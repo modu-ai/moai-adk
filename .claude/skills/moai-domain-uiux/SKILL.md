@@ -22,27 +22,7 @@ metadata:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - UI/UX
-    - design system
-    - accessibility
-    - WCAG
-    - ARIA
-    - icon
-    - theming
-    - dark mode
-    - design tokens
-    - component library
-    - Radix UI
-    - shadcn
-    - Storybook
-    - Pencil
-    - design tokens
-    - Style Dictionary
-    - Lucide
-    - Iconify
-    - responsive design
-    - user experience
+  keywords: ["UI/UX", "design system", "accessibility", "WCAG", "ARIA", "icon", "theming", "dark mode", "design tokens", "component library", "Radix UI", "shadcn", "Storybook", "Pencil", "design tokens", "Style Dictionary", "Lucide", "Iconify", "responsive design", "user experience"]
 ---
 
 ## Quick Reference

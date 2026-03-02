@@ -732,6 +732,23 @@ moai update
 moai version
 ```
 
+### Changed
+
+- **Team Agent Roster Refactored**: Replaced 8 specialized team agents with a streamlined 5-agent model
+  - **Removed**: `team-researcher`, `team-analyst`, `team-architect`, `team-backend-dev`, `team-frontend-dev`, `team-quality`
+  - **Added**: `team-reader` (plan-phase read-only), `team-coder` (implementation), `team-validator` (quality validation)
+  - **Updated**: `team-tester`, `team-designer` now use worktree isolation and background mode
+  - Roles are assigned dynamically via Task() spawn prompt rather than by agent name
+  - Added `team-protocol.md` shared protocol reference for all team agents
+
+- **Skills Improvement (moai Skills 개선 계획)**:
+  - Fixed `triggers.keywords` YAML block array → inline array format in 12 skills (P1 Critical)
+    - Affected: `moai-foundation-*` (6), `moai-domain-*` (4), `moai-workflow-spec`, `moai-workflow-thinking`
+  - Split `moai-workflow-spec/SKILL.md` 561→449 lines, extracted migration guide to `reference/migration-guide.md` (P2)
+  - Added `disable-model-invocation: true` to `99-release.md` to prevent accidental production releases (P3)
+
+- **New Template**: Added `github.md` command to template distribution
+
 ---
 
 ## [2.5.2] - 2026-02-23

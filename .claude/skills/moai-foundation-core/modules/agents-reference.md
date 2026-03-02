@@ -24,7 +24,7 @@ Agent Selection:
 - Medium (3-5 files): 2-3 agents sequential
 - Complex (10+ files): 5+ agents parallel/sequential
 
-All agents use Task() delegation:
+All agents use Agent() delegation:
 ```python
 result = Task(subagent_type="code-backend", prompt="...", context={...})
 ```
@@ -212,7 +212,7 @@ Is this a new feature or architecture change?
 
 ### Delegation Principles
 
-1. Agent-First: MoAI NEVER executes tasks directly. ALWAYS delegates via Task()
+1. Agent-First: MoAI NEVER executes tasks directly. ALWAYS delegates via Agent()
 
 2. Naming Consistency: All agents follow `{domain}-{role}` pattern
  - Lowercase only

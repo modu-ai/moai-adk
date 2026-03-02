@@ -223,7 +223,7 @@ For each issue in the current batch, spawn in a SINGLE message (parallel):
 
 ```
 Task(
-  subagent_type: "team-backend-dev",  // or team-frontend-dev based on domain
+  subagent_type: "team-coder",  // role (backend/frontend) specified in prompt
   team_name: "github-issues-{repo-slug}",
   name: "fixer-{number}",
   isolation: "worktree",
@@ -530,7 +530,7 @@ Task(
 
 ```
 Task(
-  subagent_type: "team-researcher",
+  subagent_type: "team-reader",
   team_name: "github-pr-review-{number}",
   name: "security-reviewer",
   mode: "plan",
@@ -551,7 +551,7 @@ Task(
 )
 
 Task(
-  subagent_type: "team-researcher",
+  subagent_type: "team-reader",
   team_name: "github-pr-review-{number}",
   name: "perf-reviewer",
   mode: "plan",
@@ -572,7 +572,7 @@ Task(
 )
 
 Task(
-  subagent_type: "team-researcher",
+  subagent_type: "team-reader",
   team_name: "github-pr-review-{number}",
   name: "quality-reviewer",
   mode: "plan",

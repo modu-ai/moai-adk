@@ -12,8 +12,9 @@ import (
 )
 
 var hookCmd = &cobra.Command{
-	Use:   "hook",
-	Short: "Execute hook event handlers",
+	Use:     "hook",
+	Short:   "Execute hook event handlers",
+	GroupID: "tools",
 	Long:  "Execute Claude Code hook event handlers. Called by Claude Code settings.json hook configuration.",
 }
 

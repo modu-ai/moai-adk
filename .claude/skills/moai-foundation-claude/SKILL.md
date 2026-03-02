@@ -25,21 +25,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - "skill"
-    - "agent"
-    - "plugin"
-    - "slash command"
-    - "hook"
-    - "sandbox"
-    - "headless"
-    - "memory"
-    - "settings"
-    - "claude code"
-    - "sub-agent"
-    - "agent pattern"
-    - "orchestration"
-    - "delegation"
+  keywords: ["skill", "agent", "plugin", "slash command", "hook", "sandbox", "headless", "memory", "settings", "claude code", "sub-agent", "agent pattern", "orchestration", "delegation"]
   agents:
     - "builder-agent"
     - "builder-skill"

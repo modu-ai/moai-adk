@@ -17,8 +17,14 @@ var rootCmd = &cobra.Command{
 that serves as the runtime backbone for the MoAI framework within Claude Code.
 
 It provides CLI tooling, configuration management, LSP integration,
-Git operations, quality gates, and autonomous development loop capabilities.`,
+Git operations, quality gates, and autonomous development loop capabilities.
+
+Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
 	Version: version.GetVersion(),
+	Run: func(cmd *cobra.Command, args []string) {
+		PrintBanner(version.GetVersion())
+		_ = cmd.Help()
+	},
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
@@ -32,6 +38,13 @@ func Execute() error {
 
 func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("moai-adk %s\n", version.GetVersion()))
+
+	// Command groups
+	rootCmd.AddGroup(
+		&cobra.Group{ID: "launch", Title: "Launch Commands:"},
+		&cobra.Group{ID: "project", Title: "Project Commands:"},
+		&cobra.Group{ID: "tools", Title: "Tools:"},
+	)
 
 	// Wire worktree subcommand with lazy Git initialization
 	worktree.WorktreeCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {

@@ -108,6 +108,22 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: @.cl
    - Estimate token budget
    - Apply exclude patterns
 
+### Batch Mode Decision [MANDATORY EVALUATION]
+
+After Phase 0, MoAI MUST evaluate whether to use Skill("batch") before scanning.
+
+Condition: total_source_files >= 50 (from Phase 0 scan scope calculation)
+
+Decision:
+
+- If condition is met: Execute Skill("batch") directly. Batch mode divides the source files by language or package into independent scan units. Each batch agent runs the full 3-Pass workflow (scan → deep read → edit) on its assigned files in an isolated git worktree. After all agents complete, MoAI collects all tag reports and generates a unified summary report.
+- If condition is not met: Continue to standard sequential Pass 1 below.
+
+Batch execution instructions when triggered:
+1. Divide files by language group (all Go files to batch A, all TypeScript files to batch B, etc.)
+2. Each batch agent receives: its assigned file list, project context (tech.md, structure.md, product.md), language.yaml code_comments setting, and mx.yaml thresholds
+3. Each agent must produce a tag report in the standard format defined in the Output section
+
 ### Pass 1: Full File Scan
 
 **Purpose**: Scan all source files and generate priority queue.
@@ -146,59 +162,6 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: @.cl
 2. All tags for a given file inserted in single operation
 3. Preserve existing @MX tags (unless --force)
 4. Generate final report
-
-## Batch Checkpoint Pattern
-
-Large scanning operations (50+ files) MUST use batch processing to prevent progress loss from rate limits or session interruptions.
-
-### Batch Configuration
-
-- **Batch size**: 50 files per iteration (configurable via `mx.yaml` scanning.batch_size)
-- **Auto-commit**: After each batch, commit intermediate results
-- **Commit message**: `chore(mx): batch {N}/{M} - add MX tags to {lang} files`
-- **Progress tracking**: Maintain `.moai/cache/mx-scan-progress.json`
-
-### Progress File Format
-
-```json
-{
-  "started_at": "2026-02-22T14:00:00Z",
-  "total_files": 521,
-  "completed_files": ["path/to/file1.go", "path/to/file2.ts"],
-  "current_batch": 3,
-  "total_batches": 11,
-  "tags_added": 87,
-  "last_language": "go"
-}
-```
-
-### Resume Capability
-
-When resuming a previously interrupted scan:
-1. Read `.moai/cache/mx-scan-progress.json`
-2. Skip files already listed in `completed_files`
-3. Continue from `current_batch` number
-4. Append new results to progress file
-
-### Rate Limit Detection
-
-If 3 consecutive tool failures occur during a batch:
-1. Commit current batch results immediately
-2. Update progress file with current state
-3. Stop gracefully with message: "Rate limit detected. Progress saved. Resume with `/moai mx --resume`"
-4. Do NOT retry indefinitely
-
-### Workflow
-
-```
-For each batch (50 files):
-  1. Select next 50 unscanned files from priority queue
-  2. Execute Pass 2 (deep read) + Pass 3 (batch edit) for this batch
-  3. Update .moai/cache/mx-scan-progress.json
-  4. If auto_commit enabled: git commit with batch message
-  5. If rate limit detected: save progress and stop
-  6. Continue to next batch
-```
 
 ## Output
 

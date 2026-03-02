@@ -1439,9 +1439,12 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return tmpDir, nil }
-	defer func() { findProjectRootFn = origFn }()
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
 
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
@@ -1453,13 +1456,7 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 		t.Fatalf("runCC error: %v", err)
 	}
 
-	output := buf.String()
-	if !strings.Contains(output, "Claude") {
-		t.Error("output should mention Claude")
-	}
-
-	// Verify ALL GLM env vars were removed (including ANTHROPIC_AUTH_TOKEN);
-	// only non-GLM vars like OTHER are preserved.
+	// Verify GLM env was removed but OTHER was kept
 	data, err := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -1694,8 +1691,8 @@ func TestCGCmd_Exists(t *testing.T) {
 	if cgCmd == nil {
 		t.Fatal("cgCmd should not be nil")
 	}
-	if cgCmd.Use != "cg" {
-		t.Errorf("cgCmd.Use = %q, want %q", cgCmd.Use, "cg")
+	if !strings.HasPrefix(cgCmd.Use, "cg") {
+		t.Errorf("cgCmd.Use should start with 'cg', got %q", cgCmd.Use)
 	}
 }
 
@@ -2055,7 +2052,7 @@ func TestEnableTeamMode_Success_CG(t *testing.T) {
 	}
 }
 
-// runGLM — test with API key argument
+// runGLM — test with "setup" subcommand for API key saving
 func TestRunGLM_SavesAPIKey(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
@@ -2084,15 +2081,15 @@ func TestRunGLM_SavesAPIKey(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 
-	// Test saving API key via args
-	err := runGLM(cmd, []string{"sk-my-test-key"})
+	// Test saving API key via "setup" subcommand (new API)
+	err := runGLM(cmd, []string{"setup", "sk-my-test-key"})
 	if err != nil {
-		t.Fatalf("runGLM error: %v", err)
+		t.Fatalf("runGLM setup error: %v", err)
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "GLM API key saved") {
-		t.Error("should indicate API key was saved")
+	if !strings.Contains(output, "GLM API key stored") {
+		t.Errorf("should indicate API key was stored, got: %s", output)
 	}
 
 	// Verify key was saved
@@ -2435,9 +2432,12 @@ func TestRunCC_WithProjectRoot(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return tmpDir, nil }
-	defer func() { findProjectRootFn = origFn }()
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
 
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
@@ -2447,11 +2447,6 @@ func TestRunCC_WithProjectRoot(t *testing.T) {
 	err := runCC(cmd, nil)
 	if err != nil {
 		t.Fatalf("runCC error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "Claude") {
-		t.Error("output should mention Claude")
 	}
 }
 
@@ -3735,41 +3730,27 @@ func TestSaveTemplateDefaults_VerifyContent(t *testing.T) {
 	}
 }
 
-// runGLM — test with API key argument saving
+// runGLM — test with "setup" subcommand for API key saving
 func TestRunGLM_SavesKey(t *testing.T) {
-	tmpDir := t.TempDir()
-	// Create .moai for project root detection
-	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai", "config", "sections"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
-
-	oldWd, _ := os.Getwd()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	origDeps := deps
 	defer func() { deps = origDeps }()
 	deps = nil
 
 	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	findProjectRootFn = func() (string, error) { return tmpHome, nil }
 	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "glm-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 
-	err := runGLM(cmd, []string{"test-key-abc"})
-	// Should save the key and then fail on enableTeamMode (no API key detected since HOME is isolated)
-	// The key was saved to tmpHome/.moai/.env.glm
+	err := runGLM(cmd, []string{"setup", "test-key-abc"})
 	if err != nil {
-		t.Logf("runGLM error (expected due to enableTeamMode): %v", err)
+		t.Fatalf("runGLM setup error: %v", err)
 	}
 
 	// Verify key was saved
@@ -4481,61 +4462,6 @@ func TestRunDoctor_FilterCheck(t *testing.T) {
 	}
 }
 
-// --- applyWizardConfig: with agent teams and statusline ---
-
-func TestApplyWizardConfig_WithTeamsAndStatusline(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:           "ko",
-		AgentTeamsMode:   "auto",
-		MaxTeammates:     "5",
-		DefaultModel:     "sonnet",
-		StatuslinePreset: "compact",
-		TeammateDisplay:  "tmux",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify language.yaml
-	langData, err := os.ReadFile(filepath.Join(sectionsDir, "language.yaml"))
-	if err != nil {
-		t.Fatalf("language.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(langData), "ko") {
-		t.Error("expected language.yaml to contain ko")
-	}
-
-	// Verify workflow.yaml
-	workflowData, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
-	if err != nil {
-		t.Fatalf("workflow.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(workflowData), "auto") {
-		t.Error("expected workflow.yaml to contain auto")
-	}
-
-	// Verify statusline.yaml
-	statuslineData, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
-	if err != nil {
-		t.Fatalf("statusline.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(statuslineData), "compact") {
-		t.Error("expected statusline.yaml to contain compact")
-	}
-}
-
 // --- applyWizardConfig: with GitHub user ---
 
 func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
@@ -4550,7 +4476,6 @@ func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
 	}
 
 	result := &wizard.WizardResult{
-		Locale:         "en",
 		GitHubUsername: "testuser",
 		GitHubToken:    "gh_token123",
 	}
@@ -4570,35 +4495,6 @@ func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
 	}
 	if !strings.Contains(string(userData), "gh_token123") {
 		t.Error("expected user.yaml to contain token")
-	}
-}
-
-// --- applyWizardConfig: subagent mode ---
-
-func TestApplyWizardConfig_SubagentMode(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:         "en",
-		AgentTeamsMode: "subagent",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify workflow.yaml has team.enabled = false for subagent mode
-	workflowData, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
-	if err != nil {
-		t.Fatalf("workflow.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(workflowData), "subagent") {
-		t.Error("expected workflow.yaml to contain subagent")
 	}
 }
 
@@ -5076,9 +4972,17 @@ func TestRunCC_FullPath(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
 
-	origFn := findProjectRootFn
+	// Override findProjectRootFn to return tmpDir
+	origRoot := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return tmpDir, nil }
-	defer func() { findProjectRootFn = origFn }()
+	defer func() { findProjectRootFn = origRoot }()
+
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
 
 	cmd := &cobra.Command{Use: "cc"}
 	var buf bytes.Buffer
@@ -5089,13 +4993,7 @@ func TestRunCC_FullPath(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	output := buf.String()
-	if !strings.Contains(output, "Claude backend") {
-		t.Errorf("expected Claude backend message, got: %s", output)
-	}
-
-	// Verify ALL GLM env vars were removed (including ANTHROPIC_AUTH_TOKEN);
-	// only non-GLM vars like OTHER_VAR are preserved.
+	// Verify GLM vars were removed but other vars preserved
 	data, _ := os.ReadFile(settingsPath)
 	// ANTHROPIC_AUTH_TOKEN is also removed — re-injected from ~/.moai/.env.glm by 'moai glm'
 	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
@@ -5349,9 +5247,17 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
 
-	origFn := findProjectRootFn
+	// Override findProjectRootFn to return tmpDir
+	origRoot := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return tmpDir, nil }
-	defer func() { findProjectRootFn = origFn }()
+	defer func() { findProjectRootFn = origRoot }()
+
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
 
 	cmd := &cobra.Command{Use: "cc"}
 	var buf bytes.Buffer
@@ -5360,11 +5266,6 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 	err := runCC(cmd, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "Team mode disabled") {
-		t.Errorf("expected team mode disabled message, got: %s", output)
 	}
 }
 
@@ -5813,96 +5714,6 @@ func TestRunUpdate_BinaryOnly_DevBuild_Phase5(t *testing.T) {
 
 // --- applyWizardConfig: comprehensive path coverage ---
 
-func TestApplyWizardConfig_LanguageOnly_Phase5(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale: "ko",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify language.yaml was written
-	langData, err := os.ReadFile(filepath.Join(sectionsDir, "language.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(langData), "conversation_language: ko") {
-		t.Error("expected language.yaml to contain 'conversation_language: ko'")
-	}
-}
-
-func TestApplyWizardConfig_WithAgentTeams(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create existing workflow.yaml
-	workflowContent := "workflow:\n  execution_mode: subagent\n"
-	if err := os.WriteFile(filepath.Join(sectionsDir, "workflow.yaml"), []byte(workflowContent), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:         "en",
-		AgentTeamsMode: "auto",
-		MaxTeammates:   "5",
-		DefaultModel:   "sonnet",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify workflow.yaml was updated
-	workflowData, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	content := string(workflowData)
-	if !strings.Contains(content, "execution_mode: auto") {
-		t.Error("expected workflow.yaml to contain 'execution_mode: auto'")
-	}
-}
-
-func TestApplyWizardConfig_WithStatusline(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:             "en",
-		StatuslinePreset:   "minimal",
-		StatuslineSegments: map[string]bool{"version": true, "spec": true},
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify statusline.yaml was written
-	statuslineData, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(statuslineData), "preset: minimal") {
-		t.Error("expected statusline.yaml to contain 'preset: minimal'")
-	}
-}
-
 func TestApplyWizardConfig_WithGitHubUserAndToken(t *testing.T) {
 	tmpDir := t.TempDir()
 	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
@@ -5917,7 +5728,6 @@ func TestApplyWizardConfig_WithGitHubUserAndToken(t *testing.T) {
 	}
 
 	result := &wizard.WizardResult{
-		Locale:         "en",
 		GitHubUsername: "testgithub",
 		GitHubToken:    "ghp_test_token_123",
 	}

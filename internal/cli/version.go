@@ -9,8 +9,9 @@ import (
 )
 
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show version information",
+	Use:     "version",
+	Short:   "Show version information",
+	GroupID: "tools",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		out := cmd.OutOrStdout()
 		title := "moai-adk " + version.GetVersion()

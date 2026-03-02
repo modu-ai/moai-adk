@@ -103,9 +103,9 @@ backend, frontend, security, devops, performance, debug, testing, refactoring, c
 
 agent, skill, plugin
 
-### Team Agents (8) - Experimental
+### Team Agents (5) - Experimental
 
-researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
+reader, coder, tester, designer, validator (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
 
 Both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml` are required.
 
@@ -223,12 +223,12 @@ For Go development:
 
 ### Critical Constraint
 
-Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users directly.
+Subagents invoked via Agent() operate in isolated, stateless contexts and cannot interact with users directly.
 
 ### Correct Workflow Pattern
 
 - Step 1: MoAI uses AskUserQuestion to collect user preferences
-- Step 2: MoAI invokes Task() with user choices in the prompt
+- Step 2: MoAI invokes Agent() with user choices in the prompt
 - Step 3: Subagent executes based on provided parameters
 - Step 4: Subagent returns structured response
 - Step 5: MoAI uses AskUserQuestion for next decision

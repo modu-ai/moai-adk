@@ -5,37 +5,48 @@ import (
 )
 
 var cgCmd = &cobra.Command{
-	Use:   "cg",
-	Short: "Enable Claude + GLM hybrid mode",
-	Long: `Enable hybrid mode where the team lead uses Claude and teammates use GLM models.
+	Use:   "cg [-p profile]",
+	Short: "Launch Claude Code with Claude + GLM hybrid mode",
+	Long: `Launch Claude Code with hybrid mode.
 
 CG stands for "Claude + GLM" - a cost-optimized team configuration:
   - Lead (current tmux pane): Uses Claude models (opus/sonnet)
   - Teammates (new tmux panes): Use GLM models via Z.AI proxy
 
-This mode requires:
-  1. A GLM API key configured via 'moai glm <api-key>'
+This command:
+  1. Validates tmux session (required for pane isolation)
+  2. Removes GLM env from settings.local.json (lead = Claude)
+  3. Injects GLM env into tmux session (teammates = GLM)
+  4. Optionally sets a profile via -p flag (CLAUDE_CONFIG_DIR)
+  5. Sets CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+  6. Saves team_mode: cg
+  7. Launches Claude Code via exec (replaces current process)
+
+Flags:
+  -p, --profile <name>   Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+
+Prerequisites:
+  1. A GLM API key configured via 'moai glm setup <api-key>'
   2. Running inside a tmux session for pane-level environment isolation
 
-If 'moai glm' was previously run, 'moai cg' automatically cleans up the
-all-GLM settings and switches to hybrid mode. No need to run 'moai cc' first.
-
 Examples:
-  moai glm sk-xxx-your-key    # First: save API key (one-time setup)
-  moai cg                     # Then: enable hybrid mode (direct switch)
+  moai glm setup sk-xxx    # First: save API key (one-time)
+  moai cg                  # Then: launch hybrid mode
+  moai cg -p work          # Use 'work' profile with hybrid mode
 
-Use 'moai cc' to switch back to Claude-only mode and disable team mode.
-Use 'moai glm' for all-GLM mode (all agents use GLM).`,
-	Args: cobra.NoArgs,
-	RunE: runCG,
+Use 'moai cc' to switch back to Claude-only mode.
+Use 'moai glm' for all-GLM mode.`,
+	GroupID:            "launch",
+	DisableFlagParsing: true,
+	RunE:               runCG,
 }
 
 func init() {
 	rootCmd.AddCommand(cgCmd)
 }
 
-// runCG enables Claude + GLM hybrid mode.
-func runCG(cmd *cobra.Command, _ []string) error {
-	// CG mode is always hybrid: lead = Claude, teammates = GLM
-	return enableTeamMode(cmd, true)
+// runCG enables Claude + GLM hybrid mode and launches Claude Code.
+func runCG(cmd *cobra.Command, args []string) error {
+	profileName, filteredArgs := parseProfileFlag(args)
+	return unifiedLaunch(profileName, "claude_glm", filteredArgs)
 }

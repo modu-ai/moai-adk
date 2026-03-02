@@ -9,7 +9,7 @@ Last Updated: 2026-01-06
 
 ## Quick Reference (30 seconds)
 
-Core Principle: MoAI NEVER executes directly. All work via `Task()` delegation to specialized agents.
+Core Principle: MoAI NEVER executes directly. All work via `Agent()` delegation to specialized agents.
 
 Three Primary Patterns:
 1. Sequential - Dependencies between agents (Phase 1 → Phase 2 → Phase 3)
@@ -18,7 +18,7 @@ Three Primary Patterns:
 
 Base Syntax:
 ```python
-result = await Task(
+result = await Agent(
     subagent_type="agent-name",
     prompt="specific task description",
     context={"necessary": "data"}
@@ -61,7 +61,7 @@ async def implement_feature_sequential(feature_description: str):
     """Sequential workflow with context passing."""
 
     # Phase 1: SPEC Generation
-    spec_result = await Task(
+    spec_result = await Agent(
         subagent_type="workflow-spec",
         prompt=f"Generate SPEC for: {feature_description}",
         context={"requirements": ["TRUST 5 compliance", "≥85% coverage"]}
@@ -70,14 +70,14 @@ async def implement_feature_sequential(feature_description: str):
     execute_clear()  # Save tokens
 
     # Phase 2: API Design (depends on SPEC)
-    api_result = await Task(
+    api_result = await Agent(
         subagent_type="api-designer",
         prompt="Design REST API for feature",
         context={"spec_id": spec_result.spec_id}
     )
 
     # Phase 3: Implementation (depends on API design)
-    backend_result = await Task(
+    backend_result = await Agent(
         subagent_type="code-backend",
         prompt="Implement backend with DDD",
         context={"spec_id": spec_result.spec_id, "api_design": api_result}
@@ -109,17 +109,17 @@ async def implement_feature_parallel(spec_id: str):
     """Parallel workflow for independent tasks."""
 
     results = await Promise.all([
-        Task(
+        Agent(
             subagent_type="code-backend",
             prompt=f"Implement backend for {spec_id}",
             context={"spec_id": spec_id, "focus": "API endpoints"}
         ),
-        Task(
+        Agent(
             subagent_type="code-frontend",
             prompt=f"Implement UI for {spec_id}",
             context={"spec_id": spec_id, "focus": "Components"}
         ),
-        Task(
+        Agent(
             subagent_type="data-database",
             prompt=f"Design database for {spec_id}",
             context={"spec_id": spec_id, "focus": "Schema"}
@@ -129,7 +129,7 @@ async def implement_feature_parallel(spec_id: str):
     backend, frontend, database = results
 
     # Integration step (sequential, depends on parallel results)
-    integration = await Task(
+    integration = await Agent(
         subagent_type="core-quality",
         prompt="Run integration tests",
         context={"backend": backend.summary, "frontend": frontend.summary}
@@ -165,28 +165,28 @@ Example:
 async def handle_issue_conditional(issue_description: str):
     """Conditional routing based on issue analysis."""
 
-    analysis = await Task(
+    analysis = await Agent(
         subagent_type="support-debug",
         prompt=f"Analyze issue: {issue_description}",
         context={"focus": "classification"}
     )
 
     if analysis.category == "security":
-        return await Task(
+        return await Agent(
             subagent_type="security-expert",
             prompt="Analyze and fix security issue",
             context={"issue": issue_description, "analysis": analysis.details}
         )
 
     elif analysis.category == "performance":
-        return await Task(
+        return await Agent(
             subagent_type="performance-engineer",
             prompt="Optimize performance issue",
             context={"issue": issue_description, "bottleneck": analysis.bottleneck}
         )
 
     else:
-        return await Task(
+        return await Agent(
             subagent_type="support-debug",
             prompt="Debug and fix issue",
             context={"issue": issue_description, "analysis": analysis.details}

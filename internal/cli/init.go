@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
@@ -16,13 +17,15 @@ import (
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 var initCmd = &cobra.Command{
-	Use:   "init [project-name]",
-	Short: "Initialize a new MoAI project",
+	Use:     "init [project-name]",
+	Short:   "Initialize a new MoAI project",
+	GroupID: "project",
 	Long: `Initialize a new MoAI project with Claude Code integration.
 
 Usage patterns:
@@ -46,17 +49,11 @@ func init() {
 	initCmd.Flags().String("name", "", "Project name (default: directory name)")
 	initCmd.Flags().String("language", "", "Primary programming language")
 	initCmd.Flags().String("framework", "", "Framework name (default: auto-detect or \"none\")")
-	initCmd.Flags().String("username", "", "User display name")
-	initCmd.Flags().String("conv-lang", "", "Conversation language code (e.g., \"en\", \"ko\")")
 	initCmd.Flags().String("mode", "", "Development mode: ddd or tdd (default: tdd, auto-configured by /moai project)")
 	initCmd.Flags().String("git-mode", "", "Git workflow mode: manual, personal, or team (default: manual)")
 	initCmd.Flags().String("git-provider", "", "Git provider (github, gitlab)")
 	initCmd.Flags().String("github-username", "", "GitHub username (required for personal/team modes)")
 	initCmd.Flags().String("gitlab-instance-url", "", "GitLab instance URL for self-hosted")
-	initCmd.Flags().String("git-commit-lang", "", "Git commit message language (default: en)")
-	initCmd.Flags().String("code-comment-lang", "", "Code comment language (default: en)")
-	initCmd.Flags().String("doc-lang", "", "Documentation language (default: en)")
-	initCmd.Flags().String("model-policy", "", "Agent model policy: high, medium, or low (default: high)")
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 }
@@ -108,26 +105,6 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		valid := slices.Contains(validProviders, gitProvider)
 		if !valid {
 			return fmt.Errorf("invalid --git-provider value %q: must be one of: github, gitlab", gitProvider)
-		}
-	}
-
-	// Validate model policy
-	modelPolicy := getStringFlag(cmd, "model-policy")
-	if modelPolicy != "" {
-		validPolicies := []string{"high", "medium", "low"}
-		valid := slices.Contains(validPolicies, modelPolicy)
-		if !valid {
-			return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
-		}
-	}
-
-	// Validate conversation language (ISO 639-1 codes)
-	convLang := getStringFlag(cmd, "conv-lang")
-	if convLang != "" {
-		validLangs := []string{"en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "it"}
-		valid := slices.Contains(validLangs, convLang)
-		if !valid {
-			return fmt.Errorf("invalid --conv-lang value %q: must be a valid ISO 639-1 language code (e.g., en, ko, ja, zh)", convLang)
 		}
 	}
 
@@ -210,19 +187,56 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ProjectName:       projectName,
 		Language:          getStringFlag(cmd, "language"),
 		Framework:         getStringFlag(cmd, "framework"),
-		UserName:          getStringFlag(cmd, "username"),
-		ConvLang:          getStringFlag(cmd, "conv-lang"),
 		DevelopmentMode:   getStringFlag(cmd, "mode"),
 		GitMode:           getStringFlag(cmd, "git-mode"),
 		GitProvider:       getStringFlag(cmd, "git-provider"),
 		GitHubUsername:    getStringFlag(cmd, "github-username"),
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
-		GitCommitLang:     getStringFlag(cmd, "git-commit-lang"),
-		CodeCommentLang:   getStringFlag(cmd, "code-comment-lang"),
-		DocLang:           getStringFlag(cmd, "doc-lang"),
-		ModelPolicy:       getStringFlag(cmd, "model-policy"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
+	}
+
+	// Apply user-level defaults from profile preferences.
+	// Profile preferences (identity, languages, model policy) are set via
+	// "moai profile setup" and stored in ~/.moai/claude-profiles/<name>/preferences.yaml.
+	profileName := profile.GetCurrentName()
+
+	// Auto-prompt profile setup if no profile exists yet
+	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) && !profile.IsSetup(profileName) {
+		var wantSetup bool
+		confirm := huh.NewConfirm().
+			Title("No profile found. Set up profile preferences now?").
+			Description("Configure your name, language, and model preferences.").
+			Value(&wantSetup)
+		if err := confirm.Run(); err == nil && wantSetup {
+			if err := runProfileSetup(cmd, nil); err != nil {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: profile setup failed: %v\n", err)
+			}
+		}
+	}
+
+	prefs, err := profile.ReadPreferences(profileName)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to read profile preferences: %v\n", err)
+	} else {
+		if prefs.UserName != "" {
+			opts.UserName = prefs.UserName
+		}
+		if prefs.ConversationLang != "" {
+			opts.ConvLang = prefs.ConversationLang
+		}
+		if prefs.GitCommitLang != "" {
+			opts.GitCommitLang = prefs.GitCommitLang
+		}
+		if prefs.CodeCommentLang != "" {
+			opts.CodeCommentLang = prefs.CodeCommentLang
+		}
+		if prefs.DocLang != "" {
+			opts.DocLang = prefs.DocLang
+		}
+		if prefs.ModelPolicy != "" {
+			opts.ModelPolicy = prefs.ModelPolicy
+		}
 	}
 
 	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
@@ -243,14 +257,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ProjectName == "" {
 			opts.ProjectName = result.ProjectName
 		}
-		if opts.UserName == "" {
-			opts.UserName = result.UserName
+		if opts.DevelopmentMode == "" {
+			opts.DevelopmentMode = result.DevelopmentMode
 		}
-		if opts.ConvLang == "" {
-			opts.ConvLang = result.Locale
-		}
-		// DevelopmentMode defaults to "tdd" via template context;
-		// auto-configured later by /moai project workflow based on project analysis.
 		if opts.GitMode == "" {
 			opts.GitMode = result.GitMode
 		}
@@ -262,18 +271,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 		if opts.GitLabInstanceURL == "" {
 			opts.GitLabInstanceURL = result.GitLabInstanceURL
-		}
-		if opts.GitCommitLang == "" {
-			opts.GitCommitLang = result.GitCommitLang
-		}
-		if opts.CodeCommentLang == "" {
-			opts.CodeCommentLang = result.CodeCommentLang
-		}
-		if opts.DocLang == "" {
-			opts.DocLang = result.DocLang
-		}
-		if opts.ModelPolicy == "" && result.ModelPolicy != "" {
-			opts.ModelPolicy = result.ModelPolicy
 		}
 	}
 
@@ -330,6 +327,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout())
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), renderSuccessCard("MoAI project initialized", details...))
+
+	// Sync profile preferences to project config (after template deployment)
+	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to sync profile to project config: %v\n", err)
+	}
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {

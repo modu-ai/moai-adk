@@ -23,7 +23,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team run", "glm worker", "parallel implementation"]
-  agents: ["team-backend-dev", "team-frontend-dev", "team-tester"]
+  agents: ["team-coder", "team-tester"]
   phases: ["run"]
 ---
 # Workflow: Team Run - Implementation with Agent Teams
@@ -39,7 +39,7 @@ Before executing this workflow, check `.moai/config/sections/llm.yaml`:
 
 | team_mode | Execution Mode | Description |
 |-----------|---------------|-------------|
-| (empty) | Sub-agent | Single session, Task() subagents |
+| (empty) | Sub-agent | Single session, Agent() subagents |
 | cg | CG Mode | Claude Leader + GLM Teammates via tmux |
 | agent-teams | Agent Teams | All same API, parallel teammates |
 
@@ -72,7 +72,7 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 
 1. **Delegate to manager-spec subagent**:
    ```
-   Task(
+   Agent(
      subagent_type: "manager-spec",
      prompt: "Create SPEC document for: {user_description}
               Follow EARS format.
@@ -109,13 +109,13 @@ Teammates execute implementation in parallel using GLM via Z.AI API.
 
 #### 2.2 Spawn Teammates
 
-Spawn teammates using Task() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
+Spawn teammates using Agent() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
 is set, each teammate spawns in a new tmux pane. New panes inherit GLM env vars
 from the tmux session, routing them through Z.AI API.
 
 ```
-Task(
-  subagent_type: "team-backend-dev",
+Agent(
+  subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
   isolation: "worktree",
@@ -123,12 +123,13 @@ Task(
   prompt: "You are backend-dev on team moai-run-SPEC-XXX.
     Implement backend tasks from the shared task list.
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    File ownership: server-side files (*.go excluding *_test.go), API handlers, models, database code.
     Follow TDD methodology. Claim tasks via TaskUpdate.
     Mark tasks completed when done. Send results via SendMessage."
 )
 
-Task(
-  subagent_type: "team-frontend-dev",
+Agent(
+  subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
   isolation: "worktree",
@@ -136,11 +137,12 @@ Task(
   prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
     Implement frontend tasks from the shared task list.
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    File ownership: client-side files (components, pages, styles, assets).
     Follow TDD methodology. Claim tasks via TaskUpdate.
     Mark tasks completed when done. Send results via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-tester",
   team_name: "moai-run-SPEC-XXX",
   name: "tester",
@@ -149,7 +151,7 @@ Task(
   prompt: "You are tester on team moai-run-SPEC-XXX.
     Write tests for implemented features.
     SPEC: .moai/specs/SPEC-XXX/spec.md
-    Own all *_test.go files exclusively.
+    Own all test files (*_test.go, *.test.*, __tests__/) exclusively.
     Mark tasks completed when done. Send results via SendMessage."
 )
 ```
@@ -200,7 +202,7 @@ Leader validates quality using Claude's analysis:
 #### 4.1 Documentation
 
 ```
-Task(
+Agent(
   subagent_type: "manager-docs",
   prompt: "Generate documentation for SPEC-XXX implementation.
            Update CHANGELOG.md and README.md as needed."
@@ -272,9 +274,9 @@ When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the
 Spawn teammates with file ownership boundaries and worktree isolation:
 
 ```
-Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "backend-dev", isolation: "worktree", mode: "acceptEdits", ...)
-Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", isolation: "worktree", mode: "acceptEdits", ...)
-Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", isolation: "worktree", mode: "acceptEdits", ...)
+Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "backend-dev", isolation: "worktree", mode: "acceptEdits", prompt: "Backend role. File ownership: server-side code. ...")
+Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", isolation: "worktree", mode: "acceptEdits", prompt: "Frontend role. File ownership: client-side code. ...")
+Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", isolation: "worktree", mode: "acceptEdits", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
 [HARD] All implementation teammates MUST use `isolation: "worktree"` for parallel file safety.
@@ -317,7 +319,7 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 
 ### Phase 5: Quality and Shutdown
 
-1. Assign quality validation task to team-quality (or use manager-quality subagent)
+1. Assign quality validation task to team-validator (or use manager-quality subagent)
 2. After all tasks complete, shutdown teammates:
    ```
    SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")

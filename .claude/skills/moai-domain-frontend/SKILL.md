@@ -21,27 +21,7 @@ metadata:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - frontend
-    - UI
-    - component
-    - React
-    - Next.js
-    - Vue
-    - user interface
-    - responsive
-    - TypeScript
-    - JavaScript
-    - state management
-    - hooks
-    - props
-    - JSX
-    - TSX
-    - client-side
-    - browser
-    - DOM
-    - CSS
-    - Tailwind
+  keywords: ["frontend", "UI", "component", "React", "Next.js", "Vue", "user interface", "responsive", "TypeScript", "JavaScript", "state management", "hooks", "props", "JSX", "TSX", "client-side", "browser", "DOM", "CSS", "Tailwind"]
 ---
 
 # Frontend Development Specialist

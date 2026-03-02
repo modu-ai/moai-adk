@@ -101,7 +101,7 @@ Execution Rules (`memory/execution-rules.md`):
 
 ## Agent Delegation Rules
 
-- Required tools: Task(), AskUserQuestion(), Skill()
+- Required tools: Agent(), AskUserQuestion(), Skill()
 - Forbidden tools: Read(), Write(), Edit(), Bash(), Grep(), Glob()
 - Delegation pattern: Sequential → Parallel → Conditional
 

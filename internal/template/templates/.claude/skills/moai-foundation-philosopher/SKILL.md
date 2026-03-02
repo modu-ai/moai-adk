@@ -27,26 +27,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - "architecture"
-    - "architecture decision"
-    - "technology selection"
-    - "trade-off"
-    - "strategic"
-    - "decision"
-    - "analysis"
-    - "design thinking"
-    - "first principles"
-    - "five whys"
-    - "assumption"
-    - "alternative"
-    - "cognitive bias"
-    - "root cause"
-    - "framework selection"
-    - "library selection"
-    - "database selection"
-    - "performance vs maintainability"
-    - "breaking change"
+  keywords: ["architecture", "architecture decision", "technology selection", "trade-off", "strategic", "decision", "analysis", "design thinking", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "performance vs maintainability", "breaking change"]
   agents:
     - "manager-strategy"
     - "manager-spec"

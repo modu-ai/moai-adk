@@ -57,7 +57,7 @@ Configure conf.py with the following key settings:
 - Configure html_theme to sphinx_rtd_theme for a professional look
 - Add autodoc_typehints set to description for inline type hints
 
-Generate API documentation by running sphinx-apidoc with the source directory outputting to docs/api then run make html in the docs directory.
+Generate API documentation by running sphinx-apidoc with the source directory, outputting to docs/api, then run make html in the docs directory.
 
 ### Python Documentation with MkDocs
 
@@ -129,7 +129,7 @@ Install swagger-jsdoc and swagger-ui-express.
 
 Configure swagger-jsdoc with OpenAPI definition and API file paths.
 
-Add @openapi comments to route handlers documenting paths, parameters and responses.
+Add @openapi comments to route handlers documenting paths, parameters, and responses.
 
 Serve Swagger UI at /api-docs endpoint.
 
@@ -164,7 +164,7 @@ Configure in .vitepress/config.js:
 - Define themeConfig with nav and sidebar
 - Configure search and social links
 
-Use Markdown with Vue components, code highlighting and frontmatter.
+Use Markdown with Vue components, code highlighting, and frontmatter.
 
 ---
 
@@ -179,7 +179,7 @@ Read SPEC file content and extract key sections: id, title, description, require
 Generate structured Markdown documentation:
 - Create overview section from description
 - List requirements as feature bullets
-- Document each API endpoint with method, path and description
+- Document each API endpoint with method, path, and description
 - Add usage examples based on endpoint definitions
 
 Save generated docs to appropriate location in docs directory.
@@ -195,7 +195,7 @@ Workflow steps:
 - Setup language runtime (Python, Node.js)
 - Install documentation dependencies
 - Generate documentation using appropriate tool
-- Deploy to GitHub Pages, Netlify or Vercel
+- Deploy to GitHub Pages, Netlify, or Vercel
 
 Example for Python/Sphinx:
 - Install with pip install sphinx sphinx-rtd-theme
@@ -213,7 +213,7 @@ Link Checking:
 
 Use linkchecker for local link validation in HTML output.
 
-For Markdown use markdown-link-check in pre-commit hooks.
+For Markdown, use markdown-link-check in pre-commit hooks.
 
 Spell Checking:
 
@@ -223,7 +223,7 @@ Configure .pyspelling.yml with matrix entries for different file types.
 
 Documentation Coverage:
 
-For Python use interrogate to check docstring coverage.
+For Python, use interrogate to check docstring coverage.
 
 Configure minimum coverage thresholds in pyproject.toml.
 

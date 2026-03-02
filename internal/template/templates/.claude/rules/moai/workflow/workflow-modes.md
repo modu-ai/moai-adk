@@ -35,6 +35,7 @@ Development methodology: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
 - Make small, incremental changes
 - Run characterization tests after each change
 - Refactor with test validation
+- After IMPROVE: Skill("simplify") executes automatically (see run.md Phase 2.9). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
 
 Success Criteria:
 - All SPEC requirements implemented
@@ -61,6 +62,7 @@ Development methodology: Test-Driven Development (RED-GREEN-REFACTOR)
 - Clean up implementation while keeping tests green
 - Extract patterns, remove duplication
 - Apply SOLID principles where appropriate
+- After REFACTOR: Skill("simplify") executes automatically (see run.md Phase 2.9). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
 
 Success Criteria:
 - All SPEC requirements implemented
@@ -91,7 +93,7 @@ When --team flag is used, the methodology applies at the teammate level:
 
 Team-specific rules:
 - Methodology is shared across all teammates via the SPEC document
-- team-quality agent validates methodology compliance after all implementation completes
+- team-validator agent validates methodology compliance after all implementation completes
 - File ownership prevents cross-teammate conflicts during parallel development
 - team-tester exclusively owns test files regardless of methodology
 

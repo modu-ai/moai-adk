@@ -11,8 +11,9 @@ import (
 )
 
 var statusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show project status",
+	Use:     "status",
+	Short:   "Show project status",
+	GroupID: "project",
 	Long:  "Display project state overview showing SPEC progress, quality metrics, and configuration summary.",
 	RunE:  runStatus,
 }

@@ -8,11 +8,19 @@ description: |
   KO: 크롬 확장, 브라우저 확장, 매니페스트, 서비스 워커, 콘텐츠 스크립트, 팝업, 사이드 패널, 크롬 API, 웹 스토어, 백그라운드 스크립트, 확장 프로그램, 메시지 패싱, 크롬 스토리지
   JA: Chrome拡張, ブラウザ拡張, マニフェスト, サービスワーカー, コンテンツスクリプト, ポップアップ, サイドパネル, Chrome API, ウェブストア, バックグラウンドスクリプト, 拡張機能
   ZH: Chrome扩展, 浏览器扩展, 清单, 服务工作者, 内容脚本, 弹出窗口, 侧面板, Chrome API, 网上应用店, 后台脚本, 扩展程序, 消息传递
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+maxTurns: 100
 permissionMode: default
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-platform-chrome-extension, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-foundation-quality
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-platform-chrome-extension
+  - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-domain-frontend
+  - moai-foundation-quality
 ---
 
 # Chrome Extension Expert - Manifest V3 Development Specialist

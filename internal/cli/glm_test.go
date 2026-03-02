@@ -67,6 +67,13 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
@@ -74,12 +81,6 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 	err := glmCmd.RunE(glmCmd, []string{})
 	if err != nil {
 		t.Fatalf("glm should not error, got: %v", err)
-	}
-
-	output := buf.String()
-	// GLM Team mode should be enabled
-	if !strings.Contains(output, "GLM Team mode enabled") {
-		t.Errorf("output should mention GLM Team mode enabled, got %q", output)
 	}
 }
 
@@ -109,6 +110,13 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
@@ -118,7 +126,7 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 		t.Fatalf("glm should not error, got: %v", err)
 	}
 
-	// GLM Team mode should create settings.local.json with GLM env vars
+	// GLM should create settings.local.json with GLM env vars
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
@@ -137,15 +145,74 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 	}
 }
 
+func TestGLMCmd_WithProfile(t *testing.T) {
+	t.Setenv("GLM_API_KEY", "test-api-key")
+
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+
+	var launchedProfile string
+	launchClaudeFunc = func(profile string, args []string) error {
+		launchedProfile = profile
+		return nil
+	}
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	err := glmCmd.RunE(glmCmd, []string{"-p", "work"})
+	if err != nil {
+		t.Fatalf("glm -p work should not error, got: %v", err)
+	}
+
+	if launchedProfile != "work" {
+		t.Errorf("profile should be 'work', got %q", launchedProfile)
+	}
+}
+
+func TestGLMCmd_Setup(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	// Route to setup subcommand
+	err := glmCmd.RunE(glmCmd, []string{"setup", "test-key-12345"})
+	if err != nil {
+		t.Fatalf("glm setup should not error, got: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "GLM API key stored") {
+		t.Errorf("output should mention key stored, got %q", output)
+	}
+}
+
 func TestFindProjectRoot(t *testing.T) {
-	// Create temp project
 	tmpDir := t.TempDir()
 	moaiDir := filepath.Join(tmpDir, ".moai")
 	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	// Change to temp dir
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
 	if err := os.Chdir(tmpDir); err != nil {
@@ -157,7 +224,6 @@ func TestFindProjectRoot(t *testing.T) {
 		t.Fatalf("findProjectRoot should succeed: %v", err)
 	}
 
-	// Normalize paths for comparison
 	expectedRoot, _ := filepath.EvalSymlinks(tmpDir)
 	actualRoot, _ := filepath.EvalSymlinks(root)
 	if actualRoot != expectedRoot {
@@ -166,13 +232,8 @@ func TestFindProjectRoot(t *testing.T) {
 }
 
 func TestFindProjectRoot_NotInProject(t *testing.T) {
-	// Create temp dir without .moai
 	tmpDir := t.TempDir()
 
-	// Verify no .moai exists in the parent chain of tmpDir.
-	// When running from within a MoAI project, t.TempDir() may resolve
-	// to a path whose ancestor contains .moai, causing findProjectRoot()
-	// to succeed unexpectedly.
 	dir := tmpDir
 	for {
 		if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
@@ -185,7 +246,6 @@ func TestFindProjectRoot_NotInProject(t *testing.T) {
 		dir = parent
 	}
 
-	// Change to temp dir
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
 	if err := os.Chdir(tmpDir); err != nil {
@@ -206,36 +266,12 @@ func TestEscapeDotenvValue_SpecialCharacters(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{
-			name:     "backslash",
-			input:    `key\value`,
-			expected: `key\\value`,
-		},
-		{
-			name:     "double quote",
-			input:    `key"value`,
-			expected: `key\"value`,
-		},
-		{
-			name:     "dollar sign",
-			input:    `key$value`,
-			expected: `key\$value`,
-		},
-		{
-			name:     "multiple special chars",
-			input:    `key"$value`,
-			expected: `key\"\$value`,
-		},
-		{
-			name:     "no special chars",
-			input:    `keyvalue123`,
-			expected: `keyvalue123`,
-		},
-		{
-			name:     "empty string",
-			input:    ``,
-			expected: ``,
-		},
+		{name: "backslash", input: `key\value`, expected: `key\\value`},
+		{name: "double quote", input: `key"value`, expected: `key\"value`},
+		{name: "dollar sign", input: `key$value`, expected: `key\$value`},
+		{name: "multiple special chars", input: `key"$value`, expected: `key\"\$value`},
+		{name: "no special chars", input: `keyvalue123`, expected: `keyvalue123`},
+		{name: "empty string", input: ``, expected: ``},
 	}
 
 	for _, tt := range tests {
@@ -249,25 +285,21 @@ func TestEscapeDotenvValue_SpecialCharacters(t *testing.T) {
 }
 
 func TestSaveGLMKey_Success(t *testing.T) {
-	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
+	t.Setenv("USERPROFILE", tmpHome)
 
 	testKey := "test-api-key-12345"
-
 	err := saveGLMKey(testKey)
 	if err != nil {
 		t.Fatalf("saveGLMKey should succeed, got error: %v", err)
 	}
 
-	// Verify file was created
 	envPath := filepath.Join(tmpHome, ".moai", ".env.glm")
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		t.Fatalf("expected .env.glm file to be created at %s", envPath)
 	}
 
-	// Verify file content
 	content, err := os.ReadFile(envPath)
 	if err != nil {
 		t.Fatalf("failed to read .env.glm: %v", err)
@@ -283,20 +315,16 @@ func TestSaveGLMKey_Success(t *testing.T) {
 }
 
 func TestSaveGLMKey_SpecialCharacters(t *testing.T) {
-	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
+	t.Setenv("USERPROFILE", tmpHome)
 
-	// Key with special characters that need escaping
 	testKey := `key"with$special\chars`
-
 	err := saveGLMKey(testKey)
 	if err != nil {
 		t.Fatalf("saveGLMKey should succeed with special chars, got error: %v", err)
 	}
 
-	// Load the key back
 	loadedKey := loadGLMKey()
 	if loadedKey != testKey {
 		t.Errorf("loaded key %q does not match saved key %q", loadedKey, testKey)
@@ -304,24 +332,21 @@ func TestSaveGLMKey_SpecialCharacters(t *testing.T) {
 }
 
 func TestSaveGLMKey_EmptyKey(t *testing.T) {
-	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
+	t.Setenv("USERPROFILE", tmpHome)
 
 	err := saveGLMKey("")
 	if err != nil {
 		t.Fatalf("saveGLMKey should succeed with empty key, got error: %v", err)
 	}
 
-	// Verify file was created
 	envPath := filepath.Join(tmpHome, ".moai", ".env.glm")
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		t.Fatal("expected .env.glm file to be created")
 	}
 }
 
-// TestResolveGLMModels verifies backward compatibility fallback logic.
 func TestResolveGLMModels(t *testing.T) {
 	defaults := config.NewDefaultLLMConfig()
 
@@ -333,43 +358,28 @@ func TestResolveGLMModels(t *testing.T) {
 		wantLow    string
 	}{
 		{
-			name: "only High/Medium/Low set - uses them directly",
-			models: config.GLMModels{
-				High:   "custom-high",
-				Medium: "custom-medium",
-				Low:    "custom-low",
-			},
+			name:       "only High/Medium/Low set",
+			models:     config.GLMModels{High: "custom-high", Medium: "custom-medium", Low: "custom-low"},
 			wantHigh:   "custom-high",
 			wantMedium: "custom-medium",
 			wantLow:    "custom-low",
 		},
 		{
-			name: "only Opus/Sonnet/Haiku set - falls back to legacy fields",
-			models: config.GLMModels{
-				Opus:   "legacy-opus",
-				Sonnet: "legacy-sonnet",
-				Haiku:  "legacy-haiku",
-			},
+			name:       "only Opus/Sonnet/Haiku set",
+			models:     config.GLMModels{Opus: "legacy-opus", Sonnet: "legacy-sonnet", Haiku: "legacy-haiku"},
 			wantHigh:   "legacy-opus",
 			wantMedium: "legacy-sonnet",
 			wantLow:    "legacy-haiku",
 		},
 		{
-			name: "both set - High/Medium/Low takes priority over Opus/Sonnet/Haiku",
-			models: config.GLMModels{
-				High:   "new-high",
-				Medium: "new-medium",
-				Low:    "new-low",
-				Opus:   "old-opus",
-				Sonnet: "old-sonnet",
-				Haiku:  "old-haiku",
-			},
+			name:       "both set - High/Medium/Low priority",
+			models:     config.GLMModels{High: "new-high", Medium: "new-medium", Low: "new-low", Opus: "old-opus", Sonnet: "old-sonnet", Haiku: "old-haiku"},
 			wantHigh:   "new-high",
 			wantMedium: "new-medium",
 			wantLow:    "new-low",
 		},
 		{
-			name:       "neither set - falls back to config defaults",
+			name:       "neither set - defaults",
 			models:     config.GLMModels{},
 			wantHigh:   defaults.GLM.Models.High,
 			wantMedium: defaults.GLM.Models.Medium,
@@ -394,31 +404,42 @@ func TestResolveGLMModels(t *testing.T) {
 }
 
 func TestSaveGLMKey_OverwriteExisting(t *testing.T) {
-	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
+	t.Setenv("USERPROFILE", tmpHome)
 
-	// Save first key
 	firstKey := "first-key"
 	err := saveGLMKey(firstKey)
 	if err != nil {
 		t.Fatalf("first saveGLMKey failed: %v", err)
 	}
 
-	// Save second key (should overwrite)
 	secondKey := "second-key"
 	err = saveGLMKey(secondKey)
 	if err != nil {
 		t.Fatalf("second saveGLMKey failed: %v", err)
 	}
 
-	// Verify second key was saved
 	loadedKey := loadGLMKey()
 	if loadedKey != secondKey {
 		t.Errorf("loaded key %q, want %q", loadedKey, secondKey)
 	}
-	if loadedKey == firstKey {
-		t.Error("first key should be overwritten")
+}
+
+func TestMaskAPIKey(t *testing.T) {
+	tests := []struct {
+		key  string
+		want string
+	}{
+		{"short", "****"},
+		{"12345678", "****"},
+		{"123456789", "1234****6789"},
+		{"sk-very-long-api-key-12345", "sk-v****2345"},
+	}
+	for _, tt := range tests {
+		got := maskAPIKey(tt.key)
+		if got != tt.want {
+			t.Errorf("maskAPIKey(%q) = %q, want %q", tt.key, got, tt.want)
+		}
 	}
 }

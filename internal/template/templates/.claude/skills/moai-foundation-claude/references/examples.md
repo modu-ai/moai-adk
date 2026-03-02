@@ -203,7 +203,7 @@ async def test_async_api_call():
 
 ```python
 # Phase 1: Analysis with spec-builder
-analysis = Task(
+analysis = Agent(
     subagent_type="spec-builder",
     prompt="""
     Analyze the following requirement and create a SPEC:
@@ -224,7 +224,7 @@ analysis = Task(
 )
 
 # Phase 2: Implementation with ddd-implementer (depends on analysis)
-implementation = Task(
+implementation = Agent(
     subagent_type="ddd-implementer",
     prompt=f"""
     Implement the SPEC using DDD approach:
@@ -244,7 +244,7 @@ implementation = Task(
 )
 
 # Phase 3: Validation with quality-gate (depends on implementation)
-validation = Task(
+validation = Agent(
     subagent_type="quality-gate",
     prompt=f"""
     Validate the implementation:
@@ -274,21 +274,21 @@ validation = Task(
 # All three can run in parallel
 results = await Promise.all([
     # Backend implementation
-    Task(
+    Agent(
         subagent_type="backend-expert",
         prompt="Implement API endpoints for SPEC-001",
         context={"spec_id": "SPEC-001", "focus": "api"}
     ),
 
     # Frontend implementation
-    Task(
+    Agent(
         subagent_type="frontend-expert",
         prompt="Implement UI components for SPEC-001",
         context={"spec_id": "SPEC-001", "focus": "ui"}
     ),
 
     # Documentation generation
-    Task(
+    Agent(
         subagent_type="docs-manager",
         prompt="Generate API documentation for SPEC-001",
         context={"spec_id": "SPEC-001", "focus": "docs"}
@@ -301,7 +301,7 @@ frontend_result = results[1]
 docs_result = results[2]
 
 # Integration validation (sequential - depends on all parallel tasks)
-integration = Task(
+integration = Agent(
     subagent_type="quality-gate",
     prompt="Validate integration of all components",
     context={
@@ -663,7 +663,7 @@ Load configuration from @config.yaml or $PROJECT_ROOT/config.yaml
 # Full SPEC-First TDD Workflow
 
 # Step 1: Plan - Create SPEC
-plan_result = Task(
+plan_result = Agent(
     subagent_type="spec-builder",
     prompt="Create SPEC for: User profile management with avatar upload",
     context={"project": "@CLAUDE.md"}
@@ -673,14 +673,14 @@ plan_result = Task(
 # /clear
 
 # Step 3: Run - Implement with DDD
-run_result = Task(
+run_result = Agent(
     subagent_type="ddd-implementer",
     prompt=f"Implement SPEC: {plan_result.spec_id}",
     context={"spec": plan_result}
 )
 
 # Step 4: Sync - Generate documentation
-sync_result = Task(
+sync_result = Agent(
     subagent_type="docs-manager",
     prompt=f"Generate docs for: {run_result.spec_id}",
     context={"implementation": run_result}

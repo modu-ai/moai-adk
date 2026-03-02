@@ -54,9 +54,9 @@ func TestRootCmd_HelpOutput(t *testing.T) {
 
 	output := buf.String()
 
-	// Root command should show available commands section
-	if !strings.Contains(output, "Available Commands") {
-		t.Error("root --help should show Available Commands section")
+	// Root command should show command groups
+	if !strings.Contains(output, "Launch Commands") {
+		t.Error("root --help should show Launch Commands group")
 	}
 
 	// Verify core subcommands are registered
@@ -68,7 +68,7 @@ func TestRootCmd_HelpOutput(t *testing.T) {
 	}
 }
 
-func TestRootCmd_NoArgsShowsHelp(t *testing.T) {
+func TestRootCmd_NoArgs_ShowsHelp(t *testing.T) {
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
@@ -110,5 +110,11 @@ func TestRootCmd_SubcommandCount(t *testing.T) {
 	count := len(rootCmd.Commands())
 	if count < 4 {
 		t.Errorf("rootCmd should have at least 4 subcommands, got %d", count)
+	}
+}
+
+func TestRootCmd_NoRunE(t *testing.T) {
+	if rootCmd.RunE != nil {
+		t.Error("rootCmd should not have RunE (bare moai shows help)")
 	}
 }

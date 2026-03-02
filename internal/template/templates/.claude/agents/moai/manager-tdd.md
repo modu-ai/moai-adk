@@ -9,11 +9,19 @@ description: |
   KO: TDD, 테스트주도개발, 레드그린리팩터, 테스트우선, 신규기능, 명세테스트, 그린필드
   JA: TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド
   ZH: TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: opus
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+model: sonnet
 permissionMode: default
+maxTurns: 150
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-tdd, moai-workflow-testing, moai-workflow-ddd, moai-workflow-mx-tag
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-quality
+  - moai-workflow-tdd
+  - moai-workflow-testing
+  - moai-workflow-ddd
+  - moai-workflow-mx-tag
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit"
@@ -27,7 +35,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-post-implementation"
           timeout: 10
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-completion"
@@ -76,7 +84,7 @@ Natural Language Delegation Instructions:
 Use structured natural language invocation for optimal TDD implementation:
 
 - Invocation Format: "Use the manager-tdd subagent to implement SPEC-001 using RED-GREEN-REFACTOR cycle"
-- Avoid: Technical function call patterns with Task subagent_type syntax
+- Avoid: Technical function call patterns with Agent subagent_type syntax
 - Preferred: Clear, descriptive natural language that specifies implementation scope
 
 Architecture Integration:

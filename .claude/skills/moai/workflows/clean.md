@@ -128,6 +128,22 @@ Options:
 
 If --dry flag: Display analysis results and exit without removing anything.
 
+### Batch Mode Decision [MANDATORY EVALUATION]
+
+After Phase 3 user approval, MoAI MUST evaluate whether to use Skill("batch") for removal.
+
+Condition: confirmed_dead_count >= 20 items approved for removal
+
+Decision:
+
+- If condition is met: Execute Skill("batch") directly. Batch mode assigns each package or module to an independent agent running in a git worktree. Each agent removes its assigned dead code, runs the test suite to verify no regressions, and reports results. Agents that encounter test failures automatically roll back their specific removals and mark affected items as false positives.
+- If condition is not met: Continue to standard sequential Phase 4 below.
+
+Batch execution instructions when triggered:
+1. Group confirmed dead items by package/module (minimize cross-package dependencies per batch unit)
+2. Each batch agent receives: its assigned removal list, the removal order (leaf nodes first), safety measures defined in Phase 4 below
+3. Each agent must run tests after removal and report pass/fail per item
+
 ## Phase 4: Safe Removal
 
 [HARD] Delegate removal to the expert-refactoring subagent.

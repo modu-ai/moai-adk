@@ -6,21 +6,17 @@ import (
 
 func TestWizardResult(t *testing.T) {
 	result := &WizardResult{
-		ProjectName:     "test-project",
-		Locale:          "ko",
-		UserName:        "TestUser",
-		GitMode:         "personal",
-		GitHubUsername:  "testuser",
-		GitCommitLang:   "en",
-		CodeCommentLang: "en",
-		DocLang:         "ko",
+		ProjectName:    "test-project",
+		DevelopmentMode: "tdd",
+		GitMode:        "personal",
+		GitHubUsername: "testuser",
 	}
 
 	if result.ProjectName != "test-project" {
 		t.Errorf("expected ProjectName 'test-project', got %q", result.ProjectName)
 	}
-	if result.Locale != "ko" {
-		t.Errorf("expected Locale 'ko', got %q", result.Locale)
+	if result.DevelopmentMode != "tdd" {
+		t.Errorf("expected DevelopmentMode 'tdd', got %q", result.DevelopmentMode)
 	}
 }
 
@@ -73,31 +69,23 @@ func TestDefaultQuestions(t *testing.T) {
 		t.Fatal("DefaultQuestions() returned empty slice")
 	}
 
-	// Verify first question is locale selection
-	if questions[0].ID != "locale" {
-		t.Errorf("expected first question ID 'locale', got %q", questions[0].ID)
+	// Verify first question is project_name
+	if questions[0].ID != "project_name" {
+		t.Errorf("expected first question ID 'project_name', got %q", questions[0].ID)
 	}
 
-	// Verify project name question
-	var found bool
-	for _, q := range questions {
-		if q.ID == "project_name" {
-			found = true
-			if q.Default != "test-project" {
-				t.Errorf("expected project_name default 'test-project', got %q", q.Default)
-			}
-			break
-		}
+	// Verify project name question default
+	q := QuestionByID(questions, "project_name")
+	if q == nil {
+		t.Fatal("project_name question not found")
 	}
-	if !found {
-		t.Error("project_name question not found")
+	if q.Default != "test-project" {
+		t.Errorf("expected project_name default 'test-project', got %q", q.Default)
 	}
 
-	// Verify development_mode question is NOT in wizard (auto-configured by /moai project)
-	for _, q := range questions {
-		if q.ID == "development_mode" {
-			t.Error("development_mode question should not be in wizard (auto-configured by /moai project)")
-		}
+	// Verify development_mode question IS in wizard
+	if QuestionByID(questions, "development_mode") == nil {
+		t.Error("development_mode question should be in wizard")
 	}
 }
 
@@ -204,9 +192,8 @@ func TestSaveAnswer_AllFields(t *testing.T) {
 		checkFn  func() bool
 		expected string
 	}{
-		{"locale", "ko", func() bool { return result.Locale == "ko" && locale == "ko" }, "Locale=ko, locale pointer=ko"},
-		{"user_name", "testuser", func() bool { return result.UserName == "testuser" }, "UserName=testuser"},
 		{"project_name", "myproject", func() bool { return result.ProjectName == "myproject" }, "ProjectName=myproject"},
+		{"development_mode", "ddd", func() bool { return result.DevelopmentMode == "ddd" }, "DevelopmentMode=ddd"},
 		{"git_mode", "personal", func() bool { return result.GitMode == "personal" }, "GitMode=personal"},
 		{"git_provider", "gitlab", func() bool { return result.GitProvider == "gitlab" }, "GitProvider=gitlab"},
 		{"github_username", "ghuser", func() bool { return result.GitHubUsername == "ghuser" }, "GitHubUsername=ghuser"},
@@ -214,15 +201,6 @@ func TestSaveAnswer_AllFields(t *testing.T) {
 		{"gitlab_instance_url", "https://gl.co", func() bool { return result.GitLabInstanceURL == "https://gl.co" }, "GitLabInstanceURL"},
 		{"gitlab_username", "gluser", func() bool { return result.GitLabUsername == "gluser" }, "GitLabUsername=gluser"},
 		{"gitlab_token", "glpat-token", func() bool { return result.GitLabToken == "glpat-token" }, "GitLabToken=glpat-token"},
-		{"git_commit_lang", "en", func() bool { return result.GitCommitLang == "en" }, "GitCommitLang=en"},
-		{"code_comment_lang", "en", func() bool { return result.CodeCommentLang == "en" }, "CodeCommentLang=en"},
-		{"doc_lang", "ko", func() bool { return result.DocLang == "ko" }, "DocLang=ko"},
-		{"model_policy", "high", func() bool { return result.ModelPolicy == "high" }, "ModelPolicy=high"},
-		{"agent_teams_mode", "auto", func() bool { return result.AgentTeamsMode == "auto" }, "AgentTeamsMode=auto"},
-		{"max_teammates", "3", func() bool { return result.MaxTeammates == "3" }, "MaxTeammates=3"},
-		{"default_model", "sonnet", func() bool { return result.DefaultModel == "sonnet" }, "DefaultModel=sonnet"},
-		{"teammate_display", "tmux", func() bool { return result.TeammateDisplay == "tmux" }, "TeammateDisplay=tmux"},
-		{"statusline_preset", "compact", func() bool { return result.StatuslinePreset == "compact" }, "StatuslinePreset=compact"},
 	}
 
 	for _, tt := range tests {
@@ -232,45 +210,6 @@ func TestSaveAnswer_AllFields(t *testing.T) {
 				t.Errorf("saveAnswer(%q, %q) did not set expected: %s", tt.id, tt.value, tt.expected)
 			}
 		})
-	}
-}
-
-func TestSaveAnswer_Locale_UpdatesPointer(t *testing.T) {
-	result := &WizardResult{}
-	locale := ""
-
-	saveAnswer("locale", "ja", result, &locale)
-
-	if result.Locale != "ja" {
-		t.Errorf("expected Locale 'ja', got %q", result.Locale)
-	}
-	if locale != "ja" {
-		t.Errorf("expected locale pointer 'ja', got %q", locale)
-	}
-}
-
-func TestSaveAnswer_StatuslineSegments(t *testing.T) {
-	result := &WizardResult{}
-	locale := ""
-
-	// Initially StatuslineSegments should be nil
-	if result.StatuslineSegments != nil {
-		t.Error("StatuslineSegments should be nil initially")
-	}
-
-	// Save first segment - should initialize map
-	saveAnswer("statusline_seg_model", "true", result, &locale)
-	if result.StatuslineSegments == nil {
-		t.Fatal("StatuslineSegments should be initialized after saving a segment")
-	}
-	if !result.StatuslineSegments["model"] {
-		t.Error("StatuslineSegments['model'] should be true")
-	}
-
-	// Save second segment
-	saveAnswer("statusline_seg_context", "false", result, &locale)
-	if result.StatuslineSegments["context"] {
-		t.Error("StatuslineSegments['context'] should be false")
 	}
 }
 
@@ -286,13 +225,14 @@ func TestSaveAnswer_UnknownID(t *testing.T) {
 
 func TestGetLocalizedQuestion(t *testing.T) {
 	q := &Question{
-		ID:          "locale",
+		ID:          "git_mode",
 		Type:        QuestionTypeSelect,
-		Title:       "Select conversation language",
-		Description: "This determines the language Claude will use.",
+		Title:       "Select Git automation mode",
+		Description: "Controls how much Git automation Claude can perform.",
 		Options: []Option{
-			{Label: "Korean (한국어)", Value: "ko", Desc: "Korean"},
-			{Label: "English", Value: "en", Desc: "English"},
+			{Label: "Manual", Value: "manual", Desc: "AI never commits or pushes"},
+			{Label: "Personal", Value: "personal", Desc: "AI can create branches and commit"},
+			{Label: "Team", Value: "team", Desc: "AI can create branches, commit, and open PRs"},
 		},
 	}
 
@@ -307,14 +247,14 @@ func TestGetLocalizedQuestion(t *testing.T) {
 	if localizedKo.Title == q.Title {
 		t.Error("Korean title should be different from English")
 	}
-	if localizedKo.Title != "대화 언어 선택" {
-		t.Errorf("expected Korean title '대화 언어 선택', got %q", localizedKo.Title)
+	if localizedKo.Title != "Git 자동화 모드 선택" {
+		t.Errorf("expected Korean title 'Git 자동화 모드 선택', got %q", localizedKo.Title)
 	}
 
 	// Test Japanese translation
 	localizedJa := GetLocalizedQuestion(q, "ja")
-	if localizedJa.Title != "会話言語を選択" {
-		t.Errorf("expected Japanese title '会話言語を選択', got %q", localizedJa.Title)
+	if localizedJa.Title != "Git自動化モードを選択" {
+		t.Errorf("expected Japanese title 'Git自動化モードを選択', got %q", localizedJa.Title)
 	}
 
 	// Test unknown locale (should return original)
@@ -457,7 +397,6 @@ func TestGitHubQuestionsHiddenForGitLab(t *testing.T) {
 func TestWizardResultGitLabFields(t *testing.T) {
 	result := &WizardResult{
 		ProjectName:       "test-project",
-		Locale:            "en",
 		GitMode:           "personal",
 		GitProvider:       "gitlab",
 		GitLabInstanceURL: "https://gitlab.company.com",
@@ -479,13 +418,15 @@ func TestWizardResultGitLabFields(t *testing.T) {
 	}
 }
 
-func TestDevelopmentModeRemovedFromWizard(t *testing.T) {
+func TestDevelopmentModeInWizard(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 
-	for _, q := range questions {
-		if q.ID == "development_mode" {
-			t.Fatal("development_mode question should not be in wizard; it is auto-configured by /moai project")
-		}
+	q := QuestionByID(questions, "development_mode")
+	if q == nil {
+		t.Fatal("development_mode question should be in wizard")
+	}
+	if q.Default != "tdd" {
+		t.Errorf("development_mode default should be 'tdd', got %q", q.Default)
 	}
 }
 
@@ -600,15 +541,17 @@ func TestGetLocalizedQuestion_OptionTranslation(t *testing.T) {
 }
 
 func TestGetLocalizedQuestion_MismatchedOptionCount(t *testing.T) {
-	// Create a question with 3 options but use a locale that has 2 option translations
+	// git_mode has "ko" translation with 3 options.
+	// Create a question with 4 options to trigger the mismatch branch.
 	q := &Question{
-		ID:    "locale",
+		ID:    "git_mode",
 		Type:  QuestionTypeSelect,
-		Title: "Select language",
+		Title: "Select Git automation mode",
 		Options: []Option{
-			{Label: "Korean", Value: "ko"},
-			{Label: "English", Value: "en"},
-			{Label: "Extra", Value: "extra"}, // Extra option not in translations
+			{Label: "Manual", Value: "manual"},
+			{Label: "Personal", Value: "personal"},
+			{Label: "Team", Value: "team"},
+			{Label: "Extra", Value: "extra"}, // Extra option causes mismatch
 		},
 	}
 
@@ -619,10 +562,10 @@ func TestGetLocalizedQuestion_MismatchedOptionCount(t *testing.T) {
 		t.Error("title should be translated even with mismatched option count")
 	}
 	// Options should remain original since count mismatch
-	if len(result.Options) != 3 {
-		t.Fatalf("expected 3 options, got %d", len(result.Options))
+	if len(result.Options) != 4 {
+		t.Fatalf("expected 4 options, got %d", len(result.Options))
 	}
-	if result.Options[0].Label != "Korean" {
+	if result.Options[0].Label != "Manual" {
 		t.Errorf("mismatched options should keep original label, got %q", result.Options[0].Label)
 	}
 }
@@ -860,11 +803,11 @@ func TestGetUIStrings_AllLocales(t *testing.T) {
 	}
 }
 
-func TestGetLocalizedQuestion_AllLocales_ForLocaleQuestion(t *testing.T) {
+func TestGetLocalizedQuestion_AllLocales_ForGitModeQuestion(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
-	q := QuestionByID(questions, "locale")
+	q := QuestionByID(questions, "git_mode")
 	if q == nil {
-		t.Fatal("locale question not found")
+		t.Fatal("git_mode question not found")
 	}
 
 	locales := []string{"ko", "ja", "zh"}

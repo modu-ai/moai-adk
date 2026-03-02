@@ -41,24 +41,24 @@ For development mode details, see: @.claude/rules/moai/workflow/workflow-modes.m
 
 ### Parallel Execution Pattern
 
-When multiple operations are independent, invoke them in a single response. Claude Code automatically runs multiple Task() calls in parallel (up to 10 concurrent).
+When multiple operations are independent, invoke them in a single response. Claude Code automatically runs multiple Agent() calls in parallel (up to 10 concurrent).
 
 Use Cases:
 
-- Exploration Phase: Launch codebase analysis, documentation research, and quality assessment simultaneously via separate Task() calls
+- Exploration Phase: Launch codebase analysis, documentation research, and quality assessment simultaneously via separate Agent() calls
 - Diagnostic Scan: Run LSP diagnostics, AST-grep analysis, and linter checks in parallel
 - Multi-file Generation: Generate product.md, structure.md, and tech.md simultaneously when analysis is complete
 
 Implementation:
 
-- Include multiple Task() calls in the same response message
-- Each Task() targets a different subagent or a different scope within the same agent
+- Include multiple Agent() calls in the same response message
+- Each Agent() targets a different subagent or a different scope within the same agent
 - Results are collected when all parallel tasks complete
-- Maximum 10 concurrent Task() calls for optimal throughput
+- Maximum 10 concurrent Agent() calls for optimal throughput
 
 ### Sequential Execution Pattern
 
-When operations have dependencies, chain them sequentially. Each Task() call receives context from the previous phase results.
+When operations have dependencies, chain them sequentially. Each Agent() call receives context from the previous phase results.
 
 Use Cases:
 
@@ -88,7 +88,7 @@ Use Cases:
 Implementation:
 
 - TeamCreate to initialize team structure with shared task list
-- Task() with team_name and name parameters to spawn teammates
+- Agent() with team_name and name parameters to spawn teammates
 - SendMessage for inter-teammate coordination and idle handling
 - TaskList for self-coordinated work distribution
 - TeamDelete after all teammates shut down
@@ -130,7 +130,7 @@ Required Context Elements:
 
 Propagation Method:
 
-- Include a structured summary of previous phase outputs in the Task() prompt
+- Include a structured summary of previous phase outputs in the Agent() prompt
 - Reference specific file paths rather than inline large content blocks
 - Use SPEC document as the canonical source of truth across phases
 - Pass implementation divergence report from run phase to sync phase for SPEC/project document updates
