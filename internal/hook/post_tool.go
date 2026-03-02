@@ -130,6 +130,9 @@ func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metr
 		)
 		return
 	}
+	if result == nil {
+		return
+	}
 
 	// Add scan results to metrics
 	metrics["ast_scan"] = map[string]any{
