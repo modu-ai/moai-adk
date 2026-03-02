@@ -4378,61 +4378,6 @@ func TestRunDoctor_FilterCheck(t *testing.T) {
 	}
 }
 
-// --- applyWizardConfig: with agent teams and statusline ---
-
-func TestApplyWizardConfig_WithTeamsAndStatusline(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:           "ko",
-		AgentTeamsMode:   "auto",
-		MaxTeammates:     "5",
-		DefaultModel:     "sonnet",
-		StatuslinePreset: "compact",
-		TeammateDisplay:  "tmux",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify language.yaml
-	langData, err := os.ReadFile(filepath.Join(sectionsDir, "language.yaml"))
-	if err != nil {
-		t.Fatalf("language.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(langData), "ko") {
-		t.Error("expected language.yaml to contain ko")
-	}
-
-	// Verify workflow.yaml
-	workflowData, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
-	if err != nil {
-		t.Fatalf("workflow.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(workflowData), "auto") {
-		t.Error("expected workflow.yaml to contain auto")
-	}
-
-	// Verify statusline.yaml
-	statuslineData, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
-	if err != nil {
-		t.Fatalf("statusline.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(statuslineData), "compact") {
-		t.Error("expected statusline.yaml to contain compact")
-	}
-}
-
 // --- applyWizardConfig: with GitHub user ---
 
 func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
@@ -4447,7 +4392,6 @@ func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
 	}
 
 	result := &wizard.WizardResult{
-		Locale:         "en",
 		GitHubUsername: "testuser",
 		GitHubToken:    "gh_token123",
 	}
@@ -4467,35 +4411,6 @@ func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
 	}
 	if !strings.Contains(string(userData), "gh_token123") {
 		t.Error("expected user.yaml to contain token")
-	}
-}
-
-// --- applyWizardConfig: subagent mode ---
-
-func TestApplyWizardConfig_SubagentMode(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:         "en",
-		AgentTeamsMode: "subagent",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify workflow.yaml has team.enabled = false for subagent mode
-	workflowData, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
-	if err != nil {
-		t.Fatalf("workflow.yaml not created: %v", err)
-	}
-	if !strings.Contains(string(workflowData), "subagent") {
-		t.Error("expected workflow.yaml to contain subagent")
 	}
 }
 
@@ -5699,96 +5614,6 @@ func TestRunUpdate_BinaryOnly_DevBuild_Phase5(t *testing.T) {
 
 // --- applyWizardConfig: comprehensive path coverage ---
 
-func TestApplyWizardConfig_LanguageOnly_Phase5(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale: "ko",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify language.yaml was written
-	langData, err := os.ReadFile(filepath.Join(sectionsDir, "language.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(langData), "conversation_language: ko") {
-		t.Error("expected language.yaml to contain 'conversation_language: ko'")
-	}
-}
-
-func TestApplyWizardConfig_WithAgentTeams(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create existing workflow.yaml
-	workflowContent := "workflow:\n  execution_mode: subagent\n"
-	if err := os.WriteFile(filepath.Join(sectionsDir, "workflow.yaml"), []byte(workflowContent), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:         "en",
-		AgentTeamsMode: "auto",
-		MaxTeammates:   "5",
-		DefaultModel:   "sonnet",
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify workflow.yaml was updated
-	workflowData, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	content := string(workflowData)
-	if !strings.Contains(content, "execution_mode: auto") {
-		t.Error("expected workflow.yaml to contain 'execution_mode: auto'")
-	}
-}
-
-func TestApplyWizardConfig_WithStatusline(t *testing.T) {
-	tmpDir := t.TempDir()
-	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := &wizard.WizardResult{
-		Locale:             "en",
-		StatuslinePreset:   "minimal",
-		StatuslineSegments: map[string]bool{"version": true, "spec": true},
-	}
-
-	err := applyWizardConfig(tmpDir, result)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify statusline.yaml was written
-	statuslineData, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(statuslineData), "preset: minimal") {
-		t.Error("expected statusline.yaml to contain 'preset: minimal'")
-	}
-}
-
 func TestApplyWizardConfig_WithGitHubUserAndToken(t *testing.T) {
 	tmpDir := t.TempDir()
 	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
@@ -5803,7 +5628,6 @@ func TestApplyWizardConfig_WithGitHubUserAndToken(t *testing.T) {
 	}
 
 	result := &wizard.WizardResult{
-		Locale:         "en",
 		GitHubUsername: "testgithub",
 		GitHubToken:    "ghp_test_token_123",
 	}

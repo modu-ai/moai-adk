@@ -11,7 +11,7 @@
 **Input**:
 ```python
 # 개발된 코드에 TRUST 5 검증 요청
-Task(
+Agent(
     subagent_type="core-quality",
     prompt="Validate code quality using TRUST 5 framework",
     context={
@@ -97,24 +97,24 @@ Token Usage: 35K/40K
 # 복잡한 작업: 순차 + 병렬 위임 조합
 async def develop_microservice():
     # Phase 1: 순차 실행 (의존성 있음)
-    design = await Task(
+    design = await Agent(
         subagent_type="api-designer",
         prompt="Design REST API for order management service"
     )
 
     # Phase 2: 병렬 실행 (독립적)
     backend, frontend, tests = await Promise.all([
-        Task(
+        Agent(
             subagent_type="backend-expert",
             prompt="Implement API endpoints",
             context={"design": design}
         ),
-        Task(
+        Agent(
             subagent_type="frontend-expert",
             prompt="Create admin dashboard UI",
             context={"design": design}
         ),
-        Task(
+        Agent(
             subagent_type="ddd-implementer",
             prompt="Generate integration tests",
             context={"design": design}
@@ -122,7 +122,7 @@ async def develop_microservice():
     ])
 
     # Phase 3: 최종 검증
-    validation = await Task(
+    validation = await Agent(
         subagent_type="core-quality",
         prompt="Validate complete implementation",
         context={"components": [backend, frontend, tests]}
@@ -220,7 +220,7 @@ Task(subagent_type="workflow-docs", prompt="Generate documentation")
 
 ```python
 # 먼저 문제 분석
-analysis = await Task(
+analysis = await Agent(
     subagent_type="debug-helper",
     prompt="Analyze the error and classify type"
 )
@@ -256,7 +256,7 @@ def moai_direct_execution():
 
 ```python
 # 올바른 예시
-await Task(
+await Agent(
     subagent_type="backend-expert",
     prompt="Modify src/app.py to add new feature",
     context={"requirements": feature_spec}
@@ -318,7 +318,7 @@ git add . && git commit -m "Add feature" && git push
 
 ```python
 # 올바른 예시
-validation = await Task(
+validation = await Agent(
     subagent_type="core-quality",
     prompt="Validate with TRUST 5 before merge"
 )

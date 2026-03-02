@@ -80,6 +80,33 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	return cfg, nil
 }
 
+// LoadRaw reads configuration without validation.
+// Use for write-intent operations (e.g., syncing profile preferences)
+// where required fields may be empty and will be populated before saving.
+func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	configDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir)
+	if envDir := os.Getenv("MOAI_CONFIG_DIR"); envDir != "" {
+		configDir = filepath.Clean(envDir)
+	}
+
+	cfg, err := m.loader.Load(configDir)
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+
+	m.loadedSections = m.loader.LoadedSections()
+	applyEnvOverrides(cfg)
+
+	m.config = cfg
+	m.root = projectRoot
+	m.state = stateInitialized
+
+	return cfg, nil
+}
+
 // Get returns the current in-memory configuration.
 // Returns nil if the manager has not been initialized via Load().
 func (m *ConfigManager) Get() *Config {

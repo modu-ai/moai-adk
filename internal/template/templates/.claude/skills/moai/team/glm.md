@@ -99,7 +99,7 @@ Read `.moai/config/sections/llm.yaml` for `team_mode` value:
 
 | team_mode | Execution Mode | Leader | Teammates |
 |-----------|---------------|--------|-----------|
-| (empty) | Sub-agent | Current session | Task() subagents |
+| (empty) | Sub-agent | Current session | Agent() subagents |
 | cg | CG Mode | Claude (this pane) | GLM (new tmux panes) |
 | glm | GLM-only | GLM | GLM |
 

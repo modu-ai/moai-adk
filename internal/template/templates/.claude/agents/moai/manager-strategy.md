@@ -8,11 +8,21 @@ description: |
   KO: 전략, 구현계획, 아키텍처결정, 기술평가, 계획
   JA: 戦略, 実装計画, アーキテクチャ決定, 技術評価
   ZH: 策略, 实施计划, 架构决策, 技术评估
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: opus
 permissionMode: default
+maxTurns: 150
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-thinking, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-foundation-context, moai-workflow-worktree
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-philosopher
+  - moai-foundation-thinking
+  - moai-workflow-spec
+  - moai-workflow-project
+  - moai-workflow-thinking
+  - moai-foundation-context
+  - moai-workflow-worktree
 ---
 
 # Implementation Planner - Implementation Strategist
@@ -65,7 +75,7 @@ Goal: Clear and Provides an actionable implementation plan
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-MoAI passes the user's language directly to you via `Task()` calls.
+MoAI passes the user's language directly to you via `Agent()` calls.
 
 Language Guidelines:
 

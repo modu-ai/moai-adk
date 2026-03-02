@@ -4,14 +4,18 @@ description: >
   Quality validation specialist for team-based development.
   Validates TRUST 5 compliance, coverage targets, code standards, and overall quality.
   Runs after all implementation and testing work is complete.
-  Use proactively as the final validation step in team workflows.
+  AGENT TEAMS ONLY: Must be spawned with team_name and name parameters via Agent tool.
+  Do not invoke as a standalone subagent. Requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1.
 tools: Read, Grep, Glob, Bash
 model: haiku
 permissionMode: plan
+maxTurns: 30
+background: true
 memory: project
-skills: moai-foundation-quality
+skills:
+  - moai-foundation-quality
 hooks:
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" team-quality-completion"

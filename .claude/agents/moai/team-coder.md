@@ -4,10 +4,12 @@ description: >
   Implementation specialist for team-based run phase development.
   Handles backend, frontend, or full-stack implementation.
   Role is determined dynamically by the spawn prompt.
-  Use proactively during run phase team work.
+  AGENT TEAMS ONLY: Must be spawned with team_name and name parameters via Agent tool.
+  Do not invoke as a standalone subagent. Requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 permissionMode: acceptEdits
+maxTurns: 80
 isolation: worktree
 background: true
 memory: project

@@ -1028,7 +1028,7 @@ execute_clear()
 restore_from_checkpoint(clear_context)
 
 # Phase 2: Implementation (fresh 200K budget)
-implementation = Task(
+implementation = Agent(
     subagent_type="ddd-implementer",
     prompt=f"Implement: {clear_context['spec_id']}"
 )

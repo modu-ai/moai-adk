@@ -8,15 +8,16 @@ import (
 )
 
 var profileCmd = &cobra.Command{
-	Use:   "profile",
-	Short: "Manage Claude configuration profiles",
+	Use:     "profile",
+	Short:   "Manage Claude configuration profiles",
+	GroupID: "tools",
 	Long: `Manage Claude configuration profiles stored in ~/.moai/claude-profiles/.
 
 Each profile is an isolated Claude configuration directory (CLAUDE_CONFIG_DIR).
 Use -p/--profile with cc, cg, or glm to switch between profiles.
 
-Run 'moai profile setup [name]' or 'moai profile --setup [name]' to configure
-per-profile launch options (model, bypass, continue, Chrome MCP).`,
+Run 'moai profile setup [name]' to configure per-profile preferences
+(identity, languages, model settings, display).`,
 	RunE: runProfileCmd,
 }
 
@@ -42,7 +43,7 @@ var profileDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	profileCmd.Flags().BoolP("setup", "s", false, "Run interactive setup wizard for launch options")
+	profileCmd.Flags().BoolP("setup", "s", false, "Run interactive setup wizard for preferences")
 	profileCmd.AddCommand(profileListCmd)
 	profileCmd.AddCommand(profileCurrentCmd)
 	profileCmd.AddCommand(profileDeleteCmd)

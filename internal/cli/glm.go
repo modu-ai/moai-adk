@@ -17,8 +17,10 @@ import (
 
 var glmCmd = &cobra.Command{
 	Use:   "glm [-p profile] [-- claude-args...]",
-	Short: "Login to GLM backend and launch Claude Code",
-	Long: `Login with GLM backend: all agents use GLM models, then launch Claude Code.
+	Short: "Launch Claude Code with GLM backend",
+	Long: `Launch Claude Code with GLM backend.
+
+All agents use GLM models via Z.AI proxy.
 
 This command:
   1. Loads GLM credentials from ~/.moai/.env.glm
@@ -38,6 +40,7 @@ Examples:
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
+	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runGLM,
 }
@@ -102,57 +105,8 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Parse -p/--profile from args
 	profileName, filteredArgs := parseProfileFlag(args)
-
-	root, err := findProjectRoot()
-	if err != nil {
-		return fmt.Errorf("find project root: %w", err)
-	}
-
-	// Load GLM config
-	glmConfig, err := loadGLMConfig(root)
-	if err != nil {
-		return fmt.Errorf("load GLM config: %w", err)
-	}
-
-	// Get API key
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		return fmt.Errorf("GLM API key not found.\n\n"+
-			"Save your key first:\n"+
-			"  moai glm setup <api-key>\n\n"+
-			"Or set the %s environment variable", glmConfig.EnvVar)
-	}
-
-	// Set GLM environment variables in the current process
-	// These will be inherited by claude via syscall.Exec
-	setGLMEnv(glmConfig, apiKey)
-
-	// Persist team mode
-	if err := persistTeamMode(root, "glm"); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to persist team mode: %v\n", err)
-	}
-
-	// Also inject into settings.local.json for persistence
-	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-	if err := injectGLMEnvForTeam(settingsPath, glmConfig, apiKey); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to inject GLM env into settings: %v\n", err)
-	}
-
-	// Inject into tmux session if available
-	if isInTmuxSession() {
-		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to inject GLM env into tmux session: %v\n"+
-				"  Teammates spawned in new tmux panes may not have GLM credentials.\n"+
-				"  Manually set %s in new panes if needed.\n", err, glmConfig.EnvVar)
-		}
-	}
-
-	fmt.Fprintln(os.Stderr, "Launching Claude Code with GLM backend...")
-
-	// Launch claude with profile and extra args
-	return launchClaude(profileName, filteredArgs)
+	return unifiedLaunch(profileName, "glm", filteredArgs)
 }
 
 // setGLMEnv sets GLM environment variables in the current process.

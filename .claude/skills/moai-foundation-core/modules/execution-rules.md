@@ -12,8 +12,8 @@ Version: 2.0.0
 MoAI operates under strict execution rules:
 
 Core Constraints:
-- Agent-First: ALWAYS delegate via Task(), NEVER execute directly
-- Allowed Tools: Task(), AskUserQuestion(), Skill(), MCP Servers
+- Agent-First: ALWAYS delegate via Agent(), NEVER execute directly
+- Allowed Tools: Agent(), AskUserQuestion(), Skill(), MCP Servers
 - Forbidden Tools: Read(), Write(), Edit(), Bash(), Grep(), Glob()
 
 Security Sandbox:
@@ -50,7 +50,7 @@ def process_user_data():
 REQUIRED Pattern:
 ```python
 # CORRECT - Agent delegation
-result = await Task(
+result = await Agent(
  subagent_type="code-backend",
  prompt="Process user data from data.txt",
  context={"file_path": "data.txt"}
@@ -59,7 +59,7 @@ result = await Task(
 
 Why Agent-First?:
 - Security: Agents validate before execution
-- Traceability: All actions logged via Task()
+- Traceability: All actions logged via Agent()
 - Quality: Agents enforce TRUST 5 gates
 - Scalability: Parallel/sequential delegation
 
@@ -71,7 +71,7 @@ Allowed Tools (4 categories):
 
 | Tool | Purpose | Example |
 |------|---------|---------|
-| `Task()` | Agent delegation | `Task("code-backend", "Implement API")` |
+| `Agent()` | Agent delegation | `Task("code-backend", "Implement API")` |
 | `AskUserQuestion()` | User interaction | `AskUserQuestion(questions=[...])` |
 | `Skill()` | Knowledge invocation | `Skill("moai-foundation-core")` |
 | `MCP Servers` | External integrations | Context7, Playwright, Pencil |
@@ -80,14 +80,14 @@ Forbidden Tools (Why?):
 
 | Tool | Reason |
 |------|--------|
-| `Read()`, `Write()`, `Edit()` | Use Task() for file operations (security validation) |
-| `Bash()` | Use Task() for system operations (command validation) |
-| `Grep()`, `Glob()` | Use Task() for file search (permission checks) |
-| `TodoWrite()` | Use Task() for tracking (audit trail) |
+| `Read()`, `Write()`, `Edit()` | Use Agent() for file operations (security validation) |
+| `Bash()` | Use Agent() for system operations (command validation) |
+| `Grep()`, `Glob()` | Use Agent() for file search (permission checks) |
+| `TodoWrite()` | Use Agent() for tracking (audit trail) |
 
 Delegation Protocol:
 ```python
-result = await Task(
+result = await Agent(
  subagent_type="specialized_agent", # Agent name (lowercase, hyphenated)
  prompt="Clear, specific task description", # What to do
  context={ # Required information

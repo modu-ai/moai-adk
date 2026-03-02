@@ -33,33 +33,19 @@ func TestDefaultQuestions_SlashPath(t *testing.T) {
 // TestGetLocalizedQuestion_EmptyOptionLabelFallback covers the branch
 // where a translated option label is empty and falls back to the original.
 func TestGetLocalizedQuestion_EmptyOptionLabelFallback(t *testing.T) {
-	// user_name has a "ko" translation with no Options list,
-	// so we need a question that has options with some empty translations.
-	// Craft a synthetic locale entry via the real translations map would require
-	// mutation; instead use a question ID that maps to a translation with
-	// options but where we can trigger the empty-label branch indirectly.
-	//
-	// The "gitlab_instance_url" key in "ko" has no Options defined,
-	// so translations[ko][gitlab_instance_url].Options is nil (len == 0).
-	// The empty-label/desc fallback is in the loop when len(trans.Options) > 0
-	// and len(q.Options) == len(trans.Options).
-	//
-	// To hit this branch we need a translated option whose Label or Desc is "".
-	// We cannot add to the translations map from a test without mutation.
-	// Instead, call GetLocalizedQuestion directly with "ko" locale and
-	// "user_name" question that has no options - this exercises the
-	// description-only path (trans.Title != "", trans.Description != "").
+	// project_name has a "ko" translation with no Options list (it's an input question).
+	// This exercises the description-only path (trans.Title != "", trans.Description != "").
 	q := &Question{
-		ID:          "user_name",
+		ID:          "project_name",
 		Type:        QuestionTypeInput,
-		Title:       "Enter your name",
+		Title:       "Enter project name",
 		Description: "Original desc",
 	}
 
 	result := GetLocalizedQuestion(q, "ko")
-	// Korean translation has a Title and Description for user_name
+	// Korean translation has a Title and Description for project_name
 	if result.Title == q.Title {
-		t.Error("ko translation should override user_name title")
+		t.Error("ko translation should override project_name title")
 	}
 	if result.Title == "" {
 		t.Error("ko translated title should not be empty")
@@ -141,7 +127,7 @@ func TestBuildInputField_ValidateCallback_WithValue(t *testing.T) {
 	result := &WizardResult{}
 	locale := ""
 	q := &Question{
-		ID:       "user_name",
+		ID:       "project_name",
 		Type:     QuestionTypeInput,
 		Required: false,
 	}
@@ -159,8 +145,8 @@ func TestBuildInputField_ValidateCallback_WithValue(t *testing.T) {
 		return
 	}
 
-	if result.UserName != "Alice" {
-		t.Errorf("expected UserName 'Alice' after validate callback, got %q", result.UserName)
+	if result.ProjectName != "Alice" {
+		t.Errorf("expected ProjectName 'Alice' after validate callback, got %q", result.ProjectName)
 	}
 }
 
@@ -409,7 +395,7 @@ func TestBuildInputField_ValidateCallback_RequiredEmptyDirectly(t *testing.T) {
 	result := &WizardResult{}
 	locale := "en"
 	q := &Question{
-		ID:       "user_name",
+		ID:       "project_name",
 		Type:     QuestionTypeInput,
 		Required: true,
 		Default:  "", // no default, so empty input triggers required error
@@ -427,7 +413,7 @@ func TestBuildInputField_ValidateCallback_RequiredEmptyDirectly(t *testing.T) {
 		t.Logf("RunAccessible returned error (acceptable in CI): %v", err)
 		return
 	}
-	if result.UserName != "Bob" {
-		t.Errorf("expected UserName 'Bob', got %q", result.UserName)
+	if result.ProjectName != "Bob" {
+		t.Errorf("expected ProjectName 'Bob', got %q", result.ProjectName)
 	}
 }

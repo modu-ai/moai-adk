@@ -8,11 +8,15 @@ description: |
   KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+maxTurns: 50
 permissionMode: bypassPermissions
 memory: user
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-workflow-project
 ---
 
 # Agent Creation Specialist
@@ -243,7 +247,7 @@ Permission Levels:
 
 - Level 1 (Read-only): Read, Grep, Glob. For analysis and exploration agents.
 - Level 2 (Write access): Read, Write, Edit, Grep, Glob, Bash. For creation and implementation agents.
-- Level 3 (Full access): All tools including Task, TodoWrite. For orchestration agents.
+- Level 3 (Full access): All tools including Agent, TodoWrite. For orchestration agents.
 
 Tool Categories:
 
@@ -251,7 +255,7 @@ Tool Categories:
 - Write Tools: Write, Edit (file modification)
 - System Tools: Bash (command execution)
 - Research Tools: WebFetch, WebSearch, Context7 MCP (information gathering)
-- Orchestration Tools: Task, TodoWrite, Skill (delegation and tracking)
+- Orchestration Tools: Agent, TodoWrite, Skill (delegation and tracking)
 
 ## Key Constraints
 

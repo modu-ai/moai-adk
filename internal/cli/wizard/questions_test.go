@@ -2,156 +2,62 @@ package wizard
 
 import "testing"
 
-// --- TDD RED: Statusline preset and segment questions ---
-
-func TestStatuslinePresetQuestion(t *testing.T) {
+// TestDevelopmentModeQuestion verifies the development_mode question is present and valid.
+func TestDevelopmentModeQuestion(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
-	q := QuestionByID(questions, "statusline_preset")
+	q := QuestionByID(questions, "development_mode")
 	if q == nil {
-		t.Fatal("statusline_preset question not found")
+		t.Fatal("development_mode question not found")
 	}
 
-	// Should be a select question
 	if q.Type != QuestionTypeSelect {
-		t.Errorf("statusline_preset should be QuestionTypeSelect, got %v", q.Type)
+		t.Errorf("development_mode should be QuestionTypeSelect, got %v", q.Type)
 	}
 
-	// Should have 4 options: Full, Compact, Minimal, Custom
-	if len(q.Options) != 4 {
-		t.Fatalf("statusline_preset should have 4 options, got %d", len(q.Options))
+	if len(q.Options) != 2 {
+		t.Fatalf("development_mode should have 2 options, got %d", len(q.Options))
 	}
 
-	// Verify option values
-	expectedValues := []string{"full", "compact", "minimal", "custom"}
+	expectedValues := []string{"tdd", "ddd"}
 	for i, expected := range expectedValues {
 		if q.Options[i].Value != expected {
 			t.Errorf("option %d value = %q, want %q", i, q.Options[i].Value, expected)
 		}
 	}
 
-	// Default should be "full"
-	if q.Default != "full" {
-		t.Errorf("statusline_preset default = %q, want %q", q.Default, "full")
+	if q.Default != "tdd" {
+		t.Errorf("development_mode default = %q, want %q", q.Default, "tdd")
 	}
 
-	// No condition (always visible)
 	if q.Condition != nil {
-		t.Error("statusline_preset should have no condition (always visible)")
+		t.Error("development_mode should have no condition (always visible)")
+	}
+
+	if !q.Required {
+		t.Error("development_mode should be required")
 	}
 }
 
-func TestStatuslineSegmentQuestionsExist(t *testing.T) {
+// TestQuestionOrder verifies the new streamlined question order.
+func TestQuestionOrder(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
-	segmentIDs := []string{
-		"statusline_seg_model",
-		"statusline_seg_context",
-		"statusline_seg_output_style",
-		"statusline_seg_directory",
-		"statusline_seg_git_status",
-		"statusline_seg_claude_version",
-		"statusline_seg_moai_version",
-		"statusline_seg_git_branch",
+	// The first question should now be "project_name"
+	if questions[0].ID != "project_name" {
+		t.Errorf("first question should be 'project_name', got %q", questions[0].ID)
 	}
 
-	for _, id := range segmentIDs {
-		q := QuestionByID(questions, id)
-		if q == nil {
-			t.Fatalf("%s question not found", id)
-		}
-
-		// Should be a select question
-		if q.Type != QuestionTypeSelect {
-			t.Errorf("%s should be QuestionTypeSelect, got %v", id, q.Type)
-		}
-
-		// Should have 2 options: Enabled, Disabled
-		if len(q.Options) != 2 {
-			t.Fatalf("%s should have 2 options, got %d", id, len(q.Options))
-		}
-
-		// First option: Enabled (true)
-		if q.Options[0].Value != "true" {
-			t.Errorf("%s option[0].Value = %q, want %q", id, q.Options[0].Value, "true")
-		}
-
-		// Second option: Disabled (false)
-		if q.Options[1].Value != "false" {
-			t.Errorf("%s option[1].Value = %q, want %q", id, q.Options[1].Value, "false")
-		}
-
-		// Default should be "true" (enabled)
-		if q.Default != "true" {
-			t.Errorf("%s default = %q, want %q", id, q.Default, "true")
-		}
-	}
-}
-
-func TestStatuslineSegmentQuestionsConditional(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
-
-	segmentIDs := []string{
-		"statusline_seg_model",
-		"statusline_seg_context",
-		"statusline_seg_output_style",
-		"statusline_seg_directory",
-		"statusline_seg_git_status",
-		"statusline_seg_claude_version",
-		"statusline_seg_moai_version",
-		"statusline_seg_git_branch",
-	}
-
-	for _, id := range segmentIDs {
-		q := QuestionByID(questions, id)
-		if q == nil {
-			t.Fatalf("%s question not found", id)
-		}
-
-		// Condition must be set
-		if q.Condition == nil {
-			t.Fatalf("%s should have a condition", id)
-		}
-
-		// Should be hidden when preset is NOT "custom"
-		for _, preset := range []string{"full", "compact", "minimal", ""} {
-			result := &WizardResult{StatuslinePreset: preset}
-			if q.Condition(result) {
-				t.Errorf("%s should be hidden when StatuslinePreset = %q", id, preset)
-			}
-		}
-
-		// Should be visible when preset IS "custom"
-		result := &WizardResult{StatuslinePreset: "custom"}
-		if !q.Condition(result) {
-			t.Errorf("%s should be visible when StatuslinePreset = 'custom'", id)
-		}
-	}
-}
-
-func TestStatuslineQuestionsDoNotBreakExisting(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
-
-	// The first question should still be "locale"
-	if questions[0].ID != "locale" {
-		t.Errorf("first question should be 'locale', got %q", questions[0].ID)
-	}
-
-	// Existing questions should still be present at their positions
 	expectedIDs := []string{
-		"locale",              // 0
-		"user_name",           // 1
-		"project_name",        // 2
-		"git_mode",            // 3
-		"git_provider",        // 4
-		"gitlab_instance_url", // 5
-		"github_username",     // 6
-		"github_token",        // 7
-		"gitlab_username",     // 8
-		"gitlab_token",        // 9
-		"git_commit_lang",     // 10
-		"code_comment_lang",   // 11
-		"doc_lang",            // 12
+		"project_name",
+		"development_mode",
+		"git_mode",
+		"git_provider",
+		"gitlab_instance_url",
+		"github_username",
+		"github_token",
+		"gitlab_username",
+		"gitlab_token",
 	}
 
 	for i, expectedID := range expectedIDs {
@@ -164,93 +70,24 @@ func TestStatuslineQuestionsDoNotBreakExisting(t *testing.T) {
 	}
 }
 
-func TestSaveAnswerStatuslinePreset(t *testing.T) {
+// TestSaveAnswerDevelopmentMode verifies saveAnswer stores the development_mode correctly.
+func TestSaveAnswerDevelopmentMode(t *testing.T) {
 	result := &WizardResult{}
 	locale := ""
 
-	saveAnswer("statusline_preset", "compact", result, &locale)
-	if result.StatuslinePreset != "compact" {
-		t.Errorf("expected StatuslinePreset 'compact', got %q", result.StatuslinePreset)
+	saveAnswer("development_mode", "tdd", result, &locale)
+	if result.DevelopmentMode != "tdd" {
+		t.Errorf("expected DevelopmentMode 'tdd', got %q", result.DevelopmentMode)
 	}
 
-	saveAnswer("statusline_preset", "custom", result, &locale)
-	if result.StatuslinePreset != "custom" {
-		t.Errorf("expected StatuslinePreset 'custom', got %q", result.StatuslinePreset)
-	}
-}
-
-func TestSaveAnswerStatuslineSegments(t *testing.T) {
-	result := &WizardResult{}
-	locale := ""
-
-	// Initially StatuslineSegments should be nil
-	if result.StatuslineSegments != nil {
-		t.Error("StatuslineSegments should be nil initially")
-	}
-
-	// Save first segment answer - should initialize map
-	saveAnswer("statusline_seg_model", "true", result, &locale)
-	if result.StatuslineSegments == nil {
-		t.Fatal("StatuslineSegments should be initialized after saving a segment answer")
-	}
-	if !result.StatuslineSegments["model"] {
-		t.Error("StatuslineSegments['model'] should be true")
-	}
-
-	// Save second segment answer
-	saveAnswer("statusline_seg_context", "false", result, &locale)
-	if result.StatuslineSegments["context"] {
-		t.Error("StatuslineSegments['context'] should be false")
+	saveAnswer("development_mode", "ddd", result, &locale)
+	if result.DevelopmentMode != "ddd" {
+		t.Errorf("expected DevelopmentMode 'ddd', got %q", result.DevelopmentMode)
 	}
 }
 
-func TestSaveAnswerAllStatuslineSegments(t *testing.T) {
-	segmentIDs := []string{
-		"statusline_seg_model",
-		"statusline_seg_context",
-		"statusline_seg_output_style",
-		"statusline_seg_directory",
-		"statusline_seg_git_status",
-		"statusline_seg_claude_version",
-		"statusline_seg_moai_version",
-		"statusline_seg_git_branch",
-	}
-
-	expectedSegNames := []string{
-		"model",
-		"context",
-		"output_style",
-		"directory",
-		"git_status",
-		"claude_version",
-		"moai_version",
-		"git_branch",
-	}
-
-	result := &WizardResult{}
-	locale := ""
-
-	for i, id := range segmentIDs {
-		saveAnswer(id, "true", result, &locale)
-		if !result.StatuslineSegments[expectedSegNames[i]] {
-			t.Errorf("StatuslineSegments[%q] should be true after saving %s", expectedSegNames[i], id)
-		}
-	}
-}
-
-func TestStatuslineTranslationsExist(t *testing.T) {
-	questionIDs := []string{
-		"statusline_preset",
-		"statusline_seg_model",
-		"statusline_seg_context",
-		"statusline_seg_output_style",
-		"statusline_seg_directory",
-		"statusline_seg_git_status",
-		"statusline_seg_claude_version",
-		"statusline_seg_moai_version",
-		"statusline_seg_git_branch",
-	}
-
+// TestDevelopmentModeTranslationsExist verifies translations exist for the new question.
+func TestDevelopmentModeTranslationsExist(t *testing.T) {
 	locales := []string{"ko", "ja", "zh"}
 
 	for _, locale := range locales {
@@ -259,82 +96,100 @@ func TestStatuslineTranslationsExist(t *testing.T) {
 			t.Fatalf("translations for locale %q not found", locale)
 		}
 
-		for _, id := range questionIDs {
-			trans, ok := langTrans[id]
-			if !ok {
-				t.Errorf("translation for %q in locale %q not found", id, locale)
-				continue
-			}
+		trans, ok := langTrans["development_mode"]
+		if !ok {
+			t.Errorf("translation for 'development_mode' in locale %q not found", locale)
+			continue
+		}
 
-			if trans.Title == "" {
-				t.Errorf("translation for %q in locale %q has empty title", id, locale)
-			}
-			if trans.Description == "" {
-				t.Errorf("translation for %q in locale %q has empty description", id, locale)
-			}
+		if trans.Title == "" {
+			t.Errorf("translation for 'development_mode' in locale %q has empty title", locale)
+		}
+		if trans.Description == "" {
+			t.Errorf("translation for 'development_mode' in locale %q has empty description", locale)
+		}
+		if len(trans.Options) != 2 {
+			t.Errorf("locale %q: development_mode should have 2 option translations, got %d", locale, len(trans.Options))
 		}
 	}
 }
 
-func TestStatuslinePresetTranslationOptions(t *testing.T) {
-	locales := []string{"ko", "ja", "zh"}
+// TestRemovedQuestionsAbsent verifies that removed user-level questions are no longer present.
+func TestRemovedQuestionsAbsent(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
 
-	for _, locale := range locales {
-		trans := translations[locale]["statusline_preset"]
-		if len(trans.Options) != 4 {
-			t.Errorf("locale %q: statusline_preset should have 4 option translations, got %d", locale, len(trans.Options))
-		}
-	}
-}
-
-func TestStatuslineSegmentTranslationOptions(t *testing.T) {
-	segmentIDs := []string{
+	removedIDs := []string{
+		"locale",
+		"user_name",
+		"git_commit_lang",
+		"code_comment_lang",
+		"doc_lang",
+		"model_policy",
+		"agent_teams_mode",
+		"max_teammates",
+		"default_model",
+		"teammate_display",
+		"statusline_preset",
 		"statusline_seg_model",
 		"statusline_seg_context",
 		"statusline_seg_output_style",
-		"statusline_seg_directory",
-		"statusline_seg_git_status",
-		"statusline_seg_claude_version",
-		"statusline_seg_moai_version",
-		"statusline_seg_git_branch",
 	}
 
-	locales := []string{"ko", "ja", "zh"}
-
-	for _, locale := range locales {
-		for _, id := range segmentIDs {
-			trans := translations[locale][id]
-			if len(trans.Options) != 2 {
-				t.Errorf("locale %q, %q: should have 2 option translations, got %d", locale, id, len(trans.Options))
-			}
+	for _, id := range removedIDs {
+		if q := QuestionByID(questions, id); q != nil {
+			t.Errorf("question %q should have been removed from DefaultQuestions", id)
 		}
 	}
 }
 
-func TestStatuslineFilteredWithPresets(t *testing.T) {
+// TestQuestionsAllPresent verifies all expected questions are present.
+func TestQuestionsAllPresent(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
-	// When preset is "full", segment questions should be hidden
-	result := &WizardResult{StatuslinePreset: "full"}
+	expectedIDs := []string{
+		"project_name",
+		"development_mode",
+		"git_mode",
+		"git_provider",
+		"gitlab_instance_url",
+		"github_username",
+		"github_token",
+		"gitlab_username",
+		"gitlab_token",
+	}
+
+	for _, id := range expectedIDs {
+		if q := QuestionByID(questions, id); q == nil {
+			t.Errorf("question %q not found in DefaultQuestions", id)
+		}
+	}
+}
+
+// TestGitConditionalFilteredByMode verifies conditional git questions hide when manual.
+func TestGitConditionalFilteredByMode(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	// When git_mode is "manual", git provider questions should be hidden
+	result := &WizardResult{GitMode: "manual"}
 	filtered := FilteredQuestions(questions, result)
 
 	for _, q := range filtered {
-		if len(q.ID) > 15 && q.ID[:15] == "statusline_seg_" {
-			t.Errorf("segment question %q should be hidden when preset is 'full'", q.ID)
+		if q.ID == "git_provider" || q.ID == "github_username" || q.ID == "github_token" {
+			t.Errorf("question %q should be hidden when git_mode is 'manual'", q.ID)
 		}
 	}
 
-	// When preset is "custom", segment questions should be visible
-	result = &WizardResult{StatuslinePreset: "custom"}
+	// When git_mode is "team", git provider question should be visible
+	result = &WizardResult{GitMode: "team"}
 	filtered = FilteredQuestions(questions, result)
 
-	segmentFound := 0
+	providerFound := false
 	for _, q := range filtered {
-		if len(q.ID) > 15 && q.ID[:15] == "statusline_seg_" {
-			segmentFound++
+		if q.ID == "git_provider" {
+			providerFound = true
 		}
 	}
-	if segmentFound != 8 {
-		t.Errorf("expected 8 segment questions when preset is 'custom', got %d", segmentFound)
+	if !providerFound {
+		t.Error("git_provider should be visible when git_mode is 'team'")
 	}
 }

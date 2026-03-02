@@ -11,10 +11,24 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: opus
 permissionMode: default
+maxTurns: 150
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-philosopher, moai-foundation-thinking, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-workflow-jit-docs, moai-workflow-worktree, moai-platform-database-cloud, moai-lang-python, moai-lang-typescript
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-context
+  - moai-foundation-philosopher
+  - moai-foundation-thinking
+  - moai-workflow-spec
+  - moai-workflow-project
+  - moai-workflow-thinking
+  - moai-workflow-jit-docs
+  - moai-workflow-worktree
+  - moai-platform-database-cloud
+  - moai-lang-python
+  - moai-lang-typescript
 hooks:
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" spec-completion"
@@ -148,7 +162,7 @@ Detect expertise from current session:
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-MoAI passes the user's language directly to you via `Task()` calls. This enables natural multilingual support.
+MoAI passes the user's language directly to you via `Agent()` calls. This enables natural multilingual support.
 
 Language Guidelines:
 

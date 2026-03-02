@@ -4,12 +4,16 @@ description: >
   Read-only research and analysis specialist for team-based plan phase.
   Explores codebase, analyzes requirements, and designs architecture.
   Role is determined dynamically by the spawn prompt.
-  Use proactively during plan phase team work.
+  AGENT TEAMS ONLY: Must be spawned with team_name and name parameters via Agent tool.
+  Do not invoke as a standalone subagent. Requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 permissionMode: plan
+maxTurns: 40
+background: true
 memory: project
-skills: moai-foundation-thinking
+skills:
+  - moai-foundation-thinking
 ---
 
 You are a plan phase specialist working as part of a MoAI agent team.

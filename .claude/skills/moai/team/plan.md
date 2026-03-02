@@ -56,10 +56,10 @@ See @.claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Task() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
+Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
 
 ```
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "moai-plan-{feature-slug}",
   name: "researcher",
@@ -76,7 +76,7 @@ Task(
     When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "moai-plan-{feature-slug}",
   name: "analyst",
@@ -90,7 +90,7 @@ Task(
     When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "moai-plan-{feature-slug}",
   name: "architect",

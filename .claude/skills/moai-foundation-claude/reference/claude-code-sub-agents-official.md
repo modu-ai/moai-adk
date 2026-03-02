@@ -319,7 +319,7 @@ Based on analysis findings, route to database-expert for database issues or back
 
 ### Context Size Guidelines
 
-- Each Task() creates independent context window
+- Each Agent() creates independent context window
 - Each sub-agent operates in its own 200K token session
 - Recommended context size: 20K-50K tokens maximum for passed data
 - Large datasets should be referenced rather than embedded
@@ -343,7 +343,7 @@ Sub-agents Cannot Spawn Other Sub-agents: This is a fundamental limitation to pr
 
 Sub-agents Cannot Use AskUserQuestion Effectively: Sub-agents operate in isolated, stateless contexts and cannot interact with users directly. All user interaction must happen in the main conversation before delegating to sub-agents.
 
-Required Pattern: All sub-agent delegation must use the Task() function.
+Required Pattern: All sub-agent delegation must use the Agent() function.
 
 ## Best Practices
 

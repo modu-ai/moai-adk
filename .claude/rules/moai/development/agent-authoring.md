@@ -123,16 +123,28 @@ Create new MoAI components:
 
 ### Team Agents (5) - Experimental
 
-Profile-based agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1).
-Roles are assigned dynamically via Task() spawn prompt and model override. See team-protocol.md for shared protocol.
+**Architecture**: team-* agents are sub-agent DEFINITIONS (`.claude/agents/`) used as ROLE TEMPLATES for Agent Teams teammates. They are NOT invoked as standalone subagents.
+
+**Key distinction from regular subagents**:
+- Regular subagents: spawned from main conversation, return results, cannot communicate with each other
+- team-* as teammates: spawned with `team_name` + `name` parameters, get Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework
+
+**Spawn pattern** (Agent Teams only):
+```
+Agent(subagent_type: "team-reader", team_name: "...", name: "researcher", model: "haiku")
+```
+
+**DO NOT** invoke team-* agents without `team_name` parameter. They reference SendMessage/TaskList in their body which are only available in Agent Teams context.
+
+Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 
 | Agent | Default Model | Phase | Mode | Isolation | Background | Purpose |
 |-------|---------------|-------|------|-----------|------------|---------|
-| team-reader | sonnet | plan | plan (read-only) | none | false | Codebase exploration, requirements analysis, technical design (role via prompt) |
+| team-reader | sonnet | plan | plan (read-only) | none | true | Codebase exploration, requirements analysis, technical design (role via prompt) |
 | team-coder | sonnet | run | acceptEdits | worktree | true | Backend, frontend, or full-stack implementation (role via prompt) |
 | team-tester | sonnet | run | acceptEdits | worktree | true | Test creation with exclusive test file ownership |
 | team-designer | sonnet | run | acceptEdits | worktree | true | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
-| team-validator | haiku | run | plan (read-only) | none | false | TRUST 5 quality validation |
+| team-validator | haiku | run | plan (read-only) | none | true | TRUST 5 quality validation |
 
 ## Rules
 
@@ -147,7 +159,7 @@ Roles are assigned dynamically via Task() spawn prompt and model override. See t
 
 Recommended tool sets by category:
 
-Manager agents: Read, Write, Edit, Grep, Glob, Bash, Task, TaskCreate, TaskUpdate
+Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite (NOTE: Agent tool is NOT included - subagents cannot spawn other subagents per official docs)
 
 Expert agents: Read, Write, Edit, Grep, Glob, Bash
 
@@ -164,14 +176,14 @@ Notes:
 
 ## Agent Invocation
 
-Invoke agents via Task tool:
+Invoke agents via Agent tool:
 
 - "Use the expert-backend subagent to implement the API"
-- Task tool with subagent_type parameter
+- Agent tool with subagent_type parameter
 
 For team mode invocation:
 - TeamCreate to initialize team structure
-- Task() with team_name and name parameters to spawn teammates
+- Agent() with team_name and name parameters to spawn teammates
 - SendMessage for inter-teammate coordination
 - TeamDelete after all teammates shut down
 - See team-plan.md and team-run.md for complete workflow examples

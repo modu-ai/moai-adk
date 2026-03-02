@@ -22,7 +22,7 @@ SPEC-First DDD:
 
 Delegation Patterns:
 - Purpose: Task orchestration via specialized agents
-- Core Principle: MoAI delegates all work through Task() calls
+- Core Principle: MoAI delegates all work through Agent() calls
 - Patterns: Sequential, Parallel, Conditional delegation
 - Agent Selection: Complexity-based agent matching
 
@@ -252,7 +252,7 @@ async def delegate_task(task_description: str, context: dict):
 
     if analysis.complexity == "simple":
         # Sequential single agent
-        result = await Task(
+        result = await Agent(
             subagent_type=router.get_primary_agent(analysis.domains[0]),
             prompt=task_description,
             context=context
@@ -262,7 +262,7 @@ async def delegate_task(task_description: str, context: dict):
         # Sequential multiple agents
         results = []
         for domain in analysis.domains:
-            result = await Task(
+            result = await Agent(
                 subagent_type=router.get_primary_agent(domain),
                 prompt=f"Handle {domain} aspects: {task_description}",
                 context={**context, "previous_results": results}
@@ -277,7 +277,7 @@ async def delegate_task(task_description: str, context: dict):
         ])
 
         # Integration phase
-        result = await Task(
+        result = await Agent(
             subagent_type="integration-specialist",
             prompt="Integrate all components",
             context={"results": parallel_results}

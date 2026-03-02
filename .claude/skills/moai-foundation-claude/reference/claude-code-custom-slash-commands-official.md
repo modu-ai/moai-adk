@@ -121,14 +121,14 @@ target="$2"
 
 case "$action" in
  "create")
- Task(
+ Agent(
  subagent_type="spec-builder",
  prompt="Create specification for $target",
  context={"user_input": "$ARGUMENTS"}
  )
  ;;
  "validate")
- Task(
+ Agent(
  subagent_type="quality-gate",
  prompt="Validate configuration in $target",
  context={"config_file": "$target"}
@@ -277,21 +277,21 @@ Linear Execution Pattern:
 
 ```python
 # Phase 1: Analysis
-analysis = Task(
+analysis = Agent(
  subagent_type="spec-builder",
  prompt="Analyze requirements for $ARGUMENTS",
  context={"user_input": "$ARGUMENTS"}
 )
 
 # Phase 2: Implementation (passes analysis results)
-implementation = Task(
+implementation = Agent(
  subagent_type="ddd-implementer",
  prompt="Implement based on analysis",
  context={"analysis": analysis, "spec_id": analysis.spec_id}
 )
 
 # Phase 3: Quality Validation
-validation = Task(
+validation = Agent(
  subagent_type="quality-gate",
  prompt="Validate implementation",
  context={"implementation": implementation}
@@ -305,22 +305,22 @@ Concurrent Execution Pattern:
 ```python
 # Independent parallel execution
 results = await Promise.all([
- Task(
+ Agent(
  subagent_type="backend-expert",
  prompt="Backend implementation for $1"
  ),
- Task(
+ Agent(
  subagent_type="frontend-expert",
  prompt="Frontend implementation for $1"
  ),
- Task(
+ Agent(
  subagent_type="docs-manager",
  prompt="Documentation for $1"
  )
 ])
 
 # Integration phase
-integration = Task(
+integration = Agent(
  subagent_type="quality-gate",
  prompt="Integrate all components",
  context={"components": results}
@@ -334,19 +334,19 @@ Dynamic Agent Selection:
 ```python
 # Route based on analysis results
 if analysis.has_database_issues:
- result = Task(
+ result = Agent(
  subagent_type="database-expert",
  prompt="Optimize database",
  context={"issues": analysis.database_issues}
  )
 elif analysis.has_api_issues:
- result = Task(
+ result = Agent(
  subagent_type="backend-expert",
  prompt="Fix API issues",
  context={"issues": analysis.api_issues}
  )
 else:
- result = Task(
+ result = Agent(
  subagent_type="quality-gate",
  prompt="General quality check",
  context={"analysis": analysis}
@@ -422,7 +422,7 @@ else
 fi
 
 # Execute validation
-Task(
+Agent(
  subagent_type="quality-gate",
  prompt="Validate $config_file using $validator" +
  (" --strict" if strict_mode else ""),
@@ -476,7 +476,7 @@ Complete DDD-based feature implementation from specification to deployment.
 ### Phase 1: Specification Generation
 ```python
 # Generate comprehensive specification
-spec_result = Task(
+spec_result = Agent(
  subagent_type="spec-builder",
  prompt="Create detailed specification for: $1",
  context={
@@ -493,7 +493,7 @@ echo "Specification created: $spec_id"
 
 ```python
 # Plan implementation approach
-plan_result = Task(
+plan_result = Agent(
  subagent_type="plan",
  prompt="Create implementation plan for $spec_id",
  context={
@@ -508,7 +508,7 @@ plan_result = Task(
 ```python
 if [ "$2" != "--skip-tests" ]; then
  # RED phase: Write failing tests
- test_result = Task(
+ test_result = Agent(
  subagent_type="test-engineer",
  prompt="Write comprehensive tests for $spec_id",
  context={"spec_id": spec_id}
@@ -520,7 +520,7 @@ fi
 
 ```python
 # IMPROVE phase: Implement feature
-implementation_result = Task(
+implementation_result = Agent(
  subagent_type="ddd-implementer",
  prompt="Implement feature for $spec_id",
  context={
@@ -534,7 +534,7 @@ implementation_result = Task(
 
 ```python
 # REFACTOR and validation
-quality_result = Task(
+quality_result = Agent(
  subagent_type="quality-gate",
  prompt="Validate implementation for $spec_id",
  context={
@@ -548,7 +548,7 @@ quality_result = Task(
 
 ```python
 # Generate documentation
-docs_result = Task(
+docs_result = Agent(
  subagent_type="docs-manager",
  prompt="Create documentation for $spec_id",
  context={"spec_id": spec_id}
@@ -608,14 +608,14 @@ Safe deployment with validation, testing, and rollback capabilities.
 ### Pre-Deployment Validation
 ```python
 # Environment validation
-env_result = Task(
+env_result = Agent(
  subagent_type="devops-expert",
  prompt="Validate $1 environment configuration",
  context={"environment": "$1"}
 )
 
 # Security validation
-security_result = Task(
+security_result = Agent(
  subagent_type="security-expert",
  prompt="Perform security pre-deployment check",
  context={"environment": "$1"}
@@ -627,7 +627,7 @@ security_result = Task(
 ```python
 if [ "$2" != "--skip-tests" ]; then
  # Run comprehensive test suite
- test_result = Task(
+ test_result = Agent(
  subagent_type="test-engineer",
  prompt="Execute deployment test suite",
  context={"environment": "$1"}
@@ -640,7 +640,7 @@ fi
 ```python
 if [ "$3" != "--dry-run" ]; then
  # Actual deployment
- deploy_result = Task(
+ deploy_result = Agent(
  subagent_type="devops-expert",
  prompt="Deploy to $1 environment",
  context={
@@ -658,14 +658,14 @@ fi
 
 ```python
 # Health check and validation
-health_result = Task(
+health_result = Agent(
  subagent_type="monitoring-expert",
  prompt="Validate deployment health in $1",
  context={"environment": "$1"}
 )
 
 # Generate deployment report
-report_result = Task(
+report_result = Agent(
  subagent_type="docs-manager",
  prompt="Generate deployment report",
  context={

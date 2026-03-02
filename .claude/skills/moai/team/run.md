@@ -39,7 +39,7 @@ Before executing this workflow, check `.moai/config/sections/llm.yaml`:
 
 | team_mode | Execution Mode | Description |
 |-----------|---------------|-------------|
-| (empty) | Sub-agent | Single session, Task() subagents |
+| (empty) | Sub-agent | Single session, Agent() subagents |
 | cg | CG Mode | Claude Leader + GLM Teammates via tmux |
 | agent-teams | Agent Teams | All same API, parallel teammates |
 
@@ -72,7 +72,7 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 
 1. **Delegate to manager-spec subagent**:
    ```
-   Task(
+   Agent(
      subagent_type: "manager-spec",
      prompt: "Create SPEC document for: {user_description}
               Follow EARS format.
@@ -109,12 +109,12 @@ Teammates execute implementation in parallel using GLM via Z.AI API.
 
 #### 2.2 Spawn Teammates
 
-Spawn teammates using Task() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
+Spawn teammates using Agent() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
 is set, each teammate spawns in a new tmux pane. New panes inherit GLM env vars
 from the tmux session, routing them through Z.AI API.
 
 ```
-Task(
+Agent(
   subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
@@ -127,7 +127,7 @@ Task(
     Mark tasks completed when done. Send results via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
@@ -140,7 +140,7 @@ Task(
     Mark tasks completed when done. Send results via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-tester",
   team_name: "moai-run-SPEC-XXX",
   name: "tester",
@@ -199,7 +199,7 @@ Leader validates quality using Claude's analysis:
 #### 4.1 Documentation
 
 ```
-Task(
+Agent(
   subagent_type: "manager-docs",
   prompt: "Generate documentation for SPEC-XXX implementation.
            Update CHANGELOG.md and README.md as needed."

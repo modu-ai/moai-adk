@@ -49,7 +49,7 @@ func TestInitCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestInitCmd_HasFlags(t *testing.T) {
-	flags := []string{"root", "name", "language", "framework", "username", "conv-lang", "mode", "non-interactive", "force"}
+	flags := []string{"root", "name", "language", "framework", "mode", "non-interactive", "force"}
 	for _, name := range flags {
 		if initCmd.Flags().Lookup(name) == nil {
 			t.Errorf("init command should have --%s flag", name)

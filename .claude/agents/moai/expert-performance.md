@@ -8,11 +8,21 @@ description: |
   KO: 성능, 프로파일링, 최적화, 벤치마크, 메모리, 번들, 지연시간, 속도
   JA: パフォーマンス, プロファイリング, 最適化, ベンチマーク, メモリ, バンドル, レイテンシ
   ZH: 性能, 性能分析, 优化, 基准测试, 内存, 包体, 延迟
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
+maxTurns: 80
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-rust, moai-lang-go
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-quality
+  - moai-workflow-testing
+  - moai-lang-python
+  - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-lang-rust
+  - moai-lang-go
 ---
 
 # Performance Expert
