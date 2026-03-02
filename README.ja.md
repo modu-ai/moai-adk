@@ -992,10 +992,6 @@ MoAI-ADKは、構造化されたgitコミットメッセージを活用してAI-
 - **完全な監査証跡**: `git log`で全決定履歴を確認
 - **セッション継続性**: `/clear`やセッション中断後もフルコンテキストで作業再開
 
-### 設計のインスピレーション
-
-MoAI Memoryは[claude-mem](https://github.com/thedotmack/claude-mem)、[claude-brain](https://github.com/memvid/claude-brain)、[memory-mcp](https://github.com/yuvalsuede/memory-mcp)にインスピレーションを得て、追加インフラ不要のGitネイティブアプローチで実装しました。
-
 ---
 
 ## コントリビューション

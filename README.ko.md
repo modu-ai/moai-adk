@@ -1059,10 +1059,6 @@ Phase: RUN-RED
 - **완전한 감사 추적**: `git log`로 전체 결정 히스토리 확인
 - **세션 연속성**: `/clear` 또는 세션 중단 후에도 전체 컨텍스트로 작업 재개
 
-### 설계 영감
-
-MoAI Memory는 [claude-mem](https://github.com/thedotmack/claude-mem), [claude-brain](https://github.com/memvid/claude-brain), [memory-mcp](https://github.com/yuvalsuede/memory-mcp)에서 영감을 받아 추가 인프라가 필요 없는 Git 네이티브 접근 방식으로 구현했습니다.
-
 ---
 
 ## 기여

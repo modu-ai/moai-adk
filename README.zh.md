@@ -1008,10 +1008,6 @@ MoAI-ADK 提供**基于 Git 的上下文记忆系统**，通过结构化的 git 
 - **完整审计追踪**：`git log` 提供完整的决策历史
 - **会话连续性**：`/clear` 或会话中断后仍可恢复完整上下文
 
-### 设计灵感
-
-MoAI Memory 的灵感来自 [claude-mem](https://github.com/thedotmack/claude-mem)、[claude-brain](https://github.com/memvid/claude-brain) 和 [memory-mcp](https://github.com/yuvalsuede/memory-mcp)，采用无需额外基础设施的 Git 原生方式实现。
-
 ---
 
 ## 贡献

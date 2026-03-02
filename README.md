@@ -1059,10 +1059,6 @@ Phase: RUN-RED
 - **Full Audit Trail**: `git log` provides complete decision history
 - **Session Continuity**: Resume work with full context after `/clear` or session breaks
 
-### Design Inspiration
-
-MoAI Memory is inspired by [claude-mem](https://github.com/thedotmack/claude-mem), [claude-brain](https://github.com/memvid/claude-brain), and [memory-mcp](https://github.com/yuvalsuede/memory-mcp), adapted for a Git-native approach that requires zero additional infrastructure.
-
 ---
 
 ## Contributing
