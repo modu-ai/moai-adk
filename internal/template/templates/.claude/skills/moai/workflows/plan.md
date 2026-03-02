@@ -295,6 +295,44 @@ Options:
 - Modify Plan
 - Add New Feature (create additional SPEC)
 
+### Decision Point 3.5: Execution Mode Selection Gate
+
+Triggered when: User selects "Start Implementation" in Decision Point 3.
+
+**Step 1 — Detect active mode:**
+Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
+- `""` (empty) = CC mode (all agents use Claude)
+- `"glm"` = GLM mode (all agents use GLM)
+- `"cg"` = CG mode (Leader=Claude, Workers=GLM)
+
+**Step 2 — Detect tmux availability:**
+Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
+
+**Step 3 — Present options when tmux is available:**
+AskUserQuestion with 3 options (descriptions adapt to active_mode):
+- Option 1 (Recommended): Worktree + {active_mode}
+  - CC: "독립 worktree에서 CC 모드 실행. 모든 에이전트 Claude. 최고 품질."
+  - GLM: "독립 worktree에서 GLM 모드 실행. 모든 에이전트 GLM. 비용 최적화."
+  - CG: "독립 worktree에서 CG 모드 실행. Leader=Claude, Workers=GLM. 품질-비용 균형."
+- Option 2: Team Mode — 현재 세션에서 Agent Teams 실행. Worktree 없이 직접 실행.
+- Option 3: Sub-agent Mode — 순차 실행. 가장 안정적이고 토큰 효율적.
+
+**Step 3 (tmux unavailable):** AskUserQuestion with 2 options:
+- Option 1 (Recommended): Sub-agent Mode — 순차 실행. tmux 없이 가장 안정적.
+- Option 2: Team Mode (in-process) — 현재 세션에서 Agent Teams 실행.
+
+**Step 4 — Worktree 선택 시 실행:**
+- CC: 추가 env 설정 불필요. worktree 생성 후 새 tmux 세션에서 claude 실행.
+- GLM: 새 tmux 세션에 injectTmuxSessionEnv()로 GLM env 주입 후 실행.
+- CG: 새 tmux 세션에 injectTmuxSessionEnv() 적용 + settings.local.json에서 GLM env 제거(Leader 격리).
+- 새 tmux 세션에서 worktree 디렉토리로 이동 후 `/moai run SPEC-{ID}` 실행.
+- 현재 세션 종료 (worktree 세션이 독립적으로 실행됨).
+
+**Step 5 — Gate 결과를 run 워크플로우에 전달:**
+- `execution_mode`: worktree | team | sub-agent
+- `active_mode`: cc | glm | cg
+- `tmux_available`: true | false
+
 ---
 
 ## Team Mode Routing

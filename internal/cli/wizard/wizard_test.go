@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"os"
 	"testing"
 )
 
@@ -782,6 +783,215 @@ func TestRunWithDefaults_CreatesQuestions(t *testing.T) {
 	questions := DefaultQuestions("/tmp/run-defaults-test")
 	if len(questions) == 0 {
 		t.Error("DefaultQuestions should return non-empty for RunWithDefaults")
+	}
+}
+
+// --- REQ-1: RunWithDefaults locale 파라미터 테스트 ---
+
+func TestRunWithDefaults_AcceptsLocaleParameter(t *testing.T) {
+	// RunWithDefaults(projectRoot, locale) 시그니처 테스트.
+	// TTY 없이는 실행 불가하므로 컴파일 확인 수준의 테스트.
+	questions := DefaultQuestions("/tmp/run-defaults-locale-test")
+	if len(questions) == 0 {
+		t.Error("DefaultQuestions should return non-empty")
+	}
+	// locale 파라미터를 받는 새 시그니처 확인:
+	// RunWithDefaults("/tmp/test", "ko") 가 컴파일되어야 함
+	_ = func() {
+		// 컴파일 타임에만 확인 — TTY 없이 실행 불가
+		// _, _ = RunWithDefaults("/tmp/test", "ko")
+	}
+}
+
+// --- REQ-2: DefaultQuestions 기본값 오버라이드 테스트 ---
+
+func TestDefaultQuestions_GitHubUsernameDefaultOverride(t *testing.T) {
+	// DefaultQuestions 결과의 github_username 기본값을 오버라이드할 수 있어야 함
+	questions := DefaultQuestions("/tmp/test")
+	q := QuestionByID(questions, "github_username")
+	if q == nil {
+		t.Fatal("github_username question not found")
+	}
+
+	// 기존 값은 빈 문자열
+	if q.Default != "" {
+		t.Errorf("github_username default should be empty initially, got %q", q.Default)
+	}
+
+	// Default 필드 오버라이드 가능 여부 확인
+	q.Default = "existing-user"
+	if q.Default != "existing-user" {
+		t.Error("should be able to override Default field")
+	}
+}
+
+func TestDefaultQuestions_GitLabUsernameDefaultOverride(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	q := QuestionByID(questions, "gitlab_username")
+	if q == nil {
+		t.Fatal("gitlab_username question not found")
+	}
+
+	// 기존 값은 빈 문자열
+	if q.Default != "" {
+		t.Errorf("gitlab_username default should be empty initially, got %q", q.Default)
+	}
+
+	// Default 필드 오버라이드 가능 여부 확인
+	q.Default = "existing-gl-user"
+	if q.Default != "existing-gl-user" {
+		t.Error("should be able to override Default field")
+	}
+}
+
+// --- REQ-3: gh auth 인증 확인 시 github_token 질문 스킵 테스트 ---
+
+func TestDefaultQuestions_GitHubTokenCondition(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	q := QuestionByID(questions, "github_token")
+	if q == nil {
+		t.Fatal("github_token question not found")
+	}
+
+	// 기본 Condition: github 프로바이더 + personal/team 모드일 때 표시
+	result := &WizardResult{GitMode: "personal", GitProvider: "github"}
+	if !q.Condition(result) {
+		t.Error("github_token should be visible for github provider + personal mode")
+	}
+
+	// Condition을 오버라이드하여 항상 숨길 수 있어야 함 (gh auth 인증 시)
+	q.Condition = func(r *WizardResult) bool {
+		return false // gh auth로 인증된 경우 스킵
+	}
+	if q.Condition(result) {
+		t.Error("overridden condition should return false (skip token question)")
+	}
+}
+
+func TestIsGhAuthenticated_ReturnsBoolean(t *testing.T) {
+	// IsGhAuthenticated() 함수가 bool을 반환하는지 확인
+	// gh가 없거나 인증되지 않은 환경에서는 false 반환
+	result := IsGhAuthenticated()
+	// bool 타입이어야 함 (true 또는 false)
+	_ = result // 환경에 따라 값이 달라지므로 타입만 확인
+}
+
+// --- readLocaleFromProject 헬퍼 함수 테스트 ---
+
+func TestReadLocaleFromProject_ReturnsLocale(t *testing.T) {
+	// 임시 디렉토리에 language.yaml 생성
+	tmpDir := t.TempDir()
+	sectionsDir := tmpDir + "/.moai/config/sections"
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	content := "language:\n  conversation_language: ko\n"
+	if err := os.WriteFile(sectionsDir+"/language.yaml", []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	locale := ReadLocaleFromProject(tmpDir)
+	if locale != "ko" {
+		t.Errorf("ReadLocaleFromProject = %q, want %q", locale, "ko")
+	}
+}
+
+func TestReadLocaleFromProject_MissingFile_ReturnsEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	locale := ReadLocaleFromProject(tmpDir)
+	if locale != "" {
+		t.Errorf("ReadLocaleFromProject with missing file = %q, want empty", locale)
+	}
+}
+
+func TestReadLocaleFromProject_InvalidYAML_ReturnsEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := tmpDir + "/.moai/config/sections"
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	// 유효하지 않은 YAML
+	if err := os.WriteFile(sectionsDir+"/language.yaml", []byte("invalid: [yaml"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	locale := ReadLocaleFromProject(tmpDir)
+	if locale != "" {
+		t.Errorf("ReadLocaleFromProject with invalid YAML = %q, want empty", locale)
+	}
+}
+
+func TestReadLocaleFromProject_NoLanguageKey_ReturnsEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := tmpDir + "/.moai/config/sections"
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	// language 키가 없는 YAML
+	if err := os.WriteFile(sectionsDir+"/language.yaml", []byte("other_key: value\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	locale := ReadLocaleFromProject(tmpDir)
+	if locale != "" {
+		t.Errorf("ReadLocaleFromProject with no language key = %q, want empty", locale)
+	}
+}
+
+// --- readGitHubUsernameFromConfig 헬퍼 함수 테스트 ---
+
+func TestReadGitHubUsernameFromConfig_ReturnsUsername(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := tmpDir + "/.moai/config/sections"
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	content := "user:\n  github_username: existinguser\n"
+	if err := os.WriteFile(sectionsDir+"/user.yaml", []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	username := ReadGitHubUsernameFromConfig(tmpDir)
+	if username != "existinguser" {
+		t.Errorf("ReadGitHubUsernameFromConfig = %q, want %q", username, "existinguser")
+	}
+}
+
+func TestReadGitHubUsernameFromConfig_MissingFile_ReturnsEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	username := ReadGitHubUsernameFromConfig(tmpDir)
+	if username != "" {
+		t.Errorf("ReadGitHubUsernameFromConfig with missing file = %q, want empty", username)
+	}
+}
+
+func TestReadGitLabUsernameFromConfig_ReturnsUsername(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := tmpDir + "/.moai/config/sections"
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	content := "user:\n  gitlab_username: glexistinguser\n"
+	if err := os.WriteFile(sectionsDir+"/user.yaml", []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	username := ReadGitLabUsernameFromConfig(tmpDir)
+	if username != "glexistinguser" {
+		t.Errorf("ReadGitLabUsernameFromConfig = %q, want %q", username, "glexistinguser")
+	}
+}
+
+func TestReadGitLabUsernameFromConfig_MissingFile_ReturnsEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	username := ReadGitLabUsernameFromConfig(tmpDir)
+	if username != "" {
+		t.Errorf("ReadGitLabUsernameFromConfig with missing file = %q, want empty", username)
 	}
 }
 

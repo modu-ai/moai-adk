@@ -146,13 +146,14 @@ If no VERSION argument:
 Calculate new version and update ALL version files:
 
 1. Edit `pkg/version/version.go` `Version` variable
-2. Edit `.moai/config/sections/system.yaml` `moai.version`
+2. Edit `.moai/config/sections/system.yaml` `moai.version` AND `moai.template_version`
 3. Edit `internal/template/templates/.moai/config/sections/system.yaml` `moai.version`
 4. Commit: `git add pkg/version/version.go .moai/config/sections/system.yaml internal/template/templates/.moai/config/sections/system.yaml && git commit -m "chore: bump version to vX.Y.Z"`
 
 Version files checklist:
 - [ ] pkg/version/version.go: Version = "vX.Y.Z"
 - [ ] .moai/config/sections/system.yaml: moai.version: "X.Y.Z"
+- [ ] .moai/config/sections/system.yaml: moai.template_version: "vX.Y.Z"
 - [ ] internal/template/templates/.moai/config/sections/system.yaml: moai.version: "X.Y.Z"
 
 ---
@@ -834,14 +835,15 @@ git status --porcelain
 - `pkg/version/version.go` shows v2.1.0
 - `.moai/config/sections/system.yaml` shows 2.0.5
 - `internal/template/templates/.moai/config/sections/system.yaml` shows 2.0.5
+- Statusline shows old `template_version` instead of new release version
 
-**Solution:** All 3 version files MUST be updated together in Phase 3.
+**Solution:** All 4 version fields MUST be updated together in Phase 3.
 
 **Verification:**
 ```bash
 # Check consistency
 grep -n "Version" pkg/version/version.go
-grep -n "moai.version" .moai/config/sections/system.yaml
+grep -n "moai.version\|template_version" .moai/config/sections/system.yaml
 grep -n "moai.version" internal/template/templates/.moai/config/sections/system.yaml
 
 # All should show same version (with/without "v" prefix as appropriate)

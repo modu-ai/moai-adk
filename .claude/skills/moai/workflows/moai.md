@@ -206,7 +206,17 @@ Mode selection:
 9. **Phase 0.5 (Research)**: Save research.md from Phase 0 Explore findings to SPEC directory
 10. **Phase 1 (Plan)**: If team mode -> Read team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
-12. **Phase 2 (Run)**: If team mode -> Read team/run.md and follow team orchestration. Else -> manager-tdd or manager-ddd sub-agent (per quality.yaml development_mode)
+11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2
+   - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
+   - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
+   - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | team | sub-agent
+   - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
+   - Team/Sub-agent selected: Pass execution_mode + active_mode to Phase 2
+   - See plan.md Decision Point 3.5 for full option details
+12. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)
+   - worktree: Already running in isolated tmux+worktree session (Gate handled transition)
+   - team: Read team/run.md and follow team orchestration
+   - sub-agent: manager-tdd or manager-ddd (per quality.yaml development_mode)
 13. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
 14. Terminate with completion marker
 

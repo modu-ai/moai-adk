@@ -221,7 +221,7 @@ func TestRunWithDefaults_ReturnsError(t *testing.T) {
 	// and returns ErrNoQuestions only when no questions given (covered elsewhere).
 	// Here we call it and expect a non-nil error (not ErrNoQuestions since
 	// DefaultQuestions returns multiple questions).
-	_, err := RunWithDefaults("/tmp/test-run-defaults")
+	_, err := RunWithDefaults("/tmp/test-run-defaults", "")
 	// In non-TTY: huh returns an error. We just verify the function is callable.
 	if err == ErrNoQuestions {
 		t.Error("RunWithDefaults should not return ErrNoQuestions (questions exist)")

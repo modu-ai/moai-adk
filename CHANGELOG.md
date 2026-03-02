@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-03-03
+
+### Summary
+
+This release enhances the init wizard with locale-awareness and GitLab support, introduces the Execution Mode Selection Gate for cc/glm/cg mode selection, and wires up previously unimplemented packages into the execution flow. CG mode is now the default team mode.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **Locale-aware wizard**: The init wizard now automatically detects `conversation_language` from `language.yaml` and displays UI in the user's configured language.
+- **GitLab support in wizard**: Added `gitlab_username` and `gitlab_token` fields to the init wizard; stored in `user.yaml`.
+- **Pre-fill wizard from existing config**: GitHub/GitLab usernames are pre-filled from existing `user.yaml` values when reconfiguring.
+- **gh CLI auth detection**: When `gh auth status` passes, the `github_token` question is automatically skipped.
+- **Execution Mode Selection Gate**: When transitioning from Plan to Run phase, MoAI detects the current execution environment (cc/glm/cg) and presents a mode selection UI before implementation begins.
+- **Wired packages into execution flow**: `loop`, `hook/post_tool`, `hook/session_end`, `lsp/hook/fallback`, `tmux/detector`, `tmux/session` packages are now fully integrated into the execution flow.
+
+### Changed
+
+- **CG mode as default team mode**: `team_mode` in workflow config now defaults to `cg` (Claude Leader + GLM Workers) for optimal cost-quality balance.
+- **Wizard API refactored**: `RunWithDefaults` now accepts a `locale` parameter; new `RunWithLocale` function introduced.
+- **Template skill updates**: Workflow skills (plan, run, sync, context, moai) updated with Execution Mode Selection Gate integration.
+
+### Fixed
+
+None.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.1] - 2026-03-03 (한국어)
+
+### 요약
+
+이번 릴리즈에서는 init 위저드에 로케일 인식 기능과 GitLab 지원이 추가되었으며, cc/glm/cg 모드 선택을 위한 실행 모드 선택 게이트가 도입되었습니다. 미구현 패키지들이 실행 흐름에 통합되었으며, CG 모드가 기본 팀 모드로 설정되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **로케일 인식 위저드**: init 위저드가 `language.yaml`의 `conversation_language`를 자동 감지하여 해당 언어로 UI를 표시합니다.
+- **위저드 GitLab 지원**: init 위저드에 `gitlab_username` 및 `gitlab_token` 필드 추가; `user.yaml`에 저장됩니다.
+- **기존 설정 값 사전 입력**: 재구성 시 기존 `user.yaml`의 GitHub/GitLab 사용자명을 기본값으로 미리 채워줍니다.
+- **gh CLI 인증 자동 감지**: `gh auth status`가 통과된 경우 `github_token` 질문이 자동으로 스킵됩니다.
+- **실행 모드 선택 게이트**: Plan에서 Run 단계로 전환 시, 현재 실행 환경(cc/glm/cg)을 감지하고 구현 시작 전 모드 선택 UI를 제공합니다.
+- **패키지 실행 흐름 통합**: `loop`, `hook/post_tool`, `hook/session_end`, `lsp/hook/fallback`, `tmux/detector`, `tmux/session` 패키지가 실행 흐름에 완전히 통합되었습니다.
+
+### 변경됨 (Changed)
+
+- **CG 모드 기본 팀 모드**: 워크플로우 설정의 `team_mode`가 최적의 비용-품질 균형을 위해 `cg`(Claude 리더 + GLM 워커)로 기본 설정되었습니다.
+- **위저드 API 리팩토링**: `RunWithDefaults`가 `locale` 파라미터를 받도록 변경; 새로운 `RunWithLocale` 함수가 도입되었습니다.
+- **템플릿 스킬 업데이트**: 실행 모드 선택 게이트 통합을 위해 워크플로우 스킬(plan, run, sync, context, moai)이 업데이트되었습니다.
+
+### 수정됨 (Fixed)
+
+없음.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.0] - 2026-03-02
 
 ### Summary

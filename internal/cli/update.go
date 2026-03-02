@@ -1733,8 +1733,37 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		PrintWelcomeMessage()
 	}
 
-	// Run wizard with current directory as project root
-	result, err := wizard.RunWithDefaults(cwd)
+	// REQ-1: language.yaml에서 locale 읽기
+	locale := wizard.ReadLocaleFromProject(cwd)
+
+	// REQ-2: 기존 설정에서 사용자명 읽기 (기본값으로 사용)
+	existingGitHubUsername := wizard.ReadGitHubUsernameFromConfig(cwd)
+	existingGitLabUsername := wizard.ReadGitLabUsernameFromConfig(cwd)
+
+	// REQ-3: gh CLI 인증 여부 확인
+	ghAuthenticated := wizard.IsGhAuthenticated()
+
+	// 기본 질문 생성 및 기존 값으로 기본값 설정
+	questions := wizard.DefaultQuestions(cwd)
+	if existingGitHubUsername != "" {
+		if q := wizard.QuestionByID(questions, "github_username"); q != nil {
+			q.Default = existingGitHubUsername
+		}
+	}
+	if existingGitLabUsername != "" {
+		if q := wizard.QuestionByID(questions, "gitlab_username"); q != nil {
+			q.Default = existingGitLabUsername
+		}
+	}
+	// REQ-3: gh auth 인증된 경우 github_token 질문 스킵
+	if ghAuthenticated {
+		if q := wizard.QuestionByID(questions, "github_token"); q != nil {
+			q.Condition = func(_ *wizard.WizardResult) bool { return false }
+		}
+	}
+
+	// locale과 커스텀 질문으로 위저드 실행
+	result, err := wizard.RunWithLocale(questions, nil, locale)
 	if err != nil {
 		if errors.Is(err, wizard.ErrCancelled) {
 			_, _ = fmt.Fprintln(out, "Configuration cancelled.")
@@ -1754,20 +1783,22 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	return nil
 }
 
-// applyWizardConfig applies wizard results to the project configuration files.
+// applyWizardConfig는 위저드 결과를 프로젝트 설정 파일에 반영한다.
 func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	sectionsDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
 
-	// Update user.yaml with GitHub username and token
-	if result.GitHubUsername != "" || result.GitHubToken != "" {
+	// user.yaml: GitHub/GitLab 사용자명·토큰 저장 (REQ-4, REQ-5)
+	hasUserFields := result.GitHubUsername != "" || result.GitHubToken != "" ||
+		result.GitLabUsername != "" || result.GitLabToken != ""
+	if hasUserFields {
 		userPath := filepath.Join(sectionsDir, defs.UserYAML)
-		// Read existing content
+		// 기존 파일 읽기
 		userData, err := os.ReadFile(userPath)
 		if err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("read user.yaml: %w", err)
 		}
 
-		// Parse YAML
+		// YAML 파싱
 		var user map[string]any
 		if len(userData) > 0 {
 			if err := yaml.Unmarshal(userData, &user); err != nil {
@@ -1777,7 +1808,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			user = make(map[string]any)
 		}
 
-		// Ensure user.user exists
+		// user.user 섹션 확보
 		var userConfig map[string]any
 		if existingUser, ok := user["user"].(map[string]any); ok {
 			userConfig = existingUser
@@ -1785,25 +1816,123 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			userConfig = make(map[string]any)
 		}
 
-		// Set github_username if provided
+		// GitHub 크레덴셜 저장
 		if result.GitHubUsername != "" {
 			userConfig["github_username"] = result.GitHubUsername
 		}
-
-		// Set github_token if provided
 		if result.GitHubToken != "" {
 			userConfig["github_token"] = result.GitHubToken
 		}
 
+		// GitLab 크레덴셜 저장 (REQ-5)
+		if result.GitLabUsername != "" {
+			userConfig["gitlab_username"] = result.GitLabUsername
+		}
+		if result.GitLabToken != "" {
+			userConfig["gitlab_token"] = result.GitLabToken
+		}
+
 		user["user"] = userConfig
 
-		// Write back
+		// 파일로 저장
 		updatedData, err := yaml.Marshal(user)
 		if err != nil {
 			return fmt.Errorf("marshal user.yaml: %w", err)
 		}
 		if err := os.WriteFile(userPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write user.yaml: %w", err)
+		}
+	}
+
+	// git-strategy.yaml: Git 모드·프로바이더 저장 (REQ-4)
+	if result.GitMode != "" || result.GitProvider != "" {
+		gitStratPath := filepath.Join(sectionsDir, defs.GitStrategyYAML)
+		gsData, err := os.ReadFile(gitStratPath)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("read git-strategy.yaml: %w", err)
+		}
+
+		var gs map[string]any
+		if len(gsData) > 0 {
+			if err := yaml.Unmarshal(gsData, &gs); err != nil {
+				return fmt.Errorf("parse git-strategy.yaml: %w", err)
+			}
+		} else {
+			gs = make(map[string]any)
+		}
+
+		// git_strategy 섹션 확보
+		var gitStrategy map[string]any
+		if existing, ok := gs["git_strategy"].(map[string]any); ok {
+			gitStrategy = existing
+		} else {
+			gitStrategy = make(map[string]any)
+		}
+
+		if result.GitMode != "" {
+			gitStrategy["mode"] = result.GitMode
+		}
+		if result.GitProvider != "" {
+			gitStrategy["provider"] = result.GitProvider
+		}
+
+		// GitLab instance URL 저장 (REQ-5)
+		if result.GitLabInstanceURL != "" {
+			var gitlabSection map[string]any
+			if existing, ok := gitStrategy["gitlab"].(map[string]any); ok {
+				gitlabSection = existing
+			} else {
+				gitlabSection = make(map[string]any)
+			}
+			gitlabSection["instance_url"] = result.GitLabInstanceURL
+			gitStrategy["gitlab"] = gitlabSection
+		}
+
+		gs["git_strategy"] = gitStrategy
+
+		updatedData, err := yaml.Marshal(gs)
+		if err != nil {
+			return fmt.Errorf("marshal git-strategy.yaml: %w", err)
+		}
+		if err := os.WriteFile(gitStratPath, updatedData, defs.FilePerm); err != nil {
+			return fmt.Errorf("write git-strategy.yaml: %w", err)
+		}
+	}
+
+	// quality.yaml: 개발 모드 저장 (REQ-4)
+	if result.DevelopmentMode != "" {
+		qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
+		qualityData, err := os.ReadFile(qualityPath)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("read quality.yaml: %w", err)
+		}
+
+		var quality map[string]any
+		if len(qualityData) > 0 {
+			if err := yaml.Unmarshal(qualityData, &quality); err != nil {
+				return fmt.Errorf("parse quality.yaml: %w", err)
+			}
+		} else {
+			quality = make(map[string]any)
+		}
+
+		// constitution 섹션 확보
+		var constitution map[string]any
+		if existing, ok := quality["constitution"].(map[string]any); ok {
+			constitution = existing
+		} else {
+			constitution = make(map[string]any)
+		}
+
+		constitution["development_mode"] = result.DevelopmentMode
+		quality["constitution"] = constitution
+
+		updatedData, err := yaml.Marshal(quality)
+		if err != nil {
+			return fmt.Errorf("marshal quality.yaml: %w", err)
+		}
+		if err := os.WriteFile(qualityPath, updatedData, defs.FilePerm); err != nil {
+			return fmt.Errorf("write quality.yaml: %w", err)
 		}
 	}
 

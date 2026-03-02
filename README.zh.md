@@ -130,7 +130,34 @@ cd moai-adk && make build
 
 > 预构建二进制可在 [Releases](https://github.com/modu-ai/moai-adk/releases) 页面下载。
 
-### 2. 初始化项目
+### 2. Windows 特定问题
+
+#### 韩文用户名路径错误
+
+如果 Windows 用户名包含非 ASCII 字符（韩文、中文等），
+可能会因 Windows 8.3 短文件名转换而遇到 `EINVAL` 错误。
+
+**解决方案 1：** 设置替代临时目录：
+
+```bash
+# 命令提示符
+set MOAI_TEMP_DIR=C:\temp
+mkdir C:\temp 2>nul
+
+# PowerShell
+$env:MOAI_TEMP_DIR="C:\temp"
+New-Item -ItemType Directory -Path "C:\temp" -Force
+```
+
+**解决方案 2：** 禁用 8.3 文件名生成（需要管理员权限）：
+
+```bash
+fsutil 8dot3name set 1
+```
+
+**解决方案 3：** 使用仅包含 ASCII 字符的用户名创建新 Windows 用户帐户。
+
+### 3. 初始化项目
 
 ```bash
 moai init my-project
@@ -138,7 +165,7 @@ moai init my-project
 
 交互式向导将自动检测语言、框架和方法论，并生成 Claude Code 集成文件。
 
-### 3. 在 Claude Code 中开始开发
+### 4. 在 Claude Code 中开始开发
 
 ```bash
 # 启动 Claude Code 后
@@ -452,6 +479,21 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
+#### 执行模式选择门
+
+从 Plan 阶段过渡到 Run 阶段时，MoAI 会自动检测当前执行环境（cc/glm/cg），并在实施开始前显示选择 UI，让用户确认或更改模式。
+
+```mermaid
+graph LR
+    A["Plan 完成"] --> B["环境检测"]
+    B --> C{"模式选择 UI"}
+    C -->|"CC"| D["仅 Claude 执行"]
+    C -->|"GLM"| E["仅 GLM 执行"]
+    C -->|"CG"| F["Claude 领导者 + GLM 工作者"]
+```
+
+此门确保无论环境状态如何都使用正确的执行模式，防止实施过程中的模式不匹配。
+
 ### /moai 子命令
 
 所有子命令在 Claude Code 中以 `/moai <subcommand>` 方式调用。
@@ -507,6 +549,8 @@ graph TB
 | 仅 Claude | `moai cc` | Claude | Claude | 最高质量 |
 | 仅 GLM | `moai glm` | GLM | GLM | 最大成本节省 |
 | CG（Claude+GLM） | `moai cg` | Claude | GLM | 质量+成本平衡 |
+
+> **v2.7.1 新增**：CG 模式现在是**默认**团队模式。使用 `--team` 时，除非通过 `moai cc` 或 `moai glm` 明确更改，否则系统默认以 CG 模式运行。
 
 > **注意**：`moai cg` 使用 tmux pane 级别环境隔离来分离 Claude 领导者和 GLM 工作者。如果从 `moai glm` 切换，`moai cg` 会自动先重置 GLM 设置 -- 无需在中间运行 `moai cc`。
 

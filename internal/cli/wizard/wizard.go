@@ -9,27 +9,38 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Run executes the wizard and returns the result.
-// Each question runs as its own independent huh.Form to avoid the huh v0.8.x
-// YOffset scroll bug that occurs when multiple groups share a single viewport.
+// Run은 위저드를 실행하여 결과를 반환한다.
+// huh v0.8.x의 YOffset 스크롤 버그를 피하기 위해 각 질문을 독립적인 huh.Form으로 실행한다.
 func Run(questions []Question, styles *Styles) (*WizardResult, error) {
+	return RunWithLocale(questions, styles, "")
+}
+
+// RunWithDefaults는 주어진 프로젝트 루트에 대한 기본 질문으로 위저드를 실행한다.
+// locale이 비어 있지 않으면 위저드 UI를 해당 언어로 표시한다.
+func RunWithDefaults(projectRoot, locale string) (*WizardResult, error) {
+	questions := DefaultQuestions(projectRoot)
+	return RunWithLocale(questions, nil, locale)
+}
+
+// RunWithLocale은 locale을 초기화하여 위저드를 실행한다.
+func RunWithLocale(questions []Question, styles *Styles, locale string) (*WizardResult, error) {
 	if len(questions) == 0 {
 		return nil, ErrNoQuestions
 	}
 
 	result := &WizardResult{}
-	locale := ""
+	currentLocale := locale
 	theme := newMoAIWizardTheme()
 
 	for i := range questions {
 		q := &questions[i]
 
-		// Pre-check condition: skip questions whose condition is not met.
+		// 조건이 충족되지 않는 질문은 스킵
 		if q.Condition != nil && !q.Condition(result) {
 			continue
 		}
 
-		g := buildQuestionGroup(q, result, &locale)
+		g := buildQuestionGroup(q, result, &currentLocale)
 		form := huh.NewForm(g).
 			WithTheme(theme).
 			WithAccessible(false)
@@ -43,12 +54,6 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	}
 
 	return result, nil
-}
-
-// RunWithDefaults runs the wizard with default questions for the given project root.
-func RunWithDefaults(projectRoot string) (*WizardResult, error) {
-	questions := DefaultQuestions(projectRoot)
-	return Run(questions, nil)
 }
 
 // buildQuestionGroup creates a huh.Group for a single question.
