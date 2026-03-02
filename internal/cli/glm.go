@@ -446,9 +446,10 @@ func disableTeamMode(projectRoot string) error {
 // to settings.local.json for GLM Team mode.
 // This enables teammates to use GLM models instead of Claude models.
 //
-// OAuth token preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
-// in settings.local.json (e.g. a Claude OAuth credential), it is saved as
+// API key preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
+// in settings.local.json (e.g. a user's Anthropic API key), it is saved as
 // MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
+// Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
 func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
 	var settings SettingsLocal
 
@@ -711,9 +712,10 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 
 // injectGLMEnv adds GLM environment variables to settings.local.json.
 //
-// OAuth token preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
-// in settings.local.json (e.g. a Claude OAuth credential), it is saved as
+// API key preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
+// in settings.local.json (e.g. a user's Anthropic API key), it is saved as
 // MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
+// Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
 func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	apiKey := getGLMAPIKey(glmConfig.EnvVar)
 	if apiKey == "" {

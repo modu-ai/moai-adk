@@ -66,6 +66,24 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 ---
 
+## Harness Engineering Architecture
+
+MoAI-ADK implements the **Harness Engineering** paradigm — designing the environment for AI agents rather than writing code directly.
+
+| Component | Description | Command |
+|-----------|-------------|---------|
+| **Self-Verify Loop** | Agents write code → test → fail → fix → pass cycle autonomously | `/moai loop` |
+| **Context Map** | Codebase architecture maps and documentation always available to agents | `/moai codemaps` |
+| **Session Persistence** | `progress.md` tracks completed phases across sessions; interrupted runs resume automatically | `/moai run SPEC-XXX` |
+| **Failing Checklist** | All acceptance criteria registered as pending tasks at run start; marked complete as implemented | `/moai run SPEC-XXX` |
+| **Language-Agnostic** | 16 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
+| **Garbage Collection** | Periodic scan and removal of dead code, AI Slop, and unused imports | `/moai clean` |
+| **Scaffolding First** | Empty file stubs created before implementation to prevent entropy | `/moai run SPEC-XXX` |
+
+> "Human steers, agents execute." — The engineer's role shifts from writing code to designing the harness: SPECs, quality gates, and feedback loops.
+
+---
+
 ## System Requirements
 
 | Platform | Supported Environments | Notes |

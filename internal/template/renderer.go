@@ -33,11 +33,13 @@ var templateFuncMap = template.FuncMap{
 // Matches ${VAR}, {{VAR}}, and $VAR patterns.
 var unexpandedTokenPattern = regexp.MustCompile(`\$\{[A-Za-z_][A-Za-z0-9_]*\}|\{\{\.?[A-Za-z_][A-Za-z0-9_.]*\}\}|\$[A-Z_][A-Z0-9_]*`)
 
-// claudeCodePassthroughTokens are environment variables resolved by Claude Code
-// at runtime and must not be flagged as unexpanded tokens (ADR-011 exception).
+// claudeCodePassthroughTokens are environment variables resolved at runtime
+// (by Claude Code or the shell) and must not be flagged as unexpanded tokens
+// (ADR-011 exception).
 var claudeCodePassthroughTokens = []string{
 	"$CLAUDE_PROJECT_DIR",
 	"$ARGUMENTS",
+	"$HOME",
 }
 
 // Renderer renders Go text/template files with strict mode enabled.

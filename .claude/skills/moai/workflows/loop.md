@@ -184,12 +184,28 @@ Resume commands:
 
 ## Language-Specific Commands
 
-Python: pytest --tb=short (tests), coverage run -m pytest (coverage)
-TypeScript: npm test or jest (tests), npm run coverage (coverage)
-Go: go test ./... (tests), go test -cover ./... (coverage)
-Rust: cargo test (tests), cargo tarpaulin (coverage)
+Test runner and coverage tool selection is based on auto-detected project language:
 
-Language detection: pyproject.toml (Python), package.json (TypeScript/JavaScript), go.mod (Go), Cargo.toml (Rust)
+| Language | Indicator File | Test Command | Coverage Command |
+|----------|---------------|--------------|--------------------|
+| Go | go.mod | `go test ./...` | `go test -cover ./...` |
+| Python | pyproject.toml / setup.py | `pytest --tb=short` | `coverage run -m pytest` |
+| TypeScript/JavaScript | package.json | `npm test` or `jest` | `npm run coverage` or `c8` |
+| Rust | Cargo.toml | `cargo test` | `cargo tarpaulin` |
+| Java (Maven) | pom.xml | `mvn test -q` | `mvn jacoco:report` |
+| Java (Gradle) | build.gradle | `gradle test -q` | `gradle jacocoTestReport` |
+| Kotlin | build.gradle.kts | `gradle test -q` | `gradle jacocoTestReport` |
+| C# | *.csproj | `dotnet test` | `dotnet test --collect:"XPlat Code Coverage"` |
+| Ruby | Gemfile | `bundle exec rspec` or `bundle exec rake test` | `simplecov` (via .simplecov config) |
+| PHP | composer.json | `vendor/bin/phpunit` | `vendor/bin/phpunit --coverage-text` |
+| Scala | build.sbt | `sbt test` | `sbt coverage test coverageReport` |
+| Elixir | mix.exs | `mix test` | `mix test --cover` |
+| Swift | Package.swift | `swift test` | `swift test --enable-code-coverage` |
+| Flutter/Dart | pubspec.yaml | `flutter test` or `dart test` | `flutter test --coverage` |
+| R | DESCRIPTION | `Rscript -e 'testthat::test_package(".")'` | `covr::package_coverage()` |
+| C++ | CMakeLists.txt | `ctest --test-dir build` | `gcov`/`lcov` (if configured) |
+
+Language detection priority: Check for indicator files in project root. If multiple present, prefer the one with the most associated source files. If detection fails, prompt user to specify language.
 
 ## Cancellation
 
@@ -230,5 +246,5 @@ If prerequisites are not met:
 
 ---
 
-Version: 2.1.0
-Source: loop.md command v2.3.0. Added Step 5.5 Pre-Fix MX Context Scan for context-aware iterative fixing.
+Version: 2.2.0
+Updated: 2026-03-02. Expanded Language-Specific Commands to 16 languages with test runner, coverage tool, and indicator file for each.

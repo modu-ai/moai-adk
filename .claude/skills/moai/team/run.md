@@ -183,12 +183,12 @@ When teammates complete:
 
 Leader validates quality using Claude's analysis:
 
-1. Run quality gates:
-   ```bash
-   go test -race ./...
-   golangci-lint run
-   go test -cover ./...
-   ```
+1. Run language-appropriate quality gates based on auto-detected project language:
+   - **Tests**: Language-specific test runner (e.g., `go test ./...` / `pytest` / `npm test` / `cargo test`)
+   - **Linter**: Language-specific linter (e.g., `golangci-lint` / `ruff` / `eslint` / `cargo clippy`)
+   - **Coverage**: Language-specific coverage tool (e.g., `go test -cover` / `coverage.py` / `c8` / `tarpaulin`)
+
+   For the complete language-to-command mapping table, see: `workflows/loop.md` Language-Specific Commands section.
 
 2. SPEC verification:
    - Read SPEC acceptance criteria
@@ -352,5 +352,5 @@ If team mode fails at any point:
 
 ---
 
-Version: 3.2.0 (tmux Agent Teams CG Mode)
-Last Updated: 2026-02-27
+Version: 3.3.0 (Language-Agnostic Quality Gates)
+Last Updated: 2026-03-02
