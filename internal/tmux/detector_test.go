@@ -158,3 +158,35 @@ func TestNewDetector_DefaultRunFunc(t *testing.T) {
 		t.Fatal("run function should not be nil")
 	}
 }
+
+func TestSystemDetector_InTmuxSession(t *testing.T) {
+	// t.Setenv cannot be used with t.Parallel(), so run sequentially
+	tests := []struct {
+		name     string
+		tmuxEnv  string
+		expected bool
+	}{
+		{
+			name:     "returns true when TMUX env var is set",
+			tmuxEnv:  "/tmp/tmux-1000/default,12345,0",
+			expected: true,
+		},
+		{
+			name:     "returns false when TMUX env var is empty",
+			tmuxEnv:  "",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TMUX", tt.tmuxEnv)
+
+			d := NewDetector()
+			got := d.InTmuxSession()
+			if got != tt.expected {
+				t.Errorf("InTmuxSession() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

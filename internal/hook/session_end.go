@@ -52,6 +52,7 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	cleanupCurrentSessionTeam(input.SessionID, homeDir)
 	garbageCollectStaleTeams(homeDir)
+	garbageCollectOrphanedTasks(homeDir)
 	cleanupOrphanedTmuxSessions(ctx)
 
 	// Always clear tmux session-level GLM env vars to restore Claude models.
@@ -132,6 +133,19 @@ func cleanupCurrentSessionTeam(sessionID, homeDir string) {
 					"team_dir", teamDir,
 					"session_id", sessionID,
 				)
+				// Also remove the corresponding task directory when the team directory is successfully deleted
+				tasksDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
+				if err := os.RemoveAll(tasksDir); err != nil {
+					slog.Warn("session_end: could not remove task directory for session",
+						"path", tasksDir,
+						"error", err,
+					)
+				} else {
+					slog.Info("session_end: removed task directory for session",
+						"task_dir", tasksDir,
+						"session_id", sessionID,
+					)
+				}
 			}
 		}
 	}
@@ -184,7 +198,64 @@ func garbageCollectStaleTeams(homeDir string) {
 					"path", teamDir,
 					"age", time.Since(info.ModTime()).Round(time.Minute),
 				)
+				// Also remove the corresponding task directory when a stale team directory is successfully deleted
+				taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
+				if err := os.RemoveAll(taskDir); err != nil {
+					slog.Warn("session_end: could not remove stale task directory",
+						"path", taskDir,
+						"error", err,
+					)
+				} else {
+					slog.Info("session_end: removed stale task directory",
+						"path", taskDir,
+					)
+				}
 			}
+		}
+	}
+}
+
+// garbageCollectOrphanedTasks cleans up orphaned task directories under ~/.claude/tasks/
+// that have no corresponding team directory. Collects task directories left behind by
+// interrupted sessions or incomplete cleanup. Errors are logged and never returned.
+func garbageCollectOrphanedTasks(homeDir string) {
+	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
+	teamsDir := filepath.Join(homeDir, ".claude", "teams")
+
+	taskEntries, err := os.ReadDir(tasksDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("session_end: could not read tasks directory for orphan GC",
+				"path", tasksDir,
+				"error", err,
+			)
+		}
+		return
+	}
+
+	for _, entry := range taskEntries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Check whether the corresponding team directory exists
+		teamDir := filepath.Join(teamsDir, entry.Name())
+		if _, err := os.Stat(teamDir); err == nil {
+			// Team directory exists, so this is not an orphan — keep it
+			continue
+		}
+
+		// No team directory, so remove the orphaned task directory
+		taskDir := filepath.Join(tasksDir, entry.Name())
+		if err := os.RemoveAll(taskDir); err != nil {
+			slog.Warn("session_end: could not remove orphaned task directory",
+				"path", taskDir,
+				"error", err,
+			)
+		} else {
+			slog.Info("session_end: removed orphaned task directory",
+				"path", taskDir,
+			)
 		}
 	}
 }

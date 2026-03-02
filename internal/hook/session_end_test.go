@@ -688,3 +688,273 @@ func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 		t.Errorf("ExitCode should be 0, got %d", got.ExitCode)
 	}
 }
+
+// TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir verifies that the corresponding
+// tasks directory is also removed when a session team directory is deleted.
+func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		sessionID     string
+		teams         map[string]string // teamName -> leadSessionId
+		wantTeamGone  []string          // team directories that should be removed
+		wantTeamKept  []string          // team directories that should be kept
+		wantTaskGone  []string          // task directories that should be removed
+		wantTaskKept  []string          // task directories that should be kept
+	}{
+		{
+			name:      "remove both team/task directories for matching session",
+			sessionID: "sess-abc-123",
+			teams: map[string]string{
+				"my-team":    "sess-abc-123",
+				"other-team": "sess-xyz-789",
+			},
+			wantTeamGone: []string{"my-team"},
+			wantTeamKept: []string{"other-team"},
+			wantTaskGone: []string{"my-team"},
+			wantTaskKept: []string{"other-team"},
+		},
+		{
+			name:      "keep all team/task directories when no match",
+			sessionID: "sess-no-match",
+			teams: map[string]string{
+				"team-a": "sess-111",
+				"team-b": "sess-222",
+			},
+			wantTeamGone: nil,
+			wantTeamKept: []string{"team-a", "team-b"},
+			wantTaskGone: nil,
+			wantTaskKept: []string{"team-a", "team-b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			homeDir := t.TempDir()
+			teamsDir := filepath.Join(homeDir, ".claude", "teams")
+			tasksDir := filepath.Join(homeDir, ".claude", "tasks")
+			if err := os.MkdirAll(teamsDir, 0o755); err != nil {
+				t.Fatalf("failed to create teams directory: %v", err)
+			}
+			if err := os.MkdirAll(tasksDir, 0o755); err != nil {
+				t.Fatalf("failed to create tasks directory: %v", err)
+			}
+
+			// Create team directories and their corresponding task directories
+			for name, leadSessionID := range tt.teams {
+				teamDir := filepath.Join(teamsDir, name)
+				if err := os.MkdirAll(teamDir, 0o755); err != nil {
+					t.Fatalf("failed to create team directory %s: %v", name, err)
+				}
+				cfg := teamConfig{LeadSessionID: leadSessionID}
+				data, err := json.Marshal(cfg)
+				if err != nil {
+					t.Fatalf("failed to marshal config for %s: %v", name, err)
+				}
+				if err := os.WriteFile(filepath.Join(teamDir, "config.json"), data, 0o644); err != nil {
+					t.Fatalf("failed to write config file for %s: %v", name, err)
+				}
+
+				// Also create the corresponding task directory
+				taskDir := filepath.Join(tasksDir, name)
+				if err := os.MkdirAll(taskDir, 0o755); err != nil {
+					t.Fatalf("failed to create task directory %s: %v", name, err)
+				}
+			}
+
+			cleanupCurrentSessionTeam(tt.sessionID, homeDir)
+
+			// Verify team directory removal
+			for _, name := range tt.wantTeamGone {
+				if _, err := os.Stat(filepath.Join(teamsDir, name)); !os.IsNotExist(err) {
+					t.Errorf("team directory %q should have been removed", name)
+				}
+			}
+			for _, name := range tt.wantTeamKept {
+				if _, err := os.Stat(filepath.Join(teamsDir, name)); os.IsNotExist(err) {
+					t.Errorf("team directory %q should have been kept", name)
+				}
+			}
+
+			// Verify task directory removal
+			for _, name := range tt.wantTaskGone {
+				if _, err := os.Stat(filepath.Join(tasksDir, name)); !os.IsNotExist(err) {
+					t.Errorf("task directory %q should have been removed", name)
+				}
+			}
+			for _, name := range tt.wantTaskKept {
+				if _, err := os.Stat(filepath.Join(tasksDir, name)); os.IsNotExist(err) {
+					t.Errorf("task directory %q should have been kept", name)
+				}
+			}
+		})
+	}
+}
+
+// TestGarbageCollectStaleTeams_AlsoRemovesTaskDir verifies that the corresponding
+// stale tasks directory is also removed during stale team directory GC.
+func TestGarbageCollectStaleTeams_AlsoRemovesTaskDir(t *testing.T) {
+	t.Parallel()
+
+	homeDir := t.TempDir()
+	teamsDir := filepath.Join(homeDir, ".claude", "teams")
+	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
+	if err := os.MkdirAll(teamsDir, 0o755); err != nil {
+		t.Fatalf("failed to create teams directory: %v", err)
+	}
+	if err := os.MkdirAll(tasksDir, 0o755); err != nil {
+		t.Fatalf("failed to create tasks directory: %v", err)
+	}
+
+	// Create stale team/task directories (25 hours ago)
+	staleTeamDir := filepath.Join(teamsDir, "stale-team")
+	if err := os.MkdirAll(staleTeamDir, 0o755); err != nil {
+		t.Fatalf("failed to create stale team directory: %v", err)
+	}
+	staleTime := time.Now().Add(-25 * time.Hour)
+	if err := os.Chtimes(staleTeamDir, staleTime, staleTime); err != nil {
+		t.Fatalf("failed to set stale time: %v", err)
+	}
+
+	staleTaskDir := filepath.Join(tasksDir, "stale-team")
+	if err := os.MkdirAll(staleTaskDir, 0o755); err != nil {
+		t.Fatalf("failed to create stale task directory: %v", err)
+	}
+
+	// Create fresh team/task directories
+	freshTeamDir := filepath.Join(teamsDir, "fresh-team")
+	if err := os.MkdirAll(freshTeamDir, 0o755); err != nil {
+		t.Fatalf("failed to create fresh team directory: %v", err)
+	}
+
+	freshTaskDir := filepath.Join(tasksDir, "fresh-team")
+	if err := os.MkdirAll(freshTaskDir, 0o755); err != nil {
+		t.Fatalf("failed to create fresh task directory: %v", err)
+	}
+
+	garbageCollectStaleTeams(homeDir)
+
+	// Verify stale team directory removal
+	if _, err := os.Stat(staleTeamDir); !os.IsNotExist(err) {
+		t.Error("stale team directory should have been removed")
+	}
+
+	// Verify stale task directory removal
+	if _, err := os.Stat(staleTaskDir); !os.IsNotExist(err) {
+		t.Error("stale task directory should have been removed")
+	}
+
+	// Verify fresh team directory is kept
+	if _, err := os.Stat(freshTeamDir); os.IsNotExist(err) {
+		t.Error("fresh team directory should have been kept")
+	}
+
+	// Verify fresh task directory is kept
+	if _, err := os.Stat(freshTaskDir); os.IsNotExist(err) {
+		t.Error("fresh task directory should have been kept")
+	}
+}
+
+// TestGarbageCollectOrphanedTasks verifies that orphaned task directories
+// left without a corresponding team directory are cleaned up.
+func TestGarbageCollectOrphanedTasks(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		teamNames     []string // directories present in ~/.claude/teams/
+		taskNames     []string // directories present in ~/.claude/tasks/
+		wantTaskGone  []string // task directories that should be removed (orphans)
+		wantTaskKept  []string // task directories that should be kept (have matching team)
+	}{
+		{
+			name:         "remove orphaned task directories with no matching team",
+			teamNames:    []string{"team-a"},
+			taskNames:    []string{"team-a", "orphan-1", "orphan-2"},
+			wantTaskGone: []string{"orphan-1", "orphan-2"},
+			wantTaskKept: []string{"team-a"},
+		},
+		{
+			name:         "nothing removed when all tasks have matching teams",
+			teamNames:    []string{"team-x", "team-y"},
+			taskNames:    []string{"team-x", "team-y"},
+			wantTaskGone: nil,
+			wantTaskKept: []string{"team-x", "team-y"},
+		},
+		{
+			name:         "remove all tasks when no teams exist",
+			teamNames:    []string{},
+			taskNames:    []string{"orphan-a", "orphan-b"},
+			wantTaskGone: []string{"orphan-a", "orphan-b"},
+			wantTaskKept: nil,
+		},
+		{
+			name:         "no action when only teams exist and tasks are empty",
+			teamNames:    []string{"team-z"},
+			taskNames:    []string{},
+			wantTaskGone: nil,
+			wantTaskKept: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			homeDir := t.TempDir()
+			teamsDir := filepath.Join(homeDir, ".claude", "teams")
+			tasksDir := filepath.Join(homeDir, ".claude", "tasks")
+			if err := os.MkdirAll(teamsDir, 0o755); err != nil {
+				t.Fatalf("failed to create teams directory: %v", err)
+			}
+			if err := os.MkdirAll(tasksDir, 0o755); err != nil {
+				t.Fatalf("failed to create tasks directory: %v", err)
+			}
+
+			// Create team directories
+			for _, name := range tt.teamNames {
+				teamDir := filepath.Join(teamsDir, name)
+				if err := os.MkdirAll(teamDir, 0o755); err != nil {
+					t.Fatalf("failed to create team directory %s: %v", name, err)
+				}
+			}
+
+			// Create task directories
+			for _, name := range tt.taskNames {
+				taskDir := filepath.Join(tasksDir, name)
+				if err := os.MkdirAll(taskDir, 0o755); err != nil {
+					t.Fatalf("failed to create task directory %s: %v", name, err)
+				}
+			}
+
+			garbageCollectOrphanedTasks(homeDir)
+
+			// Verify removal
+			for _, name := range tt.wantTaskGone {
+				if _, err := os.Stat(filepath.Join(tasksDir, name)); !os.IsNotExist(err) {
+					t.Errorf("orphaned task directory %q should have been removed", name)
+				}
+			}
+
+			// Verify preservation
+			for _, name := range tt.wantTaskKept {
+				if _, err := os.Stat(filepath.Join(tasksDir, name)); os.IsNotExist(err) {
+					t.Errorf("task directory %q should have been kept", name)
+				}
+			}
+		})
+	}
+}
+
+// TestGarbageCollectOrphanedTasks_MissingDir verifies that no panic or error
+// occurs when the ~/.claude/tasks/ directory does not exist.
+func TestGarbageCollectOrphanedTasks_MissingDir(t *testing.T) {
+	t.Parallel()
+
+	homeDir := t.TempDir()
+	// Do not create ~/.claude/tasks/ directory — must not panic or return error
+	garbageCollectOrphanedTasks(homeDir)
+}

@@ -3,16 +3,33 @@ package hook
 import (
 	"context"
 	"log/slog"
+	"strings"
 )
+
+// defaultCompletionMarkers is the list of default completion markers.
+// These are markers that Claude includes in output when a task is complete.
+var defaultCompletionMarkers = []string{
+	"<moai>DONE</moai>",
+	"<moai>COMPLETE</moai>",
+}
 
 // stopHandler processes Stop events.
 // It performs graceful shutdown, saves in-progress work state, and preserves
 // loop controller (Ralph) state (REQ-HOOK-035). Always returns "allow".
-type stopHandler struct{}
+type stopHandler struct {
+	// completionMarkers is the list of completion markers to detect in ToolOutput.
+	completionMarkers []string
+}
 
 // NewStopHandler creates a new Stop event handler.
 func NewStopHandler() Handler {
-	return &stopHandler{}
+	return &stopHandler{completionMarkers: defaultCompletionMarkers}
+}
+
+// NewStopHandlerWithMarkers creates a Stop event handler with custom completion markers.
+// If markers is nil or an empty slice, completion marker detection is skipped.
+func NewStopHandlerWithMarkers(markers []string) Handler {
+	return &stopHandler{completionMarkers: markers}
 }
 
 // EventType returns EventStop.
@@ -41,6 +58,20 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 	if input.StopHookActive {
 		slog.Debug("stop_hook_active is true, allowing Claude to stop")
 		return &HookOutput{}, nil
+	}
+
+	// Detect completion markers in ToolOutput (observation-only, never blocks)
+	if len(input.ToolOutput) > 0 && len(h.completionMarkers) > 0 {
+		output := string(input.ToolOutput)
+		for _, marker := range h.completionMarkers {
+			if strings.Contains(output, marker) {
+				slog.Info("completion marker detected",
+					"marker", marker,
+					"session_id", input.SessionID,
+				)
+				break
+			}
+		}
 	}
 
 	// Stop hooks use top-level decision/reason fields per Claude Code protocol

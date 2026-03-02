@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[Official Documentation](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord Community](https://discord.gg/moai-adk)**
+> 📚 **[Official Documentation](https://adk.mo.ai.kr)**
 
 ---
 
@@ -1059,10 +1059,6 @@ Phase: RUN-RED
 - **Full Audit Trail**: `git log` provides complete decision history
 - **Session Continuity**: Resume work with full context after `/clear` or session breaks
 
-### Design Inspiration
-
-MoAI Memory is inspired by [claude-mem](https://github.com/thedotmack/claude-mem), [claude-brain](https://github.com/memvid/claude-brain), and [memory-mcp](https://github.com/yuvalsuede/memory-mcp), adapted for a Git-native approach that requires zero additional infrastructure.
-
 ---
 
 ## Contributing
@@ -1084,8 +1080,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 ### Community
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, feedback
-- [Discord Community](https://discord.gg/moai-adk) -- Real-time chat, tips sharing
 - [Issues](https://github.com/modu-ai/moai-adk/issues) -- Bug reports, feature requests
 
 ---
@@ -1104,5 +1098,3 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 - [Official Documentation](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, community
-- [Discord Community](https://discord.gg/moai-adk) -- Real-time chat, tips sharing

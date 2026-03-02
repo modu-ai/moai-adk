@@ -2,15 +2,16 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/tmux"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -184,8 +185,8 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 
 	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
 
-	// Check if we're in a tmux session
-	inTmux := isInTmuxSession()
+	// 현재 tmux 세션 여부 확인
+	inTmux := tmux.NewDetector().InTmuxSession()
 
 	// CG mode requires tmux for pane-level environment isolation.
 	if isHybrid && !inTmux && os.Getenv("MOAI_TEST_MODE") != "1" {
@@ -280,28 +281,17 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	return nil
 }
 
-// isInTmuxSession checks if we're running inside a tmux session.
-func isInTmuxSession() bool {
-	return os.Getenv("TMUX") != ""
-}
 
-// escapeTmuxValue escapes special characters in values passed to tmux set-environment.
-func escapeTmuxValue(value string) string {
-	// tmux parses its arguments via shell-like quoting, so escape single quotes
-	return strings.ReplaceAll(value, "'", "'\\''")
-}
-
-// injectTmuxSessionEnv sets environment variables at the tmux session level
-// using a single batched tmux command to reduce subprocess overhead.
+// injectTmuxSessionEnv sets GLM environment variables at the tmux session level.
 func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 	if isTestEnvironment() {
 		return nil
 	}
-	if !isInTmuxSession() {
+	if !tmux.NewDetector().InTmuxSession() {
 		return nil
 	}
 
-	envVars := map[string]string{
+	vars := map[string]string{
 		"ANTHROPIC_AUTH_TOKEN":           apiKey,
 		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
@@ -309,24 +299,11 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 	}
 
-	// Build single batched tmux command: tmux set-environment VAR1 val1 \; set-environment VAR2 val2 ...
-	args := []string{}
-	for name, value := range envVars {
-		if len(args) > 0 {
-			args = append(args, ";")
-		}
-		args = append(args, "set-environment", name, escapeTmuxValue(value))
-	}
-	cmd := exec.Command("tmux", args...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("tmux set-environment batch: %w", err)
-	}
-
-	return nil
+	mgr := tmux.NewSessionManager()
+	return mgr.InjectEnv(context.Background(), vars)
 }
 
-// clearTmuxSessionEnv removes GLM environment variables from tmux session
-// using a single batched tmux command to reduce subprocess overhead.
+// clearTmuxSessionEnv removes GLM environment variables from the tmux session.
 // Called when switching back to Claude mode (moai cc).
 // All GLM vars including ANTHROPIC_AUTH_TOKEN are removed unconditionally,
 // matching pre-v2.6 behavior. The user's real Claude credential lives in
@@ -336,11 +313,11 @@ func clearTmuxSessionEnv() error {
 	if isTestEnvironment() {
 		return nil
 	}
-	if !isInTmuxSession() {
+	if !tmux.NewDetector().InTmuxSession() {
 		return nil
 	}
 
-	envVarNames := []string{
+	vars := []string{
 		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
@@ -349,16 +326,8 @@ func clearTmuxSessionEnv() error {
 		"CLAUDE_CONFIG_DIR",
 	}
 
-	args := []string{}
-	for _, name := range envVarNames {
-		if len(args) > 0 {
-			args = append(args, ";")
-		}
-		args = append(args, "set-environment", "-u", name)
-	}
-	cmd := exec.Command("tmux", args...)
-	_ = cmd.Run() //nolint:errcheck // best-effort cleanup
-
+	mgr := tmux.NewSessionManager()
+	_ = mgr.ClearEnv(context.Background(), vars) //nolint:errcheck // best-effort cleanup
 	return nil
 }
 

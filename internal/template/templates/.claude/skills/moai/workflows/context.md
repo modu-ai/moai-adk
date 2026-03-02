@@ -173,4 +173,4 @@ Next: /moai {next-phase} SPEC-{ID}
 ---
 
 Version: 1.0.0
-Source: Git-Based Context Memory System design. Inspired by claude-mem, memory-mcp, and claude-brain architectures.
+Source: Git-Based Context Memory System design.

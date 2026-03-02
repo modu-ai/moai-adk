@@ -6,8 +6,15 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
+
+// FileAnalyzer is the interface for performing AST-based code scanning on a single file.
+// astgrep.SGAnalyzer implements this interface.
+type FileAnalyzer interface {
+	ScanFile(ctx context.Context, filePath string, config *astgrep.ScanConfig) (*astgrep.ScanResult, error)
+}
 
 // postToolHandler processes PostToolUse events.
 // It collects tool execution metrics and prepares statusline data
@@ -15,6 +22,9 @@ import (
 // Optionally integrates with LSP diagnostics for Write/Edit operations.
 type postToolHandler struct {
 	diagnostics lsphook.LSPDiagnosticsCollector
+	// analyzer is an optional analyzer that performs AST-based scanning after Write/Edit operations.
+	// If nil, AST scanning is skipped.
+	analyzer FileAnalyzer
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -26,6 +36,12 @@ func NewPostToolHandler() Handler {
 // If diagnostics is nil, falls back to metrics-only collection.
 func NewPostToolHandlerWithDiagnostics(diagnostics lsphook.LSPDiagnosticsCollector) Handler {
 	return &postToolHandler{diagnostics: diagnostics}
+}
+
+// NewPostToolHandlerWithAstgrep creates a PostToolUse handler that uses both LSP diagnostics and AST scanning.
+// If diagnostics or analyzer is nil, the corresponding feature is skipped.
+func NewPostToolHandlerWithAstgrep(diagnostics lsphook.LSPDiagnosticsCollector, analyzer FileAnalyzer) Handler {
+	return &postToolHandler{diagnostics: diagnostics, analyzer: analyzer}
 }
 
 // EventType returns EventPostToolUse.
@@ -69,6 +85,11 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		h.collectDiagnostics(ctx, input, metrics)
 	}
 
+	// Perform AST file scan after Write/Edit operations (observation-only, never blocks)
+	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.analyzer != nil {
+		h.runAstScan(ctx, input, metrics)
+	}
+
 	jsonData, err := json.Marshal(metrics)
 	if err != nil {
 		slog.Error("failed to marshal post-tool metrics",
@@ -83,6 +104,49 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		},
 		Data: jsonData,
 	}, nil
+}
+
+// runAstScan performs an AST-based scan on the modified file.
+// Observation-only: never blocks even if an error occurs.
+func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metrics map[string]any) {
+	// Extract file path from tool input
+	var parsed map[string]any
+	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
+		slog.Debug("failed to parse tool input for AST scan", "error", err)
+		return
+	}
+
+	filePath, ok := parsed["file_path"].(string)
+	if !ok || filePath == "" {
+		return
+	}
+
+	// Perform AST scan (observation-only, errors are only logged)
+	result, err := h.analyzer.ScanFile(ctx, filePath, nil)
+	if err != nil {
+		slog.Debug("AST scan failed (observation-only)",
+			"file_path", filePath,
+			"error", err,
+		)
+		return
+	}
+	if result == nil {
+		return
+	}
+
+	// Add scan results to metrics
+	metrics["ast_scan"] = map[string]any{
+		"file":        filepath.Base(filePath),
+		"matches":     len(result.Matches),
+		"lang":        result.Language,
+		"duration_ms": result.Duration.Milliseconds(),
+	}
+
+	slog.Debug("AST scan complete",
+		"file_path", filepath.Base(filePath),
+		"matches", len(result.Matches),
+		"lang", result.Language,
+	)
 }
 
 // collectDiagnostics collects LSP diagnostics for the modified file.

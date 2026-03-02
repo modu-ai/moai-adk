@@ -9,15 +9,21 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/git/ops"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
+	"github.com/modu-ai/moai-adk/internal/loop"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/rank"
+	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -27,18 +33,20 @@ import (
 // are instantiated and wired together. All CLI commands access
 // dependencies through interfaces only.
 type Dependencies struct {
-	Config        *config.ConfigManager
-	Git           git.Repository
-	GitBranch     git.BranchManager
-	GitWorktree   git.WorktreeManager
-	HookRegistry  hook.Registry
-	HookProtocol  hook.Protocol
-	UpdateChecker update.Checker
-	UpdateOrch    update.Orchestrator
-	RankClient    rank.Client
-	RankCredStore rank.CredentialStore
-	RankBrowser   rank.BrowserOpener
-	Logger        *slog.Logger
+	Config         *config.ConfigManager
+	Git            git.Repository
+	GitBranch      git.BranchManager
+	GitWorktree    git.WorktreeManager
+	GitOpsManager  *ops.GitManager
+	HookRegistry   hook.Registry
+	HookProtocol   hook.Protocol
+	UpdateChecker  update.Checker
+	UpdateOrch     update.Orchestrator
+	RankClient     rank.Client
+	RankCredStore  rank.CredentialStore
+	RankBrowser    rank.BrowserOpener
+	LoopController *loop.LoopController
+	Logger         *slog.Logger
 }
 
 // deps is the global dependencies instance, initialized by InitDependencies.
@@ -55,11 +63,31 @@ func InitDependencies() {
 	// Disable JSON logging for CLI commands by using a no-op logger
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
+	// Initialize Ralph engine and loop controller.
+	ralphCfg := config.NewDefaultRalphConfig()
+	ralphEngine := ralph.NewRalphEngine(ralphCfg)
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = os.TempDir()
+	}
+	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
+	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, &noopFeedbackGenerator{}, ralphCfg.MaxIterations)
+
+	// Initialize GitOpsManager based on the current working directory.
+	// If WorkDir is empty, GitManager uses os.Getwd() internally.
+	gitOpsMgr := ops.NewGitManager(ops.ManagerConfig{
+		MaxWorkers:            2,
+		DefaultTimeoutSeconds: 10,
+		DefaultRetryCount:     1,
+	})
+
 	deps = &Dependencies{
-		Config:        config.NewConfigManager(),
-		HookProtocol:  hook.NewProtocol(),
-		RankCredStore: rank.NewFileCredentialStore(""),
-		Logger:        logger,
+		Config:         config.NewConfigManager(),
+		GitOpsManager:  gitOpsMgr,
+		HookProtocol:   hook.NewProtocol(),
+		RankCredStore:  rank.NewFileCredentialStore(""),
+		LoopController: loopCtrl,
+		Logger:         logger,
 	}
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
@@ -68,10 +96,21 @@ func InitDependencies() {
 	// Create security scanner for AST-based scanning
 	securityScanner := security.NewSecurityScanner()
 
-	// Create LSP diagnostics collector with fallback tools
-	// LSP client is nil (not yet integrated), but fallback CLI tools will work
-	fallbackDiags := lsphook.NewFallbackDiagnostics()
+	// Apply circuit breaker to LSP fallback tool execution.
+	// Allows go vet/golangci-lint to skip quickly on repeated failures.
+	lspCircuitBreaker := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{
+		Threshold: 3,
+		Timeout:   30 * time.Second,
+	})
+
+	// Initialize LSP diagnostics collector and AST analyzer.
+	// LSP client is nil (not yet integrated); fallback CLI tools are used.
+	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
+
+	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
+	cwd, _ := os.Getwd()
+	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
 	// Register default hook handlers
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
@@ -91,7 +130,7 @@ func InitDependencies() {
 
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithDiagnostics(diagnosticsCollector))
+	deps.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandler())
@@ -282,6 +321,15 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 			NewVersion:      result.NewVersion,
 		}, nil
 	}
+}
+
+// noopFeedbackGenerator is a default implementation that returns an empty Feedback without
+// any actual collection. Used to satisfy loop.FeedbackGenerator when no feedback source
+// is available during CLI execution.
+type noopFeedbackGenerator struct{}
+
+func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, error) {
+	return &loop.Feedback{}, nil
 }
 
 // EnsureRank lazily initializes the Rank client.

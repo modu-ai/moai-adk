@@ -862,6 +862,18 @@ Only applies when a PR was created in Step 3.2:
 - Assign reviewers and labels if configured
 - If Team mode disabled: Do NOT automatically transition (user controls readiness)
 
+#### Step 3.3.5: Return to Base Branch (Post-PR Cleanup)
+
+After PR/MR creation (Step 3.2) and optional ready transition (Step 3.3), return to the base branch to leave the working directory in a clean state:
+
+**github_flow**: `git checkout main && git pull origin main`
+**gitflow**: `git checkout develop && git pull origin develop` (for feature branches), `git checkout main && git pull origin main` (for release/hotfix)
+**main_direct**: No branch switch needed (already on main)
+
+This ensures the developer's working directory is on the base branch, ready for the next task. The feature branch remains on the remote for review.
+
+Remote branch cleanup after merge is handled by the hosting platform's auto-delete setting (GitHub: "Automatically delete head branches", GitLab: "Delete source branch when merge request is accepted", Bitbucket: "Close source branch"). Local branch cleanup is left to the developer (`git branch -d <branch>`).
+
 #### Step 3.4: Auto-Merge (When --merge flag set)
 
 Only applies when a PR was created in Step 3.2.

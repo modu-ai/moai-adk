@@ -3,12 +3,15 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/resilience"
 )
 
 // Package-level compiled regexps to avoid repeated compilation.
@@ -29,9 +32,11 @@ type FallbackTool struct {
 // fallbackDiagnostics implements FallbackDiagnostics interface.
 // It provides CLI tool fallback when LSP is unavailable per REQ-HOOK-160 through REQ-HOOK-162.
 type fallbackDiagnostics struct {
-	mu        sync.RWMutex
-	tools     map[string][]FallbackTool
-	available map[string]bool
+	mu             sync.RWMutex
+	tools          map[string][]FallbackTool
+	available      map[string]bool
+	// circuitBreaker protects external tool execution. If nil, it is disabled.
+	circuitBreaker *resilience.CircuitBreaker
 }
 
 // NewFallbackDiagnostics creates a new fallback diagnostics provider.
@@ -39,6 +44,19 @@ func NewFallbackDiagnostics() *fallbackDiagnostics {
 	fb := &fallbackDiagnostics{
 		tools:     make(map[string][]FallbackTool),
 		available: make(map[string]bool),
+	}
+	fb.registerDefaultTools()
+	return fb
+}
+
+// NewFallbackDiagnosticsWithCircuitBreaker creates a new fallback diagnostics provider
+// with circuit breaker protection for external tool execution.
+// Used to skip quickly when external tools like go vet/golangci-lint fail repeatedly.
+func NewFallbackDiagnosticsWithCircuitBreaker(cb *resilience.CircuitBreaker) *fallbackDiagnostics {
+	fb := &fallbackDiagnostics{
+		tools:          make(map[string][]FallbackTool),
+		available:      make(map[string]bool),
+		circuitBreaker: cb,
 	}
 	fb.registerDefaultTools()
 	return fb
@@ -201,6 +219,8 @@ func (f *fallbackDiagnostics) RunFallback(ctx context.Context, filePath string) 
 }
 
 // runTool executes a single tool and parses its output.
+// 서킷 브레이커가 설정된 경우 외부 도구 실행을 보호한다.
+// 서킷이 열려 있으면 빈 진단을 반환하며 에러를 반환하지 않는다(관찰 전용).
 func (f *fallbackDiagnostics) runTool(ctx context.Context, tool FallbackTool, filePath string) ([]Diagnostic, error) {
 	args := make([]string, len(tool.Args))
 	for i, arg := range tool.Args {
@@ -211,6 +231,30 @@ func (f *fallbackDiagnostics) runTool(ctx context.Context, tool FallbackTool, fi
 		}
 	}
 
+	// 서킷 브레이커가 활성화된 경우 외부 도구 실행을 보호한다.
+	if f.circuitBreaker != nil {
+		var diagnostics []Diagnostic
+		cbErr := f.circuitBreaker.Call(ctx, func() error {
+			var execErr error
+			diagnostics, execErr = f.execTool(ctx, tool, args, filePath)
+			return execErr
+		})
+		if cbErr != nil {
+			// Return empty diagnostics when circuit is open or context is cancelled.
+			// Errors are not propagated because this is observation-only.
+			if errors.Is(cbErr, resilience.ErrCircuitOpen) {
+				return []Diagnostic{}, nil
+			}
+			return nil, cbErr
+		}
+		return diagnostics, nil
+	}
+
+	return f.execTool(ctx, tool, args, filePath)
+}
+
+// execTool executes the actual external tool and parses its output.
+func (f *fallbackDiagnostics) execTool(ctx context.Context, tool FallbackTool, args []string, filePath string) ([]Diagnostic, error) {
 	// Set timeout
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
