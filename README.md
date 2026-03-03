@@ -37,7 +37,7 @@
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 27 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
@@ -60,7 +60,7 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 - **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **28** specialized AI agents + **52** skills
+- **27** specialized AI agents + **52** skills
 - **18** programming languages supported
 - **16** Claude Code hook events
 
@@ -256,7 +256,7 @@ Spawns dozens of agents in isolated git worktrees for large-scale parallel work.
 
 ## AI Agent Orchestration
 
-MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 28 specialized agents.
+MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 27 specialized agents.
 
 ```mermaid
 graph LR
