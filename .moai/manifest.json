@@ -32,12 +32,6 @@
       "deployed_hash": "sha256:169340b8340b9eb9df62d245603692d4510d690e5774f336bef02582cdb1114a",
       "current_hash": "sha256:169340b8340b9eb9df62d245603692d4510d690e5774f336bef02582cdb1114a"
     },
-    ".claude/agents/moai/expert-chrome-extension.md": {
-      "provenance": "template_managed",
-      "template_hash": "sha256:4c9dd8fa72f9ddaa1b914232119626172fec7967033f913b18ef2836b9d32f54",
-      "deployed_hash": "sha256:4c9dd8fa72f9ddaa1b914232119626172fec7967033f913b18ef2836b9d32f54",
-      "current_hash": "sha256:4c9dd8fa72f9ddaa1b914232119626172fec7967033f913b18ef2836b9d32f54"
-    },
     ".claude/agents/moai/expert-debug.md": {
       "provenance": "template_managed",
       "template_hash": "sha256:7d4e5a1adcd84414e3ccc4af25171a891ce09538fecba2bf48a47fae0ec96972",

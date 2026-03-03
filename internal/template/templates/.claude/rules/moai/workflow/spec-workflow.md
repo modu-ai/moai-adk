@@ -56,6 +56,32 @@ Success Criteria:
 - TRUST 5 quality gates passed
 - MX tags added for new code (NOTE, ANCHOR, WARN as appropriate)
 
+### Re-planning Gate
+
+Detect when implementation is stuck or diverging from SPEC and trigger re-assessment.
+
+Triggers:
+- 3+ iterations with no new SPEC acceptance criteria met
+- Test coverage dropping instead of increasing across iterations
+- New errors introduced exceed errors fixed in a cycle
+- Agent explicitly reports inability to meet a SPEC requirement
+
+Communication path:
+- Implementation agent (manager-ddd/tdd) detects trigger condition
+- Agent returns structured stagnation report to MoAI (agents cannot call AskUserQuestion)
+- MoAI presents gap analysis to user via AskUserQuestion with options:
+  - Continue with current approach (minor adjustments needed)
+  - Revise SPEC (requirements need refinement)
+  - Try alternative approach (re-delegate to manager-strategy)
+  - Pause for manual intervention (user takes over)
+
+Detection method:
+- Append acceptance criteria completion count and error count delta to `.moai/specs/SPEC-{ID}/progress.md` at the end of each iteration
+- Compare against previous entry to detect stagnation
+- Flag stagnation when acceptance criteria completion rate is zero for 3+ consecutive entries
+
+Integration: Referenced by run.md Phase 2.7 and loop.md iteration checks
+
 ## Sync Phase
 
 Generate documentation and prepare for deployment.

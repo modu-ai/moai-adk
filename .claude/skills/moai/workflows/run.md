@@ -341,9 +341,15 @@ If coverage is below target (quality.yaml test_coverage_target):
 - Auto-route to coverage workflow (workflows/coverage.md)
 - Re-run quality validation after coverage improvement
 
-If status is PASS or WARNING: Continue to Phase 2.7.
+If status is PASS or WARNING: Continue to Phase 2.8.
 
-### Phase 2.7: Post-Implementation Review (Optional)
+### Phase 2.7: Re-planning Gate Check
+
+Purpose: Detect stagnation and trigger re-assessment if implementation is stuck. See @.claude/rules/moai/workflow/spec-workflow.md for trigger conditions, communication path, and detection method.
+
+Check `.moai/specs/SPEC-{ID}/progress.md` for stagnation signals. If triggered, return structured stagnation report to MoAI for user escalation.
+
+### Phase 2.8: Post-Implementation Review (Optional)
 
 Purpose: Multi-dimensional review iteration for high-quality output. Activated when quality status is WARNING or when --review flag is set.
 
@@ -361,7 +367,7 @@ Iteration behavior:
 
 Output: review_findings per dimension, iterations_completed count, final review status.
 
-### Phase 2.8: MX Tag Update
+### Phase 2.9: MX Tag Update
 
 Purpose: Update @MX code annotations for modified files. See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
 
@@ -378,9 +384,9 @@ Purpose: Update @MX code annotations for modified files. See @.claude/rules/moai
 
 Output: MX_TAG_REPORT with tags added, updated, removed by type.
 
-### Phase 2.9: Simplify Pass [MANDATORY]
+### Phase 2.10: Simplify Pass [MANDATORY]
 
-Purpose: Apply a parallel quality pass to all files modified during implementation. This phase is ALWAYS executed after Phase 2.8 — it is not optional.
+Purpose: Apply a parallel quality pass to all files modified during implementation. This phase is ALWAYS executed after Phase 2.9 — it is not optional.
 
 Action: MoAI MUST call Skill("simplify") at this phase. Do not delegate to a subagent. Call it directly.
 

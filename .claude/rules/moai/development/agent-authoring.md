@@ -99,7 +99,7 @@ Coordinate workflows and multi-step processes:
 - manager-strategy: System design, architecture decisions
 - manager-git: Git operations, branching strategy
 
-### Expert Agents (9)
+### Expert Agents (8)
 
 Domain-specific implementation:
 
@@ -111,7 +111,6 @@ Domain-specific implementation:
 - expert-debug: Debugging and troubleshooting
 - expert-testing: Test creation and strategy
 - expert-refactoring: Code refactoring
-- expert-chrome-extension: Chrome Extension Manifest V3 development
 
 ### Builder Agents (3)
 
