@@ -47,6 +47,9 @@ func init() {
 
 // runCG enables Claude + GLM hybrid mode and launches Claude Code.
 func runCG(cmd *cobra.Command, args []string) error {
-	profileName, filteredArgs := parseProfileFlag(args)
+	profileName, filteredArgs, err := parseProfileFlag(args)
+	if err != nil {
+		return err
+	}
 	return unifiedLaunch(profileName, "claude_glm", filteredArgs)
 }

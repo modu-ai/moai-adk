@@ -28,6 +28,120 @@ func TestResolveMode(t *testing.T) {
 	}
 }
 
+func TestParseProfileFlag(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		wantProfile string
+		wantArgs    []string
+		wantErr     bool
+	}{
+		{
+			name:        "no flags",
+			args:        []string{},
+			wantProfile: "",
+			wantArgs:    []string{},
+		},
+		{
+			name:        "-p with value",
+			args:        []string{"-p", "work"},
+			wantProfile: "work",
+			wantArgs:    []string{},
+		},
+		{
+			name:        "--profile with value",
+			args:        []string{"--profile", "work"},
+			wantProfile: "work",
+			wantArgs:    []string{},
+		},
+		{
+			name:        "--profile=value form",
+			args:        []string{"--profile=work"},
+			wantProfile: "work",
+			wantArgs:    []string{},
+		},
+		{
+			name:        "-p=value form",
+			args:        []string{"-p=work"},
+			wantProfile: "work",
+			wantArgs:    []string{},
+		},
+		{
+			name:        "-p with extra args",
+			args:        []string{"-p", "work", "--bypass"},
+			wantProfile: "work",
+			wantArgs:    []string{"--bypass"},
+		},
+		{
+			name:        "pass-through after --",
+			args:        []string{"--", "-p", "work"},
+			wantProfile: "",
+			wantArgs:    []string{"--", "-p", "work"},
+		},
+		{
+			name:    "-p without value at end",
+			args:    []string{"-p"},
+			wantErr: true,
+		},
+		{
+			name:    "--profile without value at end",
+			args:    []string{"--profile"},
+			wantErr: true,
+		},
+		{
+			name:    "-p followed by another flag",
+			args:    []string{"-p", "--bypass"},
+			wantErr: true,
+		},
+		{
+			name:    "--profile= empty value",
+			args:    []string{"--profile="},
+			wantErr: true,
+		},
+		{
+			name:    "-p= empty value",
+			args:    []string{"-p="},
+			wantErr: true,
+		},
+		{
+			name:    "-p with empty string value",
+			args:    []string{"-p", ""},
+			wantErr: true,
+		},
+		{
+			name:    "--profile with empty string value",
+			args:    []string{"--profile", ""},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profile, args, err := parseProfileFlag(tt.args)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if profile != tt.wantProfile {
+				t.Errorf("profile = %q, want %q", profile, tt.wantProfile)
+			}
+			if len(args) != len(tt.wantArgs) {
+				t.Fatalf("args = %v, want %v", args, tt.wantArgs)
+			}
+			for i, a := range args {
+				if a != tt.wantArgs[i] {
+					t.Errorf("args[%d] = %q, want %q", i, a, tt.wantArgs[i])
+				}
+			}
+		})
+	}
+}
+
 func TestUnifiedLaunch_Claude(t *testing.T) {
 	tmpDir := t.TempDir()
 	moaiDir := filepath.Join(tmpDir, ".moai")
