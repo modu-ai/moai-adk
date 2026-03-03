@@ -469,7 +469,7 @@ func parseProfileFlag(args []string) (string, []string, error) {
 			break
 		}
 		if args[i] == "--profile" || args[i] == "-p" {
-			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
+			if i+1 >= len(args) || args[i+1] == "" || strings.HasPrefix(args[i+1], "-") {
 				return "", nil, fmt.Errorf("flag %s requires a profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc -p default", args[i])
 			}
 			profileName = args[i+1]
