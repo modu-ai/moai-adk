@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.3] - 2026-03-04
+
+### Summary
+
+This release fixes a bug where the `-p`/`--profile` flag without a value was silently ignored and passed through to Claude, causing a confusing "Input must be provided" error. The fix returns a clear error message with usage guidance.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- `TestParseProfileFlag`: 11 table-driven test cases for profile flag parsing edge cases.
+
+### Changed
+
+None.
+
+### Fixed
+
+- **`-p`/`--profile` flag without value**: Previously, omitting a value after `-p` or `--profile` caused Claude to interpret it as `--print` mode, resulting in a confusing "Input must be provided" error. Now returns a clear error message with usage guidance. Affects `cc`, `cg`, and `glm` commands. (#462)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.3] - 2026-03-04 (한국어)
+
+### 요약
+
+`-p`/`--profile` 플래그 뒤에 값을 지정하지 않으면 조용히 무시되어 Claude에 전달되던 버그를 수정한다. 이로 인해 Claude가 `--print` 모드로 해석해 혼란스러운 "Input must be provided" 에러가 발생했다. 이제 명확한 사용법 안내와 함께 에러 메시지를 반환한다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- `TestParseProfileFlag`: 프로필 플래그 파싱 엣지 케이스를 위한 11개 테이블 드리븐 테스트 케이스.
+
+### 변경됨 (Changed)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **`-p`/`--profile` 플래그 값 누락 버그**: `-p` 또는 `--profile` 뒤에 값이 없을 때 에러 없이 무시되어 Claude의 `--print` 모드로 해석되던 문제를 수정한다. 이제 사용법 안내를 포함한 에러 메시지를 반환한다. `cc`, `cg`, `glm` 커맨드에 영향. (#462)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.2] - 2026-03-03
 
 ### Summary
