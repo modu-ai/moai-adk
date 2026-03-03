@@ -61,24 +61,26 @@ Success Criteria:
 Detect when implementation is stuck or diverging from SPEC and trigger re-assessment.
 
 Triggers:
-- 3+ loop iterations with no new SPEC acceptance criteria met
+- 3+ iterations with no new SPEC acceptance criteria met
 - Test coverage dropping instead of increasing across iterations
 - New errors introduced exceed errors fixed in a cycle
 - Agent explicitly reports inability to meet a SPEC requirement
 
-Actions when triggered:
-- STOP current implementation immediately
-- Review SPEC acceptance criteria vs current implementation state
-- Present gap analysis to user via AskUserQuestion with options:
+Communication path:
+- Implementation agent (manager-ddd/tdd) detects trigger condition
+- Agent returns structured stagnation report to MoAI (agents cannot call AskUserQuestion)
+- MoAI presents gap analysis to user via AskUserQuestion with options:
   - Continue with current approach (minor adjustments needed)
   - Revise SPEC (requirements need refinement)
   - Try alternative approach (re-delegate to manager-strategy)
   - Pause for manual intervention (user takes over)
 
 Detection method:
-- Track SPEC acceptance criteria completion count per iteration
-- Compare error count delta between consecutive iterations
-- Flag stagnation when acceptance criteria completion rate is zero for 3+ iterations
+- Append acceptance criteria completion count and error count delta to `.moai/specs/SPEC-{ID}/progress.md` at the end of each iteration
+- Compare against previous entry to detect stagnation
+- Flag stagnation when acceptance criteria completion rate is zero for 3+ consecutive entries
+
+Integration: Referenced by run.md Phase 2.7 and loop.md iteration checks
 
 ## Sync Phase
 

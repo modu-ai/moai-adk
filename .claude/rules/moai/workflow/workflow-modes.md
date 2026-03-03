@@ -35,7 +35,7 @@ Development methodology: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
 - Make small, incremental changes
 - Run characterization tests after each change
 - Refactor with test validation
-- After IMPROVE: Skill("simplify") executes automatically (see run.md Phase 2.9). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
+- After IMPROVE: Skill("simplify") executes automatically (see run.md Phase 2.10). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
 
 Success Criteria:
 - All SPEC requirements implemented
@@ -62,7 +62,7 @@ Development methodology: Test-Driven Development (RED-GREEN-REFACTOR)
 - Clean up implementation while keeping tests green
 - Extract patterns, remove duplication
 - Apply SOLID principles where appropriate
-- After REFACTOR: Skill("simplify") executes automatically (see run.md Phase 2.9). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
+- After REFACTOR: Skill("simplify") executes automatically (see run.md Phase 2.10). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
 
 Success Criteria:
 - All SPEC requirements implemented
@@ -99,12 +99,13 @@ Steps:
 Scope:
 - Applies to the aggregate of all changes in the current Run phase
 - Does not re-run tests (Skill("simplify") already validated test passing)
+- If a simpler approach is implemented, re-run tests to verify the simplification does not break anything
 - Focus is architectural elegance and minimal footprint, not code style
 
 Skip conditions:
 - Single-file changes under 50 lines
 - Bug fixes with reproduction test (already minimal by Rule 4)
-- Changes explicitly approved in annotation cycle
+- Changes explicitly approved in annotation cycle (user reviewed and accepted the approach during Plan Phase annotation iterations)
 
 ## Team Mode Methodology
 
