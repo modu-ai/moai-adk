@@ -106,3 +106,16 @@ Rules:
 - Validate all external inputs
 - Follow OWASP guidelines for web security
 - Use environment variables for credentials
+
+## Lessons Protocol
+
+Capture and reuse learnings from user corrections and agent failures across sessions.
+
+Rules:
+- When user corrects agent behavior, capture the pattern in auto-memory
+- Store lessons at project memory `lessons.md` with category and correct approach
+- Review relevant lessons before starting tasks in the same domain
+- Lesson categories: architecture, testing, naming, workflow, security, performance
+- Maximum 50 active lessons per project; archive older entries when exceeded
+- Lessons are additive: never overwrite a lesson, append corrections as updates
+- Session start: scan lessons for patterns matching current task domain

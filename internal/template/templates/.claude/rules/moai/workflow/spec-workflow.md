@@ -56,6 +56,30 @@ Success Criteria:
 - TRUST 5 quality gates passed
 - MX tags added for new code (NOTE, ANCHOR, WARN as appropriate)
 
+### Re-planning Gate
+
+Detect when implementation is stuck or diverging from SPEC and trigger re-assessment.
+
+Triggers:
+- 3+ loop iterations with no new SPEC acceptance criteria met
+- Test coverage dropping instead of increasing across iterations
+- New errors introduced exceed errors fixed in a cycle
+- Agent explicitly reports inability to meet a SPEC requirement
+
+Actions when triggered:
+- STOP current implementation immediately
+- Review SPEC acceptance criteria vs current implementation state
+- Present gap analysis to user via AskUserQuestion with options:
+  - Continue with current approach (minor adjustments needed)
+  - Revise SPEC (requirements need refinement)
+  - Try alternative approach (re-delegate to manager-strategy)
+  - Pause for manual intervention (user takes over)
+
+Detection method:
+- Track SPEC acceptance criteria completion count per iteration
+- Compare error count delta between consecutive iterations
+- Flag stagnation when acceptance criteria completion rate is zero for 3+ iterations
+
 ## Sync Phase
 
 Generate documentation and prepare for deployment.

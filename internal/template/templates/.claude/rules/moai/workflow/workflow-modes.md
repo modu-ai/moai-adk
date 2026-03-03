@@ -82,6 +82,30 @@ When TDD is selected for a project with existing code, the RED phase is enhanced
 
 This ensures TDD on brownfield projects still respects existing behavior without requiring a separate methodology mode.
 
+## Pre-submission Self-Review
+
+Before marking implementation complete, review the full changeset for simplicity and correctness.
+
+This gate runs after Skill("simplify") and before completion markers. It applies to both DDD and TDD modes.
+
+Steps:
+- Review full diff against SPEC acceptance criteria
+- Ask: "Is there a simpler approach that achieves the same result?"
+- Ask: "Would removing any of these changes still satisfy the SPEC?"
+- Check for unnecessary abstractions, premature generalization, or over-engineering
+- If a simpler approach exists, implement it before presenting to user
+- If no simplification found, proceed to completion
+
+Scope:
+- Applies to the aggregate of all changes in the current Run phase
+- Does not re-run tests (Skill("simplify") already validated test passing)
+- Focus is architectural elegance and minimal footprint, not code style
+
+Skip conditions:
+- Single-file changes under 50 lines
+- Bug fixes with reproduction test (already minimal by Rule 4)
+- Changes explicitly approved in annotation cycle
+
 ## Team Mode Methodology
 
 When --team flag is used, the methodology applies at the teammate level:

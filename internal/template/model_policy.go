@@ -60,7 +60,6 @@ var agentModelMap = map[string][3]string{
 	"expert-debug":            {"opus", "sonnet", "sonnet"},
 	"expert-testing":          {"opus", "sonnet", "haiku"},
 	"expert-refactoring":      {"opus", "sonnet", "sonnet"},
-	"expert-chrome-extension": {"opus", "sonnet", "haiku"},
 	// Builder Agents
 	"builder-agent":  {"opus", "sonnet", "haiku"},
 	"builder-skill":  {"opus", "sonnet", "haiku"},

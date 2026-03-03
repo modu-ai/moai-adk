@@ -284,7 +284,7 @@ graph LR
 | カテゴリ | 数量 | エージェント | 役割 |
 |----------|------|---------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | ワークフロー調整、SPEC作成、品質管理 |
-| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | ドメイン専門の実装、分析、最適化 |
+| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | ドメイン専門の実装、分析、最適化 |
 | **Builder** | 3 | agent, skill, plugin | 新しいMoAIコンポーネントの作成 |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 並列チームベースの開発 |
 
@@ -301,19 +301,19 @@ graph LR
 | **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
 | **Library** | 3 | shadcn, nextra, mermaid |
 | **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 11 | Figma, Flutter, Chrome Extension, Pencil... |
+| **Specialist** | 10 | Figma, Flutter, Electron, Pencil... |
 
 ---
 
 ## モデルポリシー（トークン最適化）
 
-MoAI-ADKは、Claude Codeサブスクリプションプランに基づいて、28のエージェントに最適なAIモデルを割り当てます。プランのレート制限内で品質を最大化します。
+MoAI-ADKは、Claude Codeサブスクリプションプランに基づいて、27のエージェントに最適なAIモデルを割り当てます。プランのレート制限内で品質を最大化します。
 
 | ポリシー | プラン | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 用途 |
 |----------|--------|------|--------|-------|------|
-| **High** | Max $200/月 | 23 | 1 | 4 | 最高品質、最大スループット |
-| **Medium** | Max $100/月 | 4 | 19 | 5 | 品質とコストのバランス |
-| **Low** | Plus $20/月 | 0 | 12 | 16 | 経済的、Opusなし |
+| **High** | Max $200/月 | 22 | 1 | 4 | 最高品質、最大スループット |
+| **Medium** | Max $100/月 | 4 | 18 | 5 | 品質とコストのバランス |
+| **Low** | Plus $20/月 | 0 | 11 | 16 | 経済的、Opusなし |
 
 > **なぜ重要なのか？** Plus $20プランにはOpusが含まれていません。`Low`に設定すると、すべてのエージェントがSonnetとHaikuのみを使用し、レート制限エラーを防止します。上位プランでは、重要なエージェント（セキュリティ、戦略、アーキテクチャ）にOpusを、通常タスクにSonnet/Haikuを配分します。
 
@@ -344,7 +344,6 @@ MoAI-ADKは、Claude Codeサブスクリプションプランに基づいて、2
 | expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-chrome-extension | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 #### Builder Agents
 

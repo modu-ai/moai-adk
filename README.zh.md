@@ -37,7 +37,7 @@
 
 > **"氛围编程的目的不是追求速度，而是代码质量。"**
 
-MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个专业 AI 智能体与 52 个技能协同工作，助力产出高质量代码。新项目和功能开发默认采用 TDD，覆盖率低于 10% 的现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
+MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。27 个专业 AI 智能体与 52 个技能协同工作，助力产出高质量代码。新项目和功能开发默认采用 TDD，覆盖率低于 10% 的现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
 
 使用 Go 编写的单一可执行文件 -- 零依赖，全平台即刻运行。
 
@@ -284,7 +284,7 @@ graph LR
 | 分类 | 数量 | 智能体 | 职责 |
 |------|------|--------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 工作流编排、SPEC 生成、质量管理 |
-| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | 领域专业实现、分析、优化 |
+| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 领域专业实现、分析、优化 |
 | **Builder** | 3 | agent, skill, plugin | 创建新的 MoAI 组件 |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 并行团队协作开发 |
 
@@ -301,19 +301,19 @@ graph LR
 | **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
 | **Library** | 3 | shadcn, nextra, mermaid |
 | **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 11 | Figma, Flutter, Chrome Extension, Pencil... |
+| **Specialist** | 10 | Figma, Flutter, Electron, Pencil... |
 
 ---
 
 ## 模型策略（Token 优化）
 
-MoAI-ADK 根据您的 Claude Code 订阅方案，为 28 个智能体分配最优 AI 模型。在方案的速率限制内最大化质量。
+MoAI-ADK 根据您的 Claude Code 订阅方案，为 27 个智能体分配最优 AI 模型。在方案的速率限制内最大化质量。
 
 | 策略 | 方案 | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 适用场景 |
 |------|------|------|--------|-------|----------|
-| **High** | Max $200/月 | 23 | 1 | 4 | 最高质量，最大吞吐量 |
-| **Medium** | Max $100/月 | 4 | 19 | 5 | 质量与成本平衡 |
-| **Low** | Plus $20/月 | 0 | 12 | 16 | 经济实惠，无 Opus |
+| **High** | Max $200/月 | 22 | 1 | 4 | 最高质量，最大吞吐量 |
+| **Medium** | Max $100/月 | 4 | 18 | 5 | 质量与成本平衡 |
+| **Low** | Plus $20/月 | 0 | 11 | 16 | 经济实惠，无 Opus |
 
 > **为什么重要？** Plus $20 方案不包含 Opus。设置为 `Low` 后，所有智能体仅使用 Sonnet 和 Haiku，避免速率限制错误。更高级方案可在关键智能体（安全、策略、架构）上使用 Opus，常规任务使用 Sonnet/Haiku。
 
@@ -344,7 +344,6 @@ MoAI-ADK 根据您的 Claude Code 订阅方案，为 28 个智能体分配最优
 | expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-chrome-extension | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 #### Builder Agents
 

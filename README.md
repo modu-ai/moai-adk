@@ -284,7 +284,7 @@ graph LR
 | Category | Count | Agents | Role |
 |----------|-------|--------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
-| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | Domain-specific implementation, analysis, optimization |
+| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
 | **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | Parallel team-based development |
 
@@ -301,19 +301,19 @@ Managed through a 3-level progressive disclosure system for token efficiency:
 | **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
 | **Library** | 3 | shadcn, nextra, mermaid |
 | **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 11 | Figma, Flutter, Chrome Extension, Pencil... |
+| **Specialist** | 10 | Figma, Flutter, Electron, Pencil... |
 
 ---
 
 ## Model Policy (Token Optimization)
 
-MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each of 27 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|------|--------|-------|----------|
-| **High** | Max $200/mo | 23 | 1 | 4 | Maximum quality, highest throughput |
-| **Medium** | Max $100/mo | 4 | 19 | 5 | Balanced quality and cost |
-| **Low** | Plus $20/mo | 0 | 12 | 16 | Budget-friendly, no Opus access |
+| **High** | Max $200/mo | 22 | 1 | 4 | Maximum quality, highest throughput |
+| **Medium** | Max $100/mo | 4 | 18 | 5 | Balanced quality and cost |
+| **Low** | Plus $20/mo | 0 | 11 | 16 | Budget-friendly, no Opus access |
 
 > **Why does this matter?** The Plus $20 plan does not include Opus access. Setting `Low` ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
 
@@ -344,7 +344,6 @@ MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Cod
 | expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-chrome-extension | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 #### Builder Agents
 
