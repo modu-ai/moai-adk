@@ -35,3 +35,15 @@ const (
 	SystemYAML      = "system.yaml"
 	StatuslineYAML  = "statusline.yaml"
 )
+
+// Error tracking and logging files.
+const (
+	// ErrorTrackerJSON is the error tracker state file under .moai/state/.
+	ErrorTrackerJSON = "error-tracker.json"
+
+	// ErrorsLog is the error log file under .moai/logs/ (JSONL format).
+	ErrorsLog = "errors.log"
+
+	// PreCompactSnapshotJSON is the pre-compact snapshot file under .moai/state/.
+	PreCompactSnapshotJSON = "pre-compact-snapshot.json"
+)

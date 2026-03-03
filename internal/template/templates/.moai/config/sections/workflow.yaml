@@ -10,10 +10,19 @@ workflow:
             complete: <moai>COMPLETE</moai>
             done: <moai>DONE</moai>
     execution_mode: team
+    gutter_detection:
+        enabled: true
+        error_pattern_threshold: 3
+        recovery_strategy: auto_compact
+        error_log_path: .moai/logs/errors.log
+        tracker_path: .moai/state/error-tracker.json
     loop_prevention:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
+    stale_task:
+        enabled: true
+        timeout_seconds: 300
     team:
         auto_selection:
             min_complexity_score: 7

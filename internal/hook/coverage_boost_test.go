@@ -108,7 +108,7 @@ func TestSessionStartHandler_Handle_NilCfgProvider(t *testing.T) {
 
 // --- compact.go: Handle ---
 
-func TestCompactHandler_Handle_AlwaysReturnsData(t *testing.T) {
+func TestCompactHandler_Handle_AlwaysReturnsSystemMessage(t *testing.T) {
 	t.Parallel()
 
 	h := NewCompactHandler()
@@ -128,18 +128,24 @@ func TestCompactHandler_Handle_AlwaysReturnsData(t *testing.T) {
 	if got == nil {
 		t.Fatal("got nil output")
 	}
-	// Compact always returns non-nil data with session_id, status, snapshot_created.
-	if got.Data == nil {
-		t.Fatal("Data should not be nil")
+	// Compact returns SystemMessage with context summary for Claude Code.
+	if got.SystemMessage == "" {
+		t.Fatal("SystemMessage should not be empty")
 	}
+	// SystemMessage should contain "MoAI Pre-Compact" indicator
+	if !containsString(got.SystemMessage, "MoAI Pre-Compact") {
+		t.Errorf("SystemMessage should contain 'MoAI Pre-Compact', got: %s", got.SystemMessage)
+	}
+}
 
-	var data map[string]any
-	if err := json.Unmarshal(got.Data, &data); err != nil {
-		t.Fatalf("unmarshal Data: %v", err)
+// containsString is a simple helper to check if a string contains a substring.
+func containsString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
 	}
-	if data["snapshot_created"] != true {
-		t.Errorf("snapshot_created = %v, want true", data["snapshot_created"])
-	}
+	return false
 }
 
 // --- session_end.go: garbageCollectStaleTeams ---
