@@ -5,6 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] - 2026-03-03
+
+### Summary
+
+This release introduces three Boris Cherny-inspired workflow improvements — Lessons Protocol, Re-planning Gate, and Pre-submission Self-Review — that help AI agents learn from mistakes and avoid repetitive loops. The deprecated `expert-chrome-extension` agent (now built into Claude Code) has been removed.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **Lessons Protocol**: AI agents now capture user corrections automatically in `~/.claude/projects/{project-hash}/memory/lessons.md`. Each session scans relevant lessons before starting domain-specific tasks.
+- **Re-planning Gate**: When an implementation loop stalls for 3+ iterations without acceptance-criteria progress, MoAI automatically triggers a replanning phase instead of continuing futile attempts.
+- **Pre-submission Self-Review**: Before submitting work, agents run a self-review gate that checks code quality, test coverage, and annotation completeness. Skipped for changes explicitly approved in the SPEC annotation cycle.
+
+### Changed
+
+- Template rule files updated to include Boris Cherny best practices across `moai-constitution.md`, `spec-workflow.md`, `workflow-modes.md`, and `run.md`.
+
+### Fixed
+
+- Agent count corrected to 27 in all README variants (en/ko/ja/zh). The count was 28 due to a stale reference after the `expert-chrome-extension` removal.
+
+### Removed
+
+- `expert-chrome-extension` agent removed. This agent is now provided as a built-in agent by Claude Code and no longer needs a custom definition in MoAI-ADK.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.2] - 2026-03-03 (한국어)
+
+### 요약
+
+Boris Cherny의 베스트 프랙티스에서 영감을 받은 세 가지 워크플로우 개선 사항을 도입합니다 — Lessons Protocol(교훈 프로토콜), Re-planning Gate(재기획 게이트), Pre-submission Self-Review(제출 전 자체 검토). AI 에이전트가 실수로부터 학습하고 반복 루프를 방지하는 데 도움을 줍니다. 더 이상 필요 없는 `expert-chrome-extension` 에이전트(현재 Claude Code에 내장)가 제거되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **Lessons Protocol**: AI 에이전트가 사용자 수정 사항을 `~/.claude/projects/{project-hash}/memory/lessons.md`에 자동으로 캡처합니다. 각 세션은 도메인별 작업을 시작하기 전에 관련 교훈을 스캔합니다.
+- **Re-planning Gate**: 구현 루프가 수락 기준 진행 없이 3회 이상 반복될 경우, MoAI가 무익한 시도를 계속하는 대신 자동으로 재기획 단계를 트리거합니다.
+- **Pre-submission Self-Review**: 작업 제출 전, 에이전트가 코드 품질, 테스트 커버리지, 어노테이션 완성도를 점검하는 자체 검토 게이트를 실행합니다. SPEC 어노테이션 사이클에서 명시적으로 승인된 변경 사항은 건너뜁니다.
+
+### 변경됨 (Changed)
+
+- `moai-constitution.md`, `spec-workflow.md`, `workflow-modes.md`, `run.md`에 Boris Cherny 베스트 프랙티스를 포함하도록 템플릿 규칙 파일이 업데이트되었습니다.
+
+### 수정됨 (Fixed)
+
+- 모든 README 변형(en/ko/ja/zh)에서 에이전트 수가 27개로 수정되었습니다. `expert-chrome-extension` 제거 후 오래된 참조로 인해 28개로 표시되었습니다.
+
+### 제거됨 (Removed)
+
+- `expert-chrome-extension` 에이전트 제거. 이 에이전트는 이제 Claude Code에서 기본 제공하며 MoAI-ADK에 커스텀 정의가 더 이상 필요하지 않습니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.1] - 2026-03-03
 
 ### Summary
