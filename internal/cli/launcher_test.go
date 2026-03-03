@@ -93,6 +93,16 @@ func TestParseProfileFlag(t *testing.T) {
 			args:    []string{"-p", "--bypass"},
 			wantErr: true,
 		},
+		{
+			name:    "--profile= empty value",
+			args:    []string{"--profile="},
+			wantErr: true,
+		},
+		{
+			name:    "-p= empty value",
+			args:    []string{"-p="},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

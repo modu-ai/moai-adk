@@ -479,10 +479,16 @@ func parseProfileFlag(args []string) (string, []string, error) {
 		// Handle --profile=value form
 		if strings.HasPrefix(args[i], "--profile=") {
 			profileName = strings.TrimPrefix(args[i], "--profile=")
+			if profileName == "" {
+				return "", nil, fmt.Errorf("flag --profile= requires a non-empty profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc --profile=default")
+			}
 			continue
 		}
 		if strings.HasPrefix(args[i], "-p=") {
 			profileName = strings.TrimPrefix(args[i], "-p=")
+			if profileName == "" {
+				return "", nil, fmt.Errorf("flag -p= requires a non-empty profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc -p=default")
+			}
 			continue
 		}
 		filtered = append(filtered, args[i])
