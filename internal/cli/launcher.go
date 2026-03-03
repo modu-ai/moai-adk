@@ -457,7 +457,8 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 
 // parseProfileFlag extracts -p/--profile from args and returns the profile name
 // and the remaining args with the flag removed.
-func parseProfileFlag(args []string) (string, []string) {
+// Returns an error if -p/--profile is specified without a value.
+func parseProfileFlag(args []string) (string, []string, error) {
 	var profileName string
 	filtered := make([]string, 0, len(args))
 
@@ -467,7 +468,10 @@ func parseProfileFlag(args []string) (string, []string) {
 			filtered = append(filtered, args[i:]...)
 			break
 		}
-		if (args[i] == "--profile" || args[i] == "-p") && i+1 < len(args) {
+		if args[i] == "--profile" || args[i] == "-p" {
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
+				return "", nil, fmt.Errorf("flag %s requires a profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc -p default", args[i])
+			}
 			profileName = args[i+1]
 			i++
 			continue
@@ -484,7 +488,7 @@ func parseProfileFlag(args []string) (string, []string) {
 		filtered = append(filtered, args[i])
 	}
 
-	return profileName, filtered
+	return profileName, filtered, nil
 }
 
 // readSettingsLocalForLaunch reads the env map from .claude/settings.local.json

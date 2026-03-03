@@ -106,7 +106,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	profileName, filteredArgs := parseProfileFlag(args)
+	profileName, filteredArgs, err := parseProfileFlag(args)
+	if err != nil {
+		return err
+	}
 	return unifiedLaunch(profileName, "glm", filteredArgs)
 }
 
