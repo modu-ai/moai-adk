@@ -14,16 +14,20 @@ type Renderer struct {
 	noColor       bool
 	mutedStyle    lipgloss.Style
 	segmentConfig map[string]bool
+	theme         Theme
 }
 
 // NewRenderer creates a Renderer with the specified theme, color mode, and
 // segment configuration. When segmentConfig is nil or empty, all segments
 // are displayed (backward compatible).
 func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) *Renderer {
+	theme := NewTheme(themeName)
+
 	r := &Renderer{
 		separator:     " | ",
 		noColor:       noColor,
 		segmentConfig: segmentConfig,
+		theme:         theme,
 	}
 
 	if noColor {
@@ -31,43 +35,49 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 		return r
 	}
 
-	// All themes use the same muted style for consistency
-	r.mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+	// Use theme's muted color for the muted style (REQ-SLE-017)
+	r.mutedStyle = lipgloss.NewStyle().Foreground(theme.Muted())
 
 	return r
 }
 
-// Render formats the StatusData into a single-line string based on the mode.
-// Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Claude Code Ver | 🗿 MoAI Ver | 🔀 Branch
+// Render formats the StatusData into a statusline string based on the mode.
+// ModeVerbose produces up to 3 newline-separated lines (REQ-SLE-033).
+// All other modes produce a single line.
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	if data == nil {
 		return "MoAI"
 	}
 
-	var sections []string
+	if mode == ModeVerbose {
+		return r.renderVerboseLines(data)
+	}
 
+	var sections []string
 	switch mode {
 	case ModeMinimal:
 		sections = r.renderMinimal(data)
-	case ModeVerbose:
-		sections = r.renderVerbose(data)
 	default: // ModeDefault (compact)
 		sections = r.renderCompact(data)
 	}
 
-	// Filter empty sections
+	filtered := filterEmpty(sections)
+	if len(filtered) == 0 {
+		return "MoAI"
+	}
+
+	return strings.Join(filtered, r.separator)
+}
+
+// filterEmpty removes empty strings from a slice.
+func filterEmpty(sections []string) []string {
 	filtered := make([]string, 0, len(sections))
 	for _, s := range sections {
 		if s != "" {
 			filtered = append(filtered, s)
 		}
 	}
-
-	if len(filtered) == 0 {
-		return "MoAI"
-	}
-
-	return strings.Join(filtered, r.separator)
+	return filtered
 }
 
 // isSegmentEnabled checks whether a segment should be rendered based on config.
@@ -169,10 +179,107 @@ func (r *Renderer) renderMinimal(data *StatusData) []string {
 	return sections
 }
 
-// renderVerbose returns sections for verbose mode: same as compact.
-// Python uses the same format for both compact and extended.
-func (r *Renderer) renderVerbose(data *StatusData) []string {
-	return r.renderCompact(data)
+// renderVerboseLines renders up to 3 newline-separated lines for verbose mode (REQ-SLE-033).
+// Empty lines (all segments unavailable) are omitted (REQ-SLE-034).
+//
+// Line 1: Model | Context Graph | Output Style
+// Line 2: Directory | Branch | Git Changes
+// Line 3: Claude Version | MoAI Version | Cost
+func (r *Renderer) renderVerboseLines(data *StatusData) string {
+	var lines []string
+
+	// Line 1: Model | Context Graph | Output Style
+	line1 := r.renderVerboseLine1(data)
+	if line1 != "" {
+		lines = append(lines, line1)
+	}
+
+	// Line 2: Directory | Branch | Git Changes
+	line2 := r.renderVerboseLine2(data)
+	if line2 != "" {
+		lines = append(lines, line2)
+	}
+
+	// Line 3: Claude Version | MoAI Version | Cost
+	line3 := r.renderVerboseLine3(data)
+	if line3 != "" {
+		lines = append(lines, line3)
+	}
+
+	if len(lines) == 0 {
+		return "MoAI"
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// renderVerboseLine1 renders: Model | Context Graph | Output Style
+func (r *Renderer) renderVerboseLine1(data *StatusData) string {
+	var sections []string
+
+	if data.Metrics.Available && data.Metrics.Model != "" {
+		sections = append(sections, fmt.Sprintf("🤖 %s", data.Metrics.Model))
+	}
+	if data.Memory.Available {
+		if graph := r.renderContextGraph(data); graph != "" {
+			sections = append(sections, graph)
+		}
+	}
+	if data.OutputStyle != "" {
+		sections = append(sections, fmt.Sprintf("💬 %s", data.OutputStyle))
+	}
+
+	filtered := filterEmpty(sections)
+	if len(filtered) == 0 {
+		return ""
+	}
+	return strings.Join(filtered, r.separator)
+}
+
+// renderVerboseLine2 renders: Directory | Branch | Git Changes
+func (r *Renderer) renderVerboseLine2(data *StatusData) string {
+	var sections []string
+
+	if data.Directory != "" {
+		sections = append(sections, fmt.Sprintf("📁 %s", data.Directory))
+	}
+	if data.Git.Available && data.Git.Branch != "" {
+		sections = append(sections, fmt.Sprintf("🔀 %s", data.Git.Branch))
+	}
+	if git := r.renderGitStatus(data); git != "" {
+		sections = append(sections, fmt.Sprintf("📊 %s", git))
+	}
+
+	filtered := filterEmpty(sections)
+	if len(filtered) == 0 {
+		return ""
+	}
+	return strings.Join(filtered, r.separator)
+}
+
+// renderVerboseLine3 renders: Claude Version | MoAI Version | Cost
+func (r *Renderer) renderVerboseLine3(data *StatusData) string {
+	var sections []string
+
+	if data.ClaudeCodeVersion != "" {
+		sections = append(sections, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
+	}
+	if data.Version.Available && data.Version.Current != "" {
+		versionStr := fmt.Sprintf("🗿 v%s", data.Version.Current)
+		if data.Version.UpdateAvailable && data.Version.Latest != "" {
+			versionStr += fmt.Sprintf(" ⬆️ v%s", data.Version.Latest)
+		}
+		sections = append(sections, versionStr)
+	}
+	if data.Metrics.Available && data.Metrics.CostUSD > 0 {
+		sections = append(sections, fmt.Sprintf("$%.2f", data.Metrics.CostUSD))
+	}
+
+	filtered := filterEmpty(sections)
+	if len(filtered) == 0 {
+		return ""
+	}
+	return strings.Join(filtered, r.separator)
 }
 
 // renderContextGraph renders the context window usage as a bar graph.
@@ -208,6 +315,7 @@ func (r *Renderer) renderContextGraph(data *StatusData) string {
 // buildBar constructs a horizontal bar graph using Unicode block characters.
 // Width is total bar width in characters.
 // Uses full block (█) for used portion and light block (░) for remaining.
+// When a theme is active and noColor is false, applies gradient color to filled blocks.
 func (r *Renderer) buildBar(pct int, width int) string {
 	if width <= 0 {
 		return ""
@@ -215,14 +323,19 @@ func (r *Renderer) buildBar(pct int, width int) string {
 
 	// Calculate filled blocks based on percentage
 	filled := min((pct*width)/100, width)
-
 	empty := width - filled
 
-	// Build bar using Unicode block characters
 	filledChar := "█" // Full block for used
 	emptyChar := "░"  // Light block for remaining
 
-	return strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
+	if r.noColor || r.theme == nil {
+		return strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
+	}
+
+	// Apply theme gradient color to filled blocks (REQ-SLE-015)
+	gradColor := r.theme.BarGradient(float64(pct))
+	filledStr := lipgloss.NewStyle().Foreground(gradColor).Render(strings.Repeat(filledChar, filled))
+	return filledStr + strings.Repeat(emptyChar, empty)
 }
 
 // renderGitStatus renders git status in Python format.

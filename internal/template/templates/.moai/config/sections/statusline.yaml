@@ -2,6 +2,9 @@ statusline:
   # Preset name: full, compact, minimal, custom
   preset: "full"
 
+  # Theme name: default, catppuccin-mocha, catppuccin-latte
+  theme: "default"
+
   # Individual segment toggles
   segments:
     model: true

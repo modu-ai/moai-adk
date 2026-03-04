@@ -76,28 +76,138 @@ func TestRender_CompactMode(t *testing.T) {
 	}
 }
 
-func TestRender_VerboseMode(t *testing.T) {
+func TestRender_VerboseMode_MultiLine(t *testing.T) {
+	// REQ-SLE-033: verbose mode renders up to 3 newline-separated lines
 	r := newTestRenderer()
 	data := &StatusData{
-		Git:         GitStatusData{Branch: "main", Staged: 3, Modified: 2, Untracked: 1, Available: true},
-		Memory:      MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics:     MetricsData{Model: "Sonnet 4", Available: true},
-		Directory:   "my-project",
-		OutputStyle: "Yoda",
-		Version:     VersionData{Current: "1.2.0", Available: true},
+		Git:               GitStatusData{Branch: "main", Staged: 3, Modified: 2, Untracked: 1, Available: true},
+		Memory:            MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Metrics:           MetricsData{Model: "Sonnet 4", CostUSD: 0.42, Available: true},
+		Directory:         "my-project",
+		OutputStyle:       "Yoda",
+		Version:           VersionData{Current: "1.2.0", Available: true},
+		ClaudeCodeVersion: "1.0.80",
 	}
 
 	got := r.Render(data, ModeVerbose)
 
-	// Verbose mode has same format as compact
-	if !strings.Contains(got, "🤖 Sonnet 4") {
-		t.Errorf("verbose mode should contain model, got %q", got)
+	// Verbose output must contain newlines
+	if !strings.Contains(got, "\n") {
+		t.Errorf("verbose mode should produce multi-line output, got %q", got)
 	}
-	if !strings.Contains(got, "📊 +3 M2 ?1") {
-		t.Errorf("verbose mode should contain git status, got %q", got)
+
+	lines := strings.Split(got, "\n")
+
+	// Line 1: Model | Context Graph | Output Style
+	if !strings.Contains(lines[0], "🤖 Sonnet 4") {
+		t.Errorf("verbose line 1 should contain model, got %q", lines[0])
 	}
-	if !strings.Contains(got, "🔀 main") {
-		t.Errorf("verbose mode should contain branch, got %q", got)
+	if !strings.Contains(lines[0], "🔋") {
+		t.Errorf("verbose line 1 should contain context, got %q", lines[0])
+	}
+	if !strings.Contains(lines[0], "💬 Yoda") {
+		t.Errorf("verbose line 1 should contain output style, got %q", lines[0])
+	}
+	// Line 1 should NOT contain git branch or directory
+	if strings.Contains(lines[0], "📁") {
+		t.Errorf("verbose line 1 should NOT contain directory, got %q", lines[0])
+	}
+
+	// Line 2: Directory | Branch | Git Changes
+	if len(lines) < 2 {
+		t.Fatal("verbose mode should have at least 2 lines")
+	}
+	if !strings.Contains(lines[1], "📁 my-project") {
+		t.Errorf("verbose line 2 should contain directory, got %q", lines[1])
+	}
+	if !strings.Contains(lines[1], "🔀 main") {
+		t.Errorf("verbose line 2 should contain branch, got %q", lines[1])
+	}
+	if !strings.Contains(lines[1], "📊") {
+		t.Errorf("verbose line 2 should contain git status, got %q", lines[1])
+	}
+
+	// Line 3: Claude Version | MoAI Version | Cost
+	if len(lines) < 3 {
+		t.Fatal("verbose mode should have 3 lines when all data available")
+	}
+	if !strings.Contains(lines[2], "🔅 v1.0.80") {
+		t.Errorf("verbose line 3 should contain Claude version, got %q", lines[2])
+	}
+	if !strings.Contains(lines[2], "🗿 v1.2.0") {
+		t.Errorf("verbose line 3 should contain MoAI version, got %q", lines[2])
+	}
+	if !strings.Contains(lines[2], "$0.42") {
+		t.Errorf("verbose line 3 should contain cost, got %q", lines[2])
+	}
+}
+
+func TestRender_VerboseMode_OmitsEmptyLines(t *testing.T) {
+	// REQ-SLE-034: omit lines when all segments unavailable
+	r := newTestRenderer()
+	// Only model + context available (no git, no directory, no version)
+	data := &StatusData{
+		Metrics: MetricsData{Model: "Sonnet 4", Available: true},
+		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+	}
+
+	got := r.Render(data, ModeVerbose)
+
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	// Line 2 (directory/branch/git) should be omitted since all are unavailable
+	for _, line := range lines {
+		if strings.Contains(line, "📁") || strings.Contains(line, "🔀") || strings.Contains(line, "📊") {
+			t.Errorf("verbose mode should omit empty line 2, but found git/dir segment in %q", line)
+		}
+	}
+}
+
+func TestRender_VerboseMode_CostRendering(t *testing.T) {
+	// REQ-SLE-035: CostUSD rendered on line 3 as "$X.XX"
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:           MetricsData{Model: "Opus 4.5", CostUSD: 1.23, Available: true},
+		Memory:            MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Version:           VersionData{Current: "2.0.0", Available: true},
+		ClaudeCodeVersion: "1.0.80",
+	}
+
+	got := r.Render(data, ModeVerbose)
+	if !strings.Contains(got, "$1.23") {
+		t.Errorf("verbose mode should render cost as $1.23, got %q", got)
+	}
+}
+
+func TestRender_VerboseMode_ZeroCostOmitted(t *testing.T) {
+	// Zero cost (no session cost yet) should not show $0.00
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:           MetricsData{Model: "Opus 4.5", CostUSD: 0, Available: true},
+		Memory:            MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Version:           VersionData{Current: "2.0.0", Available: true},
+		ClaudeCodeVersion: "1.0.80",
+	}
+
+	got := r.Render(data, ModeVerbose)
+	if strings.Contains(got, "$0.00") {
+		t.Errorf("verbose mode should not render zero cost, got %q", got)
+	}
+}
+
+func TestRender_MinimalMode_OutputStyle(t *testing.T) {
+	// REQ-SLE-031: ModeMinimal = 1 line: Model | Context Graph | Output Style
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:     MetricsData{Model: "Sonnet 4", Available: true},
+		Memory:      MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		OutputStyle: "MoAI",
+	}
+
+	got := r.Render(data, ModeMinimal)
+
+	// Minimal mode should not contain newlines
+	if strings.Contains(got, "\n") {
+		t.Errorf("minimal mode should be single line, got %q", got)
 	}
 }
 
@@ -217,8 +327,8 @@ func TestNewRenderer_ThemeVariants(t *testing.T) {
 	}{
 		{"default", false},
 		{"default", true},
-		{"minimal", false},
-		{"nerd", false},
+		{"catppuccin-mocha", false},
+		{"catppuccin-latte", false},
 		{"unknown", false},
 	}
 
@@ -232,6 +342,31 @@ func TestNewRenderer_ThemeVariants(t *testing.T) {
 				t.Errorf("noColor = %v, want %v", r.noColor, tt.noColor)
 			}
 		})
+	}
+}
+
+func TestNewRenderer_ThemeIsStored(t *testing.T) {
+	// When a theme is supplied, the renderer should store it.
+	r := NewRenderer("catppuccin-mocha", false, nil)
+	if r == nil {
+		t.Fatal("NewRenderer returned nil")
+	}
+	if r.theme == nil {
+		t.Error("Renderer.theme should be set (not nil) after NewRenderer")
+	}
+}
+
+func TestNewRenderer_NoColorIgnoresTheme(t *testing.T) {
+	// When NoColor=true, theme colors must NOT be applied (REQ-SLE-016).
+	r := NewRenderer("catppuccin-mocha", true, nil)
+	data := &StatusData{
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
+		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+	}
+	got := r.Render(data, ModeDefault)
+	// No ANSI escape codes should be present in no-color mode
+	if strings.Contains(got, "\x1b[") {
+		t.Errorf("NoColor=true output should not contain ANSI escapes, got %q", got)
 	}
 }
 

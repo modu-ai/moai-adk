@@ -76,6 +76,10 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	if statuslinePreset == "" {
 		statuslinePreset = "full"
 	}
+	statuslineTheme := existingPrefs.StatuslineTheme
+	if statuslineTheme == "" {
+		statuslineTheme = "default"
+	}
 	// Statusline segment toggles
 	segModel := getSegmentDefault(existingPrefs.StatuslineSegments, "model", true)
 	segContext := getSegmentDefault(existingPrefs.StatuslineSegments, "context", true)
@@ -185,6 +189,15 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.StatuslineCustom, "custom"),
 				).
 				Value(&statuslinePreset),
+			huh.NewSelect[string]().
+				Title(t.StatuslineThemeTitle).
+				Description(t.StatuslineThemeDesc).
+				Options(
+					huh.NewOption(t.ThemeDefault, "default"),
+					huh.NewOption(t.ThemeCatppuccinMocha, "catppuccin-mocha"),
+					huh.NewOption(t.ThemeCatppuccinLatte, "catppuccin-latte"),
+				).
+				Value(&statuslineTheme),
 		).Title(t.DisplayTitle),
 
 		// Section 5b: Custom segments (shown only when preset is "custom")
@@ -221,6 +234,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		Model:            model,
 		Bypass:           bypass,
 		StatuslinePreset: statuslinePreset,
+		StatuslineTheme:  statuslineTheme,
 		TeammateDisplay:  "auto",
 	}
 

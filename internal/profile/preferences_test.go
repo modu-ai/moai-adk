@@ -333,3 +333,73 @@ func TestIsSetup_NamedProfile(t *testing.T) {
 		t.Error("IsSetup(personal) = true, want false")
 	}
 }
+
+func TestPreferences_StatuslineTheme(t *testing.T) {
+	tests := []struct {
+		name  string
+		theme string
+	}{
+		{"default theme", "default"},
+		{"catppuccin-mocha", "catppuccin-mocha"},
+		{"catppuccin-latte", "catppuccin-latte"},
+		{"empty theme", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			orig := BaseDirOverride
+			defer func() { BaseDirOverride = orig }()
+			BaseDirOverride = tmpDir
+
+			prefs := ProfilePreferences{
+				StatuslineTheme: tt.theme,
+			}
+
+			if err := WritePreferences("default", prefs); err != nil {
+				t.Fatalf("WritePreferences: %v", err)
+			}
+
+			got, err := ReadPreferences("default")
+			if err != nil {
+				t.Fatalf("ReadPreferences: %v", err)
+			}
+
+			if got.StatuslineTheme != tt.theme {
+				t.Errorf("StatuslineTheme = %q, want %q", got.StatuslineTheme, tt.theme)
+			}
+		})
+	}
+}
+
+func TestPreferences_StatuslineThemePersistsWithOtherFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	prefs := ProfilePreferences{
+		UserName:         "testuser",
+		StatuslinePreset: "compact",
+		StatuslineTheme:  "catppuccin-mocha",
+	}
+
+	if err := WritePreferences("default", prefs); err != nil {
+		t.Fatalf("WritePreferences: %v", err)
+	}
+
+	got, err := ReadPreferences("default")
+	if err != nil {
+		t.Fatalf("ReadPreferences: %v", err)
+	}
+
+	if got.UserName != "testuser" {
+		t.Errorf("UserName = %q, want %q", got.UserName, "testuser")
+	}
+	if got.StatuslinePreset != "compact" {
+		t.Errorf("StatuslinePreset = %q, want %q", got.StatuslinePreset, "compact")
+	}
+	if got.StatuslineTheme != "catppuccin-mocha" {
+		t.Errorf("StatuslineTheme = %q, want %q", got.StatuslineTheme, "catppuccin-mocha")
+	}
+}

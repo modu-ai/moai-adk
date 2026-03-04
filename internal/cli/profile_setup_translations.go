@@ -50,6 +50,13 @@ type profileSetupText struct {
 	StatuslineMinimal string
 	StatuslineCustom  string
 
+	// Statusline theme selector
+	StatuslineThemeTitle string
+	StatuslineThemeDesc  string
+	ThemeDefault         string
+	ThemeCatppuccinMocha string
+	ThemeCatppuccinLatte string
+
 	// Section: Statusline Segments
 	SegmentsTitle    string
 	SegModel         string
@@ -104,8 +111,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		StatuslineFull:     "Full - All 8 segments",
 		StatuslineCompact:  "Compact - Model, context, git",
 		StatuslineMinimal:  "Minimal - Model and context only",
-		StatuslineCustom:   "Custom - Choose individual segments",
-		SegmentsTitle:      "Statusline Segments",
+		StatuslineCustom:      "Custom - Choose individual segments",
+		StatuslineThemeTitle:  "Statusline Theme",
+		StatuslineThemeDesc:   "Select a color theme for the statusline.",
+		ThemeDefault:          "Default",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (dark)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (light)",
+		SegmentsTitle:         "Statusline Segments",
 		SegModel:           "Show model name",
 		SegContext:         "Show context usage",
 		SegOutputStyle:     "Show output style",
@@ -153,8 +165,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		StatuslineFull:     "Full - 전체 8개 세그먼트",
 		StatuslineCompact:  "Compact - 모델, 컨텍스트, git",
 		StatuslineMinimal:  "Minimal - 모델과 컨텍스트만",
-		StatuslineCustom:   "Custom - 개별 세그먼트 선택",
-		SegmentsTitle:      "상태줄 세그먼트",
+		StatuslineCustom:      "Custom - 개별 세그먼트 선택",
+		StatuslineThemeTitle:  "Statusline 테마",
+		StatuslineThemeDesc:   "상태줄 색상 테마를 선택하세요.",
+		ThemeDefault:          "기본값",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (어두운 테마)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (밝은 테마)",
+		SegmentsTitle:         "상태줄 세그먼트",
 		SegModel:           "모델 이름 표시",
 		SegContext:         "컨텍스트 사용량 표시",
 		SegOutputStyle:     "출력 스타일 표시",
@@ -202,8 +219,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		StatuslineFull:     "Full - 全8セグメント",
 		StatuslineCompact:  "Compact - モデル、コンテキスト、git",
 		StatuslineMinimal:  "Minimal - モデルとコンテキストのみ",
-		StatuslineCustom:   "Custom - 個別セグメント選択",
-		SegmentsTitle:      "ステータスラインセグメント",
+		StatuslineCustom:      "Custom - 個別セグメント選択",
+		StatuslineThemeTitle:  "ステータスラインテーマ",
+		StatuslineThemeDesc:   "ステータスラインのカラーテーマを選択してください。",
+		ThemeDefault:          "デフォルト",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (ダーク)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (ライト)",
+		SegmentsTitle:         "ステータスラインセグメント",
 		SegModel:           "モデル名を表示",
 		SegContext:         "コンテキスト使用量を表示",
 		SegOutputStyle:     "出力スタイルを表示",
@@ -251,8 +273,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		StatuslineFull:     "Full - 全部8个段",
 		StatuslineCompact:  "Compact - 模型、上下文、git",
 		StatuslineMinimal:  "Minimal - 仅模型和上下文",
-		StatuslineCustom:   "Custom - 选择单个段",
-		SegmentsTitle:      "状态栏段",
+		StatuslineCustom:      "Custom - 选择单个段",
+		StatuslineThemeTitle:  "状态栏主题",
+		StatuslineThemeDesc:   "选择状态栏的颜色主题。",
+		ThemeDefault:          "默认",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (深色)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (浅色)",
+		SegmentsTitle:         "状态栏段",
 		SegModel:           "显示模型名称",
 		SegContext:         "显示上下文使用量",
 		SegOutputStyle:     "显示输出样式",

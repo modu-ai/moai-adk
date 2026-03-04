@@ -191,6 +191,13 @@ type FullQualityConfig struct {
 	LSPStateTracking LSPStateTracking `yaml:"lsp_state_tracking"`
 }
 
+// StatuslineConfig represents the statusline configuration section.
+type StatuslineConfig struct {
+	Preset   string          `yaml:"preset"`
+	Segments map[string]bool `yaml:"segments"`
+	Theme    string          `yaml:"theme"`
+}
+
 // GitConventionConfig represents commit message convention settings.
 type GitConventionConfig struct {
 	// Convention name: auto, conventional-commits, angular, karma, custom
