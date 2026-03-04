@@ -40,7 +40,14 @@ Prerequisite: The `gh` CLI must be installed and authenticated (`gh auth status`
 
 [HARD] Resolve feedback type from $ARGUMENTS if provided (issue, suggestion, question).
 
-If $ARGUMENTS is empty, use AskUserQuestion:
+If $ARGUMENTS is empty:
+
+[TURN_BOUNDARY] Do NOT call AskUserQuestion in the same turn as Skill load
+(Claude Code bug: anthropics/claude-code#30360 — AskUserQuestion returns empty on first activation).
+Instead, output plain text: "What type of feedback would you like to submit? Options: Bug Report, Feature Request, Question."
+Then stop and wait for the user's reply.
+
+In the **next turn**, use AskUserQuestion if needed for confirmation:
 
 Question: What type of feedback would you like to submit?
 

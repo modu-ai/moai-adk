@@ -208,16 +208,39 @@ For detailed orchestration: Read workflows/feedback.md
 
 ## Execution Directive
 
+### [TURN_BOUNDARY] AskUserQuestion Timing Rule [HARD]
+
+**Known Claude Code bug**: `AskUserQuestion` returns empty when called in the same turn as
+Skill load (upstream: anthropics/claude-code#30360). The observable symptom is:
+
+```
+User answered Claude's questions:
+  ⎿  ← empty
+```
+
+Claude then silently proceeds with the first option, bypassing user intent.
+
+[HARD] [TURN_BOUNDARY] When activated in the **same turn as Skill load** (i.e., the first
+execution immediately after `/moai`, `/moai:sync`, `/moai:plan`, etc. is invoked):
+- Do NOT call `AskUserQuestion` — it will return empty and bypass user intent.
+- Instead: run pre-execution commands, load config, output a plain-text summary, then **stop**.
+- Call `AskUserQuestion` in the **next turn** after the user responds.
+
+This constraint applies to Step 2 (ambiguous routing) and Step 2.5 (project doc check) below,
+and to any other conditional user-input step that may trigger on first activation.
+
+---
+
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
 Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo. When --ultrathink is detected, activate Sequential Thinking MCP for deep analysis before execution.
 
 Step 2 - Route to Workflow:
-Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, output a plain-text summary of the top matching workflows and ask the user to clarify. [TURN_BOUNDARY] Do NOT call AskUserQuestion for routing clarification if this is the same turn as Skill load — output plain text instead and wait for the next turn.
 
 Step 2.5 - Project Documentation Check:
-Before executing plan, run, sync, fix, loop, or default workflows, verify project documentation exists by checking for `.moai/project/product.md`. If product.md does NOT exist, use AskUserQuestion to ask the user (in their conversation_language):
+Before executing plan, run, sync, fix, loop, or default workflows, verify project documentation exists by checking for `.moai/project/product.md`. If product.md does NOT exist, output a plain-text message asking the user whether to create project documentation first. [TURN_BOUNDARY] Do NOT call AskUserQuestion in the same turn as Skill load — output plain text and stop; call AskUserQuestion with the options below in the next turn:
 
 Question: Project documentation not found. Would you like to create it first?
 Options:
