@@ -1,5 +1,7 @@
 statusline:
+    mode: default
     preset: full
+    theme: default
     segments:
         claude_version: true
         context: true

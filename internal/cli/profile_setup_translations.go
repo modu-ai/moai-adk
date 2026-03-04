@@ -43,6 +43,14 @@ type profileSetupText struct {
 
 	// Section: Display
 	DisplayTitle      string
+	// Statusline mode selector (layout style)
+	StatuslineModeTitle string
+	StatuslineModeDesc  string
+	ModeCompact         string // label for mode = "default"
+	ModeVerbose         string // label for mode = "verbose"
+	ModeMinimal         string // label for mode = "minimal"
+
+	// Statusline preset selector (segment visibility, shown when mode != minimal)
 	StatuslineTitle   string
 	StatuslineDesc    string
 	StatuslineFull    string
@@ -105,8 +113,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus planning, Sonnet coding)",
 		BypassTitle:        "Skip permission checks?",
 		BypassDesc:         "Adds --dangerously-skip-permissions. Only use in trusted environments.",
-		DisplayTitle:       "Display",
-		StatuslineTitle:    "Statusline display preset",
+		DisplayTitle:        "Display",
+		StatuslineModeTitle: "Statusline display mode",
+		StatuslineModeDesc:  "Controls the layout style of the statusline.",
+		ModeCompact:         "Compact (default) - Single-line with all info",
+		ModeVerbose:         "Verbose - 3-line detailed view with cost tracking",
+		ModeMinimal:         "Minimal - Model and context only",
+		StatuslineTitle:    "Statusline segment preset",
 		StatuslineDesc:     "Controls which segments are shown in the Claude Code statusline.",
 		StatuslineFull:     "Full - All 8 segments",
 		StatuslineCompact:  "Compact - Model, context, git",
@@ -159,8 +172,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus 기획, Sonnet 코딩)",
 		BypassTitle:        "권한 검사 건너뛰기?",
 		BypassDesc:         "--dangerously-skip-permissions를 추가합니다. 신뢰할 수 있는 환경에서만 사용하세요.",
-		DisplayTitle:       "화면 표시",
-		StatuslineTitle:    "상태줄 표시 프리셋",
+		DisplayTitle:        "화면 표시",
+		StatuslineModeTitle: "상태줄 표시 모드",
+		StatuslineModeDesc:  "상태줄의 레이아웃 스타일을 제어합니다.",
+		ModeCompact:         "Compact (기본) - 한 줄에 모든 정보 표시",
+		ModeVerbose:         "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
+		ModeMinimal:         "Minimal - 모델과 컨텍스트만 표시",
+		StatuslineTitle:    "상태줄 세그먼트 프리셋",
 		StatuslineDesc:     "Claude Code 상태줄에 표시할 세그먼트를 제어합니다.",
 		StatuslineFull:     "Full - 전체 8개 세그먼트",
 		StatuslineCompact:  "Compact - 모델, 컨텍스트, git",
@@ -213,8 +231,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus設計、Sonnetコーディング)",
 		BypassTitle:        "権限チェックをスキップしますか？",
 		BypassDesc:         "--dangerously-skip-permissionsを追加します。信頼できる環境でのみ使用してください。",
-		DisplayTitle:       "表示設定",
-		StatuslineTitle:    "ステータスライン表示プリセット",
+		DisplayTitle:        "表示設定",
+		StatuslineModeTitle: "ステータスライン表示モード",
+		StatuslineModeDesc:  "ステータスラインのレイアウトスタイルを制御します。",
+		ModeCompact:         "Compact (デフォルト) - 全情報を1行に表示",
+		ModeVerbose:         "Verbose - コスト追跡付きの3行詳細表示",
+		ModeMinimal:         "Minimal - モデルとコンテキストのみ",
+		StatuslineTitle:    "ステータスラインセグメントプリセット",
 		StatuslineDesc:     "Claude Codeのステータスラインに表示するセグメントを制御します。",
 		StatuslineFull:     "Full - 全8セグメント",
 		StatuslineCompact:  "Compact - モデル、コンテキスト、git",
@@ -267,8 +290,13 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus规划，Sonnet编码)",
 		BypassTitle:        "跳过权限检查？",
 		BypassDesc:         "添加 --dangerously-skip-permissions。仅在可信环境中使用。",
-		DisplayTitle:       "显示设置",
-		StatuslineTitle:    "状态栏显示预设",
+		DisplayTitle:        "显示设置",
+		StatuslineModeTitle: "状态栏显示模式",
+		StatuslineModeDesc:  "控制状态栏的布局样式。",
+		ModeCompact:         "Compact (默认) - 单行显示所有信息",
+		ModeVerbose:         "Verbose - 含费用追踪的3行详细视图",
+		ModeMinimal:         "Minimal - 仅显示模型和上下文",
+		StatuslineTitle:    "状态栏段预设",
 		StatuslineDesc:     "控制Claude Code状态栏中显示的段。",
 		StatuslineFull:     "Full - 全部8个段",
 		StatuslineCompact:  "Compact - 模型、上下文、git",

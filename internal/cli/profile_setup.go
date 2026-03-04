@@ -72,6 +72,10 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	model := existingPrefs.Model
 	bypass := existingPrefs.Bypass
 
+	statuslineMode := existingPrefs.StatuslineMode
+	if statuslineMode == "" {
+		statuslineMode = "default"
+	}
 	statuslinePreset := existingPrefs.StatuslinePreset
 	if statuslinePreset == "" {
 		statuslinePreset = "full"
@@ -177,7 +181,33 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&bypass),
 		).Title(t.ModelSettingsTitle),
 
-		// Section 5: Display
+		// Section 5a: Display Mode — controls layout style (always shown)
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(t.StatuslineModeTitle).
+				Description(t.StatuslineModeDesc).
+				Options(
+					huh.NewOption(t.ModeCompact, "default"),
+					huh.NewOption(t.ModeVerbose, "verbose"),
+					huh.NewOption(t.ModeMinimal, "minimal"),
+				).
+				Value(&statuslineMode),
+		).Title(t.DisplayTitle),
+
+		// Section 5b: Color Theme (always shown)
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(t.StatuslineThemeTitle).
+				Description(t.StatuslineThemeDesc).
+				Options(
+					huh.NewOption(t.ThemeDefault, "default"),
+					huh.NewOption(t.ThemeCatppuccinMocha, "catppuccin-mocha"),
+					huh.NewOption(t.ThemeCatppuccinLatte, "catppuccin-latte"),
+				).
+				Value(&statuslineTheme),
+		).Title(t.StatuslineThemeTitle),
+
+		// Section 5c: Segment Preset — hidden when mode is minimal (segments not applicable)
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.StatuslineTitle).
@@ -189,18 +219,10 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.StatuslineCustom, "custom"),
 				).
 				Value(&statuslinePreset),
-			huh.NewSelect[string]().
-				Title(t.StatuslineThemeTitle).
-				Description(t.StatuslineThemeDesc).
-				Options(
-					huh.NewOption(t.ThemeDefault, "default"),
-					huh.NewOption(t.ThemeCatppuccinMocha, "catppuccin-mocha"),
-					huh.NewOption(t.ThemeCatppuccinLatte, "catppuccin-latte"),
-				).
-				Value(&statuslineTheme),
-		).Title(t.DisplayTitle),
+		).Title(t.StatuslineTitle).
+			WithHideFunc(func() bool { return statuslineMode == "minimal" }),
 
-		// Section 5b: Custom segments (shown only when preset is "custom")
+		// Section 5d: Custom Segments — shown only when preset is "custom" and mode is not minimal
 		huh.NewGroup(
 			huh.NewConfirm().Title(t.SegModel).Value(&segModel),
 			huh.NewConfirm().Title(t.SegContext).Value(&segContext),
@@ -211,7 +233,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			huh.NewConfirm().Title(t.SegMoaiVersion).Value(&segMoaiVersion),
 			huh.NewConfirm().Title(t.SegGitBranch).Value(&segGitBranch),
 		).Title(t.SegmentsTitle).
-			WithHideFunc(func() bool { return statuslinePreset != "custom" }),
+			WithHideFunc(func() bool { return statuslinePreset != "custom" || statuslineMode == "minimal" }),
 
 	)
 
@@ -233,6 +255,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		ModelPolicy:      modelPolicy,
 		Model:            model,
 		Bypass:           bypass,
+		StatuslineMode:   statuslineMode,
 		StatuslinePreset: statuslinePreset,
 		StatuslineTheme:  statuslineTheme,
 		TeammateDisplay:  "auto",

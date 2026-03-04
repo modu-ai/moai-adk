@@ -30,6 +30,32 @@ func TestGetProfileText_ThemeFields(t *testing.T) {
 	}
 }
 
+// TestGetProfileText_ModeFields verifies that all supported languages
+// include translations for the new statusline mode selector fields.
+func TestGetProfileText_ModeFields(t *testing.T) {
+	langs := []string{"en", "ko", "ja", "zh"}
+	for _, lang := range langs {
+		t.Run(lang, func(t *testing.T) {
+			text := getProfileText(lang)
+			if text.StatuslineModeTitle == "" {
+				t.Errorf("lang %q: StatuslineModeTitle is empty", lang)
+			}
+			if text.StatuslineModeDesc == "" {
+				t.Errorf("lang %q: StatuslineModeDesc is empty", lang)
+			}
+			if text.ModeCompact == "" {
+				t.Errorf("lang %q: ModeCompact is empty", lang)
+			}
+			if text.ModeVerbose == "" {
+				t.Errorf("lang %q: ModeVerbose is empty", lang)
+			}
+			if text.ModeMinimal == "" {
+				t.Errorf("lang %q: ModeMinimal is empty", lang)
+			}
+		})
+	}
+}
+
 // TestGetSegmentDefault verifies the helper handles nil and missing keys correctly.
 func TestGetSegmentDefault(t *testing.T) {
 	tests := []struct {

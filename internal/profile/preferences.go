@@ -29,8 +29,9 @@ type ProfilePreferences struct {
 	Bypass bool `yaml:"bypass,omitempty"` // --dangerously-skip-permissions
 
 	// Display settings
+	StatuslineMode     string          `yaml:"statusline_mode,omitempty"`     // "minimal", "default", "verbose"
 	StatuslinePreset   string          `yaml:"statusline_preset,omitempty"`   // "full", "compact", "minimal", "custom"
-	StatuslineSegments map[string]bool `yaml:"statusline_segments,omitempty"` // segment toggles
+	StatuslineSegments map[string]bool `yaml:"statusline_segments,omitempty"` // segment toggles for custom preset
 	StatuslineTheme    string          `yaml:"statusline_theme,omitempty"`    // "default", "catppuccin-mocha", "catppuccin-latte"
 	TeammateDisplay    string          `yaml:"teammate_display,omitempty"`    // "auto", "in-process", "tmux"
 }

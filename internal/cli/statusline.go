@@ -26,22 +26,30 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	ctx := context.Background()
 
-	// Determine display mode from environment or use default
-	mode := statusline.StatuslineMode(os.Getenv("MOAI_STATUSLINE_MODE"))
-	if mode == "" {
-		mode = statusline.ModeDefault
-	}
-
 	// Get project root for git and version detection (error ignored: empty root is valid)
 	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback
 
 	// Load full statusline config from statusline.yaml
 	statuslineCfg := loadStatuslineFileConfig(projectRoot)
 
+	// Determine display mode: env var > config > default
+	mode := statusline.StatuslineMode(os.Getenv("MOAI_STATUSLINE_MODE"))
+	if mode == "" && statuslineCfg != nil && statuslineCfg.Mode != "" {
+		mode = statusline.StatuslineMode(statuslineCfg.Mode)
+	}
+	if mode == "" {
+		mode = statusline.ModeDefault
+	}
+
 	var segmentConfig map[string]bool
 	var themeName string
 	if statuslineCfg != nil {
-		segmentConfig = statuslineCfg.Segments
+		// Custom preset stores explicit segment map; named presets derive their segment config.
+		if statuslineCfg.Segments != nil {
+			segmentConfig = statuslineCfg.Segments
+		} else if statuslineCfg.Preset != "" && statuslineCfg.Preset != "full" {
+			segmentConfig = presetToSegments(statuslineCfg.Preset, nil)
+		}
 		themeName = statuslineCfg.Theme
 	}
 
@@ -97,6 +105,7 @@ func renderSimpleFallback() string {
 
 // statuslineFileConfig holds all statusline configuration read from YAML.
 type statuslineFileConfig struct {
+	Mode     string
 	Preset   string
 	Theme    string
 	Segments map[string]bool
@@ -119,6 +128,7 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 
 	var raw struct {
 		Statusline struct {
+			Mode     string          `yaml:"mode"`
 			Preset   string          `yaml:"preset"`
 			Theme    string          `yaml:"theme"`
 			Segments map[string]bool `yaml:"segments"`
@@ -130,6 +140,7 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 	}
 
 	return &statuslineFileConfig{
+		Mode:     raw.Statusline.Mode,
 		Preset:   raw.Statusline.Preset,
 		Theme:    raw.Statusline.Theme,
 		Segments: raw.Statusline.Segments,
@@ -145,5 +156,12 @@ func loadSegmentConfig(projectRoot string) map[string]bool {
 	if cfg == nil {
 		return nil
 	}
-	return cfg.Segments
+	if cfg.Segments != nil {
+		return cfg.Segments
+	}
+	// "full" and empty presets mean all segments enabled (nil = backward compatible)
+	if cfg.Preset == "" || cfg.Preset == "full" {
+		return nil
+	}
+	return presetToSegments(cfg.Preset, nil)
 }

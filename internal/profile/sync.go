@@ -67,7 +67,7 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 	}
 
 	// Sync statusline section (written directly to avoid config manager dependency)
-	if prefs.StatuslinePreset != "" || prefs.StatuslineTheme != "" || prefs.StatuslineSegments != nil {
+	if prefs.StatuslinePreset != "" || prefs.StatuslineTheme != "" || prefs.StatuslineSegments != nil || prefs.StatuslineMode != "" {
 		if err := syncStatusline(projectRoot, prefs); err != nil {
 			return fmt.Errorf("sync statusline: %w", err)
 		}
@@ -78,6 +78,7 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 
 // statuslineData is the internal YAML structure for statusline.yaml.
 type statuslineData struct {
+	Mode     string          `yaml:"mode,omitempty"`
 	Preset   string          `yaml:"preset,omitempty"`
 	Segments map[string]bool `yaml:"segments,omitempty"`
 	Theme    string          `yaml:"theme,omitempty"`
@@ -116,6 +117,9 @@ func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 	}
 
 	// Merge preferences (non-empty values override existing config)
+	if prefs.StatuslineMode != "" {
+		current.Statusline.Mode = prefs.StatuslineMode
+	}
 	if prefs.StatuslinePreset != "" {
 		current.Statusline.Preset = prefs.StatuslinePreset
 	}
