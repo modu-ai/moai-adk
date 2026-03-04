@@ -188,11 +188,6 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("save LLM config: %w", err)
 	}
 
-	// Save statusline section
-	if err := saveSection(sectionsDir, "statusline.yaml", statuslineFileWrapper{Statusline: m.config.Statusline}); err != nil {
-		return fmt.Errorf("save statusline config: %w", err)
-	}
-
 	return nil
 }
 
