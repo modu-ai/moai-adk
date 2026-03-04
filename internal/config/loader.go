@@ -59,6 +59,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load state section
 	l.loadStateSection(sectionsDir, cfg)
 
+	// Load statusline section
+	l.loadStatuslineSection(sectionsDir, cfg)
+
 	return cfg, nil
 }
 
@@ -156,6 +159,20 @@ func (l *Loader) loadStateSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.State = wrapper.State
 		l.loadedSections["state"] = true
+	}
+}
+
+// loadStatuslineSection loads the statusline configuration section from statusline.yaml.
+func (l *Loader) loadStatuslineSection(dir string, cfg *Config) {
+	wrapper := &statuslineFileWrapper{Statusline: cfg.Statusline}
+	loaded, err := loadYAMLFile(dir, "statusline.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load statusline config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Statusline = wrapper.Statusline
+		l.loadedSections["statusline"] = true
 	}
 }
 
