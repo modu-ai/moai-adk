@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"text/template"
@@ -617,6 +618,80 @@ func TestMCPTemplateSchema(t *testing.T) {
 
 // --- BuildSmartPATH and PathContainsDir tests ---
 
+// TestBuildSmartPATH_DarwinIncludesHomebrew reproduces issue #467:
+// BuildSmartPATH must include /opt/homebrew/bin on macOS so that
+// Homebrew-installed MCP servers (npx, uvx, etc.) are discoverable.
+// Without this fix, macOS users running moai update from a minimal shell
+// (e.g., IDE-launched terminal) will have broken MCP server connections.
+func TestBuildSmartPATH_DarwinIncludesHomebrew(t *testing.T) {
+	// Simulate a minimal macOS PATH that does NOT include /opt/homebrew/bin.
+	// This mirrors the environment of an IDE-launched terminal or CI runner
+	// where Homebrew is not initialised in the shell profile.
+	minimalMacOSPath := "/usr/bin:/bin:/usr/sbin:/sbin"
+
+	origPATH := os.Getenv("PATH")
+	defer func() { _ = os.Setenv("PATH", origPATH) }()
+	_ = os.Setenv("PATH", minimalMacOSPath)
+
+	result := BuildSmartPATHForPlatform("darwin")
+
+	const homebrewBin = "/opt/homebrew/bin"
+	if !PathContainsDir(result, homebrewBin, ":") {
+		t.Errorf("BuildSmartPATH on darwin must include %s for Homebrew MCP servers\ngot: %q", homebrewBin, result)
+	}
+}
+
+// TestBuildSmartPATH_DarwinDoesNotForceLinuxLocalBin verifies that macOS builds
+// do NOT add the Linux-specific ~/.local/bin path (issue #467).
+func TestBuildSmartPATH_DarwinDoesNotForceLinuxLocalBin(t *testing.T) {
+	homeDir, _ := os.UserHomeDir()
+	if homeDir == "" {
+		homeDir = os.Getenv("HOME")
+	}
+	if homeDir == "" {
+		t.Skip("cannot determine home directory")
+	}
+
+	origPATH := os.Getenv("PATH")
+	defer func() { _ = os.Setenv("PATH", origPATH) }()
+	_ = os.Setenv("PATH", "/usr/bin:/bin")
+
+	result := BuildSmartPATHForPlatform("darwin")
+
+	localBin := filepath.Join(homeDir, ".local", "bin")
+	if PathContainsDir(result, localBin, ":") {
+		t.Errorf("BuildSmartPATH on darwin must NOT force-add Linux-specific %s\ngot: %q", localBin, result)
+	}
+}
+
+// TestBuildSmartPATH_LinuxEssentialDirs_PlatformAware verifies that on Linux
+// the essential dirs still include ~/.local/bin (existing behaviour preserved).
+func TestBuildSmartPATH_LinuxEssentialDirs_PlatformAware(t *testing.T) {
+	homeDir := t.TempDir()
+
+	origHome := os.Getenv("HOME")
+	origPATH := os.Getenv("PATH")
+	defer func() {
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("PATH", origPATH)
+	}()
+	_ = os.Setenv("HOME", homeDir)
+	_ = os.Setenv("PATH", "/usr/local/bin:/usr/bin:/bin")
+
+	result := BuildSmartPATHForPlatform("linux")
+
+	sep := string(os.PathListSeparator)
+	localBin := filepath.Join(homeDir, ".local", "bin")
+	goBin := filepath.Join(homeDir, "go", "bin")
+
+	if !PathContainsDir(result, localBin, sep) {
+		t.Errorf("BuildSmartPATH on linux must include %s\ngot: %q", localBin, result)
+	}
+	if !PathContainsDir(result, goBin, sep) {
+		t.Errorf("BuildSmartPATH on linux must include %s\ngot: %q", goBin, result)
+	}
+}
+
 func TestBuildSmartPATH_NonEmpty(t *testing.T) {
 	path := BuildSmartPATH()
 	if path == "" {
@@ -635,15 +710,23 @@ func TestBuildSmartPATH_EssentialDirs(t *testing.T) {
 		t.Skip("cannot determine home directory")
 	}
 
-	// Use filepath.Join for cross-platform path construction
-	localBin := filepath.Join(homeDir, ".local", "bin")
 	goBin := filepath.Join(homeDir, "go", "bin")
-
-	if !PathContainsDir(path, localBin, sep) {
-		t.Errorf("PATH should contain %s", localBin)
-	}
 	if !PathContainsDir(path, goBin, sep) {
 		t.Errorf("PATH should contain %s", goBin)
+	}
+
+	// Platform-specific essential dirs differ: Linux uses ~/.local/bin,
+	// macOS uses /opt/homebrew/bin (issue #467).
+	switch runtime.GOOS {
+	case "darwin":
+		if !PathContainsDir(path, "/opt/homebrew/bin", sep) {
+			t.Errorf("PATH on darwin should contain /opt/homebrew/bin")
+		}
+	default:
+		localBin := filepath.Join(homeDir, ".local", "bin")
+		if !PathContainsDir(path, localBin, sep) {
+			t.Errorf("PATH on linux should contain %s", localBin)
+		}
 	}
 }
 

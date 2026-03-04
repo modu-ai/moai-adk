@@ -265,7 +265,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithPlatform(opts.Platform),
 		template.WithGoBinPath(goBinPath),
 		template.WithHomeDir(homeDir),
-		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithSmartPATH(template.BuildSmartPATHForPlatform(opts.Platform)),
 		template.WithVersion(version.GetVersion()),
 	)
 

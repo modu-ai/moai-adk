@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -1749,6 +1750,10 @@ func TestBuildSmartPATH(t *testing.T) {
 	localBin := filepath.Join(homeDir, ".local", "bin")
 	goBin := filepath.Join(homeDir, "go", "bin")
 
+	// On macOS (darwin), ~/.local/bin is NOT an essential dir (issue #467).
+	// Only Linux adds ~/.local/bin; macOS adds /opt/homebrew/bin instead.
+	wantLocalBinOnPlatform := runtime.GOOS != "darwin"
+
 	tests := []struct {
 		name          string
 		envPATH       string
@@ -1759,27 +1764,27 @@ func TestBuildSmartPATH(t *testing.T) {
 		{
 			name:         "essential dirs missing from PATH - should be prepended",
 			envPATH:      strings.Join([]string{"/usr/local/bin", "/usr/bin", "/bin"}, sep),
-			wantLocalBin: true,
+			wantLocalBin: wantLocalBinOnPlatform,
 			wantGoBin:    true,
 		},
 		{
 			name:          "essential dirs already in PATH - PATH unchanged",
 			envPATH:       strings.Join([]string{localBin, goBin, "/usr/bin"}, sep),
-			wantLocalBin:  true,
+			wantLocalBin:  wantLocalBinOnPlatform,
 			wantGoBin:     true,
-			wantUnchanged: true,
+			wantUnchanged: wantLocalBinOnPlatform, // only unchanged on linux where localBin is essential
 		},
 		{
 			name:          "trailing slash on existing dir - should match and not duplicate",
 			envPATH:       strings.Join([]string{localBin + "/", goBin + "/", "/usr/bin"}, sep),
-			wantLocalBin:  true,
+			wantLocalBin:  wantLocalBinOnPlatform,
 			wantGoBin:     true,
-			wantUnchanged: true,
+			wantUnchanged: wantLocalBinOnPlatform,
 		},
 		{
 			name:         "empty current PATH - essential dirs only",
 			envPATH:      "",
-			wantLocalBin: true,
+			wantLocalBin: wantLocalBinOnPlatform,
 			wantGoBin:    true,
 		},
 	}

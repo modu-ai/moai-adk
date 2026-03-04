@@ -495,7 +495,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
 					template.WithHomeDir(homeDir),
-					template.WithSmartPATH(template.BuildSmartPATH()),
+					template.WithSmartPATH(template.BuildSmartPATHForPlatform(runtime.GOOS)),
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
 				)
