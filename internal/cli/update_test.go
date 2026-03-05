@@ -1740,6 +1740,8 @@ func TestCleanLegacyHooks_RemovesMoaiHandleHooks(t *testing.T) {
 	}
 }
 
+// TestBuildSmartPATH verifies that BuildSmartPATH produces a stable, platform-appropriate
+// PATH that does NOT depend on the terminal's PATH environment variable (issue #467).
 func TestBuildSmartPATH(t *testing.T) {
 	sep := string(os.PathListSeparator)
 
@@ -1749,83 +1751,53 @@ func TestBuildSmartPATH(t *testing.T) {
 	localBin := filepath.Join(homeDir, ".local", "bin")
 	goBin := filepath.Join(homeDir, "go", "bin")
 
-	tests := []struct {
-		name          string
-		envPATH       string
-		wantLocalBin  bool
-		wantGoBin     bool
-		wantUnchanged bool // true if PATH should remain unchanged (essential dirs already present)
-	}{
-		{
-			name:         "essential dirs missing from PATH - should be prepended",
-			envPATH:      strings.Join([]string{"/usr/local/bin", "/usr/bin", "/bin"}, sep),
-			wantLocalBin: true,
-			wantGoBin:    true,
-		},
-		{
-			name:          "essential dirs already in PATH - PATH unchanged",
-			envPATH:       strings.Join([]string{localBin, goBin, "/usr/bin"}, sep),
-			wantLocalBin:  true,
-			wantGoBin:     true,
-			wantUnchanged: true,
-		},
-		{
-			name:          "trailing slash on existing dir - should match and not duplicate",
-			envPATH:       strings.Join([]string{localBin + "/", goBin + "/", "/usr/bin"}, sep),
-			wantLocalBin:  true,
-			wantGoBin:     true,
-			wantUnchanged: true,
-		},
-		{
-			name:         "empty current PATH - essential dirs only",
-			envPATH:      "",
-			wantLocalBin: true,
-			wantGoBin:    true,
-		},
+	// BuildSmartPATH must NOT depend on the terminal PATH (regression for issue #467).
+	// Verify that changing PATH env has no effect on the output.
+	terminalPATHs := []string{
+		strings.Join([]string{"/usr/local/bin", "/usr/bin", "/bin"}, sep),
+		strings.Join([]string{localBin, goBin, "/usr/bin"}, sep),
+		"/tmp/fake-linux-path:/some/other/fake",
+		"",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Save and restore PATH
-			originalPATH := os.Getenv("PATH")
-			defer func() {
-				_ = os.Setenv("PATH", originalPATH)
-			}()
-			_ = os.Setenv("PATH", tt.envPATH)
+	var firstResult string
+	for i, terminalPATH := range terminalPATHs {
+		t.Setenv("PATH", terminalPATH)
+		result := buildSmartPATH(homeDir)
 
-			result := buildSmartPATH(homeDir)
+		if i == 0 {
+			firstResult = result
+		} else if result != firstResult {
+			t.Errorf("BuildSmartPATH result changed with terminal PATH (issue #467):\nPATH=%q\ngot:  %q\nwant: %q", terminalPATH, result, firstResult)
+		}
 
-			if tt.wantLocalBin && !strings.Contains(result, localBin) {
-				t.Errorf("result should contain %q, got %q", localBin, result)
-			}
-			if tt.wantGoBin && !strings.Contains(result, goBin) {
-				t.Errorf("result should contain %q, got %q", goBin, result)
-			}
+		// Essential user dirs must always be present
+		if !strings.Contains(result, localBin) {
+			t.Errorf("result should always contain localBin %q, got %q", localBin, result)
+		}
+		if !strings.Contains(result, goBin) {
+			t.Errorf("result should always contain goBin %q, got %q", goBin, result)
+		}
 
-			if tt.wantUnchanged && result != tt.envPATH {
-				t.Errorf("PATH should remain unchanged when essential dirs already present\ngot:  %q\nwant: %q", result, tt.envPATH)
+		// Verify no duplicate entries of essential dirs
+		entries := strings.Split(result, sep)
+		localBinCount := 0
+		goBinCount := 0
+		for _, entry := range entries {
+			normalized := strings.TrimRight(entry, "/\\")
+			if normalized == localBin {
+				localBinCount++
 			}
-
-			// Verify no duplicate entries of essential dirs
-			entries := strings.Split(result, sep)
-			localBinCount := 0
-			goBinCount := 0
-			for _, entry := range entries {
-				normalized := strings.TrimRight(entry, "/\\")
-				if normalized == localBin {
-					localBinCount++
-				}
-				if normalized == goBin {
-					goBinCount++
-				}
+			if normalized == goBin {
+				goBinCount++
 			}
-			if localBinCount > 1 {
-				t.Errorf("localBin should appear at most once, found %d times in %q", localBinCount, result)
-			}
-			if goBinCount > 1 {
-				t.Errorf("goBin should appear at most once, found %d times in %q", goBinCount, result)
-			}
-		})
+		}
+		if localBinCount > 1 {
+			t.Errorf("localBin should appear at most once, found %d times in %q", localBinCount, result)
+		}
+		if goBinCount > 1 {
+			t.Errorf("goBin should appear at most once, found %d times in %q", goBinCount, result)
+		}
 	}
 }
 
