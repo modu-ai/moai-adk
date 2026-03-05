@@ -155,5 +155,8 @@ func defaultStatuslineSegments() map[string]bool {
 		"claude_version": true,
 		"moai_version":   true,
 		"git_branch":     true,
+		"session_time":   true,
+		"usage_5h":       true,
+		"usage_7d":       true,
 	}
 }

@@ -93,6 +93,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	segClaudeVersion := getSegmentDefault(existingPrefs.StatuslineSegments, "claude_version", true)
 	segMoaiVersion := getSegmentDefault(existingPrefs.StatuslineSegments, "moai_version", true)
 	segGitBranch := getSegmentDefault(existingPrefs.StatuslineSegments, "git_branch", true)
+	segSessionTime := getSegmentDefault(existingPrefs.StatuslineSegments, "session_time", true)
+	segUsage5H := getSegmentDefault(existingPrefs.StatuslineSegments, "usage_5h", true)
+	segUsage7D := getSegmentDefault(existingPrefs.StatuslineSegments, "usage_7d", true)
 
 	// ====== Step 1: Language Selection ======
 	langOptions := []huh.Option[string]{
@@ -223,6 +226,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			huh.NewConfirm().Title(t.SegClaudeVersion).Value(&segClaudeVersion),
 			huh.NewConfirm().Title(t.SegMoaiVersion).Value(&segMoaiVersion),
 			huh.NewConfirm().Title(t.SegGitBranch).Value(&segGitBranch),
+			huh.NewConfirm().Title(t.SegSessionTime).Value(&segSessionTime),
+			huh.NewConfirm().Title(t.SegUsage5H).Value(&segUsage5H),
+			huh.NewConfirm().Title(t.SegUsage7D).Value(&segUsage7D),
 		).Title(t.SegmentsTitle).
 			WithHideFunc(func() bool { return statuslinePreset != "custom" }),
 
@@ -263,6 +269,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			"claude_version": segClaudeVersion,
 			"moai_version":   segMoaiVersion,
 			"git_branch":     segGitBranch,
+			"session_time":   segSessionTime,
+			"usage_5h":       segUsage5H,
+			"usage_7d":       segUsage7D,
 		}
 	}
 
