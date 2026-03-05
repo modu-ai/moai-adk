@@ -617,6 +617,22 @@ func TestMCPTemplateSchema(t *testing.T) {
 
 // --- BuildSmartPATH and PathContainsDir tests ---
 
+// TestBuildSmartPATH_StableAcrossTerminalPATH is a regression test for issue #467:
+// "moai update hardcodes Linux PATH into settings.json, breaking MCP servers on macOS".
+// BuildSmartPATH must NOT capture the terminal PATH; it must produce a stable,
+// platform-appropriate result regardless of what is currently in the PATH env var.
+func TestBuildSmartPATH_StableAcrossTerminalPATH(t *testing.T) {
+	path1 := BuildSmartPATH()
+
+	// Simulate running from a different environment (e.g., CI on Linux with minimal PATH)
+	t.Setenv("PATH", "/tmp/fake-linux-path:/some/other/fake:/usr/bin:/bin")
+	path2 := BuildSmartPATH()
+
+	if path1 != path2 {
+		t.Errorf("BuildSmartPATH must not capture terminal PATH (issue #467):\ngot1: %s\ngot2: %s", path1, path2)
+	}
+}
+
 func TestBuildSmartPATH_NonEmpty(t *testing.T) {
 	path := BuildSmartPATH()
 	if path == "" {
