@@ -108,6 +108,38 @@ func TestShortenModelName(t *testing.T) {
 	}
 }
 
+func TestCollectMetrics_SessionDuration(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  *StdinData
+		wantMS int
+	}{
+		{
+			name:   "extracts duration",
+			input:  &StdinData{Cost: &CostData{TotalDurationMS: 4980000}, Model: &ModelInfo{DisplayName: "Opus"}},
+			wantMS: 4980000,
+		},
+		{
+			name:   "zero duration",
+			input:  &StdinData{Cost: &CostData{TotalDurationMS: 0}, Model: &ModelInfo{DisplayName: "Opus"}},
+			wantMS: 0,
+		},
+		{
+			name:   "nil cost",
+			input:  &StdinData{Model: &ModelInfo{DisplayName: "Opus"}},
+			wantMS: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := CollectMetrics(tt.input)
+			if m.SessionDurationMS != tt.wantMS {
+				t.Errorf("SessionDurationMS = %d, want %d", m.SessionDurationMS, tt.wantMS)
+			}
+		})
+	}
+}
+
 func TestFormatCost(t *testing.T) {
 	tests := []struct {
 		input float64

@@ -43,12 +43,31 @@ type profileSetupText struct {
 
 	// Section: Display
 	DisplayTitle      string
+	// Statusline mode selector (layout style)
+	StatuslineModeTitle string
+	StatuslineModeDesc  string
+	// v3 모드 레이블 (REQ-V3-MODE-003)
+	ModeDefault string // label for mode = "default"
+	ModeCompact string // label for mode = "compact"
+	ModeFull    string // label for mode = "full"
+	// Deprecated: v2 레이블. 하위 호환성을 위해 유지.
+	ModeVerbose string // label for mode = "verbose" (deprecated)
+	ModeMinimal string // label for mode = "minimal" (deprecated)
+
+	// Statusline preset selector (segment visibility, shown when mode != minimal)
 	StatuslineTitle   string
 	StatuslineDesc    string
 	StatuslineFull    string
 	StatuslineCompact string
 	StatuslineMinimal string
 	StatuslineCustom  string
+
+	// Statusline theme selector
+	StatuslineThemeTitle string
+	StatuslineThemeDesc  string
+	ThemeDefault         string
+	ThemeCatppuccinMocha string
+	ThemeCatppuccinLatte string
 
 	// Section: Statusline Segments
 	SegmentsTitle    string
@@ -60,6 +79,9 @@ type profileSetupText struct {
 	SegClaudeVersion string
 	SegMoaiVersion   string
 	SegGitBranch     string
+	SegSessionTime   string
+	SegUsage5H       string
+	SegUsage7D       string
 
 	// Messages
 	SetupCancelled string
@@ -98,14 +120,26 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus planning, Sonnet coding)",
 		BypassTitle:        "Skip permission checks?",
 		BypassDesc:         "Adds --dangerously-skip-permissions. Only use in trusted environments.",
-		DisplayTitle:       "Display",
-		StatuslineTitle:    "Statusline display preset",
+		DisplayTitle:        "Display",
+		StatuslineModeTitle: "Statusline display mode",
+		StatuslineModeDesc:  "Controls the layout style of the statusline.",
+		ModeDefault:         "Default - 3-line: info, CW/5H/7D bars, dir+git",
+		ModeCompact:         "Compact - 2-line: model+CW bar, git status",
+		ModeFull:            "Full - 5-line: info, CW/5H/7D bars (40-block), dir+git",
+		ModeVerbose:         "Verbose - 3-line detailed view with cost tracking",
+		ModeMinimal:         "Minimal - Model and context only",
+		StatuslineTitle:    "Statusline segment preset",
 		StatuslineDesc:     "Controls which segments are shown in the Claude Code statusline.",
 		StatuslineFull:     "Full - All 8 segments",
 		StatuslineCompact:  "Compact - Model, context, git",
 		StatuslineMinimal:  "Minimal - Model and context only",
-		StatuslineCustom:   "Custom - Choose individual segments",
-		SegmentsTitle:      "Statusline Segments",
+		StatuslineCustom:      "Custom - Choose individual segments",
+		StatuslineThemeTitle:  "Statusline Theme",
+		StatuslineThemeDesc:   "Select a color theme for the statusline.",
+		ThemeDefault:          "Default",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (dark)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (light)",
+		SegmentsTitle:         "Statusline Segments",
 		SegModel:           "Show model name",
 		SegContext:         "Show context usage",
 		SegOutputStyle:     "Show output style",
@@ -114,6 +148,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		SegClaudeVersion:   "Show Claude version",
 		SegMoaiVersion:     "Show MoAI version",
 		SegGitBranch:       "Show git branch",
+		SegSessionTime:    "Show session time",
+		SegUsage5H:        "Show 5H API usage bar",
+		SegUsage7D:        "Show 7D API usage bar",
 		SetupCancelled:     "Setup cancelled.",
 		SavedProfile:       "\nSaved profile '%s':\n  Preferences → %s\n",
 	},
@@ -147,14 +184,26 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus 기획, Sonnet 코딩)",
 		BypassTitle:        "권한 검사 건너뛰기?",
 		BypassDesc:         "--dangerously-skip-permissions를 추가합니다. 신뢰할 수 있는 환경에서만 사용하세요.",
-		DisplayTitle:       "화면 표시",
-		StatuslineTitle:    "상태줄 표시 프리셋",
+		DisplayTitle:        "화면 표시",
+		StatuslineModeTitle: "상태줄 표시 모드",
+		StatuslineModeDesc:  "상태줄의 레이아웃 스타일을 제어합니다.",
+		ModeDefault:         "Default - 3줄: 정보, CW/5H/7D 바, 디렉토리+git",
+		ModeCompact:         "Compact - 2줄: 모델+CW 바, git 상태",
+		ModeFull:            "Full - 5줄: 정보, CW/5H/7D 바(40블록), 디렉토리+git",
+		ModeVerbose:         "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
+		ModeMinimal:         "Minimal - 모델과 컨텍스트만 표시",
+		StatuslineTitle:    "상태줄 세그먼트 프리셋",
 		StatuslineDesc:     "Claude Code 상태줄에 표시할 세그먼트를 제어합니다.",
 		StatuslineFull:     "Full - 전체 8개 세그먼트",
 		StatuslineCompact:  "Compact - 모델, 컨텍스트, git",
 		StatuslineMinimal:  "Minimal - 모델과 컨텍스트만",
-		StatuslineCustom:   "Custom - 개별 세그먼트 선택",
-		SegmentsTitle:      "상태줄 세그먼트",
+		StatuslineCustom:      "Custom - 개별 세그먼트 선택",
+		StatuslineThemeTitle:  "Statusline 테마",
+		StatuslineThemeDesc:   "상태줄 색상 테마를 선택하세요.",
+		ThemeDefault:          "기본값",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (어두운 테마)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (밝은 테마)",
+		SegmentsTitle:         "상태줄 세그먼트",
 		SegModel:           "모델 이름 표시",
 		SegContext:         "컨텍스트 사용량 표시",
 		SegOutputStyle:     "출력 스타일 표시",
@@ -163,6 +212,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		SegClaudeVersion:   "Claude 버전 표시",
 		SegMoaiVersion:     "MoAI 버전 표시",
 		SegGitBranch:       "git 브랜치 표시",
+		SegSessionTime:    "세션 시간 표시",
+		SegUsage5H:        "5H API 사용량 바 표시",
+		SegUsage7D:        "7D API 사용량 바 표시",
 		SetupCancelled:     "설정이 취소되었습니다.",
 		SavedProfile:       "\n프로필 '%s' 저장 완료:\n  환경설정 → %s\n",
 	},
@@ -196,14 +248,26 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus設計、Sonnetコーディング)",
 		BypassTitle:        "権限チェックをスキップしますか？",
 		BypassDesc:         "--dangerously-skip-permissionsを追加します。信頼できる環境でのみ使用してください。",
-		DisplayTitle:       "表示設定",
-		StatuslineTitle:    "ステータスライン表示プリセット",
+		DisplayTitle:        "表示設定",
+		StatuslineModeTitle: "ステータスライン表示モード",
+		StatuslineModeDesc:  "ステータスラインのレイアウトスタイルを制御します。",
+		ModeDefault:         "Default - 3行: 情報、CW/5H/7Dバー、ディレクトリ+git",
+		ModeCompact:         "Compact - 2行: モデル+CWバー、gitステータス",
+		ModeFull:            "Full - 5行: 情報、CW/5H/7Dバー(40ブロック)、ディレクトリ+git",
+		ModeVerbose:         "Verbose - コスト追跡付きの3行詳細表示",
+		ModeMinimal:         "Minimal - モデルとコンテキストのみ",
+		StatuslineTitle:    "ステータスラインセグメントプリセット",
 		StatuslineDesc:     "Claude Codeのステータスラインに表示するセグメントを制御します。",
 		StatuslineFull:     "Full - 全8セグメント",
 		StatuslineCompact:  "Compact - モデル、コンテキスト、git",
 		StatuslineMinimal:  "Minimal - モデルとコンテキストのみ",
-		StatuslineCustom:   "Custom - 個別セグメント選択",
-		SegmentsTitle:      "ステータスラインセグメント",
+		StatuslineCustom:      "Custom - 個別セグメント選択",
+		StatuslineThemeTitle:  "ステータスラインテーマ",
+		StatuslineThemeDesc:   "ステータスラインのカラーテーマを選択してください。",
+		ThemeDefault:          "デフォルト",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (ダーク)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (ライト)",
+		SegmentsTitle:         "ステータスラインセグメント",
 		SegModel:           "モデル名を表示",
 		SegContext:         "コンテキスト使用量を表示",
 		SegOutputStyle:     "出力スタイルを表示",
@@ -212,6 +276,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		SegClaudeVersion:   "Claudeバージョンを表示",
 		SegMoaiVersion:     "MoAIバージョンを表示",
 		SegGitBranch:       "gitブランチを表示",
+		SegSessionTime:    "セッション時間を表示",
+		SegUsage5H:        "5H API使用量バーを表示",
+		SegUsage7D:        "7D API使用量バーを表示",
 		SetupCancelled:     "セットアップがキャンセルされました。",
 		SavedProfile:       "\nプロファイル '%s' を保存しました:\n  環境設定 → %s\n",
 	},
@@ -245,14 +312,26 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:      "opusplan (Opus规划，Sonnet编码)",
 		BypassTitle:        "跳过权限检查？",
 		BypassDesc:         "添加 --dangerously-skip-permissions。仅在可信环境中使用。",
-		DisplayTitle:       "显示设置",
-		StatuslineTitle:    "状态栏显示预设",
+		DisplayTitle:        "显示设置",
+		StatuslineModeTitle: "状态栏显示模式",
+		StatuslineModeDesc:  "控制状态栏的布局样式。",
+		ModeDefault:         "Default - 3行: 信息、CW/5H/7D栏、目录+git",
+		ModeCompact:         "Compact - 2行: 模型+CW栏、git状态",
+		ModeFull:            "Full - 5行: 信息、CW/5H/7D栏(40块)、目录+git",
+		ModeVerbose:         "Verbose - 含费用追踪的3行详细视图",
+		ModeMinimal:         "Minimal - 仅显示模型和上下文",
+		StatuslineTitle:    "状态栏段预设",
 		StatuslineDesc:     "控制Claude Code状态栏中显示的段。",
 		StatuslineFull:     "Full - 全部8个段",
 		StatuslineCompact:  "Compact - 模型、上下文、git",
 		StatuslineMinimal:  "Minimal - 仅模型和上下文",
-		StatuslineCustom:   "Custom - 选择单个段",
-		SegmentsTitle:      "状态栏段",
+		StatuslineCustom:      "Custom - 选择单个段",
+		StatuslineThemeTitle:  "状态栏主题",
+		StatuslineThemeDesc:   "选择状态栏的颜色主题。",
+		ThemeDefault:          "默认",
+		ThemeCatppuccinMocha:  "Catppuccin Mocha (深色)",
+		ThemeCatppuccinLatte:  "Catppuccin Latte (浅色)",
+		SegmentsTitle:         "状态栏段",
 		SegModel:           "显示模型名称",
 		SegContext:         "显示上下文使用量",
 		SegOutputStyle:     "显示输出样式",
@@ -261,6 +340,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		SegClaudeVersion:   "显示Claude版本",
 		SegMoaiVersion:     "显示MoAI版本",
 		SegGitBranch:       "显示git分支",
+		SegSessionTime:    "显示会话时间",
+		SegUsage5H:        "显示5H API使用量栏",
+		SegUsage7D:        "显示7D API使用量栏",
 		SetupCancelled:     "设置已取消。",
 		SavedProfile:       "\n配置文件 '%s' 已保存:\n  偏好设置 → %s\n",
 	},

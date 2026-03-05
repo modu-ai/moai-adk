@@ -13,15 +13,42 @@ import (
 type StatuslineMode string
 
 const (
-	// ModeMinimal shows only model name and context percentage.
-	ModeMinimal StatuslineMode = "minimal"
+	// ModeCompact displays all info in a compact 2-line layout (v3 name).
+	ModeCompact StatuslineMode = "compact"
 
-	// ModeDefault shows git status, context percentage, and cost.
+	// ModeDefault displays git status, context ratio in a 3-line layout.
 	ModeDefault StatuslineMode = "default"
 
-	// ModeVerbose shows all collected data with full detail.
+	// ModeFull displays all collected data in detailed 5-line layout (v3 name).
+	ModeFull StatuslineMode = "full"
+
+	// ModeMinimal is a deprecated alias for backward compatibility.
+	// Use ModeCompact in new code.
+	//
+	// Deprecated: Use ModeCompact.
+	ModeMinimal StatuslineMode = "minimal"
+
+	// ModeVerbose is a deprecated alias for backward compatibility.
+	// Use ModeFull in new code.
+	//
+	// Deprecated: Use ModeFull.
 	ModeVerbose StatuslineMode = "verbose"
 )
+
+// NormalizeMode converts deprecated mode names to current names for backward compatibility.
+// REQ-V3-MODE-001: "minimal" → "compact"
+// REQ-V3-MODE-002: "verbose" → "full"
+// Other values are returned unchanged.
+func NormalizeMode(mode StatuslineMode) StatuslineMode {
+	switch mode {
+	case "minimal":
+		return ModeCompact
+	case "verbose":
+		return ModeFull
+	default:
+		return mode
+	}
+}
 
 // StdinData represents the JSON input from Claude Code's statusline hook.
 // Matches the official JSON structure from https://code.claude.com/docs/en/statusline
@@ -104,6 +131,8 @@ type StatusData struct {
 	ClaudeCodeVersion string      // Claude Code version from JSON input (e.g., "1.0.80")
 	Directory         string      // Project directory name (e.g., "modu-saju")
 	OutputStyle       string      // Output style name (e.g., "Mr.Alfred", "R2-D2")
+	Task              TaskData    // Current active task (rendering enabled in Phase 4)
+	Usage             *UsageResult // API usage (nil when unavailable)
 }
 
 // GitStatusData holds git repository status information.
@@ -126,9 +155,10 @@ type MemoryData struct {
 
 // MetricsData holds session cost and model information.
 type MetricsData struct {
-	Model     string
-	CostUSD   float64
-	Available bool
+	Model             string
+	CostUSD           float64
+	SessionDurationMS int  // Total session duration in milliseconds (REQ-V3-TIME-001)
+	Available         bool
 }
 
 // VersionData holds version and update information.
@@ -149,7 +179,27 @@ const (
 	SegmentClaudeVersion = "claude_version"
 	SegmentMoaiVersion   = "moai_version"
 	SegmentGitBranch     = "git_branch"
+
+	// v3 new segment constants (REQ-V3-TIME-003, enabled in Phase 4)
+	SegmentSessionTime = "session_time" // Session duration
+	SegmentUsage5H     = "usage_5h"     // 5-hour API usage
+	SegmentUsage7D     = "usage_7d"     // 7-day API usage
+	SegmentTask        = "task"         // Current active task
 )
+
+// UsageData represents API usage information.
+type UsageData struct {
+	UsedTokens  int64   `json:"used_tokens"`
+	LimitTokens int64   `json:"limit_tokens"`
+	Percentage  float64 `json:"percentage"`            // 0-100
+	ResetsAt    string  `json:"resets_at,omitempty"`    // ISO 8601 reset timestamp
+}
+
+// UsageResult represents 5-hour/7-day usage results.
+type UsageResult struct {
+	Usage5H *UsageData // 5-hour usage
+	Usage7D *UsageData // 7-day usage
+}
 
 // contextLevel represents the severity level for context window usage coloring.
 type contextLevel int

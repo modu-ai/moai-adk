@@ -431,13 +431,13 @@ GLM_API_KEY="test-glm-api-key-for-team-mode"
 		t.Errorf("settings.env should preserve EXISTING_VAR")
 	}
 
-	// Check that CLAUDE_CODE_TEAMMATE_DISPLAY is set to "auto"
+	// Check that CLAUDE_CODE_TEAMMATE_DISPLAY is set to "tmux"
 	displayMode, exists := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]
 	if !exists {
 		t.Errorf("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY after enableTeamMode, got:\n%s", string(data))
 	}
-	if displayMode != "auto" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want \"auto\"", displayMode)
+	if displayMode != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want \"tmux\"", displayMode)
 	}
 
 	// Check that GLM ANTHROPIC_* vars ARE present (required for teammates to use GLM models)
@@ -622,9 +622,9 @@ func TestEnableTeamModeCGInTmux(t *testing.T) {
 		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
 	}
 
-	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=auto
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
 	}
 
 	// Should NOT have ANTHROPIC_BASE_URL (lead must use Claude, not Z.AI)
@@ -718,9 +718,9 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 		}
 	}
 
-	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=auto
-	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
 	}
 
 	// Verify llm.yaml shows cg mode (not glm)

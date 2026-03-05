@@ -92,9 +92,10 @@ triggers:
 
 ### Key Format Rules
 
-allowed-tools format: Comma-separated string, not YAML array.
-- Correct: `allowed-tools: Read, Grep, Glob, Bash`
-- Wrong: `allowed-tools: [Read, Grep, Glob, Bash]`
+allowed-tools format: Comma-separated string (recommended) or YAML array (supported since v2.1.0).
+- Recommended: `allowed-tools: Read, Grep, Glob, Bash`
+- Also valid: YAML-style list syntax (supported since v2.1.0)
+- MoAI convention: Use CSV format for consistency with existing skills
 
 metadata values: All values must be quoted strings.
 - Correct: `version: "1.0.0"`
@@ -153,6 +154,18 @@ triggers:
   languages: ["python", "typescript"]
 ```
 
+## Built-in Variables
+
+Variables available inside skill SKILL.md content:
+
+| Variable | Description | Available Since |
+|----------|-------------|-----------------|
+| `${CLAUDE_SKILL_DIR}` | Absolute path to the skill's own directory | v2.1.69 |
+| `${CLAUDE_SESSION_ID}` | Current session identifier | v2.1.9 |
+| `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory (plugin skills only) | v2.0.12 |
+
+Use `${CLAUDE_SKILL_DIR}` for referencing files within the skill directory instead of relative paths. This is more reliable across different invocation contexts.
+
 ## Best Practices
 
 - Use minimum required permissions
@@ -162,5 +175,6 @@ triggers:
 - Overestimate token usage by 10-20% for safety
 - Use YAML folded scalar (>) for description field
 - Keep all metadata values as quoted strings
-- Use comma-separated format for allowed-tools
+- Use comma-separated format for allowed-tools (YAML arrays also supported since v2.1.0)
 - Mark MoAI extension fields with standardized comments
+- Use `${CLAUDE_SKILL_DIR}` for self-referencing paths within skill content

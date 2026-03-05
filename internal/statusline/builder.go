@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -17,6 +18,7 @@ import (
 type defaultBuilder struct {
 	gitProvider    GitDataProvider
 	updateProvider UpdateProvider
+	usageProvider  UsageProvider // @MX:NOTE: [AUTO] API usage collection (Phase 5, REQ-V3-API-001)
 	renderer       *Renderer
 	mode           StatuslineMode
 	mu             sync.RWMutex
@@ -32,9 +34,17 @@ type Options struct {
 	// If nil, version will be read from config file automatically.
 	UpdateProvider UpdateProvider
 
+	// UsageProvider collects API usage (5H/7D). May be nil to skip.
+	// If nil, usage collection is disabled.
+	UsageProvider UsageProvider
+
 	// RootDir is the project root directory for auto-detecting git repo.
 	// If empty, current directory is used.
 	RootDir string
+
+	// HomeDir is the user's home directory for usage cache.
+	// If empty, os.UserHomeDir() is used.
+	HomeDir string
 
 	// ThemeName selects the rendering theme: "default", "minimal", "nerd".
 	ThemeName string
@@ -54,14 +64,21 @@ type Options struct {
 // If Mode is empty, defaults to ModeDefault.
 // If GitProvider is nil, attempts to open a git repository at RootDir (or ".") automatically.
 // If UpdateProvider is nil, attempts to read version from config file automatically.
+// If UsageProvider is nil, attempts to create usage collector automatically (Phase 5).
+//
+// @MX:ANCHOR: [AUTO] Public constructor for statusline package - all external callers create Builder through this function
+// @MX:REASON: Public API boundary; contains auto-detection logic (git/update/usage provider)
 func New(opts Options) Builder {
 	mode := opts.Mode
 	if mode == "" {
 		mode = ModeDefault
 	}
+	// Normalize deprecated mode names to current names (REQ-V3-MODE-001, REQ-V3-MODE-002)
+	mode = NormalizeMode(mode)
 
 	gitProvider := opts.GitProvider
 	updateProvider := opts.UpdateProvider
+	usageProvider := opts.UsageProvider
 
 	// Auto-create git provider if not provided
 	if gitProvider == nil {
@@ -82,9 +99,26 @@ func New(opts Options) Builder {
 		slog.Debug("auto-created version collector for statusline")
 	}
 
+	// Auto-create usage provider if not provided (Phase 5, REQ-V3-API-001)
+	if usageProvider == nil {
+		homeDir := opts.HomeDir
+		if homeDir == "" {
+			// Auto-detect home directory
+			if h, err := os.UserHomeDir(); err == nil {
+				homeDir = h
+			}
+		}
+		if homeDir != "" {
+			usageProvider = NewUsageCollector(homeDir)
+			slog.Debug("auto-created usage collector for statusline")
+		}
+		// If home dir not found, continue without usage provider
+	}
+
 	return &defaultBuilder{
 		gitProvider:    gitProvider,
 		updateProvider: updateProvider,
+		usageProvider:  usageProvider,
 		renderer:       NewRenderer(opts.ThemeName, opts.NoColor, opts.SegmentConfig),
 		mode:           mode,
 	}
@@ -94,6 +128,9 @@ func New(opts Options) Builder {
 // and returns a formatted single-line statusline string.
 // On any input error, it produces a safe fallback output.
 // The output never contains newline characters.
+//
+// @MX:ANCHOR: [AUTO] Core method of the statusline build pipeline
+// @MX:REASON: Builder interface implementation; orchestrates parseStdin + collectAll + Render 3-stage pipeline
 func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error) {
 	mode := b.getMode()
 
@@ -103,7 +140,7 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// Collect data from all sources
 	data := b.collectAll(ctx, input)
 
-	// Render the statusline
+	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)
 
 	return result, nil
@@ -117,10 +154,11 @@ func (b *defaultBuilder) getMode() StatuslineMode {
 }
 
 // SetMode switches the display mode. Thread-safe.
+// Deprecated mode names ("minimal", "verbose") are automatically normalized (REQ-V3-MODE-001, REQ-V3-MODE-002).
 func (b *defaultBuilder) SetMode(mode StatuslineMode) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.mode = mode
+	b.mode = NormalizeMode(mode)
 }
 
 // parseStdin reads and parses JSON from the reader.
@@ -152,6 +190,10 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	if met := CollectMetrics(input); met != nil {
 		data.Metrics = *met
 	}
+	// Collect active task info (rendering enabled in Phase 4, REQ-V3 Cycle 5)
+	if task := CollectTask(); task != nil {
+		data.Task = *task
+	}
 
 	// Extract directory name from workspace (prefer project_dir per documentation)
 	if input != nil {
@@ -172,6 +214,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData
 	var versionResult *VersionData
+	var usageResult *UsageResult // @MX:NOTE: [AUTO] Parallel API usage collection (Phase 5)
 
 	if b.gitProvider != nil {
 		wg.Go(func() {
@@ -195,6 +238,18 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		})
 	}
 
+	// API usage collection (Phase 5, REQ-V3-API-001)
+	if b.usageProvider != nil {
+		wg.Go(func() {
+			result, err := b.usageProvider.CollectUsage(ctx)
+			if err != nil {
+				slog.Debug("usage collection failed", "error", err)
+				return
+			}
+			usageResult = result
+		})
+	}
+
 	wg.Wait()
 
 	if gitResult != nil {
@@ -202,6 +257,9 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	}
 	if versionResult != nil {
 		data.Version = *versionResult
+	}
+	if usageResult != nil {
+		data.Usage = usageResult // @MX:NOTE: [AUTO] Usage data assignment (Phase 5)
 	}
 
 	return data

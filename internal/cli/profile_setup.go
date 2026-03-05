@@ -72,9 +72,17 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	model := existingPrefs.Model
 	bypass := existingPrefs.Bypass
 
+	statuslineMode := existingPrefs.StatuslineMode
+	if statuslineMode == "" {
+		statuslineMode = "default"
+	}
 	statuslinePreset := existingPrefs.StatuslinePreset
 	if statuslinePreset == "" {
 		statuslinePreset = "full"
+	}
+	statuslineTheme := existingPrefs.StatuslineTheme
+	if statuslineTheme == "" {
+		statuslineTheme = "default"
 	}
 	// Statusline segment toggles
 	segModel := getSegmentDefault(existingPrefs.StatuslineSegments, "model", true)
@@ -85,6 +93,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	segClaudeVersion := getSegmentDefault(existingPrefs.StatuslineSegments, "claude_version", true)
 	segMoaiVersion := getSegmentDefault(existingPrefs.StatuslineSegments, "moai_version", true)
 	segGitBranch := getSegmentDefault(existingPrefs.StatuslineSegments, "git_branch", true)
+	segSessionTime := getSegmentDefault(existingPrefs.StatuslineSegments, "session_time", true)
+	segUsage5H := getSegmentDefault(existingPrefs.StatuslineSegments, "usage_5h", true)
+	segUsage7D := getSegmentDefault(existingPrefs.StatuslineSegments, "usage_7d", true)
 
 	// ====== Step 1: Language Selection ======
 	langOptions := []huh.Option[string]{
@@ -173,8 +184,26 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&bypass),
 		).Title(t.ModelSettingsTitle),
 
-		// Section 5: Display
+		// Section 5: Display — Mode, Theme, and Preset in one screen
 		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(t.StatuslineModeTitle).
+				Description(t.StatuslineModeDesc).
+				Options(
+					huh.NewOption(t.ModeDefault, "default"),
+					huh.NewOption(t.ModeCompact, "compact"),
+					huh.NewOption(t.ModeFull, "full"),
+				).
+				Value(&statuslineMode),
+			huh.NewSelect[string]().
+				Title(t.StatuslineThemeTitle).
+				Description(t.StatuslineThemeDesc).
+				Options(
+					huh.NewOption(t.ThemeDefault, "default"),
+					huh.NewOption(t.ThemeCatppuccinMocha, "catppuccin-mocha"),
+					huh.NewOption(t.ThemeCatppuccinLatte, "catppuccin-latte"),
+				).
+				Value(&statuslineTheme),
 			huh.NewSelect[string]().
 				Title(t.StatuslineTitle).
 				Description(t.StatuslineDesc).
@@ -187,7 +216,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&statuslinePreset),
 		).Title(t.DisplayTitle),
 
-		// Section 5b: Custom segments (shown only when preset is "custom")
+		// Section 6: Custom Segments — shown only when preset is "custom"
 		huh.NewGroup(
 			huh.NewConfirm().Title(t.SegModel).Value(&segModel),
 			huh.NewConfirm().Title(t.SegContext).Value(&segContext),
@@ -197,6 +226,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			huh.NewConfirm().Title(t.SegClaudeVersion).Value(&segClaudeVersion),
 			huh.NewConfirm().Title(t.SegMoaiVersion).Value(&segMoaiVersion),
 			huh.NewConfirm().Title(t.SegGitBranch).Value(&segGitBranch),
+			huh.NewConfirm().Title(t.SegSessionTime).Value(&segSessionTime),
+			huh.NewConfirm().Title(t.SegUsage5H).Value(&segUsage5H),
+			huh.NewConfirm().Title(t.SegUsage7D).Value(&segUsage7D),
 		).Title(t.SegmentsTitle).
 			WithHideFunc(func() bool { return statuslinePreset != "custom" }),
 
@@ -220,7 +252,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		ModelPolicy:      modelPolicy,
 		Model:            model,
 		Bypass:           bypass,
+		StatuslineMode:   statuslineMode,
 		StatuslinePreset: statuslinePreset,
+		StatuslineTheme:  statuslineTheme,
 		TeammateDisplay:  "auto",
 	}
 
@@ -235,6 +269,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			"claude_version": segClaudeVersion,
 			"moai_version":   segMoaiVersion,
 			"git_branch":     segGitBranch,
+			"session_time":   segSessionTime,
+			"usage_5h":       segUsage5H,
+			"usage_7d":       segUsage7D,
 		}
 	}
 

@@ -39,6 +39,8 @@ func CollectMetrics(input *StdinData) *MetricsData {
 		} else {
 			data.CostUSD = input.Cost.TotalUSD
 		}
+		// Extract session duration (REQ-V3-TIME-001)
+		data.SessionDurationMS = input.Cost.TotalDurationMS
 	}
 
 	return data

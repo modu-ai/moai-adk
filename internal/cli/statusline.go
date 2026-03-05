@@ -26,17 +26,32 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	ctx := context.Background()
 
-	// Determine display mode from environment or use default
+	// Get project root for git and version detection (error ignored: empty root is valid)
+	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback
+
+	// Load full statusline config from statusline.yaml
+	statuslineCfg := loadStatuslineFileConfig(projectRoot)
+
+	// Determine display mode: env var > config > default
 	mode := statusline.StatuslineMode(os.Getenv("MOAI_STATUSLINE_MODE"))
+	if mode == "" && statuslineCfg != nil && statuslineCfg.Mode != "" {
+		mode = statusline.StatuslineMode(statuslineCfg.Mode)
+	}
 	if mode == "" {
 		mode = statusline.ModeDefault
 	}
 
-	// Get project root for git and version detection (error ignored: empty root is valid)
-	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback
-
-	// Load segment config from statusline.yaml (nil = all segments enabled)
-	segmentConfig := loadSegmentConfig(projectRoot)
+	var segmentConfig map[string]bool
+	var themeName string
+	if statuslineCfg != nil {
+		// Custom preset stores explicit segment map; named presets derive their segment config.
+		if statuslineCfg.Segments != nil {
+			segmentConfig = statuslineCfg.Segments
+		} else if statuslineCfg.Preset != "" && statuslineCfg.Preset != "full" {
+			segmentConfig = presetToSegments(statuslineCfg.Preset, nil)
+		}
+		themeName = statuslineCfg.Theme
+	}
 
 	// Build statusline options - git and version are auto-detected
 	opts := statusline.Options{
@@ -44,6 +59,7 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 		NoColor:       os.Getenv("NO_COLOR") != "" || os.Getenv("MOAI_NO_COLOR") != "",
 		RootDir:       projectRoot,
 		SegmentConfig: segmentConfig,
+		ThemeName:     themeName,
 	}
 
 	// Create builder and render
@@ -87,11 +103,18 @@ func renderSimpleFallback() string {
 	return "moai"
 }
 
-// loadSegmentConfig reads statusline segment configuration from
-// .moai/config/sections/statusline.yaml and returns a map of segment keys
-// to their enabled state. Returns nil if the file is missing, unreadable,
-// unparseable, or has no segments defined (backward-compatible: all enabled).
-func loadSegmentConfig(projectRoot string) map[string]bool {
+// statuslineFileConfig holds all statusline configuration read from YAML.
+type statuslineFileConfig struct {
+	Mode     string
+	Preset   string
+	Theme    string
+	Segments map[string]bool
+}
+
+// loadStatuslineFileConfig reads the full statusline configuration from
+// .moai/config/sections/statusline.yaml. Returns nil if the file is missing,
+// unreadable, or unparseable.
+func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 	if projectRoot == "" {
 		return nil
 	}
@@ -103,15 +126,42 @@ func loadSegmentConfig(projectRoot string) map[string]bool {
 		return nil
 	}
 
-	var config struct {
+	var raw struct {
 		Statusline struct {
+			Mode     string          `yaml:"mode"`
+			Preset   string          `yaml:"preset"`
+			Theme    string          `yaml:"theme"`
 			Segments map[string]bool `yaml:"segments"`
 		} `yaml:"statusline"`
 	}
 
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return nil
 	}
 
-	return config.Statusline.Segments
+	return &statuslineFileConfig{
+		Mode:     raw.Statusline.Mode,
+		Preset:   raw.Statusline.Preset,
+		Theme:    raw.Statusline.Theme,
+		Segments: raw.Statusline.Segments,
+	}
+}
+
+// loadSegmentConfig reads statusline segment configuration from
+// .moai/config/sections/statusline.yaml and returns a map of segment keys
+// to their enabled state. Returns nil if the file is missing, unreadable,
+// unparseable, or has no segments defined (backward-compatible: all enabled).
+func loadSegmentConfig(projectRoot string) map[string]bool {
+	cfg := loadStatuslineFileConfig(projectRoot)
+	if cfg == nil {
+		return nil
+	}
+	if cfg.Segments != nil {
+		return cfg.Segments
+	}
+	// "full" and empty presets mean all segments enabled (nil = backward compatible)
+	if cfg.Preset == "" || cfg.Preset == "full" {
+		return nil
+	}
+	return presetToSegments(cfg.Preset, nil)
 }

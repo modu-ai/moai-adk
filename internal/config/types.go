@@ -22,6 +22,7 @@ type Config struct {
 	Ralph         RalphConfig                `yaml:"ralph"`
 	Workflow      WorkflowConfig             `yaml:"workflow"`
 	State         StateConfig                `yaml:"state"`
+	Statusline    models.StatuslineConfig    `yaml:"statusline"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -150,7 +151,7 @@ type SyncGate struct {
 var sectionNames = []string{
 	"user", "language", "quality", "project",
 	"git_strategy", "git_convention", "system", "llm",
-	"pricing", "ralph", "workflow", "state",
+	"pricing", "ralph", "workflow", "state", "statusline",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
@@ -195,4 +196,9 @@ type llmFileWrapper struct {
 // stateFileWrapper handles the state.yaml section file.
 type stateFileWrapper struct {
 	State StateConfig `yaml:"state"`
+}
+
+// statuslineFileWrapper handles the statusline.yaml section file.
+type statuslineFileWrapper struct {
+	Statusline models.StatuslineConfig `yaml:"statusline"`
 }

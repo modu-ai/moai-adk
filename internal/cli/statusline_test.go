@@ -231,3 +231,121 @@ func TestLoadSegmentConfig_EmptyProjectRoot(t *testing.T) {
 		t.Errorf("loadSegmentConfig(\"\") = %v, want nil", got)
 	}
 }
+
+// --- TDD RED: Tests for loadStatuslineFileConfig ---
+
+func TestLoadStatuslineFileConfig(t *testing.T) {
+	tests := []struct {
+		name       string
+		yaml       string
+		wantNil    bool
+		wantPreset string
+		wantTheme  string
+		wantSegs   map[string]bool
+	}{
+		{
+			name:    "empty project root returns nil",
+			wantNil: true,
+		},
+		{
+			name:    "missing file returns nil",
+			yaml:    "",
+			wantNil: true,
+		},
+		{
+			name:    "invalid YAML returns nil",
+			yaml:    "{{ invalid",
+			wantNil: true,
+		},
+		{
+			name: "reads preset and theme",
+			yaml: `statusline:
+  preset: "compact"
+  theme: "catppuccin-mocha"
+  segments:
+    model: true
+    context: false
+`,
+			wantNil:    false,
+			wantPreset: "compact",
+			wantTheme:  "catppuccin-mocha",
+			wantSegs:   map[string]bool{"model": true, "context": false},
+		},
+		{
+			name: "default theme when absent",
+			yaml: `statusline:
+  preset: "full"
+  segments:
+    model: true
+`,
+			wantNil:    false,
+			wantPreset: "full",
+			wantTheme:  "",
+			wantSegs:   map[string]bool{"model": true},
+		},
+		{
+			name: "catppuccin-latte theme",
+			yaml: `statusline:
+  preset: "full"
+  theme: "catppuccin-latte"
+  segments:
+    model: true
+`,
+			wantNil:    false,
+			wantPreset: "full",
+			wantTheme:  "catppuccin-latte",
+			wantSegs:   map[string]bool{"model": true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			// Empty project root case
+			if tt.name == "empty project root returns nil" {
+				got := loadStatuslineFileConfig("")
+				if got != nil {
+					t.Errorf("loadStatuslineFileConfig(\"\") = %v, want nil", got)
+				}
+				return
+			}
+
+			if tt.yaml != "" {
+				configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+				if err := os.MkdirAll(configDir, 0o755); err != nil {
+					t.Fatalf("failed to create config dir: %v", err)
+				}
+				configPath := filepath.Join(configDir, "statusline.yaml")
+				if err := os.WriteFile(configPath, []byte(tt.yaml), 0o644); err != nil {
+					t.Fatalf("failed to write config: %v", err)
+				}
+			}
+
+			got := loadStatuslineFileConfig(tmpDir)
+
+			if tt.wantNil {
+				if got != nil {
+					t.Errorf("loadStatuslineFileConfig() = %v, want nil", got)
+				}
+				return
+			}
+
+			if got == nil {
+				t.Fatal("loadStatuslineFileConfig() = nil, want non-nil")
+			}
+
+			if got.Preset != tt.wantPreset {
+				t.Errorf("Preset = %q, want %q", got.Preset, tt.wantPreset)
+			}
+			if got.Theme != tt.wantTheme {
+				t.Errorf("Theme = %q, want %q", got.Theme, tt.wantTheme)
+			}
+			for k, v := range tt.wantSegs {
+				if got.Segments[k] != v {
+					t.Errorf("Segments[%q] = %v, want %v", k, got.Segments[k], v)
+				}
+			}
+		})
+	}
+}

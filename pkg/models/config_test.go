@@ -156,6 +156,39 @@ func TestTDDSettingsFields(t *testing.T) {
 	}
 }
 
+func TestStatuslineConfigFields(t *testing.T) {
+	cfg := models.StatuslineConfig{
+		Preset:   "full",
+		Segments: map[string]bool{"model": true, "context": false},
+		Theme:    "catppuccin-mocha",
+	}
+	if cfg.Preset != "full" {
+		t.Errorf("Preset: got %q, want %q", cfg.Preset, "full")
+	}
+	if cfg.Theme != "catppuccin-mocha" {
+		t.Errorf("Theme: got %q, want %q", cfg.Theme, "catppuccin-mocha")
+	}
+	if !cfg.Segments["model"] {
+		t.Error("Segments[model]: expected true")
+	}
+	if cfg.Segments["context"] {
+		t.Error("Segments[context]: expected false")
+	}
+}
+
+func TestStatuslineConfigZeroValue(t *testing.T) {
+	var cfg models.StatuslineConfig
+	if cfg.Preset != "" {
+		t.Errorf("zero-value Preset: got %q, want empty", cfg.Preset)
+	}
+	if cfg.Theme != "" {
+		t.Errorf("zero-value Theme: got %q, want empty", cfg.Theme)
+	}
+	if cfg.Segments != nil {
+		t.Errorf("zero-value Segments: got %v, want nil", cfg.Segments)
+	}
+}
+
 func TestCoverageExemptionsFields(t *testing.T) {
 	s := models.CoverageExemptions{
 		Enabled:              false,
