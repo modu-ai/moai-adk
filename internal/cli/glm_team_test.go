@@ -622,9 +622,10 @@ func TestEnableTeamModeCGInTmux(t *testing.T) {
 		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
 	}
 
-	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=auto
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux (not "auto"): CG mode requires
+	// tmux pane spawning to propagate GLM env vars to teammates.
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
 	}
 
 	// Should NOT have ANTHROPIC_BASE_URL (lead must use Claude, not Z.AI)
@@ -718,9 +719,10 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 		}
 	}
 
-	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=auto
-	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux (not "auto"): CG mode requires
+	// tmux pane spawning to propagate GLM env vars to teammates.
+	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
 	}
 
 	// Verify llm.yaml shows cg mode (not glm)
@@ -730,6 +732,84 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 	}
 	if !strings.Contains(string(llmData), "team_mode: cg") {
 		t.Errorf("llm.yaml should contain team_mode: cg, got:\n%s", string(llmData))
+	}
+}
+
+// TestEnsureSettingsLocalJSON_SetsTeammateDisplayTmux verifies that
+// ensureSettingsLocalJSON sets CLAUDE_CODE_TEAMMATE_DISPLAY=tmux (not "auto").
+//
+// CG mode requires tmux to propagate GLM env vars from the tmux session to
+// teammate processes. Using "auto" allows Claude Code to fall back to in-process
+// teammates that share the leader's env — which has no GLM vars in CG mode —
+// causing teammates to use the Claude API instead of the configured GLM backend.
+//
+// Regression test for: GLM env vars not propagated to Agent Teams teammates (#468).
+func TestEnsureSettingsLocalJSON_SetsTeammateDisplayTmux(t *testing.T) {
+	projectRoot := t.TempDir()
+	settingsPath := filepath.Join(projectRoot, ".claude", "settings.local.json")
+
+	if err := ensureSettingsLocalJSON(settingsPath); err != nil {
+		t.Fatalf("ensureSettingsLocalJSON() error: %v", err)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
+
+	var settings SettingsLocal
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
+	}
+
+	// Must be "tmux", not "auto": CG mode requires tmux to propagate GLM env vars
+	// from the tmux session to teammate processes.
+	// With "auto", Claude Code may spawn teammates in-process, inheriting the
+	// leader's env (no GLM vars in CG mode) → teammates use Claude, not GLM.
+	const want = "tmux"
+	if got := settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; got != want {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q\n"+
+			"Bug: \"auto\" allows in-process teammates that do not inherit tmux session GLM env vars",
+			got, want)
+	}
+}
+
+// TestEnsureSettingsLocalJSON_PreservesExistingEnv verifies that
+// ensureSettingsLocalJSON preserves existing env vars in settings.local.json
+// while updating CLAUDE_CODE_TEAMMATE_DISPLAY.
+func TestEnsureSettingsLocalJSON_PreservesExistingEnv(t *testing.T) {
+	projectRoot := t.TempDir()
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+
+	// Pre-populate with an existing env var
+	existing := SettingsLocal{Env: map[string]string{"EXISTING_VAR": "preserved"}}
+	data, _ := json.Marshal(existing)
+	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ensureSettingsLocalJSON(settingsPath); err != nil {
+		t.Fatalf("ensureSettingsLocalJSON() error: %v", err)
+	}
+
+	updated, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings SettingsLocal
+	if err := json.Unmarshal(updated, &settings); err != nil {
+		t.Fatal(err)
+	}
+
+	if settings.Env["EXISTING_VAR"] != "preserved" {
+		t.Errorf("EXISTING_VAR = %q, want %q", settings.Env["EXISTING_VAR"], "preserved")
+	}
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
 	}
 }
 

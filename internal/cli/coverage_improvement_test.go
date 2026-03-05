@@ -800,8 +800,8 @@ func TestEnsureSettingsLocalJSON_CreatesNewFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY=auto")
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
 	}
 }
 
@@ -836,8 +836,8 @@ func TestEnsureSettingsLocalJSON_PreservesExisting(t *testing.T) {
 	if settings.Env["MY_VAR"] != "keep_me" {
 		t.Error("existing env var should be preserved")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Error("should add CLAUDE_CODE_TEAMMATE_DISPLAY=auto")
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Error("should add CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
 	}
 }
 
@@ -2893,8 +2893,8 @@ func TestEnsureSettingsLocalJSON_NewFile(t *testing.T) {
 		t.Fatalf("parse json: %v", err)
 	}
 
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Errorf("expected CLAUDE_CODE_TEAMMATE_DISPLAY=auto, got %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"])
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("expected CLAUDE_CODE_TEAMMATE_DISPLAY=tmux, got %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"])
 	}
 }
 
@@ -2931,8 +2931,8 @@ func TestEnsureSettingsLocalJSON_ExistingFile(t *testing.T) {
 	if settings.Env["EXISTING_KEY"] != "value" {
 		t.Error("existing key should be preserved")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
-		t.Error("auto display should be set")
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Error("tmux display should be set")
 	}
 }
 

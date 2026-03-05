@@ -351,7 +351,10 @@ func persistTeamMode(projectRoot, mode string) error {
 	return saveLLMSection(sectionsDir, llmCfg)
 }
 
-// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=auto.
+// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=tmux.
+// CG mode requires tmux, so teammates must be spawned in new tmux panes to inherit
+// GLM env vars from the tmux session. Using "auto" risks falling back to in-process
+// teammates that share the leader's env (which has no GLM vars in CG mode).
 func ensureSettingsLocalJSON(settingsPath string) error {
 	var settings SettingsLocal
 
@@ -366,9 +369,10 @@ func ensureSettingsLocalJSON(settingsPath string) error {
 		settings.Env = make(map[string]string)
 	}
 
-	// Set display mode to "auto": Claude Code detects tmux availability at runtime
-	// and falls back to in-progress display when tmux is not installed.
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "auto"
+	// Set display mode to "tmux": CG mode already requires tmux (checked in applyCGMode).
+	// Forcing "tmux" ensures teammates are spawned in new tmux panes that inherit
+	// GLM env vars injected at the tmux session level via injectTmuxSessionEnv.
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
