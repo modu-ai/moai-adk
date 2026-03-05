@@ -235,31 +235,31 @@ func TestBuilder_SetMode(t *testing.T) {
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
-	// compact(default) 모드로 빌드
+	// Build in compact(default) mode
 	gotDefault, err := builder.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
 		t.Fatalf("default mode build error: %v", err)
 	}
 
-	// full(verbose) 모드로 전환 - default와 달라야 한다
+	// Switch to full(verbose) mode - should differ from default
 	builder.SetMode(ModeFull)
 	gotFull, err := builder.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
 		t.Fatalf("full mode build error: %v", err)
 	}
 
-	// full 모드는 default와 다른 출력 (멀티라인)
+	// Full mode should differ from default output (multiline)
 	if gotDefault == gotFull {
 		t.Errorf("default and full output should differ:\ndefault: %q\nfull: %q",
 			gotDefault, gotFull)
 	}
 
-	// full 모드는 모델 이름을 포함해야 한다
+	// Full mode should contain model name
 	if !strings.Contains(gotFull, "Sonnet 4") {
 		t.Errorf("full mode should contain model name, got %q", gotFull)
 	}
 
-	// full 모드는 컨텍스트 바 그래프를 포함해야 한다
+	// Full mode should contain context bar graph
 	if !strings.Contains(gotFull, "🔋 ") {
 		t.Errorf("full mode should contain context bar graph, got %q", gotFull)
 	}
@@ -269,12 +269,12 @@ func TestBuilder_SetMode(t *testing.T) {
 }
 
 func TestBuilder_Build_NoNewline(t *testing.T) {
-	// v3에서 compact 모드만 한 줄 출력이다 (L1만 또는 L2만)
+	// In v3, only compact mode can produce single-line output (L1 only or L2 only)
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
-			data: &GitStatusData{Available: false}, // git 없음 → L1만 출력
+			data: &GitStatusData{Available: false}, // no git → L1 only
 		},
-		Mode:    ModeCompact, // v3 compact: 2줄, git 없으면 1줄
+		Mode:    ModeCompact, // v3 compact: 2 lines, 1 line without git
 		NoColor: true,
 	})
 
@@ -288,7 +288,7 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// git 데이터가 없으면 L1만, 따라서 개행 없음
+	// Without git data, only L1 is rendered, so no newline
 	if strings.Contains(got, "\n") {
 		t.Errorf("compact without git should be 1 line, got %q", got)
 	}
@@ -336,11 +336,11 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// CW 바는 context window 없을 때 표시되지 않아야 한다
+	// CW bar should not be shown when context window is missing
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when context window missing, got %q", got)
 	}
-	// 5H/7D는 항상 0%로 표시된다 (🔋 아이콘 포함)
+	// 5H/7D always shown at 0% (with 🔋 icon)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -390,21 +390,21 @@ func TestBuilder_DefaultMode(t *testing.T) {
 	}
 }
 
-// TestBuilderNormalizesMode는 Builder가 deprecated 모드 이름을 자동으로 정규화하는지 검증한다.
-// REQ-V3-MODE-001: New(Options{Mode: "minimal"}) → 내부적으로 "compact"로 처리
-// REQ-V3-MODE-002: New(Options{Mode: "verbose"}) → 내부적으로 "full"로 처리
+// TestBuilderNormalizesMode verifies that Builder automatically normalizes deprecated mode names.
+// REQ-V3-MODE-001: New(Options{Mode: "minimal"}) → internally treated as "compact"
+// REQ-V3-MODE-002: New(Options{Mode: "verbose"}) → internally treated as "full"
 func TestBuilderNormalizesMode(t *testing.T) {
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
-	// "minimal"로 생성한 빌더는 ModeCompact("compact")로 동작해야 한다
+	// Builder created with "minimal" should behave as ModeCompact("compact")
 	builderMinimal := New(Options{
 		Mode:    "minimal",
 		NoColor: true,
 	})
-	// "compact"로 생성한 빌더
+	// Builder created with "compact"
 	builderCompact := New(Options{
 		Mode:    ModeCompact,
 		NoColor: true,
@@ -419,18 +419,18 @@ func TestBuilderNormalizesMode(t *testing.T) {
 		t.Fatalf("compact builder build error: %v", err)
 	}
 
-	// "minimal"과 "compact"는 동일한 출력을 생성해야 한다 (AC-V3-01)
+	// "minimal" and "compact" should produce identical output (AC-V3-01)
 	if gotMinimal != gotCompact {
 		t.Errorf("mode=minimal should produce same output as mode=compact:\nminimal: %q\ncompact: %q",
 			gotMinimal, gotCompact)
 	}
 
-	// "verbose"로 생성한 빌더는 ModeFull("full")로 동작해야 한다
+	// Builder created with "verbose" should behave as ModeFull("full")
 	builderVerbose := New(Options{
 		Mode:    "verbose",
 		NoColor: true,
 	})
-	// "full"로 생성한 빌더
+	// Builder created with "full"
 	builderFull := New(Options{
 		Mode:    ModeFull,
 		NoColor: true,
@@ -445,15 +445,15 @@ func TestBuilderNormalizesMode(t *testing.T) {
 		t.Fatalf("full builder build error: %v", err)
 	}
 
-	// "verbose"와 "full"은 동일한 출력을 생성해야 한다 (AC-V3-02)
+	// "verbose" and "full" should produce identical output (AC-V3-02)
 	if gotVerbose != gotFull {
 		t.Errorf("mode=verbose should produce same output as mode=full:\nverbose: %q\nfull: %q",
 			gotVerbose, gotFull)
 	}
 }
 
-// TestBuilderCollectsTask는 collectAll이 StatusData.Task 필드를 채우는지 검증한다.
-// Cycle 5 (REQ-V3): builder가 CollectTask()를 통해 task 정보를 수집한다.
+// TestBuilderCollectsTask verifies that collectAll populates the StatusData.Task field.
+// Cycle 5 (REQ-V3): builder collects task info via CollectTask().
 func TestBuilderCollectsTask(t *testing.T) {
 	b := &defaultBuilder{
 		renderer: NewRenderer("default", true, nil),
@@ -466,29 +466,29 @@ func TestBuilderCollectsTask(t *testing.T) {
 
 	data := b.collectAll(context.Background(), input)
 
-	// Task 필드가 존재하고 초기화되었는지 확인한다
-	// (실제 값은 session state 파일 내용에 따라 다르므로, 필드 타입만 검증)
-	// TaskData는 항상 유효한 구조체이어야 한다 (nil 포인터 없음)
-	_ = data.Task.Active   // panic 없이 접근 가능해야 한다
-	_ = data.Task.Command  // panic 없이 접근 가능해야 한다
-	_ = data.Task.SpecID   // panic 없이 접근 가능해야 한다
-	_ = data.Task.Stage    // panic 없이 접근 가능해야 한다
+	// Verify Task field exists and is initialized
+	// (actual values depend on session state file, so only verify field types)
+	// TaskData must always be a valid struct (no nil pointers)
+	_ = data.Task.Active   // must be accessible without panic
+	_ = data.Task.Command  // must be accessible without panic
+	_ = data.Task.SpecID   // must be accessible without panic
+	_ = data.Task.Stage    // must be accessible without panic
 }
 
-// TestBuilderCollectsTask_FieldExists는 StatusData에 Task 필드가 존재하는지 컴파일 시점에 검증한다.
+// TestBuilderCollectsTask_FieldExists verifies Task field exists on StatusData at compile time.
 func TestBuilderCollectsTask_FieldExists(t *testing.T) {
 	data := &StatusData{}
-	// Task 필드와 Usage 필드가 존재해야 한다 (컴파일 검증)
+	// Task and Usage fields must exist (compile-time verification)
 	_ = data.Task
 	_ = data.Usage
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 6: 전체 파이프라인 통합 테스트 (AC-V3-01 ~ AC-V3-13)
-// builder → renderer E2E 검증
+// Phase 6: Full pipeline integration tests (AC-V3-01 ~ AC-V3-13)
+// builder → renderer E2E verification
 // ─────────────────────────────────────────────────────────────────────────────
 
-// mockUsageProvider는 테스트용 UsageProvider 구현체다.
+// mockUsageProvider implements UsageProvider for testing.
 type mockUsageProvider struct {
 	data *UsageResult
 	err  error
@@ -498,7 +498,7 @@ func (m *mockUsageProvider) CollectUsage(_ context.Context) (*UsageResult, error
 	return m.data, m.err
 }
 
-// realisticInput은 현실적인 테스트 입력 데이터를 생성한다.
+// realisticInput creates realistic test input data.
 func realisticInput() *StdinData {
 	return &StdinData{
 		Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
@@ -510,7 +510,7 @@ func realisticInput() *StdinData {
 	}
 }
 
-// realisticGit는 현실적인 git 데이터를 반환하는 mockGitProvider를 생성한다.
+// realisticGit creates a mockGitProvider with realistic git data.
 func realisticGit() *mockGitProvider {
 	return &mockGitProvider{
 		data: &GitStatusData{
@@ -525,8 +525,8 @@ func realisticGit() *mockGitProvider {
 	}
 }
 
-// realisticUsage는 현실적인 API 사용량 데이터를 반환하는 mockUsageProvider를 생성한다.
-// 60% 사용률 기준 (AC-V3-07 검증용)
+// realisticUsage creates a mockUsageProvider with realistic API usage data.
+// Based on 60% usage (for AC-V3-07 verification)
 func realisticUsage(pct5H, pct7D float64) *mockUsageProvider {
 	return &mockUsageProvider{
 		data: &UsageResult{
@@ -544,7 +544,7 @@ func realisticUsage(pct5H, pct7D float64) *mockUsageProvider {
 	}
 }
 
-// countLines는 문자열의 줄 수를 계산한다 (빈 문자열은 0).
+// countLines counts the number of lines in a string (empty string returns 0).
 func countLines(s string) int {
 	if s == "" {
 		return 0
@@ -552,12 +552,12 @@ func countLines(s string) int {
 	return len(strings.Split(s, "\n"))
 }
 
-// hasANSI는 문자열에 ANSI 이스케이프 코드가 포함되어 있는지 검사한다.
+// hasANSI checks if a string contains ANSI escape codes.
 func hasANSI(s string) bool {
 	return strings.Contains(s, "\x1b[") || strings.Contains(s, "\033[")
 }
 
-// TestIntegration_ModeLineCount는 각 모드의 출력 줄 수를 검증한다 (AC-V3-01 ~ AC-V3-06).
+// TestIntegration_ModeLineCount verifies output line count for each mode (AC-V3-01 ~ AC-V3-06).
 func TestIntegration_ModeLineCount(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -567,50 +567,50 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 		maxLines      int
 		description   string
 	}{
-		// AC-V3-01: mode="minimal" → compact 2줄 출력 (backward compat)
+		// AC-V3-01: mode="minimal" → compact 2-line output (backward compat)
 		{
-			name:        "AC-V3-01: minimal→compact 2줄",
+			name:        "AC-V3-01: minimal→compact 2 lines",
 			mode:        "minimal",
 			withUsage:   true,
 			minLines:    2,
 			maxLines:    2,
-			description: "minimal 모드는 compact와 동일하게 2줄이어야 한다",
+			description: "minimal mode should produce 2 lines like compact",
 		},
-		// AC-V3-02: mode="verbose" → full 5줄 출력 (backward compat, L6 제거)
+		// AC-V3-02: mode="verbose" → full 5-line output (backward compat)
 		{
-			name:        "AC-V3-02: verbose→full 5줄",
+			name:        "AC-V3-02: verbose→full 5 lines",
 			mode:        "verbose",
 			withUsage:   true,
 			minLines:    5,
 			maxLines:    5,
-			description: "verbose 모드는 full과 동일하게 5줄이어야 한다",
+			description: "verbose mode should produce 5 lines like full",
 		},
-		// AC-V3-03: mode="compact" → 정확히 2줄
+		// AC-V3-03: mode="compact" → exactly 2 lines
 		{
-			name:        "AC-V3-03: compact 정확히 2줄",
+			name:        "AC-V3-03: compact exactly 2 lines",
 			mode:        ModeCompact,
 			withUsage:   true,
 			minLines:    2,
 			maxLines:    2,
-			description: "compact 모드는 정확히 2줄이어야 한다",
+			description: "compact mode should produce exactly 2 lines",
 		},
-		// AC-V3-04: mode="default" → 정확히 3줄 (L4 제거, 스타일 L1 통합)
+		// AC-V3-04: mode="default" → exactly 3 lines (style integrated into L1)
 		{
-			name:        "AC-V3-04: default 정확히 3줄",
+			name:        "AC-V3-04: default exactly 3 lines",
 			mode:        ModeDefault,
 			withUsage:   true,
 			minLines:    3,
 			maxLines:    3,
-			description: "default 모드는 정확히 3줄이어야 한다",
+			description: "default mode should produce exactly 3 lines",
 		},
-		// AC-V3-05: mode="full" → 정확히 5줄 (L6 제거, 스타일 L1 통합)
+		// AC-V3-05: mode="full" → exactly 5 lines (style integrated into L1)
 		{
-			name:        "AC-V3-05: full 정확히 5줄",
+			name:        "AC-V3-05: full exactly 5 lines",
 			mode:        ModeFull,
 			withUsage:   true,
 			minLines:    5,
 			maxLines:    5,
-			description: "full 모드는 정확히 5줄이어야 한다",
+			description: "full mode should produce exactly 5 lines",
 		},
 	}
 
@@ -631,81 +631,81 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 
 			got, err := builder.Build(context.Background(), makeStdinJSON(realisticInput()))
 			if err != nil {
-				t.Fatalf("Build 오류: %v", err)
+				t.Fatalf("Build error: %v", err)
 			}
 
 			lines := countLines(got)
 			if lines < tt.minLines || lines > tt.maxLines {
-				t.Errorf("%s\n줄 수: got=%d, want=%d~%d\n출력:\n%s",
+				t.Errorf("%s\nline count: got=%d, want=%d~%d\noutput:\n%s",
 					tt.description, lines, tt.minLines, tt.maxLines, got)
 			}
 		})
 	}
 }
 
-// TestIntegration_NoUsageLineCount는 usage=nil일 때 5H/7D가 0%로 항상 표시되는지 검증한다.
+// TestIntegration_NoUsageLineCount verifies 5H/7D always shown at 0% when usage=nil.
 func TestIntegration_NoUsageLineCount(t *testing.T) {
-	// AC-V3-06: mode="full" + no usage → 5H/7D 0%로 항상 표시 → 5줄 유지
-	t.Run("AC-V3-06: full + no usage → 5줄 (5H/7D 0%)", func(t *testing.T) {
+	// AC-V3-06: mode="full" + no usage → 5H/7D always shown at 0% → 5 lines
+	t.Run("AC-V3-06: full + no usage → 5 lines (5H/7D 0%)", func(t *testing.T) {
 		builder := New(Options{
 			GitProvider:    realisticGit(),
 			UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "2.8.0", Available: true}},
-			UsageProvider:  &mockUsageProvider{data: nil}, // usage 없음
+			UsageProvider:  &mockUsageProvider{data: nil}, // no usage
 			Mode:           ModeFull,
 			NoColor:        true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(realisticInput()))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
 		lines := countLines(got)
-		// 5H/7D는 항상 0%로 표시되므로 full 모드는 5줄 유지
+		// 5H/7D always shown at 0%, so full mode keeps 5 lines
 		if lines != 5 {
-			t.Errorf("AC-V3-06: full + no usage는 5줄이어야 한다, got=%d\n출력:\n%s", lines, got)
+			t.Errorf("AC-V3-06: full + no usage should be 5 lines, got=%d\noutput:\n%s", lines, got)
 		}
-		// 5H/7D 0% 바가 표시되어야 한다
+		// 5H/7D 0% bars must be shown
 		if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
-			t.Errorf("AC-V3-06: 5H/7D 바가 항상 표시되어야 한다\n출력:\n%s", got)
+			t.Errorf("AC-V3-06: 5H/7D bars must always be shown\noutput:\n%s", got)
 		}
 		if !strings.Contains(got, "0%") {
-			t.Errorf("AC-V3-06: no usage 시 0%%가 표시되어야 한다\n출력:\n%s", got)
+			t.Errorf("AC-V3-06: should show 0%% when no usage\noutput:\n%s", got)
 		}
 	})
 
-	// AC-V3-06b: mode="default" + no usage → CW + 5H(0%) + 7D(0%) 모두 L2에 표시
-	t.Run("AC-V3-06b: default + no usage → L2에 CW+5H+7D", func(t *testing.T) {
+	// AC-V3-06b: mode="default" + no usage → CW + 5H(0%) + 7D(0%) all shown in L2
+	t.Run("AC-V3-06b: default + no usage → L2 CW+5H+7D", func(t *testing.T) {
 		builder := New(Options{
 			GitProvider:    realisticGit(),
 			UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "2.8.0", Available: true}},
-			UsageProvider:  &mockUsageProvider{data: nil}, // usage 없음
+			UsageProvider:  &mockUsageProvider{data: nil}, // no usage
 			Mode:           ModeDefault,
 			NoColor:        true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(realisticInput()))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
-		// CW, 5H, 7D 모두 있어야 한다
+		// CW, 5H, 7D must all be present
 		if !strings.Contains(got, "CW:") {
-			t.Errorf("AC-V3-06b: default + no usage는 CW 바를 포함해야 한다\n출력:\n%s", got)
+			t.Errorf("AC-V3-06b: default + no usage should contain CW bar\noutput:\n%s", got)
 		}
-		// 5H/7D는 항상 0%로 표시
+		// 5H/7D always shown at 0%
 		if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
-			t.Errorf("AC-V3-06b: 5H/7D 바가 항상 표시되어야 한다\n출력:\n%s", got)
+			t.Errorf("AC-V3-06b: 5H/7D bars must always be shown\noutput:\n%s", got)
 		}
 	})
 }
 
-// TestIntegration_GradientBar는 그라디언트 바 블록 수를 검증한다 (AC-V3-07).
-// 60% usage → 40블록 중 24블록이 채워진다.
+// TestIntegration_GradientBar verifies gradient bar block counts (AC-V3-07).
+// 60% usage → 24 of 40 blocks filled.
 func TestIntegration_GradientBar(t *testing.T) {
-	// AC-V3-07: 60% usage → 40블록 바에서 24개 채워짐 (full 모드 CW 바)
-	t.Run("AC-V3-07: 60% → CW 40블록 중 24 채워짐", func(t *testing.T) {
-		// 60% 사용률로 context window 설정
+	// AC-V3-07: 60% usage → 24 filled in 40-block bar (full mode CW bar)
+	t.Run("AC-V3-07: 60% → 24 of 40 CW blocks filled", func(t *testing.T) {
+		// Set context window to 60% usage
 		input := &StdinData{
 			Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
 			ContextWindow: &ContextWindowInfo{Used: 60000, Total: 100000},
@@ -720,11 +720,11 @@ func TestIntegration_GradientBar(t *testing.T) {
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
-		// full 모드: CW(40) + 5H(40, 0%) + 7D(40, 0%) = 120 블록
-		// CW 바의 60% = 24 filled, 16 empty → CW만의 블록을 검증하려면 CW 줄만 추출
+		// full mode: CW(40) + 5H(40, 0%) + 7D(40, 0%) = 120 blocks
+		// CW bar 60% = 24 filled, 16 empty → extract CW line only for verification
 		lines := strings.Split(got, "\n")
 		var cwLine string
 		for _, l := range lines {
@@ -734,7 +734,7 @@ func TestIntegration_GradientBar(t *testing.T) {
 			}
 		}
 		if cwLine == "" {
-			t.Fatalf("AC-V3-07: CW 바가 출력에 있어야 한다\n출력:\n%s", got)
+			t.Fatalf("AC-V3-07: CW bar must be in output\noutput:\n%s", got)
 		}
 
 		cwFilled := strings.Count(cwLine, "█")
@@ -742,15 +742,15 @@ func TestIntegration_GradientBar(t *testing.T) {
 		cwTotal := cwFilled + cwEmpty
 
 		if cwTotal != 40 {
-			t.Errorf("AC-V3-07: CW 바 전체 블록 수 = %d, want=40\nCW 줄: %q", cwTotal, cwLine)
+			t.Errorf("AC-V3-07: CW bar total blocks = %d, want=40\nCW line: %q", cwTotal, cwLine)
 		}
 		if cwFilled != 24 {
-			t.Errorf("AC-V3-07: CW 바 채워진 블록 수 = %d, want=24\nCW 줄: %q", cwFilled, cwLine)
+			t.Errorf("AC-V3-07: CW bar filled blocks = %d, want=24\nCW line: %q", cwFilled, cwLine)
 		}
 	})
 }
 
-// TestIntegration_SessionTime는 세션 시간 포맷을 검증한다 (AC-V3-08).
+// TestIntegration_SessionTime verifies session time format (AC-V3-08).
 func TestIntegration_SessionTime(t *testing.T) {
 	// AC-V3-08: TotalDurationMS=4980000 → "⏳ 1h 23m"
 	// 4980000 ms = 4980 seconds = 83 minutes = 1h 23m
@@ -768,16 +768,16 @@ func TestIntegration_SessionTime(t *testing.T) {
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
 		if !strings.Contains(got, "⏳ 1h 23m") {
-			t.Errorf("AC-V3-08: 세션 시간이 '⏳ 1h 23m'이어야 한다\n출력:\n%s", got)
+			t.Errorf("AC-V3-08: session time should be '⏳ 1h 23m'\noutput:\n%s", got)
 		}
 	})
 }
 
-// TestIntegration_NoCost는 어떤 모드에서도 비용이 표시되지 않음을 검증한다 (AC-V3-08b).
+// TestIntegration_NoCost verifies no cost is shown in any mode (AC-V3-08b).
 func TestIntegration_NoCost(t *testing.T) {
 	modes := []StatuslineMode{ModeCompact, ModeDefault, ModeFull}
 	for _, mode := range modes {
@@ -795,20 +795,20 @@ func TestIntegration_NoCost(t *testing.T) {
 
 			got, err := builder.Build(context.Background(), makeStdinJSON(input))
 			if err != nil {
-				t.Fatalf("Build 오류: %v", err)
+				t.Fatalf("Build error: %v", err)
 			}
 
-			// 비용 정보($, USD, ¥ 등)가 출력되면 안 된다
+			// Cost info ($, USD, etc.) must not be in output
 			if strings.Contains(got, "$") || strings.Contains(got, "USD") {
-				t.Errorf("AC-V3-08b: %s 모드에서 비용이 표시되면 안 된다\n출력:\n%s", mode, got)
+				t.Errorf("AC-V3-08b: cost must not be shown in %s mode\noutput:\n%s", mode, got)
 			}
 		})
 	}
 }
 
-// TestIntegration_GitAheadBehind는 ahead/behind 포맷을 검증한다 (AC-V3-09).
+// TestIntegration_GitAheadBehind verifies ahead/behind format (AC-V3-09).
 func TestIntegration_GitAheadBehind(t *testing.T) {
-	// AC-V3-09: Ahead=3, Behind=2 → "↑3↓2" 포맷
+	// AC-V3-09: Ahead=3, Behind=2 → "↑3↓2" format
 	t.Run("AC-V3-09: Ahead=3, Behind=2 → ↑3↓2", func(t *testing.T) {
 		builder := New(Options{
 			GitProvider: &mockGitProvider{
@@ -828,16 +828,16 @@ func TestIntegration_GitAheadBehind(t *testing.T) {
 			Model: &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		}))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
 		if !strings.Contains(got, "↑3↓2") {
-			t.Errorf("AC-V3-09: git ahead/behind가 '↑3↓2' 포맷이어야 한다\n출력:\n%s", got)
+			t.Errorf("AC-V3-09: git ahead/behind should be in '↑3↓2' format\noutput:\n%s", got)
 		}
 	})
 }
 
-// TestIntegration_NoColor는 NoColor=true일 때 ANSI 이스케이프 코드가 없음을 검증한다 (AC-V3-12).
+// TestIntegration_NoColor verifies no ANSI escape codes when NoColor=true (AC-V3-12).
 func TestIntegration_NoColor(t *testing.T) {
 	modes := []StatuslineMode{ModeCompact, ModeDefault, ModeFull}
 	for _, mode := range modes {
@@ -846,27 +846,27 @@ func TestIntegration_NoColor(t *testing.T) {
 				GitProvider:   realisticGit(),
 				UsageProvider: realisticUsage(60.0, 75.0),
 				Mode:          mode,
-				NoColor:       true, // ANSI 비활성화
+				NoColor:       true, // ANSI disabled
 			})
 
 			got, err := builder.Build(context.Background(), makeStdinJSON(realisticInput()))
 			if err != nil {
-				t.Fatalf("Build 오류: %v", err)
+				t.Fatalf("Build error: %v", err)
 			}
 
-			// AC-V3-12: NO_COLOR → ANSI 이스케이프 없음
+			// AC-V3-12: NO_COLOR → no ANSI escapes
 			if hasANSI(got) {
-				t.Errorf("AC-V3-12: NoColor=true일 때 ANSI 이스케이프 코드가 없어야 한다\n출력:\n%q", got)
+				t.Errorf("AC-V3-12: NoColor=true should have no ANSI escape codes\noutput:\n%q", got)
 			}
 		})
 	}
 }
 
-// TestIntegration_BatteryIcon은 사용률에 따른 배터리 아이콘을 검증한다 (AC-V3-13).
+// TestIntegration_BatteryIcon verifies battery icon based on usage percentage (AC-V3-13).
 func TestIntegration_BatteryIcon(t *testing.T) {
-	// AC-V3-13: 75% usage → CW 바에 🪫 (low battery icon)
-	t.Run("AC-V3-13: 75% → CW에 🪫", func(t *testing.T) {
-		// 75% context window 사용률
+	// AC-V3-13: 75% usage → CW bar shows 🪫 (low battery icon)
+	t.Run("AC-V3-13: 75% → CW 🪫", func(t *testing.T) {
+		// 75% context window usage
 		input := &StdinData{
 			Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
 			ContextWindow: &ContextWindowInfo{Used: 75000, Total: 100000},
@@ -881,15 +881,15 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
-		// CW 바만 추출하여 검증 (5H/7D 0%는 🔋를 가짐)
+		// Extract CW bar only for verification (5H/7D 0% have 🔋)
 		lines := strings.Split(got, "\n")
 		var cwPart string
 		for _, l := range lines {
 			if strings.Contains(l, "CW:") {
-				// CW: 부분만 추출 (│ 구분자 전까지)
+				// Extract CW: part only (before │ separator)
 				parts := strings.Split(l, "│")
 				for _, p := range parts {
 					if strings.Contains(p, "CW:") {
@@ -902,16 +902,16 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 		}
 
 		if cwPart == "" {
-			t.Fatalf("CW 바가 출력에 있어야 한다\n출력:\n%s", got)
+			t.Fatalf("CW bar must be in output\noutput:\n%s", got)
 		}
-		// 75%는 70% 초과이므로 CW 바에 🪫 아이콘이어야 한다
+		// 75% > 70% threshold, so CW bar should show 🪫 icon
 		if !strings.Contains(cwPart, "🪫") {
-			t.Errorf("AC-V3-13: CW 75%% 사용률에서 🪫 아이콘이어야 한다\nCW: %q\n출력:\n%s", cwPart, got)
+			t.Errorf("AC-V3-13: CW 75%% usage should show 🪫 icon\nCW: %q\noutput:\n%s", cwPart, got)
 		}
 	})
 
-	// 반대 케이스: 60% → CW에 🔋
-	t.Run("60% → CW에 🔋", func(t *testing.T) {
+	// Opposite case: 60% → CW shows 🔋
+	t.Run("60% → CW 🔋", func(t *testing.T) {
 		input := &StdinData{
 			Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
 			ContextWindow: &ContextWindowInfo{Used: 60000, Total: 100000},
@@ -925,17 +925,17 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
 		if err != nil {
-			t.Fatalf("Build 오류: %v", err)
+			t.Fatalf("Build error: %v", err)
 		}
 
-		// CW 바에 🔋가 있어야 한다
+		// CW bar should have 🔋
 		if !strings.Contains(got, "🔋") {
-			t.Errorf("60%% 사용률에서 🔋 아이콘이어야 한다\n출력:\n%s", got)
+			t.Errorf("60%% usage should show 🔋 icon\noutput:\n%s", got)
 		}
 	})
 }
 
-// TestIntegration_BackwardCompat은 deprecated 모드 이름의 완전 파이프라인 호환성을 검증한다.
+// TestIntegration_BackwardCompat verifies full pipeline compatibility for deprecated mode names.
 func TestIntegration_BackwardCompat(t *testing.T) {
 	input := realisticInput()
 
@@ -954,15 +954,15 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 
 	gotMinimal, err := builderMinimal.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
-		t.Fatalf("minimal Build 오류: %v", err)
+		t.Fatalf("minimal Build error: %v", err)
 	}
 	gotCompact, err := builderCompact.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
-		t.Fatalf("compact Build 오류: %v", err)
+		t.Fatalf("compact Build error: %v", err)
 	}
 
 	if gotMinimal != gotCompact {
-		t.Errorf("AC-V3-01: minimal과 compact 출력이 동일해야 한다\nminimal: %q\ncompact: %q",
+		t.Errorf("AC-V3-01: minimal and compact output must be identical\nminimal: %q\ncompact: %q",
 			gotMinimal, gotCompact)
 	}
 
@@ -981,24 +981,24 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 
 	gotVerbose, err := builderVerbose.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
-		t.Fatalf("verbose Build 오류: %v", err)
+		t.Fatalf("verbose Build error: %v", err)
 	}
 	gotFull, err := builderFull.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
-		t.Fatalf("full Build 오류: %v", err)
+		t.Fatalf("full Build error: %v", err)
 	}
 
 	if gotVerbose != gotFull {
-		t.Errorf("AC-V3-02: verbose와 full 출력이 동일해야 한다\nverbose: %q\nfull: %q",
+		t.Errorf("AC-V3-02: verbose and full output must be identical\nverbose: %q\nfull: %q",
 			gotVerbose, gotFull)
 	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 6: 성능 벤치마크 (NF-001: 500ms SLA)
+// Phase 6: Performance benchmark (NF-001: 500ms SLA)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// BenchmarkBuilder_Build는 전체 Build() 파이프라인 성능을 측정한다 (NF-001: 500ms SLA).
+// BenchmarkBuilder_Build measures full Build() pipeline performance (NF-001: 500ms SLA).
 func BenchmarkBuilder_Build(b *testing.B) {
 	modes := []StatuslineMode{ModeCompact, ModeDefault, ModeFull}
 	input := realisticInput()
@@ -1017,15 +1017,15 @@ func BenchmarkBuilder_Build(b *testing.B) {
 			for range b.N {
 				_, err := builder.Build(context.Background(), makeStdinJSON(input))
 				if err != nil {
-					b.Fatalf("Build 오류: %v", err)
+					b.Fatalf("Build error: %v", err)
 				}
 			}
 		})
 	}
 }
 
-// TestBuilderSetModeNormalizes는 SetMode가 deprecated 모드 이름을 정규화하는지 검증한다.
-// REQ-V3-MODE-004: 시스템은 항상 ModeCompact, ModeDefault, ModeFull 상수를 사용한다.
+// TestBuilderSetModeNormalizes verifies SetMode normalizes deprecated mode names.
+// REQ-V3-MODE-004: system always uses ModeCompact, ModeDefault, ModeFull constants.
 func TestBuilderSetModeNormalizes(t *testing.T) {
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
@@ -1037,7 +1037,7 @@ func TestBuilderSetModeNormalizes(t *testing.T) {
 		NoColor: true,
 	})
 
-	// SetMode("minimal") 호출 후 ModeCompact와 동일하게 동작해야 한다
+	// After SetMode("minimal"), should behave same as ModeCompact
 	builder.SetMode("minimal")
 	gotAfterSetMinimal, err := builder.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {

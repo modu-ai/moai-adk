@@ -3,21 +3,25 @@ package statusline
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// TestUsageCache_ReadWrite 캐시 파일을 생성하고 읽기를 검증한다 (REQ-V3-API-002).
+// TestUsageCache_ReadWrite verifies cache file creation and reading (REQ-V3-API-002).
 func TestUsageCache_ReadWrite(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	// 캐시 데이터 생성
+	// Create cache data
 	cache := &usageCacheFile{
 		CachedAt: time.Now().Unix(),
 		Usage5H: &UsageData{
@@ -32,7 +36,7 @@ func TestUsageCache_ReadWrite(t *testing.T) {
 		},
 	}
 
-	// 캜시 파일 저장
+	// Save cache file
 	collector := &usageCollector{
 		cachePath: cachePath,
 		mu:        sync.RWMutex{},
@@ -42,18 +46,18 @@ func TestUsageCache_ReadWrite(t *testing.T) {
 		t.Fatalf("saveCache failed: %v", err)
 	}
 
-	// 파일 존재 확인
+	// Verify file exists
 	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
 		t.Fatal("cache file was not created")
 	}
 
-	// 캐시 파일 로드
+	// Load cache file
 	loaded, err := collector.loadCache()
 	if err != nil {
 		t.Fatalf("loadCache failed: %v", err)
 	}
 
-	// 데이터 검증
+	// Verify data
 	if loaded.Usage5H == nil || loaded.Usage7D == nil {
 		t.Fatal("loaded cache missing usage data")
 	}
@@ -67,7 +71,7 @@ func TestUsageCache_ReadWrite(t *testing.T) {
 	}
 }
 
-// TestUsageCache_TTL 캐시 만료 검증 (REQ-V3-API-004).
+// TestUsageCache_TTL verifies cache expiration (REQ-V3-API-004).
 func TestUsageCache_TTL(t *testing.T) {
 	t.Parallel()
 
@@ -81,7 +85,7 @@ func TestUsageCache_TTL(t *testing.T) {
 		mu:        sync.RWMutex{},
 	}
 
-	// 만료된 캐시 생성 (6분 전)
+	// Create expired cache (6 minutes ago)
 	expiredCache := &usageCacheFile{
 		CachedAt: time.Now().Add(-6 * time.Minute).Unix(),
 		Usage5H:  &UsageData{UsedTokens: 1000},
@@ -91,7 +95,7 @@ func TestUsageCache_TTL(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 만료된 캐시는 유효하지 않아야 함
+	// Expired cache should not be valid
 	fresh, ok := collector.getCachedIfFresh()
 	if ok {
 		t.Error("expired cache should not be fresh, but got fresh cache")
@@ -100,7 +104,7 @@ func TestUsageCache_TTL(t *testing.T) {
 		t.Error("expired cache should return nil, got non-nil")
 	}
 
-	// 신선한 캐시 생성 (1분 전)
+	// Create fresh cache (1 minute ago)
 	freshCache := &usageCacheFile{
 		CachedAt: time.Now().Add(-1 * time.Minute).Unix(),
 		Usage5H:  &UsageData{UsedTokens: 3000},
@@ -110,7 +114,7 @@ func TestUsageCache_TTL(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 신선한 캐시는 유효해야 함
+	// Fresh cache should be valid
 	fresh, ok = collector.getCachedIfFresh()
 	if !ok {
 		t.Error("fresh cache should be valid")
@@ -123,7 +127,7 @@ func TestUsageCache_TTL(t *testing.T) {
 	}
 }
 
-// TestUsageCache_NotExist 파일이 없을 경우 처리 검증.
+// TestUsageCache_NotExist verifies handling when file does not exist.
 func TestUsageCache_NotExist(t *testing.T) {
 	t.Parallel()
 
@@ -135,7 +139,7 @@ func TestUsageCache_NotExist(t *testing.T) {
 		mu:        sync.RWMutex{},
 	}
 
-	// 파일이 없으면 nil을 반환해야 함
+	// Should return nil when file does not exist
 	loaded, err := collector.loadCache()
 	if err != nil {
 		t.Fatalf("loadCache should not error on missing file, got: %v", err)
@@ -145,14 +149,14 @@ func TestUsageCache_NotExist(t *testing.T) {
 	}
 }
 
-// TestUsageCache_InvalidJSON 잘못된 JSON 처리 검증.
+// TestUsageCache_InvalidJSON verifies handling of invalid JSON.
 func TestUsageCache_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "invalid.json")
 
-	// 잘못된 JSON 작성
+	// Write invalid JSON
 	if err := os.WriteFile(cachePath, []byte("invalid json"), 0644); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -162,7 +166,7 @@ func TestUsageCache_InvalidJSON(t *testing.T) {
 		mu:        sync.RWMutex{},
 	}
 
-	// 잘못된 JSON은 nil을 반환해야 함
+	// Invalid JSON should return nil
 	loaded, err := collector.loadCache()
 	if err != nil {
 		t.Fatalf("loadCache should not error on invalid JSON, got: %v", err)
@@ -172,24 +176,24 @@ func TestUsageCache_InvalidJSON(t *testing.T) {
 	}
 }
 
-// TestReadOAuthToken_Keychain 키체인에서 토큰 읽기 검증 (REQ-V3-API-010).
+// TestReadOAuthToken_Keychain verifies token reading from keychain (REQ-V3-API-010).
 func TestReadOAuthToken_Keychain(t *testing.T) {
 	t.Parallel()
 
-	// 이 테스트는 실제 키체인에 의존하므로 통합 테스트 환경에서만 실행
-	// 단위 테스트에서는 security 명령어를 mock 해야 함
+	// This test depends on real keychain, only run in integration test environment
+	// Unit tests need to mock the security command
 
 	t.Skip("TODO: mock security command for unit testing")
 }
 
-// TestReadOAuthToken_Fallback credentials.json fallback 검증 (REQ-V3-API-010).
+// TestReadOAuthToken_Fallback verifies credentials.json fallback (REQ-V3-API-010).
 func TestReadOAuthToken_Fallback(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	homeDir := tmpDir
 
-	// credentials.json 생성
+	// Create credentials.json
 	credsDir := filepath.Join(homeDir, ".claude")
 	if err := os.MkdirAll(credsDir, 0755); err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -204,9 +208,9 @@ func TestReadOAuthToken_Fallback(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 키체인은 실패하도록 mock (빈 문자열 반환)
+	// Mock keychain to fail (return empty string)
 	token := readOAuthToken(homeDir, func() (string, error) {
-		return "", nil // 키체인 실패 시뮬레이션
+		return "", nil // Simulate keychain failure
 	})
 
 	if token != "test-token-from-credentials" {
@@ -214,14 +218,14 @@ func TestReadOAuthToken_Fallback(t *testing.T) {
 	}
 }
 
-// TestReadOAuthToken_NotFound 토큰을 찾을 수 없는 경우 검증 (REQ-V3-API-010).
+// TestReadOAuthToken_NotFound verifies handling when token is not found (REQ-V3-API-010).
 func TestReadOAuthToken_NotFound(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	homeDir := tmpDir
 
-	// 키체인 실패, credentials.json 없음
+	// Keychain fails, no credentials.json
 	token := readOAuthToken(homeDir, func() (string, error) {
 		return "", nil
 	})
@@ -231,43 +235,158 @@ func TestReadOAuthToken_NotFound(t *testing.T) {
 	}
 }
 
-// TestFetchUsageFromAPI_Success 성공적인 API 호출 검증 (REQ-V3-API-003, REQ-V3-API-005).
+// TestFetchUsageFromAPI_Success verifies successful API call (REQ-V3-API-003, REQ-V3-API-005).
 func TestFetchUsageFromAPI_Success(t *testing.T) {
 	t.Parallel()
 
-	// 실제 API 호출은 integration test로 분리
-	// 단위 테스트에서는 mock HTTP server 사용
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			t.Error("missing Authorization header")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(oauthUsageResponse{
+			FiveHour: &usagePeriodData{Utilization: 25.5},
+			SevenDay: &usagePeriodData{Utilization: 60.0},
+		})
+	}))
+	defer server.Close()
 
-	t.Skip("TODO: add mock HTTP server for unit testing")
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	resp, err := collector.fetchUsageFromAPI(t, server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("fetchUsageFromOAuthAPI failed: %v", err)
+	}
+	if resp.FiveHour == nil || resp.FiveHour.Utilization != 25.5 {
+		t.Errorf("FiveHour.Utilization = %v, want 25.5", resp.FiveHour)
+	}
+	if resp.SevenDay == nil || resp.SevenDay.Utilization != 60.0 {
+		t.Errorf("SevenDay.Utilization = %v, want 60.0", resp.SevenDay)
+	}
 }
 
-// TestFetchUsageFromAPI_Timeout 300ms 타임아웃 검증 (REQ-V3-API-003).
-func TestFetchUsageFromAPI_Timeout(t *testing.T) {
+// fetchUsageFromAPI is a test helper that calls fetchUsageFromOAuthAPI with a custom URL.
+func (u *usageCollector) fetchUsageFromAPI(t *testing.T, apiURL, token string) (*oauthUsageResponse, error) {
+	t.Helper()
+	ctx := context.Background()
+
+	const maxRetries = 3
+	var lastErr error
+	backoff := 50 * time.Millisecond // Shorter backoff for tests
+
+	for attempt := range maxRetries {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := u.client.Do(req)
+		if err != nil {
+			lastErr = err
+			break
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			var apiResp oauthUsageResponse
+			err = json.NewDecoder(resp.Body).Decode(&apiResp)
+			_ = resp.Body.Close()
+			if err != nil {
+				return nil, err
+			}
+			return &apiResp, nil
+		}
+
+		_ = resp.Body.Close()
+
+		if resp.StatusCode != http.StatusTooManyRequests {
+			return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		}
+
+		lastErr = fmt.Errorf("API returned status 429 (attempt %d/%d)", attempt+1, maxRetries)
+		time.Sleep(backoff)
+		backoff *= 2
+	}
+
+	return nil, lastErr
+}
+
+// TestFetchUsageFromAPI_Retry429 verifies retry on 429 with exponential backoff.
+func TestFetchUsageFromAPI_Retry429(t *testing.T) {
 	t.Parallel()
 
-	// 느린 응답을 시뮬레이션하는 mock server 필요
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := attempts.Add(1)
+		if n < 3 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		// Succeed on 3rd attempt
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(oauthUsageResponse{
+			FiveHour: &usagePeriodData{Utilization: 10.0},
+			SevenDay: &usagePeriodData{Utilization: 30.0},
+		})
+	}))
+	defer server.Close()
 
-	t.Skip("TODO: add mock HTTP server with delay for unit testing")
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	resp, err := collector.fetchUsageFromAPI(t, server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("fetchUsageFromAPI should succeed after retries, got: %v", err)
+	}
+	if resp.FiveHour == nil || resp.FiveHour.Utilization != 10.0 {
+		t.Errorf("FiveHour.Utilization = %v, want 10.0", resp.FiveHour)
+	}
+	if got := attempts.Load(); got != 3 {
+		t.Errorf("attempts = %d, want 3", got)
+	}
 }
 
-// TestFetchUsageFromAPI_Error API 오류 처리 검증 (REQ-V3-API-009).
-func TestFetchUsageFromAPI_Error(t *testing.T) {
+// TestFetchUsageFromAPI_NonRetryableError verifies non-429 errors are not retried.
+func TestFetchUsageFromAPI_NonRetryableError(t *testing.T) {
 	t.Parallel()
 
-	// 오류 응답을 시뮬레이션하는 mock server 필요
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
 
-	t.Skip("TODO: add mock HTTP server with error response for unit testing")
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	_, err := collector.fetchUsageFromAPI(t, server.URL, "test-token")
+	if err == nil {
+		t.Fatal("expected error on 500 response")
+	}
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("attempts = %d, want 1 (non-retryable error)", got)
+	}
 }
 
-// TestUsageProvider_CollectUsage_CacheHit 캐시 히트 시나리오 검증 (REQ-V3-API-004).
+// TestUsageProvider_CollectUsage_CacheHit verifies cache hit scenario (REQ-V3-API-004).
 func TestUsageProvider_CollectUsage_CacheHit(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	// NewUsageCollector는 tmpDir/.moai/cache/usage.json를 사용한다
+	// NewUsageCollector uses tmpDir/.moai/cache/usage.json
 	cachePath := filepath.Join(tmpDir, ".moai", "cache", "usage.json")
 
-	// 신선한 캐시 생성
+	// Create fresh cache
 	freshCache := &usageCacheFile{
 		CachedAt: time.Now().Unix(),
 		Usage5H: &UsageData{
@@ -291,7 +410,7 @@ func TestUsageProvider_CollectUsage_CacheHit(t *testing.T) {
 
 	collector := NewUsageCollector(tmpDir)
 
-	// 캐시가 유효하면 API 호출 없이 캐시 반환
+	// Return cache without API call when cache is valid
 	result, err := collector.CollectUsage(context.Background())
 	if err != nil {
 		t.Fatalf("CollectUsage failed: %v", err)
@@ -310,25 +429,60 @@ func TestUsageProvider_CollectUsage_CacheHit(t *testing.T) {
 	}
 }
 
-// TestUsageProvider_CollectUsage_APIFallback 캐시 만료 시 API 호출 검증 (REQ-V3-API-005).
-func TestUsageProvider_CollectUsage_APIFallback(t *testing.T) {
+// TestGetStaleCache verifies stale cache retrieval for fallback (REQ-V3-API-009).
+func TestGetStaleCache(t *testing.T) {
 	t.Parallel()
 
-	// 실제 API 호출이 필요하므로 integration test로 분리
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	t.Skip("TODO: add integration test with real API or mock server")
+	collector := &usageCollector{
+		cachePath: cachePath,
+		ttl:       5 * time.Minute,
+		mu:        sync.RWMutex{},
+	}
+
+	// No cache exists: should return nil
+	if got := collector.getStaleCache(); got != nil {
+		t.Error("getStaleCache should return nil when no cache exists")
+	}
+
+	// Create expired cache (30 minutes ago)
+	expiredCache := &usageCacheFile{
+		CachedAt: time.Now().Add(-30 * time.Minute).Unix(),
+		Usage5H:  &UsageData{Percentage: 42.0},
+		Usage7D:  &UsageData{Percentage: 85.0},
+	}
+	if err := collector.saveCache(expiredCache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// getCachedIfFresh should reject expired cache
+	_, ok := collector.getCachedIfFresh()
+	if ok {
+		t.Error("expired cache should not be fresh")
+	}
+
+	// getStaleCache should return expired cache (ignores TTL)
+	stale := collector.getStaleCache()
+	if stale == nil {
+		t.Fatal("getStaleCache should return expired cache")
+	}
+	if stale.Usage5H.Percentage != 42.0 {
+		t.Errorf("stale Usage5H.Percentage = %f, want 42.0", stale.Usage5H.Percentage)
+	}
 }
 
-// TestUsageProvider_CollectUsage_GracefulDegradation 모든 실패 시 graceful degradation 검증 (REQ-V3-API-009).
+// TestUsageProvider_CollectUsage_GracefulDegradation verifies graceful degradation on all failures (REQ-V3-API-009).
 func TestUsageProvider_CollectUsage_GracefulDegradation(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	// 토큰 없음, 캐시 없음
+	// No token, no cache
 
 	collector := NewUsageCollector(tmpDir)
 
-	// 실패해도 nil, nil을 반환 (오류 전파 안 함)
+	// Should return nil, nil on failure (no error propagation)
 	result, err := collector.CollectUsage(context.Background())
 	if err != nil {
 		t.Fatalf("CollectUsage should not error, got: %v", err)

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// abs 는 정수의 절댓값을 반환한다.
+// abs returns the absolute value of an integer.
 func abs(x int) int {
 	if x < 0 {
 		return -x
@@ -13,8 +13,8 @@ func abs(x int) int {
 	return x
 }
 
-// TestInterpolateGradientColor 는 블록 위치에 따른 RGB 그라디언트 보간을 검증한다.
-// Green(0,255,0) → Yellow(255,255,0) → Red(255,0,0) 경로 확인.
+// TestInterpolateGradientColor verifies RGB gradient interpolation by block position.
+// Checks Green(0,255,0) → Yellow(255,255,0) → Red(255,0,0) path.
 func TestInterpolateGradientColor(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -32,7 +32,7 @@ func TestInterpolateGradientColor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r, g, b := interpolateGradientColor(tt.blockPct)
-			// ±2 오차 허용 (반올림 처리)
+			// Allow ±2 tolerance (rounding)
 			if abs(r-tt.wantR) > 2 || abs(g-tt.wantG) > 2 || abs(b-tt.wantB) > 2 {
 				t.Errorf("interpolateGradientColor(%f) = (%d,%d,%d), want ~(%d,%d,%d)",
 					tt.blockPct, r, g, b, tt.wantR, tt.wantG, tt.wantB)
@@ -41,22 +41,22 @@ func TestInterpolateGradientColor(t *testing.T) {
 	}
 }
 
-// TestInterpolateGradientColor_Clamp 는 범위 밖 입력에 대한 클램핑을 검증한다.
+// TestInterpolateGradientColor_Clamp verifies clamping for out-of-range inputs.
 func TestInterpolateGradientColor_Clamp(t *testing.T) {
-	// 0 이하는 Green 반환
+	// Below 0 returns Green
 	r, g, b := interpolateGradientColor(-0.5)
 	if r != 0 || g != 255 || b != 0 {
 		t.Errorf("clamp below 0: got (%d,%d,%d), want (0,255,0)", r, g, b)
 	}
 
-	// 1 이상은 Red 반환
+	// Above 1 returns Red
 	r, g, b = interpolateGradientColor(1.5)
 	if r != 255 || g != 0 || b != 0 {
 		t.Errorf("clamp above 1: got (%d,%d,%d), want (255,0,0)", r, g, b)
 	}
 }
 
-// TestBuildGradientBar 는 그라디언트 프로그레스 바의 블록 수를 검증한다.
+// TestBuildGradientBar verifies block counts in gradient progress bars.
 func TestBuildGradientBar(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -76,8 +76,8 @@ func TestBuildGradientBar(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := BuildGradientBar(tt.pct, tt.width, tt.noColor)
-			// noColor=false 일 때는 ANSI 이스케이프가 포함되어 단순 Count 불가
-			// noColor=true 인 경우에만 정확한 블록 수 검증
+			// When noColor=false, ANSI escapes are included so simple count won't work
+			// Only verify exact block counts when noColor=true
 			if tt.noColor {
 				filled := strings.Count(result, "█")
 				empty := strings.Count(result, "░")
@@ -95,14 +95,14 @@ func TestBuildGradientBar(t *testing.T) {
 	}
 }
 
-// TestBuildGradientBar_NoColor 는 noColor 모드에서 ANSI 이스케이프가 없음을 검증한다.
+// TestBuildGradientBar_NoColor verifies no ANSI escapes in noColor mode.
 func TestBuildGradientBar_NoColor(t *testing.T) {
 	result := BuildGradientBar(50, 10, true)
-	// ANSI 이스케이프 시퀀스 없어야 함
+	// Must not contain ANSI escape sequences
 	if strings.Contains(result, "\033") || strings.Contains(result, "\x1b") {
-		t.Error("noColor 모드는 ANSI 이스케이프 시퀀스를 포함하면 안 됩니다")
+		t.Error("noColor mode must not contain ANSI escape sequences")
 	}
-	// 정확히 5 filled + 5 empty
+	// Exactly 5 filled + 5 empty
 	filled := strings.Count(result, "█")
 	empty := strings.Count(result, "░")
 	if filled != 5 || empty != 5 {
@@ -110,16 +110,16 @@ func TestBuildGradientBar_NoColor(t *testing.T) {
 	}
 }
 
-// TestBuildGradientBar_WithColor 는 컬러 모드에서 ANSI 이스케이프가 포함됨을 검증한다.
+// TestBuildGradientBar_WithColor verifies ANSI escapes are present in color mode.
 func TestBuildGradientBar_WithColor(t *testing.T) {
 	result := BuildGradientBar(50, 10, false)
-	// lipgloss 가 ANSI 이스케이프를 추가하므로 길이가 10자 이상이어야 함
+	// lipgloss adds ANSI escapes so length should exceed 10 characters
 	if len(result) <= 15 {
-		t.Error("컬러 모드는 ANSI 이스케이프 시퀀스로 인해 더 길어야 합니다")
+		t.Error("color mode should be longer due to ANSI escape sequences")
 	}
 }
 
-// TestBuildGradientBar_FilledCountWithColor 는 컬러 모드에서도 올바른 블록 수를 갖는지 검증한다.
+// TestBuildGradientBar_FilledCountWithColor verifies correct block count in color mode.
 func TestBuildGradientBar_FilledCountWithColor(t *testing.T) {
 	// 60% / 40 blocks -> 24 filled, 16 empty
 	result := BuildGradientBar(60, 40, false)
@@ -133,7 +133,7 @@ func TestBuildGradientBar_FilledCountWithColor(t *testing.T) {
 	}
 }
 
-// TestBuildGradientBar_SingleFilled 는 filled=1 인 경우 나눗셈 by zero 없이 동작함을 검증한다.
+// TestBuildGradientBar_SingleFilled verifies no division by zero when filled=1.
 func TestBuildGradientBar_SingleFilled(t *testing.T) {
 	// 10% of 10 -> 1 filled
 	result := BuildGradientBar(10, 10, false)

@@ -18,7 +18,7 @@ import (
 type defaultBuilder struct {
 	gitProvider    GitDataProvider
 	updateProvider UpdateProvider
-	usageProvider  UsageProvider // @MX:NOTE: API 사용량 수집 (Phase 5, REQ-V3-API-001)
+	usageProvider  UsageProvider // @MX:NOTE: [AUTO] API usage collection (Phase 5, REQ-V3-API-001)
 	renderer       *Renderer
 	mode           StatuslineMode
 	mu             sync.RWMutex
@@ -66,14 +66,14 @@ type Options struct {
 // If UpdateProvider is nil, attempts to read version from config file automatically.
 // If UsageProvider is nil, attempts to create usage collector automatically (Phase 5).
 //
-// @MX:ANCHOR: statusline 패키지의 공개 생성자 - 모든 외부 호출자가 이 함수를 통해 Builder를 생성함
-// @MX:REASON: 공개 API 경계점; auto-detection 로직(git/update/usage provider) 포함
+// @MX:ANCHOR: [AUTO] Public constructor for statusline package - all external callers create Builder through this function
+// @MX:REASON: Public API boundary; contains auto-detection logic (git/update/usage provider)
 func New(opts Options) Builder {
 	mode := opts.Mode
 	if mode == "" {
 		mode = ModeDefault
 	}
-	// deprecated 모드 이름을 현재 이름으로 정규화한다 (REQ-V3-MODE-001, REQ-V3-MODE-002)
+	// Normalize deprecated mode names to current names (REQ-V3-MODE-001, REQ-V3-MODE-002)
 	mode = NormalizeMode(mode)
 
 	gitProvider := opts.GitProvider
@@ -103,7 +103,7 @@ func New(opts Options) Builder {
 	if usageProvider == nil {
 		homeDir := opts.HomeDir
 		if homeDir == "" {
-			// 홈 디렉토리 자동 감지
+			// Auto-detect home directory
 			if h, err := os.UserHomeDir(); err == nil {
 				homeDir = h
 			}
@@ -129,8 +129,8 @@ func New(opts Options) Builder {
 // On any input error, it produces a safe fallback output.
 // The output never contains newline characters.
 //
-// @MX:ANCHOR: 전체 statusline 빌드 파이프라인의 핵심 메서드
-// @MX:REASON: Builder 인터페이스 구현; parseStdin + collectAll + Render 3단계 파이프라인 조율
+// @MX:ANCHOR: [AUTO] Core method of the statusline build pipeline
+// @MX:REASON: Builder interface implementation; orchestrates parseStdin + collectAll + Render 3-stage pipeline
 func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error) {
 	mode := b.getMode()
 
@@ -140,7 +140,7 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// Collect data from all sources
 	data := b.collectAll(ctx, input)
 
-	// renderer가 v3 모드를 직접 지원하므로 mode를 그대로 전달한다 (Phase 4, REQ-V3-LAYOUT-001~003)
+	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)
 
 	return result, nil
@@ -154,7 +154,7 @@ func (b *defaultBuilder) getMode() StatuslineMode {
 }
 
 // SetMode switches the display mode. Thread-safe.
-// deprecated 모드 이름("minimal", "verbose")은 자동으로 정규화된다 (REQ-V3-MODE-001, REQ-V3-MODE-002).
+// Deprecated mode names ("minimal", "verbose") are automatically normalized (REQ-V3-MODE-001, REQ-V3-MODE-002).
 func (b *defaultBuilder) SetMode(mode StatuslineMode) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -190,7 +190,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	if met := CollectMetrics(input); met != nil {
 		data.Metrics = *met
 	}
-	// 활성 태스크 정보 수집 (Phase 4에서 렌더링 활성화됨, REQ-V3 Cycle 5)
+	// Collect active task info (rendering enabled in Phase 4, REQ-V3 Cycle 5)
 	if task := CollectTask(); task != nil {
 		data.Task = *task
 	}
@@ -214,7 +214,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData
 	var versionResult *VersionData
-	var usageResult *UsageResult // @MX:NOTE: API 사용량 병렬 수집 (Phase 5)
+	var usageResult *UsageResult // @MX:NOTE: [AUTO] Parallel API usage collection (Phase 5)
 
 	if b.gitProvider != nil {
 		wg.Go(func() {
@@ -238,7 +238,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		})
 	}
 
-	// API 사용량 수집 (Phase 5, REQ-V3-API-001)
+	// API usage collection (Phase 5, REQ-V3-API-001)
 	if b.usageProvider != nil {
 		wg.Go(func() {
 			result, err := b.usageProvider.CollectUsage(ctx)
@@ -259,7 +259,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Version = *versionResult
 	}
 	if usageResult != nil {
-		data.Usage = usageResult // @MX:NOTE: 사용량 데이터 할당 (Phase 5)
+		data.Usage = usageResult // @MX:NOTE: [AUTO] Usage data assignment (Phase 5)
 	}
 
 	return data

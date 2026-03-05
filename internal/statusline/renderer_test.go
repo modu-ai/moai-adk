@@ -78,7 +78,7 @@ func TestRender_CompactMode(t *testing.T) {
 }
 
 func TestRender_VerboseMode_MultiLine(t *testing.T) {
-	// v3에서 ModeVerbose → ModeFull로 매핑되어 6줄 레이아웃
+	// v3 maps ModeVerbose → ModeFull for 6-line layout
 	r := newTestRenderer()
 	data := &StatusData{
 		Git:               GitStatusData{Branch: "main", Staged: 3, Modified: 2, Untracked: 1, Available: true},
@@ -92,25 +92,24 @@ func TestRender_VerboseMode_MultiLine(t *testing.T) {
 
 	got := r.Render(data, ModeVerbose)
 
-	// full mode는 여러 줄 출력
+	// full mode outputs multiple lines
 	if !strings.Contains(got, "\n") {
 		t.Errorf("full mode should produce multi-line output, got %q", got)
 	}
 
 	lines := strings.Split(got, "\n")
 
-	// v3 full L1: Model, Claude 버전(접두사 포함), MoAI 버전(접두사 포함)
+	// v3 full L1: Model, Claude version, MoAI version (no prefix)
 	if !strings.Contains(lines[0], "🤖 Sonnet 4") {
 		t.Errorf("full line 1 should contain model, got %q", lines[0])
 	}
-	// full 모드: "Claude v..." 및 "MoAI v..." 접두사 포함
-	if !strings.Contains(lines[0], "🔅 Claude v1.0.80") {
-		t.Errorf("full line 1 should contain Claude version with prefix, got %q", lines[0])
+	if !strings.Contains(lines[0], "🔅 v1.0.80") {
+		t.Errorf("full line 1 should contain Claude version, got %q", lines[0])
 	}
-	if !strings.Contains(lines[0], "🗿 MoAI v1.2.0") {
-		t.Errorf("full line 1 should contain MoAI version with prefix, got %q", lines[0])
+	if !strings.Contains(lines[0], "🗿 v1.2.0") {
+		t.Errorf("full line 1 should contain MoAI version, got %q", lines[0])
 	}
-	// v3에서 비용을 렌더링하지 않는다 (REQ-V3-TIME-005)
+	// v3 does not render cost (REQ-V3-TIME-005)
 	if strings.Contains(got, "$") {
 		t.Errorf("full mode should NOT contain cost in v3, got %q", got)
 	}
@@ -137,7 +136,7 @@ func TestRender_VerboseMode_OmitsEmptyLines(t *testing.T) {
 }
 
 func TestRender_VerboseMode_CostRendering(t *testing.T) {
-	// REQ-V3-TIME-005: v3에서는 비용($) 세그먼트를 렌더링하지 않는다
+	// REQ-V3-TIME-005: v3 does not render cost ($) segment
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus 4.5", CostUSD: 1.23, Available: true},
@@ -147,12 +146,12 @@ func TestRender_VerboseMode_CostRendering(t *testing.T) {
 	}
 
 	got := r.Render(data, ModeVerbose)
-	// v3에서 비용을 렌더링하지 않는다
+	// v3 does not render cost
 	if strings.Contains(got, "$1.23") || strings.Contains(got, "$") {
 		t.Errorf("full mode should NOT render cost in v3, got %q", got)
 	}
-	// 버전 정보는 여전히 표시된다 (full 모드: "Claude v...", "MoAI v...")
-	if !strings.Contains(got, "🔅 Claude v1.0.80") {
+	// Version info should still be displayed (no prefix in full mode)
+	if !strings.Contains(got, "🔅 v1.0.80") {
 		t.Errorf("full mode should still contain Claude version, got %q", got)
 	}
 }
@@ -229,11 +228,11 @@ func TestRender_EmptyMemory(t *testing.T) {
 	if !strings.Contains(got, "🔀 main") {
 		t.Errorf("should contain git info, got %q", got)
 	}
-	// CW 바는 memory 미사용 시 표시되지 않아야 한다
+	// CW bar should not display when memory is unavailable
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when memory unavailable, got %q", got)
 	}
-	// 5H/7D는 항상 0%로 표시된다
+	// 5H/7D always display at 0%
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -251,7 +250,7 @@ func TestRender_AllEmpty(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{}
 	got := r.Render(data, ModeDefault)
-	// 5H/7D 바가 항상 0%로 표시되므로 빈 데이터에서도 출력이 있다
+	// 5H/7D bars always display at 0%, so output exists even with empty data
 	if got == "" {
 		t.Errorf("empty data should still produce output (5H/7D bars), got empty")
 	}
@@ -286,24 +285,24 @@ func TestRender_Separator(t *testing.T) {
 		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
 	}
 
-	got := r.Render(data, ModeCompact) // compact 모드: 한 줄에 여러 세그먼트
+	got := r.Render(data, ModeCompact) // compact mode: multiple segments on one line
 
-	// v3 구분자는 " │ " (U+2502 박스 그리기 문자)
+	// v3 separator is " │ " (U+2502 box-drawing character)
 	if !strings.Contains(got, " │ ") {
 		t.Errorf("sections should be separated by ' │ ', got %q", got)
 	}
 }
 
 func TestRender_NoNewline(t *testing.T) {
-	// compact 모드에서 git 없으면 1줄 (L1만)
+	// compact mode with no git yields 1 line (L1 only)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Sonnet 4", Available: true},
 		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		// git 없음
+		// no git
 	}
 
-	got := r.Render(data, ModeCompact) // compact: git 없으면 1줄
+	got := r.Render(data, ModeCompact) // compact: 1 line without git
 
 	if strings.Contains(got, "\n") {
 		t.Errorf("compact without git should not contain newline, got %q", got)
@@ -599,8 +598,8 @@ func TestRender_SegmentFiltering(t *testing.T) {
 }
 
 func TestRender_SegmentFiltering_MinimalModeIgnoresConfig(t *testing.T) {
-	// v3에서 ModeMinimal → ModeCompact로 매핑됨
-	// compact는 segment config를 준수한다
+	// v3 maps ModeMinimal → ModeCompact
+	// compact respects segment config
 	segmentConfig := map[string]bool{
 		SegmentModel: false, SegmentContext: false,
 	}
@@ -612,14 +611,14 @@ func TestRender_SegmentFiltering_MinimalModeIgnoresConfig(t *testing.T) {
 
 	got := r.Render(data, ModeMinimal) // ModeMinimal → ModeCompact
 
-	// v3 compact는 segment config를 준수하므로 모든 세그먼트가 비활성화되면 MoAI 폴백
+	// v3 compact respects segment config, falls back to MoAI when all segments disabled
 	if got != "MoAI" {
 		t.Errorf("with model/context disabled, compact should return MoAI fallback, got %q", got)
 	}
 }
 
 func TestCostNotRendered(t *testing.T) {
-	// REQ-V3-TIME-005: v3에서는 비용($) 세그먼트를 렌더링하지 않는다
+	// REQ-V3-TIME-005: v3 does not render cost ($) segment
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus", CostUSD: 5.50, Available: true},
@@ -628,7 +627,7 @@ func TestCostNotRendered(t *testing.T) {
 		ClaudeCodeVersion: "1.0.80",
 	}
 
-	// 모든 모드에서 비용 렌더링 확인
+	// Verify cost rendering across all modes
 	for _, mode := range []StatuslineMode{ModeDefault, ModeCompact, ModeMinimal, ModeVerbose, ModeFull} {
 		output := r.Render(data, mode)
 		if strings.Contains(output, "$5.50") || strings.Contains(output, "$") {
@@ -643,15 +642,15 @@ func TestRenderGitBranchV3(t *testing.T) {
 		git  GitStatusData
 		want string
 	}{
-		// REQ-V3-GIT-001: Ahead만 있을 때 "🔀 main ↑3"
+		// REQ-V3-GIT-001: Ahead only → "🔀 main ↑3"
 		{"ahead only", GitStatusData{Branch: "main", Ahead: 3, Behind: 0, Available: true}, "🔀 main ↑3"},
-		// REQ-V3-GIT-002: Behind만 있을 때 "🔀 main ↓2"
+		// REQ-V3-GIT-002: Behind only → "🔀 main ↓2"
 		{"behind only", GitStatusData{Branch: "main", Ahead: 0, Behind: 2, Available: true}, "🔀 main ↓2"},
-		// REQ-V3-GIT-003: 둘 다 있을 때 "🔀 feat/auth ↑2↓1"
+		// REQ-V3-GIT-003: Both present → "🔀 feat/auth ↑2↓1"
 		{"both", GitStatusData{Branch: "feat/auth", Ahead: 2, Behind: 1, Available: true}, "🔀 feat/auth ↑2↓1"},
-		// REQ-V3-GIT-004: 둘 다 없을 때 브랜치 이름만
+		// REQ-V3-GIT-004: Neither present → branch name only
 		{"neither", GitStatusData{Branch: "main", Ahead: 0, Behind: 0, Available: true}, "🔀 main"},
-		// 사용 불가 시 빈 문자열
+		// Unavailable → empty string
 		{"unavailable", GitStatusData{Available: false}, ""},
 	}
 
@@ -672,17 +671,17 @@ func TestRenderSessionTime(t *testing.T) {
 		ms   int
 		want string
 	}{
-		// REQ-V3-TIME-002: 83분 = "⏳ 1h 23m"
+		// REQ-V3-TIME-002: 83min = "⏳ 1h 23m"
 		{"83 minutes", 4980000, "⏳ 1h 23m"},
-		// REQ-V3-TIME-002: 45분 미만 = "⏳ 45m"
+		// REQ-V3-TIME-002: under 45min = "⏳ 45m"
 		{"45 minutes", 2700000, "⏳ 45m"},
-		// REQ-V3-TIME-004: 0ms는 빈 문자열
+		// REQ-V3-TIME-004: 0ms → empty string
 		{"zero", 0, ""},
-		// REQ-V3-TIME-002: 정확히 1시간
+		// REQ-V3-TIME-002: exactly 1 hour
 		{"exactly 1 hour", 3600000, "⏳ 1h 0m"},
-		// REQ-V3-TIME-002: 26시간 = "⏳ 1d 2h"
+		// REQ-V3-TIME-002: 26 hours = "⏳ 1d 2h"
 		{"26 hours", 93600000, "⏳ 1d 2h"},
-		// REQ-V3-TIME-002: 48시간 = "⏳ 2d 0h"
+		// REQ-V3-TIME-002: 48 hours = "⏳ 2d 0h"
 		{"48 hours", 172800000, "⏳ 2d 0h"},
 	}
 
@@ -722,12 +721,12 @@ func TestIsSegmentEnabled(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle 1: renderCompactV3 테스트
-// REQ-V3-LAYOUT-001: compact 모드는 2줄 레이아웃
+// Cycle 1: renderCompactV3 tests
+// REQ-V3-LAYOUT-001: compact mode uses 2-line layout
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRenderCompactV3_TwoLines(t *testing.T) {
-	// compact 모드는 정확히 2줄을 생성해야 한다 (데이터가 모두 있을 때)
+	// compact mode must produce exactly 2 lines (when all data is present)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -747,18 +746,18 @@ func TestRenderCompactV3_TwoLines(t *testing.T) {
 	lines := strings.Split(got, "\n")
 
 	if len(lines) != 2 {
-		t.Errorf("compact 모드는 2줄이어야 한다, 실제: %d줄\n출력: %q", len(lines), got)
+		t.Errorf("compact mode must be 2 lines, got: %d lines\noutput: %q", len(lines), got)
 	}
 }
 
 func TestRenderCompactV3_Line1_ModelAndBar(t *testing.T) {
-	// compact L1: 모델, CW 바 (10블록), 세션 시간 없음 (REQ-V3-TIME-006)
+	// compact L1: model, CW bar (10 blocks), no session time (REQ-V3-TIME-006)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{
 			Model:             "Opus 4.6",
 			Available:         true,
-			SessionDurationMS: 2700000, // 45분 (compact에서는 표시 안 함)
+			SessionDurationMS: 2700000, // 45min (not shown in compact)
 		},
 		Memory: MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
 		Git:    GitStatusData{Branch: "main", Available: true},
@@ -768,30 +767,30 @@ func TestRenderCompactV3_Line1_ModelAndBar(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l1 := lines[0]
 
-	// 모델 표시
+	// Model display
 	if !strings.Contains(l1, "🤖 Opus 4.6") {
-		t.Errorf("compact L1에 모델이 있어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must contain model, got: %q", l1)
 	}
-	// CW 레이블 포함 바
+	// CW bar with label
 	if !strings.Contains(l1, "CW:") {
-		t.Errorf("compact L1에 'CW:' 레이블이 있어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must contain 'CW:' label, got: %q", l1)
 	}
 	// 88% (176000/200000 = 88%)
 	if !strings.Contains(l1, "88%") {
-		t.Errorf("compact L1에 88%%가 있어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must contain 88%%, got: %q", l1)
 	}
-	// 배터리 아이콘 (88% > 70% 이므로 🪫)
+	// Battery icon (88% > 70% so 🪫)
 	if !strings.Contains(l1, "🪫") {
-		t.Errorf("compact L1에 🪫 아이콘이 있어야 한다 (88%%), 실제: %q", l1)
+		t.Errorf("compact L1 must contain 🪫 icon (88%%), got: %q", l1)
 	}
-	// REQ-V3-TIME-006: compact에서 세션 시간 없음
+	// REQ-V3-TIME-006: no session time in compact
 	if strings.Contains(l1, "⏳") {
-		t.Errorf("compact L1에 세션 시간이 없어야 한다 (REQ-V3-TIME-006), 실제: %q", l1)
+		t.Errorf("compact L1 must not contain session time (REQ-V3-TIME-006), got: %q", l1)
 	}
 }
 
 func TestRenderCompactV3_Line1_NoVersionNoStyleNoTask(t *testing.T) {
-	// compact L1: 버전, 출력 스타일, 태스크 없음 (REQ-V3-API-011)
+	// compact L1: no version, output style, or task (REQ-V3-API-011)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus 4.6", Available: true},
@@ -807,25 +806,25 @@ func TestRenderCompactV3_Line1_NoVersionNoStyleNoTask(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l1 := lines[0]
 
-	// compact L1에는 버전 없음
+	// No version in compact L1
 	if strings.Contains(l1, "🔅") {
-		t.Errorf("compact L1에 Claude 버전이 없어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must not contain Claude version, got: %q", l1)
 	}
 	if strings.Contains(l1, "🗿") {
-		t.Errorf("compact L1에 MoAI 버전이 없어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must not contain MoAI version, got: %q", l1)
 	}
-	// compact L1에는 출력 스타일 없음
+	// No output style in compact L1
 	if strings.Contains(l1, "💬") {
-		t.Errorf("compact L1에 출력 스타일이 없어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must not contain output style, got: %q", l1)
 	}
-	// compact L1에는 태스크 없음
+	// No task in compact L1
 	if strings.Contains(l1, "📋") {
-		t.Errorf("compact L1에 태스크가 없어야 한다, 실제: %q", l1)
+		t.Errorf("compact L1 must not contain task, got: %q", l1)
 	}
 }
 
 func TestRenderCompactV3_Line2_BranchAndGitStatus(t *testing.T) {
-	// compact L2: 브랜치(ahead/behind), git 상태
+	// compact L2: branch (ahead/behind), git status
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -845,27 +844,27 @@ func TestRenderCompactV3_Line2_BranchAndGitStatus(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l2 := lines[1]
 
-	// 브랜치 + ahead/behind
+	// branch + ahead/behind
 	if !strings.Contains(l2, "🔀 feat/auth ↑2↓1") {
-		t.Errorf("compact L2에 브랜치 + ahead/behind가 있어야 한다, 실제: %q", l2)
+		t.Errorf("compact L2 must contain branch + ahead/behind, got: %q", l2)
 	}
-	// git 상태
+	// git status
 	if !strings.Contains(l2, "📊") {
-		t.Errorf("compact L2에 📊 git 상태 이모지가 있어야 한다, 실제: %q", l2)
+		t.Errorf("compact L2 must contain 📊 git status emoji, got: %q", l2)
 	}
 	if !strings.Contains(l2, "+3") {
-		t.Errorf("compact L2에 staged(+3)가 있어야 한다, 실제: %q", l2)
+		t.Errorf("compact L2 must contain staged(+3), got: %q", l2)
 	}
 	if !strings.Contains(l2, "M2") {
-		t.Errorf("compact L2에 modified(M2)가 있어야 한다, 실제: %q", l2)
+		t.Errorf("compact L2 must contain modified(M2), got: %q", l2)
 	}
 	if !strings.Contains(l2, "?1") {
-		t.Errorf("compact L2에 untracked(?1)가 있어야 한다, 실제: %q", l2)
+		t.Errorf("compact L2 must contain untracked(?1), got: %q", l2)
 	}
 }
 
 func TestRenderCompactV3_Line2_No5HNo7D(t *testing.T) {
-	// compact 모드에는 5H/7D 바 없음 (REQ-V3-API-011)
+	// compact mode has no 5H/7D bars (REQ-V3-API-011)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -879,22 +878,22 @@ func TestRenderCompactV3_Line2_No5HNo7D(t *testing.T) {
 
 	got := r.Render(data, ModeCompact)
 
-	// compact에는 5H/7D 없음
+	// No 5H/7D in compact
 	if strings.Contains(got, "5H:") {
-		t.Errorf("compact 모드에는 5H 바가 없어야 한다, 실제: %q", got)
+		t.Errorf("compact mode must not contain 5H bar, got: %q", got)
 	}
 	if strings.Contains(got, "7D:") {
-		t.Errorf("compact 모드에는 7D 바가 없어야 한다, 실제: %q", got)
+		t.Errorf("compact mode must not contain 7D bar, got: %q", got)
 	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle 2: renderDefaultV3 테스트
-// REQ-V3-LAYOUT-002: default 모드는 4줄 레이아웃
+// Cycle 2: renderDefaultV3 tests
+// REQ-V3-LAYOUT-002: default mode uses 4-line layout
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRenderDefaultV3_ThreeLines(t *testing.T) {
-	// default 모드는 정확히 3줄이어야 한다 (L4 제거됨, 스타일은 L1에 통합)
+	// default mode must produce exactly 3 lines (L4 removed, style merged into L1)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus 4.6", Available: true, SessionDurationMS: 9240000},
@@ -923,16 +922,16 @@ func TestRenderDefaultV3_ThreeLines(t *testing.T) {
 	lines := strings.Split(got, "\n")
 
 	if len(lines) != 3 {
-		t.Errorf("default 모드는 3줄이어야 한다, 실제: %d줄\n출력: %q", len(lines), got)
+		t.Errorf("default mode must be 3 lines, got: %d lines\noutput: %q", len(lines), got)
 	}
-	// L1에 출력 스타일이 통합되어야 한다
+	// Output style must be merged into L1
 	if !strings.Contains(lines[0], "💬 MoAI") {
-		t.Errorf("default L1에 출력 스타일이 있어야 한다, 실제: %q", lines[0])
+		t.Errorf("default L1 must contain output style, got: %q", lines[0])
 	}
 }
 
 func TestRenderDefaultV3_Line1(t *testing.T) {
-	// default L1: 모델, Claude 버전, MoAI 버전, 세션 시간
+	// default L1: model, Claude version, MoAI version, session time
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus 4.6", Available: true, SessionDurationMS: 9240000}, // 2h 34m
@@ -948,25 +947,25 @@ func TestRenderDefaultV3_Line1(t *testing.T) {
 	l1 := lines[0]
 
 	if !strings.Contains(l1, "🤖 Opus 4.6") {
-		t.Errorf("default L1에 모델이 있어야 한다, 실제: %q", l1)
+		t.Errorf("default L1 must contain model, got: %q", l1)
 	}
 	if !strings.Contains(l1, "🔅 v2.1.50") {
-		t.Errorf("default L1에 Claude 버전이 있어야 한다, 실제: %q", l1)
+		t.Errorf("default L1 must contain Claude version, got: %q", l1)
 	}
 	if !strings.Contains(l1, "🗿 v2.8.0") {
-		t.Errorf("default L1에 MoAI 버전이 있어야 한다, 실제: %q", l1)
+		t.Errorf("default L1 must contain MoAI version, got: %q", l1)
 	}
-	// 세션 시간 (9240000ms = 154분 = 2h 34m)
+	// Session time (9240000ms = 154min = 2h 34m)
 	if !strings.Contains(l1, "⏳") {
-		t.Errorf("default L1에 세션 시간이 있어야 한다, 실제: %q", l1)
+		t.Errorf("default L1 must contain session time, got: %q", l1)
 	}
 	if !strings.Contains(l1, "2h 34m") {
-		t.Errorf("default L1에 '2h 34m'이 있어야 한다, 실제: %q", l1)
+		t.Errorf("default L1 must contain '2h 34m', got: %q", l1)
 	}
 }
 
 func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
-	// default L2: CW/5H/7D 바가 한 줄에 인라인 (10블록씩, REQ-V3-API-011)
+	// default L2: CW/5H/7D bars inline on one line (10 blocks each, REQ-V3-API-011)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -983,30 +982,30 @@ func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l2 := lines[1]
 
-	// CW, 5H, 7D 모두 L2에 있어야 한다
+	// CW, 5H, 7D must all be on L2
 	if !strings.Contains(l2, "CW:") {
-		t.Errorf("default L2에 'CW:' 레이블이 있어야 한다, 실제: %q", l2)
+		t.Errorf("default L2 must contain 'CW:' label, got: %q", l2)
 	}
 	if !strings.Contains(l2, "5H:") {
-		t.Errorf("default L2에 '5H:' 레이블이 있어야 한다, 실제: %q", l2)
+		t.Errorf("default L2 must contain '5H:' label, got: %q", l2)
 	}
 	if !strings.Contains(l2, "7D:") {
-		t.Errorf("default L2에 '7D:' 레이블이 있어야 한다, 실제: %q", l2)
+		t.Errorf("default L2 must contain '7D:' label, got: %q", l2)
 	}
-	// 퍼센트 값 확인
+	// Verify percentage values
 	if !strings.Contains(l2, "88%") {
-		t.Errorf("default L2에 CW 88%%가 있어야 한다, 실제: %q", l2)
+		t.Errorf("default L2 must contain CW 88%%, got: %q", l2)
 	}
 	if !strings.Contains(l2, "45%") {
-		t.Errorf("default L2에 5H 45%%가 있어야 한다, 실제: %q", l2)
+		t.Errorf("default L2 must contain 5H 45%%, got: %q", l2)
 	}
 	if !strings.Contains(l2, "82%") {
-		t.Errorf("default L2에 7D 82%%가 있어야 한다, 실제: %q", l2)
+		t.Errorf("default L2 must contain 7D 82%%, got: %q", l2)
 	}
 }
 
 func TestRenderDefaultV3_Line3(t *testing.T) {
-	// default L3: 디렉토리, 브랜치 + ahead/behind, git 상태
+	// default L3: directory, branch + ahead/behind, git status
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1028,18 +1027,18 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	l3 := lines[2]
 
 	if !strings.Contains(l3, "📁 moai-adk-go") {
-		t.Errorf("default L3에 디렉토리가 있어야 한다, 실제: %q", l3)
+		t.Errorf("default L3 must contain directory, got: %q", l3)
 	}
 	if !strings.Contains(l3, "🔀 feat/auth ↑2↓1") {
-		t.Errorf("default L3에 브랜치 + ahead/behind가 있어야 한다, 실제: %q", l3)
+		t.Errorf("default L3 must contain branch + ahead/behind, got: %q", l3)
 	}
 	if !strings.Contains(l3, "📊") {
-		t.Errorf("default L3에 git 상태가 있어야 한다, 실제: %q", l3)
+		t.Errorf("default L3 must contain git status, got: %q", l3)
 	}
 }
 
 func TestRenderDefaultV3_StyleInL1(t *testing.T) {
-	// default: 출력 스타일이 L1에 통합됨 (L4 제거)
+	// default: output style merged into L1 (L4 removed)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:     MetricsData{Model: "Opus 4.6", Available: true},
@@ -1053,25 +1052,25 @@ func TestRenderDefaultV3_StyleInL1(t *testing.T) {
 	got := r.Render(data, ModeDefault)
 	lines := strings.Split(got, "\n")
 
-	// default는 3줄이어야 한다 (L4 제거됨)
+	// default must be 3 lines (L4 removed)
 	if len(lines) != 3 {
-		t.Fatalf("default 모드는 3줄이어야 한다, 실제: %d줄\n출력: %q", len(lines), got)
+		t.Fatalf("default mode must be 3 lines, got: %d lines\noutput: %q", len(lines), got)
 	}
 
-	// L1에 출력 스타일이 통합되어야 한다
+	// Output style must be merged into L1
 	if !strings.Contains(lines[0], "💬 MoAI") {
-		t.Errorf("default L1에 출력 스타일이 있어야 한다, 실제: %q", lines[0])
+		t.Errorf("default L1 must contain output style, got: %q", lines[0])
 	}
-	// 태스크(📋)는 더 이상 표시되지 않는다
+	// Task (📋) is no longer displayed
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle 3: renderFullV3 테스트
-// REQ-V3-LAYOUT-003: full 모드는 6줄 레이아웃
+// Cycle 3: renderFullV3 tests
+// REQ-V3-LAYOUT-003: full mode uses 6-line layout
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRenderFullV3_FiveLines(t *testing.T) {
-	// full 모드는 정확히 5줄이어야 한다 (L6 제거됨, 스타일은 L1에 통합)
+	// full mode must produce exactly 5 lines (L6 removed, style merged into L1)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus 4.6", Available: true, SessionDurationMS: 9240000},
@@ -1100,16 +1099,16 @@ func TestRenderFullV3_FiveLines(t *testing.T) {
 	lines := strings.Split(got, "\n")
 
 	if len(lines) != 5 {
-		t.Errorf("full 모드는 5줄이어야 한다, 실제: %d줄\n출력:\n%s", len(lines), got)
+		t.Errorf("full mode must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
 	}
-	// L1에 출력 스타일이 통합되어야 한다
+	// Output style must be merged into L1
 	if !strings.Contains(lines[0], "💬 MoAI") {
-		t.Errorf("full L1에 출력 스타일이 있어야 한다, 실제: %q", lines[0])
+		t.Errorf("full L1 must contain output style, got: %q", lines[0])
 	}
 }
 
 func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
-	// full L1: 모델, "Claude" 접두사가 있는 Claude 버전, "MoAI" 접두사가 있는 MoAI 버전, 세션 시간
+	// full L1: model, Claude version with "Claude" prefix, MoAI version with "MoAI" prefix, session time
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:           MetricsData{Model: "Opus 4.6", Available: true, SessionDurationMS: 9240000},
@@ -1129,23 +1128,22 @@ func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 	l1 := lines[0]
 
 	if !strings.Contains(l1, "🤖 Opus 4.6") {
-		t.Errorf("full L1에 모델이 있어야 한다, 실제: %q", l1)
+		t.Errorf("full L1 must contain model, got: %q", l1)
 	}
-	// full 모드: "Claude v2.1.50" (접두사 포함)
-	if !strings.Contains(l1, "🔅 Claude v2.1.50") {
-		t.Errorf("full L1에 '🔅 Claude v2.1.50'이 있어야 한다, 실제: %q", l1)
+	// full mode: no prefix, same as default
+	if !strings.Contains(l1, "🔅 v2.1.50") {
+		t.Errorf("full L1 should contain '🔅 v2.1.50', got: %q", l1)
 	}
-	// full 모드: "MoAI v2.8.0" (접두사 포함)
-	if !strings.Contains(l1, "🗿 MoAI v2.8.0") {
-		t.Errorf("full L1에 '🗿 MoAI v2.8.0'이 있어야 한다, 실제: %q", l1)
+	if !strings.Contains(l1, "🗿 v2.8.0") {
+		t.Errorf("full L1 should contain '🗿 v2.8.0', got: %q", l1)
 	}
 	if !strings.Contains(l1, "⏳") {
-		t.Errorf("full L1에 세션 시간이 있어야 한다, 실제: %q", l1)
+		t.Errorf("full L1 must contain session time, got: %q", l1)
 	}
 }
 
 func TestRenderFullV3_Lines2To4_SeparateBars(t *testing.T) {
-	// full L2-L4: 각 바가 별도 줄 (40블록, REQ-V3-API-011)
+	// full L2-L4: each bar on separate line (40 blocks, REQ-V3-API-011)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1161,36 +1159,36 @@ func TestRenderFullV3_Lines2To4_SeparateBars(t *testing.T) {
 	got := r.Render(data, ModeFull)
 	lines := strings.Split(got, "\n")
 
-	// L2: CW 바만
+	// L2: CW bar only
 	l2 := lines[1]
 	if !strings.Contains(l2, "CW:") {
-		t.Errorf("full L2에 'CW:' 레이블이 있어야 한다, 실제: %q", l2)
+		t.Errorf("full L2 must contain 'CW:' label, got: %q", l2)
 	}
 	if strings.Contains(l2, "5H:") || strings.Contains(l2, "7D:") {
-		t.Errorf("full L2에는 5H/7D가 없어야 한다 (CW만), 실제: %q", l2)
+		t.Errorf("full L2 must not contain 5H/7D (CW only), got: %q", l2)
 	}
 
-	// L3: 5H 바만
+	// L3: 5H bar only
 	l3 := lines[2]
 	if !strings.Contains(l3, "5H:") {
-		t.Errorf("full L3에 '5H:' 레이블이 있어야 한다, 실제: %q", l3)
+		t.Errorf("full L3 must contain '5H:' label, got: %q", l3)
 	}
 	if strings.Contains(l3, "CW:") || strings.Contains(l3, "7D:") {
-		t.Errorf("full L3에는 CW/7D가 없어야 한다 (5H만), 실제: %q", l3)
+		t.Errorf("full L3 must not contain CW/7D (5H only), got: %q", l3)
 	}
 
-	// L4: 7D 바만
+	// L4: 7D bar only
 	l4 := lines[3]
 	if !strings.Contains(l4, "7D:") {
-		t.Errorf("full L4에 '7D:' 레이블이 있어야 한다, 실제: %q", l4)
+		t.Errorf("full L4 must contain '7D:' label, got: %q", l4)
 	}
 	if strings.Contains(l4, "CW:") || strings.Contains(l4, "5H:") {
-		t.Errorf("full L4에는 CW/5H가 없어야 한다 (7D만), 실제: %q", l4)
+		t.Errorf("full L4 must not contain CW/5H (7D only), got: %q", l4)
 	}
 }
 
 func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
-	// full L5: 디렉토리, 브랜치 + ahead/behind, git 상태
+	// full L5: directory, branch + ahead/behind, git status
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1214,25 +1212,25 @@ func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
 	got := r.Render(data, ModeFull)
 	lines := strings.Split(got, "\n")
 
-	// L5 확인
+	// Verify L5
 	if len(lines) < 5 {
-		t.Fatalf("full 모드에 L5가 있어야 한다, 실제: %d줄\n출력:\n%s", len(lines), got)
+		t.Fatalf("full mode must have L5, got: %d lines\noutput:\n%s", len(lines), got)
 	}
 	l5 := lines[4]
 
 	if !strings.Contains(l5, "📁 moai-adk-go") {
-		t.Errorf("full L5에 디렉토리가 있어야 한다, 실제: %q", l5)
+		t.Errorf("full L5 must contain directory, got: %q", l5)
 	}
 	if !strings.Contains(l5, "🔀 feat/auth ↑2↓1") {
-		t.Errorf("full L5에 브랜치 + ahead/behind가 있어야 한다, 실제: %q", l5)
+		t.Errorf("full L5 must contain branch + ahead/behind, got: %q", l5)
 	}
 	if !strings.Contains(l5, "📊") {
-		t.Errorf("full L5에 git 상태가 있어야 한다, 실제: %q", l5)
+		t.Errorf("full L5 must contain git status, got: %q", l5)
 	}
 }
 
 func TestRenderFullV3_StyleInL1(t *testing.T) {
-	// full: 출력 스타일이 L1에 통합됨 (L6 제거)
+	// full: output style merged into L1 (L6 removed)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:     MetricsData{Model: "Opus 4.6", Available: true},
@@ -1250,63 +1248,63 @@ func TestRenderFullV3_StyleInL1(t *testing.T) {
 	got := r.Render(data, ModeFull)
 	lines := strings.Split(got, "\n")
 
-	// full은 5줄이어야 한다 (L6 제거됨)
+	// full must be 5 lines (L6 removed)
 	if len(lines) != 5 {
-		t.Fatalf("full 모드는 5줄이어야 한다, 실제: %d줄\n출력:\n%s", len(lines), got)
+		t.Fatalf("full mode must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
 	}
 
-	// L1에 출력 스타일이 통합되어야 한다
+	// Output style must be merged into L1
 	if !strings.Contains(lines[0], "💬 MoAI") {
-		t.Errorf("full L1에 출력 스타일이 있어야 한다, 실제: %q", lines[0])
+		t.Errorf("full L1 must contain output style, got: %q", lines[0])
 	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle 4: 빈 줄 생략 테스트
-// REQ-V3-LAYOUT-004: 세그먼트가 모두 비어있는 줄은 생략
+// Cycle 4: empty line omission tests
+// REQ-V3-LAYOUT-004: omit lines where all segments are empty
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRenderV3_OmitsEmptyLines_Compact(t *testing.T) {
-	// compact: git 데이터가 없으면 L2 생략 → 1줄만
+	// compact: omit L2 when no git data → 1 line only
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
 		Memory:  MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
-		// git 없음
+		// no git
 	}
 
 	got := r.Render(data, ModeCompact)
 	lines := strings.Split(got, "\n")
 
 	if len(lines) != 1 {
-		t.Errorf("git 없는 compact 모드는 1줄이어야 한다, 실제: %d줄\n출력: %q", len(lines), got)
+		t.Errorf("compact mode without git must be 1 line, got: %d lines\noutput: %q", len(lines), got)
 	}
 }
 
 func TestRenderV3_OmitsEmptyLines_Default(t *testing.T) {
-	// default: 태스크/출력 스타일 없으면 L4 생략 → 3줄
+	// default: omit L4 when no task/output style → 3 lines
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
 		Memory:    MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
 		Directory: "moai-adk-go",
 		Git:       GitStatusData{Branch: "main", Available: true},
-		// 태스크, 출력 스타일, 사용량 없음
+		// No task, output style, or usage
 	}
 
 	got := r.Render(data, ModeDefault)
 	lines := strings.Split(got, "\n")
 
-	// L1(모델+CW), L3(디렉토리+브랜치) 있음
-	// L2(5H/7D 없으면 CW만 있음 → 생략 안 됨), L4(스타일/태스크 없으면 생략)
-	// 사용량 없으면: L1(모델+CW), L2(CW 바만) → 빈 줄 아님, L3(디렉토리+브랜치), L4 없음 → 3줄
+	// L1(model+CW), L3(directory+branch) present
+	// L2(CW only without 5H/7D → not omitted), L4(omitted without style/task)
+	// Without usage: L1(model+CW), L2(CW bar only → not empty), L3(directory+branch), no L4 → 3 lines
 	if len(lines) != 3 {
-		t.Errorf("태스크/스타일 없는 default 모드는 3줄이어야 한다, 실제: %d줄\n출력:\n%s", len(lines), got)
+		t.Errorf("default mode without task/style must be 3 lines, got: %d lines\noutput:\n%s", len(lines), got)
 	}
 }
 
 func TestRenderV3_OmitsEmptyLines_Full(t *testing.T) {
-	// full: 태스크/출력 스타일 없으면 L6 생략 → 5줄
+	// full: omit L6 when no task/output style → 5 lines
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1317,23 +1315,23 @@ func TestRenderV3_OmitsEmptyLines_Full(t *testing.T) {
 			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
 			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
 		},
-		// 태스크, 출력 스타일 없음
+		// No task or output style
 	}
 
 	got := r.Render(data, ModeFull)
 	lines := strings.Split(got, "\n")
 
 	if len(lines) != 5 {
-		t.Errorf("태스크/스타일 없는 full 모드는 5줄이어야 한다, 실제: %d줄\n출력:\n%s", len(lines), got)
+		t.Errorf("full mode without task/style must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
 	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle 5: Render() 라우팅 및 하위 호환성 테스트
+// Cycle 5: Render() routing and backward compatibility tests
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRender_ModeRouting(t *testing.T) {
-	// 모든 모드가 올바르게 라우팅되어야 한다
+	// All modes must route correctly
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -1356,12 +1354,12 @@ func TestRender_ModeRouting(t *testing.T) {
 		t.Run(string(tt.mode), func(t *testing.T) {
 			got := r.Render(data, tt.mode)
 			if got == "" || got == "MoAI" {
-				// 데이터가 있으면 MoAI 폴백이 아닌 실제 출력이어야 함
+				// With data present, output should be actual render not MoAI fallback
 				return
 			}
 			lines := strings.Split(got, "\n")
 			if len(lines) < tt.minLines || len(lines) > tt.maxLines {
-				t.Errorf("mode=%s: %d~%d줄이어야 하는데 %d줄\n출력: %q",
+				t.Errorf("mode=%s: expected %d~%d lines but got %d lines\noutput: %q",
 					tt.mode, tt.minLines, tt.maxLines, len(lines), got)
 			}
 		})
@@ -1369,14 +1367,14 @@ func TestRender_ModeRouting(t *testing.T) {
 }
 
 func TestRenderUsageBar(t *testing.T) {
-	// renderUsageBar 헬퍼 함수 테스트
+	// renderUsageBar helper function tests
 	tests := []struct {
 		name    string
 		label   string
 		pct     int
 		width   int
 		noColor bool
-		wantPfx string // 출력 시작 접두사
+		wantPfx string // expected output prefix
 	}{
 		{
 			name:    "CW 88% noColor",
@@ -1403,14 +1401,14 @@ func TestRenderUsageBar(t *testing.T) {
 				t.Errorf("renderUsageBar() = %q, wantPfx %q", got, tt.wantPfx)
 			}
 			if !strings.Contains(got, fmt.Sprintf("%d%%", tt.pct)) {
-				t.Errorf("renderUsageBar()에 %d%%가 있어야 한다, 실제: %q", tt.pct, got)
+				t.Errorf("renderUsageBar() must contain %d%%, got: %q", tt.pct, got)
 			}
 		})
 	}
 }
 
 func TestRender_V3Separator(t *testing.T) {
-	// v3 구분자는 " │ " (U+2502 박스 그리기 문자)여야 한다
+	// v3 separator must be " │ " (U+2502 box-drawing character)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1421,8 +1419,8 @@ func TestRender_V3Separator(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// v3 구분자 확인
+	// Verify v3 separator
 	if !strings.Contains(got, " │ ") {
-		t.Errorf("v3 구분자 ' │ '가 있어야 한다, 실제: %q", got)
+		t.Errorf("v3 separator ' │ ' must be present, got: %q", got)
 	}
 }

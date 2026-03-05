@@ -20,8 +20,8 @@ type Theme interface {
 	// BarGradient returns a color for the context bar based on usage percentage.
 	// Stages: 0-25% (green), 26-50% (yellow), 51-75% (peach/orange), 76-100% (red).
 	//
-	// Deprecated: v3에서는 BuildGradientBar()의 연속 RGB 보간을 사용한다.
-	// 하위 호환성을 위해 유지된다.
+	// Deprecated: v3 uses continuous RGB interpolation via BuildGradientBar().
+	// Retained for backward compatibility.
 	BarGradient(percentage float64) lipgloss.Color
 }
 

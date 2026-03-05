@@ -33,13 +33,13 @@ func CollectMetrics(input *StdinData) *MetricsData {
 	}
 
 	if input.Cost != nil {
-		// 두 필드명을 모두 지원한다
+		// Support both field names
 		if input.Cost.TotalCostUSD > 0 {
 			data.CostUSD = input.Cost.TotalCostUSD
 		} else {
 			data.CostUSD = input.Cost.TotalUSD
 		}
-		// 세션 실행 시간을 추출한다 (REQ-V3-TIME-001)
+		// Extract session duration (REQ-V3-TIME-001)
 		data.SessionDurationMS = input.Cost.TotalDurationMS
 	}
 

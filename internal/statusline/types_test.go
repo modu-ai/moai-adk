@@ -2,25 +2,25 @@ package statusline
 
 import "testing"
 
-// TestNormalizeMode는 하위 호환성 모드 이름 정규화를 검증한다.
-// REQ-V3-MODE-001: "minimal" → "compact" 변환
-// REQ-V3-MODE-002: "verbose" → "full" 변환
+// TestNormalizeMode verifies backward-compatible mode name normalization.
+// REQ-V3-MODE-001: "minimal" → "compact" conversion
+// REQ-V3-MODE-002: "verbose" → "full" conversion
 func TestNormalizeMode(t *testing.T) {
 	tests := []struct {
 		name  string
 		input StatuslineMode
 		want  StatuslineMode
 	}{
-		// 하위 호환성: 이전 이름 → 새 이름 변환
-		{"minimal은 compact로 변환", "minimal", ModeCompact},
-		{"verbose는 full로 변환", "verbose", ModeFull},
-		// 현재 이름은 변경 없음
-		{"default는 변경 없음", "default", ModeDefault},
-		{"compact는 변경 없음", "compact", ModeCompact},
-		{"full은 변경 없음", "full", ModeFull},
-		// 엣지 케이스
-		{"빈 값은 변경 없음", "", ""},
-		{"알 수 없는 값은 변경 없음", "custom", "custom"},
+		// Backward compatibility: old name → new name conversion
+		{"minimal converts to compact", "minimal", ModeCompact},
+		{"verbose converts to full", "verbose", ModeFull},
+		// Current names remain unchanged
+		{"default unchanged", "default", ModeDefault},
+		{"compact unchanged", "compact", ModeCompact},
+		{"full unchanged", "full", ModeFull},
+		// Edge cases
+		{"empty unchanged", "", ""},
+		{"unknown unchanged", "custom", "custom"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -13,33 +13,32 @@ import (
 type StatuslineMode string
 
 const (
-	// ModeCompact는 한 줄에 모든 정보를 표시하는 기본 모드다 (v3 명칭).
+	// ModeCompact displays all info in a compact 2-line layout (v3 name).
 	ModeCompact StatuslineMode = "compact"
 
-	// ModeDefault는 git 상태, 컨텍스트 비율, 비용을 표시하는 기본 모드다.
-	// 내부적으로 "compact"와 동일하게 동작한다.
+	// ModeDefault displays git status, context ratio in a 3-line layout.
 	ModeDefault StatuslineMode = "default"
 
-	// ModeFull은 모든 수집 데이터를 상세하게 표시하는 모드다 (v3 명칭).
+	// ModeFull displays all collected data in detailed 5-line layout (v3 name).
 	ModeFull StatuslineMode = "full"
 
-	// ModeMinimal은 하위 호환성을 위한 deprecated 별칭이다.
-	// 새 코드에서는 ModeCompact를 사용할 것.
+	// ModeMinimal is a deprecated alias for backward compatibility.
+	// Use ModeCompact in new code.
 	//
-	// Deprecated: ModeCompact를 사용하라.
+	// Deprecated: Use ModeCompact.
 	ModeMinimal StatuslineMode = "minimal"
 
-	// ModeVerbose는 하위 호환성을 위한 deprecated 별칭이다.
-	// 새 코드에서는 ModeFull을 사용할 것.
+	// ModeVerbose is a deprecated alias for backward compatibility.
+	// Use ModeFull in new code.
 	//
-	// Deprecated: ModeFull을 사용하라.
+	// Deprecated: Use ModeFull.
 	ModeVerbose StatuslineMode = "verbose"
 )
 
-// NormalizeMode는 하위 호환성을 위해 deprecated 모드 이름을 현재 이름으로 변환한다.
+// NormalizeMode converts deprecated mode names to current names for backward compatibility.
 // REQ-V3-MODE-001: "minimal" → "compact"
 // REQ-V3-MODE-002: "verbose" → "full"
-// 그 외 값은 변경 없이 반환한다.
+// Other values are returned unchanged.
 func NormalizeMode(mode StatuslineMode) StatuslineMode {
 	switch mode {
 	case "minimal":
@@ -132,8 +131,8 @@ type StatusData struct {
 	ClaudeCodeVersion string      // Claude Code version from JSON input (e.g., "1.0.80")
 	Directory         string      // Project directory name (e.g., "modu-saju")
 	OutputStyle       string      // Output style name (e.g., "Mr.Alfred", "R2-D2")
-	Task              TaskData    // 현재 활성 태스크 (Phase 4에서 렌더링 활성화)
-	Usage             *UsageResult // API 사용량 (nil이면 사용 불가)
+	Task              TaskData    // Current active task (rendering enabled in Phase 4)
+	Usage             *UsageResult // API usage (nil when unavailable)
 }
 
 // GitStatusData holds git repository status information.
@@ -158,7 +157,7 @@ type MemoryData struct {
 type MetricsData struct {
 	Model             string
 	CostUSD           float64
-	SessionDurationMS int  // 세션 총 실행 시간 (밀리초, REQ-V3-TIME-001)
+	SessionDurationMS int  // Total session duration in milliseconds (REQ-V3-TIME-001)
 	Available         bool
 }
 
@@ -181,24 +180,24 @@ const (
 	SegmentMoaiVersion   = "moai_version"
 	SegmentGitBranch     = "git_branch"
 
-	// v3 신규 세그먼트 상수 (REQ-V3-TIME-003, Phase 4에서 활성화됨)
-	SegmentSessionTime = "session_time" // 세션 실행 시간
-	SegmentUsage5H     = "usage_5h"     // 5시간 API 사용량
-	SegmentUsage7D     = "usage_7d"     // 7일 API 사용량
-	SegmentTask        = "task"         // 현재 활성 태스크
+	// v3 new segment constants (REQ-V3-TIME-003, enabled in Phase 4)
+	SegmentSessionTime = "session_time" // Session duration
+	SegmentUsage5H     = "usage_5h"     // 5-hour API usage
+	SegmentUsage7D     = "usage_7d"     // 7-day API usage
+	SegmentTask        = "task"         // Current active task
 )
 
-// UsageData 는 API 사용량 정보를 나타낸다.
+// UsageData represents API usage information.
 type UsageData struct {
 	UsedTokens  int64   `json:"used_tokens"`
 	LimitTokens int64   `json:"limit_tokens"`
 	Percentage  float64 `json:"percentage"` // 0-100
 }
 
-// UsageResult 는 5시간/7일 사용량 결과를 나타낸다.
+// UsageResult represents 5-hour/7-day usage results.
 type UsageResult struct {
-	Usage5H *UsageData // 5시간 사용량
-	Usage7D *UsageData // 7일 사용량
+	Usage5H *UsageData // 5-hour usage
+	Usage7D *UsageData // 7-day usage
 }
 
 // contextLevel represents the severity level for context window usage coloring.
