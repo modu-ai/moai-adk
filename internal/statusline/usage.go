@@ -86,11 +86,13 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	if apiResp.FiveHour != nil {
 		usage5H = &UsageData{
 			Percentage: apiResp.FiveHour.Utilization,
+			ResetsAt:   apiResp.FiveHour.ResetsAt,
 		}
 	}
 	if apiResp.SevenDay != nil {
 		usage7D = &UsageData{
 			Percentage: apiResp.SevenDay.Utilization,
+			ResetsAt:   apiResp.SevenDay.ResetsAt,
 		}
 	}
 

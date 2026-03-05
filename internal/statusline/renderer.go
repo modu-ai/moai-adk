@@ -3,6 +3,7 @@ package statusline
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -197,19 +198,23 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 		lines = append(lines, renderUsageBar("CW:", cwPct, 40, r.noColor))
 	}
 
-	// L3: 5H bar (40 blocks, standalone line) - defaults to 0% when no data
+	// L3: 5H bar (40 blocks, standalone line) with reset time - defaults to 0% when no data
 	pct5H := 0
+	var reset5H string
 	if data.Usage != nil && data.Usage.Usage5H != nil {
 		pct5H = int(data.Usage.Usage5H.Percentage)
+		reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
 	}
-	lines = append(lines, renderUsageBar("5H:", pct5H, 40, r.noColor))
+	lines = append(lines, renderUsageBarWithReset("5H:", pct5H, 40, r.noColor, reset5H))
 
-	// L4: 7D bar (40 blocks, standalone line) - defaults to 0% when no data
+	// L4: 7D bar (40 blocks, standalone line) with reset date - defaults to 0% when no data
 	pct7D := 0
+	var reset7D string
 	if data.Usage != nil && data.Usage.Usage7D != nil {
 		pct7D = int(data.Usage.Usage7D.Percentage)
+		reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
 	}
-	lines = append(lines, renderUsageBar("7D:", pct7D, 40, r.noColor))
+	lines = append(lines, renderUsageBarWithReset("7D:", pct7D, 40, r.noColor, reset7D))
 
 	// L5: directory, branch, git status
 	l5 := r.renderDirGitLine(data)
@@ -388,6 +393,69 @@ func renderUsageBar(label string, pct int, width int, noColor bool) string {
 	icon := BatteryIcon(pct)
 	bar := BuildGradientBar(pct, width, noColor)
 	return fmt.Sprintf("%s %s  %s %d%%", label, icon, bar, pct)
+}
+
+// renderUsageBarWithReset renders a usage bar with optional reset time suffix.
+// Format: {label} {icon}  {bar} {pct}% (Resets {resetStr})
+func renderUsageBarWithReset(label string, pct int, width int, noColor bool, resetStr string) string {
+	base := renderUsageBar(label, pct, width, noColor)
+	if resetStr == "" {
+		return base
+	}
+	return fmt.Sprintf("%s (Resets %s)", base, resetStr)
+}
+
+// formatResetTimeRelative formats an ISO 8601 timestamp as relative time "in Xh Ym".
+// Returns empty string on parse failure or if reset is in the past.
+func formatResetTimeRelative(isoTimestamp string) string {
+	if isoTimestamp == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, isoTimestamp)
+	if err != nil {
+		// Try without timezone
+		t, err = time.Parse("2006-01-02T15:04:05", isoTimestamp)
+		if err != nil {
+			return ""
+		}
+	}
+	remaining := time.Until(t)
+	if remaining <= 0 {
+		return ""
+	}
+	hours := int(remaining.Hours())
+	minutes := int(remaining.Minutes()) % 60
+	if hours > 0 {
+		return fmt.Sprintf("in %dh%dm", hours, minutes)
+	}
+	return fmt.Sprintf("in %dm", minutes)
+}
+
+// formatResetTimeAbsolute formats an ISO 8601 timestamp as "Jan 21 at 2pm".
+// Returns empty string on parse failure.
+func formatResetTimeAbsolute(isoTimestamp string) string {
+	if isoTimestamp == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, isoTimestamp)
+	if err != nil {
+		t, err = time.Parse("2006-01-02T15:04:05", isoTimestamp)
+		if err != nil {
+			return ""
+		}
+	}
+	// Convert to local time for display
+	t = t.Local()
+	hour := t.Hour()
+	ampm := "am"
+	if hour >= 12 {
+		ampm = "pm"
+	}
+	hour12 := hour % 12
+	if hour12 == 0 {
+		hour12 = 12
+	}
+	return fmt.Sprintf("%s at %d%s", t.Format("Jan 2"), hour12, ampm)
 }
 
 // contextPercent returns the context window usage percentage (0~100).

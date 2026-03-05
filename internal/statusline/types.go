@@ -191,7 +191,8 @@ const (
 type UsageData struct {
 	UsedTokens  int64   `json:"used_tokens"`
 	LimitTokens int64   `json:"limit_tokens"`
-	Percentage  float64 `json:"percentage"` // 0-100
+	Percentage  float64 `json:"percentage"`            // 0-100
+	ResetsAt    string  `json:"resets_at,omitempty"`    // ISO 8601 reset timestamp
 }
 
 // UsageResult represents 5-hour/7-day usage results.

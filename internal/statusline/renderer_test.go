@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 // newTestRenderer creates a Renderer with NoColor=true for predictable test output.
@@ -1422,5 +1423,112 @@ func TestRender_V3Separator(t *testing.T) {
 	// Verify v3 separator
 	if !strings.Contains(got, " │ ") {
 		t.Errorf("v3 separator ' │ ' must be present, got: %q", got)
+	}
+}
+
+func TestFormatResetTimeRelative(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		wantPfx  string // expected prefix (e.g. "in ")
+		wantEmpty bool
+	}{
+		{"empty string", "", "", true},
+		{"invalid format", "not-a-date", "", true},
+		{"future 2h30m", time.Now().Add(2*time.Hour + 30*time.Minute).UTC().Format(time.RFC3339), "in 2h", false},
+		{"future 45m", time.Now().Add(45 * time.Minute).UTC().Format(time.RFC3339), "in 4", false},
+		{"past time", time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339), "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatResetTimeRelative(tt.input)
+			if tt.wantEmpty && got != "" {
+				t.Errorf("expected empty, got %q", got)
+			}
+			if !tt.wantEmpty && !strings.HasPrefix(got, tt.wantPfx) {
+				t.Errorf("expected prefix %q, got %q", tt.wantPfx, got)
+			}
+		})
+	}
+}
+
+func TestFormatResetTimeAbsolute(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		input     string
+		wantEmpty bool
+		wantSub   string // substring to check
+	}{
+		{"empty string", "", true, ""},
+		{"invalid format", "not-a-date", true, ""},
+		{"valid RFC3339", "2026-01-21T14:00:00Z", false, "at "},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatResetTimeAbsolute(tt.input)
+			if tt.wantEmpty && got != "" {
+				t.Errorf("expected empty, got %q", got)
+			}
+			if !tt.wantEmpty && !strings.Contains(got, tt.wantSub) {
+				t.Errorf("expected substring %q in %q", tt.wantSub, got)
+			}
+		})
+	}
+}
+
+func TestRenderFullV3_WithResetTimes(t *testing.T) {
+	t.Parallel()
+
+	r := newTestRenderer()
+	resetTime := time.Now().Add(2*time.Hour + 15*time.Minute).UTC().Format(time.RFC3339)
+
+	data := &StatusData{
+		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
+		Memory:    MemoryData{TokensUsed: 100000, TokenBudget: 200000, Available: true},
+		Directory: "test-project",
+		Git:       GitStatusData{Branch: "main", Available: true},
+		Usage: &UsageResult{
+			Usage5H: &UsageData{Percentage: 25.0, ResetsAt: resetTime},
+			Usage7D: &UsageData{Percentage: 60.0, ResetsAt: "2026-01-21T14:00:00Z"},
+		},
+	}
+
+	got := r.Render(data, ModeFull)
+	lines := strings.Split(got, "\n")
+
+	if len(lines) < 5 {
+		t.Fatalf("full mode should have 5 lines, got %d: %q", len(lines), got)
+	}
+
+	// L3 (5H) should contain "Resets in"
+	if !strings.Contains(lines[2], "Resets in") {
+		t.Errorf("5H line should contain 'Resets in', got: %q", lines[2])
+	}
+
+	// L4 (7D) should contain "Resets" with a date
+	if !strings.Contains(lines[3], "Resets") {
+		t.Errorf("7D line should contain 'Resets', got: %q", lines[3])
+	}
+}
+
+func TestRenderUsageBarWithReset(t *testing.T) {
+	t.Parallel()
+
+	// Without reset
+	got := renderUsageBarWithReset("5H:", 25, 10, true, "")
+	if strings.Contains(got, "Resets") {
+		t.Errorf("should not contain Resets when empty, got %q", got)
+	}
+
+	// With reset
+	got = renderUsageBarWithReset("5H:", 25, 10, true, "in 2h15m")
+	if !strings.Contains(got, "(Resets in 2h15m)") {
+		t.Errorf("should contain '(Resets in 2h15m)', got %q", got)
 	}
 }
