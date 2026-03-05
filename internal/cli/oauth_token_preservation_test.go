@@ -195,7 +195,7 @@ func TestOAuthToken_FullCycle(t *testing.T) {
 	initialSettings := SettingsLocal{
 		Env: map[string]string{
 			"ANTHROPIC_AUTH_TOKEN":         oauthToken,
-			"CLAUDE_CODE_TEAMMATE_DISPLAY": "auto",
+			"CLAUDE_CODE_TEAMMATE_DISPLAY": "tmux",
 		},
 	}
 	data, err := json.MarshalIndent(initialSettings, "", "  ")
@@ -259,9 +259,9 @@ func TestOAuthToken_FullCycle(t *testing.T) {
 		t.Error("step2: MOAI_BACKUP_AUTH_TOKEN should be deleted after restore")
 	}
 	// Verify other settings are preserved.
-	if afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+	if afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
 		t.Errorf("step2: CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q",
-			afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
+			afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
 	}
 }
 
@@ -281,7 +281,7 @@ func TestOAuthToken_NoExistingToken(t *testing.T) {
 	// Initial state: no ANTHROPIC_AUTH_TOKEN (fresh install or OAuth-only user).
 	initialSettings := SettingsLocal{
 		Env: map[string]string{
-			"CLAUDE_CODE_TEAMMATE_DISPLAY": "auto",
+			"CLAUDE_CODE_TEAMMATE_DISPLAY": "tmux",
 		},
 	}
 	data, err := json.MarshalIndent(initialSettings, "", "  ")

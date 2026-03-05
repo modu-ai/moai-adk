@@ -158,7 +158,7 @@ func maskAPIKey(key string) string {
 
 // enableTeamMode enables GLM Team mode with settings.json env injection.
 // isHybrid: false = all agents use GLM, true = lead uses Claude, agents use GLM
-// Note: tmux display mode is already configured by moai init/update (teammateMode: auto)
+// Note: tmux display mode is forced to "tmux" to ensure GLM env var inheritance (#468)
 func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	out := cmd.OutOrStdout()
 
@@ -351,7 +351,9 @@ func persistTeamMode(projectRoot, mode string) error {
 	return saveLLMSection(sectionsDir, llmCfg)
 }
 
-// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=auto.
+// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=tmux.
+// CG mode requires tmux, so we force tmux display to prevent inline fallback
+// which would cause teammates to lose GLM env var inheritance (see #468).
 func ensureSettingsLocalJSON(settingsPath string) error {
 	var settings SettingsLocal
 
@@ -366,9 +368,9 @@ func ensureSettingsLocalJSON(settingsPath string) error {
 		settings.Env = make(map[string]string)
 	}
 
-	// Set display mode to "auto": Claude Code detects tmux availability at runtime
-	// and falls back to in-progress display when tmux is not installed.
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "auto"
+	// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
+	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
@@ -449,9 +451,9 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
 
-	// Set display mode to "auto": Claude Code detects tmux availability at runtime
-	// and falls back to in-progress display when tmux is not installed.
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "auto"
+	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
+	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
