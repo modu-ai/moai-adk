@@ -46,9 +46,13 @@ type profileSetupText struct {
 	// Statusline mode selector (layout style)
 	StatuslineModeTitle string
 	StatuslineModeDesc  string
-	ModeCompact         string // label for mode = "default"
-	ModeVerbose         string // label for mode = "verbose"
-	ModeMinimal         string // label for mode = "minimal"
+	// v3 모드 레이블 (REQ-V3-MODE-003)
+	ModeDefault string // label for mode = "default"
+	ModeCompact string // label for mode = "compact"
+	ModeFull    string // label for mode = "full"
+	// Deprecated: v2 레이블. 하위 호환성을 위해 유지.
+	ModeVerbose string // label for mode = "verbose" (deprecated)
+	ModeMinimal string // label for mode = "minimal" (deprecated)
 
 	// Statusline preset selector (segment visibility, shown when mode != minimal)
 	StatuslineTitle   string
@@ -116,7 +120,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:        "Display",
 		StatuslineModeTitle: "Statusline display mode",
 		StatuslineModeDesc:  "Controls the layout style of the statusline.",
-		ModeCompact:         "Compact (default) - Single-line with all info",
+		ModeDefault:         "Default - Single-line with all info",
+		ModeCompact:         "Compact - Model and context only",
+		ModeFull:            "Full - 3-line detailed view with cost tracking",
 		ModeVerbose:         "Verbose - 3-line detailed view with cost tracking",
 		ModeMinimal:         "Minimal - Model and context only",
 		StatuslineTitle:    "Statusline segment preset",
@@ -175,7 +181,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:        "화면 표시",
 		StatuslineModeTitle: "상태줄 표시 모드",
 		StatuslineModeDesc:  "상태줄의 레이아웃 스타일을 제어합니다.",
-		ModeCompact:         "Compact (기본) - 한 줄에 모든 정보 표시",
+		ModeDefault:         "Default - 한 줄에 모든 정보 표시",
+		ModeCompact:         "Compact - 모델과 컨텍스트만 표시",
+		ModeFull:            "Full - 비용 추적이 포함된 3줄 상세 뷰",
 		ModeVerbose:         "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
 		ModeMinimal:         "Minimal - 모델과 컨텍스트만 표시",
 		StatuslineTitle:    "상태줄 세그먼트 프리셋",
@@ -234,7 +242,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:        "表示設定",
 		StatuslineModeTitle: "ステータスライン表示モード",
 		StatuslineModeDesc:  "ステータスラインのレイアウトスタイルを制御します。",
-		ModeCompact:         "Compact (デフォルト) - 全情報を1行に表示",
+		ModeDefault:         "Default - 全情報を1行に表示",
+		ModeCompact:         "Compact - モデルとコンテキストのみ",
+		ModeFull:            "Full - コスト追跡付きの3行詳細表示",
 		ModeVerbose:         "Verbose - コスト追跡付きの3行詳細表示",
 		ModeMinimal:         "Minimal - モデルとコンテキストのみ",
 		StatuslineTitle:    "ステータスラインセグメントプリセット",
@@ -293,7 +303,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:        "显示设置",
 		StatuslineModeTitle: "状态栏显示模式",
 		StatuslineModeDesc:  "控制状态栏的布局样式。",
-		ModeCompact:         "Compact (默认) - 单行显示所有信息",
+		ModeDefault:         "Default - 单行显示所有信息",
+		ModeCompact:         "Compact - 仅显示模型和上下文",
+		ModeFull:            "Full - 含费用追踪的3行详细视图",
 		ModeVerbose:         "Verbose - 含费用追踪的3行详细视图",
 		ModeMinimal:         "Minimal - 仅显示模型和上下文",
 		StatuslineTitle:    "状态栏段预设",

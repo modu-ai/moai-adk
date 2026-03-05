@@ -181,21 +181,17 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&bypass),
 		).Title(t.ModelSettingsTitle),
 
-		// Section 5a: Display Mode — controls layout style (always shown)
+		// Section 5: Display — Mode, Theme, and Preset in one screen
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.StatuslineModeTitle).
 				Description(t.StatuslineModeDesc).
 				Options(
-					huh.NewOption(t.ModeCompact, "default"),
-					huh.NewOption(t.ModeVerbose, "verbose"),
-					huh.NewOption(t.ModeMinimal, "minimal"),
+					huh.NewOption(t.ModeDefault, "default"),
+					huh.NewOption(t.ModeCompact, "compact"),
+					huh.NewOption(t.ModeFull, "full"),
 				).
 				Value(&statuslineMode),
-		).Title(t.DisplayTitle),
-
-		// Section 5b: Color Theme (always shown)
-		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.StatuslineThemeTitle).
 				Description(t.StatuslineThemeDesc).
@@ -205,10 +201,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.ThemeCatppuccinLatte, "catppuccin-latte"),
 				).
 				Value(&statuslineTheme),
-		).Title(t.StatuslineThemeTitle),
-
-		// Section 5c: Segment Preset — hidden when mode is minimal (segments not applicable)
-		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.StatuslineTitle).
 				Description(t.StatuslineDesc).
@@ -219,10 +211,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.StatuslineCustom, "custom"),
 				).
 				Value(&statuslinePreset),
-		).Title(t.StatuslineTitle).
-			WithHideFunc(func() bool { return statuslineMode == "minimal" }),
+		).Title(t.DisplayTitle),
 
-		// Section 5d: Custom Segments — shown only when preset is "custom" and mode is not minimal
+		// Section 6: Custom Segments — shown only when preset is "custom"
 		huh.NewGroup(
 			huh.NewConfirm().Title(t.SegModel).Value(&segModel),
 			huh.NewConfirm().Title(t.SegContext).Value(&segContext),
@@ -233,7 +224,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			huh.NewConfirm().Title(t.SegMoaiVersion).Value(&segMoaiVersion),
 			huh.NewConfirm().Title(t.SegGitBranch).Value(&segGitBranch),
 		).Title(t.SegmentsTitle).
-			WithHideFunc(func() bool { return statuslinePreset != "custom" || statuslineMode == "minimal" }),
+			WithHideFunc(func() bool { return statuslinePreset != "custom" }),
 
 	)
 

@@ -31,7 +31,8 @@ func TestGetProfileText_ThemeFields(t *testing.T) {
 }
 
 // TestGetProfileText_ModeFields verifies that all supported languages
-// include translations for the new statusline mode selector fields.
+// include translations for the statusline mode selector fields.
+// REQ-V3-MODE-003: 프로필 위저드는 compact/default/full 이름을 표시한다.
 func TestGetProfileText_ModeFields(t *testing.T) {
 	langs := []string{"en", "ko", "ja", "zh"}
 	for _, lang := range langs {
@@ -43,9 +44,17 @@ func TestGetProfileText_ModeFields(t *testing.T) {
 			if text.StatuslineModeDesc == "" {
 				t.Errorf("lang %q: StatuslineModeDesc is empty", lang)
 			}
+			// v3 모드 레이블 검증
+			if text.ModeDefault == "" {
+				t.Errorf("lang %q: ModeDefault is empty", lang)
+			}
 			if text.ModeCompact == "" {
 				t.Errorf("lang %q: ModeCompact is empty", lang)
 			}
+			if text.ModeFull == "" {
+				t.Errorf("lang %q: ModeFull is empty", lang)
+			}
+			// 하위 호환성을 위한 deprecated 필드도 검증
 			if text.ModeVerbose == "" {
 				t.Errorf("lang %q: ModeVerbose is empty", lang)
 			}

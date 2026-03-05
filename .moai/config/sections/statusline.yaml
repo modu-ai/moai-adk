@@ -1,7 +1,6 @@
 statusline:
     mode: default
     preset: full
-    theme: default
     segments:
         claude_version: true
         context: true
@@ -11,3 +10,4 @@ statusline:
         moai_version: true
         model: true
         output_style: true
+    theme: catppuccin-mocha
