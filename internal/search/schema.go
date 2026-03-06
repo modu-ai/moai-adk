@@ -1,3 +1,5 @@
+//go:build !race
+
 package search
 
 // createSessionsTableSQL은 세션 메타데이터 테이블 DDL이다.
