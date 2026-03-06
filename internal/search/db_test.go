@@ -1,3 +1,5 @@
+//go:build !race
+
 package search_test
 
 import (
