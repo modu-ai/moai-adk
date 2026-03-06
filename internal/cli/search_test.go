@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestSearchCmd_HasSubcommand은 search 커맨드가 루트에 등록되어 있는지 확인한다.
+// TestSearchCmd_HasSubcommand verifies that the search command is registered on the root command.
 func TestSearchCmd_HasSubcommand(t *testing.T) {
 	found := false
 	for _, cmd := range rootCmd.Commands() {
@@ -16,13 +16,13 @@ func TestSearchCmd_HasSubcommand(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("'search' 서브커맨드가 rootCmd에 등록되지 않았다")
+		t.Error("'search' subcommand is not registered on rootCmd")
 	}
 }
 
-// TestSearchCmd_FlagParsing은 search 커맨드에 모든 플래그가 정의되어 있는지 확인한다.
+// TestSearchCmd_FlagParsing verifies that all expected flags are defined on the search command.
 func TestSearchCmd_FlagParsing(t *testing.T) {
-	// search 커맨드 찾기
+	// Locate the search command.
 	var cmd = searchCmd
 
 	tests := []struct {
@@ -42,7 +42,7 @@ func TestSearchCmd_FlagParsing(t *testing.T) {
 		t.Run(tt.flagName, func(t *testing.T) {
 			f := cmd.Flags().Lookup(tt.flagName)
 			if f == nil {
-				t.Errorf("플래그 '--%s'가 search 커맨드에 없다", tt.flagName)
+				t.Errorf("flag '--%s' is not defined on the search command", tt.flagName)
 			}
 		})
 	}

@@ -2,7 +2,7 @@
 
 package search
 
-// createSessionsTableSQL은 세션 메타데이터 테이블 DDL이다.
+// createSessionsTableSQL is the DDL for the sessions metadata table.
 const createSessionsTableSQL = `
 CREATE TABLE IF NOT EXISTS sessions (
     session_id   TEXT PRIMARY KEY,
@@ -15,8 +15,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_path);
 CREATE INDEX IF NOT EXISTS idx_sessions_branch  ON sessions(git_branch);
 `
 
-// createMessagesTableSQL은 FTS5 전문 검색 가상 테이블 DDL이다.
-// trigram 토크나이저를 사용하여 CJK(한/중/일) 텍스트 검색을 지원한다.
+// createMessagesTableSQL is the DDL for the FTS5 full-text search virtual table.
+// Uses the trigram tokenizer to support CJK (Korean/Chinese/Japanese) text search.
 const createMessagesTableSQL = `
 CREATE VIRTUAL TABLE IF NOT EXISTS messages USING fts5(
     session_id UNINDEXED,

@@ -8,41 +8,42 @@ import (
 	"strings"
 )
 
-// SearchOptions는 검색 쿼리 옵션이다.
+// SearchOptions holds the query parameters for a search request.
 type SearchOptions struct {
-	Query  string // FTS5 전문 검색 쿼리 (3자 이상) 또는 LIKE 쿼리 (1~2자)
-	Branch string // git 브랜치 필터 (빈 문자열이면 전체)
-	Since  string // 시작 날짜 필터 (RFC3339)
-	Until  string // 종료 날짜 필터 (RFC3339)
-	Role   string // 역할 필터: user|assistant (빈 문자열이면 전체)
-	Limit  int    // 최대 결과 수 (0이면 기본값 20 사용)
+	Query  string // FTS5 full-text query (3+ runes) or LIKE query (1-2 runes)
+	Branch string // git branch filter; empty means all branches
+	Since  string // start date filter (RFC3339); empty means no lower bound
+	Until  string // end date filter (RFC3339); empty means no upper bound
+	Role   string // role filter: "user" or "assistant"; empty means all
+	Limit  int    // maximum number of results; 0 uses defaultLimit
 }
 
-// SearchResult는 단일 검색 결과를 나타낸다.
+// SearchResult represents a single search hit.
 type SearchResult struct {
 	SessionID   string
 	Role        string
-	Excerpt     string  // 최대 200자의 발췌 텍스트
+	Excerpt     string  // excerpt text, up to 200 runes
 	Timestamp   string
 	GitBranch   string
 	ProjectPath string
-	Score       float64 // BM25 점수 (작을수록 관련성 높음). LIKE 폴백 시 0.0
+	Score       float64 // BM25 rank (more negative = more relevant). 0.0 for LIKE fallback.
 }
 
-// defaultLimit는 Limit가 지정되지 않았을 때 사용하는 기본 최대 결과 수이다.
+// defaultLimit is the maximum number of results returned when Limit is not specified.
 const defaultLimit = 20
 
-// fts5MinQueryRunes는 FTS5 trigram 토크나이저가 요구하는 최소 쿼리 길이(Unicode 문자 수)이다.
-// 이보다 짧은 쿼리(한/중/일 2자 단어 포함)는 LIKE 폴백을 사용한다.
+// fts5MinQueryRunes is the minimum query length (Unicode rune count) required by the
+// FTS5 trigram tokenizer. Queries shorter than this (including 2-rune CJK words) use
+// the LIKE fallback.
 const fts5MinQueryRunes = 3
 
-// Search는 인덱싱된 세션에서 메시지를 검색한다.
+// Search searches indexed sessions for messages matching opts.Query.
 //
-// 쿼리 길이에 따라 검색 방식이 다르다:
-//   - 3자 이상: FTS5 MATCH (BM25 점수 기반 정렬, 고성능)
-//   - 1~2자:    LIKE '%query%' 폴백 (한국어/일본어/중국어 2자 단어 지원)
+// Search strategy depends on query length:
+//   - 3+ runes: FTS5 MATCH (BM25 rank-ordered, high performance)
+//   - 1-2 runes: LIKE '%query%' fallback (supports short CJK terms like "인증", "認証")
 //
-// 결과가 없으면 빈 슬라이스(nil 아님)를 반환한다.
+// Returns an empty (non-nil) slice when no results are found.
 func Search(db *sql.DB, opts SearchOptions) ([]SearchResult, error) {
 	if opts.Limit <= 0 {
 		opts.Limit = defaultLimit
@@ -55,8 +56,8 @@ func Search(db *sql.DB, opts SearchOptions) ([]SearchResult, error) {
 	return searchLike(db, opts)
 }
 
-// searchFTS5는 FTS5 MATCH를 사용하여 BM25 점수 기반으로 검색한다.
-// trigram 토크나이저 특성상 쿼리는 3 Unicode 문자 이상이어야 한다.
+// searchFTS5 runs a full-text search using FTS5 MATCH with BM25 ranking.
+// Requires a query of at least fts5MinQueryRunes Unicode characters (trigram tokenizer constraint).
 func searchFTS5(db *sql.DB, opts SearchOptions) ([]SearchResult, error) {
 	var conditions []string
 	var args []any
@@ -83,14 +84,14 @@ func searchFTS5(db *sql.DB, opts SearchOptions) ([]SearchResult, error) {
 	return runSearchQuery(db, query, args)
 }
 
-// searchLike는 LIKE 패턴 매칭을 사용하여 검색한다.
-// FTS5 trigram이 지원하지 않는 1~2자 CJK 쿼리(한국어 "인증", 일본어 "認証", 중국어 "认证")를 처리한다.
-// BM25 점수는 제공되지 않으며 Score는 0.0으로 고정된다.
+// searchLike performs a LIKE-based pattern search.
+// Handles 1-2 rune CJK queries (e.g., Korean "인증", Japanese "認証", Chinese "认证")
+// that the FTS5 trigram tokenizer cannot handle. Score is always 0.0.
 func searchLike(db *sql.DB, opts SearchOptions) ([]SearchResult, error) {
 	var conditions []string
 	var args []any
 
-	// LIKE 패턴: SQLite에서 '%' || ? || '%' 형식으로 파라미터 바인딩
+	// Bind as a LIKE parameter; SQLite evaluates '%' || ? || '%' server-side.
 	conditions = append(conditions, "m.text LIKE '%' || ? || '%'")
 	args = append(args, opts.Query)
 
@@ -113,7 +114,7 @@ func searchLike(db *sql.DB, opts SearchOptions) ([]SearchResult, error) {
 	return runSearchQuery(db, query, args)
 }
 
-// appendCommonFilters는 브랜치, 역할, 날짜 범위 필터를 조건 슬라이스에 추가한다.
+// appendCommonFilters appends branch, role, and date range filters to the condition slice.
 func appendCommonFilters(conditions *[]string, args *[]any, opts SearchOptions) {
 	if opts.Branch != "" {
 		*conditions = append(*conditions, "s.git_branch = ?")
@@ -133,11 +134,11 @@ func appendCommonFilters(conditions *[]string, args *[]any, opts SearchOptions) 
 	}
 }
 
-// runSearchQuery는 SQL 쿼리를 실행하고 SearchResult 슬라이스를 반환한다.
+// runSearchQuery executes a SQL query and returns the matching SearchResult slice.
 func runSearchQuery(db *sql.DB, query string, args []any) ([]SearchResult, error) {
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("검색 쿼리 실패: %w", err)
+		return nil, fmt.Errorf("search query failed: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -149,16 +150,16 @@ func runSearchQuery(db *sql.DB, query string, args []any) ([]SearchResult, error
 			&r.Timestamp, &r.GitBranch, &r.ProjectPath,
 			&r.Score,
 		); err != nil {
-			return nil, fmt.Errorf("결과 스캔 실패: %w", err)
+			return nil, fmt.Errorf("failed to scan result row: %w", err)
 		}
-		// Excerpt 최대 200자 제한 ([]rune 기반으로 멀티바이트 문자 안전 처리)
+		// Truncate excerpt to 200 runes (rune-safe for multi-byte CJK characters).
 		if runes := []rune(r.Excerpt); len(runes) > 200 {
 			r.Excerpt = string(runes[:200])
 		}
 		results = append(results, r)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("결과 반복 실패: %w", err)
+		return nil, fmt.Errorf("result iteration failed: %w", err)
 	}
 
 	return results, nil

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Message는 JSONL에서 파싱된 단일 대화 메시지를 나타낸다.
+// Message represents a single conversation message parsed from a JSONL session file.
 type Message struct {
 	SessionID   string
 	Role        string
@@ -19,8 +19,8 @@ type Message struct {
 	ProjectPath string
 }
 
-// noisePatterns는 필터링할 XML 태그 패턴 목록이다.
-// Claude Code 내부 제어 태그 및 시스템 메시지를 제외한다.
+// noisePatterns lists XML tag prefixes used internally by Claude Code.
+// Messages containing these patterns are excluded from the search index.
 var noisePatterns = []string{
 	"<local-command-caveat>",
 	"<command-name>",
@@ -28,38 +28,38 @@ var noisePatterns = []string{
 	"<function_calls>",
 }
 
-// minTextLength는 인덱싱할 최소 텍스트 길이이다.
-// 너무 짧은 텍스트는 검색 가치가 없으므로 제외한다.
+// minTextLength is the minimum rune count for a message to be indexed.
+// Messages shorter than this threshold carry little search value.
 const minTextLength = 20
 
-// jsonlRecord는 JSONL 파일의 단일 레코드 구조이다.
+// jsonlRecord represents a single record in a JSONL session file.
 type jsonlRecord struct {
-	Type      string        `json:"type"`
-	Timestamp string        `json:"timestamp"`
-	SessionID string        `json:"sessionId"`
-	Message   jsonlMessage  `json:"message"`
+	Type      string       `json:"type"`
+	Timestamp string       `json:"timestamp"`
+	SessionID string       `json:"sessionId"`
+	Message   jsonlMessage `json:"message"`
 }
 
-// jsonlMessage는 레코드 내의 메시지 객체이다.
+// jsonlMessage is the message object within a JSONL record.
 type jsonlMessage struct {
 	Role    string         `json:"role"`
 	Content []jsonlContent `json:"content"`
 }
 
-// jsonlContent는 메시지 내 콘텐츠 블록이다.
+// jsonlContent is a content block within a message.
 type jsonlContent struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
-// ParseJSONL은 JSONL 파일을 파싱하여 검색 가능한 메시지 목록을 반환한다.
-// gitBranch와 projectPath는 각 메시지에 메타데이터로 첨부된다.
+// ParseJSONL parses a JSONL session file and returns a list of searchable messages.
+// gitBranch and projectPath are attached as metadata to each message.
 //
-// 필터링 규칙:
-//   - type이 "user" 또는 "assistant"가 아닌 레코드 제외
-//   - XML 노이즈 태그를 포함하는 메시지 제외
-//   - 정제 후 텍스트가 minTextLength 미만인 메시지 제외
-//   - 잘못된 JSON 라인은 건너뛴다
+// Filtering rules:
+//   - Records whose type is not "user" or "assistant" are skipped.
+//   - Messages containing XML noise tags are excluded.
+//   - Messages whose trimmed text is shorter than minTextLength runes are excluded.
+//   - Invalid JSON lines are silently skipped.
 func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -69,7 +69,7 @@ func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 
 	var messages []Message
 	scanner := bufio.NewScanner(f)
-	// 최대 라인 버퍼 크기를 4MB로 증가 (대용량 메시지 대응)
+	// Increase the line buffer to 4 MB to handle large tool-output messages.
 	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
 
 	for scanner.Scan() {
@@ -80,16 +80,16 @@ func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 
 		var rec jsonlRecord
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
-			// 잘못된 JSON은 건너뛴다
+			// Skip invalid JSON lines.
 			continue
 		}
 
-		// user/assistant 타입만 처리
+		// Only process user and assistant message types.
 		if rec.Type != "user" && rec.Type != "assistant" {
 			continue
 		}
 
-		// 역할 결정: message.role을 우선, 없으면 type 사용
+		// Prefer message.role; fall back to record type.
 		role := rec.Message.Role
 		if role == "" {
 			role = rec.Type
@@ -98,7 +98,7 @@ func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 			continue
 		}
 
-		// 텍스트 타입 콘텐츠만 추출
+		// Extract text-type content blocks only.
 		var textParts []string
 		for _, c := range rec.Message.Content {
 			if c.Type == "text" && c.Text != "" {
@@ -111,12 +111,12 @@ func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 
 		text := strings.Join(textParts, " ")
 
-		// 노이즈 패턴 필터링
+		// Exclude messages containing internal noise patterns.
 		if containsNoise(text) {
 			continue
 		}
 
-		// 최소 길이 확인
+		// Exclude messages shorter than minTextLength runes.
 		if len([]rune(strings.TrimSpace(text))) < minTextLength {
 			continue
 		}
@@ -135,7 +135,7 @@ func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 		return nil, err
 	}
 
-	// nil 대신 빈 슬라이스 반환 (호출자 nil 체크 불필요)
+	// Return an empty slice (not nil) so callers do not need a nil check.
 	if messages == nil {
 		messages = []Message{}
 	}
@@ -143,7 +143,7 @@ func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
 	return messages, nil
 }
 
-// containsNoise는 텍스트에 노이즈 패턴이 포함되어 있으면 true를 반환한다.
+// containsNoise returns true if text contains any of the noise tag patterns.
 func containsNoise(text string) bool {
 	for _, pattern := range noisePatterns {
 		if strings.Contains(text, pattern) {

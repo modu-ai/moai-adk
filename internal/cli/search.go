@@ -15,7 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/search"
 )
 
-// searchCmd는 세션 히스토리 검색 서브커맨드이다.
+// searchCmd is the session history search subcommand.
 var searchCmd = &cobra.Command{
 	Use:   "search [query]",
 	Short: "Search indexed session history",
@@ -36,39 +36,39 @@ Examples:
 func init() {
 	rootCmd.AddCommand(searchCmd)
 
-	// 검색 옵션 플래그
-	searchCmd.Flags().StringP("branch", "b", "", "git 브랜치 필터")
-	searchCmd.Flags().String("since", "", "시작 날짜 필터 (RFC3339, 예: 2026-01-01T00:00:00Z)")
-	searchCmd.Flags().String("until", "", "종료 날짜 필터 (RFC3339, 예: 2026-12-31T23:59:59Z)")
-	searchCmd.Flags().String("role", "", "역할 필터: user|assistant")
-	searchCmd.Flags().IntP("limit", "n", 20, "최대 결과 수")
+	// Search filter flags.
+	searchCmd.Flags().StringP("branch", "b", "", "git branch filter")
+	searchCmd.Flags().String("since", "", "start date filter (RFC3339, e.g. 2026-01-01T00:00:00Z)")
+	searchCmd.Flags().String("until", "", "end date filter (RFC3339, e.g. 2026-12-31T23:59:59Z)")
+	searchCmd.Flags().String("role", "", "role filter: user|assistant")
+	searchCmd.Flags().IntP("limit", "n", 20, "maximum number of results")
 
-	// 인덱싱 옵션 플래그
-	searchCmd.Flags().String("index-session", "", "특정 세션 ID를 수동으로 인덱싱")
-	searchCmd.Flags().String("project-path", "", "인덱싱 시 사용할 프로젝트 경로")
-	searchCmd.Flags().String("git-branch", "", "인덱싱 시 사용할 git 브랜치")
+	// Indexing flags.
+	searchCmd.Flags().String("index-session", "", "manually index a specific session ID")
+	searchCmd.Flags().String("project-path", "", "project path to use during indexing")
+	searchCmd.Flags().String("git-branch", "", "git branch to use during indexing")
 }
 
-// runSearch는 search 커맨드의 실행 핸들러이다.
-// --index-session 플래그가 있으면 세션을 인덱싱하고 종료한다.
-// 없으면 쿼리 인수를 받아 검색 결과를 출력한다.
+// runSearch is the execution handler for the search command.
+// If --index-session is provided, it indexes the session and exits.
+// Otherwise it accepts a query argument and prints results.
 func runSearch(cmd *cobra.Command, args []string) error {
 	sessionID, _ := cmd.Flags().GetString("index-session")
 
-	// 인덱싱 모드
+	// Indexing mode.
 	if sessionID != "" {
 		return runIndexSession(cmd, sessionID)
 	}
 
-	// 검색 모드: 쿼리 인수 필수
+	// Search mode: query argument is required.
 	if len(args) == 0 {
-		return errors.New("검색 쿼리가 필요합니다. 예: moai search \"JWT 인증\"")
+		return errors.New("search query is required, e.g.: moai search \"JWT auth\"")
 	}
 
 	return runSearchQuery(cmd, args[0])
 }
 
-// runIndexSession은 지정된 세션 ID를 JSONL 파일에서 찾아 인덱싱한다.
+// runIndexSession locates the JSONL file for the given session ID and indexes it.
 func runIndexSession(cmd *cobra.Command, sessionID string) error {
 	projectPath, _ := cmd.Flags().GetString("project-path")
 	gitBranch, _ := cmd.Flags().GetString("git-branch")
@@ -80,29 +80,29 @@ func runIndexSession(cmd *cobra.Command, sessionID string) error {
 
 	db, err := search.OpenDB(dbPath)
 	if err != nil {
-		return fmt.Errorf("DB 오픈 실패: %w", err)
+		return fmt.Errorf("failed to open DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
 	if err := search.CreateTables(db); err != nil {
-		return fmt.Errorf("DB 테이블 초기화 실패: %w", err)
+		return fmt.Errorf("failed to initialize DB tables: %w", err)
 	}
 
-	// ~/.claude/projects/ 하위에서 JSONL 파일 검색
+	// Locate the JSONL file under ~/.claude/projects/.
 	filePath, err := findSessionJSONL(sessionID)
 	if err != nil {
-		return fmt.Errorf("세션 JSONL 파일을 찾을 수 없음 (session=%s): %w", sessionID, err)
+		return fmt.Errorf("session JSONL file not found (session=%s): %w", sessionID, err)
 	}
 
 	if err := search.IndexSession(db, sessionID, filePath, gitBranch, projectPath); err != nil {
-		return fmt.Errorf("세션 인덱싱 실패: %w", err)
+		return fmt.Errorf("failed to index session: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "세션 인덱싱 완료: %s\n", sessionID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "session indexed: %s\n", sessionID)
 	return nil
 }
 
-// runSearchQuery는 쿼리를 실행하고 결과를 출력한다.
+// runSearchQuery executes the query and prints results.
 func runSearchQuery(cmd *cobra.Command, query string) error {
 	branch, _ := cmd.Flags().GetString("branch")
 	since, _ := cmd.Flags().GetString("since")
@@ -117,12 +117,12 @@ func runSearchQuery(cmd *cobra.Command, query string) error {
 
 	db, err := search.OpenDB(dbPath)
 	if err != nil {
-		return fmt.Errorf("DB 오픈 실패: %w", err)
+		return fmt.Errorf("failed to open DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
 	if err := search.CreateTables(db); err != nil {
-		return fmt.Errorf("DB 테이블 초기화 실패: %w", err)
+		return fmt.Errorf("failed to initialize DB tables: %w", err)
 	}
 
 	opts := search.SearchOptions{
@@ -136,30 +136,30 @@ func runSearchQuery(cmd *cobra.Command, query string) error {
 
 	results, err := search.Search(db, opts)
 	if err != nil {
-		return fmt.Errorf("검색 실패: %w", err)
+		return fmt.Errorf("search failed: %w", err)
 	}
 
 	printSearchResults(cmd, query, results)
 	return nil
 }
 
-// printSearchResults는 검색 결과를 터미널에 출력한다.
+// printSearchResults renders search results to the terminal.
 func printSearchResults(cmd *cobra.Command, query string, results []search.SearchResult) {
 	out := cmd.OutOrStdout()
 
 	if len(results) == 0 {
-		_, _ = fmt.Fprintf(out, "검색 결과 없음: %q\n", query)
+		_, _ = fmt.Fprintf(out, "no results for: %q\n", query)
 		return
 	}
 
-	// 헤더 출력
+	// Print header.
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{
 		Light: "#C45A3C", Dark: "#DA7756",
 	})
-	_, _ = fmt.Fprintln(out, headerStyle.Render(fmt.Sprintf("검색 결과: %q (%d건)", query, len(results))))
+	_, _ = fmt.Fprintln(out, headerStyle.Render(fmt.Sprintf("results for %q (%d found)", query, len(results))))
 	_, _ = fmt.Fprintln(out)
 
-	// 각 결과를 카드 형태로 출력
+	// Print each result as a card.
 	roleStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
 		Light: "#059669", Dark: "#10B981",
 	})
@@ -172,7 +172,7 @@ func printSearchResults(cmd *cobra.Command, query string, results []search.Searc
 		Padding(0, 2)
 
 	for i, r := range results {
-		// 카드 내용 구성
+		// Build card content.
 		meta := fmt.Sprintf("%s  %s  %s",
 			roleStyle.Render(r.Role),
 			mutedStyle.Render(r.GitBranch),
@@ -180,9 +180,9 @@ func printSearchResults(cmd *cobra.Command, query string, results []search.Searc
 		)
 		excerpt := r.Excerpt
 		if excerpt == "" {
-			excerpt = "(내용 없음)"
+			excerpt = "(empty)"
 		}
-		// 세션 ID 단축 표시
+		// Truncate session ID for display.
 		shortSession := r.SessionID
 		if len(shortSession) > 12 {
 			shortSession = shortSession[:12] + "..."
@@ -191,39 +191,39 @@ func printSearchResults(cmd *cobra.Command, query string, results []search.Searc
 		content := meta + "\n" + excerpt + "\n" + mutedStyle.Render(fmt.Sprintf("session: %s", shortSession))
 		_, _ = fmt.Fprintln(out, borderStyle.Render(content))
 
-		// 마지막 결과 이후 구분선 없음
+		// No separator after the last result.
 		if i < len(results)-1 {
 			_, _ = fmt.Fprintln(out)
 		}
 	}
 }
 
-// searchDBPath는 검색 DB 파일 경로를 반환한다.
-// 경로: ~/.moai/search/sessions.db
+// searchDBPath returns the path to the search database file.
+// Path: ~/.moai/search/sessions.db
 func searchDBPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("홈 디렉터리를 찾을 수 없음: %w", err)
+		return "", fmt.Errorf("could not determine home directory: %w", err)
 	}
 	return filepath.Join(homeDir, defs.MoAIDir, defs.SearchSubdir, defs.SearchDB), nil
 }
 
-// findSessionJSONL은 ~/.claude/projects/ 하위 디렉터리에서
-// {sessionId}.jsonl 파일을 찾아 경로를 반환한다.
+// findSessionJSONL searches subdirectories under ~/.claude/projects/ for the
+// {sessionId}.jsonl file and returns its path.
 func findSessionJSONL(sessionID string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("홈 디렉터리를 찾을 수 없음: %w", err)
+		return "", fmt.Errorf("could not determine home directory: %w", err)
 	}
 
 	projectsDir := filepath.Join(homeDir, ".claude", "projects")
 	targetFile := sessionID + ".jsonl"
 
-	// 하위 디렉터리를 순회하여 JSONL 파일 검색
+	// Walk subdirectories to find the JSONL file.
 	var found string
 	err = filepath.WalkDir(projectsDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			// 접근 불가 항목은 건너뜀
+			// Skip inaccessible entries.
 			return nil
 		}
 		if !d.IsDir() && d.Name() == targetFile {
@@ -237,7 +237,7 @@ func findSessionJSONL(sessionID string) (string, error) {
 	}
 
 	if found == "" {
-		return "", fmt.Errorf("%s.jsonl 파일을 %s에서 찾을 수 없음",
+		return "", fmt.Errorf("%s.jsonl not found under %s",
 			sessionID, projectsDir)
 	}
 
