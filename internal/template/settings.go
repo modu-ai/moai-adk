@@ -21,13 +21,16 @@ func BuildSmartPATH() string {
 
 	sep := string(os.PathListSeparator)
 
-	// User-specific directories (always included, cross-platform)
-	candidates := []string{
-		filepath.Join(homeDir, ".local", "bin"), // XDG user-local binaries
-		filepath.Join(homeDir, "go", "bin"),     // Go workspace binaries
+	// User-specific directories (only if homeDir resolved)
+	var candidates []string
+	if homeDir != "" {
+		candidates = append(candidates,
+			filepath.Join(homeDir, ".local", "bin"), // XDG user-local binaries
+			filepath.Join(homeDir, "go", "bin"),     // Go workspace binaries
+		)
 	}
 
-	// Platform-specific package manager and system paths
+	// Platform-specific paths
 	switch runtime.GOOS {
 	case "darwin":
 		candidates = append(candidates,
@@ -36,6 +39,9 @@ func BuildSmartPATH() string {
 			"/usr/local/bin",     // Intel Homebrew / system
 			"/usr/local/sbin",    // Intel Homebrew system
 		)
+	case "windows":
+		// Windows uses %PATH% natively; only add Go bin if homeDir available
+		// System paths are managed by Windows itself
 	default: // linux, etc.
 		candidates = append(candidates,
 			"/usr/local/bin",
@@ -43,8 +49,10 @@ func BuildSmartPATH() string {
 		)
 	}
 
-	// Standard POSIX system paths (always required)
-	candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+	// Standard POSIX system paths (skip on Windows)
+	if runtime.GOOS != "windows" {
+		candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+	}
 
 	return strings.Join(candidates, sep)
 }

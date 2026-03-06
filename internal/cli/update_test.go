@@ -1771,11 +1771,11 @@ func TestBuildSmartPATH(t *testing.T) {
 			t.Errorf("BuildSmartPATH result changed with terminal PATH (issue #467):\nPATH=%q\ngot:  %q\nwant: %q", terminalPATH, result, firstResult)
 		}
 
-		// Essential user dirs must always be present
-		if !strings.Contains(result, localBin) {
+		// Essential user dirs must always be present (exact segment match)
+		if !template.PathContainsDir(result, localBin, sep) {
 			t.Errorf("result should always contain localBin %q, got %q", localBin, result)
 		}
-		if !strings.Contains(result, goBin) {
+		if !template.PathContainsDir(result, goBin, sep) {
 			t.Errorf("result should always contain goBin %q, got %q", goBin, result)
 		}
 
