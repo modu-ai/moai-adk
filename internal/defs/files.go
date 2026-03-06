@@ -24,6 +24,11 @@ const (
 	GithubSpecRegistryJSON = "github-spec-registry.json"
 )
 
+// Search database files.
+const (
+	SearchDB = "sessions.db"
+)
+
 // Section YAML file names under .moai/config/sections/.
 const (
 	UserYAML        = "user.yaml"
