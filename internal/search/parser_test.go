@@ -3,6 +3,7 @@ package search_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/search"
@@ -114,6 +115,43 @@ func TestParseJSONL_EmptyFile(t *testing.T) {
 	}
 	if len(msgs) != 0 {
 		t.Fatalf("빈 파일에 메시지가 반환됨: %d개", len(msgs))
+	}
+}
+
+// TestParseJSONL_CJKSafeFiltering은 노이즈 필터링이 CJK 문자를 제거하지 않는지 확인한다.
+// noisePatterns는 ASCII XML 태그만 필터링하므로 한국어/일본어/중국어 텍스트는 보존된다.
+func TestParseJSONL_CJKSafeFiltering(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	// 한국어, 일본어, 중국어 메시지 - 노이즈 패턴 없음
+	content := `{"type":"user","timestamp":"2026-03-06T10:00:00Z","sessionId":"cjk1","message":{"role":"user","content":[{"type":"text","text":"한국어 인증 구현: JWT 토큰 기반 시스템 설계"}]}}
+{"type":"user","timestamp":"2026-03-06T10:01:00Z","sessionId":"cjk1","message":{"role":"user","content":[{"type":"text","text":"日本語認証実装: JWTトークンシステムの設計方法"}]}}
+{"type":"user","timestamp":"2026-03-06T10:02:00Z","sessionId":"cjk1","message":{"role":"user","content":[{"type":"text","text":"中文认证实现: 基于JWT令牌的系统设计方案"}]}}
+`
+	path := writeJSONL(t, tmpDir, "cjk1.jsonl", content)
+
+	msgs, err := search.ParseJSONL(path, "main", "/project")
+	if err != nil {
+		t.Fatalf("ParseJSONL 실패: %v", err)
+	}
+
+	// CJK 메시지 3개 모두 보존되어야 함
+	if len(msgs) != 3 {
+		t.Fatalf("CJK 메시지 수 불일치: 원함=3, 실제=%d (노이즈 필터가 CJK를 제거)", len(msgs))
+	}
+
+	// 한국어 포함 확인
+	if !strings.Contains(msgs[0].Text, "인증") {
+		t.Error("한국어 텍스트가 손실됨")
+	}
+	// 일본어 포함 확인
+	if !strings.Contains(msgs[1].Text, "認証") {
+		t.Error("일본어 텍스트가 손실됨")
+	}
+	// 중국어 포함 확인
+	if !strings.Contains(msgs[2].Text, "认证") {
+		t.Error("중국어 텍스트가 손실됨")
 	}
 }
 

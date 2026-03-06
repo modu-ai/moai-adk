@@ -263,3 +263,143 @@ func TestSearch_CJKText(t *testing.T) {
 		t.Error("한국어 trigram 검색 결과 없음: '최적화' 매칭 실패")
 	}
 }
+
+// TestSearch_Korean은 한국어 2자 쿼리가 LIKE 폴백으로 검색되는지 확인한다.
+// "인증" = 인(1)+증(1) = 2자 → FTS5 trigram 미지원 → LIKE 폴백 사용
+func TestSearch_Korean(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDB(t)
+	if err := search.CreateTables(db); err != nil {
+		t.Fatalf("CreateTables 실패: %v", err)
+	}
+
+	// 한국어 2자 단어 "인증"이 포함된 세션 삽입
+	_, err := db.Exec(`INSERT INTO sessions (session_id, project_path, git_branch, file_path)
+		VALUES ('ko-sess', '/project', 'main', '/path.jsonl')`)
+	if err != nil {
+		t.Fatalf("세션 삽입 실패: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO messages (session_id, role, timestamp, text)
+		VALUES ('ko-sess', 'user', '2026-03-06T10:00:00Z', '인증 구현 방법을 알려주세요')`)
+	if err != nil {
+		t.Fatalf("메시지 삽입 실패: %v", err)
+	}
+
+	// "인증" (2자) → LIKE 폴백으로 검색
+	results, err := search.Search(db, search.SearchOptions{
+		Query: "인증",
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("한국어 검색 실패: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("한국어 2자 쿼리 '인증' 검색 결과 없음 (LIKE 폴백 미작동)")
+	}
+}
+
+// TestSearch_English는 영어 4자 쿼리가 FTS5 trigram으로 검색되는지 확인한다.
+// "auth" = 4자 ASCII → FTS5 trigram 직접 사용 가능
+func TestSearch_English(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDB(t)
+	if err := search.CreateTables(db); err != nil {
+		t.Fatalf("CreateTables 실패: %v", err)
+	}
+
+	_, err := db.Exec(`INSERT INTO sessions (session_id, project_path, git_branch, file_path)
+		VALUES ('en-sess', '/project', 'main', '/path.jsonl')`)
+	if err != nil {
+		t.Fatalf("세션 삽입 실패: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO messages (session_id, role, timestamp, text)
+		VALUES ('en-sess', 'user', '2026-03-06T10:00:00Z',
+		        'How to implement authentication with JWT tokens')`)
+	if err != nil {
+		t.Fatalf("메시지 삽입 실패: %v", err)
+	}
+
+	// "auth" (4자) → FTS5 trigram으로 검색
+	results, err := search.Search(db, search.SearchOptions{
+		Query: "auth",
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("영어 검색 실패: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("영어 쿼리 'auth' 검색 결과 없음")
+	}
+}
+
+// TestSearch_Japanese는 일본어 2자 쿼리가 LIKE 폴백으로 검색되는지 확인한다.
+// "認証" = 認(1)+証(1) = 2자 → FTS5 trigram 미지원 → LIKE 폴백 사용
+func TestSearch_Japanese(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDB(t)
+	if err := search.CreateTables(db); err != nil {
+		t.Fatalf("CreateTables 실패: %v", err)
+	}
+
+	_, err := db.Exec(`INSERT INTO sessions (session_id, project_path, git_branch, file_path)
+		VALUES ('ja-sess', '/project', 'main', '/path.jsonl')`)
+	if err != nil {
+		t.Fatalf("세션 삽입 실패: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO messages (session_id, role, timestamp, text)
+		VALUES ('ja-sess', 'user', '2026-03-06T10:00:00Z',
+		        '認証の実装方法を教えてください')`)
+	if err != nil {
+		t.Fatalf("메시지 삽입 실패: %v", err)
+	}
+
+	// "認証" (2자) → LIKE 폴백으로 검색
+	results, err := search.Search(db, search.SearchOptions{
+		Query: "認証",
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("일본어 검색 실패: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("일본어 2자 쿼리 '認証' 검색 결과 없음 (LIKE 폴백 미작동)")
+	}
+}
+
+// TestSearch_Chinese는 중국어 2자 쿼리가 LIKE 폴백으로 검색되는지 확인한다.
+// "认证" = 认(1)+证(1) = 2자 → FTS5 trigram 미지원 → LIKE 폴백 사용
+func TestSearch_Chinese(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDB(t)
+	if err := search.CreateTables(db); err != nil {
+		t.Fatalf("CreateTables 실패: %v", err)
+	}
+
+	_, err := db.Exec(`INSERT INTO sessions (session_id, project_path, git_branch, file_path)
+		VALUES ('zh-sess', '/project', 'main', '/path.jsonl')`)
+	if err != nil {
+		t.Fatalf("세션 삽입 실패: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO messages (session_id, role, timestamp, text)
+		VALUES ('zh-sess', 'user', '2026-03-06T10:00:00Z',
+		        '认证实现的最佳实践是什么')`)
+	if err != nil {
+		t.Fatalf("메시지 삽입 실패: %v", err)
+	}
+
+	// "认证" (2자) → LIKE 폴백으로 검색
+	results, err := search.Search(db, search.SearchOptions{
+		Query: "认证",
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("중국어 검색 실패: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("중국어 2자 쿼리 '认证' 검색 결과 없음 (LIKE 폴백 미작동)")
+	}
+}
