@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"gopkg.in/yaml.v3"
 )
 
 // gutterThreshold is the number of times the same error pattern must occur
@@ -46,14 +47,24 @@ type errorLogEntry struct {
 type GutterTracker struct {
 	projectRoot string
 	sessionID   string
+	threshold   int
 	state       *errorTrackerState
 }
 
-// NewGutterTracker creates a new GutterTracker for the given project root.
+// NewGutterTracker creates a new GutterTracker with the default threshold.
 func NewGutterTracker(projectRoot, sessionID string) *GutterTracker {
+	return NewGutterTrackerWithThreshold(projectRoot, sessionID, gutterThreshold)
+}
+
+// NewGutterTrackerWithThreshold creates a new GutterTracker with a custom threshold.
+func NewGutterTrackerWithThreshold(projectRoot, sessionID string, threshold int) *GutterTracker {
+	if threshold <= 0 {
+		threshold = gutterThreshold
+	}
 	return &GutterTracker{
 		projectRoot: projectRoot,
 		sessionID:   sessionID,
+		threshold:   threshold,
 		state: &errorTrackerState{
 			SessionID:      sessionID,
 			Patterns:       make(map[string]*errorPattern),
@@ -101,7 +112,7 @@ func (gt *GutterTracker) TrackFailure(toolName, errorMsg string) (bool, error) {
 
 	// Check for gutter detection
 	currentPattern := gt.state.Patterns[signature]
-	gutterDetected := currentPattern.Count >= gutterThreshold
+	gutterDetected := currentPattern.Count >= gt.threshold
 
 	if gutterDetected && !gt.state.GutterDetected {
 		gt.state.GutterDetected = true
@@ -194,7 +205,7 @@ func (gt *GutterTracker) saveState() error {
 		return fmt.Errorf("marshal state: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write state file: %w", err)
 	}
 
@@ -229,7 +240,7 @@ func (gt *GutterTracker) appendErrorLog(toolName, errorMsg string, patternCount 
 	line = append(line, '\n')
 
 	// Append to log file
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
@@ -251,8 +262,38 @@ func GetSystemMessageForGutter(toolName string, count int) string {
 	)
 }
 
+// gutterDetectionConfig maps the workflow.yaml gutter_detection section.
+type gutterDetectionConfig struct {
+	Workflow struct {
+		GutterDetection struct {
+			ErrorPatternThreshold int `yaml:"error_pattern_threshold"`
+		} `yaml:"gutter_detection"`
+	} `yaml:"workflow"`
+}
+
+// loadGutterThreshold reads the error_pattern_threshold from workflow.yaml.
+// Returns gutterThreshold (default) if the file cannot be read or parsed.
+func loadGutterThreshold(projectRoot string) int {
+	configPath := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return gutterThreshold
+	}
+
+	var cfg gutterDetectionConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return gutterThreshold
+	}
+
+	if cfg.Workflow.GutterDetection.ErrorPatternThreshold <= 0 {
+		return gutterThreshold
+	}
+	return cfg.Workflow.GutterDetection.ErrorPatternThreshold
+}
+
 // ResolveGutterTracker creates a GutterTracker for the given hook input.
 // Returns nil if no valid project root is found.
+// Reads error_pattern_threshold from .moai/config/sections/workflow.yaml if available.
 func ResolveGutterTracker(input *HookInput) *GutterTracker {
 	projectRoot := resolveProjectRoot(input)
 	if projectRoot == "" {
@@ -268,7 +309,8 @@ func ResolveGutterTracker(input *HookInput) *GutterTracker {
 		sessionID = "unknown"
 	}
 
-	return NewGutterTracker(projectRoot, sessionID)
+	threshold := loadGutterThreshold(projectRoot)
+	return NewGutterTrackerWithThreshold(projectRoot, sessionID, threshold)
 }
 
 // IsGutterRelevantError checks if an error should be tracked for gutter detection.

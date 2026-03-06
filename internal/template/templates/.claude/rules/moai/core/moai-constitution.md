@@ -127,7 +127,7 @@ Rules:
 Signs are structured lessons with enhanced metadata for better retrieval and application.
 
 **Sign Format Specification:**
-```
+```text
 ### Sign: [Name]
 - **Trigger**: When this situation occurs
 - **Instruction**: What to do instead

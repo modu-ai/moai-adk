@@ -135,7 +135,7 @@ func (h *compactHandler) saveSnapshot(projectRoot string, snapshot *preCompactSn
 		return fmt.Errorf("marshal snapshot: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write snapshot file: %w", err)
 	}
 
@@ -180,7 +180,7 @@ func (h *compactHandler) logCompactionEvent(projectRoot string, snapshot *preCom
 	line = append(line, '\n')
 
 	// Append to log file
-	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		slog.Warn("pre-compact: failed to open log file",
 			"error", err,

@@ -346,8 +346,8 @@ If coverage is below target (quality.yaml test_coverage_target):
 - Re-run quality validation after coverage improvement
 
 If status is PASS or WARNING:
-- Write run-end metadata to `.moai/runs/{session_id}.json`: {duration, files_modified, tests_passed, coverage_pct, git_head_after, gutter_events}
-- Continue to Phase 2.8.
+- Write run-end metadata to `.moai/runs/{session_id}.json` (session_id is a UUID, safe for filenames): {duration, files_modified, tests_passed, coverage_pct, git_head_after, gutter_events}
+- Continue to Phase 2.7.
 
 ### Phase 2.7: Re-planning Gate Check
 
