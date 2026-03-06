@@ -148,7 +148,10 @@ func TestIndexSession_WithMessages(t *testing.T) {
 	}
 
 	// 파일이 없는 세션은 인덱싱되지 않아야 함
-	indexed, _ := search.IsIndexed(db, "no-file-session")
+	indexed, err := search.IsIndexed(db, "no-file-session")
+	if err != nil {
+		t.Fatalf("IsIndexed failed: %v", err)
+	}
 	if indexed {
 		t.Error("파일 없는 세션이 인덱싱됨")
 	}

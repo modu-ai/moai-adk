@@ -23,7 +23,7 @@ import (
 // for improved concurrent read/write performance.
 func OpenDB(dbPath string) (*sql.DB, error) {
 	// Create parent directory if it does not exist.
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
 		return nil, fmt.Errorf("failed to create DB directory: %w", err)
 	}
 

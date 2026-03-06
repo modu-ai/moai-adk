@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -47,6 +49,7 @@ func init() {
 	searchCmd.Flags().String("index-session", "", "manually index a specific session ID")
 	searchCmd.Flags().String("project-path", "", "project path to use during indexing")
 	searchCmd.Flags().String("git-branch", "", "git branch to use during indexing")
+	searchCmd.Flags().String("transcript-path", "", "transcript JSONL file path (from Claude Code hook input)")
 }
 
 // runSearch is the execution handler for the search command.
@@ -65,13 +68,19 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		return errors.New("search query is required, e.g.: moai search \"JWT auth\"")
 	}
 
-	return runSearchQuery(cmd, args[0])
+	query := strings.TrimSpace(strings.Join(args, " "))
+	if query == "" {
+		return errors.New("search query is required, e.g.: moai search \"JWT auth\"")
+	}
+
+	return runSearchQuery(cmd, query)
 }
 
 // runIndexSession locates the JSONL file for the given session ID and indexes it.
 func runIndexSession(cmd *cobra.Command, sessionID string) error {
 	projectPath, _ := cmd.Flags().GetString("project-path")
 	gitBranch, _ := cmd.Flags().GetString("git-branch")
+	transcriptPath, _ := cmd.Flags().GetString("transcript-path")
 
 	dbPath, err := searchDBPath()
 	if err != nil {
@@ -88,10 +97,13 @@ func runIndexSession(cmd *cobra.Command, sessionID string) error {
 		return fmt.Errorf("failed to initialize DB tables: %w", err)
 	}
 
-	// Locate the JSONL file under ~/.claude/projects/.
-	filePath, err := findSessionJSONL(sessionID)
-	if err != nil {
-		return fmt.Errorf("session JSONL file not found (session=%s): %w", sessionID, err)
+	// Use transcript path from hook input if available; fall back to discovery.
+	filePath := transcriptPath
+	if filePath == "" {
+		filePath, err = findSessionJSONL(sessionID)
+		if err != nil {
+			return fmt.Errorf("session JSONL file not found (session=%s): %w", sessionID, err)
+		}
 	}
 
 	if err := search.IndexSession(db, sessionID, filePath, gitBranch, projectPath); err != nil {
@@ -172,13 +184,18 @@ func printSearchResults(cmd *cobra.Command, query string, results []search.Searc
 		Padding(0, 2)
 
 	for i, r := range results {
+		// Sanitize fields to prevent terminal injection via ANSI escape sequences.
+		role := sanitizeForTerminal(r.Role)
+		branch := sanitizeForTerminal(r.GitBranch)
+		ts := sanitizeForTerminal(r.Timestamp)
+		excerpt := sanitizeForTerminal(r.Excerpt)
+
 		// Build card content.
 		meta := fmt.Sprintf("%s  %s  %s",
-			roleStyle.Render(r.Role),
-			mutedStyle.Render(r.GitBranch),
-			mutedStyle.Render(r.Timestamp),
+			roleStyle.Render(role),
+			mutedStyle.Render(branch),
+			mutedStyle.Render(ts),
 		)
-		excerpt := r.Excerpt
 		if excerpt == "" {
 			excerpt = "(empty)"
 		}
@@ -196,6 +213,15 @@ func printSearchResults(cmd *cobra.Command, query string, results []search.Searc
 			_, _ = fmt.Fprintln(out)
 		}
 	}
+}
+
+// terminalUnsafe matches ANSI escape sequences and control characters (except newline and tab).
+var terminalUnsafe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]|[\x00-\x08\x0b\x0c\x0e-\x1f]`)
+
+// sanitizeForTerminal strips ANSI escape sequences and control characters
+// (except newline/tab) from s to prevent terminal injection.
+func sanitizeForTerminal(s string) string {
+	return terminalUnsafe.ReplaceAllString(s, "")
 }
 
 // searchDBPath returns the path to the search database file.

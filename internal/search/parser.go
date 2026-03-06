@@ -29,8 +29,8 @@ var noisePatterns = []string{
 }
 
 // minTextLength is the minimum rune count for a message to be indexed.
-// Messages shorter than this threshold carry little search value.
-const minTextLength = 20
+// Lowered to 5 for CJK support where short queries (e.g., 2-3 character words) are common.
+const minTextLength = 5
 
 // jsonlRecord represents a single record in a JSONL session file.
 type jsonlRecord struct {

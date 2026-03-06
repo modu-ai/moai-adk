@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 )
 
 // IsIndexed reports whether the given session ID has already been indexed.
@@ -20,27 +21,27 @@ func IsIndexed(db *sql.DB, sessionID string) (bool, error) {
 
 // IndexSession parses a single JSONL session file and indexes it into the SQLite DB.
 // Already-indexed sessions are skipped (idempotent).
-// If the JSONL file does not exist, a warning is logged and nil is returned.
+// If the JSONL file does not exist, the error is silently skipped.
+// Other parse errors are returned to the caller.
+// Sessions with zero parsed messages are not indexed.
 func IndexSession(db *sql.DB, sessionID, filePath, gitBranch, projectPath string) error {
-	// Skip if already indexed.
-	indexed, err := IsIndexed(db, sessionID)
-	if err != nil {
-		return err
-	}
-	if indexed {
-		slog.Debug("search: skipping already-indexed session", "session_id", sessionID)
-		return nil
-	}
-
 	// Parse JSONL file.
 	messages, err := ParseJSONL(filePath, gitBranch, projectPath)
 	if err != nil {
-		// Log a warning for missing files and return without error.
-		slog.Warn("search: failed to parse JSONL, skipping indexing",
-			"session_id", sessionID,
-			"path", filePath,
-			"error", err,
-		)
+		if os.IsNotExist(err) {
+			// Missing file: silently skip.
+			slog.Warn("search: JSONL file not found, skipping indexing",
+				"session_id", sessionID,
+				"path", filePath,
+			)
+			return nil
+		}
+		return fmt.Errorf("failed to parse JSONL (session=%s): %w", sessionID, err)
+	}
+
+	// Skip sessions with no indexable messages.
+	if len(messages) == 0 {
+		slog.Debug("search: no messages parsed, skipping indexing", "session_id", sessionID)
 		return nil
 	}
 
@@ -51,9 +52,19 @@ func IndexSession(db *sql.DB, sessionID, filePath, gitBranch, projectPath string
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	// Insert session metadata into sessions table.
+	// Idempotency check inside the transaction to prevent TOCTOU races.
+	var count int
+	if err := tx.QueryRow("SELECT COUNT(*) FROM sessions WHERE session_id = ?", sessionID).Scan(&count); err != nil {
+		return fmt.Errorf("failed to check session index: %w", err)
+	}
+	if count > 0 {
+		slog.Debug("search: skipping already-indexed session", "session_id", sessionID)
+		return nil
+	}
+
+	// Insert session metadata using INSERT OR IGNORE for additional safety.
 	_, err = tx.Exec(
-		`INSERT INTO sessions (session_id, project_path, git_branch, file_path) VALUES (?, ?, ?, ?)`,
+		`INSERT OR IGNORE INTO sessions (session_id, project_path, git_branch, file_path) VALUES (?, ?, ?, ?)`,
 		sessionID, projectPath, gitBranch, filePath,
 	)
 	if err != nil {

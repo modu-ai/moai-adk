@@ -53,5 +53,9 @@ Manual indexing: moai search --index-session <session-id>
 ## FTS5 Trigram Notes
 
 The trigram tokenizer requires queries of 3+ Unicode characters.
-For CJK languages (Korean, Chinese, Japanese), use 3-character terms.
-Korean example: "인덱스" (3 chars) works, "인증" (2 chars) does not.
+For CJK languages (Korean, Chinese, Japanese), queries of 3+ characters use
+FTS5 MATCH (BM25-ranked, high performance).
+
+Queries of 1-2 CJK characters (e.g., Korean "인증", Japanese "認証") automatically
+fall back to LIKE-based search. This is slower but ensures short CJK terms are
+still searchable. The fallback is transparent to the user.

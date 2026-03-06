@@ -14,7 +14,8 @@ import (
 // triggerSessionIndex runs session indexing as an asynchronous subprocess.
 // Fire-and-forget pattern: cmd.Start() without cmd.Wait().
 // The hook timeout (5 seconds) is not blocked by the indexer process.
-func triggerSessionIndex(sessionID, projectDir, gitBranch string) {
+// transcriptPath is the JSONL transcript file path provided by Claude Code's HookInput.
+func triggerSessionIndex(sessionID, projectDir, gitBranch, transcriptPath string) {
 	moaiBin, err := os.Executable()
 	if err != nil {
 		slog.Warn("session_end: could not locate moai binary for search indexing",
@@ -22,8 +23,12 @@ func triggerSessionIndex(sessionID, projectDir, gitBranch string) {
 		)
 		return
 	}
-	cmd := exec.Command(moaiBin, "search", "--index-session", sessionID,
-		"--project-path", projectDir, "--git-branch", gitBranch)
+	args := []string{"search", "--index-session", sessionID,
+		"--project-path", projectDir, "--git-branch", gitBranch}
+	if transcriptPath != "" {
+		args = append(args, "--transcript-path", transcriptPath)
+	}
+	cmd := exec.Command(moaiBin, args...)
 	if err := cmd.Start(); err != nil {
 		slog.Warn("session_end: could not start search indexer subprocess",
 			"error", err,
@@ -32,10 +37,11 @@ func triggerSessionIndex(sessionID, projectDir, gitBranch string) {
 	// No cmd.Wait() — fire-and-forget subprocess.
 }
 
-// detectGitBranch returns the current git branch name.
+// detectGitBranch returns the current git branch name for the given directory.
 // Returns an empty string if the git command fails or the directory is not a git repository.
-func detectGitBranch(ctx context.Context) string {
+func detectGitBranch(ctx context.Context, dir string) string {
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -108,7 +114,7 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	// Trigger session indexing asynchronously (supports moai search feature).
 	if input.SessionID != "" {
-		triggerSessionIndex(input.SessionID, projectDir, detectGitBranch(ctx))
+		triggerSessionIndex(input.SessionID, projectDir, detectGitBranch(ctx, projectDir), input.TranscriptPath)
 	}
 
 	slog.Info("session_end: cleanup complete",
