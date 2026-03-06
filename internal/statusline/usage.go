@@ -100,18 +100,17 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		return nil, nil
 	}
 
-	// Update cache (async, continue on failure)
+	// Update cache synchronously. moai statusline runs as a short-lived process,
+	// so async writes race with process exit and may lose data.
 	cache := &usageCacheFile{
 		CachedAt: time.Now().Unix(),
 		Usage5H:  usage5H,
 		Usage7D:  usage7D,
 	}
-	go func() {
-		u.mu.Lock()
-		u.cache = cache
-		u.mu.Unlock()
-		_ = u.saveCache(cache)
-	}()
+	u.mu.Lock()
+	u.cache = cache
+	u.mu.Unlock()
+	_ = u.saveCache(cache)
 
 	return u.toUsageResult(cache), nil
 }
