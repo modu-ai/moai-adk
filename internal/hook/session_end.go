@@ -11,6 +11,38 @@ import (
 	"time"
 )
 
+// triggerSessionIndex는 세션 인덱싱을 비동기 서브프로세스로 실행한다.
+// fire-and-forget 패턴: cmd.Start() 후 Wait() 없음.
+// 훅 타임아웃(5초) 내 완료를 보장한다.
+func triggerSessionIndex(sessionID, projectDir, gitBranch string) {
+	moaiBin, err := os.Executable()
+	if err != nil {
+		slog.Warn("session_end: search 인덱싱용 moai 바이너리를 찾을 수 없음",
+			"error", err,
+		)
+		return
+	}
+	cmd := exec.Command(moaiBin, "search", "--index-session", sessionID,
+		"--project-path", projectDir, "--git-branch", gitBranch)
+	if err := cmd.Start(); err != nil {
+		slog.Warn("session_end: search 인덱서 서브프로세스 시작 실패",
+			"error", err,
+		)
+	}
+	// cmd.Wait() 없음 — fire-and-forget 서브프로세스
+}
+
+// detectGitBranch는 현재 git 브랜치 이름을 반환한다.
+// git 명령이 실패하거나 git 저장소가 아닌 경우 빈 문자열을 반환한다.
+func detectGitBranch(ctx context.Context) string {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // teamConfig is the minimal structure read from ~/.claude/teams/*/config.json.
 type teamConfig struct {
 	LeadSessionID string `json:"leadSessionId"`
@@ -72,6 +104,11 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	}
 	if projectDir != "" {
 		cleanupGLMSettingsLocal(projectDir)
+	}
+
+	// 비동기로 세션 인덱싱 트리거 (moai search 검색 기능 지원)
+	if input.SessionID != "" {
+		triggerSessionIndex(input.SessionID, projectDir, detectGitBranch(ctx))
 	}
 
 	slog.Info("session_end: cleanup complete",
