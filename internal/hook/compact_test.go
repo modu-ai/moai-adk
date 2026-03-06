@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -105,7 +106,7 @@ func TestCompactHandler_Handle(t *testing.T) {
 	}
 }
 
-func TestCompactHandler_Handle_DataContainsSessionID(t *testing.T) {
+func TestCompactHandler_Handle_SystemMessageContainsSummary(t *testing.T) {
 	t.Parallel()
 
 	h := NewCompactHandler()
@@ -122,22 +123,12 @@ func TestCompactHandler_Handle_DataContainsSessionID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle() error: %v", err)
 	}
-	if got.Data == nil {
-		t.Fatal("Data should not be nil")
+	if got.SystemMessage == "" {
+		t.Fatal("SystemMessage should not be empty")
 	}
 
-	var data map[string]any
-	if err := json.Unmarshal(got.Data, &data); err != nil {
-		t.Fatalf("unmarshal Data: %v", err)
-	}
-
-	if data["session_id"] != "sess-data-check" {
-		t.Errorf("session_id = %v, want sess-data-check", data["session_id"])
-	}
-	if data["status"] != "preserved" {
-		t.Errorf("status = %v, want preserved", data["status"])
-	}
-	if data["snapshot_created"] != true {
-		t.Errorf("snapshot_created = %v, want true", data["snapshot_created"])
+	// SystemMessage should contain "MoAI Pre-Compact" indicator
+	if !strings.Contains(got.SystemMessage, "MoAI Pre-Compact") {
+		t.Errorf("SystemMessage should contain 'MoAI Pre-Compact', got: %s", got.SystemMessage)
 	}
 }

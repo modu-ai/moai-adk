@@ -81,6 +81,10 @@ All phases execute sequentially. Each phase receives outputs from all previous p
 
 ### Phase 1: Analysis and Planning
 
+**Per-Run Metadata Creation:**
+- Create `.moai/runs/` directory if not exists
+- Write run-start metadata: {spec_id, session_id, timestamp, development_mode, git_head}
+
 Agent: manager-strategy subagent
 
 Input: SPEC document content from the provided SPEC-ID. If research.md exists in the SPEC directory (.moai/specs/SPEC-{ID}/research.md), include it as additional context for deeper understanding of the codebase architecture, reference implementations, and identified risks.
@@ -341,7 +345,9 @@ If coverage is below target (quality.yaml test_coverage_target):
 - Auto-route to coverage workflow (workflows/coverage.md)
 - Re-run quality validation after coverage improvement
 
-If status is PASS or WARNING: Continue to Phase 2.8.
+If status is PASS or WARNING:
+- Write run-end metadata to `.moai/runs/{session_id}.json` (session_id is a UUID, safe for filenames): {duration, files_modified, tests_passed, coverage_pct, git_head_after, gutter_events}
+- Continue to Phase 2.7.
 
 ### Phase 2.7: Re-planning Gate Check
 

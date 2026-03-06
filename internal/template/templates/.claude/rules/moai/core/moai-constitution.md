@@ -121,3 +121,27 @@ Rules:
 - Lessons are additive: never overwrite a lesson, append corrections as updates
 - To supersede a lesson, add `[SUPERSEDED by #{new_lesson_number}]` prefix to the old entry
 - Session start: scan lessons for patterns matching current task domain
+
+### Signs Format
+
+Signs are structured lessons with enhanced metadata for better retrieval and application.
+
+**Sign Format Specification:**
+```text
+### Sign: [Name]
+- **Trigger**: When this situation occurs
+- **Instruction**: What to do instead
+- **Added after**: Date - What happened
+- **Category**: Preventive|Corrective|Process|Architecture
+```
+
+**Sign Categories:**
+- **Preventive**: Warnings to prevent common mistakes
+- **Corrective**: Actions to fix recurring issues
+- **Process**: Workflow and procedural improvements
+- **Architecture**: Structural patterns and anti-patterns
+
+**Sign Rules:**
+- PostToolUseFailure hook gutter detection auto-generates Sign entries for repeated failures
+- Session start: scan lessons.md Signs matching current task domain and inject as context
+- Signs are additive: never delete a Sign, mark as `[RETIRED]` if no longer relevant

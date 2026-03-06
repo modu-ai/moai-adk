@@ -46,7 +46,12 @@ Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 
 Each iteration executes the following steps in order:
 
-Step 1 - Completion Check:
+Step 1 - Gutter State Check:
+- Check `.moai/state/error-tracker.json` for prior gutter state
+- If gutter was previously detected, warn about potential context degradation
+- Consider reducing iteration scope or switching to alternative approach
+
+Step 1.5 - Completion Check:
 - Check for completion marker in previous iteration response
 - Marker types: `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`
 - If marker found: Exit loop with success
@@ -92,6 +97,7 @@ Step 5.5 - Pre-Fix MX Context Scan:
 Step 6 - Fix Execution:
 - [HARD] Before each fix: TaskUpdate to change item to in_progress
 - [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
+- If PostToolUseFailure hook reports gutter state via SystemMessage, switch strategy: try alternative approach or different tool before retrying the same operation
 
 Agent selection by issue type:
 - Type errors, logic bugs: expert-debug subagent
