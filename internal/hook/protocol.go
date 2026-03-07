@@ -17,13 +17,24 @@ func NewProtocol() Protocol {
 }
 
 // ReadInput reads and parses a JSON payload from the given reader.
+// It accepts both Claude Code's native nested camelCase format and the legacy
+// flat snake_case format. Native format (session.id, eventType, toolName) is
+// normalized to flat snake_case before decoding.
 // It validates required fields: session_id, cwd, and hook_event_name.
 // Returns ErrHookInvalidInput if the JSON is malformed or required fields are missing.
 func (p *jsonProtocol) ReadInput(r io.Reader) (*HookInput, error) {
-	var input HookInput
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrHookInvalidInput, err)
+	}
 
-	decoder := json.NewDecoder(r)
-	if err := decoder.Decode(&input); err != nil {
+	normalized, err := normalizeHookInput(data)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrHookInvalidInput, err)
+	}
+
+	var input HookInput
+	if err := json.Unmarshal(normalized, &input); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrHookInvalidInput, err)
 	}
 
