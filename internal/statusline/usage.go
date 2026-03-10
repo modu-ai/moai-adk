@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -433,7 +434,7 @@ func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiUR
 			return nil, fmt.Errorf("invalid 5h utilization header: %w", parseErr)
 		}
 		result.FiveHour = &usagePeriodData{
-			Utilization: util * 100,
+			Utilization: math.Round(util*10000) / 100, // 2 decimal places, avoids float64 imprecision
 			ResetsAt:    h5hReset,
 		}
 	}
@@ -444,7 +445,7 @@ func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiUR
 			return nil, fmt.Errorf("invalid 7d utilization header: %w", parseErr)
 		}
 		result.SevenDay = &usagePeriodData{
-			Utilization: util * 100,
+			Utilization: math.Round(util*10000) / 100, // 2 decimal places, avoids float64 imprecision
 			ResetsAt:    h7dReset,
 		}
 	}
