@@ -930,28 +930,55 @@ exclude:
 
 ### Q: 如何自定义显示的状态栏段？
 
-状态栏支持 4 个显示预设加上自定义配置：
+Statusline v3 提供**多行布局**和实时 API 使用量监控：
 
-- **Full**（默认）：显示所有 8 个段
-- **Compact**：仅显示 Model + Context + Git Status + Branch
-- **Minimal**：仅显示 Model + Context
-- **Custom**：选择个别段
+**Full 模式：**
+```
+🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 1h 26m │ 💬 MoAI
+CW: 🪫  ██████████████████████████████████████░░ 96%
+5H: 🔋  ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 19%
+7D: 🔋  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
+📁 moai-adk-go │ 🔀 main
+```
 
-在 `moai init` / `moai update` 向导中配置（对"重置状态栏"回答"y"），或编辑 `.moai/config/sections/statusline.yaml`：
+**默认（Default）模式：**
+```
+🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 16m │ 💬 MoAI
+CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
+📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
+```
+
+**紧凑（Compact）模式：**
+```
+🤖 Opus 4.6 │ CW: 🔋 ░░░░░░░░░░ 0%
+🔀 main │ 📊 +0 M119 ?29
+```
+
+支持 3 种显示模式：
+
+- **Full**：所有段 + 使用量条独立行显示（model、context、usage bars、git、version、output style、directory）
+- **Default**（默认）：核心段 + 内联使用量条（model、context、usage bars、git status、branch、version）
+- **Compact**：最小 2 行布局（model + context window、git 信息）
+
+直接编辑 `.moai/config/sections/statusline.yaml`：
 
 ```yaml
 statusline:
-  preset: compact  # 或 full、minimal、custom
+  mode: default  # 或 full、compact
   segments:
     model: true
     context: true
+    usage_5h: true    # 5 小时 API 使用量条
+    usage_7d: true    # 7 天 API 使用量条
     output_style: false
     directory: false
     git_status: true
     claude_version: false
-    moai_version: false
+    moai_version: true
     git_branch: true
 ```
+
+> **注意**：从 v2.7.8 开始，段预设选择 UI 已从 `moai init`/`moai update` 向导中移除。请直接在上述 YAML 文件中配置。
 
 详见 [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md)。
 
@@ -1031,25 +1058,13 @@ MoAI-ADK 提供**基于 Git 的上下文记忆系统**，通过结构化的 git 
 | **Risk** | 已知风险/延期项 | "限流推迟到 Phase 2" |
 | **UserPref** | 开发者偏好 | "偏好函数式风格" |
 
-### 上下文检索
-
-```bash
-# 查看特定 SPEC 的上下文
-/moai context --spec SPEC-AUTH-001
-
-# 将之前的上下文注入当前会话
-/moai context --spec SPEC-AUTH-001 --inject
-
-# 按类别筛选
-/moai context --category Decision --days 7
-```
 
 ### 核心优势
 
 - **零依赖**：使用 git 本身作为记忆存储 -- 无需外部数据库
 - **团队共享**：通过 `git clone` 自动共享上下文 -- 团队知识传递
 - **完整审计追踪**：`git log` 提供完整的决策历史
-- **会话连续性**：`/clear` 或会话中断后仍可恢复完整上下文
+- **会话连续性**：`/clear` 或会话中断后仍可恢复完整上下文（利用 Claude Code 内置 auto-memory）
 
 ---
 

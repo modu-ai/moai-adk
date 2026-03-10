@@ -928,11 +928,35 @@ See the **"@MX Tag System"** section above for details.
 
 ### Q: How do I customize which statusline segments are displayed?
 
-The statusline v3 supports 3 display modes plus direct segment configuration:
+The statusline v3 features a **multi-line layout** with real-time API usage monitoring:
 
-- **Full**: All segments (model, context, usage bars, git, version, output style, directory)
-- **Default** (default): Core segments (model, context, usage bars, git status, branch, version)
-- **Compact**: Minimal segments (model, context, git status, branch)
+**Full mode:**
+```
+🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 1h 26m │ 💬 MoAI
+CW: 🪫  ██████████████████████████████████████░░ 96%
+5H: 🔋  ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 19%
+7D: 🔋  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
+📁 moai-adk-go │ 🔀 main
+```
+
+**Default mode:**
+```
+🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 16m │ 💬 MoAI
+CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
+📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
+```
+
+**Compact mode:**
+```
+🤖 Opus 4.6 │ CW: 🔋 ░░░░░░░░░░ 0%
+🔀 main │ 📊 +0 M119 ?29
+```
+
+3 display modes are available:
+
+- **Full**: All segments with individual usage bars per line (model, context, usage bars, git, version, output style, directory)
+- **Default** (default): Core segments with inline usage bars (model, context, usage bars, git status, branch, version)
+- **Compact**: Minimal 2-line layout (model + context window, git info)
 
 Edit `.moai/config/sections/statusline.yaml` directly:
 
@@ -1032,19 +1056,6 @@ Every implementation commit includes a structured `## Context` section that capt
 | **Risk** | Known risks / deferred items | "Rate limiting deferred to Phase 2" |
 | **UserPref** | Developer preferences | "Prefers functional style" |
 
-### Context Retrieval
-
-```bash
-# View context for a specific SPEC
-/moai context --spec SPEC-AUTH-001
-
-# Inject previous context into current session
-/moai context --spec SPEC-AUTH-001 --inject
-
-# Filter by category
-/moai context --category Decision --days 7
-```
-
 ### Commit Format
 
 Both DDD and TDD workflows produce structured commits:
@@ -1076,7 +1087,7 @@ Phase: RUN-RED
 - **Zero Dependencies**: Uses git itself as the memory store -- no external databases
 - **Team Sharing**: Context travels with `git clone` -- automatic team knowledge transfer
 - **Full Audit Trail**: `git log` provides complete decision history
-- **Session Continuity**: Resume work with full context after `/clear` or session breaks
+- **Session Continuity**: Resume work with full context after `/clear` or session breaks (via Claude Code's built-in auto-memory)
 
 ---
 

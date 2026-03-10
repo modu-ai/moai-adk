@@ -930,28 +930,55 @@ exclude:
 
 ### Q: ステータスラインで表示されるセグメントをカスタマイズするにはどうすればいいですか？
 
-ステータスラインは4つの表示プリセットとカスタム設定をサポートしています：
+Statusline v3は**マルチラインレイアウト**とリアルタイムAPI使用量モニタリングを提供します：
 
-- **Full**（デフォルト）: すべて8セグメント表示
-- **Compact**: モデル + コンテキスト + Git Status + ブランチのみ
-- **Minimal**: モデル + コンテキストのみ
-- **Custom**: 個別セグメントを選択
+**Fullモード：**
+```
+🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 1h 26m │ 💬 MoAI
+CW: 🪫  ██████████████████████████████████████░░ 96%
+5H: 🔋  ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 19%
+7D: 🔋  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
+📁 moai-adk-go │ 🔀 main
+```
 
-`moai init` / `moai update` ウィザード中に設定（「ステータスラインをリセットしますか？」に「y」で回答）、または `.moai/config/sections/statusline.yaml` を編集：
+**デフォルトモード：**
+```
+🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 16m │ 💬 MoAI
+CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
+📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
+```
+
+**コンパクトモード：**
+```
+🤖 Opus 4.6 │ CW: 🔋 ░░░░░░░░░░ 0%
+🔀 main │ 📊 +0 M119 ?29
+```
+
+3つの表示モードをサポートしています：
+
+- **Full**: すべてのセグメント + 使用量バーを個別行表示（model、context、usage bars、git、version、output style、directory）
+- **Default**（デフォルト）: コアセグメント + インライン使用量バー（model、context、usage bars、git status、branch、version）
+- **Compact**: 最小2行レイアウト（model + context window、git情報）
+
+`.moai/config/sections/statusline.yaml` を直接編集してください：
 
 ```yaml
 statusline:
-  preset: compact  # or full, minimal, custom
+  mode: default  # or full, compact
   segments:
     model: true
     context: true
+    usage_5h: true    # 5時間API使用量バー
+    usage_7d: true    # 7日間API使用量バー
     output_style: false
     directory: false
     git_status: true
     claude_version: false
-    moai_version: false
+    moai_version: true
     git_branch: true
 ```
+
+> **注意**: v2.7.8からセグメントプリセット選択UIが`moai init`/`moai update`ウィザードから削除されました。上記のYAMLファイルで直接設定してください。
 
 詳細は [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md) をご参照ください。
 
@@ -1031,25 +1058,13 @@ MoAI-ADKは、構造化されたgitコミットメッセージを活用してAI-
 | **Risk** | 既知のリスク/延期事項 | "レート制限はPhase 2に延期" |
 | **UserPref** | 開発者の好み | "関数型スタイルを好む" |
 
-### コンテキスト取得
-
-```bash
-# 特定SPECのコンテキスト表示
-/moai context --spec SPEC-AUTH-001
-
-# 前回のコンテキストを現在のセッションに注入
-/moai context --spec SPEC-AUTH-001 --inject
-
-# カテゴリでフィルタリング
-/moai context --category Decision --days 7
-```
 
 ### 主なメリット
 
 - **ゼロ依存**: git自体をメモリストアとして使用 -- 外部DB不要
 - **チーム共有**: `git clone`でコンテキスト自動共有
 - **完全な監査証跡**: `git log`で全決定履歴を確認
-- **セッション継続性**: `/clear`やセッション中断後もフルコンテキストで作業再開
+- **セッション継続性**: `/clear`やセッション中断後もフルコンテキストで作業再開（Claude Code内蔵auto-memoryを活用）
 
 ---
 
