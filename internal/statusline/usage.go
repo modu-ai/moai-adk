@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -386,6 +388,57 @@ type oauthUsageResponse struct {
 type usagePeriodData struct {
 	Utilization float64 `json:"utilization"` // Usage percentage (0-100)
 	ResetsAt    string  `json:"resets_at"`   // ISO 8601 reset timestamp
+}
+
+// fetchUsageFromHeadersWithURL makes a minimal POST request to apiURL and extracts
+// usage from Anthropic rate limit response headers (REQ-V3-API-011).
+// Works for both 200 and 429 responses; returns error only if no headers are present.
+func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiURL string, token string) (*oauthUsageResponse, error) {
+	// Minimal Haiku probe body to trigger rate limit headers
+	probeBody := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(probeBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := u.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Extract rate limit headers (available on both 200 and 429 responses)
+	var result oauthUsageResponse
+
+	if util5h := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization"); util5h != "" {
+		val, parseErr := strconv.ParseFloat(util5h, 64)
+		if parseErr == nil {
+			result.FiveHour = &usagePeriodData{
+				Utilization: val * 100, // Convert 0-1 to 0-100
+				ResetsAt:    resp.Header.Get("anthropic-ratelimit-unified-5h-reset"),
+			}
+		}
+	}
+
+	if util7d := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization"); util7d != "" {
+		val, parseErr := strconv.ParseFloat(util7d, 64)
+		if parseErr == nil {
+			result.SevenDay = &usagePeriodData{
+				Utilization: val * 100, // Convert 0-1 to 0-100
+				ResetsAt:    resp.Header.Get("anthropic-ratelimit-unified-7d-reset"),
+			}
+		}
+	}
+
+	if result.FiveHour == nil && result.SevenDay == nil {
+		return nil, fmt.Errorf("no rate limit headers found in response")
+	}
+
+	return &result, nil
 }
 
 // fetchUsageFromOAuthAPI fetches 5H/7D usage from the Anthropic OAuth API with retry (REQ-V3-API-005).
