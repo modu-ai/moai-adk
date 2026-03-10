@@ -9,7 +9,7 @@ import (
 )
 
 // Renderer formats StatusData into a multiline statusline string.
-// Supports v3 layouts: compact(3L), default(3L), full(5L).
+// Supports v3 layouts: default(3L), full(5L).
 type Renderer struct {
 	separator     string
 	noColor       bool
@@ -46,10 +46,9 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 // Render formats the StatusData into a statusline string based on the mode.
 //
 // v3 mode mapping:
-//   - ModeCompact, ModeMinimal → 2-line compact layout
-//   - ModeDefault              → 3-line default layout
-//   - ModeFull, ModeVerbose    → 5-line full layout
-//   - unknown                  → 3-line default layout (fallback)
+//   - ModeDefault, ModeCompact, ModeMinimal → 3-line default layout
+//   - ModeFull, ModeVerbose                 → 5-line full layout
+//   - unknown                               → 3-line default layout (fallback)
 //
 // @MX:ANCHOR: [AUTO] Single entry point for all mode rendering - called from Build() in builder.go
 // @MX:REASON: Public API boundary; contains mode routing logic
@@ -63,8 +62,6 @@ func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 
 	var result string
 	switch normalizedMode {
-	case ModeCompact:
-		result = r.renderCompactV3(data)
 	case ModeFull:
 		result = r.renderFullV3(data)
 	default: // ModeDefault or unknown mode
@@ -115,40 +112,6 @@ func (r *Renderer) joinSegments(segments []string) string {
 // ─────────────────────────────────────────────────────────────────────────────
 // v3 layout renderers
 // ─────────────────────────────────────────────────────────────────────────────
-
-// renderCompactV3 renders the compact mode 3-line layout.
-//
-// L1: 🤖 Model
-// L2: CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-// L3: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-//
-// REQ-V3-TIME-006: session time omitted in compact mode
-func (r *Renderer) renderCompactV3(data *StatusData) string {
-	var lines []string
-
-	// L1: model (basic info only)
-	l1 := r.renderCompactLine1(data)
-	if l1 != "" {
-		lines = append(lines, l1)
-	}
-
-	// L2: CW/5H/7D bars inline (10 blocks)
-	l2 := r.renderBarsInline(data, 10)
-	if l2 != "" {
-		lines = append(lines, l2)
-	}
-
-	// L3: branch (ahead/behind) + git status
-	l3 := r.renderGitLine(data)
-	if l3 != "" {
-		lines = append(lines, l3)
-	}
-
-	if len(lines) == 0 {
-		return ""
-	}
-	return strings.Join(lines, "\n")
-}
 
 // renderDefaultV3 renders the default mode 3-line layout.
 //
@@ -238,20 +201,6 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 // Common line renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderCompactLine1 renders the compact mode L1 (basic info only).
-// Format: 🤖 Model
-// REQ-V3-TIME-006: session time omitted
-func (r *Renderer) renderCompactLine1(data *StatusData) string {
-	var segs []string
-
-	// Model
-	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
-		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
-	}
-
-	return r.joinSegments(segs)
-}
-
 // renderInfoLine renders the L1 info line (shared by default/full).
 // withPrefix=true: full mode format ("Claude v...", "MoAI v...")
 // withPrefix=false: default mode format ("v...")
@@ -333,7 +282,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderGitLine renders the branch + git status line (compact L3).
+// renderGitLine renders the branch + git status line.
 // Format: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 func (r *Renderer) renderGitLine(data *StatusData) string {
 	var segs []string

@@ -13,9 +13,6 @@ import (
 type StatuslineMode string
 
 const (
-	// ModeCompact displays all info in a compact 2-line layout (v3 name).
-	ModeCompact StatuslineMode = "compact"
-
 	// ModeDefault displays git status, context ratio in a 3-line layout.
 	ModeDefault StatuslineMode = "default"
 
@@ -23,26 +20,30 @@ const (
 	ModeFull StatuslineMode = "full"
 
 	// ModeMinimal is a deprecated alias for backward compatibility.
-	// Use ModeCompact in new code.
 	//
-	// Deprecated: Use ModeCompact.
+	// Deprecated: Use ModeDefault.
 	ModeMinimal StatuslineMode = "minimal"
 
+	// ModeCompact is a deprecated alias for backward compatibility.
+	//
+	// Deprecated: Use ModeDefault.
+	ModeCompact StatuslineMode = "compact"
+
 	// ModeVerbose is a deprecated alias for backward compatibility.
-	// Use ModeFull in new code.
 	//
 	// Deprecated: Use ModeFull.
 	ModeVerbose StatuslineMode = "verbose"
 )
 
 // NormalizeMode converts deprecated mode names to current names for backward compatibility.
-// REQ-V3-MODE-001: "minimal" → "compact"
+// REQ-V3-MODE-001: "minimal" → "default"
 // REQ-V3-MODE-002: "verbose" → "full"
+// REQ-V3-MODE-003: "compact" → "default"
 // Other values are returned unchanged.
 func NormalizeMode(mode StatuslineMode) StatuslineMode {
 	switch mode {
-	case "minimal":
-		return ModeCompact
+	case "minimal", "compact":
+		return ModeDefault
 	case "verbose":
 		return ModeFull
 	default:

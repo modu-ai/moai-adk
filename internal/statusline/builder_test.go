@@ -236,7 +236,7 @@ func TestBuilder_SetMode(t *testing.T) {
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
-	// Build in compact(default) mode
+	// Build in default mode
 	gotDefault, err := builder.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
 		t.Fatalf("default mode build error: %v", err)
@@ -270,12 +270,12 @@ func TestBuilder_SetMode(t *testing.T) {
 }
 
 func TestBuilder_Build_NoNewline(t *testing.T) {
-	// In v3, only compact mode can produce single-line output (L1 only or L2 only)
+	// Default mode without git produces 2 lines (L1 info + L2 bars)
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
-			data: &GitStatusData{Available: false}, // no git → L1 only
+			data: &GitStatusData{Available: false}, // no git → no L3
 		},
-		Mode:    ModeCompact, // v3 compact: 2 lines, 1 line without git
+		Mode:    ModeDefault,
 		NoColor: true,
 	})
 
@@ -289,10 +289,10 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Without git data, compact renders L1 (model) + L2 (bars) = 2 lines
+	// Without git data, default renders L1 (info) + L2 (bars) = 2 lines
 	lines := strings.Split(got, "\n")
 	if len(lines) != 2 {
-		t.Errorf("compact without git should be 2 lines, got %d lines: %q", len(lines), got)
+		t.Errorf("default without git should be 2 lines, got %d lines: %q", len(lines), got)
 	}
 }
 
@@ -393,22 +393,28 @@ func TestBuilder_DefaultMode(t *testing.T) {
 }
 
 // TestBuilderNormalizesMode verifies that Builder automatically normalizes deprecated mode names.
-// REQ-V3-MODE-001: New(Options{Mode: "minimal"}) → internally treated as "compact"
+// REQ-V3-MODE-001: New(Options{Mode: "minimal"}) → internally treated as "default"
 // REQ-V3-MODE-002: New(Options{Mode: "verbose"}) → internally treated as "full"
+// REQ-V3-MODE-003: New(Options{Mode: "compact"}) → internally treated as "default"
 func TestBuilderNormalizesMode(t *testing.T) {
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
-	// Builder created with "minimal" should behave as ModeCompact("compact")
+	// Builder created with "minimal" should behave as ModeDefault
 	builderMinimal := New(Options{
 		Mode:    "minimal",
 		NoColor: true,
 	})
-	// Builder created with "compact"
+	// Builder created with "compact" should also behave as ModeDefault
 	builderCompact := New(Options{
 		Mode:    ModeCompact,
+		NoColor: true,
+	})
+	// Builder created with "default"
+	builderDefault := New(Options{
+		Mode:    ModeDefault,
 		NoColor: true,
 	})
 
@@ -420,11 +426,19 @@ func TestBuilderNormalizesMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compact builder build error: %v", err)
 	}
+	gotDefault, err := builderDefault.Build(context.Background(), makeStdinJSON(input))
+	if err != nil {
+		t.Fatalf("default builder build error: %v", err)
+	}
 
-	// "minimal" and "compact" should produce identical output (AC-V3-01)
-	if gotMinimal != gotCompact {
-		t.Errorf("mode=minimal should produce same output as mode=compact:\nminimal: %q\ncompact: %q",
-			gotMinimal, gotCompact)
+	// "minimal", "compact", and "default" should all produce identical output
+	if gotMinimal != gotDefault {
+		t.Errorf("mode=minimal should produce same output as mode=default:\nminimal: %q\ndefault: %q",
+			gotMinimal, gotDefault)
+	}
+	if gotCompact != gotDefault {
+		t.Errorf("mode=compact should produce same output as mode=default:\ncompact: %q\ndefault: %q",
+			gotCompact, gotDefault)
 	}
 
 	// Builder created with "verbose" should behave as ModeFull("full")
@@ -569,14 +583,14 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 		maxLines    int
 		description string
 	}{
-		// AC-V3-01: mode="minimal" → compact 3-line output (backward compat)
+		// AC-V3-01: mode="minimal" → default 3-line output (backward compat)
 		{
-			name:        "AC-V3-01: minimal→compact 3 lines",
+			name:        "AC-V3-01: minimal→default 3 lines",
 			mode:        "minimal",
 			withUsage:   true,
 			minLines:    3,
 			maxLines:    3,
-			description: "minimal mode should produce 3 lines like compact",
+			description: "minimal mode should produce 3 lines like default",
 		},
 		// AC-V3-02: mode="verbose" → full 5-line output (backward compat)
 		{
@@ -587,14 +601,14 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 			maxLines:    5,
 			description: "verbose mode should produce 5 lines like full",
 		},
-		// AC-V3-03: mode="compact" → exactly 3 lines (model, bars, git)
+		// AC-V3-03: mode="compact" → default 3-line output (backward compat)
 		{
-			name:        "AC-V3-03: compact exactly 3 lines",
+			name:        "AC-V3-03: compact→default 3 lines",
 			mode:        ModeCompact,
 			withUsage:   true,
 			minLines:    3,
 			maxLines:    3,
-			description: "compact mode should produce exactly 3 lines",
+			description: "compact mode should produce 3 lines like default",
 		},
 		// AC-V3-04: mode="default" → exactly 3 lines (style integrated into L1)
 		{
@@ -782,7 +796,7 @@ func TestIntegration_SessionTime(t *testing.T) {
 
 // TestIntegration_NoCost verifies no cost is shown in any mode (AC-V3-08b).
 func TestIntegration_NoCost(t *testing.T) {
-	modes := []StatuslineMode{ModeCompact, ModeDefault, ModeFull}
+	modes := []StatuslineMode{ModeDefault, ModeFull}
 	for _, mode := range modes {
 		t.Run(string(mode), func(t *testing.T) {
 			input := &StdinData{
@@ -842,7 +856,7 @@ func TestIntegration_GitAheadBehind(t *testing.T) {
 
 // TestIntegration_NoColor verifies no ANSI escape codes when NoColor=true (AC-V3-12).
 func TestIntegration_NoColor(t *testing.T) {
-	modes := []StatuslineMode{ModeCompact, ModeDefault, ModeFull}
+	modes := []StatuslineMode{ModeDefault, ModeFull}
 	for _, mode := range modes {
 		t.Run(string(mode), func(t *testing.T) {
 			builder := New(Options{
@@ -954,6 +968,12 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 		Mode:          ModeCompact,
 		NoColor:       true,
 	})
+	builderDefault := New(Options{
+		GitProvider:   realisticGit(),
+		UsageProvider: realisticUsage(45.0, 60.0),
+		Mode:          ModeDefault,
+		NoColor:       true,
+	})
 
 	gotMinimal, err := builderMinimal.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
@@ -963,10 +983,19 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compact Build error: %v", err)
 	}
+	gotDefault, err := builderDefault.Build(context.Background(), makeStdinJSON(input))
+	if err != nil {
+		t.Fatalf("default Build error: %v", err)
+	}
 
-	if gotMinimal != gotCompact {
-		t.Errorf("AC-V3-01: minimal and compact output must be identical\nminimal: %q\ncompact: %q",
-			gotMinimal, gotCompact)
+	// minimal, compact, and default should all produce identical output
+	if gotMinimal != gotDefault {
+		t.Errorf("minimal and default output must be identical\nminimal: %q\ndefault: %q",
+			gotMinimal, gotDefault)
+	}
+	if gotCompact != gotDefault {
+		t.Errorf("compact and default output must be identical\ncompact: %q\ndefault: %q",
+			gotCompact, gotDefault)
 	}
 
 	builderVerbose := New(Options{
@@ -1003,7 +1032,7 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 
 // BenchmarkBuilder_Build measures full Build() pipeline performance (NF-001: 500ms SLA).
 func BenchmarkBuilder_Build(b *testing.B) {
-	modes := []StatuslineMode{ModeCompact, ModeDefault, ModeFull}
+	modes := []StatuslineMode{ModeDefault, ModeFull}
 	input := realisticInput()
 
 	for _, mode := range modes {
@@ -1028,7 +1057,7 @@ func BenchmarkBuilder_Build(b *testing.B) {
 }
 
 // TestBuilderSetModeNormalizes verifies SetMode normalizes deprecated mode names.
-// REQ-V3-MODE-004: system always uses ModeCompact, ModeDefault, ModeFull constants.
+// REQ-V3-MODE-004: system always uses ModeDefault, ModeFull constants.
 func TestBuilderSetModeNormalizes(t *testing.T) {
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
@@ -1036,28 +1065,28 @@ func TestBuilderSetModeNormalizes(t *testing.T) {
 	}
 
 	builder := New(Options{
-		Mode:    ModeDefault,
+		Mode:    ModeFull,
 		NoColor: true,
 	})
 
-	// After SetMode("minimal"), should behave same as ModeCompact
+	// After SetMode("minimal"), should behave same as ModeDefault
 	builder.SetMode("minimal")
 	gotAfterSetMinimal, err := builder.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
 		t.Fatalf("after SetMode minimal build error: %v", err)
 	}
 
-	builderCompact := New(Options{
-		Mode:    ModeCompact,
+	builderDefault := New(Options{
+		Mode:    ModeDefault,
 		NoColor: true,
 	})
-	gotCompact, err := builderCompact.Build(context.Background(), makeStdinJSON(input))
+	gotDefault, err := builderDefault.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {
-		t.Fatalf("compact builder build error: %v", err)
+		t.Fatalf("default builder build error: %v", err)
 	}
 
-	if gotAfterSetMinimal != gotCompact {
-		t.Errorf("SetMode(minimal) should produce same output as ModeCompact:\nafter SetMode(minimal): %q\ncompact: %q",
-			gotAfterSetMinimal, gotCompact)
+	if gotAfterSetMinimal != gotDefault {
+		t.Errorf("SetMode(minimal) should produce same output as ModeDefault:\nafter SetMode(minimal): %q\ndefault: %q",
+			gotAfterSetMinimal, gotDefault)
 	}
 }
