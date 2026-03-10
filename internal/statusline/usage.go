@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -54,7 +55,7 @@ func NewUsageCollector(homeDir string) UsageProvider {
 		failureCooldownBase: 1 * time.Minute,
 		failureCooldownMax:  32 * time.Minute,
 		client: &http.Client{
-			Timeout: 2 * time.Second,
+			Timeout: 5 * time.Second, // Increased for Haiku probe (Messages API)
 		},
 		homeDir: homeDir,
 	}
@@ -86,10 +87,17 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		return nil, nil
 	}
 
-	// Fetch 5H/7D usage from OAuth API in a single call (REQ-V3-API-005)
-	apiResp, err := u.fetchUsageFromOAuthAPI(ctx, token)
+	// Strategy: Try Haiku probe (response headers) first, fall back to OAuth endpoint.
+	// The OAuth /api/oauth/usage endpoint has a known persistent 429 issue (Issue #31021),
+	// so we prefer extracting rate limit data from Messages API response headers.
+	apiResp, err := u.fetchUsageFromHeaders(ctx, token)
 	if err != nil {
-		slog.Debug("oauth usage fetch failed", "error", err)
+		slog.Debug("haiku probe failed, trying oauth endpoint", "error", err)
+		// Fallback: try the OAuth usage endpoint
+		apiResp, err = u.fetchUsageFromOAuthAPI(ctx, token)
+	}
+	if err != nil {
+		slog.Debug("all usage fetch methods failed", "error", err)
 		u.saveFailure() // Record failure to prevent 429 spiral
 		// Return stale cache if available (stale-while-revalidate pattern)
 		if stale := u.getStaleCache(); stale != nil {
@@ -390,15 +398,37 @@ type usagePeriodData struct {
 	ResetsAt    string  `json:"resets_at"`   // ISO 8601 reset timestamp
 }
 
-// fetchUsageFromHeadersWithURL makes a minimal POST request to apiURL and extracts
-// usage from Anthropic rate limit response headers (REQ-V3-API-011).
-// Works for both 200 and 429 responses; returns error only if no headers are present.
-func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiURL string, token string) (*oauthUsageResponse, error) {
-	// Minimal Haiku probe body to trigger rate limit headers
-	probeBody := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(probeBody))
+// fetchUsageFromHeaders extracts 5H/7D usage from Messages API response headers.
+// Sends a minimal Haiku request (max_tokens=1) and reads rate limit headers.
+// Headers are returned even on 429 responses, making this reliable when rate-limited.
+//
+// Relevant headers:
+//
+//	anthropic-ratelimit-unified-5h-utilization: 0.28  (decimal 0-1)
+//	anthropic-ratelimit-unified-7d-utilization: 0.59  (decimal 0-1)
+//	anthropic-ratelimit-unified-5h-reset: 2026-03-10T20:00:00Z (ISO 8601)
+//	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
+func (u *usageCollector) fetchUsageFromHeaders(ctx context.Context, token string) (*oauthUsageResponse, error) {
+	return u.fetchUsageFromHeadersWithURL(ctx, "https://api.anthropic.com/v1/messages", token)
+}
+
+// fetchUsageFromHeadersWithURL extracts 5H/7D usage from Messages API response headers.
+// Sends a minimal Haiku request (max_tokens=1) and reads rate limit headers.
+// Headers are returned even on 429 responses, making this reliable when rate-limited.
+//
+// Relevant headers:
+//
+//	anthropic-ratelimit-unified-5h-utilization: 0.28  (decimal 0-1)
+//	anthropic-ratelimit-unified-7d-utilization: 0.59  (decimal 0-1)
+//	anthropic-ratelimit-unified-5h-reset: 2026-03-10T20:00:00Z (ISO 8601)
+//	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
+func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiURL, token string) (*oauthUsageResponse, error) {
+	// Minimal request body: cheapest possible Haiku call
+	body := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(body))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -407,38 +437,51 @@ func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiUR
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("haiku probe request: %w", err)
 	}
-	defer resp.Body.Close()
+	_ = resp.Body.Close()
 
-	// Extract rate limit headers (available on both 200 and 429 responses)
-	var result oauthUsageResponse
+	// Parse rate limit headers (available on both 200 and 429 responses)
+	h5 := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization")
+	h7 := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization")
 
-	if util5h := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization"); util5h != "" {
-		val, parseErr := strconv.ParseFloat(util5h, 64)
+	if h5 == "" && h7 == "" {
+		return nil, fmt.Errorf("no rate limit headers in response (status %d)", resp.StatusCode)
+	}
+
+	result := &oauthUsageResponse{}
+
+	if h5 != "" {
+		util, parseErr := strconv.ParseFloat(h5, 64)
 		if parseErr == nil {
+			reset := resp.Header.Get("anthropic-ratelimit-unified-5h-reset")
 			result.FiveHour = &usagePeriodData{
-				Utilization: val * 100, // Convert 0-1 to 0-100
-				ResetsAt:    resp.Header.Get("anthropic-ratelimit-unified-5h-reset"),
+				Utilization: math.Round(util*10000) / 100, // Convert 0-1 to 0-100 with 2 decimal places
+				ResetsAt:    reset,
 			}
 		}
 	}
 
-	if util7d := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization"); util7d != "" {
-		val, parseErr := strconv.ParseFloat(util7d, 64)
+	if h7 != "" {
+		util, parseErr := strconv.ParseFloat(h7, 64)
 		if parseErr == nil {
+			reset := resp.Header.Get("anthropic-ratelimit-unified-7d-reset")
 			result.SevenDay = &usagePeriodData{
-				Utilization: val * 100, // Convert 0-1 to 0-100
-				ResetsAt:    resp.Header.Get("anthropic-ratelimit-unified-7d-reset"),
+				Utilization: math.Round(util*10000) / 100, // Convert 0-1 to 0-100 with 2 decimal places
+				ResetsAt:    reset,
 			}
 		}
 	}
 
 	if result.FiveHour == nil && result.SevenDay == nil {
-		return nil, fmt.Errorf("no rate limit headers found in response")
+		return nil, fmt.Errorf("failed to parse rate limit headers")
 	}
 
-	return &result, nil
+	slog.Debug("usage from headers",
+		"5h", h5, "7d", h7,
+		"status", resp.StatusCode)
+
+	return result, nil
 }
 
 // fetchUsageFromOAuthAPI fetches 5H/7D usage from the Anthropic OAuth API with retry (REQ-V3-API-005).
