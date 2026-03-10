@@ -20,7 +20,8 @@ type UsageProvider interface {
 
 // usageCacheFile represents the JSON structure of the cache file (REQ-V3-API-002).
 type usageCacheFile struct {
-	CachedAt int64      `json:"cached_at"` // Unix timestamp
+	CachedAt int64      `json:"cached_at"`            // Unix timestamp
+	FailedAt int64      `json:"failed_at,omitempty"` // 마지막 API 실패 시각 (Unix timestamp)
 	Usage5H  *UsageData `json:"usage_5h"`
 	Usage7D  *UsageData `json:"usage_7d"`
 }
@@ -28,12 +29,13 @@ type usageCacheFile struct {
 // usageCollector collects and caches Anthropic API usage.
 // 5-minute TTL, 300ms timeout, graceful degradation (REQ-V3-API-002~005, REQ-V3-API-009).
 type usageCollector struct {
-	mu        sync.RWMutex
-	cache     *usageCacheFile
-	cachePath string
-	ttl       time.Duration
-	client    *http.Client
-	homeDir   string
+	mu              sync.RWMutex
+	cache           *usageCacheFile
+	cachePath       string
+	ttl             time.Duration
+	failureCooldown time.Duration // 실패 후 재시도 대기 시간 (429 스파이럴 방지)
+	client          *http.Client
+	homeDir         string
 }
 
 // NewUsageCollector creates a new UsageProvider.
@@ -43,8 +45,9 @@ func NewUsageCollector(homeDir string) UsageProvider {
 	cachePath := filepath.Join(cacheDir, "usage.json")
 
 	return &usageCollector{
-		cachePath: cachePath,
-		ttl:       5 * time.Minute,
+		cachePath:       cachePath,
+		ttl:             5 * time.Minute,
+		failureCooldown: 10 * time.Minute,
 		client: &http.Client{
 			Timeout: 2 * time.Second,
 		},
@@ -62,6 +65,15 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		return u.toUsageResult(cached), nil
 	}
 
+	// 실패 쿨다운 중이면 API 호출 건너뜀 (429 스파이럴 방지)
+	if u.isInFailureCooldown() {
+		slog.Debug("usage API in failure cooldown, skipping")
+		if stale := u.getStaleCache(); stale != nil {
+			return u.toUsageResult(stale), nil
+		}
+		return nil, nil
+	}
+
 	// Cache miss: retrieve OAuth token (REQ-V3-API-010)
 	token := readOAuthToken(u.homeDir, u.readTokenFromKeychain)
 	if token == "" {
@@ -73,6 +85,7 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	apiResp, err := u.fetchUsageFromOAuthAPI(ctx, token)
 	if err != nil {
 		slog.Debug("oauth usage fetch failed", "error", err)
+		u.saveFailure() // 실패 기록으로 429 스파이럴 방지
 		// Return stale cache if available (stale-while-revalidate pattern)
 		if stale := u.getStaleCache(); stale != nil {
 			slog.Debug("returning stale usage cache")
@@ -103,6 +116,7 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	// Update cache (async, continue on failure)
 	cache := &usageCacheFile{
 		CachedAt: time.Now().Unix(),
+		FailedAt: 0, // 성공 시 실패 상태 초기화
 		Usage5H:  usage5H,
 		Usage7D:  usage7D,
 	}
@@ -114,6 +128,44 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	}()
 
 	return u.toUsageResult(cache), nil
+}
+
+// isInFailureCooldown은 쿨다운 기간 내에 API 실패가 있었는지 확인한다.
+// 인메모리 캐시를 먼저 확인하고, 없으면 파일 캐시를 확인한다.
+func (u *usageCollector) isInFailureCooldown() bool {
+	u.mu.RLock()
+	if u.cache != nil && u.cache.FailedAt > 0 {
+		failedAt := time.Unix(u.cache.FailedAt, 0)
+		if time.Since(failedAt) < u.failureCooldown {
+			u.mu.RUnlock()
+			return true
+		}
+	}
+	u.mu.RUnlock()
+
+	// 파일 캐시 확인
+	loaded, err := u.loadCache()
+	if err != nil || loaded == nil {
+		return false
+	}
+	if loaded.FailedAt > 0 {
+		failedAt := time.Unix(loaded.FailedAt, 0)
+		return time.Since(failedAt) < u.failureCooldown
+	}
+	return false
+}
+
+// saveFailure는 실패 타임스탬프를 인메모리 및 파일 캐시에 기록한다.
+// 기존 사용량 데이터는 보존한다 (stale 데이터도 표시에 활용 가능).
+func (u *usageCollector) saveFailure() {
+	u.mu.Lock()
+	if u.cache == nil {
+		u.cache = &usageCacheFile{}
+	}
+	u.cache.FailedAt = time.Now().Unix()
+	cache := u.cache
+	u.mu.Unlock()
+	_ = u.saveCache(cache)
 }
 
 // getCachedIfFresh returns cached data if it exists and is within TTL (REQ-V3-API-004).
@@ -321,7 +373,7 @@ func (u *usageCollector) fetchUsageFromOAuthAPI(ctx context.Context, token strin
 	const maxRetries = 3
 
 	var lastErr error
-	backoff := 500 * time.Millisecond
+	backoff := 2 * time.Second
 
 	for attempt := range maxRetries {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
