@@ -1,7 +1,6 @@
 package mx
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -242,14 +241,6 @@ func extractFunctions(lines []string) []funcInfo {
 			continue
 		}
 
-		// Also detect goroutine patterns in unexported functions
-		// (to check if the function containing the goroutine needs @MX:WARN)
-		if strings.Contains(line, "func ") && !exportedFuncRe.MatchString(strings.TrimSpace(line)) {
-			// unexported function - skip for now (P1/P2/P3/P4 are for exported only for P1/P3/P4)
-			// But P2 checks all functions with goroutines that are exported
-			// We already handle this above for exported functions
-		}
-
 		i++
 	}
 
@@ -395,34 +386,32 @@ func fileExists(path string) bool {
 // formatReport formats a ValidationReport as a human-readable string.
 func formatReport(report *ValidationReport) string {
 	var buf bytes.Buffer
-	w := bufio.NewWriter(&buf)
 
 	totalFiles := len(report.FileReports)
 	timedOut := len(report.TimedOutFiles)
 
-	fmt.Fprintf(w, "## MX Validation Report - Summary\n\n")
-	fmt.Fprintf(w, "- Files validated: %d\n", totalFiles)
+	fmt.Fprintf(&buf, "## MX Validation Report - Summary\n\n")
+	fmt.Fprintf(&buf, "- Files validated: %d\n", totalFiles)
 	if timedOut > 0 {
-		fmt.Fprintf(w, "- Files timed out: %d\n", timedOut)
+		fmt.Fprintf(&buf, "- Files timed out: %d\n", timedOut)
 	}
-	fmt.Fprintf(w, "- Duration: %s\n", report.Duration.Round(time.Millisecond))
-	fmt.Fprintf(w, "- P1 violations: %d\n", report.P1Count())
-	fmt.Fprintf(w, "- P2 violations: %d\n", report.P2Count())
-	fmt.Fprintf(w, "- P3 violations: %d\n", report.P3Count())
-	fmt.Fprintf(w, "- P4 violations: %d\n", report.P4Count())
+	fmt.Fprintf(&buf, "- Duration: %s\n", report.Duration.Round(time.Millisecond))
+	fmt.Fprintf(&buf, "- P1 violations: %d\n", report.P1Count())
+	fmt.Fprintf(&buf, "- P2 violations: %d\n", report.P2Count())
+	fmt.Fprintf(&buf, "- P3 violations: %d\n", report.P3Count())
+	fmt.Fprintf(&buf, "- P4 violations: %d\n", report.P4Count())
 
 	if report.TotalViolations() == 0 && timedOut == 0 {
-		fmt.Fprintf(w, "\nAll files passed MX validation.\n")
-		_ = w.Flush()
+		fmt.Fprintf(&buf, "\nAll files passed MX validation.\n")
 		return buf.String()
 	}
 
 	// P1 Violations (blocking)
 	p1s := collectByPriority(report.FileReports, P1)
 	if len(p1s) > 0 {
-		fmt.Fprintf(w, "\n### P1 Violations (Blocking - Missing @MX:ANCHOR)\n\n")
+		fmt.Fprintf(&buf, "\n### P1 Violations (Blocking - Missing @MX:ANCHOR)\n\n")
 		for _, v := range p1s {
-			fmt.Fprintf(w, "- `%s:%d` `%s` — %s\n",
+			fmt.Fprintf(&buf, "- `%s:%d` `%s` — %s\n",
 				filepath.Base(v.FilePath), v.Line, v.FuncName, v.Reason)
 		}
 	}
@@ -430,9 +419,9 @@ func formatReport(report *ValidationReport) string {
 	// P2 Violations (blocking)
 	p2s := collectByPriority(report.FileReports, P2)
 	if len(p2s) > 0 {
-		fmt.Fprintf(w, "\n### P2 Violations (Blocking - Missing @MX:WARN)\n\n")
+		fmt.Fprintf(&buf, "\n### P2 Violations (Blocking - Missing @MX:WARN)\n\n")
 		for _, v := range p2s {
-			fmt.Fprintf(w, "- `%s:%d` `%s` — %s\n",
+			fmt.Fprintf(&buf, "- `%s:%d` `%s` — %s\n",
 				filepath.Base(v.FilePath), v.Line, v.FuncName, v.Reason)
 		}
 	}
@@ -440,9 +429,9 @@ func formatReport(report *ValidationReport) string {
 	// P3 Violations (advisory)
 	p3s := collectByPriority(report.FileReports, P3)
 	if len(p3s) > 0 {
-		fmt.Fprintf(w, "\n### P3 Violations (Advisory - Missing @MX:NOTE)\n\n")
+		fmt.Fprintf(&buf, "\n### P3 Violations (Advisory - Missing @MX:NOTE)\n\n")
 		for _, v := range p3s {
-			fmt.Fprintf(w, "- `%s:%d` `%s` — %s\n",
+			fmt.Fprintf(&buf, "- `%s:%d` `%s` — %s\n",
 				filepath.Base(v.FilePath), v.Line, v.FuncName, v.Reason)
 		}
 	}
@@ -450,21 +439,20 @@ func formatReport(report *ValidationReport) string {
 	// P4 Violations (advisory)
 	p4s := collectByPriority(report.FileReports, P4)
 	if len(p4s) > 0 {
-		fmt.Fprintf(w, "\n### P4 Violations (Advisory - Missing @MX:TODO)\n\n")
+		fmt.Fprintf(&buf, "\n### P4 Violations (Advisory - Missing @MX:TODO)\n\n")
 		for _, v := range p4s {
-			fmt.Fprintf(w, "- `%s:%d` `%s` — %s\n",
+			fmt.Fprintf(&buf, "- `%s:%d` `%s` — %s\n",
 				filepath.Base(v.FilePath), v.Line, v.FuncName, v.Reason)
 		}
 	}
 
 	if len(report.TimedOutFiles) > 0 {
-		fmt.Fprintf(w, "\n### Timed Out Files\n\n")
+		fmt.Fprintf(&buf, "\n### Timed Out Files\n\n")
 		for _, f := range report.TimedOutFiles {
-			fmt.Fprintf(w, "- %s\n", filepath.Base(f))
+			fmt.Fprintf(&buf, "- %s\n", filepath.Base(f))
 		}
 	}
 
-	_ = w.Flush()
 	return buf.String()
 }
 
