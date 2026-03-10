@@ -9,7 +9,7 @@ import (
 )
 
 // Renderer formats StatusData into a multiline statusline string.
-// Supports v3 layouts: compact(2L), default(3L), full(5L).
+// Supports v3 layouts: compact(3L), default(3L), full(5L).
 type Renderer struct {
 	separator     string
 	noColor       bool
@@ -116,26 +116,32 @@ func (r *Renderer) joinSegments(segments []string) string {
 // v3 layout renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderCompactV3 renders the compact mode 2-line layout.
+// renderCompactV3 renders the compact mode 3-line layout.
 //
-// L1: 🤖 Model │ CW: 🪫 ██████████ 88%
-// L2: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L1: 🤖 Model
+// L2: CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
+// L3: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 //
 // REQ-V3-TIME-006: session time omitted in compact mode
-// REQ-V3-API-011: 5H/7D bars omitted in compact mode
 func (r *Renderer) renderCompactV3(data *StatusData) string {
 	var lines []string
 
-	// L1: model + CW bar
+	// L1: model (basic info only)
 	l1 := r.renderCompactLine1(data)
 	if l1 != "" {
 		lines = append(lines, l1)
 	}
 
-	// L2: branch (ahead/behind) + git status
-	l2 := r.renderGitLine(data)
+	// L2: CW/5H/7D bars inline (10 blocks)
+	l2 := r.renderBarsInline(data, 10)
 	if l2 != "" {
 		lines = append(lines, l2)
+	}
+
+	// L3: branch (ahead/behind) + git status
+	l3 := r.renderGitLine(data)
+	if l3 != "" {
+		lines = append(lines, l3)
 	}
 
 	if len(lines) == 0 {
@@ -232,8 +238,8 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 // Common line renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderCompactLine1 renders the compact mode L1.
-// Format: 🤖 Model │ CW: 🪫 ██████████ 88%
+// renderCompactLine1 renders the compact mode L1 (basic info only).
+// Format: 🤖 Model
 // REQ-V3-TIME-006: session time omitted
 func (r *Renderer) renderCompactLine1(data *StatusData) string {
 	var segs []string
@@ -241,12 +247,6 @@ func (r *Renderer) renderCompactLine1(data *StatusData) string {
 	// Model
 	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
 		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
-	}
-
-	// CW bar (10 blocks)
-	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
-		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-		segs = append(segs, renderUsageBar("CW:", pct, 10, r.noColor))
 	}
 
 	return r.joinSegments(segs)
@@ -333,7 +333,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderGitLine renders the branch + git status line (compact L2).
+// renderGitLine renders the branch + git status line (compact L3).
 // Format: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 func (r *Renderer) renderGitLine(data *StatusData) string {
 	var segs []string
@@ -387,16 +387,16 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // renderUsageBar renders label + battery icon + gradient bar + percentage.
-// Format: {label} {BatteryIcon(pct)}  {BuildGradientBar(pct, width, noColor)} {pct}%
-// Example: CW: 🪫  ████████████████████████████████████░░░░ 88%
+// Format: {label} {BatteryIcon(pct)} {BuildGradientBar(pct, width, noColor)} {pct}%
+// Example: CW: 🪫 ████████████████████████████████████░░░░ 88%
 func renderUsageBar(label string, pct int, width int, noColor bool) string {
 	icon := BatteryIcon(pct)
 	bar := BuildGradientBar(pct, width, noColor)
-	return fmt.Sprintf("%s %s  %s %d%%", label, icon, bar, pct)
+	return fmt.Sprintf("%s %s %s %d%%", label, icon, bar, pct)
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
-// Format: {label} {icon}  {bar} {pct}% (Resets {resetStr})
+// Format: {label} {icon} {bar} {pct}% (Resets {resetStr})
 func renderUsageBarWithReset(label string, pct int, width int, noColor bool, resetStr string) string {
 	base := renderUsageBar(label, pct, width, noColor)
 	if resetStr == "" {

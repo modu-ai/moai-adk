@@ -174,7 +174,7 @@ func TestRender_VerboseMode_ZeroCostOmitted(t *testing.T) {
 }
 
 func TestRender_MinimalMode_OutputStyle(t *testing.T) {
-	// REQ-SLE-031: ModeMinimal = 1 line: Model | Context Graph | Output Style
+	// ModeMinimal maps to ModeCompact in v3
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:     MetricsData{Model: "Sonnet 4", Available: true},
@@ -184,9 +184,10 @@ func TestRender_MinimalMode_OutputStyle(t *testing.T) {
 
 	got := r.Render(data, ModeMinimal)
 
-	// Minimal mode should not contain newlines
-	if strings.Contains(got, "\n") {
-		t.Errorf("minimal mode should be single line, got %q", got)
+	// Compact mode: L1 (model) + L2 (bars) = 2 lines without git
+	lines := strings.Split(got, "\n")
+	if len(lines) != 2 {
+		t.Errorf("minimal/compact mode without git should be 2 lines, got %d lines: %q", len(lines), got)
 	}
 }
 
@@ -295,7 +296,7 @@ func TestRender_Separator(t *testing.T) {
 }
 
 func TestRender_NoNewline(t *testing.T) {
-	// compact mode with no git yields 1 line (L1 only)
+	// compact mode with no git yields 2 lines (L1 + L2 bars)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Sonnet 4", Available: true},
@@ -303,10 +304,11 @@ func TestRender_NoNewline(t *testing.T) {
 		// no git
 	}
 
-	got := r.Render(data, ModeCompact) // compact: 1 line without git
+	got := r.Render(data, ModeCompact) // compact: 2 lines without git (model + bars)
+	lines := strings.Split(got, "\n")
 
-	if strings.Contains(got, "\n") {
-		t.Errorf("compact without git should not contain newline, got %q", got)
+	if len(lines) != 2 {
+		t.Errorf("compact without git should be 2 lines, got %d lines: %q", len(lines), got)
 	}
 }
 
@@ -612,9 +614,10 @@ func TestRender_SegmentFiltering_MinimalModeIgnoresConfig(t *testing.T) {
 
 	got := r.Render(data, ModeMinimal) // ModeMinimal → ModeCompact
 
-	// v3 compact respects segment config, falls back to MoAI when all segments disabled
-	if got != "MoAI" {
-		t.Errorf("with model/context disabled, compact should return MoAI fallback, got %q", got)
+	// v3 compact: with model/context disabled, bars line still renders (5H/7D default to 0%)
+	// Should contain usage bars even when model/context disabled
+	if !strings.Contains(got, "5H:") {
+		t.Errorf("with model/context disabled, compact should still show 5H bar, got %q", got)
 	}
 }
 
@@ -723,11 +726,11 @@ func TestIsSegmentEnabled(t *testing.T) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cycle 1: renderCompactV3 tests
-// REQ-V3-LAYOUT-001: compact mode uses 2-line layout
+// REQ-V3-LAYOUT-001: compact mode uses 3-line layout
 // ─────────────────────────────────────────────────────────────────────────────
 
-func TestRenderCompactV3_TwoLines(t *testing.T) {
-	// compact mode must produce exactly 2 lines (when all data is present)
+func TestRenderCompactV3_ThreeLines(t *testing.T) {
+	// compact mode must produce exactly 3 lines (when all data is present)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -746,13 +749,13 @@ func TestRenderCompactV3_TwoLines(t *testing.T) {
 	got := r.Render(data, ModeCompact)
 	lines := strings.Split(got, "\n")
 
-	if len(lines) != 2 {
-		t.Errorf("compact mode must be 2 lines, got: %d lines\noutput: %q", len(lines), got)
+	if len(lines) != 3 {
+		t.Errorf("compact mode must be 3 lines, got: %d lines\noutput: %q", len(lines), got)
 	}
 }
 
-func TestRenderCompactV3_Line1_ModelAndBar(t *testing.T) {
-	// compact L1: model, CW bar (10 blocks), no session time (REQ-V3-TIME-006)
+func TestRenderCompactV3_Line1_ModelOnly(t *testing.T) {
+	// compact L1: model only, no session time (REQ-V3-TIME-006)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{
@@ -767,22 +770,23 @@ func TestRenderCompactV3_Line1_ModelAndBar(t *testing.T) {
 	got := r.Render(data, ModeCompact)
 	lines := strings.Split(got, "\n")
 	l1 := lines[0]
+	l2 := lines[1]
 
-	// Model display
+	// L1: Model display only
 	if !strings.Contains(l1, "🤖 Opus 4.6") {
 		t.Errorf("compact L1 must contain model, got: %q", l1)
 	}
-	// CW bar with label
-	if !strings.Contains(l1, "CW:") {
-		t.Errorf("compact L1 must contain 'CW:' label, got: %q", l1)
+	// L1: No CW bar (moved to L2)
+	if strings.Contains(l1, "CW:") {
+		t.Errorf("compact L1 must not contain CW bar (moved to L2), got: %q", l1)
 	}
-	// 88% (176000/200000 = 88%)
-	if !strings.Contains(l1, "88%") {
-		t.Errorf("compact L1 must contain 88%%, got: %q", l1)
+	// L2: CW bar with label
+	if !strings.Contains(l2, "CW:") {
+		t.Errorf("compact L2 must contain 'CW:' label, got: %q", l2)
 	}
-	// Battery icon (88% > 70% so 🪫)
-	if !strings.Contains(l1, "🪫") {
-		t.Errorf("compact L1 must contain 🪫 icon (88%%), got: %q", l1)
+	// L2: 88% (176000/200000 = 88%)
+	if !strings.Contains(l2, "88%") {
+		t.Errorf("compact L2 must contain 88%%, got: %q", l2)
 	}
 	// REQ-V3-TIME-006: no session time in compact
 	if strings.Contains(l1, "⏳") {
@@ -824,8 +828,8 @@ func TestRenderCompactV3_Line1_NoVersionNoStyleNoTask(t *testing.T) {
 	}
 }
 
-func TestRenderCompactV3_Line2_BranchAndGitStatus(t *testing.T) {
-	// compact L2: branch (ahead/behind), git status
+func TestRenderCompactV3_Line3_BranchAndGitStatus(t *testing.T) {
+	// compact L3: branch (ahead/behind), git status
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -843,29 +847,29 @@ func TestRenderCompactV3_Line2_BranchAndGitStatus(t *testing.T) {
 
 	got := r.Render(data, ModeCompact)
 	lines := strings.Split(got, "\n")
-	l2 := lines[1]
+	l3 := lines[2]
 
 	// branch + ahead/behind
-	if !strings.Contains(l2, "🔀 feat/auth ↑2↓1") {
-		t.Errorf("compact L2 must contain branch + ahead/behind, got: %q", l2)
+	if !strings.Contains(l3, "🔀 feat/auth ↑2↓1") {
+		t.Errorf("compact L3 must contain branch + ahead/behind, got: %q", l3)
 	}
 	// git status
-	if !strings.Contains(l2, "📊") {
-		t.Errorf("compact L2 must contain 📊 git status emoji, got: %q", l2)
+	if !strings.Contains(l3, "📊") {
+		t.Errorf("compact L3 must contain 📊 git status emoji, got: %q", l3)
 	}
-	if !strings.Contains(l2, "+3") {
-		t.Errorf("compact L2 must contain staged(+3), got: %q", l2)
+	if !strings.Contains(l3, "+3") {
+		t.Errorf("compact L3 must contain staged(+3), got: %q", l3)
 	}
-	if !strings.Contains(l2, "M2") {
-		t.Errorf("compact L2 must contain modified(M2), got: %q", l2)
+	if !strings.Contains(l3, "M2") {
+		t.Errorf("compact L3 must contain modified(M2), got: %q", l3)
 	}
-	if !strings.Contains(l2, "?1") {
-		t.Errorf("compact L2 must contain untracked(?1), got: %q", l2)
+	if !strings.Contains(l3, "?1") {
+		t.Errorf("compact L3 must contain untracked(?1), got: %q", l3)
 	}
 }
 
-func TestRenderCompactV3_Line2_No5HNo7D(t *testing.T) {
-	// compact mode has no 5H/7D bars (REQ-V3-API-011)
+func TestRenderCompactV3_Line2_Has5HAnd7D(t *testing.T) {
+	// compact L2 now includes CW/5H/7D bars inline
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -878,13 +882,18 @@ func TestRenderCompactV3_Line2_No5HNo7D(t *testing.T) {
 	}
 
 	got := r.Render(data, ModeCompact)
+	lines := strings.Split(got, "\n")
+	l2 := lines[1]
 
-	// No 5H/7D in compact
-	if strings.Contains(got, "5H:") {
-		t.Errorf("compact mode must not contain 5H bar, got: %q", got)
+	// L2 must contain CW, 5H, 7D bars
+	if !strings.Contains(l2, "CW:") {
+		t.Errorf("compact L2 must contain CW bar, got: %q", l2)
 	}
-	if strings.Contains(got, "7D:") {
-		t.Errorf("compact mode must not contain 7D bar, got: %q", got)
+	if !strings.Contains(l2, "5H:") {
+		t.Errorf("compact L2 must contain 5H bar, got: %q", l2)
+	}
+	if !strings.Contains(l2, "7D:") {
+		t.Errorf("compact L2 must contain 7D bar, got: %q", l2)
 	}
 }
 
@@ -1266,7 +1275,7 @@ func TestRenderFullV3_StyleInL1(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRenderV3_OmitsEmptyLines_Compact(t *testing.T) {
-	// compact: omit L2 when no git data → 1 line only
+	// compact: omit L3 when no git data → 2 lines (model + bars)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
@@ -1277,8 +1286,8 @@ func TestRenderV3_OmitsEmptyLines_Compact(t *testing.T) {
 	got := r.Render(data, ModeCompact)
 	lines := strings.Split(got, "\n")
 
-	if len(lines) != 1 {
-		t.Errorf("compact mode without git must be 1 line, got: %d lines\noutput: %q", len(lines), got)
+	if len(lines) != 2 {
+		t.Errorf("compact mode without git must be 2 lines, got: %d lines\noutput: %q", len(lines), got)
 	}
 }
 

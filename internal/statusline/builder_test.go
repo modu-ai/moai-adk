@@ -289,9 +289,10 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Without git data, only L1 is rendered, so no newline
-	if strings.Contains(got, "\n") {
-		t.Errorf("compact without git should be 1 line, got %q", got)
+	// Without git data, compact renders L1 (model) + L2 (bars) = 2 lines
+	lines := strings.Split(got, "\n")
+	if len(lines) != 2 {
+		t.Errorf("compact without git should be 2 lines, got %d lines: %q", len(lines), got)
 	}
 }
 
@@ -568,14 +569,14 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 		maxLines    int
 		description string
 	}{
-		// AC-V3-01: mode="minimal" → compact 2-line output (backward compat)
+		// AC-V3-01: mode="minimal" → compact 3-line output (backward compat)
 		{
-			name:        "AC-V3-01: minimal→compact 2 lines",
+			name:        "AC-V3-01: minimal→compact 3 lines",
 			mode:        "minimal",
 			withUsage:   true,
-			minLines:    2,
-			maxLines:    2,
-			description: "minimal mode should produce 2 lines like compact",
+			minLines:    3,
+			maxLines:    3,
+			description: "minimal mode should produce 3 lines like compact",
 		},
 		// AC-V3-02: mode="verbose" → full 5-line output (backward compat)
 		{
@@ -586,14 +587,14 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 			maxLines:    5,
 			description: "verbose mode should produce 5 lines like full",
 		},
-		// AC-V3-03: mode="compact" → exactly 2 lines
+		// AC-V3-03: mode="compact" → exactly 3 lines (model, bars, git)
 		{
-			name:        "AC-V3-03: compact exactly 2 lines",
+			name:        "AC-V3-03: compact exactly 3 lines",
 			mode:        ModeCompact,
 			withUsage:   true,
-			minLines:    2,
-			maxLines:    2,
-			description: "compact mode should produce exactly 2 lines",
+			minLines:    3,
+			maxLines:    3,
+			description: "compact mode should produce exactly 3 lines",
 		},
 		// AC-V3-04: mode="default" → exactly 3 lines (style integrated into L1)
 		{
