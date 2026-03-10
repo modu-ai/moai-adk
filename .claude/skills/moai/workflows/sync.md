@@ -100,8 +100,14 @@ The `project` mode performs comprehensive project-wide synchronization:
 
 ## Supported Flags
 
-- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+- --merge: [DEPRECATED] Auto-merge is now DEFAULT for worktree flows (R3 of SPEC-WORKTREE-002). This flag is kept for backward compatibility but has no effect.
+- --no-merge: Skip auto-merge PR and cleanup. Use this when you want to review the PR manually before merging.
 - --skip-mx: Skip MX tag validation and annotation during sync.
+
+**Auto-Merge Behavior (SPEC-WORKTREE-002 R3):**
+- **Default**: Auto-merge enabled for worktree-based development flows
+- **Skip**: Use `--no-merge` flag to disable auto-merge
+- **Detection**: Worktree context is auto-detected from git directory structure (contains `worktrees/` component)
 
 ## Context Loading
 
@@ -732,26 +738,16 @@ wait
 **Python project** (detected via `pyproject.toml`):
 
 ```bash
-# Tests
 pytest --tb=short
-
-# Lint
 ruff check . && ruff format --check .
-
-# Type check
 mypy . --ignore-missing-imports
 ```
 
 **TypeScript/JavaScript project** (detected via `package.json`):
 
 ```bash
-# Tests
 npm test -- --run
-
-# Lint
 npm run lint
-
-# Build
 npm run build
 ```
 
@@ -884,27 +880,34 @@ This ensures the developer's working directory is on the base branch, ready for 
 
 Remote branch cleanup after merge is handled by the hosting platform's auto-delete setting (GitHub: "Automatically delete head branches", GitLab: "Delete source branch when merge request is accepted", Bitbucket: "Close source branch"). Local branch cleanup is left to the developer (`git branch -d <branch>`).
 
-#### Step 3.4: Auto-Merge (When --merge flag set)
+#### Step 3.4: Auto-Merge (DEFAULT for worktree flows, R3 of SPEC-WORKTREE-002)
 
 Only applies when a PR was created in Step 3.2.
 
+**SPEC-WORKTREE-002 R3: Auto-Merge is DEFAULT behavior for worktree flows**
+
 Execution conditions [HARD]:
-- Flag must be explicitly set: --merge
+- `--no-merge` flag must NOT be set (auto-merge is default)
 - All CI/CD checks must pass
 - PR must have zero merge conflicts
 - Minimum reviewer approvals obtained (if Team mode)
+- Worktree context detected (git directory contains `worktrees/` component)
 
 Auto-merge execution:
-1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
-2. Check merge conflicts via `gh pr view --json mergeable`
-3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
-4. Checkout target branch, fetch latest
-5. Verify local is synchronized with remote
+1. Detect worktree context: Check if git directory contains `worktrees/` component
+2. Check for `--no-merge` flag: If set, skip auto-merge and display manual merge instructions
+3. Check CI/CD status via `gh pr checks --watch` (wait for completion)
+4. Check merge conflicts via `gh pr view --json mergeable`
+5. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+6. Trigger R4 auto-cleanup: After successful merge, execute `moai worktree done SPEC-XXX --delete-branch`
+7. Checkout target branch, fetch latest
+8. Verify local is synchronized with remote
 
 Auto-merge failures:
 - If CI/CD fails: Report failure, display error details, do NOT merge
 - If merge conflicts: Report conflicts, provide manual resolution guidance, do NOT merge
 - If approvals missing (Team mode): Report pending approvals, do NOT merge
+- If cleanup fails (R4): Log warning, provide manual cleanup commands, do NOT block merge completion
 
 ### Phase 4: Completion and Next Steps
 
@@ -976,5 +979,5 @@ All of the following must be verified:
 ---
 
 Version: 3.4.0
-Updated: 2026-02-26
-Source: Added Step 3.1.5 Local CI Mirror Validation (Pre-PR Gate): auto-reads .github/workflows/ci.yml, runs go vet + go test -race + golangci-lint + 5-target cross-compile in parallel before PR creation. Windows tests skipped with note. Results embedded in PR description. Fail → AskUserQuestion (fix/push anyway/abort).
+Updated: 2026-02-25
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.
