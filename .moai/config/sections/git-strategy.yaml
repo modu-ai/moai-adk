@@ -23,7 +23,7 @@ git_strategy:
             pre_push: warn
         push_to_remote: false
         workflow: github-flow
-    mode: manual
+    mode: team
     personal:
         automation:
             auto_branch: false
