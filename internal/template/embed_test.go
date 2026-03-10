@@ -371,6 +371,44 @@ func TestEmbeddedTemplates_WalkDirTotalCount(t *testing.T) {
 	t.Logf("total embedded files: %d", totalFiles)
 }
 
+// --- Regression tests ---
+
+// TestPlanWorkflow_WorktreeUsesSPECIDFormat is a regression test for issue #476.
+// The plan workflow must use SPEC-ID format (`moai worktree new SPEC-{ID}`) for
+// worktree creation, NOT the branch name format (`feature/SPEC-{ID}`).
+//
+// Branch name format causes worktrees to be created as sibling directories outside
+// the repo (e.g. ../feature/SPEC-XXX) because moai worktree resolves branch names
+// to ../<branch-name> while SPEC-IDs resolve to .moai/worktrees/<SPEC-ID>.
+func TestPlanWorkflow_WorktreeUsesSPECIDFormat(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+
+	data, err := fs.ReadFile(fsys, ".claude/skills/moai/workflows/plan.md")
+	if err != nil {
+		t.Fatalf("read plan.md: %v", err)
+	}
+
+	content := string(data)
+
+	// Must NOT use branch name format — this causes worktrees outside the repo
+	if strings.Contains(content, "WorktreeManager with branch feature/") {
+		t.Error("plan.md uses branch name format for worktree creation (feature/SPEC-ID). " +
+			"This creates worktrees as sibling directories outside the repo. " +
+			"Fix: use SPEC-ID format `moai worktree new SPEC-{ID}` instead.")
+	}
+
+	// Must use SPEC-ID format — this creates worktrees inside .moai/worktrees/
+	if !strings.Contains(content, "moai worktree new SPEC-{ID}") {
+		t.Error("plan.md must use SPEC-ID format for worktree creation: " +
+			"`moai worktree new SPEC-{ID}` (creates at .moai/worktrees/SPEC-{ID}, gitignored)")
+	}
+}
+
 // --- Benchmark ---
 
 func BenchmarkEmbeddedTemplatesWalkDir(b *testing.B) {

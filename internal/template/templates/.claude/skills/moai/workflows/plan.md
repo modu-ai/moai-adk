@@ -7,10 +7,10 @@ description: >
   or branch creation. Use when planning features or creating specifications.
 user-invocable: false
 metadata:
-  version: "2.6.0"
+  version: "2.6.1"
   category: "workflow"
   status: "active"
-  updated: "2026-02-23"
+  updated: "2026-03-10"
   tags: "plan, spec, ears, requirements, specification, design"
 
 # MoAI Extension: Progressive Disclosure
@@ -247,7 +247,8 @@ Skipped when: develop_direct workflow, no flags and user chooses "Use current br
 Prerequisite: SPEC files MUST be committed before worktree creation.
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
-- Create worktree via WorktreeManager with branch feature/SPEC-{ID}
+- Create worktree using SPEC-ID format: `moai worktree new SPEC-{ID}`
+  (SPEC-ID format automatically creates at .moai/worktrees/SPEC-{ID}, gitignored by default)
 - Display worktree path and navigation instructions
 
 #### Branch Path (--branch flag or user choice)
@@ -365,5 +366,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.6.0
-Updated: 2026-02-23
+Version: 2.6.1
+Updated: 2026-03-10
