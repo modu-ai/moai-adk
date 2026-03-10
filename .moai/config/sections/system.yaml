@@ -29,9 +29,9 @@ github:
     merge_strategy: squash
     spec_git_workflow: feature_branch
 moai:
-    template_version: v2.7.3
+    template_version: v2.7.8
     update_check_frequency: daily
-    version: v2.7.3
+    version: v2.7.8
     version_check:
         cache_ttl_hours: 24
         enabled: true
