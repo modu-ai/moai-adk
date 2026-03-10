@@ -4,7 +4,7 @@
 spec_id: SPEC-WORKTREE-001
 title: "Worktree Path Migration to Global ~/.moai/worktrees/"
 created: 2026-03-10
-status: Planned
+status: Completed
 priority: P2
 author: GOOS
 lifecycle: spec-anchored
@@ -220,3 +220,34 @@ lifecycle: spec-anchored
 - **관련 기능**: product.md > Core Features > 6. Worktree Management
 - **관련 SPEC**: SPEC-GIT-001 (Git Operations)
 - **관련 인프라**: `~/.moai/worktrees/` 글로벌 디렉토리, `.moai-worktree-registry.json`
+
+---
+
+## 구현 노트 (Implementation Notes)
+
+**완료일**: 2026-03-10
+**구현 방식**: TDD (RED-GREEN-REFACTOR)
+
+### 구현 요약
+
+| 요구사항 | 상태 | 구현 파일 |
+|----------|------|----------|
+| R1: 글로벌 worktree 경로 | 완료 | `internal/cli/worktree/new.go` |
+| R2: 비-SPEC-ID 글로벌 경로 | 완료 | `internal/cli/worktree/new.go` |
+| R3: 프로젝트명 자동 감지 | 완료 | `internal/cli/worktree/project.go` (신규) |
+| R4: 홈 디렉토리 보장 | 완료 | `internal/cli/worktree/new.go` |
+| R5: 하위 호환성 경고 | 완료 | `internal/cli/worktree/new.go` |
+| R6: orchestrator 매칭 | 검증 완료 | 변경 불필요 (`filepath.Base` 정상 동작) |
+| R7: launcher cleanup | 완료 | `internal/cli/launcher.go` |
+| R8: --path 우선 | 완료 | 기존 동작 유지 |
+| R9: 금지 동작 | 완료 | 프로젝트 내부 생성 차단 |
+
+### 설계 결정
+
+- `detectProjectName()`을 `project.go`로 분리하여 단일 책임 원칙 준수
+- `cleanupMoaiWorktrees`에 `filepath.EvalSymlinks` 추가하여 symlink 환경 안전성 확보
+- hook 테스트 데이터 변경 불필요 (hook은 경로를 직접 참조하지 않음)
+
+### 연기 항목
+
+- Optional Goal: `moai worktree migrate` 서브커맨드 (별도 SPEC으로 분리 권장)
