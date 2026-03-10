@@ -1,11 +1,35 @@
 package statusline
 
+import (
+	"os"
+	"strconv"
+)
+
+// defaultAutoCompactPct is the default auto-compact trigger threshold percentage.
+// Claude Code triggers auto-compact at approximately 80-85% of the total context window.
+// This can be overridden by the CLAUDE_AUTOCOMPACT_PCT_OVERRIDE environment variable.
+const defaultAutoCompactPct = 85
+
+// getAutoCompactThreshold returns the auto-compact trigger percentage.
+// Reads CLAUDE_AUTOCOMPACT_PCT_OVERRIDE env var if set, otherwise uses default.
+func getAutoCompactThreshold() int {
+	if override := os.Getenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"); override != "" {
+		if v, err := strconv.Atoi(override); err == nil && v > 0 && v <= 100 {
+			return v
+		}
+	}
+	return defaultAutoCompactPct
+}
+
 // CollectMemory extracts context window token usage from stdin data.
 // Returns a MemoryData with Available=false if input or context_window is nil.
 // Priority (following Claude Code documentation):
 // 1. Use pre-calculated used_percentage from Claude Code (most accurate)
 // 2. Calculate from current_usage tokens
 // 3. Fall back to legacy used/total fields
+//
+// The token budget is scaled to the auto-compact threshold so that the CW bar
+// reaches 100% at the point where auto-compact triggers, not at the full context window.
 func CollectMemory(input *StdinData) *MemoryData {
 	if input == nil || input.ContextWindow == nil {
 		return &MemoryData{Available: false}
@@ -22,15 +46,19 @@ func CollectMemory(input *StdinData) *MemoryData {
 		contextSize = 200000 // Default context window size
 	}
 
+	// Scale budget to auto-compact threshold so bar shows 100% at compact point
+	threshold := getAutoCompactThreshold()
+	effectiveBudget := contextSize * threshold / 100
+
 	var tokensUsed int
 
 	// Priority 1: Use pre-calculated percentage from Claude Code
 	if ctx.UsedPercentage != nil {
-		// Calculate tokens from percentage
+		// Calculate tokens from percentage (of full context window)
 		tokensUsed = int(float64(contextSize) * (*ctx.UsedPercentage) / 100.0)
 		return &MemoryData{
 			TokensUsed:  tokensUsed,
-			TokenBudget: contextSize,
+			TokenBudget: effectiveBudget,
 			Available:   true,
 		}
 	}
@@ -41,7 +69,7 @@ func CollectMemory(input *StdinData) *MemoryData {
 		tokensUsed = cu.InputTokens + cu.CacheCreationTokens + cu.CacheReadTokens
 		return &MemoryData{
 			TokensUsed:  tokensUsed,
-			TokenBudget: contextSize,
+			TokenBudget: effectiveBudget,
 			Available:   true,
 		}
 	}
@@ -50,7 +78,7 @@ func CollectMemory(input *StdinData) *MemoryData {
 	if ctx.Used > 0 || ctx.Total > 0 {
 		return &MemoryData{
 			TokensUsed:  ctx.Used,
-			TokenBudget: ctx.Total,
+			TokenBudget: ctx.Total * threshold / 100,
 			Available:   true,
 		}
 	}
@@ -58,7 +86,7 @@ func CollectMemory(input *StdinData) *MemoryData {
 	// No data available - return 0% (session start state)
 	return &MemoryData{
 		TokensUsed:  0,
-		TokenBudget: contextSize,
+		TokenBudget: effectiveBudget,
 		Available:   true,
 	}
 }
@@ -84,10 +112,14 @@ func contextUsageLevel(used, total int) contextLevel {
 }
 
 // usagePercent calculates the percentage of context window used.
-// Returns 0 if total is zero to avoid division by zero.
+// Returns 0 if total is zero to avoid division by zero. Capped at 100.
 func usagePercent(used, total int) int {
 	if total <= 0 {
 		return 0
 	}
-	return used * 100 / total
+	pct := used * 100 / total
+	if pct > 100 {
+		return 100
+	}
+	return pct
 }

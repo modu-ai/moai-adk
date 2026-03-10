@@ -162,6 +162,99 @@ func TestFormatCost(t *testing.T) {
 	}
 }
 
+// TestResolveGLMModelName verifies GLM model name detection from env vars.
+func TestResolveGLMModelName(t *testing.T) {
+	tests := []struct {
+		name        string
+		displayName string
+		envKey      string
+		envValue    string
+		want        string
+	}{
+		{
+			name:        "Opus display name with GLM env",
+			displayName: "Opus",
+			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			envValue:    "glm-5",
+			want:        "glm-5",
+		},
+		{
+			name:        "Opus 4.6 display name with GLM env",
+			displayName: "Opus 4.6",
+			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			envValue:    "glm-5",
+			want:        "glm-5",
+		},
+		{
+			name:        "Sonnet display name with GLM env",
+			displayName: "Sonnet",
+			envKey:      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+			envValue:    "glm-4.7",
+			want:        "glm-4.7",
+		},
+		{
+			name:        "Haiku display name with GLM env",
+			displayName: "Haiku",
+			envKey:      "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+			envValue:    "glm-4.7-air",
+			want:        "glm-4.7-air",
+		},
+		{
+			name:        "Opus without GLM env (Claude mode)",
+			displayName: "Opus",
+			envKey:      "",
+			envValue:    "",
+			want:        "Opus",
+		},
+		{
+			name:        "Opus with Claude model env (not GLM)",
+			displayName: "Opus",
+			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			envValue:    "claude-opus-4-6-20250514",
+			want:        "Opus",
+		},
+		{
+			name:        "Non-Claude display name unchanged",
+			displayName: "GPT-4o",
+			envKey:      "",
+			envValue:    "",
+			want:        "GPT-4o",
+		},
+		{
+			name:        "Empty display name",
+			displayName: "",
+			envKey:      "",
+			envValue:    "",
+			want:        "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envKey != "" {
+				t.Setenv(tt.envKey, tt.envValue)
+			}
+			got := resolveGLMModelName(tt.displayName)
+			if got != tt.want {
+				t.Errorf("resolveGLMModelName(%q) = %q, want %q", tt.displayName, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestCollectMetrics_GLMMode verifies CollectMetrics shows GLM model name in GLM mode.
+func TestCollectMetrics_GLMMode(t *testing.T) {
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5")
+
+	input := &StdinData{
+		Model: &ModelInfo{DisplayName: "Opus"},
+	}
+	got := CollectMetrics(input)
+	if got.Model != "glm-5" {
+		t.Errorf("Model = %q in GLM mode, want %q", got.Model, "glm-5")
+	}
+}
+
 func TestFormatTokens(t *testing.T) {
 	tests := []struct {
 		input int
