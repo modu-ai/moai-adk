@@ -500,26 +500,28 @@ func TestIsInFailureCooldown_Active(t *testing.T) {
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	// 2분 전에 실패가 기록된 캐시 파일 생성
+	// 30초 전에 1회 실패 기록 (쿨다운: 1분)
 	cache := &usageCacheFile{
-		CachedAt: time.Now().Add(-2 * time.Minute).Unix(),
-		FailedAt: time.Now().Add(-2 * time.Minute).Unix(),
-		Usage5H:  &UsageData{Percentage: 10.0},
-		Usage7D:  &UsageData{Percentage: 20.0},
+		CachedAt:     time.Now().Add(-30 * time.Second).Unix(),
+		FailedAt:     time.Now().Add(-30 * time.Second).Unix(),
+		FailureCount: 1,
+		Usage5H:      &UsageData{Percentage: 10.0},
+		Usage7D:      &UsageData{Percentage: 20.0},
 	}
 	collector := &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
-		mu:              sync.RWMutex{},
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
 	}
 	if err := collector.saveCache(cache); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 쿨다운 기간(10분) 내이므로 true 반환
+	// 1회 실패 → 쿨다운 1분, 30초 경과 → 쿨다운 활성
 	if !collector.isInFailureCooldown() {
-		t.Error("isInFailureCooldown should return true when failure was 2 minutes ago (cooldown: 10 minutes)")
+		t.Error("isInFailureCooldown should return true when failure was 30s ago (cooldown: 1m for count=1)")
 	}
 }
 
@@ -530,60 +532,62 @@ func TestIsInFailureCooldown_Expired(t *testing.T) {
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	// 15분 전에 실패가 기록된 캐시 파일 생성 (쿨다운 10분 초과)
+	// 2분 전에 1회 실패 기록 (쿨다운: 1분) → 만료
 	cache := &usageCacheFile{
-		CachedAt: time.Now().Add(-15 * time.Minute).Unix(),
-		FailedAt: time.Now().Add(-15 * time.Minute).Unix(),
-		Usage5H:  &UsageData{Percentage: 10.0},
-		Usage7D:  &UsageData{Percentage: 20.0},
+		CachedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailureCount: 1,
+		Usage5H:      &UsageData{Percentage: 10.0},
+		Usage7D:      &UsageData{Percentage: 20.0},
 	}
 	collector := &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
-		mu:              sync.RWMutex{},
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
 	}
 	if err := collector.saveCache(cache); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 쿨다운 기간(10분)이 만료되었으므로 false 반환
+	// 1회 실패 → 쿨다운 1분, 2분 경과 → 쿨다운 만료
 	if collector.isInFailureCooldown() {
-		t.Error("isInFailureCooldown should return false when failure was 15 minutes ago (cooldown: 10 minutes)")
+		t.Error("isInFailureCooldown should return false when failure was 2m ago (cooldown: 1m for count=1)")
 	}
 }
 
-// TestIsInFailureCooldown_NoFailure는 실패 기록이 없는 경우 isInFailureCooldown이 false를 반환하는지 검증한다.
+// TestIsInFailureCooldown_NoFailure verifies false when no failure is recorded.
 func TestIsInFailureCooldown_NoFailure(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	// FailedAt = 0인 캐시 파일 생성 (실패 기록 없음)
 	cache := &usageCacheFile{
-		CachedAt: time.Now().Unix(),
-		FailedAt: 0, // 실패 기록 없음
-		Usage5H:  &UsageData{Percentage: 10.0},
-		Usage7D:  &UsageData{Percentage: 20.0},
+		CachedAt:     time.Now().Unix(),
+		FailedAt:     0,
+		FailureCount: 0,
+		Usage5H:      &UsageData{Percentage: 10.0},
+		Usage7D:      &UsageData{Percentage: 20.0},
 	}
 	collector := &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
-		mu:              sync.RWMutex{},
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
 	}
 	if err := collector.saveCache(cache); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 실패 기록이 없으므로 false 반환
 	if collector.isInFailureCooldown() {
-		t.Error("isInFailureCooldown should return false when FailedAt is 0 (no failure recorded)")
+		t.Error("isInFailureCooldown should return false when no failure recorded")
 	}
 }
 
-// TestSaveFailure는 saveFailure 호출 시 캐시 파일에 FailedAt 타임스탬프가 저장되는지 검증한다.
+// TestSaveFailure verifies saveFailure records FailedAt and increments FailureCount.
 func TestSaveFailure(t *testing.T) {
 	t.Parallel()
 
@@ -591,24 +595,22 @@ func TestSaveFailure(t *testing.T) {
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
 	collector := &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
-		mu:              sync.RWMutex{},
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
 	}
 
-	// Unix timestamp는 초 단위이므로, 비교 기준도 초 단위로 맞춘다
 	beforeSave := time.Now().Truncate(time.Second)
 
-	// saveFailure 호출
+	// First failure
 	collector.saveFailure()
 
-	// 캐시 파일이 생성되었는지 확인
 	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
 		t.Fatal("saveFailure should create the cache file")
 	}
 
-	// 캐시 파일을 읽어 FailedAt이 현재 시각 근처인지 확인
 	loaded, err := collector.loadCache()
 	if err != nil {
 		t.Fatalf("loadCache failed after saveFailure: %v", err)
@@ -621,25 +623,31 @@ func TestSaveFailure(t *testing.T) {
 	if failedAt.Before(beforeSave) {
 		t.Errorf("FailedAt (%v) should be at or after test start (%v)", failedAt, beforeSave)
 	}
-	if time.Since(failedAt) > time.Minute {
-		t.Errorf("FailedAt (%v) should be within the last minute", failedAt)
+	if loaded.FailureCount != 1 {
+		t.Errorf("FailureCount = %d after first failure, want 1", loaded.FailureCount)
 	}
 
-	// saveFailure 후 isInFailureCooldown이 true인지 확인
+	// Second failure should increment count
+	collector.saveFailure()
+	loaded, _ = collector.loadCache()
+	if loaded.FailureCount != 2 {
+		t.Errorf("FailureCount = %d after second failure, want 2", loaded.FailureCount)
+	}
+
+	// Should be in cooldown after saveFailure
 	if !collector.isInFailureCooldown() {
 		t.Error("isInFailureCooldown should return true immediately after saveFailure")
 	}
 }
 
-// TestCollectUsage_SkipsDuringCooldown는 쿨다운 중에 CollectUsage가 API 호출 없이 스테일 캐시를 반환하는지 검증한다.
-// 429 스파이럴 방지를 위한 핵심 동작을 테스트한다.
+// TestCollectUsage_SkipsDuringCooldown verifies that CollectUsage returns stale cache
+// without API call during cooldown period (429 spiral prevention).
 func TestCollectUsage_SkipsDuringCooldown(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, ".moai", "cache", "usage.json")
 
-	// API 호출 횟수를 추적하는 테스트 서버
 	var apiCallCount int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		apiCallCount++
@@ -651,12 +659,13 @@ func TestCollectUsage_SkipsDuringCooldown(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 만료된 캐시 + 최근 실패 기록이 있는 캐시 파일 생성
+	// Stale cache with recent failure (count=3 → cooldown=4m, failed 2m ago → active)
 	staleCache := &usageCacheFile{
-		CachedAt: time.Now().Add(-10 * time.Minute).Unix(), // TTL(5분) 초과 - 만료됨
-		FailedAt: time.Now().Add(-2 * time.Minute).Unix(),  // 쿨다운(10분) 내 - 활성
-		Usage5H:  &UsageData{Percentage: 42.0},
-		Usage7D:  &UsageData{Percentage: 85.0},
+		CachedAt:     time.Now().Add(-10 * time.Minute).Unix(),
+		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailureCount: 3,
+		Usage5H:      &UsageData{Percentage: 42.0},
+		Usage7D:      &UsageData{Percentage: 85.0},
 	}
 	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -666,14 +675,14 @@ func TestCollectUsage_SkipsDuringCooldown(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// failureCooldown이 설정된 collector 생성
 	collector := &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
-		client:          server.Client(),
-		homeDir:         tmpDir,
-		mu:              sync.RWMutex{},
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		client:              server.Client(),
+		homeDir:             tmpDir,
+		mu:                  sync.RWMutex{},
 	}
 
 	result, err := collector.CollectUsage(context.Background())
@@ -681,30 +690,30 @@ func TestCollectUsage_SkipsDuringCooldown(t *testing.T) {
 		t.Fatalf("CollectUsage should not error: %v", err)
 	}
 
-	// 스테일 캐시 데이터가 반환되어야 한다 (nil이 아님)
 	if result == nil {
 		t.Fatal("CollectUsage should return stale data during cooldown, got nil")
 	}
 
-	// API가 호출되지 않았음을 확인
 	if apiCallCount > 0 {
 		t.Errorf("API should not be called during cooldown, but was called %d times", apiCallCount)
 	}
 }
 
-// TestCollectUsage_RetriesAfterCooldownExpires는 쿨다운 만료 후 CollectUsage가 API 호출을 시도하는지 검증한다.
+// TestCollectUsage_RetriesAfterCooldownExpires verifies that CollectUsage attempts
+// API call after cooldown expires.
 func TestCollectUsage_RetriesAfterCooldownExpires(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, ".moai", "cache", "usage.json")
 
-	// 쿨다운이 만료된 실패 기록이 있는 캐시 파일 생성 (15분 전 실패, 쿨다운 10분)
+	// count=1 → cooldown=1m, failed 2m ago → expired
 	expiredFailureCache := &usageCacheFile{
-		CachedAt: time.Now().Add(-15 * time.Minute).Unix(),
-		FailedAt: time.Now().Add(-15 * time.Minute).Unix(), // 쿨다운 만료
-		Usage5H:  &UsageData{Percentage: 30.0},
-		Usage7D:  &UsageData{Percentage: 60.0},
+		CachedAt:     time.Now().Add(-15 * time.Minute).Unix(),
+		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailureCount: 1,
+		Usage5H:      &UsageData{Percentage: 30.0},
+		Usage7D:      &UsageData{Percentage: 60.0},
 	}
 	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -714,15 +723,15 @@ func TestCollectUsage_RetriesAfterCooldownExpires(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 토큰 없이 collector 생성 (API 호출 시도하지만 토큰 없어 nil 반환)
-	// homeDir에 credentials.json이 없으면 token이 빈 문자열
+	// No token available → CollectUsage should try API but return nil
 	collector := &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
-		client:          &http.Client{Timeout: 1 * time.Second},
-		homeDir:         tmpDir, // credentials.json 없음
-		mu:              sync.RWMutex{},
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		client:              &http.Client{Timeout: 1 * time.Second},
+		homeDir:             tmpDir,
+		mu:                  sync.RWMutex{},
 	}
 
 	result, err := collector.CollectUsage(context.Background())
@@ -730,9 +739,86 @@ func TestCollectUsage_RetriesAfterCooldownExpires(t *testing.T) {
 		t.Fatalf("CollectUsage should not error: %v", err)
 	}
 
-	// 쿨다운이 만료되어 API 호출을 시도했으나 토큰이 없어 nil 반환
-	// (스테일 캐시를 반환하지 않고 토큰 없음으로 인해 nil)
+	// Cooldown expired, API call attempted but no token → nil
 	if result != nil {
 		t.Errorf("CollectUsage should return nil when cooldown expired and no token available, got: %+v", result)
+	}
+}
+
+// TestCalcCooldown verifies exponential backoff calculation.
+func TestCalcCooldown(t *testing.T) {
+	t.Parallel()
+
+	collector := &usageCollector{
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+	}
+
+	tests := []struct {
+		count int
+		want  time.Duration
+	}{
+		{0, 0},
+		{1, 1 * time.Minute},
+		{2, 2 * time.Minute},
+		{3, 4 * time.Minute},
+		{4, 8 * time.Minute},
+		{5, 16 * time.Minute},
+		{6, 32 * time.Minute},
+		{7, 32 * time.Minute},  // capped
+		{10, 32 * time.Minute}, // capped
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("count=%d", tt.count), func(t *testing.T) {
+			got := collector.calcCooldown(tt.count)
+			if got != tt.want {
+				t.Errorf("calcCooldown(%d) = %v, want %v", tt.count, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestExponentialBackoff_ProgressiveCooldown verifies that repeated failures
+// increase cooldown progressively.
+func TestExponentialBackoff_ProgressiveCooldown(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
+
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
+	}
+
+	// 5 failures ago, count=5 → cooldown=16m, failed 10m ago → still active
+	cache := &usageCacheFile{
+		FailedAt:     time.Now().Add(-10 * time.Minute).Unix(),
+		FailureCount: 5,
+	}
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	if !collector.isInFailureCooldown() {
+		t.Error("should be in cooldown (count=5 → 16m, elapsed=10m)")
+	}
+
+	// Same count=5 but failed 20m ago → expired
+	cache.FailedAt = time.Now().Add(-20 * time.Minute).Unix()
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	// Reset in-memory cache to force file read
+	collector.mu.Lock()
+	collector.cache = nil
+	collector.mu.Unlock()
+
+	if collector.isInFailureCooldown() {
+		t.Error("should not be in cooldown (count=5 → 16m, elapsed=20m)")
 	}
 }

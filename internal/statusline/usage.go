@@ -20,22 +20,24 @@ type UsageProvider interface {
 
 // usageCacheFile represents the JSON structure of the cache file (REQ-V3-API-002).
 type usageCacheFile struct {
-	CachedAt int64      `json:"cached_at"`            // Unix timestamp
-	FailedAt int64      `json:"failed_at,omitempty"` // 마지막 API 실패 시각 (Unix timestamp)
-	Usage5H  *UsageData `json:"usage_5h"`
-	Usage7D  *UsageData `json:"usage_7d"`
+	CachedAt     int64      `json:"cached_at"`                // Unix timestamp
+	FailedAt     int64      `json:"failed_at,omitempty"`      // Last API failure time (Unix timestamp)
+	FailureCount int        `json:"failure_count,omitempty"`  // Consecutive failure count (for exponential backoff)
+	Usage5H      *UsageData `json:"usage_5h"`
+	Usage7D      *UsageData `json:"usage_7d"`
 }
 
 // usageCollector collects and caches Anthropic API usage.
 // 5-minute TTL, 300ms timeout, graceful degradation (REQ-V3-API-002~005, REQ-V3-API-009).
 type usageCollector struct {
-	mu              sync.RWMutex
-	cache           *usageCacheFile
-	cachePath       string
-	ttl             time.Duration
-	failureCooldown time.Duration // 실패 후 재시도 대기 시간 (429 스파이럴 방지)
-	client          *http.Client
-	homeDir         string
+	mu                 sync.RWMutex
+	cache              *usageCacheFile
+	cachePath          string
+	ttl                time.Duration
+	failureCooldownBase time.Duration // Exponential backoff base cooldown (default: 1m)
+	failureCooldownMax  time.Duration // Exponential backoff max cooldown (default: 32m)
+	client             *http.Client
+	homeDir            string
 }
 
 // NewUsageCollector creates a new UsageProvider.
@@ -45,9 +47,10 @@ func NewUsageCollector(homeDir string) UsageProvider {
 	cachePath := filepath.Join(cacheDir, "usage.json")
 
 	return &usageCollector{
-		cachePath:       cachePath,
-		ttl:             5 * time.Minute,
-		failureCooldown: 10 * time.Minute,
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
 		client: &http.Client{
 			Timeout: 2 * time.Second,
 		},
@@ -65,7 +68,7 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		return u.toUsageResult(cached), nil
 	}
 
-	// 실패 쿨다운 중이면 API 호출 건너뜀 (429 스파이럴 방지)
+	// Skip API call during failure cooldown (prevents 429 spiral)
 	if u.isInFailureCooldown() {
 		slog.Debug("usage API in failure cooldown, skipping")
 		if stale := u.getStaleCache(); stale != nil {
@@ -85,7 +88,7 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	apiResp, err := u.fetchUsageFromOAuthAPI(ctx, token)
 	if err != nil {
 		slog.Debug("oauth usage fetch failed", "error", err)
-		u.saveFailure() // 실패 기록으로 429 스파이럴 방지
+		u.saveFailure() // Record failure to prevent 429 spiral
 		// Return stale cache if available (stale-while-revalidate pattern)
 		if stale := u.getStaleCache(); stale != nil {
 			slog.Debug("returning stale usage cache")
@@ -115,10 +118,11 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 
 	// Update cache (async, continue on failure)
 	cache := &usageCacheFile{
-		CachedAt: time.Now().Unix(),
-		FailedAt: 0, // 성공 시 실패 상태 초기화
-		Usage5H:  usage5H,
-		Usage7D:  usage7D,
+		CachedAt:     time.Now().Unix(),
+		FailedAt:     0, // Reset failure state on success
+		FailureCount: 0, // Reset consecutive failure count on success
+		Usage5H:      usage5H,
+		Usage7D:      usage7D,
 	}
 	go func() {
 		u.mu.Lock()
@@ -130,39 +134,59 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	return u.toUsageResult(cache), nil
 }
 
-// isInFailureCooldown은 쿨다운 기간 내에 API 실패가 있었는지 확인한다.
-// 인메모리 캐시를 먼저 확인하고, 없으면 파일 캐시를 확인한다.
+// calcCooldown calculates exponential backoff cooldown based on consecutive failure count.
+// cooldown = min(base * 2^(count-1), max)
+// count=1: 1m, count=2: 2m, count=3: 4m, count=4: 8m, count=5: 16m, count>=6: 32m
+func (u *usageCollector) calcCooldown(failureCount int) time.Duration {
+	if failureCount <= 0 {
+		return 0
+	}
+	cooldown := u.failureCooldownBase
+	for i := 1; i < failureCount; i++ {
+		cooldown *= 2
+		if cooldown >= u.failureCooldownMax {
+			return u.failureCooldownMax
+		}
+	}
+	return cooldown
+}
+
+// isInFailureCooldown checks if currently within exponential backoff cooldown period.
+// Checks in-memory cache first, then falls back to file cache.
 func (u *usageCollector) isInFailureCooldown() bool {
 	u.mu.RLock()
-	if u.cache != nil && u.cache.FailedAt > 0 {
+	if u.cache != nil && u.cache.FailedAt > 0 && u.cache.FailureCount > 0 {
 		failedAt := time.Unix(u.cache.FailedAt, 0)
-		if time.Since(failedAt) < u.failureCooldown {
+		cooldown := u.calcCooldown(u.cache.FailureCount)
+		if time.Since(failedAt) < cooldown {
 			u.mu.RUnlock()
 			return true
 		}
 	}
 	u.mu.RUnlock()
 
-	// 파일 캐시 확인
+	// Check file cache
 	loaded, err := u.loadCache()
 	if err != nil || loaded == nil {
 		return false
 	}
-	if loaded.FailedAt > 0 {
+	if loaded.FailedAt > 0 && loaded.FailureCount > 0 {
 		failedAt := time.Unix(loaded.FailedAt, 0)
-		return time.Since(failedAt) < u.failureCooldown
+		cooldown := u.calcCooldown(loaded.FailureCount)
+		return time.Since(failedAt) < cooldown
 	}
 	return false
 }
 
-// saveFailure는 실패 타임스탬프를 인메모리 및 파일 캐시에 기록한다.
-// 기존 사용량 데이터는 보존한다 (stale 데이터도 표시에 활용 가능).
+// saveFailure records failure timestamp and increments consecutive failure count.
+// Preserves existing usage data (stale data can still be displayed).
 func (u *usageCollector) saveFailure() {
 	u.mu.Lock()
 	if u.cache == nil {
 		u.cache = &usageCacheFile{}
 	}
 	u.cache.FailedAt = time.Now().Unix()
+	u.cache.FailureCount++
 	cache := u.cache
 	u.mu.Unlock()
 	_ = u.saveCache(cache)
