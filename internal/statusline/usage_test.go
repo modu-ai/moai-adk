@@ -743,6 +743,9 @@ func TestCollectUsage_RetriesAfterCooldownExpires(t *testing.T) {
 		client:              &http.Client{Timeout: 1 * time.Second},
 		homeDir:             tmpDir,
 		mu:                  sync.RWMutex{},
+		keychainReaderFn: func() (string, error) {
+			return "", fmt.Errorf("no keychain in test")
+		},
 	}
 
 	result, err := collector.CollectUsage(context.Background())
