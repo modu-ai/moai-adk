@@ -26,15 +26,13 @@ type Theme interface {
 }
 
 // NewTheme returns a Theme implementation for the given name.
-// Falls back to DefaultTheme for unknown names (REQ-SLE-012, REQ-NF-007).
+// Falls back to catppuccinMocha for unknown names (REQ-SLE-012, REQ-NF-007).
 func NewTheme(name string) Theme {
 	switch name {
-	case "catppuccin-mocha":
-		return &catppuccinMocha{}
 	case "catppuccin-latte":
 		return &catppuccinLatte{}
 	default:
-		return &defaultTheme{}
+		return &catppuccinMocha{}
 	}
 }
 

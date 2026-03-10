@@ -37,10 +37,10 @@ func TestThemeInterface(t *testing.T) {
 func TestDefaultThemeColors(t *testing.T) {
 	theme := NewTheme("default")
 
-	// DefaultTheme preserves current hard-coded #6B7280 muted color (REQ-SLE-012)
+	// Default falls back to catppuccinMocha
 	muted := theme.Muted()
-	if muted != lipgloss.Color("#6B7280") {
-		t.Errorf("DefaultTheme.Muted() = %q, want %q", muted, "#6B7280")
+	if muted != lipgloss.Color("#6C7086") {
+		t.Errorf("DefaultTheme.Muted() = %q, want %q", muted, "#6C7086")
 	}
 }
 

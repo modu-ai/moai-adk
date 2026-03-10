@@ -54,34 +54,11 @@ type profileSetupText struct {
 	ModeVerbose string // label for mode = "verbose" (deprecated)
 	ModeMinimal string // label for mode = "minimal" (deprecated)
 
-	// Statusline preset selector (segment visibility, shown when mode != minimal)
-	StatuslineTitle   string
-	StatuslineDesc    string
-	StatuslineFull    string
-	StatuslineCompact string
-	StatuslineMinimal string
-	StatuslineCustom  string
-
 	// Statusline theme selector
 	StatuslineThemeTitle string
 	StatuslineThemeDesc  string
-	ThemeDefault         string
-	ThemeCatppuccinMocha string
-	ThemeCatppuccinLatte string
-
-	// Section: Statusline Segments
-	SegmentsTitle    string
-	SegModel         string
-	SegContext       string
-	SegOutputStyle   string
-	SegDirectory     string
-	SegGitStatus     string
-	SegClaudeVersion string
-	SegMoaiVersion   string
-	SegGitBranch     string
-	SegSessionTime   string
-	SegUsage5H       string
-	SegUsage7D       string
+	ThemeMoaiDark        string
+	ThemeMoaiLight       string
 
 	// Messages
 	SetupCancelled string
@@ -128,29 +105,10 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeFull:            "Full - 5-line: info, CW/5H/7D bars (40-block), dir+git",
 		ModeVerbose:         "Verbose - 3-line detailed view with cost tracking",
 		ModeMinimal:         "Minimal - Model and context only",
-		StatuslineTitle:    "Statusline segment preset",
-		StatuslineDesc:     "Controls which segments are shown in the Claude Code statusline.",
-		StatuslineFull:     "Full - All 8 segments",
-		StatuslineCompact:  "Compact - Model, context, git",
-		StatuslineMinimal:  "Minimal - Model and context only",
-		StatuslineCustom:      "Custom - Choose individual segments",
 		StatuslineThemeTitle:  "Statusline Theme",
 		StatuslineThemeDesc:   "Select a color theme for the statusline.",
-		ThemeDefault:          "Default",
-		ThemeCatppuccinMocha:  "Catppuccin Mocha (dark)",
-		ThemeCatppuccinLatte:  "Catppuccin Latte (light)",
-		SegmentsTitle:         "Statusline Segments",
-		SegModel:           "Show model name",
-		SegContext:         "Show context usage",
-		SegOutputStyle:     "Show output style",
-		SegDirectory:       "Show directory",
-		SegGitStatus:       "Show git status",
-		SegClaudeVersion:   "Show Claude version",
-		SegMoaiVersion:     "Show MoAI version",
-		SegGitBranch:       "Show git branch",
-		SegSessionTime:    "Show session time",
-		SegUsage5H:        "Show 5H API usage bar",
-		SegUsage7D:        "Show 7D API usage bar",
+		ThemeMoaiDark:         "MoAI Dark",
+		ThemeMoaiLight:        "MoAI Light",
 		SetupCancelled:     "Setup cancelled.",
 		SavedProfile:       "\nSaved profile '%s':\n  Preferences → %s\n",
 	},
@@ -192,29 +150,10 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeFull:            "Full - 5줄: 정보, CW/5H/7D 바(40블록), 디렉토리+git",
 		ModeVerbose:         "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
 		ModeMinimal:         "Minimal - 모델과 컨텍스트만 표시",
-		StatuslineTitle:    "상태줄 세그먼트 프리셋",
-		StatuslineDesc:     "Claude Code 상태줄에 표시할 세그먼트를 제어합니다.",
-		StatuslineFull:     "Full - 전체 8개 세그먼트",
-		StatuslineCompact:  "Compact - 모델, 컨텍스트, git",
-		StatuslineMinimal:  "Minimal - 모델과 컨텍스트만",
-		StatuslineCustom:      "Custom - 개별 세그먼트 선택",
 		StatuslineThemeTitle:  "Statusline 테마",
 		StatuslineThemeDesc:   "상태줄 색상 테마를 선택하세요.",
-		ThemeDefault:          "기본값",
-		ThemeCatppuccinMocha:  "Catppuccin Mocha (어두운 테마)",
-		ThemeCatppuccinLatte:  "Catppuccin Latte (밝은 테마)",
-		SegmentsTitle:         "상태줄 세그먼트",
-		SegModel:           "모델 이름 표시",
-		SegContext:         "컨텍스트 사용량 표시",
-		SegOutputStyle:     "출력 스타일 표시",
-		SegDirectory:       "디렉토리 표시",
-		SegGitStatus:       "git 상태 표시",
-		SegClaudeVersion:   "Claude 버전 표시",
-		SegMoaiVersion:     "MoAI 버전 표시",
-		SegGitBranch:       "git 브랜치 표시",
-		SegSessionTime:    "세션 시간 표시",
-		SegUsage5H:        "5H API 사용량 바 표시",
-		SegUsage7D:        "7D API 사용량 바 표시",
+		ThemeMoaiDark:         "MoAI Dark",
+		ThemeMoaiLight:        "MoAI Light",
 		SetupCancelled:     "설정이 취소되었습니다.",
 		SavedProfile:       "\n프로필 '%s' 저장 완료:\n  환경설정 → %s\n",
 	},
@@ -256,29 +195,10 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeFull:            "Full - 5行: 情報、CW/5H/7Dバー(40ブロック)、ディレクトリ+git",
 		ModeVerbose:         "Verbose - コスト追跡付きの3行詳細表示",
 		ModeMinimal:         "Minimal - モデルとコンテキストのみ",
-		StatuslineTitle:    "ステータスラインセグメントプリセット",
-		StatuslineDesc:     "Claude Codeのステータスラインに表示するセグメントを制御します。",
-		StatuslineFull:     "Full - 全8セグメント",
-		StatuslineCompact:  "Compact - モデル、コンテキスト、git",
-		StatuslineMinimal:  "Minimal - モデルとコンテキストのみ",
-		StatuslineCustom:      "Custom - 個別セグメント選択",
 		StatuslineThemeTitle:  "ステータスラインテーマ",
 		StatuslineThemeDesc:   "ステータスラインのカラーテーマを選択してください。",
-		ThemeDefault:          "デフォルト",
-		ThemeCatppuccinMocha:  "Catppuccin Mocha (ダーク)",
-		ThemeCatppuccinLatte:  "Catppuccin Latte (ライト)",
-		SegmentsTitle:         "ステータスラインセグメント",
-		SegModel:           "モデル名を表示",
-		SegContext:         "コンテキスト使用量を表示",
-		SegOutputStyle:     "出力スタイルを表示",
-		SegDirectory:       "ディレクトリを表示",
-		SegGitStatus:       "gitステータスを表示",
-		SegClaudeVersion:   "Claudeバージョンを表示",
-		SegMoaiVersion:     "MoAIバージョンを表示",
-		SegGitBranch:       "gitブランチを表示",
-		SegSessionTime:    "セッション時間を表示",
-		SegUsage5H:        "5H API使用量バーを表示",
-		SegUsage7D:        "7D API使用量バーを表示",
+		ThemeMoaiDark:         "MoAI Dark",
+		ThemeMoaiLight:        "MoAI Light",
 		SetupCancelled:     "セットアップがキャンセルされました。",
 		SavedProfile:       "\nプロファイル '%s' を保存しました:\n  環境設定 → %s\n",
 	},
@@ -320,29 +240,10 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeFull:            "Full - 5行: 信息、CW/5H/7D栏(40块)、目录+git",
 		ModeVerbose:         "Verbose - 含费用追踪的3行详细视图",
 		ModeMinimal:         "Minimal - 仅显示模型和上下文",
-		StatuslineTitle:    "状态栏段预设",
-		StatuslineDesc:     "控制Claude Code状态栏中显示的段。",
-		StatuslineFull:     "Full - 全部8个段",
-		StatuslineCompact:  "Compact - 模型、上下文、git",
-		StatuslineMinimal:  "Minimal - 仅模型和上下文",
-		StatuslineCustom:      "Custom - 选择单个段",
 		StatuslineThemeTitle:  "状态栏主题",
 		StatuslineThemeDesc:   "选择状态栏的颜色主题。",
-		ThemeDefault:          "默认",
-		ThemeCatppuccinMocha:  "Catppuccin Mocha (深色)",
-		ThemeCatppuccinLatte:  "Catppuccin Latte (浅色)",
-		SegmentsTitle:         "状态栏段",
-		SegModel:           "显示模型名称",
-		SegContext:         "显示上下文使用量",
-		SegOutputStyle:     "显示输出样式",
-		SegDirectory:       "显示目录",
-		SegGitStatus:       "显示git状态",
-		SegClaudeVersion:   "显示Claude版本",
-		SegMoaiVersion:     "显示MoAI版本",
-		SegGitBranch:       "显示git分支",
-		SegSessionTime:    "显示会话时间",
-		SegUsage5H:        "显示5H API使用量栏",
-		SegUsage7D:        "显示7D API使用量栏",
+		ThemeMoaiDark:         "MoAI Dark",
+		ThemeMoaiLight:        "MoAI Light",
 		SetupCancelled:     "设置已取消。",
 		SavedProfile:       "\n配置文件 '%s' 已保存:\n  偏好设置 → %s\n",
 	},
