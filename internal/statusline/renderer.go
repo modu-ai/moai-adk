@@ -119,7 +119,7 @@ func (r *Renderer) joinSegments(segments []string) string {
 // renderCompactV3 renders the compact mode 2-line layout.
 //
 // L1: 🤖 Model │ CW: 🪫 ██████████ 88%
-// L2: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L2: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 //
 // REQ-V3-TIME-006: session time omitted in compact mode
 // REQ-V3-API-011: 5H/7D bars omitted in compact mode
@@ -132,8 +132,8 @@ func (r *Renderer) renderCompactV3(data *StatusData) string {
 		lines = append(lines, l1)
 	}
 
-	// L2: branch (ahead/behind) + git status
-	l2 := r.renderGitLine(data)
+	// L2: directory + branch (ahead/behind) + git status
+	l2 := r.renderDirGitLine(data)
 	if l2 != "" {
 		lines = append(lines, l2)
 	}
@@ -147,8 +147,8 @@ func (r *Renderer) renderCompactV3(data *StatusData) string {
 // renderDefaultV3 renders the default mode 3-line layout.
 //
 // L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
-// L2: CW: 🪫 ██████████ 88% │ 5H: 🔋 ██████████ 45% │ 7D: 🪫 ██████████ 82%
-// L3: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L2: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L3: CW: 🪫 ██████████ 88% │ 5H: 🔋 ██████████ 45% │ 7D: 🪫 ██████████ 82%
 func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	var lines []string
 
@@ -158,14 +158,14 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 		lines = append(lines, l1)
 	}
 
-	// L2: CW/5H/7D bars inline (10 blocks) - always show all 3 bars
-	l2 := r.renderBarsInline(data, 10)
+	// L2: directory, branch, git status
+	l2 := r.renderDirGitLine(data)
 	if l2 != "" {
 		lines = append(lines, l2)
 	}
 
-	// L3: directory, branch, git status
-	l3 := r.renderDirGitLine(data)
+	// L3: CW/5H/7D bars inline (10 blocks) - always show all 3 bars
+	l3 := r.renderBarsInline(data, 10)
 	if l3 != "" {
 		lines = append(lines, l3)
 	}
@@ -179,10 +179,10 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 // renderFullV3 renders the full mode 5-line layout.
 //
 // L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
-// L2: CW: 🪫 ████████████████████████████████████░░░░ 88%
-// L3: 5H: 🔋 ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%
-// L4: 7D: 🪫 ████████████████████████████████░░░░░░░░ 82%
-// L5: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L2: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L3: CW: 🪫 ████████████████████████████████████░░░░ 88%
+// L4: 5H: 🔋 ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%
+// L5: 7D: 🪫 ████████████████████████████████░░░░░░░░ 82%
 func (r *Renderer) renderFullV3(data *StatusData) string {
 	var lines []string
 
@@ -192,13 +192,19 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 		lines = append(lines, l1)
 	}
 
-	// L2: CW bar (40 blocks, standalone line)
+	// L2: directory, branch, git status
+	l2 := r.renderDirGitLine(data)
+	if l2 != "" {
+		lines = append(lines, l2)
+	}
+
+	// L3: CW bar (40 blocks, standalone line)
 	cwPct := r.contextPercent(data)
 	if cwPct >= 0 {
 		lines = append(lines, renderUsageBar("CW:", cwPct, 40, r.noColor))
 	}
 
-	// L3: 5H bar (40 blocks, standalone line) with reset time - defaults to 0% when no data
+	// L4: 5H bar (40 blocks, standalone line) with reset time - defaults to 0% when no data
 	pct5H := 0
 	var reset5H string
 	if data.Usage != nil && data.Usage.Usage5H != nil {
@@ -207,7 +213,7 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 	}
 	lines = append(lines, renderUsageBarWithReset("5H:", pct5H, 40, r.noColor, reset5H))
 
-	// L4: 7D bar (40 blocks, standalone line) with reset date - defaults to 0% when no data
+	// L5: 7D bar (40 blocks, standalone line) with reset date - defaults to 0% when no data
 	pct7D := 0
 	var reset7D string
 	if data.Usage != nil && data.Usage.Usage7D != nil {
@@ -215,12 +221,6 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 		reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
 	}
 	lines = append(lines, renderUsageBarWithReset("7D:", pct7D, 40, r.noColor, reset7D))
-
-	// L5: directory, branch, git status
-	l5 := r.renderDirGitLine(data)
-	if l5 != "" {
-		lines = append(lines, l5)
-	}
 
 	if len(lines) == 0 {
 		return ""

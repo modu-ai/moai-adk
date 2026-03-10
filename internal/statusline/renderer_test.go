@@ -824,12 +824,13 @@ func TestRenderCompactV3_Line1_NoVersionNoStyleNoTask(t *testing.T) {
 	}
 }
 
-func TestRenderCompactV3_Line2_BranchAndGitStatus(t *testing.T) {
-	// compact L2: branch (ahead/behind), git status
+func TestRenderCompactV3_Line2_DirBranchAndGitStatus(t *testing.T) {
+	// compact L2: directory, branch (ahead/behind), git status
 	r := newTestRenderer()
 	data := &StatusData{
-		Metrics: MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:  MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
+		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
+		Memory:    MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
+		Directory: "moai-adk-go",
 		Git: GitStatusData{
 			Branch:    "feat/auth",
 			Ahead:     2,
@@ -845,6 +846,10 @@ func TestRenderCompactV3_Line2_BranchAndGitStatus(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l2 := lines[1]
 
+	// directory
+	if !strings.Contains(l2, "📁 moai-adk-go") {
+		t.Errorf("compact L2 must contain directory, got: %q", l2)
+	}
 	// branch + ahead/behind
 	if !strings.Contains(l2, "🔀 feat/auth ↑2↓1") {
 		t.Errorf("compact L2 must contain branch + ahead/behind, got: %q", l2)
@@ -965,48 +970,8 @@ func TestRenderDefaultV3_Line1(t *testing.T) {
 	}
 }
 
-func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
-	// default L2: CW/5H/7D bars inline on one line (10 blocks each, REQ-V3-API-011)
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:    MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
-		Directory: "moai-adk-go",
-		Git:       GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-	}
-
-	got := r.Render(data, ModeDefault)
-	lines := strings.Split(got, "\n")
-	l2 := lines[1]
-
-	// CW, 5H, 7D must all be on L2
-	if !strings.Contains(l2, "CW:") {
-		t.Errorf("default L2 must contain 'CW:' label, got: %q", l2)
-	}
-	if !strings.Contains(l2, "5H:") {
-		t.Errorf("default L2 must contain '5H:' label, got: %q", l2)
-	}
-	if !strings.Contains(l2, "7D:") {
-		t.Errorf("default L2 must contain '7D:' label, got: %q", l2)
-	}
-	// Verify percentage values
-	if !strings.Contains(l2, "88%") {
-		t.Errorf("default L2 must contain CW 88%%, got: %q", l2)
-	}
-	if !strings.Contains(l2, "45%") {
-		t.Errorf("default L2 must contain 5H 45%%, got: %q", l2)
-	}
-	if !strings.Contains(l2, "82%") {
-		t.Errorf("default L2 must contain 7D 82%%, got: %q", l2)
-	}
-}
-
-func TestRenderDefaultV3_Line3(t *testing.T) {
-	// default L3: directory, branch + ahead/behind, git status
+func TestRenderDefaultV3_Line2_DirBranchGit(t *testing.T) {
+	// default L2: directory, branch + ahead/behind, git status
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1025,16 +990,56 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 	lines := strings.Split(got, "\n")
+	l2 := lines[1]
+
+	if !strings.Contains(l2, "📁 moai-adk-go") {
+		t.Errorf("default L2 must contain directory, got: %q", l2)
+	}
+	if !strings.Contains(l2, "🔀 feat/auth ↑2↓1") {
+		t.Errorf("default L2 must contain branch + ahead/behind, got: %q", l2)
+	}
+	if !strings.Contains(l2, "📊") {
+		t.Errorf("default L2 must contain git status, got: %q", l2)
+	}
+}
+
+func TestRenderDefaultV3_Line3_BarsInline(t *testing.T) {
+	// default L3: CW/5H/7D bars inline on one line (10 blocks each, REQ-V3-API-011)
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
+		Memory:    MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
+		Directory: "moai-adk-go",
+		Git:       GitStatusData{Branch: "main", Available: true},
+		Usage: &UsageResult{
+			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
+			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
+		},
+	}
+
+	got := r.Render(data, ModeDefault)
+	lines := strings.Split(got, "\n")
 	l3 := lines[2]
 
-	if !strings.Contains(l3, "📁 moai-adk-go") {
-		t.Errorf("default L3 must contain directory, got: %q", l3)
+	// CW, 5H, 7D must all be on L3
+	if !strings.Contains(l3, "CW:") {
+		t.Errorf("default L3 must contain 'CW:' label, got: %q", l3)
 	}
-	if !strings.Contains(l3, "🔀 feat/auth ↑2↓1") {
-		t.Errorf("default L3 must contain branch + ahead/behind, got: %q", l3)
+	if !strings.Contains(l3, "5H:") {
+		t.Errorf("default L3 must contain '5H:' label, got: %q", l3)
 	}
-	if !strings.Contains(l3, "📊") {
-		t.Errorf("default L3 must contain git status, got: %q", l3)
+	if !strings.Contains(l3, "7D:") {
+		t.Errorf("default L3 must contain '7D:' label, got: %q", l3)
+	}
+	// Verify percentage values
+	if !strings.Contains(l3, "88%") {
+		t.Errorf("default L3 must contain CW 88%%, got: %q", l3)
+	}
+	if !strings.Contains(l3, "45%") {
+		t.Errorf("default L3 must contain 5H 45%%, got: %q", l3)
+	}
+	if !strings.Contains(l3, "82%") {
+		t.Errorf("default L3 must contain 7D 82%%, got: %q", l3)
 	}
 }
 
@@ -1143,53 +1148,8 @@ func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 	}
 }
 
-func TestRenderFullV3_Lines2To4_SeparateBars(t *testing.T) {
-	// full L2-L4: each bar on separate line (40 blocks, REQ-V3-API-011)
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:    MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
-		Directory: "moai-adk-go",
-		Git:       GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	// L2: CW bar only
-	l2 := lines[1]
-	if !strings.Contains(l2, "CW:") {
-		t.Errorf("full L2 must contain 'CW:' label, got: %q", l2)
-	}
-	if strings.Contains(l2, "5H:") || strings.Contains(l2, "7D:") {
-		t.Errorf("full L2 must not contain 5H/7D (CW only), got: %q", l2)
-	}
-
-	// L3: 5H bar only
-	l3 := lines[2]
-	if !strings.Contains(l3, "5H:") {
-		t.Errorf("full L3 must contain '5H:' label, got: %q", l3)
-	}
-	if strings.Contains(l3, "CW:") || strings.Contains(l3, "7D:") {
-		t.Errorf("full L3 must not contain CW/7D (5H only), got: %q", l3)
-	}
-
-	// L4: 7D bar only
-	l4 := lines[3]
-	if !strings.Contains(l4, "7D:") {
-		t.Errorf("full L4 must contain '7D:' label, got: %q", l4)
-	}
-	if strings.Contains(l4, "CW:") || strings.Contains(l4, "5H:") {
-		t.Errorf("full L4 must not contain CW/5H (7D only), got: %q", l4)
-	}
-}
-
-func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
-	// full L5: directory, branch + ahead/behind, git status
+func TestRenderFullV3_Line2_DirBranchGit(t *testing.T) {
+	// full L2: directory, branch + ahead/behind, git status
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1213,19 +1173,113 @@ func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
 	got := r.Render(data, ModeFull)
 	lines := strings.Split(got, "\n")
 
-	// Verify L5
+	if len(lines) < 2 {
+		t.Fatalf("full mode must have L2, got: %d lines\noutput:\n%s", len(lines), got)
+	}
+	l2 := lines[1]
+
+	if !strings.Contains(l2, "📁 moai-adk-go") {
+		t.Errorf("full L2 must contain directory, got: %q", l2)
+	}
+	if !strings.Contains(l2, "🔀 feat/auth ↑2↓1") {
+		t.Errorf("full L2 must contain branch + ahead/behind, got: %q", l2)
+	}
+	if !strings.Contains(l2, "📊") {
+		t.Errorf("full L2 must contain git status, got: %q", l2)
+	}
+}
+
+func TestRenderFullV3_Lines3To5_SeparateBars(t *testing.T) {
+	// full L3-L5: each bar on separate line (40 blocks, REQ-V3-API-011)
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
+		Memory:    MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
+		Directory: "moai-adk-go",
+		Git:       GitStatusData{Branch: "main", Available: true},
+		Usage: &UsageResult{
+			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
+			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
+		},
+	}
+
+	got := r.Render(data, ModeFull)
+	lines := strings.Split(got, "\n")
+
+	// L3: CW bar only
+	l3 := lines[2]
+	if !strings.Contains(l3, "CW:") {
+		t.Errorf("full L3 must contain 'CW:' label, got: %q", l3)
+	}
+	if strings.Contains(l3, "5H:") || strings.Contains(l3, "7D:") {
+		t.Errorf("full L3 must not contain 5H/7D (CW only), got: %q", l3)
+	}
+
+	// L4: 5H bar only
+	l4 := lines[3]
+	if !strings.Contains(l4, "5H:") {
+		t.Errorf("full L4 must contain '5H:' label, got: %q", l4)
+	}
+	if strings.Contains(l4, "CW:") || strings.Contains(l4, "7D:") {
+		t.Errorf("full L4 must not contain CW/7D (5H only), got: %q", l4)
+	}
+
+	// L5: 7D bar only
+	l5 := lines[4]
+	if !strings.Contains(l5, "7D:") {
+		t.Errorf("full L5 must contain '7D:' label, got: %q", l5)
+	}
+	if strings.Contains(l5, "CW:") || strings.Contains(l5, "5H:") {
+		t.Errorf("full L5 must not contain CW/5H (7D only), got: %q", l5)
+	}
+}
+
+func TestRenderFullV3_Line5_DirBranchGit_Legacy(t *testing.T) {
+	// Verify backwards compatibility: dir+branch+git is now on L2, not L5
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
+		Memory:    MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
+		Directory: "moai-adk-go",
+		Git: GitStatusData{
+			Branch:    "feat/auth",
+			Ahead:     2,
+			Behind:    1,
+			Staged:    3,
+			Modified:  2,
+			Untracked: 1,
+			Available: true,
+		},
+		Usage: &UsageResult{
+			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
+			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
+		},
+	}
+
+	got := r.Render(data, ModeFull)
+	lines := strings.Split(got, "\n")
+
+	// L5 should now be 7D bar, not dir+branch+git
 	if len(lines) < 5 {
-		t.Fatalf("full mode must have L5, got: %d lines\noutput:\n%s", len(lines), got)
+		t.Fatalf("full mode must have 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
 	}
 	l5 := lines[4]
 
-	if !strings.Contains(l5, "📁 moai-adk-go") {
-		t.Errorf("full L5 must contain directory, got: %q", l5)
+	if strings.Contains(l5, "📁") {
+		t.Errorf("full L5 should be 7D bar (not dir), got: %q", l5)
 	}
-	if !strings.Contains(l5, "🔀 feat/auth ↑2↓1") {
-		t.Errorf("full L5 must contain branch + ahead/behind, got: %q", l5)
+	if !strings.Contains(l5, "7D:") {
+		t.Errorf("full L5 must contain '7D:' label, got: %q", l5)
 	}
-	if !strings.Contains(l5, "📊") {
+	// Dir+branch+git is on L2
+	l2 := lines[1]
+	if !strings.Contains(l2, "📁 moai-adk-go") {
+		t.Errorf("full L2 must contain directory, got: %q", l2)
+	}
+	if !strings.Contains(l2, "🔀 feat/auth ↑2↓1") {
+		t.Errorf("full L2 must contain branch + ahead/behind, got: %q", l2)
+	}
+	if !strings.Contains(l2, "📊") {
 		t.Errorf("full L5 must contain git status, got: %q", l5)
 	}
 }
@@ -1506,14 +1560,14 @@ func TestRenderFullV3_WithResetTimes(t *testing.T) {
 		t.Fatalf("full mode should have 5 lines, got %d: %q", len(lines), got)
 	}
 
-	// L3 (5H) should contain "Resets in"
-	if !strings.Contains(lines[2], "Resets in") {
-		t.Errorf("5H line should contain 'Resets in', got: %q", lines[2])
+	// L4 (5H) should contain "Resets in"
+	if !strings.Contains(lines[3], "Resets in") {
+		t.Errorf("5H line should contain 'Resets in', got: %q", lines[3])
 	}
 
-	// L4 (7D) should contain "Resets" with a date
-	if !strings.Contains(lines[3], "Resets") {
-		t.Errorf("7D line should contain 'Resets', got: %q", lines[3])
+	// L5 (7D) should contain "Resets" with a date
+	if !strings.Contains(lines[4], "Resets") {
+		t.Errorf("7D line should contain 'Resets', got: %q", lines[4])
 	}
 }
 
