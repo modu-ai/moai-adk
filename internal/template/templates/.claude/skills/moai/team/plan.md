@@ -185,7 +185,7 @@ AskUserQuestion with options:
 5. TeamDelete to clean up team resources
 6. Log any unresponsive teammates for debugging
 7. Do NOT wait indefinitely for shutdown_response
-8. Execute /clear to free context for next phase
+8. Execute /clear to free context for next phase (Note: since v2.1.72, /clear only clears foreground tasks; background agents are preserved)
 
 **Timeout Rule**: If a teammate does not respond to shutdown_request within 30 seconds, proceed without their confirmation. This prevents the common issue of teammates hanging during cleanup.
 

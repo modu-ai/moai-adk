@@ -31,6 +31,7 @@ Rules:
 - For sub-agent mode: Launch multiple Agent() calls in a single message for parallel execution
 - For team mode: Use TeamCreate for persistent team coordination, SendMessage for inter-teammate communication
 - Team agents share TaskList for work coordination; sub-agents return results directly
+- Since v2.1.72: Failed Read/WebFetch/Glob calls no longer cancel sibling parallel calls; only Bash errors cascade
 
 ## Output Format
 

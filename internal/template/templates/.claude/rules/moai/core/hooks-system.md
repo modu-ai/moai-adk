@@ -240,6 +240,22 @@ Wrapper scripts are located at:
 - Do not store secrets in hook scripts
 - Agent hooks (type: "agent") have read-only tool access (Read, Grep, Glob)
 
+## Cron Scheduling (v2.1.71+)
+
+Claude Code provides built-in cron scheduling tools for recurring tasks within a session:
+
+| Tool | Purpose |
+|------|---------|
+| CronCreate | Create a recurring scheduled task (interval-based) |
+| CronDelete | Remove a scheduled cron job |
+| CronList | List all active cron jobs in the current session |
+
+These tools complement the `/loop` built-in command for recurring prompts.
+
+Use `CLAUDE_CODE_DISABLE_CRON` environment variable (v2.1.72+) to disable cron jobs mid-session.
+
+Cron jobs are session-scoped and do not persist across sessions.
+
 ## MX Tag Integration with Hooks
 
 PostToolUse hooks can trigger MX tag validation after code modifications:

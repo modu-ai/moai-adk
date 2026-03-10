@@ -52,6 +52,14 @@ Opus 4.6 supports effort levels that control reasoning depth:
 
 MoAI's --ultrathink flag triggers high effort for the current turn. This aligns with the "ultrathink" keyword behavior in Claude Code.
 
+## Team Agent Model Inheritance (v2.1.72+)
+
+Team agents inherit the leader's model by default when no explicit `model` field is set:
+- If a teammate agent definition has `model: inherit` (or no model field), it uses the leader's model
+- Explicit `model` field in agent definitions overrides inheritance (e.g., `model: haiku`)
+- In CG Mode, tmux session-level GLM env vars take precedence over model inheritance
+- The Agent() tool's `model` parameter also overrides both inheritance and agent definition
+
 ## Rules
 
 - Agent `model` field must be one of: inherit, opus, sonnet, haiku

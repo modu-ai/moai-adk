@@ -184,6 +184,17 @@ When `workflow.execution_mode` is `auto`, these thresholds determine when team m
 | team.auto_selection.min_files_for_team | 10 | Minimum affected files to trigger team mode |
 | team.auto_selection.min_complexity_score | 7 | Minimum complexity score (1-10) to trigger team mode |
 
+## Environment Variables Reference
+
+Notable environment variables for `.claude/settings.json` env section:
+
+| Variable | Since | Purpose |
+|----------|-------|---------|
+| CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS | v2.1.32 | Enable Agent Teams API |
+| CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS | v2.1.0 | Max tokens for file reads |
+| ENABLE_TOOL_SEARCH | v2.1.70 | Enable deferred tool search with proxy endpoints |
+| CLAUDE_CODE_DISABLE_CRON | v2.1.72 | Disable scheduled cron jobs mid-session |
+
 ## Rules
 
 - Never commit secrets to settings files

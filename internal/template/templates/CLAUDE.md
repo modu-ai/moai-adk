@@ -489,7 +489,7 @@ claude --debug "api,hooks"
 claude --debug "mcp"
 ```
 
-Or use the `/debug` command inside a session to inspect current session state, hook execution logs, and tool traces.
+Or use the `/debug` command inside a session to toggle debug logging on/off mid-session (v2.1.71+), inspecting hook execution logs, tool traces, and API interactions in real-time.
 
 ### Common Issues
 
@@ -513,8 +513,8 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.1.0 (Agent Teams Integration)
-Last Updated: 2026-02-10
+Version: 13.2.0 (Claude Code 2.1.72 Compatibility)
+Last Updated: 2026-03-10
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

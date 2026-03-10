@@ -34,8 +34,22 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 | **Team Use** | Single agent isolation | Multi-developer collaboration |
 | **State Persistence** | None | SPEC state, progress tracking |
 | **Hook Support** | WorktreeCreate/WorktreeRemove hooks | WorktreeCreate/WorktreeRemove hooks |
+| **Exit Tool** | ExitWorktree (v2.1.72+) | `moai worktree remove` |
 
 ## Claude Code 2.1.50+ Worktree Features
+
+### `ExitWorktree` Tool (v2.1.72+)
+
+Use the ExitWorktree tool to programmatically leave a worktree session and return to the main workspace:
+
+- Available when inside an `EnterWorktree` session or a `claude --worktree` session
+- Useful for user-initiated worktree sessions when the work is complete
+- For agent worktrees (`isolation: worktree`), cleanup is automatic on agent termination -- ExitWorktree is not needed
+
+When to use ExitWorktree:
+- After completing work in a `claude --worktree` session
+- When EnterWorktree was called manually and you want to return to the main workspace
+- NOT needed for agent-spawned worktrees (automatic cleanup handles it)
 
 ### `claude --worktree` (`-w`) Flag
 
@@ -222,5 +236,5 @@ Currently the handlers log worktree creation and removal for session tracking.
 
 ---
 
-Version: 3.0.0 (HARD Rules + Decision Tree)
+Version: 3.1.0 (ExitWorktree + v2.1.72 Compatibility)
 Source: SPEC-WORKTREE-001
