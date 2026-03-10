@@ -69,7 +69,6 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
 - **e2e** (aliases: e2e-test): Create and run E2E tests
-- **context** (aliases: ctx, memory): Extract and display git-based context memory
 
 
 ### Priority 2: SPEC-ID Detection
