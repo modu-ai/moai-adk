@@ -3,6 +3,7 @@ package worktree
 import (
 	"bytes"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -1238,7 +1239,20 @@ func TestIsSpecID(t *testing.T) {
 
 func TestRunNew_SpecID(t *testing.T) {
 	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
+	origHomeDir := userHomeDirFunc
+	origProjectName := getProjectNameFunc
+	origLegacyDir := legacyWorktreeDir
+	defer func() {
+		WorktreeProvider = origProvider
+		userHomeDirFunc = origHomeDir
+		getProjectNameFunc = origProjectName
+		legacyWorktreeDir = origLegacyDir
+	}()
+
+	fakeHomeDir := t.TempDir()
+	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+	legacyWorktreeDir = t.TempDir() // empty dir → no legacy warning
 
 	var capturedPath, capturedBranch string
 	WorktreeProvider = &mockWorktreeManager{
@@ -1266,7 +1280,7 @@ func TestRunNew_SpecID(t *testing.T) {
 			if capturedBranch != "feature/SPEC-AUTH-001" {
 				t.Errorf("branch = %q, want %q", capturedBranch, "feature/SPEC-AUTH-001")
 			}
-			wantPath := filepath.Join(".moai", "worktrees", "SPEC-AUTH-001")
+			wantPath := filepath.Join(fakeHomeDir, ".moai", "worktrees", "test-project", "SPEC-AUTH-001")
 			if capturedPath != wantPath {
 				t.Errorf("path = %q, want %q", capturedPath, wantPath)
 			}
@@ -1278,7 +1292,20 @@ func TestRunNew_SpecID(t *testing.T) {
 
 func TestRunNew_DefaultPath(t *testing.T) {
 	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
+	origHomeDir := userHomeDirFunc
+	origProjectName := getProjectNameFunc
+	origLegacyDir := legacyWorktreeDir
+	defer func() {
+		WorktreeProvider = origProvider
+		userHomeDirFunc = origHomeDir
+		getProjectNameFunc = origProjectName
+		legacyWorktreeDir = origLegacyDir
+	}()
+
+	fakeHomeDir := t.TempDir()
+	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+	legacyWorktreeDir = t.TempDir() // empty dir → no legacy warning
 
 	tests := []struct {
 		name     string
@@ -1286,24 +1313,24 @@ func TestRunNew_DefaultPath(t *testing.T) {
 		wantPath string
 	}{
 		{
-			name:     "SPEC ID uses .moai/worktrees",
+			name:     "SPEC ID uses global worktree path",
 			input:    "SPEC-AUTH-001",
-			wantPath: filepath.Join(".moai", "worktrees", "SPEC-AUTH-001"),
+			wantPath: filepath.Join(fakeHomeDir, ".moai", "worktrees", "test-project", "SPEC-AUTH-001"),
 		},
 		{
-			name:     "regular branch uses sibling directory",
+			name:     "regular branch uses global worktree path",
 			input:    "feature-x",
-			wantPath: filepath.Join("..", "feature-x"),
+			wantPath: filepath.Join(fakeHomeDir, ".moai", "worktrees", "test-project", "feature-x"),
 		},
 		{
-			name:     "SPEC with different category",
+			name:     "SPEC with different category uses global path",
 			input:    "SPEC-UI-042",
-			wantPath: filepath.Join(".moai", "worktrees", "SPEC-UI-042"),
+			wantPath: filepath.Join(fakeHomeDir, ".moai", "worktrees", "test-project", "SPEC-UI-042"),
 		},
 		{
-			name:     "branch with slash passes through",
+			name:     "branch with slash uses global path",
 			input:    "fix/something",
-			wantPath: filepath.Join("..", "fix/something"),
+			wantPath: filepath.Join(fakeHomeDir, ".moai", "worktrees", "test-project", "fix", "something"),
 		},
 	}
 
@@ -1960,6 +1987,123 @@ func TestRunSync_SpecID(t *testing.T) {
 		}
 	}
 	t.Error("sync subcommand not found")
+}
+
+// --- Tests for global path legacy warning ---
+
+func TestRunNew_LegacyWarning(t *testing.T) {
+	origProvider := WorktreeProvider
+	origHomeDir := userHomeDirFunc
+	origProjectName := getProjectNameFunc
+	origLegacyDir := legacyWorktreeDir
+	defer func() {
+		WorktreeProvider = origProvider
+		userHomeDirFunc = origHomeDir
+		getProjectNameFunc = origProjectName
+		legacyWorktreeDir = origLegacyDir
+	}()
+
+	fakeHomeDir := t.TempDir()
+	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+
+	// Create legacy dir with at least one entry to trigger the warning.
+	legacyDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(legacyDir, "old-worktree"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	legacyWorktreeDir = legacyDir
+
+	WorktreeProvider = &mockWorktreeManager{
+		addFunc: func(_, _ string) error { return nil },
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "new" {
+			stdout := new(bytes.Buffer)
+			stderr := new(bytes.Buffer)
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			_ = cmd.Flags().Set("path", "")
+
+			if err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"}); err != nil {
+				t.Fatalf("runNew error: %v", err)
+			}
+
+			if !strings.Contains(stderr.String(), "Legacy worktrees detected") {
+				t.Errorf("expected legacy warning on stderr, got: %q", stderr.String())
+			}
+			return
+		}
+	}
+	t.Error("new subcommand not found")
+}
+
+func TestRunNew_NoLegacyWarning_EmptyDir(t *testing.T) {
+	origProvider := WorktreeProvider
+	origHomeDir := userHomeDirFunc
+	origProjectName := getProjectNameFunc
+	origLegacyDir := legacyWorktreeDir
+	defer func() {
+		WorktreeProvider = origProvider
+		userHomeDirFunc = origHomeDir
+		getProjectNameFunc = origProjectName
+		legacyWorktreeDir = origLegacyDir
+	}()
+
+	fakeHomeDir := t.TempDir()
+	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+	legacyWorktreeDir = t.TempDir() // empty dir → no warning
+
+	WorktreeProvider = &mockWorktreeManager{
+		addFunc: func(_, _ string) error { return nil },
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "new" {
+			stdout := new(bytes.Buffer)
+			stderr := new(bytes.Buffer)
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			_ = cmd.Flags().Set("path", "")
+
+			if err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"}); err != nil {
+				t.Fatalf("runNew error: %v", err)
+			}
+
+			if strings.Contains(stderr.String(), "Legacy worktrees") {
+				t.Errorf("unexpected legacy warning on stderr: %q", stderr.String())
+			}
+			return
+		}
+	}
+	t.Error("new subcommand not found")
+}
+
+// --- Tests for findWorktreeForSpec compatibility with global path ---
+
+// TestGlobalPath_Base_MatchesSpecID verifies that filepath.Base of the global
+// worktree path returns the specID, which is how findWorktreeForSpec locates worktrees.
+func TestGlobalPath_Base_MatchesSpecID(t *testing.T) {
+	tests := []struct {
+		specID string
+	}{
+		{"SPEC-AUTH-001"},
+		{"SPEC-UI-042"},
+		{"SPEC-WORKTREE-001"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.specID, func(t *testing.T) {
+			// Simulate the global path built by runNew.
+			globalPath := filepath.Join("/home/user", ".moai", "worktrees", "my-project", tt.specID)
+			got := filepath.Base(globalPath)
+			if got != tt.specID {
+				t.Errorf("filepath.Base(%q) = %q, want %q", globalPath, got, tt.specID)
+			}
+		})
+	}
 }
 
 // --- Tests for config with 2 args ---

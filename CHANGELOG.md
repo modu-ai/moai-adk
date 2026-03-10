@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Summary
+
+Worktree 생성 경로를 프로젝트 내부(`.moai/worktrees/`)에서 글로벌(`~/.moai/worktrees/{ProjectName}/`)로 마이그레이션한다. 이를 통해 git worktree 설계 원칙에 부합하고, IDE 파일 감시 간섭과 중첩 구조 문제를 해소한다.
+
+### Breaking Changes
+
+None. `--path` 플래그 동작은 변경되지 않으며, 기존 프로젝트 내부 worktree는 정상 작동한다.
+
+### Added
+
+- **글로벌 worktree 경로**: `moai worktree new` 명령이 `~/.moai/worktrees/{ProjectName}/{branch}/`에 worktree를 생성한다 (SPEC-WORKTREE-001)
+- **프로젝트명 자동 감지**: `go.mod` module path → git remote origin → 디렉토리명 순서로 프로젝트명을 결정한다
+- **하위 호환성 경고**: 기존 `.moai/worktrees/`에 worktree가 있으면 stderr로 마이그레이션 안내를 출력한다
+- **글로벌 세션 정리**: `cleanupMoaiWorktrees`가 `~/.moai/worktrees/{ProjectName}/` 경로의 worker worktree도 정리한다
+- **symlink 해석**: worktree 정리 시 symlink을 resolve하여 정확한 경로 비교를 수행한다
+- `detectProjectName()`: go.mod, git remote, 디렉토리명 3단계 fallback 함수 (7 테스트 케이스)
+- `TestCleanupMoaiWorktrees_Global`: 글로벌 경로 정리 테스트
+
+### Changed
+
+- `internal/cli/worktree/new.go`: 기본 worktree 경로를 글로벌로 변경
+- `internal/cli/launcher.go`: 정리 대상에 글로벌 경로 추가, symlink 해석 로직 추가
+- 문서 경로 표기를 `~/.moai/worktrees/` 기반으로 통일 (worktree-integration.md, SKILL.md, registry-architecture.md)
+
+### Fixed
+
+None.
+
+---
+
 ## [2.7.3] - 2026-03-04
 
 ### Summary
