@@ -3,12 +3,15 @@ package template
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-// BuildSmartPATH captures the current terminal PATH and ensures essential directories are included.
-// Unlike hardcoded approaches, this preserves all user-installed tool paths (nvm, pyenv, cargo, etc.)
-// while ensuring moai-essential directories are present.
+// BuildSmartPATH constructs a portable, platform-appropriate PATH for use in settings.json.
+// Unlike the previous approach that captured the terminal PATH at init/update time, this
+// function builds a stable PATH from well-known locations. This prevents issue #467 where
+// machine-specific paths (e.g., Linux paths from CI) were baked into settings.json and
+// broke MCP servers on macOS.
 // Used by TemplateContext.SmartPATH for settings.json.tmpl rendering.
 func BuildSmartPATH() string {
 	homeDir, _ := os.UserHomeDir()
@@ -16,24 +19,34 @@ func BuildSmartPATH() string {
 		homeDir = os.Getenv("HOME")
 	}
 
-	currentPATH := os.Getenv("PATH")
 	sep := string(os.PathListSeparator)
 
-	// Essential directories that must be in PATH for moai to function
-	essentialDirs := []string{
-		filepath.Join(homeDir, ".local", "bin"),
-		filepath.Join(homeDir, "go", "bin"),
+	// User-specific directories (always included, cross-platform)
+	candidates := []string{
+		filepath.Join(homeDir, ".local", "bin"), // XDG user-local binaries
+		filepath.Join(homeDir, "go", "bin"),     // Go workspace binaries
 	}
 
-	// Prepend essential dirs if not already present
-	for i := len(essentialDirs) - 1; i >= 0; i-- {
-		dir := essentialDirs[i]
-		if !PathContainsDir(currentPATH, dir, sep) {
-			currentPATH = dir + sep + currentPATH
-		}
+	// Platform-specific package manager and system paths
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = append(candidates,
+			"/opt/homebrew/bin",  // Apple Silicon Homebrew
+			"/opt/homebrew/sbin", // Apple Silicon Homebrew system
+			"/usr/local/bin",     // Intel Homebrew / system
+			"/usr/local/sbin",    // Intel Homebrew system
+		)
+	default: // linux, etc.
+		candidates = append(candidates,
+			"/usr/local/bin",
+			"/usr/local/sbin",
+		)
 	}
 
-	return currentPATH
+	// Standard POSIX system paths (always required)
+	candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+
+	return strings.Join(candidates, sep)
 }
 
 // PathContainsDir checks if a PATH string contains a specific directory entry.
