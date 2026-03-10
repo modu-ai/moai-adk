@@ -329,20 +329,29 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 		if !strings.HasPrefix(line, "worktree ") {
 			continue
 		}
-		worktreePath := strings.TrimPrefix(line, "worktree ")
+		rawPath := strings.TrimPrefix(line, "worktree ")
+		// Normalize path separators: git on Windows returns forward-slash paths
+		// (e.g. C:/Users/...) while filepath.Join produces backslash paths.
+		// filepath.FromSlash converts to OS-native separators for correct comparison.
+		worktreePath := filepath.FromSlash(rawPath)
 		workerName := filepath.Base(worktreePath)
 		if !strings.HasPrefix(workerName, "worker-") {
 			continue
 		}
 		for _, base := range basePaths {
-			if strings.HasPrefix(worktreePath, base) {
-				// Use the full path so git can locate the worktree regardless
-				// of whether it is under .claude/worktrees/ or ~/.moai/worktrees/.
-				if err := removeWorktree(projectRoot, worktreePath); err == nil {
-					cleanedWorktrees = append(cleanedWorktrees, workerName)
-				}
-				break
+			// Use filepath.Rel instead of strings.HasPrefix to avoid false positives
+			// from sibling directories sharing a common prefix (e.g. "myproject" vs
+			// "myproject-old") and path separator mismatches on Windows.
+			rel, err := filepath.Rel(base, worktreePath)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				continue
 			}
+			// Use the full path so git can locate the worktree regardless
+			// of whether it is under .claude/worktrees/ or ~/.moai/worktrees/.
+			if err := removeWorktree(projectRoot, worktreePath); err == nil {
+				cleanedWorktrees = append(cleanedWorktrees, workerName)
+			}
+			break
 		}
 	}
 
