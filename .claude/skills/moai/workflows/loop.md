@@ -87,7 +87,7 @@ Step 5.5 - Pre-Fix MX Context Scan:
 - @MX:TODO items: Match against current issues for resolution tracking
 - Output: MX context map included in Step 6 fix agent prompts
 - Skip if no @MX tags found in target files
-- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
+- See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
 
 Step 6 - Fix Execution:
 - [HARD] Before each fix: TaskUpdate to change item to in_progress
@@ -117,7 +117,7 @@ Step 7.5 - MX Tag Check:
   - Unresolved issues: Keep @MX:TODO
 - Remove resolved @MX:TODO tags for fixed issues
 - Generate MX_TAG_REPORT with tags added/removed/updated
-- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag rules
+- See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules
 
 Step 8 - Snapshot Save:
 - Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/

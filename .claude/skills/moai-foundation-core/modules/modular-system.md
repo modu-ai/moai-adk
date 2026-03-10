@@ -655,7 +655,7 @@ Commands:
 - /moai:3-sync - Documentation sync to modular structure
 
 Memory:
-- @.claude/skills/ - Standard skill location
+- .claude/skills/ - Standard skill location
 - Skill("moai-foundation-core") modules/ - Memory files following modular pattern
 
 ---

@@ -42,7 +42,7 @@ Success Criteria:
 - Characterization tests passing
 - Behavior snapshots stable (no regression)
 - 85%+ code coverage achieved
-- TRUST 5 gates passed (see @.claude/rules/moai/core/moai-constitution.md)
+- TRUST 5 gates passed (see .claude/rules/moai/core/moai-constitution.md)
 
 ## TDD Mode (default)
 
@@ -69,7 +69,7 @@ Success Criteria:
 - All tests passing (RED-GREEN-REFACTOR complete)
 - Minimum coverage per commit: 80% (configurable)
 - No test written after implementation code
-- TRUST 5 gates passed (see @.claude/rules/moai/core/moai-constitution.md)
+- TRUST 5 gates passed (see .claude/rules/moai/core/moai-constitution.md)
 
 ### Brownfield Enhancement (for existing codebases)
 

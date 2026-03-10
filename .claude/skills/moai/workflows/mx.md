@@ -29,7 +29,7 @@ triggers:
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 
-For tag types, lifecycle rules, mandatory fields, and per-file limits, see: @.claude/rules/moai/workflow/mx-tag-protocol.md
+For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .claude/rules/moai/workflow/mx-tag-protocol.md
 
 ## When to Use
 

@@ -8,7 +8,7 @@ Purpose: Define rules for @MX code-level annotations that enable AI agents to co
 
 ## Scope
 
-This rule applies to all agents working with source code in the supported programming languages. For full @MX protocol details, see @.claude/skills/moai/references/mx-tag.md.
+This rule applies to all agents working with source code in the supported programming languages. For full @MX protocol details, see .claude/skills/moai/references/mx-tag.md.
 
 ## @MX Tag Syntax
 

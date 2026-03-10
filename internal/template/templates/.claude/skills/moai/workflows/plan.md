@@ -32,7 +32,7 @@ triggers:
 
 Create comprehensive SPEC documents using EARS format as the first step of the Plan-Run-Sync workflow.
 
-For phase overview and token budgets, see: @.claude/rules/moai/workflow/spec-workflow.md
+For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-workflow.md
 
 ## Scope
 

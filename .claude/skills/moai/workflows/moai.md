@@ -31,7 +31,7 @@ Purpose: Full autonomous workflow. User provides a goal, MoAI autonomously execu
 
 Flow: Explore -> Plan -> Run -> Sync -> Done
 
-For phase overview, token budgets, and phase transitions, see: @.claude/rules/moai/workflow/spec-workflow.md
+For phase overview, token budgets, and phase transitions, see: .claude/rules/moai/workflow/spec-workflow.md
 
 ## Supported Flags
 
@@ -76,7 +76,7 @@ constitution:
 - **TDD cycle**: `manager-tdd` subagent (RED-GREEN-REFACTOR)
 - **DDD cycle**: `manager-ddd` subagent (ANALYZE-PRESERVE-IMPROVE)
 
-For methodology details, see: @.claude/rules/moai/workflow/workflow-modes.md
+For methodology details, see: .claude/rules/moai/workflow/workflow-modes.md
 
 ## Phase 0: Parallel Exploration
 

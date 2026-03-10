@@ -150,7 +150,7 @@ Before applying fixes, scan target files for existing @MX tags to understand con
 
 **Skip Condition:** If no @MX tags found in target files, proceed directly to Phase 3.
 
-See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
+See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
 ## Phase 3: Auto-Fix
 
@@ -212,7 +212,7 @@ Generate MX_TAG_REPORT section in fix report:
 - Files with new @MX:WARN requiring review
 ```
 
-See @.claude/rules/moai/workflow/mx-tag-protocol.md for complete tag rules.
+See .claude/rules/moai/workflow/mx-tag-protocol.md for complete tag rules.
 
 ## Phase 4.6: Dead Code Cleanup (Optional)
 
