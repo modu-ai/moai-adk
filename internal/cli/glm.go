@@ -472,7 +472,39 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 }
 
 // saveLLMSection saves only the LLM section to llm.yaml.
+// Empty GLM model values are populated with defaults to avoid confusion.
 func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
+	// Populate empty GLM model values with defaults for clarity.
+	// This prevents llm.yaml from containing empty model strings that
+	// confuse users about whether GLM is configured.
+	defaults := config.NewDefaultLLMConfig()
+	if llm.GLM.BaseURL == "" {
+		llm.GLM.BaseURL = defaults.GLM.BaseURL
+	}
+	if llm.GLM.Models.High == "" {
+		llm.GLM.Models.High = defaults.GLM.Models.High
+	}
+	if llm.GLM.Models.Medium == "" {
+		llm.GLM.Models.Medium = defaults.GLM.Models.Medium
+	}
+	if llm.GLM.Models.Low == "" {
+		llm.GLM.Models.Low = defaults.GLM.Models.Low
+	}
+	// Also populate legacy model name fields for consistency
+	if llm.GLM.Models.Opus == "" {
+		llm.GLM.Models.Opus = defaults.GLM.Models.Opus
+	}
+	if llm.GLM.Models.Sonnet == "" {
+		llm.GLM.Models.Sonnet = defaults.GLM.Models.Sonnet
+	}
+	if llm.GLM.Models.Haiku == "" {
+		llm.GLM.Models.Haiku = defaults.GLM.Models.Haiku
+	}
+	// Populate GLM env var if empty
+	if llm.GLMEnvVar == "" {
+		llm.GLMEnvVar = defaults.GLMEnvVar
+	}
+
 	wrapper := struct {
 		LLM config.LLMConfig `yaml:"llm"`
 	}{LLM: llm}
