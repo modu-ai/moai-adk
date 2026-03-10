@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -386,6 +388,68 @@ type oauthUsageResponse struct {
 type usagePeriodData struct {
 	Utilization float64 `json:"utilization"` // Usage percentage (0-100)
 	ResetsAt    string  `json:"resets_at"`   // ISO 8601 reset timestamp
+}
+
+// fetchUsageFromHeadersWithURL makes a minimal probe POST request to the Anthropic Messages API
+// and extracts usage data from rate limit response headers (REQ-V3-API-005).
+// Accepts a custom URL to support testing with httptest servers.
+// Works on both 200 and 429 responses — headers are extracted regardless of status code.
+// Returns an error if no rate limit utilization headers are present.
+func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiURL string, token string) (*oauthUsageResponse, error) {
+	// Minimal probe body — tiny Haiku request to trigger rate limit headers
+	probeBody := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(probeBody))
+	if err != nil {
+		return nil, err
+	}
+
+	// Token must not be logged (REQ-V3-API-008)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := u.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	_ = resp.Body.Close()
+
+	// Read rate limit headers (present on 200 and 429 responses)
+	h5hUtil := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization")
+	h7dUtil := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization")
+	h5hReset := resp.Header.Get("anthropic-ratelimit-unified-5h-reset")
+	h7dReset := resp.Header.Get("anthropic-ratelimit-unified-7d-reset")
+
+	if h5hUtil == "" && h7dUtil == "" {
+		return nil, fmt.Errorf("no rate limit utilization headers in response")
+	}
+
+	result := &oauthUsageResponse{}
+
+	if h5hUtil != "" {
+		util, parseErr := strconv.ParseFloat(h5hUtil, 64)
+		if parseErr != nil {
+			return nil, fmt.Errorf("invalid 5h utilization header: %w", parseErr)
+		}
+		result.FiveHour = &usagePeriodData{
+			Utilization: util * 100,
+			ResetsAt:    h5hReset,
+		}
+	}
+
+	if h7dUtil != "" {
+		util, parseErr := strconv.ParseFloat(h7dUtil, 64)
+		if parseErr != nil {
+			return nil, fmt.Errorf("invalid 7d utilization header: %w", parseErr)
+		}
+		result.SevenDay = &usagePeriodData{
+			Utilization: util * 100,
+			ResetsAt:    h7dReset,
+		}
+	}
+
+	return result, nil
 }
 
 // fetchUsageFromOAuthAPI fetches 5H/7D usage from the Anthropic OAuth API with retry (REQ-V3-API-005).
