@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/hook/mx"
 )
 
 // teamConfig is the minimal structure read from ~/.claude/teams/*/config.json.
@@ -74,6 +76,17 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		cleanupGLMSettingsLocal(projectDir)
 	}
 
+	// Validate MX tags for files modified during this session.
+	// Best-effort: errors are logged, never block session end (AC-SESSION-002).
+	if projectDir != "" {
+		mxCtx, mxCancel := context.WithTimeout(ctx, 4*time.Second)
+		defer mxCancel()
+		modifiedFiles := getModifiedGoFiles(mxCtx, projectDir)
+		if len(modifiedFiles) > 0 {
+			validateMxTags(mxCtx, modifiedFiles, projectDir)
+		}
+	}
+
 	slog.Info("session_end: cleanup complete",
 		"session_id", input.SessionID,
 	)
@@ -81,6 +94,99 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	// Do NOT use hookSpecificOutput for SessionEnd events
 	return &HookOutput{}, nil
+}
+
+// getModifiedGoFiles returns the list of .go files modified in the current session.
+// Uses `git diff --name-only HEAD` to find modified files.
+// Returns an empty slice if git is unavailable or no Go files were modified.
+func getModifiedGoFiles(ctx context.Context, projectDir string) []string {
+	cmd := exec.CommandContext(ctx, "git", "diff", "--name-only", "HEAD")
+	cmd.Dir = projectDir
+	out, err := cmd.Output()
+	if err != nil {
+		// git diff may fail in non-git environments; this is expected
+		return nil
+	}
+
+	var goFiles []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasSuffix(line, ".go") {
+			absPath := filepath.Join(projectDir, line)
+			goFiles = append(goFiles, absPath)
+		}
+	}
+	return goFiles
+}
+
+// validateMxTags validates @MX tag presence for the given Go files.
+// Observation-only: errors are logged with slog.Warn, never returned.
+// AC-SESSION-001: results are logged with slog.Info.
+// AC-SESSION-003: respects 4s timeout via context (partial results on timeout).
+func validateMxTags(ctx context.Context, filePaths []string, projectRoot string) {
+	if len(filePaths) == 0 {
+		return
+	}
+
+	// Filter to Go files only
+	var goFiles []string
+	for _, f := range filePaths {
+		if strings.HasSuffix(f, ".go") {
+			goFiles = append(goFiles, f)
+		}
+	}
+	if len(goFiles) == 0 {
+		return
+	}
+
+	validator := mx.NewValidator(nil, projectRoot)
+	report, err := validator.ValidateFiles(ctx, goFiles)
+	if err != nil {
+		slog.Warn("session_end: mx validation error",
+			"error", err,
+			"files", len(goFiles),
+		)
+		return
+	}
+
+	if report == nil {
+		return
+	}
+
+	// AC-SESSION-003: log timed out files
+	if len(report.TimedOutFiles) > 0 {
+		slog.Warn("session_end: mx validation timed out for some files",
+			"timed_out", len(report.TimedOutFiles),
+		)
+	}
+
+	// AC-SESSION-001: log validation results
+	if report.TotalViolations() > 0 || len(report.TimedOutFiles) > 0 {
+		slog.Info("session_end: mx validation complete",
+			"files_validated", len(report.FileReports),
+			"files_timed_out", len(report.TimedOutFiles),
+			"p1_violations", report.P1Count(),
+			"p2_violations", report.P2Count(),
+			"p3_violations", report.P3Count(),
+			"p4_violations", report.P4Count(),
+			"duration_ms", report.Duration.Milliseconds(),
+		)
+
+		if report.HasBlockingViolations() {
+			slog.Warn("session_end: blocking MX violations detected - run /moai run to add missing tags",
+				"p1", report.P1Count(),
+				"p2", report.P2Count(),
+			)
+		}
+	} else {
+		slog.Info("session_end: mx validation passed",
+			"files_validated", len(report.FileReports),
+			"duration_ms", report.Duration.Milliseconds(),
+		)
+	}
 }
 
 // cleanupCurrentSessionTeam removes the team directory whose leadSessionId

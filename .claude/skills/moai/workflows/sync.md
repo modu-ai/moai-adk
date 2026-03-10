@@ -250,7 +250,19 @@ Aggregate all results into a quality report showing status for test-runner, lint
 
 Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.
 
-Skip if `--skip-mx` flag is provided.
+**[HARD] P1/P2 violations BLOCK sync.** If any P1 (missing @MX:ANCHOR on fan_in >= 3 function) or P2 (missing @MX:WARN on goroutine pattern) violations are found, sync is halted and the user must resolve them before proceeding.
+
+- P1 (Blocking): exported function with fan_in >= 3 missing @MX:ANCHOR
+- P2 (Blocking): goroutine/async pattern missing @MX:WARN
+- P3 (Advisory): long exported function missing @MX:NOTE — warning only, sync continues
+- P4 (Advisory): untested public function missing @MX:TODO — warning only, sync continues
+
+When P1/P2 violations are detected:
+1. Display full violation report with file:line references
+2. Show message: "Run /moai run to add missing tags, or use --skip-mx to bypass"
+3. Halt sync — do NOT proceed to Phase 0.7+
+
+Skip if `--skip-mx` flag is provided. When skipped, log: "MX validation skipped by user flag" in sync report.
 
 #### Step 0.6.1: Language Detection for Modified Files
 
