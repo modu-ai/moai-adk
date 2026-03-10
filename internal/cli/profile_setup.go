@@ -76,27 +76,10 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	if statuslineMode == "" {
 		statuslineMode = "default"
 	}
-	statuslinePreset := existingPrefs.StatuslinePreset
-	if statuslinePreset == "" {
-		statuslinePreset = "full"
-	}
 	statuslineTheme := existingPrefs.StatuslineTheme
 	if statuslineTheme == "" {
 		statuslineTheme = "default"
 	}
-	// Statusline segment toggles
-	segModel := getSegmentDefault(existingPrefs.StatuslineSegments, "model", true)
-	segContext := getSegmentDefault(existingPrefs.StatuslineSegments, "context", true)
-	segOutputStyle := getSegmentDefault(existingPrefs.StatuslineSegments, "output_style", true)
-	segDirectory := getSegmentDefault(existingPrefs.StatuslineSegments, "directory", true)
-	segGitStatus := getSegmentDefault(existingPrefs.StatuslineSegments, "git_status", true)
-	segClaudeVersion := getSegmentDefault(existingPrefs.StatuslineSegments, "claude_version", true)
-	segMoaiVersion := getSegmentDefault(existingPrefs.StatuslineSegments, "moai_version", true)
-	segGitBranch := getSegmentDefault(existingPrefs.StatuslineSegments, "git_branch", true)
-	segSessionTime := getSegmentDefault(existingPrefs.StatuslineSegments, "session_time", true)
-	segUsage5H := getSegmentDefault(existingPrefs.StatuslineSegments, "usage_5h", true)
-	segUsage7D := getSegmentDefault(existingPrefs.StatuslineSegments, "usage_7d", true)
-
 	// ====== Step 1: Language Selection ======
 	langOptions := []huh.Option[string]{
 		huh.NewOption("English", "en"),
@@ -204,34 +187,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.ThemeCatppuccinLatte, "catppuccin-latte"),
 				).
 				Value(&statuslineTheme),
-			huh.NewSelect[string]().
-				Title(t.StatuslineTitle).
-				Description(t.StatuslineDesc).
-				Options(
-					huh.NewOption(t.StatuslineFull, "full"),
-					huh.NewOption(t.StatuslineCompact, "compact"),
-					huh.NewOption(t.StatuslineMinimal, "minimal"),
-					huh.NewOption(t.StatuslineCustom, "custom"),
-				).
-				Value(&statuslinePreset),
 		).Title(t.DisplayTitle),
-
-		// Section 6: Custom Segments — shown only when preset is "custom"
-		huh.NewGroup(
-			huh.NewConfirm().Title(t.SegModel).Value(&segModel),
-			huh.NewConfirm().Title(t.SegContext).Value(&segContext),
-			huh.NewConfirm().Title(t.SegOutputStyle).Value(&segOutputStyle),
-			huh.NewConfirm().Title(t.SegDirectory).Value(&segDirectory),
-			huh.NewConfirm().Title(t.SegGitStatus).Value(&segGitStatus),
-			huh.NewConfirm().Title(t.SegClaudeVersion).Value(&segClaudeVersion),
-			huh.NewConfirm().Title(t.SegMoaiVersion).Value(&segMoaiVersion),
-			huh.NewConfirm().Title(t.SegGitBranch).Value(&segGitBranch),
-			huh.NewConfirm().Title(t.SegSessionTime).Value(&segSessionTime),
-			huh.NewConfirm().Title(t.SegUsage5H).Value(&segUsage5H),
-			huh.NewConfirm().Title(t.SegUsage7D).Value(&segUsage7D),
-		).Title(t.SegmentsTitle).
-			WithHideFunc(func() bool { return statuslinePreset != "custom" }),
-
 	)
 
 	if err := form.Run(); err != nil {
@@ -253,26 +209,8 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		Model:            model,
 		Bypass:           bypass,
 		StatuslineMode:   statuslineMode,
-		StatuslinePreset: statuslinePreset,
-		StatuslineTheme:  statuslineTheme,
-		TeammateDisplay:  "auto",
-	}
-
-	// Only persist segment toggles for custom preset
-	if statuslinePreset == "custom" {
-		prefs.StatuslineSegments = map[string]bool{
-			"model":          segModel,
-			"context":        segContext,
-			"output_style":   segOutputStyle,
-			"directory":      segDirectory,
-			"git_status":     segGitStatus,
-			"claude_version": segClaudeVersion,
-			"moai_version":   segMoaiVersion,
-			"git_branch":     segGitBranch,
-			"session_time":   segSessionTime,
-			"usage_5h":       segUsage5H,
-			"usage_7d":       segUsage7D,
-		}
+		StatuslineTheme: statuslineTheme,
+		TeammateDisplay: "auto",
 	}
 
 	if err := profile.WritePreferences(profileName, prefs); err != nil {
@@ -293,15 +231,4 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		profileName,
 		profile.GetPreferencesPath(profileName))
 	return nil
-}
-
-// getSegmentDefault returns the segment toggle value from the map, or the default.
-func getSegmentDefault(segments map[string]bool, name string, defaultVal bool) bool {
-	if segments == nil {
-		return defaultVal
-	}
-	if val, ok := segments[name]; ok {
-		return val
-	}
-	return defaultVal
 }
