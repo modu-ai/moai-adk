@@ -41,6 +41,7 @@ type usageCollector struct {
 	failureCooldownMax  time.Duration // Exponential backoff max cooldown (default: 32m)
 	client             *http.Client
 	homeDir            string
+	keychainReaderFn   func() (string, error) // Override for testing
 }
 
 // NewUsageCollector creates a new UsageProvider.
@@ -81,7 +82,11 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	}
 
 	// Cache miss: retrieve OAuth token (REQ-V3-API-010)
-	token := readOAuthToken(u.homeDir, u.readTokenFromKeychain)
+	keychainReader := u.readTokenFromKeychain
+	if u.keychainReaderFn != nil {
+		keychainReader = u.keychainReaderFn
+	}
+	token := readOAuthToken(u.homeDir, keychainReader)
 	if token == "" {
 		slog.Debug("oauth token not found, skipping usage collection")
 		return nil, nil
@@ -434,6 +439,7 @@ func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiUR
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("anthropic-beta", "oauth-2025-04-20")
 
 	resp, err := u.client.Do(req)
 	if err != nil {

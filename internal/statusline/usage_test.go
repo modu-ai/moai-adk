@@ -478,9 +478,20 @@ func TestUsageProvider_CollectUsage_GracefulDegradation(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	// No token, no cache
-
-	collector := NewUsageCollector(tmpDir)
+	cachePath := filepath.Join(tmpDir, ".moai", "cache", "usage.json")
+	// No token, no cache — mock keychain to prevent real keychain access
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		client:              &http.Client{Timeout: 300 * time.Millisecond},
+		homeDir:             tmpDir,
+	}
+	// Override keychain reader to always fail (no real keychain access)
+	collector.keychainReaderFn = func() (string, error) {
+		return "", fmt.Errorf("no keychain in test")
+	}
 
 	// Should return nil, nil on failure (no error propagation)
 	result, err := collector.CollectUsage(context.Background())
