@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,20 +23,24 @@ type UsageProvider interface {
 
 // usageCacheFile represents the JSON structure of the cache file (REQ-V3-API-002).
 type usageCacheFile struct {
-	CachedAt int64      `json:"cached_at"` // Unix timestamp
-	Usage5H  *UsageData `json:"usage_5h"`
-	Usage7D  *UsageData `json:"usage_7d"`
+	CachedAt     int64      `json:"cached_at"`                // Unix timestamp
+	FailedAt     int64      `json:"failed_at,omitempty"`      // Last API failure time (Unix timestamp)
+	FailureCount int        `json:"failure_count,omitempty"`  // Consecutive failure count (for exponential backoff)
+	Usage5H      *UsageData `json:"usage_5h"`
+	Usage7D      *UsageData `json:"usage_7d"`
 }
 
 // usageCollector collects and caches Anthropic API usage.
 // 5-minute TTL, 300ms timeout, graceful degradation (REQ-V3-API-002~005, REQ-V3-API-009).
 type usageCollector struct {
-	mu        sync.RWMutex
-	cache     *usageCacheFile
-	cachePath string
-	ttl       time.Duration
-	client    *http.Client
-	homeDir   string
+	mu                 sync.RWMutex
+	cache              *usageCacheFile
+	cachePath          string
+	ttl                time.Duration
+	failureCooldownBase time.Duration // Exponential backoff base cooldown (default: 1m)
+	failureCooldownMax  time.Duration // Exponential backoff max cooldown (default: 32m)
+	client             *http.Client
+	homeDir            string
 }
 
 // NewUsageCollector creates a new UsageProvider.
@@ -43,10 +50,12 @@ func NewUsageCollector(homeDir string) UsageProvider {
 	cachePath := filepath.Join(cacheDir, "usage.json")
 
 	return &usageCollector{
-		cachePath: cachePath,
-		ttl:       5 * time.Minute,
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
 		client: &http.Client{
-			Timeout: 2 * time.Second,
+			Timeout: 5 * time.Second, // Increased for Haiku probe (Messages API)
 		},
 		homeDir: homeDir,
 	}
@@ -62,6 +71,15 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		return u.toUsageResult(cached), nil
 	}
 
+	// Skip API call during failure cooldown (prevents 429 spiral)
+	if u.isInFailureCooldown() {
+		slog.Debug("usage API in failure cooldown, skipping")
+		if stale := u.getStaleCache(); stale != nil {
+			return u.toUsageResult(stale), nil
+		}
+		return nil, nil
+	}
+
 	// Cache miss: retrieve OAuth token (REQ-V3-API-010)
 	token := readOAuthToken(u.homeDir, u.readTokenFromKeychain)
 	if token == "" {
@@ -69,10 +87,18 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		return nil, nil
 	}
 
-	// Fetch 5H/7D usage from OAuth API in a single call (REQ-V3-API-005)
-	apiResp, err := u.fetchUsageFromOAuthAPI(ctx, token)
+	// Strategy: Try Haiku probe (response headers) first, fall back to OAuth endpoint.
+	// The OAuth /api/oauth/usage endpoint has a known persistent 429 issue (Issue #31021),
+	// so we prefer extracting rate limit data from Messages API response headers.
+	apiResp, err := u.fetchUsageFromHeaders(ctx, token)
 	if err != nil {
-		slog.Debug("oauth usage fetch failed", "error", err)
+		slog.Debug("haiku probe failed, trying oauth endpoint", "error", err)
+		// Fallback: try the OAuth usage endpoint
+		apiResp, err = u.fetchUsageFromOAuthAPI(ctx, token)
+	}
+	if err != nil {
+		slog.Debug("all usage fetch methods failed", "error", err)
+		u.saveFailure() // Record failure to prevent 429 spiral
 		// Return stale cache if available (stale-while-revalidate pattern)
 		if stale := u.getStaleCache(); stale != nil {
 			slog.Debug("returning stale usage cache")
@@ -102,9 +128,11 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 
 	// Update cache (async, continue on failure)
 	cache := &usageCacheFile{
-		CachedAt: time.Now().Unix(),
-		Usage5H:  usage5H,
-		Usage7D:  usage7D,
+		CachedAt:     time.Now().Unix(),
+		FailedAt:     0, // Reset failure state on success
+		FailureCount: 0, // Reset consecutive failure count on success
+		Usage5H:      usage5H,
+		Usage7D:      usage7D,
 	}
 	go func() {
 		u.mu.Lock()
@@ -114,6 +142,64 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	}()
 
 	return u.toUsageResult(cache), nil
+}
+
+// calcCooldown calculates exponential backoff cooldown based on consecutive failure count.
+// cooldown = min(base * 2^(count-1), max)
+// count=1: 1m, count=2: 2m, count=3: 4m, count=4: 8m, count=5: 16m, count>=6: 32m
+func (u *usageCollector) calcCooldown(failureCount int) time.Duration {
+	if failureCount <= 0 {
+		return 0
+	}
+	cooldown := u.failureCooldownBase
+	for i := 1; i < failureCount; i++ {
+		cooldown *= 2
+		if cooldown >= u.failureCooldownMax {
+			return u.failureCooldownMax
+		}
+	}
+	return cooldown
+}
+
+// isInFailureCooldown checks if currently within exponential backoff cooldown period.
+// Checks in-memory cache first, then falls back to file cache.
+func (u *usageCollector) isInFailureCooldown() bool {
+	u.mu.RLock()
+	if u.cache != nil && u.cache.FailedAt > 0 && u.cache.FailureCount > 0 {
+		failedAt := time.Unix(u.cache.FailedAt, 0)
+		cooldown := u.calcCooldown(u.cache.FailureCount)
+		if time.Since(failedAt) < cooldown {
+			u.mu.RUnlock()
+			return true
+		}
+	}
+	u.mu.RUnlock()
+
+	// Check file cache
+	loaded, err := u.loadCache()
+	if err != nil || loaded == nil {
+		return false
+	}
+	if loaded.FailedAt > 0 && loaded.FailureCount > 0 {
+		failedAt := time.Unix(loaded.FailedAt, 0)
+		cooldown := u.calcCooldown(loaded.FailureCount)
+		return time.Since(failedAt) < cooldown
+	}
+	return false
+}
+
+// saveFailure records failure timestamp and increments consecutive failure count.
+// Preserves existing usage data (stale data can still be displayed).
+func (u *usageCollector) saveFailure() {
+	u.mu.Lock()
+	if u.cache == nil {
+		u.cache = &usageCacheFile{}
+	}
+	u.cache.FailedAt = time.Now().Unix()
+	u.cache.FailureCount++
+	cache := u.cache
+	u.mu.Unlock()
+	_ = u.saveCache(cache)
 }
 
 // getCachedIfFresh returns cached data if it exists and is within TTL (REQ-V3-API-004).
@@ -312,6 +398,92 @@ type usagePeriodData struct {
 	ResetsAt    string  `json:"resets_at"`   // ISO 8601 reset timestamp
 }
 
+// fetchUsageFromHeaders extracts 5H/7D usage from Messages API response headers.
+// Sends a minimal Haiku request (max_tokens=1) and reads rate limit headers.
+// Headers are returned even on 429 responses, making this reliable when rate-limited.
+//
+// Relevant headers:
+//
+//	anthropic-ratelimit-unified-5h-utilization: 0.28  (decimal 0-1)
+//	anthropic-ratelimit-unified-7d-utilization: 0.59  (decimal 0-1)
+//	anthropic-ratelimit-unified-5h-reset: 2026-03-10T20:00:00Z (ISO 8601)
+//	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
+func (u *usageCollector) fetchUsageFromHeaders(ctx context.Context, token string) (*oauthUsageResponse, error) {
+	return u.fetchUsageFromHeadersWithURL(ctx, "https://api.anthropic.com/v1/messages", token)
+}
+
+// fetchUsageFromHeadersWithURL extracts 5H/7D usage from Messages API response headers.
+// Sends a minimal Haiku request (max_tokens=1) and reads rate limit headers.
+// Headers are returned even on 429 responses, making this reliable when rate-limited.
+//
+// Relevant headers:
+//
+//	anthropic-ratelimit-unified-5h-utilization: 0.28  (decimal 0-1)
+//	anthropic-ratelimit-unified-7d-utilization: 0.59  (decimal 0-1)
+//	anthropic-ratelimit-unified-5h-reset: 2026-03-10T20:00:00Z (ISO 8601)
+//	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
+func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiURL, token string) (*oauthUsageResponse, error) {
+	// Minimal request body: cheapest possible Haiku call
+	body := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := u.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("haiku probe request: %w", err)
+	}
+	_ = resp.Body.Close()
+
+	// Parse rate limit headers (available on both 200 and 429 responses)
+	h5 := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization")
+	h7 := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization")
+
+	if h5 == "" && h7 == "" {
+		return nil, fmt.Errorf("no rate limit headers in response (status %d)", resp.StatusCode)
+	}
+
+	result := &oauthUsageResponse{}
+
+	if h5 != "" {
+		util, parseErr := strconv.ParseFloat(h5, 64)
+		if parseErr == nil {
+			reset := resp.Header.Get("anthropic-ratelimit-unified-5h-reset")
+			result.FiveHour = &usagePeriodData{
+				Utilization: math.Round(util*10000) / 100, // Convert 0-1 to 0-100 with 2 decimal places
+				ResetsAt:    reset,
+			}
+		}
+	}
+
+	if h7 != "" {
+		util, parseErr := strconv.ParseFloat(h7, 64)
+		if parseErr == nil {
+			reset := resp.Header.Get("anthropic-ratelimit-unified-7d-reset")
+			result.SevenDay = &usagePeriodData{
+				Utilization: math.Round(util*10000) / 100, // Convert 0-1 to 0-100 with 2 decimal places
+				ResetsAt:    reset,
+			}
+		}
+	}
+
+	if result.FiveHour == nil && result.SevenDay == nil {
+		return nil, fmt.Errorf("failed to parse rate limit headers")
+	}
+
+	slog.Debug("usage from headers",
+		"5h", h5, "7d", h7,
+		"status", resp.StatusCode)
+
+	return result, nil
+}
+
 // fetchUsageFromOAuthAPI fetches 5H/7D usage from the Anthropic OAuth API with retry (REQ-V3-API-005).
 // Endpoint: GET https://api.anthropic.com/api/oauth/usage
 // Retries up to 3 times with exponential backoff on 429 (rate limit).
@@ -321,7 +493,7 @@ func (u *usageCollector) fetchUsageFromOAuthAPI(ctx context.Context, token strin
 	const maxRetries = 3
 
 	var lastErr error
-	backoff := 500 * time.Millisecond
+	backoff := 2 * time.Second
 
 	for attempt := range maxRetries {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)

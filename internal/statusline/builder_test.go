@@ -54,6 +54,7 @@ func makeStdinJSON(data *StdinData) *bytes.Buffer {
 }
 
 func TestBuilder_Build_FullData(t *testing.T) {
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100") // Disable CW scaling for this test
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
 			data: &GitStatusData{
@@ -703,6 +704,7 @@ func TestIntegration_NoUsageLineCount(t *testing.T) {
 // TestIntegration_GradientBar verifies gradient bar block counts (AC-V3-07).
 // 60% usage → 24 of 40 blocks filled.
 func TestIntegration_GradientBar(t *testing.T) {
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100") // Disable CW scaling for exact block count tests
 	// AC-V3-07: 60% usage → 24 filled in 40-block bar (full mode CW bar)
 	t.Run("AC-V3-07: 60% → 24 of 40 CW blocks filled", func(t *testing.T) {
 		// Set context window to 60% usage

@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"log/slog"
 	"path/filepath"
+	"strings"
+	"time"
 
 	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
@@ -25,6 +28,11 @@ type postToolHandler struct {
 	// analyzer is an optional analyzer that performs AST-based scanning after Write/Edit operations.
 	// If nil, AST scanning is skipped.
 	analyzer FileAnalyzer
+	// mxValidator is an optional validator for @MX tag checks after Write/Edit operations.
+	// If nil, MX validation is skipped.
+	mxValidator mx.Validator
+	// mxTimeout is the timeout for MX validation. Default is 500ms.
+	mxTimeout time.Duration
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -42,6 +50,29 @@ func NewPostToolHandlerWithDiagnostics(diagnostics lsphook.LSPDiagnosticsCollect
 // If diagnostics or analyzer is nil, the corresponding feature is skipped.
 func NewPostToolHandlerWithAstgrep(diagnostics lsphook.LSPDiagnosticsCollector, analyzer FileAnalyzer) Handler {
 	return &postToolHandler{diagnostics: diagnostics, analyzer: analyzer}
+}
+
+// NewPostToolHandlerWithMxValidator creates a PostToolUse handler with MX tag validation.
+// projectRoot is the directory used for fan_in reference counting.
+// If projectRoot is empty, MX validation is skipped.
+// Uses default 500ms timeout for MX validation.
+func NewPostToolHandlerWithMxValidator(diagnostics lsphook.LSPDiagnosticsCollector, analyzer FileAnalyzer, projectRoot string) Handler {
+	return NewPostToolHandlerWithMxValidatorAndTimeout(diagnostics, analyzer, projectRoot, 500*time.Millisecond)
+}
+
+// NewPostToolHandlerWithMxValidatorAndTimeout creates a PostToolUse handler with MX tag validation
+// and a custom timeout for validation.
+func NewPostToolHandlerWithMxValidatorAndTimeout(diagnostics lsphook.LSPDiagnosticsCollector, analyzer FileAnalyzer, projectRoot string, timeout time.Duration) Handler {
+	var validator mx.Validator
+	if projectRoot != "" {
+		validator = mx.NewValidator(nil, projectRoot)
+	}
+	return &postToolHandler{
+		diagnostics: diagnostics,
+		analyzer:    analyzer,
+		mxValidator: validator,
+		mxTimeout:   timeout,
+	}
 }
 
 // EventType returns EventPostToolUse.
@@ -88,6 +119,11 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// Perform AST file scan after Write/Edit operations (observation-only, never blocks)
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.analyzer != nil {
 		h.runAstScan(ctx, input, metrics)
+	}
+
+	// Perform MX tag validation after Write/Edit operations (observation-only, never blocks)
+	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.mxValidator != nil {
+		h.runMxValidation(ctx, input, metrics)
 	}
 
 	jsonData, err := json.Marshal(metrics)
@@ -147,6 +183,108 @@ func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metr
 		"matches", len(result.Matches),
 		"lang", result.Language,
 	)
+}
+
+// runMxValidation performs MX tag validation on the modified file.
+// Observation-only: never blocks even if an error occurs.
+// AC-POST-001: adds mx_validation metrics to the output.
+// AC-POST-002: respects 500ms timeout via context.
+func (h *postToolHandler) runMxValidation(ctx context.Context, input *HookInput, metrics map[string]any) {
+	// Extract file path from tool input
+	var parsed map[string]any
+	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
+		slog.Debug("mx: failed to parse tool input", "error", err)
+		return
+	}
+
+	filePath, ok := parsed["file_path"].(string)
+	if !ok || filePath == "" {
+		return
+	}
+
+	// Only validate Go files
+	if !strings.HasSuffix(filePath, ".go") {
+		return
+	}
+
+	// Use configured timeout (AC-POST-002: 500ms budget)
+	timeout := h.mxTimeout
+	if timeout <= 0 {
+		timeout = 500 * time.Millisecond
+	}
+
+	mxCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	start := time.Now()
+	report, err := h.mxValidator.ValidateFile(mxCtx, filePath)
+	duration := time.Since(start)
+
+	if err != nil {
+		slog.Debug("mx: validation failed (observation-only)",
+			"file_path", filePath,
+			"error", err,
+		)
+		metrics["mx_validation"] = map[string]any{
+			"status":      "skipped",
+			"violations":  []any{},
+			"duration_ms": duration.Milliseconds(),
+		}
+		return
+	}
+
+	if report == nil || report.TimedOut {
+		// AC-POST-002: return "skipped" on timeout
+		metrics["mx_validation"] = map[string]any{
+			"status":      "skipped",
+			"violations":  []any{},
+			"duration_ms": duration.Milliseconds(),
+		}
+		return
+	}
+
+	// Classify status
+	status := "pass"
+	if report.P1Count() > 0 || report.P2Count() > 0 {
+		status = "fail"
+	} else if report.P3Count() > 0 || report.P4Count() > 0 {
+		status = "warn"
+	}
+
+	// Build violations list
+	violations := make([]map[string]any, 0, len(report.Violations))
+	for _, v := range report.Violations {
+		violations = append(violations, map[string]any{
+			"func":     v.FuncName,
+			"line":     v.Line,
+			"priority": v.Priority.String(),
+			"tag":      v.MissingTag,
+			"blocking": v.Blocking,
+		})
+	}
+
+	metrics["mx_validation"] = map[string]any{
+		"status":      status,
+		"violations":  violations,
+		"duration_ms": duration.Milliseconds(),
+		"file":        filepath.Base(filePath),
+		"fallback":    report.Fallback,
+	}
+
+	if len(report.Violations) > 0 {
+		slog.Info("mx: validation complete",
+			"file_path", filepath.Base(filePath),
+			"status", status,
+			"p1", report.P1Count(),
+			"p2", report.P2Count(),
+			"p3", report.P3Count(),
+			"p4", report.P4Count(),
+		)
+	} else {
+		slog.Debug("mx: validation complete (no violations)",
+			"file_path", filepath.Base(filePath),
+		)
+	}
 }
 
 // collectDiagnostics collects LSP diagnostics for the modified file.

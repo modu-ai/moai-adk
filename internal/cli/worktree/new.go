@@ -104,3 +104,48 @@ func isSpecID(name string) bool {
 	parts := strings.SplitN(name, "-", 3)
 	return len(parts) >= 3 && parts[2] != ""
 }
+
+// GenerateTmuxSessionName implements R5.1: tmux session name generation pattern.
+// SPEC-WORKTREE-002 requirement: moai-{ProjectName}-{SPEC-ID}
+//
+// @MX:NOTE: SPEC-WORKTREE-002 R5.1 implementation - tmux session name pattern
+// @MX:SPEC: SPEC-WORKTREE-002
+//
+// Args:
+//   - projectName: the project name (e.g., "moai-adk-go")
+//   - specID: the SPEC identifier (e.g., "SPEC-WORKTREE-002")
+//
+// Returns:
+//   - the tmux session name (e.g., "moai-moai-adk-go-SPEC-WORKTREE-002")
+//
+// Example:
+//   sessionName := GenerateTmuxSessionName("moai-adk-go", "SPEC-WORKTREE-002")
+//   fmt.Println(sessionName) // Output: moai-moai-adk-go-SPEC-WORKTREE-002
+func GenerateTmuxSessionName(projectName, specID string) string {
+	return fmt.Sprintf("moai-%s-%s", projectName, specID)
+}
+
+// ShouldAutoMerge implements R3: default auto-merge behavior.
+// SPEC-WORKTREE-002 requirement: auto-merge is the default in the worktree flow.
+//
+// @MX:NOTE: SPEC-WORKTREE-002 R3 implementation - auto-merge default
+// @MX:SPEC: SPEC-WORKTREE-002
+//
+// Args:
+//   - noMergeFlag: whether the --no-merge flag is set
+//
+// Returns:
+//   - true if auto-merge should be performed, false otherwise
+//
+// Behavior:
+//   - Default (true): performs auto-merge when the flag is absent
+//   - --no-merge flag: returns false, skipping auto-merge
+//
+// Example:
+//   shouldMerge := ShouldAutoMerge(false) // true
+//   shouldMerge := ShouldAutoMerge(true)  // false
+func ShouldAutoMerge(noMergeFlag bool) bool {
+	// R3: auto-merge is the default (true)
+	// Can only be disabled via the --no-merge flag
+	return !noMergeFlag
+}

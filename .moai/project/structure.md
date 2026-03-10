@@ -283,9 +283,12 @@ These modules are new additions to the Go edition, designed to resolve specific 
 | `session_start.go` | Project info, config validation | `session_start__show_project_info.py` |
 | `pre_tool.go` | Security guard, input validation | `pre_tool__security_guard.py` |
 | `post_tool.go` | Linter, formatter, LSP diagnostics | `post_tool__linter.py`, `post_tool__code_formatter.py`, `post_tool__lsp_diagnostic.py` |
-| `session_end.go` | Cleanup, rank submission | `session_end__auto_cleanup.py`, `session_end__rank_submit.py` |
+| `session_end.go` | Cleanup, rank submission, MX batch validation | `session_end__auto_cleanup.py`, `session_end__rank_submit.py` |
 | `stop.go` | Loop controller | `stop__loop_controller.py` |
 | `compact.go` | Context preservation | `pre_compact__save_context.py` |
+| `mx/types.go` | MX validation core types (Priority P1-P4, Violation, FileReport, ValidationReport, Validator interface) | -- (NEW: SPEC-MX-002) |
+| `mx/config.go` | MX validation config parser (mx.yaml validation section) | -- (NEW: SPEC-MX-002) |
+| `mx/validator.go` | MX tag validator (fan_in, goroutine, line count, test detection) | -- (NEW: SPEC-MX-002) |
 
 ### `internal/manifest/` -- File Provenance Tracking
 

@@ -3,6 +3,9 @@ package statusline
 import "testing"
 
 func TestCollectMemory(t *testing.T) {
+	// Disable auto-compact scaling for existing tests
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
 	tests := []struct {
 		name       string
 		input      *StdinData
@@ -93,6 +96,105 @@ func TestCollectMemory(t *testing.T) {
 			}
 			if got.Available != tt.wantAvail {
 				t.Errorf("Available = %v, want %v", got.Available, tt.wantAvail)
+			}
+		})
+	}
+}
+
+// TestCollectMemory_AutoCompactScaling verifies that TokenBudget is scaled
+// to the auto-compact threshold so the CW bar shows 100% at compact point.
+func TestCollectMemory_AutoCompactScaling(t *testing.T) {
+	tests := []struct {
+		name          string
+		threshold     string // CLAUDE_AUTOCOMPACT_PCT_OVERRIDE value
+		input         *StdinData
+		wantUsed      int
+		wantBudget    int
+		wantPctApprox int // expected usagePercent (approximate)
+	}{
+		{
+			name:      "default threshold 85%: 83% used → ~97% display",
+			threshold: "85",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    new(83.0),
+					ContextWindowSize: 200000,
+				},
+			},
+			wantUsed:      166000, // 83% of 200K
+			wantBudget:    170000, // 85% of 200K
+			wantPctApprox: 97,     // 166000/170000 = 97.6%
+		},
+		{
+			name:      "default threshold 85%: 85% used → 100% display",
+			threshold: "85",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    new(85.0),
+					ContextWindowSize: 200000,
+				},
+			},
+			wantUsed:      170000, // 85% of 200K
+			wantBudget:    170000, // 85% of 200K
+			wantPctApprox: 100,    // exact 100%
+		},
+		{
+			name:      "threshold 90%: 83% used → 92% display",
+			threshold: "90",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    new(83.0),
+					ContextWindowSize: 200000,
+				},
+			},
+			wantUsed:      166000,
+			wantBudget:    180000, // 90% of 200K
+			wantPctApprox: 92,     // 166000/180000 = 92.2%
+		},
+		{
+			name:      "threshold 100% (no scaling)",
+			threshold: "100",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    new(83.0),
+					ContextWindowSize: 200000,
+				},
+			},
+			wantUsed:      166000,
+			wantBudget:    200000,
+			wantPctApprox: 83,
+		},
+		{
+			name:      "exceeded threshold capped at 100%",
+			threshold: "80",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    new(85.0),
+					ContextWindowSize: 200000,
+				},
+			},
+			wantUsed:      170000,
+			wantBudget:    160000, // 80% of 200K
+			wantPctApprox: 100,    // capped at 100%
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", tt.threshold)
+
+			got := CollectMemory(tt.input)
+
+			if got.TokensUsed != tt.wantUsed {
+				t.Errorf("TokensUsed = %d, want %d", got.TokensUsed, tt.wantUsed)
+			}
+			if got.TokenBudget != tt.wantBudget {
+				t.Errorf("TokenBudget = %d, want %d", got.TokenBudget, tt.wantBudget)
+			}
+
+			pct := usagePercent(got.TokensUsed, got.TokenBudget)
+			if pct != tt.wantPctApprox {
+				t.Errorf("usagePercent = %d%%, want ~%d%%", pct, tt.wantPctApprox)
 			}
 		})
 	}

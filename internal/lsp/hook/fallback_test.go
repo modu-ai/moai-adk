@@ -444,7 +444,7 @@ func TestNewFallbackDiagnosticsWithCircuitBreaker(t *testing.T) {
 }
 
 // TestFallbackDiagnostics_NilCircuitBreaker verifies behavior is unchanged when circuit breaker is nil.
-// When circuit breaker is nil, behavior must be identical to the default behavior.
+// When the circuit breaker is nil, behavior must be identical to the default behavior.
 func TestFallbackDiagnostics_NilCircuitBreaker(t *testing.T) {
 	t.Parallel()
 
@@ -463,17 +463,17 @@ func TestFallbackDiagnostics_NilCircuitBreaker(t *testing.T) {
 
 // TestFallbackDiagnostics_OpenCircuitReturnsEmptyDiagnostics verifies that
 // an open circuit returns empty diagnostics without error.
-// 서킷이 열려 있으면 에러 없이 빈 진단을 반환해야 한다(관찰 전용).
+// When the circuit is open, it must return empty diagnostics without an error (observation-only).
 func TestFallbackDiagnostics_OpenCircuitReturnsEmptyDiagnostics(t *testing.T) {
 	t.Parallel()
 
-	// 임계값 1로 서킷 브레이커를 생성하여 즉시 열리게 한다.
+	// Create a circuit breaker with threshold 1 so it opens immediately.
 	cb := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{
 		Threshold: 1,
 		Timeout:   60 * time.Second,
 	})
 
-	// 서킷을 강제로 오픈 상태로 전환하기 위해 실패를 기록한다.
+	// Record a failure to force the circuit into the open state.
 	failErr := cb.Call(context.Background(), func() error {
 		return context.DeadlineExceeded
 	})
@@ -481,21 +481,21 @@ func TestFallbackDiagnostics_OpenCircuitReturnsEmptyDiagnostics(t *testing.T) {
 		t.Fatal("expected error from first call")
 	}
 
-	// 서킷이 열려 있는지 확인한다.
+	// Verify that the circuit is open.
 	if cb.State() != resilience.StateOpen {
 		t.Skipf("circuit not open, state=%s (may need timing adjustment)", cb.State())
 	}
 
 	fb := NewFallbackDiagnosticsWithCircuitBreaker(cb)
 
-	// 실제 파일 경로가 있어야 runTool이 호출된다. 임시 파일 생성.
+	// runTool is invoked only when a real file path exists, so create a temp file.
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.go")
 	if err := os.WriteFile(testFile, []byte("package main\n"), 0644); err != nil {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 
-	// go 언어가 가용한 경우에만 실행.
+	// Only run when the go tool is available.
 	if !fb.IsAvailable("go") {
 		t.Skip("go vet not available in test environment")
 	}
@@ -503,7 +503,7 @@ func TestFallbackDiagnostics_OpenCircuitReturnsEmptyDiagnostics(t *testing.T) {
 	ctx := context.Background()
 	diagnostics, err := fb.RunFallback(ctx, testFile)
 
-	// 서킷이 열려 있으면 에러 없이 빈 진단을 반환해야 한다.
+	// When the circuit is open, it must return empty diagnostics without an error.
 	if err != nil {
 		t.Errorf("expected no error when circuit is open, got %v", err)
 	}
@@ -517,7 +517,7 @@ func TestFallbackDiagnostics_OpenCircuitReturnsEmptyDiagnostics(t *testing.T) {
 
 // TestFallbackDiagnostics_ClosedCircuitPassesThrough verifies that
 // a closed circuit allows tool execution to proceed normally.
-// 서킷이 닫혀 있으면 정상 실행을 허용해야 한다.
+// When the circuit is closed, normal execution must be allowed.
 func TestFallbackDiagnostics_ClosedCircuitPassesThrough(t *testing.T) {
 	t.Parallel()
 
@@ -528,7 +528,7 @@ func TestFallbackDiagnostics_ClosedCircuitPassesThrough(t *testing.T) {
 
 	fb := NewFallbackDiagnosticsWithCircuitBreaker(cb)
 
-	// 알 수 없는 언어는 서킷 브레이커 유무와 관계없이 에러를 반환한다.
+	// An unknown language returns an error regardless of whether the circuit breaker is present.
 	ctx := context.Background()
 	_, err := fb.RunFallback(ctx, "/path/to/file.unknown")
 

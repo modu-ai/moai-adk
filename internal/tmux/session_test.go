@@ -454,7 +454,7 @@ func TestSessionManager_InjectEnv_EmptyVars(t *testing.T) {
 
 	mgr := NewSessionManager(WithSessionRunFunc(runner))
 
-	// 빈 맵은 오류 없이 완료되어야 한다
+	// An empty map should complete without error.
 	err := mgr.InjectEnv(context.Background(), map[string]string{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -481,7 +481,7 @@ func TestSessionManager_ClearEnv_Success(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// set-environment -u TEST_KEY 와 set-environment -u OTHER_KEY 호출 확인
+	// Verify that set-environment -u TEST_KEY and set-environment -u OTHER_KEY were called.
 	for _, varName := range vars {
 		found := false
 		for _, call := range calls {
@@ -527,7 +527,7 @@ func TestSessionManager_ClearEnv_EmptyVars(t *testing.T) {
 
 	mgr := NewSessionManager(WithSessionRunFunc(runner))
 
-	// 빈 슬라이스는 오류 없이 완료되어야 한다
+	// An empty slice should complete without error.
 	err := mgr.ClearEnv(context.Background(), []string{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

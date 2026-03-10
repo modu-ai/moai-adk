@@ -492,3 +492,447 @@ func TestUsageProvider_CollectUsage_GracefulDegradation(t *testing.T) {
 		t.Error("result should be nil when all collection fails")
 	}
 }
+
+// TestIsInFailureCooldown_Active verifies isInFailureCooldown returns true during cooldown period.
+func TestIsInFailureCooldown_Active(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
+
+	// 1 failure recorded 30s ago (cooldown: 1m)
+	cache := &usageCacheFile{
+		CachedAt:     time.Now().Add(-30 * time.Second).Unix(),
+		FailedAt:     time.Now().Add(-30 * time.Second).Unix(),
+		FailureCount: 1,
+		Usage5H:      &UsageData{Percentage: 10.0},
+		Usage7D:      &UsageData{Percentage: 20.0},
+	}
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
+	}
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// 1 failure → cooldown 1m, elapsed 30s → cooldown active
+	if !collector.isInFailureCooldown() {
+		t.Error("isInFailureCooldown should return true when failure was 30s ago (cooldown: 1m for count=1)")
+	}
+}
+
+// TestIsInFailureCooldown_Expired verifies isInFailureCooldown returns false after cooldown expires.
+func TestIsInFailureCooldown_Expired(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
+
+	// 1 failure recorded 2m ago (cooldown: 1m) → expired
+	cache := &usageCacheFile{
+		CachedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailureCount: 1,
+		Usage5H:      &UsageData{Percentage: 10.0},
+		Usage7D:      &UsageData{Percentage: 20.0},
+	}
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
+	}
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// 1 failure → cooldown 1m, elapsed 2m → cooldown expired
+	if collector.isInFailureCooldown() {
+		t.Error("isInFailureCooldown should return false when failure was 2m ago (cooldown: 1m for count=1)")
+	}
+}
+
+// TestIsInFailureCooldown_NoFailure verifies false when no failure is recorded.
+func TestIsInFailureCooldown_NoFailure(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
+
+	cache := &usageCacheFile{
+		CachedAt:     time.Now().Unix(),
+		FailedAt:     0,
+		FailureCount: 0,
+		Usage5H:      &UsageData{Percentage: 10.0},
+		Usage7D:      &UsageData{Percentage: 20.0},
+	}
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
+	}
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	if collector.isInFailureCooldown() {
+		t.Error("isInFailureCooldown should return false when no failure recorded")
+	}
+}
+
+// TestSaveFailure verifies saveFailure records FailedAt and increments FailureCount.
+func TestSaveFailure(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
+
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
+	}
+
+	beforeSave := time.Now().Truncate(time.Second)
+
+	// First failure
+	collector.saveFailure()
+
+	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+		t.Fatal("saveFailure should create the cache file")
+	}
+
+	loaded, err := collector.loadCache()
+	if err != nil {
+		t.Fatalf("loadCache failed after saveFailure: %v", err)
+	}
+	if loaded == nil {
+		t.Fatal("loaded cache should not be nil after saveFailure")
+	}
+
+	failedAt := time.Unix(loaded.FailedAt, 0)
+	if failedAt.Before(beforeSave) {
+		t.Errorf("FailedAt (%v) should be at or after test start (%v)", failedAt, beforeSave)
+	}
+	if loaded.FailureCount != 1 {
+		t.Errorf("FailureCount = %d after first failure, want 1", loaded.FailureCount)
+	}
+
+	// Second failure should increment count
+	collector.saveFailure()
+	loaded, _ = collector.loadCache()
+	if loaded.FailureCount != 2 {
+		t.Errorf("FailureCount = %d after second failure, want 2", loaded.FailureCount)
+	}
+
+	// Should be in cooldown after saveFailure
+	if !collector.isInFailureCooldown() {
+		t.Error("isInFailureCooldown should return true immediately after saveFailure")
+	}
+}
+
+// TestCollectUsage_SkipsDuringCooldown verifies that CollectUsage returns stale cache
+// without API call during cooldown period (429 spiral prevention).
+func TestCollectUsage_SkipsDuringCooldown(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, ".moai", "cache", "usage.json")
+
+	var apiCallCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		apiCallCount++
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(oauthUsageResponse{
+			FiveHour: &usagePeriodData{Utilization: 99.0},
+			SevenDay: &usagePeriodData{Utilization: 99.0},
+		})
+	}))
+	defer server.Close()
+
+	// Stale cache with recent failure (count=3 → cooldown=4m, failed 2m ago → active)
+	staleCache := &usageCacheFile{
+		CachedAt:     time.Now().Add(-10 * time.Minute).Unix(),
+		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailureCount: 3,
+		Usage5H:      &UsageData{Percentage: 42.0},
+		Usage7D:      &UsageData{Percentage: 85.0},
+	}
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	cacheJSON, _ := json.Marshal(staleCache)
+	if err := os.WriteFile(cachePath, cacheJSON, 0644); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		client:              server.Client(),
+		homeDir:             tmpDir,
+		mu:                  sync.RWMutex{},
+	}
+
+	result, err := collector.CollectUsage(context.Background())
+	if err != nil {
+		t.Fatalf("CollectUsage should not error: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("CollectUsage should return stale data during cooldown, got nil")
+	}
+
+	if apiCallCount > 0 {
+		t.Errorf("API should not be called during cooldown, but was called %d times", apiCallCount)
+	}
+}
+
+// TestCollectUsage_RetriesAfterCooldownExpires verifies that CollectUsage attempts
+// API call after cooldown expires.
+func TestCollectUsage_RetriesAfterCooldownExpires(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, ".moai", "cache", "usage.json")
+
+	// count=1 → cooldown=1m, failed 2m ago → expired
+	expiredFailureCache := &usageCacheFile{
+		CachedAt:     time.Now().Add(-15 * time.Minute).Unix(),
+		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
+		FailureCount: 1,
+		Usage5H:      &UsageData{Percentage: 30.0},
+		Usage7D:      &UsageData{Percentage: 60.0},
+	}
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	cacheJSON, _ := json.Marshal(expiredFailureCache)
+	if err := os.WriteFile(cachePath, cacheJSON, 0644); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// No token available → CollectUsage should try API but return nil
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		client:              &http.Client{Timeout: 1 * time.Second},
+		homeDir:             tmpDir,
+		mu:                  sync.RWMutex{},
+	}
+
+	result, err := collector.CollectUsage(context.Background())
+	if err != nil {
+		t.Fatalf("CollectUsage should not error: %v", err)
+	}
+
+	// Cooldown expired, API call attempted but no token → nil
+	if result != nil {
+		t.Errorf("CollectUsage should return nil when cooldown expired and no token available, got: %+v", result)
+	}
+}
+
+// TestCalcCooldown verifies exponential backoff calculation.
+func TestCalcCooldown(t *testing.T) {
+	t.Parallel()
+
+	collector := &usageCollector{
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+	}
+
+	tests := []struct {
+		count int
+		want  time.Duration
+	}{
+		{0, 0},
+		{1, 1 * time.Minute},
+		{2, 2 * time.Minute},
+		{3, 4 * time.Minute},
+		{4, 8 * time.Minute},
+		{5, 16 * time.Minute},
+		{6, 32 * time.Minute},
+		{7, 32 * time.Minute},  // capped
+		{10, 32 * time.Minute}, // capped
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("count=%d", tt.count), func(t *testing.T) {
+			got := collector.calcCooldown(tt.count)
+			if got != tt.want {
+				t.Errorf("calcCooldown(%d) = %v, want %v", tt.count, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestFetchUsageFromHeaders_Success verifies Haiku probe extracts rate limit headers.
+func TestFetchUsageFromHeaders_Success(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify it's a POST to Messages API format
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.Header.Get("anthropic-version") == "" {
+			t.Error("missing anthropic-version header")
+		}
+
+		// Return rate limit headers (even on 200)
+		w.Header().Set("anthropic-ratelimit-unified-5h-utilization", "0.28")
+		w.Header().Set("anthropic-ratelimit-unified-7d-utilization", "0.59")
+		w.Header().Set("anthropic-ratelimit-unified-5h-reset", "2026-03-10T20:00:00Z")
+		w.Header().Set("anthropic-ratelimit-unified-7d-reset", "2026-03-15T07:00:00Z")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"content":[{"text":"h"}]}`))
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	// Use the test server URL instead of real API
+	resp, err := collector.fetchUsageFromHeadersWithURL(context.Background(), server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("fetchUsageFromHeaders failed: %v", err)
+	}
+
+	if resp.FiveHour == nil {
+		t.Fatal("FiveHour should not be nil")
+	}
+	// 0.28 * 100 = 28.0
+	if resp.FiveHour.Utilization != 28.0 {
+		t.Errorf("FiveHour.Utilization = %f, want 28.0", resp.FiveHour.Utilization)
+	}
+	if resp.FiveHour.ResetsAt != "2026-03-10T20:00:00Z" {
+		t.Errorf("FiveHour.ResetsAt = %s, want 2026-03-10T20:00:00Z", resp.FiveHour.ResetsAt)
+	}
+
+	if resp.SevenDay == nil {
+		t.Fatal("SevenDay should not be nil")
+	}
+	// 0.59 * 100 = 59.0
+	if resp.SevenDay.Utilization != 59.0 {
+		t.Errorf("SevenDay.Utilization = %f, want 59.0", resp.SevenDay.Utilization)
+	}
+}
+
+// TestFetchUsageFromHeaders_429WithHeaders verifies headers are extracted even on 429 response.
+func TestFetchUsageFromHeaders_429WithHeaders(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("anthropic-ratelimit-unified-5h-utilization", "0.95")
+		w.Header().Set("anthropic-ratelimit-unified-7d-utilization", "0.80")
+		w.Header().Set("anthropic-ratelimit-unified-5h-reset", "2026-03-10T22:00:00Z")
+		w.Header().Set("anthropic-ratelimit-unified-7d-reset", "2026-03-17T07:00:00Z")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":{"message":"Rate limited"}}`))
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	resp, err := collector.fetchUsageFromHeadersWithURL(context.Background(), server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("fetchUsageFromHeaders should succeed even on 429: %v", err)
+	}
+
+	if resp.FiveHour == nil {
+		t.Fatal("FiveHour should not be nil even on 429")
+	}
+	if resp.FiveHour.Utilization != 95.0 {
+		t.Errorf("FiveHour.Utilization = %f, want 95.0", resp.FiveHour.Utilization)
+	}
+	if resp.SevenDay == nil {
+		t.Fatal("SevenDay should not be nil even on 429")
+	}
+	if resp.SevenDay.Utilization != 80.0 {
+		t.Errorf("SevenDay.Utilization = %f, want 80.0", resp.SevenDay.Utilization)
+	}
+}
+
+// TestFetchUsageFromHeaders_NoHeaders verifies error when no rate limit headers present.
+func TestFetchUsageFromHeaders_NoHeaders(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"content":[{"text":"h"}]}`))
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	_, err := collector.fetchUsageFromHeadersWithURL(context.Background(), server.URL, "test-token")
+	if err == nil {
+		t.Fatal("expected error when no rate limit headers present")
+	}
+}
+
+// TestExponentialBackoff_ProgressiveCooldown verifies that repeated failures
+// increase cooldown progressively.
+func TestExponentialBackoff_ProgressiveCooldown(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "usage.json")
+
+	collector := &usageCollector{
+		cachePath:           cachePath,
+		ttl:                 5 * time.Minute,
+		failureCooldownBase: 1 * time.Minute,
+		failureCooldownMax:  32 * time.Minute,
+		mu:                  sync.RWMutex{},
+	}
+
+	// 5 failures ago, count=5 → cooldown=16m, failed 10m ago → still active
+	cache := &usageCacheFile{
+		FailedAt:     time.Now().Add(-10 * time.Minute).Unix(),
+		FailureCount: 5,
+	}
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	if !collector.isInFailureCooldown() {
+		t.Error("should be in cooldown (count=5 → 16m, elapsed=10m)")
+	}
+
+	// Same count=5 but failed 20m ago → expired
+	cache.FailedAt = time.Now().Add(-20 * time.Minute).Unix()
+	if err := collector.saveCache(cache); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	// Reset in-memory cache to force file read
+	collector.mu.Lock()
+	collector.cache = nil
+	collector.mu.Unlock()
+
+	if collector.isInFailureCooldown() {
+		t.Error("should not be in cooldown (count=5 → 16m, elapsed=20m)")
+	}
+}

@@ -1733,17 +1733,17 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		PrintWelcomeMessage()
 	}
 
-	// REQ-1: language.yaml에서 locale 읽기
+	// REQ-1: Read locale from language.yaml
 	locale := wizard.ReadLocaleFromProject(cwd)
 
-	// REQ-2: 기존 설정에서 사용자명 읽기 (기본값으로 사용)
+	// REQ-2: Read existing username from config (used as default value)
 	existingGitHubUsername := wizard.ReadGitHubUsernameFromConfig(cwd)
 	existingGitLabUsername := wizard.ReadGitLabUsernameFromConfig(cwd)
 
-	// REQ-3: gh CLI 인증 여부 확인
+	// REQ-3: Check whether gh CLI is authenticated
 	ghAuthenticated := wizard.IsGhAuthenticated()
 
-	// 기본 질문 생성 및 기존 값으로 기본값 설정
+	// Generate default questions and set defaults from existing values
 	questions := wizard.DefaultQuestions(cwd)
 	if existingGitHubUsername != "" {
 		if q := wizard.QuestionByID(questions, "github_username"); q != nil {
@@ -1755,14 +1755,14 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 			q.Default = existingGitLabUsername
 		}
 	}
-	// REQ-3: gh auth 인증된 경우 github_token 질문 스킵
+	// REQ-3: Skip github_token question when gh auth is authenticated
 	if ghAuthenticated {
 		if q := wizard.QuestionByID(questions, "github_token"); q != nil {
 			q.Condition = func(_ *wizard.WizardResult) bool { return false }
 		}
 	}
 
-	// locale과 커스텀 질문으로 위저드 실행
+	// Run wizard with locale and custom questions
 	result, err := wizard.RunWithLocale(questions, nil, locale)
 	if err != nil {
 		if errors.Is(err, wizard.ErrCancelled) {
@@ -1783,22 +1783,22 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	return nil
 }
 
-// applyWizardConfig는 위저드 결과를 프로젝트 설정 파일에 반영한다.
+// applyWizardConfig applies wizard results to the project configuration files.
 func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	sectionsDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
 
-	// user.yaml: GitHub/GitLab 사용자명·토큰 저장 (REQ-4, REQ-5)
+	// user.yaml: Save GitHub/GitLab username and token (REQ-4, REQ-5)
 	hasUserFields := result.GitHubUsername != "" || result.GitHubToken != "" ||
 		result.GitLabUsername != "" || result.GitLabToken != ""
 	if hasUserFields {
 		userPath := filepath.Join(sectionsDir, defs.UserYAML)
-		// 기존 파일 읽기
+		// Read existing file
 		userData, err := os.ReadFile(userPath)
 		if err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("read user.yaml: %w", err)
 		}
 
-		// YAML 파싱
+		// Parse YAML
 		var user map[string]any
 		if len(userData) > 0 {
 			if err := yaml.Unmarshal(userData, &user); err != nil {
@@ -1808,7 +1808,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			user = make(map[string]any)
 		}
 
-		// user.user 섹션 확보
+		// Ensure user.user section exists
 		var userConfig map[string]any
 		if existingUser, ok := user["user"].(map[string]any); ok {
 			userConfig = existingUser
@@ -1816,7 +1816,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			userConfig = make(map[string]any)
 		}
 
-		// GitHub 크레덴셜 저장
+		// Save GitHub credentials
 		if result.GitHubUsername != "" {
 			userConfig["github_username"] = result.GitHubUsername
 		}
@@ -1824,7 +1824,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			userConfig["github_token"] = result.GitHubToken
 		}
 
-		// GitLab 크레덴셜 저장 (REQ-5)
+		// Save GitLab credentials (REQ-5)
 		if result.GitLabUsername != "" {
 			userConfig["gitlab_username"] = result.GitLabUsername
 		}
@@ -1834,7 +1834,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 
 		user["user"] = userConfig
 
-		// 파일로 저장
+		// Save to file
 		updatedData, err := yaml.Marshal(user)
 		if err != nil {
 			return fmt.Errorf("marshal user.yaml: %w", err)
@@ -1844,7 +1844,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
-	// git-strategy.yaml: Git 모드·프로바이더 저장 (REQ-4)
+	// git-strategy.yaml: Save git mode and provider (REQ-4)
 	if result.GitMode != "" || result.GitProvider != "" {
 		gitStratPath := filepath.Join(sectionsDir, defs.GitStrategyYAML)
 		gsData, err := os.ReadFile(gitStratPath)
@@ -1861,7 +1861,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			gs = make(map[string]any)
 		}
 
-		// git_strategy 섹션 확보
+		// Ensure git_strategy section exists
 		var gitStrategy map[string]any
 		if existing, ok := gs["git_strategy"].(map[string]any); ok {
 			gitStrategy = existing
@@ -1876,7 +1876,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			gitStrategy["provider"] = result.GitProvider
 		}
 
-		// GitLab instance URL 저장 (REQ-5)
+		// Save GitLab instance URL (REQ-5)
 		if result.GitLabInstanceURL != "" {
 			var gitlabSection map[string]any
 			if existing, ok := gitStrategy["gitlab"].(map[string]any); ok {
@@ -1899,7 +1899,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
-	// quality.yaml: 개발 모드 저장 (REQ-4)
+	// quality.yaml: Save development mode (REQ-4)
 	if result.DevelopmentMode != "" {
 		qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
 		qualityData, err := os.ReadFile(qualityPath)
@@ -1916,7 +1916,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			quality = make(map[string]any)
 		}
 
-		// constitution 섹션 확보
+		// Ensure constitution section exists
 		var constitution map[string]any
 		if existing, ok := quality["constitution"].(map[string]any); ok {
 			constitution = existing

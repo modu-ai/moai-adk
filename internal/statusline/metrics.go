@@ -2,6 +2,7 @@ package statusline
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -26,6 +27,10 @@ func CollectMetrics(input *StdinData) *MetricsData {
 			modelName = ShortenModelName(input.Model.Name)
 		}
 	}
+
+	// Override display name with actual GLM model when running in GLM mode.
+	// Claude Code reports "Opus"/"Sonnet"/"Haiku" even when env vars route to GLM models.
+	modelName = resolveGLMModelName(modelName)
 
 	data := &MetricsData{
 		Model:     modelName,
@@ -127,6 +132,39 @@ func ShortenModelName(model string) string {
 		return modelName + " " + versionStr
 	}
 	return modelName
+}
+
+// resolveGLMModelName checks if GLM mode is active via environment variables
+// and returns the actual GLM model name instead of the Claude display name.
+// When ANTHROPIC_DEFAULT_*_MODEL env vars contain non-Claude model names,
+// the display name from Claude Code (e.g., "Opus") is replaced with the actual model.
+func resolveGLMModelName(displayName string) string {
+	if displayName == "" {
+		return displayName
+	}
+
+	lower := strings.ToLower(displayName)
+
+	// Map Claude display names to their corresponding env vars
+	var envKey string
+	switch {
+	case strings.Contains(lower, "opus"):
+		envKey = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+	case strings.Contains(lower, "sonnet"):
+		envKey = "ANTHROPIC_DEFAULT_SONNET_MODEL"
+	case strings.Contains(lower, "haiku"):
+		envKey = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+	default:
+		return displayName
+	}
+
+	glmModel := os.Getenv(envKey)
+	if glmModel == "" || strings.HasPrefix(glmModel, "claude-") {
+		return displayName
+	}
+
+	// Non-Claude model detected (e.g., "glm-5", "gpt-4o")
+	return glmModel
 }
 
 // formatCost formats a USD cost value as a string with two decimal places.
