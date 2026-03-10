@@ -244,7 +244,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		PrintBanner(version.GetVersion())
 		PrintWelcomeMessage()
 
-		// init.go에서는 locale 없이 실행 (기존 동작 유지)
+		// Run without locale in init.go (preserve existing behavior)
 		result, err := wizard.RunWithDefaults(rootFlag, "")
 		if err != nil {
 			if errors.Is(err, wizard.ErrCancelled) {

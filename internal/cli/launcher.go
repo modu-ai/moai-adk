@@ -317,7 +317,7 @@ func removeWorktree(projectRoot, worktreeName string) error {
 }
 
 // runGitCommand executes a git command in the given directory.
-// GitManager를 통해 실행하여 타임아웃과 에러 처리를 일관되게 적용한다.
+// Runs via GitManager to apply consistent timeout and error handling.
 func runGitCommand(dir string, args ...string) (string, error) {
 	mgr := gitops.NewGitManager(gitops.ManagerConfig{
 		WorkDir:               dir,
@@ -331,7 +331,7 @@ func runGitCommand(dir string, args ...string) (string, error) {
 		}
 		return "", fmt.Errorf("git %s failed: %s", strings.Join(args, " "), result.Stderr)
 	}
-	// trailing newline 보존을 위해 TrimSpace 하지 않음 (기존 exec.Output() 동작과 동일)
+	// Do not TrimSpace to preserve trailing newline (matches legacy exec.Output() behavior)
 	return result.Stdout + "\n", nil
 }
 

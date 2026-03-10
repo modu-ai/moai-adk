@@ -188,7 +188,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 
 	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
 
-	// 현재 tmux 세션 여부 확인
+	// Check whether we are inside a tmux session
 	inTmux := tmux.NewDetector().InTmuxSession()
 
 	// CG mode requires tmux for pane-level environment isolation.

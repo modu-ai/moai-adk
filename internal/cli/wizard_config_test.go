@@ -176,12 +176,12 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 	}
 }
 
-// --- REQ-4: applyWizardConfig git-strategy.yaml 저장 테스트 ---
+// --- REQ-4: applyWizardConfig git-strategy.yaml save tests ---
 
 func TestApplyWizardConfig_GitStrategyYAML(t *testing.T) {
 	root := setupSectionsDir(t)
 
-	// git-strategy.yaml 사전 생성
+	// Pre-create git-strategy.yaml
 	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
 	gitStratPath := filepath.Join(sectionsDir, defs.GitStrategyYAML)
 	existing := "git_strategy:\n  mode: manual\n  provider: github\n"
@@ -232,7 +232,7 @@ func TestApplyWizardConfig_GitStrategyYAML_NoFileCreatedWhenEmpty(t *testing.T) 
 func TestApplyWizardConfig_QualityYAML(t *testing.T) {
 	root := setupSectionsDir(t)
 
-	// quality.yaml 사전 생성
+	// Pre-create quality.yaml
 	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
 	qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
 	existing := "constitution:\n  development_mode: tdd\n  enforce_quality: true\n"
@@ -256,7 +256,7 @@ func TestApplyWizardConfig_QualityYAML(t *testing.T) {
 	if constitution["development_mode"] != "ddd" {
 		t.Errorf("constitution.development_mode = %v, want %q", constitution["development_mode"], "ddd")
 	}
-	// 기존 필드 보존 확인
+	// Verify existing fields are preserved
 	if constitution["enforce_quality"] != true {
 		t.Errorf("constitution.enforce_quality should be preserved, got %v", constitution["enforce_quality"])
 	}
@@ -279,7 +279,7 @@ func TestApplyWizardConfig_QualityYAML_NoFileCreatedWhenEmpty(t *testing.T) {
 	}
 }
 
-// --- REQ-5: GitLab 크레덴셜 저장 테스트 ---
+// --- REQ-5: GitLab credential save tests ---
 
 func TestApplyWizardConfig_GitLabCredentials(t *testing.T) {
 	root := setupSectionsDir(t)
@@ -345,7 +345,7 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 	root := setupSectionsDir(t)
 	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
 
-	// 기존 파일들 사전 생성
+	// Pre-create existing files
 	qualityExisting := "constitution:\n  development_mode: tdd\n"
 	if err := os.WriteFile(filepath.Join(sectionsDir, defs.QualityYAML), []byte(qualityExisting), defs.FilePerm); err != nil {
 		t.Fatalf("write quality.yaml: %v", err)
@@ -370,7 +370,7 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 		t.Fatalf("applyWizardConfig: %v", err)
 	}
 
-	// user.yaml 검증
+	// Verify user.yaml
 	userParsed := readYAML(t, filepath.Join(sectionsDir, defs.UserYAML))
 	user := userParsed["user"].(map[string]any)
 	if user["github_username"] != "ghuser" {
@@ -386,14 +386,14 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 		t.Errorf("gitlab_token = %v, want glpat-tok", user["gitlab_token"])
 	}
 
-	// quality.yaml 검증
+	// Verify quality.yaml
 	qualityParsed := readYAML(t, filepath.Join(sectionsDir, defs.QualityYAML))
 	constitution := qualityParsed["constitution"].(map[string]any)
 	if constitution["development_mode"] != "ddd" {
 		t.Errorf("development_mode = %v, want ddd", constitution["development_mode"])
 	}
 
-	// git-strategy.yaml 검증
+	// Verify git-strategy.yaml
 	gsParsed := readYAML(t, filepath.Join(sectionsDir, defs.GitStrategyYAML))
 	gs := gsParsed["git_strategy"].(map[string]any)
 	if gs["mode"] != "team" {

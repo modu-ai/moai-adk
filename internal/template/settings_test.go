@@ -501,7 +501,7 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 		t.Fatal("missing hooks section")
 	}
 
-	const expectedCount = 16 // WorktreeCreate, WorktreeRemove 훅 추가로 14 → 16
+	const expectedCount = 16 // 14 → 16 after adding WorktreeCreate and WorktreeRemove hooks
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}

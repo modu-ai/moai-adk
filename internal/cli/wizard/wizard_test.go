@@ -786,39 +786,39 @@ func TestRunWithDefaults_CreatesQuestions(t *testing.T) {
 	}
 }
 
-// --- REQ-1: RunWithDefaults locale 파라미터 테스트 ---
+// --- REQ-1: RunWithDefaults locale parameter tests ---
 
 func TestRunWithDefaults_AcceptsLocaleParameter(t *testing.T) {
-	// RunWithDefaults(projectRoot, locale) 시그니처 테스트.
-	// TTY 없이는 실행 불가하므로 컴파일 확인 수준의 테스트.
+	// Tests the RunWithDefaults(projectRoot, locale) signature.
+	// Cannot run without a TTY, so this is a compile-level check only.
 	questions := DefaultQuestions("/tmp/run-defaults-locale-test")
 	if len(questions) == 0 {
 		t.Error("DefaultQuestions should return non-empty")
 	}
-	// locale 파라미터를 받는 새 시그니처 확인:
-	// RunWithDefaults("/tmp/test", "ko") 가 컴파일되어야 함
+	// Verify the new signature that accepts a locale parameter:
+	// RunWithDefaults("/tmp/test", "ko") should compile
 	_ = func() {
-		// 컴파일 타임에만 확인 — TTY 없이 실행 불가
+		// Compile-time check only — cannot run without a TTY
 		// _, _ = RunWithDefaults("/tmp/test", "ko")
 	}
 }
 
-// --- REQ-2: DefaultQuestions 기본값 오버라이드 테스트 ---
+// --- REQ-2: DefaultQuestions default value override tests ---
 
 func TestDefaultQuestions_GitHubUsernameDefaultOverride(t *testing.T) {
-	// DefaultQuestions 결과의 github_username 기본값을 오버라이드할 수 있어야 함
+	// The github_username default in DefaultQuestions result should be overridable.
 	questions := DefaultQuestions("/tmp/test")
 	q := QuestionByID(questions, "github_username")
 	if q == nil {
 		t.Fatal("github_username question not found")
 	}
 
-	// 기존 값은 빈 문자열
+	// Existing value is an empty string
 	if q.Default != "" {
 		t.Errorf("github_username default should be empty initially, got %q", q.Default)
 	}
 
-	// Default 필드 오버라이드 가능 여부 확인
+	// Verify that the Default field can be overridden
 	q.Default = "existing-user"
 	if q.Default != "existing-user" {
 		t.Error("should be able to override Default field")
@@ -832,19 +832,19 @@ func TestDefaultQuestions_GitLabUsernameDefaultOverride(t *testing.T) {
 		t.Fatal("gitlab_username question not found")
 	}
 
-	// 기존 값은 빈 문자열
+	// Existing value is an empty string
 	if q.Default != "" {
 		t.Errorf("gitlab_username default should be empty initially, got %q", q.Default)
 	}
 
-	// Default 필드 오버라이드 가능 여부 확인
+	// Verify that the Default field can be overridden
 	q.Default = "existing-gl-user"
 	if q.Default != "existing-gl-user" {
 		t.Error("should be able to override Default field")
 	}
 }
 
-// --- REQ-3: gh auth 인증 확인 시 github_token 질문 스킵 테스트 ---
+// --- REQ-3: Skip github_token question when gh auth is authenticated tests ---
 
 func TestDefaultQuestions_GitHubTokenCondition(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
@@ -853,15 +853,15 @@ func TestDefaultQuestions_GitHubTokenCondition(t *testing.T) {
 		t.Fatal("github_token question not found")
 	}
 
-	// 기본 Condition: github 프로바이더 + personal/team 모드일 때 표시
+	// Default Condition: show when github provider + personal/team mode
 	result := &WizardResult{GitMode: "personal", GitProvider: "github"}
 	if !q.Condition(result) {
 		t.Error("github_token should be visible for github provider + personal mode")
 	}
 
-	// Condition을 오버라이드하여 항상 숨길 수 있어야 함 (gh auth 인증 시)
+	// Condition should be overridable to always hide (when gh auth is authenticated)
 	q.Condition = func(r *WizardResult) bool {
-		return false // gh auth로 인증된 경우 스킵
+		return false // Skip when authenticated via gh auth
 	}
 	if q.Condition(result) {
 		t.Error("overridden condition should return false (skip token question)")
@@ -869,17 +869,17 @@ func TestDefaultQuestions_GitHubTokenCondition(t *testing.T) {
 }
 
 func TestIsGhAuthenticated_ReturnsBoolean(t *testing.T) {
-	// IsGhAuthenticated() 함수가 bool을 반환하는지 확인
-	// gh가 없거나 인증되지 않은 환경에서는 false 반환
+	// Verify that IsGhAuthenticated() returns a bool.
+	// Returns false in environments where gh is not installed or not authenticated.
 	result := IsGhAuthenticated()
-	// bool 타입이어야 함 (true 또는 false)
-	_ = result // 환경에 따라 값이 달라지므로 타입만 확인
+	// Value varies by environment — only check the type
+	_ = result
 }
 
-// --- readLocaleFromProject 헬퍼 함수 테스트 ---
+// --- ReadLocaleFromProject helper function tests ---
 
 func TestReadLocaleFromProject_ReturnsLocale(t *testing.T) {
-	// 임시 디렉토리에 language.yaml 생성
+	// Create language.yaml in a temporary directory
 	tmpDir := t.TempDir()
 	sectionsDir := tmpDir + "/.moai/config/sections"
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
@@ -912,7 +912,7 @@ func TestReadLocaleFromProject_InvalidYAML_ReturnsEmpty(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 
-	// 유효하지 않은 YAML
+	// Invalid YAML
 	if err := os.WriteFile(sectionsDir+"/language.yaml", []byte("invalid: [yaml"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -930,7 +930,7 @@ func TestReadLocaleFromProject_NoLanguageKey_ReturnsEmpty(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 
-	// language 키가 없는 YAML
+	// YAML without the language key
 	if err := os.WriteFile(sectionsDir+"/language.yaml", []byte("other_key: value\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -941,7 +941,7 @@ func TestReadLocaleFromProject_NoLanguageKey_ReturnsEmpty(t *testing.T) {
 	}
 }
 
-// --- readGitHubUsernameFromConfig 헬퍼 함수 테스트 ---
+// --- ReadGitHubUsernameFromConfig helper function tests ---
 
 func TestReadGitHubUsernameFromConfig_ReturnsUsername(t *testing.T) {
 	tmpDir := t.TempDir()

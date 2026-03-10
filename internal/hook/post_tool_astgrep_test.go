@@ -45,11 +45,11 @@ func TestNewPostToolHandlerWithAstgrep(t *testing.T) {
 func TestPostToolHandler_AstScan_WriteToolWithMatches(t *testing.T) {
 	t.Parallel()
 
-	// 실제 임시 파일 생성 (ScanFile이 파일 존재 여부를 확인하므로)
+	// Create an actual temp file (ScanFile checks for file existence).
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "test.go")
 	if err := os.WriteFile(tmpFile, []byte("package main\n"), 0o644); err != nil {
-		t.Fatalf("임시 파일 생성 실패: %v", err)
+		t.Fatalf("failed to create temp file: %v", err)
 	}
 
 	analyzer := &mockFileAnalyzer{
@@ -73,24 +73,24 @@ func TestPostToolHandler_AstScan_WriteToolWithMatches(t *testing.T) {
 
 	got, err := h.Handle(ctx, input)
 	if err != nil {
-		t.Fatalf("Handle() 오류: %v", err)
+		t.Fatalf("Handle() error: %v", err)
 	}
 	if got == nil || got.Data == nil {
-		t.Fatal("Data가 nil이면 안 됨")
+		t.Fatal("Data must not be nil")
 	}
 
 	var metrics map[string]any
 	if err := json.Unmarshal(got.Data, &metrics); err != nil {
-		t.Fatalf("메트릭 언마샬 실패: %v", err)
+		t.Fatalf("failed to unmarshal metrics: %v", err)
 	}
 
 	astScan, ok := metrics["ast_scan"]
 	if !ok {
-		t.Fatal("metrics에 ast_scan이 없음")
+		t.Fatal("ast_scan not found in metrics")
 	}
 	astMap, ok := astScan.(map[string]any)
 	if !ok {
-		t.Fatalf("ast_scan이 map이 아님: %T", astScan)
+		t.Fatalf("ast_scan is not a map: %T", astScan)
 	}
 	if astMap["matches"] != float64(1) {
 		t.Errorf("matches = %v, want 1", astMap["matches"])
@@ -209,32 +209,32 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 
 			got, err := h.Handle(ctx, input)
 
-			// 관찰 전용: 오류 없이 항상 allow 반환
+			// Observation-only: always returns allow without error.
 			if err != nil {
-				t.Fatalf("Handle() 오류 반환 (관찰 전용이어야 함): %v", err)
+				t.Fatalf("Handle() returned error (must be observation-only): %v", err)
 			}
 			if got == nil {
-				t.Fatal("nil output 반환")
+				t.Fatal("returned nil output")
 			}
 
-			// HookSpecificOutput이 PostToolUse로 설정돼야 함
+			// HookSpecificOutput must be set to PostToolUse.
 			if got.HookSpecificOutput == nil || got.HookSpecificOutput.HookEventName != "PostToolUse" {
-				t.Errorf("HookEventName이 PostToolUse가 아님: %+v", got.HookSpecificOutput)
+				t.Errorf("HookEventName is not PostToolUse: %+v", got.HookSpecificOutput)
 			}
 
-			// ast_scan 메트릭 확인
+			// Verify ast_scan metric.
 			if got.Data != nil {
 				var metrics map[string]any
 				if err := json.Unmarshal(got.Data, &metrics); err != nil {
-					t.Fatalf("메트릭 언마샬 실패: %v", err)
+					t.Fatalf("failed to unmarshal metrics: %v", err)
 				}
 
 				_, hasAstScan := metrics["ast_scan"]
 				if tt.wantAstScan && !hasAstScan {
-					t.Error("ast_scan이 metrics에 있어야 함")
+					t.Error("ast_scan must be present in metrics")
 				}
 				if !tt.wantAstScan && hasAstScan {
-					t.Error("ast_scan이 metrics에 없어야 함")
+					t.Error("ast_scan must not be present in metrics")
 				}
 
 				if tt.wantAstScan && hasAstScan {
@@ -244,7 +244,7 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 					}
 				}
 			} else if tt.wantAstScan {
-				t.Error("Data가 nil인데 ast_scan을 기대함")
+				t.Error("Data is nil but ast_scan was expected")
 			}
 		})
 	}
