@@ -695,13 +695,13 @@ func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		sessionID     string
-		teams         map[string]string // teamName -> leadSessionId
-		wantTeamGone  []string          // team directories that should be removed
-		wantTeamKept  []string          // team directories that should be kept
-		wantTaskGone  []string          // task directories that should be removed
-		wantTaskKept  []string          // task directories that should be kept
+		name         string
+		sessionID    string
+		teams        map[string]string // teamName -> leadSessionId
+		wantTeamGone []string          // team directories that should be removed
+		wantTeamKept []string          // team directories that should be kept
+		wantTaskGone []string          // task directories that should be removed
+		wantTaskKept []string          // task directories that should be kept
 	}{
 		{
 			name:      "remove both team/task directories for matching session",
@@ -864,11 +864,11 @@ func TestGarbageCollectOrphanedTasks(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		teamNames     []string // directories present in ~/.claude/teams/
-		taskNames     []string // directories present in ~/.claude/tasks/
-		wantTaskGone  []string // task directories that should be removed (orphans)
-		wantTaskKept  []string // task directories that should be kept (have matching team)
+		name         string
+		teamNames    []string // directories present in ~/.claude/teams/
+		taskNames    []string // directories present in ~/.claude/tasks/
+		wantTaskGone []string // task directories that should be removed (orphans)
+		wantTaskKept []string // task directories that should be kept (have matching team)
 	}{
 		{
 			name:         "remove orphaned task directories with no matching team",

@@ -23,9 +23,9 @@ type UsageProvider interface {
 
 // usageCacheFile represents the JSON structure of the cache file (REQ-V3-API-002).
 type usageCacheFile struct {
-	CachedAt     int64      `json:"cached_at"`                // Unix timestamp
-	FailedAt     int64      `json:"failed_at,omitempty"`      // Last API failure time (Unix timestamp)
-	FailureCount int        `json:"failure_count,omitempty"`  // Consecutive failure count (for exponential backoff)
+	CachedAt     int64      `json:"cached_at"`               // Unix timestamp
+	FailedAt     int64      `json:"failed_at,omitempty"`     // Last API failure time (Unix timestamp)
+	FailureCount int        `json:"failure_count,omitempty"` // Consecutive failure count (for exponential backoff)
 	Usage5H      *UsageData `json:"usage_5h"`
 	Usage7D      *UsageData `json:"usage_7d"`
 }
@@ -33,15 +33,15 @@ type usageCacheFile struct {
 // usageCollector collects and caches Anthropic API usage.
 // 5-minute TTL, 300ms timeout, graceful degradation (REQ-V3-API-002~005, REQ-V3-API-009).
 type usageCollector struct {
-	mu                 sync.RWMutex
-	cache              *usageCacheFile
-	cachePath          string
-	ttl                time.Duration
+	mu                  sync.RWMutex
+	cache               *usageCacheFile
+	cachePath           string
+	ttl                 time.Duration
 	failureCooldownBase time.Duration // Exponential backoff base cooldown (default: 1m)
 	failureCooldownMax  time.Duration // Exponential backoff max cooldown (default: 32m)
-	client             *http.Client
-	homeDir            string
-	keychainReaderFn   func() (string, error) // Override for testing
+	client              *http.Client
+	homeDir             string
+	keychainReaderFn    func() (string, error) // Override for testing
 }
 
 // NewUsageCollector creates a new UsageProvider.

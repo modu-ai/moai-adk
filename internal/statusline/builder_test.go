@@ -470,10 +470,10 @@ func TestBuilderCollectsTask(t *testing.T) {
 	// Verify Task field exists and is initialized
 	// (actual values depend on session state file, so only verify field types)
 	// TaskData must always be a valid struct (no nil pointers)
-	_ = data.Task.Active   // must be accessible without panic
-	_ = data.Task.Command  // must be accessible without panic
-	_ = data.Task.SpecID   // must be accessible without panic
-	_ = data.Task.Stage    // must be accessible without panic
+	_ = data.Task.Active  // must be accessible without panic
+	_ = data.Task.Command // must be accessible without panic
+	_ = data.Task.SpecID  // must be accessible without panic
+	_ = data.Task.Stage   // must be accessible without panic
 }
 
 // TestBuilderCollectsTask_FieldExists verifies Task field exists on StatusData at compile time.
@@ -561,12 +561,12 @@ func hasANSI(s string) bool {
 // TestIntegration_ModeLineCount verifies output line count for each mode (AC-V3-01 ~ AC-V3-06).
 func TestIntegration_ModeLineCount(t *testing.T) {
 	tests := []struct {
-		name          string
-		mode          StatuslineMode
-		withUsage     bool
-		minLines      int
-		maxLines      int
-		description   string
+		name        string
+		mode        StatuslineMode
+		withUsage   bool
+		minLines    int
+		maxLines    int
+		description string
 	}{
 		// AC-V3-01: mode="minimal" → compact 2-line output (backward compat)
 		{

@@ -32,9 +32,9 @@ type FallbackTool struct {
 // fallbackDiagnostics implements FallbackDiagnostics interface.
 // It provides CLI tool fallback when LSP is unavailable per REQ-HOOK-160 through REQ-HOOK-162.
 type fallbackDiagnostics struct {
-	mu             sync.RWMutex
-	tools          map[string][]FallbackTool
-	available      map[string]bool
+	mu        sync.RWMutex
+	tools     map[string][]FallbackTool
+	available map[string]bool
 	// circuitBreaker protects external tool execution. If nil, it is disabled.
 	circuitBreaker *resilience.CircuitBreaker
 }

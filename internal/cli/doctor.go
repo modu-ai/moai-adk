@@ -39,8 +39,8 @@ var doctorCmd = &cobra.Command{
 	Use:     "doctor",
 	Short:   "Run system diagnostics",
 	GroupID: "project",
-	Long:  "Run comprehensive system health checks including Claude Code configuration, dependency verification, and environment diagnostics.",
-	RunE:  runDoctor,
+	Long:    "Run comprehensive system health checks including Claude Code configuration, dependency verification, and environment diagnostics.",
+	RunE:    runDoctor,
 }
 
 func init() {

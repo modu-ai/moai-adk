@@ -33,10 +33,10 @@ func TestCleanupMoaiWorktrees_GlobalPath(t *testing.T) {
 			wantSubstrs:  []string{"worker-local-001", "worker-global-001"},
 		},
 		{
-			name:        "neither path exists - returns empty",
-			createLocal: false,
+			name:         "neither path exists - returns empty",
+			createLocal:  false,
 			createGlobal: false,
-			wantEmpty:   true,
+			wantEmpty:    true,
 		},
 	}
 
@@ -389,4 +389,3 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 		t.Errorf("error should mention 'not in a MoAI project', got: %v", err)
 	}
 }
-

@@ -59,8 +59,8 @@ var updateCmd = &cobra.Command{
 	Use:     "update",
 	Short:   "Sync MoAI-ADK project templates to the latest version",
 	GroupID: "project",
-	Long:  "Check for binary updates, install if available, then synchronize embedded templates with the project.",
-	RunE:  runUpdate,
+	Long:    "Check for binary updates, install if available, then synchronize embedded templates with the project.",
+	RunE:    runUpdate,
 }
 
 func init() {

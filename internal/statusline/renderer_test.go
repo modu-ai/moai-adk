@@ -1340,15 +1340,15 @@ func TestRender_ModeRouting(t *testing.T) {
 	}
 
 	tests := []struct {
-		mode      StatuslineMode
-		minLines  int
-		maxLines  int
+		mode     StatuslineMode
+		minLines int
+		maxLines int
 	}{
 		{ModeCompact, 1, 2},
 		{ModeDefault, 1, 4},
 		{ModeFull, 1, 6},
-		{ModeMinimal, 1, 2},  // deprecated → compact
-		{ModeVerbose, 1, 6},  // deprecated → full
+		{ModeMinimal, 1, 2}, // deprecated → compact
+		{ModeVerbose, 1, 6}, // deprecated → full
 	}
 
 	for _, tt := range tests {
@@ -1430,9 +1430,9 @@ func TestFormatResetTimeRelative(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    string
-		wantPfx  string // expected prefix (e.g. "in ")
+		name      string
+		input     string
+		wantPfx   string // expected prefix (e.g. "in ")
 		wantEmpty bool
 	}{
 		{"empty string", "", "", true},

@@ -928,28 +928,31 @@ See the **"@MX Tag System"** section above for details.
 
 ### Q: How do I customize which statusline segments are displayed?
 
-The statusline supports 4 display presets plus custom configuration:
+The statusline v3 supports 3 display modes plus direct segment configuration:
 
-- **Full** (default): All 8 segments displayed
-- **Compact**: Model + Context + Git Status + Branch only
-- **Minimal**: Model + Context only
-- **Custom**: Pick individual segments
+- **Full**: All segments (model, context, usage bars, git, version, output style, directory)
+- **Default** (default): Core segments (model, context, usage bars, git status, branch, version)
+- **Compact**: Minimal segments (model, context, git status, branch)
 
-Configure during `moai init` / `moai update` wizard (answer "y" to reset statusline), or edit `.moai/config/sections/statusline.yaml`:
+Edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
-  preset: compact  # or full, minimal, custom
+  mode: default  # or full, compact
   segments:
     model: true
     context: true
+    usage_5h: true    # 5-hour API usage bar
+    usage_7d: true    # 7-day API usage bar
     output_style: false
     directory: false
     git_status: true
     claude_version: false
-    moai_version: false
+    moai_version: true
     git_branch: true
 ```
+
+> **Note**: As of v2.7.8, segment preset selection has been removed from the `moai init`/`moai update` wizard. Configure segments directly in the YAML file above.
 
 See [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md) for details.
 

@@ -26,7 +26,7 @@ var rankCmd = &cobra.Command{
 	Use:     "rank",
 	Short:   "MoAI Rank leaderboard management",
 	GroupID: "tools",
-	Long:  "Manage MoAI Rank leaderboard: authenticate, view rankings, sync metrics, and configure exclusions.",
+	Long:    "Manage MoAI Rank leaderboard: authenticate, view rankings, sync metrics, and configure exclusions.",
 }
 
 func init() {

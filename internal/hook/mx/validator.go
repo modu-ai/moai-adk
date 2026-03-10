@@ -27,8 +27,8 @@ var goroutineRe = regexp.MustCompile(`\bgo\s+func\s*\(`)
 type mxValidator struct {
 	// analyzer is an optional AST-grep analyzer.
 	// If nil, Grep-based fallback is used.
-	analyzer any
-	projectRoot string
+	analyzer       any
+	projectRoot    string
 	fanInThreshold int
 }
 

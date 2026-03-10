@@ -187,7 +187,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				).
 				Value(&statuslineTheme),
 		).Title(t.DisplayTitle),
-
 	)
 
 	if err := form.Run(); err != nil {
@@ -208,8 +207,8 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		ModelPolicy:      modelPolicy,
 		Model:            model,
 		Bypass:           bypass,
-		StatuslineMode:  statuslineMode,
-		StatuslineTheme: statuslineTheme,
+		StatuslineMode:   statuslineMode,
+		StatuslineTheme:  statuslineTheme,
 		TeammateDisplay:  "auto",
 	}
 
@@ -232,4 +231,3 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		profile.GetPreferencesPath(profileName))
 	return nil
 }
-

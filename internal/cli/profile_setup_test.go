@@ -61,4 +61,3 @@ func TestGetProfileText_ModeFields(t *testing.T) {
 		})
 	}
 }
-

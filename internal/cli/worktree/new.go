@@ -119,8 +119,9 @@ func isSpecID(name string) bool {
 //   - the tmux session name (e.g., "moai-moai-adk-go-SPEC-WORKTREE-002")
 //
 // Example:
-//   sessionName := GenerateTmuxSessionName("moai-adk-go", "SPEC-WORKTREE-002")
-//   fmt.Println(sessionName) // Output: moai-moai-adk-go-SPEC-WORKTREE-002
+//
+//	sessionName := GenerateTmuxSessionName("moai-adk-go", "SPEC-WORKTREE-002")
+//	fmt.Println(sessionName) // Output: moai-moai-adk-go-SPEC-WORKTREE-002
 func GenerateTmuxSessionName(projectName, specID string) string {
 	return fmt.Sprintf("moai-%s-%s", projectName, specID)
 }
@@ -142,8 +143,9 @@ func GenerateTmuxSessionName(projectName, specID string) string {
 //   - --no-merge flag: returns false, skipping auto-merge
 //
 // Example:
-//   shouldMerge := ShouldAutoMerge(false) // true
-//   shouldMerge := ShouldAutoMerge(true)  // false
+//
+//	shouldMerge := ShouldAutoMerge(false) // true
+//	shouldMerge := ShouldAutoMerge(true)  // false
 func ShouldAutoMerge(noMergeFlag bool) bool {
 	// R3: auto-merge is the default (true)
 	// Can only be disabled via the --no-merge flag

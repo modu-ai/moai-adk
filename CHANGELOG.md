@@ -5,35 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.7.8] - 2026-03-11
 
 ### Summary
 
-Worktree 생성 경로를 프로젝트 내부(`.moai/worktrees/`)에서 글로벌(`~/.moai/worktrees/{ProjectName}/`)로 마이그레이션한다. 이를 통해 git worktree 설계 원칙에 부합하고, IDE 파일 감시 간섭과 중첩 구조 문제를 해소한다.
+Statusline v3 with RGB gradient, 5H/7D usage monitoring, and new multi-line layout. Worktree paths migrated to global `~/.moai/worktrees/`. Fixes 5H/7D usage always showing 0% (missing OAuth beta header), hook input capture, and GLM model override support.
 
 ### Breaking Changes
 
-None. `--path` 플래그 동작은 변경되지 않으며, 기존 프로젝트 내부 worktree는 정상 작동한다.
+None. All changes are backward compatible.
 
 ### Added
 
-- **글로벌 worktree 경로**: `moai worktree new` 명령이 `~/.moai/worktrees/{ProjectName}/{branch}/`에 worktree를 생성한다 (SPEC-WORKTREE-001)
-- **프로젝트명 자동 감지**: `go.mod` module path → git remote origin → 디렉토리명 순서로 프로젝트명을 결정한다
-- **하위 호환성 경고**: 기존 `.moai/worktrees/`에 worktree가 있으면 stderr로 마이그레이션 안내를 출력한다
-- **글로벌 세션 정리**: `cleanupMoaiWorktrees`가 `~/.moai/worktrees/{ProjectName}/` 경로의 worker worktree도 정리한다
-- **symlink 해석**: worktree 정리 시 symlink을 resolve하여 정확한 경로 비교를 수행한다
-- `detectProjectName()`: go.mod, git remote, 디렉토리명 3단계 fallback 함수 (7 테스트 케이스)
-- `TestCleanupMoaiWorktrees_Global`: 글로벌 경로 정리 테스트
+- **Statusline v3**: RGB gradient coloring, 5H/7D API usage monitoring bars, redesigned multi-line layout (compact/default/full modes) (SPEC-SLV3-001)
+- **Usage monitoring**: Real-time 5-hour and 7-day API utilization bars in statusline
+- **Worktree global paths**: `moai worktree new` now creates worktrees at `~/.moai/worktrees/{ProjectName}/{branch}/` instead of inside the project (SPEC-WORKTREE-001)
+- **Worktree automation workflow**: Automated worktree lifecycle management with tmux integration (SPEC-WORKTREE-002)
+- **MX Tag Auto-Validation System**: Automatic @MX tag validation on file edits (SPEC-MX-002)
+- **GLM model override**: Individual model name override support in GLM configuration
 
 ### Changed
 
-- `internal/cli/worktree/new.go`: 기본 worktree 경로를 글로벌로 변경
-- `internal/cli/launcher.go`: 정리 대상에 글로벌 경로 추가, symlink 해석 로직 추가
-- 문서 경로 표기를 `~/.moai/worktrees/` 기반으로 통일 (worktree-integration.md, SKILL.md, registry-architecture.md)
+- **Statusline themes**: Renamed from "Default/Catppuccin Mocha/Catppuccin Latte" to **"MoAI Dark/MoAI Light"** — two themes that match the statusline design language
+- **Statusline wizard**: Removed segment preset selection UI from `moai init`/`moai update` wizard — configure segments directly in `.moai/config/sections/statusline.yaml`
 
 ### Fixed
 
-None.
+- **5H/7D usage always showing 0%**: Messages API requires `anthropic-beta: oauth-2025-04-20` header when using OAuth tokens — previously missing, causing 401 errors and empty usage bars
+- **Hook input capture**: Fixed hook stdin JSON not being properly captured in some environments (#467)
+- **PATH capture in hooks**: Fixed PATH environment variable not being captured correctly (#474)
+- **Windows test**: Fixed git path separator mismatch in `cleanupMoaiWorktrees` tests
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.8] - 2026-03-11 (한국어)
+
+### 요약
+
+RGB 그라디언트와 5H/7D 사용량 모니터링을 포함한 Statusline v3 출시. Worktree 경로를 글로벌 `~/.moai/worktrees/`로 이동. 5H/7D 사용량이 항상 0%로 표시되던 문제(OAuth beta 헤더 누락), 훅 입력 캡처, GLM 모델 오버라이드 지원 수정.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음. 모든 변경사항은 하위 호환성을 유지한다.
+
+### 추가됨 (Added)
+
+- **Statusline v3**: RGB 그라디언트 색상, 5H/7D API 사용량 모니터링 바, 다중 라인 레이아웃 재설계 (compact/default/full 모드) (SPEC-SLV3-001)
+- **사용량 모니터링**: statusline에 5시간/7일 API 사용률 바 표시
+- **Worktree 글로벌 경로**: `moai worktree new`가 프로젝트 내부 대신 `~/.moai/worktrees/{ProjectName}/{branch}/`에 worktree 생성 (SPEC-WORKTREE-001)
+- **Worktree 자동화 워크플로우**: tmux 통합을 포함한 worktree 생명주기 자동화 (SPEC-WORKTREE-002)
+- **MX 태그 자동 검증 시스템**: 파일 편집 시 @MX 태그 자동 검증 (SPEC-MX-002)
+- **GLM 모델 오버라이드**: GLM 설정에서 개별 모델명 오버라이드 지원
+
+### 변경됨 (Changed)
+
+- **Statusline 테마**: "Default/Catppuccin Mocha/Catppuccin Latte"에서 **"MoAI Dark/MoAI Light"**로 이름 변경 — statusline 디자인 언어에 맞는 두 가지 테마
+- **Statusline 위자드**: `moai init`/`moai update` 위자드에서 세그먼트 프리셋 선택 UI 제거 — 세그먼트는 `.moai/config/sections/statusline.yaml`에서 직접 설정
+
+### 수정됨 (Fixed)
+
+- **5H/7D 사용량 항상 0% 표시**: Messages API에 OAuth 토큰 사용 시 `anthropic-beta: oauth-2025-04-20` 헤더가 필수인데 누락되어 401 에러 발생 → 사용량 바 항상 빈 상태
+- **훅 입력 캡처**: 일부 환경에서 훅 stdin JSON이 올바르게 캡처되지 않는 문제 수정 (#467)
+- **훅에서 PATH 캡처**: PATH 환경변수가 올바르게 캡처되지 않는 문제 수정 (#474)
+- **Windows 테스트**: `cleanupMoaiWorktrees` 테스트에서 git 경로 구분자 불일치 수정
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
 
 ---
 

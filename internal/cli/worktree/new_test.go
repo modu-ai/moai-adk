@@ -28,12 +28,12 @@ func setupMockProvider(t *testing.T) (*MockWorktreeProvider, func()) {
 // MockWorktreeProvider is a test implementation of WorktreeProvider.
 // Added for TDD implementation of SPEC-WORKTREE-002.
 type MockWorktreeProvider struct {
-	addCalled     bool
-	removeCalled  bool
-	worktrees     []WorktreeInfo
-	addFunc       func(path, branch string) error
-	removeFunc    func(path string, force bool) error
-	listFunc      func() ([]WorktreeInfo, error)
+	addCalled        bool
+	removeCalled     bool
+	worktrees        []WorktreeInfo
+	addFunc          func(path, branch string) error
+	removeFunc       func(path string, force bool) error
+	listFunc         func() ([]WorktreeInfo, error)
 	deleteBranchFunc func(branch string) error
 }
 
@@ -103,10 +103,10 @@ func (m *MockWorktreeProvider) DeleteBranch(branch string) error {
 }
 
 // Other required methods (satisfying the git.WorktreeManager interface)
-func (m *MockWorktreeProvider) Prune() error { return nil }
-func (m *MockWorktreeProvider) Repair() error { return nil }
-func (m *MockWorktreeProvider) Root() string { return "/test/repo" }
-func (m *MockWorktreeProvider) Sync(wtPath, baseBranch, strategy string) error { return nil }
+func (m *MockWorktreeProvider) Prune() error                                     { return nil }
+func (m *MockWorktreeProvider) Repair() error                                    { return nil }
+func (m *MockWorktreeProvider) Root() string                                     { return "/test/repo" }
+func (m *MockWorktreeProvider) Sync(wtPath, baseBranch, strategy string) error   { return nil }
 func (m *MockWorktreeProvider) IsBranchMerged(branch, base string) (bool, error) { return false, nil }
 
 // TestNewWorktreeWithTmuxCreation tests R5: tmux session creation after worktree
@@ -115,22 +115,22 @@ func TestNewWorktreeWithTmuxCreation(t *testing.T) {
 	// This test verifies tmux session creation after worktree creation
 
 	tests := []struct {
-		name     string
-		specID   string
+		name          string
+		specID        string
 		tmuxAvailable bool
-		wantErr  bool
+		wantErr       bool
 	}{
 		{
-			name:     "tmux session creation as specified in SPEC-WORKTREE-002",
-			specID:   "SPEC-WORKTREE-002",
+			name:          "tmux session creation as specified in SPEC-WORKTREE-002",
+			specID:        "SPEC-WORKTREE-002",
 			tmuxAvailable: true,
-			wantErr:  false,
+			wantErr:       false,
 		},
 		{
-			name:     "worktree is still created when tmux is unavailable",
-			specID:   "SPEC-WORKTREE-002",
+			name:          "worktree is still created when tmux is unavailable",
+			specID:        "SPEC-WORKTREE-002",
 			tmuxAvailable: false,
-			wantErr:  false,
+			wantErr:       false,
 		},
 	}
 
@@ -179,22 +179,22 @@ func TestNewWorktreeWithTmuxCreation(t *testing.T) {
 // TestTmuxSessionNamePattern tests R5.1: session name pattern validation
 func TestTmuxSessionNamePattern(t *testing.T) {
 	tests := []struct {
-		name      string
+		name        string
 		projectName string
-		specID    string
-		want      string
+		specID      string
+		want        string
 	}{
 		{
-			name:      "standard SPEC-ID",
+			name:        "standard SPEC-ID",
 			projectName: "moai-adk-go",
-			specID:    "SPEC-WORKTREE-002",
-			want:      "moai-moai-adk-go-SPEC-WORKTREE-002",
+			specID:      "SPEC-WORKTREE-002",
+			want:        "moai-moai-adk-go-SPEC-WORKTREE-002",
 		},
 		{
-			name:      "short project name",
+			name:        "short project name",
 			projectName: "myproject",
-			specID:    "SPEC-AUTH-001",
-			want:      "moai-myproject-SPEC-AUTH-001",
+			specID:      "SPEC-AUTH-001",
+			want:        "moai-myproject-SPEC-AUTH-001",
 		},
 	}
 
@@ -216,18 +216,18 @@ func TestAutoMergeDefaultBehavior(t *testing.T) {
 	// This test will be integrated when the sync command is implemented
 
 	tests := []struct {
-		name     string
-		noMergeFlag bool
+		name          string
+		noMergeFlag   bool
 		wantAutoMerge bool
 	}{
 		{
-			name:     "auto-merge when no flag is set (default)",
-			noMergeFlag: false,
+			name:          "auto-merge when no flag is set (default)",
+			noMergeFlag:   false,
 			wantAutoMerge: true,
 		},
 		{
-			name:     "skip with --no-merge flag",
-			noMergeFlag: true,
+			name:          "skip with --no-merge flag",
+			noMergeFlag:   true,
 			wantAutoMerge: false,
 		},
 	}
@@ -249,21 +249,21 @@ func TestWorktreeAutoCleanup(t *testing.T) {
 	// R4: automatically run `moai worktree done SPEC-XXX` after PR merge
 
 	tests := []struct {
-		name       string
-		specID     string
-		prMerged   bool
+		name        string
+		specID      string
+		prMerged    bool
 		wantCleanup bool
 	}{
 		{
-			name:       "auto cleanup after PR merge",
-			specID:     "SPEC-WORKTREE-002",
-			prMerged:   true,
+			name:        "auto cleanup after PR merge",
+			specID:      "SPEC-WORKTREE-002",
+			prMerged:    true,
 			wantCleanup: true,
 		},
 		{
-			name:       "no cleanup when PR is not merged",
-			specID:     "SPEC-WORKTREE-002",
-			prMerged:   false,
+			name:        "no cleanup when PR is not merged",
+			specID:      "SPEC-WORKTREE-002",
+			prMerged:    false,
 			wantCleanup: false,
 		},
 	}

@@ -48,9 +48,9 @@ func TestCatppuccinMochaColors(t *testing.T) {
 	theme := NewTheme("catppuccin-mocha")
 
 	tests := []struct {
-		name  string
-		got   lipgloss.Color
-		want  lipgloss.Color
+		name string
+		got  lipgloss.Color
+		want lipgloss.Color
 	}{
 		{"Primary", theme.Primary(), lipgloss.Color("#CDD6F4")},
 		{"Muted", theme.Muted(), lipgloss.Color("#6C7086")},
@@ -97,9 +97,9 @@ func TestCatppuccinLatteColors(t *testing.T) {
 func TestBarGradient_Stages(t *testing.T) {
 	// REQ-SLE-015: 4-stage gradient
 	tests := []struct {
-		name   string
-		pct    float64
-		stage  int // 1=green, 2=yellow, 3=peach/orange, 4=red
+		name  string
+		pct   float64
+		stage int // 1=green, 2=yellow, 3=peach/orange, 4=red
 	}{
 		{"0% = stage 1 (green)", 0, 1},
 		{"25% = stage 1 (green)", 25, 1},

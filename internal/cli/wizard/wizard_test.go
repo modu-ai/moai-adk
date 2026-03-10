@@ -7,10 +7,10 @@ import (
 
 func TestWizardResult(t *testing.T) {
 	result := &WizardResult{
-		ProjectName:    "test-project",
+		ProjectName:     "test-project",
 		DevelopmentMode: "tdd",
-		GitMode:        "personal",
-		GitHubUsername: "testuser",
+		GitMode:         "personal",
+		GitHubUsername:  "testuser",
 	}
 
 	if result.ProjectName != "test-project" {
