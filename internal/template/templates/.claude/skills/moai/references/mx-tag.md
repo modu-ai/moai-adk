@@ -27,7 +27,7 @@ triggers:
 
 # @MX TAG Reference -- Supplementary Details
 
-For tag types, trigger conditions, lifecycle rules, when to add/update/remove tags, per-file limits, mandatory fields, and language settings, see the authoritative source: @.claude/rules/moai/workflow/mx-tag-protocol.md
+For tag types, trigger conditions, lifecycle rules, when to add/update/remove tags, per-file limits, mandatory fields, and language settings, see the authoritative source: .claude/rules/moai/workflow/mx-tag-protocol.md
 
 This file contains ONLY supplementary operational details not covered in the protocol.
 

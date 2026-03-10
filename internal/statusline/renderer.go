@@ -9,7 +9,7 @@ import (
 )
 
 // Renderer formats StatusData into a multiline statusline string.
-// Supports v3 layouts: compact(2L), default(3L), full(5L).
+// Supports v3 layouts: default(3L), full(5L).
 type Renderer struct {
 	separator     string
 	noColor       bool
@@ -46,10 +46,9 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 // Render formats the StatusData into a statusline string based on the mode.
 //
 // v3 mode mapping:
-//   - ModeCompact, ModeMinimal → 2-line compact layout
-//   - ModeDefault              → 3-line default layout
-//   - ModeFull, ModeVerbose    → 5-line full layout
-//   - unknown                  → 3-line default layout (fallback)
+//   - ModeDefault, ModeCompact, ModeMinimal → 3-line default layout
+//   - ModeFull, ModeVerbose                 → 5-line full layout
+//   - unknown                               → 3-line default layout (fallback)
 //
 // @MX:ANCHOR: [AUTO] Single entry point for all mode rendering - called from Build() in builder.go
 // @MX:REASON: Public API boundary; contains mode routing logic
@@ -63,8 +62,6 @@ func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 
 	var result string
 	switch normalizedMode {
-	case ModeCompact:
-		result = r.renderCompactV3(data)
 	case ModeFull:
 		result = r.renderFullV3(data)
 	default: // ModeDefault or unknown mode
@@ -115,34 +112,6 @@ func (r *Renderer) joinSegments(segments []string) string {
 // ─────────────────────────────────────────────────────────────────────────────
 // v3 layout renderers
 // ─────────────────────────────────────────────────────────────────────────────
-
-// renderCompactV3 renders the compact mode 2-line layout.
-//
-// L1: 🤖 Model │ CW: 🪫 ██████████ 88%
-// L2: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-//
-// REQ-V3-TIME-006: session time omitted in compact mode
-// REQ-V3-API-011: 5H/7D bars omitted in compact mode
-func (r *Renderer) renderCompactV3(data *StatusData) string {
-	var lines []string
-
-	// L1: model + CW bar
-	l1 := r.renderCompactLine1(data)
-	if l1 != "" {
-		lines = append(lines, l1)
-	}
-
-	// L2: branch (ahead/behind) + git status
-	l2 := r.renderGitLine(data)
-	if l2 != "" {
-		lines = append(lines, l2)
-	}
-
-	if len(lines) == 0 {
-		return ""
-	}
-	return strings.Join(lines, "\n")
-}
 
 // renderDefaultV3 renders the default mode 3-line layout.
 //
@@ -232,26 +201,6 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 // Common line renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderCompactLine1 renders the compact mode L1.
-// Format: 🤖 Model │ CW: 🪫 ██████████ 88%
-// REQ-V3-TIME-006: session time omitted
-func (r *Renderer) renderCompactLine1(data *StatusData) string {
-	var segs []string
-
-	// Model
-	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
-		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
-	}
-
-	// CW bar (10 blocks)
-	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
-		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-		segs = append(segs, renderUsageBar("CW:", pct, 10, r.noColor))
-	}
-
-	return r.joinSegments(segs)
-}
-
 // renderInfoLine renders the L1 info line (shared by default/full).
 // withPrefix=true: full mode format ("Claude v...", "MoAI v...")
 // withPrefix=false: default mode format ("v...")
@@ -333,28 +282,6 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderGitLine renders the branch + git status line (compact L2).
-// Format: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-func (r *Renderer) renderGitLine(data *StatusData) string {
-	var segs []string
-
-	// Branch + ahead/behind
-	if r.isSegmentEnabled(SegmentGitBranch) {
-		if branch := renderGitBranch(data); branch != "" {
-			segs = append(segs, branch)
-		}
-	}
-
-	// Git status
-	if r.isSegmentEnabled(SegmentGitStatus) {
-		if git := r.renderGitStatus(data); git != "" {
-			segs = append(segs, fmt.Sprintf("📊 %s", git))
-		}
-	}
-
-	return r.joinSegments(segs)
-}
-
 // renderDirGitLine renders the directory + branch + git status line (default L3, full L5).
 // Format: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
@@ -387,16 +314,16 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // renderUsageBar renders label + battery icon + gradient bar + percentage.
-// Format: {label} {BatteryIcon(pct)}  {BuildGradientBar(pct, width, noColor)} {pct}%
-// Example: CW: 🪫  ████████████████████████████████████░░░░ 88%
+// Format: {label} {BatteryIcon(pct)} {BuildGradientBar(pct, width, noColor)} {pct}%
+// Example: CW: 🪫 ████████████████████████████████████░░░░ 88%
 func renderUsageBar(label string, pct int, width int, noColor bool) string {
 	icon := BatteryIcon(pct)
 	bar := BuildGradientBar(pct, width, noColor)
-	return fmt.Sprintf("%s %s  %s %d%%", label, icon, bar, pct)
+	return fmt.Sprintf("%s %s %s %d%%", label, icon, bar, pct)
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
-// Format: {label} {icon}  {bar} {pct}% (Resets {resetStr})
+// Format: {label} {icon} {bar} {pct}% (Resets {resetStr})
 func renderUsageBarWithReset(label string, pct int, width int, noColor bool, resetStr string) string {
 	base := renderUsageBar(label, pct, width, noColor)
 	if resetStr == "" {

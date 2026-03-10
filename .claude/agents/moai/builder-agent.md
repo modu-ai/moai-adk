@@ -94,7 +94,7 @@ Writing Style Requirements:
 - Specific, measurable criteria
 - No ambiguous or vague instructions
 - Clear decision-making guidelines
-- Narrative text format for all workflow descriptions per @.claude/rules/moai/development/coding-standards.md
+- Narrative text format for all workflow descriptions per .claude/rules/moai/development/coding-standards.md
 
 ### Phase 3: Frontmatter Configuration
 

@@ -90,7 +90,7 @@ After classification, cross-check all candidates against existing @MX tags:
 - @MX:NOTE candidates: Include the NOTE context in the removal plan for informed user decision
 - @MX:TODO candidates: If TODO indicates pending work, reclassify as "Deferred" rather than dead
 - This cross-check supplements the Phase 4 safety measure: "Never remove @MX:ANCHOR without explicit approval"
-- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
+- See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
 
 If --safe-only flag: Only proceed with "Confirmed Dead" items (after MX cross-check).
 If --aggressive flag: Include "Likely Dead" items for removal (MX cross-check still applies).

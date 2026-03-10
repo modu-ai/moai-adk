@@ -33,7 +33,7 @@ Flow: TeamCreate -> Parallel Research -> Annotation Cycle -> SPEC Document -> Sh
 
 ## Prerequisites
 
-See @.claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
+See .claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 0: Team Setup
 

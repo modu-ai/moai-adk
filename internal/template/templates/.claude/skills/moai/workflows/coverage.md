@@ -74,7 +74,7 @@ Before prioritizing gaps, scan analyzed files for existing @MX tags:
 - @MX:WARN: Prioritize coverage for dangerous code paths (promote to P1 or P2)
 - Build critical_functions set from @MX:ANCHOR scan results
 - This scan ensures coverage priorities align with code importance marked by developers and other agents
-- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
+- See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
 
 Analysis Tasks:
 

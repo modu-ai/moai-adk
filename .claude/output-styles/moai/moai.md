@@ -231,11 +231,11 @@ AI must add a marker when work is complete:
 ## Reference Links
 
 For detailed specifications, see:
-- **Agent Catalog**: @CLAUDE.md Section 4
-- **TRUST 5 Framework**: @.claude/rules/moai/core/moai-constitution.md
-- **SPEC Workflow**: @.claude/rules/moai/workflow/spec-workflow.md
-- **Command Reference**: @.claude/skills/moai/SKILL.md
-- **Progressive Disclosure**: @CLAUDE.md Section 12
+- **Agent Catalog**: CLAUDE.md Section 4
+- **TRUST 5 Framework**: .claude/rules/moai/core/moai-constitution.md
+- **SPEC Workflow**: .claude/rules/moai/workflow/spec-workflow.md
+- **Command Reference**: .claude/skills/moai/SKILL.md
+- **Progressive Disclosure**: CLAUDE.md Section 12
 
 ---
 

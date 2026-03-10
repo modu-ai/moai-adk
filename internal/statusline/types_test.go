@@ -3,8 +3,9 @@ package statusline
 import "testing"
 
 // TestNormalizeMode verifies backward-compatible mode name normalization.
-// REQ-V3-MODE-001: "minimal" → "compact" conversion
+// REQ-V3-MODE-001: "minimal" → "default" conversion
 // REQ-V3-MODE-002: "verbose" → "full" conversion
+// REQ-V3-MODE-003: "compact" → "default" conversion
 func TestNormalizeMode(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -12,11 +13,11 @@ func TestNormalizeMode(t *testing.T) {
 		want  StatuslineMode
 	}{
 		// Backward compatibility: old name → new name conversion
-		{"minimal converts to compact", "minimal", ModeCompact},
+		{"minimal converts to default", "minimal", ModeDefault},
+		{"compact converts to default", "compact", ModeDefault},
 		{"verbose converts to full", "verbose", ModeFull},
 		// Current names remain unchanged
 		{"default unchanged", "default", ModeDefault},
-		{"compact unchanged", "compact", ModeCompact},
 		{"full unchanged", "full", ModeFull},
 		// Edge cases
 		{"empty unchanged", "", ""},
