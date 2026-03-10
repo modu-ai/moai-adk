@@ -7,8 +7,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/core/git"
 )
 
-// setupMockProvider는 테스트를 위해 MockWorktreeProvider를 설정하고,
-// 테스트 종료 시 원래 상태로 복원하는 cleanup 함수를 반환합니다.
+// setupMockProvider sets up a MockWorktreeProvider for testing
+// and returns a cleanup function that restores the original state when the test ends.
 func setupMockProvider(t *testing.T) (*MockWorktreeProvider, func()) {
 	t.Helper()
 
@@ -25,8 +25,8 @@ func setupMockProvider(t *testing.T) (*MockWorktreeProvider, func()) {
 	return mockProvider, cleanup
 }
 
-// MockWorktreeProvider는 테스트용 WorktreeProvider 구현체입니다.
-// SPEC-WORKTREE-002의 TDD 구현을 위해 추가됨.
+// MockWorktreeProvider is a test implementation of WorktreeProvider.
+// Added for TDD implementation of SPEC-WORKTREE-002.
 type MockWorktreeProvider struct {
 	addCalled     bool
 	removeCalled  bool
@@ -37,7 +37,7 @@ type MockWorktreeProvider struct {
 	deleteBranchFunc func(branch string) error
 }
 
-// WorktreeInfo는 worktree 정보를 저장하는 구조체입니다.
+// WorktreeInfo is a struct that stores worktree information.
 type WorktreeInfo struct {
 	Branch string
 	Path   string
@@ -57,7 +57,7 @@ func (m *MockWorktreeProvider) Remove(path string, force bool) error {
 	if m.removeFunc != nil {
 		return m.removeFunc(path, force)
 	}
-	// worktree 목록에서 제거
+	// Remove from the worktree list
 	for i, wt := range m.worktrees {
 		if wt.Path == path {
 			m.worktrees = append(m.worktrees[:i], m.worktrees[i+1:]...)
@@ -69,12 +69,12 @@ func (m *MockWorktreeProvider) Remove(path string, force bool) error {
 
 func (m *MockWorktreeProvider) List() ([]git.Worktree, error) {
 	if m.listFunc != nil {
-		// listFunc가 []WorktreeInfo를 반환하도록 수정 필요
+		// listFunc needs to be updated to return []WorktreeInfo
 		result, err := m.listFunc()
 		if err != nil {
 			return nil, err
 		}
-		// WorktreeInfo를 git.Worktree로 변환
+		// Convert WorktreeInfo to git.Worktree
 		var worktrees []git.Worktree
 		for _, wt := range result {
 			worktrees = append(worktrees, git.Worktree{
@@ -84,7 +84,7 @@ func (m *MockWorktreeProvider) List() ([]git.Worktree, error) {
 		}
 		return worktrees, nil
 	}
-	// WorktreeInfo를 git.Worktree로 변환
+	// Convert WorktreeInfo to git.Worktree
 	var worktrees []git.Worktree
 	for _, wt := range m.worktrees {
 		worktrees = append(worktrees, git.Worktree{
@@ -102,7 +102,7 @@ func (m *MockWorktreeProvider) DeleteBranch(branch string) error {
 	return nil
 }
 
-// 기타 필수 메서드들 (git.WorktreeManager 인터페이스 준수)
+// Other required methods (satisfying the git.WorktreeManager interface)
 func (m *MockWorktreeProvider) Prune() error { return nil }
 func (m *MockWorktreeProvider) Repair() error { return nil }
 func (m *MockWorktreeProvider) Root() string { return "/test/repo" }
@@ -111,8 +111,8 @@ func (m *MockWorktreeProvider) IsBranchMerged(branch, base string) (bool, error)
 
 // TestNewWorktreeWithTmuxCreation tests R5: tmux session creation after worktree
 func TestNewWorktreeWithTmuxCreation(t *testing.T) {
-	// RED Phase: 테스트 작성
-	// 이 테스트는 worktree 생성 후 tmux 세션 생성을 검증
+	// RED Phase: write the test
+	// This test verifies tmux session creation after worktree creation
 
 	tests := []struct {
 		name     string
@@ -121,13 +121,13 @@ func TestNewWorktreeWithTmuxCreation(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "SPEC-WORKTREE-002에서 명시한 tmux 세션 생성",
+			name:     "tmux session creation as specified in SPEC-WORKTREE-002",
 			specID:   "SPEC-WORKTREE-002",
 			tmuxAvailable: true,
 			wantErr:  false,
 		},
 		{
-			name:     "tmux 없을 때도 worktree는 생성됨",
+			name:     "worktree is still created when tmux is unavailable",
 			specID:   "SPEC-WORKTREE-002",
 			tmuxAvailable: false,
 			wantErr:  false,
@@ -136,10 +136,10 @@ func TestNewWorktreeWithTmuxCreation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Arrange: 테스트 환경 설정
+			// Arrange: set up the test environment
 			tempDir := t.TempDir()
 
-			// Mock 함수 설정
+			// Set up mock functions
 			oldUserHomeDirFunc := userHomeDirFunc
 			oldGetProjectNameFunc := getProjectNameFunc
 			defer func() {
@@ -154,21 +154,21 @@ func TestNewWorktreeWithTmuxCreation(t *testing.T) {
 				return "test-project"
 			}
 
-			// Mock WorktreeProvider 설정
+			// Set up mock WorktreeProvider
 			mockProvider, cleanup := setupMockProvider(t)
 			defer cleanup()
 
-			// Act: worktree 생성
+			// Act: create the worktree
 			expectedPath := filepath.Join(tempDir, ".moai", "worktrees", "test-project", tt.specID)
 			err := mockProvider.Add(expectedPath, "feature/"+tt.specID)
 
-			// Assert: 결과 검증
+			// Assert: verify the result
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Add() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			// worktree가 생성되었는지 확인
+			// Verify that the worktree was created
 			if !mockProvider.addCalled {
 				t.Error("WorktreeProvider.Add was not called")
 			}
@@ -176,7 +176,7 @@ func TestNewWorktreeWithTmuxCreation(t *testing.T) {
 	}
 }
 
-// TestTmuxSessionNamePattern tests R5.1: 세션 이름 패턴 검증
+// TestTmuxSessionNamePattern tests R5.1: session name pattern validation
 func TestTmuxSessionNamePattern(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -185,13 +185,13 @@ func TestTmuxSessionNamePattern(t *testing.T) {
 		want      string
 	}{
 		{
-			name:      "표준 SPEC-ID",
+			name:      "standard SPEC-ID",
 			projectName: "moai-adk-go",
 			specID:    "SPEC-WORKTREE-002",
 			want:      "moai-moai-adk-go-SPEC-WORKTREE-002",
 		},
 		{
-			name:      "짧은 프로젝트 이름",
+			name:      "short project name",
 			projectName: "myproject",
 			specID:    "SPEC-AUTH-001",
 			want:      "moai-myproject-SPEC-AUTH-001",
@@ -201,7 +201,7 @@ func TestTmuxSessionNamePattern(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange & Act & Assert
-			// R5.1: moai-{ProjectName}-{SPEC-ID} 패턴 검증
+			// R5.1: validate moai-{ProjectName}-{SPEC-ID} pattern
 			got := GenerateTmuxSessionName(tt.projectName, tt.specID)
 			if got != tt.want {
 				t.Errorf("GenerateTmuxSessionName() = %v, want %v", got, tt.want)
@@ -210,10 +210,10 @@ func TestTmuxSessionNamePattern(t *testing.T) {
 	}
 }
 
-// TestAutoMergeDefaultBehavior tests R3: auto-merge 기본 동작
+// TestAutoMergeDefaultBehavior tests R3: auto-merge default behavior
 func TestAutoMergeDefaultBehavior(t *testing.T) {
-	// R3: sync.md 워크플로우에서 auto-merge가 기본값이어야 함
-	// 이 테스트는 향후 sync 명령어 구현 시 통합될 예정
+	// R3: auto-merge must be the default in the sync.md workflow
+	// This test will be integrated when the sync command is implemented
 
 	tests := []struct {
 		name     string
@@ -221,12 +221,12 @@ func TestAutoMergeDefaultBehavior(t *testing.T) {
 		wantAutoMerge bool
 	}{
 		{
-			name:     "플래그 없으면 auto-merge (기본값)",
+			name:     "auto-merge when no flag is set (default)",
 			noMergeFlag: false,
 			wantAutoMerge: true,
 		},
 		{
-			name:     "--no-merge 플래그로 skip",
+			name:     "skip with --no-merge flag",
 			noMergeFlag: true,
 			wantAutoMerge: false,
 		},
@@ -235,7 +235,7 @@ func TestAutoMergeDefaultBehavior(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange & Act & Assert
-			// 이 테스트는 sync.md 문서 업데이트 후 유효성 검증에 사용됨
+			// This test is used for validation after updating sync.md documentation
 			got := ShouldAutoMerge(tt.noMergeFlag)
 			if got != tt.wantAutoMerge {
 				t.Errorf("ShouldAutoMerge() = %v, want %v", got, tt.wantAutoMerge)
@@ -244,9 +244,9 @@ func TestAutoMergeDefaultBehavior(t *testing.T) {
 	}
 }
 
-// TestWorktreeAutoCleanup tests R4: PR merge 후 자동 cleanup
+// TestWorktreeAutoCleanup tests R4: automatic cleanup after PR merge
 func TestWorktreeAutoCleanup(t *testing.T) {
-	// R4: PR merge 후 자동으로 `moai worktree done SPEC-XXX` 실행
+	// R4: automatically run `moai worktree done SPEC-XXX` after PR merge
 
 	tests := []struct {
 		name       string
@@ -255,13 +255,13 @@ func TestWorktreeAutoCleanup(t *testing.T) {
 		wantCleanup bool
 	}{
 		{
-			name:       "PR merge 후 자동 cleanup",
+			name:       "auto cleanup after PR merge",
 			specID:     "SPEC-WORKTREE-002",
 			prMerged:   true,
 			wantCleanup: true,
 		},
 		{
-			name:       "PR 미merge 시 cleanup 없음",
+			name:       "no cleanup when PR is not merged",
 			specID:     "SPEC-WORKTREE-002",
 			prMerged:   false,
 			wantCleanup: false,
@@ -290,7 +290,7 @@ func TestWorktreeAutoCleanup(t *testing.T) {
 			mockProvider, cleanup := setupMockProvider(t)
 			defer cleanup()
 
-			// 초기 worktree 추가
+			// Add the initial worktree
 			worktreePath := filepath.Join(tempDir, ".moai", "worktrees", "test-project", tt.specID)
 			mockProvider.worktrees = []WorktreeInfo{
 				{
@@ -301,7 +301,7 @@ func TestWorktreeAutoCleanup(t *testing.T) {
 
 			// Act
 			if tt.prMerged && tt.wantCleanup {
-				// PR merge 후 자동 cleanup 시뮬레이션
+				// Simulate automatic cleanup after PR merge
 				err := mockProvider.Remove(worktreePath, true)
 				if err != nil {
 					t.Errorf("Auto-cleanup failed: %v", err)

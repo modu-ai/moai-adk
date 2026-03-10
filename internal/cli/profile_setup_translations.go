@@ -46,11 +46,11 @@ type profileSetupText struct {
 	// Statusline mode selector (layout style)
 	StatuslineModeTitle string
 	StatuslineModeDesc  string
-	// v3 모드 레이블 (REQ-V3-MODE-003)
+	// v3 mode labels (REQ-V3-MODE-003)
 	ModeDefault string // label for mode = "default"
 	ModeCompact string // label for mode = "compact"
 	ModeFull    string // label for mode = "full"
-	// Deprecated: v2 레이블. 하위 호환성을 위해 유지.
+	// Deprecated: v2 labels. Kept for backward compatibility.
 	ModeVerbose string // label for mode = "verbose" (deprecated)
 	ModeMinimal string // label for mode = "minimal" (deprecated)
 

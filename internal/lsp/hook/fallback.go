@@ -219,8 +219,8 @@ func (f *fallbackDiagnostics) RunFallback(ctx context.Context, filePath string) 
 }
 
 // runTool executes a single tool and parses its output.
-// 서킷 브레이커가 설정된 경우 외부 도구 실행을 보호한다.
-// 서킷이 열려 있으면 빈 진단을 반환하며 에러를 반환하지 않는다(관찰 전용).
+// If a circuit breaker is configured, it protects external tool execution.
+// When the circuit is open, it returns empty diagnostics without an error (observation-only).
 func (f *fallbackDiagnostics) runTool(ctx context.Context, tool FallbackTool, filePath string) ([]Diagnostic, error) {
 	args := make([]string, len(tool.Args))
 	for i, arg := range tool.Args {
@@ -231,7 +231,7 @@ func (f *fallbackDiagnostics) runTool(ctx context.Context, tool FallbackTool, fi
 		}
 	}
 
-	// 서킷 브레이커가 활성화된 경우 외부 도구 실행을 보호한다.
+	// Protect external tool execution when the circuit breaker is active.
 	if f.circuitBreaker != nil {
 		var diagnostics []Diagnostic
 		cbErr := f.circuitBreaker.Call(ctx, func() error {

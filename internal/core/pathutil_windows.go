@@ -8,7 +8,7 @@ import (
 )
 
 // GetLongPathName converts Windows 8.3 short paths to full Unicode paths.
-// This resolves paths like "C:\Users\홍길동~1" back to "C:\Users\홍길동팀장".
+// This resolves paths like "C:\Users\LONGNA~1" back to "C:\Users\LongName".
 func GetLongPathName(shortPath string) (string, error) {
 	// Convert to UTF-16
 	ptr, err := syscall.UTF16PtrFromString(shortPath)

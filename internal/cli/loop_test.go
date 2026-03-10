@@ -58,7 +58,7 @@ func TestLoopCmd_HasExpectedSubcommands(t *testing.T) {
 	}
 }
 
-// --- noopFeedbackGenerator 테스트 ---
+// --- noopFeedbackGenerator tests ---
 
 func TestNoopFeedbackGenerator_Collect(t *testing.T) {
 	gen := &noopFeedbackGenerator{}
@@ -71,7 +71,7 @@ func TestNoopFeedbackGenerator_Collect(t *testing.T) {
 	}
 }
 
-// --- 커맨드 핸들러 테스트 (의존성 없는 경우) ---
+// --- Command handler tests (no dependencies) ---
 
 func TestRunLoopStart_NilDeps(t *testing.T) {
 	origDeps := deps
@@ -128,7 +128,7 @@ func TestRunLoopCancel_NilDeps(t *testing.T) {
 	}
 }
 
-// --- 실제 LoopController 연결 통합 테스트 ---
+// --- Integration tests with real LoopController ---
 
 func newTestLoopDeps(t *testing.T) *Dependencies {
 	t.Helper()
@@ -141,7 +141,7 @@ func newTestLoopDeps(t *testing.T) *Dependencies {
 	}
 }
 
-// stubDecisionEngine은 항상 ActionAbort를 반환하는 테스트용 엔진이다.
+// stubDecisionEngine is a test engine that always returns ActionAbort.
 type stubDecisionEngine struct{}
 
 func (e *stubDecisionEngine) Decide(_ context.Context, _ *loop.LoopState, _ *loop.Feedback) (*loop.Decision, error) {
@@ -207,7 +207,7 @@ func TestRunLoopResume_NotPaused(t *testing.T) {
 	}
 }
 
-// TestLoopSubcmds_ArgsValidation는 서브커맨드별 필수 인자 검증 테이블 테스트다.
+// TestLoopSubcmds_ArgsValidation is a table-driven test for required argument validation per subcommand.
 func TestLoopSubcmds_ArgsValidation(t *testing.T) {
 	tests := []struct {
 		name    string

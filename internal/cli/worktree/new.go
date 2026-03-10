@@ -105,18 +105,18 @@ func isSpecID(name string) bool {
 	return len(parts) >= 3 && parts[2] != ""
 }
 
-// GenerateTmuxSessionName은 R5.1: tmux 세션 이름 생성 패턴을 구현합니다.
-// SPEC-WORKTREE-002 요구사항: moai-{ProjectName}-{SPEC-ID}
+// GenerateTmuxSessionName implements R5.1: tmux session name generation pattern.
+// SPEC-WORKTREE-002 requirement: moai-{ProjectName}-{SPEC-ID}
 //
-// @MX:NOTE: SPEC-WORKTREE-002 R5.1 구현 - tmux 세션 이름 패턴
+// @MX:NOTE: SPEC-WORKTREE-002 R5.1 implementation - tmux session name pattern
 // @MX:SPEC: SPEC-WORKTREE-002
 //
 // Args:
-//   - projectName: 프로젝트 이름 (예: "moai-adk-go")
-//   - specID: SPEC 식별자 (예: "SPEC-WORKTREE-002")
+//   - projectName: the project name (e.g., "moai-adk-go")
+//   - specID: the SPEC identifier (e.g., "SPEC-WORKTREE-002")
 //
 // Returns:
-//   - tmux 세션 이름 (예: "moai-moai-adk-go-SPEC-WORKTREE-002")
+//   - the tmux session name (e.g., "moai-moai-adk-go-SPEC-WORKTREE-002")
 //
 // Example:
 //   sessionName := GenerateTmuxSessionName("moai-adk-go", "SPEC-WORKTREE-002")
@@ -125,27 +125,27 @@ func GenerateTmuxSessionName(projectName, specID string) string {
 	return fmt.Sprintf("moai-%s-%s", projectName, specID)
 }
 
-// ShouldAutoMerge는 R3: auto-merge 기본 동작을 구현합니다.
-// SPEC-WORKTREE-002 요구사항: worktree 흐름에서 auto-merge가 기본값
+// ShouldAutoMerge implements R3: default auto-merge behavior.
+// SPEC-WORKTREE-002 requirement: auto-merge is the default in the worktree flow.
 //
-// @MX:NOTE: SPEC-WORKTREE-002 R3 구현 - auto-merge 기본값
+// @MX:NOTE: SPEC-WORKTREE-002 R3 implementation - auto-merge default
 // @MX:SPEC: SPEC-WORKTREE-002
 //
 // Args:
-//   - noMergeFlag: --no-merge 플래그가 설정되었는지 여부
+//   - noMergeFlag: whether the --no-merge flag is set
 //
 // Returns:
-//   - auto-merge를 수행해야 하면 true, 아니면 false
+//   - true if auto-merge should be performed, false otherwise
 //
 // Behavior:
-//   - 기본값(true): 플래그가 없으면 auto-merge 수행
-//   - --no-merge 플래그: false 반환하여 auto-merge 건너뜀
+//   - Default (true): performs auto-merge when the flag is absent
+//   - --no-merge flag: returns false, skipping auto-merge
 //
 // Example:
 //   shouldMerge := ShouldAutoMerge(false) // true
 //   shouldMerge := ShouldAutoMerge(true)  // false
 func ShouldAutoMerge(noMergeFlag bool) bool {
-	// R3: auto-merge는 기본값(true)
-	// --no-merge 플래그로만 비활성화 가능
+	// R3: auto-merge is the default (true)
+	// Can only be disabled via the --no-merge flag
 	return !noMergeFlag
 }

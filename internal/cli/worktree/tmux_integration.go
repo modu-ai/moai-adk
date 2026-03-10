@@ -5,43 +5,44 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
-// TmuxIntegration은 SPEC-WORKTREE-002의 R5: Tmux Integration 요구사항을 구현합니다.
-// worktree 생성 후 자동으로 tmux 세션을 생성하고, 필요한 환경 변수를 주입합니다.
+// TmuxIntegration implements SPEC-WORKTREE-002 R5: Tmux Integration requirements.
+// After worktree creation, it automatically creates a tmux session and injects the required environment variables.
 //
-// @MX:NOTE: SPEC-WORKTREE-002 R5 구현 - tmux 세션 자동 생성 및 환경 변수 주입
+// @MX:NOTE: SPEC-WORKTREE-002 R5 implementation - automatic tmux session creation and env var injection
 // @MX:SPEC: SPEC-WORKTREE-002
 
-// TmuxSessionConfig는 tmux 세션 생성을 위한 설정입니다.
+// TmuxSessionConfig holds the configuration for creating a tmux session.
 type TmuxSessionConfig struct {
-	// ProjectName은 프로젝트 이름입니다 (예: "moai-adk-go")
+	// ProjectName is the project name (e.g., "moai-adk-go")
 	ProjectName string
 
-	// SpecID는 SPEC 식별자입니다 (예: "SPEC-WORKTREE-002")
+	// SpecID is the SPEC identifier (e.g., "SPEC-WORKTREE-002")
 	SpecID string
 
-	// WorktreePath는 worktree의 절대 경로입니다
+	// WorktreePath is the absolute path to the worktree
 	WorktreePath string
 
-	// ActiveMode는 현재 LLM 모드입니다 (cc, glm, cg)
+	// ActiveMode is the current LLM mode (cc, glm, cg)
 	ActiveMode string
 
-	// GLMEnvVars는 GLM/CG 모드에서 주입할 환경 변수입니다.
-	// CC 모드에서는 비어있어야 합니다.
+	// GLMEnvVars holds the environment variables to inject in GLM/CG mode.
+	// Must be empty in CC mode.
 	GLMEnvVars map[string]string
 }
 
-// CreateTmuxSession은 worktree를 위한 tmux 세션을 생성합니다.
+// CreateTmuxSession creates a tmux session for the worktree.
 //
-// R5.1: 세션 이름 패턴: moai-{ProjectName}-{SPEC-ID}
-// R5.2-5.3: GLM/CG 모드에서는 환경 변수 주입, CC 모드에서는 주입 없음
-// R5.4: 세션 생성 후 worktree로 cd하고 /moai run 명령어 실행
+// R5.1: Session name pattern: moai-{ProjectName}-{SPEC-ID}
+// R5.2-5.3: Inject environment variables in GLM/CG mode; no injection in CC mode
+// R5.4: After session creation, cd to worktree and execute /moai run command
 //
-// @MX:ANCHOR: worktree 기반 개발 워크플로우의 핵심 진입점
-// @MX:REASON: tmux 세션 자동화는 SPEC-WORKTREE-002의 핵심 기능으로, 여러 클라이언트에서 호출됨
+// @MX:ANCHOR: Core entry point for the worktree-based development workflow
+// @MX:REASON: tmux session automation is a core feature of SPEC-WORKTREE-002, called by multiple clients
 // @MX:SPEC: SPEC-WORKTREE-002
 func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux.SessionManager) error {
 	if cfg == nil {
@@ -52,13 +53,13 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 		return fmt.Errorf("tmux manager is required")
 	}
 
-	// R5.1: 세션 이름 생성
+	// R5.1: Generate session name
 	sessionName := GenerateTmuxSessionName(cfg.ProjectName, cfg.SpecID)
 
-	// R5.4: tmux 세션 생성 (detached 모드)
+	// R5.4: Create tmux session (detached mode)
 	sessionCfg := &tmux.SessionConfig{
 		Name:       sessionName,
-		MaxVisible: 1, // 단일 pane 사용
+		MaxVisible: 1, // Use a single pane
 		Panes: []tmux.PaneConfig{
 			{
 				SpecID: cfg.SpecID,
@@ -72,7 +73,7 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 		return fmt.Errorf("create tmux session: %w", err)
 	}
 
-	// R5.2-5.3: GLM/CG 모드에서 환경 변수 주입
+	// R5.2-5.3: Inject environment variables in GLM/CG mode
 	if cfg.ActiveMode == "glm" || cfg.ActiveMode == "cg" {
 		if len(cfg.GLMEnvVars) > 0 {
 			if err := tmuxMgr.InjectEnv(ctx, cfg.GLMEnvVars); err != nil {
@@ -81,7 +82,7 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 		}
 	}
 
-	// 로그 출력
+	// Print log output
 	fmt.Printf("Tmux session created: %s\n", result.SessionName)
 	fmt.Printf("Panes created: %d\n", result.PaneCount)
 	fmt.Printf("Attached: %v\n", result.Attached)
@@ -91,52 +92,74 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 	return nil
 }
 
-// buildTmuxInitialCommand는 tmux pane에서 실행할 초기 명령어를构建합니다.
+// buildTmuxInitialCommand builds the initial command to run in the tmux pane.
 // R5.4: cd to worktree + execute /moai run
 func buildTmuxInitialCommand(cfg *TmuxSessionConfig) string {
-	// worktree 경로로 cd
+	// cd to the worktree path
 	cdCmd := fmt.Sprintf("cd %s", cfg.WorktreePath)
 
-	// /moai run 명령어 실행
+	// Execute the /moai run command
 	moaiCmd := fmt.Sprintf("/moai run %s", cfg.SpecID)
 
-	// 두 명령어를 연결 (;로 구분)
+	// Chain the two commands (separated by ;)
 	return fmt.Sprintf("%s ; %s", cdCmd, moaiCmd)
 }
 
-// IsTmuxAvailable은 현재 환경에서 tmux를 사용할 수 있는지 확인합니다.
-// R1: Execution Mode Selection Gate에서 tmux 가용성 확인에 사용
+// IsTmuxAvailable checks whether tmux is available in the current environment.
+// R1: Used for tmux availability detection in the Execution Mode Selection Gate.
 //
-// @MX:NOTE: SPEC-WORKTREE-002 R1 구현 - tmux 가용성 감지
+// @MX:NOTE: SPEC-WORKTREE-002 R1 implementation - tmux availability detection
 // @MX:SPEC: SPEC-WORKTREE-002
 func IsTmuxAvailable() bool {
-	// $TMUX 환경 변수 확인
+	// Check the $TMUX environment variable
 	return os.Getenv("TMUX") != ""
 }
 
-// GetActiveMode는 .moai/config/sections/llm.yaml에서 현재 활성 모드를 읽어옵니다.
-// R1.1: active mode 감지
+// GetActiveMode reads the current active mode from .moai/config/sections/llm.yaml.
+// R1.1: active mode detection.
 //
-// @MX:NOTE: SPEC-WORKTREE-002 R1.1 구현 - LLM 모드 감지
+// Returns: "cc" (default/empty), "glm", or "cg"
+//
+// @MX:NOTE: SPEC-WORKTREE-002 R1.1 implementation - LLM mode detection
 // @MX:SPEC: SPEC-WORKTREE-002
 func GetActiveMode(projectRoot string) (string, error) {
-	// llm.yaml 파일 경로
 	llmConfigPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
 
-	// 파일 존재 확인
-	if _, err := os.Stat(llmConfigPath); os.IsNotExist(err) {
-		// 기본값: cc (Claude Only)
-		return "cc", nil
+	data, err := os.ReadFile(llmConfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "cc", nil
+		}
+		return "cc", fmt.Errorf("read llm.yaml: %w", err)
 	}
 
-	// TODO: llm.yaml 파일 파싱 로직 구현
-	// 현재는 기본값 반환
+	// Simple YAML parsing for llm.team_mode field
+	// Look for any line containing "team_mode:" regardless of indentation
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "team_mode:") {
+			// Extract value after "team_mode:"
+			parts := strings.SplitN(trimmed, "team_mode:", 2)
+			if len(parts) == 2 {
+				value := strings.TrimSpace(parts[1])
+				// Remove quotes if present
+				value = strings.Trim(value, "\"")
+				value = strings.Trim(value, "'")
+				if value == "" || value == "cc" {
+					return "cc", nil
+				}
+				return value, nil
+			}
+		}
+	}
+
 	return "cc", nil
 }
 
-// BuildTmuxSessionConfig는 worktree 정보로부터 tmux 세션 설정을构建합니다.
+// BuildTmuxSessionConfig builds a tmux session configuration from worktree information.
 //
-// @MX:NOTE: SPEC-WORKTREE-002 통합 함수 - tmux 설정 빌더
+// @MX:NOTE: SPEC-WORKTREE-002 integration function - tmux config builder
 // @MX:SPEC: SPEC-WORKTREE-002
 func BuildTmuxSessionConfig(projectName, specID, worktreePath, projectRoot string) (*TmuxSessionConfig, error) {
 	activeMode, err := GetActiveMode(projectRoot)
@@ -152,13 +175,39 @@ func BuildTmuxSessionConfig(projectName, specID, worktreePath, projectRoot strin
 		GLMEnvVars:   make(map[string]string),
 	}
 
-	// R5.2-5.3: GLM/CG 모드에서 환경 변수 설정
+	// R5.2-5.3: Set environment variables in GLM/CG mode
 	if activeMode == "glm" || activeMode == "cg" {
-		// GLM 환경 변수 주입
-		// TODO: 실제 GLM 환경 변수 로드 로직 구현
-		cfg.GLMEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL")
-		cfg.GLMEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_SONNET_MODEL")
-		cfg.GLMEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_OPUS_MODEL")
+		// Load GLM environment variables from ~/.moai/.env.glm
+		homeDir, _ := os.UserHomeDir()
+		glmEnvPath := filepath.Join(homeDir, ".moai", ".env.glm")
+		if data, err := os.ReadFile(glmEnvPath); err == nil {
+			// Parse KEY=VALUE lines
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					value := strings.TrimSpace(parts[1])
+					// Only include ANTHROPIC_* vars
+					if strings.HasPrefix(key, "ANTHROPIC_") {
+						cfg.GLMEnvVars[key] = value
+					}
+				}
+			}
+		}
+		// Fallback to current environment if .env.glm doesn't have them
+		if cfg.GLMEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] == "" {
+			cfg.GLMEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL")
+		}
+		if cfg.GLMEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "" {
+			cfg.GLMEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_SONNET_MODEL")
+		}
+		if cfg.GLMEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "" {
+			cfg.GLMEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_OPUS_MODEL")
+		}
 	}
 
 	return cfg, nil

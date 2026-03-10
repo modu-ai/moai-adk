@@ -493,14 +493,14 @@ func TestUsageProvider_CollectUsage_GracefulDegradation(t *testing.T) {
 	}
 }
 
-// TestIsInFailureCooldown_Active는 실패 후 쿨다운 기간 내에 isInFailureCooldown이 true를 반환하는지 검증한다.
+// TestIsInFailureCooldown_Active verifies isInFailureCooldown returns true during cooldown period.
 func TestIsInFailureCooldown_Active(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	// 30초 전에 1회 실패 기록 (쿨다운: 1분)
+	// 1 failure recorded 30s ago (cooldown: 1m)
 	cache := &usageCacheFile{
 		CachedAt:     time.Now().Add(-30 * time.Second).Unix(),
 		FailedAt:     time.Now().Add(-30 * time.Second).Unix(),
@@ -519,20 +519,20 @@ func TestIsInFailureCooldown_Active(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 1회 실패 → 쿨다운 1분, 30초 경과 → 쿨다운 활성
+	// 1 failure → cooldown 1m, elapsed 30s → cooldown active
 	if !collector.isInFailureCooldown() {
 		t.Error("isInFailureCooldown should return true when failure was 30s ago (cooldown: 1m for count=1)")
 	}
 }
 
-// TestIsInFailureCooldown_Expired는 쿨다운 기간이 만료된 경우 isInFailureCooldown이 false를 반환하는지 검증한다.
+// TestIsInFailureCooldown_Expired verifies isInFailureCooldown returns false after cooldown expires.
 func TestIsInFailureCooldown_Expired(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "usage.json")
 
-	// 2분 전에 1회 실패 기록 (쿨다운: 1분) → 만료
+	// 1 failure recorded 2m ago (cooldown: 1m) → expired
 	cache := &usageCacheFile{
 		CachedAt:     time.Now().Add(-2 * time.Minute).Unix(),
 		FailedAt:     time.Now().Add(-2 * time.Minute).Unix(),
@@ -551,7 +551,7 @@ func TestIsInFailureCooldown_Expired(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 
-	// 1회 실패 → 쿨다운 1분, 2분 경과 → 쿨다운 만료
+	// 1 failure → cooldown 1m, elapsed 2m → cooldown expired
 	if collector.isInFailureCooldown() {
 		t.Error("isInFailureCooldown should return false when failure was 2m ago (cooldown: 1m for count=1)")
 	}
@@ -776,6 +776,120 @@ func TestCalcCooldown(t *testing.T) {
 				t.Errorf("calcCooldown(%d) = %v, want %v", tt.count, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestFetchUsageFromHeaders_Success verifies Haiku probe extracts rate limit headers.
+func TestFetchUsageFromHeaders_Success(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify it's a POST to Messages API format
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.Header.Get("anthropic-version") == "" {
+			t.Error("missing anthropic-version header")
+		}
+
+		// Return rate limit headers (even on 200)
+		w.Header().Set("anthropic-ratelimit-unified-5h-utilization", "0.28")
+		w.Header().Set("anthropic-ratelimit-unified-7d-utilization", "0.59")
+		w.Header().Set("anthropic-ratelimit-unified-5h-reset", "2026-03-10T20:00:00Z")
+		w.Header().Set("anthropic-ratelimit-unified-7d-reset", "2026-03-15T07:00:00Z")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"content":[{"text":"h"}]}`))
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	// Use the test server URL instead of real API
+	resp, err := collector.fetchUsageFromHeadersWithURL(context.Background(), server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("fetchUsageFromHeaders failed: %v", err)
+	}
+
+	if resp.FiveHour == nil {
+		t.Fatal("FiveHour should not be nil")
+	}
+	// 0.28 * 100 = 28.0
+	if resp.FiveHour.Utilization != 28.0 {
+		t.Errorf("FiveHour.Utilization = %f, want 28.0", resp.FiveHour.Utilization)
+	}
+	if resp.FiveHour.ResetsAt != "2026-03-10T20:00:00Z" {
+		t.Errorf("FiveHour.ResetsAt = %s, want 2026-03-10T20:00:00Z", resp.FiveHour.ResetsAt)
+	}
+
+	if resp.SevenDay == nil {
+		t.Fatal("SevenDay should not be nil")
+	}
+	// 0.59 * 100 = 59.0
+	if resp.SevenDay.Utilization != 59.0 {
+		t.Errorf("SevenDay.Utilization = %f, want 59.0", resp.SevenDay.Utilization)
+	}
+}
+
+// TestFetchUsageFromHeaders_429WithHeaders verifies headers are extracted even on 429 response.
+func TestFetchUsageFromHeaders_429WithHeaders(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("anthropic-ratelimit-unified-5h-utilization", "0.95")
+		w.Header().Set("anthropic-ratelimit-unified-7d-utilization", "0.80")
+		w.Header().Set("anthropic-ratelimit-unified-5h-reset", "2026-03-10T22:00:00Z")
+		w.Header().Set("anthropic-ratelimit-unified-7d-reset", "2026-03-17T07:00:00Z")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":{"message":"Rate limited"}}`))
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	resp, err := collector.fetchUsageFromHeadersWithURL(context.Background(), server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("fetchUsageFromHeaders should succeed even on 429: %v", err)
+	}
+
+	if resp.FiveHour == nil {
+		t.Fatal("FiveHour should not be nil even on 429")
+	}
+	if resp.FiveHour.Utilization != 95.0 {
+		t.Errorf("FiveHour.Utilization = %f, want 95.0", resp.FiveHour.Utilization)
+	}
+	if resp.SevenDay == nil {
+		t.Fatal("SevenDay should not be nil even on 429")
+	}
+	if resp.SevenDay.Utilization != 80.0 {
+		t.Errorf("SevenDay.Utilization = %f, want 80.0", resp.SevenDay.Utilization)
+	}
+}
+
+// TestFetchUsageFromHeaders_NoHeaders verifies error when no rate limit headers present.
+func TestFetchUsageFromHeaders_NoHeaders(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"content":[{"text":"h"}]}`))
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		client: server.Client(),
+		mu:     sync.RWMutex{},
+	}
+
+	_, err := collector.fetchUsageFromHeadersWithURL(context.Background(), server.URL, "test-token")
+	if err == nil {
+		t.Fatal("expected error when no rate limit headers present")
 	}
 }
 

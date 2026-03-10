@@ -8,13 +8,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// moaiSectionsDir은 프로젝트 루트 기준 sections 디렉토리 경로를 반환한다.
+// moaiSectionsDir returns the path to the sections directory relative to the project root.
 func moaiSectionsDir(projectRoot string) string {
 	return filepath.Join(projectRoot, ".moai", "config", "sections")
 }
 
-// ReadLocaleFromProject는 language.yaml에서 conversation_language를 읽는다.
-// 파일이 없거나 파싱에 실패하면 빈 문자열을 반환한다.
+// ReadLocaleFromProject reads conversation_language from language.yaml.
+// Returns an empty string if the file is missing or parsing fails.
 func ReadLocaleFromProject(projectRoot string) string {
 	langPath := filepath.Join(moaiSectionsDir(projectRoot), "language.yaml")
 	data, err := os.ReadFile(langPath)
@@ -36,19 +36,19 @@ func ReadLocaleFromProject(projectRoot string) string {
 	return locale
 }
 
-// ReadGitHubUsernameFromConfig는 user.yaml에서 github_username을 읽는다.
-// 파일이 없거나 값이 없으면 빈 문자열을 반환한다.
+// ReadGitHubUsernameFromConfig reads github_username from user.yaml.
+// Returns an empty string if the file is missing or the value is absent.
 func ReadGitHubUsernameFromConfig(projectRoot string) string {
 	return readUserField(projectRoot, "github_username")
 }
 
-// ReadGitLabUsernameFromConfig는 user.yaml에서 gitlab_username을 읽는다.
-// 파일이 없거나 값이 없으면 빈 문자열을 반환한다.
+// ReadGitLabUsernameFromConfig reads gitlab_username from user.yaml.
+// Returns an empty string if the file is missing or the value is absent.
 func ReadGitLabUsernameFromConfig(projectRoot string) string {
 	return readUserField(projectRoot, "gitlab_username")
 }
 
-// readUserField는 user.yaml의 user 섹션에서 특정 필드를 읽는다.
+// readUserField reads a specific field from the user section of user.yaml.
 func readUserField(projectRoot, field string) string {
 	userPath := filepath.Join(moaiSectionsDir(projectRoot), "user.yaml")
 	data, err := os.ReadFile(userPath)
@@ -70,15 +70,15 @@ func readUserField(projectRoot, field string) string {
 	return value
 }
 
-// IsGhAuthenticated는 gh CLI가 인증되어 있는지 확인한다.
-// gh가 없거나 인증되지 않은 경우 false를 반환한다.
+// IsGhAuthenticated checks whether the gh CLI is authenticated.
+// Returns false if gh is not installed or not authenticated.
 func IsGhAuthenticated() bool {
-	// gh CLI 존재 여부 확인
+	// Check if the gh CLI is present
 	if _, err := exec.LookPath("gh"); err != nil {
 		return false
 	}
 
-	// gh auth status 실행 — 인증된 경우 exit 0
+	// Run gh auth status — exits 0 when authenticated
 	cmd := exec.Command("gh", "auth", "status")
 	err := cmd.Run()
 	return err == nil
