@@ -45,6 +45,7 @@ func TestCleanupMoaiWorktrees_GlobalPath(t *testing.T) {
 			tmpDir := t.TempDir()
 			tmpHome := t.TempDir()
 			t.Setenv("HOME", tmpHome)
+			t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() uses USERPROFILE, not HOME
 
 			// Initialize a git repo with an initial commit.
 			gitCmds := [][]string{
