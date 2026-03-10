@@ -2,11 +2,24 @@ package worktree
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+// userHomeDirFunc resolves the user's home directory.
+// Overridable in tests.
+var userHomeDirFunc = os.UserHomeDir
+
+// getProjectNameFunc resolves the project name for worktree path construction.
+// Overridable in tests.
+var getProjectNameFunc = func() string { return detectProjectName(".") }
+
+// legacyWorktreeDir is the project-local worktrees path checked for migration warnings.
+// Overridable in tests.
+var legacyWorktreeDir = filepath.Join(".", ".moai", "worktrees")
 
 func newNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -39,11 +52,20 @@ func runNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get path flag: %w", err)
 	}
 	if wtPath == "" {
-		if isSpecID(specID) {
-			wtPath = filepath.Join(".moai", "worktrees", specID)
-		} else {
-			wtPath = filepath.Join("..", branchName)
+		homeDir, err := userHomeDirFunc()
+		if err != nil {
+			return fmt.Errorf("get home directory: %w", err)
 		}
+		projectName := getProjectNameFunc()
+		wtPath = filepath.Join(homeDir, ".moai", "worktrees", projectName, specID)
+		if err := os.MkdirAll(filepath.Dir(wtPath), 0o755); err != nil {
+			return fmt.Errorf("create worktree directory: %w", err)
+		}
+	}
+
+	// R5: warn when legacy project-local worktrees exist.
+	if dirHasEntries(legacyWorktreeDir) {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Warning: Legacy worktrees detected in .moai/worktrees/. Consider moving to ~/.moai/worktrees/{Project}/.")
 	}
 
 	if err := WorktreeProvider.Add(wtPath, branchName); err != nil {
@@ -55,6 +77,12 @@ func runNew(cmd *cobra.Command, args []string) error {
 		fmt.Sprintf("Path: %s", wtPath),
 	))
 	return nil
+}
+
+// dirHasEntries returns true when dir exists and contains at least one entry.
+func dirHasEntries(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	return err == nil && len(entries) > 0
 }
 
 // resolveSpecBranch converts SPEC-ID patterns to branch names.

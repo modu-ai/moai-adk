@@ -10,7 +10,7 @@ Last Updated: 2026-01-06
 ## Quick Reference (30 seconds)
 
 Registry Components:
-- File Location: {repo}/.moai/worktrees/.moai-worktree-registry.json
+- File Location: ~/.moai/worktrees/{ProjectName}/.moai-worktree-registry.json
 - Format: JSON with versioned schema
 - Operations: Atomic updates with backup and rollback
 - Concurrency: File-based locking for multi-process safety

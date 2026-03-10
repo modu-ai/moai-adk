@@ -16,8 +16,8 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 - Used for subagent isolation via `isolation: worktree` in agent definitions (v2.1.49+)
 - CLI access: `claude --worktree` or `claude -w` (user-level flag)
 
-**MoAI Worktree** (`.moai/worktrees/`):
-- Persistent, SPEC-scoped workspaces
+**MoAI Worktree** (`~/.moai/worktrees/{ProjectName}/`):
+- Persistent, SPEC-scoped workspaces in global home directory
 - Managed via `moai worktree` CLI commands
 - Used for multi-session SPEC development and team collaboration
 
@@ -25,7 +25,7 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 
 | Feature | Claude Native | MoAI |
 |---------|--------------|------|
-| **Path** | `.claude/worktrees/<name>/` | `.moai/worktrees/{Project}/{SPEC}/` |
+| **Path** | `.claude/worktrees/<name>/` | `~/.moai/worktrees/{Project}/{SPEC}/` |
 | **Lifetime** | Ephemeral (session-scoped) | Persistent (SPEC-scoped) |
 | **Purpose** | Session isolation for subagents | SPEC development, PR creation |
 | **CLI** | `claude -w` (user) or `isolation: worktree` (agent) | `moai worktree new/list/remove` |
@@ -217,7 +217,7 @@ Currently the handlers log worktree creation and removal for session tracking.
 | SPEC Phase | Worktree Type | Location |
 |------------|--------------|----------|
 | Plan | Claude Native | `.claude/worktrees/` (ephemeral) |
-| Run | MoAI | `.moai/worktrees/{Project}/{SPEC}/` |
+| Run | MoAI | `~/.moai/worktrees/{Project}/{SPEC}/` |
 | Sync | MoAI | Same as Run phase |
 
 ---

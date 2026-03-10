@@ -7,6 +7,104 @@ import (
 	"testing"
 )
 
+// TestCleanupMoaiWorktrees_GlobalPath verifies that cleanupMoaiWorktrees
+// removes worker worktrees from both the local .claude/worktrees/ path and
+// the global ~/.moai/worktrees/*/ path.
+//
+// NOTE: does not call t.Parallel() because it sets HOME via t.Setenv.
+func TestCleanupMoaiWorktrees_GlobalPath(t *testing.T) {
+	tests := []struct {
+		name         string
+		createLocal  bool // create a worktree under .claude/worktrees/
+		createGlobal bool // create a worktree under ~/.moai/worktrees/myproject/
+		wantSubstrs  []string
+		wantEmpty    bool
+	}{
+		{
+			name:         "global path only - no local worktrees dir",
+			createLocal:  false,
+			createGlobal: true,
+			wantSubstrs:  []string{"worker-global-001"},
+		},
+		{
+			name:         "both local and global paths",
+			createLocal:  true,
+			createGlobal: true,
+			wantSubstrs:  []string{"worker-local-001", "worker-global-001"},
+		},
+		{
+			name:        "neither path exists - returns empty",
+			createLocal: false,
+			createGlobal: false,
+			wantEmpty:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			tmpHome := t.TempDir()
+			t.Setenv("HOME", tmpHome)
+
+			// Initialize a git repo with an initial commit.
+			gitCmds := [][]string{
+				{"init"},
+				{"config", "user.email", "test@test.com"},
+				{"config", "user.name", "Test"},
+			}
+			for _, args := range gitCmds {
+				if _, err := runGitCommand(tmpDir, args...); err != nil {
+					t.Skipf("git %v failed: %v", args, err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# test\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			for _, args := range [][]string{{"add", "."}, {"commit", "-m", "initial"}} {
+				if _, err := runGitCommand(tmpDir, args...); err != nil {
+					t.Skipf("git %v failed: %v", args, err)
+				}
+			}
+
+			if tt.createLocal {
+				localWorkerPath := filepath.Join(tmpDir, ".claude", "worktrees", "worker-local-001")
+				if err := os.MkdirAll(filepath.Dir(localWorkerPath), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := runGitCommand(tmpDir, "worktree", "add", localWorkerPath, "-b", "worker-local-001"); err != nil {
+					t.Skipf("git worktree add (local) failed: %v", err)
+				}
+			}
+
+			if tt.createGlobal {
+				globalWorktreeDir := filepath.Join(tmpHome, ".moai", "worktrees", "myproject")
+				globalWorkerPath := filepath.Join(globalWorktreeDir, "worker-global-001")
+				if err := os.MkdirAll(globalWorktreeDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := runGitCommand(tmpDir, "worktree", "add", globalWorkerPath, "-b", "worker-global-001"); err != nil {
+					t.Skipf("git worktree add (global) failed: %v", err)
+				}
+			}
+
+			result := cleanupMoaiWorktrees(tmpDir)
+
+			if tt.wantEmpty {
+				if result != "" {
+					t.Errorf("expected empty result, got: %q", result)
+				}
+				return
+			}
+
+			for _, substr := range tt.wantSubstrs {
+				if !strings.Contains(result, substr) {
+					t.Errorf("result %q does not contain expected %q", result, substr)
+				}
+			}
+		})
+	}
+}
+
 func TestResolveMode(t *testing.T) {
 	tests := []struct {
 		name string
