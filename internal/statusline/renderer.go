@@ -333,28 +333,6 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderGitLine renders the branch + git status line (compact L2).
-// Format: 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-func (r *Renderer) renderGitLine(data *StatusData) string {
-	var segs []string
-
-	// Branch + ahead/behind
-	if r.isSegmentEnabled(SegmentGitBranch) {
-		if branch := renderGitBranch(data); branch != "" {
-			segs = append(segs, branch)
-		}
-	}
-
-	// Git status
-	if r.isSegmentEnabled(SegmentGitStatus) {
-		if git := r.renderGitStatus(data); git != "" {
-			segs = append(segs, fmt.Sprintf("📊 %s", git))
-		}
-	}
-
-	return r.joinSegments(segs)
-}
-
 // renderDirGitLine renders the directory + branch + git status line (default L3, full L5).
 // Format: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
