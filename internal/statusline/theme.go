@@ -36,30 +36,6 @@ func NewTheme(name string) Theme {
 	}
 }
 
-// defaultTheme preserves the original hard-coded statusline colors.
-type defaultTheme struct{}
-
-func (d *defaultTheme) Primary() lipgloss.Color { return lipgloss.Color("#CDD6F4") }
-func (d *defaultTheme) Muted() lipgloss.Color   { return lipgloss.Color("#6B7280") }
-func (d *defaultTheme) Success() lipgloss.Color { return lipgloss.Color("#4ADE80") }
-func (d *defaultTheme) Warning() lipgloss.Color { return lipgloss.Color("#FACC15") }
-func (d *defaultTheme) Danger() lipgloss.Color  { return lipgloss.Color("#F87171") }
-func (d *defaultTheme) Text() lipgloss.Color    { return lipgloss.Color("#E2E8F0") }
-
-// BarGradient returns a 4-stage gradient color for the context bar (REQ-SLE-018).
-func (d *defaultTheme) BarGradient(pct float64) lipgloss.Color {
-	switch {
-	case pct <= 25:
-		return lipgloss.Color("#4ADE80") // green
-	case pct <= 50:
-		return lipgloss.Color("#FACC15") // yellow
-	case pct <= 75:
-		return lipgloss.Color("#FB923C") // orange/peach
-	default:
-		return lipgloss.Color("#F87171") // red
-	}
-}
-
 // catppuccinMocha implements the Catppuccin Mocha dark theme (REQ-SLE-013).
 type catppuccinMocha struct{}
 
