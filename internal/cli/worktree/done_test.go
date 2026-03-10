@@ -150,9 +150,9 @@ func (m *mockWorktreeProvider) DeleteBranch(branch string) error {
 	return nil
 }
 
-func (m *mockWorktreeProvider) Prune() error            { return nil }
-func (m *mockWorktreeProvider) Repair() error           { return nil }
-func (m *mockWorktreeProvider) Root() string            { return "/test/repo" }
+func (m *mockWorktreeProvider) Prune() error  { return nil }
+func (m *mockWorktreeProvider) Repair() error { return nil }
+func (m *mockWorktreeProvider) Root() string  { return "/test/repo" }
 func (m *mockWorktreeProvider) Sync(wtPath, baseBranch, strategy string) error {
 	return nil
 }

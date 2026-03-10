@@ -41,7 +41,7 @@ func readYAML(t *testing.T, path string) map[string]any {
 func TestApplyWizardConfig_GitHubUsername(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
-		GitHubUsername:"testuser",
+		GitHubUsername: "testuser",
 	}
 
 	if err := applyWizardConfig(root, result); err != nil {
@@ -83,7 +83,7 @@ func TestApplyWizardConfig_GitHubToken(t *testing.T) {
 func TestApplyWizardConfig_GitHubUsernameAndToken(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
-		GitHubUsername:"myuser",
+		GitHubUsername: "myuser",
 		GitHubToken:    "ghp_tok",
 	}
 
@@ -106,7 +106,7 @@ func TestApplyWizardConfig_GitHubUsernameAndToken(t *testing.T) {
 func TestApplyWizardConfig_NoUserYAMLWhenGitHubFieldsEmpty(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
-		GitHubUsername:"",
+		GitHubUsername: "",
 		GitHubToken:    "",
 	}
 
@@ -156,7 +156,7 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
 		GitHubUsername: "fulluser",
-		GitHubToken:   "ghp_full",
+		GitHubToken:    "ghp_full",
 	}
 
 	if err := applyWizardConfig(root, result); err != nil {

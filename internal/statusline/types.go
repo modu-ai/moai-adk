@@ -127,11 +127,11 @@ type StatusData struct {
 	Git               GitStatusData
 	Memory            MemoryData
 	Metrics           MetricsData
-	Version           VersionData // MoAI-ADK version from config
-	ClaudeCodeVersion string      // Claude Code version from JSON input (e.g., "1.0.80")
-	Directory         string      // Project directory name (e.g., "modu-saju")
-	OutputStyle       string      // Output style name (e.g., "Mr.Alfred", "R2-D2")
-	Task              TaskData    // Current active task (rendering enabled in Phase 4)
+	Version           VersionData  // MoAI-ADK version from config
+	ClaudeCodeVersion string       // Claude Code version from JSON input (e.g., "1.0.80")
+	Directory         string       // Project directory name (e.g., "modu-saju")
+	OutputStyle       string       // Output style name (e.g., "Mr.Alfred", "R2-D2")
+	Task              TaskData     // Current active task (rendering enabled in Phase 4)
 	Usage             *UsageResult // API usage (nil when unavailable)
 }
 
@@ -157,7 +157,7 @@ type MemoryData struct {
 type MetricsData struct {
 	Model             string
 	CostUSD           float64
-	SessionDurationMS int  // Total session duration in milliseconds (REQ-V3-TIME-001)
+	SessionDurationMS int // Total session duration in milliseconds (REQ-V3-TIME-001)
 	Available         bool
 }
 
@@ -191,8 +191,8 @@ const (
 type UsageData struct {
 	UsedTokens  int64   `json:"used_tokens"`
 	LimitTokens int64   `json:"limit_tokens"`
-	Percentage  float64 `json:"percentage"`            // 0-100
-	ResetsAt    string  `json:"resets_at,omitempty"`    // ISO 8601 reset timestamp
+	Percentage  float64 `json:"percentage"`          // 0-100
+	ResetsAt    string  `json:"resets_at,omitempty"` // ISO 8601 reset timestamp
 }
 
 // UsageResult represents 5-hour/7-day usage results.

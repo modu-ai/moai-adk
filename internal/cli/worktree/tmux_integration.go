@@ -62,7 +62,7 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 		MaxVisible: 1, // Use a single pane
 		Panes: []tmux.PaneConfig{
 			{
-				SpecID: cfg.SpecID,
+				SpecID:  cfg.SpecID,
 				Command: buildTmuxInitialCommand(cfg),
 			},
 		},

@@ -88,9 +88,9 @@ func TestCleanup_CleanTempFiles(t *testing.T) {
 			}
 
 			config := CleanupConfig{
-				TempDir:        filepath.Join(moaiDir, "temp"),
-				CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
-				LogDir:         filepath.Join(moaiDir, "logs"),
+				TempDir:       filepath.Join(moaiDir, "temp"),
+				CacheDir:      filepath.Join(moaiDir, "cache", "temp"),
+				LogDir:        filepath.Join(moaiDir, "logs"),
 				PreserveState: true,
 			}
 
@@ -138,9 +138,9 @@ func TestCleanup_ClearCaches(t *testing.T) {
 	}
 
 	config := CleanupConfig{
-		TempDir:        filepath.Join(moaiDir, "temp"),
-		CacheDir:       cacheDir,
-		LogDir:         filepath.Join(moaiDir, "logs"),
+		TempDir:       filepath.Join(moaiDir, "temp"),
+		CacheDir:      cacheDir,
+		LogDir:        filepath.Join(moaiDir, "logs"),
 		PreserveState: true,
 	}
 
@@ -235,9 +235,9 @@ func TestCleanup_GenerateCleanupReport(t *testing.T) {
 	}
 
 	config := CleanupConfig{
-		TempDir:        tempDir,
-		CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
-		LogDir:         filepath.Join(moaiDir, "logs"),
+		TempDir:       tempDir,
+		CacheDir:      filepath.Join(moaiDir, "cache", "temp"),
+		LogDir:        filepath.Join(moaiDir, "logs"),
 		PreserveState: true,
 	}
 
@@ -277,9 +277,9 @@ func TestCleanup_ContinueOnError(t *testing.T) {
 	}
 
 	config := CleanupConfig{
-		TempDir:        tempDir,
-		CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
-		LogDir:         filepath.Join(moaiDir, "logs"),
+		TempDir:       tempDir,
+		CacheDir:      filepath.Join(moaiDir, "cache", "temp"),
+		LogDir:        filepath.Join(moaiDir, "logs"),
 		PreserveState: true,
 	}
 
@@ -307,9 +307,9 @@ func TestCleanup_NonExistentDirectories(t *testing.T) {
 	baseDir := t.TempDir()
 
 	config := CleanupConfig{
-		TempDir:        filepath.Join(baseDir, "nonexistent", "temp"),
-		CacheDir:       filepath.Join(baseDir, "nonexistent", "cache"),
-		LogDir:         filepath.Join(baseDir, "nonexistent", "logs"),
+		TempDir:       filepath.Join(baseDir, "nonexistent", "temp"),
+		CacheDir:      filepath.Join(baseDir, "nonexistent", "cache"),
+		LogDir:        filepath.Join(baseDir, "nonexistent", "logs"),
 		PreserveState: true,
 	}
 
@@ -383,7 +383,7 @@ func TestCleanup_SessionLogs(t *testing.T) {
 		CacheDir:          filepath.Join(moaiDir, "cache", "temp"),
 		LogDir:            logDir,
 		SessionLogPattern: "session-*.log",
-		PreserveState:    true,
+		PreserveState:     true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -425,9 +425,9 @@ func TestCleanup_ClearCachesWithSubdirs(t *testing.T) {
 	}
 
 	config := CleanupConfig{
-		TempDir:        filepath.Join(baseDir, "temp"),
-		CacheDir:       cacheDir,
-		LogDir:         filepath.Join(baseDir, "logs"),
+		TempDir:       filepath.Join(baseDir, "temp"),
+		CacheDir:      cacheDir,
+		LogDir:        filepath.Join(baseDir, "logs"),
 		PreserveState: true,
 	}
 
@@ -478,9 +478,9 @@ func TestCleanup_GenerateCleanupReportWithErrors(t *testing.T) {
 	t.Parallel()
 
 	config := CleanupConfig{
-		TempDir:        "/nonexistent/path",
-		CacheDir:       "/nonexistent/cache",
-		LogDir:         "/nonexistent/logs",
+		TempDir:       "/nonexistent/path",
+		CacheDir:      "/nonexistent/cache",
+		LogDir:        "/nonexistent/logs",
 		PreserveState: true,
 	}
 
@@ -514,9 +514,9 @@ func TestCleanup_EmptyCacheDir(t *testing.T) {
 	t.Parallel()
 
 	config := CleanupConfig{
-		TempDir:        "",
-		CacheDir:       "",
-		LogDir:         "",
+		TempDir:       "",
+		CacheDir:      "",
+		LogDir:        "",
 		PreserveState: true,
 	}
 

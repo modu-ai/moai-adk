@@ -66,7 +66,7 @@ var githubCmd = &cobra.Command{
 	Use:     "github",
 	Short:   "GitHub integration commands",
 	GroupID: "tools",
-	Long:  "Commands for GitHub issue parsing, SPEC linking, and workflow automation.",
+	Long:    "Commands for GitHub issue parsing, SPEC linking, and workflow automation.",
 }
 
 func init() {

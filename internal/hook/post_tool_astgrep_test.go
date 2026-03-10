@@ -110,12 +110,12 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		toolName      string
-		toolInput     json.RawMessage
-		analyzer      FileAnalyzer
-		wantAstScan   bool
-		wantMatches   int
+		name            string
+		toolName        string
+		toolInput       json.RawMessage
+		analyzer        FileAnalyzer
+		wantAstScan     bool
+		wantMatches     int
 		wantNonBlocking bool // always true: observation-only, allow even on error
 	}{
 		{
@@ -176,19 +176,19 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			wantNonBlocking: true,
 		},
 		{
-			name:        "no ast_scan when tool input lacks file_path",
-			toolName:    "Write",
-			toolInput:   json.RawMessage(`{"content": "pkg"}`),
-			analyzer:    &mockFileAnalyzer{},
-			wantAstScan: false,
+			name:            "no ast_scan when tool input lacks file_path",
+			toolName:        "Write",
+			toolInput:       json.RawMessage(`{"content": "pkg"}`),
+			analyzer:        &mockFileAnalyzer{},
+			wantAstScan:     false,
 			wantNonBlocking: true,
 		},
 		{
-			name:        "no ast_scan when tool input is invalid JSON",
-			toolName:    "Write",
-			toolInput:   json.RawMessage(`{invalid json`),
-			analyzer:    &mockFileAnalyzer{},
-			wantAstScan: false,
+			name:            "no ast_scan when tool input is invalid JSON",
+			toolName:        "Write",
+			toolInput:       json.RawMessage(`{invalid json`),
+			analyzer:        &mockFileAnalyzer{},
+			wantAstScan:     false,
 			wantNonBlocking: true,
 		},
 	}

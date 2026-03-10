@@ -115,11 +115,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 
 // setGLMEnv sets GLM environment variables in the current process.
 func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
-	_ = os.Setenv("ANTHROPIC_AUTH_TOKEN", apiKey)           //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_BASE_URL", glmConfig.BaseURL)  //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)   //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_AUTH_TOKEN", apiKey)                            //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_BASE_URL", glmConfig.BaseURL)                   //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)   //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
 }
 
 // runGLMSetup saves a GLM API key.
@@ -283,7 +283,6 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 
 	return nil
 }
-
 
 // injectTmuxSessionEnv sets GLM environment variables at the tmux session level.
 func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
