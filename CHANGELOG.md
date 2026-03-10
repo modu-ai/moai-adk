@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.9] - 2026-03-11
+
+### Summary
+
+Statusline compact mode removed and consolidated into default mode. Usage bar display spacing improved. Internal template reference fixes and GLM model mapping updates.
+
+### Breaking Changes
+
+None. Existing `mode: compact` config is silently normalized to `default` for backward compatibility.
+
+### Changed
+
+- **statusline**: Compact mode removed; `mode: compact` in config now silently maps to `default` mode (3-line layout)
+- **statusline**: Usage bar display spacing reduced by one space (cleaner output)
+
+### Fixed
+
+- **statusline**: `TestCollectUsage_RetriesAfterCooldownExpires` flaky test fixed by mocking keychain access
+
+### Internal
+
+- Template `@file` reference cleanup in rules/skills/agents
+- GLM model mappings updated in config (glm-5, glm-4.7, glm-4.5-air)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.9] - 2026-03-11 (한국어)
+
+### 요약
+
+statusline compact 모드를 제거하고 default 모드로 통합했습니다. 사용량 바 표시 공백이 개선되었으며, 내부 템플릿 참조 오류 수정 및 GLM 모델 매핑이 업데이트되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음. 기존 설정의 `mode: compact`는 하위 호환성을 위해 `default` 모드로 자동 변환됩니다.
+
+### 변경됨 (Changed)
+
+- **statusline**: compact 모드 제거; 설정의 `mode: compact`는 `default` 모드(3줄 레이아웃)로 자동 변환
+- **statusline**: 사용량 바 표시 공백 1칸 감소 (더 깔끔한 출력)
+
+### 수정됨 (Fixed)
+
+- **statusline**: `TestCollectUsage_RetriesAfterCooldownExpires` 불안정 테스트 수정 - 키체인 접근을 모킹으로 대체
+
+### 내부 변경
+
+- 템플릿 rules/skills/agents의 잘못된 `@file` 참조 정리
+- config GLM 모델 매핑 업데이트 (glm-5, glm-4.7, glm-4.5-air)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
+
 ## [2.7.8] - 2026-03-11
 
 ### Summary
