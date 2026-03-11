@@ -369,5 +369,37 @@ module.exports = {
 
 ---
 
-Last Updated: 2025-11-26
+---
+
+## Tailwind CSS v4 Notes
+
+Tailwind CSS v4 introduces a CSS-first configuration approach. Key changes from v3:
+
+- Configuration is now done in CSS using `@theme` directive instead of `tailwind.config.js`
+- Import with `@import "tailwindcss"` instead of `@tailwind base/components/utilities`
+- CSS variables for design tokens integrate more naturally with v4's architecture
+- The `@layer base` approach above remains compatible; use `@theme` for new v4 projects
+
+```css
+/* Tailwind v4 CSS-first configuration */
+@import "tailwindcss";
+
+@theme {
+  --color-primary: hsl(240 9% 10%);
+  --color-background: hsl(0 0% 100%);
+  --radius: 0.5rem;
+}
+```
+
+## Nova Preset
+
+The Nova preset is a shadcn/ui-based design system preset available via Pencil MCP. It uses Hugeicons as the default icon library and provides pre-built component themes.
+
+For Nova preset details and .pen file workflows, see the moai-design-tools skill:
+- reference/pencil-renderer.md — Pencil DNA rendering and Nova configuration
+- reference/pencil-code.md — Code export from Nova designs
+
+---
+
+Last Updated: 2026-03-11
 Related: [Main Skill](../SKILL.md), [Component Architecture](component-architecture.md)
