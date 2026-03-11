@@ -318,36 +318,45 @@ func (u *usageCollector) toUsageResult(cache *usageCacheFile) *UsageResult {
 }
 
 // readOAuthToken retrieves the OAuth token (REQ-V3-API-010).
-// Priority: 1) macOS Keychain ("Claude Code-credentials"), 2) ~/.claude/credentials.json.
+// Priority: 1) macOS Keychain ("Claude Code-credentials"), 2) ~/.claude/.credentials.json, 3) ~/.claude/credentials.json.
+// Claude Code stores credentials at ~/.claude/.credentials.json (dot-prefixed) on Linux/WSL2
+// where macOS Keychain is unavailable. The plain credentials.json path is retained as a fallback
+// for backward compatibility.
 func readOAuthToken(homeDir string, keychainReader func() (string, error)) string {
 	// Try keychain first (macOS only)
 	if token, err := keychainReader(); err == nil && token != "" {
 		return token
 	}
 
-	// Fallback: credentials.json (REQ-V3-API-010)
-	credsPath := filepath.Join(homeDir, ".claude", "credentials.json")
-	data, err := os.ReadFile(credsPath)
-	if err != nil {
-		return ""
-	}
+	claudeDir := filepath.Join(homeDir, ".claude")
 
-	// Try top-level oauthToken
-	var simpleCreds struct {
-		OAuthToken string `json:"oauthToken"`
-	}
-	if err := json.Unmarshal(data, &simpleCreds); err == nil && simpleCreds.OAuthToken != "" {
-		return simpleCreds.OAuthToken
-	}
+	// Try each credentials file path in priority order.
+	// ~/.claude/.credentials.json is the path Claude Code uses on Linux/WSL2 (dot-prefixed).
+	// ~/.claude/credentials.json is retained as a legacy fallback.
+	for _, filename := range []string{".credentials.json", "credentials.json"} {
+		credsPath := filepath.Join(claudeDir, filename)
+		data, err := os.ReadFile(credsPath)
+		if err != nil {
+			continue
+		}
 
-	// Try nested claudeAiOauth.accessToken
-	var nestedCreds struct {
-		ClaudeAiOauth struct {
-			AccessToken string `json:"accessToken"`
-		} `json:"claudeAiOauth"`
-	}
-	if err := json.Unmarshal(data, &nestedCreds); err == nil && nestedCreds.ClaudeAiOauth.AccessToken != "" {
-		return nestedCreds.ClaudeAiOauth.AccessToken
+		// Try top-level oauthToken
+		var simpleCreds struct {
+			OAuthToken string `json:"oauthToken"`
+		}
+		if err := json.Unmarshal(data, &simpleCreds); err == nil && simpleCreds.OAuthToken != "" {
+			return simpleCreds.OAuthToken
+		}
+
+		// Try nested claudeAiOauth.accessToken
+		var nestedCreds struct {
+			ClaudeAiOauth struct {
+				AccessToken string `json:"accessToken"`
+			} `json:"claudeAiOauth"`
+		}
+		if err := json.Unmarshal(data, &nestedCreds); err == nil && nestedCreds.ClaudeAiOauth.AccessToken != "" {
+			return nestedCreds.ClaudeAiOauth.AccessToken
+		}
 	}
 
 	return ""
