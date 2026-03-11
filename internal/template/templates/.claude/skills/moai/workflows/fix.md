@@ -259,7 +259,7 @@ When --team flag is provided, fix delegates to a team-based debugging workflow u
 
 Team composition: 3 hypothesis agents (haiku) exploring different root causes in parallel.
 
-For detailed team orchestration steps, see team/debug.md.
+For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/debug.md.
 
 Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
 

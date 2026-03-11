@@ -38,7 +38,7 @@ Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 - --branch BRANCH: Compare current branch against BRANCH (default: main)
 - --security: Focus primarily on security review (OWASP, injection, auth)
 - --file PATH: Review specific file(s) only
-- --team: Use parallel multi-perspective review team (see team/review.md)
+- --team: Use parallel multi-perspective review team (see ${CLAUDE_SKILL_DIR}/team/review.md)
 
 ## Phase 1: Identify Changes
 
@@ -58,7 +58,7 @@ Collect:
 
 [HARD] Delegate review to the manager-quality subagent with all perspectives.
 
-If --team flag: Route to team/review.md for parallel multi-perspective review with 4 dedicated reviewers.
+If --team flag: Route to ${CLAUDE_SKILL_DIR}/team/review.md for parallel multi-perspective review with 4 dedicated reviewers.
 
 If no --team flag (default single-agent mode): Delegate to manager-quality subagent with instructions to review from all 4 perspectives sequentially.
 
@@ -179,7 +179,7 @@ When --team flag is provided, review delegates to the team-based multi-perspecti
 
 Team composition: 4 review agents (security, performance, quality, UX) analyzing in parallel.
 
-For detailed team orchestration steps, see team/review.md.
+For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/review.md.
 
 Fallback: If team mode is unavailable, standard single-agent sequential review continues.
 
@@ -197,7 +197,7 @@ Team Prerequisites:
 ## Execution Summary
 
 1. Parse arguments (extract flags: --staged, --branch, --security, --file, --team)
-2. If --team: Route to team/review.md workflow
+2. If --team: Route to ${CLAUDE_SKILL_DIR}/team/review.md workflow
 3. Identify code changes (git diff based on flags)
 4. Delegate multi-perspective review to manager-quality subagent
 5. Check @MX tag compliance for changed files

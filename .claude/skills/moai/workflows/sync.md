@@ -105,11 +105,6 @@ The `project` mode performs comprehensive project-wide synchronization:
 - --no-merge: Skip auto-merge PR and cleanup. Use this when you want to review the PR manually before merging.
 - --skip-mx: Skip MX tag validation and annotation during sync.
 
-**Auto-Merge Behavior (SPEC-WORKTREE-002 R3):**
-- **Default**: Auto-merge enabled for worktree-based development flows
-- **Skip**: Use `--no-merge` flag to disable auto-merge
-- **Detection**: Worktree context is auto-detected from git directory structure (contains `worktrees/` component)
-
 ## Context Loading
 
 Before execution, load these essential files:
@@ -583,6 +578,17 @@ Update SPEC status based on lifecycle level and implementation completeness:
 
 Record version changes, status transitions, and divergence summary. Include in sync report.
 
+#### Step 2.4.1: GitHub Issue Status Sync
+
+When SPEC metadata contains `issue_number` (non-zero):
+
+- If SPEC status set to "completed":
+  - Post completion comment on Issue: `gh issue comment {issue_number} --body "Implementation complete. SPEC-{ID} marked as completed. PR with Fixes #{issue_number} will auto-close this issue on merge."`
+- If SPEC status set to "in-progress":
+  - Post progress comment: `gh issue comment {issue_number} --body "Partial implementation synced. SPEC-{ID} status: in-progress."`
+
+This step is informational only. Actual Issue closure happens automatically via GitHub's `Fixes #N` mechanism when the PR is merged.
+
 ### Phase 3: Git Operations and Delivery
 
 #### Step 3.0: Detect Git Workflow Strategy
@@ -823,6 +829,7 @@ Detect current branch:
 3. If no PR exists: Create PR via `gh pr create`
    - Title: Derived from SPEC title or branch name
    - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
+   - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
    - Base: main
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
@@ -893,34 +900,27 @@ This ensures the developer's working directory is on the base branch, ready for 
 
 Remote branch cleanup after merge is handled by the hosting platform's auto-delete setting (GitHub: "Automatically delete head branches", GitLab: "Delete source branch when merge request is accepted", Bitbucket: "Close source branch"). Local branch cleanup is left to the developer (`git branch -d <branch>`).
 
-#### Step 3.4: Auto-Merge (DEFAULT for worktree flows, R3 of SPEC-WORKTREE-002)
+#### Step 3.4: Auto-Merge (When --merge flag set)
 
 Only applies when a PR was created in Step 3.2.
 
-**SPEC-WORKTREE-002 R3: Auto-Merge is DEFAULT behavior for worktree flows**
-
 Execution conditions [HARD]:
-- `--no-merge` flag must NOT be set (auto-merge is default)
+- Flag must be explicitly set: --merge
 - All CI/CD checks must pass
 - PR must have zero merge conflicts
 - Minimum reviewer approvals obtained (if Team mode)
-- Worktree context detected (git directory contains `worktrees/` component)
 
 Auto-merge execution:
-1. Detect worktree context: Check if git directory contains `worktrees/` component
-2. Check for `--no-merge` flag: If set, skip auto-merge and display manual merge instructions
-3. Check CI/CD status via `gh pr checks --watch` (wait for completion)
-4. Check merge conflicts via `gh pr view --json mergeable`
-5. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
-6. Trigger R4 auto-cleanup: After successful merge, execute `moai worktree done SPEC-XXX --delete-branch`
-7. Checkout target branch, fetch latest
-8. Verify local is synchronized with remote
+1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
+2. Check merge conflicts via `gh pr view --json mergeable`
+3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+4. Checkout target branch, fetch latest
+5. Verify local is synchronized with remote
 
 Auto-merge failures:
 - If CI/CD fails: Report failure, display error details, do NOT merge
 - If merge conflicts: Report conflicts, provide manual resolution guidance, do NOT merge
 - If approvals missing (Team mode): Report pending approvals, do NOT merge
-- If cleanup fails (R4): Log warning, provide manual cleanup commands, do NOT block merge completion
 
 ### Phase 4: Completion and Next Steps
 
@@ -962,7 +962,7 @@ Tool: AskUserQuestion with options tailored to delivery result:
 
 The sync phase always uses sub-agent mode (manager-docs), even when --team is active for other phases. Documentation synchronization requires sequential consistency and a single authoritative view of project state.
 
-For rationale and details, see team/sync.md.
+For rationale and details, see ${CLAUDE_SKILL_DIR}/team/sync.md.
 
 ---
 
@@ -991,6 +991,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.4.0
-Updated: 2026-02-25
+Version: 3.5.0
+Updated: 2026-03-11
 Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.

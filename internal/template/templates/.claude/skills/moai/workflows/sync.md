@@ -577,6 +577,17 @@ Update SPEC status based on lifecycle level and implementation completeness:
 
 Record version changes, status transitions, and divergence summary. Include in sync report.
 
+#### Step 2.4.1: GitHub Issue Status Sync
+
+When SPEC metadata contains `issue_number` (non-zero):
+
+- If SPEC status set to "completed":
+  - Post completion comment on Issue: `gh issue comment {issue_number} --body "Implementation complete. SPEC-{ID} marked as completed. PR with Fixes #{issue_number} will auto-close this issue on merge."`
+- If SPEC status set to "in-progress":
+  - Post progress comment: `gh issue comment {issue_number} --body "Partial implementation synced. SPEC-{ID} status: in-progress."`
+
+This step is informational only. Actual Issue closure happens automatically via GitHub's `Fixes #N` mechanism when the PR is merged.
+
 ### Phase 3: Git Operations and Delivery
 
 #### Step 3.0: Detect Git Workflow Strategy
@@ -817,6 +828,7 @@ Detect current branch:
 3. If no PR exists: Create PR via `gh pr create`
    - Title: Derived from SPEC title or branch name
    - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
+   - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
    - Base: main
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
@@ -949,7 +961,7 @@ Tool: AskUserQuestion with options tailored to delivery result:
 
 The sync phase always uses sub-agent mode (manager-docs), even when --team is active for other phases. Documentation synchronization requires sequential consistency and a single authoritative view of project state.
 
-For rationale and details, see team/sync.md.
+For rationale and details, see ${CLAUDE_SKILL_DIR}/team/sync.md.
 
 ---
 
@@ -978,6 +990,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.4.0
-Updated: 2026-02-25
+Version: 3.5.0
+Updated: 2026-03-11
 Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.

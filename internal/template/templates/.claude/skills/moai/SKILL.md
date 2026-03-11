@@ -103,106 +103,106 @@ If the intent is clearly a development task with no specific routing signal, def
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team
-For detailed orchestration: Read workflows/plan.md
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-strategy, manager-ddd or manager-tdd (per quality.yaml), manager-quality, manager-git
 Flags: --resume SPEC-XXX, --team
-For detailed orchestration: Read workflows/run.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
 
 ### sync - Documentation Sync and PR
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), manager-quality, manager-git
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
-For detailed orchestration: Read workflows/sync.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
 
 ### fix - Auto-Fix Errors
 
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: expert-debug (diagnosis), expert-backend/expert-frontend (fixes)
 Flags: --dry, --sequential, --level N, --resume, --team
-For detailed orchestration: Read workflows/fix.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
 
 Purpose: Repeatedly fix issues until completion marker detected or max iterations reached.
 Agents: expert-debug, expert-backend, expert-frontend, expert-testing
 Flags: --max N, --auto-fix, --seq
-For detailed orchestration: Read workflows/loop.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
 ### mx - MX Tag Scan and Annotation
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 Agents: Explore (scan), expert-backend (annotation)
 Flags: --all, --dry, --priority P1-P4, --force, --team
-For detailed orchestration: Read workflows/mx.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 
 ### review - Code Review
 
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
 Agents: manager-quality (primary), expert-security
 Flags: --staged, --branch, --security, --team
-For detailed orchestration: Read workflows/review.md (team mode: team/review.md)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team mode: ${CLAUDE_SKILL_DIR}/team/review.md)
 
 ### clean - Dead Code Removal
 
 Purpose: Identify and safely remove unused code with test verification.
 Agents: expert-refactoring, expert-testing
 Flags: --dry, --safe-only, --file PATH
-For detailed orchestration: Read workflows/clean.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
 
 ### codemaps - Architecture Documentation
 
 Purpose: Scan codebase and generate architecture documentation.
 Agents: Explore, manager-docs
 Flags: --force, --area AREA
-For detailed orchestration: Read workflows/codemaps.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
 
 ### coverage - Test Coverage Analysis
 
 Purpose: Analyze test coverage gaps and generate missing tests.
 Agents: expert-testing
 Flags: --target N, --file PATH, --report
-For detailed orchestration: Read workflows/coverage.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/coverage.md
 
 ### e2e - End-to-End Testing
 
 Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
 Agents: expert-testing, expert-frontend
 Flags: --record, --url URL, --journey NAME
-For detailed orchestration: Read workflows/e2e.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
 ### (default) - MoAI Autonomous Workflow
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, manager-ddd/tdd, manager-quality, manager-docs, manager-git
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo
-For detailed orchestration: Read workflows/moai.md
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation
 
 Purpose: Generate project documentation by analyzing the existing codebase.
 Agents: Explore, manager-docs, expert-devops (optional)
 Output: product.md, structure.md, tech.md in .moai/project/
-For detailed orchestration: Read workflows/project.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
 
 ### context - Git-Based Context Memory
 
 Purpose: Extract AI-developer interaction context from git commit history for session continuity.
 Agents: manager-git (primary)
 Flags: --spec SPEC-XXX, --days N, --category CAT, --summary, --inject
-For detailed orchestration: Read workflows/context.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/context.md
 
 ### feedback - GitHub Issue Creation
 
 Purpose: Collect user feedback and create GitHub issues.
 Agents: manager-quality
-For detailed orchestration: Read workflows/feedback.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 
 ---
 

@@ -152,22 +152,55 @@ func TestRendererRender(t *testing.T) {
 }
 
 func TestRendererPassthroughTokens(t *testing.T) {
-	fs := fstest.MapFS{
-		"hooks.tmpl": &fstest.MapFile{
-			Data: []byte(`{"command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\"", "name": "{{.Name}}"}`),
+	tests := []struct {
+		name     string
+		template string
+		data     map[string]string
+		want     string
+	}{
+		{
+			name:     "CLAUDE_PROJECT_DIR passthrough",
+			template: `{"command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\"", "name": "{{.Name}}"}`,
+			data:     map[string]string{"Name": "test"},
+			want:     "$CLAUDE_PROJECT_DIR",
+		},
+		{
+			name:     "CLAUDE_SKILL_DIR passthrough",
+			template: `{"path": "$CLAUDE_SKILL_DIR/workflows/moai.md", "name": "{{.Name}}"}`,
+			data:     map[string]string{"Name": "test"},
+			want:     "$CLAUDE_SKILL_DIR",
+		},
+		{
+			name:     "ARGUMENTS passthrough",
+			template: `{"args": "$ARGUMENTS", "name": "{{.Name}}"}`,
+			data:     map[string]string{"Name": "test"},
+			want:     "$ARGUMENTS",
+		},
+		{
+			name:     "HOME passthrough",
+			template: `{"home": "$HOME", "name": "{{.Name}}"}`,
+			data:     map[string]string{"Name": "test"},
+			want:     "$HOME",
 		},
 	}
-	r := NewRenderer(fs)
 
-	data := map[string]string{"Name": "test"}
-	result, err := r.Render("hooks.tmpl", data)
-	if err != nil {
-		t.Fatalf("expected passthrough of $CLAUDE_PROJECT_DIR, got error: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := fstest.MapFS{
+				"test.tmpl": &fstest.MapFile{Data: []byte(tt.template)},
+			}
+			r := NewRenderer(fs)
 
-	content := string(result)
-	if !strings.Contains(content, "$CLAUDE_PROJECT_DIR") {
-		t.Error("$CLAUDE_PROJECT_DIR should be preserved in output")
+			result, err := r.Render("test.tmpl", tt.data)
+			if err != nil {
+				t.Fatalf("expected passthrough of %s, got error: %v", tt.want, err)
+			}
+
+			content := string(result)
+			if !strings.Contains(content, tt.want) {
+				t.Errorf("%s should be preserved in output, got: %q", tt.want, content)
+			}
+		})
 	}
 }
 
