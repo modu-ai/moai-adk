@@ -218,6 +218,199 @@ func TestReadOAuthToken_Fallback(t *testing.T) {
 	}
 }
 
+// TestReadOAuthToken_DotPrefixCredentials verifies that credentials stored at
+// ~/.claude/.credentials.json (dot-prefixed, as Claude Code uses on Linux/WSL2)
+// are read correctly when keychain is unavailable.
+// Regression test for: https://github.com/modu-ai/moai-adk/issues/496
+func TestReadOAuthToken_DotPrefixCredentials(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	homeDir := tmpDir
+
+	// Create ~/.claude/.credentials.json (dot-prefixed path used by Claude Code on Linux)
+	credsDir := filepath.Join(homeDir, ".claude")
+	if err := os.MkdirAll(credsDir, 0755); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// Write credentials to .credentials.json (with dot prefix)
+	dotCredsFile := filepath.Join(credsDir, ".credentials.json")
+	creds := map[string]string{
+		"oauthToken": "test-token-from-dot-credentials",
+	}
+	credsJSON, _ := json.Marshal(creds)
+	if err := os.WriteFile(dotCredsFile, credsJSON, 0600); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// Keychain fails (simulating Linux/WSL2 where macOS Keychain is unavailable)
+	token := readOAuthToken(homeDir, func() (string, error) {
+		return "", fmt.Errorf("keychain unavailable on Linux")
+	})
+
+	if token != "test-token-from-dot-credentials" {
+		t.Errorf("token = %q, want %q (credentials at ~/.claude/.credentials.json not read)",
+			token, "test-token-from-dot-credentials")
+	}
+}
+
+// TestReadOAuthToken_DotPrefixNestedCredentials verifies that nested claudeAiOauth.accessToken
+// format in ~/.claude/.credentials.json is read correctly on Linux/WSL2.
+// Regression test for: https://github.com/modu-ai/moai-adk/issues/496
+func TestReadOAuthToken_DotPrefixNestedCredentials(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	homeDir := tmpDir
+
+	// Create ~/.claude/.credentials.json with nested format
+	credsDir := filepath.Join(homeDir, ".claude")
+	if err := os.MkdirAll(credsDir, 0755); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	dotCredsFile := filepath.Join(credsDir, ".credentials.json")
+	nestedCreds := map[string]interface{}{
+		"claudeAiOauth": map[string]string{
+			"accessToken": "test-nested-token-linux",
+		},
+	}
+	credsJSON, _ := json.Marshal(nestedCreds)
+	if err := os.WriteFile(dotCredsFile, credsJSON, 0600); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// Keychain fails (simulating Linux/WSL2)
+	token := readOAuthToken(homeDir, func() (string, error) {
+		return "", fmt.Errorf("keychain unavailable on Linux")
+	})
+
+	if token != "test-nested-token-linux" {
+		t.Errorf("token = %q, want %q (nested credentials at ~/.claude/.credentials.json not read)",
+			token, "test-nested-token-linux")
+	}
+}
+
+// TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain verifies that when both
+// ~/.claude/.credentials.json and ~/.claude/credentials.json exist, the dot-prefixed
+// file (which Claude Code creates) takes precedence.
+func TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	homeDir := tmpDir
+
+	credsDir := filepath.Join(homeDir, ".claude")
+	if err := os.MkdirAll(credsDir, 0755); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	// Create both files
+	dotCredsFile := filepath.Join(credsDir, ".credentials.json")
+	dotCreds := map[string]string{"oauthToken": "dot-prefix-token"}
+	dotCredsJSON, _ := json.Marshal(dotCreds)
+	if err := os.WriteFile(dotCredsFile, dotCredsJSON, 0600); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	plainCredsFile := filepath.Join(credsDir, "credentials.json")
+	plainCreds := map[string]string{"oauthToken": "plain-token"}
+	plainCredsJSON, _ := json.Marshal(plainCreds)
+	if err := os.WriteFile(plainCredsFile, plainCredsJSON, 0600); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+
+	token := readOAuthToken(homeDir, func() (string, error) {
+		return "", fmt.Errorf("keychain unavailable")
+	})
+
+	if token != "dot-prefix-token" {
+		t.Errorf("token = %q, want %q (dot-prefixed file should take precedence)",
+			token, "dot-prefix-token")
+	}
+}
+
+// TestReadOAuthToken_PriorityChain verifies the full keychain → .credentials.json → credentials.json
+// priority chain end-to-end (REQ-V3-API-010).
+func TestReadOAuthToken_PriorityChain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		keychainToken   string // non-empty means keychain succeeds
+		dotCredsToken   string // non-empty means ~/.claude/.credentials.json exists
+		plainCredsToken string // non-empty means ~/.claude/credentials.json exists
+		want            string // expected token returned
+	}{
+		{
+			name:            "keychain wins over all files",
+			keychainToken:   "keychain-token",
+			dotCredsToken:   "dot-creds-token",
+			plainCredsToken: "plain-creds-token",
+			want:            "keychain-token",
+		},
+		{
+			name:            "dot-prefix file wins when keychain fails",
+			keychainToken:   "",
+			dotCredsToken:   "dot-creds-token",
+			plainCredsToken: "plain-creds-token",
+			want:            "dot-creds-token",
+		},
+		{
+			name:            "plain credentials.json used as last resort",
+			keychainToken:   "",
+			dotCredsToken:   "",
+			plainCredsToken: "plain-creds-token",
+			want:            "plain-creds-token",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			homeDir := tmpDir
+			claudeDir := filepath.Join(homeDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0755); err != nil {
+				t.Fatalf("setup failed: %v", err)
+			}
+
+			// Write .credentials.json if requested
+			if tc.dotCredsToken != "" {
+				creds := map[string]string{"oauthToken": tc.dotCredsToken}
+				data, _ := json.Marshal(creds)
+				if err := os.WriteFile(filepath.Join(claudeDir, ".credentials.json"), data, 0600); err != nil {
+					t.Fatalf("setup failed: %v", err)
+				}
+			}
+
+			// Write credentials.json if requested
+			if tc.plainCredsToken != "" {
+				creds := map[string]string{"oauthToken": tc.plainCredsToken}
+				data, _ := json.Marshal(creds)
+				if err := os.WriteFile(filepath.Join(claudeDir, "credentials.json"), data, 0600); err != nil {
+					t.Fatalf("setup failed: %v", err)
+				}
+			}
+
+			// Configure keychain mock
+			keychainFn := func() (string, error) {
+				if tc.keychainToken != "" {
+					return tc.keychainToken, nil
+				}
+				return "", fmt.Errorf("keychain unavailable")
+			}
+
+			got := readOAuthToken(homeDir, keychainFn)
+			if got != tc.want {
+				t.Errorf("readOAuthToken() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestReadOAuthToken_NotFound verifies handling when token is not found (REQ-V3-API-010).
 func TestReadOAuthToken_NotFound(t *testing.T) {
 	t.Parallel()
