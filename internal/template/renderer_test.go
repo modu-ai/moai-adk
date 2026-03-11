@@ -428,7 +428,7 @@ func TestPassthroughTokensCompleteness(t *testing.T) {
 		passthroughSet[tok] = true
 	}
 
-	missing := []string{}
+	var missing []string
 	for token := range requiredTokens {
 		if !passthroughSet[token] {
 			missing = append(missing, token)

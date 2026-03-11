@@ -1,9 +1,11 @@
 # ADR-011: Template Passthrough Tokens
 
 ## Status
+
 Accepted (2022-06-15, updated 2026-03-11)
 
 ## Context
+
 The template renderer uses Go's `text/template` package with strict mode (`missingkey=error`). After template execution, we validate that no unexpanded tokens remain. However, certain environment variables are resolved at runtime by Claude Code or the shell and must not be flagged as errors.
 
 ## Decision
