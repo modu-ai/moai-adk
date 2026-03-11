@@ -173,6 +173,8 @@ moai init my-project
 /moai plan "添加用户认证功能"              # 生成 SPEC 文档
 /moai run SPEC-AUTH-001                   # DDD/TDD 实现
 /moai sync SPEC-AUTH-001                  # 文档同步 & 创建 PR
+/moai github issues                      # GitHub issue自动化 (Agent Teams)
+/moai github pr 123                       # PR多角度审查 (multi-perspective)
 ```
 
 ```mermaid
