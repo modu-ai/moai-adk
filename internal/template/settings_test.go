@@ -773,6 +773,12 @@ func TestBuildSmartPATH_WSL2(t *testing.T) {
 			checkNoDup:   "/mnt/c/Windows/System32",
 		},
 		{
+			name:           "user_scoped_paths_excluded",
+			terminalPATH:   "/mnt/c/Windows/System32:/mnt/c/Users/alice/AppData/Local/Programs/bin:/mnt/c/Users/alice/AppData/Roaming/npm",
+			mustContain:    []string{"/mnt/c/Windows/System32"},
+			mustNotContain: []string{"/mnt/c/Users/alice/AppData/Local/Programs/bin", "/mnt/c/Users/alice/AppData/Roaming/npm"},
+		},
+		{
 			name:            "non_wsl2_stable",
 			isStabilityTest: true,
 		},
@@ -824,6 +830,32 @@ func TestBuildSmartPATH_WSL2(t *testing.T) {
 				if count > 1 {
 					t.Errorf("WSL2: %q should appear at most once, found %d times in %q", tc.checkNoDup, count, path)
 				}
+			}
+		})
+	}
+}
+
+// TestIsUserScopedWindowsPath verifies that per-user Windows directories are rejected.
+func TestIsUserScopedWindowsPath(t *testing.T) {
+	tests := []struct {
+		entry string
+		want  bool
+	}{
+		{"/mnt/c/Users/alice/AppData/Local/Programs/bin", true},
+		{"/mnt/c/Users/alice/AppData/Roaming/npm", true},
+		{"/mnt/c/users/bob/appdata/local/bin", true},  // case-insensitive
+		{"/mnt/c/Documents and Settings/alice/bin", true},
+		{"/mnt/c/Windows/System32", false},
+		{"/mnt/c/Windows/System32/WindowsPowerShell/v1.0", false},
+		{"/mnt/d/tools/bin", false},
+		{"/mnt/c/Program Files/Git/bin", false},
+		{"/usr/bin", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.entry, func(t *testing.T) {
+			if got := isUserScopedWindowsPath(tt.entry); got != tt.want {
+				t.Errorf("isUserScopedWindowsPath(%q) = %v, want %v", tt.entry, got, tt.want)
 			}
 		})
 	}

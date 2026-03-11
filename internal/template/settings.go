@@ -90,7 +90,7 @@ func BuildSmartPATH() string {
 			seen[strings.TrimRight(c, "/\\")] = true
 		}
 		for _, entry := range strings.Split(os.Getenv("PATH"), sep) {
-			if isWSL2DrivePath(entry) {
+			if isWSL2DrivePath(entry) && !isUserScopedWindowsPath(entry) {
 				normalized := strings.TrimRight(entry, "/\\")
 				if !seen[normalized] {
 					candidates = append(candidates, entry)
@@ -113,6 +113,31 @@ func isWSL2DrivePath(entry string) bool {
 	}
 	letter := entry[5]
 	return letter >= 'a' && letter <= 'z' && (len(entry) == 6 || entry[6] == '/')
+}
+
+// isUserScopedWindowsPath reports whether a WSL2 drive-mount path points to a
+// per-user Windows directory. Such paths (e.g., /mnt/c/Users/alice/AppData/...)
+// are machine-specific and must not be persisted in settings.json, as they would
+// break portability and partially undo the fix from issue #467.
+//
+// Rejected prefixes (case-insensitive):
+//   - /users/           — Windows user home directories
+//   - /appdata/         — per-user application data
+//   - /documents and settings/ — legacy Windows XP user profiles
+func isUserScopedWindowsPath(entry string) bool {
+	lower := strings.ToLower(entry)
+	// Strip the /mnt/<letter> prefix to check the Windows-relative path.
+	if len(lower) < 7 {
+		return false
+	}
+	// Find the path after /mnt/<letter>, e.g. "/mnt/c/Users/..." → "/users/..."
+	rest := lower[6:] // skip "/mnt/X"
+	for _, segment := range []string{"/users/", "/appdata/", "/documents and settings/"} {
+		if strings.Contains(rest, segment) {
+			return true
+		}
+	}
+	return false
 }
 
 // PathContainsDir checks if a PATH string contains a specific directory entry.
