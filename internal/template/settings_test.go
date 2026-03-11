@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"text/template"
@@ -621,7 +622,17 @@ func TestMCPTemplateSchema(t *testing.T) {
 // "moai update hardcodes Linux PATH into settings.json, breaking MCP servers on macOS".
 // BuildSmartPATH must NOT capture the terminal PATH; it must produce a stable,
 // platform-appropriate result regardless of what is currently in the PATH env var.
+//
+// Note: This invariant applies to non-WSL2 environments only. In WSL2, BuildSmartPATH
+// intentionally captures /mnt/ paths from the terminal PATH to preserve access to
+// Windows executables (issue #495). The test is skipped in WSL2 environments.
 func TestBuildSmartPATH_StableAcrossTerminalPATH(t *testing.T) {
+	// Skip in WSL2: the output legitimately changes when terminal PATH changes
+	// because /mnt/ entries are captured to preserve Windows executable access.
+	if IsWSL2() {
+		t.Skip("WSL2: BuildSmartPATH captures /mnt/ paths from terminal PATH (issue #495)")
+	}
+
 	path1 := BuildSmartPATH()
 
 	// Simulate running from a different environment (e.g., CI on Linux with minimal PATH)
@@ -690,5 +701,124 @@ func TestPathContainsDir_Cases(t *testing.T) {
 					tt.pathStr, tt.dir, tt.sep, got, tt.want)
 			}
 		})
+	}
+}
+
+// --- IsWSL2 tests ---
+
+// TestIsWSL2_EnvVar verifies that IsWSL2 returns true when WSL_DISTRO_NAME is set.
+func TestIsWSL2_EnvVar(t *testing.T) {
+	t.Setenv("WSL_DISTRO_NAME", "Ubuntu")
+	if !IsWSL2() {
+		t.Error("IsWSL2() should return true when WSL_DISTRO_NAME is set")
+	}
+}
+
+// TestIsWSL2_EmptyEnvVar verifies that IsWSL2 returns false when WSL_DISTRO_NAME is empty
+// and /proc/version does not contain WSL markers (standard Linux CI environment).
+func TestIsWSL2_EmptyEnvVar(t *testing.T) {
+	t.Setenv("WSL_DISTRO_NAME", "")
+	// If /proc/version happens to contain WSL markers (actual WSL2), detection is correct.
+	if IsWSL2() {
+		t.Skip("running in actual WSL2 environment (detected via /proc/version)")
+	}
+}
+
+// --- WSL2 BuildSmartPATH tests (regression tests for issue #495) ---
+
+// TestBuildSmartPATH_WSL2PreservesWindowsPaths verifies that in a simulated WSL2 environment,
+// BuildSmartPATH includes Windows interop paths from the terminal PATH.
+// Regression test for issue #495: "v2.7.9 update causes env.PATH to overwrite Windows paths
+// in WSL2, blocking access to powershell.exe and other Windows executables".
+func TestBuildSmartPATH_WSL2PreservesWindowsPaths(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("WSL2 PATH preservation only applies on Linux")
+	}
+
+	// Simulate WSL2 environment with Windows paths in terminal PATH
+	t.Setenv("WSL_DISTRO_NAME", "Ubuntu")
+	t.Setenv("PATH", "/usr/bin:/bin:/mnt/c/Windows/System32:/mnt/c/Windows/System32/WindowsPowerShell/v1.0:/mnt/c/Windows")
+
+	path := BuildSmartPATH()
+	sep := string(os.PathListSeparator)
+
+	// All Windows paths from terminal PATH must be preserved in SmartPATH
+	for _, wp := range []string{
+		"/mnt/c/Windows/System32",
+		"/mnt/c/Windows/System32/WindowsPowerShell/v1.0",
+		"/mnt/c/Windows",
+	} {
+		if !PathContainsDir(path, wp, sep) {
+			t.Errorf("WSL2: SmartPATH should contain %q\nfull SmartPATH: %s", wp, path)
+		}
+	}
+}
+
+// TestBuildSmartPATH_WSL2_NonMntPathsNotIncluded verifies that non-/mnt/ terminal PATH
+// entries are NOT copied into SmartPATH in WSL2. Only Windows interop paths are appended.
+func TestBuildSmartPATH_WSL2_NonMntPathsNotIncluded(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("WSL2 test only applies on Linux")
+	}
+
+	t.Setenv("WSL_DISTRO_NAME", "Ubuntu")
+	// Include a custom terminal path that should NOT be copied
+	t.Setenv("PATH", "/home/user/custom/tool:/usr/bin:/mnt/c/Windows/System32")
+
+	path := BuildSmartPATH()
+	sep := string(os.PathListSeparator)
+
+	if PathContainsDir(path, "/home/user/custom/tool", sep) {
+		t.Error("WSL2: non-/mnt/ terminal PATH entries must not be copied into SmartPATH")
+	}
+	if !PathContainsDir(path, "/mnt/c/Windows/System32", sep) {
+		t.Errorf("WSL2: /mnt/ path should be included\nfull SmartPATH: %s", path)
+	}
+}
+
+// TestBuildSmartPATH_WSL2_NoDuplicates verifies that Windows paths are not duplicated
+// when they appear multiple times in the terminal PATH.
+func TestBuildSmartPATH_WSL2_NoDuplicates(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("WSL2 test only applies on Linux")
+	}
+
+	t.Setenv("WSL_DISTRO_NAME", "Ubuntu")
+	t.Setenv("PATH", "/mnt/c/Windows/System32:/mnt/c/Windows/System32")
+
+	path := BuildSmartPATH()
+	sep := string(os.PathListSeparator)
+
+	count := 0
+	for _, entry := range strings.Split(path, sep) {
+		if strings.TrimRight(entry, "/\\") == "/mnt/c/Windows/System32" {
+			count++
+		}
+	}
+	if count > 1 {
+		t.Errorf("WSL2: /mnt/c/Windows/System32 should appear at most once, found %d times in %q", count, path)
+	}
+}
+
+// TestBuildSmartPATH_NonWSL2_StillStable verifies that the non-WSL2 stability guarantee
+// holds: on standard Linux (not WSL2), BuildSmartPATH must not capture terminal PATH.
+func TestBuildSmartPATH_NonWSL2_StillStable(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux-only stability test")
+	}
+
+	// Explicitly disable WSL2 detection for this test
+	t.Setenv("WSL_DISTRO_NAME", "")
+	// Skip if running in actual WSL2 (detected via /proc/version)
+	if IsWSL2() {
+		t.Skip("running in actual WSL2 environment")
+	}
+
+	path1 := BuildSmartPATH()
+	t.Setenv("PATH", "/tmp/fake-path:/some/other:/usr/bin:/bin")
+	path2 := BuildSmartPATH()
+
+	if path1 != path2 {
+		t.Errorf("non-WSL2 Linux: BuildSmartPATH must be stable across terminal PATH changes:\ngot1: %s\ngot2: %s", path1, path2)
 	}
 }
