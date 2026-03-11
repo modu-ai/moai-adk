@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.11] - 2026-03-11
+
+### Summary
+
+Fixed template path resolution issues by adding `${CLAUDE_SKILL_DIR}` to the passthrough token list, ensuring skill workflows can reference other files using absolute paths. Also added GitHub automation commands and improved statusline compatibility.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **GitHub Workflow Commands**: New `/moai github` subcommand for GitHub issue and PR automation
+- **Template Path Variables**: `${CLAUDE_SKILL_DIR}` now properly passthrough in template renderer
+
+### Changed
+
+- **sync.md workflow**: Added `--pr` flag to skip changelog prompt and auto-open PR
+- **SKILL.md**: Updated all workflow references to use `${CLAUDE_SKILL_DIR}` absolute paths
+- **github.md**: Converted to local-only command (not deployed to projects)
+
+### Fixed
+
+- **Template renderer**: `${CLAUDE_SKILL_DIR}` passthrough token was missing from whitelist
+- **Bare relative paths**: Replaced `team/*.md` and `workflows/*.md` with `${CLAUDE_SKILL_DIR}/` paths
+- **Statusline credentials**: Fixed `.credentials.json` (dot-prefix) reading on Linux/WSL2
+- **WSL2 paths**: Preserve Windows backslash paths in WSL2 environment
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.11] - 2026-03-11 (한국어)
+
+### 요약
+
+`${CLAUDE_SKILL_DIR}`을 passthrough 토큰 목록에 추가하여 템플릿 경로 해결 문제를 수정했습니다. 또한 GitHub 자동화 커맨드를 추가하고 statusline 호환성을 개선했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **GitHub 워크플로우 커맨드**: GitHub 이슈/PR 자동화를 위한 `/moai github` 서브커맨드
+- **템플릿 경로 변수**: 템플릿 렌더러에서 `${CLAUDE_SKILL_DIR}` passthrough 지원
+
+### 변경됨 (Changed)
+- **sync.md 워크플로우**: `--pr` 플래그 추가 (changelog 프롬프트 건너뛰고 PR 자동 열기)
+- **SKILL.md**: 모든 워크플로우 참조를 `${CLAUDE_SKILL_DIR}` 절대경로로 변경
+- **github.md**: 로컬 전용 커맨드로 변경 (프로젝트에 배포되지 않음)
+
+### 수정됨 (Fixed)
+
+- **템플릿 렌더러**: `${CLAUDE_SKILL_DIR}` passthrough 토큰 누락 수정
+- **상대 경로**: `team/*.md` 및 `workflows/*.md`를 `${CLAUDE_SKILL_DIR}/` 경로로 변경
+- **Statusline 자격증명**: Linux/WSL2에서 `.credentials.json` (점 프리픽스) 읽기 수정
+- **WSL2 경로**: WSL2 환경에서 Windows 백슬래시 경로 보존
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.9] - 2026-03-11
 
 ### Summary
