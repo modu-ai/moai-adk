@@ -7,9 +7,14 @@ import (
 	"strings"
 )
 
+// procVersionPath is the path to the kernel version file used by IsWSL2.
+// It is a package-level variable so tests can override it with a temp file
+// containing a synthetic kernel string without touching real /proc/version.
+var procVersionPath = "/proc/version"
+
 // IsWSL2 reports whether the current process is running inside WSL2
 // (Windows Subsystem for Linux). It checks the WSL_DISTRO_NAME environment
-// variable first (fastest), then falls back to /proc/version for robustness.
+// variable first (fastest), then falls back to procVersionPath for robustness.
 func IsWSL2() bool {
 	// WSL_DISTRO_NAME is set by the WSL runtime (e.g., "Ubuntu", "Debian")
 	if os.Getenv("WSL_DISTRO_NAME") != "" {
@@ -18,7 +23,7 @@ func IsWSL2() bool {
 	// Fallback: /proc/version contains "microsoft-standard-WSL" on WSL2 kernels
 	// (e.g., "6.6.87.2-microsoft-standard-WSL2"). Using the full prefix avoids
 	// false positives on Azure VMs that may contain "microsoft" in kernel strings.
-	data, err := os.ReadFile("/proc/version")
+	data, err := os.ReadFile(procVersionPath)
 	if err != nil {
 		return false
 	}
@@ -70,10 +75,20 @@ func BuildSmartPATH() string {
 	candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 
 	// WSL2: append Windows interop paths from the current terminal PATH.
-	// WSL2 automatically adds /mnt/<drive>/Windows/... entries to PATH, which
-	// allows running Windows executables (powershell.exe, cmd.exe, etc.).
+	// WSL2 automatically adds /mnt/<drive>/... entries to PATH, which allows
+	// running Windows executables (powershell.exe, cmd.exe, etc.).
 	// Without this, writing a static PATH to settings.json would remove those
 	// entries, causing "command not found: powershell.exe" (issue #495).
+	//
+	// We intentionally capture ALL /mnt/ entries rather than filtering to a
+	// known allow-list (e.g., only /mnt/c/Windows/System32) because:
+	//   1. Users frequently install custom Windows tools in non-standard locations
+	//      such as /mnt/d/tools or /mnt/c/Program Files/... and expect them to
+	//      remain accessible inside WSL2 after settings.json is written.
+	//   2. An allow-list would be fragile: it would silently drop valid entries
+	//      whenever a user's setup deviates from the expected pattern.
+	//   3. Security concern is low: these paths originate from the user's own
+	//      WSL2 session PATH, which is already trusted.
 	if runtime.GOOS == "linux" && IsWSL2() {
 		seen := make(map[string]bool, len(candidates))
 		for _, c := range candidates {
