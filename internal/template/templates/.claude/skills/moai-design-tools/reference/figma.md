@@ -1,317 +1,379 @@
-# Figma MCP Implementation Guide
+# Figma MCP Integration Guide
 
-Figma MCP integration for fetching design context, metadata, and specifications from Figma files.
+Figma MCP integration for fetching design context, creating designs, and managing design systems through the official Figma MCP remote server.
 
 ## Overview
 
-Figma MCP provides direct access to Figma file data through the Model Context Protocol, enabling automated extraction of design tokens, component hierarchies, and style information.
+Figma MCP provides direct access to Figma file data and design generation capabilities through the Model Context Protocol. The official Figma MCP server enables design context extraction, variable management, FigJam collaboration, and AI-powered design creation (Code-to-Canvas).
 
-## MCP Configuration
+## Setup
 
-### Server Setup
+### Installation
 
-Add to `.mcp.json`:
+Install the official Figma MCP plugin:
 
-```json
-{
-  "mcpServers": {
-    "figma": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-figma"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "your-token-here"
-      }
-    }
-  }
-}
+```
+claude plugin install figma@claude-plugins-official
+```
+
+No manual `mcpServers` configuration is required. The plugin handles connection automatically.
+
+### Remote MCP Server
+
+The official Figma MCP server is hosted at:
+
+```
+https://mcp.figma.com/mcp
 ```
 
 ### Authentication
 
-1. Generate Figma Personal Access Token:
-   - Go to Figma Settings → Account → Personal Access Tokens
-   - Create new token with appropriate permissions
-   - Copy token for MCP configuration
+1. Authenticate via the Figma MCP plugin prompt when first connecting
+2. Your Figma account credentials are used for authorization
+3. Access is scoped to files and projects your account can view
 
-2. Environment Variables:
-   - Set `FIGMA_ACCESS_TOKEN` in system environment or `.env` file
-   - Token requires file read permissions for target files
+## Figma MCP Tools Reference
 
-3. Permission Scopes:
-   - `file_read`: Read file content and metadata
-   - `file_tokens`: Read design tokens and styles
-   - `comments_read`: Read comments and feedback (optional)
+### Design Context and Reading
 
-## File Access Patterns
+#### get_design_context
 
-### Fetch File Metadata
+Extract design context from Figma files:
+- Retrieve component hierarchy and structure
+- Understand layout, spacing, and design relationships
+- Get detailed specifications for implementing designs
+
+```
+get_design_context(fileKey, nodeId?) → { components, layout, styles, ... }
+```
+
+#### get_screenshot
+
+Capture screenshots of Figma frames for visual reference:
+- Render specific frames as images
+- Use as visual reference during implementation
+- Compare design intent with code output
+
+```
+get_screenshot(fileKey, nodeId) → image data
+```
+
+#### get_variable_defs
+
+Extract design variables and tokens from Figma files:
+- Color tokens and palettes
+- Typography definitions
+- Spacing and sizing values
+- Theme configurations
+
+```
+get_variable_defs(fileKey) → { colors, typography, spacing, ... }
+```
+
+#### get_metadata
+
+Get file metadata and structural information:
+- File name, description, and timestamps
+- Page structure and frame hierarchy
+- Component library references
+
+```
+get_metadata(fileKey) → { name, description, lastModified, pages, ... }
+```
+
+#### whoami
+
+Get current authenticated user information:
+- Verify authentication status
+- Check user identity and permissions
+
+```
+whoami() → { id, name, email, ... }
+```
+
+### Code Connect
+
+#### get_code_connect_map
+
+Retrieve code connect mappings that link Figma components to code implementations:
+- Map Figma component IDs to code component names
+- Reference existing design-to-code connections
+
+```
+get_code_connect_map(fileKey) → { componentId: codeComponent, ... }
+```
+
+#### add_code_connect_map
+
+Add new code connect mappings to link Figma components with code:
+- Register code implementations for Figma components
+- Enable bidirectional design-code traceability
+
+```
+add_code_connect_map(fileKey, mappings) → confirmation
+```
+
+### FigJam and Diagrams
+
+#### get_figjam
+
+Access FigJam boards for collaboration content:
+- Retrieve sticky notes, shapes, and text
+- Extract workflow diagrams and user flows
+- Access collaborative brainstorming sessions
+
+```
+get_figjam(fileKey) → { boards, elements, ... }
+```
+
+#### generate_diagram
+
+Create diagrams in FigJam from text descriptions:
+- Generate flowcharts and architecture diagrams
+- Create user journey maps
+- Build system design visualizations
+
+```
+generate_diagram(description, fileKey?) → { diagramId, ... }
+```
+
+### Design Generation
+
+#### generate_figma_design
+
+Create designs in Figma from text descriptions (Code-to-Canvas workflow):
+- Generate UI components from natural language
+- Create layouts and screens from specifications
+- Automate design creation from requirements
+
+```
+generate_figma_design(description, targetFileKey?) → { frameId, ... }
+```
+
+**Code-to-Canvas (v1) Known Limitations:**
+- Japanese text rendering may have issues
+- Image dimensions may not exactly match specifications
+- Available via Remote MCP server only (https://mcp.figma.com/mcp)
+
+### Design System
+
+#### create_design_system_rules
+
+Create design system rules and guidelines within Figma:
+- Define component usage patterns
+- Establish naming conventions
+- Document design principles
+
+```
+create_design_system_rules(rules) → { ruleId, ... }
+```
+
+## implement-design Workflow
+
+When implementing a Figma design as code, follow this 7-step workflow:
+
+### Step 1: Get Design Context
+
+```
+get_design_context(fileKey, nodeId)
+```
+
+Understand the component structure, layout relationships, and design intent before writing any code.
+
+### Step 2: Get Visual Reference
+
+```
+get_screenshot(fileKey, nodeId)
+```
+
+Capture a screenshot to use as visual reference throughout implementation. Compare final code output against this image.
+
+### Step 3: Extract Design Tokens
+
+```
+get_variable_defs(fileKey)
+```
+
+Extract all design variables (colors, typography, spacing). Use these values in your implementation instead of hardcoding.
+
+### Step 4: Analyze Component Structure
+
+Review the design context to identify:
+- Component hierarchy and nesting
+- Responsive behavior and breakpoints
+- Interactive states (hover, active, disabled)
+- Reusable sub-components
+
+### Step 5: Generate React/Tailwind Code
+
+Implement the component using extracted design context:
+- Map Figma components to React components
+- Apply design token values from get_variable_defs
+- Use Tailwind classes for styling
+- Handle responsive layouts with Tailwind breakpoints
+
+### Step 6: Apply Design Tokens
+
+Map extracted variables to Tailwind config:
 
 ```typescript
-// Get file information
-const metadata = await figma.get_file_metadata(fileKey);
-
-// Response structure
-{
-  "name": "Design System",
-  "description": "Main design system file",
-  "lastModified": "2026-02-09T10:00:00Z",
-  "thumbnailUrl": "https://...",
-  "version": "1.0.0"
-}
-```
-
-### Extract Component Tree
-
-```typescript
-// Get component hierarchy
-const components = await figma.get_components(fileKey);
-
-// Component structure
-{
-  "id": "1:2",
-  "name": "Button/Primary",
-  "type": "COMPONENT",
-  "description": "Primary button component",
-  "children": [
-    {
-      "id": "1:3",
-      "name": "Label",
-      "type": "TEXT"
-    }
-  ]
-}
-```
-
-## Design Token Retrieval
-
-### Color Tokens
-
-```typescript
-// Extract color styles
-const colors = await figma.get_color_styles(fileKey);
-
-// Token format
-{
-  "name": "primary/500",
-  "value": "#3B82F6",
-  "description": "Primary brand color"
-}
-```
-
-### Typography Tokens
-
-```typescript
-// Extract text styles
-const typography = await figma.get_text_styles(fileKey);
-
-// Token format
-{
-  "name": "heading/1",
-  "fontFamily": "Inter",
-  "fontWeight": 700,
-  "fontSize": 32,
-  "lineHeight": 1.2
-}
-```
-
-### Spacing Tokens
-
-```typescript
-// Extract spacing from layout grids
-const spacing = await figma.get_spacing_tokens(fileKey);
-
-// Token format
-{
-  "name": "spacing/md",
-  "value": 16,
-  "unit": "pixels"
-}
-```
-
-## Screenshot Capture
-
-### Capture Node Screenshot
-
-```typescript
-// Screenshot specific component
-const screenshot = await figma.get_screenshot(
-  fileKey,
-  nodeId,
-  {
-    format: "png",
-    scale: 2
-  }
-);
-
-// Returns image URL or base64 data
-```
-
-### Batch Screenshots
-
-```typescript
-// Capture multiple components
-const screenshots = await Promise.all([
-  figma.get_screenshot(fileKey, "button-primary"),
-  figma.get_screenshot(fileKey, "button-secondary"),
-  figma.get_screenshot(fileKey, "input-field")
-]);
-```
-
-## Style Guide Generation
-
-### Component Documentation
-
-```typescript
-// Generate component documentation
-const doc = {
-  component: "Button/Primary",
-  description: "Primary action button",
-  props: {
-    variant: "primary",
-    size: "medium",
-    disabled: false
-  },
-  states: ["default", "hover", "active", "disabled"],
-  tokens: {
-    background: "primary/500",
-    color: "white/100",
-    borderRadius: "radius/md",
-    padding: "spacing/md"
-  }
-};
-```
-
-### Design System Documentation
-
-```typescript
-// Generate design system overview
-const designSystem = {
-  colors: await figma.get_color_styles(fileKey),
-  typography: await figma.get_text_styles(fileKey),
-  spacing: await figma.get_spacing_tokens(fileKey),
-  components: await figma.get_components(fileKey)
-};
-```
-
-## Best Practices
-
-### Token Naming
-
-Use semantic naming conventions:
-- `color.primary.500` instead of `blue.500`
-- `spacing.md` instead of `16px`
-- `font.heading.1` instead of `32px bold`
-
-### Version Control
-
-Commit design token snapshots:
-```bash
-# Export tokens to JSON
-figma export-tokens --output design-tokens.json
-
-# Commit to repository
-git add design-tokens.json
-git commit -m "docs: update design tokens from Figma"
-```
-
-### Integration with Code
-
-Map Figma tokens to code:
-```css
-/* Tailwind config */
+// tailwind.config.js — populated from get_variable_defs output
 module.exports = {
   theme: {
-    colors: {
-      primary: {
-        500: '#3B82F6' /* Figma: primary/500 */
+    extend: {
+      colors: {
+        primary: {
+          500: '#3B82F6',  /* Figma: colors.primary */
+        }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     }
   }
 }
 ```
 
-## Common Workflows
+### Step 7: Verify Against Screenshot
 
-### Workflow 1: Design System Sync
+Compare the implemented component against the screenshot from Step 2:
+- Check visual accuracy (colors, spacing, typography)
+- Validate responsive behavior at all breakpoints
+- Verify interactive states
 
-1. Fetch latest tokens from Figma
-2. Compare with local token files
-3. Update changed tokens
-4. Generate documentation
-5. Commit changes with diff summary
+## Design Token Extraction
 
-### Workflow 2: Component Documentation
+### Extracting Color Variables
 
-1. Extract component metadata
-2. Capture component screenshots
-3. Generate props documentation
-4. Create usage examples
-5. Publish to component library
+```
+vars = get_variable_defs(fileKey)
+// Returns: { colors: { primary: "#3B82F6", ... }, ... }
+```
 
-### Workflow 3: Style Guide Generation
+Map to CSS custom properties:
+```css
+:root {
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+}
+```
 
-1. Fetch all style definitions
-2. Organize by category (colors, typography, spacing)
-3. Generate visual examples
-4. Create documentation site
-5. Share with development team
+### Extracting Typography Variables
+
+```
+vars = get_variable_defs(fileKey)
+// Returns: { typography: { heading1: { fontFamily: "Inter", fontSize: 32, fontWeight: 700 } } }
+```
+
+Map to Tailwind:
+```typescript
+module.exports = {
+  theme: {
+    extend: {
+      fontSize: {
+        'heading-1': ['2rem', { lineHeight: '1.2', fontWeight: '700' }],
+        'heading-2': ['1.5rem', { lineHeight: '1.3', fontWeight: '600' }],
+      }
+    }
+  }
+}
+```
+
+## Design-to-Code Workflow Examples
+
+### Example 1: Component Implementation
+
+```
+1. get_metadata(fileKey) → Identify target frame and page
+2. get_design_context(fileKey, nodeId) → Understand component structure
+3. get_screenshot(fileKey, nodeId) → Capture visual reference
+4. get_variable_defs(fileKey) → Extract all design tokens
+5. Implement React component with extracted specifications
+6. Compare implementation screenshot with design screenshot
+```
+
+### Example 2: Design System Setup
+
+```
+1. get_variable_defs(fileKey) → All design tokens
+2. get_code_connect_map(fileKey) → Discover existing code mappings
+3. Generate tailwind.config.js from extracted tokens
+4. Map Figma component IDs to React component names
+5. add_code_connect_map(fileKey, mappings) → Register connections
+```
+
+### Example 3: FigJam Workflow Import
+
+```
+1. get_figjam(fileKey) → Access workflow diagrams and user flows
+2. Parse user journey from FigJam content
+3. Implement screens following the user flow
+4. Use generate_diagram to create updated architecture docs
+```
+
+## Best Practices
+
+### Design Context First
+
+- Always call get_design_context before implementing any Figma design
+- Use get_screenshot as a persistent visual reference checkpoint
+- Extract all variables with get_variable_defs — never hardcode design values
+
+### Token Naming Conventions
+
+Use semantic naming when mapping Figma variables to code:
+- `color.primary.500` instead of `blue`
+- `spacing.md` instead of `16px`
+- `font.heading.1` instead of `32px bold`
+
+### Code Connect Usage
+
+Register code-component mappings for full traceability:
+- Use add_code_connect_map when implementing new components
+- Use get_code_connect_map to discover if components are already mapped
+
+### Design Verification
+
+- Always verify implementation against get_screenshot output
+- Use create_design_system_rules to document component usage patterns
 
 ## Error Handling
 
-### Access Denied
+### Authentication Issues
+
 ```
-Error: Failed to fetch file metadata (403)
-Solution: Verify FIGMA_ACCESS_TOKEN has file read permission
+Error: Not authenticated to Figma
+Solution: Re-run: claude plugin install figma@claude-plugins-official
 ```
 
 ### File Not Found
-```
-Error: File not found (404)
-Solution: Verify fileKey is correct and file is shared with token owner
-```
 
-### Rate Limiting
 ```
-Error: Rate limit exceeded (429)
-Solution: Implement exponential backoff, cache responses
+Error: File not found or access denied
+Solution: Verify fileKey is correct and your Figma account has file access
 ```
 
-## Performance Optimization
+### Node Not Found
 
-### Caching Strategy
-
-```typescript
-// Cache design tokens for 1 hour
-const cacheKey = `figma:${fileKey}:tokens`;
-const cached = await cache.get(cacheKey);
-
-if (cached) {
-  return JSON.parse(cached);
-}
-
-const tokens = await figma.get_color_styles(fileKey);
-await cache.set(cacheKey, JSON.stringify(tokens), 3600);
+```
+Error: Node ID not found in file
+Solution: Use get_metadata to discover valid node IDs and page structure
 ```
 
-### Batch Requests
+### Code-to-Canvas Unavailable
 
-```typescript
-// Fetch multiple resources in parallel
-const [colors, typography, components] = await Promise.all([
-  figma.get_color_styles(fileKey),
-  figma.get_text_styles(fileKey),
-  figma.get_components(fileKey)
-]);
+```
+Error: generate_figma_design not available
+Solution: generate_figma_design requires the Remote MCP server (https://mcp.figma.com/mcp)
 ```
 
 ## Resources
 
-- Figma REST API: https://www.figma.com/developers/api
-- Figma MCP Server: https://github.com/modelcontextprotocol/servers/tree/main/src/figma
+- Figma MCP Remote Server: https://mcp.figma.com/mcp
+- Figma Developers: https://www.figma.com/developers
 - Design Tokens Format: https://designtokens.org/format/
-- W3C Design Tokens Community Group: https://www.w3.org/community/design-tokens/
 
 ---
 
-Last Updated: 2026-02-09
-Tool Version: Figma MCP 1.0.0
+Last Updated: 2026-03-11
+Tool Version: Figma MCP (Official Remote Server)

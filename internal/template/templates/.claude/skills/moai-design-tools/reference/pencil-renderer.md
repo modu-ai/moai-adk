@@ -7,9 +7,9 @@ Pencil MCP integration for creating and editing .pen design files with AI-assist
 Pencil MCP provides a comprehensive set of tools for creating, editing, and managing .pen design files. The editor is specifically designed for web and mobile applications with AI-assisted design generation capabilities.
 
 **Important Notes:**
-- .pen file contents are encrypted and can ONLY be accessed via Pencil MCP tools
-- NEVER use Read or Grep tools to read .pen file contents
-- ALWAYS use Pencil MCP tools (batch_get, batch_design) for .pen file operations
+- .pen files are pure JSON (Git diffable, mergeable)
+- ALWAYS use Pencil MCP tools (batch_get, batch_design) for .pen file operations — they provide structured access to the design graph
+- Pencil MCP auto-configures — no manual `mcpServers` configuration required
 
 ## Pencil MCP Tools Reference
 
@@ -128,6 +128,22 @@ Returns all available style guide tags for filtering:
 Returns a style guide based on tags or specific name:
 - Use when designing screens, websites, apps, or dashboards
 - Apply consistent styling across designs
+
+## UI Kit Options
+
+Pencil MCP supports multiple UI kits for different design aesthetics. Choose the kit that best matches your project requirements:
+
+| UI Kit | Description | Best For |
+|--------|-------------|----------|
+| **Shadcn UI** | Modern, accessible components with Radix UI primitives | Default for Nova preset; dashboards, admin panels |
+| **Halo** | Glassmorphic design language with blur and transparency effects | Marketing sites, premium products |
+| **Lunaris** | Dark-mode focused with high contrast and deep colors | Developer tools, creative applications |
+| **Nitro** | Performance-optimized minimal design with minimal DOM footprint | High-traffic apps, performance-critical UIs |
+
+Apply via style guide:
+```
+guide = get_style_guide(name: "shadcn-nova")  // or "halo", "lunaris", "nitro"
+```
 
 ## Default Style: shadcn/ui Nova
 
