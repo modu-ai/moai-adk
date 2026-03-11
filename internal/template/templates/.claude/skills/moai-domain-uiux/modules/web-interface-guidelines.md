@@ -540,6 +540,27 @@ function Modal() {
 }
 ```
 
+### Mobile-First UX Patterns
+
+#### Touch Target Sizing
+- Minimum touch target: 44x44px (WCAG 2.5.5)
+- Recommended: 48x48px for primary actions
+- Spacing between targets: minimum 8px
+- Thumb zone optimization: place primary actions in bottom 1/3 of screen
+
+#### Gesture Design
+- Swipe: horizontal for navigation, vertical for scroll/dismiss
+- Long press: secondary actions, context menus
+- Pinch: zoom and scale operations
+- Pull-to-refresh: top-of-list refresh pattern
+
+#### Mobile Interaction Patterns
+- Bottom sheet for contextual actions (replaces desktop modals)
+- Pull-to-refresh for content updates
+- Floating action button (FAB) for primary creation action
+- Tab bar for top-level navigation (max 5 items)
+- Haptic feedback for confirmations and state changes
+
 ---
 
 ## Safe Areas & Layout
@@ -591,6 +612,109 @@ export default function RootLayout() {
   )
 }
 ```
+
+---
+
+## Design Direction and Anti-AI Slop Prevention
+
+### Design Thinking Process
+
+Every UI project must go through a deliberate design direction process before implementation:
+
+1. **Purpose**: What is this interface trying to achieve? What feeling should it evoke?
+2. **Tone**: What personality does this product have? (formal/casual, playful/serious, warm/cool)
+3. **Constraints**: What are the brand guidelines, technical limitations, accessibility requirements?
+4. **Differentiation**: How will this look different from generic AI-generated interfaces?
+
+### Banned Patterns (AI Slop Indicators)
+
+These patterns indicate lazy, undifferentiated AI-generated design:
+
+**Typography**:
+- BANNED: Inter, Roboto, Arial as primary fonts
+- BANNED: System font stacks without intentional pairing
+- BANNED: Space Grotesk as a "modern" default
+- INSTEAD: Choose distinctive font pairings that reflect the product's personality
+
+**Color**:
+- BANNED: Purple-to-blue gradients on white backgrounds
+- BANNED: Generic teal/coral accent colors
+- INSTEAD: Dominant brand color with sharp, intentional accent colors
+- INSTEAD: Monochromatic schemes with texture variation
+
+**Layout**:
+- BANNED: Predictable hero → features grid → testimonials → CTA pattern
+- BANNED: Symmetric card grids with identical spacing
+- INSTEAD: Asymmetric spatial composition
+- INSTEAD: Intentional whitespace as a design element
+
+### Style Extremes Guide
+
+Choose a design direction from these extremes rather than defaulting to "clean and modern":
+
+| Style | Characteristics | When to Use |
+|-------|----------------|-------------|
+| Brutally Minimal | Max whitespace, single typeface, no decoration | Developer tools, productivity apps |
+| Maximalist Chaos | Dense information, overlapping elements, rich color | Creative tools, entertainment |
+| Retro-Futuristic | CRT aesthetics, monospace fonts, terminal-inspired | Tech-forward products, CLI tools |
+| Organic/Natural | Soft curves, earth tones, hand-drawn elements | Wellness, sustainability brands |
+| Luxury/Refined | Serif fonts, generous spacing, muted palette | Premium products, finance |
+| Playful/Toy-like | Rounded shapes, bright colors, bouncy animations | Consumer apps, children's products |
+| Editorial/Magazine | Strong typography hierarchy, grid-based, photographic | Content-heavy sites, blogs |
+| Brutalist/Raw | Exposed structure, system fonts, minimal CSS | Art, experimental projects |
+| Art Deco/Geometric | Gold accents, symmetrical patterns, decorative fonts | Fashion, hospitality |
+| Soft/Pastel | Muted colors, rounded corners, gentle gradients | Health, education |
+| Industrial/Utilitarian | Monospace, high contrast, dense information | Data dashboards, monitoring |
+
+### Atmospheric Backgrounds
+
+Replace flat white/gray backgrounds with textured alternatives:
+
+- Gradient meshes with subtle color shifts
+- Noise textures (SVG filter: feTurbulence)
+- Grain overlays (CSS: background-image with noise)
+- Subtle pattern backgrounds (dots, lines, crosshatch)
+- Glassmorphism with backdrop-filter
+
+---
+
+## Motion and Microinteraction Design
+
+### Transition Timing
+
+- Default duration: 200-300ms for UI state changes
+- Page transitions: 400-600ms
+- Complex animations: 600-1000ms
+- Easing: Use cubic-bezier curves, never linear for UI elements
+  - Enter: cubic-bezier(0, 0, 0.2, 1) — decelerate
+  - Exit: cubic-bezier(0.4, 0, 1, 1) — accelerate
+  - Standard: cubic-bezier(0.4, 0, 0.2, 1) — standard ease
+
+### Entrance and Exit Patterns
+
+- Fade + translate (8-16px) for content appearing
+- Scale from 0.95 to 1.0 for modals and dialogs
+- Slide from edge for drawers and panels
+- Never use bounce or elastic easing for professional UIs
+
+### Stagger Patterns
+
+- List items: 50ms stagger between items
+- Grid items: 30-50ms stagger, row-first or diagonal
+- Maximum stagger group: 8-10 items (beyond that, use batch reveal)
+
+### Scroll-Triggered Effects
+
+- Intersection Observer for scroll-based reveals
+- Parallax: subtle (0.1-0.3 factor), never extreme
+- Progressive disclosure on scroll (lazy content loading)
+- Scroll-linked progress indicators
+
+### Reduced Motion
+
+- Always respect prefers-reduced-motion
+- Provide instant state changes as fallback
+- Keep essential motion (loading indicators) even in reduced mode
 
 ---
 

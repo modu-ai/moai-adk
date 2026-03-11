@@ -42,6 +42,7 @@ Compact & Specialized:
 - Radix Icons (150+): Precise 15x15px, ~5KB
 - Simple Icons (3300+): Brand logos only
 - Iconify (200K+): Universal framework, CDN-based
+- Hugeicons (27,000+): Stroke, Solid, Duotone, Twotone, Bulk styles — default for Nova/shadcn preset
 
 ### Quick Decision Matrix
 
@@ -54,6 +55,7 @@ Compact & Specialized:
 | Minimal bundle size | Radix Icons | 5KB, precise 15x15px |
 | Brand logos | Simple Icons | 3300+ company logos |
 | General purpose UI | Lucide | 1000+ modern, well-designed |
+| Nova/shadcn preset | Hugeicons | 27K+ icons, multiple styles, default for Nova |
 
 ### Bundle Size Comparison
 
@@ -84,6 +86,9 @@ npm install @iconify/react
 
 # Brand icons
 npm install simple-icons
+
+# Nova/shadcn preset default
+npm install @hugeicons/react
 ```
 
 Version: 4.0.0 Enterprise
@@ -399,3 +404,39 @@ export function AnimatedIcon() {
  )
 }
 ```
+
+#### Hugeicons - Nova/shadcn Preset Default (27,000+ icons)
+
+Hugeicons is the default icon library for the Nova preset and shadcn-based design systems. It provides 5 visual styles for each icon.
+
+```tsx
+import {
+ Home01Icon,
+ SearchIcon,
+ SettingsIcon,
+} from '@hugeicons/react'
+
+export function HugeiconsExample() {
+ return (
+ <div className="space-y-4">
+ {/* Default stroke style */}
+ <Home01Icon size={24} />
+
+ {/* Solid style */}
+ <SearchIcon size={24} type="solid" />
+
+ {/* Duotone style */}
+ <SettingsIcon size={24} type="duotone" className="text-primary" />
+ </div>
+ )
+}
+```
+
+Style options: `stroke` (default), `solid`, `duotone`, `twotone`, `bulk`
+
+Icon naming convention: PascalCase with numeric suffix for variants (e.g., `Home01Icon`, `Home02Icon`).
+
+Use Hugeicons when:
+- Building with the Nova preset or shadcn/ui design system
+- Needing multiple visual weight/style options per icon
+- Wanting the largest available icon set (27,000+)

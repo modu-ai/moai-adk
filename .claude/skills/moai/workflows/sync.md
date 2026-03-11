@@ -101,7 +101,8 @@ The `project` mode performs comprehensive project-wide synchronization:
 ## Supported Flags
 
 - --pr: Push branch and create/update PR on GitHub after sync. When used, automatically returns to base branch (main/develop) after PR creation (Step 3.3.5).
-- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+- --merge: [DEPRECATED] Auto-merge is now DEFAULT for worktree flows (R3 of SPEC-WORKTREE-002). This flag is kept for backward compatibility but has no effect.
+- --no-merge: Skip auto-merge PR and cleanup. Use this when you want to review the PR manually before merging.
 - --skip-mx: Skip MX tag validation and annotation during sync.
 
 ## Context Loading
