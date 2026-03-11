@@ -18,7 +18,6 @@ None
 ### Added
 
 - **GitHub Workflow Commands**: New `/moai github` subcommand for GitHub issue and PR automation
-- **Release Command**: New `/moai 99-release` subcommand for structured release workflow
 - **Template Path Variables**: `${CLAUDE_SKILL_DIR}` now properly passthrough in template renderer
 
 ### Changed
@@ -59,11 +58,9 @@ moai version
 ### 추가됨 (Added)
 
 - **GitHub 워크플로우 커맨드**: GitHub 이슈/PR 자동화를 위한 `/moai github` 서브커맨드
-- **릴리즈 커맨드**: 구조화된 릴리즈 워크플로우를 위한 `/moai 99-release` 서브커맨드
 - **템플릿 경로 변수**: 템플릿 렌더러에서 `${CLAUDE_SKILL_DIR}` passthrough 지원
 
 ### 변경됨 (Changed)
-
 - **sync.md 워크플로우**: `--pr` 플래그 추가 (changelog 프롬프트 건너뛰고 PR 자동 열기)
 - **SKILL.md**: 모든 워크플로우 참조를 `${CLAUDE_SKILL_DIR}` 절대경로로 변경
 - **github.md**: 로컬 전용 커맨드로 변경 (프로젝트에 배포되지 않음)
