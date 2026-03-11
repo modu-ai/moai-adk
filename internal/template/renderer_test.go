@@ -410,3 +410,33 @@ func TestUnexpandedTokenDetection(t *testing.T) {
 		})
 	}
 }
+
+// TestPassthroughTokensCompleteness verifies that all known Claude Code runtime
+// environment variables are in the passthrough list. This prevents issues where
+// adding a new variable to documentation causes CodeRabbit to flag it as an error.
+func TestPassthroughTokensCompleteness(t *testing.T) {
+	// Known Claude Code runtime environment variables that MUST be in passthrough list
+	requiredTokens := map[string]bool{
+		"$CLAUDE_PROJECT_DIR": true,
+		"$CLAUDE_SKILL_DIR":   true,
+		"$ARGUMENTS":          true,
+		"$HOME":               true,
+	}
+
+	passthroughSet := make(map[string]bool)
+	for _, tok := range claudeCodePassthroughTokens {
+		passthroughSet[tok] = true
+	}
+
+	missing := []string{}
+	for token := range requiredTokens {
+		if !passthroughSet[token] {
+			missing = append(missing, token)
+		}
+	}
+
+	if len(missing) > 0 {
+		t.Errorf("claudeCodePassthroughTokens is missing required tokens: %v\n"+
+			"Add these to internal/template/renderer.go claudeCodePassthroughTokens", missing)
+	}
+}
