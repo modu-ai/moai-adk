@@ -331,6 +331,86 @@ func TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain(t *testing.T) {
 	}
 }
 
+// TestReadOAuthToken_PriorityChain verifies the full keychain → .credentials.json → credentials.json
+// priority chain end-to-end (REQ-V3-API-010).
+func TestReadOAuthToken_PriorityChain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		keychainToken   string // non-empty means keychain succeeds
+		dotCredsToken   string // non-empty means ~/.claude/.credentials.json exists
+		plainCredsToken string // non-empty means ~/.claude/credentials.json exists
+		want            string // expected token returned
+	}{
+		{
+			name:            "keychain wins over all files",
+			keychainToken:   "keychain-token",
+			dotCredsToken:   "dot-creds-token",
+			plainCredsToken: "plain-creds-token",
+			want:            "keychain-token",
+		},
+		{
+			name:            "dot-prefix file wins when keychain fails",
+			keychainToken:   "",
+			dotCredsToken:   "dot-creds-token",
+			plainCredsToken: "plain-creds-token",
+			want:            "dot-creds-token",
+		},
+		{
+			name:            "plain credentials.json used as last resort",
+			keychainToken:   "",
+			dotCredsToken:   "",
+			plainCredsToken: "plain-creds-token",
+			want:            "plain-creds-token",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			homeDir := tmpDir
+			claudeDir := filepath.Join(homeDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0755); err != nil {
+				t.Fatalf("setup failed: %v", err)
+			}
+
+			// Write .credentials.json if requested
+			if tc.dotCredsToken != "" {
+				creds := map[string]string{"oauthToken": tc.dotCredsToken}
+				data, _ := json.Marshal(creds)
+				if err := os.WriteFile(filepath.Join(claudeDir, ".credentials.json"), data, 0600); err != nil {
+					t.Fatalf("setup failed: %v", err)
+				}
+			}
+
+			// Write credentials.json if requested
+			if tc.plainCredsToken != "" {
+				creds := map[string]string{"oauthToken": tc.plainCredsToken}
+				data, _ := json.Marshal(creds)
+				if err := os.WriteFile(filepath.Join(claudeDir, "credentials.json"), data, 0600); err != nil {
+					t.Fatalf("setup failed: %v", err)
+				}
+			}
+
+			// Configure keychain mock
+			keychainFn := func() (string, error) {
+				if tc.keychainToken != "" {
+					return tc.keychainToken, nil
+				}
+				return "", fmt.Errorf("keychain unavailable")
+			}
+
+			got := readOAuthToken(homeDir, keychainFn)
+			if got != tc.want {
+				t.Errorf("readOAuthToken() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestReadOAuthToken_NotFound verifies handling when token is not found (REQ-V3-API-010).
 func TestReadOAuthToken_NotFound(t *testing.T) {
 	t.Parallel()
