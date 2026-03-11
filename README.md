@@ -173,6 +173,8 @@ An interactive wizard auto-detects your language, framework, and methodology, th
 /moai plan "Add user authentication"     # Create a SPEC document
 /moai run SPEC-AUTH-001                   # DDD/TDD implementation
 /moai sync SPEC-AUTH-001                  # Sync docs & create PR
+/moai github issues                      # Fix GitHub issues with Agent Teams
+/moai github pr 123                       # Review PR with multi-perspective analysis
 ```
 
 ```mermaid

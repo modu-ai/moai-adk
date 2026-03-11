@@ -173,6 +173,8 @@ moai init my-project
 /moai plan "ユーザー認証機能を追加"       # SPECドキュメント生成
 /moai run SPEC-AUTH-001                   # DDD/TDD 実装
 /moai sync SPEC-AUTH-001                  # ドキュメント同期 & PR作成
+/moai github issues                      # GitHub issue自動化 (Agent Teams)
+/moai github pr 123                       # PR多角度レビュー (multi-perspective)
 ```
 
 ```mermaid
