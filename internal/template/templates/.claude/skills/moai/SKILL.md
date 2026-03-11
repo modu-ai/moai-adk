@@ -103,7 +103,7 @@ If the intent is clearly a development task with no specific routing signal, def
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue
 For detailed orchestration: Read workflows/plan.md
 
 ### run - DDD/TDD Implementation
@@ -181,7 +181,7 @@ For detailed orchestration: Read workflows/e2e.md
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, manager-ddd/tdd, manager-quality, manager-docs, manager-git
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
 For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation

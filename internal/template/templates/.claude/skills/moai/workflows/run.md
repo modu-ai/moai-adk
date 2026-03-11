@@ -426,9 +426,20 @@ Tasks for manager-git:
 - Create feature branch (if auto_branch enabled)
 - Stage all relevant implementation and test files
 - Create commits with conventional commit messages
+- If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in commit message footer
 - Verify each commit was created successfully
 
-Output: branch_name, commits array (sha and message), files_staged count, status.
+Commit message format when issue_number exists:
+```
+feat(scope): description
+
+SPEC: SPEC-{ID}
+Fixes #{issue_number}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+```
+
+Output: branch_name, commits array (sha and message), files_staged count, status, issue_number (from SPEC metadata).
 
 ### Phase 4: Completion and Guidance
 
@@ -520,5 +531,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.9.0
-Updated: 2026-03-02. Added Harness Engineering improvements: progress.md resume (P1), failing checklist Phase 1.6 (P2), file scaffolding Phase 1.7 (P5), onboarding context propagation to implementation agents (P3).
+Version: 2.10.0
+Updated: 2026-03-11. Added GitHub Issue linking: Phase 3 reads SPEC issue_number for Fixes #N in commits/PRs. Previous: Harness Engineering improvements (v2.9.0).

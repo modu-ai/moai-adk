@@ -60,7 +60,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
 - **project** (aliases: init): Project documentation generation
-- **feedback** (aliases: issue): GitHub issue creation
+- **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion marker detected
 - **mx**: MX tag scan and annotation for codebase
@@ -69,6 +69,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
 - **e2e** (aliases: e2e-test): Create and run E2E tests
+- **context** (aliases: ctx, memory): Extract and display git-based context memory
 
 
 ### Priority 2: SPEC-ID Detection
@@ -102,7 +103,7 @@ If the intent is clearly a development task with no specific routing signal, def
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue
 For detailed orchestration: Read workflows/plan.md
 
 ### run - DDD/TDD Implementation
@@ -180,7 +181,7 @@ For detailed orchestration: Read workflows/e2e.md
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, manager-ddd/tdd, manager-quality, manager-docs, manager-git
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
 For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation
