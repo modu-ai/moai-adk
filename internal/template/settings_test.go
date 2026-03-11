@@ -774,7 +774,8 @@ func TestBuildSmartPATH_WSL2(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel() is intentionally omitted: subtests use t.Setenv which
+			// modifies global environment state and cannot run concurrently.
 
 			if tc.isStabilityTest {
 				// Verify that on standard Linux (not WSL2), BuildSmartPATH is stable.
