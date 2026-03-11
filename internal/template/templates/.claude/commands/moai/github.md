@@ -111,7 +111,7 @@ Before starting analysis, check for existing bot work on each selected issue.
 git ls-remote --heads origin | grep -i "claude/issue-{number}"
 
 # Check for other automated fix branches
-git ls-remote --heads origin | grep -E "(fix|feat|improve)/issue-{number}"
+git ls-remote --heads origin | grep -E "(fix|feat|improve|docs)/issue-{number}"
 
 # Check for PRs referencing this issue
 gh pr list --search "#{number}" --state all --json number,title,headRefName,state,author
@@ -124,6 +124,8 @@ gh pr list --search "#{number}" --state all --json number,title,headRefName,stat
 | Yes | No | - | AskUser: Create PR from bot branch / Redo fix |
 | Yes | Yes | OPEN | AskUser: Review existing PR / Redo fix |
 | Yes | Yes | MERGED | Skip issue (already resolved) |
+| No | Yes | OPEN | AskUser: Review existing PR / Continue work |
+| No | Yes | MERGED | Skip issue (already resolved) |
 | No | No | - | Proceed with normal Phase 2 analysis |
 
 When existing bot work is found, use AskUserQuestion:
@@ -173,6 +175,7 @@ Task(
   team_name: "github-issues-{repo-slug}",
   name: "fixer-{number}",
   mode: "acceptEdits",
+  isolation: "worktree",
   prompt: "Fix GitHub issue #{number} based on analysis findings.
     Analysis: {analyst_findings}
     Affected files: {file_list}

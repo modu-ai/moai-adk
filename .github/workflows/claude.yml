@@ -10,6 +10,11 @@ on:
   pull_request_review:
     types: [submitted]
 
+# I1 Fix: Added concurrency control to prevent duplicate parallel runs on the same issue/PR.
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.event.comment.id }}
+  cancel-in-progress: false
+
 jobs:
   claude:
     if: |
@@ -44,7 +49,7 @@ jobs:
       - name: Run Claude Code
         id: claude
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v1 | SHA: 1dd74842e568f373608605d9e45c9e854f65f543
+        # SHA: ba7fa4bcf054319261202aef93d71a89112a8d00 (pinned commit, beyond v1 tag)
         uses: anthropics/claude-code-action@ba7fa4bcf054319261202aef93d71a89112a8d00
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
