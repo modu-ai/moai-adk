@@ -150,7 +150,7 @@ MX Tag Types:
 
 For MX protocol details, see .claude/rules/moai/workflow/mx-tag-protocol.md
 
-For team-based parallel execution of these phases, see @.claude/skills/moai/team/plan.md and @.claude/skills/moai/team/run.md.
+For team-based parallel execution of these phases, see .claude/skills/moai/team/plan.md and .claude/skills/moai/team/run.md.
 
 ---
 
@@ -167,7 +167,7 @@ MoAI-ADK implements LSP-based quality gates:
 - **run**: Zero errors, zero type errors, zero lint errors required
 - **sync**: Zero errors, max 10 warnings, clean LSP required
 
-**Configuration:** @.moai/config/sections/quality.yaml
+**Configuration:** .moai/config/sections/quality.yaml
 
 ---
 
@@ -315,7 +315,7 @@ Resume interrupted agent work using agentId:
 
 MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 
-- **Sequential Thinking**: Complex problem analysis, architecture decisions, technology trade-offs. Activate with `--ultrathink` flag. See Skill("moai-workflow-thinking").
+- **Sequential Thinking**: Complex problem analysis, architecture decisions, technology trade-offs. Activate with `--deepthink` flag. See Skill("moai-workflow-thinking").
 - **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
 - **Pencil**: UI/UX design editing for .pen files (used by expert-frontend and team-designer agents).
 - **claude-in-chrome**: Browser automation for web-based tasks.
@@ -387,7 +387,7 @@ Call TeamDelete only after all teammates have shut down to release team resource
 
 TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
-For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see .claude/rules/moai/workflow/spec-workflow.md and @.moai/config/sections/workflow.yaml.
+For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see .claude/rules/moai/workflow/spec-workflow.md and .moai/config/sections/workflow.yaml.
 
 ### CG Mode (Claude + GLM Cost Optimization)
 
