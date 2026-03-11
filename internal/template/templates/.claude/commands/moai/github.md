@@ -33,7 +33,7 @@ Remaining arguments become sub-command arguments:
 - `--all`: Process all open items
 - `--label LABEL`: Filter by label
 - `--solo`: Force sub-agent mode (skip Agent Teams)
-- `--merge`: Auto-merge PRs after CI passes (issues only)
+- `--merge`: Auto-merge after CI passes (issues: merge created PRs; pr: merge selected PRs)
 - `NUMBER`: Target specific issue or PR number
 
 ---
@@ -99,6 +99,37 @@ For each selected issue, classify by type:
 - **docs**: Documentation only (branch prefix: `docs/issue-{number}`)
 
 Classification based on: labels, title keywords, body content analysis.
+
+## Issues Phase 1.5: Existing Work Detection
+
+Before starting analysis, check for existing bot work on each selected issue.
+
+### Step 1.5.1: Detect Bot Branches and PRs
+
+```bash
+# Check for @claude bot branches
+git ls-remote --heads origin | grep -i "claude/issue-{number}"
+
+# Check for other automated fix branches
+git ls-remote --heads origin | grep -E "(fix|feat|improve)/issue-{number}"
+
+# Check for PRs referencing this issue
+gh pr list --search "#{number}" --state all --json number,title,headRefName,state,author
+```
+
+### Step 1.5.2: Decision Matrix
+
+| Bot Branch | PR Exists | PR State | Action |
+|-----------|-----------|----------|--------|
+| Yes | No | - | AskUser: Create PR from bot branch / Redo fix |
+| Yes | Yes | OPEN | AskUser: Review existing PR / Redo fix |
+| Yes | Yes | MERGED | Skip issue (already resolved) |
+| No | No | - | Proceed with normal Phase 2 analysis |
+
+When existing bot work is found, use AskUserQuestion:
+- Use existing fix (Recommended): Verify tests pass on bot branch, then create PR
+- Redo fix from scratch: Ignore existing branches, run full analysis and implementation
+- Skip this issue: Move to next selected issue
 
 ## Issues Phase 2: Analysis
 
@@ -524,6 +555,122 @@ AskUserQuestion for next steps:
 - Review Next PR
 - Done
 
+## PR Phase 5: Merge (--merge flag only)
+
+When `--merge` flag is provided, attempt to merge reviewed PRs:
+
+1. Run Pre-Merge Validation (see Auto-Merge Safety Protocol below)
+2. Run Bot Review Integration checks (see below)
+3. If all checks pass:
+   - Try direct merge: `gh pr merge {number} --squash --delete-branch`
+   - If blocked by branch protection: `gh pr merge {number} --squash --delete-branch --auto`
+4. Run Post-Auto-Merge Monitoring if `--auto` was used
+5. Report merge status
+
+---
+
+## Bot Review Integration
+
+When merging PRs (via `--merge` flag in either issues or pr sub-command), check bot review status before merge.
+
+### Step 1: Check Bot Reviews
+
+```bash
+gh pr view {number} --json reviews --jq '
+  .reviews[] | select(
+    .author.login == "coderabbitai" or
+    .author.login == "github-actions" or
+    .author.login == "copilot"
+  ) | {author: .author.login, state: .state}'
+```
+
+### Step 2: Bot Review Decision Matrix
+
+| Bot | Review State | Action |
+|-----|-------------|--------|
+| CodeRabbit | CHANGES_REQUESTED | Fix feedback, then post `@coderabbitai resolve` |
+| CodeRabbit | APPROVED | Proceed with merge |
+| CodeRabbit | COMMENTED | Review comments, fix if Critical/Important severity |
+| Other bots | CHANGES_REQUESTED | AskUser: fix feedback or dismiss |
+| No bot reviews | - | Proceed with merge |
+
+### Step 3: CodeRabbit Feedback Resolution
+
+When CodeRabbit has CHANGES_REQUESTED:
+
+1. Parse review comments from `gh api repos/{owner}/{repo}/pulls/{number}/reviews`
+2. Delegate fixes to expert agent (expert-backend or expert-frontend based on file types)
+3. Push fixes to PR branch
+4. Post resolution comment: `gh pr comment {number} --body "@coderabbitai resolve"`
+5. Wait for re-review (poll `gh pr view {number} --json reviews` every 30s, max 5 min)
+6. Verify review state is no longer CHANGES_REQUESTED
+
+---
+
+## Auto-Merge Safety Protocol
+
+### Pre-Merge Validation
+
+Before attempting any merge operation:
+
+```bash
+# 1. Check PR mergeability
+MERGE_STATE=$(gh pr view {number} --json mergeStateStatus --jq '.mergeStateStatus')
+# CLEAN → mergeable, BEHIND → needs update, BLOCKED → requirements not met, DIRTY → conflicts
+
+# 2. Check review decision
+REVIEW_DECISION=$(gh pr view {number} --json reviewDecision --jq '.reviewDecision')
+# APPROVED → ok, CHANGES_REQUESTED → fix first, "" → no required reviews
+
+# 3. Check CI status
+gh pr checks {number} --required
+```
+
+### Merge State Resolution
+
+| mergeStateStatus | Action |
+|-----------------|--------|
+| CLEAN | Proceed with merge |
+| BEHIND | Run `gh pr update-branch {number}`, wait for CI, retry |
+| BLOCKED | Check reviews and CI, resolve blockers |
+| DIRTY | Report conflict to user, cannot auto-merge |
+
+### Branch Protection Handling
+
+When direct merge fails with "base branch policy prohibits the merge":
+- Use `gh pr merge {number} --squash --delete-branch --auto` for deferred merge
+- Monitor auto-merge status with polling (30s intervals, max 10 min)
+
+### Post-Auto-Merge Monitoring
+
+After enabling auto-merge (`--auto`):
+
+```bash
+for i in {1..20}; do
+  STATE=$(gh pr view {number} --json state --jq '.state')
+  if [[ "$STATE" == "MERGED" ]]; then break; fi
+  MERGE_STATE=$(gh pr view {number} --json mergeStateStatus --jq '.mergeStateStatus')
+  if [[ "$MERGE_STATE" == "BEHIND" ]]; then
+    gh pr update-branch {number}
+  fi
+  sleep 30
+done
+```
+
+If not merged after timeout: report blocking reasons and AskUserQuestion (Retry / Manual merge / Skip).
+
+### Multi-PR Merge Orchestration
+
+When merging multiple PRs sequentially:
+
+1. Sort PRs: independent (no file overlap) first, dependent later
+2. Merge first PR
+3. For each remaining PR:
+   a. Check `mergeStateStatus` — if BEHIND, run `gh pr update-branch`
+   b. Wait for CI to pass on updated branch
+   c. Merge PR
+4. Report final status for all PRs
+
 ---
 
 ## Common Rules
@@ -536,6 +683,9 @@ AskUserQuestion for next steps:
 - **Branch per issue**: Each issue gets its own branch (except main_direct)
 - **Test verification**: All fixes must pass tests before PR creation
 - **Batch safe**: Process multiple items sequentially to avoid branch conflicts
+- **Bot work reuse**: Check for existing @claude bot branches before creating new fixes
+- **Bot review aware**: Check CodeRabbit/bot review status before merge attempts
+- **Auto-merge safe**: Validate mergeability, handle BEHIND state, monitor --auto merges
 
 ---
 
