@@ -74,28 +74,23 @@ func BuildSmartPATH() string {
 	// Standard POSIX system paths (always required)
 	candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 
-	// WSL2: append Windows interop paths from the current terminal PATH.
-	// WSL2 automatically adds /mnt/<drive>/... entries to PATH, which allows
-	// running Windows executables (powershell.exe, cmd.exe, etc.).
+	// WSL2: append Windows drive-mount paths from the current terminal PATH.
+	// WSL2 maps Windows drives as /mnt/<letter>/ (e.g., /mnt/c/, /mnt/d/),
+	// which allows running Windows executables (powershell.exe, cmd.exe, etc.).
 	// Without this, writing a static PATH to settings.json would remove those
 	// entries, causing "command not found: powershell.exe" (issue #495).
 	//
-	// We intentionally capture ALL /mnt/ entries rather than filtering to a
-	// known allow-list (e.g., only /mnt/c/Windows/System32) because:
-	//   1. Users frequently install custom Windows tools in non-standard locations
-	//      such as /mnt/d/tools or /mnt/c/Program Files/... and expect them to
-	//      remain accessible inside WSL2 after settings.json is written.
-	//   2. An allow-list would be fragile: it would silently drop valid entries
-	//      whenever a user's setup deviates from the expected pattern.
-	//   3. Security concern is low: these paths originate from the user's own
-	//      WSL2 session PATH, which is already trusted.
+	// Only paths matching the WSL2 drive-mount pattern (/mnt/<single-letter>/...)
+	// are included. This filters out non-drive mounts (e.g., /mnt/wslg, /mnt/foo)
+	// while preserving all legitimate Windows drive paths regardless of depth
+	// (e.g., /mnt/c/Windows/System32, /mnt/d/tools/bin).
 	if runtime.GOOS == "linux" && IsWSL2() {
 		seen := make(map[string]bool, len(candidates))
 		for _, c := range candidates {
 			seen[strings.TrimRight(c, "/\\")] = true
 		}
 		for _, entry := range strings.Split(os.Getenv("PATH"), sep) {
-			if strings.HasPrefix(entry, "/mnt/") {
+			if isWSL2DrivePath(entry) {
 				normalized := strings.TrimRight(entry, "/\\")
 				if !seen[normalized] {
 					candidates = append(candidates, entry)
@@ -106,6 +101,18 @@ func BuildSmartPATH() string {
 	}
 
 	return strings.Join(candidates, sep)
+}
+
+// isWSL2DrivePath reports whether entry looks like a WSL2 Windows drive mount.
+// WSL2 maps Windows drives as /mnt/<letter>/ (e.g., /mnt/c/, /mnt/d/).
+// Only single lowercase-letter mounts are accepted to exclude non-drive mounts
+// such as /mnt/wslg or /mnt/foo.
+func isWSL2DrivePath(entry string) bool {
+	if len(entry) < 6 || entry[:5] != "/mnt/" {
+		return false
+	}
+	letter := entry[5]
+	return letter >= 'a' && letter <= 'z' && (len(entry) == 6 || entry[6] == '/')
 }
 
 // PathContainsDir checks if a PATH string contains a specific directory entry.

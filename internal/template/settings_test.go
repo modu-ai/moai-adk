@@ -715,12 +715,18 @@ func TestIsWSL2_EnvVar(t *testing.T) {
 }
 
 // TestIsWSL2_EmptyEnvVar verifies that IsWSL2 returns false when WSL_DISTRO_NAME is empty
-// and /proc/version does not contain WSL markers (standard Linux CI environment).
+// and procVersionPath points to a non-existent file (simulating non-WSL2 Linux).
 func TestIsWSL2_EmptyEnvVar(t *testing.T) {
 	t.Setenv("WSL_DISTRO_NAME", "")
-	// If /proc/version happens to contain WSL markers (actual WSL2), detection is correct.
+
+	// Override procVersionPath to a non-existent file so the test is deterministic
+	// regardless of the host environment (prevents skip on actual WSL2).
+	orig := procVersionPath
+	procVersionPath = filepath.Join(t.TempDir(), "nonexistent")
+	t.Cleanup(func() { procVersionPath = orig })
+
 	if IsWSL2() {
-		t.Skip("running in actual WSL2 environment (detected via /proc/version)")
+		t.Error("IsWSL2() should return false when WSL_DISTRO_NAME is empty and proc/version is absent")
 	}
 }
 
@@ -818,6 +824,32 @@ func TestBuildSmartPATH_WSL2(t *testing.T) {
 				if count > 1 {
 					t.Errorf("WSL2: %q should appear at most once, found %d times in %q", tc.checkNoDup, count, path)
 				}
+			}
+		})
+	}
+}
+
+// TestIsWSL2DrivePath verifies the drive-mount path filter used by BuildSmartPATH.
+func TestIsWSL2DrivePath(t *testing.T) {
+	tests := []struct {
+		entry string
+		want  bool
+	}{
+		{"/mnt/c/Windows/System32", true},
+		{"/mnt/d/tools/bin", true},
+		{"/mnt/z/", true},
+		{"/mnt/c", true},
+		{"/mnt/wslg/distro", false},  // not a single-letter drive
+		{"/mnt/foo/bar", false},       // not a drive letter
+		{"/mnt/", false},              // no drive letter
+		{"/usr/bin", false},           // not /mnt/
+		{"/mnt/C/Windows", false},     // uppercase not matched
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.entry, func(t *testing.T) {
+			if got := isWSL2DrivePath(tt.entry); got != tt.want {
+				t.Errorf("isWSL2DrivePath(%q) = %v, want %v", tt.entry, got, tt.want)
 			}
 		})
 	}
