@@ -962,7 +962,7 @@ Tool: AskUserQuestion with options tailored to delivery result:
 
 The sync phase always uses sub-agent mode (manager-docs), even when --team is active for other phases. Documentation synchronization requires sequential consistency and a single authoritative view of project state.
 
-For rationale and details, see team/sync.md.
+For rationale and details, see ${CLAUDE_SKILL_DIR}/team/sync.md.
 
 ---
 

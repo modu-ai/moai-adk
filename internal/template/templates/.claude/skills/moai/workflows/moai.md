@@ -181,9 +181,9 @@ When --team flag is provided or auto-selected (based on complexity thresholds in
 - Phase 3 sync: Always sub-agent mode (manager-docs)
 
 For team orchestration details:
-- Plan phase: See team/plan.md
-- Run phase: See team/run.md
-- Sync rationale: See team/sync.md
+- Plan phase: See ${CLAUDE_SKILL_DIR}/team/plan.md
+- Run phase: See ${CLAUDE_SKILL_DIR}/team/run.md
+- Sync rationale: See ${CLAUDE_SKILL_DIR}/team/sync.md
 
 Mode selection:
 - --team: Force team mode for all applicable phases
@@ -205,7 +205,7 @@ Mode selection:
 7. TaskCreate for discovered tasks
 8. User confirmation via AskUserQuestion
 9. **Phase 0.5 (Research)**: Save research.md from Phase 0 Explore findings to SPEC directory
-10. **Phase 1 (Plan)**: If team mode -> Read team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
+10. **Phase 1 (Plan)**: If team mode -> Read ${CLAUDE_SKILL_DIR}/team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
 10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (unless --no-issue). See plan.md Phase 2.5.
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2
@@ -217,7 +217,7 @@ Mode selection:
    - See plan.md Decision Point 3.5 for full option details
 12. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)
    - worktree: Already running in isolated tmux+worktree session (Gate handled transition)
-   - team: Read team/run.md and follow team orchestration
+   - team: Read ${CLAUDE_SKILL_DIR}/team/run.md and follow team orchestration
    - sub-agent: manager-tdd or manager-ddd (per quality.yaml development_mode)
 13. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
 14. Terminate with completion marker

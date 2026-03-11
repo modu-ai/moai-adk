@@ -51,7 +51,7 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 - --worktree: Create isolated Git worktree environment (highest priority)
 - --branch: Create traditional feature branch (second priority)
 - No flag: SPEC only by default; user may be prompted based on config
-- --team: Enable team-based exploration (see team/plan.md for parallel research team)
+- --team: Enable team-based exploration (see ${CLAUDE_SKILL_DIR}/team/plan.md for parallel research team)
 - --no-issue: Skip GitHub Issue creation after SPEC generation
 - resume SPEC-XXX: Continue from last saved draft state
 
@@ -406,12 +406,12 @@ AskUserQuestion with 3 options (descriptions adapt to active_mode):
 When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read team/plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode (manager-spec)
 
 Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
 
-For detailed team orchestration steps, see team/plan.md.
+For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/plan.md.
 
 ---
 

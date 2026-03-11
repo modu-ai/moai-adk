@@ -43,7 +43,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
-- --team: Enable team-based implementation (see team/run.md for parallel implementation team)
+- --team: Enable team-based implementation (see ${CLAUDE_SKILL_DIR}/team/run.md for parallel implementation team)
 
 ## Context Loading
 
@@ -487,7 +487,7 @@ Apply existing --team/--solo flag logic in Team Mode Routing below.
 When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read team/run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode
 
 Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
@@ -500,7 +500,7 @@ Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inher
 
 See .claude/rules/moai/workflow/worktree-integration.md for the complete worktree decision tree.
 
-For detailed team orchestration steps, see team/run.md.
+For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/run.md.
 
 ---
 
