@@ -1,10 +1,10 @@
 ---
 description: "GitHub Workflow - Manage issues and review PRs with Agent Teams"
-argument-hint: "issues [--all | --label LABEL | NUMBER] | pr [--all | NUMBER]"
+argument-hint: "issues [--all | --label LABEL | NUMBER | --merge | --solo | --tmux] | pr [--all | NUMBER | --merge | --solo]"
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, TeamCreate, SendMessage, TaskCreate, TaskUpdate, TaskList, TaskGet, TeamDelete
 model: sonnet
-version: 1.0.0
+version: 2.0.0
 ---
 
 ## GitHub Workflow Configuration
