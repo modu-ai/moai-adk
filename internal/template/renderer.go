@@ -38,6 +38,7 @@ var unexpandedTokenPattern = regexp.MustCompile(`\$\{[A-Za-z_][A-Za-z0-9_]*\}|\{
 // (ADR-011 exception).
 var claudeCodePassthroughTokens = []string{
 	"$CLAUDE_PROJECT_DIR",
+	"$CLAUDE_SKILL_DIR",
 	"$ARGUMENTS",
 	"$HOME",
 }
