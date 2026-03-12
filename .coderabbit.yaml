@@ -6,7 +6,7 @@ tone_instructions: "Professional and constructive. Focus on Go best practices, e
 
 reviews:
   profile: "assertive"
-  request_changes_workflow: true
+  request_changes_workflow: false
   high_level_summary: true
   high_level_summary_placeholder: "@coderabbitai summary"
   poem: false
