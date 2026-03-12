@@ -182,6 +182,30 @@ Example Workflow:
 
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 
+## Configuration Loading [HARD]
+
+Always load these configuration files at the start of every operation:
+
+@.moai/config/sections/git-strategy.yaml
+@.moai/config/sections/language.yaml
+
+## PR Base Branch Resolution [HARD]
+
+Before any branch checkout or `gh pr create` operation, resolve the base branch dynamically:
+
+1. Read `git_strategy.mode` from the @-imported git-strategy.yaml above (e.g., `personal`, `team`, `manual`)
+2. Resolve `main_branch = git_strategy.{mode}.main_branch` (default: `main` if field is missing)
+3. Use `--base {main_branch}` in all `gh pr create` commands
+
+Example resolution:
+- mode: `personal`, `personal.main_branch: dev` → `gh pr create --base dev`
+- mode: `team`, `team.main_branch: main` → `gh pr create --base main`
+
+WHY: Users may configure a non-main branch (e.g., `dev`) as their integration branch per mode.
+IMPACT: Hardcoding `--base main` creates PRs targeting the wrong branch, requiring manual correction.
+
+---
+
 ## Core Operational Principles
 
 Primary Design Philosophy [HARD]:
@@ -543,7 +567,7 @@ git commit -m "🔥 HOTFIX: [Correction description]"
 git push origin hotfix/v0.1.0
 
 # Create PR (hotfix → main)
-gh pr create --base main --head hotfix/v0.1.0
+gh pr create --base {main_branch} --head hotfix/v0.1.0  # {main_branch} from git_strategy.{mode}.main_branch
 ````
 
 2. After approval and merge:
@@ -786,13 +810,14 @@ Personal Mode Branch Operations [HARD]:
 
 Configuration:
 
-- Read base branch from `.moai/config/config.yaml`
+- Read active mode from `git_strategy.mode` in `.moai/config/sections/git-strategy.yaml`
+- Resolve base branch: `main_branch = git_strategy.personal.main_branch` (default: `main`)
 - Configure branch creation patterns per workflow strategy
 - Validate configuration before operations
 
 Feature Branch Creation:
 
-- Checkout main as clean starting point
+- Checkout `{main_branch}` (resolved from git-strategy.yaml) as clean starting point
 - Create branch: `git checkout -b feature/SPEC-{ID}`
 - Verify naming follows standardized pattern: `feature/SPEC-*`
 - Set upstream tracking: `git push -u origin feature/SPEC-{ID}`
@@ -822,7 +847,7 @@ Branch Creation:
 
 - Create feature branches with SPEC-ID naming: `feature/SPEC-{ID}`
 - Establish PR with draft status for early collaboration
-- Target main branch for all feature PRs
+- Target `{main_branch}` (resolved from `git_strategy.{mode}.main_branch` in git-strategy.yaml) for all feature PRs
 
 Mode Selection Process [HARD]:
 
@@ -1290,5 +1315,45 @@ Protected Branch Conflict (when auto_branch equals false):
 - Options: Create new branch automatically or confirm direct commit
 
 ---
+
+
+## Completion Report Format [HARD]
+
+When completing assigned tasks, the agent MUST return a structured completion report using this format:
+
+```markdown
+📊 COMPLETION REPORT:
+- Files Modified: [count] ([list])
+- Lines Added: [count]
+- Lines Removed: [count]
+- Tests Run: [passed]/[total] ([percentage]%)
+- Coverage: [percentage]%
+
+📦 DELIVERABLES:
+- [file_1]: [brief_description]
+- [file_2]: [brief_description]
+
+⚠️ ISSUES FOUND:
+- [severity]: [issue_description] (if any)
+
+🎯 NEXT STEPS:
+- [recommendation_1]
+- [recommendation_2]
+```
+
+For implementation agents (expert-backend, expert-frontend, expert-debug):
+- Include specific file paths modified
+- Include test results with counts
+- Note any LSP warnings/errors encountered
+
+For manager agents (manager-ddd, manager-tdd, manager-quality, manager-docs):
+- Include summary of delegated work
+- Include overall quality assessment
+- Include recommendations for next phases
+
+For quality agents (manager-quality):
+- Include TRUST 5 validation results
+- Include coverage metrics
+- Include any critical issues requiring attention
 
 manager-git provides a simple and stable work environment with direct Git commands instead of complex scripts.
