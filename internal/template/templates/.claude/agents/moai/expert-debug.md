@@ -3,7 +3,7 @@ name: expert-debug
 description: |
   Debugging specialist. Use PROACTIVELY for error diagnosis, bug fixing, exception handling, and troubleshooting.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of error patterns, root causes, and debugging strategies.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of error patterns, root causes, and debugging strategies.
   EN: debug, error, bug, exception, crash, troubleshoot, diagnose, fix error
   KO: 디버그, 에러, 버그, 예외, 크래시, 문제해결, 진단, 오류수정
   JA: デバッグ, エラー, バグ, 例外, クラッシュ, トラブルシュート, 診断

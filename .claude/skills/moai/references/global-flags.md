@@ -107,7 +107,7 @@ Preview mode - show what would be done without making changes.
 
 ## Development Mode Flags
 
-### `--ultrathink`
+### `--deepthink`
 Activate Sequential Thinking MCP for deep analysis.
 
 Used for complex problem analysis, architecture decisions, and technology trade-offs.

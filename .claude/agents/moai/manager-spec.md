@@ -3,7 +3,7 @@ name: manager-spec
 description: |
   SPEC creation specialist. Use PROACTIVELY for EARS-format requirements, acceptance criteria, and user story documentation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of requirements, acceptance criteria, and user story design.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of requirements, acceptance criteria, and user story design.
   EN: SPEC, requirement, specification, EARS, acceptance criteria, user story, planning
   KO: SPEC, 요구사항, 명세서, EARS, 인수조건, 유저스토리, 기획
   JA: SPEC, 要件, 仕様書, EARS, 受入基準, ユーザーストーリー

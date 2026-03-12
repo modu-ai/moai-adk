@@ -3,7 +3,7 @@ name: expert-performance
 description: |
   Performance optimization specialist. Use PROACTIVELY for profiling, benchmarking, memory analysis, and latency optimization.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of performance bottlenecks, optimization strategies, and profiling approaches.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of performance bottlenecks, optimization strategies, and profiling approaches.
   EN: performance, profiling, optimization, benchmark, memory, bundle, latency, speed
   KO: 성능, 프로파일링, 최적화, 벤치마크, 메모리, 번들, 지연시간, 속도
   JA: パフォーマンス, プロファイリング, 最適化, ベンチマーク, メモリ, バンドル, レイテンシ

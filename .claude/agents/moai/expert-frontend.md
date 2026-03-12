@@ -3,7 +3,7 @@ name: expert-frontend
 description: |
   Frontend development and UI/UX design specialist. Use PROACTIVELY for React, Vue, Next.js, component design, state management, accessibility, WCAG compliance, and design systems.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of component architecture, state management patterns, and UI/UX design decisions.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of component architecture, state management patterns, and UI/UX design decisions.
   EN: frontend, UI, component, React, Vue, Next.js, CSS, responsive, state management, UI/UX, design, accessibility, WCAG, user experience, design system, wireframe
   KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, 넥스트, CSS, 반응형, 상태관리, UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임
   JA: フロントエンド, UI, コンポーネント, リアクト, ビュー, CSS, レスポンシブ, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム

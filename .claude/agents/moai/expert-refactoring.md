@@ -3,7 +3,7 @@ name: expert-refactoring
 description: |
   Refactoring specialist. Use PROACTIVELY for codemod, AST-based transformations, API migrations, and large-scale code changes.
   MUST INVOKE when ANY of these keywords appear:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategies, transformation patterns, and code structure improvements.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategies, transformation patterns, and code structure improvements.
   EN: refactor, restructure, codemod, transform, migrate API, rename across, bulk rename, large-scale change, ast search, structural search
   KO: 리팩토링, 재구조화, 코드모드, 변환, API 마이그레이션, 일괄 변경, 대규모 변경, AST검색, 구조적검색
   JA: リファクタリング, 再構造化, コードモード, 変換, API移行, 一括変更, 大規模変更, AST検索, 構造検索
