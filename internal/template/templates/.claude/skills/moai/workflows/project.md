@@ -298,17 +298,48 @@ Methodology-to-Mode Mapping Reference:
 
 ## Phase 4: Completion
 
-Display completion message in user's conversation_language:
+### Step 4.1: Content Summary Report
 
-- Files created: List generated files
-- Location: .moai/project/
-- Status: Success or partial completion
+[HARD] Read the generated documents and present a structured summary to the user in conversation_language.
+
+Read these files and extract key information:
+- .moai/project/product.md → Project name, description, core features, target audience
+- .moai/project/structure.md → Top-level directory structure, architecture pattern
+- .moai/project/tech.md → Primary language, framework, key dependencies
+- .moai/project/codemaps/ → Number of codemaps files generated (if any)
+
+Display summary using this format:
+
+```
+Project Documentation Complete
+
+product.md:
+  - Project: [name]
+  - Description: [1-2 sentence summary]
+  - Core Features: [feature list]
+
+structure.md:
+  - Architecture: [pattern detected]
+  - Key Directories: [top 3-5 directories with purposes]
+
+tech.md:
+  - Language: [primary language]
+  - Framework: [framework name]
+  - Key Dependencies: [top 3-5 packages]
+
+Codemaps: [N files generated] in .moai/project/codemaps/
+Development Mode: [tdd/ddd] (auto-configured in Phase 3.7)
+```
+
+### Step 4.2: Next Steps
+
+[HARD] After displaying the summary, use AskUserQuestion to ask about next steps.
 
 Next Steps (AskUserQuestion):
 
-- Write SPEC (Recommended): Execute /moai plan to define your first feature specification. This is the natural next step after project setup - it creates a detailed plan for what you want to build.
-- Review Documentation: Open the generated product.md, structure.md, and tech.md files for review and manual editing. Choose this if you want to verify or customize the generated content.
-- Start New Session: Clear the current context and start fresh. Choose this if you want to work on something completely different.
+- Create SPEC (Recommended): Run /moai plan to define your first feature specification. This is the natural next step after project setup.
+- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
+- Done: Complete the project setup workflow.
 
 ---
 

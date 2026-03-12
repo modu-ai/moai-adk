@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.12] - 2026-03-12
+
+### Summary
+
+Fixed a language config loading bug that caused random language switches, resolved PR base branch misconfiguration when using non-main branches, and improved agent output visibility with structured completion reports.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- **Language switching bug** (#511): Config section files (`language.yaml`, `user.yaml`, etc.) are now explicitly loaded via `@import` in 9 agents, preventing random language fallback to Korean
+- **PR base branch** (#512): `manager-git` now reads `git-strategy.yaml` to determine the active mode and uses `git_strategy.{mode}.main_branch` as the PR target branch instead of hardcoding `main`
+
+### Added
+
+- **Structured completion reports**: All 9 implementation and manager agents now output a standardized `COMPLETION REPORT` block with files modified, tests run, deliverables, and next steps
+- **Progress reporting guidelines**: `fix.md` and `run.md` workflows now include `HARD` rules for agent lifecycle visibility (Dispatch → Progress → Complete templates)
+- **Agent Lifecycle Templates**: `moai.md` output-style updated with Agent Dispatch, Agent Progress, Agent Completion, Skill Activation, Parallel Execution Dashboard, and Workflow Progress templates
+
+### Changed
+
+- **project.md Phase 4**: Completion phase now reads generated docs and presents a structured content summary before asking next steps
+- **statusline**: Default mode changed from `default` to `compact`
+- Internal: ADR-011 passthrough token documentation added; README updated with `/moai github` subcommand
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.12] - 2026-03-12 (한국어)
+
+### 요약
+
+언어 설정이 랜덤하게 전환되는 버그를 수정했고, 비-main 브랜치 사용 시 PR base branch 오설정 문제를 해결했습니다. 에이전트 출력 가시성도 구조화된 완료 보고서로 개선되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- **언어 전환 버그** (#511): 9개 에이전트에서 config 섹션 파일(`language.yaml`, `user.yaml` 등)을 `@import`로 명시적 로딩하여 한국어로 랜덤 폴백되는 현상 해결
+- **PR base branch 오설정** (#512): `manager-git`이 `git-strategy.yaml`을 읽어 활성 모드를 확인하고 `git_strategy.{mode}.main_branch`를 PR 타겟 브랜치로 사용 (기존 `main` 하드코딩 제거)
+
+### 추가됨 (Added)
+
+- **구조화된 완료 보고서**: 9개 구현/매니저 에이전트가 파일 수정 내역, 테스트 결과, 산출물, 다음 단계를 포함한 `COMPLETION REPORT` 블록 출력
+- **진행 상황 보고 가이드라인**: `fix.md`, `run.md` 워크플로우에 에이전트 생명주기 가시성 HARD 규칙 추가 (Dispatch → Progress → Complete 템플릿)
+- **에이전트 생명주기 템플릿**: `moai.md` 출력 스타일에 Agent Dispatch, Agent Progress, Agent Completion, Skill Activation, Parallel Execution Dashboard, Workflow Progress 템플릿 추가
+
+### 변경됨 (Changed)
+
+- **project.md Phase 4**: 완료 단계에서 생성된 문서를 읽어 구조화된 콘텐츠 요약을 표시한 후 다음 단계 질문
+- **statusline**: 기본 모드 `default` → `compact`로 변경
+- 내부: ADR-011 passthrough token 문서 추가; README에 `/moai github` 서브커맨드 설명 추가
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.11] - 2026-03-11
 
 ### Summary

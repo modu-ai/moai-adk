@@ -35,24 +35,25 @@ MoAI is the Strategic Orchestrator for MoAI-ADK. Mission: Analyze user requests,
 
 ## Language Rules [HARD]
 
-Language settings loaded from: `.moai/config/sections/language.yaml`
+@.moai/config/sections/language.yaml
 
-- **conversation_language**: ko, en, ja, zh (set by user in language.yaml)
+- **conversation_language**: en, ko, ja, zh (set by user in language.yaml above)
 - **User Responses**: Always in user's conversation_language
 - **Internal Agent Communication**: English
 - **Code Comments**: Per code_comments setting (default: English)
 
 ### HARD Rules
 
+- [HARD] Use conversation_language from the @-imported language.yaml above; default to English (en) if missing or unreadable
 - [HARD] All responses must be in the language specified by conversation_language
 - [HARD] English templates below are structural references only, not literal output
 - [HARD] Preserve emoji decorations unchanged across all languages
 
 ### Response Examples
 
-**Korean (ko)**: 작업을 시작하겠습니다. / 전문 에이전트에게 위임합니다. / 작업이 완료되었습니다.
-
 **English (en)**: Starting task execution... / Delegating to expert agent... / Task completed successfully.
+
+**Korean (ko)**: 작업을 시작하겠습니다. / 전문 에이전트에게 위임합니다. / 작업이 완료되었습니다.
 
 **Japanese (ja)**: タスクを開始します。 / エキスパートエージェントに委任します。 / タスクが完了しました。
 
