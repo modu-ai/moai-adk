@@ -109,9 +109,9 @@ The `project` mode performs comprehensive project-wide synchronization:
 
 Before execution, load these essential files:
 
-@.moai/config/config.yaml
-@.moai/config/sections/git-strategy.yaml
-@.moai/config/sections/language.yaml
+- .moai/config/config.yaml (git strategy, language settings)
+- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
+- .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/ directory listing (SPEC documents for sync)
 - .moai/project/ directory listing (project documents for conditional update)
 - .moai/project/codemaps/ directory listing (architecture maps for conditional update)
