@@ -640,7 +640,7 @@ MoAI-ADK 在开发会话期间自动捕获任务工具指标：
 | `moai hook <event>` | Claude Code 钩子分发器 |
 | `moai glm` | 使用 GLM 5 API 启动 Claude Code（经济高效的替代方案） |
 | `moai cc` | 不使用 GLM 设置启动 Claude Code（仅 Claude 模式） |
-| `moai cg` | 启用 CG 模式 — Claude 领导者 + GLM 工作者（tmux pane 级别隔离） |
+| `moai cg` | 启动 CG 模式 — Claude 领导者 + GLM 工作者（自动启动 Claude Code，需要 tmux） |
 | `moai version` | 版本、提交哈希、构建日期信息 |
 
 ---
@@ -660,8 +660,10 @@ moai cg 执行
     ├── 2. 从 settings.local.json 移除 GLM 环境变量
     │      → 领导者窗格使用 Claude API
     │
-    └── 3. 设置 CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
-           → 工作者在新窗格中继承 GLM 环境变量
+    ├── 3. 设置 CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+    │      → 工作者在新窗格中继承 GLM 环境变量
+    │
+    └── 4. 启动 Claude Code（替换当前进程）
 
 ┌─────────────────────────────────────────────────────────────┐
 │  LEADER（当前 tmux 窗格，Claude API）                        │
@@ -692,13 +694,10 @@ tmux new -s moai
 # 提示：将 VS Code 终端默认设置为 tmux，
 # 可自动在 tmux 环境中启动，跳过此步骤。
 
-# 3. 启用 CG 模式
+# 3. 启动 CG 模式（自动启动 Claude Code）
 moai cg
 
-# 4. 在同一窗格启动 Claude Code（重要！）
-claude
-
-# 5. 运行团队工作流
+# 4. 运行团队工作流
 /moai --team "任务描述"
 ```
 
@@ -707,7 +706,7 @@ claude
 | 项目 | 说明 |
 |------|------|
 | **tmux 环境** | 如果已在使用 tmux，无需创建新会话。将 VS Code 终端默认设置为 tmux 会更方便。 |
-| **领导者启动位置** | 必须在执行 `moai cg` 的 **同一窗格** 启动 Claude Code。在新窗格启动会继承 GLM 环境变量。 |
+| **自动启动** | `moai cg` 会在当前窗格自动启动 Claude Code。无需单独运行 `claude`。 |
 | **会话结束时** | session_end 钩子自动清除 tmux 会话环境变量 → 下个会话恢复使用 Claude |
 | **Agent Teams 通信** | 使用 SendMessage 工具可实现领导者↔工作者间通信 |
 
