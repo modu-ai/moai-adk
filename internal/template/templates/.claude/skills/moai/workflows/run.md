@@ -49,10 +49,10 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 Before execution, load these essential files:
 
-- .moai/config/config.yaml (git strategy, automation settings)
-- .moai/config/sections/quality.yaml (coverage targets, TRUST 5 settings, development_mode)
-- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
-- .moai/config/sections/language.yaml (git_commit_messages setting)
+@.moai/config/config.yaml
+@.moai/config/sections/quality.yaml
+@.moai/config/sections/git-strategy.yaml
+@.moai/config/sections/language.yaml
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
 - .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
 - .moai/project/structure.md (architecture context for implementation decisions)
