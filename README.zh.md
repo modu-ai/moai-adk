@@ -732,63 +732,13 @@ Agent Teams 支持两种显示模式:
 
 ---
 
-## 架构
+## 推荐：z.ai GLM 5
 
-```
-moai-adk/
-├── cmd/moai/             # 应用程序入口
-├── internal/             # 核心私有包
-│   ├── astgrep/          # AST-grep 集成
-│   ├── cli/              # Cobra CLI 命令定义
-│   ├── config/           # 线程安全 YAML 配置管理
-│   ├── core/
-│   │   ├── git/          # Git 操作（分支、worktree、冲突检测）
-│   │   ├── project/      # 项目初始化、语言/框架检测
-│   │   └── quality/      # TRUST 5 质量门禁、并行验证器
-│   ├── defs/             # 语言定义和框架检测
-│   ├── git/              # Git 约定验证引擎
-│   ├── hook/             # 编译后的钩子系统（16 个事件、JSON 协议）
-│   ├── loop/             # Ralph 反馈循环（状态机、收敛检测）
-│   ├── lsp/              # LSP 客户端（16+ 种语言、并行服务器管理）
-│   ├── manifest/         # 文件来源追踪（SHA-256 完整性）
-│   ├── merge/            # 三路合并引擎（6 种策略）
-│   ├── rank/             # MoAI Rank 同步和记录管理
-│   ├── resilience/       # 重试策略和熔断器
-│   ├── shell/            # Shell 集成（worktree 导航）
-│   ├── statusline/       # Claude Code 状态栏集成
-│   ├── template/         # 模板部署（go:embed）、配置生成
-│   ├── ui/               # 交互式 TUI（选择器、复选框、向导）
-│   └── update/           # 二进制自更新机制
-├── pkg/                  # 公共库包
-│   ├── models/           # 共享数据模型
-│   └── version/          # 构建版本元数据
-└── Makefile              # 构建自动化
-```
-
-### 主要包覆盖率
-
-| 包 | 用途 | 覆盖率 |
-|----|------|--------|
-| `foundation` | EARS 模式、TRUST 5、18 种语言定义 | 98.4% |
-| `core/quality` | 并行验证器、阶段门禁 | 96.8% |
-| `ui` | 交互式 TUI 组件 | 96.8% |
-| `config` | 线程安全 YAML 配置 | 94.1% |
-| `loop` | Ralph 反馈循环、收敛检测 | 92.7% |
-| `cli` | Cobra 命令 | 92.0% |
-| `ralph` | 收敛决策引擎 | 100% |
-| `statusline` | Claude Code 状态栏 | 100% |
-
----
-
-## 赞助商
-
-### z.ai GLM 5
-
-MoAI-ADK 通过与 **z.ai GLM 5** 的合作伙伴关系，提供经济高效的 AI 开发环境。
+MoAI-ADK 推荐 **z.ai GLM 5** 作为 Claude Code 的高性价比替代 AI 后端。
 
 | 优势 | 说明 |
 |------|------|
-| 节省 70% 成本 | 仅为 Claude 1/7 的价格，性能相当 |
+| ~70% 成本节省 | 低价格实现同等性能 |
 | 完全兼容 | 无需修改代码即可与 Claude Code 配合使用 |
 | 无限使用 | 无每日/每周 Token 限制，自由使用 |
 
@@ -934,56 +884,46 @@ exclude:
 
 Statusline v3 提供**多行布局**和实时 API 使用量监控：
 
-**Full 模式：**
+**Full 模式**（5 行 — 40 块独立条）：
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 1h 26m │ 💬 MoAI
-CW: 🪫 ██████████████████████████████████████░░ 96%
-5H: 🔋 ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 19%
-7D: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
-📁 moai-adk-go │ 🔀 main
+🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
+CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
+5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
+7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
+📁 moai-adk-go │ 🔀 main │ 📊 +0 M38 ?2
 ```
 
-**默认（Default）模式：**
+**默认（Default）模式**（3 行 — 10 块内联条）：
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 16m │ 💬 MoAI
+🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
 CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
 📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
 ```
 
-**紧凑（Compact）模式：**
-```
-🤖 Opus 4.6
-CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-🔀 main │ 📊 +0 M119 ?29
-```
+支持 2 种显示模式：
 
-支持 3 种显示模式：
-
-- **Full**：所有段 + 使用量条独立行显示（model、context、usage bars、git、version、output style、directory）
-- **Default**（默认）：核心段 + 内联使用量条（model、context、usage bars、git status、branch、version）
-- **Compact**：最小 3 行布局（model、内联使用量条、git 信息）
+- **Full**（5 行）：所有段 + 40 块使用量条独立行显示（model、context、usage bars、git、version、output style、directory）
+- **Default**（3 行）：核心段 + 10 块内联使用量条（model、context、usage bars、git status、branch、version）
 
 直接编辑 `.moai/config/sections/statusline.yaml`：
 
 ```yaml
 statusline:
-  mode: default  # 或 full、compact
+  mode: default  # 或 full
   segments:
     model: true
     context: true
     usage_5h: true    # 5 小时 API 使用量条
     usage_7d: true    # 7 天 API 使用量条
-    output_style: false
-    directory: false
+    output_style: true
+    directory: true
     git_status: true
-    claude_version: false
+    claude_version: true
     moai_version: true
     git_branch: true
 ```
 
 > **注意**：从 v2.7.8 开始，段预设选择 UI 已从 `moai init`/`moai update` 向导中移除。请直接在上述 YAML 文件中配置。
-
-详见 [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md)。
 
 ---
 
@@ -1032,42 +972,6 @@ External imports:
 - `quality.yaml`：TRUST 5 框架和开发方法论设置
 - `language.yaml`：语言偏好（对话、注释、提交）
 - `user.yaml`：用户名（可选，用于 Co-Authored-By 属性）
-
----
-
-## MoAI Memory
-
-MoAI-ADK 提供**基于 Git 的上下文记忆系统**，通过结构化的 git 提交信息在会话之间保存 AI-开发者交互上下文。
-
-### 工作原理
-
-```
-会话 1 (Plan)             会话 2 (Run)              会话 3 (Sync)
-    │                          │                          │
-    ▼                          ▼                          ▼
- 决策 ──→ git commit ──→ 上下文 ──→ git commit ──→ 上下文
- 约束    含 ## Context    从 git      含 ## Context    从 git
- 模式    部分              加载        部分              加载
-```
-
-每个实现提交都包含一个结构化的 `## Context` 部分，捕获以下内容：
-
-| 类别 | 目的 | 示例 |
-|------|------|------|
-| **Decision** | 技术决策 + 理由 | "选择 EdDSA 而非 RSA256（性能优先）" |
-| **Constraint** | 活跃约束条件 | "必须保持 /api/v1 向后兼容" |
-| **Gotcha** | 发现的陷阱 | "Redis TTL 存储令牌不可靠" |
-| **Pattern** | 使用的参考实现 | "auth.go:45 的中间件链模式" |
-| **Risk** | 已知风险/延期项 | "限流推迟到 Phase 2" |
-| **UserPref** | 开发者偏好 | "偏好函数式风格" |
-
-
-### 核心优势
-
-- **零依赖**：使用 git 本身作为记忆存储 -- 无需外部数据库
-- **团队共享**：通过 `git clone` 自动共享上下文 -- 团队知识传递
-- **完整审计追踪**：`git log` 提供完整的决策历史
-- **会话连续性**：`/clear` 或会话中断后仍可恢复完整上下文（利用 Claude Code 内置 auto-memory）
 
 ---
 

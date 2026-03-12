@@ -645,63 +645,13 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 
 ---
 
-## Architecture
+## Recommended: z.ai GLM 5
 
-```
-moai-adk/
-├── cmd/moai/             # Application entry point
-├── internal/             # Core private packages
-│   ├── astgrep/          # AST-grep integration for structural code analysis
-│   ├── cli/              # Cobra CLI command definitions
-│   ├── config/           # Thread-safe YAML configuration management
-│   ├── core/
-│   │   ├── git/          # Git operations (branches, worktrees, conflict detection)
-│   │   ├── project/      # Project initialization, language/framework detection
-│   │   └── quality/      # TRUST 5 quality gates, parallel validators
-│   ├── defs/             # Language definitions and framework detection
-│   ├── git/              # Git convention validation engine
-│   ├── hook/             # Compiled hook system (16 events, JSON protocol)
-│   ├── loop/             # Ralph feedback loop (state machine, convergence detection)
-│   ├── lsp/              # LSP client (16+ languages, parallel server management)
-│   ├── manifest/         # File provenance tracking (SHA-256 integrity)
-│   ├── merge/            # 3-way merge engine (6 strategies)
-│   ├── rank/             # MoAI Rank sync and transcript management
-│   ├── resilience/       # Retry policies and circuit breakers
-│   ├── shell/            # Shell integration (worktree navigation)
-│   ├── statusline/       # Claude Code status line integration
-│   ├── template/         # Template deployment (go:embed), settings generation
-│   ├── ui/               # Interactive TUI (selectors, checkboxes, wizards)
-│   └── update/           # Binary self-update mechanism
-├── pkg/                  # Public library packages
-│   ├── models/           # Shared data models
-│   └── version/          # Build version metadata
-└── Makefile              # Build automation
-```
-
-### Key Package Coverage
-
-| Package | Purpose | Coverage |
-|---------|---------|----------|
-| `foundation` | EARS patterns, TRUST 5, 18 language definitions | 98.4% |
-| `core/quality` | Parallel validators, phase gates | 96.8% |
-| `ui` | Interactive TUI components | 96.8% |
-| `config` | Thread-safe YAML configuration | 94.1% |
-| `loop` | Ralph feedback loop, convergence detection | 92.7% |
-| `cli` | Cobra commands | 92.0% |
-| `ralph` | Convergence decision engine | 100% |
-| `statusline` | Claude Code status line | 100% |
-
----
-
-## Sponsors
-
-### z.ai GLM 5
-
-MoAI-ADK partners with **z.ai GLM 5** to provide a cost-effective AI development environment.
+MoAI-ADK recommends **z.ai GLM 5** as a cost-effective alternative AI backend for Claude Code.
 
 | Benefit | Description |
 |---------|-------------|
-| 70% cost savings | Equivalent performance at 1/7 the price of Claude |
+| ~70% cost savings | Equivalent performance at a fraction of the price |
 | Full compatibility | Works with Claude Code with no code changes |
 | Unlimited usage | No daily/weekly token limits |
 
@@ -932,56 +882,46 @@ See the **"@MX Tag System"** section above for details.
 
 The statusline v3 features a **multi-line layout** with real-time API usage monitoring:
 
-**Full mode:**
+**Full mode** (5 lines — 40-block individual bars):
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 1h 26m │ 💬 MoAI
-CW: 🪫 ██████████████████████████████████████░░ 96%
-5H: 🔋 ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 19%
-7D: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
-📁 moai-adk-go │ 🔀 main
+🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
+CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
+5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
+7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
+📁 moai-adk-go │ 🔀 main │ 📊 +0 M38 ?2
 ```
 
-**Default mode:**
+**Default mode** (3 lines — 10-block inline bars):
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 16m │ 💬 MoAI
+🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
 CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
 📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
 ```
 
-**Compact mode:**
-```
-🤖 Opus 4.6
-CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-🔀 main │ 📊 +0 M119 ?29
-```
+2 display modes are available:
 
-3 display modes are available:
-
-- **Full**: All segments with individual usage bars per line (model, context, usage bars, git, version, output style, directory)
-- **Default** (default): Core segments with inline usage bars (model, context, usage bars, git status, branch, version)
-- **Compact**: Minimal 3-line layout (model, inline usage bars, git info)
+- **Full** (5 lines): All segments with individual 40-block usage bars per line (model, context, usage bars, git, version, output style, directory)
+- **Default** (3 lines): Core segments with inline 10-block usage bars (model, context, usage bars, git status, branch, version)
 
 Edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
-  mode: default  # or full, compact
+  mode: default  # or full
   segments:
     model: true
     context: true
     usage_5h: true    # 5-hour API usage bar
     usage_7d: true    # 7-day API usage bar
-    output_style: false
-    directory: false
+    output_style: true
+    directory: true
     git_status: true
-    claude_version: false
+    claude_version: true
     moai_version: true
     git_branch: true
 ```
 
 > **Note**: As of v2.7.8, segment preset selection has been removed from the `moai init`/`moai update` wizard. Configure segments directly in the YAML file above.
-
-See [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md) for details.
 
 ---
 
@@ -1030,67 +970,6 @@ External imports:
 - `quality.yaml`: TRUST 5 framework and development methodology settings
 - `language.yaml`: Language preferences (conversation, comments, commits)
 - `user.yaml`: User name (optional, for Co-Authored-By attribution)
-
----
-
-## MoAI Memory
-
-MoAI-ADK features a **Git-Based Context Memory System** that preserves AI-developer interaction context across sessions using structured git commit messages.
-
-### How It Works
-
-```
-Session 1 (Plan)          Session 2 (Run)           Session 3 (Sync)
-    │                          │                          │
-    ▼                          ▼                          ▼
- Decisions ──→ git commit ──→ Context ──→ git commit ──→ Context
- Constraints   with ## Context  loaded     with ## Context  loaded
- Patterns      section          from git   section          from git
-```
-
-Every implementation commit includes a structured `## Context` section that captures:
-
-| Category | Purpose | Example |
-|----------|---------|---------|
-| **Decision** | Technical choices + rationale | "EdDSA over RSA256 (performance priority)" |
-| **Constraint** | Active constraints | "Must maintain /api/v1 compatibility" |
-| **Gotcha** | Discovered pitfalls | "Redis TTL unreliable for token storage" |
-| **Pattern** | Reference implementations used | "middleware chain from auth.go:45" |
-| **Risk** | Known risks / deferred items | "Rate limiting deferred to Phase 2" |
-| **UserPref** | Developer preferences | "Prefers functional style" |
-
-### Commit Format
-
-Both DDD and TDD workflows produce structured commits:
-
-**DDD Mode:**
-```
-🔴 ANALYZE: Document JWT validation behavior
-SPEC: SPEC-AUTH-001
-Phase: RUN-ANALYZE
-
-## Context (AI-Developer Memory)
-- Decision: Use EdDSA for JWT signing (performance priority)
-- Constraint: Must support existing RSA tokens during migration
-```
-
-**TDD Mode:**
-```
-🔴 RED: Add failing test for token expiry validation
-SPEC: SPEC-AUTH-001
-Phase: RUN-RED
-
-## Context (AI-Developer Memory)
-- Decision: 15-minute access token TTL (security best practice)
-- Gotcha: Clock skew between services requires 30s grace period
-```
-
-### Key Benefits
-
-- **Zero Dependencies**: Uses git itself as the memory store -- no external databases
-- **Team Sharing**: Context travels with `git clone` -- automatic team knowledge transfer
-- **Full Audit Trail**: `git log` provides complete decision history
-- **Session Continuity**: Resume work with full context after `/clear` or session breaks (via Claude Code's built-in auto-memory)
 
 ---
 

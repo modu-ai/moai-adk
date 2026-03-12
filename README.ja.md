@@ -732,63 +732,13 @@ Agent Teams は 2 つの表示モードをサポート:
 
 ---
 
-## アーキテクチャ
+## おすすめ: z.ai GLM 5
 
-```
-moai-adk/
-├── cmd/moai/             # アプリケーションエントリポイント
-├── internal/             # コアプライベートパッケージ
-│   ├── astgrep/          # AST-grep統合（構造的コード分析）
-│   ├── cli/              # Cobra CLIコマンド定義
-│   ├── config/           # スレッドセーフなYAML設定管理
-│   ├── core/
-│   │   ├── git/          # Git操作（ブランチ、worktree、コンフリクト検出）
-│   │   ├── project/      # プロジェクト初期化、言語/フレームワーク検出
-│   │   └── quality/      # TRUST 5 品質ゲート、並列バリデーター
-│   ├── defs/             # 言語定義とフレームワーク検出
-│   ├── git/              # Gitコンベンション検証エンジン
-│   ├── hook/             # コンパイル済みフックシステム（16個のイベント、JSONプロトコル）
-│   ├── loop/             # Ralphフィードバックループ（状態マシン、収束検知）
-│   ├── lsp/              # LSPクライアント（16以上の言語、並列サーバー管理）
-│   ├── manifest/         # ファイル追跡（SHA-256整合性）
-│   ├── merge/            # 3-wayマージエンジン（6つの戦略）
-│   ├── rank/             # MoAI Rank同期とトランスクリプト管理
-│   ├── resilience/       # リトライポリシーとサーキットブレーカー
-│   ├── shell/            # シェル統合（worktreeナビゲーション）
-│   ├── statusline/       # Claude Codeステータスライン統合
-│   ├── template/         # テンプレートデプロイ（go:embed）、設定生成
-│   ├── ui/               # 対話型TUI（セレクター、チェックボックス、ウィザード）
-│   └── update/           # バイナリ自己更新メカニズム
-├── pkg/                  # パブリックライブラリパッケージ
-│   ├── models/           # 共有データモデル
-│   └── version/          # ビルドバージョンメタデータ
-└── Makefile              # ビルド自動化
-```
-
-### 主要パッケージカバレッジ
-
-| パッケージ | 目的 | カバレッジ |
-|--------|------|----------|
-| `foundation` | EARSパターン、TRUST 5、18言語定義 | 98.4% |
-| `core/quality` | 並列バリデーター、フェーズゲート | 96.8% |
-| `ui` | 対話型TUIコンポーネント | 96.8% |
-| `config` | スレッドセーフYAML設定 | 94.1% |
-| `loop` | Ralphフィードバックループ、収束検知 | 92.7% |
-| `cli` | Cobraコマンド | 92.0% |
-| `ralph` | 収束判定エンジン | 100% |
-| `statusline` | Claude Codeステータスライン | 100% |
-
----
-
-## スポンサー
-
-### z.ai GLM 5
-
-MoAI-ADKは **z.ai GLM 5** とのパートナーシップにより、コスト効率の高いAI開発環境を提供しています。
+MoAI-ADKは、Claude Codeのコスト効率の高い代替AIバックエンドとして **z.ai GLM 5** を推奨しています。
 
 | メリット | 説明 |
 |---------|------|
-| 70%コスト削減 | Claudeの1/7の価格で同等のパフォーマンス |
+| ~70%コスト削減 | 低価格で同等のパフォーマンス |
 | 完全互換 | コード変更なしでClaude Codeと連携 |
 | 無制限使用 | 日次/週次のトークン制限なし |
 
@@ -934,56 +884,46 @@ exclude:
 
 Statusline v3は**マルチラインレイアウト**とリアルタイムAPI使用量モニタリングを提供します：
 
-**Fullモード：**
+**Fullモード**（5行 — 40ブロック個別バー）：
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 1h 26m │ 💬 MoAI
-CW: 🪫 ██████████████████████████████████████░░ 96%
-5H: 🔋 ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 19%
-7D: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
-📁 moai-adk-go │ 🔀 main
+🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
+CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
+5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
+7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
+📁 moai-adk-go │ 🔀 main │ 📊 +0 M38 ?2
 ```
 
-**デフォルトモード：**
+**デフォルトモード**（3行 — 10ブロックインラインバー）：
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.72 │ 🗿 v2.7.8 │ ⏳ 16m │ 💬 MoAI
+🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
 CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
 📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
 ```
 
-**コンパクトモード：**
-```
-🤖 Opus 4.6
-CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-🔀 main │ 📊 +0 M119 ?29
-```
+2つの表示モードをサポートしています：
 
-3つの表示モードをサポートしています：
-
-- **Full**: すべてのセグメント + 使用量バーを個別行表示（model、context、usage bars、git、version、output style、directory）
-- **Default**（デフォルト）: コアセグメント + インライン使用量バー（model、context、usage bars、git status、branch、version）
-- **Compact**: 最小3行レイアウト（model、インライン使用量バー、git情報）
+- **Full**（5行）: すべてのセグメント + 40ブロック使用量バーを個別行表示（model、context、usage bars、git、version、output style、directory）
+- **Default**（3行）: コアセグメント + 10ブロックインライン使用量バー（model、context、usage bars、git status、branch、version）
 
 `.moai/config/sections/statusline.yaml` を直接編集してください：
 
 ```yaml
 statusline:
-  mode: default  # or full, compact
+  mode: default  # or full
   segments:
     model: true
     context: true
     usage_5h: true    # 5時間API使用量バー
     usage_7d: true    # 7日間API使用量バー
-    output_style: false
-    directory: false
+    output_style: true
+    directory: true
     git_status: true
-    claude_version: false
+    claude_version: true
     moai_version: true
     git_branch: true
 ```
 
 > **注意**: v2.7.8からセグメントプリセット選択UIが`moai init`/`moai update`ウィザードから削除されました。上記のYAMLファイルで直接設定してください。
-
-詳細は [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md) をご参照ください。
 
 ---
 
@@ -1032,42 +972,6 @@ External imports:
 - `quality.yaml`: TRUST 5フレームワークと開発方法論設定
 - `language.yaml`: 言語設定（会話、コメント、コミット）
 - `user.yaml`: ユーザー名（Co-Authored-Byアトリビューションの場合は任意）
-
----
-
-## MoAI Memory
-
-MoAI-ADKは、構造化されたgitコミットメッセージを活用してAI-開発者間のインタラクションコンテキストをセッション間で保持する**Gitベースコンテキストメモリシステム**を提供します。
-
-### 仕組み
-
-```
-セッション1 (Plan)        セッション2 (Run)         セッション3 (Sync)
-    │                          │                          │
-    ▼                          ▼                          ▼
- 決定事項 ──→ git commit ──→ コンテキスト ──→ git commit ──→ コンテキスト
- 制約条件    ## Context含む    gitから          ## Context含む    gitから
- パターン    セクション        ロード            セクション        ロード
-```
-
-すべての実装コミットには、以下をキャプチャする構造化された`## Context`セクションが含まれます：
-
-| カテゴリ | 目的 | 例 |
-|---------|------|-----|
-| **Decision** | 技術的決定＋根拠 | "RSA256の代わりにEdDSA（パフォーマンス優先）" |
-| **Constraint** | アクティブな制約 | "/api/v1の後方互換性維持が必須" |
-| **Gotcha** | 発見された落とし穴 | "Redis TTLはトークン保存に不安定" |
-| **Pattern** | 使用した参照実装 | "auth.go:45のミドルウェアチェーンパターン" |
-| **Risk** | 既知のリスク/延期事項 | "レート制限はPhase 2に延期" |
-| **UserPref** | 開発者の好み | "関数型スタイルを好む" |
-
-
-### 主なメリット
-
-- **ゼロ依存**: git自体をメモリストアとして使用 -- 外部DB不要
-- **チーム共有**: `git clone`でコンテキスト自動共有
-- **完全な監査証跡**: `git log`で全決定履歴を確認
-- **セッション継続性**: `/clear`やセッション中断後もフルコンテキストで作業再開（Claude Code内蔵auto-memoryを活用）
 
 ---
 
