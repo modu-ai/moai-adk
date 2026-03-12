@@ -917,7 +917,7 @@ Edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
-  mode: default  # or full
+  preset: default  # or full
   segments:
     model: true
     context: true
