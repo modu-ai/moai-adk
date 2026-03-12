@@ -4,7 +4,7 @@ description: >
   Sequential Thinking MCP and UltraThink mode for deep analysis, complex
   problem decomposition, and structured reasoning workflows.
   Use when performing multi-step analysis, architecture decisions, technology selection
-  trade-offs, breaking change assessment, or when --ultrathink flag is specified.
+  trade-offs, breaking change assessment, or when --deepthink flag is specified.
   Do NOT use for simple decisions or straightforward implementation tasks.
 license: Apache-2.0
 compatibility: Designed for Claude Code
@@ -24,7 +24,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["sequential thinking", "ultrathink", "deep analysis", "complex problem", "architecture decision", "technology selection", "trade-off", "breaking change"]
+  keywords: ["sequential thinking", "deepthink", "deep analysis", "complex problem", "architecture decision", "technology selection", "trade-off", "breaking change"]
   phases:
     - plan
   agents:
@@ -102,12 +102,12 @@ nextThoughtNeeded: false
 
 ## UltraThink Mode
 
-Enhanced analysis mode activated by `--ultrathink` flag.
+Enhanced analysis mode activated by `--deepthink` flag.
 
 **Activation:**
 ```
-"Implement authentication system --ultrathink"
-"Refactor the API layer --ultrathink"
+"Implement authentication system --deepthink"
+"Refactor the API layer --deepthink"
 ```
 
 **Process:**

@@ -136,7 +136,7 @@ After collection, use the gathered information to generate documentation and pro
 
 [HARD] Delegate codebase analysis to the Explore subagent.
 
-[SOFT] Apply --ultrathink for comprehensive analysis.
+[SOFT] Apply --deepthink for comprehensive analysis.
 
 Analysis Objectives passed to Explore agent:
 

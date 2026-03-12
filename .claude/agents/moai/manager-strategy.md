@@ -3,7 +3,7 @@ name: manager-strategy
 description: |
   Implementation strategy specialist. Use PROACTIVELY for architecture decisions, technology evaluation, and implementation planning.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of architecture decisions, technology selection, and implementation strategies.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of architecture decisions, technology selection, and implementation strategies.
   EN: strategy, implementation plan, architecture decision, technology evaluation, planning
   KO: 전략, 구현계획, 아키텍처결정, 기술평가, 계획
   JA: 戦略, 実装計画, アーキテクチャ決定, 技術評価

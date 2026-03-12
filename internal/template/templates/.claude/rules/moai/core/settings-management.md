@@ -69,7 +69,7 @@ Example `.mcp.json` configuration:
 - Architecture decisions
 - Technology trade-off analysis
 
-Activate with `--ultrathink` flag for enhanced analysis.
+Activate with `--deepthink` flag for enhanced analysis.
 
 ### MoAI Configuration
 

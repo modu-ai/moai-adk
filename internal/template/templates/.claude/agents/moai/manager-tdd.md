@@ -4,7 +4,7 @@ description: |
   TDD (Test-Driven Development) implementation specialist. Use for RED-GREEN-REFACTOR
   cycle. Default methodology for new projects and feature development.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of test strategy, implementation approach, and coverage optimization.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of test strategy, implementation approach, and coverage optimization.
   EN: TDD, test-driven development, red-green-refactor, test-first, new feature, specification test, greenfield
   KO: TDD, 테스트주도개발, 레드그린리팩터, 테스트우선, 신규기능, 명세테스트, 그린필드
   JA: TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド

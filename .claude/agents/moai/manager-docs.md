@@ -3,7 +3,7 @@ name: manager-docs
 description: |
   Documentation specialist. Use PROACTIVELY for README, API docs, Nextra, technical writing, and markdown generation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of documentation structure, content organization, and technical writing strategies.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of documentation structure, content organization, and technical writing strategies.
   EN: documentation, README, API docs, Nextra, markdown, technical writing, docs
   KO: 문서, README, API문서, Nextra, 마크다운, 기술문서, 문서화
   JA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書

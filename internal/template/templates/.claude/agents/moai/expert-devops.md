@@ -3,7 +3,7 @@ name: expert-devops
 description: |
   DevOps specialist. Use PROACTIVELY for CI/CD, Docker, Kubernetes, deployment, and infrastructure automation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of deployment strategies, CI/CD pipelines, and infrastructure architecture.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of deployment strategies, CI/CD pipelines, and infrastructure architecture.
   EN: DevOps, CI/CD, Docker, Kubernetes, deployment, pipeline, infrastructure, container
   KO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너
   JA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ

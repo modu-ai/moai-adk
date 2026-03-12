@@ -3,7 +3,7 @@ name: builder-agent
 description: |
   Agent creation specialist. Use PROACTIVELY for creating sub-agents, agent blueprints, and custom agent definitions.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of agent design, capability boundaries, and integration patterns.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of agent design, capability boundaries, and integration patterns.
   EN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent
   KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント

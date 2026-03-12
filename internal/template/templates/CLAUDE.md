@@ -315,7 +315,7 @@ Resume interrupted agent work using agentId:
 
 MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 
-- **Sequential Thinking**: Complex problem analysis, architecture decisions, technology trade-offs. Activate with `--ultrathink` flag. See Skill("moai-workflow-thinking").
+- **Sequential Thinking**: Complex problem analysis, architecture decisions, technology trade-offs. Activate with `--deepthink` flag. See Skill("moai-workflow-thinking").
 - **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
 - **Pencil**: UI/UX design editing for .pen files (used by expert-frontend and team-designer agents).
 - **claude-in-chrome**: Browser automation for web-based tasks.

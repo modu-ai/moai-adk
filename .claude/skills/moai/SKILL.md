@@ -211,7 +211,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo. When --ultrathink is detected, activate Sequential Thinking MCP for deep analysis before execution.
+Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo. When --deepthink is detected, activate Sequential Thinking MCP for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.

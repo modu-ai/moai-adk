@@ -3,7 +3,7 @@ name: expert-security
 description: |
   Security analysis specialist. Use PROACTIVELY for OWASP, vulnerability assessment, XSS, CSRF, and secure code review.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of security threats, vulnerability patterns, and OWASP compliance.
+  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of security threats, vulnerability patterns, and OWASP compliance.
   EN: security, vulnerability, OWASP, injection, XSS, CSRF, penetration, audit, threat
   KO: 보안, 취약점, OWASP, 인젝션, XSS, CSRF, 침투, 감사, 위협
   JA: セキュリティ, 脆弱性, OWASP, インジェクション, XSS, CSRF, ペネトレーション, 監査
