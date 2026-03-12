@@ -640,7 +640,7 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 | `moai hook <event>` | Claude Code hook dispatcher |
 | `moai glm` | Start Claude Code with GLM 5 API (cost-effective alternative) |
 | `moai cc` | Start Claude Code without GLM settings (Claude-only mode) |
-| `moai cg` | Enable CG mode — Claude leader + GLM teammates (tmux pane-level isolation) |
+| `moai cg` | Launch CG mode — Claude leader + GLM teammates (auto-starts Claude Code, tmux required) |
 | `moai version` | Display version, commit hash, and build date |
 
 ---
@@ -722,8 +722,10 @@ moai cg execution
     ├── 2. Remove GLM env from settings.local.json
     │      → Leader pane uses Claude API
     │
-    └── 3. Set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
-           → Workers inherit GLM env in new panes
+    ├── 3. Set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+    │      → Workers inherit GLM env in new panes
+    │
+    └── 4. Launch Claude Code (replaces current process)
 
 ┌─────────────────────────────────────────────────────────────┐
 │  LEADER (current tmux pane, Claude API)                     │
@@ -754,13 +756,10 @@ tmux new -s moai
 # TIP: Set VS Code terminal default to tmux for automatic tmux environment.
 # This allows you to skip this step entirely.
 
-# 3. Enable CG mode
+# 3. Launch CG mode (automatically starts Claude Code)
 moai cg
 
-# 4. Start Claude Code in the SAME pane (critical!)
-claude
-
-# 5. Run team workflow
+# 4. Run team workflow
 /moai --team "your task description"
 ```
 
@@ -769,7 +768,7 @@ claude
 | Item | Description |
 |------|-------------|
 | **tmux Environment** | If already using tmux, no need to create a new session. Set VS Code terminal default to tmux for convenience. |
-| **Leader Start Location** | MUST start Claude Code in the **same pane** where `moai cg` was run. Starting in a new pane will inherit GLM env. |
+| **Auto Launch** | `moai cg` automatically launches Claude Code in the current pane. No need to run `claude` separately. |
 | **Session End** | session_end hook automatically clears tmux session env → next session uses Claude |
 | **Agent Teams Communication** | SendMessage tool enables Leader↔Workers communication |
 
