@@ -645,17 +645,27 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 
 ---
 
-## Recommended: z.ai GLM 5
+## Claude x GLM Multi-LLM
 
-MoAI-ADK recommends **z.ai GLM 5** as a cost-effective alternative AI backend for Claude Code.
+MoAI-ADK supports **z.ai GLM** as an alternative AI backend for Claude Code, enabling multi-LLM development workflows.
 
-| Benefit | Description |
-|---------|-------------|
-| ~70% cost savings | Equivalent performance at a fraction of the price |
-| Full compatibility | Works with Claude Code with no code changes |
-| Unlimited usage | No daily/weekly token limits |
+| Item | Details |
+|------|---------|
+| GLM Coding Plan | From **$10/month** ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
+| Compatibility | Works with Claude Code — no code changes needed |
+| Models | GLM-5, GLM-4.7, GLM-4.5-Air, and free models |
 
-**[Sign up for GLM 5 (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU)** -- Referral rewards are used to fund MoAI open-source development.
+**Default Model Mapping:**
+
+| Claude Tier | GLM Model | Input (per 1M tokens) | Output (per 1M tokens) |
+|-------------|-----------|----------------------|------------------------|
+| Opus | GLM-4.7 | $0.60 | $2.20 |
+| Sonnet | GLM-4.7 | $0.60 | $2.20 |
+| Haiku | GLM-4.5-Air | $0.20 | $1.10 |
+
+> Free models also available: GLM-4.7-Flash, GLM-4.5-Flash. See [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) for full details.
+
+**[Sign up for GLM Coding Plan](https://z.ai/subscribe?ic=1NDV03BGWU)**
 
 ### CG Mode (Claude + GLM Hybrid)
 

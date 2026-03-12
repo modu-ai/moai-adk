@@ -732,17 +732,27 @@ Agent Teams は 2 つの表示モードをサポート:
 
 ---
 
-## おすすめ: z.ai GLM 5
+## Claude x GLM マルチLLM
 
-MoAI-ADKは、Claude Codeのコスト効率の高い代替AIバックエンドとして **z.ai GLM 5** を推奨しています。
+MoAI-ADKは、**z.ai GLM** をClaude Codeの代替AIバックエンドとしてサポートし、マルチLLM開発ワークフローを実現します。
 
-| メリット | 説明 |
-|---------|------|
-| ~70%コスト削減 | 低価格で同等のパフォーマンス |
-| 完全互換 | コード変更なしでClaude Codeと連携 |
-| 無制限使用 | 日次/週次のトークン制限なし |
+| 項目 | 内容 |
+|------|------|
+| GLM Coding Plan | **$10/月**から（[z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)） |
+| 互換性 | コード変更なしでClaude Codeとそのまま利用可能 |
+| モデル | GLM-5、GLM-4.7、GLM-4.5-Air、および無料モデル |
 
-**[GLM 5に登録する（10%追加割引）](https://z.ai/subscribe?ic=1NDV03BGWU)** -- 紹介報酬はMoAIオープンソース開発に使用されます。
+**デフォルトモデルマッピング：**
+
+| Claude ティア | GLM モデル | 入力（100万トークンあたり） | 出力（100万トークンあたり） |
+|--------------|-----------|--------------------------|--------------------------|
+| Opus | GLM-4.7 | $0.60 | $2.20 |
+| Sonnet | GLM-4.7 | $0.60 | $2.20 |
+| Haiku | GLM-4.5-Air | $0.20 | $1.10 |
+
+> 無料モデルも利用可能：GLM-4.7-Flash、GLM-4.5-Flash。詳細は [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) を参照。
+
+**[GLM Coding Planに登録する](https://z.ai/subscribe?ic=1NDV03BGWU)**
 
 ---
 
