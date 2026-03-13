@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.13] - 2026-03-13
+
+### Summary
+
+Documentation improvements: renamed `--ultrathink` flag to `--deepthink` across all agent/skill definitions, updated README with accurate CG mode usage and Multi-LLM sponsor info, and refined statusline FAQ.
+
+### Breaking Changes
+
+None.
+
+### Changed
+
+- Renamed `--ultrathink` flag to `--deepthink` across 52 agent, skill, and rules files
+- Updated CG mode documentation: removed unnecessary manual `claude` step from usage instructions
+
+### Fixed
+
+- README: corrected statusline YAML example (`mode` → `preset`)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.13] - 2026-03-13 (한국어)
+
+### 요약
+
+문서 개선: 모든 에이전트/스킬 정의에서 `--ultrathink` 플래그를 `--deepthink`로 일괄 변경, README의 CG 모드 사용법 및 Multi-LLM 스폰서 정보 업데이트, statusline FAQ 정리.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 변경됨 (Changed)
+
+- 52개 에이전트, 스킬, 규칙 파일에서 `--ultrathink` 플래그를 `--deepthink`로 일괄 변경
+- CG 모드 문서 개선: 사용법에서 불필요한 수동 `claude` 실행 단계 제거
+
+### 수정됨 (Fixed)
+
+- README: statusline YAML 예시 오류 수정 (`mode` → `preset`)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.12] - 2026-03-12
 
 ### Summary
