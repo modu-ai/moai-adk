@@ -2,12 +2,10 @@ package cli
 
 import (
 	"bytes"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // TestMergeUserFiles_PreservesCustomizations tests that mergeUserFiles
@@ -212,55 +210,6 @@ func TestMergeUserFiles_EdgeCases(t *testing.T) {
 		})
 	}
 }
-
-// mockEmbeddedFS is a minimal mock for testing.
-type mockEmbeddedFS struct {
-	fs.FS
-	files map[string]string
-}
-
-func (m *mockEmbeddedFS) Open(name string) (fs.File, error) {
-	content, ok := m.files[name]
-	if !ok {
-		return nil, os.ErrNotExist
-	}
-	return &mockFile{name: name, content: []byte(content)}, nil
-}
-
-type mockFile struct {
-	fs.File
-	name    string
-	content []byte
-	offset  int64
-}
-
-func (m *mockFile) Stat() (fs.FileInfo, error) {
-	return &mockFileInfo{name: m.name, size: int64(len(m.content))}, nil
-}
-
-func (m *mockFile) Read(p []byte) (int, error) {
-	if m.offset >= int64(len(m.content)) {
-		return 0, nil // EOF
-	}
-	n := copy(p, m.content[m.offset:])
-	m.offset += int64(n)
-	return n, nil
-}
-
-func (m *mockFile) Close() error { return nil }
-
-type mockFileInfo struct {
-	fs.FileInfo
-	name string
-	size int64
-}
-
-func (m *mockFileInfo) Name() string       { return m.name }
-func (m *mockFileInfo) Size() int64        { return m.size }
-func (m *mockFileInfo) Mode() fs.FileMode  { return 0644 }
-func (m *mockFileInfo) ModTime() time.Time { return time.Now() }
-func (m *mockFileInfo) IsDir() bool        { return false }
-func (m *mockFileInfo) Sys() interface{}   { return nil }
 
 // TestCollectMergeableFiles_ConfigSections tests that the collectMergeableFiles
 // function returns only the fixed files, excluding .moai/config/sections/*.yaml
