@@ -533,31 +533,16 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	var mergeableBackups []fileBackup
 
 	// collectMergeableFiles returns a list of files that should be merged
-	// using the 3-way merge engine during update. This includes:
-	// - Root level config files (.mcp.json, .claude/settings.json)
-	// - User scripts (.moai/status_line.sh)
-	// - All .moai/config/sections/*.yaml files (user-customizable configs)
+	// using the 3-way merge engine during update.
+	// Note: .moai/config/sections/*.yaml files are already handled by
+	// restoreMoaiConfig with 3-way merge, so they are excluded here.
 	collectMergeableFiles := func(projectRoot string) []string {
-		var files []string
-
-		// Fixed mergeable files at project root
-		files = append(files, ".mcp.json")
-		files = append(files, ".claude/settings.json")
-		files = append(files, ".moai/status_line.sh")
-
-		// Discover all .moai/config/sections/*.yaml files
-		configSectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
-		if entries, err := os.ReadDir(configSectionsDir); err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
-					// Store as relative path from project root
-					relPath := filepath.Join(".moai", "config", "sections", entry.Name())
-					files = append(files, relPath)
-				}
-			}
+		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig
+		return []string{
+			".mcp.json",
+			".claude/settings.json",
+			".moai/status_line.sh",
 		}
-
-		return files
 	}
 
 	// Execute each step with progress reporting

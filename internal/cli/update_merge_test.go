@@ -263,9 +263,20 @@ func (m *mockFileInfo) IsDir() bool        { return false }
 func (m *mockFileInfo) Sys() interface{}   { return nil }
 
 // TestCollectMergeableFiles_ConfigSections tests that the collectMergeableFiles
-// function discovers all config section YAML files.
+// function returns only the fixed files, excluding .moai/config/sections/*.yaml
+// which are handled by restoreMoaiConfig.
 func TestCollectMergeableFiles_ConfigSections(t *testing.T) {
 	t.Parallel()
+
+	// Create the collectMergeableFiles function inline for testing
+	collectMergeableFiles := func(projectRoot string) []string {
+		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig
+		return []string{
+			".mcp.json",
+			".claude/settings.json",
+			".moai/status_line.sh",
+		}
+	}
 
 	tempDir := t.TempDir()
 
@@ -276,42 +287,22 @@ func TestCollectMergeableFiles_ConfigSections(t *testing.T) {
 	}
 
 	// Create some config section YAML files
-	configFiles := []string{"quality.yaml", "statusline.yaml", "workflow.yaml", "language.yaml"}
+	configFiles := []string{"quality.yaml", "statusline.yaml", "workflow.yaml"}
 	for _, cf := range configFiles {
 		if err := os.WriteFile(filepath.Join(configSectionsDir, cf), []byte("test: true"), 0644); err != nil {
 			t.Fatalf("write config file %s: %v", cf, err)
 		}
 	}
 
-	// Create a non-YAML file (should be ignored)
-	if err := os.WriteFile(filepath.Join(configSectionsDir, "README.md"), []byte("# readme"), 0644); err != nil {
-		t.Fatalf("write README: %v", err)
-	}
-
-	// Create the collectMergeableFiles function inline for testing
-	collectMergeableFiles := func(projectRoot string) []string {
-		var files []string
-		files = append(files, ".mcp.json")
-		files = append(files, ".claude/settings.json")
-		files = append(files, ".moai/status_line.sh")
-
-		configSectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
-		if entries, err := os.ReadDir(configSectionsDir); err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
-					relPath := filepath.Join(".moai", "config", "sections", entry.Name())
-					files = append(files, relPath)
-				}
-			}
-		}
-		return files
-	}
-
 	result := collectMergeableFiles(tempDir)
 
-	// Verify fixed files are included
-	expectedFixed := []string{".mcp.json", ".claude/settings.json", ".moai/status_line.sh"}
-	for _, ef := range expectedFixed {
+	// Verify only the fixed files are included
+	expectedFiles := []string{".mcp.json", ".claude/settings.json", ".moai/status_line.sh"}
+	if len(result) != len(expectedFiles) {
+		t.Errorf("expected %d files, got %d", len(expectedFiles), len(result))
+	}
+
+	for _, ef := range expectedFiles {
 		found := false
 		for _, rf := range result {
 			if rf == ef {
@@ -324,26 +315,13 @@ func TestCollectMergeableFiles_ConfigSections(t *testing.T) {
 		}
 	}
 
-	// Verify config section YAML files are included
+	// Verify config section YAML files are NOT included (they're handled by restoreMoaiConfig)
 	for _, cf := range configFiles {
-		expectedPath := filepath.Join(".moai", "config", "sections", cf)
-		found := false
+		excludedPath := filepath.Join(".moai", "config", "sections", cf)
 		for _, rf := range result {
-			if rf == expectedPath {
-				found = true
-				break
+			if rf == excludedPath {
+				t.Errorf("config section file %s should NOT be in result (handled by restoreMoaiConfig)", excludedPath)
 			}
-		}
-		if !found {
-			t.Errorf("expected config file %s to be in result", expectedPath)
-		}
-	}
-
-	// Verify non-YAML files are NOT included
-	readmePath := filepath.Join(".moai", "config", "sections", "README.md")
-	for _, rf := range result {
-		if rf == readmePath {
-			t.Error("README.md should not be in mergeable files")
 		}
 	}
 }
