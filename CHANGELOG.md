@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.14] - 2026-03-13
+
+### Summary
+
+Fixed a critical bug where `moai update` would silently overwrite user-customized configuration files. The existing 3-way merge engine is now wired into the update flow, preserving user customizations for `.mcp.json`, `.claude/settings.json`, and `.moai/status_line.sh`.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- `moai update` no longer overwrites user-customized `.mcp.json`, `.claude/settings.json`, and `.moai/status_line.sh` — user changes are now preserved via 3-way merge
+- `.moai/config/sections/*.yaml` files continue to use the existing merge-based restore (unchanged behavior, now documented)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.14] - 2026-03-13 (한국어)
+
+### 요약
+
+`moai update` 실행 시 사용자 설정 파일을 덮어쓰는 치명적 버그 수정. 기존 3-way merge 엔진을 update 흐름에 연결하여 `.mcp.json`, `.claude/settings.json`, `.moai/status_line.sh`의 사용자 커스터마이징이 보존됩니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- `moai update`가 `.mcp.json`, `.claude/settings.json`, `.moai/status_line.sh` 사용자 설정을 덮어쓰지 않음 — 3-way merge로 사용자 변경 사항 보존
+- `.moai/config/sections/*.yaml` 파일은 기존 merge 기반 복원 방식 유지 (동작 변경 없음, 문서화)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.13] - 2026-03-13
 
 ### Summary
