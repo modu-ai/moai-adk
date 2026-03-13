@@ -624,7 +624,12 @@ func cleanupBogusRootDir(projectDir string) {
 	bogusDir := filepath.Join(projectDir, "{}")
 	info, err := os.Stat(bogusDir)
 	if err != nil {
-		// Does not exist or inaccessible — nothing to do.
+		if !os.IsNotExist(err) {
+			slog.Warn("session_end: could not stat bogus {} directory",
+				"path", bogusDir,
+				"error", err,
+			)
+		}
 		return
 	}
 	if !info.IsDir() {
