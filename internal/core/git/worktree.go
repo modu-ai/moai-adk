@@ -30,7 +30,7 @@ func NewWorktreeManager(root string) *worktreeManager {
 // Add creates a new worktree at the given path for the given branch.
 // If the branch does not exist, it is created automatically with -b.
 func (w *worktreeManager) Add(path, branch string) error {
-	w.logger.Info("system git fallback", "operation", "worktree add", "reason", "go-git lacks worktree support")
+	w.logger.Debug("system git fallback", "operation", "worktree add", "reason", "go-git lacks worktree support")
 	w.logger.Debug("adding worktree", "path", path, "branch", branch)
 
 	// Check if path already exists.
@@ -61,7 +61,7 @@ func (w *worktreeManager) Add(path, branch string) error {
 
 // List returns all active worktrees including the main worktree.
 func (w *worktreeManager) List() ([]Worktree, error) {
-	w.logger.Info("system git fallback", "operation", "worktree list", "reason", "go-git lacks worktree support")
+	w.logger.Debug("system git fallback", "operation", "worktree list", "reason", "go-git lacks worktree support")
 	w.logger.Debug("listing worktrees")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -80,7 +80,7 @@ func (w *worktreeManager) List() ([]Worktree, error) {
 // Remove deletes a worktree at the given path.
 // If force is true, the worktree is removed even with uncommitted changes.
 func (w *worktreeManager) Remove(path string, force bool) error {
-	w.logger.Info("system git fallback", "operation", "worktree remove", "reason", "go-git lacks worktree support")
+	w.logger.Debug("system git fallback", "operation", "worktree remove", "reason", "go-git lacks worktree support")
 	w.logger.Debug("removing worktree", "path", path, "force", force)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -110,7 +110,7 @@ func (w *worktreeManager) Remove(path string, force bool) error {
 
 // Prune removes stale worktree references for deleted directories.
 func (w *worktreeManager) Prune() error {
-	w.logger.Info("system git fallback", "operation", "worktree prune", "reason", "go-git lacks worktree support")
+	w.logger.Debug("system git fallback", "operation", "worktree prune", "reason", "go-git lacks worktree support")
 	w.logger.Debug("pruning worktrees")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -127,7 +127,7 @@ func (w *worktreeManager) Prune() error {
 
 // Repair repairs worktree administrative files if they have become corrupted.
 func (w *worktreeManager) Repair() error {
-	w.logger.Info("system git fallback", "operation", "worktree repair", "reason", "go-git lacks worktree support")
+	w.logger.Debug("system git fallback", "operation", "worktree repair", "reason", "go-git lacks worktree support")
 	w.logger.Debug("repairing worktrees")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
