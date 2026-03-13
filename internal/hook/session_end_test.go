@@ -958,3 +958,58 @@ func TestGarbageCollectOrphanedTasks_MissingDir(t *testing.T) {
 	// Do not create ~/.claude/tasks/ directory — must not panic or return error
 	garbageCollectOrphanedTasks(homeDir)
 }
+
+// TestCleanupBogusRootDir_RemovesDirectory verifies that the bogus "{}"
+// directory is removed when it exists in the project root.
+func TestCleanupBogusRootDir_RemovesDirectory(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	if err := os.MkdirAll(bogusDir, 0o755); err != nil {
+		t.Fatalf("setup: create bogus dir: %v", err)
+	}
+	// Add a nested file to ensure RemoveAll is used, not Remove.
+	nestedFile := filepath.Join(bogusDir, ".claude", "agent-memory", "expert-backend", "memory.md")
+	if err := os.MkdirAll(filepath.Dir(nestedFile), 0o755); err != nil {
+		t.Fatalf("setup: create nested dirs: %v", err)
+	}
+	if err := os.WriteFile(nestedFile, []byte("data"), 0o644); err != nil {
+		t.Fatalf("setup: create nested file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); !os.IsNotExist(err) {
+		t.Error("bogus {} directory should have been removed")
+	}
+}
+
+// TestCleanupBogusRootDir_NoDirectory verifies that the function is a no-op
+// when the "{}" directory does not exist.
+func TestCleanupBogusRootDir_NoDirectory(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	// No "{}" directory created — must not panic
+	cleanupBogusRootDir(projectDir)
+}
+
+// TestCleanupBogusRootDir_IgnoresFile verifies that a regular file named "{}"
+// (not a directory) is not removed.
+func TestCleanupBogusRootDir_IgnoresFile(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusFile := filepath.Join(projectDir, "{}")
+	if err := os.WriteFile(bogusFile, []byte("not a dir"), 0o644); err != nil {
+		t.Fatalf("setup: create file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	// The file should remain untouched.
+	if _, err := os.Stat(bogusFile); os.IsNotExist(err) {
+		t.Error("regular file named {} should not have been removed")
+	}
+}

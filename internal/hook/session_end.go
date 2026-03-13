@@ -74,6 +74,7 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	}
 	if projectDir != "" {
 		cleanupGLMSettingsLocal(projectDir)
+		cleanupBogusRootDir(projectDir)
 	}
 
 	// Validate MX tags for files modified during this session.
@@ -609,5 +610,34 @@ func cleanupGLMSettingsLocal(projectDir string) {
 
 	slog.Info("session_end: removed GLM env vars from settings.local.json",
 		"path", settingsPath,
+	)
+}
+
+// cleanupBogusRootDir removes a literal "{}" directory from the project root
+// if it exists. This directory is a side-effect of a Claude Code bug where the
+// {project_root} template variable used for agent memory paths (memory: project)
+// is not substituted when spawning agents inside git worktrees, resulting in a
+// directory named "{}" at the worktree root.
+//
+// The cleanup is best-effort: errors are logged with slog.Warn and never returned.
+func cleanupBogusRootDir(projectDir string) {
+	bogusDir := filepath.Join(projectDir, "{}")
+	info, err := os.Stat(bogusDir)
+	if err != nil {
+		// Does not exist or inaccessible — nothing to do.
+		return
+	}
+	if !info.IsDir() {
+		return
+	}
+	if err := os.RemoveAll(bogusDir); err != nil {
+		slog.Warn("session_end: could not remove bogus {} directory",
+			"path", bogusDir,
+			"error", err,
+		)
+		return
+	}
+	slog.Info("session_end: removed bogus {} directory caused by unresolved agent memory path",
+		"path", bogusDir,
 	)
 }
