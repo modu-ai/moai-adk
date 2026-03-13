@@ -55,6 +55,12 @@ func symError() string    { return cliError.Render("\u2717") }
 func symWarning() string  { return cliWarn.Render("!") }
 func symProgress() string { return cliMuted.Render("\u25CB") }
 
+// fileBackup holds a file path and its backed-up content for merging.
+type fileBackup struct {
+	path string
+	data []byte
+}
+
 var updateCmd = &cobra.Command{
 	Use:     "update",
 	Short:   "Sync MoAI-ADK project templates to the latest version",
@@ -523,6 +529,21 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	var configBackupPath string
 	// Backup of user's .gitignore content for EntryMerge after deploy
 	var gitignoreBackup []byte
+	// Backups of mergeable files for 3-way merge after deploy
+	var mergeableBackups []fileBackup
+
+	// collectMergeableFiles returns a list of files that should be merged
+	// using the 3-way merge engine during update.
+	// Note: .moai/config/sections/*.yaml files are already handled by
+	// restoreMoaiConfig with 3-way merge, so they are excluded here.
+	collectMergeableFiles := func(projectRoot string) []string {
+		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig
+		return []string{
+			".mcp.json",
+			".claude/settings.json",
+			".moai/status_line.sh",
+		}
+	}
 
 	// Execute each step with progress reporting
 	for i, step := range steps {
@@ -552,6 +573,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			gitignorePath := filepath.Join(projectRoot, ".gitignore")
 			if data, readErr := os.ReadFile(gitignorePath); readErr == nil {
 				gitignoreBackup = data
+			}
+			// Backup mergeable files for 3-way merge after deploy
+			mergeableFiles := collectMergeableFiles(projectRoot)
+			for _, mf := range mergeableFiles {
+				mfPath := filepath.Join(projectRoot, mf)
+				if data, readErr := os.ReadFile(mfPath); readErr == nil {
+					mergeableBackups = append(mergeableBackups, fileBackup{path: mf, data: data})
+				}
 			}
 			if reporter != nil {
 				reporter.StepComplete("Configuration backed up")
@@ -586,6 +615,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", symWarning(), mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", symSuccess())
+				}
+			}
+			// Merge user-customized files using 3-way merge engine
+			if len(mergeableBackups) > 0 {
+				if err := mergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
+					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", symWarning(), err)
 				}
 			}
 		default:
@@ -772,6 +807,103 @@ func mergeGitignoreFile(gitignorePath string, userBackup []byte) error {
 	}
 
 	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
+}
+
+// mergeUserFiles performs 3-way merge for user-customized files after template deployment.
+// It uses the manifest's TemplateHash as the base, user's backed-up content as current,
+// and the newly deployed template as updated. This preserves user customizations while
+// incorporating template changes.
+func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) error {
+	// Load embedded templates to get original template content for base version
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		return fmt.Errorf("load embedded templates: %w", err)
+	}
+
+	// Load manifest to get template hashes for base version
+	mgr := manifest.NewManager()
+	if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
+		return fmt.Errorf("load manifest: %w", loadErr)
+	}
+
+	// Create merge engine
+	engine := merge.NewEngine()
+
+	var mergedCount int
+	for _, fb := range backups {
+		destPath := filepath.Join(projectRoot, fb.path)
+
+		// Read newly deployed file (updated version)
+		updatedContent, err := os.ReadFile(destPath)
+		if err != nil {
+			// File might not exist in new template version - keep user's version
+			if writeErr := os.WriteFile(destPath, fb.data, defs.FilePerm); writeErr != nil {
+				return fmt.Errorf("restore removed file %s: %w", fb.path, writeErr)
+			}
+			_, _ = fmt.Fprintf(out, "  %s %s preserved (removed in new template)\n", symSuccess(), fb.path)
+			mergedCount++
+			continue
+		}
+
+		// Get original template content from embedded filesystem for base version
+		// Try both with and without leading dot
+		possiblePaths := []string{fb.path, strings.TrimPrefix(fb.path, ".")}
+		var baseContent []byte
+		for _, p := range possiblePaths {
+			if data, readErr := fs.ReadFile(embedded, p); readErr == nil {
+				baseContent = data
+				break
+			}
+		}
+
+		// Perform 3-way merge: base (original template), current (user's backup), updated (new template)
+		// If base is not available, treat as new file - preserve user content
+		if baseContent == nil {
+			// No base available - this might be a user-created file
+			// Prefer user's content but merge if compatible
+			if string(fb.data) == string(updatedContent) {
+				continue // No change needed
+			}
+			// Keep user's version as-is
+			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
+				return fmt.Errorf("restore user file %s: %w", fb.path, err)
+			}
+			_, _ = fmt.Fprintf(out, "  %s %s user content preserved\n", symSuccess(), fb.path)
+			mergedCount++
+			continue
+		}
+
+		// Use merge engine for proper 3-way merge
+		result, mergeErr := engine.MergeFile(context.Background(), fb.path, baseContent, fb.data, updatedContent)
+		if mergeErr != nil {
+			// Merge failed - preserve user's version
+			_, _ = fmt.Fprintf(out, "  %s %s merge failed, preserving user version: %v\n", symWarning(), fb.path, mergeErr)
+			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
+				return fmt.Errorf("preserve user file %s: %w", fb.path, err)
+			}
+			mergedCount++
+			continue
+		}
+
+		// Write merged result
+		if err := os.WriteFile(destPath, result.Content, defs.FilePerm); err != nil {
+			return fmt.Errorf("write merged file %s: %w", fb.path, err)
+		}
+
+		// Report merge status
+		if result.HasConflict {
+			_, _ = fmt.Fprintf(out, "  %s %s merged with conflicts (user version preferred)\n", symWarning(), fb.path)
+		} else {
+			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", symSuccess(), fb.path)
+		}
+		mergedCount++
+	}
+
+	if mergedCount > 0 {
+		_, _ = fmt.Fprintf(out, "  %s Merged %d file(s) with 3-way merge engine\n", symSuccess(), mergedCount)
+	}
+
+	return nil
 }
 
 // determineChangeType returns a user-friendly description of the change type.
