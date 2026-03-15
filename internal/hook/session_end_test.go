@@ -1013,3 +1013,30 @@ func TestCleanupBogusRootDir_IgnoresFile(t *testing.T) {
 		t.Error("regular file named {} should not have been removed")
 	}
 }
+
+// TestCleanupBogusRootDir_IgnoresSymlink verifies that a symlink named "{}"
+// is not followed or removed (symlink attack prevention).
+func TestCleanupBogusRootDir_IgnoresSymlink(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	realDir := filepath.Join(projectDir, "real-dir")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("setup: create real dir: %v", err)
+	}
+	symlinkPath := filepath.Join(projectDir, "{}")
+	if err := os.Symlink(realDir, symlinkPath); err != nil {
+		t.Fatalf("setup: create symlink: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	// The symlink itself must still exist.
+	if _, err := os.Lstat(symlinkPath); os.IsNotExist(err) {
+		t.Error("symlink named {} should not have been removed")
+	}
+	// The symlink target (real directory) must still exist.
+	if _, err := os.Stat(realDir); os.IsNotExist(err) {
+		t.Error("symlink target should not have been removed")
+	}
+}

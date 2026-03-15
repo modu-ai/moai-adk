@@ -622,7 +622,7 @@ func cleanupGLMSettingsLocal(projectDir string) {
 // The cleanup is best-effort: errors are logged with slog.Warn and never returned.
 func cleanupBogusRootDir(projectDir string) {
 	bogusDir := filepath.Join(projectDir, "{}")
-	info, err := os.Stat(bogusDir)
+	info, err := os.Lstat(bogusDir)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			slog.Warn("session_end: could not stat bogus {} directory",
@@ -630,6 +630,9 @@ func cleanupBogusRootDir(projectDir string) {
 				"error", err,
 			)
 		}
+		return
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
 		return
 	}
 	if !info.IsDir() {
