@@ -50,7 +50,7 @@ jobs:
         id: claude
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # SHA: ba7fa4bcf054319261202aef93d71a89112a8d00 (pinned commit, beyond v1 tag)
-        uses: anthropics/claude-code-action@ba7fa4bcf054319261202aef93d71a89112a8d00
+        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
