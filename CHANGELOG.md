@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.15] - 2026-03-16
+
+### Summary
+
+Two worktree-related bug fixes: automatically removes stale `{}` directories created by an unresolved agent memory path template in git worktrees, and reduces log noise by downgrading worktree fallback messages from INFO to DEBUG.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- `session_end` hook now automatically removes bogus `{}` directories at the project root caused by unresolved agent memory path templates in git worktrees
+- Worktree fallback log messages (add, list, remove, prune, repair) downgraded from INFO to DEBUG to reduce log noise
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.15] - 2026-03-16 (한국어)
+
+### 요약
+
+워크트리 관련 버그 2건 수정: git 워크트리 환경에서 에이전트 메모리 경로 템플릿 미치환으로 생성되는 `{}` 디렉토리를 자동 정리하고, worktree fallback 로그 레벨을 INFO에서 DEBUG로 낮춰 로그 노이즈를 줄였습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- `session_end` 훅에서 git 워크트리 환경의 에이전트 메모리 경로 미치환으로 생성되는 `{}` 디렉토리를 자동 정리
+- worktree fallback 로그 메시지(add, list, remove, prune, repair) 레벨을 INFO에서 DEBUG로 낮춰 로그 노이즈 감소
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.14] - 2026-03-13
 
 ### Summary
