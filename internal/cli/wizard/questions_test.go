@@ -50,6 +50,7 @@ func TestQuestionOrder(t *testing.T) {
 
 	expectedIDs := []string{
 		"project_name",
+		"model_policy",
 		"development_mode",
 		"git_mode",
 		"git_provider",
@@ -124,7 +125,7 @@ func TestRemovedQuestionsAbsent(t *testing.T) {
 		"git_commit_lang",
 		"code_comment_lang",
 		"doc_lang",
-		"model_policy",
+		// model_policy intentionally NOT listed here: it was re-added as a project-level question
 		"agent_teams_mode",
 		"max_teammates",
 		"default_model",
@@ -148,6 +149,7 @@ func TestQuestionsAllPresent(t *testing.T) {
 
 	expectedIDs := []string{
 		"project_name",
+		"model_policy",
 		"development_mode",
 		"git_mode",
 		"git_provider",

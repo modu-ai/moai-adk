@@ -234,9 +234,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if prefs.DocLang != "" {
 			opts.DocLang = prefs.DocLang
 		}
-		if prefs.ModelPolicy != "" {
-			opts.ModelPolicy = prefs.ModelPolicy
-		}
+		// Model policy is now configured per-project via the init wizard.
+		// Profile-level model policy is no longer applied here.
 	}
 
 	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
@@ -272,6 +271,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 		if opts.GitLabInstanceURL == "" {
 			opts.GitLabInstanceURL = result.GitLabInstanceURL
+		}
+		if result.ModelPolicy != "" {
+			opts.ModelPolicy = result.ModelPolicy
 		}
 	}
 
