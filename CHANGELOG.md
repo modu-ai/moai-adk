@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.16] - 2026-03-18
+
+### Summary
+
+Two improvements: adds model policy selection to the `moai init` and `moai update -c` wizards (allowing users to choose High/Medium/Low tier during project setup), and fixes hardcoded macOS user home paths in generated hook and statusline scripts (replacing init-time absolute paths with runtime `$HOME` environment variable).
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- `moai init` and `moai update -c` wizards now include a model policy selection step (High/Medium/Low) allowing users to configure Claude model tier during project initialization
+
+### Fixed
+
+- Generated hook scripts (`handle-*.sh`) and `status_line.sh` no longer embed the init-time absolute home path (`/Users/username/go/bin/moai`); replaced with runtime `$HOME/go/bin/moai` for portability across users and operating systems
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.16] - 2026-03-18 (한국어)
+
+### 요약
+
+두 가지 개선 사항: `moai init` 및 `moai update -c` 위저드에 모델 정책 선택 기능을 추가(프로젝트 초기화 시 High/Medium/Low 티어 선택 가능)하고, 생성된 훅/statusline 스크립트에 하드코딩된 macOS 사용자 홈 경로를 런타임 `$HOME` 환경변수로 교체하여 이식성을 개선했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- `moai init` 및 `moai update -c` 위저드에 모델 정책 선택 단계 추가 (High/Medium/Low) — 프로젝트 초기화 시 Claude 모델 티어 직접 설정 가능
+
+### 수정됨 (Fixed)
+
+- 생성된 훅 스크립트(`handle-*.sh`) 및 `status_line.sh`에서 init 시점의 절대 경로(`/Users/username/go/bin/moai`) 제거; `$HOME/go/bin/moai` 런타임 환경변수로 교체하여 사용자/OS 간 이식성 개선
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.15] - 2026-03-16
 
 ### Summary
