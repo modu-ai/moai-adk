@@ -644,26 +644,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	_, _ = fmt.Fprintf(out, "\n%s Template sync complete.\n", symSuccess())
 
-	// Show model policy notice when user ran without -c flag
-	configWizard := getBoolFlag(cmd, "config")
-	if !configWizard {
-		boxContent := cliPrimary.Render("Model Policy Configuration") + "\n\n" +
-			"Optimize token usage based on your Claude Code plan:\n" +
-			"  High   - Max $200 plan (opus 23, sonnet 1, haiku 4)\n" +
-			"  Medium - Max $100 plan (opus 4, sonnet 19, haiku 5)\n" +
-			"  Low    - Plus $20 plan (sonnet 12, haiku 16, no opus)\n\n" +
-			"Run: moai update -c"
-		boxStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(cliBorder.GetForeground()).
-			Padding(0, 2).
-			MarginLeft(2)
-		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, boxStyle.Render(boxContent))
-	}
-
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, "To reconfigure your project settings, run:")
+	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
 	_, _ = fmt.Fprintln(out, "   moai update -c")
 
 	// Ensure global settings.json has required env variables
@@ -2028,6 +2010,38 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 		if err := os.WriteFile(gitStratPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write git-strategy.yaml: %w", err)
+		}
+	}
+
+	// Apply model policy to agent definition files (project-level, not profile-level)
+	if result.ModelPolicy != "" {
+		policy := template.ModelPolicy(result.ModelPolicy)
+		if template.IsValidModelPolicy(string(policy)) {
+			mgr := manifest.NewManager()
+			if _, err := mgr.Load(projectRoot); err == nil {
+				if err := template.ApplyModelPolicy(projectRoot, policy, mgr); err != nil {
+					return fmt.Errorf("apply model policy: %w", err)
+				}
+			}
+			// Persist model_policy to system.yaml so it survives future updates
+			systemPath := filepath.Join(sectionsDir, defs.SystemYAML)
+			systemData, _ := os.ReadFile(systemPath)
+			var sys map[string]any
+			if len(systemData) > 0 {
+				_ = yaml.Unmarshal(systemData, &sys)
+			}
+			if sys == nil {
+				sys = make(map[string]any)
+			}
+			moaiSection, _ := sys["moai"].(map[string]any)
+			if moaiSection == nil {
+				moaiSection = make(map[string]any)
+			}
+			moaiSection["model_policy"] = string(policy)
+			sys["moai"] = moaiSection
+			if updatedData, err := yaml.Marshal(sys); err == nil {
+				_ = os.WriteFile(systemPath, updatedData, defs.FilePerm)
+			}
 		}
 	}
 

@@ -16,6 +16,9 @@ type WizardResult struct {
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd
 
+	// Model policy (project-level)
+	ModelPolicy string // Token tier: high, medium, low
+
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team
 	GitProvider       string // Git provider: "github", "gitlab"
