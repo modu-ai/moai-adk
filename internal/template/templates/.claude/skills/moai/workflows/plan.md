@@ -76,6 +76,18 @@ Pre-execution commands: git status, git branch, git log, git diff, find .moai/sp
 
 ## Phase Sequence
 
+### Journal Initialization
+
+When plan workflow begins, record a journal entry:
+- Type: session_start
+- Phase: plan
+- SpecID: to be determined (recorded after SPEC ID generation in Phase 1.5)
+
+After SPEC ID is determined (Phase 1.5), record:
+- Type: checkpoint
+- Phase: plan
+- Context: {spec_id: SPEC-{ID}, spec_title: {title}}
+
 ### Phase 1A: Project Exploration (Optional)
 
 Agent: Explore subagent (read-only codebase analysis)

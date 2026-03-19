@@ -112,15 +112,52 @@ Pre-execution commands: git status, git branch, git log, git diff.
 
 ### Resume Check
 
-Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
-- If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
-- If it does not exist: Create the file now with initial entry:
-  ```
-  ## SPEC-{ID} Progress
+Before Phase 1, check resume context from multiple sources:
 
-  - Started: {current timestamp}
-  ```
+**Step 1 — Journal check** (most granular):
+If `.moai/specs/SPEC-{ID}/journal.jsonl` exists:
+- Read last 20 entries
+- Find most recent `session_end` or `checkpoint` entry
+- Extract: last phase, last status, end reason, files modified, next action
+- If status is "interrupted": this is a crash recovery scenario
+
+**Step 2 — Progress check** (phase-level):
+If `.moai/specs/SPEC-{ID}/progress.md` exists:
+- Load YAML frontmatter (if present) for structured resume data
+- Load body text to identify last completed phase checkpoint
+- If frontmatter `resumable: true`: combine with journal data
+
+**Step 3 — Determine resume point**:
+- If journal has more recent data than progress.md: use journal's checkpoint
+- Otherwise: use progress.md's last completed phase
+- Log: "Resuming SPEC-{ID} from {phase} (source: journal|progress.md)"
+
+**Step 4 — Inject resume context**:
+If resuming, synthesize context summary for the implementation agent:
+- Previous session summary (duration, tokens used, end reason)
+- Completed acceptance criteria
+- Files modified in previous session
+- Next planned action
+- Include this in the Phase 1 agent prompt as "Resume Context" section
+
+If no resume data exists: Create progress.md with initial entry:
+```
+## SPEC-{ID} Progress
+
+- Started: {current timestamp}
+```
 - The progress.md file persists across sessions and enables seamless resume after interruption.
+
+### Journal Recording [AUTOMATIC]
+
+Throughout execution, the orchestrator MUST record journal events at these points:
+- **Session start**: When this workflow begins (type: session_start)
+- **Phase transitions**: When entering/exiting each phase (type: phase_begin/phase_end)
+- **Checkpoints**: After each task completion in Phase 2 (type: checkpoint, with files_modified and next_step)
+- **Session end**: When workflow completes or is interrupted (type: session_end, with reason and tokens_used)
+
+Journal entries are written to `.moai/specs/SPEC-{ID}/journal.jsonl` via append-only writes.
+This is automatic and requires no user interaction.
 
 ---
 

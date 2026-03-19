@@ -66,6 +66,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **mx**: MX tag scan and annotation for codebase
 - **review** (aliases: code-review): Code review with security and MX tag compliance
 - **challenge** (aliases: critique, devil's-advocate): Multi-perspective SPEC critique with 4 viewpoints
+- **resume** (aliases: recover, 이어서): Resume interrupted SPEC work from checkpoint
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
@@ -156,6 +157,14 @@ Phases: SPEC Validation → Parallel Critic Invocation (4 agents) → Question C
 Agents: manager-challenge (primary), critic-tech, critic-business, critic-user, critic-ops
 Flags: --skip-persona tech|business|user|ops, --auto
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/challenge.md
+
+### resume - Resume Interrupted Work
+
+Purpose: Detect and resume interrupted SPEC work from journal checkpoints.
+Phases: Detect Resumable Work → Build Resume Context → Confirm → Execute
+Agents: None (orchestrator-driven)
+Flags: [SPEC-XXX] (optional, auto-detect if omitted)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/resume.md
 
 ### clean - Dead Code Removal
 
