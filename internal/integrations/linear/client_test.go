@@ -250,7 +250,7 @@ func TestSend_NoAPIKey_ReturnsError(t *testing.T) {
 		Message: "메시지",
 	})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), envKey)
+	assert.Contains(t, err.Error(), "not configured")
 }
 
 // TestSend_UnhandledEventType_ReturnsNil는 t.Setenv를 사용하므로 t.Parallel()을 생략한다.
@@ -311,7 +311,7 @@ func TestTest_NoAPIKey_ReturnsError(t *testing.T) {
 	c := NewClient(envKey, "TEAM-001")
 	err := c.Test()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), envKey)
+	assert.Contains(t, err.Error(), "not configured")
 }
 
 // TestTest_HTTPError는 t.Setenv를 사용하므로 t.Parallel()을 생략한다.

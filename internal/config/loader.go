@@ -224,7 +224,7 @@ func loadYAMLFile(dir, filename string, target any) (bool, error) {
 	}
 
 	if err := yaml.Unmarshal(data, target); err != nil {
-		return false, fmt.Errorf("parse %s: %w", filename, ErrInvalidYAML)
+		return false, fmt.Errorf("parse %s: %w", filename, err)
 	}
 
 	return true, nil

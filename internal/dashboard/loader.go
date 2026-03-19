@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -38,7 +39,8 @@ func (l *Loader) LoadMetrics() ([]TaskMetric, error) {
 	for _, f := range files {
 		m, err := l.loadFile(f)
 		if err != nil {
-			continue // skip malformed files
+			slog.Warn("failed to load metrics file", "path", f, "error", err)
+			continue
 		}
 		metrics = append(metrics, m...)
 	}

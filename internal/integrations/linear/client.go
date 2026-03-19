@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -38,7 +39,7 @@ func NewClient(apiKeyEnv, teamID string) *Client {
 func (c *Client) Send(event integrations.NotifyEvent) error {
 	apiKey := os.Getenv(c.apiKeyEnv)
 	if apiKey == "" {
-		return fmt.Errorf("linear API key not set in env var %s", c.apiKeyEnv)
+		return fmt.Errorf("linear API key not configured")
 	}
 
 	switch event.Type {
@@ -55,7 +56,7 @@ func (c *Client) Send(event integrations.NotifyEvent) error {
 func (c *Client) Test() error {
 	apiKey := os.Getenv(c.apiKeyEnv)
 	if apiKey == "" {
-		return fmt.Errorf("linear API key not set in env var %s", c.apiKeyEnv)
+		return fmt.Errorf("linear API key not configured")
 	}
 
 	query := `{"query": "{ viewer { id name } }"}`
@@ -115,7 +116,7 @@ func (c *Client) graphQL(apiKey, query string) ([]byte, error) {
 		return nil, fmt.Errorf("create linear request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -128,7 +129,8 @@ func (c *Client) graphQL(apiKey, query string) ([]byte, error) {
 	}
 
 	var result json.RawMessage
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	limited := io.LimitReader(resp.Body, 10<<20) // 10MB max
+	if err := json.NewDecoder(limited).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode linear response: %w", err)
 	}
 	return result, nil

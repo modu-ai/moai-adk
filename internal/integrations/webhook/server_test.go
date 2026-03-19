@@ -86,9 +86,16 @@ func TestVerifySignature(t *testing.T) {
 // --- handleWebhook HTTP 핸들러 테스트 ---
 
 func TestHandleWebhook_MethodEnforcement(t *testing.T) {
-	t.Parallel()
+	// t.Setenv를 사용하므로 t.Parallel() 생략
+	const secretEnv = "WEBHOOK_SECRET_METHOD"
+	const secretVal = "method-test-secret"
+	t.Setenv(secretEnv, secretVal)
 
-	s := NewServer(8080, "WEBHOOK_SECRET", nil)
+	s := NewServer(8080, secretEnv, nil)
+
+	body := []byte(`{"event":"test"}`)
+	// POST 요청에 사용할 유효한 서명을 미리 계산한다.
+	validSig := computeSignature(body, secretVal)
 
 	tests := []struct {
 		name       string
@@ -103,10 +110,12 @@ func TestHandleWebhook_MethodEnforcement(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			body := []byte(`{"event":"test"}`)
+			// t.Setenv가 사용된 부모 테스트 내에서는 t.Parallel() 호출 금지
 			req := httptest.NewRequest(tc.method, "/webhook", bytes.NewReader(body))
+			// POST 요청에만 유효한 서명을 추가한다. 메서드 거부 검사는 서명 검사 이전에 수행된다.
+			if tc.method == http.MethodPost {
+				req.Header.Set("X-Signature-256", validSig)
+			}
 			w := httptest.NewRecorder()
 
 			s.handleWebhook(w, req)
@@ -149,10 +158,10 @@ func TestHandleWebhook_SignatureVerification(t *testing.T) {
 			wantStatus: http.StatusUnauthorized,
 		},
 		{
-			name:       "시크릿 미설정 — 서명 없이 통과",
+			name:       "시크릿 미설정 — 403 거부",
 			signature:  "",
 			secretSet:  false,
-			wantStatus: http.StatusOK,
+			wantStatus: http.StatusForbidden,
 		},
 	}
 
@@ -181,10 +190,15 @@ func TestHandleWebhook_SignatureVerification(t *testing.T) {
 
 func TestHandleWebhook_InvalidJSON(t *testing.T) {
 	// t.Setenv 사용으로 t.Parallel() 생략
-	t.Setenv("WEBHOOK_SECRET_JSON", "")
-	s := NewServer(8080, "WEBHOOK_SECRET_JSON", nil)
+	const secretEnv = "WEBHOOK_SECRET_JSON"
+	const secretVal = "json-test-secret"
+	t.Setenv(secretEnv, secretVal)
+	s := NewServer(8080, secretEnv, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader([]byte(`not-json`)))
+	// 유효하지 않은 JSON 페이로드에도 서명은 올바르게 설정한다.
+	body := []byte(`not-json`)
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Signature-256", computeSignature(body, secretVal))
 	w := httptest.NewRecorder()
 
 	s.handleWebhook(w, req)
@@ -193,11 +207,14 @@ func TestHandleWebhook_InvalidJSON(t *testing.T) {
 
 func TestHandleWebhook_NilHandler(t *testing.T) {
 	// handler가 nil이어도 패닉 없이 200 반환해야 한다.
-	t.Setenv("WEBHOOK_SECRET_NIL", "")
-	s := NewServer(8080, "WEBHOOK_SECRET_NIL", nil)
+	const secretEnv = "WEBHOOK_SECRET_NIL"
+	const secretVal = "nil-handler-secret"
+	t.Setenv(secretEnv, secretVal)
+	s := NewServer(8080, secretEnv, nil)
 
 	body := []byte(`{"event":"ping"}`)
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Signature-256", computeSignature(body, secretVal))
 	w := httptest.NewRecorder()
 
 	s.handleWebhook(w, req)
@@ -206,15 +223,18 @@ func TestHandleWebhook_NilHandler(t *testing.T) {
 
 func TestHandleWebhook_HandlerError(t *testing.T) {
 	// 핸들러가 에러를 반환하면 500을 응답해야 한다.
-	t.Setenv("WEBHOOK_SECRET_ERR", "")
+	const secretEnv = "WEBHOOK_SECRET_ERR"
+	const secretVal = "handler-err-secret"
+	t.Setenv(secretEnv, secretVal)
 
 	errHandler := EventHandler(func(_ map[string]any) error {
 		return assert.AnError
 	})
-	s := NewServer(8080, "WEBHOOK_SECRET_ERR", errHandler)
+	s := NewServer(8080, secretEnv, errHandler)
 
 	body := []byte(`{"event":"fail"}`)
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Signature-256", computeSignature(body, secretVal))
 	w := httptest.NewRecorder()
 
 	s.handleWebhook(w, req)
@@ -222,17 +242,20 @@ func TestHandleWebhook_HandlerError(t *testing.T) {
 }
 
 func TestHandleWebhook_HandlerReceivesEvent(t *testing.T) {
-	t.Setenv("WEBHOOK_SECRET_EVT", "")
+	const secretEnv = "WEBHOOK_SECRET_EVT"
+	const secretVal = "evt-handler-secret"
+	t.Setenv(secretEnv, secretVal)
 
 	var received map[string]any
 	handler := EventHandler(func(event map[string]any) error {
 		received = event
 		return nil
 	})
-	s := NewServer(8080, "WEBHOOK_SECRET_EVT", handler)
+	s := NewServer(8080, secretEnv, handler)
 
 	body := []byte(`{"type":"spec_complete","spec_id":"SPEC-001"}`)
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Signature-256", computeSignature(body, secretVal))
 	w := httptest.NewRecorder()
 
 	s.handleWebhook(w, req)
@@ -242,7 +265,9 @@ func TestHandleWebhook_HandlerReceivesEvent(t *testing.T) {
 }
 
 func TestHandleWebhook_BodySizeLimit(t *testing.T) {
-	t.Setenv("WEBHOOK_SECRET_SIZE", "")
+	const secretEnv = "WEBHOOK_SECRET_SIZE"
+	const secretVal = "size-limit-secret"
+	t.Setenv(secretEnv, secretVal)
 
 	// 1MB + 1바이트: LimitReader가 잘라내어 JSON 파싱이 실패해야 한다.
 	oversized := make([]byte, 1<<20+1)
@@ -251,8 +276,16 @@ func TestHandleWebhook_BodySizeLimit(t *testing.T) {
 		oversized[i] = 'x'
 	}
 
-	s := NewServer(8080, "WEBHOOK_SECRET_SIZE", nil)
+	// 서버가 LimitReader로 잘라낸 1MB만 읽으므로, 서명은 잘린 부분에 대해 계산한다.
+	// 단, 서명 불일치로 401이 반환될 수 있다. 서버는 본문을 읽은 후 서명을 검사하므로
+	// 잘린 본문의 서명을 계산해도 서버가 읽는 바이트 수와 다를 수 있다.
+	// 따라서 빈 서명을 보내 401이 아닌 400(JSON 파싱 실패) 경로를 확인하는 대신,
+	// 잘린 1MB(1<<20바이트)에 대한 서명을 계산하여 서명 검사를 통과시킨다.
+	truncated := oversized[:1<<20]
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(oversized))
+	req.Header.Set("X-Signature-256", computeSignature(truncated, secretVal))
+
+	s := NewServer(8080, secretEnv, nil)
 	w := httptest.NewRecorder()
 
 	s.handleWebhook(w, req)
@@ -261,11 +294,14 @@ func TestHandleWebhook_BodySizeLimit(t *testing.T) {
 }
 
 func TestHandleWebhook_ResponseBody(t *testing.T) {
-	t.Setenv("WEBHOOK_SECRET_RESP", "")
-	s := NewServer(8080, "WEBHOOK_SECRET_RESP", nil)
+	const secretEnv = "WEBHOOK_SECRET_RESP"
+	const secretVal = "resp-body-secret"
+	t.Setenv(secretEnv, secretVal)
+	s := NewServer(8080, secretEnv, nil)
 
 	body := []byte(`{"ping":true}`)
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Signature-256", computeSignature(body, secretVal))
 	w := httptest.NewRecorder()
 
 	s.handleWebhook(w, req)

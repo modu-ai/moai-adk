@@ -1669,9 +1669,10 @@ func cleanup_old_backups(projectRoot string, keepCount int) int {
 	// Sort backups by name (timestamp) ascending (oldest first)
 	sort.Strings(backups)
 
-	// Delete backups exceeding the keep limit
+	// Delete oldest backups, keeping the most recent keepCount entries
+	toDelete := len(backups) - keepCount
 	deletedCount := 0
-	for _, backupName := range backups[keepCount:] {
+	for _, backupName := range backups[:toDelete] {
 		backupPath := filepath.Join(backupDir, backupName)
 		if err := os.RemoveAll(backupPath); err != nil {
 			// Log error but continue with other backups

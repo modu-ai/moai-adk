@@ -185,9 +185,9 @@ func (rw *ReplayWriter) flushLocked() error {
 	for _, entry := range rw.buf {
 		data, err := json.Marshal(entry)
 		if err != nil {
-			// 이미 쓰인 항목은 버퍼에서 제거하여 중복 방지
-			rw.buf = rw.buf[written:]
-			return fmt.Errorf("marshal replay entry: %w", err)
+			// marshal 실패 항목을 건너뛰어 무한 실패 루프 방지
+			rw.buf = rw.buf[written+1:]
+			return fmt.Errorf("marshal replay entry (skipped): %w", err)
 		}
 		data = append(data, '\n')
 		if _, err := f.Write(data); err != nil {

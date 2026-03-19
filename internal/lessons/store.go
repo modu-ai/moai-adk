@@ -87,13 +87,21 @@ func (s *FileStore) List(filter LessonFilter) ([]*Lesson, error) {
 		return nil, err
 	}
 
-	// Also read global lessons if path is set
+	// Also read global lessons if path is set (deduplicate by ID)
 	if s.globalPath != "" {
 		global, gErr := s.readAll(s.globalPath)
 		if gErr != nil {
 			slog.Warn("failed to read global lessons", "path", s.globalPath, "error", gErr)
 		} else {
-			lessons = append(lessons, global...)
+			seenIDs := make(map[string]bool, len(lessons))
+			for _, l := range lessons {
+				seenIDs[l.ID] = true
+			}
+			for _, l := range global {
+				if !seenIDs[l.ID] {
+					lessons = append(lessons, l)
+				}
+			}
 		}
 	}
 
@@ -224,7 +232,11 @@ func (s *FileStore) writeAll(path string, lessons []*Lesson) error {
 	}
 	f.Close()
 
-	return os.Rename(tmpPath, path)
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("rename lessons file: %w", err)
+	}
+	return nil
 }
 
 func (s *FileStore) matchesFilter(l *Lesson, f LessonFilter) bool {

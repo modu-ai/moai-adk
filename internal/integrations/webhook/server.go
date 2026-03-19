@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 )
 
 // Server receives external webhook events.
@@ -41,8 +42,13 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/health", s.handleHealth)
 
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", s.port),
+		Handler:           mux,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	slog.Info("webhook server starting", "port", s.port)
@@ -69,11 +75,13 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify signature if secret is configured
+	// Verify signature — reject if secret is not configured
 	secret := os.Getenv(s.secretEnv)
 	if secret == "" {
-		slog.Warn("webhook secret not configured, accepting unauthenticated requests")
-	} else {
+		http.Error(w, "webhook secret not configured", http.StatusForbidden)
+		return
+	}
+	{
 		sig := r.Header.Get("X-Signature-256")
 		if !verifySignature(body, sig, secret) {
 			http.Error(w, "invalid signature", http.StatusUnauthorized)
