@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI super agent - unified orchestrator for autonomous development.
   Routes natural language or explicit subcommands (plan, run, sync, fix,
-  loop, mx, project, feedback, review, critic, clean, codemaps, coverage, e2e)
+  loop, mx, project, feedback, review, clean, codemaps, coverage, e2e)
   to specialized agents.
   Use for any development task from planning to deployment.
 allowed-tools: Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
@@ -52,14 +52,6 @@ $ARGUMENTS
 
 When no flag is provided, the system evaluates task complexity and automatically selects between team mode (for complex, multi-domain tasks) and sub-agent mode (for focused, single-domain tasks).
 
-## Effort Routing (Experimental)
-
-- `--effort auto|low|medium|high`: Controls reasoning depth hints injected into agent prompts
-- Default: `auto` (system determines based on task complexity)
-- When `auto`: single-file fixes → low, moderate scope → medium, multi-domain/security → high
-- When effort != medium: Prepend effort hint to all agent prompts in the workflow
-- See `.claude/rules/moai/development/model-policy.md` for effort level definitions and auto-detection logic
-
 ### Priority 1: Explicit Subcommand Matching
 
 [HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
@@ -73,8 +65,6 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **loop**: Iterative auto-fix until completion marker detected
 - **mx**: MX tag scan and annotation for codebase
 - **review** (aliases: code-review): Code review with security and MX tag compliance
-- **critic** (aliases: critique, devil's-advocate): Multi-perspective SPEC critique with 4 viewpoints
-- **resume** (aliases: recover, 이어서): Resume interrupted SPEC work from checkpoint
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
@@ -111,9 +101,9 @@ If the intent is clearly a development task with no specific routing signal, def
 ### plan - SPEC Document Creation
 
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
-Phases: Deep Research (research.md) -> SPEC Planning (with pre-mortem) -> Annotation Cycle (1-6 iterations) -> SPEC Creation -> Handoff Documentation (decisions.md)
+Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue, --consensus
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 
 ### run - DDD/TDD Implementation
@@ -157,22 +147,6 @@ Purpose: Multi-perspective code review with security, performance, quality, and 
 Agents: manager-quality (primary), expert-security
 Flags: --staged, --branch, --security, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team mode: ${CLAUDE_SKILL_DIR}/team/review.md)
-
-### critic - Multi-Perspective SPEC Critique
-
-Purpose: Generate critical questions from tech, business, user, and ops perspectives before implementation.
-Phases: SPEC Validation → Parallel Critic Invocation (4 agents) → Question Consolidation → User Q&A → Report
-Agents: manager-critic (primary), critic-tech, critic-business, critic-user, critic-ops
-Flags: --skip-persona tech|business|user|ops, --auto
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/critic.md
-
-### resume - Resume Interrupted Work
-
-Purpose: Detect and resume interrupted SPEC work from journal checkpoints.
-Phases: Detect Resumable Work → Build Resume Context → Confirm → Execute
-Agents: None (orchestrator-driven)
-Flags: [SPEC-XXX] (optional, auto-detect if omitted)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/resume.md
 
 ### clean - Dead Code Removal
 
@@ -237,7 +211,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo, --consensus, --effort [auto|low|medium|high]. When --deepthink is detected, activate Sequential Thinking MCP for deep analysis before execution. When --consensus is detected, pass it to the plan workflow for consensus planning loop.
+Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo. When --deepthink is detected, activate Sequential Thinking MCP for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
@@ -283,5 +257,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.7.0
-Last Updated: 2026-03-19
+Version: 2.6.0
+Last Updated: 2026-02-25

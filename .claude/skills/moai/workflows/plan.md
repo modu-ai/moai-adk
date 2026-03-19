@@ -53,7 +53,6 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 - No flag: SPEC only by default; user may be prompted based on config
 - --team: Enable team-based exploration (see ${CLAUDE_SKILL_DIR}/team/plan.md for parallel research team)
 - --no-issue: Skip GitHub Issue creation after SPEC generation
-- --consensus: Enable consensus planning — auto-run critic after SPEC creation, apply HIGH severity findings to SPEC, then revalidate with critic-tech
 - resume SPEC-XXX: Continue from last saved draft state
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
@@ -76,18 +75,6 @@ Pre-execution commands: git status, git branch, git log, git diff, find .moai/sp
 ---
 
 ## Phase Sequence
-
-### Journal Initialization
-
-When plan workflow begins, record a journal entry:
-- Type: session_start
-- Phase: plan
-- SpecID: to be determined (recorded after SPEC ID generation in Phase 1.5)
-
-After SPEC ID is determined (Phase 1.5), record:
-- Type: checkpoint
-- Phase: plan
-- Context: {spec_id: SPEC-{ID}, spec_title: {title}}
 
 ### Phase 1A: Project Exploration (Optional)
 
@@ -163,15 +150,7 @@ Tasks for manager-spec:
 - Search for reference implementations: Identify similar patterns in the existing codebase or well-documented approaches that can guide implementation
 - When reference implementations are found, include them in the plan as "Reference: {file_path}:{line_range}" to improve implementation quality
 
-Pre-mortem analysis (required): Before finalizing, manager-spec MUST include a pre-mortem section:
-- "If this SPEC fails, the 3 most likely causes are:"
-  1. {cause 1 with probability assessment}
-  2. {cause 2 with probability assessment}
-  3. {cause 3 with probability assessment}
-- For each cause, include a mitigation strategy
-- This pre-mortem feeds into decisions.md (Phase 2.7) and informs critic agents
-
-Output: Implementation plan with SPEC candidates, EARS structure, technical constraints, and pre-mortem analysis.
+Output: Implementation plan with SPEC candidates, EARS structure, and technical constraints.
 
 Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MUST include the instruction: "DO NOT write implementation code. Focus exclusively on research, analysis, and planning." This separation of thinking and typing is the foundation of effective AI-assisted development.
 
@@ -320,79 +299,6 @@ The SPEC ↔ Issue link enables:
 - run.md Phase 3 uses `issue_number` to include `Fixes #{N}` in commits/PRs
 - sync.md leverages `Fixes #{N}` in PR for automatic Issue closure on merge
 
-### Decision Point 2.5: Critic Gate (Optional)
-
-Tool: AskUserQuestion (at orchestrator level)
-
-Purpose: Offer the user the opportunity to critique the SPEC before proceeding to implementation. This is the insertion point for the PLAN → CRITIC → RUN workflow.
-
-Options:
-- **Skip Critic and Continue** (Recommended): Proceed directly to Git Environment Setup. Suitable for well-understood, low-risk features.
-- **Run Critic**: Execute `/moai critic SPEC-{ID}` to generate multi-perspective critique. Recommended for complex features, new domains, or high-stakes changes.
-- **Run Critic (Auto)**: Execute `/moai critic SPEC-{ID} --auto` to auto-dismiss LOW severity questions.
-
-If user selects "Run Critic" or "Run Critic (Auto)":
-- Execute the critic workflow: Read ${CLAUDE_SKILL_DIR}/workflows/critic.md
-- After critic completes, return to this decision point with updated context
-- If critic resulted in SPEC modifications: Re-validate SPEC before continuing
-
-If user selects "Skip Critic":
-- Continue to Phase 2.7 (Handoff Documentation)
-
-### Decision Point 2.6: Consensus Loop (--consensus flag only)
-
-Triggered when: `--consensus` flag is set AND critic was executed (either from Decision Point 2.5 or auto-triggered by --consensus).
-
-**Auto-trigger rule**: When `--consensus` is set, the Critic Gate (Decision Point 2.5) is automatically executed without user prompt — skip the AskUserQuestion and go directly to critic execution.
-
-**Auto-trigger recommendation**: Even without `--consensus`, auto-recommend consensus when:
-- SPEC spans 3+ domains (e.g., AUTH + API + DB)
-- SPEC involves security or authentication concerns
-- Display: "This SPEC spans multiple domains. Consider using --consensus for higher confidence."
-
-**Consensus Process:**
-
-Step 1 — Filter HIGH severity questions from critic report:
-- Read `.moai/specs/SPEC-{ID}/critic.md`
-- Extract questions where user selected "Modify SPEC" or severity is HIGH and answer reveals a gap
-
-Step 2 — SPEC Modification (if HIGH findings exist):
-- Delegate to manager-spec subagent: "Update the SPEC to address these critic findings: {HIGH findings list}. Preserve existing requirements. Add new requirements or constraints as needed."
-- manager-spec updates spec.md, plan.md, and acceptance.md as needed
-
-Step 3 — Lightweight Revalidation:
-- Invoke critic-tech ONLY (not all 4 critics) on the modified SPEC
-- Budget: ~15K tokens (vs ~27K for full critic)
-- If critic-tech raises new HIGH concerns: Present to user via AskUserQuestion
-  - Accept and proceed
-  - Modify again (maximum 1 additional iteration to prevent infinite loops)
-- If no new HIGH concerns: Consensus achieved, proceed
-
-Step 4 — Update critic.md:
-- Append "Consensus Resolution" section documenting modifications made and revalidation results
-
-Token budget: ~47K maximum (critic ~27K + modification ~5K + revalidation ~15K).
-
-### Phase 2.7: Handoff Documentation — Plan Decisions
-
-Purpose: Record planning decisions for downstream workflows. This creates a persistent record of "why this approach was chosen" that survives context compaction and session boundaries.
-
-Action: After SPEC creation (Phase 2) and optional critic (Decision Point 2.5), generate `.moai/specs/SPEC-{ID}/decisions.md`:
-
-```markdown
-# Decisions Log — SPEC-{ID}
-
-## Plan Phase
-- **Architecture**: {selected approach} — because {rationale}
-- **Rejected Alternatives**: {alternative 1} — because {rejection reason}
-- **Identified Risks**: {risk description and mitigation strategy}
-- **Pre-mortem**: If this SPEC fails, the 3 most likely causes are: {causes}
-```
-
-Content source: Extract from Phase 1B manager-spec output (selected approach, rejected alternatives, risk analysis). If critic was executed, include critic insights that influenced the plan.
-
-This file is append-only — the Run phase will add its own section in Phase 3.
-
 ### Phase 3: Git Environment Setup (Conditional)
 
 Execution conditions: Phase 2 completed successfully AND one of the following:
@@ -526,6 +432,6 @@ All of the following must be verified:
 
 ---
 
-Version: 2.8.0
-Updated: 2026-03-19
-Changes: Added Phase 2.7 Handoff Documentation (decisions.md), --consensus flag for consensus planning with critic revalidation loop, pre-mortem section. Previous: Phase 2.5 GitHub Issue creation (v2.7.0).
+Version: 2.7.0
+Updated: 2026-03-11
+Changes: Added Phase 2.5 GitHub Issue creation with bidirectional SPEC-Issue linking, --no-issue flag, issue_number SPEC frontmatter field.

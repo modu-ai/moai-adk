@@ -55,109 +55,23 @@ Before execution, load these essential files:
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
 - .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
-- .moai/specs/SPEC-{ID}/critic.md (critic report: if exists, load to inform implementation decisions and address raised concerns)
 - .moai/project/structure.md (architecture context for implementation decisions)
 - .moai/project/tech.md (technology stack context)
 - .moai/project/codemaps/ directory listing (architecture maps for dependency and module understanding)
-
-## Progress Reporting Guidelines [HARD]
-
-MoAI MUST provide clear progress visibility to users during agent execution. Use the templates from `.claude/output-styles/moai/moai.md` Agent Lifecycle Templates section.
-
-### When to Report Progress
-
-1. **Before Agent() Call**: Always display Agent Dispatch template
-   - Show which agent is being called
-   - Show phase context and task description
-   - Show delegation context (from where, to what goal)
-
-2. **During Agent() Execution**: Display Agent Progress template periodically
-   - For long-running agents (>30 seconds): update every ~20-30 seconds
-   - Show current activity and completion status
-   - Show LSP state if applicable
-
-3. **After Agent() Completion**: Always display Agent Complete template
-   - Show files modified, tests run, issues found
-   - Show deliverables created
-   - Note any escalations or next steps
-
-4. **Automatic Skill Triggers**: Display Skill Activation template
-   - When /simplify is automatically invoked (Phase 2.10)
-   - When /batch is triggered for parallel execution (Batch Mode Decision)
-   - Show trigger conditions and execution scope
-
-5. **Parallel Execution**: Display Parallel Execution Dashboard
-   - When multiple agents run in parallel (batch mode, team mode)
-   - Update progress bars for each active agent
-   - Show overall completion percentage
-
-### Reporting Priority
-
-[HARD] Progress reporting is MANDATORY for:
-- All Agent() calls (dispatch → progress → completion)
-- All automatic skill triggers (/simplify, /batch)
-- All phase transitions
-
-### Template Reference
-
-Use templates from `.claude/output-styles/moai/moai.md`:
-- Agent Dispatch
-- Agent Progress
-- Agent Complete
-- Skill Activation
-- Parallel Execution Dashboard
-- Workflow Progress
 
 Pre-execution commands: git status, git branch, git log, git diff.
 
 ### Resume Check
 
-Before Phase 1, check resume context from multiple sources:
+Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
+- If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
+- If it does not exist: Create the file now with initial entry:
+  ```
+  ## SPEC-{ID} Progress
 
-**Step 1 — Journal check** (most granular):
-If `.moai/specs/SPEC-{ID}/journal.jsonl` exists:
-- Read last 20 entries
-- Find most recent `session_end` or `checkpoint` entry
-- Extract: last phase, last status, end reason, files modified, next action
-- If status is "interrupted": this is a crash recovery scenario
-
-**Step 2 — Progress check** (phase-level):
-If `.moai/specs/SPEC-{ID}/progress.md` exists:
-- Load YAML frontmatter (if present) for structured resume data
-- Load body text to identify last completed phase checkpoint
-- If frontmatter `resumable: true`: combine with journal data
-
-**Step 3 — Determine resume point**:
-- If journal has more recent data than progress.md: use journal's checkpoint
-- Otherwise: use progress.md's last completed phase
-- Log: "Resuming SPEC-{ID} from {phase} (source: journal|progress.md)"
-
-**Step 4 — Inject resume context**:
-If resuming, synthesize context summary for the implementation agent:
-- Previous session summary (duration, tokens used, end reason)
-- Completed acceptance criteria
-- Files modified in previous session
-- Next planned action
-- Include this in the Phase 1 agent prompt as "Resume Context" section
-
-If no resume data exists: Create progress.md with initial entry:
-```
-## SPEC-{ID} Progress
-
-- Started: {current timestamp}
-```
+  - Started: {current timestamp}
+  ```
 - The progress.md file persists across sessions and enables seamless resume after interruption.
-
-### Journal Recording [AUTOMATIC]
-
-Throughout execution, the orchestrator MUST record journal events at these points:
-- **Session start**: When this workflow begins (type: session_start)
-- **Phase transitions**: When entering/exiting each phase (type: phase_begin/phase_end)
-- **Checkpoints**: After each task completion in Phase 2 (type: checkpoint, with files_modified and next_step)
-- **Session end**: When workflow completes or is interrupted (type: session_end, with reason and tokens_used)
-
-Journal entries are written to `.moai/specs/SPEC-{ID}/journal.jsonl` via append-only writes.
-This is automatic and requires no user interaction.
 
 ---
 
@@ -497,22 +411,6 @@ The run phase enforces LSP-based quality gates as configured in quality.yaml:
 - Zero lint errors required (lsp_quality_gates.run.max_lint_errors: 0)
 - No regression from baseline allowed (lsp_quality_gates.run.allow_regression: false)
 
-### Phase 2.11: Handoff Documentation — Run Decisions
-
-Purpose: Append implementation decisions to the decisions log created during the Plan phase. Records "what actually happened" versus "what was planned" for sync and future reference.
-
-Action: Append Run section to `.moai/specs/SPEC-{ID}/decisions.md`:
-
-```markdown
-## Run Phase
-- **Implementation Decisions**: {key implementation choices made during coding}
-- **Divergence from Plan**: {what changed from the original plan and why}
-- **Technical Debt**: {any shortcuts taken with justification}
-- **Next Context for Sync**: {information the sync phase needs to know}
-```
-
-Content source: Extract from Phase 2 implementation output (divergence tracking, quality findings, simplify report). If decisions.md does not exist (plan was run without this feature), create it with the Run section only.
-
 ### Phase 3: Git Operations (Conditional)
 
 Agent: manager-git subagent
@@ -633,5 +531,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.11.0
-Updated: 2026-03-19. Added Phase 2.11 Handoff Documentation (decisions.md append for run phase). Previous: GitHub Issue linking (v2.10.0).
+Version: 2.10.0
+Updated: 2026-03-11. Added GitHub Issue linking: Phase 3 reads SPEC issue_number for Fixes #N in commits/PRs. Previous: Harness Engineering improvements (v2.9.0).

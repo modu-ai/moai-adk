@@ -52,33 +52,6 @@ Opus 4.6 supports effort levels that control reasoning depth:
 
 MoAI's --deepthink flag triggers high effort for the current turn. This aligns with the "deepthink" keyword behavior in Claude Code.
 
-## Dynamic Effort Routing (Experimental)
-
-The `--effort` flag injects complexity-aware hints into agent prompts without changing the model itself. This works within the existing architecture where model selection is static in agent definitions.
-
-### Effort Flag Values
-
-- `--effort auto` (default when flag omitted): System determines effort based on Intent Router complexity assessment
-- `--effort low`: Inject hint: "This is a straightforward task. Prioritize speed and conciseness over exhaustive analysis."
-- `--effort medium`: No hint injected (default behavior)
-- `--effort high`: Inject hint: "This task requires deep analysis. Be thorough, consider edge cases, and validate assumptions carefully."
-
-### Auto-Detection Logic
-
-When `--effort auto` is active (or no --effort flag), the system maps complexity to effort:
-
-| Complexity Signal | Effort Level |
-|-------------------|-------------|
-| Single file, simple fix | low |
-| Single domain, moderate scope | medium |
-| Multi-domain (3+), security/auth, or SPEC with 5+ requirements | high |
-
-### Integration Points
-
-- SKILL.md Intent Router: Evaluates complexity during routing, passes effort level to workflow
-- Workflow agent prompts: Effort hint prepended to agent instructions when level != medium
-- Compatible with --deepthink: --deepthink overrides --effort for the current turn
-
 ## Rules
 
 - Agent `model` field must be one of: inherit, opus, sonnet, haiku
