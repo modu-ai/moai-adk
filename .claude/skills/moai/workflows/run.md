@@ -55,6 +55,7 @@ Before execution, load these essential files:
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
 - .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
+- .moai/specs/SPEC-{ID}/challenge.md (challenge critique report: if exists, load to inform implementation decisions and address raised concerns)
 - .moai/project/structure.md (architecture context for implementation decisions)
 - .moai/project/tech.md (technology stack context)
 - .moai/project/codemaps/ directory listing (architecture maps for dependency and module understanding)

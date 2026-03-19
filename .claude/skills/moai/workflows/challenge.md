@@ -1,0 +1,201 @@
+---
+name: moai-workflow-challenge
+description: >
+  Multi-perspective SPEC critique workflow. Coordinates 4 critic agents
+  to challenge SPEC documents from tech, business, user, and ops perspectives.
+user-invocable: false
+metadata:
+  version: "1.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-03-19"
+  tags: "challenge, critique, review, spec, devil's advocate"
+
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+triggers:
+  keywords: ["challenge", "critique", "review spec", "devil's advocate", "챌린지", "비판"]
+  agents: ["manager-challenge", "critic-tech", "critic-business", "critic-user", "critic-ops"]
+  phases: ["challenge"]
+---
+
+# Challenge Workflow Orchestration
+
+## Purpose
+
+Generate multi-perspective critical questions about SPEC documents before implementation.
+Inserts between Plan and Run: PLAN → CHALLENGE → RUN → SYNC.
+
+## Scope
+
+- Validates SPEC worth before investing implementation effort
+- Generates challenge.md as a companion artifact to spec.md
+- Optional: can be skipped at user's choice
+
+## Input
+
+- $ARGUMENTS: SPEC-ID to challenge (e.g., SPEC-AUTH-001)
+- --skip-persona tech|business|user|ops: Skip specific critic
+- --auto: Auto-dismiss LOW severity questions
+
+## Context Loading
+
+Before execution, load these files:
+- .moai/specs/SPEC-{ID}/spec.md
+- .moai/specs/SPEC-{ID}/plan.md
+- .moai/specs/SPEC-{ID}/acceptance.md
+- .moai/config/sections/lessons.yaml
+
+---
+
+## Phase Sequence
+
+### Phase 1: SPEC Validity Check
+
+Verify required files exist in .moai/specs/SPEC-{ID}/:
+- spec.md (required)
+- plan.md (required)
+- acceptance.md (required)
+
+If any missing: Report error, suggest running `/moai plan` first, exit.
+
+Create SPEC summary (~1K tokens) for critic agents:
+- Key requirements from spec.md EARS structure
+- Implementation approach from plan.md
+- Success criteria from acceptance.md
+
+### Phase 2: Parallel Critic Invocation
+
+Agent: manager-challenge subagent
+
+The manager-challenge orchestrates 4 critic agents in parallel:
+
+1. **critic-tech** (haiku, permissionMode: plan):
+   - Prompt: "Analyze this SPEC from a technical architecture perspective. Focus on architecture risks, failure scenarios, and scalability concerns."
+   - Input: SPEC summary
+   - Output: 3 questions with severity (HIGH/MEDIUM/LOW) and category
+
+2. **critic-business** (haiku, permissionMode: plan):
+   - Prompt: "Analyze this SPEC from a business value perspective. Focus on revenue impact, cost-benefit, and market fit."
+   - Input: SPEC summary
+   - Output: 3 questions with severity and category
+
+3. **critic-user** (haiku, permissionMode: plan):
+   - Prompt: "Analyze this SPEC from a user experience perspective. Focus on user value, UX impact, and adoption barriers."
+   - Input: SPEC summary
+   - Output: 3 questions with severity and category
+
+4. **critic-ops** (haiku, permissionMode: plan):
+   - Prompt: "Analyze this SPEC from an operations perspective. Focus on operational costs, monitoring needs, and deployment risks."
+   - Input: SPEC summary
+   - Output: 3 questions with severity and category
+
+Skip any persona specified in --skip-persona flag.
+
+Total: Up to 12 questions generated in parallel (~27K token budget).
+
+### Phase 3: Question Consolidation
+
+Manager-challenge consolidates results:
+- Merge all questions (up to 12)
+- Remove semantic duplicates
+- Sort by severity: HIGH → MEDIUM → LOW
+- Assign sequential IDs: Q1 through Q12
+
+### Phase 4: User Q&A Session
+
+Tool: AskUserQuestion (via manager-challenge)
+
+For each question, present:
+```
+[SEVERITY] Category — Critic Perspective
+Question: {question text}
+Context: {why this matters}
+```
+
+User options per question:
+- **Answer** (Recommended): Provide response → recorded in challenge report
+- **Dismiss**: Skip this question → recorded as dismissed
+- **Modify SPEC**: This reveals a gap → flag for SPEC update
+
+If --auto flag is set: All LOW severity questions auto-dismissed.
+
+### Phase 5: Challenge Report Generation
+
+Generate `.moai/specs/SPEC-{ID}/challenge.md`:
+
+```markdown
+---
+spec_id: SPEC-{ID}
+challenge_date: {ISO 8601}
+total_questions: 12
+answered: 8
+dismissed: 4
+spec_modifications: 2
+---
+
+# CHALLENGE Report
+
+## Summary
+- Total Questions: 12
+- Answered: 8
+- Dismissed: 4
+- SPEC Modifications Suggested: 2
+
+## Tech Critic
+
+### Q1: [HIGH] Architecture Risk
+**Question**: {question text}
+**Answer**: {user answer}
+**Impact on SPEC**: {none / Added requirement R-XXX}
+
+### Q2: [MEDIUM] Scalability
+**Question**: {question text}
+**Status**: Dismissed
+
+## Business Critic
+...
+
+## User Critic
+...
+
+## Ops Critic
+...
+```
+
+### Phase 6: Learning System Integration
+
+If .moai/config/sections/lessons.yaml has `enabled: true`:
+- Record high-value patterns (questions → SPEC modifications)
+- Record low-value patterns (consistently dismissed questions)
+- Append to .moai/lessons/lessons.jsonl
+
+---
+
+## Decision Points
+
+### Decision Point: Post-Challenge Action
+Tool: AskUserQuestion
+
+Options:
+- **Proceed to Implementation** (Recommended): Continue to /moai run SPEC-{ID}
+- **Modify SPEC**: Return to /moai plan to update the SPEC based on challenge findings
+- **Re-Challenge**: Run challenge again with different perspectives
+- **Cancel**: Archive challenge report and exit
+
+---
+
+## Completion Criteria
+
+- All selected critic agents completed successfully
+- All questions presented to user with responses collected
+- challenge.md generated in .moai/specs/SPEC-{ID}/
+- Learning patterns recorded (if lessons system enabled)
+
+---
+
+Version: 1.0.0
+Updated: 2026-03-19

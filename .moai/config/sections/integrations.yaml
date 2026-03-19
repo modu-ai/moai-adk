@@ -1,0 +1,18 @@
+integrations:
+  slack:
+    enabled: false
+    webhook_url: ""
+    events:
+      - spec_complete
+      - quality_failure
+      - pr_created
+      - budget_alert
+  linear:
+    enabled: false
+    api_key_env: "LINEAR_API_KEY"
+    team_id: ""
+    auto_sync: true
+  webhook:
+    enabled: false
+    port: 8080
+    secret_env: "MOAI_WEBHOOK_SECRET"

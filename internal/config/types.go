@@ -23,6 +23,8 @@ type Config struct {
 	Workflow      WorkflowConfig             `yaml:"workflow"`
 	State         StateConfig                `yaml:"state"`
 	Statusline    models.StatuslineConfig    `yaml:"statusline"`
+	Lessons      LessonsConfig      `yaml:"lessons"`
+	Integrations IntegrationsConfig `yaml:"integrations"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -91,8 +93,9 @@ type GLMModels struct {
 
 // PricingConfig represents the pricing configuration section.
 type PricingConfig struct {
-	TokenBudget  int  `yaml:"token_budget"`
-	CostTracking bool `yaml:"cost_tracking"`
+	TokenBudget    int  `yaml:"token_budget"`
+	BudgetAlertPct int  `yaml:"budget_alert_pct"`
+	CostTracking   bool `yaml:"cost_tracking"`
 }
 
 // RalphConfig represents the Ralph engine configuration section.
@@ -115,6 +118,44 @@ type WorkflowConfig struct {
 // coverage, diagnostics) is stored.
 type StateConfig struct {
 	StateDir string `yaml:"state_dir"`
+}
+
+// LessonsConfig represents the lessons/learning system configuration.
+type LessonsConfig struct {
+	Enabled        bool `yaml:"enabled"`
+	AutoExtract    bool `yaml:"auto_extract"`
+	GlobalSync     bool `yaml:"global_sync"`
+	MaxActive      int  `yaml:"max_active"`
+	InjectionLimit int  `yaml:"injection_limit"`
+}
+
+// IntegrationsConfig represents the external integrations configuration.
+type IntegrationsConfig struct {
+	Slack   SlackConfig   `yaml:"slack"`
+	Linear  LinearConfig  `yaml:"linear"`
+	Webhook WebhookConfig `yaml:"webhook"`
+}
+
+// SlackConfig represents Slack integration configuration.
+type SlackConfig struct {
+	Enabled    bool     `yaml:"enabled"`
+	WebhookURL string   `yaml:"webhook_url"`
+	Events     []string `yaml:"events"`
+}
+
+// LinearConfig represents Linear integration configuration.
+type LinearConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	APIKeyEnv string `yaml:"api_key_env"`
+	TeamID    string `yaml:"team_id"`
+	AutoSync  bool   `yaml:"auto_sync"`
+}
+
+// WebhookConfig represents webhook server configuration.
+type WebhookConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Port      int    `yaml:"port"`
+	SecretEnv string `yaml:"secret_env"`
 }
 
 // LSPQualityGates represents LSP quality gate configuration.
@@ -152,6 +193,7 @@ var sectionNames = []string{
 	"user", "language", "quality", "project",
 	"git_strategy", "git_convention", "system", "llm",
 	"pricing", "ralph", "workflow", "state", "statusline",
+	"lessons", "integrations",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
@@ -201,4 +243,14 @@ type stateFileWrapper struct {
 // statuslineFileWrapper handles the statusline.yaml section file.
 type statuslineFileWrapper struct {
 	Statusline models.StatuslineConfig `yaml:"statusline"`
+}
+
+// lessonsFileWrapper handles the lessons.yaml section file.
+type lessonsFileWrapper struct {
+	Lessons LessonsConfig `yaml:"lessons"`
+}
+
+// integrationsFileWrapper handles the integrations.yaml section file.
+type integrationsFileWrapper struct {
+	Integrations IntegrationsConfig `yaml:"integrations"`
 }

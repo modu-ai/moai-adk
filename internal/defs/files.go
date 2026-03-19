@@ -33,5 +33,7 @@ const (
 	ProjectYAML     = "project.yaml"
 	GitStrategyYAML = "git-strategy.yaml"
 	SystemYAML      = "system.yaml"
-	StatuslineYAML  = "statusline.yaml"
+	StatuslineYAML   = "statusline.yaml"
+	LessonsYAML      = "lessons.yaml"
+	IntegrationsYAML = "integrations.yaml"
 )

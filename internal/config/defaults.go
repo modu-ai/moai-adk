@@ -61,6 +61,11 @@ const (
 	DefaultGitConventionMaxLength           = 100
 
 	DefaultStateDir = ".moai/state"
+
+	DefaultMaxActiveLessons   = 50
+	DefaultInjectionLimit     = 5
+	DefaultWebhookPort        = 8080
+	DefaultBudgetAlertPct     = 80
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
@@ -78,6 +83,8 @@ func NewDefaultConfig() *Config {
 		Ralph:         NewDefaultRalphConfig(),
 		Workflow:      NewDefaultWorkflowConfig(),
 		State:         NewDefaultStateConfig(),
+		Lessons:      NewDefaultLessonsConfig(),
+		Integrations: NewDefaultIntegrationsConfig(),
 	}
 }
 
@@ -196,7 +203,8 @@ func NewDefaultLLMConfig() LLMConfig {
 // NewDefaultPricingConfig returns a PricingConfig with default values.
 func NewDefaultPricingConfig() PricingConfig {
 	return PricingConfig{
-		TokenBudget: DefaultTokenBudget,
+		TokenBudget:    DefaultTokenBudget,
+		BudgetAlertPct: DefaultBudgetAlertPct,
 	}
 }
 
@@ -223,6 +231,37 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 func NewDefaultStateConfig() StateConfig {
 	return StateConfig{
 		StateDir: DefaultStateDir,
+	}
+}
+
+// NewDefaultLessonsConfig returns a LessonsConfig with default values.
+func NewDefaultLessonsConfig() LessonsConfig {
+	return LessonsConfig{
+		Enabled:        true,
+		AutoExtract:    true,
+		GlobalSync:     true,
+		MaxActive:      DefaultMaxActiveLessons,
+		InjectionLimit: DefaultInjectionLimit,
+	}
+}
+
+// NewDefaultIntegrationsConfig returns an IntegrationsConfig with default values.
+func NewDefaultIntegrationsConfig() IntegrationsConfig {
+	return IntegrationsConfig{
+		Slack: SlackConfig{
+			Enabled: false,
+			Events:  []string{"spec_complete", "quality_failure", "pr_created", "budget_alert"},
+		},
+		Linear: LinearConfig{
+			Enabled:   false,
+			APIKeyEnv: "LINEAR_API_KEY",
+			AutoSync:  true,
+		},
+		Webhook: WebhookConfig{
+			Enabled:   false,
+			Port:      DefaultWebhookPort,
+			SecretEnv: "MOAI_WEBHOOK_SECRET",
+		},
 	}
 }
 

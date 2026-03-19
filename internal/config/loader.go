@@ -62,6 +62,12 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
 
+	// Load lessons section
+	l.loadLessonsSection(sectionsDir, cfg)
+
+	// Load integrations section
+	l.loadIntegrationsSection(sectionsDir, cfg)
+
 	return cfg, nil
 }
 
@@ -173,6 +179,34 @@ func (l *Loader) loadStatuslineSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.Statusline = wrapper.Statusline
 		l.loadedSections["statusline"] = true
+	}
+}
+
+// loadLessonsSection loads the lessons configuration section from lessons.yaml.
+func (l *Loader) loadLessonsSection(dir string, cfg *Config) {
+	wrapper := &lessonsFileWrapper{Lessons: cfg.Lessons}
+	loaded, err := loadYAMLFile(dir, "lessons.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load lessons config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Lessons = wrapper.Lessons
+		l.loadedSections["lessons"] = true
+	}
+}
+
+// loadIntegrationsSection loads the integrations configuration section from integrations.yaml.
+func (l *Loader) loadIntegrationsSection(dir string, cfg *Config) {
+	wrapper := &integrationsFileWrapper{Integrations: cfg.Integrations}
+	loaded, err := loadYAMLFile(dir, "integrations.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load integrations config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Integrations = wrapper.Integrations
+		l.loadedSections["integrations"] = true
 	}
 }
 

@@ -21,6 +21,7 @@ const (
 	StateSubdir    = "state"
 	LogsSubdir     = "logs"
 	RankSubdir     = "rank"
+	LessonsSubdir  = "lessons"
 )
 
 // Claude subdirectory segments (relative to ClaudeDir).
