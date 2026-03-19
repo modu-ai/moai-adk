@@ -53,7 +53,7 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 - No flag: SPEC only by default; user may be prompted based on config
 - --team: Enable team-based exploration (see ${CLAUDE_SKILL_DIR}/team/plan.md for parallel research team)
 - --no-issue: Skip GitHub Issue creation after SPEC generation
-- --consensus: Enable consensus planning — auto-run challenge after SPEC creation, apply HIGH severity findings to SPEC, then revalidate with critic-tech
+- --consensus: Enable consensus planning — auto-run critic after SPEC creation, apply HIGH severity findings to SPEC, then revalidate with critic-tech
 - resume SPEC-XXX: Continue from last saved draft state
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
@@ -169,7 +169,7 @@ Pre-mortem analysis (required): Before finalizing, manager-spec MUST include a p
   2. {cause 2 with probability assessment}
   3. {cause 3 with probability assessment}
 - For each cause, include a mitigation strategy
-- This pre-mortem feeds into decisions.md (Phase 2.7) and informs challenge critics
+- This pre-mortem feeds into decisions.md (Phase 2.7) and informs critic agents
 
 Output: Implementation plan with SPEC candidates, EARS structure, technical constraints, and pre-mortem analysis.
 
@@ -320,30 +320,30 @@ The SPEC ↔ Issue link enables:
 - run.md Phase 3 uses `issue_number` to include `Fixes #{N}` in commits/PRs
 - sync.md leverages `Fixes #{N}` in PR for automatic Issue closure on merge
 
-### Decision Point 2.5: Challenge Gate (Optional)
+### Decision Point 2.5: Critic Gate (Optional)
 
 Tool: AskUserQuestion (at orchestrator level)
 
-Purpose: Offer the user the opportunity to challenge the SPEC before proceeding to implementation. This is the insertion point for the PLAN → CHALLENGE → RUN workflow.
+Purpose: Offer the user the opportunity to critique the SPEC before proceeding to implementation. This is the insertion point for the PLAN → CRITIC → RUN workflow.
 
 Options:
-- **Skip Challenge and Continue** (Recommended): Proceed directly to Git Environment Setup. Suitable for well-understood, low-risk features.
-- **Run Challenge**: Execute `/moai challenge SPEC-{ID}` to generate multi-perspective critique. Recommended for complex features, new domains, or high-stakes changes.
-- **Run Challenge (Auto)**: Execute `/moai challenge SPEC-{ID} --auto` to auto-dismiss LOW severity questions.
+- **Skip Critic and Continue** (Recommended): Proceed directly to Git Environment Setup. Suitable for well-understood, low-risk features.
+- **Run Critic**: Execute `/moai critic SPEC-{ID}` to generate multi-perspective critique. Recommended for complex features, new domains, or high-stakes changes.
+- **Run Critic (Auto)**: Execute `/moai critic SPEC-{ID} --auto` to auto-dismiss LOW severity questions.
 
-If user selects "Run Challenge" or "Run Challenge (Auto)":
-- Execute the challenge workflow: Read ${CLAUDE_SKILL_DIR}/workflows/challenge.md
-- After challenge completes, return to this decision point with updated context
-- If challenge resulted in SPEC modifications: Re-validate SPEC before continuing
+If user selects "Run Critic" or "Run Critic (Auto)":
+- Execute the critic workflow: Read ${CLAUDE_SKILL_DIR}/workflows/critic.md
+- After critic completes, return to this decision point with updated context
+- If critic resulted in SPEC modifications: Re-validate SPEC before continuing
 
-If user selects "Skip Challenge":
+If user selects "Skip Critic":
 - Continue to Phase 2.7 (Handoff Documentation)
 
 ### Decision Point 2.6: Consensus Loop (--consensus flag only)
 
-Triggered when: `--consensus` flag is set AND challenge was executed (either from Decision Point 2.5 or auto-triggered by --consensus).
+Triggered when: `--consensus` flag is set AND critic was executed (either from Decision Point 2.5 or auto-triggered by --consensus).
 
-**Auto-trigger rule**: When `--consensus` is set, the Challenge Gate (Decision Point 2.5) is automatically executed without user prompt — skip the AskUserQuestion and go directly to challenge execution.
+**Auto-trigger rule**: When `--consensus` is set, the Critic Gate (Decision Point 2.5) is automatically executed without user prompt — skip the AskUserQuestion and go directly to critic execution.
 
 **Auto-trigger recommendation**: Even without `--consensus`, auto-recommend consensus when:
 - SPEC spans 3+ domains (e.g., AUTH + API + DB)
@@ -352,32 +352,32 @@ Triggered when: `--consensus` flag is set AND challenge was executed (either fro
 
 **Consensus Process:**
 
-Step 1 — Filter HIGH severity questions from challenge report:
-- Read `.moai/specs/SPEC-{ID}/challenge.md`
+Step 1 — Filter HIGH severity questions from critic report:
+- Read `.moai/specs/SPEC-{ID}/critic.md`
 - Extract questions where user selected "Modify SPEC" or severity is HIGH and answer reveals a gap
 
 Step 2 — SPEC Modification (if HIGH findings exist):
-- Delegate to manager-spec subagent: "Update the SPEC to address these challenge findings: {HIGH findings list}. Preserve existing requirements. Add new requirements or constraints as needed."
+- Delegate to manager-spec subagent: "Update the SPEC to address these critic findings: {HIGH findings list}. Preserve existing requirements. Add new requirements or constraints as needed."
 - manager-spec updates spec.md, plan.md, and acceptance.md as needed
 
 Step 3 — Lightweight Revalidation:
 - Invoke critic-tech ONLY (not all 4 critics) on the modified SPEC
-- Budget: ~15K tokens (vs ~27K for full challenge)
+- Budget: ~15K tokens (vs ~27K for full critic)
 - If critic-tech raises new HIGH concerns: Present to user via AskUserQuestion
   - Accept and proceed
   - Modify again (maximum 1 additional iteration to prevent infinite loops)
 - If no new HIGH concerns: Consensus achieved, proceed
 
-Step 4 — Update challenge.md:
+Step 4 — Update critic.md:
 - Append "Consensus Resolution" section documenting modifications made and revalidation results
 
-Token budget: ~47K maximum (challenge ~27K + modification ~5K + revalidation ~15K).
+Token budget: ~47K maximum (critic ~27K + modification ~5K + revalidation ~15K).
 
 ### Phase 2.7: Handoff Documentation — Plan Decisions
 
 Purpose: Record planning decisions for downstream workflows. This creates a persistent record of "why this approach was chosen" that survives context compaction and session boundaries.
 
-Action: After SPEC creation (Phase 2) and optional challenge (Decision Point 2.5), generate `.moai/specs/SPEC-{ID}/decisions.md`:
+Action: After SPEC creation (Phase 2) and optional critic (Decision Point 2.5), generate `.moai/specs/SPEC-{ID}/decisions.md`:
 
 ```markdown
 # Decisions Log — SPEC-{ID}
@@ -389,7 +389,7 @@ Action: After SPEC creation (Phase 2) and optional challenge (Decision Point 2.5
 - **Pre-mortem**: If this SPEC fails, the 3 most likely causes are: {causes}
 ```
 
-Content source: Extract from Phase 1B manager-spec output (selected approach, rejected alternatives, risk analysis). If challenge was executed, include challenge insights that influenced the plan.
+Content source: Extract from Phase 1B manager-spec output (selected approach, rejected alternatives, risk analysis). If critic was executed, include critic insights that influenced the plan.
 
 This file is append-only — the Run phase will add its own section in Phase 3.
 
@@ -528,4 +528,4 @@ All of the following must be verified:
 
 Version: 2.8.0
 Updated: 2026-03-19
-Changes: Added Phase 2.7 Handoff Documentation (decisions.md), --consensus flag for consensus planning with challenge revalidation loop, pre-mortem section. Previous: Phase 2.5 GitHub Issue creation (v2.7.0).
+Changes: Added Phase 2.7 Handoff Documentation (decisions.md), --consensus flag for consensus planning with critic revalidation loop, pre-mortem section. Previous: Phase 2.5 GitHub Issue creation (v2.7.0).

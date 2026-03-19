@@ -16,7 +16,7 @@ Analyze SPEC documents from an operations perspective and generate
 3 critical questions about operational costs, monitoring, and failure risks.
 
 ## Input
-Receives a SPEC summary from manager-challenge.
+Receives a SPEC summary from manager-critic.
 
 ## Analysis Focus Areas
 1. **Operational Cost**: Infrastructure cost impact? Resource requirements?

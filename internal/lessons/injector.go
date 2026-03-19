@@ -38,11 +38,11 @@ func (i *Injector) GetQualityLessons() ([]*Lesson, error) {
 	return i.store.List(filter)
 }
 
-// GetChallengeLessons returns high-value lessons from challenge sessions.
-func (i *Injector) GetChallengeLessons() ([]*Lesson, error) {
+// GetCriticLessons returns high-value lessons from critic sessions.
+func (i *Injector) GetCriticLessons() ([]*Lesson, error) {
 	active := true
 	filter := LessonFilter{
-		Type:   "challenge_pattern",
+		Type:   "critic_pattern",
 		Tags:   []string{"high_value"},
 		Active: &active,
 		Limit:  i.limit,

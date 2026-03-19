@@ -52,16 +52,16 @@ func (e *Extractor) ExtractFromSPECCompletion(specID string, iterations int, tag
 	return e.store.Save(lesson)
 }
 
-// ExtractFromChallenge creates lessons from challenge session outcomes.
-func (e *Extractor) ExtractFromChallenge(specID string, highValueQuestions, dismissedQuestions []string) error {
+// ExtractFromCritic creates lessons from critic session outcomes.
+func (e *Extractor) ExtractFromCritic(specID string, highValueQuestions, dismissedQuestions []string) error {
 	for _, q := range highValueQuestions {
 		lesson := &Lesson{
 			ID:       fmt.Sprintf("ch-%s-hv-%d", specID, time.Now().UnixMilli()),
-			Type:     "challenge_pattern",
+			Type:     "critic_pattern",
 			Source:   specID,
-			Pattern:  fmt.Sprintf("High-value challenge question: %s", q),
+			Pattern:  fmt.Sprintf("High-value critic question: %s", q),
 			Severity: "high",
-			Tags:     []string{"challenge", "high_value"},
+			Tags:     []string{"critic", "high_value"},
 			Active:   true,
 			HitCount: 1,
 		}
@@ -73,11 +73,11 @@ func (e *Extractor) ExtractFromChallenge(specID string, highValueQuestions, dism
 	for _, q := range dismissedQuestions {
 		lesson := &Lesson{
 			ID:       fmt.Sprintf("ch-%s-lv-%d", specID, time.Now().UnixMilli()),
-			Type:     "challenge_pattern",
+			Type:     "critic_pattern",
 			Source:   specID,
-			Pattern:  fmt.Sprintf("Low-value challenge question (dismissed): %s", q),
+			Pattern:  fmt.Sprintf("Low-value critic question (dismissed): %s", q),
 			Severity: "low",
-			Tags:     []string{"challenge", "low_value"},
+			Tags:     []string{"critic", "low_value"},
 			Active:   true,
 			HitCount: 1,
 		}

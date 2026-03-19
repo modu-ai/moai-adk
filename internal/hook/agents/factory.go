@@ -49,8 +49,8 @@ func (f *Factory) CreateHandler(action string) (hook.Handler, error) {
 		return NewSpecHandler(act), nil
 	case "docs":
 		return NewDocsHandler(act), nil
-	case "challenge":
-		return NewChallengeHandler(act), nil
+	case "critic":
+		return NewCriticHandler(act), nil
 	default:
 		return NewDefaultHandler(action), nil
 	}

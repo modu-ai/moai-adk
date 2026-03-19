@@ -55,8 +55,40 @@ func BuildSmartPATH() string {
 		filepath.Join(homeDir, "go", "bin"),     // Go workspace binaries
 	}
 
+	// Cross-platform Node.js runtime paths (volta, bun)
+	// These are stable well-known locations that don't change per Node version,
+	// unlike nvm which uses version-specific paths (handled by bash -l on POSIX).
+	candidates = append(candidates,
+		filepath.Join(homeDir, ".volta", "bin"), // Volta (cross-platform)
+		filepath.Join(homeDir, ".bun", "bin"),   // Bun (cross-platform)
+		filepath.Join(homeDir, ".fnm"),          // fnm shims (cross-platform)
+	)
+
 	// Platform-specific package manager and system paths
 	switch runtime.GOOS {
+	case "windows":
+		// Node.js and npm paths
+		programFiles := os.Getenv("ProgramFiles")
+		appData := os.Getenv("APPDATA")
+		localAppData := os.Getenv("LOCALAPPDATA")
+		if programFiles != "" {
+			candidates = append(candidates, filepath.Join(programFiles, "nodejs"))
+		}
+		if appData != "" {
+			candidates = append(candidates, filepath.Join(appData, "npm"))
+		}
+		if localAppData != "" {
+			candidates = append(candidates, filepath.Join(localAppData, "fnm_multishells"))
+		}
+		// Windows system paths
+		systemRoot := os.Getenv("SystemRoot")
+		if systemRoot == "" {
+			systemRoot = `C:\Windows`
+		}
+		candidates = append(candidates,
+			filepath.Join(systemRoot, "System32"),
+			systemRoot,
+		)
 	case "darwin":
 		candidates = append(candidates,
 			"/opt/homebrew/bin",  // Apple Silicon Homebrew
@@ -64,15 +96,16 @@ func BuildSmartPATH() string {
 			"/usr/local/bin",     // Intel Homebrew / system
 			"/usr/local/sbin",    // Intel Homebrew system
 		)
+		// Standard POSIX system paths
+		candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 	default: // linux, etc.
 		candidates = append(candidates,
 			"/usr/local/bin",
 			"/usr/local/sbin",
 		)
+		// Standard POSIX system paths
+		candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 	}
-
-	// Standard POSIX system paths (always required)
-	candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 
 	// WSL2: append Windows drive-mount paths from the current terminal PATH.
 	// WSL2 maps Windows drives as /mnt/<letter>/ (e.g., /mnt/c/, /mnt/d/),

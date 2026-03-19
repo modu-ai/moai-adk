@@ -16,7 +16,7 @@ Analyze SPEC documents from a technical architecture perspective and generate
 3 critical questions about risks, failure scenarios, and scalability.
 
 ## Input
-Receives a SPEC summary from manager-challenge.
+Receives a SPEC summary from manager-critic.
 
 ## Analysis Focus Areas
 1. **Architecture Risk**: Single points of failure, tight coupling, missing abstractions

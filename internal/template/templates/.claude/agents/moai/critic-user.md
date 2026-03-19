@@ -16,7 +16,7 @@ Analyze SPEC documents from a user perspective and generate
 3 critical questions about user value, UX impact, and adoption barriers.
 
 ## Input
-Receives a SPEC summary from manager-challenge.
+Receives a SPEC summary from manager-critic.
 
 ## Analysis Focus Areas
 1. **User Value**: Does this solve a real user problem? How painful is the problem?

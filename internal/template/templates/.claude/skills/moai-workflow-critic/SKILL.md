@@ -1,5 +1,5 @@
 ---
-name: moai-workflow-challenge
+name: moai-workflow-critic
 description: >
   Multi-perspective SPEC critique system. Launches 4 critic agents (tech, business,
   user, ops) to generate critical questions about SPEC documents before implementation.
@@ -10,7 +10,7 @@ metadata:
   category: "workflow"
   status: "active"
   updated: "2026-03-19"
-  tags: "challenge, critique, review, devil's advocate, pre-mortem, spec review"
+  tags: "critic, critique, review, devil's advocate, pre-mortem, spec review"
 
 progressive_disclosure:
   enabled: true
@@ -18,12 +18,12 @@ progressive_disclosure:
   level2_tokens: 5000
 
 triggers:
-  keywords: ["challenge", "critique", "review spec", "devil's advocate", "챌린지", "비판"]
-  agents: ["manager-challenge", "critic-tech", "critic-business", "critic-user", "critic-ops"]
-  phases: ["challenge"]
+  keywords: ["critic", "critique", "review spec", "devil's advocate", "크리틱", "비판"]
+  agents: ["manager-critic", "critic-tech", "critic-business", "critic-user", "critic-ops"]
+  phases: ["critic"]
 ---
 
-# Challenge Workflow Orchestration
+# Critic Workflow Orchestration
 
 ## Purpose
 
@@ -33,14 +33,14 @@ tech architecture, business value, user experience, and operations.
 
 ## Scope
 
-- Inserts between Plan and Run phases: PLAN → CHALLENGE → RUN
+- Inserts between Plan and Run phases: PLAN → CRITIC → RUN
 - Reads SPEC documents created by /moai plan
-- Generates challenge.md report in the SPEC directory
+- Generates critic.md report in the SPEC directory
 - Optional: can be skipped via Decision Point
 
 ## Input
 
-- $ARGUMENTS: SPEC-ID to challenge (e.g., SPEC-AUTH-001)
+- $ARGUMENTS: SPEC-ID to critique (e.g., SPEC-AUTH-001)
 - --skip-persona tech|business|user|ops: Skip specific critic perspective
 - --auto: Automatically dismiss LOW severity questions
 
@@ -113,14 +113,14 @@ For each question (grouped by severity):
 
 If --auto flag: Automatically dismiss all LOW severity questions.
 
-### Phase 5: Challenge Report Generation
+### Phase 5: Critic Report Generation
 
-Generate `.moai/specs/SPEC-{ID}/challenge.md`:
+Generate `.moai/specs/SPEC-{ID}/critic.md`:
 
 ```yaml
 ---
 spec_id: SPEC-{ID}
-challenge_date: {ISO 8601 timestamp}
+critic_date: {ISO 8601 timestamp}
 total_questions: {N}
 answered: {N}
 dismissed: {N}
@@ -143,7 +143,7 @@ Record patterns for the lessons system:
 
 - All critic agents completed successfully
 - Questions presented to user and responses collected
-- challenge.md generated in SPEC directory
+- critic.md generated in SPEC directory
 - Learning patterns recorded (if lessons enabled)
 
 ---

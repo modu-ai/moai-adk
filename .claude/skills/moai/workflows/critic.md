@@ -1,15 +1,15 @@
 ---
-name: moai-workflow-challenge
+name: moai-workflow-critic
 description: >
   Multi-perspective SPEC critique workflow. Coordinates 4 critic agents
-  to challenge SPEC documents from tech, business, user, and ops perspectives.
+  to critique SPEC documents from tech, business, user, and ops perspectives.
 user-invocable: false
 metadata:
   version: "1.0.0"
   category: "workflow"
   status: "active"
   updated: "2026-03-19"
-  tags: "challenge, critique, review, spec, devil's advocate"
+  tags: "critic, critique, review, spec, devil's advocate"
 
 progressive_disclosure:
   enabled: true
@@ -17,27 +17,27 @@ progressive_disclosure:
   level2_tokens: 5000
 
 triggers:
-  keywords: ["challenge", "critique", "review spec", "devil's advocate", "챌린지", "비판"]
-  agents: ["manager-challenge", "critic-tech", "critic-business", "critic-user", "critic-ops"]
-  phases: ["challenge"]
+  keywords: ["critic", "critique", "review spec", "devil's advocate", "크리틱", "비판"]
+  agents: ["manager-critic", "critic-tech", "critic-business", "critic-user", "critic-ops"]
+  phases: ["critic"]
 ---
 
-# Challenge Workflow Orchestration
+# Critic Workflow Orchestration
 
 ## Purpose
 
 Generate multi-perspective critical questions about SPEC documents before implementation.
-Inserts between Plan and Run: PLAN → CHALLENGE → RUN → SYNC.
+Inserts between Plan and Run: PLAN → CRITIC → RUN → SYNC.
 
 ## Scope
 
 - Validates SPEC worth before investing implementation effort
-- Generates challenge.md as a companion artifact to spec.md
+- Generates critic.md as a companion artifact to spec.md
 - Optional: can be skipped at user's choice
 
 ## Input
 
-- $ARGUMENTS: SPEC-ID to challenge (e.g., SPEC-AUTH-001)
+- $ARGUMENTS: SPEC-ID to critique (e.g., SPEC-AUTH-001)
 - --skip-persona tech|business|user|ops: Skip specific critic
 - --auto: Auto-dismiss LOW severity questions
 
@@ -69,9 +69,9 @@ Create SPEC summary (~1K tokens) for critic agents:
 
 ### Phase 2: Parallel Critic Invocation
 
-Agent: manager-challenge subagent
+Agent: manager-critic subagent
 
-The manager-challenge orchestrates 4 critic agents in parallel:
+The manager-critic orchestrates 4 critic agents in parallel:
 
 1. **critic-tech** (haiku, permissionMode: plan):
    - Prompt: "Analyze this SPEC from a technical architecture perspective. Focus on architecture risks, failure scenarios, and scalability concerns."
@@ -99,7 +99,7 @@ Total: Up to 12 questions generated in parallel (~27K token budget).
 
 ### Phase 3: Question Consolidation
 
-Manager-challenge consolidates results:
+Manager-critic consolidates results:
 - Merge all questions (up to 12)
 - Remove semantic duplicates
 - Sort by severity: HIGH → MEDIUM → LOW
@@ -107,7 +107,7 @@ Manager-challenge consolidates results:
 
 ### Phase 4: User Q&A Session
 
-Tool: AskUserQuestion (via manager-challenge)
+Tool: AskUserQuestion (via manager-critic)
 
 For each question, present:
 ```
@@ -117,7 +117,7 @@ Context: {why this matters}
 ```
 
 User options per question:
-- **Answer** (Recommended): Provide response → recorded in challenge report
+- **Answer** (Recommended): Provide response → recorded in critic report
 - **Dismiss**: Skip this question → recorded as dismissed
 - **Modify SPEC**: This reveals a gap → flag for SPEC update
 
@@ -128,23 +128,23 @@ If --auto flag is set: All LOW severity questions auto-dismissed.
 When invoked from plan.md `--consensus` flow:
 - Phase 4 runs with auto-dismiss for LOW questions
 - "Modify SPEC" selections are collected but NOT immediately applied — they are returned to the plan.md consensus loop (Decision Point 2.6) for batch application
-- The challenge report includes a `consensus_modifications` field listing all requested SPEC changes
+- The critic report includes a `consensus_modifications` field listing all requested SPEC changes
 
-### Phase 5: Challenge Report Generation
+### Phase 5: Critic Report Generation
 
-Generate `.moai/specs/SPEC-{ID}/challenge.md`:
+Generate `.moai/specs/SPEC-{ID}/critic.md`:
 
 ```markdown
 ---
 spec_id: SPEC-{ID}
-challenge_date: {ISO 8601}
+critic_date: {ISO 8601}
 total_questions: 12
 answered: 8
 dismissed: 4
 spec_modifications: 2
 ---
 
-# CHALLENGE Report
+# CRITIC Report
 
 ## Summary
 - Total Questions: 12
@@ -184,14 +184,14 @@ If .moai/config/sections/lessons.yaml has `enabled: true`:
 
 ## Decision Points
 
-### Decision Point: Post-Challenge Action
+### Decision Point: Post-Critic Action
 Tool: AskUserQuestion
 
 Options:
 - **Proceed to Implementation** (Recommended): Continue to /moai run SPEC-{ID}
-- **Modify SPEC**: Return to /moai plan to update the SPEC based on challenge findings
-- **Re-Challenge**: Run challenge again with different perspectives
-- **Cancel**: Archive challenge report and exit
+- **Modify SPEC**: Return to /moai plan to update the SPEC based on critic findings
+- **Re-Critique**: Run critic again with different perspectives
+- **Cancel**: Archive critic report and exit
 
 ---
 
@@ -199,11 +199,11 @@ Options:
 
 - All selected critic agents completed successfully
 - All questions presented to user with responses collected
-- challenge.md generated in .moai/specs/SPEC-{ID}/
+- critic.md generated in .moai/specs/SPEC-{ID}/
 - Learning patterns recorded (if lessons system enabled)
 
 ---
 
 Version: 1.1.0
 Updated: 2026-03-19
-Changes: Added Consensus Mode Integration for --consensus flow from plan.md. Added consensus_modifications field to challenge report.
+Changes: Added Consensus Mode Integration for --consensus flow from plan.md. Added consensus_modifications field to critic report.

@@ -672,6 +672,16 @@ func TestBuildSmartPATH_EssentialDirs(t *testing.T) {
 	if !PathContainsDir(path, goBin, sep) {
 		t.Errorf("PATH should contain %s", goBin)
 	}
+
+	// Node.js runtime paths (volta, bun) must be present on all platforms
+	voltaBin := filepath.Join(homeDir, ".volta", "bin")
+	bunBin := filepath.Join(homeDir, ".bun", "bin")
+	if !PathContainsDir(path, voltaBin, sep) {
+		t.Errorf("PATH should contain %s (volta)", voltaBin)
+	}
+	if !PathContainsDir(path, bunBin, sep) {
+		t.Errorf("PATH should contain %s (bun)", bunBin)
+	}
 }
 
 func TestPathContainsDir_Cases(t *testing.T) {
@@ -701,6 +711,48 @@ func TestPathContainsDir_Cases(t *testing.T) {
 					tt.pathStr, tt.dir, tt.sep, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestBuildSmartPATH_WindowsPaths verifies Windows-specific paths are included.
+func TestBuildSmartPATH_WindowsPaths(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-specific test")
+	}
+
+	path := BuildSmartPATH()
+	sep := string(os.PathListSeparator)
+
+	// Node.js standard install path
+	programFiles := os.Getenv("ProgramFiles")
+	if programFiles != "" {
+		nodejsDir := filepath.Join(programFiles, "nodejs")
+		if !PathContainsDir(path, nodejsDir, sep) {
+			t.Errorf("Windows PATH should contain %s", nodejsDir)
+		}
+	}
+
+	// npm global packages
+	appData := os.Getenv("APPDATA")
+	if appData != "" {
+		npmDir := filepath.Join(appData, "npm")
+		if !PathContainsDir(path, npmDir, sep) {
+			t.Errorf("Windows PATH should contain %s", npmDir)
+		}
+	}
+
+	// Windows system paths
+	systemRoot := os.Getenv("SystemRoot")
+	if systemRoot != "" {
+		system32 := filepath.Join(systemRoot, "System32")
+		if !PathContainsDir(path, system32, sep) {
+			t.Errorf("Windows PATH should contain %s", system32)
+		}
+	}
+
+	// POSIX paths must NOT be present on Windows
+	if PathContainsDir(path, "/usr/bin", sep) {
+		t.Error("Windows PATH should not contain POSIX /usr/bin")
 	}
 }
 

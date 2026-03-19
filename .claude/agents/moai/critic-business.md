@@ -16,7 +16,7 @@ Analyze SPEC documents from a business perspective and generate
 3 critical questions about revenue impact, cost-benefit, and market fit.
 
 ## Input
-Receives a SPEC summary from manager-challenge.
+Receives a SPEC summary from manager-critic.
 
 ## Analysis Focus Areas
 1. **Revenue Impact**: Does this feature drive revenue? How?

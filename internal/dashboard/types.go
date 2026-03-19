@@ -17,7 +17,7 @@ type SPECCost struct {
 
 // PhaseCost tracks costs for a single workflow phase.
 type PhaseCost struct {
-	Phase        string        `json:"phase"` // "plan", "challenge", "run", "sync"
+	Phase        string        `json:"phase"` // "plan", "critic", "run", "sync"
 	Tokens       int64         `json:"tokens"`
 	Duration     time.Duration `json:"duration"`
 	AgentCalls   int           `json:"agent_calls"`

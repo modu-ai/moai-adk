@@ -1,5 +1,5 @@
 // Package lessons provides a learning system that captures patterns from
-// quality gate failures, SPEC completions, and challenge sessions to improve
+// quality gate failures, SPEC completions, and critic sessions to improve
 // future development cycles.
 package lessons
 
@@ -10,7 +10,7 @@ import (
 // Lesson represents a single learned pattern or insight.
 type Lesson struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"type"`       // "quality_failure", "spec_completion", "challenge_pattern"
+	Type      string    `json:"type"`       // "quality_failure", "spec_completion", "critic_pattern"
 	Source    string    `json:"source"`     // SPEC-ID or event that triggered this lesson
 	Pattern   string    `json:"pattern"`    // The pattern description
 	Severity  string    `json:"severity"`   // "high", "medium", "low"
