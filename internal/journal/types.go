@@ -19,6 +19,19 @@ type Entry struct {
 	IssueNumber int               `json:"issue_number,omitempty"`
 }
 
+// ActionEntry represents a single agent action for replay logging.
+// Actions are buffered and flushed periodically or at session boundaries.
+type ActionEntry struct {
+	Timestamp  time.Time `json:"ts"`
+	SessionID  string    `json:"session_id"`
+	AgentName  string    `json:"agent_name"`
+	AgentID    string    `json:"agent_id"`
+	Action     string    `json:"action"`                // "start", "tool_use", "complete", "error"
+	ToolName   string    `json:"tool_name,omitempty"`
+	DurationMS int64     `json:"duration_ms,omitempty"`
+	Details    string    `json:"details,omitempty"`
+}
+
 // ResumeContext is synthesized from journal entries for session recovery.
 type ResumeContext struct {
 	SpecID         string   `json:"spec_id"`

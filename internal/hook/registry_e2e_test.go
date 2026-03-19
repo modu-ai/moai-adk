@@ -54,7 +54,7 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 		},
 		{
 			name:    "SubagentStart dispatches with real handler",
-			handler: NewSubagentStartHandler(),
+			handler: NewSubagentStartHandler(nil),
 			event:   EventSubagentStart,
 			input: &HookInput{
 				SessionID:           "sess-e2e-3",
@@ -430,7 +430,7 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 		},
 		{
 			name:    "SubagentStart round-trip",
-			handler: NewSubagentStartHandler(),
+			handler: NewSubagentStartHandler(nil),
 			event:   EventSubagentStart,
 			input: &HookInput{
 				SessionID:           "sess-e2e-3",

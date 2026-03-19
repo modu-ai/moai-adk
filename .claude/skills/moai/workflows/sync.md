@@ -113,6 +113,7 @@ Before execution, load these essential files:
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/ directory listing (SPEC documents for sync)
+- .moai/specs/SPEC-{ID}/decisions.md (handoff decisions from plan and run phases, if exists)
 - .moai/project/ directory listing (project documents for conditional update)
 - .moai/project/codemaps/ directory listing (architecture maps for conditional update)
 - README.md (current project documentation)
@@ -877,6 +878,7 @@ Detect current branch:
 3. If no PR exists: Create PR via `gh pr create`
    - Title: Derived from SPEC title or branch name
    - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
+   - If `.moai/specs/SPEC-{ID}/decisions.md` exists: Include a "Decisions" section in PR body summarizing key architecture choices, rejected alternatives, and plan-vs-reality divergences from the decisions log
    - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
    - Base: main
    - Labels: auto-detected from changed files
@@ -1039,6 +1041,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.5.0
-Updated: 2026-03-11
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.
+Version: 3.6.0
+Updated: 2026-03-19
+Source: Added decisions.md loading in Context Loading and PR description integration for handoff documentation. Previous: v3.5.0 deep code review, coverage analysis, Context Memory generation.

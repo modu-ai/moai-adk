@@ -134,7 +134,7 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandler())
-	deps.HookRegistry.Register(hook.NewSubagentStartHandler())
+	deps.HookRegistry.Register(hook.NewSubagentStartHandler(nil))
 	deps.HookRegistry.Register(hook.NewUserPromptSubmitHandler())
 	deps.HookRegistry.Register(hook.NewPermissionRequestHandler())
 	deps.HookRegistry.Register(hook.NewTeammateIdleHandler())

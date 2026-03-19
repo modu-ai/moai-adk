@@ -101,7 +101,8 @@ The `project` mode performs comprehensive project-wide synchronization:
 ## Supported Flags
 
 - --pr: Push branch and create/update PR on GitHub after sync. When used, automatically returns to base branch (main/develop) after PR creation (Step 3.3.5).
-- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+- --merge: [DEPRECATED] Auto-merge is now DEFAULT for worktree flows (R3 of SPEC-WORKTREE-002). This flag is kept for backward compatibility but has no effect.
+- --no-merge: Skip auto-merge PR and cleanup. Use this when you want to review the PR manually before merging.
 - --skip-mx: Skip MX tag validation and annotation during sync.
 
 ## Context Loading
@@ -112,9 +113,58 @@ Before execution, load these essential files:
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/ directory listing (SPEC documents for sync)
+- .moai/specs/SPEC-{ID}/decisions.md (handoff decisions from plan and run phases, if exists)
 - .moai/project/ directory listing (project documents for conditional update)
 - .moai/project/codemaps/ directory listing (architecture maps for conditional update)
 - README.md (current project documentation)
+
+## Progress Reporting Guidelines [HARD]
+
+MoAI MUST provide clear progress visibility to users during agent execution. Use the templates from `.claude/output-styles/moai/moai.md` Agent Lifecycle Templates section.
+
+### When to Report Progress
+
+1. **Before Agent() Call**: Always display Agent Dispatch template
+   - Show which agent is being called
+   - Show phase context and task description
+   - Show delegation context (from where, to what goal)
+
+2. **During Agent() Execution**: Display Agent Progress template periodically
+   - For long-running agents (>30 seconds): update every ~20-30 seconds
+   - Show current activity and completion status
+   - Show LSP state if applicable
+
+3. **After Agent() Completion**: Always display Agent Complete template
+   - Show files modified, tests run, issues found
+   - Show deliverables created
+   - Note any escalations or next steps
+
+4. **Automatic Skill Triggers**: Display Skill Activation template
+   - When /simplify is automatically invoked
+   - When /batch is triggered for parallel execution
+   - Show trigger conditions and execution scope
+
+5. **Parallel Execution**: Display Parallel Execution Dashboard
+   - When multiple agents run in parallel (batch mode, team mode)
+   - Update progress bars for each active agent
+   - Show overall completion percentage
+
+### Reporting Priority
+
+[HARD] Progress reporting is MANDATORY for:
+- All Agent() calls (dispatch → progress → completion)
+- All automatic skill triggers (/simplify, /batch)
+- All phase transitions
+
+### Template Reference
+
+Use templates from `.claude/output-styles/moai/moai.md`:
+- Agent Dispatch
+- Agent Progress
+- Agent Complete
+- Skill Activation
+- Parallel Execution Dashboard
+- Workflow Progress
 
 Pre-execution commands: git status, git diff, git branch, git log, find .moai/specs.
 
@@ -828,6 +878,7 @@ Detect current branch:
 3. If no PR exists: Create PR via `gh pr create`
    - Title: Derived from SPEC title or branch name
    - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
+   - If `.moai/specs/SPEC-{ID}/decisions.md` exists: Include a "Decisions" section in PR body summarizing key architecture choices, rejected alternatives, and plan-vs-reality divergences from the decisions log
    - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
    - Base: main
    - Labels: auto-detected from changed files
@@ -990,6 +1041,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.5.0
-Updated: 2026-03-11
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.
+Version: 3.6.0
+Updated: 2026-03-19
+Source: Added decisions.md loading in Context Loading and PR description integration for handoff documentation. Previous: v3.5.0 deep code review, coverage analysis, Context Memory generation.

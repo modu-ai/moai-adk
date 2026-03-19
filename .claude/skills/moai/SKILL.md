@@ -52,6 +52,14 @@ $ARGUMENTS
 
 When no flag is provided, the system evaluates task complexity and automatically selects between team mode (for complex, multi-domain tasks) and sub-agent mode (for focused, single-domain tasks).
 
+## Effort Routing (Experimental)
+
+- `--effort auto|low|medium|high`: Controls reasoning depth hints injected into agent prompts
+- Default: `auto` (system determines based on task complexity)
+- When `auto`: single-file fixes → low, moderate scope → medium, multi-domain/security → high
+- When effort != medium: Prepend effort hint to all agent prompts in the workflow
+- See `.claude/rules/moai/development/model-policy.md` for effort level definitions and auto-detection logic
+
 ### Priority 1: Explicit Subcommand Matching
 
 [HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
@@ -103,9 +111,9 @@ If the intent is clearly a development task with no specific routing signal, def
 ### plan - SPEC Document Creation
 
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
-Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
+Phases: Deep Research (research.md) -> SPEC Planning (with pre-mortem) -> Annotation Cycle (1-6 iterations) -> SPEC Creation -> Handoff Documentation (decisions.md)
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue, --consensus
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 
 ### run - DDD/TDD Implementation
@@ -229,7 +237,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo. When --deepthink is detected, activate Sequential Thinking MCP for deep analysis before execution.
+Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo, --consensus, --effort [auto|low|medium|high]. When --deepthink is detected, activate Sequential Thinking MCP for deep analysis before execution. When --consensus is detected, pass it to the plan workflow for consensus planning loop.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
@@ -275,5 +283,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.6.0
-Last Updated: 2026-02-25
+Version: 2.7.0
+Last Updated: 2026-03-19

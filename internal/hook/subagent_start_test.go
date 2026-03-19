@@ -8,7 +8,7 @@ import (
 func TestSubagentStartHandler_EventType(t *testing.T) {
 	t.Parallel()
 
-	h := NewSubagentStartHandler()
+	h := NewSubagentStartHandler(nil)
 
 	if got := h.EventType(); got != EventSubagentStart {
 		t.Errorf("EventType() = %q, want %q", got, EventSubagentStart)
@@ -51,7 +51,7 @@ func TestSubagentStartHandler_Handle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewSubagentStartHandler()
+			h := NewSubagentStartHandler(nil)
 			ctx := context.Background()
 			got, err := h.Handle(ctx, tt.input)
 

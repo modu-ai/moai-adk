@@ -497,6 +497,22 @@ The run phase enforces LSP-based quality gates as configured in quality.yaml:
 - Zero lint errors required (lsp_quality_gates.run.max_lint_errors: 0)
 - No regression from baseline allowed (lsp_quality_gates.run.allow_regression: false)
 
+### Phase 2.11: Handoff Documentation — Run Decisions
+
+Purpose: Append implementation decisions to the decisions log created during the Plan phase. Records "what actually happened" versus "what was planned" for sync and future reference.
+
+Action: Append Run section to `.moai/specs/SPEC-{ID}/decisions.md`:
+
+```markdown
+## Run Phase
+- **Implementation Decisions**: {key implementation choices made during coding}
+- **Divergence from Plan**: {what changed from the original plan and why}
+- **Technical Debt**: {any shortcuts taken with justification}
+- **Next Context for Sync**: {information the sync phase needs to know}
+```
+
+Content source: Extract from Phase 2 implementation output (divergence tracking, quality findings, simplify report). If decisions.md does not exist (plan was run without this feature), create it with the Run section only.
+
 ### Phase 3: Git Operations (Conditional)
 
 Agent: manager-git subagent
@@ -617,5 +633,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.10.0
-Updated: 2026-03-11. Added GitHub Issue linking: Phase 3 reads SPEC issue_number for Fixes #N in commits/PRs. Previous: Harness Engineering improvements (v2.9.0).
+Version: 2.11.0
+Updated: 2026-03-19. Added Phase 2.11 Handoff Documentation (decisions.md append for run phase). Previous: GitHub Issue linking (v2.10.0).

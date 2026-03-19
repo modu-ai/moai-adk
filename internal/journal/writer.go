@@ -113,6 +113,91 @@ func (w *Writer) LogCheckpoint(sessionID, specID, phase string, ctx map[string]s
 	})
 }
 
+// ReplayWriter buffers agent action entries and flushes them periodically.
+// It writes to a separate replay.jsonl file alongside the journal.
+type ReplayWriter struct {
+	mu     sync.Mutex
+	path   string
+	buf    []ActionEntry
+	bufCap int
+}
+
+// NewReplayWriter creates a replay writer for the given SPEC directory.
+// Entries are buffered (up to bufSize) and flushed on Flush or when the buffer is full.
+func NewReplayWriter(specDir string, bufSize int) *ReplayWriter {
+	if bufSize <= 0 {
+		bufSize = 10
+	}
+	return &ReplayWriter{
+		path:   filepath.Join(specDir, "replay.jsonl"),
+		buf:    make([]ActionEntry, 0, bufSize),
+		bufCap: bufSize,
+	}
+}
+
+// LogAction records an agent action. The entry is buffered and flushed
+// when the buffer reaches capacity. Call Flush at session boundaries to
+// ensure no entries are lost.
+func (rw *ReplayWriter) LogAction(entry ActionEntry) error {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now().UTC()
+	}
+
+	rw.buf = append(rw.buf, entry)
+
+	if len(rw.buf) >= rw.bufCap {
+		return rw.flushLocked()
+	}
+	return nil
+}
+
+// Flush writes all buffered entries to disk. Call this at session end,
+// pre-compact, or periodically to prevent data loss on crash.
+func (rw *ReplayWriter) Flush() error {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	return rw.flushLocked()
+}
+
+// flushLocked writes buffered entries to disk. Caller must hold rw.mu.
+func (rw *ReplayWriter) flushLocked() error {
+	if len(rw.buf) == 0 {
+		return nil
+	}
+
+	dir := filepath.Dir(rw.path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create replay directory: %w", err)
+	}
+
+	f, err := os.OpenFile(rw.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("open replay file: %w", err)
+	}
+	defer f.Close()
+
+	for _, entry := range rw.buf {
+		data, err := json.Marshal(entry)
+		if err != nil {
+			return fmt.Errorf("marshal replay entry: %w", err)
+		}
+		data = append(data, '\n')
+		if _, err := f.Write(data); err != nil {
+			return fmt.Errorf("write replay entry: %w", err)
+		}
+	}
+
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("sync replay file: %w", err)
+	}
+
+	rw.buf = rw.buf[:0]
+	return nil
+}
+
 // LogSessionEnd records a session end event with reason and token usage.
 func (w *Writer) LogSessionEnd(sessionID, specID, phase, reason string, tokensUsed int) error {
 	status := "completed"

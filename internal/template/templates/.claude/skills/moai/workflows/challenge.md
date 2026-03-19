@@ -123,6 +123,13 @@ User options per question:
 
 If --auto flag is set: All LOW severity questions auto-dismissed.
 
+#### Consensus Mode Integration
+
+When invoked from plan.md `--consensus` flow:
+- Phase 4 runs with auto-dismiss for LOW questions
+- "Modify SPEC" selections are collected but NOT immediately applied — they are returned to the plan.md consensus loop (Decision Point 2.6) for batch application
+- The challenge report includes a `consensus_modifications` field listing all requested SPEC changes
+
 ### Phase 5: Challenge Report Generation
 
 Generate `.moai/specs/SPEC-{ID}/challenge.md`:
@@ -197,5 +204,6 @@ Options:
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Updated: 2026-03-19
+Changes: Added Consensus Mode Integration for --consensus flow from plan.md. Added consensus_modifications field to challenge report.
