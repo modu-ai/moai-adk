@@ -25,10 +25,3 @@ type Notifier interface {
 	// IsEnabled returns whether the notifier is configured and enabled.
 	IsEnabled() bool
 }
-
-// NotifyResult represents the result of a notification attempt.
-type NotifyResult struct {
-	Service string `json:"service"`
-	Success bool   `json:"success"`
-	Error   string `json:"error,omitempty"`
-}
