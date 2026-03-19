@@ -9,7 +9,7 @@ description: >
   (use moai-domain-backend instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash(psql:*) Bash(mysql:*) Bash(sqlite3:*) Bash(mongosh:*) Bash(redis-cli:*) Bash(npm:*) Bash(npx:*) Bash(prisma:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.0.0"

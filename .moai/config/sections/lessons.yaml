@@ -1,6 +1,6 @@
 lessons:
-  enabled: true
-  auto_extract: true
-  global_sync: true
-  max_active: 50
-  injection_limit: 5
+    auto_extract: true
+    enabled: true
+    global_sync: true
+    injection_limit: 5
+    max_active: 50

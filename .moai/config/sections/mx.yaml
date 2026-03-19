@@ -269,20 +269,4 @@ mx:
         complexity_warn: 15
         fan_in_anchor: 3
         line_count_warn: 500
-    validation:
-        enabled: true
-        post_tool_use:
-            enabled: true
-            timeout_ms: 500
-        session_end:
-            enabled: true
-            timeout_ms: 4000
-        sync:
-            enforcement: strict
-            skip_flag: "--skip-mx"
-        enforcement_levels:
-            p1_anchor: blocking
-            p2_warn: blocking
-            p3_note: advisory
-            p4_todo: advisory
     version: "2.1"

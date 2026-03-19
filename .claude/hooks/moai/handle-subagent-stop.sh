@@ -16,13 +16,13 @@ if command -v moai &> /dev/null; then
 fi
 
 # Try detected Go bin path from initialization
-if [ -f "/Users/goos/go/bin/moai" ]; then
-	exec "/Users/goos/go/bin/moai" hook subagent-stop < "$temp_file"
+if [ -f "C:/Users/YCR/go/bin/moai" ]; then
+	exec "C:/Users/YCR/go/bin/moai" hook subagent-stop < "$temp_file"
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "/Users/goos/go/bin/moai" ]; then
-	exec "/Users/goos/go/bin/moai" hook subagent-stop < "$temp_file"
+if [ -f "$HOME/go/bin/moai" ]; then
+	exec "$HOME/go/bin/moai" hook subagent-stop < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

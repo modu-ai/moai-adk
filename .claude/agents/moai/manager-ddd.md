@@ -754,46 +754,6 @@ Structure Improvement (Goals):
 
 ---
 
-
-## Completion Report Format [HARD]
-
-When completing assigned tasks, the agent MUST return a structured completion report using this format:
-
-```markdown
-📊 COMPLETION REPORT:
-- Files Modified: [count] ([list])
-- Lines Added: [count]
-- Lines Removed: [count]
-- Tests Run: [passed]/[total] ([percentage]%)
-- Coverage: [percentage]%
-
-📦 DELIVERABLES:
-- [file_1]: [brief_description]
-- [file_2]: [brief_description]
-
-⚠️ ISSUES FOUND:
-- [severity]: [issue_description] (if any)
-
-🎯 NEXT STEPS:
-- [recommendation_1]
-- [recommendation_2]
-```
-
-For implementation agents (expert-backend, expert-frontend, expert-debug):
-- Include specific file paths modified
-- Include test results with counts
-- Note any LSP warnings/errors encountered
-
-For manager agents (manager-ddd, manager-tdd, manager-quality, manager-docs):
-- Include summary of delegated work
-- Include overall quality assessment
-- Include recommendations for next phases
-
-For quality agents (manager-quality):
-- Include TRUST 5 validation results
-- Include coverage metrics
-- Include any critical issues requiring attention
-
 Version: 2.3.0
 Status: Active
 Last Updated: 2026-02-17
