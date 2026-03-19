@@ -60,9 +60,10 @@ func (e *Extractor) ExtractFromSPECCompletion(specID string, iterations int, tag
 
 // ExtractFromCritic creates lessons from critic session outcomes.
 func (e *Extractor) ExtractFromCritic(specID string, highValueQuestions, dismissedQuestions []string) error {
-	for _, q := range highValueQuestions {
+	ts := time.Now().UnixMilli()
+	for i, q := range highValueQuestions {
 		lesson := &Lesson{
-			ID:       fmt.Sprintf("ch-%s-hv-%d", specID, time.Now().UnixMilli()),
+			ID:       fmt.Sprintf("ch-%s-hv-%d-%d", specID, ts, i),
 			Type:     "critic_pattern",
 			Source:   specID,
 			Pattern:  fmt.Sprintf("High-value critic question: %s", q),
@@ -76,9 +77,9 @@ func (e *Extractor) ExtractFromCritic(specID string, highValueQuestions, dismiss
 		}
 	}
 
-	for _, q := range dismissedQuestions {
+	for i, q := range dismissedQuestions {
 		lesson := &Lesson{
-			ID:       fmt.Sprintf("ch-%s-lv-%d", specID, time.Now().UnixMilli()),
+			ID:       fmt.Sprintf("ch-%s-lv-%d-%d", specID, ts, i),
 			Type:     "critic_pattern",
 			Source:   specID,
 			Pattern:  fmt.Sprintf("Low-value critic question (dismissed): %s", q),

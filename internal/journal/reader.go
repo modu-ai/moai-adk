@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -146,13 +147,18 @@ func (r *Reader) readFile(path string) ([]Entry, error) {
 	defer f.Close()
 
 	var entries []Entry
+	var skipped int
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		var e Entry
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
-			continue // skip malformed lines
+			skipped++
+			continue
 		}
 		entries = append(entries, e)
+	}
+	if skipped > 0 {
+		slog.Warn("skipped malformed journal entries", "path", path, "skipped", skipped)
 	}
 	return entries, scanner.Err()
 }

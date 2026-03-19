@@ -1026,7 +1026,7 @@ func TestCleanupBogusRootDir_IgnoresSymlink(t *testing.T) {
 	}
 	symlinkPath := filepath.Join(projectDir, "{}")
 	if err := os.Symlink(realDir, symlinkPath); err != nil {
-		t.Fatalf("setup: create symlink: %v", err)
+		t.Skipf("setup: create symlink: %v (Windows may require elevated privileges)", err)
 	}
 
 	cleanupBogusRootDir(projectDir)

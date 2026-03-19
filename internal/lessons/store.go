@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,8 +89,10 @@ func (s *FileStore) List(filter LessonFilter) ([]*Lesson, error) {
 
 	// Also read global lessons if path is set
 	if s.globalPath != "" {
-		global, err := s.readAll(s.globalPath)
-		if err == nil {
+		global, gErr := s.readAll(s.globalPath)
+		if gErr != nil {
+			slog.Warn("failed to read global lessons", "path", s.globalPath, "error", gErr)
+		} else {
 			lessons = append(lessons, global...)
 		}
 	}
@@ -198,19 +201,30 @@ func (s *FileStore) writeAll(path string, lessons []*Lesson) error {
 		return fmt.Errorf("create lessons directory: %w", err)
 	}
 
-	f, err := os.Create(path)
+	// 임시 파일에 먼저 쓰고 rename하여 부분 쓰기 시 데이터 손실 방지
+	tmpPath := path + ".tmp"
+	f, err := os.Create(tmpPath)
 	if err != nil {
-		return fmt.Errorf("create lessons file: %w", err)
+		return fmt.Errorf("create lessons temp file: %w", err)
 	}
-	defer f.Close()
 
 	enc := json.NewEncoder(f)
 	for _, l := range lessons {
 		if err := enc.Encode(l); err != nil {
+			f.Close()
+			os.Remove(tmpPath)
 			return fmt.Errorf("encode lesson: %w", err)
 		}
 	}
-	return nil
+
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("sync lessons file: %w", err)
+	}
+	f.Close()
+
+	return os.Rename(tmpPath, path)
 }
 
 func (s *FileStore) matchesFilter(l *Lesson, f LessonFilter) bool {

@@ -853,10 +853,26 @@ func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) err
 			}
 
 			if isTemplateRendered {
-				// Template-rendered file: keep newly deployed version (re-rendered with current platform settings)
-				_, _ = fmt.Fprintf(out, "  %s %s re-rendered from template\n", symSuccess(), fb.path)
-				mergedCount++
-				continue
+				// Template-rendered file: try to merge user customizations with new template
+				// If content is identical, no merge needed
+				if string(fb.data) == string(updatedContent) {
+					continue
+				}
+				// For JSON files, use empty base so both user additions and template changes are preserved
+				if strings.HasSuffix(fb.path, ".json") {
+					emptyBase := []byte("{}")
+					result, mergeErr := engine.MergeFile(context.Background(), fb.path, emptyBase, fb.data, updatedContent)
+					if mergeErr == nil {
+						if writeErr := os.WriteFile(destPath, result.Content, defs.FilePerm); writeErr != nil {
+							return fmt.Errorf("write merged template file %s: %w", fb.path, writeErr)
+						}
+						_, _ = fmt.Fprintf(out, "  %s %s re-rendered and user customizations merged\n", symSuccess(), fb.path)
+						mergedCount++
+						continue
+					}
+					// JSON merge failed - fall through to preserve user content
+				}
+				// Non-JSON template-rendered files: fall through to preserve user content
 			}
 
 			// No base and no template - this might be a user-created file

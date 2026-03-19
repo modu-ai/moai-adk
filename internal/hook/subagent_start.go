@@ -27,6 +27,10 @@ func (h *subagentStartHandler) EventType() EventType {
 // Handle processes a SubagentStart event. It logs the subagent startup details
 // and records a replay action entry.
 func (h *subagentStartHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	if input == nil {
+		return &HookOutput{}, nil
+	}
+
 	slog.Info("subagent started",
 		"session_id", input.SessionID,
 		"agent_id", input.AgentID,

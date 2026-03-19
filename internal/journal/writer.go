@@ -181,18 +181,25 @@ func (rw *ReplayWriter) flushLocked() error {
 	}
 	defer f.Close()
 
+	var written int
 	for _, entry := range rw.buf {
 		data, err := json.Marshal(entry)
 		if err != nil {
+			// 이미 쓰인 항목은 버퍼에서 제거하여 중복 방지
+			rw.buf = rw.buf[written:]
 			return fmt.Errorf("marshal replay entry: %w", err)
 		}
 		data = append(data, '\n')
 		if _, err := f.Write(data); err != nil {
+			rw.buf = rw.buf[written:]
 			return fmt.Errorf("write replay entry: %w", err)
 		}
+		written++
 	}
 
 	if err := f.Sync(); err != nil {
+		// 모든 항목이 write되었으므로 버퍼 클리어 (이미 디스크에 기록됨)
+		rw.buf = rw.buf[:0]
 		return fmt.Errorf("sync replay file: %w", err)
 	}
 
