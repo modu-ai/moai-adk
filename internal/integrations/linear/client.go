@@ -17,7 +17,12 @@ type Client struct {
 	apiKeyEnv  string
 	teamID     string
 	httpClient *http.Client
+	// baseURL은 GraphQL 엔드포인트 URL이다. 기본값은 Linear 공식 API URL이며, 테스트에서 오버라이드 가능하다.
+	baseURL string
 }
+
+// linearAPIURL은 Linear GraphQL API의 공식 엔드포인트이다.
+const linearAPIURL = "https://api.linear.app/graphql"
 
 // NewClient creates a new Linear API client.
 func NewClient(apiKeyEnv, teamID string) *Client {
@@ -25,6 +30,7 @@ func NewClient(apiKeyEnv, teamID string) *Client {
 		apiKeyEnv:  apiKeyEnv,
 		teamID:     teamID,
 		httpClient: &http.Client{Timeout: 15 * time.Second},
+		baseURL:    linearAPIURL,
 	}
 }
 
@@ -104,7 +110,7 @@ func (c *Client) addComment(apiKey string, event integrations.NotifyEvent) error
 }
 
 func (c *Client) graphQL(apiKey, query string) ([]byte, error) {
-	req, err := http.NewRequest("POST", "https://api.linear.app/graphql", bytes.NewBufferString(query))
+	req, err := http.NewRequest("POST", c.baseURL, bytes.NewBufferString(query))
 	if err != nil {
 		return nil, fmt.Errorf("create linear request: %w", err)
 	}

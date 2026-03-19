@@ -65,15 +65,18 @@ func (r *Reader) BuildResumeContext(specDir string) (*ResumeContext, error) {
 		e := entries[i]
 		switch e.Type {
 		case "session_end":
-			ctx.LastSessionID = e.SessionID
-			ctx.LastPhase = e.Phase
-			ctx.LastStatus = e.Status
-			ctx.TokensUsed = e.TokensUsed
-			if reason, ok := e.Context["reason"]; ok {
-				ctx.EndReason = reason
-			}
-			if e.Status == "interrupted" {
-				ctx.Resumable = true
+			// session_end를 처음 발견하면 기록하고 더 이상 다른 세션의 session_end로 덮어쓰지 않는다.
+			if ctx.LastSessionID == "" {
+				ctx.LastSessionID = e.SessionID
+				ctx.LastPhase = e.Phase
+				ctx.LastStatus = e.Status
+				ctx.TokensUsed = e.TokensUsed
+				if reason, ok := e.Context["reason"]; ok {
+					ctx.EndReason = reason
+				}
+				if e.Status == "interrupted" {
+					ctx.Resumable = true
+				}
 			}
 		case "checkpoint":
 			if ctx.NextAction == "" {
