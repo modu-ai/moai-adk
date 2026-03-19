@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -2270,7 +2271,7 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 			tt.setup(t, root)
 
 			var buf bytes.Buffer
-			err := cleanMoaiManagedPaths(root, &buf)
+			err := cleanMoaiManagedPaths(root, manifest.NewManager(), &buf)
 
 			if tt.wantErr {
 				if err == nil {

@@ -486,7 +486,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Clean Managed Paths",
 			message: "Removing old MoAI-managed files",
 			execute: func() error {
-				return cleanMoaiManagedPaths(projectRoot, out)
+				return cleanMoaiManagedPaths(projectRoot, mgr, out)
 			},
 		},
 		{
@@ -839,9 +839,27 @@ func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) err
 		}
 
 		// Perform 3-way merge: base (original template), current (user's backup), updated (new template)
-		// If base is not available, treat as new file - preserve user content
+		// If base is not available, check if this is a template-rendered file (.tmpl variant exists)
 		if baseContent == nil {
-			// No base available - this might be a user-created file
+			// Check if a .tmpl variant exists in embedded FS
+			// If so, this file was rendered from a template and the new version should take priority
+			isTemplateRendered := false
+			for _, p := range possiblePaths {
+				tmplPath := p + ".tmpl"
+				if _, readErr := fs.ReadFile(embedded, tmplPath); readErr == nil {
+					isTemplateRendered = true
+					break
+				}
+			}
+
+			if isTemplateRendered {
+				// Template-rendered file: keep newly deployed version (re-rendered with current platform settings)
+				_, _ = fmt.Fprintf(out, "  %s %s re-rendered from template\n", symSuccess(), fb.path)
+				mergedCount++
+				continue
+			}
+
+			// No base and no template - this might be a user-created file
 			// Prefer user's content but merge if compatible
 			if string(fb.data) == string(updatedContent) {
 				continue // No change needed
@@ -1307,7 +1325,7 @@ type BackupMetadata struct {
 // deployment. This ensures stale files are cleaned up during version upgrades.
 // The .moai/config/ directory is deleted entirely (backup was done by the Backup step).
 // Paths that do not exist are silently skipped.
-func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
+func cleanMoaiManagedPaths(projectRoot string, mgr manifest.Manager, out io.Writer) error {
 	type cleanTarget struct {
 		// displayPath is shown in progress messages (e.g., ".claude/settings.json")
 		displayPath string
@@ -1315,12 +1333,15 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 		fullPath string
 		// isGlob indicates the target uses filepath.Glob matching
 		isGlob bool
+		// isFile indicates the target is a single file (not a directory)
+		isFile bool
 	}
 
 	targets := []cleanTarget{
 		{
 			displayPath: filepath.Join(defs.ClaudeDir, defs.SettingsJSON),
 			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.SettingsJSON),
+			isFile:      true,
 		},
 		{
 			displayPath: filepath.Join(defs.ClaudeDir, defs.CommandsMoaiSubdir),
@@ -1349,6 +1370,101 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 		},
 	}
 
+	// isUserCreatedFile checks if a file is marked as user_created in the manifest.
+	// Files with UserCreated provenance MUST be preserved during clean.
+	isUserCreatedFile := func(absPath string) bool {
+		mf := mgr.Manifest()
+		if mf == nil {
+			return false
+		}
+		// Convert absolute path to manifest-relative path (forward-slash normalized)
+		relPath, err := filepath.Rel(projectRoot, absPath)
+		if err != nil {
+			return false
+		}
+		relPath = filepath.ToSlash(relPath)
+		entry, ok := mf.Files[relPath]
+		if !ok {
+			return false
+		}
+		return entry.Provenance == manifest.UserCreated
+	}
+
+	// removeDirectoryPreservingUserCreated walks a directory and removes
+	// only files that are NOT user_created in manifest. Empty dirs are cleaned up.
+	removeDirectoryPreservingUserCreated := func(dirPath string) (preserved int, err error) {
+		info, statErr := os.Stat(dirPath)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				return 0, nil
+			}
+			return 0, statErr
+		}
+		if !info.IsDir() {
+			// Single file target
+			if isUserCreatedFile(dirPath) {
+				return 1, nil
+			}
+			return 0, os.Remove(dirPath)
+		}
+
+		// Walk directory bottom-up: collect files first, then remove
+		var preservedFiles []string
+		walkErr := filepath.WalkDir(dirPath, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if isUserCreatedFile(path) {
+				preservedFiles = append(preservedFiles, path)
+				return nil
+			}
+			// Remove non-user-created file
+			return os.Remove(path)
+		})
+		if walkErr != nil {
+			return len(preservedFiles), walkErr
+		}
+
+		// Clean up empty directories (bottom-up by removing dirs that are now empty)
+		// We reverse-walk to ensure children are processed before parents
+		if len(preservedFiles) == 0 {
+			// No files preserved - safe to remove entire directory tree
+			return 0, os.RemoveAll(dirPath)
+		}
+
+		// Some files preserved - remove only empty subdirectories
+		// Build a set of directories that must be kept (parents of preserved files)
+		keepDirs := make(map[string]bool)
+		for _, pf := range preservedFiles {
+			dir := filepath.Dir(pf)
+			for dir != dirPath && dir != "." && dir != string(filepath.Separator) {
+				keepDirs[dir] = true
+				dir = filepath.Dir(dir)
+			}
+			keepDirs[dirPath] = true
+		}
+
+		// Walk again to find and remove empty dirs
+		var dirs []string
+		_ = filepath.WalkDir(dirPath, func(path string, d os.DirEntry, _ error) error {
+			if d != nil && d.IsDir() && path != dirPath {
+				dirs = append(dirs, path)
+			}
+			return nil
+		})
+		// Remove in reverse order (deepest first)
+		for i := len(dirs) - 1; i >= 0; i-- {
+			if !keepDirs[dirs[i]] {
+				_ = os.Remove(dirs[i]) // Remove only if empty (os.Remove fails on non-empty)
+			}
+		}
+
+		return len(preservedFiles), nil
+	}
+
 	// Process standard targets (files and directories)
 	for _, t := range targets {
 		_, _ = fmt.Fprintf(out, "  %s Removing %s...", symProgress(), t.displayPath)
@@ -1359,16 +1475,46 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 				_, _ = fmt.Fprintf(out, "\r  %s Failed to glob %s: %v\n", symError(), t.displayPath, err)
 				return fmt.Errorf("glob %s: %w", t.displayPath, err)
 			}
+			totalPreserved := 0
 			for _, match := range matches {
-				if err := os.RemoveAll(match); err != nil {
-					_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
-					return fmt.Errorf("remove %s: %w", match, err)
+				preserved, removeErr := removeDirectoryPreservingUserCreated(match)
+				if removeErr != nil {
+					_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, removeErr)
+					return fmt.Errorf("remove %s: %w", match, removeErr)
 				}
+				totalPreserved += preserved
+			}
+			if totalPreserved > 0 {
+				_, _ = fmt.Fprintf(out, "\r  %s Removed %s (preserved %d user-created files)\n", symSuccess(), t.displayPath, totalPreserved)
+			} else {
+				_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
+			}
+			continue
+		}
+
+		if t.isFile {
+			// Single file target - check user_created before removing
+			if _, err := os.Stat(t.fullPath); err != nil {
+				if os.IsNotExist(err) {
+					_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", t.displayPath)
+					continue
+				}
+				_, _ = fmt.Fprintf(out, "\r  %s Failed to stat %s: %v\n", symError(), t.displayPath, err)
+				return fmt.Errorf("stat %s: %w", t.displayPath, err)
+			}
+			if isUserCreatedFile(t.fullPath) {
+				_, _ = fmt.Fprintf(out, "\r  - Preserved %s (user-created)\n", t.displayPath)
+				continue
+			}
+			if err := os.Remove(t.fullPath); err != nil {
+				_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
+				return fmt.Errorf("remove %s: %w", t.displayPath, err)
 			}
 			_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
 			continue
 		}
 
+		// Directory target - preserve user-created files
 		if _, err := os.Stat(t.fullPath); err != nil {
 			if os.IsNotExist(err) {
 				_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", t.displayPath)
@@ -1378,11 +1524,16 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 			return fmt.Errorf("stat %s: %w", t.displayPath, err)
 		}
 
-		if err := os.RemoveAll(t.fullPath); err != nil {
+		preserved, err := removeDirectoryPreservingUserCreated(t.fullPath)
+		if err != nil {
 			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
 			return fmt.Errorf("remove %s: %w", t.displayPath, err)
 		}
-		_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
+		if preserved > 0 {
+			_, _ = fmt.Fprintf(out, "\r  %s Removed %s (preserved %d user-created files)\n", symSuccess(), t.displayPath, preserved)
+		} else {
+			_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
+		}
 	}
 
 	// Clean .moai/config/ entirely - backup was already done by the Backup step.

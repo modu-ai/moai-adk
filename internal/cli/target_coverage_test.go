@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -1041,7 +1042,7 @@ func TestCleanMoaiManagedPaths_AllTargetsAbsent(t *testing.T) {
 	tmpDir := t.TempDir()
 	var buf bytes.Buffer
 
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -1061,7 +1062,7 @@ func TestCleanMoaiManagedPaths_WithExistingTarget(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}

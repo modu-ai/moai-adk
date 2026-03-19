@@ -3,30 +3,12 @@
 # This script forwards stdin JSON to the moai statusline command.
 # Paths are configured during project initialization.
 
-# Debug: stdin JSON을 로그 파일에 저장 (확인 후 DEBUG_STATUSLINE=1 해제)
-DEBUG_LOG="$HOME/.moai/cache/statusline_debug.log"
-
 # Create temp file to store stdin
 temp_file=$(mktemp)
 trap 'rm -f "$temp_file"' EXIT
 
 # Read stdin into temp file
 cat > "$temp_file"
-
-# Debug logging (DEBUG_STATUSLINE=1 설정 시 활성화)
-if [ "${DEBUG_STATUSLINE:-1}" = "1" ]; then
-	mkdir -p "$(dirname "$DEBUG_LOG")"
-	{
-		echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-		echo "--- stdin JSON ---"
-		python3 -m json.tool < "$temp_file" 2>/dev/null || cat "$temp_file"
-		echo ""
-	} >> "$DEBUG_LOG" 2>/dev/null
-	# 로그 파일 100KB 초과 시 자동 정리
-	if [ -f "$DEBUG_LOG" ] && [ "$(wc -c < "$DEBUG_LOG")" -gt 102400 ]; then
-		tail -c 51200 "$DEBUG_LOG" > "${DEBUG_LOG}.tmp" && mv "${DEBUG_LOG}.tmp" "$DEBUG_LOG"
-	fi
-fi
 
 # Load GLM environment variables if configured (for Agent Teams tmux mode)
 if [ -f "$HOME/.moai/.env.glm" ]; then
@@ -40,13 +22,13 @@ if command -v moai &> /dev/null; then
 fi
 
 # Try detected Go bin path from initialization
-if [ -f "/Users/goos/go/bin/moai" ]; then
-	exec "/Users/goos/go/bin/moai" statusline < "$temp_file"
+if [ -f "C:/Users/YCR/go/bin/moai" ]; then
+	exec "C:/Users/YCR/go/bin/moai" statusline < "$temp_file"
 fi
 
 # Try user local bin directory
-if [ -f "/Users/goos/.local/bin/moai" ]; then
-	exec "/Users/goos/.local/bin/moai" statusline < "$temp_file"
+if [ -f "$HOME/.local/bin/moai" ]; then
+	exec "$HOME/.local/bin/moai" statusline < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing statusline gracefully)

@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -1320,7 +1321,7 @@ func TestCleanMoaiManagedPaths_WithExistingPaths(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -2747,7 +2748,7 @@ func TestCleanMoaiManagedPaths_WithFiles(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -2769,7 +2770,7 @@ func TestCleanMoaiManagedPaths_EmptyProject2(t *testing.T) {
 	// No .claude or .moai directories exist
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -3956,7 +3957,7 @@ func TestCleanMoaiManagedPaths_WithExistingFiles(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5936,7 +5937,7 @@ func TestCleanMoaiManagedPaths_WithGlobMatches(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5957,7 +5958,7 @@ func TestCleanMoaiManagedPaths_NonExistentPaths(t *testing.T) {
 
 	// Don't create any paths - they should all be "not found"
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -7025,7 +7026,7 @@ func TestCleanMoaiManagedPaths_WithGlobAndDirs(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -7048,7 +7049,7 @@ func TestCleanMoaiManagedPaths_AllPathsMissing(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := cleanMoaiManagedPaths(tmpDir, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

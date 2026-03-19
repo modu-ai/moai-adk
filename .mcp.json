@@ -3,13 +3,13 @@
   "mcpServers": {
     "context7": {
       "$comment": "Up-to-date documentation and code examples via Context7",
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      "command": "cmd.exe",
+      "args": ["/c", "npx -y @upstash/context7-mcp@latest"]
     },
     "sequential-thinking": {
       "$comment": "Step-by-step reasoning for complex problems",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      "command": "cmd.exe",
+      "args": ["/c", "npx -y @modelcontextprotocol/server-sequential-thinking"]
     }
   },
   "staggeredStartup": {

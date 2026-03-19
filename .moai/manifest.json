@@ -3079,6 +3079,66 @@
       "template_hash": "sha256:63c802f149b235147e1e59d96ffe4ca4bd5d32534b7465ed447477a55958bd2d",
       "deployed_hash": "sha256:63c802f149b235147e1e59d96ffe4ca4bd5d32534b7465ed447477a55958bd2d",
       "current_hash": "sha256:63c802f149b235147e1e59d96ffe4ca4bd5d32534b7465ed447477a55958bd2d"
+    },
+    ".claude/agents/moai/critic-business.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:72956d1c0a87ad8563ddf5e89db1680f196eab9e89dfc014b7c927462552801e",
+      "current_hash": "sha256:72956d1c0a87ad8563ddf5e89db1680f196eab9e89dfc014b7c927462552801e"
+    },
+    ".claude/agents/moai/critic-ops.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:4bb3837c2d73d8396387786ca8f4ddbf1ab2354d59ba1f5584861fc6c3e2e197",
+      "current_hash": "sha256:4bb3837c2d73d8396387786ca8f4ddbf1ab2354d59ba1f5584861fc6c3e2e197"
+    },
+    ".claude/agents/moai/critic-tech.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:32f3f29f52e8d7392644bfa5815269db377149fd02182455c297f6aca1ae7798",
+      "current_hash": "sha256:32f3f29f52e8d7392644bfa5815269db377149fd02182455c297f6aca1ae7798"
+    },
+    ".claude/agents/moai/critic-user.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:9e442c0386dcbdf9246d5a3d6a33d6f268db94095f3be23ca605801e399a9a1d",
+      "current_hash": "sha256:9e442c0386dcbdf9246d5a3d6a33d6f268db94095f3be23ca605801e399a9a1d"
+    },
+    ".claude/agents/moai/manager-critic.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:5f3afed7d21951016ebf96af315eeaad728060bf5947f6ea5c23f2cfe137f181",
+      "current_hash": "sha256:5f3afed7d21951016ebf96af315eeaad728060bf5947f6ea5c23f2cfe137f181"
+    },
+    ".claude/commands/moai/critic.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:b5bb870f2c4048405a23de2196022eb5600f661088efa984defddbad7d848d82",
+      "current_hash": "sha256:b5bb870f2c4048405a23de2196022eb5600f661088efa984defddbad7d848d82"
+    },
+    ".claude/skills/moai-workflow-critic/SKILL.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:ca8996893d4f9163798f2240fe245e116bedc5f8519abfe771080fdc7f34f3ca",
+      "current_hash": "sha256:ca8996893d4f9163798f2240fe245e116bedc5f8519abfe771080fdc7f34f3ca"
+    },
+    ".claude/skills/moai/workflows/critic.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:614e0e900117bd10403e18dc2f4470553deea492fac114090d9b7b40e6587f11",
+      "current_hash": "sha256:614e0e900117bd10403e18dc2f4470553deea492fac114090d9b7b40e6587f11"
+    },
+    ".claude/commands/moai/resume.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:88cba9e21b2fde91311df3af325cc4fda07d30a726a881d56b62dbfa837e9616",
+      "current_hash": "sha256:88cba9e21b2fde91311df3af325cc4fda07d30a726a881d56b62dbfa837e9616"
+    },
+    ".claude/skills/moai/workflows/resume.md": {
+      "provenance": "user_created",
+      "template_hash": "",
+      "deployed_hash": "sha256:57672e962af69155471f684403d3100ca512a7cbaba802289e6071a156ba3d4c",
+      "current_hash": "sha256:57672e962af69155471f684403d3100ca512a7cbaba802289e6071a156ba3d4c"
     }
   }
 }

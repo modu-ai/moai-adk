@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 // --- backupMoaiConfig additional edge case tests ---
@@ -538,7 +539,7 @@ func TestCleanMoaiManagedPaths_OnlyUserFilesPreserved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := cleanMoaiManagedPaths(root, manifest.NewManager(), &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths failed: %v", err)
 	}
