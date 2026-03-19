@@ -55,9 +55,58 @@ Before execution, load these essential files:
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
 - .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
+- .moai/specs/SPEC-{ID}/challenge.md (challenge critique report: if exists, load to inform implementation decisions and address raised concerns)
 - .moai/project/structure.md (architecture context for implementation decisions)
 - .moai/project/tech.md (technology stack context)
 - .moai/project/codemaps/ directory listing (architecture maps for dependency and module understanding)
+
+## Progress Reporting Guidelines [HARD]
+
+MoAI MUST provide clear progress visibility to users during agent execution. Use the templates from `.claude/output-styles/moai/moai.md` Agent Lifecycle Templates section.
+
+### When to Report Progress
+
+1. **Before Agent() Call**: Always display Agent Dispatch template
+   - Show which agent is being called
+   - Show phase context and task description
+   - Show delegation context (from where, to what goal)
+
+2. **During Agent() Execution**: Display Agent Progress template periodically
+   - For long-running agents (>30 seconds): update every ~20-30 seconds
+   - Show current activity and completion status
+   - Show LSP state if applicable
+
+3. **After Agent() Completion**: Always display Agent Complete template
+   - Show files modified, tests run, issues found
+   - Show deliverables created
+   - Note any escalations or next steps
+
+4. **Automatic Skill Triggers**: Display Skill Activation template
+   - When /simplify is automatically invoked (Phase 2.10)
+   - When /batch is triggered for parallel execution (Batch Mode Decision)
+   - Show trigger conditions and execution scope
+
+5. **Parallel Execution**: Display Parallel Execution Dashboard
+   - When multiple agents run in parallel (batch mode, team mode)
+   - Update progress bars for each active agent
+   - Show overall completion percentage
+
+### Reporting Priority
+
+[HARD] Progress reporting is MANDATORY for:
+- All Agent() calls (dispatch → progress → completion)
+- All automatic skill triggers (/simplify, /batch)
+- All phase transitions
+
+### Template Reference
+
+Use templates from `.claude/output-styles/moai/moai.md`:
+- Agent Dispatch
+- Agent Progress
+- Agent Complete
+- Skill Activation
+- Parallel Execution Dashboard
+- Workflow Progress
 
 Pre-execution commands: git status, git branch, git log, git diff.
 

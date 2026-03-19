@@ -299,6 +299,25 @@ The SPEC ↔ Issue link enables:
 - run.md Phase 3 uses `issue_number` to include `Fixes #{N}` in commits/PRs
 - sync.md leverages `Fixes #{N}` in PR for automatic Issue closure on merge
 
+### Decision Point 2.5: Challenge Gate (Optional)
+
+Tool: AskUserQuestion (at orchestrator level)
+
+Purpose: Offer the user the opportunity to challenge the SPEC before proceeding to implementation. This is the insertion point for the PLAN → CHALLENGE → RUN workflow.
+
+Options:
+- **Skip Challenge and Continue** (Recommended): Proceed directly to Git Environment Setup. Suitable for well-understood, low-risk features.
+- **Run Challenge**: Execute `/moai challenge SPEC-{ID}` to generate multi-perspective critique. Recommended for complex features, new domains, or high-stakes changes.
+- **Run Challenge (Auto)**: Execute `/moai challenge SPEC-{ID} --auto` to auto-dismiss LOW severity questions.
+
+If user selects "Run Challenge" or "Run Challenge (Auto)":
+- Execute the challenge workflow: Read ${CLAUDE_SKILL_DIR}/workflows/challenge.md
+- After challenge completes, return to this decision point with updated context
+- If challenge resulted in SPEC modifications: Re-validate SPEC before continuing
+
+If user selects "Skip Challenge":
+- Continue to Phase 3 (Git Environment Setup)
+
 ### Phase 3: Git Environment Setup (Conditional)
 
 Execution conditions: Phase 2 completed successfully AND one of the following:

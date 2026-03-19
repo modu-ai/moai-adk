@@ -1,0 +1,6 @@
+lessons:
+  enabled: true
+  auto_extract: true
+  global_sync: true
+  max_active: 50
+  injection_limit: 5

@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI super agent - unified orchestrator for autonomous development.
   Routes natural language or explicit subcommands (plan, run, sync, fix,
-  loop, mx, project, feedback, review, clean, codemaps, coverage, e2e)
+  loop, mx, project, feedback, review, challenge, clean, codemaps, coverage, e2e)
   to specialized agents.
   Use for any development task from planning to deployment.
 allowed-tools: Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
@@ -65,6 +65,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **loop**: Iterative auto-fix until completion marker detected
 - **mx**: MX tag scan and annotation for codebase
 - **review** (aliases: code-review): Code review with security and MX tag compliance
+- **challenge** (aliases: critique, devil's-advocate): Multi-perspective SPEC critique with 4 viewpoints
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
@@ -147,6 +148,14 @@ Purpose: Multi-perspective code review with security, performance, quality, and 
 Agents: manager-quality (primary), expert-security
 Flags: --staged, --branch, --security, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team mode: ${CLAUDE_SKILL_DIR}/team/review.md)
+
+### challenge - Multi-Perspective SPEC Critique
+
+Purpose: Generate critical questions from tech, business, user, and ops perspectives before implementation.
+Phases: SPEC Validation → Parallel Critic Invocation (4 agents) → Question Consolidation → User Q&A → Report
+Agents: manager-challenge (primary), critic-tech, critic-business, critic-user, critic-ops
+Flags: --skip-persona tech|business|user|ops, --auto
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/challenge.md
 
 ### clean - Dead Code Removal
 
