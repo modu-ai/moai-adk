@@ -25,6 +25,10 @@ func (h *budgetHandler) EventType() EventType {
 
 // Handle checks accumulated token usage against budget thresholds.
 func (h *budgetHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	if input == nil {
+		return &HookOutput{}, nil
+	}
+
 	// Extract token usage from tool response if available
 	if input.ToolResponse != nil {
 		tokens := extractTokenCount(input.ToolResponse)
@@ -54,7 +58,9 @@ func (h *budgetHandler) Handle(ctx context.Context, input *HookInput) (*HookOutp
 			"percent", pct,
 		)
 
-		// Return a system message warning about budget
+		// Return a system message warning about budget.
+		// json.Marshal error is intentionally ignored here: the map contains
+		// only primitive types (string, int64, float64) and cannot fail in practice.
 		msg, _ := json.Marshal(map[string]any{
 			"type":    "budget_alert",
 			"used":    current,

@@ -584,11 +584,7 @@ func TestEnsureGit_AlreadyInitializedIsNoop(t *testing.T) {
 // =============================================================================
 
 func TestBuildAutoUpdateFunc_NilDepsPath(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-	deps = nil
-
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(nil)
 	result, err := fn(context.Background())
 
 	// In test, version is likely "dev" which skips early. If somehow not,
@@ -605,10 +601,7 @@ func TestBuildAutoUpdateFunc_NilDepsPath(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_WithDepsAndMockChecker(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	deps = &Dependencies{
+	d := &Dependencies{
 		UpdateChecker: &mockUpdateChecker{
 			isUpdateAvailFunc: func(current string) (bool, *update.VersionInfo, error) {
 				return false, nil, nil
@@ -617,7 +610,7 @@ func TestBuildAutoUpdateFunc_WithDepsAndMockChecker(t *testing.T) {
 		UpdateOrch: &mockUpdateOrchestrator{},
 	}
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(d)
 	result, err := fn(context.Background())
 	// In test env, version is likely "dev" so it short-circuits
 	if err != nil {

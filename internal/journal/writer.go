@@ -3,6 +3,7 @@ package journal
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sync"
@@ -39,7 +40,8 @@ func (w *Writer) Write(entry Entry) error {
 		entry.Timestamp = time.Now().UTC()
 	}
 	if entry.ID == "" {
-		entry.ID = fmt.Sprintf("%d", time.Now().UnixNano())
+		// Append a random 16-bit suffix to prevent collisions under concurrent writes.
+		entry.ID = fmt.Sprintf("%d-%04x", time.Now().UnixNano(), rand.Int63()&0xFFFF)
 	}
 
 	dir := filepath.Dir(w.path)

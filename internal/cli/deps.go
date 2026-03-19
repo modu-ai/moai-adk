@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
@@ -33,6 +34,7 @@ import (
 // are instantiated and wired together. All CLI commands access
 // dependencies through interfaces only.
 type Dependencies struct {
+	mu             sync.Mutex
 	Config         *config.ConfigManager
 	Git            git.Repository
 	GitBranch      git.BranchManager
@@ -48,6 +50,9 @@ type Dependencies struct {
 	LoopController *loop.LoopController
 	Logger         *slog.Logger
 }
+
+// depsMu guards the package-level deps variable.
+var depsMu sync.RWMutex
 
 // deps is the global dependencies instance, initialized by InitDependencies.
 // CLI commands access this through the package-level variable.
@@ -81,7 +86,7 @@ func InitDependencies() {
 		DefaultRetryCount:     1,
 	})
 
-	deps = &Dependencies{
+	d := &Dependencies{
 		Config:         config.NewConfigManager(),
 		GitOpsManager:  gitOpsMgr,
 		HookProtocol:   hook.NewProtocol(),
@@ -91,7 +96,7 @@ func InitDependencies() {
 	}
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
-	deps.HookRegistry = hook.NewRegistry(deps.Config)
+	d.HookRegistry = hook.NewRegistry(d.Config)
 
 	// Create security scanner for AST-based scanning
 	securityScanner := security.NewSecurityScanner()
@@ -113,51 +118,64 @@ func InitDependencies() {
 	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
 	// Register default hook handlers
-	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
-	deps.HookRegistry.Register(hook.NewSessionEndHandler())
+	d.HookRegistry.Register(hook.NewSessionStartHandler(d.Config))
+	d.HookRegistry.Register(hook.NewSessionEndHandler())
 
 	// Register rank session handler if credentials exist
 	rankHandler, err := hook.EnsureRankSessionHandler()
 	if err != nil {
 		logger.Warn("failed to initialize rank session handler", "error", err)
 	} else if rankHandler != nil {
-		deps.HookRegistry.Register(rankHandler)
+		d.HookRegistry.Register(rankHandler)
 		logger.Info("rank session handler registered")
 	}
 
-	// Register auto-update handler for SessionStart
-	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
+	// Register auto-update handler for SessionStart.
+	// Pass d explicitly so the closure does not capture the global deps variable.
+	d.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc(d)))
 
-	deps.HookRegistry.Register(hook.NewStopHandler())
-	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
-	deps.HookRegistry.Register(hook.NewCompactHandler())
-	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
-	deps.HookRegistry.Register(hook.NewNotificationHandler())
-	deps.HookRegistry.Register(hook.NewSubagentStartHandler(nil))
-	deps.HookRegistry.Register(hook.NewUserPromptSubmitHandler())
-	deps.HookRegistry.Register(hook.NewPermissionRequestHandler())
-	deps.HookRegistry.Register(hook.NewTeammateIdleHandler())
-	deps.HookRegistry.Register(hook.NewTaskCompletedHandler())
-	deps.HookRegistry.Register(hook.NewWorktreeCreateHandler())
-	deps.HookRegistry.Register(hook.NewWorktreeRemoveHandler())
+	d.HookRegistry.Register(hook.NewStopHandler())
+	d.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(d.Config, hook.DefaultSecurityPolicy(), securityScanner))
+	d.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
+	d.HookRegistry.Register(hook.NewCompactHandler())
+	d.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
+	d.HookRegistry.Register(hook.NewNotificationHandler())
+	d.HookRegistry.Register(hook.NewSubagentStartHandler(nil))
+	d.HookRegistry.Register(hook.NewUserPromptSubmitHandler())
+	d.HookRegistry.Register(hook.NewPermissionRequestHandler())
+	d.HookRegistry.Register(hook.NewTeammateIdleHandler())
+	d.HookRegistry.Register(hook.NewTaskCompletedHandler())
+	d.HookRegistry.Register(hook.NewWorktreeCreateHandler())
+	d.HookRegistry.Register(hook.NewWorktreeRemoveHandler())
+
+	depsMu.Lock()
+	deps = d
+	depsMu.Unlock()
 }
 
 // GetDeps returns the current Dependencies instance.
 // Returns nil if InitDependencies has not been called.
 func GetDeps() *Dependencies {
-	return deps
+	depsMu.RLock()
+	d := deps
+	depsMu.RUnlock()
+	return d
 }
 
 // SetDeps replaces the global dependencies (used for testing).
 func SetDeps(d *Dependencies) {
+	depsMu.Lock()
 	deps = d
+	depsMu.Unlock()
 }
 
 // EnsureGit lazily initializes Git-related dependencies.
 // It should be called before using Git, GitBranch, or GitWorktree.
 // Thread-safe: subsequent calls are no-ops if Git is already initialized.
 func (d *Dependencies) EnsureGit(projectRoot string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	if d.Git != nil {
 		return nil
 	}
@@ -175,6 +193,9 @@ func (d *Dependencies) EnsureGit(projectRoot string) error {
 // It should be called before using UpdateChecker or UpdateOrch.
 // Thread-safe: subsequent calls are no-ops if UpdateChecker is already initialized.
 func (d *Dependencies) EnsureUpdate() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	if d.UpdateChecker != nil {
 		return nil
 	}
@@ -220,10 +241,10 @@ func (d *Dependencies) EnsureUpdate() error {
 
 		if isDevVersion {
 			// Dev/RC version: use moai-go-v2 branch releases (tagged with go-v prefix)
-			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
+			apiURL = "https://api.github.com/repos/ycr0123/moai-adk/releases"
 		} else {
 			// Production version: use main branch releases
-			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases/latest"
+			apiURL = "https://api.github.com/repos/ycr0123/moai-adk/releases/latest"
 		}
 	}
 
@@ -236,8 +257,10 @@ func (d *Dependencies) EnsureUpdate() error {
 }
 
 // buildAutoUpdateFunc creates the callback that performs binary self-update.
-// It uses a closure to avoid circular dependencies between hook and update.
-func buildAutoUpdateFunc() hook.AutoUpdateFunc {
+// It accepts the Dependencies pointer explicitly so the closure does not read
+// the package-level global, eliminating a data race between InitDependencies
+// and any goroutine that invokes the hook.
+func buildAutoUpdateFunc(d *Dependencies) hook.AutoUpdateFunc {
 	return func(ctx context.Context) (*hook.AutoUpdateResult, error) {
 		currentVersion := version.GetVersion()
 
@@ -259,21 +282,21 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 		}
 
 		// Initialize update system
-		if deps != nil {
-			if err := deps.EnsureUpdate(); err != nil {
-				if deps.Logger != nil {
-					deps.Logger.Debug("auto-update: failed to initialize update system", "error", err)
+		if d != nil {
+			if err := d.EnsureUpdate(); err != nil {
+				if d.Logger != nil {
+					d.Logger.Debug("auto-update: failed to initialize update system", "error", err)
 				}
 				return nil, err
 			}
 		}
 
-		if deps == nil || deps.UpdateChecker == nil {
+		if d == nil || d.UpdateChecker == nil {
 			return &hook.AutoUpdateResult{Updated: false}, nil
 		}
 
 		// Check for available update via GitHub API
-		available, info, err := deps.UpdateChecker.IsUpdateAvailable(currentVersion)
+		available, info, err := d.UpdateChecker.IsUpdateAvailable(currentVersion)
 		if err != nil {
 			// Cache the failure so we don't retry on every session
 			_ = cache.Set(&update.CacheEntry{
@@ -281,8 +304,8 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 				Available:  false,
 				CurrentVer: currentVersion,
 			})
-			if deps.Logger != nil {
-				deps.Logger.Debug("auto-update: version check failed", "error", err)
+			if d.Logger != nil {
+				d.Logger.Debug("auto-update: version check failed", "error", err)
 			}
 			return nil, err
 		}
@@ -303,14 +326,14 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 		}
 
 		// Perform the update
-		if deps.UpdateOrch == nil {
+		if d.UpdateOrch == nil {
 			return &hook.AutoUpdateResult{Updated: false}, nil
 		}
 
-		result, err := deps.UpdateOrch.Update(ctx)
+		result, err := d.UpdateOrch.Update(ctx)
 		if err != nil {
-			if deps.Logger != nil {
-				deps.Logger.Debug("auto-update: update failed", "error", err)
+			if d.Logger != nil {
+				d.Logger.Debug("auto-update: update failed", "error", err)
 			}
 			return nil, err
 		}
@@ -337,6 +360,9 @@ func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, erro
 // Thread-safe: subsequent calls are no-ops if RankClient is already initialized.
 // Returns an error if RankCredStore is not initialized or has no API key.
 func (d *Dependencies) EnsureRank() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	if d.RankClient != nil {
 		return nil
 	}

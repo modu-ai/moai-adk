@@ -71,7 +71,9 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Verify signature if secret is configured
 	secret := os.Getenv(s.secretEnv)
-	if secret != "" {
+	if secret == "" {
+		slog.Warn("webhook secret not configured, accepting unauthenticated requests")
+	} else {
 		sig := r.Header.Get("X-Signature-256")
 		if !verifySignature(body, sig, secret) {
 			http.Error(w, "invalid signature", http.StatusUnauthorized)

@@ -17,13 +17,16 @@ func NewExtractor(store LessonStore) *Extractor {
 
 // ExtractFromQualityFailure creates a lesson from a quality gate failure.
 func (e *Extractor) ExtractFromQualityFailure(specID, failureType, description string, tags []string) error {
+	allTags := make([]string, 0, len(tags)+2)
+	allTags = append(allTags, tags...)
+	allTags = append(allTags, "quality", failureType)
 	lesson := &Lesson{
 		ID:       fmt.Sprintf("qf-%s-%d", specID, time.Now().UnixMilli()),
 		Type:     "quality_failure",
 		Source:   specID,
 		Pattern:  fmt.Sprintf("Quality gate failure (%s): %s", failureType, description),
 		Severity: "high",
-		Tags:     append(tags, "quality", failureType),
+		Tags:     allTags,
 		Active:   true,
 		HitCount: 1,
 	}
@@ -39,13 +42,16 @@ func (e *Extractor) ExtractFromSPECCompletion(specID string, iterations int, tag
 		severity = "medium"
 	}
 
+	allTags := make([]string, 0, len(tags)+1)
+	allTags = append(allTags, tags...)
+	allTags = append(allTags, "spec_completion")
 	lesson := &Lesson{
 		ID:       fmt.Sprintf("sc-%s-%d", specID, time.Now().UnixMilli()),
 		Type:     "spec_completion",
 		Source:   specID,
 		Pattern:  fmt.Sprintf("SPEC %s completed with %d iterations", specID, iterations),
 		Severity: severity,
-		Tags:     append(tags, "spec_completion"),
+		Tags:     allTags,
 		Active:   true,
 		HitCount: 1,
 	}

@@ -116,6 +116,7 @@ func TestFindTranscripts_MultipleSources(t *testing.T) {
 func TestFindTranscripts_EmptyDirectory(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	// No Claude directories at all.
 	transcripts, err := FindTranscripts()

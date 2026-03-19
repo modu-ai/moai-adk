@@ -424,7 +424,7 @@ func TestBuildAutoUpdateFunc_DevBuild(t *testing.T) {
 
 	// Test dev build skip
 	version.Version = "dev"
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -442,7 +442,7 @@ func TestBuildAutoUpdateFunc_DirtyBuild(t *testing.T) {
 	defer func() { version.Version = origVersion }()
 
 	version.Version = "v1.0.0-dirty"
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -460,7 +460,7 @@ func TestBuildAutoUpdateFunc_NoneBuild(t *testing.T) {
 	defer func() { version.Version = origVersion }()
 
 	version.Version = "(none)"
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -480,7 +480,7 @@ func TestBuildAutoUpdateFunc_NilDeps(t *testing.T) {
 	version.Version = "v99.99.99" // Non-dev version
 	deps = nil
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -506,7 +506,7 @@ func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
 		},
 	}
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -533,7 +533,7 @@ func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
 		UpdateOrch: nil, // No orchestrator
 	}
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -565,7 +565,7 @@ func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
 		},
 	}
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	_, err := fn(context.Background())
 	if err == nil {
 		t.Fatal("expected error from update check")
@@ -605,7 +605,7 @@ func TestBuildAutoUpdateFunc_SuccessfulUpdate(t *testing.T) {
 		},
 	}
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -2199,6 +2199,7 @@ func TestNewRankSyncCmd_LoggedInNoTranscripts(t *testing.T) {
 	// Point HOME to a temp dir so no transcripts are found
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
 
 	// EnsureRank needs a valid credential store with API key to initialize RankClient
 	deps = &Dependencies{
@@ -2215,6 +2216,7 @@ func TestNewRankSyncCmd_LoggedInNoTranscripts(t *testing.T) {
 	}
 
 	cmd := newRankSyncCmd()
+	cmd.SetContext(context.Background())
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
@@ -5050,7 +5052,7 @@ func TestBuildAutoUpdateFunc_DevVersion(t *testing.T) {
 	deps = &Dependencies{}
 	defer func() { deps = origDeps }()
 
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	// Should return nil for dev version (skip update)
 	if fn != nil {
 		// Call it anyway to exercise

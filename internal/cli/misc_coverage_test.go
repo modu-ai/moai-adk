@@ -954,7 +954,7 @@ func TestReadStdinWithTimeout_ReturnsSomething(t *testing.T) {
 // --- buildAutoUpdateFunc tests ---
 
 func TestBuildAutoUpdateFunc_ReturnsNonNil(t *testing.T) {
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	if fn == nil {
 		t.Fatal("buildAutoUpdateFunc should return a non-nil function")
 	}
@@ -964,7 +964,7 @@ func TestBuildAutoUpdateFunc_DevBuildSkipped(t *testing.T) {
 	// The function should detect dev builds and skip the update.
 	// Since we're running in a test environment, the version is likely "dev"
 	// or contains "dirty"/"none", which should be skipped.
-	fn := buildAutoUpdateFunc()
+	fn := buildAutoUpdateFunc(deps)
 	result, err := fn(context.Background())
 	if err != nil {
 		t.Fatalf("buildAutoUpdateFunc should not error for dev build, got: %v", err)

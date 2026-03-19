@@ -40,6 +40,12 @@ func (s *FileStore) Save(lesson *Lesson) error {
 
 	lessons, err := s.readAll(s.localPath)
 	if err != nil {
+		// readAll already handles os.IsNotExist internally (returns nil, nil).
+		// Any error returned here is a real I/O failure; propagate it to avoid
+		// silently discarding existing lesson data.
+		return fmt.Errorf("read existing lessons: %w", err)
+	}
+	if lessons == nil {
 		lessons = []*Lesson{}
 	}
 

@@ -65,12 +65,33 @@ func (c *Client) IsEnabled() bool {
 	return os.Getenv(c.apiKeyEnv) != "" && c.teamID != ""
 }
 
-func (c *Client) createIssue(apiKey string, event integrations.NotifyEvent) error {
-	query := fmt.Sprintf(`{
-		"query": "mutation { issueCreate(input: { teamId: \"%s\", title: \"%s\", description: \"%s\" }) { success issue { id identifier url } } }"
-	}`, c.teamID, event.Title, event.Message)
+// graphQLRequest represents a GraphQL request with variables to prevent injection.
+type graphQLRequest struct {
+	Query     string         `json:"query"`
+	Variables map[string]any `json:"variables,omitempty"`
+}
 
-	_, err := c.graphQL(apiKey, query)
+func (c *Client) createIssue(apiKey string, event integrations.NotifyEvent) error {
+	reqBody := graphQLRequest{
+		Query: `mutation CreateIssue($teamId: String!, $title: String!, $description: String!) {
+			issueCreate(input: { teamId: $teamId, title: $title, description: $description }) {
+				success
+				issue { id identifier url }
+			}
+		}`,
+		Variables: map[string]any{
+			"teamId":      c.teamID,
+			"title":       event.Title,
+			"description": event.Message,
+		},
+	}
+
+	payload, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("marshal linear request: %w", err)
+	}
+
+	_, err = c.graphQL(apiKey, string(payload))
 	return err
 }
 
