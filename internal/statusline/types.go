@@ -63,7 +63,20 @@ type StdinData struct {
 	Cost           *CostData          `json:"cost"`
 	ContextWindow  *ContextWindowInfo `json:"context_window"`
 	OutputStyle    *OutputStyleInfo   `json:"output_style"`
+	RateLimits     *RateLimitInfo     `json:"rate_limits"`
 	Version        string             `json:"version"` // Claude Code version (e.g., "1.0.80")
+}
+
+// RateLimitInfo represents Claude.ai rate limit usage from Claude Code (v2.1.80+).
+type RateLimitInfo struct {
+	FiveHour *RateLimitWindow `json:"five_hour"`
+	SevenDay *RateLimitWindow `json:"seven_day"`
+}
+
+// RateLimitWindow represents a single rate limit time window.
+type RateLimitWindow struct {
+	UsedPercentage float64 `json:"used_percentage"` // 0-100
+	ResetsAt       string  `json:"resets_at"`       // ISO-8601 timestamp
 }
 
 // ModelInfo represents the model information from Claude Code.
@@ -133,7 +146,8 @@ type StatusData struct {
 	Directory         string       // Project directory name (e.g., "modu-saju")
 	OutputStyle       string       // Output style name (e.g., "Mr.Alfred", "R2-D2")
 	Task              TaskData     // Current active task (rendering enabled in Phase 4)
-	Usage             *UsageResult // API usage (nil when unavailable)
+	Usage             *UsageResult  // API usage (nil when unavailable)
+	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
 }
 
 // GitStatusData holds git repository status information.

@@ -160,7 +160,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 	}
 }
 
-// --- Test 4: ValidEventTypes returns exactly 16 event types ---
+// --- Test 4: ValidEventTypes returns exactly 19 event types ---
 
 func TestHookValidEventTypes_Complete(t *testing.T) {
 	t.Parallel()
@@ -175,13 +175,16 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 		hook.EventTaskCompleted,
 		hook.EventWorktreeCreate,
 		hook.EventWorktreeRemove,
+		hook.EventPostCompact,
+		hook.EventInstructionsLoaded,
+		hook.EventStopFailure,
 	}
 
 	validTypes := hook.ValidEventTypes()
 
 	// Verify exact count.
-	if got := len(validTypes); got != 16 {
-		t.Errorf("ValidEventTypes() returned %d types, want 16", got)
+	if got := len(validTypes); got != 19 {
+		t.Errorf("ValidEventTypes() returned %d types, want 19", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -289,6 +292,9 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventSubagentStop:       "subagent-stop",
 		hook.EventWorktreeCreate:     "worktree-create",
 		hook.EventWorktreeRemove:     "worktree-remove",
+		hook.EventPostCompact:        "post-compact",
+		hook.EventInstructionsLoaded: "instructions-loaded",
+		hook.EventStopFailure:        "stop-failure",
 	}
 
 	registeredNames := make(map[string]bool)
