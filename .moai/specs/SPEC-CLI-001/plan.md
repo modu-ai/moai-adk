@@ -60,7 +60,7 @@ tags: [cli, composition-root, di-wiring, integration, migration, cobra, pkg]
 
 ### Milestone 2: Version Migration 시스템 (Primary Goal)
 
-`.moai/config/` 디렉토리의 YAML 설정 파일을 ADK 버전 간 안전하게 마이그레이션하는 시스템을 구현한다.
+`.moai/config/` 디렉터리의 YAML 설정 파일을 ADK 버전 간 안전하게 마이그레이션하는 시스템을 구현한다.
 
 #### 작업 목록
 
@@ -94,7 +94,7 @@ type MigrationStep struct {
 
 - 마이그레이션 실패 시 자동 롤백 동작 검증
 - Python ADK YAML 형식에서 Go ADK YAML 형식으로 마이그레이션 테스트 통과
-- 백업 디렉토리 `.moai/backup/{timestamp}/` 정상 생성 확인
+- 백업 디렉터리 `.moai/backup/{timestamp}/` 정상 생성 확인
 
 ---
 

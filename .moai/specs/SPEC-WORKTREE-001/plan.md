@@ -27,11 +27,11 @@ type: plan
 2. **`runNew()` 경로 로직 수정**
    - 파일: `internal/cli/worktree/new.go:41-47`
    - `os.UserHomeDir()` + `detectProjectName()` 조합으로 글로벌 경로 생성
-   - `os.MkdirAll`로 디렉토리 자동 생성
+   - `os.MkdirAll`로 디렉터리 자동 생성
    - SPEC-ID와 일반 브랜치명 모두 동일 패턴 적용
 
 3. **하위 호환성 경고 추가**
-   - 기존 `.moai/worktrees/` 디렉토리에 항목이 있으면 stderr 경고
+   - 기존 `.moai/worktrees/` 디렉터리에 항목이 있으면 stderr 경고
    - 기존 worktree 동작은 방해하지 않음
 
 4. **기존 테스트 수정**
@@ -101,7 +101,7 @@ worktree 경로를 참조하는 다른 모듈의 정합성을 확보한다.
 2. git remote get-url origin -> 리포지토리명 추출
    예: "git@github.com:modu-ai/moai-adk-go.git" -> "moai-adk-go"
 
-3. filepath.Base(cwd) -> 현재 디렉토리명
+3. filepath.Base(cwd) -> 현재 디렉터리명
    예: "/Users/goos/MoAI/moai-adk-go" -> "moai-adk-go"
 ```
 
@@ -135,7 +135,7 @@ worktree 경로를 참조하는 다른 모듈의 정합성을 확보한다.
 | `go.mod` 없는 프로젝트에서 실행 | 중간 | 낮음 | git remote -> cwd basename fallback 체인 |
 | 기존 `.moai/worktrees/` 사용자의 혼란 | 중간 | 중간 | stderr 경고 메시지 + 문서 안내 |
 | Windows 환경에서 경로 호환성 | 낮음 | 중간 | `filepath.Join` 사용으로 자동 처리 |
-| 글로벌 디렉토리 권한 문제 | 낮음 | 높음 | `os.MkdirAll` 에러 시 명확한 메시지 반환 |
+| 글로벌 디렉터리 권한 문제 | 낮음 | 높음 | `os.MkdirAll` 에러 시 명확한 메시지 반환 |
 
 ### 아키텍처 설계 방향
 

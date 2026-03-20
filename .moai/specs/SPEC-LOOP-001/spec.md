@@ -53,7 +53,7 @@ MoAI-ADK (Go Edition)는 Claude Code용 고성능 개발 도구킷이다. Ralph 
 
 ### 1.3 운영 환경
 
-- 루프 상태는 `.moai/loop/` 디렉토리에 JSON 파일로 영속화
+- 루프 상태는 `.moai/loop/` 디렉터리에 JSON 파일로 영속화
 - Claude Code 세션 재시작 시 상태 복원 지원
 - 최대 반복 횟수: 5회 (기본값, RalphConfig에서 변경 가능)
 - Human-in-the-loop 리뷰 브레이크포인트 지원

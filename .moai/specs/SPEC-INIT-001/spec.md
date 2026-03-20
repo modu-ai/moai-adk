@@ -36,7 +36,7 @@ tags: [init, project, detection, wizard, bubbletea, cli]
 
 ### 1.1 시스템 컨텍스트
 
-이 모듈은 `moai init` CLI 명령의 핵심 도메인 로직을 담당한다. 사용자가 MoAI 프로젝트를 초기화할 때 실행되며, `.moai/` 디렉토리 구조 생성, `.claude/` 템플릿 배포, `CLAUDE.md` 생성을 수행한다.
+이 모듈은 `moai init` CLI 명령의 핵심 도메인 로직을 담당한다. 사용자가 MoAI 프로젝트를 초기화할 때 실행되며, `.moai/` 디렉터리 구조 생성, `.claude/` 템플릿 배포, `CLAUDE.md` 생성을 수행한다.
 
 ### 1.2 런타임 환경
 
@@ -127,8 +127,8 @@ internal/core/project/
 | REQ-E-012 | **WHEN** `pyproject.toml`에서 `django` 의존성이 발견되면 **THEN** Django 프레임워크를 감지한다 |
 | REQ-E-013 | **WHEN** Go import에서 `gin-gonic/gin`이 발견되면 **THEN** Gin 프레임워크를 감지한다 |
 | REQ-E-014 | **WHEN** 위저드에서 사용자가 프로젝트 이름, 언어, 프레임워크, 기능을 선택하면 **THEN** `WizardResult`를 생성하여 Initializer에 전달한다 |
-| REQ-E-015 | **WHEN** Initializer가 `InitOptions`를 수신하면 **THEN** 다음 순서로 초기화를 실행한다: (1) `.moai/` 디렉토리 구조 생성, (2) 설정 파일 생성 (SPEC-CONFIG-001), (3) 템플릿 배포 (SPEC-TEMPLATE-001), (4) `CLAUDE.md` 생성, (5) 매니페스트 초기화 |
-| REQ-E-016 | **WHEN** 이미 `.moai/` 디렉토리가 존재하고 `--force` 플래그가 없으면 **THEN** 오류를 반환하고 재초기화를 안내한다 |
+| REQ-E-015 | **WHEN** Initializer가 `InitOptions`를 수신하면 **THEN** 다음 순서로 초기화를 실행한다: (1) `.moai/` 디렉터리 구조 생성, (2) 설정 파일 생성 (SPEC-CONFIG-001), (3) 템플릿 배포 (SPEC-TEMPLATE-001), (4) `CLAUDE.md` 생성, (5) 매니페스트 초기화 |
+| REQ-E-016 | **WHEN** 이미 `.moai/` 디렉터리가 존재하고 `--force` 플래그가 없으면 **THEN** 오류를 반환하고 재초기화를 안내한다 |
 | REQ-E-017 | **WHEN** `--force` 플래그와 함께 실행되면 **THEN** 기존 설정을 백업한 후 재초기화를 수행한다 |
 | REQ-E-018 | **WHEN** Git 저장소가 감지되지 않으면 **THEN** 경고를 표시하고 Git 없이 초기화를 계속한다 |
 | REQ-E-019 | **WHEN** 감지된 언어가 여러 개이면 **THEN** 파일 수 기준 신뢰도(Confidence)를 계산하여 주 언어를 제안한다 |
@@ -143,7 +143,7 @@ internal/core/project/
 |----|----------|
 | REQ-S-001 | **IF** TTY가 연결되지 않은 상태이면 **THEN** 자동으로 비인터랙티브 모드로 전환한다 |
 | REQ-S-002 | **IF** 프로젝트가 이미 초기화된 상태이면 **THEN** `moai init`은 기존 프로젝트 감지 결과를 표시하고 `--force` 사용을 안내한다 |
-| REQ-S-003 | **IF** 비인터랙티브 모드이고 필수 값(프로젝트 이름)이 누락된 상태이면 **THEN** 현재 디렉토리 이름을 기본값으로 사용한다 |
+| REQ-S-003 | **IF** 비인터랙티브 모드이고 필수 값(프로젝트 이름)이 누락된 상태이면 **THEN** 현재 디렉터리 이름을 기본값으로 사용한다 |
 | REQ-S-004 | **IF** 감지된 프레임워크가 없는 상태이면 **THEN** 위저드에서 "None" 옵션을 기본 선택으로 제공한다 |
 | REQ-S-005 | **IF** 비인터랙티브 모드이고 `--development-mode` 플래그가 제공되지 않은 상태이면 **THEN** 자동 감지된 추천 방법론을 사용한다 |
 | REQ-S-006 | **IF** `--development-mode` 플래그가 제공된 상태이면 **THEN** 지정된 모드를 사용하고 자동 감지를 건너뛴다 |
@@ -152,7 +152,7 @@ internal/core/project/
 
 | ID | 요구사항 |
 |----|----------|
-| REQ-N-001 | 시스템은 사용자 확인 없이 기존 `.moai/` 디렉토리를 **덮어쓰지 않아야 한다** |
+| REQ-N-001 | 시스템은 사용자 확인 없이 기존 `.moai/` 디렉터리를 **덮어쓰지 않아야 한다** |
 | REQ-N-002 | 시스템은 JSON/YAML 생성 시 문자열 연결(string concatenation)을 **사용하지 않아야 한다** -- 반드시 Go 구조체 직렬화를 사용한다 |
 | REQ-N-003 | 시스템은 생성된 파일에 미확장 동적 토큰(`$VAR`, `{{VAR}}`, `${SHELL}`)을 **포함하지 않아야 한다** |
 | REQ-N-004 | 시스템은 비인터랙티브 모드에서 사용자 입력을 **대기하지 않아야 한다** |
@@ -322,7 +322,7 @@ moai init
   |
   v
 [3] Detector.DetectProjectType(root)
-  |-- 디렉토리 구조 기반 분류 (cli, web-app, api, library)
+  |-- 디렉터리 구조 기반 분류 (cli, web-app, api, library)
   |
   v
 [4] MethodologyDetector.DetectMethodology(root, languages)    ← NEW
@@ -343,7 +343,7 @@ moai init
   |
   v
 [7] Initializer.Init(ctx, opts)                               ← opts에 DevelopmentMode 포함
-  |-- (a) .moai/ 디렉토리 구조 생성
+  |-- (a) .moai/ 디렉터리 구조 생성
   |-- (b) config.Manager를 통한 설정 파일 생성 (SPEC-CONFIG-001)
   |-- (c) template.Deployer를 통한 템플릿 배포 (SPEC-TEMPLATE-001)
   |-- (d) CLAUDE.md 렌더링 및 생성
@@ -371,7 +371,7 @@ moai init
 | TypeScript | `*.test.ts`, `*.spec.ts` |
 | JavaScript | `*.test.js`, `*.spec.js` |
 | Java | `*Test.java` |
-| Rust | `tests/` 디렉토리 또는 `#[cfg(test)]` 모듈 |
+| Rust | `tests/` 디렉터리 또는 `#[cfg(test)]` 모듈 |
 | Ruby | `*_spec.rb`, `*_test.rb` |
 | PHP | `*Test.php` |
 | C# | `*Tests.cs` |
@@ -426,7 +426,7 @@ ELSE (coverage < 10%, 테스트 없는 brownfield):
 
 | 필드 | 기본값 | 결정 로직 |
 |------|--------|-----------|
-| ProjectName | 현재 디렉토리 이름 | `filepath.Base(root)` |
+| ProjectName | 현재 디렉터리 이름 | `filepath.Base(root)` |
 | Language | 감지된 주 언어 또는 "go" | `Detector.DetectLanguages()` 결과의 최고 Confidence |
 | Framework | 감지된 프레임워크 또는 "none" | `Detector.DetectFrameworks()` 결과 |
 | Features | 빈 슬라이스 | 기본 기능만 |
@@ -434,7 +434,7 @@ ELSE (coverage < 10%, 테스트 없는 brownfield):
 | ConvLang | "en" | 시스템 로케일 감지 실패 시 |
 | DevelopmentMode | 자동 감지 추천값 또는 "ddd" | `MethodologyDetector.DetectMethodology()` 결과, 또는 `--development-mode` 플래그 값 |
 
-### 4.7 생성 디렉토리 구조
+### 4.7 생성 디렉터리 구조
 
 ```
 {project_root}/

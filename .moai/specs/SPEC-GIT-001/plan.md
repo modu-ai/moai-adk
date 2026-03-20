@@ -296,7 +296,7 @@ func NewRepository(path string, opts ...Option) (*gitManager, error) {
 | Benchmark Tests | `testing.B` | 성능 요구사항 검증 | Critical paths |
 
 **Test Fixtures**:
-- `testdata/` 디렉토리에 사전 구성된 Git 저장소 스냅샷을 배치한다.
+- `testdata/` 디렉터리에 사전 구성된 Git 저장소 스냅샷을 배치한다.
 - `git.PlainInit()`으로 각 테스트에서 독립적인 임시 저장소를 생성한다.
 - `t.Parallel()`을 사용하여 독립적인 테스트를 병렬 실행한다.
 

@@ -13,9 +13,9 @@ TDD (quality.yaml: development_mode: tdd)
 
 순서가 중요: leaf 패키지부터 삭제해야 중간 컴파일 오류를 최소화.
 
-| 순서 | 파일/디렉토리 | 작업 | 근거 |
+| 순서 | 파일/디렉터리 | 작업 | 근거 |
 |------|-------------|------|------|
-| 1.1 | `internal/rank/` (17파일) | 디렉토리 삭제 | Leaf 패키지, 내부 의존 없음 |
+| 1.1 | `internal/rank/` (17파일) | 디렉터리 삭제 | Leaf 패키지, 내부 의존 없음 |
 | 1.2 | `internal/cli/rank.go` | 파일 삭제 | CLI 명령어 + hook 관리 코드 |
 | 1.3 | `internal/hook/rank_session.go` | 파일 삭제 | SessionEnd 훅 핸들러 |
 | 1.4 | `internal/cli/rank_test.go` | 파일 삭제 | 전용 테스트 |

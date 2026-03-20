@@ -17,9 +17,9 @@ tags: [init, project, detection, wizard, bubbletea, acceptance]
 Feature: 새 프로젝트 인터랙티브 초기화
 
   Scenario: TTY 환경에서 moai init 실행 시 위저드를 통해 프로젝트를 초기화한다
-    Given 빈 디렉토리 "/tmp/test-project" 가 존재한다
+    Given 빈 디렉터리 "/tmp/test-project" 가 존재한다
     And TTY가 연결되어 있다
-    And .moai/ 디렉토리가 존재하지 않는다
+    And .moai/ 디렉터리가 존재하지 않는다
     When 사용자가 "moai init" 을 실행한다
     Then bubbletea 인터랙티브 위저드가 시작된다
     And 위저드는 다음 항목을 순서대로 질문한다:
@@ -31,7 +31,7 @@ Feature: 새 프로젝트 인터랙티브 초기화
       | 사용자 이름 | 텍스트 입력 |
       | 대화 언어 | 단일 선택 |
     When 사용자가 모든 항목을 선택한다
-    Then 다음 디렉토리가 생성된다:
+    Then 다음 디렉터리가 생성된다:
       | 경로 |
       | .moai/config/sections/ |
       | .moai/specs/ |
@@ -66,13 +66,13 @@ Feature: 새 프로젝트 인터랙티브 초기화
 ```gherkin
 Feature: 기존 프로젝트 감지 시 안전 처리
 
-  Scenario: .moai/ 디렉토리가 이미 존재할 때 초기화를 거부한다
-    Given 디렉토리 "/tmp/existing-project" 에 .moai/ 가 이미 존재한다
+  Scenario: .moai/ 디렉터리가 이미 존재할 때 초기화를 거부한다
+    Given 디렉터리 "/tmp/existing-project" 에 .moai/ 가 이미 존재한다
     And .moai/config/sections/user.yaml 파일이 존재한다
     When 사용자가 "moai init" 을 실행한다
     Then 오류 메시지 "project already initialized" 가 반환된다
     And "--force 플래그를 사용하여 재초기화하세요" 안내가 출력된다
-    And 기존 .moai/ 디렉토리는 변경되지 않는다
+    And 기존 .moai/ 디렉터리는 변경되지 않는다
 ```
 
 ---
@@ -131,16 +131,16 @@ Feature: 프로젝트 루트에서 프로그래밍 언어를 자동 감지한다
 Feature: CI/CD 환경을 위한 비인터랙티브 초기화
 
   Scenario: --non-interactive 플래그로 자동 초기화
-    Given 빈 디렉토리 "/tmp/ci-project" 가 존재한다
+    Given 빈 디렉터리 "/tmp/ci-project" 가 존재한다
     And 프로젝트 루트에 go.mod 가 존재한다
     When 사용자가 "moai init --non-interactive" 를 실행한다
     Then 사용자 입력 대기 없이 즉시 초기화가 완료된다
-    And ProjectName은 현재 디렉토리 이름 "ci-project" 으로 설정된다
+    And ProjectName은 현재 디렉터리 이름 "ci-project" 으로 설정된다
     And Language는 감지된 "Go" 로 설정된다
-    And .moai/ 디렉토리 구조가 정상 생성된다
+    And .moai/ 디렉터리 구조가 정상 생성된다
 
   Scenario: -y 축약 플래그 동작
-    Given 빈 디렉토리가 존재한다
+    Given 빈 디렉터리가 존재한다
     When 사용자가 "moai init -y" 를 실행한다
     Then --non-interactive 와 동일하게 동작한다
     And 사용자 입력 대기가 발생하지 않는다
@@ -152,7 +152,7 @@ Feature: CI/CD 환경을 위한 비인터랙티브 초기화
     And 기본값으로 초기화가 진행된다
 
   Scenario: 비인터랙티브 모드에서 플래그로 값 지정
-    Given 빈 디렉토리가 존재한다
+    Given 빈 디렉터리가 존재한다
     When 사용자가 "moai init -y --name my-app --language typescript" 를 실행한다
     Then ProjectName이 "my-app" 으로 설정된다
     And Language가 "typescript" 로 설정된다
@@ -216,16 +216,16 @@ Feature: 설정 파일에서 프레임워크를 자동 감지한다
 Feature: --force 플래그를 사용한 재초기화
 
   Scenario: 기존 프로젝트를 --force 로 재초기화
-    Given 디렉토리에 .moai/ 가 이미 존재한다
+    Given 디렉터리에 .moai/ 가 이미 존재한다
     And .moai/config/sections/user.yaml 에 사용자 설정이 저장되어 있다
     When 사용자가 "moai init --force" 를 실행한다
-    Then 기존 .moai/ 디렉토리가 .moai.backup.{timestamp}/ 으로 백업된다
-    And 새로운 .moai/ 디렉토리 구조가 생성된다
+    Then 기존 .moai/ 디렉터리가 .moai.backup.{timestamp}/ 으로 백업된다
+    And 새로운 .moai/ 디렉터리 구조가 생성된다
     And 초기화가 정상 완료된다
     And 백업 경로가 출력 메시지에 포함된다
 
   Scenario: --force 와 --non-interactive 결합
-    Given 디렉토리에 .moai/ 가 이미 존재한다
+    Given 디렉터리에 .moai/ 가 이미 존재한다
     When 사용자가 "moai init --force -y" 를 실행한다
     Then 사용자 확인 없이 백업 후 재초기화가 수행된다
     And 사용자 입력 대기가 발생하지 않는다
@@ -240,12 +240,12 @@ Feature: --force 플래그를 사용한 재초기화
 ```gherkin
 Feature: Git 저장소가 없는 프로젝트 처리
 
-  Scenario: Git 미초기화 디렉토리에서 초기화
-    Given 디렉토리에 .git/ 이 존재하지 않는다
+  Scenario: Git 미초기화 디렉터리에서 초기화
+    Given 디렉터리에 .git/ 이 존재하지 않는다
     When 사용자가 "moai init -y" 를 실행한다
     Then 경고 메시지 "Git repository not detected" 가 출력된다
     And Git 관련 기능을 건너뛰고 초기화가 정상 완료된다
-    And .moai/ 디렉토리 구조가 생성된다
+    And .moai/ 디렉터리 구조가 생성된다
 ```
 
 ---
@@ -269,7 +269,7 @@ Feature: 감지 결과를 기본값으로 활용
     Then "None" 이 기본 선택으로 제공된다
 
   Scenario: 비인터랙티브에서 프로젝트 이름 기본값
-    Given 프로젝트 디렉토리 이름이 "awesome-project" 이다
+    Given 프로젝트 디렉터리 이름이 "awesome-project" 이다
     And 사용자가 --name 플래그를 지정하지 않았다
     When "moai init -y" 를 실행한다
     Then ProjectName이 "awesome-project" 으로 설정된다
@@ -285,7 +285,7 @@ Feature: 감지 결과를 기본값으로 활용
 Feature: 금지된 동작이 발생하지 않음을 검증
 
   Scenario: 확인 없이 기존 프로젝트 덮어쓰기 방지
-    Given .moai/ 디렉토리가 이미 존재한다
+    Given .moai/ 디렉터리가 이미 존재한다
     When "moai init" 을 실행한다 (--force 없이)
     Then 기존 .moai/ 의 어떤 파일도 수정되지 않는다
     And 새로운 파일이 .moai/ 에 추가되지 않는다
@@ -310,7 +310,7 @@ Feature: 금지된 동작이 발생하지 않음을 검증
     And 행(hang) 걸림이 발생하지 않는다
 
   Scenario: 복구 가능한 오류에서 panic 미발생
-    Given 읽기 권한이 없는 디렉토리에서 실행한다
+    Given 읽기 권한이 없는 디렉터리에서 실행한다
     When "moai init -y" 를 실행한다
     Then panic이 발생하지 않는다
     And 적절한 오류 메시지가 stderr에 출력된다
@@ -482,7 +482,7 @@ Feature: --development-mode 플래그가 자동 감지를 우회한다
 | **Readable** | Go 명명 규칙 준수 | `golangci-lint` |
 | **Unified** | gofumpt 포매팅 통과 | `golangci-lint` |
 | **Unified** | golangci-lint 경고 0개 | CI 파이프라인 |
-| **Secured** | 경로 순회 방지 (filepath.Clean + 기본 디렉토리 검증) | 보안 테스트 |
+| **Secured** | 경로 순회 방지 (filepath.Clean + 기본 디렉터리 검증) | 보안 테스트 |
 | **Secured** | 입력 검증 (프로젝트 이름, 경로) | 단위 테스트 |
 | **Trackable** | Conventional Commit 메시지 | Git hook |
 
@@ -501,7 +501,7 @@ Feature: --development-mode 플래그가 자동 감지를 우회한다
 
 | 항목 | 기준 |
 |------|------|
-| 기존 .moai/ 구조 호환 | Python MoAI-ADK가 생성한 .moai/ 디렉토리를 감지 가능 |
+| 기존 .moai/ 구조 호환 | Python MoAI-ADK가 생성한 .moai/ 디렉터리를 감지 가능 |
 | YAML 설정 호환 | 기존 config/sections/ YAML 형식과 동일한 스키마 |
 | 크로스 플랫폼 | macOS, Linux, Windows에서 동일하게 동작 |
 

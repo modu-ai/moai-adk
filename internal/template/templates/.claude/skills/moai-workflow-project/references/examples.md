@@ -292,7 +292,7 @@ print(f"감지된 언어: {language}")
 # 1. 파일 내용 분석 (주석, 문자열)
 # 2. 설정 파일 검사 (package.json locale, etc.)
 # 3. 시스템 로케일 확인
-# 4. 디렉토리 구조 패턴
+# 4. 디렉터리 구조 패턴
 
 # 결과 예시
 detection_result = {
