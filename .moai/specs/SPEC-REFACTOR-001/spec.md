@@ -1,9 +1,9 @@
 ---
 id: SPEC-REFACTOR-001
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-03-19"
-updated: "2026-03-19"
+updated: "2026-03-20"
 author: GOOS
 priority: high
 issue_number: 0
@@ -14,6 +14,7 @@ issue_number: 0
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
 | 1.0.0 | 2026-03-19 | 초안 작성 |
+| 1.1.0 | 2026-03-20 | 구현 완료, SPEC 상태 completed |
 
 ---
 
