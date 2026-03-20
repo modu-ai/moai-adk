@@ -27,9 +27,6 @@ func TestInitDependencies(t *testing.T) {
 	if deps.HookRegistry == nil {
 		t.Error("deps.HookRegistry should not be nil")
 	}
-	if deps.RankCredStore == nil {
-		t.Error("deps.RankCredStore should not be nil")
-	}
 	if deps.Logger == nil {
 		t.Error("deps.Logger should not be nil")
 	}
@@ -107,51 +104,6 @@ func TestEnsureUpdate_AlreadyInitialized(t *testing.T) {
 	err := d.EnsureUpdate()
 	if err != nil {
 		t.Errorf("EnsureUpdate should return nil when UpdateChecker is already set: %v", err)
-	}
-}
-
-func TestEnsureRank_NilCredStore(t *testing.T) {
-	d := &Dependencies{}
-	err := d.EnsureRank()
-	if err == nil {
-		t.Error("EnsureRank should error when RankCredStore is nil")
-	}
-}
-
-func TestEnsureRank_NoAPIKey(t *testing.T) {
-	d := &Dependencies{
-		RankCredStore: &mockCredentialStore{
-			getKeyFunc: func() (string, error) { return "", nil },
-		},
-	}
-	err := d.EnsureRank()
-	if err == nil {
-		t.Error("EnsureRank should error when no API key is configured")
-	}
-}
-
-func TestEnsureRank_Success(t *testing.T) {
-	d := &Dependencies{
-		RankCredStore: &mockCredentialStore{
-			getKeyFunc: func() (string, error) { return "test-key", nil },
-		},
-	}
-	err := d.EnsureRank()
-	if err != nil {
-		t.Errorf("EnsureRank should succeed: %v", err)
-	}
-	if d.RankClient == nil {
-		t.Error("EnsureRank should set RankClient")
-	}
-}
-
-func TestEnsureRank_AlreadyInitialized(t *testing.T) {
-	d := &Dependencies{}
-	d.RankClient = &mockRankClient{}
-
-	err := d.EnsureRank()
-	if err != nil {
-		t.Errorf("EnsureRank should return nil when RankClient is already set: %v", err)
 	}
 }
 

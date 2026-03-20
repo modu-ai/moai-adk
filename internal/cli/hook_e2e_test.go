@@ -136,7 +136,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 		hook.EventPostToolUse,
 		hook.EventStop,
 		hook.EventPreCompact,
-		hook.EventSubagentStop, // registered via RankSessionHandler conditionally
+		hook.EventSubagentStop,
 		// New events:
 		hook.EventPostToolUseFailure,
 		hook.EventNotification,
@@ -149,7 +149,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 
 	// Events that may not have a handler (conditionally registered).
 	optionalEvents := map[hook.EventType]bool{
-		hook.EventSubagentStop: true, // RankSessionHandler is conditional
+		hook.EventSubagentStop: true,
 	}
 
 	for _, event := range allEvents {
@@ -363,7 +363,7 @@ func TestHookDepsWiring_HandlerCounts(t *testing.T) {
 		}
 	}
 
-	// SessionStart may have multiple handlers (session start + auto-update + optional rank).
+	// SessionStart may have multiple handlers (session start + auto-update).
 	sessionStartHandlers := deps.HookRegistry.Handlers(hook.EventSessionStart)
 	if len(sessionStartHandlers) < 2 {
 		t.Errorf("event %q: got %d handlers, want at least 2 (session start + auto-update)",
