@@ -6,6 +6,7 @@ package statusline
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 )
 
@@ -74,16 +75,47 @@ type RateLimitInfo struct {
 }
 
 // RateLimitWindow represents a single rate limit time window.
+// The official Claude Code statusline schema sends resets_at as a Unix epoch
+// integer (e.g., 1738425600), not as an ISO-8601 string.
 type RateLimitWindow struct {
 	UsedPercentage float64 `json:"used_percentage"` // 0-100
-	ResetsAt       string  `json:"resets_at"`       // ISO-8601 timestamp
+	ResetsAt       int64   `json:"resets_at"`       // Unix epoch seconds (official schema)
 }
 
 // ModelInfo represents the model information from Claude Code.
+// Claude Code may send this field as either an object or a plain string.
+// Custom UnmarshalJSON handles both formats.
 type ModelInfo struct {
 	ID          string `json:"id"`           // e.g., "claude-opus-4-1"
 	DisplayName string `json:"display_name"` // e.g., "Opus" - use this directly
 	Name        string `json:"name"`         // Legacy field, same as ID
+}
+
+// UnmarshalJSON implements json.Unmarshaler for ModelInfo.
+// It handles both the standard object format and the string shorthand:
+//
+//	Object: {"id": "claude-opus-4-6", "display_name": "Opus"}
+//	String: "claude-opus-4-6"
+//
+// When the string form is received, both ID and Name are set to the string value.
+func (m *ModelInfo) UnmarshalJSON(data []byte) error {
+	// Try string first (some Claude Code versions send model as plain string)
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		m.ID = s
+		m.Name = s
+		m.DisplayName = s
+		return nil
+	}
+
+	// Fall back to object format
+	type modelInfoAlias ModelInfo // prevent infinite recursion
+	var alias modelInfoAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	*m = ModelInfo(alias)
+	return nil
 }
 
 // WorkspaceInfo represents the workspace directory information from Claude Code.

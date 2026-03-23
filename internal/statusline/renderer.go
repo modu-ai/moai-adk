@@ -268,19 +268,25 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 		segs = append(segs, renderUsageBar("CW:", pct, width, r.noColor))
 	}
 
-	// 5H bar - always shown, defaults to 0% when no data
+	// 5H bar - always shown, defaults to 0% when no data.
+	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
 	if r.isSegmentEnabled(SegmentUsage5H) {
 		pct5H := 0
-		if data.Usage != nil && data.Usage.Usage5H != nil {
+		if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
+			pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
+		} else if data.Usage != nil && data.Usage.Usage5H != nil {
 			pct5H = int(data.Usage.Usage5H.Percentage)
 		}
 		segs = append(segs, renderUsageBar("5H:", pct5H, width, r.noColor))
 	}
 
-	// 7D bar - always shown, defaults to 0% when no data
+	// 7D bar - always shown, defaults to 0% when no data.
+	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
 	if r.isSegmentEnabled(SegmentUsage7D) {
 		pct7D := 0
-		if data.Usage != nil && data.Usage.Usage7D != nil {
+		if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
+			pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
+		} else if data.Usage != nil && data.Usage.Usage7D != nil {
 			pct7D = int(data.Usage.Usage7D.Percentage)
 		}
 		segs = append(segs, renderUsageBar("7D:", pct7D, width, r.noColor))
@@ -339,19 +345,13 @@ func renderUsageBarWithReset(label string, pct int, width int, noColor bool, res
 	return fmt.Sprintf("%s (Resets %s)", base, resetStr)
 }
 
-// formatResetTimeRelative formats an ISO 8601 timestamp as relative time "in Xh Ym".
-// Returns empty string on parse failure or if reset is in the past.
-func formatResetTimeRelative(isoTimestamp string) string {
-	if isoTimestamp == "" {
+// formatResetTimeRelative formats a reset time as relative "in Xh Ym".
+// Returns empty string if the reset time is zero, in the past, or unparseable.
+// Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
+func formatResetTimeRelative(resetTime interface{}) string {
+	t := parseResetTime(resetTime)
+	if t.IsZero() {
 		return ""
-	}
-	t, err := time.Parse(time.RFC3339, isoTimestamp)
-	if err != nil {
-		// Try without timezone
-		t, err = time.Parse("2006-01-02T15:04:05", isoTimestamp)
-		if err != nil {
-			return ""
-		}
 	}
 	remaining := time.Until(t)
 	if remaining <= 0 {
@@ -365,18 +365,13 @@ func formatResetTimeRelative(isoTimestamp string) string {
 	return fmt.Sprintf("in %dm", minutes)
 }
 
-// formatResetTimeAbsolute formats an ISO 8601 timestamp as "Jan 21 at 2pm".
-// Returns empty string on parse failure.
-func formatResetTimeAbsolute(isoTimestamp string) string {
-	if isoTimestamp == "" {
+// formatResetTimeAbsolute formats a reset time as "Jan 21 at 2pm".
+// Returns empty string if the reset time is zero or unparseable.
+// Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
+func formatResetTimeAbsolute(resetTime interface{}) string {
+	t := parseResetTime(resetTime)
+	if t.IsZero() {
 		return ""
-	}
-	t, err := time.Parse(time.RFC3339, isoTimestamp)
-	if err != nil {
-		t, err = time.Parse("2006-01-02T15:04:05", isoTimestamp)
-		if err != nil {
-			return ""
-		}
 	}
 	// Convert to local time for display
 	t = t.Local()
@@ -390,6 +385,37 @@ func formatResetTimeAbsolute(isoTimestamp string) string {
 		hour12 = 12
 	}
 	return fmt.Sprintf("%s at %d%s", t.Format("Jan 2"), hour12, ampm)
+}
+
+// parseResetTime converts a reset time value to time.Time.
+// Accepts:
+//   - int64: Unix epoch seconds (from Claude Code official statusline schema)
+//   - string: ISO 8601 / RFC 3339 timestamp (from MoAI API UsageData)
+//
+// Returns zero time on failure.
+func parseResetTime(resetTime interface{}) time.Time {
+	switch v := resetTime.(type) {
+	case int64:
+		if v <= 0 {
+			return time.Time{}
+		}
+		return time.Unix(v, 0)
+	case string:
+		if v == "" {
+			return time.Time{}
+		}
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			// Try without timezone
+			t, err = time.Parse("2006-01-02T15:04:05", v)
+			if err != nil {
+				return time.Time{}
+			}
+		}
+		return t
+	default:
+		return time.Time{}
+	}
 }
 
 // contextPercent returns the context window usage percentage (0~100).

@@ -754,6 +754,18 @@ Context Engineering Requirements:
   WHY: Relative descriptions avoid false precision
   IMPACT: Absolute time predictions create commitment anxiety
 
+## Memory-Constrained Testing Guidelines
+
+When working on projects with `memory_guard` enabled in quality.yaml:
+
+- Check available system memory before recommending test execution strategies
+- For memory-constrained environments (< 8GB available):
+  - Recommend module-level test splitting over single-process full suite execution
+  - Suggest separating test runs from coverage measurement (`coverage_separate: true`)
+  - Avoid running parallel test processes that multiply memory usage
+- For CI/CD pipelines: Recommend setting `memory_guard.enabled: true` with appropriate thresholds
+- Memory guard configuration reference: `.moai/config/sections/quality.yaml` memory_guard section
+
 ---
 
 Last Updated: 2025-12-07

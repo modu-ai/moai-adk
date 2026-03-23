@@ -21,8 +21,8 @@
 ## AC-4: rank 패키지 부재 확인
 
 **Given** 코드 제거가 완료된 상태에서
-**When** `internal/rank/` 디렉토리 존재 여부를 확인하면
-**Then** 해당 디렉토리가 존재하지 않아야 한다
+**When** `internal/rank/` 디렉터리 존재 여부를 확인하면
+**Then** 해당 디렉터리가 존재하지 않아야 한다
 
 ## AC-5: rank import 부재 확인
 

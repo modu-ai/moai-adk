@@ -127,6 +127,31 @@ Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
 
 All phases execute sequentially. Each phase receives outputs from all previous phases as context.
 
+### Phase 0.5: Environment Assessment (Conditional)
+
+Condition: Only executes when `memory_guard.enabled: true` in quality.yaml.
+If memory_guard is not enabled or not present, skip to Phase 1.
+
+Purpose: Detect available system memory and determine test execution strategy to prevent OOM.
+
+Steps:
+1. Read memory_guard configuration from quality.yaml
+2. Detect available system memory:
+   - Linux: `free -m | awk '/^Mem:/{print $7}'` (MemAvailable)
+   - macOS: `sysctl -n hw.memsize` (total memory in bytes, divide by 1048576 for MB) and `vm_stat | awk '/Pages free/{print $3}'` (approximate available)
+3. Compare available memory against thresholds:
+   - Below emergency_threshold_mb: BLOCK test execution, warn user, suggest closing other applications or increasing memory
+   - Below adaptive_threshold_mb: Set test_execution_strategy to memory_guard.test_split_strategy (default: "module")
+   - Above adaptive_threshold_mb: Set test_execution_strategy to "full" (normal execution)
+4. Pass test_execution_strategy as context to all subsequent phases via agent prompt
+
+Output: test_execution_strategy ("full", "module", "changed") passed to Phase 1+ as binding context.
+
+Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
+```
+- Phase 0.5 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
+```
+
 ### Phase 1: Analysis and Planning
 
 Agent: manager-strategy subagent

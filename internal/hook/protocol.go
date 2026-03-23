@@ -62,9 +62,19 @@ func (p *jsonProtocol) WriteOutput(w io.Writer, output *HookOutput) error {
 }
 
 // validateInput checks that all required fields are present in the HookInput.
+// session_id is optional for PostToolUse and PostToolUseFailure events because
+// Claude Code has a known bug (#541) where the matcher pattern is not respected
+// and non-Write/Edit tools can trigger PostToolUse hooks without session info.
 func validateInput(input *HookInput) error {
 	if input.SessionID == "" {
-		return fmt.Errorf("%w: missing required field session_id", ErrHookInvalidInput)
+		switch input.HookEventName {
+		case "PostToolUse", "PostToolUseFailure":
+			// Workaround for Claude Code bug: session_id may be absent in PostToolUse
+			// payloads when the hook fires for tools outside the matcher pattern.
+			input.SessionID = "unknown"
+		default:
+			return fmt.Errorf("%w: missing required field session_id", ErrHookInvalidInput)
+		}
 	}
 	if input.CWD == "" {
 		return fmt.Errorf("%w: missing required field cwd", ErrHookInvalidInput)
