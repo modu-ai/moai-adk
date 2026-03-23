@@ -37,7 +37,7 @@ my-docs/
 └── tsconfig.json
 ```
 
-**Explanation**: Nextra는 Next.js 기반의 문서 프레임워크로, 파일 시스템 라우팅을 사용합니다. pages/ 디렉토리의 MDX 파일이 자동으로 문서 페이지가 되며, _meta.json으로 네비게이션을 구성합니다.
+**Explanation**: Nextra는 Next.js 기반의 문서 프레임워크로, 파일 시스템 라우팅을 사용합니다. pages/ 디렉터리의 MDX 파일이 자동으로 문서 페이지가 되며, _meta.json으로 네비게이션을 구성합니다.
 
 ---
 
@@ -468,7 +468,7 @@ pages/docs/
 └── installation.mdx
 ```
 
-**Solution**: 모든 디렉토리에 _meta.json 추가
+**Solution**: 모든 디렉터리에 _meta.json 추가
 
 ```json
 // pages/docs/_meta.json
@@ -558,7 +558,7 @@ Nextra 사이트 배포 전 확인 사항:
 | 항목 | 확인 |
 |------|------|
 | theme.config.tsx에 모든 필수 설정 완료 | |
-| 모든 디렉토리에 _meta.json 존재 | |
+| 모든 디렉터리에 _meta.json 존재 | |
 | 이미지 최적화 (WebP, 적절한 크기) | |
 | SEO 메타데이터 설정 완료 | |
 | 404 페이지 커스터마이징 | |

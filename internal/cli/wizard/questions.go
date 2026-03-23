@@ -30,7 +30,21 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     defaultProjectName,
 			Required:    true,
 		},
-		// 2. Development Mode
+		// 2. Model Policy
+		{
+			ID:          "model_policy",
+			Type:        QuestionTypeSelect,
+			Title:       "Select model policy",
+			Description: "Controls which Claude model tier is assigned to each agent. Match to your Claude plan.",
+			Options: []Option{
+				{Label: "High (Recommended)", Value: "high", Desc: "Opus for critical agents — Max $200 plan"},
+				{Label: "Medium", Value: "medium", Desc: "Opus for key agents, sonnet for rest — Max $100 plan"},
+				{Label: "Low", Value: "low", Desc: "Sonnet and haiku only — Plus $20 plan"},
+			},
+			Default:  "high",
+			Required: true,
+		},
+		// 3. Development Mode
 		{
 			ID:          "development_mode",
 			Type:        QuestionTypeSelect,

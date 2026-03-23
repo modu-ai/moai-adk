@@ -22,7 +22,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/loop"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/ralph"
-	"github.com/modu-ai/moai-adk/internal/rank"
 	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -42,9 +41,6 @@ type Dependencies struct {
 	HookProtocol   hook.Protocol
 	UpdateChecker  update.Checker
 	UpdateOrch     update.Orchestrator
-	RankClient     rank.Client
-	RankCredStore  rank.CredentialStore
-	RankBrowser    rank.BrowserOpener
 	LoopController *loop.LoopController
 	Logger         *slog.Logger
 }
@@ -85,7 +81,6 @@ func InitDependencies() {
 		Config:         config.NewConfigManager(),
 		GitOpsManager:  gitOpsMgr,
 		HookProtocol:   hook.NewProtocol(),
-		RankCredStore:  rank.NewFileCredentialStore(""),
 		LoopController: loopCtrl,
 		Logger:         logger,
 	}
@@ -116,15 +111,6 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
 	deps.HookRegistry.Register(hook.NewSessionEndHandler())
 
-	// Register rank session handler if credentials exist
-	rankHandler, err := hook.EnsureRankSessionHandler()
-	if err != nil {
-		logger.Warn("failed to initialize rank session handler", "error", err)
-	} else if rankHandler != nil {
-		deps.HookRegistry.Register(rankHandler)
-		logger.Info("rank session handler registered")
-	}
-
 	// Register auto-update handler for SessionStart
 	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
 
@@ -141,6 +127,9 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewTaskCompletedHandler())
 	deps.HookRegistry.Register(hook.NewWorktreeCreateHandler())
 	deps.HookRegistry.Register(hook.NewWorktreeRemoveHandler())
+	deps.HookRegistry.Register(hook.NewPostCompactHandler())
+	deps.HookRegistry.Register(hook.NewInstructionsLoadedHandler())
+	deps.HookRegistry.Register(hook.NewStopFailureHandler())
 }
 
 // GetDeps returns the current Dependencies instance.
@@ -332,24 +321,3 @@ func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, erro
 	return &loop.Feedback{}, nil
 }
 
-// EnsureRank lazily initializes the Rank client.
-// It should be called before using RankClient.
-// Thread-safe: subsequent calls are no-ops if RankClient is already initialized.
-// Returns an error if RankCredStore is not initialized or has no API key.
-func (d *Dependencies) EnsureRank() error {
-	if d.RankClient != nil {
-		return nil
-	}
-	if d.RankCredStore == nil {
-		return fmt.Errorf("RankCredStore not initialized")
-	}
-	apiKey, err := d.RankCredStore.GetAPIKey()
-	if err != nil {
-		return fmt.Errorf("get API key: %w", err)
-	}
-	if apiKey == "" {
-		return fmt.Errorf("no API key configured")
-	}
-	d.RankClient = rank.NewClient(apiKey)
-	return nil
-}

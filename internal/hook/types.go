@@ -66,6 +66,18 @@ const (
 	// EventWorktreeRemove is triggered when a worktree is removed after an isolated agent terminates.
 	// Available since Claude Code v2.1.49+.
 	EventWorktreeRemove EventType = "WorktreeRemove"
+
+	// EventPostCompact is triggered after context compaction completes.
+	// Available since Claude Code v2.1.76+.
+	EventPostCompact EventType = "PostCompact"
+
+	// EventInstructionsLoaded is triggered when CLAUDE.md or .claude/rules/*.md files are loaded.
+	// Available since Claude Code v2.1.69+.
+	EventInstructionsLoaded EventType = "InstructionsLoaded"
+
+	// EventStopFailure is triggered when a turn ends due to an API error (rate limit, auth failure).
+	// Available since Claude Code v2.1.78+.
+	EventStopFailure EventType = "StopFailure"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -87,6 +99,9 @@ func ValidEventTypes() []EventType {
 		EventTaskCompleted,
 		EventWorktreeCreate,
 		EventWorktreeRemove,
+		EventPostCompact,
+		EventInstructionsLoaded,
+		EventStopFailure,
 	}
 }
 

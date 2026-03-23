@@ -876,6 +876,38 @@ go test -run TestCCCmd_Execution ./internal/cli/
 
 ---
 
+---
+
+## 20. Template Path Hardcoding Prevention
+
+### [HARD] Never Use `.HomeDir` or `.GoBinPath` for Fallback Paths in Shell Templates
+
+Shell script templates (`.sh.tmpl`) that need to reference the user's home directory or Go bin path MUST use shell environment variables (`$HOME`) instead of Go template variables (`.HomeDir`, `.GoBinPath`).
+
+**Why**: `.HomeDir` and `.GoBinPath` are resolved at `moai init` time on the host machine and baked into generated scripts as absolute paths (e.g., `/Users/username/go/bin`). When the project is cloned or opened on another OS or by another user, these hardcoded paths silently fail.
+
+**Rule for fallback binary lookups in `.sh.tmpl`:**
+
+```bash
+# WRONG: bakes in macOS absolute path at init time
+if [ -f "{{posixPath .HomeDir}}/go/bin/moai" ]; then
+
+# CORRECT: resolved at runtime per OS/user
+if [ -f "$HOME/go/bin/moai" ]; then
+```
+
+**`.GoBinPath` is still valid** for the primary path injection (the first detected path at `moai init`), because it is the most specific location. But the `$HOME/go/bin` fallback MUST use `$HOME`.
+
+**Checklist when editing any `.sh.tmpl` file:**
+- [ ] Primary path: `{{posixPath .GoBinPath}}/moai` — OK (init-time detection)
+- [ ] Fallback path: `$HOME/go/bin/moai` — MUST use `$HOME`, not `{{posixPath .HomeDir}}/go/bin`
+- [ ] User-local path: `$HOME/.local/bin/moai` — MUST use `$HOME`
+- [ ] After editing template: run `make build` to regenerate embedded files
+
+**`renderer.go` passthrough**: `$HOME` is already in `claudeCodePassthroughTokens`, so the unexpanded token validator will not reject it.
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.6.0 (GLM Integration Testing Rules added)
-**Last Updated**: 2026-02-26
+**Version**: 1.7.0 (Template Path Hardcoding Prevention added)
+**Last Updated**: 2026-03-18

@@ -17,9 +17,6 @@ const (
 	// ClaudeMD is the main Claude Code execution directive file.
 	ClaudeMD = "CLAUDE.md"
 
-	// CredentialsJSON is the rank service credentials file.
-	CredentialsJSON = "credentials.json"
-
 	// GithubSpecRegistryJSON is the file that maps GitHub issues to SPEC IDs.
 	GithubSpecRegistryJSON = "github-spec-registry.json"
 )

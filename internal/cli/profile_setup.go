@@ -65,10 +65,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		docLang = "en"
 	}
 
-	modelPolicy := existingPrefs.ModelPolicy
-	if modelPolicy == "" {
-		modelPolicy = "high"
-	}
 	model := existingPrefs.Model
 	bypass := existingPrefs.Bypass
 
@@ -139,17 +135,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&docLang),
 		).Title(t.LanguagesTitle),
 
-		// Section 3: Model Settings (policy + model override)
+		// Section 3: Model Settings (model override + bypass)
+		// Note: model_policy is now configured per-project via moai init / moai update -c.
 		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(t.ModelPolicyTitle).
-				Description(t.ModelPolicyDesc).
-				Options(
-					huh.NewOption(t.ModelPolicyHigh, "high"),
-					huh.NewOption(t.ModelPolicyMedium, "medium"),
-					huh.NewOption(t.ModelPolicyLow, "low"),
-				).
-				Value(&modelPolicy),
 			huh.NewSelect[string]().
 				Title(t.ModelOverrideTitle).
 				Description(t.ModelOverrideDesc).
@@ -204,7 +192,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		GitCommitLang:    gitCommitLang,
 		CodeCommentLang:  codeCommentLang,
 		DocLang:          docLang,
-		ModelPolicy:      modelPolicy,
 		Model:            model,
 		Bypass:           bypass,
 		StatuslineMode:   statuslineMode,

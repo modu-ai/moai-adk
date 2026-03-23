@@ -71,6 +71,19 @@ workflow:
                     - ux-reviewer
         require_plan_approval: true
         teammate_display: auto
+    # SPEC-WORKTREE-002: Worktree automation settings
+    worktree:
+        auto_create: true
+        auto_merge: true
+        auto_cleanup: true
+        tmux_preferred: true
+        session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+        # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+        # Uncomment and customize to speed up worktree creation
+        # sparse_paths:
+        #     - "src/"
+        #     - "tests/"
+        #     - "config/"
     token_budget:
         plan: 30000
         run: 180000

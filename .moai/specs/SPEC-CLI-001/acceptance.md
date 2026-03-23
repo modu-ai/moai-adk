@@ -40,7 +40,7 @@ And exit code 0을 반환한다
 ### AC-012: Init 커맨드 라우팅
 
 ```gherkin
-Given 프로젝트 디렉토리가 존재하고
+Given 프로젝트 디렉터리가 존재하고
 And SPEC-INIT-001 도메인 모듈이 DI로 주입되어 있고
 When 사용자가 "moai init"을 실행하면
 Then 시스템은 프로젝트 초기화 로직을 SPEC-INIT-001 모듈에 위임하고
@@ -48,13 +48,13 @@ And 초기화 결과를 출력한다
 ```
 
 ```gherkin
-Given 프로젝트 디렉토리가 존재하고
+Given 프로젝트 디렉터리가 존재하고
 When 사용자가 "moai init --non-interactive --locale ko"를 실행하면
 Then 시스템은 non-interactive 모드로 한국어 설정으로 초기화를 수행한다
 ```
 
 ```gherkin
-Given 프로젝트 디렉토리가 존재하고
+Given 프로젝트 디렉터리가 존재하고
 When 사용자가 "moai init --help"를 실행하면
 Then 시스템은 다음 flag를 포함한 도움말을 출력한다:
   | Flag | 설명 |
@@ -295,7 +295,7 @@ And 설정 파일을 v2.0.0 형식으로 업데이트한다
 ```gherkin
 Given 마이그레이션이 필요한 설정 파일이 존재하고
 When 마이그레이션이 시작되면
-Then 시스템은 .moai/backup/{timestamp}/ 디렉토리를 생성하고
+Then 시스템은 .moai/backup/{timestamp}/ 디렉터리를 생성하고
 And .moai/config/sections/ 의 모든 YAML 파일을 백업하고
 And 백업 완료 후 마이그레이션을 진행한다
 ```
@@ -510,14 +510,14 @@ Then Name 필드가 정확히 매핑된다
 ### AC-052: utils 패키지 기능
 
 ```gherkin
-Given .moai/ 디렉토리가 존재하는 프로젝트 루트가 있고
-And 현재 작업 디렉토리가 프로젝트의 하위 디렉토리이고
+Given .moai/ 디렉터리가 존재하는 프로젝트 루트가 있고
+And 현재 작업 디렉터리가 프로젝트의 하위 디렉터리이고
 When utils.FindProjectRoot()를 호출하면
-Then .moai/ 디렉토리를 포함하는 프로젝트 루트 경로를 반환한다
+Then .moai/ 디렉터리를 포함하는 프로젝트 루트 경로를 반환한다
 ```
 
 ```gherkin
-Given .moai/ 디렉토리가 존재하지 않는 디렉토리에서
+Given .moai/ 디렉터리가 존재하지 않는 디렉터리에서
 When utils.FindProjectRoot()를 호출하면
 Then os.ErrNotExist 에러를 반환한다
 ```
@@ -551,7 +551,7 @@ Then 전체 실행 시간이 50ms 미만이다
 ### AC-072: pkg에서 internal 참조 없음
 
 ```gherkin
-Given pkg/ 디렉토리의 모든 Go 파일을 검사하면
+Given pkg/ 디렉터리의 모든 Go 파일을 검사하면
 When import 구문을 분석하면
 Then "internal/" 패키지를 참조하는 import가 0건이다
 And "go build ./pkg/..." 가 정상 컴파일된다

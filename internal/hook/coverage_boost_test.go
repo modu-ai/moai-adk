@@ -1,7 +1,6 @@
 package hook
 
 // coverage_boost_test.go - Targeted tests to increase coverage for:
-//   - rank_session.go: Handle (36%), InitRankSessionHandler (0%), EnsureRankSessionHandler (0%)
 //   - pre_tool.go: scanWriteContent (0%), NewPreToolHandlerWithScanner (71.4%)
 //   - session_end.go: garbageCollectStaleTeams (75%)
 //   - compact.go: Handle (71.4%)
@@ -20,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/rank"
 )
 
 // --- protocol.go: WriteOutput nil output branch ---
@@ -207,133 +205,6 @@ func TestGarbageCollectStaleTeams_StaleRemovalError(t *testing.T) {
 	}
 }
 
-// --- rank_session.go: InitRankSessionHandler, EnsureRankSessionHandler ---
-
-func TestInitRankSessionHandler_ReturnsHandler(t *testing.T) {
-	// Cannot use t.Parallel() because we use t.Setenv()
-	// Use a temp directory so NewPatternStore doesn't fail.
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
-	t.Setenv("USERPROFILE", tempHome)
-
-	h, err := InitRankSessionHandler()
-	// InitRankSessionHandler may succeed or fail depending on environment.
-	// What matters is: no panic, and if err==nil then h is not nil.
-	if err != nil {
-		// Pattern store creation failure is acceptable in test env.
-		t.Logf("InitRankSessionHandler returned error (acceptable in test): %v", err)
-		return
-	}
-	if h == nil {
-		t.Fatal("InitRankSessionHandler() returned nil handler without error")
-	}
-	if h.EventType() != EventSessionEnd {
-		t.Errorf("EventType() = %q, want %q", h.EventType(), EventSessionEnd)
-	}
-}
-
-func TestEnsureRankSessionHandler_NoCredentials(t *testing.T) {
-	// Cannot use t.Parallel() because we use t.Setenv()
-	// Use a temp home dir with no credentials file.
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
-	t.Setenv("USERPROFILE", tempHome)
-
-	h, err := EnsureRankSessionHandler()
-	// No credentials file exists, so should return (nil, nil).
-	if err != nil {
-		t.Fatalf("EnsureRankSessionHandler() unexpected error: %v", err)
-	}
-	if h != nil {
-		t.Errorf("EnsureRankSessionHandler() = %v, want nil (no credentials)", h)
-	}
-}
-
-func TestEnsureRankSessionHandler_WithCredentials(t *testing.T) {
-	// Cannot use t.Parallel() because we use t.Setenv()
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
-	t.Setenv("USERPROFILE", tempHome)
-
-	// Create a credentials file so HasCredentials() returns true.
-	rankDir := filepath.Join(tempHome, ".moai", "rank")
-	if err := os.MkdirAll(rankDir, 0o755); err != nil {
-		t.Fatalf("setup rank dir: %v", err)
-	}
-
-	credStore := rank.NewFileCredentialStore(rankDir)
-	if err := credStore.Save(&rank.Credentials{APIKey: "test-key"}); err != nil {
-		t.Fatalf("save credentials: %v", err)
-	}
-
-	h, err := EnsureRankSessionHandler()
-	if err != nil {
-		t.Fatalf("EnsureRankSessionHandler() with credentials failed: %v", err)
-	}
-	// Should return a valid handler when credentials exist.
-	if h == nil {
-		t.Fatal("EnsureRankSessionHandler() returned nil with valid credentials")
-	}
-	if h.EventType() != EventSessionEnd {
-		t.Errorf("EventType() = %q, want %q", h.EventType(), EventSessionEnd)
-	}
-}
-
-// --- rank_session.go: Handle with valid API key (more branch coverage) ---
-
-func TestRankSessionHandler_Handle_WithAPIKey_SubmitFails(t *testing.T) {
-	t.Parallel()
-
-	// Handler with an API key but invalid server → submit fails → returns empty output (non-blocking).
-	cred := &mockCredStore{apiKey: "test-api-key", hasCredentials: true}
-	h := NewRankSessionHandler(nil, cred)
-	ctx := context.Background()
-
-	input := &HookInput{
-		SessionID:     "sess-submit-fail",
-		CWD:           "/tmp",
-		ProjectDir:    "/tmp",
-		HookEventName: "SessionEnd",
-		Model:         "claude-sonnet-4",
-	}
-
-	// Even if submit fails (no real server), Handle should return empty HookOutput with no error.
-	got, err := h.Handle(ctx, input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil output")
-	}
-	// Decision should be empty (SessionEnd hooks return empty {}).
-	if got.Decision != "" {
-		t.Errorf("Decision = %q, want empty", got.Decision)
-	}
-}
-
-func TestRankSessionHandler_Handle_CredStoreError(t *testing.T) {
-	t.Parallel()
-
-	// When GetAPIKey returns an error, Handle should skip and return empty output.
-	cred := &mockCredStore{apiKey: "", apiKeyErr: errors.New("keystore error"), hasCredentials: false}
-	h := NewRankSessionHandler(nil, cred)
-	ctx := context.Background()
-
-	input := &HookInput{
-		SessionID:     "sess-cred-error",
-		CWD:           "/tmp",
-		HookEventName: "SessionEnd",
-	}
-
-	got, err := h.Handle(ctx, input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil output")
-	}
-}
-
 // --- pre_tool.go: scanWriteContent via NewPreToolHandlerWithScanner ---
 
 func TestPreToolHandler_ScanWriteContent_NilScanner(t *testing.T) {
@@ -477,22 +348,6 @@ func TestPreToolHandler_Handle_EditTool_AskPattern(t *testing.T) {
 	}
 }
 
-// --- anonymizePath: error branch (absolute path failure) ---
-
-func TestAnonymizePath_RelativePath(t *testing.T) {
-	t.Parallel()
-
-	// A relative path that filepath.Abs can resolve.
-	// The function falls back to path if Abs fails, but Abs rarely fails.
-	got := anonymizePath("relative/path/to/project")
-	if len(got) == 0 {
-		t.Error("anonymizePath should return non-empty hash for relative path")
-	}
-	if len(got) != 16 {
-		t.Errorf("expected length 16, got %d", len(got))
-	}
-}
-
 // --- compilePatterns: error branch (invalid pattern) ---
 
 func TestCompilePatterns_InvalidPattern(t *testing.T) {
@@ -536,31 +391,6 @@ func TestSessionEndHandler_Handle_MultipleCallsIdempotent(t *testing.T) {
 		if got == nil {
 			t.Fatalf("call %d: got nil output", i+1)
 		}
-	}
-}
-
-// --- rank_session.go: Handle with ProjectDir set (not empty) ---
-
-func TestRankSessionHandler_Handle_WithProjectDir(t *testing.T) {
-	t.Parallel()
-
-	cred := &mockCredStore{apiKey: "", hasCredentials: false}
-	h := NewRankSessionHandler(nil, cred)
-	ctx := context.Background()
-
-	input := &HookInput{
-		SessionID:     "sess-with-proj",
-		CWD:           "/tmp/cwd",
-		ProjectDir:    "/tmp/project",
-		HookEventName: "SessionEnd",
-	}
-
-	got, err := h.Handle(ctx, input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil output")
 	}
 }
 
@@ -726,39 +556,6 @@ func TestPostToolHandler_Handle_TaskTool_ValidMetrics(t *testing.T) {
 	logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
 	if _, statErr := os.Stat(logPath); os.IsNotExist(statErr) {
 		t.Error("task metrics log should have been created")
-	}
-}
-
-// --- Additional rank_session.go Handle coverage ---
-
-func TestRankSessionHandler_Handle_PatternStoreNotNil_NotExcluded(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	cred := &mockCredStore{apiKey: "", hasCredentials: false}
-
-	patternStore, err := rank.NewPatternStore(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	h := NewRankSessionHandler(patternStore, cred)
-	ctx := context.Background()
-
-	// Not excluded project with no credentials → skip silently.
-	input := &HookInput{
-		SessionID:     "sess-not-excluded",
-		CWD:           "/my/project",
-		ProjectDir:    "/my/project",
-		HookEventName: "SessionEnd",
-	}
-
-	got, err := h.Handle(ctx, input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil output")
 	}
 }
 
@@ -930,44 +727,6 @@ func TestCleanupCurrentSessionTeam_NonDirEntries(t *testing.T) {
 	}
 }
 
-// --- rank_session.go: Handle with PatternStore not nil and ProjectDir ---
-
-func TestRankSessionHandler_Handle_PatternStoreChecksProjectDir(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	cred := &mockCredStore{apiKey: "some-key", hasCredentials: true}
-
-	patternStore, err := rank.NewPatternStore(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Add an exclusion for a specific path.
-	if err := patternStore.AddExclude("/excluded"); err != nil {
-		t.Fatal(err)
-	}
-
-	h := NewRankSessionHandler(patternStore, cred)
-	ctx := context.Background()
-
-	// Non-excluded project with API key → will attempt submit (which will fail without server).
-	// Function should still return empty output without error (non-blocking).
-	input := &HookInput{
-		SessionID:     "sess-pattern-check",
-		CWD:           "/my/project",
-		ProjectDir:    "/my/project",
-		HookEventName: "SessionEnd",
-	}
-
-	got, err := h.Handle(ctx, input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil output")
-	}
-}
-
 // --- post_tool.go Handle: json.Marshal failure path ---
 // json.Marshal on map[string]any with standard types never fails.
 // We cover the remaining handle branches: ToolOutput present + ToolInput present.
@@ -1125,42 +884,6 @@ func TestSessionEndHandler_Handle_WithTeamsDir(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-}
-
-// --- Additional InitRankSessionHandler coverage ---
-
-func TestInitRankSessionHandler_EventTypeCheck(t *testing.T) {
-	// Cannot use t.Parallel() because we use t.Setenv()
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
-	t.Setenv("USERPROFILE", tempHome)
-
-	h, err := InitRankSessionHandler()
-	if err != nil {
-		t.Logf("InitRankSessionHandler returned error (acceptable): %v", err)
-		return
-	}
-	if h == nil {
-		t.Fatal("expected non-nil handler")
-	}
-	// Verify the returned handler works.
-	if h.EventType() != EventSessionEnd {
-		t.Errorf("EventType() = %q, want %q", h.EventType(), EventSessionEnd)
-	}
-	// The returned handler should accept a valid input without error.
-	ctx := context.Background()
-	input := &HookInput{
-		SessionID:     "sess-init-check",
-		CWD:           "/tmp",
-		HookEventName: "SessionEnd",
-	}
-	out, handleErr := h.Handle(ctx, input)
-	if handleErr != nil {
-		t.Fatalf("Handle() unexpected error: %v", handleErr)
-	}
-	if out == nil {
-		t.Fatal("Handle() returned nil output")
 	}
 }
 

@@ -210,6 +210,11 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.ClaudeCodeVersion = input.Version
 	}
 
+	// Extract rate limit info from Claude Code (v2.1.80+)
+	if input != nil && input.RateLimits != nil {
+		data.RateLimits = input.RateLimits
+	}
+
 	// Parallel collectors (may involve I/O)
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData

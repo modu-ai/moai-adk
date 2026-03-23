@@ -359,7 +359,7 @@ Phase 4: 통합
 | 문서 | 경로 | 관련 내용 |
 |------|------|----------|
 | Product Document | `.moai/project/product.md` | Statusline 기능 정의 (Section 6) |
-| Architecture Document | `.moai/project/structure.md` | internal/statusline/ 디렉토리 구조 |
+| Architecture Document | `.moai/project/structure.md` | internal/statusline/ 디렉터리 구조 |
 | System Design | `.moai/project/design.md` | Statusline 인터페이스 (Section 3.13) |
 | Technology Stack | `.moai/project/tech.md` | Charmbracelet, errgroup 기술 선택 |
 | Claude Code Statusline | `.claude/skills/.../claude-code-statusline-official.md` | 프로토콜 스펙 |
