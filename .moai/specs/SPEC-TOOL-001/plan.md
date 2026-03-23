@@ -39,7 +39,7 @@ Python 참조 구현을 기반으로 Go 관용적 패턴으로 재작성한다. 
 
 - Rule 구조체 정의
 - RuleLoader 구현
-  - YAML 파일 로딩 (단일 파일, 디렉토리)
+  - YAML 파일 로딩 (단일 파일, 디렉터리)
   - 멀티 문서 YAML 파싱 (gopkg.in/yaml.v3)
   - 언어별 규칙 필터링
   - 에러 처리 (파일 없음, 잘못된 YAML)
@@ -63,7 +63,7 @@ Python 참조 구현을 기반으로 Go 관용적 패턴으로 재작성한다. 
 - 단위 테스트: 언어 감지, 패턴 매칭, JSON 파싱
 - 통합 테스트: sg CLI 존재 시 실제 스캔 (build tag로 분리)
 - 벤치마크 테스트: 파일 스캔 성능
-- 테스트 데이터: testdata/ 디렉토리에 샘플 코드 파일 배치
+- 테스트 데이터: testdata/ 디렉터리에 샘플 코드 파일 배치
 
 ### Secondary Goal: Rank Client 구현
 
@@ -135,7 +135,7 @@ Python 참조 구현을 기반으로 Go 관용적 패턴으로 재작성한다. 
 
 #### Task 11: Auth & Config 테스트
 
-- 크리덴셜 CRUD 테스트 (임시 디렉토리 사용)
+- 크리덴셜 CRUD 테스트 (임시 디렉터리 사용)
 - 파일 권한 검증 테스트
 - OAuth state 검증 테스트
 - 포트 탐색 테스트
@@ -192,7 +192,7 @@ func computeSignature(apiKey, timestamp, body string) string {
 
 ```go
 func (s *fileStore) Save(creds *Credentials) error {
-    // 디렉토리 생성 (0700)
+    // 디렉터리 생성 (0700)
     if err := os.MkdirAll(s.dir, 0700); err != nil {
         return fmt.Errorf("create config dir: %w", err)
     }
@@ -221,7 +221,7 @@ func (s *fileStore) Save(creds *Credentials) error {
 | sg CLI 통합 | 빌드 태그 분리 (`//go:build integration`) | 실제 sg CLI |
 | Rank API 클라이언트 | HTTP 모킹 | httptest.NewServer |
 | HMAC 서명 | 검증 벡터 | 알려진 입출력 쌍 |
-| 크리덴셜 저장 | 임시 디렉토리 | t.TempDir() |
+| 크리덴셜 저장 | 임시 디렉터리 | t.TempDir() |
 | OAuth 플로우 | 모킹 서버 | httptest + 콜백 시뮬레이션 |
 
 ---

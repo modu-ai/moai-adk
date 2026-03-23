@@ -182,6 +182,8 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	switch id {
 	case "project_name":
 		result.ProjectName = value
+	case "model_policy":
+		result.ModelPolicy = value
 	case "development_mode":
 		result.DevelopmentMode = value
 	case "git_mode":

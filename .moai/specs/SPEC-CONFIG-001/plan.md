@@ -187,7 +187,7 @@ func atomicSave(path string, data []byte) error {
 | 리스크 | 영향 | 가능성 | 대응 전략 |
 |--------|------|--------|-----------|
 | Viper file watcher가 macOS에서 불안정 | 설정 변경 감지 실패 | Medium | fsnotify 직접 사용 fallback 구현, polling 기반 대안 준비 |
-| `os.Rename` cross-device 실패 | NFS/Docker volume에서 atomic save 실패 | Low | 동일 디렉토리에 temp 파일 생성으로 완화, cross-device 감지 시 copy+delete fallback |
+| `os.Rename` cross-device 실패 | NFS/Docker volume에서 atomic save 실패 | Low | 동일 디렉터리에 temp 파일 생성으로 완화, cross-device 감지 시 copy+delete fallback |
 | Viper env binding과 YAML key 충돌 | 환경 변수 오버라이드 미적용 | Low | `SetEnvKeyReplacer`로 `.` -> `_` 매핑 명시, integration test 검증 |
 | default tag 파싱 복잡도 | Nested struct에서 default 누락 | Medium | `NewDefaultConfig()` 함수로 프로그래밍적 기본값 설정 (tag 파싱 의존성 최소화) |
 

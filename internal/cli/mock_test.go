@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/rank"
 	"github.com/modu-ai/moai-adk/internal/update"
 )
 
@@ -90,114 +89,6 @@ func (m *mockUpdateOrchestrator) Update(ctx context.Context) (*update.UpdateResu
 	return &update.UpdateResult{PreviousVersion: "v0.0.0", NewVersion: "v0.0.1"}, nil
 }
 
-// mockRankClient implements rank.Client for testing.
-type mockRankClient struct {
-	checkStatusFunc    func(ctx context.Context) (*rank.ApiStatus, error)
-	getUserRankFunc    func(ctx context.Context) (*rank.UserRank, error)
-	getLeaderboardFunc func(ctx context.Context, period string, limit, offset int) ([]rank.LeaderboardEntry, error)
-	submitSessionFunc  func(ctx context.Context, session *rank.SessionSubmission) error
-	submitBatchFunc    func(ctx context.Context, sessions []*rank.SessionSubmission) (*rank.BatchResult, error)
-}
-
-func (m *mockRankClient) CheckStatus(ctx context.Context) (*rank.ApiStatus, error) {
-	if m.checkStatusFunc != nil {
-		return m.checkStatusFunc(ctx)
-	}
-	return &rank.ApiStatus{Status: "ok"}, nil
-}
-
-func (m *mockRankClient) GetUserRank(ctx context.Context) (*rank.UserRank, error) {
-	if m.getUserRankFunc != nil {
-		return m.getUserRankFunc(ctx)
-	}
-	return &rank.UserRank{
-		Username: "testuser",
-		Stats: &rank.UserRankStats{
-			TotalTokens:   1000,
-			TotalSessions: 5,
-		},
-	}, nil
-}
-
-func (m *mockRankClient) GetLeaderboard(ctx context.Context, period string, limit, offset int) ([]rank.LeaderboardEntry, error) {
-	if m.getLeaderboardFunc != nil {
-		return m.getLeaderboardFunc(ctx, period, limit, offset)
-	}
-	return nil, nil
-}
-
-func (m *mockRankClient) SubmitSession(ctx context.Context, session *rank.SessionSubmission) error {
-	if m.submitSessionFunc != nil {
-		return m.submitSessionFunc(ctx, session)
-	}
-	return nil
-}
-
-func (m *mockRankClient) SubmitSessionsBatch(ctx context.Context, sessions []*rank.SessionSubmission) (*rank.BatchResult, error) {
-	if m.submitBatchFunc != nil {
-		return m.submitBatchFunc(ctx, sessions)
-	}
-	return &rank.BatchResult{Success: true}, nil
-}
-
-// mockCredentialStore implements rank.CredentialStore for testing.
-type mockCredentialStore struct {
-	saveFunc     func(creds *rank.Credentials) error
-	loadFunc     func() (*rank.Credentials, error)
-	deleteFunc   func() error
-	hasCredsFunc func() bool
-	getKeyFunc   func() (string, error)
-}
-
-func (m *mockCredentialStore) Save(creds *rank.Credentials) error {
-	if m.saveFunc != nil {
-		return m.saveFunc(creds)
-	}
-	return nil
-}
-
-func (m *mockCredentialStore) Load() (*rank.Credentials, error) {
-	if m.loadFunc != nil {
-		return m.loadFunc()
-	}
-	return nil, nil
-}
-
-func (m *mockCredentialStore) Delete() error {
-	if m.deleteFunc != nil {
-		return m.deleteFunc()
-	}
-	return nil
-}
-
-func (m *mockCredentialStore) HasCredentials() bool {
-	if m.hasCredsFunc != nil {
-		return m.hasCredsFunc()
-	}
-	return false
-}
-
-func (m *mockCredentialStore) GetAPIKey() (string, error) {
-	if m.getKeyFunc != nil {
-		return m.getKeyFunc()
-	}
-	return "", nil
-}
-
-// mockBrowser implements rank.BrowserOpener for testing.
-// It records the URL that would be opened without actually opening a browser.
-type mockBrowser struct {
-	openFunc func(url string) error
-	lastURL  string
-}
-
-func (m *mockBrowser) Open(url string) error {
-	m.lastURL = url
-	if m.openFunc != nil {
-		return m.openFunc(url)
-	}
-	return nil
-}
 
 // mockHandler implements hook.Handler for testing.
 type mockHandler struct {

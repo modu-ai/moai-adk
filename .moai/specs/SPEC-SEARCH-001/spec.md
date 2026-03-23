@@ -146,7 +146,7 @@ func triggerSessionIndex(sessionID, projectDir, gitBranch string) {
 ~/.claude/projects/{project-hash}/*.jsonl
 ```
 
-`--index-session <id>` 제공 시, `~/.claude/projects/` 하위 디렉토리에서 `<id>.jsonl`을 탐색.
+`--index-session <id>` 제공 시, `~/.claude/projects/` 하위 디렉터리에서 `<id>.jsonl`을 탐색.
 
 ### 의존성
 

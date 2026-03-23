@@ -17,7 +17,7 @@ Feature: 템플릿 배포
   go:embed 파일시스템에서 프로젝트 루트로 템플릿을 배포한다.
 
   Scenario: 전체 템플릿 정상 배포
-    Given 유효한 프로젝트 루트 디렉토리가 존재하고
+    Given 유효한 프로젝트 루트 디렉터리가 존재하고
     And 매니페스트 매니저가 초기화되어 있을 때
     When Deploy(ctx, projectRoot, manifest)를 호출하면
     Then 모든 임베드 템플릿이 projectRoot에 배포되고
@@ -80,13 +80,13 @@ Feature: 템플릿 배포
     Then 결과 경로가 ".claude/agents/moai/file.md"이다
 ```
 
-### AC-T-005: 디렉토리 자동 생성
+### AC-T-005: 디렉터리 자동 생성
 
 ```gherkin
-  Scenario: 중간 디렉토리 자동 생성
-    Given projectRoot 내에 ".claude/agents/moai/" 디렉토리가 존재하지 않을 때
+  Scenario: 중간 디렉터리 자동 생성
+    Given projectRoot 내에 ".claude/agents/moai/" 디렉터리가 존재하지 않을 때
     When ".claude/agents/moai/expert-backend.md" 배포를 실행하면
-    Then ".claude/agents/moai/" 디렉토리가 자동으로 생성되고
+    Then ".claude/agents/moai/" 디렉터리가 자동으로 생성되고
     And 파일이 정상적으로 배포된다
 ```
 
@@ -495,7 +495,7 @@ Feature: 파일 출처 분류
     And 매니페스트는 실제로 배포된 파일만 반영한다
 ```
 
-### AC-E-003: 읽기 전용 디렉토리
+### AC-E-003: 읽기 전용 디렉터리
 
 ```gherkin
   Scenario: 읽기 전용 projectRoot에 배포 시도

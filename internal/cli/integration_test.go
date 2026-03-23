@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 // --- Integration tests covering multiple commands and DI wiring ---
@@ -38,7 +37,7 @@ func TestExecute_InitsDeps(t *testing.T) {
 func TestRootCmd_AllCommandsRegistered(t *testing.T) {
 	expected := []string{
 		"init", "doctor", "status", "version",
-		"update", "hook", "cc", "glm", "rank",
+		"update", "hook", "cc", "glm",
 		"worktree", "statusline",
 	}
 
@@ -121,159 +120,6 @@ func TestHookEventCmd_NilDeps(t *testing.T) {
 		}
 	}
 	t.Error("session-start subcommand not found")
-}
-
-func TestRankLogin_NilDeps(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	deps = nil
-
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "login" {
-			err := cmd.RunE(cmd, []string{})
-			if err == nil {
-				t.Error("rank login with nil deps should error")
-			}
-			return
-		}
-	}
-	t.Error("login subcommand not found")
-}
-
-func TestRankLogout_NilDeps(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	deps = nil
-
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "logout" {
-			err := cmd.RunE(cmd, []string{})
-			if err == nil {
-				t.Error("rank logout with nil deps should error")
-			}
-			return
-		}
-	}
-	t.Error("logout subcommand not found")
-}
-
-func TestRankStatus_NilRankClient(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	deps = &Dependencies{}
-
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "status" {
-			buf := new(bytes.Buffer)
-			cmd.SetOut(buf)
-			cmd.SetErr(buf)
-
-			err := cmd.RunE(cmd, []string{})
-			if err != nil {
-				t.Fatalf("rank status with nil client should not error, got: %v", err)
-			}
-			if !strings.Contains(buf.String(), "not configured") {
-				t.Errorf("output should say not configured, got %q", buf.String())
-			}
-			return
-		}
-	}
-	t.Error("status subcommand not found")
-}
-
-func TestRankSync_Output(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	// Set up minimal deps for sync command (no auth = not logged in message)
-	deps = &Dependencies{}
-
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "sync" {
-			buf := new(bytes.Buffer)
-			cmd.SetOut(buf)
-			cmd.SetErr(buf)
-
-			err := cmd.RunE(cmd, []string{})
-			if err != nil {
-				t.Fatalf("rank sync error: %v", err)
-			}
-			output := buf.String()
-			// Should show not logged in message when no credentials
-			if !strings.Contains(output, "Not logged in") && !strings.Contains(output, "Sync complete") {
-				t.Errorf("output should contain login or sync message, got %q", output)
-			}
-			return
-		}
-	}
-	t.Error("sync subcommand not found")
-}
-
-func TestRankExclude_Output(t *testing.T) {
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "exclude" {
-			buf := new(bytes.Buffer)
-			cmd.SetOut(buf)
-			cmd.SetErr(buf)
-
-			// Use unique pattern to avoid conflicts with previous test runs
-			pattern := "*.test-" + time.Now().Format("20060102-150405")
-			err := cmd.RunE(cmd, []string{pattern})
-			if err != nil {
-				t.Fatalf("rank exclude error: %v", err)
-			}
-			if !strings.Contains(buf.String(), pattern) {
-				t.Errorf("output should contain pattern, got %q", buf.String())
-			}
-			return
-		}
-	}
-	t.Error("exclude subcommand not found")
-}
-
-func TestRankInclude_Output(t *testing.T) {
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "include" {
-			buf := new(bytes.Buffer)
-			cmd.SetOut(buf)
-			cmd.SetErr(buf)
-
-			// Use unique pattern to avoid conflicts with previous test runs
-			pattern := "*.go-" + time.Now().Format("20060102-150405")
-			err := cmd.RunE(cmd, []string{pattern})
-			if err != nil {
-				t.Fatalf("rank include error: %v", err)
-			}
-			if !strings.Contains(buf.String(), pattern) {
-				t.Errorf("output should contain pattern, got %q", buf.String())
-			}
-			return
-		}
-	}
-	t.Error("include subcommand not found")
-}
-
-func TestRankRegister_Output(t *testing.T) {
-	for _, cmd := range rankCmd.Commands() {
-		if cmd.Name() == "register" {
-			buf := new(bytes.Buffer)
-			cmd.SetOut(buf)
-			cmd.SetErr(buf)
-
-			err := cmd.RunE(cmd, []string{"my-org"})
-			if err != nil {
-				t.Fatalf("rank register error: %v", err)
-			}
-			if !strings.Contains(buf.String(), "my-org") {
-				t.Errorf("output should contain org name, got %q", buf.String())
-			}
-			return
-		}
-	}
-	t.Error("register subcommand not found")
 }
 
 func TestStatuslineCmd_WithDeps(t *testing.T) {
