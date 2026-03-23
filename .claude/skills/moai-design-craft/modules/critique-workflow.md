@@ -4,7 +4,7 @@ Post-build design critique is a structured review of what was actually built ver
 
 ## Trigger
 
-Activated by `/moai review --critique` or when a SPEC reaches sync phase and `.moai/design/system.md` exists with a direction for that SPEC.
+Activated by `/moai review --critique`. Sync phase auto-trigger is planned for a future release.
 
 ## Three-Step Process
 
@@ -70,6 +70,6 @@ Classify each finding:
 ## What Critique Is Not
 
 - Not a code review (that is `/moai review` without `--critique`)
-- Not a WCAG audit (that is `/moai review --design`)
+- Not a design pattern extraction audit (that is `/moai review --design`; WCAG is handled by moai-domain-uiux)
 - Not a performance review
 - Not an opportunity to redesign — critique evaluates the built thing against stated intent, not against a better design that occurred to you afterward

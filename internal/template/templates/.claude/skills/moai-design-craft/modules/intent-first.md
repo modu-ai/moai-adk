@@ -64,9 +64,11 @@ Trigger this process when a SPEC contains any of:
 
 ## Output
 
-Write findings to `.moai/design/system.md`:
-- Design Direction statement
-- Domain vocabulary list
-- Mental model notes (if relevant for future reference)
+Write findings to `.moai/specs/SPEC-{ID}/design-direction.md` (when inside a SPEC workflow) containing:
+- Intent statement (who, what, feel)
+- Domain concepts and vocabulary (5+ entries)
+- Color world exploration (5+ entries)
+- Signature element definition
+- Defaults to avoid (3+ generic patterns to reject)
 
-See `modules/design-memory.md` for the write protocol.
+Additionally, offer to persist project-level decisions to `.moai/design/system.md` via the write protocol in `modules/design-memory.md`.

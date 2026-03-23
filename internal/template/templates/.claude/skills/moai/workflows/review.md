@@ -190,7 +190,7 @@ Team Prerequisites:
 - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
 - If prerequisites not met: Falls back to single-agent review
 
-## Phase 5: Design Review (Conditional)
+## Phase 4.5: Design Review (Conditional)
 
 When to run: --design or --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
 
@@ -229,7 +229,7 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 - Phase 1: MoAI orchestrator (change identification via git)
 - Phase 2-3: manager-quality subagent (multi-perspective analysis) OR expert-security subagent (if --security)
 - Phase 4-5: MoAI orchestrator (consolidation and user interaction)
-- Phase 5 (conditional): expert-frontend subagent (if --design or --critique)
+- Phase 4.5 (conditional): expert-frontend subagent (if --design or --critique)
 
 ## Execution Summary
 
@@ -238,7 +238,7 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 3. Identify code changes (git diff based on flags)
 4. Delegate multi-perspective review to manager-quality subagent
 5. Check @MX tag compliance for changed files
-6. If --design or --critique: Run design review phase (expert-frontend with moai-design-craft)
+6. If --design or --critique: Run design review phase 4.5 (expert-frontend with moai-design-craft)
 7. Consolidate findings by severity
 8. Present report with next step options
 

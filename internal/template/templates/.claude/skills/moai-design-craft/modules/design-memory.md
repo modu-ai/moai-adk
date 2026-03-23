@@ -51,8 +51,12 @@ Write to `.moai/design/system.md` after:
 
 1. Read the current `.moai/design/system.md` first
 2. Identify the section to update (do not create duplicate sections)
-3. Append or update — do not overwrite existing entries without noting the change
-4. Keep entries concise: design memory is a reference, not documentation
+3. If the file already contains a Design Direction for the same SPEC or feature:
+   - Compare new direction against existing direction
+   - If conflicting: Present both versions to the user and ask "Overwrite existing direction or merge with it?"
+   - If additive: Append new sections without modifying existing entries
+4. Append or update — do not silently overwrite existing entries
+5. Keep entries concise: design memory is a reference, not documentation
 
 ## Stub Template
 
