@@ -30,6 +30,7 @@ skills:
   - moai-library-nextra
   - moai-library-mermaid
   - moai-design-tools
+  - moai-design-craft
   - moai-platform-chrome-extension
   - moai-platform-auth
   - moai-platform-deployment
