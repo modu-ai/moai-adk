@@ -313,7 +313,7 @@ Skipped when: develop_direct workflow, no flags and user chooses "Use current br
 Prerequisite: SPEC files MUST be committed before worktree creation.
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
-- Create worktree via WorktreeManager with branch feature/SPEC-{ID}
+- Create worktree: `moai worktree new SPEC-{ID}`
 - Display worktree path and navigation instructions
 
 #### Branch Path (--branch flag or user choice)
