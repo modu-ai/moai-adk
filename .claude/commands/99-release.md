@@ -3,7 +3,6 @@ description: "MoAI-ADK v2.x production release via GitHub Flow. Creates release/
 argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
-model: sonnet
 disable-model-invocation: true
 version: 4.0.0
 metadata:
