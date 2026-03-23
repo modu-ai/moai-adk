@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.21] - 2026-03-23
+
+### Summary
+
+Design-first development workflow integration with interface-design plugin concepts,
+dependency updates (glamour 1.0.0, huh 1.0.0, x/text 0.35.0), and statusline/hook fixes.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- Intent-First design craft skill (`moai-design-craft`) with design direction, domain vocabulary, design memory, and post-build critique modules
+- Design direction phase in `/moai plan` for UI/UX SPEC workflows
+- Design fidelity verification step in `/moai review` workflow
+- System memory-aware test execution workflow in `/moai run`
+
+### Changed
+
+- Bump `github.com/charmbracelet/glamour` from 0.10.0 to 1.0.0
+- Bump `github.com/charmbracelet/huh` from 0.8.0 to 1.0.0
+- Bump `golang.org/x/text` from 0.34.0 to 0.35.0
+- Template and skill definition updates for design workflow integration
+
+### Fixed
+
+- Statusline stdin JSON parsing failure and improved `rate_limits` field utilization (#553)
+- PostToolUse hook matcher being ignored and `session_id` missing from hook payload (#544)
+- Ambiguous 'WorktreeManager' reference in plan.md replaced with `moai worktree new` (#554)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.21] - 2026-03-23 (한국어)
+
+### 요약
+
+interface-design 플러그인 개념을 활용한 디자인 우선 개발 워크플로우 통합,
+의존성 업데이트 (glamour 1.0.0, huh 1.0.0, x/text 0.35.0), statusline/hook 버그 수정.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- Intent-First 디자인 크래프트 스킬 (`moai-design-craft`) - 디자인 방향, 도메인 어휘, 디자인 메모리, 빌드 후 비평 모듈
+- `/moai plan`에 UI/UX SPEC 디자인 방향 설정 단계 추가
+- `/moai review`에 디자인 충실도 검증 단계 추가
+- `/moai run`에 시스템 메모리 인식 테스트 실행 워크플로우 추가
+
+### 변경됨 (Changed)
+
+- `github.com/charmbracelet/glamour` 0.10.0 → 1.0.0 업그레이드
+- `github.com/charmbracelet/huh` 0.8.0 → 1.0.0 업그레이드
+- `golang.org/x/text` 0.34.0 → 0.35.0 업그레이드
+- 디자인 워크플로우 통합을 위한 템플릿 및 스킬 정의 업데이트
+
+### 수정됨 (Fixed)
+
+- Statusline stdin JSON 파싱 실패 및 `rate_limits` 필드 활용 개선 (#553)
+- PostToolUse 훅 matcher 무시 및 `session_id` 누락 오류 수정 (#544)
+- plan.md의 모호한 'WorktreeManager' 참조를 `moai worktree new`로 변경 (#554)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.20] - 2026-03-20
 
 ### Summary
