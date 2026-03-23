@@ -124,7 +124,7 @@ go:embed 기반 템플릿 추출 및 배포를 구현한다.
   - `Deploy()`: 전체 템플릿 순회 및 배포
   - `filepath.Clean()` 경로 정규화
   - containment check (프로젝트 루트 내부 확인)
-  - 상위 디렉토리 자동 생성 (`os.MkdirAll`)
+  - 상위 디렉터리 자동 생성 (`os.MkdirAll`)
   - 각 파일 배포 후 `manifest.Track()` 호출
   - `context.Context` 취소 지원
 - 요구사항: REQ-T-001, REQ-T-004, REQ-T-005, REQ-T-006, REQ-T-007
@@ -132,7 +132,7 @@ go:embed 기반 템플릿 추출 및 배포를 구현한다.
   - 정상 배포 (파일 존재 + 매니페스트 등록 검증)
   - 경로 순회 시도 (`../etc/passwd` 등)
   - 컨텍스트 취소 시 부분 배포 상태 검증
-  - 디렉토리 자동 생성 검증
+  - 디렉터리 자동 생성 검증
 
 **Task 3.3: 경로 보안 유틸리티**
 - 파일: `internal/template/deployer.go` (내부 함수)
@@ -299,7 +299,7 @@ internal/
 var templateFS embed.FS
 ```
 
-- 빌드 시점에 `templates/` 디렉토리 전체가 바이너리에 포함
+- 빌드 시점에 `templates/` 디렉터리 전체가 바이너리에 포함
 - `fs.WalkDir(templateFS, ...)` 로 순회
 - 읽기 전용: 런타임 수정 불가
 - 바이너리 버전과 템플릿 버전 자동 일치
@@ -418,7 +418,7 @@ mockery를 사용하여 다음 인터페이스의 Mock을 자동 생성:
 | Template Hash | go:embed에 내장된 원본 템플릿의 SHA-256 해시 |
 | Deployed Hash | 파일이 프로젝트에 최초 배포된 시점의 SHA-256 해시 |
 | Current Hash | 파일의 현재 디스크 상태 SHA-256 해시 |
-| Containment Check | 경로가 지정된 루트 디렉토리 내부에 존재하는지 검증 |
+| Containment Check | 경로가 지정된 루트 디렉터리 내부에 존재하는지 검증 |
 | Atomic Write | 임시 파일 작성 후 rename으로 대상 파일을 교체하는 안전한 쓰기 방식 |
 | Strict Mode | Go text/template의 missingkey=error 옵션으로 누락 키 시 오류 발생 |
 | Zero Runtime Expansion | 생성된 파일에 미확장 동적 토큰이 존재하지 않는 원칙 (ADR-011) |

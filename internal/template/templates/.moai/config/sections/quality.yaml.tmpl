@@ -163,6 +163,15 @@ constitution:
       # Type error increase threshold (0 = zero tolerance)
       type_error_increase_threshold: 0
 
+  # Memory Guard: System memory awareness for test execution (opt-in)
+  # Enable to prevent OOM kills on memory-constrained environments (WSL2, CI, VMs)
+  memory_guard:
+    enabled: false
+    emergency_threshold_mb: 2048
+    adaptive_threshold_mb: 8192
+    test_split_strategy: "module"
+    coverage_separate: true
+
 # Report generation settings
 report_generation:
   # Enable quality report generation

@@ -43,6 +43,7 @@ When assigned a testing task:
    - Integration tests for API endpoints and data flow
    - E2E tests for critical user workflows (when applicable)
 4. Run the full test suite and verify all tests pass
+   - Memory-aware execution: IF memory_guard.enabled is true in quality.yaml, check system memory before running tests. If available memory is below adaptive_threshold_mb, split the test suite into module-level batches and run them sequentially. Report combined results.
 5. Report coverage metrics
 
 File ownership rules:

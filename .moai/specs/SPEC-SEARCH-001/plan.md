@@ -21,11 +21,11 @@ TDD (Red-Green-Refactor) - `quality.yaml` 설정에 따름
 
 **2. DB 레이어 (RED-GREEN-REFACTOR)**
 - RED: `internal/search/db_test.go` 작성
-  - TestOpenDB_CreatesDirectory: DB 디렉토리 자동 생성 확인
+  - TestOpenDB_CreatesDirectory: DB 디렉터리 자동 생성 확인
   - TestOpenDB_WALMode: WAL 모드 활성화 확인
   - TestOpenDB_ReturnsExisting: 기존 DB 재사용 확인
 - GREEN: `internal/search/db.go` 구현
-  - `OpenDB(dbPath string) (*sql.DB, error)`: 디렉토리 생성 + WAL 모드 설정
+  - `OpenDB(dbPath string) (*sql.DB, error)`: 디렉터리 생성 + WAL 모드 설정
 - REFACTOR: 에러 래핑 정리
 
 **3. 스키마 레이어 (RED-GREEN-REFACTOR)**

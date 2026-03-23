@@ -16,7 +16,7 @@ internal/rank/ (leaf 패키지, 내부 의존성 없음)
 
 | 카테고리 | 파일 | LOC (추정) | 작업 |
 |---------|------|-----------|------|
-| 핵심 패키지 | `internal/rank/` (17파일) | ~2,500 | 디렉토리 삭제 |
+| 핵심 패키지 | `internal/rank/` (17파일) | ~2,500 | 디렉터리 삭제 |
 | CLI 명령어 | `internal/cli/rank.go` | 690 | 파일 삭제 |
 | Hook 핸들러 | `internal/hook/rank_session.go` | 252 | 파일 삭제 |
 | DI 참조 | `internal/cli/deps.go` | ~30줄 수정 | 편집 |
@@ -51,7 +51,7 @@ internal/rank/ (leaf 패키지, 내부 의존성 없음)
 
 ```
 Phase 1: 파일 삭제 (leaf-first)
-  1.1 internal/rank/ 디렉토리 삭제
+  1.1 internal/rank/ 디렉터리 삭제
   1.2 internal/cli/rank.go 삭제
   1.3 internal/hook/rank_session.go 삭제
   1.4 internal/cli/rank_test.go 삭제

@@ -74,7 +74,7 @@ tags: [ast-grep, rank, acceptance, gherkin]
 
 ### AC-AST-004: 프로젝트 전체 스캔
 
-**Given** 여러 언어의 소스 파일이 포함된 프로젝트 디렉토리가 주어질 때
+**Given** 여러 언어의 소스 파일이 포함된 프로젝트 디렉터리가 주어질 때
 **When** `scanProject()`를 호출하면
 **Then** ProjectScanResult를 반환해야 한다
 **And** 지원되는 확장자를 가진 모든 파일이 스캔되어야 한다
@@ -82,7 +82,7 @@ tags: [ast-grep, rank, acceptance, gherkin]
 
 **Given** ScanConfig에 exclude_patterns로 "node_modules"가 설정되어 있을 때
 **When** `scanProject()`를 호출하면
-**Then** node_modules 디렉토리 내 파일은 스캔에서 제외되어야 한다
+**Then** node_modules 디렉터리 내 파일은 스캔에서 제외되어야 한다
 
 **Given** ScanConfig에 include_patterns로 "*.go"가 설정되어 있을 때
 **When** `scanProject()`를 호출하면
@@ -151,7 +151,7 @@ tags: [ast-grep, rank, acceptance, gherkin]
 **When** `LoadFromFile()`을 호출하면
 **Then** 파싱 에러를 반환해야 한다
 
-**Given** 규칙 파일이 포함된 디렉토리가 주어질 때
+**Given** 규칙 파일이 포함된 디렉터리가 주어질 때
 **When** `LoadFromDirectory()`를 호출하면
 **Then** .yml 및 .yaml 파일에서 모든 규칙을 로드해야 한다
 
@@ -314,7 +314,7 @@ tags: [ast-grep, rank, acceptance, gherkin]
 **Given** 크리덴셜이 저장될 때
 **When** Save()가 완료되면
 **Then** credentials.json 파일 권한은 0600이어야 한다
-**And** ~/.moai/rank/ 디렉토리 권한은 0700이어야 한다
+**And** ~/.moai/rank/ 디렉터리 권한은 0700이어야 한다
 
 **Given** 크리덴셜 저장 중 에러가 발생할 때
 **When** 임시 파일이 생성된 상태이면

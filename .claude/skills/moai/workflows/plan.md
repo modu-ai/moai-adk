@@ -313,7 +313,7 @@ Skipped when: develop_direct workflow, no flags and user chooses "Use current br
 Prerequisite: SPEC files MUST be committed before worktree creation.
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
-- Create worktree via WorktreeManager with branch feature/SPEC-{ID}
+- Create worktree: `moai worktree new SPEC-{ID}`
 - Display worktree path and navigation instructions
 
 #### Branch Path (--branch flag or user choice)
@@ -391,7 +391,7 @@ AskUserQuestion with 3 options (descriptions adapt to active_mode):
 - CC: 추가 env 설정 불필요. worktree 생성 후 새 tmux 세션에서 claude 실행.
 - GLM: 새 tmux 세션에 injectTmuxSessionEnv()로 GLM env 주입 후 실행.
 - CG: 새 tmux 세션에 injectTmuxSessionEnv() 적용 + settings.local.json에서 GLM env 제거(Leader 격리).
-- 새 tmux 세션에서 worktree 디렉토리로 이동 후 `/moai run SPEC-{ID}` 실행.
+- 새 tmux 세션에서 worktree 디렉터리로 이동 후 `/moai run SPEC-{ID}` 실행.
 - 현재 세션 종료 (worktree 세션이 독립적으로 실행됨).
 
 **Step 5 — Gate 결과를 run 워크플로우에 전달:**

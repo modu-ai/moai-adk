@@ -63,7 +63,7 @@ Priority: Primary Goal
 Description: moai init 명령어에 설치 모드 선택 기능 추가
 
 Tasks:
-1. .moai/ 디렉토리 존재 확인 로직 추가
+1. .moai/ 디렉터리 존재 확인 로직 추가
 2. 설치 모드 선택 AskUserQuestion 구현
 3. Global/Local 모드에 따른 배포 로직 호출
 4. 설정 파일에 installation_mode 저장

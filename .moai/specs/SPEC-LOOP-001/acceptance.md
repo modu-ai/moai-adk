@@ -299,12 +299,12 @@ Then 이전 상태 파일이 손상되지 않아야 한다
   And 임시 파일이 정리되어야 한다
 ```
 
-### AC-PERSIST-007: 디렉토리 자동 생성
+### AC-PERSIST-007: 디렉터리 자동 생성
 
 ```gherkin
-Given ".moai/loop/" 디렉토리가 존재하지 않을 때
+Given ".moai/loop/" 디렉터리가 존재하지 않을 때
 When Storage.SaveState(state)를 호출하면
-Then 디렉토리가 자동으로 생성되어야 한다
+Then 디렉터리가 자동으로 생성되어야 한다
   And 상태 파일이 성공적으로 저장되어야 한다
 ```
 
