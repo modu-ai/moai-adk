@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.20] - 2026-03-20
+
+### Summary
+
+Major cleanup release: complete removal of the `moai rank` leaderboard feature, plus integration of Claude Code v2.1.80 new capabilities including 3 new hook events, rate limit statusline support, and effort-based skill optimization.
+
+### Breaking Changes
+
+- `moai rank` command and all subcommands (login, status, logout, sync, exclude, include, register) have been removed
+- `internal/rank/` package completely deleted (17 files)
+- `Dependencies` struct no longer contains `RankClient`, `RankCredStore`, `RankBrowser` fields
+
+### Added
+
+- Hook events: `PostCompact` (v2.1.76), `InstructionsLoaded` (v2.1.69), `StopFailure` (v2.1.78) with handlers and CLI subcommands
+- Statusline: `rate_limits` field parsing from Claude Code v2.1.80 JSON input
+- Statusline: Rate limit data from Claude Code prioritized over MoAI API calls for 5H/7D usage bars
+- Template: `effort` frontmatter support for skills (thinking: high, philosopher: high, loop: low)
+- Template: `worktree` section with `sparse_paths` configuration in workflow.yaml
+
+### Changed
+
+- Hook subcommand count increased from 19 to 22 (3 new events)
+- Template skill definitions updated with effort-based optimization
+
+### Fixed
+
+- Removed dead code from `moai rank` feature (~8,900 lines deleted)
+
+### Installation & Update
+
+```bash
+moai update
+moai version
+```
+
+---
+
+## [2.7.20] - 2026-03-20 (한국어)
+
+### 요약
+
+대규모 정리 릴리즈: `moai rank` 리더보드 기능 완전 제거, Claude Code v2.1.80 신기능 통합 (신규 훅 이벤트 3종, rate limit statusline 지원, effort 기반 스킬 최적화).
+
+### 주요 변경 사항 (Breaking Changes)
+
+- `moai rank` 명령어 및 모든 서브커맨드 제거
+- `internal/rank/` 패키지 완전 삭제 (17개 파일)
+- `Dependencies` 구조체에서 Rank 관련 필드 제거
+
+### 추가됨 (Added)
+
+- 훅 이벤트: `PostCompact`, `InstructionsLoaded`, `StopFailure` 핸들러 및 CLI 서브커맨드
+- Statusline: Claude Code v2.1.80 `rate_limits` 필드 파싱 및 우선 사용
+- 템플릿: 스킬 `effort` frontmatter 지원, workflow.yaml worktree/sparse_paths 설정
+
+### 변경됨 (Changed)
+
+- 훅 서브커맨드 수 19 → 22
+
+### 수정됨 (Fixed)
+
+- `moai rank` dead code 제거 (~8,900줄)
+
+### 설치 및 업데이트
+
+```bash
+moai update
+moai version
+```
+
+---
+
 ## [2.7.16] - 2026-03-18
 
 ### Summary
