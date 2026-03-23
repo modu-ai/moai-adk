@@ -512,7 +512,10 @@ Actions:
 
 Final Verification:
 
-- Run the complete test suite one final time (ALWAYS full suite regardless of LARGE_SCALE)
+- Run the complete test suite one final time (ALWAYS full suite regardless of LARGE_SCALE).
+- Exception: IF memory_guard.enabled is true in quality.yaml AND system memory is below adaptive_threshold_mb, execute the full test suite in module-level batches instead of a single process. The union of batch results MUST cover the complete test suite. Run batches sequentially to minimize peak memory usage.
+  - Example: `go test ./pkg/auth/... && go test ./pkg/api/... && go test ./pkg/core/...`
+  - Example: `pytest tests/unit/auth/ && pytest tests/unit/api/ && pytest tests/unit/core/`
 - Verify all behavior snapshots match
 - Confirm no regressions introduced
 

@@ -136,7 +136,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 		hook.EventPostToolUse,
 		hook.EventStop,
 		hook.EventPreCompact,
-		hook.EventSubagentStop, // registered via RankSessionHandler conditionally
+		hook.EventSubagentStop,
 		// New events:
 		hook.EventPostToolUseFailure,
 		hook.EventNotification,
@@ -149,7 +149,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 
 	// Events that may not have a handler (conditionally registered).
 	optionalEvents := map[hook.EventType]bool{
-		hook.EventSubagentStop: true, // RankSessionHandler is conditional
+		hook.EventSubagentStop: true,
 	}
 
 	for _, event := range allEvents {
@@ -160,7 +160,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 	}
 }
 
-// --- Test 4: ValidEventTypes returns exactly 16 event types ---
+// --- Test 4: ValidEventTypes returns exactly 19 event types ---
 
 func TestHookValidEventTypes_Complete(t *testing.T) {
 	t.Parallel()
@@ -175,13 +175,16 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 		hook.EventTaskCompleted,
 		hook.EventWorktreeCreate,
 		hook.EventWorktreeRemove,
+		hook.EventPostCompact,
+		hook.EventInstructionsLoaded,
+		hook.EventStopFailure,
 	}
 
 	validTypes := hook.ValidEventTypes()
 
 	// Verify exact count.
-	if got := len(validTypes); got != 16 {
-		t.Errorf("ValidEventTypes() returned %d types, want 16", got)
+	if got := len(validTypes); got != 19 {
+		t.Errorf("ValidEventTypes() returned %d types, want 19", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -289,6 +292,9 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventSubagentStop:       "subagent-stop",
 		hook.EventWorktreeCreate:     "worktree-create",
 		hook.EventWorktreeRemove:     "worktree-remove",
+		hook.EventPostCompact:        "post-compact",
+		hook.EventInstructionsLoaded: "instructions-loaded",
+		hook.EventStopFailure:        "stop-failure",
 	}
 
 	registeredNames := make(map[string]bool)
@@ -363,7 +369,7 @@ func TestHookDepsWiring_HandlerCounts(t *testing.T) {
 		}
 	}
 
-	// SessionStart may have multiple handlers (session start + auto-update + optional rank).
+	// SessionStart may have multiple handlers (session start + auto-update).
 	sessionStartHandlers := deps.HookRegistry.Handlers(hook.EventSessionStart)
 	if len(sessionStartHandlers) < 2 {
 		t.Errorf("event %q: got %d handlers, want at least 2 (session start + auto-update)",

@@ -1056,6 +1056,109 @@ func BenchmarkBuilder_Build(b *testing.B) {
 	}
 }
 
+// TestBuild_OfficialSchema verifies that the exact official Claude Code statusline
+// JSON schema (with integer resets_at) is parsed and rendered correctly.
+//
+// See Issue #549.
+func TestBuild_OfficialSchema(t *testing.T) {
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
+	builder := New(Options{
+		Mode:    ModeDefault,
+		NoColor: true,
+	})
+
+	// Use the EXACT JSON from the Claude Code official docs
+	officialJSON := `{
+		"model": {"id": "claude-opus-4-6", "display_name": "Opus"},
+		"context_window": {"used_percentage": 25, "context_window_size": 200000},
+		"rate_limits": {
+			"five_hour": {"used_percentage": 23.5, "resets_at": 1738425600},
+			"seven_day": {"used_percentage": 41.2, "resets_at": 1738857600}
+		},
+		"workspace": {"current_dir": "/home/user/project", "project_dir": "/home/user/project"},
+		"version": "1.0.80",
+		"cost": {"total_cost_usd": 0.05}
+	}`
+
+	got, err := builder.Build(context.Background(), strings.NewReader(officialJSON))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Model should appear in the output
+	if !strings.Contains(got, "Opus") {
+		t.Errorf("output should contain model display name 'Opus', got:\n%s", got)
+	}
+
+	// Claude Code version should appear
+	if !strings.Contains(got, "1.0.80") {
+		t.Errorf("output should contain claude version '1.0.80', got:\n%s", got)
+	}
+
+	// Directory should appear
+	if !strings.Contains(got, "project") {
+		t.Errorf("output should contain directory 'project', got:\n%s", got)
+	}
+
+	// Usage bars should appear - 5H and 7D
+	if !strings.Contains(got, "5H:") {
+		t.Errorf("output should contain '5H:' bar, got:\n%s", got)
+	}
+	if !strings.Contains(got, "7D:") {
+		t.Errorf("output should contain '7D:' bar, got:\n%s", got)
+	}
+
+	// 5H percentage should appear (23%)
+	if !strings.Contains(got, "23%") {
+		t.Errorf("output should contain 5H usage '23%%', got:\n%s", got)
+	}
+}
+
+// TestBuild_RateLimitsPreferredOverUsage verifies that in default mode,
+// data.RateLimits (from Claude Code stdin JSON) is preferred over data.Usage
+// (from MoAI API call) for the 5H/7D bars.
+//
+// See Issue #549 Bug 3.
+func TestBuild_RateLimitsPreferredOverUsage(t *testing.T) {
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
+	// Mock usage provider returns 99% (should be ignored when RateLimits present)
+	mockUsage := &mockUsageProvider{
+		data: &UsageResult{
+			Usage5H: &UsageData{Percentage: 99},
+			Usage7D: &UsageData{Percentage: 88},
+		},
+	}
+
+	builder := New(Options{
+		Mode:          ModeDefault,
+		NoColor:       true,
+		UsageProvider: mockUsage,
+	})
+
+	// JSON with rate_limits at 23% - should take priority over the 99% from UsageProvider
+	inputJSON := `{
+		"rate_limits": {
+			"five_hour": {"used_percentage": 23.5, "resets_at": 1738425600},
+			"seven_day": {"used_percentage": 41.2, "resets_at": 1738857600}
+		}
+	}`
+
+	got, err := builder.Build(context.Background(), strings.NewReader(inputJSON))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// 23% should appear (from RateLimits), not 99% (from Usage)
+	if !strings.Contains(got, "23%") {
+		t.Errorf("output should contain 5H rate limit '23%%' from RateLimits (not 99%% from Usage), got:\n%s", got)
+	}
+	if strings.Contains(got, "99%") {
+		t.Errorf("output should NOT contain '99%%' from Usage when RateLimits is present, got:\n%s", got)
+	}
+}
+
 // TestBuilderSetModeNormalizes verifies SetMode normalizes deprecated mode names.
 // REQ-V3-MODE-004: system always uses ModeDefault, ModeFull constants.
 func TestBuilderSetModeNormalizes(t *testing.T) {

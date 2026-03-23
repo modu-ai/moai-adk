@@ -9,6 +9,7 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__sequential-thinking__sequentialthinking
+effort: high
 user-invocable: false
 metadata:
   version: "1.0.0"

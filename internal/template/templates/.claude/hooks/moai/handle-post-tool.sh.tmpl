@@ -10,6 +10,22 @@ trap 'rm -f "$temp_file"' EXIT
 # Read stdin into temp file
 cat > "$temp_file"
 
+# Guard: only process Write, Edit, and MultiEdit tools.
+# Claude Code has a known bug where the matcher pattern in settings.json is
+# not always respected, causing PostToolUse to fire for unrelated tools such
+# as AskUserQuestion. We extract tool_name here and exit early for non-matching
+# tools to avoid unnecessary processing and error noise.
+tool_name=$(grep -oE '"(toolName|tool_name)"\s*:\s*"[^"]*"' "$temp_file" | head -1 | sed 's/.*:.*"\([^"]*\)"/\1/')
+case "$tool_name" in
+  Write|Edit|MultiEdit)
+    # Proceed: this is a file-modifying tool
+    ;;
+  *)
+    # Not a file-modifying tool; skip silently
+    exit 0
+    ;;
+esac
+
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
 	exec moai hook post-tool < "$temp_file"
@@ -21,8 +37,8 @@ if [ -f "{{posixPath .GoBinPath}}/moai" ]; then
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "{{posixPath .HomeDir}}/go/bin/moai" ]; then
-	exec "{{posixPath .HomeDir}}/go/bin/moai" hook post-tool < "$temp_file"
+if [ -f "$HOME/go/bin/moai" ]; then
+	exec "$HOME/go/bin/moai" hook post-tool < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

@@ -117,7 +117,7 @@ Then 출력에 "main" 브랜치명이 포함된다
 ### Scenario 7: Git 저장소가 없는 환경
 
 ```gherkin
-Given 현재 디렉토리에 Git 저장소가 없다
+Given 현재 디렉터리에 Git 저장소가 없다
 When GitCollector.CollectGit(ctx)가 실행된다
 Then 에러가 반환되지 않는다
   And GitStatusData가 빈 기본값으로 반환된다

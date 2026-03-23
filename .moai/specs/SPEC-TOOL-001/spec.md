@@ -57,7 +57,7 @@ tags: [ast-grep, rank, code-analysis, metrics, oauth, hmac]
 - [A-1] ast-grep (sg) CLI가 시스템 PATH에 설치되어 있을 수 있으나, 설치되지 않은 환경에서도 graceful degradation이 보장되어야 한다.
 - [A-2] `sg` 명령어는 JSON 출력 모드(`--json`)를 지원하며, 출력 형식은 ast-grep v0.25+ 기준이다.
 - [A-3] MoAI Rank API는 HTTPS를 통해 접근 가능하며, HMAC-SHA256 서명 기반 인증을 사용한다.
-- [A-4] 크리덴셜 파일은 사용자 홈 디렉토리 `~/.moai/rank/` 아래에 저장되며, 파일 권한 600으로 보호된다.
+- [A-4] 크리덴셜 파일은 사용자 홈 디렉터리 `~/.moai/rank/` 아래에 저장되며, 파일 권한 600으로 보호된다.
 - [A-5] SPEC-CONFIG-001이 완료되어 `internal/config/` 패키지를 통해 YAML 설정 읽기/쓰기가 가능하다.
 - [A-6] SPEC-GIT-001이 완료되어 `internal/core/git/` 패키지를 통해 Git 이벤트 감지가 가능하다.
 
@@ -149,13 +149,13 @@ When a pattern replacement is requested, the system shall replace matching code 
 
 #### R-AST-007: YAML 규칙 로딩 (Event-Driven)
 
-**WHEN** 규칙 파일 또는 디렉토리가 지정되면 **THEN** YAML 형식의 ast-grep 규칙을 파싱하고 로드해야 한다.
+**WHEN** 규칙 파일 또는 디렉터리가 지정되면 **THEN** YAML 형식의 ast-grep 규칙을 파싱하고 로드해야 한다.
 
 ```
 When rule files are specified, the system shall parse and load ast-grep rules from YAML format.
 ```
 
-- 단일 파일 및 디렉토리 로딩 지원
+- 단일 파일 및 디렉터리 로딩 지원
 - 멀티 문서 YAML (--- 구분) 지원
 - 규칙 필드: id, language, severity, message, pattern, fix (선택적)
 - 언어별 규칙 필터링
@@ -263,7 +263,7 @@ If credentials exist, the system shall load them securely; otherwise return nil.
 
 - 저장 경로: ~/.moai/rank/credentials.json
 - 파일 권한: 600 (owner read/write only)
-- 디렉토리 권한: 700 (owner only)
+- 디렉터리 권한: 700 (owner only)
 - 원자적 쓰기 (임시 파일 + rename)
 - 필드: api_key, username, user_id, created_at
 
