@@ -94,6 +94,45 @@ func TestReadInput(t *testing.T) {
 			errTarget: ErrHookInvalidInput,
 		},
 		{
+			// Workaround for Claude Code bug #538: PostToolUse payloads from
+			// tools outside the matcher pattern may omit session_id entirely.
+			// We expect graceful handling: no error, session_id set to "unknown".
+			name: "PostToolUse without session_id sets default unknown",
+			input: `{
+				"cwd": "/Users/goos/project",
+				"hook_event_name": "PostToolUse",
+				"tool_name": "AskUserQuestion",
+				"tool_input": {},
+				"tool_output": {}
+			}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.SessionID != "unknown" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "unknown")
+				}
+				if got.HookEventName != "PostToolUse" {
+					t.Errorf("HookEventName = %q, want %q", got.HookEventName, "PostToolUse")
+				}
+			},
+		},
+		{
+			// PostToolUseFailure should also tolerate missing session_id.
+			name: "PostToolUseFailure without session_id sets default unknown",
+			input: `{
+				"cwd": "/tmp",
+				"hook_event_name": "PostToolUseFailure",
+				"tool_name": "Bash"
+			}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.SessionID != "unknown" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "unknown")
+				}
+			},
+		},
+		{
 			name:      "missing cwd",
 			input:     `{"session_id": "sess-1", "hook_event_name": "SessionStart"}`,
 			wantErr:   true,
