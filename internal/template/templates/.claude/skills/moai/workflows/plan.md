@@ -134,11 +134,47 @@ Output: `.moai/specs/SPEC-{ID}/research.md` containing:
 - Risks, constraints, and implicit contracts identified
 - Recommendations for the implementation approach
 
+### Phase 1.25: Design Direction (Conditional)
+
+Purpose: Establish design intent and direction for UI/UX-related SPECs before SPEC planning begins. Based on the Intent-First design philosophy from the interface-design methodology.
+
+When to run:
+- SPEC description contains 2+ UI/UX keywords: ui, frontend, interface, design, component, page, screen, layout, form, dashboard, button, modal, view, sidebar, navigation, widget, chart, table
+- User explicitly requests design direction
+
+When to skip:
+- No UI/UX keywords detected in SPEC description
+- User explicitly requests "skip design" or uses --prototype flag
+- Backend-only, infrastructure, or documentation SPECs
+
+Agent: expert-frontend subagent (with moai-design-craft skill)
+
+Tasks:
+1. Check if `.moai/design/system.md` exists and has content
+2. If system.md exists: Load as design context, skip Intent-First process
+3. If system.md is empty or missing: Execute Intent-First process:
+   - Answer: Who is this human? What must they accomplish? What should this feel like?
+   - Produce domain exploration: 5+ domain concepts, 5+ color world entries, 1 signature element
+   - Identify 3+ defaults to avoid (generic patterns to reject)
+4. Generate design direction artifact
+
+Output: `.moai/specs/SPEC-{ID}/design-direction.md` containing:
+- Intent statement (who, what, feel)
+- Domain concepts and vocabulary
+- Color world exploration
+- Signature element definition
+- Defaults to avoid
+- Reference to `.moai/design/system.md` if exists
+
+Design direction guard: [HARD] During Phase 1.25, the agent MUST NOT write implementation code. Focus exclusively on design exploration and direction definition.
+
+After Phase 1.25: Offer to persist design decisions to `.moai/design/system.md` if it was newly created or updated. Use AskUserQuestion: "Save design direction to project-level design memory (.moai/design/system.md)?"
+
 ### Phase 1B: SPEC Planning (Required)
 
 Agent: manager-spec subagent
 
-Input: User request plus Phase 1A results (if executed)
+Input: User request plus Phase 1A results (if executed), plus design-direction.md (if Phase 1.25 executed)
 
 Tasks for manager-spec:
 - Analyze project documents (product.md, structure.md, tech.md)
