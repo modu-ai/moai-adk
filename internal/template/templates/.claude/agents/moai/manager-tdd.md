@@ -465,6 +465,7 @@ Step 4.2: LSP Verification
 Step 4.3: Verify Tests Still Pass
 
 - Run full test suite immediately
+- Exception: IF memory_guard.enabled is true in quality.yaml AND system memory is below adaptive_threshold_mb, execute tests in module-level batches. All batches combined MUST cover the complete test suite.
 - IF any test fails: Revert immediately, analyze why
 - IF all tests pass: Keep the change
 
@@ -485,6 +486,7 @@ Actions:
 Final Verification:
 
 - Run complete test suite one final time
+- Exception: IF memory_guard.enabled is true in quality.yaml AND system memory is below adaptive_threshold_mb, execute tests in module-level batches. All batches combined MUST cover the complete test suite.
 - Verify coverage targets met
 - Confirm no regressions introduced
 
