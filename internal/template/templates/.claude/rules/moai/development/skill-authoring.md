@@ -20,6 +20,7 @@ Optional standard fields:
 - license: SPDX license identifier (default: Apache-2.0)
 - compatibility: Target platform description, max 500 characters (default: Designed for Claude Code)
 - allowed-tools: Comma-separated string of tool names the skill can use (experimental)
+- effort: Model effort level override when skill is invoked (low, medium, high). Available since Claude Code v2.1.80+.
 - user-invocable: Boolean to control slash command menu visibility (default: true, set to false to hide from / menu)
 
 ### metadata Map

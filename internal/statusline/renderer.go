@@ -168,9 +168,13 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 	}
 
 	// L3: 5H bar (40 blocks, standalone line) with reset time - defaults to 0% when no data
+	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call)
 	pct5H := 0
 	var reset5H string
-	if data.Usage != nil && data.Usage.Usage5H != nil {
+	if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
+		pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
+		reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
+	} else if data.Usage != nil && data.Usage.Usage5H != nil {
 		pct5H = int(data.Usage.Usage5H.Percentage)
 		reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
 	}
@@ -179,7 +183,10 @@ func (r *Renderer) renderFullV3(data *StatusData) string {
 	// L4: 7D bar (40 blocks, standalone line) with reset date - defaults to 0% when no data
 	pct7D := 0
 	var reset7D string
-	if data.Usage != nil && data.Usage.Usage7D != nil {
+	if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
+		pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
+		reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
+	} else if data.Usage != nil && data.Usage.Usage7D != nil {
 		pct7D = int(data.Usage.Usage7D.Percentage)
 		reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
 	}

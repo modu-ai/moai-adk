@@ -43,6 +43,9 @@ func init() {
 		{"subagent-stop", "Handle subagent stop event", hook.EventSubagentStop},
 		{"worktree-create", "Handle worktree create event", hook.EventWorktreeCreate},
 		{"worktree-remove", "Handle worktree remove event", hook.EventWorktreeRemove},
+		{"post-compact", "Handle post-compact event", hook.EventPostCompact},
+		{"instructions-loaded", "Handle instructions loaded event", hook.EventInstructionsLoaded},
+		{"stop-failure", "Handle stop failure event", hook.EventStopFailure},
 	}
 
 	for _, sub := range hookSubcommands {
