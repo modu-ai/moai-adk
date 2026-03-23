@@ -9,8 +9,8 @@ func TestValidEventTypes(t *testing.T) {
 	t.Parallel()
 
 	events := ValidEventTypes()
-	if len(events) != 16 {
-		t.Errorf("ValidEventTypes() returned %d events, want 16", len(events))
+	if len(events) != 19 {
+		t.Errorf("ValidEventTypes() returned %d events, want 19", len(events))
 	}
 
 	expected := map[EventType]bool{
@@ -30,6 +30,9 @@ func TestValidEventTypes(t *testing.T) {
 		EventTaskCompleted:      true,
 		EventWorktreeCreate:     true,
 		EventWorktreeRemove:     true,
+		EventPostCompact:        true,
+		EventInstructionsLoaded: true,
+		EventStopFailure:        true,
 	}
 
 	for _, et := range events {

@@ -2307,7 +2307,6 @@ func cleanLegacyHooks(settings map[string]any) bool {
 		"handle-post-tool.sh",
 		"handle-agent-hook.sh",
 		"handle-compact.sh",
-		"session_end__rank_submit",
 		"post_tool__code_formatter.py",
 		"post_tool__linter.py",
 		"post_tool__ast_grep_scan.py",
