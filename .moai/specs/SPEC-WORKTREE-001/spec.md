@@ -15,7 +15,7 @@ lifecycle: spec-anchored
 ### 현재 상태
 
 - `moai worktree new SPEC-XXX` 명령이 프로젝트 내부 `.moai/worktrees/{SPEC-ID}/`에 git worktree를 생성한다.
-- 글로벌 디렉토리 `~/.moai/worktrees/MoAI-ADK/`와 레지스트리 파일 `.moai-worktree-registry.json`이 이미 존재하지만 사용되지 않는다.
+- 글로벌 디렉터리 `~/.moai/worktrees/MoAI-ADK/`와 레지스트리 파일 `.moai-worktree-registry.json`이 이미 존재하지만 사용되지 않는다.
 - `--path` 플래그로 경로를 수동 지정할 수 있어 현재도 우회가 가능하다 (P2 우선순위 근거).
 - Claude Native worktree는 `.claude/worktrees/`에 별도로 관리된다 (이 SPEC의 범위 밖).
 
@@ -31,7 +31,7 @@ lifecycle: spec-anchored
 
 - 시스템 Git 바이너리 (worktree add/remove/list 명령)
 - `go.mod` module path: `github.com/modu-ai/moai-adk`
-- 파일 시스템: `~/.moai/` 디렉토리 (사용자 홈)
+- 파일 시스템: `~/.moai/` 디렉터리 (사용자 홈)
 
 ---
 
@@ -41,10 +41,10 @@ lifecycle: spec-anchored
 
 | 가정 | 신뢰도 | 근거 | 오류 시 위험 |
 |------|---------|------|-------------|
-| `~/.moai/` 디렉토리는 MoAI가 자유롭게 사용 가능 | 높음 | MoAI 관례상 홈 디렉토리 하위 `.moai/`는 MoAI 전용 | 다른 도구와 충돌 가능 |
+| `~/.moai/` 디렉터리는 MoAI가 자유롭게 사용 가능 | 높음 | MoAI 관례상 홈 디렉터리 하위 `.moai/`는 MoAI 전용 | 다른 도구와 충돌 가능 |
 | 프로젝트명은 `go.mod` module path 또는 git remote에서 추출 가능 | 높음 | `go.mod`의 마지막 세그먼트가 프로젝트명으로 사용됨 | 프로젝트 식별 실패 |
 | 기존 `.moai/worktrees/` 사용자는 극소수 | 중간 | `--path` 플래그 없이 기본 경로를 사용한 경우만 해당 | 마이그레이션 안내 필요 |
-| `os.UserHomeDir()`는 모든 지원 플랫폼에서 정상 동작 | 높음 | Go stdlib 보장, macOS/Linux/Windows 지원 | 홈 디렉토리 해석 실패 |
+| `os.UserHomeDir()`는 모든 지원 플랫폼에서 정상 동작 | 높음 | Go stdlib 보장, macOS/Linux/Windows 지원 | 홈 디렉터리 해석 실패 |
 
 ### 설계 가정
 
@@ -63,7 +63,7 @@ lifecycle: spec-anchored
 **THEN** 시스템은 `~/.moai/worktrees/{ProjectName}/{SPEC-XXX}/`에 git worktree를 생성해야 한다.
 
 - `{ProjectName}`은 `go.mod` module path의 마지막 세그먼트 (예: `moai-adk`) 또는 git remote origin에서 추출
-- 디렉토리가 존재하지 않으면 자동 생성
+- 디렉터리가 존재하지 않으면 자동 생성
 
 ### R2: 비-SPEC-ID 브랜치의 글로벌 경로 (Event-Driven)
 
@@ -78,15 +78,15 @@ lifecycle: spec-anchored
 **THEN** 시스템은 다음 우선순위로 프로젝트명을 결정해야 한다:
 1. `go.mod` 파일의 module path 마지막 세그먼트
 2. git remote origin URL의 리포지토리명
-3. 현재 디렉토리명 (fallback)
+3. 현재 디렉터리명 (fallback)
 
-### R4: 홈 디렉토리 보장 (Ubiquitous)
+### R4: 홈 디렉터리 보장 (Ubiquitous)
 
-시스템은 worktree 생성 전에 `~/.moai/worktrees/{ProjectName}/` 디렉토리가 존재하는지 확인하고, 없으면 `os.MkdirAll`로 자동 생성해야 한다.
+시스템은 worktree 생성 전에 `~/.moai/worktrees/{ProjectName}/` 디렉터리가 존재하는지 확인하고, 없으면 `os.MkdirAll`로 자동 생성해야 한다.
 
 ### R5: 하위 호환성 경고 (Event-Driven)
 
-**WHEN** 기존 `.moai/worktrees/` 디렉토리에 worktree가 이미 존재할 때,
+**WHEN** 기존 `.moai/worktrees/` 디렉터리에 worktree가 이미 존재할 때,
 **THEN** 시스템은 stderr로 마이그레이션 안내 메시지를 출력해야 한다.
 - 기존 worktree의 동작은 방해하지 않음
 - 메시지 예시: `"Legacy worktrees detected in .moai/worktrees/. Consider moving to ~/.moai/worktrees/{Project}/."`
@@ -132,7 +132,7 @@ lifecycle: spec-anchored
 **위치**: `internal/cli/worktree/new.go` (또는 별도 유틸리티)
 
 **로직**:
-1. 현재 디렉토리에서 `go.mod` 파일을 읽어 `module` 라인 추출
+1. 현재 디렉터리에서 `go.mod` 파일을 읽어 `module` 라인 추출
 2. module path의 마지막 `/` 이후 세그먼트 사용 (예: `github.com/modu-ai/moai-adk` -> `moai-adk`)
 3. `go.mod` 없으면 `git remote get-url origin` 실행 후 리포지토리명 추출
 4. 둘 다 실패하면 `filepath.Base(cwd)` 사용
@@ -219,7 +219,7 @@ lifecycle: spec-anchored
 - **TAG**: SPEC-WORKTREE-001
 - **관련 기능**: product.md > Core Features > 6. Worktree Management
 - **관련 SPEC**: SPEC-GIT-001 (Git Operations)
-- **관련 인프라**: `~/.moai/worktrees/` 글로벌 디렉토리, `.moai-worktree-registry.json`
+- **관련 인프라**: `~/.moai/worktrees/` 글로벌 디렉터리, `.moai-worktree-registry.json`
 
 ---
 
@@ -235,7 +235,7 @@ lifecycle: spec-anchored
 | R1: 글로벌 worktree 경로 | 완료 | `internal/cli/worktree/new.go` |
 | R2: 비-SPEC-ID 글로벌 경로 | 완료 | `internal/cli/worktree/new.go` |
 | R3: 프로젝트명 자동 감지 | 완료 | `internal/cli/worktree/project.go` (신규) |
-| R4: 홈 디렉토리 보장 | 완료 | `internal/cli/worktree/new.go` |
+| R4: 홈 디렉터리 보장 | 완료 | `internal/cli/worktree/new.go` |
 | R5: 하위 호환성 경고 | 완료 | `internal/cli/worktree/new.go` |
 | R6: orchestrator 매칭 | 검증 완료 | 변경 불필요 (`filepath.Base` 정상 동작) |
 | R7: launcher cleanup | 완료 | `internal/cli/launcher.go` |

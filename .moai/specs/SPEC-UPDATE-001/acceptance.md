@@ -10,7 +10,7 @@ Global/Local Installation Mode Redesign 기능에 대한 상세 수용 기준입
 
 ### Scenario 1: moai init - New Project with Global Mode
 
-Given: 사용자가 .moai/ 디렉토리가 없는 새 프로젝트 디렉토리에 있음
+Given: 사용자가 .moai/ 디렉터리가 없는 새 프로젝트 디렉터리에 있음
 When: 사용자가 moai init . 실행
 Then:
 - 시스템이 정상적으로 초기화 프로세스 진행
@@ -45,7 +45,7 @@ Feature: Global Mode Installation
 
 ### Scenario 2: moai init - New Project with Local Mode
 
-Given: 사용자가 .moai/ 디렉토리가 없는 새 프로젝트 디렉토리에 있음
+Given: 사용자가 .moai/ 디렉터리가 없는 새 프로젝트 디렉터리에 있음
 When: 사용자가 moai init . 실행 후 Local 모드 선택
 Then:
 - .claude/agents/moai/ 생성됨
@@ -74,7 +74,7 @@ Feature: Local Mode Installation
 
 ### Scenario 3: moai init - Already Initialized Project
 
-Given: 사용자가 이미 .moai/ 디렉토리가 있는 프로젝트에 있음
+Given: 사용자가 이미 .moai/ 디렉터리가 있는 프로젝트에 있음
 When: 사용자가 moai init . 실행
 Then:
 - 정상적으로 초기화 프로세스 진행

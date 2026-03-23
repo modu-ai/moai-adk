@@ -1163,14 +1163,17 @@ All implementation commits MUST include a `## Context` section in the commit bod
 
 Context Memory Categories:
 
-| Category | Purpose | Example |
-|----------|---------|---------|
-| Decision | Technical decision + rationale | "EdDSA over RSA256 (user requested, performance priority)" |
-| Constraint | Active constraints | "Must maintain /api/v1 backward compatibility" |
-| Gotcha | Pitfalls discovered | "Redis TTL unreliable for RefreshToken storage" |
-| Pattern | Patterns/references used | "middleware chain pattern from auth.go:45" |
-| Risk | Known risks/deferred items | "Token rotation deferred to Phase 2" |
-| UserPref | User preferences captured | "User prefers functional style over OOP" |
+| Category | Purpose | When to Use | Example |
+|----------|---------|-------------|---------|
+| Decision | Technical decision + rationale | Always | "EdDSA over RSA256 (user requested, performance priority)" |
+| Constraint | Active constraints | Always | "Must maintain /api/v1 backward compatibility" |
+| Gotcha | Pitfalls discovered | Always | "Redis TTL unreliable for RefreshToken storage" |
+| Pattern | Patterns/references used | Always | "middleware chain pattern from auth.go:45" |
+| Risk | Known risks/deferred items | Always | "Token rotation deferred to Phase 2" |
+| UserPref | User preferences captured | Always | "User prefers functional style over OOP" |
+| Rejected | Evaluated alternatives with dismissal reason | When 2+ alternatives were considered | "Background refresh on timer \| race condition with concurrent requests" |
+| Not-tested | Known test coverage gaps | When known test blind spots exist | "Auth service cold-start > 500ms behavior" |
+| Reversibility | Change rollback difficulty: clean, migration-needed, irreversible | Breaking changes only | "migration-needed (schema column dropped)" |
 
 Context Section Format:
 
@@ -1181,7 +1184,17 @@ Context Section Format:
 - Gotcha: [description]
 - Pattern: [description]
 - Risk: [description]
+- Rejected: [alternative] | [dismissal reason]
+- Not-tested: [untested scenario]
+- Reversibility: [clean|migration-needed|irreversible] ([detail])
 ```
+
+Lore Trailers Usage Rules:
+
+- Rejected: Include ONLY when 2+ alternatives were evaluated and dismissed. Format: `alternative | reason`
+- Not-tested: Include ONLY when known test blind spots exist. Omit when coverage is comprehensive
+- Reversibility: Include ONLY for breaking changes (API removals, schema migrations, config format changes). Values: clean, migration-needed, irreversible
+- All three are OPTIONAL. Omit when not applicable. Do not fabricate entries for completeness
 
 MX Tags Changed Section:
 

@@ -12,12 +12,12 @@ Feature: SPEC-ID 기반 글로벌 worktree 생성
 
   Scenario: SPEC-ID 입력 시 ~/.moai/worktrees/{Project}/ 하위에 생성
     Given 프로젝트 루트에 go.mod 파일이 존재하고 module path가 "github.com/modu-ai/moai-adk"
-    And ~/.moai/worktrees/ 디렉토리가 존재하지 않음
+    And ~/.moai/worktrees/ 디렉터리가 존재하지 않음
     And --path 플래그가 지정되지 않음
     When 사용자가 "moai worktree new SPEC-AUTH-001"을 실행
     Then git worktree가 "~/.moai/worktrees/moai-adk/SPEC-AUTH-001/" 경로에 생성됨
     And 브랜치명은 "feature/SPEC-AUTH-001"
-    And "~/.moai/worktrees/moai-adk/" 디렉토리가 자동 생성됨
+    And "~/.moai/worktrees/moai-adk/" 디렉터리가 자동 생성됨
     And 성공 메시지에 생성된 경로가 포함됨
 ```
 
@@ -63,13 +63,13 @@ Feature: 프로젝트명 자동 감지
     Then 반환값은 "moai-adk-go"
 ```
 
-## 시나리오 6: 프로젝트명 감지 -- 디렉토리명 fallback
+## 시나리오 6: 프로젝트명 감지 -- 디렉터리명 fallback
 
 ```gherkin
-  Scenario: go.mod와 git remote 모두 없을 때 디렉토리명 사용
+  Scenario: go.mod와 git remote 모두 없을 때 디렉터리명 사용
     Given go.mod 파일이 존재하지 않음
     And git remote가 설정되지 않음
-    And 현재 디렉토리가 "/Users/goos/projects/my-project"
+    And 현재 디렉터리가 "/Users/goos/projects/my-project"
     When detectProjectName() 함수가 호출됨
     Then 반환값은 "my-project"
 ```
@@ -79,8 +79,8 @@ Feature: 프로젝트명 자동 감지
 ```gherkin
 Feature: 레거시 worktree 감지 및 경고
 
-  Scenario: 기존 .moai/worktrees/ 디렉토리에 worktree가 있을 때 경고
-    Given 프로젝트 루트에 ".moai/worktrees/SPEC-OLD-001/" 디렉토리가 존재
+  Scenario: 기존 .moai/worktrees/ 디렉터리에 worktree가 있을 때 경고
+    Given 프로젝트 루트에 ".moai/worktrees/SPEC-OLD-001/" 디렉터리가 존재
     When 사용자가 "moai worktree new SPEC-NEW-001"을 실행
     Then stderr에 마이그레이션 안내 메시지가 출력됨
     And 새 worktree는 정상적으로 글로벌 경로에 생성됨
@@ -90,9 +90,9 @@ Feature: 레거시 worktree 감지 및 경고
 ## 시나리오 8: os.UserHomeDir 실패 시 fallback
 
 ```gherkin
-Feature: 홈 디렉토리 해석 실패 대응
+Feature: 홈 디렉터리 해석 실패 대응
 
-  Scenario: 홈 디렉토리를 얻을 수 없을 때 에러 반환
+  Scenario: 홈 디렉터리를 얻을 수 없을 때 에러 반환
     Given os.UserHomeDir()가 에러를 반환하는 환경
     When 사용자가 "moai worktree new SPEC-AUTH-001"을 실행
     Then 명확한 에러 메시지가 반환됨
@@ -132,7 +132,7 @@ Feature: 프로젝트 내부 worktree 생성 금지
     Given --path 플래그가 지정되지 않음
     When 사용자가 "moai worktree new SPEC-AUTH-001"을 실행
     Then ".moai/worktrees/SPEC-AUTH-001/" 경로에 worktree가 생성되지 않음
-    And 프로젝트 디렉토리 내부에 새 디렉토리가 생성되지 않음
+    And 프로젝트 디렉터리 내부에 새 디렉터리가 생성되지 않음
 ```
 
 ---

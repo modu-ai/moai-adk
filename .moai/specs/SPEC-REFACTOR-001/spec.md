@@ -30,7 +30,7 @@ MoAI-ADK-Go에서 `moai rank` 리더보드 기능을 완전히 제거한다. 이
 
 시스템은 `internal/rank/` 패키지를 포함하지 않아야 한다.
 
-- `internal/rank/` 디렉토리와 모든 하위 파일이 삭제되어야 한다
+- `internal/rank/` 디렉터리와 모든 하위 파일이 삭제되어야 한다
 - 어떤 Go 소스 파일도 `internal/rank` 패키지를 import하지 않아야 한다
 
 ### REQ-REFACTOR-002: CLI 명령어 제거 (Event-Driven)
