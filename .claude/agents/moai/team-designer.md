@@ -17,6 +17,7 @@ memory: project
 skills:
   - moai-domain-uiux
   - moai-design-tools
+  - moai-design-craft
 mcpServers: pencil, figma
 ---
 
