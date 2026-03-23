@@ -195,7 +195,7 @@ validation:
 
 ## AC-EDGE-004: Empty Project
 
-**Given** Go 파일이 없는 프로젝트 디렉토리에서
+**Given** Go 파일이 없는 프로젝트 디렉터리에서
 **When** ValidateFiles를 빈 파일 목록으로 호출하면
 **Then** 빈 ValidationReport가 반환되어야 한다
 **And** violations가 빈 배열이어야 한다
