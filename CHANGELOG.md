@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.22] - 2026-03-25
+
+### Summary
+
+Template and profile configuration fixes: sync workflow base branch resolution,
+statusline compact mode cleanup in profile UI, and documentation consistency improvements.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- fix(template): sync.md github_flow strategy base branch hardcoded to `main` — now uses `{main_branch}` from git-strategy.yaml
+- fix(template): manual mode `main_branch` fallback logic clarified for agent interpretation
+- fix(statusline): Remove misleading compact mode option from profile setup UI (was showing "2-line" but produced 3-line output identical to default)
+- fix(preferences): Update StatuslineMode comment to reflect v3 actual values ("default", "full")
+- fix(template): Add missing "compact" to statusline.yaml preset comment
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.22] - 2026-03-25 (한국어)
+
+### 요약
+
+템플릿 및 프로필 설정 정합성 수정: sync 워크플로우 base branch 동적 해결,
+statusline compact 모드 프로필 UI 정리, 문서 정합성 개선.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- fix(template): sync.md github_flow 전략에서 base branch가 `main`으로 하드코딩 → `{main_branch}`로 동적 해결
+- fix(template): manual 모드 `main_branch` 누락 시 fallback 로직 명시화
+- fix(statusline): 프로필 설정에서 거짓 설명의 compact 모드 옵션 제거 ("2줄"이라 표시되었으나 실제 3줄 출력)
+- fix(preferences): StatuslineMode 주석을 v3 실제값("default", "full")으로 수정
+- fix(template): statusline.yaml preset 주석에 누락된 "compact" 추가
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.7.21] - 2026-03-23
 
 ### Summary
