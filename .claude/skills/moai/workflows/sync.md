@@ -869,7 +869,9 @@ Behavior varies based on `github.git_workflow` setting and current branch contex
 
 **Base Branch Resolution** (applies to all strategies below):
 1. Read `git_strategy.mode` from `.moai/config/sections/git-strategy.yaml`
-2. Resolve `main_branch = git_strategy.{mode}.main_branch` (default: `main`)
+2. Resolve `main_branch`:
+   - If `git_strategy.{mode}.main_branch` exists: use that value
+   - If missing (e.g., `manual` mode): default to `main`
 3. Use `{main_branch}` in all branch checkout and PR creation commands below
 
 ##### Strategy: github_flow
