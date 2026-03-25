@@ -162,7 +162,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Description(t.StatuslineModeDesc).
 				Options(
 					huh.NewOption(t.ModeDefault, "default"),
-					huh.NewOption(t.ModeCompact, "compact"),
 					huh.NewOption(t.ModeFull, "full"),
 				).
 				Value(&statuslineMode),
