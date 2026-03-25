@@ -5,7 +5,7 @@ import "fmt"
 // Build-time variables injected via -ldflags.
 // Default version for RC/test builds (overridden by -ldflags in production)
 var (
-	Version = "v2.7.21"
+	Version = "v2.7.22"
 	Commit  = "none"
 	Date    = "unknown"
 )
