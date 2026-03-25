@@ -2,7 +2,7 @@ statusline:
   # Display mode: default (3-line), full (5-line)
   mode: "default"
 
-  # Preset name: full, minimal, custom
+  # Preset name: full, compact, minimal, custom
   preset: "full"
 
   # Theme name: default, catppuccin-mocha, catppuccin-latte

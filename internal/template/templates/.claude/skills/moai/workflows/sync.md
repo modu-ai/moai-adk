@@ -818,6 +818,13 @@ Pass CI mirror results to Step 3.2 for inclusion in the PR body:
 
 Behavior varies based on `github.git_workflow` setting and current branch context.
 
+**Base Branch Resolution** (applies to all strategies below):
+1. Read `git_strategy.mode` from `.moai/config/sections/git-strategy.yaml`
+2. Resolve `main_branch`:
+   - If `git_strategy.{mode}.main_branch` exists: use that value
+   - If missing (e.g., `manual` mode): default to `main`
+3. Use `{main_branch}` in all branch checkout and PR creation commands below
+
 ##### Strategy: github_flow
 
 Detect current branch:
@@ -829,13 +836,13 @@ Detect current branch:
    - Title: Derived from SPEC title or branch name
    - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
    - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in PR body footer for automatic Issue closure on merge
-   - Base: main
+   - Base: {main_branch}
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
 5. Display PR URL to user
 
 **Main branch** (direct commit):
-- Push directly: `git push origin main`
+- Push directly: `git push origin {main_branch}`
 - Display push confirmation
 - Note: Direct main commits are permitted but feature branches are recommended
 
@@ -891,7 +898,7 @@ Only applies when a PR was created in Step 3.2:
 
 After PR/MR creation (Step 3.2) and optional ready transition (Step 3.3), return to the base branch to leave the working directory in a clean state:
 
-**github_flow**: `git checkout main && git pull origin main`
+**github_flow**: `git checkout {main_branch} && git pull origin {main_branch}`
 **gitflow**: `git checkout develop && git pull origin develop` (for feature branches), `git checkout main && git pull origin main` (for release/hotfix)
 **main_direct**: No branch switch needed (already on main)
 
