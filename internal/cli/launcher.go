@@ -422,6 +422,11 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		if info, err := os.Stat(moaiDir); err == nil && info.IsDir() {
 			_ = profile.SyncToProjectConfig(root, prefs)
 		}
+		// Sync bypass preference to settings.local.json permissions.defaultMode
+		settingsLocalPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
+		if err := syncBypassToSettingsLocal(settingsLocalPath, prefs.Bypass); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync bypass setting: %v\n", err)
+		}
 	}
 
 	// 4. Read project settings.local.json for DO_CLAUDE_* flags (overrides profile)
@@ -574,4 +579,54 @@ func readSettingsLocalForLaunch() map[string]string {
 		result[k] = v
 	}
 	return result
+}
+
+// syncBypassToSettingsLocal persists the profile bypass preference to
+// .claude/settings.local.json so that permissions.defaultMode survives
+// across sessions regardless of how Claude Code is launched.
+// When bypass is true, sets defaultMode to "bypassPermissions".
+// When bypass is false, removes the defaultMode override so the
+// project settings.json default (acceptEdits) takes effect.
+func syncBypassToSettingsLocal(settingsPath string, bypass bool) error {
+	var settings SettingsLocal
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read settings.local.json: %w", err)
+	}
+	if err == nil && len(data) > 0 {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return fmt.Errorf("parse settings.local.json: %w", err)
+		}
+	}
+
+	if bypass {
+		if settings.Permissions == nil {
+			settings.Permissions = make(map[string]any)
+		}
+		settings.Permissions["defaultMode"] = "bypassPermissions"
+	} else {
+		// Remove the override so settings.json default applies
+		if settings.Permissions != nil {
+			delete(settings.Permissions, "defaultMode")
+			if len(settings.Permissions) == 0 {
+				settings.Permissions = nil
+			}
+		}
+	}
+
+	out, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return fmt.Errorf("create directory: %w", err)
+	}
+
+	if err := os.WriteFile(settingsPath, out, 0o644); err != nil {
+		return fmt.Errorf("write settings.local.json: %w", err)
+	}
+
+	return nil
 }
