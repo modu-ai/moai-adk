@@ -573,6 +573,15 @@ Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inher
 
 See .claude/rules/moai/workflow/worktree-integration.md for the complete worktree decision tree.
 
+#### Worktree Path Handling
+
+When delegating to agents with `isolation: "worktree"`:
+- Reference all write-target files by project-root-relative paths
+- Do NOT include `cd /absolute/path &&` in any Bash commands
+- SPEC files should be referenced as `.moai/specs/SPEC-XXX/spec.md` (relative)
+- The agent's CWD is automatically set to the worktree root by Claude Code
+- See `.claude/rules/moai/workflow/worktree-integration.md` for detailed path rules
+
 For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/run.md.
 
 ---

@@ -113,6 +113,12 @@ Spawn teammates using Agent() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISP
 is set, each teammate spawns in a new tmux pane. New panes inherit GLM env vars
 from the tmux session, routing them through Z.AI API.
 
+**Path Rules for Worktree Teammates:**
+- All file references in teammate prompts MUST use project-root-relative paths
+- Do NOT include absolute paths to the main project directory
+- Teammates resolve paths from their own CWD (worktree root)
+- See `.claude/rules/moai/workflow/worktree-integration.md` Prompt Path Rules section
+
 ```
 Agent(
   subagent_type: "team-coder",
