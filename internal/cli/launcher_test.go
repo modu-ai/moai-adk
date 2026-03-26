@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -364,6 +365,132 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 	err := unifiedLaunch("", "claude_glm", nil)
 	if err != nil {
 		t.Fatalf("CG mode with MOAI_TEST_MODE=1 should not error, got: %v", err)
+	}
+}
+
+func TestSyncBypassToSettingsLocal(t *testing.T) {
+	tests := []struct {
+		name         string
+		existing     string // existing settings.local.json content ("" = no file)
+		bypass       bool
+		wantMode     string // expected defaultMode ("" = should not exist)
+		wantEnvKey   string // verify existing env is preserved
+		wantEnvValue string
+	}{
+		{
+			name:     "bypass=true creates permissions with bypassPermissions",
+			existing: "",
+			bypass:   true,
+			wantMode: "bypassPermissions",
+		},
+		{
+			name:     "bypass=true preserves existing env",
+			existing: `{"env":{"CLAUDE_CODE_TEAMMATE_DISPLAY":"tmux"}}`,
+			bypass:   true,
+			wantMode:     "bypassPermissions",
+			wantEnvKey:   "CLAUDE_CODE_TEAMMATE_DISPLAY",
+			wantEnvValue: "tmux",
+		},
+		{
+			name:     "bypass=false removes defaultMode override",
+			existing: `{"permissions":{"defaultMode":"bypassPermissions"},"env":{"FOO":"bar"}}`,
+			bypass:   false,
+			wantMode:     "",
+			wantEnvKey:   "FOO",
+			wantEnvValue: "bar",
+		},
+		{
+			name:     "bypass=false with no permissions is no-op",
+			existing: `{"env":{"FOO":"bar"}}`,
+			bypass:   false,
+			wantMode:     "",
+			wantEnvKey:   "FOO",
+			wantEnvValue: "bar",
+		},
+		{
+			name:     "bypass=true overwrites existing defaultMode",
+			existing: `{"permissions":{"defaultMode":"acceptEdits","allow":["Read"]}}`,
+			bypass:   true,
+			wantMode: "bypassPermissions",
+		},
+		{
+			name:     "bypass=false preserves other permission keys",
+			existing: `{"permissions":{"defaultMode":"bypassPermissions","allow":["Read"]}}`,
+			bypass:   false,
+			wantMode: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			claudeDir := filepath.Join(tmpDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			settingsPath := filepath.Join(claudeDir, "settings.local.json")
+
+			if tt.existing != "" {
+				if err := os.WriteFile(settingsPath, []byte(tt.existing), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			err := syncBypassToSettingsLocal(settingsPath, tt.bypass)
+			if err != nil {
+				t.Fatalf("syncBypassToSettingsLocal() error: %v", err)
+			}
+
+			data, err := os.ReadFile(settingsPath)
+			if err != nil {
+				t.Fatalf("read result: %v", err)
+			}
+
+			var result map[string]any
+			if err := json.Unmarshal(data, &result); err != nil {
+				t.Fatalf("parse result: %v", err)
+			}
+
+			// Check defaultMode
+			perms, _ := result["permissions"].(map[string]any)
+			if tt.wantMode != "" {
+				if perms == nil {
+					t.Fatal("expected permissions section, got nil")
+				}
+				got, _ := perms["defaultMode"].(string)
+				if got != tt.wantMode {
+					t.Errorf("defaultMode = %q, want %q", got, tt.wantMode)
+				}
+			} else {
+				if perms != nil {
+					if mode, ok := perms["defaultMode"]; ok {
+						t.Errorf("defaultMode should not exist, got %v", mode)
+					}
+				}
+			}
+
+			// Check env preservation
+			if tt.wantEnvKey != "" {
+				env, _ := result["env"].(map[string]any)
+				if env == nil {
+					t.Fatalf("expected env section, got nil")
+				}
+				got, _ := env[tt.wantEnvKey].(string)
+				if got != tt.wantEnvValue {
+					t.Errorf("env[%s] = %q, want %q", tt.wantEnvKey, got, tt.wantEnvValue)
+				}
+			}
+
+			// Check other permission keys preserved when bypass=false
+			if tt.name == "bypass=false preserves other permission keys" {
+				if perms == nil {
+					t.Fatal("expected permissions section with allow key")
+				}
+				if _, ok := perms["allow"]; !ok {
+					t.Error("permissions.allow should be preserved")
+				}
+			}
+		})
 	}
 }
 
