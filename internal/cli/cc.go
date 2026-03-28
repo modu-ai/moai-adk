@@ -22,16 +22,26 @@ This command:
   5. Launches Claude Code via exec (replaces current process)
 
 Flags:
-  -p, --profile <name>   Use a named Claude profile (~/.moai/claude-profiles/<name>/)
-  -b, --bypass           Enable --dangerously-skip-permissions
-  -c, --continue         Continue previous session
-  -m, --model <model>    Override model selection
-  --chrome / --no-chrome Toggle Chrome MCP
+  -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, auto, bypassPermissions, dontAsk)
+  -b, --bypass                  Shorthand for --permission-mode bypassPermissions
+  -c, --continue                Continue previous session
+  -m, --model <model>           Override model selection
+  --chrome / --no-chrome        Toggle Chrome MCP
+
+Permission Modes:
+  default            Ask permissions for file edits and commands
+  acceptEdits        Auto-accept file edits, ask for commands (project default)
+  plan               Read-only exploration and planning
+  auto               Background classifier checks actions (requires Team plan + Sonnet/Opus 4.6)
+  bypassPermissions  Skip all checks (isolated environments only)
+  dontAsk            Only pre-approved tools
 
 Examples:
-  moai cc                     # Default profile, launch Claude
-  moai cc -p work             # Use 'work' profile
-  moai cc -p work -- --print  # Profile + pass-through args to Claude`,
+  moai cc                              # Default profile, launch Claude
+  moai cc -p work                      # Use 'work' profile
+  moai cc --permission-mode auto       # Launch with auto mode
+  moai cc -p work -- --print           # Profile + pass-through args to Claude`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,

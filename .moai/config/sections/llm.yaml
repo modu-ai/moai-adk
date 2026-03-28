@@ -1,5 +1,5 @@
 llm:
-    mode: cc
+    mode: ""
     team_mode: ""
     glm_env_var: GLM_API_KEY
     performance_tier: ""
@@ -13,9 +13,9 @@ llm:
             high: glm-5.1
             medium: glm-4.7
             low: glm-4.5-air
-            opus: glm-5
+            opus: glm-5.1
             sonnet: glm-4.7
             haiku: glm-4.5-air
-    default_model: ""
-    quality_model: ""
-    speed_model: ""
+    default_model: sonnet
+    quality_model: opus
+    speed_model: haiku

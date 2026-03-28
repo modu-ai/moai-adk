@@ -422,10 +422,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		if info, err := os.Stat(moaiDir); err == nil && info.IsDir() {
 			_ = profile.SyncToProjectConfig(root, prefs)
 		}
-		// Sync bypass preference to settings.local.json permissions.defaultMode
+		// Sync permission mode preference to settings.local.json permissions.defaultMode
 		settingsLocalPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-		if err := syncBypassToSettingsLocal(settingsLocalPath, prefs.Bypass); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync bypass setting: %v\n", err)
+		if err := syncPermissionModeToSettingsLocal(settingsLocalPath, prefs.PermissionMode); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
 		}
 	}
 
@@ -437,8 +437,15 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		settings["DO_CLAUDE_MODEL"] = prefs.Model
 	}
 
-	// Profile bypass merges with settings.local.json
-	bypass := settings["DO_CLAUDE_BYPASS"] == "true" || prefs.Bypass
+	// Permission mode: profile preference is the base default.
+	// settings.local.json DO_CLAUDE_PERMISSION_MODE overrides profile.
+	// Legacy DO_CLAUDE_BYPASS is also honored for backward compatibility.
+	permMode := prefs.PermissionMode
+	if settings["DO_CLAUDE_PERMISSION_MODE"] != "" {
+		permMode = settings["DO_CLAUDE_PERMISSION_MODE"]
+	} else if settings["DO_CLAUDE_BYPASS"] == "true" && permMode == "" {
+		permMode = "bypassPermissions"
+	}
 	chrome := settings["DO_CLAUDE_CHROME"] == "true"
 	cont := settings["DO_CLAUDE_CONTINUE"] == "true"
 	model := settings["DO_CLAUDE_MODEL"]
@@ -453,7 +460,12 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		case "--no-chrome":
 			chrome = false
 		case "-b", "--bypass":
-			bypass = true
+			permMode = "bypassPermissions"
+		case "--permission-mode":
+			if i+1 < len(extraArgs) {
+				permMode = extraArgs[i+1]
+				i++
+			}
 		case "-c", "--continue":
 			cont = true
 		case "--model", "-m":
@@ -462,15 +474,20 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 				i++
 			}
 		default:
-			passThrough = append(passThrough, arg)
+			// Handle --permission-mode=value form
+			if strings.HasPrefix(arg, "--permission-mode=") {
+				permMode = strings.TrimPrefix(arg, "--permission-mode=")
+			} else {
+				passThrough = append(passThrough, arg)
+			}
 		}
 	}
 
 	// 6. Build args
 	buildArgs := func(withContinue bool) []string {
 		a := []string{"claude"}
-		if bypass {
-			a = append(a, "--dangerously-skip-permissions")
+		if permMode != "" && permMode != "acceptEdits" {
+			a = append(a, "--permission-mode", permMode)
 		}
 		if !chrome {
 			a = append(a, "--no-chrome")
@@ -581,13 +598,15 @@ func readSettingsLocalForLaunch() map[string]string {
 	return result
 }
 
-// syncBypassToSettingsLocal persists the profile bypass preference to
-// .claude/settings.local.json so that permissions.defaultMode survives
-// across sessions regardless of how Claude Code is launched.
-// When bypass is true, sets defaultMode to "bypassPermissions".
-// When bypass is false, removes the defaultMode override so the
-// project settings.json default (acceptEdits) takes effect.
-func syncBypassToSettingsLocal(settingsPath string, bypass bool) error {
+// syncPermissionModeToSettingsLocal persists the profile permission mode
+// preference to .claude/settings.local.json so that permissions.defaultMode
+// survives across sessions regardless of how Claude Code is launched.
+//
+// When permissionMode is a non-default value (e.g. "auto", "bypassPermissions"),
+// it sets permissions.defaultMode in settings.local.json.
+// When permissionMode is empty or "acceptEdits" (matching the project default),
+// it removes the defaultMode override so settings.json default applies.
+func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode string) error {
 	var settings SettingsLocal
 
 	data, err := os.ReadFile(settingsPath)
@@ -600,11 +619,14 @@ func syncBypassToSettingsLocal(settingsPath string, bypass bool) error {
 		}
 	}
 
-	if bypass {
+	// Only write an override when the mode differs from the project default.
+	// The project settings.json default is "acceptEdits", so we skip writing
+	// for empty string and "acceptEdits" to avoid unnecessary overrides.
+	if permissionMode != "" && permissionMode != "acceptEdits" {
 		if settings.Permissions == nil {
 			settings.Permissions = make(map[string]any)
 		}
-		settings.Permissions["defaultMode"] = "bypassPermissions"
+		settings.Permissions["defaultMode"] = permissionMode
 	} else {
 		// Remove the override so settings.json default applies
 		if settings.Permissions != nil {
@@ -629,4 +651,15 @@ func syncBypassToSettingsLocal(settingsPath string, bypass bool) error {
 	}
 
 	return nil
+}
+
+// syncBypassToSettingsLocal is a backward-compatible wrapper for
+// syncPermissionModeToSettingsLocal. It maps bypass=true to "bypassPermissions".
+// Deprecated: Use syncPermissionModeToSettingsLocal directly.
+func syncBypassToSettingsLocal(settingsPath string, bypass bool) error {
+	mode := ""
+	if bypass {
+		mode = "bypassPermissions"
+	}
+	return syncPermissionModeToSettingsLocal(settingsPath, mode)
 }

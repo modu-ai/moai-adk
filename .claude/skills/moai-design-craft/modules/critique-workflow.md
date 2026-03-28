@@ -67,6 +67,56 @@ Classify each finding:
 [Quote the relevant Design Direction from system.md]
 ```
 
+## Hard Rules
+
+Design quality gates that apply to all frontend output:
+
+- No cards by default — use sections, columns, dividers, lists, and media blocks instead
+- No cards in the hero — the hero is a visual anchor, not a container
+- No boxed or center-column hero when brief calls for full bleed
+- No more than one dominant idea per section
+- No headline should overpower the brand on branded pages
+- No filler copy — if deleting 30% of the copy improves the page, keep deleting
+- No split-screen hero unless text sits on calm, unified side
+- No more than two typefaces without clear reason
+- No more than one accent color unless product has a strong system
+- No default typography stacks (Inter, Roboto, Arial, system) — use expressive, purposeful fonts
+- No flat, single-color backgrounds — use gradients, images, or subtle patterns
+- No decorative gradients or abstract backgrounds as the main visual idea
+
+### Hero Budget
+
+The first viewport should contain only:
+- The brand (hero-level signal)
+- One headline
+- One short supporting sentence
+- One CTA group
+- One dominant image
+
+If a sticky/fixed header exists, it counts against the hero. Combined header + hero must fit within the initial viewport. When using 100vh/100svh heroes, subtract persistent UI chrome: calc(100svh - header-height).
+
+### App UI Defaults
+
+For dashboards, admin tools, and operational workspaces:
+- Default to Linear-style restraint: calm surface hierarchy, strong typography, few colors
+- Dense but readable information, minimal chrome
+- Cards only when the card IS the interaction
+- Organize around: primary workspace, navigation, secondary context/inspector, one accent for action/state
+
+## Rejection Criteria
+
+Reject frontends that exhibit:
+
+- Generic SaaS card grid as first impression
+- Beautiful image with weak brand presence
+- Strong headline with no clear action
+- Busy imagery behind text
+- Sections repeating the same mood statement
+- Carousels with no narrative purpose
+- App UI made of stacked cards instead of layout
+- Pill clusters, stat strips, icon rows, or boxed promos competing for attention
+- Detached labels, floating badges, promo stickers on top of hero media
+
 ## What Critique Is Not
 
 - Not a code review (that is `/moai review` without `--critique`)

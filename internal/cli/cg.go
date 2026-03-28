@@ -23,7 +23,9 @@ This command:
   7. Launches Claude Code via exec (replaces current process)
 
 Flags:
-  -p, --profile <name>   Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, auto, bypassPermissions, dontAsk)
+  -b, --bypass                  Shorthand for --permission-mode bypassPermissions
 
 Prerequisites:
   1. A GLM API key configured via 'moai glm setup <api-key>'

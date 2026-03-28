@@ -69,6 +69,8 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
 - **e2e** (aliases: e2e-test): Create and run E2E tests
 - **context** (aliases: ctx, memory): Extract and display git-based context memory
+- **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
+- **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
 
 
 ### Priority 2: SPEC-ID Detection
@@ -80,6 +82,8 @@ Only if Priority 1 did not match: Check if the Raw User Input contains a pattern
 Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the ENTIRE Raw User Input as natural language. This priority is NEVER reached when the first word matches a known subcommand.
 
 - Planning and design language (design, architect, plan, spec, requirements, feature request) routes to **plan**
+- Quality gate language (lint, format, check, pre-commit, quality gate) routes to **gate**
+- Security language (security, audit, owasp, vulnerability, injection, xss, csrf) routes to **security**
 - Error and fix language (fix, error, bug, broken, failing, lint) routes to **fix**
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
@@ -118,6 +122,20 @@ Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), manager-quality, manager-git
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
+
+### gate - Pre-Commit Quality Gate
+
+Purpose: Lightweight pre-commit quality check running lint, format, type-check, and tests in parallel.
+Agents: Direct execution (no agent delegation)
+Flags: --fix, --staged, --file PATH
+For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/gate.md
+
+### security - OWASP Security Audit
+
+Purpose: Dedicated security audit with OWASP Top 10 analysis, dependency scanning, secrets detection, and data isolation checks.
+Agents: expert-security (primary)
+Flags: --full, --deps, --secrets, --file PATH, --branch BRANCH
+For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/security.md
 
 ### fix - Auto-Fix Errors
 

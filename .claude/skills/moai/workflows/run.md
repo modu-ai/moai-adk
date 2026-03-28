@@ -45,6 +45,22 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
 - --team: Enable team-based implementation (see ${CLAUDE_SKILL_DIR}/team/run.md for parallel implementation team)
 
+## UltraThink Auto-Activation
+
+When the run phase begins, evaluate whether to activate deep analysis mode for the strategy phase:
+
+**Activation condition** (any of):
+- SPEC spans >= 2 distinct domains (backend + frontend, auth + database, etc.)
+- SPEC plan.md lists >= 8 files to create or modify
+- SPEC involves architectural patterns (new module, service, middleware layer)
+- User explicitly includes `ultrathink` keyword
+
+**UltraThink vs --deepthink**:
+- `ultrathink`: Extended reasoning within the current agent — deeper strategy analysis, more thorough trade-off evaluation
+- `--deepthink`: Sequential Thinking MCP invocation — structured step-by-step analysis via `mcp__sequential-thinking__sequentialthinking`
+
+When activated: Apply to Phase 1 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
+
 ## Context Loading
 
 Before execution, load these essential files:

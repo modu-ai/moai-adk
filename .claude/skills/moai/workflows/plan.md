@@ -100,6 +100,32 @@ Tasks for the Explore subagent:
 - Go through related test files to understand expected behavior and edge cases
 - Report comprehensive results for Phase 1B context
 
+### Phase 0.4: UltraThink Auto-Activation (Conditional)
+
+Purpose: Automatically activate deep analysis mode for complex SPECs that benefit from structured reasoning.
+
+**Activation condition**: Evaluate task complexity from Phase 1A exploration results or user request:
+- Complexity score >= 7 (multi-domain, cross-cutting concerns)
+- Request involves architectural decisions (new module, system redesign, migration)
+- Request touches security-critical areas (auth, payment, data isolation)
+- User explicitly includes `ultrathink` keyword in request
+
+**UltraThink vs --deepthink distinction**:
+- `ultrathink`: Claude Code native deep analysis mode — activates extended reasoning within the current agent context. Triggered by keyword detection in user input.
+- `--deepthink`: Sequential Thinking MCP tool invocation — programmatic step-by-step analysis via `mcp__sequential-thinking__sequentialthinking`. Triggered by explicit flag.
+
+When UltraThink auto-activates:
+- Log: "UltraThink mode activated: [reason]"
+- Apply extended reasoning to Phase 0.5 research and Phase 1B SPEC creation
+- Produce deeper analysis in research.md with trade-off comparisons and risk assessments
+- Consider alternative approaches and document rejection rationale
+
+When --deepthink flag is present (can combine with UltraThink):
+- Invoke Sequential Thinking MCP for structured step-by-step analysis
+- Each thinking step documented in research.md
+
+**Skip condition**: Simple, well-scoped features (complexity < 5, single domain, clear requirements). Log: "UltraThink skipped: low complexity task."
+
 ### Phase 0.5: Deep Research (Recommended)
 
 Agent: Explore subagent (deep codebase analysis)

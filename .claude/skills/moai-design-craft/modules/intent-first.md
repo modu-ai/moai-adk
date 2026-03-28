@@ -54,6 +54,36 @@ Example for a payments domain:
 
 Bad vocabulary choices create misaligned UI. When developers name things after UI patterns instead of domain concepts, the implementation drifts from intent.
 
+## Pre-Build Planning
+
+Before building any frontend, establish three planning artifacts. This framework (from OpenAI's GPT-5.4 frontend design research, Mar 2026) strengthens the Design Direction Statement with concrete execution guidance.
+
+### Visual Thesis
+
+One sentence describing mood, material, and energy of the interface. This anchors all subsequent visual decisions.
+
+Example: "A warm, photographic editorial feel — natural textures, generous whitespace, type-led hierarchy with one accent color for action."
+
+### Content Plan
+
+Define the narrative flow for the first viewport and beyond:
+
+1. Hero — establish identity and promise
+2. Supporting imagery — show context or environment
+3. Product detail — explain the offering
+4. Social proof — establish credibility
+5. Final CTA — convert interest into action
+
+### Interaction Thesis
+
+Define 2-3 intentional motion ideas that change the feel of the page:
+
+- Entrance sequences (how elements appear)
+- Scroll-linked effects (parallax, reveal)
+- Hover/reveal transitions (micro-interactions)
+
+Use motion to create presence and hierarchy, not noise. Ship at least 2-3 intentional motions for visually-led work.
+
 ## When to Trigger Design Direction
 
 Trigger this process when a SPEC contains any of:
