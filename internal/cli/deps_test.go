@@ -108,36 +108,25 @@ func TestEnsureUpdate_AlreadyInitialized(t *testing.T) {
 	}
 }
 
-// TestInitDependencies_SetsDefaultSlogToDiscard는 InitDependencies 호출 후
-// slog.Default() 핸들러가 discard로 교체되어 있음을 검증한다.
-// 이 테스트는 이슈 #565의 재현 테스트로, slog.SetDefault 호출이 누락된 경우 실패한다.
-// Go 기본 slog 핸들러는 *slog.defaultHandler 타입이며, discard로 설정하면
-// *slog.TextHandler로 변경된다.
 func TestInitDependencies_SetsDefaultSlogToDiscard(t *testing.T) {
 	origDeps := deps
-	// slog.Default()도 원상 복구한다
 	origDefaultLogger := slog.Default()
 	defer func() {
 		deps = origDeps
 		slog.SetDefault(origDefaultLogger)
 	}()
 
-	// InitDependencies 호출 전: Go 기본 핸들러는 *slog.defaultHandler
 	deps = nil
 	defaultHandlerBefore := slog.Default().Handler()
 
 	InitDependencies()
 
-	// InitDependencies 이후: slog.SetDefault가 호출되었으므로 핸들러가 변경되어야 한다.
-	// 변경되지 않았다면 slog.SetDefault 호출이 누락된 것으로, 이슈 #565가 재현된 상황이다.
 	defaultHandlerAfter := slog.Default().Handler()
 	if defaultHandlerBefore == defaultHandlerAfter {
-		t.Error("InitDependencies 이후 slog.Default() 핸들러가 변경되지 않음: slog.SetDefault(logger) 호출이 누락되었을 수 있음 (이슈 #565)")
+		t.Error("slog.Default() handler should change after InitDependencies")
 	}
-
-	// deps.Logger 핸들러와 slog.Default() 핸들러가 동일해야 한다.
 	if deps.Logger.Handler() != slog.Default().Handler() {
-		t.Error("deps.Logger 핸들러와 slog.Default() 핸들러가 일치하지 않음")
+		t.Error("deps.Logger handler should match slog.Default() handler")
 	}
 }
 

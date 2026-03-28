@@ -56,10 +56,7 @@ var deps *Dependencies
 // Dependencies that require a project root (Config, Git) are
 // initialized lazily on first use or when the project root is available.
 func InitDependencies() {
-	// CLI 명령에서는 JSON 로깅을 비활성화하기 위해 discard 로거를 사용한다.
-	// slog.SetDefault를 호출하여 Go 기본 slog 로거도 덮어써야 한다.
-	// 이를 통해 hook 핸들러들이 내부에서 slog.Info() 등을 호출해도 stderr 출력이 발생하지 않는다.
-	// 참고: 이슈 #565 - hook wrapper가 stderr를 통해 Claude Code에 허위 에러를 발생시키는 문제
+	// hook 핸들러의 slog 출력이 stderr로 유출되지 않도록 기본 로거를 discard로 교체한다.
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	slog.SetDefault(logger)
 
