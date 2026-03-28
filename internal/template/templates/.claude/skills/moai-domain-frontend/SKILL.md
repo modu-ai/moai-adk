@@ -10,10 +10,10 @@ compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   category: "domain"
   status: "active"
-  updated: "2026-01-11"
+  updated: "2026-03-28"
   modularized: "true"
   tags: "frontend, react, nextjs, vue, ui, components"
   author: "MoAI-ADK Team"
@@ -36,7 +36,7 @@ Core Capabilities:
 - Next.js 16: App Router, Server Actions, ISR, Route handlers
 - Vue 3.5: Composition API, TypeScript, Pinia state management
 - Component Architecture: Design systems, compound components, CVA
-- Performance: Code splitting, dynamic imports, memoization
+- Performance: Code splitting, dynamic imports, memoization, Framer Motion animations
 
 When to Use:
 
@@ -78,6 +78,10 @@ State Management in modules/state-management.md:
 Performance Optimization in modules/performance-optimization.md:
 
 - Code splitting, Dynamic imports, Image optimization, Memoization
+
+AI-Assisted Frontend Patterns in modules/ai-frontend-patterns.md:
+
+- Visual reference strategy, Playwright verification, motion design, reasoning-level tuning
 
 Vercel React Best Practices in modules/vercel-react-best-practices.md:
 
@@ -125,9 +129,13 @@ Languages: TypeScript 5.9+, JavaScript ES2024
 
 Styling: Tailwind CSS 3.4+, CSS Modules, shadcn/ui
 
+Animation: Framer Motion
+
 State: Zustand, Redux Toolkit, Pinia
 
 Testing: Vitest, Testing Library, Playwright
+
+Verification: Playwright (visual inspection, functional testing)
 
 ---
 
@@ -145,5 +153,5 @@ Official documentation:
 
 ---
 
-Version: 2.0.0
-Last Updated: 2026-01-11
+Version: 2.1.0
+Last Updated: 2026-03-28

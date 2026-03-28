@@ -9,10 +9,10 @@ compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "3.0.0"
+  version: "3.1.0"
   category: "domain"
   status: "active"
-  updated: "2026-03-11"
+  updated: "2026-03-28"
   modularized: "true"
   tags: "domain, uiux, design-systems, accessibility, components, icons, theming"
 
@@ -48,7 +48,7 @@ Module Organization:
 - Accessibility: modules/accessibility-wcag.md (WCAG 2.2 compliance, testing, navigation)
 - Icons: modules/icon-libraries.md (10+ libraries, selection guide, performance optimization)
 - Theming: modules/theming-system.md (theme system, CSS variables, brand customization)
-- Web Interface Guidelines: modules/web-interface-guidelines.md (Vercel Labs comprehensive UI/UX compliance)
+- Web Interface Guidelines: modules/web-interface-guidelines.md (Vercel Labs comprehensive UI/UX compliance, frontend composition rules)
 - Examples: examples.md (practical implementation examples)
 - Reference: reference.md (external documentation links)
 
