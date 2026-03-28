@@ -614,7 +614,7 @@ GLM is configured via environment variable overrides in ~/.claude/settings.json:
 {"env": {
   "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-air",
   "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-  "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5"
+  "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1"
 }}
 ```
 
@@ -697,25 +697,27 @@ iTerm2 → Settings → Profiles → Advanced → Triggers:
 
 Claude Code의 rule, agent, skill 파일에서 YAML frontmatter를 작성할 때 반드시 지켜야 하는 규칙들.
 
-**배경**: Claude Code의 내부 YAML 파서는 일부 필드에서 YAML 배열을 지원하지 않고, comma-separated string만 지원한다. 이를 위반하면 해당 규칙이 **완전히 무시**되어 로딩되지 않는다 (Issue #411).
+**배경**: Claude Code의 내부 YAML 파서는 일부 필드에서 YAML 배열 지원을 개선하고 있다. v2.1.84 이상에서는 여러 필드가 YAML 배열을 지원한다.
 
 ### Rules (.claude/rules/**/*.md)
 
-**`paths` 필드**: 반드시 CSV 문자열 사용. YAML 배열 사용 금지.
+**`paths` 필드**: CSV 문자열 권장 (호환성), YAML 배열도 지원됨 (v2.1.84+).
 
 ```yaml
-# CORRECT - CSV string
+# RECOMMENDED - CSV string
 ---
 paths: "**/*.go,**/go.mod,**/go.sum"
 ---
 
-# WRONG - YAML array (Claude Code가 이 규칙을 무시함!)
+# ALSO OK - YAML array (supported since v2.1.84)
 ---
 paths:
   - "**/*.go"
   - "**/go.mod"
 ---
 ```
+
+MoAI convention: 기존 규칙과의 일관성을 위해 CSV 형식 계속 사용.
 
 ### Agents (.claude/agents/**/*.md)
 
@@ -744,6 +746,15 @@ skills:
 **`model` 필드 값**: `inherit`, `opus`, `sonnet`, `haiku` 중 하나만 사용.
 
 **`permissionMode` 필드 값**: `default`, `acceptEdits`, `delegate`, `dontAsk`, `bypassPermissions`, `plan` 중 하나만 사용.
+
+**`initialPrompt` 필드**: Agent가 시작할 때 자동으로 제출할 초기 프롬프트. 사용자 입력을 기다리지 않고 즉시 작업을 시작할 수 있음 (v2.1.83+).
+
+```yaml
+# CORRECT
+initialPrompt: "Analyze the following code for performance issues: @.src/"
+
+# Agent가 시작되면 위의 프롬프트가 자동으로 제출됨
+```
 
 ### Skills (.claude/skills/**/*.md)
 
@@ -794,8 +805,10 @@ metadata:
 | Rules | `paths` | CSV string | `paths: "**/*.go,**/go.mod"` |
 | Agents | `tools` | CSV string | `tools: Read, Write, Edit` |
 | Agents | `disallowedTools` | CSV string | `disallowedTools: Task, WebSearch` |
+| Agents | `initialPrompt` | String | `initialPrompt: "Analyze the code: @.src/"` |
 | Agents | `skills` | YAML array | `skills:\n  - moai-lang-go` |
 | Skills | `allowed-tools` | CSV string | `allowed-tools: Read, Grep` |
+| Skills | `effort` | String | `effort: low` |
 | Skills | `metadata.*` | Quoted strings | `version: "1.0.0"` |
 
 ### Validation Checklist

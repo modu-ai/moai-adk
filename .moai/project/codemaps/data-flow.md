@@ -207,7 +207,7 @@ flowchart TD
     H --> J["Worker pane (right)"]
 
     I --> K["Set leader env:\nRemove GLM env vars\nClaude uses its own model"]
-    J --> L["Set worker env:\nANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air\nANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7\nANTHROPIC_DEFAULT_OPUS_MODEL=glm-5"]
+    J --> L["Set worker env:\nANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air\nANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7\nANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.1"]
 
     K --> M["Leader: claude code session\n(Claude Opus/Sonnet)\norchestrates via Task()"]
     L --> N["Worker: claude code session\n(GLM models)\nexecutes in worktree isolation"]
@@ -229,7 +229,7 @@ User: moai glm sk-xxxx
     → Patch settings.json env section:
         ANTHROPIC_DEFAULT_HAIKU_MODEL  = "glm-4.7-air"
         ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.7"
-        ANTHROPIC_DEFAULT_OPUS_MODEL   = "glm-5"
+        ANTHROPIC_DEFAULT_OPUS_MODEL   = "glm-5.1"
     → Write ~/.claude/settings.json
     → Print confirmation
 ```

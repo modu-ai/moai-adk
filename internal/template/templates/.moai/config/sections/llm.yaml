@@ -18,7 +18,7 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5"           # Complex reasoning
+      high: "glm-5.1"           # Complex reasoning
       medium: "glm-4.7"       # Balanced performance
       low: "glm-4.5-air"      # Lightweight tasks (Z.ai official default)
 

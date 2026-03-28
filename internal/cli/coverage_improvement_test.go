@@ -7063,7 +7063,7 @@ func TestInjectGLMEnvForTeam_Phase6(t *testing.T) {
 			Medium string
 			Low    string
 		}{
-			High:   "glm-5",
+			High:   "glm-5.1",
 			Medium: "glm-4.7",
 			Low:    "glm-4.7-air",
 		},
@@ -7104,7 +7104,7 @@ func TestInjectGLMEnvForTeam_MergesWithExisting(t *testing.T) {
 			Medium string
 			Low    string
 		}{
-			High:   "glm-5",
+			High:   "glm-5.1",
 			Medium: "glm-4.7",
 			Low:    "glm-4.7-air",
 		},
