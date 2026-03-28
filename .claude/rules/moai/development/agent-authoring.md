@@ -28,7 +28,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | disallowedTools | No | None | Tools to deny (denylist approach, alternative to tools) |
 | model | No | inherit | Model selection: sonnet, opus, haiku, or inherit |
 | permissionMode | No | default | Permission behavior for the agent |
-| maxTurns | No | Unlimited | Maximum agentic turns before stopping |
+| maxTurns | No | Unlimited | Maximum agentic turns before stopping (deprecated since v2.1.69+, use maxContextSize instead) |
 | skills | No | None | Skills injected into agent context at startup |
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |
@@ -158,7 +158,7 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 
 Recommended tool sets by category:
 
-Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite (NOTE: Agent tool is NOT included - subagents cannot spawn other subagents per official docs)
+Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite (NOTE: Agent tool is NOT included by default for regular subagents. However, Agent Teams teammates CAN spawn other teammates using Agent() with the team_name parameter, v2.1.50+)
 
 Expert agents: Read, Write, Edit, Grep, Glob, Bash
 

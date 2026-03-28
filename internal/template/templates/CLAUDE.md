@@ -352,8 +352,8 @@ For core parallel execution principles, see .claude/rules/moai/core/moai-constit
 
 ### Worktree Isolation Rules [HARD]
 
-- [HARD] Implementation agents in team mode (team-backend-dev, team-frontend-dev, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
-- [HARD] Read-only agents (team-researcher, team-analyst, team-architect, team-quality) MUST NOT use `isolation: "worktree"`
+- [HARD] Implementation agents in team mode (team-coder, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Read-only agents (team-reader, team-validator) MUST NOT use `isolation: "worktree"`
 - [HARD] One-shot sub-agents making cross-file changes SHOULD use `isolation: "worktree"`
 - [HARD] GitHub workflow fixer agents MUST use `isolation: "worktree"` for branch isolation
 
@@ -367,7 +367,7 @@ MoAI supports optional Agent Teams mode for parallel phase execution.
 
 ### Activation
 
-- Claude Code v2.1.32 or later
+- Claude Code v2.1.50 or later
 - Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - Set `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
 
@@ -472,7 +472,7 @@ User can explicitly request context search at any time during conversation.
 
 ---
 
-## Troubleshooting
+## 17. Troubleshooting
 
 ### Debugging MoAI Sessions
 
@@ -514,7 +514,7 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 ---
 
 Version: 13.1.0 (Agent Teams Integration)
-Last Updated: 2026-02-10
+Last Updated: 2026-03-29
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

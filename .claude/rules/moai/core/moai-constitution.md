@@ -1,3 +1,8 @@
+---
+description: Core constitutional principles for MoAI orchestrator - HARD rules that must always be followed
+globs:
+---
+
 # MoAI Constitution
 
 Core principles that MUST always be followed. These are HARD rules.
