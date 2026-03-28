@@ -178,13 +178,18 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 		hook.EventPostCompact,
 		hook.EventInstructionsLoaded,
 		hook.EventStopFailure,
+		hook.EventSetup,
+		hook.EventConfigChange,
+		hook.EventTaskCreated,
+		hook.EventCwdChanged,
+		hook.EventFileChanged,
 	}
 
 	validTypes := hook.ValidEventTypes()
 
 	// Verify exact count.
-	if got := len(validTypes); got != 19 {
-		t.Errorf("ValidEventTypes() returned %d types, want 19", got)
+	if got := len(validTypes); got != 24 {
+		t.Errorf("ValidEventTypes() returned %d types, want 24", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -295,6 +300,11 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventPostCompact:        "post-compact",
 		hook.EventInstructionsLoaded: "instructions-loaded",
 		hook.EventStopFailure:        "stop-failure",
+		hook.EventSetup:              "setup",
+		hook.EventConfigChange:       "config-change",
+		hook.EventTaskCreated:        "task-created",
+		hook.EventCwdChanged:         "cwd-changed",
+		hook.EventFileChanged:        "file-changed",
 	}
 
 	registeredNames := make(map[string]bool)

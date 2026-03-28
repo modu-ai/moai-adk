@@ -78,6 +78,26 @@ const (
 	// EventStopFailure is triggered when a turn ends due to an API error (rate limit, auth failure).
 	// Available since Claude Code v2.1.78+.
 	EventStopFailure EventType = "StopFailure"
+
+	// EventSetup is triggered via --init, --init-only, or --maintenance CLI flags.
+	// Available since Claude Code v2.1.10+.
+	EventSetup EventType = "Setup"
+
+	// EventConfigChange is triggered when configuration files change during a session.
+	// Available since Claude Code v2.1.49+.
+	EventConfigChange EventType = "ConfigChange"
+
+	// EventTaskCreated is triggered when a task is created via TaskCreate.
+	// Available since Claude Code v2.1.84+.
+	EventTaskCreated EventType = "TaskCreated"
+
+	// EventCwdChanged is triggered when the working directory changes during a session.
+	// Available since Claude Code v2.1.83+.
+	EventCwdChanged EventType = "CwdChanged"
+
+	// EventFileChanged is triggered when a file is changed externally during a session.
+	// Available since Claude Code v2.1.83+.
+	EventFileChanged EventType = "FileChanged"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -102,6 +122,11 @@ func ValidEventTypes() []EventType {
 		EventPostCompact,
 		EventInstructionsLoaded,
 		EventStopFailure,
+		EventSetup,
+		EventConfigChange,
+		EventTaskCreated,
+		EventCwdChanged,
+		EventFileChanged,
 	}
 }
 
@@ -184,6 +209,15 @@ type HookInput struct {
 	WorktreePath   string `json:"worktree_path,omitempty"`   // Absolute path to the worktree directory
 	WorktreeBranch string `json:"worktree_branch,omitempty"` // Branch name for the worktree
 	AgentName      string `json:"agent_name,omitempty"`      // Name of the agent using the worktree
+
+	// ConfigChange fields (v2.1.49+)
+	ConfigFilePath string `json:"config_file_path,omitempty"` // Path to the changed configuration file
+
+	// TaskCreated fields (v2.1.84+)
+	// Reuses TaskID, TaskSubject, TaskDescription from TeammateIdle/TaskCompleted
+
+	// FileChanged fields (v2.1.83+)
+	FilePath string `json:"file_path,omitempty"` // Path to the changed file
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`

@@ -154,6 +154,22 @@ triggers:
   languages: ["python", "typescript"]
 ```
 
+## Agent Initialization
+
+### initialPrompt
+
+Agents can specify an initial prompt that auto-submits when the agent starts. This enables agents to begin work immediately without waiting for user input. Available since Claude Code v2.1.83+.
+
+The initialPrompt field is only applicable to agent definitions (.claude/agents/), not skills.
+
+Example:
+```yaml
+---
+name: my-agent
+initialPrompt: "Analyze the following code for performance issues: @.src/"
+---
+```
+
 ## Built-in Variables
 
 Variables available inside skill SKILL.md content:
@@ -178,3 +194,4 @@ Use `${CLAUDE_SKILL_DIR}` for referencing files within the skill directory inste
 - Use comma-separated format for allowed-tools (YAML arrays also supported since v2.1.0)
 - Mark MoAI extension fields with standardized comments
 - Use `${CLAUDE_SKILL_DIR}` for self-referencing paths within skill content
+- Keep skill descriptions under 250 characters for menu display (v2.1.86+)
