@@ -4,7 +4,7 @@ description: >
   Deployment and hosting platform specialist covering Vercel, Railway, and Convex.
   Use when deploying applications, configuring edge functions, setting up continuous
   deployment, or managing serverless infrastructure.
-license: MIT
+license: Apache-2.0
 metadata:
   version: "2.0.0"
   category: "platform"

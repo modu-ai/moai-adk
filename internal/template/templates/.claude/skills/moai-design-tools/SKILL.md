@@ -4,7 +4,7 @@ description: >
   Design tool integration specialist covering Figma MCP, Pencil renderer, and
   Pencil-to-code export. Use when fetching design context from Figma, rendering
   Pencil designs, or exporting to React/Tailwind code.
-license: MIT
+license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__snapshot_layout, mcp__pencil__get_editor_state, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__get_guidelines, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__open_document, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__get_canvas_context, mcp__pencil__get_selected_frames, mcp__pencil__export_frame_data
 user-invocable: false

@@ -247,7 +247,7 @@ Fixes #456
 
 ## 라이선스
 
-기여하신 코드는 프로젝트의 [Copyleft 3.0 라이선스](LICENSE)에 따라 배포됩니다.
+기여하신 코드는 프로젝트의 [Apache License 2.0](LICENSE)에 따라 배포됩니다.
 
 ---
 

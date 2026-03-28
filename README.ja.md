@@ -22,7 +22,7 @@
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
   <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/github/v/release/modu-ai/moai-adk?sort=semver" alt="Release"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Copyleft--3.0-blue.svg" alt="License: Copyleft-3.0"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
 <p align="center">
@@ -1015,7 +1015,7 @@ External imports:
 
 ## ライセンス
 
-[Copyleft 3.0](./LICENSE) -- 詳細はLICENSEファイルをご参照ください。
+[Apache License 2.0](./LICENSE) -- 詳細はLICENSEファイルをご参照ください。
 
 ## 関連リンク
 

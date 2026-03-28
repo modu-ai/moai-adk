@@ -22,7 +22,7 @@
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
   <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/github/v/release/modu-ai/moai-adk?sort=semver" alt="Release"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Copyleft--3.0-blue.svg" alt="License: Copyleft-3.0"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
 <p align="center">
@@ -1013,7 +1013,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 ## License
 
-[Copyleft 3.0](./LICENSE) -- See the LICENSE file for details.
+[Apache License 2.0](./LICENSE) -- See the LICENSE file for details.
 
 ## Links
 
