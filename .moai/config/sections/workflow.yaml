@@ -14,13 +14,6 @@ workflow:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
-    # SPEC-WORKTREE-002: Worktree automation settings
-    worktree:
-        auto_create: true          # R2: Auto-create worktree after SPEC commit
-        auto_merge: true           # R3: Auto-merge default in sync phase
-        auto_cleanup: true         # R4: Auto-cleanup after PR merge
-        tmux_preferred: true       # R5: Prefer tmux for session isolation
-        session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
     team:
         auto_selection:
             min_complexity_score: 7
@@ -82,3 +75,9 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    worktree:
+        auto_cleanup: true
+        auto_create: true
+        auto_merge: true
+        session_name_pattern: moai-{ProjectName}-{SPEC-ID}
+        tmux_preferred: true

@@ -6,17 +6,17 @@ Comprehensive comparison of Figma MCP, Pencil MCP, and Pencil-to-Code export for
 
 | Feature | Figma MCP | Pencil MCP | Pencil-to-Code |
 |---------|-----------|------------|----------------|
-| **Primary Use** | Fetch existing designs | Create visual designs | Generate implementation code |
-| **Input** | Figma file URLs | Natural language / DNA codes | .pen frame files |
-| **Output** | Design metadata, tokens | Visual .pen frames | React/Tailwind code |
-| **Design Creation** | No (read-only) | Yes (text-to-design) | No (export only) |
-| **Code Generation** | No | No | Yes |
-| **Version Control** | Limited (snapshots) | Excellent (DNA codes) | Excellent (code) |
-| **Collaboration** | Figma comments | .pen frame sharing | Code review |
+| **Primary Use** | Fetch existing designs, generate new designs | Create visual designs | Generate implementation code |
+| **Input** | Figma file key + node IDs | Natural language / batch_design ops | .pen frame data (pure JSON) |
+| **Output** | Design context, tokens, screenshots | Visual .pen frames | React/Tailwind code |
+| **Design Creation** | Yes (generate_figma_design, generate_diagram) | Yes (text-to-design) | No (code generation only) |
+| **Code Generation** | No | No | Yes (prompt-based workflow) |
+| **Version Control** | Limited (snapshots) | Excellent (.pen files are pure JSON) | Excellent (code) |
+| **Collaboration** | Figma comments, FigJam boards | .pen frame sharing | Code review |
 | **Learning Curve** | Low | Medium | Low |
-| **Setup Complexity** | Medium | Low | Low |
+| **Setup Complexity** | Low (plugin install + auth) | Low (auto-configures) | Low |
 | **Cost** | Free tier available | Paid | Paid |
-| **Integration** | Figma files | Pencil platform | React/Tailwind projects |
+| **Integration** | Figma files via official remote MCP | Pencil platform | React/Tailwind projects |
 
 ## Use Case Decision Matrix
 
@@ -183,17 +183,17 @@ Comprehensive comparison of Figma MCP, Pencil MCP, and Pencil-to-Code export for
 
 ### Setup Complexity
 
-**Figma MCP** (Medium)
+**Figma MCP** (Low)
 - Requires Figma account
-- API token setup
-- File permissions configuration
-- MCP server installation
+- Plugin install: `claude plugin install figma@claude-plugins-official`
+- Authenticate via Figma account (OAuth)
+- No manual mcpServers configuration required
 
 **Pencil MCP** (Low)
 - Pencil account setup
-- API key configuration
-- MCP server installation
-- Minimal configuration
+- Pencil MCP auto-configures (no manual mcpServers setup)
+- .pen files are pure JSON — no special decryption needed
+- Multiple UI kit options: Shadcn UI, Halo, Lunaris, Nitro
 
 **Pencil-to-Code** (Low)
 - Pencil account (if using MCP)
@@ -403,9 +403,10 @@ Use this checklist to determine the best tool for your needs:
 ## Resources
 
 ### Tool Documentation
-- Figma MCP: https://github.com/modelcontextprotocol/servers/tree/main/src/figma
-- Pencil MCP: https://docs.pencil.dev/mcp
-- Pencil Export: https://docs.pencil.dev/export
+- Figma MCP Official: https://mcp.figma.com/mcp
+- Figma Developers: https://www.figma.com/developers
+- Pencil Official: https://pencil.dev
+- Pencil AI Integration: https://docs.pencil.dev/getting-started/ai-integration
 
 ### Community
 - Figma Community: https://www.figma.com/community
@@ -420,5 +421,5 @@ Use this checklist to determine the best tool for your needs:
 
 ---
 
-Last Updated: 2026-02-09
-Version: 1.0.0
+Last Updated: 2026-03-11
+Version: 2.0.0

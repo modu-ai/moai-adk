@@ -101,8 +101,7 @@ The `project` mode performs comprehensive project-wide synchronization:
 ## Supported Flags
 
 - --pr: Push branch and create/update PR on GitHub after sync. When used, automatically returns to base branch (main/develop) after PR creation (Step 3.3.5).
-- --merge: [DEPRECATED] Auto-merge is now DEFAULT for worktree flows (R3 of SPEC-WORKTREE-002). This flag is kept for backward compatibility but has no effect.
-- --no-merge: Skip auto-merge PR and cleanup. Use this when you want to review the PR manually before merging.
+- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
 - --skip-mx: Skip MX tag validation and annotation during sync.
 
 ## Context Loading
@@ -116,54 +115,6 @@ Before execution, load these essential files:
 - .moai/project/ directory listing (project documents for conditional update)
 - .moai/project/codemaps/ directory listing (architecture maps for conditional update)
 - README.md (current project documentation)
-
-## Progress Reporting Guidelines [HARD]
-
-MoAI MUST provide clear progress visibility to users during agent execution. Use the templates from `.claude/output-styles/moai/moai.md` Agent Lifecycle Templates section.
-
-### When to Report Progress
-
-1. **Before Agent() Call**: Always display Agent Dispatch template
-   - Show which agent is being called
-   - Show phase context and task description
-   - Show delegation context (from where, to what goal)
-
-2. **During Agent() Execution**: Display Agent Progress template periodically
-   - For long-running agents (>30 seconds): update every ~20-30 seconds
-   - Show current activity and completion status
-   - Show LSP state if applicable
-
-3. **After Agent() Completion**: Always display Agent Complete template
-   - Show files modified, tests run, issues found
-   - Show deliverables created
-   - Note any escalations or next steps
-
-4. **Automatic Skill Triggers**: Display Skill Activation template
-   - When /simplify is automatically invoked
-   - When /batch is triggered for parallel execution
-   - Show trigger conditions and execution scope
-
-5. **Parallel Execution**: Display Parallel Execution Dashboard
-   - When multiple agents run in parallel (batch mode, team mode)
-   - Update progress bars for each active agent
-   - Show overall completion percentage
-
-### Reporting Priority
-
-[HARD] Progress reporting is MANDATORY for:
-- All Agent() calls (dispatch → progress → completion)
-- All automatic skill triggers (/simplify, /batch)
-- All phase transitions
-
-### Template Reference
-
-Use templates from `.claude/output-styles/moai/moai.md`:
-- Agent Dispatch
-- Agent Progress
-- Agent Complete
-- Skill Activation
-- Parallel Execution Dashboard
-- Workflow Progress
 
 Pre-execution commands: git status, git diff, git branch, git log, find .moai/specs.
 

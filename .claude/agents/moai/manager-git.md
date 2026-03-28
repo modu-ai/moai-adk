@@ -1163,14 +1163,17 @@ All implementation commits MUST include a `## Context` section in the commit bod
 
 Context Memory Categories:
 
-| Category | Purpose | Example |
-|----------|---------|---------|
-| Decision | Technical decision + rationale | "EdDSA over RSA256 (user requested, performance priority)" |
-| Constraint | Active constraints | "Must maintain /api/v1 backward compatibility" |
-| Gotcha | Pitfalls discovered | "Redis TTL unreliable for RefreshToken storage" |
-| Pattern | Patterns/references used | "middleware chain pattern from auth.go:45" |
-| Risk | Known risks/deferred items | "Token rotation deferred to Phase 2" |
-| UserPref | User preferences captured | "User prefers functional style over OOP" |
+| Category | Purpose | When to Use | Example |
+|----------|---------|-------------|---------|
+| Decision | Technical decision + rationale | Always | "EdDSA over RSA256 (user requested, performance priority)" |
+| Constraint | Active constraints | Always | "Must maintain /api/v1 backward compatibility" |
+| Gotcha | Pitfalls discovered | Always | "Redis TTL unreliable for RefreshToken storage" |
+| Pattern | Patterns/references used | Always | "middleware chain pattern from auth.go:45" |
+| Risk | Known risks/deferred items | Always | "Token rotation deferred to Phase 2" |
+| UserPref | User preferences captured | Always | "User prefers functional style over OOP" |
+| Rejected | Evaluated alternatives with dismissal reason | When 2+ alternatives were considered | "Background refresh on timer \| race condition with concurrent requests" |
+| Not-tested | Known test coverage gaps | When known test blind spots exist | "Auth service cold-start > 500ms behavior" |
+| Reversibility | Change rollback difficulty: clean, migration-needed, irreversible | Breaking changes only | "migration-needed (schema column dropped)" |
 
 Context Section Format:
 
@@ -1181,7 +1184,17 @@ Context Section Format:
 - Gotcha: [description]
 - Pattern: [description]
 - Risk: [description]
+- Rejected: [alternative] | [dismissal reason]
+- Not-tested: [untested scenario]
+- Reversibility: [clean|migration-needed|irreversible] ([detail])
 ```
+
+Lore Trailers Usage Rules:
+
+- Rejected: Include ONLY when 2+ alternatives were evaluated and dismissed. Format: `alternative | reason`
+- Not-tested: Include ONLY when known test blind spots exist. Omit when coverage is comprehensive
+- Reversibility: Include ONLY for breaking changes (API removals, schema migrations, config format changes). Values: clean, migration-needed, irreversible
+- All three are OPTIONAL. Omit when not applicable. Do not fabricate entries for completeness
 
 MX Tags Changed Section:
 
@@ -1315,45 +1328,5 @@ Protected Branch Conflict (when auto_branch equals false):
 - Options: Create new branch automatically or confirm direct commit
 
 ---
-
-
-## Completion Report Format [HARD]
-
-When completing assigned tasks, the agent MUST return a structured completion report using this format:
-
-```markdown
-📊 COMPLETION REPORT:
-- Files Modified: [count] ([list])
-- Lines Added: [count]
-- Lines Removed: [count]
-- Tests Run: [passed]/[total] ([percentage]%)
-- Coverage: [percentage]%
-
-📦 DELIVERABLES:
-- [file_1]: [brief_description]
-- [file_2]: [brief_description]
-
-⚠️ ISSUES FOUND:
-- [severity]: [issue_description] (if any)
-
-🎯 NEXT STEPS:
-- [recommendation_1]
-- [recommendation_2]
-```
-
-For implementation agents (expert-backend, expert-frontend, expert-debug):
-- Include specific file paths modified
-- Include test results with counts
-- Note any LSP warnings/errors encountered
-
-For manager agents (manager-ddd, manager-tdd, manager-quality, manager-docs):
-- Include summary of delegated work
-- Include overall quality assessment
-- Include recommendations for next phases
-
-For quality agents (manager-quality):
-- Include TRUST 5 validation results
-- Include coverage metrics
-- Include any critical issues requiring attention
 
 manager-git provides a simple and stable work environment with direct Git commands instead of complex scripts.
