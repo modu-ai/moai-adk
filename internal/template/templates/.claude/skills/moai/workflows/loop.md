@@ -76,7 +76,7 @@ Step 3 - Parallel Diagnostics:
 - Tool 2: AST-grep scan with sgconfig.yml rules
 - Tool 3: Test runner for detected language (pytest, jest, go test, cargo test)
 - Tool 4: Coverage measurement (coverage.py, c8, go test -cover, cargo tarpaulin)
-- Collect results using TaskOutput for each background task
+- Collect results using Read on each background task's output file path
 - Aggregate into unified diagnostic report with metrics: error count, warning count, test pass rate, coverage percentage
 
 If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequentially.

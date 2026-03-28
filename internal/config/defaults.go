@@ -40,13 +40,13 @@ const (
 	DefaultGLMEnvVar  = "GLM_API_KEY"
 	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
 	// GLM model tiers
-	DefaultGLMHigh   = "glm-5"
+	DefaultGLMHigh   = "glm-5.1"
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"
-	DefaultGLMOpus   = "glm-5"
+	DefaultGLMOpus   = "glm-5.1"
 	// Default performance tier
 	DefaultPerformanceTier = "medium"
 

@@ -2,27 +2,23 @@
 name: moai-domain-uiux
 description: >
   UI/UX design systems specialist covering accessibility, icons, theming,
-  design tokens, and user experience patterns.
-  Use when user asks about design systems, WCAG accessibility compliance, ARIA patterns,
-  icon libraries, dark mode theming, design tokens, or user experience research.
-  Do NOT use for React component coding or frontend implementation
-  (use moai-domain-frontend instead) or shadcn/ui specifics
-  (use moai-library-shadcn instead).
+  design tokens, and user experience patterns. Use when working on design
+  systems, WCAG compliance, ARIA patterns, or dark mode theming.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "3.0.0"
   category: "domain"
   status: "active"
-  updated: "2026-01-11"
+  updated: "2026-03-11"
   modularized: "true"
   tags: "domain, uiux, design-systems, accessibility, components, icons, theming"
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["UI/UX", "design system", "accessibility", "WCAG", "ARIA", "icon", "theming", "dark mode", "design tokens", "component library", "Radix UI", "shadcn", "Storybook", "Pencil", "design tokens", "Style Dictionary", "Lucide", "Iconify", "responsive design", "user experience"]
+  keywords: ["UI/UX", "design system", "accessibility", "WCAG", "ARIA", "icon", "theming", "dark mode", "design tokens", "component library", "Radix UI", "shadcn", "Storybook", "Pencil", "design tokens", "Style Dictionary", "Lucide", "Iconify", "Hugeicons", "responsive design", "user experience", "Anti-AI Slop", "design direction", "AI slop prevention"]
 ---
 
 ## Quick Reference
@@ -34,7 +30,7 @@ Unified Capabilities:
 - Design Systems: W3C DTCG 2025.10 tokens, Style Dictionary 4.0, Pencil MCP workflows
 - Component Architecture: Atomic Design, React 19, Vue 3.5, shadcn/ui, Radix UI primitives
 - Accessibility: WCAG 2.2 AA/AAA compliance, keyboard navigation, screen reader optimization
-- Icon Libraries: 10+ ecosystems (Lucide, React Icons 35K+, Tabler 5900+, Iconify 200K+)
+- Icon Libraries: 10+ ecosystems (Lucide, React Icons 35K+, Tabler 5900+, Iconify 200K+, Hugeicons 27K+)
 - Theming: CSS variables, light/dark modes, theme provider, brand customization
 
 When to Use:
@@ -65,8 +61,8 @@ Module Organization:
 Core Technologies:
 
 - React 19 with Server Components and Concurrent Rendering
-- TypeScript 5.5 with full type safety and improved inference
-- Tailwind CSS 3.4 with JIT compilation, CSS variables, and dark mode
+- TypeScript 5.9+ with full type safety and improved inference
+- Tailwind CSS 4.x with CSS-first configuration, CSS variables, and dark mode
 - Radix UI for unstyled accessible primitives
 - W3C DTCG 2025.10 for design token specification
 - Style Dictionary 4.0 for token transformation
@@ -81,7 +77,9 @@ For component patterns, use modules/component-architecture.md with Atomic Design
 
 For accessibility, use modules/accessibility-wcag.md with WCAG 2.2, jest-axe, and keyboard navigation.
 
-For icons, use modules/icon-libraries.md with Lucide, React Icons, Tabler, and Iconify.
+For icons, use modules/icon-libraries.md with Lucide, React Icons, Tabler, Iconify, and Hugeicons.
+
+For Nova preset and design presets, use moai-design-tools skill (reference/pencil-renderer.md).
 
 For theming, use modules/theming-system.md with CSS variables and Theme Provider.
 
@@ -231,6 +229,6 @@ Official Resources:
 
 ---
 
-Last Updated: 2026-01-11
+Last Updated: 2026-03-11
 Status: Production Ready
-Version: 2.0.0
+Version: 3.0.0

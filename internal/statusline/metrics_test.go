@@ -175,15 +175,15 @@ func TestResolveGLMModelName(t *testing.T) {
 			name:        "Opus display name with GLM env",
 			displayName: "Opus",
 			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
-			envValue:    "glm-5",
-			want:        "glm-5",
+			envValue:    "glm-5.1",
+			want:        "glm-5.1",
 		},
 		{
 			name:        "Opus 4.6 display name with GLM env",
 			displayName: "Opus 4.6",
 			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
-			envValue:    "glm-5",
-			want:        "glm-5",
+			envValue:    "glm-5.1",
+			want:        "glm-5.1",
 		},
 		{
 			name:        "Sonnet display name with GLM env",
@@ -244,14 +244,14 @@ func TestResolveGLMModelName(t *testing.T) {
 
 // TestCollectMetrics_GLMMode verifies CollectMetrics shows GLM model name in GLM mode.
 func TestCollectMetrics_GLMMode(t *testing.T) {
-	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5")
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.1")
 
 	input := &StdinData{
 		Model: &ModelInfo{DisplayName: "Opus"},
 	}
 	got := CollectMetrics(input)
-	if got.Model != "glm-5" {
-		t.Errorf("Model = %q in GLM mode, want %q", got.Model, "glm-5")
+	if got.Model != "glm-5.1" {
+		t.Errorf("Model = %q in GLM mode, want %q", got.Model, "glm-5.1")
 	}
 }
 

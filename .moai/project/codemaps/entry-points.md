@@ -123,7 +123,7 @@ moai-adk-go supports three execution modes that control which AI model is used f
 |----------|------------|---------|
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | _(not set)_ | `glm-4.7-air` |
 | `ANTHROPIC_DEFAULT_SONNET_MODEL` | _(not set)_ | `glm-4.7` |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | _(not set)_ | `glm-5` |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | _(not set)_ | `glm-5.1` |
 
 ### Model Policy (Applied at Init/Update)
 

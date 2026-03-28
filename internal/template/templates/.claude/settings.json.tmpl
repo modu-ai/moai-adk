@@ -241,6 +241,36 @@
           }
         ]
       }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-config-change.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-config-change.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

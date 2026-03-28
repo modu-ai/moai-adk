@@ -2,11 +2,8 @@
 name: moai-design-craft
 description: >
   Intent-First design craft specialist covering design direction, domain vocabulary,
-  design memory, and post-build critique. Use when establishing design intent before
-  implementation, extracting design patterns from existing code, auditing code against
-  a design system, or performing a post-build craft review and rebuild.
-  Do NOT use for design token management (use moai-domain-uiux) or Figma/Pencil tool
-  mechanics (use moai-design-tools).
+  design memory, and post-build critique. Use when establishing design intent or
+  auditing code against design principles.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob

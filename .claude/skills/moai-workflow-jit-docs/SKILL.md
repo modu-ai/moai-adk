@@ -1,11 +1,9 @@
 ---
 name: moai-workflow-jit-docs
 description: >
-  Enhanced Just-In-Time document loading system that intelligently discovers,
-  loads, and caches relevant documentation based on user intent and project
-  context. Use when users need specific documentation, when working with new
-  technologies, when answering domain-specific questions, or when context
-  indicates documentation gaps.
+  Enhanced Just-In-Time document loading system that discovers, loads,
+  and caches relevant documentation based on user intent and project
+  context. Use when users need specific documentation on demand.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs

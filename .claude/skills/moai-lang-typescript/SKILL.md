@@ -1,7 +1,9 @@
 ---
 name: moai-lang-typescript
 description: >
-  TypeScript 5.9+ development specialist covering React 19, Next.js 16 App Router, type-safe APIs with tRPC, Zod validation, and modern TypeScript patterns. Use when developing TypeScript applications, React components, Next.js pages, or type-safe APIs.
+  TypeScript 5.9+ development specialist covering React 19, Next.js 16
+  App Router, type-safe APIs with tRPC, Zod validation, and modern
+  TypeScript patterns.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

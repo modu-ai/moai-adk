@@ -1,7 +1,9 @@
 ---
 name: moai-lang-javascript
 description: >
-  JavaScript ES2024+ development specialist covering Node.js 22 LTS, Bun 1.x (serve, SQLite, S3, shell, test), Deno 2.x, testing (Vitest, Jest), linting (ESLint 9, Biome), and backend frameworks (Express, Fastify, Hono). Use when developing JavaScript APIs, web applications, or Node.js projects.
+  JavaScript ES2024+ development specialist covering Node.js 22 LTS,
+  Bun 1.x, Deno 2.x, testing (Vitest, Jest), linting (ESLint 9,
+  Biome), and backend frameworks (Express, Fastify, Hono).
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash(node:*) Bash(npm:*) Bash(npx:*) Bash(yarn:*) Bash(pnpm:*) Bash(bun:*) Bash(deno:*) Bash(jest:*) Bash(vitest:*) Bash(eslint:*) Bash(prettier:*) Bash(biome:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs

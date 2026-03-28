@@ -56,8 +56,9 @@ var deps *Dependencies
 // Dependencies that require a project root (Config, Git) are
 // initialized lazily on first use or when the project root is available.
 func InitDependencies() {
-	// Disable JSON logging for CLI commands by using a no-op logger
+	// hook 핸들러의 slog 출력이 stderr로 유출되지 않도록 기본 로거를 discard로 교체한다.
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	slog.SetDefault(logger)
 
 	// Initialize Ralph engine and loop controller.
 	ralphCfg := config.NewDefaultRalphConfig()

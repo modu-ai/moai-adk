@@ -2,12 +2,8 @@
 name: moai-framework-electron
 description: >
   Electron 33+ desktop app development specialist covering Main/Renderer
-  process architecture, IPC communication, auto-update, packaging with
-  Electron Forge and electron-builder, and security best practices. Use when
-  building cross-platform desktop applications, implementing native OS
-  integrations, or packaging Electron apps for distribution. [KO: Electron
-  데스크톱 앱, 크로스플랫폼 개발, IPC 통신] [JA: Electronデスクトップアプリ、
-  クロスプラットフォーム開発] [ZH: Electron桌面应用、跨平台开发]
+  process architecture, IPC communication, auto-update, and packaging with
+  Electron Forge. Use when building cross-platform desktop applications.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

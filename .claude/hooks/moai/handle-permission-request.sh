@@ -12,17 +12,17 @@ cat > "$temp_file"
 
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
-	exec moai hook permission-request < "$temp_file"
+	exec moai hook permission-request < "$temp_file" 2>/dev/null
 fi
 
 # Try detected Go bin path from initialization
 if [ -f "/Users/goos/go/bin/moai" ]; then
-	exec "/Users/goos/go/bin/moai" hook permission-request < "$temp_file"
+	exec "/Users/goos/go/bin/moai" hook permission-request < "$temp_file" 2>/dev/null
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "/Users/goos/go/bin/moai" ]; then
-	exec "/Users/goos/go/bin/moai" hook permission-request < "$temp_file"
+if [ -f "$HOME/go/bin/moai" ]; then
+	exec "$HOME/go/bin/moai" hook permission-request < "$temp_file" 2>/dev/null
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

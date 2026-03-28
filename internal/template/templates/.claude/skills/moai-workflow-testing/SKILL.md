@@ -1,12 +1,9 @@
 ---
 name: moai-workflow-testing
 description: >
-  Comprehensive testing and development workflow specialist combining DDD testing,
-  characterization tests, performance profiling, code review, and quality assurance.
-  Use when writing tests, measuring coverage, creating characterization tests,
-  performing TDD, running CI/CD quality checks, or reviewing pull requests.
-  Do NOT use for debugging runtime errors (use expert-debug agent instead)
-  or code refactoring (use moai-workflow-ddd instead).
+  Comprehensive testing and development workflow specialist combining DDD
+  testing, characterization tests, performance profiling, and quality
+  assurance. Use when writing tests or measuring coverage.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Bash(pytest:*) Bash(ruff:*) Bash(npm:*) Bash(npx:*) Bash(node:*) Bash(jest:*) Bash(vitest:*) Bash(go:*) Bash(cargo:*) Bash(mix:*) Bash(uv:*) Bash(bundle:*) Bash(php:*) Bash(phpunit:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

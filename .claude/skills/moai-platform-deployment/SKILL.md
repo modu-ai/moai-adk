@@ -2,10 +2,8 @@
 name: moai-platform-deployment
 description: >
   Deployment and hosting platform specialist covering Vercel, Railway, and Convex.
-  Use when deploying applications, configuring edge functions, setting up continuous deployment,
-  managing serverless infrastructure, containerized deployments, real-time backends, or choosing
-  deployment platforms. Covers edge computing (Vercel), container orchestration (Railway), and
-  reactive backends (Convex).
+  Use when deploying applications, configuring edge functions, setting up continuous
+  deployment, or managing serverless infrastructure.
 license: MIT
 metadata:
   version: "2.0.0"

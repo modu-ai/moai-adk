@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
@@ -104,6 +105,28 @@ func TestEnsureUpdate_AlreadyInitialized(t *testing.T) {
 	err := d.EnsureUpdate()
 	if err != nil {
 		t.Errorf("EnsureUpdate should return nil when UpdateChecker is already set: %v", err)
+	}
+}
+
+func TestInitDependencies_SetsDefaultSlogToDiscard(t *testing.T) {
+	origDeps := deps
+	origDefaultLogger := slog.Default()
+	defer func() {
+		deps = origDeps
+		slog.SetDefault(origDefaultLogger)
+	}()
+
+	deps = nil
+	defaultHandlerBefore := slog.Default().Handler()
+
+	InitDependencies()
+
+	defaultHandlerAfter := slog.Default().Handler()
+	if defaultHandlerBefore == defaultHandlerAfter {
+		t.Error("slog.Default() handler should change after InitDependencies")
+	}
+	if deps.Logger.Handler() != slog.Default().Handler() {
+		t.Error("deps.Logger handler should match slog.Default() handler")
 	}
 }
 

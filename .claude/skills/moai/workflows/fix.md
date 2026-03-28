@@ -40,57 +40,9 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --errors (alias --errors-only): Fix errors only, skip warnings
 - --security (alias --include-security): Include security issues in scan
 - --no-fmt (alias --no-format): Skip formatting fixes
-- --resume <ID> (alias --resume-from): Resume from snapshot (use 'latest' for most recent)
+- --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
 - --team: Enable team-based debugging (see team-debug.md for competing hypothesis investigation)
 
-
-## Progress Reporting Guidelines [HARD]
-
-MoAI MUST provide clear progress visibility to users during agent execution. Use the templates from `.claude/output-styles/moai/moai.md` Agent Lifecycle Templates section.
-
-### When to Report Progress
-
-1. **Before Agent() Call**: Always display Agent Dispatch template
-   - Show which agent is being called
-   - Show phase context and task description
-   - Show delegation context (from where, to what goal)
-
-2. **During Agent() Execution**: Display Agent Progress template periodically
-   - For long-running agents (>30 seconds): update every ~20-30 seconds
-   - Show current activity and completion status
-   - Show LSP state if applicable
-
-3. **After Agent() Completion**: Always display Agent Complete template
-   - Show files modified, tests run, issues found
-   - Show deliverables created
-   - Note any escalations or next steps
-
-4. **Automatic Skill Triggers**: Display Skill Activation template
-   - When /simplify is automatically invoked
-   - When /batch is triggered for parallel execution
-   - Show trigger conditions and execution scope
-
-5. **Parallel Execution**: Display Parallel Execution Dashboard
-   - When multiple agents run in parallel (batch mode, team mode)
-   - Update progress bars for each active agent
-   - Show overall completion percentage
-
-### Reporting Priority
-
-[HARD] Progress reporting is MANDATORY for:
-- All Agent() calls (dispatch → progress → completion)
-- All automatic skill triggers (/simplify, /batch)
-- All phase transitions
-
-### Template Reference
-
-Use templates from `.claude/output-styles/moai/moai.md`:
-- Agent Dispatch
-- Agent Progress
-- Agent Complete
-- Skill Activation
-- Parallel Execution Dashboard
-- Workflow Progress
 ## Phase 1: Parallel Scan
 
 Launch three diagnostic tools simultaneously using Bash with run_in_background for 3-4x speedup (8s vs 30s).

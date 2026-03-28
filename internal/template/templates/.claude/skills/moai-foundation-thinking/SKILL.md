@@ -2,11 +2,8 @@
 name: moai-foundation-thinking
 description: >
   Structured thinking toolkit combining Critical Evaluation, Diverge-Converge
-  Brainstorming, and Deep Questioning frameworks for creative problem-solving
-  and rigorous analysis. Use when generating ideas, evaluating proposals,
-  questioning assumptions, or exploring solution spaces systematically.
-  Do NOT use for architecture decisions (use moai-foundation-philosopher instead)
-  or code quality validation (use moai-foundation-quality instead).
+  Brainstorming, and Deep Questioning frameworks for creative problem-solving.
+  Use when generating ideas or evaluating proposals.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob

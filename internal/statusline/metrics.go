@@ -163,7 +163,7 @@ func resolveGLMModelName(displayName string) string {
 		return displayName
 	}
 
-	// Non-Claude model detected (e.g., "glm-5", "gpt-4o")
+	// Non-Claude model detected (e.g., "glm-5.1", "gpt-4o")
 	return glmModel
 }
 

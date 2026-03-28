@@ -29,7 +29,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 					Medium string
 					Low    string
 				}{
-					High:   "glm-5",
+					High:   "glm-5.1",
 					Medium: "glm-4.7",
 					Low:    "glm-4.5-air",
 				},
@@ -46,7 +46,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "test-key-123",
 				"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.5-air",
 			},
@@ -91,7 +91,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 					Medium string
 					Low    string
 				}{
-					High:   "glm-5",
+					High:   "glm-5.1",
 					Medium: "glm-4.7",
 					Low:    "glm-4.5-air",
 				},
@@ -108,7 +108,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "",
 				"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.5-air",
 			},
