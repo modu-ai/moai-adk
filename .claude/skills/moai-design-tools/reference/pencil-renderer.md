@@ -96,6 +96,22 @@ Add or update variables in the .pen file:
 - Set theme values
 - Configure design system variables
 
+### Property Search and Replace
+
+#### search_all_unique_properties(nodeIds)
+
+Recursively search for all unique properties on nodes:
+- Discover unique property values across design elements
+- Useful for auditing design consistency
+- Find all colors, fonts, spacing values used in a design
+
+#### replace_all_matching_properties(match, replace)
+
+Recursively replace all matching properties on nodes:
+- Bulk update design properties across the entire design
+- Useful for theme changes, color updates, font replacements
+- Maintains consistency when updating design tokens
+
 ### Layout and Space Management
 
 #### find_empty_space_on_canvas()
@@ -116,6 +132,7 @@ Returns design guidelines and rules for working with .pen files.
 - `table` - Table design patterns
 - `tailwind` - Tailwind CSS integration
 - `landing-page` - Landing page design patterns
+- `design-system` - Design system guidelines and patterns
 
 #### get_style_guide_tags()
 
@@ -324,6 +341,18 @@ body=I(card, {
    vars = get_variables()
    ```
 
+## Pencil CLI
+
+Pencil provides a CLI tool for batch processing and automation:
+
+**Key Capabilities:**
+- Run AI agent with a prompt for automated design generation
+- Call MCP tools directly in an interactive shell
+- Batch-process multiple designs programmatically
+- Export to PNG, JPEG, WEBP, or PDF formats
+
+The CLI supports the same MCP tools as the desktop app and IDE extension.
+
 ## Best Practices
 
 ### batch_design Operations
@@ -377,6 +406,6 @@ screenshot = get_screenshot()
 
 ---
 
-Last Updated: 2026-02-21
-Tool Version: Pencil MCP (Latest)
+Last Updated: 2026-03-29
+Tool Version: Pencil MCP (14 tools)
 Default Style: shadcn/ui Nova (neutral, noto-sans, small radius)

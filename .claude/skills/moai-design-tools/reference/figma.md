@@ -29,8 +29,23 @@ https://mcp.figma.com/mcp
 ### Authentication
 
 1. Authenticate via the Figma MCP plugin prompt when first connecting
-2. Your Figma account credentials are used for authorization
+2. Your Figma account credentials are used for authorization (OAuth)
 3. Access is scoped to files and projects your account can view
+
+### Server Options
+
+Two deployment modes are available:
+
+**Remote MCP server (recommended):**
+- Hosted at https://mcp.figma.com/mcp
+- No Figma desktop app required
+- Broadest feature set including write-to-canvas and Code-to-Canvas
+- Recommended for most users
+
+**Desktop MCP server:**
+- Runs locally through the Figma desktop app
+- Primarily for organizations and enterprises with specific requirements
+- More limited feature set compared to remote server
 
 ## Figma MCP Tools Reference
 
@@ -113,6 +128,27 @@ Add new code connect mappings to link Figma components with code:
 add_code_connect_map(fileKey, mappings) → confirmation
 ```
 
+#### get_code_connect_suggestions
+
+Auto-detect potential component mappings between Figma and code:
+- Analyzes codebase to suggest Figma-to-code component mappings
+- Works with Code Connect framework for automated discovery
+
+```
+get_code_connect_suggestions(fileKey) → { suggestions: [...] }
+```
+
+#### send_code_connect_mappings
+
+Confirm and finalize suggested Code Connect mappings:
+- Used after calling get_code_connect_suggestions
+- Reviews and confirms suggested component mappings
+- Establishes bidirectional design-code traceability
+
+```
+send_code_connect_mappings(fileKey, mappings) → confirmation
+```
+
 ### FigJam and Diagrams
 
 #### get_figjam
@@ -141,19 +177,54 @@ generate_diagram(description, fileKey?) → { diagramId, ... }
 
 #### generate_figma_design
 
-Create designs in Figma from text descriptions (Code-to-Canvas workflow):
-- Generate UI components from natural language
-- Create layouts and screens from specifications
-- Automate design creation from requirements
+Capture live web UI and send it to Figma files (Code-to-Canvas, Remote MCP only):
+- Capture web pages and convert them into Figma design layers
+- Append captured designs to existing files or create new ones
+- Convert live UI interfaces into editable Figma frames
 
 ```
-generate_figma_design(description, targetFileKey?) → { frameId, ... }
+generate_figma_design(url, targetFileKey?) → { frameId, ... }
 ```
 
-**Code-to-Canvas (v1) Known Limitations:**
+**Known Limitations:**
 - Japanese text rendering may have issues
 - Image dimensions may not exactly match specifications
 - Available via Remote MCP server only (https://mcp.figma.com/mcp)
+
+### Write and Create Tools
+
+#### use_figma
+
+General-purpose tool for creating, editing, or inspecting any object in a Figma file (Remote MCP only, beta):
+- Create and modify pages, frames, components, variants, variables, styles, text, images
+- Checks design system before generating new elements
+- Currently free during beta period (will become usage-based paid feature)
+
+```
+use_figma(fileKey, operations) → confirmation
+```
+
+#### search_design_system
+
+Search connected design libraries for reusable assets:
+- Find components, variables, and styles matching a text query
+- Returns matching design system elements for reuse
+- Ensures consistency with established design patterns
+
+```
+search_design_system(query) → { components, variables, styles }
+```
+
+#### create_new_file
+
+Create a new blank Figma Design or FigJam file:
+- Creates files in the authenticated user's drafts folder
+- Prompts for team/organization selection if applicable
+- Supports both Figma Design and FigJam file types
+
+```
+create_new_file(name, type?) → { fileKey, url }
+```
 
 ### Design System
 
@@ -167,6 +238,18 @@ Create design system rules and guidelines within Figma:
 ```
 create_design_system_rules(rules) → { ruleId, ... }
 ```
+
+## Rate Limits
+
+**Starter Plan / View or Collab seats on paid plans:**
+- Limited to 6 tool calls per month
+
+**Dev or Full seats (Professional/Organization/Enterprise plans):**
+- Per-minute rate limits matching Figma REST API Tier 1
+
+**Write-to-Canvas:**
+- Currently free during beta period
+- Will become a usage-based paid feature
 
 ## implement-design Workflow
 
@@ -370,10 +453,13 @@ Solution: generate_figma_design requires the Remote MCP server (https://mcp.figm
 ## Resources
 
 - Figma MCP Remote Server: https://mcp.figma.com/mcp
+- Figma MCP Developer Docs: https://developers.figma.com/docs/figma-mcp-server/
+- Figma MCP Tools & Prompts: https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/
+- Figma MCP GitHub Guide: https://github.com/figma/mcp-server-guide
 - Figma Developers: https://www.figma.com/developers
 - Design Tokens Format: https://designtokens.org/format/
 
 ---
 
-Last Updated: 2026-03-11
-Tool Version: Figma MCP (Official Remote Server)
+Last Updated: 2026-03-29
+Tool Version: Figma MCP (Official Remote Server, 16 tools)
