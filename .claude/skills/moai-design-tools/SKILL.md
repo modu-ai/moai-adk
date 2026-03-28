@@ -6,7 +6,7 @@ description: >
   Pencil designs, or exporting to React/Tailwind code.
 license: MIT
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Grep Glob Bash WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs mcp__pencil__batch_design mcp__pencil__batch_get mcp__pencil__get_screenshot mcp__pencil__snapshot_layout mcp__pencil__get_editor_state mcp__pencil__get_variables mcp__pencil__set_variables mcp__pencil__get_guidelines mcp__pencil__get_style_guide mcp__pencil__get_style_guide_tags mcp__pencil__open_document mcp__pencil__find_empty_space_on_canvas mcp__pencil__get_canvas_context mcp__pencil__get_selected_frames mcp__pencil__export_frame_data
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__snapshot_layout, mcp__pencil__get_editor_state, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__get_guidelines, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__open_document, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__get_canvas_context, mcp__pencil__get_selected_frames, mcp__pencil__export_frame_data
 user-invocable: false
 metadata:
   version: "4.0.0"
