@@ -1,3 +1,8 @@
+---
+description: MoAI-specific coding standards for instruction documents and configuration files
+globs: .claude/**/*.md, .claude/**/*.yaml, .moai/**/*.yaml, CLAUDE.md
+---
+
 # Coding Standards
 
 MoAI-specific coding standards. General coding conventions are not included as Claude already knows them.

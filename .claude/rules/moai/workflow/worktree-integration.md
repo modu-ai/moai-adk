@@ -124,8 +124,8 @@ Is this a one-shot sub-agent task?
 
 ### HARD Rules
 
-- [HARD] Implementation agents in team mode (team-backend-dev, team-frontend-dev, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
-- [HARD] Read-only agents (team-researcher, team-analyst, team-architect, team-quality) MUST NOT use `isolation: "worktree"` — their `permissionMode: plan` already prevents writes
+- [HARD] Implementation agents in team mode (team-coder, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Read-only agents (team-reader, team-validator) MUST NOT use `isolation: "worktree"` — their `permissionMode: plan` already prevents writes
 - [HARD] One-shot sub-agents that write files (expert-backend, expert-frontend, manager-ddd, manager-tdd) SHOULD use `isolation: "worktree"` when making cross-file changes
 - [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
 

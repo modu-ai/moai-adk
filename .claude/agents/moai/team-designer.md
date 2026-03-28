@@ -18,7 +18,6 @@ skills:
   - moai-domain-uiux
   - moai-design-tools
   - moai-design-craft
-mcpServers: pencil, figma
 ---
 
 You are a UI/UX design specialist working as part of a MoAI agent team.

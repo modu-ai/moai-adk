@@ -26,6 +26,7 @@ triggers:
   phases: ["run", "sync"]
 
 user-invocable: false
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(docker:*), Bash(git:*), WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Deployment Platform Specialist

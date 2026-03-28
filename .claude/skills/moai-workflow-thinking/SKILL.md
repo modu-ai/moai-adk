@@ -6,7 +6,7 @@ description: >
   or architecture decisions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob mcp__sequential-thinking__sequentialthinking
+allowed-tools: Read, Grep, Glob, mcp__sequential-thinking__sequentialthinking
 effort: high
 user-invocable: false
 metadata:
@@ -18,8 +18,8 @@ metadata:
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level_1_tokens: 100
-  level_2_tokens: 3000
+  level1_tokens: 100
+  level2_tokens: 3000
 
 # MoAI Extension: Triggers
 triggers:

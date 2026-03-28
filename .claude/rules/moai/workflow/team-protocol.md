@@ -1,3 +1,8 @@
+---
+description: Shared communication and coordination protocol for all MoAI Agent Teams teammates
+globs:
+---
+
 # Team Protocol
 
 Shared protocol for all MoAI Agent Teams teammates. This supplements role-specific instructions in each agent definition and spawn prompt.
