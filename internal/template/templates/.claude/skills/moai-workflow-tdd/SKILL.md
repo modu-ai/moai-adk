@@ -2,11 +2,9 @@
 name: moai-workflow-tdd
 description: >
   Test-Driven Development workflow specialist using RED-GREEN-REFACTOR
-  cycle for test-first software development.
-  Use when developing new features from scratch, creating isolated modules,
-  or when behavior specification drives implementation.
-  Do NOT use for refactoring existing code (use moai-workflow-ddd instead)
-  or when behavior preservation is the primary goal.
+  cycle for test-first software development. Use when developing new
+  features from scratch or when behavior specification drives
+  implementation.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Bash(pytest:*) Bash(ruff:*) Bash(npm:*) Bash(npx:*) Bash(node:*) Bash(jest:*) Bash(vitest:*) Bash(go:*) Bash(cargo:*) Bash(mix:*) Bash(uv:*) Bash(bundle:*) Bash(php:*) Bash(phpunit:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

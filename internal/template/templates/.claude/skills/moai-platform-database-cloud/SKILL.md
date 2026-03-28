@@ -1,10 +1,9 @@
 ---
 name: moai-platform-database-cloud
 description: >
-  Cloud database platform specialist covering Neon (serverless PostgreSQL), Supabase (PostgreSQL 16 with real-time),
-  and Firebase Firestore (NoSQL with offline sync). Use when choosing cloud databases, setting up serverless
-  PostgreSQL, implementing real-time subscriptions, configuring offline-first apps, or evaluating database
-  platforms. Supports branching (Neon), real-time (Supabase), and mobile-first (Firestore).
+  Cloud database platform specialist covering Neon (serverless PostgreSQL), Supabase
+  (PostgreSQL 16 with real-time), and Firebase Firestore (NoSQL with offline sync).
+  Use when choosing or setting up cloud databases.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Bash(psql:*) Bash(npm:*) Bash(npx:*) Bash(neonctl:*) Bash(firebase:*) Bash(supabase:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

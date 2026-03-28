@@ -3,11 +3,7 @@ name: moai-platform-chrome-extension
 description: >
   Chrome Extension Manifest V3 development specialist covering service workers,
   content scripts, message passing, chrome.* APIs, side panel, declarativeNetRequest,
-  permissions model, and Chrome Web Store publishing. Use when building browser
-  extensions, implementing content scripts, configuring service workers, or
-  publishing to Chrome Web Store. [KO: 크롬 확장 프로그램, 매니페스트 V3, 서비스 워커,
-  콘텐츠 스크립트] [JA: Chrome拡張機能、マニフェストV3、サービスワーカー]
-  [ZH: Chrome扩展程序、Manifest V3、Service Worker]
+  and Chrome Web Store publishing. Use when building browser extensions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash(npm:*) Bash(npx:*) Bash(node:*) WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs

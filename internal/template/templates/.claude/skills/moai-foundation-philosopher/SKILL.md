@@ -1,12 +1,9 @@
 ---
 name: moai-foundation-philosopher
 description: >
-  Strategic thinking framework integrating First Principles Analysis, Stanford Design
-  Thinking, and MIT Systems Engineering for deeper problem-solving.
-  Use when performing architecture decisions, technology selection trade-offs,
-  root cause analysis, cognitive bias detection, or first principles decomposition.
-  Do NOT use for code quality validation (use moai-foundation-quality instead)
-  or implementation workflows (use moai-workflow-ddd instead).
+  Strategic thinking framework integrating First Principles Analysis, Stanford
+  Design Thinking, and MIT Systems Engineering for deeper problem-solving.
+  Use for architecture decisions or root cause analysis.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

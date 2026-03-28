@@ -1,11 +1,10 @@
 ---
 name: moai
 description: >
-  MoAI super agent - unified orchestrator for autonomous development.
-  Routes natural language or explicit subcommands (plan, run, sync, fix,
-  loop, mx, project, feedback, review, clean, codemaps, coverage, e2e)
-  to specialized agents.
-  Use for any development task from planning to deployment.
+  MoAI unified orchestrator for autonomous development. Routes natural
+  language or subcommands (plan, run, sync, fix, loop, mx, project,
+  feedback, review, clean, codemaps, coverage, e2e) to specialized
+  agents.
 allowed-tools: Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---

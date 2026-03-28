@@ -2,12 +2,8 @@
 name: moai-domain-uiux
 description: >
   UI/UX design systems specialist covering accessibility, icons, theming,
-  design tokens, and user experience patterns.
-  Use when user asks about design systems, WCAG accessibility compliance, ARIA patterns,
-  icon libraries, dark mode theming, design tokens, or user experience research.
-  Do NOT use for React component coding or frontend implementation
-  (use moai-domain-frontend instead) or shadcn/ui specifics
-  (use moai-library-shadcn instead).
+  design tokens, and user experience patterns. Use when working on design
+  systems, WCAG compliance, ARIA patterns, or dark mode theming.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

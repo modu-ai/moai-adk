@@ -1,10 +1,10 @@
 ---
 name: moai-formats-data
 description: >
-  Data format specialist covering TOON encoding, JSON/YAML optimization,
-  serialization patterns, and data validation for modern applications. Use when
-  optimizing data for LLM transmission, implementing high-performance
-  serialization, validating data schemas, or converting between data formats.
+  Data format specialist covering TOON encoding, JSON/YAML
+  optimization, serialization patterns, and data validation. Use when
+  optimizing data for LLM transmission or implementing
+  serialization.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
