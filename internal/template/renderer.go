@@ -56,6 +56,8 @@ type renderer struct {
 	fsys fs.FS
 }
 
+// @MX:ANCHOR: [AUTO] Go text/template 렌더러 팩토리 - deployer, init, update 등 3개 이상 경로에서 사용
+// @MX:REASON: fan_in=3, missingkey=error 모드와 claudeCodePassthroughTokens 검증 로직의 단일 진입점
 // NewRenderer creates a Renderer backed by the given filesystem.
 func NewRenderer(fsys fs.FS) Renderer {
 	return &renderer{fsys: fsys}

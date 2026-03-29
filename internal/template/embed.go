@@ -24,6 +24,8 @@ import (
 //go:embed all:templates
 var embeddedRaw embed.FS
 
+// @MX:ANCHOR: [AUTO] go:embed 템플릿 파일시스템 접근점 - init/update/deployer 등 6개 이상의 호출자가 의존
+// @MX:REASON: fan_in=6, 바이너리에 임베드된 유일한 템플릿 소스이며 "templates/" prefix 스트립 규칙이 배포 경로와 1:1 대응됨
 // EmbeddedTemplates returns the embedded template filesystem with the
 // "templates/" prefix stripped so that paths match deployment targets.
 //

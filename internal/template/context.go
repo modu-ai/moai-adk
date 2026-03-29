@@ -235,8 +235,7 @@ func WithModelPolicy(policy string) ContextOption {
 	}
 }
 
-// ResolveLanguageName returns the full name for a language code.
-// Uses the canonical language map from pkg/models.
+// @MX:NOTE: [AUTO] 언어 코드를 표시 이름으로 변환 - NewTemplateContext 및 WithLanguage 등 3개 경로에서 호출
 func ResolveLanguageName(code string) string {
 	return models.GetLanguageName(code)
 }

@@ -43,7 +43,7 @@ func NewDeployerWithModeAndRendererForceUpdate(fsys fs.FS, renderer Renderer, _,
 	}
 }
 
-// Deploy implements Deployer interface - all files go to project root.
+// @MX:NOTE: [AUTO] context.Done() 루프 내 컨텍스트 취소 처리 - fs.WalkDir 콜백 내부에서 select로 취소 감지
 func (d *modeAwareDeployer) Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) error {
 	projectRoot = filepath.Clean(projectRoot)
 

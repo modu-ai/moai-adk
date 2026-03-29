@@ -50,6 +50,7 @@ const (
 )
 
 // ValidPermissionModes lists all Claude Code permission mode values.
+// @MX:NOTE: [AUTO] Claude Code 권한 모드 전체 목록. CLI 입력 검증 및 프로필 위자드에서 참조.
 var ValidPermissionModes = []string{
 	"",                  // use project default
 	"default",           // ask permissions for everything
@@ -61,6 +62,7 @@ var ValidPermissionModes = []string{
 }
 
 // IsValidPermissionMode checks whether mode is a recognized Claude Code permission mode.
+// @MX:NOTE: [AUTO] 권한 모드 문자열 검증. CLI, GLM 런처 등에서 사용자 입력 유효성 검사에 사용.
 func IsValidPermissionMode(mode string) bool {
 	for _, m := range ValidPermissionModes {
 		if m == mode {

@@ -61,7 +61,7 @@ func NewStrategySelector() StrategySelector {
 	return &strategySelector{}
 }
 
-// SelectStrategy returns the appropriate merge strategy for a file path.
+// @MX:NOTE: [AUTO] 파일 타입별 머지 전략 선택 - 정확 파일명 매칭, 확장자 매칭, 텍스트/바이너리 분류 순서로 높은 순환 복잡도
 func (s *strategySelector) SelectStrategy(path string) MergeStrategy {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))

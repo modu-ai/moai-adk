@@ -1,6 +1,6 @@
 ---
 description: Worktree integration guide with path isolation rules for agents using isolation worktree
-globs:
+globs: "**/.claude/agents/**,**/.claude/worktrees/**"
 ---
 
 # Worktree Integration Guide

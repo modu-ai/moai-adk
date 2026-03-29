@@ -306,6 +306,7 @@ func init() {
 	DefaultRegistry = NewLanguageRegistry()
 }
 
+// @MX:NOTE: [AUTO] 전체 언어 생태계 정의를 포함한 LanguageRegistry를 초기화함. DefaultRegistry는 init()을 통해 생성되며 6개 이상의 파일에서 참조됨.
 // NewLanguageRegistry creates a new LanguageRegistry populated with all supported languages.
 func NewLanguageRegistry() *LanguageRegistry {
 	r := &LanguageRegistry{
