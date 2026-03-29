@@ -391,19 +391,41 @@ Agent: manager-git subagent
 - No branch creation, no manager-git invocation
 - SPEC files remain on current branch
 
-### Phase 3.5: MX Tag Planning (Optional)
+### Phase 3.5: MX Tag Planning [MANDATORY]
 
-Purpose: Identify code locations that will need @MX annotations during implementation.
+Purpose: Identify code locations that will need @MX annotations during implementation. This information is passed to run workflow agents as context constraints.
 
-Execution conditions: SPEC involves modifying existing code OR creating new public APIs.
+Execution conditions: Always executed. Depth varies by scope:
+- **Full scan**: SPEC involves modifying existing code OR creating new public APIs
+- **Lightweight scan**: New feature with no existing code interaction (scan public API surface only)
 
 Tasks:
 - Scan target files for high fan_in functions (potential @MX:ANCHOR)
 - Identify dangerous patterns (goroutines, complexity) for @MX:WARN
 - List magic constants and business rules for @MX:NOTE
-- Document MX tag strategy in plan.md
+- Document MX tag strategy in `plan.md`
+- Output: `mx_plan` section in SPEC document with annotation targets and priorities
 
-Skip conditions: New feature with no existing code interaction.
+### Phase 3.6: SPEC Quality Gate
+
+Purpose: Verify SPEC document quality before proceeding to implementation. Catches incomplete or inconsistent specs early.
+
+Tasks:
+- Verify all EARS-format requirements have corresponding acceptance criteria
+- Check that affected files list is complete (cross-reference with codebase)
+- Validate that MX tag plan covers all high-risk areas (fan_in >= 3, goroutines)
+- Run lightweight security check on SPEC scope (flag if auth/crypto/input-validation areas are touched)
+
+Gate decision:
+- **PASS**: All checks satisfied. Proceed to Decision Point 2.
+- **WARNING**: Minor gaps found (e.g., missing acceptance criteria for edge cases). Present findings and offer fix or continue.
+- **FAIL**: Critical gaps (e.g., no acceptance criteria, security-sensitive scope without security considerations). Must fix before proceeding.
+
+Tool: AskUserQuestion (when WARNING or FAIL)
+Options:
+- Fix SPEC issues (Recommended): Return to SPEC editing with specific gaps highlighted
+- Continue with warnings: Proceed knowing gaps exist (WARNING only, not available for FAIL)
+- Abort: Exit plan workflow
 
 ### Decision Point 2: Development Environment Selection
 

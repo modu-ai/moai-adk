@@ -125,10 +125,11 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
 
 ### gate - Pre-Commit Quality Gate
 
-Purpose: Lightweight pre-commit quality check running lint, format, type-check, and tests in parallel.
+Purpose: Lightweight pre-commit quality check running lint, format, type-check, and tests in parallel. Also integrated into run (Phase 2.75) and sync (Phase 0) workflows as automatic pre-checks.
 Agents: Direct execution (no agent delegation)
 Flags: --fix, --staged, --file PATH
-For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/gate.md
+Integration: Automatically invoked by run workflow (Phase 2.75) and sync workflow (Phase 0.0.1) with --fix behavior.
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 
 ### security - OWASP Security Audit
 

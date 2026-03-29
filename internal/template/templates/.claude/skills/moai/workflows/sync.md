@@ -122,16 +122,31 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ## Phase Sequence
 
-### Phase 0: Deployment Readiness Check
+### Phase 0: Pre-Sync Quality Gate
+
+Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
+
+#### Step 0.0.1: Gate Execution
+
+- Execute gate workflow equivalent: lint + format + type-check + test in parallel
+- Auto-fix any fixable issues (lint auto-fix, format auto-fix)
+- If unfixable errors remain: Present summary and offer options via AskUserQuestion
+  - Fix errors (Recommended): Delegate to expert-debug subagent for targeted fixes
+  - Skip gate: Proceed to Phase 0.1 (errors will be caught later but at higher cost)
+  - Abort: Exit sync workflow
+
+Output: gate_report with pass/fail per check category.
+
+### Phase 0.1: Deployment Readiness Check
 
 Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
 
-#### Step 0.1: Test Passage Verification
+#### Step 0.1.1: Test Passage Verification
 
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry: Delegate to expert-debug subagent
+  - Fix and retry (Recommended): Delegate to expert-debug subagent
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 
