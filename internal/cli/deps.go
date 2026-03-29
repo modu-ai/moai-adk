@@ -16,7 +16,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
-	"github.com/modu-ai/moai-adk/internal/git/ops"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
@@ -36,7 +35,6 @@ type Dependencies struct {
 	Git            git.Repository
 	GitBranch      git.BranchManager
 	GitWorktree    git.WorktreeManager
-	GitOpsManager  *ops.GitManager
 	HookRegistry   hook.Registry
 	HookProtocol   hook.Protocol
 	UpdateChecker  update.Checker
@@ -70,17 +68,8 @@ func InitDependencies() {
 	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
 	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, &noopFeedbackGenerator{}, ralphCfg.MaxIterations)
 
-	// Initialize GitOpsManager based on the current working directory.
-	// If WorkDir is empty, GitManager uses os.Getwd() internally.
-	gitOpsMgr := ops.NewGitManager(ops.ManagerConfig{
-		MaxWorkers:            2,
-		DefaultTimeoutSeconds: 10,
-		DefaultRetryCount:     1,
-	})
-
 	deps = &Dependencies{
 		Config:         config.NewConfigManager(),
-		GitOpsManager:  gitOpsMgr,
 		HookProtocol:   hook.NewProtocol(),
 		LoopController: loopCtrl,
 		Logger:         logger,

@@ -12,7 +12,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	gitops "github.com/modu-ai/moai-adk/internal/git/ops"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
@@ -368,22 +367,15 @@ func removeWorktree(projectRoot, worktreeName string) error {
 }
 
 // runGitCommand executes a git command in the given directory.
-// Runs via GitManager to apply consistent timeout and error handling.
 func runGitCommand(dir string, args ...string) (string, error) {
-	mgr := gitops.NewGitManager(gitops.ManagerConfig{
-		WorkDir:               dir,
-		DefaultTimeoutSeconds: 10,
-		DefaultRetryCount:     0,
-	})
-	result := mgr.ExecuteRaw(args, 10)
-	if !result.Success {
-		if result.Error != nil {
-			return "", result.Error
-		}
-		return "", fmt.Errorf("git %s failed: %s", strings.Join(args, " "), result.Stderr)
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git %s failed: %w", strings.Join(args, " "), err)
 	}
 	// Do not TrimSpace to preserve trailing newline (matches original exec.Output() behavior)
-	return result.Stdout + "\n", nil
+	return string(out) + "\n", nil
 }
 
 // --- Claude Launch ---

@@ -1,9 +1,18 @@
 package lsp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 )
+
+// DiagnosticsProvider is the interface for retrieving LSP diagnostics.
+// Implementations may connect to a running language server or provide
+// stub results when no server is available.
+type DiagnosticsProvider interface {
+	// Diagnostics returns all diagnostics for the given document URI.
+	Diagnostics(ctx context.Context, uri string) ([]Diagnostic, error)
+}
 
 // Sentinel errors for LSP operations.
 var (
