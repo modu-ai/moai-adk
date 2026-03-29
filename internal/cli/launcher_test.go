@@ -481,7 +481,6 @@ func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 				t.Fatalf("parse result: %v", err)
 			}
 
-			// Check defaultMode
 			perms, _ := result["permissions"].(map[string]any)
 			if tt.wantMode != "" {
 				if perms == nil {
@@ -499,7 +498,6 @@ func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 				}
 			}
 
-			// Check env preservation
 			if tt.wantEnvKey != "" {
 				env, _ := result["env"].(map[string]any)
 				if env == nil {

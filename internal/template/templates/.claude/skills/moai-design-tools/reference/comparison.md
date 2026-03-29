@@ -6,16 +6,20 @@ Comprehensive comparison of Figma MCP, Pencil MCP, and Pencil-to-Code export for
 
 | Feature | Figma MCP | Pencil MCP | Pencil-to-Code |
 |---------|-----------|------------|----------------|
-| **Primary Use** | Fetch existing designs, generate new designs | Create visual designs | Generate implementation code |
-| **Input** | Figma file key + node IDs | Natural language / batch_design ops | .pen frame data (pure JSON) |
-| **Output** | Design context, tokens, screenshots | Visual .pen frames | React/Tailwind code |
-| **Design Creation** | Yes (generate_figma_design, generate_diagram) | Yes (text-to-design) | No (code generation only) |
-| **Code Generation** | No | No | Yes (prompt-based workflow) |
-| **Version Control** | Limited (snapshots) | Excellent (.pen files are pure JSON) | Excellent (code) |
+| **Primary Use** | Fetch/create designs, write to canvas | Create visual designs | Generate implementation code |
+| **Input** | Figma file key + node IDs or URLs | Natural language / batch_design ops | .pen frame data (pure JSON) |
+| **Output** | Design context, tokens, screenshots, canvas edits | Visual .pen frames | React/Tailwind code |
+| **Design Creation** | Yes (use_figma, generate_figma_design) | Yes (text-to-design) | No (code generation only) |
+| **Design Editing** | Yes (use_figma: write-to-canvas, beta free) | Yes (batch_design) | No |
+| **Code Generation** | Yes (get_design_context: React+Tailwind default) | No | Yes (prompt-based workflow) |
+| **Design System Search** | Yes (search_design_system) | Yes (get_style_guide, batch_get) | No |
+| **Version Control** | Limited (snapshots, Code Connect) | Excellent (.pen files are pure JSON) | Excellent (code) |
 | **Collaboration** | Figma comments, FigJam boards | .pen frame sharing | Code review |
+| **Property Bulk Edit** | Yes (use_figma) | Yes (replace_all_matching_properties) | No |
 | **Learning Curve** | Low | Medium | Low |
 | **Setup Complexity** | Low (plugin install + auth) | Low (auto-configures) | Low |
-| **Cost** | Free tier available | Paid | Paid |
+| **Cost** | Free tier (6 calls/mo), paid plans per-minute | Paid | Paid |
+| **Tools Count** | 16 tools | 14 tools | Prompt-based workflow |
 | **Integration** | Figma files via official remote MCP | Pencil platform | React/Tailwind projects |
 
 ## Use Case Decision Matrix
@@ -42,15 +46,18 @@ Comprehensive comparison of Figma MCP, Pencil MCP, and Pencil-to-Code export for
 
 **Key Advantages:**
 - Access to professional design tools
-- Rich design metadata
+- Rich design metadata and token extraction
+- Write-to-canvas: create and modify designs directly (beta, free)
+- Code-to-Canvas: capture live web UI into Figma
+- Design system search across connected libraries
+- Code Connect for bidirectional design-code traceability
 - Established designer workflows
-- Comprehensive design history
 
 **Limitations:**
-- Read-only access to designs
-- Cannot create new designs
+- Rate-limited for free/starter plans (6 calls/month)
+- Write-to-canvas will become paid feature
 - Dependent on Figma availability
-- Limited code generation
+- Remote MCP required for full feature set
 
 ### Choose Pencil MCP When:
 
@@ -74,9 +81,11 @@ Comprehensive comparison of Figma MCP, Pencil MCP, and Pencil-to-Code export for
 
 **Key Advantages:**
 - Text-to-design conversion
-- Version-controlled designs (DNA codes)
+- Version-controlled designs (.pen files are pure JSON)
 - Fast iteration cycles
+- Property search and bulk replace for consistency
 - No design tool expertise required
+- CLI support for batch processing and export
 
 **Limitations:**
 - Less refined than professional tools
@@ -403,10 +412,14 @@ Use this checklist to determine the best tool for your needs:
 ## Resources
 
 ### Tool Documentation
-- Figma MCP Official: https://mcp.figma.com/mcp
-- Figma Developers: https://www.figma.com/developers
+- Figma MCP Developer Docs: https://developers.figma.com/docs/figma-mcp-server/
+- Figma MCP Tools & Prompts: https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/
+- Figma MCP GitHub Guide: https://github.com/figma/mcp-server-guide
+- Figma MCP Remote Server: https://mcp.figma.com/mcp
 - Pencil Official: https://pencil.dev
+- Pencil Documentation: https://docs.pencil.dev
 - Pencil AI Integration: https://docs.pencil.dev/getting-started/ai-integration
+- Pencil CLI: https://docs.pencil.dev/for-developers/pencil-cli
 
 ### Community
 - Figma Community: https://www.figma.com/community
@@ -421,5 +434,5 @@ Use this checklist to determine the best tool for your needs:
 
 ---
 
-Last Updated: 2026-03-11
-Version: 2.0.0
+Last Updated: 2026-03-29
+Version: 3.0.0

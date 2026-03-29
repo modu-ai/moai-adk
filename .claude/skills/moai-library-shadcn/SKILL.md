@@ -2,54 +2,56 @@
 name: moai-library-shadcn
 description: >
   Provides shadcn/ui component library expertise for React applications
-  with Tailwind CSS. Use when implementing UI components, design
-  systems, or component composition with shadcn/ui and Radix
-  primitives.
+  with shadcn/cli v4, preset system, RTL support, unified radix-ui,
+  and OKLCH theming. Use when implementing UI components, design
+  systems, CLI workflows, or registry authoring with shadcn/ui.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.1.0"
+  version: "3.0.0"
   category: "library"
   modularized: "true"
   status: "active"
-  updated: "2026-01-11"
-  tags: "library, shadcn, enterprise, development, ui"
+  updated: "2026-03-28"
+  tags: "library, shadcn, enterprise, development, ui, preset, RTL, OKLCH, CLI v4, radix-ui, registry"
   aliases: "moai-library-shadcn"
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["shadcn", "component library", "design system", "radix", "tailwind", "ui components"]
+  keywords: ["shadcn", "component library", "design system", "radix", "tailwind", "ui components", "preset", "RTL", "OKLCH", "radix-ui", "migrate", "shadcn skills", "registry"]
 ---
 
 ## Quick Reference
 
 Enterprise shadcn/ui Component Library Expert
 
-Comprehensive shadcn/ui expertise with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
+Comprehensive shadcn/ui expertise covering shadcn/cli v4, preset-based design systems, RTL support, unified radix-ui package, OKLCH theming, and AI integration for modern React applications.
 
 Core Capabilities:
 
-- AI-Powered Component Architecture using Context7 MCP
-- Intelligent Design System with automated theme customization
-- Advanced Component Orchestration with accessibility and performance
-- Enterprise UI Framework with zero-configuration design tokens
-- Predictive Component Analytics with usage insights
+- CLI v4: Preset system, framework templates, migration commands, registry management
+- Components: Radix UI and Base UI primitives with unified radix-ui package
+- Theming: OKLCH color system, CSS variables, dark mode, preset-based configuration
+- RTL: First-class right-to-left support with logical CSS properties
+- AI Integration: shadcn/skills context system, MCP server for AI assistants
+- Registry: Custom component distribution, font system, block library
 
 When to Use:
 
-- shadcn/ui component library discussions
-- React component architecture planning
-- Tailwind CSS integration and design tokens
-- Accessibility implementation
-- Design system customization
+- shadcn/ui component library setup and customization
+- Preset-based design system configuration
+- RTL layout implementation or migration
+- Registry authoring for component distribution
+- AI-assisted component scaffolding with shadcn/skills
 
 Module Organization:
 
 - Core Concepts: This file covers shadcn/ui overview, architecture, and ecosystem
-- Components: The shadcn-components.md module covers component library and advanced patterns
-- Theming: The shadcn-theming.md module covers theme system and customization
+- CLI and Registry: The cli-registry.md module covers CLI v4 commands, presets, RTL, migrations, and registry
+- Components: The shadcn-components.md module covers component library and patterns
+- Theming: The shadcn-theming.md module covers OKLCH color system and customization
 - Advanced Patterns: The advanced-patterns.md module covers complex implementations
 - Optimization: The optimization.md module covers performance tuning
 
@@ -77,25 +79,27 @@ Data Components include Table, Calendar, DatePicker, and Charts. Virtual scrolli
 
 Feedback Components include Alert, Toast, Progress, Badge, and Avatar. Loading states and skeletons are available. Error boundaries are supported.
 
+New Components in 2026 include Empty, Field, Item, Button Group, Spinner, Kbd, and Input Group.
+
 ### Installation and Setup
 
-Step 1: Initialize shadcn/ui by running the shadcn-ui init command with npx using the latest version.
+Step 1: Initialize project using shadcn/cli v4. Choose a framework template (Next.js, Vite, TanStack Start, React Router, Astro, or Laravel) and optionally apply a preset for bundled design system configuration.
 
-Step 2: Configure components.json with the schema URL pointing to ui.shadcn.com/schema.json. Set the style to default and enable RSC and TSX. Configure Tailwind settings including the config path, CSS path, base color, CSS variables enabled, and optional prefix. Set up aliases for components, utils, and ui paths.
+Step 2: The CLI generates a components.json configuration file. It detects the framework, configures Tailwind CSS (v3 or v4), sets up path aliases, and selects the base primitive library (Radix UI or Base UI).
 
-Step 3: Add components individually using the shadcn-ui add command with npx, specifying component names such as button, form, or dialog.
+Step 3: Add components individually using the add command. Use --dry-run to preview changes, --diff to see registry updates. The shadcn info command shows installed components and project configuration.
 
 ### Foundation Technologies
 
-React 19 features include Server Components support, concurrent rendering features, automatic batching improvements, and streaming SSR enhancements.
+React 19 features include Server Components support, concurrent rendering, automatic batching, and streaming SSR.
 
-TypeScript 5.5 provides full type safety across components, improved inference for generics, better error messages, and enhanced developer experience.
+TypeScript 5.9 provides full type safety, improved inference, and enhanced developer experience.
 
-Tailwind CSS 3.4 includes JIT compilation, CSS variable support, dark mode variants, and container queries.
+Tailwind CSS v4 includes CSS-first configuration, CSS variables, OKLCH color support, and container queries.
 
-Radix UI provides unstyled accessible primitives, keyboard navigation, focus management, and ARIA attributes.
+Radix UI uses the unified radix-ui package with single imports. Base UI is available as an alternative primitive library.
 
-Integration Stack includes React Hook Form for form state management, Zod for schema validation, class-variance-authority for variant management, Framer Motion for animation library, and Lucide React for icon library.
+Integration Stack includes React Hook Form for form state, Zod for schema validation, class-variance-authority for variants, Framer Motion for animations, and Lucide React for icons.
 
 ### AI-Powered Architecture Design
 
@@ -145,8 +149,9 @@ The Zod and React Hook Form integration pattern involves importing useForm from 
 
 ## Works Well With
 
+- modules/cli-registry.md for CLI v4 commands, presets, RTL, migrations, and registry
 - shadcn-components.md module for advanced component patterns and implementation
-- shadcn-theming.md module for theme system and customization strategies
+- shadcn-theming.md module for OKLCH theme system and customization strategies
 - moai-domain-uiux for design system architecture and principles
 - moai-lang-typescript for TypeScript best practices
 - code-frontend for frontend development patterns
@@ -164,18 +169,20 @@ Related Libraries:
 Official Documentation:
 
 - shadcn/ui Documentation at ui.shadcn.com/docs
-- API Reference at ui.shadcn.com/docs/components
+- CLI Reference at ui.shadcn.com/docs/cli
+- MCP Server at ui.shadcn.com/docs/mcp
 - Radix UI Documentation at radix-ui.com
 - Tailwind CSS Documentation at tailwindcss.com
 
-Latest Versions as of November 2025:
+Latest Versions as of March 2026:
 
+- shadcn/cli v4
 - React 19
-- TypeScript 5.5
-- Tailwind CSS 3.4
-- Radix UI Latest
+- TypeScript 5.9+
+- Tailwind CSS v4
+- Unified radix-ui package
 
 ---
 
-Last Updated: 2026-01-11
+Last Updated: 2026-03-28
 Status: Production Ready

@@ -369,5 +369,47 @@ module.exports = {
 
 ---
 
-Last Updated: 2025-11-26
+## OKLCH Color System
+
+shadcn/ui has adopted OKLCH as its color system, replacing HSL for improved perceptual uniformity and wider gamut support. OKLCH provides more consistent perceived lightness across different hues, making it easier to create harmonious color palettes.
+
+### OKLCH Format
+
+OKLCH values use three channels: Lightness (0-1), Chroma (0-0.4), and Hue (0-360). CSS variables in the OKLCH system follow the pattern: oklch(L C H) where L is lightness, C is chroma, and H is hue angle.
+
+### Migration from HSL
+
+Existing HSL-based themes continue to work. New projects initialized with shadcn/cli v4 default to OKLCH. The preset system generates OKLCH-based color schemes. For manual migration, convert HSL values to OKLCH equivalents in the CSS variable definitions.
+
+### Color Variable Pattern
+
+The CSS variable pattern remains the same structure (--background, --foreground, --primary, etc.) but values change from HSL to OKLCH format. This means component code requires no changes — only the CSS variable definitions in globals.css need updating.
+
+## Tailwind CSS v4 Compatibility
+
+shadcn/ui fully supports Tailwind CSS v4 with CSS-first configuration. Key differences from v3:
+
+### Configuration
+
+Tailwind v4 uses CSS-based configuration instead of tailwind.config.js. Theme customization happens directly in CSS using @theme directives. The shadcn/cli auto-detects the Tailwind version and generates appropriate configuration.
+
+### CSS Variables
+
+CSS variable integration is native in Tailwind v4. Color values defined as CSS variables work directly without the hsl() wrapper function. This simplifies the theming layer and aligns with the OKLCH color system.
+
+### Dark Mode
+
+Dark mode configuration uses the same class-based approach. The .dark selector in CSS defines dark theme variable overrides.
+
+## Preset-Based Theming
+
+The shadcn preset system bundles complete theme configurations into a single shareable code. A preset includes color palette, typography (font families), icon library, and border radius settings.
+
+Presets are generated through the shadcn/create builder with live preview on real components. Apply a preset during project initialization or switch presets by re-initializing.
+
+For custom presets, define the complete set of CSS variables, font imports, and configuration in a registry:base item. The build command packages it for distribution.
+
+---
+
+Last Updated: 2026-03-28
 Related: [Main Skill](../SKILL.md), [Component Architecture](component-architecture.md)

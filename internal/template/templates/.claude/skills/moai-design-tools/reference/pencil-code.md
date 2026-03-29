@@ -90,6 +90,24 @@ module.exports = {
 };
 ```
 
+### Step 5: Audit Design Consistency
+
+Use property search tools to ensure consistency before code generation:
+
+```
+// Search for all unique color values used in the design
+colors = search_all_unique_properties(nodeIds: ["root"])
+// Returns all unique property values across the design
+
+// Replace inconsistent values with design tokens
+replace_all_matching_properties(
+  match: { color: "#3B82F5" },  // Typo in hex
+  replace: { color: "#3B82F6" }  // Correct primary color
+)
+```
+
+These tools help ensure design consistency before generating code, reducing manual fixes in the generated output.
+
 ## Design Token Extraction
 
 Use `get_variables` before generating code to avoid hardcoded values:
@@ -339,8 +357,10 @@ export interface CardProps {
 Always read the .pen frame data before generating code:
 1. `batch_get` to retrieve frame structure
 2. `get_variables` to extract design tokens
-3. `get_screenshot` to validate design intent
-4. Generate code based on extracted data
+3. `search_all_unique_properties` to audit design consistency
+4. `replace_all_matching_properties` to fix inconsistencies
+5. `get_screenshot` to validate design intent
+6. Generate code based on extracted data
 
 ### Design Token Priority
 
@@ -404,6 +424,6 @@ Solution: Use snapshot_layout to check computed rectangles.
 
 ---
 
-Last Updated: 2026-03-11
-Tool Version: Pencil MCP (Latest)
-Workflow: Prompt-based (batch_get → analyze → generate)
+Last Updated: 2026-03-29
+Tool Version: Pencil MCP (14 tools)
+Workflow: Prompt-based (batch_get → analyze → audit → generate)

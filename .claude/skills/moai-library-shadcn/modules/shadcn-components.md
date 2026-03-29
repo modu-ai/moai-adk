@@ -453,5 +453,46 @@ export class ComponentPerformanceOptimizer {
 
 ---
 
-Last Updated: 2025-11-26
+## Recent Component Additions (2025-2026)
+
+### New Core Components
+
+Empty: Provides a standardized empty state placeholder with icon, title, description, and action slots. Use for tables with no data, search results with no matches, and initial onboarding states.
+
+Field: Form field wrapper that combines label, input, description, and error message. Integrates with React Hook Form for automatic error display. Replaces manual FormField composition patterns.
+
+Item: Generic list item component for consistent list rendering across different contexts. Supports leading icon, title, description, and trailing action slots.
+
+Button Group: Groups related action buttons with consistent spacing and optional separator. Supports horizontal and vertical orientations.
+
+Spinner: Animated loading indicator with size variants. Use instead of custom CSS spinner implementations. Pairs with the Button loading state pattern.
+
+Kbd: Renders keyboard shortcut indicators with proper styling. Supports modifier key combinations and platform-aware display (Cmd on macOS, Ctrl on Windows/Linux).
+
+Input Group: Combines an input with leading/trailing addons (text, icons, or buttons). Common patterns include URL inputs with protocol prefix, search inputs with icon, and number inputs with increment/decrement buttons.
+
+### Unified Radix UI Imports
+
+As of 2026, individual @radix-ui/react-* packages are replaced by the unified radix-ui package. Component imports change from namespace patterns to direct named imports.
+
+Old pattern: Import all exports as a namespace from the specific Radix package (e.g., @radix-ui/react-dialog), then reference sub-components as DialogPrimitive.Root, DialogPrimitive.Trigger, etc.
+
+New pattern: Import specific sub-components directly from the radix-ui package (e.g., import Dialog, DialogTrigger, DialogContent from radix-ui).
+
+Use the shadcn CLI migrate radix command to automatically rewrite imports across the project.
+
+### Logical Side Values for RTL
+
+Components with positioning (Tooltip, Popover, Select, Combobox, Context Menu, Dropdown Menu, Hover Card, Menubar) now support logical side values:
+
+- side="inline-start": Opens toward the start side (left in LTR, right in RTL)
+- side="inline-end": Opens toward the end side (right in LTR, left in RTL)
+
+These complement the existing physical side values (top, right, bottom, left) and auto-adapt based on the document direction. Use logical sides when building RTL-compatible interfaces.
+
+New Tailwind data attribute classes: data-[side=inline-start] and data-[side=inline-end] for conditional styling based on popover placement.
+
+---
+
+Last Updated: 2026-03-28
 Related: [Main Skill](../SKILL.md), [shadcn Theming](shadcn-theming.md)

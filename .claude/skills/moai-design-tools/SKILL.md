@@ -6,13 +6,13 @@ description: >
   Pencil designs, or exporting to React/Tailwind code.
 license: MIT
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__snapshot_layout, mcp__pencil__get_editor_state, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__get_guidelines, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__open_document, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__get_canvas_context, mcp__pencil__get_selected_frames, mcp__pencil__export_frame_data
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__snapshot_layout, mcp__pencil__get_editor_state, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__get_guidelines, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__open_document, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__replace_all_matching_properties, mcp__pencil__search_all_unique_properties
 user-invocable: false
 metadata:
-  version: "4.0.0"
+  version: "5.0.0"
   category: "domain"
   status: "active"
-  updated: "2026-03-11"
+  updated: "2026-03-29"
   modularized: "false"
   tools: "Figma, Pencil MCP"
   tags: "figma, pencil, design to code, design export, render dna, pen frame, react from design, tailwind from design, design context, ui implementation"
@@ -72,7 +72,7 @@ Official Figma MCP integration via Remote MCP server (https://mcp.figma.com/mcp)
 
 Best For: Fetching design context from Figma files, extracting design tokens, generating new designs with Code-to-Canvas (generate_figma_design), accessing FigJam boards, and linking components to code with Code Connect.
 
-Key Strengths: Official Figma MCP tools (get_design_context, get_variable_defs, get_screenshot, generate_figma_design, get_figjam, generate_diagram, create_design_system_rules, get_code_connect_map, add_code_connect_map, whoami, get_metadata).
+Key Strengths: 16 official tools including read (get_design_context, get_variable_defs, get_screenshot, get_metadata), write (use_figma, generate_figma_design, create_new_file), Code Connect (get_code_connect_map, add_code_connect_map, get_code_connect_suggestions, send_code_connect_mappings), FigJam (get_figjam, generate_diagram), design system (search_design_system, create_design_system_rules), and utility (whoami). Write-to-canvas is currently free during beta.
 
 Workflow: Install plugin → get_design_context → get_variable_defs → get_screenshot → Implement design → Verify against screenshot.
 
@@ -99,9 +99,8 @@ Key Strengths: Text-to-design conversion, batch design operations, style guide i
 | `get_editor_state` | Get current editor context and active file |
 | `get_variables` | Read design tokens and theme variables |
 | `set_variables` | Update design tokens and theme variables |
-| `get_canvas_context` | Get full canvas context including viewport and active selections |
-| `get_selected_frames` | Get currently selected frames with their full data |
-| `export_frame_data` | Export frame as structured data for code generation |
+| `search_all_unique_properties` | Recursively search for all unique properties on nodes |
+| `replace_all_matching_properties` | Recursively replace all matching properties on nodes |
 | `get_guidelines` | Get design guidelines for code, tables, Tailwind, or landing pages |
 | `get_style_guide` | Get style guide by name or tags |
 | `get_style_guide_tags` | List all available style guide tags |

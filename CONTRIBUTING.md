@@ -247,7 +247,7 @@ This PR implements [feature/bug fix].
 
 ## License
 
-Your contributions will be licensed under the project's [Copyleft 3.0 License](LICENSE).
+Your contributions will be licensed under the project's [Apache License 2.0](LICENSE).
 
 ---
 
