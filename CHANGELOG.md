@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-03-30
+
+### Summary
+
+Claude Code v2.1.87 harness modernization: hook system completion (18 to 25 events), settings.json schema expansion, CLAUDE.md token optimization, license change to Apache-2.0, and claude-code-action update to v1.0.82.
+
+### Breaking Changes
+
+- License changed from GPL-3.0 to Apache-2.0
+
+### Added
+
+- Elicitation and ElicitationResult hook events for MCP server input interception (v2.1.76+)
+- 7 new hook wrapper scripts (StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, Elicitation, ElicitationResult)
+- 9 new permission tools in settings.json (CronCreate, CronList, CronDelete, EnterWorktree, ExitWorktree, EnterPlanMode, ExitPlanMode, ListMcpResourcesTool, ReadMcpResourceTool)
+- `$schema` field for IDE autocomplete and validation
+- `effortLevel`, `plansDirectory`, `includeGitInstructions` settings
+- `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` security environment variable
+- TaskCreated hook event in CLAUDE.md Team Hook Events section
+
+### Changed
+
+- CLAUDE.md optimized from 522 to 356 lines (-32%) for better Claude adherence per CC best practices
+- claude-code-action updated to v1.0.82 with pull-requests write permission
+- Template skill updates: shadcn/ui v3.0.0 (shadcn/cli v4), frontend design skills (GPT-5.4)
+- Claude Code v2.1.86 audit improvements (rule frontmatter, agent names, skill format)
+- Background agent kill shortcut updated: Ctrl+F to Ctrl+X Ctrl+K (v2.1.83)
+
+### Fixed
+
+- Profile bypass settings sync to settings.local.json
+- hooks-system.md updated with complete 25-event list
+
+### Installation & Update
+
+```bash
+moai update
+moai version
+```
+
+---
+
+## [2.8.0] - 2026-03-30 (한국어)
+
+### 요약
+
+Claude Code v2.1.87 harness 현대화: hook 시스템 완성 (18 → 25 이벤트), settings.json 스키마 확장, CLAUDE.md 토큰 최적화, Apache-2.0 라이선스 변경, claude-code-action v1.0.82 업데이트.
+
+### 주요 변경 사항 (Breaking Changes)
+
+- 라이선스 GPL-3.0에서 Apache-2.0으로 변경
+
+### 추가됨 (Added)
+
+- Elicitation, ElicitationResult hook 이벤트 (MCP 서버 입력 인터셉트, v2.1.76+)
+- 7개 신규 hook wrapper script
+- settings.json에 9개 permission 도구 추가
+- `$schema`, `effortLevel`, `plansDirectory`, `includeGitInstructions` 설정
+- `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` 보안 환경변수
+
+### 변경됨 (Changed)
+
+- CLAUDE.md 522줄 → 356줄 (-32%, CC best practices 준수)
+- claude-code-action v1.0.82 업데이트
+- 템플릿 스킬: shadcn/ui v3.0.0, 프론트엔드 디자인 스킬
+- 백그라운드 에이전트 종료: Ctrl+F → Ctrl+X Ctrl+K (v2.1.83)
+
+### 수정됨 (Fixed)
+
+- Profile bypass 설정 동기화
+- hooks-system.md 25개 이벤트 목록
+
+### 설치 및 업데이트
+
+```bash
+moai update
+moai version
+```
+
+---
+
 ## [2.7.22] - 2026-03-25
 
 ### Summary
