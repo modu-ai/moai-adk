@@ -49,8 +49,8 @@ jobs:
       - name: Run Claude Code
         id: claude
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # SHA: ba7fa4bcf054319261202aef93d71a89112a8d00 (pinned commit, beyond v1 tag)
-        uses: anthropics/claude-code-action@6062f3709600659be5e47fcddf2cf76993c235c2
+        # Tag: v1.0.82 | SHA: 88c168b39e7e64da0286d812b6e9fbebb6708185
+        uses: anthropics/claude-code-action@88c168b39e7e64da0286d812b6e9fbebb6708185
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
