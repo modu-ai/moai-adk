@@ -98,6 +98,14 @@ const (
 	// EventFileChanged is triggered when a file is changed externally during a session.
 	// Available since Claude Code v2.1.83+.
 	EventFileChanged EventType = "FileChanged"
+
+	// EventElicitation is triggered when an MCP server requests user input.
+	// Available since Claude Code v2.1.76+.
+	EventElicitation EventType = "Elicitation"
+
+	// EventElicitationResult is triggered after user responds to MCP elicitation.
+	// Available since Claude Code v2.1.76+.
+	EventElicitationResult EventType = "ElicitationResult"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -127,6 +135,8 @@ func ValidEventTypes() []EventType {
 		EventTaskCreated,
 		EventCwdChanged,
 		EventFileChanged,
+		EventElicitation,
+		EventElicitationResult,
 	}
 }
 
@@ -218,6 +228,9 @@ type HookInput struct {
 
 	// FileChanged fields (v2.1.83+)
 	FilePath string `json:"file_path,omitempty"` // Path to the changed file
+
+	// Elicitation fields (v2.1.76+)
+	ElicitationServerName string `json:"elicitation_server_name,omitempty"` // MCP server requesting input
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`

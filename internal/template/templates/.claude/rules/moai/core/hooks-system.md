@@ -8,42 +8,49 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-All 24 available hook event types:
+25 hook event types (+ 1 special event, 26 total):
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
-| UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
 | SessionStart | No | No | Runs when a new session begins |
-| Setup | No | No | Runs via --init, --init-only, or --maintenance flags (v2.1.10+) |
-| PreCompact | No | No | Runs before context compaction |
-| PostCompact | No | No | Runs after context compaction completes (v2.1.76+) |
+| SessionEnd | Reason | No | Runs when session terminates |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |
-| PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
-| Notification | Type | No | Runs when Claude Code sends notifications |
-| InstructionsLoaded | No | No | Runs when CLAUDE.md or .claude/rules/*.md files are loaded (v2.1.69+) |
-| SubagentStart | Agent type | No | Runs when a subagent spawns |
-| SubagentStop | No | No | Runs when a subagent terminates |
+| PreCompact | No | No | Runs before context compaction |
+| PostCompact | No | No | Runs after context compaction completes (v2.1.76+) |
 | Stop | No | No | Runs when conversation stops |
 | StopFailure | No | No | Runs when a turn ends due to an API error (v2.1.78+) |
+| SubagentStart | Agent type | No | Runs when a subagent spawns |
+| SubagentStop | No | No | Runs when a subagent terminates |
+| Notification | Type | No | Runs when Claude Code sends notifications |
+| UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
+| PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete |
 | TaskCreated | No | No | Runs when a task is created via TaskCreate (v2.1.84+) |
-| SessionEnd | Reason | No | Runs when session terminates |
-| ConfigChange | No | No | Runs when settings.json is modified (v2.1.49+) |
 | WorktreeCreate | No | No | Runs when a worktree is created for agent isolation (v2.1.49+) |
 | WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+) |
+| ConfigChange | No | No | Runs when settings.json is modified (v2.1.49+) |
 | CwdChanged | No | No | Runs when working directory changes (v2.1.83+) |
 | FileChanged | No | No | Runs when a file is changed externally (v2.1.83+) |
+| InstructionsLoaded | No | No | Runs when CLAUDE.md or .claude/rules/*.md files are loaded (v2.1.69+) |
+| Elicitation | No | No | Runs when an elicitation dialog is presented to the user (v2.1.84+) |
+| ElicitationResult | No | No | Runs when the user responds to an elicitation dialog (v2.1.84+) |
+
+**Special Event:**
+
+| Event | Matcher | Can Block | Description |
+|-------|---------|-----------|-------------|
+| Setup | No | No | Runs via --init, --init-only, or --maintenance flags (v2.1.10+) |
 
 ### Event Categories
 
-**Lifecycle Events**: SessionStart, Setup, SessionEnd, ConfigChange, InstructionsLoaded
+**Lifecycle Events**: SessionStart, SessionEnd, Setup, ConfigChange, InstructionsLoaded
 
 **Context Events**: PreCompact, PostCompact, FileChanged, CwdChanged, WorktreeCreate, WorktreeRemove
 
-**Prompt and Notification Events**: UserPromptSubmit, PermissionRequest, Notification
+**Prompt and Notification Events**: UserPromptSubmit, PermissionRequest, Notification, Elicitation, ElicitationResult
 
 **Tool Events**: PreToolUse, PostToolUse, PostToolUseFailure
 

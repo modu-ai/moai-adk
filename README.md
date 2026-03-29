@@ -62,7 +62,7 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 - **85-100%** test coverage
 - **27** specialized AI agents + **52** skills
 - **18** programming languages supported
-- **16** Claude Code hook events
+- **25** Claude Code hook events
 
 ---
 

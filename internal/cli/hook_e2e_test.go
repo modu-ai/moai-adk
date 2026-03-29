@@ -188,8 +188,8 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 	validTypes := hook.ValidEventTypes()
 
 	// Verify exact count.
-	if got := len(validTypes); got != 24 {
-		t.Errorf("ValidEventTypes() returned %d types, want 24", got)
+	if got := len(validTypes); got != 26 {
+		t.Errorf("ValidEventTypes() returned %d types, want 26", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -305,6 +305,8 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventTaskCreated:        "task-created",
 		hook.EventCwdChanged:         "cwd-changed",
 		hook.EventFileChanged:        "file-changed",
+		hook.EventElicitation:        "elicitation",
+		hook.EventElicitationResult:  "elicitation-result",
 	}
 
 	registeredNames := make(map[string]bool)

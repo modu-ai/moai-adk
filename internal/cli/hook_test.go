@@ -60,8 +60,8 @@ func TestHookCmd_HasSubcommands(t *testing.T) {
 
 func TestHookCmd_SubcommandCount(t *testing.T) {
 	count := len(hookCmd.Commands())
-	if count != 27 {
-		t.Errorf("hook should have 27 subcommands, got %d", count)
+	if count != 29 {
+		t.Errorf("hook should have 29 subcommands, got %d", count)
 	}
 }
 
