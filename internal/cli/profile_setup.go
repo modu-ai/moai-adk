@@ -66,7 +66,10 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	model := existingPrefs.Model
-	bypass := existingPrefs.Bypass
+	permissionMode := existingPrefs.PermissionMode
+	if permissionMode == "" {
+		permissionMode = "acceptEdits" // project default
+	}
 
 	statuslineMode := existingPrefs.StatuslineMode
 	if statuslineMode == "" {
@@ -135,7 +138,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&docLang),
 		).Title(t.LanguagesTitle),
 
-		// Section 3: Model Settings (model override + bypass)
+		// Section 3: Model Settings (model override + permission mode)
 		// Note: model_policy is now configured per-project via moai init / moai update -c.
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -149,10 +152,18 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.ModelOpusPlan, "opusplan"),
 				).
 				Value(&model),
-			huh.NewConfirm().
-				Title(t.BypassTitle).
-				Description(t.BypassDesc).
-				Value(&bypass),
+			huh.NewSelect[string]().
+				Title(t.PermissionModeTitle).
+				Description(t.PermissionModeDesc).
+				Options(
+					huh.NewOption(t.PermAcceptEdits, "acceptEdits"),
+					huh.NewOption(t.PermAuto, "auto"),
+					huh.NewOption(t.PermDefault, "default"),
+					huh.NewOption(t.PermPlan, "plan"),
+					huh.NewOption(t.PermBypass, "bypassPermissions"),
+					huh.NewOption(t.PermDontAsk, "dontAsk"),
+				).
+				Value(&permissionMode),
 		).Title(t.ModelSettingsTitle),
 
 		// Section 5: Display — Mode, Theme, and Preset in one screen
@@ -184,6 +195,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("wizard error: %w", err)
 	}
 
+	// Normalize permission mode: "acceptEdits" is the project default,
+	// so store as empty to avoid unnecessary override.
+	if permissionMode == "acceptEdits" {
+		permissionMode = ""
+	}
+
 	// Build and save preferences
 	prefs := profile.ProfilePreferences{
 		UserName:         userName,
@@ -192,7 +209,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		CodeCommentLang:  codeCommentLang,
 		DocLang:          docLang,
 		Model:            model,
-		Bypass:           bypass,
+		PermissionMode:   permissionMode,
 		StatuslineMode:   statuslineMode,
 		StatuslineTheme:  statuslineTheme,
 		TeammateDisplay:  "auto",

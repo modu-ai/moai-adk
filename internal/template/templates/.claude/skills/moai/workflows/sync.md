@@ -122,16 +122,31 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ## Phase Sequence
 
-### Phase 0: Deployment Readiness Check
+### Phase 0: Pre-Sync Quality Gate
+
+Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
+
+#### Step 0.0.1: Gate Execution
+
+- Execute gate workflow equivalent: lint + format + type-check + test in parallel
+- Auto-fix any fixable issues (lint auto-fix, format auto-fix)
+- If unfixable errors remain: Present summary and offer options via AskUserQuestion
+  - Fix errors (Recommended): Delegate to expert-debug subagent for targeted fixes
+  - Skip gate: Proceed to Phase 0.1 (errors will be caught later but at higher cost)
+  - Abort: Exit sync workflow
+
+Output: gate_report with pass/fail per check category.
+
+### Phase 0.1: Deployment Readiness Check
 
 Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
 
-#### Step 0.1: Test Passage Verification
+#### Step 0.1.1: Test Passage Verification
 
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry: Delegate to expert-debug subagent
+  - Fix and retry (Recommended): Delegate to expert-debug subagent
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 
@@ -240,6 +255,39 @@ The sync phase enforces LSP-based quality gates as configured in quality.yaml:
 #### Step 0.5.5: Generate Quality Report
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
+
+### Phase 0.55: Security Scan (Conditional)
+
+Purpose: Run a targeted security audit on changed files before PR creation. Catches security vulnerabilities that code review alone may miss.
+
+**Activation condition**: Execute this phase ONLY when changed files match security-sensitive patterns:
+- Authentication/authorization files (auth, login, session, token, permission, role)
+- Database interaction files (query, model, migration, schema, repository, dao)
+- API endpoint files (handler, controller, route, endpoint, middleware)
+- User input handling files (form, input, validation, sanitize)
+- Configuration files with secrets (.env, config with credentials)
+
+**Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 0.6. Log: "Security scan skipped: no security-sensitive files changed."
+
+#### Step 0.55.1: Security Analysis
+
+Agent: expert-security subagent
+
+Delegate to expert-security with the security workflow (workflows/security.md) in inline mode:
+- Only CRITICAL findings block the sync pipeline
+- HIGH findings are reported as warnings in PR description
+- MEDIUM and LOW findings are logged in sync report
+- Dependency scan runs only if package files (go.mod, package.json, requirements.txt, etc.) changed
+
+#### Step 0.55.2: Security Gate Decision
+
+If CRITICAL findings exist:
+- Present findings via AskUserQuestion:
+  - Fix now (Recommended): Delegate to expert-security subagent for auto-fix, then re-scan
+  - Continue with warning: Proceed to Phase 0.6 with security warnings embedded in PR description
+  - Abort: Exit sync workflow
+
+If no CRITICAL findings: Proceed to Phase 0.6. Include any HIGH/MEDIUM findings in the sync report.
 
 ### Phase 0.6: MX Tag Validation (Multi-Language)
 
@@ -989,6 +1037,7 @@ All of the following must be verified:
 
 - Phase 0: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
 - Phase 0.5: Quality verification completed (tests, linter, type checker, deep code review with auto-fix)
+- Phase 0.55: Security scan completed (if security-sensitive files changed)
 - Phase 0.7: Coverage analysis completed (measurement, gap analysis, test generation, verification)
 - Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated

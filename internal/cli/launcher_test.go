@@ -368,55 +368,85 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 	}
 }
 
-func TestSyncBypassToSettingsLocal(t *testing.T) {
+func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 	tests := []struct {
 		name         string
 		existing     string // existing settings.local.json content ("" = no file)
-		bypass       bool
+		mode         string // permission mode to sync
 		wantMode     string // expected defaultMode ("" = should not exist)
 		wantEnvKey   string // verify existing env is preserved
 		wantEnvValue string
 	}{
 		{
-			name:     "bypass=true creates permissions with bypassPermissions",
+			name:     "bypassPermissions creates permissions section",
 			existing: "",
-			bypass:   true,
+			mode:     "bypassPermissions",
 			wantMode: "bypassPermissions",
 		},
 		{
-			name:     "bypass=true preserves existing env",
+			name:     "auto mode sets defaultMode",
+			existing: "",
+			mode:     "auto",
+			wantMode: "auto",
+		},
+		{
+			name:     "plan mode sets defaultMode",
+			existing: "",
+			mode:     "plan",
+			wantMode: "plan",
+		},
+		{
+			name:     "default mode sets defaultMode",
+			existing: "",
+			mode:     "default",
+			wantMode: "default",
+		},
+		{
+			name:     "dontAsk mode sets defaultMode",
+			existing: "",
+			mode:     "dontAsk",
+			wantMode: "dontAsk",
+		},
+		{
+			name:     "mode preserves existing env",
 			existing: `{"env":{"CLAUDE_CODE_TEAMMATE_DISPLAY":"tmux"}}`,
-			bypass:   true,
-			wantMode:     "bypassPermissions",
+			mode:     "auto",
+			wantMode:     "auto",
 			wantEnvKey:   "CLAUDE_CODE_TEAMMATE_DISPLAY",
 			wantEnvValue: "tmux",
 		},
 		{
-			name:     "bypass=false removes defaultMode override",
+			name:     "empty mode removes defaultMode override",
 			existing: `{"permissions":{"defaultMode":"bypassPermissions"},"env":{"FOO":"bar"}}`,
-			bypass:   false,
+			mode:     "",
 			wantMode:     "",
 			wantEnvKey:   "FOO",
 			wantEnvValue: "bar",
 		},
 		{
-			name:     "bypass=false with no permissions is no-op",
+			name:     "acceptEdits removes defaultMode (matches project default)",
+			existing: `{"permissions":{"defaultMode":"auto"}}`,
+			mode:     "acceptEdits",
+			wantMode: "",
+		},
+		{
+			name:     "empty mode with no permissions is no-op",
 			existing: `{"env":{"FOO":"bar"}}`,
-			bypass:   false,
+			mode:     "",
 			wantMode:     "",
 			wantEnvKey:   "FOO",
 			wantEnvValue: "bar",
 		},
 		{
-			name:     "bypass=true overwrites existing defaultMode",
+			name:     "mode overwrites existing defaultMode",
 			existing: `{"permissions":{"defaultMode":"acceptEdits","allow":["Read"]}}`,
-			bypass:   true,
-			wantMode: "bypassPermissions",
+			mode:     "auto",
+			wantMode: "auto",
 		},
 		{
-			name:     "bypass=false preserves other permission keys",
+			name:     "empty mode preserves other permission keys",
 			existing: `{"permissions":{"defaultMode":"bypassPermissions","allow":["Read"]}}`,
-			bypass:   false,
+			mode:     "",
 			wantMode: "",
 		},
 	}
@@ -436,9 +466,9 @@ func TestSyncBypassToSettingsLocal(t *testing.T) {
 				}
 			}
 
-			err := syncBypassToSettingsLocal(settingsPath, tt.bypass)
+			err := syncPermissionModeToSettingsLocal(settingsPath, tt.mode)
 			if err != nil {
-				t.Fatalf("syncBypassToSettingsLocal() error: %v", err)
+				t.Fatalf("syncPermissionModeToSettingsLocal() error: %v", err)
 			}
 
 			data, err := os.ReadFile(settingsPath)
@@ -481,14 +511,75 @@ func TestSyncBypassToSettingsLocal(t *testing.T) {
 				}
 			}
 
-			// Check other permission keys preserved when bypass=false
-			if tt.name == "bypass=false preserves other permission keys" {
+			// Check other permission keys preserved
+			if tt.name == "empty mode preserves other permission keys" {
 				if perms == nil {
 					t.Fatal("expected permissions section with allow key")
 				}
 				if _, ok := perms["allow"]; !ok {
 					t.Error("permissions.allow should be preserved")
 				}
+			}
+		})
+	}
+}
+
+// TestSyncBypassToSettingsLocal_BackwardCompat verifies the legacy wrapper still works.
+func TestSyncBypassToSettingsLocal_BackwardCompat(t *testing.T) {
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+
+	// bypass=true should set bypassPermissions
+	if err := syncBypassToSettingsLocal(settingsPath, true); err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := os.ReadFile(settingsPath)
+	var result map[string]any
+	_ = json.Unmarshal(data, &result)
+	perms, _ := result["permissions"].(map[string]any)
+	if got, _ := perms["defaultMode"].(string); got != "bypassPermissions" {
+		t.Errorf("bypass=true: defaultMode = %q, want %q", got, "bypassPermissions")
+	}
+
+	// bypass=false should remove it
+	if err := syncBypassToSettingsLocal(settingsPath, false); err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ = os.ReadFile(settingsPath)
+	result = nil
+	_ = json.Unmarshal(data, &result)
+	perms, _ = result["permissions"].(map[string]any)
+	if perms != nil {
+		if _, ok := perms["defaultMode"]; ok {
+			t.Error("bypass=false: defaultMode should not exist")
+		}
+	}
+}
+
+func TestContainsPermissionMode(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		mode string
+		want bool
+	}{
+		{"flag with value", []string{"--permission-mode", "auto"}, "auto", true},
+		{"flag=value form", []string{"--permission-mode=auto"}, "auto", true},
+		{"different mode", []string{"--permission-mode", "plan"}, "auto", false},
+		{"no flag", []string{"-b", "--bypass"}, "auto", false},
+		{"flag without value at end", []string{"--permission-mode"}, "auto", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := containsPermissionMode(tt.args, tt.mode)
+			if got != tt.want {
+				t.Errorf("containsPermissionMode(%v, %q) = %v, want %v", tt.args, tt.mode, got, tt.want)
 			}
 		})
 	}

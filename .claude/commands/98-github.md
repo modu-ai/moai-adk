@@ -177,9 +177,11 @@ Task(
   isolation: "worktree",
   prompt: "Fix GitHub issue #{number} based on analysis findings.
     Analysis: {analyst_findings}
-    Affected files: {file_list}
+    Affected files: {file_list} (use project-root-relative paths only)
     Create feature branch: {prefix}/issue-{number}
     Write tests, implement fix, verify tests pass.
+    [HARD] Use relative paths only — do NOT use absolute paths or cd to specific directories.
+    Your CWD is already set to the project root.
     Mark your task completed via TaskUpdate and send results via SendMessage."
 )
 ```

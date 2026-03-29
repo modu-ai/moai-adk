@@ -38,8 +38,15 @@ type profileSetupText struct {
 	ModelSonnet        string
 	ModelHaiku         string
 	ModelOpusPlan      string
-	BypassTitle        string
-	BypassDesc         string
+	// Permission mode (replaces legacy bypass)
+	PermissionModeTitle string
+	PermissionModeDesc  string
+	PermDefault         string
+	PermAcceptEdits     string
+	PermPlan            string
+	PermAuto            string
+	PermBypass          string
+	PermDontAsk         string
 
 	// Section: Display
 	DisplayTitle string
@@ -95,8 +102,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelSonnet:          "claude-sonnet-4-6 (balanced)",
 		ModelHaiku:           "claude-haiku-4-5 (fastest)",
 		ModelOpusPlan:        "opusplan (Opus planning, Sonnet coding)",
-		BypassTitle:          "Skip permission checks?",
-		BypassDesc:           "Adds --dangerously-skip-permissions. Only use in trusted environments.",
+		PermissionModeTitle: "Permission mode",
+		PermissionModeDesc:  "Controls how Claude asks for permission before taking actions.",
+		PermDefault:         "Ask permissions - Prompt for file edits and commands",
+		PermAcceptEdits:     "Auto accept edits - Auto-accept file edits, ask for commands (Recommended)",
+		PermPlan:            "Plan mode - Read-only exploration and planning",
+		PermAuto:            "Auto mode - Background safety classifier (Team plan + Sonnet/Opus 4.6)",
+		PermBypass:          "Bypass permissions - Skip all checks (isolated environments only)",
+		PermDontAsk:         "Don't ask - Only pre-approved tools (CI/locked-down environments)",
 		DisplayTitle:         "Display",
 		StatuslineModeTitle:  "Statusline display mode",
 		StatuslineModeDesc:   "Controls the layout style of the statusline.",
@@ -140,8 +153,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelSonnet:          "claude-sonnet-4-6 (균형)",
 		ModelHaiku:           "claude-haiku-4-5 (최고 속도)",
 		ModelOpusPlan:        "opusplan (Opus 기획, Sonnet 코딩)",
-		BypassTitle:          "권한 검사 건너뛰기?",
-		BypassDesc:           "--dangerously-skip-permissions를 추가합니다. 신뢰할 수 있는 환경에서만 사용하세요.",
+		PermissionModeTitle: "권한 모드",
+		PermissionModeDesc:  "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.",
+		PermDefault:         "권한 요청 - 파일 편집과 명령어에 대해 매번 확인",
+		PermAcceptEdits:     "자동 편집 수락 - 파일 편집 자동 수락, 명령어만 확인 (권장)",
+		PermPlan:            "계획 모드 - 읽기 전용 탐색 및 계획",
+		PermAuto:            "자동 모드 - 백그라운드 안전 분류기 (Team 플랜 + Sonnet/Opus 4.6 필요)",
+		PermBypass:          "권한 건너뛰기 - 모든 검사 생략 (격리된 환경 전용)",
+		PermDontAsk:         "묻지 않기 - 사전 승인된 도구만 사용 (CI/잠금 환경)",
 		DisplayTitle:         "화면 표시",
 		StatuslineModeTitle:  "상태줄 표시 모드",
 		StatuslineModeDesc:   "상태줄의 레이아웃 스타일을 제어합니다.",
@@ -185,8 +204,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelSonnet:          "claude-sonnet-4-6 (バランス)",
 		ModelHaiku:           "claude-haiku-4-5 (最速)",
 		ModelOpusPlan:        "opusplan (Opus設計、Sonnetコーディング)",
-		BypassTitle:          "権限チェックをスキップしますか？",
-		BypassDesc:           "--dangerously-skip-permissionsを追加します。信頼できる環境でのみ使用してください。",
+		PermissionModeTitle: "権限モード",
+		PermissionModeDesc:  "Claudeがアクション実行前に権限を要求する方法を制御します。",
+		PermDefault:         "権限を確認 - ファイル編集とコマンドの都度確認",
+		PermAcceptEdits:     "編集を自動承認 - ファイル編集を自動承認、コマンドのみ確認（推奨）",
+		PermPlan:            "プランモード - 読み取り専用の探索と計画",
+		PermAuto:            "自動モード - バックグラウンド安全分類器（Teamプラン + Sonnet/Opus 4.6が必要）",
+		PermBypass:          "権限スキップ - 全チェックを省略（隔離環境専用）",
+		PermDontAsk:         "確認しない - 事前承認済みツールのみ（CI/制限環境）",
 		DisplayTitle:         "表示設定",
 		StatuslineModeTitle:  "ステータスライン表示モード",
 		StatuslineModeDesc:   "ステータスラインのレイアウトスタイルを制御します。",
@@ -230,8 +255,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelSonnet:          "claude-sonnet-4-6 (均衡)",
 		ModelHaiku:           "claude-haiku-4-5 (最快)",
 		ModelOpusPlan:        "opusplan (Opus规划，Sonnet编码)",
-		BypassTitle:          "跳过权限检查？",
-		BypassDesc:           "添加 --dangerously-skip-permissions。仅在可信环境中使用。",
+		PermissionModeTitle: "权限模式",
+		PermissionModeDesc:  "控制Claude在执行操作前如何请求权限。",
+		PermDefault:         "请求权限 - 每次文件编辑和命令都需确认",
+		PermAcceptEdits:     "自动接受编辑 - 自动接受文件编辑，仅确认命令（推荐）",
+		PermPlan:            "计划模式 - 只读探索和规划",
+		PermAuto:            "自动模式 - 后台安全分类器（需要Team计划 + Sonnet/Opus 4.6）",
+		PermBypass:          "跳过权限 - 跳过所有检查（仅限隔离环境）",
+		PermDontAsk:         "不询问 - 仅预批准工具（CI/锁定环境）",
 		DisplayTitle:         "显示设置",
 		StatuslineModeTitle:  "状态栏显示模式",
 		StatuslineModeDesc:   "控制状态栏的布局样式。",

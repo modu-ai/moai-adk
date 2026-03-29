@@ -809,3 +809,63 @@ When reviewing UI code, check for:
 Version: 1.0.0
 Last Updated: 2026-01-15
 Source: Vercel Labs Web Interface Guidelines
+
+---
+
+## Frontend Composition Rules
+
+Design composition guidelines derived from OpenAI's GPT-5.4 frontend research (Mar 2026). These complement the Vercel Web Interface Guidelines above.
+
+### Viewport Composition
+
+One Composition Rule: The first viewport must read as one composition, not a dashboard. Apply a "hero budget" — limit the first viewport to brand, one headline, one supporting sentence, one CTA group, and one dominant image.
+
+Full-Bleed Hero: On landing pages and promotional surfaces, the hero image should be a dominant edge-to-edge visual plane. Do not use boxed or center-column heroes when the brief calls for full bleed.
+
+Viewport Sizing: When using 100vh/100svh heroes, subtract persistent UI chrome (header height). If a sticky header exists, it counts against the hero budget.
+
+### Typography and Color
+
+Use expressive, purposeful fonts. Avoid default stacks (Inter, Roboto, Arial, system-ui). Limit to two typefaces without clear reason.
+
+Default to one accent color unless the product has a strong multi-color system. Background treatment should never rely on flat single-color backgrounds — use gradients, images, or subtle patterns.
+
+### Design System Tokens
+
+Establish a clear design system early with core tokens:
+- Surface tokens: background, surface, primary text, muted text, accent
+- Typography roles: display, headline, body, caption
+- Spacing scale: consistent increment system
+
+### Copy Strategy
+
+For marketing and promotional pages:
+- Let the headline carry the meaning
+- Supporting copy should usually be one short sentence
+- Cut repetition between sections
+- Write in product language, not design commentary
+
+For product UI (dashboards, admin tools, workspaces):
+- Prioritize orientation, status, and action over promise, mood, or brand voice
+- Section headings should say what the area is or what the user can do there
+- Start with the working surface itself: KPIs, charts, filters, tables, status
+
+### Imagery Guidelines
+
+- Imagery should show the product, place, atmosphere, or context
+- Decorative gradients and abstract backgrounds do not count as the main visual idea
+- Use at least one strong, real-looking image for brands, venues, and lifestyle products
+- Prefer in-situ photography over abstract gradients or fake 3D objects
+- Do not use images with embedded signage, logos, or typographic clutter
+- Choose or crop images with a stable tonal area for text overlay
+
+### Motion Principles
+
+Ship at least 2-3 intentional motions for visually-led work. Use motion to create presence and hierarchy, not noise.
+
+Motion types to consider:
+- Entrance sequences: how elements appear on load
+- Scroll-linked effects: parallax, progressive reveal
+- Hover/reveal transitions: micro-interactions for engagement
+
+Preferred library: Framer Motion for React projects.

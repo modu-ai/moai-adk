@@ -165,6 +165,8 @@ func NewDefaultSystemConfig() SystemConfig {
 	}
 }
 
+// @MX:ANCHOR: [AUTO] LLM 설정 기본값 팩토리. 모델 티어·GLM 설정·성능 정책을 포함한 전체 LLM 구성의 단일 진입점.
+// @MX:REASON: fan_in=6, 설정 로더·CLI 초기화·테스트 픽스처 등 다수 호출자에서 참조됨
 // NewDefaultLLMConfig returns a LLMConfig with default values.
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{

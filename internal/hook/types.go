@@ -259,6 +259,8 @@ type HookOutput struct {
 	Data json.RawMessage `json:"-"`
 }
 
+// @MX:ANCHOR: [AUTO] PreToolUse 허용 응답 팩토리. 모든 hook 핸들러에서 기본 허용 응답을 생성할 때 사용.
+// @MX:REASON: fan_in=19, 가장 많이 사용되는 hook 응답 팩토리, 변경 시 전체 핸들러 동작에 영향
 // NewAllowOutput creates a HookOutput with permissionDecision "allow" for PreToolUse.
 // Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAllowOutput() *HookOutput {
@@ -282,6 +284,8 @@ func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
 	}
 }
 
+// @MX:ANCHOR: [AUTO] PreToolUse 차단 응답 팩토리. 도구 실행을 거부할 때 사용되는 핵심 팩토리.
+// @MX:REASON: fan_in=7, 차단 결정의 단일 진입점, 프로토콜 준수 필수
 // NewDenyOutput creates a HookOutput with permissionDecision "deny" for PreToolUse.
 // Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewDenyOutput(reason string) *HookOutput {
@@ -294,6 +298,8 @@ func NewDenyOutput(reason string) *HookOutput {
 	}
 }
 
+// @MX:ANCHOR: [AUTO] PreToolUse 권한 요청 응답 팩토리. 사용자 확인이 필요한 경우 사용.
+// @MX:REASON: fan_in=3, 권한 요청 응답의 단일 생성 지점
 // NewAskOutput creates a HookOutput with permissionDecision "ask" for PreToolUse.
 // Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAskOutput(reason string) *HookOutput {

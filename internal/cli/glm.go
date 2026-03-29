@@ -32,7 +32,12 @@ This command:
 Use 'moai glm setup <key>' to save your API key first.
 
 Flags:
-  -p, --profile <name>   Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, bypassPermissions, dontAsk)
+  -b, --bypass                  Shorthand for --permission-mode bypassPermissions
+
+Note: Auto mode is not available with GLM (third-party provider).
+Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
@@ -110,7 +115,29 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Auto mode is not available with third-party providers (GLM/Z.AI).
+	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.
+	if containsPermissionMode(filteredArgs, "auto") {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires Claude Sonnet 4.6 or Opus 4.6 running on Anthropic's API")
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead")
+		return fmt.Errorf("auto mode is not available with GLM (third-party provider)")
+	}
+
 	return unifiedLaunch(profileName, "glm", filteredArgs)
+}
+
+// containsPermissionMode checks if args contain --permission-mode with the given value.
+func containsPermissionMode(args []string, mode string) bool {
+	for i, arg := range args {
+		if arg == "--permission-mode" && i+1 < len(args) && args[i+1] == mode {
+			return true
+		}
+		if arg == "--permission-mode="+mode {
+			return true
+		}
+	}
+	return false
 }
 
 // setGLMEnv sets GLM environment variables in the current process.

@@ -45,6 +45,22 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
 - --team: Enable team-based implementation (see ${CLAUDE_SKILL_DIR}/team/run.md for parallel implementation team)
 
+## UltraThink Auto-Activation
+
+When the run phase begins, evaluate whether to activate deep analysis mode for the strategy phase:
+
+**Activation condition** (any of):
+- SPEC spans >= 2 distinct domains (backend + frontend, auth + database, etc.)
+- SPEC plan.md lists >= 8 files to create or modify
+- SPEC involves architectural patterns (new module, service, middleware layer)
+- User explicitly includes `ultrathink` keyword
+
+**UltraThink vs --deepthink**:
+- `ultrathink`: Extended reasoning within the current agent — deeper strategy analysis, more thorough trade-off evaluation
+- `--deepthink`: Sequential Thinking MCP invocation — structured step-by-step analysis via `mcp__sequential-thinking__sequentialthinking`
+
+When activated: Apply to Phase 1 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
+
 ## Context Loading
 
 Before execution, load these essential files:
@@ -72,6 +88,35 @@ Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
   - Started: {current timestamp}
   ```
 - The progress.md file persists across sessions and enables seamless resume after interruption.
+
+---
+
+## Worktree Path Rules [HARD] (All Modes)
+
+When delegating to ANY agent with `isolation: "worktree"` (sub-agent mode or team mode):
+
+- [HARD] Reference all write-target files by project-root-relative paths (e.g., `src/auth/handler.go`)
+- [HARD] Do NOT include absolute paths (e.g., `/Users/.../project/src/auth/handler.go`) in agent prompts
+- [HARD] Do NOT include `cd /absolute/path &&` in any Bash commands within agent prompts
+- [HARD] SPEC files: use `.moai/specs/SPEC-XXX/spec.md` (relative), not absolute paths
+- [HARD] The agent's CWD is automatically set to the worktree root by Claude Code — all relative paths resolve correctly
+
+Anti-patterns that bypass worktree isolation:
+```
+# WRONG: Absolute path bypasses worktree
+"Read /Users/user/project/src/auth/handler.go and fix the bug"
+
+# WRONG: cd to main project in Bash command
+"Run: cd /Users/user/project && go test ./..."
+
+# CORRECT: Relative path — agent resolves from its own CWD (worktree root)
+"The bug is in src/auth/handler.go. Read the file and fix it."
+
+# CORRECT: No cd prefix — agent CWD is already worktree root
+"Run: go test ./..."
+```
+
+See `.claude/rules/moai/workflow/worktree-integration.md` for complete path rules.
 
 ---
 
@@ -261,6 +306,8 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 
 ### Phase 2: Implementation (Mode-Dependent)
 
+**[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-ddd, manager-tdd) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See "Worktree Path Rules [HARD]" section above.
+
 #### Phase 2A: DDD Implementation (for ddd mode)
 
 Agent: manager-ddd subagent
@@ -374,21 +421,42 @@ Purpose: Detect stagnation and trigger re-assessment if implementation is stuck.
 
 Check `.moai/specs/SPEC-{ID}/progress.md` for stagnation signals. If triggered, return structured stagnation report to MoAI for user escalation.
 
-### Phase 2.8: Post-Implementation Review (Optional)
+### Phase 2.75: Pre-Review Quality Gate
 
-Purpose: Multi-dimensional review iteration for high-quality output. Activated when quality status is WARNING or when --review flag is set.
+Purpose: Run lightweight quality gate checks before the full review phase. This connects the gate workflow (workflows/gate.md) into the run pipeline.
 
-Review dimensions (each executed via manager-quality subagent):
-- Purpose alignment, improvement safety, side effect verification, full change review, dead code cleanup, user flow validation
+Execution: Always runs. Equivalent to `/moai gate --fix` on modified files.
 
-Extended review (when --review flag is set or changes affect security/performance/UX domains):
-- Delegate to review workflow (workflows/review.md) for multi-perspective analysis
+Steps:
+1. Run language-specific lint on modified files
+2. Run formatter check on modified files
+3. Run type-checker on modified files
+4. Auto-fix any fixable issues (--fix behavior)
+5. If unfixable errors remain: Report and block (must fix before review)
+
+Output: gate_report with pass/fail per check category. If all pass, continue to Phase 2.8.
+
+### Phase 2.8: Post-Implementation Review [MANDATORY]
+
+Purpose: Multi-dimensional review iteration for high-quality output. This phase is ALWAYS executed to ensure consistent code quality.
+
+**Standard review** (always executed via manager-quality subagent):
+- Purpose alignment: Do changes match SPEC requirements?
+- Improvement safety: Are existing behaviors preserved?
+- Side effect verification: Any unintended impacts?
+- Full change review: All modified files reviewed
+- Dead code cleanup: No orphaned code left behind
+- User flow validation: End-to-end correctness
+
+**Security/Performance review** (conditional, triggered when changes affect security/performance/UX domains OR --review flag):
+- Invoke review workflow explicitly: Read `${CLAUDE_SKILL_DIR}/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
+- This replaces the previous vague "delegate to review workflow" with an explicit skill invocation
 
 Iteration behavior:
 - Each review dimension generates findings with severity (critical, warning, suggestion)
 - Critical findings trigger a fix cycle: delegate to appropriate expert agent, then re-review
 - Maximum 3 review iterations to prevent infinite loops
-- If all dimensions pass with no critical findings: Continue to Phase 3
+- If all dimensions pass with no critical findings: Continue to Phase 2.9
 
 Output: review_findings per dimension, iterations_completed count, final review status.
 
@@ -521,18 +589,8 @@ Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inher
 
 - [HARD] Implementation teammates (backend-dev, frontend-dev, tester) MUST use `isolation: "worktree"` when spawned via Task()
 - [HARD] Read-only teammates (quality) MUST NOT use `isolation: "worktree"` — permissionMode: plan is sufficient
+- [HARD] All worktree path rules from "Worktree Path Rules [HARD] (All Modes)" section above apply to team mode as well
 - After team shutdown, run `git worktree prune` to clean up stale worktree references
-
-See .claude/rules/moai/workflow/worktree-integration.md for the complete worktree decision tree.
-
-#### Worktree Path Handling
-
-When delegating to agents with `isolation: "worktree"`:
-- Reference all write-target files by project-root-relative paths
-- Do NOT include `cd /absolute/path &&` in any Bash commands
-- SPEC files should be referenced as `.moai/specs/SPEC-XXX/spec.md` (relative)
-- The agent's CWD is automatically set to the worktree root by Claude Code
-- See `.claude/rules/moai/workflow/worktree-integration.md` for detailed path rules
 
 For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/run.md.
 

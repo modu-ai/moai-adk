@@ -26,7 +26,15 @@ type ProfilePreferences struct {
 	Model       string `yaml:"model,omitempty"`        // e.g. "claude-opus-4-6"
 
 	// Launch settings
-	Bypass bool `yaml:"bypass,omitempty"` // --dangerously-skip-permissions
+	// PermissionMode sets the Claude Code permission mode at launch.
+	// Valid values: "", "default", "acceptEdits", "plan", "auto", "bypassPermissions", "dontAsk".
+	// Empty string means use the project settings.json default (typically "acceptEdits").
+	PermissionMode string `yaml:"permission_mode,omitempty"`
+
+	// Bypass is deprecated. Use PermissionMode = "bypassPermissions" instead.
+	// Kept for backward compatibility: ReadPreferences migrates Bypass=true
+	// to PermissionMode="bypassPermissions" automatically.
+	Bypass bool `yaml:"bypass,omitempty"`
 
 	// Display settings
 	StatuslineMode     string          `yaml:"statusline_mode,omitempty"`     // "default", "full"
@@ -40,6 +48,29 @@ const (
 	preferencesFile       = "preferences.yaml"
 	legacyPreferencesFile = ".preferences.yaml"
 )
+
+// ValidPermissionModes lists all Claude Code permission mode values.
+// @MX:NOTE: [AUTO] Claude Code 권한 모드 전체 목록. CLI 입력 검증 및 프로필 위자드에서 참조.
+var ValidPermissionModes = []string{
+	"",                  // use project default
+	"default",           // ask permissions for everything
+	"acceptEdits",       // auto-accept file edits, ask for commands
+	"plan",              // read-only exploration and planning
+	"auto",              // background classifier checks actions
+	"bypassPermissions", // skip all checks (isolated envs only)
+	"dontAsk",           // only pre-approved tools
+}
+
+// IsValidPermissionMode checks whether mode is a recognized Claude Code permission mode.
+// @MX:NOTE: [AUTO] 권한 모드 문자열 검증. CLI, GLM 런처 등에서 사용자 입력 유효성 검사에 사용.
+func IsValidPermissionMode(mode string) bool {
+	for _, m := range ValidPermissionModes {
+		if m == mode {
+			return true
+		}
+	}
+	return false
+}
 
 // GetPreferencesPath returns the path to preferences.yaml for a profile.
 func GetPreferencesPath(profileName string) string {
@@ -84,6 +115,13 @@ func ReadPreferences(profileName string) (ProfilePreferences, error) {
 	if err := yaml.Unmarshal(data, &prefs); err != nil {
 		return ProfilePreferences{}, fmt.Errorf("parse preferences: %w", err)
 	}
+
+	// Migrate legacy Bypass field to PermissionMode.
+	// If Bypass is true and PermissionMode is not yet set, promote it.
+	if prefs.Bypass && prefs.PermissionMode == "" {
+		prefs.PermissionMode = "bypassPermissions"
+	}
+
 	return prefs, nil
 }
 
