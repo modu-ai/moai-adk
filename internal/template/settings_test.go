@@ -502,7 +502,7 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 		t.Fatal("missing hooks section")
 	}
 
-	const expectedCount = 18 // TaskCreated, ConfigChange 훅 추가로 16 → 18
+	const expectedCount = 25 // v2.1.87: StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, Elicitation, ElicitationResult added (18 → 25)
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}

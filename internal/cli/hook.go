@@ -51,6 +51,8 @@ func init() {
 		{"task-created", "Handle task created event", hook.EventTaskCreated},
 		{"cwd-changed", "Handle cwd changed event", hook.EventCwdChanged},
 		{"file-changed", "Handle file changed event", hook.EventFileChanged},
+		{"elicitation", "Handle MCP elicitation event", hook.EventElicitation},
+		{"elicitation-result", "Handle MCP elicitation result event", hook.EventElicitationResult},
 	}
 
 	for _, sub := range hookSubcommands {

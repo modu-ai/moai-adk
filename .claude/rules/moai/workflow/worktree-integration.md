@@ -97,7 +97,7 @@ background: true   # Returns immediately; results delivered on next turn
 
 Use with `isolation: worktree` for optimal parallel execution in team mode.
 
-Kill background agent: Press `Ctrl+F` in Claude Code interface.
+Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 
 ## Worktree Selection Rules [HARD]
 
