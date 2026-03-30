@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-03-30
+
+### Summary
+
+Feedback skill multilingual support and agent harness optimization across 16 agents with 5 new reference skills.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- Feedback skill now writes GitHub issues in user's conversation_language (#573)
+- 5 new reference skills: api-patterns, git-workflow, owasp-checklist, react-patterns, testing-pyramid
+
+### Changed
+
+- Agent harness optimization: 16 agent definitions streamlined with reduced token footprint (#576)
+- Workflow skills (plan, run, sync) enhanced with improved agent coordination
+
+### Fixed
+
+- None
+
+### Installation & Update
+
+```bash
+moai update
+moai version
+```
+
+---
+
+## [2.8.1] - 2026-03-30 (한국어)
+
+### 요약
+
+Feedback 스킬 다국어 지원 및 16개 에이전트 하네스 최적화, 5개 신규 참조 스킬 추가.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- Feedback 스킬이 conversation_language로 GitHub Issue 작성 (#573)
+- 5개 신규 참조 스킬: api-patterns, git-workflow, owasp-checklist, react-patterns, testing-pyramid
+
+### 변경됨 (Changed)
+
+- 에이전트 하네스 최적화: 16개 에이전트 정의 간소화, 토큰 풋프린트 감소 (#576)
+- 워크플로우 스킬 (plan, run, sync) 에이전트 조율 개선
+
+### 수정됨 (Fixed)
+
+- 없음
+
+### 설치 및 업데이트
+
+```bash
+moai update
+moai version
+```
+
+---
+
 ## [2.8.0] - 2026-03-30
 
 ### Summary
