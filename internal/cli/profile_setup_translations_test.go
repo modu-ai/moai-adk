@@ -24,6 +24,12 @@ func TestGetProfileText_AllLanguages(t *testing.T) {
 			if txt.ModelPolicyHigh == "" {
 				t.Errorf("ModelPolicyHigh is empty for lang %q", lang)
 			}
+			if txt.ModelOpus1M == "" {
+				t.Errorf("ModelOpus1M is empty for lang %q", lang)
+			}
+			if txt.ModelSonnet1M == "" {
+				t.Errorf("ModelSonnet1M is empty for lang %q", lang)
+			}
 		})
 	}
 }

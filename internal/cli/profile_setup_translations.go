@@ -35,7 +35,9 @@ type profileSetupText struct {
 	ModelOverrideDesc  string
 	ModelDefault       string
 	ModelOpus          string
+	ModelOpus1M        string
 	ModelSonnet        string
+	ModelSonnet1M      string
 	ModelHaiku         string
 	ModelOpusPlan      string
 	// Permission mode (replaces legacy bypass)
@@ -99,7 +101,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideDesc:    "Override the model when launching with this profile.",
 		ModelDefault:         "Default (no override)",
 		ModelOpus:            "claude-opus-4-6 (most capable)",
+		ModelOpus1M:          "claude-opus-4-6 1M context (extended thinking)",
 		ModelSonnet:          "claude-sonnet-4-6 (balanced)",
+		ModelSonnet1M:        "claude-sonnet-4-6 1M context (extended thinking)",
 		ModelHaiku:           "claude-haiku-4-5 (fastest)",
 		ModelOpusPlan:        "opusplan (Opus planning, Sonnet coding)",
 		PermissionModeTitle: "Permission mode",
@@ -150,7 +154,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideDesc:    "이 프로필로 실행할 때 모델을 오버라이드합니다.",
 		ModelDefault:         "기본값 (오버라이드 없음)",
 		ModelOpus:            "claude-opus-4-6 (최고 성능)",
+		ModelOpus1M:          "claude-opus-4-6 1M 컨텍스트 (확장 사고)",
 		ModelSonnet:          "claude-sonnet-4-6 (균형)",
+		ModelSonnet1M:        "claude-sonnet-4-6 1M 컨텍스트 (확장 사고)",
 		ModelHaiku:           "claude-haiku-4-5 (최고 속도)",
 		ModelOpusPlan:        "opusplan (Opus 기획, Sonnet 코딩)",
 		PermissionModeTitle: "권한 모드",
@@ -201,7 +207,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideDesc:    "このプロファイルで起動する際のモデルをオーバーライドします。",
 		ModelDefault:         "デフォルト (オーバーライドなし)",
 		ModelOpus:            "claude-opus-4-6 (最高性能)",
+		ModelOpus1M:          "claude-opus-4-6 1Mコンテキスト (拡張思考)",
 		ModelSonnet:          "claude-sonnet-4-6 (バランス)",
+		ModelSonnet1M:        "claude-sonnet-4-6 1Mコンテキスト (拡張思考)",
 		ModelHaiku:           "claude-haiku-4-5 (最速)",
 		ModelOpusPlan:        "opusplan (Opus設計、Sonnetコーディング)",
 		PermissionModeTitle: "権限モード",
@@ -252,7 +260,9 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideDesc:    "使用此配置文件启动时覆盖模型。",
 		ModelDefault:         "默认 (不覆盖)",
 		ModelOpus:            "claude-opus-4-6 (最强性能)",
+		ModelOpus1M:          "claude-opus-4-6 1M上下文 (扩展思考)",
 		ModelSonnet:          "claude-sonnet-4-6 (均衡)",
+		ModelSonnet1M:        "claude-sonnet-4-6 1M上下文 (扩展思考)",
 		ModelHaiku:           "claude-haiku-4-5 (最快)",
 		ModelOpusPlan:        "opusplan (Opus规划，Sonnet编码)",
 		PermissionModeTitle: "权限模式",
