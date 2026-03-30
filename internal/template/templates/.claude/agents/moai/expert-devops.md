@@ -8,22 +8,16 @@ description: |
   KO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너
   JA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ
   ZH: DevOps, CI/CD, Docker, Kubernetes, 部署, 流水线, 基础设施
+  NOT for: application code, frontend UI, database schema design, security audits, performance profiling, testing strategy
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 maxTurns: 100
 permissionMode: default
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-philosopher
-  - moai-foundation-quality
-  - moai-workflow-project
-  - moai-workflow-jit-docs
-  - moai-workflow-templates
   - moai-platform-deployment
-  - moai-platform-database-cloud
-  - moai-framework-electron
+  - moai-workflow-project
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
