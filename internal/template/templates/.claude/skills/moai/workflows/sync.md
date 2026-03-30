@@ -1080,4 +1080,4 @@ All of the following must be verified:
 
 Version: 3.6.0
 Updated: 2026-03-30
-Changes: Added test scenarios (Harness-100 pattern).
+Changes: Added test scenarios.

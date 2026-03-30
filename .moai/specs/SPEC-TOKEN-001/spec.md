@@ -13,13 +13,13 @@ priority: P0
 
 ## Background
 
-Harness-100 analysis revealed that MoAI-ADK agents have excessive skill bindings:
+Internal analysis revealed that MoAI-ADK agents have excessive skill bindings:
 - expert-frontend: 27 skills
 - expert-backend: 27 skills
 - manager-spec: 13 skills
 - Total system: ~305K tokens allocated (152% of 200K context budget)
 
-Harness-100 agents use 0 skills in frontmatter, relying on orchestrator-injected domain knowledge.
+Best-practice agent definitions use minimal skills in frontmatter, relying on orchestrator-injected domain knowledge.
 
 ## Requirements (EARS Format)
 

@@ -13,7 +13,7 @@ priority: P1
 
 ## Background
 
-Harness-100 analysis identified key patterns missing from MoAI-ADK agents:
+Internal analysis identified key patterns missing from MoAI-ADK agents:
 1. Anti-triggers ("NOT for:") - 19 agents lack explicit scope boundaries
 2. Agent-extending reference skills - Pure knowledge skills that amplify agent expertise
 3. Agent body reduction to ≤5KB (deferred to Phase 2 - separate session)
@@ -28,11 +28,11 @@ listing domains and tasks the agent should NOT handle.
 ### R2: Agent-Extending Reference Skills
 WHEN domain-specific knowledge is needed by agents,
 THE system SHALL provide it via dedicated reference skills
-with a "Target Agent" declaration (Harness-100 pattern).
+with a "Target Agent" declaration.
 
 ### R3: Reference Skill Structure
 WHEN creating agent-extending reference skills,
-THE system SHALL follow the Harness-100 pattern:
+THE system SHALL follow the agent-extending skill pattern:
 - Pure reference content (tables, checklists, patterns)
 - "Target Agent" declaration
 - NOT procedural workflow instructions

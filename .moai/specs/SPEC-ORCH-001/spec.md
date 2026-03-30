@@ -16,6 +16,6 @@ priority: P2
 1. Added Phase 0.95 Scale-Based Execution Mode Selection to run.md
    - Auto-selects Fix/Focused/Standard/Full/Team mode based on task scope
    - Prevents over-engineering for simple tasks
-2. Added Test Scenarios to plan.md, run.md, sync.md (Harness-100 pattern)
+2. Added Test Scenarios to plan.md, run.md, sync.md (3 scenarios each)
    - Normal Flow, Existing Assets/Partial Flow, Error Flow per orchestrator
    - Enables validation of workflow behavior

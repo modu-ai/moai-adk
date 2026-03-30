@@ -18,4 +18,4 @@ priority: P3
    - Added JIT Language Skill Loading documentation in Section 5
    - Consolidated Sections 16-17 into single Reference Protocols section
    - Updated version to 15.0.0
-2. Version bump to reflect Harness-100 optimization series
+2. Version bump to reflect agent optimization series

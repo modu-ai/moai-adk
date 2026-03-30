@@ -339,7 +339,7 @@ TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
 ---
 
-Version: 15.0.0 (Harness-100 Optimization)
+Version: 15.0.0 (Agent Optimization)
 Last Updated: 2026-03-30
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited

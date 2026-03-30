@@ -707,4 +707,4 @@ All of the following must be verified:
 
 Version: 2.11.0
 Updated: 2026-03-30
-Changes: Added Phase 0.9 JIT Language Detection, Phase 0.95 Scale-Based Mode Selection, test scenarios (Harness-100 pattern).
+Changes: Added Phase 0.9 JIT Language Detection, Phase 0.95 Scale-Based Mode Selection, test scenarios.

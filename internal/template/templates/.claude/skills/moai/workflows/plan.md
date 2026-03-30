@@ -547,4 +547,4 @@ All of the following must be verified:
 
 Version: 2.8.0
 Updated: 2026-03-30
-Changes: Added test scenarios (Harness-100 pattern), Phase 0.9 JIT Language Detection.
+Changes: Added test scenarios, Phase 0.9 JIT Language Detection.
