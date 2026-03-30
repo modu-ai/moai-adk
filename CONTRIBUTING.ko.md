@@ -20,11 +20,11 @@ MoAI-ADK Go Edition 프로젝트에 기여해 주셔서 감사합니다! 이 문
 ```bash
 # GitHub에서 저장소 포크
 # 로컬에 클론
-git clone https://github.com/YOUR_USERNAME/moai-adk-go.git
-cd moai-adk-go
+git clone https://github.com/YOUR_USERNAME/moai-adk.git
+cd moai-adk
 
 # 업스트림 원격 저장소 추가
-git remote add upstream https://github.com/modu-ai/moai-adk-go.git
+git remote add upstream https://github.com/modu-ai/moai-adk.git
 ```
 
 ### 2. 개발 브랜치 생성
@@ -251,4 +251,4 @@ Fixes #456
 
 ---
 
-질문이 있으시면 [GitHub Issues](https://github.com/modu-ai/moai-adk-go/issues)를 생성해 주세요.
+질문이 있으시면 [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)를 생성해 주세요.

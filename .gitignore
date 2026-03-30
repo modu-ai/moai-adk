@@ -59,6 +59,7 @@ env/
 # ===========================================
 .coverage
 coverage.json
+coverage.html
 htmlcov/
 
 # ===========================================
@@ -178,6 +179,7 @@ secret-*.*
 # ===========================================
 # Local-Only Files (never sync via git pull)
 # ===========================================
+CLAUDE.local.md
 .moai/status_line.sh
 .moai/memory/
 .moai/worktrees/
