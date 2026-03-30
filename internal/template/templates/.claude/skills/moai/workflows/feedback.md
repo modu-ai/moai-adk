@@ -84,11 +84,11 @@ Pass to manager-quality:
 
 ### Issue Language Policy
 
-[HARD] All GitHub Issue content MUST be written in the user's `conversation_language`:
+[HARD] GitHub Issue title and template headers MUST be written in the user's `conversation_language`:
 
 - **Title**: Written in conversation_language
 - **Body template headers**: Section names (e.g., "Description", "Priority", "Environment") translated to conversation_language
-- **Body content**: User-provided text preserved as-is (already in user's language)
+- **Body content**: User-provided text preserved verbatim (not translated, even if language differs from conversation_language)
 - **Labels**: English only (GitHub standard: "bug", "enhancement", "question")
 
 Language examples:
