@@ -9,12 +9,12 @@ compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob
 user-invocable: false
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: "domain"
   status: "active"
-  updated: "2026-03-28"
+  updated: "2026-03-30"
   modularized: "true"
-  tags: "design, craft, intent-first, design-direction, domain-exploration, design-memory, critique"
+  tags: "design, craft, intent-first, design-direction, domain-exploration, design-memory, critique, web-copy, ux-writing, headline, cta"
   related-skills: "moai-domain-uiux, moai-design-tools, moai-domain-frontend"
 
 # MoAI Extension: Progressive Disclosure
@@ -25,7 +25,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["intent-first", "design craft", "design direction", "design intent", "domain exploration", "design critique", "craft review", "design memory", "design system", "system.md", "design audit", "why before what", "design extract", "interface design"]
+  keywords: ["intent-first", "design craft", "design direction", "design intent", "domain exploration", "design critique", "craft review", "design memory", "design system", "system.md", "design audit", "why before what", "design extract", "interface design", "web copy", "ux writing", "headline", "cta copy", "landing page copy", "anti-ai writing"]
   agents: ["expert-frontend", "team-designer"]
   phases: ["plan", "run", "review"]
 ---
@@ -51,6 +51,7 @@ The three craft operations:
 - `modules/intent-first.md` — Intent-First process: domain exploration, design direction, vocabulary
 - `modules/design-memory.md` — `.moai/design/system.md` read/write protocol
 - `modules/critique-workflow.md` — Post-build critique: observe → diagnose → rebuild, hard rules and rejection criteria
+- `modules/web-copy-craft.md` — Web copy guidelines: anti-AI writing, headline formulas, CTA patterns, body copy rhythm
 
 ## Quick Reference
 
@@ -81,6 +82,16 @@ When `/moai review --critique` is invoked:
 2. Diagnose: Where does the implementation drift from intent?
 3. Decide: Patch (small drift) or rebuild (fundamental misalignment)
 
+### Web Copy Craft (run phase)
+
+When expert-frontend or team-designer generates web pages, apply copy craft rules:
+
+1. Use headline formulas: Number Anchor, Reversal, Direct Question, Empathy Hook, Declaration
+2. Vary sentence rhythm — never three consecutive sentences with the same structure
+3. Replace vague intensifiers with specific facts (numbers, names, dates)
+4. Eliminate AI filler phrases ("In today's fast-paced world", "Unlock the potential")
+5. CTA buttons: verb-first, outcome-oriented, one per viewport
+
 ## Works Well With
 
 - `moai-domain-uiux` — Design tokens, WCAG, accessibility (complementary, not overlapping)
@@ -89,5 +100,5 @@ When `/moai review --critique` is invoked:
 
 ---
 
-Version: 1.1.0
-Last Updated: 2026-03-28
+Version: 1.2.0
+Last Updated: 2026-03-30
