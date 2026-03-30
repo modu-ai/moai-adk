@@ -43,12 +43,11 @@ type profileSetupText struct {
 	// Permission mode (replaces legacy bypass)
 	PermissionModeTitle string
 	PermissionModeDesc  string
-	PermDefault         string
-	PermAcceptEdits     string
-	PermPlan            string
-	PermAuto            string
-	PermBypass          string
-	PermDontAsk         string
+	PermDefault     string
+	PermAcceptEdits string
+	PermPlan        string
+	PermBypass      string
+	PermDontAsk     string
 
 	// Section: Display
 	DisplayTitle string
@@ -108,7 +107,6 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:        "opusplan (Opus planning, Sonnet coding)",
 		PermissionModeTitle: "Permission mode",
 		PermissionModeDesc:  "Controls how Claude asks for permission before taking actions.",
-		PermAuto:            "Auto mode - Background safety classifier (Recommended, Team plan + Sonnet/Opus 4.6)",
 		PermAcceptEdits:     "Auto accept edits - Auto-accept file edits, ask for commands",
 		PermDefault:         "Ask permissions - Prompt for file edits and commands",
 		PermPlan:            "Plan mode - Read-only exploration and planning",
@@ -161,12 +159,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:        "opusplan (Opus 기획, Sonnet 코딩)",
 		PermissionModeTitle: "권한 모드",
 		PermissionModeDesc:  "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.",
-		PermAuto:            "자동 모드 - 백그라운드 안전 분류기 (권장, Team 플랜 + Sonnet/Opus 4.6 필요)",
-		PermAcceptEdits:     "자동 편집 수락 - 파일 편집 자동 수락, 명령어만 확인",
-		PermDefault:         "권한 요청 - 파일 편집과 명령어에 대해 매번 확인",
-		PermPlan:            "계획 모드 - 읽기 전용 탐색 및 계획",
-		PermBypass:          "권한 건너뛰기 - 모든 검사 생략 (격리된 환경 전용)",
-		PermDontAsk:         "묻지 않기 - 사전 승인된 도구만 사용 (CI/잠금 환경)",
+		PermAcceptEdits:     "자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인",
+		PermDefault:         "권한 요청 (default) - 파일 편집과 명령어에 대해 매번 확인",
+		PermPlan:            "계획 모드 (plan) - 읽기 전용 탐색 및 계획",
+		PermBypass:          "권한 건너뛰기 (bypassPermissions) - 모든 검사 생략 (격리된 환경 전용)",
+		PermDontAsk:         "묻지 않기 (dontAsk) - 사전 승인된 도구만 사용 (CI/잠금 환경)",
 		DisplayTitle:         "화면 표시",
 		StatuslineModeTitle:  "상태줄 표시 모드",
 		StatuslineModeDesc:   "상태줄의 레이아웃 스타일을 제어합니다.",
@@ -214,12 +211,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:        "opusplan (Opus設計、Sonnetコーディング)",
 		PermissionModeTitle: "権限モード",
 		PermissionModeDesc:  "Claudeがアクション実行前に権限を要求する方法を制御します。",
-		PermAuto:            "自動モード - バックグラウンド安全分類器（推奨、Teamプラン + Sonnet/Opus 4.6が必要）",
-		PermAcceptEdits:     "編集を自動承認 - ファイル編集を自動承認、コマンドのみ確認",
-		PermDefault:         "権限を確認 - ファイル編集とコマンドの都度確認",
-		PermPlan:            "プランモード - 読み取り専用の探索と計画",
-		PermBypass:          "権限スキップ - 全チェックを省略（隔離環境専用）",
-		PermDontAsk:         "確認しない - 事前承認済みツールのみ（CI/制限環境）",
+		PermAcceptEdits:     "編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認",
+		PermDefault:         "権限を確認 (default) - ファイル編集とコマンドの都度確認",
+		PermPlan:            "プランモード (plan) - 読み取り専用の探索と計画",
+		PermBypass:          "権限スキップ (bypassPermissions) - 全チェックを省略（隔離環境専用）",
+		PermDontAsk:         "確認しない (dontAsk) - 事前承認済みツールのみ（CI/制限環境）",
 		DisplayTitle:         "表示設定",
 		StatuslineModeTitle:  "ステータスライン表示モード",
 		StatuslineModeDesc:   "ステータスラインのレイアウトスタイルを制御します。",
@@ -267,12 +263,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOpusPlan:        "opusplan (Opus规划，Sonnet编码)",
 		PermissionModeTitle: "权限模式",
 		PermissionModeDesc:  "控制Claude在执行操作前如何请求权限。",
-		PermAuto:            "自动模式 - 后台安全分类器（推荐，需要Team计划 + Sonnet/Opus 4.6）",
-		PermAcceptEdits:     "自动接受编辑 - 自动接受文件编辑，仅确认命令",
-		PermDefault:         "请求权限 - 每次文件编辑和命令都需确认",
-		PermPlan:            "计划模式 - 只读探索和规划",
-		PermBypass:          "跳过权限 - 跳过所有检查（仅限隔离环境）",
-		PermDontAsk:         "不询问 - 仅预批准工具（CI/锁定环境）",
+		PermAcceptEdits:     "自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令",
+		PermDefault:         "请求权限 (default) - 每次文件编辑和命令都需确认",
+		PermPlan:            "计划模式 (plan) - 只读探索和规划",
+		PermBypass:          "跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）",
+		PermDontAsk:         "不询问 (dontAsk) - 仅预批准工具（CI/锁定环境）",
 		DisplayTitle:         "显示设置",
 		StatuslineModeTitle:  "状态栏显示模式",
 		StatuslineModeDesc:   "控制状态栏的布局样式。",

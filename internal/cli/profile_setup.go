@@ -158,7 +158,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Title(t.PermissionModeTitle).
 				Description(t.PermissionModeDesc).
 				Options(
-					huh.NewOption(t.PermAuto, "auto"),
 					huh.NewOption(t.PermAcceptEdits, "acceptEdits"),
 					huh.NewOption(t.PermDefault, "default"),
 					huh.NewOption(t.PermPlan, "plan"),
