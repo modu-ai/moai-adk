@@ -136,6 +136,10 @@ For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workf
 
 All phases include @MX code annotations. For MX protocol details, see .claude/rules/moai/workflow/mx-tag-protocol.md. For team-based parallel execution, see .claude/skills/moai/team/plan.md and .claude/skills/moai/team/run.md.
 
+### JIT Language Skill Loading
+
+Language skills (moai-lang-*) are NOT statically bound to agents. Instead, the orchestrator detects the project language from root indicator files (go.mod, package.json, pyproject.toml, Cargo.toml, etc.) and injects the appropriate language skill reference in agent spawn prompts. See run.md Phase 0.9 for detection rules.
+
 ---
 
 ## 6. Quality Gates
@@ -193,13 +197,7 @@ When fixing bugs:
 - Fix the bug with minimal code changes
 - Verify the reproduction test passes after the fix
 
-### Go-Specific Guidelines
-
-For Go development:
-- Run `go test -race ./...` for concurrency safety
-- Use table-driven tests for comprehensive coverage
-- Maintain 85%+ test coverage per package
-- Run `go vet` and `golangci-lint` before commits
+For language-specific guidelines (Go, Python, TypeScript, etc.), see `.claude/rules/moai/languages/`.
 
 ---
 
@@ -333,22 +331,15 @@ TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
 ---
 
-## 16. Context Search Protocol
+## 16. Reference Protocols
 
-Search previous Claude Code sessions when user references past work or a SPEC-ID not in current context. Ask user confirmation, Grep transcript files in ~/.claude/projects/, limit to 5,000 tokens per injection, skip if usage exceeds 150K tokens. For full protocol, see .claude/skills/moai/workflows/context.md.
-
----
-
-## 17. Troubleshooting
-
-- Debug hooks: `claude --debug "hooks"` or `/debug` command
-- TeammateIdle blocks: Fix LSP errors or set `enforce_quality: false` in quality.yaml
-- Agent Teams messages lost after resume: Spawn new teammates (old ones are orphaned)
-- Large PDFs: Use `pages` parameter (e.g., `pages: "1-20"`), max 20 pages per request
+- **Context Search**: Search previous sessions when user references past work. See .claude/skills/moai/workflows/context.md
+- **Troubleshooting**: `claude --debug "hooks"`, `/debug` command. TeammateIdle fix: resolve LSP errors or set `enforce_quality: false`
+- **Large PDFs**: Use `pages` parameter (e.g., `pages: "1-20"`), max 20 pages per request
 
 ---
 
-Version: 14.0.0 (Harness Modernization)
+Version: 15.0.0 (Harness-100 Optimization)
 Last Updated: 2026-03-30
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
