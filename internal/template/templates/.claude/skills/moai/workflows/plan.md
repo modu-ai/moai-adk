@@ -516,6 +516,35 @@ All of the following must be verified:
 
 ---
 
-Version: 2.7.0
-Updated: 2026-03-11
-Changes: Added Phase 2.5 GitHub Issue creation with bidirectional SPEC-Issue linking, --no-issue flag, issue_number SPEC frontmatter field.
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai plan JWT authentication with refresh token rotation"
+**Expected Result**:
+- Phase 1A: Explore discovers existing auth files if any
+- Phase 1B: manager-spec designs EARS requirements for JWT auth
+- Annotation cycle: 1-3 iterations refining requirements
+- Phase 2: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
+- Phase 2.5: GitHub Issue created and linked to SPEC
+- Phase 3: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
+
+### Existing Assets Flow
+**Prompt**: "/moai plan add payment gateway" (existing e-commerce codebase)
+**Expected Result**:
+- Explore discovers existing order, product, user models
+- SPEC references existing models as dependencies
+- plan.md identifies extension points in existing architecture
+- No duplicate functionality proposed
+
+### Error Flow
+**Prompt**: "/moai plan" (no description provided)
+**Expected Result**:
+- AskUserQuestion prompts user for feature description
+- After user provides description, normal flow continues
+- If user cancels, graceful exit with no files created
+
+---
+
+Version: 2.8.0
+Updated: 2026-03-30
+Changes: Added test scenarios, Phase 0.9 JIT Language Detection.

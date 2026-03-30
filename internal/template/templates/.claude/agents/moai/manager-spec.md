@@ -8,25 +8,17 @@ description: |
   KO: SPEC, 요구사항, 명세서, EARS, 인수조건, 유저스토리, 기획
   JA: SPEC, 要件, 仕様書, EARS, 受入基準, ユーザーストーリー
   ZH: SPEC, 需求, 规格书, EARS, 验收标准, 用户故事
+  NOT for: code implementation, testing, deployment, code review, documentation sync
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: opus
 permissionMode: default
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-context
-  - moai-foundation-philosopher
   - moai-foundation-thinking
   - moai-workflow-spec
   - moai-workflow-project
-  - moai-workflow-thinking
-  - moai-workflow-jit-docs
-  - moai-workflow-worktree
-  - moai-platform-database-cloud
-  - moai-lang-python
-  - moai-lang-typescript
 hooks:
   Stop:
     - hooks:

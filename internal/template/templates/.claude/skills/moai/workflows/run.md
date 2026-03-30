@@ -149,6 +149,58 @@ Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 - Phase 0.5 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
+### Phase 0.9: JIT Language Skill Detection
+
+Purpose: Detect the project's primary language and prepare the appropriate language skill reference for agent spawn prompts. Since language skills are not statically bound to agents, the orchestrator must inject them at spawn time.
+
+Steps:
+1. Check project root for language indicator files:
+   - go.mod → moai-lang-go
+   - package.json with "typescript" in devDependencies → moai-lang-typescript
+   - package.json without typescript → moai-lang-javascript
+   - pyproject.toml or requirements.txt → moai-lang-python
+   - Cargo.toml → moai-lang-rust
+   - pom.xml or build.gradle → moai-lang-java
+   - build.gradle.kts → moai-lang-kotlin
+   - *.csproj or *.sln → moai-lang-csharp
+   - Gemfile → moai-lang-ruby
+   - mix.exs → moai-lang-elixir
+   - build.sbt → moai-lang-scala
+   - Package.swift → moai-lang-swift
+   - pubspec.yaml → moai-lang-flutter
+   - DESCRIPTION (with R content) → moai-lang-r
+   - CMakeLists.txt or *.cpp → moai-lang-cpp
+2. Store the detected language skill name(s) as context for subsequent phases
+3. When spawning any expert or manager agent, include in the prompt: "Load Skill({detected-language-skill}) for language-specific patterns and conventions."
+4. If multiple languages detected (e.g., monorepo), include all relevant language skills
+
+Output: detected_language_skills list passed to all subsequent agent spawn prompts.
+
+This phase always executes and does NOT require user approval.
+
+### Phase 0.95: Scale-Based Execution Mode Selection
+
+Purpose: Automatically select the optimal execution mode based on task scope, preventing over-engineering for simple tasks and under-resourcing for complex ones.
+
+Mode Selection Rules:
+
+| Request Pattern | Detection Criteria | Execution Mode | Agents |
+|----------------|-------------------|---------------|--------|
+| Bug fix / error fix | SPEC scope ≤ 3 files, single domain | **Fix Mode** | expert-debug + expert-testing |
+| Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** | relevant expert + expert-testing |
+| Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** | manager-strategy + relevant expert + manager-quality |
+| Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** | All agents (strategy + backend + frontend + testing + quality + docs) |
+| Large cross-cutting change | complexity score ≥ 7 AND --team flag | **Team Mode** | 3-4 parallel teammates |
+
+Detection Steps:
+1. Count files referenced in SPEC requirements and plan
+2. Identify domains touched (backend, frontend, database, infra, docs)
+3. Assess complexity from SPEC priority and acceptance criteria count
+4. Select mode based on the table above
+5. Log selected mode: "Scale-based mode: {mode} (files: {N}, domains: {N})"
+
+This phase auto-selects and does NOT require user approval. The user can override with --team or --solo flags.
+
 ### Phase 1: Analysis and Planning
 
 Agent: manager-strategy subagent
@@ -623,5 +675,36 @@ All of the following must be verified:
 
 ---
 
-Version: 2.10.0
-Updated: 2026-03-11. Added GitHub Issue linking: Phase 3 reads SPEC issue_number for Fixes #N in commits/PRs. Previous: Harness Engineering improvements (v2.9.0).
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai run SPEC-AUTH-001"
+**Expected Result**:
+- Phase 0.9: Detects Go project (go.mod) → loads moai-lang-go
+- Phase 0.95: SPEC has 8 files, 2 domains → Standard Mode selected
+- Phase 1: manager-strategy creates execution plan with 5 tasks
+- Decision Point: User approves plan
+- Phase 2: Implementation via manager-ddd (DDD mode)
+- Phase 2.5: TRUST 5 validation passes
+- Phase 3: Commits created on feature branch
+
+### Fix Mode Flow
+**Prompt**: "/moai run SPEC-BUG-042" (bug fix SPEC, 2 files affected)
+**Expected Result**:
+- Phase 0.95: SPEC has 2 files, 1 domain → Fix Mode selected
+- Directly spawns expert-debug + expert-testing
+- Minimal overhead, fast execution
+- Quality validation still runs
+
+### Error Flow
+**Prompt**: "/moai run SPEC-NONEXISTENT"
+**Expected Result**:
+- SPEC directory not found in .moai/specs/
+- AskUserQuestion: "SPEC not found. Create it with /moai plan?"
+- If user confirms, redirect to plan workflow
+
+---
+
+Version: 2.11.0
+Updated: 2026-03-30
+Changes: Added Phase 0.9 JIT Language Detection, Phase 0.95 Scale-Based Mode Selection, test scenarios.

@@ -8,19 +8,16 @@ description: |
   KO: 품질, TRUST 5, 코드리뷰, 준수, 품질게이트, 린트, 코드품질
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
+  NOT for: code implementation, architecture design, deployment, documentation writing, git operations
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-context
   - moai-foundation-quality
-  - moai-workflow-testing
   - moai-tool-ast-grep
-  - moai-workflow-loop
 hooks:
   Stop:
     - hooks:
