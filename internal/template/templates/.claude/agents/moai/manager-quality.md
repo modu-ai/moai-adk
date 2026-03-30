@@ -14,13 +14,9 @@ permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-context
   - moai-foundation-quality
-  - moai-workflow-testing
   - moai-tool-ast-grep
-  - moai-workflow-loop
 hooks:
   Stop:
     - hooks:

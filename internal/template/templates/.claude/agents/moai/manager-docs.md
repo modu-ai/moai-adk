@@ -14,15 +14,9 @@ permissionMode: acceptEdits
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-docs-generation
+  - moai-workflow-project
   - moai-workflow-jit-docs
-  - moai-workflow-templates
-  - moai-library-mermaid
-  - moai-library-nextra
-  - moai-formats-data
-  - moai-foundation-context
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

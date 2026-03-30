@@ -14,14 +14,9 @@ permissionMode: default
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-philosopher
   - moai-foundation-thinking
   - moai-workflow-spec
-  - moai-workflow-project
-  - moai-workflow-thinking
-  - moai-foundation-context
   - moai-workflow-worktree
 ---
 

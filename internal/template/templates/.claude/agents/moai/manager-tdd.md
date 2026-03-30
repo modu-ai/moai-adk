@@ -15,13 +15,9 @@ permissionMode: default
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-quality
   - moai-workflow-tdd
   - moai-workflow-testing
-  - moai-workflow-ddd
-  - moai-workflow-mx-tag
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit"

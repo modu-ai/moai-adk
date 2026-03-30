@@ -14,9 +14,8 @@ maxTurns: 50
 permissionMode: bypassPermissions
 memory: user
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-workflow-project
+  - moai-foundation-claude
   - moai-workflow-templates
 ---
 

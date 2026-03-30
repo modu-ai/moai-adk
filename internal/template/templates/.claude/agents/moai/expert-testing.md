@@ -14,18 +14,9 @@ permissionMode: default
 maxTurns: 100
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
   - moai-foundation-quality
   - moai-workflow-testing
-  - moai-workflow-tdd
-  - moai-workflow-ddd
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-lang-javascript
-  - moai-lang-go
-  - moai-lang-java
-  - moai-tool-ast-grep
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

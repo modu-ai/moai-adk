@@ -14,15 +14,10 @@ permissionMode: default
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-philosopher
   - moai-foundation-thinking
   - moai-workflow-project
   - moai-workflow-templates
-  - moai-workflow-worktree
-  - moai-workflow-spec
-  - moai-foundation-context
 ---
 
 # Project Manager - Project Manager Agent

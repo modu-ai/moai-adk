@@ -14,15 +14,9 @@ permissionMode: default
 maxTurns: 80
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
   - moai-foundation-quality
   - moai-workflow-testing
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-lang-javascript
-  - moai-lang-rust
-  - moai-lang-go
 ---
 
 # Performance Expert

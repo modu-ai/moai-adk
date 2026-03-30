@@ -149,6 +149,35 @@ Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 - Phase 0.5 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
+### Phase 0.9: JIT Language Skill Detection
+
+Purpose: Detect the project's primary language and prepare the appropriate language skill reference for agent spawn prompts. Since language skills are not statically bound to agents, the orchestrator must inject them at spawn time.
+
+Steps:
+1. Check project root for language indicator files:
+   - go.mod → moai-lang-go
+   - package.json with "typescript" in devDependencies → moai-lang-typescript
+   - package.json without typescript → moai-lang-javascript
+   - pyproject.toml or requirements.txt → moai-lang-python
+   - Cargo.toml → moai-lang-rust
+   - pom.xml or build.gradle → moai-lang-java
+   - build.gradle.kts → moai-lang-kotlin
+   - *.csproj or *.sln → moai-lang-csharp
+   - Gemfile → moai-lang-ruby
+   - mix.exs → moai-lang-elixir
+   - build.sbt → moai-lang-scala
+   - Package.swift → moai-lang-swift
+   - pubspec.yaml → moai-lang-flutter
+   - DESCRIPTION (with R content) → moai-lang-r
+   - CMakeLists.txt or *.cpp → moai-lang-cpp
+2. Store the detected language skill name(s) as context for subsequent phases
+3. When spawning any expert or manager agent, include in the prompt: "Load Skill({detected-language-skill}) for language-specific patterns and conventions."
+4. If multiple languages detected (e.g., monorepo), include all relevant language skills
+
+Output: detected_language_skills list passed to all subsequent agent spawn prompts.
+
+This phase always executes and does NOT require user approval.
+
 ### Phase 1: Analysis and Planning
 
 Agent: manager-strategy subagent

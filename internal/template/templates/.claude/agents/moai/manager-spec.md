@@ -14,19 +14,10 @@ permissionMode: default
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-context
-  - moai-foundation-philosopher
   - moai-foundation-thinking
   - moai-workflow-spec
   - moai-workflow-project
-  - moai-workflow-thinking
-  - moai-workflow-jit-docs
-  - moai-workflow-worktree
-  - moai-platform-database-cloud
-  - moai-lang-python
-  - moai-lang-typescript
 hooks:
   Stop:
     - hooks:

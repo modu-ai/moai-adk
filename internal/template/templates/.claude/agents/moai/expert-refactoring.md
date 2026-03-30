@@ -14,12 +14,9 @@ permissionMode: default
 maxTurns: 100
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-quality
   - moai-tool-ast-grep
   - moai-workflow-testing
-  - moai-workflow-ddd
 ---
 
 # Expert Refactoring Agent

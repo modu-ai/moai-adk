@@ -14,16 +14,9 @@ maxTurns: 100
 permissionMode: default
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-philosopher
-  - moai-foundation-quality
-  - moai-workflow-project
-  - moai-workflow-jit-docs
-  - moai-workflow-templates
   - moai-platform-deployment
-  - moai-platform-database-cloud
-  - moai-framework-electron
+  - moai-workflow-project
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
