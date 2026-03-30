@@ -82,15 +82,33 @@ Pass to manager-quality:
 - Feature Request: labels "enhancement"
 - Question: labels "question"
 
+### Issue Language Policy
+
+[HARD] GitHub Issue title and template headers MUST be written in the user's `conversation_language`:
+
+- **Title**: Written in conversation_language
+- **Body template headers**: Section names (e.g., "Description", "Priority", "Environment") translated to conversation_language
+- **Body content**: User-provided text preserved verbatim (not translated, even if language differs from conversation_language)
+- **Labels**: English only (GitHub standard: "bug", "enhancement", "question")
+
+Language examples:
+
+| conversation_language | Title example | Section header example |
+|----------------------|---------------|----------------------|
+| en | "Login fails with 500 error" | "## Description", "## Priority", "## Environment" |
+| ko | "로그인 시 500 에러 발생" | "## 설명", "## 우선순위", "## 환경 정보" |
+| ja | "ログイン時に500エラー発生" | "## 説明", "## 優先度", "## 環境情報" |
+| zh | "登录时出现500错误" | "## 描述", "## 优先级", "## 环境信息" |
+
 ### Issue Creation Command
 
 The manager-quality agent executes: gh issue create --repo modu-ai/moai-adk
 
-Issue body uses a consistent template including:
+Issue body uses a consistent template in the user's conversation_language, including:
 
-- Feedback type header
-- Description content
-- Priority level
+- Feedback type header (translated)
+- Description content (user's original text)
+- Priority level (translated)
 - Environment information (MoAI version, OS)
 
 ### Result Reporting
