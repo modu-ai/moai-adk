@@ -8,6 +8,7 @@ description: |
   KO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스
   JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
   ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
+  NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default

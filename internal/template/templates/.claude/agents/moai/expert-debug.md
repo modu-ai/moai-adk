@@ -8,6 +8,7 @@ description: |
   KO: 디버그, 에러, 버그, 예외, 크래시, 문제해결, 진단, 오류수정
   JA: デバッグ, エラー, バグ, 例外, クラッシュ, トラブルシュート, 診断
   ZH: 调试, 错误, bug, 异常, 崩溃, 故障排除, 诊断
+  NOT for: new feature development, architecture design, code review, security audits, documentation
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 maxTurns: 100

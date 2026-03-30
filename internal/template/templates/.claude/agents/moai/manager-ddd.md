@@ -9,6 +9,7 @@ description: |
   KO: DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링
   JA: DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング
   ZH: DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构
+  NOT for: greenfield development (use TDD), deployment, documentation, git operations, security audits
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
