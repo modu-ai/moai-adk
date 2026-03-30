@@ -1046,6 +1046,38 @@ All of the following must be verified:
 
 ---
 
-Version: 3.5.0
-Updated: 2026-03-11
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai sync SPEC-AUTH-001"
+**Expected Result**:
+- Phase 0: Pre-sync quality gate passes (tests, lint)
+- Phase 0.5: Quality verification confirms TRUST 5 compliance
+- Phase 1: Divergence analysis shows implementation matches SPEC
+- Decision Point: User approves sync plan
+- Phase 2: Documentation updated (README, CHANGELOG, API docs)
+- Phase 2.2.1: SPEC status updated to "implemented"
+- Phase 3: Commits created, PR opened with summary
+
+### Partial Implementation Flow
+**Prompt**: "/moai sync SPEC-AUTH-001" (only backend implemented, frontend pending)
+**Expected Result**:
+- Phase 1.5: Divergence detected - 3/5 acceptance criteria met
+- Sync plan notes partial implementation
+- SPEC status updated to "in-progress" (not "implemented")
+- Documentation reflects completed portions only
+- PR description notes remaining work
+
+### Error Flow
+**Prompt**: "/moai sync" (no SPEC specified, uncommitted changes exist)
+**Expected Result**:
+- Auto-detect: Finds uncommitted changes on current branch
+- AskUserQuestion: "Sync changes on current branch?"
+- If user confirms, syncs based on git diff
+- If no changes found, reports "Nothing to sync"
+
+---
+
+Version: 3.6.0
+Updated: 2026-03-30
+Changes: Added test scenarios (Harness-100 pattern).
