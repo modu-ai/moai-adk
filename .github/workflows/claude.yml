@@ -51,6 +51,7 @@ jobs:
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
           # max-turns 40: Issue 분석/구현은 복잡한 멀티스텝 작업이 많아 20으로 부족한 경우 발생.
           # Use Opus model with high effort for better reasoning on issue fixes.
+          # C4b Fix: Increased from 20 to 40 to prevent error_max_turns on complex tasks.
           claude_args: |
             --model opus
             --effort high
