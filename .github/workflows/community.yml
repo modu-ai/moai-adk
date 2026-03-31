@@ -107,13 +107,26 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Add automerge label
+        if: github.event_name == 'pull_request_target' || github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr edit "$PR_NUMBER" --add-label "automerge" || true
+          fi
+
       - name: Auto-merge PRs
+        if: always()
         uses: pascalgn/automerge-action@v0.16.4
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           MERGE_METHOD: "squash"
           MERGE_DELETE_BRANCH: "true"
           MERGE_FORKS: "true"
+          MERGE_LABELS: ""
+          UPDATE_LABELS: ""
           MERGE_COMMIT_MESSAGE: "pull-request-title-and-description"
           MERGE_RETRIES: "6"
           MERGE_RETRY_SLEEP: "10000"
