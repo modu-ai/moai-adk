@@ -15,10 +15,12 @@ concurrency:
 
 jobs:
   parse-severity:
-    # Only run for Claude Code Review check runs that completed successfully
+    # Run for Claude Code Review check runs.
+    # Claude Code Review currently uses 'neutral' conclusion so it never blocks merging.
+    # Also handle 'success' in case Anthropic changes this in a future version.
     if: |
       github.event.check_run.name == 'Claude Code Review' &&
-      github.event.check_run.conclusion == 'neutral'
+      (github.event.check_run.conclusion == 'neutral' || github.event.check_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -33,22 +35,29 @@ jobs:
           CHECK_RUN_ID: ${{ github.event.check_run.id }}
         run: |
           # Extract severity JSON from check run output
-          SEVERITY=$(gh api repos/${{ github.repository }}/check-runs/${CHECK_RUN_ID} \
+          RAW=$(gh api repos/${{ github.repository }}/check-runs/${CHECK_RUN_ID} \
             --jq '.output.text | split("bughunter-severity: ")[1] | split(" -->")[0]' 2>/dev/null || echo "")
 
-          if [ -z "$SEVERITY" ] || [ "$SEVERITY" = "null" ]; then
+          if [ -z "$RAW" ] || [ "$RAW" = "null" ]; then
             echo "No severity data found in check run output"
             echo "has_severity=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "severity=$SEVERITY" >> "$GITHUB_OUTPUT"
+          # Validate that the extracted string is valid JSON
+          if ! echo "$RAW" | jq -e . >/dev/null 2>&1; then
+            echo "::warning::Severity data is not valid JSON: $RAW"
+            echo "has_severity=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "severity=$RAW" >> "$GITHUB_OUTPUT"
           echo "has_severity=true" >> "$GITHUB_OUTPUT"
 
           # Parse counts
-          IMPORTANT=$(echo "$SEVERITY" | jq -r '.normal // 0')
-          NIT=$(echo "$SEVERITY" | jq -r '.nit // 0')
-          PRE_EXISTING=$(echo "$SEVERITY" | jq -r '.pre_existing // 0')
+          IMPORTANT=$(echo "$RAW" | jq -r '.normal // 0')
+          NIT=$(echo "$RAW" | jq -r '.nit // 0')
+          PRE_EXISTING=$(echo "$RAW" | jq -r '.pre_existing // 0')
 
           echo "important=$IMPORTANT" >> "$GITHUB_OUTPUT"
           echo "nit=$NIT" >> "$GITHUB_OUTPUT"
@@ -76,47 +85,50 @@ jobs:
           # Build status indicator
           if [ "$IMPORTANT" -gt 0 ]; then
             STATUS="**Action Required**"
+            IMPORTANT_STATUS="Resolve before merge"
           elif [ "$NIT" -gt 0 ]; then
             STATUS="Minor Issues Found"
+            IMPORTANT_STATUS="None"
           else
             STATUS="All Clear"
+            IMPORTANT_STATUS="None"
           fi
 
-          BODY=$(cat <<'COMMENT_EOF'
+          # Delete previous quality gate comment if exists (prevent duplicate accumulation)
+          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("<!-- review-quality-gate -->")) | .id' 2>/dev/null | head -1)
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method DELETE 2>/dev/null || true
+          fi
+
+          # Post new comment with marker for deduplication
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "<!-- review-quality-gate -->
           ### Claude Code Review Quality Gate
 
           | Severity | Count | Status |
           |----------|-------|--------|
-          | :red_circle: Important | IMPORTANT_COUNT | IMPORTANT_STATUS |
-          | :yellow_circle: Nit | NIT_COUNT | - |
-          | :purple_circle: Pre-existing | PRE_EXISTING_COUNT | - |
+          | :red_circle: Important | ${IMPORTANT} | ${IMPORTANT_STATUS} |
+          | :yellow_circle: Nit | ${NIT} | - |
+          | :purple_circle: Pre-existing | ${PRE_EXISTING} | - |
 
-          **Result**: GATE_STATUS
+          **Result**: ${STATUS}
 
-          > Parsed from Claude Code Review check run. Important findings should be resolved before merging.
-          COMMENT_EOF
-          )
-
-          # Replace placeholders
-          IMPORTANT_STATUS=""
-          if [ "$IMPORTANT" -gt 0 ]; then
-            IMPORTANT_STATUS="Resolve before merge"
-          else
-            IMPORTANT_STATUS="None"
-          fi
-
-          BODY="${BODY//IMPORTANT_COUNT/$IMPORTANT}"
-          BODY="${BODY//NIT_COUNT/$NIT}"
-          BODY="${BODY//PRE_EXISTING_COUNT/$PRE_EXISTING}"
-          BODY="${BODY//IMPORTANT_STATUS/$IMPORTANT_STATUS}"
-          BODY="${BODY//GATE_STATUS/$STATUS}"
-
-          gh pr comment "$PR_NUMBER" \
-            --repo "${{ github.repository }}" \
-            --body "$BODY"
+          > Parsed from Claude Code Review check run. Important findings should be resolved before merging."
 
       - name: Fail on important findings
-        if: steps.severity.outputs.has_severity == 'true' && steps.severity.outputs.important > 0
+        if: |
+          steps.severity.outputs.has_severity == 'true' &&
+          steps.severity.outputs.important != '0' &&
+          steps.severity.outputs.important != ''
+        env:
+          PR_NUMBER: ${{ github.event.check_run.pull_requests[0].number }}
         run: |
+          # Only fail if there is an associated PR (otherwise the failure has no context)
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "::warning::Important findings detected but no PR associated — skipping failure"
+            exit 0
+          fi
           echo "::error::Claude Code Review found ${{ steps.severity.outputs.important }} important issue(s) that should be resolved before merging."
           exit 1
