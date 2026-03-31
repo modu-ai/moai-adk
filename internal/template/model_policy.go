@@ -64,15 +64,6 @@ var agentModelMap = map[string][3]string{
 	"builder-agent":  {"opus", "sonnet", "haiku"},
 	"builder-skill":  {"opus", "sonnet", "haiku"},
 	"builder-plugin": {"opus", "sonnet", "haiku"},
-	// Team Agents
-	"team-researcher":   {"haiku", "haiku", "haiku"},
-	"team-analyst":      {"opus", "sonnet", "haiku"},
-	"team-architect":    {"opus", "opus", "sonnet"},
-	"team-designer":     {"opus", "sonnet", "haiku"},
-	"team-backend-dev":  {"opus", "sonnet", "sonnet"},
-	"team-frontend-dev": {"opus", "sonnet", "sonnet"},
-	"team-tester":       {"opus", "sonnet", "haiku"},
-	"team-quality":      {"haiku", "haiku", "haiku"},
 }
 
 // GetAgentModel returns the model string for a given agent under the specified policy.

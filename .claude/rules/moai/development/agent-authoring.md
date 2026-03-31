@@ -52,7 +52,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
-## Task(agent_type) Restrictions
+## Agent(agent_type) Restrictions
 
 The `tools` field supports `Task(worker, researcher)` syntax to restrict which subagents an agent can spawn.
 
@@ -120,30 +120,32 @@ Create new MoAI components:
 - builder-skill: New skill creation
 - builder-plugin: Plugin creation
 
-### Team Agents (5) - Experimental
+### Dynamic Team Generation (Experimental)
 
-**Architecture**: team-* agents are sub-agent DEFINITIONS (`.claude/agents/`) used as ROLE TEMPLATES for Agent Teams teammates. They are NOT invoked as standalone subagents.
+**Architecture**: Agent Teams teammates are spawned dynamically using `Agent(subagent_type: "general-purpose")` with runtime parameter overrides. No static team-* agent definition files are used.
 
 **Key distinction from regular subagents**:
 - Regular subagents: spawned from main conversation, return results, cannot communicate with each other
-- team-* as teammates: spawned with `team_name` + `name` parameters, get Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework
+- Dynamic teammates: spawned with `team_name` + `name` parameters, get Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework
 
 **Spawn pattern** (Agent Teams only):
 ```
-Agent(subagent_type: "team-reader", team_name: "...", name: "researcher", model: "haiku")
+Agent(subagent_type: "general-purpose", team_name: "...", name: "researcher", model: "haiku", mode: "plan")
 ```
 
-**DO NOT** invoke team-* agents without `team_name` parameter. They reference SendMessage/TaskList in their body which are only available in Agent Teams context.
+Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.role_profiles`:
+
+| Role Profile | Default Model | Mode | Isolation | Purpose |
+|-------------|---------------|------|-----------|---------|
+| researcher | haiku | plan (read-only) | none | Codebase exploration, analysis |
+| analyst | sonnet | plan (read-only) | none | Requirements analysis, validation |
+| architect | sonnet | plan (read-only) | none | Solution design, architecture |
+| implementer | sonnet | acceptEdits | worktree | Backend, frontend, full-stack code |
+| tester | sonnet | acceptEdits | worktree | Test creation, coverage validation |
+| designer | sonnet | acceptEdits | worktree | UI/UX design with MCP tools |
+| reviewer | haiku | plan (read-only) | none | Code review, quality validation |
 
 Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
-
-| Agent | Default Model | Phase | Mode | Isolation | Background | Purpose |
-|-------|---------------|-------|------|-----------|------------|---------|
-| team-reader | sonnet | plan | plan (read-only) | none | true | Codebase exploration, requirements analysis, technical design (role via prompt) |
-| team-coder | sonnet | run | acceptEdits | worktree | true | Backend, frontend, or full-stack implementation (role via prompt) |
-| team-tester | sonnet | run | acceptEdits | worktree | true | Test creation with exclusive test file ownership |
-| team-designer | sonnet | run | acceptEdits | worktree | true | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
-| team-validator | haiku | run | plan (read-only) | none | true | TRUST 5 quality validation |
 
 ## Rules
 
@@ -164,14 +166,12 @@ Expert agents: Read, Write, Edit, Grep, Glob, Bash
 
 Builder agents: Read, Write, Edit, Grep, Glob
 
-Team implementation agents: Read, Write, Edit, Grep, Glob, Bash (+ skills preloading for domain expertise)
-
-Team research agents: Read, Grep, Glob, Bash (read-only via permissionMode: plan)
+Dynamic teammates (general-purpose): Inherit all tools from parent session. Permission control via `mode` parameter at spawn time.
 
 Notes:
-- Use `skills` field to preload domain-specific knowledge into team agents
-- Team agents with permissionMode: plan cannot write files regardless of tools listed
-- Prefer skills preloading over large tool lists for domain expertise
+- Dynamic teammates use `mode: "plan"` for read-only enforcement instead of tool restrictions
+- Project-specific context is included in the spawn prompt, not preloaded skills
+- Teammates can self-load skills via Skill() tool when deeper documentation is needed
 
 ## Agent Invocation
 

@@ -1,16 +1,16 @@
 ---
 name: moai-workflow-thinking
 description: >
-  Sequential Thinking MCP and UltraThink mode for deep analysis, complex problem
-  decomposition, and structured reasoning workflows. Use for multi-step analysis
-  or architecture decisions.
+  Sequential Thinking MCP for structured step-by-step analysis via --deepthink flag.
+  Separate from UltraThink which is Claude's native extended reasoning mode.
+  Use for multi-step analysis or architecture decisions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, mcp__sequential-thinking__sequentialthinking
 effort: high
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "workflow"
   status: "active"
   modularized: "false"
@@ -31,13 +31,27 @@ triggers:
     - manager-spec
 ---
 
-# Sequential Thinking & UltraThink
+# Sequential Thinking MCP (--deepthink)
 
-Structured reasoning system for complex problem analysis and decision-making.
+Structured step-by-step reasoning via `mcp__sequential-thinking__sequentialthinking` MCP tool.
 
-## Activation Triggers
+## CRITICAL: Two Distinct Modes
 
-Use Sequential Thinking MCP when:
+MoAI has TWO independent deep analysis modes. They are NOT the same thing:
+
+| Mode | Trigger | Mechanism | MCP Tool? | GLM Compatible? |
+|------|---------|-----------|-----------|-----------------|
+| `--deepthink` | Explicit `--deepthink` flag | Sequential Thinking MCP tool | YES — `mcp__sequential-thinking__sequentialthinking` | NO — generates server_tool_use content type |
+| `ultrathink` | Keyword or auto-detection | Claude native extended reasoning (high effort) | NO — native to Claude | YES — no special content type |
+
+**Rules:**
+- `--deepthink` → ALWAYS invoke Sequential Thinking MCP. NEVER use for native reasoning.
+- `ultrathink` → ALWAYS use Claude's native extended reasoning. NEVER invoke Sequential Thinking MCP.
+- They can coexist: `ultrathink --deepthink` activates BOTH modes independently.
+
+## Activation Triggers (--deepthink only)
+
+Use Sequential Thinking MCP when `--deepthink` flag is explicitly present:
 
 - Breaking down complex problems into steps
 - Planning and design with room for revision
@@ -98,75 +112,6 @@ thoughtNumber: 5
 totalThoughts: 5
 nextThoughtNeeded: false
 ```
-
-## UltraThink Mode
-
-Enhanced analysis mode activated by `--deepthink` flag.
-
-**Activation:**
-```
-"Implement authentication system --deepthink"
-"Refactor the API layer --deepthink"
-```
-
-**Process:**
-1. Request Analysis: Identify core task, detect keywords, recognize complexity
-2. Sequential Thinking: Begin structured reasoning
-3. Execution Planning: Map subtasks to agents, identify parallel opportunities
-4. Execution: Launch agents, integrate results
-
-**UltraThink Parameters:**
-
-Initial Analysis:
-```
-thought: "Analyzing user request: [content]"
-nextThoughtNeeded: true
-thoughtNumber: 1
-totalThoughts: [estimate]
-```
-
-Subtask Decomposition:
-```
-thought: "Breaking down: 1) [task1] 2) [task2] 3) [task3]"
-nextThoughtNeeded: true
-thoughtNumber: 2
-```
-
-Agent Mapping:
-```
-thought: "Mapping: [task1] → expert-backend, [task2] → expert-frontend"
-nextThoughtNeeded: true
-thoughtNumber: 3
-```
-
-Execution Strategy:
-```
-thought: "Strategy: [tasks1,2] parallel, [task3] depends on [task1]"
-nextThoughtNeeded: true
-thoughtNumber: 4
-```
-
-Final Plan:
-```
-thought: "Plan: Launch [agents] in parallel, then [agent]"
-nextThoughtNeeded: false
-```
-
-## When to Use
-
-**UltraThink is ideal for:**
-- Complex multi-domain tasks (backend + frontend + testing)
-- Architecture decisions affecting multiple files
-- Performance optimization requiring analysis
-- Security review needs
-- Refactoring with behavior preservation
-
-**Benefits:**
-- Structured decomposition of complex problems
-- Explicit agent-task mapping with justification
-- Identification of parallel execution opportunities
-- Context maintenance throughout reasoning
-- Revision capability when approaches need adjustment
 
 ## Guidelines
 

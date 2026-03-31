@@ -55,9 +55,8 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | manager-quality | - | - | quality-completion |
 | manager-spec | - | - | spec-completion |
 | manager-docs | - | docs-verification | docs-completion |
-| team-coder | - | team-coder-verification | - |
-| team-tester | - | team-testing-verification | team-testing-completion |
-| team-validator | - | - | team-quality-completion |
+
+Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose")`) do not use agent-scoped hooks. Quality enforcement for teammates uses global TeammateIdle and TaskCompleted hooks in settings.json.
 
 ## Hook Command Interface
 
