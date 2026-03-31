@@ -1,0 +1,122 @@
+name: Review Quality Gate
+
+# Parses Claude Code Review check run severity and posts a summary comment.
+# If any "Important" (normal) severity findings exist, the job fails to signal
+# that the PR needs attention before merging.
+
+on:
+  # Trigger when Claude Code Review check run completes
+  check_run:
+    types: [completed]
+
+concurrency:
+  group: review-quality-gate-${{ github.event.check_run.pull_requests[0].number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  parse-severity:
+    # Only run for Claude Code Review check runs that completed successfully
+    if: |
+      github.event.check_run.name == 'Claude Code Review' &&
+      github.event.check_run.conclusion == 'neutral'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: read
+      pull-requests: write
+
+    steps:
+      - name: Parse review severity
+        id: severity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHECK_RUN_ID: ${{ github.event.check_run.id }}
+        run: |
+          # Extract severity JSON from check run output
+          SEVERITY=$(gh api repos/${{ github.repository }}/check-runs/${CHECK_RUN_ID} \
+            --jq '.output.text | split("bughunter-severity: ")[1] | split(" -->")[0]' 2>/dev/null || echo "")
+
+          if [ -z "$SEVERITY" ] || [ "$SEVERITY" = "null" ]; then
+            echo "No severity data found in check run output"
+            echo "has_severity=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "severity=$SEVERITY" >> "$GITHUB_OUTPUT"
+          echo "has_severity=true" >> "$GITHUB_OUTPUT"
+
+          # Parse counts
+          IMPORTANT=$(echo "$SEVERITY" | jq -r '.normal // 0')
+          NIT=$(echo "$SEVERITY" | jq -r '.nit // 0')
+          PRE_EXISTING=$(echo "$SEVERITY" | jq -r '.pre_existing // 0')
+
+          echo "important=$IMPORTANT" >> "$GITHUB_OUTPUT"
+          echo "nit=$NIT" >> "$GITHUB_OUTPUT"
+          echo "pre_existing=$PRE_EXISTING" >> "$GITHUB_OUTPUT"
+
+          echo "## Review Severity Summary"
+          echo "- Important: $IMPORTANT"
+          echo "- Nit: $NIT"
+          echo "- Pre-existing: $PRE_EXISTING"
+
+      - name: Post summary comment
+        if: steps.severity.outputs.has_severity == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMPORTANT: ${{ steps.severity.outputs.important }}
+          NIT: ${{ steps.severity.outputs.nit }}
+          PRE_EXISTING: ${{ steps.severity.outputs.pre_existing }}
+          PR_NUMBER: ${{ github.event.check_run.pull_requests[0].number }}
+        run: |
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "No PR associated with this check run"
+            exit 0
+          fi
+
+          # Build status indicator
+          if [ "$IMPORTANT" -gt 0 ]; then
+            STATUS="**Action Required**"
+          elif [ "$NIT" -gt 0 ]; then
+            STATUS="Minor Issues Found"
+          else
+            STATUS="All Clear"
+          fi
+
+          BODY=$(cat <<'COMMENT_EOF'
+          ### Claude Code Review Quality Gate
+
+          | Severity | Count | Status |
+          |----------|-------|--------|
+          | :red_circle: Important | IMPORTANT_COUNT | IMPORTANT_STATUS |
+          | :yellow_circle: Nit | NIT_COUNT | - |
+          | :purple_circle: Pre-existing | PRE_EXISTING_COUNT | - |
+
+          **Result**: GATE_STATUS
+
+          > Parsed from Claude Code Review check run. Important findings should be resolved before merging.
+          COMMENT_EOF
+          )
+
+          # Replace placeholders
+          IMPORTANT_STATUS=""
+          if [ "$IMPORTANT" -gt 0 ]; then
+            IMPORTANT_STATUS="Resolve before merge"
+          else
+            IMPORTANT_STATUS="None"
+          fi
+
+          BODY="${BODY//IMPORTANT_COUNT/$IMPORTANT}"
+          BODY="${BODY//NIT_COUNT/$NIT}"
+          BODY="${BODY//PRE_EXISTING_COUNT/$PRE_EXISTING}"
+          BODY="${BODY//IMPORTANT_STATUS/$IMPORTANT_STATUS}"
+          BODY="${BODY//GATE_STATUS/$STATUS}"
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "$BODY"
+
+      - name: Fail on important findings
+        if: steps.severity.outputs.has_severity == 'true' && steps.severity.outputs.important > 0
+        run: |
+          echo "::error::Claude Code Review found ${{ steps.severity.outputs.important }} important issue(s) that should be resolved before merging."
+          exit 1
