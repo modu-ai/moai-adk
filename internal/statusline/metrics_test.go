@@ -2,7 +2,18 @@ package statusline
 
 import "testing"
 
+// clearGLMEnv clears GLM environment variables so tests run in isolation
+// regardless of whether GLM mode is active in the developer's shell.
+func clearGLMEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+}
+
 func TestCollectMetrics(t *testing.T) {
+	clearGLMEnv(t)
+
 	tests := []struct {
 		name      string
 		input     *StdinData
@@ -164,6 +175,8 @@ func TestFormatCost(t *testing.T) {
 
 // TestResolveGLMModelName verifies GLM model name detection from env vars.
 func TestResolveGLMModelName(t *testing.T) {
+	clearGLMEnv(t)
+
 	tests := []struct {
 		name        string
 		displayName string
@@ -202,7 +215,7 @@ func TestResolveGLMModelName(t *testing.T) {
 		{
 			name:        "Opus without GLM env (Claude mode)",
 			displayName: "Opus",
-			envKey:      "",
+			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
 			envValue:    "",
 			want:        "Opus",
 		},
