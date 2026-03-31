@@ -5,11 +5,9 @@ on:
     # C3 Fix: Removed 'synchronize' to prevent a full review on every commit push.
     # 'synchronize' was triggering N reviews for N commits in a PR (unbounded cost).
     types: [opened, ready_for_review, reopened]
-    # Optional: Only run on specific file changes (uncomment to reduce unnecessary runs)
-    # paths:
-    #   - "**/*.go"
-    #   - "**/*.ts"
-    #   - "**/*.tsx"
+    # CI 설정 파일 변경만 있는 PR은 AI 코드 리뷰 생략 (불필요한 비용 방지)
+    paths-ignore:
+      - ".github/**"
 
 # I1 Fix: Added concurrency control to prevent duplicate parallel runs on the same PR.
 concurrency:
