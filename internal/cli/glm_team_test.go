@@ -44,13 +44,17 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 				"DISABLE_PROMPT_CACHING",
+				"API_TIMEOUT_MS",
+				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 			},
 			wantVals: map[string]string{
-				"ANTHROPIC_AUTH_TOKEN":           "test-key-123",
-				"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.5-air",
+				"ANTHROPIC_AUTH_TOKEN":                      "test-key-123",
+				"ANTHROPIC_BASE_URL":                        "https://api.z.ai/api/anthropic",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":              "glm-5.1",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL":            "glm-4.7",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":             "glm-4.5-air",
+				"API_TIMEOUT_MS":                            "3000000",
+				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 			},
 		},
 		{
@@ -77,13 +81,17 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 				"DISABLE_PROMPT_CACHING",
+				"API_TIMEOUT_MS",
+				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 			},
 			wantVals: map[string]string{
-				"ANTHROPIC_AUTH_TOKEN":           "custom-api-key-xyz",
-				"ANTHROPIC_BASE_URL":             "https://custom.glm.api/v1",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "custom-high",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL": "custom-medium",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "custom-low",
+				"ANTHROPIC_AUTH_TOKEN":                      "custom-api-key-xyz",
+				"ANTHROPIC_BASE_URL":                        "https://custom.glm.api/v1",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":              "custom-high",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL":            "custom-medium",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":             "custom-low",
+				"API_TIMEOUT_MS":                            "3000000",
+				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 			},
 		},
 		{
@@ -110,13 +118,17 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 				"DISABLE_PROMPT_CACHING",
+				"API_TIMEOUT_MS",
+				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 			},
 			wantVals: map[string]string{
-				"ANTHROPIC_AUTH_TOKEN":           "",
-				"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.5-air",
+				"ANTHROPIC_AUTH_TOKEN":                      "",
+				"ANTHROPIC_BASE_URL":                        "https://api.z.ai/api/anthropic",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":              "glm-5.1",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL":            "glm-4.7",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":             "glm-4.5-air",
+				"API_TIMEOUT_MS":                            "3000000",
+				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 			},
 		},
 	}
@@ -125,9 +137,9 @@ func TestBuildGLMEnvVars(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildGLMEnvVars(tt.glmConfig, tt.apiKey)
 
-			// Verify the map has exactly 7 keys (5 GLM + 2 compatibility flags)
-			if len(got) != 7 {
-				t.Errorf("buildGLMEnvVars() returned %d keys, want 7", len(got))
+			// Verify the map has exactly 9 keys (5 GLM + 4 compatibility flags)
+			if len(got) != 9 {
+				t.Errorf("buildGLMEnvVars() returned %d keys, want 9", len(got))
 			}
 
 			// Verify all required keys exist
