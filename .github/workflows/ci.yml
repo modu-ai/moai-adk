@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main]  # main으로 향하는 모든 PR에서 CI 실행
 
 # Cancel in-progress runs for the same branch
 concurrency:
