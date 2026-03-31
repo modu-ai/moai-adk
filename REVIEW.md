@@ -1,49 +1,30 @@
 # Code Review Guidelines
 
-Review-specific rules for Claude Code Review. These apply only during code reviews, not general Claude Code sessions.
+Review-only rules for Claude Code Review. These are additive on top of default correctness checks and apply exclusively during code reviews, not general Claude Code sessions. Rules already enforced by linters or defined in CLAUDE.md are intentionally excluded.
 
-## Always Check
+## Always check
 
-### Go Code Quality
-- All errors must be wrapped with context: `fmt.Errorf("operation: %w", err)`
+- New exported functions or CLI commands have corresponding test cases
+- New handler/route registrations have integration tests
+- Goroutines have proper lifecycle management (context cancellation or WaitGroup)
 - No bare `panic()` in library code — only in `main()` or test helpers
-- Goroutines must have proper lifecycle management (context cancellation, WaitGroup)
-- Exported functions must have godoc comments in English
-- No `//nolint` without an explanation comment
-
-### Testing
-- New exported functions must have corresponding test cases
-- Tests must use `t.TempDir()` for temporary files — never write to project root
-- Table-driven test pattern required for multiple test cases
-- Race detector compatibility: no shared mutable state without synchronization
-
-### Security
-- No hardcoded credentials, API keys, or tokens
-- No `filepath.Join(cwd, userPath)` when `userPath` can be absolute — use `filepath.Abs()`
-- Environment variable reads must have fallback or validation
-- No `os.Exit()` in library code
-
-### Template System
-- Changes to `internal/template/templates/` must be accompanied by `make build` verification
-- Template variables (`.HomeDir`, `.GoBinPath`) must not be used for fallback paths in shell scripts — use `$HOME`
-- `$CLAUDE_PROJECT_DIR` must always be quoted in hook commands
-
-### Configuration
-- YAML frontmatter `tools` and `allowed-tools` fields must use CSV string format, not YAML arrays
-- `metadata` values must be quoted strings
-- Agent `model` field: only `inherit`, `opus`, `sonnet`, `haiku`
+- No `os.Exit()` in library code — return errors to callers instead
+- Error messages do not leak internal paths, stack traces, or implementation details to users
+- Breaking changes to exported functions or types are documented in commit message
+- Changes to `internal/template/templates/` include `make build` to regenerate embedded files
+- Hook timeout values are appropriate for the operation (default 5s, long operations up to 60s)
+- Cross-platform compatibility: no OS-specific assumptions without build tags
 
 ## Style
 
 - Prefer early returns over deeply nested conditionals
-- Use named return values only when they improve godoc clarity
-- Constants over magic numbers — define with meaningful names
-- Prefer `errors.Is()` / `errors.As()` over string comparison
+- Use `errors.Is()` / `errors.As()` over string comparison for error checking
+- Constants with meaningful names over magic numbers
 
 ## Skip
 
-- Generated files: `internal/template/embedded.go`
-- Lock files: `go.sum` (formatting-only changes)
-- Vendored dependencies: `vendor/`
-- Binary artifacts: `*.exe`, `*.bin`
-- IDE configuration: `.idea/`, `.vscode/`
+- `internal/template/embedded.go` (generated)
+- `go.sum` (formatting-only changes)
+- `vendor/` (vendored dependencies)
+- `*.exe`, `*.bin` (binary artifacts)
+- `.idea/`, `.vscode/` (IDE configuration)
