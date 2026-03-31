@@ -887,7 +887,10 @@ Detect current branch:
    - Base: {main_branch}
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
-5. Display PR URL to user
+5. Enable auto-merge: `gh pr merge {number} --squash --delete-branch --auto`
+   - GitHub waits for all required status checks to pass, then auto-merges
+   - If auto-merge enable fails (e.g., not allowed in repo settings): log warning, continue
+6. Display PR URL to user
 
 **Main branch** (direct commit):
 - Push directly: `git push origin {main_branch}`
