@@ -66,11 +66,12 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 
 Before executing, check `.moai/config/sections/llm.yaml`:
 
-| team_mode | Execution Mode | Description |
-|-----------|---------------|-------------|
-| (empty) | Sub-agent | Single session, Agent() subagents |
-| cg | CG Mode | Claude Leader + GLM Teammates via tmux |
-| agent-teams | Agent Teams | All same API, parallel teammates |
+| team_mode | Execution Mode | Agent Teams? | Description |
+|-----------|---------------|-------------|-------------|
+| (empty) | Sub-agent | N/A | Single session, Agent() subagents |
+| glm | GLM Mode | **Supported** | All GLM, credentials in settings.local.json |
+| cg | CG Mode | **Sub-agent only** | Claude Leader + GLM Teammates via tmux session env |
+| agent-teams | Agent Teams | **Supported** | All same API, parallel teammates |
 
 ---
 

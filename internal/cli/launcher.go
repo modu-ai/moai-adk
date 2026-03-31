@@ -230,6 +230,9 @@ func removeGLMEnv(settingsPath string) error {
 		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
+		delete(settings.Env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+		delete(settings.Env, "DISABLE_PROMPT_CACHING")
 
 		if len(settings.Env) == 0 {
 			settings.Env = nil
@@ -241,7 +244,7 @@ func removeGLMEnv(settingsPath string) error {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
@@ -475,7 +478,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		}
 	}
 
-	// 6. Build args
+	// 6. Expand model string (e.g. "claude-opus-4-6[1m]" -> "claude-opus-4-6")
+	model = expandModelString(model)
+
+	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
 		a := []string{"claude"}
 		if permMode != "" && permMode != "acceptEdits" {
@@ -638,11 +644,23 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 		return fmt.Errorf("create directory: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, out, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, out, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
 	return nil
+}
+
+// expandModelString converts moai-specific model strings (e.g. "claude-opus-4-6[1m]")
+// into valid Claude Code --model values (e.g. "claude-opus-4-6").
+// The "[1m]" suffix is a moai convention for 1M context / extended thinking models.
+// Claude Code does not recognize this suffix, so it must be stripped before passing
+// the model to the claude CLI.
+func expandModelString(model string) string {
+	if strings.HasSuffix(model, "[1m]") {
+		return strings.TrimSuffix(model, "[1m]")
+	}
+	return model
 }
 
 // syncBypassToSettingsLocal is a backward-compatible wrapper for

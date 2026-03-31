@@ -17,8 +17,8 @@ Frontmatter Fields:
 ### Sub-agent Delegation API
 
 Task Invocation:
-- `Task(subagent_type, prompt)`: Invoke specialized sub-agent
-- `Task(subagent_type, prompt, context)`: Invoke with context from previous task
+- `Agent(subagent_type, prompt)`: Invoke specialized sub-agent
+- `Agent(subagent_type, prompt, context)`: Invoke with context from previous task
 - Returns structured result object for chaining
 
 Available Sub-agent Types:
@@ -84,7 +84,7 @@ Memory Import Syntax:
 Sequential Pattern:
 1. Command receives user input with `$ARGUMENTS`
 2. Command loads relevant Skills via `Skill("skill-name")`
-3. Command delegates to sub-agent via `Task(subagent_type, prompt)`
+3. Command delegates to sub-agent via `Agent(subagent_type, prompt)`
 4. Sub-agent executes with loaded skill context
 5. Result returned to command for presentation
 

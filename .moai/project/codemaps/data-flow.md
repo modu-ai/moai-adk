@@ -209,10 +209,10 @@ flowchart TD
     I --> K["Set leader env:\nRemove GLM env vars\nClaude uses its own model"]
     J --> L["Set worker env:\nANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air\nANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7\nANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.1"]
 
-    K --> M["Leader: claude code session\n(Claude Opus/Sonnet)\norchestrates via Task()"]
+    K --> M["Leader: claude code session\n(Claude Opus/Sonnet)\norchestrates via Agent()"]
     L --> N["Worker: claude code session\n(GLM models)\nexecutes in worktree isolation"]
 
-    M --> O["Leader delegates via Task()\nwith team_name + isolation:worktree"]
+    M --> O["Leader delegates via Agent()\nwith team_name + isolation:worktree"]
     O --> N
     N --> P["Worker writes files in\n.claude/worktrees/<name>/"]
     P --> Q["Worker returns result via SendMessage"]

@@ -42,6 +42,8 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+				"DISABLE_PROMPT_CACHING",
 			},
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "test-key-123",
@@ -73,6 +75,8 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+				"DISABLE_PROMPT_CACHING",
 			},
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "custom-api-key-xyz",
@@ -104,6 +108,8 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+				"DISABLE_PROMPT_CACHING",
 			},
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "",
@@ -119,9 +125,9 @@ func TestBuildGLMEnvVars(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildGLMEnvVars(tt.glmConfig, tt.apiKey)
 
-			// Verify the map has exactly 5 keys
-			if len(got) != 5 {
-				t.Errorf("buildGLMEnvVars() returned %d keys, want 5", len(got))
+			// Verify the map has exactly 7 keys (5 GLM + 2 compatibility flags)
+			if len(got) != 7 {
+				t.Errorf("buildGLMEnvVars() returned %d keys, want 7", len(got))
 			}
 
 			// Verify all required keys exist

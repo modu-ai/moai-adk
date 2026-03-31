@@ -320,7 +320,7 @@ async def execute_with_retry(task_config, max_retries=3):
 
     for attempt in range(max_retries):
         try:
-            result = Task(**task_config)
+            result = Agent(**task_config)
 
             if result.success:
                 return result
@@ -624,7 +624,7 @@ name: everything-skill
 # Incorrect approach
 def backend_agent_task():
     # Sub-agent spawning another sub-agent - BAD
-    result = Task(subagent_type="database-expert", prompt="...")
+    result = Agent(subagent_type="database-expert", prompt="...")
     return result
 ```
 
@@ -632,9 +632,9 @@ def backend_agent_task():
 
 ```python
 # Correct approach - main thread orchestrates all
-analysis = Task(subagent_type="spec-builder", prompt="...")
-database = Task(subagent_type="database-expert", prompt="...", context=analysis)
-backend = Task(subagent_type="backend-expert", prompt="...", context=database)
+analysis = Agent(subagent_type="spec-builder", prompt="...")
+database = Agent(subagent_type="database-expert", prompt="...", context=analysis)
+backend = Agent(subagent_type="backend-expert", prompt="...", context=database)
 ```
 
 ### Anti-Pattern 3: Hardcoded Paths in Skills

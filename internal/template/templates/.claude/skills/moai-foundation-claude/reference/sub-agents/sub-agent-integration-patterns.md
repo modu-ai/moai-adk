@@ -281,7 +281,7 @@ Implementation:
 ---
 name: development-orchestrator
 description: Orchestrate complete software development workflow from specification to deployment. Use PROACTIVELY for complex multi-component projects requiring coordination across multiple phases and teams.
-tools: Read, Write, Edit, Task
+tools: Read, Write, Edit, Agent
 model: sonnet
 skills: moai-core-workflow, moai-project-manager, moai-foundation-quality
 ---
@@ -765,7 +765,7 @@ Composite Agent Pattern:
 ---
 name: full-stack-specialist
 description: Combine frontend, backend, database, and DevOps expertise for end-to-end application development. Use PROACTIVELY for complete application development requiring multiple domain expertise.
-tools: Read, Write, Edit, Bash, Grep, Glob, Task, MultiEdit, WebFetch
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent, MultiEdit, WebFetch
 model: sonnet
 skills: moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-devops-expert
 ---

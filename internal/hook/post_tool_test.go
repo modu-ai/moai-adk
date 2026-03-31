@@ -145,6 +145,19 @@ func TestLogTaskMetrics(t *testing.T) {
 			wantFile: false,
 		},
 		{
+			name: "agent tool with valid metrics creates JSONL record",
+			input: &HookInput{
+				SessionID:    "sess-metrics-agent-001",
+				ToolName:     "Agent",
+				ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":8000,"toolUses":5,"durationSeconds":30.0}}`),
+			},
+			setupMoaiDir: true,
+			wantFile:     true,
+			wantTokens:   8000,
+			wantTools:    5,
+			wantSeconds:  30.0,
+		},
+		{
 			name: "non-task tool writes no file",
 			input: &HookInput{
 				SessionID:    "sess-metrics-003",
@@ -181,8 +194,8 @@ func TestLogTaskMetrics(t *testing.T) {
 
 			logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
 
-			// Only Task tool calls logTaskMetrics; replicate Handle() routing.
-			if tt.input.ToolName == "Task" {
+			// Agent or Task tool calls logTaskMetrics; replicate Handle() routing.
+			if tt.input.ToolName == "Agent" || tt.input.ToolName == "Task" {
 				logTaskMetrics(tt.input)
 			}
 
@@ -221,8 +234,8 @@ func TestLogTaskMetrics(t *testing.T) {
 			if rec.SessionID != tt.input.SessionID {
 				t.Errorf("session_id = %q, want %q", rec.SessionID, tt.input.SessionID)
 			}
-			if rec.ToolName != "Task" {
-				t.Errorf("tool_name = %q, want %q", rec.ToolName, "Task")
+			if rec.ToolName != tt.input.ToolName {
+				t.Errorf("tool_name = %q, want %q", rec.ToolName, tt.input.ToolName)
 			}
 			if rec.TokensUsed != tt.wantTokens {
 				t.Errorf("tokens_used = %d, want %d", rec.TokensUsed, tt.wantTokens)
@@ -373,6 +386,57 @@ func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
 	}
 	if rec.ToolUses != 3 {
 		t.Errorf("tool_uses = %d, want 3", rec.ToolUses)
+	}
+}
+
+func TestPostToolHandler_Handle_AgentToolRoutesToLogTaskMetrics(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatalf("pre-create .moai: %v", err)
+	}
+	h := NewPostToolHandler()
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:    "sess-agent-route",
+		CWD:          tmpDir,
+		ToolName:     "Agent",
+		ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":750,"toolUses":4,"durationSeconds":18.3}}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("Handle() returned nil")
+	}
+
+	logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
+	if _, err := os.Stat(logPath); err != nil {
+		t.Errorf("task-metrics.jsonl should be created for Agent tool: %v", err)
+	}
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read JSONL: %v", err)
+	}
+
+	var rec taskMetricsRecord
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	if !scanner.Scan() {
+		t.Fatal("JSONL file is empty")
+	}
+	if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+		t.Fatalf("unmarshal JSONL: %v", err)
+	}
+	if rec.ToolName != "Agent" {
+		t.Errorf("tool_name = %q, want %q", rec.ToolName, "Agent")
+	}
+	if rec.TokensUsed != 750 {
+		t.Errorf("tokens_used = %d, want 750", rec.TokensUsed)
 	}
 }
 

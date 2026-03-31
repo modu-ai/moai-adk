@@ -2,7 +2,7 @@
 description: "GitHub Workflow - Manage issues and review PRs with Agent Teams"
 argument-hint: "issues [--all | --label LABEL | NUMBER | --merge | --solo | --tmux] | pr [--all | NUMBER | --merge | --solo]"
 type: local
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, TeamCreate, SendMessage, TaskCreate, TaskUpdate, TaskList, TaskGet, TeamDelete
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Agent, TeamCreate, SendMessage, TaskCreate, TaskUpdate, TaskList, TaskGet, TeamDelete
 version: 2.0.0
 ---
 
@@ -152,7 +152,7 @@ TaskCreate: "Verify fix for issue #{number}" (blocked by implementation task)
 Spawn analysis teammates in parallel (one per issue, max 3 concurrent):
 
 ```
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "github-issues-{repo-slug}",
   name: "analyst-{number}",
@@ -169,7 +169,7 @@ Task(
 After analysis completes, spawn implementation teammates:
 
 ```
-Task(
+Agent(
   subagent_type: "team-coder",  // role (backend/frontend) specified in prompt
   team_name: "github-issues-{repo-slug}",
   name: "fixer-{number}",
@@ -439,7 +439,7 @@ TaskCreate: "Quality and correctness review of PR #{number}"
 Spawn 3 reviewers in parallel:
 
 ```
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "github-pr-review-{number}",
   name: "security-reviewer",
@@ -455,7 +455,7 @@ Task(
     Mark task completed and send findings via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "github-pr-review-{number}",
   name: "perf-reviewer",
@@ -471,7 +471,7 @@ Task(
     Mark task completed and send findings via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-reader",
   team_name: "github-pr-review-{number}",
   name: "quality-reviewer",

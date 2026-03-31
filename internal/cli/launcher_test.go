@@ -583,6 +583,31 @@ func TestContainsPermissionMode(t *testing.T) {
 	}
 }
 
+func TestExpandModelString(t *testing.T) {
+	tests := []struct {
+		name  string
+		model string
+		want  string
+	}{
+		{"empty string", "", ""},
+		{"standard opus", "claude-opus-4-6", "claude-opus-4-6"},
+		{"opus 1m", "claude-opus-4-6[1m]", "claude-opus-4-6"},
+		{"standard sonnet", "claude-sonnet-4-6", "claude-sonnet-4-6"},
+		{"sonnet 1m", "claude-sonnet-4-6[1m]", "claude-sonnet-4-6"},
+		{"haiku", "claude-haiku-4-5-20251001", "claude-haiku-4-5-20251001"},
+		{"opusplan", "opusplan", "opusplan"},
+		{"arbitrary model", "some-model", "some-model"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := expandModelString(tt.model)
+			if got != tt.want {
+				t.Errorf("expandModelString(%q) = %q, want %q", tt.model, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai directory

@@ -587,7 +587,7 @@ Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inher
 
 ### Worktree Isolation [HARD]
 
-- [HARD] Implementation teammates (backend-dev, frontend-dev, tester) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Implementation teammates (backend-dev, frontend-dev, tester) MUST use `isolation: "worktree"` when spawned via Agent()
 - [HARD] Read-only teammates (quality) MUST NOT use `isolation: "worktree"` — permissionMode: plan is sufficient
 - [HARD] All worktree path rules from "Worktree Path Rules [HARD] (All Modes)" section above apply to team mode as well
 - After team shutdown, run `git worktree prune` to clean up stale worktree references
