@@ -162,6 +162,7 @@ func TestEnsureGLMCredentials(t *testing.T) {
 		_ = os.MkdirAll(moaiDir, 0o755)
 		_ = os.WriteFile(filepath.Join(moaiDir, ".env.glm"), []byte("GLM_API_KEY=\"test-glm-key-123\"\n"), 0o600)
 		t.Setenv("HOME", fakeHome)
+		t.Setenv("USERPROFILE", fakeHome) // Windows: os.UserHomeDir reads USERPROFILE
 
 		msg := ensureGLMCredentials(dir)
 		if msg == "" {
