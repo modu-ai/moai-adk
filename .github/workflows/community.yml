@@ -6,7 +6,7 @@ on:
   issues:
     types: [opened]
   pull_request_target:
-    types: [opened, synchronize]
+    types: [opened, synchronize, ready_for_review, reopened]
   schedule:
     # Run stale check daily at 00:00 UTC
     - cron: "0 0 * * *"
@@ -95,3 +95,14 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
           sync-labels: true
+
+  # Automatically enable auto-merge (squash) on PRs targeting main
+  auto-merge:
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == false && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --squash --delete-branch --auto "$PR_URL"
