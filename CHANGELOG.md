@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-03-31
+
+### Summary
+
+GLM compatibility automation with automatic env injection/removal, 1M context model support in profile wizard, and dynamic team generation replacing static agent files.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- GLM compatibility automation: auto DISABLE_BETAS + DISABLE_PROMPT_CACHING injection in GLM mode, auto removal in Claude mode (#581)
+- SessionStart hook for GLM env auto-detection and configuration
+- 1M context model selection option in profile wizard (#578)
+- Dynamic team generation: static team-* agent files replaced with runtime generation from workflow.yaml role profiles
+- Code Review Quality Gate workflow with REVIEW.md template (#583)
+- web-copy-craft module in design-craft skill v1.2.0
+- Team configuration section in workflow.yaml
+
+### Changed
+
+- Profile wizard: removed auto permission mode option
+- Statusline: GLM model name resolution from Claude display names
+- CI: automerge, dependabot, and codecov workflow improvements
+- Template: 6 agent definitions streamlined with reduced token footprint
+
+### Fixed
+
+- PostTool hook: improved GLM environment variable handling
+- CI: automerge-action configuration fixes for reliable PR merging
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.8.2] - 2026-03-31 (한국어)
+
+### 요약
+
+GLM 호환성 자동화(환경변수 자동 주입/제거), 프로필 위자드 1M 컨텍스트 모델 지원, 정적 에이전트 파일 대신 동적 팀 생성 도입.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- GLM 호환성 자동화: GLM 모드에서 DISABLE_BETAS + DISABLE_PROMPT_CACHING 자동 주입, Claude 모드에서 자동 제거 (#581)
+- SessionStart 훅으로 GLM 환경변수 자동 감지 및 설정
+- 프로필 위자드에 1M 컨텍스트 모델 선택 옵션 추가 (#578)
+- 동적 팀 생성: 정적 team-* 에이전트 파일을 workflow.yaml role_profiles 기반 런타임 생성으로 교체
+- Code Review Quality Gate 워크플로우 및 REVIEW.md 템플릿 추가 (#583)
+- design-craft 스킬 v1.2.0 web-copy-craft 모듈 추가
+- workflow.yaml에 팀 설정 섹션 추가
+
+### 변경됨 (Changed)
+
+- 프로필 위자드에서 auto 권한 모드 옵션 제거
+- Statusline: Claude 표시 이름에서 GLM 모델명 해석 기능
+- CI: automerge, dependabot, codecov 워크플로우 개선
+- 템플릿: 6개 에이전트 정의 최적화로 토큰 사용량 감소
+
+### 수정됨 (Fixed)
+
+- PostTool 훅: GLM 환경변수 처리 개선
+- CI: automerge-action 설정 수정으로 안정적인 PR merge 수행
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.8.1] - 2026-03-30
 
 ### Summary

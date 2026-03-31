@@ -54,6 +54,7 @@ func makeStdinJSON(data *StdinData) *bytes.Buffer {
 }
 
 func TestBuilder_Build_FullData(t *testing.T) {
+	clearGLMEnv(t)
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100") // Disable CW scaling for this test
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
@@ -168,6 +169,8 @@ func TestBuilder_Build_EmptyReader(t *testing.T) {
 }
 
 func TestBuilder_Build_GitProviderFailure(t *testing.T) {
+	clearGLMEnv(t)
+
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
 			err: errors.New("git not available"),
@@ -223,6 +226,8 @@ func TestBuilder_Build_AllProvidersFail(t *testing.T) {
 }
 
 func TestBuilder_SetMode(t *testing.T) {
+	clearGLMEnv(t)
+
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
 			data: &GitStatusData{Branch: "main", Modified: 2, Available: true},
@@ -349,6 +354,8 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 }
 
 func TestBuilder_Build_MissingCost(t *testing.T) {
+	clearGLMEnv(t)
+
 	builder := New(Options{
 		Mode:    ModeDefault,
 		NoColor: true,
@@ -1061,6 +1068,7 @@ func BenchmarkBuilder_Build(b *testing.B) {
 //
 // See Issue #549.
 func TestBuild_OfficialSchema(t *testing.T) {
+	clearGLMEnv(t)
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
 
 	builder := New(Options{
