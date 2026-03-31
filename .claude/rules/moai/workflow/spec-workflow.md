@@ -133,13 +133,15 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 
 | Phase | Sub-agent Mode | Team Mode | Condition |
 |-------|---------------|-----------|-----------|
-| Plan | manager-spec (single) | team-reader (researcher) + team-reader (analyst) + team-reader (architect) (parallel) | Complexity >= threshold |
-| Run | manager-ddd/tdd (sequential) | team-coder (backend) + team-coder (frontend) + team-tester (parallel) | Domains >= 3 or files >= 10 |
+| Plan | manager-spec (single) | Dynamic teammates: researcher + analyst + architect (parallel, general-purpose) | Complexity >= threshold |
+| Run | manager-ddd/tdd (sequential) | Dynamic teammates: backend-dev + frontend-dev + tester (parallel, general-purpose) | Domains >= 3 or files >= 10 |
 | Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
+
+All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles. No static team agent definitions are used. See `.claude/skills/moai/team/run.md` for complete orchestration.
 
 ### Team Mode Plan Phase
 - TeamCreate for parallel research team
-- Teammates explore codebase deeply, analyze requirements, design approach
+- Spawn general-purpose teammates with mode: "plan" (read-only)
 - researcher teammate produces research.md with deep codebase analysis
 - analyst teammate validates requirements against research findings
 - architect teammate designs solution using reference implementations found in research
@@ -150,8 +152,8 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 ### Team Mode Run Phase
 - TeamCreate for implementation team
 - Task decomposition with file ownership boundaries
-- [HARD] Implementation teammates (backend-dev, frontend-dev, tester) MUST use `isolation: "worktree"` for parallel file safety
-- [HARD] Read-only teammates (quality) MUST NOT use isolation — permissionMode: plan is sufficient
+- [HARD] Implementation teammates (role_profiles: implementer, tester) MUST use `isolation: "worktree"` for parallel file safety
+- [HARD] Read-only teammates (role_profiles: reviewer) MUST NOT use isolation — mode: "plan" is sufficient
 - Teammates self-claim tasks from shared list
 - Quality validation after all implementation completes
 - Worktree cleanup via `git worktree prune` after team shutdown

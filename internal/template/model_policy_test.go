@@ -79,11 +79,6 @@ func TestGetAgentModel(t *testing.T) {
 		{"builder_agent_high", ModelPolicyHigh, "builder-agent", "opus"},
 		{"builder_agent_low", ModelPolicyLow, "builder-agent", "haiku"},
 
-		// Team agents
-		{"researcher_high", ModelPolicyHigh, "team-researcher", "haiku"},
-		{"tester_high", ModelPolicyHigh, "team-tester", "opus"},
-		{"tester_low", ModelPolicyLow, "team-tester", "haiku"},
-
 		// Unknown agent: returns "" (skip sentinel - preserve current model)
 		{"unknown_agent", ModelPolicyHigh, "nonexistent-agent", ""},
 

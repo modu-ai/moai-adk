@@ -5,7 +5,7 @@ description: >
   language or subcommands (plan, run, sync, fix, loop, mx, project,
   feedback, review, clean, codemaps, coverage, e2e) to specialized
   agents.
-allowed-tools: Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
 
@@ -229,7 +229,12 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo. When --deepthink is detected, activate Sequential Thinking MCP for deep analysis before execution.
+Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --deepthink, --team, --solo. Also detect `ultrathink` keyword in the input text.
+
+**CRITICAL: Two distinct deep analysis modes:**
+- `--deepthink` flag detected → Invoke Sequential Thinking MCP (`mcp__sequential-thinking__sequentialthinking`) for structured step-by-step analysis. This is an MCP tool call.
+- `ultrathink` keyword detected → Activate Claude's native extended reasoning (high effort mode). Do NOT invoke Sequential Thinking MCP. This is native Claude behavior with no MCP dependency.
+- Both can coexist: `ultrathink --deepthink` activates BOTH independently.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.

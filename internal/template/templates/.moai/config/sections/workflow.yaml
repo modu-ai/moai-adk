@@ -23,6 +23,42 @@ workflow:
         delegate_mode: true
         enabled: true
         max_teammates: 10
+        role_profiles:
+            researcher:
+                mode: plan
+                model: haiku
+                isolation: none
+                description: "Read-only codebase exploration and analysis"
+            analyst:
+                mode: plan
+                model: sonnet
+                isolation: none
+                description: "Requirements analysis and validation"
+            architect:
+                mode: plan
+                model: sonnet
+                isolation: none
+                description: "Solution design and architecture decisions"
+            implementer:
+                mode: acceptEdits
+                model: sonnet
+                isolation: worktree
+                description: "Code implementation (backend, frontend, full-stack)"
+            tester:
+                mode: acceptEdits
+                model: sonnet
+                isolation: worktree
+                description: "Test creation and coverage validation"
+            designer:
+                mode: acceptEdits
+                model: sonnet
+                isolation: worktree
+                description: "UI/UX design with MCP design tools"
+            reviewer:
+                mode: plan
+                model: haiku
+                isolation: none
+                description: "Code review and quality validation"
         patterns:
             design_implementation:
                 description: Cross-layer feature implementation with UI/UX design

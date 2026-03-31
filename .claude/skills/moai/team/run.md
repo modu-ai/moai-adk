@@ -1,18 +1,18 @@
 ---
 name: moai-workflow-team-run
 description: >
-  Implement SPEC requirements using team-based architecture.
+  Implement SPEC requirements using team-based architecture with dynamic
+  teammate generation. Teammates are spawned as general-purpose agents
+  with runtime parameter overrides from workflow.yaml role profiles.
   Supports CG Mode (Claude leader + GLM teammates via tmux) and
   Agent Teams Mode (all same API, parallel teammates).
-  CG mode uses tmux pane-level env isolation for API separation.
-  Agent Teams mode uses file ownership for parallel coordination.
 user-invocable: false
 metadata:
-  version: "3.0.0"
+  version: "4.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-22"
-  tags: "run, team, glm, tmux, implementation, parallel, agent-teams"
+  updated: "2026-03-31"
+  tags: "run, team, glm, tmux, implementation, parallel, agent-teams, dynamic"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -23,29 +23,54 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team run", "glm worker", "parallel implementation"]
-  agents: ["team-coder", "team-tester"]
+  agents: []
   phases: ["run"]
 ---
-# Workflow: Team Run - Implementation with Agent Teams
+# Workflow: Team Run - Dynamic Team Generation
 
-Purpose: Implement SPEC requirements using team-based architecture with parallel
-teammates. Supports CG Mode (Claude + GLM) and standard Agent Teams Mode.
+Purpose: Implement SPEC requirements using dynamically generated teammates.
+All teammates use `subagent_type: "general-purpose"` with runtime parameter
+overrides from `workflow.yaml` role profiles. No static team agent definitions.
 
-Flow: Mode Detection -> Plan (Leader) -> Run (Agent Teams) -> Quality (Leader) -> Sync (Leader)
+Flow: Mode Detection -> Plan (Leader) -> Run (Dynamic Teams) -> Quality (Leader) -> Sync (Leader)
+
+## Architecture: Dynamic Team Generation
+
+Teammates are spawned using the Agent tool with runtime overrides:
+
+| Parameter | Source | Purpose |
+|-----------|--------|---------|
+| subagent_type | Always "general-purpose" | Full tool access |
+| team_name | TeamCreate result | Team coordination |
+| name | Pattern role name | Addressable via SendMessage |
+| model | workflow.yaml role_profiles | Cost optimization |
+| mode | workflow.yaml role_profiles | Permission control |
+| isolation | workflow.yaml role_profiles | File safety |
+| prompt | Orchestrator-generated | Role, context, instructions |
+
+### Role Profile Reference
+
+From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
+
+| Profile | mode | model | isolation | Use For |
+|---------|------|-------|-----------|---------|
+| researcher | plan | haiku | none | Codebase exploration, read-only analysis |
+| analyst | plan | sonnet | none | Requirements analysis, validation |
+| architect | plan | sonnet | none | Solution design, architecture |
+| implementer | acceptEdits | sonnet | worktree | Backend, frontend, full-stack code |
+| tester | acceptEdits | sonnet | worktree | Test creation, coverage validation |
+| designer | acceptEdits | sonnet | worktree | UI/UX with MCP design tools |
+| reviewer | plan | haiku | none | Code review, quality validation |
 
 ## Mode Selection
 
-Before executing this workflow, check `.moai/config/sections/llm.yaml`:
+Before executing, check `.moai/config/sections/llm.yaml`:
 
 | team_mode | Execution Mode | Description |
 |-----------|---------------|-------------|
 | (empty) | Sub-agent | Single session, Agent() subagents |
 | cg | CG Mode | Claude Leader + GLM Teammates via tmux |
 | agent-teams | Agent Teams | All same API, parallel teammates |
-
-- If `team_mode == "cg"`: Use CG Mode section below
-- If `team_mode == "agent-teams"`: Use Agent Teams Mode section below
-- If `team_mode == ""`: Fall back to sub-agent mode (workflows/run.md)
 
 ---
 
@@ -60,11 +85,22 @@ CG mode uses tmux pane-level environment isolation:
 This is standard Agent Teams with `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`, where
 the tmux session has GLM env vars injected by `moai cg`.
 
+### Env Isolation Mechanism (Verified)
+
+`moai cg` executes two complementary steps:
+1. `injectTmuxSessionEnv()` → `tmux set-environment` (session-scoped, no -g) injects GLM env vars
+2. `removeGLMEnv()` → removes GLM env from `settings.local.json` so leader uses Claude API
+
+When Claude Code Agent Teams spawns teammates via `tmux split-window`:
+- New panes inherit tmux session env → teammates get GLM vars → Z.AI API
+- Leader process already running → not affected by session env changes → Claude API
+- Result: Leader on Claude, Teammates on GLM, within the same tmux session
+
 ### Prerequisites
 
 - `moai cg` has been run inside tmux (team_mode="cg" in llm.yaml)
 - Claude Code started in the SAME pane where `moai cg` was run
-- GLM API key saved via `moai glm <key>` or `GLM_API_KEY` env
+- GLM API key saved via `moai glm setup <key>`
 
 ### Phase 1: Plan (Leader on Claude)
 
@@ -80,16 +116,11 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
    )
    ```
 
-2. **User Approval** via AskUserQuestion:
-   - Approve SPEC and proceed to implementation
-   - Request modifications
-   - Cancel workflow
+2. **User Approval** via AskUserQuestion
 
 3. **Output**: `.moai/specs/SPEC-XXX/spec.md`
 
-### Phase 2: Run (Agent Teams — Teammates on GLM)
-
-Teammates execute implementation in parallel using GLM via Z.AI API.
+### Phase 2: Run (Dynamic Teams — Teammates on GLM)
 
 #### 2.1 Team Setup
 
@@ -107,62 +138,90 @@ Teammates execute implementation in parallel using GLM via Z.AI API.
    TaskCreate: "Quality validation - TRUST 5" (blocked by all above)
    ```
 
-#### 2.2 Spawn Teammates
+#### 2.2 Spawn Teammates (Dynamic Generation)
 
-Spawn teammates using Agent() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
-is set, each teammate spawns in a new tmux pane. New panes inherit GLM env vars
-from the tmux session, routing them through Z.AI API.
+Spawn teammates using `Agent(subagent_type: "general-purpose")` with role profile overrides.
 
 **Path Rules for Worktree Teammates:**
 - All file references in teammate prompts MUST use project-root-relative paths
 - Do NOT include absolute paths to the main project directory
-- Teammates resolve paths from their own CWD (worktree root)
 - See `.claude/rules/moai/workflow/worktree-integration.md` Prompt Path Rules section
 
 ```
 Agent(
-  subagent_type: "team-coder",
+  subagent_type: "general-purpose",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
-  isolation: "worktree",
+  model: "sonnet",
   mode: "acceptEdits",
+  isolation: "worktree",
   prompt: "You are backend-dev on team moai-run-SPEC-XXX.
-    Implement backend tasks from the shared task list.
+
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    Project type: {detected_language} ({detected_framework})
+    Methodology: {development_mode} (from quality.yaml)
+
     File ownership: server-side files (*.go excluding *_test.go), API handlers, models, database code.
-    Follow TDD methodology. Claim tasks via TaskUpdate.
-    Mark tasks completed when done. Send results via SendMessage."
+
+    Quality requirements:
+    - Run tests after each significant change
+    - Run linter before marking tasks complete
+    - Follow project conventions
+
+    Claim tasks via TaskUpdate. Mark tasks completed when done.
+    Send results to team lead via SendMessage.
+    Report blockers immediately via SendMessage."
 )
 
 Agent(
-  subagent_type: "team-coder",
+  subagent_type: "general-purpose",
   team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
-  isolation: "worktree",
+  model: "sonnet",
   mode: "acceptEdits",
+  isolation: "worktree",
   prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
-    Implement frontend tasks from the shared task list.
+
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    Project type: {detected_language} ({detected_framework})
+
     File ownership: client-side files (components, pages, styles, assets).
-    Follow TDD methodology. Claim tasks via TaskUpdate.
-    Mark tasks completed when done. Send results via SendMessage."
+
+    Quality requirements:
+    - Run tests after each significant change
+    - Follow project conventions
+
+    Claim tasks via TaskUpdate. Mark tasks completed when done.
+    Send results to team lead via SendMessage."
 )
 
 Agent(
-  subagent_type: "team-tester",
+  subagent_type: "general-purpose",
   team_name: "moai-run-SPEC-XXX",
   name: "tester",
-  isolation: "worktree",
+  model: "sonnet",
   mode: "acceptEdits",
+  isolation: "worktree",
   prompt: "You are tester on team moai-run-SPEC-XXX.
-    Write tests for implemented features.
+
     SPEC: .moai/specs/SPEC-XXX/spec.md
-    Own all test files (*_test.go, *.test.*, __tests__/) exclusively.
-    Mark tasks completed when done. Send results via SendMessage."
+    Project type: {detected_language}
+
+    File ownership: test files exclusively (*_test.go, *.test.*, __tests__/).
+    Read implementation files but do NOT modify them.
+    If implementation has bugs, report to relevant teammate via SendMessage.
+
+    Quality standards:
+    - Meet 85%+ overall coverage, 90%+ for new code
+    - Tests should be specification-based, not implementation-coupled
+    - Include edge cases, error scenarios, boundary conditions
+
+    Claim tasks via TaskUpdate. Mark tasks completed when done.
+    Send results to team lead via SendMessage."
 )
 ```
 
-All teammates spawn in parallel in separate tmux panes, each in an isolated worktree.
+All teammates spawn in parallel. Implementation teammates use `isolation: "worktree"` for file safety.
 
 #### 2.3 Monitor and Coordinate
 
@@ -189,18 +248,8 @@ When teammates complete:
 
 Leader validates quality using Claude's analysis:
 
-1. Run language-appropriate quality gates based on auto-detected project language:
-   - **Tests**: Language-specific test runner (e.g., `go test ./...` / `pytest` / `npm test` / `cargo test`)
-   - **Linter**: Language-specific linter (e.g., `golangci-lint` / `ruff` / `eslint` / `cargo clippy`)
-   - **Coverage**: Language-specific coverage tool (e.g., `go test -cover` / `coverage.py` / `c8` / `tarpaulin`)
-
-   For the complete language-to-command mapping table, see: `workflows/loop.md` Language-Specific Commands section.
-
-2. SPEC verification:
-   - Read SPEC acceptance criteria
-   - Verify all requirements implemented
-   - If gaps found: create follow-up tasks or assign to teammates
-
+1. Run language-appropriate quality gates (auto-detected)
+2. SPEC verification against acceptance criteria
 3. TRUST 5 validation via manager-quality subagent
 
 ### Phase 4: Sync and Cleanup (Leader on Claude)
@@ -226,32 +275,12 @@ Agent(
 
 2. Wait for shutdown_response from each teammate
 
-3. Clean up GLM env vars and restore Claude-only operation:
+3. Clean up GLM env (CG mode only):
    ```bash
    moai cc
    ```
-   This safely removes GLM env vars while preserving ANTHROPIC_AUTH_TOKEN and other settings.
-   Do NOT manually Read/Write settings.local.json — use the CLI command which handles JSON merging correctly.
 
 4. TeamDelete to clean up team resources
-
-#### 4.3 Report Summary
-
-Present completion report to user:
-- SPEC ID and description
-- Files modified
-- Tests added/modified
-- Coverage achieved
-- Cost savings estimate (GLM vs Claude)
-
-### CG Mode Error Recovery
-
-| Failure | Recovery |
-|---------|----------|
-| Teammate spawn failure | Fall back to sub-agent mode |
-| tmux pane crash | Check teammate status, respawn if needed |
-| Quality gate failure | Leader creates fix task |
-| Merge conflicts (worktree) | Leader resolves or user choice |
 
 ---
 
@@ -266,23 +295,16 @@ When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the
    TeamCreate(team_name: "moai-run-SPEC-XXX")
    ```
 
-2. Create shared task list with dependencies:
-   ```
-   TaskCreate: "Implement data models and schema" (no deps)
-   TaskCreate: "Implement API endpoints" (blocked by data models)
-   TaskCreate: "Implement UI components" (blocked by API endpoints)
-   TaskCreate: "Write unit and integration tests" (blocked by API + UI)
-   TaskCreate: "Quality validation - TRUST 5" (blocked by all above)
-   ```
+2. Create shared task list with dependencies (same as CG mode)
 
 ### Phase 2: Spawn Implementation Team
 
-Spawn teammates with file ownership boundaries and worktree isolation:
+Spawn teammates with role profile overrides and worktree isolation:
 
 ```
-Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "backend-dev", isolation: "worktree", mode: "acceptEdits", prompt: "Backend role. File ownership: server-side code. ...")
-Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", isolation: "worktree", mode: "acceptEdits", prompt: "Frontend role. File ownership: client-side code. ...")
-Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", isolation: "worktree", mode: "acceptEdits", prompt: "Testing role. File ownership: test files exclusively. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "backend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Backend role. File ownership: server-side code. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Frontend role. File ownership: client-side code. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
 [HARD] All implementation teammates MUST use `isolation: "worktree"` for parallel file safety.
@@ -295,44 +317,17 @@ Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester
 2. **If all tasks complete**: Send shutdown_request
 3. **If work remains**: Send new instructions or wait
 
-Example response to idle notification:
-```
-# Check tasks
-TaskList()
-
-# If work is done, shutdown
-SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Implementation complete, shutting down")
-
-# If work remains, send instructions
-SendMessage(type: "message", recipient: "backend-dev", content: "Continue with next task: {instructions}")
-```
-
 **FAILURE TO RESPOND TO IDLE NOTIFICATIONS CAUSES INFINITE WAITING**
 
 ### Phase 4: Plan Approval (when require_plan_approval: true)
 
-When teammates submit plans, you MUST respond immediately:
-
-```
-# Receive plan_approval_request with request_id
-
-# Approve
-SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)
-
-# Reject with feedback
-SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: false, content: "Revise X")
-```
+When teammates submit plans, respond immediately with plan_approval_response.
 
 ### Phase 5: Quality and Shutdown
 
-1. Assign quality validation task to team-validator (or use manager-quality subagent)
-2. After all tasks complete, shutdown teammates:
-   ```
-   SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
-   SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Phase complete")
-   SendMessage(type: "shutdown_request", recipient: "tester", content: "Phase complete")
-   ```
-3. Wait for shutdown_response from each teammate
+1. Quality validation via manager-quality subagent (or reviewer teammate)
+2. Shutdown all teammates via SendMessage shutdown_request
+3. Wait for shutdown_response from each
 4. TeamDelete to clean up resources
 
 ---
@@ -347,6 +342,7 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 | Quality | Highest (Claude reviews) | High | High |
 | Requires tmux | Yes | No (optional) | No |
 | Isolation | tmux env + worktree (HARD) | File ownership + worktree (HARD) | None |
+| Agent definitions | None (dynamic) | None (dynamic) | Static (.claude/agents/) |
 
 ## Fallback
 
@@ -358,5 +354,6 @@ If team mode fails at any point:
 
 ---
 
-Version: 3.3.0 (Language-Agnostic Quality Gates)
-Last Updated: 2026-03-02
+Version: 4.0.0 (Dynamic Team Generation)
+Last Updated: 2026-03-31
+Source: SPEC-TEAM-001
