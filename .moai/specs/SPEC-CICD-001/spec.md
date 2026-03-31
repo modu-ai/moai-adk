@@ -69,14 +69,14 @@
 - REQ-1.2: `claude.yml`에서 PR 관련 트리거(`issue_comment`의 PR 컨텍스트, `pull_request_review_comment`, `pull_request_review`)를 제거해야 한다
 - REQ-1.3: `claude.yml`은 Issue 이벤트(`issues.opened`, `issues.assigned`, Issue 댓글의 `issue_comment`)에서만 동작해야 한다
 
-### REQ-2: 조건부 Auto-merge (Critical)
+### REQ-2: PR 생성 시 즉시 Auto-merge 활성화 (Critical)
 
-**WHEN** PR에 `automerge` 레이블이 **수동으로** 추가되고 **AND** CI가 통과하고 **AND** Claude Code Review Quality Gate가 통과하면 **THEN** PR을 자동 merge해야 한다.
+**WHEN** PR이 생성되면 **THEN** `gh pr merge --auto --squash --delete-branch`로 auto-merge를 즉시 활성화해야 한다. GitHub이 required status checks (CI) 통과를 대기한 후 자동 merge한다.
 
 - REQ-2.1: `community.yml`에서 auto-merge 관련 로직을 완전히 제거해야 한다
-- REQ-2.2: 새로운 `automerge.yml` 워크플로우를 생성해야 한다
-- REQ-2.3: `automerge` 레이블 자동 추가 로직을 제거해야 한다 (수동 추가만 허용)
-- REQ-2.4: merge 조건: CI 통과 + Review Quality Gate 통과 (Important findings == 0)
+- REQ-2.2: 별도 `automerge.yml` 워크플로우 불필요 (GitHub 내장 auto-merge 사용)
+- REQ-2.3: `/moai sync --pr` 워크플로우에서 PR 생성 후 `gh pr merge --auto` 자동 실행
+- REQ-2.4: merge 조건: GitHub branch protection의 required status checks 통과
 
 ### REQ-3: claude.yml Issue 전용 제한 (High)
 
