@@ -129,7 +129,7 @@
 
 ### 4.1 워크플로우 아키텍처 (목표 상태)
 
-```
+```text
 Tier 1: Core Quality (Required, blocks merge)
   ci.yml                    -- 테스트, Lint, Build (변경 없음)
 
@@ -146,12 +146,12 @@ Tier 4: Security
 Tier 5: Community
   community.yml             -- Welcome + Stale + Labeler (auto-merge 제거)
 
-Tier 6: Conditional Merge
-  automerge.yml             -- 조건부 auto-merge (NEW)
-
 Release:
   release.yml               -- GoReleaser (변경 없음)
   test-install.yml          -- 설치 테스트 (변경 없음)
+
+Auto-merge:
+  GitHub 내장 auto-merge    -- gh pr merge --auto (PR 생성 시 자동 활성화)
 ```
 
 ### 4.2 파일별 변경 명세
@@ -192,21 +192,12 @@ Release:
 - `stale` job
 - `labeler` job
 
-#### `automerge.yml` 신규 생성
+#### Auto-merge 방식 변경
 
-트리거:
-- `pull_request` (labeled)
-- `check_suite` (completed)
-- `workflow_run` (completed, workflows: ["CI", "Review Quality Gate"])
-
-조건:
-- `automerge` 레이블이 존재할 것
-- CI 워크플로우 통과
-- Review Quality Gate 통과 (Important == 0)
-
-동작:
-- squash merge
-- 브랜치 삭제
+GitHub 내장 auto-merge 사용:
+- PR 생성 시 `gh pr merge --auto --squash --delete-branch` 자동 실행
+- CI 통과 후 GitHub에서 자동 병합
+- 별도 워크플로우 파일 불필요
 
 #### `codeql.yml` 수정
 
@@ -225,7 +216,7 @@ Release:
 | 요구사항 | 변경 파일 | 테스트 방법 |
 |----------|----------|------------|
 | REQ-1 | `claude-code-review.yml`, `claude.yml` | PR 생성 시 AI 리뷰 1회만 실행 확인 |
-| REQ-2 | `community.yml`, `automerge.yml` (NEW) | automerge 레이블 수동 추가 후 조건부 merge 확인 |
+| REQ-2 | `community.yml`, `.claude/skills/moai/workflows/sync.md` | PR 생성 후 자동 auto-merge 활성화 확인 |
 | REQ-3 | `claude.yml` | Issue에서 @claude 멘션 시 동작, PR에서는 무시 확인 |
 | REQ-4 | `claude-code-review.yml` | `.github/` 파일만 변경한 PR에서 리뷰 스킵 확인 |
 | REQ-5 | `codeql.yml` | CodeQL 분석 정상 실행 확인 |

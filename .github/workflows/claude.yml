@@ -1,7 +1,7 @@
 name: Claude Code
 
 on:
-  # Issues only: PR 코멘트는 claude-code-review.yml에서 처리
+  # Issues only: PR lifecycle events (opened, ready_for_review, reopened) are handled in claude-code-review.yml
   issue_comment:
     types: [created]
   issues:
@@ -15,12 +15,13 @@ concurrency:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude') &&
+       (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+       (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
       issues: read
       # C2 Fix: id-token: write is required by claude-code-action for OIDC-based
       # authentication to Anthropic's API when using OAuth tokens.
