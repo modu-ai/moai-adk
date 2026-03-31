@@ -37,7 +37,7 @@
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 27 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 24 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
@@ -58,9 +58,9 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 ### Key Numbers
 
-- **34,220 lines** of Go code, **32** packages
+- **38,700+ lines** of Go code, **38** packages
 - **85-100%** test coverage
-- **27** specialized AI agents + **52** skills
+- **24** specialized AI agents + **52** skills
 - **18** programming languages supported
 - **25** Claude Code hook events
 
@@ -258,21 +258,21 @@ Spawns dozens of agents in isolated git worktrees for large-scale parallel work.
 
 ## AI Agent Orchestration
 
-MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 27 specialized agents.
+MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 24 specialized agents.
 
 ```mermaid
 graph LR
     U["👤 User Request"] --> M["🗿 MoAI Orchestrator"]
 
     M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (9)"]
+    M --> EX["⚡ Expert (8)"]
     M --> BL["🔧 Builder (3)"]
-    M --> TM["👥 Team (8)"]
+    M --> TM["👥 Team (5)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring · chrome-ext"]
+    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    TM --> TM1["researcher · analyst · architect · designer<br/>backend-dev · frontend-dev · tester · quality"]
+    TM --> TM1["reader · coder · tester<br/>designer · validator"]
 
     style M fill:#FF6B35,color:#fff
     style MG fill:#4CAF50,color:#fff
@@ -288,7 +288,7 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
 | **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
-| **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | Parallel team-based development |
+| **Team** | 5 | reader, coder, tester, designer, validator | Parallel team-based development |
 
 ### 52 Skills (Progressive Disclosure)
 
@@ -309,13 +309,13 @@ Managed through a 3-level progressive disclosure system for token efficiency:
 
 ## Model Policy (Token Optimization)
 
-MoAI-ADK assigns optimal AI models to each of 27 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|------|--------|-------|----------|
-| **High** | Max $200/mo | 22 | 1 | 4 | Maximum quality, highest throughput |
-| **Medium** | Max $100/mo | 4 | 18 | 5 | Balanced quality and cost |
-| **Low** | Plus $20/mo | 0 | 11 | 16 | Budget-friendly, no Opus access |
+| **High** | Max $200/mo | 16 | 5 | 3 | Maximum quality, highest throughput |
+| **Medium** | Max $100/mo | 3 | 17 | 4 | Balanced quality and cost |
+| **Low** | Plus $20/mo | 0 | 13 | 11 | Budget-friendly, no Opus access |
 
 > **Why does this matter?** The Plus $20 plan does not include Opus access. Setting `Low` ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
 
@@ -359,14 +359,11 @@ MoAI-ADK assigns optimal AI models to each of 27 agents based on your Claude Cod
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| team-architect | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| team-analyst | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| team-designer | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| team-backend-dev | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| team-frontend-dev | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| team-tester | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| team-researcher | 🟡 haiku | 🟡 haiku | 🟡 haiku |
-| team-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+| team-reader | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
+| team-coder | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
+| team-tester | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
+| team-designer | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
+| team-validator | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
 ### Configuration
 
@@ -653,13 +650,13 @@ MoAI-ADK supports **z.ai GLM** as an alternative AI backend for Claude Code, ena
 |------|---------|
 | GLM Coding Plan | From **$10/month** ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | Compatibility | Works with Claude Code — no code changes needed |
-| Models | GLM-5, GLM-4.7, GLM-4.5-Air, and free models |
+| Models | GLM-5.1, GLM-4.7, GLM-4.5-Air, and free models |
 
 **Default Model Mapping:**
 
 | Claude Tier | GLM Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------------|-----------|----------------------|------------------------|
-| Opus | GLM-4.7 | $0.60 | $2.20 |
+| Opus | GLM-5.1 | $2.00 | $8.00 |
 | Sonnet | GLM-4.7 | $0.60 | $2.20 |
 | Haiku | GLM-4.5-Air | $0.20 | $1.10 |
 

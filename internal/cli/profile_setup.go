@@ -147,7 +147,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Options(
 					huh.NewOption(t.ModelDefault, ""),
 					huh.NewOption(t.ModelOpus, "claude-opus-4-6"),
+					huh.NewOption(t.ModelOpus1M, "claude-opus-4-6[1m]"),
 					huh.NewOption(t.ModelSonnet, "claude-sonnet-4-6"),
+					huh.NewOption(t.ModelSonnet1M, "claude-sonnet-4-6[1m]"),
 					huh.NewOption(t.ModelHaiku, "claude-haiku-4-5-20251001"),
 					huh.NewOption(t.ModelOpusPlan, "opusplan"),
 				).
@@ -156,7 +158,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Title(t.PermissionModeTitle).
 				Description(t.PermissionModeDesc).
 				Options(
-					huh.NewOption(t.PermAuto, "auto"),
 					huh.NewOption(t.PermAcceptEdits, "acceptEdits"),
 					huh.NewOption(t.PermDefault, "default"),
 					huh.NewOption(t.PermPlan, "plan"),
