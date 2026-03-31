@@ -56,10 +56,11 @@ jobs:
 
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
           # Use Opus model with high effort for better reasoning on issue fixes.
+          # C4b Fix: Increased from 20 to 40 to prevent error_max_turns on complex tasks.
           claude_args: |
             --model opus
             --effort high
-            --max-turns 20
+            --max-turns 40
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
