@@ -105,6 +105,9 @@ func TestShortenModelName(t *testing.T) {
 		{"claude-sonnet-4", "Sonnet 4"},
 		{"claude-opus-4-5", "Opus 4.5"},
 		{"gpt-4", "gpt-4"},
+		{"glm-5.1", "glm-5.1"},
+		{"glm-5.1[1m]", "glm-5.1"},
+		{"glm-4.7[1m]", "glm-4.7"},
 		{"", ""},
 		{"claude-", ""},
 	}
@@ -227,6 +230,27 @@ func TestResolveGLMModelName(t *testing.T) {
 			want:        "Opus",
 		},
 		{
+			name:        "Opus with [1m] suffix in GLM mode",
+			displayName: "Opus[1m]",
+			envKey:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			envValue:    "glm-5.1",
+			want:        "glm-5.1",
+		},
+		{
+			name:        "Sonnet with [1m] suffix in GLM mode",
+			displayName: "Sonnet[1m]",
+			envKey:      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+			envValue:    "glm-4.7",
+			want:        "glm-4.7",
+		},
+		{
+			name:        "GLM model name passed directly with [1m]",
+			displayName: "glm-5.1[1m]",
+			envKey:      "",
+			envValue:    "",
+			want:        "glm-5.1",
+		},
+		{
 			name:        "Non-Claude display name unchanged",
 			displayName: "GPT-4o",
 			envKey:      "",
@@ -265,6 +289,30 @@ func TestCollectMetrics_GLMMode(t *testing.T) {
 	got := CollectMetrics(input)
 	if got.Model != "glm-5.1" {
 		t.Errorf("Model = %q in GLM mode, want %q", got.Model, "glm-5.1")
+	}
+}
+
+// TestCollectMetrics_GLMMode_Strips1M verifies [1m] suffix is stripped for GLM models.
+func TestCollectMetrics_GLMMode_Strips1M(t *testing.T) {
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.1")
+
+	// Case 1: Claude Code sends display_name with [1m] suffix
+	input := &StdinData{
+		Model: &ModelInfo{DisplayName: "Opus[1m]"},
+	}
+	got := CollectMetrics(input)
+	if got.Model != "glm-5.1" {
+		t.Errorf("Model = %q with Opus[1m] display, want %q", got.Model, "glm-5.1")
+	}
+
+	// Case 2: Claude Code sends GLM model ID with [1m] suffix directly
+	clearGLMEnv(t)
+	input2 := &StdinData{
+		Model: &ModelInfo{ID: "glm-5.1[1m]"},
+	}
+	got2 := CollectMetrics(input2)
+	if got2.Model != "glm-5.1" {
+		t.Errorf("Model = %q with glm-5.1[1m] ID, want %q", got2.Model, "glm-5.1")
 	}
 }
 
