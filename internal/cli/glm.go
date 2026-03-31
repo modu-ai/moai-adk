@@ -414,7 +414,7 @@ func ensureSettingsLocalJSON(settingsPath string) error {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
@@ -500,7 +500,7 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 		return fmt.Errorf("marshal settings: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
@@ -805,7 +805,7 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 

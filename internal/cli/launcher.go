@@ -244,7 +244,7 @@ func removeGLMEnv(settingsPath string) error {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
@@ -644,7 +644,7 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 		return fmt.Errorf("create directory: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, out, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, out, 0o600); err != nil {
 		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
