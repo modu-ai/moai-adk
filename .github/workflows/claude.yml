@@ -1,14 +1,11 @@
 name: Claude Code
 
 on:
+  # Issues only: PR 코멘트는 claude-code-review.yml에서 처리
   issue_comment:
-    types: [created]
-  pull_request_review_comment:
     types: [created]
   issues:
     types: [opened, assigned]
-  pull_request_review:
-    types: [submitted]
 
 # I1 Fix: Added concurrency control to prevent duplicate parallel runs on the same issue/PR.
 concurrency:
@@ -18,9 +15,7 @@ concurrency:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
@@ -30,7 +25,6 @@ jobs:
       # C2 Fix: id-token: write is required by claude-code-action for OIDC-based
       # authentication to Anthropic's API when using OAuth tokens.
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
@@ -55,12 +49,9 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
+          # max-turns 40: Issue 분석/구현은 복잡한 멀티스텝 작업이 많아 20으로 부족한 경우 발생.
           # Use Opus model with high effort for better reasoning on issue fixes.
           claude_args: |
             --model opus
             --effort high
-            --max-turns 20
-
-          # This is an optional setting that allows Claude to read CI results on PRs
-          additional_permissions: |
-            actions: read
+            --max-turns 40
