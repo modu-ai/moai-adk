@@ -43,6 +43,9 @@ const (
 	DefaultGLMHigh   = "glm-5.1"
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
+	// Additional GLM models (available but not default-mapped)
+	DefaultGLM45 = "glm-4.5"
+	DefaultGLM46 = "glm-4.6"
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"

@@ -272,7 +272,7 @@ async def delegate_task(task_description: str, context: dict):
     else:  # complex
         # Parallel then sequential integration
         parallel_results = await Promise.all([
-            Task(subagent_type=router.get_primary_agent(d), prompt=f"{d}: {task_description}")
+            Agent(subagent_type=router.get_primary_agent(d), prompt=f"{d}: {task_description}")
             for d in analysis.domains
         ])
 

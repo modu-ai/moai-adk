@@ -147,6 +147,9 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
+	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1") //nolint:errcheck
+	_ = os.Setenv("DISABLE_PROMPT_CACHING", "1")                 //nolint:errcheck
 }
 
 // runGLMSetup saves a GLM API key.
@@ -291,9 +294,11 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			"",
 			"Role model mapping (dynamic teams):",
 			"  - lead: glm-5.1",
-			"  - researcher/reviewer: glm-4.7-flash (read-only roles)",
+			"  - researcher/reviewer: glm-4.5-air (read-only roles)",
 			"  - analyst/architect: glm-5.1 (planning roles)",
 			"  - implementer/tester/designer: glm-4.7 (write roles)",
+			"",
+			"Available models: glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
 			"",
 			"Next steps:",
 			"  1. Ensure you're in a tmux session (tmux new -s moai)",
@@ -322,6 +327,9 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+		// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+		"DISABLE_PROMPT_CACHING":                 "1",
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -349,6 +357,9 @@ func clearTmuxSessionEnv() error {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 		"CLAUDE_CONFIG_DIR",
+		// Z.AI proxy compatibility flags
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+		"DISABLE_PROMPT_CACHING",
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -472,6 +483,9 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
 
 	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
@@ -735,6 +749,9 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+		// Z.AI proxy compatibility
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+		"DISABLE_PROMPT_CACHING":                 "1",
 	}
 }
 
@@ -775,6 +792,9 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)

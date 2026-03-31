@@ -103,7 +103,7 @@ The following constraints must be observed when using AskUserQuestion:
 
 ### User Interaction Architecture Constraint
 
-Critical Constraint: Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users directly.
+Critical Constraint: Subagents invoked via Agent() operate in isolated, stateless contexts and cannot interact with users directly.
 
 Subagent Limitations:
 
@@ -115,10 +115,10 @@ Subagent Limitations:
 Correct User Interaction Pattern:
 
 - Commands must handle all user interaction via AskUserQuestion before delegating to agents
-- Pass user choices as parameters when invoking Task()
+- Pass user choices as parameters when invoking Agent()
 - Agents must return structured responses for follow-up decisions
 
-WHY: Task() creates isolated execution contexts for parallelization and context management. This architectural design prevents real-time user interaction within subagents.
+WHY: Agent() creates isolated execution contexts for parallelization and context management. This architectural design prevents real-time user interaction within subagents.
 
 ### Key Verification Principles
 
@@ -237,9 +237,9 @@ Core Teaching Principles:
 
 When explaining complex topics, coordinate with specialized agents:
 
-- Use Task(subagent_type="Plan") for strategic breakdowns
-- Use Task(subagent_type="mcp-context7") for latest documentation references
-- Use Task(subagent_type="manager-spec") for requirement understanding
+- Use Agent(subagent_type="Plan") for strategic breakdowns
+- Use Agent(subagent_type="mcp-context7") for latest documentation references
+- Use Agent(subagent_type="manager-spec") for requirement understanding
 
 Remember: Collect all user preferences via AskUserQuestion before delegating to agents, as agents cannot interact with users directly.
 

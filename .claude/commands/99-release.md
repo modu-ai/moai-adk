@@ -2,7 +2,7 @@
 description: "MoAI-ADK v2.x production release via GitHub Flow. Creates release/vX.Y.Z branch, version bump, CHANGELOG, PR to main, squash merge, then tag push. Tag vX.Y.Z triggers GoReleaser. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
 argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
 type: local
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Agent
 disable-model-invocation: true
 version: 4.0.0
 metadata:
@@ -294,11 +294,11 @@ Use AskUserQuestion:
 **[HARD] Branch protection with enforce_admins is enabled. Direct push to main is blocked.**
 **[HARD] manager-git subagent MUST be invoked with `isolation: "worktree"` to enforce branch isolation.**
 
-If approved, delegate to manager-git subagent with this context and Task invocation:
+If approved, delegate to manager-git subagent with this context and Agent invocation:
 
 ```bash
-# Example Task invocation with worktree isolation
-Task(
+# Example Agent invocation with worktree isolation
+Agent(
   subagent_type: "manager-git",
   isolation: "worktree",
   prompt: "[Mission context below]"

@@ -71,7 +71,7 @@ Allowed Tools (4 categories):
 
 | Tool | Purpose | Example |
 |------|---------|---------|
-| `Agent()` | Agent delegation | `Task("code-backend", "Implement API")` |
+| `Agent()` | Agent delegation | `Agent("code-backend", "Implement API")` |
 | `AskUserQuestion()` | User interaction | `AskUserQuestion(questions=[...])` |
 | `Skill()` | Knowledge invocation | `Skill("moai-foundation-core")` |
 | `MCP Servers` | External integrations | Context7, Playwright, Pencil |

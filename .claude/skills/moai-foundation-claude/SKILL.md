@@ -69,7 +69,7 @@ Advanced Features:
 
 Skills: Model-invoked extensions in ~/.claude/skills/ (personal) or .claude/skills/ (project). Three-level progressive disclosure. Max 500 lines.
 
-Sub-agents: Specialized assistants via Task(subagent_type="..."). Own 200K context. Cannot spawn sub-agents. Use /agents command.
+Sub-agents: Specialized assistants via Agent(subagent_type="..."). Own 200K context. Cannot spawn sub-agents. Use /agents command.
 
 Plugins: Reusable bundles in .claude-plugin/plugin.json. Include commands, agents, skills, hooks, MCP servers.
 

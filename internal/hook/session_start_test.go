@@ -3,6 +3,8 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -106,4 +108,90 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEnsureGLMCredentials(t *testing.T) {
+	// Not parallel: subtests use t.Setenv which requires non-parallel parent
+
+	t.Run("no settings file", func(t *testing.T) {
+		t.Parallel()
+		msg := ensureGLMCredentials(t.TempDir())
+		if msg != "" {
+			t.Errorf("expected empty msg for missing file, got %q", msg)
+		}
+	})
+
+	t.Run("no GLM models in settings", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		claudeDir := filepath.Join(dir, ".claude")
+		_ = os.MkdirAll(claudeDir, 0o755)
+		settings := `{"env":{"SOME_VAR":"value"}}`
+		_ = os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(settings), 0o644)
+
+		msg := ensureGLMCredentials(dir)
+		if msg != "" {
+			t.Errorf("expected empty msg for non-GLM settings, got %q", msg)
+		}
+	})
+
+	t.Run("GLM models with AUTH_TOKEN already present", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		claudeDir := filepath.Join(dir, ".claude")
+		_ = os.MkdirAll(claudeDir, 0o755)
+		settings := `{"env":{"ANTHROPIC_DEFAULT_OPUS_MODEL":"glm-5.1","ANTHROPIC_AUTH_TOKEN":"existing-key"}}`
+		_ = os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(settings), 0o644)
+
+		msg := ensureGLMCredentials(dir)
+		if msg != "" {
+			t.Errorf("expected empty msg when AUTH_TOKEN exists, got %q", msg)
+		}
+	})
+
+	t.Run("GLM models without AUTH_TOKEN auto-injects from env.glm", func(t *testing.T) {
+		dir := t.TempDir()
+		claudeDir := filepath.Join(dir, ".claude")
+		_ = os.MkdirAll(claudeDir, 0o755)
+		settings := `{"env":{"ANTHROPIC_DEFAULT_OPUS_MODEL":"glm-5.1","ANTHROPIC_DEFAULT_SONNET_MODEL":"glm-4.7"}}`
+		_ = os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(settings), 0o644)
+
+		// Create fake ~/.moai/.env.glm
+		fakeHome := t.TempDir()
+		moaiDir := filepath.Join(fakeHome, ".moai")
+		_ = os.MkdirAll(moaiDir, 0o755)
+		_ = os.WriteFile(filepath.Join(moaiDir, ".env.glm"), []byte("GLM_API_KEY=\"test-glm-key-123\"\n"), 0o600)
+		t.Setenv("HOME", fakeHome)
+
+		msg := ensureGLMCredentials(dir)
+		if msg == "" {
+			t.Error("expected non-empty msg when credentials auto-injected")
+		}
+
+		// Verify settings.local.json was updated
+		data, err := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
+		if err != nil {
+			t.Fatalf("read updated settings: %v", err)
+		}
+
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(data, &raw); err != nil {
+			t.Fatalf("parse updated settings: %v", err)
+		}
+
+		var env map[string]string
+		if err := json.Unmarshal(raw["env"], &env); err != nil {
+			t.Fatalf("parse env: %v", err)
+		}
+
+		if env["ANTHROPIC_AUTH_TOKEN"] != "test-glm-key-123" {
+			t.Errorf("AUTH_TOKEN = %q, want %q", env["ANTHROPIC_AUTH_TOKEN"], "test-glm-key-123")
+		}
+		if env["ANTHROPIC_BASE_URL"] != "https://api.z.ai/api/anthropic" {
+			t.Errorf("BASE_URL = %q, want Z.AI endpoint", env["ANTHROPIC_BASE_URL"])
+		}
+		if env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] != "1" {
+			t.Error("DISABLE_EXPERIMENTAL_BETAS should be set to 1")
+		}
+	})
 }

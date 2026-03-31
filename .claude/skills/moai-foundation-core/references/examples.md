@@ -174,15 +174,15 @@ Efficiency Gain: 41%
 
 ```python
 # SPEC Phase: 30K 예산
-Task(subagent_type="workflow-spec", prompt="Create SPEC")
+Agent(subagent_type="workflow-spec", prompt="Create SPEC")
 # → SPEC 완료 후 반드시 /clear 실행 (45-50K 절약)
 
 # DDD Phase: 180K 예산
-Task(subagent_type="ddd-implementer", prompt="Implement with DDD")
+Agent(subagent_type="ddd-implementer", prompt="Implement with DDD")
 # → 선택적 파일 로딩, 필요한 파일만 로드
 
 # Docs Phase: 40K 예산
-Task(subagent_type="workflow-docs", prompt="Generate documentation")
+Agent(subagent_type="workflow-docs", prompt="Generate documentation")
 # → 결과 캐싱 및 템플릿 재사용
 ```
 
@@ -227,13 +227,13 @@ analysis = await Agent(
 
 # 분석 결과에 따라 위임
 if analysis.type == "security":
-    await Task(subagent_type="security-expert", prompt="Fix security issue")
+    await Agent(subagent_type="security-expert", prompt="Fix security issue")
 elif analysis.type == "performance":
-    await Task(subagent_type="performance-expert", prompt="Optimize performance")
+    await Agent(subagent_type="performance-expert", prompt="Optimize performance")
 elif analysis.type == "logic":
-    await Task(subagent_type="backend-expert", prompt="Fix business logic")
+    await Agent(subagent_type="backend-expert", prompt="Fix business logic")
 else:
-    await Task(subagent_type="debug-expert", prompt="General debugging")
+    await Agent(subagent_type="debug-expert", prompt="General debugging")
 ```
 
 ---
@@ -288,9 +288,9 @@ await Agent(
 
 ```python
 # 잘못된 예시 - 비효율적
-backend = await Task(subagent_type="backend-expert", ...)
-frontend = await Task(subagent_type="frontend-expert", ...)  # 대기 불필요
-docs = await Task(subagent_type="docs-generator", ...)       # 대기 불필요
+backend = await Agent(subagent_type="backend-expert", ...)
+frontend = await Agent(subagent_type="frontend-expert", ...)  # 대기 불필요
+docs = await Agent(subagent_type="docs-generator", ...)       # 대기 불필요
 ```
 
 **Solution**: 독립적인 작업은 병렬 실행
@@ -298,9 +298,9 @@ docs = await Task(subagent_type="docs-generator", ...)       # 대기 불필요
 ```python
 # 올바른 예시 - 효율적
 backend, frontend, docs = await Promise.all([
-    Task(subagent_type="backend-expert", ...),
-    Task(subagent_type="frontend-expert", ...),
-    Task(subagent_type="docs-generator", ...)
+    Agent(subagent_type="backend-expert", ...),
+    Agent(subagent_type="frontend-expert", ...),
+    Agent(subagent_type="docs-generator", ...)
 ])
 ```
 
@@ -325,10 +325,10 @@ validation = await Agent(
 
 if validation.passed:
     # 안전하게 머지
-    await Task(subagent_type="git-manager", prompt="Create PR and merge")
+    await Agent(subagent_type="git-manager", prompt="Create PR and merge")
 else:
     # 이슈 해결 후 재검증
-    await Task(subagent_type="debug-expert", prompt="Fix validation issues")
+    await Agent(subagent_type="debug-expert", prompt="Fix validation issues")
 ```
 
 ---

@@ -66,11 +66,35 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 
 Before executing, check `.moai/config/sections/llm.yaml`:
 
-| team_mode | Execution Mode | Description |
-|-----------|---------------|-------------|
-| (empty) | Sub-agent | Single session, Agent() subagents |
-| cg | CG Mode | Claude Leader + GLM Teammates via tmux |
-| agent-teams | Agent Teams | All same API, parallel teammates |
+| team_mode | Execution Mode | Agent Teams? | Description |
+|-----------|---------------|-------------|-------------|
+| (empty) | Sub-agent | N/A | Single session, Agent() subagents |
+| glm | GLM Mode | **Supported** | All GLM, credentials in settings.local.json |
+| cg | CG Mode | **Sub-agent only** | Claude Leader + GLM Teammates via tmux session env |
+| agent-teams | Agent Teams | **Supported** | All same API, parallel teammates |
+
+### GLM Credential Requirements for Agent Teams
+
+Agent Teams teammates are SEPARATE Claude Code processes that read `settings.local.json` on startup.
+For teammates to authenticate with Z.AI, `settings.local.json` MUST contain:
+
+```
+ANTHROPIC_AUTH_TOKEN=<Z.AI API key>
+ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
+CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+DISABLE_PROMPT_CACHING=1
+```
+
+`moai glm` auto-injects all of these. If settings are manually configured, ensure these are included.
+The SessionStart hook auto-detects missing credentials and injects from `~/.moai/.env.glm`.
+
+### CG Mode + Agent Teams Limitation
+
+CG mode removes `ANTHROPIC_AUTH_TOKEN` from `settings.local.json` so the leader uses Claude OAuth.
+This means Agent Teams teammates (separate processes reading `settings.local.json`) will NOT get GLM credentials.
+CG mode uses tmux session env for teammate credentials, which works for sub-agents but NOT for Agent Teams.
+
+**Recommendation**: Use `moai glm` (not `moai cg`) when combining GLM with `--team` flag.
 
 ---
 

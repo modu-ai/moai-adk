@@ -128,21 +128,21 @@ Level 3 (Bundled):
 
 Foundation Skills:
 - Allowed: Read, Grep, Glob, Context7 MCP
-- Never: Bash, Task
+- Never: Bash, Agent
 
 Workflow Skills:
 - Allowed: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
-- Conditional: AskUserQuestion (MoAI only), Task (managers only)
+- Conditional: AskUserQuestion (MoAI only), Agent (managers only)
 
 Domain Skills:
 - Allowed: Read, Grep, Glob, Bash
 - Conditional: Write, Edit (implementation tasks only)
-- Never: AskUserQuestion, Task
+- Never: AskUserQuestion, Agent
 
 Language Skills:
 - Allowed: Read, Grep, Glob, Bash, Context7 MCP
 - Conditional: Write, Edit (implementation tasks only)
-- Never: AskUserQuestion, Task
+- Never: AskUserQuestion, Agent
 
 ## Trigger Configuration
 

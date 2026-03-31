@@ -1019,7 +1019,7 @@ resumed = session.load_session(session_id)
 # Complete workflow with context optimization
 
 # Phase 1: Planning (uses ~40K tokens)
-analysis = Task(subagent_type="spec-builder", prompt="Analyze: user auth")
+analysis = Agent(subagent_type="spec-builder", prompt="Analyze: user auth")
 session.update_work_state(phase=SessionPhase.PLANNING)
 
 # Mandatory /clear after planning (saves 45-50K tokens)
@@ -1039,7 +1039,7 @@ if token_usage > 150000:
     clear_and_resume()
 
 # Phase 3: Documentation
-docs = Task(subagent_type="docs-manager", prompt="Generate docs")
+docs = Agent(subagent_type="docs-manager", prompt="Generate docs")
 session.update_work_state(phase=SessionPhase.DOCUMENTATION)
 ```
 

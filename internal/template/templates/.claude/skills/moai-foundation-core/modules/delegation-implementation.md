@@ -181,7 +181,7 @@ def sequential_with_token_management():
     """Sequential flow with strategic /clear execution."""
 
     # Phase 1: Heavy context (SPEC generation)
-    spec = Task(subagent_type="workflow-spec", ...)  # ~30K tokens
+    spec = Agent(subagent_type="workflow-spec", ...)  # ~30K tokens
     execute_clear()  # Save 45-50K tokens
 
     # Phase 2: Fresh context (implementation)

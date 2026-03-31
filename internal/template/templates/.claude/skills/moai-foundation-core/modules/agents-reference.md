@@ -26,7 +26,7 @@ Agent Selection:
 
 All agents use Agent() delegation:
 ```python
-result = Task(subagent_type="code-backend", prompt="...", context={...})
+result = Agent(subagent_type="code-backend", prompt="...", context={...})
 ```
 
 ---
@@ -122,11 +122,11 @@ External MCP server integrations with context continuity support.
 Resume Pattern (40-60% token savings):
 ```python
 # Initial call
-result = Task(subagent_type="mcp-context7", prompt="Research React 19 APIs")
+result = Agent(subagent_type="mcp-context7", prompt="Research React 19 APIs")
 agent_id = result.agent_id
 
 # Resume with context
-result2 = Task(subagent_type="mcp-context7", prompt="Compare with React 18", resume=agent_id)
+result2 = Agent(subagent_type="mcp-context7", prompt="Compare with React 18", resume=agent_id)
 ```
 
 Benefits:
@@ -221,8 +221,8 @@ Is this a new feature or architecture change?
 
 3. Context Passing: Pass each agent's results as context to the next agent
  ```python
- result1 = Task("code-backend", "Design API")
- result2 = Task("code-frontend", "Implement UI", context={"api_design": result1})
+ result1 = Agent("code-backend", "Design API")
+ result2 = Agent("code-frontend", "Implement UI", context={"api_design": result1})
  ```
 
 4. Sequential vs Parallel:
@@ -323,13 +323,13 @@ Common Errors:
 Error Recovery Pattern:
 ```python
 try:
- result = Task("code-backend", "Implement feature")
+ result = Agent("code-backend", "Implement feature")
 except AgentNotFoundError:
  # Check agent name format
- result = Task("code-backend", "Implement feature") # Corrected name
+ result = Agent("code-backend", "Implement feature") # Corrected name
 except PermissionError:
  # Update settings.json IAM rules
- result = Task("code-backend", "Implement feature", permissions=["write"])
+ result = Agent("code-backend", "Implement feature", permissions=["write"])
 ```
 
 ---

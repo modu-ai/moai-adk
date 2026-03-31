@@ -20,7 +20,7 @@ Core Format: YAML frontmatter + system prompt with clear domain focus. Naming: k
 ```yaml
 ---
 name: subagent-name # Required: kebab-case, unique within project
-description: Use PROACTIVELY when: [specific trigger scenarios]. Called from [context/workflow]. CRITICAL: This agent MUST be invoked via Task(subagent_type='subagent-name') - NEVER executed directly.
+description: Use PROACTIVELY when: [specific trigger scenarios]. Called from [context/workflow]. CRITICAL: This agent MUST be invoked via Agent(subagent_type='subagent-name') - NEVER executed directly.
 tools: Read, Write, Edit, Bash, Grep, Glob # Optional: comma-separated, principle of least privilege
 model: sonnet # Optional: sonnet/opus/haiku/inherit (default: inherit)
 permissionMode: default # Optional: default/acceptEdits/dontAsk (default: default)
@@ -123,10 +123,10 @@ Format: Natural language with specific components
 Required Components:
 1. "Use PROACTIVELY when:" clause with specific trigger scenarios
 2. "Called from" clause indicating workflow context
-3. "CRITICAL: This agent MUST be invoked via Task(subagent_type='...')" clause
+3. "CRITICAL: This agent MUST be invoked via Agent(subagent_type='...')" clause
 
 Examples:
-- `Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='code-backend') - NEVER executed directly.`
+- `Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Agent(subagent_type='code-backend') - NEVER executed directly.`
 - `Backend development agent` (too vague, missing required clauses)
 - `Helps with backend stuff` (unprofessional, missing trigger scenarios)
 
