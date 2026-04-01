@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.3] - 2026-04-01
+
+### Summary
+
+GLM environment variable completeness fix (API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), `moai cc`/`moai cg` OAuth token preservation fix, statusline [1m] suffix stripping for GLM models, and CI/CD automation improvements with auto-merge on CI pass.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- GLM env: `API_TIMEOUT_MS=3000000` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` added to all GLM injection paths (setGLMEnv, injectTmuxSessionEnv, buildGLMEnvVars, injectGLMEnvForTeam, injectGLMEnv)
+- Statusline: `[1m]` suffix stripping for non-Claude/GLM model names in display and resolve logic
+- CI: Auto-merge workflow that merges PRs when CI checks pass (#595)
+- CI: CI/CD AI automation redesign with Claude Code Action integration (SPEC-CICD-001)
+
+### Changed
+
+- CI: All PRs now trigger CI regardless of file changes (#594)
+- CI: Claude Code Action `max-turns` increased from 20 to 40
+- Statusline: `resolveGLMModelName` now strips `[1m]` before Claude display name matching
+- GLM team mode tests updated for new env var expectations (7 → 9 keys)
+
+### Fixed
+
+- GLM: Missing `API_TIMEOUT_MS` and `DISABLE_NONESSENTIAL_TRAFFIC` env vars caused timeouts and unnecessary network traffic on GLM/Z.AI proxy (#590)
+- GLM: `[1m]` suffix appearing in statusline model display for GLM models
+- GLM: `moai cc` and `moai cg` deleting OAuth token from tmux session env, causing auth failure after mode switch
+- CI: PRs from forks and branch patterns not triggering CI workflows (#594)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.8.3] - 2026-04-01 (한국어)
+
+### 요약
+
+GLM 환경변수 누락 수정(API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), `moai cc`/`moai cg` OAuth 토큰 보존 수정, GLM 모델 상태표시줄 [1m] 접미사 제거, CI 통과 시 자동 머지 등 CI/CD 자동화 개선.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- GLM 환경변수: `API_TIMEOUT_MS=3000000`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` 모든 GLM 주입 경로에 추가
+- 상태표시줄: 비-Claude/GLM 모델 이름에서 `[1m]` 접미사 자동 제거
+- CI: CI 통과 시 PR 자동 머지 워크플로우 추가 (#595)
+- CI: Claude Code Action 연동 CI/CD AI 자동화 재설계 (SPEC-CICD-001)
+
+### 변경됨 (Changed)
+
+- CI: 파일 변경 여부와 관계없이 모든 PR에서 CI 실행 (#594)
+- CI: Claude Code Action `max-turns` 20→40 증가
+- 상태표시줄: `resolveGLMModelName`이 Claude 표시 이름 매칭 전 `[1m]` 제거
+- GLM 팀 모드 테스트: 환경변수 키 수 7→9 반영
+
+### 수정됨 (Fixed)
+
+- GLM: `API_TIMEOUT_MS`, `DISABLE_NONESSENTIAL_TRAFFIC` 누락으로 타임아웃 및 불필요한 네트워크 트래픽 발생 문제 수정 (#590)
+- GLM: 상태표시줄에 GLM 모델 이름 뒤 `[1m]` 접미사 표시 문제 수정
+- GLM: `moai cc`, `moai cg` 실행 시 tmux 세션에서 OAuth 토큰이 삭제되어 인증 실패하던 문제 수정
+- CI: 포크 및 브랜치 패턴에서 CI 워크플로우 미실행 문제 수정 (#594)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.8.2] - 2026-03-31
 
 ### Summary
