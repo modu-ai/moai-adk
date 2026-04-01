@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary
 
-GLM environment variable completeness fix (API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), statusline [1m] suffix stripping for GLM models, and CI/CD automation improvements with auto-merge on CI pass.
+GLM environment variable completeness fix (API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), `moai cc`/`moai cg` OAuth token preservation fix, statusline [1m] suffix stripping for GLM models, and CI/CD automation improvements with auto-merge on CI pass.
 
 ### Breaking Changes
 
@@ -33,6 +33,7 @@ None
 
 - GLM: Missing `API_TIMEOUT_MS` and `DISABLE_NONESSENTIAL_TRAFFIC` env vars caused timeouts and unnecessary network traffic on GLM/Z.AI proxy (#590)
 - GLM: `[1m]` suffix appearing in statusline model display for GLM models
+- GLM: `moai cc` and `moai cg` deleting OAuth token from tmux session env, causing auth failure after mode switch
 - CI: PRs from forks and branch patterns not triggering CI workflows (#594)
 
 ### Installation & Update
@@ -51,7 +52,7 @@ moai version
 
 ### 요약
 
-GLM 환경변수 누락 수정(API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), GLM 모델 상태표시줄 [1m] 접미사 제거, CI 통과 시 자동 머지 등 CI/CD 자동화 개선.
+GLM 환경변수 누락 수정(API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), `moai cc`/`moai cg` OAuth 토큰 보존 수정, GLM 모델 상태표시줄 [1m] 접미사 제거, CI 통과 시 자동 머지 등 CI/CD 자동화 개선.
 
 ### 주요 변경 사항 (Breaking Changes)
 
@@ -75,6 +76,7 @@ GLM 환경변수 누락 수정(API_TIMEOUT_MS, DISABLE_NONESSENTIAL_TRAFFIC), GL
 
 - GLM: `API_TIMEOUT_MS`, `DISABLE_NONESSENTIAL_TRAFFIC` 누락으로 타임아웃 및 불필요한 네트워크 트래픽 발생 문제 수정 (#590)
 - GLM: 상태표시줄에 GLM 모델 이름 뒤 `[1m]` 접미사 표시 문제 수정
+- GLM: `moai cc`, `moai cg` 실행 시 tmux 세션에서 OAuth 토큰이 삭제되어 인증 실패하던 문제 수정
 - CI: 포크 및 브랜치 패턴에서 CI 워크플로우 미실행 문제 수정 (#594)
 
 ### 설치 및 업데이트 (Installation & Update)
