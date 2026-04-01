@@ -1,0 +1,105 @@
+name: Auto Merge
+
+# CI가 PR에서 성공적으로 완료되면 자동으로 squash merge
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    # CI가 성공한 경우에만 실행
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get PR number
+        id: pr
+        env:
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          PR_HEAD_BRANCH: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
+          PR_STATE: ${{ github.event.workflow_run.pull_requests[0].state }}
+          PR_MERGED: ${{ github.event.workflow_run.pull_requests[0].merged }}
+        run: |
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "branch=$PR_HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "state=$PR_STATE" >> "$GITHUB_OUTPUT"
+          echo "merged=$PR_MERGED" >> "$GITHUB_OUTPUT"
+          echo "PR #$PR_NUMBER ($PR_HEAD_BRANCH) - State: $PR_STATE, Merged: $PR_MERGED"
+
+      - name: Skip if not open or already merged
+        if: >
+          steps.pr.outputs.state != 'open' ||
+          steps.pr.outputs.merged == 'true' ||
+          steps.pr.outputs.number == ''
+        run: |
+          echo "Skipping: PR is not open or already merged"
+          exit 0
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check all required CI checks passed
+        id: checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          echo "Checking required CI checks for PR #$PR_NUMBER..."
+
+          # Wait for all checks to complete (max 10 minutes)
+          MAX_WAIT=60
+          WAIT=0
+
+          while [ $WAIT -lt $MAX_WAIT ]; do
+            # Get required checks status
+            CHECKS_OUTPUT=$(gh pr checks "$PR_NUMBER" --required 2>&1) || true
+
+            # Count pending/running checks
+            PENDING=$(echo "$CHECKS_OUTPUT" | grep -c "pending\|running" || true)
+            FAILED=$(echo "$CHECKS_OUTPUT" | grep -c "fail\|error" || true)
+            PASSED=$(echo "$CHECKS_OUTPUT" | grep -c "pass" || true)
+
+            echo "Check status: passed=$PASSED, pending=$PENDING, failed=$FAILED"
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "Some checks failed, skipping auto-merge"
+              echo "should_merge=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [ "$PENDING" -eq 0 ]; then
+              echo "All checks completed!"
+              echo "should_merge=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "Waiting for checks to complete... ($WAIT/$MAX_WAIT)"
+            sleep 10
+            WAIT=$((WAIT + 1))
+          done
+
+          echo "Timeout waiting for checks, skipping auto-merge"
+          echo "should_merge=false" >> "$GITHUB_OUTPUT"
+
+      - name: Auto merge PR
+        if: steps.checks.outputs.should_merge == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          echo "Auto-merging PR #$PR_NUMBER..."
+
+          # Try squash merge first
+          if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+            echo "Successfully merged PR #$PR_NUMBER"
+          else
+            echo "Merge failed, trying with --auto for deferred merge..."
+            gh pr merge "$PR_NUMBER" --squash --delete-branch --auto || true
+          fi
