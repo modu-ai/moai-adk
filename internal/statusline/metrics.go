@@ -65,9 +65,9 @@ func ShortenModelName(model string) string {
 		return ""
 	}
 
-	// Handle non-Claude models
+	// Handle non-Claude models: strip [1m] suffix (GLM doesn't support 1M context)
 	if !strings.HasPrefix(model, "claude-") {
-		return model
+		return strings.TrimSuffix(model, "[1m]")
 	}
 
 	// Remove "claude-" prefix
@@ -138,12 +138,17 @@ func ShortenModelName(model string) string {
 // and returns the actual GLM model name instead of the Claude display name.
 // When ANTHROPIC_DEFAULT_*_MODEL env vars contain non-Claude model names,
 // the display name from Claude Code (e.g., "Opus") is replaced with the actual model.
+// Also strips [1m] suffix from non-Claude models (GLM doesn't support 1M context).
 func resolveGLMModelName(displayName string) string {
 	if displayName == "" {
 		return displayName
 	}
 
-	lower := strings.ToLower(displayName)
+	// Strip [1m] suffix before matching — Claude Code may append it
+	// to any model in the Opus/Sonnet slot regardless of provider.
+	cleaned := strings.TrimSuffix(displayName, "[1m]")
+	cleaned = strings.TrimSpace(cleaned)
+	lower := strings.ToLower(cleaned)
 
 	// Map Claude display names to their corresponding env vars
 	var envKey string
@@ -155,6 +160,11 @@ func resolveGLMModelName(displayName string) string {
 	case strings.Contains(lower, "haiku"):
 		envKey = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
 	default:
+		// Not a known Claude display name — might be GLM model name passed directly.
+		// Strip [1m] for non-Claude models and return.
+		if !strings.HasPrefix(lower, "claude") {
+			return cleaned
+		}
 		return displayName
 	}
 
