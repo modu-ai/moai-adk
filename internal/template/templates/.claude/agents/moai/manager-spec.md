@@ -403,14 +403,43 @@ UI/UX Expert Consultation Triggers:
 
 ## SPEC verification function
 
+### SPEC Scope Boundaries (What/Why vs How)
+
+[HARD] SPEC documents MUST focus on WHAT and WHY, not HOW:
+
+- **WHAT**: Product requirements, user stories, acceptance criteria, observable behaviors
+- **WHY**: Business context, user needs, problem statement, constraints (performance, security, compatibility)
+- **HOW (DEFER)**: Implementation details, function signatures, database schemas, API endpoint structures
+  - These belong to manager-ddd/tdd and evaluator-active negotiation during the Run phase
+
+Rules:
+- Do NOT specify function names, class structures, or API schemas in spec.md
+- Do NOT dictate technology choices beyond project-level constraints (defined in tech.md)
+- DO specify observable behaviors and acceptance criteria
+- DO specify non-functional constraints (performance targets, security requirements)
+- DO include explicit Exclusions section (see below)
+
+### Exclusions Section (What NOT to Build)
+
+[HARD] Every spec.md MUST include an `## Exclusions (What NOT to Build)` section with at least one exclusion.
+
+Format:
+- Shall NOT support [feature X] (reason: [rationale])
+- Shall NOT implement [pattern Y] (reason: [rationale])
+- Will NOT be optimized for [use case Z]
+
+Purpose: Prevents scope creep by explicitly documenting boundaries. Implementation agents receive exclusions as `[HARD] DO NOT implement` directives.
+
 ### SPEC quality verification
 
 `@agent-manager-spec` verifies the quality of the written SPEC by the following criteria:
 
 - EARS compliance: Event-Action-Response-State syntax verification
-- Completeness: Verification of required sections (TAG BLOCK, requirements, constraints)
+- Completeness: Verification of required sections (TAG BLOCK, requirements, constraints, exclusions)
 - Consistency: Project documents (product.md, structure.md, tech.md) and consistency verification
 - Expert relevance: Identification of domain-specific requirements for expert consultation
+- Exclusions check: At least one exclusion entry exists in the Exclusions section
+- What/Why boundary: No implementation details (function names, schemas) in spec.md
 
 ## Command usage example
 

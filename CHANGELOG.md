@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-04-01
+
+### Summary
+
+Harness Design + SDD 베스트 프랙티스 통합 업그레이드. Anthropic 엔지니어링 블로그 "Harness Design for Long-Running Apps"와 2026 SDD 업계 분석을 기반으로, 에이전트 품질 평가 체계와 SPEC 워크플로우를 전면 강화.
+
+### Breaking Changes
+
+- manager-quality 모델이 haiku에서 sonnet으로 업그레이드 (비용 증가, 품질 향상)
+
+### Added
+
+- **evaluator-active 에이전트**: 독립적 회의적 품질 평가자. 4차원 평가 (Functionality/Security/Craft/Consistency). Security FAIL = 전체 FAIL
+- **Phase 2.0 Sprint Contract**: thorough 레벨에서 구현 전 evaluator-active와 Done 기준 사전 합의
+- **Phase 2.8a/2.8b 분리**: evaluator-active 능동 평가 + manager-quality TRUST 5 정적 검증
+- **harness.yaml**: 3단계 품질 깊이 (minimal/standard/thorough) 자동 판단 + 실패 시 에스컬레이션
+- **Complexity Estimator**: SPEC 복잡도 기반 하네스 레벨 자동 결정
+- **tasks.md 영속 아티팩트**: Git 추적 가능한 태스크 분해 파일
+- **Drift Guard**: DDD/TDD 사이클 완료 시 scope drift 실시간 감지
+- **Delta Markers**: 브라운필드 프로젝트용 [EXISTING]/[MODIFY]/[NEW]/[REMOVE] 분류
+- **spec-compact.md**: Run phase ~30% 토큰 절약
+- **constitution.yaml**: 프로젝트 기술 제약 기계 판독 정의
+- **evaluator-profiles/**: 4종 평가자 프로필 (default, strict, lenient, frontend)
+- **SEMAP Behavioral Contracts**: manager-ddd, manager-quality에 행동 계약
+- **Exclusions 필수화**: spec.md에 "What NOT to Build" 섹션 필수
+- **What/Why 제약**: manager-spec에 How 과명세 방지 규칙
+
+### Changed
+
+- manager-quality: model haiku → sonnet, 회의적 평가 프롬프트
+- manager-spec: What/Why 경계 + Exclusions 검증 강화
+- run.md: Harness Routing, Phase 2.0, tasks.md, Drift Guard, Phase 2.8a/2.8b
+- plan.md: Delta Markers, spec-compact.md 생성, Exclusions
+- moai.md: Complexity Estimator
+- workflow-modes.md: Drift Guard 섹션
+
+### Installation & Update
+
+```bash
+go install github.com/modu-ai/moai-adk/cmd/moai@v2.9.0
+moai update
+```
+
 ## [2.8.4] - 2026-04-01
 
 ### Summary

@@ -1,0 +1,61 @@
+# Harness Depth Configuration
+# Defines quality pipeline depth levels and auto-detection thresholds.
+# The system automatically selects the appropriate level based on SPEC complexity.
+
+harness:
+  # Execution mode defaults
+  mode_defaults:
+    solo: auto            # Sub-agent mode: auto-detect level
+    team: auto            # Team mode: auto-detect level
+    cg: thorough          # CG mode: always thorough (natural Generator-Evaluator split)
+
+  # Automatic level detection (Complexity Estimator)
+  auto_detection:
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+          - "spec_type in [bugfix, docs, config]"
+      standard:
+        conditions:
+          - "file_count > 3 OR multi_domain"
+          - "spec_type in [feature, refactor]"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+          - "spec_priority == critical"
+          - "domain in [auth, payment, migration, public_api]"
+
+  # Failure-triggered escalation
+  escalation:
+    enabled: true
+    triggers:
+      - quality_gate_fail    # Phase 2.5 FAIL -> escalate one level
+      - review_critical      # Phase 2.8 CRITICAL -> escalate to thorough
+      - test_coverage_low    # Coverage < 70% -> escalate to standard+
+    max_escalations: 2
+
+  # Level definitions
+  levels:
+    minimal:
+      description: "Fast iteration for simple changes"
+      skip_phases: [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]
+      evaluator: false
+      sprint_contract: false
+
+    standard:
+      description: "Balanced quality for most development"
+      skip_phases: []
+      evaluator: true
+      evaluator_mode: "final-pass"
+      sprint_contract: false
+
+    thorough:
+      description: "Maximum quality for critical features"
+      skip_phases: []
+      evaluator: true
+      evaluator_mode: "per-sprint"
+      evaluator_profile: "strict"
+      sprint_contract: true
+      playwright_testing: true

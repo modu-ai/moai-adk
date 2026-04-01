@@ -292,10 +292,40 @@ File generation (all three files created simultaneously):
   - Edge case testing scenarios
   - Performance and quality gate criteria
 
+### Delta Markers for Brownfield Projects
+
+When the SPEC modifies existing code (detected via research.md analysis), apply delta markers:
+
+```
+### [DELTA] {Module Name}
+- [EXISTING] {description} - unchanged context, characterization tests only
+- [MODIFY] {description} - existing code to change, requires characterization tests before modification
+- [NEW] {description} - new code to create, full implementation + new tests
+- [REMOVE] {description} - code to delete, requires dependency analysis and migration verification
+```
+
+Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfield projects skip this.
+
+### spec-compact.md Auto-Generation
+
+After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
+
+Extract from spec.md:
+- All REQ-XXX requirements (EARS format entries)
+- All acceptance criteria (Given/When/Then scenarios)
+- Files to modify list
+- Exclusions (What NOT to Build) section
+
+Exclude: Overview, technical approach, research references, annotation history.
+
+Purpose: Run phase loads spec-compact.md (~30% token savings) instead of full spec.md.
+Fallback: If generation fails, Run phase uses full spec.md.
+
 Quality constraints:
 - Requirement modules limited to 5 or fewer per SPEC
 - Acceptance criteria minimum 2 Given/When/Then scenarios
 - Technical terms and function names remain in English
+- Exclusions section MUST contain at least 1 entry
 
 ### Phase 2.5: GitHub Issue Creation (Conditional)
 
@@ -505,10 +535,13 @@ All of the following must be verified:
 
 - Phase 1: manager-spec analyzed project and proposed SPEC candidates
 - User approval obtained via AskUserQuestion before SPEC creation
-- Phase 2: All 3 SPEC files created (spec.md, plan.md, acceptance.md)
+- Phase 2: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
 - Directory naming follows .moai/specs/SPEC-{ID}/ format
 - YAML frontmatter contains all 8 required fields (including issue_number)
 - EARS structure is complete
+- Exclusions section present with at least 1 entry
+- Delta markers applied for brownfield requirements (if applicable)
+- spec-compact.md auto-generated with requirements + acceptance criteria only
 - Phase 2.5: GitHub Issue created and linked (unless --no-issue)
 - Phase 3: Appropriate git action taken based on flags and user choice
 - If --worktree: SPEC committed before worktree creation
