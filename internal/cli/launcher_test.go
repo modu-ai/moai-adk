@@ -591,9 +591,11 @@ func TestExpandModelString(t *testing.T) {
 	}{
 		{"empty string", "", ""},
 		{"standard opus", "claude-opus-4-6", "claude-opus-4-6"},
-		{"opus 1m", "claude-opus-4-6[1m]", "claude-opus-4-6"},
+		{"opus 1m", "claude-opus-4-6[1m]", "claude-opus-4-6[1m]"},
 		{"standard sonnet", "claude-sonnet-4-6", "claude-sonnet-4-6"},
-		{"sonnet 1m", "claude-sonnet-4-6[1m]", "claude-sonnet-4-6"},
+		{"sonnet 1m", "claude-sonnet-4-6[1m]", "claude-sonnet-4-6[1m]"},
+		{"opus alias 1m", "opus[1m]", "opus[1m]"},
+		{"sonnet alias 1m", "sonnet[1m]", "sonnet[1m]"},
 		{"haiku", "claude-haiku-4-5-20251001", "claude-haiku-4-5-20251001"},
 		{"opusplan", "opusplan", "opusplan"},
 		{"arbitrary model", "some-model", "some-model"},

@@ -653,15 +653,11 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 	return nil
 }
 
-// expandModelString converts moai-specific model strings (e.g. "claude-opus-4-6[1m]")
-// into valid Claude Code --model values (e.g. "claude-opus-4-6").
-// The "[1m]" suffix is a moai convention for 1M context / extended thinking models.
-// Claude Code does not recognize this suffix, so it must be stripped before passing
-// the model to the claude CLI.
+// expandModelString normalizes moai-specific model strings into valid Claude
+// Code --model values. The "[1m]" suffix is passed through as-is because
+// Claude Code natively supports it (e.g. "opus[1m]", "claude-opus-4-6[1m]")
+// to enable the 1M token context window.
 func expandModelString(model string) string {
-	if strings.HasSuffix(model, "[1m]") {
-		return strings.TrimSuffix(model, "[1m]")
-	}
 	return model
 }
 
