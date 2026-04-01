@@ -233,6 +233,8 @@ func removeGLMEnv(settingsPath string) error {
 		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
 		delete(settings.Env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
 		delete(settings.Env, "DISABLE_PROMPT_CACHING")
+		delete(settings.Env, "API_TIMEOUT_MS")
+		delete(settings.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 
 		if len(settings.Env) == 0 {
 			settings.Env = nil

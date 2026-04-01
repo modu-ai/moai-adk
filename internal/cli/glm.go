@@ -148,8 +148,10 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
 	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1") //nolint:errcheck
-	_ = os.Setenv("DISABLE_PROMPT_CACHING", "1")                 //nolint:errcheck
+	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")    //nolint:errcheck
+	_ = os.Setenv("DISABLE_PROMPT_CACHING", "1")                    //nolint:errcheck
+	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                      //nolint:errcheck
+	_ = os.Setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1") //nolint:errcheck
 }
 
 // runGLMSetup saves a GLM API key.
@@ -332,8 +334,10 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
-		"DISABLE_PROMPT_CACHING":                 "1",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":    "1",
+		"DISABLE_PROMPT_CACHING":                    "1",
+		"API_TIMEOUT_MS":                            "3000000",
+		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -364,6 +368,8 @@ func clearTmuxSessionEnv() error {
 		// Z.AI proxy compatibility flags
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 		"DISABLE_PROMPT_CACHING",
+		"API_TIMEOUT_MS",
+		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -490,6 +496,8 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
+	settings.Env["API_TIMEOUT_MS"] = "3000000"
+	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 
 	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
@@ -754,8 +762,10 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
-		"DISABLE_PROMPT_CACHING":                 "1",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":    "1",
+		"DISABLE_PROMPT_CACHING":                    "1",
+		"API_TIMEOUT_MS":                            "3000000",
+		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
 }
 
@@ -799,6 +809,8 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
+	settings.Env["API_TIMEOUT_MS"] = "3000000"
+	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
