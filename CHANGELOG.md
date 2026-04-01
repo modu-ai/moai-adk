@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.4] - 2026-04-01
+
+### Summary
+
+Fixed profile model selection where 1M context models were not being correctly passed to Claude Code, ensuring user's model choice is properly applied.
+
+### Breaking Changes
+
+None
+
+### Added
+
+None
+
+### Changed
+
+None
+
+### Fixed
+
+- Profile: 1M context model selection now correctly passes the chosen model to Claude Code instead of using the default model
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.8.4] - 2026-04-01 (한국어)
+
+### 요약
+
+프로필에서 선택한 1M 컨텍스트 모델이 Claude Code에 올바르게 전달되지 않는 문제를 수정하여 사용자가 선택한 모델이 제대로 적용되도록 했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+없음
+
+### 변경됨 (Changed)
+
+없음
+
+### 수정됨 (Fixed)
+
+- 프로필: 1M 컨텍스트 모델 선택 시 기본 모델 대신 사용자가 선택한 모델이 Claude Code에 올바르게 전달되도록 수정
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.8.3] - 2026-04-01
 
 ### Summary
