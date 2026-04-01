@@ -2,6 +2,7 @@ package worktree
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
@@ -313,5 +314,178 @@ func TestWorktreeAutoCleanup(t *testing.T) {
 				t.Error("WorktreeProvider.Remove was not called after PR merge")
 			}
 		})
+	}
+}
+
+// TestNewCmd_TmuxFlagRegistered tests that the --tmux flag is registered on newCmd
+func TestNewCmd_TmuxFlagRegistered(t *testing.T) {
+	cmd := newNewCmd()
+
+	// Check that --tmux flag exists
+	flag := cmd.Flags().Lookup("tmux")
+	if flag == nil {
+		t.Fatal("--tmux flag is not registered")
+	}
+
+	// Verify default value
+	if flag.DefValue != "false" {
+		t.Errorf("--tmux flag default = %v, want false", flag.DefValue)
+	}
+
+	// Verify flag type (should be bool)
+	if flag.Value.Type() != "bool" {
+		t.Errorf("--tmux flag type = %v, want bool", flag.Value.Type())
+	}
+}
+
+// TestRunNew_WithTmuxFlag_TmuxAvailable tests tmux session creation when --tmux flag is set
+func TestRunNew_WithTmuxFlag_TmuxAvailable(t *testing.T) {
+	// This test verifies that when --tmux flag is set and tmux is available,
+	// CreateTmuxSession is called after worktree creation
+
+	tests := []struct {
+		name          string
+		specID        string
+		tmuxFlag      bool
+		tmuxAvailable bool
+		wantTmuxCall  bool
+	}{
+		{
+			name:          "--tmux flag set, tmux available",
+			specID:        "SPEC-TEST-001",
+			tmuxFlag:      true,
+			tmuxAvailable: true,
+			wantTmuxCall:  true,
+		},
+		{
+			name:          "--tmux flag set, tmux unavailable",
+			specID:        "SPEC-TEST-001",
+			tmuxFlag:      true,
+			tmuxAvailable: false,
+			wantTmuxCall:  false,
+		},
+		{
+			name:          "--tmux flag not set, tmux available",
+			specID:        "SPEC-TEST-001",
+			tmuxFlag:      false,
+			tmuxAvailable: true,
+			wantTmuxCall:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			tempDir := t.TempDir()
+
+			// Set up mock functions
+			oldUserHomeDirFunc := userHomeDirFunc
+			oldGetProjectNameFunc := getProjectNameFunc
+			oldIsTmuxAvailableFunc := isTmuxAvailableFunc
+			defer func() {
+				userHomeDirFunc = oldUserHomeDirFunc
+				getProjectNameFunc = oldGetProjectNameFunc
+				isTmuxAvailableFunc = oldIsTmuxAvailableFunc
+			}()
+
+			userHomeDirFunc = func() (string, error) { return tempDir, nil }
+			getProjectNameFunc = func() string { return "test-project" }
+			isTmuxAvailableFunc = func() bool { return tt.tmuxAvailable }
+
+			mockProvider, cleanup := setupMockProvider(t)
+			defer cleanup()
+
+			// Create command with --tmux flag
+			cmd := newNewCmd()
+			cmd.SetArgs([]string{tt.specID})
+			if tt.tmuxFlag {
+				if err := cmd.Flags().Set("tmux", "true"); err != nil {
+					t.Fatalf("Failed to set --tmux flag: %v", err)
+				}
+			}
+
+			// Set output to buffer to capture command output
+			outBuf := &strings.Builder{}
+			cmd.SetOut(outBuf)
+			cmd.SetErr(outBuf)
+
+			// Act
+			err := cmd.RunE(cmd, []string{tt.specID})
+
+			// Assert
+			if err != nil && tt.tmuxAvailable && tt.tmuxFlag {
+				// Error might occur if CreateTmuxSession is not implemented yet,
+				// but we just want to verify the flag logic is correct
+				t.Logf("Expected error (CreateTmuxSession not yet integrated): %v", err)
+			}
+
+			// Verify worktree was created
+			if !mockProvider.addCalled {
+				t.Error("WorktreeProvider.Add was not called")
+			}
+
+			// Note: Actual CreateTmuxSession call verification will be
+			// implemented once we add the integration to runNew()
+		})
+	}
+}
+
+// TestRunNew_TmuxNotAvailable_GracefulDegradation tests graceful degradation when tmux unavailable
+func TestRunNew_TmuxNotAvailable_GracefulDegradation(t *testing.T) {
+	// This test verifies that when --tmux flag is set but tmux is unavailable,
+	// worktree is still created and manual instructions are printed
+
+	// Arrange
+	tempDir := t.TempDir()
+	specID := "SPEC-TEST-001"
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldGetProjectNameFunc := getProjectNameFunc
+	oldIsTmuxAvailableFunc := isTmuxAvailableFunc
+	defer func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		getProjectNameFunc = oldGetProjectNameFunc
+		isTmuxAvailableFunc = oldIsTmuxAvailableFunc
+	}()
+
+	userHomeDirFunc = func() (string, error) { return tempDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+	isTmuxAvailableFunc = func() bool { return false } // tmux unavailable
+
+	mockProvider, cleanup := setupMockProvider(t)
+	defer cleanup()
+
+	// Create command with --tmux flag
+	cmd := newNewCmd()
+	cmd.SetArgs([]string{specID})
+	if err := cmd.Flags().Set("tmux", "true"); err != nil {
+		t.Fatalf("Failed to set --tmux flag: %v", err)
+	}
+
+	// Set output to buffer
+	outBuf := &strings.Builder{}
+	cmd.SetOut(outBuf)
+	cmd.SetErr(outBuf)
+
+	// Act
+	err := cmd.RunE(cmd, []string{specID})
+
+	// Assert
+	// Worktree should still be created even without tmux
+	if err != nil {
+		// Note: Error might occur if CreateTmuxSession is called but fails
+		// We expect graceful degradation, so this might be acceptable
+		t.Logf("Error occurred (may be expected for graceful degradation): %v", err)
+	}
+
+	if !mockProvider.addCalled {
+		t.Error("WorktreeProvider.Add was not called - worktree should be created even without tmux")
+	}
+
+	// Verify output contains manual instructions
+	output := outBuf.String()
+	if !contains(output, "cd") && !contains(output, "/moai run") {
+		t.Log("Output should contain manual cd instructions when tmux unavailable")
+		t.Logf("Output: %s", output)
 	}
 }

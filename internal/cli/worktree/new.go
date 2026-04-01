@@ -17,6 +17,10 @@ var userHomeDirFunc = os.UserHomeDir
 // Overridable in tests.
 var getProjectNameFunc = func() string { return detectProjectName(".") }
 
+// isTmuxAvailableFunc checks if tmux is available.
+// Overridable in tests.
+var isTmuxAvailableFunc = IsTmuxAvailable
+
 // legacyWorktreeDir is the project-local worktrees path checked for migration warnings.
 // Overridable in tests.
 var legacyWorktreeDir = filepath.Join(".", ".moai", "worktrees")
@@ -35,6 +39,7 @@ to branch names using the feature/ prefix convention.`,
 	}
 	cmd.Flags().String("path", "", "Custom path for the worktree (default: .moai/worktrees/<SPEC-ID> for SPEC IDs, ../<branch-name> otherwise)")
 	cmd.Flags().String("base", "main", "Base branch to create the worktree from")
+	cmd.Flags().Bool("tmux", false, "Create a tmux session after worktree creation")
 	return cmd
 }
 
@@ -76,6 +81,30 @@ func runNew(cmd *cobra.Command, args []string) error {
 		fmt.Sprintf("Created worktree for branch %s", branchName),
 		fmt.Sprintf("Path: %s", wtPath),
 	))
+
+	// R5: tmux session creation after worktree creation
+	// Check if --tmux flag is set
+	tmuxFlag, _ := cmd.Flags().GetBool("tmux")
+	if tmuxFlag || isTmuxPreferred() {
+		if isTmuxAvailableFunc() {
+			// Create tmux session with environment isolation
+			projectName := getProjectNameFunc()
+			_, err := BuildTmuxSessionConfig(projectName, specID, wtPath, ".")
+			if err != nil {
+				return fmt.Errorf("build tmux config: %w", err)
+			}
+
+			// Note: Using a nil tmux manager for now - will need proper initialization
+			// This is a simplified implementation for the TDD cycle
+			_, _ = fmt.Fprintln(out, "Tmux session creation requested but tmux manager not yet initialized.")
+			_, _ = fmt.Fprintln(out, fmt.Sprintf("To manually create session: tmux new-session -s %s -c %s", GenerateTmuxSessionName(projectName, specID), wtPath))
+		} else {
+			// Graceful degradation: print manual instructions
+			err := NewTmuxNotAvailableError(specID, wtPath)
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
+		}
+	}
+
 	return nil
 }
 
@@ -150,4 +179,15 @@ func ShouldAutoMerge(noMergeFlag bool) bool {
 	// R3: auto-merge is the default (true)
 	// Can only be disabled via the --no-merge flag
 	return !noMergeFlag
+}
+
+// isTmuxPreferred checks if tmux session creation is preferred in workflow config.
+// This is a placeholder for future workflow.yaml integration.
+//
+// @MX:NOTE: SPEC-WORKTREE-002 workflow config integration point
+// @MX:SPEC: SPEC-WORKTREE-002
+func isTmuxPreferred() bool {
+	// TODO: Read from .moai/config/sections/workflow.yaml
+	// For now, return false to require explicit --tmux flag
+	return false
 }

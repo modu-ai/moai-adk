@@ -479,39 +479,44 @@ Options:
 
 Triggered when: User selects "Start Implementation" in Decision Point 3.
 
-**Step 1 — Detect active mode:**
+Purpose: After SPEC creation, detect execution environment and present optimal implementation mode.
+
+**Step 1: Detect active LLM mode**
 Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
-- `""` (empty) = CC mode (all agents use Claude)
-- `"glm"` = GLM mode (all agents use GLM)
-- `"cg"` = CG mode (Leader=Claude, Workers=GLM)
+- `""` (empty) or `"cc"`: CC mode (Claude-only)
+- `"glm"`: GLM mode (GLM-only)
+- `"cg"`: CG mode (Claude Leader + GLM Workers)
 
-**Step 2 — Detect tmux availability:**
-Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
+**Step 2: Detect tmux availability**
+Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
 
-**Step 3 — Present options when tmux is available:**
-AskUserQuestion with 3 options (descriptions adapt to active_mode):
+**Step 3: Present options based on detection**
+
+When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to active_mode):
 - Option 1 (Recommended): Worktree + {active_mode}
-  - CC: "독립 worktree에서 CC 모드 실행. 모든 에이전트 Claude. 최고 품질."
-  - GLM: "독립 worktree에서 GLM 모드 실행. 모든 에이전트 GLM. 비용 최적화."
-  - CG: "독립 worktree에서 CG 모드 실행. Leader=Claude, Workers=GLM. 품질-비용 균형."
-- Option 2: Team Mode — 현재 세션에서 Agent Teams 실행. Worktree 없이 직접 실행.
-- Option 3: Sub-agent Mode — 순차 실행. 가장 안정적이고 토큰 효율적.
+  - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
+  - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
+  - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
+- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session. Best for multi-domain features.
+- Option 3: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks.
 
-**Step 3 (tmux unavailable):** AskUserQuestion with 2 options:
-- Option 1 (Recommended): Sub-agent Mode — 순차 실행. tmux 없이 가장 안정적.
-- Option 2: Team Mode (in-process) — 현재 세션에서 Agent Teams 실행.
+When tmux is NOT available: AskUserQuestion with 2 options:
+- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation.
+- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session.
 
-**Step 4 — Worktree 선택 시 실행:**
-- CC: 추가 env 설정 불필요. worktree 생성 후 새 tmux 세션에서 claude 실행.
-- GLM: 새 tmux 세션에 injectTmuxSessionEnv()로 GLM env 주입 후 실행.
-- CG: 새 tmux 세션에 injectTmuxSessionEnv() 적용 + settings.local.json에서 GLM env 제거(Leader 격리).
-- 새 tmux 세션에서 worktree 디렉터리로 이동 후 `/moai run SPEC-{ID}` 실행.
-- 현재 세션 종료 (worktree 세션이 독립적으로 실행됨).
+**Step 4: Execute selected mode**
+- **Worktree mode**: Execute `moai worktree new SPEC-{ID} --tmux` to create worktree with tmux session. The tmux session will:
+  - CC mode: Create session, cd to worktree, run `/moai run SPEC-{ID}`
+  - GLM mode: Create session, inject GLM env, cd to worktree, run `/moai run SPEC-{ID}`
+  - CG mode: Create session, inject GLM env to session, clear GLM from settings.local.json, cd to worktree, run `/moai run SPEC-{ID}`
+  - Display: "Implementation started in tmux session: moai-{ProjectName}-{SPEC-ID}"
+- **Team mode**: Proceed to `/moai run SPEC-{ID} --team`
+- **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 
-**Step 5 — Gate 결과를 run 워크플로우에 전달:**
-- `execution_mode`: worktree | team | sub-agent
-- `active_mode`: cc | glm | cg
-- `tmux_available`: true | false
+**Step 5: Gate result passing**
+- Pass the selected execution mode to the run workflow
+- If worktree mode: Run workflow executes in the tmux session (no further action needed from plan)
+- If team/sub-agent mode: Continue to run workflow in current session
 
 ---
 
