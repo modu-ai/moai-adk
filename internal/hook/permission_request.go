@@ -26,13 +26,8 @@ func (h *permissionRequestHandler) Handle(ctx context.Context, input *HookInput)
 		"session_id", input.SessionID,
 		"tool_name", input.ToolName,
 	)
-	// Default to "ask" - defer decision to user/settings.
-	// Per Claude Code protocol (v2.1.59+), hookSpecificOutput.hookEventName must be
-	// "PermissionRequest" for PermissionRequest events.
-	return &HookOutput{
-		HookSpecificOutput: &HookSpecificOutput{
-			HookEventName:      "PermissionRequest",
-			PermissionDecision: DecisionAsk,
-		},
-	}, nil
+	// Return nil output to defer to user's permission mode (bypassPermissions, acceptEdits, etc.).
+	// Returning permissionDecision:"ask" would override bypass mode and always show the dialog.
+	// By returning nil, Claude Code applies its normal permission system.
+	return nil, nil
 }
