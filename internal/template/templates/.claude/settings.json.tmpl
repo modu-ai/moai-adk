@@ -168,21 +168,6 @@
         ]
       }
     ],
-    "PermissionRequest": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
-{{- end}}
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "TeammateIdle": [
       {
         "hooks": [

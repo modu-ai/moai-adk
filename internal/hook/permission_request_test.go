@@ -57,17 +57,10 @@ func TestPermissionRequestHandler_Handle(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got == nil {
-				t.Fatal("got nil output")
-			}
-			if got.HookSpecificOutput == nil {
-				t.Fatal("PermissionRequest hook should set hookSpecificOutput")
-			}
-			if got.HookSpecificOutput.PermissionDecision != DecisionAsk {
-				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, DecisionAsk)
-			}
-			if got.HookSpecificOutput.HookEventName != "PermissionRequest" {
-				t.Errorf("HookEventName = %q, want %q", got.HookSpecificOutput.HookEventName, "PermissionRequest")
+			// Handler returns nil to defer to user's permission mode.
+			// Returning non-nil with "ask" would override bypassPermissions.
+			if got != nil {
+				t.Errorf("expected nil output (defer to system), got %+v", got)
 			}
 		})
 	}
