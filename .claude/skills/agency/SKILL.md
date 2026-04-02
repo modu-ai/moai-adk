@@ -1,9 +1,32 @@
 ---
-description: "AI Agency - Self-evolving creative production system for websites and apps"
-argument-hint: "[brief|build|review|learn|evolve|resume|profile|sync-upstream|rollback|phase|config] [args] [--team] [--step]"
-type: local
+name: agency
+description: >
+  AI Agency unified orchestrator for self-evolving creative production.
+  Routes natural language or subcommands (brief, build, review, learn, evolve,
+  resume, profile, sync-upstream, rollback, phase, config) to specialized
+  agency agents for website and app creation.
+license: Apache-2.0
+compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet
-version: 1.0.0
+user-invocable: true
+metadata:
+  version: "3.2.0"
+  category: "agency"
+  status: "active"
+  updated: "2026-04-02"
+  tags: "agency, orchestrator, self-evolving, creative, production"
+  author: "MoAI-ADK Team"
+  argument-hint: "[brief|build|review|learn|evolve|resume|profile|sync-upstream|rollback|phase|config] [args] [--team] [--step]"
+
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+triggers:
+  keywords: ["agency", "brief", "landing page", "website", "web app", "creative"]
+  agents: ["planner", "copywriter", "designer", "builder", "evaluator", "learner"]
+  phases: ["plan", "run"]
 ---
 
 ## AI Agency v3.2 - Self-Evolving Creative Production System
