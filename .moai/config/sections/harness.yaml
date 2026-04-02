@@ -1,0 +1,56 @@
+harness:
+    auto_detection:
+        enabled: true
+        rules:
+            minimal:
+                conditions:
+                    - file_count <= 3 AND single_domain
+                    - spec_type in [bugfix, docs, config]
+            standard:
+                conditions:
+                    - file_count > 3 OR multi_domain
+                    - spec_type in [feature, refactor]
+            thorough:
+                conditions:
+                    - security_keywords OR payment_keywords present
+                    - spec_priority == critical
+                    - domain in [auth, payment, migration, public_api]
+    escalation:
+        enabled: true
+        max_escalations: 2
+        triggers:
+            - quality_gate_fail
+            - review_critical
+            - test_coverage_low
+    levels:
+        minimal:
+            description: Fast iteration for simple changes
+            evaluator: false
+            skip_phases:
+                - 0
+                - 0.5
+                - 2
+                - 2.5
+                - 2.75
+                - 2.8a
+                - 2.9
+                - 2.1
+            sprint_contract: false
+        standard:
+            description: Balanced quality for most development
+            evaluator: true
+            evaluator_mode: final-pass
+            skip_phases: []
+            sprint_contract: false
+        thorough:
+            description: Maximum quality for critical features
+            evaluator: true
+            evaluator_mode: per-sprint
+            evaluator_profile: strict
+            playwright_testing: true
+            skip_phases: []
+            sprint_contract: true
+    mode_defaults:
+        cg: thorough
+        solo: auto
+        team: auto
