@@ -465,8 +465,16 @@ Include in sync quality report:
 - Analyze Git changes: git status, git diff, categorize changed files
 - Read project configuration: git_strategy.mode, conversation_language, spec_git_workflow
 - Determine synchronization mode from $ARGUMENTS
-- Detect worktree context: Check if git directory contains worktrees/ component
 - Detect branch context: Check current branch name
+
+##### Worktree Context Detection
+
+Detect if the current session is running within a MoAI worktree:
+- Check if current git directory path contains `/.moai/worktrees/` component
+- OR check if `.moai/worktrees/registry.json` has an active entry for current SPEC-ID
+- Store result as `is_worktree_context` boolean for use in Phase 3.4
+
+This affects auto-merge behavior: worktree contexts default to auto-merge.
 
 #### Step 1.3: Project Status Verification
 
@@ -957,27 +965,57 @@ This ensures the developer's working directory is on the base branch, ready for 
 
 Remote branch cleanup after merge is handled by the hosting platform's auto-delete setting (GitHub: "Automatically delete head branches", GitLab: "Delete source branch when merge request is accepted", Bitbucket: "Close source branch"). Local branch cleanup is left to the developer (`git branch -d <branch>`).
 
-#### Step 3.4: Auto-Merge (When --merge flag set)
+#### Step 3.4: Auto-Merge Behavior
 
 Only applies when a PR was created in Step 3.2.
 
-Execution conditions [HARD]:
-- Flag must be explicitly set: --merge
-- All CI/CD checks must pass
-- PR must have zero merge conflicts
-- Minimum reviewer approvals obtained (if Team mode)
+##### Auto-Merge Trigger Conditions
 
-Auto-merge execution:
+Auto-merge trigger conditions:
+- `is_worktree_context == true` AND `--no-merge` flag NOT set
+- OR `--merge` flag explicitly set (deprecated, logged as warning)
+
+When auto-merge is triggered:
+1. Verify all CI/CD checks pass (gh pr checks)
+2. Verify zero merge conflicts (gh pr view --json mergeable)
+3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+4. If checks fail: Report error with recovery command, do NOT merge
+
+##### Flag Behavior
+
+- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged.
+- `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
+
+##### Auto-Merge Execution
+
 1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
 2. Check merge conflicts via `gh pr view --json mergeable`
 3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
 4. Checkout target branch, fetch latest
 5. Verify local is synchronized with remote
 
-Auto-merge failures:
+##### Auto-Merge Failures
+
 - If CI/CD fails: Report failure, display error details, do NOT merge
 - If merge conflicts: Report conflicts, provide manual resolution guidance, do NOT merge
 - If approvals missing (Team mode): Report pending approvals, do NOT merge
+
+##### Post-Merge Automatic Cleanup
+
+Condition: Auto-merge succeeded AND `workflow.worktree.auto_cleanup == true`
+
+Steps:
+1. Detect worktree path for current SPEC-ID from registry
+2. Execute cleanup equivalent to `moai worktree done SPEC-{ID} --auto --delete-branch`:
+   - Remove worktree directory
+   - Remove feature branch (already deleted by --delete-branch in merge)
+   - Update worktree registry
+3. Log cleanup result
+
+Error handling:
+- Cleanup failure does NOT block or affect merge result
+- On failure: Log warning with manual cleanup command
+- Message: "Worktree cleanup warning: {error}. Manual: `moai worktree done SPEC-{ID}`"
 
 ### Phase 4: Completion and Next Steps
 

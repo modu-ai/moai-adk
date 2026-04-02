@@ -215,15 +215,29 @@ Mode selection:
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
    - Team/Sub-agent selected: Pass execution_mode + active_mode to Phase 2
    - See plan.md Decision Point 3.5 for full option details
-12. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)
+12. **Phase 1.9 (Harness Level Auto-Detection)**: Determine pipeline depth before Run
+   - Load `.moai/config/sections/harness.yaml` (if not found, default to standard)
+   - CG mode: Always thorough (natural Generator-Evaluator split)
+   - Solo/Team: Run Complexity Estimator:
+     - Count distinct domains in SPEC requirements
+     - Count total files to modify (from plan.md)
+     - Check for security/payment/critical keywords
+   - Apply auto_detection rules:
+     - file_count <= 3 AND single_domain AND no security keywords → minimal
+     - file_count > 3 OR multi_domain → standard
+     - security/payment keywords OR priority critical → thorough
+   - Record detected harness level in progress.md
+   - Pass harness level to Run phase
+13. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)
    - worktree: Already running in isolated tmux+worktree session (Gate handled transition)
    - team: Read ${CLAUDE_SKILL_DIR}/team/run.md and follow team orchestration
    - sub-agent: manager-tdd or manager-ddd (per quality.yaml development_mode)
-13. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
-14. Terminate with completion marker
+   - Harness level determines phase skipping and evaluator involvement
+14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
+15. Terminate with completion marker
 
 ---
 
-Version: 2.7.0
-Updated: 2026-03-11
+Version: 2.8.0
+Updated: 2026-04-01
 Source: SPEC-MOAI-001. Added GitHub Issue integration (Phase 1.2) with --no-issue flag. Previous: research pattern, annotation cycle (v2.6.0).

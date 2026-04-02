@@ -44,6 +44,7 @@ func TestHookSubcommands_AllNewEventsRegistered(t *testing.T) {
 		"subagent-start",
 		"user-prompt-submit",
 		"permission-request",
+		"permission-denied",
 		"teammate-idle",
 		"task-completed",
 	}
@@ -80,6 +81,7 @@ func TestHookSubcommands_EventTypeMapping(t *testing.T) {
 		"subagent-start":     hook.EventSubagentStart,
 		"user-prompt-submit": hook.EventUserPromptSubmit,
 		"permission-request": hook.EventPermissionRequest,
+		"permission-denied":  hook.EventPermissionDenied,
 		"teammate-idle":      hook.EventTeammateIdle,
 		"task-completed":     hook.EventTaskCompleted,
 	}
@@ -188,8 +190,8 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 	validTypes := hook.ValidEventTypes()
 
 	// Verify exact count.
-	if got := len(validTypes); got != 26 {
-		t.Errorf("ValidEventTypes() returned %d types, want 26", got)
+	if got := len(validTypes); got != 27 {
+		t.Errorf("ValidEventTypes() returned %d types, want 27", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -307,6 +309,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventFileChanged:        "file-changed",
 		hook.EventElicitation:        "elicitation",
 		hook.EventElicitationResult:  "elicitation-result",
+		hook.EventPermissionDenied:   "permission-denied",
 	}
 
 	registeredNames := make(map[string]bool)

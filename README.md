@@ -868,6 +868,58 @@ The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
 
 ---
 
+## AI Agency: Self-Evolving Creative Production
+
+> Build websites and apps that get better every time you use them.
+
+MoAI-ADK includes an independent **AI Agency** system — a self-evolving creative production pipeline for websites, landing pages, and web applications.
+
+### Pipeline
+
+```mermaid
+flowchart LR
+    REQ[Request] --> P[Planner]
+    P --> C[Copywriter]
+    P --> D[Designer]
+    C --> B[Builder]
+    D --> B
+    B --> E[Evaluator]
+    E -->|FAIL| B
+    E -->|PASS| L[Learner]
+```
+
+### 6 Self-Evolving Agents
+
+| Agent | Role | Model | Source |
+|-------|------|-------|--------|
+| planner | Expand request to BRIEF | opus | fork: manager-spec |
+| copywriter | Marketing copy (JSON) | sonnet | new |
+| designer | Design system & UI spec | sonnet | new |
+| builder | Code implementation (TDD) | sonnet | fork: expert-frontend |
+| evaluator | Playwright testing & scoring | sonnet | fork: evaluator-active |
+| learner | Meta-evolution orchestrator | opus | new |
+
+### Self-Evolution
+
+Every agent and skill has a **Dual Zone Architecture**:
+- **FROZEN Zone**: Identity, safety rails, ethical boundaries (never auto-modified)
+- **EVOLVABLE Zone**: Style guidelines, patterns, weights (auto-modified via feedback)
+
+Feedback accumulates in `learnings.md`, graduates to skill rules when confidence >= 0.80 with 5+ observations.
+
+### Quick Start
+
+```bash
+/agency brief "SaaS landing page for my AI startup"
+/agency build BRIEF-001
+/agency learn
+/agency evolve
+```
+
+> [Agency Documentation](https://adk.mo.ai.kr/agency)
+
+---
+
 ## Frequently Asked Questions
 
 ### Q: Why doesn't every Go code have @MX tags?
