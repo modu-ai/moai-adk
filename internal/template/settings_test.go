@@ -305,7 +305,7 @@ func TestSettingsTemplateAllHookEvents(t *testing.T) {
 		"SessionStart", "PreCompact", "SessionEnd",
 		"PreToolUse", "PostToolUse", "Stop",
 		"SubagentStop", "PostToolUseFailure", "Notification",
-		"SubagentStart", "UserPromptSubmit", "PermissionRequest",
+		"SubagentStart", "UserPromptSubmit",
 		"TeammateIdle", "TaskCompleted",
 	}
 	for _, event := range allEvents {
@@ -340,7 +340,7 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 		{"Notification", "handle-notification.sh"},
 		{"SubagentStart", "handle-subagent-start.sh"},
 		{"UserPromptSubmit", "handle-user-prompt-submit.sh"},
-		{"PermissionRequest", "handle-permission-request.sh"},
+
 		{"TeammateIdle", "handle-teammate-idle.sh"},
 		{"TaskCompleted", "handle-task-completed.sh"},
 	}
@@ -425,7 +425,7 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 		{"Notification", "handle-notification.sh"},
 		{"SubagentStart", "handle-subagent-start.sh"},
 		{"UserPromptSubmit", "handle-user-prompt-submit.sh"},
-		{"PermissionRequest", "handle-permission-request.sh"},
+
 		{"TeammateIdle", "handle-teammate-idle.sh"},
 		{"TaskCompleted", "handle-task-completed.sh"},
 	}
@@ -502,7 +502,7 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 		t.Fatal("missing hooks section")
 	}
 
-	const expectedCount = 26 // v2.1.89: PermissionDenied added (25 → 26)
+	const expectedCount = 25 // PermissionRequest removed (bypassPermissions 무력화 방지)
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}
