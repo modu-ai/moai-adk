@@ -53,6 +53,7 @@ func init() {
 		{"file-changed", "Handle file changed event", hook.EventFileChanged},
 		{"elicitation", "Handle MCP elicitation event", hook.EventElicitation},
 		{"elicitation-result", "Handle MCP elicitation result event", hook.EventElicitationResult},
+		{"permission-denied", "Handle permission denied event", hook.EventPermissionDenied},
 	}
 
 	for _, sub := range hookSubcommands {
