@@ -53,7 +53,7 @@ func TestHookWrapper_SizeLimit(t *testing.T) {
 	if _, err := stdin.Write([]byte(largeInput)); err != nil {
 		t.Fatalf("failed to write stdin: %v", err)
 	}
-	stdin.Close()
+	_ = stdin.Close()
 
 	// Wrapper should handle large input without hanging
 	if err := cmd.Wait(); err != nil {
@@ -143,7 +143,7 @@ func TestHookWrapper_ValidJSON(t *testing.T) {
 	if _, err := stdin.Write([]byte(validInput)); err != nil {
 		t.Fatalf("failed to write stdin: %v", err)
 	}
-	stdin.Close()
+	_ = stdin.Close()
 
 	if err := cmd.Wait(); err != nil {
 		t.Logf("wrapper exited: %v (stdout: %s, stderr: %s)", err, stdout.String(), stderr.String())
@@ -220,7 +220,7 @@ func TestHookWrapper_MalformedInput(t *testing.T) {
 			if _, err := stdin.Write([]byte(tt.malformedInput)); err != nil {
 				t.Fatalf("failed to write stdin: %v", err)
 			}
-			stdin.Close()
+			_ = stdin.Close()
 
 			// Malformed input should not crash the wrapper
 			err = cmd.Wait()
@@ -299,7 +299,7 @@ exit 0
 	if _, err := stdin.Write([]byte(validInput)); err != nil {
 		t.Fatalf("failed to write stdin: %v", err)
 	}
-	stdin.Close()
+	_ = stdin.Close()
 
 	if err := cmd.Wait(); err != nil {
 		t.Logf("fallback test exited: %v", err)
@@ -401,11 +401,11 @@ func TestHookWrapper_SignalHandling(t *testing.T) {
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		if cmd.Process != nil {
-			cmd.Process.Signal(os.Interrupt)
+			_ = cmd.Process.Signal(os.Interrupt)
 		}
 	}()
 
-	stdin.Close()
+	_ = stdin.Close()
 
 	// Wrapper should handle signal gracefully (exit without hanging)
 	err = cmd.Wait()
@@ -475,38 +475,6 @@ exit 0
 `
 	if err := os.WriteFile(wrapperPath, []byte(wrapperScript), 0o755); err != nil {
 		t.Fatalf("failed to create wrapper with moai path: %v", err)
-	}
-}
-
-// createTestWrapperWithFallbacks creates a wrapper with multiple fallback paths.
-func createTestWrapperWithFallbacks(t *testing.T, wrapperPath, fallbackMoaiPath string) {
-	t.Helper()
-
-	wrapperScript := `#!/bin/bash
-temp_file=$(mktemp)
-trap 'rm -f "$temp_file"' EXIT
-
-MAX_SIZE=1048576
-head -c "$MAX_SIZE" > "$temp_file"
-
-if [ ! -s "$temp_file" ]; then
-    exit 0
-fi
-
-# Try PATH moai (won't exist in test)
-if command -v moai &> /dev/null; then
-    exec moai hook config-change < "$temp_file" 2>/dev/null
-fi
-
-# Try fallback path
-if [ -f "` + fallbackMoaiPath + `/moai" ]; then
-    exec "` + fallbackMoaiPath + `/moai" hook config-change < "$temp_file" 2>&1
-fi
-
-exit 0
-`
-	if err := os.WriteFile(wrapperPath, []byte(wrapperScript), 0o755); err != nil {
-		t.Fatalf("failed to create wrapper with fallbacks: %v", err)
 	}
 }
 
