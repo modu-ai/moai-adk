@@ -97,7 +97,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 			// Note: Using a nil tmux manager for now - will need proper initialization
 			// This is a simplified implementation for the TDD cycle
 			_, _ = fmt.Fprintln(out, "Tmux session creation requested but tmux manager not yet initialized.")
-			_, _ = fmt.Fprintln(out, fmt.Sprintf("To manually create session: tmux new-session -s %s -c %s", GenerateTmuxSessionName(projectName, specID), wtPath))
+			_, _ = fmt.Fprintf(out, "To manually create session: tmux new-session -s %s -c %s\n", GenerateTmuxSessionName(projectName, specID), wtPath)
 		} else {
 			// Graceful degradation: print manual instructions
 			err := NewTmuxNotAvailableError(specID, wtPath)

@@ -59,11 +59,12 @@ func NewTmuxNotAvailableError(specID, worktreePath string) *WorktreeError {
 // - Conflicts: "Auto-merge blocked: {SPEC-ID}. Merge conflicts detected. Recovery: `Resolve manually in PR`"
 func NewAutoMergeBlockedError(specID, reason string) *WorktreeError {
 	var recovery string
-	if reason == "CI checks failed" {
+	switch reason {
+	case "CI checks failed":
 		recovery = fmt.Sprintf("Fix issues and re-run: /moai sync %s", specID)
-	} else if reason == "Merge conflicts detected" {
+	case "Merge conflicts detected":
 		recovery = "Resolve manually in PR"
-	} else {
+	default:
 		recovery = fmt.Sprintf("/moai sync %s", specID)
 	}
 
