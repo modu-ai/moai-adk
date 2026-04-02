@@ -2213,9 +2213,9 @@ func ensureGlobalSettingsEnv() error {
 	// Clean up legacy hooks including orphaned scripts and deprecated Python hooks
 	needsUpdate = cleanLegacyHooks(existingSettings) || needsUpdate
 
-	// Clean up moai-managed settings that have been migrated to project level.
+	// Clean up legacy moai-managed env keys that are no longer needed globally.
+	// PATH is also removed here so it can be refreshed with the latest SmartPATH below.
 	// Preserve any user-added custom env keys but remove moai-specific ones.
-	// Note: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is kept as a default value (see below).
 	if envVal, exists := existingSettings["env"]; exists {
 		if envMap, ok := envVal.(map[string]any); ok {
 			moaiKeys := []string{"PATH", "ENABLE_TOOL_SEARCH"}
@@ -2233,8 +2233,17 @@ func ensureGlobalSettingsEnv() error {
 	}
 
 	// Ensure default global settings are present.
-	// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 enables Agent Teams mode by default.
+	// PATH: Provides a fallback SmartPATH for non-moai directories where no
+	// project-level settings.json exists. Without this, Claude Code loses access
+	// to basic tools (/usr/bin, /bin, etc.) in non-moai projects. Project-level
+	// PATH overrides this when present. Refreshed on every moai update. (issue #598)
+	// CLAUDE_DISABLE_PATH_WARNING: Suppresses Claude Code's PATH warning globally.
+	// Previously only written to shell config (.zshenv/.profile), which may not be
+	// sourced by non-login shells on WSL. (issue #598)
+	// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: Enables Agent Teams mode by default.
 	defaultEnvKeys := map[string]string{
+		"PATH":                                 template.BuildSmartPATH(),
+		"CLAUDE_DISABLE_PATH_WARNING":          "1",
 		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 	}
 	for key, value := range defaultEnvKeys {

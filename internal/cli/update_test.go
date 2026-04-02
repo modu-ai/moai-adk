@@ -1336,13 +1336,25 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Errorf("CUSTOM_VAR not preserved: got %v", envMap["CUSTOM_VAR"])
 		}
 
-		// Moai-managed keys should be REMOVED
-		if _, exists := envMap["PATH"]; exists {
-			t.Error("PATH should be removed from global settings (managed at project level)")
-		}
+		// ENABLE_TOOL_SEARCH should be REMOVED (legacy key)
 		if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
 			t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 		}
+
+		// PATH should be refreshed to SmartPATH as a fallback for non-moai directories (issue #598)
+		if pathVal, exists := envMap["PATH"]; !exists {
+			t.Error("PATH should be present as global fallback (issue #598)")
+		} else if pathStr, ok := pathVal.(string); !ok || pathStr == "" {
+			t.Error("PATH should be a non-empty string")
+		} else if pathStr == "/old/go/bin:/usr/local/bin" {
+			t.Error("PATH should be refreshed to SmartPATH, not keep the old value")
+		}
+
+		// CLAUDE_DISABLE_PATH_WARNING should be set to "1" as default (issue #598)
+		if envMap["CLAUDE_DISABLE_PATH_WARNING"] != "1" {
+			t.Errorf("CLAUDE_DISABLE_PATH_WARNING should be set to '1', got: %v", envMap["CLAUDE_DISABLE_PATH_WARNING"])
+		}
+
 		// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to "1" as default
 		if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
 			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
@@ -1441,18 +1453,23 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
 
-		// env key should NOT be removed (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is added as default)
+		// env should contain all default keys (PATH, CLAUDE_DISABLE_PATH_WARNING, AGENT_TEAMS)
 		env, hasEnv := settings["env"]
 		if !hasEnv {
-			t.Fatal("env should exist (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be added)")
+			t.Fatal("env should exist (default keys should be added)")
 		}
 		envMap := env.(map[string]any)
-		// Only CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be present
 		if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
 			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
 		}
-		if len(envMap) != 1 {
-			t.Errorf("env should only contain CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS, got: %v", envMap)
+		if _, exists := envMap["PATH"]; !exists {
+			t.Error("PATH should be present as global fallback (issue #598)")
+		}
+		if envMap["CLAUDE_DISABLE_PATH_WARNING"] != "1" {
+			t.Errorf("CLAUDE_DISABLE_PATH_WARNING should be '1', got: %v", envMap["CLAUDE_DISABLE_PATH_WARNING"])
+		}
+		if len(envMap) != 3 {
+			t.Errorf("env should contain exactly 3 default keys (PATH, CLAUDE_DISABLE_PATH_WARNING, AGENT_TEAMS), got %d: %v", len(envMap), envMap)
 		}
 
 		// SessionEnd hook should NOT be present (no longer managed globally)
@@ -1599,19 +1616,32 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 		t.Fatalf("failed to parse settings.json: %v", err)
 	}
 
-	// Moai-managed env keys should be REMOVED from global settings
+	// Verify env section exists
 	env, hasEnv := settings["env"]
 	if !hasEnv {
-		t.Fatal("env should still exist (CUSTOM_VAR is present)")
+		t.Fatal("env should still exist")
 	}
 	envMap := env.(map[string]any)
 
-	if _, exists := envMap["PATH"]; exists {
-		t.Error("PATH should be removed from global settings (managed at project level)")
-	}
+	// ENABLE_TOOL_SEARCH should be REMOVED (legacy key)
 	if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
 		t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 	}
+
+	// PATH should be refreshed to SmartPATH as global fallback (issue #598)
+	if pathVal, exists := envMap["PATH"]; !exists {
+		t.Error("PATH should be present as global fallback (issue #598)")
+	} else if pathStr, ok := pathVal.(string); !ok || pathStr == "" {
+		t.Error("PATH should be a non-empty string")
+	} else if pathStr == "/old/go/bin:/usr/local/bin:/usr/bin:/bin" {
+		t.Error("PATH should be refreshed to SmartPATH, not keep the old value")
+	}
+
+	// CLAUDE_DISABLE_PATH_WARNING should be set to "1" (issue #598)
+	if envMap["CLAUDE_DISABLE_PATH_WARNING"] != "1" {
+		t.Errorf("CLAUDE_DISABLE_PATH_WARNING should be set to '1', got: %v", envMap["CLAUDE_DISABLE_PATH_WARNING"])
+	}
+
 	// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to "1" as default
 	if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
 		t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
@@ -1639,6 +1669,76 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 				t.Error("orphaned SessionEnd hook should be removed from global settings")
 			}
 		}
+	}
+}
+
+// TestEnsureGlobalSettingsEnv_FallbackPATHForNonMoaiDirs verifies that
+// ensureGlobalSettingsEnv writes a SmartPATH to global settings.json so that
+// Claude Code has access to basic tools in non-moai directories. (issue #598)
+func TestEnsureGlobalSettingsEnv_FallbackPATHForNonMoaiDirs(t *testing.T) {
+	tempDir := t.TempDir()
+
+	originalHome := os.Getenv("HOME")
+	originalProfile := os.Getenv("USERPROFILE")
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+		_ = os.Setenv("USERPROFILE", originalProfile)
+	}()
+	_ = os.Setenv("HOME", tempDir)
+	_ = os.Setenv("USERPROFILE", tempDir)
+
+	claudeDir := filepath.Join(tempDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatalf("failed to create .claude dir: %v", err)
+	}
+
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+
+	// Simulate the pre-fix state: global settings with no PATH (previously removed by moai update)
+	existing := map[string]any{
+		"env": map[string]any{
+			"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+		},
+	}
+	data, _ := json.MarshalIndent(existing, "", "  ")
+	if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+		t.Fatalf("failed to write settings: %v", err)
+	}
+
+	if err := ensureGlobalSettingsEnv(); err != nil {
+		t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
+
+	var settings map[string]any
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("failed to parse settings.json: %v", err)
+	}
+
+	envMap := settings["env"].(map[string]any)
+
+	// PATH must be present as a fallback for non-moai directories
+	pathVal, exists := envMap["PATH"]
+	if !exists {
+		t.Fatal("PATH must be present in global settings as fallback for non-moai directories")
+	}
+	pathStr := pathVal.(string)
+
+	// PATH must include essential system directories
+	if !strings.Contains(pathStr, "/usr/bin") {
+		t.Errorf("global fallback PATH must include /usr/bin, got: %s", pathStr)
+	}
+	if !strings.Contains(pathStr, "/bin") {
+		t.Errorf("global fallback PATH must include /bin, got: %s", pathStr)
+	}
+
+	// CLAUDE_DISABLE_PATH_WARNING must be set
+	if envMap["CLAUDE_DISABLE_PATH_WARNING"] != "1" {
+		t.Errorf("CLAUDE_DISABLE_PATH_WARNING should be '1', got: %v", envMap["CLAUDE_DISABLE_PATH_WARNING"])
 	}
 }
 
