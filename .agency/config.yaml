@@ -1,0 +1,83 @@
+# AI Agency v3.2 Configuration
+# Pipeline, GAN loop, evolution, and integration settings
+
+agency:
+  version: "3.2.0"
+  enabled: true
+
+  # Default tech stack
+  default_framework: "next.js"
+  design_tool: "variant"
+
+  # Pipeline configuration
+  pipeline:
+    phases: [planner, copywriter, designer, builder, evaluator, learner]
+    parallel_phases: [copywriter, designer]
+    team_mode_threshold: 6
+    default_mode: "step_by_step"
+
+  # GAN Loop (Builder <-> Evaluator)
+  gan_loop:
+    max_iterations: 5
+    pass_threshold: 0.75
+    escalation_after: 3
+    improvement_threshold: 0.05
+    strict_mode: false
+
+  # Self-evolution settings
+  evolution:
+    auto_evolve_threshold: 3
+    max_active_learnings: 50
+    archive_after_evolve: true
+    require_approval: true
+    max_evolution_rate_per_week: 3
+    cooldown_hours: 24
+    graduation_criteria:
+      minimum_observations: 5
+      minimum_confidence: 0.80
+      consistency_ratio: 0.80
+      staleness_window_days: 30
+
+  # Brand context
+  context:
+    dir: ".agency/context"
+    interview_on_first_run: true
+    update_interval: "monthly"
+
+  # Agent model assignments
+  models:
+    planner: opus
+    copywriter: sonnet
+    designer: sonnet
+    builder: sonnet
+    evaluator: sonnet
+    learner: opus
+
+  # Pipeline adaptation
+  adaptation:
+    enabled: true
+    confidence_threshold: 0.70
+    min_projects_for_adaptation: 5
+    phase_weights:
+      planner: 1.0
+      copywriter: 1.0
+      designer: 1.0
+      builder: 1.0
+      evaluator: 1.0
+      learner: 1.0
+    iteration_limits:
+      copywriter: 3
+      designer: 2
+      builder: 3
+
+  # User profile
+  profile:
+    user_style: "unknown"
+    projects_completed: 0
+    adaptation_confidence: 0.0
+
+  # moai integration
+  integration:
+    share_user_profile: true
+    worktree_isolation: true
+    upstream_sync_on_update: true
