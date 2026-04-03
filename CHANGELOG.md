@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-04-03
+
+### Summary
+
+Patch release fixing Agency v3.2 template deployment. All Agency files (agents, skills, commands, rules, config) are now correctly included in `moai update` distribution. Also includes CLAUDE.md v14.0.0 with Agency and Harness documentation, and README updates for all 4 languages.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- Agency template deployment: 35 Agency files (agents, skills, commands, rules, .agency/ config) were missing from `internal/template/templates/` and not distributed via `moai update`
+
+### Changed
+
+- CLAUDE.md v14.0.0: Added /agency command reference, Agency agent catalog, Harness-Based Quality Routing, and Agency configuration section
+- README updated in 4 languages (en, ko, ja, zh) with Agency v3.2 details: GAN Loop, 5 specialized skills, 5-layer safety architecture, knowledge graduation, all 11 subcommands
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.9.1] - 2026-04-03 (한국어)
+
+### 요약
+
+Agency v3.2 템플릿 배포 누락 수정 패치. 모든 Agency 파일(에이전트, 스킬, 커맨드, 규칙, 설정)이 이제 `moai update`를 통해 올바르게 배포됩니다. CLAUDE.md v14.0.0 (Agency/Harness 문서) 및 4개 언어 README 업데이트 포함.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- Agency 템플릿 배포: 35개 Agency 파일(에이전트, 스킬, 커맨드, 규칙, .agency/ 설정)이 `internal/template/templates/`에 누락되어 `moai update`로 배포되지 않던 문제 수정
+
+### 변경됨 (Changed)
+
+- CLAUDE.md v14.0.0: /agency 커맨드 레퍼런스, Agency 에이전트 카탈로그, Harness 품질 라우팅, Agency 설정 섹션 추가
+- README 4개 언어(en, ko, ja, zh) Agency v3.2 상세 업데이트: GAN Loop, 5개 전문 스킬, 5계층 안전 아키텍처, 지식 졸업, 전체 11개 서브커맨드
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.9.0] - 2026-04-03
 
 ### Summary

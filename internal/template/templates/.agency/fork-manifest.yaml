@@ -1,0 +1,69 @@
+# AI Agency Fork Manifest
+# Tracks upstream moai sources for sync capability
+schema_version: 2
+
+forks:
+  # Agent forks
+  planner:
+    type: agent
+    source_path: .claude/agents/agency/planner.md
+    upstream:
+      file: .claude/agents/moai/manager-spec.md
+      version_at_fork: v2.9.0
+    current_generation: 0
+    divergence_score: 0.0
+    sync_policy: auto-propose
+    forked_at: "2026-04-02"
+
+  builder:
+    type: agent
+    source_path: .claude/agents/agency/builder.md
+    upstream:
+      file: .claude/agents/moai/expert-frontend.md
+      version_at_fork: v2.9.0
+    current_generation: 0
+    divergence_score: 0.0
+    sync_policy: manual
+    forked_at: "2026-04-02"
+
+  evaluator:
+    type: agent
+    source_path: .claude/agents/agency/evaluator.md
+    upstream:
+      file: .claude/agents/moai/evaluator-active.md
+      version_at_fork: v2.9.0
+    current_generation: 0
+    divergence_score: 0.0
+    sync_policy: auto-propose
+    forked_at: "2026-04-02"
+
+  # Skill forks
+  agency-frontend-patterns:
+    type: skill
+    source_path: .claude/skills/agency-frontend-patterns/SKILL.md
+    upstream:
+      file: .claude/skills/moai-domain-frontend/SKILL.md
+      version_at_fork: v2.9.0
+    current_generation: 0
+    divergence_score: 0.0
+    sync_policy: auto-propose
+    forked_at: "2026-04-02"
+
+  # New agents (no upstream)
+  copywriter:
+    type: agent
+    source_path: .claude/agents/agency/copywriter.md
+    upstream: null
+    current_generation: 0
+
+  designer:
+    type: agent
+    source_path: .claude/agents/agency/designer.md
+    upstream: null
+    current_generation: 0
+
+  learner:
+    type: agent
+    source_path: .claude/agents/agency/learner.md
+    upstream: null
+    current_generation: 0

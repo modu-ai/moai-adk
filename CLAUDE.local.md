@@ -81,17 +81,45 @@ moai version            # Show version
 # All template changes MUST be made here
 internal/template/templates/.claude/
 internal/template/templates/.moai/
+internal/template/templates/.agency/
 internal/template/templates/CLAUDE.md
 ```
+
+### [HARD] Template-First Rule
+
+When adding new files to `.claude/`, `.moai/`, or `.agency/`:
+
+1. **Add to template FIRST**: `internal/template/templates/<path>`
+2. **Run `make build`** to regenerate embedded files
+3. **Then sync to local**: `moai update` or manual copy
+
+Never add files directly to the local project directories without also adding them to the template source. This includes:
+- New agents (`.claude/agents/`)
+- New skills (`.claude/skills/`)
+- New commands (`.claude/commands/`)
+- New rules (`.claude/rules/`)
+- New config files (`.moai/config/`)
+- New agency files (`.agency/`)
+
+**Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
 ### Local-Only Files (Never in Templates)
 ```
 .claude/settings.local.json    # Personal settings
+.claude/settings.json          # Rendered from .json.tmpl
+.claude/agent-memory/          # Per-project agent memory
+.claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
+.claude/commands/98-*.md       # Dev-project-specific commands
+.claude/commands/99-*.md       # Dev-project-specific commands
 CLAUDE.local.md                # This file
-.claude/hooks/moai/handle-*.sh  # Generated hook wrappers (not templates)
 .moai/cache/                   # Cache
 .moai/logs/                    # Logs
 .moai/state/                   # Session state storage
+.moai/specs/                   # Active SPEC documents
+.moai/plans/                   # Session plans
+.moai/reports/                 # Generated reports
+.moai/manifest.json            # Generated at runtime
+.moai/status_line.sh           # Rendered from .sh.tmpl
 ```
 
 ### Embedded Template System
