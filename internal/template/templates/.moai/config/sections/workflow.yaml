@@ -106,7 +106,6 @@ workflow:
                     - quality-reviewer
                     - ux-reviewer
         require_plan_approval: true
-        teammate_display: auto
     # SPEC-WORKTREE-002: Worktree automation settings
     worktree:
         auto_create: true

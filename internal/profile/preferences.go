@@ -41,7 +41,6 @@ type ProfilePreferences struct {
 	StatuslinePreset   string          `yaml:"statusline_preset,omitempty"`   // "full", "compact", "minimal", "custom"
 	StatuslineSegments map[string]bool `yaml:"statusline_segments,omitempty"` // segment toggles for custom preset
 	StatuslineTheme    string          `yaml:"statusline_theme,omitempty"`    // "default", "catppuccin-mocha", "catppuccin-latte"
-	TeammateDisplay    string          `yaml:"teammate_display,omitempty"`    // "auto", "in-process", "tmux"
 }
 
 const (

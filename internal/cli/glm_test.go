@@ -140,8 +140,8 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
 		t.Error("settings.local.json should contain ANTHROPIC_BASE_URL")
 	}
-	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY")
+	if !strings.Contains(content, "teammateMode") {
+		t.Error("settings.local.json should contain teammateMode")
 	}
 }
 

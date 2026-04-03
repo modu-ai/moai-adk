@@ -172,7 +172,6 @@ Team behavior is controlled by the `workflow.team` section in `.moai/config/sect
 | team.default_model | string | inherit | Default model for teammates (inherit/haiku/sonnet/opus) |
 | team.require_plan_approval | boolean | true | Require plan approval before implementing |
 | team.delegate_mode | boolean | true | Team lead coordination-only mode (no direct implementation) |
-| team.teammate_display | string | auto | Display mode: auto, in-process, or tmux |
 
 ### Auto-Selection Thresholds
 

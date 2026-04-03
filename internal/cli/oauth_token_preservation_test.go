@@ -190,12 +190,12 @@ func TestOAuthToken_FullCycle(t *testing.T) {
 	}
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
 
-	// Initial state: user has an OAuth token.
+	// Initial state: user has an OAuth token and teammateMode set.
 	oauthToken := "claude-oauth-token-persistent"
 	initialSettings := SettingsLocal{
+		TeammateMode: "tmux",
 		Env: map[string]string{
-			"ANTHROPIC_AUTH_TOKEN":         oauthToken,
-			"CLAUDE_CODE_TEAMMATE_DISPLAY": "tmux",
+			"ANTHROPIC_AUTH_TOKEN": oauthToken,
 		},
 	}
 	data, err := json.MarshalIndent(initialSettings, "", "  ")
@@ -258,10 +258,14 @@ func TestOAuthToken_FullCycle(t *testing.T) {
 	if _, exists := afterCC.Env["MOAI_BACKUP_AUTH_TOKEN"]; exists {
 		t.Error("step2: MOAI_BACKUP_AUTH_TOKEN should be deleted after restore")
 	}
-	// Verify other settings are preserved.
-	if afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Errorf("step2: CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q",
-			afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
+	// teammateMode should be cleared after CC mode switch (removeGLMEnv sets it to "").
+	if afterCC.TeammateMode != "" {
+		t.Errorf("step2: teammateMode should be empty after CC mode switch, got %q", afterCC.TeammateMode)
+	}
+	// Legacy env var should also be cleaned up.
+	if _, exists := afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; exists {
+		t.Errorf("step2: legacy CLAUDE_CODE_TEAMMATE_DISPLAY env var should be removed, got %q",
+			afterCC.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"])
 	}
 }
 
@@ -280,9 +284,8 @@ func TestOAuthToken_NoExistingToken(t *testing.T) {
 
 	// Initial state: no ANTHROPIC_AUTH_TOKEN (fresh install or OAuth-only user).
 	initialSettings := SettingsLocal{
-		Env: map[string]string{
-			"CLAUDE_CODE_TEAMMATE_DISPLAY": "tmux",
-		},
+		TeammateMode: "tmux",
+		Env:          map[string]string{},
 	}
 	data, err := json.MarshalIndent(initialSettings, "", "  ")
 	if err != nil {

@@ -75,7 +75,6 @@ func TestWriteAndReadPreferences(t *testing.T) {
 		ModelPolicy:      "high",
 		Model:            "claude-opus-4-6",
 		StatuslinePreset: "compact",
-		TeammateDisplay:  "tmux",
 	}
 
 	if err := WritePreferences("myprofile", prefs); err != nil {
@@ -104,9 +103,6 @@ func TestWriteAndReadPreferences(t *testing.T) {
 	}
 	if got.StatuslinePreset != "compact" {
 		t.Errorf("StatuslinePreset = %q, want %q", got.StatuslinePreset, "compact")
-	}
-	if got.TeammateDisplay != "tmux" {
-		t.Errorf("TeammateDisplay = %q, want %q", got.TeammateDisplay, "tmux")
 	}
 }
 

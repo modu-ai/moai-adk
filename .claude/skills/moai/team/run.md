@@ -70,7 +70,7 @@ Before executing, check `.moai/config/sections/llm.yaml`:
 |-----------|---------------|-------------|-------------|
 | (empty) | Sub-agent | N/A | Single session, Agent() subagents |
 | glm | GLM Mode | **Supported** | All GLM, credentials in settings.local.json |
-| cg | CG Mode | **Sub-agent only** | Claude Leader + GLM Teammates via tmux session env |
+| cg | CG Mode | **Supported (tmux required)** | Claude Leader + GLM Teammates via tmux session env |
 | agent-teams | Agent Teams | **Supported** | All same API, parallel teammates |
 
 ---

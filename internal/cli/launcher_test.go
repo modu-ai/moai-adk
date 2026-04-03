@@ -409,11 +409,11 @@ func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 		},
 		{
 			name:     "mode preserves existing env",
-			existing: `{"env":{"CLAUDE_CODE_TEAMMATE_DISPLAY":"tmux"}}`,
+			existing: `{"env":{"SOME_EXISTING_VAR":"keep_me"}}`,
 			mode:     "auto",
 			wantMode:     "auto",
-			wantEnvKey:   "CLAUDE_CODE_TEAMMATE_DISPLAY",
-			wantEnvValue: "tmux",
+			wantEnvKey:   "SOME_EXISTING_VAR",
+			wantEnvValue: "keep_me",
 		},
 		{
 			name:     "empty mode removes defaultMode override",
