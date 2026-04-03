@@ -5,47 +5,100 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.9.0] - 2026-04-01
+## [2.9.0] - 2026-04-03
 
 ### Summary
 
-Harness Design + SDD 베스트 프랙티스 통합 업그레이드. Anthropic 엔지니어링 블로그 "Harness Design for Long-Running Apps"와 2026 SDD 업계 분석을 기반으로, 에이전트 품질 평가 체계와 SPEC 워크플로우를 전면 강화.
+Major release: Claude Code v2.1.89-90 compatibility upgrade, AI Agency self-evolution system v3.2 with GAN Loop, harness design integration, and SPEC workflow enhancements. Includes bug fixes for PATH preservation in non-moai directories and 1M context model selection.
 
 ### Breaking Changes
 
-- manager-quality 모델이 haiku에서 sonnet으로 업그레이드 (비용 증가, 품질 향상)
+- manager-quality model upgraded from haiku to sonnet (increased cost, improved quality)
 
 ### Added
 
-- **evaluator-active 에이전트**: 독립적 회의적 품질 평가자. 4차원 평가 (Functionality/Security/Craft/Consistency). Security FAIL = 전체 FAIL
-- **Phase 2.0 Sprint Contract**: thorough 레벨에서 구현 전 evaluator-active와 Done 기준 사전 합의
-- **Phase 2.8a/2.8b 분리**: evaluator-active 능동 평가 + manager-quality TRUST 5 정적 검증
-- **harness.yaml**: 3단계 품질 깊이 (minimal/standard/thorough) 자동 판단 + 실패 시 에스컬레이션
-- **Complexity Estimator**: SPEC 복잡도 기반 하네스 레벨 자동 결정
-- **tasks.md 영속 아티팩트**: Git 추적 가능한 태스크 분해 파일
-- **Drift Guard**: DDD/TDD 사이클 완료 시 scope drift 실시간 감지
-- **Delta Markers**: 브라운필드 프로젝트용 [EXISTING]/[MODIFY]/[NEW]/[REMOVE] 분류
-- **spec-compact.md**: Run phase ~30% 토큰 절약
-- **constitution.yaml**: 프로젝트 기술 제약 기계 판독 정의
-- **evaluator-profiles/**: 4종 평가자 프로필 (default, strict, lenient, frontend)
-- **SEMAP Behavioral Contracts**: manager-ddd, manager-quality에 행동 계약
-- **Exclusions 필수화**: spec.md에 "What NOT to Build" 섹션 필수
-- **What/Why 제약**: manager-spec에 How 과명세 방지 규칙
+- **AI Agency v3.2**: Self-evolving creative production system with GAN Loop (Builder-Evaluator), 5-layer safety architecture, knowledge graduation protocol, and fork management
+- **evaluator-active agent**: Independent skeptical quality evaluator with 4-dimension scoring (Functionality/Security/Craft/Consistency)
+- **harness.yaml**: 3-level quality depth (minimal/standard/thorough) with auto-detection and escalation
+- **constitution.yaml**: Machine-readable project technical constraints
+- **evaluator-profiles/**: 4 evaluator profiles (default, strict, lenient, frontend)
+- **Agency skill router**: Subcommand pattern (brief, build, review, learn, evolve, resume, profile) with `agency:*` skill routing
+- **Complexity Estimator**: Automatic harness level determination based on SPEC complexity
+- **Delta Markers**: [EXISTING]/[MODIFY]/[NEW]/[REMOVE] classification for brownfield projects
+- **spec-compact.md**: ~30% token savings in Run phase
+- **Drift Guard**: Real-time scope drift detection on DDD/TDD cycle completion
+- **GitHub workflow skill**: Issue management and PR review automation
 
 ### Changed
 
-- manager-quality: model haiku → sonnet, 회의적 평가 프롬프트
-- manager-spec: What/Why 경계 + Exclusions 검증 강화
-- run.md: Harness Routing, Phase 2.0, tasks.md, Drift Guard, Phase 2.8a/2.8b
-- plan.md: Delta Markers, spec-compact.md 생성, Exclusions
-- moai.md: Complexity Estimator
-- workflow-modes.md: Drift Guard 섹션
+- Claude Code v2.1.89-90 compatibility: permission-denied hook, updated settings template
+- manager-quality: model haiku to sonnet, skeptical evaluation prompts
+- manager-spec: What/Why boundary enforcement + Exclusions validation
+- SPEC workflow: Harness routing, Phase 2.0 sprint contracts, tasks.md persistence
+- Agency refactored from monolithic skill to subcommand-based routing pattern
+
+### Fixed
+
+- PATH preservation in non-moai directories during update (#598, #599)
+- 1M context model selection now correctly passes chosen model to Claude Code (#597)
 
 ### Installation & Update
 
 ```bash
-go install github.com/modu-ai/moai-adk/cmd/moai@v2.9.0
+# Update to the latest version
 moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.9.0] - 2026-04-03 (한국어)
+
+### 요약
+
+메이저 릴리즈: Claude Code v2.1.89-90 호환성 업그레이드, AI Agency 자기진화 시스템 v3.2 (GAN Loop 포함), 하네스 설계 통합, SPEC 워크플로우 강화. 비-moai 디렉토리 PATH 유실 및 1M 컨텍스트 모델 선택 버그 수정 포함.
+
+### 주요 변경 사항 (Breaking Changes)
+
+- manager-quality 모델이 haiku에서 sonnet으로 업그레이드 (비용 증가, 품질 향상)
+
+### 추가됨 (Added)
+
+- **AI Agency v3.2**: GAN Loop(Builder-Evaluator), 5계층 안전 아키텍처, 지식 졸업 프로토콜, 포크 관리를 갖춘 자기진화 창작 생산 시스템
+- **evaluator-active 에이전트**: 독립적 회의적 품질 평가자. 4차원 평가 (기능성/보안/완성도/일관성)
+- **harness.yaml**: 3단계 품질 깊이 (minimal/standard/thorough) 자동 판단 + 실패 시 에스컬레이션
+- **constitution.yaml**: 프로젝트 기술 제약 기계 판독 정의
+- **evaluator-profiles/**: 4종 평가자 프로필 (default, strict, lenient, frontend)
+- **Agency 스킬 라우터**: 서브커맨드 패턴 (brief, build, review, learn, evolve, resume, profile) + `agency:*` 스킬 라우팅
+- **Complexity Estimator**: SPEC 복잡도 기반 하네스 레벨 자동 결정
+- **Delta Markers**: 브라운필드 프로젝트용 [EXISTING]/[MODIFY]/[NEW]/[REMOVE] 분류
+- **spec-compact.md**: Run phase ~30% 토큰 절약
+- **Drift Guard**: DDD/TDD 사이클 완료 시 scope drift 실시간 감지
+- **GitHub 워크플로우 스킬**: 이슈 관리 및 PR 리뷰 자동화
+
+### 변경됨 (Changed)
+
+- Claude Code v2.1.89-90 호환성: permission-denied 훅, 설정 템플릿 업데이트
+- manager-quality: 모델 haiku → sonnet, 회의적 평가 프롬프트
+- manager-spec: What/Why 경계 + Exclusions 검증 강화
+- SPEC 워크플로우: 하네스 라우팅, Phase 2.0 스프린트 계약, tasks.md 영속화
+- Agency가 모놀리식 스킬에서 서브커맨드 기반 라우팅 패턴으로 리팩토링
+
+### 수정됨 (Fixed)
+
+- 비-moai 디렉토리에서 업데이트 시 PATH 유실 방지 (#598, #599)
+- 1M 컨텍스트 모델 선택이 Claude Code에 올바르게 전달되도록 수정 (#597)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
 ```
 
 ## [2.8.4] - 2026-04-01
