@@ -870,6 +870,58 @@ exclude:
 
 ---
 
+## AI Agency：自我进化创意生产系统
+
+> 构建每次使用都会变得更好的网站和应用。
+
+MoAI-ADK 包含一个独立的 **AI Agency** 系统 — 一个面向网站、落地页和 Web 应用的自我进化创意生产流水线。
+
+### 流水线
+
+```mermaid
+flowchart LR
+    REQ[请求] --> P[Planner]
+    P --> C[Copywriter]
+    P --> D[Designer]
+    C --> B[Builder]
+    D --> B
+    B --> E[Evaluator]
+    E -->|FAIL| B
+    E -->|PASS| L[Learner]
+```
+
+### 6 个自我进化代理
+
+| 代理 | 角色 | 模型 | 来源 |
+|------|------|------|------|
+| planner | 将请求扩展为 BRIEF | opus | fork: manager-spec |
+| copywriter | 营销文案（JSON） | sonnet | new |
+| designer | 设计系统 & UI 规范 | sonnet | new |
+| builder | 代码实现（TDD） | sonnet | fork: expert-frontend |
+| evaluator | Playwright 测试 & 评分 | sonnet | fork: evaluator-active |
+| learner | 元进化编排器 | opus | new |
+
+### 自我进化
+
+每个代理和技能都具有**双区架构**：
+- **FROZEN 区**：身份、安全护栏、伦理边界（永不自动修改）
+- **EVOLVABLE 区**：风格指南、模式、权重（通过反馈自动修改）
+
+反馈积累在 `learnings.md` 中，当置信度 >= 0.80 且观测次数 >= 5 时，提升为技能规则。
+
+### 快速开始
+
+```bash
+/agency brief "为我的 AI 创业公司制作 SaaS 落地页"
+/agency build BRIEF-001
+/agency learn
+/agency evolve
+```
+
+> [Agency 文档](https://adk.mo.ai.kr/agency)
+
+---
+
 ## 常见问题
 
 ### Q: 为什么不是所有 Go 代码都有 @MX 标签？

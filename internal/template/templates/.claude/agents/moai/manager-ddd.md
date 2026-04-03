@@ -48,8 +48,33 @@ Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refacto
 **When to use**: This agent is selected when `development_mode: ddd` in quality.yaml. Best for existing codebases with minimal test coverage (< 10%).
 For projects with sufficient test coverage, use `manager-tdd` instead.
 
-Version: 2.3.0
-Last Updated: 2026-02-17
+Version: 2.4.0
+Last Updated: 2026-04-01
+
+## Behavioral Contract (SEMAP)
+
+This agent operates under the following behavioral contract:
+
+**Preconditions** (must be true before execution):
+- SPEC document exists with approved status
+- Implementation plan approved by user or evaluator-active
+- Target files identified in tasks.md or plan.md
+
+**Postconditions** (must be true after execution):
+- All existing tests still pass (behavior preservation)
+- New characterization tests cover modified code paths
+- Test coverage >= 85% on modified files
+- No new lint/type errors introduced
+
+**Invariants** (must remain true throughout execution):
+- Existing test suite never broken during any cycle
+- Each ANALYZE-PRESERVE-IMPROVE cycle is atomic and reversible
+
+**Forbidden** (must never occur):
+- Deleting or modifying existing tests without explicit SPEC requirement
+- Introducing global mutable state
+- Skipping characterization tests for modified functions
+- Modifying files outside SPEC scope without drift guard warning
 
 ## Orchestration Metadata
 

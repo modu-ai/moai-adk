@@ -106,6 +106,11 @@ const (
 	// EventElicitationResult is triggered after user responds to MCP elicitation.
 	// Available since Claude Code v2.1.76+.
 	EventElicitationResult EventType = "ElicitationResult"
+
+	// EventPermissionDenied is triggered after auto mode classifier denies a tool call.
+	// Return {retry: true} in hook output to allow the model to retry the operation.
+	// Available since Claude Code v2.1.89+.
+	EventPermissionDenied EventType = "PermissionDenied"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -137,6 +142,7 @@ func ValidEventTypes() []EventType {
 		EventFileChanged,
 		EventElicitation,
 		EventElicitationResult,
+		EventPermissionDenied,
 	}
 }
 
@@ -150,6 +156,7 @@ const (
 	DecisionAllow = "allow"
 	DecisionDeny  = "deny"
 	DecisionAsk   = "ask"
+	DecisionDefer = "defer" // Pause headless session; resume with --resume (v2.1.89+)
 )
 
 // Top-level decision constants for Stop, PostToolUse, etc. (Claude Code protocol).
@@ -263,6 +270,9 @@ type HookOutput struct {
 
 	// UpdatedInput is used by UserPromptSubmit to modify the user's prompt.
 	UpdatedInput string `json:"updatedInput,omitempty"`
+
+	// Retry signals that the model should retry the denied operation (PermissionDenied, v2.1.89+).
+	Retry bool `json:"retry,omitempty"`
 
 	// ExitCode allows handlers to signal a specific process exit code.
 	// Not serialized to JSON. Used for exit code 2 protocol (TeammateIdle, TaskCompleted).
@@ -400,6 +410,24 @@ func NewUserPromptBlockOutput(reason string) *HookOutput {
 		Decision: DecisionBlock,
 		Reason:   reason,
 	}
+}
+
+// NewDeferOutput creates a HookOutput with permissionDecision "defer" for PreToolUse.
+// In headless sessions (-p mode), this pauses execution until resumed with --resume (v2.1.89+).
+func NewDeferOutput(reason string) *HookOutput {
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:            "PreToolUse",
+			PermissionDecision:       DecisionDefer,
+			PermissionDecisionReason: reason,
+		},
+	}
+}
+
+// NewPermissionDeniedRetryOutput creates a HookOutput for PermissionDenied that signals retry.
+// Return this from a PermissionDenied hook handler to allow the model to retry the denied operation.
+func NewPermissionDeniedRetryOutput() *HookOutput {
+	return &HookOutput{Retry: true}
 }
 
 // NewTeammateKeepWorkingOutput creates a HookOutput that signals exit code 2 for TeammateIdle.

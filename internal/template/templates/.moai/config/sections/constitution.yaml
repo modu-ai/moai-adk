@@ -1,0 +1,51 @@
+# Project Constitution
+# Machine-readable technical constraints for automated SPEC validation.
+# This file defines what technologies and patterns are approved/forbidden for this project.
+# Used by: manager-spec (Phase 3.6 quality gate), evaluator-active (contract verification)
+
+constitution:
+  # Approved programming languages
+  approved_languages: []
+  # Example: [go, typescript, python]
+
+  # Approved frameworks and libraries
+  approved_frameworks: []
+  # Example: [cobra, viper, gin, react, next]
+
+  # Forbidden patterns (violations trigger SPEC quality gate failure)
+  forbidden_patterns: []
+  # Example:
+  # - "global mutable state"
+  # - "init() with side effects"
+  # - "panic() in library code"
+  # - "raw SQL without parameterized queries"
+
+  # Naming conventions
+  naming_conventions:
+    packages: ""
+    # Example: "lowercase, single word"
+    exported: ""
+    # Example: "PascalCase"
+    files: ""
+    # Example: "snake_case"
+
+  # Architecture constraints
+  architecture:
+    patterns: []
+    # Example: [clean-architecture, repository-pattern, dependency-injection]
+    forbidden_dependencies: []
+    # Example: ["direct database access from handlers", "circular imports"]
+
+  # Performance constraints
+  performance:
+    max_response_time_ms: null
+    # Example: 200
+    max_memory_mb: null
+    # Example: 512
+
+  # Security constraints
+  security:
+    required_checks: []
+    # Example: [input-validation, sql-injection-prevention, xss-prevention]
+    forbidden_practices: []
+    # Example: ["hardcoded credentials", "disabled CORS", "HTTP without TLS"]

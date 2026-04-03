@@ -870,6 +870,58 @@ exclude:
 
 ---
 
+## AI Agency: 自己進化クリエイティブプロダクション
+
+> 使うたびに良くなるウェブサイトとアプリを構築しましょう。
+
+MoAI-ADKには独立した**AI Agency**システムが含まれています — ウェブサイト、ランディングページ、ウェブアプリケーション向けの自己進化クリエイティブプロダクションパイプラインです。
+
+### パイプライン
+
+```mermaid
+flowchart LR
+    REQ[リクエスト] --> P[Planner]
+    P --> C[Copywriter]
+    P --> D[Designer]
+    C --> B[Builder]
+    D --> B
+    B --> E[Evaluator]
+    E -->|FAIL| B
+    E -->|PASS| L[Learner]
+```
+
+### 6つの自己進化エージェント
+
+| エージェント | 役割 | モデル | ソース |
+|-------------|------|--------|--------|
+| planner | リクエストをBRIEFに展開 | opus | fork: manager-spec |
+| copywriter | マーケティングコピー（JSON） | sonnet | new |
+| designer | デザインシステム & UI仕様 | sonnet | new |
+| builder | コード実装（TDD） | sonnet | fork: expert-frontend |
+| evaluator | Playwrightテスト & スコアリング | sonnet | fork: evaluator-active |
+| learner | メタ進化オーケストレーター | opus | new |
+
+### 自己進化
+
+すべてのエージェントとスキルは**デュアルゾーンアーキテクチャ**を持ちます：
+- **FROZENゾーン**: アイデンティティ、安全ガードレール、倫理的境界（自動変更不可）
+- **EVOLVABLEゾーン**: スタイルガイドライン、パターン、重み（フィードバックによる自動変更）
+
+フィードバックは`learnings.md`に蓄積され、信頼度 >= 0.80かつ観測5回以上で、スキルルールに昇格します。
+
+### クイックスタート
+
+```bash
+/agency brief "AIスタートアップ向けSaaSランディングページ"
+/agency build BRIEF-001
+/agency learn
+/agency evolve
+```
+
+> [Agencyドキュメント](https://adk.mo.ai.kr/agency)
+
+---
+
 ## よくある質問
 
 ### Q: なぜすべてのGoコードに@MXタグがないのか？
