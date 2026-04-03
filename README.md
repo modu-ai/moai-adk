@@ -868,81 +868,137 @@ The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
 
 ---
 
-## AI Agency: Self-Evolving Creative Production (v3.2)
+## AI Agency: Self-Evolving Web & App Production Harness (v3.2)
 
-> Build websites and apps that get better every time you use them.
+> Just describe what you want. Agency interviews you, designs, builds, tests, and learns — autonomously.
 
-MoAI-ADK includes an independent **AI Agency** system — a self-evolving creative production pipeline for websites, landing pages, and web applications.
+MoAI-ADK includes **AI Agency** — a specialized harness for autonomous website and web application production. Like `/moai "description"` runs the full development workflow, `/agency "description"` runs the full creative production pipeline from brief to deployed code.
 
-### Pipeline with GAN Loop
+### Quick Start: One Command, Full Pipeline
+
+```bash
+/agency "SaaS landing page for my AI developer tools startup"
+```
+
+This single command triggers the **entire autonomous workflow**:
+
+1. **Client Interview** — Agency asks 9 structured questions about your business, brand, and tech preferences (skipped if already configured)
+2. **BRIEF Generation** — Planner expands your request into a comprehensive project brief
+3. **Copy + Design** — Copywriter produces brand-aligned marketing copy; Designer creates a full design system with tokens
+4. **Code Implementation** — Builder implements production code using TDD (Next.js + Tailwind by default)
+5. **Quality Assurance** — Evaluator runs Playwright tests, Lighthouse audits, and 4-dimension scoring
+6. **GAN Loop** — If quality fails, Builder and Evaluator iterate (up to 5 rounds) until threshold is met
+7. **Self-Learning** — Learner detects patterns from the session and proposes skill improvements
+
+**Typical duration**: 15-45 minutes for a complete landing page, fully autonomous.
+
+### Pipeline Architecture
 
 ```mermaid
 flowchart LR
-    REQ[Request] --> P[Planner]
-    P --> C[Copywriter]
-    P --> D[Designer]
-    C --> B[Builder]
+    REQ["🎯 /agency 'request'"] --> INT["📋 Client Interview"]
+    INT --> P["📝 Planner (BRIEF)"]
+    P --> C["✍️ Copywriter"]
+    P --> D["🎨 Designer"]
+    C --> B["🔨 Builder (TDD)"]
     D --> B
-    B --> E[Evaluator]
-    E -->|"FAIL (max 5)"| B
-    E -->|PASS| L[Learner]
+    B --> E["🔍 Evaluator"]
+    E -->|"FAIL (max 5 rounds)"| B
+    E -->|"PASS (score ≥ 0.75)"| L["🧠 Learner"]
 ```
 
-The **GAN Loop** (Builder-Evaluator) iterates up to 5 times until quality passes (threshold: 0.75). If stagnating, it escalates to the user.
+### What Each Agent Does
 
-### 6 Self-Evolving Agents
+| Agent | Model | What It Does |
+|-------|-------|-------------|
+| **Planner** | opus | Conducts client interview, generates structured BRIEF document |
+| **Copywriter** | sonnet | Writes marketing copy as structured JSON — headlines, body, CTAs — following brand voice rules |
+| **Designer** | sonnet | Creates complete design system — color tokens, typography scale, spacing, component specs |
+| **Builder** | sonnet | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui |
+| **Evaluator** | sonnet | Runs Playwright visual tests + Lighthouse audits. Scores 4 dimensions: Design Quality (30%), Originality (25%), Completeness (25%), Functionality (20%) |
+| **Learner** | opus | Detects recurring patterns, proposes skill evolution through 5-layer safety gates |
 
-| Agent | Role | Model | Source |
-|-------|------|-------|--------|
-| planner | Client interview + BRIEF generation | opus | fork: manager-spec |
-| copywriter | Marketing copy (JSON) with brand voice | sonnet | new |
-| designer | Design system, tokens & UI spec | sonnet | new |
-| builder | Code implementation (TDD) | sonnet | fork: expert-frontend |
-| evaluator | Playwright testing & 4-dimension scoring | sonnet | fork: evaluator-active |
-| learner | Meta-evolution orchestrator | opus | new |
+### The GAN Loop: Adversarial Quality Assurance
 
-### 5 Specialized Skills
+The Evaluator is **skeptical by default** — tuned to find defects, not rationalize acceptance.
 
-| Skill | Purpose |
-|-------|---------|
-| agency-client-interview | Brand context gathering via structured discovery interview |
-| agency-copywriting | Brand voice, tone, structure, and anti-pattern enforcement |
-| agency-design-system | Color palettes, typography, spacing, and design tokens |
-| agency-evaluation-criteria | Quality scoring with weighted dimensions and Playwright testing |
-| agency-frontend-patterns | Tech stack preferences, component architecture, coding conventions |
+**Auto-FAIL triggers** (score irrelevant):
+- Copy text differs from copywriter output
+- AI design cliches detected (purple gradients + white cards + generic icons)
+- Mobile viewport broken
+- Any link returns 404
+- Lighthouse Accessibility < 80
 
-### Self-Evolution & Safety
+**Iteration flow**: Evaluator provides specific feedback with file:line references → Builder fixes → re-evaluation. After 3 failed iterations, escalates to user with options: adjust criteria, provide guidance, or force-pass.
 
-Every agent and skill has a **Dual Zone Architecture**:
-- **FROZEN Zone**: Identity, safety rails, ethical boundaries (never auto-modified)
-- **EVOLVABLE Zone**: Style guidelines, patterns, weights (auto-modified via feedback)
+### Brand Context: Your Creative Constitution
 
-**5-Layer Safety Architecture**: Frozen Guard, Canary Check, Contradiction Detector, Rate Limiter, Human Oversight.
+On first run, Agency conducts a **structured client interview** (9 questions across 4 phases):
 
-**Knowledge Graduation**: Feedback accumulates in `learnings.md` and progresses through tiers — observation (1x) → heuristic (3x) → rule (5x) → graduated. Rules with confidence >= 0.80 are proposed for evolution with user approval.
+| Phase | Questions | Populates |
+|-------|-----------|-----------|
+| Business Context | Objective, target customer, success KPIs | `.agency/context/target-audience.md` |
+| Brand Identity | Voice adjectives, reference sites, design preferences | `.agency/context/brand-voice.md`, `visual-identity.md` |
+| Technical Scope | Pages needed, tech requirements | `.agency/context/tech-preferences.md` |
+| Quality Expectations | Priority factors | `.agency/context/quality-standards.md` |
+
+Brand context flows through **every agent** as an immutable constraint. The Evaluator scores brand consistency as a must-pass criterion. After 5+ projects, the interview adapts to ask only 3 key questions.
+
+### Self-Evolution with Safety
+
+Every skill has **Static + Dynamic zones**:
+- **Static Zone**: Core principles (never auto-modified)
+- **Dynamic Zone**: Rules, heuristics, anti-patterns (evolved via Learner)
+
+**Knowledge Graduation**: observation (1x) → heuristic (3x) → rule (5x, confidence ≥ 0.80) → graduated (applied with user approval)
+
+**5-Layer Safety Architecture**:
+1. **Frozen Guard** — Blocks modification of identity, safety rails, and ethical boundaries
+2. **Canary Check** — Shadow-evaluates last 3 projects; rejects if any score drops > 0.10
+3. **Contradiction Detector** — Flags rules that conflict with existing ones
+4. **Rate Limiter** — Max 3 evolutions/week, 24h cooldown, max 50 active learnings
+5. **Human Oversight** — Presents before/after diff with evidence; requires user approval
 
 ### Commands
 
 ```bash
-# Core workflow
-/agency brief "SaaS landing page for my AI startup"  # Client interview + BRIEF
-/agency build BRIEF-001          # Full pipeline execution
-/agency review BRIEF-001         # Review built project
+# Autonomous workflow (recommended)
+/agency "SaaS landing page for my AI startup"  # Full pipeline: interview → build → test → learn
 
-# Evolution
-/agency learn                    # Extract learnings from session
-/agency evolve                   # Graduate learnings to rules
+# Step-by-step workflow
+/agency brief "landing page for dev tools"    # Interview + BRIEF only (review before building)
+/agency build BRIEF-001                       # Run full pipeline from existing BRIEF
+/agency build BRIEF-001 --step                # Approve each phase before proceeding
 
-# Session management
-/agency resume BRIEF-001         # Resume interrupted work
-/agency profile                  # View/edit brand context
+# Quality & review
+/agency review BRIEF-001                      # Re-run evaluator on existing build
+/agency phase BRIEF-001 copywriter            # Re-run specific phase only
 
-# Advanced
-/agency phase BRIEF-001 copywriter  # Run specific phase only
-/agency sync-upstream             # Sync with MoAI upstream changes
-/agency rollback LEARN-001        # Rollback a graduated learning
-/agency config                    # View/edit agency configuration
+# Self-evolution
+/agency learn                                 # Record feedback for pattern detection
+/agency evolve                                # Graduate learnings to skill rules
+/agency evolve --agent copywriter             # Evolve specific agent only
+
+# Session & profile
+/agency resume BRIEF-001                      # Resume interrupted workflow
+/agency profile                               # View adaptation stats and evolution history
+
+# System management
+/agency sync-upstream                         # Sync forked agents with MoAI updates
+/agency rollback agency-copywriting           # Rollback skill to previous version
+/agency config                                # View/edit pipeline configuration
 ```
+
+### Default Tech Stack (configurable)
+
+| Layer | Default | Configured via |
+|-------|---------|---------------|
+| Framework | Next.js + App Router | `.agency/context/tech-preferences.md` |
+| Language | TypeScript (strict) | `.agency/context/tech-preferences.md` |
+| Styling | Tailwind CSS v4 | `.agency/context/tech-preferences.md` |
+| Components | shadcn/ui | `.agency/context/tech-preferences.md` |
+| Testing | Vitest + Playwright | `.agency/config.yaml` |
+| Hosting | Vercel | `.agency/context/tech-preferences.md` |
 
 > [Agency Documentation](https://adk.mo.ai.kr/agency)
 

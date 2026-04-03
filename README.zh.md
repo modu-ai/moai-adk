@@ -870,81 +870,137 @@ exclude:
 
 ---
 
-## AI Agency：自我进化创意生产系统 (v3.2)
+## AI Agency：自我进化 Web/App 生产线束 (v3.2)
 
-> 构建每次使用都会变得更好的网站和应用。
+> 只需描述你想要什么。Agency 会自主完成访谈、设计、构建、测试和学习。
 
-MoAI-ADK 包含一个独立的 **AI Agency** 系统 — 一个面向网站、落地页和 Web 应用的自我进化创意生产流水线。
+MoAI-ADK 包含 **AI Agency** — 用于自主制作网站和 Web 应用的专用线束。就像 `/moai "描述"` 运行完整开发工作流一样，`/agency "描述"` 运行从简报到部署代码的完整创意生产流水线。
 
-### GAN Loop 流水线
+### 快速开始：一条命令，完整流水线
+
+```bash
+/agency "为我的 AI 开发者工具创业公司制作 SaaS 落地页"
+```
+
+这一条命令触发**完整自主工作流**：
+
+1. **客户访谈** — 关于业务、品牌和技术偏好的 9 个结构化问题（已配置则跳过）
+2. **BRIEF 生成** — Planner 将请求扩展为全面的项目简报
+3. **文案 + 设计** — Copywriter 撰写品牌一致的营销文案；Designer 创建基于令牌的设计系统
+4. **代码实现** — Builder 用 TDD 实现生产代码（默认：Next.js + Tailwind）
+5. **质量保证** — Evaluator 运行 Playwright 测试、Lighthouse 审计和 4 维评分
+6. **GAN Loop** — 质量不达标时 Builder 和 Evaluator 迭代（最多 5 轮）
+7. **自我学习** — Learner 检测模式并提出技能改进建议
+
+**典型耗时**：完整落地页 15-45 分钟，完全自主。
+
+### 流水线架构
 
 ```mermaid
 flowchart LR
-    REQ[请求] --> P[Planner]
-    P --> C[Copywriter]
-    P --> D[Designer]
-    C --> B[Builder]
+    REQ["🎯 /agency '请求'"] --> INT["📋 客户访谈"]
+    INT --> P["📝 Planner (BRIEF)"]
+    P --> C["✍️ Copywriter"]
+    P --> D["🎨 Designer"]
+    C --> B["🔨 Builder (TDD)"]
     D --> B
-    B --> E[Evaluator]
-    E -->|"FAIL（最多5次）"| B
-    E -->|PASS| L[Learner]
+    B --> E["🔍 Evaluator"]
+    E -->|"FAIL（最多5轮）"| B
+    E -->|"PASS（分数 ≥ 0.75）"| L["🧠 Learner"]
 ```
 
-**GAN Loop**（Builder-Evaluator）在质量通过前最多迭代 5 次（阈值：0.75）。停滞时升级给用户处理。
+### 各代理职责
 
-### 6 个自我进化代理
+| 代理 | 模型 | 功能 |
+|------|------|------|
+| **Planner** | opus | 进行客户访谈，生成结构化 BRIEF 文档 |
+| **Copywriter** | sonnet | 以结构化 JSON 撰写营销文案 — 标题、正文、CTA — 遵循品牌语调规则 |
+| **Designer** | sonnet | 创建完整设计系统 — 颜色令牌、字体比例、间距、组件规范 |
+| **Builder** | sonnet | 用 TDD（RED-GREEN-REFACTOR）实现生产代码。默认栈：Next.js、TypeScript、Tailwind、shadcn/ui |
+| **Evaluator** | sonnet | Playwright 视觉测试 + Lighthouse 审计。4 维评分：设计质量(30%)、原创性(25%)、完整度(25%)、功能性(20%) |
+| **Learner** | opus | 检测重复模式，通过 5 层安全门提出技能进化建议 |
 
-| 代理 | 角色 | 模型 | 来源 |
-|------|------|------|------|
-| planner | 客户访谈 + BRIEF 生成 | opus | fork: manager-spec |
-| copywriter | 基于品牌语调的营销文案（JSON） | sonnet | new |
-| designer | 设计系统、令牌 & UI 规范 | sonnet | new |
-| builder | 代码实现（TDD） | sonnet | fork: expert-frontend |
-| evaluator | Playwright 测试 & 4维评分 | sonnet | fork: evaluator-active |
-| learner | 元进化编排器 | opus | new |
+### GAN Loop：对抗性质量保证
 
-### 5 个专业技能
+Evaluator **默认持怀疑态度** — 调整为发现缺陷而非合理化接受。
 
-| 技能 | 用途 |
-|------|------|
-| agency-client-interview | 通过结构化发现访谈收集品牌上下文 |
-| agency-copywriting | 品牌语调、语气、结构和反模式规则执行 |
-| agency-design-system | 调色板、字体、间距和设计令牌 |
-| agency-evaluation-criteria | 加权维度质量评分与 Playwright 测试 |
-| agency-frontend-patterns | 技术栈偏好、组件架构、编码规范 |
+**自动不合格触发条件**（与分数无关）：
+- 文案文本与 Copywriter 输出不一致
+- 检测到 AI 设计陈词滥调（紫色渐变 + 白色卡片 + 通用图标）
+- 移动端视口崩溃
+- 链接 404 错误
+- Lighthouse 可访问性 < 80
+
+**迭代流程**：Evaluator 提供带 file:line 引用的具体反馈 → Builder 修复 → 重新评估。3 次失败后升级给用户。
+
+### 品牌上下文：创意宪法
+
+首次运行时，Agency 进行**结构化客户访谈**（4 阶段 9 个问题）：
+
+| 阶段 | 问题 | 存储位置 |
+|------|------|----------|
+| 业务上下文 | 目标、目标客户、成功 KPI | `.agency/context/target-audience.md` |
+| 品牌身份 | 语调形容词、参考网站、设计偏好 | `.agency/context/brand-voice.md`、`visual-identity.md` |
+| 技术范围 | 所需页面、技术要求 | `.agency/context/tech-preferences.md` |
+| 质量期望 | 优先事项 | `.agency/context/quality-standards.md` |
+
+品牌上下文作为**不可变约束**传递给所有代理。Evaluator 将品牌一致性作为必须通过的标准进行评分。完成 5+ 项目后，访谈缩减为 3 个关键问题。
 
 ### 自我进化与安全
 
-每个代理和技能都具有**双区架构**：
-- **FROZEN 区**：身份、安全护栏、伦理边界（永不自动修改）
-- **EVOLVABLE 区**：风格指南、模式、权重（通过反馈自动修改）
+所有技能采用**静态 + 动态区**结构：
+- **静态区**：核心原则（永不自动修改）
+- **动态区**：规则、启发式、反模式（通过 Learner 进化）
 
-**5 层安全架构**：Frozen Guard、Canary Check、Contradiction Detector、Rate Limiter、Human Oversight。
+**知识毕业**：observation（1次）→ heuristic（3次）→ rule（5次，置信度 ≥ 0.80）→ graduated（用户批准后应用）
 
-**知识毕业**：反馈积累在 `learnings.md` 中并逐级提升 — observation（1次）→ heuristic（3次）→ rule（5次）→ graduated。置信度 >= 0.80 的规则在用户批准下提出进化方案。
+**5 层安全架构**：
+1. **Frozen Guard** — 阻止修改身份、安全护栏和伦理边界
+2. **Canary Check** — 对最近 3 个项目进行影子评估，分数下降 > 0.10 则拒绝
+3. **Contradiction Detector** — 标记与现有规则冲突的规则
+4. **Rate Limiter** — 每周最多 3 次进化，24 小时冷却，最多 50 个活跃学习
+5. **Human Oversight** — 展示 before/after diff 及证据，需用户批准
 
 ### 命令
 
 ```bash
-# 核心工作流
-/agency brief "为我的 AI 创业公司制作 SaaS 落地页"  # 客户访谈 + BRIEF
-/agency build BRIEF-001          # 完整流水线执行
-/agency review BRIEF-001         # 审查已构建的项目
+# 自主工作流（推荐）
+/agency "为我的 AI 创业公司制作 SaaS 落地页"  # 完整流水线：访谈 → 构建 → 测试 → 学习
 
-# 进化
-/agency learn                    # 从会话中提取学习
-/agency evolve                   # 将学习提升为规则
+# 分步工作流
+/agency brief "开发者工具落地页"              # 仅访谈 + BRIEF（构建前审查）
+/agency build BRIEF-001                      # 从现有 BRIEF 运行完整流水线
+/agency build BRIEF-001 --step               # 每个阶段审批后再继续
 
-# 会话管理
-/agency resume BRIEF-001         # 恢复中断的工作
-/agency profile                  # 查看/编辑品牌上下文
+# 质量与审查
+/agency review BRIEF-001                     # 对现有构建重新运行 Evaluator
+/agency phase BRIEF-001 copywriter           # 仅重新运行特定阶段
 
-# 高级
-/agency phase BRIEF-001 copywriter  # 仅运行特定阶段
-/agency sync-upstream             # 同步 MoAI 上游变更
-/agency rollback LEARN-001        # 回滚已毕业的学习
-/agency config                    # 查看/编辑 Agency 配置
+# 自我进化
+/agency learn                                # 记录反馈用于模式检测
+/agency evolve                               # 将学习提升为技能规则
+/agency evolve --agent copywriter            # 仅进化特定代理
+
+# 会话与配置
+/agency resume BRIEF-001                     # 恢复中断的工作流
+/agency profile                              # 查看适应统计和进化历史
+
+# 系统管理
+/agency sync-upstream                        # 将分叉代理与 MoAI 更新同步
+/agency rollback agency-copywriting          # 将技能回滚到上一版本
+/agency config                               # 查看/编辑流水线配置
 ```
+
+### 默认技术栈（可配置）
+
+| 层级 | 默认值 | 配置文件 |
+|------|--------|----------|
+| 框架 | Next.js + App Router | `.agency/context/tech-preferences.md` |
+| 语言 | TypeScript（strict） | `.agency/context/tech-preferences.md` |
+| 样式 | Tailwind CSS v4 | `.agency/context/tech-preferences.md` |
+| 组件 | shadcn/ui | `.agency/context/tech-preferences.md` |
+| 测试 | Vitest + Playwright | `.agency/config.yaml` |
+| 托管 | Vercel | `.agency/context/tech-preferences.md` |
 
 > [Agency 文档](https://adk.mo.ai.kr/agency)
 

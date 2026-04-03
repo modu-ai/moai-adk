@@ -870,81 +870,137 @@ exclude:
 
 ---
 
-## AI Agency: 自己進化クリエイティブプロダクション (v3.2)
+## AI Agency: 自己進化Web/アプリプロダクションハーネス (v3.2)
 
-> 使うたびに良くなるウェブサイトとアプリを構築しましょう。
+> 作りたいものを説明するだけ。Agencyがインタビュー、デザイン、ビルド、テスト、学習を自律的に行います。
 
-MoAI-ADKには独立した**AI Agency**システムが含まれています — ウェブサイト、ランディングページ、ウェブアプリケーション向けの自己進化クリエイティブプロダクションパイプラインです。
+MoAI-ADKには**AI Agency**が含まれています — Webサイトやアプリを自律的に制作する専用ハーネスです。`/moai "説明"`が開発ワークフロー全体を実行するように、`/agency "説明"`はブリーフからデプロイ用コードまでの完全なクリエイティブプロダクションパイプラインを実行します。
 
-### GAN Loopパイプライン
+### クイックスタート：1コマンドでフルパイプライン
+
+```bash
+/agency "AI開発者ツールスタートアップ向けSaaSランディングページ"
+```
+
+この1行で**完全な自律ワークフロー**が開始されます：
+
+1. **クライアントインタビュー** — ビジネス、ブランド、技術に関する9つの構造化質問（設定済みならスキップ）
+2. **BRIEF生成** — Plannerがリクエストを包括的プロジェクトブリーフに展開
+3. **コピー＋デザイン** — Copywriterがブランド準拠のマーケティングコピーを作成、Designerがトークンベースのデザインシステムを生成
+4. **コード実装** — BuilderがTDDでプロダクションコードを実装（デフォルト：Next.js + Tailwind）
+5. **品質保証** — EvaluatorがPlaywrightテスト、Lighthouse監査、4次元スコアリングを実行
+6. **GAN Loop** — 品質未達ならBuilderとEvaluatorが反復（最大5ラウンド）
+7. **自己学習** — Learnerがパターンを検出しスキル改善を提案
+
+**所要時間**：完全なランディングページで15〜45分、完全自律。
+
+### パイプラインアーキテクチャ
 
 ```mermaid
 flowchart LR
-    REQ[リクエスト] --> P[Planner]
-    P --> C[Copywriter]
-    P --> D[Designer]
-    C --> B[Builder]
+    REQ["🎯 /agency 'リクエスト'"] --> INT["📋 クライアントインタビュー"]
+    INT --> P["📝 Planner (BRIEF)"]
+    P --> C["✍️ Copywriter"]
+    P --> D["🎨 Designer"]
+    C --> B["🔨 Builder (TDD)"]
     D --> B
-    B --> E[Evaluator]
-    E -->|"FAIL（最大5回）"| B
-    E -->|PASS| L[Learner]
+    B --> E["🔍 Evaluator"]
+    E -->|"FAIL（最大5ラウンド）"| B
+    E -->|"PASS（スコア ≥ 0.75）"| L["🧠 Learner"]
 ```
 
-**GAN Loop**（Builder-Evaluator）は品質が合格するまで最大5回反復します（閾値：0.75）。停滞時はユーザーにエスカレーションします。
+### 各エージェントの役割
 
-### 6つの自己進化エージェント
+| エージェント | モデル | 機能 |
+|-------------|--------|------|
+| **Planner** | opus | クライアントインタビュー実施、構造化BRIEF文書生成 |
+| **Copywriter** | sonnet | 構造化JSONでマーケティングコピー作成 — ヘッドライン、本文、CTA — ブランドボイスルール適用 |
+| **Designer** | sonnet | 完全なデザインシステム生成 — カラートークン、タイポグラフィスケール、スペーシング、コンポーネント仕様 |
+| **Builder** | sonnet | TDD（RED-GREEN-REFACTOR）でプロダクションコード実装。デフォルト：Next.js、TypeScript、Tailwind、shadcn/ui |
+| **Evaluator** | sonnet | Playwrightビジュアルテスト＋Lighthouse監査。4次元スコアリング：デザイン品質(30%)、オリジナリティ(25%)、完成度(25%)、機能性(20%) |
+| **Learner** | opus | パターン検出、5層セーフティゲートを通じたスキル進化提案 |
 
-| エージェント | 役割 | モデル | ソース |
-|-------------|------|--------|--------|
-| planner | クライアントインタビュー + BRIEF生成 | opus | fork: manager-spec |
-| copywriter | ブランドボイスに基づくマーケティングコピー（JSON） | sonnet | new |
-| designer | デザインシステム、トークン & UI仕様 | sonnet | new |
-| builder | コード実装（TDD） | sonnet | fork: expert-frontend |
-| evaluator | Playwrightテスト & 4次元スコアリング | sonnet | fork: evaluator-active |
-| learner | メタ進化オーケストレーター | opus | new |
+### GAN Loop：敵対的品質保証
 
-### 5つの専門スキル
+Evaluatorは**デフォルトで懐疑的** — 欠陥を見つけるよう調整されています。
 
-| スキル | 目的 |
-|--------|------|
-| agency-client-interview | 構造化ディスカバリーインタビューによるブランドコンテキスト収集 |
-| agency-copywriting | ブランドボイス、トーン、構造、アンチパターンの適用 |
-| agency-design-system | カラーパレット、タイポグラフィ、スペーシング、デザイントークン |
-| agency-evaluation-criteria | 重み付き次元別品質スコアリングとPlaywrightテスト |
-| agency-frontend-patterns | テックスタック選好、コンポーネントアーキテクチャ、コーディング規約 |
+**自動不合格トリガー**（スコア無関係）：
+- コピーテキストがCopywriter出力と不一致
+- AIデザインクリシェ検出（紫グラデーション＋白カード＋汎用アイコン）
+- モバイルビューポート崩壊
+- リンク404エラー
+- Lighthouseアクセシビリティ < 80
 
-### 自己進化 & セーフティ
+**反復フロー**：Evaluatorがfile:line参照付き具体的フィードバック提供 → Builder修正 → 再評価。3回失敗後ユーザーにエスカレーション。
 
-すべてのエージェントとスキルは**デュアルゾーンアーキテクチャ**を持ちます：
-- **FROZENゾーン**: アイデンティティ、安全ガードレール、倫理的境界（自動変更不可）
-- **EVOLVABLEゾーン**: スタイルガイドライン、パターン、重み（フィードバックによる自動変更）
+### ブランドコンテキスト：クリエイティブ憲法
 
-**5層セーフティアーキテクチャ**: Frozen Guard、Canary Check、Contradiction Detector、Rate Limiter、Human Oversight。
+初回実行時、Agencyが**構造化クライアントインタビュー**（4フェーズ9質問）を実施：
 
-**知識卒業**: フィードバックは`learnings.md`に蓄積され段階的に昇格 — observation（1回）→ heuristic（3回）→ rule（5回）→ graduated。信頼度 >= 0.80のルールはユーザー承認のもとで進化が提案されます。
+| フェーズ | 質問 | 保存先 |
+|---------|------|--------|
+| ビジネスコンテキスト | 目標、ターゲット顧客、成功KPI | `.agency/context/target-audience.md` |
+| ブランドアイデンティティ | ボイス形容詞、参考サイト、デザイン志向 | `.agency/context/brand-voice.md`、`visual-identity.md` |
+| 技術スコープ | 必要ページ、技術要件 | `.agency/context/tech-preferences.md` |
+| 品質期待 | 優先事項 | `.agency/context/quality-standards.md` |
+
+ブランドコンテキストは**全エージェント**に不変制約として伝達されます。Evaluatorはブランド一貫性を必須合格基準として評価。5プロジェクト以上完了後、インタビューは主要3質問に短縮。
+
+### 自己進化とセーフティ
+
+全スキルは**静的＋動的ゾーン**構造：
+- **静的ゾーン**：コア原則（自動変更不可）
+- **動的ゾーン**：ルール、ヒューリスティック、アンチパターン（Learner経由で進化）
+
+**知識卒業**：observation（1回）→ heuristic（3回）→ rule（5回、信頼度 ≥ 0.80）→ graduated（ユーザー承認後適用）
+
+**5層セーフティアーキテクチャ**：
+1. **Frozen Guard** — アイデンティティ、安全ガードレール、倫理的境界の変更をブロック
+2. **Canary Check** — 直近3プロジェクトでシャドウ評価、スコア低下 > 0.10で拒否
+3. **Contradiction Detector** — 既存ルールと矛盾するルールをフラグ
+4. **Rate Limiter** — 週最大3回進化、24時間クールダウン、最大50アクティブ学習
+5. **Human Oversight** — before/after diffと根拠提示、ユーザー承認必須
 
 ### コマンド
 
 ```bash
-# コアワークフロー
-/agency brief "AIスタートアップ向けSaaSランディングページ"  # クライアントインタビュー + BRIEF
-/agency build BRIEF-001          # フルパイプライン実行
-/agency review BRIEF-001         # ビルド済みプロジェクトのレビュー
+# 自律ワークフロー（推奨）
+/agency "AIスタートアップ向けSaaSランディングページ"  # フルパイプライン：インタビュー → ビルド → テスト → 学習
 
-# 進化
-/agency learn                    # セッションから学習を抽出
-/agency evolve                   # 学習をルールに昇格
+# ステップバイステップ
+/agency brief "開発者ツールランディングページ"        # インタビュー＋BRIEFのみ（ビルド前レビュー）
+/agency build BRIEF-001                             # 既存BRIEFからフルパイプライン実行
+/agency build BRIEF-001 --step                      # 各フェーズで承認後に進行
 
-# セッション管理
-/agency resume BRIEF-001         # 中断した作業を再開
-/agency profile                  # ブランドコンテキストの表示/編集
+# 品質＆レビュー
+/agency review BRIEF-001                            # 既存ビルドにEvaluator再実行
+/agency phase BRIEF-001 copywriter                  # 特定フェーズのみ再実行
 
-# アドバンスド
-/agency phase BRIEF-001 copywriter  # 特定フェーズのみ実行
-/agency sync-upstream             # MoAIアップストリーム変更の同期
-/agency rollback LEARN-001        # 卒業した学習のロールバック
-/agency config                    # Agency設定の表示/編集
+# 自己進化
+/agency learn                                       # パターン検出用フィードバック記録
+/agency evolve                                      # 学習をスキルルールに昇格
+/agency evolve --agent copywriter                   # 特定エージェントのみ進化
+
+# セッション＆プロフィール
+/agency resume BRIEF-001                            # 中断ワークフロー再開
+/agency profile                                     # 適応統計・進化履歴表示
+
+# システム管理
+/agency sync-upstream                               # フォークエージェントをMoAI更新と同期
+/agency rollback agency-copywriting                 # スキルを前バージョンにロールバック
+/agency config                                      # パイプライン設定の表示/編集
 ```
+
+### デフォルト技術スタック（設定可能）
+
+| レイヤー | デフォルト | 設定ファイル |
+|---------|-----------|-------------|
+| フレームワーク | Next.js + App Router | `.agency/context/tech-preferences.md` |
+| 言語 | TypeScript（strict） | `.agency/context/tech-preferences.md` |
+| スタイリング | Tailwind CSS v4 | `.agency/context/tech-preferences.md` |
+| コンポーネント | shadcn/ui | `.agency/context/tech-preferences.md` |
+| テスティング | Vitest + Playwright | `.agency/config.yaml` |
+| ホスティング | Vercel | `.agency/context/tech-preferences.md` |
 
 > [Agencyドキュメント](https://adk.mo.ai.kr/agency)
 
