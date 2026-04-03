@@ -213,7 +213,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		PermissionMode:   permissionMode,
 		StatuslineMode:   statuslineMode,
 		StatuslineTheme:  statuslineTheme,
-		TeammateDisplay:  "auto",
 	}
 
 	if err := profile.WritePreferences(profileName, prefs); err != nil {

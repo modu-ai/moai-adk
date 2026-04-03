@@ -553,8 +553,8 @@ func TestEnsureSettingsLocalJSON_CreatesNewFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
+	if settings.TeammateMode != "tmux" {
+		t.Errorf("should set teammateMode=tmux, got %q", settings.TeammateMode)
 	}
 }
 
@@ -589,8 +589,8 @@ func TestEnsureSettingsLocalJSON_PreservesExisting(t *testing.T) {
 	if settings.Env["MY_VAR"] != "keep_me" {
 		t.Error("existing env var should be preserved")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("should add CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
+	if settings.TeammateMode != "tmux" {
+		t.Errorf("should add teammateMode=tmux, got %q", settings.TeammateMode)
 	}
 }
 
@@ -858,8 +858,8 @@ func TestInjectGLMEnvForTeam_NewFile(t *testing.T) {
 	if settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "model-high" {
 		t.Error("should set ANTHROPIC_DEFAULT_OPUS_MODEL")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY")
+	if settings.TeammateMode != "tmux" {
+		t.Errorf("should set teammateMode=tmux, got %q", settings.TeammateMode)
 	}
 }
 
@@ -2515,8 +2515,8 @@ func TestEnsureSettingsLocalJSON_NewFile(t *testing.T) {
 		t.Fatalf("parse json: %v", err)
 	}
 
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Errorf("expected CLAUDE_CODE_TEAMMATE_DISPLAY=tmux, got %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"])
+	if settings.TeammateMode != "tmux" {
+		t.Errorf("expected teammateMode=tmux, got %q", settings.TeammateMode)
 	}
 }
 
@@ -2553,8 +2553,8 @@ func TestEnsureSettingsLocalJSON_ExistingFile(t *testing.T) {
 	if settings.Env["EXISTING_KEY"] != "value" {
 		t.Error("existing key should be preserved")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("auto display should be set")
+	if settings.TeammateMode != "tmux" {
+		t.Error("teammateMode should be set to tmux")
 	}
 }
 
@@ -4990,8 +4990,8 @@ func TestEnsureSettingsLocalJSON_CreateDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("file not created: %v", err)
 	}
-	if !strings.Contains(string(data), "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("expected CLAUDE_CODE_TEAMMATE_DISPLAY in settings")
+	if !strings.Contains(string(data), "teammateMode") {
+		t.Error("expected teammateMode in settings")
 	}
 }
 
@@ -5912,8 +5912,8 @@ func TestEnsureSettingsLocalJSON_CreatesFile(t *testing.T) {
 		t.Fatalf("settings file not created: %v", err)
 	}
 
-	if !strings.Contains(string(data), "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("expected settings to contain CLAUDE_CODE_TEAMMATE_DISPLAY")
+	if !strings.Contains(string(data), "teammateMode") {
+		t.Error("expected settings to contain teammateMode")
 	}
 }
 
@@ -5946,8 +5946,8 @@ func TestEnsureSettingsLocalJSON_PreservesExisting_Phase5(t *testing.T) {
 	if !strings.Contains(content, "my_value") {
 		t.Error("expected existing env to be preserved")
 	}
-	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("expected CLAUDE_CODE_TEAMMATE_DISPLAY to be added")
+	if !strings.Contains(content, "teammateMode") {
+		t.Error("expected teammateMode to be added")
 	}
 }
 
@@ -7076,8 +7076,8 @@ func TestInjectGLMEnvForTeam_Phase6(t *testing.T) {
 
 	data, _ := os.ReadFile(settingsPath)
 	content := string(data)
-	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("expected CLAUDE_CODE_TEAMMATE_DISPLAY")
+	if !strings.Contains(content, "teammateMode") {
+		t.Error("expected teammateMode")
 	}
 	if !strings.Contains(content, "test-api-key") {
 		t.Error("expected API key in settings")

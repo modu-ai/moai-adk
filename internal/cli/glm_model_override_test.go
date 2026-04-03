@@ -94,8 +94,8 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
 		t.Error("settings.local.json should contain ANTHROPIC_BASE_URL")
 	}
-	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY")
+	if !strings.Contains(content, "teammateMode") {
+		t.Error("settings.local.json should contain teammateMode")
 	}
 }
 
@@ -167,12 +167,12 @@ func TestCGCmd_DoesNotAddModelOverridesToSettings(t *testing.T) {
 		t.Error("settings.local.json should NOT contain ANTHROPIC_DEFAULT_HAIKU_MODEL in CG mode (uses tmux env)")
 	}
 
-	// CG mode should have CLAUDE_CODE_TEAMMATE_DISPLAY set to tmux
-	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
-		t.Error("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY in CG mode")
+	// CG mode should have teammateMode set to tmux (native key)
+	if !strings.Contains(content, "\"teammateMode\"") {
+		t.Error("settings.local.json should contain teammateMode in CG mode")
 	}
 	if !strings.Contains(content, "\"tmux\"") {
-		t.Error("CLAUDE_CODE_TEAMMATE_DISPLAY should be set to \"tmux\" in CG mode")
+		t.Error("teammateMode should be set to \"tmux\" in CG mode")
 	}
 
 	// CG mode should NOT have GLM auth vars in settings.local.json

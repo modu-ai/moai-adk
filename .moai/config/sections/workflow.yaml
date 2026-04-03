@@ -106,7 +106,6 @@ workflow:
                     - quality-reviewer
                     - ux-reviewer
         require_plan_approval: true
-        teammate_display: auto
     token_budget:
         plan: 30000
         run: 180000

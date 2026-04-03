@@ -87,6 +87,12 @@ type SettingsLocal struct {
 	CompanyAnnouncements  []string          `json:"companyAnnouncements,omitempty"`
 	Env                   map[string]string `json:"env,omitempty"`
 	Permissions           map[string]any    `json:"permissions,omitempty"`
+	// TeammateMode controls how Claude Code displays Agent Teams teammates.
+	// This native settings key takes precedence over the CLAUDE_CODE_TEAMMATE_DISPLAY
+	// env var. CG/GLM modes set this to "tmux" to ensure teammates spawn in tmux
+	// panes and inherit GLM session env vars. CC mode clears it so the project
+	// default from settings.json ("auto") applies.
+	TeammateMode string `json:"teammateMode,omitempty"`
 }
 
 // runGLM launches Claude Code with GLM backend, or routes to subcommands.
@@ -188,9 +194,9 @@ func maskAPIKey(key string) string {
 	return key[:4] + "****" + key[len(key)-4:]
 }
 
-// enableTeamMode enables GLM Team mode with settings.json env injection.
+// enableTeamMode enables GLM Team mode with settings.local.json configuration.
 // isHybrid: false = all agents use GLM, true = lead uses Claude, agents use GLM
-// Note: tmux display mode is forced to "tmux" to ensure GLM env var inheritance (#468)
+// Note: teammateMode is forced to "tmux" to ensure GLM env var inheritance (#468)
 func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	out := cmd.OutOrStdout()
 
@@ -395,7 +401,7 @@ func persistTeamMode(projectRoot, mode string) error {
 	return saveLLMSection(sectionsDir, llmCfg)
 }
 
-// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=tmux.
+// ensureSettingsLocalJSON ensures settings.local.json exists with teammateMode=tmux.
 // CG mode requires tmux, so we force tmux display to prevent inline fallback
 // which would cause teammates to lose GLM env var inheritance (see #468).
 func ensureSettingsLocalJSON(settingsPath string) error {
@@ -414,7 +420,14 @@ func ensureSettingsLocalJSON(settingsPath string) error {
 
 	// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
+	// Single source of truth: teammateMode native settings key in settings.local.json.
+	settings.TeammateMode = "tmux"
+	// Clean up legacy env var if present (superseded by native key).
+	delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+
+	if len(settings.Env) == 0 {
+		settings.Env = nil
+	}
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
@@ -502,7 +515,10 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 
 	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
+	// Single source of truth: teammateMode native settings key in settings.local.json.
+	settings.TeammateMode = "tmux"
+	// Clean up legacy env var if present (superseded by native key).
+	delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)

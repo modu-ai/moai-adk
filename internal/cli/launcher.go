@@ -218,6 +218,10 @@ func removeGLMEnv(settingsPath string) error {
 		return fmt.Errorf("parse settings.local.json: %w", err)
 	}
 
+	// Clear teammateMode override so settings.json default ("auto") applies.
+	// CG/GLM modes set this to "tmux"; CC mode should restore the default.
+	settings.TeammateMode = ""
+
 	if settings.Env != nil {
 		// Restore backed-up OAuth token before removing GLM vars
 		if backup, ok := settings.Env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
@@ -235,6 +239,8 @@ func removeGLMEnv(settingsPath string) error {
 		delete(settings.Env, "DISABLE_PROMPT_CACHING")
 		delete(settings.Env, "API_TIMEOUT_MS")
 		delete(settings.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+		// Remove teammate display env var override (CG/GLM set this)
+		delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
 
 		if len(settings.Env) == 0 {
 			settings.Env = nil
