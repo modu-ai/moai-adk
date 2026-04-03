@@ -870,13 +870,13 @@ exclude:
 
 ---
 
-## AI Agency: 自己進化クリエイティブプロダクション
+## AI Agency: 自己進化クリエイティブプロダクション (v3.2)
 
 > 使うたびに良くなるウェブサイトとアプリを構築しましょう。
 
 MoAI-ADKには独立した**AI Agency**システムが含まれています — ウェブサイト、ランディングページ、ウェブアプリケーション向けの自己進化クリエイティブプロダクションパイプラインです。
 
-### パイプライン
+### GAN Loopパイプライン
 
 ```mermaid
 flowchart LR
@@ -886,36 +886,64 @@ flowchart LR
     C --> B[Builder]
     D --> B
     B --> E[Evaluator]
-    E -->|FAIL| B
+    E -->|"FAIL（最大5回）"| B
     E -->|PASS| L[Learner]
 ```
+
+**GAN Loop**（Builder-Evaluator）は品質が合格するまで最大5回反復します（閾値：0.75）。停滞時はユーザーにエスカレーションします。
 
 ### 6つの自己進化エージェント
 
 | エージェント | 役割 | モデル | ソース |
 |-------------|------|--------|--------|
-| planner | リクエストをBRIEFに展開 | opus | fork: manager-spec |
-| copywriter | マーケティングコピー（JSON） | sonnet | new |
-| designer | デザインシステム & UI仕様 | sonnet | new |
+| planner | クライアントインタビュー + BRIEF生成 | opus | fork: manager-spec |
+| copywriter | ブランドボイスに基づくマーケティングコピー（JSON） | sonnet | new |
+| designer | デザインシステム、トークン & UI仕様 | sonnet | new |
 | builder | コード実装（TDD） | sonnet | fork: expert-frontend |
-| evaluator | Playwrightテスト & スコアリング | sonnet | fork: evaluator-active |
+| evaluator | Playwrightテスト & 4次元スコアリング | sonnet | fork: evaluator-active |
 | learner | メタ進化オーケストレーター | opus | new |
 
-### 自己進化
+### 5つの専門スキル
+
+| スキル | 目的 |
+|--------|------|
+| agency-client-interview | 構造化ディスカバリーインタビューによるブランドコンテキスト収集 |
+| agency-copywriting | ブランドボイス、トーン、構造、アンチパターンの適用 |
+| agency-design-system | カラーパレット、タイポグラフィ、スペーシング、デザイントークン |
+| agency-evaluation-criteria | 重み付き次元別品質スコアリングとPlaywrightテスト |
+| agency-frontend-patterns | テックスタック選好、コンポーネントアーキテクチャ、コーディング規約 |
+
+### 自己進化 & セーフティ
 
 すべてのエージェントとスキルは**デュアルゾーンアーキテクチャ**を持ちます：
 - **FROZENゾーン**: アイデンティティ、安全ガードレール、倫理的境界（自動変更不可）
 - **EVOLVABLEゾーン**: スタイルガイドライン、パターン、重み（フィードバックによる自動変更）
 
-フィードバックは`learnings.md`に蓄積され、信頼度 >= 0.80かつ観測5回以上で、スキルルールに昇格します。
+**5層セーフティアーキテクチャ**: Frozen Guard、Canary Check、Contradiction Detector、Rate Limiter、Human Oversight。
 
-### クイックスタート
+**知識卒業**: フィードバックは`learnings.md`に蓄積され段階的に昇格 — observation（1回）→ heuristic（3回）→ rule（5回）→ graduated。信頼度 >= 0.80のルールはユーザー承認のもとで進化が提案されます。
+
+### コマンド
 
 ```bash
-/agency brief "AIスタートアップ向けSaaSランディングページ"
-/agency build BRIEF-001
-/agency learn
-/agency evolve
+# コアワークフロー
+/agency brief "AIスタートアップ向けSaaSランディングページ"  # クライアントインタビュー + BRIEF
+/agency build BRIEF-001          # フルパイプライン実行
+/agency review BRIEF-001         # ビルド済みプロジェクトのレビュー
+
+# 進化
+/agency learn                    # セッションから学習を抽出
+/agency evolve                   # 学習をルールに昇格
+
+# セッション管理
+/agency resume BRIEF-001         # 中断した作業を再開
+/agency profile                  # ブランドコンテキストの表示/編集
+
+# アドバンスド
+/agency phase BRIEF-001 copywriter  # 特定フェーズのみ実行
+/agency sync-upstream             # MoAIアップストリーム変更の同期
+/agency rollback LEARN-001        # 卒業した学習のロールバック
+/agency config                    # Agency設定の表示/編集
 ```
 
 > [Agencyドキュメント](https://adk.mo.ai.kr/agency)

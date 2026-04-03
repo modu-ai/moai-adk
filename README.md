@@ -868,13 +868,13 @@ The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
 
 ---
 
-## AI Agency: Self-Evolving Creative Production
+## AI Agency: Self-Evolving Creative Production (v3.2)
 
 > Build websites and apps that get better every time you use them.
 
 MoAI-ADK includes an independent **AI Agency** system — a self-evolving creative production pipeline for websites, landing pages, and web applications.
 
-### Pipeline
+### Pipeline with GAN Loop
 
 ```mermaid
 flowchart LR
@@ -884,36 +884,64 @@ flowchart LR
     C --> B[Builder]
     D --> B
     B --> E[Evaluator]
-    E -->|FAIL| B
+    E -->|"FAIL (max 5)"| B
     E -->|PASS| L[Learner]
 ```
+
+The **GAN Loop** (Builder-Evaluator) iterates up to 5 times until quality passes (threshold: 0.75). If stagnating, it escalates to the user.
 
 ### 6 Self-Evolving Agents
 
 | Agent | Role | Model | Source |
 |-------|------|-------|--------|
-| planner | Expand request to BRIEF | opus | fork: manager-spec |
-| copywriter | Marketing copy (JSON) | sonnet | new |
-| designer | Design system & UI spec | sonnet | new |
+| planner | Client interview + BRIEF generation | opus | fork: manager-spec |
+| copywriter | Marketing copy (JSON) with brand voice | sonnet | new |
+| designer | Design system, tokens & UI spec | sonnet | new |
 | builder | Code implementation (TDD) | sonnet | fork: expert-frontend |
-| evaluator | Playwright testing & scoring | sonnet | fork: evaluator-active |
+| evaluator | Playwright testing & 4-dimension scoring | sonnet | fork: evaluator-active |
 | learner | Meta-evolution orchestrator | opus | new |
 
-### Self-Evolution
+### 5 Specialized Skills
+
+| Skill | Purpose |
+|-------|---------|
+| agency-client-interview | Brand context gathering via structured discovery interview |
+| agency-copywriting | Brand voice, tone, structure, and anti-pattern enforcement |
+| agency-design-system | Color palettes, typography, spacing, and design tokens |
+| agency-evaluation-criteria | Quality scoring with weighted dimensions and Playwright testing |
+| agency-frontend-patterns | Tech stack preferences, component architecture, coding conventions |
+
+### Self-Evolution & Safety
 
 Every agent and skill has a **Dual Zone Architecture**:
 - **FROZEN Zone**: Identity, safety rails, ethical boundaries (never auto-modified)
 - **EVOLVABLE Zone**: Style guidelines, patterns, weights (auto-modified via feedback)
 
-Feedback accumulates in `learnings.md`, graduates to skill rules when confidence >= 0.80 with 5+ observations.
+**5-Layer Safety Architecture**: Frozen Guard, Canary Check, Contradiction Detector, Rate Limiter, Human Oversight.
 
-### Quick Start
+**Knowledge Graduation**: Feedback accumulates in `learnings.md` and progresses through tiers — observation (1x) → heuristic (3x) → rule (5x) → graduated. Rules with confidence >= 0.80 are proposed for evolution with user approval.
+
+### Commands
 
 ```bash
-/agency brief "SaaS landing page for my AI startup"
-/agency build BRIEF-001
-/agency learn
-/agency evolve
+# Core workflow
+/agency brief "SaaS landing page for my AI startup"  # Client interview + BRIEF
+/agency build BRIEF-001          # Full pipeline execution
+/agency review BRIEF-001         # Review built project
+
+# Evolution
+/agency learn                    # Extract learnings from session
+/agency evolve                   # Graduate learnings to rules
+
+# Session management
+/agency resume BRIEF-001         # Resume interrupted work
+/agency profile                  # View/edit brand context
+
+# Advanced
+/agency phase BRIEF-001 copywriter  # Run specific phase only
+/agency sync-upstream             # Sync with MoAI upstream changes
+/agency rollback LEARN-001        # Rollback a graduated learning
+/agency config                    # View/edit agency configuration
 ```
 
 > [Agency Documentation](https://adk.mo.ai.kr/agency)

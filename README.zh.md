@@ -870,13 +870,13 @@ exclude:
 
 ---
 
-## AI Agency：自我进化创意生产系统
+## AI Agency：自我进化创意生产系统 (v3.2)
 
 > 构建每次使用都会变得更好的网站和应用。
 
 MoAI-ADK 包含一个独立的 **AI Agency** 系统 — 一个面向网站、落地页和 Web 应用的自我进化创意生产流水线。
 
-### 流水线
+### GAN Loop 流水线
 
 ```mermaid
 flowchart LR
@@ -886,36 +886,64 @@ flowchart LR
     C --> B[Builder]
     D --> B
     B --> E[Evaluator]
-    E -->|FAIL| B
+    E -->|"FAIL（最多5次）"| B
     E -->|PASS| L[Learner]
 ```
+
+**GAN Loop**（Builder-Evaluator）在质量通过前最多迭代 5 次（阈值：0.75）。停滞时升级给用户处理。
 
 ### 6 个自我进化代理
 
 | 代理 | 角色 | 模型 | 来源 |
 |------|------|------|------|
-| planner | 将请求扩展为 BRIEF | opus | fork: manager-spec |
-| copywriter | 营销文案（JSON） | sonnet | new |
-| designer | 设计系统 & UI 规范 | sonnet | new |
+| planner | 客户访谈 + BRIEF 生成 | opus | fork: manager-spec |
+| copywriter | 基于品牌语调的营销文案（JSON） | sonnet | new |
+| designer | 设计系统、令牌 & UI 规范 | sonnet | new |
 | builder | 代码实现（TDD） | sonnet | fork: expert-frontend |
-| evaluator | Playwright 测试 & 评分 | sonnet | fork: evaluator-active |
+| evaluator | Playwright 测试 & 4维评分 | sonnet | fork: evaluator-active |
 | learner | 元进化编排器 | opus | new |
 
-### 自我进化
+### 5 个专业技能
+
+| 技能 | 用途 |
+|------|------|
+| agency-client-interview | 通过结构化发现访谈收集品牌上下文 |
+| agency-copywriting | 品牌语调、语气、结构和反模式规则执行 |
+| agency-design-system | 调色板、字体、间距和设计令牌 |
+| agency-evaluation-criteria | 加权维度质量评分与 Playwright 测试 |
+| agency-frontend-patterns | 技术栈偏好、组件架构、编码规范 |
+
+### 自我进化与安全
 
 每个代理和技能都具有**双区架构**：
 - **FROZEN 区**：身份、安全护栏、伦理边界（永不自动修改）
 - **EVOLVABLE 区**：风格指南、模式、权重（通过反馈自动修改）
 
-反馈积累在 `learnings.md` 中，当置信度 >= 0.80 且观测次数 >= 5 时，提升为技能规则。
+**5 层安全架构**：Frozen Guard、Canary Check、Contradiction Detector、Rate Limiter、Human Oversight。
 
-### 快速开始
+**知识毕业**：反馈积累在 `learnings.md` 中并逐级提升 — observation（1次）→ heuristic（3次）→ rule（5次）→ graduated。置信度 >= 0.80 的规则在用户批准下提出进化方案。
+
+### 命令
 
 ```bash
-/agency brief "为我的 AI 创业公司制作 SaaS 落地页"
-/agency build BRIEF-001
-/agency learn
-/agency evolve
+# 核心工作流
+/agency brief "为我的 AI 创业公司制作 SaaS 落地页"  # 客户访谈 + BRIEF
+/agency build BRIEF-001          # 完整流水线执行
+/agency review BRIEF-001         # 审查已构建的项目
+
+# 进化
+/agency learn                    # 从会话中提取学习
+/agency evolve                   # 将学习提升为规则
+
+# 会话管理
+/agency resume BRIEF-001         # 恢复中断的工作
+/agency profile                  # 查看/编辑品牌上下文
+
+# 高级
+/agency phase BRIEF-001 copywriter  # 仅运行特定阶段
+/agency sync-upstream             # 同步 MoAI 上游变更
+/agency rollback LEARN-001        # 回滚已毕业的学习
+/agency config                    # 查看/编辑 Agency 配置
 ```
 
 > [Agency 文档](https://adk.mo.ai.kr/agency)
