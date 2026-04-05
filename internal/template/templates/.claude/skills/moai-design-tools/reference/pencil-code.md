@@ -50,12 +50,26 @@ Use the component mapping reference to translate Pencil node types to React prim
 | `frame` (flex row) | `<div>` | `flex flex-row` |
 | `frame` (flex col) | `<div>` | `flex flex-col` |
 | `frame` (grid) | `<div>` | `grid` |
+| `frame` (slot) | `<div>` with `{children}` | `min-h-[...] border-dashed` |
 | `text` (body) | `<p>` or `<span>` | `text-sm text-gray-700` |
 | `text` (heading) | `<h1>`–`<h6>` | `text-xl font-semibold` |
 | `image` | `<img>` or `next/image` | `object-cover` |
 | `button` frame | `<button>` | `btn` pattern |
 | `input` frame | `<input>` | `input` pattern |
 | `card` frame | `<div>` | `rounded-lg border bg-white p-4` |
+| `rectangle` | `<div>` | Sized/colored block |
+| `ellipse` | `<div>` | `rounded-full` |
+| `line` | `<hr>` or `<div>` | `border-t` or absolute positioned |
+| `polygon` / `path` | `<svg>` | Inline SVG with viewBox |
+| `ref` (component instance) | Mapped component | Props from overrides |
+| `icon-font` | Icon component | Icon library class |
+| `note` / `prompt` / `context` | Skipped in code generation | Design-time only annotations |
+
+**Component Instance Handling (Ref type):**
+When a node has `type: "ref"`, it references a reusable component. Map the origin component to a React component and apply property overrides from the `descendants` object as props.
+
+**Slot Handling:**
+Frames marked as slots become React `children` props. Suggested slot components become TypeScript type annotations or JSDoc comments indicating expected content.
 
 ### Step 4: Generate Code with Design Token Mapping
 
@@ -424,6 +438,7 @@ Solution: Use snapshot_layout to check computed rectangles.
 
 ---
 
-Last Updated: 2026-03-29
+Last Updated: 2026-04-05
 Tool Version: Pencil MCP (14 tools)
+.pen Schema: 2.9 (13 node types)
 Workflow: Prompt-based (batch_get → analyze → audit → generate)
