@@ -100,6 +100,92 @@ Tasks for the Explore subagent:
 - Go through related test files to understand expected behavior and edge cases
 - Report comprehensive results for Phase 1B context
 
+### Phase 0.3: Clarity Evaluation (Conditional)
+
+Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
+
+**Skip conditions (any one is sufficient):**
+- `--skip-interview` flag is present in $ARGUMENTS
+- Input matches `resume SPEC-XXX` pattern (resuming an existing draft)
+- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)
+- `interview.enabled: false` in `.moai/config/sections/interview.yaml`
+
+**Clarity Scoring (1-10):**
+
+Evaluate the user's input against five dimensions:
+
+1. Technical keyword count: 2+ points for 3-4 keywords; 1 point for 1-2; 0 for none
+2. Action verbs specificity: "add CRUD endpoints for user profile" scores higher than "improve the app"
+3. File or module mentions: explicit file paths or module names each add 1 point
+4. Generic nouns penalty: deduct 1 point for each vague noun like "system", "feature", "thing"
+5. Scope boundary clarity: a defined boundary ("only the POST /users endpoint, no auth changes") adds 2 points
+
+**Score-to-rounds mapping:**
+
+| Clarity Score | Interview Rounds |
+|---|---|
+| 1-3 | 0 (request too vague — ask one broad clarification question instead) |
+| 4-6 | 2 rounds maximum |
+| 7-10 | 5 rounds maximum |
+
+Log the score: "Clarity score: {N}/10 — proceeding with {M} interview round(s)."
+
+If score is 1-3: Use a single AskUserQuestion asking for a clearer description, then re-evaluate. Do not enter the full interview loop.
+
+### Phase 0.3.1: Deep Interview Loop (Conditional)
+
+Purpose: Gather missing context through a structured, topic-focused interview before research begins. Each round presents curated options so the user can answer quickly.
+
+**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 0.3).
+
+**Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
+
+**Round topics:**
+
+| Round | Focus Topic | Example Questions |
+|---|---|---|
+| 1 | Scope | What is included and explicitly excluded? |
+| 2 | Constraints | Performance, security, compatibility, technology limits |
+| 3 | Success criteria | How do we know when this is done and working correctly? |
+| 4 | Edge cases | What unusual or failure scenarios must be handled? |
+| 5 | Priority | What is the minimum viable slice if scope must be cut? |
+
+**Per-round execution:**
+
+For each round:
+
+1. Formulate 3 recommended options relevant to the current topic and the user's request context.
+2. Present via AskUserQuestion with exactly 4 options:
+   - Option 1: [Recommended based on context] (Recommended): [Detailed description of this answer]
+   - Option 2: [Alternative]: [Description]
+   - Option 3: [Alternative]: [Description]
+   - Option 4: Type your own answer: Enter a custom response if none of the above match
+3. Record the user's answer.
+4. Re-evaluate clarity score after each round.
+5. If updated clarity score drops to 3 or below: end the loop early (user's answers added no useful information).
+6. If updated clarity score reaches 8 or above: end the loop early (sufficient clarity achieved).
+7. Display round counter: "Interview round {N}/{max_rounds}"
+
+**Output:** Write all interview answers to `.moai/specs/SPEC-{ID}/interview.md` with this structure:
+
+```
+# Interview: {SPEC Title}
+
+## Round 1: Scope
+Question: {question asked}
+Answer: {user's answer}
+
+## Round 2: Constraints
+...
+
+## Clarity Score
+Initial: {N}/10
+Final: {N}/10
+Rounds completed: {N}
+```
+
+**Context passing:** Pass `interview.md` to Phase 0.5 (Deep Research) and Phase 1B (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
+
 ### Phase 0.4: UltraThink Auto-Activation (Conditional)
 
 Purpose: Automatically activate deep analysis mode for complex SPECs that benefit from structured reasoning.
