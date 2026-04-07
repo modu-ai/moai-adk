@@ -11,7 +11,7 @@ description: |
   NOT for: code implementation, architecture design, deployment, documentation writing, git operations
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: bypassPermissions
+permissionMode: acceptEdits
 maxTurns: 150
 memory: project
 skills:
