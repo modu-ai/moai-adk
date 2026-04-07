@@ -2,8 +2,11 @@ package hook
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/hook/lifecycle"
 )
 
 // defaultCompletionMarkers is the list of default completion markers.
@@ -60,6 +63,34 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		return &HookOutput{}, nil
 	}
 
+	// Check persistent mode — non-blocking on errors
+	projectDir := input.CWD
+	if projectDir == "" {
+		projectDir = input.ProjectDir
+	}
+	if projectDir != "" {
+		mode, err := lifecycle.CheckPersistentMode(projectDir)
+		if err != nil {
+			slog.Warn("persistent mode check failed", "error", err)
+		} else if mode != nil && mode.Active {
+			if h.hasCompletionMarker(input) {
+				slog.Info("completion marker detected during persistent mode, deactivating")
+				_ = lifecycle.DeactivatePersistentMode(projectDir)
+			} else if mode.IsExpired() {
+				slog.Info("persistent mode expired", "max_minutes", mode.MaxDurationMinutes)
+				_ = lifecycle.DeactivatePersistentMode(projectDir)
+			} else {
+				slog.Info("persistent mode active, blocking stop",
+					"workflow", mode.Workflow, "spec_id", mode.SpecID)
+				return &HookOutput{
+					Decision: "block",
+					Reason: fmt.Sprintf("Persistent mode active: %s workflow on %s. Continuing work...",
+						mode.Workflow, mode.SpecID),
+				}, nil
+			}
+		}
+	}
+
 	// Detect completion markers in ToolOutput (observation-only, never blocks)
 	if len(input.ToolOutput) > 0 && len(h.completionMarkers) > 0 {
 		output := string(input.ToolOutput)
@@ -78,4 +109,19 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 	// Return empty JSON {} to allow Claude to stop (default behavior)
 	// To keep Claude working, return: {"decision": "block", "reason": "..."}
 	return &HookOutput{}, nil
+}
+
+// hasCompletionMarker reports whether the input's ToolOutput contains any of the
+// configured completion markers.
+func (h *stopHandler) hasCompletionMarker(input *HookInput) bool {
+	if len(input.ToolOutput) == 0 || len(h.completionMarkers) == 0 {
+		return false
+	}
+	output := string(input.ToolOutput)
+	for _, marker := range h.completionMarkers {
+		if strings.Contains(output, marker) {
+			return true
+		}
+	}
+	return false
 }
