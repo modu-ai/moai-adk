@@ -21,7 +21,7 @@ func (h *worktreeCreateHandler) EventType() EventType {
 }
 
 // Handle processes a WorktreeCreate event. It logs the worktree creation details
-// for session tracking and debugging.
+// and persists the entry to the worktree registry for session tracking.
 func (h *worktreeCreateHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("worktree created for isolated agent",
 		"session_id", input.SessionID,
@@ -30,5 +30,11 @@ func (h *worktreeCreateHandler) Handle(ctx context.Context, input *HookInput) (*
 		"worktree_path", input.WorktreePath,
 		"worktree_branch", input.WorktreeBranch,
 	)
+
+	// Persist the worktree entry so other sessions can inspect active worktrees.
+	if input.CWD != "" && input.WorktreePath != "" {
+		registerWorktree(input.CWD, input.WorktreePath, input.WorktreeBranch, input.AgentName)
+	}
+
 	return &HookOutput{}, nil
 }
