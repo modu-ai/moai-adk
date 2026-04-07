@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"golang.org/x/text/unicode/norm"
 )
@@ -309,6 +310,19 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 
 	// Handle Bash commands
 	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		// Quality gate for git commit commands (REQ-GATE-001).
+		// Executes before security pattern checks so the gate cannot be bypassed.
+		if command := h.extractBashCommand(input.ToolInput); quality.IsGitCommit(command) {
+			gate := quality.NewQualityGate(h.loadGateConfig())
+			passed, output := gate.Run(ctx)
+			if !passed {
+				slog.Warn("quality gate blocked git commit",
+					"reason_summary", firstLine(output),
+				)
+				return NewDenyOutput(output), nil
+			}
+		}
+
 		decision, reason := h.checkBashCommand(input.ToolInput)
 		if decision != "" {
 			slog.Warn("bash command security check",
@@ -430,6 +444,45 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 	}
 
 	return "", ""
+}
+
+// extractBashCommand parses the command string from Bash tool input JSON.
+// Returns "" if the input cannot be parsed or lacks a command field.
+func (h *preToolHandler) extractBashCommand(toolInput json.RawMessage) string {
+	var parsed map[string]any
+	if err := json.Unmarshal(toolInput, &parsed); err != nil {
+		return ""
+	}
+	command, _ := parsed["command"].(string)
+	return command
+}
+
+// loadGateConfig reads gate configuration from the config provider.
+// Falls back to DefaultGateConfig when the config is not available.
+func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
+	if h.cfg == nil {
+		return quality.DefaultGateConfig()
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return quality.DefaultGateConfig()
+	}
+	gate := cfg.Gate
+	return &quality.GateConfig{
+		Enabled:     gate.Enabled,
+		SkipTests:   gate.SkipTests,
+		VetTimeout:  gate.VetTimeoutDuration(),
+		LintTimeout: gate.LintTimeoutDuration(),
+		TestTimeout: gate.TestTimeoutDuration(),
+	}
+}
+
+// firstLine returns the first non-empty line of s, or s itself when there is no newline.
+func firstLine(s string) string {
+	if idx := strings.IndexByte(s, '\n'); idx >= 0 {
+		return s[:idx]
+	}
+	return s
 }
 
 // checkBashCommand checks a Bash command against dangerous and ask patterns.

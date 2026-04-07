@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/config"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
@@ -719,5 +721,379 @@ func TestPostToolHandler_NonWriteEditTool_NoDiagnostics(t *testing.T) {
 	_, err := h.Handle(ctx, input)
 	if err != nil {
 		t.Fatalf("Handle() error: %v", err)
+	}
+}
+
+// --- Lint-as-Instruction (LAI) integration tests (SPEC-LAI-001) ---
+
+// makeLAIConfig returns a ConfigProvider with lint_as_instruction set as specified.
+func makeLAIConfig(lintAsInstruction, warnAsInstruction bool) ConfigProvider {
+	cfg := config.NewDefaultConfig()
+	cfg.Ralph.LintAsInstruction = lintAsInstruction
+	cfg.Ralph.WarnAsInstruction = warnAsInstruction
+	return &mockConfigProvider{cfg: cfg}
+}
+
+// TestLAI_AC001_ErrorInjection verifies that LSP errors appear in SystemMessage (AC-LAI-001).
+func TestLAI_AC001_ErrorInjection(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 9}}, Severity: lsphook.SeverityError, Message: "undefined: foo", Source: "gopls"},
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 19}}, Severity: lsphook.SeverityError, Message: "unused variable", Source: "gopls"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts {
+			return lsphook.SeverityCounts{Errors: 2}
+		},
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.SystemMessage == "" {
+		t.Fatal("AC-LAI-001: SystemMessage must not be empty when errors exist")
+	}
+	if !strings.Contains(got.SystemMessage, "2 error(s)") {
+		t.Errorf("AC-LAI-001: expected '2 error(s)' in SystemMessage, got: %q", got.SystemMessage)
+	}
+}
+
+// TestLAI_AC002_MessageFormat verifies the exact format of the systemMessage (AC-LAI-002).
+func TestLAI_AC002_MessageFormat(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 41}}, Severity: lsphook.SeverityError, Message: "undefined: foo", Source: "gopls"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts {
+			return lsphook.SeverityCounts{Errors: 1}
+		},
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	// AC-LAI-002: header format
+	if !strings.Contains(got.SystemMessage, "[Quality Gate] 1 error(s) detected in main.go:") {
+		t.Errorf("AC-LAI-002: header format wrong: %q", got.SystemMessage)
+	}
+	// AC-LAI-002: entry format file:line: message (source)
+	if !strings.Contains(got.SystemMessage, "main.go:42: undefined: foo (gopls)") {
+		t.Errorf("AC-LAI-002: entry format wrong: %q", got.SystemMessage)
+	}
+}
+
+// TestLAI_AC003_ConfigDisable verifies that lint_as_instruction=false suppresses SystemMessage (AC-LAI-003).
+func TestLAI_AC003_ConfigDisable(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 0}}, Severity: lsphook.SeverityError, Message: "some error", Source: "gopls"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts {
+			return lsphook.SeverityCounts{Errors: 1}
+		},
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(false, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+
+	// AC-LAI-003: SystemMessage must be empty when lint_as_instruction=false
+	if got.SystemMessage != "" {
+		t.Errorf("AC-LAI-003: SystemMessage must be empty when lint_as_instruction=false, got: %q", got.SystemMessage)
+	}
+
+	// AC-LAI-005: Data must still contain lsp_diagnostics
+	if got.Data == nil {
+		t.Fatal("AC-LAI-005: Data must not be nil")
+	}
+	var metrics map[string]any
+	if err := json.Unmarshal(got.Data, &metrics); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, ok := metrics["lsp_diagnostics"]; !ok {
+		t.Error("AC-LAI-005: lsp_diagnostics must still be present in Data when lint_as_instruction=false")
+	}
+}
+
+// TestLAI_AC004_MaxErrors verifies truncation at 10 errors (AC-LAI-004).
+func TestLAI_AC004_MaxErrors(t *testing.T) {
+	t.Parallel()
+
+	diags := make([]lsphook.Diagnostic, 15)
+	for i := range diags {
+		diags[i] = lsphook.Diagnostic{
+			Range:    lsphook.Range{Start: lsphook.Position{Line: i}},
+			Severity: lsphook.SeverityError,
+			Message:  fmt.Sprintf("error %d", i+1),
+			Source:   "gopls",
+		}
+	}
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc:   func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) { return diags, nil },
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{Errors: 15} },
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if !strings.Contains(got.SystemMessage, "... and 5 more errors") {
+		t.Errorf("AC-LAI-004: truncation notice missing: %q", got.SystemMessage)
+	}
+	entryCount := strings.Count(got.SystemMessage, "- main.go:")
+	if entryCount != 10 {
+		t.Errorf("AC-LAI-004: expected 10 entries, got %d", entryCount)
+	}
+}
+
+// TestLAI_AC005_MetricsPreserved verifies that Data still has lsp_diagnostics (AC-LAI-005).
+func TestLAI_AC005_MetricsPreserved(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 0}}, Severity: lsphook.SeverityError, Message: "e", Source: "gopls"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{Errors: 1} },
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/a.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	var metrics map[string]any
+	if err := json.Unmarshal(got.Data, &metrics); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, ok := metrics["lsp_diagnostics"]; !ok {
+		t.Error("AC-LAI-005: lsp_diagnostics missing from Data")
+	}
+}
+
+// TestLAI_AC006_WarningsDisabled verifies warnings are suppressed by default (AC-LAI-006).
+func TestLAI_AC006_WarningsDisabled(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 0}}, Severity: lsphook.SeverityWarning, Message: "exported func missing comment", Source: "golint"},
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 5}}, Severity: lsphook.SeverityWarning, Message: "unused variable x", Source: "gopls"},
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 9}}, Severity: lsphook.SeverityWarning, Message: "consider early return", Source: "staticcheck"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{Warnings: 3} },
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.SystemMessage != "" {
+		t.Errorf("AC-LAI-006: SystemMessage must be empty for warnings-only with warn_as_instruction=false, got: %q", got.SystemMessage)
+	}
+}
+
+// TestLAI_AC007_WarningsEnabled verifies warnings appear when warn_as_instruction=true (AC-LAI-007).
+func TestLAI_AC007_WarningsEnabled(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 0}}, Severity: lsphook.SeverityWarning, Message: "exported func missing comment", Source: "golint"},
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 5}}, Severity: lsphook.SeverityWarning, Message: "unused variable x", Source: "gopls"},
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 9}}, Severity: lsphook.SeverityWarning, Message: "consider early return", Source: "staticcheck"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{Warnings: 3} },
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, true))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.SystemMessage == "" {
+		t.Fatal("AC-LAI-007: SystemMessage must not be empty when warn_as_instruction=true")
+	}
+	if !strings.Contains(got.SystemMessage, "[Quality Gate]") {
+		t.Errorf("AC-LAI-007: header missing in SystemMessage: %q", got.SystemMessage)
+	}
+	if !strings.Contains(got.SystemMessage, "warning(s)") {
+		t.Errorf("AC-LAI-007: 'warning(s)' missing in SystemMessage: %q", got.SystemMessage)
+	}
+}
+
+// TestLAI_AC008_CleanFile verifies SystemMessage is empty for clean files (AC-LAI-008).
+func TestLAI_AC008_CleanFile(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc:   func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) { return []lsphook.Diagnostic{}, nil },
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{} },
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Edit",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/clean.go", "old_string": "a", "new_string": "b"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.SystemMessage != "" {
+		t.Errorf("AC-LAI-008: SystemMessage must be empty for clean file, got: %q", got.SystemMessage)
+	}
+}
+
+// TestLAI_AC009_AstSecurityIntegration verifies AST security findings appear in SystemMessage (AC-LAI-009).
+func TestLAI_AC009_AstSecurityIntegration(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc:   func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) { return []lsphook.Diagnostic{}, nil },
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{} },
+	}
+
+	astMock := &mockFileAnalyzer{
+		scanFileFunc: func(_ context.Context, _ string, _ *astgrep.ScanConfig) (*astgrep.ScanResult, error) {
+			return &astgrep.ScanResult{
+				Matches: []astgrep.Match{
+					{File: "/tmp/main.go", Line: 10, Rule: "no-hardcoded-secrets", Message: "hardcoded secret detected"},
+				},
+			}, nil
+		},
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, astMock, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/main.go"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.SystemMessage == "" {
+		t.Fatal("AC-LAI-009: SystemMessage must not be empty when AST security issues exist")
+	}
+	if !strings.Contains(got.SystemMessage, "[Security Gate]") {
+		t.Errorf("AC-LAI-009: '[Security Gate]' missing in SystemMessage: %q", got.SystemMessage)
+	}
+	if !strings.Contains(got.SystemMessage, "no-hardcoded-secrets") {
+		t.Errorf("AC-LAI-009: rule name missing in SystemMessage: %q", got.SystemMessage)
+	}
+}
+
+// TestLAI_AC010_EditToolSupport verifies Edit tool also generates SystemMessage (AC-LAI-010).
+func TestLAI_AC010_EditToolSupport(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Range: lsphook.Range{Start: lsphook.Position{Line: 0}}, Severity: lsphook.SeverityError, Message: "syntax error", Source: "gopls"},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts { return lsphook.SeverityCounts{Errors: 1} },
+	}
+
+	h := NewPostToolHandlerWithConfig(mock, nil, "", 0, makeLAIConfig(true, false))
+	ctx := context.Background()
+
+	input := &HookInput{
+		ToolName:  "Edit",
+		ToolInput: json.RawMessage(`{"file_path": "/tmp/handler.go", "old_string": "a", "new_string": "b"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.SystemMessage == "" {
+		t.Fatal("AC-LAI-010: SystemMessage must be generated for Edit tool with errors")
+	}
+	if !strings.Contains(got.SystemMessage, "[Quality Gate]") {
+		t.Errorf("AC-LAI-010: header missing in SystemMessage: %q", got.SystemMessage)
 	}
 }

@@ -81,6 +81,20 @@ func NewDefaultConfig() *Config {
 		Ralph:         NewDefaultRalphConfig(),
 		Workflow:      NewDefaultWorkflowConfig(),
 		State:         NewDefaultStateConfig(),
+		Gate:          NewDefaultGateConfig(),
+	}
+}
+
+// NewDefaultGateConfig returns a GateConfig with production-safe defaults.
+func NewDefaultGateConfig() GateConfig {
+	return GateConfig{
+		Enabled:   true,
+		SkipTests: false,
+		Timeouts: GateTimeouts{
+			Vet:  30,
+			Lint: 60,
+			Test: 120,
+		},
 	}
 }
 
@@ -208,9 +222,11 @@ func NewDefaultPricingConfig() PricingConfig {
 // NewDefaultRalphConfig returns a RalphConfig with default values.
 func NewDefaultRalphConfig() RalphConfig {
 	return RalphConfig{
-		MaxIterations: DefaultMaxIterations,
-		AutoConverge:  true,
-		HumanReview:   true,
+		MaxIterations:     DefaultMaxIterations,
+		AutoConverge:      true,
+		HumanReview:       true,
+		LintAsInstruction: true,  // REQ-LAI-003: enabled by default
+		WarnAsInstruction: false, // REQ-LAI-006: disabled by default
 	}
 }
 

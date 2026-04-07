@@ -1,4 +1,8 @@
 ralph:
+    # Lint-as-Instruction: inject LSP diagnostics as systemMessage (REQ-LAI-001)
+    lint_as_instruction: true
+    # Include warnings in systemMessage when no errors (REQ-LAI-006). Default: false.
+    warn_as_instruction: false
     ast_grep:
         auto_fix: false
         config_path: .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml

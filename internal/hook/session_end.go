@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
+	"github.com/modu-ai/moai-adk/internal/hook/trace"
 )
 
 // teamConfig is the minimal structure read from ~/.claude/teams/*/config.json.
@@ -21,11 +22,28 @@ type teamConfig struct {
 // sessionEndHandler processes SessionEnd events.
 // It persists session metrics, cleans up temporary resources, and optionally
 // submits ranking data (REQ-HOOK-034). Always returns "allow".
-type sessionEndHandler struct{}
+type sessionEndHandler struct {
+	// traceDir is the directory where trace JSONL files are stored.
+	// When non-empty, a session summary Markdown report is generated on SessionEnd (REQ-OBS-004).
+	traceDir string
+	// reportDir is the directory where session summary reports are written.
+	reportDir string
+}
 
 // NewSessionEndHandler creates a new SessionEnd event handler.
 func NewSessionEndHandler() Handler {
 	return &sessionEndHandler{}
+}
+
+// NewSessionEndHandlerWithObservability creates a SessionEnd handler that also
+// generates a Markdown session summary report when the session ends (REQ-OBS-004).
+// traceDir is the directory containing trace JSONL files.
+// reportDir is the directory where the summary report will be written.
+func NewSessionEndHandlerWithObservability(traceDir, reportDir string) Handler {
+	return &sessionEndHandler{
+		traceDir:  traceDir,
+		reportDir: reportDir,
+	}
 }
 
 // EventType returns EventSessionEnd.
@@ -92,9 +110,54 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		"session_id", input.SessionID,
 	)
 
+	// Generate session summary report if observability is configured (REQ-OBS-004).
+	if h.traceDir != "" && h.reportDir != "" && input.SessionID != "" {
+		generateSessionSummary(input.SessionID, h.traceDir, h.reportDir)
+	}
+
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	// Do NOT use hookSpecificOutput for SessionEnd events
 	return &HookOutput{}, nil
+}
+
+// generateSessionSummary reads the session trace file and writes a Markdown
+// summary report. All errors are logged with slog.Warn (best-effort, REQ-OBS-004).
+func generateSessionSummary(sessionID, traceDir, reportDir string) {
+	summary, err := trace.GenerateSummary(traceDir, sessionID)
+	if err != nil {
+		slog.Warn("session_end: could not generate summary",
+			"session_id", sessionID,
+			"error", err,
+		)
+		return
+	}
+
+	if summary.TotalHooks == 0 {
+		return
+	}
+
+	if err := os.MkdirAll(reportDir, 0o755); err != nil {
+		slog.Warn("session_end: could not create report directory",
+			"path", reportDir,
+			"error", err,
+		)
+		return
+	}
+
+	reportPath := filepath.Join(reportDir, "session-"+sessionID+".md")
+	content := summary.FormatMarkdown()
+	if err := os.WriteFile(reportPath, []byte(content), 0o644); err != nil {
+		slog.Warn("session_end: could not write session summary",
+			"path", reportPath,
+			"error", err,
+		)
+		return
+	}
+
+	slog.Info("session_end: session summary written",
+		"path", reportPath,
+		"total_hooks", summary.TotalHooks,
+	)
 }
 
 // getModifiedGoFiles returns the list of .go files modified in the current session.
