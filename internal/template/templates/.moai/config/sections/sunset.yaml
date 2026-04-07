@@ -1,0 +1,22 @@
+# Build to Delete Framework (SPEC-SUNSET-001)
+# Best harness gradually erases itself as agents grow.
+# Sunset conditions define when quality gates can be relaxed.
+
+sunset:
+  enabled: true
+  conditions:
+    - gate: "go_vet"
+      metric: "consecutive_passes"
+      threshold: 50
+      action: "advisor"
+      description: "Switch to advisory mode after 50 consecutive passes"
+    - gate: "golangci_lint"
+      metric: "consecutive_passes"
+      threshold: 30
+      action: "advisor"
+      description: "Switch to advisory mode after 30 consecutive passes"
+    - gate: "go_test"
+      metric: "consecutive_passes"
+      threshold: 20
+      action: "advisor"
+      description: "Switch to advisory mode after 20 consecutive passes (never fully remove)"

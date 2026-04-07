@@ -25,6 +25,7 @@ type Config struct {
 	State         StateConfig                `yaml:"state"`
 	Statusline    models.StatuslineConfig    `yaml:"statusline"`
 	Gate          GateConfig                 `yaml:"gate"`
+	Sunset        SunsetConfig               `yaml:"sunset"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -203,11 +204,28 @@ func (g *GateConfig) TestTimeoutDuration() time.Duration {
 	return time.Duration(g.Timeouts.Test) * time.Second
 }
 
+// SunsetConfig defines the Build-to-Delete framework configuration.
+// Quality gates that consistently pass can be relaxed over time.
+type SunsetConfig struct {
+	// Enabled controls whether sunset tracking is active.
+	Enabled    bool              `yaml:"enabled"`
+	Conditions []SunsetCondition `yaml:"conditions"`
+}
+
+// SunsetCondition defines when a quality gate can be relaxed.
+type SunsetCondition struct {
+	Gate        string `yaml:"gate"`
+	Metric      string `yaml:"metric"`
+	Threshold   int    `yaml:"threshold"`
+	Action      string `yaml:"action"`
+	Description string `yaml:"description"`
+}
+
 // sectionNames lists all valid configuration section names.
 var sectionNames = []string{
 	"user", "language", "quality", "project",
 	"git_strategy", "git_convention", "system", "llm",
-	"pricing", "ralph", "workflow", "state", "statusline", "gate",
+	"pricing", "ralph", "workflow", "state", "statusline", "gate", "sunset",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
