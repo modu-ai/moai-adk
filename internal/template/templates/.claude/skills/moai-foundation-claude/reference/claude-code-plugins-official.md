@@ -186,7 +186,7 @@ Available Tools:
 - Grep, Glob - Search operations
 - Bash - Command execution
 - WebFetch, WebSearch - Web access
-- Task - Sub-agent delegation
+- Agent - Sub-agent delegation
 - TodoWrite - Task management
 
 ### Skills

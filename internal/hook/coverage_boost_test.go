@@ -419,7 +419,7 @@ func TestLogTaskMetrics_MkdirAllFails(t *testing.T) {
 
 	input := &HookInput{
 		SessionID:    "sess-mkdir-fail",
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		CWD:          tmpDir,
 		ToolResponse: json.RawMessage(`{"metrics":{"tokensUsed":100,"toolUses":2,"durationSeconds":5.0}}`),
 	}
@@ -539,7 +539,7 @@ func TestPostToolHandler_Handle_TaskTool_ValidMetrics(t *testing.T) {
 	input := &HookInput{
 		SessionID:    "sess-task-valid",
 		CWD:          tmpDir,
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		ToolResponse: json.RawMessage(`{"metrics":{"tokensUsed":500,"toolUses":3,"durationSeconds":10.0}}`),
 	}
 
@@ -912,7 +912,7 @@ func TestLogTaskMetrics_OpenFileFails(t *testing.T) {
 
 	input := &HookInput{
 		SessionID:    "sess-openfile-fail",
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		CWD:          tmpDir,
 		ToolResponse: json.RawMessage(`{"metrics":{"tokensUsed":50,"toolUses":1,"durationSeconds":2.5}}`),
 	}

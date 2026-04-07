@@ -113,10 +113,10 @@ func TestLogTaskMetrics(t *testing.T) {
 		wantSeconds  float64
 	}{
 		{
-			name: "task tool with valid metrics creates JSONL record",
+			name: "agent tool with valid metrics creates JSONL record",
 			input: &HookInput{
 				SessionID:    "sess-metrics-001",
-				ToolName:     "Task",
+				ToolName:     "Agent",
 				ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":12450,"toolUses":8,"durationSeconds":45.2}}`),
 			},
 			setupMoaiDir: true,
@@ -126,7 +126,7 @@ func TestLogTaskMetrics(t *testing.T) {
 			wantSeconds:  45.2,
 		},
 		{
-			name: "task tool with valid metrics but no .moai dir writes no file",
+			name: "task tool backward compat with valid metrics but no .moai dir writes no file",
 			input: &HookInput{
 				SessionID:    "sess-metrics-guard",
 				ToolName:     "Task",
@@ -136,10 +136,10 @@ func TestLogTaskMetrics(t *testing.T) {
 			wantFile:     false,
 		},
 		{
-			name: "task tool with missing metrics field writes no file",
+			name: "agent tool with missing metrics field writes no file",
 			input: &HookInput{
 				SessionID:    "sess-metrics-002",
-				ToolName:     "Task",
+				ToolName:     "Agent",
 				ToolResponse: json.RawMessage(`{"status":"completed","output":"done"}`),
 			},
 			wantFile: false,
@@ -167,10 +167,10 @@ func TestLogTaskMetrics(t *testing.T) {
 			wantFile: false,
 		},
 		{
-			name: "task tool with empty ToolResponse writes no file",
+			name: "agent tool with empty ToolResponse writes no file",
 			input: &HookInput{
 				SessionID: "sess-metrics-004",
-				ToolName:  "Task",
+				ToolName:  "Agent",
 			},
 			wantFile: false,
 		},
@@ -256,13 +256,13 @@ func TestLogTaskMetrics(t *testing.T) {
 func TestPostToolHandler_Handle_TaskMetrics_DoesNotFail(t *testing.T) {
 	t.Parallel()
 
-	// Even when Task metrics logging would fail (e.g. bad CWD),
+	// Even when Agent metrics logging would fail (e.g. bad CWD),
 	// the hook must still return a successful allow response.
 	tmpDir := t.TempDir()
 	input := &HookInput{
 		SessionID: "sess-resilience-001",
 		CWD:       tmpDir,
-		ToolName:  "Task",
+		ToolName:  "Agent",
 		// Intentionally malformed JSON to trigger parse failure.
 		ToolResponse: json.RawMessage(`{not valid json`),
 	}
@@ -349,7 +349,7 @@ func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
 	input := &HookInput{
 		SessionID:    "sess-task-route",
 		CWD:          tmpDir,
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":500,"toolUses":3,"durationSeconds":12.5}}`),
 	}
 
@@ -453,7 +453,7 @@ func TestLogTaskMetrics_AppendMultipleRecords(t *testing.T) {
 		input := &HookInput{
 			SessionID:    fmt.Sprintf("sess-multi-%d", i),
 			CWD:          tmpDir,
-			ToolName:     "Task",
+			ToolName:     "Agent",
 			ToolResponse: json.RawMessage(fmt.Sprintf(`{"metrics":{"tokensUsed":%d,"toolUses":%d,"durationSeconds":%d}}`, (i+1)*100, i+1, i+1)),
 		}
 		logTaskMetrics(input)

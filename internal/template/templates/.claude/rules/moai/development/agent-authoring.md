@@ -34,6 +34,9 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | hooks | No | None | Lifecycle hooks scoped to this agent |
 | memory | No | None | Persistent memory scope for cross-session learning |
 | background | No | false | Run agent in background without blocking conversation (v2.1.46+) |
+| color | No | None | Display color in UI: red, blue, green, yellow, purple, orange, pink, cyan |
+| effort | No | inherit | Session effort override: low, medium, high, max (max is Opus 4.6 only) |
+| initialPrompt | No | None | Auto-submitted first user turn when agent runs as main session agent via --agent flag (v2.1.83+) |
 | isolation | No | none | Isolation mode: "worktree" creates isolated git worktree (v2.1.49+) |
 
 ### Field Details
@@ -52,9 +55,15 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
+**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `max`. The `max` value is only supported on Opus 4.6 models.
+
+**color**: Display color for the agent in the task list and transcript UI. Valid values: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
+
+**initialPrompt**: When the agent runs as the main session agent (via `claude --agent <name>` or the `agent` setting), this prompt is auto-submitted as the first user turn. Commands and skills within the prompt are processed. If the user also provides a prompt, `initialPrompt` is prepended. Available since v2.1.83.
+
 ## Agent(agent_type) Restrictions
 
-The `tools` field supports `Task(worker, researcher)` syntax to restrict which subagents an agent can spawn.
+The `tools` field supports `Agent(worker, researcher)` syntax to restrict which subagent types an agent can spawn. Prior to v2.1.63, this was `Task(worker, researcher)` — the old syntax still works as a backward-compatible alias.
 
 - Only applies to agents running as the main thread via `claude --agent`
 - Has no effect on subagent definitions (subagents cannot spawn other subagents)
@@ -69,7 +78,8 @@ The `permissionMode` field controls how the agent handles permission checks:
 |------|----------|----------|
 | default | Standard permission checking with user prompts | General-purpose agents |
 | acceptEdits | Auto-accept file edit operations | Trusted implementation agents |
-| delegate | Coordination-only mode, restricts to team management tools | Team lead agents |
+| auto | Background classifier reviews commands; protected-dir writes still prompt | Balanced automation agents |
+| delegate | Coordination-only mode, restricts to team management tools | Team lead agents (MoAI-specific, experimental) |
 | dontAsk | Auto-deny all permission prompts | Strict sandbox agents |
 | bypassPermissions | Skip all permission checks (use with caution) | Fully trusted automation |
 | plan | Read-only exploration mode, no write operations | Research and analysis agents |
@@ -186,3 +196,13 @@ For team mode invocation:
 - SendMessage for inter-teammate coordination
 - TeamDelete after all teammates shut down
 - See team-plan.md and team-run.md for complete workflow examples
+
+## Plugin Agent Limitations
+
+Agents defined in plugins have restricted frontmatter support. The following fields are ignored when loading agents from plugins:
+
+- hooks
+- mcpServers
+- permissionMode
+
+These fields only work for project-level and personal-level agent definitions.
