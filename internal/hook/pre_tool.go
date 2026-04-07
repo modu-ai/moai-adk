@@ -234,6 +234,27 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 	}
 }
 
+// MergeExtraPatterns appends additional security patterns from external config
+// to the policy. Extra patterns extend (never replace) the built-in defaults
+// per SOLID O-Principle (REQ-SEC-003, REQ-SEC-004).
+func (p *SecurityPolicy) MergeExtraPatterns(extra *security.ExtraSecurityConfig) {
+	if extra == nil {
+		return
+	}
+	if len(extra.Security.ExtraDangerousBashPatterns) > 0 {
+		p.DangerousBashPatterns = append(p.DangerousBashPatterns, compilePatterns(extra.Security.ExtraDangerousBashPatterns)...)
+	}
+	if len(extra.Security.ExtraDenyPatterns) > 0 {
+		p.DenyPatterns = append(p.DenyPatterns, compilePatterns(extra.Security.ExtraDenyPatterns)...)
+	}
+	if len(extra.Security.ExtraAskPatterns) > 0 {
+		p.AskPatterns = append(p.AskPatterns, compilePatterns(extra.Security.ExtraAskPatterns)...)
+	}
+	if len(extra.Security.ExtraSensitiveContentPatterns) > 0 {
+		p.SensitiveContentPatterns = append(p.SensitiveContentPatterns, compilePatterns(extra.Security.ExtraSensitiveContentPatterns)...)
+	}
+}
+
 // preToolHandler processes PreToolUse events.
 // It enforces security policies by checking tool names against blocklists
 // and scanning tool input for dangerous patterns (REQ-HOOK-031, REQ-HOOK-032).

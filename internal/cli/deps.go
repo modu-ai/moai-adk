@@ -113,7 +113,10 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
 
 	deps.HookRegistry.Register(hook.NewStopHandler())
-	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
+	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
+	secPolicy := hook.DefaultSecurityPolicy()
+	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
+	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
 	deps.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
