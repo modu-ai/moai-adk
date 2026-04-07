@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -139,5 +140,66 @@ func TestCompactHandler_Handle_DataContainsSessionID(t *testing.T) {
 	}
 	if data["snapshot_created"] != true {
 		t.Errorf("snapshot_created = %v, want true", data["snapshot_created"])
+	}
+}
+
+func TestCompactHandler_Handle_WritesMemoFile(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	input := &HookInput{
+		SessionID:     "sess-memo-write",
+		CWD:           projectDir,
+		ProjectDir:    projectDir,
+		HookEventName: "PreCompact",
+	}
+
+	h := NewCompactHandler()
+	_, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+
+	memoPath := filepath.Join(projectDir, ".moai", "state", "session-memo.md")
+	data, err := os.ReadFile(memoPath)
+	if err != nil {
+		t.Fatalf("session memo not created: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "sess-memo-write") {
+		t.Errorf("session memo should contain session_id, got:\n%s", content)
+	}
+}
+
+func TestCompactHandler_Handle_ReadsPersistentMode(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	stateDir := filepath.Join(projectDir, ".moai", "state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	modeFile := filepath.Join(stateDir, "persistent-mode.json")
+	if err := os.WriteFile(modeFile, []byte(`{"mode":"cg","active":true}`), 0o644); err != nil {
+		t.Fatalf("write mode file: %v", err)
+	}
+
+	input := &HookInput{
+		SessionID:     "sess-mode-test",
+		CWD:           projectDir,
+		HookEventName: "PreCompact",
+	}
+
+	h := NewCompactHandler()
+	if _, err := h.Handle(context.Background(), input); err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+
+	memoPath := filepath.Join(projectDir, ".moai", "state", "session-memo.md")
+	data, _ := os.ReadFile(memoPath)
+	if !strings.Contains(string(data), "mode") {
+		t.Errorf("memo should include persistent mode info, got:\n%s", string(data))
 	}
 }
