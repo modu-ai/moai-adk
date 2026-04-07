@@ -21,7 +21,7 @@ func (h *worktreeRemoveHandler) EventType() EventType {
 }
 
 // Handle processes a WorktreeRemove event. It logs the worktree removal details
-// for session tracking and cleanup verification.
+// and removes the entry from the worktree registry.
 func (h *worktreeRemoveHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("worktree removed after isolated agent termination",
 		"session_id", input.SessionID,
@@ -30,5 +30,11 @@ func (h *worktreeRemoveHandler) Handle(ctx context.Context, input *HookInput) (*
 		"worktree_path", input.WorktreePath,
 		"worktree_branch", input.WorktreeBranch,
 	)
+
+	// Remove the registry entry for the cleaned-up worktree.
+	if input.CWD != "" && input.WorktreePath != "" {
+		unregisterWorktree(input.CWD, input.WorktreePath)
+	}
+
 	return &HookOutput{}, nil
 }

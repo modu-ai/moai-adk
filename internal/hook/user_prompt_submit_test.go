@@ -2,69 +2,147 @@ package hook
 
 import (
 	"context"
-	"strings"
 	"testing"
 )
 
 func TestUserPromptSubmitHandler_EventType(t *testing.T) {
-	t.Parallel()
-
 	h := NewUserPromptSubmitHandler()
-
-	if got := h.EventType(); got != EventUserPromptSubmit {
-		t.Errorf("EventType() = %q, want %q", got, EventUserPromptSubmit)
+	if h.EventType() != EventUserPromptSubmit {
+		t.Errorf("EventType() = %v, want %v", h.EventType(), EventUserPromptSubmit)
 	}
 }
 
-func TestUserPromptSubmitHandler_Handle(t *testing.T) {
-	t.Parallel()
-
+func TestDetectWorkflowContext(t *testing.T) {
 	tests := []struct {
-		name  string
-		input *HookInput
+		name        string
+		prompt      string
+		wantEmpty   bool
+		wantKeyword string
 	}{
 		{
-			name: "short prompt",
-			input: &HookInput{
-				SessionID:     "sess-ups-1",
-				Prompt:        "hello world",
-				HookEventName: "UserPromptSubmit",
-			},
+			name:        "contains loop keyword",
+			prompt:      "/moai loop fix errors",
+			wantEmpty:   false,
+			wantKeyword: "loop",
 		},
 		{
-			name: "long prompt truncated",
-			input: &HookInput{
-				SessionID:     "sess-ups-2",
-				Prompt:        strings.Repeat("a", 200),
-				HookEventName: "UserPromptSubmit",
-			},
+			name:        "contains run keyword",
+			prompt:      "/moai run SPEC-001",
+			wantEmpty:   false,
+			wantKeyword: "run",
 		},
 		{
-			name: "empty prompt",
-			input: &HookInput{
-				SessionID:     "sess-ups-3",
-				Prompt:        "",
-				HookEventName: "UserPromptSubmit",
-			},
+			name:        "contains plan keyword",
+			prompt:      "/moai plan add authentication",
+			wantEmpty:   false,
+			wantKeyword: "plan",
+		},
+		{
+			name:      "no workflow keyword",
+			prompt:    "what is the weather today",
+			wantEmpty: true,
+		},
+		{
+			name:      "empty prompt",
+			prompt:    "",
+			wantEmpty: true,
+		},
+		{
+			name:        "case insensitive LOOP",
+			prompt:      "LOOP until fixed",
+			wantEmpty:   false,
+			wantKeyword: "loop",
+		},
+		{
+			name:        "keyword embedded in word",
+			prompt:      "please plan the work",
+			wantEmpty:   false,
+			wantKeyword: "plan",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			got := detectWorkflowContext(tt.prompt)
+			if tt.wantEmpty && got != "" {
+				t.Errorf("detectWorkflowContext(%q) = %q, want empty", tt.prompt, got)
+			}
+			if !tt.wantEmpty {
+				if got == "" {
+					t.Errorf("detectWorkflowContext(%q) = empty, want non-empty (keyword: %s)", tt.prompt, tt.wantKeyword)
+				}
+			}
+		})
+	}
+}
 
+func TestUserPromptSubmitHandler_Handle(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          *HookInput
+		wantAdditional bool
+	}{
+		{
+			name: "prompt with loop keyword",
+			input: &HookInput{
+				SessionID: "sess-001",
+				Prompt:    "/moai loop",
+			},
+			wantAdditional: true,
+		},
+		{
+			name: "prompt with run keyword",
+			input: &HookInput{
+				SessionID: "sess-002",
+				Prompt:    "/moai run SPEC-001",
+			},
+			wantAdditional: true,
+		},
+		{
+			name: "prompt with plan keyword",
+			input: &HookInput{
+				SessionID: "sess-003",
+				Prompt:    "let's plan the feature",
+			},
+			wantAdditional: true,
+		},
+		{
+			name: "normal prompt no keywords",
+			input: &HookInput{
+				SessionID: "sess-004",
+				Prompt:    "explain this function",
+			},
+			wantAdditional: false,
+		},
+		{
+			name: "long prompt gets truncated in log",
+			input: &HookInput{
+				SessionID: "sess-005",
+				Prompt:    "this is a very long prompt that exceeds one hundred characters and should be truncated when logged but still fully checked for keywords including run",
+			},
+			wantAdditional: true,
+		},
+		{
+			name:           "empty input",
+			input:          &HookInput{},
+			wantAdditional: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			h := NewUserPromptSubmitHandler()
-			ctx := context.Background()
-			got, err := h.Handle(ctx, tt.input)
-
+			out, err := h.Handle(context.Background(), tt.input)
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Errorf("Handle() error = %v, want nil", err)
 			}
-			if got == nil {
-				t.Fatal("got nil output")
+			if out == nil {
+				t.Fatal("Handle() returned nil output")
 			}
-			if got.HookSpecificOutput != nil {
-				t.Error("UserPromptSubmit hook should not set hookSpecificOutput")
+
+			hasAdditional := out.HookSpecificOutput != nil && out.HookSpecificOutput.AdditionalContext != ""
+			if hasAdditional != tt.wantAdditional {
+				t.Errorf("HookSpecificOutput.AdditionalContext non-empty = %v, want %v", hasAdditional, tt.wantAdditional)
 			}
 		})
 	}
