@@ -60,7 +60,6 @@ func (l *RateLimiter) RecordAction(actionType string) error {
 	if err != nil {
 		return fmt.Errorf("research/safety: 액션 로그 파일 열기 실패: %w", err)
 	}
-	defer f.Close()
 
 	record := ActionRecord{
 		Type:      actionType,
@@ -68,9 +67,10 @@ func (l *RateLimiter) RecordAction(actionType string) error {
 	}
 
 	if err := json.NewEncoder(f).Encode(record); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("research/safety: 액션 기록 쓰기 실패: %w", err)
 	}
-	return nil
+	return f.Close()
 }
 
 // loadRecords는 JSONL 파일에서 모든 액션 기록을 읽는다.
@@ -82,7 +82,7 @@ func (l *RateLimiter) loadRecords() ([]ActionRecord, error) {
 		}
 		return nil, fmt.Errorf("research/safety: 액션 로그 파일 열기 실패: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var records []ActionRecord
 	dec := json.NewDecoder(f)

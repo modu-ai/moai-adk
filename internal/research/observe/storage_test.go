@@ -186,10 +186,10 @@ func TestStorage_LoadAll_CorruptedLine(t *testing.T) {
 		t.Fatalf("파일 열기 실패: %v", err)
 	}
 	if _, err := f.WriteString("이것은 유효하지 않은 JSON입니다\n"); err != nil {
-		f.Close()
+		_ = f.Close()
 		t.Fatalf("쓰기 실패: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// 정상 관찰 1개 더 추가
 	obs2 := &Observation{

@@ -90,6 +90,7 @@ func TestComputeResult(t *testing.T) {
 
 			if result == nil {
 				t.Fatal("ComputeResult() returned nil")
+				return // staticcheck SA5011 방어
 			}
 
 			// float64 비교 (허용 오차 0.001)

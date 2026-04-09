@@ -105,13 +105,13 @@ func (s *ResultStore) AppendChangelog(target string, entry ChangelogEntry) error
 	if err != nil {
 		return fmt.Errorf("changelog 파일 열기 실패: %w", err)
 	}
-	defer f.Close()
 
 	if _, err := f.WriteString(md); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("changelog 쓰기 실패: %w", err)
 	}
 
-	return nil
+	return f.Close()
 }
 
 // ExperimentCount는 타겟 디렉토리의 exp-*.json 파일 수를 반환한다.

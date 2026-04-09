@@ -34,18 +34,19 @@ func (s *Storage) Append(obs *Observation) error {
 	if err != nil {
 		return fmt.Errorf("observe: 파일 열기 실패: %w", err)
 	}
-	defer f.Close()
 
 	data, err := json.Marshal(obs)
 	if err != nil {
+		_ = f.Close()
 		return fmt.Errorf("observe: JSON 직렬화 실패: %w", err)
 	}
 
 	if _, err := f.Write(append(data, '\n')); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("observe: 파일 쓰기 실패: %w", err)
 	}
 
-	return nil
+	return f.Close()
 }
 
 // LoadAll은 저장된 모든 관찰을 순서대로 반환한다.
@@ -59,7 +60,7 @@ func (s *Storage) LoadAll() ([]*Observation, error) {
 		}
 		return nil, fmt.Errorf("observe: 파일 열기 실패: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var result []*Observation
 	scanner := bufio.NewScanner(f)

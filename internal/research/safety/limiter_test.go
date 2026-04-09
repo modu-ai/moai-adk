@@ -183,7 +183,7 @@ func writeActionRecords(t *testing.T, path string, records []ActionRecord) {
 	if err != nil {
 		t.Fatalf("파일 생성 실패: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	enc := json.NewEncoder(f)
 	for _, r := range records {
@@ -200,7 +200,7 @@ func readActionRecords(t *testing.T, path string) []ActionRecord {
 	if err != nil {
 		t.Fatalf("파일 열기 실패: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var records []ActionRecord
 	dec := json.NewDecoder(f)
