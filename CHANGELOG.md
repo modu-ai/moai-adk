@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1] - 2026-04-09
+
+### Summary
+
+Hooks protocol upgrade: Claude Code hooks specification compliance, new handler behaviors, and expanded input/output field coverage. Fixes UserPromptSubmit hook error and SPEC-ID title duplication.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- `hookEventName` now included in all `hookSpecificOutput` responses (Claude Code protocol compliance)
+- `sessionTitle` field in UserPromptSubmit output for Claude Code UI session title integration
+- `UpdatedInput`, `UpdatedMCPToolOutput` fields in `HookSpecificOutput` for tool input modification and MCP output replacement
+- 16 new `HookInput` fields: `error_type`, `error_message`, `last_assistant_message`, `configuration_source`, `change_type`, `old_cwd`, `new_cwd`, `mcp_tool_name`, `elicitation_request`, `instruction_file_path`, `memory_type`, `load_reason`, `permission_suggestions`, etc.
+- `PermissionRequest` event registered in `settings.json` with shell wrapper script
+- `PermissionDenied` auto-retry for read-only tools (Read, Grep, Glob, WebFetch, WebSearch, Skill)
+- `StopFailure` error_type-based `SystemMessage` responses (rate_limit, authentication_failed, billing_error, max_output_tokens)
+- `PostCompact` session memo restoration via `SystemMessage` injection
+- `SubagentStart` project context injection via `additionalContext` (project name, type, language, active SPEC)
+- `CwdChanged` handler with `CLAUDE_ENV_FILE` support for environment variable persistence
+- Matchers added to 6 events: SessionStart (`startup|resume`), PreCompact/PostCompact (`manual|auto`), StopFailure, ConfigChange (`project_settings|local_settings|skills`)
+- QualityGate universalized: Go, Node.js (eslint+npm test), Python (ruff+pytest), Rust (clippy+cargo test)
+
+### Fixed
+
+- UserPromptSubmit hook error caused by missing `hookEventName` in `hookSpecificOutput`
+- SPEC-ID duplication in session title (e.g., "SPEC-SRS-003: SPEC-SRS-003: Dashboard..." → "SPEC-SRS-003: Dashboard...")
+- camelCase field normalization extended with 15 new field mappings
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.10.1] - 2026-04-09 (한국어)
+
+### 요약
+
+Hooks 프로토콜 업그레이드: Claude Code hooks 스펙 준수, 새로운 핸들러 동작, 입출력 필드 확장. UserPromptSubmit hook 오류 및 SPEC-ID 타이틀 중복 수정.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- 모든 `hookSpecificOutput`에 `hookEventName` 포함 (Claude Code 프로토콜 준수)
+- UserPromptSubmit 출력에 `sessionTitle` 필드 추가 (Claude Code UI 세션 타이틀 통합)
+- `HookSpecificOutput`에 `UpdatedInput`, `UpdatedMCPToolOutput` 필드 추가
+- `HookInput`에 16개 새 필드 추가: `error_type`, `error_message`, `last_assistant_message`, `configuration_source`, `change_type`, `old_cwd`, `new_cwd` 등
+- `PermissionRequest` 이벤트를 `settings.json`에 등록 + 셸 래퍼 스크립트 생성
+- `PermissionDenied` 읽기 전용 도구 자동 재시도 (Read, Grep, Glob, WebFetch, WebSearch, Skill)
+- `StopFailure` error_type별 `SystemMessage` 응답 (rate_limit, authentication_failed, billing_error, max_output_tokens)
+- `PostCompact` 세션 메모 복원 (`SystemMessage` 주입)
+- `SubagentStart` 프로젝트 컨텍스트 자동 주입 (`additionalContext`)
+- `CwdChanged` 핸들러에 `CLAUDE_ENV_FILE` 지원 추가
+- 6개 이벤트에 matcher 추가: SessionStart, PreCompact/PostCompact, StopFailure, ConfigChange
+- QualityGate 범용화: Go, Node.js, Python, Rust 지원
+
+### 수정됨 (Fixed)
+
+- `hookSpecificOutput`에서 `hookEventName` 누락으로 인한 UserPromptSubmit hook 오류 수정
+- 세션 타이틀 SPEC-ID 중복 수정 (예: "SPEC-SRS-003: SPEC-SRS-003: Dashboard..." → "SPEC-SRS-003: Dashboard...")
+- camelCase 필드 정규화에 15개 새 매핑 추가
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.10.0] - 2026-04-09
 
 ### Summary
