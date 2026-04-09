@@ -119,9 +119,11 @@ func (m *ModelInfo) UnmarshalJSON(data []byte) error {
 }
 
 // WorkspaceInfo represents the workspace directory information from Claude Code.
+// Claude Code 2.1.97+ adds git_worktree field for active worktree path.
 type WorkspaceInfo struct {
-	CurrentDir string `json:"current_dir"` // Current working directory
-	ProjectDir string `json:"project_dir"` // Original project directory (use this for display)
+	CurrentDir  string `json:"current_dir"`   // 현재 작업 디렉토리
+	ProjectDir  string `json:"project_dir"`   // 원본 프로젝트 디렉토리 (표시에 사용)
+	GitWorktree string `json:"git_worktree"`  // 활성 git worktree 경로 (2.1.97+, 없으면 빈 문자열)
 }
 
 // OutputStyleInfo represents the output style from Claude Code.
@@ -173,13 +175,14 @@ type StatusData struct {
 	Git               GitStatusData
 	Memory            MemoryData
 	Metrics           MetricsData
-	Version           VersionData  // MoAI-ADK version from config
-	ClaudeCodeVersion string       // Claude Code version from JSON input (e.g., "1.0.80")
-	Directory         string       // Project directory name (e.g., "modu-saju")
-	OutputStyle       string       // Output style name (e.g., "Mr.Alfred", "R2-D2")
-	Task              TaskData     // Current active task (rendering enabled in Phase 4)
-	Usage             *UsageResult  // API usage (nil when unavailable)
+	Version           VersionData    // MoAI-ADK version from config
+	ClaudeCodeVersion string         // Claude Code version from JSON input (e.g., "1.0.80")
+	Directory         string         // Project directory name (e.g., "modu-saju")
+	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
+	Task              TaskData       // Current active task (rendering enabled in Phase 4)
+	Usage             *UsageResult   // API usage (nil when unavailable)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
+	Worktree          string         // 활성 git worktree 경로 (없으면 빈 문자열, REQ-CC297-003)
 }
 
 // GitStatusData holds git repository status information.
@@ -232,6 +235,9 @@ const (
 	SegmentUsage5H     = "usage_5h"     // 5-hour API usage
 	SegmentUsage7D     = "usage_7d"     // 7-day API usage
 	SegmentTask        = "task"         // Current active task
+
+	// REQ-CC297-003: git worktree 세그먼트 (Claude Code 2.1.97+)
+	SegmentWorktree = "worktree" // 활성 worktree 인디케이터 [WT]
 )
 
 // UsageData represents API usage information.

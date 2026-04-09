@@ -255,6 +255,19 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 "Run: go test ./..."
 ```
 
+## Minimum Version Requirements
+
+| Feature | Minimum Version | Notes |
+|---------|----------------|-------|
+| `isolation: worktree` in Agent frontmatter | 2.1.49 | Basic worktree isolation |
+| `background: true` in Agent frontmatter | 2.1.46 | Non-blocking agent execution |
+| `claude --worktree` user flag | 2.1.50 | User-initiated worktree sessions |
+| `Ctrl+X Ctrl+K` to kill background agent | 2.1.83 | Kill stuck background agents |
+| Worktree CWD isolation fix | **2.1.97** | Prior versions leaked agent CWD back to parent session |
+| Stop/SubagentStop hook stability | **2.1.97** | Prior versions failed on long-running sessions |
+
+**Recommended**: Claude Code **2.1.97 or later** for reliable worktree isolation and hook stability.
+
 ## Troubleshooting
 
 | Issue | Cause | Solution |
