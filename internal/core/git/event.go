@@ -125,6 +125,8 @@ func (e *EventDetector) DetectChanges() ([]GitEvent, error) {
 	return events, nil
 }
 
+// @MX:WARN: [AUTO] Continuous polling loop with channel I/O and context cancellation. Blocks until context is done.
+// @MX:REASON: goroutine-safe polling pattern — channel sends may deadlock if receiver is not consuming; context cancellation is the only exit path
 // Poll continuously monitors Git state changes at the configured interval
 // and sends detected events to the provided channel. It blocks until the
 // context is cancelled, at which point it returns ctx.Err().

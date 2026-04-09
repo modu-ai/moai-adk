@@ -35,6 +35,8 @@ type TraceWriter struct {
 }
 
 // NewTraceWriter creates a new TraceWriter and starts its background goroutine.
+// @MX:WARN: [AUTO] Launches background goroutine (go w.run()) for async trace writing. Close() must be called to flush pending entries.
+// @MX:REASON: goroutine lifecycle — background writer runs until Close() is called; leaked writer causes goroutine leak
 // logDir is the directory where trace files are stored. sessionID is embedded in
 // the filename and each entry. The writer must be closed via Close() to flush
 // all pending entries.

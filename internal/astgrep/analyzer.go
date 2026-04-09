@@ -221,6 +221,8 @@ func containsSegment(filePath, segment string) bool {
 	return false
 }
 
+// @MX:ANCHOR: [AUTO] AST scanning entry point — core analysis capability used across CLI, hooks, research, MCP, and security scanning.
+// @MX:REASON: fan_in=12+, all AST-based pattern matching flows through this method
 // Scan performs an AST-based scan using the given patterns on the specified paths.
 // If sg CLI is not available, returns an empty ScanResult without error.
 func (a *SGAnalyzer) Scan(ctx context.Context, patterns []string, paths []string) (*ScanResult, error) {

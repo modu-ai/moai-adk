@@ -47,6 +47,8 @@ func (m confirmModel) Init() tea.Cmd {
 	return nil
 }
 
+// @MX:WARN: [AUTO] High complexity state machine with 15+ branching paths for keyboard input handling.
+// @MX:REASON: cyclomatic complexity >= 15 — all key event branches must be tested individually
 func (m confirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:

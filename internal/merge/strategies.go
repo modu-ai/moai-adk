@@ -61,7 +61,8 @@ func NewStrategySelector() StrategySelector {
 	return &strategySelector{}
 }
 
-// @MX:NOTE: [AUTO] Merge strategy selection per file type - high cyclomatic complexity due to ordered checks: exact filename match, extension match, then text/binary classification
+// @MX:ANCHOR: [AUTO] Merge strategy selection per file type. Entry point for all file merge operations.
+// @MX:REASON: fan_in=4+, high cyclomatic complexity due to ordered checks: exact filename, extension, then text/binary classification
 func (s *strategySelector) SelectStrategy(path string) MergeStrategy {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))
