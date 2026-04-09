@@ -151,6 +151,16 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 				merged.SystemMessage = output.SystemMessage
 			}
 		}
+
+		// UserPromptSubmit 핸들러가 반환한 HookSpecificOutput(sessionTitle)을 병합한다.
+		// 나중에 등록된 핸들러가 먼저 설정한 값을 덮어쓰지 않도록 nil 체크 후 설정한다.
+		if output != nil && output.HookSpecificOutput != nil {
+			if merged.HookSpecificOutput == nil {
+				merged.HookSpecificOutput = output.HookSpecificOutput
+			} else if output.HookSpecificOutput.SessionTitle != "" && merged.HookSpecificOutput.SessionTitle == "" {
+				merged.HookSpecificOutput.SessionTitle = output.HookSpecificOutput.SessionTitle
+			}
+		}
 	}
 
 	return merged, nil

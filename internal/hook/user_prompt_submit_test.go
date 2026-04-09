@@ -2,16 +2,26 @@ package hook
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
+// TestUserPromptSubmitHandler_EventType는 핸들러의 이벤트 타입을 검증한다.
 func TestUserPromptSubmitHandler_EventType(t *testing.T) {
-	h := NewUserPromptSubmitHandler()
-	if h.EventType() != EventUserPromptSubmit {
-		t.Errorf("EventType() = %v, want %v", h.EventType(), EventUserPromptSubmit)
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	h := NewUserPromptSubmitHandler(cfg)
+
+	if got := h.EventType(); got != EventUserPromptSubmit {
+		t.Errorf("EventType() = %q, want %q", got, EventUserPromptSubmit)
 	}
 }
 
+// TestDetectWorkflowContext는 워크플로우 키워드 감지를 검증한다.
 func TestDetectWorkflowContext(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -76,73 +86,330 @@ func TestDetectWorkflowContext(t *testing.T) {
 	}
 }
 
-func TestUserPromptSubmitHandler_Handle(t *testing.T) {
+// TestHookSpecificOutput_SessionTitleField는 HookSpecificOutput에 SessionTitle 필드가
+// 존재하는지, JSON 직렬화가 올바른지 검증한다.
+func TestHookSpecificOutput_SessionTitleField(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		name           string
-		input          *HookInput
-		wantAdditional bool
+		name       string
+		output     HookSpecificOutput
+		wantKey    string
+		wantInJSON bool
 	}{
 		{
-			name: "prompt with loop keyword",
-			input: &HookInput{
-				SessionID: "sess-001",
-				Prompt:    "/moai loop",
-			},
-			wantAdditional: true,
+			name:       "SessionTitle 설정 시 JSON에 포함",
+			output:     HookSpecificOutput{SessionTitle: "SPEC-FOO-001: 테스트 기능"},
+			wantKey:    "sessionTitle",
+			wantInJSON: true,
 		},
 		{
-			name: "prompt with run keyword",
-			input: &HookInput{
-				SessionID: "sess-002",
-				Prompt:    "/moai run SPEC-001",
-			},
-			wantAdditional: true,
+			name:       "SessionTitle 미설정 시 JSON에서 생략 (omitempty)",
+			output:     HookSpecificOutput{},
+			wantKey:    "sessionTitle",
+			wantInJSON: false,
 		},
 		{
-			name: "prompt with plan keyword",
-			input: &HookInput{
-				SessionID: "sess-003",
-				Prompt:    "let's plan the feature",
-			},
-			wantAdditional: true,
-		},
-		{
-			name: "normal prompt no keywords",
-			input: &HookInput{
-				SessionID: "sess-004",
-				Prompt:    "explain this function",
-			},
-			wantAdditional: false,
-		},
-		{
-			name: "long prompt gets truncated in log",
-			input: &HookInput{
-				SessionID: "sess-005",
-				Prompt:    "this is a very long prompt that exceeds one hundred characters and should be truncated when logged but still fully checked for keywords including run",
-			},
-			wantAdditional: true,
-		},
-		{
-			name:           "empty input",
-			input:          &HookInput{},
-			wantAdditional: false,
+			name:       "다른 필드와 함께 설정",
+			output:     HookSpecificOutput{SessionTitle: "project / main", AdditionalContext: "ctx"},
+			wantKey:    "sessionTitle",
+			wantInJSON: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewUserPromptSubmitHandler()
-			out, err := h.Handle(context.Background(), tt.input)
+			t.Parallel()
+
+			data, err := json.Marshal(tt.output)
 			if err != nil {
-				t.Errorf("Handle() error = %v, want nil", err)
+				t.Fatalf("JSON 직렬화 실패: %v", err)
 			}
-			if out == nil {
-				t.Fatal("Handle() returned nil output")
-			} else {
-				hasAdditional := out.HookSpecificOutput != nil && out.HookSpecificOutput.AdditionalContext != ""
-				if hasAdditional != tt.wantAdditional {
-					t.Errorf("HookSpecificOutput.AdditionalContext non-empty = %v, want %v", hasAdditional, tt.wantAdditional)
-				}
+
+			var m map[string]interface{}
+			if err := json.Unmarshal(data, &m); err != nil {
+				t.Fatalf("JSON 역직렬화 실패: %v", err)
+			}
+
+			_, exists := m[tt.wantKey]
+			if tt.wantInJSON && !exists {
+				t.Errorf("JSON에 %q 키가 없음, 있어야 함. JSON: %s", tt.wantKey, string(data))
+			}
+			if !tt.wantInJSON && exists {
+				t.Errorf("JSON에 %q 키가 있음, 없어야 함 (omitempty). JSON: %s", tt.wantKey, string(data))
+			}
+		})
+	}
+}
+
+// TestUserPromptSubmitHandler_SessionTitle_WithSPEC는 SPEC 컨텍스트가 있을 때
+// sessionTitle이 올바르게 생성되는지 검증한다.
+func TestUserPromptSubmitHandler_SessionTitle_WithSPEC(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-CC297-001")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatalf("spec 디렉토리 생성 실패: %v", err)
+	}
+	specContent := "# UserPromptSubmit 세션 타이틀 기능\n\n## 요구사항\n..."
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(specContent), 0o644); err != nil {
+		t.Fatalf("spec.md 파일 생성 실패: %v", err)
+	}
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	handler := NewUserPromptSubmitHandler(cfg)
+
+	input := &HookInput{
+		SessionID: "test-session-123",
+		Prompt:    "기능을 구현해줘",
+		CWD:       tmpDir,
+	}
+
+	output, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle 실패: %v", err)
+	}
+	if output == nil {
+		t.Fatal("output이 nil임")
+	}
+	if output.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput이 nil임, 설정되어야 함")
+	}
+
+	title := output.HookSpecificOutput.SessionTitle
+	if title == "" {
+		t.Error("SessionTitle이 비어 있음, SPEC-CC297-001이 포함된 타이틀이어야 함")
+	}
+	if !strings.Contains(title, "SPEC-CC297-001") {
+		t.Errorf("SessionTitle에 SPEC-CC297-001이 없음: %q", title)
+	}
+}
+
+// TestUserPromptSubmitHandler_SessionTitle_WithoutSPEC는 SPEC 없을 때
+// project/branch 형식의 타이틀이 생성되는지 검증한다.
+func TestUserPromptSubmitHandler_SessionTitle_WithoutSPEC(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	handler := NewUserPromptSubmitHandler(cfg)
+
+	input := &HookInput{
+		SessionID: "test-session-456",
+		Prompt:    "코드를 리뷰해줘",
+		CWD:       tmpDir,
+	}
+
+	output, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle 실패: %v", err)
+	}
+	if output == nil {
+		t.Fatal("output이 nil임")
+	}
+	if output.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput이 nil임")
+	}
+
+	title := output.HookSpecificOutput.SessionTitle
+	if title == "" {
+		t.Error("SessionTitle이 비어 있음, project/branch 타이틀이어야 함")
+	}
+
+	projectName := filepath.Base(tmpDir)
+	if !strings.Contains(title, projectName) {
+		t.Errorf("SessionTitle에 프로젝트명 %q이 없음: %q", projectName, title)
+	}
+	if !strings.Contains(title, "/") {
+		t.Errorf("SessionTitle에 '/' 구분자가 없음: %q", title)
+	}
+}
+
+// TestUserPromptSubmitHandler_NilConfig는 ConfigProvider가 nil을 반환할 때
+// 에러 없이 동작하는지 검증한다.
+func TestUserPromptSubmitHandler_NilConfig(t *testing.T) {
+	t.Parallel()
+
+	handler := NewUserPromptSubmitHandler(&mockConfigProvider{cfg: nil})
+
+	input := &HookInput{
+		SessionID: "test-session-789",
+		Prompt:    "안녕하세요",
+		CWD:       t.TempDir(),
+	}
+
+	output, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle이 에러 반환함 (graceful degradation 필요): %v", err)
+	}
+	if output == nil {
+		t.Fatal("output이 nil임")
+	}
+}
+
+// TestUserPromptSubmitHandler_EmptyCWD는 CWD가 빈 문자열일 때
+// 에러 없이 동작하는지 검증한다.
+func TestUserPromptSubmitHandler_EmptyCWD(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	handler := NewUserPromptSubmitHandler(cfg)
+
+	input := &HookInput{
+		SessionID: "test-session-000",
+		Prompt:    "테스트 프롬프트",
+		CWD:       "",
+	}
+
+	output, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle이 에러 반환함: %v", err)
+	}
+	if output == nil {
+		t.Fatal("output이 nil임")
+	}
+}
+
+// TestUserPromptSubmitHandler_SPECWithoutHeading은 spec.md에 헤딩이 없을 때
+// SPEC ID만 반환하는지 검증한다.
+func TestUserPromptSubmitHandler_SPECWithoutHeading(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-TEST-001")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatalf("spec 디렉토리 생성 실패: %v", err)
+	}
+	specContent := "헤딩 없는 내용입니다.\n상세 설명..."
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(specContent), 0o644); err != nil {
+		t.Fatalf("spec.md 파일 생성 실패: %v", err)
+	}
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	handler := NewUserPromptSubmitHandler(cfg)
+
+	output, err := handler.Handle(context.Background(), &HookInput{
+		SessionID: "test-no-heading",
+		Prompt:    "테스트",
+		CWD:       tmpDir,
+	})
+	if err != nil {
+		t.Fatalf("Handle 실패: %v", err)
+	}
+	if output.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput이 nil임")
+	}
+
+	title := output.HookSpecificOutput.SessionTitle
+	if title != "SPEC-TEST-001" {
+		t.Errorf("헤딩 없을 시 SPEC ID만 반환 기대, got: %q", title)
+	}
+}
+
+// TestUserPromptSubmitHandler_MultipleSpecs는 여러 SPEC이 있을 때
+// 가장 최근 수정된 SPEC을 선택하는지 검증한다.
+func TestUserPromptSubmitHandler_MultipleSpecs(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+
+	spec1Dir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-OLD-001")
+	if err := os.MkdirAll(spec1Dir, 0o755); err != nil {
+		t.Fatalf("spec1 디렉토리 생성 실패: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(spec1Dir, "spec.md"), []byte("# 오래된 SPEC\n"), 0o644); err != nil {
+		t.Fatalf("spec1.md 파일 생성 실패: %v", err)
+	}
+
+	spec2Dir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-NEW-002")
+	if err := os.MkdirAll(spec2Dir, 0o755); err != nil {
+		t.Fatalf("spec2 디렉토리 생성 실패: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(spec2Dir, "spec.md"), []byte("# 새로운 SPEC\n"), 0o644); err != nil {
+		t.Fatalf("spec2.md 파일 생성 실패: %v", err)
+	}
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	handler := NewUserPromptSubmitHandler(cfg)
+
+	output, err := handler.Handle(context.Background(), &HookInput{
+		SessionID: "test-multi-spec",
+		Prompt:    "테스트",
+		CWD:       tmpDir,
+	})
+	if err != nil {
+		t.Fatalf("Handle 실패: %v", err)
+	}
+	if output.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput이 nil임")
+	}
+
+	title := output.HookSpecificOutput.SessionTitle
+	if !strings.Contains(title, "SPEC-") {
+		t.Errorf("SessionTitle에 SPEC ID가 없음: %q", title)
+	}
+}
+
+// TestUserPromptSubmitHandler_SPECTitle_Format은 SPEC 타이틀 형식을 테이블 기반으로 검증한다.
+func TestUserPromptSubmitHandler_SPECTitle_Format(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		specID      string
+		specHeading string
+		wantTitle   string
+	}{
+		{
+			name:        "SPEC-AUTH-001 타이틀",
+			specID:      "SPEC-AUTH-001",
+			specHeading: "사용자 인증 기능",
+			wantTitle:   "SPEC-AUTH-001: 사용자 인증 기능",
+		},
+		{
+			name:        "SPEC-CC297-001 타이틀",
+			specID:      "SPEC-CC297-001",
+			specHeading: "UserPromptSubmit 세션 타이틀",
+			wantTitle:   "SPEC-CC297-001: UserPromptSubmit 세션 타이틀",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			specDir := filepath.Join(tmpDir, ".moai", "specs", tt.specID)
+			if err := os.MkdirAll(specDir, 0o755); err != nil {
+				t.Fatalf("spec 디렉토리 생성 실패: %v", err)
+			}
+			specContent := "# " + tt.specHeading + "\n\n내용..."
+			if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(specContent), 0o644); err != nil {
+				t.Fatalf("spec.md 파일 생성 실패: %v", err)
+			}
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			handler := NewUserPromptSubmitHandler(cfg)
+
+			input := &HookInput{
+				SessionID: "test-session",
+				Prompt:    "구현해줘",
+				CWD:       tmpDir,
+			}
+
+			output, err := handler.Handle(context.Background(), input)
+			if err != nil {
+				t.Fatalf("Handle 실패: %v", err)
+			}
+			if output.HookSpecificOutput == nil {
+				t.Fatal("HookSpecificOutput이 nil임")
+			}
+
+			got := output.HookSpecificOutput.SessionTitle
+			if got != tt.wantTitle {
+				t.Errorf("SessionTitle 불일치\n  got:  %q\n  want: %q", got, tt.wantTitle)
 			}
 		})
 	}

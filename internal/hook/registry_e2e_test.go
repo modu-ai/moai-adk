@@ -67,7 +67,7 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 		},
 		{
 			name:    "UserPromptSubmit dispatches with real handler",
-			handler: NewUserPromptSubmitHandler(),
+			handler: NewUserPromptSubmitHandler(&mockConfigProvider{cfg: newTestConfig()}),
 			event:   EventUserPromptSubmit,
 			input: &HookInput{
 				SessionID:     "sess-e2e-4",
@@ -75,7 +75,8 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 				HookEventName: "UserPromptSubmit",
 				Prompt:        "Help me fix this bug",
 			},
-			wantNilHSO: true,
+			// UserPromptSubmit은 이제 sessionTitle을 포함한 HookSpecificOutput을 반환한다
+			wantNilHSO: false,
 		},
 		{
 			name:    "PermissionRequest dispatches with real handler and returns ask",
@@ -441,7 +442,7 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 		},
 		{
 			name:    "UserPromptSubmit round-trip",
-			handler: NewUserPromptSubmitHandler(),
+			handler: NewUserPromptSubmitHandler(&mockConfigProvider{cfg: newTestConfig()}),
 			event:   EventUserPromptSubmit,
 			input: &HookInput{
 				SessionID:     "sess-e2e-4",
@@ -449,7 +450,8 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 				HookEventName: "UserPromptSubmit",
 				Prompt:        "Help me fix this bug",
 			},
-			wantNilHSO: true,
+			// UserPromptSubmit은 이제 sessionTitle을 포함한 HookSpecificOutput을 반환한다
+			wantNilHSO: false,
 		},
 		{
 			name:    "PermissionRequest round-trip",
