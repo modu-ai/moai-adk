@@ -259,7 +259,9 @@ func TestQualityGate_detectToolchain(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
 			if tt.marker != "" {
-				os.WriteFile(filepath.Join(dir, tt.marker), []byte(""), 0o644)
+				if err := os.WriteFile(filepath.Join(dir, tt.marker), []byte(""), 0o644); err != nil {
+					t.Fatalf("failed to create marker file: %v", err)
+				}
 			}
 			g := NewQualityGate(&GateConfig{ProjectDir: dir})
 			tc := g.detectToolchain()
@@ -283,7 +285,9 @@ func TestQualityGate_detectToolchain_GlobPattern(t *testing.T) {
 
 	// C# projects use *.csproj glob pattern
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "MyApp.csproj"), []byte("<Project/>"), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "MyApp.csproj"), []byte("<Project/>"), 0o644); err != nil {
+		t.Fatalf("failed to create .csproj file: %v", err)
+	}
 
 	g := NewQualityGate(&GateConfig{ProjectDir: dir})
 	tc := g.detectToolchain()
