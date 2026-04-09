@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-04-09
+
+### Summary
+
+Major optimization release: 88% reduction in agent definition sizes, 16 language skills converted to path-based rules, Self-Research System, and Claude Code 2.1.97 feature adoption. Template token consumption reduced by ~106K lines while preserving 100% workflow functionality.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- Self-Research System for autonomous experimentation (SPEC-SRS-001~003)
+- Claude Code 2.1.97 feature adoption: `permissionMode` strengthening, worktree CWD isolation fix, SubagentStop hook stability (SPEC-CC297-001)
+- Background Agent Write restriction rule across 4 governance documents
+- Agency section enhanced in README with Mermaid diagrams: /moai vs /agency comparison, GAN Loop sequence, Self-Evolution lifecycle
+
+### Changed
+
+- 20 MoAI agent definitions reduced from ~700 to ~120 lines average (88% reduction) with all workflow steps preserved
+- 16 language skills converted to `paths:`-based rules for deterministic auto-loading (57→41 skills)
+- `moai-foundation-claude` renamed to `moai-foundation-cc` (official naming convention compliance)
+- Common agent protocol extracted to shared rule file (`agent-common-protocol.md`)
+- `maxTurns` removed from all 22 agents (deprecated since v2.1.69)
+- `manager-strategy`, `manager-quality`: permissionMode aligned to `plan` (read-only)
+
+### Fixed
+
+- `--team` tmux mode: `teammateMode` setting unified to native key (#605)
+
+### Internal
+
+- Template optimization: 314 files changed, -112K lines, +6K lines across agents, skills, and rules
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.10.0] - 2026-04-09 (한국어)
+
+### 요약
+
+대규모 최적화 릴리즈: 에이전트 정의 88% 축소, 16개 언어 스킬을 경로 기반 규칙으로 전환, Self-Research System, Claude Code 2.1.97 기능 채택. 워크플로우 기능 100% 보존하면서 템플릿 토큰 소비 ~106K줄 절감.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- 자율 실험 시스템 Self-Research System (SPEC-SRS-001~003)
+- Claude Code 2.1.97 기능 채택: `permissionMode` 강화, worktree CWD 격리 수정, SubagentStop 안정성 (SPEC-CC297-001)
+- Background Agent Write 제한 규칙 4개 거버넌스 문서에 추가
+- README Agency 섹션 Mermaid 다이어그램 보강: /moai vs /agency 비교, GAN Loop 시퀀스, Self-Evolution 생명주기
+
+### 변경됨 (Changed)
+
+- 20개 MoAI 에이전트 정의: 평균 ~700줄 → ~120줄 (88% 축소), 워크플로우 단계 100% 보존
+- 16개 언어 스킬을 `paths:` 기반 규칙으로 전환 (57→41 스킬, 28% 감소)
+- `moai-foundation-claude` → `moai-foundation-cc` 이름 변경 (공식 명명 규약 준수)
+- 공통 에이전트 프로토콜을 공유 규칙 파일로 추출 (`agent-common-protocol.md`)
+- 모든 22개 에이전트에서 `maxTurns` 제거 (v2.1.69 이후 deprecated)
+- `manager-strategy`, `manager-quality`: permissionMode를 `plan`으로 정렬 (read-only)
+
+### 수정됨 (Fixed)
+
+- `--team` tmux 모드: `teammateMode` 설정을 네이티브 키로 통일 (#605)
+
+### 내부 변경
+
+- 템플릿 최적화: 314개 파일 변경, -112K줄, +6K줄 (에이전트, 스킬, 규칙 전반)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.9.1] - 2026-04-03
 
 ### Summary

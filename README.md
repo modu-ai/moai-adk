@@ -874,6 +874,45 @@ The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
 
 MoAI-ADK includes **AI Agency** — a specialized harness for autonomous website and web application production. Like `/moai "description"` runs the full development workflow, `/agency "description"` runs the full creative production pipeline from brief to deployed code.
 
+### Why Agency? — /moai vs /agency
+
+```mermaid
+flowchart TB
+    subgraph MOAI["/moai — General Software Development"]
+        direction LR
+        M1["📋 Plan<br>(SPEC)"] --> M2["⚙️ Run<br>(DDD/TDD)"] --> M3["📦 Sync<br>(Docs + PR)"]
+    end
+
+    subgraph AGENCY["/agency — Creative Web Production"]
+        direction LR
+        A1["📋 Planner<br>(BRIEF)"] --> A2["✍️ Copywriter"]
+        A1 --> A3["🎨 Designer"]
+        A2 --> A4["🔨 Builder"]
+        A3 --> A4
+        A4 --> A5["🔍 Evaluator"]
+        A5 -->|"FAIL"| A4
+        A5 -->|"PASS"| A6["🧠 Learner"]
+    end
+
+    style MOAI fill:#e8f5e9,stroke:#4caf50
+    style AGENCY fill:#fff3e0,stroke:#ff9800
+```
+
+| Aspect | `/moai` | `/agency` |
+|--------|---------|-----------|
+| **Purpose** | Any software (backend, CLI, library, API) | Websites, landing pages, web apps |
+| **Input** | Feature description → SPEC | Business goal → BRIEF |
+| **Unique Phase** | DDD/TDD implementation cycle | Copywriting + Design System → Code |
+| **Quality** | Single manager-quality pass | **GAN Loop** (Builder↔Evaluator, max 5 rounds) |
+| **Self-Learning** | None | **Learner** detects patterns → proposes skill evolution |
+| **Brand** | None | Brand context as constitutional constraint |
+| **Agents** | 20 (manager/expert/builder) | 6 (planner/copywriter/designer/builder/evaluator/learner) |
+
+**When to use which:**
+- Building a REST API, CLI tool, or library? → `/moai`
+- Building a marketing website, SaaS landing page, or web app with design? → `/agency`
+- Need copy, design tokens, and code as separate artifacts? → `/agency`
+
 ### Quick Start: One Command, Full Pipeline
 
 ```bash
@@ -922,12 +961,43 @@ flowchart LR
 
 The Evaluator is **skeptical by default** — tuned to find defects, not rationalize acceptance.
 
-**Auto-FAIL triggers** (score irrelevant):
-- Copy text differs from copywriter output
-- AI design cliches detected (purple gradients + white cards + generic icons)
-- Mobile viewport broken
-- Any link returns 404
-- Lighthouse Accessibility < 80
+```mermaid
+sequenceDiagram
+    participant B as 🔨 Builder
+    participant E as 🔍 Evaluator
+    participant U as 👤 User
+
+    B->>E: Submit code (iteration 1)
+    E->>E: Score 4 dimensions
+    E-->>B: ❌ FAIL (0.58) — feedback with file:line refs
+
+    B->>E: Revised code (iteration 2)
+    E->>E: Score 4 dimensions
+    E-->>B: ❌ FAIL (0.67) — mobile viewport + copy mismatch
+
+    B->>E: Revised code (iteration 3)
+    E->>E: Score 4 dimensions
+    Note over E: Stagnation detected (improvement < 0.05)
+    E-->>U: ⚠️ Escalation — 3 rounds without pass
+
+    alt User adjusts criteria
+        U-->>E: Lower threshold to 0.65
+        E-->>B: ✅ PASS (0.67)
+    else User provides guidance
+        U-->>B: Fix specific layout issue
+        B->>E: Revised code (iteration 4)
+        E-->>B: ✅ PASS (0.78)
+    end
+```
+
+**Scoring dimensions** (must-pass threshold: 0.75):
+
+| Dimension | Weight | What It Measures | Auto-FAIL Triggers |
+|-----------|--------|-----------------|-------------------|
+| Design Quality | 30% | Visual polish, spacing, typography, color harmony | AI cliches (purple gradients + white cards + generic icons) |
+| Originality | 25% | Unique brand expression, non-template feel | Copy differs from Copywriter output |
+| Completeness | 25% | All sections, responsive, interactive elements | Mobile viewport broken, any 404 link |
+| Functionality | 20% | Working links, forms, animations, Lighthouse score | Lighthouse Accessibility < 80 |
 
 **Iteration flow**: Evaluator provides specific feedback with file:line references → Builder fixes → re-evaluation. After 3 failed iterations, escalates to user with options: adjust criteria, provide guidance, or force-pass.
 
@@ -950,7 +1020,31 @@ Every skill has **Static + Dynamic zones**:
 - **Static Zone**: Core principles (never auto-modified)
 - **Dynamic Zone**: Rules, heuristics, anti-patterns (evolved via Learner)
 
-**Knowledge Graduation**: observation (1x) → heuristic (3x) → rule (5x, confidence ≥ 0.80) → graduated (applied with user approval)
+```mermaid
+flowchart LR
+    subgraph Observation["📊 Pattern Detection"]
+        O1["1x seen"] -->|"Logged"| O2["3x seen"]
+        O2 -->|"Promoted"| O3["5x seen"]
+    end
+
+    subgraph Graduation["🎓 Knowledge Graduation"]
+        O3 -->|"confidence ≥ 0.80"| G1["Canary Check"]
+        G1 -->|"No score drop"| G2["Contradiction Check"]
+        G2 -->|"No conflicts"| G3["👤 Human Review"]
+        G3 -->|"Approved"| G4["✅ Graduated"]
+    end
+
+    subgraph Safety["🛡️ Safety Gates"]
+        G4 --> S1["Verify in next project"]
+        S1 -->|"Score drops > 0.10"| S2["🔄 Auto-Rollback"]
+    end
+
+    style Observation fill:#e3f2fd,stroke:#1976d2
+    style Graduation fill:#f3e5f5,stroke:#7b1fa2
+    style Safety fill:#fce4ec,stroke:#c62828
+```
+
+**Knowledge Graduation lifecycle**: observation (1x) → heuristic (3x) → rule (5x, confidence ≥ 0.80) → graduated (applied with user approval)
 
 **5-Layer Safety Architecture**:
 1. **Frozen Guard** — Blocks modification of identity, safety rails, and ethical boundaries
@@ -958,6 +1052,8 @@ Every skill has **Static + Dynamic zones**:
 3. **Contradiction Detector** — Flags rules that conflict with existing ones
 4. **Rate Limiter** — Max 3 evolutions/week, 24h cooldown, max 50 active learnings
 5. **Human Oversight** — Presents before/after diff with evidence; requires user approval
+
+**Anti-Pattern Protection**: A single critical failure (score drop > 0.20) triggers immediate Anti-Pattern classification — the pattern is FROZEN and can never be evolved away. Only human intervention can reclassify.
 
 ### Commands
 
