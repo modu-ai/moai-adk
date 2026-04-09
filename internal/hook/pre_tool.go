@@ -495,6 +495,7 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 		VetTimeout:  gate.VetTimeoutDuration(),
 		LintTimeout: gate.LintTimeoutDuration(),
 		TestTimeout: gate.TestTimeoutDuration(),
+		ProjectDir:  h.projectDir,
 	}
 }
 

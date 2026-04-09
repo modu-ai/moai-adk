@@ -196,6 +196,43 @@ func TestReadInput(t *testing.T) {
 				}
 			},
 		},
+		// Issue #615: Claude Code 2.1.97 sends minimal payload for UserPromptSubmit.
+		// Only { "prompt": "..." } without session_id, cwd, or hook_event_name.
+		{
+			name:    "issue-615: UserPromptSubmit minimal payload (prompt only)",
+			input:   `{"prompt": "test prompt"}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.Prompt != "test prompt" {
+					t.Errorf("Prompt = %q, want %q", got.Prompt, "test prompt")
+				}
+				if got.HookEventName != "UserPromptSubmit" {
+					t.Errorf("HookEventName = %q, want %q (should be inferred)", got.HookEventName, "UserPromptSubmit")
+				}
+				if got.SessionID != "unknown" {
+					t.Errorf("SessionID = %q, want %q (should default)", got.SessionID, "unknown")
+				}
+			},
+		},
+		// Issue #615: Full UserPromptSubmit payload should still work.
+		{
+			name:    "issue-615: UserPromptSubmit full payload",
+			input:   `{"session_id": "sess-full", "cwd": "/tmp", "hook_event_name": "UserPromptSubmit", "prompt": "hello"}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.SessionID != "sess-full" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "sess-full")
+				}
+				if got.CWD != "/tmp" {
+					t.Errorf("CWD = %q, want %q", got.CWD, "/tmp")
+				}
+				if got.Prompt != "hello" {
+					t.Errorf("Prompt = %q, want %q", got.Prompt, "hello")
+				}
+			},
+		},
 	}
 
 	proto := &jsonProtocol{}

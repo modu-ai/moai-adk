@@ -50,8 +50,8 @@ type manifestManager struct {
 	manifestPath string
 }
 
-// @MX:ANCHOR: [AUTO] 파일 출처 추적 매니저 팩토리 - 6개 이상의 호출자가 의존하는 진입점
-// @MX:REASON: fan_in=6, manifest 패키지의 유일한 Manager 생성 경로이므로 시그니처 변경 시 전체 영향 범위 검토 필요
+// @MX:ANCHOR: [AUTO] File provenance tracking manager factory - entry point depended on by 6 or more callers
+// @MX:REASON: fan_in=6, only Manager creation path in the manifest package; review full impact scope before changing the signature
 // NewManager creates a new Manager instance.
 // Load must be called before using other methods.
 func NewManager() Manager {

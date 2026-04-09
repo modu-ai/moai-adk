@@ -10,12 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newResearchCmd 는 research 커맨드 트리의 루트를 생성한다.
+// newResearchCmd creates the root of the research command tree.
 func newResearchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "research",
-		Short:   "Self-Research System 관리",
-		Long:    "moai-adk 컴포넌트를 자율적으로 실험하고 개선하는 Self-Research System",
+		Short:   "Manage the Self-Research System",
+		Long:    "Self-Research System for autonomously experimenting and improving moai-adk components",
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newResearchStatusCmd())
@@ -24,11 +24,11 @@ func newResearchCmd() *cobra.Command {
 	return cmd
 }
 
-// newResearchStatusCmd 는 연구 대시보드를 표시하는 서브커맨드를 생성한다.
+// newResearchStatusCmd creates the subcommand that displays the research dashboard.
 func newResearchStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "연구 대시보드 표시",
+		Short: "Display research dashboard",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -39,7 +39,7 @@ func newResearchStatusCmd() *cobra.Command {
 	}
 }
 
-// runResearchStatus 는 projectDir 기준으로 연구 상태를 출력한다.
+// runResearchStatus prints the research status relative to projectDir.
 func runResearchStatus(w io.Writer, projectDir string) error {
 	researchDir := filepath.Join(projectDir, ".moai", "research")
 	if _, err := os.Stat(researchDir); os.IsNotExist(err) {
@@ -47,17 +47,17 @@ func runResearchStatus(w io.Writer, projectDir string) error {
 		return nil
 	}
 
-	// 기본 대시보드 출력
+	// Print basic dashboard
 	pairs := []kvPair{
 		{"Directory", filepath.Join(".moai", "research")},
 	}
 
-	// 실험 결과 디렉터리 수 확인
+	// Count experiment result directories
 	experimentsDir := filepath.Join(researchDir, "experiments")
 	expCount := countDirs(experimentsDir)
 	pairs = append(pairs, kvPair{"Experiments", fmt.Sprintf("%d found", expCount)})
 
-	// eval suite 수 확인
+	// Count eval suites
 	evalsDir := filepath.Join(researchDir, "evals")
 	evalCount := countEvalFiles(evalsDir)
 	pairs = append(pairs, kvPair{"Eval Suites", fmt.Sprintf("%d registered", evalCount)})
@@ -66,11 +66,11 @@ func runResearchStatus(w io.Writer, projectDir string) error {
 	return nil
 }
 
-// newResearchBaselineCmd 는 baseline 측정 서브커맨드를 생성한다 (미구현).
+// newResearchBaselineCmd creates the baseline measurement subcommand (not yet implemented).
 func newResearchBaselineCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "baseline [target]",
-		Short: "Baseline 측정 (coming soon)",
+		Short: "Baseline measurement (coming soon)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Baseline measurement is not yet implemented. Coming in a future release.")
 			return nil
@@ -78,11 +78,11 @@ func newResearchBaselineCmd() *cobra.Command {
 	}
 }
 
-// newResearchListCmd 는 eval suite 목록을 출력하는 서브커맨드를 생성한다.
+// newResearchListCmd creates the subcommand that lists registered eval suites.
 func newResearchListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "등록된 eval suite 목록",
+		Short: "List registered eval suites",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -93,7 +93,7 @@ func newResearchListCmd() *cobra.Command {
 	}
 }
 
-// runResearchList 는 projectDir 기준으로 .moai/research/evals/ 하위의 eval 파일을 나열한다.
+// runResearchList lists eval files under .moai/research/evals/ relative to projectDir.
 func runResearchList(w io.Writer, projectDir string) error {
 	evalsDir := filepath.Join(projectDir, ".moai", "research", "evals")
 	files, err := findEvalFiles(evalsDir)
@@ -104,7 +104,7 @@ func runResearchList(w io.Writer, projectDir string) error {
 
 	_, _ = fmt.Fprintf(w, "Eval suites (%d):\n", len(files))
 	for _, f := range files {
-		// 프로젝트 루트 기준 상대 경로로 출력
+		// Print as a path relative to the project root
 		rel, relErr := filepath.Rel(projectDir, f)
 		if relErr != nil {
 			rel = f
@@ -114,7 +114,7 @@ func runResearchList(w io.Writer, projectDir string) error {
 	return nil
 }
 
-// findEvalFiles 는 dir 하위에서 *.eval.yaml 파일을 재귀 탐색한다.
+// findEvalFiles recursively searches dir for *.eval.yaml files.
 func findEvalFiles(dir string) ([]string, error) {
 	var results []string
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
@@ -132,7 +132,7 @@ func findEvalFiles(dir string) ([]string, error) {
 	return results, nil
 }
 
-// countEvalFiles 는 dir 하위의 *.eval.yaml 파일 수를 반환한다.
+// countEvalFiles returns the number of *.eval.yaml files under dir.
 func countEvalFiles(dir string) int {
 	files, err := findEvalFiles(dir)
 	if err != nil {

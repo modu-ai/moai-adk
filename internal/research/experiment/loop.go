@@ -4,16 +4,16 @@ import (
 	"github.com/modu-ai/moai-adk/internal/research/eval"
 )
 
-// LoopConfig는 실험 루프의 실행 조건을 설정한다.
+// LoopConfig configures the execution conditions of the experiment loop.
 type LoopConfig struct {
-	MaxExperiments      int     // 최대 실험 횟수
-	TargetScore         float64 // 목표 점수 (연속 3회 달성 시 종료)
-	StagnationThreshold float64 // 정체 판단 기준 (개선 폭이 이 값 미만이면 정체)
-	StagnationPatience  int     // 정체 허용 횟수 (초과 시 종료)
+	MaxExperiments      int     // Maximum number of experiments
+	TargetScore         float64 // Target score (loop ends after 3 consecutive hits)
+	StagnationThreshold float64 // Threshold for stagnation detection (improvement below this value is considered stagnation)
+	StagnationPatience  int     // Number of allowed stagnation occurrences before terminating
 }
 
-// Loop는 실험 루프 상태 머신이다.
-// 베이스라인 설정 후, 실험 결과를 기록하며 지속 여부를 판단한다.
+// Loop is the experiment loop state machine.
+// After baseline is set, it records experiment results and determines whether to continue.
 type Loop struct {
 	config          LoopConfig
 	state           ExperimentState
@@ -24,8 +24,8 @@ type Loop struct {
 	targetHitCount  int
 }
 
-// NewLoop는 주어진 설정으로 새 실험 루프를 생성한다.
-// 초기 상태는 StateIdle이다.
+// NewLoop creates a new experiment loop with the given configuration.
+// The initial state is StateIdle.
 func NewLoop(config LoopConfig) *Loop {
 	return &Loop{
 		config:  config,
@@ -34,19 +34,19 @@ func NewLoop(config LoopConfig) *Loop {
 	}
 }
 
-// SetBaseline은 베이스라인 평가 결과를 설정하고 상태를 StateBaseline으로 전이한다.
+// SetBaseline sets the baseline evaluation result and transitions state to StateBaseline.
 func (l *Loop) SetBaseline(result *eval.EvalResult) {
 	l.baseline = result
 	l.bestScore = result.Overall
 	l.state = StateBaseline
 }
 
-// ShouldContinue는 실험 루프를 계속 진행해야 하는지 판단한다.
-// false를 반환하는 조건:
-//  1. 실험 수가 MaxExperiments에 도달
-//  2. 목표 점수를 연속 3회 달성
-//  3. 정체 횟수가 StagnationPatience 초과
-//  4. 상태가 StateComplete
+// ShouldContinue determines whether the experiment loop should continue.
+// Returns false when:
+//  1. The number of experiments reaches MaxExperiments
+//  2. The target score is achieved 3 consecutive times
+//  3. The stagnation count exceeds StagnationPatience
+//  4. The state is StateComplete
 func (l *Loop) ShouldContinue() bool {
 	if l.state == StateComplete {
 		return false
@@ -66,18 +66,18 @@ func (l *Loop) ShouldContinue() bool {
 	return true
 }
 
-// RecordExperiment는 실험 결과를 기록하고 채택/기각 결정을 반환한다.
-// 결정 로직:
-//  1. Result가 nil → DecisionDiscard
-//  2. MustPassOK가 false → DecisionDiscard
-//  3. Overall이 bestScore보다 높으면 → DecisionKeep (bestScore 갱신)
-//  4. 그 외 → DecisionDiscard
+// RecordExperiment records an experiment result and returns the keep/discard decision.
+// Decision logic:
+//  1. Result is nil → DecisionDiscard
+//  2. MustPassOK is false → DecisionDiscard
+//  3. Overall is higher than bestScore → DecisionKeep (updates bestScore)
+//  4. Otherwise → DecisionDiscard
 //
-// 부수 효과로 정체 카운터와 목표 달성 카운터를 갱신한다.
+// As a side effect, updates the stagnation counter and target hit counter.
 func (l *Loop) RecordExperiment(exp *Experiment) Decision {
 	l.history = append(l.history, exp)
 
-	// nil 결과 처리
+	// Handle nil result
 	if exp.Result == nil {
 		exp.Decision = DecisionDiscard
 		l.stagnationCount++
@@ -85,7 +85,7 @@ func (l *Loop) RecordExperiment(exp *Experiment) Decision {
 		return DecisionDiscard
 	}
 
-	// must_pass 실패 처리
+	// Handle must_pass failure
 	if !exp.Result.MustPassOK {
 		exp.Decision = DecisionDiscard
 		l.stagnationCount++
@@ -93,10 +93,10 @@ func (l *Loop) RecordExperiment(exp *Experiment) Decision {
 		return DecisionDiscard
 	}
 
-	// 개선 폭 계산
+	// Calculate improvement
 	improvement := exp.Result.Overall - l.bestScore
 
-	// 채택/기각 결정
+	// Keep/discard decision
 	var decision Decision
 	if exp.Result.Overall > l.bestScore {
 		decision = DecisionKeep
@@ -106,14 +106,14 @@ func (l *Loop) RecordExperiment(exp *Experiment) Decision {
 	}
 	exp.Decision = decision
 
-	// 정체 추적: 개선 폭이 임계값 미만이면 정체 카운터 증가
+	// Stagnation tracking: increment stagnation counter if improvement is below threshold
 	if improvement < l.config.StagnationThreshold {
 		l.stagnationCount++
 	} else {
 		l.stagnationCount = 0
 	}
 
-	// 목표 달성 추적: 목표 점수 이상이면 연속 카운터 증가
+	// Target hit tracking: increment consecutive counter if target score is reached
 	if exp.Result.Overall >= l.config.TargetScore {
 		l.targetHitCount++
 	} else {
@@ -123,17 +123,17 @@ func (l *Loop) RecordExperiment(exp *Experiment) Decision {
 	return decision
 }
 
-// BestScore는 현재까지의 최고 점수를 반환한다.
+// BestScore returns the highest score achieved so far.
 func (l *Loop) BestScore() float64 {
 	return l.bestScore
 }
 
-// ExperimentCount는 기록된 실험의 총 수를 반환한다.
+// ExperimentCount returns the total number of recorded experiments.
 func (l *Loop) ExperimentCount() int {
 	return len(l.history)
 }
 
-// State는 실험 루프의 현재 상태를 반환한다.
+// State returns the current state of the experiment loop.
 func (l *Loop) State() ExperimentState {
 	return l.state
 }

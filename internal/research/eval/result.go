@@ -2,10 +2,10 @@ package eval
 
 import "time"
 
-// ComputeResult는 개별 기준 결과를 집계하여 EvalResult를 생성한다.
-// Overall = 통과 기준 수 / 전체 기준 수 (기준이 없으면 0.0).
-// MustPassOK = 모든 must_pass 기준이 통과했는지 여부 (must_pass가 없으면 true).
-// results 맵에 없는 기준은 실패로 처리한다.
+// ComputeResult aggregates individual criterion results to produce an EvalResult.
+// Overall = number of passing criteria / total criteria (0.0 if no criteria).
+// MustPassOK = whether all must_pass criteria passed (true if no must_pass criteria).
+// Criteria absent from the results map are treated as failed.
 func ComputeResult(criteria []EvalCriterion, results map[string]bool) *EvalResult {
 	total := len(criteria)
 	if total == 0 {
@@ -22,7 +22,7 @@ func ComputeResult(criteria []EvalCriterion, results map[string]bool) *EvalResul
 	perCriterion := make(map[string]CriterionResult, total)
 
 	for _, c := range criteria {
-		passed := results[c.Name] // 맵에 없으면 false (실패 처리)
+		passed := results[c.Name] // false if absent from map (treated as failed)
 
 		perCriterion[c.Name] = CriterionResult{
 			Name:   c.Name,

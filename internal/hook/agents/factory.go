@@ -16,8 +16,8 @@ func NewFactory() *Factory {
 	return &Factory{}
 }
 
-// @MX:NOTE: [AUTO] agent 이름 기반으로 10개 핸들러 타입 중 하나를 생성하는 switch 분기. 새 agent 추가 시 여기에 case 추가 필요.
-// 지원 agent: ddd, tdd, backend, frontend, testing, debug, devops, quality, spec, docs
+// @MX:NOTE: [AUTO] Switch branch that creates one of 10 handler types based on the agent name. Add a new case here when adding a new agent.
+// Supported agents: ddd, tdd, backend, frontend, testing, debug, devops, quality, spec, docs
 // CreateHandler creates a handler for the given agent action.
 // Action format: {agent}-{action}
 // Examples: ddd-pre-transformation, backend-validation, docs-completion

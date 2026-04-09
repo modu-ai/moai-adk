@@ -235,7 +235,7 @@ func WithModelPolicy(policy string) ContextOption {
 	}
 }
 
-// @MX:NOTE: [AUTO] 언어 코드를 표시 이름으로 변환 - NewTemplateContext 및 WithLanguage 등 3개 경로에서 호출
+// @MX:NOTE: [AUTO] Converts a language code to its display name - called from 3 paths including NewTemplateContext and WithLanguage
 func ResolveLanguageName(code string) string {
 	return models.GetLanguageName(code)
 }

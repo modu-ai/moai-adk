@@ -242,13 +242,15 @@ When fixing bugs:
 - Fix the bug with minimal code changes
 - Verify the reproduction test passes after the fix
 
-### Go-Specific Guidelines
+### Language-Specific Guidelines
 
-For Go development:
-- Run `go test -race ./...` for concurrency safety
-- Use table-driven tests for comprehensive coverage
-- Maintain 85%+ test coverage per package
-- Run `go vet` and `golangci-lint` before commits
+The quality gate auto-detects the project language and runs the appropriate toolchain:
+- **Go**: `go vet` → `golangci-lint` → `go test`
+- **Node.js**: `eslint` → `npm test`
+- **Python**: `ruff` → `pytest`
+- **Rust**: `cargo clippy` → `cargo test`
+
+Tools that are not installed are skipped gracefully. Projects with no recognized language marker pass the gate silently.
 
 ---
 

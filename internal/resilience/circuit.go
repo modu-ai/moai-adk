@@ -39,8 +39,8 @@ type CircuitBreaker struct {
 	rejectedCount atomic.Int64
 }
 
-// @MX:ANCHOR: [AUTO] 서킷 브레이커 패턴 팩토리 - 장애 전파 방지의 핵심 진입점
-// @MX:REASON: [AUTO] fan_in=3+ (HealthChecker, 외부 호출자 등); 모든 서킷 브레이커 인스턴스가 이 함수로 생성
+// @MX:ANCHOR: [AUTO] Circuit breaker pattern factory - core entry point for preventing failure propagation
+// @MX:REASON: [AUTO] fan_in=3+ (HealthChecker, external callers, etc.); all circuit breaker instances are created through this function
 // NewCircuitBreaker creates a new CircuitBreaker with the given configuration.
 // Default values are applied if not specified.
 func NewCircuitBreaker(config CircuitBreakerConfig) *CircuitBreaker {

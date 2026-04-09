@@ -2,17 +2,17 @@ package observe
 
 import "sort"
 
-// PatternThresholds는 패턴 분류를 위한 관찰 횟수 임계값이다.
+// PatternThresholds defines observation count thresholds for pattern classification.
 type PatternThresholds struct {
-	// Heuristic은 휴리스틱 분류에 필요한 최소 관찰 횟수이다.
+	// Heuristic is the minimum observation count required for heuristic classification.
 	Heuristic int
-	// Rule은 규칙 분류에 필요한 최소 관찰 횟수이다.
+	// Rule is the minimum observation count required for rule classification.
 	Rule int
-	// HighConfidence는 높은 신뢰도 분류에 필요한 최소 관찰 횟수이다.
+	// HighConfidence is the minimum observation count required for high-confidence classification.
 	HighConfidence int
 }
 
-// DefaultThresholds는 기본 패턴 분류 임계값을 반환한다.
+// DefaultThresholds returns the default pattern classification thresholds.
 func DefaultThresholds() PatternThresholds {
 	return PatternThresholds{
 		Heuristic:      3,
@@ -21,26 +21,26 @@ func DefaultThresholds() PatternThresholds {
 	}
 }
 
-// PatternDetector는 관찰 목록에서 반복 패턴을 탐지한다.
+// PatternDetector detects repeating patterns from a list of observations.
 type PatternDetector struct {
 	thresholds PatternThresholds
 }
 
-// NewPatternDetector는 지정된 임계값으로 패턴 탐지기를 생성한다.
+// NewPatternDetector creates a pattern detector with the specified thresholds.
 func NewPatternDetector(thresholds PatternThresholds) *PatternDetector {
 	return &PatternDetector{thresholds: thresholds}
 }
 
-// Detect는 관찰 목록을 분석하여 패턴을 탐지하고 count 내림차순으로 반환한다.
-// 관찰은 Agent:Target 키로 그룹화되며, 각 그룹의 관찰 횟수에 따라 분류된다.
+// Detect analyzes a list of observations to detect patterns and returns them sorted by count descending.
+// Observations are grouped by Agent:Target key, and each group is classified based on its observation count.
 func (d *PatternDetector) Detect(observations []*Observation) []*Pattern {
 	if len(observations) == 0 {
 		return nil
 	}
 
-	// Agent:Target 키로 그룹화
+	// Group by Agent:Target key
 	groups := make(map[string][]*Observation)
-	order := make([]string, 0) // 삽입 순서 유지 (안정 정렬용)
+	order := make([]string, 0) // preserve insertion order for stable sort
 	for _, obs := range observations {
 		key := obs.Agent + ":" + obs.Target
 		if _, exists := groups[key]; !exists {
@@ -49,7 +49,7 @@ func (d *PatternDetector) Detect(observations []*Observation) []*Pattern {
 		groups[key] = append(groups[key], obs)
 	}
 
-	// 그룹별 패턴 생성
+	// Build patterns per group
 	patterns := make([]*Pattern, 0, len(groups))
 	for _, key := range order {
 		obs := groups[key]
@@ -59,7 +59,7 @@ func (d *PatternDetector) Detect(observations []*Observation) []*Pattern {
 			Observations: obs,
 		}
 
-		// FirstSeen, LastSeen 계산
+		// Compute FirstSeen and LastSeen
 		p.FirstSeen = obs[0].Timestamp
 		p.LastSeen = obs[0].Timestamp
 		for _, o := range obs[1:] {
@@ -71,13 +71,13 @@ func (d *PatternDetector) Detect(observations []*Observation) []*Pattern {
 			}
 		}
 
-		// 임계값 기반 분류
+		// Threshold-based classification
 		p.Classification = d.classify(p.Count)
 
 		patterns = append(patterns, p)
 	}
 
-	// count 내림차순 정렬 (안정 정렬로 동일 count 시 삽입 순서 유지)
+	// Sort by count descending (stable sort preserves insertion order for equal counts)
 	sort.SliceStable(patterns, func(i, j int) bool {
 		return patterns[i].Count > patterns[j].Count
 	})
@@ -85,7 +85,7 @@ func (d *PatternDetector) Detect(observations []*Observation) []*Pattern {
 	return patterns
 }
 
-// classify는 관찰 횟수에 따른 패턴 분류를 반환한다.
+// classify returns the pattern classification based on observation count.
 func (d *PatternDetector) classify(count int) PatternClassification {
 	switch {
 	case count >= d.thresholds.HighConfidence:

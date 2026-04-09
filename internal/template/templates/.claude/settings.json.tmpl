@@ -3,6 +3,7 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup|resume",
         "hooks": [
           {
 {{- if eq .Platform "windows"}}
@@ -18,6 +19,7 @@
     ],
     "PreCompact": [
       {
+        "matcher": "manual|auto",
         "hooks": [
           {
 {{- if eq .Platform "windows"}}
@@ -245,6 +247,7 @@
     ],
     "ConfigChange": [
       {
+        "matcher": "project_settings|local_settings|skills",
         "hooks": [
           {
 {{- if eq .Platform "windows"}}
@@ -260,6 +263,7 @@
     ],
     "StopFailure": [
       {
+        "matcher": "rate_limit|authentication_failed|billing_error|max_output_tokens",
         "hooks": [
           {
 {{- if eq .Platform "windows"}}
@@ -275,6 +279,7 @@
     ],
     "PostCompact": [
       {
+        "matcher": "manual|auto",
         "hooks": [
           {
 {{- if eq .Platform "windows"}}
@@ -372,6 +377,21 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-denied.sh\"",
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-denied.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
 {{- end}}
             "timeout": 5,
             "type": "command"

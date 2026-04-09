@@ -1,5 +1,6 @@
-// Package experiment는 Self-Research System의 실험 루프 상태 머신을 구현한다.
-// 베이스라인 측정, 변이 적용, 평가, 점수 산정의 전체 실험 사이클을 관리한다.
+// Package experiment implements the experiment loop state machine for the Self-Research System.
+// It manages the complete experiment cycle: baseline measurement, mutation application,
+// evaluation, and scoring.
 package experiment
 
 import (
@@ -8,44 +9,44 @@ import (
 	"github.com/modu-ai/moai-adk/internal/research/eval"
 )
 
-// ExperimentState는 실험 루프의 현재 상태를 나타낸다.
+// ExperimentState represents the current state of the experiment loop.
 type ExperimentState string
 
 const (
-	// StateIdle은 실험 루프가 초기화되었지만 아직 시작되지 않은 상태이다.
+	// StateIdle is the state when the experiment loop is initialized but not yet started.
 	StateIdle ExperimentState = "idle"
-	// StateBaseline은 베이스라인이 설정된 상태이다.
+	// StateBaseline is the state after the baseline has been established.
 	StateBaseline ExperimentState = "baseline"
-	// StateMutating은 변이를 적용 중인 상태이다.
+	// StateMutating is the state while applying a mutation.
 	StateMutating ExperimentState = "mutating"
-	// StateEvaluating은 변이 결과를 평가 중인 상태이다.
+	// StateEvaluating is the state while evaluating the mutation result.
 	StateEvaluating ExperimentState = "evaluating"
-	// StateScoring은 평가 결과를 점수화 중인 상태이다.
+	// StateScoring is the state while computing scores from evaluation results.
 	StateScoring ExperimentState = "scoring"
-	// StateComplete는 실험 루프가 완료된 상태이다.
+	// StateComplete is the state when the experiment loop has finished.
 	StateComplete ExperimentState = "complete"
 )
 
-// Decision은 실험 결과에 대한 채택/기각 결정을 나타낸다.
+// Decision represents the keep/discard decision for an experiment result.
 type Decision string
 
 const (
-	// DecisionKeep은 실험 변경을 채택한다.
+	// DecisionKeep accepts the experiment change.
 	DecisionKeep Decision = "keep"
-	// DecisionDiscard는 실험 변경을 기각한다.
+	// DecisionDiscard rejects the experiment change.
 	DecisionDiscard Decision = "discard"
-	// DecisionPending은 아직 결정이 내려지지 않은 상태이다.
+	// DecisionPending is the state before a decision has been made.
 	DecisionPending Decision = "pending"
 )
 
-// ChangeRecord는 실험에서 적용된 변경 내용을 기록한다.
+// ChangeRecord records the change applied in an experiment.
 type ChangeRecord struct {
 	Type    string `json:"type"`    // addition | modification | deletion
-	Section string `json:"section"` // 변경된 섹션 이름
-	Diff    string `json:"diff"`    // 변경 내용의 diff 텍스트
+	Section string `json:"section"` // Name of the changed section
+	Diff    string `json:"diff"`    // Diff text of the change
 }
 
-// Experiment는 단일 실험의 전체 정보를 보관한다.
+// Experiment holds the complete information for a single experiment.
 type Experiment struct {
 	ID         string           `json:"id"`
 	Target     string           `json:"target"`
@@ -56,7 +57,7 @@ type Experiment struct {
 	Timestamp  time.Time        `json:"timestamp"`
 }
 
-// ChangelogEntry는 실험 결과의 변경 이력 항목이다.
+// ChangelogEntry is a change history entry for an experiment result.
 type ChangelogEntry struct {
 	ExperimentID string   `json:"experiment_id"`
 	Score        float64  `json:"score"`

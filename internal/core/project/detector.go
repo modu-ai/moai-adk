@@ -49,8 +49,8 @@ type projectDetector struct {
 	logger   *slog.Logger
 }
 
-// @MX:ANCHOR: [AUTO] 프로젝트 타입 및 언어 감지 팩토리. 전체 프로젝트에서 Detector 인스턴스 생성의 단일 진입점.
-// @MX:REASON: fan_in=13, 프로젝트 초기화·업데이트·검증 등 다수 호출자에서 공유됨
+// @MX:ANCHOR: [AUTO] Project type and language detection factory. Single entry point for creating Detector instances across the entire project.
+// @MX:REASON: fan_in=13, shared by many callers including project initialization, update, and validation
 // NewDetector creates a Detector backed by the given language registry.
 func NewDetector(registry *foundation.LanguageRegistry, logger *slog.Logger) Detector {
 	if logger == nil {

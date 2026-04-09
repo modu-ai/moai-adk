@@ -23,6 +23,12 @@ agency:
     escalation_after: 3
     improvement_threshold: 0.05
     strict_mode: false
+    sprint_contract:
+      enabled: true                    # Enable Sprint Contract negotiation
+      required_harness_levels: [thorough]  # Required for these harness levels
+      optional_harness_levels: [standard]  # Optional for these levels
+      artifact_dir: ".agency/sprints"  # Where to store contract artifacts
+      max_negotiation_rounds: 2        # Max rounds of contract negotiation per sprint
 
   # Self-evolution settings
   evolution:

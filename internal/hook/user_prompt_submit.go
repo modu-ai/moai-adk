@@ -14,21 +14,21 @@ import (
 	"github.com/modu-ai/moai-adk/internal/workflow"
 )
 
-// specFilePattern은 SPEC 디렉토리 내 spec.md 파일을 탐색하는 glob 패턴이다.
+// specFilePattern is the glob pattern for finding spec.md files in SPEC directories.
 const specFilePattern = ".moai/specs/*/spec.md"
 
-// userPromptSubmitHandler는 UserPromptSubmit 이벤트를 처리한다.
-// 사용자 프롬프트 제출 시 세션 타이틀을 자동으로 생성하여 Claude Code에 반환한다.
+// userPromptSubmitHandler handles UserPromptSubmit events.
+// It automatically generates a session title from the CWD and returns it to Claude Code.
 type userPromptSubmitHandler struct {
 	cfg ConfigProvider
 }
 
-// NewUserPromptSubmitHandler는 UserPromptSubmit 이벤트 핸들러를 생성한다.
+// NewUserPromptSubmitHandler creates a new UserPromptSubmit event handler.
 func NewUserPromptSubmitHandler(cfg ConfigProvider) Handler {
 	return &userPromptSubmitHandler{cfg: cfg}
 }
 
-// EventType은 EventUserPromptSubmit을 반환한다.
+// EventType returns EventUserPromptSubmit.
 func (h *userPromptSubmitHandler) EventType() EventType {
 	return EventUserPromptSubmit
 }
@@ -48,11 +48,11 @@ func detectWorkflowContext(prompt string) string {
 	return ""
 }
 
-// Handle은 UserPromptSubmit 이벤트를 처리한다.
-// CWD에서 활성 SPEC을 탐지하여 세션 타이틀을 생성하고 hookSpecificOutput으로 반환한다.
-// 에러가 발생해도 빈 타이틀을 반환하며 프롬프트를 차단하지 않는다.
+// Handle processes a UserPromptSubmit event.
+// It detects active SPECs from CWD to build a session title and returns it via hookSpecificOutput.
+// Errors are silently handled; an empty title is returned without blocking the prompt.
 func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
-	// 프롬프트 로깅 (감사 목적, 100자 초과 시 잘라냄)
+	// Log prompt for audit purposes (truncated to 100 chars)
 	prompt := input.Prompt
 	preview := prompt
 	if len(preview) > 100 {
@@ -63,46 +63,47 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 		"prompt_preview", preview,
 	)
 
-	// 세션 타이틀 생성 (에러는 무시하고 빈 타이틀로 폴백)
+	// Build session title (errors are silently ignored, falls back to empty title)
 	title := h.buildSessionTitle(input.CWD)
 
-	// 워크플로우 컨텍스트 감지
+	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
 
-	// 타이틀과 워크플로우 컨텍스트 모두 없으면 빈 응답
+	// Return empty output if no context to report
 	if title == "" && additionalCtx == "" {
 		return &HookOutput{}, nil
 	}
 
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:     string(EventUserPromptSubmit),
 			SessionTitle:      title,
 			AdditionalContext: additionalCtx,
 		},
 	}, nil
 }
 
-// buildSessionTitle은 CWD 기반으로 세션 타이틀을 생성한다.
-// SPEC 발견 시: "SPEC-ID: 제목"
-// SPEC 없을 시: "프로젝트명 / 브랜치명"
-// 에러 발생 시: 빈 문자열 반환
+// buildSessionTitle generates a session title based on CWD.
+// With SPEC: "SPEC-ID: title"
+// Without SPEC: "projectName / branchName"
+// On error: returns empty string
 func (h *userPromptSubmitHandler) buildSessionTitle(cwd string) string {
 	if cwd == "" {
 		return ""
 	}
 
-	// 활성 SPEC 탐지 시도
+	// Attempt to detect active SPEC
 	if title := detectActiveSpec(cwd); title != "" {
 		return title
 	}
 
-	// SPEC 없을 시 프로젝트명/브랜치명 조합
+	// Fall back to projectName/branchName combination
 	return buildProjectBranchTitle(cwd)
 }
 
-// detectActiveSpec은 cwd/.moai/specs/*/spec.md를 탐색하여
-// 가장 최근에 수정된 SPEC의 타이틀을 반환한다.
-// SPEC이 없거나 읽기 실패 시 빈 문자열을 반환한다.
+// detectActiveSpec searches cwd/.moai/specs/*/spec.md and returns the title
+// of the most recently modified SPEC.
+// Returns empty string if no SPEC is found or read fails.
 func detectActiveSpec(cwd string) string {
 	pattern := filepath.Join(cwd, specFilePattern)
 	matches, err := filepath.Glob(pattern)
@@ -110,7 +111,7 @@ func detectActiveSpec(cwd string) string {
 		return ""
 	}
 
-	// 가장 최근 수정된 spec.md를 우선 선택
+	// Select the most recently modified spec.md
 	var latestMatch string
 	var latestModTime int64
 	for _, match := range matches {
@@ -128,15 +129,27 @@ func detectActiveSpec(cwd string) string {
 		return ""
 	}
 
-	// SPEC ID를 디렉토리 이름에서 추출
+	// Extract SPEC ID from directory name
 	specDirName := filepath.Base(filepath.Dir(latestMatch))
 	specID := workflow.SpecIDPattern.FindString(specDirName)
 	if specID == "" {
 		return ""
 	}
 
-	// spec.md의 첫 번째 헤딩(# 으로 시작하는 줄)을 읽는다
+	// Read the first heading (line starting with #) from spec.md
 	heading := readFirstHeading(latestMatch)
+	if heading == "" {
+		return specID
+	}
+
+	// Strip SPEC-ID prefix from heading if already present (e.g., "SPEC-SRS-003: Dashboard...")
+	if strings.HasPrefix(heading, specID+": ") {
+		heading = strings.TrimPrefix(heading, specID+": ")
+	} else if strings.HasPrefix(heading, specID) {
+		heading = strings.TrimPrefix(heading, specID)
+		heading = strings.TrimLeft(heading, ": ")
+	}
+
 	if heading == "" {
 		return specID
 	}
@@ -144,7 +157,7 @@ func detectActiveSpec(cwd string) string {
 	return fmt.Sprintf("%s: %s", specID, heading)
 }
 
-// readFirstHeading은 markdown 파일에서 첫 번째 # 헤딩 텍스트를 반환한다.
+// readFirstHeading returns the first # heading text from a markdown file.
 func readFirstHeading(path string) string {
 	f, err := os.Open(path)
 	if err != nil {
@@ -162,8 +175,8 @@ func readFirstHeading(path string) string {
 	return ""
 }
 
-// buildProjectBranchTitle은 "프로젝트명 / 브랜치명" 형식의 타이틀을 생성한다.
-// git 브랜치 조회 실패 시 "프로젝트명 / unknown"을 반환한다.
+// buildProjectBranchTitle generates a title in "projectName / branchName" format.
+// Returns "projectName / unknown" if git branch lookup fails.
 func buildProjectBranchTitle(cwd string) string {
 	projectName := filepath.Base(cwd)
 	if projectName == "" || projectName == "." {
@@ -178,8 +191,8 @@ func buildProjectBranchTitle(cwd string) string {
 	return fmt.Sprintf("%s / %s", projectName, branch)
 }
 
-// getGitBranch는 git rev-parse --abbrev-ref HEAD로 현재 브랜치명을 조회한다.
-// 조회 실패 시 빈 문자열을 반환한다.
+// getGitBranch retrieves the current branch name using git rev-parse --abbrev-ref HEAD.
+// Returns empty string on failure.
 func getGitBranch(cwd string) string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = cwd

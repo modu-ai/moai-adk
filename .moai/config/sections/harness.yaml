@@ -1,56 +1,109 @@
+# Harness Depth Configuration
+# Defines quality pipeline depth levels and auto-detection thresholds.
+# The system automatically selects the appropriate level based on SPEC complexity.
+
 harness:
-    auto_detection:
-        enabled: true
-        rules:
-            minimal:
-                conditions:
-                    - file_count <= 3 AND single_domain
-                    - spec_type in [bugfix, docs, config]
-            standard:
-                conditions:
-                    - file_count > 3 OR multi_domain
-                    - spec_type in [feature, refactor]
-            thorough:
-                conditions:
-                    - security_keywords OR payment_keywords present
-                    - spec_priority == critical
-                    - domain in [auth, payment, migration, public_api]
-    escalation:
-        enabled: true
-        max_escalations: 2
-        triggers:
-            - quality_gate_fail
-            - review_critical
-            - test_coverage_low
-    levels:
-        minimal:
-            description: Fast iteration for simple changes
-            evaluator: false
-            skip_phases:
-                - 0
-                - 0.5
-                - 2
-                - 2.5
-                - 2.75
-                - 2.8a
-                - 2.9
-                - 2.1
-            sprint_contract: false
-        standard:
-            description: Balanced quality for most development
-            evaluator: true
-            evaluator_mode: final-pass
-            skip_phases: []
-            sprint_contract: false
-        thorough:
-            description: Maximum quality for critical features
-            evaluator: true
-            evaluator_mode: per-sprint
-            evaluator_profile: strict
-            playwright_testing: true
-            skip_phases: []
-            sprint_contract: true
-    mode_defaults:
-        cg: thorough
-        solo: auto
-        team: auto
+  # Execution mode defaults
+  mode_defaults:
+    solo: auto            # Sub-agent mode: auto-detect level
+    team: auto            # Team mode: auto-detect level
+    cg: thorough          # CG mode: always thorough (natural Generator-Evaluator split)
+
+  # Automatic level detection (Complexity Estimator)
+  auto_detection:
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+          - "spec_type in [bugfix, docs, config]"
+      standard:
+        conditions:
+          - "file_count > 3 OR multi_domain"
+          - "spec_type in [feature, refactor]"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+          - "spec_priority == critical"
+          - "domain in [auth, payment, migration, public_api]"
+
+  # Failure-triggered escalation
+  escalation:
+    enabled: true
+    triggers:
+      - quality_gate_fail    # Phase 2.5 FAIL -> escalate one level
+      - review_critical      # Phase 2.8 CRITICAL -> escalate to thorough
+      - test_coverage_low    # Coverage < 70% -> escalate to standard+
+    max_escalations: 2
+
+  # Level definitions
+  levels:
+    minimal:
+      description: "Fast iteration for simple changes"
+      skip_phases: [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]
+      evaluator: false
+      sprint_contract: false
+
+    standard:
+      description: "Balanced quality for most development"
+      skip_phases: []
+      evaluator: true
+      evaluator_mode: "final-pass"
+      sprint_contract: false
+
+    thorough:
+      description: "Maximum quality for critical features"
+      skip_phases: []
+      evaluator: true
+      evaluator_mode: "per-sprint"
+      evaluator_profile: "strict"
+      sprint_contract: true
+      playwright_testing: true
+
+  # Model Upgrade Review Process
+  # When Claude model is upgraded, review harness components for simplification.
+  # Reference: Anthropic "Harness Design for Long-Running Apps" (2025)
+  model_upgrade_review:
+    enabled: true
+    # Checklist items to evaluate after model upgrade
+    checklist:
+      - id: sprint_necessity
+        question: "Are per-sprint evaluations still needed, or can the model handle end-to-run evaluation?"
+        action: "If model handles longer coherent work, switch evaluator_mode from per-sprint to final-pass"
+        affects: "levels.thorough.evaluator_mode"
+
+      - id: context_reset_necessity
+        question: "Does the model still exhibit context anxiety near window limits?"
+        action: "If no context anxiety, reduce auto_clear frequency or increase token_threshold"
+        affects: "workflow.yaml auto_clear.token_threshold"
+
+      - id: evaluator_skepticism
+        question: "Has model self-evaluation improved enough to reduce evaluator iterations?"
+        action: "If self-evaluation is reliable, consider reducing gan_loop.max_iterations"
+        affects: "config.yaml gan_loop.max_iterations"
+
+      - id: parallel_safety
+        question: "Can the model safely coordinate more parallel agents without conflicts?"
+        action: "If coordination improved, consider increasing parallel agent limits"
+        affects: "workflow.yaml team settings"
+
+      - id: guardrail_necessity
+        question: "Are any minimal-level skip_phases still necessary for the upgraded model?"
+        action: "Review each skipped phase — remove skip if model can handle the phase efficiently"
+        affects: "levels.minimal.skip_phases"
+
+      - id: harness_level_thresholds
+        question: "Should auto_detection thresholds be adjusted for improved model capabilities?"
+        action: "If model handles complexity better, raise minimal threshold (more tasks qualify as minimal)"
+        affects: "auto_detection.rules"
+
+    # When to trigger review
+    trigger:
+      on_model_change: true           # Auto-trigger when model version changes
+      manual_command: "moai review --harness"  # Manual trigger command
+      review_interval_days: 90        # Periodic review even without model change
+
+    # Review output
+    output:
+      report_path: ".moai/reports/harness-review.md"
+      require_approval: true          # Human must approve harness changes

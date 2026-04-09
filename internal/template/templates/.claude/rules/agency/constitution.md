@@ -338,6 +338,35 @@ When strict_mode is true:
 - Score inflation protection is active (see Section 12)
 - Minimum 2 iterations required even if first iteration passes
 
+### Sprint Contract Protocol
+
+Before each GAN Loop iteration, Builder and Evaluator negotiate a Sprint Contract:
+
+1. **Contract Generation**: Evaluator analyzes the BRIEF and produces a Sprint Contract containing:
+   - Acceptance checklist: concrete, testable criteria for this iteration
+   - Priority dimension: which evaluation dimension to focus on (Design Quality, Originality, Completeness, or Functionality)
+   - Test scenarios: specific Playwright test cases that will verify success
+   - Pass conditions: minimum score per criterion for this sprint
+
+2. **Contract Review**: Builder reviews the Sprint Contract and may:
+   - Accept as-is: proceed with implementation
+   - Request adjustment: if criteria are infeasible, propose alternatives with rationale
+   - Evaluator resolves disputes by referencing BRIEF requirements
+
+3. **Contract Execution**: Builder implements against the agreed checklist. Evaluator scores only against the contracted criteria (not arbitrary standards).
+
+4. **Contract Evolution**: In subsequent iterations:
+   - Passed criteria carry forward (no regression allowed)
+   - Failed criteria get refined based on feedback
+   - New criteria may be added if previous sprint revealed gaps
+
+Rules:
+- [HARD] Sprint Contracts are required when harness level is `thorough` (sprint_contract: true)
+- [HARD] Sprint Contracts are optional but recommended for `standard` harness level
+- [HARD] Evaluator MUST NOT score on criteria not in the Sprint Contract
+- [HARD] Builder MUST NOT claim criteria as met without evidence
+- Sprint Contract artifacts are stored in `.agency/sprints/` for Learner analysis
+
 ---
 
 ## 12. Evaluator Leniency Prevention
