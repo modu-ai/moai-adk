@@ -215,10 +215,8 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("returned nil output")
-			}
-
-			// HookSpecificOutput must be set to PostToolUse.
-			if got.HookSpecificOutput == nil || got.HookSpecificOutput.HookEventName != "PostToolUse" {
+			} else if got.HookSpecificOutput == nil || got.HookSpecificOutput.HookEventName != "PostToolUse" {
+				// HookSpecificOutput must be set to PostToolUse.
 				t.Errorf("HookEventName is not PostToolUse: %+v", got.HookSpecificOutput)
 			}
 

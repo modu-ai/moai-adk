@@ -70,10 +70,9 @@ func TestSessionEndHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// SessionEnd hooks return empty JSON {} per Claude Code protocol
-			// They should NOT have hookSpecificOutput set
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
+				// SessionEnd hooks return empty JSON {} per Claude Code protocol
+				// They should NOT have hookSpecificOutput set
 				t.Error("SessionEnd hook should not set hookSpecificOutput")
 			}
 		})
@@ -680,8 +679,7 @@ func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("output should never be nil")
-	}
-	if got.Decision != "" {
+	} else if got.Decision != "" {
 		t.Errorf("Decision should be empty, got %q", got.Decision)
 	}
 	if got.ExitCode != 0 {

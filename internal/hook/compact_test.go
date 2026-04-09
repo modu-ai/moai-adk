@@ -94,9 +94,8 @@ func TestCompactHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// PreCompact does NOT use hookSpecificOutput per Claude Code protocol
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
+				// PreCompact does NOT use hookSpecificOutput per Claude Code protocol
 				t.Errorf("HookSpecificOutput should be nil for PreCompact, got %+v", got.HookSpecificOutput)
 			}
 			if got.Data != nil && !json.Valid(got.Data) {

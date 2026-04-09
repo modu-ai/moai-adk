@@ -138,11 +138,11 @@ func TestUserPromptSubmitHandler_Handle(t *testing.T) {
 			}
 			if out == nil {
 				t.Fatal("Handle() returned nil output")
-			}
-
-			hasAdditional := out.HookSpecificOutput != nil && out.HookSpecificOutput.AdditionalContext != ""
-			if hasAdditional != tt.wantAdditional {
-				t.Errorf("HookSpecificOutput.AdditionalContext non-empty = %v, want %v", hasAdditional, tt.wantAdditional)
+			} else {
+				hasAdditional := out.HookSpecificOutput != nil && out.HookSpecificOutput.AdditionalContext != ""
+				if hasAdditional != tt.wantAdditional {
+					t.Errorf("HookSpecificOutput.AdditionalContext non-empty = %v, want %v", hasAdditional, tt.wantAdditional)
+				}
 			}
 		})
 	}

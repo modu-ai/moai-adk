@@ -92,13 +92,10 @@ func TestStopHandler_CompletionMarkers_TableDriven(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("returned nil output")
-			}
-
-			// Observation-only: Stop hook always returns empty HookOutput (allow)
-			if got.Decision != "" {
+			} else if got.Decision != "" {
+				// Observation-only: Stop hook always returns empty HookOutput (allow)
 				t.Errorf("Decision = %q, want empty (marker detection must not block)", got.Decision)
-			}
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
 				t.Error("Stop hook must not set HookSpecificOutput")
 			}
 		})
@@ -152,10 +149,8 @@ func TestStopHandler_StopHookActive_SkipsMarkerCheck(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("returned nil output")
-	}
-
-	// When StopHookActive, always return empty output (prevent infinite loop)
-	if got.Decision != "" {
+	} else if got.Decision != "" {
+		// When StopHookActive, always return empty output (prevent infinite loop)
 		t.Errorf("Decision = %q, want empty", got.Decision)
 	}
 }

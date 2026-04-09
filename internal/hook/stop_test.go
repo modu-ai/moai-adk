@@ -64,10 +64,9 @@ func TestStopHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// Stop hooks return empty JSON {} per Claude Code protocol
-			// They should NOT have hookSpecificOutput set
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
+				// Stop hooks return empty JSON {} per Claude Code protocol
+				// They should NOT have hookSpecificOutput set
 				t.Error("Stop hook should not set hookSpecificOutput")
 			}
 		})
@@ -93,9 +92,8 @@ func TestStopHandler_Handle_StopHookActive(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	// When StopHookActive is true, handler should return empty to break loop
-	if got.Decision != "" {
+	} else if got.Decision != "" {
+		// When StopHookActive is true, handler should return empty to break loop
 		t.Errorf("Decision should be empty when StopHookActive=true, got %q", got.Decision)
 	}
 }
@@ -119,9 +117,8 @@ func TestStopHandler_Handle_StopHookNotActive(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	// Default behavior: allow stop
-	if got.HookSpecificOutput != nil {
+	} else if got.HookSpecificOutput != nil {
+		// Default behavior: allow stop
 		t.Error("Stop hook should not set hookSpecificOutput")
 	}
 }
@@ -152,11 +149,9 @@ func TestStopHandler_PersistentMode(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	if got.Decision != "block" {
+	} else if got.Decision != "block" {
 		t.Errorf("Decision = %q, want %q", got.Decision, "block")
-	}
-	if got.Reason == "" {
+	} else if got.Reason == "" {
 		t.Error("Reason should not be empty when blocking")
 	}
 }
@@ -188,9 +183,8 @@ func TestStopHandler_PersistentMode_CompletionMarker(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	// Completion marker should allow the stop (no block)
-	if got.Decision != "" {
+	} else if got.Decision != "" {
+		// Completion marker should allow the stop (no block)
 		t.Errorf("Decision = %q, want empty (stop allowed after completion marker)", got.Decision)
 	}
 
@@ -201,8 +195,7 @@ func TestStopHandler_PersistentMode_CompletionMarker(t *testing.T) {
 	}
 	if mode == nil {
 		t.Fatal("persistent-mode.json should still exist")
-	}
-	if mode.Active {
+	} else if mode.Active {
 		t.Error("persistent mode should be deactivated after completion marker")
 	}
 }
@@ -250,8 +243,7 @@ func TestStopHandler_PersistentMode_Expired(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	if got.Decision != "" {
+	} else if got.Decision != "" {
 		t.Errorf("Decision = %q, want empty (stop allowed when expired)", got.Decision)
 	}
 }
@@ -286,8 +278,7 @@ func TestStopHandler_PersistentMode_Inactive(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	if got.Decision != "" {
+	} else if got.Decision != "" {
 		t.Errorf("Decision = %q, want empty (inactive mode should not block)", got.Decision)
 	}
 }
@@ -315,8 +306,7 @@ func TestStopHandler_PersistentMode_NoFile(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	if got.Decision != "" {
+	} else if got.Decision != "" {
 		t.Errorf("Decision = %q, want empty (no file should allow stop)", got.Decision)
 	}
 }
@@ -347,9 +337,8 @@ func TestStopHandler_StopHookActive_OverridesPersistentMode(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	// stop_hook_active always wins — no block
-	if got.Decision != "" {
+	} else if got.Decision != "" {
+		// stop_hook_active always wins — no block
 		t.Errorf("Decision = %q, want empty (stop_hook_active overrides persistent mode)", got.Decision)
 	}
 }

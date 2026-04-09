@@ -89,9 +89,8 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// SessionStart does NOT use hookSpecificOutput per Claude Code protocol
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
+				// SessionStart does NOT use hookSpecificOutput per Claude Code protocol
 				t.Errorf("HookSpecificOutput should be nil for SessionStart, got %+v", got.HookSpecificOutput)
 			}
 

@@ -31,13 +31,14 @@ func TestPostCompactHandler_Handle_NoMemo(t *testing.T) {
 	}
 	if out == nil {
 		t.Fatal("expected non-nil output")
-	}
-	if len(out.Data) == 0 {
-		t.Error("expected non-empty Data field")
-	}
-	// No memo file => no SystemMessage
-	if out.SystemMessage != "" {
-		t.Errorf("expected empty SystemMessage when no memo exists, got: %q", out.SystemMessage)
+	} else {
+		if len(out.Data) == 0 {
+			t.Error("expected non-empty Data field")
+		}
+		// No memo file => no SystemMessage
+		if out.SystemMessage != "" {
+			t.Errorf("expected empty SystemMessage when no memo exists, got: %q", out.SystemMessage)
+		}
 	}
 }
 
@@ -67,18 +68,14 @@ func TestPostCompactHandler_Handle_WithMemo(t *testing.T) {
 	}
 	if out == nil {
 		t.Fatal("expected non-nil output")
-	}
-
-	if out.SystemMessage == "" {
+	} else if out.SystemMessage == "" {
 		t.Fatal("expected SystemMessage to be set when memo exists")
-	}
-	if !strings.Contains(out.SystemMessage, "Session Memo") {
+	} else if !strings.Contains(out.SystemMessage, "Session Memo") {
 		t.Errorf("SystemMessage should contain 'Session Memo', got: %q", out.SystemMessage)
-	}
-	if !strings.Contains(out.SystemMessage, "SPEC-001 active") {
+	} else if !strings.Contains(out.SystemMessage, "SPEC-001 active") {
 		t.Errorf("SystemMessage should contain memo content, got: %q", out.SystemMessage)
 	}
-	if len(out.Data) == 0 {
+	if out != nil && len(out.Data) == 0 {
 		t.Error("Data field should be populated even when SystemMessage is set")
 	}
 }

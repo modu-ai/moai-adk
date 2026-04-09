@@ -148,9 +148,8 @@ func TestPreToolHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// PreToolUse uses hookSpecificOutput.permissionDecision per Claude Code protocol
-			if got.HookSpecificOutput == nil {
+			} else if got.HookSpecificOutput == nil {
+				// PreToolUse uses hookSpecificOutput.permissionDecision per Claude Code protocol
 				t.Fatal("HookSpecificOutput is nil")
 			}
 			// Map expected decision to permissionDecision value
@@ -278,24 +277,23 @@ func TestPreToolHandler_UnicodeNFDNFCPathNormalization(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			if got.HookSpecificOutput == nil {
+			} else if got.HookSpecificOutput == nil {
 				t.Fatal("HookSpecificOutput is nil")
-			}
+			} else {
+				gotDecision := got.HookSpecificOutput.PermissionDecision
+				if gotDecision != tt.wantDecision {
+					t.Errorf("PermissionDecision = %q, want %q (projectDir=%q, filePath=%q)",
+						gotDecision, tt.wantDecision, tt.projectDir, tt.filePath)
+					// Log byte differences for debugging
+					t.Logf("projectDir bytes: %x", []byte(tt.projectDir))
+					t.Logf("filePath bytes:   %x", []byte(tt.filePath))
+					t.Logf("NFC korean bytes: %x", []byte(koreanNFC))
+					t.Logf("NFD korean bytes: %x", []byte(koreanNFD))
+				}
 
-			gotDecision := got.HookSpecificOutput.PermissionDecision
-			if gotDecision != tt.wantDecision {
-				t.Errorf("PermissionDecision = %q, want %q (projectDir=%q, filePath=%q)",
-					gotDecision, tt.wantDecision, tt.projectDir, tt.filePath)
-				// Log byte differences for debugging
-				t.Logf("projectDir bytes: %x", []byte(tt.projectDir))
-				t.Logf("filePath bytes:   %x", []byte(tt.filePath))
-				t.Logf("NFC korean bytes: %x", []byte(koreanNFC))
-				t.Logf("NFD korean bytes: %x", []byte(koreanNFD))
-			}
-
-			if tt.wantReason && got.HookSpecificOutput.PermissionDecisionReason == "" {
-				t.Error("expected non-empty PermissionDecisionReason for deny decision")
+				if tt.wantReason && got.HookSpecificOutput.PermissionDecisionReason == "" {
+					t.Error("expected non-empty PermissionDecisionReason for deny decision")
+				}
 			}
 		})
 	}
@@ -355,15 +353,16 @@ func TestDefaultSecurityPolicy(t *testing.T) {
 
 	if policy == nil {
 		t.Fatal("DefaultSecurityPolicy() returned nil")
-	}
-	if len(policy.DangerousBashPatterns) == 0 {
-		t.Error("DangerousBashPatterns should not be empty")
-	}
-	if len(policy.DenyPatterns) == 0 {
-		t.Error("DenyPatterns should not be empty")
-	}
-	if len(policy.AskPatterns) == 0 {
-		t.Error("AskPatterns should not be empty")
+	} else {
+		if len(policy.DangerousBashPatterns) == 0 {
+			t.Error("DangerousBashPatterns should not be empty")
+		}
+		if len(policy.DenyPatterns) == 0 {
+			t.Error("DenyPatterns should not be empty")
+		}
+		if len(policy.AskPatterns) == 0 {
+			t.Error("AskPatterns should not be empty")
+		}
 	}
 	if len(policy.SensitiveContentPatterns) == 0 {
 		t.Error("SensitiveContentPatterns should not be empty")
@@ -984,8 +983,7 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		cfg := h.loadGateConfig()
 		if cfg == nil {
 			t.Fatal("expected non-nil gate config")
-		}
-		if !cfg.Enabled {
+		} else if !cfg.Enabled {
 			t.Error("default gate should be enabled")
 		}
 	})
@@ -999,8 +997,7 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		cfg := h.loadGateConfig()
 		if cfg == nil {
 			t.Fatal("expected non-nil gate config")
-		}
-		if !cfg.Enabled {
+		} else if !cfg.Enabled {
 			t.Error("default gate should be enabled")
 		}
 	})
@@ -1016,8 +1013,7 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		cfg := h.loadGateConfig()
 		if cfg == nil {
 			t.Fatal("expected non-nil gate config")
-		}
-		if cfg.Enabled {
+		} else if cfg.Enabled {
 			t.Error("gate should be disabled per config")
 		}
 	})

@@ -308,19 +308,18 @@ func TestRegistryDispatch_PermissionRequestBlockChain(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output, want non-nil")
-	}
-
-	// Verify deny decision propagated
-	if got.HookSpecificOutput == nil {
+	} else if got.HookSpecificOutput == nil {
+		// Verify deny decision propagated
 		t.Fatal("HookSpecificOutput is nil, want deny decision")
-	}
-	if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
-		t.Errorf("PermissionDecision = %q, want %q",
-			got.HookSpecificOutput.PermissionDecision, DecisionDeny)
-	}
-	if got.HookSpecificOutput.PermissionDecisionReason != "security policy violation" {
-		t.Errorf("PermissionDecisionReason = %q, want %q",
-			got.HookSpecificOutput.PermissionDecisionReason, "security policy violation")
+	} else {
+		if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
+			t.Errorf("PermissionDecision = %q, want %q",
+				got.HookSpecificOutput.PermissionDecision, DecisionDeny)
+		}
+		if got.HookSpecificOutput.PermissionDecisionReason != "security policy violation" {
+			t.Errorf("PermissionDecisionReason = %q, want %q",
+				got.HookSpecificOutput.PermissionDecisionReason, "security policy violation")
+		}
 	}
 
 	// Verify short-circuit: first handler called, second not called
@@ -369,17 +368,16 @@ func TestRegistryDispatch_MultipleHandlersNewEvents(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output, want non-nil")
-	}
-
-	// Verify mock handler was called (both handlers should execute)
-	if !mockH.called {
-		t.Error("mock handler should have been called")
-	}
-
-	// The final output comes from defaultOutputForEvent since no handler blocked.
-	// PostToolUseFailure default is empty HookOutput.
-	if got.HookSpecificOutput != nil {
-		t.Errorf("HookSpecificOutput = %+v, want nil for PostToolUseFailure", got.HookSpecificOutput)
+	} else {
+		// Verify mock handler was called (both handlers should execute)
+		if !mockH.called {
+			t.Error("mock handler should have been called")
+		}
+		// The final output comes from defaultOutputForEvent since no handler blocked.
+		// PostToolUseFailure default is empty HookOutput.
+		if got.HookSpecificOutput != nil {
+			t.Errorf("HookSpecificOutput = %+v, want nil for PostToolUseFailure", got.HookSpecificOutput)
+		}
 	}
 }
 
@@ -509,54 +507,54 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("dispatch returned nil output")
-			}
-
-			// Step 3: Serialize output to JSON via protocol.WriteOutput
-			proto := NewProtocol()
-			var buf bytes.Buffer
-			if err := proto.WriteOutput(&buf, got); err != nil {
-				t.Fatalf("WriteOutput error: %v", err)
-			}
-
-			// Step 4: Deserialize JSON back to HookOutput
-			var roundTripped HookOutput
-			if err := json.Unmarshal(buf.Bytes(), &roundTripped); err != nil {
-				t.Fatalf("json.Unmarshal error: %v (json: %s)", err, buf.String())
-			}
-
-			// Step 5: Verify round-trip fidelity
-			if tt.wantNilHSO {
-				if roundTripped.HookSpecificOutput != nil {
-					t.Errorf("round-trip HookSpecificOutput = %+v, want nil",
-						roundTripped.HookSpecificOutput)
-				}
 			} else {
-				if roundTripped.HookSpecificOutput == nil {
-					t.Fatal("round-trip HookSpecificOutput is nil, want non-nil")
+				// Step 3: Serialize output to JSON via protocol.WriteOutput
+				proto := NewProtocol()
+				var buf bytes.Buffer
+				if err := proto.WriteOutput(&buf, got); err != nil {
+					t.Fatalf("WriteOutput error: %v", err)
 				}
-				if roundTripped.HookSpecificOutput.PermissionDecision != tt.wantPermDecision {
-					t.Errorf("round-trip PermissionDecision = %q, want %q",
-						roundTripped.HookSpecificOutput.PermissionDecision, tt.wantPermDecision)
-				}
-				if roundTripped.HookSpecificOutput.HookEventName != tt.wantHookEventName {
-					t.Errorf("round-trip HookEventName = %q, want %q",
-						roundTripped.HookSpecificOutput.HookEventName, tt.wantHookEventName)
-				}
-			}
 
-			// Verify no unexpected fields leaked through
-			if roundTripped.Decision != got.Decision {
-				t.Errorf("round-trip Decision = %q, want %q", roundTripped.Decision, got.Decision)
-			}
-			if roundTripped.Reason != got.Reason {
-				t.Errorf("round-trip Reason = %q, want %q", roundTripped.Reason, got.Reason)
-			}
-			if roundTripped.Continue != got.Continue {
-				t.Errorf("round-trip Continue = %v, want %v", roundTripped.Continue, got.Continue)
-			}
-			if roundTripped.SuppressOutput != got.SuppressOutput {
-				t.Errorf("round-trip SuppressOutput = %v, want %v",
-					roundTripped.SuppressOutput, got.SuppressOutput)
+				// Step 4: Deserialize JSON back to HookOutput
+				var roundTripped HookOutput
+				if err := json.Unmarshal(buf.Bytes(), &roundTripped); err != nil {
+					t.Fatalf("json.Unmarshal error: %v (json: %s)", err, buf.String())
+				}
+
+				// Step 5: Verify round-trip fidelity
+				if tt.wantNilHSO {
+					if roundTripped.HookSpecificOutput != nil {
+						t.Errorf("round-trip HookSpecificOutput = %+v, want nil",
+							roundTripped.HookSpecificOutput)
+					}
+				} else {
+					if roundTripped.HookSpecificOutput == nil {
+						t.Fatal("round-trip HookSpecificOutput is nil, want non-nil")
+					}
+					if roundTripped.HookSpecificOutput.PermissionDecision != tt.wantPermDecision {
+						t.Errorf("round-trip PermissionDecision = %q, want %q",
+							roundTripped.HookSpecificOutput.PermissionDecision, tt.wantPermDecision)
+					}
+					if roundTripped.HookSpecificOutput.HookEventName != tt.wantHookEventName {
+						t.Errorf("round-trip HookEventName = %q, want %q",
+							roundTripped.HookSpecificOutput.HookEventName, tt.wantHookEventName)
+					}
+				}
+
+				// Verify no unexpected fields leaked through
+				if roundTripped.Decision != got.Decision {
+					t.Errorf("round-trip Decision = %q, want %q", roundTripped.Decision, got.Decision)
+				}
+				if roundTripped.Reason != got.Reason {
+					t.Errorf("round-trip Reason = %q, want %q", roundTripped.Reason, got.Reason)
+				}
+				if roundTripped.Continue != got.Continue {
+					t.Errorf("round-trip Continue = %v, want %v", roundTripped.Continue, got.Continue)
+				}
+				if roundTripped.SuppressOutput != got.SuppressOutput {
+					t.Errorf("round-trip SuppressOutput = %v, want %v",
+						roundTripped.SuppressOutput, got.SuppressOutput)
+				}
 			}
 		})
 	}

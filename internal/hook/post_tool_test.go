@@ -85,12 +85,10 @@ func TestPostToolHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// PostToolUse handler is observation-only and uses hookSpecificOutput.hookEventName
-			if got.HookSpecificOutput == nil {
+			} else if got.HookSpecificOutput == nil {
+				// PostToolUse handler is observation-only and uses hookSpecificOutput.hookEventName
 				t.Fatal("HookSpecificOutput is nil")
-			}
-			if got.HookSpecificOutput.HookEventName != "PostToolUse" {
+			} else if got.HookSpecificOutput.HookEventName != "PostToolUse" {
 				t.Errorf("HookEventName = %q, want %q", got.HookSpecificOutput.HookEventName, "PostToolUse")
 			}
 			if tt.checkData && got.Data != nil {
@@ -278,8 +276,7 @@ func TestPostToolHandler_Handle_TaskMetrics_DoesNotFail(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("Handle() returned nil output")
-	}
-	if got.HookSpecificOutput == nil || got.HookSpecificOutput.HookEventName != "PostToolUse" {
+	} else if got.HookSpecificOutput == nil || got.HookSpecificOutput.HookEventName != "PostToolUse" {
 		t.Errorf("expected PostToolUse output, got: %+v", got)
 	}
 }
@@ -636,16 +633,15 @@ func TestPostToolHandler_CollectDiagnostics_Error(t *testing.T) {
 	// Should still succeed (observation only)
 	if got == nil {
 		t.Fatal("expected non-nil output")
-	}
-
-	var metrics map[string]any
-	if err := json.Unmarshal(got.Data, &metrics); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-
-	// No lsp_diagnostics when collector fails
-	if _, ok := metrics["lsp_diagnostics"]; ok {
-		t.Error("expected no lsp_diagnostics when collector errors")
+	} else {
+		var metrics map[string]any
+		if err := json.Unmarshal(got.Data, &metrics); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		// No lsp_diagnostics when collector fails
+		if _, ok := metrics["lsp_diagnostics"]; ok {
+			t.Error("expected no lsp_diagnostics when collector errors")
+		}
 	}
 }
 

@@ -132,7 +132,7 @@ func TestLoadWorktreeEntries_CorruptFile(t *testing.T) {
 
 func TestWorktreeStateFile(t *testing.T) {
 	got := worktreeStateFile("/project")
-	want := "/project/.moai/state/worktrees.json"
+	want := filepath.Join("/project", ".moai", "state", "worktrees.json")
 	if got != want {
 		t.Errorf("worktreeStateFile() = %v, want %v", got, want)
 	}
