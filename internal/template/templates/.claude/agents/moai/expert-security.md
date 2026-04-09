@@ -10,7 +10,7 @@ description: |
   ZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计
   NOT for: general backend development, frontend UI, performance optimization, database design, DevOps deployment
 model: opus
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 80
 memory: project
 skills:

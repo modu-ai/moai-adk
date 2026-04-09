@@ -64,14 +64,15 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 
 ## Mode Selection
 
-Before executing, check `.moai/config/sections/llm.yaml`:
+This workflow is loaded ONLY when team mode has been explicitly selected (via `--team` flag or auto-selection). Check `.moai/config/sections/llm.yaml` to determine WHICH team mode to use:
 
-| team_mode | Execution Mode | Agent Teams? | Description |
-|-----------|---------------|-------------|-------------|
-| (empty) | Sub-agent | N/A | Single session, Agent() subagents |
-| glm | GLM Mode | **Supported** | All GLM, credentials in settings.local.json |
-| cg | CG Mode | **Supported (tmux required)** | Claude Leader + GLM Teammates via tmux session env |
-| agent-teams | Agent Teams | **Supported** | All same API, parallel teammates |
+| team_mode | Execution Mode | Description |
+|-----------|---------------|-------------|
+| (empty) or agent-teams | **Agent Teams** | All same API, parallel teammates (default for `--team` flag) |
+| glm | GLM Mode | All GLM, credentials in settings.local.json |
+| cg | CG Mode (tmux required) | Claude Leader + GLM Teammates via tmux session env |
+
+[HARD] When this workflow is loaded, team mode is already decided. Empty `team_mode` defaults to Agent Teams, NOT sub-agent fallback. Sub-agent mode uses a different workflow (`workflows/run.md`).
 
 ---
 
@@ -287,7 +288,7 @@ Agent(
 
 ## Agent Teams Mode
 
-When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the same API.
+When `team_mode` is empty or `"agent-teams"` in llm.yaml, use parallel teammates all on the same API. This is the default team execution mode when `--team` flag is used.
 
 ### Phase 1: Team Setup
 
@@ -355,6 +356,6 @@ If team mode fails at any point:
 
 ---
 
-Version: 4.0.0 (Dynamic Team Generation)
-Last Updated: 2026-03-31
+Version: 4.1.0 (Fix --team flag routing: empty team_mode defaults to Agent Teams)
+Last Updated: 2026-04-09
 Source: SPEC-TEAM-001

@@ -8,21 +8,17 @@ description: |
   KO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트
   JA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド
   ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
+  NOT for: code implementation, testing, deployment, git operations, security audits
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-philosopher
   - moai-foundation-thinking
   - moai-workflow-project
   - moai-workflow-templates
-  - moai-workflow-worktree
-  - moai-workflow-spec
-  - moai-foundation-context
 ---
 
 # Project Manager - Project Manager Agent

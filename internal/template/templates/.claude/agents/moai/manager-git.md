@@ -11,7 +11,7 @@ description: |
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
 model: haiku
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:

@@ -6,7 +6,7 @@ description: |
   Forked from moai expert-frontend + expert-backend patterns.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 maxTurns: 100
 memory: project
 skills:
