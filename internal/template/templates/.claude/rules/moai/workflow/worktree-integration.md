@@ -97,6 +97,12 @@ background: true   # Returns immediately; results delivered on next turn
 
 Use with `isolation: worktree` for optimal parallel execution in team mode.
 
+[HARD] Background agents auto-deny Write/Edit operations. Only use `background: true` for:
+- Read-only research and analysis agents
+- Agents whose write paths are pre-approved in settings.json `permissions.allow`
+
+For write-heavy agents without pre-approval, use `background: false` (foreground, sequential).
+
 Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 
 ## Worktree Selection Rules [HARD]

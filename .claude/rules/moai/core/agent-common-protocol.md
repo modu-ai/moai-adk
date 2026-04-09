@@ -57,6 +57,23 @@ Architecture:
 - Agents own domain-specific expertise
 - Skills auto-load based on YAML frontmatter configuration
 
+## Background Agent Execution
+
+[HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
+
+Background agents auto-deny all non-pre-approved permission prompts because they cannot interact with the user. Even with `mode: "bypassPermissions"`, the background execution context does not fully inherit the parent session's permission allowlist.
+
+Rules for agent spawning:
+- **Read-only tasks** (research, analysis, review): `run_in_background: true` is safe
+- **Write tasks** (implementation, refactoring, file creation): `run_in_background: false` required
+- **Parallel writes needed**: Process directly from the main session, or use sequential foreground agents
+- **Pre-approved writes**: Add path patterns to settings.json `permissions.allow` for background write support
+
+Decision matrix:
+- Agent reads files only → `run_in_background: true` (parallel, fast)
+- Agent writes files → `run_in_background: false` (sequential, reliable)
+- Multiple agents need to write different files → Use main session directly or foreground agents in sequence
+
 ## Time Estimation
 
 [HARD] Never use time predictions in plans or reports.
