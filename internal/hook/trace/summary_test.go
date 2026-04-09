@@ -18,14 +18,16 @@ func writeTraceFile(t *testing.T, dir, sessionID string, entries []TraceEntry) {
 	if err != nil {
 		t.Fatalf("create trace file: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	for _, e := range entries {
 		data, err := json.Marshal(e)
 		if err != nil {
 			t.Fatalf("marshal entry: %v", err)
 		}
-		fmt.Fprintf(f, "%s\n", data)
+		if _, err := fmt.Fprintf(f, "%s\n", data); err != nil {
+			t.Fatalf("write entry: %v", err)
+		}
 	}
 }
 
@@ -98,8 +100,7 @@ func TestGenerateSummary_MissingFile(t *testing.T) {
 	}
 	if summary == nil {
 		t.Fatal("want non-nil summary")
-	}
-	if summary.TotalHooks != 0 {
+	} else if summary.TotalHooks != 0 {
 		t.Errorf("TotalHooks: want 0, got %d", summary.TotalHooks)
 	}
 }

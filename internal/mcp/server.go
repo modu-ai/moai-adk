@@ -82,7 +82,7 @@ func (s *Server) Serve(ctx context.Context, reader io.Reader, writer io.Writer) 
 			continue
 		}
 		s.mu.Lock()
-		fmt.Fprintf(writer, "%s\n", data)
+		_, _ = fmt.Fprintf(writer, "%s\n", data)
 		s.mu.Unlock()
 	}
 

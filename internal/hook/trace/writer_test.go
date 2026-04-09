@@ -26,7 +26,7 @@ func makeEntry(event string) TraceEntry {
 func TestTraceWriter_Write_BasicJSONLine(t *testing.T) {
 	dir := t.TempDir()
 	w := NewTraceWriter(dir, "basic")
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	entry := TraceEntry{
 		Timestamp:  time.Date(2026, 4, 7, 10, 30, 0, 0, time.UTC),
@@ -111,7 +111,7 @@ func TestTraceWriter_MultipleEntries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	count := 0
 	sc := bufio.NewScanner(f)

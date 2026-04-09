@@ -49,7 +49,7 @@ func GenerateSummary(logDir, sessionID string) (*SessionSummary, error) {
 		}
 		return nil, fmt.Errorf("open trace file %q: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	summary := &SessionSummary{
 		SessionID:         sessionID,
@@ -130,9 +130,9 @@ func top5Slowest(entries []TraceEntry) []TraceEntry {
 func (s *SessionSummary) FormatMarkdown() string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("# Session Summary: %s\n\n", s.SessionID))
-	sb.WriteString(fmt.Sprintf("**Total Hook Invocations:** %d\n\n", s.TotalHooks))
-	sb.WriteString(fmt.Sprintf("**Session Duration:** %s\n\n", s.Duration.Round(time.Millisecond)))
+	fmt.Fprintf(&sb, "# Session Summary: %s\n\n", s.SessionID)
+	fmt.Fprintf(&sb, "**Total Hook Invocations:** %d\n\n", s.TotalHooks)
+	fmt.Fprintf(&sb, "**Session Duration:** %s\n\n", s.Duration.Round(time.Millisecond))
 
 	// Event breakdown.
 	sb.WriteString("## Event Breakdown\n\n")
@@ -141,7 +141,7 @@ func (s *SessionSummary) FormatMarkdown() string {
 	} else {
 		events := sortedKeys(s.EventBreakdown)
 		for _, ev := range events {
-			sb.WriteString(fmt.Sprintf("- **%s**: %d\n", ev, s.EventBreakdown[ev]))
+			fmt.Fprintf(&sb, "- **%s**: %d\n", ev, s.EventBreakdown[ev])
 		}
 		sb.WriteString("\n")
 	}
@@ -153,7 +153,7 @@ func (s *SessionSummary) FormatMarkdown() string {
 	} else {
 		decisions := sortedKeys(s.DecisionBreakdown)
 		for _, d := range decisions {
-			sb.WriteString(fmt.Sprintf("- **%s**: %d\n", d, s.DecisionBreakdown[d]))
+			fmt.Fprintf(&sb, "- **%s**: %d\n", d, s.DecisionBreakdown[d])
 		}
 		sb.WriteString("\n")
 	}
@@ -166,19 +166,19 @@ func (s *SessionSummary) FormatMarkdown() string {
 		sb.WriteString("| # | Event | Handler | Tool | Duration (ms) |\n")
 		sb.WriteString("|---|-------|---------|------|---------------|\n")
 		for i, e := range s.Top5Slowest {
-			sb.WriteString(fmt.Sprintf("| %d | %s | %s | %s | %d |\n",
-				i+1, e.Event, e.Handler, e.Tool, e.DurationMs))
+			fmt.Fprintf(&sb, "| %d | %s | %s | %s | %d |\n",
+				i+1, e.Event, e.Handler, e.Tool, e.DurationMs)
 		}
 		sb.WriteString("\n")
 	}
 
 	// Errors.
-	sb.WriteString(fmt.Sprintf("## Errors (%d)\n\n", s.ErrorCount))
+	fmt.Fprintf(&sb, "## Errors (%d)\n\n", s.ErrorCount)
 	if s.ErrorCount == 0 {
 		sb.WriteString("_No errors recorded._\n\n")
 	} else {
 		for _, e := range s.Errors {
-			sb.WriteString(fmt.Sprintf("- %s\n", e))
+			fmt.Fprintf(&sb, "- %s\n", e)
 		}
 		sb.WriteString("\n")
 	}
