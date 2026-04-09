@@ -423,7 +423,7 @@ diagnose.verify_module_structure()
 
 ### Related Skills
 
-- moai-foundation-claude - Claude Code integration patterns
+- moai-foundation-cc - Claude Code integration patterns
 - moai-workflow-project - Project management with core principles
 - moai-workflow-testing - Testing workflows with TRUST 5
 - moai-workflow-templates - Template management integration

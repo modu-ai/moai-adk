@@ -7,7 +7,6 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: bypassPermissions
-maxTurns: 100
 memory: project
 skills:
   - agency-frontend-patterns

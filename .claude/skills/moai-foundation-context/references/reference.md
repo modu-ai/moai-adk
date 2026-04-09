@@ -235,7 +235,7 @@ Target Metrics:
 
 ### Related Skills
 
-- `moai-foundation-claude`: Claude Code authoring and configuration
+- `moai-foundation-cc`: Claude Code authoring and configuration
 - `moai-foundation-core`: Core execution patterns and SPEC workflow
 - `moai-workflow-project`: Project management and documentation
 - `moai-cc-memory`: Memory management and persistence

@@ -7,7 +7,6 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: opus
 permissionMode: bypassPermissions
-maxTurns: 100
 memory: project
 skills:
   - agency-copywriting

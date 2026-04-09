@@ -51,7 +51,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **hooks**: Supports PreToolUse, PostToolUse, and SubagentStop events scoped to this agent. See @hooks-system.md for configuration format.
 
-**background**: When set to true, the agent runs in the background without blocking the main conversation. Results are delivered asynchronously on the next turn. Available since Claude Code v2.1.46.
+**background**: When set to true, the agent runs in the background without blocking the main conversation. Results are delivered asynchronously on the next turn. Available since Claude Code v2.1.46. **WARNING**: Background agents auto-deny all non-pre-approved permission prompts. Do NOT set `background: true` for agents that need Write/Edit operations unless paths are pre-approved in settings.json.
 
 **isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 

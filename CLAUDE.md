@@ -37,7 +37,7 @@ Analyze user request to determine routing:
 
 Core Skills (load when needed):
 
-- Skill("moai-foundation-claude") for orchestration patterns
+- Skill("moai-foundation-cc") for orchestration patterns
 - Skill("moai-foundation-core") for SPEC system and workflows
 - Skill("moai-workflow-project") for project management
 
@@ -393,6 +393,7 @@ For core parallel execution principles, see .claude/rules/moai/core/moai-constit
 - **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
 - **Platform Compatibility**: Always prefer Edit tool over sed/awk
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
+- **Background Agent Write Restriction**: [HARD] Background subagents (`run_in_background: true`) auto-deny Write/Edit operations. Use `run_in_background: false` for agents that modify files. Read-only agents (research, analysis) can safely run in background.
 
 ### Worktree Isolation Rules [HARD]
 
@@ -566,4 +567,4 @@ Last Updated: 2026-04-03
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
-For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-claude").
+For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").

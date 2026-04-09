@@ -292,7 +292,7 @@ File Size Impact:
 ## Works Well With
 
 - moai-foundation-core: Core execution patterns and SPEC-driven development workflows
-- moai-foundation-claude: Claude Code integration and configuration
+- moai-foundation-cc: Claude Code integration and configuration
 - moai-workflow-docs: Unified documentation management
 - moai-workflow-templates: Template optimization strategies
 - moai-library-nextra: Advanced documentation architecture
