@@ -57,7 +57,7 @@ func (w *TraceWriter) Write(entry TraceEntry) {
 	if w.closed.Load() {
 		return
 	}
-	// recover는 closed 체크와 send 사이에 Close()가 실행되는 드문 레이스를 방어
+	// recover defends against the rare race where Close() runs between the closed check and send.
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Warn("trace: channel closed, dropping entry",
@@ -114,7 +114,7 @@ func (w *TraceWriter) run() {
 
 // writeEntry serializes entry as a JSON line and appends it to the trace file.
 // Rotates the file if it exceeds maxSize before writing.
-func (w *TraceWriter) writeEntry(entry TraceEntry) error {
+func (w *TraceWriter) writeEntry(entry TraceEntry) (err error) {
 	// Ensure the log directory exists.
 	if err := os.MkdirAll(w.logDir, 0o755); err != nil {
 		return fmt.Errorf("create log dir %q: %w", w.logDir, err)
@@ -145,7 +145,11 @@ func (w *TraceWriter) writeEntry(entry TraceEntry) error {
 	if err != nil {
 		return fmt.Errorf("open trace file %q: %w", path, err)
 	}
-	defer func() { _ = f.Close() }()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close trace file %q: %w", path, cerr)
+		}
+	}()
 
 	if _, err := f.Write(append(data, '\n')); err != nil {
 		return fmt.Errorf("write trace entry: %w", err)

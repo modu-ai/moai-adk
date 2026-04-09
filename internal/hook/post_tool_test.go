@@ -348,7 +348,7 @@ func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
 	input := &HookInput{
 		SessionID:    "sess-task-route",
 		CWD:          tmpDir,
-		ToolName:     "Agent",
+		ToolName:     "Task",
 		ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":500,"toolUses":3,"durationSeconds":12.5}}`),
 	}
 
@@ -360,7 +360,7 @@ func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
 		t.Fatal("Handle() returned nil")
 	}
 
-	// Verify the metrics JSONL was created
+	// Verify the metrics JSONL was created (legacy Task tool routes to logTaskMetrics)
 	logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
 	if _, err := os.Stat(logPath); err != nil {
 		t.Errorf("task-metrics.jsonl should be created: %v", err)

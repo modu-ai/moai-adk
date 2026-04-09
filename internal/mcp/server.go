@@ -28,9 +28,11 @@ func NewServer(handler Handler) *Server {
 
 // Serve reads JSON-RPC requests from reader and writes responses to writer.
 // It processes requests one at a time; MCP over stdio is inherently sequential.
-// Serve returns when the reader is exhausted or the context is cancelled.
-// @MX:WARN: scanner.Scan()이 I/O에서 블로킹되면 ctx.Done()으로 중단 불가. 호출자가 reader를 닫아야 Serve가 반환됨.
-// @MX:REASON: 블로킹 I/O와 context 취소의 상호작용 제한
+// Serve returns when reader is exhausted. Context cancellation is checked between
+// scanned messages; it does not preempt a blocking scanner.Scan() read.
+// Callers must close reader to stop Serve promptly.
+// @MX:WARN: scanner.Scan() may block on I/O; ctx.Done() cannot interrupt the blocking read.
+// @MX:REASON: Blocking I/O and cooperative context cancellation interaction.
 func (s *Server) Serve(ctx context.Context, reader io.Reader, writer io.Writer) error {
 	if s.handler == nil {
 		return fmt.Errorf("mcp: nil handler")
