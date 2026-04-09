@@ -11,7 +11,7 @@ description: |
   NOT for: production code implementation, architecture design, DevOps, security audits, performance optimization
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*
 model: sonnet
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 100
 memory: project
 skills:

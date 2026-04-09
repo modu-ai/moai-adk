@@ -9,19 +9,16 @@ description: |
   KO: TDD, 테스트주도개발, 레드그린리팩터, 테스트우선, 신규기능, 명세테스트, 그린필드
   JA: TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド
   ZH: TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
+  NOT for: legacy code refactoring (use DDD), deployment, documentation, git operations, security audits
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-quality
   - moai-workflow-tdd
   - moai-workflow-testing
-  - moai-workflow-ddd
-  - moai-workflow-mx-tag
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit"

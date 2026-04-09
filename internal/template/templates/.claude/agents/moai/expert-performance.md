@@ -11,7 +11,7 @@ description: |
   NOT for: new feature development, architecture design, security audits, DevOps, frontend UI design
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 80
 memory: project
 skills:

@@ -270,7 +270,7 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 
 	// Verify new boolean fields
 	boolFields := map[string]bool{
-		"enableAllProjectMcpServers": true,
+		"enableAllProjectMcpServers": false,
 		"respectGitignore":           true,
 	}
 	for field, want := range boolFields {

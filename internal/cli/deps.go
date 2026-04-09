@@ -76,7 +76,15 @@ func InitDependencies() {
 	}
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
-	deps.HookRegistry = hook.NewRegistry(deps.Config)
+	reg := hook.NewRegistry(deps.Config)
+	deps.HookRegistry = reg
+
+	// Determine current working directory once.
+	cwd, _ := os.Getwd()
+
+	// Enable observability when configured (REQ-OBS-001).
+	// Reads the project-relative observability config; gracefully skips on error.
+	enableObservabilityIfConfigured(reg, cwd)
 
 	// Create security scanner for AST-based scanning
 	securityScanner := security.NewSecurityScanner()
@@ -94,24 +102,27 @@ func InitDependencies() {
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
 
 	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
-	cwd, _ := os.Getwd()
 	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
 	// Register default hook handlers
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
-	deps.HookRegistry.Register(hook.NewSessionEndHandler())
+	// SessionEnd handler: use observability-aware variant when configured.
+	deps.HookRegistry.Register(buildSessionEndHandler(cwd))
 
 	// Register auto-update handler for SessionStart
 	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
 
 	deps.HookRegistry.Register(hook.NewStopHandler())
-	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
+	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
+	secPolicy := hook.DefaultSecurityPolicy()
+	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
+	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
 	deps.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandler())
 	deps.HookRegistry.Register(hook.NewSubagentStartHandler())
-	deps.HookRegistry.Register(hook.NewUserPromptSubmitHandler())
+	deps.HookRegistry.Register(hook.NewUserPromptSubmitHandler(deps.Config))
 	deps.HookRegistry.Register(hook.NewPermissionRequestHandler())
 	deps.HookRegistry.Register(hook.NewTeammateIdleHandler())
 	deps.HookRegistry.Register(hook.NewTaskCompletedHandler())
@@ -120,6 +131,42 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewPostCompactHandler())
 	deps.HookRegistry.Register(hook.NewInstructionsLoadedHandler())
 	deps.HookRegistry.Register(hook.NewStopFailureHandler())
+	deps.HookRegistry.Register(hook.NewSubagentStopHandler())
+	deps.HookRegistry.Register(hook.NewTaskCreatedHandler())
+	deps.HookRegistry.Register(hook.NewPermissionDeniedHandler())
+	deps.HookRegistry.Register(hook.NewConfigChangeHandler())
+	deps.HookRegistry.Register(hook.NewCwdChangedHandler())
+}
+
+// enableObservabilityIfConfigured reads observability config and enables
+// trace writing on the registry if configured. Gracefully skips on error.
+func enableObservabilityIfConfigured(reg hook.Registry, cwd string) {
+	cfgPath := filepath.Join(cwd, ".moai", "config", "sections", "observability.yaml")
+	if _, err := os.Stat(cfgPath); err != nil {
+		return // Config file not found — observability disabled.
+	}
+	// Enable observability via type assertion; concrete registry supports it.
+	type observabilityEnabler interface {
+		EnableObservability(logDir string)
+	}
+	if oe, ok := reg.(observabilityEnabler); ok {
+		logDir := filepath.Join(cwd, ".moai", "logs")
+		_ = os.MkdirAll(logDir, 0o755)
+		oe.EnableObservability(logDir)
+	}
+}
+
+// buildSessionEndHandler creates a SessionEnd handler with observability
+// support when the reports directory is available.
+func buildSessionEndHandler(cwd string) hook.Handler {
+	reportDir := filepath.Join(cwd, ".moai", "reports")
+	traceDir := filepath.Join(cwd, ".moai", "logs")
+	// Only use observability variant if trace dir exists.
+	if _, err := os.Stat(traceDir); err == nil {
+		_ = os.MkdirAll(reportDir, 0o755)
+		return hook.NewSessionEndHandlerWithObservability(traceDir, reportDir)
+	}
+	return hook.NewSessionEndHandler()
 }
 
 // GetDeps returns the current Dependencies instance.

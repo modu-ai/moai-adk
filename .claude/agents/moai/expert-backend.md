@@ -8,39 +8,17 @@ description: |
   KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스, 토큰, SQL, NoSQL, PostgreSQL, MongoDB, Redis, 오라클, Oracle, PL/SQL, 스키마, 쿼리, 인덱스, 데이터모델링
   JA: バックエンド, API, サーバー, 認証, データベース, マイクロサービス, SQL, NoSQL, PostgreSQL, MongoDB, Redis, Oracle, PL/SQL, スキーマ, クエリ, インデックス
   ZH: 后端, API, 服务器, 认证, 数据库, 微服务, 令牌, SQL, NoSQL, PostgreSQL, MongoDB, Redis, Oracle, PL/SQL, 架构, 查询, 索引
+  NOT for: frontend UI, CSS styling, React components, mobile apps, CLI tools, DevOps/deployment, security audits
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 maxTurns: 100
-permissionMode: default
+permissionMode: bypassPermissions
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-foundation-philosopher
-  - moai-foundation-quality
-  - moai-foundation-context
   - moai-domain-backend
   - moai-domain-database
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-lang-javascript
-  - moai-lang-go
-  - moai-lang-java
-  - moai-lang-rust
-  - moai-lang-php
-  - moai-lang-csharp
-  - moai-lang-ruby
-  - moai-lang-elixir
-  - moai-lang-scala
-  - moai-platform-database-cloud
-  - moai-platform-auth
-  - moai-platform-deployment
-  - moai-platform-chrome-extension
-  - moai-tool-ast-grep
-  - moai-workflow-tdd
-  - moai-workflow-ddd
   - moai-workflow-testing
-  - moai-workflow-jit-docs
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"

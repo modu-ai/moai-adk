@@ -74,17 +74,17 @@ func TestAutoUpdateHandler_Handle(t *testing.T) {
 
 			if output == nil {
 				t.Fatal("Handle() returned nil output")
-			}
+			} else {
+				hasMsg := output.SystemMessage != ""
+				if hasMsg != tt.wantSystemMessage {
+					t.Errorf("SystemMessage present = %v, want %v (msg: %q)",
+						hasMsg, tt.wantSystemMessage, output.SystemMessage)
+				}
 
-			hasMsg := output.SystemMessage != ""
-			if hasMsg != tt.wantSystemMessage {
-				t.Errorf("SystemMessage present = %v, want %v (msg: %q)",
-					hasMsg, tt.wantSystemMessage, output.SystemMessage)
-			}
-
-			if tt.wantContains != "" && !strings.Contains(output.SystemMessage, tt.wantContains) {
-				t.Errorf("SystemMessage %q should contain %q",
-					output.SystemMessage, tt.wantContains)
+				if tt.wantContains != "" && !strings.Contains(output.SystemMessage, tt.wantContains) {
+					t.Errorf("SystemMessage %q should contain %q",
+						output.SystemMessage, tt.wantContains)
+				}
 			}
 		})
 	}

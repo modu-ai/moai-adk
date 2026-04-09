@@ -401,11 +401,8 @@ func TestRegistryDispatchMergesSystemMessage(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-
-	want := "memory loaded\nupdate available"
-	if got.SystemMessage != want {
-		t.Errorf("SystemMessage = %q, want %q", got.SystemMessage, want)
+	} else if got.SystemMessage != "memory loaded\nupdate available" {
+		t.Errorf("SystemMessage = %q, want %q", got.SystemMessage, "memory loaded\nupdate available")
 	}
 }
 

@@ -100,8 +100,7 @@ func TestExitCodeBehavior_DefaultHandlers(t *testing.T) {
 			}
 			if output == nil {
 				t.Fatal("Handle() returned nil output")
-			}
-			if output.ExitCode != 0 {
+			} else if output.ExitCode != 0 {
 				t.Errorf("ExitCode = %d, want 0 (default accept)", output.ExitCode)
 			}
 		})
@@ -141,10 +140,8 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 		}
 		if got == nil {
 			t.Fatal("Dispatch() returned nil output")
-		}
-
-		// ExitCode=2 must be preserved so the CLI can call os.Exit(2).
-		if got.ExitCode != 2 {
+		} else if got.ExitCode != 2 {
+			// ExitCode=2 must be preserved so the CLI can call os.Exit(2).
 			t.Errorf("ExitCode = %d, want 2 (TeammateIdle keep-working signal)", got.ExitCode)
 		}
 		if !handler.called {
@@ -177,10 +174,8 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 		}
 		if got == nil {
 			t.Fatal("Dispatch() returned nil output")
-		}
-
-		// ExitCode=2 must be preserved so the CLI can call os.Exit(2).
-		if got.ExitCode != 2 {
+		} else if got.ExitCode != 2 {
+			// ExitCode=2 must be preserved so the CLI can call os.Exit(2).
 			t.Errorf("ExitCode = %d, want 2 (TaskCompleted reject signal)", got.ExitCode)
 		}
 		if !handler.called {
@@ -219,13 +214,10 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 		}
 		if got == nil {
 			t.Fatal("Dispatch() returned nil output")
-		}
-
-		// Block decision short-circuits: handler output is returned directly
-		if got.ExitCode != 2 {
+		} else if got.ExitCode != 2 {
+			// Block decision short-circuits: handler output is returned directly
 			t.Errorf("ExitCode = %d, want 2 (preserved from block handler)", got.ExitCode)
-		}
-		if got.Decision != DecisionBlock {
+		} else if got.Decision != DecisionBlock {
 			t.Errorf("Decision = %q, want %q", got.Decision, DecisionBlock)
 		}
 		if !handler.called {

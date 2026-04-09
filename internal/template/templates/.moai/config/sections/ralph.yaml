@@ -72,6 +72,14 @@ ralph:
   # Note: All git automation settings are managed in git-strategy.yaml
   # Ralph respects the git_strategy.mode configuration for branch/PR creation
 
+  # Lint-as-Instruction Configuration (REQ-LAI-001 through REQ-LAI-007)
+  # Inject LSP diagnostics as systemMessage so the AI receives errors as its next prompt.
+  lint_as_instruction: true
+
+  # Include warnings in systemMessage when there are no errors (REQ-LAI-006).
+  # Default: false (errors only).
+  warn_as_instruction: false
+
   # Hook Behavior Configuration
   hooks:
     # LSP diagnostic hook

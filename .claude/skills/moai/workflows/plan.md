@@ -100,6 +100,92 @@ Tasks for the Explore subagent:
 - Go through related test files to understand expected behavior and edge cases
 - Report comprehensive results for Phase 1B context
 
+### Phase 0.3: Clarity Evaluation (Conditional)
+
+Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
+
+**Skip conditions (any one is sufficient):**
+- `--skip-interview` flag is present in $ARGUMENTS
+- Input matches `resume SPEC-XXX` pattern (resuming an existing draft)
+- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)
+- `interview.enabled: false` in `.moai/config/sections/interview.yaml`
+
+**Clarity Scoring (1-10):**
+
+Evaluate the user's input against five dimensions:
+
+1. Technical keyword count: 2+ points for 3-4 keywords; 1 point for 1-2; 0 for none
+2. Action verbs specificity: "add CRUD endpoints for user profile" scores higher than "improve the app"
+3. File or module mentions: explicit file paths or module names each add 1 point
+4. Generic nouns penalty: deduct 1 point for each vague noun like "system", "feature", "thing"
+5. Scope boundary clarity: a defined boundary ("only the POST /users endpoint, no auth changes") adds 2 points
+
+**Score-to-rounds mapping:**
+
+| Clarity Score | Interview Rounds |
+|---|---|
+| 1-3 | 0 (request too vague — ask one broad clarification question instead) |
+| 4-6 | 2 rounds maximum |
+| 7-10 | 5 rounds maximum |
+
+Log the score: "Clarity score: {N}/10 — proceeding with {M} interview round(s)."
+
+If score is 1-3: Use a single AskUserQuestion asking for a clearer description, then re-evaluate. Do not enter the full interview loop.
+
+### Phase 0.3.1: Deep Interview Loop (Conditional)
+
+Purpose: Gather missing context through a structured, topic-focused interview before research begins. Each round presents curated options so the user can answer quickly.
+
+**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 0.3).
+
+**Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
+
+**Round topics:**
+
+| Round | Focus Topic | Example Questions |
+|---|---|---|
+| 1 | Scope | What is included and explicitly excluded? |
+| 2 | Constraints | Performance, security, compatibility, technology limits |
+| 3 | Success criteria | How do we know when this is done and working correctly? |
+| 4 | Edge cases | What unusual or failure scenarios must be handled? |
+| 5 | Priority | What is the minimum viable slice if scope must be cut? |
+
+**Per-round execution:**
+
+For each round:
+
+1. Formulate 3 recommended options relevant to the current topic and the user's request context.
+2. Present via AskUserQuestion with exactly 4 options:
+   - Option 1: [Recommended based on context] (Recommended): [Detailed description of this answer]
+   - Option 2: [Alternative]: [Description]
+   - Option 3: [Alternative]: [Description]
+   - Option 4: Type your own answer: Enter a custom response if none of the above match
+3. Record the user's answer.
+4. Re-evaluate clarity score after each round.
+5. If updated clarity score drops to 3 or below: end the loop early (user's answers added no useful information).
+6. If updated clarity score reaches 8 or above: end the loop early (sufficient clarity achieved).
+7. Display round counter: "Interview round {N}/{max_rounds}"
+
+**Output:** Write all interview answers to `.moai/specs/SPEC-{ID}/interview.md` with this structure:
+
+```
+# Interview: {SPEC Title}
+
+## Round 1: Scope
+Question: {question asked}
+Answer: {user's answer}
+
+## Round 2: Constraints
+...
+
+## Clarity Score
+Initial: {N}/10
+Final: {N}/10
+Rounds completed: {N}
+```
+
+**Context passing:** Pass `interview.md` to Phase 0.5 (Deep Research) and Phase 1B (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
+
 ### Phase 0.4: UltraThink Auto-Activation (Conditional)
 
 Purpose: Automatically activate deep analysis mode for complex SPECs that benefit from structured reasoning.
@@ -292,10 +378,40 @@ File generation (all three files created simultaneously):
   - Edge case testing scenarios
   - Performance and quality gate criteria
 
+### Delta Markers for Brownfield Projects
+
+When the SPEC modifies existing code (detected via research.md analysis), apply delta markers:
+
+```
+### [DELTA] {Module Name}
+- [EXISTING] {description} - unchanged context, characterization tests only
+- [MODIFY] {description} - existing code to change, requires characterization tests before modification
+- [NEW] {description} - new code to create, full implementation + new tests
+- [REMOVE] {description} - code to delete, requires dependency analysis and migration verification
+```
+
+Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfield projects skip this.
+
+### spec-compact.md Auto-Generation
+
+After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
+
+Extract from spec.md:
+- All REQ-XXX requirements (EARS format entries)
+- All acceptance criteria (Given/When/Then scenarios)
+- Files to modify list
+- Exclusions (What NOT to Build) section
+
+Exclude: Overview, technical approach, research references, annotation history.
+
+Purpose: Run phase loads spec-compact.md (~30% token savings) instead of full spec.md.
+Fallback: If generation fails, Run phase uses full spec.md.
+
 Quality constraints:
 - Requirement modules limited to 5 or fewer per SPEC
 - Acceptance criteria minimum 2 Given/When/Then scenarios
 - Technical terms and function names remain in English
+- Exclusions section MUST contain at least 1 entry
 
 ### Phase 2.5: GitHub Issue Creation (Conditional)
 
@@ -510,10 +626,13 @@ All of the following must be verified:
 
 - Phase 1: manager-spec analyzed project and proposed SPEC candidates
 - User approval obtained via AskUserQuestion before SPEC creation
-- Phase 2: All 3 SPEC files created (spec.md, plan.md, acceptance.md)
+- Phase 2: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
 - Directory naming follows .moai/specs/SPEC-{ID}/ format
 - YAML frontmatter contains all 8 required fields (including issue_number)
 - EARS structure is complete
+- Exclusions section present with at least 1 entry
+- Delta markers applied for brownfield requirements (if applicable)
+- spec-compact.md auto-generated with requirements + acceptance criteria only
 - Phase 2.5: GitHub Issue created and linked (unless --no-issue)
 - Phase 3: Appropriate git action taken based on flags and user choice
 - If --worktree: SPEC committed before worktree creation
@@ -521,6 +640,35 @@ All of the following must be verified:
 
 ---
 
-Version: 2.7.0
-Updated: 2026-03-11
-Changes: Added Phase 2.5 GitHub Issue creation with bidirectional SPEC-Issue linking, --no-issue flag, issue_number SPEC frontmatter field.
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai plan JWT authentication with refresh token rotation"
+**Expected Result**:
+- Phase 1A: Explore discovers existing auth files if any
+- Phase 1B: manager-spec designs EARS requirements for JWT auth
+- Annotation cycle: 1-3 iterations refining requirements
+- Phase 2: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
+- Phase 2.5: GitHub Issue created and linked to SPEC
+- Phase 3: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
+
+### Existing Assets Flow
+**Prompt**: "/moai plan add payment gateway" (existing e-commerce codebase)
+**Expected Result**:
+- Explore discovers existing order, product, user models
+- SPEC references existing models as dependencies
+- plan.md identifies extension points in existing architecture
+- No duplicate functionality proposed
+
+### Error Flow
+**Prompt**: "/moai plan" (no description provided)
+**Expected Result**:
+- AskUserQuestion prompts user for feature description
+- After user provides description, normal flow continues
+- If user cancels, graceful exit with no files created
+
+---
+
+Version: 2.8.0
+Updated: 2026-03-30
+Changes: Added test scenarios, Phase 0.9 JIT Language Detection.

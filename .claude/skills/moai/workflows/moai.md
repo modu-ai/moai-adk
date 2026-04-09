@@ -209,9 +209,12 @@ Mode selection:
 10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (unless --no-issue). See plan.md Phase 2.5.
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2
-   - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
-   - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
-   - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | team | sub-agent
+   - If `--team` flag: Skip Gate, auto-select execution_mode="team" (no user prompt needed)
+   - If `--solo` flag: Skip Gate, auto-select execution_mode="sub-agent"
+   - Otherwise (no flag):
+     - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
+     - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
+     - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | team | sub-agent
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
    - Team/Sub-agent selected: Pass execution_mode + active_mode to Phase 2
    - See plan.md Decision Point 3.5 for full option details
@@ -224,6 +227,6 @@ Mode selection:
 
 ---
 
-Version: 2.7.0
-Updated: 2026-03-11
-Source: SPEC-MOAI-001. Added GitHub Issue integration (Phase 1.2) with --no-issue flag. Previous: research pattern, annotation cycle (v2.6.0).
+Version: 2.9.0
+Updated: 2026-04-09
+Source: SPEC-MOAI-001. Fix --team/--solo flag Gate auto-skip (v2.9.0). Previous: Harness auto-detection (v2.8.0).

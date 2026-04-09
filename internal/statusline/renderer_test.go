@@ -1351,3 +1351,64 @@ func TestRenderUsageBarWithReset(t *testing.T) {
 		t.Errorf("should contain '(Resets in 2h15m)', got %q", got)
 	}
 }
+
+// TestRenderDirGitLine_WorktreeIndicator verifies that [WT] prefix appears in branch
+// segment when worktree is active and SegmentWorktree is enabled.
+// REQ-CC297-003: 워크트리 활성 시 브랜치 세그먼트에 [WT] 표시
+func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
+	tests := []struct {
+		name           string
+		worktree       string
+		segmentEnabled bool
+		wantWT         bool
+	}{
+		{
+			name:           "워크트리 있고 세그먼트 활성화 시 [WT] 표시",
+			worktree:       "/repo/.claude/worktrees/abc123",
+			segmentEnabled: true,
+			wantWT:         true,
+		},
+		{
+			name:           "워크트리 있어도 세그먼트 비활성화 시 [WT] 미표시",
+			worktree:       "/repo/.claude/worktrees/abc123",
+			segmentEnabled: false,
+			wantWT:         false,
+		},
+		{
+			name:           "워크트리 없으면 세그먼트 활성화해도 [WT] 미표시",
+			worktree:       "",
+			segmentEnabled: true,
+			wantWT:         false,
+		},
+		{
+			name:           "워크트리 없고 세그먼트 비활성화 시 [WT] 미표시",
+			worktree:       "",
+			segmentEnabled: false,
+			wantWT:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			segCfg := map[string]bool{
+				SegmentGitBranch: true,
+				SegmentDirectory: true,
+				SegmentGitStatus: false,
+				SegmentWorktree:  tt.segmentEnabled,
+			}
+			r := NewRenderer("default", true, segCfg)
+			data := &StatusData{
+				Git:      GitStatusData{Branch: "feat/test", Available: true},
+				Directory: "myproject",
+				Worktree: tt.worktree,
+			}
+			got := r.renderDirGitLine(data)
+			if tt.wantWT && !strings.Contains(got, "[WT]") {
+				t.Errorf("워크트리 활성 시 [WT] 표시 필요, got %q", got)
+			}
+			if !tt.wantWT && strings.Contains(got, "[WT]") {
+				t.Errorf("워크트리 비활성 시 [WT] 미표시 필요, got %q", got)
+			}
+		})
+	}
+}

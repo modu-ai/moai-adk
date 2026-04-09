@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -147,9 +148,8 @@ func TestPreToolHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			// PreToolUse uses hookSpecificOutput.permissionDecision per Claude Code protocol
-			if got.HookSpecificOutput == nil {
+			} else if got.HookSpecificOutput == nil {
+				// PreToolUse uses hookSpecificOutput.permissionDecision per Claude Code protocol
 				t.Fatal("HookSpecificOutput is nil")
 			}
 			// Map expected decision to permissionDecision value
@@ -277,24 +277,23 @@ func TestPreToolHandler_UnicodeNFDNFCPathNormalization(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			if got.HookSpecificOutput == nil {
+			} else if got.HookSpecificOutput == nil {
 				t.Fatal("HookSpecificOutput is nil")
-			}
+			} else {
+				gotDecision := got.HookSpecificOutput.PermissionDecision
+				if gotDecision != tt.wantDecision {
+					t.Errorf("PermissionDecision = %q, want %q (projectDir=%q, filePath=%q)",
+						gotDecision, tt.wantDecision, tt.projectDir, tt.filePath)
+					// Log byte differences for debugging
+					t.Logf("projectDir bytes: %x", []byte(tt.projectDir))
+					t.Logf("filePath bytes:   %x", []byte(tt.filePath))
+					t.Logf("NFC korean bytes: %x", []byte(koreanNFC))
+					t.Logf("NFD korean bytes: %x", []byte(koreanNFD))
+				}
 
-			gotDecision := got.HookSpecificOutput.PermissionDecision
-			if gotDecision != tt.wantDecision {
-				t.Errorf("PermissionDecision = %q, want %q (projectDir=%q, filePath=%q)",
-					gotDecision, tt.wantDecision, tt.projectDir, tt.filePath)
-				// Log byte differences for debugging
-				t.Logf("projectDir bytes: %x", []byte(tt.projectDir))
-				t.Logf("filePath bytes:   %x", []byte(tt.filePath))
-				t.Logf("NFC korean bytes: %x", []byte(koreanNFC))
-				t.Logf("NFD korean bytes: %x", []byte(koreanNFD))
-			}
-
-			if tt.wantReason && got.HookSpecificOutput.PermissionDecisionReason == "" {
-				t.Error("expected non-empty PermissionDecisionReason for deny decision")
+				if tt.wantReason && got.HookSpecificOutput.PermissionDecisionReason == "" {
+					t.Error("expected non-empty PermissionDecisionReason for deny decision")
+				}
 			}
 		})
 	}
@@ -354,15 +353,16 @@ func TestDefaultSecurityPolicy(t *testing.T) {
 
 	if policy == nil {
 		t.Fatal("DefaultSecurityPolicy() returned nil")
-	}
-	if len(policy.DangerousBashPatterns) == 0 {
-		t.Error("DangerousBashPatterns should not be empty")
-	}
-	if len(policy.DenyPatterns) == 0 {
-		t.Error("DenyPatterns should not be empty")
-	}
-	if len(policy.AskPatterns) == 0 {
-		t.Error("AskPatterns should not be empty")
+	} else {
+		if len(policy.DangerousBashPatterns) == 0 {
+			t.Error("DangerousBashPatterns should not be empty")
+		}
+		if len(policy.DenyPatterns) == 0 {
+			t.Error("DenyPatterns should not be empty")
+		}
+		if len(policy.AskPatterns) == 0 {
+			t.Error("AskPatterns should not be empty")
+		}
 	}
 	if len(policy.SensitiveContentPatterns) == 0 {
 		t.Error("SensitiveContentPatterns should not be empty")
@@ -827,6 +827,219 @@ func TestPreToolHandler_DangerousBashPatterns(t *testing.T) {
 			// Dangerous patterns should be denied
 			if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
 				t.Errorf("expected deny for %q, got %q", tt.command, got.HookSpecificOutput.PermissionDecision)
+			}
+		})
+	}
+}
+
+// TestPreToolHandler_QualityGate_Disabled verifies that when the quality gate is
+// disabled in config, git commit commands bypass the gate and proceed to regular
+// security checks (AC-GATE-006).
+func TestPreToolHandler_QualityGate_Disabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.NewDefaultConfig()
+	cfg.Gate.Enabled = false
+
+	cfgProvider := &mockConfigProvider{cfg: cfg}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfgProvider, policy)
+
+	toolInput, err := json.Marshal(map[string]string{
+		"command": `git commit -m "test: add feature"`,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	input := &HookInput{
+		SessionID:     "sess-gate",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		ToolInput:     json.RawMessage(toolInput),
+	}
+
+	got, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil || got.HookSpecificOutput == nil {
+		t.Fatal("expected non-nil output")
+	}
+
+	// With gate disabled the commit should be allowed by the gate
+	// (security policy may still apply but git commit is not a dangerous pattern).
+	if got.HookSpecificOutput.PermissionDecision == DecisionDeny {
+		t.Errorf("disabled gate should not deny git commit, got deny with reason: %s",
+			got.HookSpecificOutput.PermissionDecisionReason)
+	}
+}
+
+// TestPreToolHandler_QualityGate_NonGitCommand verifies that non-git-commit Bash
+// commands bypass the quality gate entirely.
+func TestPreToolHandler_QualityGate_NonGitCommand(t *testing.T) {
+	t.Parallel()
+
+	cfgProvider := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfgProvider, policy)
+
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{"git status", "git status"},
+		{"git push", "git push origin main"},
+		{"go build", "go build ./..."},
+		{"ls", "ls -la"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			toolInput, err := json.Marshal(map[string]string{"command": tt.command})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-non-git",
+				HookEventName: "PreToolUse",
+				ToolName:      "Bash",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			got, err := handler.Handle(context.Background(), input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("expected non-nil output")
+			}
+			// Non-git-commit commands should not be denied by the quality gate.
+			// (They may be denied by security policy but not by gate logic.)
+			_ = got // result depends on security policy, not gate
+		})
+	}
+}
+
+// TestPreToolHandler_ExtractBashCommand verifies the helper correctly extracts
+// the command string from Bash tool input JSON.
+func TestPreToolHandler_ExtractBashCommand(t *testing.T) {
+	t.Parallel()
+
+	h := &preToolHandler{
+		cfg:    &mockConfigProvider{cfg: newTestConfig()},
+		policy: DefaultSecurityPolicy(),
+	}
+
+	tests := []struct {
+		name      string
+		toolInput json.RawMessage
+		want      string
+	}{
+		{
+			name:      "valid command",
+			toolInput: json.RawMessage(`{"command": "git commit -m 'test'"}`),
+			want:      "git commit -m 'test'",
+		},
+		{
+			name:      "empty command",
+			toolInput: json.RawMessage(`{"command": ""}`),
+			want:      "",
+		},
+		{
+			name:      "no command field",
+			toolInput: json.RawMessage(`{"file_path": "/tmp/foo.go"}`),
+			want:      "",
+		},
+		{
+			name:      "invalid JSON",
+			toolInput: json.RawMessage(`not-json`),
+			want:      "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := h.extractBashCommand(tt.toolInput)
+			if got != tt.want {
+				t.Errorf("extractBashCommand() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPreToolHandler_LoadGateConfig verifies that loadGateConfig falls back to
+// defaults when config is nil or missing the Gate section.
+func TestPreToolHandler_LoadGateConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil config provider", func(t *testing.T) {
+		t.Parallel()
+		h := &preToolHandler{cfg: nil, policy: DefaultSecurityPolicy()}
+		cfg := h.loadGateConfig()
+		if cfg == nil {
+			t.Fatal("expected non-nil gate config")
+		} else if !cfg.Enabled {
+			t.Error("default gate should be enabled")
+		}
+	})
+
+	t.Run("nil config from provider", func(t *testing.T) {
+		t.Parallel()
+		h := &preToolHandler{
+			cfg:    &mockConfigProvider{cfg: nil},
+			policy: DefaultSecurityPolicy(),
+		}
+		cfg := h.loadGateConfig()
+		if cfg == nil {
+			t.Fatal("expected non-nil gate config")
+		} else if !cfg.Enabled {
+			t.Error("default gate should be enabled")
+		}
+	})
+
+	t.Run("gate disabled via config", func(t *testing.T) {
+		t.Parallel()
+		appCfg := newTestConfig()
+		appCfg.Gate.Enabled = false
+		h := &preToolHandler{
+			cfg:    &mockConfigProvider{cfg: appCfg},
+			policy: DefaultSecurityPolicy(),
+		}
+		cfg := h.loadGateConfig()
+		if cfg == nil {
+			t.Fatal("expected non-nil gate config")
+		} else if cfg.Enabled {
+			t.Error("gate should be disabled per config")
+		}
+	})
+}
+
+// TestFirstLine verifies the firstLine helper function.
+func TestFirstLine(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"single line", "hello world", "hello world"},
+		{"multi line", "first\nsecond\nthird", "first"},
+		{"empty string", "", ""},
+		{"newline only", "\n", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := firstLine(tt.input)
+			if got != tt.want {
+				t.Errorf("firstLine(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}

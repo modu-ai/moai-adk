@@ -8,21 +8,16 @@ description: |
   KO: 문서, README, API문서, Nextra, 마크다운, 기술문서, 문서화
   JA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書
   ZH: 文档, README, API文档, Nextra, markdown, 技术写作
+  NOT for: code implementation, testing, architecture design, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:
-  - moai-foundation-claude
   - moai-foundation-core
-  - moai-docs-generation
+  - moai-workflow-project
   - moai-workflow-jit-docs
-  - moai-workflow-templates
-  - moai-library-mermaid
-  - moai-library-nextra
-  - moai-formats-data
-  - moai-foundation-context
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
