@@ -81,7 +81,7 @@ func FormatDiagnosticsAsInstruction(diagnostics []lsphook.Diagnostic, counts lsp
 	}
 
 	if remaining > 0 {
-		fmt.Fprintf(&sb, "... and %d more errors\n", remaining)
+		fmt.Fprintf(&sb, "... and %d more %ss\n", remaining, kind)
 	}
 
 	sb.WriteString("Fix these errors before proceeding.")
@@ -181,7 +181,7 @@ func FormatDiagnosticsAsInstructionWithFile(filePath string, diagnostics []lspho
 
 	// REQ-LAI-004: truncation notice.
 	if remaining > 0 {
-		fmt.Fprintf(&sb, "... and %d more errors\n", remaining)
+		fmt.Fprintf(&sb, "... and %d more %ss\n", remaining, kind)
 	}
 
 	sb.WriteString("Fix these errors before proceeding.")

@@ -115,6 +115,22 @@ func TestServer_Serve_SkipsInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestServer_Serve_NilHandler(t *testing.T) {
+	t.Parallel()
+
+	srv := NewServer(nil)
+	reader := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"test"}` + "\n")
+	var buf bytes.Buffer
+
+	err := srv.Serve(context.Background(), reader, &buf)
+	if err == nil {
+		t.Fatal("expected error for nil handler, got nil")
+	}
+	if !strings.Contains(err.Error(), "nil handler") {
+		t.Errorf("error message should mention nil handler, got: %q", err.Error())
+	}
+}
+
 // errTest is a simple error type used in tests.
 type errTest string
 

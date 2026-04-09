@@ -276,10 +276,10 @@ func (r *registry) writeTrace(
 		Event:      string(event),
 		Handler:    fmt.Sprintf("%T", h),
 		DurationMs: elapsed.Milliseconds(),
-		SessionID:  input.SessionID,
 	}
 
 	if input != nil {
+		entry.SessionID = input.SessionID
 		entry.Tool = input.ToolName
 	}
 

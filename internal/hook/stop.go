@@ -64,9 +64,9 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 	}
 
 	// Check persistent mode — non-blocking on errors
-	projectDir := input.CWD
+	projectDir := input.ProjectDir
 	if projectDir == "" {
-		projectDir = input.ProjectDir
+		projectDir = input.CWD
 	}
 	if projectDir != "" {
 		mode, err := lifecycle.CheckPersistentMode(projectDir)
