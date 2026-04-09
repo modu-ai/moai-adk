@@ -62,6 +62,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
 
+	// Load research section
+	l.loadResearchSection(sectionsDir, cfg)
+
 	return cfg, nil
 }
 
@@ -173,6 +176,20 @@ func (l *Loader) loadStatuslineSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.Statusline = wrapper.Statusline
 		l.loadedSections["statusline"] = true
+	}
+}
+
+// loadResearchSection loads the research configuration section from research.yaml.
+func (l *Loader) loadResearchSection(dir string, cfg *Config) {
+	wrapper := &researchFileWrapper{Research: cfg.Research}
+	loaded, err := loadYAMLFile(dir, "research.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load research config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Research = wrapper.Research
+		l.loadedSections["research"] = true
 	}
 }
 

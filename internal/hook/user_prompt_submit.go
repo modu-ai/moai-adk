@@ -9,16 +9,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/workflow"
 )
 
 // specFilePattern은 SPEC 디렉토리 내 spec.md 파일을 탐색하는 glob 패턴이다.
 const specFilePattern = ".moai/specs/*/spec.md"
-
-// specIDRe는 SPEC-XXXXX-NNN 형식의 SPEC ID를 추출하는 정규식이다.
-// 세그먼트는 대문자와 숫자의 조합을 허용한다 (예: SPEC-CC297-001, SPEC-AUTH-001).
-var specIDRe = regexp.MustCompile(`SPEC-[A-Z0-9]+-\d+`)
 
 // userPromptSubmitHandler는 UserPromptSubmit 이벤트를 처리한다.
 // 사용자 프롬프트 제출 시 세션 타이틀을 자동으로 생성하여 Claude Code에 반환한다.
@@ -133,7 +130,7 @@ func detectActiveSpec(cwd string) string {
 
 	// SPEC ID를 디렉토리 이름에서 추출
 	specDirName := filepath.Base(filepath.Dir(latestMatch))
-	specID := specIDRe.FindString(specDirName)
+	specID := workflow.SpecIDPattern.FindString(specDirName)
 	if specID == "" {
 		return ""
 	}

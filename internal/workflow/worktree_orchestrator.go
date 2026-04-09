@@ -16,8 +16,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/core/quality"
 )
 
-// specIDPattern validates the expected SPEC-ISSUE-{number} format.
-var specIDPattern = regexp.MustCompile(`^SPEC-ISSUE-\d+$`)
+// SpecIDPattern matches any SPEC ID in the format SPEC-{DOMAIN}-{NUMBER}.
+// Domain starts with uppercase letter, followed by uppercase letters or digits.
+// Exported for reuse by hook and other packages.
+var SpecIDPattern = regexp.MustCompile(`SPEC-[A-Z][A-Z0-9]*-\d+`)
+
+// specIssueIDPattern validates the strict SPEC-ISSUE-{number} format for GitHub issue workflows.
+var specIssueIDPattern = regexp.MustCompile(`^SPEC-ISSUE-\d+$`)
 
 // WorkflowPhaseStatus tracks the completion state of a workflow phase.
 type WorkflowPhaseStatus string
@@ -182,7 +187,7 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 
 	// Extract SPEC ID from worktree path (last directory component).
 	specID := filepath.Base(matched.Path)
-	if !specIDPattern.MatchString(specID) {
+	if !specIssueIDPattern.MatchString(specID) {
 		return nil, fmt.Errorf("worktree %q has invalid SPEC ID %q: %w", matched.Path, specID, ErrInvalidSPECID)
 	}
 
@@ -208,7 +213,7 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 
 // ExecuteWorkflow runs the Plan-Run-Sync sequence for the given SPEC.
 func (o *worktreeOrchestrator) ExecuteWorkflow(ctx context.Context, specID string) (*WorkflowResult, error) {
-	if !specIDPattern.MatchString(specID) {
+	if !specIssueIDPattern.MatchString(specID) {
 		return nil, fmt.Errorf("SPEC ID %q: %w", specID, ErrInvalidSPECID)
 	}
 
@@ -278,7 +283,7 @@ func (o *worktreeOrchestrator) ExecuteWorkflow(ctx context.Context, specID strin
 
 // ValidateQuality runs TRUST 5 quality gates on the worktree for the given SPEC.
 func (o *worktreeOrchestrator) ValidateQuality(ctx context.Context, specID string) (*quality.Report, error) {
-	if !specIDPattern.MatchString(specID) {
+	if !specIssueIDPattern.MatchString(specID) {
 		return nil, fmt.Errorf("SPEC ID %q: %w", specID, ErrInvalidSPECID)
 	}
 
@@ -292,7 +297,7 @@ func (o *worktreeOrchestrator) ValidateQuality(ctx context.Context, specID strin
 
 // PrepareForReview checks quality gates and returns readiness status.
 func (o *worktreeOrchestrator) PrepareForReview(ctx context.Context, specID string) (*ReviewReadiness, error) {
-	if !specIDPattern.MatchString(specID) {
+	if !specIssueIDPattern.MatchString(specID) {
 		return nil, fmt.Errorf("SPEC ID %q: %w", specID, ErrInvalidSPECID)
 	}
 

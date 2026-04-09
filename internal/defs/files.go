@@ -8,17 +8,12 @@ const (
 	// SettingsLocalJSON is the Claude Code local settings override file.
 	SettingsLocalJSON = "settings.local.json"
 
-	// MCPJSON is the MCP server configuration file.
-	MCPJSON = ".mcp.json"
-
 	// ManifestJSON is the MoAI manifest file that tracks deployed templates.
 	ManifestJSON = "manifest.json"
 
 	// ClaudeMD is the main Claude Code execution directive file.
 	ClaudeMD = "CLAUDE.md"
 
-	// GithubSpecRegistryJSON is the file that maps GitHub issues to SPEC IDs.
-	GithubSpecRegistryJSON = "github-spec-registry.json"
 )
 
 // Section YAML file names under .moai/config/sections/.
