@@ -23,26 +23,26 @@ func TestCompactHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		input        *HookInput
-		setupDir     bool
-		wantDecision string
+		name            string
+		input           *HookInput
+		setupDir        bool
+		setProjectDir   bool
+		wantDecision    string
 	}{
 		{
 			name: "normal context preservation",
 			input: &HookInput{
 				SessionID:     "sess-compact-1",
-				CWD:           "", // will be set in test
 				HookEventName: "PreCompact",
 			},
 			setupDir:     true,
+			setProjectDir: true,
 			wantDecision: DecisionAllow,
 		},
 		{
 			name: "compact without memory dir auto-creates it",
 			input: &HookInput{
 				SessionID:     "sess-compact-2",
-				CWD:           "", // will be set in test
 				HookEventName: "PreCompact",
 			},
 			setupDir:     false,
@@ -52,7 +52,6 @@ func TestCompactHandler_Handle(t *testing.T) {
 			name: "compact with no project dir",
 			input: &HookInput{
 				SessionID:     "sess-compact-3",
-				CWD:           "/tmp",
 				HookEventName: "PreCompact",
 			},
 			setupDir:     false,
@@ -62,12 +61,11 @@ func TestCompactHandler_Handle(t *testing.T) {
 			name: "compact preserves session id in data",
 			input: &HookInput{
 				SessionID:     "sess-compact-preserve",
-				CWD:           "/tmp",
-				ProjectDir:    "/tmp",
 				HookEventName: "PreCompact",
 			},
-			setupDir:     false,
-			wantDecision: DecisionAllow,
+			setupDir:      false,
+			setProjectDir: true,
+			wantDecision:  DecisionAllow,
 		},
 	}
 
@@ -75,13 +73,18 @@ func TestCompactHandler_Handle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Use an isolated temp dir for all tests to avoid polluting
+			// /tmp/.moai which causes findProjectRoot failures in other packages
+			// on Linux (where t.TempDir() is under /tmp/).
+			tmpDir := t.TempDir()
 			if tt.setupDir {
-				tmpDir := t.TempDir()
 				stateDir := filepath.Join(tmpDir, ".moai", "state")
 				if err := os.MkdirAll(stateDir, 0o755); err != nil {
 					t.Fatalf("setup state dir: %v", err)
 				}
-				tt.input.CWD = tmpDir
+			}
+			tt.input.CWD = tmpDir
+			if tt.setProjectDir {
 				tt.input.ProjectDir = tmpDir
 			}
 
@@ -111,10 +114,11 @@ func TestCompactHandler_Handle_DataContainsSessionID(t *testing.T) {
 	h := NewCompactHandler()
 	ctx := context.Background()
 
+	tmpDir := t.TempDir()
 	input := &HookInput{
 		SessionID:     "sess-data-check",
-		CWD:           "/tmp",
-		ProjectDir:    "/tmp",
+		CWD:           tmpDir,
+		ProjectDir:    tmpDir,
 		HookEventName: "PreCompact",
 	}
 

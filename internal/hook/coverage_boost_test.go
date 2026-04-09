@@ -112,9 +112,10 @@ func TestCompactHandler_Handle_AlwaysReturnsData(t *testing.T) {
 	h := NewCompactHandler()
 	ctx := context.Background()
 
+	tmpDir := t.TempDir()
 	input := &HookInput{
 		SessionID:     "sess-compact-always",
-		CWD:           "/tmp",
+		CWD:           tmpDir,
 		ProjectDir:    "",
 		HookEventName: "PreCompact",
 	}
