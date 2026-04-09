@@ -30,12 +30,12 @@ func RenderDashboard(data *DashboardData) string {
 	b.WriteString("\n\n")
 
 	// 대상 및 점수 요약
-	b.WriteString(fmt.Sprintf("  Target: %s\n", data.Target))
+	fmt.Fprintf(&b,"  Target: %s\n", data.Target)
 
 	// 현재 점수 + 백분율
 	scorePct := int(data.CurrentScore * 100)
 	targetPct := int(data.TargetScore * 100)
-	b.WriteString(fmt.Sprintf("  Score:  %d%% / %d%% (target)\n", scorePct, targetPct))
+	fmt.Fprintf(&b,"  Score:  %d%% / %d%% (target)\n", scorePct, targetPct)
 
 	// 델타 표시 (현재 - 기준)
 	delta := data.CurrentScore - data.Baseline
@@ -48,16 +48,16 @@ func RenderDashboard(data *DashboardData) string {
 	} else {
 		deltaStr = dimStyle.Render("0%")
 	}
-	b.WriteString(fmt.Sprintf("  Delta:  %s from baseline\n", deltaStr))
+	fmt.Fprintf(&b,"  Delta:  %s from baseline\n", deltaStr)
 
 	// 전체 진행률 바
 	scoreRatio := data.CurrentScore
-	b.WriteString(fmt.Sprintf("  Progress: %s %d%%\n", renderProgressBar(scoreRatio, 25), scorePct))
+	fmt.Fprintf(&b,"  Progress: %s %d%%\n", renderProgressBar(scoreRatio, 25), scorePct)
 	b.WriteString("\n")
 
 	// 실험 통계
-	b.WriteString(fmt.Sprintf("  Experiments: %d/%d", data.Experiments, data.MaxExperiments))
-	b.WriteString(fmt.Sprintf("  (Keep: %d, Discard: %d)\n", data.KeepCount, data.DiscardCount))
+	fmt.Fprintf(&b,"  Experiments: %d/%d", data.Experiments, data.MaxExperiments)
+	fmt.Fprintf(&b,"  (Keep: %d, Discard: %d)\n", data.KeepCount, data.DiscardCount)
 
 	// 기준별 분석
 	if len(data.PerCriterion) > 0 {

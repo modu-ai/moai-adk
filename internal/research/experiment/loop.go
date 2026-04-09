@@ -52,12 +52,15 @@ func (l *Loop) ShouldContinue() bool {
 		return false
 	}
 	if len(l.history) >= l.config.MaxExperiments {
+		l.state = StateComplete
 		return false
 	}
 	if l.targetHitCount >= 3 {
+		l.state = StateComplete
 		return false
 	}
 	if l.stagnationCount >= l.config.StagnationPatience {
+		l.state = StateComplete
 		return false
 	}
 	return true

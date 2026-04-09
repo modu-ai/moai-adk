@@ -2,6 +2,7 @@ package safety
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -26,9 +27,11 @@ func NewFrozenGuardWithPaths(paths []string) *FrozenGuard {
 
 // IsFrozen은 주어진 경로가 동결 목록에 포함되어 있으면 true를 반환한다.
 // 부분 문자열 매칭을 사용하여 절대 경로에서도 동결 경로를 감지한다.
+// 경로 트래버설 방어를 위해 filepath.Clean을 적용한다.
 func (g *FrozenGuard) IsFrozen(path string) bool {
+	cleaned := filepath.Clean(path)
 	for _, fp := range g.frozenPaths {
-		if strings.Contains(path, fp) {
+		if strings.Contains(cleaned, fp) {
 			return true
 		}
 	}
