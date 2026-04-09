@@ -13,7 +13,7 @@ model: sonnet
 permissionMode: bypassPermissions
 memory: user
 skills:
-  - moai-foundation-claude
+  - moai-foundation-cc
   - moai-foundation-core
   - moai-workflow-project
 ---

@@ -267,7 +267,7 @@ The following skills are organized for token efficiency and domain specializatio
 |----------|--------|---------|
 | Language (Separated) | moai-lang-python, moai-lang-typescript, moai-lang-systems, moai-lang-jvm, moai-lang-mobile | Domain-specific language skills for 40-60% token savings |
 | Platform (Separated) | moai-platform-auth, moai-platform-database, moai-platform-deploy | Domain-specific platform skills for 30-50% token savings |
-| Foundation | moai-foundation-core, moai-foundation-claude, moai-foundation-context, moai-foundation-quality | Core principles and quality gates |
+| Foundation | moai-foundation-core, moai-foundation-cc, moai-foundation-context, moai-foundation-quality | Core principles and quality gates |
 | Workflow | moai-workflow-spec, moai-workflow-project, moai-workflow-testing, moai-workflow-jit-docs | Workflow automation and testing |
 | Domain | moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-uiux | Domain expertise patterns |
 
@@ -339,7 +339,7 @@ except PermissionError:
 Skills:
 - [moai-foundation-core](../SKILL.md) - Parent skill (this module is part of it)
 - [moai-foundation-context](../../moai-foundation-context/SKILL.md) - Token budget and session state
-- [moai-foundation-claude](../../moai-foundation-claude/SKILL.md) - Claude Code configuration
+- [moai-foundation-cc](../../moai-foundation-cc/SKILL.md) - Claude Code configuration
 
 Other Modules:
 - [delegation-patterns.md](delegation-patterns.md) - Delegation strategies

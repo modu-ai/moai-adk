@@ -15,7 +15,7 @@ permissionMode: bypassPermissions
 memory: user
 skills:
   - moai-foundation-core
-  - moai-foundation-claude
+  - moai-foundation-cc
   - moai-workflow-templates
 ---
 

@@ -37,7 +37,7 @@ Analyze user request to determine routing:
 
 Core Skills (load when needed):
 
-- Skill("moai-foundation-claude") for orchestration patterns
+- Skill("moai-foundation-cc") for orchestration patterns
 - Skill("moai-foundation-core") for SPEC system and workflows
 - Skill("moai-workflow-project") for project management
 
@@ -566,4 +566,4 @@ Last Updated: 2026-04-03
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
-For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-claude").
+For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").

@@ -59,8 +59,8 @@ Last Updated: 2025-11-29
  - Reference: [moai-workflow-project modules](moai-workflow-project/modules/)
  - Integration: Project setup with worktree support
 
-- moai-foundation-claude: Claude Code execution patterns
- - Reference: [moai-foundation-claude modules](moai-foundation-claude/modules/)
+- moai-foundation-cc: Claude Code execution patterns
+ - Reference: [moai-foundation-cc modules](moai-foundation-cc/modules/)
  - Integration: Command and agent execution patterns
 
 ### Complementary Tools

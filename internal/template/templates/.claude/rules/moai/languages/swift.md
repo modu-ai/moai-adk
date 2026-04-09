@@ -2,46 +2,113 @@
 paths: "**/*.swift,**/Package.swift,**/*.xcodeproj/**"
 ---
 
-# Swift Rules
+# Swift Development Guide
 
-Version: Swift 6+
 
-## Tooling
+---
 
-- Build: Xcode or Swift Package Manager
-- Linting: SwiftLint
-- Testing: XCTest or Swift Testing
-- Formatting: swift-format
 
-## MUST
+# Swift 6+ Development Specialist
 
-- Use Swift Concurrency (async/await, actors)
-- Use Codable for JSON serialization
-- Use property wrappers appropriately (@State, @Binding)
-- Handle errors with do-catch or Result
-- Use guard for early returns
-- Document public APIs with documentation comments
+Swift 6.0+ development expert for iOS/macOS with SwiftUI, Combine, and Swift Concurrency.
 
-## MUST NOT
 
-- Force unwrap optionals (!) without safety check
-- Use implicitly unwrapped optionals unless required
-- Block the main actor with synchronous calls
-- Ignore compiler warnings
-- Use stringly-typed APIs
-- Create retain cycles in closures (use [weak self])
+### Core Capabilities
 
-## File Conventions
+- Swift 6.0: Typed throws, complete concurrency, data-race safety by default
+- SwiftUI 6: @Observable macro, NavigationStack, modern declarative UI
+- Combine: Reactive programming with publishers and subscribers
+- Swift Concurrency: async/await, actors, TaskGroup, isolation
+- XCTest: Unit testing, UI testing, async test support
+- Swift Package Manager: Dependency management
 
-- *Tests.swift for test files
-- One type per file for public types
-- Use PascalCase for types and protocols
-- Use camelCase for properties and methods
-- Group related functionality with extensions
+### Version Requirements
 
-## Testing
+- Swift: 6.0+
+- Xcode: 16.0+
+- iOS: 17.0+ (recommended), minimum 15.0
+- macOS: 14.0+ (recommended)
 
-- Use XCTest or Swift Testing framework
-- Use async tests for concurrent code
-- Mock dependencies with protocols
-- Use snapshot testing for UI
+### Project Setup
+
+Package.swift Configuration: Begin with swift-tools-version comment set to 6.0. Import PackageDescription. Define let package with Package initializer. Set name, platforms array with .iOS and .macOS minimum versions, products array with library definitions, dependencies array with package URLs and version requirements, and targets array with target and testTarget entries including dependencies.
+
+### Essential Patterns
+
+Basic @Observable ViewModel: Import Observation framework. Apply @Observable and @MainActor attributes to final class. Declare private(set) var properties for state. Create async functions that set isLoading true, use defer to set false, and assign fetched data with try? await and nil coalescing.
+
+Basic SwiftUI View: Define struct conforming to View. Declare @State private var for viewModel. In body computed property, use NavigationStack containing List iterating over viewModel items. Add .task modifier calling await on viewModel.load and .refreshable modifier for pull-to-refresh.
+
+Basic Actor for Thread Safety: Define actor type with private dictionary for cache. Create get function returning optional Data for key lookup. Create set function taking key and data parameters for cache storage.
+
+## Module Index
+
+### Swift 6 Features
+
+[modules/swift6-features.md](modules/swift6-features.md)
+
+- Typed throws for precise error handling
+- Complete concurrency checking
+- Data-race safety by default
+- Sendable conformance requirements
+
+### SwiftUI Patterns
+
+[modules/swiftui-patterns.md](modules/swiftui-patterns.md)
+
+- @Observable macro and state management
+- NavigationStack and navigation patterns
+- View lifecycle and .task modifier
+- Environment and dependency injection
+
+### Swift Concurrency
+
+[modules/concurrency.md](modules/concurrency.md)
+
+- async/await fundamentals
+- Actor isolation and @MainActor
+- TaskGroup for parallel execution
+- Custom executors and structured concurrency
+
+### Combine Framework
+
+[modules/combine-reactive.md](modules/combine-reactive.md)
+
+- Publishers and Subscribers
+- Operators and transformations
+- async/await bridge patterns
+- Integration with SwiftUI
+
+## Context7 Library Mappings
+
+### Core Swift
+
+- `/apple/swift` - Swift language and standard library
+- `/apple/swift-evolution` - Swift evolution proposals
+- `/apple/swift-package-manager` - SwiftPM documentation
+- `/apple/swift-async-algorithms` - Async sequence algorithms
+
+### Popular Libraries
+
+- `/Alamofire/Alamofire` - HTTP networking
+- `/onevcat/Kingfisher` - Image downloading and caching
+- `/realm/realm-swift` - Mobile database
+- `/pointfreeco/swift-composable-architecture` - TCA architecture
+- `/Quick/Quick` - BDD testing framework
+- `/Quick/Nimble` - Matcher framework
+
+## Testing Quick Start
+
+Async Test with MainActor: Apply @MainActor attribute to test class extending XCTestCase. Define test function with async throws. Create mock API and set mock data. Initialize system under test with mock. Call await on async method. Use XCTAssertEqual for count verification and XCTAssertFalse for boolean state checks.
+
+
+- `moai-lang-kotlin` - Android counterpart for cross-platform projects
+- `moai-lang-flutter` - Flutter/Dart for cross-platform mobile
+- `moai-domain-backend` - API integration and backend communication
+- `moai-foundation-quality` - iOS security best practices
+- `moai-workflow-testing` - Xcode debugging and profiling
+
+## Resources
+
+- [reference.md](reference.md) - Architecture patterns, network layer, SwiftData
+- [examples.md](examples.md) - Production-ready code examples
