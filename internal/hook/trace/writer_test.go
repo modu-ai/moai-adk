@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -145,10 +146,16 @@ func TestTraceWriter_FileRotation(t *testing.T) {
 }
 
 func TestTraceWriter_GracefulDegradation_UnwritableDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support Unix permissions")
+	}
+	if os.Getuid() == 0 {
+		t.Skip("cannot test permission denial as root")
+	}
 	dir := t.TempDir()
 	// Make the directory read-only so file creation fails.
 	if err := os.Chmod(dir, 0o555); err != nil {
-		t.Skip("cannot chmod dir (may be running as root)")
+		t.Skip("cannot chmod dir")
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
@@ -197,7 +204,10 @@ func TestTraceWriter_ConcurrentWrites(t *testing.T) {
 	wg.Wait()
 	_ = w.Close()
 
-	data, _ := os.ReadFile(filepath.Join(dir, "trace-concurrent.jsonl"))
+	data, err := os.ReadFile(filepath.Join(dir, "trace-concurrent.jsonl"))
+	if err != nil {
+		t.Fatalf("read trace file: %v", err)
+	}
 	// All 50 writes should have been queued and persisted (channel capacity 100).
 	lines := nonEmptyLines(string(data))
 	if len(lines) != 50 {

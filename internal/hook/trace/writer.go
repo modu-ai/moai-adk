@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -27,9 +28,10 @@ type TraceWriter struct {
 	sessionID string
 	maxSize   int64
 
-	ch   chan TraceEntry
-	done chan struct{}
-	once sync.Once
+	ch     chan TraceEntry
+	done   chan struct{}
+	once   sync.Once
+	closed atomic.Bool
 }
 
 // NewTraceWriter creates a new TraceWriter and starts its background goroutine.
@@ -49,9 +51,21 @@ func NewTraceWriter(logDir, sessionID string) *TraceWriter {
 }
 
 // Write enqueues a TraceEntry for async writing. Returns immediately without
-// blocking the caller. If the internal channel is full, the entry is dropped
-// and a warning is logged (graceful degradation).
+// blocking the caller. If the internal channel is full or closed, the entry is
+// dropped and a warning is logged (graceful degradation).
 func (w *TraceWriter) Write(entry TraceEntry) {
+	if w.closed.Load() {
+		return
+	}
+	// recover는 closed 체크와 send 사이에 Close()가 실행되는 드문 레이스를 방어
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Warn("trace: channel closed, dropping entry",
+				"event", entry.Event,
+				"session_id", entry.SessionID,
+			)
+		}
+	}()
 	select {
 	case w.ch <- entry:
 		// Enqueued successfully.
@@ -67,6 +81,7 @@ func (w *TraceWriter) Write(entry TraceEntry) {
 // It is safe to call Close multiple times; subsequent calls are no-ops.
 func (w *TraceWriter) Close() error {
 	w.once.Do(func() {
+		w.closed.Store(true)
 		close(w.ch)
 	})
 	<-w.done
