@@ -169,8 +169,8 @@ func (s *astGrepScanner) Scan(ctx context.Context, filePath string, configPath s
 	return result, nil
 }
 
-// @MX:WARN: [AUTO] goroutine을 사용한 병렬 파일 스캔. context 타임아웃이 개별 Scan에는 전파되지만 wg.Wait 자체는 블로킹됨.
-// @MX:REASON: sync.WaitGroup + goroutine 패턴, context 취소 후에도 이미 시작된 goroutine은 완료까지 대기
+// @MX:WARN: [AUTO] Parallel file scan using goroutines. Context timeout propagates to individual Scan calls, but wg.Wait itself is blocking.
+// @MX:REASON: sync.WaitGroup + goroutine pattern, goroutines already started continue running until completion even after context cancellation
 // ScanMultiple runs ast-grep scan on multiple files.
 // Implements REQ-HOOK-123.
 func (s *astGrepScanner) ScanMultiple(ctx context.Context, filePaths []string, configPath string) ([]*ScanResult, error) {
@@ -357,8 +357,8 @@ var extensionToLanguage = func() map[string]string {
 	return m
 }()
 
-// @MX:ANCHOR: [AUTO] 파일 확장자 유효성 검증 게이트. 스캔 전 확장자 필터링의 단일 진입점.
-// @MX:REASON: fan_in=5, Scan/ScanMultiple 등 모든 스캔 경로에서 호출, 변경 시 지원 언어 범위 전체에 영향
+// @MX:ANCHOR: [AUTO] File extension validation gate. Single entry point for extension filtering before scanning.
+// @MX:REASON: fan_in=5, called from all scan paths including Scan/ScanMultiple, changes affect the full scope of supported languages
 // IsSupportedExtension checks if a file extension is supported for scanning.
 // Per REQ-HOOK-141.
 func IsSupportedExtension(ext string) bool {

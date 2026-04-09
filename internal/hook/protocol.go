@@ -62,22 +62,42 @@ func (p *jsonProtocol) WriteOutput(w io.Writer, output *HookOutput) error {
 }
 
 // validateInput checks that all required fields are present in the HookInput.
-// session_id is optional for PostToolUse and PostToolUseFailure events because
-// Claude Code has a known bug (#541) where the matcher pattern is not respected
-// and non-Write/Edit tools can trigger PostToolUse hooks without session info.
+//
+// session_id is optional for:
+//   - PostToolUse/PostToolUseFailure: Claude Code bug #541 (matcher not respected)
+//   - UserPromptSubmit: Claude Code 2.1.97+ sends minimal payload (issue #615)
+//
+// hook_event_name is inferred from the prompt field when absent:
+//   - If prompt is non-empty and hook_event_name is empty → UserPromptSubmit
+//
+// cwd is optional for UserPromptSubmit (defaults to empty, handler falls back gracefully).
 func validateInput(input *HookInput) error {
+	// Infer event type from prompt field when hook_event_name is missing.
+	// Claude Code 2.1.97+ may send only { "prompt": "..." } for UserPromptSubmit.
+	if input.HookEventName == "" && input.Prompt != "" {
+		input.HookEventName = string(EventUserPromptSubmit)
+	}
+
 	if input.SessionID == "" {
 		switch input.HookEventName {
 		case "PostToolUse", "PostToolUseFailure":
 			// Workaround for Claude Code bug: session_id may be absent in PostToolUse
 			// payloads when the hook fires for tools outside the matcher pattern.
 			input.SessionID = "unknown"
+		case string(EventUserPromptSubmit):
+			// Claude Code 2.1.97+ may omit session_id for UserPromptSubmit (issue #615).
+			input.SessionID = "unknown"
 		default:
 			return fmt.Errorf("%w: missing required field session_id", ErrHookInvalidInput)
 		}
 	}
 	if input.CWD == "" {
-		return fmt.Errorf("%w: missing required field cwd", ErrHookInvalidInput)
+		switch input.HookEventName {
+		case string(EventUserPromptSubmit):
+			// CWD may be absent for UserPromptSubmit; handler falls back gracefully.
+		default:
+			return fmt.Errorf("%w: missing required field cwd", ErrHookInvalidInput)
+		}
 	}
 	if input.HookEventName == "" {
 		return fmt.Errorf("%w: missing required field hook_event_name", ErrHookInvalidInput)

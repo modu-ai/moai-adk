@@ -34,8 +34,8 @@ type projectValidator struct {
 	logger *slog.Logger
 }
 
-// @MX:ANCHOR: [AUTO] 프로젝트 구조 유효성 검증 팩토리. init·update·sync 등 다수 커맨드에서 공유되는 진입점.
-// @MX:REASON: fan_in=8, 프로젝트 생명주기 전반에서 검증 인스턴스 생성을 담당
+// @MX:ANCHOR: [AUTO] Project structure validation factory. Shared entry point across many commands including init, update, and sync.
+// @MX:REASON: fan_in=8, responsible for creating validator instances throughout the project lifecycle
 // NewValidator creates a new ProjectValidator.
 func NewValidator(logger *slog.Logger) ProjectValidator {
 	if logger == nil {

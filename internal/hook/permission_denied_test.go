@@ -14,26 +14,77 @@ func TestPermissionDeniedHandler_EventType(t *testing.T) {
 
 func TestPermissionDeniedHandler_Handle(t *testing.T) {
 	tests := []struct {
-		name  string
-		input *HookInput
+		name      string
+		input     *HookInput
+		wantRetry bool
 	}{
+		// Read-only tools must signal retry.
 		{
-			name: "tool denied",
-			input: &HookInput{
-				SessionID: "sess-001",
-				ToolName:  "Bash",
-			},
+			name:      "Read tool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "Read"},
+			wantRetry: true,
 		},
 		{
-			name:  "empty input",
-			input: &HookInput{},
+			name:      "Grep tool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "Grep"},
+			wantRetry: true,
 		},
 		{
-			name: "write tool denied",
-			input: &HookInput{
-				SessionID: "sess-002",
-				ToolName:  "Write",
-			},
+			name:      "Glob tool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "Glob"},
+			wantRetry: true,
+		},
+		{
+			name:      "WebFetch tool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "WebFetch"},
+			wantRetry: true,
+		},
+		{
+			name:      "WebSearch tool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "WebSearch"},
+			wantRetry: true,
+		},
+		{
+			name:      "Skill tool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "Skill"},
+			wantRetry: true,
+		},
+		{
+			name:      "ListMcpResourcesTool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "ListMcpResourcesTool"},
+			wantRetry: true,
+		},
+		{
+			name:      "ReadMcpResourceTool retries",
+			input:     &HookInput{SessionID: "sess-001", ToolName: "ReadMcpResourceTool"},
+			wantRetry: true,
+		},
+		// Write and execute tools must not retry.
+		{
+			name:      "Write tool does not retry",
+			input:     &HookInput{SessionID: "sess-002", ToolName: "Write"},
+			wantRetry: false,
+		},
+		{
+			name:      "Edit tool does not retry",
+			input:     &HookInput{SessionID: "sess-002", ToolName: "Edit"},
+			wantRetry: false,
+		},
+		{
+			name:      "Bash tool does not retry",
+			input:     &HookInput{SessionID: "sess-002", ToolName: "Bash"},
+			wantRetry: false,
+		},
+		// Unknown tools must not retry.
+		{
+			name:      "unknown tool does not retry",
+			input:     &HookInput{SessionID: "sess-003", ToolName: "UnknownTool"},
+			wantRetry: false,
+		},
+		{
+			name:      "empty tool name does not retry",
+			input:     &HookInput{},
+			wantRetry: false,
 		},
 	}
 
@@ -45,7 +96,10 @@ func TestPermissionDeniedHandler_Handle(t *testing.T) {
 				t.Errorf("Handle() error = %v, want nil", err)
 			}
 			if out == nil {
-				t.Error("Handle() returned nil output")
+				t.Fatal("Handle() returned nil output")
+			}
+			if out.Retry != tt.wantRetry {
+				t.Errorf("Handle() Retry = %v, want %v (tool=%q)", out.Retry, tt.wantRetry, tt.input.ToolName)
 			}
 		})
 	}

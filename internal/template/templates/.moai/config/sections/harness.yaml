@@ -59,3 +59,51 @@ harness:
       evaluator_profile: "strict"
       sprint_contract: true
       playwright_testing: true
+
+  # Model Upgrade Review Process
+  # When Claude model is upgraded, review harness components for simplification.
+  # Reference: Anthropic "Harness Design for Long-Running Apps" (2025)
+  model_upgrade_review:
+    enabled: true
+    # Checklist items to evaluate after model upgrade
+    checklist:
+      - id: sprint_necessity
+        question: "Are per-sprint evaluations still needed, or can the model handle end-to-run evaluation?"
+        action: "If model handles longer coherent work, switch evaluator_mode from per-sprint to final-pass"
+        affects: "levels.thorough.evaluator_mode"
+
+      - id: context_reset_necessity
+        question: "Does the model still exhibit context anxiety near window limits?"
+        action: "If no context anxiety, reduce auto_clear frequency or increase token_threshold"
+        affects: "workflow.yaml auto_clear.token_threshold"
+
+      - id: evaluator_skepticism
+        question: "Has model self-evaluation improved enough to reduce evaluator iterations?"
+        action: "If self-evaluation is reliable, consider reducing gan_loop.max_iterations"
+        affects: "config.yaml gan_loop.max_iterations"
+
+      - id: parallel_safety
+        question: "Can the model safely coordinate more parallel agents without conflicts?"
+        action: "If coordination improved, consider increasing parallel agent limits"
+        affects: "workflow.yaml team settings"
+
+      - id: guardrail_necessity
+        question: "Are any minimal-level skip_phases still necessary for the upgraded model?"
+        action: "Review each skipped phase — remove skip if model can handle the phase efficiently"
+        affects: "levels.minimal.skip_phases"
+
+      - id: harness_level_thresholds
+        question: "Should auto_detection thresholds be adjusted for improved model capabilities?"
+        action: "If model handles complexity better, raise minimal threshold (more tasks qualify as minimal)"
+        affects: "auto_detection.rules"
+
+    # When to trigger review
+    trigger:
+      on_model_change: true           # Auto-trigger when model version changes
+      manual_command: "moai review --harness"  # Manual trigger command
+      review_interval_days: 90        # Periodic review even without model change
+
+    # Review output
+    output:
+      report_path: ".moai/reports/harness-review.md"
+      require_approval: true          # Human must approve harness changes

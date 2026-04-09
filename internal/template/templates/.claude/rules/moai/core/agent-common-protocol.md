@@ -74,6 +74,56 @@ Decision matrix:
 - Agent writes files → `run_in_background: false` (sequential, reliable)
 - Multiple agents need to write different files → Use main session directly or foreground agents in sequence
 
+## Tool Usage Guidelines
+
+[HARD] Agents must follow tool usage patterns optimized for accuracy and efficiency.
+
+### File Operations Pattern
+
+Read-before-write rule:
+- ALWAYS Read a file before using Edit on it
+- Use Grep to locate specific line numbers before targeted Read with offset/limit
+- Use Glob to discover files before reading — never guess file paths
+- Prefer Edit over Write for existing files (sends only the diff, preserves context)
+
+Path handling:
+- Use absolute paths for all file operations
+- Never construct paths from assumptions — verify with Glob or Bash `ls` first
+- When working in worktrees, use project-root-relative paths for write targets
+
+### Search Pattern
+
+Progressive narrowing:
+1. Glob to find candidate files by pattern
+2. Grep with `files_with_matches` to narrow by content
+3. Grep with `content` mode + context lines for detailed inspection
+4. Read with offset/limit for full section understanding
+
+Avoid:
+- Reading entire large files when only a specific section is needed
+- Using Bash grep/find when Grep/Glob tools are available
+- Searching without file type filters when the target language is known
+
+### Tool Selection by Task
+
+| Task | Preferred Tool | Avoid |
+|------|---------------|-------|
+| Find files by name | Glob | Bash find, Bash ls |
+| Search file contents | Grep | Bash grep, Bash rg |
+| Read file contents | Read | Bash cat, Bash head |
+| Modify existing file | Edit | Bash sed, Write (overwrites) |
+| Create new file | Write | Bash echo/cat heredoc |
+| Run system commands | Bash | — |
+| Explore codebase | Agent(Explore) | Multiple sequential Grep calls |
+
+### Error Recovery Pattern
+
+When a tool call fails:
+1. Read the error message carefully — diagnose root cause
+2. Verify assumptions: does the file/path exist? (Glob check)
+3. Try an alternative approach — do not retry the identical call
+4. After 3 failures on the same operation, report the blocker
+
 ## Time Estimation
 
 [HARD] Never use time predictions in plans or reports.

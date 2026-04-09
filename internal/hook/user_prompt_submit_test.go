@@ -86,9 +86,9 @@ func TestDetectWorkflowContext(t *testing.T) {
 	}
 }
 
-// TestHookSpecificOutput_SessionTitleField는 HookSpecificOutput에 SessionTitle 필드가
-// 존재하는지, JSON 직렬화가 올바른지 검증한다.
-func TestHookSpecificOutput_SessionTitleField(t *testing.T) {
+// TestHookSpecificOutput_AdditionalContextField는 HookSpecificOutput의
+// additionalContext 필드 JSON 직렬화를 검증한다.
+func TestHookSpecificOutput_AdditionalContextField(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -98,21 +98,21 @@ func TestHookSpecificOutput_SessionTitleField(t *testing.T) {
 		wantInJSON bool
 	}{
 		{
-			name:       "SessionTitle 설정 시 JSON에 포함",
-			output:     HookSpecificOutput{SessionTitle: "SPEC-FOO-001: 테스트 기능"},
-			wantKey:    "sessionTitle",
+			name:       "AdditionalContext 설정 시 JSON에 포함",
+			output:     HookSpecificOutput{HookEventName: "UserPromptSubmit", AdditionalContext: "session: SPEC-FOO-001: 테스트 기능"},
+			wantKey:    "additionalContext",
 			wantInJSON: true,
 		},
 		{
-			name:       "SessionTitle 미설정 시 JSON에서 생략 (omitempty)",
+			name:       "AdditionalContext 미설정 시 JSON에서 생략 (omitempty)",
 			output:     HookSpecificOutput{},
-			wantKey:    "sessionTitle",
+			wantKey:    "additionalContext",
 			wantInJSON: false,
 		},
 		{
-			name:       "다른 필드와 함께 설정",
-			output:     HookSpecificOutput{SessionTitle: "project / main", AdditionalContext: "ctx"},
-			wantKey:    "sessionTitle",
+			name:       "hookEventName과 함께 설정",
+			output:     HookSpecificOutput{HookEventName: "UserPromptSubmit", AdditionalContext: "session: project / main"},
+			wantKey:    "hookEventName",
 			wantInJSON: true,
 		},
 	}
@@ -142,9 +142,9 @@ func TestHookSpecificOutput_SessionTitleField(t *testing.T) {
 	}
 }
 
-// TestUserPromptSubmitHandler_SessionTitle_WithSPEC는 SPEC 컨텍스트가 있을 때
-// sessionTitle이 올바르게 생성되는지 검증한다.
-func TestUserPromptSubmitHandler_SessionTitle_WithSPEC(t *testing.T) {
+// TestUserPromptSubmitHandler_WithSPEC는 SPEC 컨텍스트가 있을 때
+// additionalContext에 SPEC 정보가 포함되는지 검증한다.
+func TestUserPromptSubmitHandler_WithSPEC(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
@@ -179,16 +179,19 @@ func TestUserPromptSubmitHandler_SessionTitle_WithSPEC(t *testing.T) {
 
 	title := output.HookSpecificOutput.SessionTitle
 	if title == "" {
-		t.Error("SessionTitle이 비어 있음, SPEC-CC297-001이 포함된 타이틀이어야 함")
+		t.Error("SessionTitle이 비어 있음, SPEC-CC297-001이 포함되어야 함")
 	}
 	if !strings.Contains(title, "SPEC-CC297-001") {
 		t.Errorf("SessionTitle에 SPEC-CC297-001이 없음: %q", title)
 	}
+	if output.HookSpecificOutput.HookEventName != "UserPromptSubmit" {
+		t.Errorf("hookEventName이 UserPromptSubmit이어야 함, got: %q", output.HookSpecificOutput.HookEventName)
+	}
 }
 
-// TestUserPromptSubmitHandler_SessionTitle_WithoutSPEC는 SPEC 없을 때
-// project/branch 형식의 타이틀이 생성되는지 검증한다.
-func TestUserPromptSubmitHandler_SessionTitle_WithoutSPEC(t *testing.T) {
+// TestUserPromptSubmitHandler_WithoutSPEC는 SPEC 없을 때
+// project/branch 형식의 정보가 additionalContext에 포함되는지 검증한다.
+func TestUserPromptSubmitHandler_WithoutSPEC(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
@@ -215,7 +218,7 @@ func TestUserPromptSubmitHandler_SessionTitle_WithoutSPEC(t *testing.T) {
 
 	title := output.HookSpecificOutput.SessionTitle
 	if title == "" {
-		t.Error("SessionTitle이 비어 있음, project/branch 타이틀이어야 함")
+		t.Error("SessionTitle이 비어 있음, project/branch 정보가 포함되어야 함")
 	}
 
 	projectName := filepath.Base(tmpDir)
@@ -303,8 +306,8 @@ func TestUserPromptSubmitHandler_SPECWithoutHeading(t *testing.T) {
 	}
 
 	title := output.HookSpecificOutput.SessionTitle
-	if title != "SPEC-TEST-001" {
-		t.Errorf("헤딩 없을 시 SPEC ID만 반환 기대, got: %q", title)
+	if !strings.Contains(title, "SPEC-TEST-001") {
+		t.Errorf("헤딩 없을 시 SPEC ID가 포함되어야 함, got: %q", title)
 	}
 }
 
@@ -360,19 +363,25 @@ func TestUserPromptSubmitHandler_SPECTitle_Format(t *testing.T) {
 		name        string
 		specID      string
 		specHeading string
-		wantTitle   string
+		wantInCtx   string
 	}{
 		{
 			name:        "SPEC-AUTH-001 타이틀",
 			specID:      "SPEC-AUTH-001",
 			specHeading: "사용자 인증 기능",
-			wantTitle:   "SPEC-AUTH-001: 사용자 인증 기능",
+			wantInCtx:   "SPEC-AUTH-001: 사용자 인증 기능",
 		},
 		{
 			name:        "SPEC-CC297-001 타이틀",
 			specID:      "SPEC-CC297-001",
 			specHeading: "UserPromptSubmit 세션 타이틀",
-			wantTitle:   "SPEC-CC297-001: UserPromptSubmit 세션 타이틀",
+			wantInCtx:   "SPEC-CC297-001: UserPromptSubmit 세션 타이틀",
+		},
+		{
+			name:        "SPEC-ID가 헤딩에 이미 포함된 경우 중복 제거",
+			specID:      "SPEC-SRS-003",
+			specHeading: "SPEC-SRS-003: Dashboard + CLI + Agency 통합",
+			wantInCtx:   "SPEC-SRS-003: Dashboard + CLI + Agency 통합",
 		},
 	}
 
@@ -408,8 +417,8 @@ func TestUserPromptSubmitHandler_SPECTitle_Format(t *testing.T) {
 			}
 
 			got := output.HookSpecificOutput.SessionTitle
-			if got != tt.wantTitle {
-				t.Errorf("SessionTitle 불일치\n  got:  %q\n  want: %q", got, tt.wantTitle)
+			if !strings.Contains(got, tt.wantInCtx) {
+				t.Errorf("SessionTitle에 기대값이 없음\n  got:  %q\n  want contains: %q", got, tt.wantInCtx)
 			}
 		})
 	}

@@ -1,23 +1,23 @@
-// Package dashboard는 리서치 실험 대시보드의 터미널 렌더링을 담당한다.
-// lipgloss를 사용하여 진행률 바, 실험 통계, 기준별 분석을 렌더링한다.
+// Package dashboard handles terminal rendering for the research experiment dashboard.
+// It uses lipgloss to render progress bars, experiment statistics, and per-criterion breakdowns.
 package dashboard
 
-// DashboardData는 리서치 대시보드 렌더링에 필요한 전체 데이터를 보관한다.
+// DashboardData holds all data required to render the research dashboard.
 type DashboardData struct {
-	Target         string            // 리서치 대상 이름
-	Baseline       float64           // 기준 점수 (0.0~1.0)
-	CurrentScore   float64           // 현재 점수 (0.0~1.0)
-	TargetScore    float64           // 목표 점수 (0.0~1.0)
-	Experiments    int               // 완료된 실험 수
-	MaxExperiments int               // 최대 실험 수
-	KeepCount      int               // 유지된 실험 수
-	DiscardCount   int               // 폐기된 실험 수
-	PerCriterion   []CriterionStatus // 기준별 상태 목록
+	Target         string            // Research target name
+	Baseline       float64           // Baseline score (0.0~1.0)
+	CurrentScore   float64           // Current score (0.0~1.0)
+	TargetScore    float64           // Target score (0.0~1.0)
+	Experiments    int               // Number of completed experiments
+	MaxExperiments int               // Maximum number of experiments
+	KeepCount      int               // Number of kept experiments
+	DiscardCount   int               // Number of discarded experiments
+	PerCriterion   []CriterionStatus // Per-criterion status list
 }
 
-// CriterionStatus는 단일 평가 기준의 통과율을 나타낸다.
+// CriterionStatus represents the pass rate of a single evaluation criterion.
 type CriterionStatus struct {
-	Name     string  // 기준 이름
-	PassRate float64 // 통과율 (0.0~1.0)
-	Weight   string  // "MUST" 또는 빈 문자열
+	Name     string  // Criterion name
+	PassRate float64 // Pass rate (0.0~1.0)
+	Weight   string  // "MUST" or empty string
 }

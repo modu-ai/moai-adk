@@ -193,8 +193,9 @@ type HookInput struct {
 	StopHookActive bool `json:"stop_hook_active,omitempty"` // True when already continuing due to stop hook
 
 	// SubagentStart/SubagentStop fields
-	AgentID             string `json:"agent_id,omitempty"`
-	AgentTranscriptPath string `json:"agent_transcript_path,omitempty"`
+	AgentID              string `json:"agent_id,omitempty"`
+	AgentTranscriptPath  string `json:"agent_transcript_path,omitempty"`
+	LastAssistantMessage string `json:"last_assistant_message,omitempty"` // SubagentStop/Stop: final response text
 
 	// PreCompact fields
 	Trigger            string `json:"trigger,omitempty"`             // manual, auto
@@ -203,6 +204,10 @@ type HookInput struct {
 	// PostToolUseFailure fields
 	Error       string `json:"error,omitempty"`
 	IsInterrupt bool   `json:"is_interrupt,omitempty"`
+
+	// StopFailure fields (v2.1.78+)
+	ErrorType    string `json:"error_type,omitempty"`    // rate_limit, authentication_failed, billing_error, etc.
+	ErrorMessage string `json:"error_message,omitempty"` // Detailed error message
 
 	// UserPromptSubmit fields
 	Prompt string `json:"prompt,omitempty"`
@@ -228,31 +233,50 @@ type HookInput struct {
 	AgentName      string `json:"agent_name,omitempty"`      // Name of the agent using the worktree
 
 	// ConfigChange fields (v2.1.49+)
-	ConfigFilePath string `json:"config_file_path,omitempty"` // Path to the changed configuration file
+	ConfigFilePath      string `json:"config_file_path,omitempty"`      // Path to the changed configuration file
+	ConfigurationSource string `json:"configuration_source,omitempty"` // user_settings, project_settings, local_settings, policy_settings, skills
 
 	// TaskCreated fields (v2.1.84+)
 	// Reuses TaskID, TaskSubject, TaskDescription from TeammateIdle/TaskCompleted
 
 	// FileChanged fields (v2.1.83+)
-	FilePath string `json:"file_path,omitempty"` // Path to the changed file
+	FilePath   string `json:"file_path,omitempty"`   // Path to the changed file
+	ChangeType string `json:"change_type,omitempty"` // modified, created, deleted
+
+	// CwdChanged fields (v2.1.83+)
+	OldCwd string `json:"old_cwd,omitempty"` // Previous working directory
+	NewCwd string `json:"new_cwd,omitempty"` // New working directory
 
 	// Elicitation fields (v2.1.76+)
-	ElicitationServerName string `json:"elicitation_server_name,omitempty"` // MCP server requesting input
+	ElicitationServerName string          `json:"elicitation_server_name,omitempty"` // MCP server requesting input
+	MCPToolName           string          `json:"mcp_tool_name,omitempty"`           // MCP tool that triggered elicitation
+	ElicitationRequest    json.RawMessage `json:"elicitation_request,omitempty"`     // Form fields for elicitation
+
+	// InstructionsLoaded fields (v2.1.69+)
+	InstructionFilePath  string `json:"instruction_file_path,omitempty"`  // Absolute path to loaded file
+	MemoryType           string `json:"memory_type,omitempty"`            // User, Project, Local, Managed
+	LoadReason           string `json:"load_reason,omitempty"`            // session_start, nested_traversal, path_glob_match, include, compact
+	Globs                string `json:"globs,omitempty"`                  // Glob patterns that triggered load
+	TriggerFilePath      string `json:"trigger_file_path,omitempty"`      // File that triggered the load
+	ParentFilePath       string `json:"parent_file_path,omitempty"`       // Parent file that included this
+
+	// PermissionRequest fields
+	PermissionSuggestions json.RawMessage `json:"permission_suggestions,omitempty"` // Suggested permission rules
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`
 }
 
-// HookSpecificOutput represents the hookSpecificOutput field for PreToolUse/PostToolUse.
-// UserPromptSubmit에서 sessionTitle을 설정하면 Claude Code가 세션 타이틀을 변경한다 (v2.1.94+).
+// HookSpecificOutput represents the hookSpecificOutput field for PreToolUse/PostToolUse/UserPromptSubmit.
+// hookEventName is REQUIRED by Claude Code protocol for every hookSpecificOutput.
 type HookSpecificOutput struct {
-	HookEventName            string `json:"hookEventName,omitempty"`
-	PermissionDecision       string `json:"permissionDecision,omitempty"`
-	PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
-	AdditionalContext        string `json:"additionalContext,omitempty"`
-	// SessionTitle은 UserPromptSubmit 훅에서만 사용되며,
-	// Claude Code 2.1.94+에서 세션 타이틀 자동 설정을 지원한다.
-	SessionTitle string `json:"sessionTitle,omitempty"`
+	HookEventName            string          `json:"hookEventName,omitempty"`
+	PermissionDecision       string          `json:"permissionDecision,omitempty"`
+	PermissionDecisionReason string          `json:"permissionDecisionReason,omitempty"`
+	AdditionalContext        string          `json:"additionalContext,omitempty"`
+	SessionTitle             string          `json:"sessionTitle,omitempty"`             // UserPromptSubmit: sets session title in Claude Code UI
+	UpdatedInput             json.RawMessage `json:"updatedInput,omitempty"`             // PreToolUse: modifies tool input before execution
+	UpdatedMCPToolOutput     string          `json:"updatedMCPToolOutput,omitempty"`     // PostToolUse: replaces MCP tool output
 }
 
 // HookOutput represents the JSON payload written to stdout for Claude Code.
@@ -286,8 +310,8 @@ type HookOutput struct {
 	Data json.RawMessage `json:"-"`
 }
 
-// @MX:ANCHOR: [AUTO] PreToolUse 허용 응답 팩토리. 모든 hook 핸들러에서 기본 허용 응답을 생성할 때 사용.
-// @MX:REASON: fan_in=19, 가장 많이 사용되는 hook 응답 팩토리, 변경 시 전체 핸들러 동작에 영향
+// @MX:ANCHOR: [AUTO] PreToolUse allow response factory. Used to generate the default allow response in all hook handlers.
+// @MX:REASON: fan_in=19, most frequently used hook response factory, changes affect all handler behavior
 // NewAllowOutput creates a HookOutput with permissionDecision "allow" for PreToolUse.
 // Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAllowOutput() *HookOutput {
@@ -311,8 +335,8 @@ func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
 	}
 }
 
-// @MX:ANCHOR: [AUTO] PreToolUse 차단 응답 팩토리. 도구 실행을 거부할 때 사용되는 핵심 팩토리.
-// @MX:REASON: fan_in=7, 차단 결정의 단일 진입점, 프로토콜 준수 필수
+// @MX:ANCHOR: [AUTO] PreToolUse deny response factory. Core factory used when rejecting tool execution.
+// @MX:REASON: fan_in=7, single entry point for deny decisions, protocol compliance is mandatory
 // NewDenyOutput creates a HookOutput with permissionDecision "deny" for PreToolUse.
 // Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewDenyOutput(reason string) *HookOutput {
@@ -325,8 +349,8 @@ func NewDenyOutput(reason string) *HookOutput {
 	}
 }
 
-// @MX:ANCHOR: [AUTO] PreToolUse 권한 요청 응답 팩토리. 사용자 확인이 필요한 경우 사용.
-// @MX:REASON: fan_in=3, 권한 요청 응답의 단일 생성 지점
+// @MX:ANCHOR: [AUTO] PreToolUse permission-ask response factory. Used when user confirmation is required.
+// @MX:REASON: fan_in=3, single creation point for permission-ask responses
 // NewAskOutput creates a HookOutput with permissionDecision "ask" for PreToolUse.
 // Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAskOutput(reason string) *HookOutput {

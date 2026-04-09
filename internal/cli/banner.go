@@ -16,7 +16,7 @@ const moaiBanner = `
 ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
 `
 
-// @MX:NOTE: [AUTO] CLI 배너 출력 - init, update, version 등 4개 이상 진입점에서 호출
+// @MX:NOTE: [AUTO] CLI banner output - called from 4+ entry points including init, update, and version
 // PrintBanner displays the MoAI ASCII art banner with version information.
 // The banner uses MoAI's adaptive brand color (#C45A3C light, #DA7756 dark)
 // and includes the provided version string. If version is empty, it displays "unknown".

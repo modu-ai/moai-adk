@@ -1,23 +1,23 @@
-// Package observe는 수동적 관찰 수집 및 패턴 탐지를 제공한다.
-// 에이전트 실행 중 교정, 실패, 성공 이벤트를 기록하고
-// 반복되는 패턴을 자동으로 분류한다.
+// Package observe provides passive observation collection and pattern detection.
+// It records correction, failure, and success events during agent execution
+// and automatically classifies repeating patterns.
 package observe
 
 import "time"
 
-// ObservationType은 관찰 유형을 나타낸다.
+// ObservationType represents the type of observation.
 type ObservationType string
 
 const (
-	// ObsCorrection은 사용자 교정 관찰을 나타낸다.
+	// ObsCorrection represents a user correction observation.
 	ObsCorrection ObservationType = "correction"
-	// ObsFailure는 에이전트 실패 관찰을 나타낸다.
+	// ObsFailure represents an agent failure observation.
 	ObsFailure ObservationType = "failure"
-	// ObsSuccess는 에이전트 성공 관찰을 나타낸다.
+	// ObsSuccess represents an agent success observation.
 	ObsSuccess ObservationType = "success"
 )
 
-// Observation은 단일 관찰 레코드를 나타낸다.
+// Observation represents a single observation record.
 type Observation struct {
 	Type      ObservationType `json:"type"`
 	Agent     string          `json:"agent"`
@@ -26,23 +26,23 @@ type Observation struct {
 	Timestamp time.Time       `json:"timestamp"`
 }
 
-// PatternClassification은 패턴의 신뢰도 분류를 나타낸다.
+// PatternClassification represents the confidence classification of a pattern.
 type PatternClassification string
 
 const (
-	// ClassObservation은 단순 관찰 단계 (반복 횟수 부족).
+	// ClassObservation is the simple observation stage (insufficient repetitions).
 	ClassObservation PatternClassification = "observation"
-	// ClassHeuristic은 휴리스틱 단계 (일정 횟수 이상 반복 확인).
+	// ClassHeuristic is the heuristic stage (confirmed above a certain repetition count).
 	ClassHeuristic PatternClassification = "heuristic"
-	// ClassRule은 규칙 단계 (높은 반복 횟수).
+	// ClassRule is the rule stage (high repetition count).
 	ClassRule PatternClassification = "rule"
-	// ClassHighConfidence는 높은 신뢰도 단계 (매우 높은 반복 횟수).
+	// ClassHighConfidence is the high-confidence stage (very high repetition count).
 	ClassHighConfidence PatternClassification = "high_confidence"
-	// ClassAntiPattern은 안티패턴 (즉시 플래그 처리 대상).
+	// ClassAntiPattern is an anti-pattern (subject to immediate flagging).
 	ClassAntiPattern PatternClassification = "anti_pattern"
 )
 
-// Pattern은 그룹화된 관찰들에서 탐지된 패턴을 나타낸다.
+// Pattern represents a pattern detected from grouped observations.
 type Pattern struct {
 	Key            string                `json:"key"`
 	Classification PatternClassification `json:"classification"`

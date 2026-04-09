@@ -2,28 +2,28 @@ package safety
 
 import "fmt"
 
-// CanaryChecker는 제안된 변경이 회귀를 일으키지 않는지 검증한다.
+// CanaryChecker verifies that a proposed change does not cause regressions.
 type CanaryChecker struct{}
 
-// NewCanaryChecker는 새로운 CanaryChecker를 생성한다.
+// NewCanaryChecker creates a new CanaryChecker.
 func NewCanaryChecker() *CanaryChecker {
 	return &CanaryChecker{}
 }
 
-// Check는 제안된 결과를 베이스라인과 비교한다.
-// 제안 점수가 임계값 이상 하락하지 않으면 true를 반환한다.
-// threshold는 허용 가능한 최대 점수 하락폭이다 (예: 0.10 = 10%).
+// Check compares the proposed result against baselines.
+// Returns true if the proposed score does not drop by more than the threshold.
+// threshold is the maximum allowable score drop (e.g., 0.10 = 10%).
 func (c *CanaryChecker) Check(baselines []Baseline, proposed float64, threshold float64) (bool, error) {
 	if threshold <= 0 {
-		return false, fmt.Errorf("research/safety: 임계값은 양수여야 함: %f", threshold)
+		return false, fmt.Errorf("research/safety: threshold must be positive: %f", threshold)
 	}
 
-	// 베이스라인이 없으면 비교 대상이 없으므로 통과
+	// No baselines means nothing to compare against, so pass
 	if len(baselines) == 0 {
 		return true, nil
 	}
 
-	// 각 베이스라인에 대해 회귀 여부 확인
+	// Check for regression against each baseline
 	for _, b := range baselines {
 		drop := b.Score - proposed
 		if drop > threshold {

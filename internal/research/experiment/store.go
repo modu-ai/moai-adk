@@ -9,22 +9,22 @@ import (
 	"strings"
 )
 
-// ResultStore는 타겟별 실험 결과와 변경 이력을 파일 시스템에 관리한다.
+// ResultStore manages per-target experiment results and change history on the filesystem.
 type ResultStore struct {
 	baseDir string
 }
 
-// NewResultStore는 지정된 디렉토리에 실험 결과를 관리하는 저장소를 생성한다.
+// NewResultStore creates a store that manages experiment results in the specified directory.
 func NewResultStore(baseDir string) *ResultStore {
 	return &ResultStore{baseDir: baseDir}
 }
 
-// SaveExperiment는 실험 결과를 JSON 파일로 저장한다.
-// 파일명은 exp-{NNN}.json 형식으로 0-패딩 3자리 순번을 사용한다.
+// SaveExperiment saves an experiment result as a JSON file.
+// Filenames use the format exp-{NNN}.json with zero-padded 3-digit sequence numbers.
 func (s *ResultStore) SaveExperiment(target string, exp *Experiment) error {
 	targetDir := s.targetDir(target)
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return fmt.Errorf("실험 디렉토리 생성 실패 (target=%s): %w", target, err)
+		return fmt.Errorf("failed to create experiment directory (target=%s): %w", target, err)
 	}
 
 	count := s.ExperimentCount(target)
@@ -32,19 +32,19 @@ func (s *ResultStore) SaveExperiment(target string, exp *Experiment) error {
 
 	data, err := json.MarshalIndent(exp, "", "  ")
 	if err != nil {
-		return fmt.Errorf("실험 직렬화 실패 (id=%s): %w", exp.ID, err)
+		return fmt.Errorf("failed to serialize experiment (id=%s): %w", exp.ID, err)
 	}
 
 	filePath := filepath.Join(targetDir, filename)
 	if err := os.WriteFile(filePath, data, 0o644); err != nil {
-		return fmt.Errorf("실험 파일 쓰기 실패 (%s): %w", filePath, err)
+		return fmt.Errorf("failed to write experiment file (%s): %w", filePath, err)
 	}
 
 	return nil
 }
 
-// LoadExperiments는 타겟의 모든 실험 결과를 파일명 순서대로 로드한다.
-// 디렉토리가 존재하지 않으면 빈 슬라이스를 반환한다.
+// LoadExperiments loads all experiment results for a target in filename order.
+// Returns an empty slice if the directory does not exist.
 func (s *ResultStore) LoadExperiments(target string) ([]*Experiment, error) {
 	targetDir := s.targetDir(target)
 
@@ -53,10 +53,10 @@ func (s *ResultStore) LoadExperiments(target string) ([]*Experiment, error) {
 		if os.IsNotExist(err) {
 			return []*Experiment{}, nil
 		}
-		return nil, fmt.Errorf("실험 디렉토리 읽기 실패 (target=%s): %w", target, err)
+		return nil, fmt.Errorf("failed to read experiment directory (target=%s): %w", target, err)
 	}
 
-	// exp-*.json 파일만 필터링하여 정렬
+	// Filter and sort exp-*.json files only
 	var jsonFiles []string
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasPrefix(e.Name(), "exp-") && strings.HasSuffix(e.Name(), ".json") {
@@ -69,12 +69,12 @@ func (s *ResultStore) LoadExperiments(target string) ([]*Experiment, error) {
 	for _, name := range jsonFiles {
 		data, err := os.ReadFile(filepath.Join(targetDir, name))
 		if err != nil {
-			return nil, fmt.Errorf("실험 파일 읽기 실패 (%s): %w", name, err)
+			return nil, fmt.Errorf("failed to read experiment file (%s): %w", name, err)
 		}
 
 		var exp Experiment
 		if err := json.Unmarshal(data, &exp); err != nil {
-			return nil, fmt.Errorf("실험 역직렬화 실패 (%s): %w", name, err)
+			return nil, fmt.Errorf("failed to deserialize experiment (%s): %w", name, err)
 		}
 		experiments = append(experiments, &exp)
 	}
@@ -82,18 +82,18 @@ func (s *ResultStore) LoadExperiments(target string) ([]*Experiment, error) {
 	return experiments, nil
 }
 
-// AppendChangelog는 타겟의 changelog.md에 마크다운 항목을 추가한다.
+// AppendChangelog appends a markdown entry to the target's changelog.md.
 func (s *ResultStore) AppendChangelog(target string, entry ChangelogEntry) error {
 	targetDir := s.targetDir(target)
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return fmt.Errorf("changelog 디렉토리 생성 실패: %w", err)
+		return fmt.Errorf("failed to create changelog directory: %w", err)
 	}
 
 	changelogPath := filepath.Join(targetDir, "changelog.md")
 
-	// 마크다운 항목 생성
+	// Build markdown entry
 	md := fmt.Sprintf(
-		"### %s (score: %.2f, decision: %s)\n\n- **변경**: %s\n- **이유**: %s\n\n",
+		"### %s (score: %.2f, decision: %s)\n\n- **Change**: %s\n- **Reason**: %s\n\n",
 		entry.ExperimentID,
 		entry.Score,
 		entry.Decision,
@@ -103,18 +103,18 @@ func (s *ResultStore) AppendChangelog(target string, entry ChangelogEntry) error
 
 	f, err := os.OpenFile(changelogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("changelog 파일 열기 실패: %w", err)
+		return fmt.Errorf("failed to open changelog file: %w", err)
 	}
 
 	if _, err := f.WriteString(md); err != nil {
 		_ = f.Close()
-		return fmt.Errorf("changelog 쓰기 실패: %w", err)
+		return fmt.Errorf("failed to write changelog: %w", err)
 	}
 
 	return f.Close()
 }
 
-// ExperimentCount는 타겟 디렉토리의 exp-*.json 파일 수를 반환한다.
+// ExperimentCount returns the number of exp-*.json files in the target directory.
 func (s *ResultStore) ExperimentCount(target string) int {
 	targetDir := s.targetDir(target)
 
@@ -133,7 +133,7 @@ func (s *ResultStore) ExperimentCount(target string) int {
 	return count
 }
 
-// targetDir는 타겟에 대한 디렉토리 경로를 반환한다.
+// targetDir returns the directory path for the given target.
 func (s *ResultStore) targetDir(target string) string {
 	return filepath.Join(s.baseDir, sanitizeTarget(target))
 }

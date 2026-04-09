@@ -24,8 +24,8 @@ type LoopController struct {
 	done      chan struct{}
 }
 
-// @MX:ANCHOR: [AUTO] 피드백 루프 컨트롤러 팩토리 - 모든 루프 실행의 진입점
-// @MX:REASON: [AUTO] fan_in=18+ (CLI, 훅, 테스트 등 모든 루프 실행 경로가 이 함수 경유); 의존성 주입 경계
+// @MX:ANCHOR: [AUTO] Feedback loop controller factory - entry point for all loop executions
+// @MX:REASON: [AUTO] fan_in=18+ (all loop execution paths, including CLI, hooks, and tests, pass through this function); dependency injection boundary
 // NewLoopController creates a new LoopController with injected dependencies.
 func NewLoopController(storage Storage, engine DecisionEngine, feedback FeedbackGenerator, maxIterations int) *LoopController {
 	if maxIterations <= 0 {
@@ -39,8 +39,8 @@ func NewLoopController(storage Storage, engine DecisionEngine, feedback Feedback
 	}
 }
 
-// @MX:WARN: [AUTO] goroutine runLoop을 시작하며 컨텍스트 기반 라이프사이클 관리 필요
-// @MX:REASON: [AUTO] loopCtx 취소 또는 Stop() 호출 없이는 goroutine이 계속 실행됨; 실행 중 ctx 취소 시 orphan 가능
+// @MX:WARN: [AUTO] Starts the runLoop goroutine; requires context-based lifecycle management
+// @MX:REASON: [AUTO] goroutine keeps running without loopCtx cancellation or Stop() call; orphan goroutine possible if ctx is cancelled during execution
 // Start initializes a new feedback loop for the given SPEC ID and begins
 // execution in a background goroutine. Returns ErrLoopAlreadyRunning if
 // a loop is already active.

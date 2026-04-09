@@ -7,38 +7,38 @@ import (
 	"time"
 )
 
-// ErrRateLimitExceeded는 속도 제한 초과 시 반환되는 에러이다.
+// ErrRateLimitExceeded is the error returned when a rate limit is exceeded.
 var ErrRateLimitExceeded = fmt.Errorf("research: rate limit exceeded")
 
-// RateLimiter는 실험 빈도 제한을 적용한다.
+// RateLimiter enforces experiment frequency limits.
 type RateLimiter struct {
-	storePath string // 액션 기록을 저장하는 JSONL 파일 경로
+	storePath string // Path to the JSONL file storing action records
 }
 
-// NewRateLimiter는 주어진 경로에 기록을 저장하는 리미터를 생성한다.
+// NewRateLimiter creates a limiter that stores records at the given path.
 func NewRateLimiter(storePath string) *RateLimiter {
 	return &RateLimiter{
 		storePath: storePath,
 	}
 }
 
-// CheckSessionLimit은 세션 실험 횟수가 제한 내에 있는지 확인한다.
+// CheckSessionLimit checks whether the session experiment count is within the limit.
 func (l *RateLimiter) CheckSessionLimit(config RateLimitConfig, sessionActions int) error {
 	if sessionActions >= config.MaxExperimentsPerSession {
-		return fmt.Errorf("research/safety: 세션 실험 제한 초과 (%d/%d): %w",
+		return fmt.Errorf("research/safety: session experiment limit exceeded (%d/%d): %w",
 			sessionActions, config.MaxExperimentsPerSession, ErrRateLimitExceeded)
 	}
 	return nil
 }
 
-// CheckWeeklyLimit은 액션 로그를 읽고 주간 제한을 확인한다.
+// CheckWeeklyLimit reads the action log and checks the weekly limit.
 func (l *RateLimiter) CheckWeeklyLimit(config RateLimitConfig) error {
 	records, err := l.loadRecords()
 	if err != nil {
-		return fmt.Errorf("research/safety: 액션 로그 읽기 실패: %w", err)
+		return fmt.Errorf("research/safety: failed to read action log: %w", err)
 	}
 
-	// 최근 7일 이내의 auto_research 기록만 카운트
+	// Count only auto_research records within the last 7 days
 	weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 	count := 0
 	for _, r := range records {
@@ -48,17 +48,17 @@ func (l *RateLimiter) CheckWeeklyLimit(config RateLimitConfig) error {
 	}
 
 	if count >= config.MaxAutoResearchPerWeek {
-		return fmt.Errorf("research/safety: 주간 자동 리서치 제한 초과 (%d/%d): %w",
+		return fmt.Errorf("research/safety: weekly auto-research limit exceeded (%d/%d): %w",
 			count, config.MaxAutoResearchPerWeek, ErrRateLimitExceeded)
 	}
 	return nil
 }
 
-// RecordAction은 JSONL 로그에 액션을 추가한다.
+// RecordAction appends an action to the JSONL log.
 func (l *RateLimiter) RecordAction(actionType string) error {
 	f, err := os.OpenFile(l.storePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("research/safety: 액션 로그 파일 열기 실패: %w", err)
+		return fmt.Errorf("research/safety: failed to open action log file: %w", err)
 	}
 
 	record := ActionRecord{
@@ -68,19 +68,19 @@ func (l *RateLimiter) RecordAction(actionType string) error {
 
 	if err := json.NewEncoder(f).Encode(record); err != nil {
 		_ = f.Close()
-		return fmt.Errorf("research/safety: 액션 기록 쓰기 실패: %w", err)
+		return fmt.Errorf("research/safety: failed to write action record: %w", err)
 	}
 	return f.Close()
 }
 
-// loadRecords는 JSONL 파일에서 모든 액션 기록을 읽는다.
+// loadRecords reads all action records from the JSONL file.
 func (l *RateLimiter) loadRecords() ([]ActionRecord, error) {
 	f, err := os.Open(l.storePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil // 파일이 없으면 빈 목록 반환
+			return nil, nil // Return empty list if file does not exist
 		}
-		return nil, fmt.Errorf("research/safety: 액션 로그 파일 열기 실패: %w", err)
+		return nil, fmt.Errorf("research/safety: failed to open action log file: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
@@ -89,7 +89,7 @@ func (l *RateLimiter) loadRecords() ([]ActionRecord, error) {
 	for dec.More() {
 		var r ActionRecord
 		if err := dec.Decode(&r); err != nil {
-			return nil, fmt.Errorf("research/safety: 액션 기록 디코딩 실패: %w", err)
+			return nil, fmt.Errorf("research/safety: failed to decode action record: %w", err)
 		}
 		records = append(records, r)
 	}

@@ -54,7 +54,7 @@ var deps *Dependencies
 // Dependencies that require a project root (Config, Git) are
 // initialized lazily on first use or when the project root is available.
 func InitDependencies() {
-	// hook 핸들러의 slog 출력이 stderr로 유출되지 않도록 기본 로거를 discard로 교체한다.
+	// Replace the default logger with discard to prevent slog output from hook handlers leaking to stderr.
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	slog.SetDefault(logger)
 

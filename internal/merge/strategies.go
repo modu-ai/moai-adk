@@ -61,7 +61,7 @@ func NewStrategySelector() StrategySelector {
 	return &strategySelector{}
 }
 
-// @MX:NOTE: [AUTO] 파일 타입별 머지 전략 선택 - 정확 파일명 매칭, 확장자 매칭, 텍스트/바이너리 분류 순서로 높은 순환 복잡도
+// @MX:NOTE: [AUTO] Merge strategy selection per file type - high cyclomatic complexity due to ordered checks: exact filename match, extension match, then text/binary classification
 func (s *strategySelector) SelectStrategy(path string) MergeStrategy {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))

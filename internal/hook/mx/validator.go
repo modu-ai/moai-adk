@@ -32,8 +32,8 @@ type mxValidator struct {
 	fanInThreshold int
 }
 
-// @MX:ANCHOR: [AUTO] MX 태그 유효성 검증기 팩토리. ValidateFile/ValidateFiles 호출 체인의 시작점.
-// @MX:REASON: fan_in=8, mx hook 핸들러 및 CLI에서 다수 호출, 인터페이스 변경 시 전파 범위 큼
+// @MX:ANCHOR: [AUTO] MX tag validator factory. Entry point for the ValidateFile/ValidateFiles call chain.
+// @MX:REASON: fan_in=8, called frequently from mx hook handlers and CLI, interface changes have wide propagation scope
 // NewValidator creates a new MX Validator.
 // analyzer may be nil (Grep fallback will be used).
 // projectRoot is the base directory for fan_in reference counting.
@@ -79,8 +79,8 @@ func (v *mxValidator) ValidateFile(ctx context.Context, filePath string) (*FileR
 	return report, nil
 }
 
-// @MX:WARN: [AUTO] ValidateFiles에서 goroutine으로 병렬 호출됨. ctx.Done() 체크로 중단 가능하지만 개별 countFanIn이 블로킹될 수 있음.
-// @MX:REASON: goroutine 병렬 유효성 검증, context 취소 시 즉시 중단되지 않는 구간 존재
+// @MX:WARN: [AUTO] Called in parallel via goroutines from ValidateFiles. Can be interrupted via ctx.Done(), but individual countFanIn calls may block.
+// @MX:REASON: parallel validation via goroutines, sections that do not stop immediately on context cancellation exist
 // analyzeFile performs the core analysis logic for a single file.
 // Returns all detected violations.
 func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content string) []Violation {
@@ -251,8 +251,8 @@ func extractFunctions(lines []string) []funcInfo {
 	return funcs
 }
 
-// @MX:WARN: [AUTO] 외부 프로세스(grep)를 goroutine 내에서 실행. context가 전달되지만 grep 프로세스 종료 보장 없음.
-// @MX:REASON: exec.CommandContext 사용, OS 프로세스 종료 타이밍이 context 취소와 비동기적
+// @MX:WARN: [AUTO] Runs an external process (grep) inside a goroutine. Context is passed but termination of the grep process is not guaranteed.
+// @MX:REASON: uses exec.CommandContext, OS process termination timing is asynchronous with context cancellation
 // countFanIn counts the number of references to funcName in the project directory.
 // It uses grep to search for the function name and subtracts 1 for the declaration.
 func (v *mxValidator) countFanIn(ctx context.Context, funcName, currentFile string) int {

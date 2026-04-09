@@ -75,7 +75,7 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 				HookEventName: "UserPromptSubmit",
 				Prompt:        "Help me fix this bug",
 			},
-			// UserPromptSubmit은 이제 sessionTitle을 포함한 HookSpecificOutput을 반환한다
+			// UserPromptSubmit returns HookSpecificOutput with additionalContext
 			wantNilHSO: false,
 		},
 		{
@@ -450,8 +450,9 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 				HookEventName: "UserPromptSubmit",
 				Prompt:        "Help me fix this bug",
 			},
-			// UserPromptSubmit은 이제 sessionTitle을 포함한 HookSpecificOutput을 반환한다
-			wantNilHSO: false,
+			// UserPromptSubmit returns HookSpecificOutput with additionalContext
+			wantNilHSO:        false,
+			wantHookEventName: "UserPromptSubmit",
 		},
 		{
 			name:    "PermissionRequest round-trip",

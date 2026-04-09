@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -209,22 +210,112 @@ func TestQualityGate_runStep_Success(t *testing.T) {
 	}
 }
 
-func TestQualityGate_runGolangciLint_SkipsIfMissing(t *testing.T) {
+func TestQualityGate_executeStep_SkipsOptionalMissing(t *testing.T) {
 	t.Parallel()
 
-	// This test verifies that runGolangciLint returns (true, "") when the binary
-	// is absent. We cannot control PATH in parallel tests without side effects,
-	// so we just verify the function handles the missing-binary case gracefully
-	// by calling it in an environment where golangci-lint may or may not be present.
+	// Verifies that executeStep returns (true, "") when the binary
+	// is absent and the step is marked optional.
 	cfg := DefaultGateConfig()
 	g := NewQualityGate(cfg)
 
-	passed, output := g.runGolangciLint(context.Background())
+	step := gateStep{name: "missing-tool", binary: "this-binary-does-not-exist-12345", optional: true}
+	passed, output := g.executeStep(context.Background(), step, 5*time.Second)
 
-	// If golangci-lint is missing: (true, ""). If present and passes: (true, "").
-	// If present and fails: (false, something). All are acceptable.
-	if !passed && output == "" {
-		t.Error("on failure, output must not be empty")
+	if !passed {
+		t.Error("executeStep with missing optional binary should pass (skip)")
+	}
+	if output != "" {
+		t.Errorf("output should be empty when tool is skipped, got: %q", output)
+	}
+}
+
+func TestQualityGate_detectToolchain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		marker     string
+		wantNil    bool
+		wantMarker string // first marker of expected toolchain
+	}{
+		{"Go project", "go.mod", false, "go.mod"},
+		{"Node project", "package.json", false, "package.json"},
+		{"Python pyproject", "pyproject.toml", false, "pyproject.toml"},
+		{"Python requirements", "requirements.txt", false, "pyproject.toml"},
+		{"Rust project", "Cargo.toml", false, "Cargo.toml"},
+		{"Java Maven", "pom.xml", false, "pom.xml"},
+		{"Ruby project", "Gemfile", false, "Gemfile"},
+		{"PHP project", "composer.json", false, "composer.json"},
+		{"Dart project", "pubspec.yaml", false, "pubspec.yaml"},
+		{"Elixir project", "mix.exs", false, "mix.exs"},
+		{"Swift project", "Package.swift", false, "Package.swift"},
+		{"Scala project", "build.sbt", false, "build.sbt"},
+		{"Zig project", "build.zig", false, "build.zig"},
+		{"Unknown project", "", true, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			if tt.marker != "" {
+				if err := os.WriteFile(filepath.Join(dir, tt.marker), []byte(""), 0o644); err != nil {
+					t.Fatalf("failed to create marker file: %v", err)
+				}
+			}
+			g := NewQualityGate(&GateConfig{ProjectDir: dir})
+			tc := g.detectToolchain()
+			if tt.wantNil {
+				if tc != nil {
+					t.Errorf("detectToolchain() should be nil for %q, got marker %v", tt.name, tc.markerFiles)
+				}
+			} else {
+				if tc == nil {
+					t.Errorf("detectToolchain() should not be nil for %q", tt.name)
+				} else if tc.markerFiles[0] != tt.wantMarker {
+					t.Errorf("detectToolchain() first marker = %q, want %q", tc.markerFiles[0], tt.wantMarker)
+				}
+			}
+		})
+	}
+}
+
+func TestQualityGate_detectToolchain_GlobPattern(t *testing.T) {
+	t.Parallel()
+
+	// C# projects use *.csproj glob pattern
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "MyApp.csproj"), []byte("<Project/>"), 0o644); err != nil {
+		t.Fatalf("failed to create .csproj file: %v", err)
+	}
+
+	g := NewQualityGate(&GateConfig{ProjectDir: dir})
+	tc := g.detectToolchain()
+
+	if tc == nil {
+		t.Fatal("detectToolchain() should detect C# project from .csproj file")
+	}
+	if tc.markerFiles[0] != "*.csproj" {
+		t.Errorf("expected *.csproj marker, got %v", tc.markerFiles)
+	}
+}
+
+func TestQualityGate_Run_UnknownProjectPasses(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir() // empty directory, no language markers
+	g := NewQualityGate(&GateConfig{
+		Enabled:    true,
+		ProjectDir: dir,
+	})
+
+	passed, output := g.Run(context.Background())
+
+	if !passed {
+		t.Errorf("unknown project should pass silently, got output: %q", output)
+	}
+	if output != "" {
+		t.Errorf("output should be empty for unknown project, got: %q", output)
 	}
 }
 

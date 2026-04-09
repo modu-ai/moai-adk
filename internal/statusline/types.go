@@ -121,9 +121,9 @@ func (m *ModelInfo) UnmarshalJSON(data []byte) error {
 // WorkspaceInfo represents the workspace directory information from Claude Code.
 // Claude Code 2.1.97+ adds git_worktree field for active worktree path.
 type WorkspaceInfo struct {
-	CurrentDir  string `json:"current_dir"`   // 현재 작업 디렉토리
-	ProjectDir  string `json:"project_dir"`   // 원본 프로젝트 디렉토리 (표시에 사용)
-	GitWorktree string `json:"git_worktree"`  // 활성 git worktree 경로 (2.1.97+, 없으면 빈 문자열)
+	CurrentDir  string `json:"current_dir"`   // Current working directory
+	ProjectDir  string `json:"project_dir"`   // Original project directory (used for display)
+	GitWorktree string `json:"git_worktree"`  // Active git worktree path (2.1.97+, empty string if none)
 }
 
 // OutputStyleInfo represents the output style from Claude Code.
@@ -182,7 +182,7 @@ type StatusData struct {
 	Task              TaskData       // Current active task (rendering enabled in Phase 4)
 	Usage             *UsageResult   // API usage (nil when unavailable)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
-	Worktree          string         // 활성 git worktree 경로 (없으면 빈 문자열, REQ-CC297-003)
+	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
 }
 
 // GitStatusData holds git repository status information.
@@ -236,8 +236,8 @@ const (
 	SegmentUsage7D     = "usage_7d"     // 7-day API usage
 	SegmentTask        = "task"         // Current active task
 
-	// REQ-CC297-003: git worktree 세그먼트 (Claude Code 2.1.97+)
-	SegmentWorktree = "worktree" // 활성 worktree 인디케이터 [WT]
+	// REQ-CC297-003: git worktree segment (Claude Code 2.1.97+)
+	SegmentWorktree = "worktree" // Active worktree indicator [WT]
 )
 
 // UsageData represents API usage information.

@@ -33,8 +33,8 @@ func HashFile(path string) (hashResult string, hashErr error) {
 	return hashPrefix + hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// @MX:ANCHOR: [AUTO] SHA-256 해시 계산 유틸리티 - 매니페스트 전반에서 6개 이상의 호출자가 사용
-// @MX:REASON: fan_in=6, 반환 포맷("sha256:<hex>")이 FileEntry.TemplateHash/DeployedHash/CurrentHash와 직접 연동되므로 포맷 변경 금지
+// @MX:ANCHOR: [AUTO] SHA-256 hash computation utility - used by 6 or more callers throughout the manifest
+// @MX:REASON: fan_in=6, the return format ("sha256:<hex>") is directly coupled with FileEntry.TemplateHash/DeployedHash/CurrentHash; do not change the format
 // HashBytes computes the SHA-256 hash of a byte slice.
 // Returns the hash as "sha256:<hex>" format.
 func HashBytes(data []byte) string {

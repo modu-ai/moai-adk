@@ -76,8 +76,8 @@ var (
 	ErrHashMismatch = errors.New("manifest: hash verification failed")
 )
 
-// @MX:ANCHOR: [AUTO] 매니페스트 데이터 구조 생성 - Load, corrupt 복구, Track 등 3개 이상의 경로에서 호출
-// @MX:REASON: fan_in=3, Files 맵 초기화를 책임지며 nil map panic 방지의 단일 출구점
+// @MX:ANCHOR: [AUTO] Manifest data structure creation - called from 3 or more paths including Load, corrupt recovery, and Track
+// @MX:REASON: fan_in=3, responsible for Files map initialization; single exit point preventing nil map panics
 // NewManifest creates a new empty Manifest with initialized Files map.
 func NewManifest() *Manifest {
 	return &Manifest{

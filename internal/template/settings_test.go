@@ -502,7 +502,7 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 		t.Fatal("missing hooks section")
 	}
 
-	const expectedCount = 25 // PermissionRequest removed (bypassPermissions 무력화 방지)
+	const expectedCount = 26 // All supported Claude Code hook events
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}

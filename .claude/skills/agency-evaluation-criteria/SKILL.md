@@ -89,11 +89,33 @@ Governs quality assessment of all agency project deliverables. Enforces skeptica
 
 ### Testing Requirements
 
-- Playwright: desktop (1280x720) + mobile (375x667) screenshots
-- Click test: all buttons, links, CTAs
-- Scroll test: full page traversal
-- Form test: all input fields (if applicable)
-- Lighthouse: Performance, Accessibility, Best Practices, SEO
+#### Phase 1: Visual Verification
+- Desktop screenshot (1280x720): full page capture
+- Mobile screenshot (375x667): full page capture
+- Compare against design-spec.md layout expectations
+- Check for AI slop indicators (purple gradients, white cards, generic stock icons)
+
+#### Phase 2: Interaction Testing
+- Click test: all buttons, links, CTAs — verify navigation and state changes
+- Form test: all input fields with valid/invalid data, verify validation messages
+- Scroll test: full page traversal, verify lazy loading and fixed elements
+- Keyboard test: Tab navigation order, Enter/Space activation on interactive elements
+
+#### Phase 3: Responsive Verification
+- Mobile viewport: no horizontal overflow, readable text (min 16px)
+- Touch targets: minimum 44x44px for all interactive elements
+- Mobile navigation: hamburger menu functionality, swipe gestures
+- Breakpoint transitions: verify layout changes at 768px, 1024px, 1280px
+
+#### Phase 4: Performance Audit
+- Lighthouse scores: Performance >= 80, Accessibility >= 90, Best Practices >= 80, SEO >= 80
+- Core Web Vitals: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- Bundle size check: main bundle < 200KB gzipped (unless justified)
+
+#### Tool Priority
+1. claude-in-chrome MCP (preferred): Live browser interaction with screenshots
+2. Playwright via Bash (fallback): Headless testing when MCP unavailable
+3. Static analysis (minimum): HTML/CSS validation, link checking
 
 ---
 
