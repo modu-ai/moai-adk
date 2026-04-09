@@ -20,6 +20,12 @@
       "command": "/bin/bash",
       "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
 {{- end}}
+    },
+    "moai-lsp": {
+      "$comment": "LSP code intelligence via moai binary (goto definition, find references, hover, diagnostics, rename)",
+      "command": "moai",
+      "args": ["mcp", "lsp"],
+      "timeout": 30
     }
   },
   "staggeredStartup": {

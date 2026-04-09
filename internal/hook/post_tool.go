@@ -10,6 +10,7 @@ import (
 
 	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
+	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
@@ -33,6 +34,9 @@ type postToolHandler struct {
 	mxValidator mx.Validator
 	// mxTimeout is the timeout for MX validation. Default is 500ms.
 	mxTimeout time.Duration
+	// cfg provides access to ralph configuration for lint_as_instruction (REQ-LAI-003).
+	// If nil, lint_as_instruction defaults to true.
+	cfg ConfigProvider
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -75,6 +79,23 @@ func NewPostToolHandlerWithMxValidatorAndTimeout(diagnostics lsphook.LSPDiagnost
 	}
 }
 
+// NewPostToolHandlerWithConfig creates a PostToolUse handler with full configuration
+// including a ConfigProvider for reading ralph settings (lint_as_instruction, etc.).
+// Use this constructor when systemMessage injection for LSP diagnostics is required.
+func NewPostToolHandlerWithConfig(diagnostics lsphook.LSPDiagnosticsCollector, analyzer FileAnalyzer, projectRoot string, timeout time.Duration, cfg ConfigProvider) Handler {
+	var validator mx.Validator
+	if projectRoot != "" {
+		validator = mx.NewValidator(nil, projectRoot)
+	}
+	return &postToolHandler{
+		diagnostics: diagnostics,
+		analyzer:    analyzer,
+		mxValidator: validator,
+		mxTimeout:   timeout,
+		cfg:         cfg,
+	}
+}
+
 // EventType returns EventPostToolUse.
 func (h *postToolHandler) EventType() EventType {
 	return EventPostToolUse
@@ -82,7 +103,8 @@ func (h *postToolHandler) EventType() EventType {
 
 // Handle processes a PostToolUse event. It collects metrics about the tool
 // execution (tool name, output size) and returns them in the Data field.
-// For Write/Edit tools, also collects LSP diagnostics per REQ-HOOK-150.
+// For Write/Edit tools, also collects LSP diagnostics per REQ-HOOK-150 and
+// injects a systemMessage when lint_as_instruction is enabled (REQ-LAI-001).
 // Always returns Decision "allow" (observation only).
 func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Debug("collecting post-tool metrics",
@@ -112,14 +134,27 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		logTaskMetrics(input)
 	}
 
-	// Collect LSP diagnostics for Write/Edit operations (REQ-HOOK-150, REQ-HOOK-153)
+	var systemMessage string
+
+	// Collect LSP diagnostics for Write/Edit operations (REQ-HOOK-150, REQ-HOOK-153).
+	// Also generates systemMessage if lint_as_instruction is enabled (REQ-LAI-001).
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.diagnostics != nil {
-		h.collectDiagnostics(ctx, input, metrics)
+		systemMessage = h.collectDiagnosticsWithInstruction(ctx, input, metrics)
 	}
 
-	// Perform AST file scan after Write/Edit operations (observation-only, never blocks)
+	// Perform AST file scan after Write/Edit operations (observation-only, never blocks).
+	// When lint_as_instruction is enabled, security findings are also appended to
+	// systemMessage alongside LSP errors (REQ-LAI-008).
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.analyzer != nil {
-		h.runAstScan(ctx, input, metrics)
+		if astResult := h.runAstScan(ctx, input, metrics); astResult != nil && h.lintAsInstructionEnabled() {
+			// Extract file path from tool input for the security message header.
+			var parsed map[string]any
+			if err := json.Unmarshal(input.ToolInput, &parsed); err == nil {
+				if fp, ok := parsed["file_path"].(string); ok {
+					systemMessage = quality.AppendAstSecurityFindings(systemMessage, fp, astResult)
+				}
+			}
+		}
 	}
 
 	// Perform MX tag validation after Write/Edit operations (observation-only, never blocks)
@@ -139,23 +174,25 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		HookSpecificOutput: &HookSpecificOutput{
 			HookEventName: "PostToolUse",
 		},
-		Data: jsonData,
+		SystemMessage: systemMessage,
+		Data:          jsonData,
 	}, nil
 }
 
 // runAstScan performs an AST-based scan on the modified file.
 // Observation-only: never blocks even if an error occurs.
-func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metrics map[string]any) {
+// Returns the ScanResult so callers can use it for systemMessage injection (REQ-LAI-008).
+func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metrics map[string]any) *astgrep.ScanResult {
 	// Extract file path from tool input
 	var parsed map[string]any
 	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
 		slog.Debug("failed to parse tool input for AST scan", "error", err)
-		return
+		return nil
 	}
 
 	filePath, ok := parsed["file_path"].(string)
 	if !ok || filePath == "" {
-		return
+		return nil
 	}
 
 	// Perform AST scan (observation-only, errors are only logged)
@@ -165,10 +202,10 @@ func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metr
 			"file_path", filePath,
 			"error", err,
 		)
-		return
+		return nil
 	}
 	if result == nil {
-		return
+		return nil
 	}
 
 	// Add scan results to metrics
@@ -184,6 +221,7 @@ func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metr
 		"matches", len(result.Matches),
 		"lang", result.Language,
 	)
+	return result
 }
 
 // runMxValidation performs MX tag validation on the modified file.
@@ -288,19 +326,47 @@ func (h *postToolHandler) runMxValidation(ctx context.Context, input *HookInput,
 	}
 }
 
-// collectDiagnostics collects LSP diagnostics for the modified file.
+// lintAsInstructionEnabled returns true when the lint_as_instruction feature
+// should be active. If no config is set, it defaults to true (opt-out model).
+func (h *postToolHandler) lintAsInstructionEnabled() bool {
+	if h.cfg == nil {
+		return true
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return true
+	}
+	return cfg.Ralph.LintAsInstruction
+}
+
+// warnAsInstructionEnabled returns true when warnings should also be injected
+// as systemMessage instructions (REQ-LAI-006). Defaults to false.
+func (h *postToolHandler) warnAsInstructionEnabled() bool {
+	if h.cfg == nil {
+		return false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return false
+	}
+	return cfg.Ralph.WarnAsInstruction
+}
+
+// collectDiagnosticsWithInstruction collects LSP diagnostics for the modified file,
+// populates the metrics map (REQ-LAI-005, backward compatible), and returns a
+// formatted systemMessage string when lint_as_instruction is enabled (REQ-LAI-001).
 // This is observation-only and MUST NOT block per REQ-HOOK-153.
-func (h *postToolHandler) collectDiagnostics(ctx context.Context, input *HookInput, metrics map[string]any) {
+func (h *postToolHandler) collectDiagnosticsWithInstruction(ctx context.Context, input *HookInput, metrics map[string]any) string {
 	// Extract file path from tool input
 	var parsed map[string]any
 	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
 		slog.Debug("failed to parse tool input for diagnostics", "error", err)
-		return
+		return ""
 	}
 
 	filePath, ok := parsed["file_path"].(string)
 	if !ok || filePath == "" {
-		return
+		return ""
 	}
 
 	// Get diagnostics (observation only, never block)
@@ -310,13 +376,13 @@ func (h *postToolHandler) collectDiagnostics(ctx context.Context, input *HookInp
 			"file_path", filePath,
 			"error", err,
 		)
-		return
+		return ""
 	}
 
 	// Calculate severity counts
 	counts := h.diagnostics.GetSeverityCounts(diagnostics)
 
-	// Add diagnostic counts to metrics
+	// REQ-LAI-005: Add diagnostic counts to metrics (always, regardless of lint_as_instruction).
 	metrics["lsp_diagnostics"] = map[string]any{
 		"file":        filepath.Base(filePath),
 		"errors":      counts.Errors,
@@ -340,4 +406,13 @@ func (h *postToolHandler) collectDiagnostics(ctx context.Context, input *HookInp
 			"file_path", filepath.Base(filePath),
 		)
 	}
+
+	// REQ-LAI-003: skip systemMessage injection when lint_as_instruction is false.
+	if !h.lintAsInstructionEnabled() {
+		return ""
+	}
+
+	// REQ-LAI-001 / REQ-LAI-002 / REQ-LAI-004 / REQ-LAI-006 / REQ-LAI-007:
+	// Format diagnostics as an instruction for the AI.
+	return quality.FormatDiagnosticsAsInstructionWithFile(filePath, diagnostics, counts, h.warnAsInstructionEnabled())
 }

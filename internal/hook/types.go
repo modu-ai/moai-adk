@@ -244,11 +244,15 @@ type HookInput struct {
 }
 
 // HookSpecificOutput represents the hookSpecificOutput field for PreToolUse/PostToolUse.
+// UserPromptSubmit에서 sessionTitle을 설정하면 Claude Code가 세션 타이틀을 변경한다 (v2.1.94+).
 type HookSpecificOutput struct {
 	HookEventName            string `json:"hookEventName,omitempty"`
 	PermissionDecision       string `json:"permissionDecision,omitempty"`
 	PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
 	AdditionalContext        string `json:"additionalContext,omitempty"`
+	// SessionTitle은 UserPromptSubmit 훅에서만 사용되며,
+	// Claude Code 2.1.94+에서 세션 타이틀 자동 설정을 지원한다.
+	SessionTitle string `json:"sessionTitle,omitempty"`
 }
 
 // HookOutput represents the JSON payload written to stdout for Claude Code.

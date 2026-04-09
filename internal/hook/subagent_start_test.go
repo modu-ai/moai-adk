@@ -60,8 +60,7 @@ func TestSubagentStartHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
 				t.Error("SubagentStart hook should not set hookSpecificOutput")
 			}
 		})

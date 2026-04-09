@@ -172,7 +172,7 @@
       "NotebookEdit",
       "Read",
       "Skill",
-      "Task",
+      "Agent",
       "TaskCreate",
       "TaskGet",
       "TaskList",

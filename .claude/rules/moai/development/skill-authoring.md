@@ -21,6 +21,14 @@ Optional standard fields:
 - compatibility: Target platform description, max 500 characters (default: Designed for Claude Code)
 - allowed-tools: Comma-separated string of tool names the skill can use (experimental)
 - user-invocable: Boolean to control slash command menu visibility (default: true, set to false to hide from / menu)
+- disable-model-invocation: Boolean, when true only user can invoke (not Claude). Use for workflows with side effects (default: false)
+- effort: Session effort override: low, medium, high, max (max is Opus 4.6 only)
+- model: Model override when skill is active (sonnet, opus, haiku)
+- shell: Shell for command injection: bash (default) or powershell
+- context: Set to "fork" to run skill in forked subagent context (isolated execution)
+- agent: Subagent type when context is fork. Built-in: Explore, Plan, general-purpose, or custom agent name
+- hooks: Hook definitions scoped to skill lifecycle
+- paths: Glob patterns limiting auto-invocation to matching files (comma-separated or YAML array)
 
 ### metadata Map
 
@@ -68,6 +76,9 @@ license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
+effort: low
+shell: bash
+model: sonnet
 metadata:
   version: "1.0.0"
   category: "domain"
@@ -179,8 +190,48 @@ Variables available inside skill SKILL.md content:
 | `${CLAUDE_SKILL_DIR}` | Absolute path to the skill's own directory | v2.1.69 |
 | `${CLAUDE_SESSION_ID}` | Current session identifier | v2.1.9 |
 | `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory (plugin skills only) | v2.0.12 |
+| `$ARGUMENTS` | All arguments passed when invoking skill | v2.1.0 |
+| `$ARGUMENTS[N]` | Specific argument by 0-based index (e.g., `$ARGUMENTS[0]`) | v2.1.0 |
+| `$N` | Shorthand for `$ARGUMENTS[N]` (e.g., `$0`, `$1`) | v2.1.0 |
 
 Use `${CLAUDE_SKILL_DIR}` for referencing files within the skill directory instead of relative paths. This is more reliable across different invocation contexts.
+
+If skill content does not reference `$ARGUMENTS`, Claude Code automatically appends `ARGUMENTS: <value>` at the end of the skill content.
+
+## Skill Invocation Control
+
+Three invocation modes control how skills appear and load:
+
+| Setting | User invokes | Claude invokes | Description loaded | Use case |
+|---------|-------------|---------------|-------------------|----------|
+| (default / user-invocable: true) | Yes | Yes | Always | Standard skills |
+| disable-model-invocation: true | Yes | No | No | Workflows with side effects |
+| user-invocable: false | No | Yes | Always | Background knowledge |
+
+When `disable-model-invocation: true` is set, the skill is NOT loaded into Claude's context, so Claude cannot auto-invoke it. Use for skills that perform destructive actions.
+
+When `user-invocable: false` is set, the skill is hidden from the `/` menu but Claude can still invoke it as background knowledge. Use for reference material.
+
+## Shell Command Injection
+
+Skills support dynamic context via shell command injection. Commands run BEFORE skill content is sent to Claude, and their output replaces the placeholder in the skill content.
+
+Inline syntax: Use exclamation-backtick notation to inject a single command's output inline.
+
+Multi-line syntax: Use a triple-backtick fence with exclamation mark as the language identifier to run multiple commands sequentially.
+
+Policy control: Disable with `disableSkillShellExecution: true` in settings.json. Each command placeholder is replaced with `[shell command execution disabled by policy]`.
+
+## Skill Scope and Priority
+
+Skills can exist at multiple levels. When the same name exists across levels, higher priority wins:
+
+| Priority | Location | Path | Scope |
+|----------|----------|------|-------|
+| 1 (highest) | Enterprise | Per managed settings | All org users |
+| 2 | Personal | ~/.claude/skills/name/SKILL.md | All projects |
+| 3 | Project | .claude/skills/name/SKILL.md | This project |
+| 4 (lowest) | Plugin | plugin/skills/name/SKILL.md | Where enabled (uses plugin-name:skill-name namespace) |
 
 ## Best Practices
 

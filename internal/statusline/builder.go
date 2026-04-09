@@ -200,6 +200,11 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Directory = extractProjectDirectory(input)
 	}
 
+	// Extract active worktree path from workspace (REQ-CC297-003, Claude Code 2.1.97+)
+	if input != nil && input.Workspace != nil {
+		data.Worktree = input.Workspace.GitWorktree
+	}
+
 	// Extract output style from nested structure
 	if input != nil && input.OutputStyle != nil {
 		data.OutputStyle = input.OutputStyle.Name

@@ -6,7 +6,7 @@ description: |
   Cannot modify its own FROZEN zone or safety_rails.
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: opus
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 maxTurns: 100
 memory: project
 skills:

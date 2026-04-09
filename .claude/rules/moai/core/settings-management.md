@@ -124,7 +124,7 @@ Tool permissions in settings.json:
 
 - Read, Write, Edit: File operations
 - Bash: Shell command execution
-- Task: Agent delegation
+- Agent: Sub-agent delegation
 - AskUserQuestion: User interaction
 
 ## Quality Configuration

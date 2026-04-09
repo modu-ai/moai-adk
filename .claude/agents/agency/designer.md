@@ -5,7 +5,7 @@ description: |
   First section (hero) sets the entire site tone. Outputs design-spec.md with tokens, components, layouts.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, WebFetch
 model: sonnet
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 maxTurns: 100
 memory: project
 skills:

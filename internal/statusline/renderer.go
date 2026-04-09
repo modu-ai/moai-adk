@@ -297,6 +297,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 
 // renderDirGitLine renders the directory + branch + git status line (default L3, full L5).
 // Format: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// 워크트리 활성 시: 🔀 [WT] feat/auth ↑2↓1
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
@@ -305,9 +306,13 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
-	// Branch + ahead/behind
+	// Branch + ahead/behind (+ worktree indicator)
 	if r.isSegmentEnabled(SegmentGitBranch) {
 		if branch := renderGitBranch(data); branch != "" {
+			// REQ-CC297-003: 워크트리 세그먼트 활성화 + 활성 worktree 있을 때 [WT] 접두사 추가
+			if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
+				branch = "[WT] " + branch
+			}
 			segs = append(segs, branch)
 		}
 	}

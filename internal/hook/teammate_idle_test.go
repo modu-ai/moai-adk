@@ -182,8 +182,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			if got.ExitCode != tt.wantExitCode {
+			} else if got.ExitCode != tt.wantExitCode {
 				t.Errorf("ExitCode = %d, want %d", got.ExitCode, tt.wantExitCode)
 			}
 		})

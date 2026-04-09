@@ -1201,3 +1201,54 @@ func TestBuilderSetModeNormalizes(t *testing.T) {
 			gotAfterSetMinimal, gotDefault)
 	}
 }
+
+// TestCollectAll_ExtractsWorktree verifies that collectAll correctly extracts
+// git_worktree from workspace input data.
+// REQ-CC297-003: collectAll에서 WorkspaceInfo.GitWorktree를 StatusData.Worktree로 전달
+func TestCollectAll_ExtractsWorktree(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     *StdinData
+		wantWT    string
+	}{
+		{
+			name: "워크트리 경로가 있을 때 StatusData.Worktree에 저장",
+			input: &StdinData{
+				Workspace: &WorkspaceInfo{
+					CurrentDir: "/repo/.claude/worktrees/abc123",
+					ProjectDir: "/repo",
+					GitWorktree: "/repo/.claude/worktrees/abc123",
+				},
+			},
+			wantWT: "/repo/.claude/worktrees/abc123",
+		},
+		{
+			name: "워크트리가 없을 때 빈 문자열",
+			input: &StdinData{
+				Workspace: &WorkspaceInfo{
+					CurrentDir: "/repo",
+					ProjectDir: "/repo",
+				},
+			},
+			wantWT: "",
+		},
+		{
+			name:   "workspace nil일 때 빈 문자열",
+			input:  &StdinData{},
+			wantWT: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &defaultBuilder{
+				renderer: NewRenderer("default", true, nil),
+				mode:     ModeDefault,
+			}
+			data := b.collectAll(context.Background(), tt.input)
+			if data.Worktree != tt.wantWT {
+				t.Errorf("Worktree = %q, want %q", data.Worktree, tt.wantWT)
+			}
+		})
+	}
+}

@@ -6,7 +6,7 @@ description: |
   Uses concrete numbers, avoids AI slop phrases, follows brand-voice.md.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, WebFetch
 model: sonnet
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 maxTurns: 100
 memory: project
 skills:

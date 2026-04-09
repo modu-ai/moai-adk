@@ -1,0 +1,16 @@
+gate:
+  # enabled controls whether the quality gate runs before git commit.
+  # Set to false to skip all checks (not recommended in production).
+  enabled: true
+
+  # skip_tests skips the go test step when true.
+  # Useful during rapid development cycles when you want quick commits.
+  skip_tests: false
+
+  timeouts:
+    # vet is the maximum seconds allowed for go vet ./...
+    vet: 30
+    # lint is the maximum seconds allowed for golangci-lint run
+    lint: 60
+    # test is the maximum seconds allowed for go test ./...
+    test: 120

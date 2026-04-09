@@ -11,7 +11,7 @@ description: |
   NOT for: code implementation, testing, architecture design, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 maxTurns: 150
 memory: project
 skills:

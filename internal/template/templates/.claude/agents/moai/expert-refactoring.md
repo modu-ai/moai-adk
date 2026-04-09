@@ -9,9 +9,9 @@ description: |
   JA: リファクタリング, 再構造化, コードモード, 変換, API移行, 一括変更, 大規模変更, AST検索, 構造検索
   ZH: 重构, 重组, 代码模式, 转换, API迁移, 批量重命名, 大规模变更, AST搜索, 结构搜索
   NOT for: new feature development, bug fixes, security audits, DevOps, testing strategy
-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: default
+permissionMode: bypassPermissions
 maxTurns: 100
 memory: project
 skills:

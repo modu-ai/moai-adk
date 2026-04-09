@@ -112,9 +112,10 @@ func TestCompactHandler_Handle_AlwaysReturnsData(t *testing.T) {
 	h := NewCompactHandler()
 	ctx := context.Background()
 
+	tmpDir := t.TempDir()
 	input := &HookInput{
 		SessionID:     "sess-compact-always",
-		CWD:           "/tmp",
+		CWD:           tmpDir,
 		ProjectDir:    "",
 		HookEventName: "PreCompact",
 	}
@@ -125,18 +126,17 @@ func TestCompactHandler_Handle_AlwaysReturnsData(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	// Compact always returns non-nil data with session_id, status, snapshot_created.
-	if got.Data == nil {
+	} else if got.Data == nil {
+		// Compact always returns non-nil data with session_id, status, snapshot_created.
 		t.Fatal("Data should not be nil")
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal(got.Data, &data); err != nil {
-		t.Fatalf("unmarshal Data: %v", err)
-	}
-	if data["snapshot_created"] != true {
-		t.Errorf("snapshot_created = %v, want true", data["snapshot_created"])
+	} else {
+		var data map[string]any
+		if err := json.Unmarshal(got.Data, &data); err != nil {
+			t.Fatalf("unmarshal Data: %v", err)
+		}
+		if data["snapshot_created"] != true {
+			t.Errorf("snapshot_created = %v, want true", data["snapshot_created"])
+		}
 	}
 }
 
@@ -419,7 +419,7 @@ func TestLogTaskMetrics_MkdirAllFails(t *testing.T) {
 
 	input := &HookInput{
 		SessionID:    "sess-mkdir-fail",
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		CWD:          tmpDir,
 		ToolResponse: json.RawMessage(`{"metrics":{"tokensUsed":100,"toolUses":2,"durationSeconds":5.0}}`),
 	}
@@ -483,11 +483,9 @@ func TestDefaultOutputForEvent_PermissionRequest(t *testing.T) {
 	out := reg.defaultOutputForEvent(EventPermissionRequest)
 	if out == nil {
 		t.Fatal("defaultOutputForEvent(PermissionRequest) returned nil")
-	}
-	if out.HookSpecificOutput == nil {
+	} else if out.HookSpecificOutput == nil {
 		t.Fatal("PermissionRequest default should have HookSpecificOutput")
-	}
-	if out.HookSpecificOutput.PermissionDecision != DecisionAsk {
+	} else if out.HookSpecificOutput.PermissionDecision != DecisionAsk {
 		t.Errorf("PermissionDecision = %q, want %q", out.HookSpecificOutput.PermissionDecision, DecisionAsk)
 	}
 }
@@ -539,7 +537,7 @@ func TestPostToolHandler_Handle_TaskTool_ValidMetrics(t *testing.T) {
 	input := &HookInput{
 		SessionID:    "sess-task-valid",
 		CWD:          tmpDir,
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		ToolResponse: json.RawMessage(`{"metrics":{"tokensUsed":500,"toolUses":3,"durationSeconds":10.0}}`),
 	}
 
@@ -751,20 +749,19 @@ func TestPostToolHandler_Handle_WithToolOutputAndInput(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
-	}
-	if got.Data == nil {
+	} else if got.Data == nil {
 		t.Fatal("Data should not be nil")
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal(got.Data, &data); err != nil {
-		t.Fatalf("unmarshal Data: %v", err)
-	}
-	if _, ok := data["output_size"]; !ok {
-		t.Error("output_size should be in data")
-	}
-	if _, ok := data["input_size"]; !ok {
-		t.Error("input_size should be in data")
+	} else {
+		var data map[string]any
+		if err := json.Unmarshal(got.Data, &data); err != nil {
+			t.Fatalf("unmarshal Data: %v", err)
+		}
+		if _, ok := data["output_size"]; !ok {
+			t.Error("output_size should be in data")
+		}
+		if _, ok := data["input_size"]; !ok {
+			t.Error("input_size should be in data")
+		}
 	}
 }
 
@@ -912,7 +909,7 @@ func TestLogTaskMetrics_OpenFileFails(t *testing.T) {
 
 	input := &HookInput{
 		SessionID:    "sess-openfile-fail",
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		CWD:          tmpDir,
 		ToolResponse: json.RawMessage(`{"metrics":{"tokensUsed":50,"toolUses":1,"durationSeconds":2.5}}`),
 	}
@@ -955,9 +952,8 @@ func TestTeammateIdleHandler_LoadConfigFails(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("Handle() returned nil output")
-	}
-	// Graceful degradation: idle allowed (exit code 0).
-	if got.ExitCode != 0 {
+	} else if got.ExitCode != 0 {
+		// Graceful degradation: idle allowed (exit code 0).
 		t.Errorf("ExitCode = %d, want 0 (idle allowed on config error)", got.ExitCode)
 	}
 }
@@ -1005,9 +1001,8 @@ lsp_quality_gates:
 	}
 	if got == nil {
 		t.Fatal("Handle() returned nil output")
-	}
-	// blockOnError is false → idle accepted.
-	if got.ExitCode != 0 {
+	} else if got.ExitCode != 0 {
+		// blockOnError is false → idle accepted.
 		t.Errorf("ExitCode = %d, want 0 (idle allowed when blockOnError=false)", got.ExitCode)
 	}
 }

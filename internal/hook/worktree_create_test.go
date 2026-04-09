@@ -61,11 +61,9 @@ func TestWorktreeCreateHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			}
-			if got.HookSpecificOutput != nil {
+			} else if got.HookSpecificOutput != nil {
 				t.Error("WorktreeCreate hook should not set hookSpecificOutput")
-			}
-			if got.Decision != "" {
+			} else if got.Decision != "" {
 				t.Errorf("WorktreeCreate hook should not set decision, got %q", got.Decision)
 			}
 		})

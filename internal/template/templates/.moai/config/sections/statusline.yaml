@@ -8,6 +8,10 @@ statusline:
   # Theme name: default, catppuccin-mocha, catppuccin-latte
   theme: "default"
 
+  # Statusline refresh interval in seconds (Claude Code 2.1.97+, REQ-CC297-002)
+  # 0 means no periodic refresh (only refresh on events)
+  refresh_interval: 10
+
   # Individual segment toggles (only used when preset is "custom")
   segments:
     model: true
@@ -18,3 +22,4 @@ statusline:
     claude_version: true
     moai_version: true
     git_branch: true
+    worktree: true
