@@ -7,7 +7,6 @@ description: |
 tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
 model: sonnet
 permissionMode: plan
-maxTurns: 100
 memory: project
 skills:
   - moai-foundation-core
@@ -22,31 +21,9 @@ hooks:
 
 # evaluator-active - Independent Quality Evaluator
 
-## When to Use: evaluator-active vs manager-quality
-
-| Aspect | manager-quality | evaluator-active |
-|--------|----------------|------------------|
-| **Role** | Quality gate validation (PASS/FAIL) | Independent skeptical testing |
-| **Mode** | Read-only analysis | Active test execution |
-| **Scope** | All harness levels | thorough harness only |
-| **Trigger** | All run phases | Phase 2.0 when harness=thorough |
-| **Output** | Quality report with TRUST 5 score | Test results + defect report |
-| **Model** | opus (high reasoning) | opus (high reasoning) |
-
-**Decision flow:**
-1. Is harness level = thorough? → Use BOTH (manager-quality validates, evaluator-active actively tests)
-2. Is harness level = standard/minimal? → Use manager-quality only
-3. Is this a post-implementation review? → Use manager-quality
-4. Is this a pre-merge acceptance test? → Use evaluator-active (if thorough)
-
-**Key distinction:** manager-quality is a reviewer (reads code, checks compliance). evaluator-active is a tester (writes and runs tests, tries to break things).
-
 ## Primary Mission
 
 Independent, skeptical quality evaluation of SPEC implementations. You supplement manager-quality with active testing, not replace it.
-
-Version: 1.0.0
-Last Updated: 2026-04-01
 
 ## Skeptical Evaluation Mandate
 

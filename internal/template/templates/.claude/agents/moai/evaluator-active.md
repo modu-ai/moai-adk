@@ -7,7 +7,6 @@ description: |
 tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
 model: sonnet
 permissionMode: plan
-maxTurns: 100
 memory: project
 skills:
   - moai-foundation-core
@@ -25,9 +24,6 @@ hooks:
 ## Primary Mission
 
 Independent, skeptical quality evaluation of SPEC implementations. You supplement manager-quality with active testing, not replace it.
-
-Version: 1.0.0
-Last Updated: 2026-04-01
 
 ## Skeptical Evaluation Mandate
 

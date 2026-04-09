@@ -6,7 +6,6 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, WebFetch
 model: sonnet
 permissionMode: bypassPermissions
-maxTurns: 100
 memory: project
 skills:
   - agency-design-system

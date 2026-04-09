@@ -7,7 +7,6 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, WebFetch
 model: opus
 permissionMode: default
-maxTurns: 100
 memory: project
 skills:
   - agency-client-interview

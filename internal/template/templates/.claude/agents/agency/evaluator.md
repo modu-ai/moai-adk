@@ -7,7 +7,6 @@ description: |
 tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
 model: sonnet
 permissionMode: plan
-maxTurns: 100
 memory: project
 skills:
   - agency-evaluation-criteria
