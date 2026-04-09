@@ -60,9 +60,9 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 - **38,700+ lines** of Go code, **38** packages
 - **85-100%** test coverage
-- **24** specialized AI agents + **52** skills
+- **26** specialized AI agents + **47** skills
 - **18** programming languages supported
-- **25** Claude Code hook events
+- **27** Claude Code hook events
 
 ---
 
@@ -267,18 +267,21 @@ graph LR
     M --> MG["📋 Manager (8)"]
     M --> EX["⚡ Expert (8)"]
     M --> BL["🔧 Builder (3)"]
-    M --> TM["👥 Team (5)"]
+    M --> EV["🔍 Evaluator (1)"]
+    M --> AG["🎨 Agency (6)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    TM --> TM1["reader · coder · tester<br/>designer · validator"]
+    EV --> EV1["evaluator-active"]
+    AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
     style MG fill:#4CAF50,color:#fff
     style EX fill:#2196F3,color:#fff
     style BL fill:#9C27B0,color:#fff
-    style TM fill:#FF9800,color:#fff
+    style EV fill:#FF5722,color:#fff
+    style AG fill:#FF9800,color:#fff
 ```
 
 ### Agent Categories
@@ -288,22 +291,32 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
 | **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
-| **Team** | 5 | reader, coder, tester, designer, validator | Parallel team-based development |
+| **Evaluator** | 1 | evaluator-active | Independent quality assessment (4-dimension scoring) |
+| **Agency** | 6 | planner, copywriter, designer, builder, evaluator, learner | Creative production pipeline |
 
-### 52 Skills (Progressive Disclosure)
+**Total: 26 agents**
+
+Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
+
+### 47 Skills (Progressive Disclosure)
 
 Managed through a 3-level progressive disclosure system for token efficiency:
 
 | Category | Count | Examples |
 |----------|-------|----------|
-| **Foundation** | 5 | core, claude, philosopher, quality, context |
-| **Workflow** | 11 | spec, project, ddd, tdd, testing, worktree, thinking... |
-| **Domain** | 5 | backend, frontend, database, uiux, data-formats |
-| **Language** | 18 | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
+| **Foundation** | 6 | core, cc, philosopher, quality, context, thinking |
+| **Workflow** | 12 | spec, project, ddd, tdd, testing, worktree, loop, research, jit-docs... |
+| **Domain** | 4 | backend, frontend, database, uiux |
+| **Format** | 1 | data-formats |
+| **Platform** | 4 | auth, chrome-extension, database-cloud, deployment |
 | **Library** | 3 | shadcn, nextra, mermaid |
+| **Reference** | 5 | api-patterns, git-workflow, owasp, react-patterns, testing-pyramid |
 | **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 10 | Figma, Flutter, Electron, Pencil... |
+| **Design** | 2 | design-tools, design-craft |
+| **Framework** | 1 | electron |
+| **Agency** | 5 | agency, client-interview, copywriting, design-system, frontend-patterns |
+| **Docs** | 1 | docs-generation |
+| **Language Rules** | 16 | Go, Python, TypeScript, Rust, Java... (path-based rules, not skills) |
 
 ---
 
@@ -614,6 +627,16 @@ MoAI-ADK automatically captures Task tool metrics during development sessions:
 - **Purpose**: Session analytics, performance optimization, cost tracking
 
 Metrics are logged by the PostToolUse hook when Task tool completes. Use this data to analyze agent efficiency and optimize token consumption.
+
+### Hook Protocol (v2.10.1)
+
+All hook events follow the Claude Code hooks protocol with JSON stdin/stdout communication:
+
+- **27 event types**: SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, PostToolUseFailure, Notification, SubagentStart, UserPromptSubmit, PermissionRequest, PermissionDenied, TeammateIdle, TaskCompleted, TaskCreated, WorktreeCreate, WorktreeRemove, InstructionsLoaded, StopFailure, ConfigChange, CwdChanged, FileChanged, Elicitation, ElicitationResult, Setup
+- **4 hook types**: command (shell scripts), prompt (LLM evaluation), agent (subagent verification), http (webhook endpoints)
+- **Smart behaviors**: PermissionDenied auto-retry for read-only tools, StopFailure error-type responses, PostCompact session memo restoration, SubagentStart context injection
+- **Matchers**: Event-specific filtering (tool name, session source, error type, config source)
+- **CLAUDE_ENV_FILE**: Environment variable persistence via CwdChanged/FileChanged hooks
 
 ---
 

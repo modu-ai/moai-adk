@@ -60,9 +60,9 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 
 - **38,700+줄** Go 코드, **38개** 패키지
 - **85-100%** 테스트 커버리지
-- **24개** 전문 AI 에이전트 + **52개** 스킬
+- **26개** 전문 AI 에이전트 + **47개** 스킬
 - **18개** 프로그래밍 언어 지원
-- **25개** Claude Code 훅 이벤트
+- **27개** Claude Code 훅 이벤트
 
 ---
 
@@ -267,18 +267,21 @@ graph LR
     M --> MG["📋 Manager (8)"]
     M --> EX["⚡ Expert (8)"]
     M --> BL["🔧 Builder (3)"]
-    M --> TM["👥 Team (5)"]
+    M --> EV["🔍 Evaluator (1)"]
+    M --> AG["🎨 Agency (6)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    TM --> TM1["reader · coder · tester<br/>designer · validator"]
+    EV --> EV1["evaluator-active"]
+    AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
     style MG fill:#4CAF50,color:#fff
     style EX fill:#2196F3,color:#fff
     style BL fill:#9C27B0,color:#fff
-    style TM fill:#FF9800,color:#fff
+    style EV fill:#FF5722,color:#fff
+    style AG fill:#FF9800,color:#fff
 ```
 
 ### 에이전트 카테고리
@@ -288,22 +291,32 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 워크플로우 조율, SPEC 생성, 품질 관리 |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 도메인 전문 구현, 분석, 최적화 |
 | **Builder** | 3 | agent, skill, plugin | 새로운 MoAI 컴포넌트 생성 |
-| **Team** | 5 | reader, coder, tester, designer, validator | 병렬 팀 기반 개발 |
+| **Evaluator** | 1 | evaluator-active | 독립적 품질 평가 (4차원 스코어링) |
+| **Agency** | 6 | planner, copywriter, designer, builder, evaluator, learner | 크리에이티브 프로덕션 파이프라인 |
 
-### 52개 스킬 (프로그레시브 디스클로저)
+**총 26개 에이전트**
+
+참고: 동적 팀 팀원(researcher, analyst, architect, implementer, tester, designer, reviewer)은 role profile을 통해 런타임에 생성되며 정적 에이전트 정의로 관리되지 않습니다.
+
+### 47개 스킬 (프로그레시브 디스클로저)
 
 토큰 효율을 위해 3단계 프로그레시브 디스클로저 시스템으로 관리됩니다:
 
 | 카테고리 | 스킬 수 | 예시 |
 |----------|---------|------|
-| **Foundation** | 5 | core, claude, philosopher, quality, context |
-| **Workflow** | 11 | spec, project, ddd, tdd, testing, worktree, thinking... |
-| **Domain** | 5 | backend, frontend, database, uiux, data-formats |
-| **Language** | 18 | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
+| **Foundation** | 6 | core, cc, philosopher, quality, context, thinking |
+| **Workflow** | 12 | spec, project, ddd, tdd, testing, worktree, loop, research, jit-docs... |
+| **Domain** | 4 | backend, frontend, database, uiux |
+| **Format** | 1 | data-formats |
+| **Platform** | 4 | auth, chrome-extension, database-cloud, deployment |
 | **Library** | 3 | shadcn, nextra, mermaid |
+| **Reference** | 5 | api-patterns, git-workflow, owasp, react-patterns, testing-pyramid |
 | **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 10 | Figma, Flutter, Electron, Pencil... |
+| **Design** | 2 | design-tools, design-craft |
+| **Framework** | 1 | electron |
+| **Agency** | 5 | agency, client-interview, copywriting, design-system, frontend-patterns |
+| **Docs** | 1 | docs-generation |
+| **Language Rules** | 16 | Go, Python, TypeScript, Rust, Java... (path-based rules, not skills) |
 
 ---
 
@@ -614,6 +627,16 @@ MoAI-ADK는 개발 세션 중 Task 도구 메트릭을 자동으로 캡처합니
 - **목적**: 세션 분석, 성능 최적화, 비용 추적
 
 Task 도구 완료 시 PostToolUse 훅이 메트릭을 로깅합니다. 이 데이터를 사용하여 에이전트 효율성을 분석하고 토큰 소비를 최적화하세요.
+
+### Hook Protocol (v2.10.1)
+
+모든 훅 이벤트는 Claude Code 훅 프로토콜을 따르며 JSON stdin/stdout 통신을 사용합니다:
+
+- **27개 이벤트 타입**: SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, PostToolUseFailure, Notification, SubagentStart, UserPromptSubmit, PermissionRequest, PermissionDenied, TeammateIdle, TaskCompleted, TaskCreated, WorktreeCreate, WorktreeRemove, InstructionsLoaded, StopFailure, ConfigChange, CwdChanged, FileChanged, Elicitation, ElicitationResult, Setup
+- **4가지 훅 타입**: command (shell script), prompt (LLM 평가), agent (subagent 검증), http (webhook 엔드포인트)
+- **스마트 동작**: PermissionDenied 읽기 전용 도구 자동 재시도, StopFailure 에러 타입 응답, PostCompact 세션 메모 복구, SubagentStart 컨텍스트 주입
+- **매처**: 이벤트별 필터링 (도구 이름, 세션 소스, 에러 타입, 설정 소스)
+- **CLAUDE_ENV_FILE**: CwdChanged/FileChanged 훅을 통한 환경변수 지속성
 
 ---
 
