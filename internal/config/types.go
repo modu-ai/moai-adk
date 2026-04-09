@@ -26,6 +26,7 @@ type Config struct {
 	Statusline    models.StatuslineConfig    `yaml:"statusline"`
 	Gate          GateConfig                 `yaml:"gate"`
 	Sunset        SunsetConfig               `yaml:"sunset"`
+	Research      ResearchConfig             `yaml:"research"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -221,11 +222,64 @@ type SunsetCondition struct {
 	Description string `yaml:"description"`
 }
 
+// ResearchConfig represents the Self-Research System configuration section.
+type ResearchConfig struct {
+	Enabled bool                   `yaml:"enabled"`
+	Passive ResearchPassiveConfig  `yaml:"passive"`
+	Active  ResearchActiveConfig   `yaml:"active"`
+	Safety  ResearchSafetyConfig   `yaml:"safety"`
+	Dashboard ResearchDashboardConfig `yaml:"dashboard"`
+}
+
+// ResearchPassiveConfig represents passive observation settings.
+type ResearchPassiveConfig struct {
+	Enabled                bool                       `yaml:"enabled"`
+	CorrectionWindowSeconds int                       `yaml:"correction_window_seconds"`
+	PatternThresholds      ResearchPatternThresholds  `yaml:"pattern_thresholds"`
+}
+
+// ResearchPatternThresholds defines observation count thresholds for pattern classification.
+type ResearchPatternThresholds struct {
+	Heuristic      int `yaml:"heuristic"`
+	Rule           int `yaml:"rule"`
+	HighConfidence int `yaml:"high_confidence"`
+}
+
+// ResearchActiveConfig represents active experiment settings.
+type ResearchActiveConfig struct {
+	RunsPerExperiment int     `yaml:"runs_per_experiment"`
+	MaxExperiments    int     `yaml:"max_experiments"`
+	PassThreshold     float64 `yaml:"pass_threshold"`
+	TargetScore       float64 `yaml:"target_score"`
+	BudgetCapTokens   int     `yaml:"budget_cap_tokens"`
+}
+
+// ResearchSafetyConfig represents safety layer settings.
+type ResearchSafetyConfig struct {
+	WorktreeIsolation          bool                    `yaml:"worktree_isolation"`
+	CanaryRegressionThreshold  float64                 `yaml:"canary_regression_threshold"`
+	RateLimits                 ResearchRateLimitConfig `yaml:"rate_limits"`
+}
+
+// ResearchRateLimitConfig represents rate limiting settings.
+type ResearchRateLimitConfig struct {
+	MaxExperimentsPerSession int `yaml:"max_experiments_per_session"`
+	MaxAcceptedPerSession    int `yaml:"max_accepted_per_session"`
+	MaxAutoResearchPerWeek   int `yaml:"max_auto_research_per_week"`
+}
+
+// ResearchDashboardConfig represents dashboard display settings.
+type ResearchDashboardConfig struct {
+	DefaultMode     string `yaml:"default_mode"`
+	HTMLOpenBrowser  bool   `yaml:"html_open_browser"`
+}
+
 // sectionNames lists all valid configuration section names.
 var sectionNames = []string{
 	"user", "language", "quality", "project",
 	"git_strategy", "git_convention", "system", "llm",
 	"pricing", "ralph", "workflow", "state", "statusline", "gate", "sunset",
+	"research",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
@@ -275,4 +329,9 @@ type stateFileWrapper struct {
 // statuslineFileWrapper handles the statusline.yaml section file.
 type statuslineFileWrapper struct {
 	Statusline models.StatuslineConfig `yaml:"statusline"`
+}
+
+// researchFileWrapper handles the research.yaml section file.
+type researchFileWrapper struct {
+	Research ResearchConfig `yaml:"research"`
 }

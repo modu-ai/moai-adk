@@ -1,0 +1,25 @@
+research:
+    enabled: false
+    passive:
+        enabled: true
+        correction_window_seconds: 60
+        pattern_thresholds:
+            heuristic: 3
+            rule: 5
+            high_confidence: 10
+    active:
+        runs_per_experiment: 3
+        max_experiments: 20
+        pass_threshold: 0.80
+        target_score: 0.95
+        budget_cap_tokens: 500000
+    safety:
+        worktree_isolation: true
+        canary_regression_threshold: 0.10
+        rate_limits:
+            max_experiments_per_session: 20
+            max_accepted_per_session: 5
+            max_auto_research_per_week: 3
+    dashboard:
+        default_mode: terminal
+        html_open_browser: true

@@ -348,7 +348,7 @@ func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
 	input := &HookInput{
 		SessionID:    "sess-task-route",
 		CWD:          tmpDir,
-		ToolName:     "Task",
+		ToolName:     "Agent",
 		ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":500,"toolUses":3,"durationSeconds":12.5}}`),
 	}
 

@@ -7,12 +7,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
-)
 
-// specIDPattern matches SPEC identifiers in task subjects (e.g., SPEC-TEAM-001).
-var specIDPattern = regexp.MustCompile(`SPEC-[A-Z]+-\d+`)
+	"github.com/modu-ai/moai-adk/internal/workflow"
+)
 
 // taskCompletedHandler processes TaskCompleted events.
 // In team mode, it validates task deliverables before accepting completion.
@@ -55,7 +53,7 @@ func (h *taskCompletedHandler) Handle(ctx context.Context, input *HookInput) (*H
 
 	// If the task subject references a SPEC ID, verify the SPEC file exists.
 	if projectDir != "" && input.TaskSubject != "" {
-		if specID := specIDPattern.FindString(input.TaskSubject); specID != "" {
+		if specID := workflow.SpecIDPattern.FindString(input.TaskSubject); specID != "" {
 			specPath := filepath.Join(projectDir, ".moai", "specs", specID, "spec.md")
 			if _, err := os.Stat(specPath); os.IsNotExist(err) {
 				msg := fmt.Sprintf(

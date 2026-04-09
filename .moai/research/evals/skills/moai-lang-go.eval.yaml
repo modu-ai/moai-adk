@@ -1,0 +1,71 @@
+# moai-lang-go 스킬 평가 기준
+# Binary eval only - Yes/No questions, no scales
+target:
+  path: .claude/skills/moai-lang-go/SKILL.md
+  type: skill
+
+test_inputs:
+  - name: rest-api-endpoint
+    prompt: |
+      Create a REST API endpoint for user CRUD operations
+      using Go Fiber framework with proper error handling
+      and input validation.
+
+  - name: concurrent-worker-pool
+    prompt: |
+      Implement a worker pool pattern in Go with graceful
+      shutdown, context cancellation, and error propagation.
+
+  - name: database-repository
+    prompt: |
+      Write a PostgreSQL repository pattern in Go using
+      sqlx with transaction support and proper error wrapping.
+
+  - name: cli-tool
+    prompt: |
+      Create a CLI tool in Go using cobra that processes
+      JSON files with streaming (not loading entire file).
+
+evals:
+  - name: compiles
+    question: "Does the generated Go code compile without errors?"
+    pass: "go build succeeds with zero errors"
+    fail: "Any compilation error occurs"
+    weight: must_pass
+
+  - name: error-handling
+    question: "Does every fallible function return and handle errors with context?"
+    pass: "All errors checked and wrapped with fmt.Errorf context"
+    fail: "Any unchecked error or bare error without wrapping"
+    weight: must_pass
+
+  - name: modern-go
+    question: "Does the code use Go 1.23+ features where appropriate?"
+    pass: "Uses modern patterns like range-over-func, enhanced ServeMux, or structured logging"
+    fail: "Uses deprecated patterns when modern alternatives exist in the skill docs"
+    weight: nice_to_have
+
+  - name: no-placeholders
+    question: "Is the code free of TODO, FIXME, or placeholder comments?"
+    pass: "Zero placeholder comments in output"
+    fail: "Any TODO, FIXME, or implement-this comment exists"
+    weight: nice_to_have
+
+  - name: test-included
+    question: "Does the output include table-driven tests for the main functionality?"
+    pass: "At least one test function with table-driven pattern and meaningful assertions"
+    fail: "No tests or only empty test stubs"
+    weight: nice_to_have
+
+  - name: context-usage
+    question: "Do blocking or long-running functions accept context.Context as first parameter?"
+    pass: "All functions that may block accept context.Context"
+    fail: "Any blocking function missing context parameter"
+    weight: nice_to_have
+
+settings:
+  runs_per_experiment: 3
+  max_experiments: 20
+  pass_threshold: 0.80
+  target_score: 0.95
+  budget_cap_tokens: 500000

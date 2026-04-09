@@ -15,26 +15,6 @@ func TestSentinelErrors(t *testing.T) {
 		want string
 	}{
 		{
-			name: "ErrInvalidRequirementType",
-			err:  ErrInvalidRequirementType,
-			want: "invalid requirement type",
-		},
-		{
-			name: "ErrInvalidPillar",
-			err:  ErrInvalidPillar,
-			want: "invalid TRUST 5 pillar",
-		},
-		{
-			name: "ErrAssessmentFailed",
-			err:  ErrAssessmentFailed,
-			want: "assessment failed: not all pillars meet threshold",
-		},
-		{
-			name: "ErrInvalidPhaseTransition",
-			err:  ErrInvalidPhaseTransition,
-			want: "invalid phase transition",
-		},
-		{
 			name: "ErrUnsupportedLanguage",
 			err:  ErrUnsupportedLanguage,
 			want: "unsupported language",
@@ -52,57 +32,6 @@ func TestSentinelErrors(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestSentinelErrorsAreDistinct(t *testing.T) {
-	t.Parallel()
-
-	sentinels := []error{
-		ErrInvalidRequirementType,
-		ErrInvalidPillar,
-		ErrAssessmentFailed,
-		ErrInvalidPhaseTransition,
-		ErrUnsupportedLanguage,
-	}
-
-	for i, a := range sentinels {
-		for j, b := range sentinels {
-			if i != j && errors.Is(a, b) {
-				t.Errorf("sentinel errors at index %d and %d should be distinct", i, j)
-			}
-		}
-	}
-}
-
-func TestRequirementNotFoundError(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		id   string
-		want string
-	}{
-		{name: "with_ID", id: "REQ-001", want: "requirement not found: REQ-001"},
-		{name: "empty_ID", id: "", want: "requirement not found: "},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			err := &RequirementNotFoundError{ID: tt.id}
-			if err.Error() != tt.want {
-				t.Errorf("got %q, want %q", err.Error(), tt.want)
-			}
-		})
-	}
-}
-
-func TestRequirementNotFoundErrorImplementsError(t *testing.T) {
-	t.Parallel()
-
-	var err error = &RequirementNotFoundError{ID: "REQ-001"}
-	// Verify the error implements the error interface by using it
-	_ = err.Error()
 }
 
 func TestLanguageNotFoundError(t *testing.T) {
@@ -144,10 +73,6 @@ func TestErrorWrapping(t *testing.T) {
 		name     string
 		sentinel error
 	}{
-		{name: "ErrInvalidRequirementType", sentinel: ErrInvalidRequirementType},
-		{name: "ErrInvalidPillar", sentinel: ErrInvalidPillar},
-		{name: "ErrAssessmentFailed", sentinel: ErrAssessmentFailed},
-		{name: "ErrInvalidPhaseTransition", sentinel: ErrInvalidPhaseTransition},
 		{name: "ErrUnsupportedLanguage", sentinel: ErrUnsupportedLanguage},
 	}
 

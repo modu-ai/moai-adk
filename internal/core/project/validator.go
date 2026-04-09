@@ -13,14 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BackupTimestampFormat is the Go time layout for backup directory names (YYYYMMDD_HHMMSS).
-// Deprecated: Use defs.BackupTimestampFormat directly.
-const BackupTimestampFormat = defs.BackupTimestampFormat
-
-// BackupsDir is the directory name where project backups are stored.
-// Deprecated: Use defs.BackupsDir directly.
-const BackupsDir = defs.BackupsDir
-
 // ProjectValidator checks project structure integrity.
 type ProjectValidator interface {
 	// Validate checks the overall project structure.
@@ -224,12 +216,12 @@ func BackupExistingProject(root string) (string, error) {
 		return "", nil // nothing to backup
 	}
 
-	backupsDir := filepath.Join(root, BackupsDir)
+	backupsDir := filepath.Join(root, defs.BackupsDir)
 	if err := os.MkdirAll(backupsDir, defs.DirPerm); err != nil {
 		return "", fmt.Errorf("create backups directory: %w", err)
 	}
 
-	timestamp := time.Now().Format(BackupTimestampFormat)
+	timestamp := time.Now().Format(defs.BackupTimestampFormat)
 	backupDir := filepath.Join(backupsDir, timestamp)
 
 	if err := os.Rename(moaiDir, backupDir); err != nil {
