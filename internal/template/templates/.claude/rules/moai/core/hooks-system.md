@@ -8,36 +8,36 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-26 hook event types (+ 1 special event, 27 total):
+27 hook event types (+ 1 special event, 28 total):
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
-| SessionStart | No | No | Runs when a new session begins |
-| SessionEnd | Reason | No | Runs when session terminates |
+| SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
+| SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |
-| PreCompact | No | No | Runs before context compaction |
-| PostCompact | No | No | Runs after context compaction completes (v2.1.76+) |
-| Stop | No | No | Runs when conversation stops |
-| StopFailure | No | No | Runs when a turn ends due to an API error (v2.1.78+) |
+| PreCompact | Trigger | No | Runs before context compaction. Matchers: manual, auto |
+| PostCompact | Trigger | No | Runs after context compaction completes (v2.1.76+). Matchers: manual, auto |
+| Stop | No | Yes | Runs when Claude finishes responding |
+| StopFailure | Error type | No | Runs when a turn ends due to API error (v2.1.78+). Matchers: rate_limit, authentication_failed, billing_error, max_output_tokens |
 | SubagentStart | Agent type | No | Runs when a subagent spawns |
-| SubagentStop | No | No | Runs when a subagent terminates |
-| Notification | Type | No | Runs when Claude Code sends notifications |
+| SubagentStop | Agent type | Yes | Runs when a subagent terminates |
+| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog |
 | UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
 | PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
+| PermissionDenied | Tool name | No | Runs after auto mode denies a tool call. Return {retry: true} to retry (v2.1.89+) |
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete |
-| TaskCreated | No | No | Runs when a task is created via TaskCreate (v2.1.84+) |
-| WorktreeCreate | No | No | Runs when a worktree is created for agent isolation (v2.1.49+) |
+| TaskCreated | No | Yes | Runs when a task is created via TaskCreate (v2.1.84+) |
+| WorktreeCreate | No | Yes | Runs when a worktree is created for agent isolation (v2.1.49+) |
 | WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+) |
-| ConfigChange | No | No | Runs when settings.json is modified (v2.1.49+) |
-| CwdChanged | No | No | Runs when working directory changes (v2.1.83+) |
-| FileChanged | No | No | Runs when a file is changed externally (v2.1.83+) |
-| InstructionsLoaded | No | No | Runs when CLAUDE.md or .claude/rules/*.md files are loaded (v2.1.69+) |
-| Elicitation | No | No | Runs when an elicitation dialog is presented to the user (v2.1.84+) |
-| ElicitationResult | No | No | Runs when the user responds to an elicitation dialog (v2.1.84+) |
-| PermissionDenied | No | No | Runs after auto mode classifier denies a tool call; return {retry: true} to retry (v2.1.89+) |
+| ConfigChange | Config source | Yes | Runs when config files change (v2.1.49+). Matchers: user_settings, project_settings, local_settings, policy_settings, skills |
+| CwdChanged | No | No | Runs when working directory changes (v2.1.83+). Receives CLAUDE_ENV_FILE |
+| FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). Receives CLAUDE_ENV_FILE |
+| InstructionsLoaded | Load reason | No | Runs when CLAUDE.md or rules loaded (v2.1.69+). Matchers: session_start, nested_traversal, path_glob_match, include, compact |
+| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+) |
+| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+) |
 
 **Special Event:**
 
@@ -47,7 +47,7 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ### Event Categories
 
-**Lifecycle Events**: SessionStart, SessionEnd, Setup, ConfigChange, InstructionsLoaded
+**Lifecycle Events**: SessionStart, Setup, SessionEnd, ConfigChange, InstructionsLoaded
 
 **Context Events**: PreCompact, PostCompact, FileChanged, CwdChanged, WorktreeCreate, WorktreeRemove
 
@@ -77,6 +77,11 @@ Claude Code hooks for extending functionality with custom scripts.
 | Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
 | SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `systemMessage` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69 |
 | ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+) |
+| StopFailure | `error_type`, `error_message` | `systemMessage` | Error types: rate_limit, authentication_failed, billing_error, max_output_tokens (v2.1.78+) |
+| CwdChanged | `old_cwd`, `new_cwd` | - | Receives CLAUDE_ENV_FILE env var for environment persistence |
+| FileChanged | `file_path`, `change_type` | - | change_type: modified, created, deleted. Receives CLAUDE_ENV_FILE |
+| Elicitation | `mcp_server_name`, `mcp_tool_name`, `elicitation_request` | `action`, `content` | action: accept, decline, cancel |
+| ElicitationResult | `mcp_server_name`, `mcp_tool_name` | `action`, `content` | Overrides user response |
 
 All hook events include `agent_id` and `agent_type` fields when triggered from a subagent context (v2.1.69+).
 
@@ -248,6 +253,17 @@ Wrapper scripts are located at:
 - `.claude/hooks/moai/handle-post-tool.sh`
 - `.claude/hooks/moai/handle-stop.sh`
 - `.claude/hooks/moai/handle-agent-hook.sh`: TeammateIdle, TaskCompleted events (team mode)
+
+## Smart Hook Behaviors (v2.10.1)
+
+MoAI-ADK implements intelligent handler logic beyond simple logging:
+
+- **PermissionDenied auto-retry**: Read-only tools (Read, Grep, Glob, WebFetch, WebSearch, Skill) automatically return `{retry: true}` when denied by auto mode
+- **StopFailure error-type responses**: Returns targeted `systemMessage` based on `error_type` (rate_limit, authentication_failed, billing_error, max_output_tokens)
+- **PostCompact memo restoration**: Reads session-memo.md saved by PreCompact and injects it as `systemMessage` for context recovery
+- **SubagentStart context injection**: Injects project metadata (name, type, language, active SPEC) via `additionalContext` into spawned subagents
+- **CwdChanged environment persistence**: Writes project-specific env vars to `CLAUDE_ENV_FILE` when directory changes to a MoAI project
+- **UserPromptSubmit session title**: Sets Claude Code session title via `sessionTitle` field with SPEC ID or project/branch info
 
 ## Rules
 

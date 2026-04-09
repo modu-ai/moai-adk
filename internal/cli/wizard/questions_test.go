@@ -9,6 +9,7 @@ func TestDevelopmentModeQuestion(t *testing.T) {
 	q := QuestionByID(questions, "development_mode")
 	if q == nil {
 		t.Fatal("development_mode question not found")
+		return // staticcheck SA5011 guard
 	}
 
 	if q.Type != QuestionTypeSelect {

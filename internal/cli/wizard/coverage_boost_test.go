@@ -13,6 +13,7 @@ func TestDefaultQuestions_DotPath(t *testing.T) {
 	q := QuestionByID(questions, "project_name")
 	if q == nil {
 		t.Fatal("project_name question not found")
+		return // staticcheck SA5011 guard
 	}
 	if q.Default != "my-project" {
 		t.Errorf("expected default 'my-project' for root '.', got %q", q.Default)
@@ -25,6 +26,7 @@ func TestDefaultQuestions_SlashPath(t *testing.T) {
 	q := QuestionByID(questions, "project_name")
 	if q == nil {
 		t.Fatal("project_name question not found")
+		return // staticcheck SA5011 guard
 	}
 	if q.Default != "my-project" {
 		t.Errorf("expected default 'my-project' for root '/', got %q", q.Default)
