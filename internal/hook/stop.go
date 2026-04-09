@@ -75,10 +75,14 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		} else if mode != nil && mode.Active {
 			if h.hasCompletionMarker(input) {
 				slog.Info("completion marker detected during persistent mode, deactivating")
-				_ = lifecycle.DeactivatePersistentMode(projectDir)
+				if err := lifecycle.DeactivatePersistentMode(projectDir); err != nil {
+					slog.Warn("failed to deactivate persistent mode", "error", err)
+				}
 			} else if mode.IsExpired() {
 				slog.Info("persistent mode expired", "max_minutes", mode.MaxDurationMinutes)
-				_ = lifecycle.DeactivatePersistentMode(projectDir)
+				if err := lifecycle.DeactivatePersistentMode(projectDir); err != nil {
+					slog.Warn("failed to deactivate persistent mode", "error", err)
+				}
 			} else {
 				slog.Info("persistent mode active, blocking stop",
 					"workflow", mode.Workflow, "spec_id", mode.SpecID)

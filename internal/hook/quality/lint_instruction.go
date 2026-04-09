@@ -51,10 +51,6 @@ func FormatDiagnosticsAsInstruction(diagnostics []lsphook.Diagnostic, counts lsp
 		}
 	}
 
-	// Determine the filename for the header from the first diagnostic.
-	// Fall back to an empty string if no diagnostics are present.
-	filename := filenameFromDiagnostics(diagnostics)
-
 	// Determine counts for the header.
 	total := len(selected)
 	kind := "error"
@@ -64,12 +60,9 @@ func FormatDiagnosticsAsInstruction(diagnostics []lsphook.Diagnostic, counts lsp
 
 	var sb strings.Builder
 
-	// Header line.
-	fmt.Fprintf(&sb, "[Quality Gate] %d %s(s) detected", total, kind)
-	if filename != "" {
-		fmt.Fprintf(&sb, " in %s", filename)
-	}
-	sb.WriteString(":\n")
+	// Header line. File name is not available in lsphook.Diagnostic;
+	// use FormatDiagnosticsAsInstructionWithFile for file-enriched output.
+	fmt.Fprintf(&sb, "[Quality Gate] %d %s(s) detected:\n", total, kind)
 
 	// REQ-LAI-004: limit to maxErrorsInMessage entries.
 	shown := selected
@@ -193,19 +186,6 @@ func FormatDiagnosticsAsInstructionWithFile(filePath string, diagnostics []lspho
 
 	sb.WriteString("Fix these errors before proceeding.")
 	return sb.String()
-}
-
-// filenameFromDiagnostics returns the base file name from the first diagnostic's Source
-// field, or an empty string when no diagnostics exist.
-// This is a best-effort helper; FormatDiagnosticsAsInstructionWithFile is preferred.
-func filenameFromDiagnostics(diagnostics []lsphook.Diagnostic) string {
-	// Diagnostics do not carry a file path in the lsphook.Diagnostic struct;
-	// the file is known only at the call site.  Return empty string here and
-	// let the caller supply it via FormatDiagnosticsAsInstructionWithFile.
-	if len(diagnostics) == 0 {
-		return ""
-	}
-	return ""
 }
 
 // AppendAstSecurityFindings appends AST-grep security findings to an existing systemMessage.

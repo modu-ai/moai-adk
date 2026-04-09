@@ -82,6 +82,7 @@ func NewDefaultConfig() *Config {
 		Workflow:      NewDefaultWorkflowConfig(),
 		State:         NewDefaultStateConfig(),
 		Gate:          NewDefaultGateConfig(),
+		Sunset:        NewDefaultSunsetConfig(),
 	}
 }
 
@@ -268,6 +269,14 @@ func NewDefaultGitConventionConfig() models.GitConventionConfig {
 			ShowSuggestions: true,
 			Verbose:         false,
 		},
+	}
+}
+
+// NewDefaultSunsetConfig returns a SunsetConfig with default values.
+func NewDefaultSunsetConfig() SunsetConfig {
+	return SunsetConfig{
+		Enabled:    false,
+		Conditions: nil,
 	}
 }
 

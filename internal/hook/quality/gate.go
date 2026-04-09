@@ -95,16 +95,18 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	defer cancel()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err == nil {
 		return true, ""
 	}
 
-	output := strings.TrimSpace(buf.String())
+	// Merge stdout and stderr; stderr typically has the diagnostics.
+	combined := stderr.String() + stdout.String()
+	output := strings.TrimSpace(combined)
 
 	// Distinguish timeout from other failures (REQ-GATE-009).
 	if stepCtx.Err() == context.DeadlineExceeded {

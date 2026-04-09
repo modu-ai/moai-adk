@@ -73,11 +73,16 @@ func (s *Server) Serve(ctx context.Context, reader io.Reader, writer io.Writer) 
 			resp.Result = result
 		}
 
-		s.mu.Lock()
 		data, marshalErr := json.Marshal(resp)
-		if marshalErr == nil {
-			fmt.Fprintf(writer, "%s\n", data)
+		if marshalErr != nil {
+			slog.Warn("mcp: failed to marshal response",
+				"method", req.Method,
+				"error", marshalErr,
+			)
+			continue
 		}
+		s.mu.Lock()
+		fmt.Fprintf(writer, "%s\n", data)
 		s.mu.Unlock()
 	}
 

@@ -26,6 +26,9 @@ const persistentModeFile = ".moai/state/persistent-mode.json"
 // ActivatePersistentMode writes a persistent-mode.json file to mark the mode as active.
 // projectDir is the root of the project (CWD from the hook input).
 func ActivatePersistentMode(projectDir, workflow, specID string, maxMinutes int) error {
+	if maxMinutes < 0 {
+		return fmt.Errorf("maxMinutes must be non-negative, got %d", maxMinutes)
+	}
 	mode := PersistentMode{
 		Active:             true,
 		Workflow:           workflow,
@@ -41,7 +44,7 @@ func ActivatePersistentMode(projectDir, workflow, specID string, maxMinutes int)
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0600)
 }
 
 // DeactivatePersistentMode sets active=false in the persistent-mode.json file.
@@ -57,7 +60,7 @@ func DeactivatePersistentMode(projectDir string) error {
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0600)
 }
 
 // CheckPersistentMode reads the persistent-mode.json file and returns the current state.

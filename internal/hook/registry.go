@@ -242,14 +242,15 @@ func (r *registry) EnableObservability(logDir string) {
 // ensureTraceWriter lazily creates the TraceWriter for the given sessionID if
 // observability is enabled and no writer has been set yet. Thread-safe.
 func (r *registry) ensureTraceWriter(sessionID string) {
-	if sessionID == "" || r.logDir == "" {
+	if sessionID == "" {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.traceWriter == nil {
-		r.traceWriter = trace.NewTraceWriter(r.logDir, sessionID)
+	if r.logDir == "" || r.traceWriter != nil {
+		return
 	}
+	r.traceWriter = trace.NewTraceWriter(r.logDir, sessionID)
 }
 
 // writeTrace builds and enqueues a TraceEntry from a completed handler execution.
