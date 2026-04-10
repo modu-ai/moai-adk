@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -33,7 +34,7 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	statuslineCfg := loadStatuslineFileConfig(projectRoot)
 
 	// Determine display mode: env var > config > default
-	mode := statusline.StatuslineMode(os.Getenv("MOAI_STATUSLINE_MODE"))
+	mode := statusline.StatuslineMode(os.Getenv(config.EnvStatuslineMode))
 	if mode == "" && statuslineCfg != nil && statuslineCfg.Mode != "" {
 		mode = statusline.StatuslineMode(statuslineCfg.Mode)
 	}
@@ -56,7 +57,7 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// Build statusline options - git and version are auto-detected
 	opts := statusline.Options{
 		Mode:          mode,
-		NoColor:       os.Getenv("NO_COLOR") != "" || os.Getenv("MOAI_NO_COLOR") != "",
+		NoColor:       os.Getenv("NO_COLOR") != "" || os.Getenv(config.EnvNoColor) != "",
 		RootDir:       projectRoot,
 		SegmentConfig: segmentConfig,
 		ThemeName:     themeName,

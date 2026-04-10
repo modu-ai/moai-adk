@@ -230,7 +230,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	inTmux := tmux.NewDetector().InTmuxSession()
 
 	// CG mode requires tmux for pane-level environment isolation.
-	if isHybrid && !inTmux && os.Getenv("MOAI_TEST_MODE") != "1" {
+	if isHybrid && !inTmux && os.Getenv(config.EnvTestMode) != "1" {
 		return fmt.Errorf("CG mode requires a tmux session: tmux is required for Claude + GLM hybrid mode because: Leader (this pane) uses Claude API, Teammates (new panes) inherit GLM env to use Z.AI API. Start a tmux session first: tmux new -s moai; moai cg. Or use 'moai glm' for all-GLM mode (no tmux required)")
 	}
 
@@ -712,7 +712,7 @@ func saveGLMKey(key string) error {
 func loadGLMKey() string {
 	// Allow tests to simulate a specific GLM key without requiring a real
 	// ~/.moai/.env.glm file. Only set this in test code via t.Setenv.
-	if testKey := os.Getenv("MOAI_TEST_GLM_KEY"); testKey != "" {
+	if testKey := os.Getenv(config.EnvTestGLMKey); testKey != "" {
 		return testKey
 	}
 
@@ -847,7 +847,7 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 
 // isTestEnvironment detects if we're running in a test environment.
 func isTestEnvironment() bool {
-	if flag := os.Getenv("MOAI_TEST_MODE"); flag == "1" {
+	if flag := os.Getenv(config.EnvTestMode); flag == "1" {
 		return true
 	}
 	// Check if running under go test by examining os.Args.

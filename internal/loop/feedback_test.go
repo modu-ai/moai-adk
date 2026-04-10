@@ -280,6 +280,7 @@ func TestFindPreviousReviewFeedback(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("expected non-nil feedback, got nil")
+				return // staticcheck SA5011
 			}
 			if got.Iteration != tt.wantIteration {
 				t.Errorf("Iteration = %d, want %d", got.Iteration, tt.wantIteration)

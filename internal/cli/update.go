@@ -22,6 +22,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -230,7 +231,7 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 	}
 
 	// Environment variable guard (set by reexecNewBinary)
-	if os.Getenv("MOAI_SKIP_BINARY_UPDATE") == "1" {
+	if os.Getenv(config.EnvSkipBinaryUpdate) == "1" {
 		return true
 	}
 

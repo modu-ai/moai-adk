@@ -16,6 +16,20 @@ import (
 	"time"
 )
 
+const (
+	// anthropicMessagesURL is the Anthropic Messages API endpoint for rate-limit probing.
+	anthropicMessagesURL = "https://api.anthropic.com/v1/messages"
+
+	// anthropicOAuthUsageURL is the Anthropic OAuth usage API endpoint.
+	anthropicOAuthUsageURL = "https://api.anthropic.com/api/oauth/usage"
+
+	// anthropicBetaHeader is the beta feature header value for OAuth API access.
+	anthropicBetaHeader = "oauth-2025-04-20"
+
+	// haikuProbeModel is the cheapest model used for rate-limit header probing.
+	haikuProbeModel = "claude-haiku-4-5-20251001"
+)
+
 // UsageProvider collects API usage information (REQ-V3-API-001).
 type UsageProvider interface {
 	CollectUsage(ctx context.Context) (*UsageResult, error)
@@ -423,7 +437,7 @@ type usagePeriodData struct {
 //	anthropic-ratelimit-unified-5h-reset: 2026-03-10T20:00:00Z (ISO 8601)
 //	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
 func (u *usageCollector) fetchUsageFromHeaders(ctx context.Context, token string) (*oauthUsageResponse, error) {
-	return u.fetchUsageFromHeadersWithURL(ctx, "https://api.anthropic.com/v1/messages", token)
+	return u.fetchUsageFromHeadersWithURL(ctx, anthropicMessagesURL, token)
 }
 
 // fetchUsageFromHeadersWithURL extracts 5H/7D usage from Messages API response headers.
@@ -438,7 +452,7 @@ func (u *usageCollector) fetchUsageFromHeaders(ctx context.Context, token string
 //	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
 func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiURL, token string) (*oauthUsageResponse, error) {
 	// Minimal request body: cheapest possible Haiku call
-	body := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`
+	body := fmt.Sprintf(`{"model":"%s","max_tokens":1,"messages":[{"role":"user","content":"h"}]}`, haikuProbeModel)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(body))
 	if err != nil {
@@ -448,7 +462,7 @@ func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiUR
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("anthropic-beta", "oauth-2025-04-20")
+	req.Header.Set("anthropic-beta", anthropicBetaHeader)
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -504,14 +518,13 @@ func (u *usageCollector) fetchUsageFromHeadersWithURL(ctx context.Context, apiUR
 // Retries up to 3 times with exponential backoff on 429 (rate limit).
 // Timeout is handled by http.Client.Timeout (REQ-V3-API-003).
 func (u *usageCollector) fetchUsageFromOAuthAPI(ctx context.Context, token string) (*oauthUsageResponse, error) {
-	const apiURL = "https://api.anthropic.com/api/oauth/usage"
 	const maxRetries = 3
 
 	var lastErr error
 	backoff := 2 * time.Second
 
 	for attempt := range maxRetries {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, anthropicOAuthUsageURL, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -519,7 +532,7 @@ func (u *usageCollector) fetchUsageFromOAuthAPI(ctx context.Context, token strin
 		// Token must not be logged (REQ-V3-API-008)
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
-		req.Header.Set("anthropic-beta", "oauth-2025-04-20")
+		req.Header.Set("anthropic-beta", anthropicBetaHeader)
 
 		resp, err := u.client.Do(req)
 		if err != nil {

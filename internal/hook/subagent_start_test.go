@@ -93,6 +93,7 @@ func TestSubagentStartHandlerWithConfig_NilConfig(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("got nil output")
+		return // staticcheck SA5011
 	}
 	// nil config must not produce additionalContext
 	if got.HookSpecificOutput != nil {

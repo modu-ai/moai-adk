@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"golang.org/x/text/unicode/norm"
@@ -268,7 +269,7 @@ type preToolHandler struct {
 
 // NewPreToolHandler creates a new PreToolUse event handler with the given security policy.
 func NewPreToolHandler(cfg ConfigProvider, policy *SecurityPolicy) Handler {
-	projectDir := os.Getenv("CLAUDE_PROJECT_DIR")
+	projectDir := os.Getenv(config.EnvClaudeProjectDir)
 	if projectDir == "" {
 		projectDir, _ = os.Getwd()
 	}
@@ -278,7 +279,7 @@ func NewPreToolHandler(cfg ConfigProvider, policy *SecurityPolicy) Handler {
 // NewPreToolHandlerWithScanner creates a PreToolUse handler with AST-based security scanning.
 // If scanner is nil or unavailable, falls back to pattern-based security only.
 func NewPreToolHandlerWithScanner(cfg ConfigProvider, policy *SecurityPolicy, scanner *security.SecurityScanner) Handler {
-	projectDir := os.Getenv("CLAUDE_PROJECT_DIR")
+	projectDir := os.Getenv(config.EnvClaudeProjectDir)
 	if projectDir == "" {
 		projectDir, _ = os.Getwd()
 	}

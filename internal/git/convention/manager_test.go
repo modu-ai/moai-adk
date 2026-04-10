@@ -204,6 +204,7 @@ func TestManager_Convention_ReturnsLoadedConvention(t *testing.T) {
 	conv := m.Convention()
 	if conv == nil {
 		t.Fatal("Convention() should not be nil after loading")
+		return // staticcheck SA5011
 	}
 	if conv.Name != "angular" {
 		t.Errorf("Convention().Name = %q, want %q", conv.Name, "angular")

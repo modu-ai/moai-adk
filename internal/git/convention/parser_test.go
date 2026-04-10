@@ -124,6 +124,7 @@ func TestParseBuiltin(t *testing.T) {
 			}
 			if conv == nil {
 				t.Fatal("ParseBuiltin returned nil convention")
+				return // staticcheck SA5011
 			}
 			if conv.Name != name {
 				t.Errorf("Name = %q, want %q", conv.Name, name)

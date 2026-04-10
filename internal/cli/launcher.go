@@ -153,7 +153,7 @@ func applyCGMode(root, profileName string) error {
 	detector := tmux.NewDetector()
 	inTmux := detector.InTmuxSession()
 
-	if !inTmux && os.Getenv("MOAI_TEST_MODE") != "1" {
+	if !inTmux && os.Getenv(config.EnvTestMode) != "1" {
 		return fmt.Errorf("CG mode requires a tmux session.\n\n" +
 			"tmux is required because:\n" +
 			"  - This pane (lead): uses Claude API\n" +

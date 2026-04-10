@@ -163,7 +163,7 @@ func ensureGLMCredentials(projectDir string) string {
 	// Inject credentials
 	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
 	if settings.Env["ANTHROPIC_BASE_URL"] == "" {
-		settings.Env["ANTHROPIC_BASE_URL"] = "https://api.z.ai/api/anthropic"
+		settings.Env["ANTHROPIC_BASE_URL"] = config.DefaultGLMBaseURL
 	}
 	// Ensure compatibility flags are set
 	if settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "" {

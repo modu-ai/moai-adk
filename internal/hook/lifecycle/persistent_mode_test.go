@@ -108,6 +108,7 @@ func TestDeactivatePersistentMode(t *testing.T) {
 	}
 	if mode == nil {
 		t.Fatal("mode should not be nil after deactivation")
+		return // staticcheck SA5011
 	}
 	if mode.Active {
 		t.Error("Active should be false after deactivation")

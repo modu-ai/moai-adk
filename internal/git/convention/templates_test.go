@@ -52,6 +52,7 @@ func TestGetBuiltin(t *testing.T) {
 			}
 			if cfg == nil {
 				t.Fatalf("GetBuiltin(%q) = nil, want non-nil", tt.name)
+				return // staticcheck SA5011
 			}
 			if cfg.Name != tt.wantName {
 				t.Errorf("Name = %q, want %q", cfg.Name, tt.wantName)

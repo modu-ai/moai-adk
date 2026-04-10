@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // taskMetrics holds the metrics embedded in a Task tool response.
@@ -37,7 +39,7 @@ type taskMetricsRecord struct {
 // not already contain a .moai/ directory, preventing accidental creation of .moai/
 // in subdirectories or unrelated directories.
 func resolveProjectRoot(input *HookInput) string {
-	root := os.Getenv("CLAUDE_PROJECT_DIR")
+	root := os.Getenv(config.EnvClaudeProjectDir)
 	if root == "" {
 		root = input.CWD
 	}

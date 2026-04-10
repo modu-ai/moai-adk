@@ -58,6 +58,13 @@ func BuildSmartPATH() string {
 	// Platform-specific package manager and system paths
 	switch runtime.GOOS {
 	case "darwin":
+		if brewPrefix := os.Getenv("HOMEBREW_PREFIX"); brewPrefix != "" {
+			candidates = append(candidates,
+				filepath.Join(brewPrefix, "bin"),
+				filepath.Join(brewPrefix, "sbin"),
+			)
+		}
+		// 항상 표준 경로를 폴백으로 추가 (HOMEBREW_PREFIX가 설정되지 않은 환경에서도 동작)
 		candidates = append(candidates,
 			"/opt/homebrew/bin",  // Apple Silicon Homebrew
 			"/opt/homebrew/sbin", // Apple Silicon Homebrew system

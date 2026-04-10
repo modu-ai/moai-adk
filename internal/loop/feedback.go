@@ -1,5 +1,7 @@
 package loop
 
+import "github.com/modu-ai/moai-adk/internal/config"
+
 // IsImproved returns true if the current feedback shows improvement
 // over the previous feedback in any metric: fewer test failures,
 // fewer lint errors, or higher coverage.
@@ -25,7 +27,7 @@ func IsStagnant(prev, curr *Feedback) bool {
 
 // MeetsQualityGate returns true if the feedback meets all quality gate
 // criteria: zero test failures, zero lint errors, build success,
-// and coverage at or above DefaultCoverageTarget (85%).
+// and coverage at or above config.DefaultTestCoverageTarget (85%).
 func MeetsQualityGate(fb *Feedback) bool {
 	if fb == nil {
 		return false
@@ -33,7 +35,7 @@ func MeetsQualityGate(fb *Feedback) bool {
 	return fb.TestsFailed == 0 &&
 		fb.LintErrors == 0 &&
 		fb.BuildSuccess &&
-		fb.Coverage >= DefaultCoverageTarget
+		fb.Coverage >= float64(config.DefaultTestCoverageTarget)
 }
 
 // FindPreviousReviewFeedback searches the feedback history for the most

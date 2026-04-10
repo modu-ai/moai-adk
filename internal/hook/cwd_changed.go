@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // cwdChangedHandler processes CwdChanged events.
@@ -39,7 +41,7 @@ func (h *cwdChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	// Write project-specific environment to CLAUDE_ENV_FILE if available.
 	// This persists env vars into subsequent Bash tool calls.
-	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" && newCwd != "" {
+	if envFile := os.Getenv(config.EnvClaudeEnvFile); envFile != "" && newCwd != "" {
 		h.writeEnvFile(envFile, newCwd)
 	}
 

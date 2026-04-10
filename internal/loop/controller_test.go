@@ -453,6 +453,7 @@ func TestLoopController_RecordFeedback(t *testing.T) {
 	saved := storage.states["SPEC-TEST-001"]
 	if saved == nil {
 		t.Fatal("state not persisted")
+		return // staticcheck SA5011
 	}
 	found := false
 	for _, f := range saved.Feedback {

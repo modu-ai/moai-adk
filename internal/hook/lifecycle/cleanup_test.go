@@ -293,6 +293,7 @@ func TestCleanup_ContinueOnError(t *testing.T) {
 
 	if result == nil {
 		t.Fatal("result should not be nil")
+		return // staticcheck SA5011
 	}
 
 	// The file that could be deleted should be counted

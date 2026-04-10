@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+const (
+	// updateUserAgent is the User-Agent header value for update checks.
+	updateUserAgent = "moai-adk-updater"
+	// archiveNamePattern is the naming pattern for moai-adk release archives.
+	archiveNamePattern = "moai-adk_%s_%s_%s.%s"
+)
+
 // releaseResponse represents the GitHub Releases API JSON response.
 type releaseResponse struct {
 	TagName     string          `json:"tag_name"`
@@ -54,7 +61,7 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 		return nil, fmt.Errorf("checker: create request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("User-Agent", "moai-adk-updater")
+	req.Header.Set("User-Agent", updateUserAgent)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -124,7 +131,7 @@ func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
 	// Strip "v" and "go-v" prefixes from tag name to match GoReleaser's {{ .Version }}
 	version := strings.TrimPrefix(release.TagName, "go-v")
 	version = strings.TrimPrefix(version, "v")
-	archiveName := fmt.Sprintf("moai-adk_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
+	archiveName := fmt.Sprintf(archiveNamePattern, version, runtime.GOOS, runtime.GOARCH, ext)
 
 	var checksumsURL string
 	for _, asset := range release.Assets {
