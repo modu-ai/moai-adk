@@ -318,3 +318,67 @@ func TestExportDiagnostics(t *testing.T) {
 		t.Errorf("loaded[0].Name = %q, want 'Test'", loaded[0].Name)
 	}
 }
+
+// --- TDD: Tests for Binary Freshness check (stale-binary detection) ---
+
+func TestShortCommit(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"full hash", "339bd4d3c1234567890abcdef", "339bd4d3c"},
+		{"exact 9", "339bd4d3c", "339bd4d3c"},
+		{"short 8", "339bd4d3", "339bd4d3"},
+		{"empty", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shortCommit(tt.in); got != tt.want {
+				t.Errorf("shortCommit(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckBinaryFreshness_BasicInvariants(t *testing.T) {
+	// The check is non-deterministic because it depends on version.GetCommit()
+	// (set at build time) and the CWD's git state. We assert invariants that
+	// hold regardless of which branch the test executes: non-empty name, a
+	// valid status value, and a non-empty message.
+	check := checkBinaryFreshness(false)
+	if check.Name != "Binary Freshness" {
+		t.Errorf("check.Name = %q, want 'Binary Freshness'", check.Name)
+	}
+	if check.Status != CheckOK && check.Status != CheckWarn {
+		t.Errorf("check.Status = %q, want ok or warn", check.Status)
+	}
+	if check.Message == "" {
+		t.Error("check.Message should not be empty")
+	}
+}
+
+func TestCheckBinaryFreshness_RegisteredInAllChecks(t *testing.T) {
+	// Verify the check is wired into runDiagnosticChecks.
+	checks := runDiagnosticChecks(false, "")
+	found := false
+	for _, c := range checks {
+		if c.Name == "Binary Freshness" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Binary Freshness check should be registered in runDiagnosticChecks allChecks array")
+	}
+}
+
+func TestCheckBinaryFreshness_FilterBy(t *testing.T) {
+	checks := runDiagnosticChecks(false, "Binary Freshness")
+	if len(checks) != 1 {
+		t.Fatalf("expected 1 check when filtered by 'Binary Freshness', got %d", len(checks))
+	}
+	if checks[0].Name != "Binary Freshness" {
+		t.Errorf("filtered check name = %q, want 'Binary Freshness'", checks[0].Name)
+	}
+}
