@@ -2,9 +2,12 @@
 id: SPEC-LSP-001
 title: Language Server Protocol Client System - Implementation Plan
 spec_ref: SPEC-LSP-001/spec.md
-status: Planned
+status: Superseded
+superseded_by: SPEC-LSP-CORE-002
 priority: High
 ---
+
+> **Note (2026-04-11)**: This plan is superseded. SPEC-LSP-001 was originally marked "Completed" on 2026-02-03 but actual delivery was limited to interface stubs in `internal/lsp/`. Real LSP client implementation is delivered via SPEC-LSP-CORE-002 (powernap-based). The content below is preserved for historical reference only.
 
 # SPEC-LSP-001: Implementation Plan
 

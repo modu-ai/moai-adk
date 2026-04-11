@@ -2,7 +2,8 @@
 id: SPEC-LSP-001
 title: Language Server Protocol Client System
 phase: "Phase 2 - Core Domains"
-status: Completed
+status: Superseded
+superseded_by: SPEC-LSP-CORE-002
 priority: High
 created: 2026-02-03
 module: "internal/lsp/"
@@ -25,6 +26,7 @@ tags: lsp, json-rpc, diagnostics, multi-language, concurrency
 | 날짜 | 버전 | 변경 내용 |
 |------|------|-----------|
 | 2026-02-03 | 1.0.0 | 초기 SPEC 작성 |
+| 2026-04-11 | 1.1.0 | Status corrected. Original 'Completed' claim was inaccurate — only interface stubs existed in `internal/lsp/`, real LSP client implementation was nil. Superseded by SPEC-LSP-CORE-002 which implements real multi-language LSP client via powernap. See SPEC-LSP-CORE-002 Problem Statement for details. |
 
 ---
 
@@ -394,14 +396,23 @@ internal/lsp/ -----> go.lsp.dev/protocol (LSP type 정의)
 
 ## Implementation Notes
 
-**Status**: Completed
-**Implementation Date**: 2026-02-03
+**Status**: Superseded by SPEC-LSP-CORE-002
+**Original Status Claim**: Completed (2026-02-03) — **INACCURATE**
+**Correction Date**: 2026-04-11
 **Development Methodology**: Hybrid (TDD for new code, DDD for existing code)
-**Test Coverage**: 91.3%
+**Test Coverage**: 91.3% (interface stubs only, not functional client)
 
-### Summary
+### Status Correction (2026-04-11)
+
+The original "Completed" status was inaccurate. Verification of `internal/lsp/` package reveals that only interface stubs and type definitions were shipped; no functional LSP client, server manager, or transport layer was actually implemented. See SPEC-LSP-CORE-002 Problem Statement (line 43): "SPEC-LSP-001 is marked `Completed` but the actual `internal/lsp/` package contains only interface stubs. Real LSP client implementation is nil."
+
+This SPEC is now formally **Superseded by SPEC-LSP-CORE-002**, which uses `github.com/charmbracelet/powernap` as the production-grade multi-language LSP client foundation.
+
+### Original Summary (preserved for historical reference)
 
 LSP integration package implemented with multi-language server management supporting 16+ languages. Includes LSP 3.17 compliant client with initialize, diagnostics, references, hover, definition, symbols, and shutdown operations. Server lifecycle management with parallel startup, health checks, and graceful shutdown. Supports both stdio and TCP transport protocols via JSON-RPC 2.0. Pure Go implementation with CGO_ENABLED=0 compatibility.
+
+**Note**: The above summary reflects the *intended* design; actual delivery was limited to interface stubs.
 
 ### Files Created
 

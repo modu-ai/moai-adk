@@ -3,9 +3,12 @@ id: SPEC-LSP-001
 title: Language Server Protocol Client System - Acceptance Criteria
 spec_ref: SPEC-LSP-001/spec.md
 plan_ref: SPEC-LSP-001/plan.md
-status: Planned
+status: Superseded
+superseded_by: SPEC-LSP-CORE-002
 priority: High
 ---
+
+> **Note (2026-04-11)**: This acceptance criteria is superseded. SPEC-LSP-001 was originally marked "Completed" on 2026-02-03 but actual delivery was limited to interface stubs in `internal/lsp/`. New acceptance criteria for the production LSP client are tracked in SPEC-LSP-CORE-002/acceptance.md. The content below is preserved for historical reference only.
 
 # SPEC-LSP-001: Acceptance Criteria
 

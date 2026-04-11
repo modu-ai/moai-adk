@@ -24,6 +24,7 @@ supersedes: SPEC-LSP-001
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-04-11 | 1.0.0 | Initial draft; supersedes SPEC-LSP-001 (which was marked Completed but never actually implemented) |
+| 2026-04-11 | 1.0.1 | Ship-target disambiguation: `estimated_loc: 2500` refers to production code only (Phase 1–3 + 5–6 non-test LOC). Test and integration code (~350 LOC from Phase 4 + in-phase tests) is tracked separately in plan.md ceiling total ~2850. Kept at 2500 for consistency with SPEC-GOPLS-BRIDGE-001 (2400) and SPEC-LSP-MULTI-006 (2900) convention where `estimated_loc` denotes shippable production code. |
 
 ---
 
