@@ -2433,6 +2433,9 @@ func detectGoBinPathForUpdate(homeDir string) string {
 		return filepath.Join(homeDir, "go", "bin")
 	}
 
-	// Last resort: common Go install location
+	// Last resort: platform-aware fallback
+	if runtime.GOOS == "windows" {
+		return filepath.Join("C:\\", "Go", "bin")
+	}
 	return "/usr/local/go/bin"
 }
