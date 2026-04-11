@@ -15,11 +15,15 @@ func NewWorktreeRemoveHandler() Handler {
 	return &worktreeRemoveHandler{}
 }
 
+// @MX:ANCHOR: [AUTO] Hook event type selector for the dispatcher routing table
+// @MX:REASON: fan_in=40, every hook handler exposes this method; the dispatcher calls it on all registered handlers to route events
 // EventType returns EventWorktreeRemove.
 func (h *worktreeRemoveHandler) EventType() EventType {
 	return EventWorktreeRemove
 }
 
+// @MX:ANCHOR: [AUTO] Worktree lifecycle hook handler called by the central hook dispatcher
+// @MX:REASON: fan_in=51, the dispatcher invokes Handle on all registered handlers; signature changes affect every lifecycle handler
 // Handle processes a WorktreeRemove event. It logs the worktree removal details
 // and removes the entry from the worktree registry.
 func (h *worktreeRemoveHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {

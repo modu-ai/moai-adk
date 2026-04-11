@@ -118,6 +118,19 @@ Create `.moai/docs/frontend-architecture-{SPEC-ID}.md` with component hierarchy,
 - expert-devops: Deployment platform (Vercel, Netlify), env vars, build strategy
 - manager-ddd: Component test structure, mock strategy (MSW), coverage
 
+## @MX Tag Obligations
+
+When creating or modifying source code, add @MX tags for the following patterns:
+
+- New exported function with expected fan_in >= 3: Add `@MX:ANCHOR` with `@MX:REASON`
+- Async pattern (Promise.all, async/await without error handling): Add `@MX:WARN` with `@MX:REASON`
+- Complex logic (cyclomatic complexity >= 15, branches >= 8): Add `@MX:WARN` with `@MX:REASON`
+- Untested public function: Add `@MX:TODO`
+
+Tag format: `// @MX:TYPE: [AUTO] description` (use language-appropriate comment syntax).
+All ANCHOR and WARN tags MUST include a `@MX:REASON` sub-line.
+Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
+
 ## Success Criteria
 
 - Clear component hierarchy with container/presentational separation

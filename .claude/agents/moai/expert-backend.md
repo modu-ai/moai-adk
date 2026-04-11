@@ -118,6 +118,19 @@ Create `.moai/docs/backend-architecture-{SPEC-ID}.md` with framework, DB, endpoi
 - expert-devops: Health checks, env vars, migrations, CI/CD
 - manager-ddd: Test structure, mock strategy, coverage requirements
 
+## @MX Tag Obligations
+
+When creating or modifying source code, add @MX tags for the following patterns:
+
+- New exported function with expected fan_in >= 3: Add `@MX:ANCHOR` with `@MX:REASON`
+- Goroutine, channel, or async pattern: Add `@MX:WARN` with `@MX:REASON`
+- Complex logic (cyclomatic complexity >= 15, branches >= 8): Add `@MX:WARN` with `@MX:REASON`
+- Untested public function: Add `@MX:TODO`
+
+Tag format: `// @MX:TYPE: [AUTO] description` (use language-appropriate comment syntax).
+All ANCHOR and WARN tags MUST include a `@MX:REASON` sub-line.
+Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
+
 ## Success Criteria
 
 - RESTful/GraphQL best practices, clear naming

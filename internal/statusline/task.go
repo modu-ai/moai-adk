@@ -116,7 +116,8 @@ func (t *TaskData) Format() string {
 	return result
 }
 
-// Global task collector instance.
+// @MX:WARN: [AUTO] Global mutable singleton with internal mutex; concurrent access risk at package boundary
+// @MX:REASON: [AUTO] Package-level var is initialized once at startup; any concurrent call to CollectTask races on the internal sync.RWMutex inside taskCollector — safe internally, but exposes global state mutation to all callers in the process
 var globalTaskCollector = newTaskCollector(time.Second)
 
 // CollectTask retrieves active task information from the session state.

@@ -34,6 +34,8 @@ type TraceWriter struct {
 	closed atomic.Bool
 }
 
+// @MX:WARN: [AUTO] Starts a background goroutine (go w.run()) whose lifetime is tied to Close(); leaks if Close is never called
+// @MX:REASON: goroutine lifecycle risk — run() blocks on channel drain; callers must call Close() to avoid goroutine leak
 // NewTraceWriter creates a new TraceWriter and starts its background goroutine.
 // logDir is the directory where trace files are stored. sessionID is embedded in
 // the filename and each entry. The writer must be closed via Close() to flush
@@ -50,6 +52,8 @@ func NewTraceWriter(logDir, sessionID string) *TraceWriter {
 	return w
 }
 
+// @MX:ANCHOR: [AUTO] Primary trace output interface called by all hook handlers that emit observability events
+// @MX:REASON: fan_in=20, all hook handlers that record trace output call Write; channel-based non-blocking contract must not change
 // Write enqueues a TraceEntry for async writing. Returns immediately without
 // blocking the caller. If the internal channel is full or closed, the entry is
 // dropped and a warning is logged (graceful degradation).
@@ -77,6 +81,8 @@ func (w *TraceWriter) Write(entry TraceEntry) {
 	}
 }
 
+// @MX:ANCHOR: [AUTO] Cleanup entry point for all trace consumers; must be called to drain background goroutine
+// @MX:REASON: fan_in=24, all hook handler teardown paths call Close; omitting this call causes the run() goroutine to leak
 // Close flushes all pending trace entries and stops the background goroutine.
 // It is safe to call Close multiple times; subsequent calls are no-ops.
 func (w *TraceWriter) Close() error {

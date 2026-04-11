@@ -81,6 +81,8 @@ type Range struct {
 	End Position `json:"end"`
 }
 
+// @MX:ANCHOR: [AUTO] Range membership check used across diagnostic filtering and hover result scoping
+// @MX:REASON: fan_in=33, diagnostic collectors, regression trackers, and quality gate enforcers all call Contains to scope results; boundary logic must remain correct
 // Contains reports whether the given position is within this range.
 func (r Range) Contains(pos Position) bool {
 	if r.Start.Line == r.End.Line {

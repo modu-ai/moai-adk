@@ -27,6 +27,8 @@ func NewBranchManager(root string) *branchManager {
 	}
 }
 
+// @MX:ANCHOR: [AUTO] Create is the sole branch creation path used by worktree, workflow, and CLI callers
+// @MX:REASON: fan_in=25, called across worktree.go, workflow managers, and multiple CLI commands; name validation and existence check are critical invariants
 // Create creates a new local branch from the current HEAD.
 func (b *branchManager) Create(name string) error {
 	b.mu.Lock()

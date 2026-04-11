@@ -63,6 +63,8 @@ func (m *manifestManager) Manifest() *Manifest {
 	return m.manifest
 }
 
+// @MX:ANCHOR: [AUTO] Load is the manifest initialization gate — every operation requiring file provenance data flows through this function
+// @MX:REASON: fan_in=22, called by every command that reads tracked file state (update, deploy, merge, diff); corrupt-file backup logic here must not be altered without testing recovery path
 // Load reads and parses the manifest from disk.
 func (m *manifestManager) Load(projectRoot string) (*Manifest, error) {
 	m.projectRoot = filepath.Clean(projectRoot)
@@ -198,6 +200,8 @@ func (m *manifestManager) DetectChanges() ([]ChangedFile, error) {
 	return changes, nil
 }
 
+// @MX:ANCHOR: [AUTO] Remove is the manifest entry deletion path called by update, merge, and deployment operations
+// @MX:REASON: fan_in=24, called by update, merge, and deployment operations; deletes provenance records — data loss is irreversible until next Track()
 // Remove deletes a file entry from the manifest.
 func (m *manifestManager) Remove(path string) error {
 	if m.manifest == nil {

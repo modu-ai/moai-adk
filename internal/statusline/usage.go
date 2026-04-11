@@ -153,6 +153,8 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 		Usage5H:      usage5H,
 		Usage7D:      usage7D,
 	}
+	// @MX:WARN: [AUTO] Background goroutine for async cache save without context or lifecycle management
+	// @MX:REASON: [AUTO] Goroutine is fire-and-forget with no cancellation signal; if the process exits immediately after CollectUsage returns, the cache write may be lost silently
 	go func() {
 		u.mu.Lock()
 		u.cache = cache
