@@ -197,24 +197,28 @@ Resume commands:
 
 Test runner and coverage tool selection is based on auto-detected project language:
 
-| Language | Indicator File | Test Command | Coverage Command |
-|----------|---------------|--------------|--------------------|
-| Go | go.mod | `go test ./...` | `go test -cover ./...` |
-| Python | pyproject.toml / setup.py | `pytest --tb=short` | `coverage run -m pytest` |
-| TypeScript/JavaScript | package.json | `npm test` or `jest` | `npm run coverage` or `c8` |
-| Rust | Cargo.toml | `cargo test` | `cargo tarpaulin` |
-| Java (Maven) | pom.xml | `mvn test -q` | `mvn jacoco:report` |
-| Java (Gradle) | build.gradle | `gradle test -q` | `gradle jacocoTestReport` |
-| Kotlin | build.gradle.kts | `gradle test -q` | `gradle jacocoTestReport` |
-| C# | *.csproj | `dotnet test` | `dotnet test --collect:"XPlat Code Coverage"` |
-| Ruby | Gemfile | `bundle exec rspec` or `bundle exec rake test` | `simplecov` (via .simplecov config) |
-| PHP | composer.json | `vendor/bin/phpunit` | `vendor/bin/phpunit --coverage-text` |
-| Scala | build.sbt | `sbt test` | `sbt coverage test coverageReport` |
-| Elixir | mix.exs | `mix test` | `mix test --cover` |
-| Swift | Package.swift | `swift test` | `swift test --enable-code-coverage` |
-| Flutter/Dart | pubspec.yaml | `flutter test` or `dart test` | `flutter test --coverage` |
-| R | DESCRIPTION | `Rscript -e 'testthat::test_package(".")'` | `covr::package_coverage()` |
-| C++ | CMakeLists.txt | `ctest --test-dir build` | `gcov`/`lcov` (if configured) |
+All 16 MoAI-supported languages are listed alphabetically with equal
+priority. Per CLAUDE.local.md Section 22, no language receives PRIMARY
+or SECONDARY classification.
+
+| Language   | Indicator File           | Test Command                                          | Coverage Command                                  |
+|------------|--------------------------|-------------------------------------------------------|---------------------------------------------------|
+| C#         | `*.csproj`               | `dotnet test`                                         | `dotnet test --collect:"XPlat Code Coverage"`     |
+| C++        | `CMakeLists.txt`         | `ctest --test-dir build`                              | `gcov` / `lcov` (if configured)                   |
+| Elixir     | `mix.exs`                | `mix test`                                            | `mix test --cover`                                |
+| Flutter    | `pubspec.yaml`           | `flutter test` or `dart test`                         | `flutter test --coverage`                         |
+| Go         | `go.mod`                 | `go test ./...`                                       | `go test -cover ./...`                            |
+| Java       | `pom.xml` / `build.gradle` | `mvn test -q` (Maven) / `gradle test -q` (Gradle)  | `mvn jacoco:report` / `gradle jacocoTestReport`   |
+| JavaScript | `package.json`           | `npm test` or `jest`                                  | `npm run coverage` or `c8`                        |
+| Kotlin     | `build.gradle.kts`       | `gradle test -q`                                      | `gradle jacocoTestReport`                         |
+| PHP        | `composer.json`          | `vendor/bin/phpunit`                                  | `vendor/bin/phpunit --coverage-text`              |
+| Python     | `pyproject.toml` / `setup.py` | `pytest --tb=short`                              | `coverage run -m pytest`                          |
+| R          | `DESCRIPTION`            | `Rscript -e 'testthat::test_package(".")'`            | `covr::package_coverage()`                        |
+| Ruby       | `Gemfile`                | `bundle exec rspec` or `bundle exec rake test`        | `simplecov` (via `.simplecov` config)             |
+| Rust       | `Cargo.toml`             | `cargo test`                                          | `cargo tarpaulin`                                 |
+| Scala      | `build.sbt`              | `sbt test`                                            | `sbt coverage test coverageReport`                |
+| Swift      | `Package.swift`          | `swift test`                                          | `swift test --enable-code-coverage`               |
+| TypeScript | `tsconfig.json` / `package.json` | `npm test` or `jest`                          | `npm run coverage` or `c8`                        |
 
 Language detection priority: Check for indicator files in project root. If multiple present, prefer the one with the most associated source files. If detection fails, prompt user to specify language.
 
