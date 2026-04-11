@@ -12,8 +12,12 @@
 # language preference into this template.
 #
 # Supported languages (all 16 equal, alphabetical):
-#   cpp, csharp, dart, elixir, go, java, javascript, kotlin,
+#   cpp, csharp, elixir, flutter, go, java, javascript, kotlin,
 #   php, python, r, ruby, rust, scala, swift, typescript
+#
+# Note: "flutter" is the canonical name for the Dart/Flutter ecosystem,
+# matching .claude/skills/moai/workflows/sync.md Phase 0.6.1 and
+# .claude/rules/moai/languages/flutter.md.
 # ================================================================
 #
 # Architecture: MoAI-ADK is an LSP CLIENT + AGGREGATOR
@@ -84,7 +88,7 @@ lsp:
       install_hint: "Install OmniSharp or Microsoft.CodeAnalysis.LanguageServer"
       license_concern: "open"
 
-    dart:
+    flutter:
       binary: dart
       fallback_binaries: []
       args:
@@ -94,7 +98,7 @@ lsp:
       project_markers:
         - "pubspec.yaml"
         - "pubspec.lock"
-      install_hint: "Install Dart SDK or Flutter SDK (includes dart LSP)"
+      install_hint: "Install Dart SDK or Flutter SDK (dart binary provides language server)"
       license_concern: "open"
 
     elixir:
@@ -271,8 +275,8 @@ lsp:
     languages:
       - cpp
       - csharp
-      - dart
       - elixir
+      - flutter
       - go
       - java
       - javascript

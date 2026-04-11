@@ -1029,7 +1029,7 @@ moai-adk-go는 Go로 작성된 도구이지만, **도구 자체의 언어와 사
 새 템플릿 파일 추가 또는 수정 시 반드시 확인:
 
 - [ ] 특정 언어 바이너리(gopls, pylsp, rust-analyzer 등)를 "PRIMARY"로 배치하지 않았는가?
-- [ ] 16개 지원 언어(go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, dart, swift)가 동등 수준으로 나열되어 있는가?
+- [ ] 16개 지원 언어(go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)가 동등 수준으로 나열되어 있는가?
 - [ ] 특정 언어만 "enabled: true", 다른 언어는 "planned"/"deferred"로 격하하지 않았는가?
 - [ ] "Primary/Secondary/Tertiary" 분류가 있다면, 언어가 아닌 "기능"(문법 검사, 타입 체크, 린트) 기준인가?
 - [ ] 사용자 환경 감지 로직(project_markers, extension-based)이 포함되어 있는가?
@@ -1040,8 +1040,11 @@ Template 파일 작성 시 반드시 16개 모두 동등 처리:
 
 ```
 go, python, typescript, javascript, rust, java, kotlin, csharp,
-ruby, php, elixir, cpp, scala, r, dart, swift
+ruby, php, elixir, cpp, scala, r, flutter, swift
 ```
+
+**캐논 이름 주의**: Dart/Flutter는 캐논 이름이 **"flutter"** (not "dart").
+이는 `.claude/skills/moai/workflows/sync.md` Phase 0.6.1 "Language Detection" 테이블과 일치하며, `.claude/rules/moai/languages/flutter.md` 파일 위치와도 일치. MoAI 프로젝트에서 Flutter는 주로 모바일 앱 개발 맥락에서 사용되므로 "dart"보다 "flutter"를 선호.
 
 이 목록은 `.claude/skills/moai/workflows/sync.md` Phase 0.6.1 "Language Detection" 테이블과 일치해야 하며, 변경 시 두 파일 모두 동기화 필요.
 
