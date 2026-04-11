@@ -108,6 +108,22 @@ constitution:
     # LSP operation timeout in seconds
     timeout_seconds: 3
 
+  # ast-grep quality gate (pattern-based static analysis)
+  # Rules loaded from rules_dir at pre-commit time.
+  # SPEC-ASTG-UPGRADE-001 (planned) will extend to 25+ Go/OWASP rules.
+  ast_grep_gate:
+    # Enable ast-grep quality checks (reverts PR #622 silent disable)
+    enabled: true
+
+    # Directory containing YAML rule files (relative to project root)
+    rules_dir: ".moai/config/astgrep-rules"
+
+    # Block commits on error-severity matches
+    block_on_error: true
+
+    # Report matches as warnings only (do not block)
+    warn_only_mode: false
+
   # Quality principles
   principles:
     # Simplicity principle
