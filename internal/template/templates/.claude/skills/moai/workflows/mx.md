@@ -94,7 +94,7 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
    | C++ | CMakeLists.txt, Makefile (with C++) | `//` |
    | Scala | build.sbt, build.sc | `//` |
    | R | DESCRIPTION, .Rproj, renv.lock | `#` |
-   | Flutter/Dart | pubspec.yaml | `//` |
+   | Flutter | pubspec.yaml | `//` |
    | Swift | Package.swift, .xcodeproj | `//` |
 
 2. **Project Context Loading**
