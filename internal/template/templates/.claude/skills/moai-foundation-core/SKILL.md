@@ -6,7 +6,7 @@ description: >
   and agent catalog reference. Use when referencing TRUST 5 gates or SPEC workflow.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.5.0"

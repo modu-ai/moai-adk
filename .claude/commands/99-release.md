@@ -2,7 +2,7 @@
 description: "MoAI-ADK v2.x production release via GitHub Flow. Creates release/vX.Y.Z branch, version bump, CHANGELOG, PR to main, squash merge, then tag push. Tag vX.Y.Z triggers GoReleaser. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
 argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
 type: local
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Agent
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet
 disable-model-invocation: true
 version: 4.0.0
 metadata:
@@ -87,7 +87,7 @@ Before starting the release process, verify the working directory is clean:
 
 ## PHASE 1: Quality Gates
 
-Create TodoWrite with these items, then run each check in parallel where possible:
+Create a task list via TaskCreate for these items, then run each check in parallel where possible:
 
 1. Run all tests: `go test -race ./... -count=1 2>&1 | tail -30`
 2. Run go vet: `go vet ./... 2>&1 | tail -10`
@@ -887,4 +887,4 @@ grep -n "moai.version" internal/template/templates/.moai/config/sections/system.
 
 ## BEGIN EXECUTION
 
-Start Phase 1 now. Create TodoWrite and run quality gates immediately.
+Start Phase 1 now. Create tasks via TaskCreate and run quality gates immediately.

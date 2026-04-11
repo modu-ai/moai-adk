@@ -6,7 +6,7 @@ description: >
   Use when choosing or setting up cloud databases.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Bash(psql:*) Bash(npm:*) Bash(npx:*) Bash(neonctl:*) Bash(firebase:*) Bash(supabase:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Write, Bash(psql:*), Bash(npm:*), Bash(npx:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.0.0"

@@ -836,8 +836,42 @@ metadata:
 | Agents | `initialPrompt` | String | `initialPrompt: "Analyze the code: @.src/"` |
 | Agents | `skills` | YAML array | `skills:\n  - moai-lang-go` |
 | Skills | `allowed-tools` | CSV string | `allowed-tools: Read, Grep` |
+| Skills | `allowed-tools` | ❌ 공백 구분 금지 | `Read Grep Glob` → YAML이 단일 string으로 파싱 (§18.1) |
 | Skills | `effort` | String | `effort: low` |
 | Skills | `metadata.*` | Quoted strings | `version: "1.0.0"` |
+
+### §18.1 [CRITICAL] Space-separated `allowed-tools` 금지
+
+YAML 스펙상 `allowed-tools: Read Grep Glob`는 **단일 string scalar** `"Read Grep Glob"`으로 파싱된다. Claude Code가 이 string을 공백으로 분리하는지, 쉼표로만 분리하는지는 공식 문서상 명시되지 않았으나 **CSV가 유일한 공식 권장 형식** (skill-authoring.md).
+
+**Go yaml.v3 파서 검증** (2026-04-11 세션):
+- `allowed-tools: Read Grep Glob` → `TYPE: string`, `VALUE: "Read Grep Glob"` → 쉼표 분리 시 1개 token "`Read Grep Glob`" (존재하지 않는 도구)
+- `allowed-tools: Read, Grep, Glob` → `TYPE: string`, `VALUE: "Read, Grep, Glob"` → 쉼표 분리 시 3개 token 정상
+
+공백 구분은 Claude Code가 **1개의 존재하지 않는 tool 이름**으로 해석하여 silently no tools allowed 상태가 될 수 있다. 검증 불가능한 영역이므로 **CSV만 허용**.
+
+**금지 예시**:
+```yaml
+# WRONG — YAML 단일 scalar로 파싱됨
+allowed-tools: Read Grep Glob Bash(git:*)
+
+# CORRECT — CSV로 3+1 tool token 분리
+allowed-tools: Read, Grep, Glob, Bash(git:*)
+```
+
+**탐지 grep 패턴**:
+```bash
+for f in .claude/skills/*/SKILL.md internal/template/templates/.claude/skills/*/SKILL.md; do
+  line=$(grep "^allowed-tools:" "$f" 2>/dev/null)
+  if [ -n "$line" ]; then
+    val="${line#allowed-tools: }"
+    if ! echo "$val" | grep -q ","; then
+      nf=$(echo "$val" | awk '{print NF}')
+      [ "$nf" -gt 1 ] && echo "DEFECT: $f"
+    fi
+  fi
+done
+```
 
 ### Validation Checklist
 
@@ -845,7 +879,7 @@ metadata:
 
 - [ ] `paths:` 필드가 CSV string 형식인지 확인
 - [ ] `tools:` 필드가 CSV string 형식인지 확인
-- [ ] `allowed-tools:` 필드가 CSV string 형식인지 확인
+- [ ] `allowed-tools:` 필드가 CSV string 형식인지 확인 (공백 구분 절대 금지, §18.1 참조)
 - [ ] `metadata:` 모든 값이 quoted string인지 확인
 - [ ] Template 수정 후 `make build` 실행했는지 확인
 - [ ] Local copy (`.claude/`)도 동일하게 수정했는지 확인
@@ -1129,6 +1163,89 @@ diff .moai/config/sections/lsp.yaml internal/template/templates/.moai/config/sec
 
 ---
 
+## 23. Audit Sweep Patterns
+
+### [HARD] 전수 감사 의뢰 시 반드시 재검증 루프 포함
+
+**배경**: 2026-04-11 세션에서 `Explore` 서브에이전트에게 전체 스킬 frontmatter 감사를 의뢰했으나, 2개 스킬(`moai-platform-auth`, `moai-platform-chrome-extension`)의 `allowed-tools` 공백 구분 결함을 놓쳤다. Iteration 2 재검증 grep에서 추가 발견되었다. **7%의 false-negative rate** (2/27).
+
+### Explore/Plan 등 Claude Code 내장 서브에이전트의 한계
+
+- `Explore`, `Plan`, `general-purpose`는 Claude Code **내장** 서브에이전트로, `.claude/agents/`에 파일이 없어 **직접 프롬프트 수정 불가**.
+- 감사 품질은 에이전트에게 전달되는 **프롬프트 지시문의 완결성**에 전적으로 의존한다.
+- 따라서 "전수 감사" 의뢰 시 에이전트를 개선하는 것이 아니라 **의뢰 프롬프트와 재검증 루프**를 강화해야 한다.
+
+### [HARD] 감사 프롬프트 필수 구성요소
+
+1. **명시적 카테고리 분류**: 카테고리를 번호(A, B, C...)로 나누고 각 카테고리의 판정 기준을 구체적 정규식 또는 문자열 매칭으로 명시
+2. **구체적 grep/glob 힌트**: 에이전트가 직접 실행할 수 있는 명령어를 프롬프트 내 제공
+3. **조사 대상 디렉토리 양쪽 모두 명시**: `internal/template/templates/...` + `.claude/...` (Template-First rule 대응)
+4. **예상 결함 수량 가이드**: "N개 카테고리에서 최소 M개 결함 예상" — 에이전트가 너무 일찍 멈추는 것을 방지
+5. **재검증 3단계 루프 필수** (아래 참조)
+
+### 감사 결과 재검증 3단계 루프
+
+| 단계 | 방법 | 목적 |
+|------|------|------|
+| 1. 1차 감사 | Explore 에이전트에 sweep 패턴 + 카테고리 명시 의뢰 | 구조적 결함 발견 |
+| 2. 2차 재검증 | **동일 sweep을 Bash 스크립트로 직접 재실행** | 에이전트 누락 보완 (이번 세션 +2개 발견) |
+| 3. 3차 full-file 파싱 | Go yaml.v3 파서 등으로 실제 YAML 유효성 검증 | 단순 grep이 놓치는 파싱 오류 탐지 |
+
+### 검증된 sweep 패턴 라이브러리
+
+```bash
+# 패턴 A: 공백 구분 allowed-tools 탐지
+for f in .claude/skills/*/SKILL.md internal/template/templates/.claude/skills/*/SKILL.md; do
+  line=$(grep "^allowed-tools:" "$f" 2>/dev/null)
+  if [ -n "$line" ]; then
+    val="${line#allowed-tools: }"
+    if ! echo "$val" | grep -q ","; then
+      nf=$(echo "$val" | awk '{print NF}')
+      [ "$nf" -gt 1 ] && echo "SPACE-SEP: $f"
+    fi
+  fi
+done
+
+# 패턴 B: Skill() 호출 vs allowed-tools 일관성
+for f in .claude/skills/*/SKILL.md internal/template/templates/.claude/skills/*/SKILL.md; do
+  if grep -q 'Skill("' "$f" 2>/dev/null; then
+    if ! grep -q "^allowed-tools:.*Skill" "$f" 2>/dev/null; then
+      echo "MISSING Skill in allowed-tools: $f"
+    fi
+  fi
+done
+
+# 패턴 C: license template vs local 불일치
+for f in .claude/skills/*/SKILL.md; do
+  base=$(basename $(dirname "$f"))
+  tpl="internal/template/templates/.claude/skills/$base/SKILL.md"
+  if [ -f "$tpl" ]; then
+    local_lic=$(grep "^license:" "$f" | sed 's/license: //')
+    tpl_lic=$(grep "^license:" "$tpl" | sed 's/license: //')
+    [ "$local_lic" != "$tpl_lic" ] && echo "MISMATCH: $base"
+  fi
+done
+
+# 패턴 D: Go yaml 파싱 전체 유효성 (gopkg.in/yaml.v3 이미 go.mod에 있음)
+# 임시 Go 스크립트로 모든 SKILL.md frontmatter 파싱 후 에러 집계
+```
+
+### 교훈
+
+- **에이전트 보고서는 최소 기준선이며 절대적 진실이 아니다.** 이번 세션에서 에이전트는 25개 결함을 보고했으나 실제는 27개였다 (7% 누락).
+- **재검증 grep sweep이 누락을 잡아냈다.** Iteration 2의 final sweep이 `moai-platform-auth`, `moai-platform-chrome-extension`을 추가 발견해 완전한 범위로 확장되었다.
+- **Template-First 원칙**: 감사 시 반드시 template + local **양쪽** 모두 스캔. 한쪽만 보면 절반을 놓친다.
+- **Go 파서 검증이 grep보다 강력**: CSV 형식 검증만으로는 공백 구분이 실제로 어떻게 파싱되는지 모름. Go yaml.v3 파서로 실제 type + value를 출력하면 false-positive 없이 확정 가능.
+
+### 적용 지침
+
+향후 전수 감사 의뢰 시 반드시:
+1. 이 §23 섹션을 감사 의뢰 프롬프트에 include (또는 요약)
+2. 감사 결과 수신 후 **Bash 재검증 스크립트를 반드시 실행**
+3. 불일치 발견 시 iteration 추가 — "에이전트가 한 말이 전부"라고 절대 가정 금지
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.9.0 (템플릿 언어 중립성 규칙 추가)
+**Version**: 2.0.0 (§18.1 공백 구분 금지 + §23 Audit Sweep Patterns 추가)
 **Last Updated**: 2026-04-11

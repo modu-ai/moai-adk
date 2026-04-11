@@ -500,7 +500,18 @@ def generate_hook_output(state: dict, complete: bool, reason: str | None) -> dic
 
 ## LSP Diagnostics Examples
 
-### Python Diagnostics (Pyright)
+The three samples below are **illustrative only**. Ralph treats all 16
+MoAI-supported languages equally (C++, C#, Elixir, Flutter, Go, Java,
+JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, TypeScript).
+The same diagnostic collection, classification, and fix patterns apply
+uniformly regardless of language. These three samples were chosen for
+their concise demonstration of common LSP diagnostic categories: type
+errors (Sample 1), deprecated imports (Sample 2), and unused variables
+(Sample 3). Per CLAUDE.local.md Section 22 (Template Language Neutrality),
+no language receives priority over another; for the complete
+language-to-server mapping table, see `references/reference.md`.
+
+### Sample 1: Type Error (illustrated with Python + Pyright)
 
 **Type Errors:**
 
@@ -547,7 +558,7 @@ from typing import Dict  # Error: Use dict instead (PEP 585)
 from typing import TYPE_CHECKING
 ```
 
-### TypeScript Diagnostics (tsserver)
+### Sample 2: Type Mismatch (illustrated with TypeScript + tsserver)
 
 **Type Mismatches:**
 
@@ -580,7 +591,7 @@ function getUser(id: number): User {
 }
 ```
 
-### Go Diagnostics (gopls)
+### Sample 3: Unused Variable (illustrated with Go + gopls)
 
 **Unused Variables:**
 
