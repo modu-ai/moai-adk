@@ -73,7 +73,11 @@ func InitDependencies() {
 		homeDir = os.TempDir()
 	}
 	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
-	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, &noopFeedbackGenerator{}, ralphCfg.MaxIterations)
+	// Use GoFeedbackGenerator for real test/lint feedback collection.
+	// Falls back gracefully: if go test/vet fail or timeout, feedback is partial.
+	cwd, _ := os.Getwd()
+	feedbackGen := loop.NewGoFeedbackGenerator(cwd)
+	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, feedbackGen, ralphCfg.MaxIterations)
 
 	deps = &Dependencies{
 		Config:         config.NewConfigManager(),
@@ -85,9 +89,6 @@ func InitDependencies() {
 	// Hook registry requires a ConfigProvider; use ConfigManager
 	reg := hook.NewRegistry(deps.Config)
 	deps.HookRegistry = reg
-
-	// Determine current working directory once.
-	cwd, _ := os.Getwd()
 
 	// Enable observability when configured (REQ-OBS-001).
 	// Reads the project-relative observability config; gracefully skips on error.
@@ -124,7 +125,7 @@ func InitDependencies() {
 	secPolicy := hook.DefaultSecurityPolicy()
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
+	deps.HookRegistry.Register(hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandler())
@@ -143,6 +144,10 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewPermissionDeniedHandler())
 	deps.HookRegistry.Register(hook.NewConfigChangeHandler())
 	deps.HookRegistry.Register(hook.NewCwdChangedHandler())
+	deps.HookRegistry.Register(hook.NewFileChangedHandler())
+	deps.HookRegistry.Register(hook.NewElicitationHandler())
+	deps.HookRegistry.Register(hook.NewElicitationResultHandler())
+	deps.HookRegistry.Register(hook.NewSetupHandler())
 }
 
 // enableObservabilityIfConfigured reads observability config and enables
@@ -356,12 +361,4 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 	}
 }
 
-// noopFeedbackGenerator is a default implementation that returns an empty Feedback without
-// any actual collection. Used to satisfy loop.FeedbackGenerator when no feedback source
-// is available during CLI execution.
-type noopFeedbackGenerator struct{}
-
-func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, error) {
-	return &loop.Feedback{}, nil
-}
 

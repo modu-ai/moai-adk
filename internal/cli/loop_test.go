@@ -58,6 +58,13 @@ func TestLoopCmd_HasExpectedSubcommands(t *testing.T) {
 	}
 }
 
+// noopFeedbackGenerator is a test-only stub that returns empty Feedback.
+type noopFeedbackGenerator struct{}
+
+func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, error) {
+	return &loop.Feedback{}, nil
+}
+
 // --- noopFeedbackGenerator tests ---
 
 func TestNoopFeedbackGenerator_Collect(t *testing.T) {

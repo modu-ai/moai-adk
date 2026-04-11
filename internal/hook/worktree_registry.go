@@ -17,7 +17,8 @@ type WorktreeEntry struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// worktreeMu protects concurrent access to the worktrees state file.
+// @MX:WARN: [AUTO] Package-level mutex guards shared worktree state file; all reads and writes must acquire this lock
+// @MX:REASON: global state mutation — concurrent hook handlers (WorktreeCreate/WorktreeRemove) share this lock; missing lock acquisition causes data races on the JSON state file
 var worktreeMu sync.Mutex
 
 // registerWorktree appends a new WorktreeEntry to the persistent state file.

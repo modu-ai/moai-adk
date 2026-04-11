@@ -190,6 +190,8 @@ func (cb *CircuitBreaker) transitionTo(newState CircuitState) {
 	cb.lastStateChange = time.Now()
 
 	if cb.config.OnStateChange != nil {
+		// @MX:WARN: [AUTO] OnStateChange callback invoked as goroutine while mutex is held by caller; panic in callback is unrecovered
+		// @MX:REASON: [AUTO] The goroutine escapes the mutex scope held by transitionTo's callers; if OnStateChange panics, there is no recover() wrapper, which crashes the process; context cancellation is also not propagated
 		// Call asynchronously to avoid blocking
 		go cb.config.OnStateChange(oldState, newState)
 	}

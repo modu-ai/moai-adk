@@ -43,6 +43,8 @@ func NewCache(path string, ttl time.Duration) *Cache {
 	return &Cache{path: path, ttl: ttl}
 }
 
+// @MX:ANCHOR: [AUTO] Update cache retrieval - read path used by update checker, version display, and statusline
+// @MX:REASON: [AUTO] fan_in=26; Get() is invoked by the update checker, the version command, and the statusline provider — all callers rely on the nil-on-miss contract; changing return semantics breaks silent degradation behavior
 // Get returns a cached entry if it is fresh and matches the current version.
 // Returns nil (no error) on cache miss, expiration, version mismatch, or corruption.
 func (c *Cache) Get(currentVersion string) *CacheEntry {
@@ -69,6 +71,8 @@ func (c *Cache) Get(currentVersion string) *CacheEntry {
 	return &entry
 }
 
+// @MX:ANCHOR: [AUTO] Update cache write path - used by update checker and session hooks to persist version state
+// @MX:REASON: [AUTO] fan_in=17; Set() is called after every successful GitHub API fetch and after each session-start hook; callers use the returned error as a soft failure signal — errors must remain non-fatal
 // Set writes a cache entry to disk, creating directories as needed.
 // Errors are returned but callers may choose to ignore them.
 func (c *Cache) Set(entry *CacheEntry) error {

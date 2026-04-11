@@ -299,6 +299,8 @@ type validateResult struct {
 	timedOut bool
 }
 
+// @MX:WARN: [AUTO] Spawns one goroutine per file path; unbounded parallelism when filePaths is large
+// @MX:REASON: goroutine lifecycle — no semaphore limits concurrency; large file sets can exhaust goroutine budget
 // ValidateFiles validates multiple Go source files in parallel.
 // Returns partial results if context is cancelled (AC-EDGE-005).
 // Never returns an error for timeout: partial results are returned instead.
@@ -343,6 +345,8 @@ func (v *mxValidator) ValidateFiles(ctx context.Context, filePaths []string) (*V
 		}(path)
 	}
 
+	// @MX:WARN: [AUTO] Goroutine that closes resultsCh after all workers finish; must not be cancelled externally
+	// @MX:REASON: goroutine lifecycle — if parent function returns early this goroutine orphans until wg reaches zero, then close panics on already-drained channel
 	// Close channel once all goroutines finish
 	go func() {
 		wg.Wait()

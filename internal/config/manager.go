@@ -107,6 +107,8 @@ func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
 	return cfg, nil
 }
 
+// @MX:ANCHOR: [AUTO] Get is the primary configuration accessor used by hooks, CLI commands, and loop controller
+// @MX:REASON: fan_in=18 across 10 files, the single read path for in-memory config; returning nil before Load() causes silent nil-deref in callers — guard logic must not be removed
 // Get returns the current in-memory configuration.
 // Returns nil if the manager has not been initialized via Load().
 func (m *ConfigManager) Get() *Config {
@@ -144,6 +146,8 @@ func (m *ConfigManager) SetSection(name string, value any) error {
 	return m.setSectionLocked(name, value)
 }
 
+// @MX:ANCHOR: [AUTO] Save is the config persistence path — atomic multi-section write to disk
+// @MX:REASON: fan_in=12 across 4 files (profile sync, project initializer, CLI); atomic write via temp+rename is critical for data integrity — do not replace with direct os.WriteFile
 // Save persists the current configuration to disk atomically.
 // Each section is saved to its corresponding YAML file using
 // temp file + os.Rename for atomic writes.

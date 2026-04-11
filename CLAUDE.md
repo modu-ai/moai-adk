@@ -10,12 +10,13 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] Parallel Execution: Execute all independent tool calls in parallel when no dependencies exist
 - [HARD] No XML in User Responses: Never display XML tags in user-facing responses
 - [HARD] Markdown Output: Use Markdown for all user-facing communication
+- [HARD] Context-First Discovery: Conduct Socratic interview when context is insufficient before executing non-trivial tasks (See Section 7)
 - [HARD] Approach-First Development: Explain approach and get approval before writing code (See Section 7)
 - [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
 - [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
 - [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
 
-Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-8) are detailed in Section 7.
+Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-9) are detailed in Section 7.
 
 ### Recommendations
 
@@ -206,7 +207,7 @@ MoAI-ADK implements LSP-based quality gates:
 
 ## 7. Safe Development Protocol
 
-### Development Safeguards (4 HARD Rules)
+### Development Safeguards (5 HARD Rules)
 
 These rules ensure code quality and prevent regressions in the project codebase.
 
@@ -241,6 +242,44 @@ When fixing bugs:
 - Confirm the test fails before making changes
 - Fix the bug with minimal code changes
 - Verify the reproduction test passes after the fix
+
+**Rule 5: Context-First Discovery**
+
+When user intent is unclear, conduct Socratic interview before execution.
+
+Trigger conditions (any one activates discovery mode):
+- Ambiguous pronouns or demonstratives without clear referent (this, that, it, the previous one)
+- Multi-interpretable action verbs without specified scope (clean up, process, improve, fix)
+- Unclear boundaries (how far, how much, which files, where to stop)
+- Potential conflict with existing state (uncommitted changes, in-progress branches, code patterns)
+
+Discovery process:
+- Detect insufficient context via trigger conditions above
+- Conduct Socratic interview via AskUserQuestion (max 4 questions per round)
+- Repeat rounds with new questions based on previous answers
+- Continue until 100% intent clarity is achieved
+- Consolidate findings into a structured report
+- Present report and obtain explicit final confirmation
+- Build execution plan from confirmed intent
+- Delegate to sequential or parallel agents per plan
+
+Exceptions (no interview needed):
+- Single-line typos or formatting fixes
+- Bug fixes with explicit reproduction provided
+- Direct file reads when path is specified
+- Command invocations with all required arguments
+- Continuation of previously confirmed work in the same session
+
+Constraints:
+- Maximum 4 questions per AskUserQuestion call (Claude Code limit)
+- All questions in user's conversation_language
+- Each new round must build on previous answers
+- Final confirmation MUST be explicit before execution begins
+
+Rule sequencing:
+- Rule 5 (Discovery) executes BEFORE Rule 1 (Approach-First) chronologically
+- Rule 5 establishes WHAT the user wants
+- Rule 1 explains HOW it will be implemented
 
 ### Go-Specific Guidelines
 

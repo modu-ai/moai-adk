@@ -250,6 +250,8 @@ type ErrDiagnosticsUnavailable struct {
 	Reason   string
 }
 
+// @MX:ANCHOR: [AUTO] Error sentinel used across quality gate error handling throughout all LSP hook paths
+// @MX:REASON: fan_in=44, quality gate enforcer, fallback diagnostics, and session tracker all branch on this error type; changing the message format breaks error string comparisons
 func (e *ErrDiagnosticsUnavailable) Error() string {
 	if e.Reason != "" {
 		return "diagnostics unavailable for " + e.Language + ": " + e.Reason

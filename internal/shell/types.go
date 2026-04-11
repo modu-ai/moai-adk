@@ -16,6 +16,8 @@ const (
 	ShellUnknown ShellType = "unknown"
 )
 
+// @MX:ANCHOR: [AUTO] Shell type string conversion - cross-system integration point used by CLI, hook, and template subsystems
+// @MX:REASON: [AUTO] fan_in=41; ShellType.String() is called across CLI command rendering, hook script generation, and template path resolution — changing the output format breaks multiple downstream consumers
 // String returns the string representation of the shell type.
 func (s ShellType) String() string {
 	return string(s)

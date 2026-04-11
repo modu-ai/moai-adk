@@ -27,6 +27,8 @@ func NewTestedValidator(lsp LSPClient, coverageTarget, currentCoverage int) *Tes
 	}
 }
 
+// @MX:ANCHOR: [AUTO] Name() is the validator identity contract — every quality gate consumer calls this to dispatch results by principle name
+// @MX:REASON: fan_in=66, highest fan_in in the codebase; all validator consumers (hook, loop, quality gate) depend on this to route PrincipleResult
 // Name returns the principle name.
 func (v *TestedValidator) Name() string { return PrincipleTested }
 

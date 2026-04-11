@@ -20,6 +20,8 @@ func NewContract(workDir string) Contract {
 	return &executionContract{workDir: workDir}
 }
 
+// @MX:ANCHOR: [AUTO] Hook pre-execution contract validator; gate for all hook handler dispatches
+// @MX:REASON: fan_in=30, every hook handler calls Validate before processing; bypassing this breaks the ADR-012 execution guarantee
 // Validate checks that the execution environment meets contract requirements.
 // It verifies:
 //   - The context is not already cancelled or expired

@@ -86,5 +86,89 @@ func (e *RalphEngine) Decide(_ context.Context, state *loop.LoopState, feedback 
 	}, nil
 }
 
+// ErrorLevel represents the severity classification for feedback errors.
+// Higher levels require more human involvement.
+type ErrorLevel int
+
+const (
+	// ErrorLevelAutoFix indicates errors that can be fixed automatically
+	// (e.g., formatting, simple lint issues, unused imports).
+	ErrorLevelAutoFix ErrorLevel = 1
+
+	// ErrorLevelLogOnly indicates errors that should be logged but
+	// don't block progress (e.g., minor warnings, style suggestions).
+	ErrorLevelLogOnly ErrorLevel = 2
+
+	// ErrorLevelApproval indicates errors that need human review before
+	// proceeding (e.g., security warnings, breaking API changes).
+	ErrorLevelApproval ErrorLevel = 3
+
+	// ErrorLevelManual indicates errors that require manual intervention
+	// (e.g., build failures, test infrastructure issues, env problems).
+	ErrorLevelManual ErrorLevel = 4
+)
+
+// ClassifiedError pairs an error description with its severity level.
+type ClassifiedError struct {
+	Level       ErrorLevel `json:"level"`
+	Description string     `json:"description"`
+	Count       int        `json:"count"`
+}
+
+// ClassifyFeedback analyzes feedback metrics and classifies the issues
+// into error levels for the decision engine.
+func ClassifyFeedback(fb *loop.Feedback) []ClassifiedError {
+	if fb == nil {
+		return nil
+	}
+
+	var classified []ClassifiedError
+
+	// Lint errors are typically auto-fixable (Level 1).
+	if fb.LintErrors > 0 {
+		classified = append(classified, ClassifiedError{
+			Level:       ErrorLevelAutoFix,
+			Description: "lint errors detected",
+			Count:       fb.LintErrors,
+		})
+	}
+
+	// Test failures need investigation (Level 2 for few, Level 3 for many).
+	if fb.TestsFailed > 0 {
+		level := ErrorLevelLogOnly
+		if fb.TestsFailed > 5 {
+			level = ErrorLevelApproval
+		}
+		classified = append(classified, ClassifiedError{
+			Level:       level,
+			Description: "test failures",
+			Count:       fb.TestsFailed,
+		})
+	}
+
+	// Build failure is a manual-level issue (Level 4).
+	if !fb.BuildSuccess {
+		classified = append(classified, ClassifiedError{
+			Level:       ErrorLevelManual,
+			Description: "build failure",
+			Count:       1,
+		})
+	}
+
+	return classified
+}
+
+// MaxErrorLevel returns the highest error level from classified errors.
+// Returns 0 if no errors are present.
+func MaxErrorLevel(errors []ClassifiedError) ErrorLevel {
+	var maxLevel ErrorLevel
+	for _, e := range errors {
+		if e.Level > maxLevel {
+			maxLevel = e.Level
+		}
+	}
+	return maxLevel
+}
+
 // Compile-time interface compliance check.
 var _ loop.DecisionEngine = (*RalphEngine)(nil)

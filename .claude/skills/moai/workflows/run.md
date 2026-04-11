@@ -646,9 +646,16 @@ Iteration behavior:
 
 Output: review_findings per dimension, iterations_completed count, final review status.
 
-### Phase 2.9: MX Tag Update
+### Phase 2.9: MX Tag Update [HARD]
 
 Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
+
+[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 2 and verify @MX tag coverage before proceeding to Phase 2.10. If implementation agents did not add required tags during their work, MoAI adds them here.
+
+**Validation criteria (blocking):**
+- P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`
+- P2: Every new goroutine/async pattern MUST have `@MX:WARN`
+- P1/P2 violations block Phase 2.10 until resolved
 
 **TDD Mode:**
 - Remove `@MX:TODO` tags for tests that now pass

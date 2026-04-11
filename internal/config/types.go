@@ -117,10 +117,23 @@ type RalphConfig struct {
 
 // WorkflowConfig represents the workflow configuration section.
 type WorkflowConfig struct {
-	AutoClear  bool `yaml:"auto_clear"`
-	PlanTokens int  `yaml:"plan_tokens"`
-	RunTokens  int  `yaml:"run_tokens"`
-	SyncTokens int  `yaml:"sync_tokens"`
+	AutoClear     bool                   `yaml:"auto_clear"`
+	PlanTokens    int                    `yaml:"plan_tokens"`
+	RunTokens     int                    `yaml:"run_tokens"`
+	SyncTokens    int                    `yaml:"sync_tokens"`
+	AutoSelection TeamAutoSelectionConfig `yaml:"auto_selection"`
+}
+
+// TeamAutoSelectionConfig holds thresholds for automatic team vs solo mode selection.
+// These values are evaluated by the orchestrator to determine execution mode
+// when no explicit --team or --solo flag is provided.
+type TeamAutoSelectionConfig struct {
+	// MinDomainsForTeam is the minimum number of distinct domains to trigger team mode.
+	MinDomainsForTeam int `yaml:"min_domains_for_team"`
+	// MinFilesForTeam is the minimum number of affected files to trigger team mode.
+	MinFilesForTeam int `yaml:"min_files_for_team"`
+	// MinComplexityScore is the minimum complexity score (1-10) to trigger team mode.
+	MinComplexityScore int `yaml:"min_complexity_score"`
 }
 
 // StateConfig represents the project state storage configuration.

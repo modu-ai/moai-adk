@@ -75,6 +75,8 @@ func (m *gitManager) CurrentBranch() (string, error) {
 	return out, nil
 }
 
+// @MX:ANCHOR: [AUTO] Status is the primary working-tree inspection point used by CLI, loop controller, and statusline consumers
+// @MX:REASON: fan_in=26 across 7 files, highest among Repository methods; ahead/behind parsing logic and staged/modified/untracked categorization are consumed by multiple callers — behavior changes have wide impact
 // Status returns the working tree status.
 func (m *gitManager) Status() (*GitStatus, error) {
 	m.logger.Debug("getting repository status")

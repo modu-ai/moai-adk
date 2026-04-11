@@ -73,6 +73,15 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Auto-detect tmux environment and set teammateMode accordingly.
+	// When inside tmux, teammates spawn in separate panes for visibility.
+	// When outside tmux, fall back to "auto" (in-process display).
+	if input.ProjectDir != "" {
+		if mode := ensureTeammateMode(input.ProjectDir); mode != "" {
+			data["teammate_mode"] = mode
+		}
+	}
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		slog.Error("failed to marshal session data",
@@ -210,6 +219,92 @@ func isCGMode(projectDir string) bool {
 	}
 	// Simple check: look for "team_mode: cg" in the file
 	return strings.Contains(string(data), "team_mode: cg")
+}
+
+// ensureTeammateMode detects whether the session runs inside tmux and
+// sets "teammateMode" in settings.local.json accordingly.
+//   - Inside tmux → "tmux" (teammates appear in separate panes)
+//   - Outside tmux → removes override (project default "auto" applies)
+//
+// This runs at every SessionStart so the setting stays current when the
+// user switches between tmux and non-tmux terminals. CG/GLM modes
+// already force "tmux" via their own code paths, so this is a no-op in
+// those cases (the value is already "tmux").
+func ensureTeammateMode(projectDir string) string {
+	inTmux := os.Getenv("TMUX") != ""
+
+	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil && !os.IsNotExist(err) {
+		return ""
+	}
+
+	var raw map[string]json.RawMessage
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return ""
+		}
+	}
+	if raw == nil {
+		raw = make(map[string]json.RawMessage)
+	}
+
+	// Read current value to avoid unnecessary writes.
+	var current string
+	if v, ok := raw["teammateMode"]; ok {
+		_ = json.Unmarshal(v, &current)
+	}
+
+	desired := "auto"
+	if inTmux {
+		desired = "tmux"
+	}
+
+	if current == desired {
+		return desired // Already correct, skip write.
+	}
+
+	modeJSON, _ := json.Marshal(desired)
+	raw["teammateMode"] = modeJSON
+
+	// Clean up legacy env var if present.
+	if envRaw, ok := raw["env"]; ok {
+		var env map[string]string
+		if err := json.Unmarshal(envRaw, &env); err == nil {
+			if _, legacy := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; legacy {
+				delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+				if len(env) > 0 {
+					newEnv, _ := json.Marshal(env)
+					raw["env"] = newEnv
+				} else {
+					delete(raw, "env")
+				}
+			}
+		}
+	}
+
+	newData, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		return ""
+	}
+
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return ""
+	}
+
+	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+		slog.Error("failed to update teammateMode in settings.local.json",
+			"error", err.Error(),
+		)
+		return ""
+	}
+
+	slog.Info("teammateMode updated",
+		"mode", desired,
+		"in_tmux", inTmux,
+	)
+	return desired
 }
 
 // loadGLMKeyFromEnvFile reads the GLM API key from ~/.moai/.env.glm.

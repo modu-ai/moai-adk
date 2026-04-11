@@ -116,6 +116,18 @@ For each improvement:
 - Auto-checkpoint on memory pressure
 - Resume: `--resume latest`
 
+## @MX Tag Obligations
+
+During GREEN and REFACTOR phases, maintain @MX tags:
+
+- RED: Add `@MX:TODO` for new public functions that lack tests (resolved in GREEN).
+- GREEN: Add `@MX:ANCHOR` for new exported functions with expected fan_in >= 3. Add `@MX:WARN` for goroutines or complex patterns introduced.
+- REFACTOR: Update @MX:ANCHOR if fan_in changes. Remove @MX:WARN if dangerous pattern is eliminated. Remove @MX:TODO when tests pass.
+
+Tag format: `// @MX:TYPE: [AUTO] description` (use language-appropriate comment syntax).
+All ANCHOR and WARN tags MUST include a `@MX:REASON` sub-line.
+Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
+
 ## TDD vs DDD Decision Guide
 
 - Creating new functionality from scratch? → TDD
