@@ -258,6 +258,59 @@ Output Files:
 
 ---
 
+## Phase 3.1: Independent Document Audit (Conditional)
+
+Purpose: Prevent confirmation bias by running an adversarial audit of the generated project documents before proceeding to codemaps and completion. The auditor sees only the final documents — not the analysis reasoning — and is prompted to find defects, not rationalize acceptance.
+
+Activation: Controlled by harness.yaml `plan_audit.enabled` setting.
+
+- `minimal`: Skip this phase
+- `standard`: Run plan-auditor once (default)
+- `thorough`: Run plan-auditor + cross-validate with evaluator-active
+
+Skip Conditions:
+- harness.yaml `plan_audit.enabled: false`
+- Phase 3 produced no output files (documentation generation failed)
+
+#### Step 3.1.1: Invoke plan-auditor
+
+Agent: plan-auditor subagent
+
+Delegation pattern: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1."
+
+Do NOT pass the analysis reasoning or interview context to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the document directory path.
+
+#### Step 3.1.2: Read Verdict
+
+After plan-auditor completes, read the report at `.moai/reports/plan-audit/PROJECT-review-1.md`.
+
+Extract the verdict line: `Verdict: PASS | FAIL`
+
+If PASS: Proceed to Phase 3.3 (Codemaps Generation).
+
+If FAIL: Enter retry loop.
+
+#### Step 3.1.3: Retry Loop (max 3 iterations)
+
+On FAIL:
+
+1. Delegate back to manager-docs: "Use the manager-docs subagent to revise .moai/project/ documents based on the review report at .moai/reports/plan-audit/PROJECT-review-{N}.md. Address all defects listed in the report."
+
+2. After manager-docs revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration {N+1}. Previous review report: .moai/reports/plan-audit/PROJECT-review-{N}.md"
+
+3. Read new verdict from `.moai/reports/plan-audit/PROJECT-review-{N+1}.md`.
+
+4. If PASS: Proceed to Phase 3.3.
+
+5. If FAIL and iteration < 3: Repeat from step 1 with incremented iteration.
+
+6. If FAIL and iteration = 3: Escalate to user via AskUserQuestion with the final review report. Options:
+   - Fix manually and retry: User edits documents, then re-run audit
+   - Accept as-is: Proceed despite audit failure (user override)
+   - Cancel: Stop project documentation generation
+
+---
+
 ## Phase 3.3: Codemaps Generation
 
 Purpose: Generate architecture documentation in `.moai/project/codemaps/` directory based on codebase analysis results from Phase 1.
@@ -409,6 +462,7 @@ Next Steps (AskUserQuestion):
 - Phase 0-2: MoAI orchestrator (AskUserQuestion for all user interaction)
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
+- Phase 3.1: plan-auditor subagent (independent document audit, conditional)
 - Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)

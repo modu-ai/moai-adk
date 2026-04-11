@@ -9,7 +9,7 @@ priority: P2
 issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/lsp/hook/, internal/hook/quality/"
-estimated_loc: 800
+estimated_loc: 2400
 dependencies:
   - SPEC-LSP-AGG-003
 lifecycle: spec-anchored
@@ -23,6 +23,7 @@ tags: lsp, quality-gate, phase-aware, trust5
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-04-11 | 1.0.0 | Initial draft — resolves 11 orphaned config keys found in audit A3 |
+| 2026-04-11 | 1.0.1 | LOC reconciliation: `estimated_loc` raised from 800 → 2400 to match expanded plan.md W12 scope (PR #631). Original 800 estimate reflected narrower initial scope; actual ceiling including test code and golden fixtures is ~2400, still within P2 budget. |
 
 ---
 

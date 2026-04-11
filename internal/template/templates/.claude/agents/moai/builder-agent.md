@@ -82,9 +82,14 @@ Configure using official Claude Code YAML frontmatter fields:
 - tools: Comma-separated list, apply least-privilege
 - disallowedTools: Denylist approach (mutually exclusive with tools)
 - model: sonnet, opus, haiku, or inherit
-- permissionMode: default, acceptEdits, dontAsk, bypassPermissions, plan
+- permissionMode: default, acceptEdits, auto, delegate, dontAsk, bypassPermissions, plan
 - skills: Skills to preload (NOT inherited from parent)
-- hooks: PreToolUse, PostToolUse, Stop lifecycle events
+- hooks: PreToolUse, PostToolUse, SubagentStop lifecycle events
+- color: Display color in UI (red/blue/green/yellow/purple/orange/pink/cyan)
+- effort: Session effort override (low/medium/high/max; max is Opus 4.6 only)
+- isolation: "worktree" creates isolated git worktree per agent (v2.1.49+)
+- initialPrompt: Auto-submitted first turn when agent runs via --agent flag (v2.1.83+)
+- maxContextSize: Maximum context size before stopping (replaces deprecated maxTurns, v2.1.69+)
 
 ### Phase 4: Integration and Validation
 
@@ -100,6 +105,7 @@ Configure using official Claude Code YAML frontmatter fields:
 - Skills are NOT inherited from parent — must list explicitly in frontmatter
 - Background sub-agents auto-deny non-pre-approved permissions
 - Each sub-agent gets independent context window — pass only essential info
+- maxTurns is deprecated since v2.1.69+; use maxContextSize instead
 
 ## Delegation Protocol
 

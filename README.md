@@ -267,13 +267,13 @@ graph LR
     M --> MG["📋 Manager (8)"]
     M --> EX["⚡ Expert (8)"]
     M --> BL["🔧 Builder (3)"]
-    M --> EV["🔍 Evaluator (1)"]
+    M --> EV["🔍 Evaluator (2)"]
     M --> AG["🎨 Agency (6)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["evaluator-active"]
+    EV --> EV1["evaluator-active · plan-auditor"]
     AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
@@ -291,10 +291,10 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
 | **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
-| **Evaluator** | 1 | evaluator-active | Independent quality assessment (4-dimension scoring) |
+| **Evaluator** | 2 | evaluator-active, plan-auditor | Independent quality assessment, plan-phase document audit |
 | **Agency** | 6 | planner, copywriter, designer, builder, evaluator, learner | Creative production pipeline |
 
-**Total: 26 agents**
+**Total: 27 agents**
 
 Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
 

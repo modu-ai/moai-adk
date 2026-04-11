@@ -5,23 +5,44 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
+
+// GoplsBridge는 gopls.Bridge의 GetDiagnostics 메서드를 노출하는 인터페이스다.
+// *gopls.Bridge를 직접 의존하지 않아 테스트에서 mock으로 교체할 수 있다.
+// GOPLS-BRIDGE-001: Phase 6 integration
+type GoplsBridge interface {
+	GetDiagnostics(ctx context.Context, path string) ([]gopls.Diagnostic, error)
+}
 
 // GoFeedbackGenerator collects feedback by running Go toolchain commands
 // (go test, go vet) and parsing their output. It implements FeedbackGenerator.
+// GOPLS-BRIDGE-001: bridge 필드가 nil이 아니면 LSP 진단도 수집한다.
 type GoFeedbackGenerator struct {
 	projectRoot string
+	bridge      GoplsBridge // nil이면 LSP 진단 수집 비활성화
 }
 
 // NewGoFeedbackGenerator creates a FeedbackGenerator for Go projects.
 // projectRoot is the directory where go test and go vet will be executed.
+// 하위 호환성: bridge는 nil로 설정된다 (LSP 진단 비활성화).
 func NewGoFeedbackGenerator(projectRoot string) FeedbackGenerator {
-	return &GoFeedbackGenerator{projectRoot: projectRoot}
+	return &GoFeedbackGenerator{projectRoot: projectRoot, bridge: nil}
+}
+
+// NewGoFeedbackGeneratorWithBridge creates a FeedbackGenerator for Go projects
+// with an optional gopls bridge for LSP diagnostics.
+// GOPLS-BRIDGE-001: bridge가 nil이면 기존 동작(go test + go vet)만 수행한다.
+// bridge가 non-nil이면 LSP 진단도 Feedback.Diagnostics에 추가한다.
+func NewGoFeedbackGeneratorWithBridge(projectRoot string, bridge GoplsBridge) FeedbackGenerator {
+	return &GoFeedbackGenerator{projectRoot: projectRoot, bridge: bridge}
 }
 
 // goTestEvent represents a single JSON event from `go test -json`.
@@ -80,6 +101,18 @@ func (g *GoFeedbackGenerator) Collect(ctx context.Context) (*Feedback, error) {
 	fb.LintErrors = countNonEmptyLines(vetStderr.Bytes())
 
 	fb.Duration = time.Since(start)
+
+	// GOPLS-BRIDGE-001: bridge가 non-nil이면 LSP 진단을 수집한다.
+	// GetDiagnostics 오류는 무시한다 — bridge 실패가 전체 피드백을 차단해선 안 된다.
+	if g.bridge != nil {
+		diags, err := g.bridge.GetDiagnostics(ctx, g.projectRoot)
+		if err != nil {
+			slog.Warn("gopls 진단 수집 실패, 건너뜀", "error", err)
+		} else {
+			fb.Diagnostics = diags
+		}
+	}
+
 	return fb, nil
 }
 

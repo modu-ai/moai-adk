@@ -115,9 +115,10 @@ backend, frontend, security, devops, performance, debug, testing, refactoring
 
 agent, skill, plugin
 
-### Evaluator Agents (1)
+### Evaluator Agents (2)
 
 evaluator-active (independent skeptical quality assessment, 4-dimension scoring)
+plan-auditor (independent plan-phase document audit, bias prevention, EARS compliance)
 
 ### Agency Agents (6)
 

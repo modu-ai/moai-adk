@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 
 // Sentinel errors for loop operations.
@@ -116,6 +118,9 @@ type Feedback struct {
 	Coverage     float64       `json:"coverage"`
 	Duration     time.Duration `json:"duration"`
 	Notes        string        `json:"notes"`
+	// Diagnostics는 gopls 브릿지로 수집한 LSP 진단 목록이다.
+	// GOPLS-BRIDGE-001: bridge가 nil이면 nil을 유지한다 (하위 호환성 보장).
+	Diagnostics []gopls.Diagnostic `json:"diagnostics,omitempty"`
 }
 
 // Decision represents the decision engine's output after evaluating feedback.

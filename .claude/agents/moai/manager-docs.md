@@ -24,7 +24,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-verification"
           timeout: 10
-  Stop:
+  SubagentStop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-completion"

@@ -14,6 +14,50 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 )
 
+// RunAstGrepGateV2는 통합 Scanner를 사용하여 ast-grep 품질 게이트를 실행합니다.
+// REQ-ASTG-UPG-030: quality gate hook이 통합 Scanner를 호출
+// RunAstGrepGate의 대체 구현으로, 점진적 마이그레이션을 지원합니다.
+func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateConfig) (bool, string) {
+	if cfg == nil || !cfg.Enabled {
+		return true, ""
+	}
+
+	rulesDir := filepath.Join(projectDir, cfg.RulesDir)
+	scannerCfg := &astgrep.ScannerConfig{
+		RulesDir:     rulesDir,
+		SGBinary:     "sg",
+		WarnOnlyMode: cfg.WarnOnlyMode,
+		Timeout:      astGrepScanTimeout,
+	}
+
+	scanner := astgrep.NewScanner(scannerCfg)
+	findings, err := scanner.Scan(ctx, projectDir)
+	if err != nil {
+		// 스캔 오류 시 통과 (graceful degradation)
+		return true, ""
+	}
+
+	if len(findings) == 0 {
+		return true, ""
+	}
+
+	// 결과 포매팅
+	var sb strings.Builder
+	sb.WriteString("ast-grep domain rule scan results:\n\n")
+	for _, f := range findings {
+		sb.WriteString(f.String())
+		sb.WriteString("\n")
+	}
+	output := strings.TrimSpace(sb.String())
+
+	// error severity 발견 시 차단 (WarnOnlyMode가 아닌 경우)
+	if astgrep.HasErrors(findings) && !cfg.WarnOnlyMode && cfg.BlockOnError {
+		return false, fmt.Sprintf("quality gate failed: ast-grep domain rules\n\n%s", output)
+	}
+
+	return true, output
+}
+
 // AstGrepGateConfig holds configuration for ast-grep quality gate scanning.
 type AstGrepGateConfig struct {
 	// Enabled controls whether ast-grep scanning is performed.

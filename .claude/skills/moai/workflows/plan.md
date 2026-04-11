@@ -413,6 +413,73 @@ Quality constraints:
 - Technical terms and function names remain in English
 - Exclusions section MUST contain at least 1 entry
 
+### Phase 2.3: Independent SPEC Review (Conditional)
+
+Purpose: Prevent confirmation bias by running an adversarial audit of the just-created SPEC before user approval and GitHub Issue creation. The reviewer sees only the final spec.md — not the author's reasoning — and is prompted to find defects, not rationalize acceptance.
+
+Execution conditions:
+- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true`
+- Current harness level is `standard` or `thorough` (default: enabled)
+- SPEC files were successfully created in Phase 2
+
+Skip conditions:
+- Harness level is `minimal` (fast iteration path, plan_audit.enabled: false)
+- `--no-review` flag is present in $ARGUMENTS
+- spec.md was not created (Phase 2 failed)
+
+#### Step 2.3.1: Invoke plan-auditor
+
+Agent: plan-auditor subagent
+
+Delegation pattern: "Use the plan-auditor subagent to audit the SPEC at .moai/specs/{SPEC-ID}/ — this is iteration 1."
+
+Do NOT pass the author's reasoning or conversation history to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the SPEC directory path.
+
+#### Step 2.3.2: Read Verdict
+
+After plan-auditor completes, read the report at `.moai/reports/plan-audit/{SPEC-ID}-review-1.md`.
+
+Extract the verdict line: `Verdict: PASS | FAIL`
+
+#### Step 2.3.3: PASS Path
+
+If verdict is PASS: proceed directly to Phase 2.5 (GitHub Issue Creation).
+
+Log: "SPEC review passed (iteration 1). Proceeding to Phase 2.5."
+
+#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
+
+If verdict is FAIL:
+
+1. Delegate back to manager-spec: "Use the manager-spec subagent to revise .moai/specs/{SPEC-ID}/spec.md based on the review report at .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md. Address all defects listed in the report. DO NOT implement any code."
+
+2. After manager-spec revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit .moai/specs/{SPEC-ID}/ — this is iteration {N+1}. Previous review report: .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md"
+
+3. Read new verdict from `.moai/reports/plan-audit/{SPEC-ID}-review-{N+1}.md`.
+
+4. Repeat until PASS or 3 iterations exhausted.
+
+Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
+
+#### Step 2.3.5: Escalation after 3 FAIL Iterations
+
+If all three iterations result in FAIL, do NOT proceed to Phase 2.5 automatically.
+
+Present the full defect history to the user:
+- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
+- Summarize blocking defects that persisted across all iterations
+- Use AskUserQuestion with options:
+  - Force-accept SPEC with known defects (proceed to Phase 2.5): "Accept SPEC with known defects — I will fix them manually before /moai run"
+  - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
+  - Abort plan workflow: "Abort — start over with a clearer feature description"
+
+Harness configuration reference (harness.yaml):
+- `minimal`: plan_audit.enabled: false (skip this entire phase)
+- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
+
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke evaluator-active in SPEC-review mode to cross-validate must-pass criteria. If evaluator-active disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
+
 ### Phase 2.5: GitHub Issue Creation (Conditional)
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.

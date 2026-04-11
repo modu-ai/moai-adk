@@ -245,12 +245,13 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	}
 
 	// Step 2.5: ast-grep domain rules
+	// ASTG-UPGRADE-001: 통합 Scanner를 사용하는 RunAstGrepGateV2로 전환
 	if g.config.AstGrepGate != nil && g.config.AstGrepGate.Enabled {
 		projectDir := g.config.ProjectDir
 		if projectDir == "" {
 			projectDir, _ = os.Getwd()
 		}
-		if ok, out := RunAstGrepGate(ctx, projectDir, g.config.AstGrepGate); !ok {
+		if ok, out := RunAstGrepGateV2(ctx, projectDir, g.config.AstGrepGate); !ok {
 			return false, out
 		}
 	}

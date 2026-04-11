@@ -133,7 +133,7 @@
 | 6 | 200 | 10 | Docs + CHANGELOG |
 | **Total** | **~2850** | **~150** | — |
 
-Note: frontmatter `estimated_loc: 2500` is a conservative ship target; the breakdown above lists ceiling estimates with test code included.
+Note: frontmatter `estimated_loc: 2500` refers to **production code only** (shippable non-test LOC across Phases 1–3 and 5–6). The breakdown above totals ~2850 because it includes test code and Phase 4 integration fixtures (~350 LOC). This convention aligns with SPEC-GOPLS-BRIDGE-001 (2400) and SPEC-LSP-MULTI-006 (2900) where `estimated_loc` denotes the production ship target, not the ceiling including tests. See spec.md HISTORY entry 1.0.1 for disambiguation rationale.
 
 ## Dependencies
 

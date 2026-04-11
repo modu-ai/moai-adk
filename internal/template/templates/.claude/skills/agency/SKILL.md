@@ -126,6 +126,7 @@ Read-only context at `.agency/context/`:
 
 **Step 4**: For `build` command:
 1. Check if BRIEF exists; create via planner if not
+1.5. If BRIEF was just created and harness.yaml `plan_audit.enabled: true`: launch plan-auditor to audit the BRIEF (document type: brief, iteration 1). On FAIL: re-invoke planner with review report, retry up to 3 iterations. On PASS: proceed.
 2. Launch copywriter (reads copywriting skill + brand voice -> copy.md)
 3. Launch designer (reads design-system skill + visual identity -> design-spec.md)
 4. Launch builder (reads copy + design -> code files, TDD approach)

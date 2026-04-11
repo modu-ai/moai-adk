@@ -31,7 +31,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-post-implementation"
           timeout: 10
-  Stop:
+  SubagentStop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-completion"

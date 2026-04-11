@@ -138,7 +138,7 @@
 | 7 | 450 | 10 | Tests + docs |
 | **Total** | **~2190** | **~250** | — |
 
-Note: frontmatter `estimated_loc: 800` was based on a narrower initial scope. Actual breakdown including test code and golden fixtures brings ceiling closer to 2400, still within P2 budget.
+Note: frontmatter `estimated_loc` was reconciled to 2400 on 2026-04-11 (spec.md HISTORY 1.0.1) after PR #631 expanded the phase breakdown. The 2400 ceiling represents production code plus test code and golden fixtures. Earlier drafts referenced 800 based on a narrower initial scope; that figure is superseded.
 
 ## Dependencies
 

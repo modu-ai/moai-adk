@@ -267,13 +267,13 @@ graph LR
     M --> MG["📋 Manager (8)"]
     M --> EX["⚡ Expert (8)"]
     M --> BL["🔧 Builder (3)"]
-    M --> EV["🔍 Evaluator (1)"]
+    M --> EV["🔍 Evaluator (2)"]
     M --> AG["🎨 Agency (6)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["evaluator-active"]
+    EV --> EV1["evaluator-active · plan-auditor"]
     AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
@@ -291,10 +291,10 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 워크플로우 조율, SPEC 생성, 품질 관리 |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 도메인 전문 구현, 분석, 최적화 |
 | **Builder** | 3 | agent, skill, plugin | 새로운 MoAI 컴포넌트 생성 |
-| **Evaluator** | 1 | evaluator-active | 독립적 품질 평가 (4차원 스코어링) |
+| **Evaluator** | 2 | evaluator-active, plan-auditor | 독립적 품질 평가, 계획 단계 문서 감사 |
 | **Agency** | 6 | planner, copywriter, designer, builder, evaluator, learner | 크리에이티브 프로덕션 파이프라인 |
 
-**총 26개 에이전트**
+**총 27개 에이전트**
 
 참고: 동적 팀 팀원(researcher, analyst, architect, implementer, tester, designer, reviewer)은 role profile을 통해 런타임에 생성되며 정적 에이전트 정의로 관리되지 않습니다.
 

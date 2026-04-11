@@ -67,4 +67,7 @@ func init() {
 
 	// Register statusline command
 	rootCmd.AddCommand(StatuslineCmd)
+
+	// ASTG-UPGRADE-001: register astgrep command
+	rootCmd.AddCommand(NewAstGrepCmd())
 }

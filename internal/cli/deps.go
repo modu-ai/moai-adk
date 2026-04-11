@@ -20,6 +20,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -76,7 +77,32 @@ func InitDependencies() {
 	// Use GoFeedbackGenerator for real test/lint feedback collection.
 	// Falls back gracefully: if go test/vet fail or timeout, feedback is partial.
 	cwd, _ := os.Getwd()
-	feedbackGen := loop.NewGoFeedbackGenerator(cwd)
+
+	// GOPLS-BRIDGE-001: gopls bridge wiring
+	// lsp.yaml에서 gopls 브릿지 설정을 로드하고, 활성화되어 있으면 bridge를 생성한다.
+	// gopls 바이너리가 없거나 설정이 비활성화된 경우 bridge=nil로 fallback한다.
+	lspConfigPath := filepath.Join(cwd, ".moai", "config", "sections", "lsp.yaml")
+	goplsCfg, cfgErr := gopls.LoadConfig(lspConfigPath)
+	var goplsBridge loop.GoplsBridge
+	if cfgErr != nil {
+		slog.Warn("gopls 설정 로드 실패, LSP 진단 비활성화",
+			"path", lspConfigPath,
+			"error", cfgErr,
+		)
+	} else if goplsCfg.Enabled {
+		// context.Background()를 사용한다: bridge는 프로세스 수명 동안 유지된다.
+		bridge, bridgeErr := gopls.NewBridge(context.Background(), cwd, goplsCfg)
+		if bridgeErr != nil {
+			slog.Warn("gopls bridge 초기화 실패, LSP 진단 비활성화", "error", bridgeErr)
+		} else if bridge != nil {
+			goplsBridge = bridge
+			slog.Info("gopls bridge 활성화됨", "binary", goplsCfg.Binary)
+		}
+	} else {
+		slog.Info("gopls bridge 비활성화됨 (lsp.yaml: enabled=false)")
+	}
+
+	feedbackGen := loop.NewGoFeedbackGeneratorWithBridge(cwd, goplsBridge)
 	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, feedbackGen, ralphCfg.MaxIterations)
 
 	deps = &Dependencies{
@@ -105,17 +131,18 @@ func InitDependencies() {
 	})
 
 	// Initialize LSP diagnostics collector and AST analyzer.
-	// @MX:WARN: LSP client is nil — real LSP integration is not yet implemented.
-	// @MX:REASON: fan_in=3 (post-tool hook, loop feedback, quality gate);
-	// silent nil-injection historically masked the absence of a real client.
-	// Emit a visible startup warning so users understand diagnostics fall back
-	// to go vet / go test / golangci-lint instead of a live language server.
-	// See SPEC-LSP-CORE-002 (planned) for the real gopls-backed client.
+	// GOPLS-BRIDGE-001: gopls bridge가 활성화된 경우 hook 레이어의 LSP 클라이언트는
+	// 여전히 nil이다 — hook/lsp는 별도 통합 경로이며 bridge와 분리되어 있다.
+	// @MX:NOTE: [AUTO] goplsBridge (loop 레이어)와 lsphook LSP 클라이언트(hook 레이어)는
+	// 별개 경로다. 전자는 Feedback.Diagnostics를 채우고, 후자는 PostTool 훅을 담당한다.
 	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
-	slog.Warn("LSP client not initialized — quality gates fall back to CLI tools only",
-		"impact", "gopls-backed diagnostics are disabled; phase-aware LSP gates bypassed",
-		"fallback", "go vet, go test, golangci-lint, ast-grep",
-		"remedy", "SPEC-LSP-CORE-002 will introduce the first real LSP client")
+	if goplsBridge == nil {
+		slog.Warn("gopls bridge 비활성화 — quality gates fall back to CLI tools only",
+			"impact", "gopls-backed diagnostics are disabled; phase-aware LSP gates bypassed",
+			"fallback", "go vet, go test, golangci-lint, ast-grep",
+			"gopls_bridge_status", "disabled",
+		)
+	}
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
 
 	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)

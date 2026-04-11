@@ -43,6 +43,8 @@ harness:
       skip_phases: [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]
       evaluator: false
       sprint_contract: false
+      plan_audit:
+        enabled: false
 
     standard:
       description: "Balanced quality for most development"
@@ -50,6 +52,10 @@ harness:
       evaluator: true
       evaluator_mode: "final-pass"
       sprint_contract: false
+      plan_audit:
+        enabled: true
+        max_iterations: 3
+        require_must_pass: true
 
     thorough:
       description: "Maximum quality for critical features"
@@ -59,6 +65,11 @@ harness:
       evaluator_profile: "strict"
       sprint_contract: true
       playwright_testing: true
+      plan_audit:
+        enabled: true
+        max_iterations: 3
+        require_must_pass: true
+        cross_validate_with_evaluator_active: true
 
   # Model Upgrade Review Process
   # When Claude model is upgraded, review harness components for simplification.

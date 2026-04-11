@@ -18,7 +18,7 @@ skills:
   - moai-foundation-quality
   - moai-tool-ast-grep
 hooks:
-  Stop:
+  SubagentStop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" quality-completion"

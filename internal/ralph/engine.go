@@ -9,6 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/loop"
+	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 
 // RalphEngine implements loop.DecisionEngine using configurable heuristics.
@@ -155,7 +156,48 @@ func ClassifyFeedback(fb *loop.Feedback) []ClassifiedError {
 		})
 	}
 
+	// GOPLS-BRIDGE-001: LSP 진단이 있으면 심각도별로 분류한다.
+	// Error 심각도 진단은 수동 개입이 필요한 수준(Level 4)으로 분류한다.
+	// Warning 심각도 진단은 로그 기록 수준(Level 2)으로 분류한다.
+	// 기존 정수 기반 분류의 fallback 동작을 유지한다.
+	classified = append(classified, classifyDiagnostics(fb.Diagnostics)...)
+
 	return classified
+}
+
+// classifyDiagnostics converts LSP diagnostics into ClassifiedError entries.
+// Error severity maps to ErrorLevelManual, Warning to ErrorLevelLogOnly.
+func classifyDiagnostics(diags []gopls.Diagnostic) []ClassifiedError {
+	if len(diags) == 0 {
+		return nil
+	}
+
+	var errorCount, warningCount int
+	for _, d := range diags {
+		switch d.Severity {
+		case gopls.SeverityError:
+			errorCount++
+		case gopls.SeverityWarning:
+			warningCount++
+		}
+	}
+
+	result := make([]ClassifiedError, 0, 2)
+	if errorCount > 0 {
+		result = append(result, ClassifiedError{
+			Level:       ErrorLevelManual,
+			Description: "diagnostic errors (LSP)",
+			Count:       errorCount,
+		})
+	}
+	if warningCount > 0 {
+		result = append(result, ClassifiedError{
+			Level:       ErrorLevelLogOnly,
+			Description: "diagnostic warnings (LSP)",
+			Count:       warningCount,
+		})
+	}
+	return result
 }
 
 // MaxErrorLevel returns the highest error level from classified errors.

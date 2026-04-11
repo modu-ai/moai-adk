@@ -1,0 +1,310 @@
+package astgrep
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// ScannerConfig는 통합 Scanner의 설정을 담습니다.
+// REQ-ASTG-UPG-010, REQ-ASTG-UPG-011, REQ-ASTG-UPG-012
+type ScannerConfig struct {
+	// RulesDir는 ast-grep 규칙 디렉토리 경로입니다 (재귀 탐색).
+	// 기본값: ".moai/config/astgrep-rules"
+	RulesDir string
+	// SGBinary는 sg CLI 바이너리 이름 또는 경로입니다.
+	// 기본값: "sg"
+	SGBinary string
+	// WarnOnlyMode가 true이면 error severity 발견 시에도 차단하지 않습니다.
+	WarnOnlyMode bool
+	// Timeout은 전체 스캔 타임아웃입니다.
+	// 기본값: 30초
+	Timeout time.Duration
+}
+
+// DefaultScannerConfig는 기본값이 설정된 ScannerConfig를 반환합니다.
+func DefaultScannerConfig() *ScannerConfig {
+	return &ScannerConfig{
+		RulesDir: ".moai/config/astgrep-rules",
+		SGBinary: "sg",
+		Timeout:  30 * time.Second,
+	}
+}
+
+// Finding은 ast-grep 스캔의 단일 결과를 나타냅니다.
+// quality gate, post-tool hook, CLI 서브커맨드가 공유하는 표준 타입입니다.
+//
+// @MX:ANCHOR: [AUTO] Finding은 scanner, CLI, hook이 공유하는 표준 데이터 타입
+// @MX:REASON: fan_in >= 3: Scanner.Scan, SARIF 변환기, hook 통합 모두 이 타입을 사용
+type Finding struct {
+	// RuleID는 규칙 ID입니다.
+	RuleID string `json:"ruleId"`
+	// Severity는 심각도입니다: "error", "warning", "info"
+	Severity string `json:"severity"`
+	// Message는 규칙 메시지입니다.
+	Message string `json:"message"`
+	// File은 발견된 파일 경로입니다.
+	File string `json:"file"`
+	// Line은 1-indexed 줄 번호입니다.
+	Line int `json:"line"`
+	// Column은 0-indexed 컬럼 번호입니다.
+	Column int `json:"column,omitempty"`
+	// EndLine은 1-indexed 종료 줄 번호입니다.
+	EndLine int `json:"endLine,omitempty"`
+	// EndColumn은 종료 컬럼 번호입니다.
+	EndColumn int `json:"endColumn,omitempty"`
+	// Note는 규칙의 추가 설명입니다.
+	Note string `json:"note,omitempty"`
+	// Metadata는 CWE/OWASP 등 추가 메타데이터입니다.
+	Metadata map[string]string `json:"metadata,omitempty"`
+}
+
+// IsError는 심각도가 error인지 반환합니다.
+func (f Finding) IsError() bool {
+	return strings.ToLower(f.Severity) == "error"
+}
+
+// IsWarning은 심각도가 warning인지 반환합니다.
+func (f Finding) IsWarning() bool {
+	return strings.ToLower(f.Severity) == "warning"
+}
+
+// IsInfo는 심각도가 info이거나 빈 문자열인지 반환합니다.
+func (f Finding) IsInfo() bool {
+	s := strings.ToLower(f.Severity)
+	return s == "info" || s == ""
+}
+
+// String은 Finding을 사람이 읽기 좋은 형식으로 반환합니다.
+func (f Finding) String() string {
+	sev := f.Severity
+	if sev == "" {
+		sev = "info"
+	}
+	return fmt.Sprintf("%s:%d: [%s] %s (%s)", f.File, f.Line, f.RuleID, f.Message, sev)
+}
+
+// HasErrors는 findings 슬라이스에 error severity 항목이 있는지 반환합니다.
+func HasErrors(findings []Finding) bool {
+	for _, f := range findings {
+		if f.IsError() {
+			return true
+		}
+	}
+	return false
+}
+
+// Scanner는 ast-grep 기반의 통합 코드 스캐너입니다.
+// quality gate와 post-tool hook의 분리된 구현을 대체합니다.
+//
+// @MX:ANCHOR: [AUTO] Scanner.Scan은 모든 ast-grep 스캔의 단일 진입점
+// @MX:REASON: fan_in >= 3: quality gate hook, PostToolUse hook, CLI subcommand 모두 이 메서드를 호출
+type Scanner struct {
+	cfg *ScannerConfig
+}
+
+// NewScanner는 주어진 설정으로 새 Scanner를 생성합니다.
+// cfg가 nil이면 DefaultScannerConfig()를 사용합니다.
+func NewScanner(cfg *ScannerConfig) *Scanner {
+	if cfg == nil {
+		cfg = DefaultScannerConfig()
+	}
+	return &Scanner{cfg: cfg}
+}
+
+// sgScanMatch는 sg scan --json 출력의 내부 파싱 구조체입니다.
+type sgScanMatch struct {
+	File     string `json:"file"`
+	Lines    string `json:"lines,omitempty"`
+	Text     string `json:"text,omitempty"`
+	RuleID   string `json:"ruleId,omitempty"`
+	Severity string `json:"severity,omitempty"`
+	Message  string `json:"message,omitempty"`
+	Note     string `json:"note,omitempty"`
+	Range    struct {
+		Start struct {
+			Line   int `json:"line"`
+			Column int `json:"column"`
+		} `json:"start"`
+		End struct {
+			Line   int `json:"line"`
+			Column int `json:"column"`
+		} `json:"end"`
+	} `json:"range"`
+}
+
+// isSGAvailable은 sg CLI 바이너리가 PATH에 있는지 확인합니다.
+func (s *Scanner) isSGAvailable() bool {
+	binary := s.cfg.SGBinary
+	if binary == "" {
+		binary = "sg"
+	}
+	_, err := exec.LookPath(binary)
+	return err == nil
+}
+
+// Scan은 주어진 경로에 대해 모든 규칙을 적용하여 스캔을 수행합니다.
+// sg CLI가 없으면 ([]Finding{}, nil)을 반환합니다 (REQ-ASTG-UPG-012).
+// rules 디렉토리가 비어있거나 존재하지 않으면 ([]Finding{}, nil)을 반환합니다 (REQ-ASTG-UPG-012).
+func (s *Scanner) Scan(ctx context.Context, path string) ([]Finding, error) {
+	// sg CLI가 없으면 warn_and_skip (REQ-ASTG-UPG-012)
+	if !s.isSGAvailable() {
+		slog.Warn("ast-grep (sg) CLI를 찾을 수 없습니다. 스캔을 건너뜁니다.",
+			"binary", s.cfg.SGBinary,
+			"hint", "https://ast-grep.github.io/guide/quick-start.html 에서 설치하세요")
+		return []Finding{}, nil
+	}
+
+	// rules 디렉토리가 없으면 빈 결과 반환
+	if _, err := os.Stat(s.cfg.RulesDir); err != nil {
+		if os.IsNotExist(err) {
+			return []Finding{}, nil
+		}
+		return []Finding{}, nil
+	}
+
+	// sgconfig.yml이 있으면 config 기반 스캔 사용
+	sgconfigPath := filepath.Join(s.cfg.RulesDir, "sgconfig.yml")
+	if _, err := os.Stat(sgconfigPath); err == nil {
+		return s.scanWithConfig(ctx, sgconfigPath, path)
+	}
+
+	// sgconfig.yml이 없으면 재귀적으로 규칙을 로딩하여 스캔
+	loader := NewRuleLoader()
+	rules, err := loader.LoadFromDir(s.cfg.RulesDir)
+	if err != nil || len(rules) == 0 {
+		return []Finding{}, nil
+	}
+
+	return s.scanWithRules(ctx, rules, path)
+}
+
+// scanWithConfig는 sgconfig.yml을 사용하여 스캔합니다.
+func (s *Scanner) scanWithConfig(ctx context.Context, configPath, path string) ([]Finding, error) {
+	timeout := s.cfg.Timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
+	scanCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	binary := s.cfg.SGBinary
+	if binary == "" {
+		binary = "sg"
+	}
+
+	cmd := exec.CommandContext(scanCtx, binary, "scan", "--config", configPath, "--json", path)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// sg는 발견 시 non-zero exit code를 반환할 수 있으므로 에러를 무시
+	_ = cmd.Run()
+
+	if stdout.Len() == 0 {
+		return []Finding{}, nil
+	}
+
+	return parseSGFindings(stdout.Bytes())
+}
+
+// scanWithRules는 규칙 목록을 사용하여 개별 스캔합니다.
+func (s *Scanner) scanWithRules(ctx context.Context, rules []Rule, path string) ([]Finding, error) {
+	timeout := s.cfg.Timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
+	binary := s.cfg.SGBinary
+	if binary == "" {
+		binary = "sg"
+	}
+
+	allFindings := make([]Finding, 0)
+
+	for _, rule := range rules {
+		if rule.Pattern == "" || rule.Language == "" {
+			continue
+		}
+
+		scanCtx, cancel := context.WithTimeout(ctx, timeout)
+		cmd := exec.CommandContext(scanCtx, binary, "run",
+			"--pattern", rule.Pattern,
+			"--lang", rule.Language,
+			"--json",
+			path,
+		)
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		_ = cmd.Run()
+		cancel()
+
+		if stdout.Len() == 0 {
+			continue
+		}
+
+		findings, err := parseSGFindings(stdout.Bytes())
+		if err != nil {
+			slog.Debug("규칙 실행 결과 파싱 실패, 건너뜀",
+				"rule", rule.ID,
+				"error", err)
+			continue
+		}
+
+		// 규칙 메타데이터 주입
+		for i := range findings {
+			if findings[i].RuleID == "" {
+				findings[i].RuleID = rule.ID
+			}
+			if findings[i].Severity == "" {
+				findings[i].Severity = rule.Severity
+			}
+			if findings[i].Message == "" {
+				findings[i].Message = rule.Message
+			}
+		}
+
+		allFindings = append(allFindings, findings...)
+	}
+
+	return allFindings, nil
+}
+
+// parseSGFindings는 sg JSON 출력을 Finding 슬라이스로 변환합니다.
+func parseSGFindings(output []byte) ([]Finding, error) {
+	trimmed := bytes.TrimSpace(output)
+	if len(trimmed) == 0 {
+		return []Finding{}, nil
+	}
+
+	var matches []sgScanMatch
+	if err := json.Unmarshal(trimmed, &matches); err != nil {
+		return nil, fmt.Errorf("sg 출력 파싱: %w", err)
+	}
+
+	findings := make([]Finding, 0, len(matches))
+	for _, m := range matches {
+		f := Finding{
+			RuleID:    m.RuleID,
+			Severity:  m.Severity,
+			Message:   m.Message,
+			File:      m.File,
+			Line:      m.Range.Start.Line + 1, // sg는 0-indexed, Finding은 1-indexed
+			Column:    m.Range.Start.Column,
+			EndLine:   m.Range.End.Line + 1,
+			EndColumn: m.Range.End.Column,
+			Note:      m.Note,
+		}
+		findings = append(findings, f)
+	}
+
+	return findings, nil
+}
