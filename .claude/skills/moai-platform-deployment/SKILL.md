@@ -4,7 +4,7 @@ description: >
   Deployment and hosting platform specialist covering Vercel, Railway, and Convex.
   Use when deploying applications, configuring edge functions, setting up continuous
   deployment, or managing serverless infrastructure.
-license: MIT
+license: Apache-2.0
 user-invocable: false
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(docker:*), Bash(git:*), WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 metadata:

@@ -4,7 +4,7 @@ description: >
   Authentication and authorization specialist covering Auth0, Clerk,
   and Firebase Auth. Use when implementing authentication, MFA, SSO,
   passkeys, WebAuthn, social login, or security features.
-license: MIT
+license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(firebase:*), Bash(curl:*), WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
