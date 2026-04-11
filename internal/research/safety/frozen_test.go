@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestFrozenGuard_IsFrozen은 FrozenGuard의 경로 동결 판정 로직을 검증한다.
+// TestFrozenGuard_IsFrozen verifies the path freeze detection logic of FrozenGuard.
 func TestFrozenGuard_IsFrozen(t *testing.T) {
 	tests := []struct {
 		name string
@@ -12,37 +12,37 @@ func TestFrozenGuard_IsFrozen(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "기본 동결 경로: moai-constitution.md",
+			name: "default frozen path: moai-constitution.md",
 			path: ".claude/rules/moai/core/moai-constitution.md",
 			want: true,
 		},
 		{
-			name: "기본 동결 경로: agency constitution.md",
+			name: "default frozen path: agency constitution.md",
 			path: ".claude/rules/agency/constitution.md",
 			want: true,
 		},
 		{
-			name: "기본 동결 경로: researcher.md",
+			name: "default frozen path: researcher.md",
 			path: ".claude/agents/moai/researcher.md",
 			want: true,
 		},
 		{
-			name: "기본 동결 경로: research config.yaml",
+			name: "default frozen path: research config.yaml",
 			path: ".moai/research/config.yaml",
 			want: true,
 		},
 		{
-			name: "동결되지 않은 경로",
+			name: "non-frozen path",
 			path: ".claude/agents/moai/expert-backend.md",
 			want: false,
 		},
 		{
-			name: "빈 경로",
+			name: "empty path",
 			path: "",
 			want: false,
 		},
 		{
-			name: "부분 일치: 절대 경로에 동결 경로 포함",
+			name: "partial match: absolute path containing frozen path",
 			path: "/project/.claude/rules/moai/core/moai-constitution.md",
 			want: true,
 		},
@@ -60,7 +60,7 @@ func TestFrozenGuard_IsFrozen(t *testing.T) {
 	}
 }
 
-// TestFrozenGuard_ValidateWrite는 동결된 경로에 대한 쓰기 검증을 테스트한다.
+// TestFrozenGuard_ValidateWrite verifies write validation against frozen paths.
 func TestFrozenGuard_ValidateWrite(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -68,17 +68,17 @@ func TestFrozenGuard_ValidateWrite(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "동결 경로에 쓰기 시도 → 에러",
+			name:    "write to frozen path → error",
 			path:    ".claude/rules/moai/core/moai-constitution.md",
 			wantErr: true,
 		},
 		{
-			name:    "허용 경로에 쓰기 시도 → nil",
+			name:    "write to allowed path → nil",
 			path:    ".claude/agents/moai/expert-backend.md",
 			wantErr: false,
 		},
 		{
-			name:    "다른 동결 경로에 쓰기 시도 → 에러",
+			name:    "write to another frozen path → error",
 			path:    ".moai/research/config.yaml",
 			wantErr: true,
 		},
@@ -96,7 +96,7 @@ func TestFrozenGuard_ValidateWrite(t *testing.T) {
 	}
 }
 
-// TestFrozenGuardWithPaths는 커스텀 동결 경로가 올바르게 적용되는지 검증한다.
+// TestFrozenGuardWithPaths verifies that custom frozen paths are applied correctly.
 func TestFrozenGuardWithPaths(t *testing.T) {
 	custom := []string{"custom/frozen.md", "another/frozen.yaml"}
 	g := NewFrozenGuardWithPaths(custom)
@@ -107,17 +107,17 @@ func TestFrozenGuardWithPaths(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "커스텀 동결 경로 1",
+			name: "custom frozen path 1",
 			path: "custom/frozen.md",
 			want: true,
 		},
 		{
-			name: "커스텀 동결 경로 2",
+			name: "custom frozen path 2",
 			path: "another/frozen.yaml",
 			want: true,
 		},
 		{
-			name: "기본 동결 경로는 포함되지 않음",
+			name: "default frozen path is not included",
 			path: ".claude/rules/moai/core/moai-constitution.md",
 			want: false,
 		},

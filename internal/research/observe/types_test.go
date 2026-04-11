@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ObservationType 상수 값 검증
+// TestObservationType_Constants verifies ObservationType constant values.
 func TestObservationType_Constants(t *testing.T) {
 	tests := []struct {
 		name string
@@ -26,7 +26,7 @@ func TestObservationType_Constants(t *testing.T) {
 	}
 }
 
-// PatternClassification 상수 값 검증
+// TestPatternClassification_Constants verifies PatternClassification constant values.
 func TestPatternClassification_Constants(t *testing.T) {
 	tests := []struct {
 		name string
@@ -48,27 +48,27 @@ func TestPatternClassification_Constants(t *testing.T) {
 	}
 }
 
-// Observation JSON 라운드트립 검증
+// TestObservation_JSONRoundTrip verifies JSON marshal/unmarshal round-trip for Observation.
 func TestObservation_JSONRoundTrip(t *testing.T) {
 	now := time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC)
 	obs := &Observation{
 		Type:      ObsCorrection,
 		Agent:     "expert-backend",
 		Target:    "error-handling",
-		Detail:    "fmt.Errorf 래핑 누락",
+		Detail:    "fmt.Errorf wrapping missing",
 		Timestamp: now,
 	}
 
-	// 직렬화
+	// Serialize
 	data, err := json.Marshal(obs)
 	if err != nil {
-		t.Fatalf("json.Marshal 실패: %v", err)
+		t.Fatalf("json.Marshal failed: %v", err)
 	}
 
-	// 역직렬화
+	// Deserialize
 	var got Observation
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("json.Unmarshal 실패: %v", err)
+		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
 	if got.Type != obs.Type {
@@ -88,14 +88,14 @@ func TestObservation_JSONRoundTrip(t *testing.T) {
 	}
 }
 
-// Pattern JSON 라운드트립 검증
+// TestPattern_JSONRoundTrip verifies JSON marshal/unmarshal round-trip for Pattern.
 func TestPattern_JSONRoundTrip(t *testing.T) {
 	now := time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC)
 	obs := &Observation{
 		Type:      ObsFailure,
 		Agent:     "expert-testing",
 		Target:    "coverage",
-		Detail:    "커버리지 85% 미달",
+		Detail:    "coverage below 85%",
 		Timestamp: now,
 	}
 	pattern := &Pattern{
@@ -109,12 +109,12 @@ func TestPattern_JSONRoundTrip(t *testing.T) {
 
 	data, err := json.Marshal(pattern)
 	if err != nil {
-		t.Fatalf("json.Marshal 실패: %v", err)
+		t.Fatalf("json.Marshal failed: %v", err)
 	}
 
 	var got Pattern
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("json.Unmarshal 실패: %v", err)
+		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
 	if got.Key != pattern.Key {

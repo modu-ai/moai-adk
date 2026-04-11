@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// validSuiteYAML 테스트용 올바른 YAML 스위트 문자열.
+// validSuiteYAML is a valid YAML suite string for testing.
 const validSuiteYAML = `
 target:
   path: ".claude/skills/moai-lang-go/SKILL.md"
@@ -33,19 +33,19 @@ settings:
   budget_cap_tokens: 50000
 `
 
-// TestLoadSuite LoadSuite 함수에 대한 테이블 기반 테스트.
+// TestLoadSuite table-driven tests for the LoadSuite function.
 func TestLoadSuite(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name      string
-		content   string // 파일에 쓸 내용 (빈 문자열이면 파일 미생성)
+		content   string // content to write to file (empty string means no file created)
 		setup     func(t *testing.T) string
 		wantErr   bool
 		checkFunc func(t *testing.T, s *EvalSuite)
 	}{
 		{
-			name:    "유효한 YAML 파일 → 성공적 파싱",
+			name:    "valid YAML file → successful parse",
 			content: validSuiteYAML,
 			setup: func(t *testing.T) string {
 				t.Helper()
@@ -66,10 +66,10 @@ func TestLoadSuite(t *testing.T) {
 					t.Errorf("Target.Type = %q", s.Target.Type)
 				}
 				if len(s.Inputs) != 1 {
-					t.Errorf("Inputs 개수 = %d, want 1", len(s.Inputs))
+					t.Errorf("Inputs count = %d, want 1", len(s.Inputs))
 				}
 				if len(s.Criteria) != 2 {
-					t.Errorf("Criteria 개수 = %d, want 2", len(s.Criteria))
+					t.Errorf("Criteria count = %d, want 2", len(s.Criteria))
 				}
 				if s.Settings.RunsPerExperiment != 3 {
 					t.Errorf("RunsPerExperiment = %d, want 3", s.Settings.RunsPerExperiment)
@@ -86,7 +86,7 @@ func TestLoadSuite(t *testing.T) {
 			},
 		},
 		{
-			name: "파일 없음 → 에러",
+			name: "file not found → error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				return filepath.Join(t.TempDir(), "nonexistent.yaml")
@@ -94,7 +94,7 @@ func TestLoadSuite(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "잘못된 YAML → 에러",
+			name: "invalid YAML → error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -107,7 +107,7 @@ func TestLoadSuite(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "기준 없음 → 검증 에러",
+			name: "no criteria → validation error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -131,7 +131,7 @@ settings:
 			wantErr: true,
 		},
 		{
-			name: "잘못된 weight 값 → 검증 에러",
+			name: "invalid weight value → validation error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -160,7 +160,7 @@ settings:
 			wantErr: true,
 		},
 		{
-			name: "빈 test_inputs → 검증 에러",
+			name: "empty test_inputs → validation error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -204,7 +204,7 @@ settings:
 	}
 }
 
-// TestEvalSuite_Validate Validate 메서드를 직접 테스트한다.
+// TestEvalSuite_Validate directly tests the Validate method.
 func TestEvalSuite_Validate(t *testing.T) {
 	t.Parallel()
 
@@ -214,7 +214,7 @@ func TestEvalSuite_Validate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "유효한 스위트",
+			name: "valid suite",
 			suite: EvalSuite{
 				Inputs:   []TestInput{{Name: "t", Prompt: "p"}},
 				Criteria: []EvalCriterion{{Name: "c", Weight: MustPass}},
@@ -222,7 +222,7 @@ func TestEvalSuite_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "기준 없음",
+			name: "no criteria",
 			suite: EvalSuite{
 				Inputs:   []TestInput{{Name: "t", Prompt: "p"}},
 				Criteria: nil,
@@ -230,7 +230,7 @@ func TestEvalSuite_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "입력 없음",
+			name: "no inputs",
 			suite: EvalSuite{
 				Inputs:   nil,
 				Criteria: []EvalCriterion{{Name: "c", Weight: MustPass}},
@@ -238,7 +238,7 @@ func TestEvalSuite_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "잘못된 weight",
+			name: "invalid weight",
 			suite: EvalSuite{
 				Inputs:   []TestInput{{Name: "t", Prompt: "p"}},
 				Criteria: []EvalCriterion{{Name: "c", Weight: "bad"}},

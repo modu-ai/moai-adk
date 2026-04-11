@@ -38,7 +38,7 @@ func DefaultAstGrepGateConfig() *AstGrepGateConfig {
 	}
 }
 
-// astGrepScanMatch는 sg scan --json 출력의 단일 매치 항목을 나타낸다.
+// astGrepScanMatch represents a single match entry from sg scan --json output.
 type astGrepScanMatch struct {
 	File     string `json:"file"`
 	Lines    string `json:"lines,omitempty"`
@@ -65,29 +65,29 @@ func RunAstGrepGate(ctx context.Context, projectDir string, cfg *AstGrepGateConf
 		return true, ""
 	}
 
-	// sg CLI 존재 여부 확인 — 없으면 조용히 통과
+	// Check if sg CLI is available — pass silently if not found
 	if _, err := exec.LookPath("sg"); err != nil {
 		return true, ""
 	}
 
 	rulesDir := filepath.Join(projectDir, cfg.RulesDir)
 	if _, err := os.Stat(rulesDir); err != nil {
-		// 룰 디렉토리가 없으면 조용히 통과
+		// Pass silently when the rules directory does not exist
 		return true, ""
 	}
 
-	// 룰 파일 로드
+	// Load rule files
 	loader := astgrep.NewRuleLoader()
 	rules, err := loader.LoadFromDirectory(rulesDir)
 	if err != nil || len(rules) == 0 {
 		return true, ""
 	}
 
-	// 전체 스캔에 30초 타임아웃 적용
+	// Apply 30-second timeout for the full scan
 	scanCtx, cancel := context.WithTimeout(ctx, astGrepScanTimeout)
 	defer cancel()
 
-	// sgconfig.yml 존재 시 config-based 스캔, 없으면 룰별 패턴 스캔
+	// Use config-based scan if sgconfig.yml exists, otherwise scan per-rule pattern
 	var allMatches []astGrepScanMatch
 	sgconfigPath := filepath.Join(rulesDir, "sgconfig.yml")
 	if _, err := os.Stat(sgconfigPath); err == nil {
@@ -112,7 +112,7 @@ func RunAstGrepGate(ctx context.Context, projectDir string, cfg *AstGrepGateConf
 		return true, ""
 	}
 
-	// 결과 포맷팅 및 심각도별 분류
+	// Format results and classify by severity
 	var sb strings.Builder
 	sb.WriteString("ast-grep domain rule scan results:\n\n")
 	hasError := false
@@ -121,7 +121,7 @@ func RunAstGrepGate(ctx context.Context, projectDir string, cfg *AstGrepGateConf
 		if sev == "" {
 			sev = "warning"
 		}
-		line := m.Range.Start.Line + 1 // 0-indexed → 1-indexed
+		line := m.Range.Start.Line + 1 // 0-indexed → 1-indexed (convert to human-readable line number)
 		ruleID := m.RuleID
 		if ruleID == "" {
 			ruleID = "unknown"
@@ -138,7 +138,7 @@ func RunAstGrepGate(ctx context.Context, projectDir string, cfg *AstGrepGateConf
 
 	output := strings.TrimSpace(sb.String())
 
-	// error 심각도 매치가 있고 WarnOnlyMode가 아니며 BlockOnError가 활성화된 경우 차단
+	// Block when error-severity matches exist, WarnOnlyMode is off, and BlockOnError is enabled
 	if hasError && !cfg.WarnOnlyMode && cfg.BlockOnError {
 		return false, fmt.Sprintf("quality gate failed: ast-grep domain rules\n\n%s", output)
 	}
@@ -153,7 +153,7 @@ func runSGConfig(ctx context.Context, configPath, projectDir string) ([]astGrepS
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// sg가 매치를 찾았을 때 non-zero 종료 코드를 반환할 수 있으므로 에러를 무시
+	// Ignore the error: sg may return a non-zero exit code when matches are found
 	_ = cmd.Run()
 
 	return parseSGScanOutput(stdout.Bytes())
@@ -171,7 +171,7 @@ func runSGRule(ctx context.Context, rule astgrep.Rule, projectDir string) ([]ast
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// sg가 매치를 찾았을 때 non-zero 종료 코드를 반환할 수 있으므로 에러를 무시
+	// Ignore the error: sg may return a non-zero exit code when matches are found
 	_ = cmd.Run()
 
 	matches, err := parseSGScanOutput(stdout.Bytes())
@@ -179,7 +179,7 @@ func runSGRule(ctx context.Context, rule astgrep.Rule, projectDir string) ([]ast
 		return nil, err
 	}
 
-	// 룰 메타데이터를 매치에 주입
+	// Inject rule metadata into matches
 	for i := range matches {
 		if matches[i].RuleID == "" {
 			matches[i].RuleID = rule.ID

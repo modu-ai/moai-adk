@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// TestCanaryChecker_Check는 카나리 회귀 검사 로직을 검증한다.
+// TestCanaryChecker_Check verifies the canary regression check logic.
 func TestCanaryChecker_Check(t *testing.T) {
 	now := time.Now()
 
@@ -18,7 +18,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "베이스라인 없음 → true (비교 대상 없음)",
+			name:      "no baselines → true (nothing to compare against)",
 			baselines: nil,
 			proposed:  0.50,
 			threshold: 0.10,
@@ -26,7 +26,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "빈 베이스라인 슬라이스 → true",
+			name:      "empty baseline slice → true",
 			baselines: []Baseline{},
 			proposed:  0.50,
 			threshold: 0.10,
@@ -34,7 +34,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "임계값 이내: 0.85 → 0.80, threshold=0.10 → true",
+			name: "within threshold: 0.85 → 0.80, threshold=0.10 → true",
 			baselines: []Baseline{
 				{Target: "test", Score: 0.85, Timestamp: now},
 			},
@@ -44,7 +44,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "임계값 초과: 0.85 → 0.70, threshold=0.10 → false",
+			name: "exceeds threshold: 0.85 → 0.70, threshold=0.10 → false",
 			baselines: []Baseline{
 				{Target: "test", Score: 0.85, Timestamp: now},
 			},
@@ -54,7 +54,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "정확히 임계값과 동일: 0.85 → 0.75, threshold=0.10 → true (경계값)",
+			name: "exactly at threshold: 0.85 → 0.75, threshold=0.10 → true (boundary value)",
 			baselines: []Baseline{
 				{Target: "test", Score: 0.85, Timestamp: now},
 			},
@@ -64,7 +64,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "여러 베이스라인, 하나가 회귀 → false",
+			name: "multiple baselines, one triggers regression → false",
 			baselines: []Baseline{
 				{Target: "a", Score: 0.80, Timestamp: now},
 				{Target: "b", Score: 0.90, Timestamp: now},
@@ -75,18 +75,18 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "여러 베이스라인, 모두 임계값 이내 → true",
+			name: "multiple baselines, all within threshold → true",
 			baselines: []Baseline{
 				{Target: "a", Score: 0.80, Timestamp: now},
 				{Target: "b", Score: 0.82, Timestamp: now},
 			},
 			proposed:  0.75,
 			threshold: 0.10,
-			want:      true, // a: 0.05, b: 0.07 — 모두 <= 0.10
+			want:      true, // a: 0.05, b: 0.07 — both <= 0.10
 			wantErr:   false,
 		},
 		{
-			name: "제안 점수가 베이스라인보다 높음 → true (향상)",
+			name: "proposed score higher than baseline → true (improvement)",
 			baselines: []Baseline{
 				{Target: "test", Score: 0.70, Timestamp: now},
 			},
@@ -96,7 +96,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "임계값 0 → 에러",
+			name:      "threshold 0 → error",
 			baselines: []Baseline{{Target: "t", Score: 0.80, Timestamp: now}},
 			proposed:  0.75,
 			threshold: 0.0,
@@ -104,7 +104,7 @@ func TestCanaryChecker_Check(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:      "음수 임계값 → 에러",
+			name:      "negative threshold → error",
 			baselines: []Baseline{{Target: "t", Score: 0.80, Timestamp: now}},
 			proposed:  0.75,
 			threshold: -0.05,

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// 단일 관찰 추가 후 파일에 1줄 존재 확인
+// TestStorage_Append_Single verifies that a single observation produces one line in the file.
 func TestStorage_Append_Single(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStorage(dir)
@@ -17,26 +17,26 @@ func TestStorage_Append_Single(t *testing.T) {
 		Type:      ObsCorrection,
 		Agent:     "expert-backend",
 		Target:    "error-handling",
-		Detail:    "에러 래핑 누락",
+		Detail:    "error wrapping missing",
 		Timestamp: time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC),
 	}
 
 	if err := s.Append(obs); err != nil {
-		t.Fatalf("Append 실패: %v", err)
+		t.Fatalf("Append failed: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, "observations.jsonl"))
 	if err != nil {
-		t.Fatalf("파일 읽기 실패: %v", err)
+		t.Fatalf("file read failed: %v", err)
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 1 {
-		t.Errorf("줄 수 = %d, want 1", len(lines))
+		t.Errorf("line count = %d, want 1", len(lines))
 	}
 }
 
-// 여러 관찰 추가 후 파일에 N줄 존재 확인
+// TestStorage_Append_Multiple verifies that multiple observations produce N lines in the file.
 func TestStorage_Append_Multiple(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStorage(dir)
@@ -46,26 +46,26 @@ func TestStorage_Append_Multiple(t *testing.T) {
 			Type:      ObsSuccess,
 			Agent:     "expert-testing",
 			Target:    "coverage",
-			Detail:    "테스트 통과",
+			Detail:    "test passed",
 			Timestamp: time.Date(2026, 4, 9, 12, i, 0, 0, time.UTC),
 		}
 		if err := s.Append(obs); err != nil {
-			t.Fatalf("Append[%d] 실패: %v", i, err)
+			t.Fatalf("Append[%d] failed: %v", i, err)
 		}
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, "observations.jsonl"))
 	if err != nil {
-		t.Fatalf("파일 읽기 실패: %v", err)
+		t.Fatalf("file read failed: %v", err)
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 5 {
-		t.Errorf("줄 수 = %d, want 5", len(lines))
+		t.Errorf("line count = %d, want 5", len(lines))
 	}
 }
 
-// LoadAll이 모든 관찰을 순서대로 반환하는지 확인
+// TestStorage_LoadAll verifies that LoadAll returns all observations in order.
 func TestStorage_LoadAll(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStorage(dir)
@@ -76,17 +76,17 @@ func TestStorage_LoadAll(t *testing.T) {
 			Type:      ObsCorrection,
 			Agent:     agent,
 			Target:    "target",
-			Detail:    "상세 정보",
+			Detail:    "detail info",
 			Timestamp: time.Date(2026, 4, 9, 12, i, 0, 0, time.UTC),
 		}
 		if err := s.Append(obs); err != nil {
-			t.Fatalf("Append 실패: %v", err)
+			t.Fatalf("Append failed: %v", err)
 		}
 	}
 
 	all, err := s.LoadAll()
 	if err != nil {
-		t.Fatalf("LoadAll 실패: %v", err)
+		t.Fatalf("LoadAll failed: %v", err)
 	}
 
 	if len(all) != 3 {
@@ -99,7 +99,7 @@ func TestStorage_LoadAll(t *testing.T) {
 	}
 }
 
-// LoadSince가 지정 시간 이후 관찰만 필터링하는지 확인
+// TestStorage_LoadSince verifies that LoadSince filters observations after the specified time.
 func TestStorage_LoadSince(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStorage(dir)
@@ -110,19 +110,19 @@ func TestStorage_LoadSince(t *testing.T) {
 			Type:      ObsSuccess,
 			Agent:     "agent",
 			Target:    "target",
-			Detail:    "상세",
+			Detail:    "detail",
 			Timestamp: base.Add(time.Duration(i) * time.Hour),
 		}
 		if err := s.Append(obs); err != nil {
-			t.Fatalf("Append 실패: %v", err)
+			t.Fatalf("Append failed: %v", err)
 		}
 	}
 
-	// base+2h 이후 → 인덱스 2,3,4 (3개)
+	// since base+2h → indices 2,3,4 (3 items)
 	since := base.Add(2 * time.Hour)
 	filtered, err := s.LoadSince(since)
 	if err != nil {
-		t.Fatalf("LoadSince 실패: %v", err)
+		t.Fatalf("LoadSince failed: %v", err)
 	}
 
 	if len(filtered) != 3 {
@@ -130,85 +130,85 @@ func TestStorage_LoadSince(t *testing.T) {
 	}
 }
 
-// 존재하지 않는 파일에서 LoadAll → 빈 슬라이스, 에러 없음
+// TestStorage_LoadAll_NonExistentFile verifies that LoadAll on a missing file returns empty slice without error.
 func TestStorage_LoadAll_NonExistentFile(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStorage(dir)
 
 	all, err := s.LoadAll()
 	if err != nil {
-		t.Fatalf("LoadAll 에러 발생: %v", err)
+		t.Fatalf("LoadAll returned error: %v", err)
 	}
 	if len(all) != 0 {
 		t.Errorf("len = %d, want 0", len(all))
 	}
 }
 
-// 빈 파일에서 LoadAll → 빈 슬라이스, 에러 없음
+// TestStorage_LoadAll_EmptyFile verifies that LoadAll on an empty file returns empty slice without error.
 func TestStorage_LoadAll_EmptyFile(t *testing.T) {
 	dir := t.TempDir()
-	// 빈 파일 생성
+	// Create empty file
 	if err := os.WriteFile(filepath.Join(dir, "observations.jsonl"), []byte(""), 0o644); err != nil {
-		t.Fatalf("빈 파일 생성 실패: %v", err)
+		t.Fatalf("failed to create empty file: %v", err)
 	}
 
 	s := NewStorage(dir)
 	all, err := s.LoadAll()
 	if err != nil {
-		t.Fatalf("LoadAll 에러 발생: %v", err)
+		t.Fatalf("LoadAll returned error: %v", err)
 	}
 	if len(all) != 0 {
 		t.Errorf("len = %d, want 0", len(all))
 	}
 }
 
-// 손상된 줄은 건너뛰고 나머지를 정상 로드
+// TestStorage_LoadAll_CorruptedLine verifies that corrupted lines are skipped and the rest are loaded normally.
 func TestStorage_LoadAll_CorruptedLine(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStorage(dir)
 
-	// 정상 관찰 1개 추가
+	// Add one valid observation
 	obs := &Observation{
 		Type:      ObsCorrection,
 		Agent:     "agent",
 		Target:    "target",
-		Detail:    "상세",
+		Detail:    "detail",
 		Timestamp: time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC),
 	}
 	if err := s.Append(obs); err != nil {
-		t.Fatalf("Append 실패: %v", err)
+		t.Fatalf("Append failed: %v", err)
 	}
 
-	// 손상된 줄 추가
+	// Append a corrupted line
 	filePath := filepath.Join(dir, "observations.jsonl")
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		t.Fatalf("파일 열기 실패: %v", err)
+		t.Fatalf("failed to open file: %v", err)
 	}
-	if _, err := f.WriteString("이것은 유효하지 않은 JSON입니다\n"); err != nil {
+	if _, err := f.WriteString("this is not valid JSON\n"); err != nil {
 		_ = f.Close()
-		t.Fatalf("쓰기 실패: %v", err)
+		t.Fatalf("write failed: %v", err)
 	}
 	_ = f.Close()
 
-	// 정상 관찰 1개 더 추가
+	// Add another valid observation
 	obs2 := &Observation{
 		Type:      ObsSuccess,
 		Agent:     "agent-2",
 		Target:    "target-2",
-		Detail:    "상세 2",
+		Detail:    "detail 2",
 		Timestamp: time.Date(2026, 4, 9, 13, 0, 0, 0, time.UTC),
 	}
 	if err := s.Append(obs2); err != nil {
-		t.Fatalf("Append 실패: %v", err)
+		t.Fatalf("Append failed: %v", err)
 	}
 
 	all, err := s.LoadAll()
 	if err != nil {
-		t.Fatalf("LoadAll 에러 발생: %v", err)
+		t.Fatalf("LoadAll returned error: %v", err)
 	}
 
-	// 손상된 줄은 건너뛰고 2개만 반환
+	// Corrupted line should be skipped; expect 2 valid observations
 	if len(all) != 2 {
 		t.Errorf("len = %d, want 2", len(all))
 	}

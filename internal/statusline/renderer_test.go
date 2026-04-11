@@ -1355,7 +1355,7 @@ func TestRenderUsageBarWithReset(t *testing.T) {
 
 // TestRenderDirGitLine_WorktreeIndicator verifies that [WT] prefix appears in branch
 // segment when worktree is active and SegmentWorktree is enabled.
-// REQ-CC297-003: 워크트리 활성 시 브랜치 세그먼트에 [WT] 표시
+// REQ-CC297-003: [WT] prefix shown in branch segment when worktree is active
 func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1364,25 +1364,25 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 		wantWT         bool
 	}{
 		{
-			name:           "워크트리 있고 세그먼트 활성화 시 [WT] 표시",
+			name:           "worktree present and segment enabled: shows [WT]",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: true,
 			wantWT:         true,
 		},
 		{
-			name:           "워크트리 있어도 세그먼트 비활성화 시 [WT] 미표시",
+			name:           "worktree present but segment disabled: no [WT]",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: false,
 			wantWT:         false,
 		},
 		{
-			name:           "워크트리 없으면 세그먼트 활성화해도 [WT] 미표시",
+			name:           "no worktree with segment enabled: no [WT]",
 			worktree:       "",
 			segmentEnabled: true,
 			wantWT:         false,
 		},
 		{
-			name:           "워크트리 없고 세그먼트 비활성화 시 [WT] 미표시",
+			name:           "no worktree and segment disabled: no [WT]",
 			worktree:       "",
 			segmentEnabled: false,
 			wantWT:         false,
@@ -1405,10 +1405,10 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 			}
 			got := r.renderDirGitLine(data)
 			if tt.wantWT && !strings.Contains(got, "[WT]") {
-				t.Errorf("워크트리 활성 시 [WT] 표시 필요, got %q", got)
+				t.Errorf("expected [WT] when worktree is active, got %q", got)
 			}
 			if !tt.wantWT && strings.Contains(got, "[WT]") {
-				t.Errorf("워크트리 비활성 시 [WT] 미표시 필요, got %q", got)
+				t.Errorf("unexpected [WT] when worktree is inactive, got %q", got)
 			}
 		})
 	}

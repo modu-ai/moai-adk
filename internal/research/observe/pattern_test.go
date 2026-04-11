@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// 기본 임계값 검증
+// TestDefaultThresholds verifies default threshold values.
 func TestDefaultThresholds(t *testing.T) {
 	d := DefaultThresholds()
 	if d.Heuristic != 3 {
@@ -19,7 +19,7 @@ func TestDefaultThresholds(t *testing.T) {
 	}
 }
 
-// 빈 관찰 목록 → 빈 패턴 목록
+// TestPatternDetector_Detect_Empty verifies that an empty observation list produces an empty pattern list.
 func TestPatternDetector_Detect_Empty(t *testing.T) {
 	d := NewPatternDetector(DefaultThresholds())
 	patterns := d.Detect(nil)
@@ -28,7 +28,7 @@ func TestPatternDetector_Detect_Empty(t *testing.T) {
 	}
 }
 
-// 분류 임계값에 따른 패턴 분류 검증
+// TestPatternDetector_Detect_Classification verifies pattern classification based on count thresholds.
 func TestPatternDetector_Detect_Classification(t *testing.T) {
 	thresholds := PatternThresholds{
 		Heuristic:      3,
@@ -41,14 +41,14 @@ func TestPatternDetector_Detect_Classification(t *testing.T) {
 		count int
 		want  PatternClassification
 	}{
-		{"1개 관찰 → observation", 1, ClassObservation},
-		{"2개 관찰 → observation", 2, ClassObservation},
-		{"3개 관찰 → heuristic", 3, ClassHeuristic},
-		{"4개 관찰 → heuristic", 4, ClassHeuristic},
-		{"5개 관찰 → rule", 5, ClassRule},
-		{"9개 관찰 → rule", 9, ClassRule},
-		{"10개 관찰 → high_confidence", 10, ClassHighConfidence},
-		{"15개 관찰 → high_confidence", 15, ClassHighConfidence},
+		{"1 observation → observation", 1, ClassObservation},
+		{"2 observations → observation", 2, ClassObservation},
+		{"3 observations → heuristic", 3, ClassHeuristic},
+		{"4 observations → heuristic", 4, ClassHeuristic},
+		{"5 observations → rule", 5, ClassRule},
+		{"9 observations → rule", 9, ClassRule},
+		{"10 observations → high_confidence", 10, ClassHighConfidence},
+		{"15 observations → high_confidence", 15, ClassHighConfidence},
 	}
 
 	for _, tt := range tests {
@@ -60,7 +60,7 @@ func TestPatternDetector_Detect_Classification(t *testing.T) {
 					Type:      ObsCorrection,
 					Agent:     "agent-a",
 					Target:    "target-x",
-					Detail:    "상세",
+					Detail:    "detail",
 					Timestamp: base.Add(time.Duration(i) * time.Minute),
 				})
 			}
@@ -81,7 +81,7 @@ func TestPatternDetector_Detect_Classification(t *testing.T) {
 	}
 }
 
-// 서로 다른 키 → 별도 패턴 생성
+// TestPatternDetector_Detect_MixedKeys verifies that different keys produce separate patterns.
 func TestPatternDetector_Detect_MixedKeys(t *testing.T) {
 	base := time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC)
 	observations := []*Observation{
@@ -98,24 +98,24 @@ func TestPatternDetector_Detect_MixedKeys(t *testing.T) {
 	}
 }
 
-// count 내림차순 정렬 확인
+// TestPatternDetector_Detect_SortedByCountDesc verifies that patterns are sorted in descending order by count.
 func TestPatternDetector_Detect_SortedByCountDesc(t *testing.T) {
 	base := time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC)
 	var observations []*Observation
 
-	// agent-a:target → 1개
+	// agent-a:target → 1 observation
 	observations = append(observations, &Observation{
 		Agent: "agent-a", Target: "target", Timestamp: base,
 	})
 
-	// agent-b:target → 3개
+	// agent-b:target → 3 observations
 	for i := 0; i < 3; i++ {
 		observations = append(observations, &Observation{
 			Agent: "agent-b", Target: "target", Timestamp: base.Add(time.Duration(i) * time.Minute),
 		})
 	}
 
-	// agent-c:target → 2개
+	// agent-c:target → 2 observations
 	for i := 0; i < 2; i++ {
 		observations = append(observations, &Observation{
 			Agent: "agent-c", Target: "target", Timestamp: base.Add(time.Duration(i) * time.Minute),
@@ -128,7 +128,7 @@ func TestPatternDetector_Detect_SortedByCountDesc(t *testing.T) {
 	if len(patterns) != 3 {
 		t.Fatalf("len = %d, want 3", len(patterns))
 	}
-	// 내림차순: 3, 2, 1
+	// Descending order: 3, 2, 1
 	if patterns[0].Count != 3 {
 		t.Errorf("patterns[0].Count = %d, want 3", patterns[0].Count)
 	}
@@ -140,13 +140,13 @@ func TestPatternDetector_Detect_SortedByCountDesc(t *testing.T) {
 	}
 }
 
-// FirstSeen/LastSeen 정확성 검증
+// TestPatternDetector_Detect_FirstSeenLastSeen verifies that FirstSeen and LastSeen are set correctly.
 func TestPatternDetector_Detect_FirstSeenLastSeen(t *testing.T) {
 	t1 := time.Date(2026, 4, 9, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 4, 9, 12, 0, 0, 0, time.UTC)
 	t3 := time.Date(2026, 4, 9, 14, 0, 0, 0, time.UTC)
 
-	// 의도적으로 순서를 섞어서 입력
+	// Intentionally provide observations out of order
 	observations := []*Observation{
 		{Agent: "agent", Target: "target", Timestamp: t2},
 		{Agent: "agent", Target: "target", Timestamp: t1},
@@ -167,7 +167,7 @@ func TestPatternDetector_Detect_FirstSeenLastSeen(t *testing.T) {
 	}
 }
 
-// 패턴 키 형식 검증 (Agent:Target)
+// TestPatternDetector_Detect_KeyFormat verifies the pattern key format (Agent:Target).
 func TestPatternDetector_Detect_KeyFormat(t *testing.T) {
 	observations := []*Observation{
 		{

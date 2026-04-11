@@ -2,7 +2,7 @@ package eval
 
 import "testing"
 
-// TestCriterionWeight_Constants CriterionWeight 상수 값이 올바른지 검증한다.
+// TestCriterionWeight_Constants verifies that CriterionWeight constant values are correct.
 func TestCriterionWeight_Constants(t *testing.T) {
 	t.Parallel()
 
@@ -11,8 +11,8 @@ func TestCriterionWeight_Constants(t *testing.T) {
 		got  CriterionWeight
 		want string
 	}{
-		{"MustPass 값", MustPass, "must_pass"},
-		{"NiceToHave 값", NiceToHave, "nice_to_have"},
+		{"MustPass value", MustPass, "must_pass"},
+		{"NiceToHave value", NiceToHave, "nice_to_have"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -23,7 +23,7 @@ func TestCriterionWeight_Constants(t *testing.T) {
 	}
 }
 
-// TestTargetSpec_Fields TargetSpec 필드가 올바르게 초기화되는지 검증한다.
+// TestTargetSpec_Fields verifies that TargetSpec fields are initialized correctly.
 func TestTargetSpec_Fields(t *testing.T) {
 	t.Parallel()
 
@@ -36,7 +36,7 @@ func TestTargetSpec_Fields(t *testing.T) {
 	}
 }
 
-// TestEvalSettings_Defaults EvalSettings 제로 값이 올바른지 검증한다.
+// TestEvalSettings_Defaults verifies that EvalSettings zero values are correct.
 func TestEvalSettings_Defaults(t *testing.T) {
 	t.Parallel()
 

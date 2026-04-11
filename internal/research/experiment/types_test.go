@@ -8,7 +8,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/research/eval"
 )
 
-// TestExperimentState_Constants는 상태 상수가 기대 값을 가지는지 검증한다.
+// TestExperimentState_Constants verifies that state constants hold their expected values.
 func TestExperimentState_Constants(t *testing.T) {
 	t.Parallel()
 
@@ -35,7 +35,7 @@ func TestExperimentState_Constants(t *testing.T) {
 	}
 }
 
-// TestDecision_Constants는 결정 상수가 기대 값을 가지는지 검증한다.
+// TestDecision_Constants verifies that decision constants hold their expected values.
 func TestDecision_Constants(t *testing.T) {
 	t.Parallel()
 
@@ -59,7 +59,7 @@ func TestDecision_Constants(t *testing.T) {
 	}
 }
 
-// TestChangeRecord_JSONRoundTrip은 ChangeRecord의 JSON 직렬화/역직렬화를 검증한다.
+// TestChangeRecord_JSONRoundTrip verifies JSON marshal/unmarshal round-trip for ChangeRecord.
 func TestChangeRecord_JSONRoundTrip(t *testing.T) {
 	t.Parallel()
 
@@ -71,20 +71,20 @@ func TestChangeRecord_JSONRoundTrip(t *testing.T) {
 
 	data, err := json.Marshal(original)
 	if err != nil {
-		t.Fatalf("Marshal 실패: %v", err)
+		t.Fatalf("Marshal failed: %v", err)
 	}
 
 	var decoded ChangeRecord
 	if err := json.Unmarshal(data, &decoded); err != nil {
-		t.Fatalf("Unmarshal 실패: %v", err)
+		t.Fatalf("Unmarshal failed: %v", err)
 	}
 
 	if decoded != original {
-		t.Errorf("라운드트립 결과 불일치:\n  원본: %+v\n  복원: %+v", original, decoded)
+		t.Errorf("round-trip mismatch:\n  original: %+v\n  decoded:  %+v", original, decoded)
 	}
 }
 
-// TestExperiment_JSONRoundTrip은 Experiment의 JSON 직렬화/역직렬화를 검증한다.
+// TestExperiment_JSONRoundTrip verifies JSON marshal/unmarshal round-trip for Experiment.
 func TestExperiment_JSONRoundTrip(t *testing.T) {
 	t.Parallel()
 
@@ -92,7 +92,7 @@ func TestExperiment_JSONRoundTrip(t *testing.T) {
 	original := Experiment{
 		ID:         "exp-001",
 		Target:     "skills/moai-lang-go",
-		Hypothesis: "Go 코드 블록 추가 시 정확도 향상",
+		Hypothesis: "adding Go code blocks improves accuracy",
 		Change: ChangeRecord{
 			Type:    "addition",
 			Section: "examples",
@@ -112,15 +112,15 @@ func TestExperiment_JSONRoundTrip(t *testing.T) {
 
 	data, err := json.Marshal(original)
 	if err != nil {
-		t.Fatalf("Marshal 실패: %v", err)
+		t.Fatalf("Marshal failed: %v", err)
 	}
 
 	var decoded Experiment
 	if err := json.Unmarshal(data, &decoded); err != nil {
-		t.Fatalf("Unmarshal 실패: %v", err)
+		t.Fatalf("Unmarshal failed: %v", err)
 	}
 
-	// 주요 필드 비교 (time.Time은 JSON 포맷 후 나노초 손실 가능)
+	// Compare key fields (time.Time may lose nanoseconds after JSON round-trip)
 	if decoded.ID != original.ID {
 		t.Errorf("ID: got %q, want %q", decoded.ID, original.ID)
 	}
@@ -137,7 +137,7 @@ func TestExperiment_JSONRoundTrip(t *testing.T) {
 		t.Errorf("Decision: got %q, want %q", decoded.Decision, original.Decision)
 	}
 	if decoded.Result == nil {
-		t.Fatal("Result가 nil")
+		t.Fatal("Result is nil")
 	}
 	if decoded.Result.Overall != original.Result.Overall {
 		t.Errorf("Result.Overall: got %f, want %f", decoded.Result.Overall, original.Result.Overall)
@@ -147,29 +147,29 @@ func TestExperiment_JSONRoundTrip(t *testing.T) {
 	}
 }
 
-// TestChangelogEntry_JSONRoundTrip은 ChangelogEntry의 JSON 직렬화/역직렬화를 검증한다.
+// TestChangelogEntry_JSONRoundTrip verifies JSON marshal/unmarshal round-trip for ChangelogEntry.
 func TestChangelogEntry_JSONRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	original := ChangelogEntry{
 		ExperimentID: "exp-003",
 		Score:        0.92,
-		Change:       "시스템 프롬프트에 예제 추가",
-		Reasoning:    "예제가 포함된 프롬프트의 정확도가 높았음",
+		Change:       "added examples to system prompt",
+		Reasoning:    "prompts with examples had higher accuracy",
 		Decision:     DecisionKeep,
 	}
 
 	data, err := json.Marshal(original)
 	if err != nil {
-		t.Fatalf("Marshal 실패: %v", err)
+		t.Fatalf("Marshal failed: %v", err)
 	}
 
 	var decoded ChangelogEntry
 	if err := json.Unmarshal(data, &decoded); err != nil {
-		t.Fatalf("Unmarshal 실패: %v", err)
+		t.Fatalf("Unmarshal failed: %v", err)
 	}
 
 	if decoded != original {
-		t.Errorf("라운드트립 결과 불일치:\n  원본: %+v\n  복원: %+v", original, decoded)
+		t.Errorf("round-trip mismatch:\n  original: %+v\n  decoded:  %+v", original, decoded)
 	}
 }

@@ -2,7 +2,7 @@ package eval
 
 import "testing"
 
-// TestComputeResult ComputeResult 함수에 대한 테이블 기반 테스트.
+// TestComputeResult table-driven tests for the ComputeResult function.
 func TestComputeResult(t *testing.T) {
 	t.Parallel()
 
@@ -14,7 +14,7 @@ func TestComputeResult(t *testing.T) {
 		wantMustPass bool
 	}{
 		{
-			name: "전부 통과 → Overall=1.0, MustPassOK=true",
+			name: "all pass → Overall=1.0, MustPassOK=true",
 			criteria: []EvalCriterion{
 				{Name: "a", Weight: MustPass},
 				{Name: "b", Weight: NiceToHave},
@@ -24,7 +24,7 @@ func TestComputeResult(t *testing.T) {
 			wantMustPass: true,
 		},
 		{
-			name: "전부 실패 → Overall=0.0, MustPassOK=false",
+			name: "all fail → Overall=0.0, MustPassOK=false",
 			criteria: []EvalCriterion{
 				{Name: "a", Weight: MustPass},
 				{Name: "b", Weight: NiceToHave},
@@ -34,7 +34,7 @@ func TestComputeResult(t *testing.T) {
 			wantMustPass: false,
 		},
 		{
-			name: "must_pass 통과, nice_to_have 실패 → MustPassOK=true, Overall < 1.0",
+			name: "must_pass pass, nice_to_have fail → MustPassOK=true, Overall < 1.0",
 			criteria: []EvalCriterion{
 				{Name: "a", Weight: MustPass},
 				{Name: "b", Weight: NiceToHave},
@@ -44,7 +44,7 @@ func TestComputeResult(t *testing.T) {
 			wantMustPass: true,
 		},
 		{
-			name: "must_pass 실패 → MustPassOK=false (overall 무관)",
+			name: "must_pass fail → MustPassOK=false (regardless of overall)",
 			criteria: []EvalCriterion{
 				{Name: "a", Weight: MustPass},
 				{Name: "b", Weight: NiceToHave},
@@ -55,14 +55,14 @@ func TestComputeResult(t *testing.T) {
 			wantMustPass: false,
 		},
 		{
-			name:         "빈 결과 → Overall=0.0",
+			name:         "empty results → Overall=0.0",
 			criteria:     []EvalCriterion{},
 			results:      map[string]bool{},
 			wantOverall:  0.0,
-			wantMustPass: true, // must_pass 기준이 없으면 true
+			wantMustPass: true, // true when no must_pass criteria exist
 		},
 		{
-			name: "must_pass만 있고 전부 통과",
+			name: "only must_pass criteria and all pass",
 			criteria: []EvalCriterion{
 				{Name: "a", Weight: MustPass},
 				{Name: "b", Weight: MustPass},
@@ -72,7 +72,7 @@ func TestComputeResult(t *testing.T) {
 			wantMustPass: true,
 		},
 		{
-			name: "results에 없는 기준은 실패 처리",
+			name: "criteria missing from results are treated as failed",
 			criteria: []EvalCriterion{
 				{Name: "a", Weight: MustPass},
 				{Name: "b", Weight: NiceToHave},
@@ -90,10 +90,10 @@ func TestComputeResult(t *testing.T) {
 
 			if result == nil {
 				t.Fatal("ComputeResult() returned nil")
-				return // staticcheck SA5011 방어
+				return // guard against staticcheck SA5011
 			}
 
-			// float64 비교 (허용 오차 0.001)
+			// float64 comparison with tolerance 0.001
 			if diff := result.Overall - tt.wantOverall; diff > 0.001 || diff < -0.001 {
 				t.Errorf("Overall = %f, want %f", result.Overall, tt.wantOverall)
 			}
@@ -102,14 +102,14 @@ func TestComputeResult(t *testing.T) {
 				t.Errorf("MustPassOK = %v, want %v", result.MustPassOK, tt.wantMustPass)
 			}
 
-			// PerCriterion 맵 크기 검증
+			// Verify PerCriterion map size
 			if len(result.PerCriterion) != len(tt.criteria) {
-				t.Errorf("PerCriterion 크기 = %d, want %d", len(result.PerCriterion), len(tt.criteria))
+				t.Errorf("PerCriterion size = %d, want %d", len(result.PerCriterion), len(tt.criteria))
 			}
 
-			// Timestamp가 제로 값이 아닌지 검증
+			// Verify Timestamp is non-zero
 			if result.Timestamp.IsZero() {
-				t.Error("Timestamp이 제로 값")
+				t.Error("Timestamp is zero value")
 			}
 		})
 	}

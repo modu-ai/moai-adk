@@ -7,11 +7,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/research/eval"
 )
 
-// TestBaselineManager는 BaselineManager의 Save/Load/Exists를 테이블 기반으로 검증한다.
+// TestBaselineManager verifies BaselineManager Save/Load/Exists using table-driven tests.
 func TestBaselineManager(t *testing.T) {
 	t.Parallel()
 
-	// 테스트 데이터 준비
+	// Prepare test data
 	makeResult := func(overall float64, mustPassOK bool) *eval.EvalResult {
 		return &eval.EvalResult{
 			Overall: overall,
@@ -23,19 +23,19 @@ func TestBaselineManager(t *testing.T) {
 		}
 	}
 
-	t.Run("Save_후_Load_라운드트립", func(t *testing.T) {
+	t.Run("Save_then_Load_round_trip", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		mgr := NewBaselineManager(dir)
 		result := makeResult(0.85, true)
 
 		if err := mgr.Save("skills/moai-lang-go", result); err != nil {
-			t.Fatalf("Save 실패: %v", err)
+			t.Fatalf("Save failed: %v", err)
 		}
 
 		loaded, err := mgr.Load("skills/moai-lang-go")
 		if err != nil {
-			t.Fatalf("Load 실패: %v", err)
+			t.Fatalf("Load failed: %v", err)
 		}
 
 		if loaded.Overall != result.Overall {
@@ -46,46 +46,46 @@ func TestBaselineManager(t *testing.T) {
 		}
 	})
 
-	t.Run("Load_존재하지_않는_파일", func(t *testing.T) {
+	t.Run("Load_nonexistent_file", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		mgr := NewBaselineManager(dir)
 
 		_, err := mgr.Load("nonexistent/target")
 		if err == nil {
-			t.Fatal("존재하지 않는 파일 Load에서 에러가 발생해야 함")
+			t.Fatal("Load on nonexistent file should return error")
 		}
 	})
 
-	t.Run("Exists_Save_후_true", func(t *testing.T) {
+	t.Run("Exists_true_after_Save", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		mgr := NewBaselineManager(dir)
 
 		if mgr.Exists("skills/moai-lang-go") {
-			t.Fatal("Save 전에 Exists가 false여야 함")
+			t.Fatal("Exists should be false before Save")
 		}
 
 		if err := mgr.Save("skills/moai-lang-go", makeResult(0.75, true)); err != nil {
-			t.Fatalf("Save 실패: %v", err)
+			t.Fatalf("Save failed: %v", err)
 		}
 
 		if !mgr.Exists("skills/moai-lang-go") {
-			t.Fatal("Save 후에 Exists가 true여야 함")
+			t.Fatal("Exists should be true after Save")
 		}
 	})
 
-	t.Run("Exists_Save_전_false", func(t *testing.T) {
+	t.Run("Exists_false_before_Save", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		mgr := NewBaselineManager(dir)
 
 		if mgr.Exists("any/target") {
-			t.Fatal("Save 전에 Exists가 false여야 함")
+			t.Fatal("Exists should be false before Save")
 		}
 	})
 
-	t.Run("여러_타겟_간섭_없음", func(t *testing.T) {
+	t.Run("multiple_targets_no_interference", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		mgr := NewBaselineManager(dir)
@@ -94,19 +94,19 @@ func TestBaselineManager(t *testing.T) {
 		result2 := makeResult(0.60, false)
 
 		if err := mgr.Save("target/alpha", result1); err != nil {
-			t.Fatalf("Save target/alpha 실패: %v", err)
+			t.Fatalf("Save target/alpha failed: %v", err)
 		}
 		if err := mgr.Save("target/beta", result2); err != nil {
-			t.Fatalf("Save target/beta 실패: %v", err)
+			t.Fatalf("Save target/beta failed: %v", err)
 		}
 
 		loaded1, err := mgr.Load("target/alpha")
 		if err != nil {
-			t.Fatalf("Load target/alpha 실패: %v", err)
+			t.Fatalf("Load target/alpha failed: %v", err)
 		}
 		loaded2, err := mgr.Load("target/beta")
 		if err != nil {
-			t.Fatalf("Load target/beta 실패: %v", err)
+			t.Fatalf("Load target/beta failed: %v", err)
 		}
 
 		if loaded1.Overall != 0.80 {
