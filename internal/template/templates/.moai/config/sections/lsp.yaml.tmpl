@@ -1,0 +1,232 @@
+# LSP Configuration for MoAI-ADK (Hybrid Strategy — Path C)
+#
+# ================================================================
+# Architecture Decision Record (ADR)
+# ================================================================
+# Chosen after comparative research of opencode, crush, cclsp,
+# plandex-ai, aider, and the Go LSP library landscape (2026).
+#
+# PRIMARY: ast-grep / Tree-sitter for 16-language AST analysis
+#   - Already supported via internal/astgrep/
+#   - See SPEC-ASTG-UPGRADE-001 for the 25-rule library rollout
+#   - Covers all 16 MoAI-supported languages out of the box
+#
+# SECONDARY: gopls subprocess bridge for Go type-checking
+#   - See SPEC-GOPLS-BRIDGE-001 (planned) for the direct
+#     JSON-RPC stdio client (~200-400 LOC, no external library)
+#   - Go is moai-adk-go's own language, so payback is immediate
+#
+# DEFERRED: Full multi-language LSP client
+#   - SPEC-LSP-CORE-002 will be re-designed with powernap
+#     (charmbracelet/crush's proven library) instead of
+#     go.lsp.dev/jsonrpc2 (pre-v1.0, 3+ years without release)
+#
+# WHY NOT full LSP from day one:
+#   1. ast-grep already covers 16+ languages via Tree-sitter
+#      — re-use don't rebuild (aider / plandex proven pattern)
+#   2. Go LSP Go library landscape is still immature in 2026:
+#      go.lsp.dev/jsonrpc2 is pre-v1.0, tliron/glsp is early
+#      release, sourcegraph/jsonrpc2 is deprecated
+#   3. Charm's powernap (used by crush, 23k+ stars) is the
+#      most battle-tested option but evaluation is pending
+#   4. "Stability > completeness > performance" philosophy
+#      rules out taking on risky dependencies prematurely
+#
+# Research sources:
+#   - C1: sst/opencode LSP deep dive (TS-heavy, lazy init, 20+ langs)
+#   - C2: charmbracelet/crush (Go, powernap, manager-coordinator)
+#   - C3: Broader Go LSP tool survey (plandex=Tree-sitter,
+#         aider=Tree-sitter, sketch=shell-based)
+# ================================================================
+
+lsp:
+  # ---------------- Path C Primary: gopls bridge ----------------
+  # Go-specific LSP integration via subprocess stdio.
+  # SPEC-GOPLS-BRIDGE-001 will implement direct JSON-RPC 2.0 client
+  # without external library dependency.
+  #
+  # Lazy spawn: only start gopls on first .go file access
+  # Timeouts: tuned to opencode/crush production values
+  gopls_bridge:
+    # Flip to true when SPEC-GOPLS-BRIDGE-001 lands
+    enabled: false
+
+    binary: gopls
+    args: []
+
+    init_options:
+      staticcheck: true
+      gofumpt: false
+      analyses:
+        unusedparams: true
+        shadow: true
+
+    project_markers:
+      - "go.mod"
+      - "go.sum"
+
+    # Lazy init prevents eager startup of gopls for non-Go sessions
+    lazy_init: true
+
+    # Timeouts based on opencode production tuning research
+    # - diagnostics_debounce_ms: 150 (opencode confirmed empirically)
+    # - initialize_seconds: 30 (extended from 3s per opencode issue #742)
+    # - request_seconds: 5 (standard LSP request timeout)
+    # - shutdown_seconds: 5 (crush graceful shutdown pattern)
+    timeouts:
+      initialize_seconds: 30
+      request_seconds: 5
+      shutdown_seconds: 5
+      diagnostics_debounce_ms: 150
+
+    install_hint: "go install golang.org/x/tools/gopls@latest"
+
+  # ---------------- Path C Primary: ast-grep delegation ----------------
+  # Multi-language analysis delegated to ast-grep / Tree-sitter.
+  # All 16 MoAI-supported languages are covered via ast-grep rules.
+  # See SPEC-ASTG-UPGRADE-001 for the full rule library rollout.
+  delegate_to_astgrep:
+    enabled: true
+    rules_dir: ".moai/config/astgrep-rules"
+
+    # All 16 MoAI-supported languages (ast-grep provides AST parsing
+    # via Tree-sitter for each). This matches the Language Detection
+    # table in .claude/skills/moai/workflows/sync.md Phase 0.6.1.
+    languages:
+      - go
+      - python
+      - typescript
+      - javascript
+      - rust
+      - java
+      - kotlin
+      - csharp
+      - ruby
+      - php
+      - elixir
+      - cpp
+      - scala
+      - r
+      - dart          # Flutter/Dart
+      - swift
+
+  # ---------------- Deferred: Full LSP Server Matrix ----------------
+  # Full multi-language LSP client is planned but deferred.
+  # Listed here for documentation and future implementation.
+  # SPEC-LSP-CORE-002 (re-designed with powernap) will enable this.
+  #
+  # Each entry documents: binary, args, init_options, markers,
+  # install hint, and maturity status.
+  future_servers:
+    python:
+      binary: pylsp
+      fallback_binaries: ["pyright-langserver", "basedpyright-langserver"]
+      status: "planned"
+      install_hint: "pip install python-lsp-server"
+
+    typescript:
+      binary: typescript-language-server
+      args: ["--stdio"]
+      status: "planned"
+      install_hint: "npm install -g typescript-language-server typescript"
+
+    javascript:
+      binary: typescript-language-server
+      args: ["--stdio"]
+      status: "planned"
+      install_hint: "npm install -g typescript-language-server typescript"
+
+    rust:
+      binary: rust-analyzer
+      status: "planned"
+      install_hint: "rustup component add rust-analyzer"
+
+    java:
+      binary: jdtls
+      status: "planned"
+      install_hint: "Install Eclipse JDT Language Server"
+
+    kotlin:
+      binary: kotlin-language-server
+      status: "planned"
+      install_hint: "https://github.com/fwcd/kotlin-language-server"
+
+    csharp:
+      binary: omnisharp
+      args: ["-lsp"]
+      fallback_binaries: ["roslyn-ls"]
+      status: "planned"
+
+    ruby:
+      binary: ruby-lsp
+      fallback_binaries: ["solargraph"]
+      status: "planned"
+      install_hint: "gem install ruby-lsp"
+
+    php:
+      binary: phpactor
+      args: ["language-server"]
+      fallback_binaries: ["intelephense"]
+      status: "planned"
+
+    elixir:
+      binary: elixir-ls
+      fallback_binaries: ["lexical"]
+      status: "planned"
+
+    cpp:
+      binary: clangd
+      status: "planned"
+      install_hint: "Install via LLVM distribution"
+
+    scala:
+      binary: metals
+      status: "planned"
+      install_hint: "https://scalameta.org/metals/"
+
+    swift:
+      binary: sourcekit-lsp
+      status: "planned"
+      install_hint: "Bundled with Xcode Command Line Tools"
+
+    dart:
+      binary: dart
+      args: ["language-server", "--protocol=lsp"]
+      status: "planned"
+      install_hint: "Bundled with Dart/Flutter SDK"
+
+    r:
+      binary: R
+      args: ["--slave", "-e", "languageserver::run()"]
+      status: "planned"
+      install_hint: "install.packages('languageserver') in R"
+
+  # ---------------- Aggregator Settings ----------------
+  # Consumed by SPEC-LSP-CORE-002 when full LSP client lands.
+  # Currently only affects gopls_bridge via shared timeout values.
+  aggregator:
+    cache_ttl_seconds: 5
+    max_parallel_servers: 16
+    server_startup_timeout_seconds: 10
+    request_timeout_seconds: 5
+    # LSP 3.17+ pull diagnostic model (Biome/Deno pattern)
+    diagnostic_pull_enabled: true
+
+  # ---------------- Discovery Policy ----------------
+  # Graceful degradation: missing binaries warn, never error.
+  # Philosophy: "stability > completeness > performance"
+  discovery:
+    on_missing: "warn_and_skip"
+    auto_install_suggest: true
+    search_paths:
+      - "PATH"
+      - "node_modules/.bin"
+      - ".venv/bin"
+      - ".tools/bin"
+
+  # ---------------- Circuit Breaker ----------------
+  # Stop trying a failing server after N consecutive failures.
+  # Adopted from opencode/crush production patterns.
+  circuit_breaker:
+    threshold: 3
+    open_duration_seconds: 30

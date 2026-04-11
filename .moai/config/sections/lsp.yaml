@@ -1,0 +1,124 @@
+# LSP Configuration for MoAI-ADK (Hybrid Strategy — Path C)
+# Rendered from internal/template/templates/.moai/config/sections/lsp.yaml.tmpl
+# See that file for the full Architecture Decision Record.
+
+lsp:
+    gopls_bridge:
+        enabled: false
+        binary: gopls
+        args: []
+        init_options:
+            staticcheck: true
+            gofumpt: false
+            analyses:
+                unusedparams: true
+                shadow: true
+        project_markers:
+            - "go.mod"
+            - "go.sum"
+        lazy_init: true
+        timeouts:
+            initialize_seconds: 30
+            request_seconds: 5
+            shutdown_seconds: 5
+            diagnostics_debounce_ms: 150
+        install_hint: "go install golang.org/x/tools/gopls@latest"
+
+    delegate_to_astgrep:
+        enabled: true
+        rules_dir: ".moai/config/astgrep-rules"
+        languages:
+            - go
+            - python
+            - typescript
+            - javascript
+            - rust
+            - java
+            - kotlin
+            - csharp
+            - ruby
+            - php
+            - elixir
+            - cpp
+            - scala
+            - r
+            - dart
+            - swift
+
+    future_servers:
+        python:
+            binary: pylsp
+            fallback_binaries: ["pyright-langserver", "basedpyright-langserver"]
+            status: "planned"
+        typescript:
+            binary: typescript-language-server
+            args: ["--stdio"]
+            status: "planned"
+        javascript:
+            binary: typescript-language-server
+            args: ["--stdio"]
+            status: "planned"
+        rust:
+            binary: rust-analyzer
+            status: "planned"
+        java:
+            binary: jdtls
+            status: "planned"
+        kotlin:
+            binary: kotlin-language-server
+            status: "planned"
+        csharp:
+            binary: omnisharp
+            args: ["-lsp"]
+            fallback_binaries: ["roslyn-ls"]
+            status: "planned"
+        ruby:
+            binary: ruby-lsp
+            fallback_binaries: ["solargraph"]
+            status: "planned"
+        php:
+            binary: phpactor
+            args: ["language-server"]
+            fallback_binaries: ["intelephense"]
+            status: "planned"
+        elixir:
+            binary: elixir-ls
+            fallback_binaries: ["lexical"]
+            status: "planned"
+        cpp:
+            binary: clangd
+            status: "planned"
+        scala:
+            binary: metals
+            status: "planned"
+        swift:
+            binary: sourcekit-lsp
+            status: "planned"
+        dart:
+            binary: dart
+            args: ["language-server", "--protocol=lsp"]
+            status: "planned"
+        r:
+            binary: R
+            args: ["--slave", "-e", "languageserver::run()"]
+            status: "planned"
+
+    aggregator:
+        cache_ttl_seconds: 5
+        max_parallel_servers: 16
+        server_startup_timeout_seconds: 10
+        request_timeout_seconds: 5
+        diagnostic_pull_enabled: true
+
+    discovery:
+        on_missing: "warn_and_skip"
+        auto_install_suggest: true
+        search_paths:
+            - "PATH"
+            - "node_modules/.bin"
+            - ".venv/bin"
+            - ".tools/bin"
+
+    circuit_breaker:
+        threshold: 3
+        open_duration_seconds: 30
