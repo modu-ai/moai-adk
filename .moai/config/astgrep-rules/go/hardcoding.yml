@@ -1,15 +1,13 @@
-# Self-Learning Quality Guard: Go hardcoding detection rules
-# SPEC: SPEC-SLQG-001
+# Go 하드코딩 방지 규칙 (기존 go-hardcoding.yml에서 마이그레이션)
+# SPEC-SLQG-001, SPEC-ASTG-UPGRADE-001
 #
-# These rules detect common hardcoding anti-patterns in Go source code.
-# Severity levels:
-#   - error: Blocks commit in quality gate
-#   - warning: Reports in PostToolUse instruction, allows commit
+# 환경변수 직접 참조, API URL 하드코딩, 중복 상수 탐지
 ---
 id: go-no-raw-getenv
 language: go
 severity: warning
 message: "Use config.Env* constants instead of raw os.Getenv() string literals. See internal/config/envkeys.go for defined constants."
+note: "하드코딩된 환경변수 이름은 오타나 변경 시 컴파일 오류 없이 실패합니다. config 패키지의 상수를 사용하세요."
 pattern: 'os.Getenv("$LITERAL")'
 fix: ""
 ---
@@ -17,6 +15,7 @@ id: go-no-hardcoded-api-url
 language: go
 severity: warning
 message: "Extract API URL to a package-level constant. Hardcoded URLs reduce maintainability and make version updates error-prone."
+note: "API URL을 코드에 직접 작성하면 URL 변경 시 모든 사용처를 찾아서 수정해야 합니다. 패키지 수준 상수로 추출하세요."
 pattern: '"https://api.$$$REST"'
 fix: ""
 ---
@@ -24,5 +23,6 @@ id: go-no-duplicate-coverage-threshold
 language: go
 severity: warning
 message: "Use config.DefaultTestCoverageTarget instead of defining a local coverage threshold constant. Single source of truth prevents drift."
+note: "커버리지 임계값을 각 패키지에서 정의하면 값이 달라질 수 있습니다. config.DefaultTestCoverageTarget을 사용하여 단일 원천을 유지하세요."
 pattern: 'const $NAME = 85.0'
 fix: ""
