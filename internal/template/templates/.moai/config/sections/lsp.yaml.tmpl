@@ -1,232 +1,340 @@
-# LSP Configuration for MoAI-ADK (Hybrid Strategy — Path C)
+# LSP Configuration for MoAI-ADK
 #
 # ================================================================
-# Architecture Decision Record (ADR)
+# Language Neutrality Policy (CLAUDE.local.md Section 22)
 # ================================================================
-# Chosen after comparative research of opencode, crush, cclsp,
-# plandex-ai, aider, and the Go LSP library landscape (2026).
+# This is a TEMPLATE file deployed to end-user projects via
+# `moai init`. MoAI-ADK supports 16 programming languages, and
+# this file MUST treat all of them as equal first-class citizens.
 #
-# PRIMARY: ast-grep / Tree-sitter for 16-language AST analysis
-#   - Already supported via internal/astgrep/
-#   - See SPEC-ASTG-UPGRADE-001 for the 25-rule library rollout
-#   - Covers all 16 MoAI-supported languages out of the box
+# The author of MoAI-ADK writes Go; users of MoAI-ADK may write
+# ANY of the 16 supported languages. Do NOT encode the author's
+# language preference into this template.
 #
-# SECONDARY: gopls subprocess bridge for Go type-checking
-#   - See SPEC-GOPLS-BRIDGE-001 (planned) for the direct
-#     JSON-RPC stdio client (~200-400 LOC, no external library)
-#   - Go is moai-adk-go's own language, so payback is immediate
-#
-# DEFERRED: Full multi-language LSP client
-#   - SPEC-LSP-CORE-002 will be re-designed with powernap
-#     (charmbracelet/crush's proven library) instead of
-#     go.lsp.dev/jsonrpc2 (pre-v1.0, 3+ years without release)
-#
-# WHY NOT full LSP from day one:
-#   1. ast-grep already covers 16+ languages via Tree-sitter
-#      — re-use don't rebuild (aider / plandex proven pattern)
-#   2. Go LSP Go library landscape is still immature in 2026:
-#      go.lsp.dev/jsonrpc2 is pre-v1.0, tliron/glsp is early
-#      release, sourcegraph/jsonrpc2 is deprecated
-#   3. Charm's powernap (used by crush, 23k+ stars) is the
-#      most battle-tested option but evaluation is pending
-#   4. "Stability > completeness > performance" philosophy
-#      rules out taking on risky dependencies prematurely
-#
-# Research sources:
-#   - C1: sst/opencode LSP deep dive (TS-heavy, lazy init, 20+ langs)
-#   - C2: charmbracelet/crush (Go, powernap, manager-coordinator)
-#   - C3: Broader Go LSP tool survey (plandex=Tree-sitter,
-#         aider=Tree-sitter, sketch=shell-based)
+# Supported languages (all 16 equal, alphabetical):
+#   cpp, csharp, dart, elixir, go, java, javascript, kotlin,
+#   php, python, r, ruby, rust, scala, swift, typescript
 # ================================================================
+#
+# Architecture: MoAI-ADK is an LSP CLIENT + AGGREGATOR
+#   - Spawns existing language server binaries per user's project
+#   - Aggregates diagnostics from all active servers
+#   - Does NOT reimplement per-language analyzers
+#
+# Lazy activation: a language server is only started when a file
+# matching its project_markers is encountered. Users working on a
+# single-language project only pay the cost of that one server.
+#
+# Fallback: ast-grep / Tree-sitter provides AST analysis for all
+# 16 languages via .moai/config/astgrep-rules/. When no LSP
+# binary is available, ast-grep continues to provide quality gates.
+#
+# Research sources (2026-04-11 comparative audit):
+#   - sst/opencode: lazy init, 20+ languages, stdio
+#   - charmbracelet/crush: manager-coordinator + powernap
+#   - ktnyt/cclsp: robust position resolution for AI agents
+#   - plandex-ai/plandex & aider: Tree-sitter fallback pattern
 
 lsp:
-  # ---------------- Path C Primary: gopls bridge ----------------
-  # Go-specific LSP integration via subprocess stdio.
-  # SPEC-GOPLS-BRIDGE-001 will implement direct JSON-RPC 2.0 client
-  # without external library dependency.
+  # Master switch. Flip to true once the runtime LSP client lands
+  # (SPEC-LSP-CORE-002, re-designed with charmbracelet/powernap).
+  enabled: false
+
+  # ---------------- 16 Language Server Matrix ----------------
+  # All 16 MoAI-supported languages, listed alphabetically, with
+  # identical schema. No language receives PRIMARY / SECONDARY /
+  # DEFERRED classification; the user's project_markers decide
+  # which servers actually spawn at runtime.
   #
-  # Lazy spawn: only start gopls on first .go file access
-  # Timeouts: tuned to opencode/crush production values
-  gopls_bridge:
-    # Flip to true when SPEC-GOPLS-BRIDGE-001 lands
-    enabled: false
-
-    binary: gopls
-    args: []
-
-    init_options:
-      staticcheck: true
-      gofumpt: false
-      analyses:
-        unusedparams: true
-        shadow: true
-
-    project_markers:
-      - "go.mod"
-      - "go.sum"
-
-    # Lazy init prevents eager startup of gopls for non-Go sessions
-    lazy_init: true
-
-    # Timeouts based on opencode production tuning research
-    # - diagnostics_debounce_ms: 150 (opencode confirmed empirically)
-    # - initialize_seconds: 30 (extended from 3s per opencode issue #742)
-    # - request_seconds: 5 (standard LSP request timeout)
-    # - shutdown_seconds: 5 (crush graceful shutdown pattern)
-    timeouts:
-      initialize_seconds: 30
-      request_seconds: 5
-      shutdown_seconds: 5
-      diagnostics_debounce_ms: 150
-
-    install_hint: "go install golang.org/x/tools/gopls@latest"
-
-  # ---------------- Path C Primary: ast-grep delegation ----------------
-  # Multi-language analysis delegated to ast-grep / Tree-sitter.
-  # All 16 MoAI-supported languages are covered via ast-grep rules.
-  # See SPEC-ASTG-UPGRADE-001 for the full rule library rollout.
-  delegate_to_astgrep:
-    enabled: true
-    rules_dir: ".moai/config/astgrep-rules"
-
-    # All 16 MoAI-supported languages (ast-grep provides AST parsing
-    # via Tree-sitter for each). This matches the Language Detection
-    # table in .claude/skills/moai/workflows/sync.md Phase 0.6.1.
-    languages:
-      - go
-      - python
-      - typescript
-      - javascript
-      - rust
-      - java
-      - kotlin
-      - csharp
-      - ruby
-      - php
-      - elixir
-      - cpp
-      - scala
-      - r
-      - dart          # Flutter/Dart
-      - swift
-
-  # ---------------- Deferred: Full LSP Server Matrix ----------------
-  # Full multi-language LSP client is planned but deferred.
-  # Listed here for documentation and future implementation.
-  # SPEC-LSP-CORE-002 (re-designed with powernap) will enable this.
-  #
-  # Each entry documents: binary, args, init_options, markers,
-  # install hint, and maturity status.
-  future_servers:
-    python:
-      binary: pylsp
-      fallback_binaries: ["pyright-langserver", "basedpyright-langserver"]
-      status: "planned"
-      install_hint: "pip install python-lsp-server"
-
-    typescript:
-      binary: typescript-language-server
-      args: ["--stdio"]
-      status: "planned"
-      install_hint: "npm install -g typescript-language-server typescript"
-
-    javascript:
-      binary: typescript-language-server
-      args: ["--stdio"]
-      status: "planned"
-      install_hint: "npm install -g typescript-language-server typescript"
-
-    rust:
-      binary: rust-analyzer
-      status: "planned"
-      install_hint: "rustup component add rust-analyzer"
-
-    java:
-      binary: jdtls
-      status: "planned"
-      install_hint: "Install Eclipse JDT Language Server"
-
-    kotlin:
-      binary: kotlin-language-server
-      status: "planned"
-      install_hint: "https://github.com/fwcd/kotlin-language-server"
-
-    csharp:
-      binary: omnisharp
-      args: ["-lsp"]
-      fallback_binaries: ["roslyn-ls"]
-      status: "planned"
-
-    ruby:
-      binary: ruby-lsp
-      fallback_binaries: ["solargraph"]
-      status: "planned"
-      install_hint: "gem install ruby-lsp"
-
-    php:
-      binary: phpactor
-      args: ["language-server"]
-      fallback_binaries: ["intelephense"]
-      status: "planned"
-
-    elixir:
-      binary: elixir-ls
-      fallback_binaries: ["lexical"]
-      status: "planned"
+  # Schema per entry:
+  #   binary               : Primary server executable
+  #   fallback_binaries    : Alternative servers if primary missing
+  #   args                 : Command-line arguments
+  #   init_options         : LSP initializationOptions for the server
+  #   project_markers      : Files that identify this language
+  #                          (LSP client spawns server only when a
+  #                          marker exists in the user's project)
+  #   install_hint         : Human-readable install command
+  #   license_concern      : "open" | "commercial" (user awareness)
+  servers:
 
     cpp:
       binary: clangd
-      status: "planned"
-      install_hint: "Install via LLVM distribution"
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "CMakeLists.txt"
+        - "compile_commands.json"
+        - "Makefile"
+      install_hint: "Install via LLVM distribution (brew install llvm / apt install clangd)"
+      license_concern: "open"
 
-    scala:
-      binary: metals
-      status: "planned"
-      install_hint: "https://scalameta.org/metals/"
-
-    swift:
-      binary: sourcekit-lsp
-      status: "planned"
-      install_hint: "Bundled with Xcode Command Line Tools"
+    csharp:
+      binary: omnisharp
+      fallback_binaries:
+        - "roslyn-ls"
+      args:
+        - "-lsp"
+      init_options: {}
+      project_markers:
+        - "*.csproj"
+        - "*.sln"
+        - "*.fsproj"
+      install_hint: "Install OmniSharp or Microsoft.CodeAnalysis.LanguageServer"
+      license_concern: "open"
 
     dart:
       binary: dart
-      args: ["language-server", "--protocol=lsp"]
-      status: "planned"
-      install_hint: "Bundled with Dart/Flutter SDK"
+      fallback_binaries: []
+      args:
+        - "language-server"
+        - "--protocol=lsp"
+      init_options: {}
+      project_markers:
+        - "pubspec.yaml"
+        - "pubspec.lock"
+      install_hint: "Install Dart SDK or Flutter SDK (includes dart LSP)"
+      license_concern: "open"
+
+    elixir:
+      binary: elixir-ls
+      fallback_binaries:
+        - "lexical"
+      args: []
+      init_options: {}
+      project_markers:
+        - "mix.exs"
+        - "mix.lock"
+      install_hint: "Install elixir-ls from https://github.com/elixir-lsp/elixir-ls"
+      license_concern: "open"
+
+    go:
+      binary: gopls
+      fallback_binaries: []
+      args: []
+      init_options:
+        staticcheck: true
+      project_markers:
+        - "go.mod"
+        - "go.sum"
+      install_hint: "go install golang.org/x/tools/gopls@latest"
+      license_concern: "open"
+
+    java:
+      binary: jdtls
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "pom.xml"
+        - "build.gradle"
+        - "build.gradle.kts"
+      install_hint: "Install Eclipse JDT Language Server (jdtls)"
+      license_concern: "open"
+
+    javascript:
+      binary: typescript-language-server
+      fallback_binaries: []
+      args:
+        - "--stdio"
+      init_options: {}
+      project_markers:
+        - "package.json"
+        - "jsconfig.json"
+      install_hint: "npm install -g typescript-language-server typescript"
+      license_concern: "open"
+
+    kotlin:
+      binary: kotlin-language-server
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "build.gradle.kts"
+        - "build.gradle"
+        - "settings.gradle.kts"
+      install_hint: "Install from https://github.com/fwcd/kotlin-language-server"
+      license_concern: "open"
+
+    php:
+      binary: phpactor
+      fallback_binaries:
+        - "intelephense"
+      args:
+        - "language-server"
+      init_options: {}
+      project_markers:
+        - "composer.json"
+        - "composer.lock"
+      install_hint: "Install phpactor from https://phpactor.readthedocs.io/"
+      license_concern: "open"
+
+    python:
+      binary: pylsp
+      fallback_binaries:
+        - "pyright-langserver"
+        - "basedpyright-langserver"
+      args: []
+      init_options: {}
+      project_markers:
+        - "pyproject.toml"
+        - "setup.py"
+        - "requirements.txt"
+        - "Pipfile"
+      install_hint: "pip install python-lsp-server"
+      license_concern: "open"
 
     r:
       binary: R
-      args: ["--slave", "-e", "languageserver::run()"]
-      status: "planned"
+      fallback_binaries: []
+      args:
+        - "--slave"
+        - "-e"
+        - "languageserver::run()"
+      init_options: {}
+      project_markers:
+        - "DESCRIPTION"
+        - ".Rproj"
+        - "renv.lock"
       install_hint: "install.packages('languageserver') in R"
+      license_concern: "open"
+
+    ruby:
+      binary: ruby-lsp
+      fallback_binaries:
+        - "solargraph"
+      args: []
+      init_options: {}
+      project_markers:
+        - "Gemfile"
+        - ".ruby-version"
+        - "Rakefile"
+      install_hint: "gem install ruby-lsp"
+      license_concern: "open"
+
+    rust:
+      binary: rust-analyzer
+      fallback_binaries: []
+      args: []
+      init_options:
+        checkOnSave:
+          command: "clippy"
+      project_markers:
+        - "Cargo.toml"
+        - "Cargo.lock"
+      install_hint: "rustup component add rust-analyzer"
+      license_concern: "open"
+
+    scala:
+      binary: metals
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "build.sbt"
+        - "build.sc"
+      install_hint: "Install metals from https://scalameta.org/metals/"
+      license_concern: "open"
+
+    swift:
+      binary: sourcekit-lsp
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "Package.swift"
+        - "*.xcodeproj"
+        - "*.xcworkspace"
+      install_hint: "Install Xcode Command Line Tools (includes sourcekit-lsp)"
+      license_concern: "open"
+
+    typescript:
+      binary: typescript-language-server
+      fallback_binaries: []
+      args:
+        - "--stdio"
+      init_options: {}
+      project_markers:
+        - "tsconfig.json"
+        - "package.json"
+      install_hint: "npm install -g typescript-language-server typescript"
+      license_concern: "open"
+
+  # ---------------- ast-grep Delegation ----------------
+  # ast-grep / Tree-sitter provides AST analysis for ALL 16 languages.
+  # This is independent of LSP and serves as universal fallback /
+  # supplement. No language is excluded.
+  delegate_to_astgrep:
+    enabled: true
+    rules_dir: ".moai/config/astgrep-rules"
+    languages:
+      - cpp
+      - csharp
+      - dart
+      - elixir
+      - go
+      - java
+      - javascript
+      - kotlin
+      - php
+      - python
+      - r
+      - ruby
+      - rust
+      - scala
+      - swift
+      - typescript
 
   # ---------------- Aggregator Settings ----------------
-  # Consumed by SPEC-LSP-CORE-002 when full LSP client lands.
-  # Currently only affects gopls_bridge via shared timeout values.
+  # Applies equally to all 16 language servers.
+  # Tuned from opencode/crush production research.
   aggregator:
+    # Per-file diagnostic cache time-to-live
     cache_ttl_seconds: 5
+
+    # Maximum simultaneous language server queries
     max_parallel_servers: 16
-    server_startup_timeout_seconds: 10
+
+    # Server startup timeout (first file of a language)
+    server_startup_timeout_seconds: 30
+
+    # Per-request timeout for LSP method calls
     request_timeout_seconds: 5
-    # LSP 3.17+ pull diagnostic model (Biome/Deno pattern)
+
+    # Graceful shutdown timeout
+    shutdown_timeout_seconds: 5
+
+    # Debounce window for diagnostic notifications
+    diagnostics_debounce_ms: 150
+
+    # Use LSP 3.17+ pull diagnostic model
     diagnostic_pull_enabled: true
 
   # ---------------- Discovery Policy ----------------
   # Graceful degradation: missing binaries warn, never error.
-  # Philosophy: "stability > completeness > performance"
+  # Applies equally to all 16 languages.
   discovery:
+    # Actions when a language server binary is not found
+    # Options: warn_and_skip | error | silent_skip
     on_missing: "warn_and_skip"
+
+    # Print install_hint when a server is missing
     auto_install_suggest: true
+
+    # Search order for binaries
     search_paths:
       - "PATH"
       - "node_modules/.bin"
       - ".venv/bin"
       - ".tools/bin"
 
+    # Auto-detect project language via project_markers
+    auto_detect_language: true
+
   # ---------------- Circuit Breaker ----------------
   # Stop trying a failing server after N consecutive failures.
-  # Adopted from opencode/crush production patterns.
+  # Applies equally to all 16 languages.
   circuit_breaker:
     threshold: 3
     open_duration_seconds: 30
