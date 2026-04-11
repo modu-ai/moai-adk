@@ -185,7 +185,7 @@ The loop hook is located at .claude/hooks/moai/stop__loop_controller.
 
 ### Supported Languages
 
-LSP diagnostics are available for Python using pyright or pylsp, TypeScript and JavaScript using tsserver, Go using gopls, Rust using rust-analyzer, Java using jdtls, and additional languages via .lsp.json configuration.
+LSP diagnostics are available for all 16 MoAI-supported languages: C++, C#, Elixir, Flutter, Go, Java, JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, and TypeScript. Ralph detects the project language via marker files (for example `go.mod` for Go, `pyproject.toml` for Python, `tsconfig.json` for TypeScript, `Cargo.toml` for Rust, `pubspec.yaml` for Flutter) and spawns the matching language server on demand. Users install only the servers their projects actually need; missing servers trigger a warn-and-skip with an install hint, never a hard failure. See `references/reference.md` for the complete language-server-to-binary mapping table. Per CLAUDE.local.md Section 22 (Template Language Neutrality), no language receives priority over another.
 
 ---
 

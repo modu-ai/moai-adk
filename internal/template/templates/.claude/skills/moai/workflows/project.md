@@ -287,24 +287,30 @@ For detailed codemaps generation process, delegate to codemaps workflow (workflo
 
 Goal: Verify LSP servers are installed for the detected technology stack.
 
-Language-to-LSP Mapping (16 languages):
+Language-to-LSP Mapping (all 16 MoAI-supported languages, alphabetical):
 
-- Python: pyright or pylsp (check: which pyright)
-- TypeScript/JavaScript: typescript-language-server (check: which typescript-language-server)
+- C++: clangd (check: which clangd)
+- C#: omnisharp or roslyn-ls (check: which omnisharp)
+- Elixir: elixir-ls or lexical (check: which elixir-ls)
+- Flutter: dart language-server (bundled with Dart SDK, check: which dart)
 - Go: gopls (check: which gopls)
-- Rust: rust-analyzer (check: which rust-analyzer)
 - Java: jdtls (Eclipse JDT Language Server)
-- Ruby: solargraph (check: which solargraph)
-- PHP: intelephense (check via npm)
-- C/C++: clangd (check: which clangd)
+- JavaScript: typescript-language-server (check: which typescript-language-server)
 - Kotlin: kotlin-language-server
+- PHP: phpactor or intelephense (check: which phpactor)
+- Python: pylsp or pyright-langserver (check: which pylsp)
+- R: R with languageserver package (check: which R)
+- Ruby: ruby-lsp or solargraph (check: which ruby-lsp)
+- Rust: rust-analyzer (check: which rust-analyzer)
 - Scala: metals
 - Swift: sourcekit-lsp
-- Elixir: elixir-ls
-- Dart/Flutter: dart language-server (bundled with Dart SDK)
-- C#: OmniSharp or csharp-ls
-- R: languageserver (R package)
-- Lua: lua-language-server
+- TypeScript: typescript-language-server (check: which typescript-language-server)
+
+Note: The canonical language name for Dart/Flutter ecosystem is "Flutter",
+matching `.claude/skills/moai/workflows/sync.md` Phase 0.6.1. Per
+CLAUDE.local.md Section 22, all 16 languages are treated as equal
+first-class citizens; the user's project marker files determine which
+server(s) actually spawn at runtime.
 
 If LSP server is NOT installed, present AskUserQuestion:
 

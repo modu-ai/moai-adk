@@ -127,6 +127,7 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 		{"MoAI Config", checkMoAIConfig},
 		{"Claude Config", checkClaudeConfig},
 		{"MoAI Version", checkMoAIVersion},
+		{"Binary Freshness", checkBinaryFreshness},
 	}
 
 	var results []DiagnosticCheck
@@ -257,6 +258,71 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 		Status:  CheckOK,
 		Message: fmt.Sprintf("moai-adk %s", version.GetVersion()),
 	}
+}
+
+// checkBinaryFreshness warns when the installed binary was built from a
+// commit older than the current source tree HEAD. Catches the class of
+// regressions where a fix has been committed but the user has not rebuilt
+// the binary, so hook handlers silently run the old code path.
+//
+// Skipped (reported OK) when:
+//   - version.GetCommit() is unset ("", "none", "unknown") — dev build
+//   - CWD is not inside a git working tree (git rev-parse walks upward)
+//   - binary commit is not an ancestor of HEAD (release/branch build)
+func checkBinaryFreshness(verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Binary Freshness"}
+
+	binCommit := strings.TrimSpace(version.GetCommit())
+	if binCommit == "" || binCommit == "none" || binCommit == "unknown" {
+		check.Status = CheckOK
+		check.Message = "development build (no commit metadata)"
+		return check
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		check.Status = CheckOK
+		check.Message = "cannot determine working directory"
+		return check
+	}
+
+	headOut, err := exec.Command("git", "-C", cwd, "rev-parse", "HEAD").Output()
+	if err != nil {
+		check.Status = CheckOK
+		check.Message = "not in a git source tree (skipped)"
+		return check
+	}
+	sourceHead := strings.TrimSpace(string(headOut))
+
+	if strings.HasPrefix(sourceHead, binCommit) {
+		check.Status = CheckOK
+		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", binCommit)
+		return check
+	}
+
+	// Binary differs from HEAD. Check whether it is an ancestor (= stale).
+	ancestorErr := exec.Command("git", "-C", cwd, "merge-base", "--is-ancestor", binCommit, sourceHead).Run()
+	if ancestorErr == nil {
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
+		check.Detail = "Run 'make build && make install' to rebuild with the latest fixes"
+		return check
+	}
+
+	check.Status = CheckOK
+	check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
+	if verbose {
+		check.Detail = "binary commit is not an ancestor of source HEAD (release or branch build)"
+	}
+	return check
+}
+
+// shortCommit returns the first 9 characters of a git commit hash.
+func shortCommit(hash string) string {
+	if len(hash) < 9 {
+		return hash
+	}
+	return hash[:9]
 }
 
 // statusIcon returns a colored Unicode icon for the check status.

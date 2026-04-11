@@ -500,5 +500,5 @@
   },
   "enableAllProjectMcpServers": true,
   "respectGitignore": true,
-  "teammateMode": "auto"
+  "teammateMode": "tmux"
 }

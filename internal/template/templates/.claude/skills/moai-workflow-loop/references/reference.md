@@ -759,15 +759,34 @@ Location: `.lsp.json` (project root)
 
 #### Supported Language Servers
 
-| Language              | Server        | Command                              | Installation                                 |
-| --------------------- | ------------- | ------------------------------------ | -------------------------------------------- |
-| Python                | Pyright       | `pyright-langserver --stdio`         | `npm install -g pyright`                     |
-| Python                | pylsp         | `pylsp`                              | `pip install python-lsp-server`              |
-| TypeScript/JavaScript | tsserver      | `typescript-language-server --stdio` | `npm install -g typescript-language-server`  |
-| Go                    | gopls         | `gopls serve`                        | `go install golang.org/x/tools/gopls@latest` |
-| Rust                  | rust-analyzer | `rust-analyzer`                      | Via rustup                                   |
-| Java                  | jdtls         | `jdtls`                              | Via Eclipse JDT LS                           |
-| C/C++                 | clangd        | `clangd`                             | Via LLVM                                     |
+All 16 MoAI-supported languages are listed alphabetically. All entries
+are equal first-class citizens; Ralph detects the user's project language
+via marker files (e.g., `go.mod`, `pyproject.toml`, `Cargo.toml`) and
+spawns the corresponding server on demand.
+
+| Language   | Server                      | Command                               | Installation                                             |
+| ---------- | --------------------------- | ------------------------------------- | -------------------------------------------------------- |
+| C++        | clangd                      | `clangd`                              | Via LLVM distribution (`brew install llvm`)              |
+| C#         | omnisharp                   | `omnisharp -lsp`                      | Install OmniSharp or Microsoft.CodeAnalysis.LanguageServer |
+| Elixir     | elixir-ls                   | `elixir-ls`                           | github.com/elixir-lsp/elixir-ls (fallback: lexical)      |
+| Flutter    | dart                        | `dart language-server --protocol=lsp` | Install Dart SDK or Flutter SDK                          |
+| Go         | gopls                       | `gopls serve`                         | `go install golang.org/x/tools/gopls@latest`             |
+| Java       | jdtls                       | `jdtls`                               | Via Eclipse JDT LS                                       |
+| JavaScript | typescript-language-server  | `typescript-language-server --stdio`  | `npm install -g typescript-language-server typescript`   |
+| Kotlin     | kotlin-language-server      | `kotlin-language-server`              | github.com/fwcd/kotlin-language-server                   |
+| PHP        | phpactor                    | `phpactor language-server`            | phpactor.readthedocs.io (fallback: intelephense)         |
+| Python     | pylsp                       | `pylsp`                               | `pip install python-lsp-server` (fallback: pyright)      |
+| R          | R (languageserver package)  | `R --slave -e 'languageserver::run()'`| `install.packages('languageserver')` in R                |
+| Ruby       | ruby-lsp                    | `ruby-lsp`                            | `gem install ruby-lsp` (fallback: solargraph)            |
+| Rust       | rust-analyzer               | `rust-analyzer`                       | `rustup component add rust-analyzer`                     |
+| Scala      | metals                      | `metals`                              | scalameta.org/metals                                     |
+| Swift      | sourcekit-lsp               | `sourcekit-lsp`                       | Install Xcode Command Line Tools                         |
+| TypeScript | typescript-language-server  | `typescript-language-server --stdio`  | `npm install -g typescript-language-server typescript`   |
+
+Note: all 16 languages in this table match the canonical Language
+Detection table in `.claude/skills/moai/workflows/sync.md` Phase 0.6.1
+and the `servers:` matrix in `.moai/config/sections/lsp.yaml.tmpl`.
+Per CLAUDE.local.md Section 22, no language receives priority over another.
 
 ---
 
