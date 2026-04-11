@@ -1004,6 +1004,128 @@ float64(config.DefaultTestCoverageTarget)
 
 ---
 
+## 22. 템플릿 언어 중립성 규칙
+
+### [HARD] 패키지 템플릿은 특정 언어 전용으로 하드코딩 금지
+
+`internal/template/templates/` 하위의 모든 파일은 **범용 패키지로 배포되어 사용자 프로젝트에 적용**되므로, 특정 언어 전용 가정이나 편향을 담으면 안 된다.
+
+moai-adk-go는 Go로 작성된 도구이지만, **도구 자체의 언어와 사용자 프로젝트 언어는 완전히 별개**다. Python 개발자가 `moai init`을 실행하면 그 사람에게 필요한 것은 pylsp이지 gopls가 아니다.
+
+### 허용 vs 금지
+
+| 위치 | 언어 편향 허용? | 이유 |
+|------|-------------|------|
+| **CLAUDE.local.md** | ✅ 허용 | 이 프로젝트(moai-adk-go) 개발자 전용 |
+| **`.moai/config/sections/*.yaml`** (로컬) | ✅ 허용 | 이 프로젝트 자체가 Go |
+| **`.claude/settings.local.json`** | ✅ 허용 | 로컬 세션 전용 |
+| **`internal/template/templates/**/*.tmpl`** | ❌ **금지** | 16개 언어 모두 동등 취급 |
+| **`internal/template/templates/**/*.yaml`** | ❌ **금지** | 사용자 환경 감지 or 중립 |
+| **`internal/template/templates/CLAUDE.md`** | ❌ **금지** | 다국적 언어 중립 |
+| **Go 코드 `internal/`, `pkg/`** | ❌ 금지 | URL/model 상수화 (Section 21) |
+
+### 체크리스트
+
+새 템플릿 파일 추가 또는 수정 시 반드시 확인:
+
+- [ ] 특정 언어 바이너리(gopls, pylsp, rust-analyzer 등)를 "PRIMARY"로 배치하지 않았는가?
+- [ ] 16개 지원 언어(go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, dart, swift)가 동등 수준으로 나열되어 있는가?
+- [ ] 특정 언어만 "enabled: true", 다른 언어는 "planned"/"deferred"로 격하하지 않았는가?
+- [ ] "Primary/Secondary/Tertiary" 분류가 있다면, 언어가 아닌 "기능"(문법 검사, 타입 체크, 린트) 기준인가?
+- [ ] 사용자 환경 감지 로직(project_markers, extension-based)이 포함되어 있는가?
+
+### 16개 지원 언어 목록
+
+Template 파일 작성 시 반드시 16개 모두 동등 처리:
+
+```
+go, python, typescript, javascript, rust, java, kotlin, csharp,
+ruby, php, elixir, cpp, scala, r, dart, swift
+```
+
+이 목록은 `.claude/skills/moai/workflows/sync.md` Phase 0.6.1 "Language Detection" 테이블과 일치해야 하며, 변경 시 두 파일 모두 동기화 필요.
+
+### 사용자 환경 감지 패턴
+
+템플릿은 project marker 파일로 사용자 프로젝트 언어를 감지하여 해당 도구만 활성화해야 한다:
+
+```yaml
+# CORRECT: 16개 언어 동등, project_markers로 자동 감지
+servers:
+  go:
+    project_markers: ["go.mod", "go.sum"]
+    binary: gopls
+  python:
+    project_markers: ["pyproject.toml", "setup.py", "Pipfile", "requirements.txt"]
+    binary: pylsp
+  typescript:
+    project_markers: ["tsconfig.json", "package.json"]
+    binary: typescript-language-server
+  rust:
+    project_markers: ["Cargo.toml"]
+    binary: rust-analyzer
+  # ... (16개 모두 동일 스키마, 동일 우선순위)
+```
+
+```yaml
+# WRONG: Go를 특별 취급
+gopls_bridge:        # ← Go 전용 최상위 섹션
+  enabled: false
+  binary: gopls
+future_servers:      # ← 다른 언어를 "future"로 격하
+  python: { status: "planned" }
+  typescript: { status: "planned" }
+```
+
+### 로컬과 템플릿 분리 원칙
+
+이 프로젝트(moai-adk-go)는 Go로 작성되었지만, **템플릿은 사용자를 위한 것**이지 이 프로젝트를 위한 것이 아니다.
+
+- `internal/template/templates/.moai/config/sections/lsp.yaml.tmpl`: **범용**, 16개 언어 동등
+- `.moai/config/sections/lsp.yaml` (로컬): **moai-adk-go 개발용**, gopls 편향 허용
+
+두 파일의 내용이 달라도 정상이며, 오히려 **같으면 규칙 위반 의심**. 로컬은 이 프로젝트의 실제 개발 필요에 맞게 편향되어야 하고, 템플릿은 사용자 환경에 맞춰 중립이어야 한다.
+
+### 허용되는 언어별 차등 (예외)
+
+다음 경우에만 언어별 차등이 허용된다:
+
+1. **공식 지원 티어**: `.moai/project/tech.md` 또는 `README.md`에 "Tier 1: Go, Python, TS / Tier 2: 나머지" 같은 공식 우선순위가 명시된 경우
+2. **상태가 실제로 다를 때**: 특정 언어 서버가 stable, 다른 언어는 experimental인 경우 (status 필드로 명시)
+3. **기능 제약**: 특정 기능이 특정 언어에서만 동작하는 경우 (드물게)
+
+이 예외들도 반드시 **명시적 문서화**가 필요하며, 암묵적 편향은 허용되지 않는다.
+
+### 검증 방법
+
+새 템플릿 파일 커밋 전 수행:
+
+```bash
+# 1. 템플릿 파일에 언어 이름 등장 횟수 체크
+for lang in go python typescript javascript rust java kotlin csharp ruby php elixir cpp scala r dart swift; do
+  count=$(grep -c "^\s*$lang:" internal/template/templates/path/to/file.tmpl)
+  echo "$lang: $count"
+done
+
+# 2. "PRIMARY" / "gopls" 등 특정 언어 편향 키워드 검색
+grep -i "primary.*gopls\|gopls.*primary" internal/template/templates/**
+
+# 3. 로컬과 템플릿 내용 비교 (동일하면 경고)
+diff .moai/config/sections/lsp.yaml internal/template/templates/.moai/config/sections/lsp.yaml.tmpl
+```
+
+### 역사적 참고
+
+이 규칙은 2026-04-11 세션에서 PR #624가 병합된 직후 발견된 문제에서 비롯되었다:
+- PR #624는 `lsp.yaml.tmpl`을 작성하며 gopls를 "PRIMARY Path C"로 배치
+- Python/TypeScript 등 15개 언어는 "future_servers.status: planned"로 격하
+- Python 개발자가 `moai init` 실행 시 자신에게 필요 없는 Go-biased config를 받게 됨
+- 근본 원인: 이 프로젝트가 Go로 작성되었다는 사실이 무의식 중에 템플릿 설계에 반영됨
+
+**교훈**: 템플릿 파일을 작성할 때 "이 프로젝트가 어떤 언어로 만들어졌는지"를 완전히 잊어버리고, "16개 언어 중 어떤 언어 사용자라도 동등하게 환영받아야 한다"는 관점을 유지해야 한다.
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.8.0 (Go 패키지 하드코딩 방지 규칙 추가)
+**Version**: 1.9.0 (템플릿 언어 중립성 규칙 추가)
 **Last Updated**: 2026-04-11
