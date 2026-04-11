@@ -9,7 +9,7 @@ priority: P2
 issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/lsp/aggregator/, internal/lsp/cache/"
-estimated_loc: 900
+estimated_loc: 1650
 dependencies:
   - SPEC-LSP-CORE-002
 lifecycle: spec-anchored
@@ -32,6 +32,7 @@ tags: lsp, aggregator, cache, ttl, parallel, diagnostics
 |-------|-------|
 | SPEC ID | SPEC-LSP-AGG-003 |
 | Title | Multi-Server Diagnostic Aggregator with TTL Cache |
+| Status | Draft |
 | Priority | P2 |
 | Depends on | SPEC-LSP-CORE-002 |
 
@@ -106,5 +107,5 @@ CacheEntry {
 ## References
 
 - Phase 1 reports R2 (reference tool architectures)
-- Deno optimization blog (TTL cache pattern)
-- Golang singleflight package
+- Deno optimization blog (TTL cache pattern) — https://deno.com/blog/optimizing-our-lsp
+- Golang singleflight package — https://pkg.go.dev/golang.org/x/sync/singleflight

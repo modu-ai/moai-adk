@@ -32,6 +32,7 @@ tags: lsp, quality-gate, phase-aware, trust5
 |-------|-------|
 | SPEC ID | SPEC-LSP-QGATE-004 |
 | Title | Phase-Aware LSP Quality Gates |
+| Status | Draft |
 | Priority | P2 |
 | Depends on | SPEC-LSP-AGG-003 |
 
