@@ -64,7 +64,7 @@ func BuildSmartPATH() string {
 				filepath.Join(brewPrefix, "sbin"),
 			)
 		}
-		// 항상 표준 경로를 폴백으로 추가 (HOMEBREW_PREFIX가 설정되지 않은 환경에서도 동작)
+		// Always include standard Homebrew paths as fallback (ensures binaries are accessible even if HOMEBREW_PREFIX is not set)
 		candidates = append(candidates,
 			"/opt/homebrew/bin",  // Apple Silicon Homebrew
 			"/opt/homebrew/sbin", // Apple Silicon Homebrew system

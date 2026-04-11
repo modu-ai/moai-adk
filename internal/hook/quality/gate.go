@@ -58,10 +58,11 @@ type langToolchain struct {
 
 // gateStep represents a single quality gate command.
 type gateStep struct {
-	name     string
-	binary   string
-	args     []string
-	optional bool // If true, skip silently when binary is not found.
+	name        string
+	binary      string
+	args        []string
+	optional    bool     // If true, skip silently when binary is not found.
+	configFiles []string // If non-empty, skip step when none of these files exist in project dir.
 }
 
 // toolchains defines quality gate steps per language.
@@ -71,21 +72,35 @@ var toolchains = []langToolchain{
 	{
 		markerFiles: []string{"go.mod"},
 		vetSteps:    []gateStep{{name: "go vet", binary: "go", args: []string{"vet", "./..."}}},
-		lintSteps:   []gateStep{{name: "golangci-lint", binary: "golangci-lint", args: []string{"run"}, optional: true}},
-		testStep:    &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}},
+		lintSteps: []gateStep{{
+			name: "golangci-lint", binary: "golangci-lint", args: []string{"run"}, optional: true,
+			configFiles: []string{".golangci.yml", ".golangci.yaml", ".golangci.toml", ".golangci.json"},
+		}},
+		testStep: &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}},
 	},
 	// Node.js (TypeScript/JavaScript): package.json
 	{
 		markerFiles: []string{"package.json"},
-		lintSteps:   []gateStep{{name: "eslint", binary: "npx", args: []string{"eslint", "."}, optional: true}},
-		testStep:    &gateStep{name: "npm test", binary: "npm", args: []string{"test", "--", "--passWithNoTests"}},
+		lintSteps: []gateStep{{
+			name: "eslint", binary: "npx", args: []string{"eslint", "."}, optional: true,
+			configFiles: []string{
+				"eslint.config.js", "eslint.config.mjs", "eslint.config.cjs",
+				"eslint.config.ts", "eslint.config.mts", "eslint.config.cts",
+				".eslintrc.js", ".eslintrc.cjs", ".eslintrc.yaml", ".eslintrc.yml", ".eslintrc.json", ".eslintrc",
+			},
+		}},
+		testStep: &gateStep{name: "npm test", binary: "npm", args: []string{"test", "--", "--passWithNoTests"}},
 	},
 	// Python: pyproject.toml, setup.py, requirements.txt
 	{
 		markerFiles: []string{"pyproject.toml", "setup.py", "requirements.txt"},
 		lintSteps: []gateStep{
-			{name: "ruff", binary: "ruff", args: []string{"check", "."}, optional: true},
-			{name: "mypy", binary: "mypy", args: []string{"."}, optional: true},
+			{name: "ruff", binary: "ruff", args: []string{"check", "."}, optional: true,
+				configFiles: []string{"ruff.toml", ".ruff.toml", "pyproject.toml"},
+			},
+			{name: "mypy", binary: "mypy", args: []string{"."}, optional: true,
+				configFiles: []string{"mypy.ini", ".mypy.ini", "pyproject.toml", "setup.cfg"},
+			},
 		},
 		testStep: &gateStep{name: "pytest", binary: "pytest", args: nil, optional: true},
 	},
@@ -98,14 +113,20 @@ var toolchains = []langToolchain{
 	// Java: pom.xml (Maven) or build.gradle (Gradle)
 	{
 		markerFiles: []string{"pom.xml", "build.gradle", "build.gradle.kts"},
-		lintSteps:   []gateStep{{name: "checkstyle", binary: "checkstyle", args: []string{"-c", "/google_checks.xml", "src/"}, optional: true}},
-		testStep:    &gateStep{name: "mvn test", binary: "mvn", args: []string{"test"}, optional: true},
+		lintSteps: []gateStep{{
+			name: "checkstyle", binary: "checkstyle", args: []string{"-c", "/google_checks.xml", "src/"}, optional: true,
+			configFiles: []string{"checkstyle.xml", "google_checks.xml", ".checkstyle"},
+		}},
+		testStep: &gateStep{name: "mvn test", binary: "mvn", args: []string{"test"}, optional: true},
 	},
 	// Kotlin: build.gradle.kts with .kt files
 	{
 		markerFiles: []string{"build.gradle.kts"},
-		lintSteps:   []gateStep{{name: "ktlint", binary: "ktlint", args: nil, optional: true}},
-		testStep:    &gateStep{name: "gradle test", binary: "gradle", args: []string{"test"}, optional: true},
+		lintSteps: []gateStep{{
+			name: "ktlint", binary: "ktlint", args: nil, optional: true,
+			configFiles: []string{".editorconfig", ".ktlint"},
+		}},
+		testStep: &gateStep{name: "gradle test", binary: "gradle", args: []string{"test"}, optional: true},
 	},
 	// C#/.NET: *.csproj or *.sln
 	{
@@ -116,20 +137,29 @@ var toolchains = []langToolchain{
 	// Ruby: Gemfile
 	{
 		markerFiles: []string{"Gemfile"},
-		lintSteps:   []gateStep{{name: "rubocop", binary: "rubocop", args: nil, optional: true}},
-		testStep:    &gateStep{name: "rspec", binary: "rspec", args: nil, optional: true},
+		lintSteps: []gateStep{{
+			name: "rubocop", binary: "rubocop", args: nil, optional: true,
+			configFiles: []string{".rubocop.yml", ".rubocop.yaml"},
+		}},
+		testStep: &gateStep{name: "rspec", binary: "rspec", args: nil, optional: true},
 	},
 	// PHP: composer.json
 	{
 		markerFiles: []string{"composer.json"},
-		lintSteps:   []gateStep{{name: "phpstan", binary: "phpstan", args: []string{"analyse"}, optional: true}},
-		testStep:    &gateStep{name: "phpunit", binary: "phpunit", args: nil, optional: true},
+		lintSteps: []gateStep{{
+			name: "phpstan", binary: "phpstan", args: []string{"analyse"}, optional: true,
+			configFiles: []string{"phpstan.neon", "phpstan.neon.dist", "phpstan.dist.neon"},
+		}},
+		testStep: &gateStep{name: "phpunit", binary: "phpunit", args: nil, optional: true},
 	},
 	// Swift: Package.swift
 	{
 		markerFiles: []string{"Package.swift"},
-		lintSteps:   []gateStep{{name: "swiftlint", binary: "swiftlint", args: nil, optional: true}},
-		testStep:    &gateStep{name: "swift test", binary: "swift", args: []string{"test"}},
+		lintSteps: []gateStep{{
+			name: "swiftlint", binary: "swiftlint", args: nil, optional: true,
+			configFiles: []string{".swiftlint.yml", ".swiftlint.yaml"},
+		}},
+		testStep: &gateStep{name: "swift test", binary: "swift", args: []string{"test"}},
 	},
 	// Dart/Flutter: pubspec.yaml
 	{
@@ -140,14 +170,20 @@ var toolchains = []langToolchain{
 	// Elixir: mix.exs
 	{
 		markerFiles: []string{"mix.exs"},
-		lintSteps:   []gateStep{{name: "credo", binary: "mix", args: []string{"credo"}, optional: true}},
-		testStep:    &gateStep{name: "mix test", binary: "mix", args: []string{"test"}},
+		lintSteps: []gateStep{{
+			name: "credo", binary: "mix", args: []string{"credo"}, optional: true,
+			configFiles: []string{".credo.exs"},
+		}},
+		testStep: &gateStep{name: "mix test", binary: "mix", args: []string{"test"}},
 	},
 	// Scala: build.sbt
 	{
 		markerFiles: []string{"build.sbt"},
-		lintSteps:   []gateStep{{name: "scalafix", binary: "scalafix", args: nil, optional: true}},
-		testStep:    &gateStep{name: "sbt test", binary: "sbt", args: []string{"test"}, optional: true},
+		lintSteps: []gateStep{{
+			name: "scalafix", binary: "scalafix", args: nil, optional: true,
+			configFiles: []string{".scalafix.conf"},
+		}},
+		testStep: &gateStep{name: "sbt test", binary: "sbt", args: []string{"test"}, optional: true},
 	},
 	// Haskell: cabal project or stack
 	{
@@ -257,13 +293,34 @@ func (g *QualityGate) detectToolchain() *langToolchain {
 }
 
 // executeStep runs a single gate step. Optional steps skip silently when the binary is missing.
+// Steps with configFiles skip silently when none of the listed config files exist.
 func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout time.Duration) (bool, string) {
 	if step.optional {
 		if _, err := exec.LookPath(step.binary); err != nil {
 			return true, ""
 		}
 	}
+	if len(step.configFiles) > 0 && !g.anyConfigFileExists(step.configFiles) {
+		return true, ""
+	}
 	return g.runStep(ctx, step.name, timeout, step.binary, step.args...)
+}
+
+// anyConfigFileExists returns true if at least one of the given config files exists in ProjectDir.
+func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
+	dir := g.config.ProjectDir
+	if dir == "" {
+		dir, _ = os.Getwd()
+	}
+	if dir == "" {
+		return false
+	}
+	for _, cf := range configFiles {
+		if fileExists(filepath.Join(dir, cf)) {
+			return true
+		}
+	}
+	return false
 }
 
 // runStep executes a single quality gate command with the given timeout.
