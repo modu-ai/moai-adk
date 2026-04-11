@@ -7,7 +7,7 @@ description: >
   serialization.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.0.0"

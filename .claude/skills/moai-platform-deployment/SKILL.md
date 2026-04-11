@@ -5,6 +5,8 @@ description: >
   Use when deploying applications, configuring edge functions, setting up continuous
   deployment, or managing serverless infrastructure.
 license: MIT
+user-invocable: false
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(docker:*), Bash(git:*), WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 metadata:
   version: "2.0.0"
   category: "platform"
@@ -24,9 +26,6 @@ triggers:
   keywords: ["deploy", "deployment", "hosting", "vercel", "railway", "convex", "edge functions", "containers", "docker", "serverless", "real-time", "preview deployment", "continuous deployment"]
   agents: ["expert-devops", "expert-backend", "expert-frontend"]
   phases: ["run", "sync"]
-
-user-invocable: false
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(docker:*), Bash(git:*), WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Deployment Platform Specialist

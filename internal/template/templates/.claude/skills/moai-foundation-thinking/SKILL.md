@@ -6,7 +6,7 @@ description: >
   Use when generating ideas or evaluating proposals.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob
+allowed-tools: Read, Grep, Glob
 user-invocable: false
 metadata:
   version: "1.0.0"

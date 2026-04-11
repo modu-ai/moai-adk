@@ -6,7 +6,7 @@ description: >
   Use for architecture decisions or root cause analysis.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 effort: high
 user-invocable: false
 metadata:

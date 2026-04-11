@@ -5,7 +5,7 @@ description: >
   language or subcommands (plan, run, sync, fix, loop, mx, project,
   feedback, review, clean, codemaps, coverage, e2e) to specialized
   agents.
-allowed-tools: Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
 

@@ -6,7 +6,7 @@ description: >
   languages. Use for structural search or codemod operations.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash(sg:*) Bash(ast-grep:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, Bash(sg:*), Bash(ast-grep:*), mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.2.0"
