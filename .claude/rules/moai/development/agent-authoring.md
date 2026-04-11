@@ -157,6 +157,15 @@ Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.r
 
 Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 
+## Frontmatter Format Rules
+
+[HARD] Field format constraints:
+- `tools`: Comma-separated string ONLY (`tools: Read, Write, Edit`). YAML arrays NOT supported.
+- `disallowedTools`: Comma-separated string ONLY. Same format as tools.
+- `skills`: YAML array format (`skills:\n  - moai-lang-go`). Exception to CSV convention.
+- `model`: One of: `inherit`, `opus`, `sonnet`, `haiku`. Never use `glm`, `high`, `medium`, `low`.
+- `permissionMode`: One of: `default`, `acceptEdits`, `auto`, `delegate`, `dontAsk`, `bypassPermissions`, `plan`.
+
 ## Rules
 
 - Write agent definitions in English

@@ -103,10 +103,10 @@ triggers:
 
 ### Key Format Rules
 
-allowed-tools format: Comma-separated string (recommended) or YAML array (supported since v2.1.0).
-- Recommended: `allowed-tools: Read, Grep, Glob, Bash`
-- Also valid: YAML-style list syntax (supported since v2.1.0)
-- MoAI convention: Use CSV format for consistency with existing skills
+allowed-tools format: [HARD] Comma-separated string ONLY. Space-separated values are PROHIBITED.
+- Correct: `allowed-tools: Read, Grep, Glob, Bash`
+- WRONG: `allowed-tools: Read Grep Glob Bash` (YAML parses as single string scalar, silently breaks tool permissions)
+- YAML arrays also supported since v2.1.0 but CSV is the MoAI convention
 
 metadata values: All values must be quoted strings.
 - Correct: `version: "1.0.0"`
