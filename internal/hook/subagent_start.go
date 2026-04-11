@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // subagentStartHandler processes SubagentStart events.
@@ -25,7 +27,7 @@ func NewSubagentStartHandler() Handler {
 // config access for project context injection.
 // projectDir is resolved from CLAUDE_PROJECT_DIR env var or os.Getwd() as fallback.
 func NewSubagentStartHandlerWithConfig(cfg ConfigProvider) Handler {
-	dir := os.Getenv("CLAUDE_PROJECT_DIR")
+	dir := os.Getenv(config.EnvClaudeProjectDir)
 	if dir == "" {
 		if cwd, err := os.Getwd(); err == nil {
 			dir = cwd

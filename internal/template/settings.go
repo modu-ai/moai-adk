@@ -58,6 +58,13 @@ func BuildSmartPATH() string {
 	// Platform-specific package manager and system paths
 	switch runtime.GOOS {
 	case "darwin":
+		if brewPrefix := os.Getenv("HOMEBREW_PREFIX"); brewPrefix != "" {
+			candidates = append(candidates,
+				filepath.Join(brewPrefix, "bin"),
+				filepath.Join(brewPrefix, "sbin"),
+			)
+		}
+		// Always include standard Homebrew paths as fallback (ensures binaries are accessible even if HOMEBREW_PREFIX is not set)
 		candidates = append(candidates,
 			"/opt/homebrew/bin",  // Apple Silicon Homebrew
 			"/opt/homebrew/sbin", // Apple Silicon Homebrew system

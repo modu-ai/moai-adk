@@ -949,6 +949,61 @@ if [ -f "$HOME/go/bin/moai" ]; then
 
 ---
 
+## 21. Go 패키지 하드코딩 방지 규칙
+
+### [HARD] 패키지 코드(internal/, pkg/)에서 하드코딩 금지
+
+moai-adk-go는 **범용 패키지**로 배포되므로, 사용자 환경에 종속되는 하드코딩이 절대 금지된다.
+개발용 로컬 설정(`CLAUDE.local.md`, `.claude/settings.local.json`)과 패키지 코드(`internal/`, `pkg/`)를 혼동하지 않도록 주의.
+
+### 구분: 개발 환경 vs 패키지 코드
+
+| 영역 | 하드코딩 가능? | 예시 |
+|------|-------------|------|
+| **CLAUDE.local.md** | OK (로컬 전용) | `/Users/goos/MoAI/...` |
+| **settings.local.json** | OK (로컬 전용) | `afplay /System/Library/Sounds/Glass.aiff` |
+| **internal/, pkg/** Go 코드 | **절대 금지** | URL, 모델명, 환경변수명, 임계값 |
+| **internal/template/templates/** | 컨텍스트별 | Go 템플릿 변수 + `$HOME` 규칙 준수 (Section 20) |
+| **_test.go** 테스트 코드 | 조건부 OK | 테스트 픽스처, `t.TempDir()` 내 |
+
+### 하드코딩 방지 체크리스트
+
+새 Go 코드 작성 또는 기존 코드 수정 시 반드시 확인:
+
+- [ ] **URL**: 상수로 추출 (`const apiURL = "https://..."`)
+- [ ] **모델명**: 상수로 추출 (`const probeModel = "claude-haiku-..."`)
+- [ ] **환경변수명**: `config/envkeys.go`에 상수 정의 후 참조 (`config.EnvXxx`)
+- [ ] **임계값**: `config/defaults.go`에 정의, 중복 금지 (단일 원천)
+- [ ] **조직/저장소명**: 상수로 추출 (`const githubReleasesURL = "..."`)
+- [ ] **API 헤더/버전**: 상수로 추출 (반복 사용 시 중복 방지)
+- [ ] **크로스 플랫폼**: `HOMEBREW_PREFIX`, `PSModulePath` 등 환경변수 우선 확인
+
+### 환경변수 상수 파일 위치
+
+모든 환경변수명은 `internal/config/envkeys.go`에 집중 정의:
+- `MOAI_*` 계열: `config.EnvConfigDir`, `config.EnvTestMode` 등
+- `CLAUDE_*` 계열: `config.EnvClaudeProjectDir`, `config.EnvClaudeConfigDir` 등
+- `ANTHROPIC_*` 계열: `config.EnvAnthropicBaseURL`, `config.EnvAnthropicAuthToken` 등
+
+새 환경변수 추가 시 반드시 `envkeys.go`에 상수 먼저 정의 후, 코드에서 참조.
+
+### 중복 상수 방지
+
+동일한 값을 여러 패키지에서 독립 정의하지 말 것:
+
+```go
+// WRONG: 같은 값 85.0이 두 패키지에 독립 정의
+// internal/loop/state.go
+const DefaultCoverageTarget = 85.0
+// internal/hook/teammate_idle.go
+const defaultCoverageThreshold = 85.0
+
+// CORRECT: config/defaults.go의 단일 원천 참조
+float64(config.DefaultTestCoverageTarget)
+```
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.7.0 (Template Path Hardcoding Prevention added)
-**Last Updated**: 2026-03-18
+**Version**: 1.8.0 (Go 패키지 하드코딩 방지 규칙 추가)
+**Last Updated**: 2026-04-11

@@ -17,6 +17,9 @@ import (
 	"time"
 )
 
+// installScriptURL is the URL for the moai-adk installation script.
+const installScriptURL = "https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh"
+
 // updaterImpl is the concrete implementation of Updater.
 type updaterImpl struct {
 	binaryPath string
@@ -279,9 +282,9 @@ func validateBinaryFormat(path string) error {
 	// Reject known archive formats (the most common mistake).
 	switch {
 	case magic[0] == 0x1f && magic[1] == 0x8b:
-		return fmt.Errorf("%w: file is a gzip archive, not an executable. Run: curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash", ErrReplaceFailed)
+		return fmt.Errorf("%w: file is a gzip archive, not an executable. Run: curl -sSL %s | bash", ErrReplaceFailed, installScriptURL)
 	case magic[0] == 0x50 && magic[1] == 0x4b:
-		return fmt.Errorf("%w: file is a zip archive, not an executable. Run: curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash", ErrReplaceFailed)
+		return fmt.Errorf("%w: file is a zip archive, not an executable. Run: curl -sSL %s | bash", ErrReplaceFailed, installScriptURL)
 	}
 
 	// Accept known executable formats.
@@ -309,7 +312,7 @@ func validateBinaryFormat(path string) error {
 		return nil
 	}
 
-	return fmt.Errorf("%w: unrecognized binary format (magic: %x). Run: curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash", ErrReplaceFailed, magic[:n])
+	return fmt.Errorf("%w: unrecognized binary format (magic: %x). Run: curl -sSL %s | bash", ErrReplaceFailed, magic[:n], installScriptURL)
 }
 
 // writeExtractedBinary writes the binary content from r to a temp file

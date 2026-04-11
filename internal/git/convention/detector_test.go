@@ -123,6 +123,7 @@ func TestDetect_CurrentRepo(t *testing.T) {
 
 	if result == nil {
 		t.Fatal("Detect returned nil for current repo")
+		return // staticcheck SA5011
 	}
 	if result.Convention == nil {
 		t.Error("DetectionResult.Convention is nil")

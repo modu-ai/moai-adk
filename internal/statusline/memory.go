@@ -3,6 +3,8 @@ package statusline
 import (
 	"os"
 	"strconv"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // defaultAutoCompactPct is the default auto-compact trigger threshold percentage.
@@ -13,7 +15,7 @@ const defaultAutoCompactPct = 85
 // getAutoCompactThreshold returns the auto-compact trigger percentage.
 // Reads CLAUDE_AUTOCOMPACT_PCT_OVERRIDE env var if set, otherwise uses default.
 func getAutoCompactThreshold() int {
-	if override := os.Getenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"); override != "" {
+	if override := os.Getenv(config.EnvClaudeAutoCompactPct); override != "" {
 		if v, err := strconv.Atoi(override); err == nil && v > 0 && v <= 100 {
 			return v
 		}

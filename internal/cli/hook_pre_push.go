@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/git/convention"
 )
 
@@ -34,7 +35,7 @@ func runPrePush(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Determine repository root from CLAUDE_PROJECT_DIR or current directory.
-	repoPath := os.Getenv("CLAUDE_PROJECT_DIR")
+	repoPath := os.Getenv(config.EnvClaudeProjectDir)
 	if repoPath == "" {
 		var err error
 		repoPath, err = os.Getwd()
@@ -97,7 +98,7 @@ func runPrePush(cmd *cobra.Command, _ []string) error {
 // resolveConventionName determines the convention name from configuration.
 // Priority: MOAI_GIT_CONVENTION env var > config > default "auto".
 func resolveConventionName() string {
-	if envVal := os.Getenv("MOAI_GIT_CONVENTION"); envVal != "" {
+	if envVal := os.Getenv(config.EnvGitConvention); envVal != "" {
 		return envVal
 	}
 
@@ -114,7 +115,7 @@ func resolveConventionName() string {
 // isEnforceOnPushEnabled checks whether convention enforcement is enabled.
 // Priority: MOAI_ENFORCE_ON_PUSH env var > config > default false.
 func isEnforceOnPushEnabled() bool {
-	if envVal := os.Getenv("MOAI_ENFORCE_ON_PUSH"); envVal != "" {
+	if envVal := os.Getenv(config.EnvEnforceOnPush); envVal != "" {
 		return envVal == "true" || envVal == "1"
 	}
 

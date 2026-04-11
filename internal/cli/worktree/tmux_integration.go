@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
@@ -199,14 +200,14 @@ func BuildTmuxSessionConfig(projectName, specID, worktreePath, projectRoot strin
 			}
 		}
 		// Fallback to current environment if .env.glm doesn't have them
-		if cfg.GLMEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] == "" {
-			cfg.GLMEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL")
+		if cfg.GLMEnvVars[config.EnvAnthropicDefaultHaikuModel] == "" {
+			cfg.GLMEnvVars[config.EnvAnthropicDefaultHaikuModel] = os.Getenv(config.EnvAnthropicDefaultHaikuModel)
 		}
-		if cfg.GLMEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "" {
-			cfg.GLMEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_SONNET_MODEL")
+		if cfg.GLMEnvVars[config.EnvAnthropicDefaultSonnetModel] == "" {
+			cfg.GLMEnvVars[config.EnvAnthropicDefaultSonnetModel] = os.Getenv(config.EnvAnthropicDefaultSonnetModel)
 		}
-		if cfg.GLMEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "" {
-			cfg.GLMEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = os.Getenv("ANTHROPIC_DEFAULT_OPUS_MODEL")
+		if cfg.GLMEnvVars[config.EnvAnthropicDefaultOpusModel] == "" {
+			cfg.GLMEnvVars[config.EnvAnthropicDefaultOpusModel] = os.Getenv(config.EnvAnthropicDefaultOpusModel)
 		}
 	}
 

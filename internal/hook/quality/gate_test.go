@@ -229,6 +229,105 @@ func TestQualityGate_executeStep_SkipsOptionalMissing(t *testing.T) {
 	}
 }
 
+func TestQualityGate_executeStep_SkipsWhenConfigFileMissing(t *testing.T) {
+	t.Parallel()
+
+	// Reproduces issue #619: eslint step runs on a project without eslint config,
+	// causing the quality gate to fail. The configFiles field should make the step
+	// skip when no config file exists.
+	dir := t.TempDir()
+	// Create package.json so Node.js toolchain matches, but NO eslint config.
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0o644); err != nil {
+		t.Fatalf("failed to create package.json: %v", err)
+	}
+
+	g := NewQualityGate(&GateConfig{Enabled: true, ProjectDir: dir})
+
+	// Step with configFiles requirement but none exist in dir.
+	step := gateStep{
+		name:     "eslint",
+		binary:   "true", // Use 'true' to ensure it would pass if executed.
+		args:     nil,
+		optional: true,
+		configFiles: []string{
+			"eslint.config.js", "eslint.config.mjs",
+			".eslintrc.js", ".eslintrc.json",
+		},
+	}
+	passed, output := g.executeStep(context.Background(), step, 5*time.Second)
+
+	if !passed {
+		t.Error("step with missing config files should skip (pass)")
+	}
+	if output != "" {
+		t.Errorf("output should be empty when config-skipped, got: %q", output)
+	}
+}
+
+func TestQualityGate_executeStep_RunsWhenConfigFileExists(t *testing.T) {
+	t.Parallel()
+
+	skipIfCommandMissing(t, "true")
+
+	dir := t.TempDir()
+	// Create both package.json and an eslint config.
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0o644); err != nil {
+		t.Fatalf("failed to create package.json: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "eslint.config.js"), []byte("module.exports = {}"), 0o644); err != nil {
+		t.Fatalf("failed to create eslint config: %v", err)
+	}
+
+	g := NewQualityGate(&GateConfig{Enabled: true, ProjectDir: dir})
+
+	step := gateStep{
+		name:        "eslint",
+		binary:      "true", // 'true' always exits 0
+		optional:    true,
+		configFiles: []string{"eslint.config.js", ".eslintrc.json"},
+	}
+	passed, output := g.executeStep(context.Background(), step, 5*time.Second)
+
+	if !passed {
+		t.Errorf("step should run and pass when config file exists, output: %q", output)
+	}
+}
+
+func TestQualityGate_Run_PythonWithPackageJSON(t *testing.T) {
+	t.Parallel()
+
+	// Issue #619: Python project with package.json but no eslint config.
+	// Node.js toolchain matches first and eslint fails.
+	// After fix: eslint step should be skipped due to missing config files.
+	dir := t.TempDir()
+
+	// Create both package.json (triggers Node.js toolchain) and requirements.txt.
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0o644); err != nil {
+		t.Fatalf("failed to create package.json: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "requirements.txt"), []byte("flask==3.0"), 0o644); err != nil {
+		t.Fatalf("failed to create requirements.txt: %v", err)
+	}
+
+	g := NewQualityGate(&GateConfig{
+		Enabled:     true,
+		SkipTests:   true, // Skip test step to isolate lint behavior.
+		ProjectDir:  dir,
+		VetTimeout:  5 * time.Second,
+		LintTimeout: 5 * time.Second,
+		TestTimeout: 5 * time.Second,
+	})
+
+	// Node.js toolchain matches first (package.json before pyproject.toml).
+	// Without the configFiles fix, eslint would run and fail.
+	// With the fix, eslint skips because no eslint config exists.
+	passed, output := g.Run(context.Background())
+
+	if !passed {
+		t.Errorf("Python project with package.json should pass when eslint config is missing, output: %q", output)
+	}
+}
+
 func TestQualityGate_detectToolchain(t *testing.T) {
 	t.Parallel()
 

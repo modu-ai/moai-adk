@@ -53,7 +53,7 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	configDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir)
 
 	// Support MOAI_CONFIG_DIR environment variable override
-	if envDir := os.Getenv("MOAI_CONFIG_DIR"); envDir != "" {
+	if envDir := os.Getenv(EnvConfigDir); envDir != "" {
 		configDir = filepath.Clean(envDir)
 	}
 
@@ -88,7 +88,7 @@ func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
 	defer m.mu.Unlock()
 
 	configDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir)
-	if envDir := os.Getenv("MOAI_CONFIG_DIR"); envDir != "" {
+	if envDir := os.Getenv(EnvConfigDir); envDir != "" {
 		configDir = filepath.Clean(envDir)
 	}
 
@@ -202,7 +202,7 @@ func (m *ConfigManager) Reload() error {
 	}
 
 	configDir := filepath.Join(filepath.Clean(m.root), defs.MoAIDir)
-	if envDir := os.Getenv("MOAI_CONFIG_DIR"); envDir != "" {
+	if envDir := os.Getenv(EnvConfigDir); envDir != "" {
 		configDir = filepath.Clean(envDir)
 	}
 
@@ -351,16 +351,16 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 // applyEnvOverrides applies environment variable overrides to the configuration.
 // Environment variables have higher priority than file-based values.
 func applyEnvOverrides(cfg *Config) {
-	if mode := os.Getenv("MOAI_DEVELOPMENT_MODE"); mode != "" {
+	if mode := os.Getenv(EnvDevelopmentMode); mode != "" {
 		cfg.Quality.DevelopmentMode = models.DevelopmentMode(mode)
 	}
-	if level := os.Getenv("MOAI_LOG_LEVEL"); level != "" {
+	if level := os.Getenv(EnvLogLevel); level != "" {
 		cfg.System.LogLevel = level
 	}
-	if format := os.Getenv("MOAI_LOG_FORMAT"); format != "" {
+	if format := os.Getenv(EnvLogFormat); format != "" {
 		cfg.System.LogFormat = format
 	}
-	if noColor := os.Getenv("MOAI_NO_COLOR"); noColor == "true" || noColor == "1" {
+	if noColor := os.Getenv(EnvNoColor); noColor == "true" || noColor == "1" {
 		cfg.System.NoColor = true
 	}
 }

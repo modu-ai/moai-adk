@@ -13,6 +13,7 @@ func TestNewTaskCollector_DefaultPath(t *testing.T) {
 	tc := newTaskCollector(time.Second)
 	if tc == nil {
 		t.Fatal("newTaskCollector returned nil")
+		return // staticcheck SA5011
 	}
 	if tc.ttl != time.Second {
 		t.Errorf("ttl = %v, want %v", tc.ttl, time.Second)
@@ -33,6 +34,7 @@ func TestTaskCollector_Read_EmptyPath(t *testing.T) {
 	data := tc.read()
 	if data == nil {
 		t.Fatal("read() returned nil, want empty TaskData")
+		return // staticcheck SA5011
 	}
 	if data.Active {
 		t.Error("expected Active = false for empty statePath")

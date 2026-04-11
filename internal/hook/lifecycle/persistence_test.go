@@ -98,6 +98,7 @@ func TestWorkState_Load(t *testing.T) {
 
 	if loaded == nil {
 		t.Fatal("Load() returned nil")
+		return // staticcheck SA5011
 	}
 
 	if len(loaded.ActiveFiles) != 3 {

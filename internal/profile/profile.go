@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 const profilesDir = ".moai/claude-profiles"
@@ -28,7 +30,7 @@ func GetBaseDir() string {
 
 // GetCurrentName returns the current profile name based on CLAUDE_CONFIG_DIR.
 func GetCurrentName() string {
-	configDir := os.Getenv("CLAUDE_CONFIG_DIR")
+	configDir := os.Getenv(config.EnvClaudeConfigDir)
 	if configDir == "" {
 		return "default"
 	}

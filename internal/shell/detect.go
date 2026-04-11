@@ -180,29 +180,55 @@ func selectConfigFile(shell ShellType, preferLogin bool) string {
 	}
 }
 
+// getDocumentsDir returns the user's Documents directory path.
+// On Windows, it checks well-known environment variables before falling back to "Documents".
+// Non-English Windows localizes the Documents folder name (e.g., "Dokumenter", "Documentos"),
+// so we use PSModulePath as a reliable hint to discover the actual folder name.
+func getDocumentsDir(home string) string {
+	// PSModulePath contains entries like C:\Users\user\Documents\PowerShell\Modules.
+	// Use that as a hint if available to find the actual localized Documents path.
+	if psModPath := os.Getenv("PSModulePath"); psModPath != "" {
+		for _, p := range filepath.SplitList(psModPath) {
+			if strings.Contains(p, "PowerShell") && strings.HasPrefix(p, home) {
+				// Extract the Documents part: home + sep + <Documents> + sep + PowerShell
+				rel, err := filepath.Rel(home, p)
+				if err == nil {
+					parts := strings.SplitN(rel, string(filepath.Separator), 3)
+					if len(parts) >= 2 {
+						return filepath.Join(home, parts[0])
+					}
+				}
+			}
+		}
+	}
+	return filepath.Join(home, "Documents")
+}
+
 // getPowerShellProfilePath returns the PowerShell profile path.
 // It checks for PowerShell Core first, then Windows PowerShell.
 func getPowerShellProfilePath(home string) string {
+	docsDir := getDocumentsDir(home)
+
 	// PowerShell Core profile (cross-platform)
-	psCorePath := filepath.Join(home, "Documents", "PowerShell", "Microsoft.PowerShell_profile.ps1")
+	psCorePath := filepath.Join(docsDir, "PowerShell", "Microsoft.PowerShell_profile.ps1")
 	if _, err := os.Stat(psCorePath); err == nil {
 		return psCorePath
 	}
 
 	// Check if PowerShell Core directory exists
-	psCoreDir := filepath.Join(home, "Documents", "PowerShell")
+	psCoreDir := filepath.Join(docsDir, "PowerShell")
 	if _, err := os.Stat(psCoreDir); err == nil {
 		return psCorePath
 	}
 
 	// Windows PowerShell profile
-	winPSPath := filepath.Join(home, "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
+	winPSPath := filepath.Join(docsDir, "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
 	if _, err := os.Stat(winPSPath); err == nil {
 		return winPSPath
 	}
 
 	// Check if Windows PowerShell directory exists
-	winPSDir := filepath.Join(home, "Documents", "WindowsPowerShell")
+	winPSDir := filepath.Join(docsDir, "WindowsPowerShell")
 	if _, err := os.Stat(winPSDir); err == nil {
 		return winPSPath
 	}

@@ -36,9 +36,6 @@ const (
 	ActionAbort         = "abort"
 )
 
-// DefaultCoverageTarget is the minimum coverage percentage for quality gate.
-const DefaultCoverageTarget = 85.0
-
 // validTransitions maps each phase to its only valid next phase.
 var validTransitions = map[LoopPhase]LoopPhase{
 	PhaseAnalyze:   PhaseImplement,

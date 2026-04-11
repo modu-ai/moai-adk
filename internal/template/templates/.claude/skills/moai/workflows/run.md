@@ -98,6 +98,19 @@ Before execution, load these essential files:
 
 Pre-execution commands: git status, git branch, git log, git diff.
 
+### Lessons Loading (REQ-SLQG-013)
+
+Before spawning implementation agents, load relevant lessons from auto-memory:
+
+1. Read `~/.claude/projects/{project-hash}/memory/lessons.md` if it exists
+2. Filter lessons by domain relevance:
+   - Match lesson categories against SPEC domain keywords
+   - Match lesson tags against modified file paths (from SPEC scope)
+   - Limit to top 5 most recent matching lessons
+3. Include filtered lessons in agent spawn prompt as "Previous lessons learned" context
+4. Maximum 2000 tokens for lesson injection
+5. If lessons.md does not exist or no relevant lessons found, skip silently
+
 ### Resume Check
 
 Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:

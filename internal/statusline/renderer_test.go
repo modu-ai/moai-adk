@@ -342,6 +342,7 @@ func TestNewRenderer_ThemeIsStored(t *testing.T) {
 	r := NewRenderer("catppuccin-mocha", false, nil)
 	if r == nil {
 		t.Fatal("NewRenderer returned nil")
+		return // staticcheck SA5011
 	}
 	if r.theme == nil {
 		t.Error("Renderer.theme should be set (not nil) after NewRenderer")

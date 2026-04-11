@@ -26,6 +26,13 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
+const (
+	// githubReleasesURL is the GitHub API endpoint for moai-adk releases.
+	githubReleasesURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
+	// githubLatestReleaseURL is the GitHub API endpoint for the latest moai-adk release.
+	githubLatestReleaseURL = githubReleasesURL + "/latest"
+)
+
 // Dependencies holds all domain-level services used by CLI commands.
 // This is the Composition Root: the only place where concrete types
 // are instantiated and wired together. All CLI commands access
@@ -210,7 +217,7 @@ func (d *Dependencies) EnsureUpdate() error {
 	// - MOAI_UPDATE_URL: custom GitHub API URL
 	// - Default: GitHub releases based on version
 	currentVersion := version.GetVersion()
-	updateSource := os.Getenv("MOAI_UPDATE_SOURCE")
+	updateSource := os.Getenv(config.EnvUpdateSource)
 
 	// Get current binary path for updater and rollback
 	binaryPath, err := os.Executable()
@@ -221,7 +228,7 @@ func (d *Dependencies) EnsureUpdate() error {
 	if updateSource == "local" {
 		// Local file-based updates
 		localConfig := update.LocalConfig{
-			ReleasesDir:    os.Getenv("MOAI_RELEASES_DIR"),
+			ReleasesDir:    os.Getenv(config.EnvReleasesDir),
 			CurrentVersion: currentVersion,
 		}
 		d.UpdateChecker = update.NewLocalChecker(localConfig)
@@ -235,7 +242,7 @@ func (d *Dependencies) EnsureUpdate() error {
 	}
 
 	// Remote GitHub updates
-	apiURL := os.Getenv("MOAI_UPDATE_URL")
+	apiURL := os.Getenv(config.EnvUpdateURL)
 	if apiURL == "" {
 		// Check if this is a development or pre-release version
 		isDevVersion := currentVersion == "dev" ||
@@ -246,10 +253,10 @@ func (d *Dependencies) EnsureUpdate() error {
 
 		if isDevVersion {
 			// Dev/RC version: use moai-go-v2 branch releases (tagged with go-v prefix)
-			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
+			apiURL = githubReleasesURL
 		} else {
 			// Production version: use main branch releases
-			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases/latest"
+			apiURL = githubLatestReleaseURL
 		}
 	}
 

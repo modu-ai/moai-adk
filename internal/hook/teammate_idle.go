@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"gopkg.in/yaml.v3"
@@ -114,9 +115,6 @@ func (h *teammateIdleHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	return &HookOutput{}, nil
 }
 
-// defaultCoverageThreshold is used when quality.yaml does not specify test_coverage_target.
-const defaultCoverageThreshold = 85.0
-
 // coverageData represents the JSON structure of .moai/state/coverage.json.
 type coverageData struct {
 	CoveragePercent float64 `json:"coverage_percent"`
@@ -149,21 +147,21 @@ func loadCoverageData(projectDir string) (float64, bool) {
 }
 
 // loadCoverageThreshold reads the test_coverage_target from quality.yaml.
-// Returns defaultCoverageThreshold (85.0) if the file cannot be read or parsed.
+// Returns float64(config.DefaultTestCoverageTarget) (85.0) if the file cannot be read or parsed.
 func loadCoverageThreshold(projectDir string) float64 {
 	configPath := filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir, defs.QualityYAML)
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return defaultCoverageThreshold
+		return float64(config.DefaultTestCoverageTarget)
 	}
 
 	var cfg coverageThresholdConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return defaultCoverageThreshold
+		return float64(config.DefaultTestCoverageTarget)
 	}
 
 	if cfg.Constitution.TestCoverageTarget <= 0 {
-		return defaultCoverageThreshold
+		return float64(config.DefaultTestCoverageTarget)
 	}
 	return cfg.Constitution.TestCoverageTarget
 }
