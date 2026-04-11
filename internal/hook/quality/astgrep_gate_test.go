@@ -55,8 +55,8 @@ func TestRunAstGrepGate_NilConfig(t *testing.T) {
 }
 
 func TestRunAstGrepGate_NoSgCLI(t *testing.T) {
-	// t.Setenv는 t.Parallel()과 함께 사용 불가
-	// sg 없는 환경 시뮬레이션: 빈 PATH로 실행
+	// t.Setenv cannot be used with t.Parallel()
+	// Simulate environment without sg: run with empty PATH
 	t.Setenv("PATH", "")
 
 	cfg := DefaultAstGrepGateConfig()
@@ -73,11 +73,11 @@ func TestRunAstGrepGate_NoSgCLI(t *testing.T) {
 func TestRunAstGrepGate_NoRulesDir(t *testing.T) {
 	t.Parallel()
 
-	// 룰 디렉토리가 없는 빈 임시 디렉토리 사용
+	// Use an empty temp directory that has no rules directory
 	projectDir := t.TempDir()
 
 	cfg := DefaultAstGrepGateConfig()
-	// 존재하지 않는 서브디렉토리를 RulesDir로 지정
+	// Point RulesDir to a non-existent subdirectory
 	cfg.RulesDir = "nonexistent-rules-dir"
 
 	passed, output := RunAstGrepGate(context.Background(), projectDir, cfg)
@@ -94,7 +94,7 @@ func TestRunAstGrepGate_EmptyRulesDir(t *testing.T) {
 	t.Parallel()
 
 	projectDir := t.TempDir()
-	// 룰 파일 없는 빈 디렉토리 생성
+	// Create an empty directory with no rule files
 	rulesDir := filepath.Join(projectDir, ".moai", "config", "astgrep-rules")
 	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
 		t.Fatalf("failed to create rules dir: %v", err)
@@ -112,9 +112,9 @@ func TestRunAstGrepGate_EmptyRulesDir(t *testing.T) {
 }
 
 func TestRunAstGrepGate_WarnOnlyMode(t *testing.T) {
-	// t.Setenv는 t.Parallel()과 함께 사용 불가
-	// WarnOnlyMode가 true이면 error 심각도 매치가 있어도 통과해야 함.
-	// 실제 sg 없이 로직을 검증하기 위해 빈 PATH로 실행 (sg 없음 → 조용히 통과)
+	// t.Setenv cannot be used with t.Parallel()
+	// When WarnOnlyMode is true, even error-severity matches must pass.
+	// Run with empty PATH to validate logic without real sg (no sg → pass silently)
 	t.Setenv("PATH", "")
 
 	projectDir := t.TempDir()
@@ -122,7 +122,7 @@ func TestRunAstGrepGate_WarnOnlyMode(t *testing.T) {
 		Enabled:      true,
 		RulesDir:     ".moai/config/astgrep-rules",
 		BlockOnError: true,
-		WarnOnlyMode: true, // error도 차단하지 않아야 함
+		WarnOnlyMode: true, // must not block even on error-severity matches
 	}
 
 	passed, _ := RunAstGrepGate(context.Background(), projectDir, cfg)
@@ -133,8 +133,8 @@ func TestRunAstGrepGate_WarnOnlyMode(t *testing.T) {
 }
 
 func TestRunAstGrepGate_BlockOnErrorFalse(t *testing.T) {
-	// t.Setenv는 t.Parallel()과 함께 사용 불가
-	// BlockOnError가 false이면 error 심각도 매치가 있어도 통과해야 함.
+	// t.Setenv cannot be used with t.Parallel()
+	// When BlockOnError is false, even error-severity matches must pass.
 	t.Setenv("PATH", "")
 
 	projectDir := t.TempDir()
@@ -194,7 +194,7 @@ func TestParseSGScanOutput_ValidJSON(t *testing.T) {
 	if m.Severity != "error" {
 		t.Errorf("Severity: want error, got %q", m.Severity)
 	}
-	// 0-indexed line 9 → 출력 시 1-indexed 10이 되어야 함 (포맷팅 단계에서 처리)
+	// 0-indexed line 9 → should become 1-indexed 10 in output (handled in formatting stage)
 	if m.Range.Start.Line != 9 {
 		t.Errorf("Range.Start.Line: want 9, got %d", m.Range.Start.Line)
 	}
@@ -212,7 +212,7 @@ func TestParseSGScanOutput_InvalidJSON(t *testing.T) {
 func TestRunAstGrepGate_GateConfigIntegration(t *testing.T) {
 	t.Parallel()
 
-	// DefaultGateConfig에 AstGrepGate 필드가 설정되어 있는지 확인
+	// Verify that DefaultGateConfig sets the AstGrepGate field
 	cfg := DefaultGateConfig()
 	if cfg.AstGrepGate == nil {
 		t.Fatal("DefaultGateConfig should set AstGrepGate")
@@ -228,8 +228,8 @@ func TestRunAstGrepGate_GateConfigIntegration(t *testing.T) {
 func TestRunAstGrepGate_OutputContainsRuleInfo(t *testing.T) {
 	t.Parallel()
 
-	// parseSGScanOutput + 포맷팅 로직을 단위 테스트로 검증
-	// 실제 sg 호출 없이 내부 포맷팅 결과를 확인
+	// Unit-test parseSGScanOutput + formatting logic directly
+	// Verify internal formatting result without invoking real sg
 	matches := []astGrepScanMatch{
 		{
 			File:     "pkg/foo/bar.go",
@@ -248,7 +248,7 @@ func TestRunAstGrepGate_OutputContainsRuleInfo(t *testing.T) {
 		},
 	}
 
-	// 포맷팅 결과 검증 (strings.Builder 로직 직접 테스트)
+	// Verify formatting result (directly testing strings.Builder logic)
 	var sb strings.Builder
 	sb.WriteString("ast-grep domain rule scan results:\n\n")
 	for _, m := range matches {

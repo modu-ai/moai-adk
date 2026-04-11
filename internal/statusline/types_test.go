@@ -173,7 +173,7 @@ func TestStdinData_UnmarshalJSON_OfficialSchema(t *testing.T) {
 
 // TestWorkspaceInfo_UnmarshalJSON_GitWorktree verifies that git_worktree field
 // from Claude Code 2.1.97+ is correctly parsed from workspace JSON.
-// REQ-CC297-003: workspace.git_worktree 필드 지원
+// REQ-CC297-003: support workspace.git_worktree field
 func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -182,19 +182,19 @@ func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 		wantDir string
 	}{
 		{
-			name:    "worktree 경로가 있을 때 파싱",
+			name:    "worktree path present: parsed correctly",
 			input:   `{"workspace": {"current_dir": "/repo/.claude/worktrees/abc123", "project_dir": "/repo", "git_worktree": "/repo/.claude/worktrees/abc123"}}`,
 			wantWT:  "/repo/.claude/worktrees/abc123",
 			wantDir: "/repo",
 		},
 		{
-			name:    "워크트리가 없을 때 빈 문자열",
+			name:    "no worktree: empty string",
 			input:   `{"workspace": {"current_dir": "/repo", "project_dir": "/repo"}}`,
 			wantWT:  "",
 			wantDir: "/repo",
 		},
 		{
-			name:    "git_worktree 빈 문자열",
+			name:    "git_worktree empty string",
 			input:   `{"workspace": {"current_dir": "/repo", "project_dir": "/repo", "git_worktree": ""}}`,
 			wantWT:  "",
 			wantDir: "/repo",
@@ -205,7 +205,7 @@ func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var data StdinData
 			if err := json.Unmarshal([]byte(tt.input), &data); err != nil {
-				t.Fatalf("json.Unmarshal 실패: %v", err)
+				t.Fatalf("json.Unmarshal failed: %v", err)
 			}
 			if data.Workspace == nil {
 				t.Fatal("Workspace is nil")
@@ -221,16 +221,16 @@ func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 }
 
 // TestSegmentWorktree_Constant verifies that SegmentWorktree constant is defined.
-// REQ-CC297-003: worktree 세그먼트 상수 정의
+// REQ-CC297-003: define worktree segment constant
 func TestSegmentWorktree_Constant(t *testing.T) {
-	// 상수 값이 "worktree"인지 검증
+	// Verify constant value is "worktree"
 	if SegmentWorktree != "worktree" {
 		t.Errorf("SegmentWorktree = %q, want %q", SegmentWorktree, "worktree")
 	}
 }
 
 // TestStatusData_Worktree_Field verifies that StatusData has a Worktree field.
-// REQ-CC297-003: StatusData에 Worktree 필드 추가
+// REQ-CC297-003: add Worktree field to StatusData
 func TestStatusData_Worktree_Field(t *testing.T) {
 	data := &StatusData{
 		Worktree: "/repo/.claude/worktrees/abc123",

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// TestBaselineFields는 Baseline 구조체 필드가 올바르게 설정되는지 검증한다.
+// TestBaselineFields verifies that Baseline struct fields are set correctly.
 func TestBaselineFields(t *testing.T) {
 	now := time.Now()
 	b := Baseline{
@@ -25,7 +25,7 @@ func TestBaselineFields(t *testing.T) {
 	}
 }
 
-// TestRateLimitConfigFields는 RateLimitConfig 구조체 필드가 올바르게 설정되는지 검증한다.
+// TestRateLimitConfigFields verifies that RateLimitConfig struct fields are set correctly.
 func TestRateLimitConfigFields(t *testing.T) {
 	cfg := RateLimitConfig{
 		MaxExperimentsPerSession: 10,
@@ -44,7 +44,7 @@ func TestRateLimitConfigFields(t *testing.T) {
 	}
 }
 
-// TestActionRecordFields는 ActionRecord 구조체 필드가 올바르게 설정되는지 검증한다.
+// TestActionRecordFields verifies that ActionRecord struct fields are set correctly.
 func TestActionRecordFields(t *testing.T) {
 	now := time.Now()
 	r := ActionRecord{

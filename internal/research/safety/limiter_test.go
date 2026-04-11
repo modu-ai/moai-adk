@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// TestRateLimiter_CheckSessionLimit은 세션 실험 횟수 제한을 검증한다.
+// TestRateLimiter_CheckSessionLimit verifies the per-session experiment count limit.
 func TestRateLimiter_CheckSessionLimit(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -18,25 +18,25 @@ func TestRateLimiter_CheckSessionLimit(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name:           "세션 제한 미초과 → nil",
+			name:           "below session limit → nil",
 			config:         RateLimitConfig{MaxExperimentsPerSession: 10},
 			sessionActions: 5,
 			wantErr:        false,
 		},
 		{
-			name:           "세션 제한 정확히 도달 → 에러",
+			name:           "exactly at session limit → error",
 			config:         RateLimitConfig{MaxExperimentsPerSession: 10},
 			sessionActions: 10,
 			wantErr:        true,
 		},
 		{
-			name:           "세션 제한 초과 → 에러",
+			name:           "above session limit → error",
 			config:         RateLimitConfig{MaxExperimentsPerSession: 5},
 			sessionActions: 8,
 			wantErr:        true,
 		},
 		{
-			name:           "세션 액션 0 → nil",
+			name:           "zero session actions → nil",
 			config:         RateLimitConfig{MaxExperimentsPerSession: 10},
 			sessionActions: 0,
 			wantErr:        false,
@@ -58,9 +58,9 @@ func TestRateLimiter_CheckSessionLimit(t *testing.T) {
 	}
 }
 
-// TestRateLimiter_CheckWeeklyLimit은 주간 자동 리서치 제한을 검증한다.
+// TestRateLimiter_CheckWeeklyLimit verifies the weekly auto-research limit.
 func TestRateLimiter_CheckWeeklyLimit(t *testing.T) {
-	t.Run("기록 없음 → nil", func(t *testing.T) {
+	t.Run("no records → nil", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		l := NewRateLimiter(filepath.Join(tmpDir, "actions.jsonl"))
 		cfg := RateLimitConfig{MaxAutoResearchPerWeek: 5}
@@ -71,12 +71,12 @@ func TestRateLimiter_CheckWeeklyLimit(t *testing.T) {
 		}
 	})
 
-	t.Run("주간 제한 미초과 → nil", func(t *testing.T) {
+	t.Run("below weekly limit → nil", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storePath := filepath.Join(tmpDir, "actions.jsonl")
 		l := NewRateLimiter(storePath)
 
-		// 최근 기록 2개 작성
+		// Write 2 recent records
 		writeActionRecords(t, storePath, []ActionRecord{
 			{Type: "auto_research", Timestamp: time.Now().Add(-1 * time.Hour)},
 			{Type: "auto_research", Timestamp: time.Now().Add(-2 * time.Hour)},
@@ -89,12 +89,12 @@ func TestRateLimiter_CheckWeeklyLimit(t *testing.T) {
 		}
 	})
 
-	t.Run("주간 제한 초과 → ErrRateLimitExceeded", func(t *testing.T) {
+	t.Run("above weekly limit → ErrRateLimitExceeded", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storePath := filepath.Join(tmpDir, "actions.jsonl")
 		l := NewRateLimiter(storePath)
 
-		// 최근 기록 5개 작성 (제한: 5)
+		// Write 5 recent records (limit: 5)
 		records := make([]ActionRecord, 5)
 		for i := range records {
 			records[i] = ActionRecord{
@@ -114,12 +114,12 @@ func TestRateLimiter_CheckWeeklyLimit(t *testing.T) {
 		}
 	})
 
-	t.Run("7일 이전 기록은 주간 제한에 포함되지 않음", func(t *testing.T) {
+	t.Run("records older than 7 days are excluded from weekly limit", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storePath := filepath.Join(tmpDir, "actions.jsonl")
 		l := NewRateLimiter(storePath)
 
-		// 오래된 기록 10개 + 최근 기록 2개
+		// 3 old records + 2 recent records
 		records := []ActionRecord{
 			{Type: "auto_research", Timestamp: time.Now().Add(-10 * 24 * time.Hour)},
 			{Type: "auto_research", Timestamp: time.Now().Add(-9 * 24 * time.Hour)},
@@ -132,14 +132,14 @@ func TestRateLimiter_CheckWeeklyLimit(t *testing.T) {
 		cfg := RateLimitConfig{MaxAutoResearchPerWeek: 5}
 		err := l.CheckWeeklyLimit(cfg)
 		if err != nil {
-			t.Errorf("CheckWeeklyLimit() error = %v, want nil (오래된 기록은 제외해야 함)", err)
+			t.Errorf("CheckWeeklyLimit() error = %v, want nil (old records should be excluded)", err)
 		}
 	})
 }
 
-// TestRateLimiter_RecordAction은 JSONL 기록 저장을 검증한다.
+// TestRateLimiter_RecordAction verifies that action records are persisted to the JSONL file.
 func TestRateLimiter_RecordAction(t *testing.T) {
-	t.Run("액션 기록이 JSONL 파일에 저장됨", func(t *testing.T) {
+	t.Run("action record is saved to JSONL file", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storePath := filepath.Join(tmpDir, "actions.jsonl")
 		l := NewRateLimiter(storePath)
@@ -154,10 +154,10 @@ func TestRateLimiter_RecordAction(t *testing.T) {
 			t.Fatalf("RecordAction() error = %v", err)
 		}
 
-		// JSONL 파일 읽기 및 검증
+		// Read and verify JSONL file
 		records := readActionRecords(t, storePath)
 		if len(records) != 2 {
-			t.Fatalf("기록 수 = %d, want 2", len(records))
+			t.Fatalf("record count = %d, want 2", len(records))
 		}
 		if records[0].Type != "experiment" {
 			t.Errorf("records[0].Type = %q, want %q", records[0].Type, "experiment")
@@ -167,7 +167,7 @@ func TestRateLimiter_RecordAction(t *testing.T) {
 		}
 	})
 
-	t.Run("존재하지 않는 디렉토리에 기록 시 에러", func(t *testing.T) {
+	t.Run("recording to nonexistent directory returns error", func(t *testing.T) {
 		l := NewRateLimiter("/nonexistent/dir/actions.jsonl")
 		err := l.RecordAction("experiment")
 		if err == nil {
@@ -176,29 +176,29 @@ func TestRateLimiter_RecordAction(t *testing.T) {
 	})
 }
 
-// writeActionRecords는 테스트용 JSONL 파일에 액션 기록을 작성한다.
+// writeActionRecords writes action records to a JSONL file for testing.
 func writeActionRecords(t *testing.T, path string, records []ActionRecord) {
 	t.Helper()
 	f, err := os.Create(path)
 	if err != nil {
-		t.Fatalf("파일 생성 실패: %v", err)
+		t.Fatalf("failed to create file: %v", err)
 	}
 	defer func() { _ = f.Close() }()
 
 	enc := json.NewEncoder(f)
 	for _, r := range records {
 		if err := enc.Encode(r); err != nil {
-			t.Fatalf("기록 인코딩 실패: %v", err)
+			t.Fatalf("failed to encode record: %v", err)
 		}
 	}
 }
 
-// readActionRecords는 테스트용 JSONL 파일에서 액션 기록을 읽는다.
+// readActionRecords reads action records from a JSONL file for testing.
 func readActionRecords(t *testing.T, path string) []ActionRecord {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
-		t.Fatalf("파일 열기 실패: %v", err)
+		t.Fatalf("failed to open file: %v", err)
 	}
 	defer func() { _ = f.Close() }()
 
@@ -207,7 +207,7 @@ func readActionRecords(t *testing.T, path string) []ActionRecord {
 	for dec.More() {
 		var r ActionRecord
 		if err := dec.Decode(&r); err != nil {
-			t.Fatalf("기록 디코딩 실패: %v", err)
+			t.Fatalf("failed to decode record: %v", err)
 		}
 		records = append(records, r)
 	}

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// --- TDD RED: research 커맨드 구조 테스트 ---
+// --- TDD RED: research command structure tests ---
 
 func TestNewResearchCmd_Use(t *testing.T) {
 	cmd := newResearchCmd()
@@ -24,7 +24,7 @@ func TestNewResearchCmd_HasThreeSubcommands(t *testing.T) {
 		t.Errorf("subcommand count = %d, want 3", len(subs))
 	}
 
-	// 서브커맨드 이름 확인
+	// Verify subcommand names
 	names := make(map[string]bool)
 	for _, s := range subs {
 		names[s.Use] = true
@@ -49,7 +49,7 @@ func TestNewResearchCmd_IsSubcommandOfRoot(t *testing.T) {
 	}
 }
 
-// --- TDD RED: research status 테스트 ---
+// --- TDD RED: research status tests ---
 
 func TestRunResearchStatus_NoDataDir(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -68,7 +68,7 @@ func TestRunResearchStatus_NoDataDir(t *testing.T) {
 
 func TestRunResearchStatus_WithDataDir(t *testing.T) {
 	tmpDir := t.TempDir()
-	// .moai/research/ 디렉터리 생성
+	// Create .moai/research/ directory
 	researchDir := filepath.Join(tmpDir, ".moai", "research")
 	if err := os.MkdirAll(researchDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestRunResearchStatus_WithDataDir(t *testing.T) {
 	}
 }
 
-// --- TDD RED: research baseline 테스트 ---
+// --- TDD RED: research baseline tests ---
 
 func TestRunResearchBaseline_ComingSoon(t *testing.T) {
 	cmd := newResearchBaselineCmd()
@@ -105,7 +105,7 @@ func TestRunResearchBaseline_ComingSoon(t *testing.T) {
 	}
 }
 
-// --- TDD RED: research list 테스트 ---
+// --- TDD RED: research list tests ---
 
 func TestRunResearchList_EmptyDir(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -129,7 +129,7 @@ func TestRunResearchList_WithEvalFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// eval 파일 생성
+	// Create eval files
 	files := []string{
 		"hook-perf.eval.yaml",
 		"template-quality.eval.yaml",
@@ -177,7 +177,7 @@ func TestRunResearchList_WithNestedEvalFiles(t *testing.T) {
 	}
 }
 
-// --- TDD RED: research status 서브커맨드 필드 테스트 ---
+// --- TDD RED: research status subcommand field tests ---
 
 func TestNewResearchStatusCmd_Use(t *testing.T) {
 	cmd := newResearchStatusCmd()

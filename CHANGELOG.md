@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2] - 2026-04-11
+
+### Summary
+
+Quality gate hardening for multi-language projects: linter config detection prevents false commit blocks. Hook binary discovery expanded for Linux environments. All Korean code comments converted to English.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- `configFiles` field on `gateStep` struct for linter config file detection before execution
+- Config file checks for all 15 supported language linters (Go, Node.js, Python, Rust, Java, Kotlin, C#, Ruby, PHP, Swift, Dart, Elixir, Scala, Haskell, Zig)
+- `$HOME/.local/bin/moai` fallback path in all 27 hook wrapper templates for Linux installs
+- Self-Learning Quality Guard system with ast-grep integration (SPEC-SLQG-001)
+- `AstGrepGate` configuration in `GateConfig` for domain-specific pattern scanning
+- 4 reproduction tests for configFiles behavior
+
+### Changed
+
+- Extracted 12 hardcoded constants into `internal/config/envkeys.go` and `internal/config/defaults.go`
+- Windows platform-aware Go binary path fallback in `update.go`
+- `code_comments` setting changed from `ko` to `en` in language.yaml
+- Converted ~150 Korean code comments to English across 24 Go source files
+
+### Fixed
+
+- ESLint quality gate blocking git commits in Python-only projects (#619)
+- Hook wrapper scripts not finding moai binary at `~/.local/bin/moai` on Linux
+- Korean comment in `settings.go` violating English-only code standard
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.10.2] - 2026-04-11 (한국어)
+
+### 요약
+
+다국어 프로젝트를 위한 품질 게이트 강화: 린터 설정 파일 감지로 잘못된 커밋 차단 방지. Linux 환경 hook 바이너리 탐색 확장. 모든 한국어 코드 주석 영어 변환.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- `gateStep` 구조체에 `configFiles` 필드 추가 — 린터 실행 전 설정 파일 존재 여부 확인
+- 15개 지원 언어 린터 전체에 설정 파일 검사 적용
+- 27개 hook wrapper 템플릿에 `$HOME/.local/bin/moai` 폴백 경로 추가
+- Self-Learning Quality Guard 시스템 + ast-grep 통합 (SPEC-SLQG-001)
+- `GateConfig`에 `AstGrepGate` 설정 추가
+- configFiles 동작 재현 테스트 4건
+
+### 변경됨 (Changed)
+
+- 하드코딩 상수 12건을 `internal/config/` 패키지로 추출
+- `update.go`에 Windows 플랫폼별 Go 바이너리 경로 폴백 추가
+- `language.yaml`의 `code_comments` 설정을 `ko`에서 `en`으로 변경
+- 24개 Go 소스 파일의 한국어 주석 ~150건 영어 변환
+
+### 수정됨 (Fixed)
+
+- Python-only 프로젝트에서 ESLint 품질 게이트가 git commit을 차단하던 버그 (#619)
+- Linux에서 `~/.local/bin/moai` 경로의 moai 바이너리를 찾지 못하던 hook wrapper 문제
+- `settings.go`의 한국어 주석 — 영어 전용 코드 표준 위반
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.10.1] - 2026-04-09
 
 ### Summary

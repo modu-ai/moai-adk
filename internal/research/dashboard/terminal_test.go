@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-// ansiRe는 ANSI 이스케이프 시퀀스를 매칭하는 정규식이다.
+// ansiRe matches ANSI escape sequences.
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
-// stripANSI는 문자열에서 ANSI 이스케이프 코드를 제거한다.
+// stripANSI removes ANSI escape codes from a string.
 func stripANSI(s string) string { return ansiRe.ReplaceAllString(s, "") }
 
 func TestRenderDashboard(t *testing.T) {
@@ -18,11 +18,11 @@ func TestRenderDashboard(t *testing.T) {
 	tests := []struct {
 		name     string
 		data     *DashboardData
-		contains []string // 출력에 포함되어야 하는 문자열
-		absent   []string // 출력에 포함되지 않아야 하는 문자열
+		contains []string // strings that must appear in output
+		absent   []string // strings that must not appear in output
 	}{
 		{
-			name: "전체 통과 데이터는 100%를 포함",
+			name: "all-pass data contains 100%",
 			data: &DashboardData{
 				Target:         "eval-quality",
 				Baseline:       0.80,
@@ -40,7 +40,7 @@ func TestRenderDashboard(t *testing.T) {
 			contains: []string{"100%", "eval-quality", "10/20"},
 		},
 		{
-			name: "혼합 데이터는 올바른 백분율 포함",
+			name: "mixed data contains correct percentages",
 			data: &DashboardData{
 				Target:         "mixed-test",
 				Baseline:       0.50,
@@ -58,7 +58,7 @@ func TestRenderDashboard(t *testing.T) {
 			contains: []string{"75%", "80%", "60%", "5/20"},
 		},
 		{
-			name: "실험 0건은 0/20 표시",
+			name: "zero experiments shows 0/20",
 			data: &DashboardData{
 				Target:         "zero-exp",
 				Baseline:       0.50,
@@ -72,7 +72,7 @@ func TestRenderDashboard(t *testing.T) {
 			contains: []string{"0/20"},
 		},
 		{
-			name: "점수 개선 시 + 접두사 포함",
+			name: "score improvement shows + prefix",
 			data: &DashboardData{
 				Target:         "improving",
 				Baseline:       0.60,
@@ -86,7 +86,7 @@ func TestRenderDashboard(t *testing.T) {
 			contains: []string{"+"},
 		},
 		{
-			name: "점수 퇴보 시 - 접두사 포함",
+			name: "score regression shows - prefix",
 			data: &DashboardData{
 				Target:         "regressing",
 				Baseline:       0.80,
@@ -109,12 +109,12 @@ func TestRenderDashboard(t *testing.T) {
 
 			for _, want := range tt.contains {
 				if !strings.Contains(stripped, want) {
-					t.Errorf("출력에 %q가 포함되어야 하지만 없음.\n출력:\n%s", want, stripped)
+					t.Errorf("output should contain %q but does not.\noutput:\n%s", want, stripped)
 				}
 			}
 			for _, absent := range tt.absent {
 				if strings.Contains(stripped, absent) {
-					t.Errorf("출력에 %q가 없어야 하지만 있음.\n출력:\n%s", absent, stripped)
+					t.Errorf("output should not contain %q but does.\noutput:\n%s", absent, stripped)
 				}
 			}
 		})
@@ -138,16 +138,16 @@ func TestRenderCompact(t *testing.T) {
 	result := RenderCompact(data)
 	stripped := stripANSI(result)
 
-	// 단일 라인이어야 함 (마지막 개행 제외)
+	// Must be a single line (excluding trailing newline)
 	trimmed := strings.TrimRight(stripped, "\n")
 	if strings.Contains(trimmed, "\n") {
-		t.Errorf("RenderCompact는 단일 라인이어야 하지만 개행 포함:\n%s", trimmed)
+		t.Errorf("RenderCompact must be a single line but contains newline:\n%s", trimmed)
 	}
 
-	// 필수 요소 확인
+	// Required elements
 	for _, want := range []string{"Research:", "compact-test", "75%", "5/20", "3K", "2D"} {
 		if !strings.Contains(stripped, want) {
-			t.Errorf("컴팩트 출력에 %q가 포함되어야 함. 출력: %s", want, stripped)
+			t.Errorf("compact output should contain %q. output: %s", want, stripped)
 		}
 	}
 }
@@ -163,21 +163,21 @@ func TestRenderProgressBar(t *testing.T) {
 		wantEmpty   int
 	}{
 		{
-			name:       "100% 채움",
+			name:       "100% filled",
 			ratio:      1.0,
 			width:      25,
 			wantFilled: 25,
 			wantEmpty:  0,
 		},
 		{
-			name:       "0% 비움",
+			name:       "0% empty",
 			ratio:      0.0,
 			width:      25,
 			wantFilled: 0,
 			wantEmpty:  25,
 		},
 		{
-			name:       "50% 절반",
+			name:       "50% half filled",
 			ratio:      0.5,
 			width:      25,
 			wantFilled: 12, // int(0.5 * 25) = 12
@@ -194,15 +194,15 @@ func TestRenderProgressBar(t *testing.T) {
 			emptyCount := strings.Count(result, "░")
 
 			if filledCount != tt.wantFilled {
-				t.Errorf("채운 블록 수: got %d, want %d (bar: %s)", filledCount, tt.wantFilled, result)
+				t.Errorf("filled block count: got %d, want %d (bar: %s)", filledCount, tt.wantFilled, result)
 			}
 			if emptyCount != tt.wantEmpty {
-				t.Errorf("빈 블록 수: got %d, want %d (bar: %s)", emptyCount, tt.wantEmpty, result)
+				t.Errorf("empty block count: got %d, want %d (bar: %s)", emptyCount, tt.wantEmpty, result)
 			}
-			// 총 길이 확인
+			// Verify total length
 			totalBlocks := filledCount + emptyCount
 			if totalBlocks != tt.width {
-				t.Errorf("총 블록 수: got %d, want %d", totalBlocks, tt.width)
+				t.Errorf("total block count: got %d, want %d", totalBlocks, tt.width)
 			}
 		})
 	}
@@ -219,26 +219,26 @@ func TestRenderCriterionLine(t *testing.T) {
 		absent     []string
 	}{
 		{
-			name:       "MUST 가중치 포함",
+			name:       "MUST weight included",
 			criterion:  CriterionStatus{Name: "accuracy", PassRate: 0.90, Weight: "MUST"},
 			maxNameLen: 10,
 			contains:   []string{"MUST", "accuracy", "90%"},
 		},
 		{
-			name:       "가중치 없음",
+			name:       "no weight",
 			criterion:  CriterionStatus{Name: "speed", PassRate: 0.70, Weight: ""},
 			maxNameLen: 10,
 			contains:   []string{"speed", "70%"},
 			absent:     []string{"MUST"},
 		},
 		{
-			name:       "100% 통과율",
+			name:       "100% pass rate",
 			criterion:  CriterionStatus{Name: "quality", PassRate: 1.0, Weight: ""},
 			maxNameLen: 10,
 			contains:   []string{"quality", "100%"},
 		},
 		{
-			name:       "0% 통과율",
+			name:       "0% pass rate",
 			criterion:  CriterionStatus{Name: "coverage", PassRate: 0.0, Weight: "MUST"},
 			maxNameLen: 10,
 			contains:   []string{"coverage", "0%", "MUST"},
@@ -253,12 +253,12 @@ func TestRenderCriterionLine(t *testing.T) {
 
 			for _, want := range tt.contains {
 				if !strings.Contains(stripped, want) {
-					t.Errorf("출력에 %q가 포함되어야 함. 출력: %s", want, stripped)
+					t.Errorf("output should contain %q. output: %s", want, stripped)
 				}
 			}
 			for _, absent := range tt.absent {
 				if strings.Contains(stripped, absent) {
-					t.Errorf("출력에 %q가 없어야 함. 출력: %s", absent, stripped)
+					t.Errorf("output should not contain %q. output: %s", absent, stripped)
 				}
 			}
 		})
@@ -270,7 +270,7 @@ func TestRenderDashboardNilData(t *testing.T) {
 
 	result := RenderDashboard(nil)
 	if result != "" {
-		t.Errorf("nil 데이터는 빈 문자열을 반환해야 함, got: %s", result)
+		t.Errorf("nil data should return empty string, got: %s", result)
 	}
 }
 
@@ -279,7 +279,7 @@ func TestRenderCompactNilData(t *testing.T) {
 
 	result := RenderCompact(nil)
 	if result != "" {
-		t.Errorf("nil 데이터는 빈 문자열을 반환해야 함, got: %s", result)
+		t.Errorf("nil data should return empty string, got: %s", result)
 	}
 }
 
@@ -291,9 +291,9 @@ func TestRenderProgressBarEdgeCases(t *testing.T) {
 		ratio float64
 		width int
 	}{
-		{"음수 비율은 0으로 클램프", -0.5, 25},
-		{"1 초과 비율은 1로 클램프", 1.5, 25},
-		{"너비 0", 0.5, 0},
+		{"negative ratio is clamped to 0", -0.5, 25},
+		{"ratio above 1 is clamped to 1", 1.5, 25},
+		{"width 0", 0.5, 0},
 	}
 
 	for _, tt := range tests {
@@ -306,7 +306,7 @@ func TestRenderProgressBarEdgeCases(t *testing.T) {
 			totalBlocks := filledCount + emptyCount
 
 			if totalBlocks != tt.width {
-				t.Errorf("총 블록 수: got %d, want %d", totalBlocks, tt.width)
+				t.Errorf("total block count: got %d, want %d", totalBlocks, tt.width)
 			}
 		})
 	}

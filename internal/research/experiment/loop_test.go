@@ -7,7 +7,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/research/eval"
 )
 
-// defaultConfig는 테스트에서 공통으로 사용하는 기본 설정이다.
+// defaultConfig returns the default configuration used in tests.
 func defaultConfig() LoopConfig {
 	return LoopConfig{
 		MaxExperiments:      10,
@@ -17,7 +17,7 @@ func defaultConfig() LoopConfig {
 	}
 }
 
-// makeEvalResult는 테스트용 EvalResult를 생성한다.
+// makeEvalResult creates an EvalResult for testing.
 func makeEvalResult(overall float64, mustPassOK bool) *eval.EvalResult {
 	return &eval.EvalResult{
 		Overall: overall,
@@ -29,12 +29,12 @@ func makeEvalResult(overall float64, mustPassOK bool) *eval.EvalResult {
 	}
 }
 
-// makeExp는 테스트용 Experiment를 생성한다.
+// makeExp creates an Experiment for testing.
 func makeExp(id string, overall float64, mustPassOK bool) *Experiment {
 	return &Experiment{
 		ID:         id,
 		Target:     "test-target",
-		Hypothesis: "테스트 가설",
+		Hypothesis: "test hypothesis",
 		Change:     ChangeRecord{Type: "modification", Section: "prompt", Diff: "diff"},
 		Result:     makeEvalResult(overall, mustPassOK),
 		Decision:   DecisionPending,
@@ -42,24 +42,24 @@ func makeExp(id string, overall float64, mustPassOK bool) *Experiment {
 	}
 }
 
-// TestNewLoop은 Loop 생성 시 초기 상태를 검증한다.
+// TestNewLoop verifies the initial state when creating a Loop.
 func TestNewLoop(t *testing.T) {
 	t.Parallel()
 
 	l := NewLoop(defaultConfig())
 
 	if l.State() != StateIdle {
-		t.Errorf("초기 상태: got %q, want %q", l.State(), StateIdle)
+		t.Errorf("initial state: got %q, want %q", l.State(), StateIdle)
 	}
 	if l.BestScore() != 0.0 {
-		t.Errorf("초기 BestScore: got %f, want 0.0", l.BestScore())
+		t.Errorf("initial BestScore: got %f, want 0.0", l.BestScore())
 	}
 	if l.ExperimentCount() != 0 {
-		t.Errorf("초기 ExperimentCount: got %d, want 0", l.ExperimentCount())
+		t.Errorf("initial ExperimentCount: got %d, want 0", l.ExperimentCount())
 	}
 }
 
-// TestSetBaseline은 베이스라인 설정 후 상태와 점수를 검증한다.
+// TestSetBaseline verifies state and score after setting a baseline.
 func TestSetBaseline(t *testing.T) {
 	t.Parallel()
 
@@ -69,14 +69,14 @@ func TestSetBaseline(t *testing.T) {
 	l.SetBaseline(baseline)
 
 	if l.State() != StateBaseline {
-		t.Errorf("상태: got %q, want %q", l.State(), StateBaseline)
+		t.Errorf("state: got %q, want %q", l.State(), StateBaseline)
 	}
 	if l.BestScore() != 0.70 {
 		t.Errorf("BestScore: got %f, want 0.70", l.BestScore())
 	}
 }
 
-// TestShouldContinue는 루프 지속 조건을 테이블 기반으로 검증한다.
+// TestShouldContinue verifies loop continuation conditions using table-driven tests.
 func TestShouldContinue(t *testing.T) {
 	t.Parallel()
 
@@ -86,7 +86,7 @@ func TestShouldContinue(t *testing.T) {
 		want  bool
 	}{
 		{
-			name: "초기_상태_지속",
+			name: "initial_state_continues",
 			setup: func() *Loop {
 				l := NewLoop(defaultConfig())
 				l.SetBaseline(makeEvalResult(0.50, true))
@@ -95,13 +95,13 @@ func TestShouldContinue(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "최대_실험_수_도달",
+			name: "max_experiments_reached",
 			setup: func() *Loop {
 				cfg := defaultConfig()
 				cfg.MaxExperiments = 3
 				l := NewLoop(cfg)
 				l.SetBaseline(makeEvalResult(0.50, true))
-				// 3개 실험 기록 (점수 계속 상승하여 정체 없음)
+				// 3 experiments with continuously rising scores (no stagnation)
 				l.RecordExperiment(makeExp("1", 0.55, true))
 				l.RecordExperiment(makeExp("2", 0.60, true))
 				l.RecordExperiment(makeExp("3", 0.65, true))
@@ -110,13 +110,13 @@ func TestShouldContinue(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "목표_점수_3회_연속_달성",
+			name: "target_score_hit_3_consecutive_times",
 			setup: func() *Loop {
 				cfg := defaultConfig()
 				cfg.TargetScore = 0.90
 				l := NewLoop(cfg)
 				l.SetBaseline(makeEvalResult(0.50, true))
-				// 목표 점수 3회 연속 달성
+				// Hit target score 3 consecutive times
 				l.RecordExperiment(makeExp("1", 0.91, true))
 				l.RecordExperiment(makeExp("2", 0.92, true))
 				l.RecordExperiment(makeExp("3", 0.93, true))
@@ -125,14 +125,14 @@ func TestShouldContinue(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "정체_인내_초과",
+			name: "stagnation_patience_exceeded",
 			setup: func() *Loop {
 				cfg := defaultConfig()
 				cfg.StagnationPatience = 3
 				cfg.StagnationThreshold = 0.05
 				l := NewLoop(cfg)
 				l.SetBaseline(makeEvalResult(0.50, true))
-				// 미미한 개선으로 정체 3회
+				// Minimal improvement causing 3 stagnation events
 				l.RecordExperiment(makeExp("1", 0.51, true))
 				l.RecordExperiment(makeExp("2", 0.51, true))
 				l.RecordExperiment(makeExp("3", 0.51, true))
@@ -141,7 +141,7 @@ func TestShouldContinue(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "완료_상태",
+			name: "complete_state",
 			setup: func() *Loop {
 				l := NewLoop(defaultConfig())
 				l.state = StateComplete
@@ -162,7 +162,7 @@ func TestShouldContinue(t *testing.T) {
 	}
 }
 
-// TestRecordExperiment는 실험 기록 시 Decision 로직을 테이블 기반으로 검증한다.
+// TestRecordExperiment verifies Decision logic when recording experiments using table-driven tests.
 func TestRecordExperiment(t *testing.T) {
 	t.Parallel()
 
@@ -176,7 +176,7 @@ func TestRecordExperiment(t *testing.T) {
 		wantBest     float64
 	}{
 		{
-			name:         "더_높은_점수_keep",
+			name:         "higher_score_keep",
 			baseline:     0.50,
 			expScore:     0.80,
 			mustPassOK:   true,
@@ -184,7 +184,7 @@ func TestRecordExperiment(t *testing.T) {
 			wantBest:     0.80,
 		},
 		{
-			name:         "더_낮은_점수_discard",
+			name:         "lower_score_discard",
 			baseline:     0.80,
 			expScore:     0.60,
 			mustPassOK:   true,
@@ -192,7 +192,7 @@ func TestRecordExperiment(t *testing.T) {
 			wantBest:     0.80,
 		},
 		{
-			name:         "must_pass_실패_높은_점수도_discard",
+			name:         "must_pass_failure_high_score_still_discard",
 			baseline:     0.50,
 			expScore:     0.90,
 			mustPassOK:   false,
@@ -207,7 +207,7 @@ func TestRecordExperiment(t *testing.T) {
 			wantBest:     0.50,
 		},
 		{
-			name:         "동일_점수_discard",
+			name:         "equal_score_discard",
 			baseline:     0.70,
 			expScore:     0.70,
 			mustPassOK:   true,
@@ -245,65 +245,65 @@ func TestRecordExperiment(t *testing.T) {
 	}
 }
 
-// TestStagnationCounter는 정체 카운터의 증가/초기화를 검증한다.
+// TestStagnationCounter verifies that the stagnation counter increments and resets correctly.
 func TestStagnationCounter(t *testing.T) {
 	t.Parallel()
 
 	cfg := defaultConfig()
 	cfg.StagnationThreshold = 0.05
-	cfg.StagnationPatience = 10 // 높게 설정하여 조기 종료 방지
+	cfg.StagnationPatience = 10 // set high to prevent early termination
 	l := NewLoop(cfg)
 	l.SetBaseline(makeEvalResult(0.50, true))
 
-	// 미미한 개선 → 정체 카운터 증가
+	// Minimal improvement → stagnation counter increments
 	l.RecordExperiment(makeExp("1", 0.51, true))
 	if l.stagnationCount != 1 {
-		t.Errorf("1회 후 stagnationCount: got %d, want 1", l.stagnationCount)
+		t.Errorf("stagnationCount after 1 minimal improvement: got %d, want 1", l.stagnationCount)
 	}
 
-	// 미미한 개선 → 정체 카운터 증가
+	// Minimal improvement → stagnation counter increments
 	l.RecordExperiment(makeExp("2", 0.51, true))
 	if l.stagnationCount != 2 {
-		t.Errorf("2회 후 stagnationCount: got %d, want 2", l.stagnationCount)
+		t.Errorf("stagnationCount after 2 minimal improvements: got %d, want 2", l.stagnationCount)
 	}
 
-	// 큰 개선 → 정체 카운터 초기화
+	// Large improvement → stagnation counter resets
 	l.RecordExperiment(makeExp("3", 0.70, true))
 	if l.stagnationCount != 0 {
-		t.Errorf("큰 개선 후 stagnationCount: got %d, want 0", l.stagnationCount)
+		t.Errorf("stagnationCount after large improvement: got %d, want 0", l.stagnationCount)
 	}
 }
 
-// TestTargetHitCounter는 목표 점수 달성 카운터의 증가/초기화를 검증한다.
+// TestTargetHitCounter verifies that the target hit counter increments and resets correctly.
 func TestTargetHitCounter(t *testing.T) {
 	t.Parallel()
 
 	cfg := defaultConfig()
 	cfg.TargetScore = 0.80
-	cfg.MaxExperiments = 20 // 높게 설정하여 조기 종료 방지
+	cfg.MaxExperiments = 20 // set high to prevent early termination
 	l := NewLoop(cfg)
 	l.SetBaseline(makeEvalResult(0.50, true))
 
-	// 목표 달성 → 카운터 증가
+	// Target hit → counter increments
 	l.RecordExperiment(makeExp("1", 0.85, true))
 	if l.targetHitCount != 1 {
-		t.Errorf("1회 후 targetHitCount: got %d, want 1", l.targetHitCount)
+		t.Errorf("targetHitCount after 1 hit: got %d, want 1", l.targetHitCount)
 	}
 
-	// 목표 달성 → 카운터 증가
+	// Target hit → counter increments
 	l.RecordExperiment(makeExp("2", 0.90, true))
 	if l.targetHitCount != 2 {
-		t.Errorf("2회 후 targetHitCount: got %d, want 2", l.targetHitCount)
+		t.Errorf("targetHitCount after 2 hits: got %d, want 2", l.targetHitCount)
 	}
 
-	// 목표 미달 → 카운터 초기화
+	// Target missed → counter resets
 	l.RecordExperiment(makeExp("3", 0.60, true))
 	if l.targetHitCount != 0 {
-		t.Errorf("미달 후 targetHitCount: got %d, want 0", l.targetHitCount)
+		t.Errorf("targetHitCount after miss: got %d, want 0", l.targetHitCount)
 	}
 }
 
-// TestExperimentCount는 실험 카운트가 정확히 증가하는지 검증한다.
+// TestExperimentCount verifies that the experiment count increments correctly.
 func TestExperimentCount(t *testing.T) {
 	t.Parallel()
 
