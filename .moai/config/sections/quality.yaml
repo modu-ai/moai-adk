@@ -37,6 +37,11 @@ constitution:
             require_clean_lsp: true
         cache_ttl_seconds: 5
         timeout_seconds: 3
+    ast_grep_gate:
+        enabled: true
+        rules_dir: ".moai/config/astgrep-rules"
+        block_on_error: true
+        warn_only_mode: false
     principles:
         simplicity:
             max_parallel_tasks: 10

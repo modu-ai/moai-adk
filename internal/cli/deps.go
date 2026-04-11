@@ -105,8 +105,17 @@ func InitDependencies() {
 	})
 
 	// Initialize LSP diagnostics collector and AST analyzer.
-	// LSP client is nil (not yet integrated); fallback CLI tools are used.
+	// @MX:WARN: LSP client is nil — real LSP integration is not yet implemented.
+	// @MX:REASON: fan_in=3 (post-tool hook, loop feedback, quality gate);
+	// silent nil-injection historically masked the absence of a real client.
+	// Emit a visible startup warning so users understand diagnostics fall back
+	// to go vet / go test / golangci-lint instead of a live language server.
+	// See SPEC-LSP-CORE-002 (planned) for the real gopls-backed client.
 	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
+	slog.Warn("LSP client not initialized — quality gates fall back to CLI tools only",
+		"impact", "gopls-backed diagnostics are disabled; phase-aware LSP gates bypassed",
+		"fallback", "go vet, go test, golangci-lint, ast-grep",
+		"remedy", "SPEC-LSP-CORE-002 will introduce the first real LSP client")
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
 
 	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
