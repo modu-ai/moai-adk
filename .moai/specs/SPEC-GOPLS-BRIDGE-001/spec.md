@@ -9,7 +9,7 @@ priority: P1
 issue_number: 0
 phase: "Phase 3 - Quality Infrastructure"
 module: "internal/lsp/gopls/, internal/loop/, internal/hook/quality/"
-estimated_loc: 400
+estimated_loc: 2400
 dependencies: []
 lifecycle: spec-anchored
 tags: gopls, lsp, json-rpc, go-toolchain, quality-gate
@@ -131,7 +131,15 @@ Implement a **self-contained, dependency-free gopls subprocess bridge** that:
 
 **REQ-GB-061**: The implementation SHALL use only `encoding/json`, `bufio`, `os/exec`, `context`, `sync`, and `log/slog` from the Go standard library.
 
-**REQ-GB-062**: Rationale: (a) go.lsp.dev/jsonrpc2 is pre-v1.0 (last release 2022), (b) powernap ties us to Charm ecosystem, (c) Go-only bridge keeps moai-adk binary dependency-free and small.
+**REQ-GB-062**: The implementation SHALL NOT depend on `go.lsp.dev/jsonrpc2`, `powernap`, or other external LSP libraries.
+
+### Rationale for REQ-GB-060..062
+
+The dependency-free constraint is justified by three factors:
+
+- (a) `go.lsp.dev/jsonrpc2` is pre-v1.0 with its last release in 2022, creating long-term maintenance risk if the upstream becomes unmaintained.
+- (b) `powernap` ties the project to the Charm ecosystem, which introduces transitive dependencies and coupling to a specific library style that conflicts with SPEC-LSP-CORE-002's clean separation.
+- (c) A hand-rolled Go-only bridge keeps the moai-adk binary dependency-free and small, which is a stated project goal for CLI distribution.
 
 ---
 
@@ -139,59 +147,32 @@ Implement a **self-contained, dependency-free gopls subprocess bridge** that:
 
 ### Package Layout
 
-```
-internal/lsp/gopls/
-├── bridge.go        # Bridge type: subprocess lifecycle + public API
-├── protocol.go      # JSON-RPC framing (Content-Length reader/writer)
-├── messages.go      # LSP message types (initialize, didOpen, publishDiagnostics)
-├── handler.go       # Notification handler registry + pending request map
-├── config.go        # Config loader from .moai/config/sections/lsp.yaml
-└── bridge_test.go, protocol_test.go, handler_test.go
-```
+The implementation resides in a single `internal/lsp/gopls/` package containing the Bridge type (subprocess lifecycle and public API), JSON-RPC framing layer (Content-Length reader and writer), minimal LSP message types (initialize, didOpen, publishDiagnostics), a notification handler registry with pending request map, and a config loader that reads from `.moai/config/sections/lsp.yaml`. Each production file has a companion `_test.go` with unit tests.
 
-### Key Types
+### Bridge Lifecycle Responsibilities
 
-```go
-// internal/lsp/gopls/bridge.go
-type Bridge struct {
-    cmd          *exec.Cmd
-    stdin        io.WriteCloser
-    stdout       io.ReadCloser
-    writer       *Writer          // framed JSON-RPC writer
-    reader       *Reader          // framed JSON-RPC reader
-    nextID       atomic.Int64
-    pending      sync.Map         // id → chan *Response
-    diagnostics  chan DiagnosticEvent
-    shutdown     chan struct{}
-    config       *Config
-}
+The Bridge type encapsulates the following responsibilities:
 
-func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, error)
-func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnostic, error)
-func (b *Bridge) Close(ctx context.Context) error
-```
+- Subprocess management: spawning gopls via `os/exec`, wiring stdin/stdout pipes, and handling shutdown via LSP `shutdown`/`exit` sequence with a 5-second timeout followed by SIGKILL on timeout.
+- Framed message I/O: delegation to the protocol layer (Writer and Reader) for LSP Content-Length framing.
+- Request correlation: an atomic request ID generator plus a pending-requests map correlating incoming responses with callers.
+- Notification dispatch: a registered-handler mechanism for `publishDiagnostics` and other notifications that flow back to subscribers via a buffered channel.
+- Graceful shutdown coordination: a shutdown channel that signals the read loop goroutine to exit cleanly.
+- Configuration injection: holding a reference to the loaded Config for timeouts, debounce windows, and init options.
+
+### Public API Surface
+
+The Bridge exposes a minimal public API consisting of:
+
+- `NewBridge(ctx, projectRoot, cfg)` — factory that returns a new Bridge or `(nil, nil)` when gopls is missing per REQ-GB-002.
+- `GetDiagnostics(ctx, filePath)` — opens the file if needed, collects diagnostics from `publishDiagnostics` notifications within the debounce window, and returns a slice of Diagnostic.
+- `Close(ctx)` — initiates graceful LSP shutdown per REQ-GB-004.
+
+Concrete Go type definitions (struct fields, method signatures, dependency types) are documented in `plan.md` Phase 4 (Bridge Lifecycle).
 
 ### Integration Point
 
-```go
-// internal/loop/go_feedback.go (updated)
-type GoFeedbackGenerator struct {
-    projectRoot string
-    bridge      *gopls.Bridge  // nil when disabled
-}
-
-func (g *GoFeedbackGenerator) Collect(ctx context.Context) (*Feedback, error) {
-    fb := &Feedback{
-        TestsFailed: g.runGoTest(ctx),
-        LintErrors:  g.runGoVet(ctx),
-    }
-    if g.bridge != nil {
-        diags, _ := g.bridge.GetDiagnostics(ctx, g.projectRoot)
-        fb.Diagnostics = diags  // new field
-    }
-    return fb, nil
-}
-```
+`GoFeedbackGenerator` in `internal/loop/go_feedback.go` accepts an optional Bridge reference via its constructor. When the bridge is non-nil, `Collect(ctx)` augments its existing `go test`/`go vet` output with `bridge.GetDiagnostics(ctx, projectRoot)` and populates the new `Feedback.Diagnostics` field. When the bridge is nil (default or missing gopls), the existing CLI-only behavior is preserved unchanged. Concrete struct and method definitions are documented in `plan.md` Phase 6 (GoFeedbackGenerator Integration).
 
 ---
 

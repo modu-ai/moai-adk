@@ -9,7 +9,7 @@ priority: P3
 issue_number: 0
 phase: "Phase 5 - Full Language Matrix"
 module: "internal/lsp/core/, .moai/config/sections/lsp.yaml"
-estimated_loc: 500
+estimated_loc: 2900
 dependencies:
   - SPEC-LSP-CORE-002
   - SPEC-LSP-AGG-003
@@ -33,6 +33,7 @@ tags: lsp, multi-language, 16-languages, neutrality, discovery
 |-------|-------|
 | SPEC ID | SPEC-LSP-MULTI-006 |
 | Title | 16-Language LSP Server Matrix |
+| Status | Draft |
 | Priority | P3 |
 | Depends on | SPEC-LSP-CORE-002, SPEC-LSP-AGG-003 |
 

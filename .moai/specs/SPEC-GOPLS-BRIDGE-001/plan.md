@@ -55,6 +55,28 @@
 
 **Goal**: Subprocess spawn, initialize, shutdown, diagnostic collection.
 
+**Concrete Types** (moved here from spec.md per scope boundary rule):
+
+```go
+// internal/lsp/gopls/bridge.go
+type Bridge struct {
+    cmd          *exec.Cmd
+    stdin        io.WriteCloser
+    stdout       io.ReadCloser
+    writer       *Writer          // framed JSON-RPC writer
+    reader       *Reader          // framed JSON-RPC reader
+    nextID       atomic.Int64
+    pending      sync.Map         // id → chan *Response
+    diagnostics  chan DiagnosticEvent
+    shutdown     chan struct{}
+    config       *Config
+}
+
+func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, error)
+func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnostic, error)
+func (b *Bridge) Close(ctx context.Context) error
+```
+
 **Files**:
 - `internal/lsp/gopls/bridge.go` (new, ~350 LOC)
   - `type Bridge struct { cmd, writer, reader, pending, dispatcher, config }`
@@ -88,6 +110,28 @@
 ### Phase 6: GoFeedbackGenerator Integration
 
 **Goal**: Wire the bridge into Ralph's feedback loop.
+
+**Concrete Types** (moved here from spec.md per scope boundary rule):
+
+```go
+// internal/loop/go_feedback.go (updated)
+type GoFeedbackGenerator struct {
+    projectRoot string
+    bridge      *gopls.Bridge  // nil when disabled
+}
+
+func (g *GoFeedbackGenerator) Collect(ctx context.Context) (*Feedback, error) {
+    fb := &Feedback{
+        TestsFailed: g.runGoTest(ctx),
+        LintErrors:  g.runGoVet(ctx),
+    }
+    if g.bridge != nil {
+        diags, _ := g.bridge.GetDiagnostics(ctx, g.projectRoot)
+        fb.Diagnostics = diags  // new field
+    }
+    return fb, nil
+}
+```
 
 **Files**:
 - `internal/loop/feedback.go` (modify): add `Diagnostics []gopls.Diagnostic` to `Feedback` struct

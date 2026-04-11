@@ -9,7 +9,7 @@ priority: P1
 issue_number: 0
 phase: "Phase 3 - Quality Infrastructure"
 module: "internal/astgrep/, internal/hook/quality/, .moai/config/astgrep-rules/"
-estimated_loc: 1500
+estimated_loc: 1800
 dependencies: []
 lifecycle: spec-anchored
 tags: ast-grep, quality, security, 16-languages, owasp, sarif

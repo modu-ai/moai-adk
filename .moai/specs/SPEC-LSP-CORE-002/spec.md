@@ -59,23 +59,75 @@ Deliver a production-grade LSP client core that:
 
 ## Requirements (EARS Format)
 
+### Dependencies
+
 **REQ-LC-001**: The system SHALL depend on `github.com/charmbracelet/powernap` at a pinned version recorded in `go.mod`.
 
-**REQ-LC-002**: The system SHALL provide a `Client` interface with methods: `Start(ctx)`, `OpenFile(ctx, path, content)`, `GetDiagnostics(ctx, path)`, `FindReferences(ctx, path, position)`, `GotoDefinition(ctx, path, position)`, `Shutdown(ctx)`.
+**REQ-LC-001a**: The pinned version SHALL be documented in a `.claude/rules/moai/core/lsp-client.md` rationale section, and upgrades SHALL require integration test re-validation against all 3 languages (Go, Python, TypeScript) before merge.
+
+### Client Interface — Lifecycle Operations
+
+**REQ-LC-002**: The system SHALL provide a `Client` interface exposing lifecycle operations `Start(ctx)` and `Shutdown(ctx)`, each accepting a `context.Context` as the first parameter.
+
+**REQ-LC-002a**: The system SHALL provide a `Client` interface exposing file synchronization operations `OpenFile(ctx, path, content)` and an internal companion for handling document changes (detailed in REQ-LC-020..023).
+
+**REQ-LC-002b**: The system SHALL provide a `Client` interface exposing query operations `GetDiagnostics(ctx, path)`, `FindReferences(ctx, path, position)`, and `GotoDefinition(ctx, path, position)`.
+
+### Configuration
 
 **REQ-LC-003**: Language server configuration SHALL be read from `.moai/config/sections/lsp.yaml` `lsp.servers.<language>` entries (already Section 22 compliant).
 
+**REQ-LC-003a**: Per-language `initializationOptions` SHALL be merged from the `lsp.servers.<language>.init_options` field into the LSP `initialize` request payload sent to each server.
+
+### Graceful Degradation
+
 **REQ-LC-004**: When a language server binary is missing in PATH, the client SHALL log a `warn_and_skip` and return an unavailable sentinel — not crash.
+
+### Subprocess Isolation
 
 **REQ-LC-005**: Each language server instance SHALL run in its own subprocess with isolated stdio pipes.
 
+### Document Synchronization
+
 **REQ-LC-006**: The client SHALL cache open file state per subprocess to avoid redundant `didOpen` on repeated requests.
 
+**REQ-LC-020**: When a previously unopened file is queried, the client SHALL send `textDocument/didOpen` with the file URI, language ID, version `1`, and current content.
+
+**REQ-LC-021**: When a file's content changes between queries, the client SHALL send `textDocument/didChange` with an incremented version number and the updated content (full document sync mode in v1).
+
+**REQ-LC-022**: When a file is no longer tracked (configurable idle timeout, default 5 minutes), the client SHALL send `textDocument/didClose` to release server-side resources.
+
+**REQ-LC-023**: On request of the caller, the client SHALL send `textDocument/didSave` to inform the server of persisted changes; this is optional and used only for servers that gate diagnostics on save (e.g., some Java servers).
+
+### Lifecycle State Machine
+
 **REQ-LC-007**: The client SHALL support graceful shutdown with configurable timeout; on timeout, SIGKILL is sent.
+
+**REQ-LC-030**: Each `Client` SHALL maintain an internal state machine with states `spawning`, `initializing`, `ready`, `degraded`, and `shutdown`; state transitions SHALL be logged at `slog.Debug` level.
+
+**REQ-LC-031**: In the `degraded` state (server crash recovery in progress), the client SHALL return empty results for queries without error, allowing upstream callers to continue.
+
+### Capability Negotiation
+
+**REQ-LC-032**: During initialization, the client SHALL send `ClientCapabilities` listing support for `textDocument/publishDiagnostics`, `textDocument/references`, and `textDocument/definition`. Additional capabilities MAY be declared per-language.
+
+**REQ-LC-033**: The client SHALL parse and store the server's `ServerCapabilities` from the `initialize` response; query methods SHALL check capability support before sending a request and return a structured `ErrCapabilityUnsupported` error for unsupported operations.
+
+### Error Handling
+
+**REQ-LC-040**: Each LSP method invocation SHALL wrap protocol errors with contextual information (method name, file URI, server language) before returning to the caller.
+
+**REQ-LC-041**: Request timeouts SHALL be enforced per-method via the provided `context.Context`; on timeout, the pending request SHALL be removed from the correlation map to prevent memory leaks.
+
+### Manager (Multi-Server Coordinator)
 
 **REQ-LC-008**: A single `Manager` type SHALL coordinate multiple `Client` instances (one per language) and delegate calls based on file extension + project markers.
 
 **REQ-LC-009**: The `Manager` SHALL respect lazy initialization: a language server is spawned only when the first file of that language is processed.
+
+**REQ-LC-050**: The `Manager` SHALL implement an idle-server cleanup policy: a `Client` with no activity for the configured `idle_shutdown_seconds` (default 600) SHALL be gracefully shut down to release subprocess resources.
+
+### Compatibility
 
 **REQ-LC-010**: `SPEC-GOPLS-BRIDGE-001` SHALL remain available as an alternative path; SPEC-LSP-CORE-002 does NOT deprecate it. Users can choose between hand-rolled (GOPLS-BRIDGE) and powernap-based (LSP-CORE) via config.
 

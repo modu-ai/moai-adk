@@ -9,7 +9,7 @@ priority: P2
 issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/loop/, internal/ralph/, internal/hook/post_tool.go"
-estimated_loc: 600
+estimated_loc: 1200
 dependencies:
   - SPEC-LSP-AGG-003
 lifecycle: spec-anchored
@@ -32,6 +32,7 @@ tags: lsp, loop, ralph, feedback, classification
 |-------|-------|
 | SPEC ID | SPEC-LSP-LOOP-005 |
 | Title | Loop/Ralph LSP Integration |
+| Status | Draft |
 | Priority | P2 |
 | Depends on | SPEC-LSP-AGG-003 |
 
@@ -44,7 +45,11 @@ Audit report A4 found:
 - PostTool hook collects LSP diagnostics for `systemMessage` injection but **data evaporates** — never reaches loop controller (Gap A4-4)
 - `RalphConfig.LintAsInstruction` / `WarnAsInstruction` flags exist in config but are unused by `Decide()` (Gap A4-6)
 
-SPEC-GOPLS-BRIDGE-001 provides the Go-only bridge; this SPEC wires the generalized path via the Aggregator.
+SPEC-GOPLS-BRIDGE-001 provides the Go-only bridge; this SPEC wires Go-language feedback from that bridge (and its Aggregator facade in SPEC-LSP-AGG-003) into Ralph's decision loop.
+
+### Scope Clarification: Go-Only
+
+This SPEC is **explicitly scoped to the Go language**. `GoFeedbackGenerator` remains Go-specific by name and implementation. The `Aggregator` dependency is used because it provides the facade for Go diagnostic collection (via SPEC-LSP-AGG-003), not because this SPEC attempts to generalize feedback across all 16 MoAI-supported languages. Multi-language feedback (e.g., a `PythonFeedbackGenerator` or a generic `FeedbackGenerator` interface with per-language implementations) is deferred to a future SPEC.
 
 ## Goal
 
@@ -68,7 +73,7 @@ Loop controller
 
 **REQ-LL-001**: `Feedback` struct SHALL carry `Diagnostics []lsp.Diagnostic` populated from Aggregator output.
 
-**REQ-LL-002**: `GoFeedbackGenerator.Collect` SHALL invoke `Aggregator.GetDiagnostics` when bridge is available and merge results into the Feedback struct.
+**REQ-LL-002**: `GoFeedbackGenerator.Collect` SHALL invoke `Aggregator.GetDiagnostics` for Go source files when the aggregator is available, filter the returned diagnostics to Go-only results, and merge them into the Feedback struct.
 
 **REQ-LL-003**: PostTool hook SHALL emit LSP diagnostics to both: (a) agent conversation via `systemMessage` (existing), and (b) LoopController via a new `RecordFeedback` channel.
 
@@ -93,6 +98,8 @@ Loop controller
 
 ## Non-Goals
 
+- **Multi-language feedback generators**: Python, TypeScript, Rust, and other languages are NOT in scope. `GoFeedbackGenerator` remains Go-specific. A generic `FeedbackGenerator` interface is explicitly deferred to a future SPEC.
+- **Generic Aggregator consumption for non-Go languages**: Although `Aggregator` (SPEC-LSP-AGG-003) is multi-language capable, this SPEC only wires Go diagnostics into Ralph's classification logic.
 - Web UI for diagnostic visualization
 - Historical diagnostic trends across sessions
 
