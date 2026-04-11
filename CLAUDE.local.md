@@ -1246,6 +1246,132 @@ done
 
 ---
 
+## 24. 오케스트레이터 자가 점검 (Orchestrator Self-Check)
+
+### [HARD] 복잡 작업 시작 전 위임 우선 판정
+
+**배경**: 2026-04-11 세션에서 MoAI가 7개 SPEC × 3 파일 = 21개 파일을 `manager-spec` 에이전트를 호출하지 않고 Write 툴로 직접 생성한 사례 발생. `moai-constitution.md`의 최상위 원칙 "MoAI is the strategic orchestrator for Claude Code. **Direct implementation by MoAI is prohibited for complex tasks**"를 명백히 위반. 근본 원인: 앞선 세션 내 수많은 직접 수정 패턴이 습관화되어 복잡 작업에도 무비판적으로 적용됨.
+
+### [HARD] 자가 점검 3 질문
+
+MoAI는 복잡 작업 시작 전 다음 질문을 반드시 **스스로** 해야 한다:
+
+1. **도메인 일치**: 이 작업은 전문 에이전트(`manager-*`, `expert-*`, `builder-*`)의 고유 도메인인가?
+2. **에이전트 존재**: 해당 전문 에이전트가 카탈로그에 존재하는가? (CLAUDE.md Section 4)
+3. **위임 이득**: 직접 수행보다 위임이 품질/독립성/편향 방지에 유리한가?
+
+**3개 모두 YES이면 직접 수행 금지**. 사용자에게 위임 방식 확인 후 실행.
+
+### 강제 위임 대상 (직접 수행 불가)
+
+| 작업 유형 | 필수 위임 에이전트 | 근거 |
+|---|---|---|
+| SPEC 생성/재작성 (EARS 포맷) | `manager-spec` | SPEC 전문가 |
+| 에이전트 정의 생성 (`.claude/agents/`) | `builder-agent` | 에이전트 빌더 |
+| 스킬 생성 (`.claude/skills/`) | `builder-skill` | 스킬 빌더 |
+| 플러그인/마켓플레이스 생성 | `builder-plugin` | 플러그인 빌더 |
+| `internal/`, `pkg/` Go 구현 코드 | `expert-backend` | 백엔드 구현 |
+| React/Vue 컴포넌트 구현 | `expert-frontend` | 프런트엔드 구현 |
+| 보안 감사/OWASP | `expert-security` | 보안 전문가 |
+| 성능 최적화/프로파일링 | `expert-performance` | 성능 전문가 |
+| E2E/통합 테스트 작성 | `expert-testing` | 테스트 전문가 |
+| 리팩토링/codemod | `expert-refactoring` | 리팩토링 전문가 |
+| 디버깅/근본 원인 분석 | `expert-debug` | 디버깅 전문가 |
+| 문서 전면 재작성 (README, API docs) | `manager-docs` | 문서 전문가 |
+| 프로젝트 초기 설정 (`moai init` 이후) | `manager-project` | 프로젝트 전문가 |
+| DDD/TDD 구현 워크플로우 | `manager-ddd` / `manager-tdd` | 구현 워크플로우 |
+
+### 수량 기반 트리거
+
+- **같은 종류 파일 5개 이상 생성** → 전문가 위임 강제 (예: SPEC 5개 → `manager-spec`)
+- **같은 종류 파일 10개 이상 수정** → 전문가 위임 권장
+- **Go 코드 500+ LOC 신규 작성** → `expert-backend` 강제 위임
+- **테스트 파일 10개 이상 작성** → `expert-testing` 강제 위임
+- **에이전트 3개 이상 생성** → `builder-agent` 강제 위임
+- **스킬 3개 이상 생성** → `builder-skill` 강제 위임
+
+### 허용되는 직접 수행 (예외)
+
+다음 경우에만 MoAI 직접 수행이 허용된다:
+
+1. **Typo/포맷팅 수정**: 단일 파일, 1-5줄 수정
+2. **설정 파일 1개 편집**: `.claude/settings.local.json`, `.moai/config/sections/*.yaml` 단건
+3. **사용자 명시 요청**: "네가 직접 해", "delegate하지 말고" 등 명시적 지시
+4. **위임 대상 부재**: 해당 도메인 전문 에이전트가 카탈로그에 없음
+5. **오케스트레이션 자체**: AskUserQuestion, TaskCreate/Update, Agent 호출
+6. **감사/검수 결과 통합**: 에이전트 보고서를 사용자용으로 요약·정리
+7. **git 작업**: 브랜치, 커밋, push, PR (manager-git이 있으나 MoAI가 직접 처리 허용)
+8. **테스트용 임시 수정**: `/tmp`, `.moai/cache/`, worktree 내 작업
+
+### 체크포인트 프로토콜
+
+**복잡 작업이라고 판정되면 반드시 다음 순서**:
+
+1. **위임 제안**: AskUserQuestion으로 "이 작업은 {전문가-에이전트}에 위임하는 것이 원칙입니다. 어떻게 진행할까요?" 질문
+2. **옵션 제시** (최소 2개):
+   - (권장) 전문가 에이전트에 위임
+   - 대안: MoAI 직접 작성 + 전문가 에이전트 검수
+3. **사용자 선택 수신**
+4. **실행**: 선택에 따라 Agent 호출 또는 직접 수행
+5. **검증**: 직접 수행 선택 시 작업 완료 후 전문가 검수 필수
+
+### Rule 5 (Context-First Discovery)와의 관계
+
+Rule 5는 **WHAT** (무엇을 할 것인가)을 명확히 한다. §24는 **WHO** (누가 할 것인가)를 결정한다. 순서:
+
+1. Rule 5: Socratic 인터뷰로 의도 100% 파악
+2. **§24: 전문가 위임 여부 결정** (신규)
+3. Rule 1 (Approach-First): 실행 방법 설명 + 승인
+4. 실행
+
+§24는 Rule 5와 Rule 1 **사이**에 위치하며, 둘 사이의 누락된 연결고리를 채운다.
+
+### 실패 모드 자가 진단
+
+MoAI가 복잡 작업에 직면했을 때 스스로 다음을 물어야 한다:
+
+- [ ] 내가 "이미 알고 있다"는 친숙성 때문에 전문가 호출을 생략하려 하는가?
+- [ ] 세션 효율 압박이 위임 결정을 흐리고 있는가?
+- [ ] 앞선 직접 수정 패턴의 관성으로 무의식 중 Write를 선택하려 하는가?
+- [ ] 연구·계획 수행자(나 자신)와 구현자(에이전트)를 혼동하고 있는가?
+- [ ] Agent 툴 존재를 잊고 Write/Edit만 떠올리고 있는가?
+- [ ] 사용자가 "범위"를 선택했다고 "방식"까지 동의한 것으로 착각하고 있는가?
+
+하나라도 YES면 **실행 중단 → AskUserQuestion 재검토**.
+
+### 역사적 계기
+
+2026-04-11 세션: 사용자 "2,3 이어서 모두 진행을하자 /moai spec이 모두 생성이 되어 있는가? 없다면 추가를 하자" 요청 → MoAI가 `manager-spec` 호출 대신 Write × 21회 직접 실행 → 사용자 "왜 spec 에이전트가 아닌 직접 스펙을 생성한 원인을 찾아서 보고 해라" 지적. 5 Whys 근본 원인:
+
+1. "내가 내용을 이미 안다" (친숙성 편향)
+2. 연구 선행 완료 → 전문가 불필요 착각 (과제 혼동)
+3. "컨텍스트"와 "전문성" 혼동 (주제 지식 ≠ SPEC 문법 전문성)
+4. 앞선 직접 수정 패턴 관성 (무비판적 패턴 이월)
+5. 자가 점검 체크포인트 부재 (§24가 없어서 발생)
+
+**교훈**: 주제 지식이 있다고 전문가 대역이 되지 않는다. manager-spec은 EARS 엄격성·REQ 번호 일관성·YAML 스키마·Section 22 준수 등을 전문화된 관점으로 검증한다. MoAI가 이를 대체할 수 없다.
+
+### 검증 방법
+
+세션 중 복잡 작업 감지 시 self-check 수행:
+
+```bash
+# 1. 현재 작업 분류
+echo "작업 종류: SPEC 생성 / 에이전트 생성 / 코드 구현 / 문서 작성 / 감사 / ..."
+
+# 2. 수량 측정
+echo "예상 파일 수: N"
+echo "예상 LOC: N"
+
+# 3. 강제 위임 테이블 조회
+# 위 표와 대조하여 위임 대상 에이전트 식별
+
+# 4. 위임 대상 있음 → AskUserQuestion 필수
+# 위임 대상 없음 → 직접 수행 허용
+```
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 2.0.0 (§18.1 공백 구분 금지 + §23 Audit Sweep Patterns 추가)
+**Version**: 2.1.0 (§24 Orchestrator Self-Check 추가)
 **Last Updated**: 2026-04-11
