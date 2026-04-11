@@ -27,6 +27,9 @@ type GateConfig struct {
 	// ProjectDir is the project root directory used for language detection.
 	// When empty, the current working directory is used.
 	ProjectDir string
+	// AstGrepGate configures the ast-grep domain rule scan step.
+	// When nil, ast-grep scanning is skipped.
+	AstGrepGate *AstGrepGateConfig
 }
 
 // DefaultGateConfig returns a GateConfig with production-safe defaults.
@@ -37,6 +40,7 @@ func DefaultGateConfig() *GateConfig {
 		VetTimeout:  30 * time.Second,
 		LintTimeout: 60 * time.Second,
 		TestTimeout: 120 * time.Second,
+		AstGrepGate: DefaultAstGrepGateConfig(),
 	}
 }
 
@@ -198,6 +202,17 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	// Step 2: lint steps
 	for _, step := range tc.lintSteps {
 		if ok, out := g.executeStep(ctx, step, g.config.LintTimeout); !ok {
+			return false, out
+		}
+	}
+
+	// Step 2.5: ast-grep domain rules
+	if g.config.AstGrepGate != nil && g.config.AstGrepGate.Enabled {
+		projectDir := g.config.ProjectDir
+		if projectDir == "" {
+			projectDir, _ = os.Getwd()
+		}
+		if ok, out := RunAstGrepGate(ctx, projectDir, g.config.AstGrepGate); !ok {
 			return false, out
 		}
 	}

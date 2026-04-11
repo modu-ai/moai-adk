@@ -1,0 +1,28 @@
+# Self-Learning Quality Guard: Go hardcoding detection rules
+# SPEC: SPEC-SLQG-001
+#
+# These rules detect common hardcoding anti-patterns in Go source code.
+# Severity levels:
+#   - error: Blocks commit in quality gate
+#   - warning: Reports in PostToolUse instruction, allows commit
+---
+id: go-no-raw-getenv
+language: go
+severity: warning
+message: "Use config.Env* constants instead of raw os.Getenv() string literals. See internal/config/envkeys.go for defined constants."
+pattern: 'os.Getenv("$LITERAL")'
+fix: ""
+---
+id: go-no-hardcoded-api-url
+language: go
+severity: warning
+message: "Extract API URL to a package-level constant. Hardcoded URLs reduce maintainability and make version updates error-prone."
+pattern: '"https://api.$$$REST"'
+fix: ""
+---
+id: go-no-duplicate-coverage-threshold
+language: go
+severity: warning
+message: "Use config.DefaultTestCoverageTarget instead of defining a local coverage threshold constant. Single source of truth prevents drift."
+pattern: 'const $NAME = 85.0'
+fix: ""
