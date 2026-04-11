@@ -169,6 +169,20 @@ type GateConfig struct {
 	SkipTests bool `yaml:"skip_tests"`
 	// Timeouts holds per-step timeout values in seconds.
 	Timeouts GateTimeouts `yaml:"timeouts"`
+	// AstGrepGate configures the ast-grep domain rule scan step (SPEC-SLQG-001).
+	AstGrepGate AstGrepGateConfig `yaml:"ast_grep_gate"`
+}
+
+// AstGrepGateConfig holds configuration for ast-grep quality gate scanning.
+type AstGrepGateConfig struct {
+	// Enabled controls whether ast-grep scanning is performed.
+	Enabled bool `yaml:"enabled"`
+	// RulesDir is the directory containing domain-specific ast-grep rule files.
+	RulesDir string `yaml:"rules_dir"`
+	// BlockOnError causes the gate to block a commit when error-severity matches are found.
+	BlockOnError bool `yaml:"block_on_error"`
+	// WarnOnlyMode prevents blocking even when error-severity matches are found.
+	WarnOnlyMode bool `yaml:"warn_only_mode"`
 }
 
 // GateTimeouts holds per-step timeout configuration in seconds.

@@ -490,7 +490,7 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 		return quality.DefaultGateConfig()
 	}
 	gate := cfg.Gate
-	return &quality.GateConfig{
+	qcfg := &quality.GateConfig{
 		Enabled:     gate.Enabled,
 		SkipTests:   gate.SkipTests,
 		VetTimeout:  gate.VetTimeoutDuration(),
@@ -498,6 +498,19 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 		TestTimeout: gate.TestTimeoutDuration(),
 		ProjectDir:  h.projectDir,
 	}
+	// Map config.AstGrepGateConfig → quality.AstGrepGateConfig (SPEC-SLQG-001).
+	ag := gate.AstGrepGate
+	qcfg.AstGrepGate = &quality.AstGrepGateConfig{
+		Enabled:      ag.Enabled,
+		RulesDir:     ag.RulesDir,
+		BlockOnError: ag.BlockOnError,
+		WarnOnlyMode: ag.WarnOnlyMode,
+	}
+	// Apply defaults when RulesDir is empty (not set in YAML).
+	if qcfg.AstGrepGate.RulesDir == "" {
+		qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
+	}
+	return qcfg
 }
 
 // firstLine returns the first non-empty line of s, or s itself when there is no newline.
