@@ -137,6 +137,23 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 
 Output: gate_report with pass/fail per check category.
 
+### Phase 0.05: Code Simplification Review
+
+Purpose: Run the simplify skill on changed code to catch reuse opportunities, unnecessary complexity, and efficiency issues before the full quality verification pipeline. This mirrors the Run phase's post-REFACTOR simplify step, ensuring sync-only changes also receive simplification review.
+
+#### Step 0.05.1: Execute Simplify
+
+- Invoke Skill("simplify") on all changed files (git diff --name-only against base branch)
+- The simplify skill reviews for: code reuse opportunities, quality issues, and efficiency improvements
+- If issues found: auto-fix and re-run tests to verify no regressions
+- If no issues found: proceed to Phase 0.1
+
+#### Step 0.05.2: Re-verify After Simplification
+
+- If simplify made changes: run the gate checks again (test + lint + vet) to confirm no regressions
+- If tests fail after simplification: revert simplify changes and proceed without them
+- Log simplify results in sync report (files reviewed, issues found, fixes applied)
+
 ### Phase 0.1: Deployment Readiness Check
 
 Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
@@ -1074,6 +1091,7 @@ When user aborts at any decision point:
 All of the following must be verified:
 
 - Phase 0: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
+- Phase 0.05: Code simplification review completed (Skill("simplify") on changed files)
 - Phase 0.5: Quality verification completed (tests, linter, type checker, deep code review with auto-fix)
 - Phase 0.55: Security scan completed (if security-sensitive files changed)
 - Phase 0.7: Coverage analysis completed (measurement, gap analysis, test generation, verification)
@@ -1116,6 +1134,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.6.0
+Version: 3.7.0
 Updated: 2026-03-30
 Changes: Added test scenarios.
