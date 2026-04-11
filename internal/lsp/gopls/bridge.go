@@ -325,10 +325,7 @@ func (b *Bridge) handlePublishDiagnostics(payload json.RawMessage) {
 		slog.Warn("gopls: publishDiagnostics 역직렬화 실패", "error", err)
 		return
 	}
-	event := DiagnosticEvent{
-		URI:         params.URI,
-		Diagnostics: params.Diagnostics,
-	}
+	event := DiagnosticEvent(params)
 	// non-blocking send: 채널이 가득 차면 가장 오래된 이벤트를 폐기한다.
 	select {
 	case b.diagnosticsCh <- event:

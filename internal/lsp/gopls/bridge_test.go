@@ -80,8 +80,8 @@ func (m *mockGopls) sendNotification(method string, params any) error {
 
 // close는 모의 서버의 pipe를 닫는다.
 func (m *mockGopls) close() {
-	m.serverWriter.Close()
-	m.clientWriter.Close()
+	_ = m.serverWriter.Close()
+	_ = m.clientWriter.Close()
 }
 
 // receivedCount는 수신된 메시지 수를 반환한다.
@@ -430,10 +430,7 @@ func TestBridge_DiagnosticsChannelOverflow(t *testing.T) {
 		URI:         "file:///tmp/new.go",
 		Diagnostics: []Diagnostic{{Message: "new error"}},
 	}
-	bridge.handlePublishDiagnostics(mustMarshal(t, PublishDiagnosticsParams{
-		URI:         newEvent.URI,
-		Diagnostics: newEvent.Diagnostics,
-	}))
+	bridge.handlePublishDiagnostics(mustMarshal(t, PublishDiagnosticsParams(newEvent)))
 
 	// 채널에서 이벤트를 드레인하여 새 이벤트가 포함됐는지 확인한다.
 	found := false

@@ -71,7 +71,7 @@ func TestWriter_Write_RoundTrip(t *testing.T) {
 			// 원본도 JSON 직렬화/역직렬화 후 비교하여 타입 정규화를 맞춘다.
 			orig, _ := json.Marshal(tt.msg)
 			var want any
-			json.Unmarshal(orig, &want)
+			_ = json.Unmarshal(orig, &want)
 
 			gotJSON, _ := json.Marshal(got)
 			wantJSON, _ := json.Marshal(want)
