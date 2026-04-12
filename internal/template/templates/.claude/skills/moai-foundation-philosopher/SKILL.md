@@ -330,3 +330,39 @@ Examples: [examples.md](examples.md)
 External Resources: [reference.md](reference.md)
 
 Origin: Inspired by Claude Code Philosopher Ignition framework
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "First principles analysis is overkill for this decision" | Decisions that feel simple often have hidden assumptions. First principles surface them before they become bugs. |
+| "I already know the trade-offs, no need to list them" | Unlisted trade-offs are invisible to reviewers. Explicit trade-off tables enable informed decisions. |
+| "Design thinking is for UX, not for backend architecture" | Design thinking is about user needs. Every API has users. Empathy drives better interfaces. |
+| "Systems thinking adds no value to a single-module change" | Single modules exist in systems. Missing feedback loops and coupling points cause production incidents. |
+| "I will pick the obvious solution and move on" | The obvious solution is often the first one that comes to mind, not the best one. Diverge-converge explores alternatives. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Architecture decision made without listing alternatives considered
+- Trade-off table missing from design document
+- Root cause analysis stops at the surface symptom (one "why" instead of five)
+- Cognitive bias not acknowledged when defending a preferred approach
+- Systems diagram missing feedback loops or external dependencies
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] At least two alternative approaches documented before selecting one
+- [ ] Trade-off table present with concrete dimensions (latency, complexity, cost)
+- [ ] Root cause chain reaches at least 3 levels deep
+- [ ] Cognitive bias checklist consulted for the decision (confirmation, anchoring, sunk cost)
+- [ ] Systems diagram includes feedback loops and external dependencies
+- [ ] Decision rationale references specific evidence, not just intuition
+
+<!-- moai:evolvable-end -->

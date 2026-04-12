@@ -142,3 +142,38 @@ Commands:
 
 - moai:3-sync for documentation deployment
 - moai:0-project for Nextra project initialization
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The README is sufficient documentation" | README is an entry point, not documentation. API references, guides, and examples need structured pages. |
+| "I will write docs when the API stabilizes" | Unstable APIs need docs more, not less. Docs expose design problems before users discover them. |
+| "Documentation sites are too much overhead for this project" | Nextra generates a full site from markdown files. The overhead is one config file and the markdown you would write anyway. |
+| "I will keep all docs in a single page" | Single-page docs become unnavigable beyond 1000 words. Structured navigation enables discovery. |
+| "Code examples in docs will go stale" | Stale examples are worse than no examples. Link to tested code or use mdx imports from source files. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Documentation site exists but has no search functionality configured
+- Navigation sidebar does not match the actual page structure
+- Code examples in docs differ from the actual source code
+- No getting-started or quickstart page for new users
+- Documentation build fails or has broken links
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Documentation site builds without errors (show build output)
+- [ ] Navigation sidebar matches file structure in pages/ directory
+- [ ] No broken links in the documentation (run link checker)
+- [ ] Getting-started page exists with working examples
+- [ ] Search functionality is configured and returns relevant results
+
+<!-- moai:evolvable-end -->

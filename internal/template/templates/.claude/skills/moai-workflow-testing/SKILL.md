@@ -291,3 +291,44 @@ Status: Production Ready
 Last Updated: 2026-01-21
 Maintained by: MoAI-ADK Development Workflow Team
 Version: 2.4.0 (DDD Testing Methodology)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "This code is already covered by integration tests" | Integration tests catch different bugs than unit tests. The testing pyramid exists for a reason. |
+| "Mocking the database is too hard, I will skip that test" | If the test is hard to write because of coupling, the code needs a better abstraction boundary. |
+| "80% coverage is good enough" | Coverage targets are floors, not ceilings. The missing 20% often contains the error handling paths. |
+| "These are just utility functions, they do not need tests" | Utility functions are the most reused code. A bug in a utility propagates everywhere. |
+| "I ran the tests locally, CI will pass" | Environment differences cause CI-only failures. Trust CI output, not local runs. |
+| "Flaky tests are normal, just re-run" | Flaky tests hide real failures. Fix the flakiness or quarantine the test explicitly. |
+
+**Shift Left**: Find and fix defects as early as possible. Every test that runs in CI instead of locally adds latency. Every test that could have been a unit test but is an E2E test adds fragility.
+
+**Beyonce Rule**: If you liked it, you should have put a test on it. Untested behavior is unspecified behavior.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Coverage report shows decreased coverage after a feature addition
+- Test file contains `t.Skip()` or `skip` without an accompanying issue tracker link
+- Test names are auto-generated (test_1, test_2) instead of behavior-descriptive
+- No test touches the error/failure branch of a new function
+- Test file imports the concrete implementation instead of the interface
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Test suite passes with zero failures (paste command output)
+- [ ] Coverage report generated and meets the 85% threshold for changed packages
+- [ ] Error paths have dedicated test cases (not just happy path)
+- [ ] No flaky tests introduced (run with -count=3 to verify stability)
+- [ ] Test isolation confirmed: each test uses its own fixtures or t.TempDir()
+- [ ] Race detector passed for concurrent code (go test -race or equivalent)
+
+<!-- moai:evolvable-end -->

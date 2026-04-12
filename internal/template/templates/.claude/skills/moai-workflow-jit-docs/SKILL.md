@@ -252,3 +252,38 @@ Commands:
 
 - /moai:3-sync: Documentation synchronization
 - /moai:9-feedback: Documentation improvements
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I already know where the docs are, JIT loading is unnecessary" | JIT docs discover context you did not know existed. Manual lookup misses cross-references. |
+| "Loading all docs upfront is simpler than on-demand" | Upfront loading wastes tokens on irrelevant content. JIT loads only what matches the current intent. |
+| "The cached version is recent enough" | Stale caches serve stale answers. Validate cache freshness before using cached documents. |
+| "This task does not need documentation" | Every non-trivial task benefits from context. JIT docs surface relevant constraints proactively. |
+| "I will find the right doc by browsing the directory" | Directory browsing is O(n). JIT matching by intent keywords is O(1) for the user. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Agent proceeds with implementation without loading any project documentation
+- Cached document served when the source file was modified more recently
+- Documentation loaded but not referenced in the implementation rationale
+- Multiple redundant document loads in the same session (cache miss on repeated content)
+- JIT loader returns zero results for a keyword that clearly maps to existing docs
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] At least one document was loaded via JIT matching for non-trivial tasks
+- [ ] Loaded documents are referenced in the agent's reasoning or output
+- [ ] Cache hits validated against source file modification time
+- [ ] No duplicate document loads in the same session (check load log)
+- [ ] JIT trigger keywords match the user's stated intent
+
+<!-- moai:evolvable-end -->

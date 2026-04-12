@@ -137,3 +137,38 @@ Skills that complement this skill include moai-docs-generation for comprehensive
 Commands that utilize this skill include moai:3-sync for documentation with embedded diagrams and moai:1-plan for SPEC creation with visual architecture diagrams.
 
 Focus: Pure skill-based Mermaid rendering with MCP Playwright integration
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "ASCII diagrams are good enough for documentation" | ASCII diagrams break on proportional fonts and cannot be versioned alongside code changes. Mermaid renders consistently everywhere. |
+| "The diagram is self-explanatory, I do not need labels" | Unlabeled edges and nodes force readers to guess relationships. Labels are cheaper than misunderstanding. |
+| "I will add the diagram after the code is stable" | Diagrams inform design decisions. Waiting until code is stable means the diagram documents what happened, not what was designed. |
+| "This architecture is too complex for a single diagram" | Complex architectures need decomposed diagrams (context, container, component), not one monolithic diagram. |
+| "Mermaid syntax is too limited for my needs" | Mermaid covers flowcharts, sequence, class, state, ER, and Gantt. If none fit, the diagram type is wrong, not the tool. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Architecture documented in prose without any visual diagram
+- Diagram nodes have single-letter labels (A, B, C) instead of meaningful names
+- Sequence diagram missing error/failure paths
+- Diagram not updated after architecture change
+- Mermaid syntax errors not validated before committing
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Diagram renders without syntax errors (validate via Mermaid live editor or Playwright)
+- [ ] All nodes have descriptive labels (not single letters or abbreviations)
+- [ ] Diagram matches the current architecture (compare with code structure)
+- [ ] Error/failure paths included in sequence diagrams
+- [ ] Diagram embedded in or linked from relevant documentation
+
+<!-- moai:evolvable-end -->

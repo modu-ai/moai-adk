@@ -102,3 +102,38 @@ When expert-frontend or team-designer generates web pages, apply copy craft rule
 
 Version: 1.2.0
 Last Updated: 2026-03-30
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Design direction is just aesthetics, the code works the same" | Design intent drives user perception and brand consistency. Code without design direction produces generic, forgettable interfaces. |
+| "I will figure out the design vocabulary during implementation" | Naming components without a design vocabulary produces inconsistent names. Establish vocabulary before building. |
+| "Design memory is unnecessary, the design system is the reference" | Design systems define what to use. Design memory captures why decisions were made and what was rejected. |
+| "Post-build critique is just a formality" | Critique reveals drift between intent and execution. Without it, the gap accumulates with each iteration. |
+| "This is an internal tool, design does not matter" | Internal users have the same cognitive load as external users. Poor design increases training cost and error rates. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Implementation diverges from stated design direction without documented reason
+- Component naming inconsistent with established design vocabulary
+- Design decisions made without referencing design memory or prior decisions
+- No post-build critique performed after major UI implementation
+- Brand voice or visual identity not consulted before UI copy changes
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Design direction documented before implementation begins
+- [ ] Component names match the established design vocabulary
+- [ ] Design memory consulted for relevant prior decisions
+- [ ] Post-build critique completed comparing intent vs execution
+- [ ] Brand visual identity referenced in color, typography, and spacing choices
+
+<!-- moai:evolvable-end -->

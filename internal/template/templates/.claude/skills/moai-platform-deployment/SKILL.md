@@ -406,3 +406,39 @@ Status: Production Ready
 Version: 2.0.0
 Updated: 2026-02-09
 Platforms: Vercel, Railway, Convex
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will configure the deployment platform after development is complete" | Deployment configuration affects build output, environment variables, and runtime behavior. Configure early. |
+| "Preview deployments are optional" | Preview deployments catch deployment-specific bugs before production. They cost little and save a lot. |
+| "Environment variables are the same across all environments" | Production, staging, and development need different database URLs, API keys, and feature flags. One set of env vars is a security risk. |
+| "Serverless cold starts are negligible" | Cold starts add 200-2000ms latency on first request. For user-facing APIs, this matters. Measure and mitigate. |
+| "I do not need a rollback strategy, I can just redeploy" | Redeployment takes minutes. Rollback takes seconds. When production is down, seconds matter. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Production environment variables visible in build logs
+- No preview deployment configured for pull requests
+- Single environment used for both staging and production
+- No rollback mechanism documented or tested
+- Build artifacts include development dependencies or source maps
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Environment variables separated by environment (dev, staging, production)
+- [ ] Preview deployments configured for pull requests (show platform config)
+- [ ] Rollback procedure documented and tested (show rollback command or process)
+- [ ] Production build excludes development dependencies and source maps
+- [ ] Deployment succeeds from a clean git checkout (no local state dependency)
+- [ ] Cold start time measured for serverless functions (show timing data)
+
+<!-- moai:evolvable-end -->

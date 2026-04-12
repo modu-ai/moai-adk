@@ -123,3 +123,38 @@ Format:
 -->
 
 - v1.0.0: Initial creation (Static Zone from Brand Context, empty Dynamic Zone)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The default color palette is fine, I do not need brand colors" | Default palettes produce generic designs. Brand colors create recognition and differentiation. |
+| "I will pick typography later, it does not affect layout" | Font choice affects line height, weight, and spacing. Late typography changes cascade through every component. |
+| "Design tokens are over-engineering for a small project" | Design tokens are not about project size. They prevent hardcoded values that make future changes impossible without find-replace. |
+| "Spacing does not need a system, I will eyeball it" | Eyeballed spacing produces inconsistent visual rhythm. A spacing scale (4px, 8px, 16px, 24px, 32px) prevents pixel-level arguments. |
+| "AI-generated designs are good enough without a design system" | AI-generated designs are the most likely to contain anti-patterns (gradient abuse, inconsistent radii, random spacing). The system constrains the generator. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Hardcoded hex colors instead of design token references
+- Typography mix of more than 2 font families without documented hierarchy
+- Spacing values that do not align with the defined spacing scale
+- Component using a gradient or shadow not defined in the design tokens
+- Brand color palette not loaded from `.agency/context/` before design phase
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Color palette matches brand context in `.agency/context/` (compare hex values)
+- [ ] Typography scale defined with no more than 2 font families
+- [ ] Spacing follows the defined scale (no arbitrary pixel values)
+- [ ] Design tokens exported and used in component implementations
+- [ ] No AI-generated anti-patterns present (gradient abuse, random border-radius, inconsistent shadow)
+
+<!-- moai:evolvable-end -->

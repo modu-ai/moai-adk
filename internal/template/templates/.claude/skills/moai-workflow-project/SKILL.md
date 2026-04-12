@@ -296,3 +296,39 @@ File Size Impact:
 - moai-workflow-docs: Unified documentation management
 - moai-workflow-templates: Template optimization strategies
 - moai-library-nextra: Advanced documentation architecture
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "project docs are a one-time setup, no need to keep them current" | Stale product.md and tech.md mislead every SPEC written against them. They are living documents. |
+| "structure.md will stay accurate since the codebase does not change much" | Every PR that adds a directory invalidates structure.md. Sync on every /moai project invocation. |
+| "I know the tech stack, I do not need tech.md" | tech.md is not for you. It is for every agent that consults the project context before acting. |
+| "codemaps take too long to generate" | codemaps are the only artifact that gives agents file-level awareness without reading every file. The cost pays for itself. |
+| "I will write project docs after the feature is done" | Post-hoc docs capture what was built, not what was intended. Pre-feature docs guide the build. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- product.md references features that do not exist in the codebase
+- tech.md lists a framework version that differs from the actual dependency file
+- structure.md missing directories that exist on disk
+- codemaps/ directory is empty or missing while the project has 10+ source files
+- /moai project last ran more than 30 days ago (check file modification dates)
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] product.md exists and describes the current product scope (compare with README)
+- [ ] tech.md lists dependencies that match the actual lock file (package.json, go.mod, etc.)
+- [ ] structure.md top-level directories match `ls` output of the project root
+- [ ] codemaps/ contains at least one codemap file per major package or module
+- [ ] All three docs updated within the current session or since last structural change
+- [ ] No placeholder text ("TODO", "TBD") remains in generated documents
+
+<!-- moai:evolvable-end -->
