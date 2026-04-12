@@ -56,3 +56,13 @@
 - T-014: DONE — FindReferences + GotoDefinition + capability precheck + parseLocations (tolerant decoder)
 - Coverage: 94.0% (internal/lsp/core)
 - Race detector: PASS
+
+### Sprint 5 (Manager): 2026-04-13
+- T-015: DONE — Manager.detectLanguage (extension → language mapping, project marker disambiguation), ErrNoLanguageDetected sentinel, Manager.routeFor
+- T-016: DONE — Manager.getOrSpawn (lazy spawn, concurrent-safe: factory called exactly once per language), Start error cleanup
+- T-017: DONE — Manager.Start (ctx + cancel + reaper goroutine), Manager.Shutdown (parallel client shutdown + errors.Join aggregation), Manager.reaper (@MX:WARN), Manager.reapIdleClients, WithReaperInterval option
+- Coverage: 94.0% (internal/lsp/core — unchanged from Sprint 4 aggregate)
+- Race detector: PASS (go test -race ./internal/lsp/core/...)
+- go vet: PASS
+- Full LSP suite: PASS (go test -race ./internal/lsp/...)
+- MX tags: @MX:ANCHOR on ErrNoLanguageDetected, Manager, NewManager, Manager.routeFor; @MX:WARN on reaper goroutine
