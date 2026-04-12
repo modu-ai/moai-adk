@@ -203,6 +203,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	// Ensure .moai/evolution/ directory tree exists for existing projects
+	// that predate the evolution infrastructure (R2: Directory Scaffolding).
+	if err := scaffoldEvolutionDir("."); err != nil {
+		_, _ = fmt.Fprintf(out, "  Warning: failed to scaffold evolution directory: %v\n", err)
+	}
+
 	// Sync profile preferences to project config (after template deployment)
 	profileName := profile.GetCurrentName()
 	prefs, err := profile.ReadPreferences(profileName)
@@ -956,6 +962,12 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 func isMoaiManaged(path string) bool {
 	// Check .moai/config/ paths first
 	if strings.HasPrefix(path, ".moai/config/") || strings.HasPrefix(path, ".moai\\config\\") {
+		return true
+	}
+
+	// Protect .moai/evolution/ from template deployment (R1: Directory Protection).
+	// All evolution data (learnings, new-skills, telemetry) must survive moai update.
+	if strings.HasPrefix(path, ".moai/evolution/") || strings.HasPrefix(path, ".moai\\evolution\\") {
 		return true
 	}
 
@@ -2438,4 +2450,70 @@ func detectGoBinPathForUpdate(homeDir string) string {
 		return filepath.Join("C:\\", "Go", "bin")
 	}
 	return "/usr/local/go/bin"
+}
+
+// scaffoldEvolutionDir ensures the .moai/evolution/ directory tree exists.
+// Called during both init and update so that existing projects that predate
+// the evolution infrastructure receive the directory structure automatically.
+// Non-destructive: only creates missing files; never overwrites existing ones.
+func scaffoldEvolutionDir(projectRoot string) error {
+	evolutionDir := filepath.Join(projectRoot, ".moai", "evolution")
+
+	// Sub-directories to create.
+	subdirs := []string{
+		"telemetry",
+		"learnings",
+		"new-skills",
+	}
+
+	for _, sub := range subdirs {
+		dir := filepath.Join(evolutionDir, sub)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create %s: %w", dir, err)
+		}
+
+		// Ensure .gitkeep exists so the directory is tracked by git.
+		gitkeep := filepath.Join(dir, ".gitkeep")
+		if _, err := os.Stat(gitkeep); os.IsNotExist(err) {
+			if err := os.WriteFile(gitkeep, []byte{}, 0o644); err != nil {
+				return fmt.Errorf("create %s: %w", gitkeep, err)
+			}
+		}
+	}
+
+	// Create default manifest.yaml if missing.
+	manifestPath := filepath.Join(evolutionDir, "manifest.yaml")
+	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+		const defaultManifest = `schema_version: 1
+evolved_skills: []
+new_skills: []
+learnings_count: 0
+last_evolution_date: ""
+rate_limit:
+  week_start: ""
+  proposals_this_week: 0
+  last_proposal_time: ""
+`
+		if err := os.WriteFile(manifestPath, []byte(defaultManifest), 0o644); err != nil {
+			return fmt.Errorf("create %s: %w", manifestPath, err)
+		}
+	}
+
+	// Create default changelog.md if missing.
+	changelogPath := filepath.Join(evolutionDir, "changelog.md")
+	if _, err := os.Stat(changelogPath); os.IsNotExist(err) {
+		const defaultChangelog = `# MoAI Evolution Changelog
+
+All notable skill evolutions and learning graduations will be documented here.
+
+## Format
+
+Each entry: date, learning ID, skill affected, change summary.
+`
+		if err := os.WriteFile(changelogPath, []byte(defaultChangelog), 0o644); err != nil {
+			return fmt.Errorf("create %s: %w", changelogPath, err)
+		}
+	}
+
+	return nil
 }
