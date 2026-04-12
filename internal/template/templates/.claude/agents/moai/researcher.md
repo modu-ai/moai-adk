@@ -15,6 +15,7 @@ model: opus
 permissionMode: acceptEdits
 memory: project
 skills:
+  - moai-foundation-core
   - moai-workflow-research
 ---
 
