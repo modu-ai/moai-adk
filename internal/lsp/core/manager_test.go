@@ -276,7 +276,7 @@ func TestDetectLanguage_AmbiguousExtension_FallsBackToFirstCandidate(t *testing.
 	}
 }
 
-// TestRouteFor_NoLanguageDetected는 알 수 없는 파일 확장자로 routeFor를 호출하면
+// TestRouteFor_NoLanguageDetected는 알 수 없는 파일 확장자로 RouteFor를 호출하면
 // ErrNoLanguageDetected가 반환되는지 테스트합니다.
 func TestRouteFor_NoLanguageDetected(t *testing.T) {
 	cfg := makeTestServersConfig()
@@ -288,7 +288,7 @@ func TestRouteFor_NoLanguageDetected(t *testing.T) {
 	}
 	defer m.Shutdown(context.Background()) //nolint:errcheck
 
-	_, err := m.routeFor(context.Background(), "/path/to/file.xyz")
+	_, err := m.RouteFor(context.Background(), "/path/to/file.xyz")
 	if !errors.Is(err, ErrNoLanguageDetected) {
 		t.Fatalf("expected ErrNoLanguageDetected, got %v", err)
 	}
@@ -298,7 +298,7 @@ func TestRouteFor_NoLanguageDetected(t *testing.T) {
 // T-016: Manager lazy spawn 테스트
 // ---------------------------------------------------------------------------
 
-// TestRouteFor_SpawnsClientOnFirstCall은 routeFor 최초 호출 시 클라이언트를 생성하는지 테스트합니다.
+// TestRouteFor_SpawnsClientOnFirstCall은 RouteFor 최초 호출 시 클라이언트를 생성하는지 테스트합니다.
 func TestRouteFor_SpawnsClientOnFirstCall(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -309,16 +309,16 @@ func TestRouteFor_SpawnsClientOnFirstCall(t *testing.T) {
 	}
 	defer m.Shutdown(context.Background()) //nolint:errcheck
 
-	_, err := m.routeFor(context.Background(), "/path/to/main.go")
+	_, err := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("routeFor failed: %v", err)
+		t.Fatalf("RouteFor failed: %v", err)
 	}
 	if spawnCount.Load() != 1 {
 		t.Fatalf("expected factory called once, got %d", spawnCount.Load())
 	}
 }
 
-// TestRouteFor_ReturnsSameClientOnSecondCall은 동일 언어로 두 번 routeFor를 호출해도
+// TestRouteFor_ReturnsSameClientOnSecondCall은 동일 언어로 두 번 RouteFor를 호출해도
 // 팩토리가 한 번만 호출되는지 테스트합니다.
 func TestRouteFor_ReturnsSameClientOnSecondCall(t *testing.T) {
 	cfg := makeTestServersConfig()
@@ -330,13 +330,13 @@ func TestRouteFor_ReturnsSameClientOnSecondCall(t *testing.T) {
 	}
 	defer m.Shutdown(context.Background()) //nolint:errcheck
 
-	c1, err := m.routeFor(context.Background(), "/path/to/main.go")
+	c1, err := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("first routeFor failed: %v", err)
+		t.Fatalf("first RouteFor failed: %v", err)
 	}
-	c2, err := m.routeFor(context.Background(), "/path/to/other.go")
+	c2, err := m.RouteFor(context.Background(), "/path/to/other.go")
 	if err != nil {
-		t.Fatalf("second routeFor failed: %v", err)
+		t.Fatalf("second RouteFor failed: %v", err)
 	}
 	if c1 != c2 {
 		t.Fatal("expected same Client instance for same language, got different")
@@ -346,7 +346,7 @@ func TestRouteFor_ReturnsSameClientOnSecondCall(t *testing.T) {
 	}
 }
 
-// TestRouteFor_ConcurrentSpawnOnlyOnce는 50개 고루틴이 동일 언어로 routeFor를 동시에
+// TestRouteFor_ConcurrentSpawnOnlyOnce는 50개 고루틴이 동일 언어로 RouteFor를 동시에
 // 호출해도 팩토리가 정확히 1번만 호출되는지 테스트합니다.
 func TestRouteFor_ConcurrentSpawnOnlyOnce(t *testing.T) {
 	cfg := makeTestServersConfig()
@@ -366,14 +366,14 @@ func TestRouteFor_ConcurrentSpawnOnlyOnce(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			_, errs[idx] = m.routeFor(context.Background(), "/path/to/main.go")
+			_, errs[idx] = m.RouteFor(context.Background(), "/path/to/main.go")
 		}(i)
 	}
 	wg.Wait()
 
 	for i, err := range errs {
 		if err != nil {
-			t.Fatalf("goroutine %d: routeFor failed: %v", i, err)
+			t.Fatalf("goroutine %d: RouteFor failed: %v", i, err)
 		}
 	}
 	if spawnCount.Load() != 1 {
@@ -407,25 +407,25 @@ func TestRouteFor_SpawnErrorReleasesClient(t *testing.T) {
 	defer m.Shutdown(context.Background()) //nolint:errcheck
 
 	// 첫 번째 호출: Start 실패
-	_, err := m.routeFor(context.Background(), "/path/to/main.go")
+	_, err := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err == nil {
-		t.Fatal("expected error from routeFor with failing client start, got nil")
+		t.Fatal("expected error from RouteFor with failing client start, got nil")
 	}
 	if !errors.Is(err, startErr) {
 		t.Fatalf("expected startErr in chain, got: %v", err)
 	}
 
 	// 두 번째 호출: 성공해야 함 (첫 번째 실패한 클라이언트가 해제됨)
-	_, err2 := m.routeFor(context.Background(), "/path/to/main.go")
+	_, err2 := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err2 != nil {
-		t.Fatalf("expected second routeFor to succeed, got: %v", err2)
+		t.Fatalf("expected second RouteFor to succeed, got: %v", err2)
 	}
 	if callCount.Load() != 2 {
 		t.Fatalf("expected factory called 2 times (1 fail + 1 success), got %d", callCount.Load())
 	}
 }
 
-// TestRouteFor_UpdatesLastActivity는 routeFor가 lastActivity를 업데이트하는지 테스트합니다.
+// TestRouteFor_UpdatesLastActivity는 RouteFor가 lastActivity를 업데이트하는지 테스트합니다.
 func TestRouteFor_UpdatesLastActivity(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -437,9 +437,9 @@ func TestRouteFor_UpdatesLastActivity(t *testing.T) {
 	defer m.Shutdown(context.Background()) //nolint:errcheck
 
 	before := time.Now()
-	_, err := m.routeFor(context.Background(), "/path/to/main.go")
+	_, err := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("routeFor failed: %v", err)
+		t.Fatalf("RouteFor failed: %v", err)
 	}
 	after := time.Now()
 
@@ -478,10 +478,10 @@ func TestManager_ReaperShutsDownIdleClient(t *testing.T) {
 	}
 	defer m.Shutdown(ctx) //nolint:errcheck
 
-	// 클라이언트 생성 (routeFor 호출)
-	_, err := m.routeFor(ctx, "/path/to/main.go")
+	// 클라이언트 생성 (RouteFor 호출)
+	_, err := m.RouteFor(ctx, "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("routeFor failed: %v", err)
+		t.Fatalf("RouteFor failed: %v", err)
 	}
 
 	// reaper가 idle 클라이언트를 종료할 때까지 대기
@@ -526,9 +526,9 @@ func TestManager_ReaperDoesNotShutdownActiveClient(t *testing.T) {
 	}
 	defer m.Shutdown(ctx) //nolint:errcheck
 
-	_, err := m.routeFor(ctx, "/path/to/main.go")
+	_, err := m.RouteFor(ctx, "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("routeFor failed: %v", err)
+		t.Fatalf("RouteFor failed: %v", err)
 	}
 
 	// reaper가 몇 번 돌 시간 동안 대기
@@ -591,9 +591,9 @@ func TestManager_Shutdown_AggregatesClientErrors(t *testing.T) {
 	}
 
 	// 클라이언트 생성
-	_, err := m.routeFor(ctx, "/path/to/main.go")
+	_, err := m.RouteFor(ctx, "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("routeFor failed: %v", err)
+		t.Fatalf("RouteFor failed: %v", err)
 	}
 
 	// Shutdown — 클라이언트 에러가 집계되어야 함
@@ -617,9 +617,9 @@ func TestManager_Shutdown_ClearsClientsMap(t *testing.T) {
 		t.Fatalf("Manager.Start failed: %v", err)
 	}
 
-	_, err := m.routeFor(ctx, "/path/to/main.go")
+	_, err := m.RouteFor(ctx, "/path/to/main.go")
 	if err != nil {
-		t.Fatalf("routeFor failed: %v", err)
+		t.Fatalf("RouteFor failed: %v", err)
 	}
 
 	if err := m.Shutdown(ctx); err != nil {

@@ -15,10 +15,10 @@ import (
 )
 
 // ErrNoLanguageDetected는 파일 확장자가 설정된 어떤 언어 서버와도 매핑되지 않을 때
-// routeFor가 반환하는 센티넬 에러입니다.
+// RouteFor가 반환하는 센티넬 에러입니다.
 //
-// @MX:ANCHOR: [AUTO] ErrNoLanguageDetected — Manager.routeFor의 공개 센티넬 에러
-// @MX:REASON: fan_in >= 3 — routeFor, 테스트 어서션, Ralph 엔진, MCP 브리지 등 여러 호출자가 이 센티넬로 분기함
+// @MX:ANCHOR: [AUTO] ErrNoLanguageDetected — Manager.RouteFor의 공개 센티넬 에러
+// @MX:REASON: fan_in >= 3 — RouteFor, 테스트 어서션, Ralph 엔진, MCP 브리지 등 여러 호출자가 이 센티넬로 분기함
 var ErrNoLanguageDetected = errors.New("lsp: no language server configured for this file type")
 
 // Manager는 여러 언어 서버 Client 인스턴스를 조율하는 타입입니다.
@@ -40,7 +40,7 @@ type Manager struct {
 	// 기본값: NewClient
 	clientFactory func(config.ServerConfig) Client
 
-	// lastActivity는 언어별 마지막 routeFor 호출 시각을 추적합니다 (REQ-LC-050).
+	// lastActivity는 언어별 마지막 RouteFor 호출 시각을 추적합니다 (REQ-LC-050).
 	lastActivity map[string]time.Time
 
 	// idleShutdownSeconds는 클라이언트 유휴 종료 기준 초 수입니다.
@@ -296,16 +296,16 @@ func findLanguageByMarkers(dir string, candidates []string, servers map[string]c
 	return ""
 }
 
-// routeFor는 파일 경로에 맞는 Client를 반환합니다.
+// RouteFor returns the LSP Client responsible for the given file path.
 //
 // 동작:
 //  1. detectLanguage로 언어 결정
 //  2. getOrSpawn으로 Client 획득 (lazy spawn)
 //  3. lastActivity 업데이트
 //
-// @MX:ANCHOR: [AUTO] Manager.routeFor — 파일 경로 기반 LSP 클라이언트 라우팅 핵심 경로
-// @MX:REASON: fan_in >= 3 — Ralph 엔진, Quality Gates, LOOP 커맨드가 모두 routeFor를 통해 Client를 획득함
-func (m *Manager) routeFor(ctx context.Context, path string) (Client, error) {
+// @MX:ANCHOR: [AUTO] Manager.RouteFor — 파일 경로 기반 LSP 클라이언트 라우팅 핵심 경로
+// @MX:REASON: fan_in >= 3 — Ralph 엔진, Quality Gates, LOOP 커맨드, Aggregator가 모두 RouteFor를 통해 Client를 획득함
+func (m *Manager) RouteFor(ctx context.Context, path string) (Client, error) {
 	lang, ok := m.detectLanguage(path)
 	if !ok {
 		return nil, fmt.Errorf("lsp manager: %w (path=%q)", ErrNoLanguageDetected, path)
