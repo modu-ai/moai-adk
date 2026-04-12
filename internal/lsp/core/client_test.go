@@ -360,8 +360,9 @@ func TestClient_State(t *testing.T) {
 	}
 }
 
-// TestClient_UnimplementedMethods verifies that Sprint-3 stubs return ErrNotImplemented.
-func TestClient_UnimplementedMethods(t *testing.T) {
+// TestClient_Sprint4Methods verifies Sprint-4 method behaviors.
+// OpenFile and GetDiagnostics are now implemented; FindReferences/GotoDefinition remain stubs.
+func TestClient_Sprint4Methods(t *testing.T) {
 	cfg := config.ServerConfig{Language: "go", Command: "gopls"}
 	fl := &fakeLauncher{}
 	ft := newFakeTransport()
@@ -377,31 +378,48 @@ func TestClient_UnimplementedMethods(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	t.Run("OpenFile", func(t *testing.T) {
+	// OpenFile은 Sprint 4에서 구현됨 — 에러 없이 성공해야 함
+	t.Run("OpenFile_Succeeds", func(t *testing.T) {
 		err := c.OpenFile(ctx, "/tmp/foo.go", "package main")
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("expected ErrNotImplemented, got %v", err)
+		if err != nil {
+			t.Errorf("OpenFile: expected nil, got %v", err)
 		}
 	})
 
-	t.Run("GetDiagnostics", func(t *testing.T) {
-		_, err := c.GetDiagnostics(ctx, "/tmp/foo.go")
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("expected ErrNotImplemented, got %v", err)
+	// GetDiagnostics는 Sprint 4에서 구현됨 — 열린 파일이면 빈 슬라이스 반환
+	t.Run("GetDiagnostics_OpenedFile", func(t *testing.T) {
+		// OpenFile로 먼저 파일을 열어야 함
+		_ = c.OpenFile(ctx, "/tmp/diag.go", "package main")
+		diags, err := c.GetDiagnostics(ctx, "/tmp/diag.go")
+		if err != nil {
+			t.Errorf("GetDiagnostics: expected nil error, got %v", err)
+		}
+		if diags == nil {
+			t.Error("GetDiagnostics: expected non-nil slice, got nil")
 		}
 	})
 
-	t.Run("FindReferences", func(t *testing.T) {
+	// GetDiagnostics는 열리지 않은 파일에 대해 ErrFileNotOpen 반환
+	t.Run("GetDiagnostics_UnopenedFile", func(t *testing.T) {
+		_, err := c.GetDiagnostics(ctx, "/tmp/notopen.go")
+		if !errors.Is(err, ErrFileNotOpen) {
+			t.Errorf("expected ErrFileNotOpen, got %v", err)
+		}
+	})
+
+	// FindReferences는 Sprint 4에서 구현됨 — 서버 capabilities가 없으면 ErrCapabilityUnsupported 반환
+	t.Run("FindReferences_NoCapability", func(t *testing.T) {
 		_, err := c.FindReferences(ctx, "/tmp/foo.go", lsp.Position{Line: 0, Character: 0})
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("expected ErrNotImplemented, got %v", err)
+		if !errors.Is(err, ErrCapabilityUnsupported) {
+			t.Errorf("expected ErrCapabilityUnsupported (server has no refs capability), got %v", err)
 		}
 	})
 
-	t.Run("GotoDefinition", func(t *testing.T) {
+	// GotoDefinition은 Sprint 4에서 구현됨 — 서버 capabilities가 없으면 ErrCapabilityUnsupported 반환
+	t.Run("GotoDefinition_NoCapability", func(t *testing.T) {
 		_, err := c.GotoDefinition(ctx, "/tmp/foo.go", lsp.Position{Line: 0, Character: 0})
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("expected ErrNotImplemented, got %v", err)
+		if !errors.Is(err, ErrCapabilityUnsupported) {
+			t.Errorf("expected ErrCapabilityUnsupported (server has no def capability), got %v", err)
 		}
 	})
 }

@@ -48,3 +48,11 @@
 - T-004: DONE — subprocess.Supervisor race-free, Watch goroutine owns cmd.Wait, multiple watcher support
 - T-006: DONE — WrapCallError + CallWithTimeout + ErrRequestTimeout, 100% function coverage
 - T-007: DONE — NotificationRouter + RegisterPublishDiagnostics, reuses lsp.Diagnostic, transport 97.0% coverage
+
+### Sprint 4 (Document Sync + Queries): 2026-04-13
+- T-011: DONE — documentCache (openOrChange/touch/snapshot/remove) + OpenFile impl + pathToURI/resolveLanguageID helpers
+- T-012: DONE — reapIdle + didSave + Client.DidSave + WithIdleTimeout option
+- T-013: DONE — GetDiagnostics (push-model cache) + ErrFileNotOpen sentinel + publishDiagnostics handler in Start
+- T-014: DONE — FindReferences + GotoDefinition + capability precheck + parseLocations (tolerant decoder)
+- Coverage: 94.0% (internal/lsp/core)
+- Race detector: PASS

@@ -16,3 +16,10 @@ var ErrNotImplemented = errors.New("lsp: not implemented in this sprint")
 //
 // The error message includes the unsupported method name.
 var ErrCapabilityUnsupported = errors.New("lsp: capability unsupported by server")
+
+// ErrFileNotOpen is returned by GetDiagnostics when the requested file has not
+// been opened via OpenFile (T-013).
+//
+// @MX:ANCHOR: [AUTO] ErrFileNotOpen — sentinel used across GetDiagnostics, Manager, and test assertions
+// @MX:REASON: fan_in >= 3 — GetDiagnostics, Manager routing, integration tests, and upstream callers all branch on this sentinel
+var ErrFileNotOpen = errors.New("lsp: file not open")

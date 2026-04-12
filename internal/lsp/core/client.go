@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sync"
 	"syscall"
 	"time"
 
@@ -51,20 +52,27 @@ type Client interface {
 	// If the subprocess does not exit within shutdownTimeout, SIGKILL is sent.
 	Shutdown(ctx context.Context) error
 
-	// OpenFile notifies the server that a file has been opened.
-	// Not implemented in Sprint 3 — returns ErrNotImplemented.
+	// OpenFile notifies the server that a file has been opened or changed.
+	// Sends textDocument/didOpen on first call for a path, or textDocument/didChange
+	// when content differs from the last known version.
+	// Same content on a previously opened file is a no-op (REQ-LC-006).
 	OpenFile(ctx context.Context, path, content string) error
 
+	// DidSave notifies the server that a tracked file has been saved (REQ-LC-023).
+	// Returns an error if the file is not currently tracked by OpenFile.
+	DidSave(ctx context.Context, path string) error
+
 	// GetDiagnostics returns diagnostics for the given file path.
-	// Not implemented in Sprint 3 — returns ErrNotImplemented.
+	// Uses push model: returns the latest diagnostics received via publishDiagnostics.
+	// Returns ErrFileNotOpen if the file has not been opened via OpenFile.
 	GetDiagnostics(ctx context.Context, path string) ([]lsp.Diagnostic, error)
 
 	// FindReferences returns all references to the symbol at pos in the given file.
-	// Not implemented in Sprint 3 — returns ErrNotImplemented.
+	// Returns ErrCapabilityUnsupported if the server does not advertise references support.
 	FindReferences(ctx context.Context, path string, pos lsp.Position) ([]lsp.Location, error)
 
 	// GotoDefinition returns the definition location for the symbol at pos.
-	// Not implemented in Sprint 3 — returns ErrNotImplemented.
+	// Returns ErrCapabilityUnsupported if the server does not advertise definition support.
 	GotoDefinition(ctx context.Context, path string, pos lsp.Position) ([]lsp.Location, error)
 
 	// State returns the current lifecycle state of the client.
@@ -81,8 +89,17 @@ type client struct {
 	state           *StateMachine
 	router          *transport.NotificationRouter
 	shutdownTimeout time.Duration
+	idleTimeout     time.Duration
 	logger          *slog.Logger
 	serverCaps      ServerCapabilities
+
+	// docs는 열린 문서 캐시입니다. T-011 이후 사용됩니다.
+	docs *documentCache
+
+	// diagnostics는 서버가 push한 textDocument/publishDiagnostics 결과를 저장합니다.
+	// T-013 이후 사용됩니다.
+	diagnostics   map[string][]lsp.Diagnostic
+	diagnosticsMu sync.RWMutex
 }
 
 // Option is a functional option for configuring a client.
@@ -106,6 +123,14 @@ func WithTransportFactory(fn transportFactory) Option {
 func WithShutdownTimeout(d time.Duration) Option {
 	return func(c *client) {
 		c.shutdownTimeout = d
+	}
+}
+
+// WithIdleTimeout sets the idle timeout after which an open file is sent textDocument/didClose
+// by the idle reaper (REQ-LC-022). Default: 5 minutes.
+func WithIdleTimeout(d time.Duration) Option {
+	return func(c *client) {
+		c.idleTimeout = d
 	}
 }
 
@@ -135,8 +160,11 @@ func NewClient(cfg config.ServerConfig, opts ...Option) *client {
 	c := &client{
 		cfg:             cfg,
 		shutdownTimeout: 10 * time.Second,
+		idleTimeout:     5 * time.Minute,
 		logger:          slog.Default(),
 		router:          transport.NewNotificationRouter(),
+		docs:            newDocumentCache(),
+		diagnostics:     make(map[string][]lsp.Diagnostic),
 	}
 	c.state = NewStateMachine(c.logger)
 
@@ -196,6 +224,16 @@ func (c *client) Start(ctx context.Context) error {
 		_ = c.state.Transition(StateDegraded)
 		return fmt.Errorf("lsp client initialize (lang=%s): %w", c.cfg.Language, err)
 	}
+
+	// publishDiagnostics 핸들러 등록: 서버가 push한 진단 결과를 diagnostics 캐시에 저장합니다.
+	// @MX:NOTE: [AUTO] NotificationRouter를 통해 비동기 publishDiagnostics 알림을 진단 캐시로 라우팅
+	_ = c.router.RegisterPublishDiagnostics(func(uri string, diags []lsp.Diagnostic) error {
+		c.diagnosticsMu.Lock()
+		c.diagnostics[uri] = diags
+		c.diagnosticsMu.Unlock()
+		return nil
+	})
+	c.router.Attach(c.tr)
 
 	// ready 상태 전환
 	if err := c.state.Transition(StateReady); err != nil {
@@ -300,25 +338,23 @@ func (c *client) cleanupTransport() {
 	}
 }
 
-// OpenFile is not implemented in Sprint 3.
-func (c *client) OpenFile(_ context.Context, _, _ string) error {
-	return fmt.Errorf("OpenFile: %w", ErrNotImplemented)
+// OpenFile notifies the server that a file has been opened or changed (REQ-LC-002a, REQ-LC-020, REQ-LC-021).
+// Delegates to documentCache.openOrChange which selects didOpen or didChange based on cache state.
+func (c *client) OpenFile(ctx context.Context, path, content string) error {
+	uri := pathToURI(path)
+	langID := resolveLanguageID(c.cfg.Language)
+	return c.docs.openOrChange(ctx, c.tr, uri, langID, content)
 }
 
-// GetDiagnostics is not implemented in Sprint 3.
-func (c *client) GetDiagnostics(_ context.Context, _ string) ([]lsp.Diagnostic, error) {
-	return nil, fmt.Errorf("GetDiagnostics: %w", ErrNotImplemented)
+// DidSave notifies the server that a tracked file has been saved (REQ-LC-023).
+func (c *client) DidSave(ctx context.Context, path string) error {
+	uri := pathToURI(path)
+	return c.docs.didSave(ctx, c.tr, uri)
 }
 
-// FindReferences is not implemented in Sprint 3.
-func (c *client) FindReferences(_ context.Context, _ string, _ lsp.Position) ([]lsp.Location, error) {
-	return nil, fmt.Errorf("FindReferences: %w", ErrNotImplemented)
-}
+// GetDiagnostics is implemented in queries.go (T-013).
 
-// GotoDefinition is not implemented in Sprint 3.
-func (c *client) GotoDefinition(_ context.Context, _ string, _ lsp.Position) ([]lsp.Location, error) {
-	return nil, fmt.Errorf("GotoDefinition: %w", ErrNotImplemented)
-}
+// FindReferences and GotoDefinition are implemented in queries.go (T-014).
 
 // State returns the current lifecycle state.
 func (c *client) State() ClientState {
