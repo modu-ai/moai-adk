@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/hook/lifecycle"
+	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
 // defaultCompletionMarkers is the list of default completion markers.
@@ -92,6 +93,15 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 						mode.Workflow, mode.SpecID),
 				}, nil
 			}
+		}
+	}
+
+	// Prune telemetry files older than 90 days (SPEC-TELEMETRY-001 R4).
+	// Best-effort: errors are logged and never propagated.
+	// Placed before completion detection to ensure pruning runs every session end.
+	if projectDir != "" {
+		if pruneErr := telemetry.PruneOldFiles(projectDir, 90); pruneErr != nil {
+			slog.Warn("stop: telemetry pruning failed", "error", pruneErr)
 		}
 	}
 

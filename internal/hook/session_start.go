@@ -8,9 +8,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
 // sessionStartHandler processes SessionStart events.
@@ -79,6 +81,23 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if input.ProjectDir != "" {
 		if mode := ensureTeammateMode(input.ProjectDir); mode != "" {
 			data["teammate_mode"] = mode
+		}
+	}
+
+	// Enforce telemetry retention: prune files older than 90 days (SPEC-TELEMETRY-001 R4).
+	// Best-effort: errors are logged and never propagated.
+	if input.ProjectDir != "" {
+		if err := pruneTelemetry(input.ProjectDir); err != nil {
+			slog.Warn("session start: telemetry pruning failed", "error", err)
+		}
+	}
+
+	// Create symlinks in .claude/skills/ for any new evolved skills
+	// stored under .moai/evolution/new-skills/ (R5: New Skill Symlink).
+	if input.ProjectDir != "" {
+		if n := ensureNewSkillSymlinks(input.ProjectDir); n > 0 {
+			data["evolved_skills_linked"] = n
+			slog.Info("evolved skill symlinks created", "count", n)
 		}
 	}
 
@@ -305,6 +324,166 @@ func ensureTeammateMode(projectDir string) string {
 		"in_tmux", inTmux,
 	)
 	return desired
+}
+
+// ensureNewSkillSymlinks scans .moai/evolution/new-skills/ for subdirectories
+// and creates corresponding symlinks (or directory copies on Windows) in
+// .claude/skills/ so that Claude Code can discover evolved skills at session start.
+//
+// Rules:
+//   - Target: .claude/skills/<name> → ../../.moai/evolution/new-skills/<name>
+//   - Existing valid symlinks are skipped.
+//   - Broken symlinks are removed with a warning.
+//   - On Windows, a directory copy is used as fallback.
+//
+// Returns the number of symlinks created in this call.
+func ensureNewSkillSymlinks(projectDir string) int {
+	newSkillsDir := filepath.Join(projectDir, ".moai", "evolution", "new-skills")
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+
+	entries, err := os.ReadDir(newSkillsDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("ensureNewSkillSymlinks: cannot read new-skills dir",
+				"path", newSkillsDir,
+				"error", err.Error(),
+			)
+		}
+		return 0
+	}
+
+	// Ensure .claude/skills/ exists.
+	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+		slog.Warn("ensureNewSkillSymlinks: cannot create skills dir",
+			"path", skillsDir,
+			"error", err.Error(),
+		)
+		return 0
+	}
+
+	created := 0
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		linkPath := filepath.Join(skillsDir, name)
+
+		// Check if a symlink (or directory copy) already exists.
+		fi, err := os.Lstat(linkPath)
+		if err == nil {
+			// Path exists — validate it.
+			if fi.Mode()&os.ModeSymlink != 0 {
+				// It's a symlink — verify it points to a valid target.
+				if _, err := os.Stat(linkPath); err == nil {
+					// Valid symlink — skip.
+					continue
+				}
+				// Broken symlink — remove it.
+				slog.Warn("ensureNewSkillSymlinks: removing broken symlink",
+					"path", linkPath,
+				)
+				if removeErr := os.Remove(linkPath); removeErr != nil {
+					slog.Warn("ensureNewSkillSymlinks: cannot remove broken symlink",
+						"path", linkPath,
+						"error", removeErr.Error(),
+					)
+					continue
+				}
+			} else if fi.IsDir() {
+				// Directory already exists (Windows copy or manual placement) — skip.
+				continue
+			} else {
+				// Something else — skip to avoid clobbering.
+				slog.Warn("ensureNewSkillSymlinks: unexpected file at link path, skipping",
+					"path", linkPath,
+				)
+				continue
+			}
+		} else if !os.IsNotExist(err) {
+			slog.Warn("ensureNewSkillSymlinks: lstat error",
+				"path", linkPath,
+				"error", err.Error(),
+			)
+			continue
+		}
+
+		// Create symlink or directory copy.
+		srcDir := filepath.Join(newSkillsDir, name)
+
+		if runtime.GOOS == "windows" {
+			// Windows fallback: copy directory contents instead of symlink.
+			if copyErr := copyDirRecursive(srcDir, linkPath); copyErr != nil {
+				slog.Warn("ensureNewSkillSymlinks: failed to copy directory on Windows",
+					"src", srcDir,
+					"dst", linkPath,
+					"error", copyErr.Error(),
+				)
+				continue
+			}
+		} else {
+			// Use a relative symlink so the project is portable.
+			// From .claude/skills/<name> to ../../.moai/evolution/new-skills/<name>
+			relTarget := filepath.Join("..", "..", ".moai", "evolution", "new-skills", name)
+			if symlinkErr := os.Symlink(relTarget, linkPath); symlinkErr != nil {
+				slog.Warn("ensureNewSkillSymlinks: failed to create symlink",
+					"link", linkPath,
+					"target", relTarget,
+					"error", symlinkErr.Error(),
+				)
+				continue
+			}
+		}
+
+		slog.Info("ensureNewSkillSymlinks: linked evolved skill",
+			"name", name,
+		)
+		created++
+	}
+
+	return created
+}
+
+// copyDirRecursive copies src directory to dst recursively.
+// Used as a Windows fallback when symlinks are not available.
+func copyDirRecursive(src, dst string) error {
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dst, err)
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("readdir %s: %w", src, err)
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDirRecursive(srcPath, dstPath); err != nil {
+				return err
+			}
+			continue
+		}
+
+		data, err := os.ReadFile(srcPath)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", srcPath, err)
+		}
+		if err := os.WriteFile(dstPath, data, 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", dstPath, err)
+		}
+	}
+	return nil
+}
+
+// pruneTelemetry enforces the 90-day retention policy for telemetry files.
+// It delegates to telemetry.PruneOldFiles and wraps any error with context.
+func pruneTelemetry(projectDir string) error {
+	return telemetry.PruneOldFiles(projectDir, 90)
 }
 
 // loadGLMKeyFromEnvFile reads the GLM API key from ~/.moai/.env.glm.

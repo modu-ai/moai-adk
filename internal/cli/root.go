@@ -70,4 +70,7 @@ func init() {
 
 	// ASTG-UPGRADE-001: register astgrep command
 	rootCmd.AddCommand(NewAstGrepCmd())
+
+	// SPEC-TELEMETRY-001: register telemetry subcommand
+	rootCmd.AddCommand(telemetryCmd)
 }

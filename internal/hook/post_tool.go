@@ -134,6 +134,12 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		logTaskMetrics(input)
 	}
 
+	// Record Skill tool invocations for telemetry (SPEC-TELEMETRY-001 R1).
+	// Best-effort: errors are logged and never propagated.
+	if input.ToolName == "Skill" {
+		logSkillUsage(input)
+	}
+
 	var systemMessage string
 
 	// Collect LSP diagnostics for Write/Edit operations (REQ-HOOK-150, REQ-HOOK-153).
