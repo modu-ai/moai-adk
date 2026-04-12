@@ -42,6 +42,14 @@ func (e *engine) MergeFile(ctx context.Context, path string, base, current, upda
 
 	strategy := e.selector.SelectStrategy(path)
 
+	// For .md files, check if content contains evolvable zone markers and upgrade strategy.
+	// This overrides LineMerge/SectionMerge with the marker-aware strategy when applicable.
+	if strategy == LineMerge || strategy == SectionMerge {
+		if HasEvolvableZones(string(current)) || HasEvolvableZones(string(updated)) {
+			strategy = EvolvableZoneMerge
+		}
+	}
+
 	switch strategy {
 	case LineMerge:
 		return mergeLineBased(base, current, updated)
@@ -55,6 +63,8 @@ func (e *engine) MergeFile(ctx context.Context, path string, base, current, upda
 		return mergeEntryBased(base, current, updated)
 	case Overwrite:
 		return mergeOverwrite(current, updated)
+	case EvolvableZoneMerge:
+		return mergeEvolvableZone(base, current, updated)
 	default:
 		return nil, fmt.Errorf("%w: strategy %q for %q", ErrMergeUnsupported, strategy, path)
 	}
