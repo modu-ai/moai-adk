@@ -16,7 +16,7 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
 - [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
 
-Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-9) are detailed in Section 7.
+Core principles (1-4) and six Agent Core Behaviors (consolidated cross-cutting rules) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-9) are detailed in Section 7.
 
 ### Recommendations
 
