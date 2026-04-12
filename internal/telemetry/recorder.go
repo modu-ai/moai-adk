@@ -68,6 +68,42 @@ func RecordSkillUsage(projectRoot string, r UsageRecord) error {
 	return nil
 }
 
+// LoadBySession reads today's (and optionally yesterday's) telemetry files and
+// returns only the records matching the given sessionID. Returns nil on any error.
+func LoadBySession(projectRoot, sessionID string) ([]UsageRecord, error) {
+	dir := filepath.Join(projectRoot, ".moai", "evolution", "telemetry")
+
+	today := time.Now().UTC().Format("2006-01-02")
+	candidates := []string{
+		filepath.Join(dir, "usage-"+today+".jsonl"),
+	}
+	// Also check yesterday in case the session spans midnight.
+	yesterday := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
+	candidates = append(candidates, filepath.Join(dir, "usage-"+yesterday+".jsonl"))
+
+	var result []UsageRecord
+	for _, path := range candidates {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue // file may not exist
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			var rec UsageRecord
+			if err := json.Unmarshal([]byte(line), &rec); err != nil {
+				continue
+			}
+			if rec.SessionID == sessionID {
+				result = append(result, rec)
+			}
+		}
+	}
+	return result, nil
+}
+
 // PruneOldFiles deletes telemetry JSONL files whose date (parsed from filename)
 // is older than retentionDays from now. Non-telemetry files are ignored.
 //

@@ -46,6 +46,31 @@ Single source of truth principle:
 - Use references (@file) instead of copying content
 - Update source file, not copies
 
+## Thin Command Pattern
+
+All slash command files MUST be thin routing wrappers (under 20 LOC body).
+
+Rules:
+- Commands route to skills via `Skill("moai")` or `Skill("agency")` -- they never contain workflow logic
+- All workflow logic belongs in `.claude/skills/moai/workflows/` or skill body
+- YAML frontmatter must include: description, argument-hint, allowed-tools (CSV string)
+- Root commands (e.g., agency.md) may contain router tables but no implementation logic
+
+Template:
+```
+---
+description: [One-sentence action description]
+argument-hint: "[Optional arg]"
+allowed-tools: Skill
+---
+
+Use Skill("moai") with arguments: [subcommand] $ARGUMENTS
+```
+
+Enforcement: `internal/template/commands_audit_test.go` verifies this pattern on every `go test`.
+
+Source: SPEC-THIN-CMDS-001
+
 ## Paths Frontmatter
 
 Use paths frontmatter for conditional rule loading:

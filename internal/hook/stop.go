@@ -119,10 +119,39 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		}
 	}
 
+	// Reflective learning: analyze session telemetry and generate proposals.
+	// Non-blocking — analysis errors are logged and never affect the stop decision.
+	if projectDir != "" {
+		numRecords := countSessionRecords(projectDir, input.SessionID)
+		if numRecords >= minToolInvocationsForReflection {
+			AnalyzeSessionAndLog(projectDir, input.SessionID)
+		}
+	}
+
+	// Prune old telemetry files (keep 30 days).
+	if projectDir != "" {
+		telemetry.PruneOldFiles(projectDir, 30)
+	}
+
 	// Stop hooks use top-level decision/reason fields per Claude Code protocol
 	// Return empty JSON {} to allow Claude to stop (default behavior)
 	// To keep Claude working, return: {"decision": "block", "reason": "..."}
 	return &HookOutput{}, nil
+}
+
+// minToolInvocationsForReflection is the minimum number of telemetry records
+// required before reflective analysis is triggered.  Mirrors
+// evolution.MinToolInvocationsForAnalysis but avoids a circular import.
+const minToolInvocationsForReflection = 3
+
+// countSessionRecords returns the number of telemetry records for the session.
+// Returns 0 on any error (conservative).
+func countSessionRecords(projectRoot, sessionID string) int {
+	records, err := telemetry.LoadBySession(projectRoot, sessionID)
+	if err != nil {
+		return 0
+	}
+	return len(records)
 }
 
 // hasCompletionMarker reports whether the input's ToolOutput contains any of the

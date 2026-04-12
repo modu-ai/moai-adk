@@ -101,6 +101,17 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Present pending skill improvement proposals from the reflective learning
+	// system.  This is non-blocking: errors are silently ignored.
+	if input.ProjectDir != "" {
+		if summary := PresentPendingProposals(input.ProjectDir); summary != "" {
+			data["skill_proposals"] = summary
+			slog.Info("reflective_write: pending proposals available for review",
+				"session_id", input.SessionID,
+			)
+		}
+	}
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		slog.Error("failed to marshal session data",
