@@ -8,6 +8,7 @@ description: |
   KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义
+  NOT for: skill creation (use builder-skill), plugin creation (use builder-plugin), code implementation, testing, documentation
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: bypassPermissions

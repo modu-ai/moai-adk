@@ -10,6 +10,7 @@ description: |
   KO: 연구, 자체 연구, 컴포넌트 최적화, 실험, 바이너리 평가, 오토리서치
   JA: リサーチ, 自己研究, コンポーネント最適化, 実験, バイナリ評価, オートリサーチ
   ZH: 研究, 自研究, 组件优化, 实验, 二元评估, 自动研究
+  NOT for: production code implementation, feature development, documentation writing, git operations, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: opus
 permissionMode: acceptEdits
