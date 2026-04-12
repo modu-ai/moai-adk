@@ -66,3 +66,34 @@
 - go vet: PASS
 - Full LSP suite: PASS (go test -race ./internal/lsp/...)
 - MX tags: @MX:ANCHOR on ErrNoLanguageDetected, Manager, NewManager, Manager.routeFor; @MX:WARN on reaper goroutine
+
+### Sprint 6 (Integration Validation): 2026-04-13
+- T-018: DONE — gopls integration test (4/4 PASS)
+  - TestIntegration_Gopls_InitializeAndShutdown: PASS (0.05s)
+  - TestIntegration_Gopls_OpenFileAndGetDiagnostics: PASS (0.15s)
+  - TestIntegration_Gopls_FindReferences: PASS (0.56s)
+  - TestIntegration_Gopls_GotoDefinition: PASS (0.57s)
+- T-019: DONE — pyright integration test (2/2 PASS)
+  - TestIntegration_Pyright_InitializeAndShutdown: PASS (0.24s)
+  - TestIntegration_Pyright_OpenFileAndGetDiagnostics: PASS (0.44s)
+- T-020: DONE — typescript integration test (2/2 SKIP, binary absent — expected)
+  - TestIntegration_TypeScript_InitializeAndShutdown: SKIP
+  - TestIntegration_TypeScript_OpenFileAndDiagnostics: SKIP
+- Total integration runtime: ~3.3s
+- Race detector: PASS (go test -tags=integration -race ./internal/lsp/core/...)
+- go vet: PASS
+- Unit test regression: ZERO (go test -race ./internal/lsp/... all PASS)
+
+### Production Code Bug Fixes (revealed by integration tests)
+- config.ServerConfig: RootDir 필드 추가 (yaml:"-") — initialize 요청의 rootUri/workspaceFolders 전달
+- client.initialize(): rootUri + workspaceFolders 동시 전달 (gopls workspace 활성화)
+- client.initialize(): LSP initialized 알림 추가 — 누락 시 gopls가 workspace를 활성화하지 않음
+- pathToURI(): filepath.EvalSymlinks 적용 — macOS /var/folders → /private/var/folders 일관성 유지
+
+### Wave 1 Task Summary (All 20 Tasks)
+- T-001 through T-007: Sprint 1-2 (Foundation + Transport) — DONE
+- T-008 through T-014: Sprint 3-4 (Core Lifecycle + Document Sync) — DONE
+- T-015 through T-017: Sprint 5 (Manager) — DONE
+- T-018 through T-020: Sprint 6 (Integration Validation) — DONE
+
+### SPEC-LSP-CORE-002 Status: COMPLETED 2026-04-13

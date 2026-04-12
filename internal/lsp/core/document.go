@@ -210,13 +210,18 @@ func (c *documentCache) didSave(ctx context.Context, tr transport.Transport, uri
 //
 // 변환 규칙:
 //   - "file://" 접두어가 있으면 그대로 반환
-//   - 절대 경로: "file://" + 슬래시 표준화된 경로
+//   - 절대 경로: symlink 해제 후 "file://" + 슬래시 표준화된 경로 (macOS /var → /private/var)
 //   - 상대 경로: "file://" + 경로 (as-is)
 func pathToURI(path string) string {
 	if strings.HasPrefix(path, "file://") {
 		return path
 	}
 	if filepath.IsAbs(path) {
+		// symlink 해제: macOS에서 /var/folders → /private/var/folders
+		// 언어 서버가 실제 경로로 반환할 때 URI 불일치를 방지함
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			path = resolved
+		}
 		// Unix: /foo/bar.go → file:///foo/bar.go
 		// Windows: C:\foo\bar.go → file:///C:/foo/bar.go
 		return "file://" + filepath.ToSlash(path)

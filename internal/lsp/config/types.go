@@ -29,6 +29,11 @@ type ServerConfig struct {
 
 	// FileExtensions are the file suffixes (including the dot) that this server handles (e.g., ".go").
 	FileExtensions []string `yaml:"file_extensions"`
+
+	// RootDir is the workspace root directory sent as rootUri in the LSP initialize request.
+	// When empty, rootUri is omitted (nil) from the initialize request.
+	// Set this to the project root when starting a client for a specific workspace.
+	RootDir string `yaml:"-"`
 }
 
 // ServersConfig is the root deserialization type for the lsp.servers section.

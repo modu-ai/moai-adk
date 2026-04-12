@@ -247,10 +247,23 @@ func (c *client) Start(ctx context.Context) error {
 func (c *client) initialize(ctx context.Context) error {
 	caps := DefaultClientCapabilities()
 
+	// rootUri + workspaceFolders: cfg.RootDir이 설정되어 있으면 file:// URI로 변환.
+	// gopls 등 서버는 workspaceFolders를 더 신뢰성 있게 처리하므로 두 필드 모두 전달.
+	var rootURI any
+	var workspaceFolders any
+	if c.cfg.RootDir != "" {
+		uri := pathToURI(c.cfg.RootDir)
+		rootURI = uri
+		workspaceFolders = []map[string]any{
+			{"uri": uri, "name": c.cfg.Language},
+		}
+	}
+
 	params := map[string]any{
-		"processId":    nil,
-		"capabilities": caps,
-		"rootUri":      nil,
+		"processId":        nil,
+		"capabilities":     caps,
+		"rootUri":          rootURI,
+		"workspaceFolders": workspaceFolders,
 	}
 	if len(c.cfg.InitOptions) > 0 {
 		params["initializationOptions"] = c.cfg.InitOptions
@@ -259,6 +272,15 @@ func (c *client) initialize(ctx context.Context) error {
 	var result lsp.InitializeResult
 	if err := transport.CallWithTimeout(ctx, c.tr, "initialize", params, &result, c.cfg.Language); err != nil {
 		return fmt.Errorf("initialize request: %w", err)
+	}
+
+	// LSP 프로토콜: initialize 응답 수신 후 반드시 initialized 알림 전송 (fire-and-forget)
+	// 이 알림 없이는 gopls 등 서버가 workspace를 활성화하지 않음
+	if notifyErr := c.tr.Notify(ctx, "initialized", map[string]any{}); notifyErr != nil {
+		c.logger.Warn("lsp: initialized notification failed",
+			slog.String("language", c.cfg.Language),
+			slog.String("error", notifyErr.Error()),
+		)
 	}
 
 	// サーバーケイパビリティ解析
