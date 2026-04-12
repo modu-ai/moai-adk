@@ -40,7 +40,11 @@
 - Status: pending
 
 ### Phase 2B (TDD Implementation)
-- Status: Sprint 1 complete (2026-04-13)
+- Status: Sprint 2 complete (2026-04-12)
 - T-001: DONE — powernap v0.1.3 pinned, lsp-client.md created (local + template)
 - T-002: DONE — config package 100% coverage, Load + MergeInitOptions
 - T-005: DONE — transport package 95.7% coverage, Transport interface + pnTransport skeleton
+- T-003: DONE — subprocess.Launcher 87.9% package coverage, ErrBinaryNotFound sentinel, isolated stdio pipes
+- T-004: DONE — subprocess.Supervisor race-free, Watch goroutine owns cmd.Wait, multiple watcher support
+- T-006: DONE — WrapCallError + CallWithTimeout + ErrRequestTimeout, 100% function coverage
+- T-007: DONE — NotificationRouter + RegisterPublishDiagnostics, reuses lsp.Diagnostic, transport 97.0% coverage
