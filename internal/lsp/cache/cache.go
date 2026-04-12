@@ -108,6 +108,24 @@ func (c *DiagnosticCache) Get(uri string, version int64) ([]lsp.Diagnostic, bool
 	return copied, true
 }
 
+// GetStale returns the diagnostics for uri regardless of TTL or version.
+// It is used for graceful degradation: when the upstream is unavailable,
+// any cached value (even expired) is preferred over an empty response.
+// Returns (nil, false) when no entry exists for the URI at all.
+func (c *DiagnosticCache) GetStale(uri string) ([]lsp.Diagnostic, bool) {
+	c.mu.RLock()
+	entry, ok := c.entries[uri]
+	c.mu.RUnlock()
+
+	if !ok {
+		return nil, false
+	}
+
+	copied := make([]lsp.Diagnostic, len(entry.Diagnostics))
+	copy(copied, entry.Diagnostics)
+	return copied, true
+}
+
 // Invalidate removes the cache entry for the given URI immediately (REQ-AGG-005).
 // If no entry exists for the URI, this is a no-op.
 func (c *DiagnosticCache) Invalidate(uri string) {

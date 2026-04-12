@@ -31,4 +31,29 @@
 - Status: complete
 
 ### Phase 2B (TDD Implementation)
-- Status: in progress
+
+#### Sprint 1 (T-001 ~ T-005) — Committed
+- T-001: CacheEntry + IsExpired — DONE
+- T-002: DiagnosticCache Get/Set — DONE
+- T-003: Invalidate + TTL — DONE
+- T-004: Start/Stop cleanup goroutine — DONE
+- T-005: Manager.RouteFor export — DONE
+
+#### Sprint 2 (T-006 ~ T-010) — Completed 2026-04-12
+- T-006: Aggregator + NewAggregator + GetDiagnostics basic — DONE
+  - Files: aggregator/doc.go, aggregator/aggregator.go, aggregator/aggregator_test.go
+  - Also added: cache.GetStale (needed for T-010 graceful degradation)
+- T-007: singleflight integration — DONE (integrated in T-006)
+- T-008: Cache integration — DONE (integrated in T-006)
+- T-009: CircuitBreaker integration — DONE (integrated in T-006)
+- T-010: Query timeout + graceful degradation — DONE
+
+#### Sprint 2 Results
+- aggregator package coverage: 96.8%
+- cache package coverage: 87.9%
+- go test -race: PASS (all packages)
+- go vet: PASS (0 issues)
+- go mod tidy: PASS
+- go build ./...: PASS
+
+- Status: complete

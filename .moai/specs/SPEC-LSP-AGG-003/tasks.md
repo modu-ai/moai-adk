@@ -12,11 +12,11 @@ Mode: sub-agent (Standard Mode)
 | T-003 | DiagnosticCache.Invalidate + TTL expiry (default 5s, configurable) | REQ-AGG-004, REQ-AGG-005 | T-002 | cache/cache.go (ext), cache/cache_test.go (ext) | pending |
 | T-004 | Cache cleanup goroutine Start/Stop lifecycle | REQ-AGG-004 | T-003 | cache/cache.go (ext), cache/cache_test.go (ext) | pending |
 | T-005 | Manager.routeFor → RouteFor export + callsite update | REQ-AGG-002 | — | core/manager.go (mod), core/manager_test.go (mod) | pending |
-| T-006 | Aggregator type + NewAggregator + GetDiagnostics basic (cache miss → upstream) | REQ-AGG-001, REQ-AGG-002 | T-002, T-005 | aggregator/aggregator.go, aggregator/aggregator_test.go | pending |
-| T-007 | singleflight integration — concurrent dedup for same file | REQ-AGG-007, REQ-AGG-010 | T-006 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | pending |
-| T-008 | Cache integration — hit skip upstream, version refresh, Invalidate | REQ-AGG-003, REQ-AGG-006 | T-003, T-006 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | pending |
-| T-009 | CircuitBreaker integration — per-server, 3 fail → open, 30s | REQ-AGG-009 | T-006 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | pending |
-| T-010 | Query timeout + graceful degradation — timeout → cache fallback, else empty | REQ-AGG-008, REQ-AGG-010 | T-008, T-009 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | pending |
+| T-006 | Aggregator type + NewAggregator + GetDiagnostics basic (cache miss → upstream) | REQ-AGG-001, REQ-AGG-002 | T-002, T-005 | aggregator/aggregator.go, aggregator/aggregator_test.go | done |
+| T-007 | singleflight integration — concurrent dedup for same file | REQ-AGG-007, REQ-AGG-010 | T-006 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | done |
+| T-008 | Cache integration — hit skip upstream, version refresh, Invalidate | REQ-AGG-003, REQ-AGG-006 | T-003, T-006 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | done |
+| T-009 | CircuitBreaker integration — per-server, 3 fail → open, 30s | REQ-AGG-009 | T-006 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | done |
+| T-010 | Query timeout + graceful degradation — timeout → cache fallback, else empty | REQ-AGG-008, REQ-AGG-010 | T-008, T-009 | aggregator/aggregator.go (ext), aggregator/aggregator_test.go (ext) | done |
 
 ### Execution Order
 T-001 > T-002 > T-003 > T-004 > T-005 > T-006 > T-007 > T-008 > T-009 > T-010
