@@ -1,7 +1,7 @@
 ---
 id: SPEC-LSP-LOOP-005
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
@@ -32,7 +32,7 @@ tags: lsp, loop, ralph, feedback, classification
 |-------|-------|
 | SPEC ID | SPEC-LSP-LOOP-005 |
 | Title | Loop/Ralph LSP Integration |
-| Status | Draft |
+| Status | Completed |
 | Priority | P2 |
 | Depends on | SPEC-LSP-AGG-003 |
 
