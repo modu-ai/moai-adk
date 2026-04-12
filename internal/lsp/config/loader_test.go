@@ -45,6 +45,38 @@ lsp:
         - .tsx
 `
 
+// sampleLSPYAMLWithExtensions is a fixture including the REQ-LM-004/008/001 fields.
+const sampleLSPYAMLWithExtensions = `
+lsp:
+  servers:
+    python:
+      command: pylsp
+      args: []
+      install_hint: "pip install python-lsp-server"
+      fallback_binaries:
+        - pyright-langserver
+        - basedpyright-langserver
+      project_markers:
+        - pyproject.toml
+        - requirements.txt
+      root_markers:
+        - pyproject.toml
+      file_extensions:
+        - .py
+    go:
+      command: gopls
+      args: []
+      install_hint: "go install golang.org/x/tools/gopls@latest"
+      fallback_binaries: []
+      project_markers:
+        - go.mod
+        - go.sum
+      root_markers:
+        - go.mod
+      file_extensions:
+        - .go
+`
+
 // writeTempYAML writes content to a temp file and returns the path.
 func writeTempYAML(t *testing.T, content string) string {
 	t.Helper()
@@ -241,5 +273,76 @@ func TestMergeInitOptions_BothNil(t *testing.T) {
 	}
 	if len(result) != 0 {
 		t.Errorf("result length = %d, want 0", len(result))
+	}
+}
+
+// TestLoad_InstallHint verifies install_hint is parsed from lsp.yaml (REQ-LM-004).
+func TestLoad_InstallHint(t *testing.T) {
+	t.Parallel()
+
+	path := writeTempYAML(t, sampleLSPYAMLWithExtensions)
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("Load error = %v", err)
+	}
+
+	py, ok := cfg.Servers["python"]
+	if !ok {
+		t.Fatal("Servers missing 'python'")
+	}
+	if py.InstallHint != "pip install python-lsp-server" {
+		t.Errorf("python.InstallHint = %q, want 'pip install python-lsp-server'", py.InstallHint)
+	}
+
+	go_, ok := cfg.Servers["go"]
+	if !ok {
+		t.Fatal("Servers missing 'go'")
+	}
+	if go_.InstallHint != "go install golang.org/x/tools/gopls@latest" {
+		t.Errorf("go.InstallHint = %q, want install command", go_.InstallHint)
+	}
+}
+
+// TestLoad_FallbackBinaries verifies fallback_binaries are parsed from lsp.yaml (REQ-LM-008).
+func TestLoad_FallbackBinaries(t *testing.T) {
+	t.Parallel()
+
+	path := writeTempYAML(t, sampleLSPYAMLWithExtensions)
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("Load error = %v", err)
+	}
+
+	py, ok := cfg.Servers["python"]
+	if !ok {
+		t.Fatal("Servers missing 'python'")
+	}
+	if len(py.FallbackBinaries) != 2 {
+		t.Errorf("python.FallbackBinaries length = %d, want 2", len(py.FallbackBinaries))
+	}
+	if len(py.FallbackBinaries) > 0 && py.FallbackBinaries[0] != "pyright-langserver" {
+		t.Errorf("python.FallbackBinaries[0] = %q, want 'pyright-langserver'", py.FallbackBinaries[0])
+	}
+}
+
+// TestLoad_ProjectMarkers verifies project_markers are parsed from lsp.yaml (REQ-LM-001).
+func TestLoad_ProjectMarkers(t *testing.T) {
+	t.Parallel()
+
+	path := writeTempYAML(t, sampleLSPYAMLWithExtensions)
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("Load error = %v", err)
+	}
+
+	py, ok := cfg.Servers["python"]
+	if !ok {
+		t.Fatal("Servers missing 'python'")
+	}
+	if len(py.ProjectMarkers) != 2 {
+		t.Errorf("python.ProjectMarkers length = %d, want 2", len(py.ProjectMarkers))
+	}
+	if len(py.ProjectMarkers) > 0 && py.ProjectMarkers[0] != "pyproject.toml" {
+		t.Errorf("python.ProjectMarkers[0] = %q, want 'pyproject.toml'", py.ProjectMarkers[0])
 	}
 }

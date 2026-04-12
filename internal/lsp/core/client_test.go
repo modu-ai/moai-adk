@@ -655,3 +655,53 @@ func TestClient_Shutdown_WithCapableServer(t *testing.T) {
 	}
 }
 
+// TestClient_Capabilities_ExposedViaInterface verifies that client.Capabilities()
+// returns the server capabilities parsed during the LSP initialize handshake (REQ-LM-009).
+func TestClient_Capabilities_ExposedViaInterface(t *testing.T) {
+	cfg := config.ServerConfig{Language: "go", Command: "gopls"}
+	fl := &fakeLauncher{}
+	ft := newFakeTransport()
+	ft.setCallResponse("initialize", json.RawMessage(`{
+		"capabilities": {
+			"textDocumentSync": 1,
+			"referencesProvider": true,
+			"definitionProvider": true
+		}
+	}`), nil)
+
+	c := NewClient(cfg,
+		WithLauncherFunc(fl.Launch),
+		WithTransportFactory(newFakeTransportFactory(ft).New),
+	)
+
+	ctx := context.Background()
+	if err := c.Start(ctx); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer func() { _ = c.Shutdown(ctx) }()
+
+	caps := c.Capabilities()
+	if !caps.ReferencesProvider {
+		t.Error("Capabilities().ReferencesProvider should be true")
+	}
+	if !caps.DefinitionProvider {
+		t.Error("Capabilities().DefinitionProvider should be true")
+	}
+	if !caps.DiagnosticProvider {
+		t.Error("Capabilities().DiagnosticProvider should be true (textDocumentSync=1)")
+	}
+}
+
+// TestClient_Capabilities_BeforeStart verifies Capabilities() returns empty defaults
+// when called before Start (safe nil-access).
+func TestClient_Capabilities_BeforeStart(t *testing.T) {
+	cfg := config.ServerConfig{Language: "go", Command: "gopls"}
+	c := NewClient(cfg)
+
+	// Before Start, Capabilities() should return zero-value ServerCapabilities
+	caps := c.Capabilities()
+	if caps.ReferencesProvider || caps.DefinitionProvider || caps.DiagnosticProvider {
+		t.Error("Capabilities() before Start should return all-false ServerCapabilities")
+	}
+}
+

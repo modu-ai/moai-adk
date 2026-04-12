@@ -34,6 +34,21 @@ type ServerConfig struct {
 	// When empty, rootUri is omitted (nil) from the initialize request.
 	// Set this to the project root when starting a client for a specific workspace.
 	RootDir string `yaml:"-"`
+
+	// InstallHint is a human-readable install command shown when the binary is missing (REQ-LM-004).
+	// Example: "go install golang.org/x/tools/gopls@latest"
+	InstallHint string `yaml:"install_hint"`
+
+	// FallbackBinaries is an ordered list of alternative server binaries to try when
+	// the primary Command is not found in PATH (REQ-LM-008).
+	// Tried in order; the first found binary is used.
+	FallbackBinaries []string `yaml:"fallback_binaries"`
+
+	// ProjectMarkers are filenames whose presence in the project root signals that
+	// this language server should be activated (REQ-LM-001, REQ-LM-002).
+	// Distinct from RootMarkers: RootMarkers identify the workspace root for LSP,
+	// while ProjectMarkers control whether the server is spawned at all.
+	ProjectMarkers []string `yaml:"project_markers"`
 }
 
 // ServersConfig is the root deserialization type for the lsp.servers section.

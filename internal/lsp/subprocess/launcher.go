@@ -20,6 +20,30 @@ import (
 // @MX:REASON: fan_in >= 3 — manager, CLI warn_and_skip handler, and test assertions all use errors.Is(err, ErrBinaryNotFound)
 var ErrBinaryNotFound = errors.New("subprocess: binary not found in PATH")
 
+// InstallHintError wraps ErrBinaryNotFound and carries the user-facing install hint
+// from lsp.yaml (REQ-LM-004). Callers may use errors.As to extract and log the hint.
+//
+// @MX:NOTE: [AUTO] InstallHintError — wraps ErrBinaryNotFound with install hint for user-facing messages
+type InstallHintError struct {
+	// Hint is the human-readable install command from lsp.yaml install_hint field.
+	Hint string
+	// Err is the underlying error (always wraps ErrBinaryNotFound).
+	Err error
+}
+
+// Error implements the error interface.
+func (e *InstallHintError) Error() string {
+	if e.Hint != "" {
+		return fmt.Sprintf("%v (install hint: %s)", e.Err, e.Hint)
+	}
+	return e.Err.Error()
+}
+
+// Unwrap allows errors.Is(err, ErrBinaryNotFound) to work through InstallHintError.
+func (e *InstallHintError) Unwrap() error {
+	return e.Err
+}
+
 // LaunchResult holds handles to the running language server subprocess.
 // All three pipe fields are guaranteed non-nil on successful launch.
 type LaunchResult struct {
@@ -53,8 +77,10 @@ func NewLauncher() *Launcher {
 // Launch starts the language server described by cfg in a new subprocess.
 //
 // Binary lookup uses exec.LookPath when cfg.Command is not an absolute path.
-// If the binary is not found, Launch returns ErrBinaryNotFound (warn_and_skip
-// pattern: caller logs and continues without the server — no panic).
+// If the primary binary is not found, fallback_binaries from cfg are tried in
+// order (REQ-LM-008). If all binaries are missing, Launch returns
+// ErrBinaryNotFound wrapped in an InstallHintError when cfg.InstallHint is set
+// (REQ-LM-004).
 //
 // Each launched server gets its own isolated stdin, stdout, and stderr pipes
 // to prevent I/O cross-contamination between servers (REQ-LC-005).
@@ -62,11 +88,31 @@ func NewLauncher() *Launcher {
 // The returned LaunchResult.Cmd is already started; callers MUST call
 // Cmd.Wait after the process is expected to exit to avoid zombie processes.
 func (l *Launcher) Launch(ctx context.Context, cfg config.ServerConfig) (*LaunchResult, error) {
-	// 바이너리 경로 결정: 절대 경로면 직접 사용, 아니면 PATH 탐색
-	binPath, err := resolveBinary(cfg.Command)
-	if err != nil {
-		return nil, fmt.Errorf("subprocess.Launch %q (language %q): %w",
+	// Try the primary command, then fallback_binaries in order (REQ-LM-008).
+	candidates := append([]string{cfg.Command}, cfg.FallbackBinaries...)
+	var binPath string
+	var resolveErr error
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		p, err := resolveBinary(candidate)
+		if err == nil {
+			binPath = p
+			break
+		}
+		resolveErr = err
+	}
+
+	if binPath == "" {
+		// All candidates failed. Wrap with InstallHintError when hint is available (REQ-LM-004).
+		notFound := fmt.Errorf("subprocess.Launch %q (language %q): %w",
 			cfg.Command, cfg.Language, ErrBinaryNotFound)
+		if cfg.InstallHint != "" {
+			return nil, &InstallHintError{Hint: cfg.InstallHint, Err: notFound}
+		}
+		_ = resolveErr
+		return nil, notFound
 	}
 
 	args := make([]string, len(cfg.Args))

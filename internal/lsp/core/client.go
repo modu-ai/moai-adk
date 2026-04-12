@@ -77,6 +77,10 @@ type Client interface {
 
 	// State returns the current lifecycle state of the client.
 	State() ClientState
+
+	// Capabilities returns the ServerCapabilities parsed from the LSP initialize response.
+	// Returns zero-value ServerCapabilities when called before Start (REQ-LM-009).
+	Capabilities() ServerCapabilities
 }
 
 // client is the concrete implementation of Client.
@@ -381,6 +385,12 @@ func (c *client) DidSave(ctx context.Context, path string) error {
 // State returns the current lifecycle state.
 func (c *client) State() ClientState {
 	return c.state.Current()
+}
+
+// Capabilities returns the ServerCapabilities parsed from the LSP initialize response
+// (REQ-LM-009). Returns a zero-value ServerCapabilities before Start completes.
+func (c *client) Capabilities() ServerCapabilities {
+	return c.serverCaps
 }
 
 // readWriteCloser combines a reader and writer into io.ReadWriteCloser for transport.

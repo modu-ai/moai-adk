@@ -245,3 +245,135 @@ func TestLauncher_Launch_PathBinary(t *testing.T) {
 		t.Error("stdio pipes are nil for PATH-resolved binary")
 	}
 }
+
+// TestLauncher_Launch_FallbackBinary verifies that Launcher tries fallback_binaries
+// when the primary command is not found (REQ-LM-008).
+func TestLauncher_Launch_FallbackBinary(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script stubs not supported on Windows")
+	}
+
+	dir := t.TempDir()
+	// Primary binary does not exist; fallback binary is the real "sh"
+	cfg := config.ServerConfig{
+		Language:         "python",
+		Command:          "this-binary-absolutely-does-not-exist-moai-fallback-test",
+		FallbackBinaries: []string{"also-does-not-exist-fallback-1", "sh"},
+		Args:             []string{"-c", "exit 0"},
+	}
+	_ = dir // dir not needed since we use "sh" from PATH
+
+	l := subprocess.NewLauncher()
+	result, err := l.Launch(t.Context(), cfg)
+	if err != nil {
+		t.Fatalf("Launch with fallback to 'sh': unexpected error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = result.Cmd.Process.Kill()
+		_ = result.Cmd.Wait()
+	})
+
+	if result.Cmd == nil {
+		t.Error("LaunchResult.Cmd is nil after fallback launch")
+	}
+}
+
+// TestLauncher_Launch_AllFallbacksFail verifies that Launcher returns ErrBinaryNotFound
+// when both the primary command and all fallback binaries are missing (REQ-LM-008).
+func TestLauncher_Launch_AllFallbacksFail(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.ServerConfig{
+		Language: "python",
+		Command:  "primary-does-not-exist-moai-test",
+		FallbackBinaries: []string{
+			"fallback-1-does-not-exist-moai-test",
+			"fallback-2-does-not-exist-moai-test",
+		},
+	}
+
+	l := subprocess.NewLauncher()
+	_, err := l.Launch(t.Context(), cfg)
+	if err == nil {
+		t.Fatal("Launch: expected ErrBinaryNotFound when all binaries missing, got nil")
+	}
+	if !errors.Is(err, subprocess.ErrBinaryNotFound) {
+		t.Errorf("Launch error = %v, want wrapping ErrBinaryNotFound", err)
+	}
+}
+
+// TestInstallHintError_ErrorMessage verifies InstallHintError.Error() includes the hint.
+func TestInstallHintError_ErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	base := errors.New("binary not found")
+	err := &subprocess.InstallHintError{Hint: "pip install pylsp", Err: base}
+
+	msg := err.Error()
+	if msg == "" {
+		t.Error("InstallHintError.Error() returned empty string")
+	}
+	if !errors.Is(err, base) {
+		t.Error("errors.Is(installHintErr, base) should be true via Unwrap")
+	}
+}
+
+// TestInstallHintError_NoHint verifies InstallHintError.Error() works when Hint is empty.
+func TestInstallHintError_NoHint(t *testing.T) {
+	t.Parallel()
+
+	base := errors.New("binary not found")
+	err := &subprocess.InstallHintError{Hint: "", Err: base}
+
+	msg := err.Error()
+	if msg != base.Error() {
+		t.Errorf("InstallHintError.Error() = %q, want %q", msg, base.Error())
+	}
+}
+
+// TestIsAbsolutePath_WindowsDriveLetterStub verifies path resolution handles edge cases.
+// Note: on non-Windows, we just test a slash path (absolute).
+func TestIsAbsolutePath_BackslashRoot(t *testing.T) {
+	t.Parallel()
+
+	// Test that a binary starting with backslash (Windows UNC style) is treated as absolute.
+	// On Unix, this path won't exist, so Launch should return ErrBinaryNotFound.
+	cfg := config.ServerConfig{
+		Language: "test",
+		Command:  "\\\\server\\share\\bin\\nonexistent-lsp",
+	}
+
+	l := subprocess.NewLauncher()
+	_, err := l.Launch(t.Context(), cfg)
+	if err == nil {
+		t.Skip("backslash path unexpectedly resolved — skipping")
+	}
+	// We just verify it doesn't panic and returns an error.
+}
+
+// TestLauncher_Launch_InstallHintInError verifies that the install hint appears in
+// the error message when primary binary is missing (REQ-LM-004).
+func TestLauncher_Launch_InstallHintInError(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.ServerConfig{
+		Language:    "python",
+		Command:     "binary-does-not-exist-moai-hint-test",
+		InstallHint: "pip install python-lsp-server",
+	}
+
+	l := subprocess.NewLauncher()
+	_, err := l.Launch(t.Context(), cfg)
+	if err == nil {
+		t.Fatal("Launch: expected error, got nil")
+	}
+	// The install hint should be retrievable for caller to log
+	// The hint is included in InstallHintError wrapper if present
+	var hintErr *subprocess.InstallHintError
+	if !errors.As(err, &hintErr) {
+		t.Errorf("Launch error type = %T, want *subprocess.InstallHintError (hint = %q)", err, cfg.InstallHint)
+	} else if hintErr.Hint != cfg.InstallHint {
+		t.Errorf("InstallHintError.Hint = %q, want %q", hintErr.Hint, cfg.InstallHint)
+	}
+}

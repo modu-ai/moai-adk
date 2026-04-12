@@ -65,6 +65,10 @@ func (f *fakeClient) State() ClientState {
 	return f.state
 }
 
+func (f *fakeClient) Capabilities() ServerCapabilities {
+	return ServerCapabilities{}
+}
+
 // fakeClientFactory는 fakeClient를 생성하는 팩토리 함수를 반환합니다.
 // spawnCount로 생성 횟수를 추적합니다.
 func fakeClientFactory(spawnCount *atomic.Int32, clients *[]*fakeClient, mu *sync.Mutex, startErr error) func(config.ServerConfig) Client {

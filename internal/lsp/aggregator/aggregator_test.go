@@ -37,6 +37,9 @@ func (f *fakeClient) GotoDefinition(_ context.Context, _ string, _ lsp.Position)
 	return nil, nil
 }
 func (f *fakeClient) State() core.ClientState { return core.StateReady }
+func (f *fakeClient) Capabilities() core.ServerCapabilities {
+	return core.ServerCapabilities{}
+}
 
 func (f *fakeClient) GetDiagnostics(_ context.Context, _ string) ([]lsp.Diagnostic, error) {
 	f.callCount++
@@ -162,6 +165,9 @@ func (b *blockingClient) GotoDefinition(_ context.Context, _ string, _ lsp.Posit
 	return nil, nil
 }
 func (b *blockingClient) State() core.ClientState { return core.StateReady }
+func (b *blockingClient) Capabilities() core.ServerCapabilities {
+	return core.ServerCapabilities{}
+}
 func (b *blockingClient) GetDiagnostics(_ context.Context, _ string) ([]lsp.Diagnostic, error) {
 	b.mu.Lock()
 	b.callCount++
@@ -203,6 +209,9 @@ func (e *errorClient) GotoDefinition(_ context.Context, _ string, _ lsp.Position
 	return nil, nil
 }
 func (e *errorClient) State() core.ClientState { return core.StateReady }
+func (e *errorClient) Capabilities() core.ServerCapabilities {
+	return core.ServerCapabilities{}
+}
 func (e *errorClient) GetDiagnostics(_ context.Context, _ string) ([]lsp.Diagnostic, error) {
 	return nil, e.err
 }
@@ -463,6 +472,9 @@ func (s *slowClient) GotoDefinition(_ context.Context, _ string, _ lsp.Position)
 	return nil, nil
 }
 func (s *slowClient) State() core.ClientState { return core.StateReady }
+func (s *slowClient) Capabilities() core.ServerCapabilities {
+	return core.ServerCapabilities{}
+}
 func (s *slowClient) GetDiagnostics(ctx context.Context, _ string) ([]lsp.Diagnostic, error) {
 	s.mu.Lock()
 	s.callCount++

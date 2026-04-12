@@ -120,3 +120,70 @@ func TestServersConfig_MultipleServers(t *testing.T) {
 		}
 	}
 }
+
+// TestServerConfig_InstallHint verifies InstallHint field is present and settable (REQ-LM-004).
+func TestServerConfig_InstallHint(t *testing.T) {
+	t.Parallel()
+
+	sc := config.ServerConfig{
+		Language:    "go",
+		Command:     "gopls",
+		InstallHint: "go install golang.org/x/tools/gopls@latest",
+	}
+
+	if sc.InstallHint != "go install golang.org/x/tools/gopls@latest" {
+		t.Errorf("InstallHint = %q, want install command", sc.InstallHint)
+	}
+}
+
+// TestServerConfig_FallbackBinaries verifies FallbackBinaries field is present (REQ-LM-008).
+func TestServerConfig_FallbackBinaries(t *testing.T) {
+	t.Parallel()
+
+	sc := config.ServerConfig{
+		Language:         "python",
+		Command:          "pylsp",
+		FallbackBinaries: []string{"pyright-langserver", "basedpyright-langserver"},
+	}
+
+	if len(sc.FallbackBinaries) != 2 {
+		t.Errorf("FallbackBinaries length = %d, want 2", len(sc.FallbackBinaries))
+	}
+	if sc.FallbackBinaries[0] != "pyright-langserver" {
+		t.Errorf("FallbackBinaries[0] = %q, want 'pyright-langserver'", sc.FallbackBinaries[0])
+	}
+}
+
+// TestServerConfig_ProjectMarkers verifies ProjectMarkers field is present (REQ-LM-001).
+func TestServerConfig_ProjectMarkers(t *testing.T) {
+	t.Parallel()
+
+	sc := config.ServerConfig{
+		Language:       "go",
+		Command:        "gopls",
+		ProjectMarkers: []string{"go.mod", "go.sum"},
+	}
+
+	if len(sc.ProjectMarkers) != 2 {
+		t.Errorf("ProjectMarkers length = %d, want 2", len(sc.ProjectMarkers))
+	}
+	if sc.ProjectMarkers[0] != "go.mod" {
+		t.Errorf("ProjectMarkers[0] = %q, want 'go.mod'", sc.ProjectMarkers[0])
+	}
+}
+
+// TestServerConfig_DefaultInstallHintEmpty verifies default zero-value has empty InstallHint.
+func TestServerConfig_DefaultInstallHintEmpty(t *testing.T) {
+	t.Parallel()
+
+	var sc config.ServerConfig
+	if sc.InstallHint != "" {
+		t.Errorf("default InstallHint = %q, want empty string", sc.InstallHint)
+	}
+	if sc.FallbackBinaries != nil {
+		t.Errorf("default FallbackBinaries = %v, want nil", sc.FallbackBinaries)
+	}
+	if sc.ProjectMarkers != nil {
+		t.Errorf("default ProjectMarkers = %v, want nil", sc.ProjectMarkers)
+	}
+}

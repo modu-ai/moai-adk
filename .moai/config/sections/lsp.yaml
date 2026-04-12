@@ -3,122 +3,283 @@
 # See that file for the full Architecture Decision Record.
 
 lsp:
-    gopls_bridge:
-        enabled: false
-        binary: gopls
-        args: []
-        init_options:
-            staticcheck: true
-            gofumpt: false
-            analyses:
-                unusedparams: true
-                shadow: true
-        project_markers:
-            - "go.mod"
-            - "go.sum"
-        lazy_init: true
-        timeouts:
-            initialize_seconds: 30
-            request_seconds: 5
-            shutdown_seconds: 5
-            diagnostics_debounce_ms: 150
-        install_hint: "go install golang.org/x/tools/gopls@latest"
+  # Master switch. Flip to true once the runtime LSP client lands
+  # (SPEC-LSP-CORE-002, re-designed with charmbracelet/powernap).
+  enabled: false
 
-    delegate_to_astgrep:
-        enabled: true
-        rules_dir: ".moai/config/astgrep-rules"
-        languages:
-            - go
-            - python
-            - typescript
-            - javascript
-            - rust
-            - java
-            - kotlin
-            - csharp
-            - ruby
-            - php
-            - elixir
-            - cpp
-            - scala
-            - r
-            - dart
-            - swift
+  # ---------------- 16 Language Server Matrix ----------------
+  # All 16 MoAI-supported languages, listed alphabetically, with
+  # identical schema. No language receives PRIMARY / SECONDARY /
+  # DEFERRED classification; the user's project_markers decide
+  # which servers actually spawn at runtime.
+  #
+  # Schema per entry:
+  #   binary               : Primary server executable
+  #   fallback_binaries    : Alternative servers if primary missing
+  #   args                 : Command-line arguments
+  #   init_options         : LSP initializationOptions for the server
+  #   project_markers      : Files that identify this language
+  #                          (LSP client spawns server only when a
+  #                          marker exists in the user's project)
+  #   install_hint         : Human-readable install command
+  #   license_concern      : "open" | "commercial" (user awareness)
+  servers:
 
-    future_servers:
-        python:
-            binary: pylsp
-            fallback_binaries: ["pyright-langserver", "basedpyright-langserver"]
-            status: "planned"
-        typescript:
-            binary: typescript-language-server
-            args: ["--stdio"]
-            status: "planned"
-        javascript:
-            binary: typescript-language-server
-            args: ["--stdio"]
-            status: "planned"
-        rust:
-            binary: rust-analyzer
-            status: "planned"
-        java:
-            binary: jdtls
-            status: "planned"
-        kotlin:
-            binary: kotlin-language-server
-            status: "planned"
-        csharp:
-            binary: omnisharp
-            args: ["-lsp"]
-            fallback_binaries: ["roslyn-ls"]
-            status: "planned"
-        ruby:
-            binary: ruby-lsp
-            fallback_binaries: ["solargraph"]
-            status: "planned"
-        php:
-            binary: phpactor
-            args: ["language-server"]
-            fallback_binaries: ["intelephense"]
-            status: "planned"
-        elixir:
-            binary: elixir-ls
-            fallback_binaries: ["lexical"]
-            status: "planned"
-        cpp:
-            binary: clangd
-            status: "planned"
-        scala:
-            binary: metals
-            status: "planned"
-        swift:
-            binary: sourcekit-lsp
-            status: "planned"
-        dart:
-            binary: dart
-            args: ["language-server", "--protocol=lsp"]
-            status: "planned"
-        r:
-            binary: R
-            args: ["--slave", "-e", "languageserver::run()"]
-            status: "planned"
+    cpp:
+      command: clangd
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "CMakeLists.txt"
+        - "compile_commands.json"
+        - "Makefile"
+      install_hint: "Install via LLVM distribution (brew install llvm / apt install clangd)"
+      license_concern: "open"
 
-    aggregator:
-        cache_ttl_seconds: 5
-        max_parallel_servers: 16
-        server_startup_timeout_seconds: 10
-        request_timeout_seconds: 5
-        diagnostic_pull_enabled: true
+    csharp:
+      command: omnisharp
+      fallback_binaries:
+        - "roslyn-ls"
+      args:
+        - "-lsp"
+      init_options: {}
+      project_markers:
+        - "*.csproj"
+        - "*.sln"
+        - "*.fsproj"
+      install_hint: "Install OmniSharp or Microsoft.CodeAnalysis.LanguageServer"
+      license_concern: "open"
 
-    discovery:
-        on_missing: "warn_and_skip"
-        auto_install_suggest: true
-        search_paths:
-            - "PATH"
-            - "node_modules/.bin"
-            - ".venv/bin"
-            - ".tools/bin"
+    elixir:
+      command: elixir-ls
+      fallback_binaries:
+        - "lexical"
+      args: []
+      init_options: {}
+      project_markers:
+        - "mix.exs"
+        - "mix.lock"
+      install_hint: "Install elixir-ls from https://github.com/elixir-lsp/elixir-ls"
+      license_concern: "open"
 
-    circuit_breaker:
-        threshold: 3
-        open_duration_seconds: 30
+    flutter:
+      command: dart
+      fallback_binaries: []
+      args:
+        - "language-server"
+        - "--protocol=lsp"
+      init_options: {}
+      project_markers:
+        - "pubspec.yaml"
+        - "pubspec.lock"
+      install_hint: "Install Dart SDK or Flutter SDK (dart binary provides language server)"
+      license_concern: "open"
+
+    go:
+      command: gopls
+      fallback_binaries: []
+      args: []
+      init_options:
+        staticcheck: true
+      project_markers:
+        - "go.mod"
+        - "go.sum"
+      install_hint: "go install golang.org/x/tools/gopls@latest"
+      license_concern: "open"
+
+    java:
+      command: jdtls
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "pom.xml"
+        - "build.gradle"
+        - "build.gradle.kts"
+      install_hint: "Install Eclipse JDT Language Server (jdtls)"
+      license_concern: "open"
+
+    javascript:
+      command: typescript-language-server
+      fallback_binaries: []
+      args:
+        - "--stdio"
+      init_options: {}
+      project_markers:
+        - "package.json"
+        - "jsconfig.json"
+      install_hint: "npm install -g typescript-language-server typescript"
+      license_concern: "open"
+
+    kotlin:
+      command: kotlin-language-server
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "build.gradle.kts"
+        - "build.gradle"
+        - "settings.gradle.kts"
+      install_hint: "Install from https://github.com/fwcd/kotlin-language-server"
+      license_concern: "open"
+
+    php:
+      command: phpactor
+      fallback_binaries:
+        - "intelephense"
+      args:
+        - "language-server"
+      init_options: {}
+      project_markers:
+        - "composer.json"
+        - "composer.lock"
+      install_hint: "Install phpactor from https://phpactor.readthedocs.io/"
+      license_concern: "open"
+
+    python:
+      command: pylsp
+      fallback_binaries:
+        - "pyright-langserver"
+        - "basedpyright-langserver"
+      args: []
+      init_options: {}
+      project_markers:
+        - "pyproject.toml"
+        - "setup.py"
+        - "requirements.txt"
+        - "Pipfile"
+      install_hint: "pip install python-lsp-server"
+      license_concern: "open"
+
+    r:
+      command: R
+      fallback_binaries: []
+      args:
+        - "--slave"
+        - "-e"
+        - "languageserver::run()"
+      init_options: {}
+      project_markers:
+        - "DESCRIPTION"
+        - ".Rproj"
+        - "renv.lock"
+      install_hint: "install.packages('languageserver') in R"
+      license_concern: "open"
+
+    ruby:
+      command: ruby-lsp
+      fallback_binaries:
+        - "solargraph"
+      args: []
+      init_options: {}
+      project_markers:
+        - "Gemfile"
+        - ".ruby-version"
+        - "Rakefile"
+      install_hint: "gem install ruby-lsp"
+      license_concern: "open"
+
+    rust:
+      command: rust-analyzer
+      fallback_binaries: []
+      args: []
+      init_options:
+        checkOnSave:
+          command: "clippy"
+      project_markers:
+        - "Cargo.toml"
+        - "Cargo.lock"
+      install_hint: "rustup component add rust-analyzer"
+      license_concern: "open"
+
+    scala:
+      command: metals
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "build.sbt"
+        - "build.sc"
+      install_hint: "Install metals from https://scalameta.org/metals/"
+      license_concern: "open"
+
+    swift:
+      command: sourcekit-lsp
+      fallback_binaries: []
+      args: []
+      init_options: {}
+      project_markers:
+        - "Package.swift"
+        - "*.xcodeproj"
+        - "*.xcworkspace"
+      install_hint: "Install Xcode Command Line Tools (includes sourcekit-lsp)"
+      license_concern: "open"
+
+    typescript:
+      command: typescript-language-server
+      fallback_binaries: []
+      args:
+        - "--stdio"
+      init_options: {}
+      project_markers:
+        - "tsconfig.json"
+        - "package.json"
+      install_hint: "npm install -g typescript-language-server typescript"
+      license_concern: "open"
+
+  # ---------------- ast-grep Delegation ----------------
+  # ast-grep / Tree-sitter provides AST analysis for ALL 16 languages.
+  # This is independent of LSP and serves as universal fallback /
+  # supplement. No language is excluded.
+  delegate_to_astgrep:
+    enabled: true
+    rules_dir: ".moai/config/astgrep-rules"
+    languages:
+      - cpp
+      - csharp
+      - elixir
+      - flutter
+      - go
+      - java
+      - javascript
+      - kotlin
+      - php
+      - python
+      - r
+      - ruby
+      - rust
+      - scala
+      - swift
+      - typescript
+
+  # ---------------- Aggregator Settings ----------------
+  # Applies equally to all 16 language servers.
+  aggregator:
+    cache_ttl_seconds: 5
+    max_parallel_servers: 16
+    server_startup_timeout_seconds: 30
+    request_timeout_seconds: 5
+    shutdown_timeout_seconds: 5
+    diagnostics_debounce_ms: 150
+    diagnostic_pull_enabled: true
+
+  # ---------------- Discovery Policy ----------------
+  # Graceful degradation: missing binaries warn, never error.
+  # Applies equally to all 16 languages.
+  discovery:
+    on_missing: "warn_and_skip"
+    auto_install_suggest: true
+    search_paths:
+      - "PATH"
+      - "node_modules/.bin"
+      - ".venv/bin"
+      - ".tools/bin"
+    auto_detect_language: true
+
+  # ---------------- Circuit Breaker ----------------
+  # Stop trying a failing server after N consecutive failures.
+  # Applies equally to all 16 languages.
+  circuit_breaker:
+    threshold: 3
+    open_duration_seconds: 30
