@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 )
 
 // jsonProtocol implements the Protocol interface using encoding/json.
@@ -78,25 +79,16 @@ func validateInput(input *HookInput) error {
 		input.HookEventName = string(EventUserPromptSubmit)
 	}
 
+	// session_id 누락 허용: Claude Code 버전에 따라 일부 이벤트에서 session_id가
+	// 전송되지 않는 경우가 있음. 훅 실행 실패보다 graceful fallback이 바람직함.
 	if input.SessionID == "" {
-		switch input.HookEventName {
-		case "PostToolUse", "PostToolUseFailure":
-			// Workaround for Claude Code bug: session_id may be absent in PostToolUse
-			// payloads when the hook fires for tools outside the matcher pattern.
-			input.SessionID = "unknown"
-		case string(EventUserPromptSubmit):
-			// Claude Code 2.1.97+ may omit session_id for UserPromptSubmit (issue #615).
-			input.SessionID = "unknown"
-		default:
-			return fmt.Errorf("%w: missing required field session_id", ErrHookInvalidInput)
-		}
+		input.SessionID = "unknown"
 	}
+	// cwd 누락 허용: $CLAUDE_PROJECT_DIR 환경변수로 폴백 가능.
+	// 훅 핸들러에서 cwd가 빈 경우 환경변수를 확인하도록 구현됨.
 	if input.CWD == "" {
-		switch input.HookEventName {
-		case string(EventUserPromptSubmit):
-			// CWD may be absent for UserPromptSubmit; handler falls back gracefully.
-		default:
-			return fmt.Errorf("%w: missing required field cwd", ErrHookInvalidInput)
+		if projectDir := os.Getenv("CLAUDE_PROJECT_DIR"); projectDir != "" {
+			input.CWD = projectDir
 		}
 	}
 	if input.HookEventName == "" {
