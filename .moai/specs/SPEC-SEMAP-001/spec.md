@@ -2,7 +2,7 @@
 spec_id: SPEC-SEMAP-001
 title: "SEMAP Behavioral Contracts"
 created: "2026-04-01"
-status: approved
+status: planned
 priority: high
 module: template
 version: "1.0.0"

@@ -2,7 +2,7 @@
 id: SPEC-UI-001
 title: Terminal UI Framework
 version: 0.1.0
-status: Completed
+status: completed
 created: 2026-02-03
 updated: 2026-02-03
 author: MoAI

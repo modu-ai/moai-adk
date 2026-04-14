@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-001
 title: Agent Skill Binding Reduction for Token Budget Optimization
 version: "1.0.0"
-status: approved
+status: planned
 created: "2026-03-30"
 updated: "2026-03-30"
 author: GOOS

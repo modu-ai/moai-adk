@@ -2,7 +2,7 @@
 spec_id: SPEC-SDD-001
 title: "SDD Integration (Harness + Delta + Compact)"
 created: "2026-04-01"
-status: implemented
+status: completed
 priority: high
 module: template
 version: "1.0.0"

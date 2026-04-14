@@ -2,7 +2,7 @@
 spec_id: SPEC-CORE-001
 title: Foundation Methodologies - Acceptance Criteria
 created: 2026-02-03
-status: Planned
+status: planned
 tags: [foundation, ears, languages, trust5, domain-patterns]
 ---
 

@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-EMBED-001
 title: Template Content and Binary Bundling
-status: Implemented
+status: completed
 priority: High
 phase: "Phase 2 - Core Domains (P0 Critical)"
 created: 2026-02-03

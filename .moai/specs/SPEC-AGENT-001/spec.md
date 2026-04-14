@@ -2,7 +2,7 @@
 id: SPEC-AGENT-001
 title: Agent Architecture Modernization - Anti-Triggers and Reference Skills
 version: "1.0.0"
-status: approved
+status: planned
 created: "2026-03-30"
 updated: "2026-03-30"
 author: GOOS

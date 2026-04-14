@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-EMBED-001
 title: Template Content and Binary Bundling - Acceptance Criteria
-status: Planned
+status: planned
 created: 2026-02-03
 tags: go-embed, templates, bundling, binary, deployment, init
 ---

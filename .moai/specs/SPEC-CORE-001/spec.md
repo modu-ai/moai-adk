@@ -2,7 +2,7 @@
 spec_id: SPEC-CORE-001
 title: Foundation Methodologies
 created: 2026-02-03
-status: Completed
+status: completed
 priority: Medium
 phase: "Phase 5 - Knowledge (Phase 1 과 병렬 구현 가능)"
 module: internal/foundation/

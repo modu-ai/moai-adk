@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-GIT-001
 title: Git Operations Module
-status: Completed
+status: completed
 priority: High
 phase: "Phase 2 - Core Domains"
 module: internal/core/git/

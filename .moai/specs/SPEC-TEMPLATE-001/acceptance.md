@@ -4,7 +4,7 @@
 spec_id: SPEC-TEMPLATE-001
 type: acceptance
 created: 2026-02-03
-status: Planned
+status: planned
 format: Given-When-Then (Gherkin)
 ---
 

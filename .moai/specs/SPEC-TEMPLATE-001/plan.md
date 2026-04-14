@@ -4,7 +4,7 @@
 spec_id: SPEC-TEMPLATE-001
 type: plan
 created: 2026-02-03
-status: Planned
+status: planned
 ---
 
 ## 1. 구현 전략

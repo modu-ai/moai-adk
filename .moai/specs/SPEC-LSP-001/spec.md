@@ -2,7 +2,7 @@
 id: SPEC-LSP-001
 title: Language Server Protocol Client System
 phase: "Phase 2 - Core Domains"
-status: Superseded
+status: superseded
 superseded_by: SPEC-LSP-CORE-002
 priority: High
 created: 2026-02-03

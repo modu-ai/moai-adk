@@ -2,7 +2,7 @@
 id: SPEC-HOOK-001
 title: Compiled Hook System
 version: "1.0.0"
-status: Completed
+status: completed
 created: 2026-02-03
 updated: 2026-02-03
 author: GOOS

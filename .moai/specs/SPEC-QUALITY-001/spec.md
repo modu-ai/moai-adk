@@ -3,7 +3,7 @@
 ---
 id: SPEC-QUALITY-001
 title: TRUST 5 Quality Gates
-status: Completed
+status: completed
 priority: High
 phase: "Phase 2 - Core Domains"
 module: internal/core/quality/

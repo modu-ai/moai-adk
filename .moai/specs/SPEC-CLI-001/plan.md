@@ -4,7 +4,7 @@
 spec_id: SPEC-CLI-001
 title: CLI Command Composition & Integration - Implementation Plan
 phase: "Phase 5 - CLI (Final, composition root)"
-status: Planned
+status: planned
 priority: Medium
 tags: [cli, composition-root, di-wiring, integration, migration, cobra, pkg]
 ---
