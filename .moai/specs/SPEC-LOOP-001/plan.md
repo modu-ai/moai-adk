@@ -1,7 +1,7 @@
 ---
 spec_id: SPEC-LOOP-001
 title: Ralph Feedback Loop Engine - Implementation Plan
-status: Planned
+status: planned
 priority: Medium-High
 tags:
   - loop

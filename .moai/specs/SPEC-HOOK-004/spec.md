@@ -2,7 +2,7 @@
 id: SPEC-HOOK-004
 title: LSP Diagnostics Integration
 version: "0.1.0"
-status: Draft
+status: draft
 created: 2026-02-04
 updated: 2026-02-04
 author: GOOS

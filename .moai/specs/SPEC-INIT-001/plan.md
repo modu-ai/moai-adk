@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-INIT-001
 title: Project Initialization & Detection - Implementation Plan
-status: Planned
+status: planned
 tags: [init, project, detection, wizard, bubbletea]
 ---
 

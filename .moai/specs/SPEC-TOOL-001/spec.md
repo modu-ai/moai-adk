@@ -4,7 +4,7 @@
 id: SPEC-TOOL-001
 title: AST-Grep & Performance Ranking Integration
 created: 2026-02-03
-status: Completed
+status: completed
 priority: Medium
 phase: "Phase 4 - UI and Integration"
 assigned: expert-backend

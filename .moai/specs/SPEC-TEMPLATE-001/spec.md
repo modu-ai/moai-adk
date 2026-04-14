@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-TEMPLATE-001
 title: Template Deployment & File Manifest System
-status: Completed
+status: completed
 priority: High
 phase: "Phase 1 - Foundation (P0 Critical)"
 created: 2026-02-03

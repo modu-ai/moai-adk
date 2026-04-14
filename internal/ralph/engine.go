@@ -6,8 +6,10 @@ package ralph
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 	"github.com/modu-ai/moai-adk/internal/loop"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
@@ -92,6 +94,10 @@ func (e *RalphEngine) Decide(_ context.Context, state *loop.LoopState, feedback 
 type ErrorLevel int
 
 const (
+	// ErrorLevelSkip is a sentinel for diagnostics that should be ignored
+	// (Severity=Information or Severity=Hint per REQ-LL-005).
+	ErrorLevelSkip ErrorLevel = 0
+
 	// ErrorLevelAutoFix indicates errors that can be fixed automatically
 	// (e.g., formatting, simple lint issues, unused imports).
 	ErrorLevelAutoFix ErrorLevel = 1
@@ -107,6 +113,12 @@ const (
 	// ErrorLevelManual indicates errors that require manual intervention
 	// (e.g., build failures, test infrastructure issues, env problems).
 	ErrorLevelManual ErrorLevel = 4
+
+	// ErrorLevelBlocker indicates compiler errors that must be resolved
+	// before any other action (REQ-LL-005: Severity=Error + Source=compiler).
+	// @MX:ANCHOR: [AUTO] ErrorLevelBlocker — highest-priority classification for compiler errors
+	// @MX:REASON: fan_in >= 3 — ClassifyFeedback, ClassifyFeedbackWithConfig, and tests all reference this constant; classification logic must remain consistent
+	ErrorLevelBlocker ErrorLevel = 5
 )
 
 // ClassifiedError pairs an error description with its severity level.
@@ -118,13 +130,39 @@ type ClassifiedError struct {
 
 // ClassifyFeedback analyzes feedback metrics and classifies the issues
 // into error levels for the decision engine.
+// When fb.LSPDiagnostics is non-empty, source-aware classification (REQ-LL-004/005)
+// is applied. When empty, integer-based classification is used as fallback (REQ-LL-008).
+//
+// @MX:ANCHOR: [AUTO] ClassifyFeedback — central classification entry point
+// @MX:REASON: fan_in >= 3 — LoopController, tests, RalphEngine, and external callers all invoke ClassifyFeedback; classification rules must remain stable
 func ClassifyFeedback(fb *loop.Feedback) []ClassifiedError {
+	return ClassifyFeedbackWithConfig(fb, config.RalphConfig{
+		LintAsInstruction: false,
+		WarnAsInstruction: false,
+	})
+}
+
+// ClassifyFeedbackWithConfig analyzes feedback metrics and classifies issues
+// using the provided ralph configuration flags (REQ-LL-006, REQ-LL-007).
+// When LintAsInstruction or WarnAsInstruction is true, warning-severity
+// diagnostics are treated as instruction-level input (no gate block).
+//
+// @MX:NOTE: [AUTO] LintAsInstruction/WarnAsInstruction influence classification severity
+func ClassifyFeedbackWithConfig(fb *loop.Feedback, cfg config.RalphConfig) []ClassifiedError {
 	if fb == nil {
 		return nil
 	}
 
 	var classified []ClassifiedError
 
+	// REQ-LL-004/005: If LSPDiagnostics is populated, use source-aware classification.
+	// REQ-LL-008: If empty, fall through to integer-based classification (backwards compat).
+	if len(fb.LSPDiagnostics) > 0 {
+		classified = append(classified, classifyLSPDiagnostics(fb.LSPDiagnostics, cfg)...)
+		return classified
+	}
+
+	// Backwards compatibility path (REQ-LL-008): integer-based classification.
 	// Lint errors are typically auto-fixable (Level 1).
 	if fb.LintErrors > 0 {
 		classified = append(classified, ClassifiedError{
@@ -156,17 +194,100 @@ func ClassifyFeedback(fb *loop.Feedback) []ClassifiedError {
 		})
 	}
 
-	// GOPLS-BRIDGE-001: LSP 진단이 있으면 심각도별로 분류한다.
-	// Error 심각도 진단은 수동 개입이 필요한 수준(Level 4)으로 분류한다.
-	// Warning 심각도 진단은 로그 기록 수준(Level 2)으로 분류한다.
-	// 기존 정수 기반 분류의 fallback 동작을 유지한다.
+	// GOPLS-BRIDGE-001: legacy gopls.Diagnostic classification (backwards compat).
+	// Kept for callers that still populate fb.Diagnostics directly.
 	classified = append(classified, classifyDiagnostics(fb.Diagnostics)...)
 
 	return classified
 }
 
-// classifyDiagnostics converts LSP diagnostics into ClassifiedError entries.
+// classifyLSPDiagnostics applies source-aware classification rules per REQ-LL-005:
+//
+//	Rule 1: Severity=Error  + Source=compiler         → ErrorLevelBlocker
+//	Rule 2: Severity=Error  + Source=staticcheck SA*   → ErrorLevelApproval
+//	Rule 3: Severity=Warning + Source=staticcheck      → ErrorLevelAutoFix
+//	Rule 4: Severity=Information                       → ErrorLevelSkip (omitted)
+//	Rule 5: Severity=Hint                              → ErrorLevelSkip (omitted)
+//
+// When cfg.LintAsInstruction or cfg.WarnAsInstruction is true, warning-severity
+// diagnostics are demoted to instruction-level (REQ-LL-006, REQ-LL-007).
+//
+// @MX:NOTE: [AUTO] 5-rule severity+source classification — rule order matters; compiler errors rank highest
+func classifyLSPDiagnostics(diags []lsp.Diagnostic, cfg config.RalphConfig) []ClassifiedError {
+	if len(diags) == 0 {
+		return nil
+	}
+
+	var blockerCount, approvalCount, autoFixCount, logOnlyCount int
+
+	for _, d := range diags {
+		switch d.Severity {
+		case lsp.SeverityError:
+			if d.Source == "compiler" {
+				// Rule 1: compiler errors are the highest priority blocker.
+				blockerCount++
+			} else if d.Source == "staticcheck" && strings.HasPrefix(d.Code, "SA") {
+				// Rule 2: staticcheck SA-class errors need approval.
+				approvalCount++
+			} else {
+				// Other error-level diagnostics need manual intervention.
+				approvalCount++
+			}
+		case lsp.SeverityWarning:
+			// REQ-LL-006: LintAsInstruction downgrades warnings to auto-fix instruction.
+			// REQ-LL-007: WarnAsInstruction also downgrades warnings.
+			if cfg.LintAsInstruction || cfg.WarnAsInstruction {
+				// Warning treated as instruction: auto-fix level (no gate block).
+				autoFixCount++
+			} else if d.Source == "staticcheck" {
+				// Rule 3: staticcheck warnings are auto-fixable.
+				autoFixCount++
+			} else {
+				// Other warnings are log-only.
+				logOnlyCount++
+			}
+		case lsp.SeverityInfo, lsp.SeverityHint:
+			// Rules 4 & 5: skip information and hints entirely.
+			continue
+		}
+	}
+
+	var result []ClassifiedError
+	if blockerCount > 0 {
+		result = append(result, ClassifiedError{
+			Level:       ErrorLevelBlocker,
+			Description: "compiler errors (LSP blocker)",
+			Count:       blockerCount,
+		})
+	}
+	if approvalCount > 0 {
+		result = append(result, ClassifiedError{
+			Level:       ErrorLevelApproval,
+			Description: "staticcheck errors requiring approval (LSP)",
+			Count:       approvalCount,
+		})
+	}
+	if autoFixCount > 0 {
+		result = append(result, ClassifiedError{
+			Level:       ErrorLevelAutoFix,
+			Description: "staticcheck warnings (LSP auto-fix)",
+			Count:       autoFixCount,
+		})
+	}
+	if logOnlyCount > 0 {
+		result = append(result, ClassifiedError{
+			Level:       ErrorLevelLogOnly,
+			Description: "diagnostic warnings (LSP)",
+			Count:       logOnlyCount,
+		})
+	}
+	return result
+}
+
+// classifyDiagnostics converts legacy gopls.Diagnostic entries into ClassifiedError.
 // Error severity maps to ErrorLevelManual, Warning to ErrorLevelLogOnly.
+// This function is kept for backwards compatibility with callers that populate
+// fb.Diagnostics directly (pre-REQ-LL-001 callers).
 func classifyDiagnostics(diags []gopls.Diagnostic) []ClassifiedError {
 	if len(diags) == 0 {
 		return nil

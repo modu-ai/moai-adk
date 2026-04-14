@@ -2,6 +2,41 @@ package loop
 
 import "github.com/modu-ai/moai-adk/internal/config"
 
+// IsStagnantWithDiagnostics returns true if stagnation is detected considering
+// both integer metrics and LSPDiagnostics count trends (REQ-LL-010).
+//
+// Stagnation is signaled when:
+//   - Integer metrics are unchanged (TestsFailed, LintErrors, Coverage) AND
+//     LSPDiagnostics count is the same or increasing (not decreasing).
+//
+// @MX:NOTE: [AUTO] Stagnation detector extended with diagnostic trend awareness (REQ-LL-010)
+func IsStagnantWithDiagnostics(prev, curr *Feedback) bool {
+	if prev == nil || curr == nil {
+		return false
+	}
+
+	// Check integer metric stagnation.
+	intStagnant := curr.TestsFailed == prev.TestsFailed &&
+		curr.LintErrors == prev.LintErrors &&
+		curr.Coverage == prev.Coverage
+
+	if !intStagnant {
+		return false
+	}
+
+	// REQ-LL-010: diagnostic count trending up is a stagnation signal.
+	// Decreasing diagnostics = improvement = NOT stagnant.
+	prevCount := len(prev.LSPDiagnostics)
+	currCount := len(curr.LSPDiagnostics)
+	if currCount < prevCount {
+		// Diagnostic count decreased: improvement detected, not stagnant.
+		return false
+	}
+
+	// Integer metrics unchanged and diagnostics are same or increasing: stagnant.
+	return true
+}
+
 // IsImproved returns true if the current feedback shows improvement
 // over the previous feedback in any metric: fewer test failures,
 // fewer lint errors, or higher coverage.

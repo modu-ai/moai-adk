@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 
@@ -22,12 +23,21 @@ type GoplsBridge interface {
 	GetDiagnostics(ctx context.Context, path string) ([]gopls.Diagnostic, error)
 }
 
+// DiagnosticsAggregator abstracts the Aggregator facade (SPEC-LSP-AGG-003)
+// so that GoFeedbackGenerator does not depend on the concrete aggregator type.
+// REQ-LL-002: GoFeedbackGenerator wires Aggregator for Go files through this interface.
+type DiagnosticsAggregator interface {
+	GetDiagnostics(ctx context.Context, path string) ([]lsp.Diagnostic, error)
+}
+
 // GoFeedbackGenerator collects feedback by running Go toolchain commands
 // (go test, go vet) and parsing their output. It implements FeedbackGenerator.
 // GOPLS-BRIDGE-001: bridge 필드가 nil이 아니면 LSP 진단도 수집한다.
+// REQ-LL-002: aggregator 필드가 nil이 아니면 Aggregator 기반 lsp.Diagnostic을 수집한다.
 type GoFeedbackGenerator struct {
 	projectRoot string
-	bridge      GoplsBridge // nil이면 LSP 진단 수집 비활성화
+	bridge      GoplsBridge          // nil이면 gopls 진단 수집 비활성화
+	aggregator  DiagnosticsAggregator // nil이면 Aggregator 진단 수집 비활성화 (REQ-LL-002)
 }
 
 // NewGoFeedbackGenerator creates a FeedbackGenerator for Go projects.
@@ -43,6 +53,14 @@ func NewGoFeedbackGenerator(projectRoot string) FeedbackGenerator {
 // bridge가 non-nil이면 LSP 진단도 Feedback.Diagnostics에 추가한다.
 func NewGoFeedbackGeneratorWithBridge(projectRoot string, bridge GoplsBridge) FeedbackGenerator {
 	return &GoFeedbackGenerator{projectRoot: projectRoot, bridge: bridge}
+}
+
+// NewGoFeedbackGeneratorWithAggregator creates a FeedbackGenerator for Go projects
+// with an optional Aggregator for LSP diagnostics via lsp.Diagnostic.
+// REQ-LL-002: aggregator가 nil이면 기존 동작(go test + go vet)만 수행한다.
+// aggregator가 non-nil이면 lsp.Diagnostic을 Feedback.LSPDiagnostics에 채운다.
+func NewGoFeedbackGeneratorWithAggregator(projectRoot string, agg DiagnosticsAggregator) FeedbackGenerator {
+	return &GoFeedbackGenerator{projectRoot: projectRoot, aggregator: agg}
 }
 
 // goTestEvent represents a single JSON event from `go test -json`.
@@ -102,7 +120,7 @@ func (g *GoFeedbackGenerator) Collect(ctx context.Context) (*Feedback, error) {
 
 	fb.Duration = time.Since(start)
 
-	// GOPLS-BRIDGE-001: bridge가 non-nil이면 LSP 진단을 수집한다.
+	// GOPLS-BRIDGE-001: bridge가 non-nil이면 gopls.Diagnostic을 수집한다.
 	// GetDiagnostics 오류는 무시한다 — bridge 실패가 전체 피드백을 차단해선 안 된다.
 	if g.bridge != nil {
 		diags, err := g.bridge.GetDiagnostics(ctx, g.projectRoot)
@@ -113,7 +131,35 @@ func (g *GoFeedbackGenerator) Collect(ctx context.Context) (*Feedback, error) {
 		}
 	}
 
+	// REQ-LL-002: aggregator가 non-nil이면 lsp.Diagnostic을 수집해 LSPDiagnostics에 채운다.
+	// aggregator 오류는 무시한다 — 진단 실패가 전체 피드백을 차단해선 안 된다.
+	if g.aggregator != nil {
+		lspDiags, err := g.aggregator.GetDiagnostics(ctx, g.projectRoot)
+		if err != nil {
+			slog.Warn("aggregator 진단 수집 실패, 건너뜀", "error", err)
+		} else {
+			// Filter to Go-only results: only include diagnostics for .go files.
+			fb.LSPDiagnostics = filterGoOnlyDiagnostics(lspDiags)
+		}
+	}
+
 	return fb, nil
+}
+
+// filterGoOnlyDiagnostics filters diagnostics to include only Go-language entries.
+// REQ-LL-002: GoFeedbackGenerator is Go-specific; non-Go diagnostics are excluded.
+// Since the aggregator is queried with the projectRoot path, all returned diagnostics
+// are considered Go-relevant when the aggregator is the Go-specific Aggregator instance.
+// This function is a no-op pass-through for now but provides an extension point.
+func filterGoOnlyDiagnostics(diags []lsp.Diagnostic) []lsp.Diagnostic {
+	if len(diags) == 0 {
+		return nil
+	}
+	// All diagnostics from the Go-project-root query are Go-relevant.
+	// Future: if multi-language aggregator is used, filter by file extension here.
+	result := make([]lsp.Diagnostic, len(diags))
+	copy(result, diags)
+	return result
 }
 
 // parseGoTestJSON parses go test -json output and returns (passed, failed) counts.

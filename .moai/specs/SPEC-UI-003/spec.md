@@ -2,7 +2,7 @@
 id: SPEC-UI-003
 title: TUI Modernization - huh, glamour, Advanced Layout
 version: 1.0.0
-status: Completed
+status: completed
 created: 2026-02-15
 updated: 2026-02-15
 author: MoAI

@@ -5,7 +5,7 @@
 spec_id: SPEC-UPDATE-001
 title: Global/Local Installation Mode Redesign
 created: 2026-02-21
-status: Planned
+status: planned
 priority: High
 assigned: manager-ddd
 related_specs: []

@@ -11,7 +11,9 @@ import (
 	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/loop"
 )
 
 // FileAnalyzer is the interface for performing AST-based code scanning on a single file.
@@ -37,6 +39,10 @@ type postToolHandler struct {
 	// cfg provides access to ralph configuration for lint_as_instruction (REQ-LAI-003).
 	// If nil, lint_as_instruction defaults to true.
 	cfg ConfigProvider
+	// feedbackCh is an optional bounded channel for emitting loop.Feedback events.
+	// REQ-LL-003: PostTool hook emits diagnostics to both systemMessage and this channel.
+	// If nil, channel emission is skipped (no-op).
+	feedbackCh *loop.FeedbackChannel
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -96,6 +102,32 @@ func NewPostToolHandlerWithConfig(diagnostics lsphook.LSPDiagnosticsCollector, a
 	}
 }
 
+// NewPostToolHandlerWithFeedbackChannel creates a PostToolUse handler that emits
+// diagnostics to both the agent systemMessage and the provided loop.FeedbackChannel.
+// REQ-LL-003: PostTool hook connects to LoopController via the feedback channel.
+// If feedbackCh is nil, channel emission is a no-op (backwards compatible).
+func NewPostToolHandlerWithFeedbackChannel(
+	diagnostics lsphook.LSPDiagnosticsCollector,
+	analyzer FileAnalyzer,
+	projectRoot string,
+	timeout time.Duration,
+	cfg ConfigProvider,
+	feedbackCh *loop.FeedbackChannel,
+) Handler {
+	var validator mx.Validator
+	if projectRoot != "" {
+		validator = mx.NewValidator(nil, projectRoot)
+	}
+	return &postToolHandler{
+		diagnostics: diagnostics,
+		analyzer:    analyzer,
+		mxValidator: validator,
+		mxTimeout:   timeout,
+		cfg:         cfg,
+		feedbackCh:  feedbackCh,
+	}
+}
+
 // EventType returns EventPostToolUse.
 func (h *postToolHandler) EventType() EventType {
 	return EventPostToolUse
@@ -135,11 +167,17 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	}
 
 	var systemMessage string
+	var collectedDiags []lsphook.Diagnostic
 
 	// Collect LSP diagnostics for Write/Edit operations (REQ-HOOK-150, REQ-HOOK-153).
 	// Also generates systemMessage if lint_as_instruction is enabled (REQ-LAI-001).
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.diagnostics != nil {
-		systemMessage = h.collectDiagnosticsWithInstruction(ctx, input, metrics)
+		systemMessage, collectedDiags = h.collectDiagnosticsWithInstructionAndReturn(ctx, input, metrics)
+	}
+
+	// REQ-LL-003: emit diagnostics to FeedbackChannel for LoopController consumption.
+	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.feedbackCh != nil {
+		h.emitToFeedbackChannel(collectedDiags)
 	}
 
 	// Perform AST file scan after Write/Edit operations (observation-only, never blocks).
@@ -352,21 +390,22 @@ func (h *postToolHandler) warnAsInstructionEnabled() bool {
 	return cfg.Ralph.WarnAsInstruction
 }
 
-// collectDiagnosticsWithInstruction collects LSP diagnostics for the modified file,
-// populates the metrics map (REQ-LAI-005, backward compatible), and returns a
-// formatted systemMessage string when lint_as_instruction is enabled (REQ-LAI-001).
-// This is observation-only and MUST NOT block per REQ-HOOK-153.
-func (h *postToolHandler) collectDiagnosticsWithInstruction(ctx context.Context, input *HookInput, metrics map[string]any) string {
+// collectDiagnosticsWithInstructionAndReturn collects LSP diagnostics for the
+// modified file, populates the metrics map (REQ-LAI-005), and returns a formatted
+// systemMessage string when lint_as_instruction is enabled (REQ-LAI-001), along
+// with the raw diagnostics for FeedbackChannel emission (REQ-LL-003).
+// Observation-only and MUST NOT block per REQ-HOOK-153.
+func (h *postToolHandler) collectDiagnosticsWithInstructionAndReturn(ctx context.Context, input *HookInput, metrics map[string]any) (string, []lsphook.Diagnostic) {
 	// Extract file path from tool input
 	var parsed map[string]any
 	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
 		slog.Debug("failed to parse tool input for diagnostics", "error", err)
-		return ""
+		return "", nil
 	}
 
 	filePath, ok := parsed["file_path"].(string)
 	if !ok || filePath == "" {
-		return ""
+		return "", nil
 	}
 
 	// Get diagnostics (observation only, never block)
@@ -376,7 +415,7 @@ func (h *postToolHandler) collectDiagnosticsWithInstruction(ctx context.Context,
 			"file_path", filePath,
 			"error", err,
 		)
-		return ""
+		return "", nil
 	}
 
 	// Calculate severity counts
@@ -409,10 +448,56 @@ func (h *postToolHandler) collectDiagnosticsWithInstruction(ctx context.Context,
 
 	// REQ-LAI-003: skip systemMessage injection when lint_as_instruction is false.
 	if !h.lintAsInstructionEnabled() {
-		return ""
+		return "", diagnostics
 	}
 
 	// REQ-LAI-001 / REQ-LAI-002 / REQ-LAI-004 / REQ-LAI-006 / REQ-LAI-007:
 	// Format diagnostics as an instruction for the AI.
-	return quality.FormatDiagnosticsAsInstructionWithFile(filePath, diagnostics, counts, h.warnAsInstructionEnabled())
+	msg := quality.FormatDiagnosticsAsInstructionWithFile(filePath, diagnostics, counts, h.warnAsInstructionEnabled())
+	return msg, diagnostics
+}
+
+// emitToFeedbackChannel converts collected lsphook.Diagnostic entries to
+// lsp.Diagnostic and emits a Feedback event to the feedback channel.
+// REQ-LL-003: observation-only, never blocks.
+func (h *postToolHandler) emitToFeedbackChannel(diags []lsphook.Diagnostic) {
+	if h.feedbackCh == nil || len(diags) == 0 {
+		return
+	}
+	lspDiags := convertHookDiagsToLSP(diags)
+	fb := loop.Feedback{
+		LSPDiagnostics: lspDiags,
+		Phase:          loop.PhaseImplement, // PostTool fires during implement phase
+	}
+	h.feedbackCh.Send(fb)
+}
+
+// convertHookDiagsToLSP converts lsphook.Diagnostic to lsp.Diagnostic.
+// lsphook uses string severity; lsp uses integer severity per LSP 3.17 spec.
+func convertHookDiagsToLSP(diags []lsphook.Diagnostic) []lsp.Diagnostic {
+	if len(diags) == 0 {
+		return nil
+	}
+	result := make([]lsp.Diagnostic, 0, len(diags))
+	for _, d := range diags {
+		lspDiag := lsp.Diagnostic{
+			Code:    d.Code,
+			Source:  d.Source,
+			Message: d.Message,
+		}
+		switch d.Severity {
+		case lsphook.SeverityError:
+			lspDiag.Severity = lsp.SeverityError
+		case lsphook.SeverityWarning:
+			lspDiag.Severity = lsp.SeverityWarning
+		case lsphook.SeverityInformation:
+			lspDiag.Severity = lsp.SeverityInfo
+		case lsphook.SeverityHint:
+			lspDiag.Severity = lsp.SeverityHint
+		default:
+			lspDiag.Severity = lsp.SeverityInfo
+		}
+		result = append(result, lspDiag)
+	}
+	return result
 }

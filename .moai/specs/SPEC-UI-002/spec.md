@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-UI-002
 title: Statusline Rendering
-status: Completed
+status: completed
 priority: Medium
 phase: "Phase 4 - UI and Integration"
 module: internal/statusline/

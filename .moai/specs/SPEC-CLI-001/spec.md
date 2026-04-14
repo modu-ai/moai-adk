@@ -4,7 +4,7 @@
 spec_id: SPEC-CLI-001
 title: CLI Command Composition & Integration
 phase: "Phase 5 - CLI (Final, composition root)"
-status: Completed
+status: completed
 priority: Medium
 created: 2026-02-03
 lifecycle: spec-anchored

@@ -2,7 +2,7 @@
 id: SPEC-HOOK-002
 title: Code Quality Automation
 version: "0.1.0"
-status: Draft
+status: draft
 created: 2026-02-04
 updated: 2026-02-04
 author: GOOS

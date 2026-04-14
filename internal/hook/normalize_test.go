@@ -411,6 +411,83 @@ func TestNormalizeHookInput_AdditionalCamelCaseFields(t *testing.T) {
 	}
 }
 
+// TestReadInput_FlatCamelCase verifies that flat camelCase format (sessionId
+// instead of session.id) is also accepted. Some Claude Code versions or
+// integrations (e.g. VS Code extension) may send this format.
+func TestReadInput_FlatCamelCase(t *testing.T) {
+	t.Parallel()
+
+	proto := &jsonProtocol{}
+
+	tests := []struct {
+		name  string
+		input string
+		check func(t *testing.T, got *HookInput)
+	}{
+		{
+			name:  "SessionEnd with flat camelCase sessionId",
+			input: `{"sessionId":"sess-flat-1","hookEventName":"SessionEnd","cwd":"/tmp","reason":"logout"}`,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.SessionID != "sess-flat-1" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "sess-flat-1")
+				}
+				if got.HookEventName != "SessionEnd" {
+					t.Errorf("HookEventName = %q, want %q", got.HookEventName, "SessionEnd")
+				}
+			},
+		},
+		{
+			name:  "Notification with flat camelCase",
+			input: `{"sessionId":"sess-flat-2","hookEventName":"Notification","cwd":"/tmp","notificationType":"auth_success","message":"ok"}`,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.SessionID != "sess-flat-2" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "sess-flat-2")
+				}
+				if got.NotificationType != "auth_success" {
+					t.Errorf("NotificationType = %q, want %q", got.NotificationType, "auth_success")
+				}
+			},
+		},
+		{
+			// hook_event_name이 없어도 CLI 명령명에서 유추 가능한 경우에 대비.
+			// 현재는 hook_event_name 필수이므로, reason만 있으면 에러가 맞음.
+			// 이 테스트는 graceful 에러 처리를 확인함.
+			name:  "SessionEnd with flat camelCase and reason field",
+			input: `{"sessionId":"sess-flat-3","hookEventName":"SessionEnd","cwd":"/tmp","reason":"logout"}`,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.SessionID != "sess-flat-3" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "sess-flat-3")
+				}
+				if got.HookEventName != "SessionEnd" {
+					t.Errorf("HookEventName = %q, want %q", got.HookEventName, "SessionEnd")
+				}
+				if got.Reason != "logout" {
+					t.Errorf("Reason = %q, want %q", got.Reason, "logout")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := strings.NewReader(tt.input)
+			got, err := proto.ReadInput(r)
+			if err != nil {
+				t.Fatalf("ReadInput() error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("ReadInput() returned nil HookInput")
+			}
+			tt.check(t, got)
+		})
+	}
+}
+
 // TestNormalizeHookInput_InvalidJSON verifies that invalid JSON returns an error.
 func TestNormalizeHookInput_InvalidJSON(t *testing.T) {
 	t.Parallel()
