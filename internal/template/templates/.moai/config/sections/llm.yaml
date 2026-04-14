@@ -22,3 +22,15 @@ llm:
       medium: "glm-4.7"       # Balanced performance
       low: "glm-4.5-air"      # Lightweight tasks (Z.ai official default)
 
+    # Optional: override the statusline context window gauge per GLM model
+    # (issue #653). Claude Code reports context_window_size based on the
+    # Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so
+    # the statusline over-reports headroom in GLM mode.
+    #
+    # Values are in tokens. Substring match: "glm-5.1" matches "glm-5.1[1m]".
+    # Set MOAI_STATUSLINE_CONTEXT_SIZE env for a one-shot override instead.
+    # context_windows:
+    #   glm-5.1: 230000
+    #   glm-4.7: 128000
+    #   glm-4.5-air: 128000
+

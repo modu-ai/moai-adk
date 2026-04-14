@@ -25,6 +25,13 @@ const (
 	// EnvStatuslineMode selects the statusline display mode.
 	EnvStatuslineMode = "MOAI_STATUSLINE_MODE"
 
+	// EnvStatuslineContextSize overrides the context window size used by the
+	// statusline gauge. Useful when the upstream provider reports a context
+	// size that does not match the actual API limit (e.g., GLM models served
+	// behind the Anthropic-compatible endpoint, see issue #653).
+	// Value is parsed as int (tokens). Zero or invalid → fall back to stdin.
+	EnvStatuslineContextSize = "MOAI_STATUSLINE_CONTEXT_SIZE"
+
 	// EnvSkipBinaryUpdate skips binary self-update when set to "1".
 	EnvSkipBinaryUpdate = "MOAI_SKIP_BINARY_UPDATE"
 
