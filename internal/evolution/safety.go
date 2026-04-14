@@ -47,8 +47,12 @@ func CheckFrozenGuard(targetFile string) error {
 	// Normalise the path separator.
 	target := filepath.ToSlash(strings.TrimSpace(targetFile))
 
-	// 절대 경로는 항상 거부 (예: /etc/passwd)
-	if filepath.IsAbs(targetFile) {
+	// 절대 경로는 항상 거부 (예: /etc/passwd, C:\Windows\...)
+	// Windows의 filepath.IsAbs는 "/foo"를 절대경로로 보지 않으므로
+	// Unix 스타일 절대경로(선행 /)와 Windows 스타일(선행 \)을 별도로 검사한다.
+	if filepath.IsAbs(targetFile) ||
+		strings.HasPrefix(targetFile, "/") ||
+		strings.HasPrefix(targetFile, `\`) {
 		return ErrFrozenPath
 	}
 
