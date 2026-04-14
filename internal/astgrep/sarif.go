@@ -3,6 +3,7 @@ package astgrep
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -108,10 +109,17 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 		}
 	}
 
+	// @MX:NOTE: rule ID 기준 오름차순 정렬로 결정적 출력 보장.
+	// Go map 반복 순서가 불확정적이어서 SARIF 출력이 실행마다 달라지면
+	// (1) Snapshot 테스트 불가 (2) GitHub Code Scanning diff 노이즈
+	// (3) CI 재현성 저하 문제가 발생하므로 정렬이 필수. (issue #644)
 	rules := make([]sarifRule, 0, len(ruleSet))
 	for _, r := range ruleSet {
 		rules = append(rules, r)
 	}
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
 
 	// results 변환
 	results := make([]sarifResult, 0, len(findings))
