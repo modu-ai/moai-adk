@@ -56,6 +56,39 @@ type ServerConfig struct {
 // @MX:ANCHOR: [AUTO] ServersConfig 최상위 설정 타입 — Load() 반환값이자 Manager 초기화 인자
 // @MX:REASON: fan_in >= 3 — config.Load 호출자들(Manager, CLI, 테스트)이 이 타입을 모두 참조
 type ServersConfig struct {
+	// ClientImpl selects which LSP client implementation handles language
+	// server communication (SPEC-LSP-CORE-002 AC10, REQ-LC-010).
+	//
+	// Accepted values: "gopls_bridge" (legacy Go-only bridge, SPEC-GOPLS-BRIDGE-001)
+	// and "powernap_core" (multi-language foundation, SPEC-LSP-CORE-002).
+	// Empty string is treated as the default "gopls_bridge".
+	//
+	// Runtime toggling without restart is an explicit SPEC requirement;
+	// Manager.Reload() consumers should re-read this value when the file
+	// changes. The initial value is captured at startup.
+	ClientImpl string `yaml:"client_impl"`
+
 	// Servers maps language identifier to its configuration.
 	Servers map[string]ServerConfig
+}
+
+// Valid LSP client implementations (REQ-LC-010).
+const (
+	ClientImplGoplsBridge = "gopls_bridge"
+	ClientImplPowernapCore = "powernap_core"
+)
+
+// ResolveClientImpl returns the effective client implementation, falling back
+// to the default "gopls_bridge" when the config value is empty or unknown.
+// @MX:NOTE: [AUTO] ResolveClientImpl — default resolution for SPEC-LSP-CORE-002 AC10 Feature Flag
+func (c *ServersConfig) ResolveClientImpl() string {
+	if c == nil {
+		return ClientImplGoplsBridge
+	}
+	switch c.ClientImpl {
+	case ClientImplGoplsBridge, ClientImplPowernapCore:
+		return c.ClientImpl
+	default:
+		return ClientImplGoplsBridge
+	}
 }

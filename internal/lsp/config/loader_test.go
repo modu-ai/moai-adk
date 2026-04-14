@@ -346,3 +346,68 @@ func TestLoad_ProjectMarkers(t *testing.T) {
 		t.Errorf("python.ProjectMarkers[0] = %q, want 'pyproject.toml'", py.ProjectMarkers[0])
 	}
 }
+
+// TestLoad_ClientImpl verifies that lsp.client_impl is parsed and surfaced
+// via ServersConfig (SPEC-LSP-CORE-002 AC10, REQ-LC-010).
+func TestLoad_ClientImpl(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		yaml  string
+		want  string
+		want2 string // ResolveClientImpl() result
+	}{
+		{
+			name:  "gopls_bridge explicit",
+			yaml:  "lsp:\n  client_impl: gopls_bridge\n  servers:\n    go: {command: gopls}\n",
+			want:  "gopls_bridge",
+			want2: "gopls_bridge",
+		},
+		{
+			name:  "powernap_core explicit",
+			yaml:  "lsp:\n  client_impl: powernap_core\n  servers:\n    go: {command: gopls}\n",
+			want:  "powernap_core",
+			want2: "powernap_core",
+		},
+		{
+			name:  "empty defaults to gopls_bridge",
+			yaml:  "lsp:\n  servers:\n    go: {command: gopls}\n",
+			want:  "",
+			want2: "gopls_bridge",
+		},
+		{
+			name:  "unknown value falls back to default",
+			yaml:  "lsp:\n  client_impl: unknown_impl\n  servers:\n    go: {command: gopls}\n",
+			want:  "unknown_impl",
+			want2: "gopls_bridge",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			path := writeTempYAML(t, tc.yaml)
+			cfg, err := config.Load(path)
+			if err != nil {
+				t.Fatalf("Load error = %v", err)
+			}
+			if cfg.ClientImpl != tc.want {
+				t.Errorf("ClientImpl = %q, want %q", cfg.ClientImpl, tc.want)
+			}
+			if got := cfg.ResolveClientImpl(); got != tc.want2 {
+				t.Errorf("ResolveClientImpl() = %q, want %q", got, tc.want2)
+			}
+		})
+	}
+}
+
+// TestResolveClientImpl_NilReceiver verifies defensive nil handling
+// (SPEC-LSP-CORE-002 AC10 defensive path).
+func TestResolveClientImpl_NilReceiver(t *testing.T) {
+	t.Parallel()
+	var cfg *config.ServersConfig
+	if got := cfg.ResolveClientImpl(); got != config.ClientImplGoplsBridge {
+		t.Errorf("nil receiver ResolveClientImpl() = %q, want %q", got, config.ClientImplGoplsBridge)
+	}
+}

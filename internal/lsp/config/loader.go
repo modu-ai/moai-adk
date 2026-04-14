@@ -8,10 +8,12 @@ import (
 )
 
 // lspYAMLRoot is the top-level YAML structure matching lsp.yaml.
-// Only the lsp.servers section is consumed; other top-level keys are ignored.
+// Only the lsp.client_impl + lsp.servers sections are consumed; other
+// top-level keys are ignored.
 type lspYAMLRoot struct {
 	LSP struct {
-		Servers map[string]ServerConfig `yaml:"servers"`
+		ClientImpl string                  `yaml:"client_impl"`
+		Servers    map[string]ServerConfig `yaml:"servers"`
 	} `yaml:"lsp"`
 }
 
@@ -46,7 +48,10 @@ func Load(path string) (*ServersConfig, error) {
 		servers[lang] = sc
 	}
 
-	return &ServersConfig{Servers: servers}, nil
+	return &ServersConfig{
+		ClientImpl: root.LSP.ClientImpl,
+		Servers:    servers,
+	}, nil
 }
 
 // MergeInitOptions merges src map entries into dst and returns the merged result.

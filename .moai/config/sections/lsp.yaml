@@ -7,6 +7,12 @@ lsp:
   # (SPEC-LSP-CORE-002, re-designed with charmbracelet/powernap).
   enabled: false
 
+  # Client implementation selector (SPEC-LSP-CORE-002 AC10, REQ-LC-010).
+  # Accepted values:
+  #   gopls_bridge  — legacy Go-only bridge (SPEC-GOPLS-BRIDGE-001). Default.
+  #   powernap_core — multi-language foundation (SPEC-LSP-CORE-002).
+  client_impl: gopls_bridge
+
   # ---------------- 16 Language Server Matrix ----------------
   # All 16 MoAI-supported languages, listed alphabetically, with
   # identical schema. No language receives PRIMARY / SECONDARY /

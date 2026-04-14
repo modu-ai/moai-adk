@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +14,11 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/lsp/config"
 )
+
+// ErrLSPMissingServers is returned by `moai lsp doctor` when one or more
+// language servers required by the project's detected languages are not
+// installed. Cobra surfaces this as a non-zero exit code (REQ-LM-007 AC4).
+var ErrLSPMissingServers = errors.New("lsp doctor: missing language servers for detected project languages")
 
 // LSPServerStatus represents the install status of a single language server.
 type LSPServerStatus struct {
@@ -58,23 +65,58 @@ var lspDoctorCmd = &cobra.Command{
   - Which languages the project uses
   - Which language servers are installed
   - Which servers are missing + install hints
-  - Aggregate readiness status`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("lsp doctor: get working directory: %w", err)
+  - Aggregate readiness status
+
+Exits with a non-zero status when any language server required by the
+detected project languages is missing (REQ-LM-007 AC4).`,
+	RunE: runLSPDoctor,
+}
+
+// lspDoctorJSON, when true, serialises the report as JSON instead of the
+// human-readable text format (REQ-LM-007 AC4).
+var lspDoctorJSON bool
+
+// runLSPDoctor executes `moai lsp doctor`, honouring the --json flag and
+// returning ErrLSPMissingServers when required language servers are missing.
+func runLSPDoctor(cmd *cobra.Command, _ []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("lsp doctor: get working directory: %w", err)
+	}
+	lspYAML := filepath.Join(cwd, ".moai", "config", "sections", "lsp.yaml")
+	report, err := runLSPDoctorReport(cwd, lspYAML)
+	if err != nil {
+		return fmt.Errorf("lsp doctor: %w", err)
+	}
+
+	out := cmd.OutOrStdout()
+	if lspDoctorJSON {
+		if err := renderLSPDoctorReportJSON(out, report); err != nil {
+			return fmt.Errorf("lsp doctor: json render: %w", err)
 		}
-		lspYAML := filepath.Join(cwd, ".moai", "config", "sections", "lsp.yaml")
-		report, err := runLSPDoctorReport(cwd, lspYAML)
-		if err != nil {
-			return fmt.Errorf("lsp doctor: %w", err)
-		}
-		renderLSPDoctorReport(cmd.OutOrStdout(), report)
-		return nil
-	},
+	} else {
+		renderLSPDoctorReport(out, report)
+	}
+
+	// Non-zero exit when any detected project language lacks its server.
+	// ReadinessStatus is "missing" when no required server is installed and
+	// "partial" when some are missing.
+	if report.ReadinessStatus == "missing" || report.ReadinessStatus == "partial" {
+		return ErrLSPMissingServers
+	}
+	return nil
+}
+
+// renderLSPDoctorReportJSON serialises the report as pretty-printed JSON
+// (REQ-LM-007 AC4). Machine-readable output for CI and tooling pipelines.
+func renderLSPDoctorReportJSON(w io.Writer, r *LSPDoctorReport) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(r)
 }
 
 func init() {
+	lspDoctorCmd.Flags().BoolVar(&lspDoctorJSON, "json", false, "Emit report as machine-readable JSON")
 	lspCmd.AddCommand(lspDoctorCmd)
 	rootCmd.AddCommand(lspCmd)
 }
