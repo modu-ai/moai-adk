@@ -12,6 +12,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
+// reLearningID matches the canonical learning ID format: LEARN-YYYYMMDD-NNN.
+// 형식 외의 ID는 경로 순회 등 보안 위험이 있으므로 거부한다.
+var reLearningID = regexp.MustCompile(`^LEARN-\d{8}-\d{3}$`)
+
+// validateLearningID checks that id matches the required LEARN-YYYYMMDD-NNN format.
+// Returns ErrInvalidLearningID if the format is not satisfied.
+func validateLearningID(id string) error {
+	if !reLearningID.MatchString(id) {
+		return ErrInvalidLearningID
+	}
+	return nil
+}
+
 // learningsDir returns the directory where learning files are stored.
 func learningsDir(projectRoot string) string {
 	return filepath.Join(projectRoot, defs.MoAIDir, defs.EvolutionSubdir, "learnings")
@@ -25,11 +38,18 @@ func learningFilePath(projectRoot, id string) string {
 // CreateLearning writes a new LearningEntry to disk.
 //
 // Preconditions:
+//   - The entry ID must match LEARN-YYYYMMDD-NNN format (보안: 경로 순회 방지).
 //   - The active learning count must be below MaxActiveLearnings.
 //   - The entry ID must not already exist.
 //
+// Returns ErrInvalidLearningID when the ID format is invalid.
 // Returns ErrMaxLearningsReached when the cap is hit.
 func CreateLearning(projectRoot string, entry *LearningEntry) error {
+	// ID 형식 검증: 경로 순회 및 임의 파일 덮어쓰기 방지
+	if err := validateLearningID(entry.ID); err != nil {
+		return err
+	}
+
 	dir := learningsDir(projectRoot)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("evolution: mkdir learnings: %w", err)
@@ -60,7 +80,11 @@ func CreateLearning(projectRoot string, entry *LearningEntry) error {
 
 // LoadLearningByID reads and parses the learning file identified by id.
 // Returns nil (no error) when the file does not exist.
+// Returns ErrInvalidLearningID when the ID format is invalid.
 func LoadLearningByID(projectRoot, id string) (*LearningEntry, error) {
+	if err := validateLearningID(id); err != nil {
+		return nil, err
+	}
 	path := learningFilePath(projectRoot, id)
 	return LoadLearning(path)
 }
@@ -80,7 +104,11 @@ func LoadLearning(path string) (*LearningEntry, error) {
 
 // UpdateLearning applies fn to the learning entry identified by id,
 // then persists the modified entry.
+// Returns ErrInvalidLearningID when the ID format is invalid.
 func UpdateLearning(projectRoot, id string, fn func(*LearningEntry)) error {
+	if err := validateLearningID(id); err != nil {
+		return err
+	}
 	path := learningFilePath(projectRoot, id)
 	entry, err := LoadLearning(path)
 	if err != nil {

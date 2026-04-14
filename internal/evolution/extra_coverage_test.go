@@ -30,7 +30,8 @@ func TestUpdateLearning_MissingID(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	err := evolution.UpdateLearning(projectRoot, "LEARN-NONEXISTENT", func(e *evolution.LearningEntry) {
+	// 유효한 형식이지만 존재하지 않는 ID
+	err := evolution.UpdateLearning(projectRoot, "LEARN-20260411-999", func(e *evolution.LearningEntry) {
 		e.Observations++
 	})
 	if err == nil {
@@ -44,13 +45,13 @@ func TestListLearnings_FilterByStatus(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	obs := sampleEntry("LEARN-20260411-F01")
+	obs := sampleEntry("LEARN-20260411-901")
 	obs.Status = evolution.StatusObservation
 	if err := evolution.CreateLearning(projectRoot, obs); err != nil {
 		t.Fatalf("create obs: %v", err)
 	}
 
-	rule := sampleEntry("LEARN-20260411-F02")
+	rule := sampleEntry("LEARN-20260411-902")
 	rule.Status = evolution.StatusRule
 	rule.Confidence = 0.9
 	rule.Observations = 5
@@ -70,16 +71,25 @@ func TestListLearnings_FilterByStatus(t *testing.T) {
 	}
 }
 
+
 // TestListLearnings_FilterBySkillID verifies skill-based filtering.
 func TestListLearnings_FilterBySkillID(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	for _, sk := range []string{"skill-a", "skill-b", "skill-b"} {
-		e := sampleEntry(fmt.Sprintf("LEARN-%s-%d", sk, time.Now().Nanosecond()%9999))
-		e.SkillID = sk
+	skillEntries := []struct {
+		id      string
+		skillID string
+	}{
+		{"LEARN-20260411-801", "skill-a"},
+		{"LEARN-20260411-802", "skill-b"},
+		{"LEARN-20260411-803", "skill-b"},
+	}
+	for _, se := range skillEntries {
+		e := sampleEntry(se.id)
+		e.SkillID = se.skillID
 		if err := evolution.CreateLearning(projectRoot, e); err != nil {
-			t.Fatalf("create %s: %v", sk, err)
+			t.Fatalf("create %s: %v", se.skillID, err)
 		}
 	}
 
@@ -242,7 +252,7 @@ func TestArchiveOldLearnings_NoExcess(t *testing.T) {
 	mustInitMoAI(t, projectRoot)
 
 	for i := 0; i < 3; i++ {
-		id := fmt.Sprintf("LEARN-20260411-AO%d", i)
+		id := fmt.Sprintf("LEARN-20260411-7%02d", i)
 		if err := evolution.CreateLearning(projectRoot, sampleEntry(id)); err != nil {
 			t.Fatalf("create: %v", err)
 		}
@@ -267,7 +277,7 @@ func TestCreateLearning_DuplicateIDOverwrite(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	e := sampleEntry("LEARN-20260411-DUP")
+	e := sampleEntry("LEARN-20260411-600")
 	if err := evolution.CreateLearning(projectRoot, e); err != nil {
 		t.Fatalf("first create: %v", err)
 	}

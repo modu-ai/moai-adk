@@ -155,6 +155,10 @@ var (
 	// ErrZoneNotFound is returned when the target evolvable zone cannot be
 	// located in the skill file.
 	ErrZoneNotFound = errors.New("evolution: evolvable zone not found in target file")
+
+	// ErrInvalidLearningID is returned when a learning ID does not match the
+	// required format LEARN-YYYYMMDD-NNN.
+	ErrInvalidLearningID = errors.New("evolution: invalid learning ID format (expected LEARN-YYYYMMDD-NNN)")
 )
 
 const (

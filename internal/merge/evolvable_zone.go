@@ -1,11 +1,16 @@
 package merge
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
 	"strings"
 )
+
+// ErrZoneNotFound is returned by ReplaceEvolvableZone when the specified zone
+// ID does not exist in the content.
+var ErrZoneNotFound = errors.New("merge: evolvable zone not found")
 
 // EvolvableZone represents a single evolvable zone within a file.
 // Evolvable zones are delimited by HTML comment markers that survive moai update.
@@ -241,4 +246,55 @@ func zoneContentMap(zones []EvolvableZone) map[string]string {
 // This is a cheap check used by the strategy selector.
 func HasEvolvableZones(content string) bool {
 	return reEvolvableStart.MatchString(content)
+}
+
+// ReplaceEvolvableZone returns content with the named zone's body replaced by
+// newZoneContent. Returns ErrZoneNotFound if zoneID does not exist.
+//
+// 이 함수는 3-way 병합이 아닌 직접 in-place 교체를 수행한다.
+// evolution Apply 경로에서 사용하도록 설계되었으며, MergeEvolvableZones와 달리
+// base/current/updated 세 버전이 아닌 단일 파일 내 특정 존만 교체한다.
+//
+// newZoneContent는 마커 줄을 포함하지 않는 순수 내용이다.
+// 결과물에서 존 시작 마커와 종료 마커 사이에 정확히 한 줄의 공백 없이 삽입된다.
+func ReplaceEvolvableZone(content, zoneID, newZoneContent string) (string, error) {
+	zones, err := ParseEvolvableZones(content)
+	if err != nil {
+		return "", fmt.Errorf("merge: parse zones for replacement: %w", err)
+	}
+
+	// 대상 존 검색
+	var target *EvolvableZone
+	for i := range zones {
+		if zones[i].ID == zoneID {
+			target = &zones[i]
+			break
+		}
+	}
+	if target == nil {
+		return "", ErrZoneNotFound
+	}
+
+	lines := strings.Split(content, "\n")
+
+	// target.StartLine: 시작 마커 줄 인덱스 (포함)
+	// target.EndLine: 종료 마커 줄 인덱스 (종료 마커 줄; 내용에는 미포함)
+	before := lines[:target.StartLine+1]    // 시작 마커까지 (포함)
+	after := lines[target.EndLine:]         // 종료 마커부터 (포함)
+
+	// 새 내용 구성: 마지막에 정확히 하나의 개행 보장
+	trimmedNew := strings.TrimRight(newZoneContent, "\n")
+
+	var sb strings.Builder
+	sb.WriteString(strings.Join(before, "\n"))
+	if trimmedNew != "" {
+		sb.WriteString("\n")
+		sb.WriteString(trimmedNew)
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString("\n")
+	}
+	sb.WriteString(strings.Join(after, "\n"))
+
+	return sb.String(), nil
 }

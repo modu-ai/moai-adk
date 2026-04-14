@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -21,16 +22,22 @@ var frozenPaths = []string{
 	"CLAUDE.md",
 	".claude/rules/moai/core/moai-constitution.md",
 	".claude/rules/moai/core/agent-common-protocol.md",
+	// Agency fork manifest는 헌법과 동급으로 불변 보호 대상
+	".agency/fork-manifest.yaml",
 }
 
 // frozenDirPrefixes contains directory prefixes whose contents are protected.
 var frozenDirPrefixes = []string{
 	".claude/rules/moai/core/",
+	// Agency 헌법 및 관련 규칙 전체 보호 (Agency Constitution §2 FROZEN Zone)
+	".claude/rules/agency/",
 }
 
 // CheckFrozenGuard reports whether targetFile is in the frozen zone.
 //
 // The check covers:
+//   - Absolute paths (항상 거부).
+//   - Paths containing ".." components after filepath.Clean (경로 순회 거부).
 //   - Exact path matches against frozenPaths.
 //   - Files inside frozen directory prefixes.
 //   - Targets with a ":frontmatter" suffix (YAML frontmatter modification).
@@ -40,16 +47,37 @@ func CheckFrozenGuard(targetFile string) error {
 	// Normalise the path separator.
 	target := filepath.ToSlash(strings.TrimSpace(targetFile))
 
+	// 절대 경로는 항상 거부 (예: /etc/passwd)
+	if filepath.IsAbs(targetFile) {
+		return ErrFrozenPath
+	}
+
+	// .. 컴포넌트를 포함한 경로 순회 시도 거부
+	// 원본 경로에 /../ 또는 /.. 종단이 있으면 경로 조작 시도로 판단
+	// filepath.Clean 이전 원본 슬래시 경로에서 직접 검사
+	if strings.Contains(target, "/../") ||
+		strings.HasSuffix(target, "/..") ||
+		strings.HasPrefix(target, "../") ||
+		target == ".." {
+		return ErrFrozenPath
+	}
+
+	// filepath.Clean 후에도 .. 로 시작하면 상위 탈출 시도
+	cleaned := filepath.ToSlash(filepath.Clean(target))
+	if strings.HasPrefix(cleaned, "../") || cleaned == ".." {
+		return ErrFrozenPath
+	}
+
 	// Frontmatter modification is always blocked.
 	if strings.HasSuffix(target, ":frontmatter") {
 		return ErrFrozenPath
 	}
 
 	// Strip any zone suffix (e.g. ":zone-id") for path comparison.
-	filePath := target
-	if idx := strings.LastIndex(target, ":"); idx > 0 {
+	filePath := cleaned
+	if idx := strings.LastIndex(cleaned, ":"); idx > 0 {
 		// Only strip if what precedes ":" is a valid file-path character sequence.
-		candidate := target[:idx]
+		candidate := cleaned[:idx]
 		if !strings.Contains(candidate, " ") {
 			filePath = candidate
 		}
@@ -71,6 +99,14 @@ func CheckFrozenGuard(targetFile string) error {
 
 	return nil
 }
+
+// rateMu guards the full Read→mutate→Write sequence in UpdateRateLimit.
+// Read와 Write 사이에 다른 고루틴이 끼어들면 카운터가 손실될 수 있으므로
+// 전체 시퀀스를 단일 락으로 보호한다.
+//
+// @MX:WARN: [AUTO] 전역 뮤텍스: 모든 UpdateRateLimit 호출이 직렬화됨
+// @MX:REASON: [AUTO] TOCTOU 경쟁 조건 방지; rate state 파일은 단일 writer 보장이 필요
+var rateMu sync.Mutex
 
 // rateStatePath returns the path to the rate-limit state file.
 func rateStatePath(projectRoot string) string {
@@ -192,7 +228,11 @@ func CheckFileCooldown(projectRoot, targetFile string) error {
 // it is reset before incrementing.
 //
 // targetFile may be empty to update only the weekly counter.
+// 경쟁 조건 방지를 위해 Read→mutate→Write 전체 시퀀스를 rateMu로 보호한다.
 func UpdateRateLimit(projectRoot, targetFile string) error {
+	rateMu.Lock()
+	defer rateMu.Unlock()
+
 	state, err := ReadRateState(projectRoot)
 	if err != nil {
 		state = &RateState{}

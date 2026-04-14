@@ -220,7 +220,7 @@ func TestMarshalUnmarshal_RoundTrip(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	entry := sampleEntry("LEARN-20260411-RT1")
+	entry := sampleEntry("LEARN-20260411-500")
 	entry.Observation = "test observation with special chars: <>&"
 	entry.Evidence = []evolution.EvidenceEntry{
 		{SessionID: "s1", Date: "2026-04-11", Context: "success: all good"},

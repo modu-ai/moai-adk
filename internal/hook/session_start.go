@@ -380,6 +380,18 @@ func ensureNewSkillSymlinks(projectDir string) int {
 		}
 
 		name := entry.Name()
+
+		// 이름 검증: 경로 순회, null 바이트, 슬래시, 백슬래시, 숨김 파일 거부
+		// TOCTOU 완화: ReadDir 결과 이름만 사용하고 직접 경로 조합하지 않음
+		if name == "" || name == "." || name == ".." ||
+			strings.ContainsAny(name, "/\\\x00") ||
+			strings.HasPrefix(name, ".") {
+			slog.Warn("ensureNewSkillSymlinks: 잘못된 스킬 이름 건너뜀",
+				"name", name,
+			)
+			continue
+		}
+
 		linkPath := filepath.Join(skillsDir, name)
 
 		// Check if a symlink (or directory copy) already exists.

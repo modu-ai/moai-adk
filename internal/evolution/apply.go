@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/merge"
 )
@@ -26,6 +27,20 @@ func ApplyProposal(projectRoot string, proposal *ProposedChange) error {
 	}
 
 	fullPath := filepath.Join(projectRoot, proposal.TargetFile)
+
+	// projectRoot 탈출 시도 검증: 정규화된 경로가 여전히 projectRoot 하위인지 확인
+	absRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("evolution: resolve project root: %w", err)
+	}
+	absTarget, err := filepath.Abs(fullPath)
+	if err != nil {
+		return fmt.Errorf("evolution: resolve target path: %w", err)
+	}
+	rel, err := filepath.Rel(absRoot, absTarget)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return fmt.Errorf("evolution: target file %q escapes project root", proposal.TargetFile)
+	}
 	original, err := os.ReadFile(fullPath)
 	if err != nil {
 		return fmt.Errorf("evolution: read target file %s: %w", fullPath, err)
@@ -37,29 +52,20 @@ func ApplyProposal(projectRoot string, proposal *ProposedChange) error {
 		return fmt.Errorf("evolution: write backup %s: %w", backupPath, err)
 	}
 
-	// Find the existing zone content and append to it.
-	zones, _ := merge.ParseEvolvableZones(string(original))
-	var existingContent string
-	for _, z := range zones {
-		if z.ID == proposal.ZoneID {
-			existingContent = z.Content
-			break
-		}
-	}
-	if existingContent == "" && len(zones) > 0 {
-		// Zone exists but is empty — that's fine, we'll just add the new content.
-		for _, z := range zones {
-			if z.ID == proposal.ZoneID {
-				existingContent = ""
-				break
-			}
-		}
+	// 기존 존 내용을 찾아 추가 내용을 붙인다.
+	// ParseEvolvableZones로 현재 존 내용을 읽은 후 proposal.Addition을 이어 붙이고,
+	// ReplaceEvolvableZone으로 파일 전체 구조(헤더/푸터)를 보존하며 존만 교체한다.
+	zones, parseErr := merge.ParseEvolvableZones(string(original))
+	if parseErr != nil {
+		return fmt.Errorf("evolution: parse evolvable zones: %w", parseErr)
 	}
 
-	// Check that the zone actually exists.
+	// 대상 존 존재 확인 및 기존 내용 추출
+	var existingContent string
 	found := false
 	for _, z := range zones {
 		if z.ID == proposal.ZoneID {
+			existingContent = z.Content
 			found = true
 			break
 		}
@@ -68,16 +74,18 @@ func ApplyProposal(projectRoot string, proposal *ProposedChange) error {
 		return ErrZoneNotFound
 	}
 
-	// Build new zone content: existing + separator + addition.
+	// 새 존 내용: 기존 내용 + 구분자 + 추가 내용
 	newContent := existingContent
-	if newContent != "" && len(newContent) > 0 && newContent[len(newContent)-1] != '\n' {
+	if newContent != "" && newContent[len(newContent)-1] != '\n' {
 		newContent += "\n"
 	}
 	newContent += proposal.Addition
 
-	updated, err := merge.MergeEvolvableZones(string(original), proposal.ZoneID, newContent)
+	// ReplaceEvolvableZone은 파일의 헤더/푸터를 보존하면서 특정 존만 교체한다.
+	// (이전 코드의 MergeEvolvableZones(original, zoneID, newContent) 오용을 수정)
+	updated, err := merge.ReplaceEvolvableZone(string(original), proposal.ZoneID, newContent)
 	if err != nil {
-		return fmt.Errorf("evolution: merge evolvable zones: %w", err)
+		return fmt.Errorf("evolution: replace evolvable zone: %w", err)
 	}
 
 	// Write atomically.
