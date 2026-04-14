@@ -89,3 +89,38 @@ Governs all code implementation decisions for AI Agency projects. Ensures consis
 ## Evolution Log
 
 - v1.0.0: Initial creation (Static Zone from Brand Context, empty Dynamic Zone)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will use whatever framework I know best" | The tech stack preference is a documented context. Using an unspecified framework creates maintenance burden for the project owner. |
+| "File structure does not matter, I will organize later" | File structure establishes conventions that every future file follows. Reorganizing later means moving and updating every import. |
+| "This coding convention is just a style preference" | Conventions reduce cognitive load for everyone who reads the code. Inconsistency forces readers to learn multiple patterns. |
+| "Component architecture is overkill for a small page" | Small pages grow. Architecture established early scales; architecture added late requires refactoring. |
+| "I will figure out the component boundary during implementation" | Component boundaries define reusability and testability. Figuring them out during implementation produces coupled, monolithic components. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Framework or library used that does not match `.agency/context/tech-preferences`
+- File structure deviates from the documented convention without justification
+- Components co-locate unrelated concerns (data fetching, presentation, business logic in one file)
+- No component boundary planning before implementation
+- Coding style inconsistent within the same file (mixed naming conventions, mixed patterns)
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Tech stack matches `.agency/context/tech-preferences` (show comparison)
+- [ ] File structure follows documented convention (show directory tree)
+- [ ] Components separate concerns (data, presentation, logic in distinct layers)
+- [ ] Component boundaries planned and documented before implementation
+- [ ] Coding conventions consistent across all files (naming, imports, exports)
+
+<!-- moai:evolvable-end -->

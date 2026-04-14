@@ -152,3 +152,39 @@ Format for future entries:
 
 Version: 3.2.0
 Last Updated: 2026-04-02
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The copy sounds fine to me, brand voice review is unnecessary" | Personal preference is not brand voice. Brand voice is a documented standard. Review against the standard, not your intuition. |
+| "Lorem ipsum placeholders are fine for now" | Placeholders persist into production more often than anyone admits. Write real copy from the start. |
+| "Marketing copy does not need structure, creativity is enough" | Structure (headline, subhead, body, CTA) guides the reader. Unstructured creative copy confuses instead of converting. |
+| "The CTA is obvious, I do not need to write it" | Missing CTAs mean missing conversions. Every section needs a clear next action for the reader. |
+| "I will adjust the tone after seeing it in the design" | Tone mismatches between copy and design require rework on both sides. Align tone with the brand voice spec first. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Copy deck contains Lorem ipsum or placeholder text
+- Brand voice attributes (tone, terminology) not referenced in copy decisions
+- Section copy missing headline-subhead-body-CTA structure
+- Copy deck not organized by page section matching the BRIEF structure
+- CTA text is generic ("Click here", "Learn more") instead of action-specific
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Copy deck covers every page section defined in the BRIEF
+- [ ] Brand voice attributes from `.agency/context/` referenced in copy decisions
+- [ ] Every section has headline, subhead, body, and CTA (where applicable)
+- [ ] No placeholder or Lorem ipsum text in the copy deck
+- [ ] Copy deck output in the contracted JSON format for downstream consumption
+- [ ] CTA text is specific and action-oriented
+
+<!-- moai:evolvable-end -->

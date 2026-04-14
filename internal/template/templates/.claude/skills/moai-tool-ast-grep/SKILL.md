@@ -242,3 +242,40 @@ For JSON output suitable for CI/CD, execute sg scan with config and json flag, r
 ## Reference
 
 For additional information, consult the AST-Grep Official Documentation at ast-grep.github.io, the AST-Grep GitHub Repository at github.com/ast-grep/ast-grep, the Pattern Playground at ast-grep.github.io/playground.html, and the Rule Configuration Reference at ast-grep.github.io/reference/yaml.html.
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Regex search is good enough for finding code patterns" | Regex matches text, not structure. Searching for `function` matches comments, strings, and variable names. AST matching is structural. |
+| "I will review the codemod output manually, dry-run is unnecessary" | Codemods at scale produce hundreds of changes. Manual review without dry-run misses edge cases in obscure files. |
+| "This rule is too strict, I will disable it globally" | Global disable hides all violations, including legitimate ones. Disable per-file with inline comments and justification. |
+| "ast-grep is overkill for a small refactor" | Small refactors across many files are exactly where ast-grep prevents missed occurrences. Manual find-replace misses variants. |
+| "The pattern works in the playground, it will work on the codebase" | Playground uses a single file context. Codebase patterns encounter language variants, file encodings, and edge cases. Always dry-run. |
+
+**Rule of 500**: For changes affecting more than 500 lines, automated structural search is more reliable than manual inspection. ast-grep provides the structural guarantee that regex cannot.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Codemod applied without dry-run output reviewed first
+- ast-grep rule disabled globally instead of per-file with justification
+- Regex used for structural code search when ast-grep pattern would be more precise
+- Pattern tested only in playground, not on actual codebase files
+- Codemod output not verified by running tests after application
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Dry-run output reviewed before applying codemod (show dry-run results)
+- [ ] Tests pass after codemod application (show test output)
+- [ ] Pattern validated on at least 3 representative files before bulk application
+- [ ] No ast-grep rules disabled globally without documented justification
+- [ ] Codemod diff reviewed for unintended changes (show diff summary)
+
+<!-- moai:evolvable-end -->

@@ -216,3 +216,38 @@ Module Deep Dives:
 External Resources: [reference.md](references/reference.md)
 
 Origin: Integrated from critical-thinking, brainstorm-diverge-converge, and ideation frameworks
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Brainstorming is for creative tasks, not engineering" | Engineering decisions have design space too. Diverge phase surfaces solutions that linear thinking misses. |
+| "I already evaluated this critically, I do not need the framework" | Unstructured evaluation skips dimensions. The framework ensures completeness across all assessment axes. |
+| "Deep questioning slows down the process" | Shallow answers produce shallow solutions. Deep questions reveal constraints the specification missed. |
+| "Converging on the first good idea is efficient" | The first good idea is often a local optimum. Spending 5 minutes on alternatives can find a global optimum. |
+| "This decision is reversible, I do not need rigorous thinking" | Reversible decisions still cost time to reverse. Rigorous thinking upfront prevents the reversal. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Architecture decision documented with only one option considered
+- Diverge phase produced fewer than 3 alternatives
+- Converge phase selected an option without evaluation criteria
+- Critical evaluation missing feasibility or risk dimension
+- Deep questioning stopped after one level of "why"
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Diverge phase produced at least 3 distinct alternatives
+- [ ] Converge phase used explicit evaluation criteria to select
+- [ ] Critical evaluation covers feasibility, risk, and impact dimensions
+- [ ] Deep questioning reached at least 3 levels for the primary question
+- [ ] Selected approach references the alternatives it was compared against
+
+<!-- moai:evolvable-end -->

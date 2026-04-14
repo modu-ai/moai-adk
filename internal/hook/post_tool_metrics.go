@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
 // taskMetrics holds the metrics embedded in a Task tool response.
@@ -31,6 +32,62 @@ type taskMetricsRecord struct {
 	TokensUsed      int     `json:"tokens_used"`
 	ToolUses        int     `json:"tool_uses"`
 	DurationSeconds float64 `json:"duration_seconds"`
+}
+
+// skillToolInput is the expected input shape for the Skill tool.
+// The "skill" field contains the skill name (skill_id).
+type skillToolInput struct {
+	Skill string `json:"skill"`
+	Args  string `json:"args,omitempty"`
+}
+
+// logSkillUsage records a Skill tool invocation to the daily telemetry file.
+// All errors are best-effort: logged with slog.Warn, never returned.
+// Storage: <projectRoot>/.moai/evolution/telemetry/usage-YYYY-MM-DD.jsonl
+func logSkillUsage(input *HookInput) {
+	projectRoot := resolveProjectRoot(input)
+	if projectRoot == "" {
+		slog.Debug("skill telemetry: skipping, no MoAI project root found",
+			"session_id", input.SessionID,
+			"cwd", input.CWD,
+		)
+		return
+	}
+
+	// Parse skill name and args from tool input.
+	// Only one JSON unmarshal — no duplicate parsing.
+	var si skillToolInput
+	if len(input.ToolInput) > 0 {
+		_ = json.Unmarshal(input.ToolInput, &si)
+	}
+	if si.Skill == "" {
+		// Cannot identify skill — skip recording.
+		slog.Debug("skill telemetry: no skill_id in tool input", "session_id", input.SessionID)
+		return
+	}
+
+	// Determine context hash from args (no PII — args are hashed, never stored raw).
+	contextHash := telemetry.HashContext(si.Args)
+
+	r := telemetry.UsageRecord{
+		Timestamp:   time.Now().UTC(),
+		SessionID:   input.SessionID,
+		SkillID:     si.Skill,
+		Trigger:     telemetry.TriggerExplicit,
+		ContextHash: contextHash,
+		AgentType:   input.AgentType,
+		Phase:       "none",
+		DurationMs:  0,
+		Outcome:     telemetry.OutcomeUnknown,
+	}
+
+	if err := telemetry.RecordSkillUsage(projectRoot, r); err != nil {
+		slog.Warn("skill telemetry: failed to record usage",
+			"skill_id", si.Skill,
+			"session_id", input.SessionID,
+			"error", err,
+		)
+	}
 }
 
 // resolveProjectRoot returns the MoAI project root for task metrics logging.

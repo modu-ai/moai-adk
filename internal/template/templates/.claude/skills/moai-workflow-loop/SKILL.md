@@ -194,3 +194,42 @@ Last Updated: 2026-01-11
 Status: Active
 Integration: Claude Code Hooks, LSP Protocol, AST-grep
 Skill Name: moai-workflow-loop (formerly moai-ralph)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will fix the remaining errors manually after the loop" | Manual follow-up means the loop did not finish its job. Errors left are errors shipped. |
+| "The loop hit max iterations, the remaining issues are minor" | Iteration limits exist for cost control, not as a quality seal. Report the unresolved list. |
+| "LSP warnings are not real errors" | Warnings that persist across iterations indicate ignored structural issues. Address or explicitly suppress. |
+| "I fixed the root cause, the other diagnostics will clear themselves" | Cascading fixes are not guaranteed. Run the diagnostic pass again and verify each resolution. |
+| "ast-grep rules are too strict for this codebase" | Rules reflect project conventions. Disable the specific rule with justification, do not skip the entire scan. |
+| "This iteration made no progress, I should stop" | Stagnation after 2 iterations triggers escalation, not silent exit. Follow the escalation protocol. |
+
+**Rule of 500**: Changes touching more than 500 lines deserve their own loop iteration with focused diagnostics. Large changes mask individual regressions.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Loop exits with unresolved errors and no stagnation report
+- Same diagnostic appears in consecutive iterations without being addressed
+- ast-grep scan disabled entirely instead of disabling specific rules
+- Loop runs without LSP baseline captured at iteration start
+- Manual code changes made between loop iterations without re-running diagnostics
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Every iteration recorded in progress log with error count delta
+- [ ] Final iteration shows zero errors or an explicit stagnation report
+- [ ] LSP baseline captured at loop start (show diagnostic count)
+- [ ] ast-grep scan ran at least once during the loop (show output)
+- [ ] Unresolved items documented with reasons they could not be fixed
+- [ ] No diagnostic count increased between consecutive iterations
+
+<!-- moai:evolvable-end -->

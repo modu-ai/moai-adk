@@ -233,3 +233,39 @@ Status: Active
 Version: 2.0.0 (Consolidated Platform Coverage)
 Last Updated: 2026-02-09
 Platforms: Auth0, Clerk, Firebase Auth
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Password-only auth is sufficient for an internal tool" | Internal tools are compromised via credential stuffing. MFA is the minimum for any tool with access to production data. |
+| "I will implement auth from scratch to avoid vendor lock-in" | Custom auth implementations are the leading source of security vulnerabilities. Use a proven provider and abstract the interface. |
+| "Session expiry can be long since users dislike re-login" | Long sessions increase the attack window for stolen tokens. Use short sessions with silent refresh. |
+| "Social login is just a convenience feature" | Social login delegates identity verification to identity providers. It reduces your attack surface for password storage. |
+| "WebAuthn/passkeys are too new to adopt" | Passkeys are supported by all major browsers and platforms. They eliminate phishing, which is the most common attack vector. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Authentication tokens stored in localStorage instead of httpOnly cookies
+- No MFA option available for accounts with elevated privileges
+- Session tokens have no expiry or refresh mechanism
+- Password reset flow does not invalidate existing sessions
+- OAuth redirect URI accepts wildcards or unvalidated values
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Tokens stored in httpOnly, Secure, SameSite cookies (not localStorage)
+- [ ] MFA enabled or available for all user accounts
+- [ ] Session expiry configured with automatic refresh mechanism
+- [ ] Password reset invalidates all existing sessions for the account
+- [ ] OAuth redirect URIs are exact-match validated (no wildcards)
+- [ ] Auth provider SDK version is current (show dependency version)
+
+<!-- moai:evolvable-end -->

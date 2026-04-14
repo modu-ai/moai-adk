@@ -256,6 +256,17 @@ Implementation guard: [HARD] During Phase 1 (Analysis and Planning), the manager
 
 ### Decision Point 1: Plan Approval
 
+<!-- moai:evolvable-start id="gate-run-1" -->
+### HUMAN GATE: Plan Approval
+
+**Previous phase output:** Analysis and implementation plan with task decomposition
+**Approval question:** Is the implementation plan correct and complete?
+**Cannot proceed until:**
+- [ ] Plan covers all SPEC acceptance criteria
+- [ ] Task decomposition respects Multi-File Decomposition rule (>3 files = split)
+- [ ] User has approved the approach
+<!-- moai:evolvable-end -->
+
 Tool: AskUserQuestion (at orchestrator level)
 
 Before presenting options, verify the plan against these criteria:
@@ -646,6 +657,18 @@ Mode-specific deployment:
 - CG mode: Leader performs evaluation inline
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
+
+<!-- moai:evolvable-start id="gate-run-2" -->
+### HUMAN GATE: Implementation Complete
+
+**Previous phase output:** Implementation with TRUST 5 validation passed
+**Approval question:** Is the implementation ready for git operations?
+**Cannot proceed until:**
+- [ ] All tests pass (show evidence)
+- [ ] TRUST 5 validation complete
+- [ ] @MX tags updated if needed
+- [ ] User has reviewed post-implementation issues list
+<!-- moai:evolvable-end -->
 
 ### Phase 2.8b: TRUST 5 Static Verification (manager-quality) [MANDATORY]
 

@@ -336,6 +336,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to sync profile to project config: %v\n", err)
 	}
 
+	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).
+	// This is also handled by template deployment, but scaffoldEvolutionDir ensures
+	// all required subdirectories and placeholder files are present even when the
+	// template fs doesn't track empty directories.
+	if err := scaffoldEvolutionDir(opts.ProjectRoot); err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to scaffold evolution directory: %v\n", err)
+	}
+
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to update global settings env: %v\n", err)

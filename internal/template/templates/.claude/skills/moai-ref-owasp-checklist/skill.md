@@ -114,3 +114,39 @@ triggers:
 | P1 | HIGH | Fix before merge | Missing authorization check |
 | P2 | MEDIUM | Fix within sprint | Weak password policy |
 | P3 | LOW | Track in backlog | Missing security header |
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "This is an internal application, OWASP does not apply" | Internal applications are reachable from compromised internal services. OWASP applies to all web applications. |
+| "The framework handles XSS protection" | Frameworks protect default rendering paths. Dynamic HTML insertion, innerHTML, and template literals bypass the protection. |
+| "We do not store sensitive data, so encryption is unnecessary" | Session tokens, API keys, and PII are sensitive data. If the application has users, it has sensitive data. |
+| "Security headers are just defense-in-depth, not critical" | Each security header blocks a specific attack class. Missing CSP enables XSS even when output is escaped. |
+| "I will do a security review before release" | Late security reviews find issues that are expensive to fix. Secure coding practices prevent them from the start. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- User input rendered in HTML without escaping or sanitization
+- SQL query built with string concatenation instead of parameterized queries
+- Authentication token stored in localStorage instead of httpOnly cookie
+- Missing Content-Security-Policy header on response
+- Secrets (API keys, passwords) found in source code or configuration files committed to git
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] OWASP Top 10 checklist reviewed for the change (show which items were evaluated)
+- [ ] User input sanitized before rendering in HTML output
+- [ ] All database queries use parameterized statements
+- [ ] Security headers present (CSP, X-Frame-Options, X-Content-Type-Options)
+- [ ] No secrets found in source code (show grep results for common secret patterns)
+- [ ] Authentication tokens use httpOnly, Secure, SameSite cookie attributes
+
+<!-- moai:evolvable-end -->

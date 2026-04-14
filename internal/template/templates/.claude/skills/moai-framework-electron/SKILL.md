@@ -277,3 +277,39 @@ For latest documentation, use Context7 to query:
 Version: 2.0.0
 Last Updated: 2026-01-10
 Changes: Restructured to comply with CLAUDE.md Documentation Standards - removed all code examples, converted to narrative text format
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I can use Node.js APIs directly in the renderer process" | Renderer process runs untrusted content. Direct Node.js access is a remote code execution vector. Use IPC through the preload bridge. |
+| "contextIsolation is unnecessary since I trust my own code" | Context isolation prevents prototype pollution from web content reaching Node.js. It is not about trusting your code, it is about isolating contexts. |
+| "Auto-update can be configured after release" | Shipping without auto-update means users stay on vulnerable versions. Configure it before the first release. |
+| "I will package the app later, development builds are enough for testing" | Development builds have different file paths, permissions, and code signing. Only production-packaged builds reveal real distribution issues. |
+| "IPC is slow, I will share state through global variables" | IPC overhead is microseconds. Global variables bypass process isolation, which exists for security. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- nodeIntegration set to true in BrowserWindow options
+- contextIsolation set to false without documented security justification
+- Renderer process imports directly from electron or node modules (bypass preload)
+- No auto-update mechanism configured
+- IPC handler does not validate or sanitize arguments from renderer
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] nodeIntegration is false and contextIsolation is true in all BrowserWindows
+- [ ] All renderer-to-main communication uses contextBridge and IPC
+- [ ] IPC handlers validate input arguments before processing
+- [ ] Auto-update configured and tested (show update configuration)
+- [ ] Application packages successfully with Electron Forge (show build output)
+- [ ] No direct require('electron') in renderer process code
+
+<!-- moai:evolvable-end -->
