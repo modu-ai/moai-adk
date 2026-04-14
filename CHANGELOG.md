@@ -5,6 +5,210 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.3] - 2026-04-14
+
+### Summary
+
+LSP SPEC suite rollout (5 completed SPECs: CORE-002, AGG-003, QGATE-004, LOOP-005, MULTI-006) + critical AC implementations (Feature Flag, `--json`/exit code) + SPEC status enum standardization across 28 SPECs. Statusline fixes: rate_limits skip prevents intermittent disappearance, GLM context-window override prevents 1M gauge mis-display. Quality gate: Flutter project detection, SARIF deterministic ordering, V2 gate tests. Routing: `--team` flag now correctly loads `team/*.md` workflows for plan/run/sync.
+
+### Breaking Changes
+
+None. All changes are additive or bug fixes. `lsp.client_impl: gopls_bridge` default maintains existing behavior.
+
+### Added
+
+#### LSP Infrastructure (SPEC-LSP-CORE-002, AGG-003, QGATE-004, LOOP-005, MULTI-006)
+
+- **SPEC-LSP-CORE-002** — powernap-based multi-language LSP client foundation (6 sprints, 91-94% coverage)
+  - `internal/lsp/core/`: Client, Manager, Document, Lifecycle State Machine, Capability Negotiation
+  - `internal/lsp/subprocess/`: Supervisor, Launcher with graceful degradation
+  - `internal/lsp/transport/`: JSON-RPC 2.0 codec via powernap
+  - Manager: Lazy Spawn + Idle Reaper
+  - **AC10 Feature Flag**: `lsp.client_impl` config key selects between `gopls_bridge` (SPEC-GOPLS-BRIDGE-001) and `powernap_core` (SPEC-LSP-CORE-002)
+- **SPEC-LSP-AGG-003** — Diagnostic Aggregator + TTL Cache
+  - `internal/lsp/cache/`: TTL cache with Get/Set/Invalidate (87.9% coverage)
+  - `internal/lsp/aggregator/`: Parallel diagnostic collection with circuit breaker (96.8% coverage)
+- **SPEC-LSP-QGATE-004** — Phase-aware LSP quality gates (plan/run/sync thresholds)
+- **SPEC-LSP-LOOP-005** — Loop/Ralph LSP integration (Go-only)
+  - `internal/ralph/`: Severity classification for LSP diagnostics
+  - FeedbackChannel for PostTool → LoopController routing
+  - Stagnation detection
+- **SPEC-LSP-MULTI-006** — 16-language LSP server matrix with install hints + project_markers discovery
+  - **AC4**: `moai lsp doctor --json` flag for machine-readable output
+  - **AC4**: Non-zero exit code when required servers are missing
+
+#### ast-grep Modernization (SPEC-ASTG-UPGRADE-001)
+
+- `internal/astgrep/`: Full scanner package with SARIF output, rules loader, CLI wrapper
+- `moai ast-grep` CLI command with `--json`, `--sarif`, `--text` output formats
+- Pre-configured rule sets: security (OWASP/CWE), Go idioms, error handling, resource safety
+- `RunAstGrepGateV2` quality gate integrated with Phase-aware LSP gates
+
+#### gopls Bridge (SPEC-GOPLS-BRIDGE-001)
+
+- `internal/lsp/gopls/`: Go-only subprocess bridge as fallback path
+- Coexistence: `lsp.client_impl` config toggles between bridge and powernap core
+
+#### Statusline Improvements
+
+- **GLM context window override** (#653): 4-tier priority resolver
+  - `MOAI_STATUSLINE_CONTEXT_SIZE` env → `llm.yaml glm.context_windows` map → built-in table → stdin fallback
+  - Built-in defaults for 6 GLM models: glm-5.1, glm-5, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air
+  - Addresses 1M gauge mis-display in GLM mode (actual limit 128-230K)
+- **`glm.context_windows` field** in `.moai/config/sections/llm.yaml` for per-model overrides
+- `EnvStatuslineContextSize = "MOAI_STATUSLINE_CONTEXT_SIZE"` constant
+
+#### Flutter Quality Gate Support (#652)
+
+- `resolveDartFlutter()` + `isFlutterProject()` dynamic pubspec.yaml analysis
+- Flutter SDK detection → `flutter test` / `flutter analyze`
+- Pure Dart CLI projects retain `dart test` / `dart analyze` (no regression)
+
+#### Other
+
+- Simplify workflow Phase 0.05 integration into sync pipeline (SPEC-HOOKWAVE-001)
+- Output styles v5.0.0: MoAI+R2D2 merge + Einstein tutor
+- Orchestrator Self-Check §24 HARD rule in CLAUDE.local.md
+- Delta Marker Detection + Complexity Estimator (SPEC-SDD-001)
+- Evaluator Prompt Library 4 profiles (SPEC-EVALLIB-001)
+- plan-auditor agent for bias-prevention SPEC reviews
+
+### Changed
+
+- **SPEC status enum standardized** across 28 SPECs (42% of SPEC inventory)
+  - `Completed` → `completed`, `Draft` → `draft`, `Planned` → `planned`, `Superseded` → `superseded`
+  - `Implemented`/`implemented` → `completed`, `approved` → `planned`
+- SPEC-LSP-001 marked `superseded` (superseded by SPEC-LSP-CORE-002)
+- `internal/statusline/builder.go` `collectAll()`: skip usageProvider when stdin has `rate_limits` (prevents 5s HTTP timeout → statusline disappearance)
+- SARIF `tool.driver.rules` array sorted deterministically (#644 fix)
+- Hook event naming: `Stop` → `SubagentStop` across 14 agent definitions
+- `internal/hook/quality/gate.go` Dart/Flutter detection: now inspects pubspec.yaml content
+- Quality gate V2 (`RunAstGrepGateV2`) gains unit test coverage (#645)
+
+### Fixed
+
+- **#626**: `--team` flag now correctly loads `team/*.md` workflows for `/moai run|plan|sync|fix|mx`. Previously only `review` subcommand honored team routing
+- **#644**: SARIF `tool.driver.rules` array had non-deterministic order due to Go map iteration; now `sort.Slice` by rule ID
+- **#645**: `RunAstGrepGateV2` quality gate had no unit tests; added table-driven test coverage
+- **#646**: Statusline intermittent disappearance caused by blocking Anthropic OAuth API calls (5s timeout on cache miss). Fix: skip usage collector when Claude Code (2.1.80+) already provides `rate_limits` via stdin
+- **#652**: Quality gate used `dart test` for Flutter projects, causing commit blocks. Fix: detect Flutter SDK in pubspec.yaml and use `flutter test` + `flutter analyze`
+- **#653**: Statusline context gauge showed 1M for GLM models that actually have 128-230K limit. Fix: 4-tier priority resolver with GLM model detection
+- `/login`, `/logout` hang in hook system (flat camelCase support + graceful validation)
+
+### Removed
+
+- None
+
+### Security
+
+- ast-grep security rules for OWASP/CWE patterns integrated into quality gate
+
+### Installation & Update
+
+```bash
+go install github.com/modu-ai/moai-adk/cmd/moai@v2.10.3
+# or
+moai update
+```
+
+### Pull Requests Merged
+
+- #648 fix(statusline): skip usage collector when stdin rate_limits present
+- #649 sync(v2.10.3): LSP suite + AC10/AC4 critical fixes + SPEC enum standardization
+- #650 fix(astgrep): SARIF tool.driver.rules 결정적 순서 보장
+- #651 test(quality): add unit tests for RunAstGrepGateV2 quality gate
+- #654 fix(routing): --team 플래그가 team/*.md 워크플로우를 로드하도록 수정
+- #655 fix(statusline): GLM 모드 컨텍스트 게이지 1M 오표시
+- #656 fix(quality): Flutter 프로젝트에서 dart test 대신 flutter test 사용
+
+### Closed Issues
+
+#626, #641 (meta), #644, #645, #646, #652, #653
+
+---
+
+## [2.10.3] - 2026-04-14 (한국어)
+
+### 요약
+
+LSP SPEC suite 출시 (완료 SPEC 5개: CORE-002, AGG-003, QGATE-004, LOOP-005, MULTI-006) + 핵심 AC 구현(Feature Flag, `--json`/exit code) + 28개 SPEC status enum 표준화. Statusline 수정: rate_limits skip으로 간헐적 사라짐 방지, GLM context window override로 1M 게이지 오표시 차단. Quality gate: Flutter 프로젝트 감지, SARIF 결정적 정렬, V2 gate 테스트. 라우팅: `--team` 플래그가 plan/run/sync에서도 `team/*.md` 워크플로우를 올바르게 로드.
+
+### Breaking Changes
+
+없음. 모든 변경은 additive 또는 bug fix. `lsp.client_impl: gopls_bridge` 기본값으로 기존 동작 유지.
+
+### 추가
+
+#### LSP 인프라 (SPEC-LSP-CORE-002, AGG-003, QGATE-004, LOOP-005, MULTI-006)
+
+- **SPEC-LSP-CORE-002** — powernap 기반 다국어 LSP 클라이언트 기반 (6 sprints, 91-94% 커버리지)
+- **SPEC-LSP-AGG-003** — Diagnostic Aggregator + TTL Cache + Circuit Breaker
+- **SPEC-LSP-QGATE-004** — Phase-aware LSP 품질 게이트 (plan/run/sync 단계별 임계값)
+- **SPEC-LSP-LOOP-005** — Loop/Ralph LSP 통합 (Go 전용)
+- **SPEC-LSP-MULTI-006** — 16개 언어 LSP 서버 매트릭스 + install hints + project_markers
+  - **AC4**: `moai lsp doctor --json` 플래그 + missing server 시 exit 1
+
+#### ast-grep 현대화 (SPEC-ASTG-UPGRADE-001)
+
+- `internal/astgrep/` 패키지: scanner, SARIF 출력, rules loader, CLI
+- `moai ast-grep` 커맨드 (`--json`, `--sarif`, `--text` 출력)
+- Pre-configured 규칙: security (OWASP/CWE), Go idioms, error handling, resource safety
+
+#### GLM statusline context (#653)
+
+- 4-tier priority 리졸버: env → `llm.yaml glm.context_windows` → 내장 테이블 → stdin fallback
+- 6개 GLM 모델 내장 기본값 (glm-5.1, glm-5, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air)
+- `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수 지원
+
+#### Flutter 품질 게이트 지원 (#652)
+
+- pubspec.yaml 동적 분석으로 Flutter SDK 감지
+- Flutter 프로젝트 → `flutter test` / `flutter analyze`
+- 순수 Dart CLI → 기존 `dart test` / `dart analyze` 유지
+
+#### 기타
+
+- Simplify workflow Phase 0.05 sync 통합 (SPEC-HOOKWAVE-001)
+- Output styles v5.0.0: MoAI+R2D2 통합 + Einstein 튜터
+- Orchestrator Self-Check §24 HARD 규칙
+- plan-auditor 에이전트 (SPEC 편향방지 검수)
+
+### 변경
+
+- **28개 SPEC enum 표준화** (전체 SPEC의 42%): 대소문자/비표준 값 소문자 표준으로
+- SPEC-LSP-001을 `superseded`로 표시 (SPEC-LSP-CORE-002가 대체)
+- statusline `collectAll()`: stdin에 `rate_limits` 있으면 usageProvider 스킵
+- SARIF rules 배열 ID 기준 정렬
+- Hook 이벤트명: `Stop` → `SubagentStop` (14개 에이전트)
+
+### 수정
+
+- **#626**: `--team` 플래그가 `/moai run|plan|sync|fix|mx`에서 `team/*.md` 로드하도록 수정
+- **#644**: SARIF rules 배열 비결정적 순서
+- **#645**: `RunAstGrepGateV2` 단위 테스트 공백
+- **#646**: Anthropic OAuth API 블로킹(5초 timeout)으로 statusline 간헐 사라짐
+- **#652**: Flutter 프로젝트에서 `dart test` 사용으로 commit 차단
+- **#653**: GLM 모드 statusline 게이지가 Claude 1M 기준으로 오표시
+- `/login`, `/logout` hook hang (flat camelCase 지원)
+
+### 설치 및 업데이트
+
+```bash
+go install github.com/modu-ai/moai-adk/cmd/moai@v2.10.3
+# 또는
+moai update
+```
+
+### 머지된 PR
+
+#648, #649, #650, #651, #654, #655, #656
+
+### 종료된 이슈
+
+#626, #641 (meta), #644, #645, #646, #652, #653
+
+---
+
 ## [2.10.2] - 2026-04-11
 
 ### Summary
