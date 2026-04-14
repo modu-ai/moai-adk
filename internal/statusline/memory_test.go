@@ -256,3 +256,96 @@ func TestUsagePercent(t *testing.T) {
 		})
 	}
 }
+
+// TestCollectMemory_GLMContextOverride verifies that when a GLM model is
+// active (via ANTHROPIC_DEFAULT_*_MODEL env), the context window size is
+// overridden from the Claude slot's reported value (e.g., 1M) to the actual
+// GLM model's limit. Issue #653.
+func TestCollectMemory_GLMContextOverride(t *testing.T) {
+	pct := 23.0 // near the reported ~23% context-full point on 1M gauge
+
+	cases := []struct {
+		name         string
+		envSlot      string
+		modelName    string
+		reportedSize int
+		wantBudget   int // expected TokenBudget (contextSize * 85 / 100)
+	}{
+		{
+			name:         "glm-5.1 opus slot overrides 1M to 200K",
+			envSlot:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			modelName:    "glm-5.1",
+			reportedSize: 1_000_000,
+			wantBudget:   200_000 * 85 / 100,
+		},
+		{
+			name:         "glm-4.5-air haiku slot",
+			envSlot:      "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+			modelName:    "glm-4.5-air",
+			reportedSize: 200_000,
+			wantBudget:   128_000 * 85 / 100,
+		},
+		{
+			name:         "claude model preserves reported size",
+			envSlot:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			modelName:    "claude-opus-4-6",
+			reportedSize: 1_000_000,
+			wantBudget:   1_000_000 * 85 / 100,
+		},
+		{
+			name:         "unknown non-claude model falls back to reported",
+			envSlot:      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+			modelName:    "custom-unknown-llm",
+			reportedSize: 200_000,
+			wantBudget:   200_000 * 85 / 100,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clear all model slots so only tc.envSlot drives detection.
+			t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+			t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+			t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+			t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "")
+			t.Setenv(tc.envSlot, tc.modelName)
+
+			input := &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    &pct,
+					ContextWindowSize: tc.reportedSize,
+				},
+			}
+			got := CollectMemory(input)
+			if got == nil || !got.Available {
+				t.Fatalf("CollectMemory returned unavailable")
+			}
+			if got.TokenBudget != tc.wantBudget {
+				t.Errorf("TokenBudget = %d, want %d", got.TokenBudget, tc.wantBudget)
+			}
+		})
+	}
+}
+
+// TestCollectMemory_ExplicitOverride verifies that MOAI_STATUSLINE_CONTEXT_SIZE
+// wins over both Claude reported size and GLM auto-detection (issue #653).
+func TestCollectMemory_ExplicitOverride(t *testing.T) {
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.1")
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "131072")
+
+	pct := 50.0
+	input := &StdinData{
+		ContextWindow: &ContextWindowInfo{
+			UsedPercentage:    &pct,
+			ContextWindowSize: 1_000_000,
+		},
+	}
+	got := CollectMemory(input)
+	if got == nil || !got.Available {
+		t.Fatalf("CollectMemory returned unavailable")
+	}
+	wantBudget := 131072 * 85 / 100
+	if got.TokenBudget != wantBudget {
+		t.Errorf("TokenBudget = %d, want %d (explicit override wins)", got.TokenBudget, wantBudget)
+	}
+}
