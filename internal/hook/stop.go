@@ -130,7 +130,7 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 
 	// Prune old telemetry files (keep 30 days).
 	if projectDir != "" {
-		telemetry.PruneOldFiles(projectDir, 30)
+		_ = telemetry.PruneOldFiles(projectDir, 30)
 	}
 
 	// Stop hooks use top-level decision/reason fields per Claude Code protocol

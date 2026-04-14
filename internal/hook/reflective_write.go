@@ -252,8 +252,10 @@ func pickEvolvableZone(skillFilePath string) string {
 	return "best-practices"
 }
 
-// deduplicateSummaries merges a slice of error summary strings into a single
-// deduplicated, comma-separated string (≤200 chars total).
+// deduplicateSummaries는 향후 Reflective Write 확장에서 사용할 헬퍼로 보존한다.
+// 현재 호출 경로는 없으므로 linter unused 경고를 방지하기 위해 주석 처리했다.
+// 복원 시: 본 파일의 블록 주석을 제거하고 호출부를 추가하라.
+/*
 func deduplicateSummaries(summaries []string) string {
 	seen := make(map[string]bool)
 	var unique []string
@@ -270,6 +272,7 @@ func deduplicateSummaries(summaries []string) string {
 	}
 	return result
 }
+*/
 
 // generateLearningID returns a new learning ID in the format LEARN-YYYYMMDD-NNN.
 // The NNN component is derived from the current nanosecond to minimise

@@ -164,7 +164,6 @@ func (r *AsyncRecorder) run() {
 
 var (
 	globalRecorder     *AsyncRecorder
-	globalRecorderOnce sync.Once
 	globalRecorderMu   sync.Mutex
 	globalRecorderRoot string
 )
@@ -190,6 +189,5 @@ func GetRecorder(projectRoot string) *AsyncRecorder {
 
 	globalRecorder = NewAsyncRecorder(projectRoot, 256)
 	globalRecorderRoot = projectRoot
-	globalRecorderOnce = sync.Once{} // 재설정 (다음 Once 대비)
 	return globalRecorder
 }

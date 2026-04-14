@@ -16,14 +16,14 @@ func writeRecords(t *testing.T, filePath string, records []UsageRecord) {
 	if err != nil {
 		t.Fatalf("writeRecords: failed to open %s: %v", filePath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	for _, r := range records {
 		line, err := json.Marshal(r)
 		if err != nil {
 			t.Fatalf("writeRecords: failed to marshal record: %v", err)
 		}
-		f.Write(append(line, '\n'))
+		_, _ = f.Write(append(line, '\n'))
 	}
 }
 

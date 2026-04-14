@@ -60,6 +60,6 @@ func runTelemetryReport(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("telemetry report: %w", err)
 	}
 
-	fmt.Fprint(cmd.OutOrStdout(), report.String())
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), report.String())
 	return nil
 }

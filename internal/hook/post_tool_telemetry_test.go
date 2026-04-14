@@ -159,7 +159,7 @@ func TestPostToolHandler_Handle_SkillToolRecorded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected telemetry file at %s: %v", telPath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	count := 0

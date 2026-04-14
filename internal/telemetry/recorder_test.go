@@ -93,7 +93,7 @@ func TestRecordSkillUsage_AppendMultipleLines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open file: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	count := 0
@@ -124,7 +124,7 @@ func TestHashContext_Returns8CharHex(t *testing.T) {
 		}
 		// Verify it's hex
 		for _, c := range got {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 				t.Errorf("HashContext(%q) = %q contains non-hex char %q", input, got, c)
 			}
 		}
@@ -256,7 +256,7 @@ func TestRecordSkillUsage_ConcurrentWrites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open telemetry file: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	count := 0

@@ -28,10 +28,10 @@ func writeTelemetryRecord(t *testing.T, dir string, records []telemetry.UsageRec
 	if err != nil {
 		t.Fatalf("writeTelemetryRecord: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	for _, r := range records {
 		line, _ := json.Marshal(r)
-		f.Write(append(line, '\n'))
+		_, _ = f.Write(append(line, '\n'))
 	}
 }
 
