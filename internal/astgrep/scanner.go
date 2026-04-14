@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -64,6 +65,11 @@ type Finding struct {
 	Note string `json:"note,omitempty"`
 	// Metadata는 CWE/OWASP 등 추가 메타데이터입니다.
 	Metadata map[string]string `json:"metadata,omitempty"`
+	// Language는 이 finding을 생성한 규칙의 대상 언어입니다.
+	// scanWithRules 경로에서 rule.Language가 주입됩니다.
+	// scanWithConfig 경로에서는 per-finding 언어를 알 수 없으므로 빈 문자열입니다.
+	// --lang 필터는 Language가 빈 finding을 항상 포함합니다 (언어-중립 규칙 허용).
+	Language string `json:"language,omitempty"`
 }
 
 // IsError는 심각도가 error인지 반환합니다.
@@ -99,6 +105,63 @@ func HasErrors(findings []Finding) bool {
 		}
 	}
 	return false
+}
+
+// ErrUntrustedBinary는 신뢰할 수 없는 바이너리 경로가 지정된 경우 반환됩니다.
+var ErrUntrustedBinary = errors.New("astgrep: 신뢰할 수 없는 바이너리 경로")
+
+// trustedBinaryPrefixes는 허용된 절대 경로 prefix 목록을 반환한다.
+func trustedBinaryPrefixes() []string {
+	home, _ := os.UserHomeDir()
+	sep := string(os.PathSeparator)
+	prefixes := []string{
+		"/usr/bin/",
+		"/usr/local/bin/",
+		"/opt/homebrew/bin/",
+	}
+	if home != "" {
+		prefixes = append(prefixes,
+			filepath.Join(home, "go", "bin")+sep,
+			filepath.Join(home, ".local", "bin")+sep,
+			filepath.Join(home, ".cargo", "bin")+sep,
+		)
+	}
+	return prefixes
+}
+
+// ValidateBinary는 sg 바이너리 경로의 안전성을 검사한다.
+// 빈 문자열은 기본값 "sg"로 폴백되므로 허용한다.
+// bare name은 "sg" 또는 "ast-grep"만 허용한다.
+// 절대 경로는 신뢰 prefix 목록에 있어야 한다.
+// 셸 메타문자나 경로 트래버설(..)이 포함되면 ErrUntrustedBinary를 반환한다.
+func ValidateBinary(binary string) error {
+	if binary == "" {
+		// 빈 값은 기본값 "sg"로 폴백됨
+		return nil
+	}
+	// 셸 인젝션 방어: 메타문자 차단
+	if strings.ContainsAny(binary, ";|&`$()<>\n\r") {
+		return ErrUntrustedBinary
+	}
+	// 경로 트래버설 차단
+	if strings.Contains(binary, "..") {
+		return ErrUntrustedBinary
+	}
+	// bare name: 허용 목록의 고정값만
+	if !filepath.IsAbs(binary) {
+		if binary == "sg" || binary == "ast-grep" {
+			return nil
+		}
+		return ErrUntrustedBinary
+	}
+	// 절대 경로: 신뢰 prefix 검사 (Clean으로 트래버설 정규화 후)
+	cleaned := filepath.Clean(binary)
+	for _, p := range trustedBinaryPrefixes() {
+		if strings.HasPrefix(cleaned, p) {
+			return nil
+		}
+	}
+	return ErrUntrustedBinary
 }
 
 // Scanner는 ast-grep 기반의 통합 코드 스캐너입니다.
@@ -153,7 +216,13 @@ func (s *Scanner) isSGAvailable() bool {
 // Scan은 주어진 경로에 대해 모든 규칙을 적용하여 스캔을 수행합니다.
 // sg CLI가 없으면 ([]Finding{}, nil)을 반환합니다 (REQ-ASTG-UPG-012).
 // rules 디렉토리가 비어있거나 존재하지 않으면 ([]Finding{}, nil)을 반환합니다 (REQ-ASTG-UPG-012).
+// SGBinary가 신뢰할 수 없는 경로이면 에러를 반환합니다 (F2 보안 검사).
 func (s *Scanner) Scan(ctx context.Context, path string) ([]Finding, error) {
+	// 바이너리 경로 보안 검증 (F2): 신뢰할 수 없는 경로는 즉시 에러 반환
+	if err := ValidateBinary(s.cfg.SGBinary); err != nil {
+		return []Finding{}, fmt.Errorf("sg 바이너리 검증 실패 (SGBinary=%q): %w", s.cfg.SGBinary, err)
+	}
+
 	// sg CLI가 없으면 warn_and_skip (REQ-ASTG-UPG-012)
 	if !s.isSGAvailable() {
 		slog.Warn("ast-grep (sg) CLI를 찾을 수 없습니다. 스캔을 건너뜁니다.",
@@ -209,10 +278,52 @@ func (s *Scanner) scanWithConfig(ctx context.Context, configPath, path string) (
 	// sg는 발견 시 non-zero exit code를 반환할 수 있으므로 에러를 무시
 	_ = cmd.Run()
 
+	// F4: stderr 내용이 있으면 디버그 로깅 (config 기반 스캔에서는 언어를 알 수 없으므로 에러 전파 생략)
+	if stderr.Len() > 0 {
+		slog.Debug("sg scan stderr (config 기반)", "config", configPath, "stderr", stderr.String())
+	}
+
 	if stdout.Len() == 0 {
 		return []Finding{}, nil
 	}
 
+	return parseSGFindings(stdout.Bytes())
+}
+
+// runSingleRule은 단일 규칙에 대해 sg run을 실행하고 finding을 반환합니다.
+// defer cancel()로 context 누수를 방지합니다 (F3).
+// stderr는 디버그 로깅하고, stdout이 비어있고 stderr가 있으면 에러를 반환합니다 (F4).
+//
+// @MX:WARN: [AUTO] context.WithTimeout을 defer cancel()로 보호 — 이전 구현에서 cancel() 누수 발생
+// @MX:REASON: F3 버그 수정: loop 내 cancel() 미 defer 시 패닉/조기 반환 경로에서 context 누수
+func (s *Scanner) runSingleRule(ctx context.Context, binary string, rule Rule, path string, timeout time.Duration) ([]Finding, error) {
+	scanCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(scanCtx, binary, "run",
+		"--pattern", rule.Pattern,
+		"--lang", rule.Language,
+		"--json",
+		path,
+	)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		// F4: stderr 내용 로깅
+		if stderr.Len() > 0 {
+			slog.Debug("sg run stderr", "rule", rule.ID, "stderr", stderr.String())
+		}
+		// stdout이 비어있고 stderr에 내용이 있으면 실행 실패로 간주
+		if stdout.Len() == 0 && stderr.Len() > 0 {
+			return nil, fmt.Errorf("sg run 실패 (rule %s): %s", rule.ID, stderr.String())
+		}
+	}
+
+	if stdout.Len() == 0 {
+		return nil, nil
+	}
 	return parseSGFindings(stdout.Bytes())
 }
 
@@ -235,31 +346,14 @@ func (s *Scanner) scanWithRules(ctx context.Context, rules []Rule, path string) 
 			continue
 		}
 
-		scanCtx, cancel := context.WithTimeout(ctx, timeout)
-		cmd := exec.CommandContext(scanCtx, binary, "run",
-			"--pattern", rule.Pattern,
-			"--lang", rule.Language,
-			"--json",
-			path,
-		)
-		var stdout bytes.Buffer
-		cmd.Stdout = &stdout
-		_ = cmd.Run()
-		cancel()
-
-		if stdout.Len() == 0 {
-			continue
-		}
-
-		findings, err := parseSGFindings(stdout.Bytes())
+		// F3: runSingleRule에서 defer cancel()로 context 누수 방지
+		findings, err := s.runSingleRule(ctx, binary, rule, path, timeout)
 		if err != nil {
-			slog.Debug("규칙 실행 결과 파싱 실패, 건너뜀",
-				"rule", rule.ID,
-				"error", err)
+			slog.Debug("규칙 실행 실패, 건너뜀", "rule", rule.ID, "error", err)
 			continue
 		}
 
-		// 규칙 메타데이터 주입
+		// 규칙 메타데이터 주입 (F1: Language 필드 포함)
 		for i := range findings {
 			if findings[i].RuleID == "" {
 				findings[i].RuleID = rule.ID
@@ -270,6 +364,8 @@ func (s *Scanner) scanWithRules(ctx context.Context, rules []Rule, path string) 
 			if findings[i].Message == "" {
 				findings[i].Message = rule.Message
 			}
+			// Language는 항상 rule에서 주입 (찾은 파일의 언어가 아닌 규칙 대상 언어)
+			findings[i].Language = rule.Language
 		}
 
 		allFindings = append(allFindings, findings...)
