@@ -198,12 +198,23 @@ func detectSGVersion() string {
 }
 
 // filterByLang은 지정된 언어의 규칙에서 발생한 finding만 반환합니다.
-// finding에 language 정보가 없으면 포함합니다.
+// lang이 빈 문자열이면 전체를 반환합니다.
+// finding.Language가 빈 문자열이면 언어-중립 규칙으로 간주하여 항상 포함합니다.
+// 대소문자를 무시합니다.
 func filterByLang(findings []astgrep.Finding, lang string) []astgrep.Finding {
-	// Finding에는 직접적인 language 필드가 없으므로 ruleId 접두사로 추정
-	// 예: "go-*" → Go, "sec-*" → security (언어 중립)
-	// 실제 언어 필터링은 scanner 레벨에서 처리되므로 여기서는 pass-through
-	return findings
+	if lang == "" {
+		return findings
+	}
+	target := strings.ToLower(lang)
+	out := make([]astgrep.Finding, 0, len(findings))
+	for _, f := range findings {
+		fl := strings.ToLower(f.Language)
+		// 언어 정보가 없는 finding은 포함 (언어-중립 규칙 허용)
+		if fl == "" || fl == target {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // filterBySeverity는 지정된 severity 이상의 finding만 반환합니다.
