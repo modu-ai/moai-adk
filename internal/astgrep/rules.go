@@ -1,7 +1,7 @@
 package astgrep
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 	"io"
 	"log/slog"
@@ -138,26 +138,36 @@ func (l *RuleLoader) LoadFromDir(dir string) ([]Rule, error) {
 	return allRules, nil
 }
 
-// loadFileSkipOnError loads rules from a single YAML file.
-// Returns partial results on decode errors to allow partial success per file.
+// loadFileSkipOnError는 단일 YAML 파일에서 규칙을 로딩합니다.
+// 멀티 문서 YAML에서 특정 문서 파싱이 실패해도 이후 문서를 계속 로딩합니다 (F5 fix).
+//
+// yaml.v3 Decoder는 파싱 실패 후 상태를 복구하지 않으므로, 파일을 "---" 구분자로
+// 분리하여 각 문서를 독립적으로 파싱하는 방식을 사용합니다.
 func (l *RuleLoader) loadFileSkipOnError(path string) ([]Rule, error) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening rule file %s: %w", path, err)
 	}
-	defer func() { _ = f.Close() }()
+
+	// "---" 구분자로 문서 분리 (멀티 문서 YAML 지원)
+	// 각 문서를 개별적으로 파싱하여 파싱 실패 격리
+	docs := splitYAMLDocs(data)
 
 	var rules []Rule
-	decoder := yaml.NewDecoder(f)
+	var parseErrors int
 
-	for {
+	for i, doc := range docs {
+		trimmed := bytes.TrimSpace(doc)
+		if len(trimmed) == 0 {
+			continue
+		}
+
 		var rule Rule
-		if err := decoder.Decode(&rule); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			slog.Warn("partial decode in rule file", "path", path, "error", err)
-			break
+		if err := yaml.Unmarshal(trimmed, &rule); err != nil {
+			parseErrors++
+			slog.Warn("규칙 파일 문서 파싱 실패, 다음 문서로 진행",
+				"path", path, "doc_index", i, "error", err)
+			continue
 		}
 		if rule.ID == "" {
 			continue
@@ -165,5 +175,34 @@ func (l *RuleLoader) loadFileSkipOnError(path string) ([]Rule, error) {
 		rules = append(rules, rule)
 	}
 
+	if parseErrors > 0 {
+		slog.Warn("규칙 파일에서 파싱 오류 발생",
+			"path", path, "valid_rules", len(rules), "parse_errors", parseErrors)
+	}
+
 	return rules, nil
+}
+
+// splitYAMLDocs는 YAML 멀티 문서 데이터를 "---" 구분자로 분리합니다.
+// 각 문서를 개별 파싱을 위한 독립적인 바이트 슬라이스로 반환합니다.
+func splitYAMLDocs(data []byte) [][]byte {
+	var docs [][]byte
+	// \n--- 또는 파일 시작 --- 로 분리
+	// bytes.Split은 정확히 "---"만 있는 행을 기준으로 분리
+	lines := bytes.Split(data, []byte("\n"))
+	var current [][]byte
+	for _, line := range lines {
+		if bytes.Equal(bytes.TrimSpace(line), []byte("---")) {
+			if len(current) > 0 {
+				docs = append(docs, bytes.Join(current, []byte("\n")))
+			}
+			current = nil
+			continue
+		}
+		current = append(current, line)
+	}
+	if len(current) > 0 {
+		docs = append(docs, bytes.Join(current, []byte("\n")))
+	}
+	return docs
 }

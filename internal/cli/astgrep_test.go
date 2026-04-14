@@ -179,3 +179,4 @@ func TestAstGrepCmd_LangFilter(t *testing.T) {
 		t.Errorf("--lang=go 설정 실패: %v", err)
 	}
 }
+
