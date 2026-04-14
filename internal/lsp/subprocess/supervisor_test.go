@@ -143,14 +143,18 @@ func TestSupervisor_Kill(t *testing.T) {
 func TestSupervisor_Signal_SIGTERM(t *testing.T) {
 	t.Parallel()
 
-	// SIGTERM을 받으면 종료하는 스크립트
-	result, sv := launchStub(t, "#!/bin/sh\ntrap 'exit 0' TERM\nsleep 60\n")
+	// SIGTERM을 받으면 종료하는 스크립트.
+	// /bin/bash 명시: Ubuntu의 /bin/sh는 dash이며 trap 처리 타이밍이 다름.
+	// Watch가 Signal보다 먼저 시작되도록 보장하기 위해 small sleep 추가.
+	result, sv := launchStub(t, "#!/bin/bash\ntrap 'exit 0' TERM\nwhile true; do sleep 0.1; done\n")
 	t.Cleanup(func() { _ = result.Cmd.Process.Kill() })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	ch := sv.Watch(ctx)
+	// CI 환경에서 subprocess가 trap을 등록할 시간 확보
+	time.Sleep(100 * time.Millisecond)
 
 	if err := sv.Signal(syscall.SIGTERM); err != nil {
 		t.Fatalf("Signal(SIGTERM): %v", err)
@@ -160,8 +164,8 @@ func TestSupervisor_Signal_SIGTERM(t *testing.T) {
 	case ev := <-ch:
 		// SIGTERM으로 정상 종료: ExitCode 0 또는 signal 종료 모두 허용
 		_ = ev
-	case <-time.After(3 * time.Second):
-		t.Error("subprocess did not exit after SIGTERM within 3s")
+	case <-time.After(10 * time.Second):
+		t.Error("subprocess did not exit after SIGTERM within 10s")
 	}
 }
 
@@ -191,10 +195,12 @@ func TestSupervisor_Signal_AlreadyDead(t *testing.T) {
 func TestSupervisor_MultipleWatchers(t *testing.T) {
 	t.Parallel()
 
-	result, sv := launchStub(t, "#!/bin/sh\nexit 42\n")
+	// 짧은 sleep으로 두 Watch 등록 시간 확보 (CI 환경 고려).
+	// /bin/bash 명시: Ubuntu /bin/sh (dash) vs macOS /bin/sh 차이 회피.
+	result, sv := launchStub(t, "#!/bin/bash\nsleep 0.3\nexit 42\n")
 	t.Cleanup(func() { _ = result.Cmd.Process.Kill() })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	ch1 := sv.Watch(ctx)
