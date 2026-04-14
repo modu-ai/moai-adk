@@ -124,6 +124,18 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ### Phase 0: Pre-Sync Quality Gate
 
+<!-- moai:evolvable-start id="gate-sync-1" -->
+### HUMAN GATE: Pre-Sync Quality
+
+**Previous phase output:** Completed SPEC implementation
+**Approval question:** Is the project in a state where documentation can be synced?
+**Cannot proceed until:**
+- [ ] Working tree is clean or only expected changes present
+- [ ] All tests pass
+- [ ] MX tags validated
+- [ ] No HARD rule violations
+<!-- moai:evolvable-end -->
+
 Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
 
 #### Step 0.0.1: Gate Execution
@@ -539,6 +551,17 @@ For each SPEC associated with the current sync:
   - Level 3 (spec-as-source): Flag discrepancies as warnings (implementation should match SPEC exactly)
 
 #### Step 1.6: User Approval
+
+<!-- moai:evolvable-start id="gate-sync-2" -->
+### HUMAN GATE: Documentation Scope
+
+**Previous phase output:** Divergence analysis showing doc/code drift
+**Approval question:** Which documents should be regenerated?
+**Cannot proceed until:**
+- [ ] User has reviewed divergence report
+- [ ] User has approved document regeneration scope
+- [ ] User has confirmed PR description draft
+<!-- moai:evolvable-end -->
 
 Tool: AskUserQuestion
 

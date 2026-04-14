@@ -247,3 +247,42 @@ Version History:
 - v4.0.0 (2026-01-06): Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
 - v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
 - v2.0.0 (2025-11-26): Initial comprehensive release
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will use Bash sed instead of Edit, it is faster" | Edit is the preferred tool for accuracy and review. Bash sed errors are silent and hard to trace. |
+| "This hook does not need a timeout, it finishes quickly" | Hooks without timeouts can hang the entire session. Always set an explicit timeout. |
+| "I can put all logic in CLAUDE.md, rules are overkill" | CLAUDE.md has a 40K character limit. Rules load conditionally and scale without bloating the prompt. |
+| "Settings.json changes are low risk" | Incorrect settings.json breaks hooks, permissions, and model routing. Validate the JSON after every edit. |
+| "I will skip progressive disclosure, all content is needed" | Loading 5K tokens for every skill wastes 67% of context. Level 1 metadata is sufficient for routing. |
+| "This skill does not need allowed-tools, Claude will figure it out" | Missing allowed-tools means the skill silently inherits all tools. Explicit is safer than implicit. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- CLAUDE.md exceeds 40,000 characters
+- Hook registered in settings.json without a corresponding script file
+- Skill frontmatter uses space-separated allowed-tools instead of comma-separated
+- Agent definition uses YAML array for tools instead of CSV string
+- settings.json contains hardcoded absolute paths instead of $CLAUDE_PROJECT_DIR
+- Progressive disclosure disabled for a skill that exceeds 3000 tokens
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] CLAUDE.md character count is under 40,000 (show wc -c output)
+- [ ] settings.json is valid JSON (show json validation output)
+- [ ] Every hook in settings.json has a matching script file in .claude/hooks/
+- [ ] All skill frontmatter uses CSV format for allowed-tools
+- [ ] Agent frontmatter uses CSV for tools and YAML array for skills
+- [ ] All metadata values in skill frontmatter are quoted strings
+- [ ] $CLAUDE_PROJECT_DIR used instead of absolute paths in hook commands
+
+<!-- moai:evolvable-end -->

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/hook/lifecycle"
+	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
 // defaultCompletionMarkers is the list of default completion markers.
@@ -95,6 +96,15 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		}
 	}
 
+	// Prune telemetry files older than 90 days (SPEC-TELEMETRY-001 R4).
+	// Best-effort: errors are logged and never propagated.
+	// Placed before completion detection to ensure pruning runs every session end.
+	if projectDir != "" {
+		if pruneErr := telemetry.PruneOldFiles(projectDir, 90); pruneErr != nil {
+			slog.Warn("stop: telemetry pruning failed", "error", pruneErr)
+		}
+	}
+
 	// Detect completion markers in ToolOutput (observation-only, never blocks)
 	if len(input.ToolOutput) > 0 && len(h.completionMarkers) > 0 {
 		output := string(input.ToolOutput)
@@ -109,10 +119,39 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		}
 	}
 
+	// Reflective learning: analyze session telemetry and generate proposals.
+	// Non-blocking — analysis errors are logged and never affect the stop decision.
+	if projectDir != "" {
+		numRecords := countSessionRecords(projectDir, input.SessionID)
+		if numRecords >= minToolInvocationsForReflection {
+			AnalyzeSessionAndLog(projectDir, input.SessionID)
+		}
+	}
+
+	// Prune old telemetry files (keep 30 days).
+	if projectDir != "" {
+		_ = telemetry.PruneOldFiles(projectDir, 30)
+	}
+
 	// Stop hooks use top-level decision/reason fields per Claude Code protocol
 	// Return empty JSON {} to allow Claude to stop (default behavior)
 	// To keep Claude working, return: {"decision": "block", "reason": "..."}
 	return &HookOutput{}, nil
+}
+
+// minToolInvocationsForReflection is the minimum number of telemetry records
+// required before reflective analysis is triggered.  Mirrors
+// evolution.MinToolInvocationsForAnalysis but avoids a circular import.
+const minToolInvocationsForReflection = 3
+
+// countSessionRecords returns the number of telemetry records for the session.
+// Returns 0 on any error (conservative).
+func countSessionRecords(projectRoot, sessionID string) int {
+	records, err := telemetry.LoadBySession(projectRoot, sessionID)
+	if err != nil {
+		return 0
+	}
+	return len(records)
 }
 
 // hasCompletionMarker reports whether the input's ToolOutput contains any of the

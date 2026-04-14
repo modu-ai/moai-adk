@@ -156,3 +156,39 @@ RootErrorBoundary (global)
 - [ ] Color contrast 4.5:1 or above
 - [ ] Visible focus indicator
 - [ ] Semantic HTML (button, nav, main, section)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "useEffect is fine for data fetching in React 19" | React 19 provides use() and server components for data fetching. useEffect for fetch is a legacy pattern that causes waterfalls. |
+| "Global state is simpler than prop drilling" | Global state couples distant components. Prop drilling or composition via children is more predictable and testable. |
+| "I will add TypeScript types later" | Untyped components accumulate any-typed callers. Retrofitting types into a used component is much harder than starting typed. |
+| "This component does not need memoization" | Premature memoization is waste, but components rendering lists or expensive trees should be profiled, not assumed fast. |
+| "CSS-in-JS is fine, everyone uses it" | CSS-in-JS adds runtime overhead and bundle size. Tailwind or CSS Modules achieve the same scoping without the cost. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- useEffect used for data fetching when server components or use() are available
+- Component receives more than 5 props without decomposition or object grouping
+- State management library used for server-cacheable data (use React Query or SWR instead)
+- Inline styles or hardcoded pixel values instead of design tokens
+- Component missing error boundary wrapping for async operations
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Data fetching uses server components, use(), or React Query (not useEffect + fetch)
+- [ ] Components have TypeScript interfaces for all props
+- [ ] Error boundaries wrap components with async operations
+- [ ] Accessibility checklist completed (alt text, keyboard nav, ARIA, contrast, focus, semantics)
+- [ ] No inline styles or hardcoded color/spacing values (design tokens used)
+- [ ] Component renders correctly in React Strict Mode (no double-effect issues)
+
+<!-- moai:evolvable-end -->

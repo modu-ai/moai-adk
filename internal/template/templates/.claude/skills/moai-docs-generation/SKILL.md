@@ -300,3 +300,38 @@ Style Guides:
 
 Version: 2.0.0
 Last Updated: 2025-12-30
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The code is self-documenting" | Code explains what happens. Documentation explains why, when, and for whom. They serve different audiences. |
+| "API docs can be generated entirely from code" | Generated docs provide structure. Context, examples, and guides require human authorship. Both are needed. |
+| "I will write docs when the feature is complete" | Post-feature docs capture what was built. In-progress docs surface design gaps before they become code. |
+| "Nobody reads the docs anyway" | People read docs when they exist and are discoverable. Empty docs sections are a self-fulfilling prophecy. |
+| "Maintaining docs alongside code is too much effort" | Stale docs are worse than no docs. Automate what can be automated (API reference) and write the rest with the code. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Public API endpoint has no documentation page
+- Documentation references code that no longer exists
+- Generated API docs contain placeholder or Lorem ipsum text
+- No example or quickstart section for a user-facing feature
+- Documentation build produces warnings about missing references
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Documentation builds without errors or warnings (show build output)
+- [ ] Every public API has a corresponding documentation page
+- [ ] Examples in documentation are tested or linked to tested source
+- [ ] No placeholder text remains in generated documentation
+- [ ] Documentation updated in the same commit or PR as the code change
+
+<!-- moai:evolvable-end -->

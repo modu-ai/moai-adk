@@ -115,3 +115,38 @@ Governs the client discovery process for AI Agency projects. Provides structured
 ## Evolution Log
 
 - v1.0.0: Initial creation (Static Zone with default interview flow, empty Dynamic Zone)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I know what the client wants from the initial message" | Initial messages are surface-level. Discovery interviews surface hidden requirements, constraints, and priorities. |
+| "Business objectives are obvious for this type of project" | Assumed objectives lead to misaligned deliverables. Every client has unique success metrics. |
+| "Brand context can be filled in later" | Brand context flows to every pipeline phase. Missing brand context produces generic, brandless output. |
+| "The audience is everyone" | Universal audience means no audience. Defining segments enables targeted copy, design, and feature prioritization. |
+| "I will ask all the questions at once to save time" | Question overload produces shallow answers. Structured flows with follow-ups surface deeper insights. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- BRIEF created without conducting a discovery interview
+- Business objectives section contains generic statements ("increase engagement")
+- Target audience described without specific segments or persona details
+- Brand voice and visual identity sections left empty or placeholder
+- Interview ended without confirming findings with the client
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Discovery interview conducted with structured question flow
+- [ ] Business objectives are specific and measurable (not generic aspirations)
+- [ ] At least one target audience segment defined with demographics and needs
+- [ ] Brand voice, tone, and visual identity captured in `.agency/context/`
+- [ ] Interview findings confirmed with client before proceeding to pipeline
+
+<!-- moai:evolvable-end -->

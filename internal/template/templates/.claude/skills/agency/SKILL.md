@@ -185,3 +185,42 @@ When builder detects project needs a moai skill (e.g., moai-lang-python):
 | Sync reports | `.agency/evolution/sync-report.md` |
 | User profile | `.agency/profile/user-adaptation.yaml` |
 | Fork tracking | `.agency/fork-manifest.yaml` |
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I can skip the Planner phase for a simple landing page" | Planner produces the BRIEF that every downstream phase depends on. Skipping it means every agent guesses the requirements. |
+| "The GAN loop is taking too many iterations, I will force-pass" | Force-passing bypasses quality validation. If the loop stagnates, escalate to the user instead of silently accepting subpar output. |
+| "The Learner has nothing to learn from a passing project" | Every project below 1.0 score has improvement patterns. Learner captures what worked and what was close to failing. |
+| "I will evolve the skill directly instead of going through graduation" | Direct evolution bypasses canary checks, contradiction detection, and human approval. The safety architecture exists for a reason. |
+| "Brand context is decoration, the code works without it" | Brand context is a constitutional constraint. Every phase must load it. Brand-inconsistent output fails evaluation. |
+| "I will fork the moai skill and modify it since it is faster" | Direct reference is preferred over forking. Fork only when customization is genuinely needed, and register it in fork-manifest.yaml. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Pipeline executed without Planner phase (BRIEF document missing)
+- GAN loop force-passed without user escalation or documented justification
+- Evaluator score higher than 0.90 without rubric justification for each criterion
+- Learner modified a FROZEN zone file (constitution, safety architecture)
+- Fork created without registration in .agency/fork-manifest.yaml
+- Brand context not loaded before Copywriter or Designer phase
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] BRIEF document exists in `.agency/briefs/` before Builder phase starts
+- [ ] Brand context loaded by Planner, Copywriter, Designer, and Evaluator (check logs)
+- [ ] GAN loop ran at least 2 iterations (strict mode) or 1 iteration (standard mode)
+- [ ] Evaluator score has rubric justification for each scored dimension
+- [ ] No FROZEN zone files modified during the session (verify with git diff)
+- [ ] All forks registered in `.agency/fork-manifest.yaml` with upstream reference
+- [ ] Learner entries have observation count and confidence score
+
+<!-- moai:evolvable-end -->

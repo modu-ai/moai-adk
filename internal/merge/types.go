@@ -31,6 +31,11 @@ const (
 
 	// Overwrite replaces the file entirely, backing up the original.
 	Overwrite MergeStrategy = "overwrite"
+
+	// EvolvableZoneMerge applies "user wins" strategy inside evolvable zone markers
+	// and normal line-based merge outside them. Used for .md files that contain
+	// <!-- moai:evolvable-start id="..." --> markers.
+	EvolvableZoneMerge MergeStrategy = "evolvable_zone_merge"
 )
 
 // MergeResult holds the outcome of a merge operation.

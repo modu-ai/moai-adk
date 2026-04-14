@@ -191,3 +191,38 @@ For working code examples, see [examples.md](examples.md).
 Status: Production Ready
 Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Data Team
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "JSON is universal, I do not need to optimize the format" | JSON verbosity wastes tokens in LLM contexts. TOON encoding reduces token usage by 30-50% for structured data. |
+| "YAML is more readable than JSON for configuration" | YAML readability comes with parsing ambiguity (Norway problem, indentation errors). Use JSON for machine-read config, YAML for human-edited. |
+| "Schema validation is unnecessary for internal data" | Internal data formats drift silently. Schema validation catches format changes before they cause runtime errors. |
+| "I will handle serialization edge cases as they appear" | Date formats, null handling, and unicode escaping are known edge cases. Handle them in the serializer, not in each consumer. |
+| "The data payload is small, optimization is unnecessary" | Small payloads multiply by request count. Optimizing a 1KB payload saves 1MB per 1000 requests. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- JSON payload contains redundant keys or unnecessary nesting for LLM consumption
+- YAML configuration files parsed without schema validation
+- Date/time values serialized in inconsistent formats across endpoints
+- Serialization/deserialization errors silently swallowed instead of reported
+- No compression applied to large data transfers
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Data format chosen with documented rationale (JSON vs YAML vs TOON)
+- [ ] Schema validation configured for structured data inputs (show schema file)
+- [ ] Date/time format consistent across all serialization points (ISO-8601)
+- [ ] Payload size measured and within acceptable limits for the use case
+- [ ] Serialization round-trip test passes (serialize -> deserialize -> compare)
+
+<!-- moai:evolvable-end -->

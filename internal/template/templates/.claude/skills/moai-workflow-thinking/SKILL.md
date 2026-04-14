@@ -120,3 +120,38 @@ nextThoughtNeeded: false
 3. Maintain thoughtNumber sequence
 4. Set nextThoughtNeeded to false only when complete
 5. Use branching for exploring alternatives
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I can think through this without sequential thinking, it is simple" | Simple problems often hide second-order effects. Structured thinking forces you to enumerate them. |
+| "The thinking steps are just internal, I do not need to record them" | Unrecorded reasoning cannot be reviewed. The chain of thoughts is evidence for the conclusion. |
+| "I already know the answer, the thinking framework is overhead" | Confirmation bias skips disconfirming evidence. The framework forces you to consider alternatives. |
+| "Branching is overkill for this decision" | Decisions with more than one viable path benefit from explicit branch comparison, even briefly. |
+| "I will use UltraThink instead, it is the same thing" | UltraThink is native extended reasoning. Sequential Thinking is MCP-based structured analysis. They serve different purposes and have different API compatibility. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Architecture decision made without documented reasoning chain
+- Sequential thinking session ended with nextThoughtNeeded still true
+- Thought chain has no revision steps despite encountering contradictions
+- Branching not used when two or more viable alternatives were identified
+- --deepthink flag confused with UltraThink (wrong tool for the job)
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Thinking chain has a clear totalThoughts estimate that was met or revised
+- [ ] Final thought sets nextThoughtNeeded to false with a conclusion
+- [ ] At least one revision step exists if contradictions were encountered
+- [ ] Branching used when multiple alternatives were identified (show branch IDs)
+- [ ] Conclusion references specific thought numbers as supporting evidence
+
+<!-- moai:evolvable-end -->

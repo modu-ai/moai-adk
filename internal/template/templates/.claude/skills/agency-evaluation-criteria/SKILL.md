@@ -140,3 +140,39 @@ Governs quality assessment of all agency project deliverables. Enforces skeptica
 ## Evolution Log
 
 - v1.0.0: Initial creation (Static Zone with default weights, empty Dynamic Zone)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The score is close enough to the threshold, I will round up" | Score inflation erodes the entire evaluation system. The threshold is the threshold. |
+| "Must-pass criteria can be averaged with other dimensions" | Must-pass criteria are firewalled. A failing must-pass means the project fails regardless of other scores. |
+| "I will skip Playwright tests, the visual review is sufficient" | Visual review catches layout issues. Playwright tests catch interaction bugs, broken links, and runtime errors that visual review misses. |
+| "This iteration improved, so I will pass it even though the score is below threshold" | Improvement is not passing. The threshold is the minimum acceptable quality, not a relative measure. |
+| "The rubric does not cover this case, I will use my judgment" | Unanchored judgment is the definition of score inflation. Extend the rubric for uncovered cases, then score against it. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Score assigned without referencing the rubric anchors (0.25, 0.50, 0.75, 1.0 examples)
+- Must-pass criterion failed but overall project passed
+- Playwright test suite not run as part of evaluation
+- Score significantly above baseline (>0.15) without corresponding quality improvement
+- Feedback to Builder is vague ("make it better") instead of actionable and dimension-specific
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Every score references the rubric anchor for that level (show rubric justification)
+- [ ] Must-pass criteria individually verified (not averaged into the overall score)
+- [ ] Playwright test suite executed and results included in score card
+- [ ] Score card compares against regression baseline from previous projects
+- [ ] Feedback provides specific, actionable items per dimension
+- [ ] Anti-pattern cross-check completed before finalizing passing score
+
+<!-- moai:evolvable-end -->
