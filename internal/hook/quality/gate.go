@@ -162,6 +162,12 @@ var toolchains = []langToolchain{
 		testStep: &gateStep{name: "swift test", binary: "swift", args: []string{"test"}},
 	},
 	// Dart/Flutter: pubspec.yaml
+	// NOTE: Flutter projects are detected dynamically by inspecting pubspec.yaml
+	// content in detectToolchain — Flutter's `package:test` dependency is provided
+	// via `flutter_test` from the SDK, so `dart test` fails ("Could not find
+	// package `test`"). We switch to `flutter test` / `flutter analyze` for
+	// Flutter projects while keeping `dart` for pure Dart CLI projects.
+	// See issue #652.
 	{
 		markerFiles: []string{"pubspec.yaml"},
 		vetSteps:    []gateStep{{name: "dart analyze", binary: "dart", args: []string{"analyze"}}},
@@ -282,17 +288,71 @@ func (g *QualityGate) detectToolchain() *langToolchain {
 				// Glob pattern (e.g., "*.csproj")
 				matches, err := filepath.Glob(filepath.Join(dir, marker))
 				if err == nil && len(matches) > 0 {
-					return &toolchains[i]
+					return resolveDartFlutter(&toolchains[i], dir)
 				}
 			} else {
 				if fileExists(filepath.Join(dir, marker)) {
-					return &toolchains[i]
+					return resolveDartFlutter(&toolchains[i], dir)
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+// resolveDartFlutter returns a Flutter-specific toolchain variant when the
+// matched Dart toolchain's pubspec.yaml declares a Flutter SDK dependency,
+// and the pure Dart variant otherwise. Flutter projects require
+// `flutter test` / `flutter analyze` because `package:test` is provided
+// transitively via `flutter_test` from the Flutter SDK (issue #652).
+//
+// Non-Dart toolchains are returned unchanged.
+func resolveDartFlutter(tc *langToolchain, dir string) *langToolchain {
+	// Only process toolchain entries whose first marker is pubspec.yaml.
+	if len(tc.markerFiles) == 0 || tc.markerFiles[0] != "pubspec.yaml" {
+		return tc
+	}
+	if !isFlutterProject(filepath.Join(dir, "pubspec.yaml")) {
+		return tc
+	}
+	// Return a new langToolchain with flutter binary substitutions so we do
+	// not mutate the package-level toolchains slice.
+	return &langToolchain{
+		markerFiles: tc.markerFiles,
+		vetSteps:    []gateStep{{name: "flutter analyze", binary: "flutter", args: []string{"analyze"}}},
+		testStep:    &gateStep{name: "flutter test", binary: "flutter", args: []string{"test"}, optional: true},
+	}
+}
+
+// isFlutterProject reports whether the given pubspec.yaml declares the
+// Flutter SDK as a dependency. Detection heuristic:
+//   - "sdk: flutter" substring appears (Dart or Flutter dependency block)
+//   - or "flutter:" top-level section appears (Flutter-specific config)
+//
+// Missing or unreadable files return false (safe fallback to `dart`).
+func isFlutterProject(pubspecPath string) bool {
+	data, err := os.ReadFile(pubspecPath)
+	if err != nil {
+		return false
+	}
+	content := string(data)
+	return strings.Contains(content, "sdk: flutter") ||
+		strings.Contains(content, "sdk:flutter") ||
+		hasFlutterSection(content)
+}
+
+// hasFlutterSection reports whether pubspec content has a top-level
+// `flutter:` section (not a dependency named "flutter").
+func hasFlutterSection(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimRight(line, " \t")
+		// Top-level section starts at column 0 with "flutter:"
+		if trimmed == "flutter:" {
+			return true
+		}
+	}
+	return false
 }
 
 // executeStep runs a single gate step. Optional steps skip silently when the binary is missing.

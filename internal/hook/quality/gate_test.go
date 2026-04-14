@@ -379,6 +379,84 @@ func TestQualityGate_detectToolchain(t *testing.T) {
 	}
 }
 
+// TestQualityGate_detectToolchain_Flutter verifies that a pubspec.yaml
+// containing the Flutter SDK dependency resolves to `flutter test` / `flutter
+// analyze` rather than the Dart CLI defaults. See issue #652.
+func TestQualityGate_detectToolchain_Flutter(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		pubspec        string
+		wantTestBinary string
+		wantTestArg0   string
+	}{
+		{
+			name: "flutter SDK dependency → flutter test",
+			pubspec: `name: my_app
+dependencies:
+  flutter:
+    sdk: flutter
+`,
+			wantTestBinary: "flutter",
+			wantTestArg0:   "test",
+		},
+		{
+			name: "flutter top-level section → flutter test",
+			pubspec: `name: my_app
+dependencies:
+  cupertino_icons: ^1.0.0
+
+flutter:
+  uses-material-design: true
+`,
+			wantTestBinary: "flutter",
+			wantTestArg0:   "test",
+		},
+		{
+			name: "pure Dart CLI project → dart test",
+			pubspec: `name: my_dart_cli
+dependencies:
+  args: ^2.4.0
+dev_dependencies:
+  test: ^1.24.0
+`,
+			wantTestBinary: "dart",
+			wantTestArg0:   "test",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "pubspec.yaml"), []byte(tc.pubspec), 0o644); err != nil {
+				t.Fatalf("write pubspec.yaml: %v", err)
+			}
+			g := NewQualityGate(&GateConfig{ProjectDir: dir})
+			tcResolved := g.detectToolchain()
+			if tcResolved == nil {
+				t.Fatalf("detectToolchain returned nil")
+			}
+			if tcResolved.testStep == nil {
+				t.Fatalf("testStep is nil")
+			}
+			if tcResolved.testStep.binary != tc.wantTestBinary {
+				t.Errorf("test binary = %q, want %q", tcResolved.testStep.binary, tc.wantTestBinary)
+			}
+			if len(tcResolved.testStep.args) == 0 || tcResolved.testStep.args[0] != tc.wantTestArg0 {
+				t.Errorf("test args[0] = %v, want %q", tcResolved.testStep.args, tc.wantTestArg0)
+			}
+			// vetSteps 도 flutter 분기인지 확인
+			if len(tcResolved.vetSteps) > 0 && tc.wantTestBinary == "flutter" {
+				if tcResolved.vetSteps[0].binary != "flutter" {
+					t.Errorf("vet binary = %q, want flutter", tcResolved.vetSteps[0].binary)
+				}
+			}
+		})
+	}
+}
+
 func TestQualityGate_detectToolchain_GlobPattern(t *testing.T) {
 	t.Parallel()
 
