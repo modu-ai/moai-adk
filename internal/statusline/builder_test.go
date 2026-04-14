@@ -513,11 +513,13 @@ func TestBuilderCollectsTask_FieldExists(t *testing.T) {
 
 // mockUsageProvider implements UsageProvider for testing.
 type mockUsageProvider struct {
-	data *UsageResult
-	err  error
+	data  *UsageResult
+	err   error
+	calls int
 }
 
 func (m *mockUsageProvider) CollectUsage(_ context.Context) (*UsageResult, error) {
+	m.calls++
 	return m.data, m.err
 }
 
@@ -1164,6 +1166,71 @@ func TestBuild_RateLimitsPreferredOverUsage(t *testing.T) {
 	}
 	if strings.Contains(got, "99%") {
 		t.Errorf("output should NOT contain '99%%' from Usage when RateLimits is present, got:\n%s", got)
+	}
+}
+
+// TestBuild_SkipsUsageProviderWhenRateLimitsPresent verifies that when stdin
+// provides rate_limits (Claude Code 2.1.80+), the usage provider (which would
+// perform blocking Anthropic OAuth API calls) is not invoked at all.
+//
+// See Issue #646 — statusline intermittent disappearance caused by 5s HTTP
+// timeout on every usage collector cache miss.
+func TestBuild_SkipsUsageProviderWhenRateLimitsPresent(t *testing.T) {
+	mockUsage := &mockUsageProvider{
+		data: &UsageResult{
+			Usage5H: &UsageData{Percentage: 50},
+			Usage7D: &UsageData{Percentage: 50},
+		},
+	}
+
+	builder := New(Options{
+		Mode:          ModeDefault,
+		NoColor:       true,
+		UsageProvider: mockUsage,
+	})
+
+	inputJSON := `{
+		"rate_limits": {
+			"five_hour": {"used_percentage": 23.5, "resets_at": 1738425600},
+			"seven_day": {"used_percentage": 41.2, "resets_at": 1738857600}
+		}
+	}`
+
+	if _, err := builder.Build(context.Background(), strings.NewReader(inputJSON)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if mockUsage.calls != 0 {
+		t.Errorf("usage provider should not be called when stdin rate_limits is present, got %d calls", mockUsage.calls)
+	}
+}
+
+// TestBuild_CallsUsageProviderWhenRateLimitsAbsent verifies the usage provider
+// is still invoked when stdin does not contain rate_limits (legacy Claude Code
+// or non-Claude-Code harness).
+func TestBuild_CallsUsageProviderWhenRateLimitsAbsent(t *testing.T) {
+	mockUsage := &mockUsageProvider{
+		data: &UsageResult{
+			Usage5H: &UsageData{Percentage: 50},
+			Usage7D: &UsageData{Percentage: 50},
+		},
+	}
+
+	builder := New(Options{
+		Mode:          ModeDefault,
+		NoColor:       true,
+		UsageProvider: mockUsage,
+	})
+
+	// Stdin without rate_limits
+	inputJSON := `{"model": {"id": "claude-opus-4-6"}}`
+
+	if _, err := builder.Build(context.Background(), strings.NewReader(inputJSON)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if mockUsage.calls != 1 {
+		t.Errorf("usage provider should be called exactly once when stdin lacks rate_limits, got %d calls", mockUsage.calls)
 	}
 }
 
