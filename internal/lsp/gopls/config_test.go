@@ -136,6 +136,85 @@ func TestLoadConfig_PartialYAML(t *testing.T) {
 	}
 }
 
+// ─── F5: validateBinary / validateArgs 테스트 ────────────────────────────────
+
+// TestValidateBinary_AllowsGopls는 bare name "gopls"가 허용되는지 검증한다.
+func TestValidateBinary_AllowsGopls(t *testing.T) {
+	if err := validateBinary("gopls"); err != nil {
+		t.Errorf("validateBinary(gopls) = %v, nil을 기대했다", err)
+	}
+}
+
+// TestValidateBinary_RejectsUntrustedPath는 신뢰되지 않은 절대 경로를 거부하는지 검증한다.
+func TestValidateBinary_RejectsUntrustedPath(t *testing.T) {
+	err := validateBinary("/tmp/evil/gopls")
+	if err == nil {
+		t.Error("validateBinary(/tmp/evil/gopls)이 오류를 반환하지 않았다")
+	}
+}
+
+// TestValidateBinary_AllowsTrustedPrefix는 신뢰된 접두사 경로를 허용하는지 검증한다.
+func TestValidateBinary_AllowsTrustedPrefix(t *testing.T) {
+	trustedPaths := []string{
+		"/usr/bin/gopls",
+		"/usr/local/bin/gopls",
+		"/opt/homebrew/bin/gopls",
+	}
+	// $HOME/go/bin/gopls
+	if home := os.Getenv("HOME"); home != "" {
+		trustedPaths = append(trustedPaths, filepath.Join(home, "go", "bin", "gopls"))
+		trustedPaths = append(trustedPaths, filepath.Join(home, ".local", "bin", "gopls"))
+	}
+
+	for _, p := range trustedPaths {
+		if err := validateBinary(p); err != nil {
+			t.Errorf("validateBinary(%q) = %v, nil을 기대했다", p, err)
+		}
+	}
+}
+
+// TestValidateBinary_RejectsTraversal은 경로 순회 시도를 거부하는지 검증한다.
+func TestValidateBinary_RejectsTraversal(t *testing.T) {
+	err := validateBinary("/usr/local/bin/../../../etc/passwd")
+	if err == nil {
+		t.Error("validateBinary(경로 순회)이 오류를 반환하지 않았다")
+	}
+}
+
+// TestValidateArgs_RejectsShellMetachars는 쉘 메타문자가 포함된 인수를 거부하는지 검증한다.
+func TestValidateArgs_RejectsShellMetachars(t *testing.T) {
+	dangerous := []string{
+		"; rm -rf /",
+		"| cat /etc/passwd",
+		"& evil",
+		"`whoami`",
+		"$(id)",
+		"> /tmp/out",
+		"< /etc/passwd",
+		"arg\nwith-newline",
+	}
+	for _, arg := range dangerous {
+		if err := validateArgs([]string{arg}); err == nil {
+			t.Errorf("validateArgs(%q)이 오류를 반환하지 않았다", arg)
+		}
+	}
+}
+
+// TestValidateArgs_AllowsSafeArgs는 안전한 인수를 허용하는지 검증한다.
+func TestValidateArgs_AllowsSafeArgs(t *testing.T) {
+	safe := [][]string{
+		{},
+		{"-remote=auto"},
+		{"-rpc.trace"},
+		{"-logfile=/tmp/gopls.log"},
+	}
+	for _, args := range safe {
+		if err := validateArgs(args); err != nil {
+			t.Errorf("validateArgs(%v) = %v, nil을 기대했다", args, err)
+		}
+	}
+}
+
 // TestLoadConfig_RealLSPYaml은 실제 .moai/config/sections/lsp.yaml을 로드할 수 있는지 검증한다.
 // 이 파일이 없으면 테스트를 건너뛴다.
 func TestLoadConfig_RealLSPYaml(t *testing.T) {
