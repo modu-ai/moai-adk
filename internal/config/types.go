@@ -80,6 +80,12 @@ type ClaudeTierModels struct {
 type GLMSettings struct {
 	BaseURL string    `yaml:"base_url"`
 	Models  GLMModels `yaml:"models"`
+	// ContextWindows maps GLM model names to their actual context window sizes
+	// (in tokens), overriding the built-in statusline table. Issue #653.
+	// Example entries: {"glm-5.1": 230000, "glm-4.5-air": 128000}.
+	// Takes precedence over the built-in glmContextWindows table in
+	// internal/statusline/memory.go but yields to MOAI_STATUSLINE_CONTEXT_SIZE.
+	ContextWindows map[string]int `yaml:"context_windows,omitempty"`
 }
 
 // GLMModels represents GLM model mappings by performance tier.

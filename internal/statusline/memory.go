@@ -2,10 +2,12 @@ package statusline
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"gopkg.in/yaml.v3"
 )
 
 // defaultAutoCompactPct is the default auto-compact trigger threshold percentage.
@@ -42,6 +44,59 @@ func getAutoCompactThreshold() int {
 	return defaultAutoCompactPct
 }
 
+// llmYAMLShape is the minimal shape needed to read
+// `llm.glm.context_windows` from .moai/config/sections/llm.yaml. Keeping a
+// local shape here avoids pulling the heavyweight config.Manager into the
+// statusline hot path.
+type llmYAMLShape struct {
+	LLM struct {
+		GLM struct {
+			ContextWindows map[string]int `yaml:"context_windows"`
+		} `yaml:"glm"`
+	} `yaml:"llm"`
+}
+
+// readLLMYAMLContextWindows reads .moai/config/sections/llm.yaml from the
+// closest ancestor directory and returns the user-configured
+// glm.context_windows map. Returns nil on any error (file missing, parse
+// error) so that the caller falls back to built-in defaults. Issue #653.
+func readLLMYAMLContextWindows() map[string]int {
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	for {
+		path := filepath.Join(dir, ".moai", "config", "sections", "llm.yaml")
+		if data, readErr := os.ReadFile(path); readErr == nil {
+			var shape llmYAMLShape
+			if yaml.Unmarshal(data, &shape) == nil && len(shape.LLM.GLM.ContextWindows) > 0 {
+				return shape.LLM.GLM.ContextWindows
+			}
+			return nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return nil
+		}
+		dir = parent
+	}
+}
+
+// matchContextWindow returns the largest-matching context window entry for
+// the given lowercase model name, or 0 when no entry matches. Longer keys are
+// preferred to avoid "glm-4.5" masking "glm-4.5-air".
+func matchContextWindow(model string, table map[string]int) int {
+	var matched int
+	var matchedSize int
+	for name, size := range table {
+		if strings.Contains(model, strings.ToLower(name)) && len(name) > matched {
+			matched = len(name)
+			matchedSize = size
+		}
+	}
+	return matchedSize
+}
+
 // resolveContextWindowOverride returns a non-zero context window override when
 // the user is running through GLM (or another non-Claude provider) so that the
 // memory gauge reflects the actual provider limit rather than the Claude slot's
@@ -50,8 +105,9 @@ func getAutoCompactThreshold() int {
 //
 // Resolution priority:
 //  1. MOAI_STATUSLINE_CONTEXT_SIZE env (explicit user override)
-//  2. ANTHROPIC_DEFAULT_*_MODEL env contains a known GLM model → glmContextWindows
-//  3. Return 0 (caller falls back to stdin's context_window_size)
+//  2. llm.yaml `glm.context_windows` map (project-level configuration)
+//  3. ANTHROPIC_DEFAULT_*_MODEL env matches built-in glmContextWindows table
+//  4. Return 0 (caller falls back to stdin's context_window_size)
 func resolveContextWindowOverride() int {
 	if v := os.Getenv(config.EnvStatuslineContextSize); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -59,30 +115,34 @@ func resolveContextWindowOverride() int {
 		}
 	}
 
-	// Check the three Anthropic model env slots; first match wins (any of them
-	// being non-Claude implies a non-Claude provider is active).
 	envSlots := []string{
 		config.EnvAnthropicDefaultOpusModel,
 		config.EnvAnthropicDefaultSonnetModel,
 		config.EnvAnthropicDefaultHaikuModel,
 	}
+
+	// Priority 2: project-level llm.yaml overrides.
+	userTable := readLLMYAMLContextWindows()
+	if len(userTable) > 0 {
+		for _, key := range envSlots {
+			val := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+			if val == "" || strings.HasPrefix(val, "claude") {
+				continue
+			}
+			if size := matchContextWindow(val, userTable); size > 0 {
+				return size
+			}
+		}
+	}
+
+	// Priority 3: built-in glmContextWindows table.
 	for _, key := range envSlots {
 		val := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
 		if val == "" || strings.HasPrefix(val, "claude") {
 			continue
 		}
-		// Match longest known model name first to avoid "glm-4.5" matching
-		// before "glm-4.5-air".
-		var matched int
-		var matchedSize int
-		for name, size := range glmContextWindows {
-			if strings.Contains(val, name) && len(name) > matched {
-				matched = len(name)
-				matchedSize = size
-			}
-		}
-		if matchedSize > 0 {
-			return matchedSize
+		if size := matchContextWindow(val, glmContextWindows); size > 0 {
+			return size
 		}
 	}
 	return 0

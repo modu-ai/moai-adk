@@ -1,6 +1,10 @@
 package statusline
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestCollectMemory(t *testing.T) {
 	// Disable auto-compact scaling for existing tests
@@ -347,5 +351,103 @@ func TestCollectMemory_ExplicitOverride(t *testing.T) {
 	wantBudget := 131072 * 85 / 100
 	if got.TokenBudget != wantBudget {
 		t.Errorf("TokenBudget = %d, want %d (explicit override wins)", got.TokenBudget, wantBudget)
+	}
+}
+
+// TestCollectMemory_LLMYAMLOverride verifies that .moai/config/sections/llm.yaml
+// `glm.context_windows` entries take precedence over the built-in
+// glmContextWindows table when MOAI_STATUSLINE_CONTEXT_SIZE is not set.
+// Priority: env > llm.yaml > built-in table (issue #653).
+func TestCollectMemory_LLMYAMLOverride(t *testing.T) {
+	tempDir := t.TempDir()
+	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	yamlBody := `llm:
+  glm:
+    context_windows:
+      glm-5.1: 230000        # user-configured override (larger than built-in 200K)
+      custom-model: 96000    # previously unknown model
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(yamlBody), 0o644); err != nil {
+		t.Fatalf("write llm.yaml: %v", err)
+	}
+	// resolveContextWindowOverride walks from getwd() upward. t.Chdir restores
+	// the original wd at test teardown.
+	t.Chdir(tempDir)
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+
+	cases := []struct {
+		name       string
+		glmModel   string
+		wantBudget int
+	}{
+		{
+			name:       "llm.yaml overrides built-in for glm-5.1 (200K→230K)",
+			glmModel:   "glm-5.1",
+			wantBudget: 230_000 * 85 / 100,
+		},
+		{
+			name:       "llm.yaml adds previously unknown custom-model",
+			glmModel:   "custom-model",
+			wantBudget: 96_000 * 85 / 100,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", tc.glmModel)
+
+			pct := 50.0
+			input := &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    &pct,
+					ContextWindowSize: 1_000_000,
+				},
+			}
+			got := CollectMemory(input)
+			if got == nil || !got.Available {
+				t.Fatalf("CollectMemory returned unavailable")
+			}
+			if got.TokenBudget != tc.wantBudget {
+				t.Errorf("TokenBudget = %d, want %d", got.TokenBudget, tc.wantBudget)
+			}
+		})
+	}
+}
+
+// TestCollectMemory_EnvOverridesLLMYAML verifies env var wins over llm.yaml.
+func TestCollectMemory_EnvOverridesLLMYAML(t *testing.T) {
+	tempDir := t.TempDir()
+	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+	_ = os.MkdirAll(sectionsDir, 0o755)
+	yamlBody := `llm:
+  glm:
+    context_windows:
+      glm-5.1: 230000
+`
+	_ = os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(yamlBody), 0o644)
+
+	t.Chdir(tempDir)
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.1")
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "65536")
+
+	pct := 50.0
+	input := &StdinData{
+		ContextWindow: &ContextWindowInfo{
+			UsedPercentage:    &pct,
+			ContextWindowSize: 1_000_000,
+		},
+	}
+	got := CollectMemory(input)
+	if got == nil || !got.Available {
+		t.Fatalf("CollectMemory returned unavailable")
+	}
+	wantBudget := 65536 * 85 / 100
+	if got.TokenBudget != wantBudget {
+		t.Errorf("TokenBudget = %d, want %d (env wins over llm.yaml)", got.TokenBudget, wantBudget)
 	}
 }
