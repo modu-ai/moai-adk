@@ -148,16 +148,21 @@ func ValidateBinary(binary string) error {
 		return ErrUntrustedBinary
 	}
 	// bare name: 허용 목록의 고정값만
-	if !filepath.IsAbs(binary) {
+	// filepath.IsAbs는 Windows에서 Unix 스타일 "/usr/bin/sg"를 절대경로로 보지 않으므로
+	// 슬래시/백슬래시 포함 여부로 경로성을 판정해 크로스플랫폼 일관성을 확보한다.
+	looksLikePath := strings.ContainsAny(binary, "/\\") || filepath.IsAbs(binary)
+	if !looksLikePath {
 		if binary == "sg" || binary == "ast-grep" {
 			return nil
 		}
 		return ErrUntrustedBinary
 	}
 	// 절대 경로: 신뢰 prefix 검사 (Clean으로 트래버설 정규화 후)
-	cleaned := filepath.Clean(binary)
+	// Windows와 Unix를 동일하게 다루기 위해 양쪽 모두 ToSlash로 정규화한다.
+	cleaned := filepath.ToSlash(filepath.Clean(binary))
 	for _, p := range trustedBinaryPrefixes() {
-		if strings.HasPrefix(cleaned, p) {
+		prefixSlash := strings.TrimRight(filepath.ToSlash(p), "/")
+		if strings.HasPrefix(cleaned, prefixSlash+"/") || cleaned == prefixSlash {
 			return nil
 		}
 	}
