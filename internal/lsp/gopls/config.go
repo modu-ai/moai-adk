@@ -177,7 +177,9 @@ var trustedPrefixesStatic = []string{
 }
 
 // binaryMetachars는 바이너리 이름·경로에 절대 포함되어선 안 되는 문자 집합이다.
-const binaryMetachars = ";&|`$\\"
+// Windows 경로는 백슬래시를 정상적으로 포함하므로 제외한다.
+// exec.Command는 쉘을 경유하지 않으므로 백슬래시 자체는 인젝션 위험이 없다.
+const binaryMetachars = ";&|`$"
 
 // argMetachars는 인수에 허용되지 않는 쉘 메타문자 집합이다.
 const argMetachars = ";&|`$\n\r"
