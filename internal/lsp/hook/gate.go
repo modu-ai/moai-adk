@@ -332,10 +332,7 @@ func DetectRegression(current, baseline SeverityCounts, errorThreshold, warnThre
 		return true
 	}
 	warnIncrease := current.Warnings - baseline.Warnings
-	if warnIncrease > warnThreshold {
-		return true
-	}
-	return false
+	return warnIncrease > warnThreshold
 }
 
 // Compile-time interface compliance check.

@@ -117,7 +117,7 @@ func buildExitEvent(err error) ExitEvent {
 	signaled := false
 
 	// Unix: ProcessState.Sys()는 syscall.WaitStatus
-	if ws, ok := exitErr.ProcessState.Sys().(syscall.WaitStatus); ok {
+	if ws, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 		signaled = ws.Signaled()
 	}
 

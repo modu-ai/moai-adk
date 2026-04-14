@@ -390,17 +390,11 @@ func (h *postToolHandler) warnAsInstructionEnabled() bool {
 	return cfg.Ralph.WarnAsInstruction
 }
 
-// collectDiagnosticsWithInstruction collects LSP diagnostics for the modified file,
-// populates the metrics map (REQ-LAI-005, backward compatible), and returns a
-// formatted systemMessage string when lint_as_instruction is enabled (REQ-LAI-001).
-// This is observation-only and MUST NOT block per REQ-HOOK-153.
-func (h *postToolHandler) collectDiagnosticsWithInstruction(ctx context.Context, input *HookInput, metrics map[string]any) string {
-	msg, _ := h.collectDiagnosticsWithInstructionAndReturn(ctx, input, metrics)
-	return msg
-}
-
-// collectDiagnosticsWithInstructionAndReturn is the internal implementation that also
-// returns collected diagnostics for FeedbackChannel emission (REQ-LL-003).
+// collectDiagnosticsWithInstructionAndReturn collects LSP diagnostics for the
+// modified file, populates the metrics map (REQ-LAI-005), and returns a formatted
+// systemMessage string when lint_as_instruction is enabled (REQ-LAI-001), along
+// with the raw diagnostics for FeedbackChannel emission (REQ-LL-003).
+// Observation-only and MUST NOT block per REQ-HOOK-153.
 func (h *postToolHandler) collectDiagnosticsWithInstructionAndReturn(ctx context.Context, input *HookInput, metrics map[string]any) (string, []lsphook.Diagnostic) {
 	// Extract file path from tool input
 	var parsed map[string]any

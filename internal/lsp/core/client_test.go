@@ -182,8 +182,7 @@ func (f *fakeTransport) notifyCount(method string) int {
 
 // fakeTransportFactory는 fakeLauncher 이후에 fakeTransport를 반환하는 팩토리.
 type fakeTransportFactory struct {
-	mu  sync.Mutex
-	tr  *fakeTransport
+	tr *fakeTransport
 }
 
 func newFakeTransportFactory(tr *fakeTransport) *fakeTransportFactory {

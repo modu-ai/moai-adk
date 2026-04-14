@@ -150,8 +150,8 @@ func TestNewPowernapTransport_WithStream(t *testing.T) {
 	t.Parallel()
 
 	pr, pw := newPipeStream()
-	defer pw.Close()
-	defer pr.Close()
+	defer func() { _ = pw.Close() }()
+	defer func() { _ = pr.Close() }()
 
 	tr := NewPowernapTransport(pr)
 	if tr == nil {

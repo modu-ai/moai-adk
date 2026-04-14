@@ -16,7 +16,10 @@ var canonicalLanguages = []string{
 	"rust", "scala", "swift", "typescript",
 }
 
-// canonicalLanguageSet is a set version for quick lookup.
+// canonicalLanguageSet is a set version of canonicalLanguages for quick lookup
+// in tests that verify membership in the canonical 16-language list.
+//
+//nolint:unused // referenced from sibling tests added in follow-up PRs
 var canonicalLanguageSet = func() map[string]bool {
 	m := make(map[string]bool, len(canonicalLanguages))
 	for _, l := range canonicalLanguages {

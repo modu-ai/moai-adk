@@ -256,29 +256,29 @@ func sortedLanguages(cfg *config.ServersConfig) []string {
 
 // renderLSPDoctorReport writes a human-readable report to w (REQ-LM-007).
 func renderLSPDoctorReport(w io.Writer, r *LSPDoctorReport) {
-	fmt.Fprintf(w, "=== moai lsp doctor ===\n\n")
+	_, _ = fmt.Fprintf(w, "=== moai lsp doctor ===\n\n")
 
-	fmt.Fprintf(w, "Project languages detected: ")
+	_, _ = fmt.Fprintf(w, "Project languages detected: ")
 	if len(r.ProjectLanguages) == 0 {
-		fmt.Fprintf(w, "(none — no project markers found)\n")
+		_, _ = fmt.Fprintf(w, "(none — no project markers found)\n")
 	} else {
-		fmt.Fprintf(w, "%v\n", r.ProjectLanguages)
+		_, _ = fmt.Fprintf(w, "%v\n", r.ProjectLanguages)
 	}
 
-	fmt.Fprintf(w, "\nInstalled servers (%d):\n", len(r.InstalledServers))
+	_, _ = fmt.Fprintf(w, "\nInstalled servers (%d):\n", len(r.InstalledServers))
 	for _, s := range r.InstalledServers {
-		fmt.Fprintf(w, "  [ok]  %-20s -> %s\n", s.Language, s.ResolvedBinary)
+		_, _ = fmt.Fprintf(w, "  [ok]  %-20s -> %s\n", s.Language, s.ResolvedBinary)
 	}
 
 	if len(r.MissingServers) > 0 {
-		fmt.Fprintf(w, "\nMissing servers (%d):\n", len(r.MissingServers))
+		_, _ = fmt.Fprintf(w, "\nMissing servers (%d):\n", len(r.MissingServers))
 		for _, s := range r.MissingServers {
-			fmt.Fprintf(w, "  [--]  %-20s (binary: %s)\n", s.Language, s.Command)
+			_, _ = fmt.Fprintf(w, "  [--]  %-20s (binary: %s)\n", s.Language, s.Command)
 			if s.InstallHint != "" {
-				fmt.Fprintf(w, "        install: %s\n", s.InstallHint)
+				_, _ = fmt.Fprintf(w, "        install: %s\n", s.InstallHint)
 			}
 		}
 	}
 
-	fmt.Fprintf(w, "\nReadiness: %s\n", r.ReadinessStatus)
+	_, _ = fmt.Fprintf(w, "\nReadiness: %s\n", r.ReadinessStatus)
 }
