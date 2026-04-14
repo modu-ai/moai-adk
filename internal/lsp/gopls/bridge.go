@@ -52,6 +52,14 @@ type Bridge struct {
 	// 버퍼 크기 16: overflow 시 오래된 이벤트를 폐기한다 (plan.md 위험 완화).
 	diagnosticsCh chan DiagnosticEvent
 
+	// pendingMu는 pendingDiag 접근을 보호한다.
+	pendingMu sync.Mutex
+	// pendingDiag는 collectDiagnostics가 대기 중인 URI 이외의 파일에서 도착한 진단을 저장한다.
+	// 설계 선택: handlePublishDiagnostics는 모든 URI의 최신 진단을 pendingDiag에 저장한다.
+	// collectDiagnostics 진입 시 pendingDiag[uri]를 먼저 확인하고, 비매칭 이벤트도 pendingDiag에 저장한다.
+	// 이를 통해 다른 URI의 진단이 영구 유실되는 F2 결함을 해결한다.
+	pendingDiag map[string][]Diagnostic
+
 	// shutdownCh는 readLoop를 종료하는 신호 채널이다.
 	shutdownCh chan struct{}
 	// closeOnce는 shutdownCh가 한 번만 닫히도록 보장한다.
@@ -81,6 +89,14 @@ func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, e
 	// REQ-GB-051: 마스터 스위치가 false이면 nil 반환.
 	if !cfg.Enabled {
 		return nil, nil
+	}
+
+	// F5: 방어적 심층 검증 — LoadConfig를 우회한 직접 Config 주입에도 대응한다.
+	if err := validateBinary(cfg.Binary); err != nil {
+		return nil, fmt.Errorf("gopls: NewBridge: 바이너리 검증 실패: %w", err)
+	}
+	if err := validateArgs(cfg.Args); err != nil {
+		return nil, fmt.Errorf("gopls: NewBridge: 인수 검증 실패: %w", err)
 	}
 
 	// REQ-GB-002: gopls 바이너리 존재 여부 확인.
@@ -117,6 +133,7 @@ func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, e
 		writer:        NewWriter(stdin),
 		reader:        NewReader(stdout),
 		diagnosticsCh: make(chan DiagnosticEvent, 16),
+		pendingDiag:   make(map[string][]Diagnostic),
 		shutdownCh:    make(chan struct{}),
 		config:        cfg,
 	}
@@ -144,8 +161,13 @@ func (b *Bridge) initialize(ctx context.Context, projectRoot string) error {
 	id := b.nextID.Add(1)
 	ch := b.pendingReg.Register(id)
 
-	// rootUri를 file:// URI로 변환한다.
-	rootURI := "file://" + projectRoot
+	// rootUri를 RFC 3986 준수 file:// URI로 변환한다.
+	// 직접 문자열 결합은 공백·유니코드·Windows 경로에서 LSP 사양을 위반한다.
+	rootURI, err := pathToURI(projectRoot)
+	if err != nil {
+		b.pendingReg.Unregister(id)
+		return fmt.Errorf("gopls: initialize: rootURI 변환 실패: %w", err)
+	}
 
 	// InitOptions 설정.
 	initOpts := map[string]any{"staticcheck": true}
@@ -226,7 +248,11 @@ func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnos
 	}
 
 	// didOpen 알림을 전송한다.
-	uri := "file://" + filePath
+	// RFC 3986 준수 URI로 변환한다. 공백·유니코드·Windows 경로 대응.
+	uri, err := pathToURI(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("gopls: GetDiagnostics: URI 변환 실패: %w", err)
+	}
 	params := DidOpenTextDocumentParams{
 		TextDocument: TextDocumentItem{
 			URI:        uri,
@@ -257,10 +283,26 @@ func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnos
 // collectDiagnostics는 diagnosticsCh에서 uri에 해당하는 진단을 수집한다.
 // 전체 타임아웃 ctx 안에서, 마지막 수신 후 debounce 창 동안 추가 이벤트가 없으면 반환한다.
 //
+// F2 수정: 진입 시 pendingDiag[uri]를 먼저 확인하여 이미 도착한 진단을 즉시 사용한다.
+// 대기 중 비매칭 URI 이벤트는 채널에서 소비하되 pendingDiag에 저장하여 후속 호출에서 참조 가능하게 한다.
+// handlePublishDiagnostics도 항상 pendingDiag를 갱신하므로 채널 overflow 시에도 데이터가 보존된다.
+//
 // @MX:WARN: [AUTO] 채널 기반 debounce 로직 — timer 리셋 경쟁 조건 주의
 // @MX:REASON: timer.Stop()과 timer.Reset() 사이 race를 drain select로 방지한다
 func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnostic, error) {
 	debounce := b.config.DebounceWindow
+
+	// 진입 시 pendingDiag[uri]를 확인한다.
+	// handlePublishDiagnostics가 이미 해당 URI의 진단을 저장했으면 즉시 사용한다.
+	b.pendingMu.Lock()
+	if diags, ok := b.pendingDiag[uri]; ok {
+		delete(b.pendingDiag, uri)
+		b.pendingMu.Unlock()
+		// pendingDiag에 저장된 진단을 초기값으로 설정하고 디바운스 창을 시작한다.
+		// 채널에 추가 이벤트가 올 수 있으므로 debounce를 그대로 수행한다.
+		return b.collectWithInitial(ctx, uri, diags, debounce)
+	}
+	b.pendingMu.Unlock()
 
 	// 전체 타임아웃 컨텍스트를 생성한다.
 	timeoutCtx, cancel := context.WithTimeout(ctx, b.config.Timeout)
@@ -279,9 +321,17 @@ func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnost
 		select {
 		case event := <-b.diagnosticsCh:
 			if event.URI != uri {
-				// 다른 파일의 진단은 버리지 않고 계속 기다린다.
+				// 다른 URI 이벤트: pendingDiag에 저장하고 계속 기다린다.
+				b.pendingMu.Lock()
+				b.pendingDiag[event.URI] = event.Diagnostics
+				b.pendingMu.Unlock()
 				continue
 			}
+			// pendingDiag에서 소비했으므로 중복 저장을 제거한다.
+			b.pendingMu.Lock()
+			delete(b.pendingDiag, uri)
+			b.pendingMu.Unlock()
+
 			result = event.Diagnostics
 			if !received {
 				received = true
@@ -317,16 +367,71 @@ func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnost
 	}
 }
 
+// collectWithInitial은 초기 진단 값을 가진 상태에서 디바운스 창을 수행한다.
+// pendingDiag에서 즉시 진단을 찾았을 때 호출된다.
+func (b *Bridge) collectWithInitial(ctx context.Context, uri string, initial []Diagnostic, debounce time.Duration) ([]Diagnostic, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, b.config.Timeout)
+	defer cancel()
+
+	debounceTimer := time.NewTimer(debounce)
+	defer debounceTimer.Stop()
+
+	result := initial
+
+	for {
+		select {
+		case event := <-b.diagnosticsCh:
+			if event.URI != uri {
+				// 다른 URI 이벤트: pendingDiag에 저장한다.
+				b.pendingMu.Lock()
+				b.pendingDiag[event.URI] = event.Diagnostics
+				b.pendingMu.Unlock()
+				continue
+			}
+			// 같은 URI의 추가 이벤트: 결과를 갱신하고 타이머를 리셋한다.
+			result = event.Diagnostics
+			if !debounceTimer.Stop() {
+				select {
+				case <-debounceTimer.C:
+				default:
+				}
+			}
+			debounceTimer.Reset(debounce)
+
+		case <-debounceTimer.C:
+			b.resetFailures()
+			return result, nil
+
+		case <-timeoutCtx.Done():
+			b.resetFailures()
+			return result, nil
+
+		case <-b.shutdownCh:
+			return nil, fmt.Errorf("gopls: GetDiagnostics: 브릿지가 종료됐다")
+		}
+	}
+}
+
 // handlePublishDiagnostics는 publishDiagnostics 알림을 처리하는 핸들러다.
 // NotificationDispatcher에 등록된다.
+//
+// 모든 URI의 최신 진단을 pendingDiag에 저장하고, 채널에도 non-blocking으로 전달한다.
+// collectDiagnostics는 채널과 pendingDiag를 모두 확인하여 어떤 URI의 진단도 유실하지 않는다.
 func (b *Bridge) handlePublishDiagnostics(payload json.RawMessage) {
 	var params PublishDiagnosticsParams
 	if err := json.Unmarshal(payload, &params); err != nil {
 		slog.Warn("gopls: publishDiagnostics 역직렬화 실패", "error", err)
 		return
 	}
+
+	// pendingDiag에 최신 진단을 저장한다 (덮어쓰기).
+	b.pendingMu.Lock()
+	b.pendingDiag[params.URI] = params.Diagnostics
+	b.pendingMu.Unlock()
+
 	event := DiagnosticEvent(params)
 	// non-blocking send: 채널이 가득 차면 가장 오래된 이벤트를 폐기한다.
+	// pendingDiag에 이미 저장했으므로 채널 overflow 시에도 데이터는 보존된다.
 	select {
 	case b.diagnosticsCh <- event:
 	default:
@@ -341,6 +446,13 @@ func (b *Bridge) handlePublishDiagnostics(payload json.RawMessage) {
 
 // Close는 LSP shutdown/exit 시퀀스로 gopls를 정상 종료한다.
 // REQ-GB-004: 5초 타임아웃 후 SIGKILL.
+//
+// F3 수정: shutdownCh 닫힘 후 stdout을 즉시 닫아 readLoop의 reader.Read() 블록을 해제한다.
+// stdout을 닫으면 bufio.Reader가 EOF를 반환하여 readLoop가 5s 지연 없이 즉시 종료한다.
+//
+// F4 수정: time.After 대신 time.NewTimer + defer Stop을 사용한다.
+// time.After는 done 분기가 먼저 실행되어도 ShutdownTimeout(5s) 동안 goroutine을 잔류시킨다.
+// time.NewTimer + defer Stop은 done 분기 실행 즉시 timer goroutine을 해제한다.
 func (b *Bridge) Close(ctx context.Context) error {
 	var shutdownErr error
 
@@ -349,9 +461,15 @@ func (b *Bridge) Close(ctx context.Context) error {
 		shutdownErr = b.sendShutdown(ctx)
 	}
 
-	// readLoop에 종료 신호를 보낸다.
+	// readLoop에 종료 신호를 보내고 stdout을 닫아 reader.Read() 블록을 해제한다.
+	// F3: close(shutdownCh) 후 stdout.Close()를 호출해야 readLoop가 즉시 종료된다.
 	b.closeOnce.Do(func() {
 		close(b.shutdownCh)
+		// stdout을 닫아 bufio.Reader.Read()가 EOF를 반환하도록 한다.
+		// forceKill은 stdin만 닫으므로 여기서 stdout을 별도로 닫는다.
+		if b.stdout != nil {
+			_ = b.stdout.Close()
+		}
 	})
 
 	// 프로세스가 있으면 정상 종료를 기다린다.
@@ -361,11 +479,15 @@ func (b *Bridge) Close(ctx context.Context) error {
 			done <- b.cmd.Wait()
 		}()
 
+		// F4: time.After → time.NewTimer + defer Stop.
+		// done 분기가 먼저 실행되면 timer goroutine을 즉시 회수한다.
 		shutdownTimeout := b.config.ShutdownTimeout
+		timer := time.NewTimer(shutdownTimeout)
+		defer timer.Stop()
 		select {
 		case <-done:
 			// 정상 종료
-		case <-time.After(shutdownTimeout):
+		case <-timer.C:
 			// 타임아웃 시 SIGKILL
 			slog.Warn("gopls: 종료 타임아웃, SIGKILL 전송")
 			b.forceKill()

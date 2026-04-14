@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -104,11 +106,12 @@ func newTestBridge(mock *mockGopls, cfg *Config) *Bridge {
 		cfg.DebounceWindow = 50 * time.Millisecond
 	}
 	b := &Bridge{
-		writer:     NewWriter(mock.clientWriter),
-		reader:     NewReader(mock.clientReader),
+		writer:        NewWriter(mock.clientWriter),
+		reader:        NewReader(mock.clientReader),
 		diagnosticsCh: make(chan DiagnosticEvent, 16),
-		shutdownCh: make(chan struct{}),
-		config:     cfg,
+		pendingDiag:   make(map[string][]Diagnostic),
+		shutdownCh:    make(chan struct{}),
+		config:        cfg,
 	}
 	b.dispatcher = NewNotificationDispatcher()
 	b.dispatcher.Register("textDocument/publishDiagnostics", b.handlePublishDiagnostics)
@@ -183,11 +186,19 @@ func TestBridge_GetDiagnostics(t *testing.T) {
 	bridge.initialized.Store(true) // 이미 초기화된 상태로 설정
 	go bridge.readLoop()
 
+	// 플랫폼 독립적 경로/URI 구성: Windows에서는 드라이브 접두사가 붙으므로
+	// pathToURI 결과를 사용해 mock URI와 일치시킨다.
+	filePath := filepath.Join(t.TempDir(), "main.go")
+	expectedURI, err := pathToURI(filePath)
+	if err != nil {
+		t.Fatalf("pathToURI: %v", err)
+	}
+
 	// 비동기로 publishDiagnostics 알림을 전송한다.
 	go func() {
 		time.Sleep(20 * time.Millisecond)
 		params := PublishDiagnosticsParams{
-			URI: "file:///tmp/test/main.go",
+			URI: expectedURI,
 			Diagnostics: []Diagnostic{
 				{
 					Severity: SeverityError,
@@ -214,7 +225,7 @@ func TestBridge_GetDiagnostics(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	diags, err := bridge.GetDiagnostics(ctx, "/tmp/test/main.go")
+	diags, err := bridge.GetDiagnostics(ctx, filePath)
 	if err != nil {
 		t.Fatalf("GetDiagnostics 오류: %v", err)
 	}
@@ -242,11 +253,18 @@ func TestBridge_GetDiagnostics_Empty(t *testing.T) {
 	bridge.initialized.Store(true)
 	go bridge.readLoop()
 
+	// 플랫폼 독립적 경로/URI 구성.
+	filePath := filepath.Join(t.TempDir(), "clean.go")
+	expectedURI, err := pathToURI(filePath)
+	if err != nil {
+		t.Fatalf("pathToURI: %v", err)
+	}
+
 	// 빈 진단 알림을 전송한다.
 	go func() {
 		time.Sleep(20 * time.Millisecond)
 		params := PublishDiagnosticsParams{
-			URI:         "file:///tmp/test/clean.go",
+			URI:         expectedURI,
 			Diagnostics: []Diagnostic{},
 		}
 		if err := mock.sendNotification("textDocument/publishDiagnostics", params); err != nil {
@@ -257,7 +275,7 @@ func TestBridge_GetDiagnostics_Empty(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	diags, err := bridge.GetDiagnostics(ctx, "/tmp/test/clean.go")
+	diags, err := bridge.GetDiagnostics(ctx, filePath)
 	if err != nil {
 		t.Fatalf("GetDiagnostics 오류: %v", err)
 	}
@@ -458,6 +476,144 @@ func mustMarshal(t *testing.T, v any) []byte {
 		t.Fatalf("JSON 직렬화 실패: %v", err)
 	}
 	return b
+}
+
+// TestReadLoop_ExitsPromptlyOnShutdown은 Close 호출 시 readLoop가 빠르게 종료하는지 검증한다.
+// F3 결함 재현: readLoop가 reader.Read()에 블록된 상태에서 shutdownCh가 닫혀도
+// stdout이 닫히지 않으면 최대 5초(ShutdownTimeout) 동안 goroutine이 잔류한다.
+func TestReadLoop_ExitsPromptlyOnShutdown(t *testing.T) {
+	mock := newMockGopls()
+	// mock.close()를 나중에 명시적으로 호출하므로 defer는 사용하지 않는다.
+
+	cfg := DefaultConfig()
+	cfg.ShutdownTimeout = 5 * time.Second // F3가 없으면 이 만큼 기다린다
+
+	bridge := newTestBridge(mock, cfg)
+
+	// readLoop를 시작하고 goroutine 종료를 추적한다.
+	done := make(chan struct{})
+	go func() {
+		bridge.readLoop()
+		close(done)
+	}()
+
+	// readLoop가 reader.Read()에 블록될 시간을 준다.
+	time.Sleep(20 * time.Millisecond)
+
+	// shutdownCh를 닫는다 (Close()가 하는 작업).
+	bridge.closeOnce.Do(func() {
+		close(bridge.shutdownCh)
+	})
+	// stdout을 닫아 reader.Read()를 unblock한다 (F3 수정의 핵심).
+	_ = mock.serverWriter.Close() // 클라이언트가 읽는 파이프의 쓰기 측 종료
+
+	// readLoop가 100ms 이내에 종료되어야 한다 (5s 타임아웃보다 훨씬 짧음).
+	select {
+	case <-done:
+		// 정상: readLoop 종료
+	case <-time.After(200 * time.Millisecond):
+		t.Error("readLoop가 200ms 이내에 종료되지 않았다 (stdout.Close가 readLoop를 unblock해야 한다)")
+	}
+
+	mock.close()
+}
+
+// TestClose_DoesNotLeakTimer는 Close()의 time.NewTimer가 누수되지 않는지 검증한다.
+// F4 결함 재현: time.After를 사용하면 done 분기가 빠르게 실행되어도 goroutine이 5s 동안 잔류한다.
+func TestClose_DoesNotLeakTimer(t *testing.T) {
+	// 여러 번 Bridge를 생성하고 Close를 호출하여 goroutine 수가 폭발하지 않는지 확인한다.
+	// runtime.NumGoroutine()으로 간접 측정한다.
+	before := countGoroutines()
+
+	const iterations = 20
+	for i := 0; i < iterations; i++ {
+		mock := newMockGopls()
+		cfg := DefaultConfig()
+		cfg.ShutdownTimeout = 100 * time.Millisecond
+
+		bridge := newTestBridge(mock, cfg)
+		go bridge.readLoop()
+
+		// shutdown 없이 바로 closeOnce만 실행 (initialized=false이므로 sendShutdown 호출 안 됨).
+		ctx := context.Background()
+		_ = bridge.Close(ctx)
+		mock.close()
+	}
+
+	// goroutine 수가 안정화될 시간을 준다.
+	time.Sleep(200 * time.Millisecond)
+	after := countGoroutines()
+
+	// 20번 반복했으나 goroutine 누수는 소수 이내여야 한다.
+	// time.After는 timer goroutine을 ShutdownTimeout(5s) 동안 유지하므로,
+	// F4가 없으면 이 시점에 20개 이상의 goroutine이 잔류할 수 있다.
+	// F4 수정 후에는 timer.Stop()으로 즉시 해제되어 누수가 없어야 한다.
+	delta := after - before
+	if delta > 5 {
+		t.Errorf("Close 반복 후 goroutine 누수 감지: before=%d, after=%d, delta=%d (5 이하를 기대했다)",
+			before, after, delta)
+	}
+}
+
+// countGoroutines는 현재 goroutine 수를 반환한다.
+func countGoroutines() int {
+	// runtime.NumGoroutine()은 현재 실행 중인 goroutine 수를 반환한다.
+	return runtime.NumGoroutine()
+}
+
+// TestCollectDiagnostics_PreservesOtherURIEvents는 다른 URI 이벤트가 수집 중 유실되지 않는지 검증한다.
+// F2 결함 재현: collectDiagnostics가 A 파일을 기다리는 동안 B 파일의 진단이 도착하면,
+// 이후 B를 요청했을 때 진단이 반환되어야 한다.
+func TestCollectDiagnostics_PreservesOtherURIEvents(t *testing.T) {
+	mock := newMockGopls()
+	defer mock.close()
+
+	cfg := DefaultConfig()
+	cfg.Timeout = 500 * time.Millisecond
+	cfg.DebounceWindow = 30 * time.Millisecond
+
+	bridge := newTestBridge(mock, cfg)
+	bridge.initialized.Store(true)
+	go bridge.readLoop()
+
+	uriA := "file:///tmp/test/a.go"
+	uriB := "file:///tmp/test/b.go"
+
+	// B 파일의 진단을 먼저 채널에 직접 주입한다 (A를 기다리기 전에).
+	bridge.diagnosticsCh <- DiagnosticEvent{
+		URI:         uriB,
+		Diagnostics: []Diagnostic{{Message: "B 파일 오류", Severity: SeverityError}},
+	}
+
+	// A 파일의 진단을 약간 지연 후 전송한다.
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		if err := mock.sendNotification("textDocument/publishDiagnostics", PublishDiagnosticsParams{
+			URI:         uriA,
+			Diagnostics: []Diagnostic{{Message: "A 파일 오류"}},
+		}); err != nil {
+			t.Errorf("A 알림 전송 실패: %v", err)
+		}
+	}()
+
+	// A 파일 수집: 성공해야 한다.
+	ctx := context.Background()
+	diagsA, err := bridge.collectDiagnostics(ctx, uriA)
+	if err != nil {
+		t.Fatalf("collectDiagnostics(A) 오류: %v", err)
+	}
+	if len(diagsA) != 1 || diagsA[0].Message != "A 파일 오류" {
+		t.Errorf("collectDiagnostics(A) = %v, 'A 파일 오류' 1개를 기대했다", diagsA)
+	}
+
+	// B 파일 수집: pendingDiag에 저장된 이벤트를 반환해야 한다.
+	diagsB, err := bridge.collectDiagnostics(ctx, uriB)
+	if err != nil {
+		t.Fatalf("collectDiagnostics(B) 오류: %v", err)
+	}
+	if len(diagsB) != 1 || diagsB[0].Message != "B 파일 오류" {
+		t.Errorf("collectDiagnostics(B) = %v, 'B 파일 오류' 1개를 기대했다 (다른 URI 이벤트 유실)", diagsB)
+	}
 }
 
 // TestNewBridge_RealGopls는 실제 gopls 바이너리가 있으면 브릿지를 생성하고 종료한다.

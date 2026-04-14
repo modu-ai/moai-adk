@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -102,7 +104,18 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("gopls: config: YAML 파싱 실패 %q: %w", configPath, err)
 	}
 
-	return mergeWithDefaults(&root.LSP.GoplsBridge), nil
+	cfg := mergeWithDefaults(&root.LSP.GoplsBridge)
+
+	// F5: 바이너리·인수 허용 목록 검사.
+	// lsp.yaml의 binary/args는 외부 편집자가 변조할 수 있는 공급망 공격 벡터다.
+	if err := validateBinary(cfg.Binary); err != nil {
+		return nil, fmt.Errorf("gopls: config: 바이너리 검증 실패: %w", err)
+	}
+	if err := validateArgs(cfg.Args); err != nil {
+		return nil, fmt.Errorf("gopls: config: 인수 검증 실패: %w", err)
+	}
+
+	return cfg, nil
 }
 
 // mergeWithDefaults는 YAML에서 파싱한 gopls_bridge 설정과 기본값을 병합한다.
@@ -141,4 +154,104 @@ func durationOrDefault(value, zero int, defaultVal time.Duration, unit time.Dura
 		return defaultVal
 	}
 	return time.Duration(value) * unit
+}
+
+// ─── 보안: 바이너리·인수 허용 목록 ──────────────────────────────────────────────
+//
+// REQ-GB-F5: lsp.yaml의 binary/args는 공급망 공격 벡터다.
+// binary가 신뢰된 경로 이외의 절대 경로를 가리키거나 쉘 메타문자를 포함하면 즉시 거부한다.
+
+// ErrUntrustedBinary는 신뢰할 수 없는 바이너리 경로가 지정됐을 때 반환된다.
+var ErrUntrustedBinary = errors.New("gopls: config: 신뢰할 수 없는 바이너리 경로")
+
+// ErrUnsafeArgs는 쉘 메타문자를 포함하는 인수가 지정됐을 때 반환된다.
+var ErrUnsafeArgs = errors.New("gopls: config: 허용되지 않는 인수 문자")
+
+// trustedPrefixes는 절대 경로 바이너리가 위치해도 되는 신뢰된 디렉토리다.
+// $HOME 기반 경로는 런타임에 확장한다.
+var trustedPrefixesStatic = []string{
+	"/usr/bin",
+	"/usr/local/bin",
+	"/opt/homebrew/bin",
+	"/opt/local/bin",
+}
+
+// binaryMetachars는 바이너리 이름·경로에 절대 포함되어선 안 되는 문자 집합이다.
+// Windows 경로는 백슬래시를 정상적으로 포함하므로 제외한다.
+// exec.Command는 쉘을 경유하지 않으므로 백슬래시 자체는 인젝션 위험이 없다.
+const binaryMetachars = ";&|`$"
+
+// argMetachars는 인수에 허용되지 않는 쉘 메타문자 집합이다.
+const argMetachars = ";&|`$\n\r"
+
+// validateBinary는 cfg.Binary가 허용된 바이너리인지 검사한다.
+//
+// 허용 조건:
+//   - bare name(경로 구분자 없음): "gopls" 형태 → 허용 (PATH 탐색에 위임)
+//   - 절대 경로: trustedPrefixes 중 하나로 시작해야 함
+//
+// 거부 조건:
+//   - 경로 순회(".." 포함)
+//   - 쉘 메타문자(";", "|", "&", "`", "$", "\") 포함
+//   - 신뢰되지 않은 디렉토리의 절대 경로
+func validateBinary(binary string) error {
+	if binary == "" {
+		return fmt.Errorf("%w: 빈 바이너리 이름", ErrUntrustedBinary)
+	}
+
+	// 쉘 메타문자 검사.
+	if strings.ContainsAny(binary, binaryMetachars) {
+		return fmt.Errorf("%w: 쉘 메타문자 포함 %q", ErrUntrustedBinary, binary)
+	}
+
+	// bare name이면 허용한다 (예: "gopls", "gopls-v0.14").
+	if !strings.Contains(binary, string(filepath.Separator)) && !strings.Contains(binary, "/") {
+		return nil
+	}
+
+	// 절대 경로 검사.
+	// 경로 순회("..")를 filepath.Clean으로 해결 후 원본과 비교한다.
+	cleaned := filepath.Clean(binary)
+
+	// ".."를 포함하면 filepath.Clean 전후가 달라진다. 이를 탐지한다.
+	if strings.Contains(binary, "..") {
+		return fmt.Errorf("%w: 경로 순회 시도 %q", ErrUntrustedBinary, binary)
+	}
+
+	// 신뢰된 접두사 목록 구성: 정적 목록 + $HOME 기반 동적 경로.
+	prefixes := append([]string(nil), trustedPrefixesStatic...)
+	if home, err := os.UserHomeDir(); err == nil {
+		prefixes = append(prefixes,
+			filepath.Join(home, "go", "bin"),
+			filepath.Join(home, ".local", "bin"),
+		)
+	}
+
+	// 플랫폼 독립적 비교를 위해 양쪽 모두 forward-slash 정규형으로 변환한다.
+	// 윈도우에서 filepath.Clean은 "/usr/bin/x" → "\usr\bin\x"가 되지만, 비교는
+	// 슬래시 기반으로 수행해 크로스플랫폼 일관성을 유지한다.
+	cleanedSlash := filepath.ToSlash(cleaned)
+	for _, prefix := range prefixes {
+		prefixSlash := filepath.ToSlash(prefix)
+		if strings.HasPrefix(cleanedSlash, prefixSlash+"/") || cleanedSlash == prefixSlash {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%w: 신뢰된 경로 외부의 바이너리 %q (허용 목록: %v)", ErrUntrustedBinary, binary, prefixes)
+}
+
+// validateArgs는 gopls에 전달할 추가 인수가 안전한지 검사한다.
+//
+// 거부 조건:
+//   - 쉘 메타문자(";", "|", "&", "`", "$", ">", "<", 개행) 포함
+func validateArgs(args []string) error {
+	// 리다이렉션 연산자를 포함한 위험 문자 집합.
+	const dangerousChars = argMetachars + "><"
+	for _, arg := range args {
+		if strings.ContainsAny(arg, dangerousChars) {
+			return fmt.Errorf("%w: 인수 %q에 허용되지 않는 문자가 포함됨", ErrUnsafeArgs, arg)
+		}
+	}
+	return nil
 }
