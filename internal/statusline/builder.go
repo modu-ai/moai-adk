@@ -248,8 +248,11 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		})
 	}
 
-	// API usage collection (Phase 5, REQ-V3-API-001)
-	if b.usageProvider != nil {
+	// API usage collection (Phase 5, REQ-V3-API-001).
+	// Skip when Claude Code (2.1.80+) already provided rate_limits via stdin:
+	// the blocking Anthropic OAuth API call (5s timeout) caused the statusline to
+	// intermittently exceed Claude Code's render budget and disappear. See issue #646.
+	if b.usageProvider != nil && (input == nil || input.RateLimits == nil) {
 		wg.Go(func() {
 			result, err := b.usageProvider.CollectUsage(ctx)
 			if err != nil {
