@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
@@ -185,11 +186,19 @@ func TestBridge_GetDiagnostics(t *testing.T) {
 	bridge.initialized.Store(true) // 이미 초기화된 상태로 설정
 	go bridge.readLoop()
 
+	// 플랫폼 독립적 경로/URI 구성: Windows에서는 드라이브 접두사가 붙으므로
+	// pathToURI 결과를 사용해 mock URI와 일치시킨다.
+	filePath := filepath.Join(t.TempDir(), "main.go")
+	expectedURI, err := pathToURI(filePath)
+	if err != nil {
+		t.Fatalf("pathToURI: %v", err)
+	}
+
 	// 비동기로 publishDiagnostics 알림을 전송한다.
 	go func() {
 		time.Sleep(20 * time.Millisecond)
 		params := PublishDiagnosticsParams{
-			URI: "file:///tmp/test/main.go",
+			URI: expectedURI,
 			Diagnostics: []Diagnostic{
 				{
 					Severity: SeverityError,
@@ -216,7 +225,7 @@ func TestBridge_GetDiagnostics(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	diags, err := bridge.GetDiagnostics(ctx, "/tmp/test/main.go")
+	diags, err := bridge.GetDiagnostics(ctx, filePath)
 	if err != nil {
 		t.Fatalf("GetDiagnostics 오류: %v", err)
 	}
@@ -244,11 +253,18 @@ func TestBridge_GetDiagnostics_Empty(t *testing.T) {
 	bridge.initialized.Store(true)
 	go bridge.readLoop()
 
+	// 플랫폼 독립적 경로/URI 구성.
+	filePath := filepath.Join(t.TempDir(), "clean.go")
+	expectedURI, err := pathToURI(filePath)
+	if err != nil {
+		t.Fatalf("pathToURI: %v", err)
+	}
+
 	// 빈 진단 알림을 전송한다.
 	go func() {
 		time.Sleep(20 * time.Millisecond)
 		params := PublishDiagnosticsParams{
-			URI:         "file:///tmp/test/clean.go",
+			URI:         expectedURI,
 			Diagnostics: []Diagnostic{},
 		}
 		if err := mock.sendNotification("textDocument/publishDiagnostics", params); err != nil {
@@ -259,7 +275,7 @@ func TestBridge_GetDiagnostics_Empty(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	diags, err := bridge.GetDiagnostics(ctx, "/tmp/test/clean.go")
+	diags, err := bridge.GetDiagnostics(ctx, filePath)
 	if err != nil {
 		t.Fatalf("GetDiagnostics 오류: %v", err)
 	}

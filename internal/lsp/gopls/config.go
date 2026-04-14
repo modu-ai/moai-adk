@@ -225,9 +225,13 @@ func validateBinary(binary string) error {
 		)
 	}
 
-	// 신뢰된 접두사 중 하나로 시작하는지 확인한다.
+	// 플랫폼 독립적 비교를 위해 양쪽 모두 forward-slash 정규형으로 변환한다.
+	// 윈도우에서 filepath.Clean은 "/usr/bin/x" → "\usr\bin\x"가 되지만, 비교는
+	// 슬래시 기반으로 수행해 크로스플랫폼 일관성을 유지한다.
+	cleanedSlash := filepath.ToSlash(cleaned)
 	for _, prefix := range prefixes {
-		if strings.HasPrefix(cleaned, prefix+string(filepath.Separator)) || cleaned == prefix {
+		prefixSlash := filepath.ToSlash(prefix)
+		if strings.HasPrefix(cleanedSlash, prefixSlash+"/") || cleanedSlash == prefixSlash {
 			return nil
 		}
 	}
