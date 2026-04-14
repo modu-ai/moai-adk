@@ -5,6 +5,148 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.4] - 2026-04-15
+
+### Summary
+
+Security + quality hardening across three packages (evolution, telemetry, gopls bridge, astgrep) driven by a 3-perspective review bundle. 16 defects fixed (CRITICAL 6 + IMPORTANT 8 + SUGGESTION 2) with reproduction-first TDD. Includes file-destruction bug fix in `apply.go:80` (MergeEvolvableZones API misuse), two path traversal vulnerabilities, OWASP-aligned binary allowlists for `gopls`/`sg`, async telemetry writer, Windows CI cross-platform compatibility, and strengthened AskUserQuestion-only interaction rules.
+
+### Breaking Changes
+
+None. All changes are bug fixes with no API deletions.
+
+### Added
+
+#### Security & Quality (PR #636 Skill Evolution Infrastructure)
+
+- **CRITICAL 1 & 2 — Path traversal rejection** (`internal/evolution/safety.go`, `learning.go`)
+  - `CheckFrozenGuard`: `filepath.IsAbs` + leading `/`/`\` detection + normalized `..` rejection
+  - `ApplyProposal`: `filepath.Rel` containment check to prevent projectRoot escape
+  - `validateLearningID`: regex `^LEARN-\d{8}-\d{3}$` enforced on `CreateLearning`, `UpdateLearning`, `LoadLearningByID`
+  - New sentinel errors: `ErrInvalidLearningID`
+- **CRITICAL 3 — MergeEvolvableZones API misuse (file destruction)** (`internal/evolution/apply.go`, `internal/merge/evolvable_zone.go`)
+  - New helper: `merge.ReplaceEvolvableZone(content, zoneID, newZoneContent)` for in-place zone substitution
+  - Replaces buggy 3-way merge usage at `apply.go:80` that silently destroyed file headers/footers
+  - Exported `merge.ErrZoneNotFound`
+- **CRITICAL 4 — Frozen Guard coverage** (`internal/evolution/safety.go`)
+  - Added `.claude/rules/agency/` prefix + `.agency/fork-manifest.yaml` to frozen set
+- **CRITICAL 5 & 6 — Async telemetry + file handle reuse** (`internal/telemetry/async_recorder.go`)
+  - `AsyncRecorder`: single writer goroutine, channel-based, drop policy on buffer full
+  - Date-keyed file handle cache with `bufio.Writer` (4KB buffer, flush every 16 records)
+  - `GetRecorder(projectRoot)` singleton with `sync.Mutex`
+  - `ErrRecordDropped` sentinel
+- **IMPORTANT — `ensureNewSkillSymlinks` name validation** (`internal/hook/session_start.go`)
+  - Rejects `..`, `/`, `\`, null bytes, hidden files as skill entry names
+- **IMPORTANT — `UpdateRateLimit` race fix** (`internal/evolution/safety.go`)
+  - `rateMu sync.Mutex` serializes Read→mutate→Write sequence
+
+#### gopls Bridge Hardening (PR #660 / Issue #643)
+
+- **F1 — RFC 3986 URI encoding** (`internal/lsp/gopls/uri.go`)
+  - New `pathToURI()` helper via `url.URL` for space/unicode/Windows drive paths
+- **F2 — Per-URI pending map** (`internal/lsp/gopls/bridge.go`)
+  - `pendingMu` + `pendingDiag map[string][]Diagnostic` prevents event drop when processing files sequentially
+- **F3 — Prompt shutdown** (`internal/lsp/gopls/bridge.go`)
+  - `Close()` closes stdout to unblock `readLoop`'s blocking `Read()`
+- **F4 — Timer leak** (`internal/lsp/gopls/bridge.go`)
+  - `time.After` → `time.NewTimer` + `defer timer.Stop()`
+- **F5 — Binary allowlist** (`internal/lsp/gopls/config.go`)
+  - `validateBinary` / `validateArgs` with trusted prefixes and shell-metachar rejection
+  - New errors: `ErrUntrustedBinary`, `ErrUnsafeArgs`
+  - Invoked on `LoadConfig` + `NewBridge` (defense in depth)
+
+#### astgrep Hardening (PR #661 / Issue #642)
+
+- **F1 — `filterByLang` implementation** (`internal/astgrep/scanner.go`, `internal/cli/astgrep.go`)
+  - New `Finding.Language` field populated from `rule.Language` during scan
+  - Case-insensitive lang filter; empty Language treated as language-neutral (always included)
+- **F2 — Binary allowlist** (`internal/astgrep/scanner.go`)
+  - Public `ValidateBinary()` + `trustedBinaryPrefixes()`
+  - Allows bare names `sg`/`ast-grep` or trusted absolute prefixes
+  - Rejects `..`, shell metachars, untrusted paths
+- **F3 — Context cancel defer-safety** (`internal/astgrep/scanner.go`)
+  - `runSingleRule` helper per-rule isolation with `defer cancel()`
+- **F4 — stderr logging** (`internal/astgrep/scanner.go`)
+  - Captured stderr logged via `slog.Debug`; propagated as error when stdout empty
+- **F5 — YAML resilience** (`internal/astgrep/rules.go`)
+  - `loadFileSkipOnError` now `---`-splits documents for independent parsing; malformed docs no longer drop subsequent rules
+
+#### Documentation (PR #663)
+
+- **CLAUDE.md [HARD] AskUserQuestion-Only Interaction**: All user-facing questions must use AskUserQuestion (no free-form prose questions)
+- **Section 8 expansion**:
+  - "Socratic Interview via AskUserQuestion" subsection: round design + bias prevention rules
+  - Beginner-friendly option design: first option always "(Recommended)" + detailed description
+  - "Ambiguity Triggers" section: explicit trigger list for discovery mode
+  - `4 questions per call` constraint documented
+- Applied to both `internal/template/templates/CLAUDE.md` (Template-First) and local `CLAUDE.md`; `make build` regenerated `internal/template/embedded.go`
+
+### Changed
+
+- `TestAsyncRecorder_NonBlockingUnderLoad`: threshold relaxed from 10ms→100ms with 5% slow-call allowance for Windows CI scheduler variance
+- `deduplicateSummaries` (unused helper) commented out in `reflective_write.go`
+- `globalRecorderOnce` (unused) removed from `async_recorder.go`
+- Template `CLAUDE.md` HARD rules table: new `AskUserQuestion-Only Interaction` entry; `Context-First Discovery` line clarified to reference AskUserQuestion
+
+### Fixed
+
+- **#636** 3-perspective review blockers (8 fixes: CRITICAL 6 + IMPORTANT 2)
+- **#643** gopls bridge 5 defects (F1-F5)
+- **#642** astgrep bundle 5 defects (F1-F5)
+- Windows CI cross-platform path handling:
+  - `filepath.IsAbs("/usr/bin/sg")` returns false on Windows → added `strings.HasPrefix(binary, "/")` detection
+  - `filepath.Clean` converts `/` to `\` on Windows → use `filepath.ToSlash` for cross-platform prefix comparison
+  - Backslash removed from binary shell-metachar list (Windows legitimate paths)
+  - `TestBridge_GetDiagnostics{,_Empty}`: hardcoded `/tmp/test/*.go` replaced with `t.TempDir()` + `pathToURI()`
+  - `TestCheckFrozenGuard_RejectsPathTraversal/절대_경로_거부`: added leading-`/` detection on Windows
+- Lint cleanup: 10 `errcheck`/`staticcheck`/`unused` warnings across telemetry, hook, cli packages
+
+### Closed Issues / PRs
+
+- #636 (merged), #643 → closed by #660, #642 → closed by #661, #663 (merged)
+- #662 (backlog) closed — 13/18 commits duplicate with #649, remaining 5 commits pending individual PRs
+
+### 설치 및 업데이트
+
+```bash
+go install github.com/modu-ai/moai-adk/cmd/moai@v2.10.4
+# 또는
+moai update
+```
+
+---
+
+## [2.10.4] - 2026-04-15 (한국어)
+
+### 요약
+
+3관점 리뷰 번들(CRITICAL 6 + IMPORTANT 8 + SUGGESTION 2 = 16건)을 재현-먼저 TDD로 일괄 수정: 파일 파괴 버그(apply.go:80 `MergeEvolvableZones` API 오용), path traversal 2건, OWASP 기반 `gopls`/`sg` 바이너리 allowlist, 비동기 텔레메트리 writer, Windows CI 크로스플랫폼 호환성, AskUserQuestion 전용 인터랙션 규칙 강화. 영향 패키지: `internal/evolution`, `internal/telemetry`, `internal/lsp/gopls`, `internal/astgrep`, `internal/merge`.
+
+### Breaking Changes
+
+없음. 모든 변경은 bug fix이며 API 삭제 없음.
+
+### 추가 (요약)
+
+- **보안/품질** (#636): path traversal 거부, 파일 파괴 버그 수정(`ReplaceEvolvableZone`), Agency 헌법 frozen 포함, AsyncRecorder + 파일 핸들 캐시, symlink 이름 검증, rate limit race 수정
+- **gopls 브릿지** (#660): RFC 3986 URI 인코딩, per-URI pending map, 즉시 shutdown, timer 누수 제거, binary+args allowlist
+- **astgrep** (#661): filterByLang 실제 구현, binary allowlist, context cancel defer, stderr 로깅, YAML 재질러 파싱
+- **문서** (#663): `[HARD] AskUserQuestion 전용` + Socratic 인터뷰 라운드 설계 + Ambiguity Triggers
+
+### 수정
+
+- #636 CRITICAL 6건 + IMPORTANT 2건 (all TDD reproduction tests)
+- #643 gopls 결함 5건, #642 astgrep 결함 5건
+- Windows CI 경로 호환성 일괄 수정 (`filepath.ToSlash` 정규화, 백슬래시 메타문자 제외)
+- Lint 경고 10건 정리 (errcheck/staticcheck/unused)
+
+### 종료된 이슈/PR
+
+- #636, #660, #661, #663 (모두 merge)
+- #662 (백로그) close — 13/18 중복(#649), 남은 5건 개별 PR 예정
+
+---
+
 ## [2.10.3] - 2026-04-14
 
 ### Summary
