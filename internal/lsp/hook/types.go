@@ -61,12 +61,35 @@ type Diagnostic struct {
 	Message string `json:"message"`
 }
 
+// PhaseType identifies the workflow phase in which a quality gate is evaluated.
+// Values match the phase identifiers used in the .moai SPEC workflow.
+type PhaseType string
+
+const (
+	// PhasePlan is the plan phase — captures LSP baseline state.
+	PhasePlan PhaseType = "plan"
+
+	// PhaseRun is the run phase — enforces error/type/lint thresholds.
+	PhaseRun PhaseType = "run"
+
+	// PhaseSync is the sync phase — enforces clean LSP requirement.
+	PhaseSync PhaseType = "sync"
+
+	// PhaseAuto detects the active phase from the hook invocation context.
+	// Falls back to run-phase thresholds when the phase cannot be determined.
+	PhaseAuto PhaseType = "auto"
+)
+
 // SeverityCounts represents counts of diagnostics by severity.
 type SeverityCounts struct {
 	Errors      int `json:"errors"`
 	Warnings    int `json:"warnings"`
 	Information int `json:"information"`
 	Hints       int `json:"hints"`
+	// TypeErrors is the count of type-checking errors (maps to max_type_errors).
+	TypeErrors int `json:"typeErrors"`
+	// LintErrors is the count of lint errors (maps to max_lint_errors).
+	LintErrors int `json:"lintErrors"`
 }
 
 // Total returns the total count of all diagnostics.
@@ -97,6 +120,9 @@ type RegressionReport struct {
 
 // QualityGate defines quality gate thresholds.
 type QualityGate struct {
+	// Phase identifies the workflow phase this gate applies to (REQ-QG-001).
+	Phase PhaseType `json:"phase,omitempty"`
+
 	// MaxErrors is the maximum allowed error count.
 	MaxErrors int `json:"maxErrors"`
 
@@ -108,6 +134,34 @@ type QualityGate struct {
 
 	// BlockOnWarning indicates whether to block on warning threshold exceeded.
 	BlockOnWarning bool `json:"blockOnWarning"`
+}
+
+// PhaseEnforceResult holds the outcome of a phase-aware gate enforcement check.
+type PhaseEnforceResult struct {
+	// ShouldBlock is true if the gate determines execution should be blocked.
+	ShouldBlock bool `json:"shouldBlock"`
+
+	// Phase is the phase that was evaluated.
+	Phase PhaseType `json:"phase"`
+
+	// BaselineCaptured is true when the plan phase recorded a new baseline (REQ-QG-002).
+	BaselineCaptured bool `json:"baselineCaptured"`
+
+	// HasRegression is true when a regression was detected against the baseline (REQ-QG-007).
+	HasRegression bool `json:"hasRegression"`
+
+	// ViolatedThreshold describes which threshold was exceeded, if any.
+	ViolatedThreshold string `json:"violatedThreshold,omitempty"`
+}
+
+// ExitCode converts the enforcement result to a process exit code.
+// Returns ExitCodeQualityGateFailed (2) when ShouldBlock is true,
+// otherwise ExitCodeSuccess (0).
+func (r PhaseEnforceResult) ExitCode() int {
+	if r.ShouldBlock {
+		return ExitCodeQualityGateFailed
+	}
+	return ExitCodeSuccess
 }
 
 // FileBaseline represents the diagnostic baseline for a single file.
@@ -223,6 +277,65 @@ type QualityGateEnforcer interface {
 
 	// CheckWithConfig loads config and checks if should block.
 	CheckWithConfig(counts SeverityCounts) (shouldBlock bool, gate QualityGate, err error)
+
+	// EnforcePhase evaluates the quality gate for the given phase (REQ-QG-001 through REQ-QG-004).
+	// baseline is the prior diagnostic snapshot used for regression detection (REQ-QG-007).
+	// Pass nil baseline to skip regression comparison.
+	EnforcePhase(phase PhaseType, counts SeverityCounts, baseline *SeverityCounts) (PhaseEnforceResult, error)
+
+	// LoadPhaseAwareConfig loads all phase-specific config fields via pkg/models (REQ-QG-005, REQ-QG-006).
+	LoadPhaseAwareConfig() (LSPQualityGatesConfig, error)
+
+	// LoadTRUST5Config loads the trust5_integration dimension mapping (REQ-QG-009).
+	LoadTRUST5Config() (TRUST5Config, error)
+}
+
+// LSPQualityGatesConfig is the gate-layer view of models.LSPQualityGates.
+// It mirrors models.LSPQualityGates so callers in this package have a local type
+// without a hard dependency on pkg/models in every file.
+type LSPQualityGatesConfig struct {
+	Enabled         bool               `json:"enabled"`
+	Plan            LSPPlanGateConfig  `json:"plan"`
+	Run             LSPRunGateConfig   `json:"run"`
+	Sync            LSPSyncGateConfig  `json:"sync"`
+	CacheTTLSeconds int                `json:"cacheTTLSeconds"`
+	TimeoutSeconds  int                `json:"timeoutSeconds"`
+}
+
+// LSPPlanGateConfig holds plan-phase gate settings.
+type LSPPlanGateConfig struct {
+	RequireBaseline bool `json:"requireBaseline"`
+}
+
+// LSPRunGateConfig holds run-phase gate settings.
+type LSPRunGateConfig struct {
+	MaxErrors       int  `json:"maxErrors"`
+	MaxTypeErrors   int  `json:"maxTypeErrors"`
+	MaxLintErrors   int  `json:"maxLintErrors"`
+	AllowRegression bool `json:"allowRegression"`
+}
+
+// LSPSyncGateConfig holds sync-phase gate settings.
+type LSPSyncGateConfig struct {
+	MaxErrors       int  `json:"maxErrors"`
+	MaxWarnings     int  `json:"maxWarnings"`
+	RequireCleanLSP bool `json:"requireCleanLSP"`
+}
+
+// TRUST5Config holds the trust5_integration dimension mapping (REQ-QG-009).
+type TRUST5Config struct {
+	Tested         []string `json:"tested"`
+	Readable       []string `json:"readable"`
+	Understandable []string `json:"understandable"`
+	Secured        []string `json:"secured"`
+	Trackable      []string `json:"trackable"`
+}
+
+// RegressionDetectionConfig holds regression detection thresholds (REQ-QG-007).
+type RegressionDetectionConfig struct {
+	ErrorIncreaseThreshold     int `json:"errorIncreaseThreshold"`
+	WarningIncreaseThreshold   int `json:"warningIncreaseThreshold"`
+	TypeErrorIncreaseThreshold int `json:"typeErrorIncreaseThreshold"`
 }
 
 // SessionTracker tracks diagnostic statistics for a session.

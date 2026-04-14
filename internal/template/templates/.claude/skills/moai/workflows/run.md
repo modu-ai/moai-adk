@@ -443,6 +443,31 @@ Mode-specific deployment:
 
 **Output**: `.moai/specs/SPEC-{ID}/contract.md`
 
+### Delta Marker Detection (Brownfield Pre-Check)
+
+Before routing to Phase 2A or 2B, scan the loaded SPEC for `[DELTA]` section markers:
+
+1. Check spec.md (or spec-compact.md) for any line matching `[EXISTING]`, `[MODIFY]`, `[NEW]`, or `[REMOVE]`
+2. If NO delta markers found: skip this section, proceed to Phase 2A/2B normally (greenfield path)
+3. If delta markers found: activate delta-aware routing as follows
+
+**Delta-aware routing rules (applied within DDD or TDD mode):**
+
+| Marker | Treatment | Action |
+|--------|-----------|--------|
+| `[EXISTING]` | Context only — do not modify | Generate characterization tests to document current behavior; no code changes |
+| `[MODIFY]` | Modify with safety net | Generate characterization tests FIRST, verify they pass, THEN apply modifications |
+| `[NEW]` | Full implementation | Apply complete DDD ANALYZE-PRESERVE-IMPROVE or TDD RED-GREEN-REFACTOR cycle |
+| `[REMOVE]` | Safe deletion | Check all callers and dependents; confirm no active references; then remove |
+
+**Delta processing order** (prevents regression):
+1. Process all `[EXISTING]` items — characterization tests only
+2. Process all `[MODIFY]` items — characterization tests → modification → verify tests still pass
+3. Process all `[NEW]` items — full implementation cycle
+4. Process all `[REMOVE]` items — dependency analysis → safe deletion
+
+If no delta markers are present in the SPEC, delta processing is silently skipped and the standard implementation flow proceeds unchanged (backward compatible with greenfield SPECs).
+
 ### Phase 2: Implementation (Mode-Dependent)
 
 **[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-ddd, manager-tdd) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See "Worktree Path Rules [HARD]" section above.

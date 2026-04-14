@@ -6,6 +6,11 @@ import "encoding/json"
 // the flat snake_case format expected by HookInput. Session fields are handled
 // separately via flattenSession.
 var camelToSnakeMap = map[string]string{
+	// Session fields (flat camelCase fallback — complements nested session.id)
+	"sessionId":      "session_id",
+	"hookEventName":  "hook_event_name",
+	"projectDir":     "project_dir",
+	// Standard field mappings
 	"eventType":           "hook_event_name",
 	"toolName":            "tool_name",
 	"toolInput":           "tool_input",
@@ -89,9 +94,19 @@ func normalizeHookInput(data []byte) ([]byte, error) {
 	}
 
 	// Check for native Claude Code format indicators.
+	// Detect any camelCase key from the mapping to trigger normalization.
 	_, hasSession := raw["session"]
 	_, hasEventType := raw["eventType"]
+	hasCamelCase := false
 	if !hasSession && !hasEventType {
+		for camel := range camelToSnakeMap {
+			if _, ok := raw[camel]; ok {
+				hasCamelCase = true
+				break
+			}
+		}
+	}
+	if !hasSession && !hasEventType && !hasCamelCase {
 		// Ambiguous format; return as-is and let validation report what is missing.
 		return data, nil
 	}

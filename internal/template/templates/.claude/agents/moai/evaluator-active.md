@@ -75,6 +75,18 @@ Overall Verdict: PASS | FAIL
 - {actionable fix suggestion}
 ```
 
+## Evaluator Profile Loading
+
+At invocation, load the active evaluator profile to determine dimension weights and thresholds:
+
+1. Check if the SPEC file contains an `evaluator_profile` field in its frontmatter
+2. If present: load `.moai/config/evaluator-profiles/{evaluator_profile}.md`
+3. If absent: load `.moai/config/evaluator-profiles/{harness.default_profile}.md` (from harness.yaml)
+4. If profile file not found: use built-in default weights (Functionality 40%, Security 25%, Craft 20%, Consistency 15%)
+
+Profile determines: dimension weights, pass thresholds, must-pass criteria, and hard thresholds.
+The "Evaluation Dimensions" table above reflects the built-in default profile. When a non-default profile is loaded, its weights and thresholds override these defaults.
+
 ## Sprint Contract Negotiation (Phase 2.0, thorough only)
 
 When invoked for contract negotiation before implementation:

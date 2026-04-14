@@ -3,7 +3,7 @@
 ---
 spec_id: SPEC-INIT-001
 title: Project Initialization & Detection
-status: Completed
+status: completed
 priority: High
 phase: "Phase 2 - Core Domains"
 module: internal/core/project/

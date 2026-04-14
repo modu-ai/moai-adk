@@ -107,21 +107,21 @@ Purpose: Create comprehensive specification documents using EARS format with Res
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
 Flags: --worktree, --branch, --resume SPEC-XXX, --team, --no-issue
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mode: ${CLAUDE_SKILL_DIR}/team/plan.md)
 
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-strategy, manager-ddd or manager-tdd (per quality.yaml), manager-quality, manager-git
 Flags: --resume SPEC-XXX, --team
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
 ### sync - Documentation Sync and PR
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), manager-quality, manager-git
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md (team mode: ${CLAUDE_SKILL_DIR}/team/sync.md)
 
 ### gate - Pre-Commit Quality Gate
 
@@ -255,7 +255,7 @@ All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
 - Every option MUST include a detailed description explaining what it does and its implications
 
 Step 3 - Load Workflow Details:
-Read the corresponding workflows/<name>.md file for detailed orchestration instructions.
+If `--team` flag was parsed AND `${CLAUDE_SKILL_DIR}/team/<name>.md` exists for the target subcommand, read the team workflow file instead of the solo workflow. Otherwise read `workflows/<name>.md`. The Quick Reference section above shows both paths for each subcommand that supports team mode.
 
 Step 4 - Read Configuration:
 Load relevant configuration from .moai/config/config.yaml and section files as needed.

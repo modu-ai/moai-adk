@@ -195,6 +195,77 @@ func TestToSARIF_MetadataPreservation(t *testing.T) {
 	}
 }
 
+// TestToSARIF_RulesDeterministicOrder: tool.driver.rules 배열이 rule ID 기준으로
+// 오름차순 정렬되어 실행마다 동일한 순서로 출력되는지 검증.
+// REGRESSION: Go map 반복 순서가 불확정적이어서 SARIF 출력이 실행마다 달라지는
+// 문제(issue #644)를 방지한다. Snapshot 테스트 및 GitHub Code Scanning diff 안정성 확보용.
+func TestToSARIF_RulesDeterministicOrder(t *testing.T) {
+	// 의도적으로 알파벳 역순에 가까운 순서로 입력하여,
+	// map 반복 순서에 의존하면 출력 순서가 불안정해지도록 구성한다.
+	findings := []astgrep.Finding{
+		{RuleID: "zeta-rule", Severity: "warning", Message: "zeta", File: "a.go", Line: 1},
+		{RuleID: "alpha-rule", Severity: "error", Message: "alpha", File: "b.go", Line: 2},
+		{RuleID: "mike-rule", Severity: "warning", Message: "mike", File: "c.go", Line: 3},
+		{RuleID: "bravo-rule", Severity: "error", Message: "bravo", File: "d.go", Line: 4},
+		{RuleID: "yankee-rule", Severity: "warning", Message: "yankee", File: "e.go", Line: 5},
+		{RuleID: "charlie-rule", Severity: "error", Message: "charlie", File: "f.go", Line: 6},
+	}
+
+	wantOrder := []string{
+		"alpha-rule",
+		"bravo-rule",
+		"charlie-rule",
+		"mike-rule",
+		"yankee-rule",
+		"zeta-rule",
+	}
+
+	// 여러 번 호출해도 항상 동일한 순서여야 한다 (map 반복 비결정성 회피 검증).
+	const iterations = 20
+	var firstOutput []byte
+
+	for i := 0; i < iterations; i++ {
+		output, err := astgrep.ToSARIF(findings, "1.0.0-test")
+		if err != nil {
+			t.Fatalf("iteration %d: ToSARIF() error = %v", i, err)
+		}
+
+		if i == 0 {
+			firstOutput = output
+		} else if string(output) != string(firstOutput) {
+			t.Fatalf("iteration %d: SARIF 출력이 실행마다 달라짐 (비결정적)\nfirst:\n%s\ngot:\n%s",
+				i, string(firstOutput), string(output))
+		}
+
+		var doc map[string]any
+		if err := json.Unmarshal(output, &doc); err != nil {
+			t.Fatalf("iteration %d: JSON 파싱 실패: %v", i, err)
+		}
+
+		runs := doc["runs"].([]any)
+		run := runs[0].(map[string]any)
+		tool := run["tool"].(map[string]any)
+		driver := tool["driver"].(map[string]any)
+		rules, ok := driver["rules"].([]any)
+		if !ok {
+			t.Fatalf("iteration %d: tool.driver.rules 배열이 없음", i)
+		}
+
+		if len(rules) != len(wantOrder) {
+			t.Fatalf("iteration %d: rules len = %d, want %d", i, len(rules), len(wantOrder))
+		}
+
+		for idx, rule := range rules {
+			r := rule.(map[string]any)
+			id := r["id"].(string)
+			if id != wantOrder[idx] {
+				t.Errorf("iteration %d: rules[%d].id = %q, want %q (전체 순서가 ID 기준 오름차순이어야 함)",
+					i, idx, id, wantOrder[idx])
+			}
+		}
+	}
+}
+
 // TestToSARIF_RoundTrip: ToSARIF 출력이 유효한 SARIF 2.1.0 스키마를 따르는지 검증
 func TestToSARIF_RoundTrip(t *testing.T) {
 	findings := []astgrep.Finding{

@@ -3,6 +3,9 @@
 # The system automatically selects the appropriate level based on SPEC complexity.
 
 harness:
+  # Default evaluator profile (used when SPEC has no evaluator_profile field)
+  default_profile: "default"
+
   # Execution mode defaults
   mode_defaults:
     solo: auto            # Sub-agent mode: auto-detect level

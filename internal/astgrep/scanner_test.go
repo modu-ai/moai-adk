@@ -27,18 +27,25 @@ func TestNewScanner_NilConfig(t *testing.T) {
 	}
 }
 
-// TestScanner_SGNotAvailable: sg CLI가 없을 때 (nil, nil) 반환 검증 (AC3)
+// TestScanner_SGNotAvailable: sg CLI가 PATH에 없을 때 (nil, nil) 반환 검증 (AC3)
+// 기본 허용 binary("sg")를 사용하되 실제 PATH에 없는 환경을 시뮬레이션한다.
+// 참고: 비허용 binary name은 F2 보안 검사에서 에러로 차단된다.
 func TestScanner_SGNotAvailable(t *testing.T) {
+	// "sg"는 ValidateBinary를 통과하지만, PATH에 없으면 isSGAvailable이 false를 반환한다.
+	// 이 테스트는 sg가 실제로 없는 환경(PATH에 "sg" 없음)에서만 유의미하다.
+	// sg가 설치된 환경에서는 실제 스캔이 발생할 수 있으므로, 빈 rules 디렉토리로 테스트한다.
+	tmpDir := t.TempDir()
 	cfg := astgrep.DefaultScannerConfig()
-	cfg.SGBinary = "sg-does-not-exist-in-path-12345"
-	s := astgrep.NewScanner(cfg)
+	cfg.SGBinary = "sg" // 허용된 bare name
+	cfg.RulesDir = tmpDir
 
+	s := astgrep.NewScanner(cfg)
 	findings, err := s.Scan(context.Background(), ".")
 	if err != nil {
-		t.Errorf("Scan() error = %v; sg 미존재 시 nil 에러를 반환해야 함", err)
+		t.Errorf("Scan() error = %v; sg 미존재 또는 빈 rules 시 nil 에러를 반환해야 함", err)
 	}
 	if len(findings) != 0 {
-		t.Errorf("Scan() len(findings) = %d; sg 미존재 시 빈 슬라이스를 반환해야 함", len(findings))
+		t.Errorf("Scan() len(findings) = %d; 빈 rules 디렉토리에서 빈 슬라이스를 반환해야 함", len(findings))
 	}
 }
 
@@ -536,4 +543,69 @@ func containsSubstr(s, substr string) bool {
 			}
 			return false
 		}())
+}
+
+// --- F2 재현 테스트: Binary allowlist 부재 ---
+
+// TestValidateBinary_AllowsSg: "sg", "ast-grep" bare name이 허용되는지 검증
+func TestValidateBinary_AllowsSg(t *testing.T) {
+	for _, name := range []string{"sg", "ast-grep"} {
+		if err := astgrep.ValidateBinary(name); err != nil {
+			t.Errorf("ValidateBinary(%q) = %v; 허용된 bare name이어야 함", name, err)
+		}
+	}
+}
+
+// TestValidateBinary_AllowsTrustedPrefix: /usr/local/bin/sg 같은 신뢰 경로가 허용되는지 검증
+func TestValidateBinary_AllowsTrustedPrefix(t *testing.T) {
+	paths := []string{
+		"/usr/bin/sg",
+		"/usr/local/bin/sg",
+		"/opt/homebrew/bin/sg",
+	}
+	for _, p := range paths {
+		if err := astgrep.ValidateBinary(p); err != nil {
+			t.Errorf("ValidateBinary(%q) = %v; 신뢰 경로여야 함", p, err)
+		}
+	}
+}
+
+// TestValidateBinary_RejectsUntrustedPath: /tmp 같은 비신뢰 절대 경로가 거부되는지 검증
+func TestValidateBinary_RejectsUntrustedPath(t *testing.T) {
+	if err := astgrep.ValidateBinary("/tmp/evil/sg"); err == nil {
+		t.Error("ValidateBinary(/tmp/evil/sg) = nil; 비신뢰 경로는 에러를 반환해야 함")
+	}
+}
+
+// TestValidateBinary_RejectsShellMetachars: 셸 메타문자가 포함된 바이너리 경로가 거부되는지 검증
+func TestValidateBinary_RejectsShellMetachars(t *testing.T) {
+	malicious := []string{
+		"sg; rm -rf /",
+		"sg|cat /etc/passwd",
+		"`sg`",
+	}
+	for _, bin := range malicious {
+		if err := astgrep.ValidateBinary(bin); err == nil {
+			t.Errorf("ValidateBinary(%q) = nil; 셸 메타문자는 에러를 반환해야 함", bin)
+		}
+	}
+}
+
+// TestValidateBinary_RejectsTraversal: ..을 포함한 경로 트래버설이 거부되는지 검증
+func TestValidateBinary_RejectsTraversal(t *testing.T) {
+	if err := astgrep.ValidateBinary("/usr/local/bin/../../tmp/sg"); err == nil {
+		t.Error("ValidateBinary(경로 트래버설) = nil; 에러를 반환해야 함")
+	}
+}
+
+// TestScan_RejectsUntrustedBinary: Scan이 신뢰할 수 없는 바이너리 경로로 에러를 반환하는지 검증
+func TestScan_RejectsUntrustedBinary(t *testing.T) {
+	cfg := astgrep.DefaultScannerConfig()
+	cfg.SGBinary = "/tmp/evil/sg"
+	s := astgrep.NewScanner(cfg)
+
+	_, err := s.Scan(context.Background(), ".")
+	if err == nil {
+		t.Error("Scan() with untrusted binary = nil error; 에러를 반환해야 함")
+	}
 }

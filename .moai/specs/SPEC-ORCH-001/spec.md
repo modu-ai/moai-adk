@@ -2,7 +2,7 @@
 id: SPEC-ORCH-001
 title: Orchestration Pattern Enhancement
 version: "1.0.0"
-status: implemented
+status: completed
 created: "2026-03-30"
 updated: "2026-03-30"
 author: GOOS

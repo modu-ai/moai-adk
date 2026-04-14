@@ -1,6 +1,10 @@
 package statusline
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestCollectMemory(t *testing.T) {
 	// Disable auto-compact scaling for existing tests
@@ -254,5 +258,196 @@ func TestUsagePercent(t *testing.T) {
 					tt.used, tt.total, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestCollectMemory_GLMContextOverride verifies that when a GLM model is
+// active (via ANTHROPIC_DEFAULT_*_MODEL env), the context window size is
+// overridden from the Claude slot's reported value (e.g., 1M) to the actual
+// GLM model's limit. Issue #653.
+func TestCollectMemory_GLMContextOverride(t *testing.T) {
+	pct := 23.0 // near the reported ~23% context-full point on 1M gauge
+
+	cases := []struct {
+		name         string
+		envSlot      string
+		modelName    string
+		reportedSize int
+		wantBudget   int // expected TokenBudget (contextSize * 85 / 100)
+	}{
+		{
+			name:         "glm-5.1 opus slot overrides 1M to 200K",
+			envSlot:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			modelName:    "glm-5.1",
+			reportedSize: 1_000_000,
+			wantBudget:   200_000 * 85 / 100,
+		},
+		{
+			name:         "glm-4.5-air haiku slot",
+			envSlot:      "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+			modelName:    "glm-4.5-air",
+			reportedSize: 200_000,
+			wantBudget:   128_000 * 85 / 100,
+		},
+		{
+			name:         "claude model preserves reported size",
+			envSlot:      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+			modelName:    "claude-opus-4-6",
+			reportedSize: 1_000_000,
+			wantBudget:   1_000_000 * 85 / 100,
+		},
+		{
+			name:         "unknown non-claude model falls back to reported",
+			envSlot:      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+			modelName:    "custom-unknown-llm",
+			reportedSize: 200_000,
+			wantBudget:   200_000 * 85 / 100,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clear all model slots so only tc.envSlot drives detection.
+			t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+			t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+			t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+			t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "")
+			t.Setenv(tc.envSlot, tc.modelName)
+
+			input := &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    &pct,
+					ContextWindowSize: tc.reportedSize,
+				},
+			}
+			got := CollectMemory(input)
+			if got == nil || !got.Available {
+				t.Fatalf("CollectMemory returned unavailable")
+			}
+			if got.TokenBudget != tc.wantBudget {
+				t.Errorf("TokenBudget = %d, want %d", got.TokenBudget, tc.wantBudget)
+			}
+		})
+	}
+}
+
+// TestCollectMemory_ExplicitOverride verifies that MOAI_STATUSLINE_CONTEXT_SIZE
+// wins over both Claude reported size and GLM auto-detection (issue #653).
+func TestCollectMemory_ExplicitOverride(t *testing.T) {
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.1")
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "131072")
+
+	pct := 50.0
+	input := &StdinData{
+		ContextWindow: &ContextWindowInfo{
+			UsedPercentage:    &pct,
+			ContextWindowSize: 1_000_000,
+		},
+	}
+	got := CollectMemory(input)
+	if got == nil || !got.Available {
+		t.Fatalf("CollectMemory returned unavailable")
+	}
+	wantBudget := 131072 * 85 / 100
+	if got.TokenBudget != wantBudget {
+		t.Errorf("TokenBudget = %d, want %d (explicit override wins)", got.TokenBudget, wantBudget)
+	}
+}
+
+// TestCollectMemory_LLMYAMLOverride verifies that .moai/config/sections/llm.yaml
+// `glm.context_windows` entries take precedence over the built-in
+// glmContextWindows table when MOAI_STATUSLINE_CONTEXT_SIZE is not set.
+// Priority: env > llm.yaml > built-in table (issue #653).
+func TestCollectMemory_LLMYAMLOverride(t *testing.T) {
+	tempDir := t.TempDir()
+	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	yamlBody := `llm:
+  glm:
+    context_windows:
+      glm-5.1: 230000        # user-configured override (larger than built-in 200K)
+      custom-model: 96000    # previously unknown model
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(yamlBody), 0o644); err != nil {
+		t.Fatalf("write llm.yaml: %v", err)
+	}
+	// resolveContextWindowOverride walks from getwd() upward. t.Chdir restores
+	// the original wd at test teardown.
+	t.Chdir(tempDir)
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+
+	cases := []struct {
+		name       string
+		glmModel   string
+		wantBudget int
+	}{
+		{
+			name:       "llm.yaml overrides built-in for glm-5.1 (200K→230K)",
+			glmModel:   "glm-5.1",
+			wantBudget: 230_000 * 85 / 100,
+		},
+		{
+			name:       "llm.yaml adds previously unknown custom-model",
+			glmModel:   "custom-model",
+			wantBudget: 96_000 * 85 / 100,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", tc.glmModel)
+
+			pct := 50.0
+			input := &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    &pct,
+					ContextWindowSize: 1_000_000,
+				},
+			}
+			got := CollectMemory(input)
+			if got == nil || !got.Available {
+				t.Fatalf("CollectMemory returned unavailable")
+			}
+			if got.TokenBudget != tc.wantBudget {
+				t.Errorf("TokenBudget = %d, want %d", got.TokenBudget, tc.wantBudget)
+			}
+		})
+	}
+}
+
+// TestCollectMemory_EnvOverridesLLMYAML verifies env var wins over llm.yaml.
+func TestCollectMemory_EnvOverridesLLMYAML(t *testing.T) {
+	tempDir := t.TempDir()
+	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+	_ = os.MkdirAll(sectionsDir, 0o755)
+	yamlBody := `llm:
+  glm:
+    context_windows:
+      glm-5.1: 230000
+`
+	_ = os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(yamlBody), 0o644)
+
+	t.Chdir(tempDir)
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "glm-5.1")
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "65536")
+
+	pct := 50.0
+	input := &StdinData{
+		ContextWindow: &ContextWindowInfo{
+			UsedPercentage:    &pct,
+			ContextWindowSize: 1_000_000,
+		},
+	}
+	got := CollectMemory(input)
+	if got == nil || !got.Available {
+		t.Fatalf("CollectMemory returned unavailable")
+	}
+	wantBudget := 65536 * 85 / 100
+	if got.TokenBudget != wantBudget {
+		t.Errorf("TokenBudget = %d, want %d (env wins over llm.yaml)", got.TokenBudget, wantBudget)
 	}
 }

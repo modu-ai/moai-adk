@@ -2,7 +2,7 @@
 id: SPEC-LSP-001
 title: Language Server Protocol Client System - Implementation Plan
 spec_ref: SPEC-LSP-001/spec.md
-status: Superseded
+status: superseded
 superseded_by: SPEC-LSP-CORE-002
 priority: High
 ---

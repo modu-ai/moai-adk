@@ -4,7 +4,7 @@
 spec_id: SPEC-WORKTREE-001
 title: "Worktree Path Migration to Global ~/.moai/worktrees/"
 created: 2026-03-10
-status: Completed
+status: completed
 priority: P2
 author: GOOS
 lifecycle: spec-anchored

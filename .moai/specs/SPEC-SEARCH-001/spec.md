@@ -1,7 +1,7 @@
 ---
 id: SPEC-SEARCH-001
 title: "moai search: JSONL Session Search with SQLite FTS5"
-status: approved
+status: planned
 created: 2026-03-06
 branch: feat/spec-search-001
 tags: [search, sqlite, fts5, cli, hook]

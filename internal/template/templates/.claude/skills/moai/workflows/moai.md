@@ -222,13 +222,15 @@ Mode selection:
    - Load `.moai/config/sections/harness.yaml` (if not found, default to standard)
    - CG mode: Always thorough (natural Generator-Evaluator split)
    - Solo/Team: Run Complexity Estimator:
-     - Count distinct domains in SPEC requirements
-     - Count total files to modify (from plan.md)
+     - Count distinct domains in SPEC requirements (domain_count)
+     - Count total files to modify (file_count, from plan.md)
      - Check for security/payment/critical keywords
-   - Apply auto_detection rules:
-     - file_count <= 3 AND single_domain AND no security keywords → minimal
+     - Compute complexity_score = domain_count * 2 + file_count / 3 (integer, rounded down)
+   - Apply auto_detection rules (evaluated in order, first match wins):
+     - security/payment keywords OR spec_priority == critical → thorough
+     - file_count >= 10 AND multi_domain (domain_count >= 2) → thorough
      - file_count > 3 OR multi_domain → standard
-     - security/payment keywords OR priority critical → thorough
+     - file_count <= 3 AND single_domain AND no security keywords → minimal
    - Record detected harness level in progress.md
    - Pass harness level to Run phase
 13. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)

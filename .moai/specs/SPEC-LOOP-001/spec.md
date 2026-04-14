@@ -1,7 +1,7 @@
 ---
 spec_id: SPEC-LOOP-001
 title: Ralph Feedback Loop Engine
-status: Completed
+status: completed
 priority: Medium-High
 phase: "Phase 3 - Automation"
 created: 2026-02-03
