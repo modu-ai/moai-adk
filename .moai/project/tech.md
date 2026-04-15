@@ -39,6 +39,28 @@ The module path follows Go conventions with the GitHub organization and reposito
 | Concurrency | goroutines + channels (stdlib) | Go 1.26 | Native concurrent execution for LSP, quality gates, and parallel operations |
 | File Embedding | `embed` (stdlib) | Go 1.26 | Compile-time template embedding into the binary |
 | Context | `context` (stdlib) | Go 1.26 | Cancellation, timeouts, and request-scoped values |
+| LSP Client | `github.com/charmbracelet/x/powernap` | v0.1.3 | Multi-language LSP client foundation (SPEC-LSP-CORE-002). Wraps `sourcegraph/jsonrpc2` with VSCode-compatible codec. Used by `internal/lsp/core/` and `internal/lsp/transport/` |
+| URI Encoding | `net/url` (stdlib) | Go 1.26 | RFC 3986 file:// URI encoding for LSP (`internal/lsp/gopls/uri.go`). Handles space, unicode, Windows drive paths correctly |
+
+### Security Patterns (v2.10.4)
+
+Cross-cutting security patterns established by the 3-perspective review bundle:
+
+| Pattern | Where | Purpose |
+|---------|-------|---------|
+| Path traversal rejection | `internal/evolution/safety.go` | `CheckFrozenGuard` rejects absolute paths (`filepath.IsAbs` + leading `/` for Windows) and `..` components |
+| Binary allowlist | `internal/lsp/gopls/config.go`, `internal/astgrep/scanner.go` | Trusted prefix list (`/usr/bin`, `/usr/local/bin`, `/opt/homebrew/bin`, `$HOME/{go,.local,.cargo}/bin`) + shell metachar rejection (`;&|\`$`) |
+| Cross-platform path normalization | Both above | `filepath.ToSlash` on both sides before HasPrefix comparison (Windows `filepath.Clean` produces backslashes) |
+| ID validation | `internal/evolution/learning.go` | `validateLearningID` regex enforcement prevents path injection via `LearningEntry.ID` |
+
+### Cross-Platform CI Compatibility (v2.10.4)
+
+Established patterns for `Test (windows-latest)` parity:
+
+1. **Path handling**: Use `filepath.ToSlash` for all prefix/equality comparisons. `filepath.IsAbs` returns false for Unix-style `/foo` on Windows — check leading `/` explicitly when Unix-style inputs are expected.
+2. **Test paths**: Use `t.TempDir()` + explicit URI/path conversion helpers. Never hardcode Unix-style test paths that will be compared against OS-generated paths.
+3. **Shell metachar lists**: Do NOT include backslash `\`. Go's `exec.Command` does not invoke a shell, so backslashes in Windows paths are safe and must not be rejected.
+4. **Timing thresholds**: Use generous thresholds (100ms+) with small allowances (5%+) for async operations on Windows CI — scheduler granularity is coarser than Linux/macOS.
 
 ### Language Support
 

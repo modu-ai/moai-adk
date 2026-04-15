@@ -368,6 +368,56 @@ moai update
 | `rollback.go` | Atomic rollback on failure (keeps previous binary) |
 | `orchestrator.go` | Full update workflow: check → download → merge → replace → verify |
 
+### `internal/lsp/` -- LSP Client Suite (SPEC-LSP-CORE-002 .. MULTI-006, v2.10.3)
+
+Multi-language LSP client foundation based on `github.com/charmbracelet/x/powernap`. Supports 16 languages via project_markers auto-detection.
+
+| Package | Purpose |
+|---------|---------|
+| `internal/lsp/core/` | `Client`, `Manager`, `Document`, Lifecycle State Machine, Capability Negotiation |
+| `internal/lsp/subprocess/` | `Supervisor`, `Launcher` with graceful degradation |
+| `internal/lsp/transport/` | JSON-RPC 2.0 codec via powernap |
+| `internal/lsp/cache/` | TTL cache for diagnostic results (SPEC-LSP-AGG-003) |
+| `internal/lsp/aggregator/` | Parallel diagnostic collection + circuit breaker |
+| `internal/lsp/gopls/` | gopls bridge (SPEC-GOPLS-BRIDGE-001, coexists via `lsp.client_impl` feature flag) |
+| `internal/lsp/config/` | `lsp.yaml` loader with multi-language server matrix |
+| `internal/lsp/hook/` | Phase-aware quality gate (SPEC-LSP-QGATE-004) |
+
+**Feature flag**: `lsp.client_impl` in `.moai/config/sections/lsp.yaml` selects `gopls_bridge` (legacy, Go-only) or `powernap_core` (default, 16 languages).
+
+### `internal/astgrep/` -- Code Quality Scanner (SPEC-ASTG-UPGRADE-001, v2.10.3)
+
+Unified ast-grep (sg CLI) scanner replacing separate quality-gate and PostToolUse hook implementations.
+
+| File | Purpose |
+|------|---------|
+| `scanner.go` | `Scanner.Scan` single entry point (`@MX:ANCHOR`, fan_in >= 3), binary allowlist via `ValidateBinary` |
+| `rules.go` | YAML rule loader with `---` document splitting (malformed docs skipped individually) |
+| `sarif.go` | SARIF 2.1.0 output for GitHub code scanning |
+| `analyzer.go` | Finding aggregation, language filtering, severity ranking |
+
+### `internal/evolution/` -- Skill Evolution System (SPEC-EVO-001, v2.10.4)
+
+Reflective Write Hook infrastructure with 5-layer safety (Frozen Guard / Rate Limiter / Human Oversight).
+
+| File | Purpose |
+|------|---------|
+| `safety.go` | `CheckFrozenGuard` (path traversal / agency constitution / absolute-path rejection), `UpdateRateLimit` with `rateMu` serialization |
+| `learning.go` | `LearningEntry` CRUD with `validateLearningID` regex `^LEARN-\d{8}-\d{3}$` |
+| `graduation.go` | Observation → Heuristic → Rule → Graduated tier progression |
+| `apply.go` | `ApplyProposal` with `merge.ReplaceEvolvableZone` + `filepath.Rel` containment check |
+| `types.go` | Sentinel errors: `ErrFrozenPath`, `ErrRateLimit`, `ErrInvalidLearningID`, `ErrZoneNotFound` |
+
+### `internal/telemetry/` -- Skill Usage Metrics (SPEC-TELEMETRY-001, v2.10.4)
+
+Daily JSONL telemetry with async writer.
+
+| File | Purpose |
+|------|---------|
+| `recorder.go` | Sync `RecordSkillUsage`, `PruneOldFiles` (day-granularity retention) |
+| `async_recorder.go` | `AsyncRecorder` with channel-based single writer, date-keyed file handle cache, `bufio.Writer` (4KB), drop policy on buffer full |
+| `report.go` | Daily/weekly/monthly aggregation, `moai telemetry report` CLI |
+
 ### `internal/template/` -- Template Deployment (Improved)
 
 **Resolves**: 6 template substitution issues (#304, #308, #309, etc.)
