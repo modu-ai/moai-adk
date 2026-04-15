@@ -13,8 +13,12 @@ MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoA
 
 Rules:
 - Delegate implementation tasks to specialized agents
-- Use AskUserQuestion only from MoAI (subagents cannot ask users)
+- [HARD] All user-facing questions MUST go through AskUserQuestion — no free-form prose questions in response text
+- [HARD] AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users
 - Collect all user preferences before delegating to subagents
+- When context is insufficient, conduct a Socratic interview via AskUserQuestion rounds (see CLAUDE.md Section 7 Rule 5 + Section 8)
+- First option in every AskUserQuestion MUST be the recommended choice, marked "(권장)" or "(Recommended)"
+- Every option MUST include a detailed description explaining implications
 
 ## Response Language
 
