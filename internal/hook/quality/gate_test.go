@@ -2,6 +2,7 @@ package quality
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -497,6 +498,292 @@ func TestQualityGate_Run_UnknownProjectPasses(t *testing.T) {
 }
 
 // TestIsGitCommit covers various command patterns.
+// ─── 이슈 #667: dotnet format 스테이징 파일 필터 및 복원 실패 graceful 처리 ───
+
+// TestStagedFiles_OutsideGitRepo는 git 저장소 밖에서 stagedFiles가 nil을 반환하는지 확인합니다.
+func TestStagedFiles_OutsideGitRepo(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir() // git init 없음
+
+	got, err := stagedFiles(context.Background(), dir)
+	// 오류가 없어야 하고 nil을 반환해야 합니다 (보수적 fallback).
+	if err != nil {
+		t.Errorf("git 저장소 밖에서 오류가 발생해서는 안 됨: %v", err)
+	}
+	if got != nil {
+		t.Errorf("git 저장소 밖에서 nil 반환 기대, got: %v", got)
+	}
+}
+
+// TestStagedFiles_InsideGitRepo는 git 저장소 내에서 스테이징된 파일 목록을 반환하는지 확인합니다.
+func TestStagedFiles_InsideGitRepo(t *testing.T) {
+	t.Parallel()
+
+	skipIfCommandMissing(t, "git")
+
+	dir := t.TempDir()
+	// git 저장소 초기화
+	if out, err := runGitCmd(dir, "init"); err != nil {
+		t.Fatalf("git init 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.email", "test@test.com"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.name", "Test"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+
+	// 파일 생성 및 스테이징
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("hello"), 0o644); err != nil {
+		t.Fatalf("파일 생성 실패: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("key: val"), 0o644); err != nil {
+		t.Fatalf("파일 생성 실패: %v", err)
+	}
+	if out, err := runGitCmd(dir, "add", "README.md", "config.yaml"); err != nil {
+		t.Fatalf("git add 실패: %v, out: %s", err, out)
+	}
+
+	got, err := stagedFiles(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("stagedFiles 오류: %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("스테이징된 파일 2개 기대, got: %v", got)
+	}
+}
+
+// TestStagedFiles_EmptyStaging은 스테이징된 파일이 없을 때 nil을 반환하는지 확인합니다.
+func TestStagedFiles_EmptyStaging(t *testing.T) {
+	t.Parallel()
+
+	skipIfCommandMissing(t, "git")
+
+	dir := t.TempDir()
+	if out, err := runGitCmd(dir, "init"); err != nil {
+		t.Fatalf("git init 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.email", "test@test.com"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.name", "Test"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+
+	// 스테이징하지 않음
+	got, err := stagedFiles(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("stagedFiles 오류: %v", err)
+	}
+	// 빈 스테이징: nil 반환 (보수적 fallback — 단계 실행)
+	if got != nil {
+		t.Errorf("스테이징된 파일 없을 때 nil 기대, got: %v", got)
+	}
+}
+
+// writeFakeBinary는 임시 디렉터리에 호출 시 지정된 종료 코드로 종료하는
+// 가짜 바이너리 셸 스크립트를 생성하고, 해당 디렉터리 경로를 반환합니다.
+// 테스트에서 PATH를 앞에 삽입하여 실제 바이너리 대신 호출되게 합니다.
+func writeFakeBinary(t *testing.T, name string, exitCode int, output string) string {
+	t.Helper()
+	binDir := t.TempDir()
+	script := filepath.Join(binDir, name)
+	content := "#!/bin/sh\n"
+	if output != "" {
+		content += "echo '" + output + "' >&2\n"
+	}
+	content += "exit " + fmt.Sprintf("%d", exitCode) + "\n"
+	if err := os.WriteFile(script, []byte(content), 0o755); err != nil {
+		t.Fatalf("가짜 바이너리 생성 실패: %v", err)
+	}
+	return binDir
+}
+
+// TestQualityGate_SkipsDotnetFormatWhenNoCSharpStaged는 .cs 파일이 스테이징되지 않았을 때
+// dotnet format 단계를 건너뛰는지 검증합니다 (이슈 #667 Fix 1).
+// t.Setenv를 사용하므로 t.Parallel()을 호출하지 않습니다.
+func TestQualityGate_SkipsDotnetFormatWhenNoCSharpStaged(t *testing.T) {
+	skipIfCommandMissing(t, "git")
+
+	dir := t.TempDir()
+
+	// git 저장소 초기화
+	if out, err := runGitCmd(dir, "init"); err != nil {
+		t.Fatalf("git init 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.email", "test@test.com"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.name", "Test"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+
+	// C# 프로젝트 마커 생성 (.sln 파일로 C# 툴체인 감지)
+	if err := os.WriteFile(filepath.Join(dir, "MyApp.sln"), []byte(""), 0o644); err != nil {
+		t.Fatalf("sln 파일 생성 실패: %v", err)
+	}
+
+	// .cs 파일이 아닌 파일만 스테이징 (README.md, config.yaml)
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("docs"), 0o644); err != nil {
+		t.Fatalf("README.md 생성 실패: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("key: val"), 0o644); err != nil {
+		t.Fatalf("config.yaml 생성 실패: %v", err)
+	}
+	if out, err := runGitCmd(dir, "add", "README.md", "config.yaml"); err != nil {
+		t.Fatalf("git add 실패: %v, out: %s", err, out)
+	}
+
+	// 호출되면 exit 1로 실패하는 가짜 dotnet 바이너리 주입.
+	// changedExts 필터가 올바르게 동작하면 이 바이너리는 절대 실행되지 않아야 합니다.
+	fakeBinDir := writeFakeBinary(t, "dotnet", 1, "Restore operation failed")
+	t.Setenv("PATH", fakeBinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	step := gateStep{
+		name:        "dotnet format",
+		binary:      "dotnet",
+		args:        []string{"format", "--verify-no-changes"},
+		optional:    false, // optional=false: 바이너리가 있으면 반드시 실행
+		changedExts: []string{".cs"},
+	}
+
+	g := NewQualityGate(&GateConfig{
+		Enabled:     true,
+		SkipTests:   true,
+		ProjectDir:  dir,
+		LintTimeout: 5 * time.Second,
+	})
+
+	// stagedFiles를 통해 .cs 없음 감지 → dotnet format 건너뜀
+	passed, out := g.executeStep(context.Background(), step, 5*time.Second)
+
+	if !passed {
+		t.Errorf("C# 파일이 없을 때 dotnet format 건너뛰어야 합니다 (passed=true 기대), output: %q", out)
+	}
+}
+
+// TestQualityGate_RunsDotnetFormatWhenCSharpStaged는 .cs 파일이 스테이징되었을 때
+// dotnet format 단계가 실행되는지 검증합니다 (이슈 #667 Fix 1).
+// t.Setenv를 사용하므로 t.Parallel()을 호출하지 않습니다.
+func TestQualityGate_RunsDotnetFormatWhenCSharpStaged(t *testing.T) {
+	skipIfCommandMissing(t, "git")
+
+	dir := t.TempDir()
+
+	// git 저장소 초기화
+	if out, err := runGitCmd(dir, "init"); err != nil {
+		t.Fatalf("git init 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.email", "test@test.com"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+	if out, err := runGitCmd(dir, "config", "user.name", "Test"); err != nil {
+		t.Fatalf("git config 실패: %v, out: %s", err, out)
+	}
+
+	// C# 마커 생성
+	if err := os.WriteFile(filepath.Join(dir, "MyApp.sln"), []byte(""), 0o644); err != nil {
+		t.Fatalf("sln 파일 생성 실패: %v", err)
+	}
+
+	// .cs 파일을 스테이징
+	if err := os.WriteFile(filepath.Join(dir, "Program.cs"), []byte("// C# code"), 0o644); err != nil {
+		t.Fatalf("Program.cs 생성 실패: %v", err)
+	}
+	if out, err := runGitCmd(dir, "add", "Program.cs"); err != nil {
+		t.Fatalf("git add 실패: %v, out: %s", err, out)
+	}
+
+	// 성공(exit 0)하는 가짜 dotnet 주입 — 실제로 호출되어야 합니다.
+	fakeBinDir := writeFakeBinary(t, "dotnet", 0, "")
+	t.Setenv("PATH", fakeBinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	step := gateStep{
+		name:        "dotnet format",
+		binary:      "dotnet",
+		args:        []string{"format", "--verify-no-changes"},
+		optional:    false,
+		changedExts: []string{".cs"},
+	}
+
+	g := NewQualityGate(&GateConfig{
+		Enabled:     true,
+		SkipTests:   true,
+		ProjectDir:  dir,
+		LintTimeout: 5 * time.Second,
+	})
+
+	// .cs 파일이 스테이징됨 → dotnet format 실행되어야 함 → 가짜 dotnet은 exit 0
+	passed, out := g.executeStep(context.Background(), step, 5*time.Second)
+
+	if !passed {
+		t.Errorf(".cs 파일이 스테이징되었을 때 dotnet format이 통과해야 합니다, output: %q", out)
+	}
+}
+
+// TestQualityGate_GracefulOnDotnetRestoreFailure는 dotnet 복원 실패 시
+// 게이트가 경고를 로그하고 통과(true, "")를 반환하는지 검증합니다 (이슈 #667 Fix 2).
+func TestQualityGate_GracefulOnDotnetRestoreFailure(t *testing.T) {
+	t.Parallel()
+
+	// dotnetRestoreFailure 감지 함수를 직접 테스트합니다.
+	cases := []struct {
+		name     string
+		stderr   string
+		wantSkip bool
+	}{
+		{
+			name:     "Restore operation failed 포함",
+			stderr:   "Unhandled exception: System.Exception: Restore operation failed.",
+			wantSkip: true,
+		},
+		{
+			name:     "NU1202 오류 코드 포함",
+			stderr:   "error NU1202: Package 'foo' 1.0.0 is not compatible with net9.0-windows10.0.22621.0",
+			wantSkip: true,
+		},
+		{
+			name:     "NETSDK1005 오류 포함",
+			stderr:   "NETSDK1005: Assets file not found",
+			wantSkip: true,
+		},
+		{
+			name:     "not supported on this platform 포함",
+			stderr:   "This target framework 'net9.0-windows10.0.22621.0' is not supported on this platform",
+			wantSkip: true,
+		},
+		{
+			name:     "일반 dotnet 포맷 오류 (복원 실패 아님)",
+			stderr:   "error CS1001: Identifier expected",
+			wantSkip: false,
+		},
+		{
+			name:     "빈 stderr",
+			stderr:   "",
+			wantSkip: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := isDotnetRestoreFailure(tc.stderr)
+			if got != tc.wantSkip {
+				t.Errorf("isDotnetRestoreFailure(%q) = %v, want %v", tc.stderr, got, tc.wantSkip)
+			}
+		})
+	}
+}
+
+// runGitCmd는 테스트 헬퍼로 주어진 디렉터리에서 git 명령을 실행합니다.
+func runGitCmd(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 func TestIsGitCommit(t *testing.T) {
 	t.Parallel()
 
