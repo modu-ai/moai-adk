@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Summary
+
+Runtime reliability fixes shipped post-v2.10.4 covering quality gate cross-compilation (#667) and GLM team-mode credential propagation (#640). Both fixes are TDD-verified and include Windows CI stability improvements.
+
+### Fixed
+
+- **#667 — pre-tool quality gate blocks Bash on macOS cross-compile projects** (PR #668)
+  - `gateStep.changedExts` field + `stagedFiles()` helper: skips language-specific lint steps when the staged changeset contains no matching file extensions
+  - Applied to `dotnet format` (`.cs` extensions only) — macOS users with Windows-only TFM .NET solutions can now `git commit` non-C# files
+  - Defense in depth: `isDotnetRestoreFailure()` detects NuGet restore failure markers (`Restore operation failed`, `NU1202`, `NETSDK1005`, `not supported on this platform`) and logs a warning instead of blocking
+  - `GateConfig.DisabledSteps map[string]bool` — per-project step-level disable flag
+  - Conservative fallback: git binary missing / outside git repo / empty staging → runs step (preserves existing behavior)
+
+- **#640 — moai glm + --team 401 Unauthorized on tmux teammates** (PR #669)
+  - New `internal/hook/glm_tmux.go` with `ensureTmuxGLMEnv()` — SessionStart hook auto-injects GLM credentials into tmux session env when user set up GLM mode outside tmux
+  - Propagates 9 GLM vars: `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL`, compatibility flags
+  - Guard rails: `TMUX == ""` / `teammateMode != "tmux"` / missing `AUTH_TOKEN` / missing tmux binary → all graceful no-op, never aborts SessionStart
+  - UX: `moai glm` non-tmux path now prints actionable 4-step recovery instructions
+
+### Changed
+
+- `TestAsyncRecorder_NonBlockingUnderLoad` (`internal/telemetry/async_recorder_test.go`) now skips on Windows CI due to scheduler granularity causing flaky latency assertions. Non-blocking invariant is still verified on Linux/macOS.
+- `TestQualityGate_RunsDotnetFormatWhenCSharpStaged` (`internal/hook/quality/gate_test.go`) skips on Windows because shell-script fake binaries cannot be executed directly by `exec.Command` on Windows.
+
+### Installation & Update
+
+```bash
+# Update to the latest development version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [Unreleased] (한국어)
+
+### 요약
+
+v2.10.4 이후 배포된 런타임 신뢰성 수정: quality gate 크로스컴파일 이슈(#667) 및 GLM team-mode 자격증명 전파(#640). 두 수정 모두 TDD로 검증되었으며 Windows CI 안정화 개선 포함.
+
+### 수정됨 (Fixed)
+
+- **#667 — macOS 크로스컴파일 .NET 프로젝트에서 pre-tool 품질 게이트가 Bash 차단** (PR #668)
+  - `gateStep.changedExts` 필드 + `stagedFiles()` 헬퍼로 staged changeset에 해당 확장자 없으면 언어별 lint 단계 skip
+  - `dotnet format`을 `.cs` 확장자로 제한 → Windows-only TFM .NET 솔루션 포함 프로젝트에서 비-C# 파일 `git commit` 가능
+  - Defense in depth: `isDotnetRestoreFailure()`가 NuGet 복원 실패 마커 감지 시 경고 후 통과
+  - `GateConfig.DisabledSteps` — per-project 단계 명시적 비활성화
+  - 보수적 폴백: git 미설치 / git 저장소 밖 / 빈 스테이징 → 기존 동작 유지
+
+- **#640 — moai glm + --team 조합 시 tmux 팀원 401 Unauthorized** (PR #669)
+  - `internal/hook/glm_tmux.go` 신규 파일 + `ensureTmuxGLMEnv()`: SessionStart 훅에서 tmux 세션 env 자동 주입
+  - GLM 변수 9종 일괄 전파: `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_DEFAULT_*_MODEL`, 호환 플래그
+  - Guard: `TMUX` 없음 / `teammateMode != "tmux"` / `AUTH_TOKEN` 없음 / tmux 바이너리 없음 → graceful no-op
+  - UX: `moai glm` 비-tmux 경로에 actionable 4단계 복구 안내 추가
+
+### 변경됨 (Changed)
+
+- `TestAsyncRecorder_NonBlockingUnderLoad`: Windows CI 스케줄러 입도 문제로 latency 기반 검증이 flaky하여 Windows skip. 비블로킹 불변식은 Linux/macOS에서 계속 검증.
+- `TestQualityGate_RunsDotnetFormatWhenCSharpStaged`: Windows는 shell-script 기반 fake 바이너리를 `exec.Command`로 실행할 수 없어 skip.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 개발 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.10.4] - 2026-04-15
 
 ### Summary
