@@ -84,6 +84,17 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// GLM 팀 모드에서 팀원 tmux 팬이 ANTHROPIC_AUTH_TOKEN을 상속하도록
+	// 현재 tmux 세션에 GLM 환경변수를 주입합니다.
+	// ensureGLMCredentials가 settings.local.json에 토큰을 기록한 후에 실행해야
+	// 최신 값을 읽을 수 있습니다.
+	if input.ProjectDir != "" {
+		if msg := ensureTmuxGLMEnv(input.ProjectDir); msg != "" {
+			data["tmux_glm_env"] = msg
+			slog.Info("tmux GLM 환경변수 주입", "message", msg)
+		}
+	}
+
 	// Enforce telemetry retention: prune files older than 90 days (SPEC-TELEMETRY-001 R4).
 	// Best-effort: errors are logged and never propagated.
 	if input.ProjectDir != "" {
