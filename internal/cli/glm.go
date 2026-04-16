@@ -289,7 +289,12 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 
 		tmuxStatus := "tmux session: active (env vars injected)"
 		if !inTmux {
-			tmuxStatus = "tmux session: NOT DETECTED (start claude inside tmux for teammates)"
+			tmuxStatus = "Warning: tmux session NOT DETECTED. GLM teammates require tmux for env propagation.\n" +
+				"  Recommended steps:\n" +
+				"    1. tmux new -s moai\n" +
+				"    2. moai glm                # (tmux 안에서 재실행하여 세션 env 설정)\n" +
+				"    3. claude\n" +
+				"    4. /moai --team \"task\""
 		}
 
 		_, _ = fmt.Fprintln(out, renderSuccessCard(
