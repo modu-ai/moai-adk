@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -667,6 +668,11 @@ func TestQualityGate_SkipsDotnetFormatWhenNoCSharpStaged(t *testing.T) {
 // dotnet format 단계가 실행되는지 검증합니다 (이슈 #667 Fix 1).
 // t.Setenv를 사용하므로 t.Parallel()을 호출하지 않습니다.
 func TestQualityGate_RunsDotnetFormatWhenCSharpStaged(t *testing.T) {
+	// Windows는 #!/bin/sh 가짜 바이너리를 exec.Command로 실행할 수 없으므로 스킵.
+	// 실제 dotnet이 설치된 CI에서는 format 실행이 타임아웃으로 실패함.
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: shell-script fake binary is not directly executable")
+	}
 	skipIfCommandMissing(t, "git")
 
 	dir := t.TempDir()
