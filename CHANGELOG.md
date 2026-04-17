@@ -5,55 +5,175 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v2.12.0
+## [2.12.0] - 2026-04-17
 
 ### Summary
 
-Claude Code v2.1.110/111 + claude-opus-4-7 compatibility layer (SPEC-OPUS47-COMPAT-001). Key changes: (1) 5-tier Effort system — `effortLevel` profile field + `CLAUDE_CODE_EFFORT_LEVEL` env injection at launch, (2) `claude-opus-4-7` model ID constant + 6 high-reasoning agents get explicit effort overrides, (3) MCP scope duplicate detection in `moai doctor`, (4) PermissionRequest deny on modified tool input (updatedInput re-verification), (5) Windows CLAUDE_ENV_FILE injection at SessionStart, (6) `disableBypassPermissionsMode` field in settings template, (7) Adaptive Thinking docs update.
+Claude Code v2.1.110/111 + Claude Opus 4.7 (`claude-opus-4-7`) compatibility layer (SPEC-OPUS47-COMPAT-001 + post-implementation follow-up). Introduces a 5-tier Effort system, Opus 4.7 prompt philosophy (5 principles documented in `moai-constitution.md`), v2.1.110 runtime handlers (MCP scope duplicate detection, PermissionRequest `updatedInput` re-verification, Windows `CLAUDE_ENV_FILE` injection), and `ApplyEffortPolicy` production wiring that automatically injects effort levels into agent frontmatter during `moai init` / `moai update` while preserving user customisation. Backward compatible with Opus 4.6 / Sonnet 4.6 / Haiku 4.5.
+
+### Breaking Changes
+
+None. `agentModelMap [3]string` signature unchanged (NFR-1). `effort` is opt-in — agents without the field inherit runtime defaults. Existing Opus 4.6 user profiles are preserved (no forced migration).
 
 ### Added
 
-- **Effort system** (`internal/profile/preferences.go`, `internal/cli/launcher.go`)
-  - `ProfilePreferences.EffortLevel string` YAML field (omitempty)
+- **Effort system** (`internal/profile/preferences.go`, `internal/cli/launcher.go`, `internal/config/envkeys.go`)
+  - `ProfilePreferences.EffortLevel string` YAML field (`effort_level`, omitempty)
   - `buildEnvForLaunch(effortLevel, baseEnv)` — injects `CLAUDE_CODE_EFFORT_LEVEL` at `syscall.Exec` time
-  - `EnvClaudeCodeEffortLevel` constant in `internal/config/envkeys.go`
+  - `EnvClaudeCodeEffortLevel` constant
 
 - **Model policy** (`internal/template/model_policy.go`)
   - `ModelIDOpus47 = "claude-opus-4-7"` constant
   - `EffortLevel{Low,Medium,High,XHigh,Max}` constants (5-tier)
-  - `agentEffortMap` — explicit overrides for 6 high-reasoning agents
+  - `agentEffortMap` — explicit overrides for 6 high-reasoning agents (manager-spec/manager-strategy → `xhigh`; plan-auditor/evaluator-active/expert-security/expert-refactoring → `high`)
   - `GetAgentEffort(agentName string) string` exported function
-  - `ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error` — injects effort level overrides into agent `.md` files; called by `moai init` and `moai update`; preserves existing `effort:` values (user customisation wins)
+  - `ApplyEffortPolicy(projectRoot, manifestMgr) error` — called by `moai init` and `moai update`; injects effort overrides into agent `.md` frontmatter, preserves any existing `effort:` value (user customisation wins), registers hash changes in the manifest
 
-- **Profile setup UI** (`internal/cli/profile_setup.go`, `profile_setup_translations.go`)
+- **Profile setup UI** (`internal/cli/profile_setup.go`, `internal/cli/profile_setup_translations.go`)
   - `claude-opus-4-7` model option in model selector
-  - Effort level selector (5 tiers) with translations (en/ko/ja/zh)
+  - 5-tier effort selector with localised labels (en/ko/ja/zh)
 
 - **Doctor check** (`internal/cli/doctor.go`)
-  - `checkMCPScopeDuplicates` — detects MCP server name collisions between project `.mcp.json` and global `~/.claude/.mcp.json`
+  - `checkMCPScopeDuplicates` — detects MCP server name collisions between project `.mcp.json` and global `~/.claude/.mcp.json`; warning-level only, `exit 0`
 
 - **Hook: PermissionRequest** (`internal/hook/permission_request.go`)
-  - Deny when `ToolInput` contains `__updated_input_marker__` sentinel (updatedInput re-verification, T-015)
+  - Deny when `ToolInput` contains the `__updated_input_marker__` sentinel (updatedInput re-verification, T-015)
 
 - **Hook: SessionStart** (`internal/hook/session_start.go`)
-  - `injectCLAUDEEnvFile` — Windows-only: injects `CLAUDE_ENV_FILE` path into `settings.local.json` when `.env` exists (T-016)
+  - `injectCLAUDEEnvFile` — Windows-only: injects `CLAUDE_ENV_FILE` path into `settings.local.json` when project `.env` exists (T-016); macOS/Linux paths unchanged (R-P1-1 regression verified)
 
 - **Template: settings.json**
   - `disableBypassPermissionsMode: false` field (v2.1.111)
 
 - **Template: harness.yaml**
-  - `effort_mapping` section: thorough→xhigh, standard→high, minimal→medium
+  - `effort_mapping` section: thorough → `xhigh`, standard → `high`, minimal → `medium`
 
 - **Template: quality.yaml**
   - `session_effort_default: "xhigh"` field
 
-- **Docs**: CLAUDE.md §12 — Adaptive Thinking vs UltraThink distinction
-- **Docs**: coding-standards.md — Claude Code version compatibility table
-- **Docs**: agent-common-protocol.md — Bash timeout 600,000ms documentation
+- **Rules documentation**
+  - `moai-constitution.md` — new "Opus 4.7 Prompt Philosophy" section with 5 principles (one-turn fully-loaded, Adaptive Thinking, scaffolding removal, explicit fan-out, fewer tool calls)
+  - `agent-authoring.md` — new "Bash Tool Timeout Ceiling" section (600,000ms documented)
+  - `agent-common-protocol.md` — Bash timeout documentation + parallel fan-out principle
+  - `worktree-integration.md` — minimum version table expanded with v2.1.110/111 rows; `Recommended: 2.1.111 or later`
+  - `skill-authoring.md` — `effort` field now lists `low/medium/high/xhigh/max` (removed "max is Opus 4.6 only" phrasing)
+  - `coding-standards.md` — Claude Code version compatibility table
+  - `CLAUDE.md §12` — UltraThink vs Adaptive Thinking vs `--deepthink` (Sequential Thinking MCP) distinction clarified
+  - `moai-workflow-thinking/SKILL.md` — Adaptive Thinking redefined; fixed `thinking.budget_tokens` instructions removed (Opus 4.7 rejects fixed budgets with HTTP 400)
+
+- **Local development docs**
+  - `CLAUDE.local.md` — `settings.local.json` runtime-management rule + `OTEL_LOG_RAW_API_BODIES` production warning
+
+- **Testing** (post-implementation follow-up, PR #673)
+  - Coverage boost in `internal/hook` 77.7% → **85.0%** (12 new table-driven tests)
+  - R-P1-1 Handle-level Windows guard regression tests in `internal/hook/session_start_windows_guard_test.go` (verifies macOS/Linux paths do NOT call `injectCLAUDEEnvFile`)
+  - `internal/cli` coverage 73.6% → 75.1% (partial; 85% target deferred to future SPEC)
 
 ### Changed
 
-- `llm.yaml` template: `high:` tier updated from `"opus"` to `"claude-opus-4-7"` model ID
+- `llm.yaml` template: `claude_models.high` tier updated from `"opus"` to `"claude-opus-4-7"` — ensures `high` policy lands on Opus 4.7 on new projects
+
+### Fixed
+
+- `GetAgentEffort` now has a production caller (`ApplyEffortPolicy`) — resolves W-5 dead-code warning from Phase 2.5 manager-quality review
+
+### Installation & Update
+
+```bash
+# Fresh install
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+moai version
+
+# Existing users update
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.12.0] - 2026-04-17 (한국어)
+
+### 요약
+
+Claude Code v2.1.110/111 및 Claude Opus 4.7(`claude-opus-4-7`) 호환성 레이어(SPEC-OPUS47-COMPAT-001 + 후속 정리). 5단계 Effort 시스템, Opus 4.7 프롬프트 철학 5원칙(`moai-constitution.md` 명문화), v2.1.110 런타임 핸들러(MCP 중복 감지, PermissionRequest `updatedInput` 재검증, Windows `CLAUDE_ENV_FILE` 주입), 그리고 `moai init`/`moai update` 시점에 agent frontmatter로 effort 값을 자동 주입하되 사용자 커스텀을 보존하는 `ApplyEffortPolicy`를 추가했습니다. Opus 4.6/Sonnet 4.6/Haiku 4.5와 완전 하위 호환.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음. `agentModelMap [3]string` 시그니처 불변(NFR-1). `effort`는 opt-in으로 미설정 에이전트는 런타임 기본값을 상속. 기존 Opus 4.6 사용자 프로파일은 유지(강제 마이그레이션 없음).
+
+### 추가됨 (Added)
+
+- **Effort 시스템** (`internal/profile/preferences.go`, `internal/cli/launcher.go`, `internal/config/envkeys.go`)
+  - `ProfilePreferences.EffortLevel string` YAML 필드(`effort_level`, omitempty)
+  - `buildEnvForLaunch(effortLevel, baseEnv)` — `syscall.Exec` 시점에 `CLAUDE_CODE_EFFORT_LEVEL` 주입
+  - `EnvClaudeCodeEffortLevel` 상수
+
+- **모델 정책** (`internal/template/model_policy.go`)
+  - `ModelIDOpus47 = "claude-opus-4-7"` 상수
+  - `EffortLevel{Low,Medium,High,XHigh,Max}` 5단계 상수
+  - `agentEffortMap` — 6개 추론 집약 에이전트 명시적 override (manager-spec/strategy → `xhigh`, 나머지 4개 → `high`)
+  - `GetAgentEffort(agentName)` 신규 함수
+  - `ApplyEffortPolicy(projectRoot, manifestMgr)` — `moai init`/`moai update`가 호출; agent `.md` frontmatter에 effort 주입, 기존 `effort:` 값은 보존(사용자 커스텀 우선), manifest 해시 갱신
+
+- **Profile 설정 UI** (`internal/cli/profile_setup.go`, `profile_setup_translations.go`)
+  - `claude-opus-4-7` 모델 선택지
+  - 5단계 effort 선택기(한/영/일/중 4개 언어)
+
+- **Doctor 진단** (`internal/cli/doctor.go`)
+  - `checkMCPScopeDuplicates` — 프로젝트 `.mcp.json`과 전역 `~/.claude/.mcp.json` 간 서버 이름 충돌 감지; warning 수준(`exit 0`)
+
+- **Hook: PermissionRequest** (`internal/hook/permission_request.go`)
+  - `ToolInput`에 `__updated_input_marker__` sentinel 포함 시 deny (updatedInput 재검증, T-015)
+
+- **Hook: SessionStart** (`internal/hook/session_start.go`)
+  - `injectCLAUDEEnvFile` — Windows 전용: 프로젝트 `.env` 존재 시 `settings.local.json`에 `CLAUDE_ENV_FILE` 경로 주입 (T-016); macOS/Linux 기존 경로 영향 없음 (R-P1-1 회귀 검증)
+
+- **템플릿 파일**
+  - `settings.json.tmpl` — `disableBypassPermissionsMode: false` (v2.1.111)
+  - `harness.yaml` — `effort_mapping` 섹션 (thorough→xhigh, standard→high, minimal→medium)
+  - `quality.yaml.tmpl` — `session_effort_default: "xhigh"`
+
+- **규칙 문서**
+  - `moai-constitution.md` — "Opus 4.7 Prompt Philosophy" 섹션 신설 (5원칙: 1턴 몰빵, Adaptive Thinking, 스캐폴딩 제거, 명시적 fan-out, 툴 호출 감소)
+  - `agent-authoring.md` — "Bash Tool Timeout Ceiling" 섹션 신설 (600,000ms 문서화)
+  - `agent-common-protocol.md` — Bash timeout + parallel fan-out 원칙
+  - `worktree-integration.md` — 최소 버전 표에 v2.1.110/111 추가, 권장 버전 2.1.111+
+  - `skill-authoring.md` — `effort` 필드를 `low/medium/high/xhigh/max`로 확장 ("max is Opus 4.6 only" 문구 제거)
+  - `coding-standards.md` — Claude Code 버전 호환성 표
+  - `CLAUDE.md §12` — UltraThink vs Adaptive Thinking vs `--deepthink`(Sequential Thinking MCP) 구분 명확화
+  - `moai-workflow-thinking/SKILL.md` — Adaptive Thinking 재정의, 고정 `thinking.budget_tokens` 지시 제거 (Opus 4.7은 고정 예산 시 HTTP 400 오류)
+
+- **로컬 개발 문서**
+  - `CLAUDE.local.md` — `settings.local.json` 런타임 관리 원칙 + `OTEL_LOG_RAW_API_BODIES` 프로덕션 경고
+
+- **테스트** (후속 정리, PR #673)
+  - `internal/hook` 커버리지 77.7% → **85.0%** (12개 신규 table-driven 테스트)
+  - R-P1-1 Handle 레벨 Windows 가드 회귀 테스트 신설 (`session_start_windows_guard_test.go`); macOS/Linux에서 `injectCLAUDEEnvFile` 미호출 검증
+  - `internal/cli` 커버리지 73.6% → 75.1% (부분 개선; 85% 완전 달성은 별도 SPEC으로 연기)
+
+### 변경됨 (Changed)
+
+- `llm.yaml` 템플릿: `claude_models.high` 계층을 `"opus"` → `"claude-opus-4-7"`로 갱신 — 신규 프로젝트에서 `high` 정책이 Opus 4.7을 사용하도록 보장
+
+### 수정됨 (Fixed)
+
+- `GetAgentEffort`에 프로덕션 호출자(`ApplyEffortPolicy`) 추가 — Phase 2.5 manager-quality 리뷰가 지적한 W-5 dead-code 경고 해소
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 신규 설치
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+moai version
+
+# 기존 사용자 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
 
 ---
 
