@@ -35,19 +35,22 @@ triggers:
 
 Structured step-by-step reasoning via `mcp__sequential-thinking__sequentialthinking` MCP tool.
 
-## CRITICAL: Two Distinct Modes
+## CRITICAL: Three Distinct Reasoning Modes
 
-MoAI has TWO independent deep analysis modes. They are NOT the same thing:
+MoAI has THREE independent deep analysis modes. They are NOT the same thing:
 
-| Mode | Trigger | Mechanism | MCP Tool? | GLM Compatible? |
-|------|---------|-----------|-----------|-----------------|
-| `--deepthink` | Explicit `--deepthink` flag | Sequential Thinking MCP tool | YES — `mcp__sequential-thinking__sequentialthinking` | NO — generates server_tool_use content type |
-| `ultrathink` | Keyword or auto-detection | Claude native extended reasoning (high effort) | NO — native to Claude | YES — no special content type |
+| Mode | Trigger | Mechanism | MCP Tool? | GLM Compatible? | Model |
+|------|---------|-----------|-----------|-----------------|-------|
+| `--deepthink` | Explicit `--deepthink` flag | Sequential Thinking MCP tool | YES — `mcp__sequential-thinking__sequentialthinking` | NO — generates server_tool_use content type | Any |
+| `ultrathink` | Keyword or auto-detection | Claude native extended reasoning (high effort) | NO — native to Claude | YES — no special content type | Any |
+| Adaptive Thinking | Automatic on Opus 4.7 | Opus 4.7's only supported thinking mode | NO — built-in | YES | Opus 4.7 only |
 
 **Rules:**
 - `--deepthink` → ALWAYS invoke Sequential Thinking MCP. NEVER use for native reasoning.
 - `ultrathink` → ALWAYS use Claude's native extended reasoning. NEVER invoke Sequential Thinking MCP.
 - They can coexist: `ultrathink --deepthink` activates BOTH modes independently.
+- Adaptive Thinking → Opus 4.7's built-in reasoning. Let the model adapt depth automatically based on task complexity.
+- On Opus 4.7: do not hardcode a fixed reasoning budget. Adaptive Thinking overrides fixed-budget instructions.
 
 ## Activation Triggers (--deepthink only)
 

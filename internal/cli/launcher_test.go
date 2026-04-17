@@ -592,6 +592,7 @@ func TestExpandModelString(t *testing.T) {
 		{"empty string", "", ""},
 		{"standard opus", "claude-opus-4-6", "claude-opus-4-6"},
 		{"opus 1m", "claude-opus-4-6[1m]", "claude-opus-4-6[1m]"},
+		{"opus 4.7 direct", "claude-opus-4-7", "claude-opus-4-7"},
 		{"standard sonnet", "claude-sonnet-4-6", "claude-sonnet-4-6"},
 		{"sonnet 1m", "claude-sonnet-4-6[1m]", "claude-sonnet-4-6[1m]"},
 		{"opus alias 1m", "opus[1m]", "opus[1m]"},
@@ -608,6 +609,58 @@ func TestExpandModelString(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestBuildEnvForLaunch verifies that CLAUDE_CODE_EFFORT_LEVEL is injected
+// when EffortLevel is set and absent when empty.
+func TestBuildEnvForLaunch(t *testing.T) {
+	const effortKey = "CLAUDE_CODE_EFFORT_LEVEL"
+
+	t.Run("effort xhigh injected", func(t *testing.T) {
+		env := buildEnvForLaunch("xhigh", os.Environ())
+		found := ""
+		for _, e := range env {
+			if strings.HasPrefix(e, effortKey+"=") {
+				found = strings.TrimPrefix(e, effortKey+"=")
+				break
+			}
+		}
+		if found != "xhigh" {
+			t.Errorf("buildEnvForLaunch: %s not set to xhigh (got %q)", effortKey, found)
+		}
+	})
+
+	t.Run("empty effort leaves env unchanged", func(t *testing.T) {
+		base := []string{"PATH=/usr/bin", "HOME=/root"}
+		env := buildEnvForLaunch("", base)
+		for _, e := range env {
+			if strings.HasPrefix(e, effortKey+"=") {
+				t.Errorf("buildEnvForLaunch with empty effort injected %s", e)
+			}
+		}
+		if len(env) != len(base) {
+			t.Errorf("buildEnvForLaunch with empty effort changed env length: %d -> %d", len(base), len(env))
+		}
+	})
+
+	t.Run("existing effort overridden", func(t *testing.T) {
+		base := []string{"PATH=/usr/bin", effortKey + "=low"}
+		env := buildEnvForLaunch("xhigh", base)
+		count := 0
+		val := ""
+		for _, e := range env {
+			if strings.HasPrefix(e, effortKey+"=") {
+				count++
+				val = strings.TrimPrefix(e, effortKey+"=")
+			}
+		}
+		if count != 1 {
+			t.Errorf("buildEnvForLaunch: expected 1 %s entry, got %d", effortKey, count)
+		}
+		if val != "xhigh" {
+			t.Errorf("buildEnvForLaunch: %s = %q, want xhigh", effortKey, val)
+		}
+	})
 }
 
 func TestUnifiedLaunch_NotInProject(t *testing.T) {

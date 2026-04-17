@@ -36,10 +36,20 @@ type profileSetupText struct {
 	ModelDefault       string
 	ModelOpus          string
 	ModelOpus1M        string
+	ModelOpus47        string
 	ModelSonnet        string
 	ModelSonnet1M      string
 	ModelHaiku         string
 	ModelOpusPlan      string
+	// Effort level selector
+	EffortLevelTitle   string
+	EffortLevelDesc    string
+	EffortLevelDefault string
+	EffortLevelLow     string
+	EffortLevelMedium  string
+	EffortLevelHigh    string
+	EffortLevelXHigh   string
+	EffortLevelMax     string
 	// Permission mode (replaces legacy bypass)
 	PermissionModeTitle string
 	PermissionModeDesc  string
@@ -101,10 +111,19 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelDefault:         "Default (no override)",
 		ModelOpus:            "claude-opus-4-6 (most capable)",
 		ModelOpus1M:          "claude-opus-4-6 1M context (extended thinking)",
+		ModelOpus47:          "claude-opus-4-7 (Opus 4.7 with adaptive thinking)",
 		ModelSonnet:          "claude-sonnet-4-6 (balanced)",
 		ModelSonnet1M:        "claude-sonnet-4-6 1M context (extended thinking)",
 		ModelHaiku:           "claude-haiku-4-5 (fastest)",
 		ModelOpusPlan:        "opusplan (Opus planning, Sonnet coding)",
+		EffortLevelTitle:     "Session effort level",
+		EffortLevelDesc:      "Sets reasoning depth for this profile. xhigh/max require Opus 4.7.",
+		EffortLevelDefault:   "Default (runtime default, xhigh for Opus 4.7)",
+		EffortLevelLow:       "low - fastest, least thorough",
+		EffortLevelMedium:    "medium - balanced",
+		EffortLevelHigh:      "high - deep reasoning",
+		EffortLevelXHigh:     "xhigh - extended reasoning (Opus 4.7+)",
+		EffortLevelMax:       "max - maximum effort (Opus 4.7+)",
 		PermissionModeTitle: "Permission mode",
 		PermissionModeDesc:  "Controls how Claude asks for permission before taking actions.",
 		PermAcceptEdits:     "Auto accept edits - Auto-accept file edits, ask for commands",
@@ -153,10 +172,19 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelDefault:         "기본값 (오버라이드 없음)",
 		ModelOpus:            "claude-opus-4-6 (최고 성능)",
 		ModelOpus1M:          "claude-opus-4-6 1M 컨텍스트 (확장 사고)",
+		ModelOpus47:          "claude-opus-4-7 (Opus 4.7, 적응형 사고)",
 		ModelSonnet:          "claude-sonnet-4-6 (균형)",
 		ModelSonnet1M:        "claude-sonnet-4-6 1M 컨텍스트 (확장 사고)",
 		ModelHaiku:           "claude-haiku-4-5 (최고 속도)",
 		ModelOpusPlan:        "opusplan (Opus 기획, Sonnet 코딩)",
+		EffortLevelTitle:     "세션 추론 강도",
+		EffortLevelDesc:      "이 프로필의 추론 깊이를 설정합니다. xhigh/max는 Opus 4.7 필요.",
+		EffortLevelDefault:   "기본값 (런타임 기본값, Opus 4.7은 xhigh)",
+		EffortLevelLow:       "low - 가장 빠름, 간략한 추론",
+		EffortLevelMedium:    "medium - 균형",
+		EffortLevelHigh:      "high - 심층 추론",
+		EffortLevelXHigh:     "xhigh - 확장 추론 (Opus 4.7+)",
+		EffortLevelMax:       "max - 최대 추론 (Opus 4.7+)",
 		PermissionModeTitle: "권한 모드",
 		PermissionModeDesc:  "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.",
 		PermAcceptEdits:     "자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인",
@@ -205,10 +233,19 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelDefault:         "デフォルト (オーバーライドなし)",
 		ModelOpus:            "claude-opus-4-6 (最高性能)",
 		ModelOpus1M:          "claude-opus-4-6 1Mコンテキスト (拡張思考)",
+		ModelOpus47:          "claude-opus-4-7 (Opus 4.7、適応型思考)",
 		ModelSonnet:          "claude-sonnet-4-6 (バランス)",
 		ModelSonnet1M:        "claude-sonnet-4-6 1Mコンテキスト (拡張思考)",
 		ModelHaiku:           "claude-haiku-4-5 (最速)",
 		ModelOpusPlan:        "opusplan (Opus設計、Sonnetコーディング)",
+		EffortLevelTitle:     "セッション推論レベル",
+		EffortLevelDesc:      "このプロファイルの推論深度を設定します。xhigh/maxはOpus 4.7が必要。",
+		EffortLevelDefault:   "デフォルト (ランタイムデフォルト、Opus 4.7はxhigh)",
+		EffortLevelLow:       "low - 最速、簡易推論",
+		EffortLevelMedium:    "medium - バランス",
+		EffortLevelHigh:      "high - 深い推論",
+		EffortLevelXHigh:     "xhigh - 拡張推論 (Opus 4.7+)",
+		EffortLevelMax:       "max - 最大推論 (Opus 4.7+)",
 		PermissionModeTitle: "権限モード",
 		PermissionModeDesc:  "Claudeがアクション実行前に権限を要求する方法を制御します。",
 		PermAcceptEdits:     "編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認",
@@ -257,10 +294,19 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelDefault:         "默认 (不覆盖)",
 		ModelOpus:            "claude-opus-4-6 (最强性能)",
 		ModelOpus1M:          "claude-opus-4-6 1M上下文 (扩展思考)",
+		ModelOpus47:          "claude-opus-4-7 (Opus 4.7，自适应思考)",
 		ModelSonnet:          "claude-sonnet-4-6 (均衡)",
 		ModelSonnet1M:        "claude-sonnet-4-6 1M上下文 (扩展思考)",
 		ModelHaiku:           "claude-haiku-4-5 (最快)",
 		ModelOpusPlan:        "opusplan (Opus规划，Sonnet编码)",
+		EffortLevelTitle:     "会话推理强度",
+		EffortLevelDesc:      "设置此配置文件的推理深度。xhigh/max需要Opus 4.7。",
+		EffortLevelDefault:   "默认 (运行时默认值，Opus 4.7为xhigh)",
+		EffortLevelLow:       "low - 最快，简略推理",
+		EffortLevelMedium:    "medium - 均衡",
+		EffortLevelHigh:      "high - 深度推理",
+		EffortLevelXHigh:     "xhigh - 扩展推理 (Opus 4.7+)",
+		EffortLevelMax:       "max - 最大推理 (Opus 4.7+)",
 		PermissionModeTitle: "权限模式",
 		PermissionModeDesc:  "控制Claude在执行操作前如何请求权限。",
 		PermAcceptEdits:     "自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令",

@@ -66,6 +66,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	model := existingPrefs.Model
+	effortLevel := existingPrefs.EffortLevel
 	permissionMode := existingPrefs.PermissionMode
 	if permissionMode == "" {
 		permissionMode = "acceptEdits" // project default
@@ -146,6 +147,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Description(t.ModelOverrideDesc).
 				Options(
 					huh.NewOption(t.ModelDefault, ""),
+					huh.NewOption(t.ModelOpus47, "claude-opus-4-7"),
 					huh.NewOption(t.ModelOpus, "opus"),
 					huh.NewOption(t.ModelOpus1M, "opus[1m]"),
 					huh.NewOption(t.ModelSonnet, "sonnet"),
@@ -154,6 +156,18 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.ModelOpusPlan, "opusplan"),
 				).
 				Value(&model),
+			huh.NewSelect[string]().
+				Title(t.EffortLevelTitle).
+				Description(t.EffortLevelDesc).
+				Options(
+					huh.NewOption(t.EffortLevelDefault, ""),
+					huh.NewOption(t.EffortLevelLow, "low"),
+					huh.NewOption(t.EffortLevelMedium, "medium"),
+					huh.NewOption(t.EffortLevelHigh, "high"),
+					huh.NewOption(t.EffortLevelXHigh, "xhigh"),
+					huh.NewOption(t.EffortLevelMax, "max"),
+				).
+				Value(&effortLevel),
 			huh.NewSelect[string]().
 				Title(t.PermissionModeTitle).
 				Description(t.PermissionModeDesc).
@@ -210,6 +224,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		CodeCommentLang:  codeCommentLang,
 		DocLang:          docLang,
 		Model:            model,
+		EffortLevel:      effortLevel,
 		PermissionMode:   permissionMode,
 		StatuslineMode:   statuslineMode,
 		StatuslineTheme:  statuslineTheme,

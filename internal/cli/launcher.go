@@ -529,7 +529,8 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// NOTE: syscall.Exec replaces the current process entirely.
 	// No defer() functions will execute after this point.
 	// Ensure all cleanup and setup is complete before calling.
-	return syscall.Exec(claudeBin, buildArgs(false), os.Environ())
+	launchEnv := buildEnvForLaunch(prefs.EffortLevel, os.Environ())
+	return syscall.Exec(claudeBin, buildArgs(false), launchEnv)
 }
 
 // --- Flag Parsing ---
@@ -665,6 +666,34 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 // to enable the 1M token context window.
 func expandModelString(model string) string {
 	return model
+}
+
+// buildEnvForLaunch returns an environment slice with CLAUDE_CODE_EFFORT_LEVEL
+// set to effortLevel when non-empty. Any existing CLAUDE_CODE_EFFORT_LEVEL entry
+// in base is replaced to avoid duplicates. When effortLevel is empty, base is
+// returned unchanged.
+//
+// @MX:NOTE: [AUTO] Effort injection point — separate from model routing (ModelPolicy⊥Effort).
+func buildEnvForLaunch(effortLevel string, base []string) []string {
+	if effortLevel == "" {
+		return base
+	}
+	const key = "CLAUDE_CODE_EFFORT_LEVEL"
+	entry := key + "=" + effortLevel
+	result := make([]string, 0, len(base)+1)
+	replaced := false
+	for _, e := range base {
+		if strings.HasPrefix(e, key+"=") {
+			result = append(result, entry)
+			replaced = true
+		} else {
+			result = append(result, e)
+		}
+	}
+	if !replaced {
+		result = append(result, entry)
+	}
+	return result
 }
 
 // syncBypassToSettingsLocal is a backward-compatible wrapper for

@@ -11,6 +11,7 @@ description: |
   NOT for: code implementation, testing, deployment, documentation, git operations
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: opus
+effort: xhigh
 permissionMode: plan
 memory: project
 skills:
