@@ -23,6 +23,7 @@ Claude Code v2.1.110/111 + claude-opus-4-7 compatibility layer (SPEC-OPUS47-COMP
   - `EffortLevel{Low,Medium,High,XHigh,Max}` constants (5-tier)
   - `agentEffortMap` — explicit overrides for 6 high-reasoning agents
   - `GetAgentEffort(agentName string) string` exported function
+  - `ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error` — injects effort level overrides into agent `.md` files; called by `moai init` and `moai update`; preserves existing `effort:` values (user customisation wins)
 
 - **Profile setup UI** (`internal/cli/profile_setup.go`, `profile_setup_translations.go`)
   - `claude-opus-4-7` model option in model selector

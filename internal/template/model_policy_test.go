@@ -567,6 +567,227 @@ func TestDeployExistingUserFile(t *testing.T) {
 	}
 }
 
+// TestApplyEffortPolicy verifies ApplyEffortPolicy behaviour across multiple scenarios.
+func TestApplyEffortPolicy(t *testing.T) {
+	t.Run("injects_effort_for_reasoning_agent", func(t *testing.T) {
+		root := t.TempDir()
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
+		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+
+		// manager-spec has no effort: field yet — should be injected as xhigh
+		agentContent := `---
+name: manager-spec
+model: opus
+permissionMode: bypassPermissions
+---
+# Manager Spec Agent
+`
+		if err := os.WriteFile(filepath.Join(agentsDir, "manager-spec.md"), []byte(agentContent), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+
+		mgr := manifest.NewManager()
+		moaiDir := filepath.Join(root, ".moai")
+		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("manifest Load error: %v", err)
+		}
+
+		if err := ApplyEffortPolicy(root, mgr); err != nil {
+			t.Fatalf("ApplyEffortPolicy error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-spec.md"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		if !containsString(string(content), "effort: xhigh") {
+			t.Errorf("expected effort: xhigh injected, got:\n%s", content)
+		}
+		// Existing fields must be preserved
+		if !containsString(string(content), "model: opus") {
+			t.Errorf("model field was lost:\n%s", content)
+		}
+	})
+
+	t.Run("preserves_existing_effort_value", func(t *testing.T) {
+		root := t.TempDir()
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
+		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+
+		// expert-security already has effort: max (user override) — must not be changed
+		agentContent := `---
+name: expert-security
+model: opus
+effort: max
+---
+# Expert Security
+`
+		if err := os.WriteFile(filepath.Join(agentsDir, "expert-security.md"), []byte(agentContent), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+
+		mgr := manifest.NewManager()
+		moaiDir := filepath.Join(root, ".moai")
+		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("manifest Load error: %v", err)
+		}
+
+		if err := ApplyEffortPolicy(root, mgr); err != nil {
+			t.Fatalf("ApplyEffortPolicy error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(agentsDir, "expert-security.md"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		if string(content) != agentContent {
+			t.Errorf("existing effort was modified; want preserved:\ngot:\n%s\nwant:\n%s", content, agentContent)
+		}
+	})
+
+	t.Run("no_op_for_agent_not_in_effort_map", func(t *testing.T) {
+		root := t.TempDir()
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
+		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+
+		// expert-backend is NOT in agentEffortMap — nothing should be injected
+		agentContent := `---
+name: expert-backend
+model: opus
+---
+# Expert Backend
+`
+		if err := os.WriteFile(filepath.Join(agentsDir, "expert-backend.md"), []byte(agentContent), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+
+		mgr := manifest.NewManager()
+		moaiDir := filepath.Join(root, ".moai")
+		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("manifest Load error: %v", err)
+		}
+
+		if err := ApplyEffortPolicy(root, mgr); err != nil {
+			t.Fatalf("ApplyEffortPolicy error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(agentsDir, "expert-backend.md"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		if string(content) != agentContent {
+			t.Errorf("agent not in effort map was modified; want no-op:\ngot:\n%s\nwant:\n%s", content, agentContent)
+		}
+	})
+
+	t.Run("no_agents_directory", func(t *testing.T) {
+		root := t.TempDir()
+		mgr := manifest.NewManager()
+		moaiDir := filepath.Join(root, ".moai")
+		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("manifest Load error: %v", err)
+		}
+
+		// Should not error when directory is absent
+		if err := ApplyEffortPolicy(root, mgr); err != nil {
+			t.Fatalf("ApplyEffortPolicy error: %v", err)
+		}
+	})
+
+	t.Run("no_frontmatter_not_modified", func(t *testing.T) {
+		root := t.TempDir()
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
+		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+
+		// File without YAML frontmatter — skip silently
+		agentContent := "# manager-spec\nNo frontmatter here.\n"
+		if err := os.WriteFile(filepath.Join(agentsDir, "manager-spec.md"), []byte(agentContent), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+
+		mgr := manifest.NewManager()
+		moaiDir := filepath.Join(root, ".moai")
+		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("manifest Load error: %v", err)
+		}
+
+		if err := ApplyEffortPolicy(root, mgr); err != nil {
+			t.Fatalf("ApplyEffortPolicy error: %v", err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-spec.md"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		if string(content) != agentContent {
+			t.Errorf("file without frontmatter was modified:\ngot:\n%s\nwant:\n%s", content, agentContent)
+		}
+	})
+
+	t.Run("manifest_tracked_after_injection", func(t *testing.T) {
+		root := t.TempDir()
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
+		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+
+		agentContent := `---
+name: plan-auditor
+model: opus
+---
+# Plan Auditor
+`
+		if err := os.WriteFile(filepath.Join(agentsDir, "plan-auditor.md"), []byte(agentContent), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+
+		mgr := manifest.NewManager()
+		moaiDir := filepath.Join(root, ".moai")
+		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("manifest Load error: %v", err)
+		}
+
+		if err := ApplyEffortPolicy(root, mgr); err != nil {
+			t.Fatalf("ApplyEffortPolicy error: %v", err)
+		}
+
+		// Manifest entry must be updated for the injected file
+		relPath := filepath.Join(".claude", "agents", "moai", "plan-auditor.md")
+		entry, found := mgr.GetEntry(relPath)
+		if !found {
+			t.Errorf("manifest entry not found for %q after injection", relPath)
+		} else if entry.TemplateHash == "" {
+			t.Errorf("manifest entry TemplateHash is empty for %q", relPath)
+		}
+	})
+}
+
 // containsString checks if s contains substr.
 func containsString(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
