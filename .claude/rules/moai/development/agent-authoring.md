@@ -35,7 +35,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | memory | No | None | Persistent memory scope for cross-session learning |
 | background | No | false | Run agent in background without blocking conversation (v2.1.46+) |
 | color | No | None | Display color in UI: red, blue, green, yellow, purple, orange, pink, cyan |
-| effort | No | inherit | Session effort override: low, medium, high, max (max is Opus 4.6 only) |
+| effort | No | inherit | Session effort override: low, medium, high, xhigh, max (xhigh/max require Opus 4.7+) |
 | initialPrompt | No | None | Auto-submitted first user turn when agent runs as main session agent via --agent flag (v2.1.83+) |
 | isolation | No | none | Isolation mode: "worktree" creates isolated git worktree (v2.1.49+) |
 
@@ -55,7 +55,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
-**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `max`. The `max` value is only supported on Opus 4.6 models.
+**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `xhigh`, `max`. The `xhigh` and `max` values require Opus 4.7 or later. On Opus 4.6, the highest supported effort level is `high`.
 
 **color**: Display color for the agent in the task list and transcript UI. Valid values: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
 
@@ -191,6 +191,16 @@ Notes:
 - Dynamic teammates use `mode: "plan"` for read-only enforcement instead of tool restrictions
 - Project-specific context is included in the spawn prompt, not preloaded skills
 - Teammates can self-load skills via Skill() tool when deeper documentation is needed
+
+## Bash Tool Timeout Ceiling
+
+The Claude Code runtime enforces a hard ceiling on the Bash tool's `timeout` parameter:
+
+- Default: 120,000ms (2 minutes)
+- **Maximum: 600,000ms (10 minutes)** — values above this are rejected by Claude Code v2.1.110+
+- When authoring agent prompts that invoke long-running Bash commands (build, test suite, install), specify `timeout` explicitly up to the 600,000ms ceiling
+- Do NOT attempt to specify Bash tool timeouts exceeding 600,000ms; the runtime silently clamps or rejects them
+- Enforcement is performed by Claude Code itself, not by moai-adk-go; documentation here is for agent authors to avoid invalid values
 
 ## Agent Invocation
 
