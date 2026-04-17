@@ -103,6 +103,9 @@ Hooks support environment variables and must be quoted to handle spaces:
 
 **Important**: Quote the entire path: `"\"$CLAUDE_PROJECT_DIR/path\""` not `"$CLAUDE_PROJECT_DIR/path"`
 
+Hook timeout range: 1–600,000ms (max 10 minutes). Default is 5,000ms for most hooks.
+Long-running hooks (PostToolUse, quality gates) should set `"timeout": 60000` or higher.
+
 ## StatusLine Configuration
 
 StatusLine does NOT support environment variables. Use relative paths from project root:

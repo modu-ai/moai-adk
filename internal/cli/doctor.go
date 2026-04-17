@@ -121,6 +121,7 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 		fn   func(bool) DiagnosticCheck
 	}
 
+	cwd, _ := os.Getwd()
 	allChecks := []checkFunc{
 		{"Go Runtime", checkGoRuntime},
 		{"Git", checkGit},
@@ -128,6 +129,7 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 		{"Claude Config", checkClaudeConfig},
 		{"MoAI Version", checkMoAIVersion},
 		{"Binary Freshness", checkBinaryFreshness},
+		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
 	}
 
 	var results []DiagnosticCheck
@@ -323,6 +325,85 @@ func shortCommit(hash string) string {
 		return hash
 	}
 	return hash[:9]
+}
+
+// findMCPDuplicates returns server names that appear more than once in the
+// counts map. Used by checkMCPScopeDuplicates to detect same-name servers
+// registered at multiple scopes (project + user).
+func findMCPDuplicates(counts map[string]int) []string {
+	var dups []string
+	for name, count := range counts {
+		if count > 1 {
+			dups = append(dups, name)
+		}
+	}
+	return dups
+}
+
+// mcpJSONServers holds the parsed structure of .mcp.json.
+type mcpJSONServers struct {
+	MCPServers map[string]json.RawMessage `json:"mcpServers"`
+}
+
+// checkMCPScopeDuplicates detects MCP server names that appear in both the
+// project .mcp.json and the global ~/.claude/.mcp.json, causing silent
+// shadowing that can hide server configuration changes.
+func checkMCPScopeDuplicates(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "MCP Scope Duplicates"}
+
+	// Parse project .mcp.json
+	projectServers := parseMCPJSON(filepath.Join(projectRoot, ".mcp.json"))
+
+	// Parse global ~/.claude/.mcp.json
+	homeDir, _ := os.UserHomeDir()
+	globalServers := parseMCPJSON(filepath.Join(homeDir, ".claude", ".mcp.json"))
+
+	if len(projectServers) == 0 && len(globalServers) == 0 {
+		check.Status = CheckOK
+		check.Message = "no MCP configuration found (project or global)"
+		return check
+	}
+
+	// Tally server name occurrences across both scopes
+	counts := make(map[string]int)
+	for name := range projectServers {
+		counts[name]++
+	}
+	for name := range globalServers {
+		counts[name]++
+	}
+
+	dups := findMCPDuplicates(counts)
+	if len(dups) == 0 {
+		check.Status = CheckOK
+		check.Message = fmt.Sprintf("%d project, %d global MCP servers — no duplicates", len(projectServers), len(globalServers))
+		return check
+	}
+
+	check.Status = CheckWarn
+	check.Message = fmt.Sprintf("duplicate MCP server names across scopes: %s", strings.Join(dups, ", "))
+	if verbose {
+		check.Detail = "Duplicate server names may shadow configuration. Remove duplicates from one scope."
+	}
+	return check
+}
+
+// parseMCPJSON reads .mcp.json and returns the set of server names.
+// Returns empty map on error or missing file.
+func parseMCPJSON(path string) map[string]struct{} {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var parsed mcpJSONServers
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return nil
+	}
+	result := make(map[string]struct{}, len(parsed.MCPServers))
+	for name := range parsed.MCPServers {
+		result[name] = struct{}{}
+	}
+	return result
 }
 
 // statusIcon returns a colored Unicode icon for the check status.

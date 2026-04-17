@@ -131,6 +131,16 @@ Avoid:
 | Run system commands | Bash | — |
 | Explore codebase | Agent(Explore) | Multiple sequential Grep calls |
 
+### Bash Timeout
+
+The Bash tool supports an optional `timeout` parameter (milliseconds):
+
+- Default: 120,000ms (2 minutes)
+- Maximum: 600,000ms (10 minutes)
+- Use for long-running commands: builds, test suites, installs
+
+Specify via the `timeout` field when the command is expected to run longer than 2 minutes.
+
 ### Error Recovery Pattern
 
 When a tool call fails:

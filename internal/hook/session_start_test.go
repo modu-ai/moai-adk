@@ -195,3 +195,55 @@ func TestEnsureGLMCredentials(t *testing.T) {
 		}
 	})
 }
+
+// T-016: Windows CLAUDE_ENV_FILE injection
+
+// TestInjectCLAUDEEnvFile_WithEnvFile verifies that injectCLAUDEEnvFile sets
+// CLAUDE_ENV_FILE in settings.local.json when a .env file exists in the project.
+func TestInjectCLAUDEEnvFile_WithEnvFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Create a .env file in the project root
+	envFilePath := filepath.Join(dir, ".env")
+	if err := os.WriteFile(envFilePath, []byte("SOME_VAR=value\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	msg := injectCLAUDEEnvFile(dir)
+	if msg == "" {
+		t.Error("injectCLAUDEEnvFile: expected non-empty message when .env exists")
+	}
+
+	// Verify settings.local.json was written with CLAUDE_ENV_FILE
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("settings.local.json not created: %v", err)
+	}
+	var settings struct {
+		Env map[string]string `json:"env"`
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("unmarshal settings.local.json: %v", err)
+	}
+	if settings.Env["CLAUDE_ENV_FILE"] != envFilePath {
+		t.Errorf("CLAUDE_ENV_FILE = %q, want %q", settings.Env["CLAUDE_ENV_FILE"], envFilePath)
+	}
+}
+
+// TestInjectCLAUDEEnvFile_NoEnvFile verifies that injectCLAUDEEnvFile is a
+// no-op when no .env file exists (returns empty string).
+func TestInjectCLAUDEEnvFile_NoEnvFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	msg := injectCLAUDEEnvFile(dir)
+	if msg != "" {
+		t.Errorf("injectCLAUDEEnvFile: expected empty msg when no .env, got %q", msg)
+	}
+}

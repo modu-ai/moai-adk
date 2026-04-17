@@ -358,6 +358,61 @@ func TestCheckBinaryFreshness_BasicInvariants(t *testing.T) {
 	}
 }
 
+// --- T-014: MCP Scope Duplicate Detection ---
+
+func TestCheckMCPScopeDuplicates_NoDuplicates(t *testing.T) {
+	tmpDir := t.TempDir()
+	mcpJSON := `{"mcpServers":{"context7":{"command":"npx","args":["-y","@context7/mcp"]},"sequential-thinking":{"command":"npx","args":["-y","@modelcontextprotocol/server-sequential-thinking"]}}}`
+	if err := os.WriteFile(filepath.Join(tmpDir, ".mcp.json"), []byte(mcpJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	check := checkMCPScopeDuplicates(tmpDir, false)
+	if check.Name != "MCP Scope Duplicates" {
+		t.Errorf("check.Name = %q, want 'MCP Scope Duplicates'", check.Name)
+	}
+	if check.Status != CheckOK {
+		t.Errorf("no duplicates: check.Status = %q, want ok; msg=%s", check.Status, check.Message)
+	}
+}
+
+func TestCheckMCPScopeDuplicates_WithDuplicate(t *testing.T) {
+	// context7 appears in both project .mcp.json and simulated global config
+	// We simulate a duplicate by listing the same server name twice via the
+	// parsed structure (for unit test isolation we test the detection logic).
+	servers := map[string]int{
+		"context7":             2, // duplicate
+		"sequential-thinking": 1,
+	}
+	dups := findMCPDuplicates(servers)
+	if len(dups) != 1 {
+		t.Errorf("findMCPDuplicates: expected 1 duplicate, got %d: %v", len(dups), dups)
+	}
+	if dups[0] != "context7" {
+		t.Errorf("findMCPDuplicates: expected 'context7', got %q", dups[0])
+	}
+}
+
+func TestCheckMCPScopeDuplicates_MissingFile(t *testing.T) {
+	tmpDir := t.TempDir() // no .mcp.json created
+	check := checkMCPScopeDuplicates(tmpDir, false)
+	// Missing .mcp.json is OK — project may not use MCP
+	if check.Status != CheckOK {
+		t.Errorf("missing .mcp.json: check.Status = %q, want ok", check.Status)
+	}
+}
+
+func TestCheckMCPScopeDuplicates_InRunDiagnosticChecks(t *testing.T) {
+	// Verify the check is registered in runDiagnosticChecks
+	results := runDiagnosticChecks(false, "MCP Scope Duplicates")
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result for MCP Scope Duplicates filter, got %d", len(results))
+	}
+	if results[0].Name != "MCP Scope Duplicates" {
+		t.Errorf("results[0].Name = %q, want 'MCP Scope Duplicates'", results[0].Name)
+	}
+}
+
 func TestCheckBinaryFreshness_RegisteredInAllChecks(t *testing.T) {
 	// Verify the check is wired into runDiagnosticChecks.
 	checks := runDiagnosticChecks(false, "")

@@ -41,6 +41,18 @@ Rules:
 - For team mode: Use TeamCreate for persistent team coordination, SendMessage for inter-teammate communication
 - Team agents share TaskList for work coordination; sub-agents return results directly
 
+## Opus 4.7 Prompt Philosophy
+
+Reasoning-intensive agents targeting `claude-opus-4-7` must follow Anthropic's official prompt guidelines (platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-7).
+
+Rules:
+- One-turn fully-loaded: deliver intent + constraints + completion criteria + file locations in a single agent prompt. Avoid multi-turn ping-pong which wastes tokens on Opus 4.7
+- Adaptive Thinking: do NOT set fixed thinking budgets via `budget_tokens`; Opus 4.7 rejects fixed budgets with HTTP 400. Let the model self-allocate reasoning depth
+- Remove Opus 4.6-era defensive scaffolding: "double-check X before returning", "verify N times", "explicitly confirm before proceeding" patterns are counterproductive on Opus 4.7's literal instruction following
+- [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7 does not auto-spawn subagents. When fan-out is needed, explicitly instruct "Use agent-A, agent-B in parallel (single message, multiple Agent() calls)" in the prompt
+- [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7 prefers reasoning over tool invocation. When tool use is expected, specify "when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context)" in the agent prompt
+- Effort level selection: reasoning-intensive agents (manager-spec, manager-strategy, plan-auditor, evaluator-active, expert-security, expert-refactoring) → `effort: xhigh` or `high`; implementation agents (expert-backend, expert-frontend, builder-*) → `effort: high` (default for Opus 4.7); speed-critical agents (manager-git, Explore) → `effort: medium`
+
 ## Output Format
 
 Never display XML tags in user-facing responses.
