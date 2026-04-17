@@ -163,6 +163,11 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		if err := template.ApplyModelPolicy(opts.ProjectRoot, policy, i.manifestMgr); err != nil {
 			i.logger.Warn("failed to apply model policy", "error", err)
 		}
+		// Step 3c: Inject effort level overrides for Opus 4.7 reasoning agents.
+		// Only agents in agentEffortMap are patched; existing effort values are preserved.
+		if err := template.ApplyEffortPolicy(opts.ProjectRoot, i.manifestMgr); err != nil {
+			i.logger.Warn("failed to apply effort policy", "error", err)
+		}
 	}
 
 	// Step 4: Create CLAUDE.md

@@ -98,7 +98,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Windows only: inject CLAUDE_ENV_FILE into settings.local.json when a
 	// .env file is present in the project root (T-016, R-P1-1).
 	// Guarded to Windows so macOS/Linux GLM env injection is never affected.
-	if runtime.GOOS == "windows" && input.ProjectDir != "" {
+	if claudeEnvFileGuard(runtime.GOOS) && input.ProjectDir != "" {
 		if msg := injectCLAUDEEnvFile(input.ProjectDir); msg != "" {
 			data["claude_env_file"] = msg
 			slog.Info("CLAUDE_ENV_FILE injected", "message", msg)
@@ -626,4 +626,14 @@ func loadGLMKeyFromEnvFile() string {
 		}
 	}
 	return ""
+}
+
+// claudeEnvFileGuard reports whether the CLAUDE_ENV_FILE injection should run
+// for the given OS name. Injection is Windows-only (T-016, R-P1-1).
+//
+// Extracted from Handle() so that unit tests can exercise the guard without
+// depending on runtime.GOOS (a compile-time constant that cannot be overridden
+// via os.Setenv). See TestSessionStartHandler_Handle_NonWindowsGuard.
+func claudeEnvFileGuard(goos string) bool {
+	return goos == "windows"
 }

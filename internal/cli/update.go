@@ -2035,6 +2035,11 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 				if err := template.ApplyModelPolicy(projectRoot, policy, mgr); err != nil {
 					return fmt.Errorf("apply model policy: %w", err)
 				}
+				// Inject effort level overrides for Opus 4.7 reasoning agents.
+				// Runs after ApplyModelPolicy to ensure agent files are in place first.
+				if err := template.ApplyEffortPolicy(projectRoot, mgr); err != nil {
+					return fmt.Errorf("apply effort policy: %w", err)
+				}
 			}
 			// Persist model_policy to system.yaml so it survives future updates
 			systemPath := filepath.Join(sectionsDir, defs.SystemYAML)

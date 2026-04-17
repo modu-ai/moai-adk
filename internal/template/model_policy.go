@@ -87,6 +87,102 @@ func GetAgentEffort(agentName string) string {
 	return agentEffortMap[agentName]
 }
 
+// effortLineRegex matches an existing effort: field in YAML frontmatter.
+var effortLineRegex = regexp.MustCompile(`(?m)^effort:\s*\S+`)
+
+// frontmatterCloseRegex matches the closing --- delimiter of a YAML frontmatter block.
+// It is intentionally written to match the second occurrence via string splitting logic
+// in insertEffortInFrontmatter, not via regex alone.
+var frontmatterOpenPrefix = "---\n"
+
+// insertEffortInFrontmatter inserts "effort: <level>" into the YAML frontmatter block
+// of content. Returns unchanged content when:
+//   - the file does not start with "---\n" (no frontmatter)
+//   - no closing "---" is found
+//   - an effort: line already exists (caller is responsible for this guard)
+func insertEffortInFrontmatter(content []byte, effortLevel string) []byte {
+	s := string(content)
+	if !strings.HasPrefix(s, frontmatterOpenPrefix) {
+		return content // No YAML frontmatter
+	}
+	// Locate the closing --- after the opening one.
+	// Content after the opening "---\n" (offset 4) is searched for "\n---".
+	rest := s[len(frontmatterOpenPrefix):]
+	closingIdx := strings.Index(rest, "\n---")
+	if closingIdx == -1 {
+		return content // Malformed frontmatter — leave untouched
+	}
+	// closingIdx points at the "\n" before "---". Insert before the newline.
+	insertPos := len(frontmatterOpenPrefix) + closingIdx + 1 // position of the closing "---" line
+	return []byte(s[:insertPos] + "effort: " + effortLevel + "\n" + s[insertPos:])
+}
+
+// ApplyEffortPolicy injects effort level overrides into agent definition files
+// under the given project root. It mirrors ApplyModelPolicy in structure but
+// operates on the effort: frontmatter field instead of model:.
+//
+// Injection rules:
+//   - Agent already has effort: field → preserved (user customisation wins)
+//   - Agent is in agentEffortMap and has no effort: field → value injected
+//   - Agent is not in agentEffortMap → no-op (runtime default applies)
+//   - File has no YAML frontmatter → skipped silently
+//
+// Manifest hashes are updated for every file that is written.
+//
+// @MX:ANCHOR: [AUTO] ApplyEffortPolicy — called from initializer and update paths; mirrors ApplyModelPolicy contract
+// @MX:REASON: fan_in >= 2 (initializer.go + update.go); public API boundary for effort wiring
+func ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error {
+	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "moai")
+	entries, err := os.ReadDir(agentsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // No agents directory yet
+		}
+		return fmt.Errorf("read agents directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		agentName := strings.TrimSuffix(entry.Name(), ".md")
+		targetEffort := GetAgentEffort(agentName)
+		if targetEffort == "" {
+			continue // Not in effort map — use runtime default, no injection
+		}
+
+		filePath := filepath.Join(agentsDir, entry.Name())
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
+		}
+
+		// Preserve existing effort: value (user customisation wins)
+		if effortLineRegex.Match(content) {
+			continue
+		}
+
+		newContent := insertEffortInFrontmatter(content, targetEffort)
+		if string(newContent) == string(content) {
+			continue // No frontmatter or no change — skip
+		}
+
+		if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
+			return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
+		}
+
+		// Update manifest hash for the patched file
+		relPath := filepath.Join(".claude", "agents", "moai", entry.Name())
+		hash := manifest.HashBytes(newContent)
+		if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
+			return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
+		}
+	}
+
+	return nil
+}
+
 // agentModelMap defines the model assignment for each agent under each policy.
 // Key: agent name, Value: [high_model, medium_model, low_model]
 var agentModelMap = map[string][3]string{
