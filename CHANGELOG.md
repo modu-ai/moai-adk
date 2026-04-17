@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v2.12.0
+
+### Summary
+
+Claude Code v2.1.110/111 + claude-opus-4-7 compatibility layer (SPEC-OPUS47-COMPAT-001). Key changes: (1) 5-tier Effort system — `effortLevel` profile field + `CLAUDE_CODE_EFFORT_LEVEL` env injection at launch, (2) `claude-opus-4-7` model ID constant + 6 high-reasoning agents get explicit effort overrides, (3) MCP scope duplicate detection in `moai doctor`, (4) PermissionRequest deny on modified tool input (updatedInput re-verification), (5) Windows CLAUDE_ENV_FILE injection at SessionStart, (6) `disableBypassPermissionsMode` field in settings template, (7) Adaptive Thinking docs update.
+
+### Added
+
+- **Effort system** (`internal/profile/preferences.go`, `internal/cli/launcher.go`)
+  - `ProfilePreferences.EffortLevel string` YAML field (omitempty)
+  - `buildEnvForLaunch(effortLevel, baseEnv)` — injects `CLAUDE_CODE_EFFORT_LEVEL` at `syscall.Exec` time
+  - `EnvClaudeCodeEffortLevel` constant in `internal/config/envkeys.go`
+
+- **Model policy** (`internal/template/model_policy.go`)
+  - `ModelIDOpus47 = "claude-opus-4-7"` constant
+  - `EffortLevel{Low,Medium,High,XHigh,Max}` constants (5-tier)
+  - `agentEffortMap` — explicit overrides for 6 high-reasoning agents
+  - `GetAgentEffort(agentName string) string` exported function
+
+- **Profile setup UI** (`internal/cli/profile_setup.go`, `profile_setup_translations.go`)
+  - `claude-opus-4-7` model option in model selector
+  - Effort level selector (5 tiers) with translations (en/ko/ja/zh)
+
+- **Doctor check** (`internal/cli/doctor.go`)
+  - `checkMCPScopeDuplicates` — detects MCP server name collisions between project `.mcp.json` and global `~/.claude/.mcp.json`
+
+- **Hook: PermissionRequest** (`internal/hook/permission_request.go`)
+  - Deny when `ToolInput` contains `__updated_input_marker__` sentinel (updatedInput re-verification, T-015)
+
+- **Hook: SessionStart** (`internal/hook/session_start.go`)
+  - `injectCLAUDEEnvFile` — Windows-only: injects `CLAUDE_ENV_FILE` path into `settings.local.json` when `.env` exists (T-016)
+
+- **Template: settings.json**
+  - `disableBypassPermissionsMode: false` field (v2.1.111)
+
+- **Template: harness.yaml**
+  - `effort_mapping` section: thorough→xhigh, standard→high, minimal→medium
+
+- **Template: quality.yaml**
+  - `session_effort_default: "xhigh"` field
+
+- **Docs**: CLAUDE.md §12 — Adaptive Thinking vs UltraThink distinction
+- **Docs**: coding-standards.md — Claude Code version compatibility table
+- **Docs**: agent-common-protocol.md — Bash timeout 600,000ms documentation
+
+### Changed
+
+- `llm.yaml` template: `high:` tier updated from `"opus"` to `"claude-opus-4-7"` model ID
+
+---
+
 ## [2.11.0] - 2026-04-16
 
 ### Summary

@@ -105,7 +105,7 @@ Never add files directly to the local project directories without also adding th
 
 ### Local-Only Files (Never in Templates)
 ```
-.claude/settings.local.json    # Personal settings
+.claude/settings.local.json    # Personal settings — runtime-managed, NEVER template
 .claude/settings.json          # Rendered from .json.tmpl
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
@@ -121,6 +121,24 @@ CLAUDE.local.md                # This file
 .moai/manifest.json            # Generated at runtime
 .moai/status_line.sh           # Rendered from .sh.tmpl
 ```
+
+### [HARD] settings.local.json Separation
+
+`settings.local.json` is **runtime-managed**. Never put it in templates.
+
+- Modified by `moai glm`, `moai cc`, `moai cg` commands at runtime
+- Modified by SessionStart hook (GLM credentials, teammateMode, CLAUDE_ENV_FILE)
+- Contains per-machine values: tmux pane IDs, API tokens, absolute paths
+- **Never** add effortLevel, teammateMode, or env tokens to the template
+
+If you accidentally commit `settings.local.json`, run `git rm --cached .claude/settings.local.json`.
+
+### [WARN] OpenTelemetry / OTEL in Tests
+
+Do NOT use `t.Setenv` with OTEL environment variables (`OTEL_EXPORTER_*`, `OTEL_SERVICE_NAME`) in tests. Setting these in parallel tests causes data races because the OTEL SDK initializes global state from env vars on first use.
+
+- Use a fake/no-op exporter instead of env-var configuration in tests
+- If the test must set OTEL vars, make the parent test non-parallel and use `t.Setenv` only in non-parallel subtests
 
 ### Embedded Template System
 

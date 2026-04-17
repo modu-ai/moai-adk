@@ -71,6 +71,19 @@ Enforcement: `internal/template/commands_audit_test.go` verifies this pattern on
 
 Source: SPEC-THIN-CMDS-001
 
+## Claude Code Version Compatibility
+
+Settings fields introduced by specific Claude Code versions:
+
+| Field | Version | Notes |
+|-------|---------|-------|
+| `effortLevel` | v2.1.110 | Sets CLAUDE_CODE_EFFORT_LEVEL; values: low/medium/high/xhigh/max |
+| `disableBypassPermissionsMode` | v2.1.111 | Prevents agents from using bypassPermissions mode when true |
+| `Bash(timeout=N)` | v2.1.110 | Per-command Bash timeout in ms; max 600,000ms |
+
+When adding new settings fields, update `internal/template/templates/.claude/settings.json.tmpl`
+and this compatibility table.
+
 ## Paths Frontmatter
 
 Use paths frontmatter for conditional rule loading:
