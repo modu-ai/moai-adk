@@ -5,13 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] — v2.12.0
 
 ### Summary
 
-Runtime reliability fixes shipped post-v2.10.4 covering quality gate cross-compilation (#667) and GLM team-mode credential propagation (#640). Both fixes are TDD-verified and include Windows CI stability improvements.
+Claude Code v2.1.110/111 + claude-opus-4-7 compatibility layer (SPEC-OPUS47-COMPAT-001). Key changes: (1) 5-tier Effort system — `effortLevel` profile field + `CLAUDE_CODE_EFFORT_LEVEL` env injection at launch, (2) `claude-opus-4-7` model ID constant + 6 high-reasoning agents get explicit effort overrides, (3) MCP scope duplicate detection in `moai doctor`, (4) PermissionRequest deny on modified tool input (updatedInput re-verification), (5) Windows CLAUDE_ENV_FILE injection at SessionStart, (6) `disableBypassPermissionsMode` field in settings template, (7) Adaptive Thinking docs update.
 
-### Fixed
+### Added
+
+- **Effort system** (`internal/profile/preferences.go`, `internal/cli/launcher.go`)
+  - `ProfilePreferences.EffortLevel string` YAML field (omitempty)
+  - `buildEnvForLaunch(effortLevel, baseEnv)` — injects `CLAUDE_CODE_EFFORT_LEVEL` at `syscall.Exec` time
+  - `EnvClaudeCodeEffortLevel` constant in `internal/config/envkeys.go`
+
+- **Model policy** (`internal/template/model_policy.go`)
+  - `ModelIDOpus47 = "claude-opus-4-7"` constant
+  - `EffortLevel{Low,Medium,High,XHigh,Max}` constants (5-tier)
+  - `agentEffortMap` — explicit overrides for 6 high-reasoning agents
+  - `GetAgentEffort(agentName string) string` exported function
+
+- **Profile setup UI** (`internal/cli/profile_setup.go`, `profile_setup_translations.go`)
+  - `claude-opus-4-7` model option in model selector
+  - Effort level selector (5 tiers) with translations (en/ko/ja/zh)
+
+- **Doctor check** (`internal/cli/doctor.go`)
+  - `checkMCPScopeDuplicates` — detects MCP server name collisions between project `.mcp.json` and global `~/.claude/.mcp.json`
+
+- **Hook: PermissionRequest** (`internal/hook/permission_request.go`)
+  - Deny when `ToolInput` contains `__updated_input_marker__` sentinel (updatedInput re-verification, T-015)
+
+- **Hook: SessionStart** (`internal/hook/session_start.go`)
+  - `injectCLAUDEEnvFile` — Windows-only: injects `CLAUDE_ENV_FILE` path into `settings.local.json` when `.env` exists (T-016)
+
+- **Template: settings.json**
+  - `disableBypassPermissionsMode: false` field (v2.1.111)
+
+- **Template: harness.yaml**
+  - `effort_mapping` section: thorough→xhigh, standard→high, minimal→medium
+
+- **Template: quality.yaml**
+  - `session_effort_default: "xhigh"` field
+
+- **Docs**: CLAUDE.md §12 — Adaptive Thinking vs UltraThink distinction
+- **Docs**: coding-standards.md — Claude Code version compatibility table
+- **Docs**: agent-common-protocol.md — Bash timeout 600,000ms documentation
+
+### Changed
+
+- `llm.yaml` template: `high:` tier updated from `"opus"` to `"claude-opus-4-7"` model ID
+
+---
+
+## [2.11.0] - 2026-04-16
+
+### Summary
+
+First tagged release since v2.10.2, consolidating 32 merged PRs. Headlines: (1) LSP Suite (SPEC-LSP-CORE-002..MULTI-006) — powernap-based multi-language foundation + phase-aware quality gates, (2) Skill Evolution Infrastructure — 5-layer safety + telemetry, (3) 3-perspective security+quality review fixing 16 defects across evolution/telemetry/gopls/astgrep packages, (4) pre-tool quality gate cross-compilation fix (#667), (5) GLM team-mode credential propagation (#640), (6) comprehensive Windows CI compatibility. For detailed entries see v2.10.3, v2.10.4, and the fixes documented below.
+
+### Breaking Changes
+
+None. `lsp.client_impl: gopls_bridge` default maintains existing behavior.
+
+### Fixed (post-v2.10.4)
 
 - **#667 — pre-tool quality gate blocks Bash on macOS cross-compile projects** (PR #668)
   - `gateStep.changedExts` field + `stagedFiles()` helper: skips language-specific lint steps when the staged changeset contains no matching file extensions
@@ -43,13 +98,17 @@ moai version
 
 ---
 
-## [Unreleased] (한국어)
+## [2.11.0] - 2026-04-16 (한국어)
 
 ### 요약
 
-v2.10.4 이후 배포된 런타임 신뢰성 수정: quality gate 크로스컴파일 이슈(#667) 및 GLM team-mode 자격증명 전파(#640). 두 수정 모두 TDD로 검증되었으며 Windows CI 안정화 개선 포함.
+v2.10.2 이후 첫 정식 태그 릴리즈로 32개 PR을 통합합니다. 헤드라인: (1) LSP Suite (SPEC-LSP-CORE-002..MULTI-006) — powernap 기반 다국어 기반 + 단계별 품질 게이트, (2) Skill Evolution Infrastructure — 5계층 안전 + 텔레메트리, (3) 3관점 보안·품질 리뷰 — evolution/telemetry/gopls/astgrep 16 결함 수정, (4) pre-tool 품질 게이트 크로스컴파일 수정(#667), (5) GLM team-mode 자격증명 전파(#640), (6) 포괄적 Windows CI 호환성. 세부 항목은 v2.10.3, v2.10.4 및 아래 수정 섹션 참조.
 
-### 수정됨 (Fixed)
+### 주요 변경 사항 (Breaking Changes)
+
+없음. `lsp.client_impl: gopls_bridge` 기본값으로 기존 동작 유지.
+
+### 수정됨 (Fixed, post-v2.10.4)
 
 - **#667 — macOS 크로스컴파일 .NET 프로젝트에서 pre-tool 품질 게이트가 Bash 차단** (PR #668)
   - `gateStep.changedExts` 필드 + `stagedFiles()` 헬퍼로 staged changeset에 해당 확장자 없으면 언어별 lint 단계 skip

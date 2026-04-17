@@ -299,6 +299,92 @@ model: opus
 	})
 }
 
+// TestGetAgentEffort verifies the new agentEffortMap and GetAgentEffort function
+// introduced for Opus 4.7 effort separation (T-002-RED / T-002-IMPL).
+func TestGetAgentEffort(t *testing.T) {
+	tests := []struct {
+		name      string
+		agentName string
+		want      string
+	}{
+		// 6 Opus 4.7 reasoning agents with explicit effort
+		{"manager-spec xhigh", "manager-spec", "xhigh"},
+		{"manager-strategy xhigh", "manager-strategy", "xhigh"},
+		{"plan-auditor high", "plan-auditor", "high"},
+		{"evaluator-active high", "evaluator-active", "high"},
+		{"expert-security high", "expert-security", "high"},
+		{"expert-refactoring high", "expert-refactoring", "high"},
+		// 22 remaining agents: return "" (runtime default)
+		{"manager-ddd unset", "manager-ddd", ""},
+		{"manager-tdd unset", "manager-tdd", ""},
+		{"expert-backend unset", "expert-backend", ""},
+		{"expert-frontend unset", "expert-frontend", ""},
+		{"unknown-agent unset", "some-nonexistent-agent", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetAgentEffort(tt.agentName)
+			if got != tt.want {
+				t.Errorf("GetAgentEffort(%q) = %q, want %q", tt.agentName, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestModelClaudeOpus47Constant verifies the claude-opus-4-7 model ID constant.
+func TestModelClaudeOpus47Constant(t *testing.T) {
+	if ModelIDOpus47 == "" {
+		t.Error("ModelIDOpus47 constant is empty, want non-empty model ID")
+	}
+	want := "claude-opus-4-7"
+	if ModelIDOpus47 != want {
+		t.Errorf("ModelIDOpus47 = %q, want %q", ModelIDOpus47, want)
+	}
+}
+
+// TestEffortLevelConstants verifies xhigh and max constants exist.
+func TestEffortLevelConstants(t *testing.T) {
+	if EffortLevelXHigh == "" {
+		t.Error("EffortLevelXHigh constant is empty")
+	}
+	if EffortLevelMax == "" {
+		t.Error("EffortLevelMax constant is empty")
+	}
+	if EffortLevelXHigh != "xhigh" {
+		t.Errorf("EffortLevelXHigh = %q, want %q", EffortLevelXHigh, "xhigh")
+	}
+	if EffortLevelMax != "max" {
+		t.Errorf("EffortLevelMax = %q, want %q", EffortLevelMax, "max")
+	}
+}
+
+// TestAgentModelMapSignatureUnchanged verifies the existing agentModelMap type
+// and all existing public API functions remain unchanged (NFR-1 no-break).
+func TestAgentModelMapSignatureUnchanged(t *testing.T) {
+	// ValidModelPolicies still returns exactly 3 items.
+	policies := ValidModelPolicies()
+	if len(policies) != 3 {
+		t.Errorf("ValidModelPolicies() len = %d, want 3 (signature must not change)", len(policies))
+	}
+
+	// IsValidModelPolicy still accepts only high/medium/low.
+	for _, p := range []string{"high", "medium", "low"} {
+		if !IsValidModelPolicy(p) {
+			t.Errorf("IsValidModelPolicy(%q) = false, want true", p)
+		}
+	}
+	// "xhigh" is NOT a ModelPolicy (it's an effort level, separate concern).
+	if IsValidModelPolicy("xhigh") {
+		t.Error("IsValidModelPolicy(xhigh) = true, want false (xhigh is effort, not policy)")
+	}
+
+	// GetAgentModel still returns "" for unknown agents.
+	if got := GetAgentModel(ModelPolicyHigh, "nonexistent"); got != "" {
+		t.Errorf("GetAgentModel(high, nonexistent) = %q, want empty string", got)
+	}
+}
+
 func TestNewDeployerWithRenderer(t *testing.T) {
 	fsys := testFS()
 	r := NewRenderer(fsys)

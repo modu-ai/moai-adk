@@ -6,6 +6,22 @@
 
 Go is the implementation language for the MoAI-ADK rewrite. The project uses Go 1.26, which provides Green Tea GC (10-40% GC overhead reduction), enhanced routing patterns in `net/http`, range-over-int iterators, and the latest `log/slog` structured logging capabilities.
 
+## Claude Code Integration
+
+**Minimum Recommended Version: Claude Code v2.1.110** (released April 2026)
+
+MoAI-ADK v2.12+ requires Claude Code v2.1.110 or later to support:
+- MCP scope duplicate detection in `moai doctor` (v2.1.110+)
+- Bash tool timeout ceiling enforcement (600,000ms) (v2.1.110+)
+- `disableBypassPermissionsMode` policy for security gates (v2.1.110+)
+
+**Opus 4.7 Support** (v2.12.0+):
+- Model: `claude-opus-4-7`
+- Effort levels: `low`, `medium`, `high`, `xhigh` (default), `max`
+- Recommended for: manager-spec, plan-auditor, evaluator-active, manager-strategy, expert-security, expert-refactoring
+- Backward compatibility: Opus 4.6, Sonnet 4.6, Haiku 4.5 supported with effort field auto-downgrade
+- Windows support: CLAUDE_ENV_FILE injection via SessionStart hook (v2.12.0+)
+
 ## Go Module
 
 ```

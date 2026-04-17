@@ -3,6 +3,7 @@ package profile
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -363,6 +364,84 @@ func TestPreferences_StatuslineTheme(t *testing.T) {
 
 			if got.StatuslineTheme != tt.theme {
 				t.Errorf("StatuslineTheme = %q, want %q", got.StatuslineTheme, tt.theme)
+			}
+		})
+	}
+}
+
+// TestPreferences_EffortLevelRoundTrip verifies that EffortLevel survives
+// YAML marshal/unmarshal (T-001-RED).
+func TestPreferences_EffortLevelRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	prefs := ProfilePreferences{
+		Model:       "claude-opus-4-7",
+		EffortLevel: "xhigh",
+	}
+
+	if err := WritePreferences("default", prefs); err != nil {
+		t.Fatalf("WritePreferences: %v", err)
+	}
+
+	got, err := ReadPreferences("default")
+	if err != nil {
+		t.Fatalf("ReadPreferences: %v", err)
+	}
+	if got.Model != "claude-opus-4-7" {
+		t.Errorf("Model = %q, want %q", got.Model, "claude-opus-4-7")
+	}
+	if got.EffortLevel != "xhigh" {
+		t.Errorf("EffortLevel = %q, want %q", got.EffortLevel, "xhigh")
+	}
+}
+
+// TestPreferences_EffortLevelOmitempty verifies that EffortLevel is omitted
+// when empty (preserving backward-compatibility with existing preferences.yaml).
+func TestPreferences_EffortLevelOmitempty(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	prefs := ProfilePreferences{UserName: "testuser"}
+	if err := WritePreferences("default", prefs); err != nil {
+		t.Fatalf("WritePreferences: %v", err)
+	}
+
+	// Ensure effort_level key is absent from the YAML file.
+	path := GetPreferencesPath("default")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if strings.Contains(string(data), "effort_level") {
+		t.Errorf("effort_level should be absent from YAML when empty, got:\n%s", data)
+	}
+}
+
+// TestPreferences_AllEffortLevels verifies all 5 effort levels round-trip correctly.
+func TestPreferences_AllEffortLevels(t *testing.T) {
+	levels := []string{"low", "medium", "high", "xhigh", "max"}
+	for _, level := range levels {
+		t.Run(level, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			orig := BaseDirOverride
+			defer func() { BaseDirOverride = orig }()
+			BaseDirOverride = tmpDir
+
+			prefs := ProfilePreferences{EffortLevel: level}
+			if err := WritePreferences("default", prefs); err != nil {
+				t.Fatalf("WritePreferences: %v", err)
+			}
+			got, err := ReadPreferences("default")
+			if err != nil {
+				t.Fatalf("ReadPreferences: %v", err)
+			}
+			if got.EffortLevel != level {
+				t.Errorf("EffortLevel = %q, want %q", got.EffortLevel, level)
 			}
 		})
 	}

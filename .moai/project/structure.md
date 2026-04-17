@@ -66,7 +66,7 @@ moai-adk-go/
 │   ├── cli/                        # Cobra CLI commands
 │   │   ├── cc.go                   #   Claude Code integration commands
 │   │   ├── deps.go                 #   Dependency injection and wiring
-│   │   ├── doctor.go
+│   │   ├── doctor.go               #   Diagnostics (MCP scope duplicate detection v2.1.110+)
 │   │   ├── glm.go                  #   GLM (Go Language Model) commands
 │   │   ├── hook.go                 #   Hook dispatcher (moai hook <event>)
 │   │   ├── init.go
@@ -135,7 +135,7 @@ moai-adk-go/
 │   │   ├── doc.go
 │   │   ├── errors.go
 │   │   ├── notification.go         #   Notification hook handler
-│   │   ├── permission_request.go   #   Permission request hook handler
+│   │   ├── permission_request.go   #   Permission request hook handler (updatedInput deny re-validation v2.1.110+)
 │   │   ├── post_tool.go            #   Linter, formatter, LSP diagnostics
 │   │   ├── post_tool_failure.go    #   Post-tool failure handler
 │   │   ├── pre_tool.go             #   Security guard, validation
@@ -143,7 +143,7 @@ moai-adk-go/
 │   │   ├── rank_session.go         #   Session ranking hook handler
 │   │   ├── registry.go             #   Hook registration & dispatch
 │   │   ├── session_end.go          #   Cleanup, rank submission
-│   │   ├── session_start.go        #   Project info, config validation
+│   │   ├── session_start.go        #   Project info, config validation, Windows CLAUDE_ENV_FILE injection (v2.1.111+)
 │   │   ├── stop.go                 #   Loop controller
 │   │   ├── subagent_start.go       #   Subagent start hook handler
 │   │   ├── task_completed.go       #   Task completed hook handler
@@ -201,9 +201,10 @@ moai-adk-go/
 │   │   ├── deployer.go             #   go:embed extraction with manifest
 │   │   ├── deployer_mode.go        #   Model policy application to agent definitions
 │   │   ├── errors.go               #   Template error types
-│   │   ├── model_policy.go         #   Per-agent model assignment (high/medium/low)
+│   │   ├── model_policy.go         #   Per-agent model assignment (5-level effort: low/medium/high/xhigh/max; Opus 4.7 support)
+│   │   ├── agent_effort_map.go     #   Effort level mapping for critical reasoning agents (SPEC-OPUS47-COMPAT-001)
 │   │   ├── renderer.go             #   Go text/template strict rendering
-│   │   ├── settings.go             #   Platform-aware settings.json generation
+│   │   ├── settings.go             #   Platform-aware settings.json generation (v2.1.110+ disableBypassPermissionsMode)
 │   │   ├── validator.go            #   Post-deployment validation
 │   │   └── templates/              #   go:embed source (bundled into binary)
 │   │       ├── .claude/            #       Agent definitions, skills, commands, rules

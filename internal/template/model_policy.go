@@ -39,6 +39,54 @@ func IsValidModelPolicy(s string) bool {
 	return false
 }
 
+// ModelIDOpus47 is the canonical model ID for Claude Opus 4.7.
+// Used by launcher.go to route the new model and by profile translations.
+const ModelIDOpus47 = "claude-opus-4-7"
+
+// Effort level constants for the 5-tier effort system.
+// These are separate from ModelPolicy (3-tier). ModelPolicy selects the model;
+// effort levels control reasoning depth within a model session.
+// Supported by Claude Code v2.1.68+ for Opus 4.6 and Opus 4.7.
+const (
+	// EffortLevelLow is the fastest, least thorough effort level.
+	EffortLevelLow = "low"
+	// EffortLevelMedium is the balanced default effort level.
+	EffortLevelMedium = "medium"
+	// EffortLevelHigh activates deep reasoning for complex tasks.
+	EffortLevelHigh = "high"
+	// EffortLevelXHigh is extended high reasoning for Opus 4.7+.
+	// Not supported on Opus 4.6.
+	EffortLevelXHigh = "xhigh"
+	// EffortLevelMax is the maximum effort level.
+	// On Opus 4.6, max is the highest supported level.
+	// On Opus 4.7+, xhigh and max are both available.
+	EffortLevelMax = "max"
+)
+
+// agentEffortMap specifies explicit effort overrides for reasoning-heavy agents.
+// Only the 6 Opus 4.7 reasoning agents have entries.
+// The remaining 22 agents return "" (empty string) so the Opus 4.7 runtime
+// default (xhigh) applies without any explicit override injection.
+//
+// Key: agent name, Value: effort level string
+var agentEffortMap = map[string]string{
+	"manager-spec":       EffortLevelXHigh,
+	"manager-strategy":   EffortLevelXHigh,
+	"plan-auditor":       EffortLevelHigh,
+	"evaluator-active":   EffortLevelHigh,
+	"expert-security":    EffortLevelHigh,
+	"expert-refactoring": EffortLevelHigh,
+}
+
+// GetAgentEffort returns the effort level override for the given agent.
+// Returns "" (empty string) for agents not in agentEffortMap, which signals
+// the caller to use the runtime default (Opus 4.7 defaults to xhigh).
+//
+// @MX:NOTE: [AUTO] Separate from GetAgentModel — ModelPolicy⊥Effort by design.
+func GetAgentEffort(agentName string) string {
+	return agentEffortMap[agentName]
+}
+
 // agentModelMap defines the model assignment for each agent under each policy.
 // Key: agent name, Value: [high_model, medium_model, low_model]
 var agentModelMap = map[string][3]string{

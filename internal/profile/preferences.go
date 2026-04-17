@@ -23,7 +23,12 @@ type ProfilePreferences struct {
 
 	// LLM settings
 	ModelPolicy string `yaml:"model_policy,omitempty"` // "high", "medium", "low"
-	Model       string `yaml:"model,omitempty"`        // e.g. "claude-opus-4-6"
+	Model       string `yaml:"model,omitempty"`        // e.g. "claude-opus-4-6", "claude-opus-4-7"
+	// EffortLevel sets the session effort override for reasoning depth.
+	// Valid values: "low", "medium", "high", "xhigh", "max".
+	// "xhigh" and "max" are supported on Opus 4.7+.
+	// When empty, the runtime default applies (xhigh for Opus 4.7).
+	EffortLevel string `yaml:"effort_level,omitempty"`
 
 	// Launch settings
 	// PermissionMode sets the Claude Code permission mode at launch.

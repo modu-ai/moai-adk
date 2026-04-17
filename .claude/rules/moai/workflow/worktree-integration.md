@@ -271,8 +271,13 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 | `Ctrl+X Ctrl+K` to kill background agent | 2.1.83 | Kill stuck background agents |
 | Worktree CWD isolation fix | **2.1.97** | Prior versions leaked agent CWD back to parent session |
 | Stop/SubagentStop hook stability | **2.1.97** | Prior versions failed on long-running sessions |
+| `moai doctor` MCP scope duplicate detection | **2.1.110** | Warns on MCP server duplication across `.mcp.json` + settings.json |
+| Bash tool timeout ceiling enforcement | **2.1.110** | Maximum 600,000ms (10 min) enforced by runtime |
+| `effortLevel` setting for Opus 4.7 | **2.1.110** | Supports `low`/`medium`/`high`/`xhigh`/`max` effort levels |
+| `CLAUDE_ENV_FILE` on Windows | **2.1.111** | Prior versions: no-op on Windows; fixed to inject env as on macOS/Linux |
+| `disableBypassPermissionsMode` policy | **2.1.111** | Prevents agents from requesting `bypassPermissions` when `true` |
 
-**Recommended**: Claude Code **2.1.97 or later** for reliable worktree isolation and hook stability.
+**Recommended**: Claude Code **2.1.111 or later** for Opus 4.7 support, MCP doctor warnings, and Windows CLAUDE_ENV_FILE parity. Minimum baseline: **2.1.97** for worktree isolation.
 
 ## Troubleshooting
 

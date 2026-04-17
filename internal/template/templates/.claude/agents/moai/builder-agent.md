@@ -87,7 +87,7 @@ Configure using official Claude Code YAML frontmatter fields:
 - skills: Skills to preload (NOT inherited from parent)
 - hooks: PreToolUse, PostToolUse, SubagentStop lifecycle events
 - color: Display color in UI (red/blue/green/yellow/purple/orange/pink/cyan)
-- effort: Session effort override (low/medium/high/max; max is Opus 4.6 only)
+- effort: Session effort override (low/medium/high/xhigh/max; xhigh/max require Opus 4.7+)
 - isolation: "worktree" creates isolated git worktree per agent (v2.1.49+)
 - initialPrompt: Auto-submitted first turn when agent runs via --agent flag (v2.1.83+)
 - maxContextSize: Maximum context size before stopping (replaces deprecated maxTurns, v2.1.69+)

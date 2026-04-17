@@ -73,6 +73,12 @@ const (
 
 	// EnvClaudeAutoCompactPct overrides the auto-compact percentage threshold.
 	EnvClaudeAutoCompactPct = "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"
+
+	// EnvClaudeCodeEffortLevel sets the session effort level for Claude Code.
+	// Valid values: "low", "medium", "high", "xhigh", "max".
+	// "xhigh" and "max" are supported on Opus 4.7+.
+	// When empty, the runtime default applies.
+	EnvClaudeCodeEffortLevel = "CLAUDE_CODE_EFFORT_LEVEL"
 )
 
 // Anthropic API environment variables.

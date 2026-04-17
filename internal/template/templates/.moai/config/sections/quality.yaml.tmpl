@@ -3,6 +3,12 @@ constitution:
   # Options: ddd (Domain-Driven Development), tdd (Test-Driven Development)
   development_mode: "{{.DevelopmentMode}}"
 
+  # Default session effort level for Opus 4.7+.
+  # Applied when no agent-specific effort override exists.
+  # Valid values: "low", "medium", "high", "xhigh", "max"
+  # "xhigh" and "max" require Opus 4.7.
+  session_effort_default: "xhigh"
+
   # Enable TRUST 5 quality framework enforcement
   enforce_quality: {{.EnforceQuality}}
 

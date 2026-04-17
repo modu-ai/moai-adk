@@ -9,10 +9,14 @@ llm:
   performance_tier: "medium"
 
   # Claude model mapping by tier
+  # Effort level mapping (Opus 4.7+ adaptive thinking):
+  #   thorough harness → xhigh effort (deep reasoning)
+  #   standard harness → high effort (balanced reasoning)
+  #   minimal harness  → medium effort (fast, light)
   claude_models:
-    high: "opus"      # Complex reasoning, architecture, security
-    medium: "sonnet"  # Balanced performance for most tasks
-    low: "haiku"      # Fast exploration, simple tasks
+    high: "claude-opus-4-7"  # Opus 4.7: adaptive thinking, reasoning agents
+    medium: "sonnet"         # Balanced performance for most tasks
+    low: "haiku"             # Fast exploration, simple tasks
 
   # GLM backend configuration
   glm:

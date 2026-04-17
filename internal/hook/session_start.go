@@ -95,6 +95,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Windows only: inject CLAUDE_ENV_FILE into settings.local.json when a
+	// .env file is present in the project root (T-016, R-P1-1).
+	// Guarded to Windows so macOS/Linux GLM env injection is never affected.
+	if runtime.GOOS == "windows" && input.ProjectDir != "" {
+		if msg := injectCLAUDEEnvFile(input.ProjectDir); msg != "" {
+			data["claude_env_file"] = msg
+			slog.Info("CLAUDE_ENV_FILE injected", "message", msg)
+		}
+	}
+
 	// Enforce telemetry retention: prune files older than 90 days (SPEC-TELEMETRY-001 R4).
 	// Best-effort: errors are logged and never propagated.
 	if input.ProjectDir != "" {
@@ -518,6 +528,69 @@ func copyDirRecursive(src, dst string) error {
 // It delegates to telemetry.PruneOldFiles and wraps any error with context.
 func pruneTelemetry(projectDir string) error {
 	return telemetry.PruneOldFiles(projectDir, 90)
+}
+
+// injectCLAUDEEnvFile checks whether a .env file exists in projectRoot. If it
+// does, it injects CLAUDE_ENV_FILE into the env section of
+// .claude/settings.local.json so that Claude Code loads the project's env file
+// automatically (Windows CLAUDE_ENV_FILE support, T-016).
+//
+// Returns a non-empty status message when the value was written, empty string
+// when the .env file does not exist or when no write was needed.
+func injectCLAUDEEnvFile(projectRoot string) string {
+	envFilePath := filepath.Join(projectRoot, ".env")
+	if _, err := os.Stat(envFilePath); os.IsNotExist(err) {
+		return ""
+	}
+
+	settingsPath := filepath.Join(projectRoot, ".claude", "settings.local.json")
+
+	var raw map[string]json.RawMessage
+	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
+		if err := json.Unmarshal(data, &raw); err != nil {
+			raw = nil
+		}
+	}
+	if raw == nil {
+		raw = make(map[string]json.RawMessage)
+	}
+
+	// Read current env section.
+	env := make(map[string]string)
+	if envRaw, ok := raw["env"]; ok {
+		_ = json.Unmarshal(envRaw, &env)
+	}
+
+	// Skip write if already set to the same value.
+	if env["CLAUDE_ENV_FILE"] == envFilePath {
+		return ""
+	}
+
+	env["CLAUDE_ENV_FILE"] = envFilePath
+
+	envData, err := json.Marshal(env)
+	if err != nil {
+		return ""
+	}
+	raw["env"] = envData
+
+	newData, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		return ""
+	}
+
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".claude"), 0o755); err != nil {
+		return ""
+	}
+
+	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+		slog.Error("injectCLAUDEEnvFile: failed to write settings.local.json",
+			"error", err.Error(),
+		)
+		return ""
+	}
+
+	return fmt.Sprintf("injected CLAUDE_ENV_FILE=%s into %s", envFilePath, settingsPath)
 }
 
 // loadGLMKeyFromEnvFile reads the GLM API key from ~/.moai/.env.glm.

@@ -39,6 +39,14 @@ harness:
       - test_coverage_low    # Coverage < 70% -> escalate to standard+
     max_escalations: 2
 
+  # Effort level mapping
+  # Maps harness depth to CLAUDE_CODE_EFFORT_LEVEL for Opus 4.7 adaptive thinking.
+  # Deeper harness = more extended reasoning budget for evaluator and planner agents.
+  effort_mapping:
+    minimal:  "medium"   # Fast iteration: no extended reasoning
+    standard: "high"     # Balanced quality: moderate reasoning budget
+    thorough: "xhigh"    # Critical features: maximum reasoning budget
+
   # Level definitions
   levels:
     minimal:

@@ -145,12 +145,13 @@ Code analysis via structural AST (Abstract Syntax Tree) pattern matching.
 
 ### 11. Multi-Model Architecture
 
-Support for multiple LLM providers and hybrid cost-optimization modes.
+Support for multiple LLM providers and hybrid cost-optimization modes with Opus 4.7 integration.
 
-- **Claude Mode** (`moai cc`): Full Claude model stack with per-agent model assignment (opus, sonnet, haiku) controlled by model policy
+- **Claude Mode** (`moai cc`): Full Claude model stack including Opus 4.7 with 5-level effort scaling (low/medium/high/xhigh/max) for critical reasoning agents, with automatic fallback to Opus 4.6/Sonnet 4.6/Haiku 4.5 for backward compatibility (Requires Claude Code v2.1.110+)
+- **Opus 4.7 Prompt Philosophy**: Built-in support for Opus 4.7's "one-turn fully-loaded" principle with effort configuration at agent level, enabling xhigh/max effort assignments for critical reasoning workflows (manager-spec, plan-auditor, evaluator-active, manager-strategy, expert-security, expert-refactoring)
 - **GLM Mode** (`moai glm`): Switch all agents to Z.AI's GLM models for cost reduction
 - **Hybrid CG Mode** (`moai cg`): Claude leader with GLM workers via worktree-based environment isolation for 60-70% cost reduction on implementation tasks
-- **Model Policy** (`moai init --model-policy`): Apply high/medium/low model distribution across all agent definitions based on role-specific mappings
+- **Model Policy** (`moai init --model-policy`): Apply high/medium/low/xhigh/max effort distribution across all agent definitions based on role-specific mappings and model capabilities
 
 ### 12. Agent Teams Integration (Experimental)
 
