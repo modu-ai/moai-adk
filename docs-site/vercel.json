@@ -26,6 +26,21 @@
       "source": "/moai-rank/:path*",
       "destination": "/",
       "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/agency/:path*",
+      "destination": "/:locale/design/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/agency",
+      "destination": "/:locale/design",
+      "permanent": true
+    },
+    {
+      "source": "/agency/:path*",
+      "destination": "/design/:path*",
+      "permanent": true
     }
   ],
   "headers": [
