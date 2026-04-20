@@ -41,6 +41,33 @@ WARN  deprecated: .Site.Languages was deprecated in Hugo v0.156.0
 - 영향: 빌드 성공에 영향 없음, 향후 Hextra 업데이트 시 자동 해결 예정
 - Phase 2 G1.5 통과 기준: 빌드 성공 (exit 0) — 충족
 
-## Phase 3 이후 재측정 예정
+## Phase 3 완료 시점 측정 (219페이지 변환 후)
 
-219페이지 변환 완료 후 `hugo --minify --gc` 재실행하여 이 문서에 결과 추가 예정.
+> 측정일: 2026-04-20 (Phase 3 콘텐츠 마이그레이션 완료 직후)
+
+```
+hugo --minify --gc
+Total in 634 ms (초기 캐시 없음 기준)
+real: 2.92s user / 0.20s system / 529% cpu / 0.591s total
+```
+
+### 빌드 결과
+
+| 항목 | 값 |
+|------|-----|
+| 빌드 시간 | 0.59초 (wall clock) |
+| Pages (KO) | 81 |
+| Pages (EN/JA/ZH) | 66 각 |
+| Total HTML pages | 228 |
+| public/ 크기 | 38 MB |
+| 빌드 경고 | 3건 (Hextra deprecated API, 빌드 성공에 무영향) |
+
+### Vercel 빌드 timeout 여유 (Phase 3 기준 갱신)
+
+| 항목 | 값 |
+|------|-----|
+| Vercel 기본 빌드 timeout | 10분 (600초) |
+| Phase 3 빌드 시간 (219페이지) | 0.59초 |
+| 여유율 | 99.9% (600초 대비 0.59초) |
+
+Hugo 빌드는 219페이지 전량 변환 후에도 1초 미만으로 완료되어 Vercel timeout 문제 없음.

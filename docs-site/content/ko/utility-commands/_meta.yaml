@@ -1,0 +1,17 @@
+index:
+  title: "유틸리티 명령어"
+  display: "hidden"
+moai:
+  title: "/moai"
+"moai-github":
+  title: "/moai github"
+"moai-loop":
+  title: "/moai loop"
+"moai-fix":
+  title: "/moai fix"
+"moai-clean":
+  title: "/moai clean"
+"moai-mx":
+  title: "/moai mx"
+"moai-feedback":
+  title: "/moai feedback"

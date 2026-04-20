@@ -1,0 +1,21 @@
+index:
+  title: "Advanced"
+  display: "hidden"
+"skill-guide":
+  title: "Skill Guide"
+"agent-guide":
+  title: "Agent Guide"
+"builder-agents":
+  title: "Builder Agents Guide"
+"hooks-guide":
+  title: "Hooks Guide"
+"settings-json":
+  title: "settings.json Guide"
+"claude-md-guide":
+  title: "CLAUDE.md Guide"
+"mcp-servers":
+  title: "MCP Servers"
+"pencil-guide":
+  title: "Pencil Guide"
+"stitch-guide":
+  title: "Google Stitch Guide"
