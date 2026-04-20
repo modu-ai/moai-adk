@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -69,6 +70,13 @@ func TestClaudeEnvFileGuard_WindowsOnly(t *testing.T) {
 func TestSessionStartHandler_Handle_NonWindowsGuard(t *testing.T) {
 	t.Parallel()
 
+	// This test asserts the non-Windows path; on Windows the guard legitimately
+	// fires and the key is present. Windows behavior is covered by
+	// TestClaudeEnvFileGuard_WindowsOnly and TestInjectCLAUDEEnvFile_* tests.
+	if runtime.GOOS == "windows" {
+		t.Skip("non-Windows guard assertion; skipping on Windows")
+	}
+
 	dir := t.TempDir()
 	claudeDir := filepath.Join(dir, ".claude")
 	_ = os.MkdirAll(claudeDir, 0o755)
@@ -99,16 +107,9 @@ func TestSessionStartHandler_Handle_NonWindowsGuard(t *testing.T) {
 		}
 	}
 
-	// On non-Windows the key must be absent.
-	// (On Windows CI this test would fail, but we intentionally skip verifying
-	//  the Windows path here — that is covered by TestClaudeEnvFileGuard_WindowsOnly
-	//  and TestInjectCLAUDEEnvFile_* tests below.)
+	// On non-Windows the key must be absent (guard blocks injectCLAUDEEnvFile).
 	if _, ok := data["claude_env_file"]; ok {
-		// Allow on Windows (where the guard should fire).
-		if claudeEnvFileGuard("windows") && !claudeEnvFileGuard("darwin") {
-			// We are on darwin/linux — fail.
-			t.Error("claude_env_file key present on non-Windows: injectCLAUDEEnvFile was called but should have been blocked by claudeEnvFileGuard")
-		}
+		t.Error("claude_env_file key present on non-Windows: injectCLAUDEEnvFile was called but should have been blocked by claudeEnvFileGuard")
 	}
 }
 
