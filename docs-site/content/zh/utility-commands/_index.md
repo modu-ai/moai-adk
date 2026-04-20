@@ -1,6 +1,6 @@
 ---
 title: 实用命令
-weight: 30
+weight: 40
 draft: false
 ---
 

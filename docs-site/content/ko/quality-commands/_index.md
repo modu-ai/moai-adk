@@ -1,6 +1,6 @@
 ---
 title: 품질 명령어
-weight: 40
+weight: 50
 draft: false
 ---
 

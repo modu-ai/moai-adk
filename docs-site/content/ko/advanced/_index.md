@@ -1,6 +1,6 @@
 ---
 title: 심화 학습
-weight: 50
+weight: 80
 draft: false
 ---
 

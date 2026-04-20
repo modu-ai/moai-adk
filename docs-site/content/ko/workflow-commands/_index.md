@@ -1,6 +1,6 @@
 ---
 title: 워크플로우 명령어
-weight: 20
+weight: 30
 draft: false
 ---
 
