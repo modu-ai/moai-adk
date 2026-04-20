@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-04-20
+
+### Added
+- `/moai design` subcommand — Hybrid design workflow (Claude Design import path + code-based skill path)
+- `moai migrate agency` command — Safe migration of .agency/ data to .moai/project/brand/ and .moai/config/sections/design.yaml
+- `moai-domain-copywriting` skill — Brand-aligned copywriting with anti-AI-slop enforcement
+- `moai-domain-brand-design` skill — Visual design system with hero-first chaining, WCAG 2.1 AA
+- `moai-workflow-design-import` skill — Claude Design handoff bundle parser (ZIP/HTML)
+- `moai-workflow-gan-loop` skill — Builder-Evaluator iteration with Sprint Contract protocol
+- `.moai/project/brand/` directory — brand-voice.md, visual-identity.md, target-audience.md templates
+- `.moai/config/sections/design.yaml` — Design pipeline configuration (GAN loop, sprint contract, evolution thresholds)
+- `.claude/rules/moai/design/constitution.md` — Relocated from .claude/rules/agency/constitution.md with FROZEN/EVOLVABLE zones preserved
+
+### Changed
+- Agency Agents catalog reduced from 6 to 2 (copywriter, designer absorbed into skills; planner, builder, evaluator, learner removed per SPEC-AGENCY-ABSORB-001 M5)
+- `/agency` command redirected to `/moai design` with deprecation warning
+- coding-standards.md: removed `Skill("agency")` reference
+
+### Removed
+- `.claude/agents/agency/` agent definitions: planner, builder, evaluator, learner, copywriter, designer
+- `.claude/skills/agency-*` forked skills: agency-copywriting, agency-design-system, agency-evaluation-criteria, agency-client-interview, agency-frontend-patterns
+- `.claude/skills/agency/` orchestrator skill
+- Fork management via `fork-manifest.yaml` (absorbed into moai-workflow-research)
+
+### Deprecated
+- `/agency` subcommands (brief, build, review, learn, evolve, resume, profile) now redirect to equivalent `/moai` subcommands. Scheduled for removal per REQ-DEPRECATE-003 (2 minor versions after this release)
+
+### Migration
+- Existing projects with `.agency/` directories can migrate via `moai migrate agency`
+- Migration is atomic, reversible (data preserved as `.agency.archived/`), and handles SIGINT/SIGTERM with `--resume` flag
+- See SPEC-AGENCY-ABSORB-001 acceptance.md for full behavior
+
 ## [2.12.0] - 2026-04-17
 
 ### Summary

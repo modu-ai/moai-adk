@@ -235,3 +235,7 @@ pencil/
 .moai/reports/
 .moai/temp/
 temp/
+
+# docs-site Hugo build artifacts (root stray outputs)
+/public/
+/.hugo_build.lock
