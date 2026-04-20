@@ -1,5 +1,6 @@
 ---
 title: MoAI-ADK Documentation
+type: docs
 toc: true
 sidebar:
   open: true
