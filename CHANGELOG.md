@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Summary
+
+Profile setup wizard hardening (16 review findings applied) + team role_profiles model reassignment. Fixes silent data coercion of deprecated Claude model IDs in saved preferences, restores ast_grep_gate SAST scanning, and re-balances `workflow.yaml` role_profiles for the Opus 4.7 / 1M-context era.
+
+### Added
+
+- **`normalizeModel(m string) string`** helper in `internal/cli/profile_setup.go` — maps deprecated Claude IDs to canonical aliases (`claude-opus-4-7`/`claude-opus-4-6` → `opus`, `*-4-*[1m]`/`* 1M` → `opus[1m]`/`sonnet[1m]`, `claude-sonnet-4-6` → `sonnet`, `claude-haiku-4-5` → `haiku`). Prevents silent loss of saved preferences when an option is removed from the wizard.
+- **Statusline migration banner** (4 languages) — one-time notice printed before the Display form when `existingPrefs.StatuslineMode/Theme` differs from the normalized value (deprecated → canonical migration visibility).
+- **`auto` permission mode option** in wizard — Claude Code v2.1.83+ / Sonnet 4.6+, requires Max/Team/Enterprise/API plan. Runtime-failure disclaimer included in all locale labels.
+- **Canonical validation slices** — `statuslineModeCanonical`, `statuslineThemeCanonical` + `isCanonicalStatuslineMode/Theme` helpers replace duplicated validation maps.
+- **Package constants** — `defaultStatuslineMode = "default"`, `defaultStatuslineTheme = "catppuccin-mocha"`, `defaultPermissionMode = "acceptEdits"`.
+- **New unit tests** — `profile_setup_normalize_test.go` (`normalizeModel` 19 rows, statusline normalize 13 rows, `valueOrDash`/`valueOrDefault` 7 rows) and `profile_setup_summary_test.go` (4 tests for `printProfileSummary`: Synced/Skipped/EmptyFields/AllLanguages). New helpers at 100% line coverage.
+- **@MX:NOTE + @MX:REASON** on `normalizeModel` documenting wizard v3 migration intent (ko comments per `code_comments: ko`).
+
+### Changed
+
+- **`printProfileSummary` signature** refactored to `(out io.Writer, t *profileSetupText, prefs *profile.ProfilePreferences, syncedProjectRoot string)` — enables unit testing via `bytes.Buffer` injection; pointer receivers avoid ~800B `profileSetupText` + 160B `ProfilePreferences` value copies.
+- **Permission mode option ordering** — `auto` moved to position 2 (after `acceptEdits`) for severity gradient.
+- **`SummarySyncSkipped`** phrasing neutralized in all 4 locales (no longer reads as error for global-profile setups outside a MoAI project).
+- **PermAuto labels** strengthened with explicit "session errors at runtime if unsupported" disclaimer (en/ko/ja/zh).
+- **ko/ja `SummaryHeader`** — `입력된 값 확인:` → `저장된 설정값:`; `入力された設定値:` → `保存された設定値:`.
+- **Summary path rendering** — uses relative paths (`.moai/config/sections/statusline.yaml`) instead of `filepath.Join(cwd, ...)` absolute paths to prevent 80-col wrap.
+- **`workflow.yaml` role_profiles reassignment**: team lead (`default_model`) → `opus[1m]` (Opus 4.7 + 1M context for orchestration), `architect` → `opus` (deep design reasoning), `reviewer` → `sonnet` (context-aware review, up from `haiku`). `researcher=haiku`, `analyst=sonnet`, `implementer=sonnet`, `tester=sonnet`, `designer=sonnet` preserved.
+- **Fprintf collapse** — 7 sequential `fmt.Fprintf` calls in `printProfileSummary` merged into a single multi-line format string (~6 fewer heap allocations per wizard-end).
+
+### Fixed
+
+- **Silent data coercion (Critical)** — users with `claude-opus-4-7` (or other deprecated IDs) in saved preferences no longer have their stored model silently overwritten by `huh.Select` when the matching option is absent. Root cause: `huh.Select` binding falls back to cursor-landing value when the pre-bound value has no matching option. Mitigation: pre-coerce via `normalizeModel` before form binding.
+- **`ast_grep_gate` SAST re-enabled** — `.moai/config/sections/quality.yaml` block restored (`enabled: true`, `rules_dir: ".moai/config/astgrep-rules"`, `block_on_error: true`). Previous removal silently disabled structural code scanning on pre-commit (Go struct `AstGrepGateConfig` still exists; missing YAML → zero-value → `Enabled=false` → `RunAstGrepGateV2` short-circuit). All 3 reviewers (security/perf/quality) concurred on restoration.
+- **Dead-branch fallback removed** — `valueOrDefault(prefs.StatuslineMode, "default")` simplified to direct `prefs.StatuslineMode` access since post-normalize values are guaranteed non-empty.
+
+### Testing
+
+- `internal/cli` coverage maintained at 75.3% (wizard sub-package 91.2%, worktree sub-package 84.2%).
+- All new helpers (`normalizeModel`, `printProfileSummary`, `valueOrDash`, `valueOrDefault`, `isCanonicalStatuslineMode/Theme`, `normalizeStatuslineModeRaw`) at **100% line coverage**.
+- `go vet ./...`, `go test -race ./internal/cli/... -count=1` (1102 tests), `golangci-lint run` — all PASS.
+
 ## [2.12.0] - 2026-04-17
 
 ### Summary
