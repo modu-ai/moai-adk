@@ -1,6 +1,6 @@
 ---
 title: Git Worktree Overview
-weight: 10
+weight: 70
 draft: false
 ---
 

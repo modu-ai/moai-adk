@@ -1,8 +1,7 @@
 ---
-title: Overview
-weight: 10
+title: Getting Started
+weight: 90
 draft: false
 ---
-Getting Started
 
 Learn how to get started with MoAI-ADK.

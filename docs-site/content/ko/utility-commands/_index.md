@@ -1,6 +1,6 @@
 ---
 title: 유틸리티 명령어
-weight: 10
+weight: 30
 draft: false
 ---
 

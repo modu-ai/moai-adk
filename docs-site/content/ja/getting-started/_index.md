@@ -1,8 +1,7 @@
 ---
-title: Overview
-weight: 10
+title: はじめに
+weight: 90
 draft: false
 ---
-はじめに
 
 MoAI-ADK の使用方法を学びます。

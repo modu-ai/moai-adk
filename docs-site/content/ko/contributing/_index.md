@@ -1,6 +1,6 @@
 ---
 title: 참여하기
-weight: 10
+weight: 80
 draft: false
 ---
 
