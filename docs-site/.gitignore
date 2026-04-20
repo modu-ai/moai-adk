@@ -3,6 +3,9 @@ public/
 resources/_gen/
 .hugo_build.lock
 
+# og image original (7.5MB — og.jpg 압축본 사용)
+static/og-original.png
+
 # Hugo module cache
 /tmp/hugo_*
 

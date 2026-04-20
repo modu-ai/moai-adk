@@ -1,0 +1,12 @@
+# MoAI-ADK 简体中文 i18n
+# Hextra 默认键覆盖 + 项目专用键
+
+# Hextra 默认键覆盖
+editThisPage: "编辑此页面 →"
+copyright: "MIT License © 2025 MoAI-ADK Contributors"
+
+# 项目专用元键
+site_description: "MoAI-ADK 在线文档 — 面向 Claude Code 的智能开发工具包。通过 SPEC 驱动开发、DDD 实现和 TRUST 5 质量系统实现完全自动化。"
+og_description: "从 SPEC 创建到 DDD 实现和文档化全程自动化的 AI 开发工具"
+footer_copyright: "MIT License © 2025 MoAI-ADK Contributors"
+language_label: "ZH"

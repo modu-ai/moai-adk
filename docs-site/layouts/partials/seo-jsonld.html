@@ -1,0 +1,90 @@
+{{/*
+  seo-jsonld.html — JSON-LD structured data partial
+  주입 스키마: Organization, SoftwareApplication, WebSite, BreadcrumbList
+  aggregateRating 전면 제거 (REQ-DS-21)
+  참조: https://schema.org/
+*/}}
+{{- $baseURL := "https://adk.mo.ai.kr" -}}
+{{- $permalink := .Permalink -}}
+{{- $title := .Title | default .Site.Title -}}
+{{- $description := .Description | default .Site.Params.description | default "" -}}
+{{- $lang := .Site.Language.Lang -}}
+
+{{/* Organization schema */}}
+{{- $org := dict
+  "@context" "https://schema.org"
+  "@type" "Organization"
+  "name" "MoAI-ADK"
+  "url" $baseURL
+  "logo" (printf "%s/og.jpg" $baseURL)
+  "description" "MoAI-ADK — Agentic Development Kit for Claude Code"
+  "sameAs" (slice
+    "https://github.com/modu-ai/moai-adk"
+    "https://discord.gg/moai-adk"
+  )
+-}}
+
+{{/* SoftwareApplication schema — aggregateRating 제거됨 */}}
+{{- $app := dict
+  "@context" "https://schema.org"
+  "@type" "SoftwareApplication"
+  "name" "MoAI-ADK"
+  "operatingSystem" "macOS, Linux, Windows"
+  "applicationCategory" "DeveloperApplication"
+  "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "USD")
+  "author" (dict "@type" "Organization" "name" "MoAI-ADK Contributors")
+  "description" "MoAI-ADK is an Agentic Development Kit for Claude Code. Fully automates from SPEC creation to DDD implementation and documentation."
+  "keywords" "MoAI-ADK, Claude Code, AI development, SPEC, DDD, TRUST 5"
+  "license" "MIT"
+  "url" $baseURL
+  "softwareVersion" "2.12.0"
+-}}
+
+{{/* WebSite schema */}}
+{{- $website := dict
+  "@context" "https://schema.org"
+  "@type" "WebSite"
+  "name" (.Site.Title | default "MoAI-ADK Documentation")
+  "url" $baseURL
+  "description" ($description | default "MoAI-ADK documentation")
+  "inLanguage" (slice "ko" "en" "ja" "zh")
+-}}
+
+{{/* BreadcrumbList schema — ページごとに生成 */}}
+{{- $breadcrumbs := slice -}}
+{{- $breadcrumbs = $breadcrumbs | append (dict
+  "@type" "ListItem"
+  "position" 1
+  "name" "Home"
+  "item" $baseURL
+) -}}
+{{- if not .IsHome -}}
+  {{- $pos := 2 -}}
+  {{- range .Ancestors.Reverse -}}
+    {{- $breadcrumbs = $breadcrumbs | append (dict
+      "@type" "ListItem"
+      "position" $pos
+      "name" (.Title | default "")
+      "item" .Permalink
+    ) -}}
+    {{- $pos = add $pos 1 -}}
+  {{- end -}}
+  {{- $breadcrumbs = $breadcrumbs | append (dict
+    "@type" "ListItem"
+    "position" $pos
+    "name" $title
+    "item" $permalink
+  ) -}}
+{{- end -}}
+{{- $breadcrumbList := dict
+  "@context" "https://schema.org"
+  "@type" "BreadcrumbList"
+  "itemListElement" $breadcrumbs
+-}}
+
+<script type="application/ld+json">{{ $org | jsonify (dict "indent" "  ") | safeJS }}</script>
+<script type="application/ld+json">{{ $app | jsonify (dict "indent" "  ") | safeJS }}</script>
+<script type="application/ld+json">{{ $website | jsonify (dict "indent" "  ") | safeJS }}</script>
+{{- if not .IsHome -}}
+<script type="application/ld+json">{{ $breadcrumbList | jsonify (dict "indent" "  ") | safeJS }}</script>
+{{- end -}}

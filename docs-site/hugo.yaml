@@ -77,3 +77,6 @@ params:
   editURL:
     enable: true
     base: "https://github.com/modu-ai/moai-adk-go/edit/main/docs-site/content"
+  # OG image (1200x654, 248KB) — custom/head-end.html에서 직접 주입
+  images:
+    - "/og.jpg"
