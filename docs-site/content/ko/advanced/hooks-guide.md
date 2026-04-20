@@ -3,7 +3,6 @@ title: Hooks 가이드
 weight: 50
 draft: false
 ---
-# Hooks 가이드
 
 Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세히 안내합니다.
 

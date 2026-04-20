@@ -3,7 +3,6 @@ title: /moai mx
 weight: 70
 draft: false
 ---
-# /moai mx
 
 扫描代码库并添加 @MX 代码级注解的命令。自动插入注释，使 AI 代理能够**快速理解代码上下文**。
 

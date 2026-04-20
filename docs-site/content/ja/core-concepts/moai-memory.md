@@ -3,7 +3,6 @@ title: MoAI Memory
 weight: 60
 draft: false
 ---
-# MoAI Memory
 
 セッションをまたいでAIと開発者のインタラクションコンテキストを保持する、MoAI-ADKのGitベースコンテキストメモリシステムの詳細ガイドです。
 

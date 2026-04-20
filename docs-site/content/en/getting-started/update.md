@@ -3,7 +3,6 @@ title: Update
 weight: 60
 draft: false
 ---
-# Update
 
 Keep MoAI-ADK up to date and perform smooth upgrades with the smart update workflow.
 

@@ -3,7 +3,6 @@ title: 品質コマンド
 weight: 10
 draft: false
 ---
-# 品質コマンド
 
 MoAI-ADK のコード品質管理コマンドを紹介します。
 

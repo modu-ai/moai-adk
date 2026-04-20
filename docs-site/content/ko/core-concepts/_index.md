@@ -3,7 +3,6 @@ title: 핵심 개념
 weight: 10
 draft: false
 ---
-# 핵심 개념
 
 MoAI-ADK를 이해하기 위한 4가지 핵심 개념을 소개합니다.
 

@@ -3,7 +3,6 @@ title: Introduction
 weight: 20
 draft: false
 ---
-# Introduction
 
 MoAI-ADK is an AI-based development environment, a comprehensive toolkit for efficiently generating high-quality code.
 

@@ -3,7 +3,6 @@ title: 安装
 weight: 30
 draft: false
 ---
-# 安装
 
 了解如何在您的系统上安装 MoAI-ADK 2.x。
 

@@ -3,7 +3,6 @@ title: Git Worktree 概要
 weight: 10
 draft: false
 ---
-# Git Worktree 概要
 
 Git Worktree は MoAI-ADK で並列開発を行うための中核機能です。各 SPEC を独立した環境で開発できるように完全な分離を提供します。
 

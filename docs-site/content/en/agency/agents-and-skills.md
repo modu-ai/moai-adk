@@ -3,7 +3,6 @@ title: "Agents & Skills Architecture"
 weight: 30
 draft: false
 ---
-# Agents & Skills Architecture
 
 {{< callout type="info" >}}
 AI Agency uses 6 specialized agents that work together to transform briefs into complete websites. Each agent is optimized for one creative task.

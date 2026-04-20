@@ -3,7 +3,6 @@ title: 자기진화 시스템
 weight: 60
 draft: false
 ---
-# 자기진화 시스템
 
 AI Agency의 가장 강력한 기능은 **자기진화(Self-Evolution)** 입니다. 프로젝트를 진행할수록 에이전트들이 자동으로 학습하고 규칙을 업데이트합니다.
 

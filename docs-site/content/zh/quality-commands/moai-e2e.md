@@ -3,7 +3,6 @@ title: /moai e2e
 weight: 40
 draft: false
 ---
-# /moai e2e
 
 使用浏览器自动化工具创建和运行 **E2E (端到端) 测试** 的命令。
 

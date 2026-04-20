@@ -3,7 +3,6 @@ title: /moai clean
 weight: 60
 draft: false
 ---
-# /moai clean
 
 데드 코드 식별 및 안전 제거 명령어입니다. 정적 분석과 사용 그래프 분석을 통해 **미사용 코드를 찾아 안전하게 제거**합니다.
 

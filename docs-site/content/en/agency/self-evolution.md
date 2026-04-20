@@ -3,7 +3,6 @@ title: Self-Evolution System
 weight: 40
 draft: false
 ---
-# Self-Evolution System
 
 {{< callout type="info" >}}
 The more you use AI Agency, the more it learns about YOUR business. After 10 projects, Agency becomes a uniquely specialized system optimized for your specific brand, audience, and quality standards.

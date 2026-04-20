@@ -3,7 +3,6 @@ title: TRUST 5 품질 프레임워크
 weight: 70
 draft: false
 ---
-# TRUST 5 품질 프레임워크
 
 MoAI-ADK의 모든 코드가 통과해야 하는 5가지 품질 원칙을 상세히 안내합니다.
 

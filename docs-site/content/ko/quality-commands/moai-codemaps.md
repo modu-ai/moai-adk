@@ -3,7 +3,6 @@ title: /moai codemaps
 weight: 50
 draft: false
 ---
-# /moai codemaps
 
 코드베이스를 스캔하여 **아키텍처 문서**를 자동 생성하는 명령어입니다.
 

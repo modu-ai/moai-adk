@@ -3,7 +3,6 @@ title: Git Worktree Real Usage Examples
 weight: 30
 draft: false
 ---
-# Git Worktree Real Usage Examples
 
 Learn how to apply Git Worktree in real projects through concrete examples.
 

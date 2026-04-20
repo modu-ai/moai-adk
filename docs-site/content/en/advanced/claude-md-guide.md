@@ -3,7 +3,6 @@ title: CLAUDE.md Guide
 weight: 70
 draft: false
 ---
-# CLAUDE.md Guide
 
 Detailed guide to Claude Code's core instruction file system.
 

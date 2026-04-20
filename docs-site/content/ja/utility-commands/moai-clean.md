@@ -3,7 +3,6 @@ title: /moai clean
 weight: 60
 draft: false
 ---
-# /moai clean
 
 デッドコードの特定と安全な削除コマンドです。静的解析と使用グラフ分析により、**未使用コードを見つけて安全に削除**します。
 

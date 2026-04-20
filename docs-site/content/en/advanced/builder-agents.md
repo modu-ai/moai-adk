@@ -3,7 +3,6 @@ title: Builder Agents Guide
 weight: 40
 draft: false
 ---
-# Builder Agents Guide
 
 Detailed guide to the 3 builder agents that extend MoAI-ADK.
 

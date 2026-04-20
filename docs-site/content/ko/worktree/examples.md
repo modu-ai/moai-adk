@@ -3,7 +3,6 @@ title: Git Worktree 실제 사용 예시
 weight: 30
 draft: false
 ---
-# Git Worktree 실제 사용 예시
 
 실제 프로젝트에서 Git Worktree를 활용하는 구체적인 예시들을 통해 실무 적용
 방법을 배워보세요.

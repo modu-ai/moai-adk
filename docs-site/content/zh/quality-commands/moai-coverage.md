@@ -3,7 +3,6 @@ title: /moai coverage
 weight: 30
 draft: false
 ---
-# /moai coverage
 
 分析测试覆盖率、识别缺口并自动生成缺失测试的命令。
 

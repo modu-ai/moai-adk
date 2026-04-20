@@ -3,7 +3,6 @@ title: Hooks Guide
 weight: 50
 draft: false
 ---
-# Hooks Guide
 
 Detailed guide to Claude Code's Hooks system and MoAI-ADK's default Hook scripts.
 

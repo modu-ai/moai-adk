@@ -3,7 +3,6 @@ title: /moai run
 weight: 40
 draft: false
 ---
-# /moai run
 
 SPEC 文書を基に DDD (Domain-Driven Development) 方法でコードを実装します。
 

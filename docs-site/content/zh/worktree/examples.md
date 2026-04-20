@@ -3,7 +3,6 @@ title: Git Worktree 实际使用示例
 weight: 30
 draft: false
 ---
-# Git Worktree 实际使用示例
 
 通过具体示例了解如何在实际项目中应用 Git Worktree。
 

@@ -3,7 +3,6 @@ title: /moai feedback
 weight: 80
 draft: false
 ---
-# /moai feedback
 
 提交 MoAI-ADK 的反馈或 bug 报告的命令。
 

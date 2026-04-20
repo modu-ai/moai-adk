@@ -3,7 +3,6 @@ title: /moai feedback
 weight: 80
 draft: false
 ---
-# /moai feedback
 
 MoAI-ADK에 피드백이나 버그 리포트를 제출하는 명령어입니다.
 

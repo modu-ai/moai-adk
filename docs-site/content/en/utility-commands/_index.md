@@ -3,7 +3,6 @@ title: Utility Commands
 weight: 10
 draft: false
 ---
-# Utility Commands
 
 Introduction to MoAI-ADK's automation and feedback commands.
 

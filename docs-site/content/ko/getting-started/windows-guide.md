@@ -3,7 +3,6 @@ title: Windows 사용 가이드
 weight: 40
 draft: false
 ---
-# Windows 사용 가이드
 
 ## 지원 환경
 

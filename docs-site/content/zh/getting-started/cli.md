@@ -3,7 +3,6 @@ title: CLI 参考
 weight: 70
 draft: false
 ---
-# CLI 参考
 
 参考 MoAI-ADK 命令行界面的所有命令和选项。
 

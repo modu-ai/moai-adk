@@ -3,7 +3,6 @@ title: よくある質問
 weight: 80
 draft: false
 ---
-# よくある質問
 
 MoAI-ADK の使用中によくある質問と回答です。
 

@@ -3,7 +3,6 @@ title: /moai codemaps
 weight: 50
 draft: false
 ---
-# /moai codemaps
 
 扫描代码库并自动生成 **架构文档** 的命令。
 

@@ -3,7 +3,6 @@ title: /moai clean
 weight: 60
 draft: false
 ---
-# /moai clean
 
 死代码识别和安全删除命令。通过静态分析和使用图分析，**查找并安全删除未使用的代码**。
 

@@ -3,7 +3,6 @@ title: 멀티 LLM
 weight: 10
 draft: false
 ---
-# 멀티 LLM
 
 MoAI-ADK는 Claude API 외에 **z.ai GLM**을 대안 AI 백엔드로 지원하여 멀티 LLM 개발 워크플로우를 가능하게 합니다.
 

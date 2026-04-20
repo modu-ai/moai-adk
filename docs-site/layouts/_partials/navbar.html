@@ -38,21 +38,20 @@
         {{- else if eq .Params.type "language-switch" -}}
           {{- partial "language-switch" (dict "context" $page "grow" false "hideLabel" (not .Params.label) "iconName" (.Params.icon | default "translate") "iconHeight" $iconHeight "location" "top" "class" "hx:p-2") -}}
         {{- else if eq .Params.icon "github-stars" -}}
-          {{- /* MoAI custom: GitHub icon + shields.io star badge */ -}}
+          {{- /* MoAI custom: shields.io social style — GitHub star button with count */ -}}
           {{- $rel := "noreferrer" }}
           <a
-            class="hx:p-2 hx:text-current hx:flex hx:items-center hx:gap-1.5"
+            class="hx:p-2 hx:text-current hx:flex hx:items-center"
             target="_blank"
             rel="{{ $rel }}"
             href="{{ $link }}"
             title="{{ or (T .Identifier) .Name | safeHTML }}"
           >
-            {{- partial "utils/icon.html" (dict "name" "github" "attributes" (printf "height=%d" $iconHeight)) -}}
             <img
-              src="https://img.shields.io/github/stars/modu-ai/moai-adk?style=flat-square&label=&color=ffdd40&logo=&logoColor=&cacheSeconds=3600"
-              alt="GitHub stars"
+              src="https://img.shields.io/github/stars/modu-ai/moai-adk?style=social&label=Star"
+              alt="GitHub stars on modu-ai/moai-adk"
               height="20"
-              class="hx:inline-block hx:rounded hx:max-h-5"
+              class="hx:inline-block hx:max-h-5"
               loading="lazy"
             />
             <span class="hx:sr-only">{{ or (T .Identifier) .Name | safeHTML }}</span>

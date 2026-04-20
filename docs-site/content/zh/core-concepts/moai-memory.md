@@ -3,7 +3,6 @@ title: MoAI 记忆系统
 weight: 60
 draft: false
 ---
-# MoAI 记忆系统
 
 MoAI-ADK 基于 Git 的上下文记忆系统详细指南，该系统可跨会话保留 AI 与开发者的交互上下文。
 

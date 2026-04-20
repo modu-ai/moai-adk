@@ -3,7 +3,6 @@ title: /moai coverage
 weight: 30
 draft: false
 ---
-# /moai coverage
 
 테스트 커버리지를 분석하고, 갭을 식별하며, 누락된 테스트를 자동 생성하는 명령어입니다.
 

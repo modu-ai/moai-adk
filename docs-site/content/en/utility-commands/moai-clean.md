@@ -3,7 +3,6 @@ title: /moai clean
 weight: 60
 draft: false
 ---
-# /moai clean
 
 Dead code identification and safe removal command. Uses static analysis and usage graph analysis to **find and safely remove unused code**.
 

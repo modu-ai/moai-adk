@@ -3,7 +3,6 @@ title: Pencil ガイド
 weight: 90
 draft: false
 ---
-# Pencil ガイド
 
 Pencil MCP サーバーを活用して AI ベース UI/UX デザインを作成する方法を詳細に解説します。
 

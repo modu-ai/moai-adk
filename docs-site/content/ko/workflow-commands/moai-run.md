@@ -3,7 +3,6 @@ title: /moai run
 weight: 40
 draft: false
 ---
-# /moai run
 
 SPEC 문서를 바탕으로 DDD (Domain-Driven Development) 방식으로 코드를 구현합니다.
 

@@ -3,7 +3,6 @@ title: CLI リファレンス
 weight: 70
 draft: false
 ---
-# CLI リファレンス
 
 MoAI-ADK コマンドラインインターフェースのすべてのコマンドとオプションを参照します。
 

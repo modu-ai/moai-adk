@@ -3,7 +3,6 @@ title: 实用命令
 weight: 10
 draft: false
 ---
-# 实用命令
 
 MoAI-ADK 的自动化和反馈命令介绍。
 

@@ -3,7 +3,6 @@ title: Git Worktree Complete Guide
 weight: 20
 draft: false
 ---
-# Git Worktree Complete Guide
 
 This guide provides detailed explanations of all aspects of MoAI-ADK parallel development using Git Worktree.
 

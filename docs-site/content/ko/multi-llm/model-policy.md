@@ -3,7 +3,6 @@ title: 모델 정책
 weight: 30
 draft: false
 ---
-# 모델 정책
 
 ## 모델 정책이란?
 

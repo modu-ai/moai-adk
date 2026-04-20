@@ -3,7 +3,6 @@ title: /moai sync
 weight: 50
 draft: false
 ---
-# /moai sync
 
 구현 완료된 코드의 문서를 동기화하고, Git 자동화를 통해 배포를 준비합니다.
 

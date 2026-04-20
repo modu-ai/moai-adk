@@ -3,7 +3,6 @@ title: /moai coverage
 weight: 30
 draft: false
 ---
-# /moai coverage
 
 テストカバレッジを分析し、ギャップを特定し、不足しているテストを自動生成するコマンドです。
 

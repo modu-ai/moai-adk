@@ -3,7 +3,6 @@ title: Getting Started with AI Agency
 weight: 20
 draft: false
 ---
-# Getting Started with AI Agency
 
 {{< callout type="info" >}}
 Complete your first project in 15 minutes by following this step-by-step guide. No prior AI knowledge required.

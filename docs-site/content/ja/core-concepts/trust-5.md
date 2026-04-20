@@ -3,7 +3,6 @@ title: TRUST 5 品質フレームワーク
 weight: 50
 draft: false
 ---
-# TRUST 5 品質フレームワーク
 
 すべての MoAI-ADK コードが通過しなければならない 5 つの品質原則の詳細ガイドです。
 

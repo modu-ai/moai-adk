@@ -3,7 +3,6 @@ title: インストール
 weight: 30
 draft: false
 ---
-# インストール
 
 MoAI-ADK 2.x をシステムにインストールする方法を説明します。
 

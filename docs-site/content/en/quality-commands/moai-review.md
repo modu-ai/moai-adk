@@ -3,7 +3,6 @@ title: /moai review
 weight: 20
 draft: false
 ---
-# /moai review
 
 A code review command that analyzes your codebase from **4 perspectives: Security, Performance, Quality, and UX**.
 

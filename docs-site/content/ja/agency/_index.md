@@ -3,7 +3,6 @@ title: AI Agency
 weight: 10
 draft: false
 ---
-# AI Agency
 
 ## AI Agencyとは
 

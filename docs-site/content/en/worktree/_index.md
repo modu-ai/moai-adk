@@ -3,7 +3,6 @@ title: Git Worktree Overview
 weight: 10
 draft: false
 ---
-# Git Worktree Overview
 
 Git Worktree is a core feature in MoAI-ADK for parallel development. It provides complete isolation by allowing each SPEC to be developed in an independent environment.
 

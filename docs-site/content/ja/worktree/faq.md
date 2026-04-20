@@ -3,7 +3,6 @@ title: Git Worktree よくある質問
 weight: 40
 draft: false
 ---
-# Git Worktree よくある質問
 
 Git Worktree 使用中に発生する一般的な問題と解決方法をまとめました。
 

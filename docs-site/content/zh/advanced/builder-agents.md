@@ -3,7 +3,6 @@ title: 构建者代理指南
 weight: 40
 draft: false
 ---
-# 构建者代理指南
 
 详细介绍扩展 MoAI-ADK 的 3 种构建者代理。
 

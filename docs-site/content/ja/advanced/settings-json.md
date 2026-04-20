@@ -3,7 +3,6 @@ title: settings.json ガイド
 weight: 60
 draft: false
 ---
-# settings.json ガイド
 
 Claude Code の設定ファイル体系を詳細に解説します。
 

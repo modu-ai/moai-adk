@@ -3,7 +3,6 @@ title: MCP 服务器使用指南
 weight: 80
 draft: false
 ---
-# MCP 服务器使用指南
 
 详细介绍如何在 Claude Code 中使用 MCP (Model Context Protocol) 服务器。
 

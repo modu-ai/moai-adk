@@ -3,7 +3,6 @@ title: Development Methodology (DDD/TDD)
 weight: 40
 draft: false
 ---
-# Development Methodology (DDD/TDD)
 
 A detailed guide to MoAI-ADK's development methodology. Choose either TDD or DDD
 depending on your project's state.

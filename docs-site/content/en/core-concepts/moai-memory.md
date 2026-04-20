@@ -3,7 +3,6 @@ title: MoAI Memory
 weight: 60
 draft: false
 ---
-# MoAI Memory
 
 A detailed guide to MoAI-ADK's Git-Based Context Memory System that preserves
 AI-developer interaction context across sessions.

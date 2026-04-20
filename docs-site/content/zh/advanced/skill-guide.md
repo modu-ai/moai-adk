@@ -3,7 +3,6 @@ title: 技能指南
 weight: 20
 draft: false
 ---
-# 技能指南
 
 MoAI-ADK 的技能系统详细介绍。
 

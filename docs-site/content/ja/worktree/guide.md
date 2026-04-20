@@ -3,7 +3,6 @@ title: Git Worktree 完全ガイド
 weight: 20
 draft: false
 ---
-# Git Worktree 完全ガイド
 
 このガイドは、Git Worktree を使用した MoAI-ADK 並列開発のすべての側面を詳細に説明します。
 

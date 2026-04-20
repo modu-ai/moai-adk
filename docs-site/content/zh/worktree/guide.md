@@ -3,7 +3,6 @@ title: Git Worktree 完整指南
 weight: 20
 draft: false
 ---
-# Git Worktree 完整指南
 
 本指南详细说明使用 Git Worktree 进行 MoAI-ADK 并行开发的所有方面。
 

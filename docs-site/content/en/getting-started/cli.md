@@ -3,7 +3,6 @@ title: CLI Reference
 weight: 70
 draft: false
 ---
-# CLI Reference
 
 Reference all commands and options of the MoAI-ADK command-line interface.
 

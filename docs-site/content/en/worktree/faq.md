@@ -3,7 +3,6 @@ title: Git Worktree FAQ
 weight: 40
 draft: false
 ---
-# Git Worktree FAQ
 
 Common problems and solutions when using Git Worktree.
 

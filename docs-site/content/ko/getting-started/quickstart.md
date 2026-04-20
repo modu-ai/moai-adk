@@ -3,7 +3,6 @@ title: 빠른 시작
 weight: 60
 draft: false
 ---
-# 빠른 시작
 
 MoAI-ADK를 사용하여 첫 프로젝트를 생성하고 개발 워크플로우를 경험해보세요.
 

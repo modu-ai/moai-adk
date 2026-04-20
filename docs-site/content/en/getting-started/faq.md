@@ -3,7 +3,6 @@ title: Frequently Asked Questions
 weight: 80
 draft: false
 ---
-# Frequently Asked Questions
 
 Frequently asked questions and answers about MoAI-ADK.
 

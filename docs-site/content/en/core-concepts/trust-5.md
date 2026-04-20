@@ -3,7 +3,6 @@ title: TRUST 5 Quality Framework
 weight: 50
 draft: false
 ---
-# TRUST 5 Quality Framework
 
 Detailed guide to 5 quality principles that all MoAI-ADK code must pass.
 

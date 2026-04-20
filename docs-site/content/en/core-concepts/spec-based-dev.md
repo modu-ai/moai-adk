@@ -3,7 +3,6 @@ title: SPEC-Based Development
 weight: 30
 draft: false
 ---
-# SPEC-Based Development
 
 A detailed guide to MoAI-ADK's SPEC-based development methodology.
 

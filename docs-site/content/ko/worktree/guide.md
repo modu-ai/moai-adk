@@ -3,7 +3,6 @@ title: Git Worktree 완벽 가이드
 weight: 20
 draft: false
 ---
-# Git Worktree 완벽 가이드
 
 이 가이드는 Git Worktree를 사용한 MoAI-ADK 병렬 개발의 모든 측면을 상세히
 설명합니다.

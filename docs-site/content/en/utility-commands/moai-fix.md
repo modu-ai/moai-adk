@@ -3,7 +3,6 @@ title: /moai fix
 weight: 50
 draft: false
 ---
-# /moai fix
 
 One-shot auto-fix command. **Parallel scans** code errors then **fixes all at once**.
 

@@ -3,7 +3,6 @@ title: 설치
 weight: 30
 draft: false
 ---
-# 설치
 
 MoAI-ADK 2.x를 시스템에 설치하는 방법을 안내합니다.
 

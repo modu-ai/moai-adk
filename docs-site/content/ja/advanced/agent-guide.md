@@ -3,7 +3,6 @@ title: エージェントガイド
 weight: 30
 draft: false
 ---
-# エージェントガイド
 
 MoAI-ADKのエージェントシステムを詳しく解説します。
 

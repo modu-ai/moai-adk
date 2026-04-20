@@ -3,7 +3,6 @@ title: 质量命令
 weight: 10
 draft: false
 ---
-# 质量命令
 
 介绍 MoAI-ADK 的代码质量管理命令。
 

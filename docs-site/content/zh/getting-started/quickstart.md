@@ -3,7 +3,6 @@ title: 快速开始
 weight: 50
 draft: false
 ---
-# 快速开始
 
 使用 MoAI-ADK 创建您的第一个项目并体验开发工作流。
 

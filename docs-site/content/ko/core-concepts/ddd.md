@@ -3,7 +3,6 @@ title: 개발 방법론 (DDD/TDD)
 weight: 50
 draft: false
 ---
-# 개발 방법론 (DDD/TDD)
 
 MoAI-ADK의 개발 방법론을 상세히 안내합니다. 프로젝트 상태에 따라 TDD 또는 DDD를
 선택하여 사용합니다.

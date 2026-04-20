@@ -3,7 +3,6 @@ title: /moai
 weight: 20
 draft: false
 ---
-# /moai
 
 완전 자율 자동화 명령어입니다. 사용자가 목표를 제공하면 MoAI가 **plan → run →
 sync** 파이프라인을 자율적으로 실행합니다.
