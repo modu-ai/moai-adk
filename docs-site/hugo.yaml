@@ -1,5 +1,6 @@
 baseURL: "https://adk.mo.ai.kr/"
 title: "MoAI-ADK Documentation"
+copyright: "© MoAI-ADK | 모두의AI"
 enableGitInfo: true
 enableRobotsTXT: true
 hasCJKLanguage: true
@@ -67,10 +68,16 @@ params:
   navbar:
     displayTitle: true
     displayLogo: true
+    width: normal
+  page:
+    width: normal
+  theme:
+    default: system
+    displayToggle: true
   footer:
     displayCopyright: true
     displayPoweredBy: false
-    copyright: "MIT License © 2025 MoAI-ADK Contributors"
+    copyright: "© MoAI-ADK | 모두의AI"
   search:
     enable: false
     type: flexsearch
@@ -80,3 +87,13 @@ params:
   # OG image (1200x654, 248KB) — custom/head-end.html에서 직접 주입
   images:
     - "/og.jpg"
+
+# GitHub badge via Hugo menu.main — renders github icon + shields.io star count badge
+# (custom override in layouts/_partials/navbar.html handles icon=github-stars specially)
+menu:
+  main:
+    - name: GitHub
+      weight: 100
+      url: "https://github.com/modu-ai/moai-adk"
+      params:
+        icon: github-stars

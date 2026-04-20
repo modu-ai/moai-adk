@@ -1,9 +1,11 @@
 ---
 title: MoAI-ADK 文档
+toc: true
+sidebar:
+  open: true
 weight: 99
 draft: false
 ---
-# MoAI-ADK 文档
 
 MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
