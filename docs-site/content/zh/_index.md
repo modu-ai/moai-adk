@@ -1,6 +1,5 @@
 ---
 title: MoAI-ADK 文档
-type: docs
 toc: true
 sidebar:
   open: true
