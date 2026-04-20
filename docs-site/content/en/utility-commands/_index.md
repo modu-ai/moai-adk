@@ -1,6 +1,6 @@
 ---
 title: Utility Commands
-weight: 40
+weight: 30
 draft: false
 ---
 

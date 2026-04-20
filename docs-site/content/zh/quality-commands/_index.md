@@ -1,6 +1,6 @@
 ---
 title: 质量命令
-weight: 50
+weight: 40
 draft: false
 ---
 

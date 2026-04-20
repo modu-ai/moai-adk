@@ -1,6 +1,6 @@
 ---
 title: Quality Commands
-weight: 50
+weight: 40
 draft: false
 ---
 

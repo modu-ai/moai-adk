@@ -1,6 +1,6 @@
 ---
 title: ワークフローコマンド
-weight: 30
+weight: 20
 draft: false
 ---
 

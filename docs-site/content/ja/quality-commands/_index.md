@@ -1,6 +1,6 @@
 ---
 title: 品質コマンド
-weight: 50
+weight: 40
 draft: false
 ---
 

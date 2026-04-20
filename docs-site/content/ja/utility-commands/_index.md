@@ -1,6 +1,6 @@
 ---
 title: ユーティリティコマンド
-weight: 40
+weight: 30
 draft: false
 ---
 
