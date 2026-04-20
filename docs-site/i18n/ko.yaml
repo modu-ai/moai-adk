@@ -10,3 +10,7 @@ site_description: "MoAI-ADK 온라인 문서 — Claude Code를 위한 에이전
 og_description: "SPEC 생성부터 DDD 구현, 문서화까지 완전 자동화하는 AI 개발 도구"
 footer_copyright: "MIT License © 2025 MoAI-ADK Contributors"
 language_label: "KO"
+
+# 버전 배너 (REQ-DS-19, Phase 5)
+version_banner_old: "이 페이지는 구버전 문서입니다."
+version_banner_latest: "최신 버전 보기"

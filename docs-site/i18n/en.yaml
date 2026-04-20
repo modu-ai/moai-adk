@@ -10,3 +10,7 @@ site_description: "MoAI-ADK online documentation — Agentic Development Kit for
 og_description: "AI development tool that fully automates from SPEC creation to DDD implementation and documentation"
 footer_copyright: "MIT License © 2025 MoAI-ADK Contributors"
 language_label: "EN"
+
+# Version banner (REQ-DS-19, Phase 5)
+version_banner_old: "You are viewing an archived version of this documentation."
+version_banner_latest: "Go to latest version"
