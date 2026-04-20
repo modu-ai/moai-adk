@@ -303,9 +303,10 @@ func parseMetaBody(body string) []MetaEntry {
 		if inObj {
 			objLines = append(objLines, line)
 			for _, ch := range line {
-				if ch == '{' {
+				switch ch {
+				case '{':
 					braceDepth++
-				} else if ch == '}' {
+				case '}':
 					braceDepth--
 				}
 			}
@@ -343,9 +344,10 @@ func parseMetaBody(body string) []MetaEntry {
 			inObj = true
 			// 초기 depth: 이 줄에서 { } 카운트
 			for _, ch := range trimmed {
-				if ch == '{' {
+				switch ch {
+				case '{':
 					braceDepth++
-				} else if ch == '}' {
+				case '}':
 					braceDepth--
 				}
 			}
