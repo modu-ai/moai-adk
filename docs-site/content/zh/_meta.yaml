@@ -1,0 +1,16 @@
+"getting-started":
+  title: "开始使用"
+"core-concepts":
+  title: "核心概念"
+"workflow-commands":
+  title: "工作流命令"
+"utility-commands":
+  title: "实用命令"
+"quality-commands":
+  title: "质量命令"
+agency:
+  title: "Agency"
+advanced:
+  title: "高级"
+worktree:
+  title: "Git 工作树"

@@ -1,0 +1,59 @@
+{{/*
+  custom/head-end.html — Hextra hook: <head> 끝에 자동 삽입
+  포함:
+    - OGP (og:*) meta tags (locale별)
+    - Twitter Card meta tags
+    - hreflang alternate links (4 locale)
+    - canonical URL
+    - Vercel Analytics
+    - SEO JSON-LD (aggregateRating 없음, REQ-DS-21)
+*/}}
+
+{{- $baseURL := "https://adk.mo.ai.kr" -}}
+{{- $permalink := .Permalink -}}
+{{- $lang := .Site.Language.Lang -}}
+{{- $langCode := .Site.Language.LanguageCode | default $lang -}}
+{{- $title := .Title | default .Site.Title -}}
+{{- $siteTitle := .Site.Title -}}
+{{- $description := "" -}}
+{{- if .Description -}}
+  {{- $description = .Description -}}
+{{- else if .IsPage -}}
+  {{- $description = .Summary -}}
+{{- else -}}
+  {{- $description = .Site.Params.description | default "" -}}
+{{- end -}}
+{{- $ogImage := printf "%s/og.jpg" $baseURL -}}
+
+{{/* OGP meta tags */}}
+<meta property="og:locale" content="{{ replace $langCode "-" "_" }}">
+<meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ $permalink }}">
+<meta property="og:site_name" content="{{ $siteTitle }}">
+<meta property="og:image" content="{{ $ogImage }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+
+{{/* hreflang alternate links — 4 locale */}}
+<link rel="alternate" hreflang="ko" href="{{ $baseURL }}/ko/">
+<link rel="alternate" hreflang="en" href="{{ $baseURL }}/en/">
+<link rel="alternate" hreflang="ja" href="{{ $baseURL }}/ja/">
+<link rel="alternate" hreflang="zh" href="{{ $baseURL }}/zh/">
+<link rel="alternate" hreflang="x-default" href="{{ $baseURL }}/ko/">
+
+{{/* Twitter Card meta tags */}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $title }}">
+<meta name="twitter:description" content="{{ $description }}">
+<meta name="twitter:image" content="{{ $ogImage }}">
+
+{{/* SEO JSON-LD (aggregateRating 없음) */}}
+{{ partial "seo-jsonld.html" . }}
+
+{{/* Vercel Analytics — 프로덕션 빌드에서만 로드 */}}
+{{- if hugo.IsProduction -}}
+<script defer src="/_vercel/insights/script.js"></script>
+{{- end -}}

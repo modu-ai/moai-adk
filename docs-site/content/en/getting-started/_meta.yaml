@@ -1,0 +1,17 @@
+index:
+  title: "Getting Started"
+  display: "hidden"
+introduction:
+  title: "Introduction"
+installation:
+  title: "Installation"
+"init-wizard":
+  title: "Setup Wizard"
+quickstart:
+  title: "Quick Start"
+update:
+  title: "Update"
+cli:
+  title: "CLI Reference"
+faq:
+  title: "FAQ"
