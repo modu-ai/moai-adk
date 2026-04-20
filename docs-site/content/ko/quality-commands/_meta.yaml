@@ -1,0 +1,11 @@
+index:
+  title: "품질 명령어"
+  display: "hidden"
+"moai-review":
+  title: "/moai review"
+"moai-coverage":
+  title: "/moai coverage"
+"moai-e2e":
+  title: "/moai e2e"
+"moai-codemaps":
+  title: "/moai codemaps"

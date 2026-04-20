@@ -205,6 +205,20 @@ Support for Claude Code's experimental Agent Teams API for parallel phase execut
 | settings.json generation failures | 0 | Contract test suite (vs Python's 4 regression cycles) |
 | Destructive update overwrites | 0 | Manifest-based update verification (vs Python's 6 overwrite issues) |
 
+### 13. Official Documentation Site
+
+공식 사용자 문서는 `https://adk.mo.ai.kr`에서 서비스되며, moai-adk-go 모노레포의 `docs-site/` 하위에서 관리된다.
+
+**구성**:
+- 4개국어 지원 (한국어, English, 日本語, 简体中文)
+- 버전별 문서 관리 (최신은 unversioned, 과거는 `/v2.X/` 경로)
+- Hugo + Hextra 정적 사이트 생성기 (Go 단일 바이너리 빌드)
+- Vercel 배포 (Edge Function으로 Accept-Language 기반 locale detection)
+
+**책임**:
+- 기능 추가/변경 시 4개국어 문서 동시 업데이트 (CLAUDE.local.md §17.3)
+- Minor/Major 릴리스 시 이전 버전 스냅샷 자동 생성 (scripts/docs-version-snapshot)
+
 ---
 
 ## Competitive Advantages

@@ -1,0 +1,16 @@
+# MoAI-ADK 日本語 i18n
+# Hextra デフォルトキーのオーバーライド + プロジェクト固有キー
+
+# Hextra デフォルトキーのオーバーライド
+editThisPage: "このページを編集 →"
+copyright: "MIT License © 2025 MoAI-ADK Contributors"
+
+# プロジェクト固有メタキー
+site_description: "MoAI-ADK オンラインドキュメント — Claude Code 向けエージェント型開発キット。SPEC ベース開発、DDD 実装、TRUST 5 品質システムで完全自動化。"
+og_description: "SPEC 作成から DDD 実装、ドキュメント化まで完全自動化する AI 開発ツール"
+footer_copyright: "MIT License © 2025 MoAI-ADK Contributors"
+language_label: "JA"
+
+# バージョンバナー (REQ-DS-19, Phase 5)
+version_banner_old: "このページはアーカイブ版のドキュメントです。"
+version_banner_latest: "最新バージョンを見る"

@@ -1,0 +1,13 @@
+index:
+  title: "コア概念"
+  display: "hidden"
+"what-is-moai-adk":
+  title: "MoAI-ADKとは？"
+"spec-based-dev":
+  title: "SPECベース開発"
+ddd:
+  title: "MoAI-ADK開発方法論"
+"trust-5":
+  title: "TRUST 5品質"
+"moai-memory":
+  title: "MoAI Memory"

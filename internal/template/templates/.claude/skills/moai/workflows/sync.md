@@ -767,38 +767,6 @@ Timestamp: ISO-8601 timestamp
 - Coverage Impact: [change or percentage]
 ```
 
-**Session Boundary Tag Creation:**
-
-After successful commit, create a session boundary tag to enable `/moai context` reconstruction:
-
-```
-git tag -a "moai/SPEC-{ID}/sync-complete" \
-  -m "Sync phase completed
-SPEC: SPEC-XXX
-Docs updated: N files
-Coverage verified: XX%
-Context embedded in: [commit hash]
-Next action: Feature complete or /moai plan for next SPEC"
-```
-
-Tag naming convention: `moai/SPEC-{ID}/sync-complete`
-
-**Context Memory Integration:**
-
-The embedded context enables:
-
-1. **Session Resumption**: When resuming development, `/moai context` retrieves this information automatically
-2. **Decision History**: Future SPECs build on documented decisions
-3. **Pattern Reuse**: Similar documentation patterns are recognized and applied
-4. **Cross-Session Continuity**: Context persists across individual AI sessions
-
-**Implementation Details:**
-
-- Commit message MUST include complete decision/pattern documentation
-- Session boundary tag MUST be created after successful push
-- Context metadata saved to `.moai/state/sync-context-{SPEC-ID}.json` for quick access
-- Tag message MUST reference the commit hash for traceability
-
 #### Step 3.1.5: Local CI Mirror Validation (Pre-PR Gate)
 
 Purpose: Replicate CI checks locally before pushing and creating a PR to catch failures fast, without waiting for slow remote CI. Windows-specific tests are skipped (cannot run locally).

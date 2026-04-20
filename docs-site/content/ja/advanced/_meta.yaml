@@ -1,0 +1,21 @@
+index:
+  title: "詳細"
+  display: "hidden"
+"skill-guide":
+  title: "スキルガイド"
+"agent-guide":
+  title: "エージェントガイド"
+"builder-agents":
+  title: "ビルダーエージェントガイド"
+"hooks-guide":
+  title: "フックガイド"
+"settings-json":
+  title: "settings.json ガイド"
+"claude-md-guide":
+  title: "CLAUDE.md ガイド"
+"mcp-servers":
+  title: "MCPサーバー"
+"pencil-guide":
+  title: "Pencil ガイド"
+"stitch-guide":
+  title: "Google Stitch ガイド"

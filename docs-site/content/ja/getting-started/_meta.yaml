@@ -1,0 +1,17 @@
+index:
+  title: "はじめに"
+  display: "hidden"
+introduction:
+  title: "紹介"
+installation:
+  title: "インストール"
+"init-wizard":
+  title: "セットアップウィザード"
+quickstart:
+  title: "クイックスタート"
+update:
+  title: "アップデート"
+cli:
+  title: "CLI リファレンス"
+faq:
+  title: "よくある質問"

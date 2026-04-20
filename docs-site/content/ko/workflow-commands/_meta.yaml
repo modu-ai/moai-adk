@@ -1,0 +1,11 @@
+index:
+  title: "워크플로우 명령어"
+  display: "hidden"
+"moai-project":
+  title: "/moai project"
+"moai-plan":
+  title: "/moai plan"
+"moai-run":
+  title: "/moai run"
+"moai-sync":
+  title: "/moai sync"

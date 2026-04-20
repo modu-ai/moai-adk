@@ -39,6 +39,12 @@ Flags:
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
 
+Note: Z.AI enforces low concurrency limits (paid tiers observe 1-3 in-flight
+requests). Multi-agent workflows that exceed this limit can surface as opaque
+errors (sometimes misreported by clients as "context window limit"). The GLM
+models themselves have ample context (glm-5.1 ~204K, glm-4.7 ~203K). For more
+stable parallel execution with MoAI Agent Teams, prefer 'moai cg' (hybrid mode).
+
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
