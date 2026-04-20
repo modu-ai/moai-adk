@@ -1,6 +1,6 @@
 ---
 title: 핵심 개념
-weight: 10
+weight: 20
 draft: false
 ---
 

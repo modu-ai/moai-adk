@@ -1,6 +1,6 @@
 ---
 title: 入门指南
-weight: 90
+weight: 10
 draft: false
 ---
 

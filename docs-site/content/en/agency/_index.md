@@ -1,6 +1,6 @@
 ---
 title: AI Agency
-weight: 100
+weight: 70
 draft: false
 ---
 

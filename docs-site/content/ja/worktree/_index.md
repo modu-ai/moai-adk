@@ -1,6 +1,6 @@
 ---
 title: Git Worktree 概要
-weight: 70
+weight: 90
 draft: false
 ---
 

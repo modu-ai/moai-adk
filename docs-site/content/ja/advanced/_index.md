@@ -1,6 +1,6 @@
 ---
 title: 上級トピック
-weight: 50
+weight: 80
 draft: false
 ---
 

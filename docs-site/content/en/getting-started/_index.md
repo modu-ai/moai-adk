@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-weight: 90
+weight: 10
 draft: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: 시작하기
-weight: 90
+weight: 10
 draft: false
 ---
 
