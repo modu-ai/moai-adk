@@ -1,0 +1,132 @@
+---
+title: "MoAI-ADK Documentation"
+---
+
+# MoAI-ADK 온라인 문서
+
+**MoAI-ADK**는 온라인 제작 인공지능(Mr. Online-based Artificial Intelligence for Development)을 통해 엔터프라이즈급 개발 자동화를 제공합니다.
+
+## 핵심 기능
+
+- **🎯 SPEC-First**: 명확한 명세서로 90% 재작업 감소
+- **🔵 DDD (Domain-Driven Development)**: ANALYZE-PRESERVE-IMPROVE 사이클로 85%+ 커버리지 보장
+- **🤖 AI 오케스트레이션**: 20개 전문 에이전트 + 52개 스킬
+- **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
+- **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
+
+## 빠른 시작
+
+### 설치
+
+```bash
+# 빠른 설치 (권장)
+curl -LsSf https://adk.mo.ai.kr/install.sh | sh
+
+# 또는 수동 설치
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install moai-adk
+```
+
+### 프로젝트 초기화
+
+```bash
+moai init my-project
+cd my-project
+```
+
+### 핵심 워크플로우
+
+```bash
+# SPEC 작성
+/moai:1-plan "사용자 인증 시스템 구현"
+
+# DDD 구현
+/moai:2-run SPEC-001
+
+# 문서 동기화
+/moai:3-sync SPEC-001
+```
+
+## 문서 구조
+
+| 섹션 | 설명 |
+|------|------|
+| **[시작하기](/getting-started)** | 설치, 기본 설정, 빠른 시작 |
+| **[핵심 개념](/core-concepts)** | SPEC 포맷, 에이전트, 워크플로우 |
+| **[심화 학습](/advanced)** | 고급 패턴, 스킬 활용, 성능 최적화 |
+| **[Git Worktree](/worktree)** | 워크트리 CLI 완벽 가이드 |
+| **[Claude Code](/claude-code)** | Claude Code 사용법 가이드 |
+| **[API 레퍼런스](/reference)** | 스킬, 명령어 상세 문서 |
+
+## 주요 에이전트
+
+```
+expert-*          → 도메인 전문가 (백엔드, 프론트엔드, 데이터베이스, 보안 등)
+manager-*         → 워크플로우 관리자 (DDD, 문서화, 품질, Git 등)
+builder-*         → 메타 생성기 (에이전트, 스킬 자동 생성)
+```
+
+## 핵심 명령어
+
+### /moai:0-project
+프로젝트 초기화 및 설정 관리
+
+```bash
+/moai init my-project
+/moai:0-project
+```
+
+### /moai:1-plan
+SPEC 기반 구현 계획 수립
+
+```bash
+/moai:1-plan "기능 설명"
+```
+
+### /moai:2-run
+DDD 프로세스로 완벽한 구현 실행
+
+```bash
+/moai:2-run SPEC-001
+```
+
+### /moai:3-sync
+구현 결과를 문서와 동기화
+
+```bash
+/moai:3-sync SPEC-001
+```
+
+### /moai:alfred
+완전 자율 자동화 (Plan → Run → Sync)
+
+```bash
+/moai:alfred "기능 설명"
+```
+
+### /moai:loop
+자율 반복 수정
+
+```bash
+/moai:loop
+```
+
+## TRUST 5 품질 원칙
+
+MoAI-ADK는 5가지 핵심 품질 원칙을 따릅니다:
+
+1. **Tested**: 85%+ 커버리지, 특성화 테스트, 동작 보존
+2. **Readable**: 명확한 명명 규칙, 일관된 포맷팅
+3. **Unified**: 통합된 스타일 가이드, 자동 포맷팅
+4. **Secured**: OWASP 준수, 보안 검증, 취약점 분석
+5. **Trackable**: 구조화된 커밋, 변경 이력 추적
+
+## 커뮤니티
+
+- **GitHub**: [github.com/moai-ai/moai-adk](https://github.com/moai-ai/moai-adk)
+- **Discord**: [Join our community](https://discord.gg/moai-adk)
+- **Issues**: [Report bugs and request features](https://github.com/moai-ai/moai-adk/issues)
+
+## 라이선스
+
+MIT © 2025 MoAI-ADK Contributors

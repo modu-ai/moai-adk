@@ -1,0 +1,88 @@
+constitution:
+    coverage_exemptions:
+        enabled: false
+        max_exempt_percentage: 5
+        require_justification: true
+    ddd_settings:
+        behavior_snapshots: true
+        characterization_tests: true
+        max_transformation_size: small
+        preserve_before_improve: true
+        require_existing_tests: true
+    development_mode: tdd
+    enforce_quality: true
+    lsp_integration:
+        diagnostic_sources:
+            - typecheck
+            - lint
+            - security
+        regression_detection:
+            error_increase_threshold: 0
+            type_error_increase_threshold: 0
+            warning_increase_threshold: 10
+        trust5_integration:
+            readable:
+                - naming_conventions_followed
+                - lsp_lint_errors == 0
+            secured:
+                - security_scan_pass
+                - lsp_security_warnings == 0
+            tested:
+                - unit_tests_pass
+                - lsp_type_errors == 0
+                - lsp_errors == 0
+            trackable:
+                - logs_structured
+                - lsp_diagnostic_history_tracked
+            understandable:
+                - documentation_complete
+                - code_complexity_acceptable
+                - lsp_warnings < threshold
+    lsp_quality_gates:
+        cache_ttl_seconds: 5
+        enabled: true
+        plan:
+            require_baseline: true
+        run:
+            allow_regression: false
+            max_errors: 0
+            max_lint_errors: 0
+            max_type_errors: 0
+        sync:
+            max_errors: 0
+            max_warnings: 10
+            require_clean_lsp: true
+        timeout_seconds: 3
+    principles:
+        simplicity:
+            max_parallel_tasks: 10
+    tdd_settings:
+        min_coverage_per_commit: 80
+        mutation_testing_enabled: false
+        red_green_refactor: true
+        test_first_required: true
+    test_coverage_target: 85
+    test_quality:
+        avoid_implementation_coupling: true
+        meaningful_assertions: true
+        mutation_testing_enabled: false
+        specification_based: true
+lsp_state_tracking:
+    capture_points:
+        - phase_start
+        - post_transformation
+        - pre_sync
+    comparison:
+        baseline: phase_start
+        regression_threshold: 0
+    enabled: true
+    logging:
+        include_lsp_in_reports: true
+        log_completion_markers: true
+        log_lsp_state_changes: true
+        log_regression_detection: true
+report_generation:
+    auto_create: false
+    enabled: true
+    user_choice: Minimal
+    warn_user: true

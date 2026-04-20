@@ -1,0 +1,132 @@
+/* MoAI-ADK Documentation - Global Styles */
+/* Nextra 5.0 includes its own Tailwind CSS - do not import again */
+
+/* Smooth scrolling */
+html {
+	scroll-behavior: smooth;
+}
+
+/* Font rendering optimization */
+body {
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #888;
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #555;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+	background: #555;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+	background: #888;
+}
+
+@media (min-width: 1024px) {
+	/* Reposition search to sidebar */
+	.nextra-search {
+		position: fixed !important;
+		left: 1rem !important;
+		top: 4.5rem !important;
+		width: calc(64px * 4 - 2rem) !important; /* Based on w-64 */
+		max-width: none !important;
+		z-index: 40 !important;
+		margin: 0 !important;
+	}
+
+	/* Adjust search input styling */
+	.nextra-search input {
+		width: 100% !important;
+	}
+
+	/* Add space at top of sidebar for search */
+	.nextra-sidebar {
+		padding-top: 3.5rem !important;
+	}
+}
+
+/* macOS Style Code Block - Nextra 4.x */
+pre:has(> code.nextra-code) {
+	position: relative !important;
+	border-radius: 8px !important;
+	padding-top: 40px !important;
+	margin: 1.5rem 0 !important;
+	background: #1e1e1e !important;
+}
+
+/* Title bar */
+pre:has(> code.nextra-code)::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 32px;
+	background: #1e1e1e;
+	border-radius: 8px 8px 0 0;
+	border-bottom: 1px solid #333;
+	z-index: 1;
+}
+
+/* macOS traffic light buttons */
+pre:has(> code.nextra-code)::after {
+	content: "";
+	position: absolute;
+	top: 10px;
+	left: 12px;
+	width: 52px;
+	height: 12px;
+	background:
+		radial-gradient(circle at 6px 6px, #ff5f56 5px, transparent 5.5px),
+		radial-gradient(circle at 26px 6px, #ffbd2e 5px, transparent 5.5px),
+		radial-gradient(circle at 46px 6px, #27c93f 5px, transparent 5.5px);
+	background-repeat: no-repeat;
+	z-index: 2;
+}
+
+/* Light mode */
+html:not(.dark) pre:has(> code.nextra-code) {
+	background: #fafafa !important;
+}
+
+html:not(.dark) pre:has(> code.nextra-code)::before {
+	background: #f0f0f0;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+html:not(.dark) pre:has(> code.nextra-code)::after {
+	background:
+		radial-gradient(circle at 6px 6px, #ff5f56 5px, transparent 5.5px),
+		radial-gradient(circle at 26px 6px, #ffbd2e 5px, transparent 5.5px),
+		radial-gradient(circle at 46px 6px, #27c93f 5px, transparent 5.5px);
+	background-repeat: no-repeat;
+}
+
+/* Table width - 100% width for all tables */
+table {
+	width: 100% !important;
+	table-layout: auto !important;
+}
+
+/* Ensure table containers don't restrict width */
+.nextra-content div > table {
+	width: 100% !important;
+}

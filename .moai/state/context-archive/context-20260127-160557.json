@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "saved_at": "2026-01-27T16:05:57.209931",
+  "trigger": "session_end",
+  "session_id": "",
+  "context": {
+    "current_spec": {},
+    "active_tasks": [],
+    "recent_files": [
+      ".claude/hooks/moai/lib/context_manager.py",
+      ".claude/hooks/moai/pre_compact__save_context.py",
+      ".claude/hooks/moai/session_start__show_project_info.py",
+      ".claude/rules/core/moai-constitution.md",
+      ".claude/rules/development/coding-standards.md",
+      ".claude/rules/development/skill-authoring.md",
+      ".claude/rules/languages/cpp.md",
+      ".claude/rules/languages/csharp.md",
+      ".claude/rules/languages/elixir.md",
+      ".claude/rules/languages/flutter.md"
+    ],
+    "key_decisions": [],
+    "current_branch": "main",
+    "uncommitted_changes": true
+  },
+  "conversation_summary": "40 uncommitted files"
+}

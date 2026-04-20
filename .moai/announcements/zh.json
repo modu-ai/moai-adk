@@ -1,0 +1,22 @@
+{
+  "companyAnnouncements": [
+    "🗿 MoAI-ADK: 20个专业代理 + 52个技能的SPEC优先DDD",
+    "⚡ /moai: 一站式 Plan→Run→Sync 自动化（智能路由）",
+    "🌳 moai worktree: 在隔离的工作树环境中并行SPEC开发",
+    "🤖 Expert Agents (9): backend, frontend, security, devops, debug, performance, refactoring, testing, chrome-extension",
+    "🤖 Manager Agents (7): git, spec, ddd, docs, quality, project, strategy",
+    "🤖 Builder Agents (4): agent, skill, command, plugin",
+    "🤖 Team Agents (8, 实验性): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
+    "📋 工作流程: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
+    "🚀 选项: --team (并行Agent Teams)、--ultrathink (Sequential Thinking MCP深度分析)、--loop (迭代自动修复)",
+    "✅ 质量: TRUST 5 + 85%+ 覆盖率 + Ralph Engine (LSP + AST-grep)",
+    "🔄 Git策略: 3-Mode (Manual/Personal/Team) + Smart Merge配置更新",
+    "📚 提示: moai update --templates-only 同步最新的skills和agents",
+    "📚 提示: moai worktree new SPEC-XXX 创建并行开发的worktree",
+    "⚙️ moai update -c: 模型可用性设置 (high/medium/low) - 按Claude计划等级配置模型",
+    "💡 混合模式: Plan使用Claude (Opus/Sonnet)，Run/Sync使用GLM-5节省成本",
+    "💡 并行开发: 终端1运行Claude，终端2+运行 'moai glm && claude' 并行执行",
+    "💎 GLM-5赞助商: z.ai合作伙伴关系 - 高性价比AI，同等性能",
+    "🏆 moai rank: 追踪Claude令牌使用量，在rank.mo.ai.kr排行榜上竞争"
+  ]
+}

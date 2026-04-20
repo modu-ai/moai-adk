@@ -1,0 +1,36 @@
+document_management:
+    block_root_pollution: true
+    directories:
+        cache:
+            auto_cleanup: true
+            base: .moai/cache/
+            retention_days: 30
+        docs:
+            base: .moai/docs/
+            retention_days: null
+        logs:
+            base: .moai/logs/
+            retention_days: 30
+        temp:
+            auto_cleanup: true
+            base: .moai/temp/
+            retention_days: 7
+    enabled: true
+    enforce_structure: true
+    separation_policy:
+        description: Clear separation between logs (runtime data) and docs (documentation content)
+        docs_scope: reports, analysis, validation, sync, inspection, documentation files
+        logs_scope: runtime sessions, errors, execution traces, agent transcripts
+        strict_separation: true
+github:
+    auto_delete_branches: true
+    enable_trust_5: true
+    spec_git_workflow: main_direct
+moai:
+    model_policy: high
+    template_version: 2.7.16
+    update_check_frequency: daily
+    version: 2.7.16
+    version_check:
+        cache_ttl_hours: 24
+        enabled: true

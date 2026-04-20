@@ -1,0 +1,37 @@
+# MoAI-ADK Documentation
+
+MoAI-ADK는 Claude Code를 위한 온라인 제작 인공지능 개발 도구 키트입니다.
+
+## 주요 기능
+
+- **완전 자율 자동화**: /moai 명령어로 SPEC 생성부터 구현, 문서화까지 자동화
+- **SPEC 기반 개발**: EARS 형식으로 요구사항을 명확화하고 DDD 방식으로 안전하게 구현
+- **TRUST 5 품질 시스템**: 85% 테스트 커버리지, 코드 리뷰, 보안 검증 자동화
+- **워크트리 지원**: 여러 기능을 병렬로 개발할 수 있는 격리된 환경 제공
+
+## 시작하기
+
+```bash
+# 설치
+npm install -g moai-adk
+
+# 문서 확인
+# https://adk.mo.ai.kr
+
+# Discord 커뮤니티
+# https://discord.gg/moai-adk
+```
+
+## 문서 구조
+
+- **Core Concepts**: 핵심 개념 (SPEC, DDD, TRUST 5)
+- **Workflow Commands**: 워크플로우 명령어 (/moai plan, /moai run, /moai sync)
+- **Utility Commands**: 유틸리티 명령어 (/moai fix, /moai loop)
+- **Claude Code**: Claude Code 가이드
+- **Advanced**: 고급 설정 (Hooks, Skills, Agents)
+
+## 라이선스
+
+MIT License
+- GitHub: https://github.com/modu-ai/moai-adk
+- Discord: https://discord.gg/moai-adk

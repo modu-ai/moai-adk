@@ -1,0 +1,22 @@
+{
+  "companyAnnouncements": [
+    "🗿 MoAI-ADK: 20個の専門エージェント + 52個のSkillsでSPEC-First DDD",
+    "⚡ /moai: ワンストップ Plan→Run→Sync 自動化（インテリジェントルーティング）",
+    "🌳 moai worktree: 隔離されたワークツリー環境で並列SPEC開発",
+    "🤖 Expert Agents (9): backend, frontend, security, devops, debug, performance, refactoring, testing, chrome-extension",
+    "🤖 Manager Agents (7): git, spec, ddd, docs, quality, project, strategy",
+    "🤖 Builder Agents (4): agent, skill, command, plugin",
+    "🤖 Team Agents (8, 実験的): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
+    "📋 ワークフロー: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
+    "🚀 オプション: --team (並列Agent Teams)、--ultrathink (Sequential Thinking MCPで深い分析)、--loop (反復自動修正)",
+    "✅ 品質: TRUST 5 + 85%+ カバレッジ + Ralph Engine (LSP + AST-grep)",
+    "🔄 Git戦略: 3-Mode (Manual/Personal/Team) + Smart Merge設定更新",
+    "📚 ヒント: moai update --templates-only で最新のskillsとagentsを同期",
+    "📚 ヒント: moai worktree new SPEC-XXX で並列開発用のworktreeを作成",
+    "⚙️ moai update -c: モデル可用性設定 (high/medium/low) - Claudeプラン別モデル構成",
+    "💡 ハイブリッドモード: PlanはClaude (Opus/Sonnet)、Run/SyncはGLM-5でコスト削減",
+    "💡 並列開発: ターミナル1はClaude、ターミナル2+は 'moai glm && claude' で並列実行",
+    "💎 GLM-5スポンサー: z.aiパートナーシップ - コスト効率の高いAIで同等のパフォーマンス",
+    "🏆 moai rank: Claudeトークン使用量を追跡し、rank.mo.ai.krリーダーボードで競争"
+  ]
+}

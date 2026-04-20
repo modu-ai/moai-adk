@@ -1,0 +1,16 @@
+# Template files with mustache/handlebars syntax
+**/*.template
+**/*.template.json
+**/templates/**
+**/templates/**/*
+
+# Generated files
+**/node_modules/**
+**/.next/**
+**/dist/**
+**/build/**
+**/.turbo/**
+
+# Cache directories
+**/.moai/cache/**
+**/.cache/**

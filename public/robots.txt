@@ -1,0 +1,15 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+User-agent: *
+Disallow: /api/
+Disallow: /_next/
+Disallow: /debug-pagemap/
+
+# Crawl-delay to be polite to the server
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://adk.mo.ai.kr/sitemap.xml

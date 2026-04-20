@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "saved_at": "2026-01-28T05:10:07.754554",
+  "trigger": "session_end",
+  "session_id": "",
+  "context": {
+    "current_spec": {},
+    "active_tasks": [],
+    "recent_files": [
+      ".moai/memory/context-archive/context-20260127-135458.json",
+      ".moai/memory/last-session-state.json",
+      "content/advanced/performance.mdx",
+      "content/claude-code/best-practices.mdx",
+      "content/claude-code/cli-reference.mdx",
+      "content/claude-code/common-workflows.mdx",
+      "content/claude-code/extensions.mdx",
+      "content/claude-code/how-it-works.mdx",
+      "content/claude-code/settings.mdx",
+      "content/core-concepts/agent-system.mdx"
+    ],
+    "key_decisions": [],
+    "current_branch": "main",
+    "uncommitted_changes": true
+  },
+  "conversation_summary": "30 uncommitted files"
+}

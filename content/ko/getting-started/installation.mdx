@@ -1,0 +1,423 @@
+import { Callout } from 'nextra/components'
+
+# 설치
+
+MoAI-ADK 2.x를 시스템에 설치하는 방법을 안내합니다.
+
+## 라이선스
+
+MoAI-ADK v2.9.0 이상은 **Apache-2.0 라이선스** 하에 배포됩니다.
+
+상업적 사용, 수정, 배포가 자유로우며, 소스 코드 공개 의무가 없습니다. 자세한 내용은 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)을 참조하세요.
+
+<Callout type="info">
+**참고**: MoAI-ADK 1.x (Python 버전)은 GPL-3.0 라이선스였습니다. v2.0.0부터 Go 언어로 재작성되며 Apache-2.0으로 변경되었습니다.
+</Callout>
+
+## 사전 요구사항
+
+설치 전 다음 항목을 확인하세요:
+
+### 1. Claude Code
+
+MoAI-ADK는 Claude Code 위에서 동작하는 확장 프레임워크입니다. 먼저 Claude Code가 설치되어 있어야 합니다.
+
+```bash
+claude --version
+```
+
+아직 설치하지 않았다면 [Claude Code 공식 문서](https://docs.anthropic.com/en/docs/claude-code)를 참조하세요.
+
+### 2. Git (필수)
+
+MoAI-ADK는 Git 기반 워크플로우를 사용합니다. 시스템에 Git이 설치되어 있어야 합니다.
+
+```bash
+git --version
+```
+
+<Callout type="warning">
+**Windows 사용자**: 반드시 **Git Bash** 또는 **WSL** 환경에서 사용하세요. Command Prompt (cmd.exe)는 지원하지 않습니다.
+
+Git이 설치되어 있지 않다면:
+- **Windows**: [git-scm.com](https://git-scm.com)에서 Git for Windows를 설치하세요. Git Bash가 함께 설치됩니다.
+- **macOS**: `xcode-select --install` 또는 [git-scm.com](https://git-scm.com)
+- **Linux**: `sudo apt install git` (Ubuntu/Debian) 또는 `sudo dnf install git` (Fedora)
+</Callout>
+
+### 시스템 요구사항
+
+| 항목 | 요구사항 |
+|------|---------|
+| **운영체제** | macOS, Linux, Windows (Git Bash / WSL) |
+| **아키텍처** | amd64, arm64 |
+| **메모리** | 최소 4GB RAM |
+| **디스크** | 최소 100MB 여유 공간 |
+
+## 설치 방법
+
+### 방법 1: 빠른 설치 (권장)
+
+하나의 명령어로 최신 버전을 자동 설치합니다.
+
+**macOS / Linux / WSL / Git Bash:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+```
+
+<Callout type="tip">
+설치 스크립트는 자동으로 플랫폼을 감지하고, GitHub에서 사전 빌드된 바이너리를 다운로드하며, SHA256 체크섬을 검증하고, PATH를 설정합니다. Python이나 별도의 런타임은 필요하지 않습니다.
+</Callout>
+
+설치가 완료되면 확인하세요:
+
+```bash
+moai version
+```
+
+#### 설치 옵션
+
+```bash
+# 특정 버전 설치
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version 2.9.0
+
+# 커스텀 디렉터리에 설치
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
+```
+
+### 방법 2: 소스에서 빌드
+
+Go 개발 환경이 있는 경우 소스에서 직접 빌드할 수 있습니다.
+
+```bash
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
+make build
+```
+
+빌드된 바이너리는 `./bin/moai`에 생성됩니다. PATH가 지정된 위치로 복사하세요:
+
+```bash
+cp ./bin/moai ~/.local/bin/
+```
+
+### 설치 위치
+
+설치 스크립트는 다음 순서로 설치 디렉터리를 결정합니다:
+
+| 플랫폼 | 우선순위 |
+|--------|---------|
+| **macOS / Linux** | `$GOBIN` → `$GOPATH/bin` → `~/.local/bin` |
+| **Windows** | `%LOCALAPPDATA%\Programs\moai` |
+
+## 1.x 사용자 마이그레이션
+
+<Callout type="error">
+**MoAI-ADK 1.x (Python 버전) 사용자는 반드시 먼저 기존 버전을 제거하세요.**
+
+1.x와 2.x는 동일한 `moai` 명령어를 사용하므로, 기존 버전이 남아있으면 충돌이 발생합니다.
+</Callout>
+
+### 1단계: 기존 1.x 제거
+
+```bash
+# uv로 설치한 경우
+uv tool uninstall moai-adk
+
+# pip로 설치한 경우
+pip uninstall moai-adk
+```
+
+### 2단계: 기존 설정 백업 (선택)
+
+```bash
+# 기존 설정을 백업하고 싶다면
+cp -r ~/.moai ~/.moai-v1-backup
+```
+
+### 3단계: 2.x 설치
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+### 4단계: 설치 확인
+
+```bash
+moai version
+# 출력 예시: moai v2.9.0 (commit: abc1234, built: 2026-04-01)
+```
+
+<Callout type="info">
+2.x는 단일 Go 바이너리로, Python 런타임이나 가상환경이 필요하지 않습니다. 시작 시간이 약 800ms에서 5ms로 크게 향상되었습니다.
+</Callout>
+
+## WSL 지원
+
+Windows 사용자를 위해 WSL (Windows Subsystem for Linux) 환경에서의 설치 및 사용 방법을 안내합니다.
+
+### WSL 설치
+
+WSL이 설치되어 있지 않다면, PowerShell (관리자 권한)에서 다음 명령어를 실행하세요:
+
+```powershell
+wsl --install
+```
+
+설치 후 Windows를 재시작하면 Ubuntu가 자동으로 설치됩니다.
+
+### WSL에서 MoAI-ADK 설치
+
+WSL 터미널에서 Linux와 동일한 명령어를 사용합니다:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+### 경로 처리
+
+WSL에서는 Windows 경로와 WSL 경로를 구분해야 합니다:
+
+| Windows 경로 | WSL 경로 |
+|-------------|----------|
+| `C:\Users\name\project` | `/mnt/c/Users/name/project` |
+| `D:\Projects\myapp` | `/mnt/d/Projects/myapp` |
+
+<Callout type="tip">
+**권장**: WSL의 Linux 파일시스템 (`~/projects/`)에 프로젝트를 생성하면 I/O 성능이 2-5배 향상됩니다. Windows 파일시스템 (`/mnt/c/`)에 접근하면 성능이 저하될 수 있습니다.
+</Callout>
+
+### WSL 모범 사례
+
+1. **Linux 파일시스템 사용**: 프로젝트는 `~/projects/` 디렉터리에 생성
+2. **Git 자격증명 설정**: Windows와 별도로 WSL에서 Git 자격증명 구성
+3. **터미널 권장**: Windows Terminal을 사용하여 여러 WSL 배포판 관리
+
+### WSL 문제 해결
+
+#### PATH가 로드되지 않음
+
+```bash
+# ~/.bashrc 또는 ~/.zshrc에 추가
+source ~/.cargo/env
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+#### 훅/MCP 서버 실행 권한 문제
+
+```bash
+# 실행 권한 부여
+chmod +x ~/.claude/hooks/moai/*.sh
+```
+
+#### Windows 경로 접근 속도 저하
+
+Linux 파일시스템으로 프로젝트를 이동하세요:
+
+```bash
+# Windows에서 WSL로 이동
+cp -r /mnt/c/Users/name/project ~/projects/
+cd ~/projects/project
+```
+
+## pip와 uv 도구 충돌
+
+MoAI-ADK 1.x (Python 버전) 사용자가 겪을 수 있는 일반적인 문제입니다.
+
+### 문제 설명
+
+pip와 uv는 서로 다른 위치에 패키지를 설치합니다. 두 도구를 혼용하면 `moai` 명령어가 예상치 못한 버전을 실행할 수 있습니다.
+
+### 증상
+
+- `moai version`을 실행했을 때 1.x 버전이 표시됨
+- `command not found: moai` 오류 발생
+- `which moai`와 다른 경로에서 실행됨
+
+### 원인
+
+1. pip는 시스템 Python 경로에 설치
+2. uv tool은 `~/.local/bin` 또는 `~/.cargo/bin`에 설치
+3. PATH 순서에 따라 다른 버전이 실행됨
+
+### 해결 방법
+
+#### 완전 제거 후 재설치
+
+```bash
+# 1. 모든 기존 버전 제거
+uv tool uninstall moai-adk 2>/dev/null || true
+pip uninstall moai-adk -y 2>/dev/null || true
+
+# 2. 남은 바이너리 확인 및 삭제
+which moai && rm $(which moai) 2>/dev/null || true
+ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
+
+# 3. 2.x 설치
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+
+# 4. 확인
+moai version
+```
+
+#### 쉘 설정 업데이트
+
+```bash
+# ~/.bashrc 또는 ~/.zshrc에 추가
+export PATH="$HOME/.local/bin:$PATH"
+
+# 설정 적용
+source ~/.bashrc  # 또는 source ~/.zshrc
+```
+
+### 예방 방법
+
+1. MoAI-ADK 2.x는 Python과 무관한 Go 바이너리입니다
+2. 1.x (Python 버전)를 제거한 후 2.x를 설치하세요
+3. pip와 uv tool을 동시에 사용하지 마세요
+
+## 설치 문제 해결
+
+### 문제: 명령어를 찾을 수 없음
+
+```bash
+command not found: moai
+```
+
+**해결 방법:**
+
+1. 터미널을 재시작하세요
+2. PATH 설정을 확인하세요:
+
+```bash
+echo $PATH
+```
+
+3. 바이너리가 설치된 위치를 확인하세요:
+
+```bash
+which moai || ls ~/.local/bin/moai
+```
+
+4. PATH에 수동으로 추가하세요:
+
+```bash
+# Bash/Zsh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 문제: 권한 거부
+
+```bash
+Permission denied
+```
+
+**해결 방법:**
+
+```bash
+chmod +x ~/.local/bin/moai
+```
+
+### 문제: 1.x와 2.x 충돌
+
+이전 버전의 `moai` 명령이 실행되는 경우:
+
+```bash
+# 어떤 moai가 실행되는지 확인
+which moai
+
+# 1.x가 남아있다면 제거
+uv tool uninstall moai-adk
+# 또는
+pip uninstall moai-adk
+
+# 터미널 재시작 후 2.x 확인
+moai version
+```
+
+## 설치 후 다음 단계
+
+설치가 완료되면 프로젝트를 초기화하세요:
+
+### 새 프로젝트 생성
+
+```bash
+moai init my-project
+```
+
+### 기존 프로젝트에 적용
+
+```bash
+cd my-existing-project
+moai init
+```
+
+## 업그레이드
+
+최신 버전으로 업그레이드하려면:
+
+```bash
+moai update
+```
+
+### 업데이트 옵션
+
+```bash
+# 버전 확인만 (업데이트 안 함)
+moai update --check
+
+# 템플릿 동기화만 (패키지 업그레이드 건너뜀)
+moai update --templates-only
+
+# 설정 편집 모드 (초기화 마법사 다시 실행)
+moai update --config
+moai update -c
+
+# 백업 없이 강제 업데이트
+moai update --force
+
+# 자동 승인 모드 (모든 확인 자동 승인)
+moai update --yes
+```
+
+### 병합 전략
+
+```bash
+# 자동 병합 강제 (기본값)
+moai update --merge
+
+# 수동 병합 강제
+moai update --manual
+```
+
+<Callout type="info">
+**자동 보존 항목**: 사용자 설정, 커스텀 에이전트, 커스텀 명령어, 커스텀 스킬, 커스텀 훅, SPEC 문서, 보고서는 업데이트 시 자동으로 보존됩니다.
+</Callout>
+
+자세한 내용은 [업데이트 가이드](https://adk.mo.ai.kr/getting-started/update)를 참조하세요.
+
+## 제거
+
+MoAI-ADK를 완전히 제거하려면 바이너리와 설정 디렉토리를 삭제하세요:
+
+```bash
+# 바이너리 삭제 (which moai 결과로 삭제)
+rm "$(which moai)"
+
+# 설정 디렉토리 삭제 (선택사항)
+rm -rf "$HOME/.moai"
+```
+
+---
+
+## 다음 단계
+
+[초기 설정 마법사](./init-wizard)에서 MoAI-ADK 구성 방법을 알아보세요.
