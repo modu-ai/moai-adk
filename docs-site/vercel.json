@@ -10,6 +10,12 @@
   "github": {
     "silent": true
   },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/i18n-detect"
+    }
+  ],
   "redirects": [
     {
       "source": "/:locale(ko|en|ja|zh)/moai-rank/:path*",
