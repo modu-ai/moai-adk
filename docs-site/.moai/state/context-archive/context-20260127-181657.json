@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "saved_at": "2026-01-27T18:16:57.096168",
+  "trigger": "session_end",
+  "session_id": "",
+  "context": {
+    "current_spec": {},
+    "active_tasks": [],
+    "recent_files": [
+      ".moai/memory/last-session-state.json",
+      "content/core-concepts/what-is-moai-adk.mdx",
+      "next.config.mjs",
+      "package-lock.json",
+      "package.json",
+      ".moai/memory/context-snapshot.json"
+    ],
+    "key_decisions": [],
+    "current_branch": "main",
+    "uncommitted_changes": true
+  },
+  "conversation_summary": "6 uncommitted files"
+}

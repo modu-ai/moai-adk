@@ -1,0 +1,25 @@
+{
+  "index": {
+    "title": "🗿 MoAI-ADK: AI 기반 SPEC-First DDD 개발 프레임워크"
+  },
+  "getting-started": {
+    "title": "1단계: Claude Code 기초",
+    "display": "children"
+  },
+  "prompt-engineering": {
+    "title": "2단계: 프롬프트 엔지니어링",
+    "display": "children"
+  },
+  "context-engineering": {
+    "title": "3단계: 컨텍스트 엔지니어링",
+    "display": "children"
+  },
+  "agentic-ai": {
+    "title": "4단계: Agentic AI와 Agents",
+    "display": "children"
+  },
+  "moai-adk": {
+    "title": "5단계: MoAI-ADK 통합",
+    "display": "children"
+  }
+}

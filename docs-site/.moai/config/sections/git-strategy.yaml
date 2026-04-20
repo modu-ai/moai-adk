@@ -1,0 +1,74 @@
+git_strategy:
+    github_username: ""
+    gitlab:
+        instance_url: ""
+    manual:
+        auto_checkpoint: disabled
+        automation:
+            auto_branch: false
+            auto_commit: true
+            auto_pr: false
+            auto_push: false
+        branch_creation:
+            auto_enabled: false
+            prompt_always: true
+        commit_style:
+            format: conventional
+            scope_required: false
+        environment: local
+        github_integration: false
+        hooks:
+            commit_msg: warn
+            pre_commit: enforce
+            pre_push: warn
+        push_to_remote: false
+        workflow: github-flow
+    mode: manual
+    personal:
+        automation:
+            auto_branch: false
+            auto_commit: true
+            auto_pr: false
+            auto_push: false
+        branch_creation:
+            auto_enabled: false
+            prompt_always: true
+        branch_prefix: feature/SPEC-
+        commit_style:
+            format: conventional
+            scope_required: false
+        environment: github
+        github_integration: true
+        hooks:
+            commit_msg: warn
+            pre_commit: enforce
+            pre_push: warn
+        main_branch: main
+        push_to_remote: true
+        workflow: github-flow
+    provider: github
+    team:
+        automation:
+            auto_branch: true
+            auto_commit: true
+            auto_pr: true
+            auto_push: true
+        branch_creation:
+            auto_enabled: true
+            prompt_always: false
+        branch_prefix: feature/SPEC-
+        branch_protection: true
+        commit_style:
+            format: conventional
+            scope_required: true
+        draft_pr: true
+        environment: github
+        github_integration: true
+        hooks:
+            commit_msg: warn
+            pre_commit: enforce
+            pre_push: warn
+        main_branch: main
+        push_to_remote: true
+        required_reviews: 1
+        workflow: github-flow

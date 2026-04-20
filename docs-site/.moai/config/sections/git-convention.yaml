@@ -1,0 +1,6 @@
+git_convention:
+    auto_detect: true
+    convention: auto
+    enforce_on_push: false
+    max_length: 72
+    sample_size: 100

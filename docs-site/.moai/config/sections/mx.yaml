@@ -1,0 +1,272 @@
+mx:
+    auto_tag: true
+    comment_syntax:
+        '#':
+            - python
+            - ruby
+            - r
+            - elixir
+        --:
+            - haskell
+        //:
+            - go
+            - java
+            - kotlin
+            - scala
+            - rust
+            - swift
+            - typescript
+            - javascript
+            - cpp
+            - csharp
+            - dart
+    discovery:
+        enabled: true
+        load_project_docs: true
+        project_doc_paths:
+            - .moai/project/tech.md
+            - .moai/project/structure.md
+            - .moai/project/product.md
+            - README.md
+    exclude:
+        - '**/*_generated.*'
+        - '**/vendor/**'
+        - '**/node_modules/**'
+        - '**/dist/**'
+        - '**/build/**'
+        - '**/target/**'
+        - '**/.git/**'
+        - '**/bin/**'
+        - '**/obj/**'
+        - '**/DerivedData/**'
+        - '**/_build/**'
+        - '**/deps/**'
+    languages:
+        cpp:
+            enabled: auto
+            exclude:
+                - '**/build/**'
+                - '**/vendor/**'
+            patterns:
+                - '*.cpp'
+                - '*.cc'
+                - '*.cxx'
+                - '*.h'
+                - '*.hpp'
+            warn_patterns:
+                - description: Thread usage requires concurrency caution
+                  pattern: std::thread
+                - description: Raw pointer usage requires memory management caution
+                  pattern: 'new '
+        csharp:
+            enabled: auto
+            exclude:
+                - '**/bin/**'
+                - '**/obj/**'
+                - '**/Properties/**'
+            patterns:
+                - '*.cs'
+            warn_patterns:
+                - description: Task usage requires proper await handling
+                  pattern: Task.Run
+                - description: Direct thread usage should be avoided
+                  pattern: Thread.
+        elixir:
+            enabled: auto
+            exclude:
+                - '**/_build/**'
+                - '**/deps/**'
+            patterns:
+                - '*.ex'
+                - '*.exs'
+            warn_patterns:
+                - description: Async task requires proper error handling
+                  pattern: Task.async
+                - description: Process spawn requires proper supervision
+                  pattern: spawn
+        flutter:
+            enabled: auto
+            exclude:
+                - '**/.dart_tool/**'
+                - '**/build/**'
+            patterns:
+                - '*.dart'
+            warn_patterns:
+                - description: Isolate usage requires proper management
+                  pattern: Isolate.
+                - description: Future usage requires proper error handling
+                  pattern: Future.
+        go:
+            enabled: auto
+            exclude:
+                - '*_generated.go'
+                - vendor/**
+                - '**/mock_*.go'
+            patterns:
+                - '*.go'
+            warn_patterns:
+                - description: Goroutine executes without context.Context
+                  pattern: go func
+                - description: Goroutine lifecycle risk
+                  pattern: 'go '
+        java:
+            enabled: auto
+            exclude:
+                - '**/target/**'
+                - '**/build/**'
+            patterns:
+                - '*.java'
+            warn_patterns:
+                - description: Thread creation requires concurrency caution
+                  pattern: new Thread
+                - description: Executor usage requires proper management
+                  pattern: Executor
+        javascript:
+            enabled: auto
+            exclude:
+                - '**/node_modules/**'
+                - '**/dist/**'
+            patterns:
+                - '*.js'
+                - '*.jsx'
+            warn_patterns:
+                - description: Parallel Promise may require error handling
+                  pattern: Promise.all
+                - description: Async function may require try/catch
+                  pattern: 'async '
+        kotlin:
+            enabled: auto
+            exclude:
+                - '**/build/**'
+            patterns:
+                - '*.kt'
+                - '*.kts'
+            warn_patterns:
+                - description: Global coroutine scope should be avoided
+                  pattern: GlobalScope
+                - description: Blocking call can be dangerous in coroutines
+                  pattern: runBlocking
+        php:
+            enabled: auto
+            exclude:
+                - '**/vendor/**'
+            patterns:
+                - '*.php'
+            warn_patterns:
+                - description: Async call requires proper error handling
+                  pattern: 'async '
+        python:
+            enabled: auto
+            exclude:
+                - '**/__pycache__/**'
+                - '**/venv/**'
+                - '**/site-packages/**'
+            patterns:
+                - '*.py'
+            warn_patterns:
+                - description: Async function may require error handling
+                  pattern: async def
+                - description: Thread usage requires concurrency caution
+                  pattern: threading
+        r:
+            enabled: auto
+            exclude:
+                - '**/Rplots/**'
+            patterns:
+                - '*.R'
+                - '*.r'
+            warn_patterns:
+                - description: Parallel processing requires proper error handling
+                  pattern: 'parallel::'
+        ruby:
+            enabled: auto
+            exclude:
+                - '**/vendor/**'
+            patterns:
+                - '*.rb'
+            warn_patterns:
+                - description: Thread creation requires concurrency caution
+                  pattern: Thread.new
+        rust:
+            enabled: auto
+            exclude:
+                - '**/target/**'
+            patterns:
+                - '*.rs'
+            warn_patterns:
+                - description: Async function may require error handling
+                  pattern: async fn
+                - description: Unsafe code block detected
+                  pattern: 'unsafe '
+        scala:
+            enabled: auto
+            exclude:
+                - '**/target/**'
+            patterns:
+                - '*.scala'
+            warn_patterns:
+                - description: Future usage requires proper error handling
+                  pattern: Future.
+                - description: Thread creation requires concurrency caution
+                  pattern: new Thread
+        swift:
+            enabled: auto
+            exclude:
+                - '**/DerivedData/**'
+                - '**/build/**'
+            patterns:
+                - '*.swift'
+            warn_patterns:
+                - description: Task usage requires proper error handling
+                  pattern: Task.
+                - description: DispatchQueue usage requires concurrency caution
+                  pattern: DispatchQueue
+        typescript:
+            enabled: auto
+            exclude:
+                - '**/node_modules/**'
+                - '**/*.d.ts'
+                - '**/dist/**'
+            patterns:
+                - '*.ts'
+                - '*.tsx'
+            warn_patterns:
+                - description: Parallel Promise may require error handling
+                  pattern: Promise.all
+                - description: Async function may require try/catch
+                  pattern: 'async '
+    limits:
+        anchor_per_file: 3
+        note_per_file: 10
+        todo_per_file: 5
+        warn_per_file: 5
+    priorities:
+        p1_weight: 100
+        p2_weight: 50
+        p3_weight: 10
+        p4_weight: 1
+    reporting:
+        include_file_list: true
+        include_language_breakdown: true
+        include_priority_breakdown: true
+        show_attention_required: true
+    require_reason_for:
+        - ANCHOR
+        - WARN
+    scanning:
+        auto_commit: true
+        batch_size: 50
+        commit_message_template: 'chore(mx): batch {N}/{M} - add MX tags to {lang} files'
+        max_consecutive_failures: 3
+        progress_file: .moai/cache/mx-scan-progress.json
+        resume_enabled: true
+    tag_generation:
+        add_auto_prefix: true
+        respect_code_comments: true
+        validate_existing: true
+    thresholds:
+        branch_warn: 8
+        complexity_warn: 15
+        fan_in_anchor: 3
+        line_count_warn: 500
+    version: "2.1"

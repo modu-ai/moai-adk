@@ -1,0 +1,234 @@
+---
+name: moai-workflow-loop
+description: >
+  Iterative autonomous fixing workflow that scans, fixes, verifies, and
+  repeats until all issues are resolved or max iterations reached.
+  Includes memory pressure detection and snapshot-based resume.
+  Use when iterative error resolution or continuous fixing is needed.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-21"
+  tags: "loop, iterative, auto-fix, diagnostics, testing, coverage"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["loop", "iterate", "repeat", "until done", "keep fixing", "all errors"]
+  agents: ["expert-debug", "expert-backend", "expert-frontend", "expert-testing"]
+  phases: ["loop"]
+---
+
+# Workflow: Loop - Iterative Autonomous Fixing
+
+Purpose: Iterative autonomous fixing until all issues resolved. AI scans, fixes, verifies, and repeats until completion conditions met or max iterations reached.
+
+Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
+
+## Supported Flags
+
+- --max N (alias --max-iterations): Maximum iteration count (default 100)
+- --auto-fix: Enable auto-fix (default Level 1)
+- --sequential (alias --seq): Sequential diagnostics instead of parallel
+- --errors (alias --errors-only): Fix errors only, skip warnings
+- --coverage (alias --include-coverage): Include coverage threshold (default 85%)
+- --memory-check: Enable memory pressure detection
+- --resume ID (alias --resume-from): Restore from snapshot
+
+## Per-Iteration Cycle
+
+Each iteration executes the following steps in order:
+
+Step 1 - Completion Check:
+- Check for completion marker in previous iteration response
+- Marker types: `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`
+- If marker found: Exit loop with success
+
+Step 2 - Memory Pressure Check (if --memory-check enabled):
+- Calculate session duration from start time
+- Monitor iteration time for GC pressure signs (doubling iteration time)
+- If session duration exceeds 25 minutes OR iteration time doubling:
+  - Save proactive checkpoint to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/memory-pressure.json
+  - Warn user about memory pressure
+  - Suggest resuming with /moai:loop --resume memory-pressure
+- If memory-safe limit reached (50 iterations): Exit with checkpoint
+
+Step 3 - Parallel Diagnostics:
+- Launch four diagnostic tools simultaneously using Bash with run_in_background
+- Tool 1: LSP diagnostics for detected language
+- Tool 2: AST-grep scan with sgconfig.yml rules
+- Tool 3: Test runner for detected language (pytest, jest, go test, cargo test)
+- Tool 4: Coverage measurement (coverage.py, c8, go test -cover, cargo tarpaulin)
+- Collect results using TaskOutput for each background task
+- Aggregate into unified diagnostic report with metrics: error count, warning count, test pass rate, coverage percentage
+
+If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequentially.
+
+Step 4 - Completion Condition Check:
+- Conditions: Zero errors AND all tests passing AND coverage meets threshold
+- If all conditions met: Prompt user to add completion marker or continue
+- If only coverage below target (zero errors + tests passing): Auto-route to coverage workflow (workflows/coverage.md) for intelligent gap analysis and test generation instead of blind looping. Coverage workflow identifies P1-P4 priority gaps and generates targeted tests.
+
+Step 5 - Task Generation:
+- [HARD] TaskCreate for all newly discovered issues with pending status
+
+Step 5.5 - Pre-Fix MX Context Scan:
+- Scan files with newly discovered issues for existing @MX tags
+- @MX:ANCHOR functions: Pass as "do not break" constraints to fix agents
+- @MX:WARN zones: Pass danger context; ensure fix does not worsen the warned condition
+- @MX:NOTE context: Provide business logic understanding before modification
+- @MX:TODO items: Match against current issues for resolution tracking
+- Output: MX context map included in Step 6 fix agent prompts
+- Skip if no @MX tags found in target files
+- See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
+
+Step 6 - Fix Execution:
+- [HARD] Before each fix: TaskUpdate to change item to in_progress
+- [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
+
+Agent selection by issue type:
+- Type errors, logic bugs: expert-debug subagent
+- Import/module issues: expert-backend or expert-frontend subagent
+- Test failures: expert-testing subagent
+- Security issues: expert-security subagent
+- Performance issues: expert-performance subagent
+
+Fix levels applied per --auto setting:
+- Level 1 (Immediate): No approval. Import sorting, whitespace
+- Level 2 (Safe): Log only. Rename variable, add type
+- Level 3 (Approval): AskUserQuestion required. Logic change, API modify
+- Level 4 (Manual): Not auto-fixed. Security, architecture
+
+Step 7 - Verification:
+- [HARD] After each fix: TaskUpdate to change item to completed
+
+Step 7.5 - MX Tag Check:
+- After fixes applied, scan modified files for MX tag requirements
+- Add missing tags for modified functions:
+  - New exported functions: Add @MX:NOTE or @MX:ANCHOR if fan_in >= 3
+  - Dangerous patterns introduced: Add @MX:WARN with @MX:REASON
+  - Unresolved issues: Keep @MX:TODO
+- Remove resolved @MX:TODO tags for fixed issues
+- Generate MX_TAG_REPORT with tags added/removed/updated
+- See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules
+
+Step 8 - Snapshot Save:
+- Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
+- Increment iteration counter
+
+Step 9 - Repeat or Exit:
+- If max iterations reached: Display remaining issues and options
+- Otherwise: Return to Step 1
+
+## Completion Conditions
+
+The loop exits when any of these conditions are met:
+- Completion marker detected in response
+- All conditions met: zero errors + tests passing + coverage threshold
+- Max iterations reached (displays remaining issues)
+- Memory pressure threshold exceeded (saves checkpoint)
+- User interruption (state auto-saved)
+
+Pre-exit clean sweep (when exiting with success):
+- Before final report, run clean workflow (workflows/clean.md) scan on all modified files
+- Remove dead code exposed by fixes (unused imports, orphaned functions)
+- Skip if no dead code detected or if --errors flag was set
+
+## MX Tag Integration
+
+Each iteration includes MX tag management:
+
+**Tag Updates During Loop:**
+- Fix resolves an issue: Remove corresponding @MX:TODO
+- Fix introduces new code: Add appropriate @MX tags
+- Fix changes function signature: Re-evaluate @MX:ANCHOR
+- Fix adds complexity: Add @MX:WARN if threshold exceeded
+
+**Tag Types for Fixes:**
+| Fix Type | MX Action |
+|----------|-----------|
+| Bug fix (resolved) | Remove @MX:TODO |
+| New function added | Add @MX:NOTE or @MX:ANCHOR |
+| Refactoring | Update @MX:NOTE, check ANCHOR |
+| Security fix | Add @MX:NOTE with security context |
+
+**MX Tag Report:**
+After each iteration, include MX_TAG_REPORT section:
+- Tags Added: List new tags with file:line
+- Tags Removed: List resolved TODOs
+- Tags Updated: List modified tags
+- Attention Required: WARN tags requiring review
+
+## Snapshot Management
+
+Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
+
+Files:
+- iteration-001.json, iteration-002.json, etc. (per-iteration snapshots)
+- latest.json (symlink to most recent)
+- memory-pressure.json (proactive checkpoint on memory pressure)
+
+Loop state file: $CLAUDE_PROJECT_DIR/.moai/cache/.moai_loop_state.json
+
+Resume commands:
+- /moai:loop --resume latest
+- /moai:loop --resume iteration-002
+- /moai:loop --resume memory-pressure
+
+## Language-Specific Commands
+
+Test runner and coverage tool selection is based on auto-detected project language:
+
+| Language | Indicator File | Test Command | Coverage Command |
+|----------|---------------|--------------|--------------------|
+| Go | go.mod | `go test ./...` | `go test -cover ./...` |
+| Python | pyproject.toml / setup.py | `pytest --tb=short` | `coverage run -m pytest` |
+| TypeScript/JavaScript | package.json | `npm test` or `jest` | `npm run coverage` or `c8` |
+| Rust | Cargo.toml | `cargo test` | `cargo tarpaulin` |
+| Java (Maven) | pom.xml | `mvn test -q` | `mvn jacoco:report` |
+| Java (Gradle) | build.gradle | `gradle test -q` | `gradle jacocoTestReport` |
+| Kotlin | build.gradle.kts | `gradle test -q` | `gradle jacocoTestReport` |
+| C# | *.csproj | `dotnet test` | `dotnet test --collect:"XPlat Code Coverage"` |
+| Ruby | Gemfile | `bundle exec rspec` or `bundle exec rake test` | `simplecov` (via .simplecov config) |
+| PHP | composer.json | `vendor/bin/phpunit` | `vendor/bin/phpunit --coverage-text` |
+| Scala | build.sbt | `sbt test` | `sbt coverage test coverageReport` |
+| Elixir | mix.exs | `mix test` | `mix test --cover` |
+| Swift | Package.swift | `swift test` | `swift test --enable-code-coverage` |
+| Flutter/Dart | pubspec.yaml | `flutter test` or `dart test` | `flutter test --coverage` |
+| R | DESCRIPTION | `Rscript -e 'testthat::test_package(".")'` | `covr::package_coverage()` |
+| C++ | CMakeLists.txt | `ctest --test-dir build` | `gcov`/`lcov` (if configured) |
+
+Language detection priority: Check for indicator files in project root. If multiple present, prefer the one with the most associated source files. If detection fails, prompt user to specify language.
+
+## Cancellation
+
+Send any message to interrupt the loop. State is automatically saved via session_end hook.
+
+## Safe Development Protocol
+
+All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
+- Reproduction-first: Write failing tests before fixing bugs
+- Post-fix review: List potential side effects after each fix cycle
+- Maximum 3 retries per individual operation (per CLAUDE.md constitution)
+
+## Execution Summary
+
+1. Parse arguments (extract flags: --max, --auto-fix, --sequential, --errors, --coverage, --memory-check, --resume)
+2. If --resume: Load state from specified snapshot and continue
+3. Detect project language from indicator files
+4. Initialize iteration counter and memory tracking (start time)
+5. Loop: Execute per-iteration cycle (Steps 1-9, including Step 5.5 MX Context Scan)
+6. On exit: Report final summary with evidence
+7. If memory checkpoint created: Display resume instructions
+
+---
+
+Version: 2.2.0
+Updated: 2026-03-02. Expanded Language-Specific Commands to 16 languages with test runner, coverage tool, and indicator file for each.
