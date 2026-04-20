@@ -3,7 +3,6 @@ title: MCP 서버 활용 가이드
 weight: 90
 draft: false
 ---
-# MCP 서버 활용 가이드
 
 Claude Code의 MCP (Model Context Protocol) 서버를 활용하는 방법을 상세히 안내합니다.
 

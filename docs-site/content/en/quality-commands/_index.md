@@ -1,9 +1,8 @@
 ---
 title: Quality Commands
-weight: 10
+weight: 50
 draft: false
 ---
-# Quality Commands
 
 Introduction to MoAI-ADK's code quality management commands.
 

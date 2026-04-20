@@ -3,7 +3,6 @@ title: /moai e2e
 weight: 40
 draft: false
 ---
-# /moai e2e
 
 A command that creates and runs **E2E (End-to-End) tests** using browser automation tools.
 

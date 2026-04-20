@@ -3,7 +3,6 @@ title: MCP Servers Guide
 weight: 80
 draft: false
 ---
-# MCP Servers Guide
 
 Detailed guide to leveraging Claude Code's MCP (Model Context Protocol) servers.
 

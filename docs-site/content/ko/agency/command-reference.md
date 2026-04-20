@@ -3,7 +3,6 @@ title: 커맨드 레퍼런스
 weight: 70
 draft: false
 ---
-# 커맨드 레퍼런스
 
 AI Agency의 모든 커맨드를 상세히 설명합니다.
 

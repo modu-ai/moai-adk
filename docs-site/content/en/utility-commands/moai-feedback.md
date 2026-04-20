@@ -3,7 +3,6 @@ title: /moai feedback
 weight: 80
 draft: false
 ---
-# /moai feedback
 
 Command to submit feedback or bug reports for MoAI-ADK.
 

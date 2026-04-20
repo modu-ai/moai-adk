@@ -3,7 +3,6 @@ title: /moai project
 weight: 20
 draft: false
 ---
-# /moai project
 
 Analyzes your project's codebase to automatically generate foundational documents that AI needs to understand your project.
 

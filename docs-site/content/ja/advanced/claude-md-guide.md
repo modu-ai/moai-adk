@@ -3,7 +3,6 @@ title: CLAUDE.md ガイド
 weight: 70
 draft: false
 ---
-# CLAUDE.md ガイド
 
 Claude Code のコアガイドファイル体系を詳細に解説します。
 

@@ -3,7 +3,6 @@ title: Agent Guide
 weight: 30
 draft: false
 ---
-# Agent Guide
 
 Detailed guide to MoAI-ADK's agent system.
 

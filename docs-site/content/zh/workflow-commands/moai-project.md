@@ -3,7 +3,6 @@ title: /moai project
 weight: 20
 draft: false
 ---
-# /moai project
 
 分析项目的代码库，自动生成 AI 理解项目所需的基础文档。
 

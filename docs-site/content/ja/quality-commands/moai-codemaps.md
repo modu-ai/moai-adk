@@ -3,7 +3,6 @@ title: /moai codemaps
 weight: 50
 draft: false
 ---
-# /moai codemaps
 
 コードベースをスキャンして **アーキテクチャドキュメント** を自動生成するコマンドです。
 

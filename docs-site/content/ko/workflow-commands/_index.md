@@ -1,9 +1,8 @@
 ---
 title: 워크플로우 명령어
-weight: 10
+weight: 30
 draft: false
 ---
-# 워크플로우 명령어
 
 MoAI-ADK의 4가지 워크플로우 명령어로 체계적인 개발 사이클을 완성하세요.
 

@@ -3,7 +3,6 @@ title: /moai sync
 weight: 50
 draft: false
 ---
-# /moai sync
 
 同步已完成实现的代码的文档，并通过 Git 自动化准备部署。
 

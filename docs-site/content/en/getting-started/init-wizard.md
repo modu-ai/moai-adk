@@ -3,7 +3,6 @@ title: Initial Setup
 weight: 40
 draft: false
 ---
-# Initial Setup
 
 Complete your first setup using MoAI-ADK's interactive setup wizard. Configure your system for development in 9 steps.
 

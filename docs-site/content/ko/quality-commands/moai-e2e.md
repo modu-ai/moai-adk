@@ -3,7 +3,6 @@ title: /moai e2e
 weight: 40
 draft: false
 ---
-# /moai e2e
 
 브라우저 자동화 도구를 사용하여 **E2E (End-to-End) 테스트**를 생성하고 실행하는 명령어입니다.
 

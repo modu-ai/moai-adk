@@ -1,0 +1,78 @@
+{{- $navWidth := "hx:max-w-[90rem]" -}}
+{{- with .Site.Params.navbar.width -}}
+  {{ if eq . "normal" -}}
+    {{ $navWidth = "hx:max-w-screen-xl" -}}
+  {{ else if eq . "full" -}}
+    {{ $navWidth = "max-w-full" -}}
+  {{ end -}}
+{{- end -}}
+
+{{- $page := . -}}
+{{- $iconHeight := 24 -}}
+
+<div class="hextra-nav-container hx:sticky hx:top-0 hx:z-20 hx:w-full hx:bg-transparent hx:print:hidden">
+  <div
+    class="hextra-nav-container-blur hx:pointer-events-none hx:absolute hx:z-[-1] hx:h-full hx:w-full hx:bg-white hx:dark:bg-dark hx:shadow-[0_2px_4px_rgba(0,0,0,.02),0_1px_0_rgba(0,0,0,.06)] hx:contrast-more:shadow-[0_0_0_1px_#000] hx:dark:shadow-[0_-1px_0_rgba(255,255,255,.1)_inset] hx:contrast-more:dark:shadow-[0_0_0_1px_#fff]"
+  ></div>
+
+  <nav class="hextra-max-navbar-width hx:mx-auto hx:flex hx:items-center hx:justify-end hx:gap-2 hx:h-16 hx:px-6">
+    {{ partial "navbar-title.html" . }}
+
+    {{- $currentPage := . -}}
+    {{- range .Site.Menus.main -}}
+      {{- if eq .Params.type "search" -}}
+        {{- partial "search.html" (dict "params" .Params "location" "navbar") -}}
+      {{- else -}}
+        {{- $link := .URL -}}
+        {{- $external := strings.HasPrefix $link "http" -}}
+        {{- with .PageRef -}}
+          {{- if hasPrefix . "/" -}}
+            {{- $link = relLangURL (strings.TrimPrefix "/" .) -}}
+          {{- end -}}
+        {{- end -}}
+
+        {{- if eq .Params.type "link" -}}
+          {{- partial "navbar-link.html" (dict "currentPage" $currentPage "link" $link "external" $external "item" . "icon" .Params.icon) -}}
+        {{- else if eq .Params.type "theme-toggle" -}}
+          {{- partial "theme-toggle.html" (dict "iconHeight" $iconHeight "hideLabel" (not .Params.label) "iconHeight" $iconHeight "location" "top" "class" "hx:p-2") -}}
+        {{- else if eq .Params.type "language-switch" -}}
+          {{- partial "language-switch" (dict "context" $page "grow" false "hideLabel" (not .Params.label) "iconName" (.Params.icon | default "translate") "iconHeight" $iconHeight "location" "top" "class" "hx:p-2") -}}
+        {{- else if eq .Params.icon "github-stars" -}}
+          {{- /* MoAI custom: shields.io social style — GitHub star button with count */ -}}
+          {{- $rel := "noreferrer" }}
+          <a
+            class="hx:p-2 hx:text-current hx:flex hx:items-center"
+            target="_blank"
+            rel="{{ $rel }}"
+            href="{{ $link }}"
+            title="{{ or (T .Identifier) .Name | safeHTML }}"
+          >
+            <img
+              src="https://img.shields.io/github/stars/modu-ai/moai-adk?style=social&label=Star"
+              alt="GitHub stars on modu-ai/moai-adk"
+              height="20"
+              class="hx:inline-block hx:max-h-5"
+              loading="lazy"
+            />
+            <span class="hx:sr-only">{{ or (T .Identifier) .Name | safeHTML }}</span>
+          </a>
+        {{- else if .Params.icon -}}
+          {{- /* Display icon menu item */ -}}
+          {{- if not $link -}}{{ warnf "Icon menu item '%s' has no URL" .Name }}{{- end -}}
+          {{- $rel := cond (eq .Params.icon "mastodon") "noreferrer me" "noreferrer" }}
+          <a class="hx:p-2 hx:text-current" {{ if $external }}target="_blank" rel="{{ $rel }}"{{ end }} href="{{ $link }}" title="{{ or (T .Identifier) .Name | safeHTML }}">
+            {{- partial "utils/icon.html" (dict "name" .Params.icon "attributes" (printf "height=%d" $iconHeight)) -}}
+            <span class="hx:sr-only">{{ or (T .Identifier) .Name | safeHTML }}</span>
+          </a>
+        {{- else -}}
+          {{- partial "navbar-link.html" (dict "currentPage" $currentPage "link" $link "external" $external "item" .) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+
+
+    <button type="button" aria-label="{{ (T "menu") | default "Menu" }}" aria-expanded="false" class="hextra-hamburger-menu hx:cursor-pointer hx:-mr-2 hx:rounded-sm hx:p-2 hx:active:bg-gray-400/20 hx:md:hidden hx:hextra-focus-visible-inset">
+      {{- partial "utils/icon.html" (dict "name" "hamburger-menu" "attributes" (printf "height=%d" $iconHeight)) -}}
+    </button>
+  </nav>
+</div>

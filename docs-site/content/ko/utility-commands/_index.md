@@ -1,9 +1,8 @@
 ---
 title: 유틸리티 명령어
-weight: 10
+weight: 40
 draft: false
 ---
-# 유틸리티 명령어
 
 MoAI-ADK의 자동화 및 피드백 명령어를 소개합니다.
 

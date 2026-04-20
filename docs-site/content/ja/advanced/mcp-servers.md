@@ -3,7 +3,6 @@ title: MCPサーバー活用ガイド
 weight: 80
 draft: false
 ---
-# MCPサーバー活用ガイド
 
 Claude CodeのMCP (Model Context Protocol) サーバーの活用方法を詳しく解説します。
 

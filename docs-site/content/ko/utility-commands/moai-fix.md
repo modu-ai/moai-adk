@@ -3,7 +3,6 @@ title: /moai fix
 weight: 50
 draft: false
 ---
-# /moai fix
 
 일회성 자동 수정 명령어입니다. 코드의 오류를 **병렬로 스캔**한 후 **한 번에 수정**합니다.
 

@@ -3,7 +3,6 @@ title: Pencil 指南
 weight: 90
 draft: false
 ---
-# Pencil 指南
 
 Pencil MCP 服务器用于基于 AI 的 UI/UX 设计生成的综合指南。
 

@@ -3,7 +3,6 @@ title: Skill Guide
 weight: 20
 draft: false
 ---
-# Skill Guide
 
 Detailed guide to MoAI-ADK's skill system.
 

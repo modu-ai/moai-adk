@@ -3,7 +3,6 @@ title: Hooks 이벤트 레퍼런스
 weight: 60
 draft: false
 ---
-# Hooks 이벤트 레퍼런스
 
 MoAI-ADK v2.10.1 기준, Claude Code의 훅 시스템은 **27개 이벤트 타입**, **4가지 훅 타입**, **이벤트별 매처**, **스마트 동작**을 지원합니다.
 

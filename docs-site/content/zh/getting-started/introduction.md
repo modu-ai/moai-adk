@@ -3,7 +3,6 @@ title: 简介
 weight: 20
 draft: false
 ---
-# 简介
 
 MoAI-ADK 是一个基于 AI 的开发环境,是高效生成高质量代码的综合工具包。
 

@@ -3,7 +3,6 @@ title: /moai
 weight: 20
 draft: false
 ---
-# /moai
 
 完全自主自动化命令。当您提供目标时，MoAI 自主执行 **plan → run → sync** 流水线。
 

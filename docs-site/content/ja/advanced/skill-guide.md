@@ -3,7 +3,6 @@ title: スキルガイド
 weight: 20
 draft: false
 ---
-# スキルガイド
 
 MoAI-ADKのスキルシステムを詳しく解説します。
 

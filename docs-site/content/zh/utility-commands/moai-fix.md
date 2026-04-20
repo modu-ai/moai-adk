@@ -3,7 +3,6 @@ title: /moai fix
 weight: 50
 draft: false
 ---
-# /moai fix
 
 一键自动修复命令。**并行扫描**代码错误后**一次性修复**。
 

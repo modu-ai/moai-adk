@@ -3,7 +3,6 @@ title: CLI 레퍼런스
 weight: 90
 draft: false
 ---
-# CLI 레퍼런스
 
 MoAI-ADK 명령줄 인터페이스의 모든 명령어와 옵션을 참조하세요.
 

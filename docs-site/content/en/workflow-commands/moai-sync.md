@@ -3,7 +3,6 @@ title: /moai sync
 weight: 50
 draft: false
 ---
-# /moai sync
 
 Synchronizes documentation for completed implementation code and prepares for deployment through Git automation.
 

@@ -1,9 +1,8 @@
 ---
 title: Advanced
-weight: 10
+weight: 80
 draft: false
 ---
-# Advanced
 
 Covers MoAI-ADK's internal structure and advanced features in depth.
 

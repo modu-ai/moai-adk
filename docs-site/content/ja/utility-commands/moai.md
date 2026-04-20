@@ -3,7 +3,6 @@ title: /moai
 weight: 20
 draft: false
 ---
-# /moai
 
 完全自律自動化コマンド。目標を指定すると、MoAI が自律的に **plan → run → sync** パイプラインを実行します。
 

@@ -3,7 +3,6 @@ title: /moai coverage
 weight: 30
 draft: false
 ---
-# /moai coverage
 
 A command that analyzes test coverage, identifies gaps, and automatically generates missing tests.
 

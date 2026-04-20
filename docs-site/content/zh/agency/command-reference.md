@@ -3,7 +3,6 @@ title: 命令参考
 weight: 50
 draft: false
 ---
-# 命令参考
 
 AI Agency 提供 11 个主要子命令用于管理项目的整个生命周期。所有命令都可以通过 Claude Code 的 `/moai` 前缀或终端中的 `moai agency` 调用。
 

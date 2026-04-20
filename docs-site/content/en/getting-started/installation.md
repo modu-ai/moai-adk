@@ -3,7 +3,6 @@ title: Installation
 weight: 30
 draft: false
 ---
-# Installation
 
 Learn how to install MoAI-ADK 2.x on your system.
 

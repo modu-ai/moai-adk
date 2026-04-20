@@ -3,7 +3,6 @@ title: SPEC 기반 개발
 weight: 40
 draft: false
 ---
-# SPEC 기반 개발
 
 MoAI-ADK의 SPEC 기반 개발 방법론을 상세히 안내합니다.
 

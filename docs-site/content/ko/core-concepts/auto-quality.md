@@ -3,7 +3,6 @@ title: 자동 품질 레이어
 weight: 60
 draft: false
 ---
-# 자동 품질 레이어
 
 MoAI-ADK v2.6.0부터 Claude Code의 네이티브 스킬 2개를 **자동으로** 호출합니다. 별도의 플래그나 수동 명령이 필요 없습니다.
 

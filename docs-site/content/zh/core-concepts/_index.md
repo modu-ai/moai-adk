@@ -1,9 +1,8 @@
 ---
 title: 核心概念
-weight: 10
+weight: 20
 draft: false
 ---
-# 核心概念
 
 介绍理解 MoAI-ADK 的 4 个核心概念。
 

@@ -3,7 +3,6 @@ title: Hooks 指南
 weight: 50
 draft: false
 ---
-# Hooks 指南
 
 Claude Code 的 Hooks 系统和 MoAI-ADK 的默认 Hook 脚本详细介绍。
 

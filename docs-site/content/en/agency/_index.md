@@ -1,9 +1,8 @@
 ---
 title: AI Agency
-weight: 10
+weight: 70
 draft: false
 ---
-# AI Agency
 
 {{< callout type="info" >}}
 AI Agency is a self-evolving creative production system that automatically learns from feedback and improves its output quality with every project.

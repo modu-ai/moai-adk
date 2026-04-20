@@ -3,7 +3,6 @@ title: settings.json Guide
 weight: 60
 draft: false
 ---
-# settings.json Guide
 
 A comprehensive guide to Claude Code's configuration file system.
 

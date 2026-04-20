@@ -3,7 +3,6 @@ title: 開発方法論 (DDD/TDD)
 weight: 40
 draft: false
 ---
-# 開発方法論 (DDD/TDD)
 
 MoAI-ADK の開発方法論を詳しくご案内します。プロジェクトの状態に応じて TDD または DDD を
 選択して使用します。

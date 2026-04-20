@@ -3,7 +3,6 @@ title: Command Reference
 weight: 50
 draft: false
 ---
-# Command Reference
 
 {{< callout type="info" >}}
 All Agency commands start with `/agency`. Use natural language for quick results, or add flags for more control.

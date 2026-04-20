@@ -1,9 +1,8 @@
 ---
 title: 高级
-weight: 10
+weight: 80
 draft: false
 ---
-# 高级
 
 深入介绍 MoAI-ADK 的内部结构和高级功能。
 

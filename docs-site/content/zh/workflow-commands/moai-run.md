@@ -3,7 +3,6 @@ title: /moai run
 weight: 40
 draft: false
 ---
-# /moai run
 
 基于 SPEC 文档使用 DDD (Domain-Driven Development) 方法论实现代码。
 

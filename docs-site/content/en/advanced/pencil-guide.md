@@ -3,7 +3,6 @@ title: Pencil Guide
 weight: 90
 draft: false
 ---
-# Pencil Guide
 
 Comprehensive guide to using Pencil MCP server for AI-powered UI/UX design generation.
 

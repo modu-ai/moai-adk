@@ -1,9 +1,8 @@
 ---
 title: AI Agency
-weight: 10
+weight: 70
 draft: false
 ---
-# AI Agency
 
 ## AI Agency란?
 

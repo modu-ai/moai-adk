@@ -3,7 +3,6 @@ title: 시작하기
 weight: 20
 draft: false
 ---
-# 시작하기
 
 AI Agency의 첫 프로젝트를 시작하는 완벽한 가이드입니다.
 

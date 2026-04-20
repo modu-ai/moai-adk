@@ -3,7 +3,6 @@ title: CLAUDE.md 指南
 weight: 70
 draft: false
 ---
-# CLAUDE.md 指南
 
 Claude Code 的核心指令文件体系详细介绍。
 

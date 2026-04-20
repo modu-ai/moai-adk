@@ -3,12 +3,12 @@
 
 # Hextra default key overrides
 editThisPage: "Edit this page →"
-copyright: "MIT License © 2025 MoAI-ADK Contributors"
+copyright: "© MoAI-ADK | 모두의AI"
 
 # Project-specific meta keys
 site_description: "MoAI-ADK online documentation — Agentic Development Kit for Claude Code. Fully automated development with SPEC-based development, DDD implementation, and TRUST 5 quality system."
 og_description: "AI development tool that fully automates from SPEC creation to DDD implementation and documentation"
-footer_copyright: "MIT License © 2025 MoAI-ADK Contributors"
+footer_copyright: "© MoAI-ADK | 모두의AI"
 language_label: "EN"
 
 # Version banner (REQ-DS-19, Phase 5)

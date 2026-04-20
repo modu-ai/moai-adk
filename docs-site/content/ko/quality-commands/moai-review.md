@@ -3,7 +3,6 @@ title: /moai review
 weight: 20
 draft: false
 ---
-# /moai review
 
 코드베이스를 **보안, 성능, 품질, UX** 4가지 관점에서 분석하는 코드 리뷰 명령어입니다.
 

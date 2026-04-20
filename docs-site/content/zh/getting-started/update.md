@@ -3,7 +3,6 @@ title: 更新
 weight: 60
 draft: false
 ---
-# 更新
 
 保持 MoAI-ADK 更新,使用智能更新工作流进行平滑升级。
 

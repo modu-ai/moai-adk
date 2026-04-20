@@ -3,7 +3,6 @@ title: /moai github
 weight: 30
 draft: false
 ---
-# /moai github
 
 GitHub issue fixing and PR code review automation with Agent Teams.
 

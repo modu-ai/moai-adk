@@ -3,7 +3,6 @@ title: 常见问题
 weight: 80
 draft: false
 ---
-# 常见问题
 
 MoAI-ADK 使用过程中的常见问题和解答。
 

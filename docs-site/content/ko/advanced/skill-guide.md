@@ -3,7 +3,6 @@ title: 스킬 가이드
 weight: 20
 draft: false
 ---
-# 스킬 가이드
 
 MoAI-ADK의 스킬 시스템을 상세히 안내합니다.
 

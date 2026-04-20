@@ -3,7 +3,6 @@ title: 快速开始
 weight: 20
 draft: false
 ---
-# 快速开始
 
 ## 前提条件
 

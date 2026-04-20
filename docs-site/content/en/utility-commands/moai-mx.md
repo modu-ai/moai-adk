@@ -3,7 +3,6 @@ title: /moai mx
 weight: 70
 draft: false
 ---
-# /moai mx
 
 Scans the codebase and adds @MX code-level annotations. Automatically inserts comments so AI agents can **quickly understand code context**.
 

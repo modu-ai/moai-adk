@@ -3,7 +3,6 @@ title: /moai project
 weight: 20
 draft: false
 ---
-# /moai project
 
 プロジェクトのコードベースを分析して、AI がプロジェクトを理解するために必要な基礎文書を自動生成します。
 

@@ -1,9 +1,8 @@
 ---
 title: 上級トピック
-weight: 10
+weight: 80
 draft: false
 ---
-# 上級トピック
 
 MoAI-ADKの内部構造と高度な機能を詳しく解説します。
 

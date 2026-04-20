@@ -3,7 +3,6 @@ title: TRUST 5 质量框架
 weight: 50
 draft: false
 ---
-# TRUST 5 质量框架
 
 所有 MoAI-ADK 代码必须通过的 5 个质量原则详细指南。
 

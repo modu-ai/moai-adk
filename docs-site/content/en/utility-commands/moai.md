@@ -3,7 +3,6 @@ title: /moai
 weight: 20
 draft: false
 ---
-# /moai
 
 Fully autonomous automation command. When you provide a goal, MoAI autonomously executes the **plan → run → sync** pipeline.
 

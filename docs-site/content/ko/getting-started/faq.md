@@ -3,7 +3,6 @@ title: 자주 묻는 질문
 weight: 100
 draft: false
 ---
-# 자주 묻는 질문
 
 MoAI-ADK 사용 중 자주 묻는 질문과 답변입니다.
 

@@ -3,7 +3,6 @@ title: CG 모드 (Claude + GLM)
 weight: 20
 draft: false
 ---
-# CG 모드 (Claude + GLM)
 
 ## CG 모드란?
 

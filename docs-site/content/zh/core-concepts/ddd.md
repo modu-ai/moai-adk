@@ -3,7 +3,6 @@ title: 开发方法论 (DDD/TDD)
 weight: 40
 draft: false
 ---
-# 开发方法论 (DDD/TDD)
 
 详细介绍 MoAI-ADK 的开发方法论。根据项目状态选择使用 TDD 或 DDD。
 

@@ -3,7 +3,6 @@ title: /moai github
 weight: 30
 draft: false
 ---
-# /moai github
 
 GitHub Issue修正とPRコードレビューの自動化（Agent Teams対応）。
 

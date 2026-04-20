@@ -3,7 +3,6 @@ title: Google Stitch 가이드
 weight: 110
 draft: false
 ---
-# Google Stitch 가이드
 
 Google Stitch MCP 서버를 활용하여 AI 기반 UI/UX 디자인을 생성하는 방법을 상세히 안내합니다.
 

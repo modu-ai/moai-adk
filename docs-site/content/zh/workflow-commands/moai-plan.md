@@ -3,7 +3,6 @@ title: /moai plan
 weight: 30
 draft: false
 ---
-# /moai plan
 
 以 EARS 格式创建清晰的 SPEC 文档，将您与 AI 的对话转换为永久的需求文档。
 

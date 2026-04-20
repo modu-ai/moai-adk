@@ -1,9 +1,8 @@
 ---
 title: 심화 학습
-weight: 10
+weight: 80
 draft: false
 ---
-# 심화 학습
 
 MoAI-ADK의 내부 구조와 고급 기능을 깊이 있게 다룹니다.
 

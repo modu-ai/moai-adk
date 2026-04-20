@@ -1,9 +1,8 @@
 ---
 title: Core Concepts
-weight: 10
+weight: 20
 draft: false
 ---
-# Core Concepts
 
 Introduction to 4 core concepts for understanding MoAI-ADK.
 

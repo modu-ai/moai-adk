@@ -3,7 +3,6 @@ title: Quick Start
 weight: 50
 draft: false
 ---
-# Quick Start
 
 Create your first project with MoAI-ADK and experience the development workflow.
 

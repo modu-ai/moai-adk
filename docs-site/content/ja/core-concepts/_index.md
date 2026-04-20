@@ -1,9 +1,8 @@
 ---
 title: コアコンセプト
-weight: 10
+weight: 20
 draft: false
 ---
-# コアコンセプト
 
 MoAI-ADK を理解するための 4 つのコアコンセプトの紹介です。
 

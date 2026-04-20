@@ -3,7 +3,6 @@ title: MoAI-ADKとは？
 weight: 20
 draft: false
 ---
-# MoAI-ADKとは？
 
 MoAI-ADKはClaude Codeのための **高性能AI開発環境** です。28の専門AIエージェントと52のスキルが協力して高品質なコードを生産します。新規プロジェクトと機能開発にはTDD (デフォルト) 、テストカバレッジが低い既存プロジェクトにはDDDを自動的に適用し、Sub-AgentとAgent Teamsの二重実行モードをサポートします。
 

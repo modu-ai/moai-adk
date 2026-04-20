@@ -1,9 +1,8 @@
 ---
 title: Workflow Commands
-weight: 10
+weight: 30
 draft: false
 ---
-# Workflow Commands
 
 Complete a systematic development cycle with MoAI-ADK's 4 workflow commands.
 

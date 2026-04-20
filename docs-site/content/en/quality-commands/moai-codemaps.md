@@ -3,7 +3,6 @@ title: /moai codemaps
 weight: 50
 draft: false
 ---
-# /moai codemaps
 
 A command that scans the codebase and automatically generates **architecture documentation**.
 

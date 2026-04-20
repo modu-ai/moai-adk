@@ -3,7 +3,6 @@ title: Google Stitch Guide
 weight: 100
 draft: false
 ---
-# Google Stitch Guide
 
 Detailed guide to generating AI-powered UI/UX designs using the Google Stitch MCP server.
 

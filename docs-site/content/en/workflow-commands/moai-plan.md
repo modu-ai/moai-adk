@@ -3,7 +3,6 @@ title: /moai plan
 weight: 30
 draft: false
 ---
-# /moai plan
 
 Creates clear SPEC documents in EARS format, turning your conversations with AI into permanent requirement documents.
 

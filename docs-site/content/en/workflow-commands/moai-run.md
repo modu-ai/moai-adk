@@ -3,7 +3,6 @@ title: /moai run
 weight: 40
 draft: false
 ---
-# /moai run
 
 Implements code using DDD (Domain-Driven Development) methodology based on SPEC documents.
 

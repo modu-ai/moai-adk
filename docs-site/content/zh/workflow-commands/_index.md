@@ -1,9 +1,8 @@
 ---
 title: 工作流命令
-weight: 10
+weight: 30
 draft: false
 ---
-# 工作流命令
 
 通过 MoAI-ADK 的 4 个工作流命令完成系统化的开发周期。
 

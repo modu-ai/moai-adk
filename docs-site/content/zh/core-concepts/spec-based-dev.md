@@ -3,7 +3,6 @@ title: 基于 SPEC 的开发
 weight: 30
 draft: false
 ---
-# 基于 SPEC 的开发
 
 详细介绍 MoAI-ADK 的基于 SPEC 的开发方法论。
 

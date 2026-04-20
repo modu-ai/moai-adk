@@ -3,7 +3,6 @@ title: /moai feedback
 weight: 80
 draft: false
 ---
-# /moai feedback
 
 MoAI-ADK へのフィードバックやバグレポートを送信するコマンド。
 

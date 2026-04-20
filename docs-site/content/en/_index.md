@@ -1,9 +1,12 @@
 ---
 title: MoAI-ADK Documentation
+type: docs
+toc: true
+sidebar:
+  open: true
 weight: 99
 draft: false
 ---
-# MoAI-ADK Documentation
 
 MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Claude Code.
 

@@ -3,7 +3,6 @@ title: /moai plan
 weight: 30
 draft: false
 ---
-# /moai plan
 
 EARS 형식으로 명확한 SPEC 문서를 생성하여, AI와 나눈 대화를 영구적인 요구사항
 문서로 만듭니다.

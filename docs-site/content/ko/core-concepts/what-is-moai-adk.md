@@ -3,7 +3,6 @@ title: MoAI-ADK란?
 weight: 20
 draft: false
 ---
-# MoAI-ADK란?
 
 MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 28개의 전문 AI 에이전트와 52개의 스킬이 협력하여 품질 높은 코드를 생산합니다. 새 프로젝트와 기능 개발에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
 

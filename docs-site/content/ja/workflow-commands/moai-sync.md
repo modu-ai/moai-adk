@@ -3,7 +3,6 @@ title: /moai sync
 weight: 50
 draft: false
 ---
-# /moai sync
 
 実装完了したコードの文書を同期し、Git 自動化を通じてデプロイの準備をします。
 

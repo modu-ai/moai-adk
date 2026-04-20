@@ -1,9 +1,8 @@
 ---
 title: ユーティリティコマンド
-weight: 10
+weight: 40
 draft: false
 ---
-# ユーティリティコマンド
 
 MoAI-ADK の自動化とフィードバックコマンドの概要。
 
