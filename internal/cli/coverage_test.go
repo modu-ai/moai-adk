@@ -655,12 +655,21 @@ func TestRunGLM_WithConfig(t *testing.T) {
 	}
 }
 
-func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
+// TestRunGLM_InjectsEnvToProcess verifies that 'moai glm' injects GLM env vars
+// into the current process (via setGLMEnv), NOT into settings.local.json.
+// The old name was TestRunGLM_InjectsEnvToSettings, which codified the #676 bug.
+// After the fix, GLM env is carried by the current process and inherited by
+// syscall.Exec into `claude`; settings.local.json is left clean.
+// NOTE: does not call t.Parallel() because it modifies process-level env via setGLMEnv.
+func TestRunGLM_InjectsEnvToProcess(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
+	// Clear baseline env so assertions are deterministic.
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
+	t.Setenv("ANTHROPIC_BASE_URL", "")
 
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
@@ -701,14 +710,20 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 		t.Fatalf("runGLM error: %v", err)
 	}
 
-	// Verify settings.local.json was created with GLM env
-	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("settings.local.json should be created: %v", err)
+	// GLM env must be in the current process env (inherited by syscall.Exec).
+	if got := os.Getenv("ANTHROPIC_AUTH_TOKEN"); got == "" {
+		t.Error("ANTHROPIC_AUTH_TOKEN must be set in process env after moai glm")
 	}
-	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
+	if got := os.Getenv("ANTHROPIC_BASE_URL"); got == "" {
+		t.Error("ANTHROPIC_BASE_URL must be set in process env after moai glm")
+	}
+
+	// settings.local.json must NOT contain GLM env vars (#676 regression guard).
+	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+			t.Error("settings.local.json must NOT contain ANTHROPIC_AUTH_TOKEN (regression: #676)")
+		}
 	}
 }
 

@@ -112,13 +112,15 @@ func applyGLMMode(root, profileName string) error {
 
 	setGLMEnv(glmConfig, apiKey)
 
+	// settings.local.json injection is intentionally omitted here: setGLMEnv()
+	// already sets env for the current process which syscall.Exec inherits into
+	// `claude`. Writing to settings.local.json (as previous behavior) would leak
+	// GLM env to subsequent `claude` invocations after `moai glm` exits.
+	// Tmux team panes still receive env via injectTmuxSessionEnv below (moai cg path).
+	// For persistent settings.local.json injection used by `moai --team`, see enableTeamMode().
+
 	if err := persistTeamMode(root, "glm"); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to persist team mode: %v\n", err)
-	}
-
-	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-	if err := injectGLMEnvForTeam(settingsPath, glmConfig, apiKey); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to inject GLM env into settings: %v\n", err)
 	}
 
 	if tmux.NewDetector().InTmuxSession() {
