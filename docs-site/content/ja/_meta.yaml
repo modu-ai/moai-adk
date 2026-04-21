@@ -10,6 +10,9 @@
   title: "品質コマンド"
 design:
   title: "デザインシステム"
+db:
+  title: "データベーススキーマ管理"
+  weight: 15
 advanced:
   title: "詳細"
 worktree:

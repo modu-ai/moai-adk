@@ -10,6 +10,9 @@
   title: "质量命令"
 design:
   title: "设计系统"
+db:
+  title: "数据库架构管理"
+  weight: 15
 advanced:
   title: "高级"
 worktree:

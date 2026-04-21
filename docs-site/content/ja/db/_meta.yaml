@@ -1,0 +1,15 @@
+index:
+  title: "データベーススキーマ管理"
+  display: "hidden"
+"getting-started":
+  title: "始める"
+  weight: 10
+"schema-sync":
+  title: "スキーマ同期"
+  weight: 20
+"migration-patterns":
+  title: "マイグレーションパターン"
+  weight: 30
+"project-db-directory":
+  title: "プロジェクト DB ディレクトリ"
+  weight: 40
