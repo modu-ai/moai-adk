@@ -84,6 +84,14 @@ Two independent workstreams converged in this release:
 **Lint cleanup** (`76ba50eab`)
 - `defer f.Close()` errcheck in `internal/cli/design_folder.go:111` (hashFile) and `internal/hook/dbsync/db_schema_sync.go:312` (logError) wrapped in `defer func() { _ = f.Close() }()`.
 
+**Hardening (SPEC-DB-SYNC-HARDEN-001 — 5 warning resolution)**
+- **H1: parseMigrationStub file size guard** — Added package constant `maxMigrationFileSize = 1 << 20` (1 MiB) with `os.Stat` pre-check. Files exceeding the ceiling are now rejected without calling `os.ReadFile`, eliminating memory-pressure from malformed or malicious migration inputs. Return shape extended to `parseMigrationResult{ParsedContent, Truncated}` so callers can distinguish "genuinely empty" from "size-guarded" without either-or ambiguity (REQ-H1-001 ~ REQ-H1-003).
+- **H2: CheckDebounce atomicity (signature unchanged)** — Concurrent `CheckDebounce` callers targeting the same `(stateFile, filePath, window)` now provably return `{false, true}` as a multiset (exactly-one-winner semantic, REQ-H2-002). Implementation uses a `stateFile + ".lock"` companion with `O_CREATE|O_EXCL` for mutual exclusion, plus the pre-existing `os.CreateTemp + os.Rename` pattern for torn-write-free state persistence. I/O failure on any step returns the safe default `(true, nil)` and logs to `ErrorLogFile` per REQ-H2-003. **plan.md had suggested `os.Rename` alone would suffice; empirical testing during implementation revealed `os.Rename` prevents torn writes but not decision races, hence the added O_EXCL layer.** AST-level regression guard (`TestCheckDebounce_NoDirectWriteFile`) asserts zero direct `os.WriteFile` + at least one `os.Rename` call, surviving variable renames.
+- **H3: settings.json.tmpl Windows platform branch for db-schema-change** — The db-schema-change PostToolUse hook entry was the sole exception to the file's `{{- if eq .Platform "windows"}}...{{- else}}...{{- end}}` branching convention (16 other entries used it consistently). Now aligned. Windows command: `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` (bash prefix + forward-slash + bash-style variable). Unix command unchanged. `TestRender_DbSchemaChangeHook_{Unix,Windows,ConsistencyWithOtherEntries}` verify the rendering outputs. SPEC v0.2.0 drafted a conflicting literal (`%CLAUDE_PROJECT_DIR%\.claude\...` with backslashes) that does not expand inside a bash-quoted argument; corrected to v0.2.1 during `/moai run`.
+- **H4: internal/hook/dbsync test coverage 79.2% → 85.7%** — 8 boundary test cases added (`empty_file`, `utf8_bom`, `oversized`, `nonexistent`, `trailing_slash`, `double_star_only`, `unicode_path`, `corrupt_state_recovery`). All use `t.TempDir()` isolation; no `t.Setenv("HOME", …)`. Internal test file (`db_schema_sync_internal_test.go`) added for strict `parseMigrationStub` return-shape assertions that require unexported-symbol access.
+- **H5: @MX:NOTE godoc for 5 exported helpers** — `BuildProposal`, `MatchesMigrationPattern`, `IsExcluded`, `CheckDebounce` gained godoc blocks with input/output/side-effect three-element contracts (Korean prose per `code_comments: ko`). `HandleDBSchemaSync` retained its pre-existing `@MX:NOTE + @MX:ANCHOR` from commit `aa29a9316`. AC-9 awk-based multiline scan confirms 5/5 coverage.
+- **SPEC v0.2.1 amendment** (`38350a698`) — REQ-H3-002 and AC-6 literals corrected to match the file's actual hook entry convention. HISTORY entry records the reason (Git Bash/WSL cannot expand `%CLAUDE_PROJECT_DIR%` inside a bash-quoted argument).
+
 ### Removed
 
 - `.claude/agents/agency/` agent definitions: planner, builder, evaluator, learner, copywriter, designer
@@ -105,7 +113,7 @@ Two independent workstreams converged in this release:
 
 - `internal/cli` coverage maintained at 75.3% (wizard sub-package 91.2%, worktree sub-package 84.2%).
 - All new profile_setup helpers at 100% line coverage.
-- `internal/hook/dbsync` package: 13 unit tests covering debounce, path matching, exclusion patterns, path traversal guard (4-case regression).
+- `internal/hook/dbsync` package: **coverage 79.2% → 85.7%** after SPEC-DB-SYNC-HARDEN-001 H4. 13 pre-existing unit tests + H1/H2/H4/H5 additions (8 AC-8 boundary cases, `TestCheckDebounceConcurrency` running at `-race -count=10`, `TestCheckDebounce_NoDirectWriteFile` AST regression guard, oversized-file handler test, readonly-dir safety-default tests).
 - `internal/cli` design_folder: 282-line test file covering SHA-256 preservation, glob collision, .DS_Store-only directory handling.
 - `go vet ./...`, `go test -race ./... -count=1` (all packages), `golangci-lint run ./internal/...` — all PASS.
 - Cross-compile verified for 5 targets: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64.

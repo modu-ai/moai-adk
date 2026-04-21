@@ -1,7 +1,7 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
 version: 0.2.1
-status: draft
+status: completed
 created_at: 2026-04-21
 updated_at: 2026-04-21
 author: moai-adk-go
@@ -219,3 +219,41 @@ SPEC-DB-SYNC-001은 PostToolUse 훅, `moai-domain-db-docs` 스킬, `/moai db ref
 - `CLAUDE.local.md` §6 — `t.TempDir()` 테스트 격리 원칙(H4)
 - `.moai/config/sections/quality.yaml` — harness level 결정; 본 SPEC은 `standard` 사용(plan-auditor 리뷰 활성)
 - `.moai/config/sections/language.yaml` — `code_comments: ko` (REQ-H5-002 자연어 선택 기준)
+
+## Implementation Notes
+
+실제 구현 중 plan.md의 초안에 대해 다음과 같은 조정이 이루어졌다. 모두 **REQ의 외부 계약은 보존**하며, 내부 수단 선택만 변경되었다.
+
+### H1 — parseMigrationStub 반환 shape
+
+REQ-H1-002의 "both set, not an either/or" 계약을 만족하기 위해, 기존 `func parseMigrationStub(filePath string) (string, error)` 시그니처를 `parseMigrationResult{ParsedContent, Truncated}` 구조체 기반으로 확장했다. parseMigrationStub은 패키지-내부 함수이므로 외부 계약 파급은 없다. 공개 `HandleDBSchemaSync`의 호출부만 업데이트했으며, Proposal 스키마는 변경하지 않았다(scope discipline).
+
+부수적으로, 테스트에서 ErrorLogFile 경로를 주입하기 위해 `parseMigrationStubWithLog(filePath, logFile string)` 내부 헬퍼를 추가하고, 공개 `parseMigrationStub`은 `logFile=""`로 위임하는 형태로 유지했다.
+
+### H2 — CheckDebounce 상호 배제 수단 (락 파일 + 원자 rename)
+
+plan.md L81-L103은 `os.CreateTemp + os.Rename` 만으로 원자성을 달성한다고 가정했으나, 실제 구현 중 AC-3 동시성 테스트에서 두 goroutine 모두 `debounced=false`를 관찰하는 실패가 재현되었다. `os.Rename`은 **torn write**는 방지하지만 **결정 원자성**(exactly-one winner)은 제공하지 않는다는 점이 드러났다.
+
+이를 해결하기 위해 `stateFile + ".lock"` 위치에 `O_CREATE|O_EXCL|O_WRONLY`로 락 파일을 생성하는 상호 배제 레이어를 추가했다. OS 레벨에서 `O_EXCL` 생성은 원자적이므로 정확히 한 호출만 락을 획득하고, 나머지는 `os.IsExist` 에러를 받아 `(true, nil)` 안전 기본값으로 반환한다. 락 획득 후에도 기존 temp-file + `os.Rename` 패턴을 유지하여 상태 파일 쓰기는 torn write 없이 원자적으로 교체된다.
+
+이 수단 변경은 REQ-H2-001("atomicity 계약"), REQ-H2-002("exactly one winner"), REQ-H2-003("I/O 실패 시 safe default")를 전부 만족하며, `CheckDebounce`의 공개 시그니처는 변경하지 않았다. AC-4 AST 검증은 `os.WriteFile` 직접 호출 부재만 확인하므로 락 파일 패턴과 공존한다.
+
+락 파일은 `defer os.Remove(lockPath)`로 winner 반환 시 해제되며, 프로세스 강제 종료 시 stale 락이 남을 수 있으나 dbsync 훅은 < 1s로 종료되므로 실무적으로 무시 가능한 위험이다.
+
+### H4 — 커버리지 측정 결과
+
+baseline 79.2% → 구현 완료 후 **85.7%** (목표 85.0%). 8개 지정 테이블 케이스(REQ-H4-002) + 추가 매치 엣지(trailing_slash glob, exact filename, basename fallback, extension fallback) + I/O 실패 경로 테스트로 갭을 채웠다.
+
+### H3 — SPEC v0.2.0 → v0.2.1 리터럴 정정
+
+plan-auditor v0.2.0 리뷰 후에도 남아있던 Windows command 리터럴 오작성(`%CLAUDE_PROJECT_DIR%\.claude\...`)이 `/moai run` 실행 중 발견되었다. `settings.json.tmpl` 내 다른 16개 Windows 훅 엔트리가 일관되게 사용하는 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-*.sh"` 패턴이 Git Bash/WSL에서 실제로 변수를 전개할 수 있는 유일한 형식임을 확인하고, REQ-H3-002와 AC-6 Then-1을 v0.2.1로 정정했다. HISTORY 엔트리에 근거를 기록했다.
+
+### 최종 검증 결과
+
+- `go test -race ./...` 전체 green
+- `golangci-lint run ./...` 0 issues
+- `go vet ./...` clean
+- cross-compile 5 플랫폼(linux-amd64/arm64, darwin-amd64/arm64, windows-amd64) 모두 성공
+- 패키지 커버리지 (internal/hook/dbsync): 85.7%
+- AC-1 ~ AC-10 전수 통과; SPEC-DB-SYNC-001 회귀 없음
+- 동시성 `-race -count=10` 10회 반복 green
