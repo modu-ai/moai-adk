@@ -782,7 +782,14 @@ func TestHandleDBSchemaSync_WinnerLoserOrdering(t *testing.T) {
 		StateFile:         stateFile,
 		ProposalFile:      filepath.Join(tmpDir, "proposal.json"),
 		ErrorLogFile:      filepath.Join(tmpDir, "errors.log"),
-		DebounceWindow:    50 * time.Millisecond,
+		// 5s window: this is a sequential test (winner vs loser via two
+		// successive calls), not a concurrency-race test. The Windows CI
+		// runner regularly takes >50ms between the first call's state
+		// write and the second call's state read — a short window
+		// produced flaky "ask-user" on the second call where "debounced"
+		// was expected. AC-3 concurrency tests use 50ms for intentional
+		// race conditions; this test does not.
+		DebounceWindow: 5 * time.Second,
 	}
 
 	// First invocation — winner.

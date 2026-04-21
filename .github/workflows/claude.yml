@@ -29,14 +29,15 @@ jobs:
     steps:
       - name: Checkout repository
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v4.3.1 | SHA: 34e114876b0b11c390a56381ad16ebd13914f8d5
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        # Tag: v5.0.0 | SHA: 08c6903cd8c0fde910a37f88322edcfb5dd907a8 (Node 24 runtime)
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           fetch-depth: 1
 
       # C5 Fix: Restored setup-go step so @claude can run Go commands (go test, go build, etc.)
       - name: Setup Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        # Tag: v6.0.0 | SHA: 44694675825211faa026b3c33043df3e48a5fa00 (Node 24 runtime)
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
           go-version: "1.26"
           cache: true
