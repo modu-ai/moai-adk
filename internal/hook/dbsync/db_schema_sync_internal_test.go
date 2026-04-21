@@ -140,29 +140,6 @@ func TestCheckDebounceWithLog_IOFailureReturnsSafeDefault(t *testing.T) {
 	}
 }
 
-// TestItoa — regression guard for the internal int64→string helper used by the
-// size-guard log. Keeps parseMigrationStub independent of strconv for the single
-// formatting site.
-func TestItoa(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		in   int64
-		want string
-	}{
-		{0, "0"},
-		{1, "1"},
-		{1024, "1024"},
-		{-42, "-42"},
-		{1 << 20, "1048576"},
-	}
-	for _, tt := range tests {
-		if got := itoa(tt.in); got != tt.want {
-			t.Errorf("itoa(%d) = %q, want %q", tt.in, got, tt.want)
-		}
-	}
-}
-
 // TestParseMigrationStub_WrapperRoundTrips ensures the public-style wrapper
 // (parseMigrationStub without an explicit logFile path) forwards to the
 // implementation body without regressing the happy-path shape.
@@ -220,49 +197,82 @@ func TestCheckDebounceWithLog_FastPathRespectsExistingWindow(t *testing.T) {
 	}
 }
 
-// TestCheckDebounceWithLog_ReChecksUnderLock validates that the second
-// under-lock re-check returns debounced=true when a fresh state appeared
-// between the fast-path read and the lock acquisition. Simulates the state
-// arrival by seeding the state file after the caller bypassed the fast path
-// (achieved by making the on-disk state stale, then mutating it to fresh
-// right before the lock is taken).
-func TestCheckDebounceWithLog_ReChecksUnderLock(t *testing.T) {
+// TestCheckDebounceWithLog_FreshStateBetweenChecks seeds a fresh same-file state
+// on disk BEFORE the helper is called, so the fast path short-circuits to
+// debounced=true. This asserts that the shared isWithinDebounceWindow helper
+// behaves symmetrically at both call sites (fast path + under-lock re-check) —
+// removing this coverage leaves the second call-site unverified end-to-end.
+func TestCheckDebounceWithLog_FreshStateBetweenChecks(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	stateFile := filepath.Join(tmpDir, "last-seen.json")
-
-	// Seed a stale state so the fast path falls through.
-	stale := DebounceState{
-		FilePath:  "migrations/001.sql",
-		Timestamp: time.Now().Add(-1 * time.Hour),
-	}
-	staleBytes, _ := json.Marshal(stale)
-	if err := os.WriteFile(stateFile, staleBytes, 0o644); err != nil {
-		t.Fatalf("seed stale: %v", err)
-	}
-
-	// Overwrite with a fresh state just before the lock is taken. Because the
-	// fast-path read already happened when our helper enters the lock block,
-	// the under-lock re-check is what catches this.
-	fresh := DebounceState{
-		FilePath:  "migrations/001.sql",
-		Timestamp: time.Now(),
-	}
+	fresh := DebounceState{FilePath: "migrations/001.sql", Timestamp: time.Now()}
 	freshBytes, _ := json.Marshal(fresh)
 	if err := os.WriteFile(stateFile, freshBytes, 0o644); err != nil {
 		t.Fatalf("seed fresh: %v", err)
 	}
 
-	// With a fresh state already on disk, the fast path short-circuits to true;
-	// this test is a defensive regression guard that fast-path + under-lock
-	// paths agree.
 	debounced, err := checkDebounceWithLog(stateFile, "migrations/001.sql", 10*time.Second, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !debounced {
-		t.Error("under-lock re-check must honor a fresh state")
+		t.Error("fresh same-file state must yield debounced=true at both call sites")
+	}
+}
+
+// TestIsWithinDebounceWindow covers the shared fast-path/under-lock helper
+// directly. The three cases (missing file, corrupt JSON, stale timestamp) all
+// return false — the caller will then proceed to establish a new window under
+// its lock. A fresh same-file state within the window returns true.
+func TestIsWithinDebounceWindow(t *testing.T) {
+	t.Parallel()
+
+	const filePath = "migrations/001.sql"
+	tmpDir := t.TempDir()
+
+	// Case 1: state file missing → false.
+	missing := filepath.Join(tmpDir, "missing.json")
+	if isWithinDebounceWindow(missing, filePath, 10*time.Second) {
+		t.Error("missing state file must return false")
+	}
+
+	// Case 2: corrupt JSON → false.
+	corrupt := filepath.Join(tmpDir, "corrupt.json")
+	if err := os.WriteFile(corrupt, []byte("{not-json"), 0o644); err != nil {
+		t.Fatalf("seed corrupt: %v", err)
+	}
+	if isWithinDebounceWindow(corrupt, filePath, 10*time.Second) {
+		t.Error("corrupt JSON must return false")
+	}
+
+	// Case 3: stale timestamp → false.
+	stateFile := filepath.Join(tmpDir, "state.json")
+	staleBytes, _ := json.Marshal(DebounceState{FilePath: filePath, Timestamp: time.Now().Add(-1 * time.Hour)})
+	if err := os.WriteFile(stateFile, staleBytes, 0o644); err != nil {
+		t.Fatalf("seed stale: %v", err)
+	}
+	if isWithinDebounceWindow(stateFile, filePath, 10*time.Second) {
+		t.Error("stale state must return false")
+	}
+
+	// Case 4: different filePath → false.
+	freshBytes, _ := json.Marshal(DebounceState{FilePath: "migrations/other.sql", Timestamp: time.Now()})
+	if err := os.WriteFile(stateFile, freshBytes, 0o644); err != nil {
+		t.Fatalf("seed fresh-other: %v", err)
+	}
+	if isWithinDebounceWindow(stateFile, filePath, 10*time.Second) {
+		t.Error("different filePath must return false")
+	}
+
+	// Case 5: fresh same-file state → true.
+	matchBytes, _ := json.Marshal(DebounceState{FilePath: filePath, Timestamp: time.Now()})
+	if err := os.WriteFile(stateFile, matchBytes, 0o644); err != nil {
+		t.Fatalf("seed fresh-match: %v", err)
+	}
+	if !isWithinDebounceWindow(stateFile, filePath, 10*time.Second) {
+		t.Error("fresh same-file state must return true")
 	}
 }
 

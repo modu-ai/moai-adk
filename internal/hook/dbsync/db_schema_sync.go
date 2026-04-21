@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -300,6 +301,24 @@ func matchGlob(pattern, filePath string) bool {
 	return false
 }
 
+// isWithinDebounceWindow reports whether the persisted state file records the
+// given filePath with a timestamp inside the debounce window. Any I/O or decode
+// error is treated as "no fresh state" (returns false) since the caller will
+// proceed to establish a new window under a lock. This helper collapses the
+// two read-then-check sites in checkDebounceWithLog (fast path + under-lock
+// re-check) into a single implementation.
+func isWithinDebounceWindow(stateFile, filePath string, window time.Duration) bool {
+	data, err := os.ReadFile(stateFile)
+	if err != nil {
+		return false
+	}
+	var state DebounceState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return false
+	}
+	return state.FilePath == filePath && time.Since(state.Timestamp) < window
+}
+
 // @MX:NOTE CheckDebounce는 동일 filePath가 window 내에 이미 관측되었는지 확인하고,
 // 관측되지 않았다면 stateFile을 원자적으로 갱신한다(임시 파일 + os.Rename, POSIX rename
 // 원자성에 의존). 동일 stateFile을 대상으로 동시에 호출되더라도 정확히 한 호출만
@@ -337,13 +356,8 @@ func checkDebounceWithLog(stateFile, filePath string, window time.Duration, logF
 	// Fast path: if the already-persisted state indicates we are inside the
 	// window, skip the lock acquisition entirely. This is safe because the
 	// fast-path result is re-validated after acquiring the lock.
-	if data, err := os.ReadFile(stateFile); err == nil {
-		var state DebounceState
-		if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr == nil {
-			if state.FilePath == filePath && time.Since(state.Timestamp) < window {
-				return true, nil
-			}
-		}
+	if isWithinDebounceWindow(stateFile, filePath, window) {
+		return true, nil
 	}
 
 	// Ensure the state directory exists so the lock file can be created.
@@ -356,6 +370,11 @@ func checkDebounceWithLog(stateFile, filePath string, window time.Duration, logF
 	// Acquire the advisory lock. Exactly one concurrent caller succeeds here;
 	// the others see os.IsExist and return the safe debounced=true result.
 	// REQ-H2-002 — "exactly one winner" is enforced by O_EXCL's atomicity.
+	//
+	// Note: the companion ".lock" file lives beside stateFile, which is
+	// conventionally under .moai/cache/db-sync/ — covered by
+	// DefaultExcludedPatterns' ".moai/cache/**" entry, so the lock itself
+	// cannot re-trigger the hook even if a user's editor briefly Write/Edits it.
 	lockPath := stateFile + ".lock"
 	lockFD, lockErr := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if lockErr != nil {
@@ -372,13 +391,8 @@ func checkDebounceWithLog(stateFile, filePath string, window time.Duration, logF
 
 	// Re-check under the lock: a process that released the lock just before
 	// our acquisition may have established a fresh window.
-	if data, err := os.ReadFile(stateFile); err == nil {
-		var state DebounceState
-		if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr == nil {
-			if state.FilePath == filePath && time.Since(state.Timestamp) < window {
-				return true, nil
-			}
-		}
+	if isWithinDebounceWindow(stateFile, filePath, window) {
+		return true, nil
 	}
 
 	// Winner path — persist new state atomically via temp-file + os.Rename.
@@ -456,7 +470,7 @@ func parseMigrationStubWithLog(filePath, logFile string) (parseMigrationResult, 
 	}
 	if info.Size() > maxMigrationFileSize {
 		// REQ-H1-002: log + return (parsed_content="", truncated=true), no full read.
-		logError(logFile, "parseMigrationStub: file exceeds maxMigrationFileSize="+itoa(info.Size())+" path="+filePath)
+		logError(logFile, "parseMigrationStub: file exceeds maxMigrationFileSize="+strconv.FormatInt(info.Size(), 10)+" path="+filePath)
 		return parseMigrationResult{ParsedContent: "", Truncated: true}, nil
 	}
 
@@ -465,30 +479,6 @@ func parseMigrationStubWithLog(filePath, logFile string) (parseMigrationResult, 
 		return parseMigrationResult{}, err
 	}
 	return parseMigrationResult{ParsedContent: string(data), Truncated: false}, nil
-}
-
-// itoa is a minimal int64→string helper to avoid pulling strconv into a single
-// log message formatter. The log prefix is matched literally by REQ-H1-002.
-func itoa(n int64) string {
-	if n == 0 {
-		return "0"
-	}
-	negative := n < 0
-	if negative {
-		n = -n
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if negative {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
 }
 
 // logError appends an error message to the error log file (REQ-011).
