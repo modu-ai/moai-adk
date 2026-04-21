@@ -926,6 +926,45 @@ exclude:
 
 MoAI-ADK 包含集成的 **Design System** — 用于自主制作网站和 Web 应用的专用线束。就像 `/moai "描述"` 运行完整开发工作流一样，`/moai design "描述"` 运行从简报到部署代码的完整创意生产流水线。
 
+### 设计系统是什么？ — /moai vs /moai design 对比
+
+```mermaid
+flowchart TB
+    subgraph MOAI["/moai — 通用软件开发"]
+        direction LR
+        M1["📋 Plan<br>(SPEC)"] --> M2["⚙️ Run<br>(DDD/TDD)"] --> M3["📦 Sync<br>(文档 + PR)"]
+    end
+
+    subgraph DESIGN["/moai design — 创意 Web 制作"]
+        direction LR
+        D1["📋 Manager-Spec<br>(BRIEF)"] --> D2["✍️ Copywriting"]
+        D1 --> D3["🎨 Brand Design"]
+        D2 --> D4["🔨 Builder"]
+        D3 --> D4
+        D4 --> D5["🔍 Evaluator"]
+        D5 -->|"FAIL"| D4
+        D5 -->|"PASS"| D6["🧠 Learner"]
+    end
+
+    style MOAI fill:#e8f5e9,stroke:#4caf50
+    style DESIGN fill:#fff3e0,stroke:#ff9800
+```
+
+| 方面 | `/moai` | `/moai design` |
+|------|---------|-----------|
+| **目的** | 任何软件（后端、CLI、库、API） | 网站、落地页、Web 应用 |
+| **输入** | 功能描述 → SPEC | 业务目标 → BRIEF |
+| **独特阶段** | DDD/TDD 实现周期 | 文案创作 + 设计系统 → 代码 |
+| **品质** | 单一 manager-quality 通过 | **GAN Loop** (Builder↔Evaluator，最多 5 轮) |
+| **自学习** | 无 | **Learner** 检测模式 → 提议技能演进 |
+| **品牌** | 无 | 品牌上下文作为宪法约束 |
+| **实现** | 20 个智能体 (manager/expert/builder) | 4 个技能 (copywriting、brand-design、design-import、gan-loop) + evaluator-active |
+
+**何时使用哪个？**
+- 构建 REST API、CLI 工具或库？ → `/moai`
+- 构建营销网站、SaaS 落地页或带设计的 Web 应用？ → `/moai design`
+- 需要将文案、设计令牌和代码作为独立工件？ → `/moai design`
+
 ### 快速开始：一条命令，完整流水线
 
 ```bash
@@ -1022,6 +1061,10 @@ evaluator-active **默认持怀疑态度** — 调整为发现缺陷而非合理
 /moai design brief "开发者工具落地页"              # 仅访谈 + BRIEF（构建前审查）
 /moai design build BRIEF-001                      # 从现有 BRIEF 运行完整流水线
 /moai design import /path/to/design.zip           # Claude Design 交接包 import (路径 A)
+
+# 旧版 Agency 命令（已弃用，重定向至 /moai design）
+/agency "..."                                      # 重定向到 /moai design + 弃用警告
+/agency brief "..."                                # 不支持；请使用 /moai design brief
 ```
 
 ### 默认技术栈（可配置）

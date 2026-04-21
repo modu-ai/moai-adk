@@ -1135,6 +1135,10 @@ flowchart LR
 /moai design brief "개발자 도구 랜딩 페이지"        # 인터뷰 + BRIEF만 (빌드 전 검토)
 /moai design build BRIEF-001                       # 기존 BRIEF에서 전체 파이프라인 실행
 /moai design import /path/to/design.zip            # Claude Design 핸드오프 번들 import (Path A)
+
+# 기존 /agency 명령어 (deprecated, /moai design으로 리다이렉트)
+/agency "..."                                      # /moai design으로 리다이렉트 + 사용중단 경고
+/agency brief "..."                                # 지원 안 함; /moai design brief 사용 권장
 ```
 
 ### 기본 기술 스택 (설정 가능)
