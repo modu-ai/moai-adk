@@ -934,120 +934,46 @@ func TestIsWSL2_ProcVersionFallback_NonWSL(t *testing.T) {
 	}
 }
 
-// --- SPEC-DB-SYNC-HARDEN-001 H3: db-schema-change hook platform branching ---
+// --- SPEC-DB-SYNC-RELOC-001: db-schema-change PostToolUse 훅이 제거되었음을 검증 ---
 
-// TestRender_DbSchemaChangeHook_Unix verifies AC-6 Then-2. On darwin/linux the
-// db-schema-change PostToolUse command field must be exactly
-// "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh" with NO
-// `bash ` prefix — matching SPEC-DB-SYNC-001 AC-2 baseline and the convention
-// used by every other Unix-side hook entry in settings.json.tmpl.
-func TestRender_DbSchemaChangeHook_Unix(t *testing.T) {
-	for _, platform := range []string{"darwin", "linux"} {
+// TestRender_DbSchemaChangeHook_Removed verifies that SPEC-DB-SYNC-RELOC-001
+// has relocated the per-edit PostToolUse hook for `handle-db-schema-change.sh`
+// into the `/moai sync` Phase 0.08 workflow. The rendered settings.json for
+// any platform must NOT contain a reference to the former hook script, and the
+// template tree must not ship the wrapper script either. The existing Go
+// package `internal/hook/dbsync` and `moai hook db-schema-sync` CLI remain
+// intact for manual invocation (verified by package-level tests).
+func TestRender_DbSchemaChangeHook_Removed(t *testing.T) {
+	for _, platform := range []string{"darwin", "linux", "windows"} {
 		platform := platform
 		t.Run(platform, func(t *testing.T) {
 			ctx := testContext(platform)
 			out := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-			// The rendered file must be valid JSON.
+			// Rendered settings.json must remain valid JSON on all platforms.
 			if !json.Valid([]byte(strings.TrimSpace(out))) {
 				t.Fatalf("%s render is not valid JSON:\n%s", platform, out)
 			}
 
-			// Locate the db-schema-change hook entry by unmarshaling.
+			// The former hook script must not be referenced anywhere in the
+			// rendered output (raw string check catches both command fields
+			// and any orphan comment references).
+			if strings.Contains(out, "handle-db-schema-change.sh") {
+				t.Errorf("%s rendered settings.json still references handle-db-schema-change.sh:\n%s", platform, out)
+			}
+
+			// Structural check: the PostToolUse slot must contain exactly one
+			// matcher block (the Write|Edit generic handler) — the second
+			// db-schema-change block has been removed.
 			var settings map[string]any
 			if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &settings); err != nil {
 				t.Fatalf("unmarshal: %v", err)
 			}
 			hooks := settings["hooks"].(map[string]any)
 			post := hooks["PostToolUse"].([]any)
-
-			var dbEntryCmd string
-			for _, entry := range post {
-				block := entry.(map[string]any)
-				for _, h := range block["hooks"].([]any) {
-					cmd, _ := h.(map[string]any)["command"].(string)
-					if strings.Contains(cmd, "handle-db-schema-change.sh") {
-						dbEntryCmd = cmd
-					}
-				}
-			}
-			if dbEntryCmd == "" {
-				t.Fatalf("db-schema-change hook entry not found in PostToolUse for platform=%s", platform)
-			}
-
-			const want = `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"`
-			if dbEntryCmd != want {
-				t.Errorf("%s db-schema-change command = %q, want %q", platform, dbEntryCmd, want)
-			}
-			if strings.HasPrefix(dbEntryCmd, "bash ") {
-				t.Errorf("%s Unix command must NOT start with bash prefix: %q", platform, dbEntryCmd)
+			if got := len(post); got != 1 {
+				t.Errorf("%s PostToolUse entries = %d, want 1 (db-schema-change block was removed in SPEC-DB-SYNC-RELOC-001)", platform, got)
 			}
 		})
-	}
-}
-
-// TestRender_DbSchemaChangeHook_Windows verifies AC-6 Then-1 (v0.2.1). On Windows
-// the db-schema-change command must be exactly
-// `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` —
-// matching the pattern used by all other Windows hook entries in the same file
-// (handle-session-start, handle-post-tool, handle-subagent-stop, etc.). The
-// `bash ` prefix exists so Git Bash / WSL executes the .sh wrapper;
-// `$CLAUDE_PROJECT_DIR` is expanded by bash at invocation.
-func TestRender_DbSchemaChangeHook_Windows(t *testing.T) {
-	ctx := testContext("windows")
-	out := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
-
-	if !json.Valid([]byte(strings.TrimSpace(out))) {
-		t.Fatalf("windows render is not valid JSON:\n%s", out)
-	}
-
-	var settings map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &settings); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	hooks := settings["hooks"].(map[string]any)
-	post := hooks["PostToolUse"].([]any)
-
-	var dbEntryCmd string
-	for _, entry := range post {
-		block := entry.(map[string]any)
-		for _, h := range block["hooks"].([]any) {
-			cmd, _ := h.(map[string]any)["command"].(string)
-			if strings.Contains(cmd, "handle-db-schema-change.sh") {
-				dbEntryCmd = cmd
-			}
-		}
-	}
-	if dbEntryCmd == "" {
-		t.Fatal("db-schema-change hook entry not found in PostToolUse for platform=windows")
-	}
-
-	const want = `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"`
-	if dbEntryCmd != want {
-		t.Errorf("windows db-schema-change command = %q, want %q", dbEntryCmd, want)
-	}
-}
-
-// TestRender_DbSchemaChangeHook_ConsistencyWithOtherEntries verifies AC-5 and
-// REQ-H3-001 — that the db-schema-change PostToolUse branch matches the Windows
-// branching style used by other PostToolUse entries. Specifically: when
-// Platform=windows is rendered, BOTH the Write|Edit global PostToolUse entry
-// AND the db-schema-change entry must start with `bash "$CLAUDE_PROJECT_DIR/…"`.
-func TestRender_DbSchemaChangeHook_ConsistencyWithOtherEntries(t *testing.T) {
-	ctx := testContext("windows")
-	out := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
-
-	// Count Windows-branch command forms in the raw rendered output. In the
-	// JSON literal the double quotes are backslash-escaped, so the search
-	// string matches the on-disk form `bash \"$CLAUDE_PROJECT_DIR/...`.
-	needle := `bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/`
-	count := strings.Count(out, needle)
-	if count < 3 {
-		t.Errorf("expected >= 3 Windows-branched hook entries with the `bash \"$CLAUDE_PROJECT_DIR/...\"` shape, got %d", count)
-	}
-
-	// The rendered file must still parse as JSON.
-	if !json.Valid([]byte(strings.TrimSpace(out))) {
-		t.Fatal("windows render is not valid JSON")
 	}
 }
