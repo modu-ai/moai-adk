@@ -71,6 +71,10 @@ Two independent workstreams converged in this release:
 
 ### Fixed
 
+**LSP 서버 감지 수정 (#683)**
+- LSP 서버 감지 전체 비활성 문제 수정 (#683): `lsp.yaml` 템플릿 YAML 키를 `binary` → `command`로 수정 (`ServerConfig` YAML 태그와 일치), 16개 언어 전체에 `file_extensions` 추가 (`detectLanguage()` 파일-서버 라우팅 복원)
+- 템플릿 준수 테스트 추가 (`TestTemplate_NoBinaryKey`, `TestTemplate_16LangCommandNonEmpty`, `TestTemplate_16LangFileExtensionsNonEmpty`): 실제 템플릿 파일을 파싱해 스키마 드리프트 재발 방지
+
 **`moai glm` settings.local.json 영구 오염 수정 (#676)**
 - `moai glm` 실행 후 Claude Code 진입 시 context window limit 에러 수정: `applyGLMMode`에서 `injectGLMEnvForTeam()` 호출을 제거하여 `settings.local.json`에 GLM 환경변수(`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `DISABLE_PROMPT_CACHING` 등)가 영구 기록되던 동작 방지. `setGLMEnv()`이 현재 프로세스 env를 설정하면 `syscall.Exec`가 이를 `claude`에 상속하므로 파일 기록은 중복이었으며 세션 종료 후 GLM 모드 잔류를 유발했음.
 - `moai glm` 시작 시 메인 세션 컨텍스트 한도 경고 메시지 추가: `DISABLE_PROMPT_CACHING=1`로 인한 전체 시스템 프롬프트 재전송 (~30-40K 토큰), Z.AI 동시성 한도 (유료 티어 1-3 in-flight), GLM 모델 컨텍스트 윈도우 크기를 안내. Claude 리더 + GLM 팀원 조합이 필요한 경우 `moai cg` 사용 권장.

@@ -58,7 +58,7 @@ lsp:
   # which servers actually spawn at runtime.
   #
   # Schema per entry:
-  #   binary               : Primary server executable
+  #   command              : Primary server executable
   #   fallback_binaries    : Alternative servers if primary missing
   #   args                 : Command-line arguments
   #   init_options         : LSP initializationOptions for the server
@@ -70,7 +70,7 @@ lsp:
   servers:
 
     cpp:
-      binary: clangd
+      command: clangd
       fallback_binaries: []
       args: []
       init_options: {}
@@ -79,10 +79,16 @@ lsp:
         - "compile_commands.json"
         - "Makefile"
       install_hint: "Install via LLVM distribution (brew install llvm / apt install clangd)"
+      file_extensions:
+        - ".cpp"
+        - ".cc"
+        - ".cxx"
+        - ".h"
+        - ".hpp"
       license_concern: "open"
 
     csharp:
-      binary: omnisharp
+      command: omnisharp
       fallback_binaries:
         - "roslyn-ls"
       args:
@@ -93,10 +99,12 @@ lsp:
         - "*.sln"
         - "*.fsproj"
       install_hint: "Install OmniSharp or Microsoft.CodeAnalysis.LanguageServer"
+      file_extensions:
+        - ".cs"
       license_concern: "open"
 
     flutter:
-      binary: dart
+      command: dart
       fallback_binaries: []
       args:
         - "language-server"
@@ -106,10 +114,12 @@ lsp:
         - "pubspec.yaml"
         - "pubspec.lock"
       install_hint: "Install Dart SDK or Flutter SDK (dart binary provides language server)"
+      file_extensions:
+        - ".dart"
       license_concern: "open"
 
     elixir:
-      binary: elixir-ls
+      command: elixir-ls
       fallback_binaries:
         - "lexical"
       args: []
@@ -118,10 +128,13 @@ lsp:
         - "mix.exs"
         - "mix.lock"
       install_hint: "Install elixir-ls from https://github.com/elixir-lsp/elixir-ls"
+      file_extensions:
+        - ".ex"
+        - ".exs"
       license_concern: "open"
 
     go:
-      binary: gopls
+      command: gopls
       fallback_binaries: []
       args: []
       init_options:
@@ -130,10 +143,12 @@ lsp:
         - "go.mod"
         - "go.sum"
       install_hint: "go install golang.org/x/tools/gopls@latest"
+      file_extensions:
+        - ".go"
       license_concern: "open"
 
     java:
-      binary: jdtls
+      command: jdtls
       fallback_binaries: []
       args: []
       init_options: {}
@@ -142,10 +157,12 @@ lsp:
         - "build.gradle"
         - "build.gradle.kts"
       install_hint: "Install Eclipse JDT Language Server (jdtls)"
+      file_extensions:
+        - ".java"
       license_concern: "open"
 
     javascript:
-      binary: typescript-language-server
+      command: typescript-language-server
       fallback_binaries: []
       args:
         - "--stdio"
@@ -154,10 +171,14 @@ lsp:
         - "package.json"
         - "jsconfig.json"
       install_hint: "npm install -g typescript-language-server typescript"
+      file_extensions:
+        - ".js"
+        - ".jsx"
+        - ".mjs"
       license_concern: "open"
 
     kotlin:
-      binary: kotlin-language-server
+      command: kotlin-language-server
       fallback_binaries: []
       args: []
       init_options: {}
@@ -166,10 +187,13 @@ lsp:
         - "build.gradle"
         - "settings.gradle.kts"
       install_hint: "Install from https://github.com/fwcd/kotlin-language-server"
+      file_extensions:
+        - ".kt"
+        - ".kts"
       license_concern: "open"
 
     php:
-      binary: phpactor
+      command: phpactor
       fallback_binaries:
         - "intelephense"
       args:
@@ -179,10 +203,12 @@ lsp:
         - "composer.json"
         - "composer.lock"
       install_hint: "Install phpactor from https://phpactor.readthedocs.io/"
+      file_extensions:
+        - ".php"
       license_concern: "open"
 
     python:
-      binary: pylsp
+      command: pylsp
       fallback_binaries:
         - "pyright-langserver"
         - "basedpyright-langserver"
@@ -194,10 +220,12 @@ lsp:
         - "requirements.txt"
         - "Pipfile"
       install_hint: "pip install python-lsp-server"
+      file_extensions:
+        - ".py"
       license_concern: "open"
 
     r:
-      binary: R
+      command: R
       fallback_binaries: []
       args:
         - "--slave"
@@ -209,10 +237,13 @@ lsp:
         - ".Rproj"
         - "renv.lock"
       install_hint: "install.packages('languageserver') in R"
+      file_extensions:
+        - ".R"
+        - ".r"
       license_concern: "open"
 
     ruby:
-      binary: ruby-lsp
+      command: ruby-lsp
       fallback_binaries:
         - "solargraph"
       args: []
@@ -222,10 +253,12 @@ lsp:
         - ".ruby-version"
         - "Rakefile"
       install_hint: "gem install ruby-lsp"
+      file_extensions:
+        - ".rb"
       license_concern: "open"
 
     rust:
-      binary: rust-analyzer
+      command: rust-analyzer
       fallback_binaries: []
       args: []
       init_options:
@@ -235,10 +268,12 @@ lsp:
         - "Cargo.toml"
         - "Cargo.lock"
       install_hint: "rustup component add rust-analyzer"
+      file_extensions:
+        - ".rs"
       license_concern: "open"
 
     scala:
-      binary: metals
+      command: metals
       fallback_binaries: []
       args: []
       init_options: {}
@@ -246,10 +281,13 @@ lsp:
         - "build.sbt"
         - "build.sc"
       install_hint: "Install metals from https://scalameta.org/metals/"
+      file_extensions:
+        - ".scala"
+        - ".sc"
       license_concern: "open"
 
     swift:
-      binary: sourcekit-lsp
+      command: sourcekit-lsp
       fallback_binaries: []
       args: []
       init_options: {}
@@ -258,10 +296,12 @@ lsp:
         - "*.xcodeproj"
         - "*.xcworkspace"
       install_hint: "Install Xcode Command Line Tools (includes sourcekit-lsp)"
+      file_extensions:
+        - ".swift"
       license_concern: "open"
 
     typescript:
-      binary: typescript-language-server
+      command: typescript-language-server
       fallback_binaries: []
       args:
         - "--stdio"
@@ -270,6 +310,9 @@ lsp:
         - "tsconfig.json"
         - "package.json"
       install_hint: "npm install -g typescript-language-server typescript"
+      file_extensions:
+        - ".ts"
+        - ".tsx"
       license_concern: "open"
 
   # ---------------- ast-grep Delegation ----------------
