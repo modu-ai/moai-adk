@@ -309,7 +309,7 @@ func logError(logFile, message string) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	entry := time.Now().UTC().Format(time.RFC3339) + " " + message + "\n"
 	_, _ = f.WriteString(entry)
 }
