@@ -67,6 +67,14 @@ design:
       consistency_ratio: 0.80
       staleness_window_days: 30
 
+  # Design brief documents auto-loaded during /moai design Phase B2.5
+  # Source: SPEC-DESIGN-ATTACH-001
+  design_docs:
+    dir: ".moai/design"
+    auto_load_on_design_command: true
+    token_budget: 20000
+    priority: [spec, system, research, pencil-plan]
+
   # Pipeline adaptation weights (absorbed from agency adaptation config)
   adaptation:
     enabled: true

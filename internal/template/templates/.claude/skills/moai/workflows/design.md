@@ -105,6 +105,16 @@ Step B2: Load brand context:
 - Read `.moai/project/brand/visual-identity.md`
 - Read `.moai/project/brand/target-audience.md`
 
+### Phase B2.5: Load .moai/design/ Context
+
+1. Check .moai/design/ exists. If absent: skip, log "design docs not initialized".
+2. Check design_docs.auto_load_on_design_command. If false: skip (user may invoke standalone).
+3. Read README.md for attach rules (if present).
+4. Invoke moai-workflow-design-context skill with dir=".moai/design".
+5. Receive consolidated context block (Markdown, token-capped per REQ-5 algorithm).
+6. Prepend context block to the orchestrator's next subagent prompt (expert-frontend or moai-domain-brand-design).
+7. Proceed to Phase B3 (BRIEF generation).
+
 Step B3: Generate BRIEF (REQ-BRIEF-001, REQ-BRIEF-002, REQ-BRIEF-003):
 - Invoke `manager-spec` in BRIEF generation mode.
 - Required BRIEF sections: `## Goal`, `## Audience`, `## Brand`
