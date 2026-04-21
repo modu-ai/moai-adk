@@ -243,6 +243,53 @@ func TestHandleDBSchemaSync_ExcludedPattern(t *testing.T) {
 	}
 }
 
+// TestHandleDBSchemaSync_PathTraversalRejected verifies that crafted paths escaping the
+// project root are rejected before matchGlob or parseMigrationStub can observe them.
+// Regression guard: without the filepath.Clean + "../" check, "migrations/../../../etc/passwd.sql"
+// passes the "migrations/**/*.sql" glob and is fed into os.ReadFile.
+func TestHandleDBSchemaSync_PathTraversalRejected(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	// Only "../"-escape paths are explicitly rejected by this guard. Absolute paths
+	// outside the project are handled by matchGlob's prefix check downstream (covered
+	// by TestHandleDBSchemaSync_NonMigrationFile and TestMatchesMigrationPattern).
+	malicious := []string{
+		"migrations/../../../etc/passwd.sql",
+		"migrations/../../secrets.sql",
+		"../escape.sql",
+		"../../..",
+	}
+
+	for _, path := range malicious {
+		path := path
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+			cfg := dbsync.Config{
+				FilePath:          path,
+				MigrationPatterns: []string{"migrations/**/*.sql"},
+				ExcludedPatterns:  dbsync.DefaultExcludedPatterns,
+				StateFile:         filepath.Join(tmpDir, "last-seen.json"),
+				ProposalFile:      filepath.Join(tmpDir, "proposal.json"),
+				ErrorLogFile:      filepath.Join(tmpDir, "db-sync-errors.log"),
+				DebounceWindow:    10 * time.Second,
+			}
+
+			result := dbsync.HandleDBSchemaSync(cfg)
+			if result.ExitCode != 0 {
+				t.Errorf("traversal path %q should exit 0, got %d", path, result.ExitCode)
+			}
+			if result.Decision != dbsync.DecisionSkip {
+				t.Errorf("traversal path %q should return skip, got %q", path, result.Decision)
+			}
+			// Proposal file must NOT be created — would indicate the path was processed.
+			if _, err := os.Stat(cfg.ProposalFile); err == nil {
+				t.Errorf("traversal path %q produced proposal.json (info disclosure)", path)
+			}
+		})
+	}
+}
+
 // TestHandleDBSchemaSync_NonMigrationFile exits 0 (no match, REQ-003).
 func TestHandleDBSchemaSync_NonMigrationFile(t *testing.T) {
 	t.Parallel()

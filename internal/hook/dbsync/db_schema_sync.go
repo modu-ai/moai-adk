@@ -83,11 +83,28 @@ type DebounceState struct {
 // It always returns exit 0 (non-blocking) to avoid disrupting the user's Write/Edit flow.
 //
 // @MX:NOTE: [AUTO] HandleDBSchemaSync is the public facade for db-schema-sync. It never blocks the caller.
+// @MX:ANCHOR: Path traversal guard — cleaned paths that escape the project root (absolute or "../")
+//
+//	are rejected so matchGlob cannot be coerced into reading files outside the project tree.
+//	@MX:REASON: matchGlob accepts unnormalized paths; without this guard a crafted file_path like
+//	"migrations/../../../etc/passwd.sql" passes pattern matching and would be fed into parseMigrationStub.
 func HandleDBSchemaSync(cfg Config) Result {
 	// Empty path — exit silently (REQ-002 guard)
 	if cfg.FilePath == "" {
 		return Result{ExitCode: 0, Decision: DecisionSkip}
 	}
+
+	// Path traversal guard: reject paths that escape to a parent directory after
+	// filepath.Clean normalization. Absolute paths remain accepted because Claude Code's
+	// tool_input.file_path is always absolute in production; matchGlob's prefix check
+	// handles out-of-project absolute paths downstream.
+	cleaned := filepath.Clean(cfg.FilePath)
+	sep := string(filepath.Separator)
+	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+sep) || strings.HasPrefix(cleaned, "../") {
+		slog.Debug("db-schema-sync: rejected path traversal", "path", cfg.FilePath, "cleaned", cleaned)
+		return Result{ExitCode: 0, Decision: DecisionSkip}
+	}
+	cfg.FilePath = cleaned
 
 	// Recursion guard: excluded patterns exit 0 silently (REQ-004)
 	if IsExcluded(cfg.FilePath, cfg.ExcludedPatterns) {
