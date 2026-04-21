@@ -59,9 +59,11 @@ jobs:
           #   C4a: 10 — initial value, hit error_max_turns on multi-file PRs
           #        (e.g. PR #688 docs 4-language sync, run #24720853092)
           #   C4b: 10 → 40 — reviews need to read N files across locales.
-          #        Code review is lighter than issue fixing (claude.yml: 80),
-          #        so 40 is a conservative middle ground. Bump to 80 if exceeded.
+          #   C4c: 40 → 80 — align with claude.yml (issue fixes). Code reviews
+          #        on SPEC-level changes frequently exceed 40 turns when the PR
+          #        touches cross-cutting code + tests + docs. 80 matches the
+          #        budget used by the sibling issue-fix workflow.
           claude_args: |
             --model claude-opus-4-7
             --effort high
-            --max-turns 40
+            --max-turns 80
