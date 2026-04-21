@@ -55,7 +55,13 @@ jobs:
           allowed_bots: 'dependabot'
           # Use Opus model with high effort for thorough code reviews.
           # C4 Fix: Added --max-turns to cap runaway executions and control costs.
+          # History:
+          #   C4a: 10 — initial value, hit error_max_turns on multi-file PRs
+          #        (e.g. PR #688 docs 4-language sync, run #24720853092)
+          #   C4b: 10 → 40 — reviews need to read N files across locales.
+          #        Code review is lighter than issue fixing (claude.yml: 80),
+          #        so 40 is a conservative middle ground. Bump to 80 if exceeded.
           claude_args: |
             --model claude-opus-4-7
             --effort high
-            --max-turns 10
+            --max-turns 40
