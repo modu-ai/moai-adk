@@ -2,6 +2,7 @@
 
 ## HISTORY
 
+- 2026-04-20 (SPEC-DESIGN-CONST-AMEND-001): Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
 - 2026-04-20: Relocated from `.claude/rules/agency/constitution.md` (v3.2.0) to `.claude/rules/moai/design/constitution.md` as part of SPEC-AGENCY-ABSORB-001 M1. Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
 
 ---
@@ -29,6 +30,9 @@ The design system is NOT a replacement for MoAI. It is a vertical specialization
 The following elements are immutable and can only be changed by human developers:
 
 - [FROZEN] This constitution file (.claude/rules/moai/design/constitution.md)
+- [FROZEN] Section 3.1 Brand Context content
+- [FROZEN] Section 3.2 Design Brief content
+- [FROZEN] Section 3.3 Relationship rules
 - [FROZEN] Safety architecture (Section 5)
 - [FROZEN] GAN Loop contract (Section 11)
 - [FROZEN] Evaluator leniency prevention mechanisms (Section 12)
@@ -48,7 +52,9 @@ The following elements can be modified through the graduation protocol:
 
 ---
 
-## 3. Brand Context as Constitutional Principle
+## 3. Brand Context and Design Brief as Constitutional Principles
+
+### 3.1 Brand Context (constitutional parent)
 
 Brand context is not optional decoration. It is a constitutional constraint that flows through every phase:
 
@@ -59,6 +65,23 @@ Brand context is not optional decoration. It is a constitutional constraint that
 - [HARD] evaluator-active MUST score brand consistency as a must-pass criterion
 
 Brand context is stored in `.moai/project/brand/` and initialized through the brand interview process on first run. Context updates require explicit user approval.
+
+### 3.2 Design Brief (execution scope)
+
+Iteration-specific design briefs are stored in `.moai/design/`:
+
+- [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md, pencil-plan.md) when present and not _TBD_
+- [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
+- [HARD] `moai-workflow-design-import` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
+- [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
+- [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
+- [HARD] Priority order when truncation is needed: spec.md > system.md > research.md > pencil-plan.md
+
+### 3.3 Relationship
+
+- Brand (`.moai/project/brand/`) = WHO the brand is (long-lived, rarely changes)
+- Design (`.moai/design/`) = WHAT each iteration produces (per-project, evolves with redesign cycles)
+- When both are present, brand constraints win on conflict.
 
 ---
 
@@ -85,7 +108,7 @@ Each phase produces typed artifacts consumed by downstream phases:
 | manager-spec | User request + brand context | BRIEF document (Goal/Audience/Brand sections) | Always |
 | moai-domain-copywriting | BRIEF + brand voice | Copy JSON (hero/features/cta/etc.) | Path B |
 | moai-domain-brand-design | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
-| moai-workflow-design-import | Handoff bundle path | .moai/design/tokens.json + components.json | Path A |
+| moai-workflow-design-import | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
 | expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
 | evaluator-active | Built code + BRIEF | Score card + feedback | Always |
 
@@ -373,9 +396,9 @@ If a graduated learning causes regression:
 
 ---
 
-Version: 3.2.0
-Classification: FROZEN
-Original Version: 3.2.0 (agency/constitution.md)
-Last Updated: 2026-04-02
+Version: 3.3.0
+Classification: FROZEN_AMENDMENT
+Original Source: agency/constitution.md v3.2.0
+Last Updated: 2026-04-20
 Relocated: 2026-04-20 (SPEC-AGENCY-ABSORB-001 M1)
 REQ coverage: REQ-CONST-001, REQ-CONST-002, REQ-CONST-003, REQ-CONST-004
