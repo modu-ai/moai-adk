@@ -19,7 +19,7 @@ Comprehensive comparison of Figma MCP, Pencil MCP, and Pencil-to-Code export for
 | **Learning Curve** | Low | Medium | Low |
 | **Setup Complexity** | Low (plugin install + auth) | Low (auto-configures) | Low |
 | **Cost** | Free tier (6 calls/mo), paid plans per-minute | Paid | Paid |
-| **Tools Count** | 16 tools | 14 tools | Prompt-based workflow |
+| **Tools Count** | 18 tools | 14 tools | Prompt-based workflow |
 | **Integration** | Figma files via official remote MCP | Pencil platform | React/Tailwind projects |
 
 ## Use Case Decision Matrix

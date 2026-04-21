@@ -49,25 +49,31 @@ Two deployment modes are available:
 
 ## Figma MCP Tools Reference
 
+All Figma MCP tools are exposed in Claude Code as `mcp__plugin_figma_figma__<name>` (sections below use the short names). Many tools accept optional `clientFrameworks` and `clientLanguages` string parameters used for telemetry only — pass `unknown` when uncertain. Node IDs are accepted as either `123:456` or `123-456` and are extractable from standard Figma URLs:
+
+- `figma.com/design/:fileKey/:fileName?node-id=1-2` → `nodeId = "1:2"`, `fileKey = ":fileKey"`
+- `figma.com/design/:fileKey/branch/:branchKey/:fileName` → pass `branchKey` as `fileKey`
+- `figma.com/make/:makeFileKey/:makeFileName` → pass `makeFileKey` as `fileKey`
+
 ### Design Context and Reading
 
 #### get_design_context
 
-Extract design context from Figma files:
-- Retrieve component hierarchy and structure
-- Understand layout, spacing, and design relationships
-- Get detailed specifications for implementing designs
+Primary tool for design-to-code workflows. Returns reference code, a screenshot, and contextual metadata for the node. The returned code is a reference to adapt to the target project — NOT final output:
+- Required: `fileKey`, `nodeId`
+- Optional: `excludeScreenshot` (screenshots strongly recommended), `forceCode` (always return code even if large), `disableCodeConnect`, `clientFrameworks`, `clientLanguages`
+- Returns a code string plus a JSON of asset download URLs and (by default) a screenshot
 
 ```
-get_design_context(fileKey, nodeId?) → { components, layout, styles, ... }
+get_design_context(fileKey, nodeId, { excludeScreenshot?, forceCode?, disableCodeConnect? }?) → { code, assets: { [assetUrl]: string }, screenshot? }
 ```
 
 #### get_screenshot
 
-Capture screenshots of Figma frames for visual reference:
-- Render specific frames as images
-- Use as visual reference during implementation
-- Compare design intent with code output
+Render a screenshot image of any Figma node (frame, component, page, etc.) or the currently selected node in the desktop app:
+- Required: `fileKey`, `nodeId`
+- No optional params
+- Same URL parsing rules as `get_design_context`
 
 ```
 get_screenshot(fileKey, nodeId) → image data
@@ -75,115 +81,151 @@ get_screenshot(fileKey, nodeId) → image data
 
 #### get_variable_defs
 
-Extract design variables and tokens from Figma files:
-- Color tokens and palettes
-- Typography definitions
-- Spacing and sizing values
-- Theme configurations
+Resolve design-token variables referenced under a specific node's subtree (per-node, not per-file):
+- Required: `fileKey`, `nodeId` — variables are returned for the subtree rooted at the node
+- Optional: `clientFrameworks`, `clientLanguages`
+- Returns a flat map `{ variableName: value }`, e.g. `{ "icon/default/secondary": "#949494" }`
+- Covers color, typography, size, and spacing tokens referenced by the node
 
 ```
-get_variable_defs(fileKey) → { colors, typography, spacing, ... }
+get_variable_defs(fileKey, nodeId) → { [variableName: string]: value }
 ```
 
 #### get_metadata
 
-Get file metadata and structural information:
-- File name, description, and timestamps
-- Page structure and frame hierarchy
-- Component library references
+Get XML-format structural metadata for a node or page. Prefer `get_design_context` for substantive design-to-code work:
+- Required: `fileKey`, `nodeId` (page IDs such as `0:1` are accepted)
+- Optional: `clientFrameworks`, `clientLanguages`
+- Returns XML with node IDs, layer types, names, positions, and sizes only — no file-level metadata (name, description, timestamps, etc.)
+- IMPORTANT: never call `get_metadata` on Figma Make files
 
 ```
-get_metadata(fileKey) → { name, description, lastModified, pages, ... }
+get_metadata(fileKey, nodeId) → XML
+```
+
+#### get_libraries
+
+Get the design libraries associated with a Figma file. Returns two lists:
+- Subscribed libraries — libraries currently added to the file
+- Available libraries — community UI kits and organization libraries available to add
+- Each entry includes `name`, library `key`, `description`, and `sourceType`
+- Use the returned library keys to scope `search_design_system` via its `includeLibraryKeys` parameter
+
+```
+get_libraries(fileKey) → { subscribed: [{ name, key, description, sourceType }, ...], available: [...] }
 ```
 
 #### whoami
 
-Get current authenticated user information:
-- Verify authentication status
-- Check user identity and permissions
+Get authenticated-user information and available plans:
+- No parameters
+- Returns the current user identity plus available plans; each plan's `key` is the `planKey` required by `create_new_file`
+- Use for debugging authentication issues with other tools
 
 ```
-whoami() → { id, name, email, ... }
+whoami() → { user: { ... }, plans: [{ key, name, ... }] }
 ```
 
 ### Code Connect
 
 #### get_code_connect_map
 
-Retrieve code connect mappings that link Figma components to code implementations:
-- Map Figma component IDs to code component names
-- Reference existing design-to-code connections
+Retrieve existing Figma-node → codebase-component Code Connect mappings:
+- Required: `fileKey`, `nodeId`
+- Optional: `codeConnectLabel` — disambiguator when multiple mappings exist for the same node across languages/frameworks
+- Returns a map keyed by `nodeId` with `{ codeConnectSrc, codeConnectName }` (source file path and exported component name)
 
 ```
-get_code_connect_map(fileKey) → { componentId: codeComponent, ... }
+get_code_connect_map(fileKey, nodeId, codeConnectLabel?) → { [nodeId]: { codeConnectSrc, codeConnectName } }
 ```
 
 #### add_code_connect_map
 
-Add new code connect mappings to link Figma components with code:
-- Register code implementations for Figma components
-- Enable bidirectional design-code traceability
+Create a Code Connect mapping for a single Figma node → code component:
+- Required: `fileKey`, `nodeId`, `source` (file path in codebase), `componentName`, `label`
+- `label` enum (16 values): `React`, `Web Components`, `Vue`, `Svelte`, `Storybook`, `Javascript`, `Swift`, `Swift UIKit`, `Objective-C UIKit`, `SwiftUI`, `Compose`, `Java`, `Kotlin`, `Android XML Layout`, `Flutter`, `Markdown`
+- Optional: `template` (executable JS template — promotes the record to `figmadoc`-type instead of a simple `component_browser` mapping), `templateDataJson` (metadata keys: `isParserless`, `imports`, `nestable`, `props`), `clientFrameworks`, `clientLanguages`
+- For bulk mapping across many nodes, use `send_code_connect_mappings` instead
 
 ```
-add_code_connect_map(fileKey, mappings) → confirmation
+add_code_connect_map(fileKey, nodeId, source, componentName, label, { template?, templateDataJson? }?) → confirmation
 ```
 
 #### get_code_connect_suggestions
 
-Auto-detect potential component mappings between Figma and code:
-- Analyzes codebase to suggest Figma-to-code component mappings
-- Works with Code Connect framework for automated discovery
+Get AI-suggested Code Connect mapping candidates for a node:
+- Required: `fileKey`, `nodeId`
+- Optional: `excludeMappingPrompt` (return only a lightweight list of unmapped components), `clientFrameworks`, `clientLanguages`
+- Workflow: call this → review suggestions with the user → persist via `send_code_connect_mappings`
 
 ```
-get_code_connect_suggestions(fileKey) → { suggestions: [...] }
+get_code_connect_suggestions(fileKey, nodeId, { excludeMappingPrompt? }?) → { suggestions: [...] }
 ```
 
 #### send_code_connect_mappings
 
-Confirm and finalize suggested Code Connect mappings:
-- Used after calling get_code_connect_suggestions
-- Reviews and confirms suggested component mappings
-- Establishes bidirectional design-code traceability
+Persist multiple Code Connect mappings in bulk after user approval:
+- Required: `fileKey`, `nodeId`, `mappings` (array)
+- Each mapping item: `{ nodeId, componentName, source, label, template?, templateDataJson? }` (same semantics as `add_code_connect_map`)
+- Follow-up to `get_code_connect_suggestions`
 
 ```
-send_code_connect_mappings(fileKey, mappings) → confirmation
+send_code_connect_mappings(fileKey, nodeId, mappings) → confirmation
+```
+
+#### get_context_for_code_connect
+
+Get structured Figma component metadata designed for authoring Code Connect template files (.figma.ts / .figma.js):
+- Returns property definitions (with types and variant options) for the target component or component set
+- Returns a descendant tree of instances and text nodes, each annotated with property references
+- Required: `fileKey`, `nodeId`
+- Optional: `clientFrameworks`, `clientLanguages` (telemetry only — pass `unknown` when uncertain)
+
+```
+get_context_for_code_connect(fileKey, nodeId, { clientFrameworks?, clientLanguages? }?) → { properties, variants, descendantTree }
 ```
 
 ### FigJam and Diagrams
 
 #### get_figjam
 
-Access FigJam boards for collaboration content:
-- Retrieve sticky notes, shapes, and text
-- Extract workflow diagrams and user flows
-- Access collaborative brainstorming sessions
+Generate UI code for a FigJam node — FigJam-only, not a generic board reader:
+- Required: `fileKey`, `nodeId` (use `0:1` for the root node)
+- Optional: `includeImagesOfNodes` (default `true`)
+- IMPORTANT: works only on FigJam files (`figma.com/board/...`), not on regular Figma design files
 
 ```
-get_figjam(fileKey) → { boards, elements, ... }
+get_figjam(fileKey, nodeId, { includeImagesOfNodes? }?) → UI code
 ```
 
 #### generate_diagram
 
-Create diagrams in FigJam from text descriptions:
-- Generate flowcharts and architecture diagrams
-- Create user journey maps
-- Build system design visualizations
+Create a Mermaid.js diagram as a new FigJam file. Creates its own file — do NOT call `create_new_file` beforehand:
+- Required: `name` (short human-readable title), `mermaidSyntax` (Mermaid.js code)
+- Optional: `userIntent` (short description — telemetry only)
+- Supported diagram types: `graph`, `flowchart`, `sequenceDiagram`, `stateDiagram`, `stateDiagram-v2`, `gantt`
+- Not supported: class diagrams, timelines, Venn diagrams, ER diagrams, font changes, moving individual shapes
+- IMPORTANT: after calling, you MUST surface the returned URL to the user as a markdown link
 
 ```
-generate_diagram(description, fileKey?) → { diagramId, ... }
+generate_diagram(name, mermaidSyntax, userIntent?) → { url, ... }
 ```
 
-### Design Generation
+### Design Generation (Code-to-Canvas)
 
 #### generate_figma_design
 
-Capture live web UI and send it to Figma files (Code-to-Canvas, Remote MCP only):
-- Capture web pages and convert them into Figma design layers
-- Append captured designs to existing files or create new ones
-- Convert live UI interfaces into editable Figma frames
+Multi-step Code-to-Canvas tool — captures, imports, or converts a web page or HTML into a Figma design. Works with localhost and external URLs (Remote MCP only):
+- No required params; call first with no `outputMode` to receive capture instructions and output-mode options
+- Follow-up params (once selected): `outputMode` (enum: `newFile` | `existingFile` | `clipboard`), `fileKey` (for `existingFile`), `fileName` + `planKey` (for `newFile`), `nodeId` (target inside `existingFile`), `captureId` (for polling)
+- Workflow: initial call → choose `outputMode` → capture → poll with `captureId` every 5s (max 10 polls) until `status === "completed"`
+- For LOCAL projects: identify the dev-server URL from the codebase first
+- For EXTERNAL URLs: capture via Playwright MCP — do NOT use `open` with hash fragments
+- For web apps, pair with `use_figma` + `search_design_system` to build the screen from design-system components, then delete this tool's capture (used only as a pixel-perfect layout reference)
+- Each capture ID is single-use
 
 ```
-generate_figma_design(url, targetFileKey?) → { frameId, ... }
+generate_figma_design({ captureId?, fileKey?, fileName?, nodeId?, outputMode?, planKey? }?) → { captureId | fileKey | ... }
 ```
 
 **Known Limitations:**
@@ -195,48 +237,53 @@ generate_figma_design(url, targetFileKey?) → { frameId, ... }
 
 #### use_figma
 
-General-purpose tool for creating, editing, or inspecting any object in a Figma file (Remote MCP only, beta):
-- Create and modify pages, frames, components, variants, variables, styles, text, images
-- Checks design system before generating new elements
-- Currently free during beta period (will become usage-based paid feature)
+Canonical Figma Plugin API executor — the primary tool for all Figma writes. Runs JavaScript in the Figma file context:
+- Required: `fileKey`, `code` (JavaScript, max 50,000 chars), `description` (≤ 2000 chars summary of intent)
+- Optional: `skillNames` (e.g. `"figma-use"` or `"figma-use,figma-generate-design"` — telemetry)
+- MANDATORY PREREQUISITE: load the `figma-use` skill before calling (skipping causes hard-to-debug failures)
+- Capabilities: create/edit/delete pages, frames, components, variants, variables, styles, text, images; set up design tokens; build variant systems; inspect node properties; fix layout/auto-layout issues
+- Gotchas:
+  - Inter font uses style `"Semi Bold"` with a space — not `"SemiBold"`; same for `"Extra Bold"`
+  - Do NOT assign `figma.currentPage = page`; use `await figma.setCurrentPageAsync(page)`
+- Before creating components, call `search_design_system` first and import matches via `importComponentByKeyAsync` / `importComponentSetByKeyAsync`
 
 ```
-use_figma(fileKey, operations) → confirmation
+use_figma(fileKey, code, description, { skillNames? }?) → execution result
 ```
 
 #### search_design_system
 
-Search connected design libraries for reusable assets:
-- Find components, variables, and styles matching a text query
-- Returns matching design system elements for reuse
-- Ensures consistency with established design patterns
+Search design libraries for matching components, variables, and styles:
+- Required: `query`, `fileKey`
+- Optional: `includeLibraryKeys` (scope to library keys from `get_libraries`), `includeComponents` (default `true`), `includeStyles` (default `true`), `includeVariables` (default `true`), `disableCodeConnect`
+- Returns matching assets across all connected design libraries
 
 ```
-search_design_system(query) → { components, variables, styles }
+search_design_system(query, fileKey, { includeLibraryKeys?, includeComponents?, includeStyles?, includeVariables?, disableCodeConnect? }?) → { components, styles, variables }
 ```
 
 #### create_new_file
 
-Create a new blank Figma Design or FigJam file:
-- Creates files in the authenticated user's drafts folder
-- Prompts for team/organization selection if applicable
-- Supports both Figma Design and FigJam file types
+Create a new blank Figma Design or FigJam file in the authenticated user's drafts folder:
+- Required: `fileName`, `planKey`, `editorType` (enum: `"design"` | `"figjam"`)
+- `planKey` is obtained from `whoami()` — it is the `key` field on each plan entry. If the user has multiple plans, ask which team/organization to use
+- Returns the new file key and URL
 
 ```
-create_new_file(name, type?) → { fileKey, url }
+create_new_file(fileName, planKey, editorType) → { fileKey, url }
 ```
 
 ### Design System
 
 #### create_design_system_rules
 
-Create design system rules and guidelines within Figma:
-- Define component usage patterns
-- Establish naming conventions
-- Document design principles
+Return a prompt used by the agent to scaffold design-system rules for the current repository. This does NOT create rules inside Figma:
+- No required params
+- Optional: `clientFrameworks`, `clientLanguages` (telemetry)
+- Output is a prompt string the agent feeds back into itself; pair with the `figma-create-design-system-rules` skill for the end-to-end flow
 
 ```
-create_design_system_rules(rules) → { ruleId, ... }
+create_design_system_rules({ clientFrameworks?, clientLanguages? }?) → prompt
 ```
 
 ## Rate Limits
@@ -274,10 +321,10 @@ Capture a screenshot to use as visual reference throughout implementation. Compa
 ### Step 3: Extract Design Tokens
 
 ```
-get_variable_defs(fileKey)
+get_variable_defs(fileKey, nodeId)
 ```
 
-Extract all design variables (colors, typography, spacing). Use these values in your implementation instead of hardcoding.
+Extract design variables referenced under the target node (colors, typography, spacing tokens). Use these values instead of hardcoding them. Variables are returned as a flat `{ variableName: value }` map.
 
 ### Step 4: Analyze Component Structure
 
@@ -329,8 +376,9 @@ Compare the implemented component against the screenshot from Step 2:
 ### Extracting Color Variables
 
 ```
-vars = get_variable_defs(fileKey)
-// Returns: { colors: { primary: "#3B82F6", ... }, ... }
+vars = get_variable_defs(fileKey, nodeId)
+// Returns a flat map, e.g.:
+// { "color/primary": "#3B82F6", "color/primary-hover": "#2563EB", ... }
 ```
 
 Map to CSS custom properties:
@@ -344,8 +392,9 @@ Map to CSS custom properties:
 ### Extracting Typography Variables
 
 ```
-vars = get_variable_defs(fileKey)
-// Returns: { typography: { heading1: { fontFamily: "Inter", fontSize: 32, fontWeight: 700 } } }
+vars = get_variable_defs(fileKey, nodeId)
+// Returns a flat map with typography entries, e.g.:
+// { "typography/heading-1": { fontFamily: "Inter", fontSize: 32, fontWeight: 700 } }
 ```
 
 Map to Tailwind:
@@ -367,31 +416,31 @@ module.exports = {
 ### Example 1: Component Implementation
 
 ```
-1. get_metadata(fileKey) → Identify target frame and page
-2. get_design_context(fileKey, nodeId) → Understand component structure
-3. get_screenshot(fileKey, nodeId) → Capture visual reference
-4. get_variable_defs(fileKey) → Extract all design tokens
-5. Implement React component with extracted specifications
+1. get_metadata(fileKey, pageNodeId) → Inspect page structure, identify target node
+2. get_design_context(fileKey, nodeId) → Get reference code, screenshot, and contextual metadata
+3. get_screenshot(fileKey, nodeId) → Capture visual reference (or reuse screenshot from get_design_context)
+4. get_variable_defs(fileKey, nodeId) → Extract design tokens referenced under the node
+5. Implement the component, adapting the reference code to your stack
 6. Compare implementation screenshot with design screenshot
 ```
 
 ### Example 2: Design System Setup
 
 ```
-1. get_variable_defs(fileKey) → All design tokens
-2. get_code_connect_map(fileKey) → Discover existing code mappings
-3. Generate tailwind.config.js from extracted tokens
-4. Map Figma component IDs to React component names
-5. add_code_connect_map(fileKey, mappings) → Register connections
+1. get_libraries(fileKey) → Discover connected libraries (subscribed + available)
+2. get_variable_defs(fileKey, rootNodeId) → Extract all design tokens under the root
+3. Generate tailwind.config.js from the extracted token map
+4. get_code_connect_suggestions(fileKey, componentNodeId) → Propose Figma → code component mappings
+5. send_code_connect_mappings(fileKey, rootNodeId, approvedMappings) → Persist confirmed mappings in bulk
 ```
 
 ### Example 3: FigJam Workflow Import
 
 ```
-1. get_figjam(fileKey) → Access workflow diagrams and user flows
-2. Parse user journey from FigJam content
+1. get_figjam(fileKey, "0:1") → Generate UI code for the root of a FigJam file
+2. Parse user journey from the returned UI code
 3. Implement screens following the user flow
-4. Use generate_diagram to create updated architecture docs
+4. generate_diagram(name, mermaidSyntax) → Create updated architecture diagrams as new FigJam files
 ```
 
 ## Best Practices
@@ -461,5 +510,5 @@ Solution: generate_figma_design requires the Remote MCP server (https://mcp.figm
 
 ---
 
-Last Updated: 2026-03-29
-Tool Version: Figma MCP (Official Remote Server, 16 tools)
+Last Updated: 2026-04-21
+Tool Version: Figma MCP (Official Remote Server, 18 tools — plugin v2.1.7, verified against live tool schemas)

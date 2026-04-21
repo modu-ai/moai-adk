@@ -6,7 +6,7 @@ description: >
   Pencil designs, or exporting to React/Tailwind code.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__snapshot_layout, mcp__pencil__get_editor_state, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__get_guidelines, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__open_document, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__replace_all_matching_properties, mcp__pencil__search_all_unique_properties
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__snapshot_layout, mcp__pencil__get_editor_state, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__get_guidelines, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__open_document, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__replace_all_matching_properties, mcp__pencil__search_all_unique_properties, mcp__plugin_figma_figma__get_design_context, mcp__plugin_figma_figma__get_screenshot, mcp__plugin_figma_figma__get_variable_defs, mcp__plugin_figma_figma__get_metadata, mcp__plugin_figma_figma__get_libraries, mcp__plugin_figma_figma__whoami, mcp__plugin_figma_figma__get_code_connect_map, mcp__plugin_figma_figma__add_code_connect_map, mcp__plugin_figma_figma__get_code_connect_suggestions, mcp__plugin_figma_figma__send_code_connect_mappings, mcp__plugin_figma_figma__get_context_for_code_connect, mcp__plugin_figma_figma__get_figjam, mcp__plugin_figma_figma__generate_diagram, mcp__plugin_figma_figma__generate_figma_design, mcp__plugin_figma_figma__use_figma, mcp__plugin_figma_figma__search_design_system, mcp__plugin_figma_figma__create_new_file, mcp__plugin_figma_figma__create_design_system_rules
 user-invocable: false
 metadata:
   version: "5.1.0"
@@ -72,7 +72,7 @@ Official Figma MCP integration via Remote MCP server (https://mcp.figma.com/mcp)
 
 Best For: Fetching design context from Figma files, extracting design tokens, generating new designs with Code-to-Canvas (generate_figma_design), accessing FigJam boards, and linking components to code with Code Connect.
 
-Key Strengths: 16 official tools including read (get_design_context, get_variable_defs, get_screenshot, get_metadata), write (use_figma, generate_figma_design, create_new_file), Code Connect (get_code_connect_map, add_code_connect_map, get_code_connect_suggestions, send_code_connect_mappings), FigJam (get_figjam, generate_diagram), design system (search_design_system, create_design_system_rules), and utility (whoami). Write-to-canvas is currently free during beta.
+Key Strengths: 18 official tools including read (get_design_context, get_variable_defs, get_screenshot, get_metadata, get_libraries), write (use_figma, generate_figma_design, create_new_file), Code Connect (get_code_connect_map, add_code_connect_map, get_code_connect_suggestions, send_code_connect_mappings, get_context_for_code_connect), FigJam (get_figjam, generate_diagram), design system (search_design_system, create_design_system_rules), and utility (whoami). Write-to-canvas is currently free during beta.
 
 Workflow: Install plugin → get_design_context → get_variable_defs → get_screenshot → Implement design → Verify against screenshot.
 
@@ -348,6 +348,41 @@ Access up-to-date tool documentation using Context7 MCP:
 Status: Active
 Version: 5.1.0 (Pencil docs sync — schema v2.9, CLI v0.2.4, slots, libraries, full node types)
 Last Updated: 2026-04-05
-Tools: Figma MCP (16 tools, Official Remote Server), Pencil MCP (14 tools + export_nodes CLI-only), Pencil-to-Code Export
+Tools: Figma MCP (18 tools, Official Remote Server), Pencil MCP (14 tools + export_nodes CLI-only), Pencil-to-Code Export
 Default Style: shadcn/ui Nova (neutral, noto-sans, small radius)
 UI Kits: Shadcn UI (default), Halo (glassmorphic), Lunaris (dark-mode), Nitro (minimal)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I can implement the design from the screenshot, I do not need Figma context" | Screenshots lose component structure, spacing tokens, and interaction states. Figma MCP provides structured design data. |
+| "Pencil files are just for designers, developers do not need them" | Pencil files contain layout constraints and component hierarchy. Developers use them as the source of truth for implementation. |
+| "I will export to code and clean it up" | Generated code is a starting point, not a deliverable. Export without review produces non-semantic, non-accessible markup. |
+| "Design tokens are too rigid, I need custom values" | Custom values bypass the design system. Extend tokens through the system, not around it. |
+| "I will sync with the designer after implementation" | Post-implementation sync means rework. Sync before implementation means alignment. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Implementation uses hardcoded values instead of design tokens from Figma or Pencil
+- Exported code committed without semantic HTML cleanup
+- Interaction states (hover, focus, active, disabled) missing from implementation
+- Pencil file updated but implementation not synced
+- Design tool export contains absolute positioning that breaks responsive layout
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Design tokens from Figma or Pencil used for colors, spacing, and typography
+- [ ] All interaction states implemented (hover, focus, active, disabled)
+- [ ] Exported code cleaned up with semantic HTML and accessibility attributes
+- [ ] Implementation matches design file at all breakpoints (compare visually)
+- [ ] No hardcoded pixel values where design tokens are available
+
+<!-- moai:evolvable-end -->
