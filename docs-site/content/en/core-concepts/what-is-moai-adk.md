@@ -183,7 +183,7 @@ The default methodology for new projects and feature development. Write tests fi
 |-------|-------------|
 | **RED** | Write a failing test that defines the expected behavior |
 | **GREEN** | Write the minimal code to pass the test |
-| **REFACTOR** | Improve code quality while keeping tests green. `/simplify` runs automatically after REFACTOR completes. |
+| **REFACTOR** | Improve code quality while keeping tests green. |
 
 For brownfield projects (existing codebases), TDD adds a **pre-RED analysis phase**: read existing code to understand current behavior before writing tests.
 
@@ -194,7 +194,7 @@ A methodology for safely refactoring existing projects with low test coverage.
 ```
 ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
 PRESERVE  → Write characterization tests, capture current behavior snapshots
-IMPROVE   → Improve incrementally under test protection. /simplify runs automatically after IMPROVE completes.
+IMPROVE   → Improve incrementally under test protection.
 ```
 
 {{< callout type="info" >}}
@@ -220,30 +220,6 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 {{< callout type="info" >}}
 "Human steers, agents execute." — The engineer's role shifts from writing code to designing the harness: SPECs, quality gates, and feedback loops.
 {{< /callout >}}
-
-## Auto Quality and Scale-Out Layer
-
-MoAI-ADK v2.6.0+ integrates two Claude Code native skills that MoAI invokes **autonomously** — no flags or manual commands required.
-
-| Skill | Role | Trigger |
-|-------|------|---------|
-| `/simplify` | Quality enforcement | **Always** runs after every TDD REFACTOR and DDD IMPROVE phase |
-| `/batch` | Scale-out execution | Auto-triggered when task complexity exceeds thresholds |
-
-**`/simplify` — Automatic Quality Pass**
-
-Uses parallel agents to review changed code for reuse opportunities, quality issues, efficiency, and CLAUDE.md compliance, then auto-fixes findings. MoAI calls this directly after every implementation cycle — no configuration needed.
-
-**`/batch` — Parallel Scale-Out**
-
-Spawns dozens of agents in isolated git worktrees for large-scale parallel work. Each agent runs tests and reports results; MoAI merges them. Auto-triggered per workflow:
-
-| Workflow | Trigger Condition |
-|----------|------------------|
-| `run` | tasks >= 5, OR predicted file changes >= 10, OR independent tasks >= 3 |
-| `mx` | source files >= 50 |
-| `coverage` | P1+P2 coverage gaps >= 10 |
-| `clean` | confirmed dead code items >= 20 |
 
 ## AI Agent Orchestration
 
