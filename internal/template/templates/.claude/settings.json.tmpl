@@ -82,7 +82,11 @@
       {
         "hooks": [
           {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh\"",
+{{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh\"",
+{{- end}}
             "timeout": 30,
             "type": "command"
           }
