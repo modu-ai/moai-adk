@@ -1119,6 +1119,108 @@ This command safely moves `.agency/` data to `.moai/project/brand/` and `.moai/c
 
 ---
 
+## Database Workflow: /moai db
+
+Database metadata management system for MoAI projects. Manages schema documentation, migrations, ERD diagrams, and seeds through four subcommands: init, refresh, verify, and list.
+
+### Quick Start
+
+```bash
+# Initialize database metadata (interactive interview)
+/moai db init
+
+# Rescan migrations and update schema documentation
+/moai db refresh
+
+# Check for drift between schema.md and migration files
+/moai db verify
+
+# Display all tables from schema.md
+/moai db list
+```
+
+### Subcommands
+
+| Command | Purpose | When to Use |
+|---------|---------|------------|
+| **init** | Interactive setup of database engine, ORM, multi-tenant strategy, and migration tool. Scaffolds `.moai/project/db/` with 7-file template set | New project initialization, before any database work |
+| **refresh** | Scans migration files and regenerates `schema.md`, `erd.mmd` (Mermaid ERD), and `migrations.md` from current migration state | After adding/modifying migrations, milestone sync |
+| **verify** | Read-only drift detection: compares `schema.md` table set against actual migration files, exits non-zero if drift detected | Before PR submission, in CI/CD pipelines |
+| **list** | Read-only table listing: displays all tables from `schema.md` in aligned Markdown table format | Quick project overview, documentation review |
+
+### Directory Structure
+
+`/moai db init` creates the following structure in `.moai/project/db/`:
+
+```
+.moai/project/db/
+├── README.md              # Database overview and setup instructions
+├── schema.md              # Table schema documentation (auto-generated)
+├── erd.mmd                # Entity-Relationship Diagram in Mermaid format
+├── migrations.md          # Migration history and sequencing
+├── rls-policies.md        # Row-level security policies (PostgreSQL)
+├── queries.md             # Important queries and performance notes
+└── seed-data.md           # Sample data and seeding instructions
+```
+
+### Supported Database Technologies
+
+Auto-detects and supports 6 migration file patterns:
+
+| Migration Type | File Pattern | Example |
+|---------------|-------------|---------|
+| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
+| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
+| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
+| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
+| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
+| **Generic** | `migrations/*.sql` or `db/*.sql` | Custom patterns supported |
+
+Supports 16 programming language ecosystems (Go, Python, TypeScript, Java, etc.) through common package paths.
+
+### Integrations
+
+- **PostToolUse Hook**: Auto-refreshes `schema.md`, `erd.mmd`, `migrations.md` when migration files are edited
+- **Drift Detection**: Prevents schema documentation from drifting out of sync with actual migrations
+- **Mermaid Diagrams**: Generates ERD diagrams automatically for documentation and design reviews
+- **Phase 4.1a DB Detection**: `/moai project` automatically surfaces `/moai db` recommendations based on detected database technology
+
+### Configuration
+
+Database settings are stored in `.moai/config/sections/db.yaml`:
+
+```yaml
+db:
+  enabled: true
+  dir: ".moai/project/db"
+  auto_sync: true
+  migration_patterns:
+    - "prisma/migrations/*/migration.sql"
+    - "alembic/versions/*.py"
+    - "db/migrate/*.rb"
+  engine: ""  # Populated during init interview
+  orm: ""     # Populated during init interview
+  multi_tenant: false
+  migration_tool: ""
+```
+
+### Workflow Example
+
+1. **New Project**: Run `/moai db init`, answer 4 questions about your database setup
+2. **During Development**: Create migrations as usual; `/moai db` auto-syncs documentation
+3. **Before PR**: Run `/moai db verify` to check for schema drift
+4. **Review**: Reference `.moai/project/db/erd.mmd` in PRs for visual schema review
+
+### When to Use
+
+- **Always on**: Enable during `moai init` for any project with a database
+- **Init**: New projects, database architecture changes
+- **Refresh**: After significant migration work, before major commits
+- **Verify**: Part of CI/CD pipeline, pre-PR checks
+- **List**: Quick reference, documentation generation
+
+---
+
 ## Frequently Asked Questions
 
 ### Q: Why doesn't every Go code have @MX tags?

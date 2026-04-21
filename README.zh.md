@@ -1003,6 +1003,108 @@ moai migrate agency
 
 ---
 
+## 数据库工作流: /moai db
+
+MoAI 项目的数据库元数据管理系统。通过四个子命令（init、refresh、verify、list）管理架构文档、迁移、ERD 图表和种子数据。
+
+### 快速开始
+
+```bash
+# 初始化数据库元数据（交互式问卷）
+/moai db init
+
+# 重新扫描迁移并更新架构文档
+/moai db refresh
+
+# 检查 schema.md 和迁移文件之间的偏差
+/moai db verify
+
+# 显示 schema.md 中的所有表
+/moai db list
+```
+
+### 子命令
+
+| 命令 | 目的 | 使用时机 |
+|------|------|---------|
+| **init** | 数据库引擎、ORM、多租户策略和迁移工具的交互式设置。在 `.moai/project/db/` 中脚手架 7 文件模板集 | 新项目初始化、任何数据库工作之前 |
+| **refresh** | 扫描迁移文件并从当前迁移状态重新生成 `schema.md`、`erd.mmd`（Mermaid ERD）和 `migrations.md` | 添加/修改迁移之后、里程碑同步时 |
+| **verify** | 只读偏差检测：比较 `schema.md` 表集与实际迁移文件，发现偏差时以非零状态退出 | PR 提交前、CI/CD 管道中 |
+| **list** | 只读表列表：以对齐的 Markdown 表格格式显示 `schema.md` 中的所有表 | 快速项目概览、文档审查 |
+
+### 目录结构
+
+`/moai db init` 在 `.moai/project/db/` 中创建以下结构：
+
+```
+.moai/project/db/
+├── README.md              # 数据库概览和设置说明
+├── schema.md              # 表架构文档（自动生成）
+├── erd.mmd                # Mermaid 格式的实体关系图
+├── migrations.md          # 迁移历史和顺序
+├── rls-policies.md        # 行级安全策略（PostgreSQL）
+├── queries.md             # 重要查询和性能注释
+└── seed-data.md           # 示例数据和播种说明
+```
+
+### 支持的数据库技术
+
+自动检测并支持 6 种迁移文件模式：
+
+| 迁移类型 | 文件模式 | 示例 |
+|--------|---------|------|
+| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
+| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
+| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
+| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
+| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
+| **通用** | `migrations/*.sql` 或 `db/*.sql` | 支持自定义模式 |
+
+通过常见包路径支持 16 个编程语言生态系统（Go、Python、TypeScript、Java 等）。
+
+### 集成
+
+- **PostToolUse Hook**：编辑迁移文件时自动刷新 `schema.md`、`erd.mmd`、`migrations.md`
+- **偏差检测**：防止架构文档与实际迁移不同步
+- **Mermaid 图表**：为文档和设计审查自动生成 ERD 图表
+- **Phase 4.1a 数据库检测**：`/moai project` 根据检测到的数据库技术自动显示 `/moai db` 建议
+
+### 配置
+
+数据库设置存储在 `.moai/config/sections/db.yaml` 中：
+
+```yaml
+db:
+  enabled: true
+  dir: ".moai/project/db"
+  auto_sync: true
+  migration_patterns:
+    - "prisma/migrations/*/migration.sql"
+    - "alembic/versions/*.py"
+    - "db/migrate/*.rb"
+  engine: ""  # 在 init 问卷期间填充
+  orm: ""     # 在 init 问卷期间填充
+  multi_tenant: false
+  migration_tool: ""
+```
+
+### 工作流示例
+
+1. **新项目**：运行 `/moai db init`，回答关于数据库设置的 4 个问题
+2. **开发中**：照常创建迁移；`/moai db` 自动同步文档
+3. **PR 前**：运行 `/moai db verify` 检查架构偏差
+4. **审查**：在 PR 中参考 `.moai/project/db/erd.mmd` 进行架构视觉审查
+
+### 使用时机
+
+- **始终启用**：在 `moai init` 期间为任何具有数据库的项目启用
+- **Init**：新项目、数据库架构更改
+- **Refresh**：大型迁移工作后、主要提交前
+- **Verify**：CI/CD 管道的一部分、PR 前检查
+- **List**：快速参考、文档生成
+
+---
+
 ## 常见问题
 
 ### Q: 为什么不是所有 Go 代码都有 @MX 标签？

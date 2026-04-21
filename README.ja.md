@@ -1002,6 +1002,108 @@ moai migrate agency
 
 ---
 
+## データベースワークフロー: /moai db
+
+MoAI プロジェクトのデータベースメタデータ管理システムです。4つのサブコマンド(init、refresh、verify、list)を使用してスキーマドキュメント、マイグレーション、ERDダイアグラム、シードデータを管理します。
+
+### クイックスタート
+
+```bash
+# データベースメタデータを初期化（対話形式インタビュー）
+/moai db init
+
+# マイグレーションを再スキャンしてスキーマドキュメントを更新
+/moai db refresh
+
+# schema.md とマイグレーションファイル間の差異を確認
+/moai db verify
+
+# schema.md のすべてのテーブルを表示
+/moai db list
+```
+
+### サブコマンド
+
+| コマンド | 目的 | 使用時期 |
+|---------|------|---------|
+| **init** | データベースエンジン、ORM、マルチテナント戦略、マイグレーションツールの対話形式設定。`.moai/project/db/` に7ファイルテンプレートセットをスカフォルディング | 新規プロジェクト初期化、データベース作業前 |
+| **refresh** | マイグレーションファイルをスキャンして、現在のマイグレーション状態から `schema.md`、`erd.mmd`(Mermaid ERD)、`migrations.md` を再生成 | マイグレーション追加/修正後、マイルストーン同期時 |
+| **verify** | 読み取り専用ドリフト検出: `schema.md` テーブルセットと実際のマイグレーションファイルを比較、ドリフト検出時に 0 以外で終了 | PR提出前、CI/CDパイプラインで |
+| **list** | 読み取り専用テーブルリスト: `schema.md` のすべてのテーブルを整列Markdownテーブル形式で表示 | プロジェクト概要確認、ドキュメント確認 |
+
+### ディレクトリ構造
+
+`/moai db init` は `.moai/project/db/` に以下の構造を作成します:
+
+```
+.moai/project/db/
+├── README.md              # データベース概要とセットアップ手順
+├── schema.md              # テーブルスキーマドキュメント（自動生成）
+├── erd.mmd                # Mermaid形式のEntity-Relationship Diagram
+├── migrations.md          # マイグレーション履歴と順序
+├── rls-policies.md        # 行レベルセキュリティポリシー（PostgreSQL）
+├── queries.md             # 重要なクエリとパフォーマンスノート
+└── seed-data.md           # サンプルデータとシーディング手順
+```
+
+### サポートするデータベース技術
+
+6つのマイグレーションファイルパターンを自動検出・サポート:
+
+| マイグレーションタイプ | ファイルパターン | 例 |
+|------|---------|------|
+| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
+| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
+| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
+| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
+| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
+| **汎用** | `migrations/*.sql` または `db/*.sql` | カスタムパターン対応 |
+
+16のプログラミング言語エコシステム(Go、Python、TypeScript、Javaなど)を一般的なパッケージパスでサポート。
+
+### 統合
+
+- **PostToolUse Hook**: マイグレーションファイル編集時に `schema.md`、`erd.mmd`、`migrations.md` を自動更新
+- **ドリフト検出**: スキーマドキュメントが実際のマイグレーションと同期状態を保つ
+- **Mermaidダイアグラム**: ドキュメント・設計レビュー用にERDダイアグラムを自動生成
+- **Phase 4.1a DB検出**: `/moai project` が検出されたデータベース技術に基づいて `/moai db` 推奨事項を自動表示
+
+### 設定
+
+データベース設定は `.moai/config/sections/db.yaml` に保存されます:
+
+```yaml
+db:
+  enabled: true
+  dir: ".moai/project/db"
+  auto_sync: true
+  migration_patterns:
+    - "prisma/migrations/*/migration.sql"
+    - "alembic/versions/*.py"
+    - "db/migrate/*.rb"
+  engine: ""  # init インタビュー中に入力
+  orm: ""     # init インタビュー中に入力
+  multi_tenant: false
+  migration_tool: ""
+```
+
+### ワークフロー例
+
+1. **新規プロジェクト**: `/moai db init` を実行し、データベースセットアップについて4つの質問に回答
+2. **開発中**: 通常通りマイグレーションを作成; `/moai db` は自動的にドキュメントを同期
+3. **PR前**: `/moai db verify` を実行してスキーマドリフトを確認
+4. **レビュー**: PR内で `.moai/project/db/erd.mmd` を参照してスキーマを視覚的にレビュー
+
+### 使用時期
+
+- **常に有効**: `moai init` 中にデータベースを持つ全プロジェクトで有効化
+- **Init**: 新規プロジェクト、データベースアーキテクチャ変更時
+- **Refresh**: 大規模マイグレーション作業後、主要なコミット前
+- **Verify**: CI/CDパイプラインの一部、PR前チェック
+- **List**: クイックリファレンス、ドキュメント生成
+
+---
+
 ## よくある質問
 
 ### Q: なぜすべてのGoコードに@MXタグがないのか？
