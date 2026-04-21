@@ -50,10 +50,14 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
-          # max-turns 40: Issue 분석/구현은 복잡한 멀티스텝 작업이 많아 20으로 부족한 경우 발생.
           # Use Opus model with high effort for better reasoning on issue fixes.
-          # C4b Fix: Increased from 20 to 40 to prevent error_max_turns on complex tasks.
+          # History:
+          #   C4a: 20 — initial value, exceeded on moderate issues
+          #   C4b: 20 → 40 — still exceeded on complex multi-file issues
+          #   C4c: 40 → 80 — run #24700719267 (issue #683 LSP TypeScript detection)
+          #        hit error_max_turns at 40. Multi-language LSP investigation requires
+          #        reading many files + cross-referencing config — 80 budget is safer.
           claude_args: |
             --model opus
             --effort high
-            --max-turns 40
+            --max-turns 80
