@@ -60,8 +60,9 @@ func TestHookCmd_HasSubcommands(t *testing.T) {
 
 func TestHookCmd_SubcommandCount(t *testing.T) {
 	count := len(hookCmd.Commands())
-	if count != 30 {
-		t.Errorf("hook should have 30 subcommands, got %d", count)
+	// 30 previous + 1 new: db-schema-sync (SPEC-DB-SYNC-001)
+	if count != 31 {
+		t.Errorf("hook should have 31 subcommands, got %d", count)
 	}
 }
 

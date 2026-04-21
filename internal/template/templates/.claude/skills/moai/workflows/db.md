@@ -190,14 +190,16 @@ Triggered by: `refresh` (after Phase 5 completes)
 
 Regenerate schema documentation from the scanned migration files.
 
-Steps:
-1. Read existing `.moai/project/db/schema.md` if it exists.
-2. Extract table/collection names from migration files identified in Phase 5.
-3. Update `schema.md` with the current table set, column counts, and last migration file reference.
-4. Write updated `schema.md` using Write or Edit tool.
-5. Output a summary of changes: tables added, tables removed, tables unchanged.
+Implementation: Invoke Skill("moai-domain-db-docs") with `refresh` mode.
+The skill handles Phase D (full rebuild) including user confirmation (REQ-024),
+rescanning all migrations, and rebuilding schema.md / erd.mmd / migrations.md.
 
-NOTE: Detailed regeneration logic is defined in SPEC-DB-TEMPLATES-001.
+Steps (delegated to moai-domain-db-docs):
+1. Skill("moai-domain-db-docs") Phase D1: AskUserQuestion confirm full rebuild.
+2. Skill("moai-domain-db-docs") Phase D2: Full scan of all migration files.
+3. Skill("moai-domain-db-docs") Phase D3: Rebuild 3 docs and output summary.
+
+NOTE: Detailed regeneration logic is in moai-domain-db-docs (SPEC-DB-SYNC-001 Phase D).
 
 ---
 
@@ -207,30 +209,24 @@ Triggered by: `verify`
 
 Read-only drift check. This phase MUST NOT create or modify any files.
 
-Drift is defined as the symmetric difference between:
-- Set A: table/collection names registered in `.moai/project/db/schema.md`
-- Set B: table/collection names extractable from migration files (via Phase 5 scan logic)
+Implementation: Invoke Skill("moai-domain-db-docs") with `verify` mode.
+The skill handles Phase C (drift detection, REQ-020–022) and exits with the
+appropriate code (0 = in sync, 1 = drift detected).
 
-Steps:
-1. Check if `.moai/project/db/schema.md` exists using Glob.
-   - If missing: output `"Schema not found. Run /moai db init to initialize db schema."` and exit with code 2.
-2. Read `.moai/project/db/schema.md` and extract Set A (registered table names).
-3. Scan migration files (using Appendix mapping) and extract Set B (migration table names).
-4. Compute symmetric difference: `drift = (A - B) ∪ (B - A)`
-5. If drift is empty (no difference): output "No drift detected. Schema and migrations are in sync." and exit 0.
-6. If drift is non-empty: output the following and exit 1:
+Steps (delegated to moai-domain-db-docs):
+1. Skill("moai-domain-db-docs") Phase C1: Compute expected schema from migration files.
+2. Skill("moai-domain-db-docs") Phase C2: Read current schema.md table set.
+3. Skill("moai-domain-db-docs") Phase C3: Diff and output:
+   - No drift: print "Schema documentation is in sync", exit 0 (REQ-022).
+   - Drift: print unified diff, exit 1 (REQ-021).
 
-```
-Drift detected between schema.md and migration files:
+Fallback (if moai-domain-db-docs is unavailable): apply inline logic below.
 
-Added in migrations (not in schema.md):
-  - <table_name>
+Check if `.moai/project/db/schema.md` exists using Glob.
+- If missing: output `"Schema not found. Run /moai db init to initialize db schema."` and exit with code 2.
 
-Missing from migrations (in schema.md but not in migrations):
-  - <table_name>
-
-Run /moai db refresh to update schema.md.
-```
+Extract table names from schema.md and migration files, compute symmetric difference.
+If drift: output drift report and exit 1. If no drift: output "No drift detected." and exit 0.
 
 ---
 

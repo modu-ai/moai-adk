@@ -78,6 +78,16 @@
           }
         ],
         "matcher": "Write|Edit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh\"",
+            "timeout": 30000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit"
       }
     ],
     "Stop": [
