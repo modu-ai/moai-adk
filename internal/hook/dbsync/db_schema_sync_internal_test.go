@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -105,6 +106,9 @@ func TestParseMigrationStub_NormalFilePreservesContent(t *testing.T) {
 // directory that should host the temp file is not writable, the helper must
 // return (true, nil) and emit a log line rather than propagating the I/O error.
 func TestCheckDebounceWithLog_IOFailureReturnsSafeDefault(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows: chmod 0555 does not restrict writes per POSIX semantics")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("running as root: chmod 0555 does not restrict writes")
 	}
@@ -340,6 +344,9 @@ func TestParseMigrationStubWithLog_NonexistentFile(t *testing.T) {
 // directory cannot be created because an ancestor is read-only. Must still
 // return the safe default (true, nil) per REQ-H2-003.
 func TestCheckDebounceWithLog_MkdirStateDirFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows: chmod does not restrict writes per POSIX semantics")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("running as root: chmod does not restrict writes")
 	}

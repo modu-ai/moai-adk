@@ -14,6 +14,11 @@ import (
 // Windows prints a one-time notice instead of applying Unix permission bits.
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-012b
 func TestMigrateAgency_WindowsNoop(t *testing.T) {
+	// The one-time Windows permission notice is guarded by a package-level
+	// sync.Once. Any earlier test that triggered the migrate flow will have
+	// consumed the once, leaving this test's stderr empty. Reset before use.
+	resetWindowsPermNoticeForTest()
+
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 

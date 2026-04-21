@@ -113,7 +113,11 @@ func HandleDBSchemaSync(cfg Config) Result {
 		slog.Debug("db-schema-sync: rejected path traversal", "path", cfg.FilePath, "cleaned", cleaned)
 		return Result{ExitCode: 0, Decision: DecisionSkip}
 	}
-	cfg.FilePath = cleaned
+	// Normalize to forward-slash form AFTER the traversal guard. Downstream
+	// matchGlob / IsExcluded operate on forward-slash glob patterns from db.yaml
+	// (e.g. `migrations/**/*.sql`), so Windows `migrations\001.sql` produced by
+	// filepath.Clean would never match without this conversion.
+	cfg.FilePath = filepath.ToSlash(cleaned)
 
 	// Recursion guard: excluded patterns exit 0 silently (REQ-004)
 	if IsExcluded(cfg.FilePath, cfg.ExcludedPatterns) {

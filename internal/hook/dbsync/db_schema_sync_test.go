@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -665,6 +666,9 @@ func TestMatchGlob_TableDrivenEdges(t *testing.T) {
 // branch in HandleDBSchemaSync. When the state directory cannot be created, the
 // handler must exit 0 with DecisionSkip (REQ-011 non-blocking contract).
 func TestHandleDBSchemaSync_ReadonlyStateDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows: chmod does not restrict writes per POSIX semantics")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("running as root: chmod does not restrict writes")
 	}
@@ -711,6 +715,9 @@ func TestHandleDBSchemaSync_ReadonlyStateDir(t *testing.T) {
 // reaches the proposal write step; pointing ProposalFile at a read-only parent
 // forces os.WriteFile to fail and the handler to return skip without crashing.
 func TestHandleDBSchemaSync_ReadonlyProposalDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows: chmod does not restrict writes per POSIX semantics")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("running as root: chmod does not restrict writes")
 	}
