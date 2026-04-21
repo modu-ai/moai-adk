@@ -1,7 +1,7 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
 document: acceptance
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-04-21
 updated_at: 2026-04-21
 ---
@@ -163,8 +163,8 @@ grep -c '{{- if eq .Platform "windows"}}' internal/template/templates/.claude/se
 **When-1**: `TestRender_DbSchemaChangeHook_Windows` 실행 시 `Platform="windows"`로 `settings.json.tmpl`을 렌더한다.
 
 **Then-1**:
-- 렌더 결과에 `bash ` 문자열(뒤에 공백 포함)이 정확히 db-schema-change 훅 블록 안에 포함된다.
-- 해당 훅 command 필드에 `%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\handle-db-schema-change.sh` 문자열(백슬래시 경로 포함)이 포함된다.
+- 렌더 결과 db-schema-change 훅 블록의 command 필드가 정확히 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 문자열을 포함한다 (JSON 이스케이프 형태: `bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh\"`).
+- 동일 파일 내 다른 Windows 훅 엔트리(예: handle-session-start, handle-subagent-stop)가 사용하는 패턴과 일치한다.
 - 결과는 유효한 JSON으로 파싱 가능하다.
 
 **When-2**: `TestRender_DbSchemaChangeHook_Unix` 실행 시 `Platform="darwin"` 또는 `Platform="linux"`로 동일 템플릿을 렌더한다.

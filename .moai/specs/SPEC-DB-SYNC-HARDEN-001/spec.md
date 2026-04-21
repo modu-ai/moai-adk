@@ -1,6 +1,6 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
-version: 0.2.0
+version: 0.2.1
 status: draft
 created_at: 2026-04-21
 updated_at: 2026-04-21
@@ -16,6 +16,7 @@ related_specs: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
 
 ## HISTORY
 
+- 2026-04-21 v0.2.1: `/moai run` 실행 중 발견된 REQ-H3-002/AC-6 Windows 리터럴 오작성 정정. `settings.json.tmpl` 내 다른 16개 Windows 엔트리는 전부 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-*.sh"` (bash 스타일 변수 + 슬래시) 패턴이며, `%CLAUDE_PROJECT_DIR%` 백슬래시 경로는 bash 내부에서 확장되지 않아 실제로 작동하지 않는다. REQ-H3-001("기존 엔트리와 동일 패턴")이 정확한 의도이며, REQ-H3-002/AC-6의 리터럴을 기존 컨벤션에 맞춰 정정. REQ/AC 개수 불변.
 - 2026-04-21 v0.2.0: plan-auditor iteration 1 FAIL 후속 수정. F-1~F-5 blocking defects 해결(AC-9 multiline grep, REQ-H5-003 제거, HandleDBSchemaSync 5번째 대상 추가, CheckDebounce 실제 signature 반영, spec-compact에 Exclusions 추가). W-1~W-6 warnings 전부 반영. REQ 총 15 → 14 (REQ-H5-003 제거), AC 10 유지.
 - 2026-04-21 v0.1.0: SPEC 최초 작성. SPEC-DB-SYNC-001 (commit `e22eb718d`) 병합 이후 발견된 5개 Warning-level 코드 리뷰 지적사항을 단일 SPEC으로 통합. Critical 수정(c6985e2fe / aa29a9316 / 8a4022c69)은 이미 적용 완료된 상태에서 잔여 견고화 항목을 다룸.
 
@@ -70,8 +71,8 @@ SPEC-DB-SYNC-001은 PostToolUse 훅, `moai-domain-db-docs` 스킬, `/moai db ref
 7. **REQ-H3-001** (Ubiquitous): The `db-schema-change` PostToolUse hook entry registered in `internal/template/templates/.claude/settings.json.tmpl` SHALL use the same `{{- if eq .Platform "windows"}} … {{- else}} … {{- end}}` branching pattern that the other PostToolUse / Stop / SessionStart / SubagentStop hook entries in the same file already use consistently; the `db-schema-change` entry is currently the sole exception to this pattern and SHALL be brought into conformance.
    - **Rationale**: 일관성 회귀 방지. 최근 추가된 훅이 파일 내 다른 훅들과 다른 형식을 채택하면 Windows 사용자에게만 동기화가 작동하지 않아 회귀 테스트에서 누락되기 쉽다. 특정 엔트리 개수 대신 "기존 엔트리는 이 패턴을 사용한다"라는 구조적 사실을 참조한다.
 
-8. **REQ-H3-002** (Event-driven): WHEN `settings.json.tmpl` is rendered with `Platform=windows`, THEN the `db-schema-change` hook `command` field SHALL begin with the literal string `bash ` (`bash` followed by a single space) AND SHALL contain the backslash-separated path `%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\handle-db-schema-change.sh`.
-   - **Rationale**: Windows에서는 `.sh` 파일을 직접 실행할 수 없으므로 `bash` 명시가 필수이며, 경로 구분자는 `%CLAUDE_PROJECT_DIR%` 전개 결과와 일치해야 한다.
+8. **REQ-H3-002** (Event-driven): WHEN `settings.json.tmpl` is rendered with `Platform=windows`, THEN the `db-schema-change` hook `command` field SHALL be exactly the string `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` — identical to the Windows branch pattern used by the other 16 hook entries in the same file (handle-session-start/handle-compact/handle-session-end/handle-pre-tool/handle-post-tool/handle-stop/handle-subagent-stop/handle-post-tool-failure/etc.). The `bash ` prefix is required so that Git Bash / WSL executes the `.sh` wrapper, and `$CLAUDE_PROJECT_DIR` is expanded by bash at invocation time (NOT `%CLAUDE_PROJECT_DIR%` cmd.exe-style which does not expand inside a bash-quoted argument).
+   - **Rationale**: Windows에서 `.sh` 파일을 직접 실행할 수 없으므로 `bash` 접두사가 필수이며, Git Bash/WSL가 실제로 변수를 전개할 수 있도록 `$CLAUDE_PROJECT_DIR` (bash 스타일)을 사용한다. `%CLAUDE_PROJECT_DIR%`는 cmd.exe 전개 문법이므로 bash-quoted 인자 내부에서는 확장되지 않아 경로가 리터럴 문자열로 넘어가는 버그가 된다. v0.2.0 초안은 이 점을 누락했다.
 
 9. **REQ-H3-003** (Event-driven): WHEN `settings.json.tmpl` is rendered with `Platform=darwin` OR `Platform=linux`, THEN the `db-schema-change` hook `command` field SHALL be exactly the string `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` (double quotes included) — identical to the SPEC-DB-SYNC-001 AC-2 baseline, with no `bash ` prefix.
    - **Rationale**: macOS/Linux 경로는 SPEC-DB-SYNC-001 REQ-001이 이미 규정했으며 회귀가 있어서는 안 된다.
@@ -102,7 +103,7 @@ SPEC-DB-SYNC-001은 PostToolUse 훅, `moai-domain-db-docs` 스킬, `/moai db ref
 - **AC-3 (H2-a)**: `go test -race ./internal/hook/dbsync/... -run TestCheckDebounceConcurrency -count=10` 실행 시, 10회 반복 모두 통과. 테스트는 (i) 짧은 `window`(예: `50*time.Millisecond`) 값을 사용하여 실제 `time.Now()` 기반 디바운스 윈도우를 재현하고, (ii) `sync.WaitGroup`으로 2개 고루틴을 동시에 기동하여 동일 `stateFile`·`filePath`에 대해 `CheckDebounce`를 호출하며, (iii) 반환된 두 `debounced` 값의 multiset이 정확히 `{false, true}`임을 asert하고, (iv) 종료 후 `stateFile`이 유효한 JSON으로 parse 가능함을 확인한다. 데이터 레이스 미검출 포함.
 - **AC-4 (H2-b)**: Go 단위 테스트 `TestCheckDebounce_NoDirectWriteFile` (신규)가 존재하고 통과해야 한다. 이 테스트는 `go/parser`로 `db_schema_sync.go`의 AST를 읽고 `CheckDebounce` 함수 본문 내부의 모든 `*ast.CallExpr`를 순회하며, `os.WriteFile(...)` 직접 호출이 존재하지 않음을 assert한다 (변수 이름 rename에 대해 false-pass를 방지). 동시에 동일 AST에서 최소 1개 이상의 `os.Rename(...)` 또는 `flock(...)` 호출이 존재함을 확인한다.
 - **AC-5 (H3-a)**: `grep -nA 10 'handle-db-schema-change.sh' internal/template/templates/.claude/settings.json.tmpl` 결과 블록 안에 `{{- if eq .Platform "windows"}}`, `{{- else}}`, `{{- end}}` 세 행이 모두 존재한다. 또한 동일 파일 내 다른 기존 PostToolUse/Stop/SessionStart/SubagentStop 엔트리 중 임의의 2개 이상이 동일한 세 토큰을 사용하고 있음을 grep으로 확인한다 (일관성 증거).
-- **AC-6 (H3-b)**: Go 템플릿 렌더링 테스트 `TestRender_DbSchemaChangeHook_Windows` 및 `TestRender_DbSchemaChangeHook_Unix` (신규 또는 기존 확장) 추가 및 통과. Windows 렌더 결과는 `bash ` 접두사와 `%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\handle-db-schema-change.sh` 문자열을 포함하고, Unix 렌더 결과는 접두사 없이 `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 를 정확히 포함한다.
+- **AC-6 (H3-b)**: Go 템플릿 렌더링 테스트 `TestRender_DbSchemaChangeHook_Windows` 및 `TestRender_DbSchemaChangeHook_Unix` (신규 또는 기존 확장) 추가 및 통과. Windows 렌더 결과(`Platform="windows"`)는 db-schema-change 훅 엔트리에서 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 문자열(JSON escape: `bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh\"`)을 정확히 포함하며, Unix 렌더 결과(`Platform="darwin"` 또는 `"linux"`)는 `bash ` 접두사 없이 `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"`를 정확히 포함한다. 두 결과 모두 유효한 JSON이다.
 - **AC-7 (H4-a)**: `go test -coverprofile=cover.out ./internal/hook/dbsync/... && go tool cover -func=cover.out | awk '/^total:/{print $3}' | sed 's/%//'` 명령 출력이 부동소수점으로 `>= 85.0`.
 - **AC-8 (H4-b)**: `internal/hook/dbsync/db_schema_sync_test.go`에서 다음 8개 테이블 케이스 이름이 문자열 리터럴로 최소 1회씩 등장해야 한다: `empty_file`, `utf8_bom`, `oversized`, `nonexistent`, `trailing_slash`, `double_star_only`, `unicode_path`, `corrupt_state_recovery`. (`grep -c '"empty_file"' …` 등 각 케이스 이름별 확인.)
 - **AC-9 (H5)**: 5개 함수 각각에 대해, 함수 시그니처 라인 `^func Name(` 바로 앞의 godoc 블록(대략 20줄 윈도우) 안에 `// @MX:NOTE` 마커가 최소 1줄 존재해야 한다. 검증 방법은 다음 awk 기반 multiline 스캔이며 5/5 함수에 대해 `OK`가 출력되어야 한다:
@@ -163,7 +164,7 @@ SPEC-DB-SYNC-001은 PostToolUse 훅, `moai-domain-db-docs` 스킬, `/moai db ref
 | REQ-H2-002 | AC-3 | 동시 호출 2-goroutine multiset = `{false, true}` |
 | REQ-H2-003 | AC-3 (I/O 실패 variant), AC-8(`corrupt_state_recovery` 케이스) | I/O 실패 시 `(true, nil)` 반환 |
 | REQ-H3-001 | AC-5 | 플랫폼 분기 3-token + 다른 엔트리 일관성 증거 |
-| REQ-H3-002 | AC-6 | Windows 렌더: `bash ` 접두사 + Windows 경로 |
+| REQ-H3-002 | AC-6 | Windows 렌더: `bash "$CLAUDE_PROJECT_DIR/..."` (기존 16 엔트리 컨벤션) |
 | REQ-H3-003 | AC-6, AC-10 | Unix 렌더: SPEC-DB-SYNC-001 AC-2 baseline 회귀 없음 |
 | REQ-H4-001 | AC-7 | 패키지 커버리지 ≥ 85.0% |
 | REQ-H4-002 | AC-8 | 8개 지정 테이블 케이스 이름 존재 |

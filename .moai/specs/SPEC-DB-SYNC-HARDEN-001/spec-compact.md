@@ -1,7 +1,7 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
 document: spec-compact
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-04-21
 updated_at: 2026-04-21
 source: spec.md (Requirements + Acceptance Criteria + Exclusions sections)
@@ -28,7 +28,7 @@ source: spec.md (Requirements + Acceptance Criteria + Exclusions sections)
 ### H3 — handle-db-schema-change.sh Windows 플랫폼 분기
 
 - **REQ-H3-001** (Ubiquitous): `settings.json.tmpl`의 `db-schema-change` PostToolUse 엔트리는 동일 파일 내 다른 PostToolUse/Stop/SessionStart/SubagentStop 엔트리들이 일관되게 사용하는 `{{- if eq .Platform "windows"}} … {{- else}} … {{- end}}` 패턴을 준수해야 한다. db-schema-change 엔트리가 현재 유일한 예외이다.
-- **REQ-H3-002** (Event-driven): WHEN `Platform=windows`로 렌더될 때, command 필드는 `bash ` 접두사와 `%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\handle-db-schema-change.sh` 문자열을 포함한다.
+- **REQ-H3-002** (Event-driven): WHEN `Platform=windows`로 렌더될 때, command 필드는 정확히 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 문자열(JSON 이스케이프 `bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh\"`) — 동일 파일 내 다른 16개 Windows 훅 엔트리와 동일 패턴.
 - **REQ-H3-003** (Event-driven): WHEN `Platform=darwin` OR `Platform=linux`로 렌더될 때, command 필드는 정확히 `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 문자열(SPEC-DB-SYNC-001 AC-2 baseline)을 유지한다.
 
 ### H4 — dbsync 테스트 커버리지 77.8% → 85%
@@ -51,7 +51,7 @@ source: spec.md (Requirements + Acceptance Criteria + Exclusions sections)
 - **AC-3 (H2-a)**: `go test -race ./internal/hook/dbsync/... -run TestCheckDebounceConcurrency -count=10` 10회 모두 통과. `window=50ms` 짧은 실제 윈도우 + 2 goroutine + `sync.WaitGroup` → 반환 multiset `{false, true}`, 상태 파일 유효 JSON.
 - **AC-4 (H2-b)**: `TestCheckDebounce_NoDirectWriteFile` (신규 Go 테스트) 통과. `go/parser` AST로 `CheckDebounce` 본문 순회하여 `os.WriteFile(...)` 직접 호출 0건 + `os.Rename(...)` 호출 ≥ 1건 검증 (변수 rename false-pass 방지).
 - **AC-5 (H3-a)**: `grep -nA 10 'handle-db-schema-change.sh' internal/template/templates/.claude/settings.json.tmpl` 결과 블록에 `{{- if eq .Platform "windows"}}`, `{{- else}}`, `{{- end}}` 3행 존재. `grep -c '{{- if eq .Platform "windows"}}' …` ≥ 3 (다른 엔트리 일관성 증거).
-- **AC-6 (H3-b)**: 렌더 테스트 `TestRender_DbSchemaChangeHook_Windows`(`bash ` + `%CLAUDE_PROJECT_DIR%\.claude\...` 포함) 및 `TestRender_DbSchemaChangeHook_Unix`(접두사 없음 + `"$CLAUDE_PROJECT_DIR/.claude/..."` 정확 포함) 통과.
+- **AC-6 (H3-b)**: 렌더 테스트 `TestRender_DbSchemaChangeHook_Windows`(`bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 정확 포함, 기존 16 엔트리 컨벤션) 및 `TestRender_DbSchemaChangeHook_Unix`(`bash ` 접두사 없음 + `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` 정확 포함) 통과.
 - **AC-7 (H4-a)**: `go test -coverprofile=cover.out ./internal/hook/dbsync/... && go tool cover -func=cover.out | awk '/^total:/{print $3}' | sed 's/%//'` ≥ 85.0.
 - **AC-8 (H4-b)**: 테스트 파일에 8개 케이스 이름 문자열 리터럴 존재: `empty_file`, `utf8_bom`, `oversized`, `nonexistent`, `trailing_slash`, `double_star_only`, `unicode_path`, `corrupt_state_recovery`.
 - **AC-9 (H5)**: 5개 함수(`HandleDBSchemaSync`, `BuildProposal`, `MatchesMigrationPattern`, `IsExcluded`, `CheckDebounce`) 각각의 godoc 블록(시그니처 이전 ~20줄 윈도우) 안에 `// @MX:NOTE` 라인 ≥ 1. awk multiline 스캔 또는 `grep -B 20 '^func X(' … | grep -c '^// @MX:NOTE' >= 1` per function.
