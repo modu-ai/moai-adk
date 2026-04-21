@@ -56,6 +56,6 @@ jobs:
           # Use Opus model with high effort for thorough code reviews.
           # C4 Fix: Added --max-turns to cap runaway executions and control costs.
           claude_args: |
-            --model opus
+            --model claude-opus-4-7
             --effort high
             --max-turns 10

@@ -59,6 +59,6 @@ jobs:
           #        hit error_max_turns at 40. Multi-language LSP investigation requires
           #        reading many files + cross-referencing config — 80 budget is safer.
           claude_args: |
-            --model opus
+            --model claude-opus-4-7
             --effort high
             --max-turns 80
