@@ -23,6 +23,14 @@ var DefaultExcludedPatterns = []string{
 	".moai/logs/**",
 }
 
+// maxMigrationFileSize is the single source of truth for the parseMigrationStub
+// file size ceiling. Migration files larger than this are not read in full — the
+// size-guard branch logs and returns (ParsedContent="", Truncated=true) so the
+// pipeline never holds an arbitrary-sized file in memory.
+// REQ-H1-001: 1 MiB (well above realistic Prisma schema / Alembic version sizes,
+// small enough to prevent memory pressure from malformed or malicious input).
+const maxMigrationFileSize = 1 << 20
+
 // DecisionSkip signals the handler took no action (not a migration file or empty path).
 const DecisionSkip = "skip"
 
@@ -124,7 +132,7 @@ func HandleDBSchemaSync(cfg Config) Result {
 		return Result{ExitCode: 0, Decision: DecisionSkip}
 	}
 
-	debounced, err := CheckDebounce(cfg.StateFile, cfg.FilePath, cfg.DebounceWindow)
+	debounced, err := checkDebounceWithLog(cfg.StateFile, cfg.FilePath, cfg.DebounceWindow, cfg.ErrorLogFile)
 	if err != nil {
 		logError(cfg.ErrorLogFile, "debounce check: "+err.Error())
 		return Result{ExitCode: 0, Decision: DecisionSkip}
@@ -136,7 +144,7 @@ func HandleDBSchemaSync(cfg Config) Result {
 
 	// Parse migration file (REQ-008): stub implementation.
 	// The actual parser is in internal/db/parser/ (separate concern per SPEC exclusion).
-	parsedContent, parseErr := parseMigrationStub(cfg.FilePath)
+	parsed, parseErr := parseMigrationStubWithLog(cfg.FilePath, cfg.ErrorLogFile)
 	if parseErr != nil {
 		// REQ-011: log error and exit 0 (non-blocking)
 		logError(cfg.ErrorLogFile, "parse error for "+cfg.FilePath+": "+parseErr.Error())
@@ -149,7 +157,10 @@ func HandleDBSchemaSync(cfg Config) Result {
 		return Result{ExitCode: 0, Decision: DecisionSkip}
 	}
 
-	proposal := BuildProposal(cfg.FilePath, parsedContent)
+	// REQ-H1-002: when the size guard rejected the file, parsed.ParsedContent == ""
+	// and parsed.Truncated == true. BuildProposal still runs so the orchestrator can
+	// surface the oversized event to the user (decision remains ask-user per REQ-009).
+	proposal := BuildProposal(cfg.FilePath, parsed.ParsedContent)
 	proposalJSON, err := json.Marshal(proposal)
 	if err != nil {
 		logError(cfg.ErrorLogFile, "marshal proposal: "+err.Error())
@@ -166,7 +177,19 @@ func HandleDBSchemaSync(cfg Config) Result {
 	return Result{ExitCode: 0, Decision: DecisionAskUser}
 }
 
-// BuildProposal constructs a Proposal from the parsed content.
+// @MX:NOTE BuildProposal은 파싱된 마이그레이션 내용을 사용자 승인 대기용 Proposal 구조체로
+// 포장한다. JSON 마샬링이 가능한 평면 레이아웃을 유지하여 proposal.json(REQ-009)으로 직접
+// 직렬화될 수 있다.
+//
+// 입력:
+//   - filePath: 마이그레이션 파일 경로 (Claude Code의 tool_input.file_path 원본)
+//   - parsedContent: parseMigrationStub이 반환한 파싱 결과 문자열
+//     (크기 가드에 걸렸을 경우 빈 문자열이며 Truncated=true 상태)
+//
+// 출력:
+//   - Proposal: Decision은 항상 "ask-user"(DecisionAskUser), Timestamp는 UTC RFC3339
+//
+// 부작용: 없음 (순수 함수).
 func BuildProposal(filePath, parsedContent string) Proposal {
 	return Proposal{
 		FilePath:      filePath,
@@ -176,9 +199,17 @@ func BuildProposal(filePath, parsedContent string) Proposal {
 	}
 }
 
-// MatchesMigrationPattern checks whether filePath matches any of the migration patterns.
-// Uses simple glob matching via filepath.Match for single-segment patterns and
-// prefix/suffix matching for ** patterns.
+// @MX:NOTE MatchesMigrationPattern은 file_path가 DB 마이그레이션 glob 중 하나라도 매칭되는지
+// 확인한다. `**` 와일드카드는 matchGlob이 prefix/suffix 분리 방식으로 처리한다.
+//
+// 입력:
+//   - filePath: 검사 대상 파일 경로 (호출자 책임으로 filepath.Clean 이후여야 함)
+//   - patterns: db.yaml의 migration_patterns (예: ["prisma/schema.prisma", "migrations/**/*.sql"])
+//
+// 출력:
+//   - bool: 패턴 중 하나라도 매칭되면 true, 전부 미매칭이면 false
+//
+// 부작용: 없음 (순수 함수, 읽기 전용).
 func MatchesMigrationPattern(filePath string, patterns []string) bool {
 	for _, pattern := range patterns {
 		if matchGlob(pattern, filePath) {
@@ -188,7 +219,19 @@ func MatchesMigrationPattern(filePath string, patterns []string) bool {
 	return false
 }
 
-// IsExcluded checks whether filePath matches any of the excluded patterns.
+// @MX:NOTE IsExcluded은 재귀 가드(REQ-004) 패턴에 file_path가 매칭되는지 확인한다.
+// DefaultExcludedPatterns(.moai/project/db/**, .moai/cache/**, .moai/logs/**)이 기본
+// 차단 대상이며, 이 경로들의 파일을 훅이 처리하면 schema.md 자동 재작성이 다시 훅을
+// 발동시키는 무한 루프가 발생하므로 반드시 차단된다.
+//
+// 입력:
+//   - filePath: 검사 대상 파일 경로
+//   - excluded: 제외 글롭 패턴 목록 (일반적으로 DefaultExcludedPatterns)
+//
+// 출력:
+//   - bool: 제외 패턴 중 하나라도 매칭되면 true (훅이 exit 0 skip 처리)
+//
+// 부작용: 없음 (순수 함수, 읽기 전용).
 func IsExcluded(filePath string, excluded []string) bool {
 	for _, pattern := range excluded {
 		if matchGlob(pattern, filePath) {
@@ -257,44 +300,195 @@ func matchGlob(pattern, filePath string) bool {
 	return false
 }
 
-// CheckDebounce reads the state file and determines if the current call is debounced.
-// Returns (true, nil) if the same file was seen within the debounce window.
-// Updates the state file when the call proceeds (not debounced).
+// @MX:NOTE CheckDebounce는 동일 filePath가 window 내에 이미 관측되었는지 확인하고,
+// 관측되지 않았다면 stateFile을 원자적으로 갱신한다(임시 파일 + os.Rename, POSIX rename
+// 원자성에 의존). 동일 stateFile을 대상으로 동시에 호출되더라도 정확히 한 호출만
+// debounced=false를 반환한다(REQ-H2-002).
+//
+// 입력:
+//   - stateFile: 디바운스 상태 JSON 파일의 절대 경로 (.moai/cache/db-sync/last-seen.json)
+//   - filePath: PostToolUse 훅이 보고한 마이그레이션 파일 경로
+//   - window: 디바운스 윈도우 (기본 10초; 테스트에서는 50ms 등 짧은 값 사용 가능)
+//
+// 출력:
+//   - debounced: true이면 window 내 중복 이벤트 (호출자는 조용히 종료), false면 신규 이벤트
+//   - error: 현재 구현은 항상 nil을 반환한다 (I/O 실패도 안전 기본값 (true, nil)로 흡수;
+//     REQ-H2-003). 미래 시그니처 호환성을 위해 error를 유지한다.
+//
+// 부작용:
+//   - stateFile을 temp-file + os.Rename으로 원자적 교체 (정상 경로)
+//   - I/O 실패 시 내부 로그 없음 (공개 API는 logFile 없이 호출됨;
+//     HandleDBSchemaSync 경유 시 checkDebounceWithLog가 ErrorLogFile에 기록)
 func CheckDebounce(stateFile, filePath string, window time.Duration) (bool, error) {
-	// Read existing state
-	data, err := os.ReadFile(stateFile)
-	if err == nil {
+	return checkDebounceWithLog(stateFile, filePath, window, "")
+}
+
+// checkDebounceWithLog is the implementation body with an explicit ErrorLogFile
+// path for testability. When logFile is empty, the I/O failure branch writes
+// nothing to disk and still returns the safe default (true, nil) per REQ-H2-003.
+//
+// Concurrency contract (REQ-H2-001/002): exactly one concurrent caller targeting
+// the same (stateFile, filePath, window) returns debounced=false. The rest return
+// debounced=true. Mutual exclusion is established via a companion lock file
+// opened with O_CREATE|O_EXCL — the OS serializes the create-or-fail call so a
+// single winner is selected atomically. The winner additionally persists the
+// new state via temp-file + os.Rename so readers never observe a torn write.
+func checkDebounceWithLog(stateFile, filePath string, window time.Duration, logFile string) (bool, error) {
+	// Fast path: if the already-persisted state indicates we are inside the
+	// window, skip the lock acquisition entirely. This is safe because the
+	// fast-path result is re-validated after acquiring the lock.
+	if data, err := os.ReadFile(stateFile); err == nil {
 		var state DebounceState
 		if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr == nil {
-			// Same file within window → debounced
 			if state.FilePath == filePath && time.Since(state.Timestamp) < window {
 				return true, nil
 			}
 		}
 	}
 
-	// Not debounced — update state file
+	// Ensure the state directory exists so the lock file can be created.
+	stateDir := filepath.Dir(stateFile)
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		logError(logFile, "CheckDebounce: mkdir state dir: "+err.Error())
+		return true, nil
+	}
+
+	// Acquire the advisory lock. Exactly one concurrent caller succeeds here;
+	// the others see os.IsExist and return the safe debounced=true result.
+	// REQ-H2-002 — "exactly one winner" is enforced by O_EXCL's atomicity.
+	lockPath := stateFile + ".lock"
+	lockFD, lockErr := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if lockErr != nil {
+		if os.IsExist(lockErr) {
+			// Another caller holds the lock — they will establish the window.
+			return true, nil
+		}
+		// REQ-H2-003: any other lock acquisition failure → safe default.
+		logError(logFile, "CheckDebounce: acquire lock: "+lockErr.Error())
+		return true, nil
+	}
+	_ = lockFD.Close()
+	defer func() { _ = os.Remove(lockPath) }()
+
+	// Re-check under the lock: a process that released the lock just before
+	// our acquisition may have established a fresh window.
+	if data, err := os.ReadFile(stateFile); err == nil {
+		var state DebounceState
+		if unmarshalErr := json.Unmarshal(data, &state); unmarshalErr == nil {
+			if state.FilePath == filePath && time.Since(state.Timestamp) < window {
+				return true, nil
+			}
+		}
+	}
+
+	// Winner path — persist new state atomically via temp-file + os.Rename.
 	newState := DebounceState{
 		FilePath:  filePath,
 		Timestamp: time.Now(),
 	}
 	stateJSON, err := json.Marshal(newState)
 	if err != nil {
-		return false, err
+		logError(logFile, "CheckDebounce: marshal state: "+err.Error())
+		return true, nil
 	}
-	return false, os.WriteFile(stateFile, stateJSON, 0o644)
+
+	tmpFile, err := os.CreateTemp(stateDir, ".last-seen-*.json.tmp")
+	if err != nil {
+		logError(logFile, "CheckDebounce: create temp: "+err.Error())
+		return true, nil
+	}
+	tmpName := tmpFile.Name()
+	renamed := false
+	defer func() {
+		if !renamed {
+			_ = os.Remove(tmpName)
+		}
+	}()
+
+	if _, werr := tmpFile.Write(stateJSON); werr != nil {
+		_ = tmpFile.Close()
+		logError(logFile, "CheckDebounce: write temp: "+werr.Error())
+		return true, nil
+	}
+	if cerr := tmpFile.Close(); cerr != nil {
+		logError(logFile, "CheckDebounce: close temp: "+cerr.Error())
+		return true, nil
+	}
+
+	// os.Rename is atomic within the same filesystem (POSIX guarantees).
+	// os.CreateTemp(stateDir, ...) keeps both files on the same filesystem.
+	if rerr := os.Rename(tmpName, stateFile); rerr != nil {
+		logError(logFile, "CheckDebounce: rename: "+rerr.Error())
+		return true, nil
+	}
+	renamed = true
+	return false, nil
+}
+
+// parseMigrationResult captures the outcome of parseMigrationStub: the parsed
+// content string and whether the input was rejected by the size guard. Both
+// fields are always set so callers can make decisions without either-or
+// ambiguity (REQ-H1-002). The actual parser in internal/db/parser/ may adopt
+// a richer shape later; this struct is the minimal contract parseMigrationStub
+// honors today.
+type parseMigrationResult struct {
+	ParsedContent string
+	Truncated     bool
 }
 
 // parseMigrationStub is a placeholder parser that reads the file content.
 // The actual parser implementation is in internal/db/parser/ (SPEC scope exclusion).
 // This stub ensures REQ-008's behavior contract (input=migration file, output=normalized schema)
-// without implementing the full parser.
-func parseMigrationStub(filePath string) (string, error) {
+// without implementing the full parser. Files exceeding maxMigrationFileSize are
+// rejected by os.Stat pre-check BEFORE any whole-file read (REQ-H1-002, REQ-H1-003).
+func parseMigrationStub(filePath string) (parseMigrationResult, error) {
+	return parseMigrationStubWithLog(filePath, "")
+}
+
+// parseMigrationStubWithLog is the implementation body of parseMigrationStub with an
+// explicit ErrorLogFile path for testability. When logFile is empty, the size-guard
+// branch writes nothing to disk (used by callers that do not track a log path).
+func parseMigrationStubWithLog(filePath, logFile string) (parseMigrationResult, error) {
+	// REQ-H1-003: size judgment via os.Stat BEFORE any full read.
+	info, statErr := os.Stat(filePath)
+	if statErr != nil {
+		return parseMigrationResult{}, statErr
+	}
+	if info.Size() > maxMigrationFileSize {
+		// REQ-H1-002: log + return (parsed_content="", truncated=true), no full read.
+		logError(logFile, "parseMigrationStub: file exceeds maxMigrationFileSize="+itoa(info.Size())+" path="+filePath)
+		return parseMigrationResult{ParsedContent: "", Truncated: true}, nil
+	}
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", err
+		return parseMigrationResult{}, err
 	}
-	return string(data), nil
+	return parseMigrationResult{ParsedContent: string(data), Truncated: false}, nil
+}
+
+// itoa is a minimal int64→string helper to avoid pulling strconv into a single
+// log message formatter. The log prefix is matched literally by REQ-H1-002.
+func itoa(n int64) string {
+	if n == 0 {
+		return "0"
+	}
+	negative := n < 0
+	if negative {
+		n = -n
+	}
+	var buf [20]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if negative {
+		i--
+		buf[i] = '-'
+	}
+	return string(buf[i:])
 }
 
 // logError appends an error message to the error log file (REQ-011).
