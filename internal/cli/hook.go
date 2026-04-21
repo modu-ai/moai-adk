@@ -2,13 +2,16 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
 )
 
 var hookCmd = &cobra.Command{
@@ -83,6 +86,16 @@ func init() {
 		Args:  cobra.ExactArgs(1),
 		RunE:  runAgentHook,
 	})
+
+	// Add "db-schema-sync" subcommand (SPEC-DB-SYNC-001)
+	dbSchemaSyncCmd := &cobra.Command{
+		Use:   "db-schema-sync",
+		Short: "Handle DB schema change detection from PostToolUse hook",
+		Long:  "Detect migration file changes, apply debounce, parse, and write proposal.json for user approval.",
+		RunE:  runDBSchemaSync,
+	}
+	dbSchemaSyncCmd.Flags().String("file", "", "File path from PostToolUse hook stdin")
+	hookCmd.AddCommand(dbSchemaSyncCmd)
 }
 
 // @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
@@ -230,4 +243,120 @@ func endsWith(s string, suffixes ...string) bool {
 // endsWithAny is an alias for endsWith for readability.
 func endsWithAny(s string, suffixes ...string) bool {
 	return endsWith(s, suffixes...)
+}
+
+// runDBSchemaSync executes the db-schema-sync hook handler (SPEC-DB-SYNC-001).
+// It accepts --file <path> and always exits 0 (non-blocking per REQ-011).
+//
+// @MX:NOTE: [AUTO] runDBSchemaSync wires CLI flag to dbsync.HandleDBSchemaSync; always non-blocking.
+func runDBSchemaSync(cmd *cobra.Command, _ []string) error {
+	filePath, _ := cmd.Flags().GetString("file")
+
+	// Resolve project root from cwd
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	// Load migration patterns from db.yaml if available; use defaults otherwise.
+	patterns := loadMigrationPatterns(cwd)
+
+	cfg := dbsync.Config{
+		FilePath:          filePath,
+		MigrationPatterns: patterns,
+		ExcludedPatterns:  dbsync.DefaultExcludedPatterns,
+		StateFile:         filepath.Join(cwd, ".moai", "cache", "db-sync", "last-seen.json"),
+		ProposalFile:      filepath.Join(cwd, ".moai", "cache", "db-sync", "proposal.json"),
+		ErrorLogFile:      filepath.Join(cwd, ".moai", "logs", "db-sync-errors.log"),
+		DebounceWindow:    10 * time.Second,
+	}
+
+	result := dbsync.HandleDBSchemaSync(cfg)
+
+	// REQ-010: emit decision JSON to stdout so orchestrator can act on it.
+	out := map[string]string{"decision": result.Decision}
+	if encErr := json.NewEncoder(cmd.OutOrStdout()).Encode(out); encErr != nil {
+		// Non-fatal: stdout write failure is logged but does not block.
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "db-schema-sync: write output:", encErr)
+	}
+
+	// Always exit 0 (non-blocking, REQ-011)
+	_ = result.ExitCode
+	return nil
+}
+
+// defaultMigrationPatterns are the built-in migration patterns from SPEC-DB-SYNC-001.
+var defaultMigrationPatterns = []string{
+	"prisma/schema.prisma",
+	"alembic/versions/**/*.py",
+	"db/migrate/**/*.rb",
+	"migrations/**/*.sql",
+	"supabase/migrations/**/*.sql",
+	"sql/migrations/**/*.sql",
+}
+
+// loadMigrationPatterns reads migration_patterns from .moai/config/sections/db.yaml.
+// Falls back to defaultMigrationPatterns if the file is absent or unparseable.
+func loadMigrationPatterns(projectRoot string) []string {
+	dbYAML := filepath.Join(projectRoot, ".moai", "config", "sections", "db.yaml")
+	data, err := os.ReadFile(dbYAML)
+	if err != nil {
+		return defaultMigrationPatterns
+	}
+
+	// Simple line-based extraction for migration_patterns list.
+	// Full YAML parsing would require gopkg.in/yaml.v3 which is already a dep,
+	// but the file format is simple enough for this lightweight approach.
+	var patterns []string
+	inPatterns := false
+	for _, line := range splitLines(string(data)) {
+		trimmed := trimSpace(line)
+		if trimmed == "migration_patterns:" {
+			inPatterns = true
+			continue
+		}
+		if inPatterns {
+			if len(trimmed) > 0 && trimmed[0] == '-' {
+				pat := trimSpace(trimmed[1:])
+				if pat != "" {
+					patterns = append(patterns, pat)
+				}
+			} else if len(trimmed) > 0 && trimmed[0] != ' ' && trimmed[0] != '\t' {
+				// New top-level key — stop collecting
+				break
+			}
+		}
+	}
+
+	if len(patterns) == 0 {
+		return defaultMigrationPatterns
+	}
+	return patterns
+}
+
+func splitLines(s string) []string {
+	var lines []string
+	start := 0
+	for i, c := range s {
+		if c == '\n' {
+			lines = append(lines, s[start:i])
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		lines = append(lines, s[start:])
+	}
+	return lines
+}
+
+func trimSpace(s string) string {
+	left := 0
+	for left < len(s) && (s[left] == ' ' || s[left] == '\t') {
+		left++
+	}
+	right := len(s)
+	for right > left && (s[right-1] == ' ' || s[right-1] == '\t' || s[right-1] == '\r') {
+		right--
+	}
+	return s[left:right]
 }

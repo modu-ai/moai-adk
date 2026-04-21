@@ -1,0 +1,13 @@
+index:
+  title: "Design System"
+  display: "hidden"
+"getting-started":
+  title: "Getting Started"
+"claude-design-handoff":
+  title: "Claude Design Handoff"
+"code-based-path":
+  title: "Code-Based Path"
+"gan-loop":
+  title: "GAN Loop"
+"migration-guide":
+  title: "Migration Guide"

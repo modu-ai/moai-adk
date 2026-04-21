@@ -1,7 +1,13 @@
 ---
-description: "Agency learn command"
-argument-hint: "[args] [--team] [--step]"
+description: "(Deprecated) /agency learn - AGENCY_SUBCOMMAND_UNSUPPORTED"
+argument-hint: "[args]"
 allowed-tools: Skill
 ---
 
-Use Skill("agency") with arguments: learn $ARGUMENTS
+> DEPRECATED: /agency is deprecated, use /moai design instead (SPEC-AGENCY-ABSORB-001)
+>
+> ERROR: AGENCY_SUBCOMMAND_UNSUPPORTED — /agency learn has no direct equivalent.
+> Migration guide: https://github.com/modu-ai/moai-adk/blob/main/docs/agency-migration.md
+> Use /moai-workflow-research for research and observation recording.
+
+Use Skill("moai-workflow-research") with arguments: $ARGUMENTS

@@ -81,16 +81,20 @@ Default (natural language): Routes to autonomous workflow (plan -> run -> sync p
 
 Allowed Tools: Full access (Agent, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep)
 
-### Unified Skill: /agency
+### Unified Skill: /moai design
 
-Definition: Self-evolving creative production system for websites, landing pages, and web applications.
+Definition: Hybrid design workflow — Claude Design (path A) or code-based brand design (path B).
 
-Subcommands: brief, build, review, learn, evolve, resume, profile, phase, sync-upstream, rollback, config
-Default (natural language): Routes to agency pipeline (Planner -> Copywriter/Designer -> Builder -> Evaluator -> Learner)
+Subcommands: design (unified entry point)
+Default (natural language): Routes to /moai design with AskUserQuestion path selection (Claude Design vs code-based)
 
-Pipeline: GAN Loop (Builder-Evaluator iterates up to 5 times until quality threshold 0.75 is met)
+For detailed design rules, see .claude/rules/moai/design/constitution.md
 
-For detailed Agency rules, see .claude/rules/agency/constitution.md
+### /agency (DEPRECATED — use /moai design)
+
+DEPRECATED as of SPEC-AGENCY-ABSORB-001. The /agency command redirects to /moai design.
+Will be removed in the next minor version per REQ-DEPRECATE-003.
+Migration guide: see .claude/commands/agency/agency.md
 
 ---
 
@@ -121,9 +125,10 @@ agent, skill, plugin
 evaluator-active (independent skeptical quality assessment, 4-dimension scoring)
 plan-auditor (independent plan-phase document audit, bias prevention, EARS compliance)
 
-### Agency Agents (6)
+### Agency Agents (2) — copywriter and designer retained as fallback path B skills
 
-planner, copywriter, designer, builder, evaluator, learner (self-evolving creative production pipeline)
+copywriter (absorbed into moai-domain-copywriting skill), designer (absorbed into moai-domain-brand-design skill)
+planner, builder, evaluator, learner removed in SPEC-AGENCY-ABSORB-001 M5
 
 ### Dynamic Team Generation (Experimental)
 
@@ -398,16 +403,18 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 - **Workflow rules**: Progressive disclosure, token budget, workflow modes
 - **Development rules**: Skill frontmatter schema, tool permissions
 - **Language rules**: Path-specific rules for 16 programming languages
-- **Agency rules**: AI Agency constitution (.claude/rules/agency/constitution.md)
+- **Design rules**: Design system constitution (.claude/rules/moai/design/constitution.md)
 
-### Agency Configuration
+### Design System Configuration (absorbed from agency, SPEC-AGENCY-ABSORB-001)
 
-- `.agency/config.yaml`: Agency pipeline settings, adaptation weights, iteration limits
-- `.agency/context/`: Brand voice, visual identity, target audience, tech preferences
-- `.agency/fork-manifest.yaml`: Fork tracking for agency agents/skills evolved from MoAI upstream
+- `.moai/config/sections/design.yaml`: Design pipeline settings, GAN loop parameters, sprint contract, evolution thresholds
+- `.moai/project/brand/`: Brand voice (brand-voice.md), visual identity (visual-identity.md), target audience (target-audience.md)
+- `.claude/rules/moai/design/constitution.md`: FROZEN/EVOLVABLE zone definitions, safety architecture
 - `.moai/config/sections/constitution.yaml`: Project technical constraints (machine-readable)
 - `.moai/config/sections/harness.yaml`: Quality depth routing (minimal/standard/thorough)
 - `.moai/config/evaluator-profiles/`: Evaluator scoring profiles (default, strict, lenient, frontend)
+
+Legacy .agency/ directories are archived via `moai migrate agency` command.
 
 ### Language Rules
 

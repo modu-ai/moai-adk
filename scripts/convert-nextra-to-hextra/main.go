@@ -400,13 +400,13 @@ func writeMetaYAML(entries []MetaEntry, path string) error {
 		if strings.Contains(key, "-") {
 			key = fmt.Sprintf(`"%s"`, key)
 		}
-		sb.WriteString(fmt.Sprintf("%s:\n", key))
-		sb.WriteString(fmt.Sprintf("  title: %q\n", e.Title))
+		fmt.Fprintf(&sb, "%s:\n", key)
+		fmt.Fprintf(&sb, "  title: %q\n", e.Title)
 		if e.Display != "" {
-			sb.WriteString(fmt.Sprintf("  display: %q\n", e.Display))
+			fmt.Fprintf(&sb, "  display: %q\n", e.Display)
 		}
 		if e.Type != "" {
-			sb.WriteString(fmt.Sprintf("  type: %q\n", e.Type))
+			fmt.Fprintf(&sb, "  type: %q\n", e.Type)
 		}
 	}
 	return os.WriteFile(path, []byte(sb.String()), 0644)

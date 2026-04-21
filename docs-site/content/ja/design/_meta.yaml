@@ -1,0 +1,13 @@
+index:
+  title: "デザインシステム"
+  display: "hidden"
+"getting-started":
+  title: "はじめに"
+"claude-design-handoff":
+  title: "Claude Designハンドオフ"
+"code-based-path":
+  title: "コードベースパス"
+"gan-loop":
+  title: "GAN Loop"
+"migration-guide":
+  title: "移行ガイド"

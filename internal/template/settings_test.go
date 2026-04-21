@@ -933,3 +933,47 @@ func TestIsWSL2_ProcVersionFallback_NonWSL(t *testing.T) {
 		t.Error("IsWSL2() should return false for a non-WSL kernel string")
 	}
 }
+
+// --- SPEC-DB-SYNC-RELOC-001: db-schema-change PostToolUse 훅이 제거되었음을 검증 ---
+
+// TestRender_DbSchemaChangeHook_Removed verifies that SPEC-DB-SYNC-RELOC-001
+// has relocated the per-edit PostToolUse hook for `handle-db-schema-change.sh`
+// into the `/moai sync` Phase 0.08 workflow. The rendered settings.json for
+// any platform must NOT contain a reference to the former hook script, and the
+// template tree must not ship the wrapper script either. The existing Go
+// package `internal/hook/dbsync` and `moai hook db-schema-sync` CLI remain
+// intact for manual invocation (verified by package-level tests).
+func TestRender_DbSchemaChangeHook_Removed(t *testing.T) {
+	for _, platform := range []string{"darwin", "linux", "windows"} {
+		platform := platform
+		t.Run(platform, func(t *testing.T) {
+			ctx := testContext(platform)
+			out := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			// Rendered settings.json must remain valid JSON on all platforms.
+			if !json.Valid([]byte(strings.TrimSpace(out))) {
+				t.Fatalf("%s render is not valid JSON:\n%s", platform, out)
+			}
+
+			// The former hook script must not be referenced anywhere in the
+			// rendered output (raw string check catches both command fields
+			// and any orphan comment references).
+			if strings.Contains(out, "handle-db-schema-change.sh") {
+				t.Errorf("%s rendered settings.json still references handle-db-schema-change.sh:\n%s", platform, out)
+			}
+
+			// Structural check: the PostToolUse slot must contain exactly one
+			// matcher block (the Write|Edit generic handler) — the second
+			// db-schema-change block has been removed.
+			var settings map[string]any
+			if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &settings); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			hooks := settings["hooks"].(map[string]any)
+			post := hooks["PostToolUse"].([]any)
+			if got := len(post); got != 1 {
+				t.Errorf("%s PostToolUse entries = %d, want 1 (db-schema-change block was removed in SPEC-DB-SYNC-RELOC-001)", platform, got)
+			}
+		})
+	}
+}

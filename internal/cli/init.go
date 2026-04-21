@@ -344,6 +344,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to scaffold evolution directory: %v\n", err)
 	}
 
+	// Scaffold .moai/design/ directory structure (REQ-001, REQ-002, REQ-003, REQ-010).
+	// Deploy README.md, research.md, system.md, spec.md templates and create
+	// wireframes/ and screenshots/ subdirectories. Skips deployment if design dir
+	// already contains regular files to prevent overwriting user assets.
+	if _, err := scaffoldDesignDir(opts.ProjectRoot, cmd.OutOrStderr()); err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to scaffold design directory: %v\n", err)
+	}
+
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to update global settings env: %v\n", err)

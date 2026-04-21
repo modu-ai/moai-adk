@@ -1,0 +1,13 @@
+index:
+  title: "디자인 시스템"
+  display: "hidden"
+"getting-started":
+  title: "시작하기"
+"claude-design-handoff":
+  title: "Claude Design 핸드오프"
+"code-based-path":
+  title: "코드 기반 경로"
+"gan-loop":
+  title: "GAN Loop"
+"migration-guide":
+  title: "마이그레이션 가이드"
