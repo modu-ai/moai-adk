@@ -84,7 +84,14 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 	}
 }
 
-func TestGLMCmd_InjectsEnv(t *testing.T) {
+// TestGLMCmd_NoSettingsLocalPollution verifies that `moai glm` does NOT write
+// GLM env vars to settings.local.json. The previous behavior (injectGLMEnvForTeam
+// in applyGLMMode) caused GLM mode to persist after `moai glm` exited, routing all
+// subsequent `claude` invocations to GLM unexpectedly (#676).
+//
+// setGLMEnv() already injects env into the current process, which syscall.Exec
+// inherits into `claude` — writing to settings.local.json is redundant and harmful.
+func TestGLMCmd_NoSettingsLocalPollution(t *testing.T) {
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -126,22 +133,24 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 		t.Fatalf("glm should not error, got: %v", err)
 	}
 
-	// GLM should create settings.local.json with GLM env vars
+	// GLM should NOT write GLM env vars to settings.local.json (#676 fix).
+	// setGLMEnv() injects env into the current process; no file persistence needed.
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
-		t.Fatalf("settings.local.json should be created: %v", err)
+		// File not created at all — that's acceptable and expected.
+		if !os.IsNotExist(err) {
+			t.Fatalf("unexpected error reading settings.local.json: %v", err)
+		}
+		return
 	}
 
 	content := string(data)
-	if !strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
+	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
+		t.Error("settings.local.json must NOT contain ANTHROPIC_BASE_URL after moai glm (regression: #676 persistence bug)")
 	}
-	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
-		t.Error("settings.local.json should contain ANTHROPIC_BASE_URL")
-	}
-	if !strings.Contains(content, "teammateMode") {
-		t.Error("settings.local.json should contain teammateMode")
+	if strings.Contains(content, "DISABLE_PROMPT_CACHING") {
+		t.Error("settings.local.json must NOT contain DISABLE_PROMPT_CACHING after moai glm (regression: #676 persistence bug)")
 	}
 }
 
