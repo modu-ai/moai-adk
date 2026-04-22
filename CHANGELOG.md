@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.1] - 2026-04-23
+
+### Summary
+
+Patch release addressing slash command registration for `/moai db` and `/moai design` workflows introduced in v2.13.0. These commands existed as internal skill workflows but lacked the `.claude/commands/moai/*.md` wrapper files, preventing them from appearing in the Claude Code slash command menu.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- `.claude/commands/moai/db.md` command wrapper (local synced from template)
+- `.claude/commands/moai/design.md` command wrapper (new, template + local)
+- `.claude/skills/moai/workflows/db.md` local workflow (template sync for files missing locally)
+
+### Changed
+
+- `.claude/skills/moai/SKILL.md` router: `db` and `design` added to Priority 1 subcommand matching, description field, and Workflow Quick Reference blocks
+- `.claude/skills/moai/workflows/design.md` synced from template (7.4K → 9.5K, adds Phase 0 pre-flight checks and path B details)
+- `CLAUDE.md` Subcommands list: `design, db` inserted
+- Template sources (`internal/template/templates/.claude/`) updated in parallel to preserve Template-First rule
+
+### Fixed
+
+- `/moai db` and `/moai design` now appear in Claude Code slash command menu (`moai:db`, `moai:design`)
+- First-word subcommand matching in router now correctly routes `db` and `design` to their respective workflows
+- Template/local drift between router SKILL.md and workflow files resolved
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.13.1] - 2026-04-23 (한국어)
+
+### 요약
+
+v2.13.0에 도입된 `/moai db`와 `/moai design` 워크플로우의 slash command 등록 누락을 수정하는 패치 릴리즈입니다. 내부 skill 워크플로우로는 존재했으나 `.claude/commands/moai/*.md` 래퍼 파일이 부재하여 Claude Code slash command 메뉴에 노출되지 않던 문제를 해결했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- `.claude/commands/moai/db.md` command 래퍼 (local, template에서 동기화)
+- `.claude/commands/moai/design.md` command 래퍼 (신규, template + local)
+- `.claude/skills/moai/workflows/db.md` local 워크플로우 (local 부재분 template 동기화)
+
+### 변경됨 (Changed)
+
+- `.claude/skills/moai/SKILL.md` 라우터: Priority 1 subcommand 매칭, description 필드, Workflow Quick Reference 블록에 `db`와 `design` 추가
+- `.claude/skills/moai/workflows/design.md` template에서 동기화 (7.4K → 9.5K, Phase 0 사전 검사 및 path B 세부 추가)
+- `CLAUDE.md` Subcommands 목록에 `design, db` 삽입
+- Template 원본(`internal/template/templates/.claude/`)도 Template-First 규칙 유지를 위해 동시 업데이트
+
+### 수정됨 (Fixed)
+
+- `/moai db`와 `/moai design`이 Claude Code slash command 메뉴에 정상 노출 (`moai:db`, `moai:design`)
+- 라우터의 FIRST WORD subcommand 매칭이 `db`와 `design`을 각 워크플로우로 올바르게 라우팅
+- 라우터 SKILL.md와 워크플로우 파일 간 template/local 드리프트 해소
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.13.0] - 2026-04-23
 
 ### Summary
