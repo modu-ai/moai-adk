@@ -1124,7 +1124,7 @@ MoAI プロジェクトのデータベースメタデータ管理システムで
 
 `/moai db init` は `.moai/project/db/` に以下の構造を作成します:
 
-```
+```plaintext
 .moai/project/db/
 ├── README.md              # データベース概要とセットアップ手順
 ├── schema.md              # テーブルスキーマドキュメント（自動生成）

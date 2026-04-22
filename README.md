@@ -1198,7 +1198,7 @@ Database metadata management system for MoAI projects. Manages schema documentat
 
 `/moai db init` creates the following structure in `.moai/project/db/`:
 
-```
+```plaintext
 .moai/project/db/
 ├── README.md              # Database overview and setup instructions
 ├── schema.md              # Table schema documentation (auto-generated)
