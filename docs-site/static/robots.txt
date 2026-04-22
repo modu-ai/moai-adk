@@ -1,0 +1,84 @@
+# MoAI-ADK Documentation — robots.txt
+# Source: https://adk.mo.ai.kr
+# Spec: CLAUDE.local.md §17.1 (URL & Sitemap requirement)
+
+# Default: allow all well-behaved crawlers
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Explicitly allow AI assistants and LLM crawlers so users can
+# ask questions about the docs via ChatGPT, Claude, Gemini, etc.
+# (Cloudflare "Block AI Bots" must also be configured to honor this.)
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+# Sitemap (Hugo auto-generates at site root)
+Sitemap: https://adk.mo.ai.kr/sitemap.xml
