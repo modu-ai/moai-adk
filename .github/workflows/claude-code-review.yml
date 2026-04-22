@@ -46,7 +46,7 @@ jobs:
         id: claude-review
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v1.0.82 | SHA: 88c168b39e7e64da0286d812b6e9fbebb6708185
-        uses: anthropics/claude-code-action@b47fd721da662d48c5680e154ad16a73ed74d2e0
+        uses: anthropics/claude-code-action@5d5c10a4f389689f992ea10bb14dcb6fcc83146d
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
@@ -55,7 +55,15 @@ jobs:
           allowed_bots: 'dependabot'
           # Use Opus model with high effort for thorough code reviews.
           # C4 Fix: Added --max-turns to cap runaway executions and control costs.
+          # History:
+          #   C4a: 10 — initial value, hit error_max_turns on multi-file PRs
+          #        (e.g. PR #688 docs 4-language sync, run #24720853092)
+          #   C4b: 10 → 40 — reviews need to read N files across locales.
+          #   C4c: 40 → 80 — align with claude.yml (issue fixes). Code reviews
+          #        on SPEC-level changes frequently exceed 40 turns when the PR
+          #        touches cross-cutting code + tests + docs. 80 matches the
+          #        budget used by the sibling issue-fix workflow.
           claude_args: |
             --model claude-opus-4-7
             --effort high
-            --max-turns 10
+            --max-turns 80

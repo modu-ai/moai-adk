@@ -1,0 +1,15 @@
+index:
+  title: "데이터베이스 스키마 관리"
+  display: "hidden"
+"getting-started":
+  title: "시작하기"
+  weight: 10
+"schema-sync":
+  title: "스키마 동기화"
+  weight: 20
+"migration-patterns":
+  title: "마이그레이션 패턴"
+  weight: 30
+"project-db-directory":
+  title: "프로젝트 DB 디렉토리"
+  weight: 40

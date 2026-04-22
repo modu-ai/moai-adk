@@ -12,6 +12,9 @@
   title: "멀티 LLM"
 design:
   title: "디자인 시스템"
+db:
+  title: "데이터베이스 스키마 관리"
+  weight: 15
 advanced:
   title: "심화 학습"
 worktree:
