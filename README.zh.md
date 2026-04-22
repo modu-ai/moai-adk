@@ -1125,7 +1125,7 @@ MoAI 项目的数据库元数据管理系统。通过四个子命令（init、re
 
 `/moai db init` 在 `.moai/project/db/` 中创建以下结构：
 
-```
+```plaintext
 .moai/project/db/
 ├── README.md              # 数据库概览和设置说明
 ├── schema.md              # 表架构文档（自动生成）
