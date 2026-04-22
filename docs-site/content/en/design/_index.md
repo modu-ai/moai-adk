@@ -1,7 +1,7 @@
 ---
 title: Design System
 description: Hybrid design workflow combining Claude Design and code-based paths
-weight: 10
+weight: 60
 draft: false
 ---
 

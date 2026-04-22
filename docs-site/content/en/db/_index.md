@@ -1,7 +1,7 @@
 ---
 title: Database Schema Management
 description: Automatically track and manage schemas, migrations, and seed data
-weight: 15
+weight: 70
 draft: false
 ---
 

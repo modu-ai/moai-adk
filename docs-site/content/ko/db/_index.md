@@ -1,7 +1,7 @@
 ---
 title: 데이터베이스 스키마 관리
 description: 스키마, 마이그레이션, 시드 데이터를 자동으로 추적하고 관리하는 워크플로우
-weight: 15
+weight: 70
 draft: false
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: データベーススキーマ管理
 description: スキーマ、マイグレーション、シードデータを自動的に追跡および管理
-weight: 15
+weight: 70
 draft: false
 ---
 
