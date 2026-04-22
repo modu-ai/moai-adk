@@ -43,6 +43,52 @@ Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 
 
 ---
 
+## v2.12.0의 새로운 기능
+
+MoAI-ADK v2.12.0은 디자인 시스템, Claude Code 원어민 통합, Opus 4.7 지원의 주요 업그레이드를 소개합니다.
+
+### 주요 마일스톤
+
+| 버전 | 주요 기능 |
+|------|---------|
+| **v2.9.0** | Claude Code v2.1.89-90 원어민 스킬 통합 (Opus 4.6) |
+| **v2.10.x** | LSP 스위트 확장, SPEC-CC297-001 `permissionMode` 속성 지원, Opus 4.7 프리뷰 |
+| **v2.11.x** | 자기진화 시스템 통합, 다중 소스 문서 로딩, 강화된 메모리 관리 |
+| **v2.12.0** | **[SPEC-AGENCY-ABSORB-001]** /agency → /moai design 흡수, Opus 4.7 완전 지원, Adaptive Thinking 원어민 통합 |
+
+### 주요 변경사항
+
+**디자인 시스템 흡수 (SPEC-AGENCY-ABSORB-001)**
+
+기존 `/agency` 명령어가 `/moai design`에 완전히 통합되었습니다. 기존 `/agency/` 프로젝트는 다음으로 자동 마이그레이션됩니다:
+
+```bash
+moai migrate agency
+```
+
+이점:
+- 이중 `/moai` + `/agency` 명령어 대신 단일 통합 디자인 워크플로우
+- MoAI 코어와의 개선된 통합 (브랜드 컨텍스트, 품질 게이트, SPEC 기반 워크플로우)
+- 향상된 문서 [adk.mo.ai.kr](https://adk.mo.ai.kr) (한국어)
+
+**Opus 4.7 원어민 지원**
+
+MoAI-ADK는 이제 Claude Opus 4.7을 원어민 Adaptive Thinking으로 지원합니다:
+
+- 추론을 위한 자동 동적 토큰 할당 (고정 예산 없음)
+- 간결한 프롬프트 작성으로 더 빠른 추론
+- 복잡한 작업에서 더 나은 비용 효율성
+
+**자기학습 및 메모리 진화**
+
+v2.11+ 자기학습 시스템이 에이전트 학습과 통합됩니다:
+
+- 에이전트가 수정사항에서 자동으로 교훈 캡처
+- 메모리 시스템이 세션 간 지속 (`.claude/agent-memory/`)
+- 문서가 작업 컨텍스트에 따라 적시에 로드
+
+---
+
 ## 왜 MoAI-ADK인가?
 
 Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
@@ -1089,6 +1135,10 @@ flowchart LR
 /moai design brief "개발자 도구 랜딩 페이지"        # 인터뷰 + BRIEF만 (빌드 전 검토)
 /moai design build BRIEF-001                       # 기존 BRIEF에서 전체 파이프라인 실행
 /moai design import /path/to/design.zip            # Claude Design 핸드오프 번들 import (Path A)
+
+# 기존 /agency 명령어 (deprecated, /moai design으로 리다이렉트)
+/agency "..."                                      # /moai design으로 리다이렉트 + 사용중단 경고
+/agency brief "..."                                # 지원 안 함; /moai design brief 사용 권장
 ```
 
 ### 기본 기술 스택 (설정 가능)
@@ -1113,6 +1163,108 @@ moai migrate agency
 이 명령어는 `.agency/` 데이터를 `.moai/project/brand/`와 `.moai/config/sections/design.yaml`로 안전하게 이동합니다. 원본 데이터는 복구를 위해 `.agency.archived/`로 보관됩니다.
 
 > [Design System 문서](https://adk.mo.ai.kr)
+
+---
+
+## 데이터베이스 워크플로우: /moai db
+
+MoAI 프로젝트의 데이터베이스 메타데이터 관리 시스템입니다. 스키마 문서, 마이그레이션, ERD 다이어그램, 시드 데이터를 4개의 서브커맨드(init, refresh, verify, list)로 관리합니다.
+
+### 빠른 시작
+
+```bash
+# 데이터베이스 메타데이터 초기화 (대화형 인터뷰)
+/moai db init
+
+# 마이그레이션 재스캔 및 스키마 문서 업데이트
+/moai db refresh
+
+# schema.md와 마이그레이션 파일 간의 편차 확인
+/moai db verify
+
+# schema.md의 모든 테이블 표시
+/moai db list
+```
+
+### 서브커맨드
+
+| 커맨드 | 목적 | 사용 시점 |
+|--------|------|---------|
+| **init** | 데이터베이스 엔진, ORM, 다중 테넌트 전략, 마이그레이션 도구에 대한 대화형 설정. `.moai/project/db/`에 7개 파일 템플릿 세트를 스캐폴딩 | 새로운 프로젝트 초기화, 데이터베이스 작업 전 |
+| **refresh** | 마이그레이션 파일을 스캔하고 현재 마이그레이션 상태에서 `schema.md`, `erd.mmd` (Mermaid ERD), `migrations.md` 재생성 | 마이그레이션 추가/수정 후, 마일스톤 동기화 |
+| **verify** | 읽기 전용 편차 감지: `schema.md` 테이블 세트를 실제 마이그레이션 파일과 비교, 편차 발견 시 0이 아닌 값으로 종료 | PR 제출 전, CI/CD 파이프라인에서 |
+| **list** | 읽기 전용 테이블 나열: `schema.md`의 모든 테이블을 정렬된 Markdown 테이블 형식으로 표시 | 프로젝트 빠른 개요, 문서 검토 |
+
+### 디렉토리 구조
+
+`/moai db init`은 `.moai/project/db/`에 다음 구조를 생성합니다:
+
+```plaintext
+.moai/project/db/
+├── README.md              # 데이터베이스 개요 및 설정 지침
+├── schema.md              # 테이블 스키마 문서 (자동 생성)
+├── erd.mmd                # Mermaid 형식의 Entity-Relationship Diagram
+├── migrations.md          # 마이그레이션 이력 및 순서
+├── rls-policies.md        # 행 수준 보안 정책 (PostgreSQL)
+├── queries.md             # 중요한 쿼리 및 성능 노트
+└── seed-data.md           # 샘플 데이터 및 시딩 지침
+```
+
+### 지원 데이터베이스 기술
+
+6가지 마이그레이션 파일 패턴을 자동 감지 및 지원합니다:
+
+| 마이그레이션 유형 | 파일 패턴 | 예제 |
+|-----------------|----------|------|
+| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
+| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
+| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
+| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
+| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
+| **일반** | `migrations/*.sql` 또는 `db/*.sql` | 커스텀 패턴 지원 |
+
+16개 프로그래밍 언어 생태계(Go, Python, TypeScript, Java 등)를 일반적인 패키지 경로를 통해 지원합니다.
+
+### 통합
+
+- **PostToolUse Hook**: 마이그레이션 파일 편집 시 `schema.md`, `erd.mmd`, `migrations.md` 자동 새로고침
+- **편차 감지**: 스키마 문서가 실제 마이그레이션과 동기화 상태를 유지하도록 방지
+- **Mermaid 다이어그램**: 문서 및 디자인 검토를 위해 ERD 다이어그램 자동 생성
+- **Phase 4.1a DB 감지**: `/moai project`는 감지된 데이터베이스 기술을 기반으로 `/moai db` 권장사항을 자동으로 표시
+
+### 설정
+
+데이터베이스 설정은 `.moai/config/sections/db.yaml`에 저장됩니다:
+
+```yaml
+db:
+  enabled: true
+  dir: ".moai/project/db"
+  auto_sync: true
+  migration_patterns:
+    - "prisma/migrations/*/migration.sql"
+    - "alembic/versions/*.py"
+    - "db/migrate/*.rb"
+  engine: ""  # init 인터뷰 중에 채워집니다
+  orm: ""     # init 인터뷰 중에 채워집니다
+  multi_tenant: false
+  migration_tool: ""
+```
+
+### 워크플로우 예제
+
+1. **새로운 프로젝트**: `/moai db init`을 실행하고 데이터베이스 설정에 대한 4개 질문에 답합니다
+2. **개발 중**: 평소대로 마이그레이션을 생성합니다; `/moai db`는 자동으로 문서를 동기화합니다
+3. **PR 전**: `/moai db verify`를 실행하여 스키마 편차를 확인합니다
+4. **검토**: PR에서 `.moai/project/db/erd.mmd`를 참조하여 스키마를 시각적으로 검토합니다
+
+### 사용 시점
+
+- **항상 활성화**: `moai init` 중에 데이터베이스가 있는 모든 프로젝트에서 활성화
+- **Init**: 새로운 프로젝트, 데이터베이스 아키텍처 변경
+- **Refresh**: 대규모 마이그레이션 작업 후, 주요 커밋 전
+- **Verify**: CI/CD 파이프라인의 일부, PR 전 검사
+- **List**: 빠른 참조, 문서 생성
 
 ---
 

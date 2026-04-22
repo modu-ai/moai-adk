@@ -6,7 +6,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/huh v0.8.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/charmbracelet/x/powernap v0.1.3
+	github.com/charmbracelet/x/powernap v0.1.4
 	github.com/mattn/go-isatty v0.0.21
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sync v0.20.0

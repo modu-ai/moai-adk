@@ -1,0 +1,15 @@
+index:
+  title: "Database Schema Management"
+  display: "hidden"
+"getting-started":
+  title: "Getting Started"
+  weight: 10
+"schema-sync":
+  title: "Schema Sync"
+  weight: 20
+"migration-patterns":
+  title: "Migration Patterns"
+  weight: 30
+"project-db-directory":
+  title: "Project DB Directory"
+  weight: 40

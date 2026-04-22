@@ -10,6 +10,9 @@
   title: "Quality Commands"
 design:
   title: "Design System"
+db:
+  title: "Database Schema Management"
+  weight: 15
 advanced:
   title: "Advanced"
 worktree:
