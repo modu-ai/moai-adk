@@ -3,6 +3,7 @@ package subprocess_test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"testing"
@@ -38,11 +39,32 @@ func launchStub(t *testing.T, script string) (*subprocess.LaunchResult, *subproc
 }
 
 // writeFakeBinaryContent writes a script with custom content to dir.
+//
+// Implementation note (ETXTBSY mitigation): see writeFakeBinary in launcher_test.go.
+// The same Create → Write → Sync → Close → Chmod ordering is applied here to avoid
+// "text file busy" on Linux fork/exec when t.Parallel() tests race file creation
+// with subprocess launch.
 func writeFakeBinaryContent(t *testing.T, dir, name, script string) string {
 	t.Helper()
-	path := dir + "/" + name
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatalf("writeFakeBinaryContent: %v", err)
+	path := filepath.Join(dir, name)
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("writeFakeBinaryContent create: %v", err)
+	}
+	if _, err := f.Write([]byte(script)); err != nil {
+		_ = f.Close()
+		t.Fatalf("writeFakeBinaryContent write: %v", err)
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		t.Fatalf("writeFakeBinaryContent sync: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("writeFakeBinaryContent close: %v", err)
+	}
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatalf("writeFakeBinaryContent chmod: %v", err)
 	}
 	return path
 }
