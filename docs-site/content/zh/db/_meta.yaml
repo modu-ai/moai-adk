@@ -1,0 +1,15 @@
+index:
+  title: "数据库架构管理"
+  display: "hidden"
+"getting-started":
+  title: "入门"
+  weight: 10
+"schema-sync":
+  title: "架构同步"
+  weight: 20
+"migration-patterns":
+  title: "迁移模式"
+  weight: 30
+"project-db-directory":
+  title: "项目数据库目录"
+  weight: 40
