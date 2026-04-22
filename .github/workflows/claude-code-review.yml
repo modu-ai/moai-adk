@@ -16,6 +16,12 @@ concurrency:
 
 jobs:
   claude-review:
+    # C5 Fix: Skip fork PRs. GitHub blocks `id-token: write` on cross-repository
+    # PRs for security reasons, causing OIDC token acquisition to fail with
+    # `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL`. Example: PR #690.
+    # Fork PR reviews should be triggered manually via `@claude` on `claude.yml`.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
