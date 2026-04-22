@@ -209,6 +209,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(out, "  Warning: failed to scaffold evolution directory: %v\n", err)
 	}
 
+	// Sync .moai/design/ templates (REQ-005, REQ-008).
+	// Preserves user-modified files (SHA-256 mismatch) and rejects reserved filename collisions.
+	if err := updateDesignDir(".", out); err != nil {
+		_, _ = fmt.Fprintf(out, "  Error: .moai/design/ update: %v\n", err)
+		return err
+	}
+
 	// Sync profile preferences to project config (after template deployment)
 	profileName := profile.GetCurrentName()
 	prefs, err := profile.ReadPreferences(profileName)

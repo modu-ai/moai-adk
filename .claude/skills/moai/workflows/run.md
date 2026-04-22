@@ -375,26 +375,6 @@ Purpose: Scan files that will be modified during implementation to build an MX c
 
 See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
-### Batch Mode Decision [MANDATORY EVALUATION]
-
-Before routing to Phase 2, MoAI MUST evaluate whether to use Skill("batch") for parallel implementation.
-
-Evaluate ALL of the following conditions:
-
-- Condition A: task_count >= 5 (from Phase 1.5 decomposition)
-- Condition B: predicted_file_changes >= 10 (estimated from SPEC scope)
-- Condition C: independent_tasks >= 3 (tasks with no inter-dependencies)
-
-Decision:
-
-- If ANY condition is met: Execute Skill("batch") directly. Batch mode replaces sequential Phase 2. Each batch unit executes one atomic task in an isolated git worktree, runs tests, and creates a PR. MoAI collects all PRs and merges in dependency order via manager-git.
-- If NO condition is met: Continue to standard sequential Phase 2 below.
-
-Batch execution instructions when triggered:
-1. Provide Skill("batch") with the full task list from Phase 1.5, the SPEC document content, and the development_mode from quality.yaml
-2. Each batch agent MUST follow the same DDD/TDD cycle defined in the Development Mode Routing section
-3. After all batch agents complete, collect results and jump directly to Phase 2.5 (Quality Validation)
-
 ### Development Mode Routing
 
 Before Phase 2, determine the development methodology by reading `.moai/config/sections/quality.yaml`:
@@ -675,12 +655,12 @@ Output: review_findings per dimension, iterations_completed count, final review 
 
 Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
 
-[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 2 and verify @MX tag coverage before proceeding to Phase 2.10. If implementation agents did not add required tags during their work, MoAI adds them here.
+[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 2 and verify @MX tag coverage before proceeding to Phase 3. If implementation agents did not add required tags during their work, MoAI adds them here.
 
 **Validation criteria (blocking):**
 - P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`
 - P2: Every new goroutine/async pattern MUST have `@MX:WARN`
-- P1/P2 violations block Phase 2.10 until resolved
+- P1/P2 violations block Phase 3 until resolved
 
 **TDD Mode:**
 - Remove `@MX:TODO` tags for tests that now pass
@@ -694,25 +674,6 @@ Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/
 - Convert `@MX:LEGACY` to `@MX:SPEC` if SPEC retroactively created
 
 Output: MX_TAG_REPORT with tags added, updated, removed by type.
-
-### Phase 2.10: Simplify Pass [MANDATORY]
-
-Purpose: Apply a parallel quality pass to all files modified during implementation. This phase is ALWAYS executed after Phase 2.9 — it is not optional.
-
-Action: MoAI MUST call Skill("simplify") at this phase. Do not delegate to a subagent. Call it directly.
-
-Skill("simplify") will:
-- Use parallel agents to review all modified files for reuse opportunities, quality issues, and efficiency improvements
-- Enforce CLAUDE.md coding standards compliance
-- Fix discovered issues automatically
-
-Scope: Only files listed in the implementation output (files_created + files_modified). Do not run on unrelated files.
-
-Output: simplify_report with files_improved count, issues_fixed list, and compliance_status.
-
-If simplify_report contains remaining unfixed issues:
-- Include them in the quality findings passed to Phase 2.5 re-evaluation
-- Do NOT block progress for suggestion-level issues; only block for critical issues
 
 ### LSP Quality Gates
 

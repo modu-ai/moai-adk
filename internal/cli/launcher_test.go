@@ -685,3 +685,112 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 		t.Errorf("error should mention 'not in a MoAI project', got: %v", err)
 	}
 }
+
+// TestApplyGLMMode_NoSettingsLocalPollution verifies that applyGLMMode does NOT
+// write GLM env vars to settings.local.json. Regression test for #676.
+//
+// Before the fix, injectGLMEnvForTeam() in applyGLMMode permanently wrote
+// ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, DISABLE_PROMPT_CACHING, etc. to
+// settings.local.json, causing GLM mode to leak into all subsequent `claude`
+// invocations after `moai glm` exited.
+//
+// After the fix, setGLMEnv() sets the current-process env (inherited by
+// syscall.Exec into `claude`), and settings.local.json is left clean.
+// NOTE: does not call t.Parallel() because it modifies process-level env via setGLMEnv.
+func TestApplyGLMMode_NoSettingsLocalPollution(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("GLM_API_KEY", "test-glm-key-676")
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(p string, args []string) error { return nil }
+
+	// Call applyGLMMode directly — this is what unifiedLaunch calls in GLM mode.
+	if err := applyGLMMode(tmpDir, ""); err != nil {
+		t.Fatalf("applyGLMMode() error: %v", err)
+	}
+
+	// settings.local.json must NOT contain GLM env vars after applyGLMMode.
+	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File not created — correct behavior.
+			return
+		}
+		t.Fatalf("unexpected error reading settings.local.json: %v", err)
+	}
+
+	content := string(data)
+	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
+		t.Error("settings.local.json must NOT contain ANTHROPIC_BASE_URL (regression: #676)")
+	}
+	if strings.Contains(content, "DISABLE_PROMPT_CACHING") {
+		t.Error("settings.local.json must NOT contain DISABLE_PROMPT_CACHING (regression: #676)")
+	}
+	if strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("settings.local.json must NOT contain ANTHROPIC_AUTH_TOKEN (regression: #676)")
+	}
+}
+
+// TestApplyGLMMode_ProcessEnvIsSet verifies that applyGLMMode sets GLM env
+// vars in the current process via setGLMEnv(). The process env is what
+// syscall.Exec inherits into the launched `claude` binary.
+// NOTE: does not call t.Parallel() because it modifies process-level env via setGLMEnv.
+func TestApplyGLMMode_ProcessEnvIsSet(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("GLM_API_KEY", "test-glm-key-676-proc")
+	// Ensure a clean baseline for the vars we check.
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+	t.Setenv("DISABLE_PROMPT_CACHING", "")
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(p string, args []string) error { return nil }
+
+	if err := applyGLMMode(tmpDir, ""); err != nil {
+		t.Fatalf("applyGLMMode() error: %v", err)
+	}
+
+	// Process env must have GLM vars set (inherited by syscall.Exec into claude).
+	if got := os.Getenv("ANTHROPIC_BASE_URL"); got == "" {
+		t.Error("ANTHROPIC_BASE_URL must be set in process env after applyGLMMode")
+	}
+	if got := os.Getenv("DISABLE_PROMPT_CACHING"); got != "1" {
+		t.Errorf("DISABLE_PROMPT_CACHING must be '1' after applyGLMMode, got %q", got)
+	}
+}

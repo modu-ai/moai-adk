@@ -1,0 +1,13 @@
+index:
+  title: "设计系统"
+  display: "hidden"
+"getting-started":
+  title: "入门指南"
+"claude-design-handoff":
+  title: "Claude Design交接"
+"code-based-path":
+  title: "代码路径"
+"gan-loop":
+  title: "GAN Loop"
+"migration-guide":
+  title: "迁移指南"

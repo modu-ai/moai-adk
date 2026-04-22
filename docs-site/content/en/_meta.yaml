@@ -1,0 +1,19 @@
+"getting-started":
+  title: "Getting Started"
+"core-concepts":
+  title: "Core Concepts"
+"workflow-commands":
+  title: "Workflow Commands"
+"utility-commands":
+  title: "Utility Commands"
+"quality-commands":
+  title: "Quality Commands"
+design:
+  title: "Design System"
+db:
+  title: "Database Schema Management"
+  weight: 15
+advanced:
+  title: "Advanced"
+worktree:
+  title: "Git Worktree"

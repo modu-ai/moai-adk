@@ -101,6 +101,25 @@ MoAI-ADK provides built-in internationalization with 4 supported languages:
 - `internal/template/`: Template context language resolution
 - Configuration files: Language settings validation
 
+### Documentation Site Stack
+
+Official documentation site running at `https://adk.mo.ai.kr`:
+
+| 항목 | 기술 | 버전 |
+|------|------|------|
+| 정적 사이트 생성기 | Hugo Extended | v0.160.1+ |
+| 테마 | Hextra | v0.12.2+ (Hugo module) |
+| 콘텐츠 포맷 | Hugo Markdown + shortcode | — |
+| 다이어그램 | Mermaid (Hextra 내장, 클라이언트 사이드) | v11+ |
+| 다국어 | Hugo multilingual (파일 기반) | ko/en/ja/zh 4개 |
+| 검색 | FlexSearch | Hextra 내장 |
+| 배포 | Vercel | Framework Preset=Hugo |
+| Edge Runtime | Vercel Edge Function | @runtime: 'edge' |
+| 릴리스 자동화 | Go + git archive | scripts/docs-version-snapshot |
+
+**Bun/Node.js 제거**: Phase 2 이전의 Nextra(Next.js + Bun) 스택을 전면 교체하여
+`docs-site/` 빌드에 Node 런타임 의존성이 0건이다. 로컬 개발도 Hugo 단일 바이너리만으로 가능.
+
 ### LSP Dependencies
 
 | Category | Package | Version | Purpose |

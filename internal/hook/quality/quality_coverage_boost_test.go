@@ -98,11 +98,9 @@ func TestExtensionFromPath_DotInDirectory(t *testing.T) {
 func TestExtensionFromPath_HiddenFile(t *testing.T) {
 	t.Parallel()
 
-	result := extensionFromPath(".gitignore")
-	// LastIndex finds index 0 → returns ".gitignore"
-	if result == "" {
-		// Also acceptable; just verify no panic.
-	}
+	// LastIndex finds index 0 → returns ".gitignore"; empty is also acceptable.
+	// Purpose: verify no panic on hidden-file input.
+	_ = extensionFromPath(".gitignore")
 }
 
 // --- languageFromExtension uncovered branches ---

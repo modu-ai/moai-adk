@@ -108,22 +108,6 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
    - Estimate token budget
    - Apply exclude patterns
 
-### Batch Mode Decision [MANDATORY EVALUATION]
-
-After Phase 0, MoAI MUST evaluate whether to use Skill("batch") before scanning.
-
-Condition: total_source_files >= 50 (from Phase 0 scan scope calculation)
-
-Decision:
-
-- If condition is met: Execute Skill("batch") directly. Batch mode divides the source files by language or package into independent scan units. Each batch agent runs the full 3-Pass workflow (scan → deep read → edit) on its assigned files in an isolated git worktree. After all agents complete, MoAI collects all tag reports and generates a unified summary report.
-- If condition is not met: Continue to standard sequential Pass 1 below.
-
-Batch execution instructions when triggered:
-1. Divide files by language group (all Go files to batch A, all TypeScript files to batch B, etc.)
-2. Each batch agent receives: its assigned file list, project context (tech.md, structure.md, product.md), language.yaml code_comments setting, and mx.yaml thresholds
-3. Each agent must produce a tag report in the standard format defined in the Output section
-
 ### Pass 1: Full File Scan
 
 **Purpose**: Scan all source files and generate priority queue.

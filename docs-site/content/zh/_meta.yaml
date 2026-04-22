@@ -1,0 +1,19 @@
+"getting-started":
+  title: "开始使用"
+"core-concepts":
+  title: "核心概念"
+"workflow-commands":
+  title: "工作流命令"
+"utility-commands":
+  title: "实用命令"
+"quality-commands":
+  title: "质量命令"
+design:
+  title: "设计系统"
+db:
+  title: "数据库架构管理"
+  weight: 15
+advanced:
+  title: "高级"
+worktree:
+  title: "Git 工作树"

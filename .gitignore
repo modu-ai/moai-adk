@@ -212,6 +212,13 @@ dist-ssr/
 .netlify/
 .firebase/
 
+# ===========================================
+# docs-site Hugo build artifacts
+# ===========================================
+/docs-site/public/
+/docs-site/resources/_gen/
+/docs-site/.hugo_build.lock
+
 # User Custom Patterns (preserved by moai update)
 /moai
 /moai_test
@@ -228,3 +235,7 @@ pencil/
 .moai/reports/
 .moai/temp/
 temp/
+
+# docs-site Hugo build artifacts (root stray outputs)
+/public/
+/.hugo_build.lock

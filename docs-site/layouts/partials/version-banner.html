@@ -1,0 +1,64 @@
+{{/*
+  version-banner.html — 구버전 문서 알림 배너
+  SPEC-DOCS-SITE-001 Phase 5, REQ-DS-19, D-023
+
+  URL 경로가 /v<MAJOR>.<MINOR>/ 형태일 때 상단에 경고 배너를 표시한다.
+  예: /ko/v2.12/getting-started/installation
+
+  동작:
+    1. .RelPermalink 에서 versioned prefix 탐지 (findRE 기반)
+    2. latest URL 산출: /v<X>.<Y>/ prefix를 제거한 unversioned 경로
+    3. i18n 키 사용 (version_banner_old, version_banner_latest)
+*/}}
+
+{{- $path := .RelPermalink -}}
+{{- $versionPattern := `^/(ko|en|ja|zh)/(v[0-9]+\.[0-9]+)/` -}}
+{{- $matched := findRE $versionPattern $path -}}
+
+{{- if $matched -}}
+  {{/* Extract version token from path segment (e.g. "v2.12") */}}
+  {{- $segments := split $path "/" -}}
+  {{/* segments[0]="" segments[1]=locale segments[2]=version segments[3+]=rest */}}
+  {{- $version := "" -}}
+  {{- if ge (len $segments) 3 -}}
+    {{- $version = index $segments 2 -}}
+  {{- end -}}
+
+  {{/* Build latest URL: remove the /vX.Y/ part from the current path */}}
+  {{- $versionPrefix := printf "/%s/%s" (index $segments 1) $version -}}
+  {{- $latestPath := replaceRE (printf "^/%s/%s" (index $segments 1) $version) (printf "/%s" (index $segments 1)) $path -}}
+
+  {{- $bannerOld := T "version_banner_old" | default (printf "Viewing %s — this is an archived version." $version) -}}
+  {{- $bannerLatest := T "version_banner_latest" | default "Go to latest" -}}
+
+  <div class="moai-version-banner" role="alert" aria-live="polite">
+    <span class="moai-version-banner__text">{{ $bannerOld }}</span>
+    <a class="moai-version-banner__link" href="{{ $latestPath | relURL }}">{{ $bannerLatest }} &rarr;</a>
+  </div>
+
+  <style>
+    .moai-version-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 1rem;
+      background-color: #fef3c7;
+      border-bottom: 1px solid #fbbf24;
+      font-size: 0.875rem;
+      color: #92400e;
+    }
+    .dark .moai-version-banner {
+      background-color: #451a03;
+      border-color: #b45309;
+      color: #fcd34d;
+    }
+    .moai-version-banner__link {
+      font-weight: 600;
+      text-decoration: underline;
+      white-space: nowrap;
+    }
+    .moai-version-banner__link:hover {
+      opacity: 0.8;
+    }
+  </style>
+{{- end -}}

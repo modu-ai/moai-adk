@@ -1,0 +1,31 @@
+ko:
+  languageName: "한국어"
+  languageCode: "ko-KR"
+  weight: 1
+  title: "MoAI-ADK 문서"
+  params:
+    description: "MoAI-ADK 온라인 문서 — Claude Code를 위한 에이전틱 개발 도구 키트"
+
+en:
+  languageName: "English"
+  languageCode: "en-US"
+  weight: 2
+  title: "MoAI-ADK Documentation"
+  params:
+    description: "MoAI-ADK online documentation — Agentic Development Kit for Claude Code"
+
+ja:
+  languageName: "日本語"
+  languageCode: "ja-JP"
+  weight: 3
+  title: "MoAI-ADK ドキュメント"
+  params:
+    description: "MoAI-ADK オンラインドキュメント — Claude Code 向けエージェント型開発キット"
+
+zh:
+  languageName: "简体中文"
+  languageCode: "zh-CN"
+  weight: 4
+  title: "MoAI-ADK 文档"
+  params:
+    description: "MoAI-ADK 在线文档 — 面向 Claude Code 的智能开发工具包"

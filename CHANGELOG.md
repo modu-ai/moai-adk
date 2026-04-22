@@ -5,6 +5,129 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-04-21
+
+### Summary
+
+Two independent workstreams converged in this release:
+
+1. **SPEC-AGENCY-ABSORB-001 흡수 완료** (from HEAD) — `/agency` command and agents absorbed into `/moai design` hybrid workflow. Brand context promoted to `.moai/project/brand/` as a constitutional constraint.
+2. **Design + DB 8 SPEC 통합 구현** (this session) — `.moai/design/` folder scaffolding, `/moai db` command family, Pencil MCP integration, PostToolUse DB sync hook, and `/moai project` Phase 4.1a DB detection.
+3. **Profile setup wizard hardening** (from origin/main #681) — 16 review findings applied, silent data coercion of deprecated Claude IDs fixed, `ast_grep_gate` SAST re-enabled, team role_profiles rebalanced for Opus 4.7 / 1M-context.
+
+### Added
+
+**Design workflow (SPEC-AGENCY-ABSORB-001, SPEC-DESIGN-* series)**
+- `/moai design` subcommand — Hybrid design workflow (Claude Design import path + code-based skill path)
+- `moai migrate agency` command — Safe migration of .agency/ data to .moai/project/brand/ and .moai/config/sections/design.yaml
+- `moai-domain-copywriting` skill — Brand-aligned copywriting with anti-AI-slop enforcement
+- `moai-domain-brand-design` skill — Visual design system with hero-first chaining, WCAG 2.1 AA
+- `moai-workflow-design-import` skill — Claude Design handoff bundle parser (ZIP/HTML)
+- `moai-workflow-gan-loop` skill — Builder-Evaluator iteration with Sprint Contract protocol
+- `moai-workflow-design-context` skill (SPEC-DESIGN-ATTACH-001) — `.moai/design/` bare-token auto-loader with priority truncation (`spec > system > research > pencil-plan`) and `ceiling(char/4) * 1.10` token budget enforcement
+- `moai-workflow-pencil-integration` skill (SPEC-DESIGN-PENCIL-001) — Pencil MCP batch operation executor with DSL parser (I/M/R), 25-op batch split, layout verification, screenshot archival
+- `.moai/design/` folder scaffolding (SPEC-DESIGN-DOCS-001) — README + research/system/spec templates with `_TBD_` markers; SHA-256 based user-edit preservation on `moai update`; reserved filename collision detection (exact + `filepath.Match`); non-empty-dir skip on `moai init`
+- `.moai/project/brand/` directory — brand-voice.md, visual-identity.md, target-audience.md templates
+- `.moai/config/sections/design.yaml` — Design pipeline configuration (GAN loop, sprint contract, evolution thresholds) + `design_docs` subsection (SPEC-DESIGN-ATTACH-001)
+- `.claude/rules/moai/design/constitution.md` v3.3.0 (SPEC-DESIGN-CONST-AMEND-001) — Section 3 expanded to tripartite structure (3.1 Brand Context / 3.2 Design Brief / 3.3 Relationship); FROZEN zone extended to cover each subsection individually
+
+**DB workflow (SPEC-DB-* series)**
+- `/moai db` subcommand (SPEC-DB-CMD-001) — Thin wrapper (`commands/moai/db.md` <20 LOC) + router skill (`workflows/db.md` 9 phases) supporting `init`/`refresh`/`verify`/`list`. 16-language migration path mapping table.
+- `.moai/project/db/` 7-file template set (SPEC-DB-TEMPLATES-001) — README, schema.md, erd.mmd (Mermaid `erDiagram`), migrations.md, rls-policies.md, queries.md, seed-data.md. `_TBD_` markers for interview-driven customization.
+- `.moai/config/sections/db.yaml` (SPEC-DB-TEMPLATES-001) — 8-key structure (5 system + 3 interview): `enabled`, `dir`, `auto_sync`, `migration_patterns` (6 patterns: Prisma/Alembic/Rails/SQL/Supabase/generic), `engine`, `orm`, `multi_tenant`, `migration_tool`. Recursion guard via `.moai/project/db/**` exclusion.
+- `moai-domain-db-docs` skill (SPEC-DB-SYNC-001) — Migration file parser facade + schema.md/erd.mmd/migrations.md synchronizer. Preserves user-edited sections and `_TBD_` markers.
+- `moai hook db-schema-sync` subcommand (SPEC-DB-SYNC-001) — Go CLI for PostToolUse hook processing with 10s debounce state file, path traversal guard, proposal.json writer, non-blocking error logging.
+- `handle-db-schema-change.sh` PostToolUse hook (SPEC-DB-SYNC-001) — Bash wrapper invoking `moai hook db-schema-sync` on Write/Edit events.
+- `/moai project` Phase 4.1a DB Detection (SPEC-PROJECT-DB-HINT-001) — Auto-detects DB technology from `.moai/project/tech.md` + 16-language dependency manifests; conditionally surfaces `/moai db init` (Recommended, new project) or `/moai db refresh` (4th option, existing project) in Phase 4.2 Next Steps.
+
+**Profile setup wizard hardening (#681 from origin/main)**
+- `normalizeModel(m string) string` helper in `internal/cli/profile_setup.go` — maps deprecated Claude IDs to canonical aliases. Prevents silent loss of saved preferences when an option is removed from the wizard.
+- Statusline migration banner (4 languages) — one-time notice when `existingPrefs` differs from normalized value.
+- `auto` permission mode option in wizard — Claude Code v2.1.83+ / Sonnet 4.6+ gated option with runtime-failure disclaimer.
+- Canonical validation slices + package constants (`defaultStatuslineMode`, `defaultStatuslineTheme`, `defaultPermissionMode`).
+- New unit tests: `profile_setup_normalize_test.go` (19+13+7 rows) and `profile_setup_summary_test.go` (4 tests). New helpers at 100% line coverage.
+
+**SPEC documents (this session)**
+- SPEC-DESIGN-CONST-AMEND-001 / SPEC-DESIGN-DOCS-001 / SPEC-DESIGN-ATTACH-001 / SPEC-DESIGN-PENCIL-001 — Design workflow family
+- SPEC-DB-CMD-001 / SPEC-DB-TEMPLATES-001 / SPEC-DB-SYNC-001 / SPEC-PROJECT-DB-HINT-001 — DB workflow family
+- SPEC-DB-SYNC-HARDEN-001 — Hardening follow-up bundling 5 review warnings (file size guard, CheckDebounce atomicity, Windows platform branch, coverage ≥85%, MX tag annotations for 5 exported helpers). plan-auditor iter 1 FAIL → iter 2 PASS.
+
+### Changed
+
+**Design absorption (SPEC-AGENCY-ABSORB-001)**
+- Agency Agents catalog reduced from 6 to 2 (copywriter, designer absorbed into skills; planner, builder, evaluator, learner removed per M5)
+- `/agency` command redirected to `/moai design` with deprecation warning
+- coding-standards.md: removed `Skill("agency")` reference
+
+**Profile setup (#681)**
+- `printProfileSummary` signature refactored to `(out io.Writer, t *profileSetupText, prefs *profile.ProfilePreferences, syncedProjectRoot string)` — enables unit testing via `bytes.Buffer` injection; pointer receivers avoid ~800B + 160B value copies.
+- Permission mode option ordering: `auto` moved to position 2 for severity gradient.
+- `SummarySyncSkipped` phrasing neutralized in all 4 locales.
+- PermAuto labels strengthened with runtime-failure disclaimer (en/ko/ja/zh).
+- ko/ja `SummaryHeader` — `입력된 값 확인:` → `저장된 설정값:`; `入力された設定値:` → `保存された設定値:`.
+- Summary path rendering uses relative paths instead of absolute `filepath.Join(cwd, ...)`.
+- `workflow.yaml` role_profiles reassignment: team lead `default_model` → `opus[1m]` (Opus 4.7 + 1M), `architect` → `opus`, `reviewer` → `sonnet` (up from `haiku`).
+- `fmt.Fprintf` collapse in `printProfileSummary` (~6 fewer heap allocations per wizard-end).
+
+### Fixed
+
+**LSP 서버 감지 수정 (#683)**
+- LSP 서버 감지 전체 비활성 문제 수정 (#683): `lsp.yaml` 템플릿 YAML 키를 `binary` → `command`로 수정 (`ServerConfig` YAML 태그와 일치), 16개 언어 전체에 `file_extensions` 추가 (`detectLanguage()` 파일-서버 라우팅 복원)
+- 템플릿 준수 테스트 추가 (`TestTemplate_NoBinaryKey`, `TestTemplate_16LangCommandNonEmpty`, `TestTemplate_16LangFileExtensionsNonEmpty`): 실제 템플릿 파일을 파싱해 스키마 드리프트 재발 방지
+
+**`moai glm` settings.local.json 영구 오염 수정 (#676)**
+- `moai glm` 실행 후 Claude Code 진입 시 context window limit 에러 수정: `applyGLMMode`에서 `injectGLMEnvForTeam()` 호출을 제거하여 `settings.local.json`에 GLM 환경변수(`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `DISABLE_PROMPT_CACHING` 등)가 영구 기록되던 동작 방지. `setGLMEnv()`이 현재 프로세스 env를 설정하면 `syscall.Exec`가 이를 `claude`에 상속하므로 파일 기록은 중복이었으며 세션 종료 후 GLM 모드 잔류를 유발했음.
+- `moai glm` 시작 시 메인 세션 컨텍스트 한도 경고 메시지 추가: `DISABLE_PROMPT_CACHING=1`로 인한 전체 시스템 프롬프트 재전송 (~30-40K 토큰), Z.AI 동시성 한도 (유료 티어 1-3 in-flight), GLM 모델 컨텍스트 윈도우 크기를 안내. Claude 리더 + GLM 팀원 조합이 필요한 경우 `moai cg` 사용 권장.
+- `injectGLMEnvForTeam`은 `enableTeamMode()`(`moai --team` 경로)에서만 사용하도록 범위 축소. `applyGLMMode` 호출 제거만 수행, 함수 자체는 유지.
+- 회귀 테스트 추가: `TestApplyGLMMode_NoSettingsLocalPollution`, `TestApplyGLMMode_ProcessEnvIsSet`, `TestGLMCmd_NoSettingsLocalPollution` (기존 `TestGLMCmd_InjectsEnv` 역전).
+
+**Critical Review Findings (this session, post SPEC-DB-SYNC-001 review)**
+- **Hook timeout unit bug** (`c6985e2fe`) — `settings.json.tmpl` PostToolUse `handle-db-schema-change.sh` entry had `"timeout": 30000` (8.3 hours). Claude Code hook timeout is in seconds (range 1-600). Corrected to `30`.
+- **matchGlob path traversal** (`aa29a9316`) — `migrations/../../../etc/passwd.sql` style paths passed `migrations/**/*.sql` prefix match, enabling read of files outside project root in `proposal.json`. Added `filepath.Clean` + `../` escape rejection guard at `HandleDBSchemaSync` entry. 4-case regression test added.
+- **Template-First rule violation** (`8a4022c69`) — SPEC-DESIGN-CONST-AMEND-001 updated the project constitution to v3.3.0 but the template tree copy remained at v3.2.0. New projects created via `moai init` would miss Section 3.2 Design Brief HARD rules. Synchronized template copy byte-for-byte.
+
+**Profile setup (#681)**
+- Silent data coercion (Critical) — users with deprecated model IDs in saved preferences no longer silently overwritten by `huh.Select`. Root cause: `huh.Select` binding falls back to cursor-landing when pre-bound value has no matching option. Mitigation: pre-coerce via `normalizeModel` before form binding.
+- `ast_grep_gate` SAST re-enabled — `.moai/config/sections/quality.yaml` block restored. Previous removal silently disabled structural scanning.
+- Dead-branch fallback removed — `valueOrDefault(prefs.StatuslineMode, "default")` simplified to direct access (post-normalize guaranteed non-empty).
+
+**Lint cleanup** (`76ba50eab`)
+- `defer f.Close()` errcheck in `internal/cli/design_folder.go:111` (hashFile) and `internal/hook/dbsync/db_schema_sync.go:312` (logError) wrapped in `defer func() { _ = f.Close() }()`.
+
+**Hardening (SPEC-DB-SYNC-HARDEN-001 — 5 warning resolution)**
+- **H1: parseMigrationStub file size guard** — Added package constant `maxMigrationFileSize = 1 << 20` (1 MiB) with `os.Stat` pre-check. Files exceeding the ceiling are now rejected without calling `os.ReadFile`, eliminating memory-pressure from malformed or malicious migration inputs. Return shape extended to `parseMigrationResult{ParsedContent, Truncated}` so callers can distinguish "genuinely empty" from "size-guarded" without either-or ambiguity (REQ-H1-001 ~ REQ-H1-003).
+- **H2: CheckDebounce atomicity (signature unchanged)** — Concurrent `CheckDebounce` callers targeting the same `(stateFile, filePath, window)` now provably return `{false, true}` as a multiset (exactly-one-winner semantic, REQ-H2-002). Implementation uses a `stateFile + ".lock"` companion with `O_CREATE|O_EXCL` for mutual exclusion, plus the pre-existing `os.CreateTemp + os.Rename` pattern for torn-write-free state persistence. I/O failure on any step returns the safe default `(true, nil)` and logs to `ErrorLogFile` per REQ-H2-003. **plan.md had suggested `os.Rename` alone would suffice; empirical testing during implementation revealed `os.Rename` prevents torn writes but not decision races, hence the added O_EXCL layer.** AST-level regression guard (`TestCheckDebounce_NoDirectWriteFile`) asserts zero direct `os.WriteFile` + at least one `os.Rename` call, surviving variable renames.
+- **H3: settings.json.tmpl Windows platform branch for db-schema-change** — The db-schema-change PostToolUse hook entry was the sole exception to the file's `{{- if eq .Platform "windows"}}...{{- else}}...{{- end}}` branching convention (16 other entries used it consistently). Now aligned. Windows command: `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-db-schema-change.sh"` (bash prefix + forward-slash + bash-style variable). Unix command unchanged. `TestRender_DbSchemaChangeHook_{Unix,Windows,ConsistencyWithOtherEntries}` verify the rendering outputs. SPEC v0.2.0 drafted a conflicting literal (`%CLAUDE_PROJECT_DIR%\.claude\...` with backslashes) that does not expand inside a bash-quoted argument; corrected to v0.2.1 during `/moai run`.
+- **H4: internal/hook/dbsync test coverage 79.2% → 85.7%** — 8 boundary test cases added (`empty_file`, `utf8_bom`, `oversized`, `nonexistent`, `trailing_slash`, `double_star_only`, `unicode_path`, `corrupt_state_recovery`). All use `t.TempDir()` isolation; no `t.Setenv("HOME", …)`. Internal test file (`db_schema_sync_internal_test.go`) added for strict `parseMigrationStub` return-shape assertions that require unexported-symbol access.
+- **H5: @MX:NOTE godoc for 5 exported helpers** — `BuildProposal`, `MatchesMigrationPattern`, `IsExcluded`, `CheckDebounce` gained godoc blocks with input/output/side-effect three-element contracts (Korean prose per `code_comments: ko`). `HandleDBSchemaSync` retained its pre-existing `@MX:NOTE + @MX:ANCHOR` from commit `aa29a9316`. AC-9 awk-based multiline scan confirms 5/5 coverage.
+- **SPEC v0.2.1 amendment** (`38350a698`) — REQ-H3-002 and AC-6 literals corrected to match the file's actual hook entry convention. HISTORY entry records the reason (Git Bash/WSL cannot expand `%CLAUDE_PROJECT_DIR%` inside a bash-quoted argument).
+
+### Removed
+
+- `.claude/agents/agency/` agent definitions: planner, builder, evaluator, learner, copywriter, designer
+- `.claude/skills/agency-*` forked skills: agency-copywriting, agency-design-system, agency-evaluation-criteria, agency-client-interview, agency-frontend-patterns
+- `.claude/skills/agency/` orchestrator skill
+- Fork management via `fork-manifest.yaml` (absorbed into moai-workflow-research)
+
+### Deprecated
+
+- `/agency` subcommands (brief, build, review, learn, evolve, resume, profile) now redirect to equivalent `/moai` subcommands. Scheduled for removal per REQ-DEPRECATE-003 (2 minor versions after this release)
+
+### Migration
+
+- Existing projects with `.agency/` directories can migrate via `moai migrate agency`
+- Migration is atomic, reversible (data preserved as `.agency.archived/`), and handles SIGINT/SIGTERM with `--resume` flag
+- See SPEC-AGENCY-ABSORB-001 acceptance.md for full behavior
+
+### Testing
+
+- `internal/cli` coverage maintained at 75.3% (wizard sub-package 91.2%, worktree sub-package 84.2%).
+- All new profile_setup helpers at 100% line coverage.
+- `internal/hook/dbsync` package: **coverage 79.2% → 85.7%** after SPEC-DB-SYNC-HARDEN-001 H4. 13 pre-existing unit tests + H1/H2/H4/H5 additions (8 AC-8 boundary cases, `TestCheckDebounceConcurrency` running at `-race -count=10`, `TestCheckDebounce_NoDirectWriteFile` AST regression guard, oversized-file handler test, readonly-dir safety-default tests).
+- `internal/cli` design_folder: 282-line test file covering SHA-256 preservation, glob collision, .DS_Store-only directory handling.
+- `go vet ./...`, `go test -race ./... -count=1` (all packages), `golangci-lint run ./internal/...` — all PASS.
+- Cross-compile verified for 5 targets: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64.
+
 ## [2.12.0] - 2026-04-17
 
 ### Summary

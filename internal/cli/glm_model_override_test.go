@@ -10,12 +10,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestGLMCmd_AddsModelOverrides verifies that 'moai glm' adds GLM model overrides
-// to settings.local.json. This test addresses the issue where GLM model environment
-// variables (ANTHROPIC_DEFAULT_OPUS_MODEL, etc.) were not being added.
+// TestGLMCmd_AddsModelOverrides verifies that 'moai glm' injects GLM model overrides
+// into the current process env (via setGLMEnv). After the #676 fix, these are no longer
+// written to settings.local.json — the process env is what syscall.Exec inherits into
+// `claude`. settings.local.json must remain clean to prevent GLM mode from leaking
+// into subsequent sessions.
+// NOTE: does not call t.Parallel() because it modifies process-level env via setGLMEnv.
 func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key-for-model-override-test")
+	// Baseline: clear the vars we will check so the test is deterministic.
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
 
 	// Create temp project
 	tmpDir := t.TempDir()
@@ -56,46 +63,37 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 		t.Fatalf("moai glm should not error, got: %v", err)
 	}
 
-	// Verify settings.local.json was created with GLM model overrides
+	// GLM model overrides must be in the PROCESS ENV (inherited by syscall.Exec),
+	// NOT in settings.local.json (which would cause persistence pollution, #676).
+	defaults := config.NewDefaultLLMConfig()
+	if got := os.Getenv("ANTHROPIC_DEFAULT_OPUS_MODEL"); got == "" {
+		t.Error("ANTHROPIC_DEFAULT_OPUS_MODEL must be set in process env after moai glm")
+	} else if got != defaults.GLM.Models.High {
+		t.Errorf("ANTHROPIC_DEFAULT_OPUS_MODEL = %q, want %q", got, defaults.GLM.Models.High)
+	}
+	if got := os.Getenv("ANTHROPIC_DEFAULT_SONNET_MODEL"); got == "" {
+		t.Error("ANTHROPIC_DEFAULT_SONNET_MODEL must be set in process env after moai glm")
+	}
+	if got := os.Getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL"); got == "" {
+		t.Error("ANTHROPIC_DEFAULT_HAIKU_MODEL must be set in process env after moai glm")
+	}
+	if got := os.Getenv("ANTHROPIC_AUTH_TOKEN"); got == "" {
+		t.Error("ANTHROPIC_AUTH_TOKEN must be set in process env after moai glm")
+	}
+	if got := os.Getenv("ANTHROPIC_BASE_URL"); got == "" {
+		t.Error("ANTHROPIC_BASE_URL must be set in process env after moai glm")
+	}
+
+	// settings.local.json must NOT contain GLM env vars (#676 regression guard).
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("settings.local.json should be created: %v", err)
-	}
-
-	content := string(data)
-
-	// Check for GLM model override environment variables
-	if !strings.Contains(content, "ANTHROPIC_DEFAULT_OPUS_MODEL") {
-		t.Error("settings.local.json should contain ANTHROPIC_DEFAULT_OPUS_MODEL for GLM mode")
-	}
-	if !strings.Contains(content, "ANTHROPIC_DEFAULT_SONNET_MODEL") {
-		t.Error("settings.local.json should contain ANTHROPIC_DEFAULT_SONNET_MODEL for GLM mode")
-	}
-	if !strings.Contains(content, "ANTHROPIC_DEFAULT_HAIKU_MODEL") {
-		t.Error("settings.local.json should contain ANTHROPIC_DEFAULT_HAIKU_MODEL for GLM mode")
-	}
-
-	// Verify the actual model values
-	if !strings.Contains(content, "glm-5.1") {
-		t.Error("settings.local.json should contain glm-5.1 as the Opus model")
-	}
-	if !strings.Contains(content, "glm-4.7") {
-		t.Error("settings.local.json should contain glm-4.7 as the Sonnet model")
-	}
-	if !strings.Contains(content, "glm-4.5-air") {
-		t.Error("settings.local.json should contain glm-4.5-air as the Haiku model")
-	}
-
-	// Also verify base GLM env vars are present
-	if !strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
-	}
-	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
-		t.Error("settings.local.json should contain ANTHROPIC_BASE_URL")
-	}
-	if !strings.Contains(content, "teammateMode") {
-		t.Error("settings.local.json should contain teammateMode")
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		content := string(data)
+		if strings.Contains(content, "ANTHROPIC_BASE_URL") {
+			t.Error("settings.local.json must NOT contain ANTHROPIC_BASE_URL (regression: #676)")
+		}
+		if strings.Contains(content, "ANTHROPIC_DEFAULT_OPUS_MODEL") {
+			t.Error("settings.local.json must NOT contain ANTHROPIC_DEFAULT_OPUS_MODEL (regression: #676)")
+		}
 	}
 }
 

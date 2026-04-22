@@ -1,0 +1,16 @@
+# MoAI-ADK English i18n
+# Hextra default key overrides + project-specific keys
+
+# Hextra default key overrides
+editThisPage: "Edit this page →"
+copyright: "© MoAI-ADK | 모두의AI"
+
+# Project-specific meta keys
+site_description: "MoAI-ADK online documentation — Agentic Development Kit for Claude Code. Fully automated development with SPEC-based development, DDD implementation, and TRUST 5 quality system."
+og_description: "AI development tool that fully automates from SPEC creation to DDD implementation and documentation"
+footer_copyright: "© MoAI-ADK | 모두의AI"
+language_label: "EN"
+
+# Version banner (REQ-DS-19, Phase 5)
+version_banner_old: "You are viewing an archived version of this documentation."
+version_banner_latest: "Go to latest version"

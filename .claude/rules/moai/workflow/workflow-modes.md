@@ -35,7 +35,6 @@ Development methodology: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
 - Make small, incremental changes
 - Run characterization tests after each change
 - Refactor with test validation
-- After IMPROVE: Skill("simplify") executes automatically (see run.md Phase 2.10). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
 
 Success Criteria:
 - All SPEC requirements implemented
@@ -62,7 +61,6 @@ Development methodology: Test-Driven Development (RED-GREEN-REFACTOR)
 - Clean up implementation while keeping tests green
 - Extract patterns, remove duplication
 - Apply SOLID principles where appropriate
-- After REFACTOR: Skill("simplify") executes automatically (see run.md Phase 2.10). This is mandatory and not a separate step for the agent — it is orchestrated by MoAI.
 
 Success Criteria:
 - All SPEC requirements implemented
@@ -86,7 +84,7 @@ This ensures TDD on brownfield projects still respects existing behavior without
 
 Before marking implementation complete, review the full changeset for simplicity and correctness.
 
-This gate runs after Skill("simplify") and before completion markers. It applies to both DDD and TDD modes.
+This gate runs before completion markers. It applies to both DDD and TDD modes.
 
 Steps:
 - Review full diff against SPEC acceptance criteria
@@ -98,7 +96,6 @@ Steps:
 
 Scope:
 - Applies to the aggregate of all changes in the current Run phase
-- Does not re-run tests (Skill("simplify") already validated test passing)
 - If a simpler approach is implemented, re-run tests to verify the simplification does not break anything
 - Focus is architectural elegance and minimal footprint, not code style
 

@@ -36,7 +36,6 @@ type profileSetupText struct {
 	ModelDefault       string
 	ModelOpus          string
 	ModelOpus1M        string
-	ModelOpus47        string
 	ModelSonnet        string
 	ModelSonnet1M      string
 	ModelHaiku         string
@@ -56,6 +55,7 @@ type profileSetupText struct {
 	PermDefault     string
 	PermAcceptEdits string
 	PermPlan        string
+	PermAuto        string
 	PermBypass      string
 	PermDontAsk     string
 
@@ -81,6 +81,23 @@ type profileSetupText struct {
 	// Messages
 	SetupCancelled string
 	SavedProfile   string
+
+	// Final summary block (rendered after SavedProfile)
+	SummaryHeader          string
+	SummaryUserName        string
+	SummaryLanguages       string
+	SummaryModel           string
+	SummaryEffort          string
+	SummaryPermission      string
+	SummaryStatuslineMode  string
+	SummaryStatuslineTheme string
+	SummaryDefault         string
+	SummarySyncedHeader    string
+	SummarySyncSkipped     string
+
+	// W-4: statusline 마이그레이션 배너 (이전 값 → 새 값)
+	MigrationNoticeStatuslineMode  string
+	MigrationNoticeStatuslineTheme string
 }
 
 // profileSetupTexts maps language code to translated UI strings.
@@ -109,12 +126,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideTitle:   "Default model override",
 		ModelOverrideDesc:    "Override the model when launching with this profile.",
 		ModelDefault:         "Default (no override)",
-		ModelOpus:            "claude-opus-4-6 (most capable)",
-		ModelOpus1M:          "claude-opus-4-6 1M context (extended thinking)",
-		ModelOpus47:          "claude-opus-4-7 (Opus 4.7 with adaptive thinking)",
-		ModelSonnet:          "claude-sonnet-4-6 (balanced)",
-		ModelSonnet1M:        "claude-sonnet-4-6 1M context (extended thinking)",
-		ModelHaiku:           "claude-haiku-4-5 (fastest)",
+		ModelOpus:            "opus (Opus 4.7, adaptive thinking)",
+		ModelOpus1M:          "opus[1m] (Opus 4.7 + 1M context)",
+		ModelSonnet:          "sonnet (Sonnet 4.6, balanced)",
+		ModelSonnet1M:        "sonnet[1m] (Sonnet 4.6 + 1M context)",
+		ModelHaiku:           "haiku (Haiku 4.5, fastest)",
 		ModelOpusPlan:        "opusplan (Opus planning, Sonnet coding)",
 		EffortLevelTitle:     "Session effort level",
 		EffortLevelDesc:      "Sets reasoning depth for this profile. xhigh/max require Opus 4.7.",
@@ -129,6 +145,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermAcceptEdits:     "Auto accept edits - Auto-accept file edits, ask for commands",
 		PermDefault:         "Ask permissions - Prompt for file edits and commands",
 		PermPlan:            "Plan mode - Read-only exploration and planning",
+		PermAuto:            "Auto mode (auto) - Classifier-gated approvals. REQUIRES Max/Team/Enterprise/API plan + Sonnet 4.6+. Session errors at runtime if unsupported.",
 		PermBypass:          "Bypass permissions - Skip all checks (isolated environments only)",
 		PermDontAsk:         "Don't ask - Only pre-approved tools (CI/locked-down environments)",
 		DisplayTitle:         "Display",
@@ -145,6 +162,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		ThemeMoaiLight:       "MoAI Light",
 		SetupCancelled:       "Setup cancelled.",
 		SavedProfile:         "\nSaved profile '%s':\n  Preferences → %s\n",
+
+		SummaryHeader:          "Captured values:",
+		SummaryUserName:        "User name",
+		SummaryLanguages:       "Languages (conv/git/code/doc)",
+		SummaryModel:           "Model",
+		SummaryEffort:          "Effort level",
+		SummaryPermission:      "Permission mode",
+		SummaryStatuslineMode:  "Statusline mode",
+		SummaryStatuslineTheme: "Statusline theme",
+		SummaryDefault:         "(runtime default)",
+		SummarySyncedHeader:    "Synced to project config:",
+		SummarySyncSkipped:     "No project-level sync (profile saved globally).",
+
+		MigrationNoticeStatuslineMode:  "Notice: your previous statusline mode %q was migrated to %q in v3.",
+		MigrationNoticeStatuslineTheme: "Notice: your previous statusline theme %q was migrated to %q in v3.",
 	},
 	"ko": {
 		ConfiguringProfile:   "프로필 '%s' 설정",
@@ -170,12 +202,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideTitle:   "기본 모델 오버라이드",
 		ModelOverrideDesc:    "이 프로필로 실행할 때 모델을 오버라이드합니다.",
 		ModelDefault:         "기본값 (오버라이드 없음)",
-		ModelOpus:            "claude-opus-4-6 (최고 성능)",
-		ModelOpus1M:          "claude-opus-4-6 1M 컨텍스트 (확장 사고)",
-		ModelOpus47:          "claude-opus-4-7 (Opus 4.7, 적응형 사고)",
-		ModelSonnet:          "claude-sonnet-4-6 (균형)",
-		ModelSonnet1M:        "claude-sonnet-4-6 1M 컨텍스트 (확장 사고)",
-		ModelHaiku:           "claude-haiku-4-5 (최고 속도)",
+		ModelOpus:            "opus (Opus 4.7, 적응형 사고)",
+		ModelOpus1M:          "opus[1m] (Opus 4.7 + 1M 컨텍스트)",
+		ModelSonnet:          "sonnet (Sonnet 4.6, 균형)",
+		ModelSonnet1M:        "sonnet[1m] (Sonnet 4.6 + 1M 컨텍스트)",
+		ModelHaiku:           "haiku (Haiku 4.5, 최고 속도)",
 		ModelOpusPlan:        "opusplan (Opus 기획, Sonnet 코딩)",
 		EffortLevelTitle:     "세션 추론 강도",
 		EffortLevelDesc:      "이 프로필의 추론 깊이를 설정합니다. xhigh/max는 Opus 4.7 필요.",
@@ -190,6 +221,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermAcceptEdits:     "자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인",
 		PermDefault:         "권한 요청 (default) - 파일 편집과 명령어에 대해 매번 확인",
 		PermPlan:            "계획 모드 (plan) - 읽기 전용 탐색 및 계획",
+		PermAuto:            "자동 모드 (auto) - 분류기 기반 자동 승인. Max/Team/Enterprise/API 플랜 + Sonnet 4.6+ 필수. 미지원 환경에서는 런타임 오류 발생.",
 		PermBypass:          "권한 건너뛰기 (bypassPermissions) - 모든 검사 생략 (격리된 환경 전용)",
 		PermDontAsk:         "묻지 않기 (dontAsk) - 사전 승인된 도구만 사용 (CI/잠금 환경)",
 		DisplayTitle:         "화면 표시",
@@ -206,6 +238,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		ThemeMoaiLight:       "MoAI Light",
 		SetupCancelled:       "설정이 취소되었습니다.",
 		SavedProfile:         "\n프로필 '%s' 저장 완료:\n  환경설정 → %s\n",
+
+		SummaryHeader:          "저장된 설정값:",
+		SummaryUserName:        "사용자 이름",
+		SummaryLanguages:       "언어 (대화/커밋/주석/문서)",
+		SummaryModel:           "모델",
+		SummaryEffort:          "추론 강도",
+		SummaryPermission:      "권한 모드",
+		SummaryStatuslineMode:  "상태줄 모드",
+		SummaryStatuslineTheme: "상태줄 테마",
+		SummaryDefault:         "(런타임 기본값)",
+		SummarySyncedHeader:    "프로젝트 설정에 동기화됨:",
+		SummarySyncSkipped:     "프로젝트별 동기화 없음 (프로필만 저장됨).",
+
+		MigrationNoticeStatuslineMode:  "알림: 이전 statusline 모드 %q 가 v3에서 %q 로 마이그레이션되었습니다.",
+		MigrationNoticeStatuslineTheme: "알림: 이전 statusline 테마 %q 가 v3에서 %q 로 마이그레이션되었습니다.",
 	},
 	"ja": {
 		ConfiguringProfile:   "プロファイル '%s' を設定",
@@ -231,12 +278,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideTitle:   "デフォルトモデルオーバーライド",
 		ModelOverrideDesc:    "このプロファイルで起動する際のモデルをオーバーライドします。",
 		ModelDefault:         "デフォルト (オーバーライドなし)",
-		ModelOpus:            "claude-opus-4-6 (最高性能)",
-		ModelOpus1M:          "claude-opus-4-6 1Mコンテキスト (拡張思考)",
-		ModelOpus47:          "claude-opus-4-7 (Opus 4.7、適応型思考)",
-		ModelSonnet:          "claude-sonnet-4-6 (バランス)",
-		ModelSonnet1M:        "claude-sonnet-4-6 1Mコンテキスト (拡張思考)",
-		ModelHaiku:           "claude-haiku-4-5 (最速)",
+		ModelOpus:            "opus (Opus 4.7、適応型思考)",
+		ModelOpus1M:          "opus[1m] (Opus 4.7 + 1Mコンテキスト)",
+		ModelSonnet:          "sonnet (Sonnet 4.6、バランス)",
+		ModelSonnet1M:        "sonnet[1m] (Sonnet 4.6 + 1Mコンテキスト)",
+		ModelHaiku:           "haiku (Haiku 4.5、最速)",
 		ModelOpusPlan:        "opusplan (Opus設計、Sonnetコーディング)",
 		EffortLevelTitle:     "セッション推論レベル",
 		EffortLevelDesc:      "このプロファイルの推論深度を設定します。xhigh/maxはOpus 4.7が必要。",
@@ -251,6 +297,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermAcceptEdits:     "編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認",
 		PermDefault:         "権限を確認 (default) - ファイル編集とコマンドの都度確認",
 		PermPlan:            "プランモード (plan) - 読み取り専用の探索と計画",
+		PermAuto:            "オートモード (auto) - 分類器による自動承認。Max/Team/Enterprise/APIプラン + Sonnet 4.6+ 必須。未対応環境では実行時エラーが発生します。",
 		PermBypass:          "権限スキップ (bypassPermissions) - 全チェックを省略（隔離環境専用）",
 		PermDontAsk:         "確認しない (dontAsk) - 事前承認済みツールのみ（CI/制限環境）",
 		DisplayTitle:         "表示設定",
@@ -267,6 +314,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		ThemeMoaiLight:       "MoAI Light",
 		SetupCancelled:       "セットアップがキャンセルされました。",
 		SavedProfile:         "\nプロファイル '%s' を保存しました:\n  環境設定 → %s\n",
+
+		SummaryHeader:          "保存された設定値:",
+		SummaryUserName:        "ユーザー名",
+		SummaryLanguages:       "言語 (会話/コミット/コメント/ドキュメント)",
+		SummaryModel:           "モデル",
+		SummaryEffort:          "推論レベル",
+		SummaryPermission:      "権限モード",
+		SummaryStatuslineMode:  "ステータスラインモード",
+		SummaryStatuslineTheme: "ステータスラインテーマ",
+		SummaryDefault:         "(ランタイムデフォルト)",
+		SummarySyncedHeader:    "プロジェクト設定に同期しました:",
+		SummarySyncSkipped:     "プロジェクト別同期なし (プロファイルのみ保存).",
+
+		MigrationNoticeStatuslineMode:  "お知らせ: 以前のステータスラインモード %q は v3 で %q に移行されました。",
+		MigrationNoticeStatuslineTheme: "お知らせ: 以前のステータスラインテーマ %q は v3 で %q に移行されました。",
 	},
 	"zh": {
 		ConfiguringProfile:   "配置文件 '%s' 设置",
@@ -292,12 +354,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelOverrideTitle:   "默认模型覆盖",
 		ModelOverrideDesc:    "使用此配置文件启动时覆盖模型。",
 		ModelDefault:         "默认 (不覆盖)",
-		ModelOpus:            "claude-opus-4-6 (最强性能)",
-		ModelOpus1M:          "claude-opus-4-6 1M上下文 (扩展思考)",
-		ModelOpus47:          "claude-opus-4-7 (Opus 4.7，自适应思考)",
-		ModelSonnet:          "claude-sonnet-4-6 (均衡)",
-		ModelSonnet1M:        "claude-sonnet-4-6 1M上下文 (扩展思考)",
-		ModelHaiku:           "claude-haiku-4-5 (最快)",
+		ModelOpus:            "opus (Opus 4.7，自适应思考)",
+		ModelOpus1M:          "opus[1m] (Opus 4.7 + 1M 上下文)",
+		ModelSonnet:          "sonnet (Sonnet 4.6，均衡)",
+		ModelSonnet1M:        "sonnet[1m] (Sonnet 4.6 + 1M 上下文)",
+		ModelHaiku:           "haiku (Haiku 4.5，最快)",
 		ModelOpusPlan:        "opusplan (Opus规划，Sonnet编码)",
 		EffortLevelTitle:     "会话推理强度",
 		EffortLevelDesc:      "设置此配置文件的推理深度。xhigh/max需要Opus 4.7。",
@@ -312,6 +373,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermAcceptEdits:     "自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令",
 		PermDefault:         "请求权限 (default) - 每次文件编辑和命令都需确认",
 		PermPlan:            "计划模式 (plan) - 只读探索和规划",
+		PermAuto:            "自动模式 (auto) - 分类器把关自动批准。需要 Max/Team/Enterprise/API 计划 + Sonnet 4.6+。不支持时会产生运行时错误。",
 		PermBypass:          "跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）",
 		PermDontAsk:         "不询问 (dontAsk) - 仅预批准工具（CI/锁定环境）",
 		DisplayTitle:         "显示设置",
@@ -328,6 +390,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		ThemeMoaiLight:       "MoAI Light",
 		SetupCancelled:       "设置已取消。",
 		SavedProfile:         "\n配置文件 '%s' 已保存:\n  偏好设置 → %s\n",
+
+		SummaryHeader:          "已输入的配置值:",
+		SummaryUserName:        "用户名",
+		SummaryLanguages:       "语言 (对话/提交/注释/文档)",
+		SummaryModel:           "模型",
+		SummaryEffort:          "推理强度",
+		SummaryPermission:      "权限模式",
+		SummaryStatuslineMode:  "状态栏模式",
+		SummaryStatuslineTheme: "状态栏主题",
+		SummaryDefault:         "(运行时默认值)",
+		SummarySyncedHeader:    "已同步到项目配置:",
+		SummarySyncSkipped:     "未进行项目级同步 (仅保存全局配置文件).",
+
+		MigrationNoticeStatuslineMode:  "提示：您之前的状态栏模式 %q 已在 v3 中迁移为 %q。",
+		MigrationNoticeStatuslineTheme: "提示：您之前的状态栏主题 %q 已在 v3 中迁移为 %q。",
 	},
 }
 

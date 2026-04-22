@@ -1,0 +1,86 @@
+# Design Configuration
+# Controls /moai design workflow, GAN loop, Claude Design integration, and brand context.
+# Absorbed from agency config (v3.2.0) under the 'design' namespace.
+# Source: SPEC-AGENCY-ABSORB-001 REQ-SKILL-014, REQ-FALLBACK-003, REQ-SKILL-015
+
+design:
+  version: "1.0.0"
+  enabled: true
+
+  # Default tech stack for code-based design (path B)
+  default_framework: "next.js"
+
+  # GAN Loop (Builder <-> Evaluator)
+  gan_loop:
+    max_iterations: 5
+    pass_threshold: 0.75
+    escalation_after: 3
+    improvement_threshold: 0.05
+    strict_mode: false
+    sprint_contract:
+      enabled: true
+      # Sprint Contract is required for 'thorough' harness level
+      required_harness_levels: [thorough]
+      # Sprint Contract is optional (user opt-in) for 'standard' harness level
+      optional_harness_levels: [standard]
+      # Directory where sprint contract artifacts are stored
+      artifact_dir: ".moai/sprints"
+      # Maximum rounds of Builder-Evaluator contract negotiation per sprint
+      max_negotiation_rounds: 2
+
+  # Brand context settings
+  brand_context:
+    # Directory containing brand voice, visual identity, and target audience files
+    dir: ".moai/project/brand"
+    # Trigger brand interview if brand files are missing or contain _TBD_ markers
+    interview_on_first_run: true
+
+  # Claude Design integration (path A of /moai design)
+  claude_design:
+    enabled: true
+    # Supported Claude Design handoff bundle format versions.
+    # DESIGN_IMPORT_UNSUPPORTED_VERSION is returned for versions not in this list.
+    # Increment this list when new Claude Design bundle formats are validated.
+    supported_bundle_versions:
+      - "1.0"
+    # What to do when bundle version is unsupported
+    fallback_path: "code_based"
+
+  # Figma integration (Phase 2 roadmap — disabled by default in current release)
+  figma:
+    enabled: false
+    # When enabled, moai-domain-brand-design can extract tokens from a public Figma file URL.
+    # Requires figma.enabled: true and a valid public Figma file URL provided by user.
+    # See REQ-FALLBACK-003 for Phase 2 release criteria.
+
+  # Self-evolution settings (absorbed from agency evolution config)
+  evolution:
+    auto_evolve_threshold: 3
+    max_active_learnings: 50
+    archive_after_evolve: true
+    require_approval: true
+    max_evolution_rate_per_week: 3
+    cooldown_hours: 24
+    graduation_criteria:
+      minimum_observations: 5
+      minimum_confidence: 0.80
+      consistency_ratio: 0.80
+      staleness_window_days: 30
+
+  # Design brief documents auto-loaded during /moai design Phase B2.5
+  # Source: SPEC-DESIGN-ATTACH-001
+  design_docs:
+    dir: ".moai/design"
+    auto_load_on_design_command: true
+    token_budget: 20000
+    priority: [spec, system, research, pencil-plan]
+
+  # Pipeline adaptation weights (absorbed from agency adaptation config)
+  adaptation:
+    enabled: true
+    confidence_threshold: 0.70
+    min_projects_for_adaptation: 5
+    iteration_limits:
+      copywriter: 3
+      designer: 2
+      builder: 3
