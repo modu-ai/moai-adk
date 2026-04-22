@@ -51,10 +51,10 @@ Single source of truth principle:
 All slash command files MUST be thin routing wrappers (under 20 LOC body).
 
 Rules:
-- Commands route to skills via `Skill("moai")` or `Skill("agency")` -- they never contain workflow logic
+- Commands route to skills via `Skill("moai")` -- they never contain workflow logic
 - All workflow logic belongs in `.claude/skills/moai/workflows/` or skill body
 - YAML frontmatter must include: description, argument-hint, allowed-tools (CSV string)
-- Root commands (e.g., agency.md) may contain router tables but no implementation logic
+- Root commands may contain router tables but no implementation logic
 
 Template:
 ```

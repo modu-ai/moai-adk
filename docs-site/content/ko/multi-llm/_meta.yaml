@@ -1,0 +1,6 @@
+index:
+  title: "개요"
+"cg-mode":
+  title: "CG 모드 (Claude + GLM)"
+"model-policy":
+  title: "모델 정책"

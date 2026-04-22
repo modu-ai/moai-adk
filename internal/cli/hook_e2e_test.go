@@ -339,9 +339,10 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 
 	// Collect event subcommand names (exclude utility subcommands like "list", "agent", "pre-push").
 	utilitySubcmds := map[string]bool{
-		"list":     true,
-		"agent":    true,
-		"pre-push": true,
+		"list":             true,
+		"agent":            true,
+		"pre-push":         true,
+		"db-schema-sync":   true, // SPEC-DB-SYNC-001: domain hook, not a Claude Code event
 	}
 
 	for _, cmd := range hookCmd.Commands() {

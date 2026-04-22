@@ -55,6 +55,27 @@ MoAI-ADK follows a **Modular Monolithic** architecture with clear Domain-Driven 
 
 ```
 moai-adk-go/
+├── docs-site/                        # Official documentation site (Hugo + Hextra)
+│   ├── content/                      # 4개 locale 콘텐츠 (ko 63, en/ja/zh 각 52 페이지)
+│   │   ├── ko/
+│   │   ├── en/
+│   │   ├── ja/
+│   │   └── zh/
+│   ├── layouts/                      # Hugo partial override
+│   │   ├── _default/baseof.html
+│   │   └── partials/
+│   │       ├── language-switch.html
+│   │       ├── seo-jsonld.html
+│   │       ├── version-banner.html
+│   │       └── custom/head-end.html
+│   ├── i18n/                         # 4개 locale 번역 문자열
+│   ├── config/_default/              # Hugo + Hextra 설정
+│   ├── api/                          # Vercel Edge Function
+│   │   └── i18n-detect.ts
+│   ├── static/                       # 정적 자산 (og.jpg, favicon 등)
+│   ├── go.mod                        # Hugo module system (Hextra import)
+│   ├── hugo.yaml                     # Hugo 설정
+│   └── vercel.json                   # Vercel 빌드/배포 설정
 ├── cmd/
 │   └── moai/
 │       └── main.go
@@ -248,6 +269,15 @@ moai-adk-go/
 ├── CHANGELOG.md
 └── .goreleaser.yml
 ```
+
+---
+
+## Build Pipeline (docs-site)
+
+- Local: `cd docs-site && hugo server`
+- Build: `hugo --minify --gc` → `docs-site/public/`
+- Deploy: Vercel (Framework=Hugo, Root Directory=docs-site)
+- Edge: `docs-site/api/i18n-detect.ts` (Accept-Language + cookie 검출)
 
 ---
 

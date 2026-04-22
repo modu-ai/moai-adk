@@ -1,0 +1,44 @@
+# Database Documentation Configuration
+# Controls /moai db workflow, auto-sync hook, and schema documentation policy.
+#
+# Structure: 8 keys directly under `db:` (REQ-010)
+#   - 5 system-fixed keys: enabled, dir, auto_sync, migration_patterns, engine
+#   - 3 interview-input keys: orm, multi_tenant, migration_tool (filled by `/moai db init`)
+
+db:
+  # [System] Enabled when /moai db init has run. Default false until user opts in.
+  enabled: false
+
+  # [System] Documentation folder (relative to project root)
+  dir: ".moai/project/db"
+
+  # [System] Automatic schema sync on migration file changes
+  auto_sync:
+    enabled: true
+    debounce_seconds: 10
+    require_user_approval: true
+    excluded_patterns:
+      - ".moai/project/db/**"
+      - ".moai/cache/**"
+      - "**/*.lock"
+
+  # [System] Migration file detection globs (PostToolUse matcher references these)
+  migration_patterns:
+    - "prisma/schema.prisma"
+    - "alembic/versions/**/*.py"
+    - "db/migrate/**/*.rb"
+    - "migrations/**/*.sql"
+    - "supabase/migrations/**/*.sql"
+    - "sql/migrations/**/*.sql"
+
+  # [System] Primary database engine (set during /moai db init interview)
+  engine: "_TBD_"
+
+  # [Interview] ORM/ODM (set during /moai db init interview)
+  orm: "_TBD_"
+
+  # [Interview] Multi-tenant strategy (set during /moai db init interview)
+  multi_tenant: "none"
+
+  # [Interview] Migration tool (set during /moai db init interview)
+  migration_tool: "_TBD_"

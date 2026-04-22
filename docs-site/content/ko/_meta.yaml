@@ -1,0 +1,23 @@
+"getting-started":
+  title: "시작하기"
+"core-concepts":
+  title: "핵심 개념"
+"workflow-commands":
+  title: "워크플로우 명령어"
+"utility-commands":
+  title: "유틸리티 명령어"
+"quality-commands":
+  title: "품질 명령어"
+"multi-llm":
+  title: "멀티 LLM"
+design:
+  title: "디자인 시스템"
+db:
+  title: "데이터베이스 스키마 관리"
+  weight: 15
+advanced:
+  title: "심화 학습"
+worktree:
+  title: "깃 워크트리"
+contributing:
+  title: "참여하기"

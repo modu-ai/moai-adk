@@ -1,0 +1,23 @@
+index:
+  title: "심화 학습"
+  display: "hidden"
+"skill-guide":
+  title: "스킬 가이드"
+"agent-guide":
+  title: "에이전트 가이드"
+"builder-agents":
+  title: "빌더 에이전트 가이드"
+"hooks-guide":
+  title: "Hooks 가이드"
+"hooks-reference":
+  title: "Hooks 이벤트 레퍼런스"
+"settings-json":
+  title: "settings.json 가이드"
+"claude-md-guide":
+  title: "CLAUDE.md 가이드"
+"mcp-servers":
+  title: "MCP 서버 활용"
+"pencil-guide":
+  title: "Pencil 가이드"
+"stitch-guide":
+  title: "Google Stitch 가이드"

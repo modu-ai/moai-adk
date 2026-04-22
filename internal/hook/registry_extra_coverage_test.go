@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -160,6 +161,11 @@ func TestWriteTrace_NilTraceWriter(t *testing.T) {
 }
 
 // TestWriteTrace_WithObservability exercises writeTrace via Dispatch with real TraceWriter.
+// The async TraceWriter spawned by ensureTraceWriter writes to logDir in a
+// background goroutine. Without an explicit shutdown, t.TempDir's RemoveAll
+// cleanup may race the writer on slower runners (macOS CI observed
+// "unlinkat ...: directory not empty"). The explicit SetTraceWriter(nil) +
+// short settle window lets the writer flush before the TempDir hook runs.
 func TestWriteTrace_WithObservability(t *testing.T) {
 	t.Parallel()
 
@@ -176,6 +182,13 @@ func TestWriteTrace_WithObservability(t *testing.T) {
 		CWD:       t.TempDir(),
 	}
 	_, _ = reg.Dispatch(context.Background(), EventSessionStart, input)
+
+	// Detach the async TraceWriter before TempDir cleanup fires. Detaching
+	// gives the goroutine a chance to observe the closed state and exit
+	// cleanly. The 50ms settle is a conservative bound for fsync on CI
+	// runners; local runs typically drain in <5ms.
+	reg.SetTraceWriter(nil)
+	time.Sleep(50 * time.Millisecond)
 	// writeTrace should have been called (non-nil tw after ensureTraceWriter)
 }
 

@@ -252,6 +252,11 @@ func TestHookWrapper_MoaiBinaryFallback(t *testing.T) {
 	moaiPath := filepath.Join(fallbackDir, "moai")
 	createMockMoai(t, moaiPath)
 
+	// Normalize path separators so the embedded bash script parses correctly on Windows.
+	// Without this, backslashes in paths like C:\Users\... are interpreted as shell
+	// escape sequences by Git Bash, causing the fallback lookup to silently fail.
+	moaiPathBash := filepath.ToSlash(moaiPath)
+
 	// Create wrapper that uses an absolute path to our mock moai
 	wrapperScript := `#!/bin/bash
 temp_file=$(mktemp)
@@ -265,8 +270,8 @@ if [ ! -s "$temp_file" ]; then
 fi
 
 # Try fallback moai binary (absolute path)
-if [ -f "` + moaiPath + `" ]; then
-    exec "` + moaiPath + `" hook config-change < "$temp_file" 2>&1
+if [ -f "` + moaiPathBash + `" ]; then
+    exec "` + moaiPathBash + `" hook config-change < "$temp_file" 2>&1
 fi
 
 exit 0

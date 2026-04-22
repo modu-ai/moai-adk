@@ -1,0 +1,72 @@
+{{/*
+  language-switch.html — Hextra language switcher override
+  이모지 없음 (coding-standards 준수)
+  텍스트 라벨: KO / EN / JA / ZH
+  현재 locale 강조 (active state)
+  Hugo i18n: site.Language.Lang 기반 현재 언어 탐지
+*/}}
+
+{{- $page := .context -}}
+{{- $location := .location -}}
+{{- $grow := .grow -}}
+{{- $hideLabel := .hideLabel | default false -}}
+{{- $class := .class | default "hx:h-7 hx:px-2 hx:text-xs hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50" -}}
+
+{{/* locale별 짧은 텍스트 라벨 (이모지 없음) */}}
+{{- $labelMap := dict "ko" "KO" "en" "EN" "ja" "JA" "zh" "ZH" -}}
+{{- $currentLang := site.Language.Lang -}}
+{{- $currentLabel := index $labelMap $currentLang | default (upper $currentLang) -}}
+{{- $changeLanguage := (T "changeLanguage") | default "Change language" -}}
+
+{{- if hugo.IsMultilingual -}}
+  <div class="hx:flex hx:justify-items-start {{ if $grow }}hx:grow{{ end }}">
+    <button
+      title="{{ $changeLanguage }}"
+      data-state="closed"
+      data-location="{{ $location }}"
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium {{ $class }} hx:grow"
+      type="button"
+      aria-label="{{ $changeLanguage }}"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-1 hx:capitalize">
+        {{/* 텍스트 라벨만 표시 — 이모지 없음 */}}
+        {{- if not $hideLabel -}}
+          <span class="hx:text-xs hx:font-semibold hx:tracking-wide">{{ $currentLabel }}</span>
+        {{- end -}}
+        <svg xmlns="http://www.w3.org/2000/svg" height="10" width="10" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="hx:opacity-50">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      {{ range site.Languages }}
+        {{- $lang := .Lang -}}
+        {{- $label := index $labelMap $lang | default (upper $lang) -}}
+        {{- $isActive := eq $lang $currentLang -}}
+        {{ $link := partial "utils/lang-link" (dict "lang" $lang "context" $page) }}
+        <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="{{ $link }}"
+            role="menuitem"
+            lang="{{ $lang }}"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9{{ if $isActive }} hx:font-semibold{{ end }}"
+          >
+            <span class="hx:text-xs hx:font-bold hx:tracking-wide hx:mr-1.5">{{ $label }}</span>
+            <span class="hx:text-gray-500 hx:dark:text-gray-400">{{ .LanguageName }}</span>
+            {{- if $isActive -}}
+              <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3">
+                {{- partial "utils/icon" (dict "name" "check" "attributes" "height=1em width=1em") -}}
+              </span>
+            {{- end -}}
+          </a>
+        </li>
+      {{ end -}}
+    </ul>
+  </div>
+{{- end -}}

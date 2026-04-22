@@ -1,0 +1,21 @@
+index:
+  title: "시작하기"
+  display: "hidden"
+introduction:
+  title: "소개"
+installation:
+  title: "설치"
+"windows-guide":
+  title: "Windows 사용 가이드"
+"init-wizard":
+  title: "초기 설정"
+quickstart:
+  title: "빠른 시작"
+update:
+  title: "업데이트"
+profile:
+  title: "프로필 관리"
+cli:
+  title: "CLI 레퍼런스"
+faq:
+  title: "자주 묻는 질문"

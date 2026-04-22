@@ -136,6 +136,16 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("auto mode is not available with GLM (third-party provider)")
 	}
 
+	// Warn about main-session GLM limitations before launch.
+	// DISABLE_PROMPT_CACHING=1 forces full system prompt re-send per request (~30-40K tokens),
+	// which hits GLM context limits faster than expected. Z.AI concurrency limits (1-3 in-flight
+	// requests per paid tier) are sometimes misreported by Claude Code as "context window limit".
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 204K (glm-5.1)")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - DISABLE_PROMPT_CACHING=1 causes full system prompt re-send per request")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
+
 	return unifiedLaunch(profileName, "glm", filteredArgs)
 }
 

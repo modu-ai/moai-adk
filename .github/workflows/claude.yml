@@ -29,14 +29,15 @@ jobs:
     steps:
       - name: Checkout repository
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v4.3.1 | SHA: 34e114876b0b11c390a56381ad16ebd13914f8d5
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        # Tag: v5.0.0 | SHA: 08c6903cd8c0fde910a37f88322edcfb5dd907a8 (Node 24 runtime)
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           fetch-depth: 1
 
       # C5 Fix: Restored setup-go step so @claude can run Go commands (go test, go build, etc.)
       - name: Setup Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        # Tag: v6.0.0 | SHA: 44694675825211faa026b3c33043df3e48a5fa00 (Node 24 runtime)
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
           go-version: "1.26"
           cache: true
@@ -45,15 +46,19 @@ jobs:
         id: claude
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v1.0.82 | SHA: 88c168b39e7e64da0286d812b6e9fbebb6708185
-        uses: anthropics/claude-code-action@b47fd721da662d48c5680e154ad16a73ed74d2e0
+        uses: anthropics/claude-code-action@5d5c10a4f389689f992ea10bb14dcb6fcc83146d
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
-          # max-turns 40: Issue 분석/구현은 복잡한 멀티스텝 작업이 많아 20으로 부족한 경우 발생.
           # Use Opus model with high effort for better reasoning on issue fixes.
-          # C4b Fix: Increased from 20 to 40 to prevent error_max_turns on complex tasks.
+          # History:
+          #   C4a: 20 — initial value, exceeded on moderate issues
+          #   C4b: 20 → 40 — still exceeded on complex multi-file issues
+          #   C4c: 40 → 80 — run #24700719267 (issue #683 LSP TypeScript detection)
+          #        hit error_max_turns at 40. Multi-language LSP investigation requires
+          #        reading many files + cross-referencing config — 80 budget is safer.
           claude_args: |
-            --model opus
+            --model claude-opus-4-7
             --effort high
-            --max-turns 40
+            --max-turns 80

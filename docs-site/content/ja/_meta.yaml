@@ -1,0 +1,19 @@
+"getting-started":
+  title: "はじめに"
+"core-concepts":
+  title: "コア概念"
+"workflow-commands":
+  title: "ワークフローコマンド"
+"utility-commands":
+  title: "ユーティリティコマンド"
+"quality-commands":
+  title: "品質コマンド"
+design:
+  title: "デザインシステム"
+db:
+  title: "データベーススキーマ管理"
+  weight: 15
+advanced:
+  title: "詳細"
+worktree:
+  title: "Git Worktree"

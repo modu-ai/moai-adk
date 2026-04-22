@@ -1,0 +1,17 @@
+index:
+  title: "开始使用"
+  display: "hidden"
+introduction:
+  title: "介绍"
+installation:
+  title: "安装"
+"init-wizard":
+  title: "设置向导"
+quickstart:
+  title: "快速入门"
+update:
+  title: "更新"
+cli:
+  title: "CLI 参考"
+faq:
+  title: "常见问题"

@@ -1,0 +1,33 @@
+{{/*
+  _default/baseof.html — Hextra baseof override
+  SPEC-DOCS-SITE-001 Phase 5, REQ-DS-19
+
+  Hextra의 layouts/baseof.html을 오버라이드하여 version-banner partial을
+  navbar 상단에 조건부 삽입한다.
+
+  원본 Hextra baseof.html (v0.12.2) 구조:
+    <html> -> head.html -> body(skip link, banner, navbar, main, footer, scripts)
+
+  이 파일은 해당 구조를 그대로 유지하면서 version-banner만 추가한다.
+*/}}
+<!DOCTYPE html>
+<html lang="{{ .Site.Language.Lang }}" dir="{{ .Site.Language.LanguageDirection | default `ltr` }}">
+  {{- partial "head.html" . -}}
+  <body>
+    <a href="#content" class="hx:sr-only hx:focus-visible:not-sr-only hx:focus-visible:fixed hx:focus-visible:z-50 hx:focus-visible:top-2 hx:focus-visible:left-2 hx:focus-visible:bg-primary-500 hx:focus-visible:text-white hx:focus-visible:px-4 hx:focus-visible:py-2 hx:focus-visible:rounded-md hx:focus-visible:text-sm hx:focus-visible:font-medium">
+      {{- (T "skipToContent") | default "Skip to content" -}}
+    </a>
+    {{/*
+      version-banner: 구버전 경로(/v<X>.<Y>/)에서만 표시
+      REQ-DS-19, D-023 — baseof.html 조건부 호출 포인트
+    */}}
+    {{ partial "version-banner.html" . }}
+    {{- partial "banner.html" . -}}
+    {{- partial "navbar.html" . -}}
+    {{- block "main" . }}{{ end -}}
+    {{- if or (eq .Site.Params.footer.enable nil) (.Site.Params.footer.enable) }}
+      {{ partial "footer.html" . }}
+    {{ end }}
+    {{ partial "scripts.html" . }}
+  </body>
+</html>

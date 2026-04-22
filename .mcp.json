@@ -10,6 +10,11 @@
       "$comment": "Step-by-step reasoning for complex problems",
       "command": "/bin/bash",
       "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
+    },
+    "chrome-devtools": {
+      "$comment": "Google Chrome DevTools MCP: 29 tools for performance profiling (LCP/FID/CLS), CSS/DOM inspection, Lighthouse audits, CDP-native debugging. Used for docs-site E2E performance baseline and Mermaid render verification.",
+      "command": "/bin/bash",
+      "args": ["-l", "-c", "exec npx -y chrome-devtools-mcp@latest --headless"]
     }
   },
   "staggeredStartup": {
