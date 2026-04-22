@@ -105,6 +105,45 @@ Step B2: Load brand context:
 - Read `.moai/project/brand/visual-identity.md`
 - Read `.moai/project/brand/target-audience.md`
 
+### Phase B2.5: Load .moai/design/ Context
+
+1. Check .moai/design/ exists. If absent: skip, log "design docs not initialized".
+2. Check design_docs.auto_load_on_design_command. If false: skip (user may invoke standalone).
+3. Read README.md for attach rules (if present).
+4. Invoke moai-workflow-design-context skill with dir=".moai/design".
+5. Receive consolidated context block (Markdown, token-capped per REQ-5 algorithm).
+6. Prepend context block to the orchestrator's next subagent prompt (expert-frontend or moai-domain-brand-design).
+7. Proceed to Phase B3 (BRIEF generation).
+
+### Phase B2.6: Pencil Path (Conditional)
+
+Executes after Phase B2.5 and before Phase B3. This phase is conditional: it activates only when Pencil file/folder signals are present. It does not block Phase B3 on error.
+
+#### Precondition Check (REQ-PENCIL-001, REQ-PENCIL-002)
+
+Check both conditions:
+1. `.moai/design/pencil-plan.md` exists.
+2. At least one `.pen` file exists in `.moai/design/` or the project root (use Glob: `.moai/design/*.pen` and `*.pen`).
+
+If either condition is not met: skip Phase B2.6 silently (no user-visible error message, no stderr output) and proceed directly to Phase B3 (graceful skip per REQ-PENCIL-002).
+
+#### Skill Invocation (REQ-PENCIL-003)
+
+When both preconditions are met:
+- Invoke `moai-workflow-pencil-integration` skill synchronously.
+- Wait for the skill to return (success or structured error) before proceeding to Phase B3.
+- Phase B3 MUST NOT start until the skill returns.
+
+#### Error Handling (AC-8)
+
+When the skill returns a structured error (`PENCIL_MCP_UNAVAILABLE`, `PENCIL_CONNECTION_FAILED`, `PENCIL_PLAN_SYNTAX_ERROR`, or `PENCIL_BATCH_FAILED`):
+- Log the error code and message for the session record.
+- Do NOT abort the overall `/moai design` workflow.
+- Continue to Phase B3 immediately.
+- "Fallback" here means continuation within Path B — not a return to Phase 1 route selection.
+
+Exception: `PENCIL_PLAN_SYNTAX_ERROR` and `PENCIL_BATCH_FAILED` are halting errors within the skill itself. The skill returns them to the orchestrator, and the orchestrator continues to Phase B3 after logging them.
+
 Step B3: Generate BRIEF (REQ-BRIEF-001, REQ-BRIEF-002, REQ-BRIEF-003):
 - Invoke `manager-spec` in BRIEF generation mode.
 - Required BRIEF sections: `## Goal`, `## Audience`, `## Brand`
