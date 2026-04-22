@@ -2,9 +2,9 @@
 name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
-  language or subcommands (plan, run, sync, fix, loop, mx, project,
-  feedback, review, clean, codemaps, coverage, e2e) to specialized
-  agents.
+  language or subcommands (plan, run, sync, design, db, project, fix,
+  loop, mx, feedback, review, clean, codemaps, coverage, e2e) to
+  specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
@@ -58,6 +58,8 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **plan** (aliases: spec): SPEC document creation workflow
 - **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
+- **design** (aliases: brief, brand): Hybrid design workflow (Claude Design import path A or code-based skill path B)
+- **db** (aliases: database, schema): Database metadata management (init/refresh/verify/list for .moai/project/db/)
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
@@ -193,6 +195,22 @@ Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
 Agents: expert-testing, expert-frontend
 Flags: --record, --url URL, --journey NAME
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
+
+### design - Hybrid Design Workflow
+
+Purpose: Produce web/brand design artifacts via Claude Design import (path A) or code-based skill pipeline (path B). Integrates brand context from `.moai/project/brand/` and design briefs from `.moai/design/`.
+Agents: manager-spec (BRIEF), expert-frontend (implementation), evaluator-active (GAN loop scoring)
+Skills: moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop, moai-workflow-design-context, moai-workflow-pencil-integration
+Flags: --path A|B, --harness thorough|standard, --brief BRIEF-XXX
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
+
+### db - Database Metadata Management
+
+Purpose: Manage project database documentation in `.moai/project/db/` (schema.md, erd.mmd, migrations.md, rls-policies.md, queries.md, seed-data.md). Subcommands synchronize schema from migration files, verify drift, and list state.
+Agents: moai-domain-db-docs (parser + sync), Explore (migration discovery)
+Subcommands: init | refresh | verify | list
+Flags: --dry, --force, --engine postgres|mongodb|mysql|oracle|sqlite|supabase
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/db.md
 
 ### (default) - MoAI Autonomous Workflow
 
