@@ -5,15 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-04-21
+## [2.13.0] - 2026-04-23
 
 ### Summary
 
-Two independent workstreams converged in this release:
+Three independent workstreams converged in this release:
 
-1. **SPEC-AGENCY-ABSORB-001 흡수 완료** (from HEAD) — `/agency` command and agents absorbed into `/moai design` hybrid workflow. Brand context promoted to `.moai/project/brand/` as a constitutional constraint.
-2. **Design + DB 8 SPEC 통합 구현** (this session) — `.moai/design/` folder scaffolding, `/moai db` command family, Pencil MCP integration, PostToolUse DB sync hook, and `/moai project` Phase 4.1a DB detection.
-3. **Profile setup wizard hardening** (from origin/main #681) — 16 review findings applied, silent data coercion of deprecated Claude IDs fixed, `ast_grep_gate` SAST re-enabled, team role_profiles rebalanced for Opus 4.7 / 1M-context.
+1. **SPEC-AGENCY-ABSORB-001 absorption (#682)** — `/agency` command and agents absorbed into the unified `/moai design` hybrid workflow. Brand context promoted to `.moai/project/brand/` as a constitutional constraint.
+2. **Design + DB 8-SPEC integrated delivery** — `.moai/design/` folder scaffolding, `/moai db` command family, Pencil MCP integration, PostToolUse DB sync hook, and `/moai project` Phase 4.1a DB detection.
+3. **Profile setup wizard hardening (#681)** — 16 review findings applied, silent data coercion of deprecated Claude IDs fixed, `ast_grep_gate` SAST re-enabled, team role_profiles rebalanced for Opus 4.7 / 1M-context models.
+
+Additional highlights: LSP server detection fix restoring 16-language support (#689), `moai glm` settings.local.json pollution fix (#691), `charmbracelet/x/powernap` v0.1.3 → v0.1.4 (#679), and Hextra-based docs-site monorepo integration (#680).
+
+### Breaking Changes
+
+- `/agency` command deprecated — now redirects to `/moai design`. Full removal scheduled per REQ-DEPRECATE-003 (2 minor versions after this release).
 
 ### Added
 
@@ -71,15 +77,15 @@ Two independent workstreams converged in this release:
 
 ### Fixed
 
-**LSP 서버 감지 수정 (#683)**
-- LSP 서버 감지 전체 비활성 문제 수정 (#683): `lsp.yaml` 템플릿 YAML 키를 `binary` → `command`로 수정 (`ServerConfig` YAML 태그와 일치), 16개 언어 전체에 `file_extensions` 추가 (`detectLanguage()` 파일-서버 라우팅 복원)
-- 템플릿 준수 테스트 추가 (`TestTemplate_NoBinaryKey`, `TestTemplate_16LangCommandNonEmpty`, `TestTemplate_16LangFileExtensionsNonEmpty`): 실제 템플릿 파일을 파싱해 스키마 드리프트 재발 방지
+**LSP server detection restored across 16 languages (#689)**
+- Fixed complete LSP server detection failure: corrected `lsp.yaml` template YAML key `binary` → `command` (aligns with `ServerConfig` YAML tags), added `file_extensions` across all 16 languages (restores `detectLanguage()` file-to-server routing).
+- Added template compliance tests (`TestTemplate_NoBinaryKey`, `TestTemplate_16LangCommandNonEmpty`, `TestTemplate_16LangFileExtensionsNonEmpty`): parses actual template files to prevent schema drift regression.
 
-**`moai glm` settings.local.json 영구 오염 수정 (#676)**
-- `moai glm` 실행 후 Claude Code 진입 시 context window limit 에러 수정: `applyGLMMode`에서 `injectGLMEnvForTeam()` 호출을 제거하여 `settings.local.json`에 GLM 환경변수(`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `DISABLE_PROMPT_CACHING` 등)가 영구 기록되던 동작 방지. `setGLMEnv()`이 현재 프로세스 env를 설정하면 `syscall.Exec`가 이를 `claude`에 상속하므로 파일 기록은 중복이었으며 세션 종료 후 GLM 모드 잔류를 유발했음.
-- `moai glm` 시작 시 메인 세션 컨텍스트 한도 경고 메시지 추가: `DISABLE_PROMPT_CACHING=1`로 인한 전체 시스템 프롬프트 재전송 (~30-40K 토큰), Z.AI 동시성 한도 (유료 티어 1-3 in-flight), GLM 모델 컨텍스트 윈도우 크기를 안내. Claude 리더 + GLM 팀원 조합이 필요한 경우 `moai cg` 사용 권장.
-- `injectGLMEnvForTeam`은 `enableTeamMode()`(`moai --team` 경로)에서만 사용하도록 범위 축소. `applyGLMMode` 호출 제거만 수행, 함수 자체는 유지.
-- 회귀 테스트 추가: `TestApplyGLMMode_NoSettingsLocalPollution`, `TestApplyGLMMode_ProcessEnvIsSet`, `TestGLMCmd_NoSettingsLocalPollution` (기존 `TestGLMCmd_InjectsEnv` 역전).
+**`moai glm` settings.local.json permanent pollution fix (#691)**
+- Fixed context window limit error when entering Claude Code after `moai glm`: removed `injectGLMEnvForTeam()` call from `applyGLMMode` to prevent GLM environment variables (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `DISABLE_PROMPT_CACHING`, etc.) from being persisted to `settings.local.json`. Since `setGLMEnv()` sets the current process env and `syscall.Exec` inherits it to `claude`, the file write was redundant and caused GLM mode to leak after session end.
+- Added main session context-limit warning at `moai glm` startup: informs about full system-prompt retransmission (~30-40K tokens) from `DISABLE_PROMPT_CACHING=1`, Z.AI concurrency limits (paid tier 1-3 in-flight), and GLM model context window sizes. Recommends `moai cg` for the Claude-leader + GLM-teammate combination.
+- Narrowed `injectGLMEnvForTeam` scope to `enableTeamMode()` (`moai --team` path) only. Only the `applyGLMMode` caller was removed — function itself retained.
+- Added regression tests: `TestApplyGLMMode_NoSettingsLocalPollution`, `TestApplyGLMMode_ProcessEnvIsSet`, `TestGLMCmd_NoSettingsLocalPollution` (inverts the prior `TestGLMCmd_InjectsEnv`).
 
 **Critical Review Findings (this session, post SPEC-DB-SYNC-001 review)**
 - **Hook timeout unit bug** (`c6985e2fe`) — `settings.json.tmpl` PostToolUse `handle-db-schema-change.sh` entry had `"timeout": 30000` (8.3 hours). Claude Code hook timeout is in seconds (range 1-600). Corrected to `30`.
@@ -127,6 +133,131 @@ Two independent workstreams converged in this release:
 - `internal/cli` design_folder: 282-line test file covering SHA-256 preservation, glob collision, .DS_Store-only directory handling.
 - `go vet ./...`, `go test -race ./... -count=1` (all packages), `golangci-lint run ./internal/...` — all PASS.
 - Cross-compile verified for 5 targets: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.13.0] - 2026-04-23 (한국어)
+
+### 요약
+
+세 개의 독립 워크스트림이 이번 릴리즈에서 수렴되었습니다.
+
+1. **SPEC-AGENCY-ABSORB-001 흡수 완료 (#682)** — `/agency` 명령어와 에이전트가 통합 `/moai design` 하이브리드 워크플로우로 흡수되었습니다. 브랜드 컨텍스트가 `.moai/project/brand/`로 승격되어 헌법적 제약으로 작동합니다.
+2. **Design + DB 8 SPEC 통합 구현** — `.moai/design/` 폴더 스캐폴딩, `/moai db` 명령어 패밀리, Pencil MCP 통합, PostToolUse DB 동기화 훅, `/moai project` Phase 4.1a DB 감지.
+3. **Profile setup wizard 하드닝 (#681)** — 16개 리뷰 지적사항 반영, deprecated Claude ID 무음 데이터 강제 변환 수정, `ast_grep_gate` SAST 재활성화, Opus 4.7 / 1M 컨텍스트 모델에 맞춰 팀 role_profiles 재조정.
+
+추가 하이라이트: LSP 서버 감지 수정으로 16개 언어 지원 복원 (#689), `moai glm` settings.local.json 오염 수정 (#691), `charmbracelet/x/powernap` v0.1.3 → v0.1.4 (#679), Hextra 기반 docs-site 모노레포 통합 (#680).
+
+### 주요 변경 사항 (Breaking Changes)
+
+- `/agency` 명령어 deprecated — `/moai design`으로 리다이렉트. REQ-DEPRECATE-003에 따라 본 릴리즈 2개 마이너 버전 후 완전 제거 예정.
+
+### 추가됨 (Added)
+
+**Design 워크플로우 (SPEC-AGENCY-ABSORB-001, SPEC-DESIGN-* 패밀리)**
+- `/moai design` 서브 명령어 — 하이브리드 디자인 워크플로우 (Claude Design 임포트 경로 + 코드 기반 스킬 경로)
+- `moai migrate agency` 명령어 — `.agency/` 데이터를 `.moai/project/brand/`와 `.moai/config/sections/design.yaml`로 안전하게 마이그레이션
+- `moai-domain-copywriting` 스킬 — anti-AI-slop 적용된 브랜드 정렬 카피라이팅
+- `moai-domain-brand-design` 스킬 — hero-first 체이닝 및 WCAG 2.1 AA 준수 시각 디자인 시스템
+- `moai-workflow-design-import` 스킬 — Claude Design 핸드오프 번들(ZIP/HTML) 파서
+- `moai-workflow-gan-loop` 스킬 — Sprint Contract 프로토콜 기반 Builder-Evaluator 반복 루프
+- `moai-workflow-design-context` 스킬 (SPEC-DESIGN-ATTACH-001) — `.moai/design/` 자동 로더, 우선순위 기반 truncation (`spec > system > research > pencil-plan`) 및 토큰 예산 강제
+- `moai-workflow-pencil-integration` 스킬 (SPEC-DESIGN-PENCIL-001) — Pencil MCP 배치 연산 실행기 (DSL 파서, 25-op 배치 분할, 레이아웃 검증, 스크린샷 아카이브)
+- `.moai/design/` 폴더 스캐폴딩 (SPEC-DESIGN-DOCS-001) — README + research/system/spec 템플릿, `moai update` 시 SHA-256 기반 사용자 수정 보존, 예약 파일명 충돌 감지
+- `.moai/project/brand/` 디렉토리 — brand-voice.md, visual-identity.md, target-audience.md 템플릿
+- `.moai/config/sections/design.yaml` — 디자인 파이프라인 설정 (GAN loop, sprint contract, evolution 임계치) + `design_docs` 서브섹션
+- `.claude/rules/moai/design/constitution.md` v3.3.0 — Section 3 삼분할 구조 확장 (3.1 Brand Context / 3.2 Design Brief / 3.3 Relationship)
+
+**DB 워크플로우 (SPEC-DB-* 패밀리)**
+- `/moai db` 서브 명령어 (SPEC-DB-CMD-001) — Thin 래퍼 + 라우터 스킬 (`init`/`refresh`/`verify`/`list` 지원), 16개 언어 마이그레이션 경로 매핑
+- `.moai/project/db/` 7-파일 템플릿 세트 — README, schema.md, erd.mmd (Mermaid `erDiagram`), migrations.md, rls-policies.md, queries.md, seed-data.md
+- `.moai/config/sections/db.yaml` — 8-키 구조 (5 시스템 + 3 인터뷰) + 6개 마이그레이션 패턴 (Prisma/Alembic/Rails/SQL/Supabase/generic), `.moai/project/db/**` 재귀 가드
+- `moai-domain-db-docs` 스킬 — 마이그레이션 파서 facade + schema.md/erd.mmd/migrations.md 동기화
+- `moai hook db-schema-sync` 서브 명령어 — PostToolUse 훅 처리 (10초 debounce, path traversal 가드, proposal.json writer)
+- `handle-db-schema-change.sh` PostToolUse 훅 — Write/Edit 이벤트 시 `moai hook db-schema-sync` 호출
+- `/moai project` Phase 4.1a DB 감지 — `tech.md` + 16-언어 의존성 매니페스트로 DB 기술 자동 감지
+
+**Profile setup wizard 하드닝 (#681)**
+- `normalizeModel(m string) string` 헬퍼 — deprecated Claude ID를 정규 별칭으로 매핑하여 저장된 설정 무음 손실 방지
+- 4개 언어 statusline 마이그레이션 배너 — `existingPrefs` 정규화 시 1회성 알림
+- `auto` 권한 모드 선택지 (Claude Code v2.1.83+ / Sonnet 4.6+ 게이팅, 런타임 실패 경고 포함)
+- 정규 검증 슬라이스 + 패키지 상수 (`defaultStatuslineMode`, `defaultStatuslineTheme`, `defaultPermissionMode`)
+- 신규 단위 테스트 추가 (`profile_setup_normalize_test.go`, `profile_setup_summary_test.go`, 신규 헬퍼 100% 라인 커버리지)
+
+**SPEC 문서**
+- SPEC-DESIGN-CONST-AMEND-001 / SPEC-DESIGN-DOCS-001 / SPEC-DESIGN-ATTACH-001 / SPEC-DESIGN-PENCIL-001 — 디자인 워크플로우 패밀리
+- SPEC-DB-CMD-001 / SPEC-DB-TEMPLATES-001 / SPEC-DB-SYNC-001 / SPEC-PROJECT-DB-HINT-001 — DB 워크플로우 패밀리
+- SPEC-DB-SYNC-HARDEN-001 — 5개 경고 해결 하드닝 (파일 크기 가드, CheckDebounce 원자성, Windows 분기, 커버리지 ≥85%, MX 태그)
+
+### 변경됨 (Changed)
+
+**Design 흡수 (SPEC-AGENCY-ABSORB-001)**
+- Agency 에이전트 카탈로그 6 → 2 축소 (copywriter, designer가 스킬로 흡수; planner, builder, evaluator, learner 제거)
+- `/agency` 명령어가 deprecation 경고와 함께 `/moai design`으로 리다이렉트
+- coding-standards.md에서 `Skill("agency")` 참조 제거
+
+**Profile setup (#681)**
+- `printProfileSummary` 시그니처 리팩토링 — `bytes.Buffer` 주입으로 단위 테스트 가능, 포인터 수신자로 사본 복사 제거
+- 권한 모드 선택지 순서 조정 — `auto`를 2번 위치로 이동 (심각도 gradient)
+- 4개 locale에서 `SummarySyncSkipped` 표현 중립화
+- PermAuto 라벨에 런타임 실패 경고 추가 (en/ko/ja/zh)
+- ko/ja `SummaryHeader` — `입력된 값 확인:` → `저장된 설정값:`; `入力された設定値:` → `保存された設定値:`
+- Summary 경로 렌더링이 절대 경로 대신 상대 경로 사용
+- `workflow.yaml` role_profiles 재조정 — 팀 리더 `default_model` → `opus[1m]`, `architect` → `opus`, `reviewer` → `sonnet` (기존 `haiku`에서 상향)
+
+### 수정됨 (Fixed)
+
+**LSP 서버 감지 16개 언어 복원 (#689)**
+- LSP 서버 감지 전체 비활성 문제 수정: `lsp.yaml` 템플릿 YAML 키를 `binary` → `command`로 수정 (`ServerConfig` YAML 태그 일치), 16개 언어 전체에 `file_extensions` 추가 (`detectLanguage()` 파일-서버 라우팅 복원)
+- 템플릿 준수 테스트 3종 추가하여 스키마 드리프트 재발 방지
+
+**`moai glm` settings.local.json 영구 오염 수정 (#691)**
+- `moai glm` 실행 후 Claude Code 진입 시 context window limit 에러 수정: `applyGLMMode`에서 `injectGLMEnvForTeam()` 호출을 제거하여 `settings.local.json`에 GLM 환경변수가 영구 기록되던 동작 방지
+- `moai glm` 시작 시 메인 세션 컨텍스트 한도 경고 메시지 추가 (DISABLE_PROMPT_CACHING 영향, Z.AI 동시성 한도, GLM 컨텍스트 윈도우 안내). Claude 리더 + GLM 팀원 조합은 `moai cg` 권장
+- `injectGLMEnvForTeam` 범위를 `enableTeamMode()`(`moai --team` 경로)로만 제한
+- 회귀 테스트 3종 추가 (`TestApplyGLMMode_NoSettingsLocalPollution` 등)
+
+**DB 하드닝 (SPEC-DB-SYNC-HARDEN-001)**
+- 파일 크기 가드 (1 MiB 제한), CheckDebounce 원자성 (O_EXCL + os.Rename), settings.json.tmpl Windows 분기 정렬, `internal/hook/dbsync` 커버리지 79.2% → 85.7%, 5개 exported helper에 @MX:NOTE godoc 추가
+
+### 제거됨 (Removed)
+
+- `.claude/agents/agency/` 에이전트 정의: planner, builder, evaluator, learner, copywriter, designer
+- `.claude/skills/agency-*` 포크된 스킬: agency-copywriting, agency-design-system, agency-evaluation-criteria, agency-client-interview, agency-frontend-patterns
+- `.claude/skills/agency/` 오케스트레이터 스킬
+- `fork-manifest.yaml` 포크 관리 (moai-workflow-research에 흡수)
+
+### Deprecated
+
+- `/agency` 서브명령어 (brief, build, review, learn, evolve, resume, profile)은 `/moai` 상응 서브명령어로 리다이렉트. REQ-DEPRECATE-003에 따라 2개 마이너 버전 후 제거 예정
+
+### 마이그레이션 (Migration)
+
+- `.agency/` 디렉토리를 가진 기존 프로젝트는 `moai migrate agency`로 마이그레이션 가능
+- 마이그레이션은 atomic 및 reversible (데이터는 `.agency.archived/`로 보존), SIGINT/SIGTERM 시 `--resume` 플래그 지원
+- 전체 동작은 SPEC-AGENCY-ABSORB-001 acceptance.md 참조
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
 
 ## [2.12.0] - 2026-04-17
 
