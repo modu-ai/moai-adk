@@ -43,6 +43,52 @@ A single binary written in Go -- runs instantly on any platform with zero depend
 
 ---
 
+## What's New in v2.12.0
+
+MoAI-ADK v2.12.0 introduces major upgrades to the design system, Claude Code native integration, and Opus 4.7 support.
+
+### Key Milestones
+
+| Version | Highlights |
+|---------|-----------|
+| **v2.9.0** | Claude Code v2.1.89-90 native skill integration (Opus 4.6) |
+| **v2.10.x** | LSP suite expansion, SPEC-CC297-001 `permissionMode` attribute support, Opus 4.7 preview |
+| **v2.11.x** | Self-Research System integration, multi-source documentation loading, enhanced memory management |
+| **v2.12.0** | **[SPEC-AGENCY-ABSORB-001]** /agency → /moai design absorption, full Opus 4.7 support, Adaptive Thinking native integration |
+
+### Major Changes
+
+**Design System Absorption (SPEC-AGENCY-ABSORB-001)**
+
+The legacy `/agency` command has been fully absorbed into `/moai design`. Existing `/agency/` projects migrate automatically via:
+
+```bash
+moai migrate agency
+```
+
+Benefits:
+- Single unified design workflow instead of dual `/moai` + `/agency` commands
+- Improved integration with MoAI core (brand context, quality gates, SPEC-driven workflows)
+- Enhanced documentation at [adk.mo.ai.kr/design](https://adk.mo.ai.kr/design)
+
+**Opus 4.7 Native Support**
+
+MoAI-ADK now targets Claude Opus 4.7 with native Adaptive Thinking:
+
+- Automatic dynamic token allocation for reasoning (no fixed budgets)
+- Faster inference through streamlined prompt phrasing
+- Better cost efficiency on complex tasks
+
+**Self-Research & Memory Evolution**
+
+v2.11+ self-research system now integrated with agent learnings:
+
+- Agents auto-capture lessons from corrections
+- Memory system persists across sessions (`.claude/agent-memory/`)
+- Documentation loads just-in-time based on task context
+
+---
+
 ## Why MoAI-ADK?
 
 We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
@@ -1116,6 +1162,108 @@ moai migrate agency
 This command safely moves `.agency/` data to `.moai/project/brand/` and `.moai/config/sections/design.yaml`. Data is preserved as `.agency.archived/` for recovery if needed.
 
 > [Design System Documentation](https://adk.mo.ai.kr/design)
+
+---
+
+## Database Workflow: /moai db
+
+Database metadata management system for MoAI projects. Manages schema documentation, migrations, ERD diagrams, and seeds through four subcommands: init, refresh, verify, and list.
+
+### Quick Start
+
+```bash
+# Initialize database metadata (interactive interview)
+/moai db init
+
+# Rescan migrations and update schema documentation
+/moai db refresh
+
+# Check for drift between schema.md and migration files
+/moai db verify
+
+# Display all tables from schema.md
+/moai db list
+```
+
+### Subcommands
+
+| Command | Purpose | When to Use |
+|---------|---------|------------|
+| **init** | Interactive setup of database engine, ORM, multi-tenant strategy, and migration tool. Scaffolds `.moai/project/db/` with 7-file template set | New project initialization, before any database work |
+| **refresh** | Scans migration files and regenerates `schema.md`, `erd.mmd` (Mermaid ERD), and `migrations.md` from current migration state | After adding/modifying migrations, milestone sync |
+| **verify** | Read-only drift detection: compares `schema.md` table set against actual migration files, exits non-zero if drift detected | Before PR submission, in CI/CD pipelines |
+| **list** | Read-only table listing: displays all tables from `schema.md` in aligned Markdown table format | Quick project overview, documentation review |
+
+### Directory Structure
+
+`/moai db init` creates the following structure in `.moai/project/db/`:
+
+```
+.moai/project/db/
+├── README.md              # Database overview and setup instructions
+├── schema.md              # Table schema documentation (auto-generated)
+├── erd.mmd                # Entity-Relationship Diagram in Mermaid format
+├── migrations.md          # Migration history and sequencing
+├── rls-policies.md        # Row-level security policies (PostgreSQL)
+├── queries.md             # Important queries and performance notes
+└── seed-data.md           # Sample data and seeding instructions
+```
+
+### Supported Database Technologies
+
+Auto-detects and supports 6 migration file patterns:
+
+| Migration Type | File Pattern | Example |
+|---------------|-------------|---------|
+| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
+| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
+| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
+| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
+| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
+| **Generic** | `migrations/*.sql` or `db/*.sql` | Custom patterns supported |
+
+Supports 16 programming language ecosystems (Go, Python, TypeScript, Java, etc.) through common package paths.
+
+### Integrations
+
+- **PostToolUse Hook**: Auto-refreshes `schema.md`, `erd.mmd`, `migrations.md` when migration files are edited
+- **Drift Detection**: Prevents schema documentation from drifting out of sync with actual migrations
+- **Mermaid Diagrams**: Generates ERD diagrams automatically for documentation and design reviews
+- **Phase 4.1a DB Detection**: `/moai project` automatically surfaces `/moai db` recommendations based on detected database technology
+
+### Configuration
+
+Database settings are stored in `.moai/config/sections/db.yaml`:
+
+```yaml
+db:
+  enabled: true
+  dir: ".moai/project/db"
+  auto_sync: true
+  migration_patterns:
+    - "prisma/migrations/*/migration.sql"
+    - "alembic/versions/*.py"
+    - "db/migrate/*.rb"
+  engine: ""  # Populated during init interview
+  orm: ""     # Populated during init interview
+  multi_tenant: false
+  migration_tool: ""
+```
+
+### Workflow Example
+
+1. **New Project**: Run `/moai db init`, answer 4 questions about your database setup
+2. **During Development**: Create migrations as usual; `/moai db` auto-syncs documentation
+3. **Before PR**: Run `/moai db verify` to check for schema drift
+4. **Review**: Reference `.moai/project/db/erd.mmd` in PRs for visual schema review
+
+### When to Use
+
+- **Always on**: Enable during `moai init` for any project with a database
+- **Init**: New projects, database architecture changes
+- **Refresh**: After significant migration work, before major commits
+- **Verify**: Part of CI/CD pipeline, pre-PR checks
+- **List**: Quick reference, documentation generation
 
 ---
 
