@@ -14,15 +14,45 @@ import (
 // writeFakeBinary writes a minimal shell script to dir with the given name
 // and marks it executable. The script acts as a minimal "read from stdin, write
 // nothing" stub to allow pipe smoke tests without spawning real language servers.
+//
+// Implementation note (ETXTBSY mitigation):
+// On Linux, os.WriteFile followed immediately by fork/exec can fail with
+// "text file busy" (ETXTBSY) because the kernel still considers the file to be
+// open for writing when exec() is called. This is especially reproducible when
+// multiple t.Parallel() tests create and execute binaries concurrently.
+//
+// The fix is to explicitly Create → Write → Sync → Close the file *before*
+// applying executable permission via Chmod. That way, by the time the caller
+// invokes Launcher.Launch(), the kernel has closed all writer fds and fork/exec
+// succeeds. See:
+//   - https://github.com/golang/go/issues/22315 (os/exec: ETXTBSY on Linux)
+//   - https://github.com/golang/go/issues/3001 (ETXTBSY race in test helpers)
 func writeFakeBinary(t *testing.T, dir, name string) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("shell script stubs not supported on Windows")
 	}
 	path := filepath.Join(dir, name)
+
 	// 표준 입력을 읽고 아무것도 출력하지 않는 최소 스텁
-	if err := os.WriteFile(path, []byte("#!/bin/sh\ncat\n"), 0o755); err != nil {
-		t.Fatalf("writeFakeBinary: %v", err)
+	// ETXTBSY 방지: 파일 디스크립터를 write 후 즉시 닫고, 그다음에 chmod
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("writeFakeBinary create: %v", err)
+	}
+	if _, err := f.Write([]byte("#!/bin/sh\ncat\n")); err != nil {
+		_ = f.Close()
+		t.Fatalf("writeFakeBinary write: %v", err)
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		t.Fatalf("writeFakeBinary sync: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("writeFakeBinary close: %v", err)
+	}
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatalf("writeFakeBinary chmod: %v", err)
 	}
 	return path
 }
