@@ -262,3 +262,38 @@ Module Deep Dives: modules/trust-5-framework.md, modules/spec-first-ddd.md, modu
 
 Full Examples: examples.md
 External Resources: reference.md
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "TRUST 5 is a guideline, not a gate" | TRUST 5 is a HARD quality gate. All five dimensions must pass before completion. |
+| "I can skip the SPEC for this small change" | Every change without a SPEC is untracked. SPEC-less changes accumulate into unmanageable technical debt. |
+| "Delegation to an agent is overhead for simple tasks" | MoAI is an orchestrator, not an implementer. Skipping delegation bypasses domain expertise and quality checks. |
+| "I will skip the quality gate, the code is clearly correct" | Clearly correct code still needs evidence. Tests and linting are mechanisms; confidence is not. |
+| "Progressive disclosure is not important for this project" | Even small projects benefit from token-efficient skill loading. Disclosure is about context budget, not project size. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- MoAI executing implementation code directly instead of delegating to an agent
+- TRUST 5 dimensions partially checked (only Tested and Readable, ignoring Secured)
+- SPEC document exists but has no acceptance criteria
+- Agent selected without consulting the selection decision tree
+- Quality gate skipped with "will check later" comment
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] All five TRUST 5 dimensions addressed (Tested, Readable, Unified, Secured, Trackable)
+- [ ] Agent selection documented with rationale matching the decision tree
+- [ ] SPEC document has acceptance criteria with observable evidence requirements
+- [ ] Delegation chain traceable: MoAI -> agent -> execution
+- [ ] Progressive disclosure levels configured in skill frontmatter
+
+<!-- moai:evolvable-end -->

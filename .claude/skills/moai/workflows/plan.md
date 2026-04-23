@@ -304,6 +304,18 @@ Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MU
 
 ### Decision Point 1: Plan Review and Annotation Cycle
 
+<!-- moai:evolvable-start id="gate-plan-1" -->
+### HUMAN GATE: Plan Review
+
+**Previous phase output:** SPEC draft with EARS-format requirements and acceptance criteria
+**Approval question:** Does this SPEC capture the correct requirements and scope?
+**Cannot proceed until:**
+- [ ] User has reviewed the SPEC document
+- [ ] User has confirmed acceptance criteria are testable
+- [ ] User has approved the proposed file changes
+- [ ] No open questions remain in the SPEC
+<!-- moai:evolvable-end -->
+
 Tool: AskUserQuestion (at orchestrator level only)
 
 Options:
@@ -590,6 +602,17 @@ Tasks:
 - Output: `mx_plan` section in SPEC document with annotation targets and priorities
 
 ### Phase 3.6: SPEC Quality Gate
+
+<!-- moai:evolvable-start id="gate-plan-2" -->
+### HUMAN GATE: SPEC Quality Validation
+
+**Previous phase output:** Validated SPEC with quality score
+**Approval question:** Is the SPEC ready for execution mode selection and implementation?
+**Cannot proceed until:**
+- [ ] SPEC quality gate shows PASS
+- [ ] No HARD rule violations detected
+- [ ] User has selected execution mode (sub-agent vs team)
+<!-- moai:evolvable-end -->
 
 Purpose: Verify SPEC document quality before proceeding to implementation. Catches incomplete or inconsistent specs early.
 

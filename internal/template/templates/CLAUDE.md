@@ -90,12 +90,6 @@ Default (natural language): Routes to /moai design with AskUserQuestion path sel
 
 For detailed design rules, see .claude/rules/moai/design/constitution.md
 
-### /agency (DEPRECATED — use /moai design)
-
-DEPRECATED as of SPEC-AGENCY-ABSORB-001. The /agency command redirects to /moai design.
-Will be removed in the next minor version per REQ-DEPRECATE-003.
-Migration guide: see .claude/commands/agency/agency.md
-
 ---
 
 ## 4. Agent Catalog

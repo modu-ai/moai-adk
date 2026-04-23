@@ -22,7 +22,7 @@ Optional standard fields:
 - allowed-tools: Comma-separated string of tool names the skill can use (experimental)
 - user-invocable: Boolean to control slash command menu visibility (default: true, set to false to hide from / menu)
 - disable-model-invocation: Boolean, when true only user can invoke (not Claude). Use for workflows with side effects (default: false)
-- effort: Session effort override: low, medium, high, max (max is Opus 4.6 only)
+- effort: Session effort override: low, medium, high, xhigh, max (xhigh/max require Opus 4.7+)
 - model: Model override when skill is active (sonnet, opus, haiku)
 - shell: Shell for command injection: bash (default) or powershell
 - context: Set to "fork" to run skill in forked subagent context (isolated execution)

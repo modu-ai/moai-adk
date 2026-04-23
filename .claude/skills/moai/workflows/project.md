@@ -340,24 +340,30 @@ For detailed codemaps generation process, delegate to codemaps workflow (workflo
 
 Goal: Verify LSP servers are installed for the detected technology stack.
 
-Language-to-LSP Mapping (16 languages):
+Language-to-LSP Mapping (all 16 MoAI-supported languages, alphabetical):
 
-- Python: pyright or pylsp (check: which pyright)
-- TypeScript/JavaScript: typescript-language-server (check: which typescript-language-server)
+- C++: clangd (check: which clangd)
+- C#: omnisharp or roslyn-ls (check: which omnisharp)
+- Elixir: elixir-ls or lexical (check: which elixir-ls)
+- Flutter: dart language-server (bundled with Dart SDK, check: which dart)
 - Go: gopls (check: which gopls)
-- Rust: rust-analyzer (check: which rust-analyzer)
 - Java: jdtls (Eclipse JDT Language Server)
-- Ruby: solargraph (check: which solargraph)
-- PHP: intelephense (check via npm)
-- C/C++: clangd (check: which clangd)
+- JavaScript: typescript-language-server (check: which typescript-language-server)
 - Kotlin: kotlin-language-server
+- PHP: phpactor or intelephense (check: which phpactor)
+- Python: pylsp or pyright-langserver (check: which pylsp)
+- R: R with languageserver package (check: which R)
+- Ruby: ruby-lsp or solargraph (check: which ruby-lsp)
+- Rust: rust-analyzer (check: which rust-analyzer)
 - Scala: metals
 - Swift: sourcekit-lsp
-- Elixir: elixir-ls
-- Dart/Flutter: dart language-server (bundled with Dart SDK)
-- C#: OmniSharp or csharp-ls
-- R: languageserver (R package)
-- Lua: lua-language-server
+- TypeScript: typescript-language-server (check: which typescript-language-server)
+
+Note: The canonical language name for Dart/Flutter ecosystem is "Flutter",
+matching `.claude/skills/moai/workflows/sync.md` Phase 0.6.1. Per
+CLAUDE.local.md Section 22, all 16 languages are treated as equal
+first-class citizens; the user's project marker files determine which
+server(s) actually spawn at runtime.
 
 If LSP server is NOT installed, present AskUserQuestion:
 
@@ -404,6 +410,52 @@ Methodology-to-Mode Mapping Reference:
 
 ---
 
+## Phase 4.1a: DB Detection
+
+Purpose: Detect database technology from generated documentation and dependency
+files to conditionally propose `/moai db init` in Next Steps.
+
+[HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed.
+
+Steps:
+
+1. Check `.moai/project/tech.md` exists. If not: set `detected_db=false` and skip to Phase 4.2.
+2. Grep `tech.md` for DB engine keywords (case-insensitive). See Detection Keywords Reference → DB Engines section.
+3. Glob for dependency manifests across all 16 supported languages (see Detection Keywords Reference → Dependency Files section).
+4. For each found manifest file ≤ 1 MB: grep for ORM/ODM keywords relevant to that language (see Detection Keywords Reference → ORMs / ODMs by Language section).
+5. Aggregate matches into: `{detected, matched_keywords[], source_files[], scanned_at, tech_md_hash}`.
+6. Write state artifact at `.moai/state/db-detection.json`.
+7. Proceed to Phase 4.2 with `detected_db` flag.
+
+Guidance message on user selection (REQ-009):
+When the user selects the `/moai db init` option from Next Steps, display this message before terminating `/moai project`:
+
+> `/moai db init` will run 4 interview rounds (engine selection, connection config, schema survey, migration strategy) and create `.moai/project/db/` templates. Run it in your next turn.
+
+Then terminate `/moai project` — do NOT auto-execute `/moai db init` (REQ-010). The user invokes it themselves in a subsequent turn.
+
+File size limit: 1 MB. Skip any manifest file larger than 1 MB to avoid scanning generated lockfiles (e.g., `package-lock.json`, `poetry.lock`, `Cargo.lock`).
+
+Tool choice: Grep with `-i` (case-insensitive) for keyword matching; Glob for manifest discovery.
+
+Edge case (REQ-011): If `.moai/project/tech.md` does not exist (e.g., Phase 3 failed or was skipped), Phase 4.1a SHALL skip gracefully without error, set `detected_db=false`, and proceed to Phase 4.2 with the original three options unchanged.
+
+State artifact schema (REQ-013): `.moai/state/db-detection.json` contains:
+
+```json
+{
+  "detected": true,
+  "matched_keywords": ["prisma", "postgresql"],
+  "source_files": ["package.json", ".moai/project/tech.md"],
+  "scanned_at": "2026-04-21T12:00:00Z",
+  "tech_md_hash": "<sha256-of-tech.md-content>"
+}
+```
+
+The `tech_md_hash` field enables stale-detection: if `tech.md` content changes between runs, Phase 4.2 can detect that the cached detection result is outdated and re-trigger Phase 4.1a.
+
+---
+
 ## Phase 4: Completion
 
 ### Step 4.1: Content Summary Report
@@ -441,11 +493,33 @@ Development Mode: [tdd/ddd] (auto-configured in Phase 3.7)
 
 ### Step 4.2: Next Steps
 
-[HARD] After displaying the summary, use AskUserQuestion to ask about next steps.
+[HARD] After displaying the summary, read the `detected_db` flag from `.moai/state/db-detection.json` (written by Phase 4.1a), then use AskUserQuestion to present conditional options based on the three-way branch below.
 
-Next Steps (AskUserQuestion):
+**Branch A — DB detected, `.moai/project/db/` does NOT exist (REQ-006, AC-6):**
 
-- Create SPEC (Recommended): Run /moai plan to define your first feature specification. This is the natural next step after project setup.
+When `detected_db` is true AND `.moai/project/db/` is absent, present these options:
+
+- Initialize DB documentation (`/moai db init`) (Recommended): DB technology was detected in your project. Run `/moai db init` to create database schema documentation, connection config, and migration strategy through a 4-round interview. Recommended before creating SPECs that depend on your data model.
+- Create SPEC: Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
+- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
+- Done: Complete the project setup workflow.
+
+When the user selects "Initialize DB documentation (`/moai db init`)": Display the guidance message from Phase 4.1a and terminate `/moai project`. Do NOT auto-execute `/moai db init`.
+
+**Branch B — DB detected, `.moai/project/db/` already exists (REQ-007, AC-7):**
+
+When `detected_db` is true AND `.moai/project/db/` already exists, present these options (existing order and Recommended flag preserved):
+
+- Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
+- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
+- Done: Complete the project setup workflow.
+- Refresh DB documentation (`/moai db refresh`): DB documentation already exists. Run `/moai db refresh` to incorporate changes from an updated `tech.md` or schema evolution. This will update `.moai/project/db/` without re-running the full interview.
+
+**Branch C — DB not detected (REQ-008, AC-8):**
+
+When `detected_db` is false, present the original three options unchanged:
+
+- Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
 - Done: Complete the project setup workflow.
 
@@ -460,8 +534,173 @@ Next Steps (AskUserQuestion):
 - Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
+- Phase 4.1a: MoAI orchestrator (automatic DB detection via Grep/Glob, no user interaction)
 
 ---
 
-Version: 2.1.0
-Last Updated: 2026-02-10
+## Detection Keywords Reference
+
+Phase 4.1a references the following keyword lists. All matching is case-insensitive. ORM/ODM matches are treated as stronger signals than DB engine name matches alone (mitigates false positives from documentation-only mentions).
+
+### DB Engines
+
+**Relational / SQL:**
+- PostgreSQL
+- MySQL
+- MariaDB
+- SQLite
+- Oracle
+- SQL Server / MSSQL
+- CockroachDB
+- Supabase
+- Neon
+- Planetscale
+
+**NoSQL Document:**
+- MongoDB
+- Firestore
+- Firebase
+- Couchbase
+
+**NoSQL Key-Value / Wide-column:**
+- Redis
+- DynamoDB
+- Cassandra
+- ScyllaDB
+- Riak
+
+**Search / Analytics:**
+- Elasticsearch
+- ClickHouse
+- Snowflake
+- InfluxDB
+
+### Dependency Files (16 MoAI-supported languages + SQL standalone)
+
+| Language (canonical name) | Dependency manifest files |
+|---|---|
+| go | `go.mod`, `go.sum` |
+| python | `requirements.txt`, `pyproject.toml`, `Pipfile`, `setup.py` |
+| typescript | `package.json`, `tsconfig.json` |
+| javascript | `package.json` |
+| rust | `Cargo.toml`, `Cargo.lock` |
+| java | `pom.xml`, `build.gradle` |
+| kotlin | `build.gradle.kts`, `build.gradle` |
+| csharp | `*.csproj`, `packages.config`, `Directory.Packages.props` |
+| ruby | `Gemfile`, `Gemfile.lock`, `*.gemspec` |
+| php | `composer.json`, `composer.lock` |
+| elixir | `mix.exs`, `mix.lock` |
+| cpp | `CMakeLists.txt`, `conanfile.txt`, `conanfile.py`, `vcpkg.json` |
+| scala | `build.sbt`, `project/plugins.sbt` |
+| r | `DESCRIPTION`, `renv.lock` |
+| flutter | `pubspec.yaml`, `pubspec.lock` |
+| swift | `Package.swift`, `Podfile`, `Podfile.lock` |
+| sql-standalone | `migrations/**/*.sql`, `db/migrate/**/*.sql`, `schema.sql` |
+
+### ORMs / ODMs by Language
+
+**Go:**
+- GORM
+- SQLc
+- Ent
+- mongo-go-driver
+- sqlx
+
+**Python:**
+- SQLAlchemy
+- Django ORM (django.db)
+- Tortoise ORM
+- Peewee
+- python-oracledb
+- motor (Mongo async)
+- pymongo
+
+**TypeScript / JavaScript:**
+- Prisma
+- TypeORM
+- Drizzle
+- Sequelize
+- Mongoose
+- Objection
+- Kysely
+- MikroORM
+
+**Rust:**
+- Diesel
+- SQLx
+- SeaORM
+- mongodb (crate)
+- tokio-postgres
+
+**Java:**
+- Hibernate
+- JPA / jakarta.persistence
+- Spring Data
+- MyBatis
+- jOOQ
+
+**Kotlin:**
+- Exposed
+- Ktorm
+- Hibernate (via JVM)
+- JPA (via JVM)
+
+**C#:**
+- Entity Framework (EF Core)
+- Dapper
+- NHibernate
+- LINQ to DB
+
+**Ruby:**
+- ActiveRecord
+- Sequel
+- Mongoid
+- ROM-rb
+
+**PHP:**
+- Eloquent (Laravel)
+- Doctrine
+- Phinx
+- CakePHP ORM
+
+**Elixir:**
+- Ecto
+
+**C++:**
+- SOCI
+- ODB
+- SQLite (direct, via CMake/conan)
+- mongocxx
+
+**Scala:**
+- Slick
+- Doobie
+- Quill
+- ScalikeJDBC
+
+**R:**
+- DBI
+- dplyr (dbplyr backend)
+- RPostgres
+- RSQLite
+- RMariaDB
+
+**Flutter / Dart:**
+- Drift (formerly Moor)
+- sqflite
+- hive
+- isar
+- objectbox
+
+**Swift:**
+- Core Data
+- GRDB
+- Realm
+- SQLite.swift
+- FluentKit (Vapor)
+
+---
+
+Version: 2.2.0
+Last Updated: 2026-04-21
+SPEC: SPEC-PROJECT-DB-HINT-001

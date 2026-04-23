@@ -232,3 +232,40 @@ Official Resources:
 Last Updated: 2026-03-11
 Status: Production Ready
 Version: 3.0.0
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Accessibility is a nice-to-have, not a requirement" | WCAG compliance is a legal requirement in many jurisdictions. It is also a core quality dimension, not optional. |
+| "Dark mode is just inverting colors" | Naive inversion breaks contrast ratios, image visibility, and semantic color meanings. Dark mode is a design exercise. |
+| "The design system is too rigid, I need custom styles" | Custom styles that bypass the design system create inconsistency. Extend the system instead of working around it. |
+| "Icons do not need labels, they are self-explanatory" | Icons are ambiguous without context. Screen readers cannot describe unlabeled icons. Always add aria-label. |
+| "I will handle responsive design at the end" | Responsive retrofitting breaks layouts. Design for the smallest viewport first, then enhance. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Interactive element has no visible focus indicator
+- Color contrast ratio below 4.5:1 for normal text
+- Icon used without aria-label or accompanying text
+- Design token bypassed with hardcoded color or spacing value
+- No dark mode variant defined for a new component
+- Responsive breakpoints absent from new layout components
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Color contrast meets WCAG AA (4.5:1 normal text, 3:1 large text) (show contrast check output)
+- [ ] All interactive elements have visible focus indicators
+- [ ] Icons have accessible names (aria-label or accompanying visible text)
+- [ ] Design tokens used for colors, spacing, and typography (no hardcoded values)
+- [ ] Dark mode renders correctly without broken contrast or invisible elements
+- [ ] Layout tested at mobile (320px), tablet (768px), and desktop (1280px) widths
+
+<!-- moai:evolvable-end -->

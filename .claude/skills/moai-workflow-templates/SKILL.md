@@ -271,3 +271,39 @@ Status: Production Ready (Enterprise)
 Modular Architecture: SKILL.md + 3 core modules
 Integration: Plan-Run-Sync workflow optimized
 Generated with: MoAI-ADK Skill Factory
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will add the template file directly to .claude/, not to internal/template/templates/" | Template-first rule is HARD. Local files are overwritten on moai update. Edit the template source. |
+| "This template is only for our project, so language neutrality does not apply" | Templates ship to every moai init user across 16 supported languages. Neutrality is mandatory. |
+| "make build is slow, I will just copy the file manually" | Manual copy diverges from embedded.go. The next moai update silently reverts the manual copy. |
+| "The template variable is easier to hardcode than to parameterize" | Hardcoded paths break when the user is on a different OS or username. Use Go template variables or $HOME. |
+| "I will skip the template and add a local-only override" | Local overrides are undocumented and non-portable. Prefer a template with conditional rendering. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- New file added to `.claude/` or `.moai/` without a corresponding file in `internal/template/templates/`
+- Template file contains absolute paths (e.g., /Users/username or /home/username)
+- make build not executed after template file changes
+- Template file hardcodes a specific programming language as primary when the skill is language-neutral
+- Go template variable `.HomeDir` used in fallback path inside a `.sh.tmpl` file
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Every new file under `.claude/`, `.moai/`, `.agency/` has a corresponding template source
+- [ ] `make build` succeeds after template changes (show build output)
+- [ ] No absolute user-specific paths in template files (search for /Users/ or /home/)
+- [ ] Template files containing language lists treat all 16 languages equally
+- [ ] `.sh.tmpl` files use `$HOME` for fallback paths, not `.HomeDir`
+- [ ] `diff` between local copy and template output shows no unexpected divergence
+
+<!-- moai:evolvable-end -->

@@ -186,3 +186,38 @@ Latest Versions as of March 2026:
 
 Last Updated: 2026-03-28
 Status: Production Ready
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will customize the component after copying it" | Customization without understanding the original breaks accessibility and keyboard interaction. Read the source first. |
+| "I do not need the CLI, I will copy-paste from the docs" | The CLI handles dependency resolution and file placement. Manual copy misses peer dependencies and path conventions. |
+| "Any color palette works, I will pick one later" | shadcn/ui uses CSS variables tied to the theme. Changing colors later means updating every component that references them. |
+| "I will skip the dark mode variant for now" | shadcn components are designed for light/dark from the start. Skipping dark mode means retrofitting every component later. |
+| "This component is too complex, I will build my own" | shadcn components are battle-tested for accessibility and keyboard navigation. Building your own risks regressions in both. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- shadcn component modified without preserving keyboard navigation behavior
+- Hardcoded color values instead of CSS variables from the theme
+- Component installed manually without using shadcn CLI
+- Missing dark mode styles on newly added components
+- Radix UI accessibility primitives removed during customization
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Components installed via shadcn CLI (show command history)
+- [ ] All color values use CSS variables from the theme (no hardcoded hex)
+- [ ] Dark mode renders correctly for every new component
+- [ ] Keyboard navigation works (Tab, Enter, Escape, Arrow keys) on interactive components
+- [ ] Accessibility attributes preserved from the original shadcn source
+
+<!-- moai:evolvable-end -->
