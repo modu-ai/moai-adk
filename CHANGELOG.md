@@ -5,6 +5,106 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.2] - 2026-04-23
+
+### Summary
+
+Patch release completing the v2.13.0 `/agency` deprecation cycle ahead of schedule and resolving template/local drift across 60+ skill and rule files. The `/agency` redirect wrappers (originally scheduled for removal in the next minor version per REQ-DEPRECATE-003) are now fully removed. Template/local drift that accumulated since v2.13.0 is resolved, restoring HUMAN GATE quality gates, Drift Guard, `effort` field on reasoning-intensive agents, and the v2.13.0 DB Detection pipeline (Phase 4.1a) to local projects.
+
+### Breaking Changes
+
+None. The `/agency` command stubs were already marked DEPRECATED in v2.13.0 with a clear migration path to `/moai design`. Users who did not migrate will now see an "unknown command" error instead of the deprecation redirect.
+
+### Added
+
+- 3 skills synced from template to local: `moai-domain-db-docs`, `moai-workflow-design-context`, `moai-workflow-pencil-integration`
+- Evolvable blocks (`Common Rationalizations`, `Red Flags`, `Verification`) restored across 41 domain/foundation/workflow/library/platform/ref/tool skills
+- v2.13.0 DB Detection (Phase 4.1a) restored in `moai/workflows/project.md` (+257 lines of DB engine/ORM/ODM keyword matrices across 16 supported languages)
+- HUMAN GATE quality gates restored: 6 blocks across `plan.md`, `run.md`, `sync.md`
+- `Drift Guard` section restored in `workflow-modes.md` (non-blocking scope drift check after DDD/TDD cycles)
+
+### Changed
+
+- `user-invocable: false` applied to `moai-domain-brand-design` and `moai-domain-copywriting` skills (internal `/moai design` pipeline components, no longer appear in `/` slash command menu)
+- `effort: high` / `effort: xhigh` field restored on 7 reasoning-intensive agents (evaluator-active, expert-refactoring, expert-security, manager-spec, manager-strategy, plan-auditor, builder-agent) per CLAUDE.md Opus 4.7 HARD rule
+- `skill-authoring.md` updated to Opus 4.7 effort level description (xhigh/max require Opus 4.7+)
+- `lsp-client.md` template updated with powernap v0.1.3 to v0.1.4 upgrade notes (merged in #679)
+- 16-language neutrality table restored in `loop.md`, `references/examples.md`, `references/reference.md` per CLAUDE.local.md Section 22
+
+### Removed
+
+- `/agency` deprecation stubs: 8 command files in `.claude/commands/agency/` and template parallel
+- `.claude/rules/agency/constitution.md` redirect stub and template parallel
+- `/agency (DEPRECATED)` section in CLAUDE.md and template CLAUDE.md
+
+### Fixed
+
+- Template/local skill drift: 41 skill files synced to pick up evolvable blocks added in recent template updates
+- Missing `effort` field on reasoning-intensive agents caused Opus 4.7 to use default reasoning budget instead of configured level
+- `moai/workflows/project.md` local version missing v2.13.0 DB Detection caused `/moai project` to skip DB inspection phase
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.13.2] - 2026-04-23 (한국어)
+
+### 요약
+
+v2.13.0에서 예정된 `/agency` deprecation 제거를 앞당겨 완전 제거하고, v2.13.0 이후 누적된 템플릿/로컬 드리프트 60여 개 파일을 해소하는 패치 릴리즈입니다. REQ-DEPRECATE-003에 따라 다음 minor 버전 예정이던 `/agency` redirect 래퍼가 제거되었고, HUMAN GATE 품질 게이트, Drift Guard, 추론 집약 에이전트의 `effort` 필드, v2.13.0 DB Detection 파이프라인(Phase 4.1a)이 로컬 프로젝트에 복구되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음. `/agency` 명령 스텁은 v2.13.0에서 이미 DEPRECATED로 표기되고 `/moai design` 이주 안내가 제공되었습니다. 미이주 사용자는 이제 deprecation 안내 대신 "unknown command" 오류를 보게 됩니다.
+
+### 추가됨 (Added)
+
+- 로컬 부재 스킬 3개 템플릿에서 동기화: `moai-domain-db-docs`, `moai-workflow-design-context`, `moai-workflow-pencil-integration`
+- 41개 domain/foundation/workflow/library/platform/ref/tool 스킬에 evolvable blocks (`Common Rationalizations`, `Red Flags`, `Verification`) 복구
+- `moai/workflows/project.md`에 v2.13.0 DB Detection (Phase 4.1a) 복구 — 16개 지원 언어의 DB engine/ORM/ODM 키워드 매트릭스 +257줄
+- HUMAN GATE 품질 게이트 복구: `plan.md`, `run.md`, `sync.md`에 6개 블록
+- `workflow-modes.md`에 `Drift Guard` 섹션 복구 (DDD/TDD 사이클 후 non-blocking scope drift 검사)
+
+### 변경됨 (Changed)
+
+- `moai-domain-brand-design`, `moai-domain-copywriting` 스킬에 `user-invocable: false` 적용 (/moai design 내부 파이프라인 컴포넌트, 슬래시 메뉴 노출 제거)
+- 7개 추론 집약 에이전트(evaluator-active, expert-refactoring, expert-security, manager-spec, manager-strategy, plan-auditor, builder-agent)에 `effort: high` / `effort: xhigh` 필드 복구 (CLAUDE.md Opus 4.7 HARD rule 준수)
+- `skill-authoring.md` Opus 4.7 effort level 설명 갱신 (xhigh/max는 Opus 4.7+ 요구)
+- `lsp-client.md` 템플릿에 powernap v0.1.3 → v0.1.4 업그레이드 노트 반영 (#679)
+- CLAUDE.local.md Section 22에 따라 `loop.md`, `references/examples.md`, `references/reference.md`에 16개 언어 중립성 테이블 복구
+
+### 제거됨 (Removed)
+
+- `/agency` deprecation 스텁: `.claude/commands/agency/` 8개 명령 파일 및 템플릿 대응
+- `.claude/rules/agency/constitution.md` redirect 스텁 및 템플릿 대응
+- CLAUDE.md 및 템플릿 CLAUDE.md의 `/agency (DEPRECATED)` 섹션
+
+### 수정됨 (Fixed)
+
+- 템플릿/로컬 스킬 드리프트: 최근 템플릿 업데이트에서 추가된 evolvable blocks를 반영하도록 41개 스킬 동기화
+- 추론 집약 에이전트의 `effort` 필드 누락으로 Opus 4.7이 구성된 레벨 대신 기본 추론 예산을 사용하던 문제 해결
+- `moai/workflows/project.md` 로컬 버전에서 v2.13.0 DB Detection이 누락되어 `/moai project`의 DB 검사 단계가 스킵되던 문제 해결
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.13.1] - 2026-04-23
 
 ### Summary
