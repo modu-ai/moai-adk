@@ -1,1397 +1,1217 @@
-# MoAI-ADK v3.0.0 — Master Design Document
+# MoAI-ADK v3.0.0 — Master Design Document (Ground-Up Redesign)
 
-> Status: DRAFT (Wave 3 — architect synthesis)
-> Based on: Claude Code source analysis (1,903 files, 33MB) + moai-adk-go current state snapshot
-> Date: 2026-04-22
-> Inputs: `.moai/design/v3-research/gap-matrix.md` (194 gaps), `priority-roadmap.md` (56 tiered items), `v3-themes.md` (9 themes), 6 Wave 1 findings files
-> Author directive: Go-idiomatic, evidence-grounded, SPEC-ready
-
----
-
-## Executive Summary
-
-MoAI-ADK v3.0.0 is a capability-parity and foundation release. It closes the largest delta between moai-adk-go and Claude Code's native subsystems (Hook Protocol v2, 4-type Memory, layered settings, plugin manifest) while laying the structural foundations — formal schemas, versioned migrations, discriminated-union team mailbox — that make every subsequent release safer. v3.0.0 ships nine architectural themes (detailed in §3), anchored on 28 proposed SPECs (§8), and intentionally rejects thirteen tempting-but-wrong scopes (§10) to keep the release shippable.
-
-The release is necessary now because moai-adk-go has crossed the scale threshold where ad-hoc configuration no longer works: 104 active SPECs, 50 skills, 22 agents, 502 embedded template files, 35 rule files, and 22 YAML config sections. Claude Code itself ships a versioned migration framework (`CURRENT_MIGRATION_VERSION` counter, `preAction` hook — W1.5 §5.1) and JSON-Schema-validated settings (Zod v4, W1.5 §6.1); moai-adk validates nothing. The cost of introducing schemas and migrations grows linearly with every new SPEC shipped. v3.0.0 is the last cheap moment.
-
-Breaking change scope is deliberately narrow: eight named breaking changes (BC-001 through BC-008, §4), every one paired with a dual-parse shim or opt-out env var, and all concentrated in low-cardinality surfaces (hook authors, team-mode users, config maintainers). User-visible migration effort is one command: `moai migrate v2-to-v3 --dry-run` (§5.1). v3.0 preserves moai's identity verbatim — SPEC-First DDD, TRUST 5, TAG system, @MX protocol, the 50-skill / 22-agent catalog, harness-based quality routing, and the hybrid design system all ship unchanged in behavior.
+> Status: DRAFT (Wave 3 — fresh architect synthesis from 48K words of research)
+> Supersedes: `.moai/design/v3-legacy/docs/major-v3-master-v1.md` (first v3 attempt)
+> Authored: 2026-04-23
+> Review target: Wave 4 SPEC generation (round 2, prefix `SPEC-V3R2-`)
 
 ---
 
-## 1. Vision & Goals
+## 0. Revision History
 
-### 1.1 Product Vision
+This document is the **second** ground-up architectural synthesis for v3. It supersedes the v3-legacy master drafted under the v3 prefix, which conflated CC-architecture mirroring with moai's unique SPEC-governed posture.
 
-MoAI-ADK continues to be the strategic orchestrator layer for Claude Code, specialized for SPEC-First DDD and TDD engineering teams. v3.0.0 reframes this vision around three commitments:
-
-1. **CC-native integration**: moai runs inside Claude Code v2.1.111+ and speaks every authoritative CC subsystem (hooks, memory, settings, plugins, output) with full protocol fidelity. Where CC has a schema, moai validates against it. Where CC has a hook reply contract, moai emits the reply shape.
-2. **Schema-first configuration**: every `.moai/config/sections/*.yaml` file, every hook declaration, every migration step has a formal Go struct + validator/v10 tags + auto-generated JSON Schema. No more silent typos.
-3. **Additive moai differentiation**: SPEC-to-SPEC chaining, SPEC templates, SPEC lifecycle transitions, and the harness-based quality routing are moai-unique — v3 formalizes them as first-class primitives, not afterthoughts.
-
-### 1.2 Design Principles (v3 refined)
-
-Anchored in W1.1–W1.5 observed CC patterns and moai's existing constitution (`.claude/rules/moai/core/moai-constitution.md`):
-
-- **Evidence over inference** — every behavior choice cites a Wave 1 finding (file:line) or a moai-adk source anchor.
-- **Go-idiomatic, minimal-deps** — continue the 9-direct-dep philosophy (W1.6 §14.1). Reject solutions requiring net-new heavy dependencies (OTEL counters, CUE, jsonrpc2 direct). Exception: `go-playground/validator/v10` for schemas (Tier 1 critical).
-- **One-turn fully-loaded agent prompts** — inherit the Opus 4.7 prompt philosophy already ratified (SPEC-OPUS47-COMPAT-001, W1.6 §16 git log).
-- **Reversible changes** — every breaking change has a dual-parse shim or opt-out env var for one minor version.
-- **Verify don't assume** — ship `moai doctor config --fix`, `moai doctor migration --dry-run`, `moai doctor hook --validate` for all v3 additions.
-
-### 1.3 Success Metrics (measurable)
-
-- **MIG-PASS**: `moai migrate v2-to-v3 --dry-run` completes with zero destructive operations on a corpus of 10 representative v2.12 projects.
-- **HOOK-PARITY**: 100% of CC's 27 hook events have moai handlers returning schema-valid `HookOutput` (target: match W1.1 §1 catalog 1:1).
-- **SCHEMA-COVERAGE**: 22/22 YAML config sections have Go struct + validator tags + exported JSON Schema.
-- **AGENT-FRONTMATTER**: 22/22 existing agents compile under v2 frontmatter schema with zero validation errors.
-- **TEMPLATE-DRIFT-ZERO**: Local `.claude/` and template tree byte-identical except for explicitly-protected runtime-managed files (per CLAUDE.local.md §2).
-- **BINARY-SIZE**: `bin/moai` grows by less than 4 MB net from v2.12.0 baseline.
-- **TEST-COVERAGE**: `internal/` packages hold 85%+ line coverage (moai-constitution HARD rule).
-- **DOCS-4LOCALE**: `docs-site/content/{ko,en,ja,zh}/` section parity — zero missing sections per locale (fixes gap matrix #194).
+- **v1 context** — `major-v3-master-v1.md` in the v3-legacy tree focused on enumerating gaps against Claude Code's architecture and proposed direct adoption of most CC subsystems (bridge, feature flags, 52-subcommand CLI). Wave 1 re-read of CC (R3) surfaced that most of those subsystems are implementation details specific to CC's product shape, not structural patterns. v1 also predates the agency absorption and the sprint-contract evaluator memory problem (P-Z01) surfaced in this round.
+- **Why v2 ground-up** — Round 2 research (R1 papers + R2 opensource + R3 CC re-read + R4-R6 moai audits) converged on 12 principles that v1 either missed or mis-ordered (notably Principle 4 "Evaluator Judgments Fresh, Contract State Durable" is new). Wave 2 synthesis produced 72 specific problems in moai v2.13.2 state and 37 pattern candidates with explicit ADOPT/CONSIDER/NOT-NOW disposition. This document is the first artifact to work from that corpus in full.
+- **Scope** — This master document defines the seven-layer architecture, identifies the target SPEC set (~35 SPECs), catalogs breaking changes (BC-V3R2-*), and proposes the phase plan. It does not generate SPEC bodies (Wave 4) and does not implement any code.
 
 ---
 
-## 2. Current State Analysis
+## 1. Executive Summary
 
-### 2.1 Strengths to Preserve
+### 1.1 v3 North Star
 
-From Wave 1.6 (`findings-wave1-moai-current.md`):
+MoAI-ADK v3 is a **SPEC-governed, language-neutral, harness-routed development orchestrator that rides on Claude Code's turn runtime**. It treats the EARS-formatted SPEC document — with its Given/When/Then acceptance criteria and associated @MX tags — as the constitutional contract that every phase (plan, run, sync, design, review, fix, loop, db, mx) reads from and writes to. v3 composes seven structural ideas: (a) Ralph-style file-first persistence with fresh-context iteration for run/loop phases; (b) MetaGPT-style role-specialized multi-agent orchestration for open-ended plan/design work; (c) Agent-as-a-Judge independent adversarial evaluation with **fresh judgments per iteration** and durable Sprint Contract state; (d) Constitutional AI-style declarative governance with FROZEN/EVOLVABLE zones; (e) SWE-agent-style Agent-Computer Interface layered over LSP + @MX + structured hook JSON; (f) LangGraph-style typed state checkpointed at phase boundaries with `interrupt()`-equivalent blocker reports surfacing to AskUserQuestion; (g) TRUST 5 quality gates routed by a 3-level harness system that scales evaluation depth with SPEC complexity.
 
-- **Strong agent catalog** (W1.6 §6): 22 agents organized into Managers (8) / Experts (8) / Builders (3) / Evaluators (2) / Researcher (1); consistent frontmatter fields (`name`, `description`, `tools`, `model`, `permissionMode`, `memory`, `skills`, `hooks`) across all 22.
-- **Skill ecosystem depth** (W1.6 §7): 50 skills spanning `moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-platform-*`, `moai-framework-*`, `moai-library-*`, `moai-ref-*`, `moai-design-*`, `moai-docs-*`. 320 skill markdown files total — Progressive Disclosure Level 2 works.
-- **SPEC-First DDD maturity** (W1.6 §11): 104 active SPECs, triple-file pattern (`spec.md` / `plan.md` / `acceptance.md`), EARS requirements format, YAML frontmatter with `spec_id`/`phase`/`lifecycle`.
-- **Thin command pattern** (W1.6 §8, CLAUDE.local.md §3): 13 `/moai` commands all under 20 LOC body, enforced by `internal/template/commands_audit_test.go`.
-- **Hook registry core** (W1.6 §5.1): `internal/hook/registry.go` with 27 `EventType` constants, lazy TraceWriter initialization, `@MX:ANCHOR fan_in=20+`.
-- **Template system robustness** (W1.6 §4): `go:embed all:templates`, 502 embedded files, provenance-aware deployer (`TemplateManaged` / `UserCreated` / `UserModified`), `validateDeployPath` security.
-- **Hybrid design system** (`.claude/rules/moai/design/constitution.md` v3.3.0): FROZEN/EVOLVABLE zones, GAN Loop contract, Sprint Contract Protocol.
-- **Multi-locale docs** (W1.6 §12): Hugo+Hextra, 4 locales (`ko/en/ja/zh`), `docs-site/scripts/translate.mjs` AI translation, Vercel deployment.
-- **Minimal dependency budget** (W1.6 §14): 9 direct deps, 23 indirect — intentional simplicity.
+Moai v3's unique position: the only agentic development orchestrator that combines a constitutional SPEC contract with adversarial skeptical evaluation, typed phase transitions, sandboxed execution by default, and language-neutral harness routing — betting that explicit, externalized intent plus adversarial verification produces more correct software than any autonomy-maximizing agent, at a complexity cost bounded by harness routing and file-first primitives. *Source: synthesis/design-principles.md §v3 North Star.*
 
-### 2.2 Weaknesses to Address
+### 1.2 What changes vs v2.13.2
 
-From gap-matrix.md and Wave 1.6 §15:
+| Axis | v2 state | v3 state | Source |
+|------|----------|----------|--------|
+| Hook protocol | Exit-code-only | JSON-OR-ExitCode dual protocol | R3 §2 Dec 5, P-H05 |
+| Permission model | Flat `permissions.allow` | 8-source stack with provenance + `bubble` mode | R3 §4 Adopt 2, P-C01 |
+| Execution sandbox | None (approval-only) | Bubblewrap/Seatbelt/Docker default for implementers | R2 §A#5, P-C03 |
+| Skills | 48 (platform triplets, thinking triplet, kitchen-sink domains) | ~24 (merge clusters 1-5) | R4 verdict, P-S01..S14 |
+| Agents | 22 (9 protocol violations, 3 near-identical builders, 4 advisor-only) | ~17 (common-protocol scrub, `manager-cycle`, `builder-platform`) | R5 verdict, P-A01..A23 |
+| Evaluator memory | Cascading across iterations | Fresh per-iteration; Sprint Contract state durable | R1 §9 anti-pattern, P-Z01 |
+| Acceptance criteria | Flat Given/When/Then list | Hierarchical (Agent-as-a-Judge 365-sub-req shape) | R1 §9, E-1 |
+| Workflow surface | Subcommands only (15) | Subcommands × `--mode {autopilot,loop,team}` | R2 §3 OMC, O-4 |
+| Utility subcommands | Multi-agent default | Fixed Agentless pipeline (`/moai fix|coverage|mx|codemaps|clean`) | R1 §25, O-6, P-Z02 |
+| Config loaders | 5 yaml sections template-only (constitution/context/interview/design/harness) | All 23 sections typed + Go loaders | R6 §5.2, P-H06 |
+| Memory model | Informal MEMORY.md | Typed taxonomy (user/feedback/project/reference) + staleness caveat | R3 §4 Adopt 7, M-1, M-5 |
+| Tool layer | Raw `Bash` exposed to agents | 6 canonical ACI commands + LSP + ast-grep, Bash as escape hatch | R1 §11, T-1 |
+| Migration | Explicit `moai migrate agency` | Versioned silent auto-apply at session-start | R3 §2 Dec 10, X-5 |
+| Hardcoded path | `/Users/goos/go/bin/moai` in 26 shell wrappers | `$HOME/go/bin/moai` primary fallback | R6 §2.1, P-H04 |
+| Rule tree | 34 files, duplicate workflow-modes/spec-workflow, misfiled lsp-client.md | 31 files, consolidated | R6 §4, P-H10..H14 |
 
-- **Hook protocol poverty** (gm#4, #5, #6 — Critical): exit-code-only output; no `hookSpecificOutput`, `additionalContext`, `updatedInput`, `systemMessage`.
-- **Zero formal schemas** (gm#156, #157, #163 — Critical): `.moai/config/sections/*.yaml` parsed via `gopkg.in/yaml.v3` with struct tags only; typos silently ignored.
-- **One-shot migrations** (gm#149 — Critical): only `moai migrate agency` exists; no `CURRENT_MIGRATION_VERSION` counter; no `preAction` runner.
-- **Flat settings tier** (gm#164 — High): single `.moai/config/sections/` level; CC has 6-tier precedence (user / project / local / flag / policy / managed).
-- **Ad-hoc team JSON** (gm#71 — Medium): `TeamCreate`/`SendMessage` payloads are untyped; CC has 10 Zod-validated message types.
-- **MEMORY.md unbounded** (gm#44 — Critical): CLAUDE.md has 40K char cap but MEMORY.md does not; CC enforces 200 lines / 25KB with warning appendix.
-- **Memory freshness missing** (gm#50 — High): stale memories (>1 day) propagate without staleness marker.
-- **Agent frontmatter gaps** (gm#56–#63 — High): missing `initialPrompt`, `omitClaudeMd` (5–15 Gtok/week savings per CC BQ data, W1.3 §4.2), `requiredMcpServers`, `maxTurns`.
-- **No plugin system** (gm#140 — High): zero third-party extension path.
-- **Output rendering fidelity** (gm#175, #176, #177 — Medium): moai emits plain text; CC has StructuredDiff, ValidationErrorsList, ProgressBar components ready to render structured output.
+### 1.3 What stays FROZEN
 
-### 2.3 Technical Debt Inventory
+v3 preserves moai's invariants. Each of these is load-bearing and cannot change without constitutional amendment (see Layer 1).
 
-Self-identified in Wave 1.6 §15:
+- **SPEC system + EARS format** — REQ-*, modality vocabulary (ubiquitous/event/state/optional/unwanted), Given/When/Then acceptance. *Source: `.claude/rules/moai/workflow/spec-workflow.md`, design-principles Principle 1.*
+- **TRUST 5 framework** — Tested, Readable, Unified, Secured, Trackable. *Source: `.claude/rules/moai/core/moai-constitution.md`, design-principles Principle 12.*
+- **@MX TAG protocol** — NOTE / WARN (+REASON) / ANCHOR / TODO / LEGACY sub-lines, autonomous agent add/update/remove without human approval. *Source: `.claude/rules/moai/workflow/mx-tag-protocol.md`.*
+- **16-language neutrality** — go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift — equal citizens in `internal/template/templates/`. *Source: CLAUDE.local.md §15.*
+- **Template-First discipline** — every `.claude/`, `.moai/`, `.agency/` file has a twin under `internal/template/templates/`. Local drift is a CI error. *Source: CLAUDE.local.md §2.*
+- **AskUserQuestion-Only-for-Orchestrator** — subagents MUST NOT prompt; missing inputs must surface as structured blocker reports. *Source: `.claude/rules/moai/core/agent-common-protocol.md` §User Interaction Boundary.*
+- **Claude Code as execution substrate** — moai rides on CC's turn runtime; never replaces it. *Source: R3 §6 "moai's big idea".*
 
-1. **project.yaml.template_version drift** (W1.6 §15.4, §15.8, gm#183): `project.yaml:template_version: v2.7.22` vs `system.yaml:moai.version: v2.12.0` — 12 minor versions stale. `moai update` silently skips this field.
-2. **Template/local skill drift** (W1.6 §7.1, §15.1, gm#184): 3 template-only skills (`moai-domain-db-docs`, `moai-workflow-design-context`, `moai-workflow-pencil-integration`) not deployed to local.
-3. **Hook wrapper drift** (W1.6 §5.5, §15.7, gm#185): `handle-permission-denied.sh` missing from local (`.tmpl` exists in template).
-4. **Pre-refactor backups** (W1.6 §15.10): `internal/cli/glm.go.bak` (28,567 bytes), `internal/cli/worktree/new_test.go.bak` (13,700 bytes). Checked in; should be removed.
-5. **Stale coverage artifacts** (W1.6 §13.2, §15.2, gm#188): `coverage.out` / `coverage.html` dated 2026-03-11. Predates many SPEC changes.
-6. **ADR-011 comment drift** (W1.6 §4.6, §15.3, gm#189): `internal/template/embed.go:8-12` claims runtime-generated files excluded, but `.claude/settings.json.tmpl` IS embedded and rendered.
-7. **.agency/ vestigial** (W1.6 §15.6, gm#190): stub redirects in `.claude/commands/agency/*.md` (8 files) + `.claude/rules/agency/constitution.md` (695-byte stub) + `.moai-backups/` folder (April migration snapshot).
-8. **MCP pencil unconfigured in project scope** (W1.6 §16.2, gm#192): `expert-frontend.md` declares 14 `mcp__pencil__*` tools but `.mcp.json` does not list `pencil`.
-9. **Handler count drift** (W1.6 §5.3, §15.5): `InitDependencies()` registers 28 handler calls vs 27 `EventType` constants. `AutoUpdateHandler` is second SessionStart handler via compose pattern; intentional but undocumented.
-10. **docs-site locale lag** (W1.6 §12.2, gm#194): `docs-site/content/en/` lacks `contributing/` and `multi-llm/` sections present in `ko/`.
+### 1.4 Release shape
+
+Nine phases, tagged alpha.1 through GA. Phase labels are ordering, not durations.
+
+| Phase | Tag | Theme |
+|-------|-----|-------|
+| 1 | v3.0.0-alpha.1 | Constitution & Foundation (FROZEN zones, settings layering, migration framework) |
+| 2 | v3.0.0-alpha.2 | Runtime Hardening (hook JSON, 27-event coverage, sandbox layer) |
+| 3 | v3.0.0-alpha.3 | Agent Cleanup (22 → 17, common-protocol scrub, effort calibration) |
+| 4 | v3.0.0-alpha.4 | Skill Consolidation (48 → 24, merge clusters 1-5, retirements) |
+| 5 | v3.0.0-beta.1 | Harness + Evaluator (Sprint Contract fresh judgment, 3-level routing) |
+| 6 | v3.0.0-beta.2 | Multi-Mode Workflow (/moai loop Ralph, /moai design, team mode) |
+| 7 | v3.0.0-rc.1 | Extension (output styles, ACI tools, memdir) |
+| 8 | v3.0.0-rc.2 | Migration Tool + Docs (v2 → v3 migrator, release docs) |
+| 9 | v3.0.0 | GA |
 
 ---
 
-## 3. v3 Architecture Themes
+## 2. Vision & Positioning
 
-Each theme below includes: problem statement, design approach, API/schema sketch (Go-idiomatic), breaking change impact (BC-IDs defined in §4), migration path, and SPEC IDs (defined in §8).
+### 2.1 Mission Statement
 
-### 3.1 Theme 1 — Hook Protocol v2
+Deliver a development orchestrator for Claude Code that makes *SPEC-driven, adversarially-verified, sandboxed, language-neutral* the default posture for any codebase — without asking the user to learn a framework. The SPEC is the contract. TRUST 5 is the quality floor. Claude Code is the runtime. moai is the workflow.
 
-#### Problem statement
+*Source: synthesis/design-principles.md Preamble + Principle 1.*
 
-moai-adk-go hook handlers today emit only exit codes (0 / 2 / other — W1.6 §5.1, `internal/hook/types.go:19-114`). Claude Code's authoritative contract (W1.1 §4, `utils/hooks.ts:747-1335` + `types/hooks.ts:211-226`) expects a rich `HookJSONOutput` with `decision`, `hookSpecificOutput`, `additionalContext`, `updatedInput`, `updatedMCPToolOutput`, `systemMessage`, `suppressOutput`, `stopReason`, `continue`, `watchPaths`. Without this, moai hooks cannot:
-- Inject model-turn context (`additionalContext` — W1.1 §14.3)
-- Rewrite tool input before execution (`updatedInput`)
-- Participate in permission dialogs (`PermissionRequest.decision` — W1.1 §2.1)
-- Register `FileChanged` watches (`SessionStart.watchPaths` — W1.1 §2.1)
-- Block compaction or config changes (`PreCompact`, `ConfigChange` — W1.1 §2.1)
+### 2.2 Differentiation Map
 
-#### Design approach
+| | moai v3 | Claude Code | Ralph (iannuttall) | oh-my-claudecode | Aider | SWE-agent / Agentless |
+|---|---|---|---|---|---|---|
+| Core abstraction | SPEC contract + phases | Turn runtime | Outer loop + prd.json | Multi-mode router + 6-tier memory | Git-commit-native chat | Fixed 3-phase pipeline |
+| Intent source of truth | EARS SPEC + hierarchical acceptance | User prompt | prd.json | User prompt | User prompt + repo-map | GitHub issue text |
+| Evaluation | evaluator-active + Sprint Contract + TRUST 5 | None (runtime only) | None | None | `/undo` via git | Fail-to-pass test delta |
+| Memory | Typed taxonomy (user/feedback/project/reference) + staleness | memdir (user/feedback/project/reference) | `progress.md` + `.ralph/` files | 6-tier + session JSONL | Repo-map + chat | History processor compression |
+| Parallelism | DAG from plan phase + team-mode file ownership | Subagents + teams | Sequential-only | Tmux panes | None | None |
+| Sandboxing | Bubblewrap/Seatbelt/Docker default | None (permissions.allow) | None | None | Git undo | Docker for benchmark only |
+| Language neutrality | 16-language parity FROZEN | Any (via tool names) | Delegates | Primarily English | 100+ via Tree-sitter | Python-only |
+| Surface | 15 subcommands × 3 modes | 52 subcommands | 3 skills | 6 modes + 10+ shortcuts | 9 slash commands | ACI (open/scroll/edit/search) |
+| Extension axis | Skills + agents + hooks + plugins (deferred) | Plugins (3 origins) + skills + agents | Skills (install-time) | OpenClaw hook bridge + tmux | MCP servers | ACI iteration |
+| Quality gate | TRUST 5 harness (minimal/standard/thorough) | Permission approvals | None | Stop-triggers | Review each atomic commit | Linter + test runner |
 
-1. Extend `internal/hook/types.go` `HookOutput` struct to match CC's `HookJSONOutput` shape (already partially exists — W1.6 §5.7 lists `Continue, StopReason, SystemMessage, SuppressOutput, Decision, Reason, HookSpecificOutput, UpdatedInput, Retry, ExitCode`). Add missing: `AdditionalContext`, `UpdatedMCPToolOutput`, `WatchPaths`, `InitialUserMessage`, `NewCustomInstructions`, `UserDisplayMessage`.
-2. Introduce `HookSpecificOutput` as discriminated union tagged by `hookEventName` (Go: interface with `HookEventName() string` method + type-switched marshalers).
-3. Add hook source precedence pipeline (3-tier v3.0: user / project / local). Defer policy / plugin / skill / session / builtin tiers to v3.2 (see §9 open question #4).
-4. Add `if` condition filter pre-spawn (permission-rule syntax `Bash(git *)`, `Read(*.ts)` — W1.1 §3.8). Implemented as a lightweight condition evaluator in `internal/hook/condition.go` reusing existing permission rule parsing.
-5. Add `async: true` / `asyncRewake: true` hook flags with a Go `AsyncHookRegistry` equivalent (`internal/hook/async_registry.go`). Completion signaled via `continue` field in stdout JSON.
-6. Add `once: true` self-removing hook flag with source-of-truth bookkeeping in `.moai/state/hook-once.json`.
-7. Add `CLAUDE_ENV_FILE` mechanism: SessionStart / Setup / CwdChanged / FileChanged hook handlers write to `$CLAUDE_ENV_FILE` temp file; moai's BashTool wrapper sources the file before invocation (W1.1 §4.3).
-8. Upgrade 6 observational handlers (PermissionRequest, PermissionDenied, PreCompact, ConfigChange, InstructionsLoaded, WorktreeCreate, Elicitation/ElicitationResult) to emit structured outputs per CC schema (W1.1 §2.1).
-9. `WorktreeCreate` moves from observational to PROVIDER contract: stdout MUST contain absolute path to created worktree, non-zero exit = failed (W1.1 §14.4, gm#24).
+*Sources: r2-opensource-tools.md §C Design-space taxonomy; r3-cc-architecture-reread.md §6.*
 
-#### API/schema sketch
+### 2.3 FROZEN Zones (what v3 MUST preserve)
+
+Listed verbatim in §1.3. In architectural terms these manifest as:
+
+- Layer 1 constitution codifies all 7 as FROZEN clauses; amendment requires the 5-layer safety gate (S-5) and human approval.
+- Layer 2 enforces SPEC + EARS schema via `moai spec lint`.
+- Layer 3 enforces TRUST 5 via harness routing and agent common-protocol lint.
+- Layer 6 preserves AskUserQuestion monopoly via CI check that scans agent bodies.
+- Layer 7 preserves Template-First via `diff -rq` CI check (already exists per CLAUDE.local.md §2).
+- 16-language neutrality flows through Layer 3 (ACI commands are LSP-backed, powernap-abstracted), Layer 5 (evaluator rubrics per-language), and Layer 6 (language rules in `.claude/rules/moai/languages/`, not skill tree).
+
+---
+
+## 3. Design Principles
+
+Twelve principles govern v3 design decisions. Each is grounded in ≥2 Wave 1 sources. They form a partial order: Tier 1 principles constrain lower tiers when conflicts arise. *Source: synthesis/design-principles.md.*
+
+**Tier 1 — FROZEN invariants**
+
+1. **SPEC as Constitutional Contract** — SPEC with EARS requirements, Given/When/Then acceptance, and typed artifacts is the single source of truth across phases. Context and memory derive from SPEC; they do not override it. *(MetaGPT R1 §7; Constitutional AI R1 §18; R3 §6.)*
+2. **Constitutional Governance with FROZEN/EVOLVABLE Zones** — rules live in declarative constitution files with explicit zones; every amendment is auditable, reversible, canary-tested. *(Constitutional AI R1 §18; ADAS R1 §16 anti-pattern flag; moai design-constitution v3.3.0 §2, §5.)*
+3. **Sandboxed Execution as Default Safety Layer** — implementer agents execute in ephemeral isolated sandbox; approval prompts alone are empirically exploitable. *(R2 §A Pattern 5; OWASP Top 10 for Agentic Apps 2025; Cline npm-token exfiltration R2 §5.)*
+
+**Tier 2 — Structural invariants**
+
+4. **Interface Design Over Tool Count (ACI)** — ACI matters more than number of tools or model capability; design LM-optimized interfaces, not human IDE passthroughs. *(SWE-agent R1 §11, R2 §8 — 8× empirical improvement.)*
+5. **Evaluator Judgments Fresh, Contract State Durable** — Agent-as-a-Judge evaluators start each iteration with no memory of previous judgments; Sprint Contract carries criteria state forward, not reasoning traces. *(Agent-as-a-Judge R1 §9 anti-pattern "errors cascade"; Reflexion R1 §2.)*
+6. **Typed State + Durable Checkpoint at Phase Boundaries** — cross-phase state is a typed schema with immutable updates; `interrupt()`-equivalent surfaces to AskUserQuestion. *(LangGraph R2 §16; DSPy R1 §17; MS Agent Framework R2 §12.)*
+7. **Permission Bubble Over Bypass** — permissions resolve through 8-source stack with provenance; escalate to parent terminal on ambiguity rather than default-allow. *(R3 §4 Adopt 2; R3 §2 Dec 15 bubble mode.)*
+8. **Hook Output = JSON Protocol (Exit Codes Remain as Fallback)** — hook handlers communicate via structured JSON capable of carrying `additionalContext`, `permissionDecision`, `updatedInput`, `systemMessage`, `continue`. Exit codes preserved for backward compat. *(R3 §2 Dec 5, §4 Adopt 4.)*
+
+**Tier 3 — Optimization principles**
+
+9. **Fresh-Context Iteration Over Session Accumulation** — long-horizon tasks decompose into iterations each starting from clean LM context; state persists on disk (SPEC, MX tags, checkpoint files, git). *(Ralph R2 §1-2; Reflexion R1 §2; CC BigQuery 250K wasted calls/day R3 §3.2.)*
+10. **Parallelism via Explicit Dependency DAG** — concurrent tasks represented as explicit DAG with `reads: [paths]` / `writes: [paths]` per agent spawn; not implicit ordering. *(LLMCompiler R1 §15 — 3.7× latency; R3 §2 Dec 9 worktree orthogonality.)*
+11. **Agent Count Matches Task Structure** — well-structured tasks (lint, coverage gap, mx) use Agentless fixed pipelines; open-ended tasks (plan, design) use multi-agent role specialization. *(Agentless R1 §25; R1 §Y divergence matrix.)*
+12. **File-First Primitives Over Framework Abstractions** — prefer git + disk + markdown + YAML substrate; reject frameworks requiring >~500 LOC scaffolding. *(Ralph R2 §1; R2 §B anti-pattern 9 "framework-over-primitives"; CC memdir markdown R3 §1.1.)*
+
+**Conflict resolution**: Tier 1 always wins over Tier 2/3. Same-tier conflicts require SPEC-documented trade-off decisions. Principle 3 (Fresh context) ↔ Principle 6 (Durable checkpoint) resolve via "disk durable, LM context ephemeral." Principle 6/7 (typed state, sandbox) ↔ Principle 12 (file-first) resolve via "keep frameworks thin; total framework budget ≤ 500 LOC." *Source: synthesis/design-principles.md §Principle interaction matrix.*
+
+---
+
+## 4. v3 Architecture — 7 Layers
+
+The architecture is a bottom-up stack. Each layer depends only on layers below it. Cross-cutting concerns (§5) thread across layers but do not introduce new horizontal dependencies.
+
+```
+ ┌─────────────────────────────────────────────────────────────────┐
+ │ Layer 7: Extension   (plugins, output styles, memdir, migrations)│
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Layer 6: Workflow    (plan/run/sync/design/review/fix/loop/...) │
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Layer 5: Harness     (minimal/standard/thorough routing)         │
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Layer 4: Orchestration (agents, teams, tasklist, mailbox)        │
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Layer 3: Runtime     (hooks, permissions, session, sandbox)      │
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Layer 2: SPEC & TAG  (EARS contract + code annotation)           │
+ ├─────────────────────────────────────────────────────────────────┤
+ │ Layer 1: Constitution (FROZEN / EVOLVABLE zone model)            │
+ └─────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1: Constitution
+
+**Purpose.** Define the invariants that no automation may change. Provide the vocabulary and safety gates for evolving everything else.
+
+**Owned SPECs.** `SPEC-V3R2-CON-001`, `-CON-002`, `-CON-003`.
+
+**Core types.**
 
 ```go
-// internal/hook/types.go (v3)
+// internal/constitution/zone.go
+type Zone uint8
+const (
+    ZoneFrozen Zone = iota  // immutable by automation
+    ZoneEvolvable           // amendable via graduation protocol
+)
 
-// HookOutput is the rich JSON reply from a moai hook wrapper.
-// Maps 1:1 to CC's HookJSONOutput (entrypoints/sdk/coreSchemas.ts:806-935).
-type HookOutput struct {
-    // Flow control
-    Continue      *bool   `json:"continue,omitempty"`
-    StopReason    string  `json:"stopReason,omitempty"`
-    SystemMessage string  `json:"systemMessage,omitempty"`
-    SuppressOutput bool   `json:"suppressOutput,omitempty"`
-
-    // Legacy: inherit from v2 (deprecated in v3.2, removed v4.0)
-    Decision string `json:"decision,omitempty"`  // allow | deny | ask | block
-    Reason   string `json:"reason,omitempty"`
-    ExitCode int    `json:"-"`  // synthesized from Decision for backcompat
-
-    // Event-specific payload (discriminated by HookEventName)
-    HookSpecificOutput HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
+type Rule struct {
+    ID         string   // CONST-V3R2-NNN
+    Zone       Zone
+    File       string   // .claude/rules/moai/core/moai-constitution.md#anchor
+    Clause     string   // the HARD-rule text
+    CanaryGate bool     // does amendment require shadow eval?
 }
 
-// HookSpecificOutput is the discriminated union (per event).
-type HookSpecificOutput interface {
-    HookEventName() string
-}
-
-// Concrete variant for PreToolUse.
-type PreToolUseOutput struct {
-    EventName                string                `json:"hookEventName"` // "PreToolUse"
-    PermissionDecision       string                `json:"permissionDecision,omitempty"` // allow|deny|ask
-    PermissionDecisionReason string                `json:"permissionDecisionReason,omitempty"`
-    UpdatedInput             map[string]any        `json:"updatedInput,omitempty"`
-    AdditionalContext        string                `json:"additionalContext,omitempty"`
-}
-
-func (PreToolUseOutput) HookEventName() string { return "PreToolUse" }
-
-// SessionStart — watchPaths is UNIQUE to this event.
-type SessionStartOutput struct {
-    EventName          string   `json:"hookEventName"` // "SessionStart"
-    AdditionalContext  string   `json:"additionalContext,omitempty"`
-    InitialUserMessage string   `json:"initialUserMessage,omitempty"`
-    WatchPaths         []string `json:"watchPaths,omitempty"` // abs paths
-}
-
-// PermissionRequest — decision is a nested allow/deny object.
-type PermissionRequestOutput struct {
-    EventName string                     `json:"hookEventName"` // "PermissionRequest"
-    Decision  *PermissionRequestDecision `json:"decision,omitempty"`
-}
-
-type PermissionRequestDecision struct {
-    Behavior           string           `json:"behavior"` // allow | deny
-    UpdatedInput       map[string]any   `json:"updatedInput,omitempty"`       // allow-only
-    UpdatedPermissions []PermissionRule `json:"updatedPermissions,omitempty"` // allow-only
-    Message            string           `json:"message,omitempty"`            // deny-only
-    Interrupt          bool             `json:"interrupt,omitempty"`          // deny-only
+type AmendmentProposal struct {
+    RuleID       string
+    Before       string
+    After        string
+    Evidence     []Observation
+    CanaryResult CanaryVerdict
+    Contradicts  []string   // rule IDs in conflict
+    Approved     bool       // human approval required
 }
 ```
 
-Hook declaration schema (settings):
+**Key interfaces.**
+- `FrozenGuard.Check(file, clause) bool` — reject writes to FROZEN zone.
+- `Canary.Evaluate(proposal) CanaryVerdict` — shadow-eval against last 3 completed SPECs.
+- `ContradictionDetector.Scan(proposal) []Conflict` — flag rule-level contradictions.
+- `RateLimiter.Admit() bool` — enforce 3/week, 24h cooldown, 50 active learnings cap.
+- `HumanOversight.Approve(proposal) bool` — via AskUserQuestion at the orchestrator.
 
-```yaml
-# .claude/settings.json (hooks section)
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh"
-          if: "Write(*.go) | Edit(*.go)"   # permission-rule syntax
-          async: false
-          once: false
-          timeout: 5
-```
-
-Source precedence merge (v3.0 scope — 3 tiers):
+**Mapped moai subsystem.** `.claude/rules/moai/core/moai-constitution.md` (core invariants) + `.claude/rules/moai/design/constitution.md` v3.3.0 (design subsystem, already FROZEN/EVOLVABLE codified per SPEC-AGENCY-ABSORB-001). v3 generalizes the zone model from design subsystem to core. *Source: pattern-library.md S-4, S-5.*
 
 ```
-resolve(eventType) =
-  merge(
-    userHooks[eventType],      // ~/.moai/hooks.yaml
-    projectHooks[eventType],   // .claude/settings.json
-    localHooks[eventType],     // .claude/settings.local.json
-  )
+ ┌─────────────────────────────────────────┐
+ │ ConstitutionFile ▶ parses HARD clauses  │
+ │        │                                │
+ │        ▼                                │
+ │    Zone {Frozen, Evolvable}             │
+ │        │                                │
+ │        ▼                                │
+ │  5-Layer Safety Gate                    │
+ │    1 FrozenGuard                        │
+ │    2 Canary (shadow 3 SPECs)            │
+ │    3 ContradictionDetector              │
+ │    4 RateLimiter (3/week)               │
+ │    5 HumanOversight (AskUserQuestion)   │
+ │        │                                │
+ │        ▼                                │
+ │  ApplyAmendment → commit + evolution-log│
+ └─────────────────────────────────────────┘
 ```
 
-Dedup key: `{shell}\0{command}\0{if}` (W1.1 §3.9). Duplicate hooks across tiers retained only once; outermost tier wins.
+### Layer 2: SPEC & TAG
 
-#### Breaking change impact
+**Purpose.** Encode intent (SPEC) and in-code invariants (TAG) as durable, parseable, agent-consumable artifacts. This is what makes moai SPEC-governed rather than prompt-governed.
 
-- **BC-001** — Hook output protocol (exit-code-only deprecated)
-- **BC-003** — Hook settings source layering (flat single-tier → 3-tier)
-- **BC-005** — WorktreeCreate provider contract (observational → stdout-is-path)
-- **BC-007** — PermissionRequest decision semantics
-- **BC-008** — PermissionDenied retry semantics
+**Owned SPECs.** `SPEC-V3R2-SPC-001`, `-SPC-002`, `-SPC-003`, `-SPC-004`.
 
-#### Migration path
-
-- **v3.0 dual-parse**: `internal/hook/protocol.go` attempts JSON first; on parse error or empty stdout, falls back to exit-code semantics. `HookOutput.ExitCode` synthesizes from `Decision` field for backward compatibility.
-- **v3.0 warn on legacy**: if a hook returns only exit codes with no JSON, emit a `systemMessage` to the user: "Hook {wrapper-name} uses deprecated exit-code protocol; see docs-site/migration/v3-hooks.md."
-- **v3.2 (next minor)**: the warn becomes an error for new hook declarations; existing hooks with `api_version: 2` (optional frontmatter) retain dual-parse.
-- **v4.0**: exit-code fallback removed entirely.
-- **Opt-out**: `MOAI_HOOK_LEGACY=1` env var disables warn for CI/airgap.
-
-#### SPEC IDs
-
-- SPEC-V3-HOOKS-001 (Hook Protocol v2 rich JSON IO)
-- SPEC-V3-HOOKS-002 (Hook `if` condition + matcher upgrade)
-- SPEC-V3-HOOKS-003 (Hook source precedence, 3-tier)
-- SPEC-V3-HOOKS-004 (Hook event handler richness upgrade, 6 events)
-- SPEC-V3-HOOKS-005 (Hook async / asyncRewake / once / CLAUDE_ENV_FILE)
-- SPEC-V3-HOOKS-006 (Hook permission decision protocol)
-
-### 3.2 Theme 2 — Migration Framework
-
-#### Problem statement
-
-moai-adk has one one-shot migration (`moai migrate agency` per SPEC-AGENCY-ABSORB-001; `internal/cli/migrate_agency.go:569`). With 104 SPECs, 50 skills, 22 agents, and 22 YAML sections, every future breaking change now incurs an ad-hoc script. Wave 1.6 §15.4 also found `project.yaml.template_version` silently stale by 12 minor versions — a defect that a versioned framework would prevent.
-
-Claude Code's `CURRENT_MIGRATION_VERSION` counter (W1.5 §5.1) with ordered, idempotent migration runner firing in `preAction` hook (W1.5 §5.2) is the reference pattern.
-
-#### Design approach
-
-1. Introduce `CURRENT_MIGRATION_VERSION` counter in `.moai/config/sections/system.yaml` (`migration_version: 1`). Counter increments by 1 per landed migration step.
-2. Each migration is a `MigrationStep` implementing:
-```go
-type MigrationStep interface {
-    Version() int           // monotonic, starts at 1
-    ID() string             // e.g., "M01-template-version-sync"
-    Description() string    // human-readable
-    IsIdempotent() bool     // safe to re-run?
-    PreConditionsMet(*MigrationContext) (bool, error)
-    DryRun(*MigrationContext) (MigrationDiff, error)
-    Apply(*MigrationContext) error
-    Rollback(*MigrationContext) error
-}
-```
-3. Migration runner (`internal/core/migration/runner.go`) fires on selected commands only (conservative, see §9 open question #10): `moai init`, `moai update`, `moai doctor`, `moai migrate`. Explicitly NOT on every cobra command (avoids surprise on `moai version`, `moai status`, etc.).
-4. Opt-out: `MOAI_DISABLE_MIGRATIONS=1` environment variable for CI and air-gapped installs.
-5. Every migration snapshots affected files to `.moai/backups/{ISO-8601-timestamp}/` before applying (rollback path).
-6. Initial migration set (dogfood fixes for §2.3 debt):
-   - **M01**: Auto-sync `project.yaml.template_version` with `system.yaml.moai.version` (fixes W1.6 §15.8, gm#183).
-   - **M02**: Archive `.agency/` redirects and `.moai-backups/` to `~/.moai/history/{version}/` (addresses gm#190, gm#191).
-   - **M03**: Hook wrapper drift resolver — deploy missing `handle-permission-denied.sh` (gm#185).
-   - **M04**: Skill drift resolver — deploy 3 template-only skills to `.claude/skills/` (gm#184).
-   - **M05**: Remove `.go.bak` files and stale coverage artifacts (gm#186, gm#187, gm#188).
-7. Post-migration: log to `.moai/reports/migration-{timestamp}.md` with before/after diff summary.
-
-#### API/schema sketch
+**Core types.**
 
 ```go
-// internal/core/migration/context.go
-type MigrationContext struct {
-    ProjectRoot  string
-    ConfigMgr    *config.Manager
-    TemplateSrc  fs.FS             // EmbeddedTemplates()
-    Logger       *slog.Logger
-    DryRun       bool
-    BackupDir    string            // .moai/backups/{timestamp}/
+// internal/spec/ears.go
+type Modality uint8
+const (
+    ModUbiquitous Modality = iota  // "The system SHALL ..."
+    ModEvent                        // "WHEN X, the system SHALL ..."
+    ModState                        // "WHILE Y, the system SHALL ..."
+    ModOptional                     // "WHERE Z, the system SHALL ..."
+    ModUnwanted                     // "IF X, THEN the system SHALL NOT ..."
+)
+
+type EARSRequirement struct {
+    ID         string           // REQ-V3R2-xxx
+    Modality   Modality
+    Condition  string
+    Response   string
+    Acceptance []Acceptance     // Agent-as-a-Judge hierarchical shape (R1 §9)
 }
 
-// internal/core/migration/runner.go
-type Runner struct {
-    steps   []MigrationStep   // registered in init()
-    getVer  func() int        // reads system.yaml.migration_version
-    setVer  func(int) error
+type Acceptance struct {
+    ID       string
+    Given    string
+    When     string
+    Then     string
+    Children []Acceptance       // nested sub-requirements
 }
 
-func (r *Runner) Run(ctx *MigrationContext) (*RunReport, error) {
-    current := r.getVer()
-    pending := filter(r.steps, func(s MigrationStep) bool { return s.Version() > current })
-    sort.Slice(pending, func(i, j int) bool { return pending[i].Version() < pending[j].Version() })
+// internal/mx/tag.go
+type TagKind uint8
+const (
+    MXNote TagKind = iota
+    MXWarn                        // requires MXReason sub-line
+    MXAnchor                      // high fan_in (>=3 callers)
+    MXTodo                        // incomplete; resolved in GREEN
+    MXLegacy                      // no SPEC traceability
+)
 
-    var applied []AppliedStep
-    for _, step := range pending {
-        ok, err := step.PreConditionsMet(ctx)
-        if !ok || err != nil { continue }
-
-        diff, err := step.DryRun(ctx)
-        if err != nil { return &RunReport{Applied: applied}, err }
-
-        if ctx.DryRun {
-            applied = append(applied, AppliedStep{Step: step, Diff: diff, DryRun: true})
-            continue
-        }
-
-        if err := step.Apply(ctx); err != nil {
-            _ = step.Rollback(ctx)
-            return &RunReport{Applied: applied}, err
-        }
-        if err := r.setVer(step.Version()); err != nil { return nil, err }
-        applied = append(applied, AppliedStep{Step: step, Diff: diff})
-    }
-    return &RunReport{Applied: applied}, nil
+type Tag struct {
+    Kind      TagKind
+    File      string
+    Line      int
+    Body      string
+    Reason    string              // MXWarn only
+    AnchorID  string              // stable ID for cross-reference
+    CreatedBy string              // agent name / "human"
 }
 ```
 
-#### Breaking change impact
+**Key interfaces.**
+- `SPECParser.Parse(path) (*SPEC, error)` — EARS syntax + acceptance hierarchy.
+- `SPECLinter.Check(spec) []Violation` — missing modality, untestable Then, orphan acceptance.
+- `TagScanner.Scan(file) []Tag` — locate @MX in source across 16 languages.
+- `TagResolver.Resolve(anchorID) []Callsite` — fan-in analysis for ANCHOR promotion.
+- `AcceptanceRunner.Exec(acceptance, artifact) Verdict` — run Given/When/Then against built code.
 
-- **BC-004** — Migrations auto-run on init/update/doctor/migrate (was: explicit `moai migrate <name>` only)
+**Mapped moai subsystem.** `.moai/specs/SPEC-*/spec.md` + `.claude/rules/moai/workflow/mx-tag-protocol.md` + `/moai mx` subcommand. v3 upgrades acceptance from flat to hierarchical (enables E-1 Agent-as-a-Judge scoring per sub-criterion).
 
-#### Migration path
+### Layer 3: Runtime
 
-- v3.0 first run: user sees "5 migrations pending. Run with --yes to apply, --dry-run to preview. Or set MOAI_DISABLE_MIGRATIONS=1 to skip."
-- v3.0 `moai init` on fresh project: no migrations run (`migration_version` starts at current count).
-- v3.0 `moai update` on v2.12 project: migrations M01–M05 run in order after template refresh.
+**Purpose.** Safely execute model turns on the user's machine. This is the dense layer — hooks, permissions, session state, sandbox all live here.
 
-#### SPEC IDs
+**Owned SPECs.** `SPEC-V3R2-RT-001`, `-RT-002`, `-RT-003`, `-RT-004`, `-RT-005`, `-RT-006`, `-RT-007`.
 
-- SPEC-V3-MIG-001 (Versioned migration framework)
-- SPEC-V3-MIG-002 (Initial migration set M01-M05)
-
-### 3.3 Theme 3 — Schema & Validation Layer
-
-#### Problem statement
-
-moai has zero formal schemas (W1.6 §10.1). All 22 `.moai/config/sections/*.yaml` files are parsed via `gopkg.in/yaml.v3` with struct tags only; typos like `development_mode: tddd` fail silently and default to zero-value. Claude Code uses Zod v4 with `lazySchema()` and full round-trip safety (W1.5 §6.1, §6.7). Every Tier 1 and Tier 2 theme depends on schemas existing.
-
-#### Design approach
-
-1. Adopt `github.com/go-playground/validator/v10` (Go-native, minimal dep) for struct-tag-based validation. Rejected alternative: CUE (external language, cross-file dependency mismatch with moai's Go-first philosophy; see §9 open question #6).
-2. Introduce `internal/config/schema/` with one file per YAML section (`system_schema.go`, `workflow_schema.go`, etc.). Each defines:
-   - Go struct with `validate:"..."` tags
-   - `Validate() error` method
-   - `JSONSchema() []byte` method (auto-gen via `invopop/jsonschema` or hand-rolled)
-3. Schema registration in `internal/config/schema/registry.go` — maps section name → validator.
-4. `moai doctor config` uses the registry: loads each YAML, validates, reports violations with file:line and a fix suggestion when deterministic.
-5. Settings source layering (v3.0 scope — 3 tiers; 6-tier deferred to v3.2 per §9 open question #4):
-   - `userSettings` — `~/.moai/config/sections/*.yaml`
-   - `projectSettings` — `.moai/config/sections/*.yaml`
-   - `localSettings` — `.moai/config/sections/*.local.yaml` (gitignored)
-6. Deep-merge semantics: maps merged key-by-key; arrays replaced wholesale; scalars overridden. Precedence (last-wins): local > project > user.
-7. JSON Schema export: `make schemas` generates `docs-site/static/schemas/*.json` for editor integration (`$schema` field in YAML heads).
-
-#### API/schema sketch
+**Core types.**
 
 ```go
-// internal/config/schema/quality_schema.go
-package schema
-
-type QualityConfig struct {
-    DevelopmentMode    string  `yaml:"development_mode" validate:"required,oneof=tdd ddd"`
-    TestCoverageTarget int     `yaml:"test_coverage_target" validate:"min=0,max=100"`
-    LSPQualityGates    struct {
-        Plan LSPGateLevel `yaml:"plan" validate:"required,dive"`
-        Run  LSPGateLevel `yaml:"run" validate:"required,dive"`
-        Sync LSPGateLevel `yaml:"sync" validate:"required,dive"`
-    } `yaml:"lsp_quality_gates" validate:"required"`
-    Principles struct {
-        Simplicity struct {
-            MaxParallelTasks int `yaml:"max_parallel_tasks" validate:"min=1,max=50"`
-        } `yaml:"simplicity"`
-    } `yaml:"principles"`
+// internal/hook/response.go
+type HookResponse struct {
+    AdditionalContext  string              `json:"additionalContext,omitempty"`
+    PermissionDecision PermissionDecision  `json:"permissionDecision,omitempty"`
+    UpdatedInput       map[string]any      `json:"updatedInput,omitempty"`
+    SystemMessage      string              `json:"systemMessage,omitempty"`
+    Continue           *bool               `json:"continue,omitempty"`
 }
 
-type LSPGateLevel struct {
-    MaxErrors    int `yaml:"max_errors" validate:"gte=0"`
-    MaxWarnings  int `yaml:"max_warnings" validate:"gte=0"`
+type PermissionDecision string
+const (
+    PermAllow PermissionDecision = "allow"
+    PermAsk   PermissionDecision = "ask"
+    PermDeny  PermissionDecision = "deny"
+)
+
+// internal/permission/stack.go
+type Source uint8
+const (
+    SrcPolicy Source = iota  // managed-settings.json
+    SrcUser                  // ~/.claude/settings.json
+    SrcProject               // .claude/settings.json
+    SrcLocal                 // .claude/settings.local.json
+    SrcPlugin
+    SrcSkill
+    SrcSession
+    SrcBuiltin
+)
+
+type PermissionRule struct {
+    Pattern string  // e.g. "Bash(go test:*)"
+    Action  PermissionDecision
+    Source  Source
+    Origin  string  // file path for provenance
 }
 
-func (c QualityConfig) Validate() error {
-    return validator.New().Struct(c)
+type PermissionMode string
+const (
+    ModeDefault        PermissionMode = "default"
+    ModeAcceptEdits    PermissionMode = "acceptEdits"
+    ModeBypass         PermissionMode = "bypassPermissions"
+    ModePlan           PermissionMode = "plan"
+    ModeBubble         PermissionMode = "bubble"   // escalate to parent terminal
+)
+
+// internal/sandbox/context.go
+type Sandbox string
+const (
+    SandboxNone        Sandbox = "none"
+    SandboxBubblewrap  Sandbox = "bubblewrap"   // Linux
+    SandboxSeatbelt    Sandbox = "seatbelt"     // macOS
+    SandboxDocker      Sandbox = "docker"       // CI
+)
+
+// internal/session/state.go
+type PhaseState struct {
+    Phase       Phase       // plan | run | sync | design
+    SPECID      string
+    Checkpoint  Checkpoint  // typed snapshot
+    BlockerRpt  *BlockerReport  // interrupt()-equivalent
+    UpdatedAt   time.Time
 }
 ```
 
-Doctor command behavior:
+**Key interfaces.**
+- `HookDispatcher.Fire(event HookEvent, payload) HookResponse` — JSON-first, exit-code fallback.
+- `PermissionResolver.Resolve(tool, input, ctx) HookResponse` — walk 8-source stack.
+- `SandboxLauncher.Exec(cmd []string, sandbox Sandbox) (output, error)` — ephemeral isolated process.
+- `SessionStore.Checkpoint(phase, state)` / `Hydrate(phase) State` — file-first at `.moai/state/`.
+
+**Mapped moai subsystem.** `internal/hook/*.go` (27 handlers), `internal/cli/deps.go` (registration), `.claude/hooks/moai/*.sh` (26 shell wrappers), `.claude/settings.json` (25 event registrations). v3 addresses R6 audit findings: 10 logging-only stubs upgraded or retired; hardcoded `/Users/goos/go/bin/moai` replaced with `$HOME/go/bin/moai`; JSON protocol added; subagent-stop tmux pane cleanup bug fixed (P-H02). *Source: r6-commands-hooks-style-rules.md §2, problem-catalog.md Cluster 3.*
 
 ```
-$ moai doctor config
-Checking .moai/config/sections/quality.yaml...
-  ERROR development_mode: "tddd" is not one of [tdd ddd] (line 3)
-    suggestion: did you mean "tdd"?
-  ERROR test_coverage_target: 150 must be <= 100 (line 7)
-    suggestion: must be between 0 and 100
-
-Run 'moai doctor config --fix' to auto-repair recoverable issues.
-2 errors in 1 file.
+ ┌──────────────────────────────────────────────────────┐
+ │ Event → ShellWrapper → moai hook <event>             │
+ │                              │                        │
+ │                              ▼                        │
+ │                   HookDispatcher (Go handler)         │
+ │                              │                        │
+ │         ┌────────────────────┼────────────────────┐  │
+ │         ▼                    ▼                    ▼  │
+ │   PermissionStack     SandboxLauncher      SessionStore│
+ │   (8-source, prov.)   (bwrap/seatbelt)    (.moai/state)│
+ │         │                    │                    │  │
+ │         └────────────────────┼────────────────────┘  │
+ │                              ▼                        │
+ │              HookResponse (JSON or exit code)         │
+ └──────────────────────────────────────────────────────┘
 ```
 
-#### Breaking change impact
+### Layer 4: Orchestration
 
-- **BC-002** — Settings source layering (flat → 3-tier)
-- **BC-006** — Strict config validation (typos previously silent now fail)
+**Purpose.** Launch and coordinate agents; manage teams, mailboxes, and task ledgers. This is where CC's `Agent()` tool is wrapped and moai's team primitives (`TeamCreate`, `SendMessage`, `TaskCreate/Update/List/Get`) live.
 
-#### Migration path
+**Owned SPECs.** `SPEC-V3R2-ORC-001`, `-ORC-002`, `-ORC-003`, `-ORC-004`, `-ORC-005`.
 
-- v3.0 first `moai update` or `moai init`: runs `doctor config --fix` in auto-repair mode. Unrecoverable errors require user intervention.
-- v3.0 dual-parse: if any YAML fails schema validation, fall back to v2 lenient parsing BUT emit `systemMessage` warning: "Config section {name} failed v3 schema; using v2 best-effort parse. See docs-site/migration/v3-schemas.md."
-- v3.2: strict mode default on; lenient fallback opt-in via `MOAI_CONFIG_STRICT=0`.
+**Core types.**
 
-#### SPEC IDs
-
-- SPEC-V3-SCH-001 (Formal config schemas + validator/v10 + JSON Schema export)
-- SPEC-V3-SCH-002 (Settings source layering, 3-tier)
-
-### 3.4 Theme 4 — Agent Frontmatter Expansion
-
-#### Problem statement
-
-moai agents support `name`, `description`, `tools`, `model`, `permissionMode`, `memory`, `skills`, `hooks` (W1.6 §6.3). Claude Code's agent model supports additionally: `memory: user|project|local`, `initialPrompt`, `requiredMcpServers`, `omitClaudeMd`, `maxTurns`, `criticalSystemReminder_EXPERIMENTAL`, `background`, `isolation` (W1.3 §4.2, §8.1). Notably, `omitClaudeMd` alone saves 5–15 Gtok/week per CC BigQuery telemetry (W1.3 §4.2), extremely relevant for moai's high-volume Explore-style research agents.
-
-#### Design approach
-
-1. Extend agent frontmatter parser (`internal/template/deployer.go` + agent-loading path) to accept the new fields.
-2. Validate per `internal/config/schema/agent_schema.go`:
 ```go
+// internal/agent/frontmatter.go
 type AgentFrontmatter struct {
-    Name          string `yaml:"name" validate:"required,slug"`
-    Description   string `yaml:"description" validate:"required"`
-    Tools         string `yaml:"tools"` // CSV string; parsed to []string
-    Model         string `yaml:"model" validate:"oneof=opus sonnet haiku inherit"`
-    PermissionMode string `yaml:"permissionMode" validate:"oneof=default plan acceptEdits bypassPermissions"`
+    Name           string
+    Description    string
+    Model          string            // sonnet | opus
+    Effort         Effort            // low | medium | high | xhigh | max
+    PermissionMode PermissionMode
+    Isolation      Isolation         // none | worktree
+    Sandbox        Sandbox           // inherits Layer 3 enum
+    Memory         MemoryScope       // none | project | user
+    Tools          []string          // CSV allowed-tools
+    Skills         []string          // preloaded skills (YAML list)
+    Hooks          []HookBinding     // agent-scoped PreToolUse/PostToolUse
+}
 
-    // v3 additions
-    Memory             string   `yaml:"memory" validate:"omitempty,oneof=user project local"`
-    InitialPrompt      string   `yaml:"initialPrompt"`
-    RequiredMcpServers []string `yaml:"requiredMcpServers"`
-    OmitClaudeMd       bool     `yaml:"omitClaudeMd"`
-    MaxTurns           int      `yaml:"maxTurns" validate:"min=0"`
-    CriticalSystemReminderExperimental string `yaml:"criticalSystemReminder_EXPERIMENTAL"`
-    Background         bool     `yaml:"background"`
-    Isolation          string   `yaml:"isolation" validate:"omitempty,oneof=none worktree"`
-    Skills             []string `yaml:"skills"`                            // already partial
-    Hooks              map[string][]AgentHook `yaml:"hooks"`               // already partial
-    Effort             string   `yaml:"effort" validate:"omitempty,oneof=low medium high xhigh max"`
+// internal/team/team.go
+type Team struct {
+    ID          string
+    Config      TeamConfig           // ~/.claude/teams/{id}/config.json
+    Teammates   map[string]Teammate  // name → config entry
+    Mailboxes   map[string]Mailbox
+    TaskList    *TaskList
 }
 ```
-3. Default `omitClaudeMd: false` (§9 open question #9 — opt-in, never default-on). Candidates for opt-in in v3.0: `researcher`, `plan-auditor`, `evaluator-active`.
-4. `requiredMcpServers` availability check fires at agent spawn time; 30-second timeout matching CC (W1.3 §4.2). Fails-fast with blocker report if server unavailable.
-5. `background` as frontmatter field complements spawn-time `Agent(background: true)`. Frontmatter value is a DEFAULT; spawn-time overrides.
-6. `isolation` as frontmatter field formalizes current convention (`.claude/rules/moai/workflow/worktree-integration.md`). Spawn-time override remains authoritative.
-7. Fork subagent primitive (Tier 2, simplified scope for v3.0): `Agent()` call without `subagent_type` inherits parent's system prompt (NOT cache-identical prefix — that's v3.1). Recursion depth cap: 2 (parent → fork → leaf). Enforced by `internal/cli/deps.go` agent spawn dispatcher.
 
-#### API/schema sketch
+**Key interfaces.**
+- `AgentSpawner.Spawn(name, prompt, overrides) AgentHandle` — wraps CC `Agent()` tool.
+- `CommonProtocolLinter.Check(agent) []Violation` — reject `AskUserQuestion` in body, `Agent` in tools, missing `effort`.
+- `TeamCoordinator.Create(roster []string) Team` — static or dynamic roster.
+- `Mailbox.Send(target, msg)` / `Recv() Message` — SendMessage abstraction.
+- `TaskList.Claim() *Task` — FIFO with dependency check.
 
-```yaml
-# .claude/agents/moai/researcher.md (v3 frontmatter)
----
-name: researcher
-description: Read-only research agent. Use for codebase discovery.
-tools: Read, Grep, Glob, WebSearch, WebFetch
-model: opus
-permissionMode: plan
+**Mapped moai subsystem.** `.claude/agents/moai/*.md` (22 → 17 in v3). v3 merges builders (3 → 1 `builder-platform`), merges manager-ddd/tdd (→ `manager-cycle`), retires advisor-only experts (expert-debug → manager-quality sub-mode; expert-testing folded into manager-cycle + expert-performance). *Source: r5-agent-audit.md §Recommended v3 agent inventory, problem-catalog.md Cluster 6.*
 
-# v3 additions
-memory: project                 # project-scoped persistent memory
-omitClaudeMd: true              # skip CLAUDE.md to save ~15Ktok/spawn
-maxTurns: 30                    # hard cap
-requiredMcpServers: [context7]  # block if context7 unavailable
-effort: high                    # Opus 4.7 effort level
-skills:
-  - moai-foundation-cc
-  - moai-foundation-core
----
-```
+Dynamic team generation (SPEC-TEAM-001 in v2) preserved: teammates spawned via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles (researcher / analyst / architect / implementer / tester / designer / reviewer). No static team agent files. *Source: CLAUDE.md §4 Dynamic Team Generation.*
 
-#### Breaking change impact
+### Layer 5: Harness
 
-None — all additions are optional. Existing 22 agents work unchanged under v3 schema.
+**Purpose.** Route quality depth (minimal / standard / thorough) based on SPEC complexity and user opt-in. Own the evaluator-active flow, Sprint Contract negotiation, and GAN loop contract.
 
-#### Migration path
+**Owned SPECs.** `SPEC-V3R2-HRN-001`, `-HRN-002`, `-HRN-003`.
 
-- v3.0 `moai update` re-parses existing agent definitions against v3 schema. Validation errors reported but non-blocking (legacy allowed).
-- Per-agent opt-in: edit frontmatter to add new fields as needed.
-
-#### SPEC IDs
-
-- SPEC-V3-AGT-001 (Agent frontmatter v2 bundle: memory / initialPrompt / requiredMcpServers / omitClaudeMd / maxTurns / critical / background / isolation / effort)
-- SPEC-V3-AGT-002 (Built-in moai agents: Explore / Plan moai-augmented versions)
-- SPEC-V3-AGT-003 (Fork subagent primitive, simplified scope)
-
-### 3.5 Theme 5 — Memory 2.0 Alignment
-
-#### Problem statement
-
-CC's `memdir` contract (W1.2 §6) mandates 4-type taxonomy (user/feedback/project/reference), 200-line / 25KB entrypoint truncation, freshness markers via `<system-reminder>` for memories older than 1 day, path security validation (non-absolute reject, tilde-only reject, UNC reject, null byte reject, NFKC attack reject — W1.2 §6.3). moai already uses the 4-type TAXONOMY implicitly (via `~/.claude/projects/-*/memory/MEMORY.md` format) but does NOT enforce truncation, freshness, or path security. Current MEMORY.md is unbounded; CLAUDE.md has 40K cap (`.claude/rules/moai/development/coding-standards.md`) but MEMORY.md does not.
-
-#### Design approach
-
-1. `internal/core/memory/truncate.go`: enforce `MAX_ENTRYPOINT_LINES=200` and `MAX_ENTRYPOINT_BYTES=25000` with human-readable warning appendix: `> [Truncated at {N} lines / {M} bytes — see .moai/reports/memory-truncation-{timestamp}.md for full content]`.
-2. `internal/core/memory/freshness.go`: compute memory age from `mtime`. Files >1 day old get a wrapping `<system-reminder>Memory file {path} last modified {relative-age}; content may be stale.</system-reminder>`.
-3. `internal/core/memory/validate.go`: port CC's `validateMemoryPath` rules faithfully (W1.2 §6.3).
-4. `internal/core/memory/taxonomy.go`: enforce 4-type classification. Each MEMORY.md has YAML frontmatter:
-```yaml
----
-memory_type: project  # user | feedback | project | reference
-last_validated: 2026-04-22T12:00:00Z
----
-```
-5. LLM-based relevance selection (T2-MEM-02, opt-in): `memory.yaml.llm_relevance.enabled: false` default. When enabled, runs a Haiku-class side query with memory candidates and picks top-5 relevant (configurable via `top_k`). Cost: ~$0.01-0.03 per turn; telemetry-driven evaluation for default-on in v3.2.
-
-#### API/schema sketch
+**Core types.**
 
 ```go
-// internal/core/memory/types.go
+// internal/harness/level.go
+type Level string
+const (
+    LevelMinimal  Level = "minimal"
+    LevelStandard Level = "standard"
+    LevelThorough Level = "thorough"
+)
+
+// internal/harness/sprint.go
+type SprintContract struct {
+    Iteration int
+    Checklist []CriterionState        // per acceptance criterion
+    Priority  EvalDimension           // DesignQuality | Originality | Completeness | Functionality
+    Tests     []TestScenario          // Playwright or language-specific
+    // FRESH JUDGMENT: evaluator sees no prior judgment reasoning
+    EvaluatorMemoryScope MemoryScope  // always PerIteration per Principle 4
+}
+
+type CriterionState struct {
+    CriterionID string
+    Status      Status                // Passed | Failed | Refined | New
+    Evidence    string                // test output, artifact paths
+    Score       float64               // 0.0-1.0, rubric-anchored
+}
+
+// internal/harness/evaluator.go
+type EvaluatorProfile struct {
+    Name          string              // default | strict | lenient | frontend
+    PassThreshold float64             // floor 0.60 FROZEN (design-constitution §5)
+    MaxIterations int                 // default 5
+    Escalation    int                 // default 3
+    StrictMode    bool
+    Rubrics       map[string]Rubric   // per-criterion 0.25/0.50/0.75/1.0 anchors
+}
+```
+
+**Key interfaces.**
+- `HarnessRouter.Route(spec) Level` — complexity estimator.
+- `SprintContractNegotiator.Propose(spec, iter) SprintContract` — evaluator-active proposes; Actor may request adjustment.
+- `EvaluatorRunner.Score(contract, artifact) ScoreCard` — fresh context per iteration.
+- `GanLoop.Execute(spec) Result` — Builder/Evaluator with max_iterations cap.
+
+**Mapped moai subsystem.** `.moai/config/sections/harness.yaml` + `.moai/config/evaluator-profiles/` + `evaluator-active` agent + `moai-workflow-gan-loop` skill + `.claude/rules/moai/design/constitution.md` §11 (Sprint Contract Protocol). v3 amends constitution §11.4 to explicitly scope evaluator memory per-iteration, closing P-Z01. v3 adds Go loader for harness.yaml (currently template-only per R6 §5.2). *Source: problem-catalog.md Cluster 4.*
+
+### Layer 6: Workflow
+
+**Purpose.** The user-visible surface. Subcommands, skills, modes, the plan/run/sync pipeline, and all utility subcommands.
+
+**Owned SPECs.** `SPEC-V3R2-WF-001`, `-WF-002`, `-WF-003`, `-WF-004`, `-WF-005`, `-WF-006`.
+
+**Core types.**
+
+```go
+// internal/workflow/mode.go
+type Mode string
+const (
+    ModeAutopilot Mode = "autopilot"  // single-lead
+    ModeLoop      Mode = "loop"       // Ralph fresh-context
+    ModeTeam      Mode = "team"       // multi-agent DAG
+)
+
+type Command struct {
+    Name       string     // plan | run | sync | ...
+    SkillRoute string     // moai:plan
+    MultiAgent bool       // vs Agentless fixed pipeline
+    AllowedModes []Mode
+}
+```
+
+**Subcommand classification.**
+
+| Subcommand | Multi-agent? | Fixed pipeline? | Default mode |
+|---|---|---|---|
+| `/moai plan` | Yes | No | autopilot |
+| `/moai run` | Yes | No | auto (by harness) |
+| `/moai sync` | Yes | No | autopilot |
+| `/moai design` | Yes | No | autopilot |
+| `/moai db` | No | Yes | — |
+| `/moai project` | No (interview + doc-gen) | Partial | — |
+| `/moai fix` | **No (Agentless)** | Yes | — |
+| `/moai coverage` | **No (Agentless)** | Yes | — |
+| `/moai codemaps` | **No (Agentless)** | Yes | — |
+| `/moai mx` | **No (Agentless)** | Yes | — |
+| `/moai clean` | **No (Agentless)** | Yes | — |
+| `/moai loop` | **No (outer Ralph)** | Yes | loop |
+| `/moai review` | Partial (expert-security agent + checklist) | Partial | autopilot |
+| `/moai e2e` | No | Yes | — |
+| `/moai feedback` | No | Yes | — |
+
+*Source: pattern-library.md O-6 Agentless, design-principles.md Principle 11.*
+
+**Skill consolidation (48 → 24).** Five merge clusters from r4-skill-audit.md:
+
+1. Thinking triplet (foundation-thinking + foundation-philosopher + workflow-thinking) → `moai-foundation-thinking`.
+2. Design cluster (design-craft + domain-uiux) → `moai-design-system`; retain brand-design and copywriting (agency absorption contracts FROZEN).
+3. Database cluster (domain-database + platform-database-cloud) → `moai-domain-database`.
+4. Templates/docs (workflow-templates + docs-generation) → `moai-workflow-project` + `moai-workflow-jit-docs`.
+5. Design tools (moai-design-tools) → split to `moai-tool-figma` + absorb Pencil side into `moai-workflow-pencil-integration`.
+
+**Retired.** moai-tool-svg, moai-docs-generation, moai-foundation-philosopher (merged), moai-workflow-thinking (merged), moai-workflow-templates (merged), moai-platform-database-cloud (merged).
+
+**Mapped moai subsystem.** `.claude/commands/moai/*.md` (15 thin wrappers) + `.claude/skills/` (48 → 24). `/98-github.md` and `/99-release.md` (698 + 890 LOC dev-only commands violating thin-wrapper pattern) extracted to `moai-workflow-github` and `moai-workflow-release` skills. *Source: r6-commands-hooks-style-rules.md §1.2, problem-catalog.md P-H08, P-H09.*
+
+### Layer 7: Extension
+
+**Purpose.** Controlled extension points — output styles, memdir, migrations. Plugins deferred.
+
+**Owned SPECs.** `SPEC-V3R2-EXT-001`, `-EXT-002`, `-EXT-003`, `-EXT-004`.
+
+**Core types.**
+
+```go
+// internal/memdir/taxonomy.go
+type MemoryType string
+const (
+    MemUser      MemoryType = "user"       // about the developer
+    MemFeedback  MemoryType = "feedback"   // correction patterns
+    MemProject   MemoryType = "project"    // current work state
+    MemReference MemoryType = "reference"  // external pointers
+)
+
 type MemoryEntry struct {
-    Path          string    `yaml:"-"`
-    Type          string    `yaml:"memory_type" validate:"oneof=user feedback project reference"`
-    LastValidated time.Time `yaml:"last_validated"`
-    Content       string    `yaml:"-"`
-    SizeBytes     int       `yaml:"-"`
-    LineCount     int       `yaml:"-"`
-    AgeHours      float64   `yaml:"-"`
+    Type      MemoryType
+    Body      string
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    Stale     bool   // age > staleness_window_days
 }
 
-func Truncate(content string) (truncated string, truncationMark string) {
-    // MAX_LINES=200, MAX_BYTES=25000; return truncation marker on overflow
+// internal/outputstyle/style.go
+type OutputStyle struct {
+    Name                    string
+    Description             string
+    KeepCodingInstructions  bool
+    ForceForPlugin          string  // plugin name auto-applies this style
+    Body                    string
 }
 
-func FreshnessPreamble(entry MemoryEntry) string {
-    if entry.AgeHours <= 24 {
-        return ""
-    }
-    return fmt.Sprintf("<system-reminder>Memory file %s last modified %s; content may be stale.</system-reminder>\n",
-        entry.Path, humanize.Time(time.Now().Add(-time.Duration(entry.AgeHours)*time.Hour)))
-}
-```
-
-Config:
-
-```yaml
-# .moai/config/sections/memory.yaml
-memory:
-  truncation:
-    max_lines: 200
-    max_bytes: 25000
-  freshness:
-    stale_threshold_hours: 24
-  llm_relevance:
-    enabled: false         # default off (opt-in for v3.0)
-    model: haiku           # Haiku for cost
-    top_k: 5
-    timeout_seconds: 5
-```
-
-#### Breaking change impact
-
-None — all additions are non-breaking. Users with oversized MEMORY.md files see a one-time truncation notice.
-
-#### Migration path
-
-- Existing MEMORY.md files >200 lines or >25KB: on first load, full content snapshotted to `.moai/reports/memory-truncation-{timestamp}.md`, in-context view truncated. User sees one-time `systemMessage`.
-
-#### SPEC IDs
-
-- SPEC-V3-MEM-001 (MEMORY.md truncation + freshness + 4-type enforcement + path validation)
-- SPEC-V3-MEM-002 (LLM-based memory relevance, opt-in)
-
-### 3.6 Theme 6 — Plugin Ecosystem Parity
-
-#### Problem statement
-
-moai has no plugin system today (gm#140, W1.5 §9.4). CC's plugin system (W1.5 §4) supports 3 plugin kinds (built-in, marketplace, session inline), 5 marketplace source types (github, git, url, directory, file), 6 capabilities (agents, skills, commands, hooks, mcpServers, outputStyles), install scopes (user/project/local), and hot-reload. Full parity is massive (Tier 4 defer); v3.0 ships a reduced-scope v1.
-
-#### Design approach (v3.0 scope — reduced)
-
-1. Plugin manifest at `.moai-plugin/plugin.json`:
-```json
-{
-  "name": "example-moai-plugin",
-  "version": "1.0.0",
-  "description": "Example plugin",
-  "author": "you@example.com",
-  "capabilities": {
-    "agents": ["agents/my-agent.md"],
-    "skills": ["skills/my-skill/"],
-    "commands": ["commands/my-command.md"]
-  },
-  "engines": {
-    "moai": "^3.0.0"
-  }
-}
-```
-2. **v1 scope**: agents + skills + commands ONLY. NO hooks, NO mcpServers, NO outputStyles (defer to v3.2+).
-3. Marketplace source types v1: `github` + `directory` only. Defer git/url/file.
-4. Install scopes: `user` (`~/.moai/plugins/`), `project` (`.moai/plugins/`), `local` (`.moai/plugins/local/`, gitignored).
-5. CLI surface:
-   - `moai plugin install {source}` (source = `github:owner/repo@tag` or local path)
-   - `moai plugin uninstall {name}`
-   - `moai plugin enable {name}` / `moai plugin disable {name}`
-   - `moai plugin update {name}`
-   - `moai plugin list`
-   - `moai plugin marketplace add {url}` / `list` / `remove` / `update`
-   - `moai plugin validate {path}`
-6. Validation (`moai plugin validate`): manifest schema check + content walk (agents valid per schema, skills have SKILL.md, commands are thin routers).
-7. Dependency conflicts: two plugins declaring the same agent `name` → error at install time (no silent override).
-8. Trust: plugins from `github:*` require explicit `--trust` flag on first install; `directory:` plugins require source-pinned commit hash.
-
-#### API/schema sketch
-
-```go
-// internal/plugin/manifest.go
-type PluginManifest struct {
-    Name         string              `json:"name" validate:"required,slug"`
-    Version      string              `json:"version" validate:"required,semver"`
-    Description  string              `json:"description"`
-    Author       string              `json:"author"`
-    Capabilities PluginCapabilities  `json:"capabilities" validate:"required"`
-    Engines      PluginEngines       `json:"engines" validate:"required"`
-}
-
-type PluginCapabilities struct {
-    Agents   []string `json:"agents,omitempty"`   // paths to .md files
-    Skills   []string `json:"skills,omitempty"`   // paths to skill dirs
-    Commands []string `json:"commands,omitempty"` // paths to .md files
-}
-
-type PluginEngines struct {
-    Moai string `json:"moai" validate:"required,semverConstraint"` // e.g., "^3.0.0"
-}
-
-// internal/plugin/installer.go
-type Installer interface {
-    Install(ctx context.Context, source string, scope InstallScope, opts InstallOpts) (*InstallReport, error)
-    Uninstall(ctx context.Context, name string, scope InstallScope) error
-    List(scope InstallScope) ([]InstalledPlugin, error)
-    Validate(path string) (*ValidationReport, error)
+// internal/migration/runner.go
+type Migration struct {
+    Version int
+    Name    string
+    Apply   func(projectRoot string) error  // idempotent
 }
 ```
 
-#### Breaking change impact
+**Key interfaces.**
+- `MemdirStore.Retrieve(query) []MemoryEntry` — LLM-selected relevance (not grep).
+- `MemdirStore.MarkStale(entry)` — freshness caveat wrapping.
+- `OutputStyleLoader.Load(dir) []OutputStyle` — CC-compatible frontmatter.
+- `MigrationRunner.Apply(current int) error` — preAction auto-apply at session-start.
 
-None — plugin system is entirely additive.
-
-#### Migration path
-
-N/A — no prior state to migrate.
-
-#### SPEC IDs
-
-- SPEC-V3-PLG-001 (Plugin system v1: manifest + install + marketplace skills/agents/commands)
-
-### 3.7 Theme 7 — Output Style Contract
-
-#### Problem statement
-
-moai emits plain-text diffs, errors, and progress (W1.4 §8.4). Claude Code's Ink renderer has 146 components ready to render structured content (StructuredDiff, ValidationErrorsList, StatusIcon, ProgressBar, HighlightedCode) — but only if moai emits the right output formats. Zero TUI code required on moai's side — pure output-fidelity theme.
-
-#### Design approach
-
-1. `internal/output/diff.go`: emit `diff --git` format for all file modifications. Replaces plain-text `<<<<<<< / =======` style.
-2. `internal/output/errors.go`: structured errors emitted as YAML lists:
-```yaml
-validation_errors:
-  - severity: error
-    path: .moai/config/sections/quality.yaml
-    line: 3
-    message: 'development_mode: "tddd" is not one of [tdd ddd]'
-    suggestion: 'did you mean "tdd"?'
-```
-3. `internal/output/progress.go`: progress prefixes during long operations. `Progress: 3/10 — running gopls diagnostics`. Integrates with `moai doctor`, `moai update`, `moai migrate`.
-4. `internal/output/code.go`: every code block gets a language fence (` ```go `, ` ```python `, ` ```yaml `).
-5. `internal/output/file_link.go`: absolute paths emitted with OSC-8 hyperlinks when stdout is TTY (detected via `isatty` — already a dep, W1.6 §14.1). Graceful fallback when non-TTY (plain absolute path).
-6. `internal/output/status_icon.go`: `✓` (success), `✗` (error), `⚠` (warning), `ℹ` (info), `○` (pending), `…` (loading). ANSI-colored when TTY.
-7. Output style files under `.claude/output-styles/` use CC-compat frontmatter keys (`name`, `description`, `keep-coding-instructions`, `force-for-plugin`). moai-specific metadata goes under `moai:` prefix:
-```yaml
----
-name: moai-default
-description: Default MoAI output style
-keep-coding-instructions: true
-moai:
-  spec_id: SPEC-V3-OUT-001
----
-```
-
-#### API/schema sketch
-
-```go
-// internal/output/renderer.go
-type Renderer struct {
-    isTTY bool
-    color bool
-}
-
-func (r *Renderer) Diff(oldPath, oldContent, newPath, newContent string) string {
-    // emit "diff --git a/{path} b/{path}" with unified context
-}
-
-func (r *Renderer) ValidationError(errs []ValidationError) string {
-    // YAML list with severity/path/line/message/suggestion
-}
-
-func (r *Renderer) Progress(step, total int, message string) string {
-    return fmt.Sprintf("Progress: %d/%d — %s", step, total, message)
-}
-
-func (r *Renderer) FilePath(path string, line int) string {
-    if r.isTTY {
-        return fmt.Sprintf("\x1b]8;;file://%s#L%d\x1b\\%s:%d\x1b]8;;\x1b\\", path, line, path, line)
-    }
-    return fmt.Sprintf("%s:%d", path, line)
-}
-```
-
-#### Breaking change impact
-
-None — output-only changes; downstream CC rendering unchanged.
-
-#### Migration path
-
-N/A — additive.
-
-#### SPEC IDs
-
-- SPEC-V3-OUT-001 (Output contract v2: diff + errors + progress + language hints + OSC-8)
-
-### 3.8 Theme 8 — Team Protocol v2 (Mailbox + In-process)
-
-#### Problem statement
-
-moai team mode today uses ad-hoc JSON for `SendMessage` payloads (W1.6 feedback memory, gm#71). CC defines 10 Zod-validated message types (W1.3 §6.8): `shutdown_request`, `shutdown_approved`, `shutdown_rejected`, `plan_approval_request`, `plan_approval_response`, `permission_request`, `permission_response`, `sandbox_permission_request`, `sandbox_permission_response`, `task_assignment`. This prevents a whole class of team-mode bugs (silent payload-shape drift).
-
-In-process teammate backend (via goroutine + `context.Context` — gm#68) is deferred to v3.1 (§9 open question #7). v3.0 ships the mailbox schema only.
-
-#### Design approach
-
-1. `internal/team/mailbox/types.go`: 10 typed message structs, each implementing `Message` interface with `Type() string` method.
-2. `SendMessage` adds strict mode: payloads validated against schema before enqueue. Invalid messages rejected with error.
-3. Legacy ad-hoc JSON: accepted with warning log for one minor version (v3.0). Removed in v3.2.
-4. Plan-approval flow (T3-TEAM-03): team lead receives `plan_approval_request` from teammate, sends `plan_approval_response` with `feedback` payload. Implementation in `internal/team/approval/`.
-5. `TEAMMATE_MESSAGES_UI_CAP = 50`: bounded message history per teammate session (prevents 36GB whale sessions per W1.3 §7.2).
-
-#### API/schema sketch
-
-```go
-// internal/team/mailbox/types.go
-type Message interface {
-    Type() string
-    RequestID() string  // for request/response pairing
-}
-
-type ShutdownRequest struct {
-    ReqID     string `json:"request_id" validate:"required,uuid4"`
-    TeamName  string `json:"team_name" validate:"required"`
-    Initiator string `json:"initiator" validate:"required"`
-    Reason    string `json:"reason"`
-}
-func (ShutdownRequest) Type() string        { return "shutdown_request" }
-func (m ShutdownRequest) RequestID() string { return m.ReqID }
-
-type PlanApprovalRequest struct {
-    ReqID        string `json:"request_id" validate:"required,uuid4"`
-    TeammateName string `json:"teammate_name" validate:"required"`
-    PlanPath     string `json:"plan_path" validate:"required"`
-    Summary      string `json:"summary" validate:"required"`
-}
-func (PlanApprovalRequest) Type() string { return "plan_approval_request" }
-
-type PlanApprovalResponse struct {
-    ReqID    string `json:"request_id" validate:"required,uuid4"`
-    Approved bool   `json:"approved"`
-    Feedback string `json:"feedback"`
-}
-func (PlanApprovalResponse) Type() string { return "plan_approval_response" }
-
-// ... (7 more types)
-
-// internal/team/mailbox/registry.go
-var registry = map[string]func() Message{
-    "shutdown_request":      func() Message { return &ShutdownRequest{} },
-    "plan_approval_request": func() Message { return &PlanApprovalRequest{} },
-    // ... 10 types total
-}
-
-func Decode(raw []byte) (Message, error) {
-    var envelope struct{ Type string `json:"type"` }
-    if err := json.Unmarshal(raw, &envelope); err != nil { return nil, err }
-    factory, ok := registry[envelope.Type]
-    if !ok {
-        // legacy ad-hoc payload — return LegacyMessage{RawBytes: raw}
-    }
-    msg := factory()
-    if err := json.Unmarshal(raw, msg); err != nil { return nil, err }
-    if err := validator.New().Struct(msg); err != nil { return nil, err }
-    return msg, nil
-}
-```
-
-#### Breaking change impact
-
-- **BC-008** — ad-hoc JSON accepted for 1 minor version with warning, removed v3.2.
-
-#### Migration path
-
-- v3.0 legacy messages: `LegacyMessage{RawBytes: ...}` wrapper. Handlers receive raw bytes; must self-deserialize. Warning logged.
-- v3.2: unknown `type` rejected outright.
-
-#### SPEC IDs
-
-- SPEC-V3-TEAM-001 (Teammate mailbox v2 schemas, 10 message types, plan-approval flow)
-
-### 3.9 Theme 9 — Internal Cleanup & Template Drift Resolution
-
-#### Problem statement
-
-Eleven self-identified issues from Wave 1.6 §15 (listed in §2.3 above). None of these add capability; they restore integrity. All are low-risk XS-effort fixes that ship as part of the M01–M05 migration set (§3.2 Theme 2).
-
-#### Design approach
-
-1. **T1-CLN-01** (Template drift resolution): migration M03 (hook wrapper) + M04 (skill) deploy the 4 missing files. Byte-identical to template source.
-2. **T1-CLN-02** (`template_version` sync): migration M01 runs one-line YAML patch reading `system.yaml.moai.version` and writing `project.yaml.template_version`. Idempotent.
-3. **T1-CLN-03** (Legacy code removal): migration M05 removes:
-   - `internal/cli/glm.go.bak` (28,567 bytes)
-   - `internal/cli/worktree/new_test.go.bak` (13,700 bytes)
-   - `coverage.out` / `coverage.html` (if older than 30 days)
-4. **Fix ADR-011 comment drift** (gm#189): not a migration — direct source edit in `internal/template/embed.go:8-12`. Ships in v3.0 first PR.
-5. **.agency/ archival** (gm#190, gm#191): migration M02 moves `.claude/commands/agency/*.md` (8 redirect files), `.claude/rules/agency/constitution.md` (stub), `.moai-backups/` folder to `~/.moai/history/v2.12/`. Never deletes.
-6. **docs-site 4-locale sync** (T3-DOC-01, gm#194): delegate to `manager-docs` subagent; uses existing `docs-site/scripts/translate.mjs`. Part of Phase 7 user-facing docs, NOT a migration.
-7. **`.mcp.json` pencil addition** (gm#192): direct source edit in `internal/template/templates/.mcp.json.tmpl` to include `pencil` config block with commentary note about user-scope fallback.
-8. **Handler count doc** (gm#193): add ADR-style comment in `internal/cli/deps.go:151-186` explaining that `AutoUpdateHandler` is a second SessionStart handler via compose pattern.
-
-#### API/schema sketch
-
-```go
-// internal/core/migration/steps/m01_template_version.go
-type M01TemplateVersion struct{}
-
-func (m M01TemplateVersion) Version() int     { return 1 }
-func (m M01TemplateVersion) ID() string       { return "M01-template-version-sync" }
-func (m M01TemplateVersion) Description() string {
-    return "Sync .moai/config/sections/project.yaml:template_version with system.yaml:moai.version"
-}
-func (m M01TemplateVersion) IsIdempotent() bool { return true }
-
-func (m M01TemplateVersion) PreConditionsMet(ctx *MigrationContext) (bool, error) {
-    projectCfg, err := loadYAML(ctx.ProjectRoot + "/.moai/config/sections/project.yaml")
-    if err != nil { return false, err }
-    systemCfg, err := loadYAML(ctx.ProjectRoot + "/.moai/config/sections/system.yaml")
-    if err != nil { return false, err }
-    return projectCfg["template_version"] != systemCfg["moai"].(map[string]any)["version"], nil
-}
-
-func (m M01TemplateVersion) DryRun(ctx *MigrationContext) (MigrationDiff, error) { /* ... */ }
-func (m M01TemplateVersion) Apply(ctx *MigrationContext) error                    { /* in-place YAML edit */ }
-func (m M01TemplateVersion) Rollback(ctx *MigrationContext) error                 { /* restore from backup */ }
-```
-
-#### Breaking change impact
-
-- Minor: users who manually pinned `template_version` may see it change. Mitigated by:
-  - Backup to `.moai/backups/{timestamp}/project.yaml.bak`
-  - One-time notice with rollback instructions
-
-#### Migration path
-
-- All cleanup lives in M01–M05. Users run `moai migrate v2-to-v3` or `moai update` on v3.0 first encounter.
-
-#### SPEC IDs
-
-- SPEC-V3-CLN-001 (Template drift resolution — M03/M04)
-- SPEC-V3-CLN-002 (Legacy code removal — M05 + ADR-011 comment fix)
-- SPEC-V3-CLN-003 (`.agency/` archival + docs drift — M02 + docs-site locale sync)
+**Plugin system (X-4): deferred to v4.** Rationale: moai's extensibility via skills + agents is already sufficient; a second plugin layer would confuse the surface. Revisit if v4 adds a marketplace. *Source: pattern-library.md X-4.*
 
 ---
 
-## 4. Breaking Changes Catalog
+## 5. Cross-Layer Concerns
 
-| BC-ID | Description | v2 Behavior | v3 Behavior | Migration |
-|-------|-------------|-------------|-------------|-----------|
-| **BC-001** | Hook output protocol | Exit codes (0/2/other); minimal JSON | Rich JSON: `decision`, `hookSpecificOutput`, `additionalContext`, `updatedInput`, `watchPaths`, `stopReason`, `systemMessage`, `continue` | Auto: v3.0 dual-parse shim; legacy warn; removed in v4.0. Env escape: `MOAI_HOOK_LEGACY=1` |
-| **BC-002** | Settings source layering | Single tier (`.moai/config/sections/*.yaml`) | 3-tier: user / project / local with deep-merge precedence | Auto: migration M01 preserves existing project-tier values. Opt-in: users create `~/.moai/config/` and `*.local.yaml` as needed |
-| **BC-003** | Hook settings source layering | Hook declarations only in project `.claude/settings.json` | Same 3-tier as BC-002, with per-event dedup key `{shell}\0{command}\0{if}` | Auto: existing hooks become project-tier. No action required |
-| **BC-004** | Migration auto-run | Only explicit `moai migrate <name>` | Auto-run on `moai init`, `moai update`, `moai doctor`, `moai migrate` | Auto: dry-run preview + user confirmation by default. Escape: `MOAI_DISABLE_MIGRATIONS=1` |
-| **BC-005** | WorktreeCreate provider contract | Observational only (log and return) | Provider: stdout MUST contain absolute path; non-zero exit = failed | Manual: users with custom WorktreeCreate hooks must write absolute path to stdout. Detected by `moai doctor hook --validate`; migration M06 optional |
-| **BC-006** | Config schema strict validation | Typos silently ignored (YAML best-effort) | validator/v10 enforcement; unknown fields warn; out-of-range values error | Auto: v3.0 first run invokes `moai doctor config --fix` auto-repair. Unrecoverable errors logged with fix suggestions. Env escape: `MOAI_CONFIG_STRICT=0` |
-| **BC-007** | PermissionRequest decision semantics | Pass-through (handler observational) | Handler can return `decision: {behavior: allow\|deny, updatedInput?, updatedPermissions?, message?, interrupt?}` | Auto: default handler returns neutral (behaves as pass-through). Opt-in via custom wrapper |
-| **BC-008** | Team mailbox structured schema + PermissionDenied retry hint | Observational handler; ad-hoc JSON in team mode | `{retry: boolean}` reply; 10 typed team messages (shutdown, plan_approval, permission, sandbox_permission, task_assignment) | Auto: v3.0 accepts legacy ad-hoc team JSON with warning; strict in v3.2 |
+### 5.1 Typed Memory Taxonomy (pattern M-1)
 
-### Blast radius analysis
+Four memory kinds with distinct lifetimes, each stored in `~/.claude/projects/{hash}/memory/`:
 
-- BC-001: affects hook authors. Current moai-adk-go hook surface = 26 shell wrappers + `internal/hook/registry.go` handlers. All internal wrappers will be rewritten in Phase 2. External hook authors (plugin users, custom scripts) have grace period.
-- BC-002 / BC-003: affects config maintainers. Migration M01 touches `project.yaml:template_version` — one field. No user action required.
-- BC-004: affects `moai init` / `moai update` / `moai doctor` / `moai migrate` command users. Dry-run default; explicit confirmation for apply.
-- BC-005: affects users with custom `handle-worktree-create.sh`. Detection via `moai doctor hook --validate`. Current moai-adk-go handler is observational (W1.6 §5.7) — needs rewrite in Phase 2.
-- BC-006: affects users whose configs have typos. `moai doctor config --fix` auto-repairs.
-- BC-007 / BC-008: affects permission rule authors (rare) and team mode users (experimental).
+| Type | Lifetime | Example |
+|------|----------|---------|
+| `user` | Persistent, rarely changes | "GOOS행님; local dev on macOS; avoid time estimates in reports" |
+| `feedback` | Persistent, correction patterns | "Team tmux pane cleanup — kill-pane before TeamDelete" |
+| `project` | Per-project, current work state | "Active SPEC-V3R2-RT-003; Phase 2; sandbox layer incomplete" |
+| `reference` | Persistent, external pointers | "design-constitution v3.3.0 §11.4 FROZEN" |
 
----
+Retrieval uses LLM-selected relevance (M-5) with a dedicated Sonnet sideQuery; stale entries (>24h) wrapped in `<system-reminder>` with explicit caveat to prevent over-trust. Cross-cuts: Layer 1 (constitution constant pointers), Layer 4 (per-agent memory directories), Layer 7 (memdir loader). *Source: pattern-library.md M-1, M-5; r3-cc-architecture-reread.md §1.1 memdir.*
 
-## 5. Migration Strategy (v2 → v3)
+### 5.2 Multi-Source Permission Resolution (pattern S-1)
 
-### 5.1 `moai migrate v2-to-v3` Tool Design
-
-Single entry point for users on v2.x upgrading to v3.0.
+Permissions resolve via an 8-source ordered stack (priority high → low):
 
 ```
-$ moai migrate v2-to-v3 --help
-Usage: moai migrate v2-to-v3 [flags]
-
-Perform the full v2.x → v3.0 migration. Equivalent to running:
-  moai migrate (runs M01..M05)
-  moai update  (refreshes templates)
-  moai doctor config --fix (auto-repair schema errors)
-
-Flags:
-  --dry-run          Show what would change without applying (default: true for interactive)
-  --yes              Skip confirmation prompts
-  --no-backup        Skip backup snapshot (NOT recommended)
-  --only <step>      Run a single migration step (e.g., "M01")
-  --rollback <ts>    Roll back to a timestamped backup
+ policy > user > project > local > plugin > skill > session > builtin
 ```
 
-Behavior:
+Every rule carries a `Source` tag for `/moai doctor` provenance. Resolution returns `allow | ask | deny + updatedInput?`. Provenance enables: "which file set this rule?" diagnostics, targeted migrations (touch userSettings without disturbing projectSettings), and plugin-hook dedup. Cross-cuts: Layer 3 (runtime enforcement), Layer 4 (agent `permissionMode`), Layer 7 (plugin-contributed rules). *Source: r3-cc-architecture-reread.md §1.3, §4 Adopt 2; pattern-library.md S-1.*
 
-1. Pre-flight check: moai-adk-go v3.0.0+ binary is current (else error "upgrade moai binary first").
-2. Snapshot `.moai/backups/{ISO-8601-timestamp}/` containing changed files.
-3. Run migration steps M01–M05 in order.
-4. Refresh templates via `moai update` logic.
-5. Run `moai doctor config --fix` in auto-repair mode.
-6. Generate summary report `.moai/reports/migration-v2-to-v3-{timestamp}.md`.
-7. Prompt user: "Migration complete. Review changes? (y/N)"
+### 5.3 ACI — Agent-Computer Interface (pattern T-1)
 
-Dry-run mode outputs:
+Six canonical ACI commands form the preferred tool layer for moai agents. Raw `Bash` remains as escape hatch but is discouraged for common moves. Each command returns structured, paginated, LM-optimized responses with a linter guardrail at write time.
 
 ```
-Planned changes:
-
-M01-template-version-sync (idempotent)
-  .moai/config/sections/project.yaml
-    - template_version: v2.7.22
-    + template_version: v2.12.0
-
-M02-agency-archival (one-shot)
-  .claude/commands/agency/ (8 files) → ~/.moai/history/v2.12/commands/agency/
-  .claude/rules/agency/constitution.md → ~/.moai/history/v2.12/rules/agency/
-  .moai-backups/ (folder) → ~/.moai/history/v2.12/backups/
-
-M03-hook-wrapper-drift
-  + .claude/hooks/moai/handle-permission-denied.sh (new)
-
-M04-skill-drift (3 skills added)
-  + .claude/skills/moai-domain-db-docs/ (from template)
-  + .claude/skills/moai-workflow-design-context/ (from template)
-  + .claude/skills/moai-workflow-pencil-integration/ (from template)
-
-M05-legacy-cleanup
-  - internal/cli/glm.go.bak (28,567 bytes)
-  - internal/cli/worktree/new_test.go.bak (13,700 bytes)
-  - coverage.out (dated 2026-03-11, stale)
-  - coverage.html (dated 2026-03-11, stale)
-
-Backup: .moai/backups/2026-04-22T14:30:00Z/
-Apply? (y/N)
+ moai_spec_read          — load SPEC + acceptance criteria, truncated by token budget
+ moai_locate_mx_anchor   — find @MX:ANCHOR by ID, return callsite fan-in
+ moai_run_tests_for_spec — run acceptance tests with fail-to-pass classification
+ moai_lsp_find_references — LSP-backed via powernap, 16-language neutral
+ moai_lsp_workspace_symbols — symbol search across project
+ moai_linter_gated_write — block syntactically-invalid edits before commit
 ```
 
-### 5.2 Backward-Compat Shims (deprecation window)
+Cross-cuts: Layer 2 (SPEC read, MX resolution), Layer 3 (hook PostToolUse validates linter), Layer 6 (workflow uses). *Source: r1-ai-harness-papers.md §11 SWE-agent; pattern-library.md T-1; r2-opensource-tools.md §8.*
 
-| Shim | v3.0 | v3.2 | v4.0 |
-|------|------|------|------|
-| Hook exit-code fallback | dual-parse | warn | remove |
-| Config schema lenient fallback | dual-parse + auto-repair | strict default; opt-out env | strict only |
-| Team mailbox ad-hoc JSON | accept with warning | reject unknown `type` | N/A |
-| `.agency/` stub redirects | retain for backward `moai` command routing | remove | N/A |
+### 5.4 Hook JSON-OR-ExitCode Dual Protocol (pattern T-5)
 
-### 5.3 User-facing Migration Guide Sketch
+Hook handlers emit structured JSON on stdout when they have rich output; empty JSON or missing output falls back to exit code parsing. Fields:
 
-Location: `docs-site/content/{ko,en,ja,zh}/migration/v3.md`
+```
+ additionalContext   — inject text into next model turn
+ permissionDecision  — allow | ask | deny
+ updatedInput        — mutate the tool input mid-turn
+ systemMessage       — user-visible notification
+ continue            — false blocks teammate from idling
+```
 
-Sections:
+Migration: shell wrappers unchanged (they forward stdin/stdout); Go handlers in `internal/hook/*.go` gain typed `HookResponse` return. v3 upgrades 5 critical handlers first (subagent-stop tmux fix, config-change reload, setup, instructions-loaded CLAUDE.md length check, file-changed MX re-scan), then broader migration. Cross-cuts: Layer 3 (protocol definition), Layer 4 (agent-scoped hooks), Layer 5 (Sprint Contract injection via PostToolUse). *Source: r3-cc-architecture-reread.md §2 Dec 5; pattern-library.md T-5.*
 
-1. **Why v3?** — 1-paragraph summary of capabilities gained.
-2. **Who needs to migrate?** — anyone running moai-adk-go v2.x.
-3. **Before you start** — backup checklist, recommended: commit pending changes.
-4. **The one command** — `moai migrate v2-to-v3 --dry-run && moai migrate v2-to-v3 --yes`.
-5. **What changes** — table of affected files per migration step.
-6. **Hook authors** — BC-001/005/007/008 details with before/after examples.
-7. **Config maintainers** — BC-002/003/006 details, schema docs link.
-8. **Team mode users** — BC-008 structured mailbox details.
-9. **Rollback** — `moai migrate v2-to-v3 --rollback {timestamp}`.
-10. **Troubleshooting** — common error recovery paths.
+### 5.5 Multi-Layer Settings with Provenance (pattern X-2)
 
-Each locale maintained per CLAUDE.local.md §17 rules (canonical = ko, translation SLA 48h for en, 72h for zh/ja).
+Every configuration value that enters the merged runtime representation carries a `Source` tag. The merge is deterministic (ordered by the 8-source priority). Provenance is exposed via `moai doctor config dump` and via permission-denial diagnostics. This is the prerequisite for S-1 (permission stack), S-2 (bubble mode), and sandbox routing by source. Cross-cuts: Layer 1 (config is part of constitutional runtime surface), Layer 3 (runtime config), Layer 7 (plugin-contributed settings). *Source: r3-cc-architecture-reread.md §2 Dec 11, §4 Adopt 1; pattern-library.md X-2.*
 
----
+### 5.6 File-First State + Fresh-Context Iteration (Principle 3 + 12)
 
-## 6. Release Plan
+Cross-iteration state is a file on disk; LM context that consumes the state is ephemeral. Canonical layout at `.moai/state/`:
 
-### 6.1 Phase Structure
+```
+ .moai/state/
+   task-ledger.md      # append-only, Magentic pattern (O-3)
+   progress.md         # Ralph-shape per iteration
+   activity.log
+   errors.log
+   runs/{iter-id}/
+     prompt.md
+     response.md
+     artifacts/
+   sprint-contract.yaml
+   checkpoint-{phase}.json
+```
 
-Phases are dependency-ordered, not time-boxed. Each phase closes with a release artifact (tag).
+Cross-iteration reset: each Ralph iteration starts fresh; the prompt rebuilds from the SPEC + state files, not from accumulated transcripts. `STALE_SECONDS` primitive (from Ralph) governs crash-resume. Cross-cuts: Layer 3 (session state), Layer 5 (Sprint Contract state), Layer 6 (loop mode execution). *Source: pattern-library.md R-6; design-principles.md P3, P12.*
 
-- **Phase 1 — Foundation**
-  Schema (T1-SCH-01, T1-SCH-02) + Migration framework (T1-MIG-01, T1-MIG-02 with M01–M05) + ADR-011 comment fix.
-  Artifact: `v3.0.0-alpha.1`.
+### 5.7 Agent-as-Judge Without Memory (pattern E-1 + Principle 4)
 
-- **Phase 2 — Hook Protocol v2 core**
-  T1-HOOK-01 (JSON output), T1-HOOK-02 (if condition), T1-HOOK-03 (async/asyncRewake), T1-HOOK-04 (once), T1-HOOK-05 (3-tier source precedence), T1-HOOK-06 (permission decisions), T1-HOOK-07 (handler richness for 6 events).
-  Artifact: `v3.0.0-alpha.2`.
+**This is the single most important amendment to moai's design subsystem.** Current design-constitution §11.4 (Sprint Contract) retains evaluator memory across iterations; Agent-as-a-Judge paper (R1 §9) explicitly flags this as an anti-pattern: "any errors in previous judgments could lead to a chain of errors."
 
-- **Phase 3 — Agent Runtime v2**
-  T1-AGT-01 (frontmatter bundle), T1-AGT-02 (skills preload formalization), T1-AGT-03 (background frontmatter), T1-SKL-01 (skill frontmatter bundle).
-  Artifact: `v3.0.0-alpha.3`.
+v3 amends the design constitution:
 
-- **Phase 4 — Memory 2.0 (parallel with Phase 3)**
-  T1-MEM-01 (truncation + freshness + 4-type enforcement + path validation).
-  Artifact: folded into next alpha tag.
+- **Sprint Contract state is durable** — passed criteria carry forward (no regression allowed); failed criteria get refined based on evaluator feedback; new criteria may be added if previous sprint revealed gaps.
+- **Evaluator judgment memory is ephemeral** — each iteration spawns evaluator-active with a fresh context that sees only: (a) the BRIEF / SPEC, (b) the Sprint Contract state, (c) the artifact to evaluate. It MUST NOT see prior scoring rationale.
+- Constitutional amendment: `evaluator.memory_scope: per_iteration` added to `.moai/config/sections/design.yaml` and harness.yaml.
 
-- **Phase 5 — Internal Cleanup**
-  T1-CLN-01 (template drift), T1-CLN-02 (template_version), T1-CLN-03 (legacy code).
-  All implemented as migrations in Phase 1's M01–M05; Phase 5 is the documentation + validation of the cleanup.
-  Artifact: `v3.0.0-beta.1`.
-
-- **Phase 6a — Tier 2 Strategic Differentiators**
-  T2-HOOK-10/11/12/13/14 (prompt/agent/http hook types + CLAUDE_ENV_FILE + full 8-tier source precedence), T2-PLG-01/02 (plugin system + marketplace), T2-MEM-02 (LLM relevance), T2-AGT-04/05 (fork subagent + built-in agents), T2-TEAM-01 (team mailbox), T2-DIFF-01 (SPEC-to-SPEC chaining).
-  Artifact: `v3.0.0-beta.2`.
-
-- **Phase 6b — Tier 2 Polish**
-  T2-SKL-02 (context:fork), T2-SKL-03 (dynamic skill discovery), T2-CLI-01 (startup profiler), T2-OUT-01 (output contract).
-  Artifact: `v3.0.0-rc.1`.
-
-- **Phase 7 — Migration Tool + User Docs**
-  `moai migrate v2-to-v3` tool wiring, 4-locale migration guide (docs-site), release notes, CHANGELOG.
-  Artifact: `v3.0.0-rc.2`.
-
-- **Phase 8 — Release Rollout**
-  Final QA on a corpus of 10 v2.12 projects, binary tagging, GitHub Release, announcement to Discord.
-  Artifact: `v3.0.0` (stable).
-
-### 6.2 Phase → SPEC → PR mapping
-
-| Phase | SPECs | Expected PR count |
-|-------|-------|--------------------|
-| 1 | SPEC-V3-SCH-001, SPEC-V3-SCH-002, SPEC-V3-MIG-001, SPEC-V3-MIG-002 | 4–6 PRs (schema split per section, migration per step) |
-| 2 | SPEC-V3-HOOKS-001..006 | 6–8 PRs |
-| 3 | SPEC-V3-AGT-001, SPEC-V3-SKL-001 | 2–3 PRs |
-| 4 | SPEC-V3-MEM-001 | 1–2 PRs |
-| 5 | SPEC-V3-CLN-001..003 | Folded into Phase 1 migration PRs |
-| 6a | SPEC-V3-HOOKS-007/008/009, SPEC-V3-PLG-001, SPEC-V3-MEM-002, SPEC-V3-AGT-002/003, SPEC-V3-TEAM-001, SPEC-V3-SPEC-001 | 9–12 PRs |
-| 6b | SPEC-V3-SKL-002, SPEC-V3-CLI-001, SPEC-V3-OUT-001 | 3–4 PRs |
-| 7 | SPEC-V3-MIGRATE-001 | 2–3 PRs |
-| 8 | none (release workflow) | 1 PR (CHANGELOG bump, tag) |
-
-Target total: ~28–39 PRs across 28 SPECs.
-
-### 6.3 Rollout Strategy (alpha → beta → stable)
-
-- **Alpha**: tagged per phase close (`-alpha.1`..`-alpha.3`). Released to early adopters via Discord opt-in list.
-- **Beta**: `v3.0.0-beta.1` (after cleanup) and `-beta.2` (after Tier 2 strategic). Public but flagged.
-- **RC**: `-rc.1` and `-rc.2`. Feature-frozen; only bug fixes and docs.
-- **Stable**: `v3.0.0`. Tagged and released via goreleaser (`.goreleaser.yml` existing per W1.6 §13.4).
-
-Homebrew / install.sh / install.bat / install.ps1 updated at `v3.0.0` stable (W1.6 §13.4).
+Cross-cuts: Layer 5 (evaluator-active flow), Layer 4 (evaluator agent frontmatter). *Source: r1-ai-harness-papers.md §9 anti-pattern flag; design-principles.md P4; problem-catalog.md P-Z01.*
 
 ---
 
-## 7. Risk Register
+## 6. Problem Resolution Matrix
 
-| Risk ID | Description | Probability | Impact | Mitigation |
-|---------|-------------|-------------|--------|------------|
-| **R-001** | BC-001 hook backward-compat breakage — users with exit-code-only wrappers see regressions | Medium | High | Dual-parse shim for 2 minor versions; `MOAI_HOOK_LEGACY=1` env escape; `moai doctor hook --validate` detects legacy hooks |
-| **R-002** | Migration M01-M05 corrupts user config | Low | Critical | Automatic backup to `.moai/backups/{timestamp}/`; dry-run default; rollback via `moai migrate v2-to-v3 --rollback` |
-| **R-003** | BC-006 schema validation breaks configs with typos | Medium | Medium | `moai doctor config --fix` auto-repair; lenient fallback with warning for 1 minor version; escape via `MOAI_CONFIG_STRICT=0` |
-| **R-004** | Plugin system scope creep (adds hooks/MCP/outputStyles mid-phase) | Medium | High | Explicit scope charter locks v1 to 3 capabilities (agents/skills/commands); full parity deferred to v3.2+; PR reviews reject scope additions |
-| **R-005** | `omitClaudeMd: true` default regression — agents lose rules | Very Low | High | Default is `false`; opt-in per agent; 22 existing agents retain default behavior |
-| **R-006** | Fork subagent recursion — parent spawns child which spawns child, etc. | Low | Medium | Depth cap of 2 enforced in `internal/cli/deps.go` agent dispatcher; detected by `moai doctor agent --validate` |
-| **R-007** | HTTP hook SSRF (T2-HOOK-12) — user writes hook targeting internal network | Low | Critical | Faithful port of CC's `utils/hooks/ssrfGuard.ts` (W1.1 §12); URL allowlist via `policy_settings.allowed_http_hook_urls`; env-var interpolation allowlist |
-| **R-008** | BC-004 migration surprise — users don't expect migrations on `moai update` | Medium | Low | Conservative trigger list (init/update/doctor/migrate only, NOT every command); dry-run default; one-time notice on first upgrade |
-| **R-009** | BC-008 team mailbox legacy JSON breakage | Low | Medium | Accept both shapes for 1 minor version with warning log; strict in v3.2 |
-| **R-010** | docs-site 4-locale translation lag — en/zh/ja behind ko at release | Medium | Low | Use `docs-site/scripts/translate.mjs`; SLA per CLAUDE.local.md §17.3 (ko merge → en within 48h → zh/ja within 72h); block release if locale parity less than 95% |
-| **R-011** | Binary size balloon — plugin + schema + migration adds >4 MB | Low | Medium | Embedded schemas as minified JSON; plugin manifest parsing via `encoding/json` (stdlib); size target enforced by CI check |
-| **R-012** | Fork subagent cache-identical prefix not working in v3.0 | Accepted | Low | Explicitly deferred to v3.1; v3.0 ships inherit-system-prompt only; documented in §9 open question #5 |
+72 problems from `synthesis/problem-catalog.md`. Severity: C=Critical, H=High, M=Medium, L=Low. Resolution type: Fix (direct fix), Redesign (architectural change), Retire (removed), Defer (v3.1+).
 
----
+| Problem | Sev | Addressed by SPEC | Layer | Type |
+|---------|-----|-------------------|-------|------|
+| P-A01 AskUserQuestion in 9 agents | C | SPEC-V3R2-ORC-001, -ORC-002 | 4 | Fix |
+| P-A02 19 agents missing `effort` | H | SPEC-V3R2-ORC-003 | 4 | Fix |
+| P-A03 3 wrong `effort` | H | SPEC-V3R2-ORC-003 | 4 | Fix |
+| P-A04 4 agents dead `Agent` tool | H | SPEC-V3R2-ORC-002 | 4 | Fix |
+| P-A05 3 builders near-identical | H | SPEC-V3R2-ORC-001 | 4 | Redesign (merge) |
+| P-A06 expert-debug router | H | SPEC-V3R2-ORC-001 | 4 | Retire (→ manager-quality sub-mode) |
+| P-A07 expert-testing strategy-only | H | SPEC-V3R2-ORC-001 | 4 | Retire (→ manager-cycle) |
+| P-A08 expert-performance advisor | H | SPEC-V3R2-ORC-001 | 4 | Redesign (grant Write or retire) |
+| P-A09 manager-ddd/tdd 60% overlap | H | SPEC-V3R2-ORC-001 | 4 | Redesign (→ manager-cycle) |
+| P-A10 manager-project 6 modes | H | SPEC-V3R2-ORC-001 | 4 | Redesign (scope shrink) |
+| P-A11 6 agents missing worktree | H | SPEC-V3R2-ORC-004 | 4 | Fix |
+| P-A12 manager-project scope overreach | M | SPEC-V3R2-ORC-001 | 4 | Fix |
+| P-A13 duplicate Skeptical Mandate | M | SPEC-V3R2-ORC-002 | 4 | Fix (extract to common) |
+| P-A14 plan-auditor no memory field | M | SPEC-V3R2-ORC-001 | 4 | Fix |
+| P-A15 Context7 over-included | M | SPEC-V3R2-ORC-001 | 4 | Fix |
+| P-A16 manager-git 14 triggers | L | SPEC-V3R2-ORC-001 | 4 | Fix |
+| P-A17 expert-backend 24 triggers w/ dup | L | SPEC-V3R2-ORC-001 | 4 | Fix |
+| P-A18 dead hook config | M | SPEC-V3R2-ORC-002 | 4 | Fix |
+| P-A19 --deepthink boilerplate × 22 | L | SPEC-V3R2-ORC-002 | 4 | Fix |
+| P-A20 expert-frontend mixed scope | M | SPEC-V3R2-ORC-001 | 4 | Redesign (split Pencil) |
+| P-A21 missing manager-design | M | SPEC-V3R2-ORC-001 | 4 | Defer (evaluate after WF-003) |
+| P-A22 researcher no worktree | H | SPEC-V3R2-ORC-004 | 4 | Fix |
+| P-A23 skills injection parity | L | SPEC-V3R2-ORC-001 | 4 | Fix |
+| P-S01 Thinking triplet overlap | H | SPEC-V3R2-WF-001 | 6 | Redesign (merge) |
+| P-S02 Platform triplets | H | SPEC-V3R2-WF-001 | 6 | Redesign (split/narrow) |
+| P-S03 Kitchen-sink domain skills | H | SPEC-V3R2-WF-001 | 6 | Redesign (router pattern) |
+| P-S04 `moai` root skill 300KB | H | SPEC-V3R2-WF-001 | 6 | Redesign (promote workflows to skills) |
+| P-S05 4 skills over Level 2 budget | M | SPEC-V3R2-WF-001 | 6 | Fix |
+| P-S06 43 bundled files in testing | M | SPEC-V3R2-WF-001 | 6 | Fix |
+| P-S07 reference/ vs references/ | L | SPEC-V3R2-WF-001 | 6 | Fix (lint) |
+| P-S08 moai-lang-* referenced but absent | H | SPEC-V3R2-WF-005 | 6 | Redesign (boundary decision) |
+| P-S09 moai-ref-* zero static refs | M | SPEC-V3R2-WF-001 | 6 | Fix (document activation) |
+| P-S10 moai-tool-svg niche | M | SPEC-V3R2-WF-001 | 6 | Retire |
+| P-S11 moai-docs-generation superseded | M | SPEC-V3R2-WF-001 | 6 | Retire |
+| P-S12 moai-design-tools stapled | M | SPEC-V3R2-WF-001 | 6 | Redesign (split) |
+| P-S13 Design cluster 4-way overlap | M | SPEC-V3R2-WF-001 | 6 | Redesign (merge) |
+| P-S14 moai-workflow-templates nested aggregate | M | SPEC-V3R2-WF-001 | 6 | Retire (→ workflow-project) |
+| P-S15 PD declaration missing in 40% | L | SPEC-V3R2-WF-001 | 6 | Fix |
+| P-S16 moai-foundation-context zero refs | L | SPEC-V3R2-WF-001 | 6 | Fix (merge into core) |
+| P-S17 Level 2 budget inconsistent | L | SPEC-V3R2-WF-001 | 6 | Fix (document ladder) |
+| P-S18 Stale sibling refs | L | SPEC-V3R2-WF-001 | 6 | Fix |
+| P-S19 lang rules vs skills boundary | H | SPEC-V3R2-WF-005 | 6 | Redesign |
+| P-H01 10 logging-only handlers | H | SPEC-V3R2-RT-006 | 3 | Redesign (upgrade or retire each) |
+| P-H02 subagentStop no tmux kill (BUG) | C | SPEC-V3R2-RT-006 | 3 | Fix |
+| P-H03 setupHandler orphan | H | SPEC-V3R2-RT-006 | 3 | Fix (implement or remove) |
+| P-H04 hardcoded /Users/goos path | C | SPEC-V3R2-RT-007 | 3 | Fix |
+| P-H05 exit-code-only hook protocol | H | SPEC-V3R2-RT-001 | 3 | Redesign |
+| P-H06 5 yaml sections no Go loader | C | SPEC-V3R2-MIG-003 | 3,5 | Fix |
+| P-H07 sunset.yaml dormant | M | SPEC-V3R2-MIG-003 | 7 | Fix (activate or retire) |
+| P-H08 /98-github.md 698 LOC | H | SPEC-V3R2-WF-002 | 6 | Redesign (extract skill) |
+| P-H09 /99-release.md 890 LOC | H | SPEC-V3R2-WF-002 | 6 | Redesign (extract skill) |
+| P-H10 lsp-client.md misfiled | L | SPEC-V3R2-CON-003 | 1 | Fix (move) |
+| P-H11 workflow-modes/spec-workflow overlap | M | SPEC-V3R2-CON-003 | 1 | Fix (merge) |
+| P-H12 team-protocol/worktree-integration overlap | M | SPEC-V3R2-CON-003 | 1 | Fix (merge) |
+| P-H13 file-reading-optimization is heuristic | L | SPEC-V3R2-CON-003 | 1 | Fix (move to skill) |
+| P-H14 frontmatter inconsistency | L | SPEC-V3R2-CON-003 | 1 | Fix (migrate to paths:) |
+| P-H15 configChange reload no-op | M | SPEC-V3R2-RT-006 | 3 | Fix |
+| P-H16 instructionsLoaded validation no-op | L | SPEC-V3R2-RT-006 | 3 | Fix |
+| P-H17 fileChanged MX re-scan no-op | L | SPEC-V3R2-RT-006 | 3 | Fix |
+| P-H18 design.md/db.md extension drift | L | SPEC-V3R2-WF-002 | 6 | Fix |
+| P-H19 59% events partial coverage | H | SPEC-V3R2-RT-006 | 3 | Redesign |
+| P-H20 workflow.yaml partial schema | M | SPEC-V3R2-MIG-003 | 3 | Fix |
+| P-R01 handler count drift | M | SPEC-V3R2-MIG-002 | 3 | Fix |
+| P-R02 Constitutional sprawl | M | SPEC-V3R2-CON-003 | 1 | Redesign |
+| P-R03 CLAUDE.md/common-protocol dup | M | SPEC-V3R2-CON-003 | 1 | Fix |
+| P-C01 No permission bubble | C | SPEC-V3R2-RT-002 | 3 | Redesign |
+| P-C02 No sub-agent context isolation | H | SPEC-V3R2-RT-004 | 3 | Redesign |
+| P-C03 No sandbox default | C | SPEC-V3R2-RT-003 | 3 | Redesign |
+| P-C04 No config provenance | H | SPEC-V3R2-RT-005 | 3 | Redesign |
+| P-C05 No cache-prefix discipline | M | SPEC-V3R2-RT-004 | 3 | Fix (audit prompt assembly) |
+| P-C06 Explicit migrate command | L | SPEC-V3R2-EXT-004 | 7 | Redesign (auto-apply) |
+| P-Z01 Evaluator memory cascade | H | SPEC-V3R2-HRN-002 | 5 | Redesign (constitution amendment) |
+| P-Z02 Utility multi-agent over-use | M | SPEC-V3R2-WF-004 | 6 | Redesign (classify as Agentless) |
+| P-X01 /98-/99- template drift | L | SPEC-V3R2-WF-002 | 6 | Fix |
 
-## 8. SPEC Index (Wave 4 inputs)
+### Problems intentionally deferred to v3.1+
 
-The Wave 4 SPEC writer will produce 28 SPECs organized across 8 groupings below. Each line gives SPEC ID, one-sentence scope, and traceability to Tier 1/2 items and gap matrix row numbers.
+- **M-4 Workflow Memory Induction (AWM)** — auto-distillation from successful `/moai run` trajectories. Premature; needs ≥100 completed SPECs + telemetry corpus.
+- **T-2 Deeper Tree-sitter Repo-Map** — `/moai codemaps` already provides partial coverage; deeper integration is optimization, not critical.
+- **O-2 Pub-Sub Shared Message Pool** — current team sizes don't warrant; direct `SendMessage` works. Revisit past ~10 teammates.
+- **X-4 Plugin Marketplace** — skills + agents already adequate; second plugin axis would confuse surface.
+- **E-4 Pass@N default** — N× cost; thorough-harness opt-in only.
+- **R-4 Tree-of-Thoughts default** — 5-100× token cost; thorough-harness opt-in only.
+- **P-A21 manager-design agent** — evaluate after WF-003 multi-mode router ships and /moai design flow stabilizes.
 
-### 8.1 Hooks/Commands SPECs (9 SPECs)
-
-- **SPEC-V3-HOOKS-001** — Hook Protocol v2 rich JSON output (T1-HOOK-01; gm#4, gm#5, gm#6, gm#7). Extend `internal/hook/types.go HookOutput` with `HookSpecificOutput` discriminated union; emit `additionalContext`, `updatedInput`, `watchPaths`; dual-parse backward-compat shim.
-- **SPEC-V3-HOOKS-002** — Hook `if` condition + matcher upgrade (T1-HOOK-02, T3-HOOK-09; gm#8, gm#13). Add permission-rule-syntax `if` evaluator (`Bash(git *)`, `Read(*.ts)`); upgrade matcher to support exact / pipe-separated / regex / `*`.
-- **SPEC-V3-HOOKS-003** — Hook source precedence 3-tier (T1-HOOK-05, T3-HOOK-08; gm#15 scope-reduced, gm#14). Introduce user / project / local layering; dedup key `{shell}\0{command}\0{if}`; source precedence pipeline in `internal/hook/registry.go`.
-- **SPEC-V3-HOOKS-004** — Hook handler richness upgrade for 6 events (T1-HOOK-07; gm#24, gm#29, gm#30, gm#31, gm#32). Upgrade PreCompact / ConfigChange / InstructionsLoaded / Elicitation / ElicitationResult / WorktreeCreate to emit structured outputs.
-- **SPEC-V3-HOOKS-005** — Hook async + once + CLAUDE_ENV_FILE (T1-HOOK-03, T1-HOOK-04, T2-HOOK-13; gm#9, gm#10, gm#11, gm#20). `AsyncHookRegistry` in Go; `once: true` self-remove; CLAUDE_ENV_FILE mechanism for 4 events (SessionStart/Setup/CwdChanged/FileChanged).
-- **SPEC-V3-HOOKS-006** — Hook permission decision protocol (T1-HOOK-06; gm#27, gm#28). PermissionRequest emits `decision: {behavior, updatedInput?, updatedPermissions?, message?, interrupt?}`; PermissionDenied emits `{retry: boolean}`.
-- **SPEC-V3-HOOKS-007** — Hook type:prompt (T2-HOOK-10; gm#1). Haiku-class LLM-gated hook returning `{ok, reason?}` JSON; cost budget configuration.
-- **SPEC-V3-HOOKS-008** — Hook type:agent (T2-HOOK-11; gm#2). Multi-turn subagent verifier; respects `ALL_AGENT_DISALLOWED_TOOLS`; depth cap 2.
-- **SPEC-V3-HOOKS-009** — Hook type:http (T2-HOOK-12; gm#3). SSRF-guarded HTTP webhook with URL allowlist + env-var interpolation allowlist + CRLF sanitization.
-
-### 8.2 Query/Context/Memory SPECs (2 SPECs)
-
-- **SPEC-V3-MEM-001** — MEMORY.md 4-type + truncation + freshness + path validation (T1-MEM-01, T3-MEM-03; gm#44, gm#45, gm#50, gm#53). Enforce taxonomy, 200-line/25KB cap, freshness `<system-reminder>` wrapping, path security rules.
-- **SPEC-V3-MEM-002** — LLM-based memory relevance (opt-in) (T2-MEM-02; gm#48, gm#49, gm#52). Haiku side-query returns top-k relevant; config-gated; default off.
-
-### 8.3 Agent/Team SPECs (4 SPECs)
-
-- **SPEC-V3-AGT-001** — Agent frontmatter v2 bundle (T1-AGT-01, T1-AGT-02, T1-AGT-03; gm#56, gm#57, gm#58, gm#59, gm#60, gm#61, gm#62, gm#63). Add memory/initialPrompt/requiredMcpServers/omitClaudeMd/maxTurns/criticalSystemReminder/background/isolation/effort fields.
-- **SPEC-V3-AGT-002** — Built-in moai agents (T2-AGT-05; gm#66). Ship Explore / Plan moai-augmented definitions (SPEC-aware variants of CC built-ins).
-- **SPEC-V3-AGT-003** — Fork subagent primitive (simplified) (T2-AGT-04; gm#67). Omit `subagent_type` → child inherits parent's system prompt; depth cap 2.
-- **SPEC-V3-TEAM-001** — Teammate mailbox v2 schemas (T2-TEAM-01, T3-TEAM-03; gm#71, gm#72, gm#75, gm#76). 10 typed messages + plan-approval flow + TEAMMATE_MESSAGES_UI_CAP 50.
-
-### 8.4 Skill SPECs (2 SPECs)
-
-- **SPEC-V3-SKL-001** — Skill frontmatter v2 bundle (T1-SKL-01; gm#89, gm#90, gm#99, gm#100, gm#101, gm#104, gm#105). Add paths/effort conditional activation; $ARGUMENTS[N] / $N / $name substitution; ${CLAUDE_SKILL_DIR} / ${CLAUDE_SESSION_ID} body substitution.
-- **SPEC-V3-SKL-002** — `context: fork` skill execution + dynamic discovery (T2-SKL-02, T2-SKL-03; gm#87, gm#88, gm#106, gm#107). Skill runs as sub-agent with fresh context; walk-up nested `.claude/skills/` discovery; realpath dedup.
-
-### 8.5 UI/UX SPECs (1 SPEC)
-
-- **SPEC-V3-OUT-001** — Output contract v2 (T2-OUT-01, T3-OUT-02, T3-OUT-03, T3-OUT-04; gm#175, gm#176, gm#177, gm#178, gm#179, gm#180, gm#181, gm#182). diff --git emission + structured validation errors + Progress: N/M + language-fenced code blocks + OSC-8 file-path links + StatusIcon + CC-compat output-style frontmatter.
-
-### 8.6 Bootstrap / CLI / Plugin / Migration / Schema SPECs (6 SPECs)
-
-- **SPEC-V3-SCH-001** — Formal config schemas (T1-SCH-01; gm#156, gm#157, gm#163). validator/v10 tags + JSON Schema export + `moai doctor config --fix`.
-- **SPEC-V3-SCH-002** — Settings source layering 3-tier (T1-SCH-02; gm#138, gm#164 scope-reduced). user / project / local with deep-merge precedence.
-- **SPEC-V3-MIG-001** — Versioned migration framework (T1-MIG-01; gm#149, gm#150, gm#151). `CURRENT_MIGRATION_VERSION` counter + ordered runner + conservative trigger list + opt-out env.
-- **SPEC-V3-MIG-002** — Initial migration set M01–M05 (T1-MIG-02; gm#183, gm#184, gm#185, gm#190, gm#191). template_version sync + .agency/ archival + hook wrapper drift + skill drift + legacy cleanup.
-- **SPEC-V3-PLG-001** — Plugin system v1 (T2-PLG-01, T2-PLG-02; gm#140, gm#141 scope-reduced, gm#142 scope-reduced, gm#143, gm#144, gm#145). Manifest + install scopes (user/project/local) + CLI surface (install/uninstall/update/list) + marketplace (github + directory only) + validation.
-- **SPEC-V3-CLI-001** — Startup profiler + --bare mode (T2-CLI-01, T3-CLI-02, T3-CLI-03, T3-CLI-04, T3-CLI-05; gm#127, gm#128, gm#133, gm#135, gm#136). profileCheckpoint markers + `--bare` minimal mode + cobra PersistentPreRunE migration wiring + `moai completion <shell>`.
-
-### 8.7 Internal Cleanup + moai-unique SPECs (3 SPECs)
-
-- **SPEC-V3-CLN-001** — Template drift resolution (T1-CLN-01; gm#184, gm#185). Deploy 3 missing skills + handle-permission-denied.sh via M03/M04.
-- **SPEC-V3-CLN-002** — Legacy code removal (T1-CLN-03; gm#186, gm#187, gm#188, gm#189). Delete .go.bak + stale coverage + fix ADR-011 comment via M05 + direct source edit.
-- **SPEC-V3-SPEC-001** — SPEC-to-SPEC chaining (T2-DIFF-01; moai-unique, not in CC gap matrix). SPEC inheritance (`inherits:` field) + SPEC templates + dependency graph validation + lifecycle transitions (`spec-first` → `spec-anchored` → `spec-as-source`).
-
-### 8.8 Migration Tool SPEC (1 SPEC)
-
-- **SPEC-V3-MIGRATE-001** — `moai migrate v2-to-v3` tool (Phase 7). CLI wiring + dry-run / yes / rollback / only flags + 4-locale migration guide generation.
-
-### SPEC count summary
-
-| Grouping | SPECs |
-|----------|------:|
-| Hooks/Commands | 9 |
-| Memory | 2 |
-| Agent/Team | 4 |
-| Skill | 2 |
-| UI/UX | 1 |
-| Bootstrap/CLI/Plugin/Migration/Schema | 6 |
-| Internal Cleanup + moai-unique | 3 |
-| Migration tool | 1 |
-| **Total** | **28** |
-
-(Exceeds the 20-25 target upper bound slightly at 28 because Hooks theme naturally decomposes into 9 discrete units — the hook subsystem is deep. Wave 4 may consolidate adjacent SPECs if scope permits.)
-
----
-
-## 9. Open Questions (defer to implementation)
-
-Each question carries a recommended default. Wave 4 SPEC writers may override with explicit justification.
-
-1. **Hook exit-code deprecation window**
-   - Pros: Shorter = less legacy code; Longer = more user adoption time.
-   - Cons: Shorter = breaks users who skip minor versions; Longer = carrying dead code.
-   - **Recommended default**: v3.0 dual-parse → v3.2 warn-only (both shapes accepted) → v4.0 JSON-only.
-
-2. **Plugin system v1 scope**
-   - Pros (reduce): ship faster; lower risk; no source-precedence complexity.
-   - Cons (reduce): plugin authors can't ship hooks, reducing appeal.
-   - **Recommended default**: Lock v1 to skills + agents + commands ONLY. No hooks/MCP/outputStyles in v3.0. Re-evaluate for v3.2 based on plugin author feedback.
-
-3. **Memory LLM relevance default**
-   - Pros (opt-in): predictable cost; no surprise API bills.
-   - Cons (opt-in): users miss out on relevance improvement; telemetry slow.
-   - **Recommended default**: opt-in (default off) in v3.0. Telemetry-driven evaluation for default-on in v3.2.
-
-4. **Settings source layering v1 tier count**
-   - Pros (3-tier): enough for most users; simple to explain.
-   - Cons (3-tier): doesn't match CC's 6-tier; enterprise policy/managed settings deferred.
-   - **Recommended default**: 3-tier (user/project/local) in v3.0; extend to 6-tier (adds policy/flag/managed) in v3.2.
-
-5. **Fork subagent scope**
-   - Pros (simplified): ships in v3.0; low recursion risk; minimal new infra.
-   - Cons (simplified): doesn't achieve cache-identical prefix sharing (CC's key win).
-   - **Recommended default**: Simplified (inherit system prompt) in v3.0; full cache-identical prefix in v3.1.
-
-6. **Schema technology choice**
-   - Pros (validator/v10): Go-native; minimal new deps; familiar.
-   - Cons (validator/v10): no cross-language reuse; no declarative DSL.
-   - Pros (CUE): declarative; cross-language capable.
-   - Cons (CUE): new language to learn; external tooling; adds substantial build complexity.
-   - **Recommended default**: validator/v10 in v3.0. Revisit CUE if cross-language schema sharing becomes requirement.
-
-7. **In-process teammate timing**
-   - Pros (v3.0): ship parity faster.
-   - Cons (v3.0): requires goroutine + context.Context identity isolation; test matrix heavy.
-   - **Recommended default**: Defer to v3.1. v3.0 ships mailbox schemas only.
-
-8. **CG Mode vs CC Bridge**
-   - Pros (adopt Bridge): name-compat with CC internals.
-   - Cons (adopt Bridge): CC's Bridge is Anthropic-cloud specific (W1.3 §1).
-   - **Recommended default**: Reject CC Bridge transport; adopt `SDKControlRequest/Response` message NAMING for internal CG channel schemas (provides naming consistency without implementation coupling).
-
-9. **`omitClaudeMd` default**
-   - Pros (default-true): massive token savings across 22 agents.
-   - Cons (default-true): agents lose CLAUDE.md context silently; regression risk.
-   - **Recommended default**: Default `false`. Opt-in per agent via frontmatter. Explicit candidates: `researcher`, `plan-auditor` (adversarial, context less relevant), `evaluator-active` (scoring role).
-
-10. **Migration trigger aggression**
-    - Pros (aggressive — every cobra command): migrations can't be skipped.
-    - Cons (aggressive): surprise on `moai version`, `moai status`.
-    - **Recommended default**: Conservative — fires only on `moai init`, `moai update`, `moai doctor`, `moai migrate`. `moai version` and `moai status` stay side-effect-free.
-
-11. **docs-site 4-locale translation SLA**
-    - Pros (synchronous, block release): no locale lag.
-    - Cons (synchronous): release cadence slows; small doc changes block release.
-    - **Recommended default**: Per CLAUDE.local.md §17.3 — canonical ko → en within 48h → zh/ja within 72h. Release gated by 95%+ locale parity (not 100%) for major releases.
-
-12. **v3.0 dual-parse enforcement**
-    - Pros (strict): cleaner upgrade; fewer moving parts.
-    - Cons (strict): hook authors must update wrappers in v3.0 cycle.
-    - **Recommended default**: Dual-parse active in v3.0; warn phase v3.2; removal v4.0. Telemetry via `moai doctor hook --validate` counts legacy wrappers for graduation decision.
+*Source: pattern-library.md §Patterns deliberately NOT adopted.*
 
 ---
 
-## 10. Non-Goals (what v3 explicitly does NOT do)
+## 7. Component Inventory (Target State)
 
-These items are explicitly OUT OF SCOPE for v3.0.0. Most are Tier 4 from `priority-roadmap.md`.
+### 7.1 Skills — target ~24 (from 48)
 
-- **T4-BRIDGE-01 — Remote Control Bridge** (gm#86; W1.3 §1.7). Reject. CC's bridge subsystem (33 files, 500KB+) is tied to `api.anthropic.com` OAuth and cannot be reused. moai's tmux-based CG Mode is sufficient.
-- **T4-BUDDY-01 — Buddy Sprite**. Reject. Gamified companion sprite — zero business value for a professional dev tool.
-- **T4-SDK-01 — Agent SDK re-export barrel** (gm#171). Reject. moai is a CLI, not a library; no SDK consumers exist.
-- **T4-MCP-01 — MCP server entrypoint (`moai mcp serve`)** (gm#170). Defer. moai's tools are Go binary subcommands, not MCP-exposed. Revisit if demand materializes.
-- **T4-REPL-01 — REPL TUI** (gm#173). Reject. moai is non-interactive by design.
-- **T4-PRINT-01 — Headless mode `--print`** (gm#172). Reject. moai is always headless; concept doesn't apply.
-- **T4-AUTH-01 — OAuth subcommands**. Reject. moai relies on CC's auth.
-- **T4-POLICY-01 — Policy limits / managed remote settings**. Defer. Enterprise-gated; revisit when enterprise contracts materialize.
-- **T4-AUTOMODE-01 — auto-mode classifier command**. Reject. moai uses its own permissionMode config via `.moai/config/sections/quality.yaml`.
-- **T4-REMOTE-01 — `isolation: remote`** (gm#84). Reject. Anthropic-internal CCR infrastructure.
-- **T4-PLG-FULL — Full CC-parity plugin system** (gm#142, gm#146, gm#147, gm#148). Defer to v3.2+. v3.0 ships reduced scope (skills+agents+commands only).
-- **T4-COMPACT-01 — 5-layer compaction pipeline** (gm#36, gm#37). Reject. snip → microcompact → context-collapse → autocompact → reactive is CC-runtime's QueryEngine concern.
-- **T4-COST-01 — Cost tracker with OpenTelemetry counters** (gm#42, gm#43). Defer. Adds OTEL deps; conflicts with moai's 9-dep philosophy.
-- **T4-COORD-01 — Coordinator Mode** (gm#85). Defer. moai already has manager-strategy + agent orchestration.
+| Skill | Verdict | Notes |
+|-------|---------|-------|
+| moai (root) | REFACTOR | Thin router; 20 bundled workflows promote to `moai:*` system skills |
+| moai-foundation-core | KEEP | TRUST 5, SPEC-DDD authoritative |
+| moai-foundation-cc | KEEP | CC authoring kit |
+| moai-foundation-quality | KEEP | TRUST 5 glue |
+| moai-foundation-thinking | MERGE | absorbs philosopher + workflow-thinking |
+| moai-foundation-context | RETIRE | fold into foundation-core |
+| moai-workflow-spec | KEEP | EARS authority |
+| moai-workflow-tdd | KEEP | RED-GREEN-REFACTOR canonical |
+| moai-workflow-ddd | KEEP | ANALYZE-PRESERVE-IMPROVE canonical |
+| moai-workflow-testing | REFACTOR | slim 22.5KB → ~12KB, split bundled 43 files |
+| moai-workflow-project | KEEP | absorbs templates + docs-generation |
+| moai-workflow-worktree | KEEP | worktree mechanics |
+| moai-workflow-loop | KEEP | Ralph Engine (LSP + ast-grep) |
+| moai-workflow-gan-loop | KEEP | Builder-Evaluator contract (amend §11.4 per P-Z01) |
+| moai-workflow-design-context | KEEP | brief loader |
+| moai-workflow-design-import | KEEP | handoff bundle parser |
+| moai-workflow-research | KEEP | experimental loop |
+| moai-workflow-jit-docs | KEEP | JIT docs loader |
+| moai-domain-backend | REFACTOR | decision matrix, not kitchen sink |
+| moai-domain-frontend | REFACTOR | router to ref-react / library-nextra |
+| moai-domain-database | MERGE | absorbs platform-database-cloud |
+| moai-domain-db-docs | KEEP | migration parser |
+| moai-domain-copywriting | KEEP (FROZEN) | agency absorption contract |
+| moai-domain-brand-design | KEEP (FROZEN) | agency absorption contract |
+| moai-design-system | NEW | merge design-craft + domain-uiux |
+| moai-tool-ast-grep | KEEP | canonical structural search |
+| moai-tool-figma | NEW | split from moai-design-tools |
+| moai-tool-svg | RETIRE | niche, zero refs |
+| moai-library-mermaid | KEEP | |
+| moai-library-nextra | KEEP | |
+| moai-library-shadcn | KEEP | |
+| moai-ref-api-patterns | KEEP | agent-extending reference |
+| moai-ref-git-workflow | KEEP | |
+| moai-ref-owasp-checklist | KEEP | |
+| moai-ref-react-patterns | KEEP | |
+| moai-ref-testing-pyramid | KEEP | |
+| moai-docs-generation | RETIRE | superseded by jit-docs + nextra |
+| moai-design-craft | RETIRE | merged into design-system |
+| moai-design-tools | RETIRE | split to tool-figma + pencil-integration |
+| moai-workflow-templates | RETIRE | merged into workflow-project |
+| moai-workflow-thinking | RETIRE | merged into foundation-thinking |
+| moai-workflow-pencil-integration | KEEP (absorbs Pencil side of design-tools) | |
+| moai-domain-uiux | RETIRE | merged into design-system |
+| moai-foundation-philosopher | RETIRE | merged into foundation-thinking |
+| moai-platform-auth | REFACTOR | vendor-narrow contract |
+| moai-platform-deployment | REFACTOR | vendor-narrow contract |
+| moai-platform-database-cloud | RETIRE | merged into domain-database |
+| moai-platform-chrome-extension | KEEP (monitor) | niche but well-scoped |
+| moai-framework-electron | KEEP (monitor) | niche, retire if unused |
+| moai-formats-data | KEEP (monitor) | TOON + JSON optimization |
 
-Additionally rejected mid-design:
+*Source: r4-skill-audit.md §Recommended v3 skill inventory.*
 
-- Full 6-tier settings in v3.0 (reduced to 3-tier per §9 question #4).
-- Cache-identical fork subagent prefix (deferred to v3.1 per §9 question #5).
-- In-process teammate backend (deferred to v3.1 per §9 question #7).
-- Plugin hooks / MCP / outputStyles capabilities (deferred to v3.2 per §9 question #2).
-- `omitClaudeMd: true` default across all agents (default-false per §9 question #9).
-- KAIROS daily-log mode with `/dream` distillation (deferred per v3-themes §2 open question).
+### 7.2 Agents — target 17 (from 22)
+
+| Agent | Category | Verdict | Notes |
+|-------|----------|---------|-------|
+| manager-spec | manager | KEEP | scrub AskUserQuestion per P-A01 |
+| manager-strategy | manager | KEEP | scrub AskUserQuestion |
+| manager-cycle | manager | NEW | merges manager-ddd + manager-tdd with `cycle_type:` |
+| manager-quality | manager | KEEP | absorbs expert-debug diagnostic sub-mode |
+| manager-docs | manager | KEEP | |
+| manager-git | manager | KEEP | trim triggers per P-A16 |
+| manager-project | manager | REFACTOR | scope to `.moai/project/` only; other modes → CLI |
+| expert-backend | expert | KEEP | add `isolation: worktree`; drop duplicate Oracle trigger |
+| expert-frontend | expert | KEEP | add `isolation: worktree`; consider split of Pencil scope |
+| expert-security | expert | KEEP | `effort: xhigh`; drop dead `Agent` tool |
+| expert-devops | expert | KEEP | scrub AskUserQuestion |
+| expert-performance | expert | REFACTOR | grant `Write` scoped to `.moai/docs/` or retire |
+| expert-refactoring | expert | KEEP | `effort: xhigh`; add `isolation: worktree`; document boundary vs manager-cycle IMPROVE |
+| builder-platform | builder | NEW | merges builder-agent + builder-skill + builder-plugin |
+| evaluator-active | evaluator | KEEP | `effort: xhigh`; evaluator memory per-iteration (P-Z01) |
+| plan-auditor | evaluator | KEEP | `effort: xhigh`; add `memory: project` |
+| researcher | meta | REFACTOR | `effort: xhigh`; `isolation: worktree`; or retire to skill runbook |
+| manager-ddd | — | RETIRED (→ manager-cycle) | |
+| manager-tdd | — | RETIRED (→ manager-cycle) | |
+| expert-debug | — | RETIRED (→ manager-quality sub-mode) | |
+| expert-testing | — | RETIRED (→ manager-cycle strategy + expert-performance load) | |
+| builder-agent | — | RETIRED (→ builder-platform) | |
+| builder-skill | — | RETIRED (→ builder-platform) | |
+| builder-plugin | — | RETIRED (→ builder-platform) | |
+
+*Source: r5-agent-audit.md §Recommended v3 agent inventory.*
+
+### 7.3 Hooks — 25 native events (business-logic audit)
+
+| Event | Current Logic | v3 Target | Resolution |
+|-------|--------------|-----------|------------|
+| SessionStart | Full (GLM, skill, memory) | Full | KEEP |
+| SessionEnd | Full (memo, MX) | Full | KEEP |
+| PreToolUse | Full (security) | Full + JSON injection | UPGRADE |
+| PostToolUse | Full (MX validate) | Full + MX tag injection via JSON | UPGRADE |
+| PostToolUseFailure | Partial | Full (error classification) | UPGRADE |
+| PreCompact | Full (memo save) | Full | KEEP |
+| PostCompact | Full (memo restore) | Full | KEEP |
+| Stop | Full | Full | KEEP |
+| StopFailure | Full | Full | KEEP |
+| SubagentStart | Full | Full | KEEP |
+| SubagentStop | **Partial (no-op on tmux bug)** | Full (kill tmux pane) | **FIX P-H02** |
+| Notification | Partial | Retire from settings.json | RETIRE |
+| UserPromptSubmit | Full | Full | KEEP |
+| PermissionRequest | Full | Full | KEEP |
+| PermissionDenied | Full | Full | KEEP |
+| TeammateIdle | Full | Full | KEEP |
+| TaskCompleted | Full | Full | KEEP |
+| TaskCreated | Partial | Retire from settings.json | RETIRE |
+| WorktreeCreate | Full | Full | KEEP |
+| WorktreeRemove | Full | Full | KEEP |
+| ConfigChange | Partial | Full (reload + revalidate) | UPGRADE |
+| CwdChanged | Full | Full | KEEP |
+| FileChanged | Partial | Full (MX re-scan) | UPGRADE |
+| InstructionsLoaded | Partial | Full (CLAUDE.md length check) | UPGRADE |
+| Elicitation | Partial | Retire | RETIRE |
+| ElicitationResult | Partial | Retire | RETIRE |
+| Setup (special) | Orphan | Implement or remove Go handler | FIX P-H03 |
+
+*Source: r6-commands-hooks-style-rules.md §A Hook Coverage Matrix.*
+
+### 7.4 Commands — target 15 thin + 2 refactored
+
+| Command | LOC | Verdict | Route |
+|---------|-----|---------|-------|
+| /moai plan|run|sync|project|design|db|fix|loop|clean|mx|feedback|review|coverage|e2e|codemaps (×15) | 8 each | KEEP | `Skill("moai")` |
+| /98-github.md | 698 | REFACTOR | extract to `moai-workflow-github` skill |
+| /99-release.md | 890 | REFACTOR | extract to `moai-workflow-release` skill |
+
+Template extension drift (design.md, db.md use `.md` instead of `.md.tmpl`) fixed under WF-002. *Source: r6-commands-hooks-style-rules.md §1.*
+
+### 7.5 Rules — target 31 files (from 34)
+
+| Action | Count | Notes |
+|--------|-------|-------|
+| KEEP | 28 | core/, design/, development/, languages/ (all 16), most workflow/ |
+| MOVE | 1 | `core/lsp-client.md` → `.moai/decisions/` (SPEC decision record, not agent rule) |
+| MERGE | 2 | `workflow/workflow-modes.md` → `workflow/spec-workflow.md`; `workflow/team-protocol.md` → `workflow/worktree-integration.md` |
+| MOVE | 1 | `workflow/file-reading-optimization.md` → `moai-foundation-context` skill references |
+| FRONTMATTER MIGRATION | 4 | `moai-constitution.md`, `coding-standards.md`, `team-protocol.md`, `worktree-integration.md` migrate `description + globs` → `paths:` CSV |
+
+*Source: r6-commands-hooks-style-rules.md §4.5.*
+
+### 7.6 Config sections — target 23 active (all Go-loaded)
+
+| Section | Go loader? | Verdict |
+|---------|-----------|---------|
+| language, llm, quality, workflow, lsp, mx, security, statusline, system, user, project, git-convention, git-strategy, ralph, research, state | YES | KEEP |
+| **harness.yaml** | **NO (currently template-only)** | **ADD LOADER (P-H06 CRITICAL)** |
+| **constitution.yaml** | NO | ADD LOADER |
+| **context.yaml** | NO | ADD LOADER |
+| **interview.yaml** | NO | ADD LOADER |
+| **design.yaml** | Partial (migrate_agency only) | ADD RUNTIME LOADER |
+| sunset.yaml | Struct exists but dormant | ACTIVATE or RETIRE |
+
+Every v3 yaml section requires a Go struct in `internal/config/types.go`, a loader in `internal/config/loader.go`, and a test in `loader_test.go` — new CI rule. *Source: r6-commands-hooks-style-rules.md §5.2.*
 
 ---
 
-## Appendix A: Design Principles for v3
+## 8. Breaking Changes Catalog
 
-Consolidated from §1.2 and §3 rationale sections. These principles govern every SPEC, PR, and migration in the v3 release.
+Each BC identifies what breaks, migration automation level, and the deprecation window. The `v2→v3 migrator` (SPEC-V3R2-MIG-001) handles all **AUTO** migrations; **MANUAL** migrations require user action with documentation.
 
-1. **Evidence-grounded**: every design decision cites a Wave 1 finding (file:line) or gap-matrix row ID. No speculation.
-2. **Reversible**: every breaking change has dual-parse or opt-out env escape for one minor version.
-3. **Go-idiomatic**: struct tags over external DSLs; stdlib over heavy frameworks; 9-direct-dep budget preserved.
-4. **Opus 4.7 one-turn**: agent prompts deliver intent + constraints + completion criteria in a single message.
-5. **CC parity where it matters**: emit output CC's renderer can parse; reply to hook events with schema-valid payloads; validate configs with schemas.
-6. **moai identity preserved**: SPEC-First DDD, TRUST 5, TAG system, @MX protocol, 50-skill / 22-agent catalog stay.
-7. **Conservative migrations**: fire only on explicit user actions (init/update/doctor/migrate), never on read-only commands.
-8. **Additive > breaking**: prefer optional frontmatter fields over required changes; grow schemas, don't rewrite them.
-9. **Template-first changes**: new .claude/.moai/.agency/ content added to `internal/template/templates/` FIRST (per CLAUDE.local.md §2).
-10. **Language-neutral templates**: treat all 16 supported languages equally in `internal/template/templates/`; bias allowed only in `CLAUDE.local.md` / `settings.local.json` / `_test.go` (per CLAUDE.local.md §15).
+| ID | Breaking Change | Migration | Deprecation |
+|----|-----------------|-----------|-------------|
+| BC-V3R2-001 | Hook handlers migrate to JSON-OR-ExitCode protocol | AUTO (wrappers unchanged; handlers rewritten) | v2.x hooks continue via exit code fallback |
+| BC-V3R2-002 | Agent frontmatter requires `effort` field | AUTO (migrator populates per matrix; default medium) | v2.x agents missing field fall through to session default |
+| BC-V3R2-003 | Sandbox-by-default for implementer agents | AUTO (frontmatter adds `sandbox: seatbelt` on macOS, `bubblewrap` on Linux) | Opt-out via `sandbox: none` with SPEC-documented justification |
+| BC-V3R2-004 | 4 dead `Agent` tool declarations removed from subagent definitions | AUTO (migrator scrubs) | N/A (dead config) |
+| BC-V3R2-005 | 9 agent bodies lose `AskUserQuestion` lines; replaced by blocker-report pattern | AUTO (migrator rewrites) + CI lint | CI lint fails v2-style bodies after v3.0.0-alpha.3 |
+| BC-V3R2-006 | 48 skills → 24 via merge clusters | AUTO (migrator rewrites `related-skills`, `skills:` fields) | Old skill names return a stub with "merged into X" pointer for one v3.x cycle |
+| BC-V3R2-007 | `/moai fix | coverage | mx | codemaps | clean` become Agentless fixed pipelines (no subagents by default) | AUTO (flag flip) | Opt-in `--mode agent` preserves v2 behavior during v3.x |
+| BC-V3R2-008 | Hardcoded `/Users/goos/go/bin/moai` fallback removed from 26 shell wrappers | AUTO (`make build` regenerates via updated GoBinPath resolver) | N/A (bug fix) |
+| BC-V3R2-009 | 22 → 17 agents: manager-ddd + tdd → manager-cycle; 3 builders → builder-platform; expert-debug + testing retired | AUTO (migrator rewrites SPEC agent references; stub agents map to new) | Stubs removed after v3.1.0 |
+| BC-V3R2-010 | Evaluator memory scope per-iteration (design-constitution §11.4 amendment) | AUTO (config flag added; evaluator-active respawn per iteration) | Old evaluator sessions (memory-retentive) retired on first upgrade |
+| BC-V3R2-011 | SPEC acceptance criteria become hierarchical (nested Given/When/Then); flat criteria promoted to 1-level tree | AUTO (migrator wraps flat criteria as single-level children) | Old flat SPECs remain parseable indefinitely |
+| BC-V3R2-012 | `/98-github.md` + `/99-release.md` extracted to `moai-workflow-github` + `moai-workflow-release` skills | AUTO (for dev tree) | Dev-local only; no user impact |
+| BC-V3R2-013 | Config sections gain Go loaders (constitution, context, interview, design, harness) | AUTO (loaders added; existing YAML files unchanged) | Template-only era deprecated at v3.0.0-alpha.1 |
+| BC-V3R2-014 | `lsp-client.md` rule moved to `.moai/decisions/lsp-client-choice.md` | AUTO (move + update references) | Rule-tree grep returns empty; decisions/ grep finds new location |
+| BC-V3R2-015 | Multi-layer settings resolution with `Source` tags replaces flat merge | AUTO (reader layer; settings.json files unchanged) | Flat-merge consumers are internal; no user API change |
+| BC-V3R2-016 | `manager-ddd` + `manager-tdd` agent names deprecated in SPEC references | AUTO (migrator rewrites to `manager-cycle` with `cycle_type:` argument) | Stubs for one v3.x cycle |
+| BC-V3R2-017 | Workflow-modes + team-protocol rules merged into spec-workflow + worktree-integration | AUTO (file move + ref update) | Old rule paths return 404 after v3.0.0-alpha.1 |
+| BC-V3R2-018 | `notification`, `elicitation`, `elicitationResult`, `taskCreated` hook events removed from settings.json | AUTO | Events still fire at CC level but no moai handler; Go handlers retained as observability tap with explicit disable option |
+| BC-V3R2-019 | Migration framework auto-runs on `init`/`update`/`doctor`/`migrate` entry points (idempotent, ordered, rollback-aware) | AUTO (framework ships with v3.0.0-alpha.1) | v2.x users hit migration on first v3 invocation; idempotent re-runs are no-ops |
 
----
-
-## Appendix B: Glossary of new terms
-
-| Term | Definition |
-|------|-----------|
-| **Hook Protocol v2** | The rich-JSON hook output contract introduced in v3.0 (superset of v2's exit-code-only). See §3.1. |
-| **HookSpecificOutput** | Discriminated union of per-event payloads, tagged by `hookEventName`. Implemented as Go interface with per-event concrete type. |
-| **CLAUDE_ENV_FILE** | Temp-file mechanism where SessionStart/Setup/CwdChanged/FileChanged hooks write bash exports for subsequent BashTool commands. Matches CC (W1.1 §4.3). |
-| **MigrationStep** | Interface implemented by each versioned migration (Version/ID/Description/IsIdempotent/PreConditionsMet/DryRun/Apply/Rollback). |
-| **Source precedence pipeline** | Ordered merge of hook/config sources (user → project → local in v3.0). |
-| **Fork subagent** | Sub-agent spawned without `subagent_type`, inheriting parent's system prompt. v3.0 ships inherit-prompt; v3.1 adds cache-identical prefix. |
-| **`omitClaudeMd`** | Agent frontmatter field; when true, agent skips loading CLAUDE.md hierarchy. Saves 5–15Gtok/week per CC BQ data. Default false in v3.0. |
-| **Mailbox v2** | Structured discriminated-union team message schema (10 types); replaces v2 ad-hoc JSON. |
-| **Teammate mailbox** | Message queue between team lead and teammates in team mode; typed messages with validator/v10 schemas. |
-| **Plan-approval flow** | Team coordination mechanism where lead approves/rejects teammate plans via `plan_approval_request` / `plan_approval_response` messages. |
-| **SPEC chaining** | moai-unique mechanism for SPEC inheritance (`inherits:` field), SPEC templates, and lifecycle transitions (spec-first → spec-anchored → spec-as-source). |
-| **Harness-based quality routing** | Existing (preserved) 3-level (minimal/standard/thorough) quality routing in `.moai/config/sections/harness.yaml`. |
-| **4-type memory taxonomy** | CC-native memory classification: user / feedback / project / reference. moai enforces this in v3 MEMORY.md frontmatter. |
-| **Memory freshness** | Computed age of MEMORY.md file via mtime; >24h wraps content in `<system-reminder>` staleness warning. |
-| **Dual-parse shim** | Transitional parser that tries v3 JSON first, falls back to v2 exit-code semantics on parse error. Active v3.0 → v4.0. |
+Top 5 for reviewer summary: BC-V3R2-001 (hook JSON), BC-V3R2-003 (sandbox default), BC-V3R2-005 (AskUserQuestion scrub), BC-V3R2-006 (skill 48→24), BC-V3R2-010 (evaluator memory amendment).
 
 ---
 
-## Appendix C: References (Wave 1 findings file:section index)
+## 9. Release Plan
 
-Every substantive claim in this master document traces to one of the Wave 1 findings files or a moai-adk-go source file.
+| Phase | Tag | Scope | Primary SPECs |
+|-------|-----|-------|---------------|
+| 1 Constitution & Foundation | v3.0.0-alpha.1 | FROZEN/EVOLVABLE codification; settings layering with provenance; migration framework auto-apply | SPEC-V3R2-CON-001, -CON-002, -CON-003, SPEC-V3R2-RT-005, SPEC-V3R2-EXT-004 |
+| 2 Runtime Hardening | v3.0.0-alpha.2 | Hook JSON protocol + 27-event coverage + sandbox layer + hardcoded-path fix | SPEC-V3R2-RT-001, -RT-002, -RT-003, -RT-004, -RT-006, -RT-007 |
+| 3 Agent Cleanup | v3.0.0-alpha.3 | 22→17 agents, Common-Protocol scrub, effort calibration, worktree MUST | SPEC-V3R2-ORC-001, -ORC-002, -ORC-003, -ORC-004 |
+| 4 Skill Consolidation | v3.0.0-alpha.4 | 48→24 skills; merge clusters 1-5; retirements | SPEC-V3R2-WF-001 |
+| 5 Harness + Evaluator | v3.0.0-beta.1 | Sprint Contract fresh-judgment fix, harness routing, hierarchical acceptance | SPEC-V3R2-HRN-001, -HRN-002, -HRN-003, SPEC-V3R2-SPC-001 |
+| 6 Multi-Mode Workflow | v3.0.0-beta.2 | `/moai loop` Ralph, `/moai design` path B, `--mode team`, Agentless classification, dynamic team generation, language rules/skills boundary | SPEC-V3R2-WF-002, -WF-003, -WF-004, -WF-005, -WF-006, SPEC-V3R2-ORC-005 |
+| 7 Extension | v3.0.0-rc.1 | ACI commands, output styles CC-alignment, memdir typed taxonomy | SPEC-V3R2-SPC-002, -SPC-003, -SPC-004, SPEC-V3R2-EXT-001, -EXT-002 |
+| 8 Migration Tool + Docs | v3.0.0-rc.2 | v2→v3 migrator, release docs, doctor diagnostics, MIG-002/003 closeout | SPEC-V3R2-MIG-001, -MIG-002, -MIG-003 |
+| 9 Stable | v3.0.0 | GA — no new SPECs; bug fixes + docs | — |
 
-### Wave 1 findings (6 files)
-
-- **W1.1** `.moai/design/v3-research/findings-wave1-hooks-commands.md` (1,148 lines)
-  - §1 27-event hook catalog
-  - §2 4 hook types
-  - §3 hook configuration schema
-  - §4 hook output / env / timeout / bidir
-  - §6 skill discovery
-  - §7 frontmatter parser
-  - §8 argument substitution
-  - §9 skill body substitution
-  - §11 skill `context: inline` vs `fork`
-  - §12 security primitives (ssrfGuard)
-  - §14 v2.1.111 summary
-- **W1.2** `findings-wave1-query-context.md` (1,083 lines)
-  - §1 QueryEngine (CC-runtime, not moai)
-  - §2 Compaction pipeline (CC-runtime)
-  - §3 System prompt assembly
-  - §5 Cost accounting
-  - §6 Memory (4-type, truncation, freshness, path validation, LLM relevance)
-  - §7 Migration patterns
-  - §9 Integration summary
-- **W1.3** `findings-wave1-agent-team.md` (1,015 lines)
-  - §1 Bridge subsystem (REJECT)
-  - §2 Coordinator mode (DEFER)
-  - §3 Buddy (REJECT)
-  - §4 Agent frontmatter fields
-  - §6 Team mailbox message types
-  - §7 Team backends (tmux / iterm2 / in-process)
-  - §8 Integration summary
-- **W1.4** `findings-wave1-ui-ux.md` (1,304 lines)
-  - §2 Component catalog
-  - §8 Output contract gaps (diff / validation / progress / icons / links)
-- **W1.5** `findings-wave1-bootstrap-cli.md` (1,202 lines)
-  - §1 CLI shim + init
-  - §2 Commander + preAction
-  - §3 Entry points
-  - §4 Plugin system
-  - §5 Migration framework
-  - §6 Schema (Zod v4)
-  - §7 Output styles
-  - §9 Recommendation summary
-- **W1.6** `findings-wave1-moai-current.md` (909 lines)
-  - §1 CLI subcommand inventory
-  - §2 internal/ packages
-  - §3 pkg/ surface
-  - §4 Template system (go:embed)
-  - §5 Hook implementations
-  - §6 Agent catalog
-  - §7 Skill catalog
-  - §8 Command catalog
-  - §9 Rules hierarchy
-  - §10 Config schema
-  - §11 SPEC state
-  - §12 docs-site
-  - §13 Tests & coverage
-  - §14 Dependencies
-  - §15 Self-identified weaknesses
-  - §16 Version & release
-
-### Wave 2 synthesis (3 files)
-
-- `.moai/design/v3-research/gap-matrix.md` — 194 gap rows across 7 sections (Hook / Memory / Agent+Team / Command+Skill / Bootstrap+CLI+Plugin+Migration / UI+UX / moai self-identified).
-- `.moai/design/v3-research/priority-roadmap.md` — 56 tiered items (18 Tier-1 / 14 Tier-2 / 11 Tier-3 / 13 Tier-4).
-- `.moai/design/v3-research/v3-themes.md` — 9 themes + summary matrix + cross-theme dependencies.
-
-### Key moai-adk-go source anchors
-
-- `CLAUDE.md` (project instructions, 17 sections, 19 HARD rules)
-- `CLAUDE.local.md` (private, §17 docs-site 4-locale sync rules)
-- `.claude/rules/moai/core/moai-constitution.md` (Agent Core Behaviors, Opus 4.7 prompt philosophy)
-- `.claude/rules/moai/design/constitution.md` v3.3.0 (FROZEN/EVOLVABLE zones)
-- `.claude/rules/moai/development/coding-standards.md` (language policy, file-size limits)
-- `internal/hook/types.go:19-114` (27 EventType constants)
-- `internal/hook/types.go:167-311` (HookInput/HookOutput schema — partial)
-- `internal/hook/registry.go:18-325` (registry implementation)
-- `internal/cli/deps.go:151-186` (handler registrations — 28 calls)
-- `internal/template/embed.go:25` (go:embed all:templates)
-- `internal/template/deployer.go:21-30` (Deployer interface)
-- `internal/cli/migrate_agency.go:569-595` (existing agency migration)
-- `pkg/version/version.go:7` (Version = "v2.12.0" default)
-- `.moai/config/sections/system.yaml` (moai.version, template_version)
-- `.moai/config/sections/project.yaml:template_version: v2.7.22` (drift source)
+Phase ordering is dependency-driven: Constitution (1) enables all others; Runtime (2) enables Agent Cleanup (3) which enables Skill (4) which enables Harness (5); Multi-Mode (6) builds on 3 and 4; Extension (7) polish; Migration (8) unblocks user upgrade; GA (9). No phase assumes a successor; each is releasable alpha/beta.
 
 ---
 
-End of Master Design Document. Wave 4 input: SPEC IDs in §8 are the authoritative set for Wave 4 SPEC authoring. Wave 4 may split or merge SPECs for implementation-scope reasons with explicit justification.
+## 10. Risk Register
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| R1. Skill merge breaks agent keyword auto-activation | HIGH | MEDIUM | Keep union of trigger keywords at merge; CI regression tests; alpha.4 gating |
+| R2. Hook JSON migration breaks 26 shell wrappers | MEDIUM | MEDIUM | Wrappers unchanged; Go emits JSON stdout; exit-code fallback preserved |
+| R3. Sandbox per-OS divergence (bwrap vs seatbelt vs docker) | HIGH | MEDIUM | Per-OS backends with feature detection; `sandbox: none` fallback; CI matrix across 3 OS |
+| R4. Design-constitution §11.4 amendment triggers FROZEN-zone gate | MEDIUM | LOW | Use graduation protocol; canary-eval on last 3 design projects; human approval via AskUserQuestion |
+| R5. 22→17 agent reduction breaks SPEC workflows with hardcoded agent names | MEDIUM | HIGH | `moai migrate` rewrites SPEC agent refs; stub agents for one v3.x cycle per BC-V3R2-009, -016 |
+| R6. Adding 5 config loaders introduces schema churn | LOW | MEDIUM | Strict versioning per yaml; migration v1→v2 schema handled by MIG-003 |
+| R7. Permission bubble mode UX fatigue | HIGH | MEDIUM | Pre-allowlist for common dev ops; bubble only for genuinely novel risks; telemetry post-beta.1 |
+| R8. Fresh-context per iteration loses within-task reasoning | MEDIUM | LOW | @MX tags + SPEC + `.moai/state/` as persistent substrate; explicit `progress.md` append-only log |
+| R9. Agentless classification regresses users expecting agent delegation | MEDIUM | LOW | Opt-in `--mode agent` preserves v2 behavior; empirical measurement in alpha.4 telemetry |
+| R10. Go binary absent hot-reload — changes require rebuild | HIGH | LOW | Document in CLAUDE.local.md; `make build && make install` + Claude Code restart standard; `moai doctor` Binary Freshness check |
+| R11. Claude Code version drift past 2.1.111 target | MEDIUM | MEDIUM | Version-pin check in `moai doctor`; migration path in CHANGELOG; max 2 minor-version window |
+| R12. AskUserQuestion scrub + blocker-report pattern subtle behavior change | LOW | HIGH | CI lint rejects literal `AskUserQuestion`; comprehensive e2e tests at alpha.3 |
+| R13. 16-language neutrality strained if ACI commands favor specific LSP | LOW | MEDIUM | Language-agnostic contract via powernap abstraction; per-language adapters tested in CI |
+| R14. Template vs local drift during multi-phase v3 migration | MEDIUM | MEDIUM | `diff -rq` CI check already present per CLAUDE.local.md §2; hardened at each alpha |
+| R15. v3 redesign scope bloat (v3-legacy already bloated) | HIGH | MEDIUM | Explicit NOT-NOW list (§6 deferred); phase gating; each alpha releasable; no Phase 9 "catch-up" pattern allowed |
+
+---
+
+## 11. SPEC Index (Wave 4 input)
+
+35 target SPECs grouped by layer. All prefix `SPEC-V3R2-` (round 2) to distinguish from v3-legacy. Each cites related principles (P#), problems (P-XYZ), and patterns (letter-number).
+
+### 11.1 Constitution (Layer 1) — 3 SPECs
+
+- **SPEC-V3R2-CON-001: FROZEN/EVOLVABLE zone codification** — generalize design-constitution zone model to core constitution; list the 7 FROZEN invariants. *Principles P1, P2, P12. Pattern S-4.*
+- **SPEC-V3R2-CON-002: Constitutional amendment protocol** — 5-layer safety gate (FrozenGuard, Canary, ContradictionDetector, RateLimiter, HumanOversight); evolution-log format. *Pattern S-5.*
+- **SPEC-V3R2-CON-003: Constitution consolidation pass** — rule tree cleanup (P-H10..H14, P-R02, P-R03); move lsp-client.md; merge workflow-modes/spec-workflow, team-protocol/worktree-integration; frontmatter `paths:` migration.
+
+### 11.2 SPEC & TAG (Layer 2) — 4 SPECs
+
+- **SPEC-V3R2-SPC-001: EARS + hierarchical acceptance criteria** — Agent-as-a-Judge hierarchical shape (R1 §9 365-sub-req pattern); migration from flat Given/When/Then. *Principle 1. Pattern E-1.*
+- **SPEC-V3R2-SPC-002: @MX TAG protocol v2 with hook JSON injection** — autonomous add/update/remove via PostToolUse JSON `additionalContext`; cross-language TagScanner; sub-line parsers for NOTE/WARN/ANCHOR/TODO/LEGACY. *Principle 1, 8.*
+- **SPEC-V3R2-SPC-003: SPEC linter** — `moai spec lint` enforces EARS modality, Given/When/Then testability, orphan acceptance detection; CI integration.
+- **SPEC-V3R2-SPC-004: SPEC-to-MX-anchor resolver** — `moai_locate_mx_anchor` ACI command; fan-in analysis for ANCHOR promotion. *Pattern T-1.*
+
+### 11.3 Runtime (Layer 3) — 7 SPECs
+
+- **SPEC-V3R2-RT-001: Hook JSON-OR-ExitCode protocol** — HookResponse schema, 27-event compliance, 5 critical handler upgrades first. *Principle 8. Pattern T-5.*
+- **SPEC-V3R2-RT-002: Permission stack with bubble mode** — 8-source resolution, `bubble` as first-class PermissionMode, hook PreToolUse `permissionDecision` wiring. *Principle 7. Patterns S-1, S-2.*
+- **SPEC-V3R2-RT-003: Sandbox execution layer** — Bubblewrap/Seatbelt/Docker backends; network egress denylist; file-write scope; `security.yaml` integration. *Principle 3. Pattern S-3.*
+- **SPEC-V3R2-RT-004: Typed session state + checkpoint** — `.moai/state/` file-first layout, `PhaseState`/`Checkpoint` types, `interrupt()`-equivalent `BlockerReport`. *Principle 6. Patterns M-1 partial.*
+- **SPEC-V3R2-RT-005: Multi-layer settings with provenance tags** — Source enum, merger with origin tracking, `moai doctor config dump` diagnostic. *Principle 7. Pattern X-2.*
+- **SPEC-V3R2-RT-006: Hook handler completeness** — upgrade 5 handlers (subagent-stop tmux fix P-H02, config-change reload, setup, instructions-loaded, file-changed); retire 4 (notification, elicitation×2, task-created); document 27-event coverage. *Pattern T-5.*
+- **SPEC-V3R2-RT-007: Hardcoded path fix + versioned migration** — replace `/Users/goos/go/bin/moai` with `$HOME/go/bin/moai`; migration framework with `CURRENT_MIGRATION_VERSION` + idempotent guards; auto-apply at session-start. *Problem P-H04. Pattern X-5.*
+
+### 11.4 Orchestration (Layer 4) — 5 SPECs
+
+- **SPEC-V3R2-ORC-001: Agent roster reduction 22→17** — merge manager-ddd+tdd into manager-cycle; merge 3 builders into builder-platform; retire expert-debug, expert-testing; split expert-frontend Pencil scope; scope-shrink manager-project. *Problems Cluster 6.*
+- **SPEC-V3R2-ORC-002: Common Protocol CI lint** — reject literal `AskUserQuestion` / `Agent` tool / missing `effort` / `--deepthink` boilerplate; extract duplicate Skeptical Mandate to common-protocol. *Problem P-A01, P-A04, P-A13, P-A19.*
+- **SPEC-V3R2-ORC-003: Effort-level matrix population** — publish table in agent-authoring.md; auto-populate all 17 agents per constitution guidance. *Problem P-A02, P-A03.*
+- **SPEC-V3R2-ORC-004: Worktree isolation MUST for implementers** — upgrade SHOULD → MUST for agents touching ≥3 files; add `isolation: worktree` to manager-cycle, expert-backend, expert-frontend, expert-refactoring, researcher. *Problem P-A11, P-A22.*
+- **SPEC-V3R2-ORC-005: Dynamic team generation formalization** — preserve general-purpose spawn + workflow.yaml role_profiles; document role → isolation/mode mapping; remove any static team-* agent definitions if present. *Existing SPEC-TEAM-001.*
+
+### 11.5 Harness (Layer 5) — 3 SPECs
+
+- **SPEC-V3R2-HRN-001: Harness routing + harness.yaml loader** — complexity estimator (domains × files × score) → minimal/standard/thorough; Go loader for harness.yaml (currently template-only); evaluator-profiles per level. *Problem P-H06.*
+- **SPEC-V3R2-HRN-002: Evaluator fresh-memory amendment** — constitutional amendment to design-constitution §11.4: `evaluator.memory_scope: per_iteration` FROZEN; Sprint Contract state durable; judgment transcripts ephemeral. *Principle 4. Pattern E-1. Problem P-Z01.*
+- **SPEC-V3R2-HRN-003: Hierarchical acceptance scoring** — evaluator-active scores per-criterion per sub-criterion (Agent-as-a-Judge §9 shape); rubric files in `.moai/config/evaluator-profiles/` per harness level. *Pattern E-1, E-3.*
+
+### 11.6 Workflow (Layer 6) — 6 SPECs
+
+- **SPEC-V3R2-WF-001: Skill consolidation 48→24** — execute merge waves 1-4 per r4-audit §v3 migration sequencing; retire moai-tool-svg, moai-docs-generation, moai-design-tools (split), moai-workflow-templates, moai-platform-database-cloud, moai-foundation-philosopher, moai-workflow-thinking, moai-design-craft, moai-domain-uiux, moai-foundation-context. *Problems Cluster 2.*
+- **SPEC-V3R2-WF-002: Command thin-wrapper enforcement + /98-/99- extraction** — all command files ≤20 LOC; extract /98-github to `moai-workflow-github` skill; extract /99-release to `moai-workflow-release` skill; unify `.md.tmpl` extension. *Problem P-H08, P-H09, P-H18.*
+- **SPEC-V3R2-WF-003: Multi-mode router** — `/moai run --mode {autopilot,loop,team}`; auto-select by harness; surface Ralph loop + team orchestration as first-class modes. *Pattern O-4. Principle 11.*
+- **SPEC-V3R2-WF-004: Agentless vs multi-agent classification** — `/moai fix | coverage | codemaps | mx | clean` as fixed pipelines; `/moai plan | run | sync | design` as multi-agent; empirical validation at alpha.4 telemetry. *Pattern O-6. Principle 11. Problem P-Z02.*
+- **SPEC-V3R2-WF-005: Language rules vs skills boundary decision** — codify `.claude/rules/moai/languages/*.md` as authoritative (rules) and remove stale `moai-lang-*` skill references; document rule-vs-skill boundary in agent-authoring. *Problem P-S08, P-S19.*
+- **SPEC-V3R2-WF-006: Output styles CC schema alignment** — match CC's `{name, description, keep-coding-instructions, force-for-plugin}` frontmatter exactly; retain MoAI + Einstein; test serialization identity. *Pattern X-3.*
+
+### 11.7 Extension (Layer 7) — 4 SPECs
+
+- **SPEC-V3R2-EXT-001: Typed memory taxonomy** — formalize MemoryType {user, feedback, project, reference} in `~/.claude/projects/{hash}/memory/`; update `moai-memory.md` rule; add MemdirStore loader. *Patterns M-1, M-5. Principle 12.*
+- **SPEC-V3R2-EXT-002: Output style + memdir loader** — share loader across `.claude/output-styles/` + memdir; CC-compatible. Pair with WF-006.
+- **SPEC-V3R2-EXT-003: Plugin system design-only** — document 3-origin design (builtin/installed/inline) for v4 planning; no implementation in v3. *Pattern X-4. Deferred.*
+- **SPEC-V3R2-EXT-004: Versioned migration auto-apply** — `MigrationRunner` with CURRENT_MIGRATION_VERSION; session-start hook trigger; migration list in `internal/migration/`; silent apply with log. *Pattern X-5. Problem P-C06.*
+
+### 11.8 Cleanup / Migration — 3 SPECs
+
+- **SPEC-V3R2-MIG-001: v2→v3 user migrator tool** — `moai migrate v3` one-shot upgrade: SPEC hierarchical acceptance wrapping, agent renames (manager-ddd/tdd→manager-cycle, builder-*→builder-platform), skill rename mapping, settings provenance-annotate pass. Executes all AUTO BCs (§8).
+- **SPEC-V3R2-MIG-002: Hook registration cleanup** — document setup orphan + autoUpdate composite; align settings.json / Go handler / shell wrapper counts. *Problem P-R01.*
+- **SPEC-V3R2-MIG-003: Config loader addition for 5 sections** — add Go struct + loader + test for constitution.yaml, context.yaml, interview.yaml, design.yaml, harness.yaml; decide sunset.yaml fate (activate or retire); complete workflow.yaml typed schema. *Problem P-H06, P-H07, P-H20.*
+
+**Total: 35 SPECs.**
+
+- Total REQs: 695
+- Total ACs: 549 (402 Given/When/Then + 147 AC-NNN labels)
+- Breaking SPECs: 16
+
+---
+
+## 12. Open Questions (for implementation phase)
+
+From Wave 2 synthesis return message + new questions surfaced while authoring this master:
+
+1. **Should `/moai plan` output become a formal task-DAG artifact?** LLMCompiler (R1 §15) and MLE-bench (R1 §21) suggest DAG reduces latency and reveals genuine dependencies. Open: does Go's concurrency model plus moai's existing team-mode file-ownership already capture this implicitly, or does the plan phase need an explicit `task-dag.yaml`? Needs empirical measurement at beta.1.
+2. **Where does skill distillation happen?** Voyager auto-distills skills from successful code; AWM auto-induces workflows. Moai currently relies on human authorship via builder-platform. Open: pilot in v3.1+ with 1-2 workflow categories (e.g., "add REST endpoint"); gate via graduation protocol. Do not auto-distill in v3.0.
+3. **Is the evaluator itself an agent or a pipeline?** Agent-as-a-Judge says agent (matches human reliability); Agentless says pipeline (simpler, cheaper). Open: which wins for moai's specific workloads? Likely both — Agent-judge for thorough harness (SPEC-V3R2-HRN-003), pipeline-scorer for minimal/standard. Empirical via harness telemetry.
+4. **How persistent is episodic memory exactly?** Reflexion scopes per trial; Generative Agents span days; AWM spans workloads. Open: for moai, the right unit is per-SPEC (episodic), per-project (procedural workflow memory), per-machine (global lessons.md). v3 codifies this in SPEC-V3R2-EXT-001 but exact retention TTLs need telemetry.
+5. **When does moai invoke `xhigh` vs `max` effort?** Anthropic guidance: xhigh is starting point; max only when evals show headroom. Open: per-agent telemetry `(effort_level, duration, success)` aggregated weekly, auto-recommend. SPEC-V3R2-ORC-003 populates per matrix; dynamic tuning deferred.
+6. **Does `manager-design` become a first-class agent?** P-A21 flagged the gap; deferred to post WF-003 validation. Decision point: if `/moai design` stabilizes without it, retire the question; if orchestration pain surfaces, add in v3.1.
+7. **Sandbox compatibility with LSP server processes?** LSP servers need filesystem access + local sockets; running them inside a sandbox may require carve-outs. Open: validate at alpha.2 that `moai_lsp_*` ACI commands work with `sandbox: seatbelt` on macOS.
+8. **Which Ralph primitives become first-class in `/moai loop`?** `STALE_SECONDS`, `progress.md`, `activity.log`, `errors.log`, `runs/` directory — which must be present per constitution? Decision at beta.2 in SPEC-V3R2-WF-003 refinement.
+
+---
+
+## 13. Non-Goals
+
+v3 explicitly does NOT pursue these, despite Wave 1 evidence for some of them. Each is tagged with the Wave 1 source so future planners can re-open if the ecosystem shifts.
+
+- **Codex integration** — removed from v3 scope at Wave 1 planning time. moai supports Claude + GLM (via CG mode); Codex/Gemini cross-provider teams are OMC territory, not moai's. *Source: user directive prior to Wave 1.*
+- **Cursor-first UX** — moai is Claude Code-native. Cursor parallel-subagent-for-exploration and Composer multi-file agent are interesting but belong in a separate product. *Source: r2-opensource-tools.md honourable mentions.*
+- **CC Bridge / cloud-relay architecture** — 33 files, OAuth, trusted-device-token. moai uses local tmux; bridge would require Anthropic partnership. *Source: r3-cc-architecture-reread.md §3.9, §5 divergence 3.*
+- **CC Ink TUI fork** — 750KB vendored UI; moai stays headless and rides CC's renderer. *Source: r3-cc-architecture-reread.md §5 divergence 1.*
+- **CC GrowthBook feature-flag gating** — OSS binary cannot hide commands behind analytics-backed flags. moai uses explicit `.moai/config/sections/*.yaml` keys. *Source: r3-cc-architecture-reread.md §5 divergence 4.*
+- **Centralized MCP registry + marketplace** — moai treats MCP as per-project opt-in (`.mcp.json` user-owned). No registry API. *Source: r3-cc-architecture-reread.md §5 divergence 5.*
+- **52-subcommand CLI** — moai's ~15 subcommands × 3 modes is the right surface. *Source: r3-cc-architecture-reread.md §5 divergence 6.*
+- **ADAS / Meta-Agent harness synthesis** — research-grade; far-horizon; requires S-4/S-5 maturity. Revisit in v5+. *Source: r1-ai-harness-papers.md §16.*
+- **DSPy prompt compiler / optimizer** — research framework with high production effort. moai lessons.md + evaluator-profiles are the manual equivalent for now. Revisit v5+. *Source: r1-ai-harness-papers.md §17.*
+- **Tree-of-Thoughts as default reasoning** — 5-100× token cost. Available via `harness: thorough` opt-in only. *Source: r1-ai-harness-papers.md §4.*
+- **Pass@N as default evaluation** — N× cost. Available via `--attempts N` flag gated by thorough harness. *Source: r1-ai-harness-papers.md §21.*
+- **LangGraph-style graph framework** — P11 file-first primitive preference; frameworks requiring >500 LOC scaffolding rejected. *Source: pattern-library.md §Patterns deliberately NOT adopted; design-principles.md P12.*
+- **Plugin marketplace** — X-4 3-Origin Plugin System deferred to v4+. *Source: pattern-library.md X-4.*
+- **Publish-Subscribe shared message pool** — O-2; current team sizes don't warrant. Revisit past ~10 teammates. *Source: pattern-library.md O-2.*
+- **Workflow memory auto-induction (AWM)** — M-4; requires ≥100-SPEC trajectory corpus. Revisit after telemetry accumulates. *Source: pattern-library.md M-4.*
+
+---
+
+## Appendix A: Design Principle → SPEC cross-reference
+
+| Principle | Primary SPECs | Secondary SPECs |
+|-----------|---------------|-----------------|
+| P1 SPEC as Constitutional Contract | CON-001, SPC-001 | SPC-002, HRN-003 |
+| P2 Interface Design Over Tool Count (ACI) | SPC-004, RT-006 | EXT-002 |
+| P3 Fresh-Context Iteration | RT-004, WF-003 | HRN-002 |
+| P4 Evaluator Judgments Fresh, Contract State Durable | HRN-002 | HRN-003 |
+| P5 Typed State + Durable Checkpoint | RT-004 | RT-005 |
+| P6 Permission Bubble Over Bypass | RT-002 | RT-005 |
+| P7 Sandboxed Execution Default | RT-003 | — |
+| P8 Hook JSON Protocol | RT-001 | SPC-002, RT-006 |
+| P9 Parallelism via Explicit DAG | ORC-005, WF-003 | — |
+| P10 Agent Count Matches Task Structure | WF-004 | ORC-001 |
+| P11 File-First Primitives | RT-004, EXT-001 | CON-003 |
+| P12 Constitutional Governance | CON-001, CON-002 | CON-003 |
+
+## Appendix B: Problem → SPEC cross-reference
+
+See §6 for the full 72-problem matrix. Key critical mappings:
+
+- **P-A01 (9 agents with AskUserQuestion, CRITICAL)** → SPEC-V3R2-ORC-001 (roster) + SPEC-V3R2-ORC-002 (CI lint)
+- **P-H02 (subagent-stop tmux bug, CRITICAL)** → SPEC-V3R2-RT-006 (handler upgrade)
+- **P-H04 (hardcoded path, CRITICAL)** → SPEC-V3R2-RT-007 (path + migration)
+- **P-H06 (5 yaml sections no loader, CRITICAL)** → SPEC-V3R2-MIG-003 (loader addition)
+- **P-C01 (no permission bubble, CRITICAL)** → SPEC-V3R2-RT-002 (permission stack)
+- **P-C03 (no sandbox default, CRITICAL)** → SPEC-V3R2-RT-003 (sandbox layer)
+- **P-Z01 (evaluator memory cascade, HIGH)** → SPEC-V3R2-HRN-002 (amendment)
+
+## Appendix C: Pattern → SPEC cross-reference
+
+| Pattern ID | Name | Disposition | SPEC |
+|-----------|------|-------------|------|
+| R-1 ReAct | Reason-Act-Observe | ADOPT | implicit across ORC-001, HRN-003 |
+| R-2 Self-Refine | Feedback-Refine | ADOPT | WF-003 (--mode loop) |
+| R-3 Reflexion | Actor/Evaluator/Reflector | ADOPT | HRN-002, HRN-003 |
+| R-6 Ralph Fresh-Context | Outer loop with fresh context | ADOPT | WF-003, RT-004 |
+| O-1 LLMCompiler DAG | Parallel task DAG | ADOPT | WF-003 |
+| O-3 Magentic Ledger | Dynamic task ledger | ADOPT | ORC-005 |
+| O-4 Multi-Mode Router | Mode surface | CONSIDER (2-3 modes) | WF-003 |
+| O-5 Plan/Act Mode | plan | acceptEdits | ADOPT | RT-002 |
+| O-6 Agentless | Fixed pipeline for well-structured | ADOPT | WF-004 |
+| M-1 Typed Memory | user/feedback/project/reference | ADOPT | EXT-001 |
+| M-5 LLM-Selected + Staleness | Freshness caveats | ADOPT | EXT-001 |
+| T-1 ACI | LM-centric command set | ADOPT (priority 1) | SPC-004, RT-006 |
+| T-5 Hook JSON-OR-ExitCode | Dual protocol | ADOPT (priority 2) | RT-001 |
+| S-1 Multi-Source Permission | 8-source stack | ADOPT (priority 3) | RT-002, RT-005 |
+| S-2 Permission Bubble | bubble mode | ADOPT | RT-002 |
+| S-3 Ephemeral Sandbox | Bubblewrap/Seatbelt/Docker | ADOPT | RT-003 |
+| S-4 FROZEN + Graduation | Zone model | ADOPT | CON-001, CON-002 |
+| S-5 5-Layer Safety | FrozenGuard/Canary/Contr./RateLim./Human | ADOPT | CON-002 |
+| E-1 Agent-as-a-Judge | Intermediate scoring + fresh memory | ADOPT (priority 9) | HRN-002, HRN-003 |
+| E-2 Sprint Contract | Criteria-state negotiation | ADOPT (priority 6) | HRN-002 |
+| E-3 Rubric-Anchored + Independent Re-eval | 0.25/0.5/0.75/1.0 rubrics | ADOPT | HRN-003 |
+| X-1 Markdown + YAML Frontmatter | One file = one artifact | ADOPT | ORC-002 (lint), WF-006 |
+| X-2 Multi-Layer Settings Provenance | Source tags | ADOPT (priority 4) | RT-005 |
+| X-3 Output Style Override | CC-compatible frontmatter | ADOPT | WF-006, EXT-002 |
+| X-5 Versioned Migration preAction | Silent auto-apply | ADOPT | EXT-004, RT-007 |
+
+## Appendix D: Wave 1 + Wave 2 file manifest
+
+Wave 1 research (input, 33.5K words):
+- `.moai/design/v3-redesign/research/r1-ai-harness-papers.md` (25 papers)
+- `.moai/design/v3-redesign/research/r2-opensource-tools.md` (16+ tools)
+- `.moai/design/v3-redesign/research/r3-cc-architecture-reread.md`
+- `.moai/design/v3-redesign/research/r4-skill-audit.md` (48 skills)
+- `.moai/design/v3-redesign/research/r5-agent-audit.md` (22 agents)
+- `.moai/design/v3-redesign/research/r6-commands-hooks-style-rules.md`
+
+Wave 2 synthesis (input, 15K words):
+- `.moai/design/v3-redesign/synthesis/design-principles.md` (12 principles + North Star)
+- `.moai/design/v3-redesign/synthesis/problem-catalog.md` (72 problems in 6 clusters)
+- `.moai/design/v3-redesign/synthesis/pattern-library.md` (37 patterns in 7 categories)
+
+Wave 3 output (this document):
+- `docs/design/major-v3-master.md`
+
+Wave 4 input (not in this document; for SPEC generation):
+- Target: 35 SPECs per §11, prefix `SPEC-V3R2-`
+- Output directory: `.moai/specs/SPEC-V3R2-*/spec.md`
+- Generation method: one SPEC per file, EARS format, hierarchical acceptance criteria
+
+---
+
+**End of v3.0.0 Master Design Document (DRAFT).**
+**Next action**: Wave 4 SPEC regeneration from §11 index.
