@@ -233,3 +233,39 @@ Status: Production Ready (Enterprise)
 Modular Architecture: SKILL.md + 6 modules
 Integration: Plan-Run-Sync workflow optimized
 Generated with: MoAI-ADK Skill Factory
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I have plenty of context left, I do not need to optimize" | Context fills faster than expected. Reading 10 files at 500 lines each consumes 50% of the budget. |
+| "I will read the full file to be thorough" | Reading 1000 lines when you need 50 wastes 950 lines of context. Use Grep to find the relevant section first. |
+| "/clear loses too much context, I will keep going" | Exceeding 150K tokens causes degraded reasoning. A planned /clear with SPEC persistence is better than degraded output. |
+| "Session state does not need persistence, I will remember" | You will not remember across /clear or session restart. SPEC documents and task lists are the persistence mechanism. |
+| "Token budget tracking is too complex to maintain" | Budget tracking is arithmetic. Exceeding the budget silently degrades quality, which is harder to debug. |
+| "I will load all skills upfront to be prepared" | Upfront loading wastes tokens on skills that may never trigger. Progressive disclosure exists for this reason. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Full file reads (no offset/limit) on files exceeding 200 lines
+- Context usage exceeds 150K tokens without a /clear or compact
+- Same file read multiple times in a single session without caching
+- Session handoff loses progress because no SPEC or task list was maintained
+- Token budget not mentioned in any phase transition discussion
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Large files (200+ lines) read with offset/limit or via Grep
+- [ ] Grep used before Read to locate specific line numbers
+- [ ] Context tracked and /clear executed before 150K threshold
+- [ ] Session state persisted in SPEC document or task list before /clear
+- [ ] No duplicate file reads for the same content in the same session
+
+<!-- moai:evolvable-end -->

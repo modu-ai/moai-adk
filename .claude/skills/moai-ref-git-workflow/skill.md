@@ -158,3 +158,39 @@ Gotcha: Token blacklist requires Redis, not just in-memory cache
 
 Refs: SPEC-AUTH-001
 ```
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will clean up the commit messages before merging" | Interactive rebase is error-prone under pressure. Write clean commits from the start. |
+| "Force push is fine on my feature branch" | Collaborators or CI may have fetched the branch. Force push destroys their reference. Use --force-with-lease. |
+| "This commit is too small to need a conventional format" | Changelog generators, bisect, and blame all depend on consistent commit formats. Every commit matters. |
+| "I will push directly to main, it is a small fix" | Direct pushes bypass code review and CI. Even small fixes can break production. |
+| "Merge commits are messy, I always squash" | Squash loses individual commit context. Merge commits preserve the development narrative for future debugging. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Commit message does not follow conventional format (type(scope): description)
+- Force push to main or shared release branch
+- PR merged without CI passing
+- Branch name does not indicate feature, fix, or SPEC reference
+- Merge conflict markers found in committed files
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] All commit messages follow conventional format (show git log --oneline)
+- [ ] Branch name follows convention (feature/, fix/, chore/ prefix)
+- [ ] No force pushes to main or protected branches (check reflog or CI)
+- [ ] PR has passing CI checks before merge
+- [ ] No merge conflict markers in committed files (grep for <<<<<<<)
+- [ ] SPEC-ID referenced in commit message or PR description when applicable
+
+<!-- moai:evolvable-end -->

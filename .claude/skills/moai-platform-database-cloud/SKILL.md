@@ -190,3 +190,39 @@ Generated with: MoAI-ADK Skill Factory v2.0
 Last Updated: 2026-02-09
 Version: 2.0.0 (Consolidated)
 Platforms: Neon, Supabase, Firestore
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Serverless databases scale automatically, I do not need to think about limits" | Serverless billing scales automatically too. Unoptimized queries on auto-scaling databases create surprise bills. |
+| "I will use the free tier for production, it has enough capacity" | Free tiers have connection limits, storage caps, and no SLA. Production workloads need production-tier guarantees. |
+| "Real-time subscriptions are always better than polling" | Real-time subscriptions hold connections open. At scale, this exhausts connection pools. Poll when freshness tolerance allows. |
+| "I will pick the database after building the application" | Database choice affects schema design, query patterns, and data modeling. Choosing late means refactoring early decisions. |
+| "Connection pooling is handled by the platform" | Platform pooling has default limits. Serverless functions can exhaust connection pools rapidly without explicit configuration. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Production application running on free-tier database plan
+- No connection pooling configured for serverless function deployments
+- Real-time subscriptions used where polling with 30-second interval would suffice
+- Database credentials stored in code instead of environment secrets
+- No backup or point-in-time recovery configured
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Database plan appropriate for production workload (not free tier)
+- [ ] Connection pooling configured with explicit limits (show configuration)
+- [ ] Credentials stored in environment secrets, not source code
+- [ ] Backup strategy configured and tested (show backup schedule)
+- [ ] Query performance measured on representative data (show query timing)
+- [ ] Real-time vs polling decision documented with justification
+
+<!-- moai:evolvable-end -->

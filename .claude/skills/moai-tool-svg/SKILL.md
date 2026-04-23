@@ -414,3 +414,39 @@ For detailed patterns on each topic, see the modules directory.
 - moai-domain-frontend: React/Vue SVG component integration
 - moai-docs-generation: SVG diagram generation for documentation
 - moai-domain-uiux: Icon systems and design system integration
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "PNG is fine, SVG is overkill for this icon" | PNGs blur at different resolutions and require multiple sizes. SVGs scale perfectly and are smaller for simple graphics. |
+| "I will optimize the SVG later" | Unoptimized SVGs from design tools contain editor metadata, hidden layers, and precision decimals that bloat file size by 50-80%. |
+| "Inline SVG is always better than an img tag" | Inline SVGs increase HTML payload and prevent browser caching. Use img tags for static icons that do not need dynamic styling. |
+| "Accessibility does not apply to decorative icons" | Decorative icons need aria-hidden=true to be properly ignored by screen readers. Without it, they read meaningless content. |
+| "SVGO defaults are fine for all SVGs" | SVGO defaults remove viewBox and title elements. Custom configuration is required to preserve accessibility and responsiveness. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- SVG file contains editor metadata (Illustrator, Sketch, Figma export cruft)
+- SVG missing viewBox attribute (breaks responsive scaling)
+- Interactive SVG missing role and aria-label attributes
+- Decorative SVG missing aria-hidden="true"
+- SVG file larger than the equivalent PNG for the same visual
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] SVGs optimized with SVGO or equivalent (show before/after file size)
+- [ ] viewBox attribute present on all SVGs (no fixed width/height only)
+- [ ] Decorative SVGs have aria-hidden="true"
+- [ ] Interactive SVGs have role="img" and aria-label
+- [ ] SVG file size smaller than PNG equivalent at target resolution
+- [ ] No editor metadata in committed SVG files (check for Illustrator/Sketch/Figma tags)
+
+<!-- moai:evolvable-end -->

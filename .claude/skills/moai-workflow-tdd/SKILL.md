@@ -328,3 +328,47 @@ When TDD discipline breaks down:
 Version: 1.0.0
 Status: Active
 Last Updated: 2026-02-03
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll add tests after the implementation works" | Post-hoc tests verify what the code does, not what it should do. They miss the bugs RED phase catches. |
+| "The existing tests cover this case" | Existing tests verify old behavior. New behavior needs its own failing test first. |
+| "This function is too simple to test" | Simple functions accumulate complexity. The test documents expected behavior before drift. |
+| "I tested it manually in the terminal" | Manual checks do not persist. Tomorrow's change breaks the contract with no signal. |
+| "The test requires complex mocking" | If the test is hard to write, the code is hard to reason about. Refactor the design first. |
+| "Tests slow me down" | Test-first surfaces design problems early, when they are cheapest to fix. |
+| "I'll skip REFACTOR this cycle to keep moving" | Skipped refactors compound. The next cycle starts from a worse baseline. |
+
+**DAMP over DRY**: In test code, prefer Descriptive And Meaningful Phrases over Don't Repeat Yourself. Duplication inside a test that makes the intent obvious is better than an abstraction that hides it.
+
+**Beyonce Rule**: If you liked it, you should have put a test on it. Any behavior CI does not verify will eventually break without warning.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Implementation file created in the same commit as its test file (RED phase skipped)
+- Test names describe implementation (test_function_returns_true) instead of behavior (test_user_login_rejects_expired_token)
+- All tests in a new file pass on first run — no RED phase was captured
+- Commit message says "add tests" after the feature is already merged
+- Test suite contains mocks of the code under test (mocking implementation, not collaborators)
+- Coverage dropped in the commit that added a new feature
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Git history shows a failing-test commit before the implementation commit, or evidence of RED in the same commit
+- [ ] Test names read as behavior specifications, not function descriptions
+- [ ] Every new public function has at least one corresponding test case
+- [ ] Full test suite passes (paste command output)
+- [ ] Coverage for changed files is measured and reported (show tool output)
+- [ ] No `skip`, `xit`, or disabled tests were added in this change
+- [ ] REFACTOR phase was executed or explicitly justified as unnecessary
+
+<!-- moai:evolvable-end -->

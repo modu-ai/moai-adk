@@ -300,3 +300,42 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 Version: 2.6.0
 Last Updated: 2026-02-25
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will just implement this directly, delegation is overhead" | MoAI is an orchestrator. Direct implementation bypasses the quality gates agents enforce. |
+| "The user's intent is obvious, no need for a Socratic interview" | Ambiguous verbs (clean, fix, improve) almost always produce wrong scope. Rule 5 exists because obvious is often wrong. |
+| "This is a small change, Approach-First is unnecessary" | Small changes still touch files the user cares about. One sentence of approach costs nothing and prevents rework. |
+| "I can run /moai run without a SPEC, it is just a tweak" | Without a SPEC, there is no acceptance criterion to check. Every run without a SPEC silently degrades quality tracking. |
+| "Parallel agents will just race, sequential is safer" | Independent tool calls are explicitly required to run in parallel. Sequentializing them wastes user time. |
+| "I will respond in English since it is technical" | Conversation language is a HARD rule. User-facing output must match the configured language, always. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- MoAI writes code directly instead of delegating to a specialized agent
+- Response in English when conversation_language is not English
+- Multiple independent tool calls executed sequentially in separate messages
+- AskUserQuestion with more than 4 options or containing emoji
+- Agent invocation prompt contains absolute paths to the main project when isolation is worktree
+- /moai run executed without a corresponding SPEC-XXX document
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] User-facing response language matches conversation_language from language.yaml
+- [ ] Every independent tool call was launched in parallel (one message, multiple tool blocks)
+- [ ] Agent selection trace documents why this agent, not another, was chosen
+- [ ] No XML tags visible in user-facing output
+- [ ] For non-trivial tasks, approach was explained and approved before code changes
+- [ ] SPEC-ID is referenced when /moai run, /moai sync, or /moai fix is invoked
+- [ ] TodoList used to decompose multi-file changes (3+ files)
+
+<!-- moai:evolvable-end -->

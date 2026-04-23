@@ -124,6 +124,18 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ### Phase 0: Pre-Sync Quality Gate
 
+<!-- moai:evolvable-start id="gate-sync-1" -->
+### HUMAN GATE: Pre-Sync Quality
+
+**Previous phase output:** Completed SPEC implementation
+**Approval question:** Is the project in a state where documentation can be synced?
+**Cannot proceed until:**
+- [ ] Working tree is clean or only expected changes present
+- [ ] All tests pass
+- [ ] MX tags validated
+- [ ] No HARD rule violations
+<!-- moai:evolvable-end -->
+
 Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
 
 #### Step 0.0.1: Gate Execution
@@ -568,6 +580,17 @@ For each SPEC associated with the current sync:
 
 #### Step 1.6: User Approval
 
+<!-- moai:evolvable-start id="gate-sync-2" -->
+### HUMAN GATE: Documentation Scope
+
+**Previous phase output:** Divergence analysis showing doc/code drift
+**Approval question:** Which documents should be regenerated?
+**Cannot proceed until:**
+- [ ] User has reviewed divergence report
+- [ ] User has approved document regeneration scope
+- [ ] User has confirmed PR description draft
+<!-- moai:evolvable-end -->
+
 Tool: AskUserQuestion
 
 Display sync plan report and present options:
@@ -908,10 +931,7 @@ Detect current branch:
    - Base: {main_branch}
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
-5. Enable auto-merge: `gh pr merge {number} --squash --delete-branch --auto`
-   - GitHub waits for all required status checks to pass, then auto-merges
-   - If auto-merge enable fails (e.g., not allowed in repo settings): log warning, continue
-6. Display PR URL to user
+5. Display PR URL to user
 
 **Main branch** (direct commit):
 - Push directly: `git push origin {main_branch}`
@@ -1100,6 +1120,38 @@ All of the following must be verified:
 
 ---
 
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai sync SPEC-AUTH-001"
+**Expected Result**:
+- Phase 0: Pre-sync quality gate passes (tests, lint)
+- Phase 0.5: Quality verification confirms TRUST 5 compliance
+- Phase 1: Divergence analysis shows implementation matches SPEC
+- Decision Point: User approves sync plan
+- Phase 2: Documentation updated (README, CHANGELOG, API docs)
+- Phase 2.2.1: SPEC status updated to "implemented"
+- Phase 3: Commits created, PR opened with summary
+
+### Partial Implementation Flow
+**Prompt**: "/moai sync SPEC-AUTH-001" (only backend implemented, frontend pending)
+**Expected Result**:
+- Phase 1.5: Divergence detected - 3/5 acceptance criteria met
+- Sync plan notes partial implementation
+- SPEC status updated to "in-progress" (not "implemented")
+- Documentation reflects completed portions only
+- PR description notes remaining work
+
+### Error Flow
+**Prompt**: "/moai sync" (no SPEC specified, uncommitted changes exist)
+**Expected Result**:
+- Auto-detect: Finds uncommitted changes on current branch
+- AskUserQuestion: "Sync changes on current branch?"
+- If user confirms, syncs based on git diff
+- If no changes found, reports "Nothing to sync"
+
+---
+
 Version: 3.7.0
-Updated: 2026-03-11
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.
+Updated: 2026-03-30
+Changes: Added test scenarios.

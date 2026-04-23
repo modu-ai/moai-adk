@@ -147,3 +147,41 @@ Rules:
 - Write the simplest code that passes
 - Refactor only when all tests are green
 - One assertion per test (when practical)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "E2E tests cover everything, unit tests are redundant" | E2E tests are slow and flaky. Unit tests provide fast, precise feedback. The pyramid exists because each level serves a different purpose. |
+| "Integration tests are more realistic than unit tests" | Realism comes at the cost of speed and isolation. A balanced pyramid gives both fast feedback and realistic validation. |
+| "100% code coverage means the code is well tested" | Coverage measures execution, not correctness. A test that executes code without meaningful assertions provides zero value. |
+| "Mocking is bad, I prefer real dependencies" | Real dependencies make tests slow and non-deterministic. Mock at boundaries, test business logic in isolation. |
+| "This test is flaky, but it catches real bugs sometimes" | Flaky tests erode trust in the entire suite. Fix the flakiness or quarantine the test with a tracking issue. |
+
+**DAMP over DRY**: Test code should be descriptive and self-contained. A reader should understand the test without reading shared fixtures or helper methods.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Test pyramid inverted: more E2E tests than unit tests
+- Unit tests depend on external services (databases, APIs, file systems)
+- Test assertions check implementation details instead of behavior
+- No integration tests between unit and E2E layers
+- Flaky test present without a quarantine label or tracking issue
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Test distribution follows the pyramid: unit > integration > E2E (show test counts per category)
+- [ ] Unit tests run in under 30 seconds total
+- [ ] Integration tests mock external dependencies at the boundary
+- [ ] No flaky tests in the active suite (run 3x to verify stability)
+- [ ] Test names describe behavior, not implementation (review naming convention)
+- [ ] Coverage report shows meaningful assertions, not just line execution
+
+<!-- moai:evolvable-end -->

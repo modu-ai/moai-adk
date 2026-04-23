@@ -5,7 +5,13 @@ Decision Date: 2026-04-12
 
 ## Selected Library
 
-`github.com/charmbracelet/x/powernap` **v0.1.3** (pinned 2026-04-12)
+`github.com/charmbracelet/x/powernap` **v0.1.4** (pinned 2026-04-22)
+
+Previous pin: v0.1.3 (2026-04-12 → 2026-04-22). Upgrade merged in #679.
+The v0.1.3 → v0.1.4 delta inside the `powernap/` subdirectory is limited to
+`powernap/pkg/config/lsps.json` (+11/-7) — a data-only refresh synced from
+nvim-lspconfig. No Go code, API, or ABI change. Other 28 commits in the
+charmbracelet/x range belong to unrelated subpackages (ansi/vt/cellbuf/...).
 
 ## Why powernap
 

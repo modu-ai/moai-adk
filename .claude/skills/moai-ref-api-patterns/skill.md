@@ -158,3 +158,41 @@ Non-breaking changes (no version bump needed):
 - Adding new optional fields
 - Adding new endpoints
 - Adding new query parameters
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "REST naming conventions are just aesthetics" | Consistent resource naming is how clients discover and predict endpoints. Inconsistency multiplies documentation burden. |
+| "GraphQL solves over-fetching, so I do not need to design response shapes" | GraphQL shifts complexity to the resolver layer. Poorly designed schemas create N+1 queries and authorization gaps. |
+| "Error codes are internal details, clients just need the message" | Clients need machine-readable error codes for programmatic handling. Messages are for humans, codes are for code. |
+| "PATCH and PUT are interchangeable" | PATCH applies partial updates; PUT replaces the entire resource. Using them incorrectly breaks idempotency expectations. |
+| "I will version the API when it becomes necessary" | Versioning after breaking changes forces emergency migrations. Plan versioning from the first release. |
+
+**Hyrum's Law**: Every observable API behavior will eventually be depended on by clients. Undocumented response fields, error formats, and timing characteristics become implicit contracts.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- API returns different error formats across endpoints
+- Resource names use verbs instead of nouns (e.g., /getUser instead of /users/:id)
+- No pagination on list endpoints that can return unbounded results
+- Breaking change deployed without API version bump
+- GraphQL schema allows unbounded depth or circular queries without limits
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] All endpoints follow consistent naming convention (nouns, plurals, nested resources)
+- [ ] Error responses use a standard format with machine-readable error code
+- [ ] List endpoints implement pagination with documented limits
+- [ ] API versioning strategy present and enforced (URL path, header, or query param)
+- [ ] Breaking vs non-breaking change classification documented for recent changes
+- [ ] Input validation returns 400 with specific field-level error details
+
+<!-- moai:evolvable-end -->

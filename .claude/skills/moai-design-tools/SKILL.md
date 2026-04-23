@@ -351,3 +351,38 @@ Last Updated: 2026-04-05
 Tools: Figma MCP (16 tools, Official Remote Server), Pencil MCP (14 tools + export_nodes CLI-only), Pencil-to-Code Export
 Default Style: shadcn/ui Nova (neutral, noto-sans, small radius)
 UI Kits: Shadcn UI (default), Halo (glassmorphic), Lunaris (dark-mode), Nitro (minimal)
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I can implement the design from the screenshot, I do not need Figma context" | Screenshots lose component structure, spacing tokens, and interaction states. Figma MCP provides structured design data. |
+| "Pencil files are just for designers, developers do not need them" | Pencil files contain layout constraints and component hierarchy. Developers use them as the source of truth for implementation. |
+| "I will export to code and clean it up" | Generated code is a starting point, not a deliverable. Export without review produces non-semantic, non-accessible markup. |
+| "Design tokens are too rigid, I need custom values" | Custom values bypass the design system. Extend tokens through the system, not around it. |
+| "I will sync with the designer after implementation" | Post-implementation sync means rework. Sync before implementation means alignment. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Implementation uses hardcoded values instead of design tokens from Figma or Pencil
+- Exported code committed without semantic HTML cleanup
+- Interaction states (hover, focus, active, disabled) missing from implementation
+- Pencil file updated but implementation not synced
+- Design tool export contains absolute positioning that breaks responsive layout
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Design tokens from Figma or Pencil used for colors, spacing, and typography
+- [ ] All interaction states implemented (hover, focus, active, disabled)
+- [ ] Exported code cleaned up with semantic HTML and accessibility attributes
+- [ ] Implementation matches design file at all breakpoints (compare visually)
+- [ ] No hardcoded pixel values where design tokens are available
+
+<!-- moai:evolvable-end -->
