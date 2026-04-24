@@ -371,6 +371,14 @@ func (s *Scanner) scanWithRules(ctx context.Context, rules []Rule, path string) 
 			}
 			// Language는 항상 rule에서 주입 (찾은 파일의 언어가 아닌 규칙 대상 언어)
 			findings[i].Language = rule.Language
+			// Note 전파: Finding에 Note가 없으면 Rule.Note에서 복사 (REQ-UTIL-002-003)
+			if findings[i].Note == "" {
+				findings[i].Note = rule.Note
+			}
+			// Metadata 전파: Finding에 Metadata가 없으면 Rule.Metadata에서 복사 (REQ-UTIL-002-004)
+			if findings[i].Metadata == nil {
+				findings[i].Metadata = rule.Metadata
+			}
 		}
 
 		allFindings = append(allFindings, findings...)

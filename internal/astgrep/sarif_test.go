@@ -266,6 +266,210 @@ func TestToSARIF_RulesDeterministicOrder(t *testing.T) {
 	}
 }
 
+// TestToSARIF_OWASPTag verifies that a Finding with metadata.owasp emits an
+// external/owasp/* tag in properties.tags. AC-UTIL-002-05
+func TestToSARIF_OWASPTag(t *testing.T) {
+	findings := []astgrep.Finding{
+		{
+			RuleID:   "sec-injection",
+			Severity: "error",
+			Message:  "injection risk",
+			File:     "db.go",
+			Line:     1,
+			Metadata: map[string]string{
+				"owasp": "A03:2021 - Injection",
+			},
+		},
+	}
+
+	output, err := astgrep.ToSARIF(findings, "0.42.1")
+	if err != nil {
+		t.Fatalf("ToSARIF() error = %v", err)
+	}
+
+	var doc map[string]any
+	_ = json.Unmarshal(output, &doc)
+
+	runs := doc["runs"].([]any)
+	run := runs[0].(map[string]any)
+	results := run["results"].([]any)
+	result := results[0].(map[string]any)
+
+	props, ok := result["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("SARIF result.properties field is missing")
+	}
+
+	tags, ok := props["tags"].([]any)
+	if !ok {
+		t.Fatal("SARIF result.properties.tags field is missing or not an array")
+	}
+
+	found := false
+	for _, tag := range tags {
+		s, ok := tag.(string)
+		if !ok {
+			continue
+		}
+		if len(s) > len("external/owasp/") && s[:len("external/owasp/")] == "external/owasp/" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected tag starting with external/owasp/ in properties.tags, got: %v", tags)
+	}
+}
+
+// TestToSARIF_CWETag verifies that a Finding with metadata.cwe emits an
+// external/cwe/* tag in properties.tags. AC-UTIL-002-06
+func TestToSARIF_CWETag(t *testing.T) {
+	findings := []astgrep.Finding{
+		{
+			RuleID:   "sec-sqli",
+			Severity: "error",
+			Message:  "SQL injection",
+			File:     "db.go",
+			Line:     1,
+			Metadata: map[string]string{
+				"cwe": "CWE-89",
+			},
+		},
+	}
+
+	output, err := astgrep.ToSARIF(findings, "0.42.1")
+	if err != nil {
+		t.Fatalf("ToSARIF() error = %v", err)
+	}
+
+	var doc map[string]any
+	_ = json.Unmarshal(output, &doc)
+
+	runs := doc["runs"].([]any)
+	run := runs[0].(map[string]any)
+	results := run["results"].([]any)
+	result := results[0].(map[string]any)
+
+	props, ok := result["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("SARIF result.properties field is missing")
+	}
+
+	tags, ok := props["tags"].([]any)
+	if !ok {
+		t.Fatal("SARIF result.properties.tags field is missing or not an array")
+	}
+
+	found := false
+	for _, tag := range tags {
+		s, ok := tag.(string)
+		if !ok {
+			continue
+		}
+		if s == "external/cwe/cwe-89" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected external/cwe/cwe-89 in properties.tags, got: %v", tags)
+	}
+}
+
+// TestSARIF_BackwardCompatibility locks existing SARIF field names and types.
+// Any rename or removal of existing fields MUST fail this test.
+// Cross-cutting invariant for REQ-UTIL-002-021.
+func TestSARIF_BackwardCompatibility(t *testing.T) {
+	findings := []astgrep.Finding{
+		{
+			RuleID:    "bc-rule",
+			Severity:  "error",
+			Message:   "backward compat message",
+			File:      "test.go",
+			Line:      10,
+			Column:    5,
+			EndLine:   10,
+			EndColumn: 20,
+			Metadata: map[string]string{
+				"owasp": "A03:2021",
+				"cwe":   "CWE-89",
+			},
+		},
+	}
+
+	output, err := astgrep.ToSARIF(findings, "1.0.0-bc-test")
+	if err != nil {
+		t.Fatalf("ToSARIF() error = %v", err)
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal(output, &doc); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	// Top-level fields
+	if doc["$schema"] == nil {
+		t.Error("BACKWARD COMPAT: $schema field removed or renamed")
+	}
+	if doc["version"] == nil {
+		t.Error("BACKWARD COMPAT: version field removed or renamed")
+	}
+	if doc["runs"] == nil {
+		t.Error("BACKWARD COMPAT: runs field removed or renamed")
+	}
+
+	runs := doc["runs"].([]any)
+	run := runs[0].(map[string]any)
+
+	// tool.driver fields
+	tool := run["tool"].(map[string]any)
+	driver := tool["driver"].(map[string]any)
+	if driver["name"] == nil {
+		t.Error("BACKWARD COMPAT: tool.driver.name removed")
+	}
+	if driver["version"] == nil {
+		t.Error("BACKWARD COMPAT: tool.driver.version removed")
+	}
+
+	// result fields
+	results := run["results"].([]any)
+	result := results[0].(map[string]any)
+
+	if result["ruleId"] == nil {
+		t.Error("BACKWARD COMPAT: result.ruleId removed")
+	}
+	if result["level"] == nil {
+		t.Error("BACKWARD COMPAT: result.level removed")
+	}
+	if result["message"] == nil {
+		t.Error("BACKWARD COMPAT: result.message removed")
+	}
+	if result["locations"] == nil {
+		t.Error("BACKWARD COMPAT: result.locations removed")
+	}
+
+	// properties: existing metadata keys MUST still be present as top-level string values
+	props, ok := result["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("BACKWARD COMPAT: result.properties field removed or type changed")
+	}
+	if _, ok := props["owasp"].(string); !ok {
+		t.Error("BACKWARD COMPAT: result.properties.owasp removed or type changed from string")
+	}
+	if _, ok := props["cwe"].(string); !ok {
+		t.Error("BACKWARD COMPAT: result.properties.cwe removed or type changed from string")
+	}
+
+	// NEW: properties.tags array must be present (additive)
+	tags, ok := props["tags"].([]any)
+	if !ok {
+		t.Error("NEW FIELD: result.properties.tags missing or not an array")
+	}
+	if len(tags) == 0 {
+		t.Error("NEW FIELD: result.properties.tags should contain OWASP and CWE entries")
+	}
+}
+
 // TestToSARIF_RoundTrip: ToSARIF 출력이 유효한 SARIF 2.1.0 스키마를 따르는지 검증
 func TestToSARIF_RoundTrip(t *testing.T) {
 	findings := []astgrep.Finding{

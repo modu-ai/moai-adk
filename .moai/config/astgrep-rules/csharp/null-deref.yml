@@ -1,0 +1,9 @@
+id: csharp-null-deref
+language: csharp
+severity: error
+message: "Convert.ToString(null) returns null, which may cause a NullReferenceException when the result is used without a null check."
+note: "Convert.ToString(null) returns null (not an empty string or '(null)'). Callers that assume a non-null string will encounter NullReferenceException when calling methods on the result. Use null-coalescing: Convert.ToString(value) ?? string.Empty, or validate the input before conversion."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-476"
+pattern: Convert.ToString(null)

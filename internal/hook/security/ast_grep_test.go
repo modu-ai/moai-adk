@@ -2,9 +2,12 @@ package security
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -469,4 +472,56 @@ func TestParseASTGrepJSON_RangeFormat(t *testing.T) {
 			t.Errorf("expected endColumn 20, got %d", findings[0].EndColumn)
 		}
 	})
+}
+
+// TestScanMultiple_SemaphoreBound verifies that ScanMultiple caps the number of
+// concurrently-active Scan invocations at runtime.NumCPU()*2 via a buffered channel
+// semaphore. AC-UTIL-002-07
+func TestScanMultiple_SemaphoreBound(t *testing.T) {
+	t.Parallel()
+
+	// Build a scanner with an injected scan function that:
+	// 1. Increments a concurrent counter atomically
+	// 2. Updates the peak counter
+	// 3. Sleeps briefly to allow concurrency to accumulate
+	// 4. Decrements the concurrent counter
+	scanner := &astGrepScanner{}
+
+	var concurrent atomic.Int32
+	var peak atomic.Int32
+
+	scanner.scanFunc = func(_ context.Context, _, _ string) (*ScanResult, error) {
+		cur := concurrent.Add(1)
+		// Update peak (lock-free compare-and-swap loop)
+		for {
+			p := peak.Load()
+			if cur <= p {
+				break
+			}
+			if peak.CompareAndSwap(p, cur) {
+				break
+			}
+		}
+		// Hold the slot briefly so that concurrency accumulates.
+		time.Sleep(5 * time.Millisecond)
+		concurrent.Add(-1)
+		return &ScanResult{Scanned: true}, nil
+	}
+
+	// Create 100 file paths (they don't need to exist; scanFunc handles them).
+	filePaths := make([]string, 100)
+	for i := range filePaths {
+		filePaths[i] = fmt.Sprintf("file%d.go", i)
+	}
+
+	_, err := scanner.ScanMultiple(context.Background(), filePaths, "")
+	if err != nil {
+		t.Fatalf("ScanMultiple() error: %v", err)
+	}
+
+	maxAllowed := int32(runtime.NumCPU() * 2)
+	if got := peak.Load(); got > maxAllowed {
+		t.Errorf("peak concurrent Scan invocations = %d, want <= %d (runtime.NumCPU()*2=%d)",
+			got, maxAllowed, maxAllowed)
+	}
 }
