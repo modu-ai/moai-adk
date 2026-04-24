@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/modu-ai/moai-adk/internal/lsp/config"
 )
 
@@ -35,6 +37,11 @@ type Manager struct {
 
 	// mu는 servers, clients, lastActivity 접근을 보호합니다.
 	mu sync.Mutex
+
+	// sf는 동시 getOrSpawn 호출을 언어별로 직렬화하는 singleflight 그룹입니다 (REQ-UTIL-003-003).
+	// zero-value로 초기화되며 추가 생성자 호출 없이 즉시 사용 가능합니다.
+	// @MX:NOTE: [AUTO] sf — singleflight.Group; 동일 언어에 대한 중복 clientFactory+Start 호출 방지 (REQ-UTIL-003-004, REQ-UTIL-003-005)
+	sf singleflight.Group
 
 	// clientFactory는 테스트에서 DI로 교체 가능한 Client 생성 함수입니다.
 	// 기본값: NewClient
@@ -325,42 +332,59 @@ func (m *Manager) RouteFor(ctx context.Context, path string) (Client, error) {
 
 // getOrSpawn은 캐시된 Client를 반환하거나, 없으면 새로 생성합니다.
 //
-// 동시 안전성: mu 락 하에 clients 맵을 확인하고,
-// StateShutdown이 아닌 클라이언트가 있으면 재사용합니다.
-// 없으면 clientFactory로 새 Client를 생성하고 Start를 호출합니다.
-// Start 실패 시 캐시에서 제거합니다.
+// 동시 안전성 (REQ-UTIL-003-004, REQ-UTIL-003-005, REQ-UTIL-003-006):
+//  1. 빠른 경로: mu 락 하에 캐시를 확인하고 StateShutdown이 아닌 클라이언트가 있으면 즉시 반환.
+//  2. 캐시 미스: singleflight 장벽(m.sf.Do)으로 진입하여 동일 언어에 대한 동시 호출을 직렬화.
+//     - sf.Do 내부에서 재확인(double-check): 다른 goroutine이 이미 완료했을 수 있음.
+//     - clientFactory + c.Start는 sf.Do 내부에서만 실행됨 → 언어당 정확히 1회 보장.
+//     - Start 성공 후에만 캐시에 삽입 → Start 실패 시 캐시 부재로 다음 호출이 재시도 가능.
 func (m *Manager) getOrSpawn(ctx context.Context, language string) (Client, error) {
+	// 빠른 경로: 준비된 클라이언트가 캐시에 있으면 즉시 반환 (락 → 해제 → 반환)
 	m.mu.Lock()
 	existing, ok := m.clients[language]
 	if ok && existing.State() != StateShutdown {
 		m.mu.Unlock()
 		return existing, nil
 	}
-
-	sc, hasCfg := m.servers[language]
-	if !hasCfg {
-		m.mu.Unlock()
-		return nil, fmt.Errorf("lsp manager: no server config for language %q", language)
-	}
-
-	// 새 클라이언트 생성 및 캐시 등록 (Start 전)
-	c := m.clientFactory(sc)
-	m.clients[language] = c
 	m.mu.Unlock()
 
-	// Start 호출 (락 외부에서 실행 — 블로킹 가능)
-	if err := c.Start(ctx); err != nil {
-		// Start 실패: 캐시에서 제거하여 다음 호출 시 재시도 가능하게 함
+	// singleflight 장벽: 동일 언어에 대한 동시 factory+Start 호출을 직렬화 (REQ-UTIL-003-004).
+	// sf.Do는 동일 키에 대해 in-flight 중인 호출이 있으면 모든 대기 호출자가 그 결과를 공유.
+	// 호출 완료 후 키는 자동으로 제거되어 다음 호출은 새로 실행됨 (REQ-UTIL-003-006 재시도 보장).
+	v, err, _ := m.sf.Do(language, func() (any, error) {
+		// sf.Do 내부 재확인: 다른 goroutine이 이미 클라이언트를 캐시에 삽입했을 수 있음
 		m.mu.Lock()
-		// 다른 고루틴이 같은 클라이언트를 교체하지 않은 경우만 삭제
-		if cur, still := m.clients[language]; still && cur == c {
-			delete(m.clients, language)
+		existing2, ok2 := m.clients[language]
+		if ok2 && existing2.State() != StateShutdown {
+			m.mu.Unlock()
+			return existing2, nil
 		}
+		sc, hasCfg := m.servers[language]
 		m.mu.Unlock()
-		return nil, fmt.Errorf("lsp manager: failed to start client for language %q: %w", language, err)
-	}
 
-	return c, nil
+		if !hasCfg {
+			return nil, fmt.Errorf("lsp manager: no server config for language %q", language)
+		}
+
+		// factory 호출: 언어당 정확히 1회 실행됨 (REQ-UTIL-003-005)
+		c := m.clientFactory(sc)
+
+		// Start 호출: 락 외부에서 실행 (블로킹 I/O 가능)
+		if err := c.Start(ctx); err != nil {
+			// Start 실패: 캐시에 삽입하지 않음 → 다음 호출 시 재시도 가능 (REQ-UTIL-003-006)
+			return nil, fmt.Errorf("lsp manager: failed to start client for language %q: %w", language, err)
+		}
+
+		// Start 성공 후에만 캐시에 삽입 (REQ-UTIL-003-006)
+		m.mu.Lock()
+		m.clients[language] = c
+		m.mu.Unlock()
+		return c, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return v.(Client), nil
 }
 
 // reaper는 일정 간격으로 유휴 클라이언트를 종료하는 백그라운드 고루틴입니다.

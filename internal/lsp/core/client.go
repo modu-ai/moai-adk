@@ -209,6 +209,16 @@ func (c *client) Start(ctx context.Context) error {
 		c.supervisor = subprocess.NewSupervisor(result)
 	}
 
+	// stderr drain 고루틴: subprocess stderr 버퍼 deadlock 방지 (REQ-UTIL-003-001, REQ-UTIL-003-002).
+	// result.Stderr가 nil인 경우(테스트 전용 LaunchResult)는 고루틴을 생성하지 않는다.
+	// Supervisor가 subprocess를 종료하면 stderr 파이프가 닫히고 io.Copy가 자연스럽게 반환된다 (C-06).
+	if result.Stderr != nil {
+		go func() {
+			io.Copy(io.Discard, result.Stderr) //nolint:errcheck
+			result.Stderr.Close()              //nolint:errcheck
+		}()
+	}
+
 	// subprocess stdio로 Transport 생성
 	stream := &readWriteCloser{
 		r: result.Stdout,
