@@ -760,6 +760,47 @@ docs-site 파일을 직접 수정하는 에이전트 (`expert-frontend`, `manage
 
 v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.
 
+### §18.0 [HARD] 운영 원칙 — 5가지 즉시 개선 Framework
+
+이 프로젝트는 **다음 5가지 개선을 공식 운영 방침으로 채택**한다. 모든 git 작업은 이 5개 축을 준수해야 한다.
+
+| # | 개선 항목 | 현재 구현 | 참조 |
+|---|----------|-----------|------|
+| 1 | **Branch protection rule 강제** (`main` + `release/*`) | ⏳ `gh api` 명령어 준비 완료, admin 적용 대기 | §18.7 |
+| 2 | **Label 3축 체계** (`type:` / `priority:` / `area:`) + `status:` 보조축 | ✅ `.github/labels.yml` 정의 완료, 25 labels 추가됨 | §18.6 |
+| 3 | **Merge strategy 명시** (release = merge commit, feature = squash) | ✅ `.github/PULL_REQUEST_TEMPLATE.md` + `git-strategy.yaml` | §18.3 |
+| 4 | **Release Drafter로 CHANGELOG 자동화** | ✅ `.github/release-drafter.yml` + workflow 구성 완료 | §18.9 |
+| 5 | **Hotfix 브랜치 명명 공식화** (`hotfix/vX.Y.Z-*`) | ✅ 스크립트 `--hotfix` 플래그 + `Makefile release-hotfix` target | §18.5 |
+
+### §18.0.1 운영 방침 (매 PR/Release마다 점검)
+
+**모든 PR 작성자**:
+1. 브랜치 명명 §18.2 준수 (11 prefix 중 선택)
+2. PR에 type/priority/area 3축 label 부착 (필수)
+3. PR template 내 "Merge Strategy" 체크박스 선택 (`--squash` vs `--merge`)
+4. Commit 메시지 Conventional Commits 형식 (type:scope) — Release Drafter 자동 분류용
+
+**모든 릴리스 담당자**:
+1. Release Drafter draft 확인 → `CHANGELOG.md`에 영문+한국어 섹션 작성
+2. `./scripts/release.sh vX.Y.Z` 또는 `make release V=vX.Y.Z` 실행 (수동 tag push 금지)
+3. Hotfix는 `./scripts/release.sh vX.Y.Z --hotfix`
+4. GoReleaser workflow 완료 후 GitHub Release 5 플랫폼 assets 확인
+5. Post-release: docs-site 4개국어 reference sync (별도 PR) — §17 규칙 준수
+
+**모든 리뷰어**:
+1. PR의 merge strategy가 브랜치 유형과 일치하는지 확인 (release → `--merge`, feature → `--squash`)
+2. 3축 label 부착 여부 확인 (type 축 최소 1, area 축 최소 1, priority 축 최소 1)
+3. CI all-green 확인 (Lint / Test ubuntu/macos/windows / Build 5 / CodeQL)
+4. v2.14.0 Case Study (§18.11) 재발 방지 체크 (release squash 금지, stacked PR base 전환)
+
+**금지 사항** (§18.10 전체 위반 금지):
+- ❌ `main` 직접 push
+- ❌ `develop` 브랜치 생성 (Gitflow 패턴)
+- ❌ Release PR squash merge (history 손실)
+- ❌ `--rebase` merge 전략
+- ❌ 수동 `gh release create` (GoReleaser와 충돌)
+- ❌ 브랜치 명명 관례 위반
+
 ### §18.1 브랜치 구조
 
 ```
@@ -956,15 +997,31 @@ git checkout main && git pull
 
 ### §18.9 자동화 도구
 
-이미 구성된 도구 (유지):
-- **GoReleaser** (`.goreleaser.yml` + `.github/workflows/release.yml`): tag push 시 자동 binary 빌드 + GitHub Release
-- **Dependabot** (`.github/dependabot.yml`): Go modules + GitHub Actions 자동 버전 업데이트
-- **Auto-merge** (`.github/workflows/auto-merge.yml`): dependabot PR 자동 머지
-- **Labeler** (`.github/labeler.yml`): PR 파일 패턴 기반 자동 라벨 부착
+**구성 완료된 도구 (Enhanced GitHub Flow 공식 인프라)**:
 
-추가 도구 (v2.15 이후):
-- **Release Drafter**: PR label/title 기반 CHANGELOG draft 자동 생성
-- **Label Sync**: `.github/labels.yml`을 GitHub과 동기화
+| 도구 | 역할 | 트리거 | 설정 파일 |
+|------|------|--------|-----------|
+| **GoReleaser** | Tag push 시 5 플랫폼 바이너리 빌드 + GitHub Release 생성 | `push: tags: v*` | `.goreleaser.yml` + `.github/workflows/release.yml` |
+| **Release Drafter** ⭐ | PR merge 시 next release draft 자동 업데이트 (CHANGELOG 작성 보조) | `push: branches: main`, `pull_request: [opened, synchronize, edited]` | `.github/release-drafter.yml` + `.github/workflows/release-drafter.yml` |
+| **Dependabot** | Go modules + GitHub Actions 자동 버전 업데이트 PR | 주간 | `.github/dependabot.yml` |
+| **Auto-merge** | Dependabot PR CI pass 시 자동 머지 (squash) | PR + CI success | `.github/workflows/auto-merge.yml` |
+| **Labeler** | PR 파일 패턴 기반 자동 라벨 부착 (area 축 추론) | PR opened/synchronized | `.github/labeler.yml` |
+| **Release Drafter autolabeler** | PR title/branch/files 기반 type 축 자동 라벨 | 위 Release Drafter와 통합 | `.github/release-drafter.yml` § `autolabeler` |
+
+**Release Drafter ↔ GoReleaser 역할 분담** (공존 설계):
+- **Release Drafter** = "다음 릴리스 preview" 자동 축적 → 인간이 `CHANGELOG.md`에 영문+한국어로 정제
+- **GoReleaser** = tag push 시 final release 생성 (commit 기반 changelog 포함). Release Drafter draft와 무관하게 tag 기준 독립 운영
+- **실제 workflow**: PR merge → Release Drafter가 draft 축적 → 릴리스 시 draft 확인 → `CHANGELOG.md` 업데이트 → `./scripts/release.sh` → GoReleaser final release
+
+**Release Drafter Version Resolver** (자동 SemVer 추정):
+- `breaking` / `type:breaking` label → major bump
+- `type:feature` label → minor bump
+- `type:fix` / `type:security` / `type:performance` / 기타 → patch bump
+
+**추가 도구 (v2.15+ 검토)**:
+- **EndBug/label-sync**: `.github/labels.yml`을 GitHub과 주기적 동기화 (현재 수동)
+- **Commitlint GitHub Action**: Conventional Commits 형식 CI 강제
+- **Changesets (대안)**: CHANGELOG 관리 자동화 심화 — 현재 Release Drafter로 충분
 
 ### §18.10 [HARD] 공식 위반 금지 사항
 
@@ -1000,5 +1057,5 @@ v2.14.0 릴리스 과정에서 다음 문제 발생 → v2.15부터 방지:
 ---
 
 **Status**: Active (Local Development)
-**Version**: 3.2.0 (Phase 7: §18 Enhanced GitHub Flow 공식 채택, Gitflow 거부 결정)
+**Version**: 3.3.0 (Phase 8: §18.0 운영 원칙 5 Framework 명시화 + Release Drafter 구성 완료)
 **Last Updated**: 2026-04-24

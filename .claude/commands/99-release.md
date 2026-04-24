@@ -1,29 +1,44 @@
 ---
-description: "MoAI-ADK v2.x production release via GitHub Flow. Creates release/vX.Y.Z branch, version bump, CHANGELOG, PR to main, squash merge, then tag push. Tag vX.Y.Z triggers GoReleaser. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
-argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
+description: "MoAI-ADK production release via Enhanced GitHub Flow (CLAUDE.local.md §18). Creates release/vX.Y.Z branch, version bump, CHANGELOG (bilingual), PR to main, merge commit (NOT squash), then scripts/release.sh for tag + GoReleaser. Hotfix support via --hotfix flag. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
+argument-hint: "[VERSION] [--hotfix] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet
 disable-model-invocation: true
-version: 4.0.0
+version: 5.0.0
 metadata:
   release_target: "production"
   branch: "main"
   tag_format: "vX.Y.Z"
-  changelog_format: "korean_first"
+  changelog_format: "english_first_bilingual"
   release_notes_format: "bilingual"
   git_delegation: "required"
   quality_escalation: "expert-debug"
+  workflow_model: "enhanced-github-flow"
+  merge_strategy: "merge-commit"
+  reference_policy: "CLAUDE.local.md §18"
 ---
 
-## Release Configuration
+## Release Configuration (Enhanced GitHub Flow)
 
-- **Git workflow**: GitHub Flow with enforce_admins (direct main push blocked)
-- **Release branch**: `release/vX.Y.Z` (created from main, merged via PR)
-- **Target branch**: `main` (all releases merge to main)
-- **Tag format**: `vX.Y.Z` (standard semver, triggers GoReleaser via `.github/workflows/release.yml`)
-- **Merge strategy**: Squash merge with branch auto-delete
+- **Git workflow**: Enhanced GitHub Flow (CLAUDE.local.md §18, Gitflow 비채택)
+- **Release branch**: `release/vX.Y.Z` (main에서 분기, PR 경유 머지)
+- **Hotfix branch**: `hotfix/vX.Y.Z-*` (최신 tag에서 분기, main으로 머지)
+- **Target branch**: `main` (production releases only)
+- **Tag format**: `vX.Y.Z` (SemVer, GoReleaser trigger via `.github/workflows/release.yml`)
+- **[HARD] Merge strategy**: **Merge commit** (`gh pr merge --merge --delete-branch`) — release PR에 반드시 적용. Squash 금지 (개별 SPEC commit 보존 필수, §18.3)
+- **Tag push tool**: `./scripts/release.sh vX.Y.Z` 또는 `make release V=vX.Y.Z` (§18.8) — 수동 `git tag + push` 금지 (CHANGELOG 검증 + CI 확인 + GoReleaser watch 포함)
+- **Label 3축**: PR에 `type:*` + `priority:*` + `area:*` 필수 (§18.6)
 - **Release URL**: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
-- **Binaries**: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
+- **Binaries**: darwin-arm64/amd64, linux-arm64/amd64, windows-arm64/amd64 (6 assets + checksums.txt)
+
+### Tool Selection Guide (§18.8 이중 경로)
+
+| 시나리오 | 도구 | 이유 |
+|---------|------|------|
+| Patch/Minor 자동 릴리스 (CHANGELOG 이미 작성됨) | `./scripts/release.sh vX.Y.Z` | 최소 interaction, CI 확인 포함 |
+| Major release / breaking changes | `/99-release` (이 커맨드) | 완전한 리뷰 + 단계별 확인 흐름 |
+| Hotfix 긴급 대응 | `./scripts/release.sh vX.Y.Z --hotfix` | main 외 브랜치 허용, 빠른 경로 |
+| CHANGELOG 작성 + release 통합 | `/99-release` (이 커맨드) | Phase 4에서 bilingual CHANGELOG 생성 |
 
 ---
 
@@ -349,8 +364,10 @@ Agent(
 3. Wait for CI checks to pass:
    `gh pr checks --watch`
 
-4. Merge PR with squash:
-   `gh pr merge --squash --delete-branch`
+4. **[HARD] Merge PR with merge commit (NOT squash)** — Enhanced GitHub Flow §18.3 준수:
+   `gh pr merge --merge --delete-branch`
+
+   이유: release/vX.Y.Z 브랜치의 개별 commit (version bump + CHANGELOG + 필요 시 추가 fix)을 main history에 보존하여 릴리스 시점 추적 가능. Squash 시 개별 SPEC 구현 commit이 소실됨 (v2.14.0 Case Study §18.11 참조).
 
 5. Sync local main with merged result:
    ```bash
@@ -358,17 +375,38 @@ Agent(
    git pull origin main
    ```
 
-6. Check remote status: Verify if tag vX.Y.Z exists on remote (origin)
-7. Handle tag conflicts:
-   - If remote does NOT have vX.Y.Z: Create tag on current main HEAD and push
-   - If remote already has vX.Y.Z: Report situation with options
-8. Create and push tag (only if tag does NOT exist on remote):
+6. **[HARD] Tag creation via scripts/release.sh** (§18.8) — 수동 `git tag + push` 금지:
    ```bash
-   # Only execute this block if vX.Y.Z tag does NOT exist on origin
-   git tag vX.Y.Z
+   ./scripts/release.sh vX.Y.Z
+   # OR (Makefile)
+   make release V=vX.Y.Z
+   ```
+
+   스크립트가 자동으로:
+   - CHANGELOG.md 해당 버전 섹션 존재 확인
+   - CI 상태 조회 (`gh api /commits/{sha}/status`)
+   - main 브랜치 + origin 동기화 확인
+   - 기존 tag 충돌 검사 (local + remote)
+   - CHANGELOG 섹션 → annotated tag annotation 자동 추출
+   - 사용자 confirmation prompt
+   - Tag 생성 + push → GoReleaser workflow 자동 trigger
+   - GoReleaser workflow watch + GitHub Release 검증
+
+   Hotfix 경우:
+   ```bash
+   ./scripts/release.sh vX.Y.Z --hotfix  # main 외 브랜치 허용
+   ```
+
+   **Fallback** (스크립트 실패 시): manager-git이 수동 tag 생성 — 단, 반드시 CHANGELOG 검증 수행 후
+   ```bash
+   # CHANGELOG.md 에 ## [X.Y.Z] 섹션 존재 확인
+   grep "^## \[X.Y.Z\]" CHANGELOG.md
+   # Tag 생성 + push
+   git tag -a vX.Y.Z -m "vX.Y.Z — [요약]"
    git push origin vX.Y.Z
    ```
-9. Verify GoReleaser workflow triggered (tags bypass branch protection)
+
+7. Verify GoReleaser workflow triggered (tags bypass branch protection)
 
 ### Expected Output
 
@@ -670,19 +708,24 @@ Updating version files...
 
 ---
 
-## Key Rules
+## Key Rules (Enhanced GitHub Flow §18)
 
 - **Target branch**: `main` (production releases)
-- **Git workflow**: GitHub Flow with enforce_admins (direct main push blocked)
-- **Release flow**: release/vX.Y.Z branch → PR → squash merge → tag → push tag
-- **Tag format**: `vX.Y.Z` (triggers GoReleaser via release.yml)
+- **Git workflow**: Enhanced GitHub Flow (CLAUDE.local.md §18, Gitflow 비채택)
+- **[HARD] Release flow**: release/vX.Y.Z branch → PR → **merge commit** (NOT squash) → `./scripts/release.sh` → GoReleaser auto-release
+- **[HARD] Hotfix flow**: hotfix/vX.Y.Z-* branch → PR → **merge commit** → `./scripts/release.sh --hotfix` (§18.5)
+- **Tag format**: `vX.Y.Z` (SemVer, triggers GoReleaser via release.yml)
 - Tags bypass branch protection (only branch pushes are blocked)
 - Tests MUST pass to continue (85%+ coverage per package)
-- All 3 version files must be consistent
+- All 3 version files must be consistent (pkg/version, .moai/config, internal/template/templates/.moai/config)
 - **[HARD] CHANGELOG and GitHub Release: English FIRST, Korean SECOND**
+- **[HARD] Release PR: `--merge` (NOT `--squash`)** — 개별 SPEC commit 보존 (§18.3, v2.14.0 Case Study)
+- **[HARD] Tag push via `scripts/release.sh` only** — 수동 `git tag + push` 금지 (§18.8, CHANGELOG 검증 누락 방지)
 - **[HARD] ALL git operations MUST be delegated to manager-git agent**
 - **[HARD] Quality gate failures MUST be delegated to expert-debug agent**
 - **[HARD] Never `git push origin main` — always use PR merge flow**
+- **[HARD] Label 3축** (type/priority/area) PR 부착 필수 (§18.6) — Release Drafter 자동 분류용
+- **[HARD] Release Drafter draft 참조** (§18.9) — PR merge 시 자동 업데이트되는 draft를 CHANGELOG.md 작성에 활용
 
 ---
 
