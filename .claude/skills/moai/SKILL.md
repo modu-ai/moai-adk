@@ -312,6 +312,8 @@ Last Updated: 2026-02-25
 | "I can run /moai run without a SPEC, it is just a tweak" | Without a SPEC, there is no acceptance criterion to check. Every run without a SPEC silently degrades quality tracking. |
 | "Parallel agents will just race, sequential is safer" | Independent tool calls are explicitly required to run in parallel. Sequentializing them wastes user time. |
 | "I will respond in English since it is technical" | Conversation language is a HARD rule. User-facing output must match the configured language, always. |
+| "Schema 로드가 귀찮으니 이번엔 산문으로 질문하자" | AskUserQuestion/Task* 는 deferred tool. ToolSearch 한 번으로 session 전체 사용 가능. 산문 질문은 HARD 위반 (CLAUDE.md §1, §8 Deferred Tool Preload Protocol). |
+| "짧은 확인 질문은 산문으로 처리해도 된다" | 모든 user-facing 질문은 AskUserQuestion 경유 강제. "짧은 질문"은 예외 아님. Self-check: 응답에 "?" 있으면 AskUserQuestion 호출 동반 필수. |
 
 <!-- moai:evolvable-end -->
 
@@ -324,6 +326,11 @@ Last Updated: 2026-02-25
 - AskUserQuestion with more than 4 options or containing emoji
 - Agent invocation prompt contains absolute paths to the main project when isolation is worktree
 - /moai run executed without a corresponding SPEC-XXX document
+- Response ends with "?" but no AskUserQuestion tool call accompanies it
+- Options listed as markdown (`- A:`, `- B:`, `Option X:`) without structured AskUserQuestion
+- Prose decision requests ("진행할까요?", "어느 것 선호?", "A or B?") instead of AskUserQuestion
+- First AskUserQuestion call in session without prior ToolSearch preload (produces InputValidationError)
+- Waiting for user's next message after prose question without AskUserQuestion tool call
 
 <!-- moai:evolvable-end -->
 
@@ -337,5 +344,9 @@ Last Updated: 2026-02-25
 - [ ] For non-trivial tasks, approach was explained and approved before code changes
 - [ ] SPEC-ID is referenced when /moai run, /moai sync, or /moai fix is invoked
 - [ ] TodoList used to decompose multi-file changes (3+ files)
+- [ ] Session opened with ToolSearch preload of deferred tools (AskUserQuestion, TaskCreate/Update/List/Get)
+- [ ] Every response containing "?" is accompanied by a structured AskUserQuestion tool call
+- [ ] Option lists (`- A:`, `- B:`) are routed through AskUserQuestion, not markdown-only
+- [ ] No silent "wait for user input" state after prose question (§8 Deferred Tool Preload Protocol)
 
 <!-- moai:evolvable-end -->

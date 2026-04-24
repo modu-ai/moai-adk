@@ -1056,6 +1056,86 @@ v2.14.0 릴리스 과정에서 다음 문제 발생 → v2.15부터 방지:
 
 ---
 
+---
+
+## 19. AskUserQuestion Enforcement Protocol
+
+2026-04-24 세션에서 `AskUserQuestion` 미사용으로 [HARD] 규칙(§1, §8) 위반 반복 발생. 근본 원인은 **deferred tool 사전 로드 부재** + **산문 질문 편의주의**. v3.4.0부터 본 Enforcement Protocol을 [HARD] 운영 방침으로 고정.
+
+### §19.1 근본 원인 체인
+
+1. **1차 원인**: `AskUserQuestion`은 deferred tool. 세션 시작 시 schema 미로드 → 직접 호출 시 `InputValidationError` → agent가 회피 → 산문 질문으로 우회.
+2. **2차 원인**: Red Flags / Verification 체크리스트에 "응답 말미 `?` + AskUserQuestion 미호출" 탐지 규칙 부재.
+3. **3차 원인**: 규칙은 존재하나 매 세션 agent 해석에 의존. 편의주의("짧은 질문은 산문으로") 허용 관행.
+
+### §19.2 [HARD] 세션 시작 Preload (의무)
+
+모든 MoAI 세션은 첫 사용자 입력 수신 직후 다음 `ToolSearch` 호출을 실행해야 한다:
+
+```
+ToolSearch({
+  query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet",
+  max_results: 5
+})
+```
+
+Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD 위반 + `InputValidationError`.
+
+### §19.3 [HARD] Pre-Response Self-Check (응답 전송 전 필수)
+
+모든 사용자 응답 전송 전, 다음 4항목 자가 점검:
+
+1. **Question mark detection**: 응답에 `?`가 포함되었는가? → 있으면 `AskUserQuestion` tool call 동반 필수
+2. **Option list detection**: 응답에 선택지 구조(`- A:`, `- B:`, `Option X:`, `1.`)가 있는가? → structured `AskUserQuestion` 경유 필수
+3. **Schema load check**: `AskUserQuestion` schema 로드 상태 확인. 미로드 시 `ToolSearch` 선행
+4. **Silent-wait detection**: 산문 질문 후 사용자 응답 대기 상태인가? → `AskUserQuestion`으로 전환 필수
+
+점검 실패 시 = [HARD] 규칙 위반. 즉시 수정 필요.
+
+### §19.4 [HARD] Anti-Patterns (금지)
+
+| 패턴 | 왜 금지 | 올바른 방법 |
+|------|---------|-------------|
+| 응답 말미 `?`로 끝나는 산문 질문 | 사용자에게 무엇을 원하는지 불명확, silent wait | `AskUserQuestion` 호출 필수 |
+| "진행할까요?", "A or B?" 자연어 선택 요청 | structured 응답 아닌 free-form 기대 → 파싱 불가 | `AskUserQuestion` with 2-4 options |
+| 선택지를 markdown `- A:`, `- B:`로만 나열 | 사용자가 자연어로 답해야 함 | `AskUserQuestion` structured options |
+| `AskUserQuestion` 호출 전 `ToolSearch` 생략 | `InputValidationError` 발생 | §19.2 Preload 먼저 |
+| Silent "wait for next message" after prose | 사용자에게 정확한 응답 형식 미제공 | `AskUserQuestion` 또는 구체적 지시 |
+
+### §19.5 운영 적용 (Role별)
+
+**MoAI orchestrator**:
+- [HARD] 모든 사용자 결정 요청은 `AskUserQuestion` 경유
+- [HARD] 세션 시작 시 §19.2 preload 실행
+- [HARD] 응답 전송 전 §19.3 self-check 통과
+
+**Subagent (manager-*, expert-*, builder-*)**:
+- [HARD] `AskUserQuestion` 호출 금지 (agent-common-protocol §User Interaction Boundary)
+- 사용자 결정 필요 시 "missing inputs" 보고서로 orchestrator에 반환
+
+**User**:
+- 산문 질문 탐지 시 즉시 지적 (2026-04-24 세션 사례처럼)
+- 반복 위반 시 memory/feedback_askuserquestion_*.md에 기록
+
+### §19.6 Recovery Protocol (위반 발생 시)
+
+[HARD] 위반 탐지 즉시 다음 순서로 복구:
+
+1. 위반 인정 + 근본 원인 명시 (1/2/3차)
+2. `ToolSearch`로 schema preload
+3. 동일 질문을 `AskUserQuestion`으로 재구성 + 재전송
+4. `memory/feedback_askuserquestion_*.md`에 incident 기록
+5. 다음 응답부터 §19.3 self-check 엄격 적용
+
+### §19.7 관련 정책 참조
+
+- CLAUDE.md §1 HARD Rules (AskUserQuestion-Only + Deferred Tool Preload)
+- CLAUDE.md §8 User Interaction Architecture § Deferred Tool Preload Protocol
+- .claude/skills/moai/SKILL.md § Red Flags + Verification (deferred tool 관련 5+4 항목)
+- ~/.claude/projects/{hash}/memory/feedback_askuserquestion_enforcement.md (이번 incident 기록)
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 3.3.0 (Phase 8: §18.0 운영 원칙 5 Framework 명시화 + Release Drafter 구성 완료)
+**Version**: 3.4.0 (Phase 9: §19 AskUserQuestion Enforcement Protocol 공식 채택)
 **Last Updated**: 2026-04-24
