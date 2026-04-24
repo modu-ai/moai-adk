@@ -1,10 +1,14 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -189,13 +193,51 @@ func outputSARIF(cmd *cobra.Command, findings []astgrep.Finding) error {
 	return err
 }
 
-// detectSGVersion은 sg --version의 출력을 파싱하여 버전 문자열을 반환합니다.
-func detectSGVersion() string {
-	cfg := &astgrep.ScannerConfig{SGBinary: "sg"}
-	s := astgrep.NewScanner(cfg)
-	_ = s // 미래 구현을 위한 플레이스홀더
-	return "unknown"
+// sgVersionOnce와 sgVersionResult는 detectSGVersion의 sync.Once 캐싱을 위한 패키지 변수입니다.
+// 포인터를 사용하여 테스트에서 새 인스턴스로 교체할 수 있게 합니다 (sync.Once는 복사 불가).
+// REQ-UTIL-002-009: 동일 프로세스 내에서 sg --version은 한 번만 실행됩니다.
+var (
+	sgVersionOnce   = new(sync.Once)
+	sgVersionResult string
+)
+
+// sgVersionExec는 sg --version 실행을 담당하는 함수입니다.
+// 테스트에서 교체 가능(injectable)하여 sg 바이너리 없이도 단위 테스트가 가능합니다.
+// REQ-UTIL-002-008: 5초 timeout 내에 sg --version을 실행하여 trimmed stdout을 반환합니다.
+var sgVersionExec = func(sgBinary string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, sgBinary, "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }
+
+// detectSGVersion은 sg --version의 출력을 파싱하여 버전 문자열을 반환합니다.
+// sync.Once를 통해 결과를 캐싱하므로 동일 프로세스 내에서 sg --version은 한 번만 실행됩니다.
+// 오류(바이너리 없음, timeout, 비정상 종료, 빈 출력) 시 "unknown"을 반환합니다.
+// REQ-UTIL-002-008, REQ-UTIL-002-009
+func detectSGVersion() string {
+	sgVersionOnce.Do(func() {
+		v, err := sgVersionExec("sg")
+		if err != nil {
+			sgVersionResult = "unknown"
+			return
+		}
+		v = strings.TrimSpace(v)
+		if v == "" {
+			sgVersionResult = "unknown"
+			return
+		}
+		sgVersionResult = v
+	})
+	return sgVersionResult
+}
+
+// NOTE: sgVersionOnce は *sync.Once (ポインタ型) であることに注意。
+// テストでは新しいインスタンスへのポインタ置き換えにより sync.Once のリセット相当を実現できる。
 
 // filterByLang은 지정된 언어의 규칙에서 발생한 finding만 반환합니다.
 // lang이 빈 문자열이면 전체를 반환합니다.

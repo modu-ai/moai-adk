@@ -39,6 +39,22 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Assert zero exec.Command in MX validator (AC-UTIL-001-04)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          count=$(grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/" | wc -l)
+          if [ "$count" -ne "0" ]; then
+            echo "FAIL: exec.Command found in internal/hook/mx/ (AC-UTIL-001-04):"
+            grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/"
+            exit 1
+          fi
+          echo "PASS: zero exec.Command in internal/hook/mx/ (AC-UTIL-001-04)"
+
+      - name: Run MX validator tests (Windows cross-platform AC-UTIL-001-05)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: go test -race ./internal/hook/mx/...
+
       - name: Run tests with race detector
         shell: bash
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...

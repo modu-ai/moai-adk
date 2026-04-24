@@ -70,10 +70,16 @@ type ReplaceResult struct {
 
 // Rule represents an ast-grep rule loaded from YAML.
 type Rule struct {
-	ID       string `json:"id" yaml:"id"`
-	Language string `json:"language" yaml:"language"`
-	Severity string `json:"severity" yaml:"severity"`
-	Message  string `json:"message" yaml:"message"`
-	Pattern  string `json:"pattern" yaml:"pattern"`
-	Fix      string `json:"fix,omitempty" yaml:"fix,omitempty"`
+	ID       string            `json:"id" yaml:"id"`
+	Language string            `json:"language" yaml:"language"`
+	Severity string            `json:"severity" yaml:"severity"`
+	Message  string            `json:"message" yaml:"message"`
+	Pattern  string            `json:"pattern" yaml:"pattern"`
+	Fix      string            `json:"fix,omitempty" yaml:"fix,omitempty"`
+	// Note는 규칙의 교육적 설명입니다. 발견 시 Finding.Note에 전파됩니다.
+	// REQ-UTIL-002-001
+	Note     string            `json:"note,omitempty" yaml:"note,omitempty"`
+	// Metadata는 CWE/OWASP 등 분류 메타데이터입니다. 발견 시 Finding.Metadata에 전파됩니다.
+	// REQ-UTIL-002-002
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }

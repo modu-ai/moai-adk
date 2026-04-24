@@ -2,9 +2,11 @@ package subprocess_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -30,7 +32,24 @@ func launchStub(t *testing.T, script string) (*subprocess.LaunchResult, *subproc
 	}
 
 	l := subprocess.NewLauncher()
-	result, err := l.Launch(context.Background(), cfg)
+
+	// ETXTBSY mitigation: Linux fork/exec race between goroutines may leave
+	// the stub binary with an open write fd in a sibling goroutine, triggering
+	// "text file busy". Retry up to 5 times with linear backoff (max ~750 ms).
+	// Go issue #22315: fork/exec inherits fds that are not FD_CLOEXEC.
+	var result *subprocess.LaunchResult
+	var err error
+	for attempts := 0; attempts < 5; attempts++ {
+		result, err = l.Launch(context.Background(), cfg)
+		if err == nil {
+			break
+		}
+		if errors.Is(err, syscall.ETXTBSY) || strings.Contains(err.Error(), "text file busy") {
+			time.Sleep(time.Duration(50*(attempts+1)) * time.Millisecond)
+			continue
+		}
+		break
+	}
 	if err != nil {
 		t.Fatalf("launchStub: %v", err)
 	}

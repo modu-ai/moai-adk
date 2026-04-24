@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 // SARIF 2.1.0 스키마 URL
@@ -45,11 +46,14 @@ type sarifRule struct {
 
 // sarifResult는 단일 발견 결과입니다.
 type sarifResult struct {
-	RuleID    string             `json:"ruleId"`
-	Level     string             `json:"level"`
-	Message   sarifMessage       `json:"message"`
-	Locations []sarifLocation    `json:"locations"`
-	Properties map[string]string `json:"properties,omitempty"`
+	RuleID     string           `json:"ruleId"`
+	Level      string           `json:"level"`
+	Message    sarifMessage     `json:"message"`
+	Locations  []sarifLocation  `json:"locations"`
+	// Properties는 SARIF 2.1.0 §3.52 property bag입니다.
+	// map[string]any 를 사용하여 기존 string 값과 tags []string을 함께 수용합니다.
+	// REQ-UTIL-002-005/006: owasp/cwe 키가 있으면 external/owasp/* external/cwe/* 태그를 tags에 추가합니다.
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 // sarifMessage는 SARIF 메시지 텍스트입니다.
@@ -145,9 +149,25 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 			},
 		}
 
-		// 메타데이터를 SARIF properties로 전달 (CWE/OWASP 보존)
+		// 메타데이터를 SARIF properties로 전달 + OWASP/CWE 태그 추가
+		// REQ-UTIL-002-005/006: Metadata에 owasp/cwe 키가 있으면 external/* 태그를 추가합니다.
 		if len(f.Metadata) > 0 {
-			result.Properties = f.Metadata
+			props := make(map[string]any, len(f.Metadata)+1)
+			for k, v := range f.Metadata {
+				props[k] = v // 기존 string 값 보존 (backward compat)
+			}
+			// SARIF 2.1.0 §3.52: tags 배열에 external/owasp/* 및 external/cwe/* 항목 추가
+			var tags []string
+			if v, ok := f.Metadata["owasp"]; ok && v != "" {
+				tags = append(tags, "external/owasp/"+sanitizeTagValue(v))
+			}
+			if v, ok := f.Metadata["cwe"]; ok && v != "" {
+				tags = append(tags, "external/cwe/"+sanitizeTagValue(v))
+			}
+			if len(tags) > 0 {
+				props["tags"] = tags
+			}
+			result.Properties = props
 		}
 
 		results = append(results, result)
@@ -211,4 +231,30 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// sanitizeTagValue는 OWASP/CWE 메타데이터 값을 SARIF tags 항목에 안전한 형태로 변환합니다.
+// 변환 규칙:
+//  1. 소문자 변환
+//  2. 알파벳/숫자 이외의 문자 → 하이픈 치환
+//  3. 연속 하이픈 → 단일 하이픈 축소
+//  4. 선두/말미 하이픈 제거
+//
+// 예시: "A03:2021 - Injection" → "a03-2021-injection", "CWE-89" → "cwe-89"
+func sanitizeTagValue(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(unicode.ToLower(r))
+		} else {
+			b.WriteByte('-')
+		}
+	}
+	// 연속 하이픈 축소
+	result := b.String()
+	for strings.Contains(result, "--") {
+		result = strings.ReplaceAll(result, "--", "-")
+	}
+	return strings.Trim(result, "-")
 }

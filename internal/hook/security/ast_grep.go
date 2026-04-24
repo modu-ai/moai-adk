@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +24,11 @@ type astGrepScanner struct {
 	available bool
 	checked   bool
 	version   string
+	// scanFunc はテストでScanメソッドを置き換えるためのフック。
+	// nilの場合はproduction実装（s.Scan）が使用される。
+	// scanFunc allows tests to inject a custom scan implementation for ScanMultiple.
+	// When nil (default production path), s.Scan is called directly.
+	scanFunc func(ctx context.Context, filePath, configPath string) (*ScanResult, error)
 }
 
 // NewASTGrepScanner creates a new ASTGrepScanner instance.
@@ -169,13 +175,27 @@ func (s *astGrepScanner) Scan(ctx context.Context, filePath string, configPath s
 	return result, nil
 }
 
-// @MX:WARN: [AUTO] Parallel file scan using goroutines. Context timeout propagates to individual Scan calls, but wg.Wait itself is blocking.
-// @MX:REASON: sync.WaitGroup + goroutine pattern, goroutines already started continue running until completion even after context cancellation
+// @MX:WARN: [AUTO] Parallel file scan using goroutines — bounded by semaphore (SPEC-UTIL-002).
+// @MX:REASON: REQ-UTIL-002-007: ScanMultiple now caps concurrent Scan invocations at
+//   runtime.NumCPU()*2 via a buffered channel semaphore to prevent unbounded goroutine spawning.
+//   Context timeout propagates to individual Scan calls; wg.Wait remains blocking after context cancel
+//   but the semaphore prevents resource exhaustion on large file sets.
 // ScanMultiple runs ast-grep scan on multiple files.
-// Implements REQ-HOOK-123.
+// Implements REQ-HOOK-123, REQ-UTIL-002-007.
 func (s *astGrepScanner) ScanMultiple(ctx context.Context, filePaths []string, configPath string) ([]*ScanResult, error) {
 	if len(filePaths) == 0 {
 		return []*ScanResult{}, nil
+	}
+
+	// Bounded semaphore: cap concurrent Scan invocations at NumCPU*2 (REQ-UTIL-002-007)
+	sem := make(chan struct{}, runtime.NumCPU()*2)
+
+	// Determine the scan function to use (allows test injection via scanFunc field)
+	scanFn := func(ctx context.Context, filePath, configPath string) (*ScanResult, error) {
+		return s.Scan(ctx, filePath, configPath)
+	}
+	if s.scanFunc != nil {
+		scanFn = s.scanFunc
 	}
 
 	results := make([]*ScanResult, len(filePaths))
@@ -188,7 +208,12 @@ func (s *astGrepScanner) ScanMultiple(ctx context.Context, filePaths []string, c
 		go func(idx int, path string) {
 			defer wg.Done()
 
-			result, err := s.Scan(ctx, path, configPath)
+			// Acquire semaphore slot before executing scan
+			sem <- struct{}{}
+			result, err := scanFn(ctx, path, configPath)
+			// Release semaphore slot after scan completes
+			<-sem
+
 			mu.Lock()
 			defer mu.Unlock()
 

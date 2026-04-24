@@ -1,6 +1,10 @@
 package gopls
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
+)
 
 // ─── JSON-RPC 2.0 봉투 타입 ────────────────────────────────────────────────
 //
@@ -116,6 +120,9 @@ type TextDocumentItem struct {
 // ─── 진단 메시지 ──────────────────────────────────────────────────────────
 //
 // REQ-GB-023: severity, source, code, message, range 필드를 포함해야 한다.
+// REQ-UTIL-003-007: gopls.Diagnostic / Range / Position / DiagnosticSeverity는
+// lsp 패키지 정의의 타입 별칭이다. 단일 출처(single source of truth) 보장.
+// 기존 gopls 호출자는 타입 별칭의 동일성(identity) 의미론으로 수정 없이 컴파일된다.
 
 // PublishDiagnosticsParams는 `textDocument/publishDiagnostics` 알림의 파라미터다.
 type PublishDiagnosticsParams struct {
@@ -125,38 +132,19 @@ type PublishDiagnosticsParams struct {
 	Diagnostics []Diagnostic `json:"diagnostics"`
 }
 
-// Diagnostic은 LSP 진단 항목이다.
-// REQ-GB-023: severity, source, code, message, range 필드를 포함한다.
-type Diagnostic struct {
-	// Range는 문서 내 진단 위치다.
-	Range Range `json:"range"`
-	// Severity는 진단의 심각도다. (1=Error, 2=Warning, 3=Information, 4=Hint)
-	Severity DiagnosticSeverity `json:"severity,omitempty"`
-	// Code는 진단 코드다. (예: "SA1001", "undeclared name")
-	Code string `json:"code,omitempty"`
-	// Source는 진단의 출처다. (예: "compiler", "staticcheck", "gopls")
-	Source string `json:"source,omitempty"`
-	// Message는 진단 메시지 본문이다.
-	Message string `json:"message"`
-}
+// Diagnostic은 lsp.Diagnostic의 타입 별칭이다 (REQ-UTIL-003-007).
+// reflect.TypeOf(gopls.Diagnostic{}) == reflect.TypeOf(lsp.Diagnostic{})가 보장된다.
+type Diagnostic = lsp.Diagnostic
 
-// Range는 문서 내 텍스트 범위를 나타낸다.
-type Range struct {
-	Start Position `json:"start"`
-	End   Position `json:"end"`
-}
+// Range는 lsp.Range의 타입 별칭이다 (REQ-UTIL-003-007).
+type Range = lsp.Range
 
-// Position은 문서 내 커서 위치를 나타낸다. 줄과 문자는 0부터 시작한다.
-type Position struct {
-	// Line은 0-indexed 줄 번호다.
-	Line int `json:"line"`
-	// Character는 0-indexed UTF-16 코드 유닛 오프셋이다.
-	Character int `json:"character"`
-}
+// Position은 lsp.Position의 타입 별칭이다 (REQ-UTIL-003-007).
+type Position = lsp.Position
 
-// DiagnosticSeverity는 진단 심각도 열거형이다.
-// LSP 3.17 사양의 DiagnosticSeverity 값과 일치한다.
-type DiagnosticSeverity int
+// DiagnosticSeverity는 lsp.DiagnosticSeverity의 타입 별칭이다 (REQ-UTIL-003-007).
+// LSP 3.17 사양의 DiagnosticSeverity 값과 일치한다 (int 기반, 1=Error, 2=Warning, 3=Info, 4=Hint).
+type DiagnosticSeverity = lsp.DiagnosticSeverity
 
 const (
 	// SeverityError는 오류 진단이다 (값: 1).
@@ -164,6 +152,7 @@ const (
 	// SeverityWarning은 경고 진단이다 (값: 2).
 	SeverityWarning DiagnosticSeverity = 2
 	// SeverityInformation은 정보성 진단이다 (값: 3).
+	// 참고: lsp 패키지는 동일 값을 SeverityInfo로 명명한다.
 	SeverityInformation DiagnosticSeverity = 3
 	// SeverityHint는 힌트 진단이다 (값: 4).
 	SeverityHint DiagnosticSeverity = 4

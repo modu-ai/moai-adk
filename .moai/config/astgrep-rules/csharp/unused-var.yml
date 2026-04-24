@@ -1,0 +1,9 @@
+id: csharp-unused-var
+language: csharp
+severity: warning
+message: "String variable initialized to null may cause NullReferenceException downstream."
+note: "In C#, reference types including string are nullable by default in pre-nullable-annotations code. Assigning null to a string variable and then calling methods without null checks causes NullReferenceException. Prefer string.Empty or a meaningful default, and use C# 8+ nullable annotations (#nullable enable) to get compiler warnings for null dereferences."
+metadata:
+  owasp: "A05:2021 - Security Misconfiguration"
+  cwe: "CWE-476"
+pattern: string $_ = null

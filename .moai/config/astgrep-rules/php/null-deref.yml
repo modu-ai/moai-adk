@@ -1,0 +1,9 @@
+id: php-null-deref
+language: php
+severity: error
+message: "Passing null directly to json_decode() produces null output and masks data integrity issues."
+note: "json_decode(null) returns null in PHP 8, silently ignoring the invalid input. Always validate that the input is a non-null string before decoding. Use is_string($input) && !is_null($input) guards, or leverage PHP 8's named arguments and match expressions for safer deserialization."
+metadata:
+  owasp: "A08:2021 - Software and Data Integrity Failures"
+  cwe: "CWE-476"
+pattern: json_decode(null)
