@@ -1,0 +1,30 @@
+name: Release Drafter
+
+# Enhanced GitHub Flow §18.9 자동화
+# PR이 main에 머지될 때마다 next release의 draft notes를 자동 업데이트.
+# Draft 내용은 수동으로 CHANGELOG.md에 반영한 후 ./scripts/release.sh 실행.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    name: Update Release Draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Run Release Drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
