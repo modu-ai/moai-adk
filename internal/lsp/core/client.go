@@ -212,6 +212,8 @@ func (c *client) Start(ctx context.Context) error {
 	// stderr drain 고루틴: subprocess stderr 버퍼 deadlock 방지 (REQ-UTIL-003-001, REQ-UTIL-003-002).
 	// result.Stderr가 nil인 경우(테스트 전용 LaunchResult)는 고루틴을 생성하지 않는다.
 	// Supervisor가 subprocess를 종료하면 stderr 파이프가 닫히고 io.Copy가 자연스럽게 반환된다 (C-06).
+	// @MX:WARN: [AUTO] subprocess stderr 드레인 goroutine — context.Context 없이 subprocess stderr 파이프 수명에 바인딩
+	// @MX:REASON: stderr 버퍼 deadlock 방지 목적. Supervisor가 subprocess 종료 시 stderr를 닫으면 io.Copy가 자연 반환되어 goroutine leak 없음 (C-06 보장, REQ-UTIL-003-010 테스트로 128 KiB 버스트 검증).
 	if result.Stderr != nil {
 		go func() {
 			io.Copy(io.Discard, result.Stderr) //nolint:errcheck

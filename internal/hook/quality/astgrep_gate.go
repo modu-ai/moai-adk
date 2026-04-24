@@ -220,8 +220,8 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 				File: filePath,
 				Line: i + 1,
 				Message: fmt.Sprintf(
-					"ast-grep suppression at %s:%d requires adjacent '// @MX:REASON <rationale>' on next line",
-					filePath, i+1,
+					"ast-grep suppression at %s:%d requires adjacent '%s @MX:REASON <rationale>' on next line",
+					filePath, i+1, prefix,
 				),
 			})
 		}
