@@ -11,6 +11,7 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] No XML in User Responses: Never display XML tags in user-facing responses
 - [HARD] Markdown Output: Use Markdown for all user-facing communication
 - [HARD] AskUserQuestion-Only Interaction: ALL questions directed at the user MUST go through AskUserQuestion (See Section 8)
+- [HARD] Deferred Tool Preload: AskUserQuestion, TaskCreate/Update/List/Get are deferred tools — schema is NOT loaded at session start. Call ToolSearch BEFORE first use to load schemas. Calling without schema produces InputValidationError. (See Section 8 Deferred Tool Preload Protocol)
 - [HARD] Context-First Discovery: Conduct Socratic interview via AskUserQuestion when context is insufficient before executing non-trivial tasks (See Section 7)
 - [HARD] Approach-First Development: Explain approach and get approval before writing code (See Section 7)
 - [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
@@ -315,6 +316,37 @@ Rationale:
 Exceptions (free-form text questions permitted ONLY when):
 - AskUserQuestion is technically unavailable (e.g., inside a subagent — should not happen since subagents must not ask users)
 - The question is actually a statement of status, not a question
+
+### Deferred Tool Preload Protocol [HARD]
+
+[HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — their schemas are NOT loaded at session start. Calling them directly produces `InputValidationError`. Load schemas via `ToolSearch` BEFORE first use.
+
+Preload triggers (execute ToolSearch immediately when any condition matches):
+- Session start after first user input received
+- Before any complex / multi-step task begins
+- Before invoking Socratic interview (Section 7 Rule 5)
+- When user decision is required ("Should I proceed?", "Which option?", "선택", "진행 여부")
+- Immediately before first TaskCreate/Update/List/Get call
+
+Preload command (once per session, BEFORE any user-facing question):
+```
+ToolSearch({query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5})
+```
+
+Anti-patterns (PROHIBITED — these constitute HARD violation of §1):
+- Prose question ending with "?" + no accompanying AskUserQuestion tool call
+- Natural language decision requests: "진행할까요?", "어느 것을 선호하시나요?", "A or B?"
+- Listing options as markdown only (`- A:`, `- B:`) without structured AskUserQuestion
+- Calling AskUserQuestion without prior ToolSearch preload (produces InputValidationError)
+- Converting a user decision into a "wait for next message" without AskUserQuestion
+
+Pre-response self-check (MANDATORY before sending any user-facing response):
+1. Does the response end with "?" or contain "?" as a decision prompt? → MUST be paired with AskUserQuestion tool call
+2. Does the response list options (`- A:`, `1.`, `Option X:`)? → MUST use structured AskUserQuestion
+3. Is the deferred tool schema loaded? → If not, call ToolSearch FIRST
+4. Am I silently waiting for user input after prose question? → Convert to AskUserQuestion
+
+Self-check failure = HARD rule violation. Treat as critical defect requiring immediate correction.
 
 ### Socratic Interview via AskUserQuestion [HARD]
 
