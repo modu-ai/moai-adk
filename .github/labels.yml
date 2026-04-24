@@ -115,3 +115,128 @@
 - name: dependencies
   color: "0366d6"
   description: "Dependency updates"
+
+# ============================================================================
+# Enhanced GitHub Flow 3축 체계 (CLAUDE.local.md §18.6)
+# type: / priority: / area: 접두사는 2026-04-24부터 공식 표준
+# ============================================================================
+
+# --- type:* (required, 1개 PR당 1 type) ---
+- name: "type:feature"
+  color: "1f883d"
+  description: "New feature or capability"
+
+- name: "type:fix"
+  color: "d73a4a"
+  description: "Bug fix"
+
+- name: "type:docs"
+  color: "0075ca"
+  description: "Documentation only change"
+
+- name: "type:chore"
+  color: "fbca04"
+  description: "Maintenance (dependencies, cleanup)"
+
+- name: "type:ci"
+  color: "e3d21c"
+  description: "CI/CD or GitHub Actions change"
+
+- name: "type:refactor"
+  color: "d2dae6"
+  description: "Code restructuring without behavior change"
+
+- name: "type:security"
+  color: "ee0701"
+  description: "Security fix or hardening"
+
+- name: "type:test"
+  color: "d876e3"
+  description: "Test addition or improvement"
+
+# --- priority:* (required) ---
+- name: "priority:P0"
+  color: "b60205"
+  description: "Critical — immediate response required"
+
+- name: "priority:P1"
+  color: "d93f0b"
+  description: "High — within 24 hours"
+
+- name: "priority:P2"
+  color: "fbca04"
+  description: "Medium — this sprint"
+
+- name: "priority:P3"
+  color: "85e89d"
+  description: "Low — backlog"
+
+- name: "priority:P4"
+  color: "c2c2c2"
+  description: "Icebox — deferred indefinitely"
+
+# --- area:* (required, multiple allowed for cross-cutting PRs) ---
+- name: "area:mx"
+  color: "5319e7"
+  description: "MX validator subsystem"
+
+- name: "area:astgrep"
+  color: "5319e7"
+  description: "ast-grep integration subsystem"
+
+- name: "area:lsp"
+  color: "5319e7"
+  description: "LSP subsystem"
+
+- name: "area:hooks"
+  color: "f9d0c4"
+  description: "Hook system"
+
+- name: "area:docs-site"
+  color: "0e8a16"
+  description: "docs-site (Hugo 4-locale documentation)"
+
+- name: "area:templates"
+  color: "c5def5"
+  description: "internal/template/templates/ (project templates)"
+
+- name: "area:cli"
+  color: "00add8"
+  description: "CLI commands and UX"
+
+- name: "area:config"
+  color: "d4c5f9"
+  description: "Configuration files (.moai/, .claude/)"
+
+- name: "area:workflow"
+  color: "1d76db"
+  description: "SPEC workflow (plan/run/sync)"
+
+- name: "area:ci"
+  color: "e3d21c"
+  description: "CI/CD infrastructure"
+
+- name: "area:security"
+  color: "ee0701"
+  description: "Security-related area"
+
+- name: "area:deps"
+  color: "0366d6"
+  description: "External dependencies"
+
+# --- status:* (optional, progress tracking) ---
+- name: "status:in-progress"
+  color: "ffd700"
+  description: "Currently being worked on"
+
+- name: "status:review"
+  color: "0075ca"
+  description: "In code review"
+
+- name: "status:blocked"
+  color: "d73a4a"
+  description: "Blocked on external dependency"
+
+- name: "status:needs-info"
+  color: "ffffa5"
+  description: "Waiting for additional information from reporter"

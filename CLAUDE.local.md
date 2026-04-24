@@ -756,6 +756,249 @@ docs-site 파일을 직접 수정하는 에이전트 (`expert-frontend`, `manage
 
 ---
 
+## 18. Git Workflow — Enhanced GitHub Flow
+
+v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.
+
+### §18.1 브랜치 구조
+
+```
+main ──●──●──●──●──●──  (protected, 항상 배포 가능, tags 부착)
+       ↑  ↑     ↑
+       │  │     release/vX.Y.Z (며칠 이내)
+       │  │
+       │  feat/SPEC-XXX-description (1-3일)
+       │  fix/issue-NNN-description (1일)
+       │  docs/topic-description (1일)
+       │  chore/task-description (1일)
+       │  plan/vX.Y-topic (SPEC 초안 모음)
+       │
+       hotfix/vX.Y.Z-description (main의 tag에서 분기)
+```
+
+### §18.2 [HARD] 브랜치 명명 규칙
+
+| 접두사 | 용도 | 수명 | 예시 |
+|--------|------|------|------|
+| `feat/SPEC-XXX-*` | 기능 개발 (SPEC 기반) | 1-3일 | `feat/SPEC-AUTH-001-oauth2` |
+| `fix/issue-NNN-*` | 이슈 기반 버그 수정 | 1일 | `fix/issue-683-race-condition` |
+| `fix/*` | 이슈 없는 버그 수정 | 1일 | `fix/ci-lint-errcheck` |
+| `docs/*` | 문서 작업 | 1일 | `docs/v2.14-release-notes` |
+| `chore/*` | 유지보수 (의존성, cleanup) | 1일 | `chore/bump-go-1.26` |
+| `ci/*` | CI/GitHub Actions 변경 | 1일 | `ci/add-windows-runner` |
+| `refactor/*` | 리팩토링 (동작 불변) | 1-2일 | `refactor/validator-cleanup` |
+| `release/vX.Y.Z` | 릴리스 준비 (CHANGELOG, version) | 1-3일 | `release/v2.14.0` |
+| `hotfix/vX.Y.Z-*` | 프로덕션 긴급 수정 | 1일 이내 | `hotfix/v2.14.1-import-crash` |
+| `plan/vX.Y-*` | SPEC draft 모음 | 1-3일 | `plan/v2.15-util-perf-backlog` |
+| `audit/*` | 보안/품질 감사 | 1-3일 | `audit/askuserquestion-propagation` |
+
+### §18.3 [HARD] Merge Strategy
+
+각 브랜치 유형별 머지 방식 **반드시** 준수:
+
+| 머지 유형 | 전략 | gh 명령어 | 이유 |
+|-----------|------|-----------|------|
+| feature/fix/chore/docs → main | **squash** | `gh pr merge N --squash` | WIP commit 정리, 1 PR = 1 main commit |
+| release/* → main | **merge commit** ⭐ | `gh pr merge N --merge` | 릴리스 마일스톤 + 개별 SPEC commit 보존 |
+| hotfix/* → main | **merge commit** | `gh pr merge N --merge` | 긴급 변경 이력 명확성 |
+| plan/* → main | **squash** | `gh pr merge N --squash` | 초안 commit 정리 |
+| dependabot/* → main | **squash** | (auto-merge) | 단순 버전 bump |
+
+**공통 규칙**:
+- [HARD] `--delete-branch=true` 기본 (머지 후 head branch 자동 삭제)
+- [HARD] `--rebase`는 금지 (main history linear가 아니어도 OK, merge commit 보존 중요)
+- [HARD] Force push to `main` 금지 (branch protection으로 차단)
+
+### §18.4 Release Cadence 공식화
+
+| 타입 | 기준 | 주기 | 브랜치 |
+|------|------|------|--------|
+| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | `fix/*` 여러 개 직접 main → tag bump |
+| **Minor (vX.Y.0)** | SPEC cluster (2-4 SPECs) 또는 주요 feature | 1-2주 | `release/vX.Y.0` 경유 |
+| **Major (vX.0.0)** | Breaking changes | 3-6개월 | `release/vX.0.0` + migration guide |
+| **Hotfix (vX.Y.Z+1)** | 프로덕션 긴급 수정 | 24h 이내 | `hotfix/vX.Y.Z+1-*` → main |
+
+### §18.5 Hotfix Workflow
+
+프로덕션에서 발견된 긴급 이슈 처리:
+
+```bash
+# 1. 최신 production tag에서 분기
+git fetch origin --tags
+git checkout -b hotfix/v2.14.1-crash-on-startup v2.14.0
+
+# 2. 수정 + 테스트 (로컬)
+# ...
+
+# 3. Commit + push
+git commit -m "fix(hotfix): crash on startup when config missing (#NNN)"
+git push -u origin hotfix/v2.14.1-crash-on-startup
+
+# 4. PR 생성 (base: main)
+gh pr create --base main --title "hotfix(v2.14.1): ..." --body "..."
+
+# 5. CI green 확인 후 merge commit
+gh pr merge <PR> --merge --delete-branch
+
+# 6. Tag 생성 + push (로컬 릴리스 스크립트 사용)
+./scripts/release.sh v2.14.1 "Hotfix release"
+```
+
+### §18.6 Label 3축 체계
+
+모든 Issue/PR은 다음 3축 label 부착:
+
+**축 1: type (필수)**
+- `type:feature` — 새 기능
+- `type:fix` — 버그 수정
+- `type:docs` — 문서만 변경
+- `type:chore` — 유지보수 (의존성, 빌드 등)
+- `type:ci` — CI/CD 변경
+- `type:refactor` — 리팩토링
+- `type:security` — 보안 이슈/수정
+- `type:test` — 테스트 추가/개선
+
+**축 2: priority (필수)**
+- `priority:P0` — Critical (즉시 대응)
+- `priority:P1` — High (당일)
+- `priority:P2` — Medium (이번 sprint)
+- `priority:P3` — Low (backlog)
+- `priority:P4` — Icebox (장기 보류)
+
+**축 3: area (필수)**
+- `area:mx` — MX validator
+- `area:astgrep` — ast-grep integration
+- `area:lsp` — LSP subsystem
+- `area:hooks` — Hook system
+- `area:docs-site` — docs-site (Hugo)
+- `area:templates` — internal/template/templates/
+- `area:cli` — CLI 명령어
+- `area:config` — .moai/config/*
+- `area:workflow` — SPEC workflow
+- `area:ci` — GitHub Actions
+- `area:security` — 보안 관련
+- `area:deps` — 외부 의존성
+
+**축 4: status (선택)** — 진행 상태 추적
+- `status:in-progress` · `status:review` · `status:blocked` · `status:needs-info`
+
+### §18.7 Branch Protection Rule (GitHub)
+
+[HARD] `main` 브랜치 보호 설정 (admin 실행 필요):
+
+```bash
+gh api -X PUT /repos/modu-ai/moai-adk/branches/main/protection \
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Lint", "Test (ubuntu-latest)", "Test (macos-latest)", "Test (windows-latest)", "Build (linux/amd64)", "CodeQL"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 1
+  },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_linear_history": false,
+  "required_conversation_resolution": true
+}
+EOF
+```
+
+[HARD] `release/*` 패턴 보호 (feature freeze 기간 안정성):
+
+```bash
+gh api -X PUT /repos/modu-ai/moai-adk/branches/release%2F*/protection \
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Lint", "Test (ubuntu-latest)", "Test (macos-latest)"]
+  },
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
+```
+
+### §18.8 Release 프로세스
+
+[HARD] 릴리스는 `scripts/release.sh` 스크립트 경유. 수동 tag push 금지 (GoReleaser 자동 릴리스와 충돌 가능).
+
+**Minor/Major Release (release 브랜치 경유)**:
+
+```bash
+# 1. release 브랜치 생성 + 작업
+git checkout -b release/v2.15.0 main
+# CHANGELOG.md, SPEC status 업데이트, docs-site update 등
+
+# 2. PR + review + merge (merge commit 전략)
+gh pr create --base main --title "release: v2.15.0" --body "..."
+gh pr merge <PR> --merge --delete-branch
+
+# 3. Tag + release (로컬 스크립트)
+git checkout main && git pull
+./scripts/release.sh v2.15.0
+# → tag 생성, push, GoReleaser 자동 실행, GitHub Release 생성
+```
+
+**Patch Release (fix 직접 main)**:
+
+```bash
+# 1. fix 브랜치에서 수정 + PR + squash merge
+# 2. main pull + tag + push (release 스크립트)
+./scripts/release.sh v2.14.1
+```
+
+### §18.9 자동화 도구
+
+이미 구성된 도구 (유지):
+- **GoReleaser** (`.goreleaser.yml` + `.github/workflows/release.yml`): tag push 시 자동 binary 빌드 + GitHub Release
+- **Dependabot** (`.github/dependabot.yml`): Go modules + GitHub Actions 자동 버전 업데이트
+- **Auto-merge** (`.github/workflows/auto-merge.yml`): dependabot PR 자동 머지
+- **Labeler** (`.github/labeler.yml`): PR 파일 패턴 기반 자동 라벨 부착
+
+추가 도구 (v2.15 이후):
+- **Release Drafter**: PR label/title 기반 CHANGELOG draft 자동 생성
+- **Label Sync**: `.github/labels.yml`을 GitHub과 동기화
+
+### §18.10 [HARD] 공식 위반 금지 사항
+
+- ❌ `main`에 직접 push (반드시 PR 경유)
+- ❌ `develop` 브랜치 생성 (Gitflow 패턴 금지)
+- ❌ release PR squash merge (merge commit 필수 — 개별 SPEC commit 보존)
+- ❌ tag 수동 push 없이 `gh release create` (GoReleaser와 충돌)
+- ❌ branch prefix 관례 위반 (`feat/SPEC-*` 대신 `add-something` 등)
+- ❌ `--rebase` merge 전략 (history rewrite 방지)
+- ❌ CI fail 상태 PR merge (admin override 필요, 최소화)
+
+### §18.11 이전 세션 학습 (v2.14.0 Case Study)
+
+v2.14.0 릴리스 과정에서 다음 문제 발생 → v2.15부터 방지:
+
+1. **Squash merge로 release history 손실**
+   - PR #703 (`release/v2.14.0 → main`)을 squash로 머지하여 9개 의미 있는 commit (UTIL-001/002/003 + review fix + CI fix + ETXTBSY)이 단일 commit으로 압축됨
+   - **교훈**: release → main은 항상 `--merge` 사용
+
+2. **Stacked PR close 후 reopen 실패**
+   - PR #704 (base: release/v2.14.0)가 PR #703 merge 과정에서 auto-close됨. `gh pr reopen` 실패 → 새 PR #705 생성으로 우회
+   - **교훈**: stacked PR은 parent merge 전 base를 main으로 미리 전환하는 것이 안전
+
+3. **CI Ubuntu 환경 의존성 누락**
+   - `sg` command가 Ubuntu의 `util-linux` `newgrp` symlink와 충돌
+   - `TestRuleSeed` skip 로직이 `LookPath`만으로 판정하여 false positive
+   - **교훈**: 환경 의존 테스트는 **command signature 검증** 필수 (예: `sg --version` 출력의 "ast-grep" 확인)
+
+4. **Pre-existing flaky test가 릴리스 block**
+   - `TestSupervisor_NonZeroExit`의 ETXTBSY race가 Ubuntu CI에서 간헐 실패
+   - **교훈**: flaky 테스트는 CLAUDE.local.md에 기록 + retry 로직 즉시 적용 (ETXTBSY mitigation pattern 참조)
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 3.1.0 (Phase 6: §17 docs-site 규칙 신설, 4개국어 동기화)
-**Last Updated**: 2026-04-17
+**Version**: 3.2.0 (Phase 7: §18 Enhanced GitHub Flow 공식 채택, Gitflow 거부 결정)
+**Last Updated**: 2026-04-24
