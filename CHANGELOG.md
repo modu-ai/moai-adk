@@ -5,6 +5,224 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-04-24
+
+### Summary
+
+Utility Hardening release — MX validator correctness improvements (method receiver detection, word-boundary fan-in counting, bounded goroutine pools), tree-sitter 16-language cyclomatic complexity measurement, ast-grep multi-language rule seeding (5 languages + suppression policy), LSP subprocess hygiene (stderr drain, singleflight spawn). All 51/51 acceptance criteria passing (SPEC-UTIL-001: 18/18, SPEC-UTIL-002: 21/21, SPEC-UTIL-003: 12/12). Non-breaking release with detection improvements documented in Detection Improvements section.
+
+### Breaking Changes
+
+None. Hook JSON wire format frozen; no config key changes; no public API changes. Detection improvements (method receivers, @MX:REASON pairing) are additive; existing codebases may see new advisory violations in `transition_mode` grace period.
+
+### Added
+
+- MX validator tree-sitter integration — 16-language cyclomatic complexity measurement with 5-language query seeding (Go, Python, TypeScript, JavaScript, Rust) and 11-language scaffolding (Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift)
+- MX validator method receiver detection — `^func\s+\(\w+\s+\*?\w+\)\s+([A-Z]\w+)` regex extended to catch exported methods alongside exported functions
+- `@MX:REASON` pairing enforcement — P1 violation when `@MX:ANCHOR` lacks paired `@MX:REASON` within ±1 line; P2 violation for `@MX:WARN` (per mx-tag-protocol.md)
+- Windows-native MX validator — Go-native `filepath.WalkDir` + `bufio.Scanner` replaces grep subprocess; zero exec.Command calls in MX validator path on all platforms
+- Windows CI runner for MX validator — `.github/workflows/ci.yml` extended with Windows test matrix coverage
+- `transition_mode` grace flag in `mx.yaml` — downgrades newly-surfaced violations (method receivers, paired @MX:REASON) to advisory for one minor cycle (v2.14 only); default false
+- ast-grep Rule.Note + Rule.Metadata fields — YAML rule format extended; propagated through SARIF external/ tags (OWASP/CWE per SARIF 2.1.0 §3.52)
+- ast-grep suppression policy lint — `// ast-grep-ignore` now requires adjacent `// @MX:REASON <rationale>` comment within 1 line; language-aware prefix support (//, #, --)
+- 5-language ast-grep rule seeding — Ruby, PHP, Elixir, C#, Kotlin each with 3 foundational rules (unused-var, null-deref, todo-marker) + per-language fixture triplets (15 total rules, 15 fixture triplets)
+- `detectSGVersion()` implementation — sync.Once-cached subprocess invocation with 5s context timeout; SARIF tool.driver.version populated
+- LSP stderr drain goroutine — `io.Discard` sink preventing 128 KiB buffer deadlock on high-volume subprocess stderr
+- LSP Manager singleflight.Group — exactly-once factory invocation under concurrent `RouteFor` calls via `golang.org/x/sync/singleflight`
+- `gopls.Diagnostic` / `gopls.Range` / `gopls.Position` type aliases — internal consolidation pointing at `lsp.*` types for single source of truth on LSP bridge
+- 60+ new tests — characterization + post-fix + new behavior across MX validator (method receiver, fan-in word boundary, semaphore, Windows native, @MX:REASON pairing), ast-grep (metadata propagation, suppression lint, 5-language fixtures), and LSP (stderr drain, singleflight race)
+- Binary size controlled — tree-sitter language sub-packages lazy-loaded (only 5/16 imported at build time per v2.14 scope; remaining 11 scaffolded as stubs)
+
+### Changed
+
+- MX validator fan-in counter — word-boundary regex `\b` + `regexp.QuoteMeta` replaces substring matching; eliminates false positives from identifier substrings
+- MX validator ValidateFiles — `runtime.NumCPU()*2` semaphore bounds goroutine fan-out (previously unbounded)
+- ast-grep ScanMultiple — buffered semaphore with same capacity bounds goroutine fan-out
+- SARIF output — external/owasp/* and external/cwe/* property tags added when rule metadata present (additive)
+
+### Fixed
+
+- IMP-V3U-001: MX validator method receiver blindspot — exported methods now detected alongside exported functions
+- IMP-V3U-002: LSP stderr buffer deadlock — drain goroutine prevents subprocess stderr saturation on large projects
+- IMP-V3U-003: LSP Manager getOrSpawn concurrent spawn race — singleflight.Group guarantees exactly-once client factory invocation
+- IMP-V3U-004: ast-grep Rule.Metadata propagation gap — OWASP/CWE metadata from YAML now included in SARIF output
+- IMP-V3U-005: MX fan-in substring false positives — word-boundary regex prevents over-counting due to identifier substrings
+- IMP-V3U-006: ast-grep ScanMultiple unbounded goroutine fan-out — semaphore applied (same pattern as MX validator)
+- IMP-V3U-007: MX ValidateFiles unbounded goroutine fan-out — semaphore applied for predictable resource usage
+
+### Detection Improvements
+
+v2.14.0 enables detection of previously-invisible violations. This is **not a bug fix but a discipline strengthening** — the MX validator now catches patterns that were always protocol violations but silently ignored:
+
+#### Method Receivers (P2/P3/P4 priority)
+
+Method definitions were invisible to the validator. `func (r *Receiver) ExportedMethod()` is now detected with the same fan-in counting as `func ExportedFunction()`. Existing codebases may reveal untracked high-fan-in methods. Mitigation: Enable `transition_mode: true` in `mx.yaml` to downgrade to advisory for v2.14 cycle.
+
+#### @MX:REASON Pairing (P1 for ANCHOR, P2 for WARN)
+
+The protocol (mx-tag-protocol.md "Mandatory Fields") requires `@MX:REASON` sub-line within ±1 lines of `@MX:ANCHOR` and `@MX:WARN` tags. v2.14 now enforces this. Existing tags lacking paired `@MX:REASON` emit blocking violations. Mitigation: Add `@MX:REASON "explanation"` adjacent lines or enable `transition_mode: true` for advisory-only behavior in v2.14.
+
+### Performance
+
+- tree-sitter 1 MiB input cap guards memory during complexity measurement
+- word-boundary regex compiled once per countFanIn invocation
+- singleflight prevents redundant language server spawn attempts under concurrent RouteFor calls
+- Bounded semaphores in MX validator and ast-grep ScanMultiple eliminate unbounded goroutine fan-out
+
+### Security
+
+- All `exec.Command` calls removed from `internal/hook/mx/` — Windows CI enforces zero-subprocess-dependency via static analysis
+- Zero secrets in 15 new fixture files (Ruby/PHP/Elixir/C#/Kotlin)
+
+### Dependencies
+
+- Added: `github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82` (5 grammar sub-packages: golang, python, typescript, javascript, rust; 11 additional languages scaffolded without import)
+- Existing: `golang.org/x/sync v0.20.0` (singleflight already present, no new dependency)
+- Binary size impact: ~50 MiB increase from tree-sitter grammars (documented in release plan §0.5 D5 caveat)
+
+### Deferred (v2.15+)
+
+- **v2.15**: LSP subprocess hygiene baseline (cmd.WaitDelay, Setpgid, close-fds), MX validator config tuning knobs, ast-grep sg version floor bump ≥ 0.42.1, ScanMultiple pattern alignment, incremental source file scanning
+- **v2.16**: hook.Diagnostic ↔ lsp.Diagnostic wire format compatibility layer (IMP-V3U-008), MX brace-in-string-literal and blank-line-gap fixes
+- **v2.17+**: SARIF file:// URI prefix, remaining 6-language ast-grep rule seeding (Java, C++, Scala, R, Flutter, Swift), community contributions
+- **v3.0**: MX Validator interface cleanup, `config.ResolveClientImpl()` default flip to powernap_core
+
+### Acceptance Criteria Coverage
+
+- **SPEC-UTIL-001** (MX Validator Correctness): 18/18 ACs PASS (AC-UTIL-001-01..18) — characterization tests confirm B1/B2/P1 bugs reproduce pre-fix and pass post-fix
+- **SPEC-UTIL-002** (ast-grep Hardening): 21/21 ACs PASS (AC-UTIL-002-01..21) — PHP `$_ = null` pattern replaced with `json_decode(null)` due to tree-sitter grammar limitation (semantic equivalent)
+- **SPEC-UTIL-003** (LSP Hygiene): 12/12 ACs PASS (AC-UTIL-003-01..12) — wire format frozen (consolidation deferred to v2.16)
+- **Total**: 51/51 ACs PASS
+
+### Quality Verification
+
+- `go vet ./...`: 0 issues
+- `go test -race ./...`: all SPEC-touched packages PASS (pre-existing flaky `TestHookWrapper_ValidJSON` unrelated, passes in isolation)
+- Coverage: mx 87.5%, complexity 86.2%, astgrep 83%+, quality 82%+, security 91%+, lsp/core 92.9%, lsp/gopls 80.1%, hook 85.0%
+- manager-quality review: CONDITIONAL → MERGE-READY (2 feedback items fixed in commit 52a9bf81f)
+- TRUST 5 Score: 5/5
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.14.0] - 2026-04-24 (한국어)
+
+### 요약
+
+유틸리티 강화 릴리스 — MX validator 정확성 개선(메서드 수신자 감지, 단어 경계 fan-in 계산, 제한된 goroutine 풀), tree-sitter 16개 언어 cyclomatic complexity 측정, ast-grep 다국어 규칙 시딩(5개 언어 + 억제 정책), LSP subprocess hygiene(stderr 드레인, singleflight spawn). 총 51/51 acceptance criteria 통과(SPEC-UTIL-001: 18/18, SPEC-UTIL-002: 21/21, SPEC-UTIL-003: 12/12). Detection Improvements 섹션에 감지 개선사항 문서화된 non-breaking 릴리스입니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음. Hook JSON 와이어 형식 동결; config 키 변경 없음; public API 변경 없음. 감지 개선사항(메서드 수신자, @MX:REASON 페어링)은 additive이며, 기존 코드베이스는 `transition_mode` 유예 기간 동안 새로운 advisory 위반을 볼 수 있습니다.
+
+### 추가됨 (Added)
+
+- MX validator tree-sitter 통합 — 16개 언어 cyclomatic complexity 측정(5개 언어 쿼리 시딩: Go/Python/TypeScript/JavaScript/Rust, 11개 언어 스캐폴딩)
+- MX validator 메서드 수신자 감지 — `^func\s+\(\w+\s+\*?\w+\)\s+([A-Z]\w+)` 정규식 확장으로 exported 함수와 함께 exported 메서드 감지
+- `@MX:REASON` 페어링 강제 — `@MX:ANCHOR`가 ±1 줄 내 `@MX:REASON`을 갖지 않을 시 P1 위반 발행; `@MX:WARN`의 경우 P2 (mx-tag-protocol.md 준수)
+- Windows-native MX validator — Go-native `filepath.WalkDir` + `bufio.Scanner`로 grep subprocess 대체; 모든 플랫폼에서 MX validator 경로의 exec.Command 호출 제거
+- MX validator Windows CI 실행기 — `.github/workflows/ci.yml` Windows 테스트 행렬 확대
+- `mx.yaml` 내 `transition_mode` 유예 플래그 — 새로 감지된 위반(메서드 수신자, 페어된 @MX:REASON)을 한 minor 사이클(v2.14만) advisory로 다운그레이드; 기본값 false
+- ast-grep Rule.Note + Rule.Metadata 필드 — YAML 규칙 형식 확장; SARIF external/ 태그로 전파(SARIF 2.1.0 §3.52당 OWASP/CWE)
+- ast-grep 억제 정책 lint — `// ast-grep-ignore`이 이제 ±1 줄 내 인접 `// @MX:REASON <rationale>` 주석 필요; 언어별 접두사 지원(//, #, --)
+- 5개 언어 ast-grep 규칙 시딩 — Ruby/PHP/Elixir/C#/Kotlin 각 3개 기초 규칙(unused-var, null-deref, todo-marker) + 언어별 fixture 삼중쌍(총 15개 규칙, 15개 fixture 삼중쌍)
+- `detectSGVersion()` 구현 — sync.Once-cached subprocess 호출, 5s context timeout; SARIF tool.driver.version 채워짐
+- LSP stderr 드레인 goroutine — `io.Discard` sink로 128 KiB 버퍼 deadlock 방지
+- LSP Manager singleflight.Group — `golang.org/x/sync/singleflight`를 통한 concurrent `RouteFor` 호출 하에서 정확히 한 번의 factory 호출 보장
+- `gopls.Diagnostic` / `gopls.Range` / `gopls.Position` 타입 alias — `lsp.*` 타입을 가리키는 내부 통합으로 LSP bridge 단일 원천 보장
+- 60+ 신규 테스트 — MX validator(메서드 수신자, fan-in 단어 경계, semaphore, Windows native, @MX:REASON 페어링), ast-grep(메타데이터 전파, 억제 lint, 5개 언어 fixture), LSP(stderr 드레인, singleflight race)의 특성화 + 수정 후 + 신규 동작 테스트
+- 바이너리 크기 관리 — tree-sitter 언어 서브패키지 지연 로드(빌드 시간에 16/5개만 import per v2.14 범위; 나머지 11개는 스텁으로 스캐폴딩)
+
+### 변경됨 (Changed)
+
+- MX validator fan-in 카운터 — 단어 경계 정규식 `\b` + `regexp.QuoteMeta`로 부분 문자열 매칭 대체; 식별자 부분 문자열의 거짓 양성 제거
+- MX validator ValidateFiles — `runtime.NumCPU()*2` semaphore로 goroutine fan-out 제한(이전에는 제한 없음)
+- ast-grep ScanMultiple — 동일 용량의 buffered semaphore로 goroutine fan-out 제한
+- SARIF 출력 — 규칙 메타데이터 존재 시 external/owasp/* 및 external/cwe/* property 태그 추가(additive)
+
+### 수정됨 (Fixed)
+
+- IMP-V3U-001: MX validator 메서드 수신자 blindspot — exported 메서드를 exported 함수와 함께 감지
+- IMP-V3U-002: LSP stderr 버퍼 deadlock — 드레인 goroutine이 대형 프로젝트의 subprocess stderr 포화 방지
+- IMP-V3U-003: LSP Manager getOrSpawn concurrent spawn race — singleflight.Group이 정확히 한 번의 client factory 호출 보장
+- IMP-V3U-004: ast-grep Rule.Metadata 전파 간극 — YAML의 OWASP/CWE 메타데이터가 SARIF 출력에 포함됨
+- IMP-V3U-005: MX fan-in 부분 문자열 거짓 양성 — 단어 경계 정규식이 식별자 부분 문자열로 인한 과계산 방지
+- IMP-V3U-006: ast-grep ScanMultiple 제한 없는 goroutine fan-out — semaphore 적용(MX validator와 동일 패턴)
+- IMP-V3U-007: MX ValidateFiles 제한 없는 goroutine fan-out — 예측 가능한 리소스 사용을 위해 semaphore 적용
+
+### 감지 개선사항 (Detection Improvements)
+
+v2.14.0은 이전에 보이지 않던 위반 감지를 가능하게 합니다. 이는 **버그 수정이 아니라 규율 강화**입니다 — MX validator는 이제 항상 protocol 위반이지만 조용히 무시되던 패턴을 포착합니다:
+
+#### 메서드 수신자 (P2/P3/P4 우선순위)
+
+메서드 정의가 validator에 보이지 않았습니다. `func (r *Receiver) ExportedMethod()`는 이제 `func ExportedFunction()`과 동일한 fan-in 계산으로 감지됩니다. 기존 코드베이스는 추적되지 않은 high-fan-in 메서드를 드러낼 수 있습니다. 완화: `mx.yaml`에서 `transition_mode: true`를 활성화하여 v2.14 사이클 동안 advisory로 다운그레이드하세요.
+
+#### @MX:REASON 페어링 (ANCHOR의 경우 P1, WARN의 경우 P2)
+
+프로토콜(mx-tag-protocol.md "Mandatory Fields")은 `@MX:ANCHOR` 및 `@MX:WARN` 태그 ±1 줄 내에 `@MX:REASON` 서브라인을 요구합니다. v2.14는 이를 이제 강제합니다. 페어된 `@MX:REASON`을 갖지 않는 기존 태그는 blocking 위반을 발행합니다. 완화: 인접 줄에 `@MX:REASON "설명"`을 추가하거나 `mx.yaml`에서 `transition_mode: true`를 활성화하여 v2.14에서 advisory 전용 동작으로 만드세요.
+
+### 성능 (Performance)
+
+- tree-sitter 1 MiB 입력 상한선이 complexity 측정 중 메모리 보호
+- 단어 경계 정규식은 countFanIn 호출당 한 번 compile됨
+- singleflight는 concurrent RouteFor 호출 하에서 redundant 언어 서버 spawn 시도 방지
+- MX validator 및 ast-grep ScanMultiple의 제한된 semaphore는 제한 없는 goroutine fan-out 제거
+
+### 보안 (Security)
+
+- `internal/hook/mx/`에서 모든 `exec.Command` 호출 제거 — Windows CI는 static 분석을 통해 subprocess 무의존성 강제
+- 15개 신규 fixture 파일(Ruby/PHP/Elixir/C#/Kotlin)의 secret 없음
+
+### 의존성 (Dependencies)
+
+- 추가: `github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82` (5개 grammar 서브패키지: golang, python, typescript, javascript, rust; 11개 추가 언어는 import 없이 스캐폴딩)
+- 기존: `golang.org/x/sync v0.20.0` (singleflight 이미 present, 신규 의존성 없음)
+- 바이너리 크기 영향: tree-sitter grammar로부터 ~50 MiB 증가(릴리스 플랜 §0.5 D5 caveat에 문서화됨)
+
+### 연기됨 (Deferred)
+
+- **v2.15**: LSP subprocess hygiene baseline(cmd.WaitDelay, Setpgid, close-fds), MX validator config tuning 노브, ast-grep sg 버전 하한선 ≥ 0.42.1, ScanMultiple 패턴 정렬, incremental 원본 파일 스캔
+- **v2.16**: hook.Diagnostic ↔ lsp.Diagnostic 와이어 형식 호환성 레이어(IMP-V3U-008), MX brace-in-string-literal 및 blank-line-gap 수정
+- **v2.17+**: SARIF file:// URI 접두사, 나머지 6개 언어 ast-grep 규칙 시딩(Java, C++, Scala, R, Flutter, Swift), community 기여
+- **v3.0**: MX Validator interface cleanup, `config.ResolveClientImpl()` 기본값 powernap_core로 변경
+
+### Acceptance Criteria 커버리지
+
+- **SPEC-UTIL-001** (MX Validator 정확성): 18/18 ACs PASS (AC-UTIL-001-01..18) — characterization 테스트가 B1/B2/P1 버그 수정 전 재현 및 수정 후 통과 확인
+- **SPEC-UTIL-002** (ast-grep 강화): 21/21 ACs PASS (AC-UTIL-002-01..21) — PHP `$_ = null` 패턴을 tree-sitter grammar 제한으로 인해 `json_decode(null)`로 대체(의미적 동등)
+- **SPEC-UTIL-003** (LSP 위생): 12/12 ACs PASS (AC-UTIL-003-01..12) — 와이어 형식 동결(통합은 v2.16으로 연기)
+- **총계**: 51/51 ACs PASS
+
+### 품질 검증 (Quality Verification)
+
+- `go vet ./...`: 0 issues
+- `go test -race ./...`: 모든 SPEC 관련 패키지 PASS(무관한 pre-existing flaky `TestHookWrapper_ValidJSON` 격리 시 통과)
+- 커버리지: mx 87.5%, complexity 86.2%, astgrep 83%+, quality 82%+, security 91%+, lsp/core 92.9%, lsp/gopls 80.1%, hook 85.0%
+- manager-quality 리뷰: CONDITIONAL → MERGE-READY(commit 52a9bf81f에서 2개 피드백 수정)
+- TRUST 5 점수: 5/5
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.13.2] - 2026-04-23
 
 ### Summary

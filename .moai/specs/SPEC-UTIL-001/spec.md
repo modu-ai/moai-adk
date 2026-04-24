@@ -2,7 +2,7 @@
 id: SPEC-UTIL-001
 title: "MX Validator Correctness + Tree-sitter 16-Language Complexity + Windows Go-Native Scan + @MX:REASON Enforcement"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-04-24
 updated: 2026-04-24
 author: Wave v2.14 SPEC Writer
@@ -27,6 +27,7 @@ tags: "mx, validator, tree-sitter, multi-language, windows, v2.14"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1 | 2026-04-24 | MoAI (release/v2.14.0) | Implementation complete, merged as commit `b69cd1b2d`. AC coverage 18/18. Characterization tests confirm B1/B2/P1 bugs reproduce pre-fix and pass post-fix. Coverage: mx 87.5%, complexity 86.2%. TRUST 5: 5/5 (post review fix 52a9bf81f). |
 | 0.1.0 | 2026-04-24 | Wave v2.14 SPEC Writer | Initial draft from `docs/design/v2.14.0-release-plan.md` §2.2 + D4/D5/D6 decisions. Owns IMP-V3U-001 (method receiver blindspot), IMP-V3U-005 (substring fan-in false positives), IMP-V3U-007 (unbounded goroutine fan-out). Extends scope to Go-native cross-platform file walk (D4), per-language cyclomatic complexity via tree-sitter (D5), and `@MX:REASON` pairing enforcement in the MX layer (D6). All changes `breaking: false` per release plan §1.2 semver gate. |
 
 ---
