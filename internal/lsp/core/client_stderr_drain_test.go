@@ -73,7 +73,7 @@ func (l *largeStderrLauncher) Launch(_ context.Context, _ config.ServerConfig) (
 	// drain 고루틴이 있으면 읽어서 쓰기를 완료시키고, writeDone을 닫는다.
 	go func() {
 		defer close(l.writeDone)
-		defer stderrW.Close()
+		defer func() { _ = stderrW.Close() }()
 		data := make([]byte, 128*1024+1)
 		// 쓰기 실패는 무시 (파이프가 닫힌 경우)
 		_, _ = stderrW.Write(data)
@@ -127,7 +127,7 @@ func TestStderrDrain_GoroutineObserved(t *testing.T) {
 	// 고루틴 수가 증가했거나 신호 채널에 신호가 왔음을 확인하기 위해
 	// stderr에 소량의 데이터를 쓰고 readCh 신호를 기다린다.
 	go func() {
-		defer stderrW.Close()
+		defer func() { _ = stderrW.Close() }()
 		stderrW.Write([]byte("drain me")) //nolint:errcheck
 	}()
 

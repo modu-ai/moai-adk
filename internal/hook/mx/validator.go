@@ -306,10 +306,6 @@ func extractFunctions(lines []string) []funcInfo {
 
 		// Scan preceding comment block for @MX tags (up to 10 lines back).
 		// Track which lines have which tags for ±1 REASON pairing.
-		type tagLine struct {
-			lineIdx int
-			tag     string
-		}
 		var anchorLines, warnLines []int
 
 		for j := max(i-1, 0); j >= 0 && i-j <= 10; j-- {

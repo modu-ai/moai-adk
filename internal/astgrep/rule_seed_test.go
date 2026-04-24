@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
@@ -43,9 +44,18 @@ func findProjectRoot(t *testing.T) string {
 func TestRuleSeed(t *testing.T) {
 	t.Parallel()
 
+	// Verify sg is actually ast-grep, not newgrp (util-linux symlink on Ubuntu).
+	// Ubuntu/Debian ships `/usr/bin/sg` as newgrp alternative which shadows ast-grep
+	// when ast-grep is not installed. LookPath alone is insufficient.
 	sgAvailable := func() bool {
-		_, err := exec.LookPath("sg")
-		return err == nil
+		if _, err := exec.LookPath("sg"); err != nil {
+			return false
+		}
+		out, err := exec.Command("sg", "--version").CombinedOutput()
+		if err != nil {
+			return false
+		}
+		return strings.Contains(strings.ToLower(string(out)), "ast-grep")
 	}()
 
 	type langCase struct {

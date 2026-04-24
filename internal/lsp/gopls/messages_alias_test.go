@@ -64,6 +64,8 @@ func TestDiagnosticAlias_Interoperability(t *testing.T) {
 	}
 
 	// 타입 별칭: 추가 변환 없이 대입 가능
+	// ST1023 nolint: 타입 어노테이션이 테스트의 의도(별칭 식별성 대입 증명)
+	//nolint:staticcheck // ST1023
 	var goplsDiag gopls.Diagnostic = lspDiag
 	if goplsDiag.Message != lspDiag.Message {
 		t.Errorf("goplsDiag.Message = %q, want %q", goplsDiag.Message, lspDiag.Message)

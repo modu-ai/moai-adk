@@ -3,6 +3,7 @@
 package complexity
 
 import (
+	"context"
 	_ "embed"
 	"log/slog"
 
@@ -35,7 +36,6 @@ var queryRust []byte
 type langEntry struct {
 	language     *sitter.Language
 	decisionSCM  []byte
-	ifBranchSCM  []byte
 	funcNodeType []string // node types that represent function definitions
 }
 
@@ -104,8 +104,11 @@ func measure(lang string, content []byte, funcName string, startLine int) (Resul
 	// Parse the file.
 	parser := sitter.NewParser()
 	parser.SetLanguage(entry.language)
-	tree := parser.Parse(nil, content)
-	if tree == nil {
+	tree, err := parser.ParseCtx(context.Background(), nil, content)
+	if err != nil || tree == nil {
+		if err != nil {
+			slog.Debug("complexity: parse error", "lang", lang, "error", err)
+		}
 		return Result{Supported: false}, nil
 	}
 
