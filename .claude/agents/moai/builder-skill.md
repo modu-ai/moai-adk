@@ -16,7 +16,7 @@ memory: user
 skills:
   - moai-foundation-core
   - moai-foundation-cc
-  - moai-workflow-templates
+  - moai-workflow-project
 ---
 
 # Skill Creation Specialist

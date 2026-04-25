@@ -16,7 +16,7 @@ memory: project
 skills:
   - moai-foundation-core
   - moai-domain-frontend
-  - moai-domain-uiux
+  - moai-design-system
   - moai-workflow-testing
 hooks:
   PreToolUse:
