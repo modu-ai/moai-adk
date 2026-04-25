@@ -1093,3 +1093,118 @@ func TestLAI_AC010_EditToolSupport(t *testing.T) {
 		t.Errorf("AC-LAI-010: header missing in SystemMessage: %q", got.SystemMessage)
 	}
 }
+
+// --- Memory Taxonomy Audit integration tests (SPEC-V3R2-EXT-001 T6) ---
+
+// TestPostTool_MemoryMissingType verifies that a Write to an agent-memory file
+// with a missing `type` key emits a MEMORY_MISSING_TYPE warning to stderr
+// and still returns DecisionAllow (non-blocking).
+func TestPostTool_MemoryMissingType(t *testing.T) {
+	t.Parallel()
+
+	// Create a temporary memory file without a `type` field.
+	dir := t.TempDir()
+	agentMemDir := filepath.Join(dir, ".claude", "agent-memory", "manager-tdd")
+	if err := os.MkdirAll(agentMemDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	memFilePath := filepath.Join(agentMemDir, "note.md")
+	content := "---\nname: test note\ndescription: a test note without type\n---\nbody content\n"
+	if err := os.WriteFile(memFilePath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Capture stderr to verify the audit warning is emitted.
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	h := NewPostToolHandler()
+	ctx := context.Background()
+	input := &HookInput{
+		SessionID:     "sess-mem-audit",
+		CWD:           dir,
+		HookEventName: "PostToolUse",
+		ToolName:      "Write",
+		ToolInput:     json.RawMessage(`{"file_path": "` + memFilePath + `"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+
+	// Restore stderr and read captured output.
+	_ = w.Close()
+	os.Stderr = oldStderr
+	var stderrBuf strings.Builder
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		stderrBuf.WriteString(scanner.Text())
+		stderrBuf.WriteString("\n")
+	}
+
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("got nil output")
+	}
+
+	// Verify audit warning was emitted to stderr.
+	stderrOutput := stderrBuf.String()
+	if !strings.Contains(stderrOutput, "MEMORY_MISSING_TYPE") {
+		t.Errorf("expected MEMORY_MISSING_TYPE in stderr; got: %q", stderrOutput)
+	}
+}
+
+// TestPostTool_AuditDisabled verifies that MOAI_MEMORY_AUDIT=0 prevents audit
+// even when a Write targets an agent-memory file.
+// Not parallel: uses t.Setenv.
+func TestPostTool_AuditDisabled(t *testing.T) {
+	t.Setenv("MOAI_MEMORY_AUDIT", "0")
+
+	dir := t.TempDir()
+	agentMemDir := filepath.Join(dir, ".claude", "agent-memory", "manager-tdd")
+	if err := os.MkdirAll(agentMemDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	memFilePath := filepath.Join(agentMemDir, "note.md")
+	content := "---\nname: test\ndescription: d\n---\nbody\n" // missing type — would trigger warning
+	if err := os.WriteFile(memFilePath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Capture stderr to verify nothing is emitted.
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	h := NewPostToolHandler()
+	ctx := context.Background()
+	input := &HookInput{
+		SessionID:     "sess-mem-audit-disabled",
+		CWD:           dir,
+		HookEventName: "PostToolUse",
+		ToolName:      "Write",
+		ToolInput:     json.RawMessage(`{"file_path": "` + memFilePath + `"}`),
+	}
+
+	_, err := h.Handle(ctx, input)
+
+	_ = w.Close()
+	os.Stderr = oldStderr
+	var stderrBuf strings.Builder
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		stderrBuf.WriteString(scanner.Text())
+		stderrBuf.WriteString("\n")
+	}
+
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+
+	// MOAI_MEMORY_AUDIT=0: no audit output expected.
+	stderrOutput := stderrBuf.String()
+	if strings.Contains(stderrOutput, "MEMORY_MISSING_TYPE") {
+		t.Errorf("MOAI_MEMORY_AUDIT=0: expected no audit output; got: %q", stderrOutput)
+	}
+}

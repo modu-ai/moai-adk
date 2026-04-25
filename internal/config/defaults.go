@@ -64,6 +64,11 @@ const (
 	DefaultGitConventionMaxLength           = 100
 
 	DefaultStateDir = ".moai/state"
+
+	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
+	DefaultMemoryStalenessHours         = 24  // files older than this are wrapped in staleness caveat
+	DefaultMemoryIndexLineCap           = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
+	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.

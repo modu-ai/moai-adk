@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
@@ -110,6 +112,17 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if input.ProjectDir != "" {
 		if err := pruneTelemetry(input.ProjectDir); err != nil {
 			slog.Warn("session start: telemetry pruning failed", "error", err)
+		}
+	}
+
+	// Detect stale agent memories and inject staleness caveat (SPEC-V3R2-EXT-001 REQ-006/017).
+	// Best-effort: errors are logged and never propagated.
+	if input.ProjectDir != "" {
+		if staleMsg := detectAndWrapStaleMemories(input.ProjectDir, time.Now()); staleMsg != "" {
+			data["memory_stale_warning"] = staleMsg
+			slog.Info("session start: stale memory files detected",
+				"session_id", input.SessionID,
+			)
 		}
 	}
 
@@ -626,6 +639,63 @@ func loadGLMKeyFromEnvFile() string {
 		}
 	}
 	return ""
+}
+
+// detectAndWrapStaleMemories scans all agent memory directories under
+// .claude/agent-memory/<agent>/ and wraps stale files in <system-reminder> tags.
+//
+// When MOAI_MEMORY_AUDIT=0, the function returns empty string (disabled path).
+// When 10+ stale files are found, a single aggregated warning is returned.
+// Otherwise per-file wrapped content is concatenated (REQ-EXT001-006/017).
+//
+// The now parameter is accepted to allow deterministic testing.
+func detectAndWrapStaleMemories(projectDir string, now time.Time) string {
+	// Respect kill-switch (rollback safety — plan.md §6.2).
+	if os.Getenv("MOAI_MEMORY_AUDIT") == "0" {
+		return ""
+	}
+
+	agentMemBase := filepath.Join(projectDir, ".claude", "agent-memory")
+	entries, err := os.ReadDir(agentMemBase)
+	if err != nil {
+		// Directory may not exist yet — not an error.
+		return ""
+	}
+
+	var allReports []taxonomy.StaleReport
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		agentDir := filepath.Join(agentMemBase, e.Name())
+		reports, err := taxonomy.DetectStale(agentDir, config.DefaultMemoryStalenessHours, now)
+		if err != nil {
+			slog.Warn("session start: staleness scan error",
+				"dir", agentDir,
+				"error", err.Error(),
+			)
+			continue
+		}
+		allReports = append(allReports, reports...)
+	}
+
+	if len(allReports) == 0 {
+		return ""
+	}
+
+	// When count reaches the aggregation threshold, return a single short warning.
+	// Otherwise return wrapped content (each file's content in <system-reminder>).
+	if len(allReports) >= config.DefaultMemoryStaleAggregateThreshold {
+		return taxonomy.AggregateWarning(allReports)
+	}
+
+	// Per-file: return each file's wrapped content (the <system-reminder> block).
+	var sb strings.Builder
+	for _, r := range allReports {
+		sb.WriteString(r.Wrapped)
+		sb.WriteByte('\n')
+	}
+	return strings.TrimRight(sb.String(), "\n")
 }
 
 // claudeEnvFileGuard reports whether the CLAUDE_ENV_FILE injection should run
