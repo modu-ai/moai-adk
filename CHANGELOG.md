@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-WF-AUDIT-GATE-001: Plan Audit Gate (grace window 7d)
+
+### Added
+
+- **Plan Audit Gate** (`/moai run` Phase 0.5): Mandatory plan-auditor invocation before every
+  `/moai run <SPEC-ID>` call. Prevents unreviewed SPEC artifacts from entering the implementation
+  phase. Source: SPEC-WF-AUDIT-GATE-001.
+- **Grace window** (7 days): FAIL verdicts emit warnings only until T0 + 7 days, after which
+  they block Phase 1. Grace window T0 stored in `.moai/state/audit-gate-merge-at.txt`.
+- **`--skip-audit` bypass**: Users can bypass the gate with `--skip-audit` or `MOAI_SKIP_PLAN_AUDIT=1`.
+  All bypasses are recorded as BYPASSED verdict in `.moai/reports/plan-audit/` with timestamp, user, and rationale.
+- **INCONCLUSIVE fall-back**: Auditor timeout/error/malformed output results in INCONCLUSIVE verdict.
+  Never auto-PASS. Presents retry/proceed/abort options to user.
+- **24h audit cache**: Repeated `/moai run` calls within 24h with unchanged plan artifacts reuse
+  the cached PASS verdict without re-invoking plan-auditor.
+- **Daily report persistence**: All gate invocations append to `.moai/reports/plan-audit/<SPEC-ID>-<DATE>.md`.
+- **Team mode parity**: Gate applies equally in `--team` mode before any TeamCreate or teammate spawn.
+
+### Technical
+
+- New package `internal/runtime`: `audit_gate.go`, `audit_cache.go`, `audit_report.go`, `clock.go`
+- Integration tests: `internal/cli/run_audit_gate_*_test.go`, `team_run_audit_gate_test.go`, `dogfood_self_audit_test.go`
+- Workflow skills updated: `workflows/run.md`, `team/run.md`, `plan.md`, `spec-workflow.md`
+
 ## [2.13.2] - 2026-04-23
 
 ### Summary
