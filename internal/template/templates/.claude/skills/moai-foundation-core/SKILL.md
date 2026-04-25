@@ -3,18 +3,19 @@ name: moai-foundation-core
 description: >
   Provides MoAI-ADK foundational principles including TRUST 5 quality framework,
   SPEC-First DDD methodology, delegation patterns, progressive disclosure,
-  and agent catalog reference. Use when referencing TRUST 5 gates or SPEC workflow.
+  agent catalog reference, and token budget management (absorbed from moai-foundation-context).
+  Use when referencing TRUST 5 gates, SPEC workflow, or context window optimization.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.5.0"
+  version: "3.0.0"
   category: "foundation"
   status: "active"
-  updated: "2026-01-21"
+  updated: "2026-04-25"
   modularized: "true"
-  tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd"
+  tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd, token-budget, context-window, session-state"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -24,7 +25,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format"]
+  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format", "context window", "token budget", "token limit", "session state", "/clear", "context management", "multi-agent handoff", "session persistence"]
   agents:
     - "manager-spec"
     - "manager-ddd"
@@ -297,3 +298,59 @@ External Resources: reference.md
 - [ ] Progressive disclosure levels configured in skill frontmatter
 
 <!-- moai:evolvable-end -->
+
+---
+
+## Token Budget (absorbed from moai-foundation-context)
+
+Context window optimization, /clear strategy, session state persistence, and multi-agent handoff patterns.
+
+### Context Window Targets
+
+| Model class | Window | 75% threshold | /clear trigger |
+|-------------|--------|---------------|----------------|
+| Opus 4.7 (1M) | 1,000,000 tokens | ~750,000 | Above threshold |
+| Sonnet/Opus standard | 200,000 tokens | ~150,000 | Above threshold |
+| Haiku | 200,000 tokens | ~150,000 | Above threshold |
+
+### Phase Token Allocation
+
+| Phase | Budget | Strategy |
+|-------|--------|----------|
+| /moai plan | 30,000 | Load requirements only, /clear after completion |
+| /moai run | 180,000 | Selective file loading, on-demand skill loading |
+| /moai sync | 40,000 | Result caching, reduced redundant reads |
+
+### /clear Strategy
+
+Mandatory /clear points:
+1. After `/moai plan` completion (before `/moai run`)
+2. When context exceeds 150,000 tokens (Sonnet/standard)
+3. Before major phase transitions
+
+Never use /clear when: In the middle of an agent task, when session state has not been persisted.
+
+### Session State Persistence
+
+Before /clear, persist in-flight state to `.moai/specs/<SPEC-ID>/progress.md`:
+- Current task status (completed, in-progress, blocked)
+- File modification summary
+- Next action required
+- Resume message for paste-back after /clear
+
+Resume message format:
+```
+Wave <N> 이어서 진행. SPEC-<ID>부터 <approach>.
+progress.md: .moai/specs/<ID>/progress.md
+다음 단계: <command>.
+```
+
+### Multi-Agent Handoff
+
+When delegating to a sub-agent near context ceiling:
+1. Summarize findings in progress.md before Agent() call
+2. Pass only necessary context in spawn prompt (avoid full file dumps)
+3. Sub-agent result contributes to parent context on return — factor this in
+4. If parent context > 120,000 tokens after return, save and /clear
+
+Full optimization patterns: [modules/token-budget-allocation.md](modules/token-budget-allocation.md)
