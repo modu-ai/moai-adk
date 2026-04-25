@@ -2,7 +2,7 @@
 id: SPEC-V3R2-WF-001
 title: Skill Consolidation — Stage 1 (48 to 38)
 version: "1.1.0"
-status: draft
+status: completed
 created: 2026-04-23
 updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
@@ -366,6 +366,44 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
   - `docs/design/major-v3-master.md:L965` (§8 BC-V3R2-006 — skill 48→24)
   - `docs/design/major-v3-master.md:L990` (§9 Phase 4 Skill Consolidation)
   - `.moai/design/v3-redesign/research/r4-skill-audit.md` (Per-skill audit, Recommended v3 skill inventory, Merge clusters)
+
+---
+
+## Implementation Notes (완료 기록)
+
+### Completion Summary
+
+**Status**: Completed (2026-04-25)
+
+**Commits**: 11 implementation commits (Waves 1.1–1.7 + progress.md + fixup)
+- All 48 skills received exactly one verdict label (REQ-WF001-002)
+- 38 skill directories retained post-Stage 1 (REQ-WF001-001)
+- 5 merge clusters assembled with trigger keyword union preservation (REQ-WF001-003, REQ-WF001-007)
+- 11 retirement archives created in `.moai/archive/skills/v3.0/` (REQ-WF001-008)
+- Template/local byte-identity maintained via `diff -rq` (REQ-WF001-006)
+- Agency FROZEN contract preserved (REQ-WF001-005, AC-WF001-06)
+- `.moai/decisions/skill-rename-map.yaml` artifact authored per contract (REQ-WF001-009, AC-WF001-16)
+- CI fixtures implemented for retirement archive check (AC-WF001-08) and trigger drop detection (AC-WF001-18)
+
+### Key Implementation Decisions (v1.1.0 Amendments)
+
+1. **OQ-7 Resolution** (moai-foundation-context verdict): Corrected R4 audit verdict from KEEP to RETIRE; content absorbed into `moai-foundation-core` as §Token Budget section.
+2. **OQ-1 Resolution** (moai-workflow-jit-docs verdict): Corrected R4 verdict from KEEP to RETIRE; merged into `moai-workflow-project` docs section.
+3. **OQ-4 Resolution** (moai-design-tools split): Pencil portion → `moai-workflow-pencil-integration` (authoritative); Figma portion → `.moai/archive/` (no substitute, Stage 2 revisit).
+4. **Stage 1 scope honesty** (§1.0): Confirmed 48→38 is achievable within single SPEC; 38→24 (Stage 2) reserved for SPEC-V3R3-WF-001.
+5. **MIG-001 contract enforcement**: Schema change requires HUMAN GATE review before merge (plan.md §Decision Log, `OQ-CONTRACT` resolution).
+
+### Test Coverage
+
+- AC-WF001-01 through AC-WF001-18 all implemented (18/18 acceptance criteria)
+- REQ-WF001-001 through REQ-WF001-017 all satisfied (17/17 requirements)
+- Broken-fixture CI tests validate retirement archive requirements and trigger-drop blocking
+- Drift Guard triggered after implementation to confirm scope tracking
+
+### Known Limitations
+
+- Stage 2 (38→24 transition) requires re-evaluation of MONITOR and REFACTOR categories; deferred per staging decision
+- Telemetry windows for 2 UNCLEAR skills (`moai-framework-electron`, `moai-platform-chrome-extension`) require SessionStart hook logging (not yet implemented; tracked for v3.0 post-release)
 
 ---
 

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-EXT-001: Typed Memory Taxonomy (4-type enforcement)
+
+### Added
+
+- **`internal/hook/memo/taxonomy` sub-package**: 4-type memory enum (`user | feedback | project | reference`) with
+  `ParseFile`, `ValidateType`, `DetectStale`, `AggregateWarning`, `AuditFile`, `AuditIndex`, `AuditDuplicates`.
+  91.7% test coverage. Source: SPEC-V3R2-EXT-001.
+- **SessionStart staleness wrap** (`internal/hook/session_start.go`): Memory files with mtime > 24h are wrapped
+  in `<system-reminder>` blocks with a verification caveat. Aggregated single warning when 10+ stale files detected.
+- **PostToolUse memory audit** (`internal/hook/post_tool.go`): Non-blocking warnings on Write/Edit of agent-memory
+  files: `MEMORY_MISSING_TYPE`, `MEMORY_MISSING_FRONTMATTER`, `MEMORY_BODY_STRUCTURE_MISSING`,
+  `MEMORY_EXCLUDED_CATEGORY`, `MEMORY_INDEX_OVERFLOW`, `MEMORY_DUPLICATE`. Static-keyword v1 detection
+  (LLM-based detection deferred to v2).
+- **`memory:` config section** (`.moai/config/sections/workflow.yaml`): `staleness_threshold_hours: 24`,
+  `index_line_cap: 200`, `stale_aggregate_threshold: 10`. Single source of truth for all thresholds.
+- **Rule documentation** (`.claude/rules/moai/workflow/moai-memory.md`): 4-type taxonomy section with
+  per-type writing guidelines, MEMORY.md 200-line cap explanation, excluded category enumeration.
+- **`MOAI_MEMORY_AUDIT=0` rollback flag**: Disables both SessionStart wrap and PostToolUse audit (skip path).
+
+### Technical
+
+- New fixtures: `internal/hook/memo/taxonomy/fixtures/` (11 files for valid/invalid taxonomy permutations)
+- Constants centralized in `internal/config/defaults.go` (no hardcoded literals 24/200/10)
+
 ## [Unreleased] — SPEC-V3R2-CON-001: FROZEN/EVOLVABLE Zone Registry
 
 ### Added
@@ -29,6 +53,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test fixtures: `internal/constitution/testdata/` (6 fixture files)
 - Binary size delta: +33,600 bytes (~33 KiB, limit 50 KiB)
 - Integration tests: `internal/cli/constitution_integration_test.go` (build tag: integration)
+
+## [Unreleased] — SPEC-V3R2-WF-001: Skill Consolidation Stage 1 (48 → 38)
+
+### Added
+
+- **Stage 1 skill consolidation**: 48 skills → 38 surviving directories (11 RETIRE + 1 NEW `moai-design-system`).
+  Source: SPEC-V3R2-WF-001 v1.1.0.
+- **5 merge clusters**: `moai-foundation-thinking` (absorbs philosopher + workflow-thinking triplet),
+  `moai-design-system` (NEW, absorbs design-craft + domain-uiux + Pencil portion of design-tools),
+  `moai-domain-database` (absorbs platform-database-cloud), `moai-workflow-project` (absorbs templates + docs-generation + jit-docs),
+  `moai-foundation-core` (absorbs foundation-context content).
+- **11 retired skills** (archived to `.moai/archive/skills/v3.0/`):
+  `moai-foundation-context`, `moai-foundation-philosopher`, `moai-workflow-thinking`, `moai-workflow-templates`,
+  `moai-workflow-jit-docs`, `moai-domain-uiux`, `moai-design-craft`, `moai-design-tools` (Figma portion),
+  `moai-docs-generation`, `moai-platform-database-cloud`, `moai-tool-svg`.
+- **Trigger keyword union preservation**: All retired skill triggers migrated to merge target's `triggers:` or `related-skills:` frontmatter.
+- **6 REFACTOR skills**: `moai-workflow-testing` (split bundled modules), `moai-domain-backend` (narrow to API matrix),
+  `moai-domain-frontend` (router-only), `moai-platform-deployment` (Vercel-only), `moai-platform-auth` (narrower vendor guidance),
+  plus 2 UNCLEAR telemetry windows (`moai-framework-electron`, `moai-platform-chrome-extension`).
+- **CI fixture tests**: 2 broken-fixture suites at `.moai/specs/SPEC-V3R2-WF-001/fixtures/` validating retirement archive requirements and trigger drop detection.
+- **Shared contract** (SPEC-V3R2-MIG-001): `.moai/decisions/skill-rename-map.yaml` artifact schema (v1) for migrator consumption.
+
+### Breaking Changes
+
+- **[BC-V3R2-006] Skill directory deletions**: Users with customized `.claude/skills/` may encounter deleted directories
+  during `moai update`. Migrate per `.moai/archive/skills/v3.0/<name>/RETIRED.md` guidance.
+
+### Technical
+
+- Template/local byte-identity maintained across all `.claude/skills/` and `internal/template/templates/.claude/skills/`
+  via `diff -rq` CI validation.
+- 48→38 progression is Stage 1 of a 2-stage plan; Stage 2 (38→24) deferred to SPEC-V3R3-WF-001.
+- Agency-absorbed skills (`moai-domain-copywriting`, `moai-domain-brand-design`) remain FROZEN per design constitution.
+
+## [Unreleased] — SPEC-V3R2-WF-006: Output Styles Alignment
+
+### Added
+
+- **Output style schema validation** (frontmatter fields: `name`, `description`, `keep-coding-instructions`).
+  Source: SPEC-V3R2-WF-006 v1.1.0.
+- **Loading precedence**: Project-level `settings.json` `outputStyle` > user-level > hardcoded "MoAI" default.
+  Documented in `.claude/rules/moai/core/settings-management.md`.
+- **Fallback warning**: Unknown style names fall back to "MoAI" and emit `OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI` to stderr.
+- **CI drift check**: `make build` validates template and local output-styles byte-identity; rejects with `OUTPUT_STYLE_DRIFT` on divergence.
+- **Schema audit CI** (`internal/template/output_styles_audit_test.go`): Rejects missing/malformed frontmatter with `OUTPUT_STYLE_SCHEMA_ERROR`.
+
+### Technical
+
+- Two styles remain stable: `MoAI` (`keep-coding-instructions: true`) and `Einstein` (`keep-coding-instructions: false`).
+- Third style admission gated by schema validation (`OUTPUT_STYLE_UNVERIFIED` block).
+- Template/local byte-identity maintained via `diff -rq` CI check (extends existing commands pattern).
 
 ## [Unreleased] — SPEC-WF-AUDIT-GATE-001: Plan Audit Gate (grace window 7d)
 
