@@ -183,6 +183,13 @@ secret-*.*
 .moai/worktrees/
 
 # ===========================================
+# Plan Audit Reports (local artifacts)
+# See SPEC-WF-AUDIT-GATE-001
+# ===========================================
+.moai/reports/plan-audit/*.md
+!.moai/reports/plan-audit/.gitkeep
+
+# ===========================================
 # Evolution Telemetry (local-only usage data)
 # Learnings and new-skills are git-tracked for team sharing.
 # ===========================================
