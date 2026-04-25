@@ -173,6 +173,37 @@
 - make build: exit 0
 - diff -rq .claude/agents internal/template/templates/.claude/agents: empty (PASS)
 
-## Next: Dispatch 6 = Wave 1.7 (CI verification + fixtures + final make build)
+## Wave 1.7 Summary — 2026-04-25
 
+- Tasks: T1.7-1 through T1.7-6 (ALL COMPLETED) + Checkpoint T1.7-END: PASS
+
+### CI Verification Results
+
+| Check | Result |
+|-------|--------|
+| Skill count (.claude/skills/) | 38 (PASS) |
+| Skill count (template/skills/) | 38 (PASS) |
+| diff -rq skills | empty (PASS) |
+| diff -rq agents | empty (PASS) |
+| FROZEN hash moai-domain-copywriting | MATCH (PASS) |
+| FROZEN hash moai-domain-brand-design | MATCH (PASS) |
+| Retired skill refs in agents | 0 (PASS) |
+| go test ./... | exit 0 (PASS) |
+| make build | exit 0 (PASS) |
+
+### Test Fixes (embed_test.go threshold update)
+
+- TestEmbeddedTemplates_SkillDefinitions: threshold 300 → 260 (actual: 269)
+- TestEmbeddedTemplates_WalkDirTotalCount: threshold 450 → 440 (actual: 444)
+- TestEmbeddedTemplates_NoMCPConfig: deleted stray .mcp.json from templates/
+
+### Artifacts
+
+- wave-1.7-report.md: created (.moai/specs/SPEC-V3R2-WF-001/wave-1.7-report.md)
+- baseline-hashes.txt: DELETED (Wave 1.1 artifact, verification complete)
+
+## SPEC-V3R2-WF-001 STATUS: COMPLETE
+
+Stage 1 skill consolidation 48 → 38 complete. All 7 waves committed.
+Post-WF-001: `/moai sync`
 

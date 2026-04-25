@@ -327,12 +327,9 @@ unchanged_keep:
 | R11 | `moai-tool-svg` | (no substitute; niche) | RETIRE |
 | — | — | — | — |
 
-위는 11개. 검증: spec.md §6.2 의 verdict roll-up (line 276) 는 "RETIRED/ABSORBED = 13 directories" 라고 명시한다. 나머지 2개는 다음과 같이 세부 집계됨:
+위는 11개. 검증: spec.md §6.2 의 verdict roll-up (v1.1.0 corrected) 는 "RETIRE (archived) = **11 directories**" 로 명시한다. 디렉터리 기준으로 **archive 대상은 총 11** (foundation-context 및 jit-docs 모두 위 R1/R5 항목에 포함).
 
-- `moai-foundation-context` (R1) — 이미 위 리스트에 포함
-- "and 2 absorbed under merge targets" — spec.md §6.2 roll-up은 실제로는 11개의 개별 삭제 + "foundation-context" 추가 = 12개이며, 또 어느 1개가 count에 포함됨. `moai-workflow-jit-docs`가 §6.2 판정표에서는 KEEP (line 243)이지만 action은 "RETIRE (merged)"로 기재되어 있음 — 즉 디렉터리 기준으로 **archive 대상은 총 11 + 1(foundation-context) + 1(jit-docs) = 13**.
-
-**[OPEN QUESTION OQ-1]**: `moai-workflow-jit-docs` 는 R4 verdict 는 KEEP 인데 v3 action 은 RETIRE(merged) 임. 최종 판정은 v3 action(=RETIRE) 를 따른다고 가정하지만, R4 audit 원문 재확인 필요.
+**[CLOSED OQ-1]**: `moai-workflow-jit-docs` 는 v3 action = RETIRE(merged). DL-3 (v1.1.0): single verdict = RETIRE — jit-docs 는 T1.4-5 에서 archive 완료.
 
 **RETIRED.md 템플릿** (각 archived skill 하위):
 
@@ -365,7 +362,7 @@ If a substitute exists, functional content has been relocated to the substitute 
 
 **Template 쪽 처리**: `internal/template/templates/.claude/skills/<name>` 도 archive 로 이동. 단, archive 자체는 `.moai/archive/` 리포 루트 단일 경로 → template에는 archive 디렉터리를 복사하지 않는다. 즉 template 에서는 **삭제**하고, local 에서는 **archive 로 이동**한다. (archive 는 dev-only artifact; template 사용자에게는 배포되지 않음.)
 
-**[OPEN QUESTION OQ-2]**: template 삭제 vs local archive 의 비대칭성 때문에 `diff -rq .claude/skills internal/template/templates/.claude/skills` 는 여전히 empty 여야 하지만 archive 파일은 양쪽 어느 쪽에도 없어야 한다. 대안: archive 를 `internal/template/templates/` 하위에 두지 않고 dev-only 위치에 두는 게 맞는지 확인 필요 (SPEC constraint §7 "삭제되는 skill은 .moai/archive/skills/v3.0/에 아카이브된다" 는 리포 단일 위치를 암시 → OK).
+**[CLOSED OQ-2]**: archive 는 dev-only artifact. template 에서는 **삭제**, local 에서는 **archive 로 이동**. `diff -rq .claude/skills internal/template/templates/.claude/skills` 는 archive 양쪽 제외이므로 여전히 empty. DL-2 (v1.1.0): archive asymmetry resolved — dev-only path (`.moai/archive/`) 는 template tree 에 포함하지 않음.
 
 **Checkpoint (v1.1.0 — OQ-3 resolved per DL-2)**: Wave 1.4 끝에서:
 - `.claude/skills/` 디렉터리 수 = 48 (baseline) − 11 (T1.4-1..11 archive) + 1 (moai-design-system 신설, Wave 1.2) = **38** ✓
@@ -478,8 +475,8 @@ grep -rl "moai-foundation-philosopher\|moai-workflow-thinking\|moai-design-craft
 
 **검증 체크리스트**:
 
-1. `[ "$(ls -d .claude/skills/*/ | wc -l)" -eq 24 ]` (REQ-WF001-001)
-2. `[ "$(ls -d internal/template/templates/.claude/skills/*/ | wc -l)" -eq 24 ]`
+1. `[ "$(ls -d .claude/skills/*/ | wc -l)" -eq 38 ]` (REQ-WF001-001; Stage 1 target per DL-1)
+2. `[ "$(ls -d internal/template/templates/.claude/skills/*/ | wc -l)" -eq 38 ]`
 3. `diff -rq .claude/skills internal/template/templates/.claude/skills` → empty (REQ-WF001-006)
 4. `[ -d .moai/archive/skills/v3.0/ ]` 및 각 R1~R11 아카이브 존재 (REQ-WF001-015 dry-run)
 5. `[ -f .moai/decisions/skill-rename-map.yaml ]`
@@ -577,7 +574,7 @@ grep -rl "moai-foundation-philosopher\|moai-workflow-thinking\|moai-design-craft
 | R2 | Wave 1.4 에서 template/local archive 비대칭 (OQ-2) | diff -rq 실패 | template 에서는 삭제, local 에서는 archive 로 이동; archive 는 dev-only 경로로 명시 |
 | R3 | Wave 1.6 의 `replace_all` 오류 | 잘못된 skill 이름 치환 | `moai-design-tools` 문맥별 수동 Edit, 전체 grep 재검증 |
 | R4 | Agency FROZEN skill 의도치 않은 수정 | GAN loop 계약 파괴 | Wave 1.1 baseline hash 와 Wave 1.7 재검증 hash 비교 (exact match 요구) |
-| R5 | `moai-workflow-jit-docs` 의 KEEP vs RETIRE 모호 (OQ-1) | 집계 오류 → 24개 초과/미달 | 본 SPEC 은 v3 action(RETIRE) 를 따른다고 가정; Wave 1.4 commit 메시지에 가정 명시 |
+| R5 | `moai-workflow-jit-docs` 의 KEEP vs RETIRE 모호 **(OQ-1 CLOSED)** | 집계 오류 → 38개 초과/미달 | DL-3 (v1.1.0): single verdict = RETIRE; T1.4-5 에서 archive 완료. 리스크 해소됨. |
 | R6 | `skill-rename-map.yaml` 스키마가 MIG-001 과 불일치 | Phase 8 에서 MIG-001 실패 | 본 SPEC §2.5 스키마를 artifact 로 확정하되 MIG-001 spec.md 가 제정되면 재정합 |
 | R7 | 13개 삭제 중 하나라도 bundled resource 누락 | 구현 지식 손실 | Wave 1.2 에서 bundled resource 이관을 명시적으로 수행, Wave 1.4 archive 전 재검증 |
 | R8 | `make build` 실패 | embedded.go 비정상 | 각 Wave 끝에서 `make build` 를 수행하여 빠른 실패 detection |
