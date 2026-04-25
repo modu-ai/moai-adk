@@ -122,10 +122,30 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 
 3. **Output**: `.moai/specs/SPEC-XXX/spec.md`
 
-### Phase 0.5: Plan Audit Gate (TBD — see SPEC-WF-AUDIT-GATE-001)
+### Phase 0.5: Plan Audit Gate
 
-<!-- Plan Audit Gate body will be filled in per SPEC-WF-AUDIT-GATE-001 Phase C -->
-<!-- Team mode note: gate runs in main session (Leader) BEFORE any TeamCreate or teammate spawn -->
+**Purpose**: Mandatory independent audit of plan artifacts before any teammate is spawned.
+Source: SPEC-WF-AUDIT-GATE-001 REQ-WAG-005.
+
+**Team mode rules**:
+- Gate executes in the **main session (Leader)** only — not inside any teammate
+- Gate runs **before** any `TeamCreate`, `Agent(subagent_type: ...)`, or teammate spawn
+- plan-auditor is invoked exactly once per `/moai run --team` call (no per-teammate duplication)
+- If cache HIT (24h valid PASS): skip plan-auditor invocation, log cache hit, proceed to Phase 2
+- Verdict=FAIL blocks Phase 2 entirely — no TeamCreate, no teammate spawn occurs
+- `--skip-audit` / `MOAI_SKIP_PLAN_AUDIT=1`: bypass applies equally in team mode
+
+**Implementation**: Follow the identical 5-step logic defined in `workflows/run.md` Phase 0.5:
+Step 1 (hash), Step 2 (24h cache), Step 3 (plan-auditor invocation), Step 4 (verdict routing),
+Step 5 (persist verdict + daily report). The only team-mode difference is enforcement point:
+verdict=PASS is required before the Phase 2 TeamCreate call below.
+
+Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
+
+If FAIL (grace window expired): present options via AskUserQuestion before any team ops:
+- Option 1 (Recommended): Revise SPEC, then re-run `/moai run --team`
+- Option 2: Override and proceed (records BYPASSED)
+- Option 3: Abort
 
 ### Phase 2: Run (Dynamic Teams — Teammates on GLM)
 
@@ -295,10 +315,12 @@ Agent(
 
 When `team_mode` is empty or `"agent-teams"` in llm.yaml, use parallel teammates all on the same API. This is the default team execution mode when `--team` flag is used.
 
-### Phase 0.5: Plan Audit Gate (TBD — see SPEC-WF-AUDIT-GATE-001)
+### Phase 0.5: Plan Audit Gate
 
-<!-- Plan Audit Gate body will be filled in per SPEC-WF-AUDIT-GATE-001 Phase C -->
-<!-- Team mode note: gate runs in main session BEFORE TeamCreate. Verdict=PASS required before Phase 1 proceeds. -->
+Same as CG Mode Phase 0.5 above — execute in main session before TeamCreate.
+Verdict=PASS required before `TeamCreate(team_name: "moai-run-SPEC-XXX")` is called.
+
+Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
 
 ### Phase 1: Team Setup
 
