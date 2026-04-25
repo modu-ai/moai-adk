@@ -1,13 +1,13 @@
 ---
 id: SPEC-V3R2-WF-001
-title: Skill Consolidation (48 to 24)
-version: "0.1.0"
+title: Skill Consolidation — Stage 1 (48 to 38)
+version: "1.1.0"
 status: draft
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1 High
-phase: "v3.0.0 — Phase 4 — Skill Consolidation"
+phase: "v3.0.0 — Phase 4 — Skill Consolidation (Stage 1)"
 module: ".claude/skills/, internal/template/templates/.claude/skills/"
 dependencies: []
 related_gap:
@@ -17,22 +17,28 @@ related_theme: "Theme 6 — Workflow Consolidation"
 breaking: true
 bc_id: [BC-V3R2-006]
 lifecycle: spec-anchored
-tags: "skill-consolidation, skill-audit, merge, retire, v3, workflow, breaking"
+tags: "skill-consolidation, skill-audit, merge, retire, v3, workflow, breaking, stage1"
+follow_up_spec: SPEC-V3R3-WF-001  # Stage 2 (38 → 24), reserved; not yet drafted
 ---
 
-# SPEC-V3R2-WF-001: Skill Consolidation (48 to 24)
+# SPEC-V3R2-WF-001: Skill Consolidation — Stage 1 (48 to 38)
 
 ## HISTORY
 
 | Version | Date       | Author | Description                                                           |
 |---------|------------|--------|-----------------------------------------------------------------------|
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC draft for 48 → 24 skill reduction per R4 skill audit     |
+| 1.1.0   | 2026-04-25 | manager-spec | Audit response (plan-audit 2026-04-25 FAIL → revised). Scope honesty: target revised 48 → 38 (Stage 1 of 48 → 24 trajectory; Stage 2 reserved for SPEC-V3R3-WF-001). §6.1 demoted to logical grouping (§6.2 becomes single SoT). Dual-verdict rows (foundation-context, jit-docs) resolved to RETIRE. moai-design-tools split committed to Pencil → pencil-integration, Figma → archive. REQ-WF001-009/012/016 ACs added (AC-16/17/18). REQ-WF001-002 verdict-uniqueness task added. MIG-001 dependency edge upgraded to contract. AC-WF001-08 extended with broken-fixture rejection check. Typo "단일 단일" fixed. MERGED-INTO roll-up count corrected 3 → 4. M1 unblock criteria made objective per OQ. |
 
 ---
 
 ## 1. Goal (목적)
 
-MoAI v2.13.2의 48개 skill 중 **24개**만 v3.0.0에 존속시킨다. 이 SPEC은 R4 skill audit(2026-04-23)의 verdict 분포(KEEP 12 / REFACTOR 14 / MERGE 15 / RETIRE 5 / UNCLEAR 2)를 집행하는 단일 단일 실행 계약이다. 5개 merge cluster(thinking, design, database, templates-to-project, design-tools split)와 5건 retirement를 명시적 KEEP/REFACTOR/MERGE/RETIRE 판정으로 고정하고, 각 skill의 트리거 키워드 union 보존 및 bundled resource 재배치를 규정한다.
+MoAI v2.13.2의 48개 skill에 대해 **Stage 1 consolidation**을 집행하여 최종 38개 skill 디렉터리(5개 merge target 흡수 + 11건 retirement + 1개 신규 design-system = 48 − 11 + 1 = 38)를 v3.0.0에 존속시킨다. 이 SPEC은 R4 skill audit(2026-04-23)의 verdict 분포(KEEP 12 / REFACTOR 14 / MERGE 15 / RETIRE 5 / UNCLEAR 2)에서 집행 가능한 부분을 단일 실행 계약으로 고정한다. 5개 merge cluster(thinking, design, database, templates-to-project, design-tools split)와 11건 retirement(§6.2)를 명시적 KEEP/REFACTOR/MERGE/RETIRE 판정으로 고정하고, 각 skill의 트리거 키워드 union 보존 및 bundled resource 재배치를 규정한다.
+
+### 1.0 Staging Note — why 38, not 24
+
+R4 audit은 "~24 skills" 라는 지향 목표를 제시했으나 §Per-skill audit table의 개별 verdict는 KEEP 37 + 신규 1 = 38 만 달성 가능하다. 잔여 14개 추가 RETIRE는 monitor/UNCLEAR/REFACTOR 범주 재평가가 필요하며 이는 본 SPEC의 단일 단위 실행 범위를 초과한다. 따라서 본 SPEC은 **Stage 1 (48 → 38)** 을 집행하고 **Stage 2 (38 → 24)** 는 `SPEC-V3R3-WF-001` 로 예약한다. 이 결정은 plan.md §Decision Log 에 근거와 함께 기록된다.
 
 ### 1.1 배경
 
@@ -53,9 +59,10 @@ R4 audit §Executive summary: "Total skills: 48, Recommended v3 skill inventory:
 
 ### 2.1 In Scope
 
-- **Owns**: `.claude/skills/` 디렉터리 48→24 변경, `internal/template/templates/.claude/skills/` 동일 변환, 각 KEEP/REFACTOR/MERGE/RETIRE 판정 집행.
-- 신규 병합 skill 3종 신설(`moai-foundation-thinking` 확장, `moai-design-system`, `moai-domain-database` 확장).
-- 15건 MERGE(5개 cluster) + 5건 RETIRE + 14건 REFACTOR + 12건 KEEP-as-is 확정 라벨 부여.
+- **Owns**: `.claude/skills/` 디렉터리 48→38 변경 (Stage 1), `internal/template/templates/.claude/skills/` 동일 변환, 각 KEEP/REFACTOR/MERGE/RETIRE 판정 집행.
+- 신규 병합 skill 3종 신설(`moai-foundation-thinking` 확장, `moai-design-system` 신설, `moai-domain-database` 확장).
+- 11건 RETIRE(archive) + 5건 MERGE target 재구성 + 6건 REFACTOR 라벨 주입 + KEEP 판정 유지.
+- 48개 entry 각각에 단일 verdict 라벨 보장(REQ-WF001-002) 및 CI 검증 fixture 포함.
 - 각 skill의 `related-skills` frontmatter 필드 재연결(merge 대상 skill 이름 alias 처리 포함).
 - Trigger keyword union preservation: merge 대상 skill의 모든 trigger를 신규 skill의 frontmatter trigger에 union 병합.
 - Bundled resource 재배치: 삭제되는 skill의 `modules/`, `references/` 중 재사용 가능한 asset을 신규 skill의 Level 3 payload로 이관.
@@ -65,7 +72,7 @@ R4 audit §Executive summary: "Total skills: 48, Recommended v3 skill inventory:
 
 - Skill 본문의 언어 번역 / style rewrite
 - `moai-ref-*` 5개 skill의 trigger 키워드 재설계 (keyword-matching auto-activation 모델 유지)
-- 48개 → 24개 수치를 벗어나는 추가 신규 skill 창설
+- Stage 1 목표 38개를 벗어나는 추가 신규 skill 창설 (38 → 24 추가 감축은 SPEC-V3R3-WF-001에서 처리)
 - Agency 흡수 skill 2종(`copywriting`, `brand-design`) 내용 수정 (FROZEN per .claude/rules/moai/design/constitution.md)
 - `moai-workflow-testing` 22.5KB body split (본 SPEC은 REFACTOR 라벨만 부여; 실제 split은 별도 sub-SPEC)
 - 16개 language rules → skills migration (SPEC-V3R2-WF-005가 codify)
@@ -81,7 +88,7 @@ R4 audit §Executive summary: "Total skills: 48, Recommended v3 skill inventory:
   - 참조: `.claude/agents/`, `.claude/commands/`, `.claude/rules/moai/development/skill-authoring.md`
 - 기준 상태: R4 audit 기준 48개 skill 디렉터리, template/local byte-identical
 - 외부 레퍼런스: R4 audit §Per-skill audit table, §Merge clusters, §Recommended v3 skill inventory, synthesis pattern-library §M-1/M-4
-- Skill consolidation REFERENCES (not depends on) MIG-001's migrator; the migrator will read WF-001's skill rename / merge map artifact (written to `.moai/decisions/skill-rename-map.yaml` by WF-001's landing commit) after WF-001 lands in Phase 4. MIG-001 in Phase 8 consumes the artifact without a dependency-graph edge.
+- **Skill consolidation shares a behavioral contract with SPEC-V3R2-MIG-001** (dependency edge, not "references only"). WF-001 authors the artifact `.moai/decisions/skill-rename-map.yaml` per the schema in plan.md §2.5. MIG-001 in Phase 8 consumes that artifact and enacts `moai update` migrations on user local trees (REQ-WF001-009). The schema in plan.md §2.5 is a shared contract that BOTH SPECs MUST honor; any schema change requires a HUMAN GATE review before merge (see plan.md §Decision Log, `OQ-CONTRACT` resolution).
 
 ---
 
@@ -100,8 +107,8 @@ R4 audit §Executive summary: "Total skills: 48, Recommended v3 skill inventory:
 
 ### 5.1 Ubiquitous Requirements
 
-**REQ-WF001-001**
-The v3 skill tree **shall** contain exactly 24 skill directories under `.claude/skills/` (per R4 audit §Recommended v3 skill inventory).
+**REQ-WF001-001** (Stage 1 target)
+The v3 skill tree **shall** contain exactly 38 skill directories under `.claude/skills/` after Stage 1 consolidation (baseline 48 − 11 RETIRE + 1 NEW (`moai-design-system`) = 38). The long-term R4 audit target of ~24 skills is deferred to Stage 2 (SPEC-V3R3-WF-001) and is NOT a pass/fail criterion for this SPEC.
 
 **REQ-WF001-002**
 Each of the 48 current skills **shall** receive exactly one verdict label from {KEEP, REFACTOR, MERGE, RETIRE} recorded in §6.2 判定표.
@@ -127,7 +134,7 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 **When** a RETIRE verdict is applied, the system **shall** archive the retired skill to `.moai/archive/skills/v3.0/<skill-name>/` with a `RETIRED.md` note recording the migration substitute.
 
 **REQ-WF001-009**
-**When** `moai update` runs on a v2 project post-consolidation, the migrator (SPEC-V3R2-MIG-001) **shall** remove deprecated skill directories from the user's local `.claude/skills/` and deploy the 24 retained skills.
+**When** `moai update` runs on a v2 project post-consolidation, the migrator (SPEC-V3R2-MIG-001) **shall** remove the 11 Stage-1 deprecated skill directories from the user's local `.claude/skills/` and deploy the 38 retained skills per the schema defined in plan.md §2.5 (shared contract; see spec.md §9.1.1).
 
 **REQ-WF001-010**
 **When** bundled resources (`modules/`, `references/`) exist in a source skill being merged, the system **shall** relocate still-referenced resources into the target skill's Level 3 payload and delete unused resources.
@@ -163,14 +170,14 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 
 ## 6. Acceptance Criteria (수용 기준 요약)
 
-- **AC-WF001-01**: Given the v2.13.2 tree with 48 skills When the full consolidation is applied Then `.claude/skills/` contains exactly 24 directories (maps REQ-WF001-001).
+- **AC-WF001-01**: Given the v2.13.2 tree with 48 skills When the full Stage 1 consolidation is applied Then `.claude/skills/` contains exactly 38 directories (48 − 11 RETIRE + 1 NEW) (maps REQ-WF001-001).
 - **AC-WF001-02**: Given R4 audit's 48 entries When the verdict table is compared against §6.2 Then all 48 entries have exactly one of {KEEP, REFACTOR, MERGE, RETIRE} (maps REQ-WF001-002).
 - **AC-WF001-03**: Given the thinking triplet (`moai-foundation-thinking`, `moai-foundation-philosopher`, `moai-workflow-thinking`) When merged into `moai-foundation-thinking` Then the merged skill contains the union of all three source skills' triggers (maps REQ-WF001-007).
 - **AC-WF001-04**: Given a RETIRE verdict on `moai-tool-svg` When the retirement applies Then `.moai/archive/skills/v3.0/moai-tool-svg/RETIRED.md` exists with substitute guidance (maps REQ-WF001-008).
 - **AC-WF001-05**: Given `diff -rq .claude/skills internal/template/templates/.claude/skills` When run after any wave commit Then output is empty (maps REQ-WF001-006).
 - **AC-WF001-06**: Given `moai-domain-copywriting` and `moai-domain-brand-design` frontmatter When inspected post-consolidation Then both files are byte-identical to pre-consolidation state (maps REQ-WF001-005).
 - **AC-WF001-07**: Given an agent prompt referencing `moai-foundation-philosopher` When the consolidation commit lands Then the agent prompt is updated in the same commit to reference `moai-foundation-thinking` (maps REQ-WF001-014).
-- **AC-WF001-08**: Given a skill directory deleted without archive entry When CI runs Then the commit is rejected with `SKILL_RETIRE_NO_ARCHIVE` (maps REQ-WF001-015).
+- **AC-WF001-08**: Given a skill directory deleted without archive entry When the dry-run audit script runs locally AND when a deliberately-broken CI fixture (missing `RETIRED.md`) is inserted in `.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/` Then (a) the local dry-run emits `SKILL_RETIRE_NO_ARCHIVE` diagnostics AND (b) the fixture-verifier task exits non-zero demonstrating CI rejection behavior (maps REQ-WF001-015).
 - **AC-WF001-09**: Given `moai-workflow-templates` and `moai-workflow-project` merging into `moai-workflow-project` When merge runs Then templates' `schemas/` and `templates/` bundled directories are relocated under `moai-workflow-project/` (maps REQ-WF001-010).
 - **AC-WF001-10**: Given `moai-foundation-thinking` after merge When inspected Then it references `moai-workflow-thinking` (Sequential Thinking MCP) and `moai-foundation-philosopher` (First Principles) content as internal sections (maps REQ-WF001-003).
 - **AC-WF001-11**: Given `moai-design-system` after merge When inspected Then it unions triggers from `moai-design-craft`, `moai-domain-uiux`, `moai-design-tools` (UI side) (maps REQ-WF001-007).
@@ -178,8 +185,13 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 - **AC-WF001-13**: Given `moai-framework-electron` and `moai-platform-chrome-extension` marked UNCLEAR When consolidation applies Then both retain directory and `## Telemetry Window` section is added to SKILL.md (maps REQ-WF001-013).
 - **AC-WF001-14**: Given a REFACTOR skill (e.g., `moai-workflow-testing`) When consolidation commits Then its SKILL.md includes `## Refactor Notes` section linking to R4 audit line (maps REQ-WF001-011).
 - **AC-WF001-15**: Given a skill's `related-skills:` pointing to a retired name When consolidation commits Then the reference is rewritten to the merge target per §6.2 mapping (maps REQ-WF001-017).
+- **AC-WF001-16**: Given `moai update` running on a v2 project post-consolidation When the migrator reads `.moai/decisions/skill-rename-map.yaml` Then (a) the artifact exists with schema version 1, (b) every entry in the `retires` and `merges` sections has a corresponding migration plan in MIG-001's consumer code, verified by a static schema-match check performed in T1.7-9 (maps REQ-WF001-009).
+- **AC-WF001-17**: Given this SPEC executes consolidation When any Wave (1.1 through 1.7) completes Then `git diff HEAD~N -- .claude/skills/moai/workflows/` shows zero changes AND `diff` between `moai/workflows/` contents before and after Stage 1 is empty (maps REQ-WF001-012 — this SPEC shall not modify moai/workflows/).
+- **AC-WF001-18**: Given a MERGE target missing a trigger keyword that existed in at least one merged source When the audit script runs against the `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/` fixture (where one trigger has been intentionally dropped from a merge target) Then the fixture verifier exits non-zero with diagnostic `SKILL_TRIGGER_DROP: <trigger_name>` demonstrating the CI behavior the real guard rail will enforce (maps REQ-WF001-016).
 
-### 6.1 Final 24 skill inventory (per R4 §Recommended v3 skill inventory)
+### 6.1 Surviving skill logical grouping (non-authoritative; see §6.2 for directory count SoT)
+
+> **NOTE (v1.1.0)**: §6.1 is a **logical grouping** of surviving skills for narrative clarity. The authoritative single source of truth for the post-Stage-1 directory count is §6.2. Stage 1 preserves 38 directories (not 24); the "24" long-term target is reserved for Stage 2 (SPEC-V3R3-WF-001). §6.1 enumerates the groups that R4 audit called out as the "core inventory"; additional KEEP/REFACTOR/UNCLEAR rows in §6.2 (e.g., `moai-platform-auth`, `moai-platform-deployment`, `moai-framework-electron`, `moai-platform-chrome-extension`, `moai-workflow-research`, `moai-workflow-pencil-integration`, `moai-workflow-design-context`, `moai-workflow-design-import`, `moai-domain-brand-design`, `moai-domain-db-docs`, `moai-formats-data`, `moai` root) all survive Stage 1 but are not duplicated in the groupings below.
 
 **Foundation (4)**
 1. `moai-foundation-core` (KEEP)
@@ -228,7 +240,7 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 | 2 | moai-foundation-core | KEEP | KEEP | absorb `moai-foundation-context` content into §Token Budget section |
 | 3 | moai-foundation-cc | KEEP | KEEP | unify `reference/` vs `references/` dir naming |
 | 4 | moai-foundation-quality | KEEP | KEEP | — |
-| 5 | moai-foundation-context | KEEP | RETIRE (fold into foundation-core) | content absorbed into moai-foundation-core |
+| 5 | moai-foundation-context | RETIRE | RETIRE (fold into foundation-core) | OQ-7 resolved v1.1.0: R4 column corrected from KEEP to RETIRE; single verdict = RETIRE. Content absorbed into moai-foundation-core. |
 | 6 | moai-foundation-thinking | MERGE | MERGE target | unions 3-way thinking triplet |
 | 7 | moai-foundation-philosopher | MERGE | RETIRE (merged) | absorbed into moai-foundation-thinking |
 | 8 | moai-workflow-thinking | MERGE | RETIRE (merged) | absorbed into moai-foundation-thinking |
@@ -240,7 +252,7 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 | 14 | moai-workflow-project | KEEP | KEEP | absorbs templates + docs-generation |
 | 15 | moai-workflow-worktree | KEEP | KEEP | — |
 | 16 | moai-workflow-loop | KEEP | KEEP | — |
-| 17 | moai-workflow-jit-docs | KEEP | RETIRE (merged) | absorbed into moai-workflow-project documentation section |
+| 17 | moai-workflow-jit-docs | RETIRE | RETIRE (merged) | OQ-1 resolved v1.1.0: R4 column corrected from KEEP to RETIRE; single verdict = RETIRE. Absorbed into moai-workflow-project documentation section. |
 | 18 | moai-workflow-research | KEEP | KEEP (monitor) | retain experimental loop |
 | 19 | moai-workflow-gan-loop | KEEP | KEEP | — |
 | 20 | moai-workflow-design-import | KEEP | KEEP | — |
@@ -254,7 +266,7 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 | 28 | moai-domain-brand-design | KEEP | KEEP (FROZEN) | agency contract |
 | 29 | moai-domain-db-docs | KEEP | KEEP | separate workflow skill (migration parser) |
 | 30 | moai-design-craft | MERGE | RETIRE (merged) | absorbed into moai-design-system |
-| 31 | moai-design-tools | REFACTOR | RETIRE (split) | Pencil → moai-workflow-pencil-integration; Figma → archive pending telemetry |
+| 31 | moai-design-tools | REFACTOR | RETIRE (split) | OQ-4 resolved v1.1.0: Pencil portion → `moai-workflow-pencil-integration` (authoritative target); Figma portion → archive under `.moai/archive/skills/v3.0/moai-design-tools/figma/` (no active substitute, revisit in Stage 2). The earlier tasks.md reference to `moai-design-system` as Pencil destination is SUPERSEDED by this resolution. |
 | 32 | moai-docs-generation | REFACTOR | RETIRE (merged) | absorbed into moai-workflow-project |
 | 33 | moai-platform-deployment | REFACTOR | REFACTOR | shrink triplet to Vercel-only; Railway/Convex doc-only |
 | 34 | moai-platform-auth | REFACTOR | REFACTOR | retain triplet scope, narrower guidance per vendor |
@@ -273,7 +285,14 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 | 47 | moai-ref-testing-pyramid | KEEP | KEEP | — |
 | 48 | moai-ref-owasp-checklist | KEEP | KEEP | — |
 
-**Verdict roll-up:** KEEP = 24 directories (includes `moai` root, `moai-formats-data` monitor, 2 UNCLEAR windows). MERGED-INTO = 3 targets (`moai-foundation-thinking`, `moai-workflow-project`, `moai-design-system`, `moai-domain-database`). RETIRED/ABSORBED = 13 directories (foundation-context, foundation-philosopher, workflow-thinking, workflow-templates, workflow-jit-docs, domain-uiux, design-craft, design-tools, docs-generation, platform-database-cloud, tool-svg, and 2 absorbed under merge targets). Total: 48 − 13 − 11 = 24 ✓.
+**Verdict roll-up (v1.1.0 corrected):**
+- **RETIRE (archived)** = **11 directories**, each with a verdict cell of RETIRE in the v3 action column:
+  `moai-foundation-context`, `moai-foundation-philosopher`, `moai-workflow-thinking`, `moai-workflow-templates`, `moai-workflow-jit-docs`, `moai-domain-uiux`, `moai-design-craft`, `moai-design-tools`, `moai-docs-generation`, `moai-platform-database-cloud`, `moai-tool-svg`.
+- **MERGED-INTO (absorbing targets)** = **4 targets**: `moai-foundation-thinking`, `moai-workflow-project`, `moai-design-system` (NEW), `moai-domain-database`. (`moai-foundation-core` also absorbs `moai-foundation-context` content but is itself a pre-existing KEEP directory, not a new merge target.)
+- **KEEP / KEEP (FROZEN) / KEEP (UNCLEAR window) / KEEP (monitor) / REFACTOR** = **37 pre-existing directories** survive Stage 1.
+- **NEW** = 1 directory (`moai-design-system`).
+- **Stage 1 arithmetic**: 48 baseline − 11 RETIRE + 1 NEW = **38 surviving directories** (REQ-WF001-001 target).
+- **Stage 2 target (38 → 24)**: deferred to SPEC-V3R3-WF-001. The previous v0.1.0 roll-up line "48 − 13 − 11 = 24 ✓" was mathematically incoherent (the 13 and 11 were non-partitioning) and has been retired in v1.1.0.
 
 ---
 
@@ -303,7 +322,14 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 
 ### 9.1 Blocked by
 
-- SPEC-V3R2-MIG-001: v2→v3 migrator가 user의 local skills 트리에서 removed skill을 이관해야 함.
+- (none — this SPEC is self-contained for repo-side enactment)
+
+### 9.1.1 Shared Contract (co-signed with SPEC-V3R2-MIG-001)
+
+- **SPEC-V3R2-MIG-001** consumes `.moai/decisions/skill-rename-map.yaml` (schema v1, defined in plan.md §2.5) to perform user-local migrations during `moai update`.
+- REQ-WF001-009 mandates the behavioral contract: WHEN `moai update` runs THEN MIG-001 SHALL remove deprecated skill directories and deploy the Stage 1 38-skill set.
+- Schema ownership: WF-001 authors the artifact; any schema change MUST be reviewed by the MIG-001 author via a HUMAN GATE (plan.md §Decision Log, `OQ-CONTRACT` entry).
+- AC-WF001-16 verifies the contract existence and schema integrity at Wave 1.7.
 
 ### 9.2 Blocks
 
@@ -320,15 +346,19 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 ## 10. Traceability (추적성)
 
 - REQ 총 17개: Ubiquitous 6, Event-Driven 4, State-Driven 2, Optional 2, Complex 3.
-- AC 총 15개, 모든 REQ에 최소 1개 AC 매핑 (100% 커버리지).
+- AC 총 18개 (v1.1.0 에서 AC-16/17/18 추가), 모든 REQ에 최소 1개 AC 매핑 (17/17 = 100% 커버리지; v0.1.0 에서 누락되었던 REQ-009/012/016 이 v1.1.0 에서 각각 AC-16/17/18 로 매핑됨).
+- REQ → AC 매핑: REQ-001→AC-01, REQ-002→AC-02, REQ-003→AC-10/12, REQ-004→AC-04, REQ-005→AC-06, REQ-006→AC-05, REQ-007→AC-03/11, REQ-008→AC-04, REQ-009→AC-16, REQ-010→AC-09, REQ-011→AC-14, REQ-012→AC-17, REQ-013→AC-13, REQ-014→AC-07, REQ-015→AC-08, REQ-016→AC-18, REQ-017→AC-15.
 - Wave 2 소스 앵커: R4 audit §Executive summary / §Per-skill audit table / §Merge clusters / §Recommended v3 skill inventory / §Section A Category analysis; pattern-library §M-1/M-4.
-- BC 영향: BC-V3R2-006 (user's local `.claude/skills/` tree에서 13 directories 삭제). 본 SPEC은 **breaking**.
+- BC 영향: BC-V3R2-006 (user's local `.claude/skills/` tree에서 **11 directories** 삭제 — Stage 1). 본 SPEC은 **breaking**.
 - 구현 경로 예상:
   - `.claude/skills/moai-foundation-thinking/SKILL.md` (확장)
   - `.claude/skills/moai-design-system/SKILL.md` (신설)
   - `.claude/skills/moai-domain-database/SKILL.md` (확장)
-  - `.claude/skills/moai-workflow-project/SKILL.md` (templates + docs-generation 흡수)
-  - `.moai/archive/skills/v3.0/<13 directories>/RETIRED.md`
+  - `.claude/skills/moai-workflow-project/SKILL.md` (templates + docs-generation + jit-docs 흡수)
+  - `.claude/skills/moai-foundation-core/SKILL.md` (context 흡수)
+  - `.moai/archive/skills/v3.0/<11 directories>/RETIRED.md`
+  - `.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/` (broken-fixture test for AC-08)
+  - `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/` (broken-fixture test for AC-18)
   - `internal/template/templates/.claude/skills/` 동기화
 - 외부 참조: `.claude/rules/moai/development/skill-authoring.md` (frontmatter 규칙), `.claude/rules/moai/design/constitution.md` §3 (FROZEN).
 - **File:line anchors** (per D5 traceability requirement):
