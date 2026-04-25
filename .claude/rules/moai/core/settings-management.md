@@ -186,6 +186,92 @@ When `workflow.execution_mode` is `auto`, these thresholds determine when team m
 | team.auto_selection.min_files_for_team | 10 | Minimum affected files to trigger team mode |
 | team.auto_selection.min_complexity_score | 7 | Minimum complexity score (1-10) to trigger team mode |
 
+## Output Style Configuration
+
+Output styles are Markdown files in `.claude/output-styles/moai/` that control how MoAI formats responses.
+Two styles ship with MoAI-ADK: **MoAI** (`moai.md`) and **Einstein** (`einstein.md`).
+
+### Precedence
+
+When `outputStyle` is set in multiple places, the first match wins:
+
+| Priority | Source | Key | Example |
+|----------|--------|-----|---------|
+| 1 (highest) | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "Einstein"` |
+| 2 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
+| 3 (lowest) | Hardcoded default | — | `"MoAI"` |
+
+**Example 1 — project overrides user:**
+
+```json
+// ~/.claude/settings.json
+{ "outputStyle": "MoAI" }
+
+// .claude/settings.json (project)
+{ "outputStyle": "Einstein" }
+```
+
+Result: **Einstein** loads (project wins over user, REQ-WF006-006).
+
+**Example 2 — user setting applies when project is absent:**
+
+```json
+// ~/.claude/settings.json
+{ "outputStyle": "Einstein" }
+
+// .claude/settings.json (project) — outputStyle key not present
+```
+
+Result: **Einstein** loads (user setting applies, REQ-WF006-015).
+
+**Example 3 — third-party style at project level:**
+
+```json
+// .claude/settings.json (project)
+{ "outputStyle": "ThirdStyle" }
+```
+
+Result: **ThirdStyle** loads if the file `output-styles/moai/thirdstyle.md` exists (REQ-WF006-011).
+If the file does not exist, see Fallback Policy below.
+
+### Fallback Policy
+
+When the requested style name cannot be resolved to a file in `output-styles/moai/`, MoAI falls back
+to the built-in **MoAI** style and emits the following warning to **stderr**:
+
+```
+OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI
+```
+
+`<name>` is replaced by the exact string from the `outputStyle` setting (e.g., `NonExistent`).
+This warning is emitted to stderr only — it does not appear in the AI response body.
+
+### Frontmatter Schema Contract
+
+Every output style file MUST have a YAML frontmatter block with exactly these required keys:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `name` | string | Human-readable style name (e.g., `"MoAI"`) |
+| `description` | string | One-sentence description of the style |
+| `keep-coding-instructions` | boolean | `true` = preserve coding directives; `false` = suppress |
+
+`keep-coding-instructions` MUST be a raw boolean literal (`true` or `false`) — quoted strings
+(`"true"`, `"false"`), capitalized forms (`True`, `False`), or other values are schema errors.
+
+Additional frontmatter keys beyond these three are tolerated and ignored.
+
+### Breaking Change Policy
+
+Adding a new output style requires:
+1. Adding the `.md` file to `internal/template/templates/.claude/output-styles/moai/` (Template-First).
+2. Running `make build` to regenerate the embedded template.
+3. Mirroring the file to `.claude/output-styles/moai/` in the project.
+4. Updating `TestOutputStylesExactlyTwo` in `internal/template/output_styles_audit_test.go` to reflect
+   the new expected count and add the new file to the allowed set.
+
+Removing a built-in style is a breaking change and requires a major version bump.
+
 ## Rules
 
 - Never commit secrets to settings files
