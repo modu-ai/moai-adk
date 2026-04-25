@@ -78,5 +78,83 @@
 - Dedup applied: case-insensitive (NoSQL/nosql kept canonical "NoSQL"/"nosql" per existing entries)
 - related-skills alias entries: preserved (retiring skills remain referenceable until Wave 1.4)
 
-## Next: Dispatch 3 = Wave 1.4 (archive 11 retiring skills + skill-rename-map + plan.md drift cleanup)
+## Wave 1.4 Summary — 2026-04-25
+
+- Tasks: T1.4-1 through T1.4-12 (ALL COMPLETED) + Checkpoint T1.4-END: PASS
+
+### Archive moves (T1.4-1..11)
+
+| Task | Skill | Substitute | Verdict |
+|------|-------|-----------|---------|
+| T1.4-1 | moai-foundation-context | moai-foundation-core | ABSORBED |
+| T1.4-2 | moai-foundation-philosopher | moai-foundation-thinking | MERGED |
+| T1.4-3 | moai-workflow-thinking | moai-foundation-thinking | MERGED |
+| T1.4-4 | moai-workflow-templates | moai-workflow-project | MERGED |
+| T1.4-5 | moai-workflow-jit-docs | moai-workflow-project | MERGED |
+| T1.4-6 | moai-domain-uiux | moai-design-system | MERGED |
+| T1.4-7 | moai-design-craft | moai-design-system | MERGED |
+| T1.4-8 | moai-design-tools | pencil-integration(Pencil)+archive(Figma) | SPLIT |
+| T1.4-9 | moai-docs-generation | moai-workflow-project | MERGED |
+| T1.4-10 | moai-platform-database-cloud | moai-domain-database | MERGED |
+| T1.4-11 | moai-tool-svg | (none — niche) | RETIRE |
+
+- Each archive dir: RETIRED.md present (verified)
+- Template: deleted from internal/template/templates/.claude/skills/ (11 dirs)
+- Local: git mv to .moai/archive/skills/v3.0/ (11 dirs)
+
+### T1.4-12: skill-rename-map.yaml
+
+- Path: .moai/decisions/skill-rename-map.yaml
+- Schema version: 1
+- Sections: merges(10), retires(1), refactors(6), unchanged_keep(33)
+- YAML parse: OK
+
+### Plan.md drift cleanup (5 fixes applied)
+
+- D1: L333 — corrected "= 13" stale narrative to "= 11" per DL-3
+- D2: L335 — `[OPEN QUESTION OQ-1]` → `[CLOSED OQ-1]` per DL-3
+- D3: L368 — `[OPEN QUESTION OQ-2]` → `[CLOSED OQ-2]` per DL-2
+- D4: L481-482 — `-eq 24` → `-eq 38` per DL-1 (Stage 1 target)
+- D5: L580 — R5 risk row "(OQ-1)" → "(OQ-1 CLOSED)" per DL-3
+
+### Checkpoint T1.4-END
+
+- make build: exit 0
+- diff -rq .claude/skills internal/template/templates/.claude/skills: empty (PASS)
+- ls -d .claude/skills/*/ | wc -l: **38** (Stage 1 target achieved)
+- ls -d internal/template/templates/.claude/skills/*/ | wc -l: **38**
+- .moai/decisions/skill-rename-map.yaml: exists, YAML parse OK
+- Archive dirs: 11 (all with RETIRED.md)
+- OQ-CONTRACT HUMAN GATE: deferred to PR review (per tasks.md T1.4-END item 6)
+
+## Wave 1.5 Summary — 2026-04-25
+
+- Tasks: T1.5-1 through T1.5-8 (ALL COMPLETED) + Checkpoint T1.5-END: PASS
+
+### REFACTOR Notes injected (T1.5-1..6)
+
+| Task | Skill | R4 audit reason | SPEC line |
+|------|-------|-----------------|-----------|
+| T1.5-1 | moai-workflow-testing | split 43-file bundled modules/ into Level-3 | §6.2 line 250 |
+| T1.5-2 | moai-domain-backend | narrow to "API design decision matrix" | §6.2 line 261 |
+| T1.5-3 | moai-domain-frontend | router-only (ref-react, library-nextra) | §6.2 line 262 |
+| T1.5-4 | moai-domain-database | MERGE target + additional restructuring | §6.2 line 263 |
+| T1.5-5 | moai-platform-deployment | shrink triplet to Vercel-only primary | §6.2 line 271 |
+| T1.5-6 | moai-platform-auth | retain triplet, narrower per-vendor guidance | §6.2 line 272 |
+
+### Telemetry Window injected (T1.5-7..8)
+
+| Task | Skill | Window start | Window end |
+|------|-------|-------------|-----------|
+| T1.5-7 | moai-framework-electron | 2026-04-25 | 2026-06-24 |
+| T1.5-8 | moai-platform-chrome-extension | 2026-04-25 | 2026-06-24 |
+
+### Checkpoint T1.5-END
+
+- make build: exit 0
+- diff -rq .claude/skills internal/template/templates/.claude/skills: empty (PASS)
+- Skill count: 38 (unchanged — no directory additions/removals in Wave 1.5)
+
+## Next: Dispatch 5 = Wave 1.6 (Agent prompt rewrite, 4 files)
+
 

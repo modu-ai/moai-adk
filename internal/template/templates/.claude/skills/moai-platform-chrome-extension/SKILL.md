@@ -352,3 +352,16 @@ Coverage: Manifest V3, Service Workers, Content Scripts, Messaging, Chrome APIs,
 - [ ] Manifest V3 compliance verified (no MV2-only APIs used)
 
 <!-- moai:evolvable-end -->
+
+## Telemetry Window
+
+**Status**: UNCLEAR (60-day window)
+**R4 audit verdict**: KEEP (monitor)
+**SPEC**: SPEC-V3R2-WF-001 §6.2 (REQ-WF001-013)
+**Window start**: 2026-04-25 (Wave 1.5 commit date)
+**Window end**: 2026-06-24 (60 days)
+**Re-audit trigger**: SessionStart hook activation count for this skill
+**Decision criteria**:
+- If activation count >= 5 during window → retain permanently
+- If activation count = 0 during window → schedule RETIRE in v3.1
+- If 0 < count < 5 → retain with "low-use" tag

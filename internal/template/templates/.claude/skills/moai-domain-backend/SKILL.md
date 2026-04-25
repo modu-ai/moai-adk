@@ -182,3 +182,14 @@ Maintained by: MoAI-ADK Backend Team
 - [ ] Authentication required on all non-public endpoints (show auth middleware)
 
 <!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — narrow to "API design decision matrix" focused content
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 261
+**Refactor scope** (deferred to future sub-SPEC):
+- Narrow body to API design decision matrix (REST vs GraphQL vs tRPC vs gRPC)
+- Extract language-specific implementation details into Level-3 modules
+- Remove framework-specific content that duplicates language skill coverage
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.
