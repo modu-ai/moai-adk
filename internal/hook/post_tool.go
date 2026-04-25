@@ -3,12 +3,15 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	lsp "github.com/modu-ai/moai-adk/internal/lsp"
@@ -204,6 +207,12 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// Perform MX tag validation after Write/Edit operations (observation-only, never blocks)
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.mxValidator != nil {
 		h.runMxValidation(ctx, input, metrics)
+	}
+
+	// Audit memory files on Write/Edit targeting agent-memory paths (SPEC-V3R2-EXT-001 T6).
+	// Observation-only: emits warnings to stderr, never blocks.
+	if input.ToolName == "Write" || input.ToolName == "Edit" {
+		runMemoryAudit(input)
 	}
 
 	jsonData, err := json.Marshal(metrics)
@@ -506,4 +515,43 @@ func convertHookDiagsToLSP(diags []lsphook.Diagnostic) []lsp.Diagnostic {
 		result = append(result, lspDiag)
 	}
 	return result
+}
+
+// runMemoryAudit checks whether the Write/Edit target is an agent-memory markdown file,
+// and if so runs taxonomy.AuditFile on it, emitting any findings to stderr.
+// Observation-only: never returns an error or blocks execution.
+// MOAI_MEMORY_AUDIT=0 disables all audit output (SPEC-V3R2-EXT-001 T6).
+func runMemoryAudit(input *HookInput) {
+	if os.Getenv("MOAI_MEMORY_AUDIT") == "0" {
+		return
+	}
+
+	// Extract file_path from tool input.
+	var parsed map[string]any
+	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
+		return
+	}
+	filePath, ok := parsed["file_path"].(string)
+	if !ok || filePath == "" {
+		return
+	}
+
+	// Only audit .md files inside agent-memory directories.
+	if !strings.HasSuffix(filePath, ".md") {
+		return
+	}
+	normalized := filepath.ToSlash(filePath)
+	if !strings.Contains(normalized, "agent-memory/") && !strings.Contains(normalized, "agent-memory\\") {
+		return
+	}
+
+	findings, err := taxonomy.AuditFile(filePath)
+	if err != nil {
+		slog.Debug("memory audit: AuditFile error (observation-only)", "path", filePath, "error", err)
+		return
+	}
+
+	for _, f := range findings {
+		fmt.Fprintf(os.Stderr, "[memory-audit] %s: %s — %s\n", f.Code, f.Path, f.Detail)
+	}
 }

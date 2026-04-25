@@ -1,13 +1,17 @@
 package hook
 
 // Additional coverage tests for session_start.go functions below 85%.
-// Targets: copyDirRecursive, ensureTeammateMode, Handle (windows guard path).
+// Targets: copyDirRecursive, ensureTeammateMode, Handle (windows guard path),
+// and detectAndWrapStaleMemories (SPEC-V3R2-EXT-001 T5).
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 // --- copyDirRecursive ---
@@ -243,5 +247,84 @@ func TestEnsureTeammateMode_MalformedJSON_ReturnsEmpty(t *testing.T) {
 	result := ensureTeammateMode(dir)
 	if result != "" {
 		t.Errorf("malformed JSON should return empty, got %q", result)
+	}
+}
+
+// --- detectAndWrapStaleMemories (SPEC-V3R2-EXT-001 T5) ---
+
+// TestSessionStart_MemoryStaleAggregated verifies AC-EXT001-08:
+// when 10+ stale memory files are found, a single aggregated warning is emitted
+// (REQ-EXT001-017).
+func TestSessionStart_MemoryStaleAggregated(t *testing.T) {
+	// Not parallel: creates many files, serial is fine for determinism.
+	projectDir := t.TempDir()
+	agentMemDir := filepath.Join(projectDir, ".claude", "agent-memory", "expert-backend")
+	if err := os.MkdirAll(agentMemDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	// Create 12 stale memory files (> aggregation threshold of 10).
+	const fileCount = 12
+	staleTime := testFixedNow.Add(-25 * time.Hour)
+	for i := 0; i < fileCount; i++ {
+		path := filepath.Join(agentMemDir, fmt.Sprintf("note%02d.md", i))
+		content := fmt.Sprintf("---\nname: note%d\ndescription: desc%d\ntype: user\n---\nbody\n", i, i)
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("WriteFile %s: %v", path, err)
+		}
+		if err := os.Chtimes(path, staleTime, staleTime); err != nil {
+			t.Fatalf("Chtimes %s: %v", path, err)
+		}
+	}
+
+	result := detectAndWrapStaleMemories(projectDir, testFixedNow)
+	if result == "" {
+		t.Fatal("detectAndWrapStaleMemories returned empty; expected aggregated warning")
+	}
+
+	// Must contain file count (12).
+	if !strings.Contains(result, "12") {
+		t.Errorf("aggregated warning %q does not contain count '12'", result)
+	}
+
+	// Must NOT expand into 12 separate <system-reminder> blocks
+	// (aggregation short-circuits to a single text warning).
+	count := strings.Count(result, "<system-reminder>")
+	if count > 1 {
+		t.Errorf("aggregated warning contains %d <system-reminder> blocks, want <= 1", count)
+	}
+}
+
+// TestSessionStart_NoMemoryDir verifies graceful no-op when memory dir is absent.
+func TestSessionStart_NoMemoryDir(t *testing.T) {
+	t.Parallel()
+	projectDir := t.TempDir()
+	result := detectAndWrapStaleMemories(projectDir, testFixedNow)
+	if result != "" {
+		t.Errorf("detectAndWrapStaleMemories(no memory dir) = %q, want empty", result)
+	}
+}
+
+// TestSessionStart_FreshFilesNotWrapped verifies that files < 24h old are not wrapped.
+func TestSessionStart_FreshFilesNotWrapped(t *testing.T) {
+	t.Parallel()
+	projectDir := t.TempDir()
+	agentMemDir := filepath.Join(projectDir, ".claude", "agent-memory", "expert-backend")
+	if err := os.MkdirAll(agentMemDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	freshPath := filepath.Join(agentMemDir, "fresh.md")
+	if err := os.WriteFile(freshPath, []byte("---\nname: f\ndescription: d\ntype: user\n---\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	freshTime := testFixedNow.Add(-1 * time.Hour)
+	if err := os.Chtimes(freshPath, freshTime, freshTime); err != nil {
+		t.Fatal(err)
+	}
+
+	result := detectAndWrapStaleMemories(projectDir, testFixedNow)
+	if result != "" {
+		t.Errorf("detectAndWrapStaleMemories(fresh file) = %q, want empty", result)
 	}
 }
