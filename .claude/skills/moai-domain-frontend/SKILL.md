@@ -192,3 +192,14 @@ Last Updated: 2026-03-28
 - [ ] Components under 300 lines or decomposed with clear sub-component boundaries
 
 <!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — router-only skill pointing to moai-ref-react-patterns and moai-library-nextra
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 262
+**Refactor scope** (deferred to future sub-SPEC):
+- Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
+- Extract framework-specific deep-dives into Level-3 modules
+- Remove content that duplicates coverage in library and reference skills
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

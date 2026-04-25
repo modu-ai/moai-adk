@@ -305,3 +305,14 @@ match /users/{userId} {
 Offline persistence: Enable via `enableIndexedDbPersistence(db)` (web) or SDK default (mobile).
 
 Full platform reference: [modules/cloud-database.md](modules/cloud-database.md)
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — MERGE target (absorbs moai-platform-database-cloud) with additional restructuring needed
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 263
+**Refactor scope** (deferred to future sub-SPEC):
+- Separate moai-domain-db-docs workflow skill from this query/schema design skill
+- Extract cloud vendor deep-dives (Neon, Supabase, Firestore) into dedicated Level-3 modules
+- Consolidate overlapping ORM pattern content across database types
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC. Cloud vendor content absorbed from moai-platform-database-cloud in Wave 1.2.
