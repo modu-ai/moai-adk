@@ -74,7 +74,8 @@ Trigger conditions (any one activates Stage 1):
 - Potential conflict with current state (uncommitted changes, partial branches)
 
 Process:
-1. Ask via `AskUserQuestion` (max 4 options, user language, no emoji)
+0. First: `ToolSearch(query: "select:AskUserQuestion")` — preload deferred tool schema before every AskUserQuestion call (see `.claude/rules/moai/core/askuser-protocol.md` §ToolSearch Preload Procedure)
+1. Ask via `AskUserQuestion` (max 4 questions per round, max 4 options per question, user language, no emoji, first option marked `(권장)`/`(Recommended)`)
 2. Build on previous answers; continue rounds until 100% intent clarity
 3. Consolidate into a short report
 4. Obtain explicit final confirmation before Stage 2
@@ -310,6 +311,7 @@ Rules:
 - [HARD] Parallel tool calls when no dependencies
 - [HARD] File paths include `file:line` for navigation
 - [HARD] No time estimates ("2-3 days" forbidden); use priority labels
+- [HARD] **free-form interrogative prose in response body is prohibited as a question channel.** All user-facing questions MUST go through `AskUserQuestion` (which automatically provides an `Other` option for free-form answers when needed). Anti-pattern: embedding `?` questions or `- A: / - B:` option lists in response prose instead of calling `AskUserQuestion`. Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
 
 ---
 
