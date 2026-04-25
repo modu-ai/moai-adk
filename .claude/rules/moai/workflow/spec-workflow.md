@@ -119,7 +119,42 @@ Progressive Disclosure:
 
 Plan to Run:
 - Trigger: SPEC document approved (annotation cycle completed, user confirmed "Proceed")
+- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md
 - Action: Execute /clear, then /moai run SPEC-XXX
+- Gate: `/moai run` Phase 0.5 (Plan Audit Gate) executes automatically before any implementation.
+  See "Phase 0.5: Plan Audit Gate" section below for details.
+
+## Phase 0.5: Plan Audit Gate
+
+The Plan Audit Gate is a mandatory protocol executed at the start of every `/moai run` invocation,
+before any implementation phase begins. It prevents unreviewed or incomplete SPEC artifacts from
+entering the implementation phase. Source: SPEC-WF-AUDIT-GATE-001.
+
+### Gate Entry Condition
+
+- Triggered on every `/moai run <SPEC-ID>` invocation (REQ-WAG-001)
+- Applies in both solo mode (workflows/run.md) and team mode (team/run.md)
+- Cannot be skipped by harness level — gate is never disabled, not even on `minimal`
+
+### Verdicts
+
+| Verdict | Meaning | Action |
+|---------|---------|--------|
+| `PASS` | All must-pass criteria met | Persist to progress.md, proceed to Phase 1 |
+| `FAIL` | One or more must-pass criteria failed | Block Phase 1, surface report, AskUserQuestion |
+| `BYPASSED` | User passed `--skip-audit` or set `MOAI_SKIP_PLAN_AUDIT=1` | Record bypass in report, proceed |
+| `INCONCLUSIVE` | Auditor timed out, errored, or returned malformed output | Block, AskUserQuestion (retry/proceed/abort) |
+
+### Report Persistence
+
+Every gate call persists a record at `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md`.
+Multiple calls on the same day append to the same file. Reports are local artifacts (gitignored).
+
+### Grace Window
+
+7-day grace window after SPEC-WF-AUDIT-GATE-001 merge: FAIL verdicts emit warnings only (FAIL_WARNED),
+not blocking. After grace window expires, FAIL verdicts block Phase 1 unconditionally.
+Grace window start: `.moai/state/audit-gate-merge-at.txt` (ISO-8601 timestamp).
 
 Run to Sync:
 - Trigger: Implementation complete, tests passing

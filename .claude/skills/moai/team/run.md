@@ -122,6 +122,11 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 
 3. **Output**: `.moai/specs/SPEC-XXX/spec.md`
 
+### Phase 0.5: Plan Audit Gate (TBD — see SPEC-WF-AUDIT-GATE-001)
+
+<!-- Plan Audit Gate body will be filled in per SPEC-WF-AUDIT-GATE-001 Phase C -->
+<!-- Team mode note: gate runs in main session (Leader) BEFORE any TeamCreate or teammate spawn -->
+
 ### Phase 2: Run (Dynamic Teams — Teammates on GLM)
 
 #### 2.1 Team Setup
@@ -289,6 +294,11 @@ Agent(
 ## Agent Teams Mode
 
 When `team_mode` is empty or `"agent-teams"` in llm.yaml, use parallel teammates all on the same API. This is the default team execution mode when `--team` flag is used.
+
+### Phase 0.5: Plan Audit Gate (TBD — see SPEC-WF-AUDIT-GATE-001)
+
+<!-- Plan Audit Gate body will be filled in per SPEC-WF-AUDIT-GATE-001 Phase C -->
+<!-- Team mode note: gate runs in main session BEFORE TeamCreate. Verdict=PASS required before Phase 1 proceeds. -->
 
 ### Phase 1: Team Setup
 
