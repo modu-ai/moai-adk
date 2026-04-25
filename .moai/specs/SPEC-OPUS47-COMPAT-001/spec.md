@@ -1,12 +1,14 @@
 ---
 id: SPEC-OPUS47-COMPAT-001
-version: 0.1.1
-status: draft
+version: 0.2.0
+status: completed
 created: 2026-04-17
-updated: 2026-04-17
+updated: 2026-04-24
 author: GOOS행님
 priority: critical
 issue_number: 671
+merged_pr: [672, 673]
+merged_commits: [07525c7ae, 4a00aa304]
 ---
 
 # SPEC-OPUS47-COMPAT-001: Claude Code v2.1.110/111 + Opus 4.7 프롬프트 철학 적용
@@ -17,6 +19,7 @@ issue_number: 671
 | ------- | ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0.1.0   | 2026-04-17 | GOOS행님 | 초기 SPEC 작성 — Opus 4.7 호환성 및 프롬프트 철학 5원칙 시스템 적용                                                                                      |
 | 0.1.1   | 2026-04-17 | GOOS행님 | plan-auditor iteration 1 반영: Reference 경로 정정(injectGLMEnvForTeam, ensureTmuxGLMEnv), REQ-OC-003(c) 문서화로 약화, DELTA 마커 통일, EARS 라벨 정정 |
+| 0.2.0   | 2026-04-24 | plan-auditor | 후행 감사 반영: status draft → completed (PR #672, #673 merge 반영, commits 07525c7ae & 4a00aa304). D-OPUS47-2 (builder-agent.md `effort` 필드 scope 미정합) 인지됨 — REQ-OC-002 enumeration에 builder-agent 포함 의도 확인 필요. |
 
 ## Context (Background)
 

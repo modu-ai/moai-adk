@@ -1,21 +1,23 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
-version: 0.2.1
+version: 0.3.0
 status: completed
 created_at: 2026-04-21
-updated_at: 2026-04-21
+updated_at: 2026-04-24
 author: moai-adk-go
 priority: medium
 labels: [db, hook, hardening, follow-up, debounce, atomicity, windows-compat, coverage, mx-tag]
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001]
 related_specs: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
+partially_superseded_by: [SPEC-DB-SYNC-RELOC-001]
 ---
 
 # SPEC-DB-SYNC-HARDEN-001: dbsync 훅 견고화 (5 warning 통합)
 
 ## HISTORY
 
+- 2026-04-24 v0.3.0: 후행 감사(plan-auditor 2026-04-24)에서 식별된 D-DBHARDEN-1 (H3 블록 obsoleted) 반영. SPEC-DB-SYNC-RELOC-001 (commit 후속) 이 `db-schema-change` PostToolUse 훅을 `settings.json.tmpl`에서 완전 제거하고 `handle-db-schema-change.sh` 파일을 삭제함에 따라, **H3 섹션(REQ-H3-001/002/003 + AC-6) 전체가 obsolete**. frontmatter에 `partially_superseded_by: [SPEC-DB-SYNC-RELOC-001]` 추가. H3 REQ들은 "WAIVED (superseded by RELOC-001)" 마킹. H1/H2/H4/H5는 여전히 활성. REQ/AC 개수는 형식상 불변(히스토리 보존).
 - 2026-04-21 v0.2.1: `/moai run` 실행 중 발견된 REQ-H3-002/AC-6 Windows 리터럴 오작성 정정. `settings.json.tmpl` 내 다른 16개 Windows 엔트리는 전부 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-*.sh"` (bash 스타일 변수 + 슬래시) 패턴이며, `%CLAUDE_PROJECT_DIR%` 백슬래시 경로는 bash 내부에서 확장되지 않아 실제로 작동하지 않는다. REQ-H3-001("기존 엔트리와 동일 패턴")이 정확한 의도이며, REQ-H3-002/AC-6의 리터럴을 기존 컨벤션에 맞춰 정정. REQ/AC 개수 불변.
 - 2026-04-21 v0.2.0: plan-auditor iteration 1 FAIL 후속 수정. F-1~F-5 blocking defects 해결(AC-9 multiline grep, REQ-H5-003 제거, HandleDBSchemaSync 5번째 대상 추가, CheckDebounce 실제 signature 반영, spec-compact에 Exclusions 추가). W-1~W-6 warnings 전부 반영. REQ 총 15 → 14 (REQ-H5-003 제거), AC 10 유지.
 - 2026-04-21 v0.1.0: SPEC 최초 작성. SPEC-DB-SYNC-001 (commit `e22eb718d`) 병합 이후 발견된 5개 Warning-level 코드 리뷰 지적사항을 단일 SPEC으로 통합. Critical 수정(c6985e2fe / aa29a9316 / 8a4022c69)은 이미 적용 완료된 상태에서 잔여 견고화 항목을 다룸.
@@ -66,7 +68,11 @@ SPEC-DB-SYNC-001은 PostToolUse 훅, `moai-domain-db-docs` 스킬, `/moai db ref
 6. **REQ-H2-003** (Unwanted behavior guard / IF-THEN): IF the atomic state-file write fails due to an I/O error (disk full, permission denied, ENOSPC, etc.), THEN `CheckDebounce` SHALL (a) append the error message to `ErrorLogFile`, AND (b) return `(true, nil)` — the "debounced=true" safe default — so the pipeline is not blocked.
    - **Rationale**: 상태 파일 쓰기 실패 시 "not-debounced"(`false`)를 반환하면 동일 이벤트가 영구히 작동하지 않으므로, 안전 측면에서 `debounced=true`(안전 기본값)로 처리해 다음 정상 실행을 기다린다. 단일 복구 정책을 선언하여 구현 분기와 테스트 assertion을 단순화한다.
 
-### H3 — handle-db-schema-change.sh Windows 플랫폼 분기
+### H3 — handle-db-schema-change.sh Windows 플랫폼 분기 *(WAIVED — superseded by SPEC-DB-SYNC-RELOC-001)*
+
+> **SUPERSESSION NOTICE (2026-04-24, v0.3.0)**: SPEC-DB-SYNC-RELOC-001이 `db-schema-change` PostToolUse 훅을 `settings.json.tmpl`에서 완전히 제거하고 `handle-db-schema-change.sh` 파일을 삭제했다. 따라서 **H3 블록의 모든 REQ(REQ-H3-001/002/003) 및 관련 AC-6은 무효**(N/A)이며, 본 SPEC은 더 이상 `db-schema-change` 훅 엔트리에 대해 어떤 요구사항도 부과하지 않는다. 현재 대체 구현은 `/moai sync` Phase 0.08 (sync.md)에 위임되어 있다.
+>
+> 원본 REQ-H3 텍스트는 히스토리 보존을 위해 아래에 유지되지만 활성 계약이 아니다.
 
 7. **REQ-H3-001** (Ubiquitous): The `db-schema-change` PostToolUse hook entry registered in `internal/template/templates/.claude/settings.json.tmpl` SHALL use the same `{{- if eq .Platform "windows"}} … {{- else}} … {{- end}}` branching pattern that the other PostToolUse / Stop / SessionStart / SubagentStop hook entries in the same file already use consistently; the `db-schema-change` entry is currently the sole exception to this pattern and SHALL be brought into conformance.
    - **Rationale**: 일관성 회귀 방지. 최근 추가된 훅이 파일 내 다른 훅들과 다른 형식을 채택하면 Windows 사용자에게만 동기화가 작동하지 않아 회귀 테스트에서 누락되기 쉽다. 특정 엔트리 개수 대신 "기존 엔트리는 이 패턴을 사용한다"라는 구조적 사실을 참조한다.

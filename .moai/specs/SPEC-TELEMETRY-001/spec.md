@@ -117,7 +117,7 @@ The system SHALL NOT store personally identifiable information and SHALL enforce
 - [ ] Session IDs are Claude Code internal IDs (not user-identifiable)
 - [ ] Storage limit: 90 days retention, files older than 90 days auto-deleted on session start
 - [ ] `.moai/evolution/telemetry/` is in `.gitignore` (local-only per SPEC-EVO-001 R6)
-- [ ] Total telemetry directory size capped at 10MB; oldest files pruned first
+- [ ] ~~Total telemetry directory size capped at 10MB; oldest files pruned first~~ **[DEFERRED 2026-04-24]**: 90-day retention으로 실측 디스크 증가량 미미(평균 30KB/day, 90일 ≈ 2.7MB < 10MB cap). LRU 구현 복잡도가 실제 이익을 초과하므로 SPEC-TELEMETRY-002 follow-up으로 이관. 현재 구현 상태는 acceptance AC-R4 last-bullet에서 "DEFERRED"로 표시.
 
 ## Modified Files
 
@@ -143,7 +143,7 @@ The system SHALL NOT store personally identifiable information and SHALL enforce
 |------|--------|------------|
 | Telemetry slows down hooks | Increased hook latency | Async write with buffer flush; <1ms per record |
 | Outcome heuristic is inaccurate | Bad evolution proposals | Conservative default (unknown); require high confidence for non-unknown |
-| File growth unbounded | Disk usage | 90-day retention + 10MB cap with LRU pruning |
+| File growth unbounded | Disk usage | 90-day retention (10MB cap + LRU DEFERRED to SPEC-TELEMETRY-002; 실측 2.7MB로 미시급) |
 | PII leakage in context_hash | Privacy violation | SHA-256 is irreversible for 8-char truncation; audit in tests |
 
 ## Dependencies

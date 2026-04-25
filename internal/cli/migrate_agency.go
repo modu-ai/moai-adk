@@ -1,7 +1,7 @@
 // Package cli implements the moai command-line interface.
 // migrate_agency.go provides the `moai migrate agency` subcommand.
 //
-// @SPEC:SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-001~014,REQ-DIR-001~003
+// @SPEC:SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-001..011,012a,012b,013,REQ-DIR-001..003
 package cli
 
 import (
@@ -167,6 +167,11 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 		if err := r.checkTargetsAbsent(); err != nil {
 			return nil, err
 		}
+	}
+
+	// REQ-MIGRATE-011: 디스크 공간 사전 검사 — .agency/ 크기의 2배 이상 가용해야 한다.
+	if err := checkDiskSpaceFn(agencyDir); err != nil {
+		return nil, err
 	}
 
 	// Check for tech-preferences.md merge conflict BEFORE starting.
