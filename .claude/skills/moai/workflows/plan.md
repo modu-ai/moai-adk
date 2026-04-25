@@ -753,6 +753,13 @@ All of the following must be verified:
 - Phase 3: Appropriate git action taken based on flags and user choice
 - If --worktree: SPEC committed before worktree creation
 - Next steps presented to user
+- **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
+  ```
+  - plan_complete_at: {ISO-8601 timestamp}
+  - plan_status: audit-ready
+  ```
+  This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
+  and ready for Plan Audit Gate validation at `/moai run` Phase 0.5 (SPEC-WF-AUDIT-GATE-001).
 
 ---
 
