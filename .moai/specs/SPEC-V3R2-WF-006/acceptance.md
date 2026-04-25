@@ -3,7 +3,7 @@
 - SPEC: SPEC-V3R2-WF-006
 - Plan ref: `.moai/specs/SPEC-V3R2-WF-006/plan.md`
 - Tasks ref: `.moai/specs/SPEC-V3R2-WF-006/tasks.md`
-- 총 AC: 12 (spec.md §6 전부 승격) + Edge/DoD 확장
+- 총 AC: 13 (v1.1.0에서 REQ-011 observable hook AC-13 추가) + Edge/DoD 확장
 - Traceability: 모든 REQ(15개)에 최소 1개 AC 매핑. 역매핑은 §3 Traceability Matrix 참조.
 - 성격: 본 SPEC은 "감사 테스트 + 정책 문서화" 가 본질이므로 일부 AC(precedence/fallback)는 문서 수용 + EXT-002 deferral 로 분할됨.
 
@@ -77,15 +77,16 @@
   - **보조 검증**: `settings.json.tmpl` 에 `"outputStyle": "MoAI"` 라인 존재 — `grep '"outputStyle"' internal/template/templates/.claude/settings.json.tmpl` 로 수동 확인
   - **자동화 deferral**: EXT-002
 
-### AC-WF006-08 — Unknown style fallback with warning
+### AC-WF006-08 — Unknown style fallback with warning (sink: stderr)
 
 - Maps: REQ-WF006-008
 - **Given** `.claude/settings.json` 의 `outputStyle: "NonExistent"`
 - **When** Claude Code 세션이 시작된다
-- **Then** "MoAI" 가 fallback 으로 로드되고, 경고 로그가 emit 된다
+- **Then** "MoAI" 가 fallback 으로 로드되고, `stderr` (Claude Code 세션 stderr 스트림) 에 정확한 문자열 `OUTPUT_STYLE_UNKNOWN: NonExistent not found; falling back to MoAI` 가 출력된다
 - Test path:
-  - **문서 레벨 AC**: `settings-management.md` fallback 정책 섹션 (unknown → "MoAI" + warn)
-  - **자동화 deferral**: EXT-002
+  - **문서 레벨 AC (본 SPEC 범위)**: `.claude/rules/moai/core/settings-management.md` fallback 정책 섹션에 sink=stderr 및 정확한 포맷 문자열 명시
+  - **자동화 (EXT-002 deferral)**: Go loader 테스트에서 `os.Pipe()` 로 stderr 캡처 후 `strings.Contains(captured, "OUTPUT_STYLE_UNKNOWN: NonExistent not found; falling back to MoAI")` assert
+  - **본 SPEC Go test 레벨 보조 검증**: `TestOutputStylesFallbackDocsContract` (신규) — `settings-management.md` 본문에 위 정확한 경고 포맷 문자열이 포함되어 있는지 grep assert (문서-정의 드리프트 방지)
 
 ### AC-WF006-09 — Schema violation rejection
 
@@ -123,6 +124,16 @@
   - **본 SPEC 범위 외** — EXT-002 acceptance.md 에서 자동화
   - 본 SPEC 은 "스키마 확립 + 상수 위치 고정" 으로 preconditional 충족
 
+### AC-WF006-13 — Third-style precedence (project > user for newly registered style)
+
+- Maps: REQ-WF006-011
+- **Given** 가상의 3번째 output style `ThirdStyle` 이 등록되어 있고, project `.claude/settings.json` 의 `outputStyle: "ThirdStyle"` AND user `~/.claude/settings.json` 의 `outputStyle: "MoAI"` (또는 역의 대소문자 변형)
+- **When** Claude Code 세션이 시작된다
+- **Then** project-level 값(`ThirdStyle`) 이 user-level 값을 override 한다 (REQ-014 의 admission gate 와 달리 본 AC 는 "등록된 3번째 style 의 precedence 유지" 를 검증)
+- Test path:
+  - **문서 레벨 AC (본 SPEC 범위)**: `.claude/rules/moai/core/settings-management.md` precedence 표에 "3번째 style 등록 시에도 project > user 규칙 불변" 명시
+  - **자동화 (EXT-002 deferral)**: EXT-002 Go loader 테스트가 3-style 허용 시 본 precedence 불변성 검증
+
 ---
 
 ## 2. Edge Cases
@@ -154,16 +165,16 @@
 | REQ-WF006-005 | AC-01, AC-02 | `output_styles_audit_test.go::TestOutputStylesFrontmatterSchema` |
 | REQ-WF006-006 | AC-05 | 문서 AC + EXT-002 deferral |
 | REQ-WF006-007 | AC-09 | `output_styles_audit_test.go::TestOutputStylesFrontmatterSchema` (synthetic) |
-| REQ-WF006-008 | AC-08 | `settings-management.md` fallback 섹션 (문서 AC) + EXT-002 deferral |
+| REQ-WF006-008 | AC-08 | `settings-management.md` fallback 섹션 (sink=stderr 명시, 정확한 포맷 문자열) + `TestOutputStylesFallbackDocsContract` (신규, 문서 drift 방지) + EXT-002 automation |
 | REQ-WF006-009 | AC-07 | 문서 AC + `settings.json.tmpl` grep 보조 |
 | REQ-WF006-010 | AC-04, AC-10 | `output_styles_audit_test.go::TestOutputStylesTemplateLiveParity` |
-| REQ-WF006-011 | (Optional — v3.1+ 범위 외) | 본 SPEC에서 "schema 재사용 의무" 로 문서화; 테스트 없음 |
+| REQ-WF006-011 | AC-13 | `settings-management.md` precedence 표 (3rd-style row) + EXT-002 deferral automation |
 | REQ-WF006-012 | AC-12 (deferral) | EXT-002 acceptance.md 에서 자동화 |
 | REQ-WF006-013 | AC-09 | `output_styles_audit_test.go::TestOutputStylesFrontmatterSchema` (synthetic) |
 | REQ-WF006-014 | AC-11 | `output_styles_audit_test.go::TestOutputStylesExactlyTwo` |
 | REQ-WF006-015 | AC-06 | 문서 AC + EXT-002 deferral |
 
-Optional REQ-WF006-011 ("Where future v3.x adds a 3rd style, it shall go through this SPEC's schema validation") 는 "미래 조건" 이므로 현재 Wave 1 deliverable 에 테스트 없음. `settings-management.md` 의 precedence/schema 섹션에 "3번째 style 추가 시 본 SPEC의 스키마 재검증 필수" 로 명문화함으로써 충족.
+REQ-WF006-011 은 v1.1.0 에서 "등록된 3번째 style 의 project > user precedence 불변" 이라는 distinct clause 로 재정의되어 AC-13 observable hook 를 획득했다 (REQ-014 의 "admission gate" 와 분리). REQ-014 는 `TestOutputStylesExactlyTwo` 로 차단 보증, REQ-011 은 향후 차단 해제 시 precedence 규칙 유지의 observable contract 를 제공한다.
 
 ---
 
@@ -171,7 +182,12 @@ Optional REQ-WF006-011 ("Where future v3.x adds a 3rd style, it shall go through
 
 단위 (Go):
 
-- `internal/template/output_styles_audit_test.go` (신규 — 4개 Test 함수 + synthetic subtests)
+- `internal/template/output_styles_audit_test.go` (신규 — 5개 Test 함수 + synthetic subtests):
+  - `TestOutputStylesFrontmatterSchema`
+  - `TestOutputStylesExactlyTwo`
+  - `TestOutputStylesTemplateLiveParity`
+  - `TestOutputStylesEncoding`
+  - `TestOutputStylesFallbackDocsContract` (v1.1.0 신규 — AC-08 documentation drift guard: `settings-management.md` 본문에 정확한 경고 포맷 문자열 포함 여부 grep assert)
 
 문서 (Markdown):
 
@@ -190,8 +206,8 @@ Optional REQ-WF006-011 ("Where future v3.x adds a 3rd style, it shall go through
 
 ### 5.1 기능 (Functional)
 
-- [ ] 15개 REQ 중 13개(REQ-011/012 제외 — 미래 조건/deferral) AC 매핑 완료, 관련 테스트 녹색
-- [ ] `output_styles_audit_test.go` 의 4개 Test 함수 모두 `go test -count=1 -race` 통과
+- [ ] 15개 REQ 중 14개(REQ-012 제외 — EXT-002 deferral) AC 매핑 완료, 관련 테스트 녹색 (v1.1.0 에서 REQ-011 AC-13 추가)
+- [ ] `output_styles_audit_test.go` 의 5개 Test 함수 모두 `go test -count=1 -race` 통과 (`TestOutputStylesFallbackDocsContract` 포함)
 - [ ] `.claude/rules/moai/core/settings-management.md` 에 precedence 표(project > user > default), 예시 2개, fallback 정책, schema 계약 섹션 모두 존재
 - [ ] template mirror 와 live 문서 diff 없음 (`diff -q`)
 - [ ] `diff -rq .claude/output-styles/moai internal/template/templates/.claude/output-styles/moai` 공백 출력
@@ -214,12 +230,27 @@ Optional REQ-WF006-011 ("Where future v3.x adds a 3rd style, it shall go through
 - [ ] 하드코딩 금지 — `"MoAI"`, `"Einstein"`, 파일명 리터럴이 테스트 파일 내부 const 블록 단일 원천 (CLAUDE.local.md §14)
 - [ ] 템플릿 언어 중립성 (CLAUDE.local.md §15) — 문서에 특정 언어 편향 없음
 
-### 5.4 수동 수용 (Precedence / Fallback — 자동화 불가)
+### 5.4 수동 수용 (Precedence / Fallback — 객관적 unblock 증거 마커)
 
-- [ ] reviewer 수동 체크리스트: `settings-management.md` 에 precedence 표 존재 확인
-- [ ] reviewer 수동 체크리스트: unknown style fallback 정책 문단 존재 확인
-- [ ] reviewer 수동 체크리스트: schema 계약(3 key 최소 집합, 추가 key tolerate) 섹션 존재 확인
-- [ ] 3rd-style smoke 테스트 수행 로그 캡처 (PR 코멘트 또는 커밋 본문)
+v1.1.0 에서 기존 "reviewer 수동 체크리스트" 항목을 objective evidence marker 로 전환했다. 각 항목은 PR comment trailer 형식의 문자열로 검증 가능하며, CI 또는 reviewer 스크립트가 grep 으로 존재 여부를 assert 할 수 있다.
+
+Marker 형식 (모두 PR body 또는 PR review comment 로 게시):
+
+```
+Audit-Manual-Check-1: passed (reviewer: <github-handle>, ts: <ISO-8601>, artifact: .claude/rules/moai/core/settings-management.md §precedence)
+Audit-Manual-Check-2: passed (reviewer: <github-handle>, ts: <ISO-8601>, artifact: .claude/rules/moai/core/settings-management.md §fallback)
+Audit-Manual-Check-3: passed (reviewer: <github-handle>, ts: <ISO-8601>, artifact: .claude/rules/moai/core/settings-management.md §schema-contract)
+Audit-Manual-Check-4: passed (reviewer: <github-handle>, ts: <ISO-8601>, artifact: <PR-comment-URL-of-3rd-style-smoke-log>)
+```
+
+Unblock 기준:
+
+- [ ] `Audit-Manual-Check-1: passed` trailer 존재 — precedence 표가 `settings-management.md` 에 물리적으로 존재 (`grep -c '^|.*project.*|.*user.*|' .claude/rules/moai/core/settings-management.md` ≥ 1)
+- [ ] `Audit-Manual-Check-2: passed` trailer 존재 — fallback 정책 문단에 정확한 경고 포맷 문자열 `OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI` 가 포함됨 (`TestOutputStylesFallbackDocsContract` 자동 검증)
+- [ ] `Audit-Manual-Check-3: passed` trailer 존재 — schema 계약(3 key 최소 집합, 추가 key tolerate) 섹션 존재 (`grep -n '추가 key' .claude/rules/moai/core/settings-management.md` ≥ 1)
+- [ ] `Audit-Manual-Check-4: passed` trailer 존재 — 3rd-style smoke 테스트 실패 로그 (`OUTPUT_STYLE_UNVERIFIED` 문자열 포함) 가 artifact URL 로 링크됨
+
+Automation path (optional, SPEC 범위 외): PR CI에서 `gh pr view --json body` 로 4개 trailer 존재 여부 grep. 본 SPEC 에서는 marker 만 의무화.
 
 ### 5.5 롤백 준비
 
@@ -229,7 +260,7 @@ Optional REQ-WF006-011 ("Where future v3.x adds a 3rd style, it shall go through
 
 ### 5.6 Open Question 해소
 
-- [ ] OPEN-A (live tree 경로 탐색 전략) — `runtime.Caller(0)` 기반 해결 또는 대안 결정을 PR 설명에 기록
+- [x] **OPEN-A RESOLVED (v1.1.0)**: live-tree 경로 탐색 전략은 `runtime.Caller(0)` + `filepath.Dir` 상향 탐색으로 결정. 프로젝트 루트 마커는 `.moai/` 디렉터리 존재. worktree/main repo 양쪽에서 동작하며 env 의존 없음. T0 smoke 실험으로 검증.
 - [ ] OPEN-B (추가 key tolerate 정책) — `settings-management.md` 에 명문화
 - [ ] OPEN-C (오류 코드 emit 위치) — "Go test failure message only, Wave 1 범위" 로 acceptance.md 명시 완료
 - [ ] OPEN-D (precedence 자동화 분할) — EXT-002 에서 자동화하기로 결정 기록
@@ -237,8 +268,8 @@ Optional REQ-WF006-011 ("Where future v3.x adds a 3rd style, it shall go through
 
 ### 5.7 Wave 1 조율
 
-- [ ] CON-001 의 `settings-management.md` 편집 계획 확인 — 충돌 시 CON-001 merge 후 rebase
-- [ ] EXT-001 / WF-001 과 파일 겹침 0 재확인
+- [ ] **Watch-item (not a hard guard)**: CON-001 이 `settings-management.md` 를 수정하지 않음을 2026-04-25 boundary audit 에서 독립 grep 으로 확인 완료 (CON-001 zero-references `settings-management|output-styles|outputStyle`). 통합 시점에 재확인 후 충돌 발견 시에만 rebase 한다.
+- [x] EXT-001 / WF-001 과 파일 겹침 0 — 2026-04-25 audit 보고서 §7 에서 독립 grep 으로 confirmed (본 SPEC 머지 전 재검증 불요)
 - [ ] PR 본문에 Wave 1 sibling SPEC 링크 포함
 
 ---

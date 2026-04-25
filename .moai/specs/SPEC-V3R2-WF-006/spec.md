@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-WF-006
 title: Output Styles Alignment (MoAI, Einstein)
-version: "0.1.0"
+version: "1.1.0"
 status: draft
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P2 Medium
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
@@ -23,9 +23,20 @@ tags: "output-styles, moai, einstein, claude-code-schema, precedence, v3"
 
 ## HISTORY
 
-| Version | Date       | Author | Description                                                  |
-|---------|------------|--------|--------------------------------------------------------------|
-| 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — align MoAI + Einstein styles, schema, loading |
+| Version | Date       | Author | Description                                                                                       |
+|---------|------------|--------|---------------------------------------------------------------------------------------------------|
+| 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — align MoAI + Einstein styles, schema, loading                                      |
+| 1.1.0   | 2026-04-25 | Wave 2 | Addressed plan-audit warnings (OPEN-A resolved, REQ-008 sink concretized, HUMAN GATE → markers)  |
+
+### 2026-04-25 (v1.1.0) — Plan-audit follow-up
+
+- OPEN-A resolved: `runtime.Caller(0)` + ascent to project root (detects `.moai/` directory) selected for live-tree path discovery. T0 gets an explicit ascent smoke experiment.
+- REQ-WF006-008 sink concretized: warning log is emitted to `stderr` (Claude Code session stderr stream); optional mirror to session log. AC-08 strengthened to capture and assert stderr content.
+- HUMAN GATE items in acceptance.md §5.4 converted to objective PR-comment trailer markers (`Audit-Manual-Check-*: passed`).
+- REQ-WF006-011 differentiated from REQ-WF006-014 via new project-over-user override clause, and AC-13 added as its observable hook.
+- Commit policy (한국어 본문) now cites `.moai/config/sections/language.yaml git_commit_messages: ko`.
+- CON-001 conflict guard downgraded to watch-item (boundary audit confirmed CON-001 zero-references `settings-management.md`).
+- T0 extended with manual precedence verification step for Claude Code v2.1.111+.
 
 ---
 
@@ -121,7 +132,7 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 **When** a style file violates the frontmatter schema (missing key, wrong type), CI **shall** reject with `OUTPUT_STYLE_SCHEMA_ERROR`.
 
 **REQ-WF006-008**
-**When** an unknown style name is referenced in `settings.json` `outputStyle`, the Claude Code session **shall** fall back to "MoAI" default and emit warning log.
+**When** an unknown style name is referenced in `settings.json` `outputStyle`, the Claude Code session **shall** fall back to "MoAI" default and emit a warning line to `stderr` (Claude Code session stderr stream) in the exact format `OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI`. Optional mirror to Claude Code session log is permitted but not required.
 
 ### 5.3 State-Driven Requirements
 
@@ -134,7 +145,7 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 ### 5.4 Optional Requirements
 
 **REQ-WF006-011**
-**Where** future v3.x versions add a third output style, it **shall** go through this SPEC's schema validation before being registered.
+**Where** a future v3.x third output style introduces a project-level `outputStyle` setting that conflicts with a user-level `outputStyle` setting, the project-level value **shall** win over the user-level value (distinct from REQ-014: this clause governs precedence for a *newly registered* third style, whereas REQ-014 governs its admission gate).
 
 **REQ-WF006-012**
 **Where** SPEC-V3R2-EXT-002 implements a Go loader, the loader **shall** consume the frontmatter schema defined here.
@@ -161,11 +172,12 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 - **AC-WF006-05**: Given project `settings.json outputStyle: "Einstein"` AND user `settings.json outputStyle: "MoAI"` When session starts Then Einstein loads (maps REQ-WF006-004, REQ-WF006-006).
 - **AC-WF006-06**: Given user-level `outputStyle: "Einstein"` AND project-level `outputStyle: "MoAI"` When session starts Then MoAI loads (maps REQ-WF006-015).
 - **AC-WF006-07**: Given no `outputStyle` set in any settings When session starts Then "MoAI" default loads (maps REQ-WF006-009).
-- **AC-WF006-08**: Given `outputStyle: "NonExistent"` When session starts Then "MoAI" fallback with warning log (maps REQ-WF006-008).
+- **AC-WF006-08**: Given `outputStyle: "NonExistent"` When session starts Then "MoAI" fallback loads AND `stderr` receives the exact line `OUTPUT_STYLE_UNKNOWN: NonExistent not found; falling back to MoAI` (maps REQ-WF006-008). Automation: `settings-management.md` documents the sink; EXT-002 Go loader test captures stderr via `os.Pipe` and asserts the exact warning prefix.
 - **AC-WF006-09**: Given a style file missing `keep-coding-instructions` When CI runs Then `OUTPUT_STYLE_SCHEMA_ERROR` rejection (maps REQ-WF006-007, REQ-WF006-013).
 - **AC-WF006-10**: Given template and local output-styles diverge When `make build` runs Then `OUTPUT_STYLE_DRIFT` failure (maps REQ-WF006-010).
 - **AC-WF006-11**: Given a PR adding a 3rd style without schema pass When CI runs Then `OUTPUT_STYLE_UNVERIFIED` rejection (maps REQ-WF006-014).
 - **AC-WF006-12**: Given SPEC-V3R2-EXT-002 Go loader when implemented Then it parses frontmatter per REQ-WF006-001 (maps REQ-WF006-012).
+- **AC-WF006-13**: Given a hypothetical third output style is registered AND both project-level and user-level `outputStyle` specify that third style's name with conflicting casing or setting When session starts Then project-level value wins (maps REQ-WF006-011). Automation: `settings-management.md` precedence table adds a row for the third-style case; EXT-002 Go loader test covers the observable behavior.
 
 ---
 
@@ -210,7 +222,7 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 ## 10. Traceability (추적성)
 
 - REQ 총 15개: Ubiquitous 5, Event-Driven 3, State-Driven 2, Optional 2, Complex 3.
-- AC 총 12개, 모든 REQ에 최소 1개 AC 매핑 (100% 커버리지).
+- AC 총 13개 (v1.1.0에서 AC-13 추가 — REQ-011 observable hook). 모든 REQ에 최소 1개 AC 매핑 (100% 커버리지).
 - Wave 2 소스 앵커: R6 §3.1/§3.2/§3.4.
 - BC 영향: 없음 (기존 style behavior 보존).
 - 구현 경로 예상:

@@ -14,10 +14,17 @@
 - Owner role: analyst
 - Files: read-only
 - Scope:
-  - [ ] `ls internal/hook/memo/` 구조 확인 (plan §Open Questions OPEN-3)
+  - [ ] **OPEN-3 strategy confirm**: `ls internal/hook/memo/` 결과가 plan.md §3.1에 명시된 6개 파일(`priority.go`, `priority_test.go`, `reader.go`, `reader_test.go`, `writer.go`, `writer_test.go`)과 일치하는지 재확인. 불일치 시 plan.md §3.1 Consequences 갱신 후 진행.
+  - [ ] **Strategy B (adapted) 적용 확인**: 신규 코드는 `internal/hook/memo/taxonomy/` 서브패키지에 배치한다는 설계 재확인 (plan.md §3.1 참조). 기존 `memo` 패키지 파일은 비수정.
+  - [ ] **OPEN-2 static-keyword v1 confirm**: plan.md §8 OPEN-2 RESOLVED 섹션에 명시된 category→keyword 매핑 테이블을 T4 구현의 기준으로 사용. LLM 분류는 v2 범위 외.
+  - [ ] **200-line 재확인 (spec.md §4)**: Claude Code 공식 문서에서 MEMORY.md/context-loader의 truncation 동작을 확인. 문서화된 값이 200이 아닐 경우 `.moai/config/sections/workflow.yaml` `memory.index_line_cap` 기본값과 spec.md §4를 동기화.
   - [ ] `make build && make install` 바이너리 싱크
   - [ ] `go test ./internal/hook/... -race` 현재 green 확인
-- DoD: OPEN-3 답 확정 + 빌드/테스트 baseline green.
+- DoD:
+  - OPEN-3 strategy 재확인 완료 (서브패키지 경로 확정: `internal/hook/memo/taxonomy/`)
+  - OPEN-2 detection method 확정 (static-keyword v1)
+  - 200-line 수치 공식 문서 근거 기록 또는 대체 값 합의
+  - 빌드/테스트 baseline green
 
 ### T1. Rule documentation (Phase 1)
 
@@ -38,31 +45,34 @@
   - `make build` 후 embedded 파일 변경 반영
   - 이모지/XML 태그 없음 (coding-standards 준수)
 
-### T2. Memo package — taxonomy core (Phase 2)
+### T2. Memo taxonomy package — taxonomy core (Phase 2)
 
 - Owner role: tester + implementer (TDD)
+- Package: `internal/hook/memo/taxonomy` (신규 서브패키지 — OPEN-3 RESOLVED, plan.md §3.1)
 - Files owned:
-  - `internal/hook/memo/taxonomy.go`
-  - `internal/hook/memo/taxonomy_test.go`
-  - `internal/hook/memo/fixtures/*.md` (신규 8개)
+  - `internal/hook/memo/taxonomy/taxonomy.go`
+  - `internal/hook/memo/taxonomy/taxonomy_test.go`
+  - `internal/hook/memo/taxonomy/fixtures/*.md` (신규 11개: valid 4종 + missing_type/name/description + unknown_type + overflow_index + excluded_claude_md + feedback_missing_why)
 - Scope:
-  - [ ] RED: `TestValidateType_*`, `TestParseFile_*` (테이블 드리븐)
-  - [ ] GREEN: `MemoryType` const, `ValidateType`, `ParseFile`
+  - [ ] RED: `TestValidateType_*`, `TestParseFile_*`, `TestParseFile_MissingName`, `TestParseFile_MissingDescription`, `TestParseFile_MissingBoth` (테이블 드리븐)
+  - [ ] GREEN: `MemoryType` const, `ValidateType`, `ParseFile` (Frontmatter name/description 키 추출 포함)
   - [ ] REFACTOR: frontmatter 파서 util 추출 검토
 - Dependencies: T0
-- Parallel: T1과 병렬 가능 (파일 겹침 없음)
+- Parallel: T1과 병렬 가능 (파일 겹침 없음, 서브패키지 신설이라 기존 `memo` 패키지 무영향)
 - DoD:
-  - REQ-001, 002, 004 구현
-  - `go test ./internal/hook/memo/... -race` green
+  - REQ-001, 002, 004 구현 (AC-01, AC-01b, AC-02, AC-09)
+  - `go test ./internal/hook/memo/taxonomy/... -race` green
+  - 기존 `internal/hook/memo/` 회귀 없음 (`go test ./internal/hook/memo/... -race`)
   - 90% coverage 달성
   - 모든 테스트 `t.TempDir()` 사용, `t.Setenv("HOME", ...)` 없음
 
-### T3. Memo package — staleness (Phase 3 prep)
+### T3. Memo taxonomy package — staleness (Phase 3 prep)
 
 - Owner role: tester + implementer
+- Package: `internal/hook/memo/taxonomy`
 - Files owned:
-  - `internal/hook/memo/staleness.go`
-  - `internal/hook/memo/staleness_test.go`
+  - `internal/hook/memo/taxonomy/staleness.go`
+  - `internal/hook/memo/taxonomy/staleness_test.go`
 - Scope:
   - [ ] RED: `TestDetectStale_Boundary` (23h/24h/25h), `TestAggregateWarning_Counts` (0/1/9/10/11)
   - [ ] GREEN: `DetectStale(dir, hours, now)`, `AggregateWarning([]StaleReport)`
@@ -73,21 +83,24 @@
   - `now time.Time` 주입형 서명 (flake 방지)
   - 커버리지 90%+
 
-### T4. Memo package — audit (Phase 4 prep)
+### T4. Memo taxonomy package — audit (Phase 4 prep)
 
 - Owner role: tester + implementer
+- Package: `internal/hook/memo/taxonomy`
 - Files owned:
-  - `internal/hook/memo/audit.go`
-  - `internal/hook/memo/audit_test.go`
+  - `internal/hook/memo/taxonomy/audit.go`
+  - `internal/hook/memo/taxonomy/audit_test.go`
 - Scope:
-  - [ ] RED: `TestAuditFile_MissingType`, `TestAuditFile_ExcludedCategory`, `TestAuditIndex_Overflow`, `TestAuditDuplicates`
-  - [ ] GREEN: `AuditFile`, `AuditIndex`, `AuditDuplicates`
-  - [ ] REFACTOR: AuditCode 상수, 판정 키워드 목록을 `internal/config/defaults.go` 또는 패키지 전역 상수로 단일화
+  - [ ] RED: `TestAuditFile_MissingType`, `TestAuditFile_MissingFrontmatterKeys` (AC-01b), `TestAuditFile_FeedbackBodyMarkers` (AC-04a), `TestAuditFile_ExcludedCategory`, `TestAuditIndex_Overflow`, `TestAuditDuplicates`
+  - [ ] GREEN: `AuditFile`, `AuditIndex`, `AuditDuplicates` (+ 신규 `AuditFeedbackBody` 또는 `AuditFile` 내부 dispatch)
+  - [ ] **OPEN-2 static-keyword v1 구현**: plan.md §8 OPEN-2 RESOLVED 카테고리→키워드 매핑 테이블을 코드 상수로 구현 (`internal/config/defaults.go` 또는 `taxonomy` 전역 상수). LLM 분류 경로는 추가하지 않음.
+  - [ ] REFACTOR: AuditCode 상수, 판정 키워드 목록을 단일 원천화
 - Dependencies: T2 (ParseFile 재사용)
 - Parallel: T3과 병렬 가능 (별도 파일)
 - DoD:
-  - REQ-007, 008, 015, 016 구현
-  - OPEN-2(제외 카테고리 판정) PR 설명에 명시
+  - REQ-007, 008, 015, 016 구현 (AC-03, AC-04a, AC-10, AC-11)
+  - OPEN-2 (제외 카테고리 판정) **static-keyword v1 확정** — PR 설명에 카테고리 매핑 테이블 인용
+  - False-positive 수집 로그 경로 명시 (Phase 5 모니터링 포인트)
   - 커버리지 90%+
 
 ### T5. SessionStart hook integration (Phase 3 live)
@@ -98,7 +111,7 @@
   - `internal/hook/session_start_test.go`
   - `internal/hook/session_start_extra_coverage_test.go`
 - Scope:
-  - [ ] 메모리 로드 경로에서 `memo.DetectStale` 호출
+  - [ ] 메모리 로드 경로에서 `taxonomy.DetectStale` 호출 (import: `…/internal/hook/memo/taxonomy`)
   - [ ] aggregation threshold(10) 초과 시 단일 warning 주입
   - [ ] 각 stale 파일 content를 `<system-reminder>` wrap으로 교체 후 agent context 전달
   - [ ] env flag `MOAI_MEMORY_AUDIT=0`로 비활성화 경로 (rollback 대비)
@@ -157,7 +170,7 @@
 - Dependencies: T1–T7 전부
 - DoD:
   - 모든 명령 zero error
-  - 커버리지 리포트 `internal/hook/memo` 90%+
+  - 커버리지 리포트 `internal/hook/memo/taxonomy` 90%+ (기존 `internal/hook/memo` session memo 패키지는 회귀 없음만 확인)
   - TRUST 5 리뷰 체크리스트 통과 (acceptance.md DoD 참조)
 
 ---
@@ -199,12 +212,13 @@ T1..T7 all ──► T8 (verification)
 |--------------|-------|
 | `.claude/rules/moai/workflow/moai-memory.md` | T1 |
 | `internal/template/templates/.claude/rules/moai/workflow/moai-memory.md` | T1 |
-| `internal/hook/memo/taxonomy*.go`, `fixtures/*.md` | T2 |
-| `internal/hook/memo/staleness*.go` | T3 |
-| `internal/hook/memo/audit*.go` | T4 |
+| `internal/hook/memo/taxonomy/taxonomy*.go`, `internal/hook/memo/taxonomy/fixtures/*.md` | T2 |
+| `internal/hook/memo/taxonomy/staleness*.go` | T3 |
+| `internal/hook/memo/taxonomy/audit*.go` | T4 |
 | `internal/hook/session_start*.go` | T5 |
 | `internal/hook/post_tool*.go` | T6 |
 | `.moai/config/sections/workflow.yaml`, template mirror, `internal/config/defaults.go` | T7 |
+| NEVER (비수정) | `internal/hook/memo/{priority,reader,writer}*.go` — 기존 session memo 패키지 |
 
 team 모드에서 T5/T6 분리 병렬 시 worktree isolation 필수 (.claude/rules/moai/workflow/worktree-integration.md §Implementation Agents).
 

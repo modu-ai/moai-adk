@@ -3,8 +3,9 @@
 - SPEC: SPEC-V3R2-EXT-001
 - Plan ref: `.moai/specs/SPEC-V3R2-EXT-001/plan.md`
 - Tasks ref: `.moai/specs/SPEC-V3R2-EXT-001/tasks.md`
-- 총 AC: 13 (spec.md §6 모두 승격) + Edge/DoD 확장
+- 총 AC: 15 (spec.md §6 13개 + AC-01b/AC-04 분할로 추가) + Edge/DoD 확장
 - Traceability: 모든 REQ(17개)에 최소 1개 AC 매핑. 역매핑은 §3 Traceability Matrix 참조.
+- v1.1.0 변경: AC-01b(REQ-002 name/description 명시 커버), AC-04 를 AC-04a(automated regex)/AC-04b(optional human review)로 분할.
 
 ---
 
@@ -16,7 +17,15 @@
 - **Given** 파일 `.claude/agent-memory/manager-spec/foo.md` 의 frontmatter에 `type` 키가 없다
 - **When** PostToolUse 훅이 이 파일을 대상으로 실행된다
 - **Then** stderr에 `MEMORY_MISSING_TYPE` 경고가 출력되고, 훅 exit code는 0 (non-blocking)
-- Test path: `internal/hook/memo/audit_test.go::TestAuditFile_MissingType`, `internal/hook/post_tool_test.go::TestPostTool_MemoryMissingType`
+- Test path: `internal/hook/memo/taxonomy/audit_test.go::TestAuditFile_MissingType`, `internal/hook/post_tool_test.go::TestPostTool_MemoryMissingType`
+
+### AC-EXT001-01b — Missing name/description warning
+
+- Maps: REQ-EXT001-002
+- **Given** 파일 `.claude/agent-memory/manager-spec/foo.md` 의 frontmatter에 `type`은 있지만 `name` 또는 `description` 키가 누락되어 있다 (세 가지 케이스: name 누락, description 누락, 둘 다 누락)
+- **When** PostToolUse 훅이 해당 파일을 감사한다
+- **Then** `MEMORY_MISSING_FRONTMATTER` 또는 `MEMORY_MISSING_TYPE`과 동등한 non-blocking warning이 발생하고, detail에 어떤 키가 누락되었는지(`name` / `description`) 명시된다
+- Test path: `internal/hook/memo/taxonomy/taxonomy_test.go::TestParseFile_MissingName`, `TestParseFile_MissingDescription`, `TestParseFile_MissingBoth`, `internal/hook/memo/taxonomy/audit_test.go::TestAuditFile_MissingFrontmatterKeys`
 
 ### AC-EXT001-02 — Unknown type rejected by loader
 
@@ -34,13 +43,22 @@
 - **Then** `MEMORY_INDEX_OVERFLOW` 경고가 출력되고 `lineCap=200`이 로그에 포함된다
 - Test path: `internal/hook/memo/audit_test.go::TestAuditIndex_Overflow`
 
-### AC-EXT001-04 — Feedback memory body structure
+### AC-EXT001-04a — Feedback memory body structure (automated regex check)
 
 - Maps: REQ-EXT001-010
-- **Given** `type: feedback` 메모리 파일이 `룰 → **Why:** → **How to apply:**` 순으로 작성되어 있다
-- **When** 휴먼/CI가 `.claude/rules/moai/workflow/moai-memory.md` 예시를 기준으로 리뷰한다
-- **Then** 문서 구조와 일치하여 스타일 가이드 위반이 없다
-- Test path: 문서 레벨 AC (수동 리뷰 + `moai-memory.md` 예시 2–3개 포함)
+- **Given** `type: feedback` 메모리 파일의 body
+- **When** 감사 루틴이 정규식 `(?s).+?\*\*Why:\*\*.+?\*\*How to apply:\*\*` 로 body를 검사한다 (rule 텍스트 이후 `**Why:**`와 `**How to apply:**` 마커 순서 존재 확인)
+- **Then** 정규식이 매치되어야 PASS (binary-testable). 미매치 시 `MEMORY_BODY_STRUCTURE_MISSING` non-blocking warning 발생
+- Test path: `internal/hook/memo/taxonomy/audit_test.go::TestAuditFile_FeedbackBodyMarkers` (fixture: `feedback_testing.md` PASS, `feedback_missing_why.md` FAIL)
+- Unblock criterion: 자동 regex 통과가 문서 레벨 PASS의 필요 조건 (객관적 기준)
+
+### AC-EXT001-04b — Feedback memory prose quality (optional human review)
+
+- Maps: REQ-EXT001-010 (보조)
+- **Given** AC-04a를 통과한 `type: feedback` 메모리 파일
+- **When** PR 리뷰어가 prose 품질을 검토한다 (Why/How to apply의 서술이 `moai-memory.md` 예시 톤과 유사한가)
+- **Then** reviewer 판단에 따라 선택적 개선 의견 제시 (unblock criterion: AC-04a PASS이면 merge 차단 금지)
+- Test path: 문서 레벨 AC — human review only. Automation은 AC-04a에서 이미 수행.
 
 ### AC-EXT001-05 — User memory content scope
 
@@ -139,22 +157,22 @@
 
 | REQ | 커버 AC | Test 경로 |
 |-----|---------|-----------|
-| REQ-EXT001-001 | AC-01, AC-02 | `taxonomy_test.go`, `audit_test.go` |
-| REQ-EXT001-002 | AC-01 (name/description 누락 시 동일 경로) | `taxonomy_test.go` |
-| REQ-EXT001-003 | AC-03 | `audit_test.go` |
-| REQ-EXT001-004 | AC-09 | `taxonomy_test.go::TestValidTypes_ImmutableSet` |
+| REQ-EXT001-001 | AC-01, AC-02 | `taxonomy/taxonomy_test.go`, `taxonomy/audit_test.go` |
+| REQ-EXT001-002 | AC-01b (name/description 명시 커버) | `taxonomy/taxonomy_test.go::TestParseFile_MissingName`, `TestParseFile_MissingDescription`, `TestParseFile_MissingBoth`, `taxonomy/audit_test.go::TestAuditFile_MissingFrontmatterKeys` |
+| REQ-EXT001-003 | AC-03 | `taxonomy/audit_test.go` |
+| REQ-EXT001-004 | AC-09 | `taxonomy/taxonomy_test.go::TestValidTypes_ImmutableSet` |
 | REQ-EXT001-005 | AC-06 | 문서 + (선택) `rules_audit_test.go` |
 | REQ-EXT001-006 | AC-07 | `session_start_test.go` |
-| REQ-EXT001-007 | AC-01 | `post_tool_test.go`, `audit_test.go` |
-| REQ-EXT001-008 | AC-03 | `audit_test.go`, `post_tool_test.go` |
+| REQ-EXT001-007 | AC-01, AC-01b | `post_tool_test.go`, `taxonomy/audit_test.go` |
+| REQ-EXT001-008 | AC-03 | `taxonomy/audit_test.go`, `post_tool_test.go` |
 | REQ-EXT001-009 | AC-05 | 문서 + fixtures |
-| REQ-EXT001-010 | AC-04 | 문서 + fixtures |
+| REQ-EXT001-010 | AC-04a (automated), AC-04b (optional review) | `taxonomy/audit_test.go::TestAuditFile_FeedbackBodyMarkers` + 문서 |
 | REQ-EXT001-011 | AC-13 | 문서 + fixtures |
 | REQ-EXT001-012 | AC-12 | 문서 + fixtures |
-| REQ-EXT001-013 | AC-02 (enum 소스 확정, 실제 loader 구현은 EXT-002에서 검증) | `taxonomy_test.go` + EXT-002 referral |
+| REQ-EXT001-013 | AC-02 (enum 소스 확정, 실제 loader 구현은 EXT-002에서 검증) | `taxonomy/taxonomy_test.go` + EXT-002 referral |
 | REQ-EXT001-014 | (Optional, 30일 5 세션 미독) | Wave 2 이후 별도 SPEC 또는 후속 Run — 본 Wave 1 범위 외. 문서에 "may" 명시. |
-| REQ-EXT001-015 | AC-10 | `audit_test.go::TestAuditFile_ExcludedCategory` |
-| REQ-EXT001-016 | AC-11 | `audit_test.go::TestAuditDuplicates` |
+| REQ-EXT001-015 | AC-10 | `taxonomy/audit_test.go::TestAuditFile_ExcludedCategory` |
+| REQ-EXT001-016 | AC-11 | `taxonomy/audit_test.go::TestAuditDuplicates` |
 | REQ-EXT001-017 | AC-08 | `session_start_extra_coverage_test.go` |
 
 REQ-EXT001-014(Optional "may")는 Wave 1 deliverable에 포함되지 않음. spec.md §5.4 "may" 어구와 일치. acceptance.md는 "범위 외" 명시.
@@ -163,11 +181,13 @@ REQ-EXT001-014(Optional "may")는 Wave 1 deliverable에 포함되지 않음. spe
 
 ## 4. Test File Paths (Summary)
 
+> 패키지 경로 주의: OPEN-3 해소에 따라 신규 코드는 `internal/hook/memo/taxonomy/` 서브패키지에 배치된다(plan.md §3.1 참조). 기존 `internal/hook/memo/` (session memo read/write)는 건드리지 않는다.
+
 단위 (Go):
 
-- `internal/hook/memo/taxonomy_test.go`
-- `internal/hook/memo/staleness_test.go`
-- `internal/hook/memo/audit_test.go`
+- `internal/hook/memo/taxonomy/taxonomy_test.go`
+- `internal/hook/memo/taxonomy/staleness_test.go`
+- `internal/hook/memo/taxonomy/audit_test.go`
 
 통합 (Hook):
 
@@ -177,14 +197,17 @@ REQ-EXT001-014(Optional "may")는 Wave 1 deliverable에 포함되지 않음. spe
 
 문서/Fixture:
 
-- `internal/hook/memo/fixtures/user_role.md`
-- `internal/hook/memo/fixtures/feedback_testing.md`
-- `internal/hook/memo/fixtures/project_migration.md`
-- `internal/hook/memo/fixtures/reference_grafana.md`
-- `internal/hook/memo/fixtures/missing_type.md`
-- `internal/hook/memo/fixtures/unknown_type.md`
-- `internal/hook/memo/fixtures/overflow_index.md`
-- `internal/hook/memo/fixtures/excluded_claude_md.md`
+- `internal/hook/memo/taxonomy/fixtures/user_role.md`
+- `internal/hook/memo/taxonomy/fixtures/feedback_testing.md`
+- `internal/hook/memo/taxonomy/fixtures/feedback_missing_why.md` (AC-04a negative)
+- `internal/hook/memo/taxonomy/fixtures/project_migration.md`
+- `internal/hook/memo/taxonomy/fixtures/reference_grafana.md`
+- `internal/hook/memo/taxonomy/fixtures/missing_type.md`
+- `internal/hook/memo/taxonomy/fixtures/missing_name.md` (AC-01b)
+- `internal/hook/memo/taxonomy/fixtures/missing_description.md` (AC-01b)
+- `internal/hook/memo/taxonomy/fixtures/unknown_type.md`
+- `internal/hook/memo/taxonomy/fixtures/overflow_index.md`
+- `internal/hook/memo/taxonomy/fixtures/excluded_claude_md.md`
 
 ---
 
@@ -199,7 +222,7 @@ REQ-EXT001-014(Optional "may")는 Wave 1 deliverable에 포함되지 않음. spe
 
 ### 5.2 비기능 (Quality Gates — TRUST 5)
 
-- [ ] **Tested**: `internal/hook/memo/**` 커버리지 90%+, 기존 `internal/hook/` 회귀 없음
+- [ ] **Tested**: `internal/hook/memo/taxonomy/**` 커버리지 90%+, 기존 `internal/hook/memo/` (session memo) 및 `internal/hook/` 전반 회귀 없음
 - [ ] **Readable**: 패키지명 `memo`, 공개 API godoc 영문, lint 경고 0
 - [ ] **Unified**: `gofmt`/`goimports` 적용, `golangci-lint run` zero issues
 - [ ] **Secured**: memory 파일은 read-only로만 접근, path traversal 방어, symlink follow 금지 (`TestParseFile_Symlink`)
@@ -222,9 +245,10 @@ REQ-EXT001-014(Optional "may")는 Wave 1 deliverable에 포함되지 않음. spe
 ### 5.5 Open Question 해소
 
 - [ ] OPEN-1(config key 이름) 최종 결정 기록
-- [ ] OPEN-2(excluded category 판정 방식) PR 설명에 명시
-- [ ] OPEN-3(`internal/hook/memo/` 기존 구조) T0에서 확인 결과 반영
+- [x] **OPEN-2(excluded category 판정 방식) — RESOLVED 2026-04-25**: static-keyword list v1 (plan.md §8 category→keyword 매핑 테이블). LLM 기반은 v2 연기.
+- [x] **OPEN-3(`internal/hook/memo/` 기존 구조) — RESOLVED 2026-04-25**: Strategy B (adapted), 신규 코드는 `internal/hook/memo/taxonomy/` 서브패키지. 기존 session memo 패키지 비수정.
 - [ ] OPEN-4(`rules_audit_test.go` 여부) 결정 기록
+- [ ] 200-line cap 수치 공식 문서 근거 확인 (T0 precheck에서 수행)
 
 ---
 

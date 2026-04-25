@@ -4,9 +4,10 @@
 - Wave: 1 (Leaf, no dependencies)
 - Methodology: TDD (quality.yaml default)
 - Created: 2026-04-24
+- Updated: 2026-04-25 (v1.1.0 — plan-audit 대응: OPEN-2, OPEN-3 해소)
 - Author: manager-spec
 
-이 문서는 spec.md의 17개 REQ를 구현하기 위한 phase/작업/롤아웃 계획이다. `.moai/reports/plan-audit/V3R2-triage-audit-2026-04-24.md` PASS 판정을 기준으로 작성한다.
+이 문서는 spec.md의 17개 REQ를 구현하기 위한 phase/작업/롤아웃 계획이다. `.moai/reports/plan-audit/V3R2-triage-audit-2026-04-24.md` PASS 판정 및 `.moai/reports/plan-audit/SPEC-V3R2-EXT-001-2026-04-25.md` PASS_WITH_WARNINGS 후속 대응을 기준으로 작성한다.
 
 ---
 
@@ -38,15 +39,17 @@
 
 ### 2.1 신규 생성
 
+> **패키지 경로**: OPEN-3 해소에 따라 모든 신규 파일은 `internal/hook/memo/taxonomy/` 서브패키지에 배치 (§3.1 참조).
+
 | 경로 | 목적 | 예상 LOC |
 |------|------|----------|
-| `internal/hook/memo/taxonomy.go` | 4-type enum + frontmatter 파서 + staleness/cap 검사 | ~220 |
-| `internal/hook/memo/taxonomy_test.go` | 테이블 드리븐 단위 테스트 (enum, parser, audit rules) | ~350 |
-| `internal/hook/memo/fixtures/` | 테스트용 샘플 memory 파일 (user/feedback/project/reference + 오류 케이스) | 8 files |
-| `internal/hook/memo/staleness.go` | mtime → `<system-reminder>` wrap + aggregation 로직 | ~140 |
-| `internal/hook/memo/staleness_test.go` | 24h threshold, aggregation, wrap 포맷 테스트 | ~220 |
-| `internal/hook/memo/audit.go` | MISSING_TYPE / INDEX_OVERFLOW / EXCLUDED_CATEGORY / DUPLICATE 검출 | ~180 |
-| `internal/hook/memo/audit_test.go` | 각 warning 규칙 테스트 | ~260 |
+| `internal/hook/memo/taxonomy/taxonomy.go` | 4-type enum + frontmatter 파서 + staleness/cap 검사 | ~220 |
+| `internal/hook/memo/taxonomy/taxonomy_test.go` | 테이블 드리븐 단위 테스트 (enum, parser, audit rules) | ~350 |
+| `internal/hook/memo/taxonomy/fixtures/` | 테스트용 샘플 memory 파일 (user/feedback/project/reference + 오류 케이스 + name/description 누락 3종 + feedback body 음성 케이스) | 11 files |
+| `internal/hook/memo/taxonomy/staleness.go` | mtime → `<system-reminder>` wrap + aggregation 로직 | ~140 |
+| `internal/hook/memo/taxonomy/staleness_test.go` | 24h threshold, aggregation, wrap 포맷 테스트 | ~220 |
+| `internal/hook/memo/taxonomy/audit.go` | MISSING_TYPE / MISSING_FRONTMATTER / INDEX_OVERFLOW / EXCLUDED_CATEGORY / DUPLICATE / BODY_STRUCTURE_MISSING 검출 | ~210 |
+| `internal/hook/memo/taxonomy/audit_test.go` | 각 warning 규칙 테스트 (feedback body regex 포함) | ~290 |
 
 ### 2.2 수정
 
@@ -74,13 +77,30 @@
 
 ### 3.1 패키지 배치
 
-`internal/hook/memo/` 패키지 신설 (기존 `internal/hook/memo/` 디렉터리가 비어 있는지 확인 필요 — 이미 존재 시 서브패키지 `taxonomy` 또는 파일만 추가). 단일 패키지로 staleness/audit/taxonomy를 묶는 이유는 모두 memory 파일 대상 pure function이기 때문이다.
+**OPEN-3 RESOLVED (2026-04-25): Strategy B (adapted) — `internal/hook/memo/taxonomy/` 서브패키지로 분리.**
+
+- Rationale:
+  - 기존 `internal/hook/memo/` 디렉터리에는 `priority.go`/`reader.go`/`writer.go` (6 files, ~16 KB)가 존재하며, 이는 **세션 메모(`.moai/state/session-memo.md`) read/write + P1–P4 priority trimming** 도메인이다.
+  - 본 SPEC은 **agent persistent memory taxonomy**(`.claude/agent-memory/<agent>/*.md`) 도메인으로, 기존 `memo` 패키지의 세션 메모와 데이터 모델·생명주기·파일 위치가 모두 다르다.
+  - 두 개념(session memo priority vs agent memory 4-type taxonomy)을 단일 패키지에 섞으면 `Priority`/`MemoryType` 등 이름 충돌과 의미론적 혼선이 발생한다.
+  - Strategy A(merge)는 scope 혼재로 기각. Strategy C(move existing)는 scope creep로 기각 (SPEC 밖 파일 이동 금지 원칙). Strategy B(새 sibling 패키지)가 가장 안전하되, 의미 있는 네임스페이스를 위해 `memo_v2` 대신 **서브패키지 `internal/hook/memo/taxonomy/`**를 채택한다.
+- Consequences:
+  - 기존 `internal/hook/memo/` 파일은 **수정하지 않음** (`priority.go`, `reader.go`, `writer.go`, 해당 `_test.go`).
+  - 신규 파일은 모두 `internal/hook/memo/taxonomy/` 아래에 위치하며 패키지 선언은 `package taxonomy`.
+  - import 경로: `github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy`.
+  - 훅 통합(T5/T6)에서는 `import "…/internal/hook/memo/taxonomy"`로 참조.
+- T0에서 수행할 검증 (비파괴):
+  - [ ] `ls internal/hook/memo/` 결과가 위 6 파일과 일치하는지 재확인.
+  - [ ] `grep -r "package memo" internal/hook/memo/` 로 단일 패키지 선언 상태 확인.
+  - [ ] 새 `taxonomy/` 서브디렉터리는 T2에서 생성.
+
+단일 서브패키지로 staleness/audit/taxonomy를 묶는 이유는 모두 agent memory 파일 대상 pure function이기 때문이다.
 
 ### 3.2 공개 API (안정화 포인트)
 
 ```go
-// internal/hook/memo/taxonomy.go
-package memo
+// internal/hook/memo/taxonomy/taxonomy.go
+package taxonomy
 
 type MemoryType string
 
@@ -109,7 +129,9 @@ func ValidateType(t MemoryType) error
 ```
 
 ```go
-// internal/hook/memo/staleness.go
+// internal/hook/memo/taxonomy/staleness.go
+package taxonomy
+
 type StaleReport struct {
     Path     string
     Age      time.Duration
@@ -125,14 +147,18 @@ func AggregateWarning(reports []StaleReport) string
 ```
 
 ```go
-// internal/hook/memo/audit.go
+// internal/hook/memo/taxonomy/audit.go
+package taxonomy
+
 type AuditCode string
 
 const (
-    WarnMissingType        AuditCode = "MEMORY_MISSING_TYPE"
-    WarnIndexOverflow      AuditCode = "MEMORY_INDEX_OVERFLOW"
-    WarnExcludedCategory   AuditCode = "MEMORY_EXCLUDED_CATEGORY"
-    WarnDuplicate          AuditCode = "MEMORY_DUPLICATE"
+    WarnMissingType            AuditCode = "MEMORY_MISSING_TYPE"
+    WarnMissingFrontmatter     AuditCode = "MEMORY_MISSING_FRONTMATTER" // name/description (AC-01b)
+    WarnIndexOverflow          AuditCode = "MEMORY_INDEX_OVERFLOW"
+    WarnExcludedCategory       AuditCode = "MEMORY_EXCLUDED_CATEGORY"
+    WarnDuplicate              AuditCode = "MEMORY_DUPLICATE"
+    WarnBodyStructureMissing   AuditCode = "MEMORY_BODY_STRUCTURE_MISSING" // feedback/project Why/How markers (AC-04a)
 )
 
 type AuditFinding struct {
@@ -149,8 +175,8 @@ func AuditDuplicates(dir string) ([]AuditFinding, error)
 ### 3.3 설계 원칙
 
 1. **Pure functions**: 시간/파일 I/O는 명시 인자로 주입 (`now time.Time`, `threshold int`) → 테스트 용이.
-2. **non-blocking**: 모든 warning은 exit code 0, stderr로만 출력. `pkg/version` 충돌 방지용 `internal/hook/memo` 네임스페이스 유지.
-3. **하드코딩 금지**: 24/200/10 등은 `workflow.yaml` 기본값 + `internal/config/defaults.go` 단일 원천. 코드 literal 금지.
+2. **non-blocking**: 모든 warning은 exit code 0, stderr로만 출력. `internal/hook/memo` (session memo) 와 `internal/hook/memo/taxonomy` (agent memory)는 이름 충돌 없는 별개 패키지.
+3. **하드코딩 금지**: 24/200/10 등은 `workflow.yaml` 기본값 + `internal/config/defaults.go` 단일 원천. 코드 literal 금지. `200`은 "documented target"이며 T1에서 Claude Code 문서로 최종 확인(spec.md §4 참조).
 4. **16개 언어 중립**: 구현은 Go지만 룰 문서(`moai-memory.md`)는 특정 언어 편향 금지.
 
 ---
@@ -252,9 +278,25 @@ func AuditDuplicates(dir string) ([]AuditFinding, error)
 
 **OPEN-1 (non-blocking)**: SessionStart staleness 임계값이 `workflow.yaml` key로 노출되므로 key 이름 확정 필요. 후보: `memory.staleness_hours` (제안) vs `agent_memory.staleness_hours`. 본 Plan에서는 전자로 가정하되 PR 리뷰에서 확정.
 
-**OPEN-2**: `MEMORY_EXCLUDED_CATEGORY` 판정을 위한 "excluded category" 목록(REQ-015)은 spec.md §5.5에 `code patterns, git history, debugging recipes, CLAUDE.md content, ephemeral task state`로 열거되어 있음. 구현 시 이들을 정적 키워드 매칭으로 판정할지, LLM 기반으로 판정할지 결정 필요. Plan은 정적 키워드(예: "```go ", "commit hash", "fix recipe" 등)로 1차 구현 후 false-positive 수집 후 개선 방향. PR 리뷰 시 확정.
+**OPEN-2 RESOLVED (2026-04-25)**: **v1 = static-keyword list** (LLM detection deferred to v2).
 
-**OPEN-3**: `internal/hook/memo/` 기존 디렉터리 구조와 본 SPEC의 신규 파일 충돌 여부. 기존 디렉터리 내용은 별도 Read로 확인 필요. 충돌 시 `internal/hook/memo/taxonomy/` 서브패키지로 분리. Run phase 시작 시 첫 Task에서 확인.
+- Decision: `MEMORY_EXCLUDED_CATEGORY` 판정을 **정적 키워드 매칭**으로 1차 구현. LLM 기반 분류는 v2 이후로 연기(별도 SPEC).
+- Rationale:
+  - LLM 호출은 PostToolUse 훅에서 지연/비용 부담이 크고, 훅 sync 타임아웃(5초) 위반 위험.
+  - Static-keyword 매칭은 deterministic → AC-EXT001-10 (acceptance.md:L86) 테스트 안정성 확보.
+  - False-positive는 warning-only(non-blocking)이므로 초기 오탐 수용 가능.
+- Category → keyword map (v1, T4에서 구현):
+  | Category | Keywords (case-insensitive, substring match) |
+  |----------|-----------------------------------------------|
+  | `code_pattern` | ` ``` ` fenced block with lang tag (go/python/ts/...), 함수 시그니처 패턴(`func `, `def `, `class `) 대량 포함 |
+  | `git_history` | `commit `, `git log`, `git blame`, `HEAD~`, SHA 해시 패턴 (`^[0-9a-f]{7,40}$`) |
+  | `debug_recipe` | `fix recipe`, `debug solution`, `root cause:`, `fixed in commit` |
+  | `claude_md_mirror` | `CLAUDE.md`, `TRUST 5`, `MoAI-ADK` 대량 노출 (3+ 매칭 시) |
+  | `ephemeral_state` | `currently working on`, `in progress:`, `TODO for this session`, `current branch` |
+- False-positive budget (v1): 최초 1주 세션 로그에서 `MEMORY_EXCLUDED_CATEGORY` 오탐률 **30%** 이하가 목표. 초과 시 v2 LLM 분기 재검토 트리거.
+- v2 후속 연기 명시: `SPEC-V3R2-EXT-002` 또는 별도 SPEC에서 LLM 분류 고려.
+
+**OPEN-3 RESOLVED (2026-04-25)**: **Strategy B (adapted) — `internal/hook/memo/taxonomy/` 서브패키지로 분리.** 상세 내용은 §3.1 참조. 요약: 기존 `internal/hook/memo/`(session memo priority R/W) 와 scope가 다르므로 병합하지 않고, 신규 코드는 모두 `taxonomy/` 서브패키지에 격리한다. T0에서 기존 파일 존재 확인만 수행(비파괴).
 
 **OPEN-4**: `rules_audit_test.go`(룰 문서 live/template drift 가드) 추가 여부 — Wave 1 범위 외일 수 있음. Run phase Task 6에서 결정.
 

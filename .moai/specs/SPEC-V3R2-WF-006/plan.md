@@ -4,6 +4,7 @@
 - Wave: 1 (Leaf, no dependencies — 병렬 CON-001 / EXT-001 / WF-001)
 - Methodology: TDD (quality.yaml default)
 - Created: 2026-04-24
+- Updated: 2026-04-25 (v1.1.0 — plan-audit follow-up)
 - Author: manager-spec
 
 이 문서는 spec.md의 15개 REQ(Ubiquitous 5 / Event-Driven 3 / State-Driven 2 / Optional 2 / Complex 3)를 구현하기 위한 phase/작업/롤아웃 계획이다. `.moai/reports/plan-audit/V3R2-triage-audit-2026-04-24.md` 에서 WF-006은 PASS 판정이며 "leaf SPEC (no deps)"로 분류되었다.
@@ -122,9 +123,9 @@ func TestOutputStylesEncoding(t *testing.T) { ... }
 
 3. `TestOutputStylesTemplateLiveParity`
    - live 경로(`.claude/output-styles/moai/*.md`)와 template(embedded) byte-by-byte 동일
-   - **주의**: live 파일은 프로젝트 루트 기준 읽기 — 테스트는 `os.ReadFile` 사용, `filepath.Abs` 기반 경로 확정 (CLAUDE.local.md §6 경로 안전 규칙)
+   - **주의**: live 파일은 프로젝트 루트 기준 읽기. OPEN-A RESOLVED (v1.1.0) — `runtime.Caller(0)` ascent 로 프로젝트 루트(`.moai/` 마커) 탐지 후 `filepath.Join(root, ".claude/output-styles/moai")` 로 접근. 자세한 알고리즘은 §8 OPEN-A 참조.
    - 불일치 시 `OUTPUT_STYLE_DRIFT` 에러 메시지 (REQ-WF006-010)
-   - **OPEN-A** 참고: CI 이외 환경(sandbox build)에서 live 경로 접근 가능 여부 확인 필요
+   - sandbox / non-standard checkout 환경에서 `.moai/` 마커 부재 시 `t.Skip("live tree not available")` graceful fallback.
 
 4. `TestOutputStylesEncoding`
    - UTF-8 BOM 없음, CR 없음(LF only) — spec.md §4 Assumption 5 검증
@@ -189,12 +190,13 @@ Precedence (REQ-004, 006, 015) 및 unknown fallback(REQ-008) 은 Claude Code 세
 5. **Phase 5 커밋 (BC guard)**: `TestOutputStylesExactlyTwo` 가 이미 P1에 포함되었으면 skip. 누락 시 이 단계에서 보강.
 6. **Phase 6 커밋 (Verification)**: `go test ./... -race -count=1`, `go vet ./...`, `golangci-lint run ./internal/template/...`, `make build && make install`.
 
-각 Phase는 Conventional Commits 형식 (`test(template): ...`, `docs(settings): ...`, `chore: ...`). `git_commit_messages: ko` 설정에 따라 한국어.
+각 Phase는 Conventional Commits 형식 (`test(template): ...`, `docs(settings): ...`, `chore: ...`). 커밋 본문 한국어 사용 근거: `.moai/config/sections/language.yaml` 의 `git_commit_messages: ko` 설정. 이 설정은 로컬 language.yaml 파일에 코드로 선언되어 있으며, 본 SPEC 은 프로젝트 전역 규칙을 따를 뿐 별도 정책을 신설하지 않는다.
 
 ### 5.2 v3.0 하위 Wave 위치
 
 - Wave 1 leaf — CON-001 / EXT-001 / WF-001과 병렬 가능 (파일 겹침 없음).
 - SPEC-V3R2-EXT-002(Go output-style loader)는 본 SPEC 머지 후 시작 (REQ-WF006-012 prerequisite — frontmatter 스키마 consume).
+- **Watch-item (downgrade from hard guard, v1.1.0)**: CON-001 의 `settings-management.md` 편집 여부 — 2026-04-25 boundary audit 결과 CON-001 은 `settings-management|output-styles|outputStyle` 를 zero-reference 함이 독립 grep 으로 확인됨 (audit 보고서 §7). 따라서 병렬 실행은 안전하며, T4 머지 시점에만 재확인하여 충돌 발생 시에만 rebase 한다. "sequential merge 강제" 하지 않는다.
 
 ### 5.3 모니터링 포인트
 
@@ -240,12 +242,37 @@ Precedence (REQ-004, 006, 015) 및 unknown fallback(REQ-008) 은 Claude Code 세
 
 ## 8. Open Questions
 
-**OPEN-A**: `TestOutputStylesTemplateLiveParity` 가 live 파일(`.claude/output-styles/moai/*.md`)을 어떻게 찾을 것인가. 후보:
-1. 테스트 실행 디렉터리(`os.Getwd`)에서 상향 탐색으로 프로젝트 루트 탐지(`.moai` 존재) 후 상대경로 접근 — `commands_audit_test.go` 는 embedded만 읽으므로 선례 없음.
-2. `runtime.Caller(0)` 기반 source file 위치에서 `../../.claude/output-styles/moai/` 로 역산.
-3. 환경변수 `MOAI_PROJECT_ROOT` (없으면 skip with `t.Skip`).
+**OPEN-A — RESOLVED (v1.1.0, 2026-04-25)**: `TestOutputStylesTemplateLiveParity` 의 live-tree 경로 탐색 전략은 `runtime.Caller(0)` ascent 로 확정.
 
-**Plan 제안**: 후보 2번 (`runtime.Caller`) — test go-file 자체가 `internal/template/` 에 위치하므로 `../..` 로 프로젝트 루트 도달 가능. CI 및 로컬 모두에서 안정. Task T3 착수 시 프로토타입 후 결정.
+구현 알고리즘:
+
+1. `_, thisFile, _, _ := runtime.Caller(0)` 로 테스트 소스 파일 절대 경로 획득 (`.../internal/template/output_styles_audit_test.go`).
+2. `dir := filepath.Dir(thisFile)` 에서 시작해 `.moai/` 디렉터리가 존재하는 상위 디렉터리까지 `filepath.Dir(dir)` 반복 (최대 8 levels 상향 — 극단적인 non-standard layout 방어).
+3. `.moai/` 를 찾지 못하면 `t.Skip("live tree not available: .moai marker not found up to 8 levels")` — CI sandboxed checkout 등의 예외 환경에서 graceful degradation.
+4. 찾은 프로젝트 루트에서 `filepath.Join(root, ".claude/output-styles/moai")` 로 live dir 접근.
+
+**Rationale**:
+- runtime.Caller 는 빌드 타임 `-trimpath` 적용 시에도 테스트 컨텍스트에서 절대 경로를 반환 (Go test binary 는 `-trimpath` 미적용이 기본).
+- `.moai/` 마커는 main repo 와 Claude Code native worktree (`.claude/worktrees/abc123/.moai/` 존재) 양쪽에서 동작 — worktree 는 프로젝트 루트에 `.moai/` 를 동기화한다는 MoAI Worktree 전제(worktree-integration.md)에 의존.
+- `os.Getwd()` 와 달리 test CWD 가 변형되어도 동작 (`go test ./internal/template/...` vs `go test` from repo root 양쪽 안전).
+- env 의존 없음 — CI env 설정 불요.
+
+**Task T0 smoke 검증**: 아래 프로토타입을 `go run` 또는 `go test -run TestRuntimeCallerAscent` 로 실행해 프로젝트 루트가 `.moai/` 포함 디렉터리로 올바르게 잡히는지 확인 (T0 DoD 참조).
+
+```go
+// OPEN-A 검증 스케치 (T0 smoke only, production 코드에는 포함 금지)
+_, this, _, _ := runtime.Caller(0)
+dir := filepath.Dir(this)
+for i := 0; i < 8; i++ {
+    if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
+        fmt.Println("resolved root:", dir)
+        break
+    }
+    parent := filepath.Dir(dir)
+    if parent == dir { break }
+    dir = parent
+}
+```
 
 **OPEN-B**: 본 SPEC의 스키마 테스트는 "frontmatter에 명시된 3개 key만 엄격 검증" 이며 **추가 key(예: `model`, `temperature`) 가 있을 때 허용/거부** 정책이 spec.md에 명시되지 않았다.
 

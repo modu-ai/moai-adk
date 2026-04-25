@@ -1,16 +1,16 @@
 ---
 spec_id: SPEC-V3R2-WF-001
-title: Task Decomposition — Skill Consolidation (48 → 24)
-version: "0.1.0"
+title: Task Decomposition — Skill Consolidation Stage 1 (48 → 38)
+version: "1.1.0"
 status: draft
 created: 2026-04-24
-updated: 2026-04-24
-author: manager-spec (tasks.md generation)
+updated: 2026-04-25
+author: manager-spec (tasks.md generation; v1.1.0 revision post plan-audit 2026-04-25)
 related_plan: .moai/specs/SPEC-V3R2-WF-001/plan.md
 related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 ---
 
-# 작업 분해 — SPEC-V3R2-WF-001 Skill Consolidation (48 → 24)
+# 작업 분해 — SPEC-V3R2-WF-001 Skill Consolidation Stage 1 (48 → 38)
 
 > **범례**:
 > - **File owner**: 해당 task 가 단독 소유하는 파일 경로. 다른 task 와 중복되면 순차 실행 필수.
@@ -21,7 +21,7 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 
 ---
 
-## 전체 Task 개요
+## 전체 Task 개요 (v1.1.0)
 
 | Wave | Task 수 | Parallel 가능 | Sequential 필수 |
 |---|---|---|---|
@@ -31,27 +31,30 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 | 1.4 Archive + map | 12 | Archive 11개는 독립 parallel, map 생성은 archive 완료 후 sequential | T1.4-1 ~ 12 |
 | 1.5 REFACTOR + Telemetry | 8 | 각 SKILL.md 독립 → parallel | T1.5-1 ~ 8 |
 | 1.6 Agent rewrite | 4 | 4개 agent 파일 독립 → parallel | T1.6-1 ~ 4 |
-| 1.7 Verification | 7 | 일부 parallel, assertion 은 sequential | T1.7-1 ~ 7 |
+| 1.7 Verification | **12** (v1.1.0: T1.7-8/9/10/11/12 추가) | 일부 parallel, assertion 은 sequential | T1.7-1 ~ 12 |
 
-**총 task 수: 42**
+**총 core task 수: 47** (v0.1.0 42개 → v1.1.0 47개; 감사 응답으로 5개 verification task 추가)
+**Wave checkpoint: 6** (T1.X-END)
+**Grand total (checkpoint 포함): 53**
 
 ---
 
 ## Wave 1.1 — Baseline Lock
 
-### T1.1-1: Baseline hash 기록
+### T1.1-1: Baseline hash 기록 (v1.1.0 — moai/workflows/ 해시 추가)
 
 - **File owner**: `.moai/specs/SPEC-V3R2-WF-001/baseline-hashes.txt` (단독, 임시)
 - **Depends on**: 없음
 - **Parallel OK**: —
-- **Inputs**: 20개 FROZEN/KEEP skill 의 SKILL.md 경로
+- **Inputs**: 20개 FROZEN/KEEP skill 의 SKILL.md 경로 + `.claude/skills/moai/workflows/*.md` 전체 (v1.1.0 추가; REQ-WF001-012 invariant 검증용)
 - **Action**:
   1. `shasum -a 256 .claude/skills/moai-domain-copywriting/SKILL.md` 수행, 결과 기록
   2. `shasum -a 256 .claude/skills/moai-domain-brand-design/SKILL.md` 수행
   3. 12 KEEP + `moai` + 5 `moai-ref-*` SKILL.md 해시 기록
-  4. `.moai/specs/SPEC-V3R2-WF-001/baseline-hashes.txt` 에 20 라인으로 저장
+  4. **(v1.1.0 신규)** `.claude/skills/moai/workflows/` 하위 모든 `.md` 파일 해시 기록 (REQ-WF001-012 invariant 검증 baseline)
+  5. `.moai/specs/SPEC-V3R2-WF-001/baseline-hashes.txt` 에 저장
 - **Outputs**: `baseline-hashes.txt`
-- **Verification**: 파일이 20 라인, 각 라인 `<hex-hash>  <path>` 형식
+- **Verification**: 파일이 각 라인 `<hex-hash>  <path>` 형식; 20 skill 해시 + moai/workflows/ 전체 파일 해시 포함
 - **Rollback**: 파일 삭제
 
 ---
@@ -259,7 +262,7 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 | T1.4-5 | `moai-workflow-jit-docs` | same | `moai-workflow-project` | RETIRE (merged) |
 | T1.4-6 | `moai-domain-uiux` | same | `moai-design-system` | RETIRE (merged) |
 | T1.4-7 | `moai-design-craft` | same | `moai-design-system` | RETIRE (merged) |
-| T1.4-8 | `moai-design-tools` | same | `moai-design-system` (Pencil) + `moai-workflow-pencil-integration` | RETIRE (split) |
+| T1.4-8 | `moai-design-tools` | same | **Pencil → `moai-workflow-pencil-integration`** (authoritative, per DL-4 / OQ-4 resolution); **Figma → archive/figma subdir** (no substitute, Stage 2 재평가) | RETIRE (split) |
 | T1.4-9 | `moai-docs-generation` | same | `moai-workflow-project` | RETIRE (merged) |
 | T1.4-10 | `moai-platform-database-cloud` | same | `moai-domain-database` | RETIRE (merged) |
 | T1.4-11 | `moai-tool-svg` | same | (none) | RETIRE |
@@ -300,14 +303,17 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 ### Checkpoint T1.4-END: Wave 1.4 gate
 
 - **Depends on**: T1.4-1 ~ 12
-- **Action**:
-  1. `make build` 실행
+- **Action (v1.1.0 — OQ-1/3/7 closed)**:
+  1. `make build` 실행 (exit code 0 확인)
   2. `diff -rq .claude/skills internal/template/templates/.claude/skills` → empty (archive 는 양쪽 제외)
-  3. `ls .claude/skills/ | wc -l` → **25** (48 − 13 + 1 신규 `moai-design-system` − 11 + … 확인용)
-    - 실제 계산: 48 초기 − 11 (T1.4-1~11 archive) + 1 (design-system 신설) − 2 (foundation-context/jit-docs — if T1.4-1/5 포함) = 36. 재검증 필요 — Wave 1.4 끝에서 기대치는 **36** (Wave 1.7 에서 정확한 24 검증)
-    - 주의: "11개 archive" 는 잘못된 요약. 실제 T1.4-1 ~ 11 총 11개가 archive. plan.md 에서 13개라고 한 것은 foundation-context + jit-docs + 11 = 13? 재검토: T1.4 목록은 11 task; foundation-context(1) + philosopher(2) + thinking(3) + templates(4) + jit-docs(5) + uiux(6) + design-craft(7) + design-tools(8) + docs-generation(9) + database-cloud(10) + tool-svg(11) = 총 11개. 그러나 spec.md §6.2 roll-up 은 13개라 함. **OPEN QUESTION OQ-1/OQ-7 와 연동** — 2 차이는 count 해석 이슈, T1.4 에서는 11개만 삭제하고 최종 개수를 Wave 1.7 에서 검증
+  3. `ls -d .claude/skills/*/ | wc -l` → **38** (산식: 48 baseline − 11 archive [T1.4-1..11] + 1 new [moai-design-system, Wave 1.2] = 38). Stage 1 의 최종 디렉터리 수가 이 Wave 끝에서 확정됨; Wave 1.5/1.6 는 섹션 주입/agent rewrite 만 수행하며 디렉터리 수는 불변.
+    - **[OQ-1 CLOSED]** jit-docs 는 RETIRE (T1.4-5 에서 archive).
+    - **[OQ-7 CLOSED]** foundation-context 는 RETIRE (T1.4-1 에서 archive).
+    - **[OQ-3 CLOSED]** §6.2 가 디렉터리 수 SoT; §6.1 은 논리적 그룹핑.
+    - Stage 2 (38→24) 는 본 SPEC 범위 밖 → `SPEC-V3R3-WF-001` 에서 처리.
   4. `[ -f .moai/decisions/skill-rename-map.yaml ]`
   5. 각 archive 디렉터리에 `RETIRED.md` 존재 확인
+  6. OQ-CONTRACT HUMAN GATE 확인: MIG-001 author 가 `skill-rename-map.yaml` schema v1 을 PR review 로 approve 하고 `SPEC-V3R2-MIG-001/spec.md` 가 `schema v1` 문자열을 포함
 
 ---
 
@@ -435,16 +441,16 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 
 ## Wave 1.7 — Verification + Final `make build`
 
-### T1.7-1: Skill count assertion
+### T1.7-1: Skill count assertion (v1.1.0 — Stage 1 target 38)
 
 - **File owner**: verification only, no write
 - **Depends on**: T1.6-END
-- **Parallel OK**: T1.7-2 ~ 6 과 병렬
+- **Parallel OK**: T1.7-2 ~ 12 과 병렬
 - **Action**:
   1. `ls -d .claude/skills/*/ | wc -l` → 결과를 `wave-1.7-report.md` 에 기록
   2. `ls -d internal/template/templates/.claude/skills/*/ | wc -l` → 기록
-  3. 두 값이 **24** 인지 assert (OQ-3 해소 기준 적용)
-- **Verification**: 24 또는 실패 시 재조정 task 생성
+  3. 두 값이 **38** 인지 assert (DL-1 / Option B / OQ-3 해소 결과)
+- **Verification**: 38 (Stage 1 target). 실패 시 재조정 task 생성; 38→24 추가 감축은 Stage 2 (SPEC-V3R3-WF-001) 에서 처리.
 
 ### T1.7-2: Template/local parity check
 
@@ -495,7 +501,7 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
   3. `go test -race ./...` (전체)
 - **Verification**: 모두 pass
 
-### T1.7-7: Wave 1.7 report 작성 + cleanup
+### T1.7-7: Wave 1.7 report 작성 + cleanup (v1.1.0 — exit code verification 명시)
 
 - **File owner**:
   - `.moai/specs/SPEC-V3R2-WF-001/wave-1.7-report.md` (신규)
@@ -503,32 +509,111 @@ related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 - **Depends on**: T1.7-1 ~ 6
 - **Parallel OK**: 없음 (최종 정리)
 - **Action**:
-  1. `wave-1.7-report.md` 에 모든 검증 결과 기록
+  1. `wave-1.7-report.md` 에 모든 검증 결과 기록 (T1.7-1 부터 T1.7-12 까지의 로그 포함)
   2. `baseline-hashes.txt` 삭제 (임시 파일)
-  3. 최종 `make build`
+  3. 최종 `make build` 실행 — **exit code 0 명시 검증**:
+     ```bash
+     make build
+     mbrc=$?
+     [ "$mbrc" -eq 0 ] || { echo "FAIL: make build exit code $mbrc"; exit 1; }
+     echo "make build OK (exit 0)" >> wave-1.7-report.md
+     ```
+  4. `internal/template/embedded.go` 재생성 확인 (`[ -f internal/template/embedded.go ] && [ -s internal/template/embedded.go ]`)
 - **Outputs**: `wave-1.7-report.md`
-- **Verification**: 파일 존재, baseline-hashes.txt 제거됨
+- **Verification**: 파일 존재, baseline-hashes.txt 제거됨, make build exit 0 로그 기록
+
+### T1.7-8: REQ-WF001-002 verdict uniqueness validator (v1.1.0 신규)
+
+- **File owner**: verification only + `.moai/specs/SPEC-V3R2-WF-001/scripts/verify-verdict-uniqueness.sh` (신규, no-op 외부 변경 없음)
+- **Depends on**: T1.6-END
+- **Parallel OK**: T1.7-1 ~ 6, 9 ~ 12 와 병렬
+- **Action**:
+  1. spec.md §6.2 판정표를 awk 로 parse 하여 48 행 추출
+  2. 각 행에 대해 "v3 action" 컬럼 (column 4) 가 다음 중 **정확히 하나** 의 verdict 레이블을 포함하는지 검증:
+     `{KEEP, REFACTOR, MERGE target, MERGE, RETIRE}` (및 변형 KEEP (FROZEN), KEEP (UNCLEAR window), KEEP (monitor), RETIRE (fold), RETIRE (merged), RETIRE (split), KEEP (absorbs Pencil portion of design-tools))
+  3. 각 행에 대해 "R4 verdict" 컬럼 (column 3) 도 단일 verdict 검증 (OQ-1/OQ-7 resolution 이후 적용)
+- **Verification**: 48 행 모두 단일 verdict → exit 0. 어느 행이라도 복수 verdict 또는 empty → exit 1 + 행 번호 출력
+
+### T1.7-9: REQ-WF001-009 MIG-001 shared contract verifier (v1.1.0 신규)
+
+- **File owner**: verification only
+- **Depends on**: T1.4-12 (skill-rename-map.yaml 존재)
+- **Parallel OK**: T1.7-1 ~ 8, 10 ~ 12 와 병렬
+- **Action**:
+  1. `.moai/decisions/skill-rename-map.yaml` YAML parse 성공
+  2. top-level `version: 1` 확인
+  3. `merges`, `retires`, `refactors`, `unchanged_keep` 4개 section 존재
+  4. `.moai/specs/SPEC-V3R2-MIG-001/spec.md` 에서 `schema v1` 또는 `skill-rename-map.yaml` 문자열 grep (HUMAN GATE OQ-CONTRACT 완료 증명)
+- **Verification**: acceptance.md AC-16 shell 블록이 zero exit
+
+### T1.7-10: REQ-WF001-015 broken-fixture rejection verifier (v1.1.0 신규)
+
+- **File owner**:
+  - 신규 fixture: `.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/archive-without-retired-md/SKILL.md`
+  - (RETIRED.md 는 의도적으로 누락)
+- **Depends on**: T1.1-1 (fixture 는 Wave 1.1 이후 언제든 생성 가능)
+- **Parallel OK**: T1.7-1 ~ 9, 11 ~ 12 와 병렬
+- **Action**:
+  1. Fixture 디렉터리 생성 (SKILL.md 에는 minimal frontmatter 만)
+  2. acceptance.md AC-WF001-08 (b) 섹션의 verifier shell 스크립트 실행
+  3. 스크립트가 **non-zero exit** 해야 테스트 pass (정상: broken fixture 가 guard 를 trip)
+- **Verification**: `rc != 0` → test pass; `rc == 0` → test fail (guard 가 깨진 것)
+
+### T1.7-11: REQ-WF001-016 trigger-drop fixture verifier (v1.1.0 신규)
+
+- **File owner**:
+  - 신규 fixture: `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/`
+    - `source-skill-a/SKILL.md` (frontmatter triggers: [alpha, beta, gamma])
+    - `source-skill-b/SKILL.md` (frontmatter triggers: [delta])
+    - `merge-target/SKILL.md` (frontmatter triggers: [alpha, beta]) — intentionally drops gamma + delta
+- **Depends on**: T1.1-1
+- **Parallel OK**: T1.7-1 ~ 10, 12 와 병렬
+- **Action**:
+  1. Fixture 디렉터리 생성
+  2. acceptance.md AC-WF001-18 의 Python 블록 실행
+  3. `rc != 0` 및 `SKILL_TRIGGER_DROP: gamma` / `SKILL_TRIGGER_DROP: delta` 진단 출력 확인
+- **Verification**: `rc != 0` → test pass
+
+### T1.7-12: REQ-WF001-012 moai/workflows/ invariant verifier (v1.1.0 신규)
+
+- **File owner**: verification only
+- **Depends on**: T1.6-END, T1.1-1 (baseline-hashes.txt 에 moai/workflows/ 해시 포함 필수)
+- **Parallel OK**: T1.7-1 ~ 11 과 병렬
+- **Action**:
+  1. Wave 1.1 T1.1-1 이 기록한 baseline 의 `.claude/skills/moai/workflows/*.md` 해시 목록과
+     현재 `.claude/skills/moai/workflows/*.md` 해시를 비교
+  2. 완전 일치 필수 (본 SPEC 이 WF-002 담당 디렉터리를 건드리지 않았음을 증명)
+- **Verification**: acceptance.md AC-17 shell 블록이 zero exit
 
 ---
 
-## Dependency Graph (요약)
+## Dependency Graph (요약, v1.1.0)
 
 ```
-T1.1-1 (baseline)
+T1.1-1 (baseline; includes moai/workflows/ hashes per v1.1.0)
     ├─ T1.2-1 ── T1.3-1 ── T1.4-2, T1.4-3
     ├─ T1.2-2 ── T1.3-2 ── T1.4-4, T1.4-5, T1.4-9
-    ├─ T1.2-3 ── T1.3-3 ── T1.4-6, T1.4-7, T1.4-8
+    ├─ T1.2-3 ── T1.3-3 ── T1.4-6, T1.4-7, T1.4-8 (Pencil→pencil-integration per DL-4)
     ├─ T1.2-4 ── T1.3-4 ── T1.4-10 ── T1.5-4
     ├─ T1.2-5 ── T1.3-5 ── T1.4-1
     ├─ T1.4-11 (tool-svg, 독립)
-    ├─ T1.5-1, T1.5-2, T1.5-3, T1.5-5, T1.5-6, T1.5-7, T1.5-8 (독립, 병렬)
+    ├─ T1.5-1, 2, 3, 5, 6, 7, 8 (독립, 병렬)
+    ├─ T1.7-10 (ci-reject fixture creation; independent, depends on T1.1-1)
+    ├─ T1.7-11 (trigger-drop fixture creation; independent, depends on T1.1-1)
     │
-    ├─ [T1.4-1..11] ─ T1.4-12 (skill-rename-map)
-    │                     └─ T1.6-1, T1.6-2, T1.6-3, T1.6-4 (병렬)
-    │                             └─ T1.7-1..5 (병렬)
+    ├─ [T1.4-1..11] ─ T1.4-12 (skill-rename-map + OQ-CONTRACT HUMAN GATE)
+    │                     └─ T1.6-1, 2, 3, 4 (병렬)
+    │                             └─ T1.7-1..5, 8, 9, 12 (병렬)
     │                                     └─ T1.7-6 (go test, sequential)
-    │                                             └─ T1.7-7 (report + cleanup)
+    │                                             └─ T1.7-7 (report + cleanup, make build exit 0 verification)
 ```
+
+New in v1.1.0:
+- T1.7-8: REQ-WF001-002 verdict uniqueness validator
+- T1.7-9: REQ-WF001-009 MIG-001 contract verifier
+- T1.7-10: REQ-WF001-015 broken-fixture rejection (ci-reject fixture)
+- T1.7-11: REQ-WF001-016 trigger-drop fixture verifier
+- T1.7-12: REQ-WF001-012 moai/workflows/ invariant verifier
 
 ---
 
@@ -542,15 +627,17 @@ T1.1-1 (baseline)
 
 ---
 
-## 총 태스크 수: 42
+## 총 태스크 수: **47 core tasks + 6 checkpoints = 53 total (v1.1.0)**
 
 - Wave 1.1: 1 (T1.1-1)
 - Wave 1.2: 5 (T1.2-1 ~ 5) + 1 checkpoint
-- Wave 1.3: 5 + 1
-- Wave 1.4: 12 + 1
-- Wave 1.5: 8 + 1
-- Wave 1.6: 4 + 1
-- Wave 1.7: 7
-- **검증 Checkpoint**: 6 (T1.X-END)
+- Wave 1.3: 5 (T1.3-1 ~ 5) + 1 checkpoint
+- Wave 1.4: 12 (T1.4-1 ~ 12) + 1 checkpoint
+- Wave 1.5: 8 (T1.5-1 ~ 8) + 1 checkpoint
+- Wave 1.6: 4 (T1.6-1 ~ 4) + 1 checkpoint
+- Wave 1.7: **12** (T1.7-1 ~ 12; v1.1.0 에서 T1.7-8/9/10/11/12 추가)
+- **Wave Checkpoints**: 6 (T1.X-END for X in 1.2, 1.3, 1.4, 1.5, 1.6; Wave 1.1 및 1.7 은 Wave 단위 체크포인트 없음)
 
-Implementation task: **42** (checkpoint 포함) / **36 핵심 task** (checkpoint 제외).
+Core implementation + verification tasks: **47** (v0.1.0 42 → v1.1.0 47; 감사 응답으로 T1.7-8/9/10/11/12 추가).
+Grand total (checkpoints 포함): **53**.
+이전 v0.1.0 의 "42 / 36" 수치는 사라짐; v1.1.0 의 수치는 "47 / 53" 로 단일화.

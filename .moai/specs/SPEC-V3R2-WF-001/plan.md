@@ -1,32 +1,96 @@
 ---
 spec_id: SPEC-V3R2-WF-001
-title: Implementation Plan — Skill Consolidation (48 → 24)
-version: "0.1.0"
+title: Implementation Plan — Skill Consolidation Stage 1 (48 → 38)
+version: "1.1.0"
 status: draft
 created: 2026-04-24
-updated: 2026-04-24
-author: manager-spec (plan.md generation)
+updated: 2026-04-25
+author: manager-spec (plan.md generation; v1.1.0 revision post plan-audit 2026-04-25)
 priority: P1 High
 development_mode: DDD
 scope_scale: XL
 blast_radius: maximum
 related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
-related_audit: .moai/reports/plan-audit/V3R2-triage-audit-2026-04-24.md
+related_audit: .moai/reports/plan-audit/V3R2-triage-audit-2026-04-24.md, .moai/reports/plan-audit/SPEC-V3R2-WF-001-2026-04-25.md
 ---
 
-# 구현 계획 — SPEC-V3R2-WF-001 Skill Consolidation (48 → 24)
+# 구현 계획 — SPEC-V3R2-WF-001 Skill Consolidation Stage 1 (48 → 38)
 
 > **스코프 경고**: 이 SPEC은 v3R2 Wave 1 중 가장 큰 폭발 반경(maximum blast radius)을 가진다.
-> `.claude/skills/` 및 `internal/template/templates/.claude/skills/` 양쪽에서 **48개 디렉터리 → 24개**, **13개 디렉터리 삭제 + 아카이브**, **4개 merge target 재구성**, **다수 agent prompt 문자열 치환**을 수반한다. 단일 PR 머지는 리스크가 지나치게 크므로 본 계획은 7개 Wave(1.1~1.7)로 분할하고, 각 Wave는 독립적으로 revert 가능하도록 설계한다.
+> `.claude/skills/` 및 `internal/template/templates/.claude/skills/` 양쪽에서 **48개 디렉터리 → 38개** (Stage 1), **11개 디렉터리 삭제 + 아카이브**, **4개 merge target 재구성 + 1개 신규**, **다수 agent prompt 문자열 치환**을 수반한다. 단일 PR 머지는 리스크가 지나치게 크므로 본 계획은 7개 Wave(1.1~1.7)로 분할하고, 각 Wave는 독립적으로 revert 가능하도록 설계한다.
+>
+> **Stage 1 vs Stage 2**: 본 SPEC은 48 → 38 (Stage 1) 만 집행한다. 38 → 24 추가 감축은 `SPEC-V3R3-WF-001` 로 예약되며 Stage 2 에서 monitor/UNCLEAR/REFACTOR 재평가를 수행한다. 결정 근거는 §Decision Log 참조.
 
 ---
 
 ## 1. 목표 (Objectives)
 
-- **1차 목표**: `.claude/skills/` 디렉터리 수를 48개에서 24개로 축소하면서 §6.2 판정표(spec.md lines 225–274)의 48개 entry 모두에 단일 verdict를 집행한다.
+- **1차 목표 (Stage 1)**: `.claude/skills/` 디렉터리 수를 48개에서 38개로 축소 (48 − 11 RETIRE + 1 NEW = 38) 하면서 §6.2 판정표(spec.md)의 48개 entry 모두에 단일 verdict를 집행한다 (REQ-WF001-001).
 - **2차 목표**: Template-First 규칙(CLAUDE.local.md §2)에 따라 `internal/template/templates/.claude/skills/` 와 `.claude/skills/` 을 모든 Wave 끝에서 byte-identical 상태로 유지한다 (REQ-WF001-006).
 - **3차 목표**: Retired skill 이름이 하드코딩된 agent prompt 4개 파일(`expert-frontend.md`, `manager-project.md`, `builder-skill.md`, `manager-docs.md`)을 동일 commit 안에서 rewrite한다 (REQ-WF001-014).
-- **4차 목표**: SPEC-V3R2-MIG-001이 Phase 8에서 소비할 `.moai/decisions/skill-rename-map.yaml` 산출물을 Wave 1.4 landing commit에 포함한다 (spec.md §3 Environment 각주).
+- **4차 목표**: SPEC-V3R2-MIG-001이 Phase 8에서 소비할 `.moai/decisions/skill-rename-map.yaml` 산출물을 Wave 1.4 landing commit에 포함한다 (spec.md §9.1.1 공유 계약).
+- **5차 목표**: REQ-WF001-009/012/015/016 각각에 대한 CI fixture / dependency invariant 검증을 Wave 1.7 에 포함한다 (plan-audit 2026-04-25 응답).
+
+---
+
+## 1.5 Decision Log (v1.1.0 audit response)
+
+본 문서 v1.1.0 은 `.moai/reports/plan-audit/SPEC-V3R2-WF-001-2026-04-25.md` 의 FAIL 판정에 대한 응답이다. 아래 결정은 명시적으로 기록되며, Stage 2 SPEC 에 핸드오프된다.
+
+### DL-1: 48 → 24 scope resolution — Option B (target = 38, Stage 2 reserved)
+
+- **선택지**: (A) 14개 추가 RETIRE 를 위한 R4 audit 재평가, (B) REQ-001 의 목표를 38 로 정직하게 수정하고 Stage 2 SPEC 예약, (C) 본 SPEC 을 "stage 1 of 2" 로 명시.
+- **선택**: B + C hybrid. REQ-001 을 **38** 로 수정하고, 제목 및 HISTORY 에 Stage 1 이 48→38 임을 명시. 38→24 는 `SPEC-V3R3-WF-001` 로 예약 (아직 draft 미작성).
+- **근거**: Option A (14 추가 RETIRE) 는 R4 audit 의 monitor/UNCLEAR/REFACTOR 판정을 재개하는 스코프 확장이며 본 SPEC 의 단일 단위 실행 범위를 넘어선다. 본 SPEC 은 §6.2 판정표가 실제로 달성 가능한 것(38)만 집행하고, 추가 감축은 telemetry 근거 확보 후 별도 SPEC 으로 다룬다.
+- **영향**:
+  - spec.md REQ-WF001-001 `exactly 24` → `exactly 38`
+  - acceptance.md AC-WF001-01 `count = 24` → `count = 38`
+  - plan.md §8 DoD `정확히 24` → `정확히 38`
+  - tasks.md T1.7-1 assertion `24` → `38`
+  - 새 SPEC 예약: `SPEC-V3R3-WF-001 — Skill Consolidation Stage 2 (38 → 24)`
+
+### DL-2: §6.1 vs §6.2 single SoT — §6.2 wins
+
+- §6.1 은 논리적 그룹핑으로 demotion. 디렉터리 수 SoT 는 §6.2 단일.
+- 관련: **OQ-3 CLOSED** (§Decision Log DL-2).
+
+### DL-3: Dual-verdict rows — single verdict enforced
+
+- `moai-foundation-context` (row 5): R4 column = RETIRE, v3 action = RETIRE. 단일 verdict.
+- `moai-workflow-jit-docs` (row 17): R4 column = RETIRE, v3 action = RETIRE. 단일 verdict.
+- 관련: **OQ-1 CLOSED**, **OQ-7 CLOSED**.
+
+### DL-4: moai-design-tools split resolution — Pencil → pencil-integration
+
+- Pencil portion → `moai-workflow-pencil-integration` (authoritative; more granular target per audit preference).
+- Figma portion → `.moai/archive/skills/v3.0/moai-design-tools/figma/` (archive, no substitute, Stage 2 재평가).
+- tasks.md T1.4-8 `Substitute` 필드 는 `moai-workflow-pencil-integration (Pencil) + archive (Figma)` 로 업데이트. 이전의 `moai-design-system (Pencil)` 는 SUPERSEDED.
+- 관련: **OQ-4 CLOSED**.
+
+### DL-5: MIG-001 shared contract — dependency edge added
+
+- spec.md §3 Environment 의 "REFERENCES (not depends on)" 문구를 제거하고 §9.1.1 Shared Contract 로 승격.
+- plan.md §2.5 스키마는 WF-001 과 MIG-001 이 co-signed 하는 계약. 스키마 변경 시 HUMAN GATE (MIG-001 author review) 필수.
+- REQ-WF001-009 의 behavioral contract 는 이제 정당한 의존성 엣지로 지지됨.
+
+### DL-6: CI fixtures for REQ-015 / REQ-016
+
+- AC-WF001-08 (REQ-015): 기존 dry-run 에 더해 `.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/` 의 broken fixture 를 추가하고 T1.7-10 이 이를 검증 (fixture-verifier 가 non-zero exit).
+- AC-WF001-18 (REQ-016 신설): `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/` 의 broken fixture 를 T1.7-11 이 검증.
+- 실제 production CI guard rail 구현은 여전히 follow-up SPEC `SPEC-CI-SKILL-GUARD-001` (proposed) 로 deferred. 본 SPEC 은 fixture 검증으로 REQ-015/016 을 observable 하게 만든다.
+- 관련: **OQ-6 PARTIALLY CLOSED** (fixture 까지는 본 SPEC 범위; production CI 구현은 follow-up).
+
+### DL-7: OQ-5 (REFACTOR scope) — deferred
+
+- 6개 REFACTOR skill 의 실제 refactor scope 는 본 SPEC 범위 밖. 본 SPEC 은 `## Refactor Notes` 라벨만 주입하며 실제 refactor 는 6개 독립 sub-SPEC (`SPEC-V3R2-WF-001a`...`f`) 으로 분할 제안.
+- Follow-up SPEC ID 블록: `SPEC-V3R2-WF-001a` (workflow-testing), `b` (domain-backend), `c` (domain-frontend), `d` (domain-database scope), `e` (platform-deployment), `f` (platform-auth).
+- 관련: **OQ-5 DEFERRED** with explicit follow-up SPEC reservations.
+
+### DL-8: OQ-CONTRACT (new) — MIG-001 schema human gate
+
+- 본 SPEC 이 authoring 하는 `skill-rename-map.yaml` 스키마는 MIG-001 author 의 명시적 승인 후 merge 된다.
+- 승인 artifact: GitHub PR review + MIG-001 spec.md 에 "consumes skill-rename-map.yaml schema v1" 문구 포함 확인.
+- T1.7-9 가 schema 를 parse 하여 MIG-001 spec.md 에 "schema v1" 문자열 존재 여부를 grep 으로 검증.
 
 ---
 
@@ -303,34 +367,27 @@ If a substitute exists, functional content has been relocated to the substitute 
 
 **[OPEN QUESTION OQ-2]**: template 삭제 vs local archive 의 비대칭성 때문에 `diff -rq .claude/skills internal/template/templates/.claude/skills` 는 여전히 empty 여야 하지만 archive 파일은 양쪽 어느 쪽에도 없어야 한다. 대안: archive 를 `internal/template/templates/` 하위에 두지 않고 dev-only 위치에 두는 게 맞는지 확인 필요 (SPEC constraint §7 "삭제되는 skill은 .moai/archive/skills/v3.0/에 아카이브된다" 는 리포 단일 위치를 암시 → OK).
 
-**Checkpoint**: Wave 1.4 끝에서:
-- `.claude/skills/` 디렉터리 수 = 48 − 13 = 35? 아니다. Wave 1.2 에서 `moai-design-system` 이 신설되었으므로 48 + 1 − 13 = **36**. Wave 1.5 에서도 추가 변동 없음.
-- 최종 24개가 되려면 다음 검증: Wave 1.4 후 `.claude/skills/` 에 남는 건 12 KEEP (§6.1) + 4 MERGE targets + 14 REFACTOR + 2 UNCLEAR + 2 agency + 5 ref = **35 + 1 (moai root)**? 계산 재검토:
-  - §6.1 의 Final 24 inventory 재확인: Foundation 4 (core, cc, quality, thinking) + Workflow 8 (spec, tdd, ddd, testing, project, worktree, loop, gan-loop) + Design pipeline 4 (design-context, design-import, design-system, copywriting) + Domain 3 (backend, frontend, database) + Tools/Libraries 4 (ast-grep, mermaid, shadcn, nextra) + Ref 5 aggregate = **24 + moai root + research + pencil-integration + brand-design + db-docs + formats-data + electron + chrome-extension + auth + deployment** (이것들은 §6.1 에 없지만 §6.2 에서 KEEP)
-  - §6.2 의 "KEEP = 24 directories" roll-up 은 `moai` root 포함 + 2 UNCLEAR + 1 monitor 포함.
-  - 즉 24 = 목록 §6.1 + 추가 KEEP 들 (moai root, research, pencil-integration, db-docs, brand-design, formats-data, electron, chrome-extension, auth, deployment).
-
-**[OPEN QUESTION OQ-3]**: §6.1 (24 skill inventory) 와 §6.2 (verdict roll-up "KEEP=24") 사이의 정합성 확인 필요. §6.1 은 `moai-ref-*` 5개를 단일 aggregate item (24번) 으로 카운트하여 "24 skills" 라고 하지만, §6.2 의 KEEP=24 는 개별 디렉터리 수 기준. 실제 디렉터리 수는 §6.2 의 48 − 13 − 11 = 24 계산을 따르되 §6.1 열거 항목이 서로 다르다. 구현 시 §6.2 의 디렉터리 수를 authoritative 로 삼고 §6.1 은 논리적 그룹핑으로 취급.
+**Checkpoint (v1.1.0 — OQ-3 resolved per DL-2)**: Wave 1.4 끝에서:
+- `.claude/skills/` 디렉터리 수 = 48 (baseline) − 11 (T1.4-1..11 archive) + 1 (moai-design-system 신설, Wave 1.2) = **38** ✓
+- 이 값이 Stage 1 의 최종 목표이며 Wave 1.5, 1.6 에서는 디렉터리 수 변동 없음 (섹션 주입/agent rewrite 만).
+- **[OQ-3 CLOSED]** §6.2 가 디렉터리 수의 단일 SoT 이며 §6.1 은 논리적 그룹핑이다 (spec.md §6.1 노트 + §Decision Log DL-2 참조).
 
 ### Wave 1.5 — REFACTOR Label Injection + UNCLEAR Telemetry Window
 
 **목적**: REQ-WF001-011 (REFACTOR 라벨) + REQ-WF001-013 (UNCLEAR 60-day window) 집행.
 
-**REFACTOR 14개 skill** (§6.2 verdict = REFACTOR):
+**REFACTOR label 주입 대상 (v1.1.0 최종)** — archive 되지 않고 surviving 하는 REFACTOR verdict skill **6개**:
 
-1. `moai-workflow-testing`
-2. `moai-domain-backend`
-3. `moai-domain-frontend`
-4. `moai-domain-database` (Wave 1.2 에서 MERGE target 이 되었지만 §6.2 verdict 는 REFACTOR 이므로 이중 처리)
-5. `moai-platform-deployment`
-6. `moai-platform-auth`
-7. `moai-foundation-cc` (directory naming unify per §6.2 line 229 note)
-8. `moai-tool-svg` — [SKIP: RETIRE됨, Wave 1.4 에서 archive]
-9. `moai-docs-generation` — [SKIP: RETIRE됨]
-10. `moai-design-tools` — [SKIP: RETIRE됨]
-11. `moai-platform-database-cloud` — [SKIP: RETIRE됨]
+1. `moai-workflow-testing` (§6.2 line 238)
+2. `moai-domain-backend` (§6.2 line 249)
+3. `moai-domain-frontend` (§6.2 line 250)
+4. `moai-domain-database` (§6.2 line 251) — Wave 1.2 에서 MERGE target 이자 §6.2 verdict 는 REFACTOR → 두 라벨 모두 기록
+5. `moai-platform-deployment` (§6.2 line 259)
+6. `moai-platform-auth` (§6.2 line 260)
 
-실제로 Wave 1.5 에서 "REFACTOR 라벨 주입" 대상은 archive 안 된 REFACTOR 6개: `moai-workflow-testing`, `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-platform-deployment`, `moai-platform-auth` + 필요시 `moai-foundation-cc`.
+보조: `moai-foundation-cc` 는 directory naming unify 만 수행 (Refactor Notes 섹션 불필요).
+
+Archive 된 REFACTOR 항목 (`moai-tool-svg`, `moai-docs-generation`, `moai-design-tools`, `moai-platform-database-cloud`) 은 Wave 1.4 에서 이미 처리됨 (각 `RETIRED.md` 에 verdict 기록). 이전 v0.1.0 의 [SKIP] 리스트 노이즈는 v1.1.0 에서 제거.
 
 각 skill SKILL.md 하단 (Advanced Implementation 이후, Works Well With 이전)에 다음 섹션 추가:
 
@@ -528,89 +585,62 @@ grep -rl "moai-foundation-philosopher\|moai-workflow-thinking\|moai-design-craft
 
 ---
 
-## 7. OPEN QUESTIONS
+## 7. OPEN QUESTIONS (v1.1.0 audit response)
 
-다음 질문은 Wave 1.2 착수 전에 해소되어야 한다. 본 계획은 각 질문에 대한 잠정 가정 (assumption) 을 명시했으나 구현자는 user 확인을 받아야 한다.
+| OQ | Status (v1.1.0) | Resolution | Closing deliverable |
+|---|---|---|---|
+| OQ-1 (jit-docs verdict) | **CLOSED** | DL-3: single verdict = RETIRE (both R4 and v3 action columns) | spec.md §6.2 row 17 edited to RETIRE in R4 column |
+| OQ-2 (archive asymmetry) | **CLOSED** | Archive is dev-only; `diff -rq` excludes `.moai/archive/`. Template gets deletion, local gets `git mv`. | tasks.md T1.4-1..11 explicit archive-only-local step |
+| OQ-3 (§6.1 vs §6.2) | **CLOSED** | DL-2: §6.2 is single SoT; §6.1 demoted to logical grouping | spec.md §6.1 note prefix + §6.2 corrected roll-up |
+| OQ-4 (design-tools split) | **CLOSED** | DL-4: Pencil → `moai-workflow-pencil-integration`; Figma → archive/figma subdir | spec.md §6.2 row 31 updated; tasks.md T1.4-8 Substitute corrected |
+| OQ-5 (REFACTOR scope) | **DEFERRED** | DL-7: label-only in this SPEC; 6 sub-SPECs reserved (SPEC-V3R2-WF-001a..f) | Follow-up SPEC IDs registered in DL-7 |
+| OQ-6 (CI guard rails) | **PARTIALLY CLOSED** | DL-6: broken-fixture verification in T1.7-10/11 (REQ-015/016). Production CI implementation deferred to `SPEC-CI-SKILL-GUARD-001` | Fixtures at `.moai/specs/SPEC-V3R2-WF-001/fixtures/{ci-reject,trigger-drop}/` + T1.7-10/11 tasks |
+| OQ-7 (foundation-context verdict) | **CLOSED** | DL-3: single verdict = RETIRE | spec.md §6.2 row 5 edited to RETIRE in R4 column |
+| OQ-CONTRACT (new) | **HUMAN GATE** | DL-8: MIG-001 author must explicitly approve `skill-rename-map.yaml` schema v1 before Wave 1.4 landing commit | PR review trail + MIG-001 spec.md cross-reference check in T1.7-9 |
 
-### OQ-1: `moai-workflow-jit-docs` 의 최종 verdict
-
-- **이슈**: §6.2 line 243 은 R4 verdict = KEEP 이지만 v3 action = RETIRE (merged). 집계 상 RETIRE 로 보이나 KEEP 으로도 해석 가능.
-- **잠정 가정**: v3 action(RETIRE) 을 따라 Wave 1.4 에서 archive.
-- **확인 필요**: R4 audit 원문 (`/Users/goos/MoAI/moai-adk-go/.moai/design/v3-redesign/research/r4-skill-audit.md`) 의 `moai-workflow-jit-docs` entry.
-
-### OQ-2: Template 과 local 의 archive 비대칭
-
-- **이슈**: `.moai/archive/skills/v3.0/` 은 리포 단일 위치이지만 `diff -rq .claude/skills internal/template/templates/.claude/skills` 는 양쪽 skills 디렉터리만 비교하므로 archive 제외.
-- **잠정 가정**: Wave 1.4 에서 template 에서는 **삭제**, local 에서는 **archive 이동**. archive 는 dev-only → template 배포에 포함 안 됨.
-- **확인 필요**: SPEC constraint §7 이 이를 허용하는지, 또는 archive 를 template 에도 포함해야 하는지.
-
-### OQ-3: §6.1 (24 skill inventory) vs §6.2 (verdict roll-up) 정합성
-
-- **이슈**: §6.1 은 24개 목록이지만 `moai-ref-*` 를 단일 aggregate 로 카운트 → 실제 디렉터리 수 20. §6.2 roll-up 은 "KEEP=24 directories" 라고 디렉터리 기준으로 명시.
-- **잠정 가정**: §6.2 의 디렉터리 수를 authoritative 로 채택. §6.1 은 논리적 그룹핑.
-- **확인 필요**: Final 24 skill 디렉터리 목록을 `skill-rename-map.yaml` 의 `unchanged_keep` + 3 merge targets + 1 신규 (design-system) 로 정확히 열거. (본 §2.5 스키마 30개 이상 나열 — 재검토 필요.)
-
-### OQ-4: `moai-design-tools` Figma portion 의 행선지
-
-- **이슈**: §6.2 line 257 은 "Pencil → moai-workflow-pencil-integration; Figma → archive pending telemetry". Figma portion 은 별도 archive 인지, 또는 `moai-workflow-pencil-integration` 에 통합 불가한지 명확하지 않음.
-- **잠정 가정**: Figma portion 은 `moai-design-tools` 의 archive 하위에 원본 그대로 보존; 사용 시 `moai-workflow-pencil-integration` telemetry 재평가 후 부활 또는 영구 retire.
-- **확인 필요**: `moai-design-tools` bundled resource 중 Figma 전용 부분의 분량.
-
-### OQ-5: REFACTOR skill 의 실제 리팩터 scope
-
-- **이슈**: §6.2 는 REFACTOR 라벨만 명시하고 실제 scope 는 "shrink to API design decision matrix" (backend) 같이 모호.
-- **잠정 가정**: 본 SPEC 은 라벨 주입만 수행; 실제 리팩터는 별도 sub-SPEC.
-- **확인 필요**: 본 SPEC 머지 후 6개 REFACTOR skill 의 리팩터 sub-SPEC 작성 책임자.
-
-### OQ-6: CI guard rail (SKILL_RETIRE_NO_ARCHIVE, SKILL_TRIGGER_DROP) 의 구현 SPEC
-
-- **이슈**: REQ-WF001-015, 016 은 CI rejection 을 요구하지만 실제 CI 구현은 본 SPEC 에서 범위 밖.
-- **잠정 가정**: Wave 1.7 에서 manual dry-run 만 수행. CI 구현은 follow-up SPEC.
-- **확인 필요**: CI 구현 SPEC ID 지정 또는 본 SPEC 확장.
-
-### OQ-7: `moai-foundation-context` 의 §6.2 분류
-
-- **이슈**: §6.2 line 231 은 R4 verdict = KEEP, v3 action = "RETIRE (fold into foundation-core)". Wave 1.4 에서 archive 대상인지, 또는 내용만 흡수하고 디렉터리는 유지인지?
-- **잠정 가정**: v3 action(RETIRE) 를 따라 archive, 내용은 Wave 1.2 T5 에서 흡수됨.
-- **확인 필요**: R4 audit 의 원문 verdict 컬럼.
+All M1-blocking OQs (1, 3, 4, 7) are CLOSED. OQ-2 was non-blocking but is also CLOSED. OQ-5 and OQ-6 are documented deferrals, not blockers. OQ-CONTRACT is a HUMAN GATE explicitly gated before Wave 1.4 merge.
 
 ---
 
 ## 8. Milestones (우선순위 기반, 시간 추정 금지)
 
-| 우선순위 | Milestone | 수행 조건 |
+| 우선순위 | Milestone | Objective unblock 조건 (v1.1.0) |
 |---|---|---|
-| **Priority High** | M1: OPEN QUESTIONS 1, 2, 3, 7 해소 | User 확인 완료, Wave 1.2 착수 가능 |
-| **Priority High** | M2: Wave 1.1 (Baseline hash lock) | M1 완료 |
-| **Priority High** | M3: Wave 1.2 (MERGE target 확장 + 신규 design-system 생성) | M2 완료, Level 2 토큰 budget 사전 계산 |
-| **Priority High** | M4: Wave 1.3 (Trigger union dedup) | M3 완료, frontmatter validation 준비 |
-| **Priority High** | M5: Wave 1.4 (Archive + skill-rename-map) | M4 완료, `.moai/archive/` 디렉터리 생성 |
+| **Priority High** | M1: Audit response gates closed | 다음 **모두** 만족: (1) OQ-1 CLOSED (spec.md §6.2 row 17 R4 column = RETIRE), (2) OQ-3 CLOSED (spec.md §6.1 prefix note + §6.2 corrected roll-up present), (3) OQ-4 CLOSED (spec.md §6.2 row 31 Pencil destination = `moai-workflow-pencil-integration` + tasks.md T1.4-8 updated), (4) OQ-7 CLOSED (spec.md §6.2 row 5 R4 column = RETIRE), (5) OQ-CONTRACT HUMAN GATE scheduled (MIG-001 author review item created). OQ-2/5/6 는 비블로킹 deferral 로 명시적 기록 확인. |
+| **Priority High** | M2: Wave 1.1 (Baseline hash lock) | M1 완료 + baseline-hashes.txt 생성 |
+| **Priority High** | M3: Wave 1.2 (MERGE target 확장 + 신규 design-system 생성) | M2 완료, Level 2 토큰 budget 사전 계산 (4 merge targets 각 `wc -w * 0.75 ≤ 5000`) |
+| **Priority High** | M4: Wave 1.3 (Trigger union dedup) | M3 완료 + 4 target frontmatter YAML parse 성공 |
+| **Priority High** | M5: Wave 1.4 (Archive + skill-rename-map) | M4 완료 + `.moai/archive/skills/v3.0/` 생성 + OQ-CONTRACT HUMAN GATE 완료 (MIG-001 author approval on PR) |
 | **Priority Medium** | M6: Wave 1.5 (REFACTOR + Telemetry 라벨) | M5 완료 |
 | **Priority Medium** | M7: Wave 1.6 (Agent prompt rewrite) | M5 완료 (M6 병렬 가능) |
-| **Priority High** | M8: Wave 1.7 (CI verification + final make build) | M6, M7 완료 |
+| **Priority High** | M8: Wave 1.7 (CI verification + final make build + fixtures) | M6, M7 완료 + fixtures 디렉터리 2개 생성 (`ci-reject`, `trigger-drop`) |
 | **Priority Low** | M9: `baseline-hashes.txt` 삭제, `wave-1.7-report.md` 작성, PR 생성 | M8 통과 |
 
 Milestone 순서: M1 → M2 → M3 → M4 → M5 → {M6, M7 병렬} → M8 → M9.
+
+**M1 unblock objectivity note**: v1.1.0 에서 M1 의 수행 조건을 **파일-레벨 검증 가능한** 체크리스트로 재정의. Audit 검토자가 `grep` 기반으로 5개 closing deliverable 을 확인 가능해야 Wave 1.2 착수.
 
 ---
 
 ## 9. Definition of Done (DoD)
 
-본 SPEC 은 다음 기준을 모두 만족할 때 완료된다:
+본 SPEC (Stage 1) 은 다음 기준을 모두 만족할 때 완료된다:
 
-1. `.claude/skills/` 디렉터리 수 정확히 24 (REQ-WF001-001).
-2. `internal/template/templates/.claude/skills/` 디렉터리 수 정확히 24.
+1. `.claude/skills/` 디렉터리 수 정확히 **38** (REQ-WF001-001, Stage 1 target).
+2. `internal/template/templates/.claude/skills/` 디렉터리 수 정확히 **38**.
 3. `diff -rq .claude/skills internal/template/templates/.claude/skills` 가 empty (REQ-WF001-006).
-4. `§6.2 판정표 48 entry 전부` 에 대해 집행 결과가 예상 상태와 일치 (REQ-WF001-002).
-5. `.moai/archive/skills/v3.0/` 에 13개 archive 디렉터리 존재, 각 디렉터리에 `RETIRED.md` 존재 (REQ-WF001-008, 015).
-6. `.moai/decisions/skill-rename-map.yaml` 존재 및 §2.5 스키마 준수 (spec.md §3 Environment 요구사항).
+4. §6.2 판정표 48 entry 전부에 대해 **단일 verdict 라벨** 보장 (REQ-WF001-002) — T1.7-8 verdict-uniqueness validator 통과.
+5. `.moai/archive/skills/v3.0/` 에 **11개** archive 디렉터리 존재, 각 디렉터리에 `RETIRED.md` 존재 (REQ-WF001-008, 015).
+6. `.moai/decisions/skill-rename-map.yaml` 존재 및 §2.5 스키마 준수 (spec.md §9.1.1 shared contract + OQ-CONTRACT HUMAN GATE 승인 로그).
 7. Agency FROZEN skill 2개 (`moai-domain-copywriting`, `moai-domain-brand-design`) 의 SKILL.md 파일 해시가 Wave 1.1 baseline 과 정확히 일치 (REQ-WF001-005).
 8. Retired skill 이름이 `.claude/agents/` 및 template 쌍에 0 occurrence (REQ-WF001-014 grep check).
-9. `make build` 성공, `internal/template/embedded.go` 재생성 완료.
+9. `make build` 성공 (exit code 0 명시 검증), `internal/template/embedded.go` 재생성 완료.
 10. `go test ./...` 및 `go vet ./...` 통과.
 11. Wave 1.7 report (`.moai/specs/SPEC-V3R2-WF-001/wave-1.7-report.md`) 작성 완료.
-12. 본 SPEC 의 모든 OPEN QUESTIONS 가 user 확인을 통해 해소됨 (Commit 메시지 또는 PR description 에 기록).
-13. `acceptance.md` 의 15 AC 전부 PASS.
+12. 본 SPEC 의 OPEN QUESTIONS 상태가 §7 표와 동일 (OQ-1/3/4/7 CLOSED; OQ-2 CLOSED; OQ-5 DEFERRED; OQ-6 PARTIALLY CLOSED; OQ-CONTRACT HUMAN GATE 완료).
+13. `acceptance.md` 의 **18 AC** 전부 PASS (v1.1.0 에서 AC-16/17/18 추가됨).
+14. MIG-001 shared contract 검증 (T1.7-9): `skill-rename-map.yaml` schema v1 과 MIG-001 spec.md 의 `schema v1` 참조 일치.
+15. CI fixtures (`ci-reject`, `trigger-drop`) 존재 및 T1.7-10/11 fixture-verifier 가 non-zero exit 로 예상 거부 거동 증명.
 
 ---
 

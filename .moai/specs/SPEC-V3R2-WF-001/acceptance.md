@@ -1,45 +1,47 @@
 ---
 spec_id: SPEC-V3R2-WF-001
-title: Acceptance Criteria — Skill Consolidation (48 → 24)
-version: "0.1.0"
+title: Acceptance Criteria — Skill Consolidation Stage 1 (48 → 38)
+version: "1.1.0"
 status: draft
 created: 2026-04-24
-updated: 2026-04-24
-author: manager-spec (acceptance.md generation)
+updated: 2026-04-25
+author: manager-spec (acceptance.md generation; v1.1.0 revision post plan-audit 2026-04-25)
 related_plan: .moai/specs/SPEC-V3R2-WF-001/plan.md
 related_spec: .moai/specs/SPEC-V3R2-WF-001/spec.md
 ---
 
-# 수용 기준 — SPEC-V3R2-WF-001 Skill Consolidation (48 → 24)
+# 수용 기준 — SPEC-V3R2-WF-001 Skill Consolidation Stage 1 (48 → 38)
 
 > **형식**: 각 AC 는 Given-When-Then (GWT) 로 서술되며, 자동 검증을 위한 구체 `grep`/`ls`/`diff` 명령과 수동 관찰 방법을 포함한다.
 > **참조**: spec.md §6 (AC-WF001-01 ~ 15), plan.md §9 Definition of Done, tasks.md 의 각 Checkpoint.
 
 ---
 
-## AC-WF001-01: v3 skill directory count = 24
+## AC-WF001-01: v3 skill directory count = 38 (Stage 1)
 
 **Maps**: REQ-WF001-001
 
 **Given** v2.13.2 skill tree 가 `.claude/skills/` 에 48 디렉터리를 보유한 상태
 **When** SPEC-V3R2-WF-001 의 모든 7 Wave 가 머지되고 `make build` 가 실행됨
-**Then** `.claude/skills/` 의 디렉터리 수는 정확히 **24** 이어야 한다
+**Then** `.claude/skills/` 의 디렉터리 수는 정확히 **38** 이어야 한다 (48 − 11 RETIRE + 1 NEW = 38, Stage 1 target)
+
+> **Note (v1.1.0)**: 38→24 추가 감축은 `SPEC-V3R3-WF-001` 로 예약된 Stage 2 범위. 본 SPEC 의 AC-01 은 Stage 1 만 검증한다.
 
 ### Verification
 
 ```bash
 # Automated check
 actual=$(ls -d /Users/goos/MoAI/moai-adk-go/.claude/skills/*/ | wc -l | tr -d ' ')
-[ "$actual" = "24" ] || { echo "FAIL: expected 24, got $actual"; exit 1; }
+[ "$actual" = "38" ] || { echo "FAIL: expected 38 (Stage 1), got $actual"; exit 1; }
 
 # Template parity
 template=$(ls -d /Users/goos/MoAI/moai-adk-go/internal/template/templates/.claude/skills/*/ | wc -l | tr -d ' ')
-[ "$template" = "24" ] || { echo "FAIL: template mismatch: $template"; exit 1; }
+[ "$template" = "38" ] || { echo "FAIL: template mismatch: $template"; exit 1; }
 ```
 
 ### Evidence
 - Wave 1.7 `wave-1.7-report.md` 의 "Skill count" 섹션
-- `ls -d .claude/skills/*/` 출력 = 24 라인
+- `ls -d .claude/skills/*/` 출력 = 38 라인 (Stage 1 target)
 
 ---
 
@@ -213,30 +215,53 @@ grep -l "moai-foundation-thinking" /Users/goos/MoAI/moai-adk-go/.claude/agents/m
 
 ---
 
-## AC-WF001-08: Archive 없이 삭제 시 CI reject
+## AC-WF001-08: Archive 없이 삭제 시 CI reject (dry-run + broken-fixture verification)
 
 **Maps**: REQ-WF001-015 (Unwanted Behavior)
 
-**Given** 가상 시나리오: skill 디렉터리 삭제가 commit 에 포함되었으나 `.moai/archive/skills/v3.0/<name>/` 가 없는 경우
-**When** CI guard rail `SKILL_RETIRE_NO_ARCHIVE` 가 실행됨
-**Then** commit 이 reject 되어야 한다
+**Given** 두 가지 시나리오:
+(a) 실제 archive 디렉터리 스캔 (dry-run): 각 archive 하위에 `RETIRED.md` 가 존재해야 함.
+(b) **Broken fixture 시나리오 (v1.1.0 추가)**: `.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/` 하위에 의도적으로 `RETIRED.md` 가 누락된 fixture 가 존재.
+**When** (a) Wave 1.7 T1.7-5 dry-run 스크립트 실행, (b) T1.7-10 fixture-verifier 스크립트 실행
+**Then** (a) 는 모든 archive 엔트리에 대해 zero exit, (b) 는 fixture 에서 `SKILL_RETIRE_NO_ARCHIVE` 진단을 방출하며 **non-zero exit** 로 종료 (CI 거부 거동을 observable 하게 증명)
+
+> **Note (v1.1.0, DL-6)**: Production CI guard rail 구현은 여전히 follow-up SPEC `SPEC-CI-SKILL-GUARD-001` (proposed) 대상이나, 본 SPEC 은 **broken fixture 검증**으로 REQ-015 를 observable requirement 로 강화했다. 이전 v0.1.0 의 "dry-run only, unverifiable" 상태는 해소됨.
 
 ### Verification
 
-**본 SPEC 은 dry-run 검증만 포함 (OQ-6)**. 실제 CI 구현은 follow-up SPEC 대상.
-
 ```bash
-# Dry-run logic (Wave 1.7 manual check)
+# (a) Dry-run logic (Wave 1.7 T1.7-5)
 for archived in $(ls /Users/goos/MoAI/moai-adk-go/.moai/archive/skills/v3.0/ 2>/dev/null); do
   [ -f "/Users/goos/MoAI/moai-adk-go/.moai/archive/skills/v3.0/$archived/RETIRED.md" ] || {
     echo "FAIL: $archived has no RETIRED.md"; exit 1;
   }
 done
+
+# (b) Broken-fixture verification (Wave 1.7 T1.7-10)
+# Fixture layout (intentionally broken):
+#   .moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/archive-without-retired-md/
+#     └── SKILL.md              (present)
+#     (RETIRED.md intentionally MISSING)
+FIXTURE_DIR=/Users/goos/MoAI/moai-adk-go/.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject
+# Run the same guard logic against the fixture; expect NON-ZERO exit.
+# If the script exits 0 against a broken fixture, the guard is broken → test fails.
+set +e
+for archived in $(ls "$FIXTURE_DIR" 2>/dev/null); do
+  if [ ! -f "$FIXTURE_DIR/$archived/RETIRED.md" ]; then
+    echo "SKILL_RETIRE_NO_ARCHIVE: $archived"
+    exit 1  # Expected rejection
+  fi
+done
+set -e
+# If we reach here, the broken fixture did NOT trip the guard — this is a failure of the test itself.
+echo "FAIL: broken fixture did not trigger SKILL_RETIRE_NO_ARCHIVE"; exit 2
 ```
 
 ### Evidence
-- Wave 1.7 T1.7-5 의 archive completeness log
-- Follow-up SPEC reference (`SKILL_RETIRE_NO_ARCHIVE` hook 구현)
+- Wave 1.7 T1.7-5 의 archive completeness log (real archives)
+- Wave 1.7 T1.7-10 의 fixture-verifier log (broken fixture 거부 증명)
+- `.moai/specs/SPEC-V3R2-WF-001/fixtures/ci-reject/` 존재
+- Follow-up SPEC reference: `SPEC-CI-SKILL-GUARD-001` for production CI hook
 
 ---
 
@@ -438,6 +463,154 @@ count=$(grep -rl "moai-foundation-philosopher\|moai-workflow-thinking\|moai-desi
 
 ---
 
+## AC-WF001-16: MIG-001 shared contract — skill-rename-map.yaml schema integrity
+
+**Maps**: REQ-WF001-009
+
+**Given** Wave 1.4 T1.4-12 가 `.moai/decisions/skill-rename-map.yaml` 를 §2.5 스키마 v1 로 생성한 상태
+**When** Wave 1.7 T1.7-9 (MIG-001 contract verifier) 가 실행됨
+**Then** 다음 **모두** 만족:
+  (a) YAML parse 성공,
+  (b) top-level `version: 1` 확인,
+  (c) `merges`, `retires`, `refactors`, `unchanged_keep` 4개 section 존재,
+  (d) `merges` 항목 수 ≥ 10 (본 SPEC 의 실제 merge 수), `retires` ≥ 1 (moai-tool-svg),
+  (e) `.moai/specs/SPEC-V3R2-MIG-001/spec.md` 에 `schema v1` 또는 `skill-rename-map.yaml` 문자열이 포함되어 있어 co-signed 계약 참조가 성립함.
+
+### Verification
+
+```bash
+ARTIFACT=/Users/goos/MoAI/moai-adk-go/.moai/decisions/skill-rename-map.yaml
+MIG_SPEC=/Users/goos/MoAI/moai-adk-go/.moai/specs/SPEC-V3R2-MIG-001/spec.md
+
+# (a) YAML parse
+python3 -c "import yaml; yaml.safe_load(open('$ARTIFACT'))" || { echo "FAIL: YAML parse"; exit 1; }
+
+# (b) version = 1
+python3 -c "
+import yaml, sys
+d = yaml.safe_load(open('$ARTIFACT'))
+assert d.get('version') == 1, f'version={d.get(\"version\")}'
+" || { echo "FAIL: version != 1"; exit 1; }
+
+# (c)+(d) section counts
+python3 -c "
+import yaml, sys
+d = yaml.safe_load(open('$ARTIFACT'))
+for key in ('merges', 'retires', 'refactors', 'unchanged_keep'):
+    assert key in d, f'missing {key}'
+    assert isinstance(d[key], list), f'{key} not list'
+assert len(d['merges']) >= 10
+assert len(d['retires']) >= 1
+" || { echo "FAIL: schema structure"; exit 1; }
+
+# (e) MIG-001 cross-reference
+grep -qE 'schema v1|skill-rename-map\.yaml' "$MIG_SPEC" || {
+  echo "FAIL: MIG-001 spec.md missing schema v1 cross-reference (HUMAN GATE OQ-CONTRACT)"
+  exit 1
+}
+```
+
+### Evidence
+- `.moai/decisions/skill-rename-map.yaml` 존재 및 §2.5 스키마 준수
+- `.moai/specs/SPEC-V3R2-MIG-001/spec.md` 의 `schema v1` 참조 (HUMAN GATE OQ-CONTRACT 완료 증명)
+- Wave 1.7 T1.7-9 log
+
+---
+
+## AC-WF001-17: WF-002 dependency invariant — moai/workflows/ untouched
+
+**Maps**: REQ-WF001-012
+
+**Given** `.claude/skills/moai/workflows/` 의 현재 상태 (Wave 시작 전 hash set)
+**When** 본 SPEC 의 Wave 1.1 ~ 1.7 이 모두 완료됨
+**Then** `.claude/skills/moai/workflows/` 의 모든 파일 내용과 디렉터리 구조가 **byte-identical** (본 SPEC 은 WF-002 의존 조건을 준수하여 moai/workflows/ 를 수정하지 않음)
+
+### Verification
+
+```bash
+# Wave 1.1 T1.1-1 이 moai/workflows/ baseline hash 를 함께 기록한다 (v1.1.0 추가 요구사항).
+BASELINE=/Users/goos/MoAI/moai-adk-go/.moai/specs/SPEC-V3R2-WF-001/baseline-hashes.txt
+
+# Current hashes (Wave 1.7)
+current=$(find /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows -type f -name '*.md' \
+  -exec shasum -a 256 {} \; | sort)
+
+# Baseline subset
+baseline_workflows=$(grep '/moai/workflows/' "$BASELINE" | sort)
+
+# Exact match required
+diff <(echo "$baseline_workflows" | awk '{print $1}') <(echo "$current" | awk '{print $1}') \
+  || { echo "FAIL: moai/workflows/ was modified by this SPEC (REQ-WF001-012 violation)"; exit 1; }
+
+# Template parity
+template_workflows=$(find /Users/goos/MoAI/moai-adk-go/internal/template/templates/.claude/skills/moai/workflows \
+  -type f -name '*.md' -exec shasum -a 256 {} \; | sort)
+diff <(echo "$current" | awk '{print $1}' | sort) <(echo "$template_workflows" | awk '{print $1}' | sort) \
+  || { echo "FAIL: moai/workflows/ template vs local divergence"; exit 1; }
+```
+
+### Evidence
+- Wave 1.1 baseline-hashes.txt 에 `moai/workflows/*.md` 해시 포함 (v1.1.0 요구사항)
+- Wave 1.7 T1.7-12 verification log
+- `git diff HEAD~N -- .claude/skills/moai/workflows/` 가 empty (보조 확인)
+
+---
+
+## AC-WF001-18: SKILL_TRIGGER_DROP broken-fixture rejection
+
+**Maps**: REQ-WF001-016 (Unwanted Behavior)
+
+**Given** `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/` 에 의도적으로 trigger 를 누락한 merge target fixture 가 존재
+**When** Wave 1.7 T1.7-11 (trigger-drop fixture verifier) 가 fixture 를 스캔
+**Then** verifier 는 `SKILL_TRIGGER_DROP: <trigger_name>` 진단을 출력하며 **non-zero exit** 로 종료 (CI 가 실제로 이 조건에서 거부할 것임을 증명)
+
+> **Note (v1.1.0, DL-6)**: REQ-016 의 production CI 구현은 `SPEC-CI-SKILL-GUARD-001` 에서 다룬다. 본 SPEC 은 fixture 검증으로 observable 요구사항을 만족시킨다 (이전 v0.1.0 의 unverifiable 상태 해소).
+
+### Verification
+
+```bash
+# Fixture layout:
+#   .moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/
+#     ├── source-skill-a/SKILL.md       (frontmatter triggers: [alpha, beta, gamma])
+#     ├── source-skill-b/SKILL.md       (frontmatter triggers: [delta])
+#     └── merge-target/SKILL.md         (frontmatter triggers: [alpha, beta])  # DROPS gamma + delta
+FIXTURE_DIR=/Users/goos/MoAI/moai-adk-go/.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop
+
+set +e
+python3 <<'PY'
+import yaml, os, sys
+fx = os.environ.get('FIXTURE_DIR', '.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop')
+def load(p):
+    text = open(p).read()
+    if text.startswith('---'):
+        end = text.find('---', 3)
+        return yaml.safe_load(text[3:end])
+    return {}
+src_triggers = set()
+for src in ('source-skill-a', 'source-skill-b'):
+    d = load(os.path.join(fx, src, 'SKILL.md'))
+    src_triggers.update(d.get('triggers', []))
+tgt = load(os.path.join(fx, 'merge-target', 'SKILL.md'))
+tgt_triggers = set(tgt.get('triggers', []))
+dropped = src_triggers - tgt_triggers
+if dropped:
+    for t in sorted(dropped):
+        print(f'SKILL_TRIGGER_DROP: {t}')
+    sys.exit(1)
+sys.exit(0)
+PY
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || { echo "FAIL: broken trigger-drop fixture did not trip guard"; exit 2; }
+```
+
+### Evidence
+- `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/` 존재
+- Wave 1.7 T1.7-11 log
+- Follow-up SPEC reference: `SPEC-CI-SKILL-GUARD-001`
+
+---
+
 ## Edge Cases (보조 검증)
 
 ### EC-1: `make build` idempotency
@@ -499,18 +672,18 @@ print('OK')
 
 ---
 
-## Definition of Done (DoD) — 최종 체크리스트
+## Definition of Done (DoD) — 최종 체크리스트 (v1.1.0)
 
-본 SPEC 은 다음 **모든** 조건이 만족될 때 완료로 간주된다:
+본 SPEC (Stage 1) 은 다음 **모든** 조건이 만족될 때 완료로 간주된다:
 
-- [ ] AC-WF001-01 PASS: `.claude/skills/` = 24 directories (template 동등)
-- [ ] AC-WF001-02 PASS: §6.2 판정표 48 entry 전부에 verdict 존재
+- [ ] AC-WF001-01 PASS: `.claude/skills/` = **38** directories (template 동등; Stage 1 target)
+- [ ] AC-WF001-02 PASS: §6.2 판정표 48 entry 전부에 단일 verdict 존재
 - [ ] AC-WF001-03 PASS: thinking triplet trigger union
 - [ ] AC-WF001-04 PASS: `moai-tool-svg/RETIRED.md` 생성
 - [ ] AC-WF001-05 PASS: `diff -rq` empty
 - [ ] AC-WF001-06 PASS: agency FROZEN hash match
 - [ ] AC-WF001-07 PASS: agent prompt 내 retired 이름 0 occurrence
-- [ ] AC-WF001-08 PASS: archive-less deletion CI dry-run 통과
+- [ ] AC-WF001-08 PASS: archive-less deletion dry-run + broken-fixture verifier 통과 (non-zero exit 증명)
 - [ ] AC-WF001-09 PASS: templates/docs-generation bundled resource 이관됨
 - [ ] AC-WF001-10 PASS: `moai-foundation-thinking` 섹션 포함
 - [ ] AC-WF001-11 PASS: `moai-design-system` trigger union
@@ -518,9 +691,12 @@ print('OK')
 - [ ] AC-WF001-13 PASS: 2개 UNCLEAR skill Telemetry Window
 - [ ] AC-WF001-14 PASS: 6개 REFACTOR skill 에 Refactor Notes 섹션
 - [ ] AC-WF001-15 PASS: related-skills 자동 재작성
+- [ ] **AC-WF001-16 PASS (신규 v1.1.0)**: MIG-001 shared contract — `skill-rename-map.yaml` schema integrity + MIG-001 spec.md cross-reference
+- [ ] **AC-WF001-17 PASS (신규 v1.1.0)**: `.claude/skills/moai/workflows/` byte-identical to baseline (REQ-WF001-012 invariant)
+- [ ] **AC-WF001-18 PASS (신규 v1.1.0)**: `SKILL_TRIGGER_DROP` broken-fixture verifier non-zero exit
 - [ ] EC-1 ~ 4 edge case 4건 모두 PASS
-- [ ] `make build` 성공, `go test ./...`, `go vet ./...` 통과
-- [ ] OPEN QUESTIONS (OQ-1 ~ OQ-7) 모두 user 확인으로 해소
+- [ ] `make build` 성공 (exit 0 확인), `go test ./...`, `go vet ./...` 통과
+- [ ] plan.md §7 OQ 표의 모든 CLOSED 항목 deliverable 확인 완료 (OQ-1/2/3/4/7); OQ-5 DEFERRED / OQ-6 PARTIALLY CLOSED / OQ-CONTRACT HUMAN GATE 완료
 - [ ] `wave-1.7-report.md` 작성, `baseline-hashes.txt` 정리
 
-**AC 총 15개 + Edge Case 4개 = 19개 관찰가능 검증 포인트**. 모두 PASS 시 `<moai>COMPLETE</moai>` 마커 부여.
+**AC 총 18개 + Edge Case 4개 = 22개 관찰가능 검증 포인트**. 모두 PASS 시 `<moai>COMPLETE</moai>` 마커 부여.

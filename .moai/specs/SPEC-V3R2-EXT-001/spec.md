@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-EXT-001
 title: Typed Memory Taxonomy (4-type enforcement)
-version: "0.1.0"
+version: "1.1.0"
 status: draft
-created: 2026-04-23
-updated: 2026-04-23
+created_at: 2026-04-23
+updated_at: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1 High
 phase: "v3.0.0 — Phase 7 — Extension"
@@ -17,7 +17,8 @@ related_theme: "Theme 7 — Extension"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
-tags: "memory, taxonomy, user, feedback, project, reference, staleness, v3"
+labels: [memory, taxonomy, user, feedback, project, reference, staleness, v3]
+issue_number: null
 ---
 
 # SPEC-V3R2-EXT-001: Typed Memory Taxonomy
@@ -27,6 +28,7 @@ tags: "memory, taxonomy, user, feedback, project, reference, staleness, v3"
 | Version | Date       | Author | Description                                                                |
 |---------|------------|--------|----------------------------------------------------------------------------|
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — 4-type memory taxonomy, staleness, MEMORY.md cap            |
+| 1.1.0   | 2026-04-25 | manager-spec | Addressed plan-audit warnings (OPEN-3 memo collision resolved via sub-package strategy, OPEN-2 static-keyword v1 locked, frontmatter schema canonicalized, 200-line claim weakened, AC-04 split, REQ-002 coverage strengthened) |
 
 ---
 
@@ -90,7 +92,7 @@ pattern-library §M-1: "Four typed memory kinds with distinct lifetimes and prom
 - Memory 파일은 text markdown이며 frontmatter를 가질 수 있다.
 - SessionStart 훅은 Go handler로 실행되고 file mtime을 읽을 수 있다.
 - Agent memory content는 민감정보가 아니므로 system-reminder wrap은 안전하다.
-- MEMORY.md 200줄 cap은 Claude Code의 컨텍스트 로딩 한계(200줄 후 truncate)와 일치한다.
+- MEMORY.md 200줄 cap은 Claude Code의 context-loader 동작에 대한 **documented target**이다. 프로젝트 내부 문서(Agent persistent memory 규약) 및 관측된 로더 동작을 근거로 하되, 정확한 하드 truncation 라인 수치는 T1에서 Claude Code 공식 문서로 재확인한다(verify before T1). 재확인 결과 값이 다르면 plan.md §3.3 + `memory.index_line_cap` 기본값을 함께 조정한다.
 
 ---
 
