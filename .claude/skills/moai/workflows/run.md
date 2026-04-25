@@ -159,9 +159,150 @@ See `.claude/rules/moai/workflow/worktree-integration.md` for complete path rule
 
 All phases execute sequentially. Each phase receives outputs from all previous phases as context.
 
-### Phase 0.5: Plan Audit Gate (TBD — see SPEC-WF-AUDIT-GATE-001)
+### Phase 0.5: Plan Audit Gate
 
-<!-- Plan Audit Gate body will be filled in per SPEC-WF-AUDIT-GATE-001 Phase B -->
+**Purpose**: Mandatory independent audit of plan artifacts before any implementation begins.
+Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 1.
+Source: SPEC-WF-AUDIT-GATE-001 (REQ-WAG-001 ~ REQ-WAG-007).
+
+**Scope**: Every `/moai run <SPEC-ID>` invocation. Never skipped — not even in `minimal` harness.
+
+#### Step 1: Compute Plan Artifact Hash (Cache Key)
+
+Compute a combined SHA-256 hash of all plan artifacts present in `.moai/specs/<SPEC-ID>/`:
+- `spec.md` (required)
+- `plan.md` (if present)
+- `acceptance.md` (if present)
+- `tasks.md` (if present)
+
+Hash algorithm: SHA-256 of the UTF-8 content of each file, sorted by filename, concatenated.
+Whitespace normalization: collapse all runs of whitespace to a single space before hashing (whitespace-insensitive cache).
+Store hash as `plan_artifact_hash` for Step 2 cache lookup.
+
+#### Step 2: Check 24-Hour Audit Cache
+
+Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date).
+
+Cache HIT conditions (all must be true):
+1. File exists and the most recent audit run entry has `verdict: PASS`
+2. `plan_artifact_hash` in the cached entry matches `plan_artifact_hash` from Step 1
+3. `audit_at` timestamp in the cached entry is within 24 hours of now (UTC)
+
+If cache HIT:
+- Log: `[plan-audit] cache hit (verdict=PASS, age=<Nh>)`
+- Append to `.moai/specs/<SPEC-ID>/progress.md`: `- audit_cache_hit: true` and `- cached_audit_at: <T0>`
+- Skip Step 3 and proceed to Phase 1.
+
+If cache MISS: proceed to Step 3.
+
+#### Step 3: Invoke plan-auditor Subagent
+
+Delegation pattern (single invocation, main session only):
+
+> "Use the plan-auditor subagent to audit the SPEC at `.moai/specs/<SPEC-ID>/` — plan artifacts:
+> spec.md, plan.md, acceptance.md, tasks.md (if present). Produce a verdict (PASS/FAIL) and
+> write the report to `.moai/reports/plan-audit/<SPEC-ID>-review-<iteration>.md`."
+
+Do NOT pass the implementation context or any prior conversation to plan-auditor.
+plan-auditor enforces context isolation automatically.
+
+Timeout: 60 seconds. On timeout, treat as INCONCLUSIVE (Step 4d).
+
+#### Step 4: Verdict Routing (4-Way Branch)
+
+Read the verdict from the report file produced by plan-auditor.
+
+**4a. PASS**
+- Log: `[plan-audit] verdict=PASS, persisted to progress.md, proceeding to Phase 1`
+- Proceed to Step 5 (persist), then continue to Phase 1.
+
+**4b. FAIL (and grace window ACTIVE — today < merge_date + 7 days)**
+- Log: `[plan-audit] verdict=FAIL [grace-window], D-<N> until auto-block`
+- Grace window start: read from `.moai/state/audit-gate-merge-at.txt` (ISO-8601).
+- If `MOAI_AUDIT_GATE_T0` env var is set, use it as T0 override (test injection).
+- Emit warning to stdout: `[grace-window] D-<N> (auto-block activates at T0+7)`
+- Record `audit_verdict: FAIL_WARNED` in progress.md.
+- Proceed to Phase 1 (warn-only, not blocked).
+
+**4c. FAIL (and grace window EXPIRED — today >= merge_date + 7 days)**
+- Log: `[plan-audit] verdict=FAIL, blocking Run phase, report=<path>`
+- Surface the audit report path and the list of must-pass failures to stdout.
+- Do NOT proceed to Phase 1 automatically.
+- [HARD] Present options to user via AskUserQuestion (orchestrator responsibility):
+  - Option 1 (Recommended): Revise SPEC — fix the defects, then re-run `/moai run`
+  - Option 2: Override and proceed — skip the gate (sets `--skip-audit` implicitly, records BYPASSED)
+  - Option 3: Abort — exit without any implementation
+
+**4d. INCONCLUSIVE (timeout, malformed output, error, or filesystem failure)**
+- Log: `[plan-audit] verdict=INCONCLUSIVE, falling back to manual prompt`
+- Record `verdict: INCONCLUSIVE` in the daily report.
+- [HARD] Do NOT auto-PASS. Present options to user via AskUserQuestion:
+  - Option 1 (Recommended): Retry audit — re-invoke plan-auditor (max 3 retries total)
+  - Option 2: Proceed with acknowledgement — user accepts responsibility; records `inconclusive_acknowledged_by: <user.name>`
+  - Option 3: Abort — exit without any implementation
+
+#### Step 5: Persist Verdict and Daily Report
+
+**progress.md** (append to `.moai/specs/<SPEC-ID>/progress.md`):
+```yaml
+- audit_verdict: PASS          # or FAIL_WARNED, BYPASSED, INCONCLUSIVE
+- audit_report: .moai/reports/plan-audit/<SPEC-ID>-review-<N>.md
+- audit_at: <ISO-8601 UTC>
+- auditor_version: plan-auditor v<version>
+```
+
+**Daily report** (append to `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md`):
+Path is always `.moai/reports/plan-audit/` + SPEC-ID + `-` + current date (YYYY-MM-DD) + `.md`.
+[HARD] Path must be validated with `filepath.Clean` and confirmed to reside inside the project's `.moai/reports/plan-audit/` directory (path traversal prevention).
+
+Append format (each audit run is a numbered section):
+```markdown
+## Audit Run <N> of <total>
+
+- verdict: PASS | FAIL | BYPASSED | INCONCLUSIVE | FAIL_WARNED
+- report_path: .moai/reports/plan-audit/<SPEC-ID>-review-<N>.md
+- audit_at: <ISO-8601 UTC>
+- run_trigger: automatic | manual | bypassed | inconclusive
+- plan_artifact_hash: <hash>
+- auditor_version: <identifier>
+```
+
+When the same SPEC is audited multiple times in the same day, each run appends a new section.
+
+### When --skip-audit Flag Is Provided
+
+When the user passes `--skip-audit` flag OR sets `MOAI_SKIP_PLAN_AUDIT=1` env var:
+
+1. Skip Steps 1–4 entirely.
+2. Read user identity from `.moai/config/sections/user.yaml` → `user.name`.
+3. Collect bypass rationale:
+   - **Interactive** (stdin is a TTY): Collect via AskUserQuestion: "Provide bypass rationale:"
+   - **Non-interactive** (stdin is not a TTY, e.g., CI): Auto-record `bypass_reason: "non-interactive"`
+4. Sanitize rationale: escape Markdown special characters (`*`, `_`, `[`, `]`, etc.) before writing.
+5. Append to daily report:
+   ```yaml
+   verdict: BYPASSED
+   bypass_at: <ISO-8601 UTC>
+   bypass_user: <user.name>
+   bypass_reason: "<sanitized rationale>"
+   ```
+6. Proceed to Phase 1 under the user's explicit responsibility.
+
+### When Plan-Auditor Fails or Times Out
+
+Plan-auditor failure cases classified as INCONCLUSIVE (REQ-WAG-007):
+
+| Failure Case | Classification | Notes |
+|-------------|----------------|-------|
+| Timeout (> 60s) | INCONCLUSIVE | Retry up to 3 times total |
+| Malformed output / missing verdict field | INCONCLUSIVE | Log raw output for debugging |
+| panic / unhandled exception | INCONCLUSIVE | Capture stack trace if available |
+| Filesystem write failure (report directory) | INCONCLUSIVE | Falls back to AC-WAG-10 handling |
+
+[HARD] INCONCLUSIVE is never equivalent to PASS. Automatic pass-through on failure is prohibited.
+
+Retry limit (OPEN QUESTION Q3 resolution): Maximum 3 total plan-auditor invocations per `/moai run`
+call (including retries). After 3 INCONCLUSIVE results, force AskUserQuestion with proceed/abort only.
 
 ### Phase 0.6: Environment Assessment (Conditional)
 
