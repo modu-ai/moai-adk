@@ -320,6 +320,11 @@ When `team_mode` is empty or `"agent-teams"` in llm.yaml, use parallel teammates
 Same as CG Mode Phase 0.5 above — execute in main session before TeamCreate.
 Verdict=PASS required before `TeamCreate(team_name: "moai-run-SPEC-XXX")` is called.
 
+Invokes plan-auditor subagent once in main session. INCONCLUSIVE verdict (timeout/malformed/error)
+falls back to AskUserQuestion (retry/proceed/abort) — never auto-PASS.
+Reports persist to `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md`.
+`--skip-audit` / `MOAI_SKIP_PLAN_AUDIT=1` records BYPASSED verdict in the same report.
+
 Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
 
 ### Phase 1: Team Setup
