@@ -256,6 +256,7 @@ Trigger conditions (any one activates discovery mode):
 
 Discovery process:
 - Detect insufficient context via trigger conditions above
+- First, preload AskUserQuestion schema via `ToolSearch(query: "select:AskUserQuestion")` (deferred tool prerequisite)
 - Conduct Socratic interview via AskUserQuestion (max 4 questions per round)
 - Repeat rounds with new questions based on previous answers
 - Continue until 100% intent clarity is achieved
@@ -379,6 +380,18 @@ Exceptions (no interview needed):
 - Direct file reads when path is specified
 - Command invocations with all required arguments
 - Continuation of previously confirmed work in the same session
+
+### Deferred Tool Preload Requirement [HARD]
+
+`AskUserQuestion` is a **deferred tool** in Claude Code — its schema is NOT loaded at session start. Before **every** `AskUserQuestion` invocation, the orchestrator MUST execute:
+
+```
+ToolSearch(query: "select:AskUserQuestion")
+```
+
+Failure to preload results in `InputValidationError: tool not in schema`. This precondition applies to all deferred tools, not only `AskUserQuestion`.
+
+Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full procedure, Socratic interview structure, and anti-pattern catalog.
 
 ---
 
