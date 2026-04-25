@@ -147,6 +147,87 @@ func TestAppendToProgressWritesFourFields(t *testing.T) {
 	}
 }
 
+// TestRunTriggerLabels verifies all trigger labels. (coverage for runTriggerLabel)
+func TestRunTriggerLabels(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		verdict Verdict
+		want    string
+	}{
+		{VerdictBypassed, "bypassed"},
+		{VerdictInconclusive, "inconclusive"},
+		{VerdictPass, "automatic"},
+		{VerdictFail, "automatic"},
+		{VerdictFailWarned, "automatic"},
+	}
+
+	for _, tt := range tests {
+		got := runTriggerLabel(tt.verdict)
+		if got != tt.want {
+			t.Errorf("runTriggerLabel(%q) = %q, want %q", tt.verdict, got, tt.want)
+		}
+	}
+}
+
+// TestAppendRunInconclusiveVerdict verifies INCONCLUSIVE is recorded in report.
+func TestAppendRunInconclusiveVerdict(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	reportDir := filepath.Join(projectDir, ".moai", "reports", "plan-audit")
+
+	now := time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
+	reporter := &FileAuditReporter{
+		ReportDir:  reportDir,
+		ProjectDir: projectDir,
+		Clock:      FakeClock{FixedTime: now},
+	}
+
+	result := &AuditResult{
+		Verdict:        VerdictInconclusive,
+		AuditAt:        now,
+		AuditorVersion: "plan-auditor/v1",
+	}
+
+	if err := reporter.AppendRun("SPEC-INC-001", result); err != nil {
+		t.Fatalf("AppendRun: %v", err)
+	}
+
+	filePath := filepath.Join(reportDir, "SPEC-INC-001-2026-04-25.md")
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "INCONCLUSIVE") {
+		t.Error("report missing INCONCLUSIVE verdict")
+	}
+	if !strings.Contains(content, "run_trigger: inconclusive") {
+		t.Error("report missing run_trigger: inconclusive")
+	}
+}
+
+// TestNewFileAuditReporterDefaults verifies constructor defaults.
+func TestNewFileAuditReporterDefaults(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	reportDir := filepath.Join(projectDir, ".moai", "reports", "plan-audit")
+	reporter := NewFileAuditReporter(projectDir, reportDir)
+
+	if reporter.ProjectDir != projectDir {
+		t.Errorf("ProjectDir = %q, want %q", reporter.ProjectDir, projectDir)
+	}
+	if reporter.ReportDir != reportDir {
+		t.Errorf("ReportDir = %q, want %q", reporter.ReportDir, reportDir)
+	}
+	if reporter.Clock == nil {
+		t.Error("Clock is nil, want SystemClock")
+	}
+}
+
 // TestAppendToProgressIncludesCacheFields verifies cache hit fields. AC-WAG-09
 func TestAppendToProgressIncludesCacheFields(t *testing.T) {
 	t.Parallel()

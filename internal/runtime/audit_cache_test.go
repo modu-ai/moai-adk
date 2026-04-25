@@ -169,6 +169,63 @@ func TestValidateReportDirPathTraversalPrevented(t *testing.T) {
 	}
 }
 
+// TestListSpecArtifactFiles verifies artifact enumeration.
+func TestListSpecArtifactFiles(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	// Create only spec.md and acceptance.md.
+	for _, name := range []string{"spec.md", "acceptance.md"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("content"), 0o644); err != nil {
+			t.Fatalf("WriteFile %s: %v", name, err)
+		}
+	}
+
+	files, err := ListSpecArtifactFiles(dir)
+	if err != nil {
+		t.Fatalf("ListSpecArtifactFiles: %v", err)
+	}
+
+	if len(files) != 2 {
+		t.Errorf("got %d files, want 2", len(files))
+	}
+	// Files must be sorted.
+	if files[0] != "acceptance.md" || files[1] != "spec.md" {
+		t.Errorf("files not sorted correctly: %v", files)
+	}
+}
+
+// TestCacheStoreNonPassIgnored verifies non-PASS verdicts are not cached.
+func TestCacheStoreNonPassIgnored(t *testing.T) {
+	t.Parallel()
+
+	cache := NewInMemoryCache()
+	t0 := time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
+
+	for _, v := range []Verdict{VerdictFail, VerdictBypassed, VerdictInconclusive} {
+		cache.Store("SPEC-NOSTORE-001", "hash1", &AuditResult{
+			Verdict: v,
+			AuditAt: t0,
+		})
+		_, hit := cache.Lookup("SPEC-NOSTORE-001", "hash1", t0.Add(1*time.Hour))
+		if hit {
+			t.Errorf("non-PASS verdict %q was cached (should not be)", v)
+		}
+	}
+}
+
+// TestSystemClockNow verifies SystemClock returns non-zero time.
+func TestSystemClockNow(t *testing.T) {
+	t.Parallel()
+
+	var clk SystemClock
+	now := clk.Now()
+	if now.IsZero() {
+		t.Error("SystemClock.Now() returned zero time")
+	}
+}
+
 // TestComputeHashEmptyDirFails verifies hash fails when spec.md is missing.
 func TestComputeHashEmptyDirFails(t *testing.T) {
 	t.Parallel()
