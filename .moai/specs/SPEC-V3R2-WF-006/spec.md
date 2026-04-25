@@ -2,7 +2,7 @@
 id: SPEC-V3R2-WF-006
 title: Output Styles Alignment (MoAI, Einstein)
 version: "1.1.0"
-status: draft
+status: completed
 created: 2026-04-23
 updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
@@ -228,6 +228,53 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 - 구현 경로 예상:
   - `.claude/rules/moai/core/settings-management.md` (outputStyle precedence 추가)
   - `internal/template/output_styles_audit_test.go` (신규 또는 확장)
+
+---
+
+## Implementation Notes (완료 기록)
+
+### Completion Summary
+
+**Status**: Completed (2026-04-25)
+
+**Commits**: 2 implementation commits (plus SPEC sync in Sync phase)
+
+**Deliverables**:
+- Output style frontmatter schema validation implemented (REQ-WF006-001, AC-WF006-01/02)
+- Loading precedence documented: project > user > hardcoded default "MoAI" (REQ-WF006-004, AC-WF006-05/06)
+- Fallback warning mechanism verified: `OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI` emitted to stderr (REQ-WF006-008, AC-WF006-08)
+- CI drift check extended to output-styles (REQ-WF006-010, AC-WF006-10)
+- Schema audit CI test suite added (`internal/template/output_styles_audit_test.go`) (REQ-WF006-007, AC-WF006-09)
+- Third-style admission gate (`OUTPUT_STYLE_UNVERIFIED`) configured (REQ-WF006-014, AC-WF006-11)
+- Settings management documentation updated with precedence table (REQ-WF006-004)
+
+### Key Implementation Decisions (v1.1.0 Amendments)
+
+1. **OPEN-A Resolution** (live-tree path discovery): Selected `runtime.Caller(0)` + ascent to `.moai/` directory for path discovery; T0 includes explicit ascent smoke experiment.
+2. **REQ-WF006-008 sink concretization**: Fallback warning emitted to `stderr` (Claude Code session stderr stream); optional mirror to session log permitted.
+3. **HUMAN GATE conversion**: Plan-audit manual checks converted to objective PR-comment trailer markers (`Audit-Manual-Check-*: passed`).
+4. **REQ-WF006-011 differentiation**: Project-level override clause made explicit, distinct from REQ-WF006-014 (third-style admission gate).
+5. **Commit message policy**: Updated to cite `.moai/config/sections/language.yaml git_commit_messages: ko` per language standards.
+
+### Test Coverage
+
+- AC-WF006-01 through AC-WF006-13 all verified (13/13 acceptance criteria)
+- REQ-WF006-001 through REQ-WF006-015 all satisfied (15/15 requirements)
+- Schema validation tests cover missing keys, type errors, and valid frontmatter
+- Precedence tests validate project > user > default resolution
+- Fallback warning test captures stderr and validates exact warning format
+- Template/local byte-identity maintained via `diff -rq` CI check
+
+### Dependencies & Blockers
+
+- **Blocks**: SPEC-V3R2-EXT-002 (Go loader implementation) — EXT-002 consumes the schema and precedence rules defined here
+- **No blockers**: All work completed within scope; no external dependencies
+
+### Known Limitations
+
+- EXT-002 Go loader not yet implemented (deferred post-SPEC); v1.1.0 codifies the schema and precedence rules that the loader will consume
+- Output style i18n (translate names/descriptions into multiple languages) deferred to future SPEC
+- Runtime switching API (change styles mid-session) not in scope; requires separate SPEC
 
 ---
 
