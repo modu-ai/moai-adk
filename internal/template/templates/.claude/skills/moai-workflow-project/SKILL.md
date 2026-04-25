@@ -16,6 +16,7 @@ metadata:
   modularized: "true"
   tags: "workflow, project, documentation, initialization, templates, boilerplate, scaffolding, jit-docs, docs-generation"
   aliases: "moai-workflow-project"
+  related-skills: "moai-workflow-templates, moai-docs-generation, moai-workflow-jit-docs"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -25,9 +26,9 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization", "template", "boilerplate", "scaffolding", "code template", "feedback template", "docs", "documentation", "API reference", "docs generation", "Sphinx", "MkDocs", "TypeDoc", "OpenAPI", "jit docs", "just in time docs"]
+  keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization", "template", "boilerplate", "scaffolding", "code template", "feedback template", "docs", "documentation", "API reference", "docs generation", "Sphinx", "MkDocs", "TypeDoc", "OpenAPI", "jit docs", "just in time docs", "project template", "GitHub issue", "template optimization", "how to", "implement", "best practices", "technology guide", "framework documentation"]
   phases: ["plan", "run", "sync"]
-  agents: ["manager-project", "manager-docs", "builder-skill"]
+  agents: ["manager-project", "manager-docs", "builder-skill", "manager-spec", "expert-backend", "expert-frontend"]
 ---
 
 # MoAI Workflow Project - Integrated Project Management System

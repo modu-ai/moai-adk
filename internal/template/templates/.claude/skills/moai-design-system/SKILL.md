@@ -26,7 +26,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["intent-first", "design craft", "design direction", "design intent", "design critique", "craft review", "design memory", "design system", "design audit", "UI/UX", "accessibility", "WCAG", "ARIA", "design tokens", "component library", "theming", "dark mode", "shadcn", "Radix UI", "Storybook", "pencil", "pen frame", "pencil mcp", "web copy", "ux writing", "headline", "cta copy", "landing page copy"]
+  keywords: ["intent-first", "design craft", "design direction", "design intent", "design critique", "craft review", "design memory", "design system", "design audit", "UI/UX", "accessibility", "WCAG", "ARIA", "design tokens", "component library", "theming", "dark mode", "shadcn", "Radix UI", "Storybook", "pencil", "pen frame", "pencil mcp", "web copy", "ux writing", "headline", "cta copy", "landing page copy", "domain exploration", "system.md", "why before what", "design extract", "interface design", "anti-ai writing", "icon", "Style Dictionary", "Lucide", "Iconify", "Hugeicons", "responsive design", "user experience", "Anti-AI Slop", "AI slop prevention", "design to code", "design export", "render dna", "react from design", "tailwind from design", "design context", "ui implementation", "component from design", "layout from design"]
   agents: ["expert-frontend", "team-designer"]
   phases: ["plan", "run", "review"]
 ---

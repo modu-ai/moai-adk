@@ -26,11 +26,14 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize", "architecture decision", "technology selection", "trade-off", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "sequential thinking", "deepthink", "breaking change", "strategic", "decision"]
+  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize", "architecture decision", "technology selection", "trade-off", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "sequential thinking", "deepthink", "breaking change", "strategic", "decision", "architecture", "analysis", "design thinking", "complex problem", "performance vs maintainability"]
   agents:
     - "manager-strategy"
     - "manager-spec"
     - "team-reader"
+    - "expert-backend"
+    - "expert-frontend"
+    - "expert-devops"
   phases:
     - "plan"
 ---

@@ -60,5 +60,23 @@
 - Source skills: ALIVE (no archives — Wave 1.4 only)
 - FROZEN skills: NOT TOUCHED (moai-domain-copywriting, moai-domain-brand-design untouched)
 
-## Next: Dispatch 2 = Wave 1.3 (trigger union dedup)
+## Wave 1.3 Summary — 2026-04-25
+
+- Tasks: T1.3-1 through T1.3-5 (ALL COMPLETED)
+- Checkpoint T1.3-END: PASS (make build exit 0, diff -rq empty, YAML parse ALL PASS)
+
+| Task | Target | Triggers before | Triggers after (dedup) | Action |
+|------|--------|-----------------|------------------------|--------|
+| T1.3-1 | moai-foundation-thinking | 33 keywords, 4 agents | 38 keywords, 6 agents | +architecture, analysis, design thinking, complex problem, performance vs maintainability; +expert-backend/frontend/devops |
+| T1.3-2 | moai-workflow-project | 22 keywords, 3 agents | 30 keywords, 6 agents | +project template, GitHub issue, template optimization, how to, implement, best practices, technology guide, framework documentation; +related-skills; +manager-docs/spec/expert-backend/frontend |
+| T1.3-3 | moai-design-system | 29 keywords, 2 agents | 52 keywords, 2 agents | +20 keywords from design-craft/domain-uiux/design-tools(Pencil portion); Figma-only keywords excluded |
+| T1.3-4 | moai-domain-database | 37 keywords, none | 39 keywords, 3 agents | +nosql, mobile database; +agents/phases/languages; +progressive_disclosure; +related-skills |
+| T1.3-5 | moai-foundation-core | 21 keywords, 6 agents | 29 keywords, 8 agents | +context/session/budget/optimization/handoff/state/memory/multi-agent; +manager-docs/project; +related-skills |
+
+- FROZEN skills: NOT TOUCHED (moai-domain-copywriting, moai-domain-brand-design untouched)
+- Template-First rule: COMPLIANT (internal/template/templates/ edited first, then mirrored to .claude/skills/)
+- Dedup applied: case-insensitive (NoSQL/nosql kept canonical "NoSQL"/"nosql" per existing entries)
+- related-skills alias entries: preserved (retiring skills remain referenceable until Wave 1.4)
+
+## Next: Dispatch 3 = Wave 1.4 (archive 11 retiring skills + skill-rename-map + plan.md drift cleanup)
 

@@ -16,6 +16,7 @@ metadata:
   updated: "2026-04-25"
   modularized: "true"
   tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd, token-budget, context-window, session-state"
+  related-skills: "moai-foundation-context"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -25,7 +26,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format", "context window", "token budget", "token limit", "session state", "/clear", "context management", "multi-agent handoff", "session persistence"]
+  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format", "context window", "token budget", "token limit", "session state", "/clear", "context management", "multi-agent handoff", "session persistence", "context", "session", "budget", "optimization", "handoff", "state", "memory", "multi-agent"]
   agents:
     - "manager-spec"
     - "manager-ddd"
@@ -33,6 +34,8 @@ triggers:
     - "manager-quality"
     - "builder-agent"
     - "builder-skill"
+    - "manager-docs"
+    - "manager-project"
   phases:
     - "plan"
     - "run"
