@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-CON-001: FROZEN/EVOLVABLE Zone Registry
+
+### Added
+
+- **`moai constitution list`** CLI command: Browse and filter the zone registry by `--zone frozen|evolvable`,
+  `--file <pattern>`, and `--format table|json`. Source: SPEC-V3R2-CON-001.
+- **`moai constitution guard`** CLI command: Check a list of changed rule IDs for FROZEN zone violations.
+  Returns non-zero exit on any Frozen-zone rule modification. Designed for CI pipelines.
+- **Zone Registry** (`.claude/rules/moai/core/zone-registry.md`): Single source of truth for all HARD clauses
+  across the MoAI rule tree. 68 entries: 38 Frozen, 30 Evolvable. Template twin included.
+- **`internal/constitution` package**: `Zone`, `Rule`, `Registry`, `LoadRegistry`, `ValidateRuleReferences`.
+  86.5% test coverage. 200-entry cold load benchmark: ~1.85ms (target <10ms).
+- **Doctor constitution check** (`moai doctor`): `Constitution Registry` check validates registry existence,
+  Frozen entry count, orphan warnings, and duplicate IDs. Supports `MOAI_CONSTITUTION_STRICT=1` strict mode.
+- **Makefile `constitution-check` target**: Runs `moai constitution list --format json` against the live registry.
+- **CI `constitution-check` job** (`.github/workflows/ci.yml`): `continue-on-error: true` job verifying
+  registry integrity on every push to main and PR.
+
+### Technical
+
+- New package `internal/constitution`: `zone.go`, `rule.go`, `loader.go`, `dangling.go`
+- Test fixtures: `internal/constitution/testdata/` (6 fixture files)
+- Binary size delta: +33,600 bytes (~33 KiB, limit 50 KiB)
+- Integration tests: `internal/cli/constitution_integration_test.go` (build tag: integration)
+
 ## [Unreleased] — SPEC-WF-AUDIT-GATE-001: Plan Audit Gate (grace window 7d)
 
 ### Added

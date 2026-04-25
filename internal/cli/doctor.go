@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -130,6 +131,11 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 		{"MoAI Version", checkMoAIVersion},
 		{"Binary Freshness", checkBinaryFreshness},
 		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
+		{"Constitution Registry", func(v bool) DiagnosticCheck {
+			registryPath := resolveRegistryPath(cwd)
+			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"
+			return checkConstitution(cwd, registryPath, v, strictMode)
+		}},
 	}
 
 	var results []DiagnosticCheck
@@ -418,6 +424,67 @@ func statusIcon(s CheckStatus) string {
 	default:
 		return "?"
 	}
+}
+
+// constitutionStrictEnvKey는 strict mode를 활성화하는 환경 변수 이름이다.
+const constitutionStrictEnvKey = "MOAI_CONSTITUTION_STRICT"
+
+// checkConstitution은 zone registry 상태를 점검한다.
+// - registry 파일 없음: Warn (선택적 기능)
+// - 로드 오류(중복 ID, 잘못된 YAML 등): Fail
+// - Frozen 엔트리 0개: Warn
+// - orphan 경고 있음 + strictMode: Fail; 아니면 Warn
+// - 정상: OK
+func checkConstitution(projectDir, registryPath string, verbose, strictMode bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Constitution Registry"}
+
+	// registry 파일 존재 여부 확인
+	if _, err := os.Stat(registryPath); err != nil {
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("zone-registry.md not found at %q — run `moai constitution list` to verify", registryPath)
+		return check
+	}
+
+	reg, err := constitution.LoadRegistry(registryPath, projectDir)
+	if err != nil {
+		check.Status = CheckFail
+		check.Message = fmt.Sprintf("registry load error: %v", err)
+		return check
+	}
+
+	// orphan 경고 확인
+	if len(reg.Warnings) > 0 && strictMode {
+		check.Status = CheckFail
+		check.Message = fmt.Sprintf("%d orphan/overflow warning(s) detected (strict mode)", len(reg.Warnings))
+		if verbose {
+			check.Detail = strings.Join(reg.Warnings, "\n")
+		}
+		return check
+	}
+
+	// Frozen 엔트리 수 확인
+	frozen := reg.FilterByZone(constitution.ZoneFrozen)
+	if len(frozen) == 0 {
+		check.Status = CheckWarn
+		check.Message = "no Frozen entries found in registry — expected at least 1"
+		return check
+	}
+
+	// orphan 경고만 있는 경우 (non-strict)
+	if len(reg.Warnings) > 0 {
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("registry OK (%d entries, %d Frozen), %d orphan/overflow warning(s)",
+			len(reg.Entries), len(frozen), len(reg.Warnings))
+		if verbose {
+			check.Detail = strings.Join(reg.Warnings, "\n")
+		}
+		return check
+	}
+
+	check.Status = CheckOK
+	check.Message = fmt.Sprintf("registry OK — %d entries (%d Frozen, %d Evolvable)",
+		len(reg.Entries), len(frozen), len(reg.Entries)-len(frozen))
+	return check
 }
 
 // exportDiagnostics writes check results to a JSON file.

@@ -124,3 +124,36 @@ jobs:
           name: moai-${{ matrix.goos }}-${{ matrix.goarch }}
           path: moai-${{ matrix.goos }}-${{ matrix.goarch }}*
           retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Constitution Check: Verify FROZEN/EVOLVABLE zone registry integrity
+  # SPEC-V3R2-CON-001 — continue-on-error so CI doesn't block on missing registry
+  # ---------------------------------------------------------------------------
+  constitution-check:
+    name: Constitution Check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Build binary
+        run: go build -ldflags="-s -w" -o bin/moai ./cmd/moai/
+
+      - name: Verify zone registry (list)
+        run: |
+          MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md \
+            ./bin/moai constitution list --format json | \
+            python3 -c "import json,sys; d=json.load(sys.stdin); print(f'entries: {len(d[\"entries\"])}')"
+
+      - name: Verify zone registry (frozen entries)
+        run: |
+          MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md \
+            ./bin/moai constitution list --zone frozen | tail -1

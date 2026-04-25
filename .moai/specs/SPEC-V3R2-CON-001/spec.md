@@ -2,7 +2,7 @@
 id: SPEC-V3R2-CON-001
 title: "FROZEN/EVOLVABLE zone codification for core constitution"
 version: "1.1.0"
-status: draft
+status: implemented
 created: 2026-04-23
 updated: 2026-04-25
 author: Wave 4 SPEC Writer
