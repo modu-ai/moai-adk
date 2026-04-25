@@ -67,7 +67,8 @@ At Run phase entry, determine the pipeline depth:
 
 1. Receive harness level from orchestrator (moai.md Complexity Estimator) or default to standard
 2. Apply level-specific phase configuration:
-   - **minimal**: Skip phases [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only.
+   - **minimal**: Skip phases [0, 0.6, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only.
+     Note: Phase 0.5 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
    - **standard**: Execute all phases. evaluator-active in final-pass mode (Phase 2.8a only).
    - **thorough**: Execute all phases. evaluator-active in per-sprint mode (Phase 2.0 + 2.8a). Sprint contract enabled.
 3. Load SPEC context (token-efficient):
@@ -158,7 +159,11 @@ See `.claude/rules/moai/workflow/worktree-integration.md` for complete path rule
 
 All phases execute sequentially. Each phase receives outputs from all previous phases as context.
 
-### Phase 0.5: Environment Assessment (Conditional)
+### Phase 0.5: Plan Audit Gate (TBD — see SPEC-WF-AUDIT-GATE-001)
+
+<!-- Plan Audit Gate body will be filled in per SPEC-WF-AUDIT-GATE-001 Phase B -->
+
+### Phase 0.6: Environment Assessment (Conditional)
 
 Condition: Only executes when `memory_guard.enabled: true` in quality.yaml.
 If memory_guard is not enabled or not present, skip to Phase 1.
@@ -180,7 +185,7 @@ Output: test_execution_strategy ("full", "module", "changed") passed to Phase 1+
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 0.5 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
+- Phase 0.6 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
 ### Phase 0.9: JIT Language Skill Detection
