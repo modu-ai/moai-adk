@@ -16,7 +16,7 @@ memory: project
 skills:
   - moai-foundation-core
   - moai-workflow-project
-  - moai-workflow-jit-docs
+  - moai-workflow-project
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

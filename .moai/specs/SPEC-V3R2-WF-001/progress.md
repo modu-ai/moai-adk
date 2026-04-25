@@ -155,6 +155,24 @@
 - diff -rq .claude/skills internal/template/templates/.claude/skills: empty (PASS)
 - Skill count: 38 (unchanged — no directory additions/removals in Wave 1.5)
 
-## Next: Dispatch 5 = Wave 1.6 (Agent prompt rewrite, 4 files)
+## Wave 1.6 Summary — 2026-04-25
+
+- Tasks: T1.6-1 through T1.6-4 (ALL COMPLETED) + Checkpoint T1.6-END: PASS
+
+### Agent prompt rewrite (4 agent files, 4 template pairs)
+
+| Agent | Old skill ref | New skill ref |
+|-------|--------------|---------------|
+| expert-frontend.md | moai-domain-uiux | moai-design-system |
+| manager-project.md | moai-workflow-templates | moai-workflow-project |
+| manager-docs.md | moai-workflow-jit-docs | moai-workflow-project |
+| builder-skill.md | moai-workflow-templates | moai-workflow-project |
+
+- Template-First: all 4 changes applied to internal/template/templates/.claude/agents/moai/ first
+- Grep verification: zero retired skill references in both .claude/agents/ and template/agents/
+- make build: exit 0
+- diff -rq .claude/agents internal/template/templates/.claude/agents: empty (PASS)
+
+## Next: Dispatch 6 = Wave 1.7 (CI verification + fixtures + final make build)
 
 

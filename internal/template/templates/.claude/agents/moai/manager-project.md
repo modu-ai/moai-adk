@@ -17,7 +17,7 @@ skills:
   - moai-foundation-core
   - moai-foundation-thinking
   - moai-workflow-project
-  - moai-workflow-templates
+  - moai-workflow-project
 ---
 
 # Project Manager Agent
