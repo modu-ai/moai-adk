@@ -127,8 +127,9 @@ Plan to Run:
 ## Phase 0.5: Plan Audit Gate
 
 The Plan Audit Gate is a mandatory protocol executed at the start of every `/moai run` invocation,
-before any implementation phase begins. It prevents unreviewed or incomplete SPEC artifacts from
-entering the implementation phase. Source: SPEC-WF-AUDIT-GATE-001.
+before any implementation phase begins. The gate invokes the plan-auditor subagent to independently
+review all SPEC plan artifacts. It prevents unreviewed or incomplete SPEC artifacts from entering
+the implementation phase. Source: SPEC-WF-AUDIT-GATE-001.
 
 ### Gate Entry Condition
 
