@@ -102,7 +102,8 @@ func (c *InMemoryCache) ComputeHash(specDir string) (string, error) {
 		// Whitespace normalization: collapse runs of whitespace to a single space.
 		normalized := normalizeWhitespace(string(data))
 		// Include filename as separator to prevent hash collisions between files.
-		fmt.Fprintf(h, "%s:%s\n", name, normalized)
+		// hash.Hash.Write never errors per io.Writer contract, so the return value is intentionally discarded.
+		_, _ = fmt.Fprintf(h, "%s:%s\n", name, normalized)
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
