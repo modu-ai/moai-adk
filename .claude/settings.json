@@ -52,8 +52,9 @@
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-            "timeout": 60,
-            "type": "command"
+            "timeout": 10,
+            "type": "command",
+            "async": true
           }
         ],
         "matcher": "Write|Edit"

@@ -320,31 +320,51 @@ License credit: Apache 2.0 (revfactory/harness)
 
 ---
 
-## 2. 다음 세션 Resume Message (paste-ready)
+## 2. 다음 세션 Resume Message (paste-ready) — LEARNING-001 SPEC 작성
+
+> **STATUS UPDATE (2026-04-26 세션 종료)**: Phase B Step 1+2 완료.
+> - PATTERNS-001 구현 완료, PR #715 (release/v2.16.0 branch, 5 commits) 생성됨
+> - 보너스: PostToolUse async + freeze diagnosis + V3R2 inherited 11 lint cleanup
+> - 다음 세션 목표: PR admin merge 확인 → tag v2.16.0 → LEARNING-001 SPEC 작성
 
 ```
-ultrathink. V3R3 Extreme Aggressive Phase A 진행. v2.15 마무리부터.
+ultrathink. V3R3 Phase B Step 3 진행. SPEC-V3R3-HARNESS-LEARNING-001 작성.
 
 진행 위치:
-- main HEAD: 3ed706a5b (ARCH-003 완료 시점)
-- 미구현: ARCH-007 (작성됨), COV-001 (작성됨), CMD-CLEANUP-001 (미작성)
-- v2.15 배포 대기
+- main HEAD: 같음 (b47101779) — 새 SPEC 작성은 main에서 새 feat/* 브랜치
+- release/v2.16.0 branch에 5 commits, PR #715 OPEN, 사용자 검토/머지 대기
+- 완료: PATTERNS-001 4파일 SPEC + 6 rule files + NOTICE + Template-First sync
+- 완료: PostToolUse 60s→10s + async:true 적용 (template + local)
+- 완료: freeze 진단 가이드 (settings-management.md 4-step checklist)
+- 완료: V3R2 restore inherited 11 lint cleanup (audit_cache.go + audit_report.go)
+- 미작성 (이 세션 목표): SPEC-V3R3-HARNESS-LEARNING-001
+- 미작성 (다음): SPEC-V3R3-HARNESS-001, DESIGN-PIPELINE-001, PROJECT-HARNESS-001
 
 handoff document: .moai/release/v3r3-extreme-aggressive-handoff.md
+                  §4.3 LEARNING-001 요구사항 (4-tier 학습 + 5-layer safety + /moai harness)
+
 다음 단계 (이 세션):
-1. SPEC-V3R3-CMD-CLEANUP-001 작성 (gate 추가 + security 흡수 강화 + context 제거)
-2. SPEC-V3R3-ARCH-007 구현 (manager-tdd dispatch, Go runtime + runtime.yaml)
-3. SPEC-V3R3-COV-001 구현 (manager-tdd dispatch, expert-mobile + harness seed)
-4. CMD-CLEANUP-001 구현 (review/sync 보안 강화 + gate command + context 삭제)
-5. v2.15 release prep (CHANGELOG/system.yaml/release-notes)
-6. PR + tag v2.15.0
+1. PR #715 status 확인: gh pr view 715
+   • CI all green이면 사용자 admin merge 대기 (squash 금지, merge commit 사용 — release branch)
+   • merge 후: git tag v2.16.0 && git push origin v2.16.0 → GoReleaser 자동 release
+2. SPEC-V3R3-HARNESS-LEARNING-001 작성 (manager-spec dispatch)
+   • 산출: .moai/specs/SPEC-V3R3-HARNESS-LEARNING-001/{spec,plan,acceptance,tasks}.md
+   • 핵심 요구사항 (handoff §4.3):
+     - 4-tier 학습 (1x observation / 3x heuristic / 5x rule / 10x auto-update)
+     - 5-layer safety (Frozen Guard / Canary / Contradiction / Rate Limit / Human Oversight)
+     - .claude/agents/my-harness/ + .claude/skills/my-harness-*/ 자동 진화
+     - .moai/harness/ 사용자 영역만 자동 업데이트 (moai-managed 절대 불가침)
+     - .moai/config/sections/harness.yaml learning section + /moai harness CLI subcommand
+   • 의존성: HARNESS-001 (meta-harness), PROJECT-HARNESS-001 (소크라테스 인터뷰)
+   • design.yaml safety architecture (Section 5) 활용
+3. (시간 여유 시) HARNESS-001 + DESIGN-PIPELINE-001 + PROJECT-HARNESS-001 SPEC 작성
 
 applied lessons:
 - feedback_large_spec_wave_split.md (각 dispatch ~1.5KB)
 - context-window-management.md (75% 임계 모니터)
 
 긴 세션 예상 — 75% 도달 시 progress.md 저장 + /clear + 새 세션 resume.
-완료 후: v2.16 PATTERNS-001 → v2.17 HARNESS+DESIGN+PROJECT
+완료 후: v2.17 phase 4-SPEC 구현 (HARNESS → DESIGN → PROJECT → LEARNING 순)
 ```
 
 ---
@@ -552,6 +572,81 @@ attribution: each rule file 상단에 "# Source: revfactory/harness Apache 2.0"
 이후 manager-tdd로 순차 구현 (HARNESS → DESIGN → PROJECT 순) + v2.17 release.
 ```
 
+### 4.3 SPEC-V3R3-HARNESS-LEARNING-001 (사용자 추가 요구사항 — 2026-04-26)
+
+**요구사항 출처**: 사용자 요청 ("사용자가 설치한 하네스는 사용자가 사용을 하면 할수록 학습된 내용을 지속적으로 자동으로 업데이트가 되도록")
+
+**핵심**: 사용자 프로젝트에 설치된 dynamic harness (`.claude/agents/my-harness/`, `.claude/skills/my-harness-*/`, `.moai/harness/`)가 사용자 활동을 학습하여 자동으로 진화.
+
+#### Scope
+
+1. **사용자 활동 모니터링**:
+   - `/moai` 명령 사용 빈도 (subcommand 별)
+   - 자주 사용하는 SPEC ID 패턴
+   - commit message 트렌드
+   - agent 호출 통계 (어떤 agent가 어떤 작업에 반복 호출되는지)
+   - 사용자 명시 feedback (`/moai feedback` 입력)
+
+2. **학습 알고리즘 (3-tier)**:
+   - **Tier 1 (Observation)**: 1x 발생 — 로그만 기록
+   - **Tier 2 (Heuristic)**: 3x 발생 — harness skill body의 description 보강
+   - **Tier 3 (Rule)**: 5x 발생 — harness skill의 triggers/keywords 자동 inject
+   - **Tier 4 (Auto-update)**: 10x 발생 — 사용자 승인 후 chaining_rules.yaml 갱신
+
+3. **학습 결과 자동 반영 대상**:
+   - `.moai/harness/main.md` (project customization 진입점)
+   - `.moai/harness/{plan,run,sync,design}-extension.md` (workflow 확장)
+   - `.moai/harness/chaining-rules.yaml` (agent chain 규칙)
+   - `.claude/skills/my-harness-*/SKILL.md` body
+   - `.claude/agents/my-harness/*.md` body
+
+4. **5-layer 안전 메커니즘 (design constitution §5 활용)**:
+   - **L1 Frozen Guard**: moai-managed (`.claude/agents/moai/`, `.claude/skills/moai-*/`)는 절대 수정 금지
+   - **L2 Canary Check**: 학습 변경 적용 전 shadow eval (이전 3 프로젝트에 영향 시뮬레이션)
+   - **L3 Contradiction Detector**: 신규 학습이 기존 사용자 customization과 충돌 시 alert
+   - **L4 Rate Limiter**: 주당 최대 3회 자동 업데이트, 24h cooldown
+   - **L5 Human Oversight**: Tier 4 자동 업데이트 시 AskUserQuestion으로 승인 받기
+
+#### 산출 (예정)
+
+- `moai-harness-learner` skill (학습 + 자동 업데이트 코디네이터)
+- `internal/harness/learner.go` (Go 백엔드, 활동 로그 분석 + 학습 추출)
+- `internal/harness/observer.go` (PostToolUse hook 기반 활동 수집)
+- `.moai/harness/usage-log.jsonl` (활동 로그 schema)
+- `.moai/harness/learning-history/` (학습 변경 이력 + rollback)
+- `/moai harness` 신규 subcommand:
+  - `/moai harness status` — 현재 학습 상태 표시
+  - `/moai harness apply` — pending 학습 변경 수동 적용
+  - `/moai harness rollback <date>` — 특정 시점으로 복원
+  - `/moai harness disable` — 자동 학습 일시 중단
+- `.moai/config/sections/harness.yaml`:
+  ```yaml
+  harness:
+    learning:
+      enabled: true
+      auto_apply: false  # 기본 false (사용자 승인 모드)
+      tier_thresholds: { observation: 1, heuristic: 3, rule: 5, auto_update: 10 }
+      rate_limit: { per_week: 3, cooldown_hours: 24 }
+      log_retention_days: 90
+  ```
+
+#### 통합 위치
+
+- v2.17 phase에 포함 (HARNESS-001 + DESIGN-PIPELINE-001 + PROJECT-HARNESS-001 + **LEARNING-001** = 4 SPECs)
+- 의존성:
+  - HARNESS-001 (meta-harness) 선행 필수
+  - PROJECT-HARNESS-001 (소크라테스 인터뷰) 선행 — 사용자 baseline 확보
+  - design.yaml safety architecture (Section 5) 활용
+
+#### Risks & Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| 자동 변경이 사용자 의도와 다름 | Tier 4 자동 적용 전 AskUserQuestion 의무, default `auto_apply: false` |
+| 학습 결과 발산 (drift) | Rate Limiter + 주간 회고 보고 (`/moai harness status`) |
+| 활동 로그 privacy 우려 | 로컬 보존만, 외부 전송 없음, 90일 retention |
+| moai-managed 영역 침범 | Frozen Guard L1 강제 — 절대 변경 불가 |
+
 ---
 
 ## 5. 핵심 검증 시나리오 (v2.17 완료 후)
@@ -666,11 +761,15 @@ moai-adk = workflow framework (22 base skills) + meta-harness (∞ generated)
    - /moai security: 흡수 (review/sync 강화) — command 추가 안 함
    - /moai context: 제거 — typed memory(EXT-001)만 사용
    - /moai gate: 추가 (V2.15)
+   - ★ Self-Learning Harness (LEARNING-001, v2.17): 사용자 활동 학습 → harness 자동 진화
+     - 4-tier (1x observation / 3x heuristic / 5x rule / 10x auto-update)
+     - 5-layer safety (Frozen Guard / Canary / Contradiction / Rate Limit / Human Oversight)
+     - moai-managed 영역 절대 불가침, my-harness/ 영역만 자동 업데이트
 ```
 
 ---
 
 **Status**: Ready for next session
-**Last Updated**: 2026-04-26
+**Last Updated**: 2026-04-26 (§4.3 LEARNING-001 추가)
 **Author**: MoAI Orchestrator (Claude Opus 4.7)
-**Reviewed**: User decision integrated (6 decisions confirmed)
+**Reviewed**: User decision integrated (6 decisions + self-learning 요구사항)

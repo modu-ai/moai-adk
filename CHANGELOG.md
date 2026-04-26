@@ -5,34 +5,122 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — SPEC-V3R2-CON-001: FROZEN/EVOLVABLE Zone Registry
+## [2.16.0] - 2026-04-26
+
+Consolidated minor release: V3R3 Phase A 산출물 + V3R2 backup restore (Plan Audit Gate, Zone Registry, Typed Memory Taxonomy, WF-001/006) + V3R3 Phase B PATTERNS-001 (Pattern Cookbook). v2.15.0 was prepared but never tagged separately; its Phase A entry below is preserved as historical reference and is fully included in this release.
 
 ### Added
 
-- **`moai constitution list`** CLI command: Browse and filter the zone registry by `--zone frozen|evolvable`,
-  `--file <pattern>`, and `--format table|json`. Source: SPEC-V3R2-CON-001.
-- **`moai constitution guard`** CLI command: Check a list of changed rule IDs for FROZEN zone violations.
-  Returns non-zero exit on any Frozen-zone rule modification. Designed for CI pipelines.
-- **Zone Registry** (`.claude/rules/moai/core/zone-registry.md`): Single source of truth for all HARD clauses
-  across the MoAI rule tree. 68 entries: 38 Frozen, 30 Evolvable. Template twin included.
-- **`internal/constitution` package**: `Zone`, `Rule`, `Registry`, `LoadRegistry`, `ValidateRuleReferences`.
-  86.5% test coverage. 200-entry cold load benchmark: ~1.85ms (target <10ms).
-- **Doctor constitution check** (`moai doctor`): `Constitution Registry` check validates registry existence,
-  Frozen entry count, orphan warnings, and duplicate IDs. Supports `MOAI_CONSTITUTION_STRICT=1` strict mode.
-- **Makefile `constitution-check` target**: Runs `moai constitution list --format json` against the live registry.
+#### V3R3 Phase B — Pattern Cookbook (revfactory/harness Apache 2.0 흡수)
+
+- **Pattern Cookbook 6 rule files** (SPEC-V3R3-PATTERNS-001):
+  - `.claude/rules/moai/development/agent-patterns.md` — 6 architectural patterns + MoAI vocabulary mapping
+    (Team / Sub-agent / Hybrid / Orchestrator / Specialist / Pipeline)
+  - `.claude/rules/moai/development/orchestrator-templates.md` — 3 templates (Team-orchestrator / Sub-orchestrator / Hybrid-orchestrator)
+  - `.claude/rules/moai/development/skill-ab-testing.md` — with-skill vs baseline A/B methodology
+  - `.claude/rules/moai/development/skill-writing-craft.md` — description craft + 3-level disclosure + schema
+  - `.claude/rules/moai/quality/boundary-verification.md` — 7 documented bug case studies (NEW directory)
+  - `.claude/rules/moai/workflow/team-pattern-cookbook.md` — 5 team patterns (Research / Implementation / Review / Design / Debug)
+- **Apache 2.0 NOTICE** (`.claude/rules/moai/NOTICE.md`): attribution + source list + import date
+- **Frontmatter `paths` (CSV)** on all 6 rule files for context-aware auto-loading
+- **Template-First mirror**: 7/7 byte-identical copies under `internal/template/templates/.claude/rules/moai/`
+
+#### V3R2 Backup Restore — Plan Audit Gate
+
+- **Phase 0.5 Plan Audit Gate** (SPEC-WF-AUDIT-GATE-001): mandatory plan-auditor gate executed at the
+  start of every `/moai run` invocation, before any implementation phase begins. 4 verdicts
+  (PASS / FAIL / BYPASSED / INCONCLUSIVE), 7-day grace window with FAIL_WARNED downgrade.
+- **`.moai/reports/plan-audit/`** directory + `.gitkeep` for per-call audit report persistence
+- **`spec-workflow.md` Phase 0.5 documentation**: gate entry conditions, verdicts, report format,
+  grace window mechanics
+- **plan.md `audit-ready` signal**: Completion Criteria amended to require explicit `audit-ready`
+  status before transition to Run phase
+- **WF-001/006 restoration**: workflow rule baselines re-aligned with V3R2 standards
+
+#### V3R2 Backup Restore — FROZEN/EVOLVABLE Zone Registry
+
+- **`moai constitution list`** CLI command (SPEC-V3R2-CON-001): browse and filter the zone registry by
+  `--zone frozen|evolvable`, `--file <pattern>`, and `--format table|json`
+- **`moai constitution guard`** CLI command: checks a list of changed rule IDs for FROZEN zone
+  violations. Returns non-zero exit on any Frozen-zone rule modification. Designed for CI pipelines.
+- **Zone Registry** (`.claude/rules/moai/core/zone-registry.md`): single source of truth for all HARD
+  clauses across the MoAI rule tree. 68 entries: 38 Frozen, 30 Evolvable. Template twin included.
+- **`internal/constitution` package**: `Zone`, `Rule`, `Registry`, `LoadRegistry`,
+  `ValidateRuleReferences`. 86.5% test coverage. 200-entry cold load benchmark: ~1.85ms (target <10ms).
+- **Doctor constitution check** (`moai doctor`): validates registry existence, Frozen entry count,
+  orphan warnings, and duplicate IDs. Supports `MOAI_CONSTITUTION_STRICT=1` strict mode.
+- **Makefile `constitution-check` target**: runs `moai constitution list --format json` against the
+  live registry.
 - **CI `constitution-check` job** (`.github/workflows/ci.yml`): `continue-on-error: true` job verifying
   registry integrity on every push to main and PR.
 
+#### V3R2 Backup Restore — Typed Memory Taxonomy
+
+- **4-type memory enforcement** (SPEC-V3R2-EXT-001): `user / feedback / project / reference` memory
+  types with required frontmatter (`name`, `description`, `type`). Body structure rules for
+  `feedback` / `project` (lead with rule + `**Why:**` + `**How to apply:**`).
+- **`internal/hook/memo/taxonomy` subpackage**: `MemoryType` enum, `ParseFile`, `DetectStale`,
+  `AuditFile / AuditIndex / AuditDuplicates`. 91.7% coverage.
+- **Stale memory detection**: SessionStart hook wraps memory files older than 24h in
+  `<system-reminder>` blocks. Aggregate warning emitted when ≥10 stale files detected
+  simultaneously to avoid token bloat.
+- **MEMORY.md 200-line cap**: enforced by `MEMORY_INDEX_OVERFLOW` audit warning. Lines 201+ are
+  silently truncated by Claude Code memory loader.
+- **PostToolUse memory audit**: non-blocking stderr warnings on Write/Edit operations
+  (`MEMORY_MISSING_TYPE`, `MEMORY_MISSING_FRONTMATTER`, `MEMORY_BODY_STRUCTURE_MISSING`,
+  `MEMORY_EXCLUDED_CATEGORY`, `MEMORY_DUPLICATE`).
+- **`workflow.yaml` `memory` section**: `staleness_threshold_hours`, `index_line_cap`,
+  `stale_aggregate_threshold` configurable per project. Default: 24h / 200 lines / 10 files.
+- **`MOAI_MEMORY_AUDIT=0`** environment override for bulk migrations.
+
+### Fixed
+
+- **PostToolUse hook: timeout 60s → 10s + `async: true`** (template + local): the previous 60s synchronous default
+  could hold the conversation for up to 60s after every Write/Edit while LSP/AST/MX validations completed. Real-world
+  latency for `moai hook post-tool` is <50ms, so the 60s ceiling was pure defensive margin that compounded MCP-related
+  stalls. The new defaults: (a) `timeout: 10` as the per-run upper bound, (b) `async: true` so the hook runs in the
+  background and results are delivered via `systemMessage` on the next turn — Write/Edit never blocks the main response.
+- **`settings-management.md` freeze diagnosis checklist**: added a 4-step ordered checklist (MCP auth → hook timeout
+  → context pressure → terminal I/O) so users can self-diagnose mid-session freezes instead of escalating.
+- **`settings-management.md` timeout units clarification**: corrected the "1–600,000ms" wording (Claude Code hook
+  timeouts are in **seconds**, not milliseconds) and added a per-hook recommended ceiling table.
+- **`internal/runtime/audit_report.go` + `audit_cache.go` lint cleanup**: addressed 11 staticcheck (QF1012, S1039) and
+  errcheck findings inherited from the V3R2 backup restore. Replaced `WriteString(fmt.Sprintf(...))` patterns with
+  `fmt.Fprintf(&sb, ...)`, removed redundant `fmt.Sprintf` for static strings, and made `defer f.Close()` errcheck-safe
+  via `defer func() { _ = f.Close() }()`.
+
 ### Technical
 
-- New package `internal/constitution`: `zone.go`, `rule.go`, `loader.go`, `dangling.go`
+- New rule directory: `.claude/rules/moai/quality/` (created for boundary-verification.md)
+- New packages: `internal/constitution`, `internal/hook/memo/taxonomy`
+- Binary size delta cumulative: +33,600 bytes (~33 KiB, limit 50 KiB) for constitution; ~5 KiB for taxonomy
 - Test fixtures: `internal/constitution/testdata/` (6 fixture files)
-- Binary size delta: +33,600 bytes (~33 KiB, limit 50 KiB)
 - Integration tests: `internal/cli/constitution_integration_test.go` (build tag: integration)
+- License compliance: revfactory/harness Apache 2.0 → MoAI-ADK MIT, NOTICE preserved
+  (Apache 2.0 → MIT direction permitted with NOTICE retention)
 
-## [Unreleased] — SPEC-WF-AUDIT-GATE-001: Plan Audit Gate (grace window 7d)
+### Verification
 
-## [2.15.0] - 2026-04-26
+- All AC for SPEC-V3R3-PATTERNS-001 (AC-001..005): PASS
+- All AC for SPEC-V3R2-CON-001 (17 AC): PASS, coverage 86.5%
+- All AC for SPEC-V3R2-EXT-001: PASS, coverage 91.7%
+- All AC for SPEC-WF-AUDIT-GATE-001: PASS (placeholder + spec-workflow integration)
+- `make build`: green
+- `go test ./internal/template/...`: PASS
+- `go test ./internal/constitution/...`: PASS
+- `go test ./internal/hook/memo/...`: PASS
+
+### Note on Versioning
+
+v2.15.0 was prepared (system.yaml bumped, CHANGELOG entry added) but never tagged. The V3R3 Phase A
+content listed in the v2.15.0 section below was merged to main but the tag push was skipped, then
+V3R2 backup restore + Phase B work continued. Per user decision (2026-04-26), all merged content
+since v2.14.0 is consolidated into a single v2.16.0 release. The v2.15.0 section is preserved
+verbatim as a historical artifact.
+
+---
+
+## [2.15.0] - 2026-04-26  *(prepared but never tagged — content consolidated into v2.16.0 above)*
 
 ### Breaking Changes
 
