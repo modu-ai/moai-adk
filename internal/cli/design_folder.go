@@ -61,18 +61,29 @@ func designDirHasRegularFile(dir string) (bool, error) {
 	return false, nil
 }
 
-// checkReservedCollision returns an error if any existing user file in projectRoot/.moai/design/
-// collides with a reserved filename (exact match or glob match).
-func checkReservedCollision(projectRoot string, errOut io.Writer) error {
+// checkReservedCollision 함수는 projectRoot/.moai/design/ 내 사용자 파일이
+// reserved filename(exact match 또는 glob match)과 충돌하는지 검사한다.
+//
+// strict=true (scaffold path): 첫 번째 충돌 발견 시 error 반환 (기존 동작 유지).
+// strict=false (update path): 모든 충돌에 대해 warning 출력 후 nil 반환.
+//   - 사용자 데이터는 어떤 경우에도 수정·삭제되지 않음 (REQ-DFF-004).
+//   - 충돌 파일을 건너뛰고 다른 templates sync는 계속 진행됨 (REQ-DFF-001/002).
+func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) error {
 	base := filepath.Join(projectRoot, designDir)
 
 	for _, name := range reservedExact {
 		target := filepath.Join(base, name)
 		if _, err := os.Stat(target); err == nil {
-			if errOut != nil {
-				_, _ = fmt.Fprintf(errOut, "error: reserved filename: %s\n", name)
+			if strict {
+				if errOut != nil {
+					_, _ = fmt.Fprintf(errOut, "error: reserved filename: %s\n", name)
+				}
+				return fmt.Errorf("reserved filename: %q collides with reserved name", name)
 			}
-			return fmt.Errorf("reserved filename: %q collides with reserved name", name)
+			// update path: warning 출력 + 계속 진행 (REQ-DFF-001)
+			if errOut != nil {
+				_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", name)
+			}
 		}
 	}
 
@@ -87,10 +98,16 @@ func checkReservedCollision(projectRoot string, errOut io.Writer) error {
 				return nil
 			}
 			if matched {
-				if errOut != nil {
-					_, _ = fmt.Fprintf(errOut, "error: reserved filename: %s\n", path)
+				if strict {
+					if errOut != nil {
+						_, _ = fmt.Fprintf(errOut, "error: reserved filename: %s\n", path)
+					}
+					return fmt.Errorf("reserved filename: %q matches reserved pattern %q", path, pattern)
 				}
-				return fmt.Errorf("reserved filename: %q matches reserved pattern %q", path, pattern)
+				// update path: warning 출력 + 계속 진행 (REQ-DFF-001)
+				if errOut != nil {
+					_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", path)
+				}
 			}
 			return nil
 		})
@@ -209,15 +226,18 @@ func scaffoldDesignDir(projectRoot string, warnOut io.Writer) (bool, error) {
 // Rules:
 //   - REQ-005: Files whose on-disk content differs from the canonical template
 //     (SHA-256 mismatch) are treated as user-modified and are NOT overwritten.
-//   - REQ-008: If any user file collides with a reserved filename, the function
-//     returns a non-zero error and writes "reserved filename" to errOut.
+//   - REQ-DFF-001: Reserved filename collisions emit a warning (not an error) so
+//     other template files continue to sync. The reserved file itself is skipped.
+//   - REQ-DFF-004: Reserved files are never modified or deleted.
 //
-// Returns nil on success, error on reserved filename collision or I/O failure.
+// Returns nil on success or on reserved filename collision.
+// Returns error only on I/O failure.
 func updateDesignDir(projectRoot string, errOut io.Writer) error {
 	base := filepath.Join(projectRoot, designDir)
 
-	// REQ-008: Reject reserved filename collisions before touching anything.
-	if err := checkReservedCollision(projectRoot, errOut); err != nil {
+	// REQ-DFF-001: Warn on reserved filename collisions (strict=false) and continue.
+	// updateDesignDir는 scaffold path와 달리 기존 사용자 데이터를 존중하여 warning만 출력.
+	if err := checkReservedCollision(projectRoot, errOut, false); err != nil {
 		return err
 	}
 
