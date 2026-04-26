@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-HARNESS-001
 title: Meta-Harness Skill — Static Core 22 + Dynamic ∞
-version: "0.1.0"
-status: draft
+version: "0.1.2"
+status: completed
 created_at: 2026-04-26
-updated_at: 2026-04-26
+updated_at: 2026-04-27
 author: manager-spec
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Extreme Aggressive Core"
@@ -36,6 +36,7 @@ depends_on:
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. v3R3 Phase C P0 — meta-harness skill 신설 + 16 정적 skills 제거 (BC-V3R3-007) + namespace 분리 (moai-*/my-harness-*) + revfactory/harness 7-Phase workflow 흡수 (Apache 2.0 attribution). |
 | 0.1.1   | 2026-04-27 | orchestrator | D-1/D-2 plan-audit fix. §3 카테고리 라벨 라이브 트리 기준 정확화 (workflow=10, design=1, foundation=4 명시). plan.md §3.5 staticCoreAllowlist 11개 가공 skill명을 검증된 22개 실명으로 대체. plan.md §6 "11 REQs" → 10. |
+| 0.1.2   | 2026-04-27 | orchestrator | T-M5-05 post-merge: status draft → completed. PR #724 머지 완료 (merge commit `ba4545981`). Wave A (M1) + Wave B (M2+M3) + Wave C (M4+M5) 전체 7/7 ACs 충족. main 브랜치에 통합됨. |
 
 ---
 
