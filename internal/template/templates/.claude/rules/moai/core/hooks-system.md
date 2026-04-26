@@ -195,7 +195,8 @@ Define hooks in `.claude/settings.json`:
     "PostToolUse": [{
       "matcher": "Write|Edit",
       "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-      "timeout": 10
+      "timeout": 10,
+      "async": true
     }],
     "Stop": [{
       "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",

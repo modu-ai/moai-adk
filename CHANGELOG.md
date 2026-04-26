@@ -75,13 +75,19 @@ Consolidated minor release: V3R3 Phase A 산출물 + V3R2 backup restore (Plan A
 
 ### Fixed
 
-- **PostToolUse hook timeout 60s → 10s** (template + local): the previous 60s default could amplify MCP-related stalls
-  by holding the conversation for up to 60s after Write/Edit while LSP/AST/MX validations completed. Real-world latency
-  for `moai hook post-tool` is <50ms; 10s now serves as the defensive ceiling.
+- **PostToolUse hook: timeout 60s → 10s + `async: true`** (template + local): the previous 60s synchronous default
+  could hold the conversation for up to 60s after every Write/Edit while LSP/AST/MX validations completed. Real-world
+  latency for `moai hook post-tool` is <50ms, so the 60s ceiling was pure defensive margin that compounded MCP-related
+  stalls. The new defaults: (a) `timeout: 10` as the per-run upper bound, (b) `async: true` so the hook runs in the
+  background and results are delivered via `systemMessage` on the next turn — Write/Edit never blocks the main response.
 - **`settings-management.md` freeze diagnosis checklist**: added a 4-step ordered checklist (MCP auth → hook timeout
   → context pressure → terminal I/O) so users can self-diagnose mid-session freezes instead of escalating.
 - **`settings-management.md` timeout units clarification**: corrected the "1–600,000ms" wording (Claude Code hook
   timeouts are in **seconds**, not milliseconds) and added a per-hook recommended ceiling table.
+- **`internal/runtime/audit_report.go` + `audit_cache.go` lint cleanup**: addressed 11 staticcheck (QF1012, S1039) and
+  errcheck findings inherited from the V3R2 backup restore. Replaced `WriteString(fmt.Sprintf(...))` patterns with
+  `fmt.Fprintf(&sb, ...)`, removed redundant `fmt.Sprintf` for static strings, and made `defer f.Close()` errcheck-safe
+  via `defer func() { _ = f.Close() }()`.
 
 ### Technical
 

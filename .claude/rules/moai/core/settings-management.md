@@ -109,7 +109,7 @@ Hook timeout unit is **seconds** (not milliseconds, despite some external docs).
 |------|--------------------|-----------|
 | SessionStart | 30s | MCP server startup latency |
 | PreToolUse | 5s | Fast pre-flight checks only |
-| PostToolUse | **10s** (was 60s before v2.16.0) | LSP/AST/MX validations average <30ms; 10s is generous safety margin |
+| PostToolUse | **10s + `async: true`** (was 60s synchronous before v2.16.0) | LSP/AST/MX validations run in background; results delivered via systemMessage on next turn. 10s is the per-run upper bound, not a blocking wait |
 | Stop / SubagentStop | 5s | Lightweight teardown |
 | TeammateIdle / TaskCompleted | 10s | Quality validation may run lint/test |
 
