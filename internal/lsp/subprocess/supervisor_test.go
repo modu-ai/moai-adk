@@ -94,7 +94,7 @@ func TestSupervisor_NormalExit(t *testing.T) {
 	t.Parallel()
 
 	result, sv := launchStub(t, "#!/bin/sh\nexit 0\n")
-	// Supervisor가 cmd.Wait()를 소유하므로 테스트에서 직접 Wait 호출 금지
+	// Supervisor owns cmd.Wait(), so do not call Wait directly from the test.
 	t.Cleanup(func() { _ = result.Cmd.Process.Kill() })
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -132,23 +132,23 @@ func TestSupervisor_NonZeroExit(t *testing.T) {
 func TestSupervisor_CtxCancelStopsWatcher(t *testing.T) {
 	t.Parallel()
 
-	// 무한 대기 스크립트
+	// Infinite-wait script.
 	result, sv := launchStub(t, "#!/bin/sh\nsleep 60\n")
 	t.Cleanup(func() {
 		_ = result.Cmd.Process.Kill()
-		// Supervisor가 cmd.Wait()를 소유 — 직접 Wait 호출 금지
+		// Supervisor owns cmd.Wait() — do not call Wait directly.
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ch := sv.Watch(ctx)
 
-	// 컨텍스트 취소 → 채널 즉시 닫힘 기대
+	// Context cancel → expect the channel to close immediately.
 	cancel()
 
 	select {
 	case <-ch:
-		// 정상: 채널 닫힘
+		// Normal: channel closed.
 	case <-time.After(2 * time.Second):
 		t.Error("Watch channel did not close after ctx cancel within 2s")
 	}
@@ -173,7 +173,7 @@ func TestSupervisor_Kill(t *testing.T) {
 
 	select {
 	case <-ch:
-		// 정상: 프로세스 종료 후 채널 닫힘
+		// Normal: channel closed after process exit.
 	case <-time.After(3 * time.Second):
 		t.Error("Watch channel did not close after Kill within 3s")
 	}
@@ -184,9 +184,9 @@ func TestSupervisor_Kill(t *testing.T) {
 func TestSupervisor_Signal_SIGTERM(t *testing.T) {
 	t.Parallel()
 
-	// SIGTERM을 받으면 종료하는 스크립트.
-	// /bin/bash 명시: Ubuntu의 /bin/sh는 dash이며 trap 처리 타이밍이 다름.
-	// Watch가 Signal보다 먼저 시작되도록 보장하기 위해 small sleep 추가.
+	// Script that exits when SIGTERM is received.
+	// /bin/bash explicitly: Ubuntu /bin/sh is dash, which has different trap timing.
+	// Add a small sleep to ensure Watch starts before Signal.
 	result, sv := launchStub(t, "#!/bin/bash\ntrap 'exit 0' TERM\nwhile true; do sleep 0.1; done\n")
 	t.Cleanup(func() { _ = result.Cmd.Process.Kill() })
 
@@ -194,7 +194,7 @@ func TestSupervisor_Signal_SIGTERM(t *testing.T) {
 	defer cancel()
 
 	ch := sv.Watch(ctx)
-	// CI 환경에서 subprocess가 trap을 등록할 시간 확보
+	// Give the subprocess time to register the trap in CI environments.
 	time.Sleep(100 * time.Millisecond)
 
 	if err := sv.Signal(syscall.SIGTERM); err != nil {
@@ -203,7 +203,7 @@ func TestSupervisor_Signal_SIGTERM(t *testing.T) {
 
 	select {
 	case ev := <-ch:
-		// SIGTERM으로 정상 종료: ExitCode 0 또는 signal 종료 모두 허용
+		// Normal exit via SIGTERM: ExitCode 0 or signal-based exit are both acceptable.
 		_ = ev
 	case <-time.After(10 * time.Second):
 		t.Error("subprocess did not exit after SIGTERM within 10s")
@@ -221,13 +221,13 @@ func TestSupervisor_Signal_AlreadyDead(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 프로세스 종료 대기
+	// Wait for process exit.
 	ch := sv.Watch(ctx)
 	<-ch
 
-	// 이미 종료된 프로세스에 시그널 — 에러 반환, 패닉 없음
+	// Send a signal to an already-dead process — must return an error, not panic.
 	err := sv.Signal(os.Interrupt)
-	// 에러 발생 여부는 OS에 따라 다름 — 패닉 없으면 통과
+	// Whether an error is produced depends on the OS — passing if no panic occurs.
 	_ = err
 }
 
@@ -236,8 +236,8 @@ func TestSupervisor_Signal_AlreadyDead(t *testing.T) {
 func TestSupervisor_MultipleWatchers(t *testing.T) {
 	t.Parallel()
 
-	// 짧은 sleep으로 두 Watch 등록 시간 확보 (CI 환경 고려).
-	// /bin/bash 명시: Ubuntu /bin/sh (dash) vs macOS /bin/sh 차이 회피.
+	// Short sleep to allow time for both Watch registrations (CI environment).
+	// /bin/bash explicitly: avoid Ubuntu /bin/sh (dash) vs macOS /bin/sh differences.
 	result, sv := launchStub(t, "#!/bin/bash\nsleep 0.3\nexit 42\n")
 	t.Cleanup(func() { _ = result.Cmd.Process.Kill() })
 
@@ -275,7 +275,7 @@ func TestSupervisor_ExitEvent_Signaled(t *testing.T) {
 
 	select {
 	case ev := <-ch:
-		// SIGKILL로 강제 종료: Signaled or non-zero exit code
+		// Forced exit via SIGKILL: Signaled or non-zero exit code expected.
 		if !ev.Signaled && ev.ExitCode == 0 && ev.Err == nil {
 			t.Error("ExitEvent after Kill: expected Signaled=true or non-zero ExitCode")
 		}
