@@ -80,6 +80,7 @@ func init() {
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
+	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -199,8 +200,30 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintln(out, "Binary update skipped (dev build). Template sync skipped (--binary).")
 		return nil
 	}
+
+	// --dry-run: print planned operations without mutating the filesystem
+	if getBoolFlag(cmd, "dry-run") {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		return dryRunArchiveLegacySkills(cwd, out)
+	}
+
 	if err := runTemplateSyncWithProgress(cmd); err != nil {
 		return err
+	}
+
+	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
+	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
+	{
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for archive: %w", err)
+		}
+		if _, archiveErr := archiveLegacySkills(cwd, out); archiveErr != nil {
+			_, _ = fmt.Fprintf(out, "Warning: legacy skill archive failed: %v\n", archiveErr)
+		}
 	}
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects
