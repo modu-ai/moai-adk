@@ -34,7 +34,7 @@ type ExitEvent struct {
 //	ch := sv.Watch(ctx)
 //	select {
 //	case ev := <-ch:
-//	    // 서버 비정상 종료 처리 (degraded state)
+//	    // Handle abnormal server termination (degraded state)
 //	}
 //
 // @MX:ANCHOR: [AUTO] Supervisor — subprocess lifecycle monitor used by core.Client and degraded-state handler
@@ -52,13 +52,13 @@ type Supervisor struct {
 // exactly once. Callers MUST NOT call result.Cmd.Wait after this point.
 //
 // @MX:WARN: [AUTO] NewSupervisor starts a goroutine that owns cmd.Wait for the subprocess lifetime
-// @MX:REASON: 표준 입출력 파이프를 닫지 않으면 Wait()이 영구 블록됨 — 호출자는 stdin/stdout/stderr를 먼저 닫아야 함
+// @MX:REASON: Wait() blocks forever if stdio pipes are not closed — callers must close stdin/stdout/stderr first
 func NewSupervisor(result *LaunchResult) *Supervisor {
 	s := &Supervisor{
 		cmd:    result.Cmd,
 		doneCh: make(chan struct{}),
 	}
-	// Wait goroutine: 정확히 한 번만 실행하여 race condition 방지
+	// Wait goroutine: run exactly once to prevent race conditions
 	go func() {
 		err := result.Cmd.Wait()
 		s.exitEv = buildExitEvent(err)
@@ -79,11 +79,11 @@ func (s *Supervisor) Watch(ctx context.Context) <-chan ExitEvent {
 		defer close(ch)
 		select {
 		case <-s.doneCh:
-			// doneCh는 이미 닫혔거나 Wait 완료 시 닫힘
-			// exitEv는 doneCh 닫힌 후에만 읽으므로 race-free
+			// doneCh is already closed or closes when Wait completes
+			// exitEv is read only after doneCh is closed, so this is race-free
 			ch <- s.exitEv
 		case <-ctx.Done():
-			// 컨텍스트 취소: 빈 채널 닫힘으로 호출자에게 알림
+			// Context cancelled: notify caller by closing the empty channel
 		}
 	}()
 
@@ -108,7 +108,7 @@ func buildExitEvent(err error) ExitEvent {
 		return ExitEvent{ExitCode: 0}
 	}
 
-	exitErr, ok := err.(*exec.ExitError) //nolint:errorlint // exec.ExitError은 wrapped되지 않음
+	exitErr, ok := err.(*exec.ExitError) //nolint:errorlint // exec.ExitError is not wrapped
 	if !ok {
 		return ExitEvent{Err: err}
 	}
@@ -116,7 +116,7 @@ func buildExitEvent(err error) ExitEvent {
 	code := exitErr.ExitCode()
 	signaled := false
 
-	// Unix: ProcessState.Sys()는 syscall.WaitStatus
+	// Unix: ProcessState.Sys() returns syscall.WaitStatus
 	if ws, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 		signaled = ws.Signaled()
 	}

@@ -15,17 +15,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 )
 
-// RunAstGrepGateV2는 통합 Scanner를 사용하여 ast-grep 품질 게이트를 실행합니다.
-// REQ-ASTG-UPG-030: quality gate hook이 통합 Scanner를 호출
-// REQ-UTIL-002-012: 억제 정책 위반이 있으면 (false, formatted-list)를 반환합니다.
-// RunAstGrepGate의 대체 구현으로, 점진적 마이그레이션을 지원합니다.
+// RunAstGrepGateV2 runs the ast-grep quality gate using the unified Scanner.
+// REQ-ASTG-UPG-030: quality gate hook calls the unified Scanner
+// REQ-UTIL-002-012: returns (false, formatted-list) when suppression policy violations are found.
+// Alternative implementation of RunAstGrepGate that supports gradual migration.
 func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateConfig) (bool, string) {
 	if cfg == nil || !cfg.Enabled {
 		return true, ""
 	}
 
-	// ── 1. 억제 정책 검사 (sg 독립적, pure-Go) ─────────────────────────────
-	// REQ-UTIL-002-010/011/012: ast-grep-ignore 주석의 @MX:REASON 쌍 검사
+	// ── 1. Suppression policy check (sg-independent, pure-Go) ─────────────────
+	// REQ-UTIL-002-010/011/012: verify @MX:REASON pairing for ast-grep-ignore comments
 	sourceFiles := walkSourceFiles(projectDir)
 	var allViolations []SuppressionViolation
 	for _, fp := range sourceFiles {
@@ -41,7 +41,7 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 		return false, strings.TrimSpace(sb.String())
 	}
 
-	// ── 2. ast-grep 스캔 (sg CLI 의존) ───────────────────────────────────────
+	// ── 2. ast-grep scan (depends on sg CLI) ─────────────────────────────────
 	rulesDir := filepath.Join(projectDir, cfg.RulesDir)
 	scannerCfg := &astgrep.ScannerConfig{
 		RulesDir:     rulesDir,
@@ -53,7 +53,7 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 	scanner := astgrep.NewScanner(scannerCfg)
 	findings, err := scanner.Scan(ctx, projectDir)
 	if err != nil {
-		// 스캔 오류 시 통과 (graceful degradation)
+		// Pass on scan error (graceful degradation)
 		return true, ""
 	}
 
@@ -61,7 +61,7 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 		return true, ""
 	}
 
-	// 결과 포매팅
+	// Format results
 	var sb strings.Builder
 	sb.WriteString("ast-grep domain rule scan results:\n\n")
 	for _, f := range findings {
@@ -70,7 +70,7 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 	}
 	output := strings.TrimSpace(sb.String())
 
-	// error severity 발견 시 차단 (WarnOnlyMode가 아닌 경우)
+	// Block when error-severity findings are found (unless WarnOnlyMode is enabled)
 	if astgrep.HasErrors(findings) && !cfg.WarnOnlyMode && cfg.BlockOnError {
 		return false, fmt.Sprintf("quality gate failed: ast-grep domain rules\n\n%s", output)
 	}
@@ -120,21 +120,21 @@ type astGrepScanMatch struct {
 
 const astGrepScanTimeout = 30 * time.Second
 
-// SuppressionViolation은 ast-grep-ignore 주석이 @MX:REASON과 쌍을 이루지 않는 경우를 나타냅니다.
+// SuppressionViolation represents a case where an ast-grep-ignore comment is not paired with @MX:REASON.
 // REQ-UTIL-002-010/011
 type SuppressionViolation struct {
-	// Type은 항상 "SUPPRESSION_WITHOUT_REASON"입니다.
+	// Type is always "SUPPRESSION_WITHOUT_REASON".
 	Type    string `json:"type"`
-	// File은 위반이 발생한 파일 경로입니다.
+	// File is the path of the file where the violation occurred.
 	File    string `json:"file"`
-	// Line은 1-indexed 줄 번호입니다.
+	// Line is the 1-indexed line number.
 	Line    int    `json:"line"`
-	// Message는 사람이 읽을 수 있는 오류 메시지입니다.
+	// Message is a human-readable error message.
 	Message string `json:"message"`
 }
 
-// commentPrefix는 파일 확장자에 따라 line comment 접두사를 반환합니다.
-// 지원하지 않는 확장자는 빈 문자열을 반환합니다.
+// commentPrefix returns the line comment prefix for the given file extension.
+// Returns an empty string for unsupported extensions.
 func commentPrefix(filePath string) string {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	switch ext {
@@ -151,11 +151,11 @@ func commentPrefix(filePath string) string {
 	}
 }
 
-// checkSuppressionPairing는 파일을 한 줄씩 검사하여
-// ast-grep-ignore 주석이 인접한 @MX:REASON 주석과 쌍을 이루지 않는 경우를 찾습니다.
+// checkSuppressionPairing inspects a file line by line to find cases where
+// an ast-grep-ignore comment is not paired with an adjacent @MX:REASON comment.
 //
-// 허용 거리: ast-grep-ignore 다음 빈 줄 0~1개 후 @MX:REASON (REQ-UTIL-002-010).
-// 허용 안됨: 비어 있지 않은 다른 주석 또는 코드 행이 사이에 있는 경우 (REQ-UTIL-002-011).
+// Allowed distance: @MX:REASON may appear after 0–1 blank lines following ast-grep-ignore (REQ-UTIL-002-010).
+// Not allowed: any non-empty comment or code line in between (REQ-UTIL-002-011).
 //
 // REQ-UTIL-002-010/011
 func checkSuppressionPairing(filePath string) []SuppressionViolation {
@@ -173,7 +173,7 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 	ignoreMarker := prefix + " ast-grep-ignore"
 	reasonPrefix := prefix + " @MX:REASON"
 
-	// 파일을 행 단위로 읽기
+	// Read file line by line
 	var lines []string
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
@@ -187,7 +187,7 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 			continue
 		}
 
-		// i번째 줄에서 ast-grep-ignore 발견 (1-indexed: i+1)
+		// ast-grep-ignore found at line i (1-indexed: i+1)
 		found := false
 		blankCount := 0
 
@@ -197,14 +197,14 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 			if nextTrimmed == "" {
 				blankCount++
 				if blankCount > 1 {
-					// 빈 줄 2개 이상: 너무 멀다
+					// More than 1 blank line: too far
 					break
 				}
 				continue
 			}
 
-			// 비어 있지 않은 첫 번째 행 도달
-			// @MX:REASON이 존재하고 이후 텍스트가 비어 있지 않으면 OK
+			// Reached the first non-empty line
+			// OK if @MX:REASON is present and followed by non-empty text
 			if strings.HasPrefix(nextTrimmed, reasonPrefix) {
 				rest := strings.TrimSpace(strings.TrimPrefix(nextTrimmed, reasonPrefix))
 				if rest != "" {
@@ -230,24 +230,24 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 	return violations
 }
 
-// walkSourceFiles는 projectDir 하위의 소스 파일을 재귀 탐색합니다.
-// commentPrefix가 비어 있지 않은 파일만 반환합니다.
-// 억제 정책 검사는 프로덕션 코드에 적용되므로 *_test.go 및 일반적인 제외 경로는 건너뜁니다.
+// walkSourceFiles recursively walks source files under projectDir.
+// Returns only files for which commentPrefix is non-empty.
+// Suppression policy checks apply to production code, so *_test.go and common exclusion paths are skipped.
 func walkSourceFiles(projectDir string) []string {
 	var files []string
 	_ = filepath.WalkDir(projectDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-		// vendor, .git, node_modules 등 제외
+		// Exclude vendor, .git, node_modules, etc.
 		parts := strings.Split(filepath.ToSlash(path), "/")
 		for _, part := range parts {
 			if part == "vendor" || part == ".git" || part == "node_modules" || part == "__pycache__" {
 				return nil
 			}
 		}
-		// *_test.go 파일 제외: 테스트 파일은 ast-grep-ignore를 테스트 픽스처 데이터로
-		// 사용하는 경우가 많으므로 억제 정책 검사에서 제외합니다.
+		// Exclude *_test.go files: test files often use ast-grep-ignore as test fixture data
+		// and should be excluded from suppression policy checks.
 		if strings.HasSuffix(d.Name(), "_test.go") {
 			return nil
 		}

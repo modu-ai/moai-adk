@@ -1,8 +1,8 @@
 package cli
 
-// F1 재현 테스트: filterByLang 미구현 pass-through
-// Finding.Language 필드와 filterByLang 함수를 직접 테스트한다.
-// 패키지 내부 테스트 (package cli)로 작성하여 비공개 함수에 접근한다.
+// F1 reproduction test: filterByLang unimplemented pass-through
+// Tests the Finding.Language field and filterByLang function directly.
+// Written as a package-internal test (package cli) to access unexported functions.
 
 import (
 	"strings"
@@ -11,7 +11,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 )
 
-// TestFilterByLang_KeepsMatchingLanguage: 언어 필터가 일치하는 항목과 언어 정보 없는 항목만 반환하는지 검증
+// TestFilterByLang_KeepsMatchingLanguage: verifies that the language filter returns only matching items and items with no language info
 func TestFilterByLang_KeepsMatchingLanguage(t *testing.T) {
 	findings := []astgrep.Finding{
 		{RuleID: "r1", Language: "go"},
@@ -19,18 +19,18 @@ func TestFilterByLang_KeepsMatchingLanguage(t *testing.T) {
 		{RuleID: "r3", Language: ""},
 	}
 	got := filterByLang(findings, "python")
-	// python + 빈 언어 = 2개 반환
+	// python + empty language = 2 returned
 	if len(got) != 2 {
-		t.Errorf("filterByLang(python) len = %d, want 2 (python 항목 + 언어 정보 없는 항목)", len(got))
+		t.Errorf("filterByLang(python) len = %d, want 2 (python item + item with no language info)", len(got))
 	}
 	for _, f := range got {
 		if strings.ToLower(f.Language) != "python" && f.Language != "" {
-			t.Errorf("filterByLang(python)에 잘못된 언어가 포함됨: %q", f.Language)
+			t.Errorf("filterByLang(python) contains unexpected language: %q", f.Language)
 		}
 	}
 }
 
-// TestFilterByLang_EmptyLang_ReturnsAll: 언어 필터가 비어있으면 전부 반환하는지 검증
+// TestFilterByLang_EmptyLang_ReturnsAll: verifies that an empty language filter returns all items
 func TestFilterByLang_EmptyLang_ReturnsAll(t *testing.T) {
 	findings := []astgrep.Finding{
 		{RuleID: "r1", Language: "go"},
@@ -39,11 +39,11 @@ func TestFilterByLang_EmptyLang_ReturnsAll(t *testing.T) {
 	}
 	got := filterByLang(findings, "")
 	if len(got) != len(findings) {
-		t.Errorf("filterByLang(\"\") len = %d, want %d (전체 반환)", len(got), len(findings))
+		t.Errorf("filterByLang(\"\") len = %d, want %d (return all)", len(got), len(findings))
 	}
 }
 
-// TestFilterByLang_CaseInsensitive: 언어 필터가 대소문자를 무시하는지 검증
+// TestFilterByLang_CaseInsensitive: verifies that the language filter is case-insensitive
 func TestFilterByLang_CaseInsensitive(t *testing.T) {
 	findings := []astgrep.Finding{
 		{RuleID: "r1", Language: "Go"},
@@ -51,8 +51,8 @@ func TestFilterByLang_CaseInsensitive(t *testing.T) {
 		{RuleID: "r3", Language: ""},
 	}
 	got := filterByLang(findings, "go")
-	// Go (대문자) + 빈 언어 = 2개
+	// Go (uppercase) + empty language = 2
 	if len(got) != 2 {
-		t.Errorf("filterByLang(go) 대소문자 무시 테스트: len = %d, want 2", len(got))
+		t.Errorf("filterByLang(go) case-insensitive test: len = %d, want 2", len(got))
 	}
 }

@@ -30,7 +30,7 @@ func TestUpdateLearning_MissingID(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	// 유효한 형식이지만 존재하지 않는 ID
+	// Valid format but non-existent ID
 	err := evolution.UpdateLearning(projectRoot, "LEARN-20260411-999", func(e *evolution.LearningEntry) {
 		e.Observations++
 	})

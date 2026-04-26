@@ -88,7 +88,7 @@ func TestReadInput(t *testing.T) {
 			},
 		},
 		{
-			// session_id 누락 시 "unknown"으로 폴백 (graceful degradation)
+			// when session_id is absent, falls back to "unknown" (graceful degradation)
 			name:    "missing session_id defaults to unknown",
 			input:   `{"cwd": "/tmp", "hook_event_name": "SessionStart"}`,
 			wantErr: false,
@@ -139,7 +139,7 @@ func TestReadInput(t *testing.T) {
 			},
 		},
 		{
-			// cwd 누락 시 $CLAUDE_PROJECT_DIR 폴백 또는 빈 문자열 허용
+			// when cwd is absent, falls back to $CLAUDE_PROJECT_DIR or allows empty string
 			name:    "missing cwd falls back gracefully",
 			input:   `{"session_id": "sess-1", "hook_event_name": "SessionStart"}`,
 			wantErr: false,

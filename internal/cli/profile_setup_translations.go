@@ -95,7 +95,7 @@ type profileSetupText struct {
 	SummarySyncedHeader    string
 	SummarySyncSkipped     string
 
-	// W-4: statusline 마이그레이션 배너 (이전 값 → 새 값)
+	// W-4: statusline migration banner (previous value → new value)
 	MigrationNoticeStatuslineMode  string
 	MigrationNoticeStatuslineTheme string
 }

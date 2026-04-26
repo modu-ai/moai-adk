@@ -252,9 +252,9 @@ func pickEvolvableZone(skillFilePath string) string {
 	return "best-practices"
 }
 
-// deduplicateSummaries는 향후 Reflective Write 확장에서 사용할 헬퍼로 보존한다.
-// 현재 호출 경로는 없으므로 linter unused 경고를 방지하기 위해 주석 처리했다.
-// 복원 시: 본 파일의 블록 주석을 제거하고 호출부를 추가하라.
+// deduplicateSummaries is preserved as a helper for future Reflective Write extensions.
+// Currently there is no call path, so it is commented out to suppress the linter unused warning.
+// To restore: remove the block comment in this file and add a call site.
 /*
 func deduplicateSummaries(summaries []string) string {
 	seen := make(map[string]bool)

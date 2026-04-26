@@ -7,24 +7,24 @@ import (
 	"time"
 )
 
-// TestDefaultConfig는 DefaultConfig가 합리적인 기본값을 반환하는지 검증한다.
+// TestDefaultConfig verifies that DefaultConfig returns reasonable default values.
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 	if cfg == nil {
-		t.Fatal("DefaultConfig()가 nil을 반환해서는 안 된다")
+		t.Fatal("DefaultConfig() must not return nil")
 	}
 	if cfg.Binary != "gopls" {
-		t.Errorf("기본 Binary = %q, 원하는 값 = %q", cfg.Binary, "gopls")
+		t.Errorf("default Binary = %q, want %q", cfg.Binary, "gopls")
 	}
 	if cfg.Timeout != 30*time.Second {
-		t.Errorf("기본 Timeout = %v, 원하는 값 = %v", cfg.Timeout, 30*time.Second)
+		t.Errorf("default Timeout = %v, want %v", cfg.Timeout, 30*time.Second)
 	}
 	if cfg.Enabled {
-		t.Error("기본 Enabled는 false여야 한다")
+		t.Error("default Enabled must be false")
 	}
 }
 
-// TestLoadConfig_ValidYAML은 올바른 YAML 파일에서 설정을 로드하는지 검증한다.
+// TestLoadConfig_ValidYAML verifies that config is loaded from a valid YAML file.
 func TestLoadConfig_ValidYAML(t *testing.T) {
 	yaml := `lsp:
     gopls_bridge:
@@ -43,72 +43,72 @@ func TestLoadConfig_ValidYAML(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "lsp.yaml")
 	if err := os.WriteFile(configPath, []byte(yaml), 0644); err != nil {
-		t.Fatalf("테스트 파일 생성 실패: %v", err)
+		t.Fatalf("failed to create test file: %v", err)
 	}
 
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
-		t.Fatalf("LoadConfig 오류: %v", err)
+		t.Fatalf("LoadConfig error: %v", err)
 	}
 	if !cfg.Enabled {
-		t.Error("Enabled = false, true를 기대했다")
+		t.Error("Enabled = false, want true")
 	}
 	if cfg.Binary != "/usr/local/bin/gopls" {
-		t.Errorf("Binary = %q, 원하는 값 = %q", cfg.Binary, "/usr/local/bin/gopls")
+		t.Errorf("Binary = %q, want %q", cfg.Binary, "/usr/local/bin/gopls")
 	}
 	if len(cfg.Args) != 1 || cfg.Args[0] != "-remote=auto" {
-		t.Errorf("Args = %v, 원하는 값 = [-remote=auto]", cfg.Args)
+		t.Errorf("Args = %v, want [-remote=auto]", cfg.Args)
 	}
-	// 타임아웃 검증
+	// validate timeouts
 	if cfg.Timeout != 10*time.Second {
-		t.Errorf("Timeout (request) = %v, 원하는 값 = %v", cfg.Timeout, 10*time.Second)
+		t.Errorf("Timeout (request) = %v, want %v", cfg.Timeout, 10*time.Second)
 	}
 	if cfg.InitTimeout != 60*time.Second {
-		t.Errorf("InitTimeout = %v, 원하는 값 = %v", cfg.InitTimeout, 60*time.Second)
+		t.Errorf("InitTimeout = %v, want %v", cfg.InitTimeout, 60*time.Second)
 	}
 	if cfg.ShutdownTimeout != 10*time.Second {
-		t.Errorf("ShutdownTimeout = %v, 원하는 값 = %v", cfg.ShutdownTimeout, 10*time.Second)
+		t.Errorf("ShutdownTimeout = %v, want %v", cfg.ShutdownTimeout, 10*time.Second)
 	}
 	if cfg.DebounceWindow != 200*time.Millisecond {
-		t.Errorf("DebounceWindow = %v, 원하는 값 = %v", cfg.DebounceWindow, 200*time.Millisecond)
+		t.Errorf("DebounceWindow = %v, want %v", cfg.DebounceWindow, 200*time.Millisecond)
 	}
-	// init_options 검증
+	// validate init_options
 	if v, ok := cfg.InitOptions["staticcheck"]; !ok || v != true {
-		t.Errorf("InitOptions[staticcheck] = %v, true를 기대했다", v)
+		t.Errorf("InitOptions[staticcheck] = %v, want true", v)
 	}
 }
 
-// TestLoadConfig_MissingFile은 파일이 없으면 기본값을 반환하는지 검증한다.
-// REQ-GB-002 대응: 파일 없음은 오류가 아니라 기본값을 반환한다.
+// TestLoadConfig_MissingFile verifies that default values are returned when the file is absent.
+// REQ-GB-002: missing file is not an error; return defaults instead.
 func TestLoadConfig_MissingFile(t *testing.T) {
 	cfg, err := LoadConfig("/nonexistent/path/lsp.yaml")
 	if err != nil {
-		t.Fatalf("파일 없음 시 오류가 반환됐다: %v (기본값을 기대했다)", err)
+		t.Fatalf("missing file returned error: %v (wanted default values)", err)
 	}
 	if cfg == nil {
-		t.Fatal("파일 없음 시 nil이 반환됐다 (기본값을 기대했다)")
+		t.Fatal("missing file returned nil (wanted default values)")
 	}
-	// 기본값 확인
+	// verify defaults
 	if cfg.Binary != "gopls" {
-		t.Errorf("기본 Binary = %q, 원하는 값 = gopls", cfg.Binary)
+		t.Errorf("default Binary = %q, want gopls", cfg.Binary)
 	}
 }
 
-// TestLoadConfig_InvalidYAML은 잘못된 YAML 파일에서 오류를 반환하는지 검증한다.
+// TestLoadConfig_InvalidYAML verifies that an error is returned for an invalid YAML file.
 func TestLoadConfig_InvalidYAML(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "lsp.yaml")
 	if err := os.WriteFile(configPath, []byte("not: valid: yaml: ["), 0644); err != nil {
-		t.Fatalf("테스트 파일 생성 실패: %v", err)
+		t.Fatalf("failed to create test file: %v", err)
 	}
 
 	_, err := LoadConfig(configPath)
 	if err == nil {
-		t.Error("잘못된 YAML에서 오류가 반환되지 않았다")
+		t.Error("invalid YAML did not return an error")
 	}
 }
 
-// TestLoadConfig_PartialYAML은 일부 필드만 지정된 YAML에서 기본값이 채워지는지 검증한다.
+// TestLoadConfig_PartialYAML verifies that default values fill in unspecified fields in a partial YAML.
 func TestLoadConfig_PartialYAML(t *testing.T) {
 	yaml := `lsp:
     gopls_bridge:
@@ -117,43 +117,43 @@ func TestLoadConfig_PartialYAML(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "lsp.yaml")
 	if err := os.WriteFile(configPath, []byte(yaml), 0644); err != nil {
-		t.Fatalf("테스트 파일 생성 실패: %v", err)
+		t.Fatalf("failed to create test file: %v", err)
 	}
 
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
-		t.Fatalf("LoadConfig 오류: %v", err)
+		t.Fatalf("LoadConfig error: %v", err)
 	}
 	if !cfg.Enabled {
-		t.Error("Enabled = false, true를 기대했다")
+		t.Error("Enabled = false, want true")
 	}
-	// 지정하지 않은 필드는 기본값
+	// unspecified fields use defaults
 	if cfg.Binary != "gopls" {
-		t.Errorf("부분 YAML: Binary = %q, 기본값 gopls를 기대했다", cfg.Binary)
+		t.Errorf("partial YAML: Binary = %q, want default gopls", cfg.Binary)
 	}
 	if cfg.Timeout != 30*time.Second {
-		t.Errorf("부분 YAML: Timeout = %v, 기본값 30s를 기대했다", cfg.Timeout)
+		t.Errorf("partial YAML: Timeout = %v, want default 30s", cfg.Timeout)
 	}
 }
 
-// ─── F5: validateBinary / validateArgs 테스트 ────────────────────────────────
+// ─── F5: validateBinary / validateArgs tests ─────────────────────────────────
 
-// TestValidateBinary_AllowsGopls는 bare name "gopls"가 허용되는지 검증한다.
+// TestValidateBinary_AllowsGopls verifies that the bare name "gopls" is allowed.
 func TestValidateBinary_AllowsGopls(t *testing.T) {
 	if err := validateBinary("gopls"); err != nil {
-		t.Errorf("validateBinary(gopls) = %v, nil을 기대했다", err)
+		t.Errorf("validateBinary(gopls) = %v, want nil", err)
 	}
 }
 
-// TestValidateBinary_RejectsUntrustedPath는 신뢰되지 않은 절대 경로를 거부하는지 검증한다.
+// TestValidateBinary_RejectsUntrustedPath verifies that untrusted absolute paths are rejected.
 func TestValidateBinary_RejectsUntrustedPath(t *testing.T) {
 	err := validateBinary("/tmp/evil/gopls")
 	if err == nil {
-		t.Error("validateBinary(/tmp/evil/gopls)이 오류를 반환하지 않았다")
+		t.Error("validateBinary(/tmp/evil/gopls) did not return an error")
 	}
 }
 
-// TestValidateBinary_AllowsTrustedPrefix는 신뢰된 접두사 경로를 허용하는지 검증한다.
+// TestValidateBinary_AllowsTrustedPrefix verifies that trusted prefix paths are allowed.
 func TestValidateBinary_AllowsTrustedPrefix(t *testing.T) {
 	trustedPaths := []string{
 		"/usr/bin/gopls",
@@ -168,20 +168,20 @@ func TestValidateBinary_AllowsTrustedPrefix(t *testing.T) {
 
 	for _, p := range trustedPaths {
 		if err := validateBinary(p); err != nil {
-			t.Errorf("validateBinary(%q) = %v, nil을 기대했다", p, err)
+			t.Errorf("validateBinary(%q) = %v, want nil", p, err)
 		}
 	}
 }
 
-// TestValidateBinary_RejectsTraversal은 경로 순회 시도를 거부하는지 검증한다.
+// TestValidateBinary_RejectsTraversal verifies that path traversal attempts are rejected.
 func TestValidateBinary_RejectsTraversal(t *testing.T) {
 	err := validateBinary("/usr/local/bin/../../../etc/passwd")
 	if err == nil {
-		t.Error("validateBinary(경로 순회)이 오류를 반환하지 않았다")
+		t.Error("validateBinary(path traversal) did not return an error")
 	}
 }
 
-// TestValidateArgs_RejectsShellMetachars는 쉘 메타문자가 포함된 인수를 거부하는지 검증한다.
+// TestValidateArgs_RejectsShellMetachars verifies that args containing shell metacharacters are rejected.
 func TestValidateArgs_RejectsShellMetachars(t *testing.T) {
 	dangerous := []string{
 		"; rm -rf /",
@@ -195,12 +195,12 @@ func TestValidateArgs_RejectsShellMetachars(t *testing.T) {
 	}
 	for _, arg := range dangerous {
 		if err := validateArgs([]string{arg}); err == nil {
-			t.Errorf("validateArgs(%q)이 오류를 반환하지 않았다", arg)
+			t.Errorf("validateArgs(%q) did not return an error", arg)
 		}
 	}
 }
 
-// TestValidateArgs_AllowsSafeArgs는 안전한 인수를 허용하는지 검증한다.
+// TestValidateArgs_AllowsSafeArgs verifies that safe args are allowed.
 func TestValidateArgs_AllowsSafeArgs(t *testing.T) {
 	safe := [][]string{
 		{},
@@ -210,16 +210,16 @@ func TestValidateArgs_AllowsSafeArgs(t *testing.T) {
 	}
 	for _, args := range safe {
 		if err := validateArgs(args); err != nil {
-			t.Errorf("validateArgs(%v) = %v, nil을 기대했다", args, err)
+			t.Errorf("validateArgs(%v) = %v, want nil", args, err)
 		}
 	}
 }
 
-// TestLoadConfig_RealLSPYaml은 실제 .moai/config/sections/lsp.yaml을 로드할 수 있는지 검증한다.
-// 이 파일이 없으면 테스트를 건너뛴다.
+// TestLoadConfig_RealLSPYaml verifies that the real .moai/config/sections/lsp.yaml can be loaded.
+// Skips if the file is not present.
 func TestLoadConfig_RealLSPYaml(t *testing.T) {
-	// 프로젝트 루트에서 실제 파일 경로를 찾는다.
-	// 테스트는 패키지 디렉토리에서 실행되므로 상위 경로로 이동한다.
+	// find the real file path from project root.
+	// tests run from the package directory, so navigate up.
 	candidates := []string{
 		"../../../.moai/config/sections/lsp.yaml",
 		"../../../../.moai/config/sections/lsp.yaml",
@@ -232,18 +232,18 @@ func TestLoadConfig_RealLSPYaml(t *testing.T) {
 		}
 	}
 	if found == "" {
-		t.Skip("실제 lsp.yaml 파일을 찾을 수 없어 테스트를 건너뜁니다")
+		t.Skip("real lsp.yaml not found, skipping test")
 	}
 
 	cfg, err := LoadConfig(found)
 	if err != nil {
-		t.Fatalf("실제 lsp.yaml 로드 오류: %v", err)
+		t.Fatalf("loading real lsp.yaml error: %v", err)
 	}
 	if cfg == nil {
-		t.Fatal("실제 lsp.yaml 로드 결과 nil")
+		t.Fatal("loading real lsp.yaml returned nil")
 	}
-	// 실제 파일에서는 enabled가 false여야 한다 (기본값)
+	// real file should have enabled=false (default)
 	if cfg.Binary != "gopls" {
-		t.Errorf("Binary = %q, gopls를 기대했다", cfg.Binary)
+		t.Errorf("Binary = %q, want gopls", cfg.Binary)
 	}
 }

@@ -1,7 +1,7 @@
 package hook
 
-// registry_extra_coverage_test.go: SetTraceWriter, EnableObservability,
-// effectiveDecision, effectiveReason, writeTrace, ensureTraceWriter 커버리지
+// registry_extra_coverage_test.go: coverage for SetTraceWriter, EnableObservability,
+// effectiveDecision, effectiveReason, writeTrace, ensureTraceWriter
 
 import (
 	"context"
