@@ -9,10 +9,14 @@ on:
     branches:
       - main
   pull_request:
-    types: [opened, reopened, synchronize, edited]
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-drafter-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   update_release_draft:
