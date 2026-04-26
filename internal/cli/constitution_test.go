@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -189,11 +190,19 @@ func TestConstitutionListRegistryMissing_FileNotFound(t *testing.T) {
 	}
 }
 
-// TestConstitutionListRegistryMissing_PermissionDenied는 권한 없는 registry 파일 시 에러를 검증한다.
-// AC-CON-001-013 직접 매핑 (permission-denied subtest).
+// TestConstitutionListRegistryMissing_PermissionDenied verifies an error
+// is returned when the registry file is not readable.
+// AC-CON-001-013 (permission-denied subtest).
+//
+// Skipped on Windows: os.Chmod(path, 0o000) does not remove read access on
+// Windows because the Windows ACL model does not honor POSIX permission bits
+// in the same way. The test relies on a POSIX permission semantics.
 func TestConstitutionListRegistryMissing_PermissionDenied(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission semantics required; skipped on Windows")
+	}
 	if os.Getuid() == 0 {
-		t.Skip("root에서는 권한 거부 테스트를 건너뜁니다")
+		t.Skip("permission-denied test skipped when running as root")
 	}
 
 	dir := t.TempDir()
