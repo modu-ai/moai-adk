@@ -16,8 +16,9 @@ import (
 // TestAsyncRecorder_NonBlockingUnderLoad verifies that Record() returns quickly
 // even under heavy parallel load, and that all records are persisted after Close.
 func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
-	// Windows CI 러너의 고루틴 스케줄러 입도가 Linux/macOS 대비 훨씬 거칠어
-	// latency 기반 검증이 일관되게 실패한다. 비블로킹 불변식은 다른 OS에서 검증.
+	// On Windows CI runners the goroutine scheduler granularity is much coarser
+	// than on Linux/macOS, so latency-based assertions fail consistently.
+	// Verify the non-blocking invariant on other OSes instead.
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping on Windows: scheduler granularity causes flaky latency assertions")
 	}
@@ -52,8 +53,8 @@ func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
 			start := time.Now()
 			_ = rec.Record(r)
 			elapsed := time.Since(start)
-			// CI 환경(특히 Windows)의 고루틴 스케줄링 지연을 고려해 임계값을 100ms로 설정.
-			// 핵심 불변식: Record()는 디스크 I/O를 기다리지 않고 즉시 반환한다(채널 send 또는 drop).
+			// Threshold set to 100ms to accommodate goroutine scheduling latency in CI (especially Windows).
+			// Core invariant: Record() returns immediately without waiting for disk I/O (channel send or drop).
 			if elapsed > 100*time.Millisecond {
 				slowMu.Lock()
 				slowCalls++
@@ -63,13 +64,13 @@ func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
 	}
 	wg.Wait()
 
-	// 버퍼 크기보다 많은 레코드이므로 일부는 드롭될 수 있음 - 하지만 블로킹은 없어야 함
-	// 느린 호출이 전체의 5% 이하여야 함(CI 스케줄링 변동 허용)
+	// More records than the buffer size, so some may be dropped — but blocking must not occur.
+	// Slow calls must be <= 5% of total (allows CI scheduling jitter).
 	if slowCalls > numRecords*5/100 {
-		t.Errorf("너무 많은 느린 호출: %d/%d (100ms 초과)", slowCalls, numRecords)
+		t.Errorf("too many slow calls: %d/%d (>100ms)", slowCalls, numRecords)
 	}
 
-	// 모든 레코드가 처리될 때까지 닫기
+	// Close after all records are processed.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -77,14 +78,14 @@ func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
 		t.Fatalf("Close: %v", err)
 	}
 
-	// 파일에 일부 레코드가 기록되었는지 확인 (드롭 정책으로 전체가 아닐 수 있음)
+	// Verify that some records were written to file (drop policy may keep less than total).
 	telDir := filepath.Join(dir, ".moai", "evolution", "telemetry")
 	entries, err := os.ReadDir(telDir)
 	if err != nil {
-		t.Fatalf("telemetry 디렉터리 읽기 실패: %v", err)
+		t.Fatalf("read telemetry dir: %v", err)
 	}
 	if len(entries) == 0 {
-		t.Fatal("telemetry 파일이 생성되지 않음")
+		t.Fatal("no telemetry files were created")
 	}
 }
 
@@ -98,10 +99,9 @@ func TestAsyncRecorder_DropPolicyWhenFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 버퍼 크기 1, 소비자를 차단하여 버퍼가 꽉 차도록 함
+	// Buffer size 1; block the consumer so the buffer fills up.
 	rec := NewAsyncRecorder(dir, 1)
-	// 소비자 고루틴을 즉시 멈추기 위해 Close 후에도 테스트
-	// 대신 소비자 없이 채널을 꽉 채우는 방식으로 테스트
+	// Alternatively, fill the channel without a consumer to drive the test.
 
 	ts := time.Date(2026, 4, 15, 10, 0, 0, 0, time.UTC)
 	r := UsageRecord{
@@ -110,8 +110,8 @@ func TestAsyncRecorder_DropPolicyWhenFull(t *testing.T) {
 		Outcome:   OutcomeUnknown,
 	}
 
-	// 여러 번 Record를 호출하여 드롭이 발생하는지 확인
-	// 버퍼가 1이므로 처음 몇 번 이후에는 드롭되어야 함
+	// Call Record many times and verify that drops occur.
+	// Buffer is 1, so after the first few calls drops must happen.
 	var dropped int
 	for i := 0; i < 100; i++ {
 		err := rec.Record(r)
@@ -124,9 +124,9 @@ func TestAsyncRecorder_DropPolicyWhenFull(t *testing.T) {
 	defer cancel()
 	_ = rec.Close(ctx)
 
-	// 드롭이 발생했어야 함 (버퍼 1이므로)
-	// 소비자가 빠르면 드롭이 적을 수 있으므로 느슨하게 검증
-	t.Logf("드롭된 레코드: %d/100", dropped)
+	// Drops must have occurred (because buffer is 1).
+	// If the consumer is fast, dropped count may be small — verify loosely.
+	t.Logf("dropped records: %d/100", dropped)
 }
 
 // TestAsyncRecorder_ReusesFileHandle verifies that the async recorder does not
@@ -141,7 +141,7 @@ func TestAsyncRecorder_ReusesFileHandle(t *testing.T) {
 
 	rec := NewAsyncRecorder(dir, 500)
 
-	// 같은 날짜로 100개 레코드 기록
+	// Record 100 entries with the same date.
 	ts := time.Date(2026, 4, 15, 10, 0, 0, 0, time.UTC)
 	for i := 0; i < 100; i++ {
 		r := UsageRecord{
@@ -161,12 +161,12 @@ func TestAsyncRecorder_ReusesFileHandle(t *testing.T) {
 		t.Fatalf("Close: %v", err)
 	}
 
-	// 파일에 100개 레코드가 모두 기록되었는지 확인
+	// Verify that all 100 records were written to the file.
 	telDir := filepath.Join(dir, ".moai", "evolution", "telemetry")
 	path := filepath.Join(telDir, "usage-2026-04-15.jsonl")
 	f, err := os.Open(path)
 	if err != nil {
-		t.Fatalf("파일 열기 실패: %v", err)
+		t.Fatalf("open file: %v", err)
 	}
 	defer func() { _ = f.Close() }()
 
@@ -179,12 +179,12 @@ func TestAsyncRecorder_ReusesFileHandle(t *testing.T) {
 		}
 		var rec UsageRecord
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
-			t.Errorf("유효하지 않은 JSON at line %d: %v", count+1, err)
+			t.Errorf("invalid JSON at line %d: %v", count+1, err)
 		}
 		count++
 	}
 
 	if count != 100 {
-		t.Errorf("기대 100개 레코드, 실제 %d개", count)
+		t.Errorf("expected 100 records, got %d", count)
 	}
 }

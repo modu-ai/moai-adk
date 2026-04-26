@@ -8,8 +8,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 
-// TestDiagnosticAlias_TypeIdentity는 gopls.Diagnostic이 lsp.Diagnostic과
-// 동일한 타입임을 reflect.TypeOf로 확인한다 (AC-UTIL-003-007).
+// TestDiagnosticAlias_TypeIdentity verifies via reflect.TypeOf that
+// gopls.Diagnostic and lsp.Diagnostic are the same type (AC-UTIL-003-007).
 func TestDiagnosticAlias_TypeIdentity(t *testing.T) {
 	t.Parallel()
 
@@ -22,8 +22,8 @@ func TestDiagnosticAlias_TypeIdentity(t *testing.T) {
 	}
 }
 
-// TestRangeAlias_TypeIdentity는 gopls.Range가 lsp.Range와
-// 동일한 타입임을 확인한다 (AC-UTIL-003-007).
+// TestRangeAlias_TypeIdentity verifies that gopls.Range and lsp.Range are
+// the same type (AC-UTIL-003-007).
 func TestRangeAlias_TypeIdentity(t *testing.T) {
 	t.Parallel()
 
@@ -32,8 +32,8 @@ func TestRangeAlias_TypeIdentity(t *testing.T) {
 	}
 }
 
-// TestPositionAlias_TypeIdentity는 gopls.Position이 lsp.Position과
-// 동일한 타입임을 확인한다 (AC-UTIL-003-007).
+// TestPositionAlias_TypeIdentity verifies that gopls.Position and lsp.Position
+// are the same type (AC-UTIL-003-007).
 func TestPositionAlias_TypeIdentity(t *testing.T) {
 	t.Parallel()
 
@@ -42,7 +42,7 @@ func TestPositionAlias_TypeIdentity(t *testing.T) {
 	}
 }
 
-// TestSeverityError_Equality는 gopls.SeverityError == lsp.SeverityError를 확인한다 (AC-UTIL-003-007).
+// TestSeverityError_Equality verifies gopls.SeverityError == lsp.SeverityError (AC-UTIL-003-007).
 func TestSeverityError_Equality(t *testing.T) {
 	t.Parallel()
 
@@ -52,19 +52,21 @@ func TestSeverityError_Equality(t *testing.T) {
 	}
 }
 
-// TestDiagnosticAlias_Interoperability는 lsp.Diagnostic 값을 gopls.Diagnostic으로
-// 타입 변환 없이 대입할 수 있음을 컴파일 시점에 검증한다 (AC-UTIL-003-007).
+// TestDiagnosticAlias_Interoperability verifies at compile time that an
+// lsp.Diagnostic value can be assigned to a gopls.Diagnostic without a type
+// conversion (AC-UTIL-003-007).
 func TestDiagnosticAlias_Interoperability(t *testing.T) {
 	t.Parallel()
 
-	// 타입 별칭이면 대입이 컴파일되고 값이 동일해야 함
+	// If aliased, the assignment compiles and the value must be the same.
 	lspDiag := lsp.Diagnostic{
 		Severity: lsp.SeverityError,
 		Message:  "undefined: foo",
 	}
 
-	// 타입 별칭: 추가 변환 없이 대입 가능
-	// ST1023 nolint: 타입 어노테이션이 테스트의 의도(별칭 식별성 대입 증명)
+	// Type alias: assignment without an explicit conversion compiles.
+	// ST1023 nolint: the type annotation is intentional — it documents the test intent
+	// (proving alias identity through the assignment).
 	//nolint:staticcheck // ST1023
 	var goplsDiag gopls.Diagnostic = lspDiag
 	if goplsDiag.Message != lspDiag.Message {

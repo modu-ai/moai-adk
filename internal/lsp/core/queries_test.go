@@ -18,7 +18,8 @@ import (
 // fakeQueryTransport — supports Call responses + Notify recording + Notification simulation
 // ---------------------------------------------------------------------------
 
-// fakeQueryTransport는 Call 응답과 Notify를 기록하며 OnNotification 핸들러를 지원합니다.
+// fakeQueryTransport records Call responses and Notify calls and supports
+// OnNotification handlers.
 type fakeQueryTransport struct {
 	mu               sync.Mutex
 	callLog          []string
@@ -86,7 +87,7 @@ func (f *fakeQueryTransport) Close() error {
 	return nil
 }
 
-// simulateNotification은 서버가 push 알림을 보내는 것을 시뮬레이션합니다.
+// simulateNotification simulates the server pushing a notification.
 func (f *fakeQueryTransport) simulateNotification(method string, params json.RawMessage) {
 	f.mu.Lock()
 	handler, ok := f.notifHandlers[method]
@@ -116,7 +117,7 @@ func (f *fakeQueryTransport) callCount(method string) int {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// makeQueryClient는 fakeQueryTransport로 시작된 테스트 클라이언트를 반환합니다.
+// makeQueryClient returns a test client constructed with fakeQueryTransport.
 func makeQueryClient(cfg config.ServerConfig, ft *fakeQueryTransport) *client {
 	return NewClient(cfg,
 		WithLauncherFunc((&fakeLauncher{}).Launch),
@@ -126,7 +127,7 @@ func makeQueryClient(cfg config.ServerConfig, ft *fakeQueryTransport) *client {
 	)
 }
 
-// startedQueryClient는 Start까지 완료된 클라이언트를 반환합니다.
+// startedQueryClient returns a client that has completed Start.
 func startedQueryClient(t *testing.T, cfg config.ServerConfig, ft *fakeQueryTransport) *client {
 	t.Helper()
 	c := makeQueryClient(cfg, ft)
@@ -168,12 +169,12 @@ func TestGetDiagnostics_AfterPublishDiagnostics(t *testing.T) {
 	c := startedQueryClient(t, cfg, ft)
 
 	ctx := context.Background()
-	// 파일을 먼저 열어야 함
+	// The file must be opened first.
 	if err := c.OpenFile(ctx, "/tmp/diag.go", "package main"); err != nil {
 		t.Fatalf("OpenFile: %v", err)
 	}
 
-	// 서버가 publishDiagnostics 알림을 보내는 시뮬레이션
+	// Simulate the server sending a publishDiagnostics notification.
 	uri := pathToURI("/tmp/diag.go")
 	diagPayload, _ := json.Marshal(map[string]any{
 		"uri": uri,
@@ -296,7 +297,7 @@ func TestFindReferences_Timeout(t *testing.T) {
 	cfg := config.ServerConfig{Language: "go", Command: "gopls"}
 	c := startedQueryClient(t, cfg, ft)
 
-	// 이미 만료된 컨텍스트
+	// Already-expired context.
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1*time.Second))
 	defer cancel()
 
@@ -345,7 +346,7 @@ func TestGotoDefinition_SingleObjectResponse(t *testing.T) {
 	ft := newFakeQueryTransport()
 	cfg := config.ServerConfig{Language: "go", Command: "gopls"}
 
-	// 단일 Location 객체 (배열이 아님)
+	// Single Location object (not an array).
 	locJSON, _ := json.Marshal(lsp.Location{
 		URI:   "file:///single.go",
 		Range: lsp.Range{Start: lsp.Position{Line: 3, Character: 2}},

@@ -12,7 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/core"
 )
 
-// tsConfig는 typescript-language-server 통합 테스트용 ServerConfig를 반환합니다.
+// tsConfig returns a ServerConfig for typescript-language-server integration tests.
 func tsConfig() config.ServerConfig {
 	return config.ServerConfig{
 		Language:       "typescript",
@@ -23,10 +23,10 @@ func tsConfig() config.ServerConfig {
 	}
 }
 
-// TestIntegration_TypeScript_InitializeAndShutdown은 typescript-language-server를
-// 실제로 기동하고 StateReady에 도달한 후 정상적으로 종료되는지 확인합니다.
+// TestIntegration_TypeScript_InitializeAndShutdown actually launches
+// typescript-language-server, waits for StateReady, and verifies normal shutdown.
 //
-// typescript-language-server가 PATH에 없으면 Skip됩니다.
+// Skipped if typescript-language-server is not on PATH.
 func TestIntegration_TypeScript_InitializeAndShutdown(t *testing.T) {
 	skipIfBinaryMissing(t, "typescript-language-server")
 
@@ -49,20 +49,21 @@ func TestIntegration_TypeScript_InitializeAndShutdown(t *testing.T) {
 	assertStateEquals(t, cl, core.StateShutdown)
 }
 
-// TestIntegration_TypeScript_OpenFileAndDiagnostics는 typescript-language-server가
-// TypeScript 소스 파일의 타입 오류에 대해 진단을 push하는지 확인합니다.
+// TestIntegration_TypeScript_OpenFileAndDiagnostics verifies that
+// typescript-language-server pushes diagnostics for type errors in a TypeScript
+// source file.
 //
-// typescript-language-server가 PATH에 없으면 Skip됩니다.
+// Skipped if typescript-language-server is not on PATH.
 func TestIntegration_TypeScript_OpenFileAndDiagnostics(t *testing.T) {
 	skipIfBinaryMissing(t, "typescript-language-server")
 
 	tmpDir := t.TempDir()
 
-	// 타입 오류가 있는 TypeScript 파일 생성
+	// Create a TypeScript file with a type error.
 	tsContent := "const x: number = \"string\";\n"
 	tsPath := writeTempFile(t, tmpDir, "main.ts", tsContent)
 
-	// tsconfig.json 생성 (root marker)
+	// Create tsconfig.json (root marker).
 	writeTempFile(t, tmpDir, "tsconfig.json", `{"compilerOptions":{"strict":true}}`+"\n")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -83,13 +84,13 @@ func TestIntegration_TypeScript_OpenFileAndDiagnostics(t *testing.T) {
 		t.Fatalf("OpenFile: %v", err)
 	}
 
-	// 진단 폴링: 최대 10s 대기
+	// Poll for diagnostics: wait up to 10s.
 	diags := waitForDiagnostics(ctx, cl, tsPath, 1, 200*time.Millisecond, 10*time.Second)
 	if len(diags) == 0 {
 		t.Fatal("expected at least 1 diagnostic from typescript-language-server for type mismatch, got 0")
 	}
 
-	// 진단 메시지에 타입 오류 관련 키워드가 포함되어 있는지 확인 (case-insensitive)
+	// Verify the diagnostic message contains type-error keywords (case-insensitive).
 	typeErrorKeywords := []string{"type", "string", "number", "assignable"}
 	found := false
 outer:
