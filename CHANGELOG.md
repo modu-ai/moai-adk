@@ -5,6 +5,100 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.0] - 2026-04-27
+
+V3R3 Phase C 마일스톤: 메타-하니스 스킬 신설 + 16개 정적 스킬 제거 (BC-V3R3-007) + namespace 분리 (moai-* / my-harness-*) + revfactory/harness 7-Phase workflow 흡수.
+
+### Breaking Changes
+
+#### BC-V3R3-007: 16개 정적 스킬 제거 및 메타-하니스 기반 동적 생성 전환
+
+- **제거 스킬 (16개)**: moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-db-docs, moai-domain-mobile, moai-framework-electron, moai-library-shadcn, moai-library-mermaid, moai-library-nextra, moai-tool-ast-grep, moai-platform-auth, moai-platform-deployment, moai-platform-chrome-extension, moai-workflow-research, moai-workflow-pencil-integration, moai-formats-data
+- **자동 마이그레이션**: `moai update`는 제거되는 스킬을 `.moai/archive/skills/v2.16/<skill-id>/`로 자동 백업하고 `moai-meta-harness` 설치
+- **Grace window**: v2.17.x에서 `moai migrate restore-skill <id>`로 복원 가능. v2.18.0에서 아카이브 지원 종료 예정
+- **마이그레이션 가이드**: `.moai/release/MIGRATION-v2.17.0.md` 참조
+
+### Added
+
+#### V3R3 Phase C — Meta-Harness Skill (revfactory/harness Apache 2.0 기반)
+
+- **`moai-meta-harness` 스킬** (SPEC-V3R3-HARNESS-001):
+  - revfactory/harness 7-Phase workflow 흡수 (Discovery, Analysis, Synthesis, Skeleton, Customization, Evaluation, Iteration)
+  - MoAI 에이전트 에코시스템 통합 (manager-spec, manager-tdd/ddd, expert-*, evaluator-active)
+  - Apache 2.0 attribution 포함
+  - Frontmatter `triggers: {phases: ["plan", "run", "sync"], keywords: ["harness", "project-init", "meta-skill"]}`
+  - 동적 `my-harness-*` 스킬 생성 능력
+
+- **Namespace 분리** (SPEC-V3R3-HARNESS-001):
+  - 정적 스킬: `moai-*` prefix (23개: 4 foundation + 10 workflow + 5 ref + 1 design + 2 domain-FROZEN + 1 meta)
+  - 동적 스킬: `my-harness-*` prefix (사용자 관리, `moai update` 미변경)
+  - `moai doctor`: namespace allowlist 검증 추가
+
+#### Archive + Restore Infrastructure
+
+- **`.moai/archive/skills/v2.16/` 디렉토리 구조**: 제거된 16개 스킬 전체 보존 (SKILL.md, modules/, examples.md, reference.md)
+- **`moai migrate restore-skill <skill-id>` 명령**: 아카이브에서 `.claude/skills/<id>/`로 복원 (v2.17.x만, v2.18.0에서 삭제 예정)
+- **`moai update --dry-run` 플래그**: 마이그레이션 계획 출력 (filesystem 미변경)
+- **Idempotency**: 중복 실행 시 아카이브 재작성 안 함
+
+#### Documentation & Release
+
+- **`.moai/release/MIGRATION-v2.17.0.md`**: 자동 마이그레이션 / 수동 fallback / 복원 명령어 / deprecation timeline
+- **`.moai/release/RELEASE-NOTES-v2.17.0.md`**: v2.17.0 하이라이트 (first 30 lines에 BC-V3R3-007 callout)
+- **`CHANGELOG.md` v2.17.0 엔트리**: Breaking Changes / Added / Attribution 섹션
+
+#### Template-First Mirror
+
+- `internal/template/templates/.claude/skills/moai-meta-harness/SKILL.md`: Template source
+- `.claude/skills/moai-meta-harness/SKILL.md`: Local mirror (post `make build`)
+
+### Migration
+
+**Automatic (Recommended)**:
+```bash
+moai update
+```
+16개 스킬 자동 아카이브 → meta-harness 설치
+
+**Manual Fallback**:
+1. 제거 스킬 16개 수동 삭제
+2. meta-harness 스킬 템플릿에서 복사
+3. `moai migrate restore-skill` 불가능 (아카이브 없음)
+
+**Restore (Grace Window)**:
+```bash
+moai migrate restore-skill <skill-id>
+```
+
+### Attribution
+
+- **원본**: revfactory/harness (https://github.com/revfactory/harness, Apache License 2.0)
+- **적용 방식**: 7-Phase workflow 적응 → MoAI 에이전트 에코시스템 통합
+- **라이선스 호환**: Apache 2.0 → MoAI-ADK MIT, attribution 보존 (Apache 2.0 §4(c), §4(b))
+- **상세 정보**: `.claude/rules/moai/NOTICE.md`
+
+### Technical
+
+- New package: `internal/cli/update/archive.go` (skill archiving)
+- New command: `moai migrate restore-skill` (recovery)
+- New flag: `moai update --dry-run` (migration preview)
+- New test: `internal/template/skills_removal_test.go` (16-skill removal verification)
+- New test: `internal/cli/update/archive_test.go` (archive round-trip validation)
+- New test: `internal/cli/update/idempotency_test.go` (double-update idempotency)
+- Modified: `moai doctor` skills check (allowlist enforcement)
+
+### Verification
+
+- All AC for SPEC-V3R3-HARNESS-001 (AC-HARNESS-01..07): PASS
+- `moai update` e2e fixture: 16 skills archived, meta-harness installed
+- `moai migrate restore-skill` round-trip: byte-identical restoration (SHA-256)
+- `moai update --dry-run`: zero filesystem mutations
+- `moai update` idempotency: second run produces no changes
+- `moai doctor` allowlist: 23-skill static core verified
+- `make build`: green
+
+---
+
 ## [2.16.0] - 2026-04-26
 
 Consolidated minor release: V3R3 Phase A 산출물 + V3R2 backup restore (Plan Audit Gate, Zone Registry, Typed Memory Taxonomy, WF-001/006) + V3R3 Phase B PATTERNS-001 (Pattern Cookbook). v2.15.0 was prepared but never tagged separately; its Phase A entry below is preserved as historical reference and is fully included in this release.
