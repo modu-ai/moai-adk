@@ -19,7 +19,7 @@ func fileSHA256(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatalf("fileSHA256: open %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		t.Fatalf("fileSHA256: hash %s: %v", path, err)
