@@ -35,6 +35,7 @@ depends_on:
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. v3R3 Phase C P0 — meta-harness skill 신설 + 16 정적 skills 제거 (BC-V3R3-007) + namespace 분리 (moai-*/my-harness-*) + revfactory/harness 7-Phase workflow 흡수 (Apache 2.0 attribution). |
+| 0.1.1   | 2026-04-27 | orchestrator | D-1/D-2 plan-audit fix. §3 카테고리 라벨 라이브 트리 기준 정확화 (workflow=10, design=1, foundation=4 명시). plan.md §3.5 staticCoreAllowlist 11개 가공 skill명을 검증된 22개 실명으로 대체. plan.md §6 "11 REQs" → 10. |
 
 ---
 
@@ -111,15 +112,15 @@ The following 16 skills MUST be removed (verbatim from handoff §4.2 / §6 v2.17
 
 Total: domain (5) + framework (1) + library (3) + tool (1) + platform (3) + workflow (2) + formats (1) = **16 skills**.
 
-The static core after removal MUST contain exactly:
-- `moai-foundation-*` (4)
-- `moai-workflow-*` (8 — note: research and pencil-integration removed from this group)
-- `moai-ref-*` (5)
-- `moai-design-*` (3 — pencil-integration removed)
+The static core after removal MUST contain exactly (verified against live tree on 2026-04-27):
+- `moai-foundation-*` (4): cc, core, quality, thinking
+- `moai-workflow-*` (10 — note: research and pencil-integration removed from this group): ddd, design-context, design-import, gan-loop, loop, project, spec, tdd, testing, worktree
+- `moai-ref-*` (5): api-patterns, git-workflow, owasp-checklist, react-patterns, testing-pyramid
+- `moai-design-*` (1): design-system
 - `moai-domain-{copywriting,brand-design}` (2 FROZEN)
 - `moai-meta-harness` (1 NEW)
 
-= 22 base + 1 meta = **23 total skills**.
+= 22 base + 1 meta = **23 total skills**. Math: 4 + 10 + 5 + 1 + 2 + 1 = 23.
 
 ---
 
