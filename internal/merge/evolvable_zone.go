@@ -251,19 +251,19 @@ func HasEvolvableZones(content string) bool {
 // ReplaceEvolvableZone returns content with the named zone's body replaced by
 // newZoneContent. Returns ErrZoneNotFound if zoneID does not exist.
 //
-// 이 함수는 3-way 병합이 아닌 직접 in-place 교체를 수행한다.
-// evolution Apply 경로에서 사용하도록 설계되었으며, MergeEvolvableZones와 달리
-// base/current/updated 세 버전이 아닌 단일 파일 내 특정 존만 교체한다.
+// This function performs a direct in-place replacement rather than a 3-way merge.
+// Designed for use in the evolution Apply path; unlike MergeEvolvableZones,
+// it replaces only a specific zone within a single file rather than using base/current/updated versions.
 //
-// newZoneContent는 마커 줄을 포함하지 않는 순수 내용이다.
-// 결과물에서 존 시작 마커와 종료 마커 사이에 정확히 한 줄의 공백 없이 삽입된다.
+// newZoneContent is the pure body content without marker lines.
+// It is inserted between the zone start and end markers with no blank lines in the result.
 func ReplaceEvolvableZone(content, zoneID, newZoneContent string) (string, error) {
 	zones, err := ParseEvolvableZones(content)
 	if err != nil {
 		return "", fmt.Errorf("merge: parse zones for replacement: %w", err)
 	}
 
-	// 대상 존 검색
+	// Find the target zone
 	var target *EvolvableZone
 	for i := range zones {
 		if zones[i].ID == zoneID {
@@ -277,12 +277,12 @@ func ReplaceEvolvableZone(content, zoneID, newZoneContent string) (string, error
 
 	lines := strings.Split(content, "\n")
 
-	// target.StartLine: 시작 마커 줄 인덱스 (포함)
-	// target.EndLine: 종료 마커 줄 인덱스 (종료 마커 줄; 내용에는 미포함)
-	before := lines[:target.StartLine+1]    // 시작 마커까지 (포함)
-	after := lines[target.EndLine:]         // 종료 마커부터 (포함)
+	// target.StartLine: start marker line index (inclusive)
+	// target.EndLine: end marker line index (end marker line; not included in content)
+	before := lines[:target.StartLine+1]    // up to and including the start marker
+	after := lines[target.EndLine:]         // from the end marker (inclusive)
 
-	// 새 내용 구성: 마지막에 정확히 하나의 개행 보장
+	// Build new content: guarantee exactly one trailing newline
 	trimmedNew := strings.TrimRight(newZoneContent, "\n")
 
 	var sb strings.Builder

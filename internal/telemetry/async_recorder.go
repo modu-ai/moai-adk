@@ -18,11 +18,11 @@ import (
 var ErrRecordDropped = errors.New("telemetry: record dropped (buffer full)")
 
 // AsyncRecorder is a non-blocking telemetry writer.
-// 내부 채널을 통해 단일 writer 고루틴에 레코드를 전달하여
-// 호출자 경로를 블로킹하지 않는다.
+// Delivers records to a single writer goroutine via an internal channel
+// so that the caller path is never blocked.
 //
-// @MX:WARN: [AUTO] 고루틴 + 채널 패턴: goroutine 수명은 Close()로 명시적으로 종료
-// @MX:REASON: [AUTO] 고루틴 누수 방지를 위해 Close() 없이 GC되면 writer 고루틴이 영구 대기
+// @MX:WARN: [AUTO] goroutine + channel pattern: goroutine lifetime is explicitly terminated via Close()
+// @MX:REASON: [AUTO] without Close(), the writer goroutine waits indefinitely when GC'd, causing a goroutine leak
 type AsyncRecorder struct {
 	projectRoot string
 	ch          chan UsageRecord
@@ -31,11 +31,11 @@ type AsyncRecorder struct {
 }
 
 // NewAsyncRecorder creates and starts a new AsyncRecorder.
-// bufSize는 내부 채널 버퍼 크기이다. 버퍼가 꽉 차면 Record()는 ErrRecordDropped를 반환한다.
-// 반환된 AsyncRecorder는 반드시 Close()로 종료해야 한다.
+// bufSize is the internal channel buffer size. When the buffer is full, Record() returns ErrRecordDropped.
+// The returned AsyncRecorder must be terminated with Close().
 //
-// @MX:ANCHOR: [AUTO] NewAsyncRecorder — 비동기 텔레메트리 진입점
-// @MX:REASON: [AUTO] hook/post_tool_metrics.go 등 다수 호출자에서 사용하는 공개 API
+// @MX:ANCHOR: [AUTO] NewAsyncRecorder — async telemetry entry point
+// @MX:REASON: [AUTO] public API used by many callers including hook/post_tool_metrics.go
 func NewAsyncRecorder(projectRoot string, bufSize int) *AsyncRecorder {
 	if bufSize < 1 {
 		bufSize = 256
@@ -51,7 +51,7 @@ func NewAsyncRecorder(projectRoot string, bufSize int) *AsyncRecorder {
 }
 
 // Record enqueues a UsageRecord for asynchronous writing.
-// 버퍼가 꽉 찬 경우 블로킹하지 않고 ErrRecordDropped를 반환한다.
+// Returns ErrRecordDropped without blocking when the buffer is full.
 func (r *AsyncRecorder) Record(rec UsageRecord) error {
 	select {
 	case r.ch <- rec:
@@ -66,8 +66,8 @@ func (r *AsyncRecorder) Record(rec UsageRecord) error {
 }
 
 // Close signals the writer goroutine to flush remaining records and exit.
-// ctx를 통해 최대 대기 시간을 제어한다.
-// Close 이후에는 Record()를 호출하면 안 된다.
+// ctx controls the maximum wait duration.
+// Record() must not be called after Close().
 func (r *AsyncRecorder) Close(ctx context.Context) error {
 	close(r.ch)
 
@@ -94,13 +94,13 @@ func (r *AsyncRecorder) run() {
 	dir := filepath.Join(r.projectRoot, ".moai", "evolution", "telemetry")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		slog.Error("telemetry: async recorder cannot create dir", "err", err)
-		// 디렉터리 생성 실패 시 모든 레코드를 드레인만 하고 종료
+		// Drain all records without writing and exit when directory creation fails
 		for range r.ch {
 		}
 		return
 	}
 
-	// 날짜별 파일 핸들 캐시 (CRITICAL 6: 동일 날짜 파일은 한 번만 open)
+	// Per-day file handle cache (CRITICAL 6: open each day's file only once)
 	var (
 		currentDay string
 		currentFile *os.File
@@ -119,12 +119,12 @@ func (r *AsyncRecorder) run() {
 	}
 	defer flushAndClose()
 
-	// 일정 레코드 수마다 flush (버퍼 누적 방지)
+	// Flush after a certain number of records (prevent buffer accumulation)
 	const flushEvery = 16
 	count := 0
 
 	for rec := range r.ch {
-		// UTC 날짜 키로 날짜 롤오버 감지
+		// Detect day rollover using the UTC date key
 		dayKey := rec.Timestamp.UTC().Format("2006-01-02")
 		if dayKey != currentDay {
 			flushAndClose()
@@ -157,10 +157,10 @@ func (r *AsyncRecorder) run() {
 			}
 		}
 	}
-	// 채널이 닫히면 남은 버퍼를 flush (defer flushAndClose가 처리)
+	// When the channel closes, flush remaining buffer (handled by defer flushAndClose)
 }
 
-// --- 패키지 레벨 싱글턴 ---
+// --- Package-level singleton ---
 
 var (
 	globalRecorder     *AsyncRecorder
@@ -169,9 +169,9 @@ var (
 )
 
 // GetRecorder returns the package-level singleton AsyncRecorder for projectRoot.
-// 첫 호출 시 레코더를 시작한다. projectRoot가 바뀌면 기존 레코더를 닫고 새로 시작한다.
+// Starts the recorder on first call. When projectRoot changes, closes the existing recorder and starts a new one.
 //
-// @MX:NOTE: [AUTO] 싱글턴 패턴: 프로세스당 하나의 writer 고루틴으로 파일 I/O를 집약
+// @MX:NOTE: [AUTO] Singleton pattern: concentrates file I/O into a single writer goroutine per process
 func GetRecorder(projectRoot string) *AsyncRecorder {
 	globalRecorderMu.Lock()
 	defer globalRecorderMu.Unlock()
@@ -180,7 +180,7 @@ func GetRecorder(projectRoot string) *AsyncRecorder {
 		return globalRecorder
 	}
 
-	// projectRoot가 바뀌었거나 아직 초기화되지 않은 경우
+	// projectRoot has changed or not yet initialized
 	if globalRecorder != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()

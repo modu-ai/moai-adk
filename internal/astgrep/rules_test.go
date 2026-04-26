@@ -189,15 +189,16 @@ func TestRules_ReturnsCopy(t *testing.T) {
 	}
 }
 
-// --- F5 재현 테스트: YAML parse error silent break ---
+// --- F5 regression test: YAML parse error silent break ---
 
-// TestLoadFromDir_ContinuesAfterMalformedDocument: 멀티 문서 YAML에서 중간에 잘못된 문서가 있어도
-// 이후 유효한 문서를 계속 로딩하는지 검증한다.
+// TestLoadFromDir_ContinuesAfterMalformedDocument: verifies that even when a malformed
+// document appears in the middle of a multi-document YAML, subsequent valid documents
+// continue to be loaded.
 func TestLoadFromDir_ContinuesAfterMalformedDocument(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// doc1: 유효, doc2: 잘못된 YAML, doc3: 유효
-	// yaml.v3 디코더는 문서 간 경계를 --- 로 구분한다.
+	// doc1: valid, doc2: malformed YAML, doc3: valid
+	// yaml.v3 decoder separates documents with ---.
 	multiDocYAML := `---
 id: rule-first
 language: go
@@ -214,26 +215,26 @@ message: "세 번째 규칙"
 pattern: "eval($CODE)"
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "mixed.yml"), []byte(multiDocYAML), 0o644); err != nil {
-		t.Fatalf("파일 작성 실패: %v", err)
+		t.Fatalf("failed to write file: %v", err)
 	}
 
 	loader := NewRuleLoader()
 	rules, err := loader.LoadFromDir(tmpDir)
-	// 에러는 반환하지 않아야 함 (partial success)
+	// must not return an error (partial success)
 	if err != nil {
-		t.Fatalf("LoadFromDir() error = %v; 잘못된 문서가 있어도 에러를 반환하면 안 됨", err)
+		t.Fatalf("LoadFromDir() error = %v; must not return error even with malformed documents", err)
 	}
 
-	// rule-first와 rule-third 모두 로딩되어야 함 (F5 fix 이후)
+	// both rule-first and rule-third must be loaded (after F5 fix)
 	ids := make(map[string]bool)
 	for _, r := range rules {
 		ids[r.ID] = true
 	}
 
 	if !ids["rule-first"] {
-		t.Error("rule-first가 로딩되지 않음 — 첫 번째 유효한 문서가 누락됨")
+		t.Error("rule-first not loaded — first valid document is missing")
 	}
 	if !ids["rule-third"] {
-		t.Error("rule-third가 로딩되지 않음 — 잘못된 문서 이후의 유효한 문서가 누락됨 (F5 버그)")
+		t.Error("rule-third not loaded — valid document after malformed one is missing (F5 bug)")
 	}
 }

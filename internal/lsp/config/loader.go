@@ -42,7 +42,7 @@ func Load(path string) (*ServersConfig, error) {
 		servers = make(map[string]ServerConfig)
 	}
 
-	// 각 ServerConfig에 Language 필드를 키에서 역주입 (YAML 키 → 구조체)
+	// Back-inject the Language field into each ServerConfig from its map key (YAML key → struct).
 	for lang, sc := range servers {
 		sc.Language = lang
 		servers[lang] = sc

@@ -22,22 +22,22 @@ var frozenPaths = []string{
 	"CLAUDE.md",
 	".claude/rules/moai/core/moai-constitution.md",
 	".claude/rules/moai/core/agent-common-protocol.md",
-	// Agency fork manifest는 헌법과 동급으로 불변 보호 대상
+	// Agency fork manifest is immutably protected on par with the constitution.
 	".agency/fork-manifest.yaml",
 }
 
 // frozenDirPrefixes contains directory prefixes whose contents are protected.
 var frozenDirPrefixes = []string{
 	".claude/rules/moai/core/",
-	// Agency 헌법 및 관련 규칙 전체 보호 (Agency Constitution §2 FROZEN Zone)
+	// Protect the full Agency constitution and related rules (Agency Constitution §2 FROZEN Zone).
 	".claude/rules/agency/",
 }
 
 // CheckFrozenGuard reports whether targetFile is in the frozen zone.
 //
 // The check covers:
-//   - Absolute paths (항상 거부).
-//   - Paths containing ".." components after filepath.Clean (경로 순회 거부).
+//   - Absolute paths (always rejected).
+//   - Paths containing ".." components after filepath.Clean (path traversal rejected).
 //   - Exact path matches against frozenPaths.
 //   - Files inside frozen directory prefixes.
 //   - Targets with a ":frontmatter" suffix (YAML frontmatter modification).
@@ -47,18 +47,18 @@ func CheckFrozenGuard(targetFile string) error {
 	// Normalise the path separator.
 	target := filepath.ToSlash(strings.TrimSpace(targetFile))
 
-	// 절대 경로는 항상 거부 (예: /etc/passwd, C:\Windows\...)
-	// Windows의 filepath.IsAbs는 "/foo"를 절대경로로 보지 않으므로
-	// Unix 스타일 절대경로(선행 /)와 Windows 스타일(선행 \)을 별도로 검사한다.
+	// Absolute paths are always rejected (e.g. /etc/passwd, C:\Windows\...).
+	// filepath.IsAbs does not treat "/foo" as absolute on Windows, so
+	// Unix-style absolute paths (leading /) and Windows-style (leading \) are checked separately.
 	if filepath.IsAbs(targetFile) ||
 		strings.HasPrefix(targetFile, "/") ||
 		strings.HasPrefix(targetFile, `\`) {
 		return ErrFrozenPath
 	}
 
-	// .. 컴포넌트를 포함한 경로 순회 시도 거부
-	// 원본 경로에 /../ 또는 /.. 종단이 있으면 경로 조작 시도로 판단
-	// filepath.Clean 이전 원본 슬래시 경로에서 직접 검사
+	// Reject path traversal attempts containing ".." components.
+	// If the original slash path contains /../ or ends with /.., treat it as a path manipulation attempt.
+	// Check on the original slash path before applying filepath.Clean.
 	if strings.Contains(target, "/../") ||
 		strings.HasSuffix(target, "/..") ||
 		strings.HasPrefix(target, "../") ||
@@ -66,7 +66,7 @@ func CheckFrozenGuard(targetFile string) error {
 		return ErrFrozenPath
 	}
 
-	// filepath.Clean 후에도 .. 로 시작하면 상위 탈출 시도
+	// If the path still starts with ".." after filepath.Clean, it is an attempt to escape to a parent.
 	cleaned := filepath.ToSlash(filepath.Clean(target))
 	if strings.HasPrefix(cleaned, "../") || cleaned == ".." {
 		return ErrFrozenPath
@@ -105,11 +105,11 @@ func CheckFrozenGuard(targetFile string) error {
 }
 
 // rateMu guards the full Read→mutate→Write sequence in UpdateRateLimit.
-// Read와 Write 사이에 다른 고루틴이 끼어들면 카운터가 손실될 수 있으므로
-// 전체 시퀀스를 단일 락으로 보호한다.
+// Without the lock, another goroutine could interleave between Read and Write,
+// causing the counter to be lost. The entire sequence is protected by a single lock.
 //
-// @MX:WARN: [AUTO] 전역 뮤텍스: 모든 UpdateRateLimit 호출이 직렬화됨
-// @MX:REASON: [AUTO] TOCTOU 경쟁 조건 방지; rate state 파일은 단일 writer 보장이 필요
+// @MX:WARN: [AUTO] Global mutex: all UpdateRateLimit calls are serialized
+// @MX:REASON: [AUTO] Prevents TOCTOU race conditions; the rate state file requires a single writer guarantee
 var rateMu sync.Mutex
 
 // rateStatePath returns the path to the rate-limit state file.
@@ -232,7 +232,7 @@ func CheckFileCooldown(projectRoot, targetFile string) error {
 // it is reset before incrementing.
 //
 // targetFile may be empty to update only the weekly counter.
-// 경쟁 조건 방지를 위해 Read→mutate→Write 전체 시퀀스를 rateMu로 보호한다.
+// The entire Read→mutate→Write sequence is protected by rateMu to prevent race conditions.
 func UpdateRateLimit(projectRoot, targetFile string) error {
 	rateMu.Lock()
 	defer rateMu.Unlock()

@@ -1,7 +1,7 @@
 package gopls
 
-// @MX:ANCHOR: [AUTO] Config 타입 및 로더 — bridge.go, NewBridge에서 의존하는 설정 진입점
-// @MX:REASON: fan_in >= 3 (NewBridge, 테스트, 외부 의존 주입 경로)
+// @MX:ANCHOR: [AUTO] Config type and loader — the settings entry point depended on by bridge.go and NewBridge
+// @MX:REASON: fan_in >= 3 (NewBridge, tests, external dependency injection paths)
 
 import (
 	"errors"
@@ -14,35 +14,35 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config는 gopls 브릿지 동작 설정을 담는다.
-// REQ-GB-050: .moai/config/sections/lsp.yaml의 gopls_bridge 섹션에서 로드한다.
-// REQ-GB-022: 타임아웃과 디바운스 창은 lsp.yaml에서 설정 가능하다.
+// Config holds the gopls bridge behavior settings.
+// REQ-GB-050: loaded from the gopls_bridge section of .moai/config/sections/lsp.yaml.
+// REQ-GB-022: timeouts and debounce window are configurable via lsp.yaml.
 type Config struct {
-	// Enabled는 gopls 브릿지 활성화 여부다.
-	// REQ-GB-051: false(기본값)이면 GoFeedbackGenerator는 CLI 전용 경로를 유지한다.
+	// Enabled indicates whether the gopls bridge is active.
+	// REQ-GB-051: when false (default), GoFeedbackGenerator retains the CLI-only path.
 	Enabled bool
-	// Binary는 gopls 실행 파일 경로 또는 이름이다. 기본값: "gopls".
+	// Binary is the gopls executable path or name. Default: "gopls".
 	Binary string
-	// Args는 gopls 서브프로세스에 전달할 추가 인수다.
+	// Args are additional arguments passed to the gopls subprocess.
 	Args []string
-	// InitOptions는 LSP initialize 요청의 initializationOptions다.
-	// REQ-GB-013: staticcheck: true를 포함해야 한다.
+	// InitOptions is the initializationOptions field of the LSP initialize request.
+	// REQ-GB-013: must include staticcheck: true.
 	InitOptions map[string]any
-	// Timeout은 개별 LSP 요청(didOpen, 진단 등)의 타임아웃이다. 기본값: 30s.
-	// REQ-GB-020: didOpen 후 publishDiagnostics 대기 타임아웃.
+	// Timeout is the per-request timeout for individual LSP requests (didOpen, diagnostics, etc.). Default: 30s.
+	// REQ-GB-020: timeout for waiting on publishDiagnostics after didOpen.
 	Timeout time.Duration
-	// InitTimeout은 LSP initialize 핸드셰이크 타임아웃이다.
-	// REQ-GB-012: 초기화 타임아웃 30초.
+	// InitTimeout is the timeout for the LSP initialize handshake.
+	// REQ-GB-012: initialization timeout of 30 seconds.
 	InitTimeout time.Duration
-	// ShutdownTimeout은 graceful shutdown 타임아웃이다.
-	// REQ-GB-004: 5초 타임아웃 후 SIGKILL.
+	// ShutdownTimeout is the graceful shutdown timeout.
+	// REQ-GB-004: SIGKILL after a 5-second timeout.
 	ShutdownTimeout time.Duration
-	// DebounceWindow는 publishDiagnostics 디바운스 창이다.
-	// REQ-GB-021: 기본값 150ms.
+	// DebounceWindow is the publishDiagnostics debounce window.
+	// REQ-GB-021: default 150ms.
 	DebounceWindow time.Duration
 }
 
-// DefaultConfig는 합리적인 기본값으로 채워진 Config를 반환한다.
+// DefaultConfig returns a Config populated with sensible defaults.
 // binary=gopls, timeout=30s, initTimeout=30s, shutdownTimeout=5s, debounce=150ms.
 func DefaultConfig() *Config {
 	return &Config{
@@ -57,8 +57,8 @@ func DefaultConfig() *Config {
 	}
 }
 
-// ─── YAML 파싱용 내부 구조체 ─────────────────────────────────────────────────
-// lsp.yaml의 구조와 1:1 매핑한다.
+// ─── Internal structs for YAML parsing ───────────────────────────────────────
+// 1:1 mapping to the lsp.yaml structure.
 
 type lspYAMLRoot struct {
 	LSP lspYAMLConfig `yaml:"lsp"`
@@ -83,43 +83,43 @@ type timeoutsYAML struct {
 	DiagnosticsDebounceMs  int `yaml:"diagnostics_debounce_ms"`
 }
 
-// LoadConfig는 configPath의 YAML 파일에서 gopls 브릿지 설정을 로드한다.
-// 파일이 없으면 DefaultConfig를 반환한다 (오류 아님).
-// YAML 구문 오류 등 다른 오류는 error를 반환한다.
+// LoadConfig loads the gopls bridge settings from the YAML file at configPath.
+// Returns DefaultConfig when the file does not exist (not an error).
+// All other errors, such as YAML syntax errors, are returned as an error.
 //
-// REQ-GB-050: lsp.yaml에서 설정을 읽는다.
-// REQ-GB-002 연계: gopls 없음과 동일하게 설정 없음도 graceful하게 처리한다.
+// REQ-GB-050: reads settings from lsp.yaml.
+// Related to REQ-GB-002: absence of config is handled gracefully, identical to a missing gopls binary.
 func LoadConfig(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			// 파일이 없으면 기본값을 반환한다. 오류가 아니다.
+			// File not found: return defaults. This is not an error.
 			return DefaultConfig(), nil
 		}
-		return nil, fmt.Errorf("gopls: config: 파일 읽기 실패 %q: %w", configPath, err)
+		return nil, fmt.Errorf("gopls: config: file read failed %q: %w", configPath, err)
 	}
 
 	var root lspYAMLRoot
 	if err := yaml.Unmarshal(data, &root); err != nil {
-		return nil, fmt.Errorf("gopls: config: YAML 파싱 실패 %q: %w", configPath, err)
+		return nil, fmt.Errorf("gopls: config: YAML parsing failed %q: %w", configPath, err)
 	}
 
 	cfg := mergeWithDefaults(&root.LSP.GoplsBridge)
 
-	// F5: 바이너리·인수 허용 목록 검사.
-	// lsp.yaml의 binary/args는 외부 편집자가 변조할 수 있는 공급망 공격 벡터다.
+	// F5: binary and argument allowlist check.
+	// The binary/args in lsp.yaml are a supply-chain attack vector that external editors could tamper with.
 	if err := validateBinary(cfg.Binary); err != nil {
-		return nil, fmt.Errorf("gopls: config: 바이너리 검증 실패: %w", err)
+		return nil, fmt.Errorf("gopls: config: binary validation failed: %w", err)
 	}
 	if err := validateArgs(cfg.Args); err != nil {
-		return nil, fmt.Errorf("gopls: config: 인수 검증 실패: %w", err)
+		return nil, fmt.Errorf("gopls: config: argument validation failed: %w", err)
 	}
 
 	return cfg, nil
 }
 
-// mergeWithDefaults는 YAML에서 파싱한 gopls_bridge 설정과 기본값을 병합한다.
-// 0 값인 필드는 기본값으로 채운다.
+// mergeWithDefaults merges the gopls_bridge settings parsed from YAML with the defaults.
+// Fields with zero values are filled with the defaults.
 func mergeWithDefaults(y *goplsBridgeYAML) *Config {
 	def := DefaultConfig()
 	cfg := &Config{
@@ -139,7 +139,7 @@ func mergeWithDefaults(y *goplsBridgeYAML) *Config {
 		cfg.InitOptions = y.InitOptions
 	}
 
-	// 타임아웃: 0이면 기본값 사용
+	// Timeouts: use defaults when the value is 0.
 	cfg.InitTimeout = durationOrDefault(y.Timeouts.InitializeSeconds, 0, def.InitTimeout, time.Second)
 	cfg.Timeout = durationOrDefault(y.Timeouts.RequestSeconds, 0, def.Timeout, time.Second)
 	cfg.ShutdownTimeout = durationOrDefault(y.Timeouts.ShutdownSeconds, 0, def.ShutdownTimeout, time.Second)
@@ -148,7 +148,7 @@ func mergeWithDefaults(y *goplsBridgeYAML) *Config {
 	return cfg
 }
 
-// durationOrDefault는 값이 0이면 defaultVal을 반환하고, 아니면 value * unit을 반환한다.
+// durationOrDefault returns defaultVal when value equals zero, otherwise returns value * unit.
 func durationOrDefault(value, zero int, defaultVal time.Duration, unit time.Duration) time.Duration {
 	if value == zero {
 		return defaultVal
@@ -156,19 +156,19 @@ func durationOrDefault(value, zero int, defaultVal time.Duration, unit time.Dura
 	return time.Duration(value) * unit
 }
 
-// ─── 보안: 바이너리·인수 허용 목록 ──────────────────────────────────────────────
+// ─── Security: binary and argument allowlist ──────────────────────────────────
 //
-// REQ-GB-F5: lsp.yaml의 binary/args는 공급망 공격 벡터다.
-// binary가 신뢰된 경로 이외의 절대 경로를 가리키거나 쉘 메타문자를 포함하면 즉시 거부한다.
+// REQ-GB-F5: binary/args in lsp.yaml are a supply-chain attack vector.
+// Reject immediately if binary points to an absolute path outside trusted paths or contains shell metacharacters.
 
-// ErrUntrustedBinary는 신뢰할 수 없는 바이너리 경로가 지정됐을 때 반환된다.
-var ErrUntrustedBinary = errors.New("gopls: config: 신뢰할 수 없는 바이너리 경로")
+// ErrUntrustedBinary is returned when an untrusted binary path is specified.
+var ErrUntrustedBinary = errors.New("gopls: config: untrusted binary path")
 
-// ErrUnsafeArgs는 쉘 메타문자를 포함하는 인수가 지정됐을 때 반환된다.
-var ErrUnsafeArgs = errors.New("gopls: config: 허용되지 않는 인수 문자")
+// ErrUnsafeArgs is returned when an argument contains shell metacharacters.
+var ErrUnsafeArgs = errors.New("gopls: config: disallowed argument characters")
 
-// trustedPrefixes는 절대 경로 바이너리가 위치해도 되는 신뢰된 디렉토리다.
-// $HOME 기반 경로는 런타임에 확장한다.
+// trustedPrefixes is the set of trusted directories where absolute-path binaries may reside.
+// $HOME-based paths are expanded at runtime.
 var trustedPrefixesStatic = []string{
 	"/usr/bin",
 	"/usr/local/bin",
@@ -176,49 +176,49 @@ var trustedPrefixesStatic = []string{
 	"/opt/local/bin",
 }
 
-// binaryMetachars는 바이너리 이름·경로에 절대 포함되어선 안 되는 문자 집합이다.
-// Windows 경로는 백슬래시를 정상적으로 포함하므로 제외한다.
-// exec.Command는 쉘을 경유하지 않으므로 백슬래시 자체는 인젝션 위험이 없다.
+// binaryMetachars is the set of characters that must never appear in a binary name or path.
+// Windows paths legitimately contain backslashes, so they are excluded.
+// exec.Command does not go through a shell, so backslashes themselves carry no injection risk.
 const binaryMetachars = ";&|`$"
 
-// argMetachars는 인수에 허용되지 않는 쉘 메타문자 집합이다.
+// argMetachars is the set of shell metacharacters disallowed in arguments.
 const argMetachars = ";&|`$\n\r"
 
-// validateBinary는 cfg.Binary가 허용된 바이너리인지 검사한다.
+// validateBinary checks whether cfg.Binary is an allowed binary.
 //
-// 허용 조건:
-//   - bare name(경로 구분자 없음): "gopls" 형태 → 허용 (PATH 탐색에 위임)
-//   - 절대 경로: trustedPrefixes 중 하나로 시작해야 함
+// Allowed conditions:
+//   - Bare name (no path separator): e.g. "gopls" → allowed (delegated to PATH lookup).
+//   - Absolute path: must start with one of the trustedPrefixes.
 //
-// 거부 조건:
-//   - 경로 순회(".." 포함)
-//   - 쉘 메타문자(";", "|", "&", "`", "$", "\") 포함
-//   - 신뢰되지 않은 디렉토리의 절대 경로
+// Rejected conditions:
+//   - Path traversal (contains "..").
+//   - Shell metacharacters (";", "|", "&", "`", "$", "\").
+//   - Absolute path outside a trusted directory.
 func validateBinary(binary string) error {
 	if binary == "" {
-		return fmt.Errorf("%w: 빈 바이너리 이름", ErrUntrustedBinary)
+		return fmt.Errorf("%w: empty binary name", ErrUntrustedBinary)
 	}
 
-	// 쉘 메타문자 검사.
+	// Check for shell metacharacters.
 	if strings.ContainsAny(binary, binaryMetachars) {
-		return fmt.Errorf("%w: 쉘 메타문자 포함 %q", ErrUntrustedBinary, binary)
+		return fmt.Errorf("%w: shell metacharacter in %q", ErrUntrustedBinary, binary)
 	}
 
-	// bare name이면 허용한다 (예: "gopls", "gopls-v0.14").
+	// Bare name is allowed (e.g. "gopls", "gopls-v0.14").
 	if !strings.Contains(binary, string(filepath.Separator)) && !strings.Contains(binary, "/") {
 		return nil
 	}
 
-	// 절대 경로 검사.
-	// 경로 순회("..")를 filepath.Clean으로 해결 후 원본과 비교한다.
+	// Absolute path check.
+	// Resolve path traversal ("..") via filepath.Clean and compare with the original.
 	cleaned := filepath.Clean(binary)
 
-	// ".."를 포함하면 filepath.Clean 전후가 달라진다. 이를 탐지한다.
+	// If ".." is present, filepath.Clean produces a different result. Detect this.
 	if strings.Contains(binary, "..") {
-		return fmt.Errorf("%w: 경로 순회 시도 %q", ErrUntrustedBinary, binary)
+		return fmt.Errorf("%w: path traversal attempt %q", ErrUntrustedBinary, binary)
 	}
 
-	// 신뢰된 접두사 목록 구성: 정적 목록 + $HOME 기반 동적 경로.
+	// Build the trusted prefix list: static list + $HOME-based dynamic paths.
 	prefixes := append([]string(nil), trustedPrefixesStatic...)
 	if home, err := os.UserHomeDir(); err == nil {
 		prefixes = append(prefixes,
@@ -227,9 +227,9 @@ func validateBinary(binary string) error {
 		)
 	}
 
-	// 플랫폼 독립적 비교를 위해 양쪽 모두 forward-slash 정규형으로 변환한다.
-	// 윈도우에서 filepath.Clean은 "/usr/bin/x" → "\usr\bin\x"가 되지만, 비교는
-	// 슬래시 기반으로 수행해 크로스플랫폼 일관성을 유지한다.
+	// Convert both sides to forward-slash canonical form for platform-independent comparison.
+	// On Windows, filepath.Clean turns "/usr/bin/x" into "\usr\bin\x", but the comparison
+	// is slash-based to maintain cross-platform consistency.
 	cleanedSlash := filepath.ToSlash(cleaned)
 	for _, prefix := range prefixes {
 		prefixSlash := filepath.ToSlash(prefix)
@@ -238,19 +238,19 @@ func validateBinary(binary string) error {
 		}
 	}
 
-	return fmt.Errorf("%w: 신뢰된 경로 외부의 바이너리 %q (허용 목록: %v)", ErrUntrustedBinary, binary, prefixes)
+	return fmt.Errorf("%w: binary %q is outside trusted paths (allowlist: %v)", ErrUntrustedBinary, binary, prefixes)
 }
 
-// validateArgs는 gopls에 전달할 추가 인수가 안전한지 검사한다.
+// validateArgs checks whether the additional arguments to be passed to gopls are safe.
 //
-// 거부 조건:
-//   - 쉘 메타문자(";", "|", "&", "`", "$", ">", "<", 개행) 포함
+// Rejected conditions:
+//   - Contains shell metacharacters (";", "|", "&", "`", "$", ">", "<", newline).
 func validateArgs(args []string) error {
-	// 리다이렉션 연산자를 포함한 위험 문자 집합.
+	// Dangerous character set including redirection operators.
 	const dangerousChars = argMetachars + "><"
 	for _, arg := range args {
 		if strings.ContainsAny(arg, dangerousChars) {
-			return fmt.Errorf("%w: 인수 %q에 허용되지 않는 문자가 포함됨", ErrUnsafeArgs, arg)
+			return fmt.Errorf("%w: argument %q contains disallowed characters", ErrUnsafeArgs, arg)
 		}
 	}
 	return nil

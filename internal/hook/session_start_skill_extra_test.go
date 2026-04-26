@@ -1,9 +1,9 @@
 package hook
 
-// session_start_skill_extra_test.go: ensureNewSkillSymlinks 추가 경로 커버리지
-// - 잘못된 이름(경로 탐색, 숨김 파일, 슬래시 포함)
-// - 기존 디렉터리(Windows 복사본) 건너뜀
-// - getModifiedGoFiles 비어있는 git 출력
+// session_start_skill_extra_test.go: additional path coverage for ensureNewSkillSymlinks
+// - invalid names (path traversal, hidden files, slash-containing)
+// - skipping existing directories (Windows copies)
+// - getModifiedGoFiles with empty git output
 
 import (
 	"os"

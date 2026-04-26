@@ -13,21 +13,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// 위저드가 제공하는 canonical 값 슬라이스 — huh.NewOption 블록(~line 230)과 반드시 동기화.
+// statuslineModeCanonical holds the canonical values offered by the wizard — must stay in sync with the huh.NewOption block (~line 230).
 // KEEP IN SYNC with huh.NewOption block at ~line 230
 var statuslineModeCanonical = []string{defaultStatuslineMode, "full"}
 
 // KEEP IN SYNC with huh.NewOption block at ~line 240
 var statuslineThemeCanonical = []string{defaultStatuslineTheme, "catppuccin-latte"}
 
-// wizard 기본값 상수.
+// Wizard default constants.
 const (
 	defaultStatuslineMode  = "default"
 	defaultStatuslineTheme = "catppuccin-mocha"
 	defaultPermissionMode  = "acceptEdits"
 )
 
-// isCanonicalStatuslineMode는 s 가 wizard 옵션 슬라이스에 포함된 canonical 값인지 확인한다.
+// isCanonicalStatuslineMode reports whether s is a canonical value in the wizard option slice.
 func isCanonicalStatuslineMode(s string) bool {
 	for _, v := range statuslineModeCanonical {
 		if v == s {
@@ -37,7 +37,7 @@ func isCanonicalStatuslineMode(s string) bool {
 	return false
 }
 
-// isCanonicalStatuslineTheme는 s 가 wizard 옵션 슬라이스에 포함된 canonical 값인지 확인한다.
+// isCanonicalStatuslineTheme reports whether s is a canonical value in the wizard option slice.
 func isCanonicalStatuslineTheme(s string) bool {
 	for _, v := range statuslineThemeCanonical {
 		if v == s {
@@ -47,15 +47,14 @@ func isCanonicalStatuslineTheme(s string) bool {
 	return false
 }
 
-// normalizeStatuslineModeRaw는 statusline 패키지의 NormalizeMode를 호출해
-// 문자열 변환 노이즈를 캡슐화한다.
+// normalizeStatuslineModeRaw calls statusline.NormalizeMode to encapsulate string conversion noise.
 func normalizeStatuslineModeRaw(s string) string {
 	return string(statusline.NormalizeMode(statusline.StatuslineMode(s)))
 }
 
-// normalizeStatuslineMode는 wizard 옵션과 호환되는 mode 값을 반환한다.
-// 이전 statusline 버전의 deprecated 이름을 v3 이름으로 변환하며,
-// 옵션 집합에 없는 값은 "default"로 폴백한다.
+// normalizeStatuslineMode returns a mode value compatible with wizard options.
+// Converts deprecated names from older statusline versions to v3 names,
+// and falls back to "default" for values not present in the option set.
 func normalizeStatuslineMode(mode string) string {
 	if mode == "" {
 		return defaultStatuslineMode
@@ -67,8 +66,9 @@ func normalizeStatuslineMode(mode string) string {
 	return defaultStatuslineMode
 }
 
-// normalizeStatuslineTheme는 wizard 옵션과 호환되는 theme 이름을 반환한다.
-// "default" 등 레거시 값은 "catppuccin-mocha"로 변환해 Select 위젯이 올바르게 선택 항목을 강조한다.
+// normalizeStatuslineTheme returns a theme name compatible with wizard options.
+// Legacy values such as "default" are converted to "catppuccin-mocha" so that the Select
+// widget highlights the correct item.
 func normalizeStatuslineTheme(theme string) string {
 	if isCanonicalStatuslineTheme(theme) {
 		return theme
@@ -76,11 +76,11 @@ func normalizeStatuslineTheme(theme string) string {
 	return defaultStatuslineTheme
 }
 
-// @MX:NOTE: [AUTO] 위저드 v3 마이그레이션 — deprecated Claude 모델 ID를 canonical alias로 정규화.
-// @MX:REASON: 이전 위저드의 "claude-opus-4-7" 옵션 제거 후 기존 prefs 값이 huh.Select 바인딩에서 침묵 소실되는 것을 방지.
+// @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases.
+// @MX:REASON: Prevents silent loss of existing prefs values in huh.Select bindings after the "claude-opus-4-7" option was removed from the previous wizard.
 func normalizeModel(m string) string {
 	switch m {
-	// canonical alias 는 그대로 통과
+	// canonical aliases pass through unchanged
 	case "", "opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan":
 		return m
 	// deprecated full-ID → canonical alias
@@ -95,7 +95,7 @@ func normalizeModel(m string) string {
 	case "claude-haiku-4-5":
 		return "haiku"
 	default:
-		// 알 수 없는 값은 런타임 기본값으로 초기화
+		// Unknown values are reset to the runtime default.
 		return ""
 	}
 }
@@ -119,21 +119,21 @@ func init() {
 	profileCmd.AddCommand(profileSetupCmd)
 }
 
-// runProfileSetup은 인터랙티브 프로필 설정 wizard를 실행한다.
-// 첫 번째 질문은 언어 선택이며, 이후 모든 UI 텍스트는 선택된 언어로 표시된다.
+// runProfileSetup runs the interactive profile configuration wizard.
+// The first question is language selection; all subsequent UI text is displayed in the chosen language.
 func runProfileSetup(cmd *cobra.Command, args []string) error {
 	profileName := "default"
 	if len(args) > 0 {
 		profileName = args[0]
 	}
 
-	// 기존 설정을 기본값으로 로드
+	// Load existing preferences as defaults.
 	existingPrefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		return fmt.Errorf("read existing preferences: %w", err)
 	}
 
-	// 기존 설정으로 폼 값 초기화
+	// Initialize form values from existing preferences.
 	userName := existingPrefs.UserName
 
 	convLang := existingPrefs.ConversationLang
@@ -153,7 +153,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		docLang = "en"
 	}
 
-	// C-1: deprecated 모델 ID를 canonical alias로 정규화
+	// C-1: normalize deprecated model IDs to canonical aliases
 	model := normalizeModel(existingPrefs.Model)
 	effortLevel := existingPrefs.EffortLevel
 	permissionMode := existingPrefs.PermissionMode
@@ -161,14 +161,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		permissionMode = defaultPermissionMode
 	}
 
-	// W-4: 마이그레이션 배너 출력을 위해 raw 값 보존
+	// W-4: preserve raw values for migration banner output
 	rawStatuslineMode := existingPrefs.StatuslineMode
 	rawStatuslineTheme := existingPrefs.StatuslineTheme
 
 	statuslineMode := normalizeStatuslineMode(existingPrefs.StatuslineMode)
 	statuslineTheme := normalizeStatuslineTheme(existingPrefs.StatuslineTheme)
 
-	// ====== Step 1: 언어 선택 ======
+	// ====== Step 1: Language selection ======
 	langOptions := []huh.Option[string]{
 		huh.NewOption("English", "en"),
 		huh.NewOption("Korean (한국어)", "ko"),
@@ -194,12 +194,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("wizard error: %w", err)
 	}
 
-	// ====== Step 2: 선택된 언어로 나머지 폼 표시 ======
+	// ====== Step 2: Display remaining forms in the selected language ======
 	t := getProfileText(convLang)
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.ConfiguringProfile+"\n\n", profileName)
 
-	// W-4: statusline mode/theme 마이그레이션 배너 — 폼 표시 전 출력
+	// W-4: statusline mode/theme migration banner — print before displaying the form
 	if rawStatuslineMode != "" && rawStatuslineMode != statuslineMode {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.MigrationNoticeStatuslineMode+"\n", rawStatuslineMode, statuslineMode)
 	}
@@ -208,7 +208,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	form := huh.NewForm(
-		// Section 1: 사용자 정보
+		// Section 1: User information
 		huh.NewGroup(
 			huh.NewInput().
 				Title(t.UserNameTitle).
@@ -216,7 +216,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&userName),
 		).Title(t.IdentityTitle),
 
-		// Section 2: 언어 (대화 언어 이후)
+		// Section 2: Languages (after conversation language)
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.GitCommitLangTitle).
@@ -235,7 +235,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&docLang),
 		).Title(t.LanguagesTitle),
 
-		// Section 3: 모델 설정 (모델 오버라이드 + 권한 모드)
+		// Section 3: Model settings (model override + permission mode)
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.ModelOverrideTitle).
@@ -262,7 +262,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.EffortLevelMax, "max"),
 				).
 				Value(&effortLevel),
-			// S-4: 옵션 순서 — acceptEdits, auto, default, plan, bypass, dontAsk
+			// S-4: option order — acceptEdits, auto, default, plan, bypass, dontAsk
 			huh.NewSelect[string]().
 				Title(t.PermissionModeTitle).
 				Description(t.PermissionModeDesc).
@@ -277,7 +277,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&permissionMode),
 		).Title(t.ModelSettingsTitle),
 
-		// Section 4: 화면 표시 — 모드, 테마
+		// Section 4: Display — mode, theme
 		// KEEP IN SYNC with statuslineModeCanonical at top of file
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -308,12 +308,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("wizard error: %w", err)
 	}
 
-	// 권한 모드 정규화: "acceptEdits"는 프로젝트 기본값이므로 불필요한 override를 피해 빈 문자열로 저장
+	// Normalize permission mode: "acceptEdits" is the project default, so store empty string to avoid an unnecessary override.
 	if permissionMode == defaultPermissionMode {
 		permissionMode = ""
 	}
 
-	// 설정 저장
+	// Save preferences.
 	prefs := profile.ProfilePreferences{
 		UserName:         userName,
 		ConversationLang: convLang,
@@ -331,9 +331,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("save preferences: %w", err)
 	}
 
-	// MoAI 프로젝트 내에 있는 경우 프로젝트 설정에 동기화.
-	// syncedProjectRoot가 설정되면 최종 리포트에 statusline.yaml 경로를 표시해
-	// 사용자가 변경이 적용된 위치를 확인할 수 있다.
+	// When inside a MoAI project, sync preferences to the project configuration.
+	// When syncedProjectRoot is set, the final report shows the statusline.yaml path
+	// so the user can verify where the changes were applied.
 	var syncedProjectRoot string
 	if cwd, err := os.Getwd(); err == nil {
 		moaiDir := filepath.Join(cwd, ".moai")
@@ -350,15 +350,15 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		profileName,
 		profile.GetPreferencesPath(profileName))
 
-	// 사용자가 캡처된 모든 값을 시각적으로 확인할 수 있도록 구조화된 요약 출력.
+	// Print a structured summary so the user can visually confirm all captured values.
 	printProfileSummary(cmd.OutOrStdout(), &t, &prefs, syncedProjectRoot)
 	return nil
 }
 
-// printProfileSummary는 적용된 설정의 다중 라인 요약을 out에 출력한다.
-// 동기화가 실행된 경우 해당 값을 보유한 프로젝트 레벨 YAML 경로도 함께 출력한다.
+// printProfileSummary writes a multi-line summary of the applied settings to out.
+// When sync has been performed, the project-level YAML paths holding the values are also printed.
 func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.ProfilePreferences, syncedProjectRoot string) {
-	// S-7: 7개 필드를 단일 Fprintf 호출로 통합
+	// S-7: combine 7 fields into a single Fprintf call
 	_, _ = fmt.Fprintf(out,
 		"%s\n"+
 			"  %s: %s\n"+
@@ -377,14 +377,14 @@ func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.Prof
 		valueOrDash(prefs.DocLang),
 		t.SummaryModel, valueOrDefault(prefs.Model, t.SummaryDefault),
 		t.SummaryEffort, valueOrDefault(prefs.EffortLevel, t.SummaryDefault),
-		// S-2: normalize 후 StatuslineMode/Theme 는 항상 non-empty이므로 valueOrDefault 불필요
+		// S-2: StatuslineMode/Theme are always non-empty after normalization, so valueOrDefault is unnecessary
 		t.SummaryPermission, valueOrDefault(prefs.PermissionMode, defaultPermissionMode),
 		t.SummaryStatuslineMode, prefs.StatuslineMode,
 		t.SummaryStatuslineTheme, prefs.StatuslineTheme,
 	)
 
 	if syncedProjectRoot != "" {
-		// S-1: 상대 경로 출력 (syncedProjectRoot == cwd 이므로 상대 경로 하드코딩)
+		// S-1: print relative paths (syncedProjectRoot == cwd, so relative paths are hardcoded)
 		_, _ = fmt.Fprintf(out, "\n%s\n", t.SummarySyncedHeader)
 		_, _ = fmt.Fprintf(out, "  statusline.yaml -> .moai/config/sections/statusline.yaml\n")
 		_, _ = fmt.Fprintf(out, "  language.yaml   -> .moai/config/sections/language.yaml\n")
@@ -393,8 +393,8 @@ func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.Prof
 	}
 }
 
-// valueOrDash는 값이 비어 있을 때 "-"를 반환한다.
-// 사용자 이름/언어 등 빈 값이 "설정 안 됨"을 의미하는 필드에 사용한다.
+// valueOrDash returns "-" when v is empty.
+// Used for fields such as user name or language where an empty value means "not set".
 func valueOrDash(v string) string {
 	if v == "" {
 		return "-"
@@ -402,8 +402,8 @@ func valueOrDash(v string) string {
 	return v
 }
 
-// valueOrDefault는 v가 비어 있을 때 fallback을 반환한다.
-// 빈 문자열이 "런타임 기본값 사용"을 의미하는 슬롯에 사용한다.
+// valueOrDefault returns fallback when v is empty.
+// Used for slots where an empty string means "use runtime default".
 func valueOrDefault(v, fallback string) string {
 	if v == "" {
 		return fallback

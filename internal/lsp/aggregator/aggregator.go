@@ -30,7 +30,7 @@ const defaultCBTimeout = 30 * time.Second
 // Manager from SPEC-LSP-CORE-002 satisfies this interface because it exports
 // RouteFor(ctx, path) (core.Client, error).
 //
-// @MX:NOTE: [AUTO] Router interface는 Manager와의 결합 없이 테스트에서 fake를 주입하기 위한 DI 경계
+// @MX:NOTE: [AUTO] Router interface is a DI boundary that allows injecting fakes in tests without coupling to Manager
 type Router interface {
 	RouteFor(ctx context.Context, path string) (core.Client, error)
 }
@@ -39,8 +39,8 @@ type Router interface {
 // servers. It integrates a TTL-based cache, singleflight deduplication, per-language
 // circuit breakers, and per-query timeouts for graceful degradation.
 //
-// @MX:ANCHOR: [AUTO] Aggregator — Ralph, QGATE, LOOP, MCP 등 다수 호출자가 공유하는 진단 수집 핵심 타입
-// @MX:REASON: fan_in >= 3 — Ralph 엔진, Quality Gate, LOOP 커맨드, MCP 브리지가 모두 Aggregator를 통해 진단을 획득함
+// @MX:ANCHOR: [AUTO] Aggregator — core diagnostic collection type shared by Ralph, QGATE, LOOP, MCP and other callers
+// @MX:REASON: fan_in >= 3 — Ralph engine, Quality Gate, LOOP command, and MCP bridge all obtain diagnostics through Aggregator
 type Aggregator struct {
 	router       Router
 	cache        *cache.DiagnosticCache
@@ -87,8 +87,8 @@ func WithCircuitBreakerConfig(cfg resilience.CircuitBreakerConfig) Option {
 
 // NewAggregator constructs a new Aggregator backed by the given router.
 //
-// @MX:ANCHOR: [AUTO] NewAggregator — Aggregator 생성의 유일한 진입점
-// @MX:REASON: fan_in >= 3 — Ralph 엔진, Quality Gate, 통합 테스트, MCP 브리지가 모두 NewAggregator를 호출함
+// @MX:ANCHOR: [AUTO] NewAggregator — sole entry point for constructing an Aggregator
+// @MX:REASON: fan_in >= 3 — Ralph engine, Quality Gate, integration tests, and MCP bridge all call NewAggregator
 func NewAggregator(router Router, opts ...Option) *Aggregator {
 	a := &Aggregator{
 		router:       router,
@@ -132,8 +132,8 @@ func (a *Aggregator) Shutdown(_ context.Context) error {
 // A per-query timeout is applied; on deadline the latest cached value is
 // returned if available, otherwise an empty slice is returned (REQ-AGG-008).
 //
-// @MX:ANCHOR: [AUTO] Aggregator.GetDiagnostics — 진단 수집 핵심 경로
-// @MX:REASON: fan_in >= 3 — Ralph 엔진, Quality Gate, LOOP 커맨드, MCP 브리지가 모두 이 메서드를 통해 진단을 요청함
+// @MX:ANCHOR: [AUTO] Aggregator.GetDiagnostics — core path for collecting diagnostics
+// @MX:REASON: fan_in >= 3 — Ralph engine, Quality Gate, LOOP command, and MCP bridge all request diagnostics through this method
 func (a *Aggregator) GetDiagnostics(ctx context.Context, path string) ([]lsp.Diagnostic, error) {
 	uri := path // v1: use path directly as cache key
 
@@ -240,7 +240,7 @@ func (a *Aggregator) getOrCreateBreaker(lang string) *resilience.CircuitBreaker 
 // detectLanguageFromPath maps common file extensions to language identifiers.
 // This avoids coupling Aggregator to Manager's unexported detectLanguage logic.
 //
-// @MX:NOTE: [AUTO] 확장자 기반 언어 감지 헬퍼 — Manager와의 결합 없이 CircuitBreaker 맵 키를 결정함
+// @MX:NOTE: [AUTO] Extension-based language detection helper — determines the CircuitBreaker map key without coupling to Manager
 func detectLanguageFromPath(path string) string {
 	// Find the last dot in the base name only.
 	base := path

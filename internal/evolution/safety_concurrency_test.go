@@ -9,7 +9,7 @@ import (
 
 // TestUpdateRateLimit_ConcurrentSafety verifies that concurrent calls to
 // UpdateRateLimit do not produce data races and the final count is correct.
-// I2: Read→mutate→Write TOCTOU 경쟁 조건 수정 검증
+// I2: verifies the fix for the Read→mutate→Write TOCTOU race condition
 func TestUpdateRateLimit_ConcurrentSafety(t *testing.T) {
 	t.Parallel()
 

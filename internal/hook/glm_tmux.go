@@ -11,8 +11,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
-// glmTmuxKeys는 tmux 세션에 주입할 GLM 관련 환경변수 목록입니다.
-// 새 tmux 팬(팀원)이 GLM API를 사용하려면 이 변수들이 세션 수준에서 설정되어야 합니다.
+// glmTmuxKeys is the list of GLM-related environment variables to inject into the tmux session.
+// New tmux panes (teammates) must have these variables set at the session level to use the GLM API.
 var glmTmuxKeys = []string{
 	"ANTHROPIC_AUTH_TOKEN",
 	"ANTHROPIC_BASE_URL",
@@ -25,12 +25,12 @@ var glmTmuxKeys = []string{
 	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 }
 
-// buildGLMTmuxEnvVars는 settings.local.json의 env 맵에서 GLM 관련 변수만 추출합니다.
+// buildGLMTmuxEnvVars extracts only GLM-related variables from the env map in settings.local.json.
 //
-// 규칙:
-//   - ANTHROPIC_AUTH_TOKEN이 비어 있으면 nil 반환 (주입 불필요)
-//   - glmTmuxKeys에 포함된 키만 결과에 포함됨
-//   - 설정에 없는 키는 결과에 포함되지 않음
+// Rules:
+//   - Returns nil if ANTHROPIC_AUTH_TOKEN is empty (injection not needed)
+//   - Only keys listed in glmTmuxKeys are included in the result
+//   - Keys absent from settings are not included in the result
 func buildGLMTmuxEnvVars(env map[string]string) map[string]string {
 	if env["ANTHROPIC_AUTH_TOKEN"] == "" {
 		return nil
@@ -43,7 +43,7 @@ func buildGLMTmuxEnvVars(env map[string]string) map[string]string {
 		}
 	}
 
-	// ANTHROPIC_AUTH_TOKEN이 있으면 반드시 포함
+	// Always include ANTHROPIC_AUTH_TOKEN if present
 	if token := env["ANTHROPIC_AUTH_TOKEN"]; token != "" {
 		result["ANTHROPIC_AUTH_TOKEN"] = token
 	}
@@ -51,32 +51,32 @@ func buildGLMTmuxEnvVars(env map[string]string) map[string]string {
 	return result
 }
 
-// formatTmuxGLMEnvSummary는 tmux 세션 환경변수 주입 결과 요약 문자열을 반환합니다.
+// formatTmuxGLMEnvSummary returns a summary string for the tmux session environment variable injection result.
 func formatTmuxGLMEnvSummary(n int) string {
-	return fmt.Sprintf("GLM 팀원을 위해 tmux 세션 환경변수 주입 완료 (%d개 변수)", n)
+	return fmt.Sprintf("tmux session environment variables injected for GLM teammates (%d variables)", n)
 }
 
-// ensureTmuxGLMEnv는 SessionStart 훅에서 호출되어, GLM 모드에서 팀원 tmux 팬이
-// ANTHROPIC_AUTH_TOKEN을 상속받을 수 있도록 현재 tmux 세션에 환경변수를 주입합니다.
+// ensureTmuxGLMEnv is called from the SessionStart hook to inject environment variables
+// into the current tmux session so that teammate tmux panes can inherit ANTHROPIC_AUTH_TOKEN in GLM mode.
 //
-// 동작:
-//  1. TMUX 환경변수가 없으면 no-op (tmux 세션 밖)
-//  2. settings.local.json에서 teammateMode가 "tmux"가 아니면 no-op
-//  3. ANTHROPIC_AUTH_TOKEN이 없으면 no-op
-//  4. GLM 관련 환경변수를 tmux set-environment로 현재 세션에 주입
+// Behavior:
+//  1. No-op if TMUX env var is absent (not inside a tmux session)
+//  2. No-op if teammateMode in settings.local.json is not "tmux"
+//  3. No-op if ANTHROPIC_AUTH_TOKEN is absent
+//  4. Inject GLM-related environment variables into the current session via tmux set-environment
 //
-// 에러 처리: 모든 에러는 경고 로그만 출력하고 빈 문자열을 반환합니다.
-// SessionStart 훅 실패를 절대 일으키지 않습니다.
+// Error handling: all errors are only logged as warnings; an empty string is returned.
+// This function must never cause the SessionStart hook to fail.
 //
-// @MX:ANCHOR: [AUTO] SessionStart 훅의 GLM+팀 모드 tmux 환경변수 주입 진입점
-// @MX:REASON: Handle에서 직접 호출되며 session_start_glm_tmux_test.go에서 3개 이상 테스트 케이스가 검증
+// @MX:ANCHOR: [AUTO] Entry point for GLM+team mode tmux environment variable injection in the SessionStart hook
+// @MX:REASON: Called directly from Handle; 3+ test cases in session_start_glm_tmux_test.go verify this
 func ensureTmuxGLMEnv(projectDir string) string {
-	// 1. tmux 세션 여부 확인
+	// 1. Check if inside a tmux session
 	if os.Getenv("TMUX") == "" {
 		return ""
 	}
 
-	// 2. settings.local.json 읽기
+	// 2. Read settings.local.json
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 	data, err := os.ReadFile(settingsPath)
 	if err != nil || len(data) == 0 {
@@ -88,7 +88,7 @@ func ensureTmuxGLMEnv(projectDir string) string {
 		return ""
 	}
 
-	// 3. teammateMode == "tmux" 확인
+	// 3. Verify teammateMode == "tmux"
 	var teammateMode string
 	if v, ok := raw["teammateMode"]; ok {
 		_ = json.Unmarshal(v, &teammateMode)
@@ -97,7 +97,7 @@ func ensureTmuxGLMEnv(projectDir string) string {
 		return ""
 	}
 
-	// 4. env 맵 추출
+	// 4. Extract env map
 	envRaw, ok := raw["env"]
 	if !ok {
 		return ""
@@ -107,24 +107,24 @@ func ensureTmuxGLMEnv(projectDir string) string {
 		return ""
 	}
 
-	// 5. GLM 환경변수 맵 구성 (AUTH_TOKEN 없으면 nil 반환)
+	// 5. Build GLM env var map (returns nil if AUTH_TOKEN is absent)
 	vars := buildGLMTmuxEnvVars(env)
 	if len(vars) == 0 {
 		return ""
 	}
 
-	// 6. tmux set-environment 실행
+	// 6. Run tmux set-environment
 	mgr := tmux.NewSessionManager()
 	if err := mgr.InjectEnv(context.Background(), vars); err != nil {
-		slog.Warn("ensureTmuxGLMEnv: tmux 환경변수 주입 실패",
+		slog.Warn("ensureTmuxGLMEnv: tmux env var injection failed",
 			"error", err.Error(),
-			"hint", "tmux 바이너리가 없거나 세션 외부일 수 있음",
+			"hint", "tmux binary may be missing or running outside a session",
 		)
 		return ""
 	}
 
 	summary := formatTmuxGLMEnvSummary(len(vars))
-	slog.Info("ensureTmuxGLMEnv: tmux 세션 GLM 환경변수 주입",
+	slog.Info("ensureTmuxGLMEnv: GLM env vars injected into tmux session",
 		"vars", len(vars),
 	)
 	return summary
