@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.15.0] - 2026-04-26
+
+### Breaking Changes
+
+- **BC-V3R3-001**: 7 expert agents (backend, frontend, testing, debug, performance, refactoring, security, devops) now have `Agent` tool, enabling T2 → T2 escalation. Max depth 2, same-SPEC scope. (SPEC-V3R3-ARCH-003)
+- **BC-V3R3-002**: expert-debug and expert-performance agents now have `Write` and `Edit` tools. (SPEC-V3R3-ARCH-003)
+- **BC-V3R3-006**: Token Circuit Breaker added (`.moai/config/sections/runtime.yaml`). Per-agent token budget tracking with warning emission at 75%/90% thresholds. /clear remains MANUAL. (SPEC-V3R3-ARCH-007)
+
+### Added
+
+#### V3R3 Phase A — Foundation Hardening
+
+- **Convention Compliance Sweep** (SPEC-V3R3-DEF-007)
+  - 11 skills: added `progressive_disclosure` YAML frontmatter blocks
+  - manager-git: added Scope Boundaries + Delegation Protocol sections
+  
+- **Expert Agent Tool Uplift** (SPEC-V3R3-ARCH-003)
+  - 7 expert agents: added `Agent` tool for cross-call escalation (max depth 2)
+  - expert-debug, expert-performance: added `Write` and `Edit` tools
+  - All 7: added Escalation Protocol section with boundary rules
+
+- **Token Circuit Breaker** (SPEC-V3R3-ARCH-007)
+  - `.moai/config/sections/runtime.yaml`: New config section with per-agent budgets
+  - `internal/runtime/budget.go`: `Tracker` type + 5 methods + goroutine-safe mutations
+  - `internal/runtime/persist.go`: `PersistProgress` writes atomic progress.md + resume messages
+  - SessionStart hook: loads runtime.yaml, initializes Tracker, falls back to defaults
+
+- **Mobile Native Coverage** (SPEC-V3R3-COV-001)
+  - expert-mobile agent (4-strategy router: iOS/Android/RN/Flutter)
+  - moai-domain-mobile skill (iOS/Android native patterns)
+  - moai-framework-react-native skill (RN deep dive)
+  - moai-framework-flutter-deep skill (Flutter deep dive)
+  - Mobile keyword auto-detection in SKILL.md routing
+
+- **Commands Cleanup** (SPEC-V3R3-CMD-CLEANUP-001)
+  - `/moai gate` command file: added missing wrapper (Thin Command Pattern)
+  - review.md Phase 4: strengthened security depth (dependency vuln + secrets git history + data isolation)
+  - sync.md Phase 0.55: strengthened manifest audit checks
+  - Removed `/moai context` skill (superseded by @MX annotations + auto-memory)
+
+### Fixed
+
+- **ORC Dependency Cycle Resolution** (SPEC-V3R3-DEF-001)
+  - Resolved D-CRIT-001: ORC graph cycle risk via single-direction reaffirmation
+  - WF-001 ↔ MIG-001 cycle: enforced WF-001 → MIG-001 one-way dependency
+
+### Technical Details
+
+| Component | Change | Impact |
+|-----------|--------|--------|
+| Skills | 11 PD blocks added | ~2-3K tokens per skill, better token efficiency |
+| Agents | 7 expert tools + escalation | T2 domain coordination enabled |
+| Runtime | Token budgets per-agent | 75% threshold auto-save + resume message |
+| Mobile | 4 new skills + expert-mobile | Zero coverage → iOS/Android/RN/Flutter guidance |
+| Commands | /moai gate added, context removed | Thin Command Pattern enforcement |
+
+---
+
 ## [2.14.0] - 2026-04-24
 
 ### Summary
