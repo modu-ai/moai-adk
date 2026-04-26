@@ -320,39 +320,51 @@ License credit: Apache 2.0 (revfactory/harness)
 
 ---
 
-## 2. 다음 세션 Resume Message (paste-ready) — v2.16 PATTERNS + LEARNING SPEC 작성
+## 2. 다음 세션 Resume Message (paste-ready) — LEARNING-001 SPEC 작성
+
+> **STATUS UPDATE (2026-04-26 세션 종료)**: Phase B Step 1+2 완료.
+> - PATTERNS-001 구현 완료, PR #715 (release/v2.16.0 branch, 5 commits) 생성됨
+> - 보너스: PostToolUse async + freeze diagnosis + V3R2 inherited 11 lint cleanup
+> - 다음 세션 목표: PR admin merge 확인 → tag v2.16.0 → LEARNING-001 SPEC 작성
 
 ```
-ultrathink. V3R3 Phase B 진행. v2.16 PATTERNS-001 구현 + v2.17 SPEC 작성.
+ultrathink. V3R3 Phase B Step 3 진행. SPEC-V3R3-HARNESS-LEARNING-001 작성.
 
 진행 위치:
-- origin/main HEAD: b47101779 (v2.15.0 candidate, V3R3 Phase A + V3R2 backup 모두 통합 완료)
-- 작성됨: SPEC-V3R3-PATTERNS-001 (.moai/specs/SPEC-V3R3-PATTERNS-001/) ← 4파일
-- 미작성: SPEC-V3R3-HARNESS-LEARNING-001 (handoff §4.3에 요구사항 명문화됨)
-- 미작성: SPEC-V3R3-HARNESS-001, SPEC-V3R3-DESIGN-PIPELINE-001, SPEC-V3R3-PROJECT-HARNESS-001
+- main HEAD: 같음 (b47101779) — 새 SPEC 작성은 main에서 새 feat/* 브랜치
+- release/v2.16.0 branch에 5 commits, PR #715 OPEN, 사용자 검토/머지 대기
+- 완료: PATTERNS-001 4파일 SPEC + 6 rule files + NOTICE + Template-First sync
+- 완료: PostToolUse 60s→10s + async:true 적용 (template + local)
+- 완료: freeze 진단 가이드 (settings-management.md 4-step checklist)
+- 완료: V3R2 restore inherited 11 lint cleanup (audit_cache.go + audit_report.go)
+- 미작성 (이 세션 목표): SPEC-V3R3-HARNESS-LEARNING-001
+- 미작성 (다음): SPEC-V3R3-HARNESS-001, DESIGN-PIPELINE-001, PROJECT-HARNESS-001
 
 handoff document: .moai/release/v3r3-extreme-aggressive-handoff.md
-                  (§4.1 PATTERNS-001 / §4.2 v2.17 핵심 / §4.3 LEARNING-001 ★ NEW)
+                  §4.3 LEARNING-001 요구사항 (4-tier 학습 + 5-layer safety + /moai harness)
 
 다음 단계 (이 세션):
-1. PATTERNS-001 구현 (manager-tdd dispatch)
-   - revfactory/harness clone (/tmp/harness-analysis/harness/) 또는 기존 활용
-   - 6 rule 파일 작성 (.claude/rules/moai/{development,quality,workflow}/)
-   - NOTICE.md 또는 LICENSE-third-party.md 추가 (Apache 2.0 attribution)
-   - Template + local sync, make build, go test
-2. v2.16.0 release prep + PR + admin merge
-3. SPEC-V3R3-HARNESS-LEARNING-001 작성 (manager-spec dispatch, handoff §4.3)
-   - 4-tier 학습 + 5-layer safety
-   - .moai/config/sections/harness.yaml learning section
-   - /moai harness subcommand
-4. (시간 여유 시) SPEC-V3R3-HARNESS-001 + DESIGN-PIPELINE-001 + PROJECT-HARNESS-001 작성
+1. PR #715 status 확인: gh pr view 715
+   • CI all green이면 사용자 admin merge 대기 (squash 금지, merge commit 사용 — release branch)
+   • merge 후: git tag v2.16.0 && git push origin v2.16.0 → GoReleaser 자동 release
+2. SPEC-V3R3-HARNESS-LEARNING-001 작성 (manager-spec dispatch)
+   • 산출: .moai/specs/SPEC-V3R3-HARNESS-LEARNING-001/{spec,plan,acceptance,tasks}.md
+   • 핵심 요구사항 (handoff §4.3):
+     - 4-tier 학습 (1x observation / 3x heuristic / 5x rule / 10x auto-update)
+     - 5-layer safety (Frozen Guard / Canary / Contradiction / Rate Limit / Human Oversight)
+     - .claude/agents/my-harness/ + .claude/skills/my-harness-*/ 자동 진화
+     - .moai/harness/ 사용자 영역만 자동 업데이트 (moai-managed 절대 불가침)
+     - .moai/config/sections/harness.yaml learning section + /moai harness CLI subcommand
+   • 의존성: HARNESS-001 (meta-harness), PROJECT-HARNESS-001 (소크라테스 인터뷰)
+   • design.yaml safety architecture (Section 5) 활용
+3. (시간 여유 시) HARNESS-001 + DESIGN-PIPELINE-001 + PROJECT-HARNESS-001 SPEC 작성
 
 applied lessons:
 - feedback_large_spec_wave_split.md (각 dispatch ~1.5KB)
 - context-window-management.md (75% 임계 모니터)
 
 긴 세션 예상 — 75% 도달 시 progress.md 저장 + /clear + 새 세션 resume.
-완료 후: v2.17 4-SPEC 구현 (HARNESS → DESIGN → PROJECT → LEARNING 순)
+완료 후: v2.17 phase 4-SPEC 구현 (HARNESS → DESIGN → PROJECT → LEARNING 순)
 ```
 
 ---
