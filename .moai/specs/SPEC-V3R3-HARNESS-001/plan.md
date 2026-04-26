@@ -174,22 +174,24 @@ This locks the §3 removal list to a CI-enforced contract.
 ```go
 var staticCoreAllowlist = []string{
     // foundation (4)
-    "moai-foundation-cc", "moai-foundation-context", "moai-foundation-core", "moai-foundation-thinking",
-    // workflow (8 — research and pencil-integration removed)
-    "moai-workflow-spec", "moai-workflow-project", "moai-workflow-testing", "moai-workflow-templates",
-    "moai-workflow-design-import", "moai-workflow-gan-loop", "moai-workflow-jit-docs", "moai-workflow-thinking",
+    "moai-foundation-cc", "moai-foundation-core", "moai-foundation-quality", "moai-foundation-thinking",
+    // workflow (10 — research and pencil-integration removed)
+    "moai-workflow-ddd", "moai-workflow-design-context", "moai-workflow-design-import", "moai-workflow-gan-loop",
+    "moai-workflow-loop", "moai-workflow-project", "moai-workflow-spec", "moai-workflow-tdd",
+    "moai-workflow-testing", "moai-workflow-worktree",
     // ref (5)
-    "moai-ref-anthropic", "moai-ref-go", "moai-ref-python", "moai-ref-typescript", "moai-ref-claude-code",
-    // design (3 — pencil-integration removed)
-    "moai-design-system", "moai-design-tokens", "moai-design-evaluator",
+    "moai-ref-api-patterns", "moai-ref-git-workflow", "moai-ref-owasp-checklist",
+    "moai-ref-react-patterns", "moai-ref-testing-pyramid",
+    // design (1)
+    "moai-design-system",
     // FROZEN domain (2)
-    "moai-domain-copywriting", "moai-domain-brand-design",
+    "moai-domain-brand-design", "moai-domain-copywriting",
     // meta (1 NEW)
     "moai-meta-harness",
 }
 ```
 
-(The exact 22 base skill names will be verified against the live tree before final SKILL.md authoring; the list above is illustrative.)
+The 22 base skill names above were verified against the live `.claude/skills/` tree on 2026-04-27 (D-1 plan-audit fix). Math: 4 + 10 + 5 + 1 + 2 + 1 = 23. Total skill count after BC-V3R3-007 removal = 23.
 
 ## 4. Risks (Plan-Level)
 
@@ -211,7 +213,7 @@ var staticCoreAllowlist = []string{
 
 ## 6. Plan Audit Checklist (for plan-auditor)
 
-- [ ] All 11 REQs (REQ-HARNESS-001 through 010, plus implicit REQ-HARNESS-010) covered by an AC
+- [ ] All 10 REQs (REQ-HARNESS-001 through 010) covered by an AC (see acceptance.md AC ↔ REQ matrix)
 - [ ] EARS keywords used in every REQ ("WHEN", "IF", "shall", "shall not")
 - [ ] §3 16-skill list verbatim from handoff §4.2 / §6
 - [ ] Frontmatter has all 9 required fields per `.claude/agents/moai/manager-spec.md` schema

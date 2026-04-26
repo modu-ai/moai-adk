@@ -136,6 +136,7 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"
 			return checkConstitution(cwd, registryPath, v, strictMode)
 		}},
+		{"Skills Allowlist", func(_ bool) DiagnosticCheck { return runSkillsCheck(cwd) }},
 	}
 
 	var results []DiagnosticCheck
