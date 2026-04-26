@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	budgetruntime "github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
@@ -131,6 +132,34 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				"session_id", input.SessionID,
 			)
 		}
+	}
+
+	// Initialize Token Circuit Breaker (SPEC-V3R3-ARCH-007).
+	// Load runtime.yaml and create a per-session Tracker.
+	// Errors are non-blocking: defaults are used when runtime.yaml is missing.
+	if input.ProjectDir != "" {
+		runtimeCfgPath := filepath.Join(input.ProjectDir, ".moai", "config", "sections", "runtime.yaml")
+		runtimeCfg, err := budgetruntime.LoadRuntime(runtimeCfgPath)
+		if err != nil {
+			slog.Debug("runtime.yaml not found, using defaults",
+				"path", runtimeCfgPath,
+				"error", err,
+			)
+			runtimeCfg = budgetruntime.DefaultRuntimeConfig()
+		}
+		tracker := budgetruntime.NewTracker(runtimeCfg)
+		tracker.SetProjectRoot(input.ProjectDir)
+		data["runtime_tracker_initialized"] = true
+		slog.Info("Token Circuit Breaker initialized",
+			"spec", "SPEC-V3R3-ARCH-007",
+			"pre_clear_threshold", runtimeCfg.PreClearThreshold,
+			"hard_clear_threshold", runtimeCfg.HardClearThreshold,
+			"stall_detection_seconds", runtimeCfg.StallDetectionSeconds,
+		)
+		// Store tracker in data for downstream use (debug info only).
+		// The tracker is not yet wired into a shared session context — that is
+		// deferred to the PreToolUse hook integration (future SPEC).
+		_ = tracker
 	}
 
 	jsonData, err := json.Marshal(data)
