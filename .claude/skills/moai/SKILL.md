@@ -70,7 +70,6 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **coverage** (aliases: cov): Analyze test coverage and generate missing tests
 - **e2e** (aliases: e2e-test): Create and run E2E tests
-- **context** (aliases: ctx, memory): Extract and display git-based context memory
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
 
@@ -226,13 +225,6 @@ Purpose: Generate project documentation by analyzing the existing codebase.
 Agents: Explore, manager-docs, expert-devops (optional)
 Output: product.md, structure.md, tech.md in .moai/project/
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
-
-### context - Git-Based Context Memory
-
-Purpose: Extract AI-developer interaction context from git commit history for session continuity.
-Agents: manager-git (primary)
-Flags: --spec SPEC-XXX, --days N, --category CAT, --summary, --inject
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/context.md
 
 ### feedback - GitHub Issue Creation
 
