@@ -103,8 +103,32 @@ Hooks support environment variables and must be quoted to handle spaces:
 
 **Important**: Quote the entire path: `"\"$CLAUDE_PROJECT_DIR/path\""` not `"$CLAUDE_PROJECT_DIR/path"`
 
-Hook timeout range: 1–600,000ms (max 10 minutes). Default is 5,000ms for most hooks.
-Long-running hooks (PostToolUse, quality gates) should set `"timeout": 60000` or higher.
+Hook timeout unit is **seconds** (not milliseconds, despite some external docs). Default is 5s for most hooks. Recommended ceilings:
+
+| Hook | Recommended timeout | Rationale |
+|------|--------------------|-----------|
+| SessionStart | 30s | MCP server startup latency |
+| PreToolUse | 5s | Fast pre-flight checks only |
+| PostToolUse | **10s** (was 60s before v2.16.0) | LSP/AST/MX validations average <30ms; 10s is generous safety margin |
+| Stop / SubagentStop | 5s | Lightweight teardown |
+| TeammateIdle / TaskCompleted | 10s | Quality validation may run lint/test |
+
+For very long validations (full test suites, deployments), prefer `"async": true` over high timeout — the hook runs in background and results arrive on the next turn (see hooks-system.md §Async Command Hooks).
+
+### Freeze Diagnosis Checklist
+
+If a session appears to freeze mid-conversation, check in this order (cheapest to most invasive):
+
+1. **MCP authentication failures** — most common cause. Run `claude mcp list` and remove servers showing `oauth_required` / `connection_failed`. Each unauthenticated MCP can add 5-30s retry latency on tool calls.
+2. **Hook timeout** — run `claude --debug "hooks"` to see per-hook latency. If a hook exceeds its timeout, the response stalls until timeout expires. moai hook handlers (post-tool, stop, subagent-stop) typically complete in <50ms; persistent slowness usually points to LSP server hangs.
+3. **Context window pressure** — see `.claude/rules/moai/workflow/context-window-management.md`. SSE streams stall when prompts approach 75% of the window.
+4. **Terminal I/O saturation** — high write ratio (>90% writes in `tmux info`) can make output appear delayed. This is rendering only, not a true freeze.
+
+Profile a hook directly:
+```bash
+echo '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_response":{"success":true},"session_id":"test"}' | time moai hook post-tool
+```
+Healthy result: under 100ms. Persistent slowness → check LSP / disk I/O / MX validation cost.
 
 ## StatusLine Configuration
 
