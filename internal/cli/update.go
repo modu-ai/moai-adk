@@ -956,6 +956,32 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 	return files
 }
 
+// isUserAreaPath returns true when the relative project path belongs to the
+// user customization area and must never be overwritten or deleted by moai update.
+//
+// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004):
+//   - .claude/skills/my-harness-*   (user harness skill directories)
+//   - .claude/agents/my-harness/    (user harness agent directory)
+//
+// This function is called by cleanMoaiManagedPaths before any remove operation
+// and by the template overlay write loop to skip user-owned paths.
+func isUserAreaPath(rel string) bool {
+	// Normalize to forward slashes for consistent matching on all platforms.
+	norm := strings.ReplaceAll(rel, "\\", "/")
+
+	// .claude/skills/my-harness-* (any sub-path inside)
+	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
+		return true
+	}
+
+	// .claude/agents/my-harness/ (any sub-path inside)
+	if strings.HasPrefix(norm, ".claude/agents/my-harness/") || norm == ".claude/agents/my-harness" {
+		return true
+	}
+
+	return false
+}
+
 // isMoaiManaged returns true if the path is managed by MoAI-ADK and should be excluded from merge confirmation.
 // MoAI-managed paths include:
 //   - .claude/skills/moai-* and .claude/skills/moai/
