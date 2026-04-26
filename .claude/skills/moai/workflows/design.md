@@ -217,3 +217,11 @@ Use Skill("moai") with arguments: design $ARGUMENTS
 ```
 
 This document is the authoritative source for the design subcommand workflow logic.
+
+---
+
+## Custom Harness Extension (Optional)
+
+@.moai/harness/design-extension.md
+
+*(이 파일은 `/moai project --harness`로 생성되며 Q13 답변이 "Advanced"일 때만 만들어집니다. 파일이 없으면 자동으로 skip됩니다.)*

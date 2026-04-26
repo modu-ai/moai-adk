@@ -217,7 +217,7 @@ Task ID format: `T-P{phase}-{NN}` where `{phase}` is the phase number (1-5) and 
 - **Type**: Git
 - **REQ-IDs**: 모든 REQ
 - **Dependencies**: T-P5-06
-- **Output**: 한국어 commit body + conventional message: `spec(project): SPEC-V3R3-PROJECT-HARNESS-001 — 16Q 인터뷰 + 5-Layer 통합`. branch: `feat/SPEC-V3R3-HARNESS-LEARNING-001` (현재 브랜치, commit 분리).
+- **Output**: 한국어 commit body + conventional message: `spec(project): SPEC-V3R3-PROJECT-HARNESS-001 — 16Q 인터뷰 + 5-Layer 통합`. branch: `feat/SPEC-V3R3-PROJECT-HARNESS-001-impl` (본 SPEC 전용 브랜치, plan-auditor D5 수정).
 - **Done when**: `git log` 첫 commit이 본 SPEC 메시지; pre-commit hook PASS (lint, vet, test).
 
 ---

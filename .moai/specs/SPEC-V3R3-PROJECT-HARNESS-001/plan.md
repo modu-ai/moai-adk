@@ -273,6 +273,7 @@ chains:
 | Layer 4 import line 누락 (사용자가 수동 삭제) | moai doctor가 누락 감지 → restore 안내. |
 | Q13 "Advanced" 분기로 design-extension.md 생성 후 SPEC-V3R3-DESIGN-PIPELINE-001 미완성 | design-extension.md는 placeholder + warning ("DESIGN-PIPELINE-001 머지 후 실제 분기 활성"). |
 | Template static import line이 사용자가 수정한 workflows/*.md와 충돌 | moai update가 한 줄 단위로만 갱신; 사용자 customization은 `.moai/harness/`에만 작성하도록 README.md 강제 안내. |
+| **/clear mid-interview**: 사용자가 Round 1~3 도중 `/clear`를 실행하면 in-memory 버퍼 손실 + 부분 답변만 누적된 상태에서 세션 종료 (plan-auditor D8 보강) | Buffer는 매 Round 종료 시점에도 디스크에 commit하지 않으므로 `/clear` 시 깨끗한 abort 효과 (REQ-PH-010 자동 충족). 단, 사용자에게 "인터뷰 진행 중에는 `/clear` 시 답변 손실"을 Round 1 안내문에 명시 (project.md Phase 5 헤더). 재시작 시 처음 Round 1부터 다시 진행. |
 
 ## 6. Test Strategy
 

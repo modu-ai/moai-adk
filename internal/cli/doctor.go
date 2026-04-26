@@ -137,6 +137,7 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 			return checkConstitution(cwd, registryPath, v, strictMode)
 		}},
 		{"Skills Allowlist", func(_ bool) DiagnosticCheck { return runSkillsCheck(cwd) }},
+		{"Harness 5-Layer", func(_ bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 	}
 
 	var results []DiagnosticCheck
