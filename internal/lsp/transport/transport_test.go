@@ -34,7 +34,7 @@ func (f *fakeTransport) Call(ctx context.Context, method string, params, result 
 		return err
 	}
 	if r, ok := f.callResults[method]; ok && result != nil {
-		// 결과를 JSON 경유로 병합: Call 시그니처는 result any
+		// Merge the result via JSON: Call's signature is `result any`.
 		b, err := json.Marshal(r)
 		if err != nil {
 			return err
@@ -72,7 +72,7 @@ func TestTransport_Interface(t *testing.T) {
 	ft := newFakeTransport()
 	ctx := context.Background()
 
-	// Call은 파라미터를 받아 result에 채워야 함
+	// Call must accept params and populate result.
 	ft.callResults["initialize"] = map[string]any{"serverInfo": "test"}
 	var result map[string]any
 	if err := ft.Call(ctx, "initialize", nil, &result); err != nil {
@@ -82,7 +82,7 @@ func TestTransport_Interface(t *testing.T) {
 		t.Errorf("callCalled = %v, want [initialize]", ft.callCalled)
 	}
 
-	// Notify는 result 없이 notification 전송
+	// Notify sends a notification without a result.
 	if err := ft.Notify(ctx, "initialized", nil); err != nil {
 		t.Errorf("Notify returned unexpected error: %v", err)
 	}
@@ -167,14 +167,14 @@ func TestNewPowernapTransport_CloseOnNil(t *testing.T) {
 
 	tr := transport.NewPowernapTransport(nil)
 
-	// Close은 nil stream이면 에러를 반환하거나 nil을 반환해야 함 — panic 불가
+	// Close must return either an error or nil when the stream is nil — must not panic.
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("Close panicked: %v", r)
 		}
 	}()
 
-	// 패닉 없이 호출 가능해야 함
+	// Must be callable without panicking.
 	_ = tr.Close()
 }
 

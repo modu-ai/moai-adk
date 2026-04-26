@@ -11,17 +11,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/config"
 )
 
-// ─── AC-UTIL-003-003: singleflight.Group 필드 존재 확인 ────────────────────
+// ─── AC-UTIL-003-003: verify the singleflight.Group field is present ──────
 
-// TestManager_SingleflightField_Present는 Manager.sf 필드가 존재하고
-// 즉시 Do 호출이 가능한 zero-value 상태임을 확인한다 (AC-UTIL-003-003).
+// TestManager_SingleflightField_Present verifies that the Manager.sf field exists
+// and is in a zero-value ready state where Do can be invoked immediately (AC-UTIL-003-003).
 func TestManager_SingleflightField_Present(t *testing.T) {
 	t.Parallel()
 
 	m := NewManager(makeTestServersConfig())
 
-	// 같은 패키지에서 직접 필드 접근 — 필드가 없으면 컴파일 실패
-	// zero-value 준비 상태 검증: Do 호출이 정상적으로 동작해야 한다
+	// Direct field access from the same package — compile fails if the field is missing.
+	// Verify zero-value readiness: Do invocation must work normally.
 	called := false
 	val, err, shared := m.sf.Do("probe-key", func() (any, error) {
 		called = true
@@ -37,18 +37,18 @@ func TestManager_SingleflightField_Present(t *testing.T) {
 	if val != "result" {
 		t.Errorf("sf.Do value = %v, want 'result'", val)
 	}
-	_ = shared // 공유 여부는 이 테스트에서 검증하지 않음
+	_ = shared // sharing is not verified in this test
 }
 
-// ─── AC-UTIL-003-004: singleflight 장벽 ──────────────────────────────────
+// ─── AC-UTIL-003-004: singleflight barrier ────────────────────────────────
 
-// TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst는
-// 두 번째 동시 getOrSpawn 호출이 첫 번째 factory 반환까지 차단됨을 확인한다 (AC-UTIL-003-004).
+// TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst verifies that
+// the second concurrent getOrSpawn call is blocked until the first factory returns (AC-UTIL-003-004).
 func TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst(t *testing.T) {
 	t.Parallel()
 
 	var factoryCount atomic.Int32
-	// factory가 차단 해제 신호를 받을 때까지 지연됨
+	// factory waits until it receives the unblock signal
 	firstStarted := make(chan struct{})
 	unblock := make(chan struct{})
 
@@ -56,12 +56,12 @@ func TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst(t *testing.T) {
 		makeTestServersConfig(),
 		WithClientFactory(func(cfg config.ServerConfig) Client {
 			factoryCount.Add(1)
-			// 첫 번째 factory 진입 신호
+			// signal that the first factory entered
 			select {
 			case firstStarted <- struct{}{}:
 			default:
 			}
-			// 차단 해제 신호 대기
+			// wait for the unblock signal
 			<-unblock
 			return &fakeClient{state: StateSpawning}
 		}),
@@ -69,7 +69,7 @@ func TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 첫 번째 고루틴 시작
+	// Start the first goroutine.
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -77,14 +77,14 @@ func TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst(t *testing.T) {
 		_, _ = m.getOrSpawn(ctx, "go")
 	}()
 
-	// factory가 시작될 때까지 대기
+	// Wait until the factory starts.
 	select {
 	case <-firstStarted:
 	case <-time.After(2 * time.Second):
 		t.Fatal("first factory did not start within 2s")
 	}
 
-	// 두 번째 고루틴 시작: factory가 차단 중인 상태에서 getOrSpawn 호출
+	// Start the second goroutine: invoke getOrSpawn while the factory is blocked.
 	done2 := make(chan struct{})
 	wg.Add(1)
 	go func() {
@@ -93,30 +93,30 @@ func TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst(t *testing.T) {
 		_, _ = m.getOrSpawn(ctx, "go")
 	}()
 
-	// 두 번째 고루틴이 즉시 반환되지 않아야 한다 (sf.Do 차단 중)
+	// The second goroutine must not return immediately (sf.Do is blocking).
 	select {
 	case <-done2:
-		// 두 번째가 즉시 반환되었다 — 빠른 경로(캐시 히트)를 탔을 수 있음.
-		// factory 호출 횟수가 1이면 sf.Do를 통한 공유를 의미하므로 허용한다.
+		// The second caller returned early — it may have taken the fast path (cache hit).
+		// If the factory call count is 1, this means sharing via sf.Do, which is acceptable.
 		t.Logf("second caller returned early (cache hit path) — factory calls: %d", factoryCount.Load())
 	case <-time.After(50 * time.Millisecond):
-		// 예상된 동작: 두 번째 고루틴이 sf.Do 내부에서 차단 중
+		// expected behavior: the second goroutine is blocked inside sf.Do
 	}
 
-	// factory 차단 해제
+	// Release the factory.
 	close(unblock)
 	wg.Wait()
 
-	// factory는 정확히 1번 호출되어야 한다
+	// The factory must have been called exactly once.
 	if got := factoryCount.Load(); got != 1 {
 		t.Errorf("factory called %d times, want 1 (singleflight should deduplicate)", got)
 	}
 }
 
-// ─── AC-UTIL-003-005: 16 goroutine 동시 RouteFor, factory 정확히 1회 ───────
+// ─── AC-UTIL-003-005: 16 concurrent RouteFor goroutines, factory exactly once ───
 
-// TestRouteFor_ExactlyOnce_16ConcurrentCallers는 16개의 동시 RouteFor 호출에서
-// clientFactory가 정확히 1회 호출됨을 확인한다 (AC-UTIL-003-005).
+// TestRouteFor_ExactlyOnce_16ConcurrentCallers verifies that across 16 concurrent
+// RouteFor invocations, clientFactory is called exactly once (AC-UTIL-003-005).
 func TestRouteFor_ExactlyOnce_16ConcurrentCallers(t *testing.T) {
 	t.Parallel()
 
@@ -126,7 +126,7 @@ func TestRouteFor_ExactlyOnce_16ConcurrentCallers(t *testing.T) {
 		makeTestServersConfig(),
 		WithClientFactory(func(cfg config.ServerConfig) Client {
 			factoryCount.Add(1)
-			// 동시성 시나리오를 더 두드러지게 만들기 위해 짧은 지연
+			// Short delay to make the concurrency scenario more pronounced.
 			time.Sleep(5 * time.Millisecond)
 			return &fakeClient{state: StateSpawning}
 		}),
@@ -139,7 +139,7 @@ func TestRouteFor_ExactlyOnce_16ConcurrentCallers(t *testing.T) {
 	ctx := context.Background()
 	var wg sync.WaitGroup
 
-	// 최대한 동시에 시작하기 위한 시작 게이트
+	// Start gate to start all goroutines as concurrently as possible.
 	startGate := make(chan struct{})
 
 	for i := 0; i < N; i++ {
@@ -151,16 +151,16 @@ func TestRouteFor_ExactlyOnce_16ConcurrentCallers(t *testing.T) {
 		}(i)
 	}
 
-	// 모든 고루틴이 준비된 후 동시 시작
+	// Start all goroutines simultaneously after they are ready.
 	close(startGate)
 	wg.Wait()
 
-	// factory는 정확히 1회 호출되어야 한다
+	// The factory must have been called exactly once.
 	if got := factoryCount.Load(); got != 1 {
 		t.Errorf("clientFactory called %d times, want exactly 1", got)
 	}
 
-	// 모든 호출이 에러 없이 완료되어야 한다
+	// All calls must complete without error.
 	for i := 0; i < N; i++ {
 		if errs[i] != nil {
 			t.Errorf("goroutine %d: RouteFor error = %v", i, errs[i])
@@ -170,7 +170,7 @@ func TestRouteFor_ExactlyOnce_16ConcurrentCallers(t *testing.T) {
 		}
 	}
 
-	// 모든 클라이언트가 동일한 포인터여야 한다
+	// All clients must be the same pointer.
 	for i := 1; i < N; i++ {
 		if clients[i] != clients[0] {
 			t.Errorf("goroutine %d: got different client pointer (want same as goroutine 0)", i)
@@ -178,10 +178,10 @@ func TestRouteFor_ExactlyOnce_16ConcurrentCallers(t *testing.T) {
 	}
 }
 
-// ─── AC-UTIL-003-006: Start 실패 시 캐시 부재 및 재시도 확인 ──────────────
+// ─── AC-UTIL-003-006: cache absent and retry on Start failure ─────────────
 
-// TestGetOrSpawn_StartError_CacheAbsentAndRetry는 c.Start 실패 시
-// 캐시에 클라이언트가 남지 않고 다음 호출에서 factory가 다시 호출됨을 확인한다 (AC-UTIL-003-006).
+// TestGetOrSpawn_StartError_CacheAbsentAndRetry verifies that on c.Start failure,
+// no client remains in the cache and the factory is invoked again on the next call (AC-UTIL-003-006).
 func TestGetOrSpawn_StartError_CacheAbsentAndRetry(t *testing.T) {
 	t.Parallel()
 
@@ -198,7 +198,7 @@ func TestGetOrSpawn_StartError_CacheAbsentAndRetry(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 첫 번째 호출: Start 실패 → 에러 반환
+	// First call: Start fails → returns error.
 	c1, err1 := m.getOrSpawn(ctx, "go")
 	if err1 == nil {
 		t.Fatal("first getOrSpawn: expected error, got nil")
@@ -210,7 +210,7 @@ func TestGetOrSpawn_StartError_CacheAbsentAndRetry(t *testing.T) {
 		t.Errorf("first getOrSpawn: error = %v, want to wrap %v", err1, startErr)
 	}
 
-	// 캐시에 클라이언트가 없어야 한다
+	// The cache must not contain the client.
 	m.mu.Lock()
 	_, cacheHit := m.clients["go"]
 	m.mu.Unlock()
@@ -218,21 +218,21 @@ func TestGetOrSpawn_StartError_CacheAbsentAndRetry(t *testing.T) {
 		t.Error("cache should be absent after Start error (REQ-UTIL-003-006)")
 	}
 
-	// 두 번째 호출: factory가 다시 호출되어야 한다 (sf.Do 키가 해제됨)
+	// Second call: the factory must be invoked again (sf.Do key released).
 	_, _ = m.getOrSpawn(ctx, "go")
 	if got := callCount.Load(); got != 2 {
 		t.Errorf("factory called %d times total, want 2 (retry on second call)", got)
 	}
 }
 
-// ─── AC-UTIL-003-011: 경쟁 감지기 — 16 goroutine getOrSpawn ──────────────
+// ─── AC-UTIL-003-011: race detector — 16 goroutines getOrSpawn ────────────
 
-// TestGetOrSpawnConcurrent_RaceDetector는 16개 동시 getOrSpawn 호출에서
-// 데이터 경쟁이 발생하지 않음을 go test -race로 검증한다 (AC-UTIL-003-011).
+// TestGetOrSpawnConcurrent_RaceDetector verifies that 16 concurrent getOrSpawn calls
+// do not produce a data race when run under go test -race (AC-UTIL-003-011).
 //
-// 실행 방법: go test -race -run TestGetOrSpawnConcurrent ./internal/lsp/core/
+// Run with: go test -race -run TestGetOrSpawnConcurrent ./internal/lsp/core/
 func TestGetOrSpawnConcurrent_RaceDetector(t *testing.T) {
-	// t.Parallel()은 -race 단독 실행 시 간섭을 줄이기 위해 의도적으로 생략
+	// t.Parallel() is intentionally omitted to reduce interference when running -race in isolation.
 
 	var spawnCount atomic.Int32
 
@@ -240,7 +240,7 @@ func TestGetOrSpawnConcurrent_RaceDetector(t *testing.T) {
 		makeTestServersConfig(),
 		WithClientFactory(func(cfg config.ServerConfig) Client {
 			spawnCount.Add(1)
-			// 실제 경쟁 조건을 유발할 수 있도록 약간의 지연
+			// Small delay to provoke real race conditions.
 			time.Sleep(2 * time.Millisecond)
 			return &fakeClient{state: StateSpawning}
 		}),
@@ -257,7 +257,7 @@ func TestGetOrSpawnConcurrent_RaceDetector(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-startGate
-			// RouteFor는 lastActivity 업데이트도 수행하므로 더 넓은 경쟁 표면을 커버함
+			// RouteFor also updates lastActivity, so it covers a wider race surface.
 			_, _ = m.RouteFor(ctx, "/workspace/main.go")
 		}()
 	}
@@ -265,8 +265,8 @@ func TestGetOrSpawnConcurrent_RaceDetector(t *testing.T) {
 	close(startGate)
 	wg.Wait()
 
-	// 경쟁 감지기가 이 테스트를 통과하면 데이터 경쟁 없음
-	// factory 호출 횟수는 1이어야 함 (singleflight 보장)
+	// If the race detector passes this test, no data race occurred.
+	// The factory call count must be 1 (singleflight guarantee).
 	if got := spawnCount.Load(); got != 1 {
 		t.Errorf("spawnCount = %d, want 1 (singleflight should prevent duplicates)", got)
 	}

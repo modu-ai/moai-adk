@@ -182,19 +182,18 @@ func HandleDBSchemaSync(cfg Config) Result {
 	return Result{ExitCode: 0, Decision: DecisionAskUser}
 }
 
-// @MX:NOTE BuildProposal은 파싱된 마이그레이션 내용을 사용자 승인 대기용 Proposal 구조체로
-// 포장한다. JSON 마샬링이 가능한 평면 레이아웃을 유지하여 proposal.json(REQ-009)으로 직접
-// 직렬화될 수 있다.
+// @MX:NOTE BuildProposal wraps the parsed migration content into a Proposal struct awaiting user approval.
+// Maintains a flat JSON-marshalable layout so it can be serialized directly as proposal.json (REQ-009).
 //
-// 입력:
-//   - filePath: 마이그레이션 파일 경로 (Claude Code의 tool_input.file_path 원본)
-//   - parsedContent: parseMigrationStub이 반환한 파싱 결과 문자열
-//     (크기 가드에 걸렸을 경우 빈 문자열이며 Truncated=true 상태)
+// Inputs:
+//   - filePath: migration file path (the original tool_input.file_path from Claude Code)
+//   - parsedContent: the parsing result string returned by parseMigrationStub
+//     (empty string when the size guard was triggered; Truncated=true in that state)
 //
-// 출력:
-//   - Proposal: Decision은 항상 "ask-user"(DecisionAskUser), Timestamp는 UTC RFC3339
+// Output:
+//   - Proposal: Decision is always "ask-user" (DecisionAskUser), Timestamp is UTC RFC3339
 //
-// 부작용: 없음 (순수 함수).
+// Side effects: none (pure function).
 func BuildProposal(filePath, parsedContent string) Proposal {
 	return Proposal{
 		FilePath:      filePath,
@@ -204,17 +203,17 @@ func BuildProposal(filePath, parsedContent string) Proposal {
 	}
 }
 
-// @MX:NOTE MatchesMigrationPattern은 file_path가 DB 마이그레이션 glob 중 하나라도 매칭되는지
-// 확인한다. `**` 와일드카드는 matchGlob이 prefix/suffix 분리 방식으로 처리한다.
+// @MX:NOTE MatchesMigrationPattern checks whether file_path matches any of the DB migration globs.
+// The `**` wildcard is handled by matchGlob using prefix/suffix splitting.
 //
-// 입력:
-//   - filePath: 검사 대상 파일 경로 (호출자 책임으로 filepath.Clean 이후여야 함)
-//   - patterns: db.yaml의 migration_patterns (예: ["prisma/schema.prisma", "migrations/**/*.sql"])
+// Inputs:
+//   - filePath: the file path to check (caller is responsible for applying filepath.Clean first)
+//   - patterns: migration_patterns from db.yaml (e.g., ["prisma/schema.prisma", "migrations/**/*.sql"])
 //
-// 출력:
-//   - bool: 패턴 중 하나라도 매칭되면 true, 전부 미매칭이면 false
+// Output:
+//   - bool: true if any pattern matches, false if none match
 //
-// 부작용: 없음 (순수 함수, 읽기 전용).
+// Side effects: none (pure function, read-only).
 func MatchesMigrationPattern(filePath string, patterns []string) bool {
 	for _, pattern := range patterns {
 		if matchGlob(pattern, filePath) {
@@ -224,19 +223,19 @@ func MatchesMigrationPattern(filePath string, patterns []string) bool {
 	return false
 }
 
-// @MX:NOTE IsExcluded은 재귀 가드(REQ-004) 패턴에 file_path가 매칭되는지 확인한다.
-// DefaultExcludedPatterns(.moai/project/db/**, .moai/cache/**, .moai/logs/**)이 기본
-// 차단 대상이며, 이 경로들의 파일을 훅이 처리하면 schema.md 자동 재작성이 다시 훅을
-// 발동시키는 무한 루프가 발생하므로 반드시 차단된다.
+// @MX:NOTE IsExcluded checks whether file_path matches any of the recursion guard (REQ-004) patterns.
+// DefaultExcludedPatterns (.moai/project/db/**, .moai/cache/**, .moai/logs/**) are the default blocklist;
+// if the hook processes files at these paths, the automatic schema.md rewrite would trigger the hook again,
+// causing an infinite loop — these paths must always be blocked.
 //
-// 입력:
-//   - filePath: 검사 대상 파일 경로
-//   - excluded: 제외 글롭 패턴 목록 (일반적으로 DefaultExcludedPatterns)
+// Inputs:
+//   - filePath: the file path to check
+//   - excluded: list of exclusion glob patterns (typically DefaultExcludedPatterns)
 //
-// 출력:
-//   - bool: 제외 패턴 중 하나라도 매칭되면 true (훅이 exit 0 skip 처리)
+// Output:
+//   - bool: true if any exclusion pattern matches (hook handles as exit 0 skip)
 //
-// 부작용: 없음 (순수 함수, 읽기 전용).
+// Side effects: none (pure function, read-only).
 func IsExcluded(filePath string, excluded []string) bool {
 	for _, pattern := range excluded {
 		if matchGlob(pattern, filePath) {
@@ -323,25 +322,27 @@ func isWithinDebounceWindow(stateFile, filePath string, window time.Duration) bo
 	return state.FilePath == filePath && time.Since(state.Timestamp) < window
 }
 
-// @MX:NOTE CheckDebounce는 동일 filePath가 window 내에 이미 관측되었는지 확인하고,
-// 관측되지 않았다면 stateFile을 원자적으로 갱신한다(임시 파일 + os.Rename, POSIX rename
-// 원자성에 의존). 동일 stateFile을 대상으로 동시에 호출되더라도 정확히 한 호출만
-// debounced=false를 반환한다(REQ-H2-002).
+// @MX:NOTE CheckDebounce verifies whether the same filePath has already been observed inside
+// the window, and atomically updates stateFile if not (temp-file + os.Rename, relying on POSIX
+// rename atomicity). When concurrent callers target the same stateFile, exactly one of them
+// returns debounced=false (REQ-H2-002).
 //
-// 입력:
-//   - stateFile: 디바운스 상태 JSON 파일의 절대 경로 (.moai/cache/db-sync/last-seen.json)
-//   - filePath: PostToolUse 훅이 보고한 마이그레이션 파일 경로
-//   - window: 디바운스 윈도우 (기본 10초; 테스트에서는 50ms 등 짧은 값 사용 가능)
+// Inputs:
+//   - stateFile: absolute path of the debounce-state JSON file (.moai/cache/db-sync/last-seen.json)
+//   - filePath: migration file path reported by the PostToolUse hook
+//   - window: debounce window (default 10s; tests may use shorter values such as 50ms)
 //
-// 출력:
-//   - debounced: true이면 window 내 중복 이벤트 (호출자는 조용히 종료), false면 신규 이벤트
-//   - error: 현재 구현은 항상 nil을 반환한다 (I/O 실패도 안전 기본값 (true, nil)로 흡수;
-//     REQ-H2-003). 미래 시그니처 호환성을 위해 error를 유지한다.
+// Outputs:
+//   - debounced: true means a duplicate event within the window (caller exits silently);
+//     false means a new event.
+//   - error: the current implementation always returns nil (I/O failures are absorbed into
+//     the safe default (true, nil); REQ-H2-003). The error is retained for future signature
+//     compatibility.
 //
-// 부작용:
-//   - stateFile을 temp-file + os.Rename으로 원자적 교체 (정상 경로)
-//   - I/O 실패 시 내부 로그 없음 (공개 API는 logFile 없이 호출됨;
-//     HandleDBSchemaSync 경유 시 checkDebounceWithLog가 ErrorLogFile에 기록)
+// Side effects:
+//   - stateFile is replaced atomically via temp-file + os.Rename (success path)
+//   - On I/O failure the public API logs nothing (it is invoked without logFile;
+//     when called via HandleDBSchemaSync, checkDebounceWithLog records to ErrorLogFile).
 func CheckDebounce(stateFile, filePath string, window time.Duration) (bool, error) {
 	return checkDebounceWithLog(stateFile, filePath, window, "")
 }

@@ -58,8 +58,8 @@ func DefaultClientCapabilities() ClientCapabilities {
 	}
 }
 
-// serverCapabilitiesRaw는 initialize 응답에서 파싱하는 내부 타입.
-// 최소한의 필드만 파싱하며 알 수 없는 필드는 무시합니다.
+// serverCapabilitiesRaw is the internal type parsed from the initialize response.
+// Only the minimum required fields are parsed; unknown fields are ignored.
 type serverCapabilitiesRaw struct {
 	TextDocumentSync   any  `json:"textDocumentSync"`
 	ReferencesProvider bool `json:"referencesProvider"`
@@ -114,7 +114,7 @@ func parseTextDocumentSync(v any) int {
 	if v == nil {
 		return 0
 	}
-	// JSON 숫자는 float64로 디코딩됨
+	// JSON numbers are decoded as float64.
 	switch vt := v.(type) {
 	case float64:
 		return int(vt)

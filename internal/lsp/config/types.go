@@ -53,8 +53,8 @@ type ServerConfig struct {
 
 // ServersConfig is the root deserialization type for the lsp.servers section.
 // Servers maps language name → ServerConfig.
-// @MX:ANCHOR: [AUTO] ServersConfig 최상위 설정 타입 — Load() 반환값이자 Manager 초기화 인자
-// @MX:REASON: fan_in >= 3 — config.Load 호출자들(Manager, CLI, 테스트)이 이 타입을 모두 참조
+// @MX:ANCHOR: [AUTO] ServersConfig — top-level config type returned by Load() and used as a Manager initialization argument
+// @MX:REASON: fan_in >= 3 — callers of config.Load (Manager, CLI, tests) all reference this type
 type ServersConfig struct {
 	// ClientImpl selects which LSP client implementation handles language
 	// server communication (SPEC-LSP-CORE-002 AC10, REQ-LC-010).

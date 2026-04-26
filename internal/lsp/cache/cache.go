@@ -23,8 +23,8 @@ func WithCleanupInterval(d time.Duration) Option {
 // Entries are keyed by file URI and invalidated when the document version changes
 // or the TTL expires.
 //
-// @MX:ANCHOR: [AUTO] DiagnosticCache — Aggregator, 테스트, Manager가 공유하는 진단 캐시 핵심 타입
-// @MX:REASON: fan_in >= 3 — Aggregator.GetDiagnostics, cache 테스트, Manager 연동 코드가 모두 이 타입을 직접 참조함
+// @MX:ANCHOR: [AUTO] DiagnosticCache — core diagnostic cache type shared by Aggregator, tests, and Manager
+// @MX:REASON: fan_in >= 3 — Aggregator.GetDiagnostics, cache tests, and Manager integration code all reference this type directly
 type DiagnosticCache struct {
 	mu      sync.RWMutex
 	entries map[string]*CacheEntry
@@ -54,8 +54,8 @@ func NewDiagnosticCache(ttl time.Duration, opts ...Option) *DiagnosticCache {
 // Set stores diagnostics for the given URI at the given version.
 // The entry expires after the cache's configured TTL.
 //
-// @MX:ANCHOR: [AUTO] DiagnosticCache.Set — 진단 결과 저장 진입점
-// @MX:REASON: fan_in >= 3 — Aggregator, 캐시 테스트, 통합 테스트가 모두 Set을 호출함
+// @MX:ANCHOR: [AUTO] DiagnosticCache.Set — entry point for storing diagnostic results
+// @MX:REASON: fan_in >= 3 — Aggregator, cache tests, and integration tests all call Set
 func (c *DiagnosticCache) Set(uri string, version int64, diagnostics []lsp.Diagnostic) {
 	copied := make([]lsp.Diagnostic, len(diagnostics))
 	copy(copied, diagnostics)
@@ -86,8 +86,8 @@ func (c *DiagnosticCache) Set(uri string, version int64, diagnostics []lsp.Diagn
 // On a cache hit, a copy of the diagnostics slice is returned to prevent
 // callers from mutating the cached data.
 //
-// @MX:ANCHOR: [AUTO] DiagnosticCache.Get — 캐시 조회 핵심 경로
-// @MX:REASON: fan_in >= 3 — Aggregator.GetDiagnostics, 캐시 테스트, Ralph 엔진이 모두 Get을 통해 결과를 조회함
+// @MX:ANCHOR: [AUTO] DiagnosticCache.Get — core path for cache lookup
+// @MX:REASON: fan_in >= 3 — Aggregator.GetDiagnostics, cache tests, and Ralph engine all retrieve results through Get
 func (c *DiagnosticCache) Get(uri string, version int64) ([]lsp.Diagnostic, bool) {
 	c.mu.RLock()
 	entry, ok := c.entries[uri]
@@ -138,8 +138,8 @@ func (c *DiagnosticCache) Invalidate(uri string) {
 // The goroutine runs until the provided context is cancelled or Stop is called.
 // Calling Start more than once is idempotent.
 //
-// @MX:WARN: [AUTO] Start 고루틴 — cleanupInterval마다 만료 항목을 삭제하는 장기 실행 백그라운드 고루틴
-// @MX:REASON: ctx 취소 없이는 고루틴 누수가 발생함. Start/Stop 쌍 또는 외부 ctx 취소를 반드시 보장해야 함.
+// @MX:WARN: [AUTO] Start goroutine — long-running background goroutine that evicts expired entries every cleanupInterval
+// @MX:REASON: goroutine leak occurs without ctx cancellation. A Start/Stop pair or external ctx cancellation must be guaranteed.
 func (c *DiagnosticCache) Start(ctx context.Context) {
 	c.mu.Lock()
 	if c.cancel != nil {

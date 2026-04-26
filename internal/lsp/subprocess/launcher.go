@@ -118,9 +118,9 @@ func (l *Launcher) Launch(ctx context.Context, cfg config.ServerConfig) (*Launch
 	args := make([]string, len(cfg.Args))
 	copy(args, cfg.Args)
 
-	cmd := exec.CommandContext(ctx, binPath, args...) //nolint:gosec // 경로는 위에서 검증됨
+	cmd := exec.CommandContext(ctx, binPath, args...) //nolint:gosec // path is validated above
 
-	// 각 파이프를 독립적으로 생성 (REQ-LC-005 isolation)
+	// Create each pipe independently (REQ-LC-005 isolation)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("subprocess.Launch %q: stdin pipe: %w", cfg.Command, err)

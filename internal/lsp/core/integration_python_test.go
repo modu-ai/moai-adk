@@ -12,7 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/core"
 )
 
-// pyrightConfig는 pyright-langserver 통합 테스트용 ServerConfig를 반환합니다.
+// pyrightConfig returns the ServerConfig for pyright-langserver integration tests.
 func pyrightConfig() config.ServerConfig {
 	return config.ServerConfig{
 		Language:       "python",
@@ -23,15 +23,15 @@ func pyrightConfig() config.ServerConfig {
 	}
 }
 
-// pyrightConfigWithRoot는 rootDir이 설정된 pyright ServerConfig를 반환합니다.
+// pyrightConfigWithRoot returns a pyright ServerConfig with rootDir set.
 func pyrightConfigWithRoot(rootDir string) config.ServerConfig {
 	cfg := pyrightConfig()
 	cfg.RootDir = rootDir
 	return cfg
 }
 
-// TestIntegration_Pyright_InitializeAndShutdown은 pyright-langserver를 실제로
-// 기동하고 StateReady에 도달한 후 정상적으로 종료되는지 확인합니다.
+// TestIntegration_Pyright_InitializeAndShutdown verifies that pyright-langserver starts,
+// reaches StateReady, and shuts down cleanly.
 func TestIntegration_Pyright_InitializeAndShutdown(t *testing.T) {
 	skipIfBinaryMissing(t, "pyright-langserver")
 
@@ -54,22 +54,22 @@ func TestIntegration_Pyright_InitializeAndShutdown(t *testing.T) {
 	assertStateEquals(t, cl, core.StateShutdown)
 }
 
-// TestIntegration_Pyright_OpenFileAndGetDiagnostics는 pyright-langserver가
-// Python 소스 파일의 타입 오류에 대해 진단을 push하는지 확인합니다.
+// TestIntegration_Pyright_OpenFileAndGetDiagnostics verifies that pyright-langserver pushes
+// diagnostics for type errors in a Python source file.
 //
-// pyright는 초기 분석 시간이 길어 최대 15s 폴링 윈도우를 사용합니다.
+// Pyright has a longer initial analysis time, so a polling window of up to 15s is used.
 func TestIntegration_Pyright_OpenFileAndGetDiagnostics(t *testing.T) {
 	skipIfBinaryMissing(t, "pyright-langserver")
 
 	tmpDir := t.TempDir()
 
-	// 타입 오류가 포함된 Python 파일 생성
-	// pyright는 타입 불일치를 정적으로 감지함
+	// Create a Python file with a type error
+	// pyright statically detects type mismatches
 	pyContent := `x: int = "this is a string"
 `
 	pyPath := writeTempFile(t, tmpDir, "main.py", pyContent)
 
-	// pyproject.toml 생성 (pyright root marker)
+	// Create pyproject.toml (pyright root marker)
 	writeTempFile(t, tmpDir, "pyproject.toml", "[tool.pyright]\n")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -78,8 +78,8 @@ func TestIntegration_Pyright_OpenFileAndGetDiagnostics(t *testing.T) {
 	var cl core.Client
 	var startErr error
 
-	// pyright 기동 재시도 (최대 2회): 첫 번째 기동이 실패하는 경우 대비
-	// RootDir을 tmpDir로 설정하여 pyright에 workspace root 전달
+	// Retry pyright startup (up to 2 times) in case the first attempt fails.
+	// Set RootDir to tmpDir to pass the workspace root to pyright.
 	for attempt := 0; attempt < 2; attempt++ {
 		cl = core.NewClient(pyrightConfigWithRoot(tmpDir))
 		startErr = cl.Start(ctx)
@@ -103,14 +103,14 @@ func TestIntegration_Pyright_OpenFileAndGetDiagnostics(t *testing.T) {
 		t.Fatalf("OpenFile: %v", err)
 	}
 
-	// 진단 폴링: pyright는 gopls보다 느린 분석기 — 최대 15s 대기
+	// Poll for diagnostics: pyright is a slower analyzer than gopls — wait up to 15s
 	diags := waitForDiagnostics(ctx, cl, pyPath, 1, 200*time.Millisecond, 15*time.Second)
 	if len(diags) == 0 {
 		t.Fatal("expected at least 1 diagnostic from pyright for type mismatch, got 0")
 	}
 
-	// 진단 메시지에 타입 오류 관련 키워드가 포함되어 있는지 확인 (case-insensitive)
-	// pyright는 "Expression of type" 혹은 "Cannot assign" 등을 출력함
+	// Verify that at least one diagnostic contains a type-error keyword (case-insensitive)
+	// pyright outputs messages like "Expression of type" or "Cannot assign"
 	typeErrorKeywords := []string{"type", "assign", "str", "int", "expression"}
 	found := false
 outer:

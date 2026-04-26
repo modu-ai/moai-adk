@@ -8,10 +8,10 @@ import (
 	"unicode"
 )
 
-// SARIF 2.1.0 스키마 URL
+// sarifSchema is the SARIF 2.1.0 schema URL.
 const sarifSchema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 
-// sarifDocument는 SARIF 2.1.0 최상위 문서입니다.
+// sarifDocument is the SARIF 2.1.0 top-level document.
 // https://docs.oasis-open.org/sarif/sarif/v2.1.0/
 type sarifDocument struct {
 	Schema  string     `json:"$schema"`
@@ -19,65 +19,65 @@ type sarifDocument struct {
 	Runs    []sarifRun `json:"runs"`
 }
 
-// sarifRun은 단일 도구 실행 결과입니다.
+// sarifRun is the result of a single tool execution.
 type sarifRun struct {
 	Tool    sarifTool     `json:"tool"`
 	Results []sarifResult `json:"results"`
 }
 
-// sarifTool은 스캔 도구 정보입니다.
+// sarifTool holds scan tool information.
 type sarifTool struct {
 	Driver sarifDriver `json:"driver"`
 }
 
-// sarifDriver는 도구 드라이버 메타데이터입니다.
+// sarifDriver holds tool driver metadata.
 type sarifDriver struct {
 	Name    string       `json:"name"`
 	Version string       `json:"version"`
 	Rules   []sarifRule  `json:"rules,omitempty"`
 }
 
-// sarifRule은 SARIF 규칙 정의입니다.
+// sarifRule is a SARIF rule definition.
 type sarifRule struct {
 	ID               string            `json:"id"`
 	ShortDescription *sarifMessage     `json:"shortDescription,omitempty"`
 	Properties       map[string]string `json:"properties,omitempty"`
 }
 
-// sarifResult는 단일 발견 결과입니다.
+// sarifResult is a single finding result.
 type sarifResult struct {
 	RuleID     string           `json:"ruleId"`
 	Level      string           `json:"level"`
 	Message    sarifMessage     `json:"message"`
 	Locations  []sarifLocation  `json:"locations"`
-	// Properties는 SARIF 2.1.0 §3.52 property bag입니다.
-	// map[string]any 를 사용하여 기존 string 값과 tags []string을 함께 수용합니다.
-	// REQ-UTIL-002-005/006: owasp/cwe 키가 있으면 external/owasp/* external/cwe/* 태그를 tags에 추가합니다.
+	// Properties is a SARIF 2.1.0 §3.52 property bag.
+	// Uses map[string]any to accommodate both existing string values and tags []string.
+	// REQ-UTIL-002-005/006: when owasp/cwe keys are present, external/owasp/* and external/cwe/* tags are appended to tags.
 	Properties map[string]any `json:"properties,omitempty"`
 }
 
-// sarifMessage는 SARIF 메시지 텍스트입니다.
+// sarifMessage is the SARIF message text.
 type sarifMessage struct {
 	Text string `json:"text"`
 }
 
-// sarifLocation은 코드 위치 정보입니다.
+// sarifLocation holds code location information.
 type sarifLocation struct {
 	PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
 }
 
-// sarifPhysicalLocation은 파일 및 영역 정보입니다.
+// sarifPhysicalLocation holds file and region information.
 type sarifPhysicalLocation struct {
 	ArtifactLocation sarifArtifactLocation `json:"artifactLocation"`
 	Region           sarifRegion           `json:"region"`
 }
 
-// sarifArtifactLocation은 파일 URI입니다.
+// sarifArtifactLocation is the file URI.
 type sarifArtifactLocation struct {
 	URI string `json:"uri"`
 }
 
-// sarifRegion은 코드 영역(줄/컬럼)입니다.
+// sarifRegion is the code region (line/column).
 type sarifRegion struct {
 	StartLine   int `json:"startLine"`
 	StartColumn int `json:"startColumn,omitempty"`
@@ -85,17 +85,17 @@ type sarifRegion struct {
 	EndColumn   int `json:"endColumn,omitempty"`
 }
 
-// ToSARIF는 Finding 슬라이스를 SARIF 2.1.0 형식의 JSON으로 변환합니다.
-// REQ-ASTG-UPG-022: SARIF 2.1.0 출력 지원
+// ToSARIF converts a slice of Findings to SARIF 2.1.0 JSON format.
+// REQ-ASTG-UPG-022: SARIF 2.1.0 output support
 //
-// sgVersion은 ast-grep CLI 버전 문자열입니다 (tool.driver.version에 반영).
-// findings가 nil이면 빈 results 배열을 포함한 유효한 SARIF 문서를 반환합니다.
+// sgVersion is the ast-grep CLI version string (reflected in tool.driver.version).
+// When findings is nil, a valid SARIF document with an empty results array is returned.
 func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 	if sgVersion == "" {
 		sgVersion = "unknown"
 	}
 
-	// 규칙 목록 수집 (dedup)
+	// Collect rule list (dedup)
 	ruleSet := make(map[string]sarifRule)
 	for _, f := range findings {
 		if f.RuleID == "" {
@@ -113,10 +113,10 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 		}
 	}
 
-	// @MX:NOTE: rule ID 기준 오름차순 정렬로 결정적 출력 보장.
-	// Go map 반복 순서가 불확정적이어서 SARIF 출력이 실행마다 달라지면
-	// (1) Snapshot 테스트 불가 (2) GitHub Code Scanning diff 노이즈
-	// (3) CI 재현성 저하 문제가 발생하므로 정렬이 필수. (issue #644)
+	// @MX:NOTE: Sort ascending by rule ID to guarantee deterministic output.
+	// Go map iteration order is non-deterministic, so without sorting the SARIF output
+	// differs between runs: (1) snapshot tests become impossible, (2) GitHub Code Scanning
+	// diffs become noisy, (3) CI reproducibility degrades. Sorting is mandatory. (issue #644)
 	rules := make([]sarifRule, 0, len(ruleSet))
 	for _, r := range ruleSet {
 		rules = append(rules, r)
@@ -125,7 +125,7 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 		return rules[i].ID < rules[j].ID
 	})
 
-	// results 변환
+	// Convert to results
 	results := make([]sarifResult, 0, len(findings))
 	for _, f := range findings {
 		result := sarifResult{
@@ -149,14 +149,14 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 			},
 		}
 
-		// 메타데이터를 SARIF properties로 전달 + OWASP/CWE 태그 추가
-		// REQ-UTIL-002-005/006: Metadata에 owasp/cwe 키가 있으면 external/* 태그를 추가합니다.
+		// Pass metadata as SARIF properties and append OWASP/CWE tags.
+		// REQ-UTIL-002-005/006: when owasp/cwe keys are present in Metadata, external/* tags are added.
 		if len(f.Metadata) > 0 {
 			props := make(map[string]any, len(f.Metadata)+1)
 			for k, v := range f.Metadata {
-				props[k] = v // 기존 string 값 보존 (backward compat)
+				props[k] = v // preserve existing string values (backward compat)
 			}
-			// SARIF 2.1.0 §3.52: tags 배열에 external/owasp/* 및 external/cwe/* 항목 추가
+			// SARIF 2.1.0 §3.52: append external/owasp/* and external/cwe/* entries to tags array
 			var tags []string
 			if v, ok := f.Metadata["owasp"]; ok && v != "" {
 				tags = append(tags, "external/owasp/"+sanitizeTagValue(v))
@@ -192,15 +192,15 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 
 	output, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("SARIF 직렬화: %w", err)
+		return nil, fmt.Errorf("SARIF serialization: %w", err)
 	}
 
 	return output, nil
 }
 
-// severityToSARIFLevel은 ast-grep severity를 SARIF level로 변환합니다.
-// SARIF 2.1.0 지원 level: "error", "warning", "note", "none"
-// REQ-ASTG-UPG-022: severity 매핑 (error→error, warning→warning, info→note)
+// severityToSARIFLevel converts an ast-grep severity to a SARIF level.
+// Supported SARIF 2.1.0 levels: "error", "warning", "note", "none"
+// REQ-ASTG-UPG-022: severity mapping (error→error, warning→warning, info→note)
 func severityToSARIFLevel(severity string) string {
 	switch strings.ToLower(severity) {
 	case "error":
@@ -208,24 +208,24 @@ func severityToSARIFLevel(severity string) string {
 	case "warning", "warn":
 		return "warning"
 	default:
-		return "note" // info, hint, "" 모두 note로 매핑
+		return "note" // info, hint, and "" all map to note
 	}
 }
 
-// toFileURI는 파일 경로를 SARIF URI 형식으로 변환합니다.
-// 절대 경로는 file:// 스킴을 붙이지 않고 상대 경로를 그대로 사용합니다.
+// toFileURI converts a file path to the SARIF URI format.
+// Absolute paths are used as-is without adding the file:// scheme.
 func toFileURI(path string) string {
 	if path == "" {
 		return ""
 	}
-	// 이미 URI 형식이면 그대로 반환
+	// Already in URI format — return as-is.
 	if strings.HasPrefix(path, "file://") {
 		return path
 	}
 	return path
 }
 
-// maxInt는 두 정수 중 큰 값을 반환합니다.
+// maxInt returns the larger of two integers.
 func maxInt(a, b int) int {
 	if a > b {
 		return a
@@ -233,14 +233,14 @@ func maxInt(a, b int) int {
 	return b
 }
 
-// sanitizeTagValue는 OWASP/CWE 메타데이터 값을 SARIF tags 항목에 안전한 형태로 변환합니다.
-// 변환 규칙:
-//  1. 소문자 변환
-//  2. 알파벳/숫자 이외의 문자 → 하이픈 치환
-//  3. 연속 하이픈 → 단일 하이픈 축소
-//  4. 선두/말미 하이픈 제거
+// sanitizeTagValue converts an OWASP/CWE metadata value into a form safe
+// for use as a SARIF tags entry. Transformation rules:
+//  1. Convert to lowercase
+//  2. Replace non-alphanumeric characters with hyphens
+//  3. Collapse consecutive hyphens to a single hyphen
+//  4. Strip leading and trailing hyphens
 //
-// 예시: "A03:2021 - Injection" → "a03-2021-injection", "CWE-89" → "cwe-89"
+// Examples: "A03:2021 - Injection" → "a03-2021-injection", "CWE-89" → "cwe-89"
 func sanitizeTagValue(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -251,7 +251,7 @@ func sanitizeTagValue(s string) string {
 			b.WriteByte('-')
 		}
 	}
-	// 연속 하이픈 축소
+	// Collapse consecutive hyphens
 	result := b.String()
 	for strings.Contains(result, "--") {
 		result = strings.ReplaceAll(result, "--", "-")

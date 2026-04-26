@@ -15,7 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/core"
 )
 
-// skipIfBinaryMissing는 cmd 바이너리가 PATH에 없으면 테스트를 건너뜁니다.
+// skipIfBinaryMissing skips the test when the cmd binary is not found in PATH.
 func skipIfBinaryMissing(t *testing.T, cmd string) {
 	t.Helper()
 	if _, err := exec.LookPath(cmd); err != nil {
@@ -23,9 +23,9 @@ func skipIfBinaryMissing(t *testing.T, cmd string) {
 	}
 }
 
-// waitForDiagnostics는 pollInterval 간격으로 GetDiagnostics를 폴링하여
-// minCount 이상의 진단이 반환될 때까지 최대 totalTimeout 동안 대기합니다.
-// totalTimeout 내에 조건이 충족되지 않으면 빈 슬라이스를 반환합니다.
+// waitForDiagnostics polls GetDiagnostics at pollInterval intervals and waits up to totalTimeout
+// until at least minCount diagnostics are returned.
+// Returns an empty slice if the condition is not met within totalTimeout.
 func waitForDiagnostics(
 	ctx context.Context,
 	cl core.Client,
@@ -46,7 +46,7 @@ func waitForDiagnostics(
 		}
 		time.Sleep(pollInterval)
 	}
-	// 마지막으로 한 번 더 시도
+	// One final attempt
 	diags, err := cl.GetDiagnostics(ctx, path)
 	if err == nil {
 		return diags
@@ -54,7 +54,7 @@ func waitForDiagnostics(
 	return nil
 }
 
-// writeTempFile은 dir/name 경로에 content를 쓰고 절대 경로를 반환합니다.
+// writeTempFile writes content to dir/name and returns the absolute path.
 func writeTempFile(t *testing.T, dir, name, content string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
@@ -68,7 +68,7 @@ func writeTempFile(t *testing.T, dir, name, content string) string {
 	return abs
 }
 
-// assertStateEquals는 Client.State()가 expected와 같은지 확인합니다.
+// assertStateEquals verifies that Client.State() equals expected.
 func assertStateEquals(t *testing.T, cl core.Client, expected core.ClientState) {
 	t.Helper()
 	got := cl.State()
@@ -77,13 +77,13 @@ func assertStateEquals(t *testing.T, cl core.Client, expected core.ClientState) 
 	}
 }
 
-// lspPosition은 0-based line, character를 lsp.Position으로 변환합니다.
+// lspPosition converts 0-based line and character to an lsp.Position.
 func lspPosition(line, character int) lsp.Position {
 	return lsp.Position{Line: line, Character: character}
 }
 
-// writeGoModule은 tmpDir에 go.mod와 main.go를 생성하고 절대 경로를 반환합니다.
-// mainContent가 비어 있으면 기본 main.go를 사용합니다.
+// writeGoModule creates go.mod and main.go in tmpDir and returns their absolute paths.
+// If mainContent is empty, a default main.go is used.
 func writeGoModule(t *testing.T, tmpDir, moduleName, mainContent string) (goModPath, mainGoPath string) {
 	t.Helper()
 
@@ -97,22 +97,22 @@ func writeGoModule(t *testing.T, tmpDir, moduleName, mainContent string) (goModP
 	return goModPath, mainGoPath
 }
 
-// makeGoModuleDir는 gopls가 인식할 수 있는 Go 모듈 임시 디렉토리를 생성합니다.
+// makeGoModuleDir creates a temporary directory under /tmp for a Go module that gopls can recognize.
 //
-// macOS에서 os.TempDir()은 /var/folders/...를 반환하며, Go 도구는 system temp root
-// 내의 go.mod를 무시합니다. 이 함수는 명시적으로 /tmp 아래에 디렉토리를 생성하여
-// gopls가 Go 모듈을 올바르게 인식하도록 합니다.
+// On macOS, os.TempDir() returns /var/folders/..., and Go tools ignore go.mod files within the
+// system temp root. This function explicitly creates the directory under /tmp so gopls
+// correctly recognizes the Go module.
 //
-// t.Cleanup으로 자동 삭제됩니다.
+// Automatically deleted via t.Cleanup.
 func makeGoModuleDir(t *testing.T) string {
 	t.Helper()
-	// /tmp 아래에 생성: macOS system temp root(/var/folders) 우회
+	// Create under /tmp: bypass the macOS system temp root (/var/folders)
 	dir, err := os.MkdirTemp("/tmp", "lsp_integration_*")
 	if err != nil {
 		t.Fatalf("makeGoModuleDir: MkdirTemp: %v", err)
 	}
 	t.Cleanup(func() { os.RemoveAll(dir) })
-	// symlink 해제: gopls가 실제 경로로 URI를 구성하기 때문에 일관성 유지
+	// Resolve symlinks: ensures consistency because gopls constructs URIs from the real path
 	realDir, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		return dir

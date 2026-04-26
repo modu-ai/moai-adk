@@ -2,7 +2,7 @@ package cli
 
 import "testing"
 
-// TestNormalizeStatuslineMode_Canonical canonical 값이 변경 없이 통과하는지 확인한다.
+// TestNormalizeStatuslineMode_Canonical verifies that canonical values pass through unchanged.
 func TestNormalizeStatuslineMode_Canonical(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -19,8 +19,8 @@ func TestNormalizeStatuslineMode_Canonical(t *testing.T) {
 	}
 }
 
-// TestNormalizeStatuslineMode_Deprecated deprecated alias가 v3 canonical 값으로 변환되는지 확인한다.
-// minimal/compact → default, verbose → full (statusline.NormalizeMode 동작과 일치).
+// TestNormalizeStatuslineMode_Deprecated verifies that deprecated aliases are converted to v3 canonical values.
+// minimal/compact → default, verbose → full (consistent with statusline.NormalizeMode behavior).
 func TestNormalizeStatuslineMode_Deprecated(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -38,7 +38,7 @@ func TestNormalizeStatuslineMode_Deprecated(t *testing.T) {
 	}
 }
 
-// TestNormalizeStatuslineMode_EmptyAndUnknown 빈 문자열과 알 수 없는 값이 "default"로 폴백하는지 확인한다.
+// TestNormalizeStatuslineMode_EmptyAndUnknown verifies that empty strings and unknown values fall back to "default".
 func TestNormalizeStatuslineMode_EmptyAndUnknown(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -56,8 +56,8 @@ func TestNormalizeStatuslineMode_EmptyAndUnknown(t *testing.T) {
 	}
 }
 
-// TestNormalizeStatuslineTheme 유효한 테마는 그대로 통과하고,
-// 알 수 없거나 레거시 "default" 값은 "catppuccin-mocha"로 변환되는지 확인한다.
+// TestNormalizeStatuslineTheme verifies that valid themes pass through unchanged
+// and that unknown or legacy "default" values are converted to "catppuccin-mocha".
 func TestNormalizeStatuslineTheme(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -77,7 +77,7 @@ func TestNormalizeStatuslineTheme(t *testing.T) {
 	}
 }
 
-// TestNormalizeModel_Canonical canonical alias는 그대로 통과하는지 확인한다.
+// TestNormalizeModel_Canonical verifies that canonical aliases pass through unchanged.
 func TestNormalizeModel_Canonical(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -99,7 +99,7 @@ func TestNormalizeModel_Canonical(t *testing.T) {
 	}
 }
 
-// TestNormalizeModel_Deprecated deprecated full-ID가 canonical alias로 변환되는지 확인한다.
+// TestNormalizeModel_Deprecated verifies that deprecated full-IDs are converted to canonical aliases.
 func TestNormalizeModel_Deprecated(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -123,8 +123,8 @@ func TestNormalizeModel_Deprecated(t *testing.T) {
 	}
 }
 
-// TestNormalizeModel_EmptyAndUnknown 빈 문자열은 빈 문자열을 반환하고,
-// 알 수 없는 값은 ""(런타임 기본값)을 반환하는지 확인한다.
+// TestNormalizeModel_EmptyAndUnknown verifies that empty strings return empty strings
+// and unknown values return "" (runtime default).
 func TestNormalizeModel_EmptyAndUnknown(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -142,7 +142,7 @@ func TestNormalizeModel_EmptyAndUnknown(t *testing.T) {
 	}
 }
 
-// TestValueOrDash 빈 문자열에서 "-"를 반환하는지 확인한다.
+// TestValueOrDash verifies that "-" is returned for empty strings.
 func TestValueOrDash(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -160,7 +160,7 @@ func TestValueOrDash(t *testing.T) {
 	}
 }
 
-// TestValueOrDefault 빈 문자열에서 fallback을 반환하는지 확인한다.
+// TestValueOrDefault verifies that the fallback is returned for empty strings.
 func TestValueOrDefault(t *testing.T) {
 	tests := []struct {
 		in, fallback, want string

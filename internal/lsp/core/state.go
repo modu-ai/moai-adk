@@ -59,7 +59,7 @@ var allowedTransitions = map[ClientState][]ClientState{
 
 // StateMachine manages ClientState transitions with thread-safety and logging.
 //
-// @MX:NOTE: [AUTO] StateMachine.Transition — 상태 전환은 slog.Debug로 기록되어 디버깅 가능
+// @MX:NOTE: [AUTO] StateMachine.Transition — state transitions are logged at slog.Debug for debuggability
 type StateMachine struct {
 	mu      sync.RWMutex
 	current ClientState

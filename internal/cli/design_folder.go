@@ -61,13 +61,19 @@ func designDirHasRegularFile(dir string) (bool, error) {
 	return false, nil
 }
 
-// checkReservedCollision 함수는 projectRoot/.moai/design/ 내 사용자 파일이
-// reserved filename(exact match 또는 glob match)과 충돌하는지 검사한다.
+// @MX:ANCHOR: [AUTO] checkReservedCollision enforces the SPEC-V3R3-DESIGN-FOLDER-FIX-001 dual-mode invariant
+// @MX:REASON: invariant contract — scaffold path (strict=true) keeps hard error, update path (strict=false) warns and continues; user data is never mutated
+// @MX:SPEC: SPEC-V3R3-DESIGN-FOLDER-FIX-001
 //
-// strict=true (scaffold path): 첫 번째 충돌 발견 시 error 반환 (기존 동작 유지).
-// strict=false (update path): 모든 충돌에 대해 warning 출력 후 nil 반환.
-//   - 사용자 데이터는 어떤 경우에도 수정·삭제되지 않음 (REQ-DFF-004).
-//   - 충돌 파일을 건너뛰고 다른 templates sync는 계속 진행됨 (REQ-DFF-001/002).
+// checkReservedCollision checks whether any user file under projectRoot/.moai/design/
+// collides with a reserved filename (exact match or glob match).
+//
+// strict=true (scaffold path): returns an error on the first collision found (preserves
+// the original behavior).
+// strict=false (update path): emits a warning for each collision and returns nil.
+//   - User data is never modified or deleted in any case (REQ-DFF-004).
+//   - The conflicting file is skipped while other templates continue to sync
+//     (REQ-DFF-001/002).
 func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) error {
 	base := filepath.Join(projectRoot, designDir)
 
@@ -80,7 +86,7 @@ func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) e
 				}
 				return fmt.Errorf("reserved filename: %q collides with reserved name", name)
 			}
-			// update path: warning 출력 + 계속 진행 (REQ-DFF-001)
+			// update path: emit warning and continue (REQ-DFF-001)
 			if errOut != nil {
 				_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", name)
 			}
@@ -104,7 +110,7 @@ func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) e
 					}
 					return fmt.Errorf("reserved filename: %q matches reserved pattern %q", path, pattern)
 				}
-				// update path: warning 출력 + 계속 진행 (REQ-DFF-001)
+				// update path: emit warning and continue (REQ-DFF-001)
 				if errOut != nil {
 					_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", path)
 				}
@@ -153,6 +159,10 @@ func loadDesignTemplateFS() (fs.FS, error) {
 	return sub, nil
 }
 
+// @MX:ANCHOR: [AUTO] scaffoldDesignDir is the canonical entry point for `moai init` design folder bootstrap
+// @MX:REASON: invariant contract — empty-dir guard (REQ-010) + reserved-name strict mode prevent corruption of user data on first run
+// @MX:SPEC: SPEC-DESIGN-001
+//
 // scaffoldDesignDir deploys .moai/design/ templates to projectRoot.
 //
 // Returns (true, nil) on successful deployment, (false, nil) when the directory
@@ -221,6 +231,10 @@ func scaffoldDesignDir(projectRoot string, warnOut io.Writer) (bool, error) {
 	return true, nil
 }
 
+// @MX:ANCHOR: [AUTO] updateDesignDir is the canonical entry point for `moai update` design folder sync
+// @MX:REASON: invariant contract — preserves user-modified files via SHA-256 (REQ-005) and never mutates reserved-name collisions (REQ-DFF-004); regression here breaks user data preservation guarantee
+// @MX:SPEC: SPEC-V3R3-DESIGN-FOLDER-FIX-001
+//
 // updateDesignDir syncs .moai/design/ template files during `moai update`.
 //
 // Rules:
@@ -236,7 +250,7 @@ func updateDesignDir(projectRoot string, errOut io.Writer) error {
 	base := filepath.Join(projectRoot, designDir)
 
 	// REQ-DFF-001: Warn on reserved filename collisions (strict=false) and continue.
-	// updateDesignDir는 scaffold path와 달리 기존 사용자 데이터를 존중하여 warning만 출력.
+	// Unlike the scaffold path, updateDesignDir respects existing user data and only emits warnings.
 	if err := checkReservedCollision(projectRoot, errOut, false); err != nil {
 		return err
 	}

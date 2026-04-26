@@ -79,27 +79,27 @@ func InitDependencies() {
 	cwd, _ := os.Getwd()
 
 	// GOPLS-BRIDGE-001: gopls bridge wiring
-	// lsp.yaml에서 gopls 브릿지 설정을 로드하고, 활성화되어 있으면 bridge를 생성한다.
-	// gopls 바이너리가 없거나 설정이 비활성화된 경우 bridge=nil로 fallback한다.
+	// Load gopls bridge config from lsp.yaml; create the bridge when enabled.
+	// Falls back to bridge=nil when the gopls binary is absent or the setting is disabled.
 	lspConfigPath := filepath.Join(cwd, ".moai", "config", "sections", "lsp.yaml")
 	goplsCfg, cfgErr := gopls.LoadConfig(lspConfigPath)
 	var goplsBridge loop.GoplsBridge
 	if cfgErr != nil {
-		slog.Warn("gopls 설정 로드 실패, LSP 진단 비활성화",
+		slog.Warn("gopls config load failed; LSP diagnostics disabled",
 			"path", lspConfigPath,
 			"error", cfgErr,
 		)
 	} else if goplsCfg.Enabled {
-		// context.Background()를 사용한다: bridge는 프로세스 수명 동안 유지된다.
+		// Use context.Background(): the bridge lives for the entire process lifetime.
 		bridge, bridgeErr := gopls.NewBridge(context.Background(), cwd, goplsCfg)
 		if bridgeErr != nil {
-			slog.Warn("gopls bridge 초기화 실패, LSP 진단 비활성화", "error", bridgeErr)
+			slog.Warn("gopls bridge initialization failed; LSP diagnostics disabled", "error", bridgeErr)
 		} else if bridge != nil {
 			goplsBridge = bridge
-			slog.Info("gopls bridge 활성화됨", "binary", goplsCfg.Binary)
+			slog.Info("gopls bridge enabled", "binary", goplsCfg.Binary)
 		}
 	} else {
-		slog.Info("gopls bridge 비활성화됨 (lsp.yaml: enabled=false)")
+		slog.Info("gopls bridge disabled (lsp.yaml: enabled=false)")
 	}
 
 	feedbackGen := loop.NewGoFeedbackGeneratorWithBridge(cwd, goplsBridge)
@@ -131,13 +131,13 @@ func InitDependencies() {
 	})
 
 	// Initialize LSP diagnostics collector and AST analyzer.
-	// GOPLS-BRIDGE-001: gopls bridge가 활성화된 경우 hook 레이어의 LSP 클라이언트는
-	// 여전히 nil이다 — hook/lsp는 별도 통합 경로이며 bridge와 분리되어 있다.
-	// @MX:NOTE: [AUTO] goplsBridge (loop 레이어)와 lsphook LSP 클라이언트(hook 레이어)는
-	// 별개 경로다. 전자는 Feedback.Diagnostics를 채우고, 후자는 PostTool 훅을 담당한다.
+	// GOPLS-BRIDGE-001: when the gopls bridge is active, the hook-layer LSP client
+	// remains nil — hook/lsp is a separate integration path, independent of the bridge.
+	// @MX:NOTE: [AUTO] goplsBridge (loop layer) and lsphook LSP client (hook layer) are
+	// separate paths. The former populates Feedback.Diagnostics; the latter handles the PostTool hook.
 	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
 	if goplsBridge == nil {
-		slog.Warn("gopls bridge 비활성화 — quality gates fall back to CLI tools only",
+		slog.Warn("gopls bridge disabled — quality gates fall back to CLI tools only",
 			"impact", "gopls-backed diagnostics are disabled; phase-aware LSP gates bypassed",
 			"fallback", "go vet, go test, golangci-lint, ast-grep",
 			"gopls_bridge_status", "disabled",

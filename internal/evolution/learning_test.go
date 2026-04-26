@@ -122,7 +122,7 @@ func TestMaxActiveLearnings_Enforced(t *testing.T) {
 	}
 
 	// One more should fail with ErrMaxLearningsReached.
-	// MaxActiveLearnings는 50이므로 i+1이 001..050 범위이고, 다음은 051
+	// MaxActiveLearnings is 50, so i+1 ranges from 001..050 and the next would be 051
 	extra := sampleEntry("LEARN-20260411-051")
 	err := evolution.CreateLearning(projectRoot, extra)
 	if err == nil {

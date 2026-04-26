@@ -13,7 +13,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// sampleRegistryContent는 테스트용 minimal registry 마크다운이다.
+// sampleRegistryContent is a minimal registry markdown for testing.
 const sampleRegistryContent = `# Test Registry
 
 ## Entries
@@ -42,63 +42,63 @@ const sampleRegistryContent = `# Test Registry
 ` + "```" + `
 `
 
-// TestConstitutionListAllEntries는 registry 전체 엔트리 렌더링을 검증한다.
-// AC-CON-001-001 관련.
+// TestConstitutionListAllEntries verifies full entry rendering of the registry.
+// Related to AC-CON-001-001.
 func TestConstitutionListAllEntries(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
 	if err := os.WriteFile(registryPath, []byte(sampleRegistryContent), 0o600); err != nil {
-		t.Fatalf("registry 파일 생성 오류: %v", err)
+		t.Fatalf("failed to create registry file: %v", err)
 	}
 
 	var buf bytes.Buffer
 	err := runConstitutionList(&buf, io.Discard, dir, registryPath, nil, "", "table")
 	if err != nil {
-		t.Fatalf("runConstitutionList 오류: %v", err)
+		t.Fatalf("runConstitutionList error: %v", err)
 	}
 
 	output := buf.String()
-	// 모든 3개 엔트리가 출력에 포함되어야 한다
+	// All 3 entries must be present in the output
 	for _, id := range []string{"CONST-V3R2-001", "CONST-V3R2-002", "CONST-V3R2-003"} {
 		if !strings.Contains(output, id) {
-			t.Errorf("출력에 %q가 포함되지 않았다\n출력: %s", id, output)
+			t.Errorf("%q not found in output\noutput: %s", id, output)
 		}
 	}
 }
 
-// TestConstitutionListFilterFrozen은 --zone frozen 필터를 검증한다.
-// AC-CON-001-002 직접 매핑.
+// TestConstitutionListFilterFrozen verifies the --zone frozen filter.
+// Direct mapping to AC-CON-001-002.
 func TestConstitutionListFilterFrozen(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
 	if err := os.WriteFile(registryPath, []byte(sampleRegistryContent), 0o600); err != nil {
-		t.Fatalf("registry 파일 생성 오류: %v", err)
+		t.Fatalf("failed to create registry file: %v", err)
 	}
 
 	frozenZone := constitution.ZoneFrozen
 	var buf bytes.Buffer
 	err := runConstitutionList(&buf, io.Discard, dir, registryPath, &frozenZone, "", "table")
 	if err != nil {
-		t.Fatalf("runConstitutionList --zone frozen 오류: %v", err)
+		t.Fatalf("runConstitutionList --zone frozen error: %v", err)
 	}
 
 	output := buf.String()
 
-	// Frozen 엔트리만 포함되어야 한다
+	// Only Frozen entries should be included
 	if !strings.Contains(output, "CONST-V3R2-001") {
-		t.Errorf("출력에 CONST-V3R2-001이 포함되지 않았다")
+		t.Errorf("CONST-V3R2-001 not found in output")
 	}
 	if !strings.Contains(output, "CONST-V3R2-002") {
-		t.Errorf("출력에 CONST-V3R2-002가 포함되지 않았다")
+		t.Errorf("CONST-V3R2-002 not found in output")
 	}
 
-	// Evolvable 엔트리는 제외되어야 한다
+	// Evolvable entries should be excluded
 	if strings.Contains(output, "CONST-V3R2-003") {
-		t.Errorf("출력에 Evolvable 엔트리 CONST-V3R2-003이 포함되어서는 안 된다")
+		t.Errorf("Evolvable entry CONST-V3R2-003 must not be in output")
 	}
 }
 
-// TestConstitutionListFilterByFile은 --file 필터를 검증한다.
+// TestConstitutionListFilterByFile verifies the --file filter.
 func TestConstitutionListFilterByFile(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
@@ -124,56 +124,56 @@ func TestConstitutionListFilterByFile(t *testing.T) {
 ` + "```" + `
 `
 	if err := os.WriteFile(registryPath, []byte(content), 0o600); err != nil {
-		t.Fatalf("registry 파일 생성 오류: %v", err)
+		t.Fatalf("failed to create registry file: %v", err)
 	}
 
 	var buf bytes.Buffer
 	err := runConstitutionList(&buf, io.Discard, dir, registryPath, nil, "CLAUDE.md", "table")
 	if err != nil {
-		t.Fatalf("runConstitutionList --file 오류: %v", err)
+		t.Fatalf("runConstitutionList --file error: %v", err)
 	}
 
 	output := buf.String()
 
 	if !strings.Contains(output, "CONST-V3R2-001") {
-		t.Errorf("출력에 CONST-V3R2-001이 포함되지 않았다")
+		t.Errorf("CONST-V3R2-001 not found in output")
 	}
 	if strings.Contains(output, "CONST-V3R2-002") {
-		t.Errorf("출력에 moai-constitution.md 엔트리가 포함되어서는 안 된다")
+		t.Errorf("moai-constitution.md entry must not be in output")
 	}
 }
 
-// TestConstitutionListJSON은 JSON 형식 출력을 검증한다.
+// TestConstitutionListJSON verifies JSON format output.
 func TestConstitutionListJSON(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
 	if err := os.WriteFile(registryPath, []byte(sampleRegistryContent), 0o600); err != nil {
-		t.Fatalf("registry 파일 생성 오류: %v", err)
+		t.Fatalf("failed to create registry file: %v", err)
 	}
 
 	var buf bytes.Buffer
 	err := runConstitutionList(&buf, io.Discard, dir, registryPath, nil, "", "json")
 	if err != nil {
-		t.Fatalf("runConstitutionList --format json 오류: %v", err)
+		t.Fatalf("runConstitutionList --format json error: %v", err)
 	}
 
 	output := buf.String()
 
-	// 유효한 JSON이어야 한다
+	// Must be valid JSON
 	var result struct {
 		Entries []map[string]any `json:"entries"`
 	}
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("JSON 파싱 오류: %v\n출력: %s", err, output)
+		t.Fatalf("JSON parse error: %v\noutput: %s", err, output)
 	}
 
 	if len(result.Entries) != 3 {
-		t.Errorf("JSON entries 수 = %d, want 3", len(result.Entries))
+		t.Errorf("JSON entries count = %d, want 3", len(result.Entries))
 	}
 }
 
-// TestConstitutionListRegistryMissing_FileNotFound는 registry 파일 없음 시 에러를 검증한다.
-// AC-CON-001-013 직접 매핑 (file-missing subtest).
+// TestConstitutionListRegistryMissing_FileNotFound verifies that an error is returned when the registry file is absent.
+// Direct mapping to AC-CON-001-013 (file-missing subtest).
 func TestConstitutionListRegistryMissing_FileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentPath := filepath.Join(dir, "nonexistent-registry.md")
@@ -181,12 +181,12 @@ func TestConstitutionListRegistryMissing_FileNotFound(t *testing.T) {
 	var buf bytes.Buffer
 	err := runConstitutionList(&buf, io.Discard, dir, nonExistentPath, nil, "", "table")
 	if err == nil {
-		t.Fatal("존재하지 않는 registry 경로에서 오류를 반환해야 한다")
+		t.Fatal("must return an error for a non-existent registry path")
 	}
 
 	errMsg := err.Error()
 	if !strings.Contains(errMsg, nonExistentPath) {
-		t.Errorf("오류 메시지에 경로 %q가 포함되어야 한다: %v", nonExistentPath, err)
+		t.Errorf("error message must contain path %q: %v", nonExistentPath, err)
 	}
 }
 
@@ -196,7 +196,7 @@ func TestConstitutionListRegistryMissing_FileNotFound(t *testing.T) {
 //
 // Skipped on Windows: os.Chmod(path, 0o000) does not remove read access on
 // Windows because the Windows ACL model does not honor POSIX permission bits
-// in the same way. The test relies on a POSIX permission semantics.
+// in the same way. The test relies on POSIX permission semantics.
 func TestConstitutionListRegistryMissing_PermissionDenied(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX permission semantics required; skipped on Windows")
@@ -208,12 +208,12 @@ func TestConstitutionListRegistryMissing_PermissionDenied(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
 	if err := os.WriteFile(registryPath, []byte(sampleRegistryContent), 0o600); err != nil {
-		t.Fatalf("registry 파일 생성 오류: %v", err)
+		t.Fatalf("failed to create registry file: %v", err)
 	}
 
-	// 권한 제거
+	// Remove permissions
 	if err := os.Chmod(registryPath, 0o000); err != nil {
-		t.Fatalf("chmod 오류: %v", err)
+		t.Fatalf("chmod error: %v", err)
 	}
 	defer func() {
 		_ = os.Chmod(registryPath, 0o600)
@@ -222,6 +222,6 @@ func TestConstitutionListRegistryMissing_PermissionDenied(t *testing.T) {
 	var buf bytes.Buffer
 	err := runConstitutionList(&buf, io.Discard, dir, registryPath, nil, "", "table")
 	if err == nil {
-		t.Fatal("권한 없는 registry 파일에서 오류를 반환해야 한다")
+		t.Fatal("must return an error for a registry file with no permissions")
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// logBuffer는 slog 출력을 캡처하기 위한 thread-safe 버퍼.
+// logBuffer is a thread-safe buffer for capturing slog output.
 type logBuffer struct {
 	mu  sync.Mutex
 	buf bytes.Buffer
@@ -59,7 +59,7 @@ func TestStateMachine_AllowedTransitions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 각 테스트는 독립된 StateMachine을 사용
+			// each test uses its own independent StateMachine
 			sm := newStateMachineAt(tt.from, nil)
 			if err := sm.Transition(tt.to); err != nil {
 				t.Errorf("Transition(%q→%q) unexpected error: %v", tt.from, tt.to, err)
@@ -111,7 +111,7 @@ func TestStateMachine_ShutdownTerminal(t *testing.T) {
 	if err := sm.Transition(StateShutdown); err != nil {
 		t.Fatalf("Transition to shutdown: %v", err)
 	}
-	// shutdown 이후 어떤 상태로도 전환 불가
+	// no transition allowed after shutdown
 	for _, next := range []ClientState{StateSpawning, StateInitializing, StateReady, StateDegraded} {
 		err := sm.Transition(next)
 		if err == nil {
@@ -166,7 +166,7 @@ func TestStateMachine_ConcurrentTransitionAndRead(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// 단일 writer: spawning→initializing
+		// single writer: spawning→initializing
 		_ = sm.Transition(StateInitializing)
 	}()
 

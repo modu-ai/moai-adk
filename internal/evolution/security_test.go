@@ -9,7 +9,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/evolution"
 )
 
-// --- CRITICAL 1: CheckFrozenGuard 경로 순회 취약점 재현 테스트 ---
+// --- CRITICAL 1: CheckFrozenGuard path traversal vulnerability reproduction test ---
 
 // TestCheckFrozenGuard_RejectsPathTraversal verifies that CheckFrozenGuard rejects
 // path traversal and absolute path attacks.
@@ -22,27 +22,27 @@ func TestCheckFrozenGuard_RejectsPathTraversal(t *testing.T) {
 		expectBlock bool
 	}{
 		{
-			name:        "../../../etc/passwd 거부",
+			name:        "reject ../../../etc/passwd",
 			targetFile:  "../../../etc/passwd",
 			expectBlock: true,
 		},
 		{
-			name:        ".. 우회 경로 거부",
+			name:        "reject .. bypass path",
 			targetFile:  ".claude/rules/moai/core/../../../CLAUDE.md",
 			expectBlock: true,
 		},
 		{
-			name:        "절대 경로 거부",
+			name:        "reject absolute path",
 			targetFile:  "/etc/passwd",
 			expectBlock: true,
 		},
 		{
-			name:        "유효한 스킬 파일 허용",
+			name:        "allow valid skill file",
 			targetFile:  ".claude/skills/moai-lang-go/SKILL.md",
 			expectBlock: false,
 		},
 		{
-			name:        "./로 시작하는 유효 경로 허용",
+			name:        "allow valid path starting with ./",
 			targetFile:  ".claude/skills/moai-lang-go/SKILL.md",
 			expectBlock: false,
 		},
@@ -54,13 +54,13 @@ func TestCheckFrozenGuard_RejectsPathTraversal(t *testing.T) {
 			t.Parallel()
 			err := evolution.CheckFrozenGuard(tt.targetFile)
 			if tt.expectBlock && err == nil {
-				t.Errorf("CheckFrozenGuard(%q): 차단 예상, 하지만 nil 반환", tt.targetFile)
+				t.Errorf("CheckFrozenGuard(%q): expected block, but returned nil", tt.targetFile)
 			}
 			if !tt.expectBlock && err != nil {
-				t.Errorf("CheckFrozenGuard(%q): 허용 예상, 하지만 오류 반환: %v", tt.targetFile, err)
+				t.Errorf("CheckFrozenGuard(%q): expected allow, but returned error: %v", tt.targetFile, err)
 			}
 			if tt.expectBlock && err != nil && err != evolution.ErrFrozenPath {
-				t.Errorf("CheckFrozenGuard(%q): ErrFrozenPath 예상, 하지만 반환: %v", tt.targetFile, err)
+				t.Errorf("CheckFrozenGuard(%q): expected ErrFrozenPath, but returned: %v", tt.targetFile, err)
 			}
 		})
 	}
@@ -72,11 +72,11 @@ func TestApplyProposal_RejectsProjectRootEscape(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	// 외부 디렉터리 생성 (프로젝트 루트의 형제)
+	// Create an external directory (sibling of project root)
 	outsideRoot := t.TempDir()
 
-	// outsideRoot 내 파일을 대상으로 하는 상대 경로 계산
-	// filepath.Rel 로 계산하면 ../../tmp/xxx/evil.md 형태
+	// Compute a relative path targeting a file inside outsideRoot
+	// filepath.Rel produces something like ../../tmp/xxx/evil.md
 	rel, err := filepath.Rel(projectRoot, filepath.Join(outsideRoot, "evil.md"))
 	if err != nil {
 		t.Fatalf("filepath.Rel: %v", err)
@@ -90,16 +90,16 @@ func TestApplyProposal_RejectsProjectRootEscape(t *testing.T) {
 
 	applyErr := evolution.ApplyProposal(projectRoot, proposal)
 	if applyErr == nil {
-		t.Error("ApplyProposal: 프로젝트 루트 탈출 시 오류 예상, 하지만 nil 반환")
+		t.Error("ApplyProposal: expected error when escaping project root, but returned nil")
 	}
 
-	// 외부 경로에 파일이 생성되지 않아야 함
+	// No file must be created at the external path
 	if _, statErr := os.Stat(filepath.Join(outsideRoot, "evil.md")); !os.IsNotExist(statErr) {
-		t.Error("ApplyProposal: 프로젝트 루트 외부에 파일이 생성되면 안 됨")
+		t.Error("ApplyProposal: must not create a file outside the project root")
 	}
 }
 
-// --- CRITICAL 2: LearningEntry.ID 경로 순회 취약점 재현 테스트 ---
+// --- CRITICAL 2: LearningEntry.ID path traversal vulnerability reproduction test ---
 
 // TestCreateLearning_RejectsPathTraversalID verifies that CreateLearning rejects
 // IDs that would escape the learnings directory via path traversal.
@@ -109,7 +109,7 @@ func TestCreateLearning_RejectsPathTraversalID(t *testing.T) {
 	projectRoot := t.TempDir()
 	mustInitMoAI(t, projectRoot)
 
-	// 에이전트 파일을 덮어쓸 수 있는 악성 ID
+	// Malicious ID that could overwrite an agent file
 	maliciousID := "../../.claude/agents/evil"
 
 	entry := &evolution.LearningEntry{
@@ -120,16 +120,16 @@ func TestCreateLearning_RejectsPathTraversalID(t *testing.T) {
 
 	err := evolution.CreateLearning(projectRoot, entry)
 	if err == nil {
-		t.Error("CreateLearning: 경로 순회 ID에 오류 예상, 하지만 nil 반환")
+		t.Error("CreateLearning: expected error for path traversal ID, but returned nil")
 	}
 	if err != evolution.ErrInvalidLearningID {
-		t.Errorf("CreateLearning: ErrInvalidLearningID 예상, 하지만 반환: %v", err)
+		t.Errorf("CreateLearning: expected ErrInvalidLearningID, but returned: %v", err)
 	}
 
-	// 순회 경로에 파일이 생성되지 않아야 함
+	// No file must be created at the traversal path
 	escapedPath := filepath.Join(projectRoot, ".moai", "evolution", "learnings", maliciousID+".md")
 	if _, statErr := os.Stat(escapedPath); !os.IsNotExist(statErr) {
-		t.Error("CreateLearning: 경로 순회 ID로 파일이 생성되면 안 됨")
+		t.Error("CreateLearning: must not create a file with a path traversal ID")
 	}
 }
 
@@ -200,7 +200,7 @@ func TestCreateLearning_RejectsInvalidIDFormats(t *testing.T) {
 	}
 }
 
-// --- CRITICAL 4: FrozenGuard Agency 경로 누락 재현 테스트 ---
+// --- CRITICAL 4: FrozenGuard Agency path omission reproduction test ---
 
 // TestCheckFrozenGuard_ProtectsAgencyConstitution verifies that agency constitution
 // files, fork-manifest, and lsp-client.md are blocked.

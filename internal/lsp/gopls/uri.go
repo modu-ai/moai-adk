@@ -8,59 +8,59 @@ import (
 	"strings"
 )
 
-// pathToURI는 로컬 파일 경로를 RFC 3986 준수 file:// URI로 변환한다.
+// pathToURI converts a local file path to an RFC 3986 compliant file:// URI.
 //
-// LSP 사양에 따라 파일 URI는 경로의 공백, 유니코드 문자를 퍼센트 인코딩해야 한다.
-// 직접 "file://" + path 문자열 결합은 다음 케이스에서 실패한다:
-//   - 공백 포함 경로 (/Users/goos/My Project/) — LSP 사양 위반
-//   - 유니코드 경로 (/내 프로젝트/main.go) — didOpen 무음 실패
-//   - Windows 드라이브 경로 (C:\...) — 슬래시 개수 오류
+// Per the LSP spec, file URIs must percent-encode spaces and Unicode characters in the path.
+// Direct string concatenation of "file://" + path fails in these cases:
+//   - Paths with spaces (/Users/goos/My Project/) — LSP spec violation
+//   - Unicode paths (/my-project/main.go) — silent didOpen failure
+//   - Windows drive paths (C:\...) — incorrect number of slashes
 //
-// 변환 규칙:
-//   - 상대 경로는 filepath.Abs로 절대 경로로 변환한다.
-//   - Windows: 백슬래시를 슬래시로 변환하고 /C:/... 형식으로 정규화한다.
+// Conversion rules:
+//   - Relative paths are converted to absolute paths via filepath.Abs.
+//   - Windows: backslashes are converted to slashes and normalized to /C:/... format.
 //   - Unix: /path/to/file → file:///path/to/file
 //
-// @MX:ANCHOR: [AUTO] LSP URI 변환 핵심 헬퍼 — bridge.go의 initialize, GetDiagnostics에서 호출된다
-// @MX:REASON: fan_in >= 3 (initialize, GetDiagnostics, 테스트)
+// @MX:ANCHOR: [AUTO] Core LSP URI conversion helper — called from initialize and GetDiagnostics in bridge.go
+// @MX:REASON: fan_in >= 3 (initialize, GetDiagnostics, tests)
 func pathToURI(absPath string) (string, error) {
 	if absPath == "" {
-		return "", fmt.Errorf("gopls: uri: 빈 경로는 허용되지 않는다")
+		return "", fmt.Errorf("gopls: uri: empty path is not allowed")
 	}
 
-	// 상대 경로를 절대 경로로 변환한다.
+	// Convert relative path to absolute path.
 	abs, err := filepath.Abs(absPath)
 	if err != nil {
-		return "", fmt.Errorf("gopls: uri: 절대 경로 변환 실패 %q: %w", absPath, err)
+		return "", fmt.Errorf("gopls: uri: absolute path conversion failed %q: %w", absPath, err)
 	}
 
-	// filepath.ToSlash로 OS 경로 구분자를 슬래시로 통일한다.
+	// Normalize OS path separators to slashes using filepath.ToSlash.
 	slashed := filepath.ToSlash(abs)
 
-	// Windows 드라이브 경로(C:/...) 처리:
-	// url.URL.String()은 Path가 /C:/...로 시작해야 file:///C:/... 형식을 생성한다.
-	// Unix에서는 abs가 이미 /로 시작하므로 조정 불필요.
+	// Handle Windows drive paths (C:/...):
+	// url.URL.String() requires Path to start with /C:/... to produce the file:///C:/... format.
+	// On Unix, abs already starts with /, so no adjustment is needed.
 	if runtime.GOOS == "windows" && len(slashed) >= 2 && slashed[1] == ':' {
 		// "C:/..." → "/C:/..."
 		slashed = "/" + slashed
 	}
 
-	// url.URL을 사용하여 경로를 퍼센트 인코딩한다.
-	// Scheme만 지정하고 Path는 url.URL이 자동으로 인코딩한다.
+	// Use url.URL to percent-encode the path.
+	// Only Scheme is specified; url.URL encodes Path automatically.
 	u := &url.URL{
 		Scheme: "file",
-		// Host를 빈 문자열로 두면 file:///path 형식이 생성된다.
+		// Leaving Host empty generates the file:///path format.
 		Path: slashed,
 	}
 
-	// url.URL.String()은 "file:///path%20with%20space/main.go" 형식으로 반환한다.
+	// url.URL.String() returns the form "file:///path%20with%20space/main.go".
 	result := u.String()
 
-	// 슬래시 트리플 검증: file:// + /path 는 file:///path가 된다.
-	// url.URL은 Host가 비어있으면 authority를 생략하므로 file:/path 가 될 수 있다.
-	// 명시적으로 file:///를 보장한다.
+	// Verify triple-slash: file:// + /path becomes file:///path.
+	// url.URL may omit the authority when Host is empty, resulting in file:/path.
+	// Explicitly guarantee file:///.
 	if !strings.HasPrefix(result, "file:///") {
-		// file://path → file:///path로 수정
+		// Fix file://path → file:///path
 		if strings.HasPrefix(result, "file://") {
 			result = "file:///" + strings.TrimPrefix(result, "file://")
 		}

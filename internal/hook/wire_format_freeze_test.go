@@ -9,8 +9,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 )
 
-// canonicalHookDiagnostics는 AC-UTIL-003-009의 표준 픽스처를 반환한다.
-// Error / Warning / Information / Hint 각 1개씩 포함한다.
+// canonicalHookDiagnostics returns the canonical fixture for AC-UTIL-003-009.
+// Contains one each of Error, Warning, Information, and Hint.
 func canonicalHookDiagnostics() []lsphook.Diagnostic {
 	return []lsphook.Diagnostic{
 		{
@@ -52,7 +52,7 @@ func canonicalHookDiagnostics() []lsphook.Diagnostic {
 	}
 }
 
-// computeCounts는 픽스처의 SeverityCounts를 계산한다.
+// computeCounts computes the SeverityCounts for the given fixture.
 func computeCounts(diags []lsphook.Diagnostic) lsphook.SeverityCounts {
 	var counts lsphook.SeverityCounts
 	for _, d := range diags {
@@ -72,9 +72,9 @@ func computeCounts(diags []lsphook.Diagnostic) lsphook.SeverityCounts {
 
 // ─── AC-UTIL-003-008 ─────────────────────────────────────────────────────────
 
-// TestHookDiagnosticSeverity_JSONMarshal_StringPreserved는
-// hook.DiagnosticSeverity("error")가 JSON에서 문자열 "error"로 직렬화됨을 확인한다 (AC-UTIL-003-008).
-// wire format 동결: SPEC-UTIL-003 이전과 이후 동일한 JSON 출력이 보장되어야 한다.
+// TestHookDiagnosticSeverity_JSONMarshal_StringPreserved verifies that
+// hook.DiagnosticSeverity("error") serializes to the string "error" in JSON (AC-UTIL-003-008).
+// Wire format freeze: identical JSON output must be guaranteed before and after SPEC-UTIL-003.
 func TestHookDiagnosticSeverity_JSONMarshal_StringPreserved(t *testing.T) {
 	t.Parallel()
 
@@ -122,19 +122,19 @@ func TestHookDiagnosticSeverity_JSONMarshal_StringPreserved(t *testing.T) {
 
 // ─── AC-UTIL-003-009 ─────────────────────────────────────────────────────────
 
-// TestWireFormat_FormatDiagnosticsAsInstructionWithFile_Freeze는
-// 표준 픽스처에 대한 FormatDiagnosticsAsInstructionWithFile 출력이
-// SPEC 적용 전후로 byte-identical임을 확인한다 (AC-UTIL-003-009).
+// TestWireFormat_FormatDiagnosticsAsInstructionWithFile_Freeze verifies that
+// FormatDiagnosticsAsInstructionWithFile output for the canonical fixture is
+// byte-identical before and after SPEC is applied (AC-UTIL-003-009).
 //
-// 동결 검증 방식: 동일 함수를 두 번 호출하여 출력이 항등 (idempotent)임을 검증.
-// SPEC 적용 후 이 테스트는 새 코드와 함께 실행되므로 구현 변경 시 반드시 실패해야 한다.
+// Freeze validation: call the same function twice and verify output is idempotent.
+// After SPEC is applied this test runs with the new code, so it must fail on any implementation change.
 func TestWireFormat_FormatDiagnosticsAsInstructionWithFile_Freeze(t *testing.T) {
 	t.Parallel()
 
 	fixture := canonicalHookDiagnostics()
 	counts := computeCounts(fixture)
 
-	// 에러만 포함 (errors > 0이면 경고는 무시됨)
+	// errors only (when errors > 0, warnings are ignored)
 	got1 := quality.FormatDiagnosticsAsInstructionWithFile("main.go", fixture, counts, false)
 	got2 := quality.FormatDiagnosticsAsInstructionWithFile("main.go", fixture, counts, false)
 
@@ -142,12 +142,12 @@ func TestWireFormat_FormatDiagnosticsAsInstructionWithFile_Freeze(t *testing.T) 
 		t.Error("FormatDiagnosticsAsInstructionWithFile is not idempotent (wire format unstable)")
 	}
 
-	// 출력이 비어있지 않아야 함 (error 진단이 있으므로)
+	// output must not be empty (error diagnostic is present)
 	if got1 == "" {
 		t.Error("FormatDiagnosticsAsInstructionWithFile returned empty string for error diagnostic")
 	}
 
-	// 예상 포맷 요소 확인: 헤더, 파일명, 에러 메시지, 종료 문구
+	// verify expected format elements: header, filename, error message, closing instruction
 	if !strings.Contains(got1, "[Quality Gate]") {
 		t.Errorf("output missing '[Quality Gate]' header: %q", got1)
 	}
@@ -162,9 +162,9 @@ func TestWireFormat_FormatDiagnosticsAsInstructionWithFile_Freeze(t *testing.T) 
 	}
 }
 
-// TestWireFormat_ConvertHookDiagsToLSP_Freeze는 convertHookDiagsToLSP 변환이
-// SPEC 적용 전후로 byte-identical 출력을 생성함을 확인한다 (AC-UTIL-003-009).
-// hook.Diagnostic(string severity) → lsp.Diagnostic(int severity) 변환 경로 동결.
+// TestWireFormat_ConvertHookDiagsToLSP_Freeze verifies that convertHookDiagsToLSP
+// produces byte-identical output before and after SPEC is applied (AC-UTIL-003-009).
+// Freeze for the hook.Diagnostic(string severity) → lsp.Diagnostic(int severity) conversion path.
 func TestWireFormat_ConvertHookDiagsToLSP_Freeze(t *testing.T) {
 	t.Parallel()
 
@@ -186,7 +186,7 @@ func TestWireFormat_ConvertHookDiagsToLSP_Freeze(t *testing.T) {
 		}
 	}
 
-	// severity 변환 정확도: string → int 검증
+	// severity conversion accuracy: string → int validation
 	// SeverityError = "error" → 1, SeverityWarning = "warning" → 2,
 	// SeverityInformation = "information" → 3, SeverityHint = "hint" → 4
 	expected := []int{1, 2, 3, 4}
@@ -197,8 +197,8 @@ func TestWireFormat_ConvertHookDiagsToLSP_Freeze(t *testing.T) {
 	}
 }
 
-// TestHookDiagnostic_JSONRoundTrip는 hook.Diagnostic의 JSON 직렬화/역직렬화가
-// 완전한 데이터 보존을 보장함을 확인한다 (AC-UTIL-003-008 보강).
+// TestHookDiagnostic_JSONRoundTrip verifies that JSON serialization/deserialization of
+// hook.Diagnostic guarantees complete data preservation (reinforces AC-UTIL-003-008).
 func TestHookDiagnostic_JSONRoundTrip(t *testing.T) {
 	t.Parallel()
 

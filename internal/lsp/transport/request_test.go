@@ -107,7 +107,7 @@ func TestCallWithTimeout_TransportError(t *testing.T) {
 func TestCallWithTimeout_DeadlineExceeded(t *testing.T) {
 	t.Parallel()
 
-	// 절대 완료되지 않는 fake transport — 채널 블로킹
+	// fake transport that never completes — channel blocking
 	blocking := &blockingTransport{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
@@ -135,7 +135,7 @@ func TestCallWithTimeout_NilCtx(t *testing.T) {
 		}
 	}()
 
-	//nolint:staticcheck // 의도적인 nil context 테스트
+	//nolint:staticcheck // intentional nil context test
 	err := transport.CallWithTimeout(nil, ft, "initialize", nil, nil, "go") //nolint:staticcheck
 	if err == nil {
 		t.Error("CallWithTimeout(nil ctx): expected error, got nil")
