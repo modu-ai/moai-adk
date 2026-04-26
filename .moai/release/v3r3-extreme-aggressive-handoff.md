@@ -671,6 +671,76 @@ moai-adk = workflow framework (22 base skills) + meta-harness (∞ generated)
 ---
 
 **Status**: Ready for next session
-**Last Updated**: 2026-04-26
+**Last Updated**: 2026-04-27
 **Author**: MoAI Orchestrator (Claude Opus 4.7)
 **Reviewed**: User decision integrated (6 decisions confirmed)
+
+---
+
+## 9. 진행 상태 갱신 (2026-04-27 세션 종료 시점)
+
+### 머지된 PR (main HEAD: e65005650)
+
+- **PR #714** (b47101779): V3R2 CON-001 + EXT-001 restore
+- **PR #719** (a14ecfab5): chore(lint) audit_runtime cleanup precursor
+- **PR #718** (e65005650): SPEC-V3R3-DESIGN-FOLDER-FIX-001 reserved collision update path warning 격하
+
+### Open PRs (사용자 admin merge 대기)
+
+- **PR #715**: release/v2.16.0 — Pattern Cookbook + V3R2 restore + Phase A 통합
+  - Windows pre-existing FAIL (#714 머지 패턴과 동일)
+  - merge 전략: `--merge` (release branch)
+- **PR #716**: SPEC-V3R3-HARNESS-LEARNING-001 (Self-Learning Dynamic Harness)
+  - merge 전략: `--squash`
+- **PR #717**: Wave 2 SPECs — HARNESS-001 + DESIGN-PIPELINE-001 + PROJECT-HARNESS-001
+  - 3 SPECs 통합 (34 REQs / 22 ACs / AC-REQ 100%)
+  - merge 전략: `--squash`
+- **PR #720**: chore(lang,mx) — code_comments en + 영어화 Wave 1+2 + @MX:ANCHOR
+  - Wave 1+2 통합 (113 files / +2700/-2670)
+  - 잔존 한국어 3 files (i18n DATA 보존)
+  - CI: Lint/Tests/Builds/CodeQL all PASS, Windows pending
+  - merge 전략: `--squash`
+
+### 권장 머지 순서 (Enhanced GitHub Flow §18.3)
+
+```bash
+# 1. lang/mx (urgent — code_comments 정책 정상화)
+gh pr merge 720 --squash --delete-branch --admin
+
+# 2. SPEC documents (no code, low risk)
+gh pr merge 717 --squash --delete-branch --admin   # Wave 2 SPECs
+gh pr merge 716 --squash --delete-branch --admin   # LEARNING-001
+
+# 3. Release v2.16.0 (merge commit, 마지막)
+gh pr merge 715 --merge --delete-branch --admin
+git checkout main && git pull
+./scripts/release.sh v2.16.0
+```
+
+### v2.17 Implementation 다음 단계 (PR 머지 후)
+
+1. **SPEC-V3R3-HARNESS-001** 구현 (BREAKING, BC-V3R3-007)
+   - meta-harness skill 신설 (revfactory/harness Apache 2.0 흡수)
+   - 16 정적 skills 제거 (domain-{backend,frontend,...} 외 11)
+   - Static/Dynamic namespace 분리 (moai-* / my-harness-*)
+   - moai update 마이그레이터 확장
+2. **SPEC-V3R3-DESIGN-PIPELINE-001** (DTCG 2025.10 + Path A/B1/B2)
+3. **SPEC-V3R3-PROJECT-HARNESS-001** (16Q 인터뷰 + 5-Layer 통합)
+4. **SPEC-V3R3-HARNESS-LEARNING-001** (Self-Learning Dynamic Harness)
+
+manager-tdd 순차 dispatch (depends_on chain 따라). 각 SPEC 4 files (spec/plan/acceptance/tasks)에 implementation 매핑.
+
+### Applied Lessons (이번 세션)
+
+- `feedback_large_spec_wave_split.md` — Wave 2 SPEC 3-way 병렬 dispatch 성공 (각 ~1.5KB)
+- `lessons.md #9` (NEW) — Agent 1M context limit + wave 분할 패턴 (Korean→English 영어화)
+- §18.10 enforcement: main 직접 push 금지 → chore PR 경유 (#719, #720)
+- Auto mode + interrupt 처리: 사용자 결정 명확화 + mixed state 정리
+
+### Verification 시점 (2026-04-27)
+
+- [x] PR #715/716/717: ci_pass 14, Windows pre-existing FAIL
+- [x] PR #720: ci_pass 15, Windows still running
+- [x] main HEAD: e65005650
+- [x] 잔존 한국어 3 files (false positive — i18n DATA / English with Korean references)
+
