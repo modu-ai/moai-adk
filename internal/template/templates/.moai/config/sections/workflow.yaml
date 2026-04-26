@@ -119,6 +119,16 @@ workflow:
         #     - "src/"
         #     - "tests/"
         #     - "config/"
+    # SPEC-V3R2-EXT-001: Typed Memory Taxonomy settings
+    memory:
+        # staleness_threshold_hours: memory files older than this trigger a staleness warning
+        staleness_threshold_hours: 24
+        # index_line_cap: MEMORY.md lines beyond this cap trigger MEMORY_INDEX_OVERFLOW
+        index_line_cap: 200
+        # stale_aggregate_threshold: stale file count at or above this collapses per-file warnings into one
+        stale_aggregate_threshold: 10
+        # audit_enabled: set to false (or env MOAI_MEMORY_AUDIT=0) to disable all taxonomy auditing
+        audit_enabled: true
     token_budget:
         plan: 30000
         run: 180000

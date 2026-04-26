@@ -13,7 +13,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate help release-local release release-dry release-hotfix dev-sync
+.PHONY: all build test lint fix clean install generate help release-local release release-dry release-hotfix dev-sync constitution-check
 
 all: lint test build ## Run lint, test, and build
 
@@ -76,6 +76,11 @@ clean: ## Remove build artifacts
 
 tidy: ## Tidy go modules
 	go mod tidy
+
+constitution-check: build ## Verify zone registry integrity (SPEC-V3R2-CON-001)
+	MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md \
+		./bin/$(BINARY_NAME) constitution list --format json > /dev/null && \
+		echo "constitution-check: OK" || echo "constitution-check: WARN (zone-registry.md not found)"
 
 run: build ## Build and run
 	./bin/$(BINARY_NAME)

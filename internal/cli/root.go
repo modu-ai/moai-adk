@@ -73,4 +73,7 @@ func init() {
 
 	// SPEC-TELEMETRY-001: register telemetry subcommand
 	rootCmd.AddCommand(telemetryCmd)
+
+	// SPEC-V3R2-CON-001: register constitution subcommand
+	rootCmd.AddCommand(newConstitutionCmd())
 }
