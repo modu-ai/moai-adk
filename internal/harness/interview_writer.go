@@ -20,10 +20,29 @@ var roundHeaders = map[int]string{
 	4: "## Round 4: Customization & Final Confirmation",
 }
 
+// errWriter wraps an io.Writer to track the first write error, removing the
+// need to check Fprintf return values on every call. The first non-nil error
+// is preserved; subsequent writes are no-ops.
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+// Printf writes formatted output to the underlying writer. If a previous
+// write returned an error, the call is a no-op so the original error is
+// preserved.
+func (ew *errWriter) Printf(format string, args ...any) {
+	if ew.err != nil {
+		return
+	}
+	_, ew.err = fmt.Fprintf(ew.w, format, args...)
+}
+
 // WriteResults serializes the committed Buffer to w in the interview-results.md
 // schema. It returns an error if:
 //   - the buffer is not frozen (Commit not yet called)
 //   - the buffer contains fewer than 16 answers
+//   - the underlying writer returns an error during serialization
 func WriteResults(buffer *Buffer, projectRoot, specID, conversationLang string, w io.Writer) error {
 	if !buffer.Frozen() {
 		return errors.New("harness: WriteResults: buffer must be committed before writing")
@@ -35,17 +54,18 @@ func WriteResults(buffer *Buffer, projectRoot, specID, conversationLang string, 
 	}
 
 	generatedAt := time.Now().UTC().Format(time.RFC3339)
+	ew := &errWriter{w: w}
 
 	// --- YAML frontmatter ---
-	fmt.Fprintf(w, "---\n")
-	fmt.Fprintf(w, "spec_id: %s\n", specID)
-	fmt.Fprintf(w, "generated_at: %s\n", generatedAt)
-	fmt.Fprintf(w, "project_root: %s\n", projectRoot)
-	fmt.Fprintf(w, "conversation_language: %s\n", conversationLang)
-	fmt.Fprintf(w, "---\n\n")
+	ew.Printf("---\n")
+	ew.Printf("spec_id: %s\n", specID)
+	ew.Printf("generated_at: %s\n", generatedAt)
+	ew.Printf("project_root: %s\n", projectRoot)
+	ew.Printf("conversation_language: %s\n", conversationLang)
+	ew.Printf("---\n\n")
 
 	// --- Document heading ---
-	fmt.Fprintf(w, "# Interview Results\n\n")
+	ew.Printf("# Interview Results\n\n")
 
 	// --- Per-round sections ---
 	currentRound := 0
@@ -57,16 +77,19 @@ func WriteResults(buffer *Buffer, projectRoot, specID, conversationLang string, 
 				header = fmt.Sprintf("## Round %d", currentRound)
 			}
 			if currentRound > 1 {
-				fmt.Fprintf(w, "\n")
+				ew.Printf("\n")
 			}
-			fmt.Fprintf(w, "%s\n", header)
+			ew.Printf("%s\n", header)
 		}
 		recordedAt := ans.RecordedAt.UTC().Format(time.RFC3339)
-		fmt.Fprintf(w, "\n- %s: %s\n", ans.QuestionID, ans.QuestionText)
-		fmt.Fprintf(w, "  - Answer: %s\n", ans.AnswerText)
-		fmt.Fprintf(w, "  - Recorded at: %s\n", recordedAt)
+		ew.Printf("\n- %s: %s\n", ans.QuestionID, ans.QuestionText)
+		ew.Printf("  - Answer: %s\n", ans.AnswerText)
+		ew.Printf("  - Recorded at: %s\n", recordedAt)
 	}
 
+	if ew.err != nil {
+		return fmt.Errorf("harness: WriteResults: write: %w", ew.err)
+	}
 	return nil
 }
 
