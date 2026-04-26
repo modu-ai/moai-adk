@@ -61,7 +61,7 @@ func TestNotificationRouter_UnknownMethod_Ignored(t *testing.T) {
 
 	r := transport.NewNotificationRouter()
 
-	// 미등록 메서드 — 에러 없이 무시
+	// unregistered method — silently ignored
 	err := r.Dispatch("$/progress", json.RawMessage(`{}`))
 	if err != nil {
 		t.Errorf("Dispatch unknown method: %v, want nil", err)
@@ -153,7 +153,7 @@ func TestNotificationRouter_Attach_Dispatches(t *testing.T) {
 
 	r.Attach(ft)
 
-	// fakeTransport에 등록된 핸들러 직접 호출로 Attach 통합 검증
+	// verify Attach integration by directly invoking the handler registered on fakeTransport
 	handler, ok := ft.handlers["textDocument/publishDiagnostics"]
 	if !ok {
 		t.Fatal("Attach did not register handler on transport")

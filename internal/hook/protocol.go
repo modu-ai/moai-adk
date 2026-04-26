@@ -79,13 +79,13 @@ func validateInput(input *HookInput) error {
 		input.HookEventName = string(EventUserPromptSubmit)
 	}
 
-	// session_id 누락 허용: Claude Code 버전에 따라 일부 이벤트에서 session_id가
-	// 전송되지 않는 경우가 있음. 훅 실행 실패보다 graceful fallback이 바람직함.
+	// Allow missing session_id: some events in certain Claude Code versions do not
+	// send session_id. A graceful fallback is preferable to hook execution failure.
 	if input.SessionID == "" {
 		input.SessionID = "unknown"
 	}
-	// cwd 누락 허용: $CLAUDE_PROJECT_DIR 환경변수로 폴백 가능.
-	// 훅 핸들러에서 cwd가 빈 경우 환경변수를 확인하도록 구현됨.
+	// Allow missing cwd: can fall back to the $CLAUDE_PROJECT_DIR env var.
+	// Hook handlers check the env var when cwd is empty.
 	if input.CWD == "" {
 		if projectDir := os.Getenv("CLAUDE_PROJECT_DIR"); projectDir != "" {
 			input.CWD = projectDir

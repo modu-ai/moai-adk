@@ -8,8 +8,8 @@ import (
 
 // CacheEntry holds a snapshot of diagnostics for a single file at a specific version.
 //
-// @MX:ANCHOR: [AUTO] CacheEntry — TTL 캐시 항목 타입, DiagnosticCache, Aggregator, 테스트 등 다수 호출자가 직접 참조
-// @MX:REASON: fan_in >= 3 — DiagnosticCache.Set/Get, Aggregator.GetDiagnostics, cache 테스트가 모두 이 타입을 사용함
+// @MX:ANCHOR: [AUTO] CacheEntry — TTL cache entry type referenced directly by DiagnosticCache, Aggregator, tests, and other callers
+// @MX:REASON: fan_in >= 3 — DiagnosticCache.Set/Get, Aggregator.GetDiagnostics, and cache tests all use this type
 type CacheEntry struct {
 	// Diagnostics is the list of diagnostics captured at this version.
 	Diagnostics []lsp.Diagnostic

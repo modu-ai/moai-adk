@@ -31,9 +31,9 @@ type GateConfig struct {
 	// AstGrepGate configures the ast-grep domain rule scan step.
 	// When nil, ast-grep scanning is skipped.
 	AstGrepGate *AstGrepGateConfig
-	// DisabledSteps는 이름으로 특정 단계를 비활성화합니다 (이슈 #667 Fix 3).
-	// 키는 단계 이름(예: "dotnet format"), 값이 false이면 해당 단계를 건너뜁니다.
-	// 예: map[string]bool{"dotnet format": false}
+	// DisabledSteps disables specific steps by name (issue #667 Fix 3).
+	// Keys are step names (e.g., "dotnet format"); a value of false skips that step.
+	// Example: map[string]bool{"dotnet format": false}
 	DisabledSteps map[string]bool
 }
 
@@ -68,10 +68,10 @@ type gateStep struct {
 	args        []string
 	optional    bool     // If true, skip silently when binary is not found.
 	configFiles []string // If non-empty, skip step when none of these files exist in project dir.
-	// changedExts는 이 단계를 실행할 파일 확장자 목록입니다 (이슈 #667 Fix 1).
-	// 비어 있으면 스테이징 파일에 관계없이 항상 실행됩니다.
-	// 비어 있지 않으면 스테이징된 파일 중 이 확장자를 가진 파일이 없을 때 건너뜁니다.
-	// 미래의 무거운 언어별 linter도 이 패턴으로 opt-in할 수 있습니다.
+	// changedExts is the list of file extensions that trigger this step (issue #667 Fix 1).
+	// When empty, the step always runs regardless of staged files.
+	// When non-empty, the step is skipped if no staged file has one of these extensions.
+	// Future heavy language-specific linters can opt-in using this pattern.
 	changedExts []string
 }
 
@@ -139,9 +139,9 @@ var toolchains = []langToolchain{
 		testStep: &gateStep{name: "gradle test", binary: "gradle", args: []string{"test"}, optional: true},
 	},
 	// C#/.NET: *.csproj or *.sln
-	// changedExts: .cs 파일이 스테이징되지 않으면 dotnet format을 건너뜁니다.
-	// Windows 전용 TFM(예: net9.0-windows10.0.22621.0)을 대상으로 하는 프로젝트가
-	// macOS에서 NuGet 복원에 실패하는 문제를 방지합니다 (이슈 #667).
+	// changedExts: skip dotnet format when no .cs file is staged.
+	// Prevents NuGet restore failures on macOS for projects targeting Windows-only TFMs
+	// (e.g., net9.0-windows10.0.22621.0) (issue #667).
 	{
 		markerFiles: []string{"*.csproj", "*.sln"},
 		lintSteps:   []gateStep{{name: "dotnet format", binary: "dotnet", args: []string{"format", "--verify-no-changes"}, optional: true, changedExts: []string{".cs"}}},
@@ -222,10 +222,10 @@ var toolchains = []langToolchain{
 type QualityGate struct {
 	config *GateConfig
 
-	// stagedCache는 Run 호출당 한 번만 git diff --cached 결과를 캐시합니다.
+	// stagedCache caches the git diff --cached result exactly once per Run call.
 	stagedCache        []string
-	stagedCacheReady   bool // 쿼리 완료 여부 (결과가 nil이어도 true)
-	stagedCacheNil     bool // nil 반환(보수적 fallback) 여부
+	stagedCacheReady   bool // true when the query is complete (even if result is nil)
+	stagedCacheNil     bool // true when nil was returned (conservative fallback)
 }
 
 // NewQualityGate creates a QualityGate with the given configuration.
@@ -269,7 +269,7 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	}
 
 	// Step 2.5: ast-grep domain rules
-	// ASTG-UPGRADE-001: 통합 Scanner를 사용하는 RunAstGrepGateV2로 전환
+	// ASTG-UPGRADE-001: switched to RunAstGrepGateV2 which uses the unified Scanner
 	if g.config.AstGrepGate != nil && g.config.AstGrepGate.Enabled {
 		projectDir := g.config.ProjectDir
 		if projectDir == "" {
@@ -377,7 +377,7 @@ func hasFlutterSection(content string) bool {
 // Steps with configFiles skip silently when none of the listed config files exist.
 // Steps with changedExts skip silently when no staged file matches any of the listed extensions.
 func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout time.Duration) (bool, string) {
-	// Fix 3: DisabledSteps 설정으로 명시적 비활성화
+	// Fix 3: explicitly disable via DisabledSteps configuration
 	if disabled, ok := g.config.DisabledSteps[step.name]; ok && !disabled {
 		return true, ""
 	}
@@ -391,15 +391,15 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 		return true, ""
 	}
 
-	// Fix 1: 스테이징된 파일 중 changedExts에 해당하는 파일이 없으면 건너뜁니다.
-	// stagedFiles 조회가 실패하거나 git 저장소 밖이면 보수적으로 단계를 실행합니다.
+	// Fix 1: skip when no staged file matches changedExts.
+	// If stagedFiles lookup fails or we are outside a git repository, run the step conservatively.
 	if len(step.changedExts) > 0 {
 		dir := g.config.ProjectDir
 		if dir == "" {
 			dir, _ = os.Getwd()
 		}
 		staged := g.cachedStagedFiles(ctx, dir)
-		// staged가 nil이면 판단 불가 → 보수적으로 실행
+		// If staged is nil, cannot determine — run step conservatively
 		if staged != nil && !hasStagedExt(staged, step.changedExts) {
 			return true, ""
 		}
@@ -408,8 +408,8 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 	return g.runStep(ctx, step.name, timeout, step.binary, step.args...)
 }
 
-// cachedStagedFiles는 Run 호출당 한 번만 stagedFiles를 조회하고 결과를 캐시합니다.
-// stagedFiles가 nil(보수적 fallback)을 반환한 경우도 캐시합니다.
+// cachedStagedFiles queries stagedFiles exactly once per Run call and caches the result.
+// Also caches when stagedFiles returns nil (conservative fallback).
 func (g *QualityGate) cachedStagedFiles(ctx context.Context, dir string) []string {
 	if !g.stagedCacheReady {
 		files, _ := stagedFiles(ctx, dir)
@@ -423,7 +423,7 @@ func (g *QualityGate) cachedStagedFiles(ctx context.Context, dir string) []strin
 	return g.stagedCache
 }
 
-// hasStagedExt는 staged 목록 중 exts에 포함된 확장자를 가진 파일이 있으면 true를 반환합니다.
+// hasStagedExt returns true if any file in the staged list has an extension in exts.
 func hasStagedExt(staged []string, exts []string) bool {
 	for _, f := range staged {
 		ext := filepath.Ext(f)
@@ -436,26 +436,26 @@ func hasStagedExt(staged []string, exts []string) bool {
 	return false
 }
 
-// stagedFiles는 git diff --cached --name-only를 실행하여 스테이징된 파일 목록을 반환합니다.
-// git 저장소 밖이거나 git 바이너리가 없거나 스테이징된 파일이 없으면 nil을 반환합니다.
-// 오류가 발생해도 nil을 반환하며 (보수적 fallback), 호출자는 nil 시 단계를 실행해야 합니다.
+// stagedFiles runs git diff --cached --name-only and returns the list of staged files.
+// Returns nil when outside a git repository, the git binary is absent, or there are no staged files.
+// Also returns nil on error (conservative fallback); callers must run the step when nil is returned.
 func stagedFiles(ctx context.Context, dir string) ([]string, error) {
-	// git 바이너리 존재 여부 확인
+	// Check whether the git binary exists
 	if _, err := exec.LookPath("git"); err != nil {
-		return nil, nil //nolint:nilerr // 보수적 fallback
+		return nil, nil //nolint:nilerr // conservative fallback
 	}
 
 	cmd := exec.CommandContext(ctx, "git", "diff", "--cached", "--name-only")
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
-		// git 저장소 밖이거나 명령 실패 → 보수적 fallback
+		// Outside a git repository or command failed — conservative fallback
 		return nil, nil //nolint:nilerr
 	}
 
 	raw := strings.TrimSpace(string(out))
 	if raw == "" {
-		// 스테이징된 파일 없음 → nil 반환 (보수적: 단계 실행)
+		// No staged files — return nil (conservative: run the step)
 		return nil, nil
 	}
 
@@ -516,12 +516,12 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 		return false, msg
 	}
 
-	// Fix 2: dotnet 단계에서 NuGet 복원 실패(크로스 플랫폼 TFM 불일치)가 감지되면
-	// 경고를 로그하고 통과시킵니다. 다른 linter는 여전히 실패를 전파합니다 (이슈 #667).
+	// Fix 2: when a NuGet restore failure (cross-platform TFM mismatch) is detected in the dotnet step,
+	// log a warning and pass. Other linters still propagate failures (issue #667).
 	if strings.Contains(strings.ToLower(stepName), "dotnet") && isDotnetRestoreFailure(combined) {
-		slog.Warn("dotnet 복원 실패: 크로스 플랫폼 TFM 불일치로 추정하여 건너뜁니다",
+		slog.Warn("dotnet restore failed: assumed cross-platform TFM mismatch, skipping",
 			"step", stepName,
-			"hint", "Windows 전용 TFM이 macOS에서 복원에 실패했을 수 있습니다",
+			"hint", "a Windows-only TFM may have failed to restore on macOS",
 		)
 		return true, ""
 	}
@@ -532,10 +532,10 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	return false, fmt.Sprintf("quality gate failed: %s\n\n%s", stepName, output)
 }
 
-// isDotnetRestoreFailure는 stderr/stdout 출력에 NuGet 복원 실패 마커가 포함되어 있는지 확인합니다.
-// Windows 전용 TFM(예: net9.0-windows10.0.22621.0)이 macOS에서 복원에 실패할 때
-// 발생하는 오류 패턴을 감지합니다 (이슈 #667 Fix 2).
-// 이 함수는 dotnet 단계에만 적용됩니다. 다른 linter는 실패를 그대로 전파합니다.
+// isDotnetRestoreFailure checks whether the stderr/stdout output contains NuGet restore failure markers.
+// Detects the error pattern that occurs when a Windows-only TFM (e.g., net9.0-windows10.0.22621.0)
+// fails to restore on macOS (issue #667 Fix 2).
+// This function applies only to the dotnet step; other linters propagate failures as-is.
 func isDotnetRestoreFailure(output string) bool {
 	markers := []string{
 		"Restore operation failed",

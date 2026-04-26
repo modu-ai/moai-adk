@@ -1,8 +1,8 @@
 // Package runtime provides the Token Circuit Breaker for MoAI-ADK.
 //
 // SPEC-V3R3-ARCH-007: per-agent token budget tracking + stall detection.
-// Warning-first policy (BC-V3R3-006); P5에서 hard-fail로 전환 예정.
-// /clear는 절대 자동 트리거되지 않음 (HARD constraint per MEMORY.md).
+// Warning-first policy (BC-V3R3-006); will switch to hard-fail in P5.
+// /clear is never triggered automatically (HARD constraint per MEMORY.md).
 package runtime
 
 import (

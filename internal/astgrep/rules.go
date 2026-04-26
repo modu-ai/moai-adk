@@ -138,19 +138,21 @@ func (l *RuleLoader) LoadFromDir(dir string) ([]Rule, error) {
 	return allRules, nil
 }
 
-// loadFileSkipOnError는 단일 YAML 파일에서 규칙을 로딩합니다.
-// 멀티 문서 YAML에서 특정 문서 파싱이 실패해도 이후 문서를 계속 로딩합니다 (F5 fix).
+// loadFileSkipOnError loads rules from a single YAML file.
+// Parsing failures in individual documents of a multi-document YAML do not
+// prevent subsequent documents from being loaded (F5 fix).
 //
-// yaml.v3 Decoder는 파싱 실패 후 상태를 복구하지 않으므로, 파일을 "---" 구분자로
-// 분리하여 각 문서를 독립적으로 파싱하는 방식을 사용합니다.
+// Because yaml.v3 Decoder does not recover state after a parse error,
+// the file is split on the "---" separator and each document is parsed
+// independently for failure isolation.
 func (l *RuleLoader) loadFileSkipOnError(path string) ([]Rule, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening rule file %s: %w", path, err)
 	}
 
-	// "---" 구분자로 문서 분리 (멀티 문서 YAML 지원)
-	// 각 문서를 개별적으로 파싱하여 파싱 실패 격리
+	// Split documents on the "---" separator (multi-document YAML support).
+	// Each document is parsed independently to isolate parsing failures.
 	docs := splitYAMLDocs(data)
 
 	var rules []Rule
@@ -165,7 +167,7 @@ func (l *RuleLoader) loadFileSkipOnError(path string) ([]Rule, error) {
 		var rule Rule
 		if err := yaml.Unmarshal(trimmed, &rule); err != nil {
 			parseErrors++
-			slog.Warn("규칙 파일 문서 파싱 실패, 다음 문서로 진행",
+			slog.Warn("rule file document parse failed, advancing to next document",
 				"path", path, "doc_index", i, "error", err)
 			continue
 		}
@@ -176,19 +178,19 @@ func (l *RuleLoader) loadFileSkipOnError(path string) ([]Rule, error) {
 	}
 
 	if parseErrors > 0 {
-		slog.Warn("규칙 파일에서 파싱 오류 발생",
+		slog.Warn("parse errors encountered in rule file",
 			"path", path, "valid_rules", len(rules), "parse_errors", parseErrors)
 	}
 
 	return rules, nil
 }
 
-// splitYAMLDocs는 YAML 멀티 문서 데이터를 "---" 구분자로 분리합니다.
-// 각 문서를 개별 파싱을 위한 독립적인 바이트 슬라이스로 반환합니다.
+// splitYAMLDocs splits YAML multi-document data on the "---" separator.
+// Returns each document as an independent byte slice for individual parsing.
 func splitYAMLDocs(data []byte) [][]byte {
 	var docs [][]byte
-	// \n--- 또는 파일 시작 --- 로 분리
-	// bytes.Split은 정확히 "---"만 있는 행을 기준으로 분리
+	// Split on \n--- or a leading --- at the start of the file.
+	// bytes.Split separates on lines that contain exactly "---".
 	lines := bytes.Split(data, []byte("\n"))
 	var current [][]byte
 	for _, line := range lines {

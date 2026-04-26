@@ -56,7 +56,7 @@ func (r *NotificationRouter) Dispatch(method string, params json.RawMessage) err
 	r.mu.RUnlock()
 
 	if !ok {
-		// 미등록 메서드 — 무시 (서버가 클라이언트 범위 밖의 알림을 보낼 수 있음)
+		// Unregistered method — silently ignored (servers may emit notifications beyond our registered set)
 		return nil
 	}
 	return h(params)
@@ -65,8 +65,8 @@ func (r *NotificationRouter) Dispatch(method string, params json.RawMessage) err
 // Attach registers the router's Dispatch as the notification handler for
 // each method in the router on the given Transport.
 //
-// @MX:NOTE: [AUTO] Attach는 Transport.OnNotification을 통해 라우터를 Transport에 연결함
-// 모든 알림이 이 라우터로 집중되므로 Register 후 Attach 호출 순서가 중요함
+// @MX:NOTE: [AUTO] Attach connects the router to a Transport via Transport.OnNotification
+// All notifications are funneled through this router, so the order of Register then Attach matters
 func (r *NotificationRouter) Attach(t Transport) {
 	r.mu.RLock()
 	methods := make([]string, 0, len(r.handlers))
@@ -78,14 +78,14 @@ func (r *NotificationRouter) Attach(t Transport) {
 	for _, method := range methods {
 		m := method // loop variable capture
 		t.OnNotification(m, func(params json.RawMessage) {
-			// 에러는 로깅 레이어에서 처리; Attach는 fire-and-forget
+			// Errors are handled by the logging layer; Attach is fire-and-forget
 			_ = r.Dispatch(m, params)
 		})
 	}
 }
 
 // publishDiagnosticsParams is the JSON payload for textDocument/publishDiagnostics.
-// URI 필드와 Diagnostics 슬라이스는 internal/lsp/models.go의 타입을 재사용함.
+// Reuses the URI field and Diagnostics slice types from internal/lsp/models.go.
 type publishDiagnosticsParams struct {
 	URI         string           `json:"uri"`
 	Diagnostics []lsp.Diagnostic `json:"diagnostics"`
@@ -97,7 +97,7 @@ type publishDiagnosticsParams struct {
 //
 // Uses internal/lsp/models.go types — no duplicate type definitions (REQ-LC-002b).
 //
-// @MX:NOTE: [AUTO] publishDiagnostics 파싱 — internal/lsp.Diagnostic 재사용, 중복 정의 금지
+// @MX:NOTE: [AUTO] publishDiagnostics parsing — reuses internal/lsp.Diagnostic, no duplicate type definitions
 func (r *NotificationRouter) RegisterPublishDiagnostics(
 	callback func(uri string, diags []lsp.Diagnostic) error,
 ) error {

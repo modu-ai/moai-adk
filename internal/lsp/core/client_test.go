@@ -21,7 +21,7 @@ import (
 // Test doubles
 // ---------------------------------------------------------------------------
 
-// fakeSupervisor는 실제 subprocess 없이 Shutdown 경로를 테스트하는 supervisor 더블.
+// fakeSupervisor is a supervisor test double that tests the Shutdown path without a real subprocess.
 type fakeSupervisor struct {
 	mu          sync.Mutex
 	signalLog   []os.Signal
@@ -69,8 +69,8 @@ func (f *fakeSupervisor) exitNow() {
 	f.exitCh <- subprocess.ExitEvent{ExitCode: 0}
 }
 
-// fakeLauncher는 실제 서브프로세스를 생성하지 않는 테스트 전용 Launcher.
-// 기본적으로 성공을 반환하며, failWith가 설정된 경우 해당 에러를 반환합니다.
+// fakeLauncher is a test-only Launcher that does not spawn a real subprocess.
+// By default it returns success; if failWith is set, it returns that error instead.
 type fakeLauncher struct {
 	mu       sync.Mutex
 	called   int
@@ -84,7 +84,7 @@ func (f *fakeLauncher) Launch(ctx context.Context, cfg config.ServerConfig) (*su
 	if f.failWith != nil {
 		return nil, f.failWith
 	}
-	// 실제 subprocess 없이 가짜 파이프 반환 (Cmd is nil — Supervisor must handle nil gracefully)
+	// return fake pipes without a real subprocess (Cmd is nil — Supervisor must handle nil gracefully)
 	_, w1 := io.Pipe()
 	r2, _ := io.Pipe()
 	r3, _ := io.Pipe()
@@ -95,7 +95,7 @@ func (f *fakeLauncher) Launch(ctx context.Context, cfg config.ServerConfig) (*su
 	}, nil
 }
 
-// fakeTransport는 실제 JSON-RPC 통신 없이 동작하는 테스트 전용 Transport.
+// fakeTransport is a test-only Transport that operates without real JSON-RPC communication.
 type fakeTransport struct {
 	mu            sync.Mutex
 	callLog       []string
@@ -115,7 +115,7 @@ func newFakeTransport() *fakeTransport {
 	}
 }
 
-// setCallResponse는 특정 method에 대한 응답을 설정합니다.
+// setCallResponse sets the response for a specific method.
 func (f *fakeTransport) setCallResponse(method string, result json.RawMessage, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -136,7 +136,7 @@ func (f *fakeTransport) Call(ctx context.Context, method string, params, result 
 		}
 		return nil
 	}
-	// 기본: 성공, result 수정 없음
+	// default: success, result unchanged
 	return nil
 }
 
@@ -180,7 +180,7 @@ func (f *fakeTransport) notifyCount(method string) int {
 	return n
 }
 
-// fakeTransportFactory는 fakeLauncher 이후에 fakeTransport를 반환하는 팩토리.
+// fakeTransportFactory is a factory that returns a fakeTransport after fakeLauncher.
 type fakeTransportFactory struct {
 	tr *fakeTransport
 }
@@ -234,7 +234,7 @@ func TestClient_Start_Success(t *testing.T) {
 	fl := &fakeLauncher{}
 	ft := newFakeTransport()
 
-	// initialize 응답 설정: capabilities 포함
+	// set initialize response: includes capabilities
 	ft.setCallResponse("initialize", json.RawMessage(`{"capabilities":{}}`), nil)
 
 	c := NewClient(cfg,
@@ -377,7 +377,7 @@ func TestClient_Sprint4Methods(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	// OpenFile은 Sprint 4에서 구현됨 — 에러 없이 성공해야 함
+	// OpenFile is implemented in Sprint 4 — must succeed without error
 	t.Run("OpenFile_Succeeds", func(t *testing.T) {
 		err := c.OpenFile(ctx, "/tmp/foo.go", "package main")
 		if err != nil {
@@ -385,9 +385,9 @@ func TestClient_Sprint4Methods(t *testing.T) {
 		}
 	})
 
-	// GetDiagnostics는 Sprint 4에서 구현됨 — 열린 파일이면 빈 슬라이스 반환
+	// GetDiagnostics is implemented in Sprint 4 — must return empty slice for an open file
 	t.Run("GetDiagnostics_OpenedFile", func(t *testing.T) {
-		// OpenFile로 먼저 파일을 열어야 함
+		// file must be opened with OpenFile first
 		_ = c.OpenFile(ctx, "/tmp/diag.go", "package main")
 		diags, err := c.GetDiagnostics(ctx, "/tmp/diag.go")
 		if err != nil {
@@ -398,7 +398,7 @@ func TestClient_Sprint4Methods(t *testing.T) {
 		}
 	})
 
-	// GetDiagnostics는 열리지 않은 파일에 대해 ErrFileNotOpen 반환
+	// GetDiagnostics returns ErrFileNotOpen for a file that has not been opened
 	t.Run("GetDiagnostics_UnopenedFile", func(t *testing.T) {
 		_, err := c.GetDiagnostics(ctx, "/tmp/notopen.go")
 		if !errors.Is(err, ErrFileNotOpen) {
@@ -406,7 +406,7 @@ func TestClient_Sprint4Methods(t *testing.T) {
 		}
 	})
 
-	// FindReferences는 Sprint 4에서 구현됨 — 서버 capabilities가 없으면 ErrCapabilityUnsupported 반환
+	// FindReferences is implemented in Sprint 4 — must return ErrCapabilityUnsupported when server lacks capability
 	t.Run("FindReferences_NoCapability", func(t *testing.T) {
 		_, err := c.FindReferences(ctx, "/tmp/foo.go", lsp.Position{Line: 0, Character: 0})
 		if !errors.Is(err, ErrCapabilityUnsupported) {
@@ -414,7 +414,7 @@ func TestClient_Sprint4Methods(t *testing.T) {
 		}
 	})
 
-	// GotoDefinition은 Sprint 4에서 구현됨 — 서버 capabilities가 없으면 ErrCapabilityUnsupported 반환
+	// GotoDefinition is implemented in Sprint 4 — must return ErrCapabilityUnsupported when server lacks capability
 	t.Run("GotoDefinition_NoCapability", func(t *testing.T) {
 		_, err := c.GotoDefinition(ctx, "/tmp/foo.go", lsp.Position{Line: 0, Character: 0})
 		if !errors.Is(err, ErrCapabilityUnsupported) {
@@ -455,7 +455,7 @@ func TestClient_Start_TransportClosedOnFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("Start: expected error on initialize failure, got nil")
 	}
-	// 초기화 실패 시 상태가 degraded 또는 shutdown으로 전환되어야 함
+	// state must transition to degraded or shutdown on initialization failure
 	state := c.State()
 	if state != StateDegraded && state != StateShutdown {
 		t.Errorf("after initialize failure: expected degraded or shutdown, got %q", state)
@@ -508,7 +508,7 @@ func TestWithLogger(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	// Logger이 적용되었으면 state 전환 시 로그가 기록됨
+	// when WithLogger is applied, log entries must be written on state transitions
 	logged := buf.String()
 	if logged == "" {
 		t.Error("expected log output from WithLogger, got empty")
@@ -525,7 +525,7 @@ func TestReadWriteCloser_Operations(t *testing.T) {
 		closers: []io.Closer{pr, pw},
 	}
 
-	// 쓰기 후 읽기
+	// write then read
 	payload := []byte("hello")
 	go func() {
 		_, _ = rwc.Write(payload)
@@ -540,9 +540,9 @@ func TestReadWriteCloser_Operations(t *testing.T) {
 		t.Errorf("expected %q, got %q", "hello", string(buf[:n]))
 	}
 
-	// Close: 양쪽 파이프 모두 닫힘
+	// Close: both pipes closed
 	if err := rwc.Close(); err != nil {
-		// io.Pipe Close는 이미 닫힌 파이프에 에러를 반환할 수 있음 — 무시
+		// io.Pipe Close may return error for already-closed pipes — ignore
 		_ = err
 	}
 }
@@ -568,7 +568,7 @@ func TestClient_Shutdown_WithSupervisor_GracefulExit(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	// Supervisor가 즉시 종료하는 시뮬레이션
+	// simulate Supervisor exiting immediately
 	go sv.exitNow()
 
 	if err := c.Shutdown(ctx); err != nil {
@@ -641,7 +641,7 @@ func TestClient_Shutdown_WithCapableServer(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	// 서버 캐퍼빌리티가 파싱되었는지 확인
+	// verify that server capabilities were parsed
 	if !c.serverCaps.ReferencesProvider {
 		t.Error("expected ReferencesProvider to be true after Start")
 	}

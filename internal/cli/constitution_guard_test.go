@@ -9,39 +9,39 @@ import (
 	"testing"
 )
 
-// setupGuardRegistry는 guard 테스트용 임시 registry를 생성한다.
-// projectDir 아래에 CLAUDE.md와 zone-registry.md를 생성한다.
+// setupGuardRegistry creates a temporary registry for guard tests.
+// Creates CLAUDE.md and zone-registry.md under projectDir.
 func setupGuardRegistry(t *testing.T, content string) (projectDir, registryPath string) {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Test"), 0o600); err != nil {
-		t.Fatalf("CLAUDE.md 생성 오류: %v", err)
+		t.Fatalf("failed to create CLAUDE.md: %v", err)
 	}
 	regPath := filepath.Join(dir, "zone-registry.md")
 	if err := os.WriteFile(regPath, []byte(content), 0o600); err != nil {
-		t.Fatalf("registry 파일 생성 오류: %v", err)
+		t.Fatalf("failed to create registry file: %v", err)
 	}
 	return dir, regPath
 }
 
-// TestConstitutionGuard_NoViolations는 Frozen zone 변경이 없는 경우 OK를 반환함을 검증한다.
-// AC-CON-001-003 관련.
+// TestConstitutionGuard_NoViolations verifies that OK is returned when there are no Frozen zone changes.
+// Related to AC-CON-001-003.
 func TestConstitutionGuard_NoViolations(t *testing.T) {
 	dir, regPath := setupGuardRegistry(t, validConstitutionRegistryForDoctor)
 
 	var buf bytes.Buffer
 	result := runConstitutionGuard(&buf, io.Discard, dir, regPath, []string{})
 	if result != nil {
-		t.Errorf("위반 없음 시 nil 반환 기대, got: %v", result)
+		t.Errorf("expected nil when no violations, got: %v", result)
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "OK") && !strings.Contains(output, "no violations") && !strings.Contains(output, "위반") {
-		t.Logf("출력: %s", output)
+	if !strings.Contains(output, "OK") && !strings.Contains(output, "no violations") && !strings.Contains(output, "violation") {
+		t.Logf("output: %s", output)
 	}
 }
 
-// TestConstitutionGuard_RegistryMissing은 registry 없음 시 에러를 반환함을 검증한다.
+// TestConstitutionGuard_RegistryMissing verifies that an error is returned when the registry is absent.
 func TestConstitutionGuard_RegistryMissing(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentPath := filepath.Join(dir, "nonexistent.md")
@@ -49,29 +49,29 @@ func TestConstitutionGuard_RegistryMissing(t *testing.T) {
 	var buf bytes.Buffer
 	result := runConstitutionGuard(&buf, io.Discard, dir, nonExistentPath, []string{})
 	if result == nil {
-		t.Fatal("registry 없음 시 에러를 반환해야 한다")
+		t.Fatal("must return an error when registry is missing")
 	}
 }
 
-// TestConstitutionGuard_DetectsFrozenViolation은 Frozen zone 변경 탐지를 검증한다.
-// AC-CON-001-003 직접 매핑.
+// TestConstitutionGuard_DetectsFrozenViolation verifies detection of Frozen zone changes.
+// Direct mapping to AC-CON-001-003.
 func TestConstitutionGuard_DetectsFrozenViolation(t *testing.T) {
 	dir, regPath := setupGuardRegistry(t, validConstitutionRegistryForDoctor)
 
-	// 위반 목록: Frozen 엔트리 ID를 포함
+	// Violation list: includes a Frozen entry ID
 	violations := []string{"CONST-V3R2-001"}
 	var buf bytes.Buffer
 	result := runConstitutionGuard(&buf, io.Discard, dir, regPath, violations)
 
 	if result == nil {
-		t.Fatal("Frozen 위반 탐지 시 에러를 반환해야 한다")
+		t.Fatal("must return an error when a Frozen violation is detected")
 	}
 	if !strings.Contains(result.Error(), "CONST-V3R2-001") {
-		t.Errorf("에러 메시지에 위반 ID가 포함되어야 한다: %v", result)
+		t.Errorf("error message must contain the violation ID: %v", result)
 	}
 }
 
-// TestConstitutionGuard_EvolvableViolationNotFatal은 Evolvable zone 변경이 에러가 아님을 검증한다.
+// TestConstitutionGuard_EvolvableViolationNotFatal verifies that Evolvable zone changes are not errors.
 func TestConstitutionGuard_EvolvableViolationNotFatal(t *testing.T) {
 	dir, regPath := setupGuardRegistry(t, validConstitutionRegistryForDoctor)
 
@@ -81,11 +81,11 @@ func TestConstitutionGuard_EvolvableViolationNotFatal(t *testing.T) {
 	result := runConstitutionGuard(&buf, io.Discard, dir, regPath, violations)
 
 	if result != nil {
-		t.Errorf("Evolvable zone 변경은 에러가 아니어야 한다: %v", result)
+		t.Errorf("Evolvable zone changes must not be errors: %v", result)
 	}
 }
 
-// TestConstitutionGuard_SubcommandExists는 guard 서브커맨드가 등록되어 있음을 검증한다.
+// TestConstitutionGuard_SubcommandExists verifies that the guard subcommand is registered.
 func TestConstitutionGuard_SubcommandExists(t *testing.T) {
 	constitutionCmd := newConstitutionCmd()
 	var found bool
@@ -96,6 +96,6 @@ func TestConstitutionGuard_SubcommandExists(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("constitution guard 서브커맨드가 등록되어 있어야 한다")
+		t.Error("constitution guard subcommand must be registered")
 	}
 }

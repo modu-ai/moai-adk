@@ -1,7 +1,7 @@
 package hook
 
-// session_end_extra_coverage_test.go: getModifiedGoFiles, cleanupGLMSettingsLocal,
-// NewSessionEndHandlerWithObservability, generateSessionSummary 추가 커버리지
+// session_end_extra_coverage_test.go: additional coverage for getModifiedGoFiles,
+// cleanupGLMSettingsLocal, NewSessionEndHandlerWithObservability, generateSessionSummary
 
 import (
 	"context"

@@ -87,14 +87,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// GLM 팀 모드에서 팀원 tmux 팬이 ANTHROPIC_AUTH_TOKEN을 상속하도록
-	// 현재 tmux 세션에 GLM 환경변수를 주입합니다.
-	// ensureGLMCredentials가 settings.local.json에 토큰을 기록한 후에 실행해야
-	// 최신 값을 읽을 수 있습니다.
+	// Inject GLM environment variables into the current tmux session so that
+	// teammate tmux panes can inherit ANTHROPIC_AUTH_TOKEN in GLM team mode.
+	// Must run after ensureGLMCredentials writes the token to settings.local.json
+	// so the latest value can be read.
 	if input.ProjectDir != "" {
 		if msg := ensureTmuxGLMEnv(input.ProjectDir); msg != "" {
 			data["tmux_glm_env"] = msg
-			slog.Info("tmux GLM 환경변수 주입", "message", msg)
+			slog.Info("tmux GLM env vars injected", "message", msg)
 		}
 	}
 
@@ -444,12 +444,12 @@ func ensureNewSkillSymlinks(projectDir string) int {
 
 		name := entry.Name()
 
-		// 이름 검증: 경로 순회, null 바이트, 슬래시, 백슬래시, 숨김 파일 거부
-		// TOCTOU 완화: ReadDir 결과 이름만 사용하고 직접 경로 조합하지 않음
+		// Validate name: reject path traversal, null bytes, slashes, backslashes, and hidden files
+		// TOCTOU mitigation: use only names from ReadDir results without constructing paths directly
 		if name == "" || name == "." || name == ".." ||
 			strings.ContainsAny(name, "/\\\x00") ||
 			strings.HasPrefix(name, ".") {
-			slog.Warn("ensureNewSkillSymlinks: 잘못된 스킬 이름 건너뜀",
+			slog.Warn("ensureNewSkillSymlinks: skipping invalid skill name",
 				"name", name,
 			)
 			continue

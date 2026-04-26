@@ -1,9 +1,9 @@
 package gopls
 
-// @MX:ANCHOR: [AUTO] Bridge — gopls 서브프로세스 생명주기 및 진단 수집의 핵심 타입
+// @MX:ANCHOR: [AUTO] Bridge — core type for gopls subprocess lifecycle management and diagnostic collection
 // @MX:REASON: fan_in >= 3 (NewBridge, GetDiagnostics, Close, readLoop, initialize)
-// @MX:WARN: [AUTO] readLoop는 goroutine이므로 shutdownCh로 반드시 종료해야 한다
-// @MX:REASON: goroutine 수명이 Bridge.Close()와 결합되며 누수 위험이 있다
+// @MX:WARN: [AUTO] readLoop runs as a goroutine and must be terminated via shutdownCh
+// @MX:REASON: goroutine lifetime is bound to Bridge.Close() and risks leaking
 
 import (
 	"context"
@@ -17,23 +17,23 @@ import (
 	"time"
 )
 
-// circuitBreakerThreshold는 서킷브레이커가 열리기 위한 연속 실패 횟수다.
-// REQ-GB-005 연계: 3회 실패 후 open 상태.
+// circuitBreakerThreshold is the number of consecutive failures required to open the circuit breaker.
+// Related to REQ-GB-005: open state after 3 failures.
 const circuitBreakerThreshold = 3
 
-// circuitBreakerOpenDuration은 서킷브레이커가 open 상태를 유지하는 시간이다.
+// circuitBreakerOpenDuration is the duration the circuit breaker remains in the open state.
 const circuitBreakerOpenDuration = 30 * time.Second
 
-// DiagnosticEvent는 publishDiagnostics 알림을 내부 채널로 전달하는 이벤트다.
+// DiagnosticEvent is the event that delivers publishDiagnostics notifications to the internal channel.
 type DiagnosticEvent struct {
 	URI         string
 	Diagnostics []Diagnostic
 }
 
-// Bridge는 gopls 서브프로세스와의 통신을 관리한다.
-// subprocess 생명주기, LSP 핸드셰이크, 진단 수집을 담당한다.
+// Bridge manages communication with the gopls subprocess.
+// Responsible for subprocess lifecycle, LSP handshake, and diagnostic collection.
 //
-// 모든 공개 메서드는 동시성 안전하다.
+// All public methods are concurrency-safe.
 type Bridge struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
@@ -42,33 +42,33 @@ type Bridge struct {
 	writer *Writer
 	reader *Reader
 
-	// nextID는 JSON-RPC 요청 ID를 원자적으로 생성한다.
+	// nextID atomically generates JSON-RPC request IDs.
 	nextID atomic.Int64
-	// pendingReg는 진행 중인 요청의 응답 채널을 관리한다.
+	// pendingReg manages response channels for in-flight requests.
 	pendingReg PendingRegistry
 	dispatcher *NotificationDispatcher
 
-	// diagnosticsCh는 publishDiagnostics 알림을 GetDiagnostics에 전달한다.
-	// 버퍼 크기 16: overflow 시 오래된 이벤트를 폐기한다 (plan.md 위험 완화).
+	// diagnosticsCh delivers publishDiagnostics notifications to GetDiagnostics.
+	// Buffer size 16: older events are discarded on overflow (risk mitigation from plan.md).
 	diagnosticsCh chan DiagnosticEvent
 
-	// pendingMu는 pendingDiag 접근을 보호한다.
+	// pendingMu protects access to pendingDiag.
 	pendingMu sync.Mutex
-	// pendingDiag는 collectDiagnostics가 대기 중인 URI 이외의 파일에서 도착한 진단을 저장한다.
-	// 설계 선택: handlePublishDiagnostics는 모든 URI의 최신 진단을 pendingDiag에 저장한다.
-	// collectDiagnostics 진입 시 pendingDiag[uri]를 먼저 확인하고, 비매칭 이벤트도 pendingDiag에 저장한다.
-	// 이를 통해 다른 URI의 진단이 영구 유실되는 F2 결함을 해결한다.
+	// pendingDiag stores diagnostics that arrive for URIs other than the one collectDiagnostics is waiting on.
+	// Design choice: handlePublishDiagnostics stores the latest diagnostics for every URI in pendingDiag.
+	// On entry, collectDiagnostics checks pendingDiag[uri] first; non-matching events are also stored in pendingDiag.
+	// This resolves the F2 defect where diagnostics for other URIs were permanently lost.
 	pendingDiag map[string][]Diagnostic
 
-	// shutdownCh는 readLoop를 종료하는 신호 채널이다.
+	// shutdownCh is the signal channel used to terminate readLoop.
 	shutdownCh chan struct{}
-	// closeOnce는 shutdownCh가 한 번만 닫히도록 보장한다.
+	// closeOnce ensures shutdownCh is closed exactly once.
 	closeOnce sync.Once
 
-	// initialized는 LSP 핸드셰이크 완료 여부다.
+	// initialized indicates whether the LSP handshake has completed.
 	initialized atomic.Bool
 
-	// 서킷브레이커 상태
+	// Circuit breaker state.
 	cbMu          sync.Mutex
 	cbFailures    int
 	cbOpenUntil   time.Time
@@ -76,54 +76,54 @@ type Bridge struct {
 	config *Config
 }
 
-// NewBridge는 gopls 서브프로세스를 생성하고 LSP 핸드셰이크를 수행한 Bridge를 반환한다.
-// gopls 바이너리가 없거나 cfg.Enabled=false이면 (nil, nil)을 반환한다.
+// NewBridge creates a gopls subprocess, performs the LSP handshake, and returns the Bridge.
+// Returns (nil, nil) if the gopls binary is absent or cfg.Enabled=false.
 //
-// REQ-GB-002: gopls 없음 → slog.Warn 후 (nil, nil) 반환.
-// REQ-GB-003: 첫 번째 GetDiagnostics 호출 시가 아니라 명시적으로 호출할 때 초기화한다.
-//             (이 구현에서는 NewBridge 호출 시점에 초기화하고 lazy init은 선택 사항으로 남긴다.)
+// REQ-GB-002: gopls not found → log slog.Warn and return (nil, nil).
+// REQ-GB-003: Initialize on explicit call, not on the first GetDiagnostics call.
+//             (This implementation initializes at NewBridge call time; lazy init is left as an option.)
 func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, error) {
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
-	// REQ-GB-051: 마스터 스위치가 false이면 nil 반환.
+	// REQ-GB-051: return nil if the master switch is false.
 	if !cfg.Enabled {
 		return nil, nil
 	}
 
-	// F5: 방어적 심층 검증 — LoadConfig를 우회한 직접 Config 주입에도 대응한다.
+	// F5: deep defensive validation — handles direct Config injection that bypasses LoadConfig.
 	if err := validateBinary(cfg.Binary); err != nil {
-		return nil, fmt.Errorf("gopls: NewBridge: 바이너리 검증 실패: %w", err)
+		return nil, fmt.Errorf("gopls: NewBridge: binary validation failed: %w", err)
 	}
 	if err := validateArgs(cfg.Args); err != nil {
-		return nil, fmt.Errorf("gopls: NewBridge: 인수 검증 실패: %w", err)
+		return nil, fmt.Errorf("gopls: NewBridge: argument validation failed: %w", err)
 	}
 
-	// REQ-GB-002: gopls 바이너리 존재 여부 확인.
+	// REQ-GB-002: check whether the gopls binary exists.
 	goplsPath, err := exec.LookPath(cfg.Binary)
 	if err != nil {
-		slog.Warn("gopls 브릿지 비활성화: 바이너리를 찾을 수 없음",
+		slog.Warn("gopls bridge disabled: binary not found",
 			"binary", cfg.Binary,
 			"hint", "go install golang.org/x/tools/gopls@latest",
 		)
 		return nil, nil
 	}
 
-	// gopls 서브프로세스를 시작한다.
+	// Start the gopls subprocess.
 	args := append([]string{"serve"}, cfg.Args...)
 	cmd := exec.CommandContext(ctx, goplsPath, args...)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("gopls: NewBridge: stdin pipe 생성 실패: %w", err)
+		return nil, fmt.Errorf("gopls: NewBridge: failed to create stdin pipe: %w", err)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("gopls: NewBridge: stdout pipe 생성 실패: %w", err)
+		return nil, fmt.Errorf("gopls: NewBridge: failed to create stdout pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("gopls: NewBridge: 서브프로세스 시작 실패: %w", err)
+		return nil, fmt.Errorf("gopls: NewBridge: failed to start subprocess: %w", err)
 	}
 
 	b := &Bridge{
@@ -140,36 +140,36 @@ func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, e
 	b.dispatcher = NewNotificationDispatcher()
 	b.dispatcher.Register("textDocument/publishDiagnostics", b.handlePublishDiagnostics)
 
-	// 읽기 루프를 시작한다.
+	// Start the read loop.
 	go b.readLoop()
 
-	// LSP 핸드셰이크 수행.
+	// Perform the LSP handshake.
 	initCtx, cancel := context.WithTimeout(ctx, cfg.InitTimeout)
 	defer cancel()
 	if err := b.initialize(initCtx, projectRoot); err != nil {
-		// 초기화 실패 시 프로세스를 강제 종료한다.
+		// Force-kill the process on initialization failure.
 		b.forceKill()
-		return nil, fmt.Errorf("gopls: NewBridge: 초기화 실패: %w", err)
+		return nil, fmt.Errorf("gopls: NewBridge: initialization failed: %w", err)
 	}
 
 	return b, nil
 }
 
-// initialize는 LSP 초기화 핸드셰이크를 수행한다.
-// REQ-GB-010, REQ-GB-011, REQ-GB-013 구현.
+// initialize performs the LSP initialization handshake.
+// Implements REQ-GB-010, REQ-GB-011, REQ-GB-013.
 func (b *Bridge) initialize(ctx context.Context, projectRoot string) error {
 	id := b.nextID.Add(1)
 	ch := b.pendingReg.Register(id)
 
-	// rootUri를 RFC 3986 준수 file:// URI로 변환한다.
-	// 직접 문자열 결합은 공백·유니코드·Windows 경로에서 LSP 사양을 위반한다.
+	// Convert rootUri to an RFC 3986-compliant file:// URI.
+	// Direct string concatenation violates the LSP specification for paths with spaces, Unicode, or Windows drive letters.
 	rootURI, err := pathToURI(projectRoot)
 	if err != nil {
 		b.pendingReg.Unregister(id)
-		return fmt.Errorf("gopls: initialize: rootURI 변환 실패: %w", err)
+		return fmt.Errorf("gopls: initialize: rootURI conversion failed: %w", err)
 	}
 
-	// InitOptions 설정.
+	// Configure InitOptions.
 	initOpts := map[string]any{"staticcheck": true}
 	if b.config != nil && len(b.config.InitOptions) > 0 {
 		initOpts = b.config.InitOptions
@@ -190,7 +190,7 @@ func (b *Bridge) initialize(ctx context.Context, projectRoot string) error {
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		b.pendingReg.Unregister(id)
-		return fmt.Errorf("gopls: initialize: params 직렬화 실패: %w", err)
+		return fmt.Errorf("gopls: initialize: params serialization failed: %w", err)
 	}
 
 	req := Request{
@@ -201,57 +201,57 @@ func (b *Bridge) initialize(ctx context.Context, projectRoot string) error {
 	}
 	if err := b.writer.Write(req); err != nil {
 		b.pendingReg.Unregister(id)
-		return fmt.Errorf("gopls: initialize: 요청 전송 실패: %w", err)
+		return fmt.Errorf("gopls: initialize: request send failed: %w", err)
 	}
 
-	// initialize 응답을 기다린다.
+	// Wait for the initialize response.
 	select {
 	case raw, ok := <-ch:
 		if !ok {
-			return fmt.Errorf("gopls: initialize: 응답 채널이 닫혔다")
+			return fmt.Errorf("gopls: initialize: response channel closed")
 		}
 		var resp Response
 		if err := json.Unmarshal(raw, &resp); err != nil {
-			return fmt.Errorf("gopls: initialize: 응답 역직렬화 실패: %w", err)
+			return fmt.Errorf("gopls: initialize: response deserialization failed: %w", err)
 		}
 		if resp.Error != nil {
-			return fmt.Errorf("gopls: initialize: 서버 오류 %d: %s", resp.Error.Code, resp.Error.Message)
+			return fmt.Errorf("gopls: initialize: server error %d: %s", resp.Error.Code, resp.Error.Message)
 		}
 	case <-ctx.Done():
 		b.pendingReg.Unregister(id)
-		return fmt.Errorf("gopls: initialize: 타임아웃: %w", ctx.Err())
+		return fmt.Errorf("gopls: initialize: timeout: %w", ctx.Err())
 	}
 
-	// initialized 알림을 전송한다.
-	// REQ-GB-011: initialize 응답 수신 후 initialized 알림 전송.
+	// Send the initialized notification.
+	// REQ-GB-011: send initialized notification after receiving the initialize response.
 	notif := Notification{
 		JSONRPC: "2.0",
 		Method:  "initialized",
 		Params:  json.RawMessage(`{}`),
 	}
 	if err := b.writer.Write(notif); err != nil {
-		return fmt.Errorf("gopls: initialize: initialized 알림 전송 실패: %w", err)
+		return fmt.Errorf("gopls: initialize: initialized notification send failed: %w", err)
 	}
 
 	b.initialized.Store(true)
 	return nil
 }
 
-// GetDiagnostics는 filePath를 gopls에 열고 publishDiagnostics 알림을 수집하여 반환한다.
-// 서킷브레이커가 열려 있으면 즉시 오류를 반환한다.
+// GetDiagnostics opens filePath in gopls, collects publishDiagnostics notifications, and returns them.
+// Returns an error immediately if the circuit breaker is open.
 //
-// REQ-GB-020, REQ-GB-021, REQ-GB-023 구현.
+// Implements REQ-GB-020, REQ-GB-021, REQ-GB-023.
 func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnostic, error) {
-	// 서킷브레이커 확인.
+	// Check the circuit breaker.
 	if err := b.checkCircuitBreaker(); err != nil {
 		return nil, err
 	}
 
-	// didOpen 알림을 전송한다.
-	// RFC 3986 준수 URI로 변환한다. 공백·유니코드·Windows 경로 대응.
+	// Send the didOpen notification.
+	// Convert to an RFC 3986-compliant URI to handle paths with spaces, Unicode, and Windows drive letters.
 	uri, err := pathToURI(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("gopls: GetDiagnostics: URI 변환 실패: %w", err)
+		return nil, fmt.Errorf("gopls: GetDiagnostics: URI conversion failed: %w", err)
 	}
 	params := DidOpenTextDocumentParams{
 		TextDocument: TextDocumentItem{
@@ -263,7 +263,7 @@ func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnos
 	}
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
-		return nil, fmt.Errorf("gopls: GetDiagnostics: params 직렬화 실패: %w", err)
+		return nil, fmt.Errorf("gopls: GetDiagnostics: params serialization failed: %w", err)
 	}
 	notif := Notification{
 		JSONRPC: "2.0",
@@ -272,46 +272,46 @@ func (b *Bridge) GetDiagnostics(ctx context.Context, filePath string) ([]Diagnos
 	}
 	if err := b.writer.Write(notif); err != nil {
 		b.recordFailure()
-		return nil, fmt.Errorf("gopls: GetDiagnostics: didOpen 전송 실패: %w", err)
+		return nil, fmt.Errorf("gopls: GetDiagnostics: didOpen send failed: %w", err)
 	}
 
-	// publishDiagnostics 알림을 디바운스 창 동안 수집한다.
-	// REQ-GB-021: diagnostics_debounce_ms 동안 대기.
+	// Collect publishDiagnostics notifications during the debounce window.
+	// REQ-GB-021: wait for diagnostics_debounce_ms.
 	return b.collectDiagnostics(ctx, uri)
 }
 
-// collectDiagnostics는 diagnosticsCh에서 uri에 해당하는 진단을 수집한다.
-// 전체 타임아웃 ctx 안에서, 마지막 수신 후 debounce 창 동안 추가 이벤트가 없으면 반환한다.
+// collectDiagnostics collects diagnostics for uri from diagnosticsCh.
+// Returns after the debounce window elapses with no additional events, within the overall ctx timeout.
 //
-// F2 수정: 진입 시 pendingDiag[uri]를 먼저 확인하여 이미 도착한 진단을 즉시 사용한다.
-// 대기 중 비매칭 URI 이벤트는 채널에서 소비하되 pendingDiag에 저장하여 후속 호출에서 참조 가능하게 한다.
-// handlePublishDiagnostics도 항상 pendingDiag를 갱신하므로 채널 overflow 시에도 데이터가 보존된다.
+// F2 fix: on entry, check pendingDiag[uri] first to use diagnostics that have already arrived.
+// Non-matching URI events received while waiting are consumed from the channel and stored in pendingDiag for later calls.
+// handlePublishDiagnostics always refreshes pendingDiag, so data is preserved even on channel overflow.
 //
-// @MX:WARN: [AUTO] 채널 기반 debounce 로직 — timer 리셋 경쟁 조건 주의
-// @MX:REASON: timer.Stop()과 timer.Reset() 사이 race를 drain select로 방지한다
+// @MX:WARN: [AUTO] channel-based debounce logic — watch for race conditions around timer reset
+// @MX:REASON: a drain select between timer.Stop() and timer.Reset() prevents the race
 func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnostic, error) {
 	debounce := b.config.DebounceWindow
 
-	// 진입 시 pendingDiag[uri]를 확인한다.
-	// handlePublishDiagnostics가 이미 해당 URI의 진단을 저장했으면 즉시 사용한다.
+	// Check pendingDiag[uri] on entry.
+	// Use diagnostics already stored by handlePublishDiagnostics immediately.
 	b.pendingMu.Lock()
 	if diags, ok := b.pendingDiag[uri]; ok {
 		delete(b.pendingDiag, uri)
 		b.pendingMu.Unlock()
-		// pendingDiag에 저장된 진단을 초기값으로 설정하고 디바운스 창을 시작한다.
-		// 채널에 추가 이벤트가 올 수 있으므로 debounce를 그대로 수행한다.
+		// Use the stored diagnostics as the initial value and start the debounce window.
+		// Additional events may arrive on the channel, so debounce proceeds as normal.
 		return b.collectWithInitial(ctx, uri, diags, debounce)
 	}
 	b.pendingMu.Unlock()
 
-	// 전체 타임아웃 컨텍스트를 생성한다.
+	// Create the overall timeout context.
 	timeoutCtx, cancel := context.WithTimeout(ctx, b.config.Timeout)
 	defer cancel()
 
-	// 첫 번째 이벤트 대기: 전체 타임아웃까지 기다린다.
-	// 이벤트를 받으면 디바운스 창으로 전환한다.
+	// Wait for the first event up to the overall timeout.
+	// When an event arrives, switch to the debounce window.
 	debounceTimer := time.NewTimer(debounce)
-	debounceTimer.Stop() // 아직 시작하지 않는다.
+	debounceTimer.Stop() // Not started yet.
 	defer debounceTimer.Stop()
 
 	var result []Diagnostic
@@ -321,13 +321,13 @@ func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnost
 		select {
 		case event := <-b.diagnosticsCh:
 			if event.URI != uri {
-				// 다른 URI 이벤트: pendingDiag에 저장하고 계속 기다린다.
+				// Different URI event: store in pendingDiag and continue waiting.
 				b.pendingMu.Lock()
 				b.pendingDiag[event.URI] = event.Diagnostics
 				b.pendingMu.Unlock()
 				continue
 			}
-			// pendingDiag에서 소비했으므로 중복 저장을 제거한다.
+			// Already consumed from pendingDiag — remove duplicate entry.
 			b.pendingMu.Lock()
 			delete(b.pendingDiag, uri)
 			b.pendingMu.Unlock()
@@ -337,7 +337,7 @@ func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnost
 				received = true
 				debounceTimer.Reset(debounce)
 			} else {
-				// 추가 이벤트: 디바운스 타이머를 리셋한다.
+				// Additional event: reset the debounce timer.
 				if !debounceTimer.Stop() {
 					select {
 					case <-debounceTimer.C:
@@ -348,27 +348,27 @@ func (b *Bridge) collectDiagnostics(ctx context.Context, uri string) ([]Diagnost
 			}
 
 		case <-debounceTimer.C:
-			// 디바운스 창 내에 추가 이벤트 없음 → 수집 완료.
+			// No additional events within the debounce window → collection complete.
 			b.resetFailures()
 			return result, nil
 
 		case <-timeoutCtx.Done():
 			if received {
-				// 타임아웃이 됐지만 이미 진단을 받았으면 반환한다.
+				// Timed out but diagnostics were already received — return them.
 				b.resetFailures()
 				return result, nil
 			}
 			b.recordFailure()
-			return nil, fmt.Errorf("gopls: GetDiagnostics: 타임아웃")
+			return nil, fmt.Errorf("gopls: GetDiagnostics: timeout")
 
 		case <-b.shutdownCh:
-			return nil, fmt.Errorf("gopls: GetDiagnostics: 브릿지가 종료됐다")
+			return nil, fmt.Errorf("gopls: GetDiagnostics: bridge has been closed")
 		}
 	}
 }
 
-// collectWithInitial은 초기 진단 값을 가진 상태에서 디바운스 창을 수행한다.
-// pendingDiag에서 즉시 진단을 찾았을 때 호출된다.
+// collectWithInitial performs the debounce window starting with an initial set of diagnostics.
+// Called when diagnostics are found immediately in pendingDiag.
 func (b *Bridge) collectWithInitial(ctx context.Context, uri string, initial []Diagnostic, debounce time.Duration) ([]Diagnostic, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, b.config.Timeout)
 	defer cancel()
@@ -382,13 +382,13 @@ func (b *Bridge) collectWithInitial(ctx context.Context, uri string, initial []D
 		select {
 		case event := <-b.diagnosticsCh:
 			if event.URI != uri {
-				// 다른 URI 이벤트: pendingDiag에 저장한다.
+				// Different URI event: store in pendingDiag.
 				b.pendingMu.Lock()
 				b.pendingDiag[event.URI] = event.Diagnostics
 				b.pendingMu.Unlock()
 				continue
 			}
-			// 같은 URI의 추가 이벤트: 결과를 갱신하고 타이머를 리셋한다.
+			// Additional event for the same URI: update result and reset the timer.
 			result = event.Diagnostics
 			if !debounceTimer.Stop() {
 				select {
@@ -407,35 +407,35 @@ func (b *Bridge) collectWithInitial(ctx context.Context, uri string, initial []D
 			return result, nil
 
 		case <-b.shutdownCh:
-			return nil, fmt.Errorf("gopls: GetDiagnostics: 브릿지가 종료됐다")
+			return nil, fmt.Errorf("gopls: GetDiagnostics: bridge has been closed")
 		}
 	}
 }
 
-// handlePublishDiagnostics는 publishDiagnostics 알림을 처리하는 핸들러다.
-// NotificationDispatcher에 등록된다.
+// handlePublishDiagnostics is the handler for publishDiagnostics notifications.
+// Registered with the NotificationDispatcher.
 //
-// 모든 URI의 최신 진단을 pendingDiag에 저장하고, 채널에도 non-blocking으로 전달한다.
-// collectDiagnostics는 채널과 pendingDiag를 모두 확인하여 어떤 URI의 진단도 유실하지 않는다.
+// Stores the latest diagnostics for every URI in pendingDiag and delivers them non-blocking to the channel.
+// collectDiagnostics checks both the channel and pendingDiag to ensure no diagnostics are lost for any URI.
 func (b *Bridge) handlePublishDiagnostics(payload json.RawMessage) {
 	var params PublishDiagnosticsParams
 	if err := json.Unmarshal(payload, &params); err != nil {
-		slog.Warn("gopls: publishDiagnostics 역직렬화 실패", "error", err)
+		slog.Warn("gopls: publishDiagnostics deserialization failed", "error", err)
 		return
 	}
 
-	// pendingDiag에 최신 진단을 저장한다 (덮어쓰기).
+	// Store the latest diagnostics in pendingDiag (overwrite).
 	b.pendingMu.Lock()
 	b.pendingDiag[params.URI] = params.Diagnostics
 	b.pendingMu.Unlock()
 
 	event := DiagnosticEvent(params)
-	// non-blocking send: 채널이 가득 차면 가장 오래된 이벤트를 폐기한다.
-	// pendingDiag에 이미 저장했으므로 채널 overflow 시에도 데이터는 보존된다.
+	// Non-blocking send: discard the oldest event if the channel is full.
+	// Data is preserved on channel overflow because it was already stored in pendingDiag.
 	select {
 	case b.diagnosticsCh <- event:
 	default:
-		// 채널이 가득 찼으면 오래된 이벤트 하나를 버리고 새 이벤트를 넣는다.
+		// Channel is full: drop one old event and insert the new one.
 		select {
 		case <-b.diagnosticsCh:
 		default:
@@ -444,35 +444,35 @@ func (b *Bridge) handlePublishDiagnostics(payload json.RawMessage) {
 	}
 }
 
-// Close는 LSP shutdown/exit 시퀀스로 gopls를 정상 종료한다.
-// REQ-GB-004: 5초 타임아웃 후 SIGKILL.
+// Close performs graceful gopls shutdown using the LSP shutdown/exit sequence.
+// REQ-GB-004: SIGKILL after a 5-second timeout.
 //
-// F3 수정: shutdownCh 닫힘 후 stdout을 즉시 닫아 readLoop의 reader.Read() 블록을 해제한다.
-// stdout을 닫으면 bufio.Reader가 EOF를 반환하여 readLoop가 5s 지연 없이 즉시 종료한다.
+// F3 fix: after closing shutdownCh, immediately close stdout to unblock reader.Read() in readLoop.
+// Closing stdout causes bufio.Reader to return EOF, allowing readLoop to exit instantly without a 5s delay.
 //
-// F4 수정: time.After 대신 time.NewTimer + defer Stop을 사용한다.
-// time.After는 done 분기가 먼저 실행되어도 ShutdownTimeout(5s) 동안 goroutine을 잔류시킨다.
-// time.NewTimer + defer Stop은 done 분기 실행 즉시 timer goroutine을 해제한다.
+// F4 fix: use time.NewTimer + defer Stop instead of time.After.
+// time.After retains the goroutine for ShutdownTimeout (5s) even if the done branch runs first.
+// time.NewTimer + defer Stop releases the timer goroutine immediately when the done branch runs.
 func (b *Bridge) Close(ctx context.Context) error {
 	var shutdownErr error
 
-	// initialized 상태일 때만 shutdown 요청을 전송한다.
+	// Only send the shutdown request when initialized.
 	if b.initialized.Load() {
 		shutdownErr = b.sendShutdown(ctx)
 	}
 
-	// readLoop에 종료 신호를 보내고 stdout을 닫아 reader.Read() 블록을 해제한다.
-	// F3: close(shutdownCh) 후 stdout.Close()를 호출해야 readLoop가 즉시 종료된다.
+	// Signal readLoop to stop and close stdout to unblock reader.Read().
+	// F3: stdout.Close() must be called after close(shutdownCh) for readLoop to exit immediately.
 	b.closeOnce.Do(func() {
 		close(b.shutdownCh)
-		// stdout을 닫아 bufio.Reader.Read()가 EOF를 반환하도록 한다.
-		// forceKill은 stdin만 닫으므로 여기서 stdout을 별도로 닫는다.
+		// Close stdout so bufio.Reader.Read() returns EOF.
+		// forceKill only closes stdin, so stdout is closed separately here.
 		if b.stdout != nil {
 			_ = b.stdout.Close()
 		}
 	})
 
-	// 프로세스가 있으면 정상 종료를 기다린다.
+	// Wait for the process to exit cleanly if it exists.
 	if b.cmd != nil {
 		done := make(chan error, 1)
 		go func() {
@@ -480,16 +480,16 @@ func (b *Bridge) Close(ctx context.Context) error {
 		}()
 
 		// F4: time.After → time.NewTimer + defer Stop.
-		// done 분기가 먼저 실행되면 timer goroutine을 즉시 회수한다.
+		// When the done branch runs first, the timer goroutine is released immediately.
 		shutdownTimeout := b.config.ShutdownTimeout
 		timer := time.NewTimer(shutdownTimeout)
 		defer timer.Stop()
 		select {
 		case <-done:
-			// 정상 종료
+			// Clean exit.
 		case <-timer.C:
-			// 타임아웃 시 SIGKILL
-			slog.Warn("gopls: 종료 타임아웃, SIGKILL 전송")
+			// Timeout: send SIGKILL.
+			slog.Warn("gopls: shutdown timeout, sending SIGKILL")
 			b.forceKill()
 		}
 	}
@@ -497,7 +497,7 @@ func (b *Bridge) Close(ctx context.Context) error {
 	return shutdownErr
 }
 
-// sendShutdown은 LSP shutdown 요청 + exit 알림을 전송한다.
+// sendShutdown sends the LSP shutdown request and exit notification.
 func (b *Bridge) sendShutdown(ctx context.Context) error {
 	id := b.nextID.Add(1)
 	ch := b.pendingReg.Register(id)
@@ -510,37 +510,37 @@ func (b *Bridge) sendShutdown(ctx context.Context) error {
 	}
 	if err := b.writer.Write(req); err != nil {
 		b.pendingReg.Unregister(id)
-		return fmt.Errorf("gopls: Close: shutdown 요청 전송 실패: %w", err)
+		return fmt.Errorf("gopls: Close: shutdown request send failed: %w", err)
 	}
 
-	// shutdown 응답을 기다린다.
+	// Wait for the shutdown response.
 	shutdownCtx, cancel := context.WithTimeout(ctx, b.config.ShutdownTimeout)
 	defer cancel()
 	select {
 	case <-ch:
 	case <-shutdownCtx.Done():
 		b.pendingReg.Unregister(id)
-		slog.Warn("gopls: shutdown 응답 타임아웃")
+		slog.Warn("gopls: shutdown response timeout")
 	}
 
-	// exit 알림 전송.
+	// Send the exit notification.
 	exit := Notification{
 		JSONRPC: "2.0",
 		Method:  "exit",
 		Params:  json.RawMessage(`null`),
 	}
 	if err := b.writer.Write(exit); err != nil {
-		return fmt.Errorf("gopls: Close: exit 알림 전송 실패: %w", err)
+		return fmt.Errorf("gopls: Close: exit notification send failed: %w", err)
 	}
 
 	return nil
 }
 
-// readLoop는 gopls stdout에서 메시지를 읽어 pending registry 또는 dispatcher에 라우팅한다.
-// Bridge가 닫힐 때까지 실행된다.
+// readLoop reads messages from gopls stdout and routes them to the pending registry or dispatcher.
+// Runs until the Bridge is closed.
 //
-// @MX:WARN: [AUTO] goroutine — shutdownCh 닫힘 또는 reader EOF에 의해서만 종료된다
-// @MX:REASON: goroutine 수명이 Bridge.Close()와 결합되어 있음
+// @MX:WARN: [AUTO] goroutine — terminated only by shutdownCh closing or reader EOF
+// @MX:REASON: goroutine lifetime is bound to Bridge.Close()
 func (b *Bridge) readLoop() {
 	for {
 		select {
@@ -552,12 +552,12 @@ func (b *Bridge) readLoop() {
 		raw, err := b.reader.Read()
 		if err != nil {
 			if err != io.EOF {
-				slog.Debug("gopls: readLoop 오류 (종료)", "error", err)
+				slog.Debug("gopls: readLoop error (exiting)", "error", err)
 			}
 			return
 		}
 
-		// 메시지를 Response로 파싱하여 id 여부로 라우팅한다.
+		// Parse the message as a Response and route based on whether it has an id.
 		var envelope struct {
 			ID     json.RawMessage `json:"id"`
 			Method string          `json:"method"`
@@ -566,20 +566,20 @@ func (b *Bridge) readLoop() {
 			Params json.RawMessage `json:"params,omitempty"`
 		}
 		if err := json.Unmarshal(raw, &envelope); err != nil {
-			slog.Warn("gopls: 메시지 파싱 실패", "error", err)
+			slog.Warn("gopls: message parsing failed", "error", err)
 			continue
 		}
 
 		isNotification := len(envelope.ID) == 0 || string(envelope.ID) == "null"
 
 		if isNotification && envelope.Method != "" {
-			// 알림: method로 dispatcher에 전달한다.
+			// Notification: forward to dispatcher by method.
 			b.dispatcher.Dispatch(envelope.Method, envelope.Params)
 		} else if !isNotification {
-			// 응답: id를 파싱하여 pending registry에 전달한다.
+			// Response: parse the id and forward to the pending registry.
 			var id int64
 			if err := json.Unmarshal(envelope.ID, &id); err != nil {
-				slog.Warn("gopls: 응답 ID 파싱 실패", "raw_id", string(envelope.ID))
+				slog.Warn("gopls: response ID parsing failed", "raw_id", string(envelope.ID))
 				continue
 			}
 			b.pendingReg.Dispatch(id, raw)
@@ -587,24 +587,24 @@ func (b *Bridge) readLoop() {
 	}
 }
 
-// ─── 서킷브레이커 헬퍼 ────────────────────────────────────────────────────────
+// ─── Circuit breaker helpers ───────────────────────────────────────────────────
 
-// checkCircuitBreaker는 서킷브레이커가 열려 있으면 오류를 반환한다.
+// checkCircuitBreaker returns an error if the circuit breaker is open.
 func (b *Bridge) checkCircuitBreaker() error {
 	b.cbMu.Lock()
 	defer b.cbMu.Unlock()
 	if b.cbFailures >= circuitBreakerThreshold {
 		if time.Now().Before(b.cbOpenUntil) {
-			return fmt.Errorf("gopls: 서킷브레이커 open (연속 %d회 실패, %v 후 재시도 가능)",
+			return fmt.Errorf("gopls: circuit breaker open (%d consecutive failures, retry available in %v)",
 				b.cbFailures, time.Until(b.cbOpenUntil).Round(time.Second))
 		}
-		// open 기간이 지났으면 half-open으로 전환.
+		// Open period has elapsed: transition to half-open.
 		b.cbFailures = 0
 	}
 	return nil
 }
 
-// recordFailure는 실패를 기록하고 임계값 초과 시 서킷브레이커를 연다.
+// recordFailure records a failure and opens the circuit breaker when the threshold is exceeded.
 func (b *Bridge) recordFailure() {
 	b.cbMu.Lock()
 	defer b.cbMu.Unlock()
@@ -614,14 +614,14 @@ func (b *Bridge) recordFailure() {
 	}
 }
 
-// resetFailures는 서킷브레이커 실패 카운트를 초기화한다.
+// resetFailures resets the circuit breaker failure count.
 func (b *Bridge) resetFailures() {
 	b.cbMu.Lock()
 	defer b.cbMu.Unlock()
 	b.cbFailures = 0
 }
 
-// forceKill은 gopls 프로세스를 강제 종료한다.
+// forceKill force-terminates the gopls process.
 func (b *Bridge) forceKill() {
 	if b.cmd != nil && b.cmd.Process != nil {
 		_ = b.cmd.Process.Kill()

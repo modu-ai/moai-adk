@@ -11,7 +11,7 @@ func TestServerConfig_Defaults(t *testing.T) {
 	t.Parallel()
 
 	var sc config.ServerConfig
-	// 기본값 검증: 비어 있는 ServerConfig은 zero-value여야 함
+	// Verify default: empty ServerConfig must be zero-value
 	if sc.Language != "" {
 		t.Errorf("default Language = %q, want empty", sc.Language)
 	}
