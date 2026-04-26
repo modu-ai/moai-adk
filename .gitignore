@@ -232,7 +232,10 @@ pencil/
 .moai/cache/
 .moai/logs/
 .moai/state/
-.moai/reports/
+.moai/reports/*.md
+# Plan audit reports are local artifacts; only .gitkeep is tracked (SPEC-WF-AUDIT-GATE-001)
+.moai/reports/plan-audit/*.md
+!.moai/reports/plan-audit/.gitkeep
 .moai/temp/
 temp/
 

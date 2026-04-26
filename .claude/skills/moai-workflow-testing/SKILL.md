@@ -332,3 +332,14 @@ Version: 2.4.0 (DDD Testing Methodology)
 - [ ] Race detector passed for concurrent code (go test -race or equivalent)
 
 <!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — split 43-file bundled modules/ tree into Level-3 references
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 250
+**Refactor scope** (deferred to future sub-SPEC):
+- Split large bundled modules/ directory into Level-3 on-demand references
+- Reduce Level-2 token footprint by extracting verbose framework-specific content
+- Consolidate overlapping test pattern sections across modules
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

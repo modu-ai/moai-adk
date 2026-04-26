@@ -442,3 +442,14 @@ Platforms: Vercel, Railway, Convex
 - [ ] Cold start time measured for serverless functions (show timing data)
 
 <!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — shrink triplet to Vercel-only primary; Railway/Convex as documentation-only
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 271
+**Refactor scope** (deferred to future sub-SPEC):
+- Elevate Vercel as primary platform with full guidance; demote Railway and Convex to doc-only references
+- Move Railway and Convex deep-dives into Level-3 modules
+- Add CI/CD pipeline patterns section (GitHub Actions, Vercel CI integration)
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

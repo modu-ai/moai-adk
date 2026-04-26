@@ -1,25 +1,37 @@
 ---
 name: moai-domain-database
 description: >
-  Database specialist covering PostgreSQL, MongoDB, Redis, Oracle, and advanced data
-  patterns for modern applications. Use for database schema design, query optimization,
-  indexing strategies, or data modeling.
+  Database specialist covering PostgreSQL, MongoDB, Redis, Oracle, and cloud database
+  platforms (Neon, Supabase, Firestore). Use for schema design, query optimization,
+  indexing strategies, data modeling, or cloud database selection.
+  Cloud vendor guide absorbed from moai-platform-database-cloud.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "domain"
   status: "active"
-  updated: "2026-01-11"
+  updated: "2026-04-25"
   modularized: "true"
-  tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance"
+  tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance, neon, supabase, firestore, cloud-database, serverless"
   author: "MoAI-ADK Team"
+  context7-libraries: "/neondatabase/neon, /supabase/supabase, /firebase/firebase-docs"
+  related-skills: "moai-platform-database-cloud"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["database", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQL", "NoSQL", "PL/SQL", "query", "schema", "migration", "indexing", "ORM", "ODM", "SQLAlchemy", "Mongoose", "Prisma", "Drizzle", "python-oracledb", "cx_Oracle", "connection pool", "transaction", "data modeling", "aggregation", "partitioning", "hierarchical query"]
+  keywords: ["database", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQL", "NoSQL", "PL/SQL", "query", "schema", "migration", "indexing", "ORM", "ODM", "SQLAlchemy", "Mongoose", "Prisma", "Drizzle", "python-oracledb", "cx_Oracle", "connection pool", "transaction", "data modeling", "aggregation", "partitioning", "hierarchical query", "neon", "supabase", "firestore", "cloud database", "serverless postgresql", "real-time database", "offline sync", "pgvector", "rls", "database branching", "vector database", "nosql", "mobile database"]
+  agents: ["expert-backend", "expert-devops", "manager-spec"]
+  phases: ["plan", "run"]
+  languages: ["typescript", "javascript", "python", "go"]
 ---
 
 # Database Domain Specialist
@@ -235,3 +247,72 @@ Maintained by: MoAI-ADK Database Team
 - [ ] Connection pool settings configured with explicit size and timeout
 
 <!-- moai:evolvable-end -->
+
+---
+
+## Cloud Vendor Guide (absorbed from moai-platform-database-cloud)
+
+Cloud database platform selection and configuration for Neon, Supabase, and Firebase Firestore.
+
+### Quick Decision Guide
+
+| Need | Platform |
+|------|----------|
+| Serverless PostgreSQL with auto-scaling | Neon |
+| Database branching for CI/CD previews | Neon branching |
+| Edge-compatible connection pooling | Neon + Neon Proxy |
+| Vector search (pgvector) for AI/ML | Supabase |
+| Row-Level Security for multi-tenant apps | Supabase RLS |
+| Real-time subscriptions + full-stack | Supabase |
+| Mobile-first with offline sync | Firebase Firestore |
+| Cross-platform (iOS/Android/Web) | Firebase Firestore |
+
+### Neon (Serverless PostgreSQL)
+
+Key features: Auto-scaling compute, scale-to-zero, database branching, pg_bouncer pooling.
+
+Setup:
+```bash
+npm install @neondatabase/serverless
+# Connection string: postgresql://user:pass@ep-xxx.neon.tech/dbname?sslmode=require
+```
+
+Branch workflow: Create a branch per PR (`neonctl branches create --name pr-123`), run migrations, test, delete on merge. Zero cost during idle periods.
+
+### Supabase (PostgreSQL 16)
+
+Key features: pgvector, Row-Level Security, real-time subscriptions, built-in auth/storage.
+
+RLS policy pattern:
+```sql
+CREATE POLICY "users_own_data" ON items
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+pgvector search: `SELECT * FROM embeddings ORDER BY embedding <-> $1 LIMIT 10;`
+
+### Firebase Firestore (NoSQL)
+
+Key features: Real-time sync, offline caching, Security Rules, mobile SDKs.
+
+Security Rules pattern:
+```javascript
+match /users/{userId} {
+  allow read, write: if request.auth.uid == userId;
+}
+```
+
+Offline persistence: Enable via `enableIndexedDbPersistence(db)` (web) or SDK default (mobile).
+
+Full platform reference: [modules/cloud-database.md](modules/cloud-database.md)
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — MERGE target (absorbs moai-platform-database-cloud) with additional restructuring needed
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 263
+**Refactor scope** (deferred to future sub-SPEC):
+- Separate moai-domain-db-docs workflow skill from this query/schema design skill
+- Extract cloud vendor deep-dives (Neon, Supabase, Firestore) into dedicated Level-3 modules
+- Consolidate overlapping ORM pattern content across database types
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC. Cloud vendor content absorbed from moai-platform-database-cloud in Wave 1.2.

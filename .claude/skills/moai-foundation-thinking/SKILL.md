@@ -1,21 +1,22 @@
 ---
 name: moai-foundation-thinking
 description: >
-  Structured thinking toolkit combining Critical Evaluation, Diverge-Converge
-  Brainstorming, and Deep Questioning frameworks for creative problem-solving.
-  Use when generating ideas or evaluating proposals.
+  Unified thinking toolkit: Creative frameworks (Critical Evaluation, Diverge-Converge,
+  Deep Questioning), First Principles reasoning (absorbed from moai-foundation-philosopher),
+  and Sequential Thinking MCP (absorbed from moai-workflow-thinking). Use for ideation,
+  strategic analysis, architecture decisions, and structured step-by-step reasoning.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, mcp__sequential-thinking__sequentialthinking
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "foundation"
   status: "active"
-  updated: "2026-02-10"
+  updated: "2026-04-25"
   modularized: "true"
-  tags: "foundation, critical-thinking, brainstorming, ideation, evaluation, creative-thinking, diverge-converge"
-  related-skills: "moai-foundation-philosopher"
+  tags: "foundation, critical-thinking, brainstorming, ideation, evaluation, creative-thinking, diverge-converge, first-principles, sequential-thinking, philosophy, architecture-decision"
+  related-skills: "moai-foundation-philosopher, moai-workflow-thinking"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -25,11 +26,14 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize"]
+  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize", "architecture decision", "technology selection", "trade-off", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "sequential thinking", "deepthink", "breaking change", "strategic", "decision", "architecture", "analysis", "design thinking", "complex problem", "performance vs maintainability"]
   agents:
     - "manager-strategy"
     - "manager-spec"
     - "team-reader"
+    - "expert-backend"
+    - "expert-frontend"
+    - "expert-devops"
   phases:
     - "plan"
 ---
@@ -251,3 +255,63 @@ Origin: Integrated from critical-thinking, brainstorm-diverge-converge, and idea
 - [ ] Selected approach references the alternatives it was compared against
 
 <!-- moai:evolvable-end -->
+
+---
+
+## First Principles (absorbed from moai-foundation-philosopher)
+
+Five-phase strategic analysis framework for architecture decisions and technology selection.
+
+### When to Use
+
+Use when facing decisions where the solution space is broad, trade-offs are non-obvious, or existing patterns may not apply. Particularly valuable for: architecture decisions, technology selection, breaking changes, performance vs maintainability trade-offs.
+
+### Five-Phase Process
+
+Phase 1 — Assumption Audit: List every assumption underlying the current approach. Challenge each: is it empirically verified or conventionally accepted? Which assumptions carry the highest risk if wrong?
+
+Phase 2 — First Principles Decomposition: Strip away analogies and precedent. Break the problem into fundamental truths. Ask "What must be true for this to work?" rather than "What has worked before?"
+
+Phase 3 — Alternative Generation: From first principles, generate alternatives that ignore prior constraints. Aim for 5-10 distinct approaches before filtering. Include "absurd" alternatives — they often surface overlooked fundamentals.
+
+Phase 4 — Trade-off Analysis: Score each alternative across: correctness, performance, maintainability, operability, reversibility. Use explicit weights based on project context. Document which trade-offs are acceptable vs dealbreakers.
+
+Phase 5 — Cognitive Bias Check: Before finalizing, audit for: anchoring bias (overweighting the first option), confirmation bias (seeking evidence for the preferred option), sunk cost fallacy (keeping a bad choice due to investment).
+
+Full methodology in modules: [First Principles](modules/first-principles.md), [Assumption Matrix](modules/assumption-matrix.md), [Trade-off Analysis](modules/trade-off-analysis.md), [Cognitive Bias](modules/cognitive-bias.md)
+
+Examples and reference: [examples.md](references/philosopher-examples.md), [reference.md](references/philosopher-reference.md)
+
+---
+
+## Sequential Thinking MCP (absorbed from moai-workflow-thinking)
+
+Structured step-by-step reasoning via `mcp__sequential-thinking__sequentialthinking` MCP tool. Activated by `--deepthink` flag.
+
+### Three Distinct Reasoning Modes
+
+| Mode | Trigger | Mechanism | GLM Compatible? |
+|------|---------|-----------|-----------------|
+| `--deepthink` | Explicit flag | Sequential Thinking MCP | NO — generates server_tool_use |
+| `ultrathink` | Keyword | Claude native extended reasoning | YES |
+| Adaptive Thinking | Automatic | Opus 4.7 built-in | YES |
+
+Rules: `--deepthink` → ALWAYS invoke Sequential Thinking MCP. `ultrathink` → ALWAYS use Claude native. They can coexist: `ultrathink --deepthink` activates both independently.
+
+### When to Activate (--deepthink only)
+
+Architecture decisions affecting 3+ files, technology selection between options, breaking changes under consideration, performance vs maintainability trade-offs, complex problems with multiple viable approaches.
+
+### Tool Parameters
+
+Required: `thought` (string), `nextThoughtNeeded` (boolean), `thoughtNumber` (integer), `totalThoughts` (integer)
+
+Optional: `isRevision` (boolean), `revisesThought` (integer), `branchFromThought` (integer), `branchId` (string), `needsMoreThoughts` (boolean)
+
+### Key Guidelines
+
+1. Start with a reasonable `totalThoughts` estimate (adjust up as needed)
+2. Use `isRevision: true` when correcting earlier thoughts
+3. Use branching (`branchFromThought`) when two viable alternatives exist
+4. Set `nextThoughtNeeded: false` only when a concrete conclusion is reached
+5. On Opus 4.7: Adaptive Thinking handles reasoning automatically — no fixed budget needed

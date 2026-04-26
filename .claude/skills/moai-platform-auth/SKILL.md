@@ -269,3 +269,14 @@ Platforms: Auth0, Clerk, Firebase Auth
 - [ ] Auth provider SDK version is current (show dependency version)
 
 <!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — retain triplet scope (Clerk, Auth.js, Supabase Auth) with narrower per-vendor guidance
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 272
+**Refactor scope** (deferred to future sub-SPEC):
+- Provide narrower, more actionable guidance per vendor (Clerk, Auth.js, Supabase Auth)
+- Add implementation pattern comparison table for vendor selection
+- Extract OWASP auth checklist references to moai-ref-owasp-checklist
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.
