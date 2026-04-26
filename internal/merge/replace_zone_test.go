@@ -29,28 +29,28 @@ func TestReplaceEvolvableZone_Basic(t *testing.T) {
 		t.Fatalf("ReplaceEvolvableZone: %v", err)
 	}
 
-	// 헤더와 푸터가 보존되어야 함
+	// Header and footer must be preserved.
 	if !strings.Contains(result, "# Header") {
-		t.Error("결과에 헤더가 없음")
+		t.Error("header missing from result")
 	}
 	if !strings.Contains(result, "Introduction paragraph.") {
-		t.Error("결과에 소개 문단이 없음")
+		t.Error("introduction paragraph missing from result")
 	}
 	if !strings.Contains(result, "Footer content.") {
-		t.Error("결과에 푸터가 없음")
+		t.Error("footer missing from result")
 	}
 
-	// 새 존 내용이 포함되어야 함
+	// New zone content must be present.
 	if !strings.Contains(result, "New line 1.") {
-		t.Error("결과에 새 내용이 없음")
+		t.Error("new content missing from result")
 	}
 	if !strings.Contains(result, "New line 3.") {
-		t.Error("결과에 새 내용 3이 없음")
+		t.Error("new content line 3 missing from result")
 	}
 
-	// 원본 존 내용은 없어야 함
+	// Original zone content must be removed.
 	if strings.Contains(result, "Original content") {
-		t.Error("결과에 원본 내용이 남아 있음")
+		t.Error("original content remains in result")
 	}
 }
 
@@ -63,10 +63,10 @@ func TestReplaceEvolvableZone_ErrZoneNotFound(t *testing.T) {
 
 	_, err := ReplaceEvolvableZone(content, "nonexistent-zone", "new content")
 	if err == nil {
-		t.Fatal("ErrZoneNotFound 예상, 하지만 nil 반환")
+		t.Fatal("expected ErrZoneNotFound, got nil")
 	}
 	if err != ErrZoneNotFound {
-		t.Fatalf("ErrZoneNotFound 예상, 하지만 반환: %v", err)
+		t.Fatalf("expected ErrZoneNotFound, got: %v", err)
 	}
 }
 
@@ -87,28 +87,29 @@ func TestReplaceEvolvableZone_Idempotent(t *testing.T) {
 
 	result1, err := ReplaceEvolvableZone(content, "zone1", newContent)
 	if err != nil {
-		t.Fatalf("첫 번째 ReplaceEvolvableZone: %v", err)
+		t.Fatalf("first ReplaceEvolvableZone: %v", err)
 	}
 
 	result2, err := ReplaceEvolvableZone(result1, "zone1", newContent)
 	if err != nil {
-		t.Fatalf("두 번째 ReplaceEvolvableZone: %v", err)
+		t.Fatalf("second ReplaceEvolvableZone: %v", err)
 	}
 
 	if result1 != result2 {
-		t.Errorf("멱등성 실패:\n첫 번째: %q\n두 번째: %q", result1, result2)
+		t.Errorf("idempotency failed:\nfirst: %q\nsecond: %q", result1, result2)
 	}
 }
 
-// TestMergeEvolvableZones_PreservesFileStructure는 apply.go:78의 버그를 재현한다.
-// MergeEvolvableZones를 (file_content, zoneID, newContent)로 잘못 호출했을 때
-// 파일 헤더와 푸터가 사라지는 것을 확인한다.
+// TestMergeEvolvableZones_PreservesFileStructure reproduces the bug at apply.go:78.
+// When MergeEvolvableZones was incorrectly invoked as (file_content, zoneID,
+// newContent), the file header and footer disappeared. This test verifies that.
 //
-// 이 테스트는 ReplaceEvolvableZone으로 수정하기 전 apply.go의 동작을 재현한다.
+// It documents the apply.go behavior before the fix that switched to
+// ReplaceEvolvableZone.
 func TestMergeEvolvableZones_PreservesFileStructure(t *testing.T) {
 	t.Parallel()
 
-	// 헤더, 존, 푸터가 있는 완전한 파일
+	// Complete file with header, zone, and footer.
 	fullFile := strings.Join([]string{
 		"# Skill Header",
 		"",
@@ -123,25 +124,25 @@ func TestMergeEvolvableZones_PreservesFileStructure(t *testing.T) {
 
 	newZoneContent := "Initial best practice content.\n- Always pass context.Context as first argument."
 
-	// ReplaceEvolvableZone으로 올바른 대체 수행
+	// Perform the correct replacement via ReplaceEvolvableZone.
 	result, err := ReplaceEvolvableZone(fullFile, "best-practices", newZoneContent)
 	if err != nil {
 		t.Fatalf("ReplaceEvolvableZone: %v", err)
 	}
 
-	// 헤더와 푸터가 보존되어야 함
+	// Header and footer must be preserved.
 	if !strings.Contains(result, "# Skill Header") {
-		t.Error("헤더가 보존되지 않음")
+		t.Error("header was not preserved")
 	}
 	if !strings.Contains(result, "Introduction content that must be preserved.") {
-		t.Error("소개 내용이 보존되지 않음")
+		t.Error("introduction content was not preserved")
 	}
 	if !strings.Contains(result, "Footer content that must also be preserved.") {
-		t.Error("푸터가 보존되지 않음")
+		t.Error("footer was not preserved")
 	}
 
-	// 새 내용이 포함되어야 함
+	// New content must be present.
 	if !strings.Contains(result, "Always pass context.Context as first argument.") {
-		t.Error("추가된 내용이 없음")
+		t.Error("added content missing")
 	}
 }

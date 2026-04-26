@@ -258,8 +258,8 @@ func TestRalphEngine_Decide(t *testing.T) {
 	}
 }
 
-// TestClassifyFeedback_DiagnosticError는 Diagnostics에 Error 심각도 항목이 있을 때
-// ClassifyFeedback이 ErrorLevelManual을 포함하는지 검증한다.
+// TestClassifyFeedback_DiagnosticError verifies that when Diagnostics contains
+// an Error-severity entry, ClassifyFeedback includes ErrorLevelManual.
 func TestClassifyFeedback_DiagnosticError(t *testing.T) {
 	t.Parallel()
 
@@ -273,15 +273,15 @@ func TestClassifyFeedback_DiagnosticError(t *testing.T) {
 	classified := ClassifyFeedback(fb)
 
 	if len(classified) == 0 {
-		t.Fatal("진단 오류가 있는데 ClassifyFeedback이 빈 슬라이스를 반환했다")
+		t.Fatal("ClassifyFeedback returned empty slice despite a diagnostic error")
 	}
 
 	maxLevel := MaxErrorLevel(classified)
 	if maxLevel < ErrorLevelManual {
-		t.Errorf("MaxErrorLevel = %d, 기대값: >= %d (ErrorLevelManual)", maxLevel, ErrorLevelManual)
+		t.Errorf("MaxErrorLevel = %d, expected >= %d (ErrorLevelManual)", maxLevel, ErrorLevelManual)
 	}
 
-	// 진단 오류 분류 항목이 있어야 한다.
+	// A diagnostic-error classification entry must be present.
 	found := false
 	for _, ce := range classified {
 		if ce.Level == ErrorLevelManual && strings.Contains(ce.Description, "diagnostic") {
@@ -290,12 +290,13 @@ func TestClassifyFeedback_DiagnosticError(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("진단 오류에 대한 ErrorLevelManual 분류 항목을 찾지 못했다. classified = %v", classified)
+		t.Errorf("could not find an ErrorLevelManual classification entry for the diagnostic error. classified = %v", classified)
 	}
 }
 
-// TestClassifyFeedback_DiagnosticWarning는 Diagnostics에 Warning 심각도 항목만 있을 때
-// ClassifyFeedback이 ErrorLevelLogOnly를 포함하는지 검증한다.
+// TestClassifyFeedback_DiagnosticWarning verifies that when Diagnostics
+// contains only Warning-severity entries, ClassifyFeedback includes
+// ErrorLevelLogOnly.
 func TestClassifyFeedback_DiagnosticWarning(t *testing.T) {
 	t.Parallel()
 
@@ -310,7 +311,7 @@ func TestClassifyFeedback_DiagnosticWarning(t *testing.T) {
 	classified := ClassifyFeedback(fb)
 
 	if len(classified) == 0 {
-		t.Fatal("진단 경고가 있는데 ClassifyFeedback이 빈 슬라이스를 반환했다")
+		t.Fatal("ClassifyFeedback returned empty slice despite a diagnostic warning")
 	}
 
 	found := false
@@ -318,18 +319,18 @@ func TestClassifyFeedback_DiagnosticWarning(t *testing.T) {
 		if ce.Level == ErrorLevelLogOnly && strings.Contains(ce.Description, "diagnostic") {
 			found = true
 			if ce.Count != 2 {
-				t.Errorf("경고 Count = %d, 기대값 2", ce.Count)
+				t.Errorf("warning Count = %d, expected 2", ce.Count)
 			}
 			break
 		}
 	}
 	if !found {
-		t.Errorf("진단 경고에 대한 ErrorLevelLogOnly 분류 항목을 찾지 못했다. classified = %v", classified)
+		t.Errorf("could not find an ErrorLevelLogOnly classification entry for the diagnostic warning. classified = %v", classified)
 	}
 }
 
-// TestClassifyFeedback_DiagnosticMixed는 Error + Warning이 혼재할 때
-// 최종 MaxErrorLevel이 ErrorLevelManual인지 검증한다.
+// TestClassifyFeedback_DiagnosticMixed verifies that when Error + Warning
+// entries coexist, the final MaxErrorLevel is ErrorLevelManual.
 func TestClassifyFeedback_DiagnosticMixed(t *testing.T) {
 	t.Parallel()
 
@@ -345,12 +346,12 @@ func TestClassifyFeedback_DiagnosticMixed(t *testing.T) {
 	maxLevel := MaxErrorLevel(classified)
 
 	if maxLevel < ErrorLevelManual {
-		t.Errorf("MaxErrorLevel = %d, Error+Warning 혼재 시 기대값: >= %d", maxLevel, ErrorLevelManual)
+		t.Errorf("MaxErrorLevel = %d, expected >= %d when Error+Warning coexist", maxLevel, ErrorLevelManual)
 	}
 }
 
-// TestClassifyFeedback_NilDiagnostics는 Diagnostics가 nil일 때
-// 기존 정수 기반 분류가 그대로 동작하는지 검증한다 (fallback 보장).
+// TestClassifyFeedback_NilDiagnostics verifies that when Diagnostics is nil
+// the legacy integer-based classification continues to work (fallback guarantee).
 func TestClassifyFeedback_NilDiagnostics(t *testing.T) {
 	t.Parallel()
 
@@ -363,10 +364,10 @@ func TestClassifyFeedback_NilDiagnostics(t *testing.T) {
 	classified := ClassifyFeedback(fb)
 
 	if len(classified) == 0 {
-		t.Fatal("기존 오류가 있는데 ClassifyFeedback이 빈 슬라이스를 반환했다")
+		t.Fatal("ClassifyFeedback returned empty slice despite legacy errors")
 	}
 
-	// 기존 분류: lint=AutoFix, tests=LogOnly (<=5이므로)
+	// Legacy classification: lint=AutoFix, tests=LogOnly (<= 5).
 	foundLint := false
 	foundTest := false
 	for _, ce := range classified {
@@ -378,28 +379,28 @@ func TestClassifyFeedback_NilDiagnostics(t *testing.T) {
 		}
 	}
 	if !foundLint {
-		t.Errorf("lint 오류 분류를 찾지 못했다. classified = %v", classified)
+		t.Errorf("could not find a lint-error classification. classified = %v", classified)
 	}
 	if !foundTest {
-		t.Errorf("테스트 실패 분류를 찾지 못했다. classified = %v", classified)
+		t.Errorf("could not find a test-failure classification. classified = %v", classified)
 	}
 }
 
-// TestClassifyFeedback_EmptyDiagnostics는 Diagnostics가 빈 슬라이스일 때
-// 추가 분류 항목이 생기지 않는지 검증한다.
+// TestClassifyFeedback_EmptyDiagnostics verifies that no extra classification
+// entries are produced when Diagnostics is an empty slice.
 func TestClassifyFeedback_EmptyDiagnostics(t *testing.T) {
 	t.Parallel()
 
 	fb := &loop.Feedback{
 		BuildSuccess: true,
-		Diagnostics:  []gopls.Diagnostic{}, // 빈 슬라이스
+		Diagnostics:  []gopls.Diagnostic{}, // empty slice
 	}
 
 	classified := ClassifyFeedback(fb)
-	// 빈 진단이면 추가 분류 없음
+	// With empty diagnostics, no diagnostic classification should be added.
 	for _, ce := range classified {
 		if strings.Contains(ce.Description, "diagnostic") {
-			t.Errorf("빈 진단에도 진단 분류 항목이 생성되었다: %v", ce)
+			t.Errorf("a diagnostic classification was produced despite empty diagnostics: %v", ce)
 		}
 	}
 }

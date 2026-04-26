@@ -322,25 +322,27 @@ func isWithinDebounceWindow(stateFile, filePath string, window time.Duration) bo
 	return state.FilePath == filePath && time.Since(state.Timestamp) < window
 }
 
-// @MX:NOTE CheckDebounce는 동일 filePath가 window 내에 이미 관측되었는지 확인하고,
-// 관측되지 않았다면 stateFile을 원자적으로 갱신한다(임시 파일 + os.Rename, POSIX rename
-// 원자성에 의존). 동일 stateFile을 대상으로 동시에 호출되더라도 정확히 한 호출만
-// debounced=false를 반환한다(REQ-H2-002).
+// @MX:NOTE CheckDebounce verifies whether the same filePath has already been observed inside
+// the window, and atomically updates stateFile if not (temp-file + os.Rename, relying on POSIX
+// rename atomicity). When concurrent callers target the same stateFile, exactly one of them
+// returns debounced=false (REQ-H2-002).
 //
-// 입력:
-//   - stateFile: 디바운스 상태 JSON 파일의 절대 경로 (.moai/cache/db-sync/last-seen.json)
-//   - filePath: PostToolUse 훅이 보고한 마이그레이션 파일 경로
-//   - window: 디바운스 윈도우 (기본 10초; 테스트에서는 50ms 등 짧은 값 사용 가능)
+// Inputs:
+//   - stateFile: absolute path of the debounce-state JSON file (.moai/cache/db-sync/last-seen.json)
+//   - filePath: migration file path reported by the PostToolUse hook
+//   - window: debounce window (default 10s; tests may use shorter values such as 50ms)
 //
-// 출력:
-//   - debounced: true이면 window 내 중복 이벤트 (호출자는 조용히 종료), false면 신규 이벤트
-//   - error: 현재 구현은 항상 nil을 반환한다 (I/O 실패도 안전 기본값 (true, nil)로 흡수;
-//     REQ-H2-003). 미래 시그니처 호환성을 위해 error를 유지한다.
+// Outputs:
+//   - debounced: true means a duplicate event within the window (caller exits silently);
+//     false means a new event.
+//   - error: the current implementation always returns nil (I/O failures are absorbed into
+//     the safe default (true, nil); REQ-H2-003). The error is retained for future signature
+//     compatibility.
 //
-// 부작용:
-//   - stateFile을 temp-file + os.Rename으로 원자적 교체 (정상 경로)
-//   - I/O 실패 시 내부 로그 없음 (공개 API는 logFile 없이 호출됨;
-//     HandleDBSchemaSync 경유 시 checkDebounceWithLog가 ErrorLogFile에 기록)
+// Side effects:
+//   - stateFile is replaced atomically via temp-file + os.Rename (success path)
+//   - On I/O failure the public API logs nothing (it is invoked without logFile;
+//     when called via HandleDBSchemaSync, checkDebounceWithLog records to ErrorLogFile).
 func CheckDebounce(stateFile, filePath string, window time.Duration) (bool, error) {
 	return checkDebounceWithLog(stateFile, filePath, window, "")
 }

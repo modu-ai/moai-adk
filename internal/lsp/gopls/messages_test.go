@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestRequestEnvelope_Serialization은 Request 봉투가 JSON-RPC 2.0 규격에 맞게
-// 직렬화되는지 검증한다.
+// TestRequestEnvelope_Serialization verifies that the Request envelope is
+// serialized according to the JSON-RPC 2.0 specification.
 func TestRequestEnvelope_Serialization(t *testing.T) {
 	t.Parallel()
 
@@ -19,12 +19,12 @@ func TestRequestEnvelope_Serialization(t *testing.T) {
 
 	data, err := json.Marshal(req)
 	if err != nil {
-		t.Fatalf("Request 직렬화 실패: %v", err)
+		t.Fatalf("Request marshal failed: %v", err)
 	}
 
 	var got map[string]any
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("역직렬화 실패: %v", err)
+		t.Fatalf("unmarshal failed: %v", err)
 	}
 
 	if got["jsonrpc"] != "2.0" {
@@ -35,8 +35,8 @@ func TestRequestEnvelope_Serialization(t *testing.T) {
 	}
 }
 
-// TestNotificationEnvelope_NoID는 Notification 봉투에 id 필드가 없는지 검증한다.
-// LSP 3.17: notification은 id 필드를 가지지 않는다.
+// TestNotificationEnvelope_NoID verifies that the Notification envelope has no
+// id field. LSP 3.17: notifications do not carry an id.
 func TestNotificationEnvelope_NoID(t *testing.T) {
 	t.Parallel()
 
@@ -48,23 +48,24 @@ func TestNotificationEnvelope_NoID(t *testing.T) {
 
 	data, err := json.Marshal(n)
 	if err != nil {
-		t.Fatalf("Notification 직렬화 실패: %v", err)
+		t.Fatalf("Notification marshal failed: %v", err)
 	}
 
 	var got map[string]any
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("역직렬화 실패: %v", err)
+		t.Fatalf("unmarshal failed: %v", err)
 	}
 
 	if _, ok := got["id"]; ok {
-		t.Error("Notification에 id 필드가 있어서는 안 됨")
+		t.Error("Notification must not contain an id field")
 	}
 	if got["method"] != "initialized" {
 		t.Errorf("method = %v, want initialized", got["method"])
 	}
 }
 
-// TestResponseEnvelope_WithResult는 Response 봉투가 result 필드를 올바르게 갖는지 검증한다.
+// TestResponseEnvelope_WithResult verifies that the Response envelope carries
+// the result field correctly.
 func TestResponseEnvelope_WithResult(t *testing.T) {
 	t.Parallel()
 
@@ -76,20 +77,21 @@ func TestResponseEnvelope_WithResult(t *testing.T) {
 
 	data, err := json.Marshal(resp)
 	if err != nil {
-		t.Fatalf("Response 직렬화 실패: %v", err)
+		t.Fatalf("Response marshal failed: %v", err)
 	}
 
 	var got map[string]any
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("역직렬화 실패: %v", err)
+		t.Fatalf("unmarshal failed: %v", err)
 	}
 
 	if _, ok := got["result"]; !ok {
-		t.Error("Response에 result 필드가 없음")
+		t.Error("Response missing result field")
 	}
 }
 
-// TestResponse_IsNotification은 응답 봉투의 알림 여부를 올바르게 판별하는지 검증한다.
+// TestResponse_IsNotification verifies that the response envelope correctly
+// identifies whether it represents a notification.
 func TestResponse_IsNotification(t *testing.T) {
 	t.Parallel()
 
@@ -99,12 +101,12 @@ func TestResponse_IsNotification(t *testing.T) {
 		wantBool bool
 	}{
 		{
-			name:     "ID 없음 = 알림",
+			name:     "no ID = notification",
 			resp:     Response{JSONRPC: "2.0", Method: "textDocument/publishDiagnostics"},
 			wantBool: true,
 		},
 		{
-			name:     "ID 있음 = 응답",
+			name:     "with ID = response",
 			resp:     Response{JSONRPC: "2.0", ID: json.RawMessage(`1`), Result: json.RawMessage(`{}`)},
 			wantBool: false,
 		},
@@ -121,8 +123,8 @@ func TestResponse_IsNotification(t *testing.T) {
 	}
 }
 
-// TestInitializeParams_Serialization은 InitializeParams가 올바르게 직렬화되는지 검증한다.
-// REQ-GB-010: rootUri와 publishDiagnostics.relatedInformation이 포함되어야 한다.
+// TestInitializeParams_Serialization verifies that InitializeParams serializes correctly.
+// REQ-GB-010: rootUri and publishDiagnostics.relatedInformation must be included.
 func TestInitializeParams_Serialization(t *testing.T) {
 	t.Parallel()
 
@@ -140,12 +142,12 @@ func TestInitializeParams_Serialization(t *testing.T) {
 
 	data, err := json.Marshal(params)
 	if err != nil {
-		t.Fatalf("InitializeParams 직렬화 실패: %v", err)
+		t.Fatalf("InitializeParams marshal failed: %v", err)
 	}
 
 	var got map[string]any
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("역직렬화 실패: %v", err)
+		t.Fatalf("unmarshal failed: %v", err)
 	}
 
 	if got["rootUri"] != "file:///workspace" {
@@ -160,7 +162,8 @@ func TestInitializeParams_Serialization(t *testing.T) {
 	}
 }
 
-// TestDiagnosticSeverity_Values는 DiagnosticSeverity 상수값이 LSP 3.17 규격과 일치하는지 검증한다.
+// TestDiagnosticSeverity_Values verifies that the DiagnosticSeverity constant
+// values match the LSP 3.17 specification.
 func TestDiagnosticSeverity_Values(t *testing.T) {
 	t.Parallel()
 
@@ -181,8 +184,8 @@ func TestDiagnosticSeverity_Values(t *testing.T) {
 	}
 }
 
-// TestPublishDiagnosticsParams_Deserialization은 gopls가 보내는
-// publishDiagnostics 알림의 params를 올바르게 역직렬화하는지 검증한다.
+// TestPublishDiagnosticsParams_Deserialization verifies that the params of the
+// publishDiagnostics notification sent by gopls are deserialized correctly.
 func TestPublishDiagnosticsParams_Deserialization(t *testing.T) {
 	t.Parallel()
 
@@ -203,14 +206,14 @@ func TestPublishDiagnosticsParams_Deserialization(t *testing.T) {
 
 	var params PublishDiagnosticsParams
 	if err := json.Unmarshal([]byte(raw), &params); err != nil {
-		t.Fatalf("역직렬화 실패: %v", err)
+		t.Fatalf("unmarshal failed: %v", err)
 	}
 
 	if params.URI != "file:///workspace/main.go" {
 		t.Errorf("URI = %q, want file:///workspace/main.go", params.URI)
 	}
 	if len(params.Diagnostics) != 1 {
-		t.Fatalf("Diagnostics 개수 = %d, want 1", len(params.Diagnostics))
+		t.Fatalf("Diagnostics count = %d, want 1", len(params.Diagnostics))
 	}
 
 	d := params.Diagnostics[0]
@@ -228,8 +231,8 @@ func TestPublishDiagnosticsParams_Deserialization(t *testing.T) {
 	}
 }
 
-// TestDidOpenTextDocumentParams_Serialization은 didOpen 알림의 params가
-// 올바르게 직렬화되는지 검증한다.
+// TestDidOpenTextDocumentParams_Serialization verifies that the params of the
+// didOpen notification serialize correctly.
 func TestDidOpenTextDocumentParams_Serialization(t *testing.T) {
 	t.Parallel()
 
@@ -244,12 +247,12 @@ func TestDidOpenTextDocumentParams_Serialization(t *testing.T) {
 
 	data, err := json.Marshal(params)
 	if err != nil {
-		t.Fatalf("직렬화 실패: %v", err)
+		t.Fatalf("marshal failed: %v", err)
 	}
 
 	var got DidOpenTextDocumentParams
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("역직렬화 실패: %v", err)
+		t.Fatalf("unmarshal failed: %v", err)
 	}
 
 	if got.TextDocument.URI != "file:///workspace/main.go" {

@@ -34,8 +34,8 @@ func writeFakeBinary(t *testing.T, dir, name string) string {
 	}
 	path := filepath.Join(dir, name)
 
-	// 표준 입력을 읽고 아무것도 출력하지 않는 최소 스텁
-	// ETXTBSY 방지: 파일 디스크립터를 write 후 즉시 닫고, 그다음에 chmod
+	// Minimal stub that reads stdin and writes nothing.
+	// ETXTBSY mitigation: close the writer fd before chmod.
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("writeFakeBinary create: %v", err)
@@ -68,7 +68,7 @@ func TestLauncher_Launch_HappyPath(t *testing.T) {
 
 	cfg := config.ServerConfig{
 		Language: "go",
-		Command:  binPath, // 절대 경로 직접 지정 — PATH 탐색 없이 실행
+		Command:  binPath, // absolute path explicitly; no PATH lookup required
 	}
 
 	l := subprocess.NewLauncher()
@@ -141,7 +141,7 @@ func TestLauncher_Launch_StdioPipesNonNil(t *testing.T) {
 		_ = result.Cmd.Wait()
 	})
 
-	// stdin에 쓰기 시도 — 파이프가 유효하면 에러 없음
+	// Try writing to stdin — if the pipe is valid, no error occurs.
 	if _, err := result.Stdin.Write([]byte("test\n")); err != nil {
 		t.Errorf("Stdin.Write: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestLauncher_Launch_WithArgs(t *testing.T) {
 		_ = result.Cmd.Wait()
 	})
 
-	// 명령행 인자가 정확히 전달됐는지 확인
+	// Verify that the command-line arguments are forwarded correctly.
 	if len(result.Cmd.Args) < 3 {
 		t.Errorf("Cmd.Args = %v, expected binary + 2 args", result.Cmd.Args)
 	}
@@ -212,7 +212,7 @@ func TestLauncher_Launch_EmptyCommand(t *testing.T) {
 	if err == nil {
 		t.Fatal("Launch: expected error for empty command, got nil")
 	}
-	// 에러 메시지에 언어 또는 커맨드 정보가 포함되어야 함
+	// The error message should include language or command information.
 	_ = err
 }
 
@@ -226,7 +226,7 @@ func TestLauncher_Launch_StartFails(t *testing.T) {
 
 	dir := t.TempDir()
 	binPath := dir + "/non-exec"
-	// 실행 권한 없는 파일 작성
+	// Write a file without executable permission.
 	if err := os.WriteFile(binPath, []byte("#!/bin/sh\nexit 0\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestLauncher_Launch_StartFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("Launch: expected error for non-executable binary, got nil")
 	}
-	// ErrBinaryNotFound가 아닌 다른 에러 (Start 실패)
+	// Expect a different error (Start failure), not ErrBinaryNotFound.
 	if errors.Is(err, subprocess.ErrBinaryNotFound) {
 		t.Errorf("Launch error = ErrBinaryNotFound, want start error")
 	}
