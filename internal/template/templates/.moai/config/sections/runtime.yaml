@@ -1,0 +1,44 @@
+# Token Circuit Breaker configuration
+# SPEC-V3R3-ARCH-007: per-agent token budget tracking + stall detection.
+# Warning-first policy (BC-V3R3-006); P5에서 hard-fail로 전환 예정.
+# /clear는 절대 자동 트리거되지 않음 (HARD constraint).
+runtime:
+  context_window:
+    # Emit warning + persist progress.md when cumulative usage reaches this ratio
+    pre_clear_threshold: 0.75
+    # Emit strong clear recommendation when cumulative usage reaches this ratio
+    hard_clear_threshold: 0.90
+
+  # Per-agent token budget (input + output total, heuristic estimate)
+  # Agents not listed here use the 'default' value.
+  per_agent_budget:
+    default: 30000
+    manager-strategy: 60000
+    manager-spec: 40000
+    expert-backend: 40000
+    expert-frontend: 40000
+    expert-security: 40000
+    expert-testing: 40000
+    expert-debug: 40000
+    expert-performance: 40000
+    expert-refactoring: 40000
+    expert-devops: 40000
+    expert-mobile: 40000
+    evaluator-active: 20000
+    plan-auditor: 20000
+
+  circuit_breaker:
+    # Seconds without a RecordCall before DetectStall returns true
+    stall_detection_seconds: 60
+    # After this many stall events, emit fallback recommendation
+    retry_max: 3
+    # Recommended action when retry_max is reached
+    fallback: split_into_waves
+
+  progress_persistence:
+    # Automatically save progress.md when pre_clear_threshold is reached
+    auto_save_at_threshold: true
+    # Template for the progress.md path; {SPEC_ID} is replaced at runtime
+    save_path_template: ".moai/specs/{SPEC_ID}/progress.md"
+    # Resume message format (paste-ready for the user after /clear)
+    resume_message_format: "ultrathink. {wave_label} 이어서 진행. SPEC-{spec_id}부터 {approach_summary}. progress.md 경로: {progress_path}. 다음 단계: {next_step}."

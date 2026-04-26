@@ -43,9 +43,9 @@ A single binary written in Go -- runs instantly on any platform with zero depend
 
 ---
 
-## What's New in v2.12.0
+## What's New in v2.15.0
 
-MoAI-ADK v2.12.0 introduces major upgrades to the design system, Claude Code native integration, and Opus 4.7 support.
+MoAI-ADK v2.15.0 (V3R3 Phase A) introduces foundation hardening with expert agent capabilities, token circuit breaker, and mobile native coverage.
 
 ### Key Milestones
 

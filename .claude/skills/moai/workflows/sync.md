@@ -334,7 +334,14 @@ Delegate to expert-security with the security workflow (workflows/security.md) i
 - Only CRITICAL findings block the sync pipeline
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report
-- Dependency scan runs only if package files (go.mod, package.json, requirements.txt, etc.) changed
+
+**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)**:
+
+Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
+`go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
+
+When any manifest is detected, invoke `expert-security` for a dependency vulnerability scan of that manifest.
+Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
 
 #### Step 0.55.2: Security Gate Decision
 
