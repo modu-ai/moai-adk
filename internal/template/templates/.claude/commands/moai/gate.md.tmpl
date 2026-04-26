@@ -1,0 +1,7 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}lint+format+type-check+test 병렬 실행 (pre-commit 품질 게이트){{else if eq .ConversationLanguage "ja"}}lint+format+type-check+testを並列実行（プリコミット品質ゲート）{{else if eq .ConversationLanguage "zh"}}并行执行lint+format+type-check+test（提交前质量门禁）{{else}}Run lint+format+type-check+test in parallel (pre-commit quality gate){{end}}
+argument-hint: "[--fix]"
+allowed-tools: Skill
+---
+
+Use Skill("moai") with arguments: gate $ARGUMENTS
