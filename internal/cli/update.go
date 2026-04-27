@@ -520,6 +520,28 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			},
 		},
 		{
+			name:    "Validate Templates",
+			message: "Validating all templates before deployment",
+			execute: func() error {
+				homeDir, _ := userHomeDir()
+				goBinPath := detectGoBinPathForUpdate(homeDir)
+				tmplCtx := template.NewTemplateContext(
+					template.WithGoBinPath(goBinPath),
+					template.WithHomeDir(homeDir),
+					template.WithSmartPATH(template.BuildSmartPATH()),
+					template.WithPlatform(runtime.GOOS),
+					template.WithVersion(version.GetVersion()),
+				)
+
+				if validateErr := deployer.ValidateAll(ctx, tmplCtx); validateErr != nil {
+					_, _ = fmt.Fprintf(out, "\r  %s Template validation failed: %v\n", symError(), validateErr)
+					return fmt.Errorf("template validation: %w", validateErr)
+				}
+				_, _ = fmt.Fprintf(out, "\r  %s All templates validated\n", symSuccess())
+				return nil
+			},
+		},
+		{
 			name:    "Clean Managed Paths",
 			message: "Removing old MoAI-managed files",
 			execute: func() error {
