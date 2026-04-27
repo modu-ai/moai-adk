@@ -118,6 +118,68 @@ Create `.moai/docs/frontend-architecture-{SPEC-ID}.md` with component hierarchy,
 - expert-devops: Deployment platform (Vercel, Netlify), env vars, build strategy
 - manager-ddd: Component test structure, mock strategy (MSW), coverage
 
+## DTCG Validator Integration
+
+SPEC: SPEC-V3R3-DESIGN-PIPELINE-001 REQ-DPL-010 / AC-DPL-06
+Validator package: `internal/design/dtcg/` (SPEC.md 참조)
+
+### 코드 생성 전 필수 검증 게이트
+
+[HARD] **컴포넌트 생성, 스타일 파일 출력, JSX/TSX 렌더 등 모든 프론트엔드 코드 생성 단계 이전에**
+반드시 DTCG 검증기를 실행해야 한다.
+
+```go
+import "github.com/modu-ai/moai-adk/internal/design/dtcg"
+
+// tokens: tokens.json을 파싱한 map[string]any
+report, err := dtcg.Validate(tokens)
+if err != nil {
+    // 검증 실행 자체 실패 (nil 입력 등) — 오케스트레이터에 반환
+    return fmt.Errorf("DTCG 검증기 실행 실패: %w", err)
+}
+```
+
+### 실패 처리 (report.Valid == false)
+
+[HARD] `report.Valid == false`이면 **코드 생성을 중단**하고, 아래 구조화된 오류를 오케스트레이터에 반환한다.
+`report.Errors` 슬라이스 전체를 포함해야 오케스트레이터가 사용자에게 surfacing할 수 있다.
+
+```go
+if !report.Valid {
+    // 코드 생성 절대 금지 — 구조화된 오류 반환
+    return &DTCGValidationFailure{
+        TokenCount:  report.TokenCount,
+        ErrorCount:  len(report.Errors),
+        Errors:      report.Errors,   // []*dtcg.ValidationError — 경로, 카테고리, 규칙 포함
+        Warnings:    report.Warnings, // []*dtcg.ValidationWarning — 브랜드 충돌 등
+    }
+}
+```
+
+`ValidationError`에는 다음 필드가 포함된다:
+- `TokenPath`: 오류 토큰 경로 (예: `"colors.primary"`)
+- `Category`: DTCG $type (예: `"color"`, `"dimension"`)
+- `Rule`: 위반 규칙 설명
+- `Value`: 오류 유발 값
+
+### 브랜드 컨텍스트 우선순위 (design constitution §3.1)
+
+토큰이 DTCG 검증을 통과하더라도, `.moai/project/brand/visual-identity.md`에 정의된
+브랜드 색상과 충돌하는 경우 `report.Warnings`에 `category: "brand-conflict"` 경고가 포함된다.
+[HARD] 브랜드 제약이 항상 우선한다 — 토큰 값이 아닌 브랜드 값을 사용해야 한다.
+
+### 경고 처리 (Warnings만 있는 경우)
+
+`report.Valid == true`이지만 `report.Warnings`가 있는 경우, 오케스트레이터에 경고를 surfacing하고
+사용자 결정을 기다린다. 경고만으로는 코드 생성을 차단하지 않는다.
+
+### DTCG 지원 카테고리 (2025.10)
+
+14개 카테고리: color, dimension, fontFamily, fontWeight, font, typography,
+duration, cubicBezier, number, strokeStyle, border, transition, shadow, gradient.
+
+알 수 없는 카테고리는 오류로 처리된다 — 사용자가 DTCG 2025.10으로 토큰을 업그레이드해야 한다.
+
 ## @MX Tag Obligations
 
 When creating or modifying source code, add @MX tags for the following patterns:

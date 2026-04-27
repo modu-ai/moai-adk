@@ -1,6 +1,6 @@
 # SPEC-V3R3-DESIGN-PIPELINE-001 — Task Breakdown
 
-This task list decomposes the 5-phase implementation plan into discrete, ownership-assigned, dependency-ordered work items. Tasks are priority-tagged (P0 Critical, P1 High, P2 Medium); no time estimates per `agent-common-protocol.md` Time Estimation rule. Each task references its REQ-IDs and AC-IDs and notes its file ownership for parallel/sequential execution decisions.
+This task list decomposes the 6-phase implementation plan into discrete, ownership-assigned, dependency-ordered work items. Tasks are priority-tagged (P0 Critical, P1 High, P2 Medium); no time estimates per `agent-common-protocol.md` Time Estimation rule. Each task references its REQ-IDs and AC-IDs and notes its file ownership for parallel/sequential execution decisions. Phase 6 release-coordination tasks (T6-01 CHANGELOG, T6-02 docs-site) are explicitly exempt from REQ/AC traceability — release artifacts are not requirement-bearing per spec.md §5 EARS scope.
 
 ## Legend
 
@@ -429,23 +429,23 @@ This task list decomposes the 5-phase implementation plan into discrete, ownersh
 
 ## Phase 6 — Documentation + Release Coordination (P2 Medium)
 
-### T6-01 — Update CHANGELOG.md with v2.17.0 entry
+### T6-01 — Update CHANGELOG.md with v2.19.0 entry
 
-- **REQ-IDs**: —
-- **AC-IDs**: —
+- **REQ-IDs**: — (intentional, release coordination not requirement-bearing — see tasks.md preamble)
+- **AC-IDs**: — (intentional, release coordination not acceptance-bearing — see tasks.md preamble)
 - **Owner**: `manager-docs`
 - **Dep**: All Phase 1–5 tasks complete
 - **Files**: `CHANGELOG.md`
 - **Subtasks**:
-  - Add v2.17.0 section (or extend existing draft) with:
+  - Add v2.19.0 section (or extend existing draft) with:
     - feat(design): SPEC-V3R3-DESIGN-PIPELINE-001 — Hybrid Design Pipeline (Path A/B1/B2 + DTCG 2025.10 validator).
     - BREAKING (BC-V3R3-007 coordinated): `moai-workflow-pencil-integration` removed; replaced by Path B2 dynamic generation.
 - **Exit gate**: CHANGELOG entry follows existing format; bilingual (English + Korean) per CLAUDE.local.md §17 guidance.
 
 ### T6-02 — Update docs-site (4-locale) design pipeline reference
 
-- **REQ-IDs**: —
-- **AC-IDs**: —
+- **REQ-IDs**: — (intentional, release coordination not requirement-bearing — see tasks.md preamble)
+- **AC-IDs**: — (intentional, release coordination not acceptance-bearing — see tasks.md preamble)
 - **Owner**: `manager-docs`
 - **Dep**: T6-01
 - **Files**:

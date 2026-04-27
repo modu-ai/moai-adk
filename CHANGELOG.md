@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### V3R3 Phase C — Hybrid Design Pipeline (SPEC-V3R3-DESIGN-PIPELINE-001)
+
+- **`feat(design)`**: SPEC-V3R3-DESIGN-PIPELINE-001 — Hybrid Design Pipeline 구현
+  - **3-path 라우팅**: Path A (Claude Design import), Path B1 (Figma extractor via meta-harness), Path B2 (Pencil MCP via meta-harness)
+  - **DTCG 2025.10 validator** (`internal/design/dtcg/`): W3C Design Tokens Community Group 2025.10 사양 준수
+    - 14개 카테고리: color / dimension / font / fontFamily / fontWeight / fontStyle / duration / cubicBezier / number / strokeStyle / border / transition / shadow / gradient (+ composite types typography)
+    - alias cycle detection (DFS-based, 최대 100 홉 제한)
+    - FROZEN guard: `internal/design/dtcg/frozen_guard.go` — config bypass 불가 (`TestIsFrozen_ConfigBypass` 통과)
+    - 성능: 500-token 검증 ~50μs (목표 100ms의 0.05%, 2000x 마진)
+    - 커버리지: `internal/design/dtcg/` **88.8%**, `internal/design/pipeline/` **89.1%** (목표 85%)
+  - **Brand-conflict warning surface**: `visual-identity.md` vs `tokens.json` 색상 팔레트 편차 감지 (허용 한계 초과 시 ValidationWarning)
+  - **design constitution §4 Phase Contracts 확장** (v3.3.1 → v3.4.0, additive amendment):
+    - Path B1 (figma-extractor) 행 추가: BRIEF + Figma file ID → tokens.json + components.json
+    - Path B2 (pencil-mcp) 행 추가: BRIEF + .pen files → tokens.json + components.json
+    - FROZEN zone (§2, §3.1, §3.2, §3.3) 불변 유지
+- **`feat(design)`**: `expert-frontend` 에이전트 업데이트 — 코드 생성 전 DTCG validator 호출 의무화 (`internal/design/pipeline/`)
+- **`moai-workflow-pencil-integration` 제거**: 레거시 정적 스킬 삭제 → Path B2 (`my-harness-pencil-mcp`) 동적 생성으로 대체
+
 #### V3R3 Phase C — Project Harness Activation (SPEC-V3R3-PROJECT-HARNESS-001)
 
 - **`/moai project` Phase 5+ 신설**: 16개 질문/4 라운드 소크라테스 인터뷰 (`AskUserQuestion`, max 4 질문 per call) → `moai-meta-harness` 호출 → 사용자 영역 dynamic harness 자동 생성.
@@ -42,6 +60,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - target_release: **v2.19.0** (v3R3 cluster bundling). 단독 v2.17.x 릴리스 안 함 (project_v3r3_cluster_release_bundling lesson 적용).
 - Plan-auditor verdict PASS (0.78), 4 major + 6 minor defects 추적 → D1/D4/D5/D8/D9 본 PR에서 처리 완료.
 - **Anthropic 1M context entitlement regression** (#44117 외 8건 OPEN, 2026-04 초중반 발생) 영향으로 일부 Wave는 `Agent()` spawn 차단 → orchestrator 직접 작성으로 우회. `/extra-usage` 1회 실행 후에도 동일 차단 발생 — Anthropic 패치 대기.
+
+---
+
+## [2.19.0] - TBD
+
+v3R3 Phase C 최종 마일스톤: Hybrid Design Pipeline (DTCG 2025.10 validator + 3-path routing) + Self-Learning Dynamic Harness + Project Harness Activation 클러스터.
+
+### 추가 (Added)
+
+#### V3R3 Phase C — Hybrid Design Pipeline (SPEC-V3R3-DESIGN-PIPELINE-001)
+
+- **`feat(design)`**: Hybrid Design Pipeline — 3-path 라우팅 구현
+  - **Path A**: Claude Design handoff bundle import (기존 동작 보존)
+  - **Path B1**: Figma extractor → meta-harness를 통한 동적 figma-extractor skill 생성
+  - **Path B2**: Pencil MCP → meta-harness를 통한 동적 pencil-mcp skill 생성 (`moai-workflow-pencil-integration` 대체)
+- **DTCG 2025.10 Validator** (`internal/design/dtcg/`):
+  - 14개 타입 카테고리: color, dimension, font, fontFamily, fontWeight, fontStyle, duration, cubicBezier, number, strokeStyle, border, transition, shadow, gradient (+ composite: typography)
+  - Alias cycle detection (DFS, 최대 100 홉)
+  - FROZEN guard — config bypass 불가 (`TestIsFrozen_ConfigBypass` 통과)
+  - 성능: 500-token 기준 ~50μs (목표 100ms 대비 0.05%)
+  - 커버리지: `internal/design/dtcg/` 88.8% / `internal/design/pipeline/` 89.1%
+- **Brand-conflict warning**: `visual-identity.md` ↔ `tokens.json` 색상 편차 초과 시 `ValidationWarning` 발생
+- **design constitution §4 Phase Contracts 확장** (v3.3.1 → v3.4.0, additive amendment only):
+  - Path B1 (figma-extractor) 행: BRIEF + Figma file ID → tokens.json + components.json
+  - Path B2 (pencil-mcp) 행: BRIEF + .pen files → tokens.json + components.json
+  - FROZEN zone (§2, §3.1, §3.2, §3.3) 불변
+
+#### V3R3 Phase C — Self-Learning Dynamic Harness (SPEC-V3R3-HARNESS-LEARNING-001)
+
+(LEARNING-001 — PR #728에서 머지 완료, Release Drafter 자동 기록)
+
+- Self-learning subsystem: harness tier 자동 상승 + Tier 4 제안 UI
+- `internal/harness/learner/` 패키지: 5-tier 학습 파이프라인 (observe → heuristic → rule → graduate → archive)
+- `moai-harness-learner` skill: AskUserQuestion 기반 Tier 4 승인 UI
+- FROZEN guard 연동: constitution FROZEN zone 진입 시 evolution 차단
+
+#### V3R3 Phase C — Project Harness Activation (SPEC-V3R3-PROJECT-HARNESS-001)
+
+(PROJECT-HARNESS-001 — PR #727에서 머지 완료, Release Drafter 자동 기록)
+
+- `/moai project` Phase 5+ 신설: 16Q 소크라테스 인터뷰 → meta-harness → dynamic harness 자동 생성
+- `internal/harness/` 패키지: 5-Layer 활성화 (VerifyTriggers / UpdateWorkflowYAML / InjectMarker / static import / ScaffoldHarnessDir)
+- `moai doctor` 5-Layer 진단 확장
+
+### 변경 (Changed)
+
+- **`moai-workflow-pencil-integration` 제거**: Path B2 (`my-harness-pencil-mcp`) 동적 생성으로 대체
+- **`expert-frontend` 에이전트**: 코드 생성 전 DTCG validator 호출 의무화
+- **design constitution**: §4 Phase Contracts 확장 (v3.3.1 → v3.4.0)
+
+### 주의 사항 (Notes)
+
+- T6-02 docs-site 4-locale (ko/en/zh/ja) 업데이트는 별도 follow-up PR로 처리 (§17.3 동일 PR 규칙 준수 — 번역 지연 방지 목적)
+- T6-03 plan-auditor sign-off: orchestrator 별도 위임 예정
+- `target_release: v2.17.0` (spec.md frontmatter): v2.19.0으로 /moai sync 단계에서 reconcile 예정
+
+---
+
+### Added (English summary — SPEC-V3R3-DESIGN-PIPELINE-001)
+
+- **3-path routing**: Path A (Claude Design import), Path B1 (Figma extractor via meta-harness), Path B2 (Pencil MCP via meta-harness; replaces legacy `moai-workflow-pencil-integration`)
+- **DTCG 2025.10 validator** (`internal/design/dtcg/`): 14-category W3C Design Token spec enforcement with alias cycle detection, FROZEN guard (config-bypass proof), and ~50μs/500-token benchmark (2000x within 100ms target)
+- **Brand-conflict warning surface**: detects color palette divergence between `visual-identity.md` and `tokens.json`
+- **design constitution §4 amendment** (v3.3.1 → v3.4.0): additive Phase Contracts rows for Path B1/B2; FROZEN zones (§2, §3.1–3.3) remain inviolable
+- **`expert-frontend` integration**: mandatory DTCG validation call before code generation (`internal/design/pipeline/`)
+
+### Changed (English)
+
+- Removed `moai-workflow-pencil-integration` static skill; capability recreated dynamically via meta-harness Path B2 pattern
+- `expert-frontend` agent updated to call DTCG validator before generating component code
+
+---
 
 ## [2.17.0] - 2026-04-27
 

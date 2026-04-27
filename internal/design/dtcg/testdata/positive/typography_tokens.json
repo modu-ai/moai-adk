@@ -1,0 +1,33 @@
+{
+  "font-family-sans": {
+    "$type": "fontFamily",
+    "$value": ["Roboto", "Arial", "sans-serif"]
+  },
+  "font-weight-normal": {
+    "$type": "fontWeight",
+    "$value": 400
+  },
+  "font-weight-bold": {
+    "$type": "fontWeight",
+    "$value": 700
+  },
+  "typography-body": {
+    "$type": "typography",
+    "$value": {
+      "family": ["Roboto", "sans-serif"],
+      "size": { "value": 16, "unit": "px" },
+      "weight": 400,
+      "lineHeight": "1.5"
+    }
+  },
+  "typography-heading-1": {
+    "$type": "typography",
+    "$value": {
+      "family": ["Roboto", "sans-serif"],
+      "size": "2rem",
+      "weight": 700,
+      "letterSpacing": "-0.02em",
+      "textTransform": "none"
+    }
+  }
+}

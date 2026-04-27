@@ -2,6 +2,7 @@
 
 ## HISTORY
 
+- 2026-04-26 (SPEC-V3R3-DESIGN-PIPELINE-001): §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
 - 2026-04-26 (SPEC-V3R3-DESIGN-FOLDER-FIX-001): §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
 - 2026-04-20 (SPEC-DESIGN-CONST-AMEND-001): Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
 - 2026-04-20: Relocated from `.claude/rules/agency/constitution.md` (v3.2.0) to `.claude/rules/moai/design/constitution.md` as part of SPEC-AGENCY-ABSORB-001 M1. Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
@@ -114,6 +115,8 @@ Each phase produces typed artifacts consumed by downstream phases:
 | moai-workflow-design-import | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
 | expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
 | evaluator-active | Built code + BRIEF | Score card + feedback | Always |
+| figma-extractor (Path B1) | BRIEF + Figma file ID + page selectors | tokens.json + components.json | Path B1 |
+| pencil-mcp (Path B2) | BRIEF + .pen files | tokens.json + components.json | Path B2 |
 
 ---
 
@@ -399,7 +402,7 @@ If a graduated learning causes regression:
 
 ---
 
-Version: 3.3.1
+Version: 3.4.0
 Classification: FROZEN_AMENDMENT
 Original Source: agency/constitution.md v3.2.0
 Last Updated: 2026-04-26

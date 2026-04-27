@@ -1,0 +1,31 @@
+{
+  "color-brand-primary-base": {
+    "$type": "color",
+    "$value": "#0066ff"
+  },
+  "color-brand-primary": {
+    "$type": "color",
+    "$value": "{color-brand-primary-base}",
+    "$description": "브랜드 주 색상 - 에일리어스 참조"
+  },
+  "font-size-base": {
+    "$type": "dimension",
+    "$value": { "value": 16, "unit": "px" }
+  },
+  "font-size-body": {
+    "$type": "dimension",
+    "$value": "{font-size-base}"
+  },
+  "font-weight-body": {
+    "$type": "fontWeight",
+    "$value": 400
+  },
+  "typography-body-text": {
+    "$type": "typography",
+    "$value": {
+      "family": "{font-family-sans}",
+      "size": "{font-size-body}",
+      "weight": "{font-weight-body}"
+    }
+  }
+}

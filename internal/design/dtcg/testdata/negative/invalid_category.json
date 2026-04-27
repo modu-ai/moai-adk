@@ -1,0 +1,27 @@
+{
+  "token-unknown-type": {
+    "$type": "motionPath",
+    "$value": "some-motion-value",
+    "$description": "DTCG 2025.10 미지원 카테고리 (오류 예상)"
+  },
+  "token-missing-type": {
+    "$value": "#0066ff"
+  },
+  "token-missing-value": {
+    "$type": "color"
+  },
+  "cubic-bezier-x-out-of-range": {
+    "$type": "cubicBezier",
+    "$value": [1.5, 0.0, 0.5, 1.0]
+  },
+  "gradient-single-stop": {
+    "$type": "gradient",
+    "$value": [
+      { "color": "#fff", "position": 0 }
+    ]
+  },
+  "font-weight-out-of-range": {
+    "$type": "fontWeight",
+    "$value": 950
+  }
+}

@@ -141,6 +141,20 @@ The FROZEN zone matcher in Phase 3 is implemented in `internal/design/dtcg/froze
 
 **Exit gate**: `make build && go test ./...` passes; plan-auditor verifies §4 amendment is additive-only (diff shows only appended rows + HISTORY + version line); zone-registry validation passes; no orphaned references to `moai-workflow-pencil-integration` remain.
 
+### Phase 6 — Documentation + Release Coordination (Priority: P2 Medium)
+
+**Goal**: Finalize CHANGELOG, docs-site, and SPEC status; obtain plan-auditor sign-off; mark SPEC completed for v2.19.0 release coordination.
+
+**Deliverables**:
+- `CHANGELOG.md` — v2.19.0 entry (bilingual ko + en) covering DESIGN-PIPELINE-001 + grouped LEARNING-001 + (optional) CI-MULTI-LLM-001 deliverables (T6-01).
+- `docs-site/content/{ko,en,ja,zh}/v2/design/pipeline.md` — 4-locale design pipeline reference (T6-02). **Deferred to follow-up PR per CLAUDE.local.md §17.3 ko+en+ja+zh same-PR mandate** to avoid blocking SPEC merge on translation latency.
+- Plan-auditor sign-off (T6-03) — final §4 amendment additive verification + zone-registry CONST-V3R2-051..072 zero-diff confirmation; PASS verdict recorded in `.moai/reports/plan-audit/SPEC-V3R3-DESIGN-PIPELINE-001-2026-04-27-signoff.md`.
+- SPEC frontmatter `status: draft → completed`, `target_release: v2.17.0 → v2.19.0` (TX-03, reconciled during /moai sync).
+
+**REQ-IDs covered**: REQ-DPL-007 (sign-off only); CHANGELOG/docs are release-coordination work without dedicated REQ-IDs (intentional — release artifacts are not requirement-bearing per spec.md §5 EARS scope).
+
+**Exit gate**: CHANGELOG v2.19.0 entry merged; plan-auditor PASS verdict; SPEC status `completed`; T6-02 docs-site tracked as separate PR ticket.
+
 ## 4. Data Schemas
 
 ### 4.1 `.moai/design/path-selection.json`

@@ -1,0 +1,15 @@
+{
+  "color-bad-hex": {
+    "$type": "color",
+    "$value": "#fffff",
+    "$description": "hex 5자리 - 비표준 (오류 예상)"
+  },
+  "color-bad-named": {
+    "$type": "color",
+    "$value": "notacolor"
+  },
+  "color-missing-hash": {
+    "$type": "color",
+    "$value": "ffffff"
+  }
+}
