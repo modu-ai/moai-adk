@@ -174,3 +174,49 @@ func (d *modeAwareDeployer) ListTemplates() []string {
 
 	return list
 }
+
+// ValidateAll validates all templates without writing any files.
+func (d *modeAwareDeployer) ValidateAll(ctx context.Context, tmplCtx *TemplateContext) error {
+	// Only validate if we have a renderer configured
+	if d.renderer == nil {
+		return nil
+	}
+
+	var validationErrors []error
+	walkErr := fs.WalkDir(d.fsys, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Skip directories and non-templates
+		if path == "." || entry.IsDir() || !strings.HasSuffix(path, ".tmpl") {
+			return nil
+		}
+
+		// Try to render the template (this will catch parse errors)
+		_, renderErr := d.renderer.Render(path, tmplCtx)
+		if renderErr != nil {
+			validationErrors = append(validationErrors,
+				fmt.Errorf("template %q: %w", path, renderErr))
+		}
+
+		return nil
+	})
+
+	if walkErr != nil {
+		return walkErr
+	}
+
+	if len(validationErrors) > 0 {
+		return validationErrors[0]
+	}
+
+	return nil
+}

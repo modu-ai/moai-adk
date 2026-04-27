@@ -25,21 +25,9 @@ jobs:
 | LLM | Status |
 |-----|--------|
 | Claude | Pending (add \`/claude\` comment) |
-| Codex | ${{ "{{" } } } {
-  if secrets.CODEX_AUTH_JSON != '' then '✓ Ready'
-  else '⚠️ Token missing'
-  end
-{{ "}" } } |
-| Gemini | ${{ "{{" } } } {
-  if secrets.GEMINI_API_KEY != '' then '✓ Ready'
-  else '⚠️ Token missing'
-  end
-{{ "}" } } |
-| GLM | ${{ "{{" } } } {
-  if secrets.GLM_API_KEY != '' then '✓ Ready'
-  else '⚠️ Token missing'
-  end
-{{ "}" } } |
+| Codex | ${{ "{{" }} secrets.CODEX_AUTH_JSON != '' && '✓ Ready' || '⚠️ Token missing' {{ "}}" }} |
+| Gemini | ${{ "{{" }} secrets.GEMINI_API_KEY != '' && '✓ Ready' || '⚠️ Token missing' {{ "}}" }} |
+| GLM | ${{ "{{" }} secrets.GLM_API_KEY != '' && '✓ Ready' || '⚠️ Token missing' {{ "}}" }} |
 
 Trigger individual reviews:
 - Add \`/claude\` comment to trigger Claude
