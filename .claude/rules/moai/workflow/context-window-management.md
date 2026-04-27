@@ -57,11 +57,35 @@ The resume message is a verbatim hand-off — paste-ready, no editing required.
 The orchestrator estimates context usage from these observable signals:
 
 - Cumulative output bytes since session start (rough proxy)
-- System reminder volume per turn (large rule-file injections inflate input rapidly)
+- System reminder volume per turn (large rule-file injections inflate input rapidly — typically 10-50K tokens per `<system-reminder>` block injection)
 - Number of large tool results received (each Read/Bash output >5 KB adds linear pressure)
-- Number of Agent() invocations completed (each Agent context contributes to parent context on return)
+- Number of Agent() invocations completed (only the **final response message** of each sub-agent contributes to parent context — typically 0.5-3K tokens per agent return, NOT the agent's internal total_tokens)
 
 When uncertain, prefer to under-estimate remaining capacity. A premature `/clear` recommendation costs one paste; a missed one costs a stalled stream and possibly lost work.
+
+## Sub-Agent Token Accounting [HARD]
+
+**Common mistake**: treating an Agent()'s reported `total_tokens` as parent context consumption. This produces wildly inflated estimates and triggers premature `/clear` recommendations. Resolved 2026-04-27 (this session).
+
+The truth:
+- Each Agent() spawns a **separate context window**. The sub-agent consumes its own input + output + thinking + tool-call tokens internally. That internal consumption is reported as `total_tokens` in the agent return message.
+- Only the sub-agent's **final user-facing response message** crosses back into the parent context. That is typically a structured report of 500-3000 tokens, NOT the multi-hundred-K internal total.
+- Therefore: **do NOT sum `total_tokens` from Agent returns into the parent context estimate**.
+
+[HARD] Correct estimation formula for parent context:
+```
+parent_context ≈
+  initial_system_prompt (~30-60K, includes CLAUDE.md + autoloaded rules)
+  + sum(system_reminders this session)        # each ~5-50K
+  + sum(user_messages this session)           # each ~0.5-5K
+  + sum(orchestrator responses this session)  # each ~1-10K
+  + sum(tool_results received)                # Bash/Read each ~0.5-30K
+  + sum(agent_FINAL_responses)                # NOT total_tokens; each ~0.5-3K
+```
+
+For Opus 4.7 (1M context), even an aggressive session with 5 agent delegations + 20 large tool calls + 30 system reminders typically lands at 200-400K — well under the 750K threshold. Premature `/clear` advice based on summing agent total_tokens is a HARD rule violation.
+
+[HARD] Authoritative measurement: when in doubt, the user runs `/cost` or checks the Claude Code statusline. Orchestrator's heuristic is for proactive warnings only; it MUST NOT override the actual measurement.
 
 ## Applies To
 
