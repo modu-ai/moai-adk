@@ -123,7 +123,7 @@ func (w *Wizard) loadMessages() {
 
 // selectLLMsTUI runs the LLM selection TUI with multiple selection.
 func (w *Wizard) selectLLMsTUI() error {
-	model := NewLLMModel()
+	model := NewLLMModel(w.messages)
 	p := tea.NewProgram(model, tea.WithOutput(w.out))
 
 	finalModel, err := p.Run()
@@ -143,7 +143,7 @@ func (w *Wizard) selectLLMsTUI() error {
 // selectModelsTUI runs model selection for each selected LLM using TUI.
 func (w *Wizard) selectModelsTUI() error {
 	for _, llm := range w.state.SelectedLLMs {
-		model := NewModelChoiceModel(llm)
+		model := NewModelChoiceModel(llm, w.messages)
 		p := tea.NewProgram(model, tea.WithOutput(w.out))
 
 		finalModel, err := p.Run()
@@ -188,7 +188,7 @@ func (w *Wizard) confirmAndFinishTUI() error {
 
 	// Use Yes/No TUI for confirmation
 	summary := "? Proceed with this configuration? / 이 설정으로 진행할까요?"
-	model := NewYesNoModel(summary)
+	model := NewYesNoModel(summary, w.messages)
 	p := tea.NewProgram(model, tea.WithOutput(w.out))
 
 	finalModel, err := p.Run()
