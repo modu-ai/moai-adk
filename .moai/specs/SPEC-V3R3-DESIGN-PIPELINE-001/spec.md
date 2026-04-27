@@ -2,9 +2,9 @@
 id: SPEC-V3R3-DESIGN-PIPELINE-001
 title: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing
 version: "0.1.0"
-status: draft
+status: completed
 created_at: 2026-04-26
-updated_at: 2026-04-26
+updated_at: 2026-04-27
 author: manager-spec
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Design Pipeline Hybridization"
@@ -31,6 +31,7 @@ issue_number: null
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. Phase C P0 — Hybrid design pipeline (Path A Claude Design / B1 Figma / B2 Pencil) with W3C DTCG 2025.10 token spec validator, depending on SPEC-V3R3-HARNESS-001 meta-harness skill. |
+| 1.0.0   | 2026-04-27 | manager-tdd  | Implementation completed across 6 waves (Phase 1-5 + Phase 6 partial). Open items: T6-02 docs-site 4-locale deferred to follow-up PR; T6-03 plan-auditor sign-off pending; target_release v2.17.0 → v2.19.0 reconciliation in /moai sync. |
 
 ---
 
