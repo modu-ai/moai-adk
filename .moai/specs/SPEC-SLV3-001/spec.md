@@ -5,7 +5,7 @@
 | SPEC ID | SPEC-SLV3-001 |
 | 제목 | Statusline v3 Upgrade |
 | 버전 | 1.0.0 |
-| 상태 | Planned |
+| 상태 | Completed |
 | 우선순위 | High |
 | 관련 SPEC | SPEC-SLE-001 (Statusline Engine), SPEC-STATUSLINE-001 |
 | 태그 | `statusline`, `v3`, `gradient`, `usage-monitoring` |

@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-009
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-03-20"
 updated: "2026-03-20"
 author: GOOS

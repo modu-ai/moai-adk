@@ -101,7 +101,7 @@ func NewLLMModel(messages *Messages) LLMModel {
 	return LLMModel{
 		Choices: []LLMChoice{
 			{Name: "Claude (Anthropic)", Value: "claude"},
-			{Name: "Codex (OpenAI)", Value: "codex", Notice: "Private repos only"},
+			{Name: "OpenAI (GPT)", Value: "codex", Notice: "Private repos only"},
 			{Name: "Gemini (Google)", Value: "gemini"},
 			{Name: "GLM (Z.AI)", Value: "glm"},
 		},
@@ -220,50 +220,42 @@ type ModelChoice struct {
 	Value string
 }
 
+// modelDefs maps LLM value to its model choices and metadata.
+var modelDefs = map[string]struct {
+	modelName string
+	nameKey   string
+	values    []string
+}{
+	"claude": {modelName: "Claude", nameKey: "SelectClaudeModel", values: []string{"claude-opus-4-7", "claude-sonnet-4-6"}},
+	"codex":  {modelName: "OpenAI", nameKey: "SelectCodexModel", values: []string{"gpt-5.5", "gpt-5.3-codex"}},
+	"gemini": {modelName: "Gemini", nameKey: "SelectGeminiModel", values: []string{"gemini-pro-latest"}},
+	"glm":    {modelName: "GLM (Z.AI)", nameKey: "SelectZAIModel", values: []string{"glm-5.1", "glm-4.7"}},
+}
+
 // NewModelChoiceModel creates a new model selection model for the given LLM.
 func NewModelChoiceModel(llm string, messages *Messages) ModelChoiceModel {
-	var choices []ModelChoice
-	var modelName string
-	var nameKey string
+	def, ok := modelDefs[llm]
+	if !ok {
+		return ModelChoiceModel{Messages: messages}
+	}
 
-	switch llm {
-	case "claude":
-		modelName = "Claude"
-		nameKey = "SelectClaudeModel"
-		choices = []ModelChoice{
-			{Name: "Opus 4.7 (최고 성능 / Highest performance)", Value: "claude-opus-4-7"},
-			{Name: "Sonnet 4.6 (균형 / Balanced)", Value: "claude-sonnet-4-6"},
-			{Name: "Haiku 4.5 (빠른 속도 / Fastest)", Value: "claude-haiku-4-5"},
+	choices := make([]ModelChoice, 0, len(def.values))
+	for _, v := range def.values {
+		name := v
+		if messages != nil {
+			if n, found := messages.ModelNames[v]; found {
+				name = n
+			}
 		}
-	case "codex":
-		modelName = "Codex"
-		nameKey = "SelectCodexModel"
-		choices = []ModelChoice{
-			{Name: "GPT-4", Value: "gpt-4"},
-			{Name: "GPT-3.5 Turbo", Value: "gpt-3.5-turbo"},
-		}
-	case "gemini":
-		modelName = "Gemini"
-		nameKey = "SelectGeminiModel"
-		choices = []ModelChoice{
-			{Name: "Gemini Pro", Value: "gemini-pro"},
-			{Name: "Gemini Flash", Value: "gemini-flash"},
-		}
-	case "glm":
-		modelName = "GLM (Z.AI)"
-		nameKey = "SelectZAIModel"
-		choices = []ModelChoice{
-			{Name: "GLM-4", Value: "glm-4"},
-			{Name: "GLM-3-Turbo", Value: "glm-3-turbo"},
-		}
+		choices = append(choices, ModelChoice{Name: name, Value: v})
 	}
 
 	return ModelChoiceModel{
-		LLMName:   modelName,
-		LLMNameKey: nameKey,
-		Choices:   choices,
-		Cursor:    0,
-		Messages:  messages,
+		LLMName:    def.modelName,
+		LLMNameKey: def.nameKey,
+		Choices:    choices,
+		Cursor:     0,
+		Messages:   messages,
 	}
 }
 
@@ -344,13 +336,6 @@ func (m ModelChoiceModel) GetModelSelectionPrompt(key string) (string, bool) {
 	return "", false
 }
 
-// MessagesLanguageCode returns the language code from Messages.
-func (m ModelChoiceModel) MessagesLanguageCode() string {
-	// Extract from Messages or default to English
-	// This is a simplified version - in production, Messages would have a LanguageCode() method
-	return "en" // Default fallback
-}
-
 // YesNoModel is the bubbletea Model for Yes/No confirmation.
 type YesNoModel struct {
 	Message    string
@@ -418,7 +403,6 @@ func (m YesNoModel) GetYesNoLabels() (string, string) {
 
 // Styling
 var (
-	dimmedStyle    = lipgloss.NewStyle().Faint(true)
-	selectedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("86")).Bold(true)
-	highlightStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("228"))
+	dimmedStyle   = lipgloss.NewStyle().Faint(true)
+	selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("86")).Bold(true)
 )

@@ -3,7 +3,7 @@
 ## Metadata
 - **ID**: SPEC-DESIGN-001
 - **Title**: interface-design 플러그인 개념의 MoAI ADK 통합
-- **Status**: draft
+- **Status**: completed
 - **Priority**: P1
 - **Created**: 2026-03-23
 - **Issue**: #550
