@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/github/runner"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -138,6 +140,8 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 		}},
 		{"Skills Allowlist", func(_ bool) DiagnosticCheck { return runSkillsCheck(cwd) }},
 		{"Harness 5-Layer", func(_ bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
+		// @MX:NOTE GitHub Actions Runner 버전 확인 (SPEC-CI-MULTI-LLM-001 T-27)
+		{"GitHub Actions Runner", func(_ bool) DiagnosticCheck { return checkGitHubActionsRunner(verbose) }},
 	}
 
 	var results []DiagnosticCheck
@@ -496,4 +500,46 @@ func exportDiagnostics(path string, checks []DiagnosticCheck) error {
 		return fmt.Errorf("marshal diagnostics: %w", err)
 	}
 	return os.WriteFile(path, data, defs.FilePerm)
+}
+
+// checkGitHubActionsRunner는 GitHub Actions Runner 버전을 확인합니다 (SPEC-CI-MULTI-LLM-001 T-27).
+// checkGitHubActionsRunner checks GitHub Actions runner version and warns if outdated.
+func checkGitHubActionsRunner(verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "GitHub Actions Runner"}
+
+	// Runner 패키지가 존재하지 않으면 SKIP
+	ghRunnerDir := runner.DefaultRunnerDir()
+	if _, err := os.Stat(ghRunnerDir); os.IsNotExist(err) {
+		check.Status = CheckOK
+		check.Message = "Runner not installed"
+		return check
+	}
+
+	// 버전 확인
+	ghClient := runner.NewFileSystemGitHubClient()
+	checker := runner.NewVersionChecker(ghRunnerDir, ghClient)
+	result, err := checker.CheckVersion(context.Background())
+	if err != nil {
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("Version check failed: %v", err)
+		return check
+	}
+
+	// 상태별 메시지
+	switch result.Status {
+	case runner.VersionCheckOK:
+		check.Status = CheckOK
+		check.Message = fmt.Sprintf("Runner v%s (latest: v%s, %d days old)", result.InstalledVersion, result.LatestVersion, result.DaysOld)
+	case runner.VersionCheckWarn:
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("Runner v%s is %d days old (25+ days warning) — latest: v%s", result.InstalledVersion, result.DaysOld, result.LatestVersion)
+	case runner.VersionCheckFail:
+		check.Status = CheckFail
+		check.Message = fmt.Sprintf("Runner v%s is %d days old (30+ days expired) — URGENT upgrade required", result.InstalledVersion, result.DaysOld)
+	case runner.VersionCheckSkip:
+		check.Status = CheckOK
+		check.Message = "Runner not installed"
+	}
+
+	return check
 }

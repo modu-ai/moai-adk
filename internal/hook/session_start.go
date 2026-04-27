@@ -175,6 +175,15 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		_ = tracker
 	}
 
+	// Check GitHub Actions runner version (REQ-CI-005, T-27, T-28).
+	// Non-blocking: warnings are logged and added to session data.
+	if input.ProjectDir != "" {
+		if msg := checkRunnerVersion(input.ProjectDir); msg != "" {
+			data["runner_version_warning"] = msg
+			slog.Warn("session start: runner version check", "message", msg)
+		}
+	}
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		slog.Error("failed to marshal session data",

@@ -306,6 +306,11 @@ func TestGithubCmd_HasSubcommands(t *testing.T) {
 	expected := map[string]bool{
 		"parse-issue": false,
 		"link-spec":   false,
+		"init":        false, // T-01: 새로운 서브커맨드
+		"runner":      false, // T-01: 새로운 서브커맨드
+		"auth":        false, // T-01: 새로운 서브커맨드
+		"workflow":    false, // T-01: 새로운 서브커맨드
+		"status":      false, // T-01: 새로운 서브커맨드
 	}
 
 	for _, cmd := range githubCmd.Commands() {
@@ -353,4 +358,82 @@ func TestGithubCmd_LinkSpecRequiresTwoArgs(t *testing.T) {
 		}
 	}
 	t.Error("link-spec subcommand not found")
+}
+
+// --- T-01: 테스트 for 새로운 기능 ---
+
+func TestGithubCmd_HasDryRunFlag(t *testing.T) {
+	// githubCmd는 --dry-run 지속적 플래그를 가져야 함
+	flag := githubCmd.PersistentFlags().Lookup("dry-run")
+	if flag == nil {
+		t.Error("github command should have --dry-run persistent flag")
+		return
+	}
+	if flag.Value.Type() != "bool" {
+		t.Errorf("--dry-run flag should be bool, got %s", flag.Value.Type())
+	}
+}
+
+func TestGithubCmd_HasRunnerGroup(t *testing.T) {
+	// "runner" 그룹이 존재해야 함
+	found := false
+	for _, group := range githubCmd.Groups() {
+		if group.ID == "runner" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("github command should have 'runner' group")
+	}
+}
+
+func TestGithubCmd_HasAuthGroup(t *testing.T) {
+	// "auth" 그룹이 존재해야 함
+	found := false
+	for _, group := range githubCmd.Groups() {
+		if group.ID == "auth" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("github command should have 'auth' group")
+	}
+}
+
+func TestGithubCmd_NewSubcommandsRegistered(t *testing.T) {
+	// 새로운 서브커맨드들이 등록되어야 함
+	subcommands := []string{"init", "runner", "auth", "workflow", "status"}
+
+	for _, name := range subcommands {
+		found := false
+		for _, cmd := range githubCmd.Commands() {
+			if cmd.Name() == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("github subcommand %q not found", name)
+		}
+	}
+}
+
+func TestGithubCmd_ExistingCommandsPreserved(t *testing.T) {
+	// 기존 명령들이 보존되어야 함
+	existing := []string{"parse-issue", "link-spec"}
+
+	for _, name := range existing {
+		found := false
+		for _, cmd := range githubCmd.Commands() {
+			if cmd.Name() == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("existing github subcommand %q not found (should be preserved)", name)
+		}
+	}
 }

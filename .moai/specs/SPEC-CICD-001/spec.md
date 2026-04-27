@@ -6,7 +6,7 @@
 |------|-----|
 | SPEC ID | SPEC-CICD-001 |
 | 제목 | CI/CD AI 자동화 재설계 |
-| 상태 | Planned |
+| 상태 | Completed |
 | 우선순위 | High |
 | 생성일 | 2026-03-31 |
 | 담당 | expert-devops |
