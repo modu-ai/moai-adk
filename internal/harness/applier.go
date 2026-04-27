@@ -1,12 +1,16 @@
 // Package harness — frontmatter 수정 applier.
 // REQ-HL-003: description enrichment (Tier 2 heuristic).
 // REQ-HL-004: trigger injection (Tier 3 rule, feature-gated).
+// REQ-HL-005: Apply() — snapshot 우선 생성 후 파일 수정 (Phase 4).
 package harness
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 // enableTriggerInjectionWrites는 InjectTrigger의 실제 파일 쓰기를 활성화하는 feature flag이다.
@@ -106,6 +110,190 @@ func (a *Applier) InjectTrigger(skillPath, keyword string) error {
 	if err := os.WriteFile(skillPath, []byte(newContent), 0o644); err != nil {
 		return fmt.Errorf("applier: 파일 쓰기 실패 %s: %w", skillPath, err)
 	}
+	return nil
+}
+
+// ─────────────────────────────────────────────
+// Phase 4: Apply() — snapshot + safety pipeline 통합
+// ─────────────────────────────────────────────
+
+// SafetyEvaluator는 safety pipeline의 Evaluate 메서드 인터페이스이다.
+// 순환 임포트 방지: harness → safety 직접 임포트 불가.
+// safety.Pipeline이 이 인터페이스를 구현한다.
+type SafetyEvaluator interface {
+	Evaluate(proposal Proposal, sessions []Session) (Decision, error)
+}
+
+// ApplyPendingError는 safety pipeline이 pending_approval을 반환할 때 발생하는 오류이다.
+// orchestrator(moai-harness-learner skill)가 이 오류를 받아 OversightProposal을
+// AskUserQuestion으로 사용자에게 제시한다.
+//
+// @MX:ANCHOR: [AUTO] ApplyPendingError는 subagent→orchestrator 경계 타입이다.
+// @MX:REASON: [AUTO] fan_in >= 3: applier.go, applier_test.go, harness CLI apply, moai-harness-learner skill
+type ApplyPendingError struct {
+	// OversightPayload는 orchestrator가 AskUserQuestion에 사용할 페이로드이다.
+	OversightPayload *OversightProposal
+}
+
+func (e *ApplyPendingError) Error() string {
+	if e.OversightPayload != nil {
+		return fmt.Sprintf("apply: 사용자 승인 대기 중 (proposal_id=%s)", e.OversightPayload.ProposalID)
+	}
+	return "apply: 사용자 승인 대기 중"
+}
+
+// snapshotManifest는 snapshot 디렉토리의 manifest.json 스키마이다.
+type snapshotManifest struct {
+	// ProposalID는 이 스냅샷을 생성한 제안 ID이다.
+	ProposalID string `json:"proposal_id"`
+
+	// CreatedAt은 스냅샷 생성 시각 (UTC).
+	CreatedAt time.Time `json:"created_at"`
+
+	// Files는 백업된 파일 목록이다.
+	Files []snapshotFile `json:"files"`
+}
+
+// snapshotFile은 단일 백업 파일 정보이다.
+type snapshotFile struct {
+	// OriginalPath는 원본 파일 경로이다.
+	OriginalPath string `json:"original_path"`
+
+	// BackupName은 스냅샷 디렉토리 내 백업 파일명이다.
+	BackupName string `json:"backup_name"`
+}
+
+// Apply는 Proposal을 safety pipeline 평가 후 안전하게 적용한다.
+// [HARD] 반드시 evaluator.Evaluate()를 먼저 호출하고, 거부 시 즉시 반환한다.
+// [HARD] 스냅샷은 파일 write보다 먼저 생성되어야 한다. 스냅샷 실패 시 write 중단.
+//
+// evaluator는 SafetyEvaluator 인터페이스(safety.Pipeline이 구현)이다.
+// snapshotBase는 ".moai/harness/learning-history/snapshots/" 형식의 기본 경로이다.
+// sessions는 L2 canary check에 사용되는 최근 세션 목록이다.
+//
+// @MX:ANCHOR: [AUTO] Apply는 Phase 4 학습 적용 파이프라인의 단일 진입점이다.
+// @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI apply, moai-harness-learner skill
+func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBase string, sessions []Session) error {
+	// ── Step 1: Safety Pipeline 평가 ─────────────────────────────────────────
+	// [HARD] Frozen Guard를 포함한 5-Layer를 반드시 통과해야 한다.
+	decision, err := evaluator.Evaluate(proposal, sessions)
+	if err != nil {
+		return fmt.Errorf("applier: safety pipeline 평가 오류: %w", err)
+	}
+
+	switch decision.Kind {
+	case DecisionRejected:
+		return fmt.Errorf("applier: 제안 거부됨 (L%d, rejected)", decision.RejectedBy)
+
+	case DecisionPendingApproval:
+		// [HARD] subagent는 AskUserQuestion을 직접 호출하지 않는다.
+		// orchestrator에게 payload를 반환하여 사용자 승인을 위임한다.
+		return &ApplyPendingError{OversightPayload: decision.OversightProposal}
+
+	case DecisionApproved:
+		// approved — 계속 진행
+	}
+
+	// ── Step 2: Snapshot 생성 (write보다 먼저) ───────────────────────────────
+	// [HARD] snapshot 실패 시 write를 중단한다.
+	if err := a.createSnapshot(proposal, snapshotBase); err != nil {
+		return fmt.Errorf("applier: snapshot 생성 실패 — write 중단: %w", err)
+	}
+
+	// ── Step 3: 실제 파일 수정 ───────────────────────────────────────────────
+	switch proposal.FieldKey {
+	case "description":
+		return a.EnrichDescription(proposal.TargetPath, proposal.NewValue)
+	case "triggers":
+		// 쓰기 활성화된 Applier로 InjectTrigger 수행
+		w := newApplierWithWritesEnabled()
+		return w.InjectTrigger(proposal.TargetPath, proposal.NewValue)
+	default:
+		return fmt.Errorf("applier: 지원하지 않는 fieldKey %q", proposal.FieldKey)
+	}
+}
+
+// createSnapshot은 proposal.TargetPath의 현재 내용을 snapshotBase/<ISO-DATE>/ 에 백업한다.
+// manifest.json을 생성한 후 파일 복사를 수행한다.
+func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) error {
+	// ISO-DATE 형식 디렉토리명 생성 (날짜 + nano 충돌 방지)
+	now := time.Now().UTC()
+	dirName := now.Format("2006-01-02T15-04-05.000000000Z")
+	snapshotDir := filepath.Join(snapshotBase, dirName)
+
+	if err := os.MkdirAll(snapshotDir, 0o755); err != nil {
+		return fmt.Errorf("createSnapshot: 디렉토리 생성 실패 %s: %w", snapshotDir, err)
+	}
+
+	// 원본 파일 읽기
+	originalData, err := os.ReadFile(proposal.TargetPath)
+	if err != nil {
+		return fmt.Errorf("createSnapshot: 원본 파일 읽기 실패 %s: %w", proposal.TargetPath, err)
+	}
+
+	// 백업 파일명: 원본 파일명 그대로 사용
+	backupName := filepath.Base(proposal.TargetPath)
+	backupPath := filepath.Join(snapshotDir, backupName)
+
+	if err := os.WriteFile(backupPath, originalData, 0o644); err != nil {
+		return fmt.Errorf("createSnapshot: 백업 파일 쓰기 실패 %s: %w", backupPath, err)
+	}
+
+	// manifest.json 생성
+	manifest := snapshotManifest{
+		ProposalID: proposal.ID,
+		CreatedAt:  now,
+		Files: []snapshotFile{
+			{
+				OriginalPath: proposal.TargetPath,
+				BackupName:   backupName,
+			},
+		},
+	}
+
+	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("createSnapshot: manifest 직렬화 실패: %w", err)
+	}
+
+	manifestPath := filepath.Join(snapshotDir, "manifest.json")
+	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
+		return fmt.Errorf("createSnapshot: manifest 쓰기 실패: %w", err)
+	}
+
+	return nil
+}
+
+// RestoreSnapshot은 snapshotDir의 manifest.json을 읽어 원본 파일을 복원한다.
+// REQ-HL-009: rollback <date> verb에서 사용된다.
+//
+// @MX:ANCHOR: [AUTO] RestoreSnapshot은 rollback 기능의 핵심 함수이다.
+// @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI rollback, Phase 5 IT
+func RestoreSnapshot(snapshotDir string) error {
+	manifestPath := filepath.Join(snapshotDir, "manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("RestoreSnapshot: manifest.json 읽기 실패 %s: %w", manifestPath, err)
+	}
+
+	var manifest snapshotManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return fmt.Errorf("RestoreSnapshot: manifest 파싱 실패: %w", err)
+	}
+
+	for _, f := range manifest.Files {
+		backupPath := filepath.Join(snapshotDir, f.BackupName)
+		backupData, err := os.ReadFile(backupPath)
+		if err != nil {
+			return fmt.Errorf("RestoreSnapshot: 백업 파일 읽기 실패 %s: %w", backupPath, err)
+		}
+
+		// 원본 경로에 복원
+		if err := os.WriteFile(f.OriginalPath, backupData, 0o644); err != nil {
+			return fmt.Errorf("RestoreSnapshot: 원본 파일 복원 실패 %s: %w", f.OriginalPath, err)
+		}
+	}
+
 	return nil
 }
 

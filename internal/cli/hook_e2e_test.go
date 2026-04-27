@@ -343,6 +343,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"agent":            true,
 		"pre-push":         true,
 		"db-schema-sync":   true, // SPEC-DB-SYNC-001: domain hook, not a Claude Code event
+		"harness-observe":  true, // SPEC-V3R3-HARNESS-LEARNING-001: domain hook, not a Claude Code event
 	}
 
 	for _, cmd := range hookCmd.Commands() {

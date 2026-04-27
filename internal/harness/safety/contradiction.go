@@ -8,6 +8,16 @@ import (
 	harness "github.com/modu-ai/moai-adk/internal/harness"
 )
 
+// SkillTriggers는 단일 skill의 trigger 목록이다.
+// DetectOverlappingTriggers의 입력 타입으로 사용된다.
+type SkillTriggers struct {
+	// SkillPath는 skill 파일 경로이다.
+	SkillPath string
+
+	// Keywords는 이 skill의 trigger keyword 목록이다.
+	Keywords []string
+}
+
 // DetectOverlappingTriggers는 여러 skill의 trigger keyword 중첩을 탐지한다.
 // REQ-HL-008: 중첩된 keyword가 있으면 ContradictionReport에 기록한다.
 //

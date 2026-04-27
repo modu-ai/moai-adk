@@ -1,10 +1,12 @@
 // Package harness — applier.go 테스트.
 // REQ-HL-003: EnrichDescription frontmatter 수정 검증.
 // REQ-HL-004: InjectTrigger dedup + feature flag 검증.
+// REQ-HL-005: Apply() snapshot + safety pipeline 검증 (Phase 4).
 package harness
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -356,6 +358,413 @@ Body here.
 	newContent, _ := os.ReadFile(skillPath)
 	if !bytes.Equal(originalContent, newContent) {
 		t.Error("triggers 없는 파일이 변경됨")
+	}
+}
+
+// ─────────────────────────────────────────────
+// Apply() 테스트용 SafetyEvaluator stub
+// ─────────────────────────────────────────────
+
+// stubEvaluator는 테스트용 SafetyEvaluator 구현체이다.
+type stubEvaluator struct {
+	decision Decision
+	err      error
+}
+
+func (s *stubEvaluator) Evaluate(_ Proposal, _ []Session) (Decision, error) {
+	return s.decision, s.err
+}
+
+// approvedEvaluator는 항상 DecisionApproved를 반환하는 stub이다.
+func approvedEvaluator() SafetyEvaluator {
+	return &stubEvaluator{decision: Decision{Kind: DecisionApproved}}
+}
+
+// rejectedEvaluator는 Layer 1 거부를 반환하는 stub이다.
+func rejectedEvaluator() SafetyEvaluator {
+	return &stubEvaluator{decision: Decision{
+		Kind:       DecisionRejected,
+		RejectedBy: 1,
+		Reason:     "L1 FROZEN Guard: 테스트 거부",
+	}}
+}
+
+// pendingEvaluator는 pending_approval을 반환하는 stub이다.
+func pendingEvaluator(proposalID string) SafetyEvaluator {
+	return &stubEvaluator{decision: Decision{
+		Kind: DecisionPendingApproval,
+		OversightProposal: &OversightProposal{
+			ProposalID: proposalID,
+			Question:   "이 변경을 적용하시겠습니까?",
+			Options: []OversightOption{
+				{Label: "승인 (권장)", Value: "approve", Recommended: true, Description: "변경을 적용합니다"},
+				{Label: "거부", Value: "reject", Description: "변경을 취소합니다"},
+			},
+		},
+	}}
+}
+
+// ─────────────────────────────────────────────
+// Apply() 테스트 (T-P4-01)
+// REQ-HL-005, REQ-HL-009
+// ─────────────────────────────────────────────
+
+// TestApply_SnapshotPrecedesWrite는 snapshot이 파일 write보다 먼저 생성되는지 검증한다.
+// [HARD] Snapshot creation MUST precede the file write.
+func TestApply_SnapshotPrecedesWrite(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillFixture), 0o644); err != nil {
+		t.Fatalf("SKILL.md 생성 실패: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "test-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "snapshot test note",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	if err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{}); err != nil {
+		t.Fatalf("Apply 오류: %v", err)
+	}
+
+	// 스냅샷 디렉토리가 생성되었는지 확인
+	entries, err := os.ReadDir(snapshotBase)
+	if err != nil {
+		t.Fatalf("스냅샷 디렉토리 읽기 실패: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Error("스냅샷 디렉토리가 비어 있음 — snapshot 생성 안 됨")
+	}
+
+	// manifest.json이 존재하는지 확인
+	found := false
+	for _, e := range entries {
+		manifestPath := filepath.Join(snapshotBase, e.Name(), "manifest.json")
+		if _, statErr := os.Stat(manifestPath); statErr == nil {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("manifest.json이 snapshot 디렉토리에 없음")
+	}
+}
+
+// TestApply_RejectedByFrozenGuard는 거부 결정 시 Apply가 오류를 반환하는지 검증한다.
+// [HARD] Apply() must call evaluator.Evaluate() first; reject on Decision = Reject.
+func TestApply_RejectedByFrozenGuard(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	snapshotBase := filepath.Join(dir, "snapshots")
+
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "frozen-001",
+		TargetPath:       ".claude/skills/moai-test-skill/SKILL.md",
+		FieldKey:         "description",
+		NewValue:         "should not apply",
+		PatternKey:       "test:test:ctx",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	err := a.Apply(proposal, rejectedEvaluator(), snapshotBase, []Session{})
+	if err == nil {
+		t.Error("거부 결정에서 Apply 성공 — 오류가 반환되어야 함")
+	}
+	if !strings.Contains(err.Error(), "rejected") && !strings.Contains(err.Error(), "거부") {
+		t.Errorf("오류 메시지에 거부 원인 없음: %v", err)
+	}
+
+	// 스냅샷이 생성되지 않아야 함 (거부 시 write 발생 전 중단)
+	if _, statErr := os.Stat(snapshotBase); statErr == nil {
+		entries, _ := os.ReadDir(snapshotBase)
+		if len(entries) > 0 {
+			t.Error("거부 결정임에도 스냅샷이 생성됨")
+		}
+	}
+}
+
+// TestApply_SnapshotFailAborts는 snapshot 디렉토리 생성 실패 시 write가 중단되는지 검증한다.
+// [HARD] If snapshot fails, abort write.
+func TestApply_SnapshotFailAborts(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillFixture), 0o644); err != nil {
+		t.Fatalf("SKILL.md 생성 실패: %v", err)
+	}
+
+	// snapshotBase를 파일로 만들어 디렉토리 생성 실패 유발
+	snapshotBase := filepath.Join(dir, "snapshots-file")
+	if err := os.WriteFile(snapshotBase, []byte("not a dir"), 0o644); err != nil {
+		t.Fatalf("스냅샷 기반 파일 생성 실패: %v", err)
+	}
+
+	originalContent, _ := os.ReadFile(skillPath)
+
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "snap-fail-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "should not write",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{})
+	if err == nil {
+		t.Error("snapshot 실패 시 오류가 반환되어야 함")
+	}
+
+	// 파일이 변경되지 않아야 함
+	newContent, _ := os.ReadFile(skillPath)
+	if !bytes.Equal(originalContent, newContent) {
+		t.Error("snapshot 실패 후 파일이 변경됨 — abort가 동작하지 않음")
+	}
+}
+
+// TestApply_PendingApprovalReturnsOversightPayload는 pending_approval 상태에서
+// ApplyPendingError와 payload가 반환되는지 검증한다.
+func TestApply_PendingApprovalReturnsOversightPayload(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillFixture), 0o644); err != nil {
+		t.Fatalf("SKILL.md 생성 실패: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "pending-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "pending note",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	// pending_approval은 ApplyPendingError 타입이어야 함
+	err := a.Apply(proposal, pendingEvaluator("pending-001"), snapshotBase, []Session{})
+	if err == nil {
+		t.Error("pending_approval 상태에서 오류 없이 성공 — ApplyPendingError가 반환되어야 함")
+	}
+
+	var pendingErr *ApplyPendingError
+	if !isPendingError(err, &pendingErr) {
+		t.Errorf("오류 타입이 *ApplyPendingError가 아님: %T", err)
+	} else {
+		if pendingErr.OversightPayload == nil {
+			t.Error("OversightPayload가 nil")
+		}
+		if pendingErr.OversightPayload.ProposalID != "pending-001" {
+			t.Errorf("ProposalID = %q, want %q", pendingErr.OversightPayload.ProposalID, "pending-001")
+		}
+	}
+}
+
+// TestApply_ManifestContainsExpectedFields는 manifest.json이 올바른 필드를 포함하는지 검증한다.
+func TestApply_ManifestContainsExpectedFields(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillFixture), 0o644); err != nil {
+		t.Fatalf("SKILL.md 생성 실패: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "manifest-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "manifest test",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	if err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{}); err != nil {
+		t.Fatalf("Apply 오류: %v", err)
+	}
+
+	// manifest.json 읽기
+	entries, _ := os.ReadDir(snapshotBase)
+	if len(entries) == 0 {
+		t.Fatal("스냅샷 디렉토리 없음")
+	}
+
+	manifestPath := filepath.Join(snapshotBase, entries[0].Name(), "manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("manifest.json 읽기 실패: %v", err)
+	}
+
+	var manifest snapshotManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatalf("manifest.json 파싱 실패: %v", err)
+	}
+
+	if manifest.ProposalID != "manifest-001" {
+		t.Errorf("ProposalID = %q, want %q", manifest.ProposalID, "manifest-001")
+	}
+	if len(manifest.Files) == 0 {
+		t.Error("manifest.files가 비어 있음")
+	}
+	if manifest.CreatedAt.IsZero() {
+		t.Error("manifest.created_at가 zero 값")
+	}
+}
+
+// isPendingError는 err가 *ApplyPendingError인지 확인하는 헬퍼이다.
+func isPendingError(err error, target **ApplyPendingError) bool {
+	if err == nil {
+		return false
+	}
+	if pe, ok := err.(*ApplyPendingError); ok {
+		*target = pe
+		return true
+	}
+	return false
+}
+
+// TestApplyPendingError_Error는 ApplyPendingError.Error() 메서드를 검증한다.
+func TestApplyPendingError_Error(t *testing.T) {
+	t.Parallel()
+
+	t.Run("with_payload", func(t *testing.T) {
+		t.Parallel()
+		err := &ApplyPendingError{
+			OversightPayload: &OversightProposal{ProposalID: "test-123"},
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, "test-123") {
+			t.Errorf("Error() = %q, want proposal_id included", msg)
+		}
+	})
+
+	t.Run("nil_payload", func(t *testing.T) {
+		t.Parallel()
+		err := &ApplyPendingError{OversightPayload: nil}
+		msg := err.Error()
+		if msg == "" {
+			t.Error("Error() 반환값이 비어 있음")
+		}
+	})
+}
+
+// TestRestoreSnapshot_RestoresByteIdentical은 RestoreSnapshot이 byte-identical로 복원하는지 검증한다.
+func TestRestoreSnapshot_RestoresByteIdentical(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	originalContent := []byte(skillFixture)
+
+	// 원본 파일 생성
+	targetPath := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(targetPath, originalContent, 0o644); err != nil {
+		t.Fatalf("원본 파일 생성 실패: %v", err)
+	}
+
+	// Apply로 스냅샷 생성 후 파일 변경
+	snapshotBase := filepath.Join(dir, "snapshots")
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "restore-test-001",
+		TargetPath:       targetPath,
+		FieldKey:         "description",
+		NewValue:         "modified value",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	if err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{}); err != nil {
+		t.Fatalf("Apply 오류: %v", err)
+	}
+
+	// Apply 후 파일이 변경되었는지 확인
+	after, _ := os.ReadFile(targetPath)
+	if bytes.Equal(originalContent, after) {
+		t.Skip("EnrichDescription이 변경을 만들지 않은 경우 (fixture에 이미 해당 값 포함)")
+	}
+
+	// 스냅샷 디렉토리 찾기
+	entries, _ := os.ReadDir(snapshotBase)
+	if len(entries) == 0 {
+		t.Fatal("스냅샷 없음")
+	}
+	snapshotDir := filepath.Join(snapshotBase, entries[0].Name())
+
+	// RestoreSnapshot으로 복원
+	if err := RestoreSnapshot(snapshotDir); err != nil {
+		t.Fatalf("RestoreSnapshot 오류: %v", err)
+	}
+
+	// byte-identical 복원 확인
+	restored, _ := os.ReadFile(targetPath)
+	if !bytes.Equal(originalContent, restored) {
+		t.Errorf("복원 후 byte-identical 불일치:\ngot:  %q\nwant: %q", string(restored), string(originalContent))
+	}
+}
+
+// TestRestoreSnapshot_InvalidManifest는 manifest.json이 없으면 오류를 반환하는지 검증한다.
+func TestRestoreSnapshot_InvalidManifest(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// manifest.json 없는 디렉토리
+	err := RestoreSnapshot(dir)
+	if err == nil {
+		t.Error("manifest.json 없는 디렉토리에서 오류가 반환되어야 함")
+	}
+}
+
+// TestApply_UnsupportedFieldKey는 알 수 없는 fieldKey에서 오류가 반환되는지 검증한다.
+func TestApply_UnsupportedFieldKey(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillFixture), 0o644); err != nil {
+		t.Fatalf("SKILL.md 생성 실패: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	a := NewApplier()
+	proposal := Proposal{
+		ID:               "unsupported-001",
+		TargetPath:       skillPath,
+		FieldKey:         "nonexistent_field",
+		NewValue:         "value",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{})
+	if err == nil {
+		t.Error("지원하지 않는 fieldKey에서 오류가 반환되어야 함")
+	}
+	if !strings.Contains(err.Error(), "nonexistent_field") {
+		t.Errorf("오류 메시지에 fieldKey 없음: %v", err)
 	}
 }
 

@@ -129,3 +129,29 @@ harness:
     output:
       report_path: ".moai/reports/harness-review.md"
       require_approval: true          # Human must approve harness changes
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Harness Learning Subsystem Configuration
+# REQ-HL-010: 학습 동작 파라미터. learning: 키 하위에 정의된다.
+# ─────────────────────────────────────────────────────────────────────────────
+learning:
+  # observer + learner 활성화 여부 (기본 true).
+  # false로 설정하면 RecordEvent, AggregatePatterns 모두 no-op.
+  enabled: true
+
+  # Tier 4 도달 시 자동 적용 여부 (기본 false).
+  # false이면 AskUserQuestion으로 사용자 승인 필요.
+  # REQ-HL-005: auto_apply 기본값은 반드시 false이어야 한다.
+  auto_apply: false
+
+  # tier 승격 임계값 [Observation, Heuristic, Rule, AutoUpdate].
+  # 기본값 [1, 3, 5, 10] — 변경 시 ClassifyTier 동작이 달라진다.
+  tier_thresholds: [1, 3, 5, 10]
+
+  # 자동 업데이트 횟수 제한.
+  rate_limit:
+    max_per_week: 3       # 7일 슬라이딩 윈도우 내 최대 허용 횟수
+    cooldown_hours: 24    # 업데이트 간 최소 대기 시간 (시간)
+
+  # usage-log.jsonl 보존 기간 (일).
+  log_retention_days: 90

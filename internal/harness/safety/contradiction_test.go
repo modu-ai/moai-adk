@@ -8,12 +8,6 @@ import (
 	harness "github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// SkillTriggers는 단일 skill의 trigger 목록이다 (테스트 헬퍼 타입).
-type SkillTriggers struct {
-	SkillPath string
-	Keywords  []string
-}
-
 // TestDetectContradictions_OverlappingTriggers는 여러 skill의 trigger가 겹칠 때 탐지하는지 검증한다.
 func TestDetectContradictions_OverlappingTriggers(t *testing.T) {
 	t.Parallel()
