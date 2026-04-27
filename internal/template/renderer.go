@@ -41,6 +41,12 @@ var claudeCodePassthroughTokens = []string{
 	"$CLAUDE_SKILL_DIR",
 	"$ARGUMENTS",
 	"$HOME",
+	// GitHub Actions runtime environment variables
+	"$GITHUB_OUTPUT",
+	"$GITHUB_ENV",
+	"$GITHUB_STEP_SUMMARY",
+	// Shell local variables (legitimate in GitHub Actions run scripts)
+	"$LANG_COUNT",
 }
 
 // Renderer renders Go text/template files with strict mode enabled.

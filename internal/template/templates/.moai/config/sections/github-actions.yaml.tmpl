@@ -1,0 +1,36 @@
+# GitHub Actions Integration Configuration
+github_actions:
+  enabled: true
+
+  # Runner configuration
+  runner:
+    mode: self-hosted  # self-hosted | github-hosted
+    os: linux          # linux | macos | windows
+
+  # LLM review settings
+  review:
+    enabled: true
+    llms:
+      claude:
+        enabled: true
+        secret: CLAUDE_CODE_OAUTH_TOKEN
+      codex:
+        enabled: true
+        secret: CODEX_AUTH_JSON
+        private_only: true  # HARD requirement (REQ-SEC-001)
+      gemini:
+        enabled: true
+        secret: GEMINI_API_KEY
+      glm:
+        enabled: true
+        secret: GLM_API_KEY
+
+  # Auto-panel on PR open
+  auto_panel:
+    enabled: true
+    trigger: pr_open  # pr_open | manual
+
+  # SHA-pin settings (REQ-CI-018, REQ-CI-018.1)
+  sha_pin:
+    actions_checkout: "actions/checkout@a81bbbf8298c0fa03ea29cdc473d45769f9536"
+    exclude_broken_range: true  # Exclude commits with SHA collisions
