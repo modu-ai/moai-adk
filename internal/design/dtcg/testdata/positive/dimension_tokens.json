@@ -1,0 +1,26 @@
+{
+  "spacing-xs": {
+    "$type": "dimension",
+    "$value": { "value": 4, "unit": "px" }
+  },
+  "spacing-sm": {
+    "$type": "dimension",
+    "$value": { "value": 8, "unit": "px" }
+  },
+  "spacing-md": {
+    "$type": "dimension",
+    "$value": { "value": 16, "unit": "px" }
+  },
+  "font-size-body": {
+    "$type": "dimension",
+    "$value": "1rem"
+  },
+  "font-size-heading": {
+    "$type": "dimension",
+    "$value": "2rem"
+  },
+  "container-max-width": {
+    "$type": "dimension",
+    "$value": { "value": 100, "unit": "%" }
+  }
+}

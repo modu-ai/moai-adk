@@ -1,0 +1,15 @@
+{
+  "dimension-bad-unit": {
+    "$type": "dimension",
+    "$value": { "value": 16, "unit": "vw" },
+    "$description": "지원안되는 단위 vw (오류 예상)"
+  },
+  "dimension-number-type": {
+    "$type": "dimension",
+    "$value": 16
+  },
+  "dimension-missing-unit": {
+    "$type": "dimension",
+    "$value": { "value": 16 }
+  }
+}

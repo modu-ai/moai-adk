@@ -1,0 +1,21 @@
+{
+  "typography-missing-family": {
+    "$type": "typography",
+    "$value": {
+      "size": { "value": 16, "unit": "px" },
+      "weight": 400
+    },
+    "$description": "family 필드 누락 (오류 예상)"
+  },
+  "typography-missing-size": {
+    "$type": "typography",
+    "$value": {
+      "family": "Roboto",
+      "weight": 400
+    }
+  },
+  "typography-wrong-type": {
+    "$type": "typography",
+    "$value": "Roboto 16px"
+  }
+}
