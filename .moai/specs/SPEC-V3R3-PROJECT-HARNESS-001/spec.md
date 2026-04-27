@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-PROJECT-HARNESS-001
 title: Project Harness Activation — 16Q Interview + 5-Layer
-version: "0.1.0"
-status: draft
+version: "0.3.0"
+status: completed
 created_at: 2026-04-26
-updated_at: 2026-04-26
+updated_at: 2026-04-27
 author: manager-spec
 priority: P0
 labels: [project, harness, interview, integration, v3r3, phase-c]
@@ -19,7 +19,7 @@ related_specs:
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
-target_release: v2.17.0
+target_release: v2.19.0
 ---
 
 # SPEC-V3R3-PROJECT-HARNESS-001: Project Harness Activation
@@ -29,6 +29,8 @@ target_release: v2.17.0
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. Phase C P0 — `/moai project` Phase 5+ 소크라테스 인터뷰 (16 질문 / 4 라운드) + 5-Layer 통합 장치 (사용자 통찰 반영). |
+| 0.2.0   | 2026-04-27 | manager-tdd  | Run phase 진입. status: draft → in-progress. target_release v2.17.0 → **v2.19.0** (v3R3 cluster bundling 정책, project_v3r3_cluster_release_bundling lesson 적용). Wave-split 5-Wave 위임 시작. |
+| 0.3.0   | 2026-04-27 | manager-tdd  | Wave 1~5 완료. 17 Go 파일 (interview/layer1-5/chaining/frozen/cleanup/prefix/doctor/session_replay/update_safety/e2e_ios) + 4 workflow template/local sync. Plan-auditor D1 fix: REQ-PH-011 [Unwanted] IF/THEN. status: in-progress → completed. |
 
 ---
 
@@ -115,7 +117,7 @@ target_release: v2.17.0
 ### 4.4 Unwanted Behavior Requirements
 
 - **REQ-PH-010** [Unwanted] IF 사용자가 인터뷰 도중 abort하면, THEN 시스템은 부분 산출물을 생성해서는 안 되며, `.moai/harness/`에 어떠한 파일도 작성하지 않아야 한다.
-- **REQ-PH-011** [Unwanted] 시스템은 `.claude/agents/moai/` 또는 `.claude/skills/moai-*/` 디렉터리 (moai-managed area)에 어떠한 파일도 작성·수정해서는 안 된다 (FROZEN).
+- **REQ-PH-011** [Unwanted] IF 시스템이 `.claude/agents/moai/`, `.claude/skills/moai-*/`, `.claude/skills/moai/`, 또는 `.claude/rules/moai/` 디렉터리(moai-managed FROZEN area)에 파일을 작성·수정·삭제하려 시도하면, THEN 시스템은 `FrozenViolationError`를 반환하고 해당 시도를 거부해야 한다 (path-prefix matcher first check). 어떠한 우회 경로도 허용되지 않는다.
 
 ### 4.5 Optional Requirements
 

@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### V3R3 Phase C — Project Harness Activation (SPEC-V3R3-PROJECT-HARNESS-001)
+
+- **`/moai project` Phase 5+ 신설**: 16개 질문/4 라운드 소크라테스 인터뷰 (`AskUserQuestion`, max 4 질문 per call) → `moai-meta-harness` 호출 → 사용자 영역 dynamic harness 자동 생성.
+- **5-Layer 통합 장치 활성화**:
+  - L1: `my-harness-*` SKILL.md frontmatter triggers (paths/keywords/agents/phases) 검증 — `harness.VerifyTriggers`
+  - L2: `.moai/config/sections/workflow.yaml` `harness:` 섹션 idempotent merge — `harness.UpdateWorkflowYAML` (yaml.Node 기반, team 섹션 보존)
+  - L3: `CLAUDE.md` `<!-- moai:harness-start --> ... <!-- moai:harness-end -->` 마커 블록 inject — `harness.InjectMarker` (heading-inclusive markerPattern으로 idempotent re-run 보장)
+  - L4: `internal/template/templates/.claude/skills/moai/workflows/{plan,run,sync,design}.md` 정적 import line (`@.moai/harness/<phase>-extension.md`) 4개 파일 추가
+  - L5: `.moai/harness/` 7개 베이스라인 파일 (+ Q13="Advanced" 시 design-extension.md) 자동 scaffolding — `harness.ScaffoldHarnessDir`
+- **`internal/harness/` 패키지 신설** (10 .go 파일 + 관련 test):
+  - `interview.go` Buffer/Answer + Abort/Commit (REQ-PH-010 zero-disk-write 보장)
+  - `interview_writer.go` interview-results.md 작성기 (YAML frontmatter + Q-A timestamps)
+  - `frozen_guard.go` `EnsureAllowed` orchestration-level guard (FROZEN zone 거부)
+  - `cleanup.go` 부분 산출물 cleanup tracker
+  - `layer1.go ~ layer5.go` 5-Layer 활성화 함수 모듈
+  - `chaining_rules.go` `ChainingRules` Write/Read (sub-agent에서 사용)
+  - `prefix_conflict.go` `my-harness-*` ↔ `moai-*` semantic 충돌 탐지 (Levenshtein ≤ 2 + 정확 suffix)
+  - `e2e_ios_test.go` 종단간 iOS 시나리오 + chain ORDER (before<primary<after) 검증
+  - `session_replay_test.go` 새 세션 자동 활성화 (CLAUDE.md @import follow)
+- **`moai doctor` 5-Layer 진단 추가** (`internal/cli/doctor_harness.go`): L1~L5 PASS/FAIL + prefix 충돌 WARN 출력.
+- **`internal/cli/update_safety_test.go`**: `moai update` 전후 사용자 영역 (`.moai/harness/`, `.claude/agents/my-harness/`, `.claude/skills/my-harness-*/`) sha256 snapshot diff 검증 (REQ-PH-009).
+- **`/moai project` Phase 5/6 명세** (`.claude/skills/moai/workflows/project.md`): 16Q 인터뷰 프로토콜 + meta-harness 호출 wrapper.
+
+### Test Coverage
+
+- internal/harness: **94.7%** (목표 85%)
+- internal/cli: 74.3% (기존 baseline 유지)
+
+### Notes
+
+- target_release: **v2.19.0** (v3R3 cluster bundling). 단독 v2.17.x 릴리스 안 함 (project_v3r3_cluster_release_bundling lesson 적용).
+- Plan-auditor verdict PASS (0.78), 4 major + 6 minor defects 추적 → D1/D4/D5/D8/D9 본 PR에서 처리 완료.
+- **Anthropic 1M context entitlement regression** (#44117 외 8건 OPEN, 2026-04 초중반 발생) 영향으로 일부 Wave는 `Agent()` spawn 차단 → orchestrator 직접 작성으로 우회. `/extra-usage` 1회 실행 후에도 동일 차단 발생 — Anthropic 패치 대기.
+
 ## [2.17.0] - 2026-04-27
 
 V3R3 Phase C 마일스톤: 메타-하니스 스킬 신설 + 16개 정적 스킬 제거 (BC-V3R3-007) + namespace 분리 (moai-* / my-harness-*) + revfactory/harness 7-Phase workflow 흡수.

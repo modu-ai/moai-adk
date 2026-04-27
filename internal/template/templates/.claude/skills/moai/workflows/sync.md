@@ -1162,3 +1162,11 @@ All of the following must be verified:
 Version: 3.7.0
 Updated: 2026-03-30
 Changes: Added test scenarios.
+
+---
+
+## Custom Harness Extension (Optional)
+
+@.moai/harness/sync-extension.md
+
+*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*
