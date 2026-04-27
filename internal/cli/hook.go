@@ -106,6 +106,15 @@ func init() {
 	}
 	dbSchemaSyncCmd.Flags().String("file", "", "File path from PostToolUse hook stdin")
 	hookCmd.AddCommand(dbSchemaSyncCmd)
+
+	// Add "spec-status" subcommand (SPEC-STATUS-AUTO-001)
+	specStatusCmd := &cobra.Command{
+		Use:   "spec-status",
+		Short: "Auto-update SPEC status on git commit",
+		Long:  "Extract SPEC-IDs from git commit messages and update their status to 'implemented'. Called from handle-spec-status.sh.",
+		RunE:  runSpecStatus,
+	}
+	hookCmd.AddCommand(specStatusCmd)
 }
 
 // @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
@@ -292,6 +301,39 @@ func runDBSchemaSync(cmd *cobra.Command, _ []string) error {
 
 	// Always exit 0 (non-blocking, REQ-011)
 	_ = result.ExitCode
+	return nil
+}
+
+// runSpecStatus handles the spec-status hook subcommand.
+// It reads hook input from stdin and dispatches to the spec status handler.
+func runSpecStatus(cmd *cobra.Command, _ []string) error {
+	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
+		return fmt.Errorf("hook system not initialized")
+	}
+
+	// Read hook input from stdin
+	input, err := deps.HookProtocol.ReadInput(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("read hook input: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	defer cancel()
+
+	// Create spec status handler and execute
+	handler := hook.NewSpecStatusHandler()
+	output, err := handler.Handle(ctx, input)
+	if err != nil {
+		// Log but don't fail - hook is non-blocking
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "spec-status: error:", err)
+		return nil
+	}
+
+	if writeErr := deps.HookProtocol.WriteOutput(cmd.OutOrStdout(), output); writeErr != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "spec-status: write output:", writeErr)
+	}
+
+	// Always exit 0 (non-blocking)
 	return nil
 }
 
