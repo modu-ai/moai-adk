@@ -133,6 +133,78 @@ Pencil designs export to React + Tailwind via `moai-workflow-design-import`. The
 
 For Figma MCP integration (fetching Figma design context), see moai-design-tools full skill.
 
+---
+
+## DTCG 2025.10 Token Specification (SPEC-V3R3-DESIGN-PIPELINE-001)
+
+### Specification Reference
+
+The W3C Design Tokens Community Group (DTCG) 2025.10 snapshot defines the canonical token
+format for MoAI design pipelines. A Go validator (`internal/design/dtcg/`) enforces schema
+compliance before `expert-frontend` consumes any `tokens.json` produced by Path A, B1, or B2.
+
+> **Forward reference**: `internal/design/dtcg/SPEC.md` will be created in Phase 3 of
+> SPEC-V3R3-DESIGN-PIPELINE-001. Until then, the spec snapshot date is 2025-10 and the
+> supported categories are as listed below.
+
+### Supported Token Categories (2025.10)
+
+All 14 categories below MUST be validated by `internal/design/dtcg.Validate` before code
+generation:
+
+| Category | Description | Example value format |
+|----------|-------------|----------------------|
+| `color` | Color values | `"#RRGGBB"`, CSS color string |
+| `dimension` | Length values with units | `"16px"`, `"1rem"` |
+| `font` | Font shorthand | CSS font shorthand string |
+| `fontFamily` | Font family stack | `"Inter, sans-serif"` |
+| `fontWeight` | Font weight | `400`, `"bold"` |
+| `duration` | Time values | `"200ms"`, `"0.2s"` |
+| `cubicBezier` | Easing curve | `[0.4, 0, 0.2, 1]` (4-number array) |
+| `number` | Unitless number | `1.5`, `16` |
+| `strokeStyle` | Stroke style keyword | `"solid"`, `"dashed"` |
+| `border` | Border composite | `{ color, width, style }` |
+| `transition` | Transition composite | `{ duration, timingFunction, delay }` |
+| `shadow` | Shadow composite | `{ color, offsetX, offsetY, blur, spread }` |
+| `gradient` | Gradient composite | `{ type, stops }` |
+| `typography` | Typography composite | `{ fontFamily, fontSize, fontWeight, lineHeight }` |
+
+### Validator Invocation Guidance
+
+`expert-frontend` MUST call `internal/design/dtcg.Validate(tokensJSON)` before generating
+any frontend code from a `tokens.json` file. This applies to all three paths (A, B1, B2).
+
+Validation failure produces a structured error report:
+
+```
+dtcg.ValidationError{
+  TokenPath: "colors.primary",    // DTCG token path
+  Category:  "color",             // Expected category
+  Rule:      "invalid_format",    // Violated rule
+  Got:       "PRIMARY_BLUE",      // Actual value found
+}
+```
+
+On validation failure: surface the structured error report to the orchestrator and block
+code generation. Do not attempt to auto-correct token values.
+
+### Brand Context Priority
+
+Design constitution §3.1 (FROZEN): brand context (`.moai/project/brand/visual-identity.md`)
+is the constitutional parent. Token values from any path that conflict with brand constraints
+MUST be flagged as warnings and presented for user resolution — not silently overridden.
+
+The DTCG validator gate runs AFTER brand context is loaded and BEFORE frontend code
+generation. The validation order is:
+
+1. Load brand context (`.moai/project/brand/`)
+2. Run DTCG validator on `tokens.json`
+3. Cross-check DTCG-valid tokens against brand constraints
+4. Surface conflicts as warnings
+5. Proceed to `expert-frontend` code generation
+
+---
+
 <!-- moai:evolvable-start id="verification" -->
 ## Verification
 
@@ -142,5 +214,8 @@ For Figma MCP integration (fetching Figma design context), see moai-design-tools
 - [ ] Color contrast ratios verified (4.5:1 normal text, 3:1 UI components)
 - [ ] Web copy free of AI-generic filler phrases
 - [ ] Pencil MCP tools used via batch operations (not individual calls) for performance
+- [ ] DTCG 2025.10 validator invoked before expert-frontend code generation (REQ-DPL-010)
+- [ ] Brand context loaded before DTCG validation (design constitution §3.1)
+- [ ] Validation errors surface structured report (not silent auto-correction)
 
 <!-- moai:evolvable-end -->

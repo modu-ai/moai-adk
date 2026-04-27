@@ -1,21 +1,21 @@
 ---
 name: moai-workflow-design-import
 description: >
-  Parses Claude Design handoff bundle (ZIP or HTML) and extracts design tokens,
-  component manifests, and static assets for expert-frontend delegation. Validates
-  bundle version against the supported_bundle_versions whitelist and returns
-  structured error codes on failure with path B fallback guidance.
+  Handles /moai design 3-path routing: Path A (Claude Design handoff bundle), Path B1
+  (Figma extractor via meta-harness), Path B2 (Pencil MCP via meta-harness). Validates
+  bundle version against supported_bundle_versions whitelist and returns structured error
+  codes on failure. Depends on SPEC-V3R3-HARNESS-001 for Path B1/B2.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "workflow"
   status: "active"
-  updated: "2026-04-20"
-  tags: "design import, handoff bundle, claude design, design tokens, components"
-  related-skills: "moai-domain-brand-design, moai-workflow-gan-loop"
+  updated: "2026-04-27"
+  tags: "design import, handoff bundle, claude design, design tokens, components, figma, pencil, meta-harness"
+  related-skills: "moai-domain-brand-design, moai-workflow-gan-loop, moai-meta-harness"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -25,20 +25,44 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["design import", "handoff bundle", "claude design", "bundle path", "design zip", "import bundle"]
+  keywords: ["design import", "handoff bundle", "claude design", "bundle path", "design zip", "import bundle", "figma extractor", "pencil mcp", "path b1", "path b2"]
   agents: ["expert-frontend"]
   phases: ["run"]
 ---
 
 # moai-workflow-design-import
 
-Handles Claude Design handoff bundle ingestion for the `/moai design` path A workflow. Validates bundle format, extracts design artifacts, and prepares structured output for `expert-frontend` delegation.
+Handles `/moai design` 3-path routing for design artifact ingestion. Each path produces
+DTCG-validated design tokens at `.moai/design/tokens.json` for `expert-frontend` consumption.
 
-This skill is invoked only when the user selects path A (Claude Design) in `/moai design` and provides a local bundle file path.
+**Path A** (Claude Design): Existing handoff bundle import — preserved verbatim.
+**Path B1** (Figma): Meta-harness generates a project-scoped figma-extractor skill.
+**Path B2** (Pencil): Meta-harness generates a project-scoped pencil-mcp skill.
+
+Reserved output paths (design constitution §3.2): `tokens.json`, `components.json`,
+`assets/`, `import-warnings.json`, `brief/BRIEF-*.md` — all written to `.moai/design/`.
 
 ---
 
-## Quick Reference
+## Path Selection
+
+When `/moai design` requires path selection, present via AskUserQuestion:
+1. **Path A — Claude Design** (권장): Handoff bundle (ZIP or HTML) from Claude Design.
+2. **Path B1 — Figma**: Figma file access; meta-harness generates `my-harness-figma-extractor`.
+3. **Path B2 — Pencil**: `.pen` files; meta-harness generates `my-harness-pencil-mcp`.
+
+Selection is persisted to `.moai/design/path-selection.json` for audit.
+
+Brand context (`.moai/project/brand/`) is the constitutional parent across all paths — no
+path may override brand constraints (design constitution §3.1, §3.3).
+
+---
+
+---
+
+## Path A — Claude Design Handoff Bundle
+
+*This section is preserved verbatim from v1.0.0. Path A behavior is unchanged.*
 
 ### Supported Bundle Formats (Phase 1)
 
@@ -231,13 +255,85 @@ When extracting assets:
 
 ---
 
+---
+
+## Path B1 — Figma Extractor (via Meta-Harness)
+
+**Prerequisite**: SPEC-V3R3-HARNESS-001 meta-harness skill (`moai-meta-harness`) must be
+available. Path B1 does NOT ship a static Figma skill — it is generated dynamically.
+
+### Invocation
+
+When the user selects Path B1, invoke `moai-meta-harness` to generate:
+
+```
+.claude/skills/my-harness-figma-extractor/SKILL.md
+```
+
+The generated skill is project-scoped and user-owned (`my-harness-*` prefix). It will never
+be overwritten by `moai update`.
+
+### Generation Contract
+
+`moai-meta-harness` Phase 5 (Customization) produces `my-harness-figma-extractor` with:
+
+- **Figma file ID**: project-specific file identifier (collected during Socratic interview)
+- **Page selectors**: which Figma pages map to which token categories
+- **Credential reference**: environment variable name holding the Figma API token
+  (e.g., `FIGMA_TOKEN`). The token value is NEVER stored in the skill file.
+
+The generated extractor skill produces `tokens.json` + `components.json` at `.moai/design/`
+matching the reserved file paths in design constitution §3.2.
+
+### Output
+
+After `my-harness-figma-extractor` runs, this skill receives the produced artifacts at
+`.moai/design/` and proceeds to DTCG validation before `expert-frontend` consumption.
+
+---
+
+## Path B2 — Pencil MCP (via Meta-Harness)
+
+**Prerequisite**: SPEC-V3R3-HARNESS-001 meta-harness skill (`moai-meta-harness`) must be
+available. Path B2 replaces the removed `moai-workflow-pencil-integration` skill
+(SPEC-V3R3-HARNESS-001 BC-V3R3-007 16-skill removal).
+
+### Invocation
+
+When the user selects Path B2, invoke `moai-meta-harness` to generate:
+
+```
+.claude/skills/my-harness-pencil-mcp/SKILL.md
+```
+
+### Generation Contract
+
+`moai-meta-harness` Phase 5 produces `my-harness-pencil-mcp` with:
+
+- **`.pen` file locations**: glob patterns for the project's Pencil design files
+- **Pencil MCP server endpoint**: local server URL (default: `http://localhost:11111`)
+- **Export configuration**: which Pencil frames/pages map to token categories
+
+The generated skill uses `mcp__pencil__*` tools (already listed in `moai-design-system`
+allowed-tools) to extract design data and write to `.moai/design/`.
+
+### Output
+
+After `my-harness-pencil-mcp` runs, this skill receives artifacts at `.moai/design/` and
+proceeds to DTCG validation before `expert-frontend` consumption.
+
+---
+
 ## Works Well With
 
 - `moai-domain-brand-design`: Fallback path when bundle import fails
 - `moai-workflow-gan-loop`: Receives extracted tokens for quality evaluation
 - `expert-frontend`: Primary consumer of extracted design artifacts
+- `moai-meta-harness`: Generates `my-harness-figma-extractor` and `my-harness-pencil-mcp`
+  for Path B1/B2 (SPEC-V3R3-HARNESS-001)
+- `moai-design-system`: DTCG token validation guidance and design system context
 
 ---
 
-REQ coverage: REQ-SKILL-007, REQ-SKILL-008, REQ-SKILL-009, REQ-SKILL-010, REQ-SKILL-015
-Version: 1.0.0
+REQ coverage: REQ-DPL-001, REQ-DPL-002, REQ-DPL-003, REQ-SKILL-007, REQ-SKILL-008, REQ-SKILL-009, REQ-SKILL-010, REQ-SKILL-015
+Version: 1.1.0 (SPEC-V3R3-DESIGN-PIPELINE-001 Wave C.1)
