@@ -295,8 +295,8 @@ After `my-harness-figma-extractor` runs, this skill receives the produced artifa
 ## Path B2 — Pencil MCP (via Meta-Harness)
 
 **Prerequisite**: SPEC-V3R3-HARNESS-001 meta-harness skill (`moai-meta-harness`) must be
-available. Path B2 replaces the removed `moai-workflow-pencil-integration` skill
-(SPEC-V3R3-HARNESS-001 BC-V3R3-007 16-skill removal).
+available. Path B2 is implemented via dynamically generated `my-harness-pencil-mcp` skill
+(SPEC-V3R3-HARNESS-001 BC-V3R3-007 16-skill removal — legacy static skill archived).
 
 ### Invocation
 
