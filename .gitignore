@@ -236,6 +236,10 @@ pencil/
 # Plan audit reports are local artifacts; only .gitkeep is tracked (SPEC-WF-AUDIT-GATE-001)
 .moai/reports/plan-audit/*.md
 !.moai/reports/plan-audit/.gitkeep
+# Harness learning data is local-only (SPEC-V3R3-HARNESS-LEARNING-001 §10)
+.moai/harness/usage-log.jsonl
+.moai/harness/.last-prune
+.moai/harness/learning-history/
 .moai/temp/
 temp/
 
