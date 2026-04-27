@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/modu-ai/moai-adk/internal/github"
 )
 
@@ -41,28 +42,28 @@ func NewWizard(out io.Writer) *Wizard {
 	}
 }
 
-// Run executes the Wizard flow.
+// Run executes the Wizard flow using bubbletea TUI.
 func (w *Wizard) Run() (*WizardState, error) {
 	// Step 0: Check internet connection
 	if err := w.checkInternetConnection(); err != nil {
 		return nil, err
 	}
 
-	// Step 1: Language selection
-	if err := w.selectLanguage(); err != nil {
+	// Step 1: Language selection (TUI)
+	if err := w.selectLanguageTUI(); err != nil {
 		return nil, err
 	}
 
 	// Load messages for selected language
 	w.loadMessages()
 
-	// Step 2: LLM selection (multiple)
-	if err := w.selectLLMs(); err != nil {
+	// Step 2: LLM selection (TUI with multiple selection)
+	if err := w.selectLLMsTUI(); err != nil {
 		return nil, err
 	}
 
-	// Step 3: Model configuration
-	if err := w.selectModels(); err != nil {
+	// Step 3: Model selection for each selected LLM (TUI)
+	if err := w.selectModelsTUI(); err != nil {
 		return nil, err
 	}
 
@@ -71,8 +72,8 @@ func (w *Wizard) Run() (*WizardState, error) {
 		return nil, err
 	}
 
-	// Step 5: Summary and confirmation
-	if err := w.confirmAndFinish(); err != nil {
+	// Step 5: Summary and confirmation (Yes/No TUI)
+	if err := w.confirmAndFinishTUI(); err != nil {
 		return nil, err
 	}
 
@@ -96,32 +97,22 @@ func (w *Wizard) checkInternetConnection() error {
 	return nil
 }
 
-// selectLanguage prompts for language selection.
-func (w *Wizard) selectLanguage() error {
-	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "? Select your language / 사용하실 언어를 선택하세요:")
-	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "  1. 한국어 (ko)")
-	fmt.Fprintln(w.out, "  2. English (en)")
-	fmt.Fprintln(w.out, "  3. 日本語 (ja)")
-	fmt.Fprintln(w.out, "  4. 中文 (zh)")
-	fmt.Fprintln(w.out)
+// selectLanguageTUI runs the language selection TUI.
+func (w *Wizard) selectLanguageTUI() error {
+	model := NewLanguageModel()
+	p := tea.NewProgram(model, tea.WithOutput(w.out))
 
-	var choice int
-	for {
-		fmt.Fprint(w.out, "Select (1-4) / 선택 (1-4): ")
-		if _, err := fmt.Scanln(&choice); err != nil {
-			fmt.Fprintln(w.out, "Invalid input. Please try again.")
-			continue
-		}
-		if choice >= 1 && choice <= 4 {
-			break
-		}
-		fmt.Fprintln(w.out, "Please enter a number between 1 and 4.")
+	finalModel, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("TUI execution failed: %w", err)
 	}
 
-	languages := []string{"ko", "en", "ja", "zh"}
-	w.state.Language = languages[choice-1]
+	languageModel, ok := finalModel.(LanguageModel)
+	if !ok {
+		return fmt.Errorf("unexpected model type")
+	}
+
+	w.state.Language = languageModel.GetSelectedLanguage()
 	return nil
 }
 
@@ -130,70 +121,51 @@ func (w *Wizard) loadMessages() {
 	w.messages = GetMessages(w.state.Language)
 }
 
-// selectLLMs prompts for LLM selection (multiple selection allowed).
-func (w *Wizard) selectLLMs() error {
-	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, w.messages.SelectLLM)
-	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "  1. Claude (Anthropic)")
-	fmt.Fprintln(w.out, "  2. Codex (OpenAI) - Private repos only / 비공개 레포 전용")
-	fmt.Fprintln(w.out, "  3. Gemini (Google)")
-	fmt.Fprintln(w.out, "  4. GLM (Zhipu AI)")
-	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "Separate multiple choices with comma / 쉼표(,)로 구분하여 여러 개 선택 가능:")
-	fmt.Fprintln(w.out)
+// selectLLMsTUI runs the LLM selection TUI with multiple selection.
+func (w *Wizard) selectLLMsTUI() error {
+	model := NewLLMModel()
+	p := tea.NewProgram(model, tea.WithOutput(w.out))
 
-	var input string
-	fmt.Fprint(w.out, "Select / 선택 (e.g., 1,3): ")
-	if _, err := fmt.Scanln(&input); err != nil {
-		return err
+	finalModel, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("TUI execution failed: %w", err)
 	}
 
-	llms := parseLLMSelection(input)
-	if len(llms) == 0 {
-		fmt.Fprintln(w.out, "At least one LLM must be selected / 최소 하나의 LLM을 선택해야 합니다.")
-		return w.selectLLMs()
+	llmModel, ok := finalModel.(LLMModel)
+	if !ok {
+		return fmt.Errorf("unexpected model type")
 	}
 
-	w.state.SelectedLLMs = llms
+	w.state.SelectedLLMs = llmModel.GetSelectedLLMs()
 	return nil
 }
 
-// parseLLMSelection parses user input and returns selected LLMs.
-// TODO: Implement robust parsing - "1,3" -> ["claude", "gemini"]
-func parseLLMSelection(input string) []string {
-	// Temporary: return default values
-	return []string{"claude", "gemini"}
-}
-
-// selectModels configures models for each selected LLM.
-func (w *Wizard) selectModels() error {
+// selectModelsTUI runs model selection for each selected LLM using TUI.
+func (w *Wizard) selectModelsTUI() error {
 	for _, llm := range w.state.SelectedLLMs {
-		if err := w.selectModelForLLM(llm); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+		model := NewModelChoiceModel(llm)
+		p := tea.NewProgram(model, tea.WithOutput(w.out))
 
-// selectModelForLLM prompts for model selection for a specific LLM.
-// TODO: Implement interactive model selection per LLM
-func (w *Wizard) selectModelForLLM(llm string) error {
-	switch llm {
-	case "claude":
-		w.state.ModelChoices[llm] = "claude-opus-4-7" // Default
-	case "gemini":
-		w.state.ModelChoices[llm] = "gemini-pro" // Default
-	case "codex":
-		w.state.ModelChoices[llm] = "gpt-4" // Default
-	case "glm":
-		w.state.ModelChoices[llm] = "glm-4" // Default
+		finalModel, err := p.Run()
+		if err != nil {
+			return fmt.Errorf("TUI execution failed for %s: %w", llm, err)
+		}
+
+		modelChoice, ok := finalModel.(ModelChoiceModel)
+		if !ok {
+			return fmt.Errorf("unexpected model type")
+		}
+
+		if modelChoice.Cancelled {
+			return fmt.Errorf("model selection cancelled for %s", llm)
+		}
+
+		w.state.ModelChoices[llm] = modelChoice.Selected
 	}
 	return nil
 }
 
 // configureTriggers configures when code reviews run.
-// TODO: Implement interactive trigger configuration
 func (w *Wizard) configureTriggers() error {
 	// Default configuration
 	w.state.Triggers.AutoOnPR = true
@@ -201,20 +173,35 @@ func (w *Wizard) configureTriggers() error {
 	return nil
 }
 
-// confirmAndFinish displays configuration summary and confirms.
-func (w *Wizard) confirmAndFinish() error {
+// confirmAndFinishTUI displays configuration summary and confirms using Yes/No TUI.
+func (w *Wizard) confirmAndFinishTUI() error {
 	fmt.Fprintln(w.out)
 	fmt.Fprintln(w.out, "✅ Configuration Summary / 설정 요약:")
 	fmt.Fprintln(w.out)
 	fmt.Fprintf(w.out, "Language / 언어: %s\n", w.state.Language)
 	fmt.Fprintf(w.out, "LLMs: %v\n", w.state.SelectedLLMs)
-	fmt.Fprintf(w.out, "Models / 모델: %v\n", w.state.ModelChoices)
+	fmt.Fprintf(w.out, "Models / 모델:\n")
+	for llm, model := range w.state.ModelChoices {
+		fmt.Fprintf(w.out, "  - %s: %s\n", llm, model)
+	}
 	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "? Proceed with this configuration? / 이 설정으로 진행할까요? (Y/n)")
 
-	var confirm string
-	fmt.Scanln(&confirm)
-	if confirm == "n" || confirm == "N" {
+	// Use Yes/No TUI for confirmation
+	summary := "? Proceed with this configuration? / 이 설정으로 진행할까요?"
+	model := NewYesNoModel(summary)
+	p := tea.NewProgram(model, tea.WithOutput(w.out))
+
+	finalModel, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("TUI execution failed: %w", err)
+	}
+
+	yesNoModel, ok := finalModel.(YesNoModel)
+	if !ok {
+		return fmt.Errorf("unexpected model type")
+	}
+
+	if yesNoModel.Cancelled {
 		return fmt.Errorf("cancelled by user / 사용자가 취소했습니다")
 	}
 
