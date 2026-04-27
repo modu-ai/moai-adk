@@ -1,22 +1,25 @@
-// Package cli는 GitHub auth 명령을 제공합니다.
-// Package cli provides GitHub auth command.
 package cli
 
 import (
+	"context"
+	"fmt"
+	"os/exec"
+	"regexp"
+	"strings"
+
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/github"
 	"github.com/modu-ai/moai-adk/internal/github/auth"
 )
 
-// newAuthCmd는 auth 명령을 생성합니다.
 func newAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
 		Short: "LLM 제공업체 인증 관리 (Authenticate with LLM providers)",
-		Long:  `Claude, Codex, Gemini, GLM 인증 토큰을 설정합니다.`,
+		Long:  `Claude, OpenAI, Gemini, GLM 인증 토큰을 설정합니다.`,
 	}
 
-	// 서브커먼드 등록
 	cmd.AddCommand(newAuthClaudeCmd())
 	cmd.AddCommand(newAuthCodexCmd())
 	cmd.AddCommand(newAuthGeminiCmd())
@@ -25,73 +28,92 @@ func newAuthCmd() *cobra.Command {
 	return cmd
 }
 
-// newAuthClaudeCmd는 claude 인증 서브커맨드를 생성합니다.
 func newAuthClaudeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "claude <token>",
 		Short: "Claude API 토큰 설정 (Set Claude API token)",
-		Long:  `Anthropic Claude API 토큰을 설정하여 GitHub Actions에서 Claude를 사용합니다.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo := detectRepo()
-			token := args[0]
-			handler := auth.NewClaudeAuthHandler(nil)
-			return handler.Setup(cmd.Context(), repo, token)
+			repo, err := detectRepo()
+			if err != nil {
+				return err
+			}
+			return auth.NewClaudeAuthHandler(newSecretSetter(cmd)).Setup(cmd.Context(), repo, args[0])
 		},
 	}
 }
 
-// newAuthCodexCmd는 codex 인증 서브커맨드를 생성합니다.
 func newAuthCodexCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "codex <token>",
-		Short: "Codex API 토큰 설정 (Set Codex API token)",
-		Long:  `OpenAI Codex API 토큰을 설정하여 GitHub Actions에서 Codex를 사용합니다.`,
+		Short: "OpenAI (Codex) API 토큰 설정 (Set OpenAI API token)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo := detectRepo()
-			token := args[0]
-			handler := auth.NewCodexAuthHandler(nil)
-			return handler.Setup(cmd.Context(), repo, token, true)
+			repo, err := detectRepo()
+			if err != nil {
+				return err
+			}
+			return auth.NewCodexAuthHandler(newSecretSetter(cmd)).Setup(cmd.Context(), repo, args[0], true)
 		},
 	}
 }
 
-// newAuthGeminiCmd는 gemini 인증 서브커맨드를 생성합니다.
 func newAuthGeminiCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "gemini <token>",
 		Short: "Gemini API 토큰 설정 (Set Gemini API token)",
-		Long:  `Google Gemini API 토큰을 설정하여 GitHub Actions에서 Gemini를 사용합니다.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo := detectRepo()
-			token := args[0]
-			handler := auth.NewGeminiAuthHandler(nil)
-			return handler.Setup(cmd.Context(), repo, token)
+			repo, err := detectRepo()
+			if err != nil {
+				return err
+			}
+			return auth.NewGeminiAuthHandler(newSecretSetter(cmd)).Setup(cmd.Context(), repo, args[0])
 		},
 	}
 }
 
-// newAuthGLMCmd는 glm 인증 서브커맨드를 생성합니다.
 func newAuthGLMCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "glm <token>",
 		Short: "GLM API 토큰 설정 (Set GLM API token)",
-		Long:  `Zhipu AI GLM API 토큰을 설정하여 GitHub Actions에서 GLM을 사용합니다.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo := detectRepo()
-			token := args[0]
-			handler := auth.NewGLMAuthHandler(nil)
-			return handler.Setup(cmd.Context(), repo, token)
+			repo, err := detectRepo()
+			if err != nil {
+				return err
+			}
+			return auth.NewGLMAuthHandler(newSecretSetter(cmd)).Setup(cmd.Context(), repo, args[0])
 		},
 	}
 }
 
-// detectRepo는 현재 Git 리포지토리를 감지합니다.
-func detectRepo() string {
-	// TODO: 실제 Git 리포지토리 감지 로직 구현
-	// 현재는 placeholder 반환
-	return "owner/repo"
+func newSecretSetter(cmd *cobra.Command) auth.SecretSetter {
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	if dryRun {
+		return &dryRunSecretSetter{}
+	}
+	return github.NewRealGHSecretManager()
+}
+
+type dryRunSecretSetter struct{}
+
+func (d *dryRunSecretSetter) SetSecret(_ context.Context, repo, name, value string) error {
+	fmt.Printf("[DRY-RUN] gh secret set %s -R %s (value: %s)\n", name, repo, github.MaskSecret(value))
+	return nil
+}
+
+// remoteRepos matches SSH (git@github.com:owner/repo) and HTTPS GitHub remote URLs.
+var remoteRepos = regexp.MustCompile(`github\.com[:/]([^/]+)/([^/.]+)`)
+
+func detectRepo() (string, error) {
+	out, err := exec.Command("git", "remote", "get-url", "origin").Output()
+	if err != nil {
+		return "", fmt.Errorf("git remote: %w (are you in a git repository?)", err)
+	}
+	m := remoteRepos.FindStringSubmatch(strings.TrimSpace(string(out)))
+	if len(m) < 3 {
+		return "", fmt.Errorf("cannot parse GitHub owner/repo from remote: %s", strings.TrimSpace(string(out)))
+	}
+	return m[1] + "/" + m[2], nil
 }

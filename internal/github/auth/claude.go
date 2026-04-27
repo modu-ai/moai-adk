@@ -6,49 +6,47 @@ import (
 	"os/exec"
 )
 
-// ClaudeAuthHandler는 Claude OAuth 토큰을 처리합니다.
+// ClaudeAuthHandler handles Claude OAuth token setup.
 type ClaudeAuthHandler struct {
 	secrets SecretSetter
 }
 
-// NewClaudeAuthHandler는 새로운 ClaudeAuthHandler를 생성합니다.
+// NewClaudeAuthHandler creates a new ClaudeAuthHandler.
 func NewClaudeAuthHandler(secrets SecretSetter) *ClaudeAuthHandler {
 	return &ClaudeAuthHandler{
 		secrets: secrets,
 	}
 }
 
-// Setup은 Claude를 인증하고 OAuth 토큰을 GitHub 시크릿으로 저장합니다.
-// 시크릿 이름: CLAUDE_CODE_OAUTH_TOKEN
+// Setup authenticates Claude and stores the OAuth token as a GitHub secret.
+// Secret name: CLAUDE_CODE_OAUTH_TOKEN
 func (h *ClaudeAuthHandler) Setup(ctx context.Context, repo, token string) error {
-	// gh secret set CLAUDE_CODE_OAUTH_TOKEN -R REPO
-	// stdin을 통해 값을 전달 (REQ-SEC-002)
+	// Pass value via stdin (REQ-SEC-002: never write to disk)
 	if err := h.secrets.SetSecret(ctx, repo, "CLAUDE_CODE_OAUTH_TOKEN", token); err != nil {
 		return fmt.Errorf("claude setup: %w", err)
 	}
 
-	fmt.Println("Claude OAuth 토큰이 설정되었습니다.")
-	fmt.Println("Max 플랜 구독이 필요합니다.")
+	fmt.Println("Claude OAuth token has been set.")
+	fmt.Println("Max plan subscription is required.")
 
 	return nil
 }
 
-// Check는 Claude CLI가 설치되어 있고 토큰이 유효한지 확인합니다.
+// Check verifies that Claude CLI is installed and the token is valid.
 func (h *ClaudeAuthHandler) Check(ctx context.Context) (*AuthStatus, error) {
-	// Claude CLI 설치 확인
 	_, err := exec.LookPath("claude")
 	if err != nil {
 		return &AuthStatus{
 			Installed:     false,
 			Authenticated: false,
-			Message:       "Claude CLI가 설치되지 않았습니다. 'npm install -g @anthropic-ai/claude'를 실행하세요.",
+			Message:       "Claude CLI is not installed. Run 'npm install -g @anthropic-ai/claude'.",
 		}, nil
 	}
 
 	return &AuthStatus{
 		Installed:     true,
-		Authenticated: false, // 실제 토큰 확인은 복잡하므로 기본적으로 false
+		Authenticated: false, // Actual token verification is complex; default to false
 		SecretName:    "CLAUDE_CODE_OAUTH_TOKEN",
-		Message:       "Claude CLI가 설치되어 있습니다.",
+		Message:       "Claude CLI is installed.",
 	}, nil
 }

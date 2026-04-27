@@ -6,32 +6,31 @@ import (
 	"strings"
 )
 
-// GLMAuthHandler는 GLM 인증을 처리합니다.
+// GLMAuthHandler handles GLM authentication.
 type GLMAuthHandler struct {
 	secrets SecretSetter
 }
 
-// NewGLMAuthHandler는 새로운 GLMAuthHandler를 생성합니다.
+// NewGLMAuthHandler creates a new GLMAuthHandler.
 func NewGLMAuthHandler(secrets SecretSetter) *GLMAuthHandler {
 	return &GLMAuthHandler{
 		secrets: secrets,
 	}
 }
 
-// Setup은 GLM 인증 토큰을 GitHub 시크릿으로 저장하고
-// SPEC-GLM-001 환경 변수 메타데이터를 주입합니다.
+// Setup stores the GLM auth token as a GitHub secret and injects
+// SPEC-GLM-001 environment variable metadata.
 func (h *GLMAuthHandler) Setup(ctx context.Context, repo, token string) error {
-	// 토큰 검증
 	if err := validateGLMToken(token); err != nil {
 		return fmt.Errorf("glm setup: %w", err)
 	}
 
-	// 1. GLM_API_KEY 시크릿 설정
+	// 1. Set GLM_API_KEY secret
 	if err := h.secrets.SetSecret(ctx, repo, "GLM_API_KEY", token); err != nil {
 		return fmt.Errorf("glm setup: %w", err)
 	}
 
-	// 2. SPEC-GLM-001 환경 변수 메타데이터 주입
+	// 2. Inject SPEC-GLM-001 environment variable metadata
 	envVars := map[string]string{
 		"DISABLE_BETAS":            "true",
 		"DISABLE_PROMPT_CACHING":   "true",
@@ -46,8 +45,8 @@ func (h *GLMAuthHandler) Setup(ctx context.Context, repo, token string) error {
 		}
 	}
 
-	fmt.Println("GLM 인증이 완료되었습니다.")
-	fmt.Println("SPEC-GLM-001 환경 변수 메타데이터가 주입되었습니다:")
+	fmt.Println("GLM authentication complete.")
+	fmt.Println("SPEC-GLM-001 environment variable metadata injected:")
 	fmt.Println("  - DISABLE_BETAS=true")
 	fmt.Println("  - DISABLE_PROMPT_CACHING=true")
 	fmt.Println("  - CLAUDE_CODE_USE_bedrock=0")
@@ -56,7 +55,7 @@ func (h *GLMAuthHandler) Setup(ctx context.Context, repo, token string) error {
 	return nil
 }
 
-// validateGLMToken은 GLM 토큰을 검증합니다.
+// validateGLMToken validates a GLM token.
 func validateGLMToken(token string) error {
 	trimmed := strings.TrimSpace(token)
 	if trimmed == "" {

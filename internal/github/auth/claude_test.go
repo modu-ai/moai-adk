@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// MockSecretSetter는 테스트용 SecretSetter 모의 구현입니다.
+// MockSecretSetter is a test mock for the SecretSetter interface.
 type MockSecretSetter struct {
 	SetSecretFunc func(ctx context.Context, repo, name, value string) error
 }
@@ -19,7 +19,7 @@ func (m *MockSecretSetter) SetSecret(ctx context.Context, repo, name, value stri
 }
 
 func TestClaudeAuthHandler_Check(t *testing.T) {
-	t.Run("claude CLI 설치됨", func(t *testing.T) {
+	t.Run("claude CLI installed", func(t *testing.T) {
 		handler := NewClaudeAuthHandler(&MockSecretSetter{})
 		status, err := handler.Check(context.Background())
 
@@ -31,14 +31,13 @@ func TestClaudeAuthHandler_Check(t *testing.T) {
 		}
 	})
 
-	t.Run("토큰이 존재함", func(t *testing.T) {
-		// 이 테스트는 실제 환경에서만 작동하므로 skip
-		t.Skip("실제 claude CLI가 필요함")
+	t.Run("token exists", func(t *testing.T) {
+		t.Skip("requires actual claude CLI")
 	})
 }
 
 func TestClaudeAuthHandler_Setup(t *testing.T) {
-	t.Run("secret 설정 성공", func(t *testing.T) {
+	t.Run("secret set success", func(t *testing.T) {
 		ctx := context.Background()
 		setSecretCalled := false
 
@@ -62,11 +61,11 @@ func TestClaudeAuthHandler_Setup(t *testing.T) {
 			t.Errorf("Setup() error = %v, want nil", err)
 		}
 		if !setSecretCalled {
-			t.Error("SetSecret이 호출되지 않음")
+			t.Error("SetSecret was not called")
 		}
 	})
 
-	t.Run("secret 설정 실패 시 에러 반환", func(t *testing.T) {
+	t.Run("secret set failure returns error", func(t *testing.T) {
 		ctx := context.Background()
 		expectedErr := errors.New("secret set failed")
 

@@ -7,10 +7,10 @@ import (
 )
 
 func TestGeminiAuthHandler_Setup(t *testing.T) {
-	t.Run("유효한 API key 설정 성공", func(t *testing.T) {
+	t.Run("valid API key set success", func(t *testing.T) {
 		ctx := context.Background()
 		setSecretCalled := false
-		validKey := "AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3hbgL-Td123" // 39자, alphanumeric + -_
+		validKey := "AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3hbgL-Td123" // 39 chars, alphanumeric + -_
 
 		mockSetter := &MockSecretSetter{
 			SetSecretFunc: func(ctx context.Context, repo, name, value string) error {
@@ -32,11 +32,11 @@ func TestGeminiAuthHandler_Setup(t *testing.T) {
 			t.Errorf("Setup() error = %v, want nil", err)
 		}
 		if !setSecretCalled {
-			t.Error("SetSecret이 호출되지 않음")
+			t.Error("SetSecret was not called")
 		}
 	})
 
-	t.Run("잘못된 형식의 API key는 에러 - REQ-CI-010.1", func(t *testing.T) {
+	t.Run("invalid API key format returns error - REQ-CI-010.1", func(t *testing.T) {
 		ctx := context.Background()
 		mockSetter := &MockSecretSetter{}
 
@@ -47,9 +47,9 @@ func TestGeminiAuthHandler_Setup(t *testing.T) {
 			key   string
 			valid bool
 		}{
-			{"너무 짧음", "short", false},
-			{"잘못된 문자 포함", "AIza$Invalid@Chars#Here", false},
-			{"공백 포함", "AIzaSyDaGmWKa4JsXZ HjGw", false},
+			{"too short", "short", false},
+			{"invalid characters", "AIza$Invalid@Chars#Here", false},
+			{"contains spaces", "AIzaSyDaGmWKa4JsXZ HjGw", false},
 		}
 
 		for _, tc := range testCases {
@@ -62,7 +62,7 @@ func TestGeminiAuthHandler_Setup(t *testing.T) {
 		}
 	})
 
-	t.Run("secret 설정 실패 시 에러 반환", func(t *testing.T) {
+	t.Run("secret set failure returns error", func(t *testing.T) {
 		ctx := context.Background()
 		expectedErr := errors.New("secret set failed")
 
@@ -82,10 +82,10 @@ func TestGeminiAuthHandler_Setup(t *testing.T) {
 }
 
 func TestValidateGeminiAPIKey(t *testing.T) {
-	t.Run("유효한 형식", func(t *testing.T) {
+	t.Run("valid format", func(t *testing.T) {
 		validKeys := []string{
-			"AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3hbgL-Td123", // 39자
-			"AIza0123456789",                            // 최소 길이
+			"AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3hbgL-Td123",
+			"AIza0123456789",
 		}
 
 		for _, key := range validKeys {
@@ -96,7 +96,7 @@ func TestValidateGeminiAPIKey(t *testing.T) {
 		}
 	})
 
-	t.Run("잘못된 형식", func(t *testing.T) {
+	t.Run("invalid format", func(t *testing.T) {
 		invalidKeys := []string{
 			"",
 			"short",
@@ -114,18 +114,17 @@ func TestValidateGeminiAPIKey(t *testing.T) {
 }
 
 func TestMaskGeminiKey(t *testing.T) {
-	t.Run("정상 마스킹", func(t *testing.T) {
+	t.Run("normal masking", func(t *testing.T) {
 		key := "AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3hbgL-Td123"
 		masked := maskGeminiKey(key)
 
-		// 첫 문자 + 마지막 4자만 표시
 		expected := "A...d123"
 		if masked != expected {
 			t.Errorf("maskGeminiKey() = %s, want %s", masked, expected)
 		}
 	})
 
-	t.Run("짧은 키", func(t *testing.T) {
+	t.Run("short key", func(t *testing.T) {
 		key := "AIza"
 		masked := maskGeminiKey(key)
 
