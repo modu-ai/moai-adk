@@ -183,7 +183,6 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewFileChangedHandler())
 	deps.HookRegistry.Register(hook.NewElicitationHandler())
 	deps.HookRegistry.Register(hook.NewElicitationResultHandler())
-	deps.HookRegistry.Register(hook.NewSetupHandler())
 }
 
 // enableObservabilityIfConfigured reads observability config and enables

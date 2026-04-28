@@ -74,35 +74,8 @@ func TestElicitationResultHandler_Handle_ReturnsAllow(t *testing.T) {
 }
 
 // --- fileChangedHandler ---
+// Tests moved to file_changed_test.go for better organization
 
-// TestFileChangedHandler_EventType returns EventFileChanged.
-func TestFileChangedHandler_EventType(t *testing.T) {
-	t.Parallel()
-
-	h := NewFileChangedHandler()
-	if got := h.EventType(); got != EventFileChanged {
-		t.Errorf("EventType() = %q, want %q", got, EventFileChanged)
-	}
-}
-
-// TestFileChangedHandler_Handle_ReturnsAllow verifies the handler allows.
-func TestFileChangedHandler_Handle_ReturnsAllow(t *testing.T) {
-	t.Parallel()
-
-	h := NewFileChangedHandler()
-	input := &HookInput{
-		SessionID: "sess-file-changed",
-		FilePath:  "/project/src/main.go",
-	}
-
-	out, err := h.Handle(context.Background(), input)
-	if err != nil {
-		t.Fatalf("Handle() error: %v", err)
-	}
-	if out == nil {
-		t.Fatal("Handle() returned nil")
-	}
-}
 
 // --- genericHandler ---
 
