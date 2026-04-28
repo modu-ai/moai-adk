@@ -40,7 +40,6 @@ func TestVersionChecker_CheckVersion_OK(t *testing.T) {
 
 	mockClient := &MockGitHubClient{
 		GetInstalledVersionFunc: func(ctx context.Context) (string, error) {
-			// 10일 전 release (2.700.0: 2026-04-17, 기준: 2026-04-27)
 			return "2.700.0", nil
 		},
 		GetLatestReleaseFunc: func(ctx context.Context) (string, string, error) {
@@ -59,8 +58,11 @@ func TestVersionChecker_CheckVersion_OK(t *testing.T) {
 		t.Errorf("Expected VersionCheckOK, got %s", result.Status)
 	}
 
-	if result.DaysOld != 10 {
-		t.Errorf("Expected 10 days old, got %d", result.DaysOld)
+	// daysOld는 time.Now() 기준이므로 mockReleaseData 날짜(2026-04-17)와의
+	// 실제 차이를 계산하여 검증
+	wantDays := calculateDaysOld(parseDate("2026-04-17"), time.Now())
+	if result.DaysOld != wantDays {
+		t.Errorf("Expected %d days old, got %d", wantDays, result.DaysOld)
 	}
 }
 
@@ -70,7 +72,6 @@ func TestVersionChecker_CheckVersion_Warn25(t *testing.T) {
 
 	mockClient := &MockGitHubClient{
 		GetInstalledVersionFunc: func(ctx context.Context) (string, error) {
-			// 25일 전 release (2.699.0: 2026-04-02)
 			return "2.699.0", nil
 		},
 		GetLatestReleaseFunc: func(ctx context.Context) (string, string, error) {
@@ -89,8 +90,9 @@ func TestVersionChecker_CheckVersion_Warn25(t *testing.T) {
 		t.Errorf("Expected VersionCheckWarn (25 days), got %s", result.Status)
 	}
 
-	if result.DaysOld != 25 {
-		t.Errorf("Expected 25 days old, got %d", result.DaysOld)
+	wantDays := calculateDaysOld(parseDate("2026-04-02"), time.Now())
+	if result.DaysOld != wantDays {
+		t.Errorf("Expected %d days old, got %d", wantDays, result.DaysOld)
 	}
 }
 
@@ -100,7 +102,6 @@ func TestVersionChecker_CheckVersion_Fail30(t *testing.T) {
 
 	mockClient := &MockGitHubClient{
 		GetInstalledVersionFunc: func(ctx context.Context) (string, error) {
-			// 30일 전 release (2.698.0: 2026-03-28)
 			return "2.698.0", nil
 		},
 		GetLatestReleaseFunc: func(ctx context.Context) (string, string, error) {
@@ -119,8 +120,9 @@ func TestVersionChecker_CheckVersion_Fail30(t *testing.T) {
 		t.Errorf("Expected VersionCheckFail (30 days), got %s", result.Status)
 	}
 
-	if result.DaysOld != 30 {
-		t.Errorf("Expected 30 days old, got %d", result.DaysOld)
+	wantDays := calculateDaysOld(parseDate("2026-03-28"), time.Now())
+	if result.DaysOld != wantDays {
+		t.Errorf("Expected %d days old, got %d", wantDays, result.DaysOld)
 	}
 }
 
@@ -185,6 +187,12 @@ func TestNewVersionChecker(t *testing.T) {
 	if checker.ghClient != mockClient {
 		t.Error("GitHubClient not set correctly")
 	}
+}
+
+// parseDate parses a date string in YYYY-MM-DD format.
+func parseDate(s string) time.Time {
+	t, _ := time.Parse("2006-01-02", s)
+	return t
 }
 
 // TestVersionChecker_CalculateDaysOld는 날짜 계산을 테스트합니다.

@@ -62,17 +62,17 @@ func checkRunnerVersion(ctx context.Context) (string, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("설치 버전: %s\n", result.InstalledVersion))
-	sb.WriteString(fmt.Sprintf("최신 버전: %s\n", result.LatestVersion))
-	sb.WriteString(fmt.Sprintf("경과 일수: %d일\n", result.DaysOld))
-	sb.WriteString(fmt.Sprintf("상태: %s - %s", result.Status, result.Message))
+	fmt.Fprintf(&sb, "설치 버전: %s\n", result.InstalledVersion)
+	fmt.Fprintf(&sb, "최신 버전: %s\n", result.LatestVersion)
+	fmt.Fprintf(&sb, "경과 일수: %d일\n", result.DaysOld)
+	fmt.Fprintf(&sb, "상태: %s - %s", result.Status, result.Message)
 
 	return sb.String(), nil
 }
 
 // displayStatusCard는 상태 카드를 표시합니다.
 func displayStatusCard(out interface{}, runnerStatus string) {
-	fmt.Fprintf(out.(interface{ Write([]byte) (int, error) }), 
+	_, _ = fmt.Fprintf(out.(interface{ Write([]byte) (int, error) }), 
 		"=== GitHub Actions 상태 ===\n\n"+
 		"[Runner]\n%s\n\n"+
 		"[Auth]\n토큰 확인 기능: moai github auth <llm> <token>로 설정\n\n"+

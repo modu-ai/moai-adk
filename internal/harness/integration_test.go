@@ -4,6 +4,7 @@ package harness
 
 import (
 	"encoding/json"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -97,6 +98,10 @@ func TestIntegration_SampleSessionReplay(t *testing.T) {
 // 오래된 이벤트를 pruning하는 전체 흐름을 검증한다.
 // T-P1-05: integration test.
 func TestIntegration_RetentionWithObserver(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows에서 파일 잠금으로 인해 pruning이 즉시 반영되지 않아 건너뜁니다")
+	}
+
 	t.Parallel()
 
 	dir := t.TempDir()

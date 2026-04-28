@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1100,6 +1101,10 @@ func TestLAI_AC010_EditToolSupport(t *testing.T) {
 // with a missing `type` key emits a MEMORY_MISSING_TYPE warning to stderr
 // and still returns DecisionAllow (non-blocking).
 func TestPostTool_MemoryMissingType(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows에서 stderr pipe 캡처가 누락되어 건너뜁니다")
+	}
+
 	t.Parallel()
 
 	// Create a temporary memory file without a `type` field.

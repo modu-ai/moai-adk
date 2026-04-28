@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"os/exec"
 	"testing"
 )
 
@@ -20,6 +21,10 @@ func (m *MockSecretSetter) SetSecret(ctx context.Context, repo, name, value stri
 
 func TestClaudeAuthHandler_Check(t *testing.T) {
 	t.Run("claude CLI installed", func(t *testing.T) {
+		if _, err := exec.LookPath("claude"); err != nil {
+			t.Skip("skipping: claude CLI not available")
+		}
+
 		handler := NewClaudeAuthHandler(&MockSecretSetter{})
 		status, err := handler.Check(context.Background())
 

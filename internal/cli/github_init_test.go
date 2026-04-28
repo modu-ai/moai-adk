@@ -5,6 +5,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"os"
 	"testing"
 )
 
@@ -39,6 +40,13 @@ func TestRunInit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// default execution requires an interactive TTY for the wizard
+			if len(tt.args) == 0 {
+				if _, err := os.OpenFile("/dev/tty", os.O_RDONLY, 0); err != nil {
+					t.Skip("skipping: no TTY available (CI environment)")
+				}
+			}
+
 			cmd := newInitCmd()
 			cmd.SetArgs(tt.args)
 

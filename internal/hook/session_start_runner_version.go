@@ -12,6 +12,7 @@ import (
 // This implements T-27 (Doctor Integration) and T-28 (SessionStart Hook Integration).
 //
 // The check is non-blocking: any errors are logged and an empty string is returned.
+//nolint:unused // TODO: SessionStart hook에 runner version check 통합 예정
 func checkRunnerVersion(projectDir string) string {
 	ghRunnerDir := runner.DefaultRunnerDir()
 	ghClient := runner.NewFileSystemGitHubClient()

@@ -39,7 +39,7 @@ func runGitHubInit(cmd *cobra.Command, args []string) error {
 // displayInitSuccess displays the initialization success message.
 func displayInitSuccess(out interface{}, state *WizardState) {
 	messages := GetMessages(state.Language)
-	fmt.Fprintf(out.(interface{ Write([]byte) (int, error) }),
+	_, _ = fmt.Fprintf(out.(interface{ Write([]byte) (int, error) }),
 		"\n%s\n"+
 			"Repository: Current directory\n"+
 			"Language: %s\n"+

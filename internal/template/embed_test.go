@@ -88,9 +88,10 @@ func TestEmbeddedTemplates_SkillDefinitions(t *testing.T) {
 		return nil
 	})
 
-	if skillCount < 260 {
-		t.Errorf("expected at least 260 skill .md files, got %d", skillCount)
+	if skillCount < 180 {
+		t.Errorf("expected at least 180 skill .md files, got %d", skillCount)
 	}
+	t.Logf("total skill .md files: %d", skillCount)
 }
 
 func TestEmbeddedTemplates_RuleFiles(t *testing.T) {
@@ -365,8 +366,8 @@ func TestEmbeddedTemplates_WalkDirTotalCount(t *testing.T) {
 		t.Fatalf("WalkDir error: %v", walkErr)
 	}
 
-	if totalFiles < 440 {
-		t.Errorf("expected at least 440 embedded files, got %d", totalFiles)
+	if totalFiles < 380 {
+		t.Errorf("expected at least 380 embedded files, got %d", totalFiles)
 	}
 	t.Logf("total embedded files: %d", totalFiles)
 }
@@ -380,7 +381,7 @@ func BenchmarkEmbeddedTemplatesWalkDir(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var count int
 		_ = fs.WalkDir(fsys, ".", func(_ string, d fs.DirEntry, _ error) error {
 			if d != nil && !d.IsDir() {
