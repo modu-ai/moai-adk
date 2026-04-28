@@ -45,9 +45,55 @@ Token Strategy:
 - Selective file loading
 - Enables 70% larger implementations
 
-Development Methodology:
-- Configured in quality.yaml (development_mode: ddd or tdd)
-- See @workflow-modes.md for detailed methodology cycles
+Development Methodology (configured in quality.yaml development_mode):
+
+### DDD Mode — ANALYZE-PRESERVE-IMPROVE
+
+Best for existing projects with < 10% test coverage. Uses manager-ddd agent.
+
+**ANALYZE**: Read existing code, map domain boundaries, identify side effects and implicit contracts.
+**PRESERVE**: Write characterization tests capturing current behavior. Create behavior snapshots for regression detection.
+**IMPROVE**: Make small incremental changes. Run characterization tests after each change. Refactor with test validation.
+
+### TDD Mode — RED-GREEN-REFACTOR (default)
+
+Best for all development work, new projects, and brownfield with 10%+ coverage. Uses manager-tdd agent.
+
+**RED**: Write a failing test describing desired behavior. Verify it fails. One test at a time.
+**GREEN**: Write simplest implementation that passes. No premature optimization.
+**REFACTOR**: Clean up while keeping tests green. Extract patterns, remove duplication.
+
+Brownfield enhancement: Pre-RED step reads existing code to understand current behavior before writing the failing test.
+
+### Methodology Auto-Detection
+
+| Project State | Test Coverage | Recommendation |
+|--------------|---------------|----------------|
+| Greenfield (new) | N/A | TDD |
+| Brownfield | >= 10% | TDD |
+| Brownfield | < 10% | DDD |
+
+Manual override: `quality.development_mode` in quality.yaml, `MOAI_DEVELOPMENT_MODE` env var, or `moai init --mode <ddd|tdd>`.
+
+### Pre-submission Self-Review
+
+Before marking implementation complete: review full diff against SPEC acceptance criteria. Ask "Is there a simpler approach?" and "Would removing any changes still satisfy the SPEC?" Skip for single-file changes under 50 lines, bug fixes with reproduction test, or user-approved annotation cycle changes.
+
+### Drift Guard
+
+After each methodology cycle, compare planned files against actual modifications. Warns at <= 30% drift. Triggers re-planning (Phase 2.7) above 30%.
+
+### Team Mode Methodology
+
+Each teammate applies the methodology within their file ownership scope. team-validator validates compliance. team-tester exclusively owns test files.
+
+### MX Tag Integration
+
+| Phase | TDD Action | DDD Action |
+|-------|-----------|-----------|
+| Test/Analyze | RED: add `@MX:TODO` | ANALYZE: 3-Pass scan, identify targets |
+| Implement/Preserve | GREEN: remove `@MX:TODO` | PRESERVE: validate tags, add `@MX:LEGACY` |
+| Refactor/Improve | REFACTOR: add `@MX:NOTE` | IMPROVE: update tags, add `@MX:NOTE` |
 
 Success Criteria:
 - All SPEC requirements implemented

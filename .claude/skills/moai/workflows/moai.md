@@ -77,7 +77,7 @@ constitution:
 - **TDD cycle**: `manager-tdd` subagent (RED-GREEN-REFACTOR)
 - **DDD cycle**: `manager-ddd` subagent (ANALYZE-PRESERVE-IMPROVE)
 
-For methodology details, see: .claude/rules/moai/workflow/workflow-modes.md
+For methodology details, see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
 
 ## Phase 0: Parallel Exploration
 

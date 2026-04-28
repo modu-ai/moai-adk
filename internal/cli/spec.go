@@ -18,6 +18,7 @@ func newSpecCmd() *cobra.Command {
 
 	// Add subcommands
 	specCmd.AddCommand(newSpecStatusCmd())
+	specCmd.AddCommand(newSpecViewCmd())
 
 	return specCmd
 }

@@ -1,7 +1,7 @@
 package hook
 
 // Additional coverage tests for 0% and low-coverage functions:
-// - setup.go (0%)
+// - setup.go (REMOVED - was 0%)
 // - types.go: NewDeferOutput (0%)
 // - pre_tool.go: MergeExtraPatterns (0%)
 // - worktree_registry.go: saveWorktreeEntries (44%)
@@ -20,47 +20,7 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
-// --- setup.go ---
-
-// TestSetupHandler_EventType returns EventSetup.
-func TestSetupHandler_EventType(t *testing.T) {
-	t.Parallel()
-
-	h := NewSetupHandler()
-	if got := h.EventType(); got != EventSetup {
-		t.Errorf("EventType() = %q, want %q", got, EventSetup)
-	}
-}
-
-// TestSetupHandler_Handle_ReturnsEmptyOutput verifies Handle succeeds.
-func TestSetupHandler_Handle_ReturnsEmptyOutput(t *testing.T) {
-	t.Parallel()
-
-	h := NewSetupHandler()
-	out, err := h.Handle(context.Background(), &HookInput{
-		SessionID: "sess-setup-001",
-	})
-	if err != nil {
-		t.Fatalf("Handle() error: %v", err)
-	}
-	if out == nil {
-		t.Fatal("Handle() returned nil output")
-	}
-}
-
-// TestSetupHandler_Handle_EmptyInput handles empty input without panic.
-func TestSetupHandler_Handle_EmptyInput(t *testing.T) {
-	t.Parallel()
-
-	h := NewSetupHandler()
-	out, err := h.Handle(context.Background(), &HookInput{})
-	if err != nil {
-		t.Fatalf("Handle() error: %v", err)
-	}
-	if out == nil {
-		t.Fatal("Handle() returned nil")
-	}
-}
+// --- setup.go REMOVED (orphan handler) ---
 
 // --- types.go: NewDeferOutput ---
 

@@ -298,132 +298,21 @@ Tools that are not installed are skipped gracefully. Projects with no recognized
 
 ## 8. User Interaction Architecture
 
-### AskUserQuestion is the ONLY User Question Channel [HARD]
+[HARD] Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in response text are prohibited.
 
-[HARD] Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in regular response text are prohibited.
+[HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start. Call `ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` before first use.
 
-Applies to:
-- Clarification questions when intent is ambiguous
-- Preference/decision questions ("Which approach?", "Continue or abort?")
-- Socratic interview rounds during Context-First Discovery (Section 7 Rule 5)
-- Branch/workflow selection
-- Conflict resolution (merge strategy, rollback confirmation, etc.)
+Key rules (full detail in `.claude/rules/moai/core/askuser-protocol.md`):
+- Subagents MUST NOT prompt users — return blocker reports to orchestrator instead
+- Socratic interview: max 4 questions per round, max 4 options per question, in user's conversation_language
+- First option MUST be recommended choice marked "(권장)" / "(Recommended)"
+- Anti-patterns: prose questions ending with "?", markdown-only option lists, silent wait for input
+- Pre-response self-check: every "?" in response MUST pair with AskUserQuestion call
 
-Rationale:
-- Structured options are faster and less error-prone than free-form answers
-- AskUserQuestion is the only interaction channel subagents cannot use, keeping MoAI's orchestrator responsibility explicit
-- Users get consistent UX with selectable choices + automatic "Other" fallback
-
-Exceptions (free-form text questions permitted ONLY when):
-- AskUserQuestion is technically unavailable (e.g., inside a subagent — should not happen since subagents must not ask users)
-- The question is actually a statement of status, not a question
-
-### Deferred Tool Preload Protocol [HARD]
-
-[HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — their schemas are NOT loaded at session start. Calling them directly produces `InputValidationError`. Load schemas via `ToolSearch` BEFORE first use.
-
-Preload triggers (execute ToolSearch immediately when any condition matches):
-- Session start after first user input received
-- Before any complex / multi-step task begins
-- Before invoking Socratic interview (Section 7 Rule 5)
-- When user decision is required ("Should I proceed?", "Which option?", "선택", "진행 여부")
-- Immediately before first TaskCreate/Update/List/Get call
-
-Preload command (once per session, BEFORE any user-facing question):
-```
-ToolSearch({query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5})
-```
-
-Anti-patterns (PROHIBITED — these constitute HARD violation of §1):
-- Prose question ending with "?" + no accompanying AskUserQuestion tool call
-- Natural language decision requests: "진행할까요?", "어느 것을 선호하시나요?", "A or B?"
-- Listing options as markdown only (`- A:`, `- B:`) without structured AskUserQuestion
-- Calling AskUserQuestion without prior ToolSearch preload (produces InputValidationError)
-- Converting a user decision into a "wait for next message" without AskUserQuestion
-
-Pre-response self-check (MANDATORY before sending any user-facing response):
-1. Does the response end with "?" or contain "?" as a decision prompt? → MUST be paired with AskUserQuestion tool call
-2. Does the response list options (`- A:`, `1.`, `Option X:`)? → MUST use structured AskUserQuestion
-3. Is the deferred tool schema loaded? → If not, call ToolSearch FIRST
-4. Am I silently waiting for user input after prose question? → Convert to AskUserQuestion
-
-Self-check failure = HARD rule violation. Treat as critical defect requiring immediate correction.
-
-### Socratic Interview via AskUserQuestion [HARD]
-
-When context is insufficient (see Section 7 Rule 5 triggers), MoAI conducts a Socratic interview using AskUserQuestion rounds.
-
-Interview rules:
-- Each round: single AskUserQuestion call with up to 4 questions, each with up to 4 options
-- All question text and option labels MUST be in user's conversation_language
-- No emoji in question text, headers, or option labels
-- Each subsequent round MUST build on previous answers, narrowing ambiguity
-- Continue rounds until intent clarity is 100%
-- Consolidate findings into a brief report BEFORE execution
-- Obtain explicit final confirmation via AskUserQuestion before irreversible actions
-
-Bias prevention:
-- The first option MUST be the recommended choice, marked "(권장)" or "(Recommended)"
-- Every option MUST include a detailed description explaining implications
-- Never phrase questions to push the user toward a specific answer
-
-### Critical Constraint
-
-Subagents invoked via Agent() operate in isolated, stateless contexts and CANNOT interact with users directly. They must never prompt the user — they must either succeed with provided context or return with a blocker report.
-
-### Correct Workflow Pattern
-
-- Step 1: MoAI uses AskUserQuestion to collect user preferences
-- Step 2: MoAI invokes Agent() with user choices in the prompt
-- Step 3: Subagent executes based on provided parameters
-- Step 4: Subagent returns structured response
-- Step 5: MoAI uses AskUserQuestion for next decision
-
-### Team Coordination Pattern
-
-In team mode, MoAI bridges user interaction and teammate coordination:
-
-- MoAI uses AskUserQuestion for user decisions (teammates cannot)
-- MoAI uses SendMessage for teammate-to-teammate coordination
-- Teammates share TaskList for self-coordinated work distribution
-- MoAI synthesizes teammate results before presenting to user
-
-### AskUserQuestion Constraints
-
-- Maximum 4 questions per single AskUserQuestion call
-- Maximum 4 options per question
-- No emoji characters in question text, headers, or option labels
-- Questions and options must be in user's conversation_language
-- Recommended option placed first with "(권장)/(Recommended)" suffix
-- Each option MUST include a detailed description
-
-### Ambiguity Triggers — When to Invoke the Socratic Interview
-
-Any one of these triggers activates discovery mode (from Section 7 Rule 5):
-- Ambiguous pronouns or demonstratives without clear referent ("this", "that", "it", "the previous one")
-- Multi-interpretable action verbs without specified scope ("clean up", "process", "improve", "fix")
-- Unclear boundaries (how far, how much, which files, where to stop)
-- Potential conflict with existing state (uncommitted changes, in-progress branches, overlapping work)
-- Destructive/irreversible operation (force-push, reset --hard, file deletion) without explicit prior authorization
-
-Exceptions (no interview needed):
-- Single-line typos or formatting fixes
-- Bug fixes with explicit reproduction provided
-- Direct file reads when path is specified
-- Command invocations with all required arguments
-- Continuation of previously confirmed work in the same session
-
-### Deferred Tool Preload Requirement [HARD]
-
-`AskUserQuestion` is a **deferred tool** in Claude Code — its schema is NOT loaded at session start. Before **every** `AskUserQuestion` invocation, the orchestrator MUST execute:
-
-```
-ToolSearch(query: "select:AskUserQuestion")
-```
-
-Failure to preload results in `InputValidationError: tool not in schema`. This precondition applies to all deferred tools, not only `AskUserQuestion`.
-
-Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full procedure, Socratic interview structure, and anti-pattern catalog.
+Agent interaction boundary (full detail in `.claude/rules/moai/core/agent-common-protocol.md`):
+- MoAI collects preferences via AskUserQuestion, then delegates to agents via Agent()
+- Subagents run in isolated contexts, cannot interact with users
+- Team mode: MoAI bridges AskUserQuestion (user) + SendMessage (teammates) + TaskList (coordination)
 
 ---
 

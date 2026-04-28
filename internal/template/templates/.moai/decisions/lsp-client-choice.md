@@ -72,7 +72,12 @@ Before bumping the pinned version:
 - Multi-language neutrality: MoAI supports 16 languages. powernap's `lsp.ClientConfig`
   accepts arbitrary command + args + initOptions, enabling all language servers equally.
 
+## HISTORY
+
+- 2026-04-28 (SPEC-V3R2-CON-003 OP-1): Moved from `.claude/rules/moai/core/lsp-client.md` to `.moai/decisions/lsp-client-choice.md`. Content unchanged. Decision records belong in `.moai/decisions/`, not in the rules tree.
+
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Source: SPEC-LSP-CORE-002 Decision Point 1 (2026-04-12)
+Relocated: SPEC-V3R2-CON-003 OP-1 (2026-04-28)

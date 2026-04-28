@@ -1,6 +1,5 @@
 ---
-description: MoAI-specific coding standards for instruction documents and configuration files
-globs: .claude/**/*.md, .claude/**/*.yaml, .moai/**/*.yaml, CLAUDE.md
+paths: ".claude/**/*.md,.claude/**/*.yaml,.moai/**/*.yaml,CLAUDE.md"
 ---
 
 # Coding Standards

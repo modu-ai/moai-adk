@@ -1,3 +1,5 @@
+// Resolution: RETIRE-OBS-ONLY — removed from settings.json registration.
+// Retained as observability tap via system.yaml hook.observability_events opt-in.
 package hook
 
 import (
