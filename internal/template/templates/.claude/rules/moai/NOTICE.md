@@ -32,6 +32,37 @@ For the complete Apache License 2.0 text, visit: https://www.apache.org/licenses
 
 ---
 
-**Import Date**: 2026-04-26  
-**MoAI-ADK License**: MIT  
+## Karpathy Coding Principles
+
+The following reference material is derived from Andrej Karpathy's coding philosophy:
+
+**Source Repository**: https://github.com/forrestchang/andrej-karpathy-skills
+
+### Imported Concepts
+
+The following concepts from Karpathy's 4 coding principles and anti-pattern catalog (imported 2026-04-28) are incorporated into MoAI-ADK:
+
+1. **4 Coding Principles** → `.claude/rules/moai/development/karpathy-quickref.md`
+   - Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution
+   - Mapped to MoAI's 6 Agent Core Behaviors with checkpoint questions
+
+2. **Anti-Pattern Catalog (8 categories)** → `.claude/skills/moai/references/anti-patterns.md`
+   - Premature Abstraction, Over-Engineering, Drive-By Refactoring, Style Drift
+   - Silent Assumption, Guessing Over Clarifying, Sycophantic Agreement, Claiming Without Evidence
+   - Adapted with Go/Python/TypeScript code examples for MoAI agent context
+
+3. **Constitution Amendments (3 additions)** → `.claude/rules/moai/core/moai-constitution.md`
+   - Behavior 4: Quantitative LOC trigger (Simplicity First)
+   - Behavior 5: Style-matching directive (Surgical Changes)
+   - Behavior 6: Goal-to-test pattern (Goal-Driven Execution)
+
+### Attribution
+
+Andrej Karpathy's coding principles are shared publicly as educational material. The `forrestchang/andrej-karpathy-skills` repository packages these principles into a structured reference. MoAI-ADK has adapted the concepts, mapped them to existing Agent Core Behaviors, and created concrete code examples specific to MoAI's orchestration context.
+
+---
+
+**Import Date (harness)**: 2026-04-26
+**Import Date (Karpathy)**: 2026-04-28
+**MoAI-ADK License**: MIT
 **Combined Compatibility**: Apache 2.0 imports distributed under MIT with Apache attribution preserved.

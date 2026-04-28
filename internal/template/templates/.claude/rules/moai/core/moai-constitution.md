@@ -237,6 +237,8 @@ Cross-reference: TRUST 5 Readable principle.
 
 Anti-pattern: Building 1000 lines when 100 would suffice; creating a factory for a single concrete implementation.
 
+Quantitative trigger: If implementation exceeds 3x the estimated minimum viable LOC, flag for simplification before proceeding. Estimate by asking: "What is the fewest lines this could be written in?" — then compare. If the ratio exceeds 3:1, stop and rewrite.
+
 ### 5. Maintain Scope Discipline [HARD]
 
 Touch only what you were asked to touch. Drive-by refactors create noise and risk regressions.
@@ -252,6 +254,8 @@ Cross-reference: CLAUDE.md Section 7 Rule 2 (Multi-File Decomposition).
 
 Anti-pattern: "While I was in this file I noticed..." — stay focused.
 
+Positive directive: Match the existing code style of the file you are modifying — naming conventions, error handling patterns, import organization. Consistency within a file is more important than personal preference.
+
 ### 6. Verify, Don't Assume [HARD]
 
 Every task requires evidence of completion. "Seems right" is never sufficient.
@@ -265,4 +269,6 @@ Evidence requirements:
 Cross-reference: CLAUDE.md Section 7 Rule 3 (Post-Implementation Review).
 
 Anti-pattern: Claiming "tests pass" without running them; assuming code compiles without building.
+
+Goal-to-test pattern: For ad-hoc tasks without a SPEC, define the completion goal as a testable assertion before starting. "This task is done when X produces Y" — then verify X produces Y. No SPEC required; the goal IS the test.
 <!-- moai:evolvable-end -->
