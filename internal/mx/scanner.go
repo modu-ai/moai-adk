@@ -38,7 +38,7 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Get comment prefix for this file extension
 	ext := strings.ToLower(filepath.Ext(filePath))

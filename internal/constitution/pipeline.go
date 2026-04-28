@@ -80,7 +80,7 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 
 	// ===== Layer 1: FrozenGuard =====
 	if err := p.FrozenGuard.Check(proposal, currentRule.Zone); err != nil {
-		return nil, fmt.Errorf("Layer 1 (FrozenGuard) 실패: %w", err)
+		return nil, fmt.Errorf("layer 1 (FrozenGuard) 실패: %w", err)
 	}
 
 	// ===== Layer 2: Canary =====
@@ -90,11 +90,11 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 		if err != nil {
 			// CanaryUnavailable은 치명적이 아님 (skip과 유사)
 			if _, unavailable := err.(*ErrCanaryUnavailable); !unavailable {
-				return nil, fmt.Errorf("Layer 2 (Canary) 실패: %w", err)
+				return nil, fmt.Errorf("layer 2 (Canary) 실패: %w", err)
 			}
 			// CanaryUnavailable은 계속 진행
 		} else if !canaryResult.Passed {
-			return nil, fmt.Errorf("Layer 2 (Canary) 실패: score drop %.2f > threshold %.2f",
+			return nil, fmt.Errorf("layer 2 (Canary) 실패: score drop %.2f > threshold %.2f",
 				canaryResult.MaxDrop, canaryScoreDropThreshold)
 		}
 	} else {
@@ -108,19 +108,19 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 	contradictionResult, err := p.ContradictionDetector.Scan(proposal, registry)
 	proposal.Contradicts = contradictionResult
 	if err != nil {
-		return nil, fmt.Errorf("Layer 3 (ContradictionDetector) 실패: %w", err)
+		return nil, fmt.Errorf("layer 3 (ContradictionDetector) 실패: %w", err)
 	}
 
 	// ===== Layer 4: RateLimiter =====
 	evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
 	if err := p.RateLimiter.Admit(proposal, evolutionLogPath); err != nil {
-		return nil, fmt.Errorf("Layer 4 (RateLimiter) 실패: %w", err)
+		return nil, fmt.Errorf("layer 4 (RateLimiter) 실패: %w", err)
 	}
 
 	// ===== Layer 5: HumanOversight =====
 	approved, err := p.HumanOversight.Approve(proposal, dryRun)
 	if err != nil {
-		return nil, fmt.Errorf("Layer 5 (HumanOversight) 실패: %w", err)
+		return nil, fmt.Errorf("layer 5 (HumanOversight) 실패: %w", err)
 	}
 	if !approved {
 		return nil, fmt.Errorf("사용자가 amendment를 거부했습니다")

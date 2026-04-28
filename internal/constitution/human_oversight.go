@@ -40,17 +40,17 @@ func (h *humanOversight) Approve(proposal *AmendmentProposal, dryRun bool) (bool
 
 	// Y/N prompt
 	for {
-		h.writer.Flush()
+		_ = h.writer.Flush()
 		fmt.Print("\n승인하시겠습니까? (Y/N): ")
 		response, err := h.reader.ReadString('\n')
 		if err != nil {
 			return false, fmt.Errorf("입력 읽기 오류: %w", err)
 		}
 
-		response = strings.TrimSpace(strings.ToUpper(response))
-		if response == "Y" || response == "YES" {
+		switch response = strings.TrimSpace(strings.ToUpper(response)); response {
+		case "Y", "YES":
 			return true, nil
-		} else if response == "N" || response == "NO" {
+		case "N", "NO":
 			return false, nil
 		}
 

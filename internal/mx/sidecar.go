@@ -111,7 +111,7 @@ func (m *Manager) writeWithoutLock(sidecar *Sidecar) error {
 
 	// Atomic rename
 	if err := os.Rename(tempPath, m.sidecarPath); err != nil {
-		os.Remove(tempPath) // Clean up temp file
+		_ = os.Remove(tempPath) // Clean up temp file
 		return fmt.Errorf("rename sidecar: %w", err)
 	}
 
@@ -212,7 +212,7 @@ func (m *Manager) ArchiveStale() (*Archive, error) {
 	var archive Archive
 	archiveData, err := os.ReadFile(m.archivePath)
 	if err == nil {
-		json.Unmarshal(archiveData, &archive)
+		_ = json.Unmarshal(archiveData, &archive)
 	}
 
 	// Append stale tags to archive
@@ -232,7 +232,7 @@ func (m *Manager) ArchiveStale() (*Archive, error) {
 	}
 
 	if err := os.Rename(tempPath, m.archivePath); err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return nil, fmt.Errorf("rename archive: %w", err)
 	}
 

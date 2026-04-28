@@ -197,8 +197,8 @@ func authHandler() {}
 	}
 
 	scanner := NewScanner()
-	scanner.ScanFile(file1)
-	scanner.ScanFile(file2)
+	_, _ = scanner.ScanFile(file1)
+	_, _ = scanner.ScanFile(file2)
 
 	errors := scanner.GetErrors()
 	if len(errors) == 0 {

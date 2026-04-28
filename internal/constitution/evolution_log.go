@@ -11,9 +11,8 @@ import (
 )
 
 // evolutionLogPath는 기본 evolution-log.md 경로를 반환한다.
-func evolutionLogPath(projectDir string) string {
-	return filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
-}
+// SPEC-V3R2-CON-003에서 사용 예정.
+var _ = filepath.Join // referenced by LoadEvolutionLogs path construction
 
 // LoadEvolutionLogs는 evolution-log.md 파일에서 로그 목록을 로드한다.
 // 파일이 없으면 빈 목록과 nil 에러를 반환한다.
@@ -69,7 +68,7 @@ func AppendEvolutionLog(path string, log *AmendmentLog) error {
 	if err != nil {
 		return fmt.Errorf("파일 열기 오류: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// 엔트리 작성: --- 구분자 + YAML + ---
 	entry := fmt.Sprintf("---\n%s---\n", string(yamlData))
@@ -126,7 +125,7 @@ func rewriteEvolutionLog(path string, logs []AmendmentLog) error {
 	if err != nil {
 		return fmt.Errorf("임시 파일 생성 오류: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// 헤더 작성
 	if _, err := f.WriteString("# Evolution Log\n\n"); err != nil {

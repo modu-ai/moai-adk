@@ -145,13 +145,13 @@ func TestInstructionsLoadedHandler_CheckCharacterBudget(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create temp file: %v", err)
 			}
-			defer os.Remove(tempFile.Name())
+			defer func() { _ = os.Remove(tempFile.Name()) }()
 
 			// Write content
 			if _, err := tempFile.Write([]byte(tt.content)); err != nil {
 				t.Fatalf("failed to write to temp file: %v", err)
 			}
-			tempFile.Close()
+			_ = tempFile.Close()
 
 			// Check budget
 			err = h.checkCharacterBudget(tempFile.Name())

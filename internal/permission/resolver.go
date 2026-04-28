@@ -359,7 +359,7 @@ func (r *PermissionResolver) logUnreachablePrompt(tool, input string) {
 	if err != nil {
 		return // Silently fail if we can't write the log
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, _ = f.WriteString(entry)
 }
 
@@ -385,10 +385,7 @@ func (r *PermissionResolver) ValidateMode(mode PermissionMode, isFork bool, stri
 		return fmt.Errorf("permission mode rejected: bypassPermissions not allowed in strict mode")
 	}
 
-	if isFork && mode == ModeBypassPermissions {
-		// BypassPermissions is allowed for forks but degraded to bubble
-		// This is not an error, just a warning handled in Resolve
-	}
+	// Note: isFork + ModeBypassPermissions is allowed — degradation handled in Resolve
 
 	if forkDepth > 3 && mode != ModePlan && mode != ModeBubble {
 		// Mode will be degraded to bubble in Resolve
