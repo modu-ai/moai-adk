@@ -177,6 +177,8 @@ func (m *MockGitHubClientImpl) GetInstalledVersion(ctx context.Context) (string,
 // parseRunnerVersion은 runner 버전 문자열에서 버전을 추출합니다.
 // parseRunnerVersion extracts version from runner version string.
 // 형식: "2.700.0" 또는 "actions-runner-linux-x64-2.700.0.tar.gz"
+//
+//nolint:unused // TODO: SPEC-xxx 러너 버전 파싱에 사용 예정
 func parseRunnerVersion(versionStr string) string {
 	// 버전 패턴 찾기 (X.Y.Z)
 	parts := strings.Split(versionStr, ".")

@@ -29,7 +29,7 @@ type ValidationResult struct {
 
 // Validator는 워크플로우 검증을 수행하는 구현체
 type Validator struct {
-	templateFS embed.FS // 템플릿 파일 읽기용 파일시스템
+	templateFS embed.FS //nolint:unused // 템플릿 파일 읽기용 파일시스템
 }
 
 // NewValidator는 새로운 Validator 인스턴스를 생성
