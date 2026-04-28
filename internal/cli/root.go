@@ -76,7 +76,4 @@ func init() {
 
 	// SPEC-V3R2-CON-001: register constitution subcommand
 	rootCmd.AddCommand(newConstitutionCmd())
-
-	// SPEC-V3R3-HARNESS-LEARNING-001: register harness subcommand
-	rootCmd.AddCommand(newHarnessCmd())
 }

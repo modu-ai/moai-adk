@@ -110,11 +110,54 @@ OUT OF SCOPE: Code implementation (manager-ddd/tdd), Git operations (manager-git
 
 [HARD] Use MultiEdit for simultaneous 3-file creation (60% faster than sequential):
 
-**spec.md**: YAML frontmatter (8 fields: id, version, status, created, updated, author, priority, issue_number), HISTORY section, EARS requirements, exclusions.
+**spec.md**: YAML frontmatter (9 required fields, see schema below), HISTORY section, EARS requirements, exclusions.
 
 **plan.md**: Implementation plan, milestones (priority-based, no time estimates), technical approach, risks.
 
 **acceptance.md**: Given-When-Then scenarios (minimum 2), edge cases, quality gate criteria, Definition of Done.
+
+#### [HARD] SPEC Frontmatter Canonical Schema
+
+[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 9 required fields below. Missing any one is a schema violation and blocks creation. This schema is non-negotiable — aligns with plan-auditor expectations and prevents the 2026-04-21 mass-SPEC-drift incident (30 SPECs generated with inconsistent fields).
+
+```yaml
+---
+id: SPEC-{DOMAIN}-{NUM}                 # Required. Format: SPEC-[A-Z]+-[0-9]+
+version: "0.1.0"                         # Required. Semantic version as quoted string
+status: draft                            # Required. Enum: draft|approved|completed|superseded|archived
+created_at: YYYY-MM-DD                   # Required. ISO date. NEVER use `created` (legacy, rejected)
+updated_at: YYYY-MM-DD                   # Required. ISO date. NEVER use `updated` (legacy, rejected)
+author: <name or role>                   # Required. String. Recommended: agent name or user identifier
+priority: High|Medium|Low|Critical       # Required. Enum (Title case). Alt: P0|P1|P2|P3 (uppercase)
+labels: [domain1, domain2, ...]          # Required. YAML array of lowercase tags. Empty array [] allowed only if justified.
+issue_number: null                       # Required. Integer | null. GitHub Issue number when created.
+---
+```
+
+Optional fields (include when applicable):
+- `depends_on: [SPEC-X-001, SPEC-Y-002]` — SPEC IDs this one blocks on
+- `related_specs: [SPEC-Z-001]` — Non-blocking references
+- `superseded_by: SPEC-NEW-001` — When status=superseded
+- `partially_superseded_by: [SPEC-A-001]` — Partial supersession
+- `issue_number: 123` — After GitHub Issue creation
+- `merged_pr: [N, M]` — Post-merge provenance
+- `merged_commit: <hash>` — Post-merge provenance
+
+[HARD] Field name aliases REJECTED (common errors caught by plan-auditor):
+- `created` → must be `created_at`
+- `updated` → must be `updated_at`
+- `spec_id` → must be `id`
+- `title` in frontmatter → put title in H1 heading, not frontmatter
+
+Pre-write validation (you MUST verify before calling Write/MultiEdit):
+1. All 9 required fields present
+2. `id` matches regex `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+3. `status` is one of the 5 enum values
+4. `priority` is Title-case or P-prefixed uppercase
+5. `created_at` / `updated_at` are ISO YYYY-MM-DD (not `created` / `updated`)
+6. `labels` is a YAML array (not comma-separated string)
+7. `version` is a quoted string (not unquoted float like `0.1`)
+8. If any check fails: halt, report the missing/invalid field, do NOT write the file
 
 ### Step 5: Verification Checklist
 
@@ -124,6 +167,9 @@ OUT OF SCOPE: Code implementation (manager-ddd/tdd), Git operations (manager-git
 - [ ] EARS format compliant
 - [ ] Exclusions section present
 - [ ] No implementation details in spec.md
+- [ ] Frontmatter 9-field canonical schema validated (see Step 4)
+- [ ] `created_at` / `updated_at` used (NOT `created` / `updated`)
+- [ ] `labels` array present (non-empty unless documented reason)
 
 ### Step 6: Expert Consultation (Conditional)
 

@@ -5,618 +5,129 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] — SPEC-V3R2-EXT-001: Typed Memory Taxonomy (4-type enforcement)
 
 ### Added
 
-#### V3R3 Phase C — Hybrid Design Pipeline (SPEC-V3R3-DESIGN-PIPELINE-001)
-
-- **`feat(design)`**: SPEC-V3R3-DESIGN-PIPELINE-001 — Hybrid Design Pipeline 구현
-  - **3-path 라우팅**: Path A (Claude Design import), Path B1 (Figma extractor via meta-harness), Path B2 (Pencil MCP via meta-harness)
-  - **DTCG 2025.10 validator** (`internal/design/dtcg/`): W3C Design Tokens Community Group 2025.10 사양 준수
-    - 14개 카테고리: color / dimension / font / fontFamily / fontWeight / fontStyle / duration / cubicBezier / number / strokeStyle / border / transition / shadow / gradient (+ composite types typography)
-    - alias cycle detection (DFS-based, 최대 100 홉 제한)
-    - FROZEN guard: `internal/design/dtcg/frozen_guard.go` — config bypass 불가 (`TestIsFrozen_ConfigBypass` 통과)
-    - 성능: 500-token 검증 ~50μs (목표 100ms의 0.05%, 2000x 마진)
-    - 커버리지: `internal/design/dtcg/` **88.8%**, `internal/design/pipeline/` **89.1%** (목표 85%)
-  - **Brand-conflict warning surface**: `visual-identity.md` vs `tokens.json` 색상 팔레트 편차 감지 (허용 한계 초과 시 ValidationWarning)
-  - **design constitution §4 Phase Contracts 확장** (v3.3.1 → v3.4.0, additive amendment):
-    - Path B1 (figma-extractor) 행 추가: BRIEF + Figma file ID → tokens.json + components.json
-    - Path B2 (pencil-mcp) 행 추가: BRIEF + .pen files → tokens.json + components.json
-    - FROZEN zone (§2, §3.1, §3.2, §3.3) 불변 유지
-- **`feat(design)`**: `expert-frontend` 에이전트 업데이트 — 코드 생성 전 DTCG validator 호출 의무화 (`internal/design/pipeline/`)
-- **`moai-workflow-pencil-integration` 제거**: 레거시 정적 스킬 삭제 → Path B2 (`my-harness-pencil-mcp`) 동적 생성으로 대체
-
-#### V3R3 Phase C — Project Harness Activation (SPEC-V3R3-PROJECT-HARNESS-001)
-
-- **`/moai project` Phase 5+ 신설**: 16개 질문/4 라운드 소크라테스 인터뷰 (`AskUserQuestion`, max 4 질문 per call) → `moai-meta-harness` 호출 → 사용자 영역 dynamic harness 자동 생성.
-- **5-Layer 통합 장치 활성화**:
-  - L1: `my-harness-*` SKILL.md frontmatter triggers (paths/keywords/agents/phases) 검증 — `harness.VerifyTriggers`
-  - L2: `.moai/config/sections/workflow.yaml` `harness:` 섹션 idempotent merge — `harness.UpdateWorkflowYAML` (yaml.Node 기반, team 섹션 보존)
-  - L3: `CLAUDE.md` `<!-- moai:harness-start --> ... <!-- moai:harness-end -->` 마커 블록 inject — `harness.InjectMarker` (heading-inclusive markerPattern으로 idempotent re-run 보장)
-  - L4: `internal/template/templates/.claude/skills/moai/workflows/{plan,run,sync,design}.md` 정적 import line (`@.moai/harness/<phase>-extension.md`) 4개 파일 추가
-  - L5: `.moai/harness/` 7개 베이스라인 파일 (+ Q13="Advanced" 시 design-extension.md) 자동 scaffolding — `harness.ScaffoldHarnessDir`
-- **`internal/harness/` 패키지 신설** (10 .go 파일 + 관련 test):
-  - `interview.go` Buffer/Answer + Abort/Commit (REQ-PH-010 zero-disk-write 보장)
-  - `interview_writer.go` interview-results.md 작성기 (YAML frontmatter + Q-A timestamps)
-  - `frozen_guard.go` `EnsureAllowed` orchestration-level guard (FROZEN zone 거부)
-  - `cleanup.go` 부분 산출물 cleanup tracker
-  - `layer1.go ~ layer5.go` 5-Layer 활성화 함수 모듈
-  - `chaining_rules.go` `ChainingRules` Write/Read (sub-agent에서 사용)
-  - `prefix_conflict.go` `my-harness-*` ↔ `moai-*` semantic 충돌 탐지 (Levenshtein ≤ 2 + 정확 suffix)
-  - `e2e_ios_test.go` 종단간 iOS 시나리오 + chain ORDER (before<primary<after) 검증
-  - `session_replay_test.go` 새 세션 자동 활성화 (CLAUDE.md @import follow)
-- **`moai doctor` 5-Layer 진단 추가** (`internal/cli/doctor_harness.go`): L1~L5 PASS/FAIL + prefix 충돌 WARN 출력.
-- **`internal/cli/update_safety_test.go`**: `moai update` 전후 사용자 영역 (`.moai/harness/`, `.claude/agents/my-harness/`, `.claude/skills/my-harness-*/`) sha256 snapshot diff 검증 (REQ-PH-009).
-- **`/moai project` Phase 5/6 명세** (`.claude/skills/moai/workflows/project.md`): 16Q 인터뷰 프로토콜 + meta-harness 호출 wrapper.
-
-### Test Coverage
-
-- internal/harness: **94.7%** (목표 85%)
-- internal/cli: 74.3% (기존 baseline 유지)
-
-### Notes
-
-- target_release: **v2.19.0** (v3R3 cluster bundling). 단독 v2.17.x 릴리스 안 함 (project_v3r3_cluster_release_bundling lesson 적용).
-- Plan-auditor verdict PASS (0.78), 4 major + 6 minor defects 추적 → D1/D4/D5/D8/D9 본 PR에서 처리 완료.
-- **Anthropic 1M context entitlement regression** (#44117 외 8건 OPEN, 2026-04 초중반 발생) 영향으로 일부 Wave는 `Agent()` spawn 차단 → orchestrator 직접 작성으로 우회. `/extra-usage` 1회 실행 후에도 동일 차단 발생 — Anthropic 패치 대기.
-
----
-
-## [2.19.0] - TBD
-
-v3R3 Phase C 최종 마일스톤: Hybrid Design Pipeline (DTCG 2025.10 validator + 3-path routing) + Self-Learning Dynamic Harness + Project Harness Activation 클러스터.
-
-### 추가 (Added)
-
-#### V3R3 Phase C — Hybrid Design Pipeline (SPEC-V3R3-DESIGN-PIPELINE-001)
-
-- **`feat(design)`**: Hybrid Design Pipeline — 3-path 라우팅 구현
-  - **Path A**: Claude Design handoff bundle import (기존 동작 보존)
-  - **Path B1**: Figma extractor → meta-harness를 통한 동적 figma-extractor skill 생성
-  - **Path B2**: Pencil MCP → meta-harness를 통한 동적 pencil-mcp skill 생성 (`moai-workflow-pencil-integration` 대체)
-- **DTCG 2025.10 Validator** (`internal/design/dtcg/`):
-  - 14개 타입 카테고리: color, dimension, font, fontFamily, fontWeight, fontStyle, duration, cubicBezier, number, strokeStyle, border, transition, shadow, gradient (+ composite: typography)
-  - Alias cycle detection (DFS, 최대 100 홉)
-  - FROZEN guard — config bypass 불가 (`TestIsFrozen_ConfigBypass` 통과)
-  - 성능: 500-token 기준 ~50μs (목표 100ms 대비 0.05%)
-  - 커버리지: `internal/design/dtcg/` 88.8% / `internal/design/pipeline/` 89.1%
-- **Brand-conflict warning**: `visual-identity.md` ↔ `tokens.json` 색상 편차 초과 시 `ValidationWarning` 발생
-- **design constitution §4 Phase Contracts 확장** (v3.3.1 → v3.4.0, additive amendment only):
-  - Path B1 (figma-extractor) 행: BRIEF + Figma file ID → tokens.json + components.json
-  - Path B2 (pencil-mcp) 행: BRIEF + .pen files → tokens.json + components.json
-  - FROZEN zone (§2, §3.1, §3.2, §3.3) 불변
-
-#### V3R3 Phase C — Self-Learning Dynamic Harness (SPEC-V3R3-HARNESS-LEARNING-001)
-
-(LEARNING-001 — PR #728에서 머지 완료, Release Drafter 자동 기록)
-
-- Self-learning subsystem: harness tier 자동 상승 + Tier 4 제안 UI
-- `internal/harness/learner/` 패키지: 5-tier 학습 파이프라인 (observe → heuristic → rule → graduate → archive)
-- `moai-harness-learner` skill: AskUserQuestion 기반 Tier 4 승인 UI
-- FROZEN guard 연동: constitution FROZEN zone 진입 시 evolution 차단
-
-#### V3R3 Phase C — Project Harness Activation (SPEC-V3R3-PROJECT-HARNESS-001)
-
-(PROJECT-HARNESS-001 — PR #727에서 머지 완료, Release Drafter 자동 기록)
-
-- `/moai project` Phase 5+ 신설: 16Q 소크라테스 인터뷰 → meta-harness → dynamic harness 자동 생성
-- `internal/harness/` 패키지: 5-Layer 활성화 (VerifyTriggers / UpdateWorkflowYAML / InjectMarker / static import / ScaffoldHarnessDir)
-- `moai doctor` 5-Layer 진단 확장
-
-### 변경 (Changed)
-
-- **`moai-workflow-pencil-integration` 제거**: Path B2 (`my-harness-pencil-mcp`) 동적 생성으로 대체
-- **`expert-frontend` 에이전트**: 코드 생성 전 DTCG validator 호출 의무화
-- **design constitution**: §4 Phase Contracts 확장 (v3.3.1 → v3.4.0)
-
-### 주의 사항 (Notes)
-
-- T6-02 docs-site 4-locale (ko/en/zh/ja) 업데이트는 별도 follow-up PR로 처리 (§17.3 동일 PR 규칙 준수 — 번역 지연 방지 목적)
-- T6-03 plan-auditor sign-off: orchestrator 별도 위임 예정
-- `target_release: v2.17.0` (spec.md frontmatter): v2.19.0으로 /moai sync 단계에서 reconcile 예정
-
----
-
-### Added (English summary — SPEC-V3R3-DESIGN-PIPELINE-001)
-
-- **3-path routing**: Path A (Claude Design import), Path B1 (Figma extractor via meta-harness), Path B2 (Pencil MCP via meta-harness; replaces legacy `moai-workflow-pencil-integration`)
-- **DTCG 2025.10 validator** (`internal/design/dtcg/`): 14-category W3C Design Token spec enforcement with alias cycle detection, FROZEN guard (config-bypass proof), and ~50μs/500-token benchmark (2000x within 100ms target)
-- **Brand-conflict warning surface**: detects color palette divergence between `visual-identity.md` and `tokens.json`
-- **design constitution §4 amendment** (v3.3.1 → v3.4.0): additive Phase Contracts rows for Path B1/B2; FROZEN zones (§2, §3.1–3.3) remain inviolable
-- **`expert-frontend` integration**: mandatory DTCG validation call before code generation (`internal/design/pipeline/`)
-
-### Changed (English)
-
-- Removed `moai-workflow-pencil-integration` static skill; capability recreated dynamically via meta-harness Path B2 pattern
-- `expert-frontend` agent updated to call DTCG validator before generating component code
-
----
-
-## [2.17.0] - 2026-04-27
-
-V3R3 Phase C 마일스톤: 메타-하니스 스킬 신설 + 16개 정적 스킬 제거 (BC-V3R3-007) + namespace 분리 (moai-* / my-harness-*) + revfactory/harness 7-Phase workflow 흡수.
-
-### Breaking Changes
-
-#### BC-V3R3-007: 16개 정적 스킬 제거 및 메타-하니스 기반 동적 생성 전환
-
-- **제거 스킬 (16개)**: moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-db-docs, moai-domain-mobile, moai-framework-electron, moai-library-shadcn, moai-library-mermaid, moai-library-nextra, moai-tool-ast-grep, moai-platform-auth, moai-platform-deployment, moai-platform-chrome-extension, moai-workflow-research, moai-workflow-pencil-integration, moai-formats-data
-- **자동 마이그레이션**: `moai update`는 제거되는 스킬을 `.moai/archive/skills/v2.16/<skill-id>/`로 자동 백업하고 `moai-meta-harness` 설치
-- **Grace window**: v2.17.x에서 `moai migrate restore-skill <id>`로 복원 가능. v2.18.0에서 아카이브 지원 종료 예정
-- **마이그레이션 가이드**: `.moai/release/MIGRATION-v2.17.0.md` 참조
-
-### Added
-
-#### V3R3 Phase C — Meta-Harness Skill (revfactory/harness Apache 2.0 기반)
-
-- **`moai-meta-harness` 스킬** (SPEC-V3R3-HARNESS-001):
-  - revfactory/harness 7-Phase workflow 흡수 (Discovery, Analysis, Synthesis, Skeleton, Customization, Evaluation, Iteration)
-  - MoAI 에이전트 에코시스템 통합 (manager-spec, manager-tdd/ddd, expert-*, evaluator-active)
-  - Apache 2.0 attribution 포함
-  - Frontmatter `triggers: {phases: ["plan", "run", "sync"], keywords: ["harness", "project-init", "meta-skill"]}`
-  - 동적 `my-harness-*` 스킬 생성 능력
-
-- **Namespace 분리** (SPEC-V3R3-HARNESS-001):
-  - 정적 스킬: `moai-*` prefix (23개: 4 foundation + 10 workflow + 5 ref + 1 design + 2 domain-FROZEN + 1 meta)
-  - 동적 스킬: `my-harness-*` prefix (사용자 관리, `moai update` 미변경)
-  - `moai doctor`: namespace allowlist 검증 추가
-
-#### Archive + Restore Infrastructure
-
-- **`.moai/archive/skills/v2.16/` 디렉토리 구조**: 제거된 16개 스킬 전체 보존 (SKILL.md, modules/, examples.md, reference.md)
-- **`moai migrate restore-skill <skill-id>` 명령**: 아카이브에서 `.claude/skills/<id>/`로 복원 (v2.17.x만, v2.18.0에서 삭제 예정)
-- **`moai update --dry-run` 플래그**: 마이그레이션 계획 출력 (filesystem 미변경)
-- **Idempotency**: 중복 실행 시 아카이브 재작성 안 함
-
-#### Documentation & Release
-
-- **`.moai/release/MIGRATION-v2.17.0.md`**: 자동 마이그레이션 / 수동 fallback / 복원 명령어 / deprecation timeline
-- **`.moai/release/RELEASE-NOTES-v2.17.0.md`**: v2.17.0 하이라이트 (first 30 lines에 BC-V3R3-007 callout)
-- **`CHANGELOG.md` v2.17.0 엔트리**: Breaking Changes / Added / Attribution 섹션
-
-#### Template-First Mirror
-
-- `internal/template/templates/.claude/skills/moai-meta-harness/SKILL.md`: Template source
-- `.claude/skills/moai-meta-harness/SKILL.md`: Local mirror (post `make build`)
-
-### Migration
-
-**Automatic (Recommended)**:
-```bash
-moai update
-```
-16개 스킬 자동 아카이브 → meta-harness 설치
-
-**Manual Fallback**:
-1. 제거 스킬 16개 수동 삭제
-2. meta-harness 스킬 템플릿에서 복사
-3. `moai migrate restore-skill` 불가능 (아카이브 없음)
-
-**Restore (Grace Window)**:
-```bash
-moai migrate restore-skill <skill-id>
-```
-
-### Attribution
-
-- **원본**: revfactory/harness (https://github.com/revfactory/harness, Apache License 2.0)
-- **적용 방식**: 7-Phase workflow 적응 → MoAI 에이전트 에코시스템 통합
-- **라이선스 호환**: Apache 2.0 → MoAI-ADK MIT, attribution 보존 (Apache 2.0 §4(c), §4(b))
-- **상세 정보**: `.claude/rules/moai/NOTICE.md`
+- **`internal/hook/memo/taxonomy` sub-package**: 4-type memory enum (`user | feedback | project | reference`) with
+  `ParseFile`, `ValidateType`, `DetectStale`, `AggregateWarning`, `AuditFile`, `AuditIndex`, `AuditDuplicates`.
+  91.7% test coverage. Source: SPEC-V3R2-EXT-001.
+- **SessionStart staleness wrap** (`internal/hook/session_start.go`): Memory files with mtime > 24h are wrapped
+  in `<system-reminder>` blocks with a verification caveat. Aggregated single warning when 10+ stale files detected.
+- **PostToolUse memory audit** (`internal/hook/post_tool.go`): Non-blocking warnings on Write/Edit of agent-memory
+  files: `MEMORY_MISSING_TYPE`, `MEMORY_MISSING_FRONTMATTER`, `MEMORY_BODY_STRUCTURE_MISSING`,
+  `MEMORY_EXCLUDED_CATEGORY`, `MEMORY_INDEX_OVERFLOW`, `MEMORY_DUPLICATE`. Static-keyword v1 detection
+  (LLM-based detection deferred to v2).
+- **`memory:` config section** (`.moai/config/sections/workflow.yaml`): `staleness_threshold_hours: 24`,
+  `index_line_cap: 200`, `stale_aggregate_threshold: 10`. Single source of truth for all thresholds.
+- **Rule documentation** (`.claude/rules/moai/workflow/moai-memory.md`): 4-type taxonomy section with
+  per-type writing guidelines, MEMORY.md 200-line cap explanation, excluded category enumeration.
+- **`MOAI_MEMORY_AUDIT=0` rollback flag**: Disables both SessionStart wrap and PostToolUse audit (skip path).
 
 ### Technical
 
-- New package: `internal/cli/update/archive.go` (skill archiving)
-- New command: `moai migrate restore-skill` (recovery)
-- New flag: `moai update --dry-run` (migration preview)
-- New test: `internal/template/skills_removal_test.go` (16-skill removal verification)
-- New test: `internal/cli/update/archive_test.go` (archive round-trip validation)
-- New test: `internal/cli/update/idempotency_test.go` (double-update idempotency)
-- Modified: `moai doctor` skills check (allowlist enforcement)
+- New fixtures: `internal/hook/memo/taxonomy/fixtures/` (11 files for valid/invalid taxonomy permutations)
+- Constants centralized in `internal/config/defaults.go` (no hardcoded literals 24/200/10)
 
-### Verification
-
-- All AC for SPEC-V3R3-HARNESS-001 (AC-HARNESS-01..07): PASS
-- `moai update` e2e fixture: 16 skills archived, meta-harness installed
-- `moai migrate restore-skill` round-trip: byte-identical restoration (SHA-256)
-- `moai update --dry-run`: zero filesystem mutations
-- `moai update` idempotency: second run produces no changes
-- `moai doctor` allowlist: 23-skill static core verified
-- `make build`: green
-
----
-
-## [2.16.0] - 2026-04-26
-
-Consolidated minor release: V3R3 Phase A 산출물 + V3R2 backup restore (Plan Audit Gate, Zone Registry, Typed Memory Taxonomy, WF-001/006) + V3R3 Phase B PATTERNS-001 (Pattern Cookbook). v2.15.0 was prepared but never tagged separately; its Phase A entry below is preserved as historical reference and is fully included in this release.
+## [Unreleased] — SPEC-V3R2-CON-001: FROZEN/EVOLVABLE Zone Registry
 
 ### Added
 
-#### V3R3 Phase B — Pattern Cookbook (revfactory/harness Apache 2.0 흡수)
-
-- **Pattern Cookbook 6 rule files** (SPEC-V3R3-PATTERNS-001):
-  - `.claude/rules/moai/development/agent-patterns.md` — 6 architectural patterns + MoAI vocabulary mapping
-    (Team / Sub-agent / Hybrid / Orchestrator / Specialist / Pipeline)
-  - `.claude/rules/moai/development/orchestrator-templates.md` — 3 templates (Team-orchestrator / Sub-orchestrator / Hybrid-orchestrator)
-  - `.claude/rules/moai/development/skill-ab-testing.md` — with-skill vs baseline A/B methodology
-  - `.claude/rules/moai/development/skill-writing-craft.md` — description craft + 3-level disclosure + schema
-  - `.claude/rules/moai/quality/boundary-verification.md` — 7 documented bug case studies (NEW directory)
-  - `.claude/rules/moai/workflow/team-pattern-cookbook.md` — 5 team patterns (Research / Implementation / Review / Design / Debug)
-- **Apache 2.0 NOTICE** (`.claude/rules/moai/NOTICE.md`): attribution + source list + import date
-- **Frontmatter `paths` (CSV)** on all 6 rule files for context-aware auto-loading
-- **Template-First mirror**: 7/7 byte-identical copies under `internal/template/templates/.claude/rules/moai/`
-
-#### V3R2 Backup Restore — Plan Audit Gate
-
-- **Phase 0.5 Plan Audit Gate** (SPEC-WF-AUDIT-GATE-001): mandatory plan-auditor gate executed at the
-  start of every `/moai run` invocation, before any implementation phase begins. 4 verdicts
-  (PASS / FAIL / BYPASSED / INCONCLUSIVE), 7-day grace window with FAIL_WARNED downgrade.
-- **`.moai/reports/plan-audit/`** directory + `.gitkeep` for per-call audit report persistence
-- **`spec-workflow.md` Phase 0.5 documentation**: gate entry conditions, verdicts, report format,
-  grace window mechanics
-- **plan.md `audit-ready` signal**: Completion Criteria amended to require explicit `audit-ready`
-  status before transition to Run phase
-- **WF-001/006 restoration**: workflow rule baselines re-aligned with V3R2 standards
-
-#### V3R2 Backup Restore — FROZEN/EVOLVABLE Zone Registry
-
-- **`moai constitution list`** CLI command (SPEC-V3R2-CON-001): browse and filter the zone registry by
-  `--zone frozen|evolvable`, `--file <pattern>`, and `--format table|json`
-- **`moai constitution guard`** CLI command: checks a list of changed rule IDs for FROZEN zone
-  violations. Returns non-zero exit on any Frozen-zone rule modification. Designed for CI pipelines.
-- **Zone Registry** (`.claude/rules/moai/core/zone-registry.md`): single source of truth for all HARD
-  clauses across the MoAI rule tree. 68 entries: 38 Frozen, 30 Evolvable. Template twin included.
-- **`internal/constitution` package**: `Zone`, `Rule`, `Registry`, `LoadRegistry`,
-  `ValidateRuleReferences`. 86.5% test coverage. 200-entry cold load benchmark: ~1.85ms (target <10ms).
-- **Doctor constitution check** (`moai doctor`): validates registry existence, Frozen entry count,
-  orphan warnings, and duplicate IDs. Supports `MOAI_CONSTITUTION_STRICT=1` strict mode.
-- **Makefile `constitution-check` target**: runs `moai constitution list --format json` against the
-  live registry.
+- **`moai constitution list`** CLI command: Browse and filter the zone registry by `--zone frozen|evolvable`,
+  `--file <pattern>`, and `--format table|json`. Source: SPEC-V3R2-CON-001.
+- **`moai constitution guard`** CLI command: Check a list of changed rule IDs for FROZEN zone violations.
+  Returns non-zero exit on any Frozen-zone rule modification. Designed for CI pipelines.
+- **Zone Registry** (`.claude/rules/moai/core/zone-registry.md`): Single source of truth for all HARD clauses
+  across the MoAI rule tree. 68 entries: 38 Frozen, 30 Evolvable. Template twin included.
+- **`internal/constitution` package**: `Zone`, `Rule`, `Registry`, `LoadRegistry`, `ValidateRuleReferences`.
+  86.5% test coverage. 200-entry cold load benchmark: ~1.85ms (target <10ms).
+- **Doctor constitution check** (`moai doctor`): `Constitution Registry` check validates registry existence,
+  Frozen entry count, orphan warnings, and duplicate IDs. Supports `MOAI_CONSTITUTION_STRICT=1` strict mode.
+- **Makefile `constitution-check` target**: Runs `moai constitution list --format json` against the live registry.
 - **CI `constitution-check` job** (`.github/workflows/ci.yml`): `continue-on-error: true` job verifying
   registry integrity on every push to main and PR.
 
-#### V3R2 Backup Restore — Typed Memory Taxonomy
+### Technical
 
-- **4-type memory enforcement** (SPEC-V3R2-EXT-001): `user / feedback / project / reference` memory
-  types with required frontmatter (`name`, `description`, `type`). Body structure rules for
-  `feedback` / `project` (lead with rule + `**Why:**` + `**How to apply:**`).
-- **`internal/hook/memo/taxonomy` subpackage**: `MemoryType` enum, `ParseFile`, `DetectStale`,
-  `AuditFile / AuditIndex / AuditDuplicates`. 91.7% coverage.
-- **Stale memory detection**: SessionStart hook wraps memory files older than 24h in
-  `<system-reminder>` blocks. Aggregate warning emitted when ≥10 stale files detected
-  simultaneously to avoid token bloat.
-- **MEMORY.md 200-line cap**: enforced by `MEMORY_INDEX_OVERFLOW` audit warning. Lines 201+ are
-  silently truncated by Claude Code memory loader.
-- **PostToolUse memory audit**: non-blocking stderr warnings on Write/Edit operations
-  (`MEMORY_MISSING_TYPE`, `MEMORY_MISSING_FRONTMATTER`, `MEMORY_BODY_STRUCTURE_MISSING`,
-  `MEMORY_EXCLUDED_CATEGORY`, `MEMORY_DUPLICATE`).
-- **`workflow.yaml` `memory` section**: `staleness_threshold_hours`, `index_line_cap`,
-  `stale_aggregate_threshold` configurable per project. Default: 24h / 200 lines / 10 files.
-- **`MOAI_MEMORY_AUDIT=0`** environment override for bulk migrations.
+- New package `internal/constitution`: `zone.go`, `rule.go`, `loader.go`, `dangling.go`
+- Test fixtures: `internal/constitution/testdata/` (6 fixture files)
+- Binary size delta: +33,600 bytes (~33 KiB, limit 50 KiB)
+- Integration tests: `internal/cli/constitution_integration_test.go` (build tag: integration)
 
-### Fixed
+## [Unreleased] — SPEC-V3R2-WF-001: Skill Consolidation Stage 1 (48 → 38)
 
-- **PostToolUse hook: timeout 60s → 10s + `async: true`** (template + local): the previous 60s synchronous default
-  could hold the conversation for up to 60s after every Write/Edit while LSP/AST/MX validations completed. Real-world
-  latency for `moai hook post-tool` is <50ms, so the 60s ceiling was pure defensive margin that compounded MCP-related
-  stalls. The new defaults: (a) `timeout: 10` as the per-run upper bound, (b) `async: true` so the hook runs in the
-  background and results are delivered via `systemMessage` on the next turn — Write/Edit never blocks the main response.
-- **`settings-management.md` freeze diagnosis checklist**: added a 4-step ordered checklist (MCP auth → hook timeout
-  → context pressure → terminal I/O) so users can self-diagnose mid-session freezes instead of escalating.
-- **`settings-management.md` timeout units clarification**: corrected the "1–600,000ms" wording (Claude Code hook
-  timeouts are in **seconds**, not milliseconds) and added a per-hook recommended ceiling table.
-- **`internal/runtime/audit_report.go` + `audit_cache.go` lint cleanup**: addressed 11 staticcheck (QF1012, S1039) and
-  errcheck findings inherited from the V3R2 backup restore. Replaced `WriteString(fmt.Sprintf(...))` patterns with
-  `fmt.Fprintf(&sb, ...)`, removed redundant `fmt.Sprintf` for static strings, and made `defer f.Close()` errcheck-safe
-  via `defer func() { _ = f.Close() }()`.
+### Added
+
+- **Stage 1 skill consolidation**: 48 skills → 38 surviving directories (11 RETIRE + 1 NEW `moai-design-system`).
+  Source: SPEC-V3R2-WF-001 v1.1.0.
+- **5 merge clusters**: `moai-foundation-thinking` (absorbs philosopher + workflow-thinking triplet),
+  `moai-design-system` (NEW, absorbs design-craft + domain-uiux + Pencil portion of design-tools),
+  `moai-domain-database` (absorbs platform-database-cloud), `moai-workflow-project` (absorbs templates + docs-generation + jit-docs),
+  `moai-foundation-core` (absorbs foundation-context content).
+- **11 retired skills** (archived to `.moai/archive/skills/v3.0/`):
+  `moai-foundation-context`, `moai-foundation-philosopher`, `moai-workflow-thinking`, `moai-workflow-templates`,
+  `moai-workflow-jit-docs`, `moai-domain-uiux`, `moai-design-craft`, `moai-design-tools` (Figma portion),
+  `moai-docs-generation`, `moai-platform-database-cloud`, `moai-tool-svg`.
+- **Trigger keyword union preservation**: All retired skill triggers migrated to merge target's `triggers:` or `related-skills:` frontmatter.
+- **6 REFACTOR skills**: `moai-workflow-testing` (split bundled modules), `moai-domain-backend` (narrow to API matrix),
+  `moai-domain-frontend` (router-only), `moai-platform-deployment` (Vercel-only), `moai-platform-auth` (narrower vendor guidance),
+  plus 2 UNCLEAR telemetry windows (`moai-framework-electron`, `moai-platform-chrome-extension`).
+- **CI fixture tests**: 2 broken-fixture suites at `.moai/specs/SPEC-V3R2-WF-001/fixtures/` validating retirement archive requirements and trigger drop detection.
+- **Shared contract** (SPEC-V3R2-MIG-001): `.moai/decisions/skill-rename-map.yaml` artifact schema (v1) for migrator consumption.
+
+### Breaking Changes
+
+- **[BC-V3R2-006] Skill directory deletions**: Users with customized `.claude/skills/` may encounter deleted directories
+  during `moai update`. Migrate per `.moai/archive/skills/v3.0/<name>/RETIRED.md` guidance.
 
 ### Technical
 
-- New rule directory: `.claude/rules/moai/quality/` (created for boundary-verification.md)
-- New packages: `internal/constitution`, `internal/hook/memo/taxonomy`
-- Binary size delta cumulative: +33,600 bytes (~33 KiB, limit 50 KiB) for constitution; ~5 KiB for taxonomy
-- Test fixtures: `internal/constitution/testdata/` (6 fixture files)
-- Integration tests: `internal/cli/constitution_integration_test.go` (build tag: integration)
-- License compliance: revfactory/harness Apache 2.0 → MoAI-ADK MIT, NOTICE preserved
-  (Apache 2.0 → MIT direction permitted with NOTICE retention)
+- Template/local byte-identity maintained across all `.claude/skills/` and `internal/template/templates/.claude/skills/`
+  via `diff -rq` CI validation.
+- 48→38 progression is Stage 1 of a 2-stage plan; Stage 2 (38→24) deferred to SPEC-V3R3-WF-001.
+- Agency-absorbed skills (`moai-domain-copywriting`, `moai-domain-brand-design`) remain FROZEN per design constitution.
 
-### Verification
-
-- All AC for SPEC-V3R3-PATTERNS-001 (AC-001..005): PASS
-- All AC for SPEC-V3R2-CON-001 (17 AC): PASS, coverage 86.5%
-- All AC for SPEC-V3R2-EXT-001: PASS, coverage 91.7%
-- All AC for SPEC-WF-AUDIT-GATE-001: PASS (placeholder + spec-workflow integration)
-- `make build`: green
-- `go test ./internal/template/...`: PASS
-- `go test ./internal/constitution/...`: PASS
-- `go test ./internal/hook/memo/...`: PASS
-
-### Note on Versioning
-
-v2.15.0 was prepared (system.yaml bumped, CHANGELOG entry added) but never tagged. The V3R3 Phase A
-content listed in the v2.15.0 section below was merged to main but the tag push was skipped, then
-V3R2 backup restore + Phase B work continued. Per user decision (2026-04-26), all merged content
-since v2.14.0 is consolidated into a single v2.16.0 release. The v2.15.0 section is preserved
-verbatim as a historical artifact.
-
----
-
-## [2.15.0] - 2026-04-26  *(prepared but never tagged — content consolidated into v2.16.0 above)*
-
-### Breaking Changes
-
-- **BC-V3R3-001**: 7 expert agents (backend, frontend, testing, debug, performance, refactoring, security, devops) now have `Agent` tool, enabling T2 → T2 escalation. Max depth 2, same-SPEC scope. (SPEC-V3R3-ARCH-003)
-- **BC-V3R3-002**: expert-debug and expert-performance agents now have `Write` and `Edit` tools. (SPEC-V3R3-ARCH-003)
-- **BC-V3R3-006**: Token Circuit Breaker added (`.moai/config/sections/runtime.yaml`). Per-agent token budget tracking with warning emission at 75%/90% thresholds. /clear remains MANUAL. (SPEC-V3R3-ARCH-007)
+## [Unreleased] — SPEC-V3R2-WF-006: Output Styles Alignment
 
 ### Added
 
-#### V3R3 Phase A — Foundation Hardening
+- **Output style schema validation** (frontmatter fields: `name`, `description`, `keep-coding-instructions`).
+  Source: SPEC-V3R2-WF-006 v1.1.0.
+- **Loading precedence**: Project-level `settings.json` `outputStyle` > user-level > hardcoded "MoAI" default.
+  Documented in `.claude/rules/moai/core/settings-management.md`.
+- **Fallback warning**: Unknown style names fall back to "MoAI" and emit `OUTPUT_STYLE_UNKNOWN: <name> not found; falling back to MoAI` to stderr.
+- **CI drift check**: `make build` validates template and local output-styles byte-identity; rejects with `OUTPUT_STYLE_DRIFT` on divergence.
+- **Schema audit CI** (`internal/template/output_styles_audit_test.go`): Rejects missing/malformed frontmatter with `OUTPUT_STYLE_SCHEMA_ERROR`.
 
-- **Convention Compliance Sweep** (SPEC-V3R3-DEF-007)
-  - 11 skills: added `progressive_disclosure` YAML frontmatter blocks
-  - manager-git: added Scope Boundaries + Delegation Protocol sections
-  
-- **Expert Agent Tool Uplift** (SPEC-V3R3-ARCH-003)
-  - 7 expert agents: added `Agent` tool for cross-call escalation (max depth 2)
-  - expert-debug, expert-performance: added `Write` and `Edit` tools
-  - All 7: added Escalation Protocol section with boundary rules
+### Technical
 
-- **Token Circuit Breaker** (SPEC-V3R3-ARCH-007)
-  - `.moai/config/sections/runtime.yaml`: New config section with per-agent budgets
-  - `internal/runtime/budget.go`: `Tracker` type + 5 methods + goroutine-safe mutations
-  - `internal/runtime/persist.go`: `PersistProgress` writes atomic progress.md + resume messages
-  - SessionStart hook: loads runtime.yaml, initializes Tracker, falls back to defaults
+- Two styles remain stable: `MoAI` (`keep-coding-instructions: true`) and `Einstein` (`keep-coding-instructions: false`).
+- Third style admission gated by schema validation (`OUTPUT_STYLE_UNVERIFIED` block).
+- Template/local byte-identity maintained via `diff -rq` CI check (extends existing commands pattern).
 
-- **Mobile Native Coverage** (SPEC-V3R3-COV-001)
-  - expert-mobile agent (4-strategy router: iOS/Android/RN/Flutter)
-  - moai-domain-mobile skill (iOS/Android native patterns)
-  - moai-framework-react-native skill (RN deep dive)
-  - moai-framework-flutter-deep skill (Flutter deep dive)
-  - Mobile keyword auto-detection in SKILL.md routing
-
-- **Commands Cleanup** (SPEC-V3R3-CMD-CLEANUP-001)
-  - `/moai gate` command file: added missing wrapper (Thin Command Pattern)
-  - review.md Phase 4: strengthened security depth (dependency vuln + secrets git history + data isolation)
-  - sync.md Phase 0.55: strengthened manifest audit checks
-  - Removed `/moai context` skill (superseded by @MX annotations + auto-memory)
-
-### Fixed
-
-- **ORC Dependency Cycle Resolution** (SPEC-V3R3-DEF-001)
-  - Resolved D-CRIT-001: ORC graph cycle risk via single-direction reaffirmation
-  - WF-001 ↔ MIG-001 cycle: enforced WF-001 → MIG-001 one-way dependency
-
-### Technical Details
-
-| Component | Change | Impact |
-|-----------|--------|--------|
-| Skills | 11 PD blocks added | ~2-3K tokens per skill, better token efficiency |
-| Agents | 7 expert tools + escalation | T2 domain coordination enabled |
-| Runtime | Token budgets per-agent | 75% threshold auto-save + resume message |
-| Mobile | 4 new skills + expert-mobile | Zero coverage → iOS/Android/RN/Flutter guidance |
-| Commands | /moai gate added, context removed | Thin Command Pattern enforcement |
-
----
-
-## [2.14.0] - 2026-04-24
-
-### Summary
-
-Utility Hardening release — MX validator correctness improvements (method receiver detection, word-boundary fan-in counting, bounded goroutine pools), tree-sitter 16-language cyclomatic complexity measurement, ast-grep multi-language rule seeding (5 languages + suppression policy), LSP subprocess hygiene (stderr drain, singleflight spawn). All 51/51 acceptance criteria passing (SPEC-UTIL-001: 18/18, SPEC-UTIL-002: 21/21, SPEC-UTIL-003: 12/12). Non-breaking release with detection improvements documented in Detection Improvements section.
-
-### Breaking Changes
-
-None. Hook JSON wire format frozen; no config key changes; no public API changes. Detection improvements (method receivers, @MX:REASON pairing) are additive; existing codebases may see new advisory violations in `transition_mode` grace period.
+## [Unreleased] — SPEC-WF-AUDIT-GATE-001: Plan Audit Gate (grace window 7d)
 
 ### Added
 
-- MX validator tree-sitter integration — 16-language cyclomatic complexity measurement with 5-language query seeding (Go, Python, TypeScript, JavaScript, Rust) and 11-language scaffolding (Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift)
-- MX validator method receiver detection — `^func\s+\(\w+\s+\*?\w+\)\s+([A-Z]\w+)` regex extended to catch exported methods alongside exported functions
-- `@MX:REASON` pairing enforcement — P1 violation when `@MX:ANCHOR` lacks paired `@MX:REASON` within ±1 line; P2 violation for `@MX:WARN` (per mx-tag-protocol.md)
-- Windows-native MX validator — Go-native `filepath.WalkDir` + `bufio.Scanner` replaces grep subprocess; zero exec.Command calls in MX validator path on all platforms
-- Windows CI runner for MX validator — `.github/workflows/ci.yml` extended with Windows test matrix coverage
-- `transition_mode` grace flag in `mx.yaml` — downgrades newly-surfaced violations (method receivers, paired @MX:REASON) to advisory for one minor cycle (v2.14 only); default false
-- ast-grep Rule.Note + Rule.Metadata fields — YAML rule format extended; propagated through SARIF external/ tags (OWASP/CWE per SARIF 2.1.0 §3.52)
-- ast-grep suppression policy lint — `// ast-grep-ignore` now requires adjacent `// @MX:REASON <rationale>` comment within 1 line; language-aware prefix support (//, #, --)
-- 5-language ast-grep rule seeding — Ruby, PHP, Elixir, C#, Kotlin each with 3 foundational rules (unused-var, null-deref, todo-marker) + per-language fixture triplets (15 total rules, 15 fixture triplets)
-- `detectSGVersion()` implementation — sync.Once-cached subprocess invocation with 5s context timeout; SARIF tool.driver.version populated
-- LSP stderr drain goroutine — `io.Discard` sink preventing 128 KiB buffer deadlock on high-volume subprocess stderr
-- LSP Manager singleflight.Group — exactly-once factory invocation under concurrent `RouteFor` calls via `golang.org/x/sync/singleflight`
-- `gopls.Diagnostic` / `gopls.Range` / `gopls.Position` type aliases — internal consolidation pointing at `lsp.*` types for single source of truth on LSP bridge
-- 60+ new tests — characterization + post-fix + new behavior across MX validator (method receiver, fan-in word boundary, semaphore, Windows native, @MX:REASON pairing), ast-grep (metadata propagation, suppression lint, 5-language fixtures), and LSP (stderr drain, singleflight race)
-- Binary size controlled — tree-sitter language sub-packages lazy-loaded (only 5/16 imported at build time per v2.14 scope; remaining 11 scaffolded as stubs)
+- **Plan Audit Gate** (`/moai run` Phase 0.5): Mandatory plan-auditor invocation before every
+  `/moai run <SPEC-ID>` call. Prevents unreviewed SPEC artifacts from entering the implementation
+  phase. Source: SPEC-WF-AUDIT-GATE-001.
+- **Grace window** (7 days): FAIL verdicts emit warnings only until T0 + 7 days, after which
+  they block Phase 1. Grace window T0 stored in `.moai/state/audit-gate-merge-at.txt`.
+- **`--skip-audit` bypass**: Users can bypass the gate with `--skip-audit` or `MOAI_SKIP_PLAN_AUDIT=1`.
+  All bypasses are recorded as BYPASSED verdict in `.moai/reports/plan-audit/` with timestamp, user, and rationale.
+- **INCONCLUSIVE fall-back**: Auditor timeout/error/malformed output results in INCONCLUSIVE verdict.
+  Never auto-PASS. Presents retry/proceed/abort options to user.
+- **24h audit cache**: Repeated `/moai run` calls within 24h with unchanged plan artifacts reuse
+  the cached PASS verdict without re-invoking plan-auditor.
+- **Daily report persistence**: All gate invocations append to `.moai/reports/plan-audit/<SPEC-ID>-<DATE>.md`.
+- **Team mode parity**: Gate applies equally in `--team` mode before any TeamCreate or teammate spawn.
 
-### Changed
+### Technical
 
-- MX validator fan-in counter — word-boundary regex `\b` + `regexp.QuoteMeta` replaces substring matching; eliminates false positives from identifier substrings
-- MX validator ValidateFiles — `runtime.NumCPU()*2` semaphore bounds goroutine fan-out (previously unbounded)
-- ast-grep ScanMultiple — buffered semaphore with same capacity bounds goroutine fan-out
-- SARIF output — external/owasp/* and external/cwe/* property tags added when rule metadata present (additive)
-
-### Fixed
-
-- IMP-V3U-001: MX validator method receiver blindspot — exported methods now detected alongside exported functions
-- IMP-V3U-002: LSP stderr buffer deadlock — drain goroutine prevents subprocess stderr saturation on large projects
-- IMP-V3U-003: LSP Manager getOrSpawn concurrent spawn race — singleflight.Group guarantees exactly-once client factory invocation
-- IMP-V3U-004: ast-grep Rule.Metadata propagation gap — OWASP/CWE metadata from YAML now included in SARIF output
-- IMP-V3U-005: MX fan-in substring false positives — word-boundary regex prevents over-counting due to identifier substrings
-- IMP-V3U-006: ast-grep ScanMultiple unbounded goroutine fan-out — semaphore applied (same pattern as MX validator)
-- IMP-V3U-007: MX ValidateFiles unbounded goroutine fan-out — semaphore applied for predictable resource usage
-
-### Detection Improvements
-
-v2.14.0 enables detection of previously-invisible violations. This is **not a bug fix but a discipline strengthening** — the MX validator now catches patterns that were always protocol violations but silently ignored:
-
-#### Method Receivers (P2/P3/P4 priority)
-
-Method definitions were invisible to the validator. `func (r *Receiver) ExportedMethod()` is now detected with the same fan-in counting as `func ExportedFunction()`. Existing codebases may reveal untracked high-fan-in methods. Mitigation: Enable `transition_mode: true` in `mx.yaml` to downgrade to advisory for v2.14 cycle.
-
-#### @MX:REASON Pairing (P1 for ANCHOR, P2 for WARN)
-
-The protocol (mx-tag-protocol.md "Mandatory Fields") requires `@MX:REASON` sub-line within ±1 lines of `@MX:ANCHOR` and `@MX:WARN` tags. v2.14 now enforces this. Existing tags lacking paired `@MX:REASON` emit blocking violations. Mitigation: Add `@MX:REASON "explanation"` adjacent lines or enable `transition_mode: true` for advisory-only behavior in v2.14.
-
-### Performance
-
-- tree-sitter 1 MiB input cap guards memory during complexity measurement
-- word-boundary regex compiled once per countFanIn invocation
-- singleflight prevents redundant language server spawn attempts under concurrent RouteFor calls
-- Bounded semaphores in MX validator and ast-grep ScanMultiple eliminate unbounded goroutine fan-out
-
-### Security
-
-- All `exec.Command` calls removed from `internal/hook/mx/` — Windows CI enforces zero-subprocess-dependency via static analysis
-- Zero secrets in 15 new fixture files (Ruby/PHP/Elixir/C#/Kotlin)
-
-### Dependencies
-
-- Added: `github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82` (5 grammar sub-packages: golang, python, typescript, javascript, rust; 11 additional languages scaffolded without import)
-- Existing: `golang.org/x/sync v0.20.0` (singleflight already present, no new dependency)
-- Binary size impact: ~50 MiB increase from tree-sitter grammars (documented in release plan §0.5 D5 caveat)
-
-### Deferred (v2.15+)
-
-- **v2.15**: LSP subprocess hygiene baseline (cmd.WaitDelay, Setpgid, close-fds), MX validator config tuning knobs, ast-grep sg version floor bump ≥ 0.42.1, ScanMultiple pattern alignment, incremental source file scanning
-- **v2.16**: hook.Diagnostic ↔ lsp.Diagnostic wire format compatibility layer (IMP-V3U-008), MX brace-in-string-literal and blank-line-gap fixes
-- **v2.17+**: SARIF file:// URI prefix, remaining 6-language ast-grep rule seeding (Java, C++, Scala, R, Flutter, Swift), community contributions
-- **v3.0**: MX Validator interface cleanup, `config.ResolveClientImpl()` default flip to powernap_core
-
-### Acceptance Criteria Coverage
-
-- **SPEC-UTIL-001** (MX Validator Correctness): 18/18 ACs PASS (AC-UTIL-001-01..18) — characterization tests confirm B1/B2/P1 bugs reproduce pre-fix and pass post-fix
-- **SPEC-UTIL-002** (ast-grep Hardening): 21/21 ACs PASS (AC-UTIL-002-01..21) — PHP `$_ = null` pattern replaced with `json_decode(null)` due to tree-sitter grammar limitation (semantic equivalent)
-- **SPEC-UTIL-003** (LSP Hygiene): 12/12 ACs PASS (AC-UTIL-003-01..12) — wire format frozen (consolidation deferred to v2.16)
-- **Total**: 51/51 ACs PASS
-
-### Quality Verification
-
-- `go vet ./...`: 0 issues
-- `go test -race ./...`: all SPEC-touched packages PASS (pre-existing flaky `TestHookWrapper_ValidJSON` unrelated, passes in isolation)
-- Coverage: mx 87.5%, complexity 86.2%, astgrep 83%+, quality 82%+, security 91%+, lsp/core 92.9%, lsp/gopls 80.1%, hook 85.0%
-- manager-quality review: CONDITIONAL → MERGE-READY (2 feedback items fixed in commit 52a9bf81f)
-- TRUST 5 Score: 5/5
-
-### Installation & Update
-
-```bash
-# Update to the latest version
-moai update
-
-# Verify version
-moai version
-```
-
----
-
-## [2.14.0] - 2026-04-24 (한국어)
-
-### 요약
-
-유틸리티 강화 릴리스 — MX validator 정확성 개선(메서드 수신자 감지, 단어 경계 fan-in 계산, 제한된 goroutine 풀), tree-sitter 16개 언어 cyclomatic complexity 측정, ast-grep 다국어 규칙 시딩(5개 언어 + 억제 정책), LSP subprocess hygiene(stderr 드레인, singleflight spawn). 총 51/51 acceptance criteria 통과(SPEC-UTIL-001: 18/18, SPEC-UTIL-002: 21/21, SPEC-UTIL-003: 12/12). Detection Improvements 섹션에 감지 개선사항 문서화된 non-breaking 릴리스입니다.
-
-### 주요 변경 사항 (Breaking Changes)
-
-없음. Hook JSON 와이어 형식 동결; config 키 변경 없음; public API 변경 없음. 감지 개선사항(메서드 수신자, @MX:REASON 페어링)은 additive이며, 기존 코드베이스는 `transition_mode` 유예 기간 동안 새로운 advisory 위반을 볼 수 있습니다.
-
-### 추가됨 (Added)
-
-- MX validator tree-sitter 통합 — 16개 언어 cyclomatic complexity 측정(5개 언어 쿼리 시딩: Go/Python/TypeScript/JavaScript/Rust, 11개 언어 스캐폴딩)
-- MX validator 메서드 수신자 감지 — `^func\s+\(\w+\s+\*?\w+\)\s+([A-Z]\w+)` 정규식 확장으로 exported 함수와 함께 exported 메서드 감지
-- `@MX:REASON` 페어링 강제 — `@MX:ANCHOR`가 ±1 줄 내 `@MX:REASON`을 갖지 않을 시 P1 위반 발행; `@MX:WARN`의 경우 P2 (mx-tag-protocol.md 준수)
-- Windows-native MX validator — Go-native `filepath.WalkDir` + `bufio.Scanner`로 grep subprocess 대체; 모든 플랫폼에서 MX validator 경로의 exec.Command 호출 제거
-- MX validator Windows CI 실행기 — `.github/workflows/ci.yml` Windows 테스트 행렬 확대
-- `mx.yaml` 내 `transition_mode` 유예 플래그 — 새로 감지된 위반(메서드 수신자, 페어된 @MX:REASON)을 한 minor 사이클(v2.14만) advisory로 다운그레이드; 기본값 false
-- ast-grep Rule.Note + Rule.Metadata 필드 — YAML 규칙 형식 확장; SARIF external/ 태그로 전파(SARIF 2.1.0 §3.52당 OWASP/CWE)
-- ast-grep 억제 정책 lint — `// ast-grep-ignore`이 이제 ±1 줄 내 인접 `// @MX:REASON <rationale>` 주석 필요; 언어별 접두사 지원(//, #, --)
-- 5개 언어 ast-grep 규칙 시딩 — Ruby/PHP/Elixir/C#/Kotlin 각 3개 기초 규칙(unused-var, null-deref, todo-marker) + 언어별 fixture 삼중쌍(총 15개 규칙, 15개 fixture 삼중쌍)
-- `detectSGVersion()` 구현 — sync.Once-cached subprocess 호출, 5s context timeout; SARIF tool.driver.version 채워짐
-- LSP stderr 드레인 goroutine — `io.Discard` sink로 128 KiB 버퍼 deadlock 방지
-- LSP Manager singleflight.Group — `golang.org/x/sync/singleflight`를 통한 concurrent `RouteFor` 호출 하에서 정확히 한 번의 factory 호출 보장
-- `gopls.Diagnostic` / `gopls.Range` / `gopls.Position` 타입 alias — `lsp.*` 타입을 가리키는 내부 통합으로 LSP bridge 단일 원천 보장
-- 60+ 신규 테스트 — MX validator(메서드 수신자, fan-in 단어 경계, semaphore, Windows native, @MX:REASON 페어링), ast-grep(메타데이터 전파, 억제 lint, 5개 언어 fixture), LSP(stderr 드레인, singleflight race)의 특성화 + 수정 후 + 신규 동작 테스트
-- 바이너리 크기 관리 — tree-sitter 언어 서브패키지 지연 로드(빌드 시간에 16/5개만 import per v2.14 범위; 나머지 11개는 스텁으로 스캐폴딩)
-
-### 변경됨 (Changed)
-
-- MX validator fan-in 카운터 — 단어 경계 정규식 `\b` + `regexp.QuoteMeta`로 부분 문자열 매칭 대체; 식별자 부분 문자열의 거짓 양성 제거
-- MX validator ValidateFiles — `runtime.NumCPU()*2` semaphore로 goroutine fan-out 제한(이전에는 제한 없음)
-- ast-grep ScanMultiple — 동일 용량의 buffered semaphore로 goroutine fan-out 제한
-- SARIF 출력 — 규칙 메타데이터 존재 시 external/owasp/* 및 external/cwe/* property 태그 추가(additive)
-
-### 수정됨 (Fixed)
-
-- IMP-V3U-001: MX validator 메서드 수신자 blindspot — exported 메서드를 exported 함수와 함께 감지
-- IMP-V3U-002: LSP stderr 버퍼 deadlock — 드레인 goroutine이 대형 프로젝트의 subprocess stderr 포화 방지
-- IMP-V3U-003: LSP Manager getOrSpawn concurrent spawn race — singleflight.Group이 정확히 한 번의 client factory 호출 보장
-- IMP-V3U-004: ast-grep Rule.Metadata 전파 간극 — YAML의 OWASP/CWE 메타데이터가 SARIF 출력에 포함됨
-- IMP-V3U-005: MX fan-in 부분 문자열 거짓 양성 — 단어 경계 정규식이 식별자 부분 문자열로 인한 과계산 방지
-- IMP-V3U-006: ast-grep ScanMultiple 제한 없는 goroutine fan-out — semaphore 적용(MX validator와 동일 패턴)
-- IMP-V3U-007: MX ValidateFiles 제한 없는 goroutine fan-out — 예측 가능한 리소스 사용을 위해 semaphore 적용
-
-### 감지 개선사항 (Detection Improvements)
-
-v2.14.0은 이전에 보이지 않던 위반 감지를 가능하게 합니다. 이는 **버그 수정이 아니라 규율 강화**입니다 — MX validator는 이제 항상 protocol 위반이지만 조용히 무시되던 패턴을 포착합니다:
-
-#### 메서드 수신자 (P2/P3/P4 우선순위)
-
-메서드 정의가 validator에 보이지 않았습니다. `func (r *Receiver) ExportedMethod()`는 이제 `func ExportedFunction()`과 동일한 fan-in 계산으로 감지됩니다. 기존 코드베이스는 추적되지 않은 high-fan-in 메서드를 드러낼 수 있습니다. 완화: `mx.yaml`에서 `transition_mode: true`를 활성화하여 v2.14 사이클 동안 advisory로 다운그레이드하세요.
-
-#### @MX:REASON 페어링 (ANCHOR의 경우 P1, WARN의 경우 P2)
-
-프로토콜(mx-tag-protocol.md "Mandatory Fields")은 `@MX:ANCHOR` 및 `@MX:WARN` 태그 ±1 줄 내에 `@MX:REASON` 서브라인을 요구합니다. v2.14는 이를 이제 강제합니다. 페어된 `@MX:REASON`을 갖지 않는 기존 태그는 blocking 위반을 발행합니다. 완화: 인접 줄에 `@MX:REASON "설명"`을 추가하거나 `mx.yaml`에서 `transition_mode: true`를 활성화하여 v2.14에서 advisory 전용 동작으로 만드세요.
-
-### 성능 (Performance)
-
-- tree-sitter 1 MiB 입력 상한선이 complexity 측정 중 메모리 보호
-- 단어 경계 정규식은 countFanIn 호출당 한 번 compile됨
-- singleflight는 concurrent RouteFor 호출 하에서 redundant 언어 서버 spawn 시도 방지
-- MX validator 및 ast-grep ScanMultiple의 제한된 semaphore는 제한 없는 goroutine fan-out 제거
-
-### 보안 (Security)
-
-- `internal/hook/mx/`에서 모든 `exec.Command` 호출 제거 — Windows CI는 static 분석을 통해 subprocess 무의존성 강제
-- 15개 신규 fixture 파일(Ruby/PHP/Elixir/C#/Kotlin)의 secret 없음
-
-### 의존성 (Dependencies)
-
-- 추가: `github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82` (5개 grammar 서브패키지: golang, python, typescript, javascript, rust; 11개 추가 언어는 import 없이 스캐폴딩)
-- 기존: `golang.org/x/sync v0.20.0` (singleflight 이미 present, 신규 의존성 없음)
-- 바이너리 크기 영향: tree-sitter grammar로부터 ~50 MiB 증가(릴리스 플랜 §0.5 D5 caveat에 문서화됨)
-
-### 연기됨 (Deferred)
-
-- **v2.15**: LSP subprocess hygiene baseline(cmd.WaitDelay, Setpgid, close-fds), MX validator config tuning 노브, ast-grep sg 버전 하한선 ≥ 0.42.1, ScanMultiple 패턴 정렬, incremental 원본 파일 스캔
-- **v2.16**: hook.Diagnostic ↔ lsp.Diagnostic 와이어 형식 호환성 레이어(IMP-V3U-008), MX brace-in-string-literal 및 blank-line-gap 수정
-- **v2.17+**: SARIF file:// URI 접두사, 나머지 6개 언어 ast-grep 규칙 시딩(Java, C++, Scala, R, Flutter, Swift), community 기여
-- **v3.0**: MX Validator interface cleanup, `config.ResolveClientImpl()` 기본값 powernap_core로 변경
-
-### Acceptance Criteria 커버리지
-
-- **SPEC-UTIL-001** (MX Validator 정확성): 18/18 ACs PASS (AC-UTIL-001-01..18) — characterization 테스트가 B1/B2/P1 버그 수정 전 재현 및 수정 후 통과 확인
-- **SPEC-UTIL-002** (ast-grep 강화): 21/21 ACs PASS (AC-UTIL-002-01..21) — PHP `$_ = null` 패턴을 tree-sitter grammar 제한으로 인해 `json_decode(null)`로 대체(의미적 동등)
-- **SPEC-UTIL-003** (LSP 위생): 12/12 ACs PASS (AC-UTIL-003-01..12) — 와이어 형식 동결(통합은 v2.16으로 연기)
-- **총계**: 51/51 ACs PASS
-
-### 품질 검증 (Quality Verification)
-
-- `go vet ./...`: 0 issues
-- `go test -race ./...`: 모든 SPEC 관련 패키지 PASS(무관한 pre-existing flaky `TestHookWrapper_ValidJSON` 격리 시 통과)
-- 커버리지: mx 87.5%, complexity 86.2%, astgrep 83%+, quality 82%+, security 91%+, lsp/core 92.9%, lsp/gopls 80.1%, hook 85.0%
-- manager-quality 리뷰: CONDITIONAL → MERGE-READY(commit 52a9bf81f에서 2개 피드백 수정)
-- TRUST 5 점수: 5/5
-
-### 설치 및 업데이트 (Installation & Update)
-
-```bash
-# 최신 버전으로 업데이트
-moai update
-
-# 버전 확인
-moai version
-```
-
----
+- New package `internal/runtime`: `audit_gate.go`, `audit_cache.go`, `audit_report.go`, `clock.go`
+- Integration tests: `internal/cli/run_audit_gate_*_test.go`, `team_run_audit_gate_test.go`, `dogfood_self_audit_test.go`
+- Workflow skills updated: `workflows/run.md`, `team/run.md`, `plan.md`, `spec-workflow.md`
 
 ## [2.13.2] - 2026-04-23
 

@@ -374,11 +374,37 @@ Input: Approved plan from Phase 1B, validated SPEC ID from Phase 1.5.
 File generation (all three files created simultaneously):
 
 - .moai/specs/SPEC-{ID}/spec.md
-  - YAML frontmatter with 8 required fields (id, version, status, created, updated, author, priority, issue_number)
-  - issue_number: GitHub Issue number linked to this SPEC (0 if --no-issue or Issue creation skipped)
+  - YAML frontmatter with **9 required fields** (canonical schema — see checklist below)
   - HISTORY section immediately after frontmatter
   - Complete EARS structure with all 5 requirement types
   - Content written in conversation_language
+
+#### [HARD] Pre-Write Frontmatter Checklist
+
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 9 required fields AND rejects 4 legacy aliases. This checklist blocks the 2026-04-21 mass-SPEC-drift pattern where 30 SPECs shipped with `created`/`updated` (wrong) and no `labels`.
+
+Required 9 fields (canonical order):
+- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
+- [ ] `status: draft` — enum: draft | approved | completed | superseded | archived
+- [ ] `created_at: YYYY-MM-DD` — ISO date (NEVER `created`, NEVER `date`)
+- [ ] `updated_at: YYYY-MM-DD` — ISO date (NEVER `updated`)
+- [ ] `author: <name>` — string, not empty
+- [ ] `priority: High|Medium|Low|Critical` — Title-case (alt: P0|P1|P2|P3 uppercase)
+- [ ] `labels: [tag1, tag2, ...]` — YAML array, lowercase tags
+- [ ] `issue_number: null` — integer or null (0 if --no-issue)
+
+Rejected legacy aliases (fail closed — do NOT accept):
+- `created:` (use `created_at:`)
+- `updated:` (use `updated_at:`)
+- `spec_id:` (use `id:`)
+- `title:` in frontmatter (put in H1 heading, not frontmatter)
+
+Pre-write gate behavior:
+1. manager-spec generates frontmatter draft in memory.
+2. manager-spec self-audits against the 9-field checklist above.
+3. If any required field is missing OR any rejected alias appears: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
+4. Phase 2.3 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
 
 - .moai/specs/SPEC-{ID}/plan.md
   - Implementation plan with task decomposition

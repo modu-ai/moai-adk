@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -1100,16 +1099,7 @@ func TestLAI_AC010_EditToolSupport(t *testing.T) {
 // TestPostTool_MemoryMissingType verifies that a Write to an agent-memory file
 // with a missing `type` key emits a MEMORY_MISSING_TYPE warning to stderr
 // and still returns DecisionAllow (non-blocking).
-//
-// Skipped on Windows: the audit path matcher relies on POSIX-style
-// `.claude/agent-memory/...` prefix detection. Windows backslash separators
-// in temp paths bypass the matcher, so the warning is not emitted.
-// The audit feature itself is exercised on Linux/macOS where Claude Code hooks
-// run; production paths are POSIX in Claude Code's runtime contract.
 func TestPostTool_MemoryMissingType(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("POSIX path matcher required; skipped on Windows")
-	}
 	t.Parallel()
 
 	// Create a temporary memory file without a `type` field.

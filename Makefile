@@ -13,7 +13,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate help release-local release release-dry release-hotfix dev-sync constitution-check
+.PHONY: all build test lint fix clean install generate help release-local constitution-check
 
 all: lint test build ## Run lint, test, and build
 
@@ -29,18 +29,6 @@ release-local: build ## Create a local release for development updates
 	@echo "Local release created at: $(LOCAL_RELEASE_DIR)"
 	@echo "  Binary: $(RELEASE_BINARY)"
 	@echo "  Version: $(VERSION)"
-
-release: ## Run Enhanced GitHub Flow release (usage: make release V=v2.15.0)
-	@test -n "$(V)" || (echo "Usage: make release V=v2.15.0"; exit 1)
-	@./scripts/release.sh $(V)
-
-release-dry: ## Dry-run release (validation only, usage: make release-dry V=v2.15.0)
-	@test -n "$(V)" || (echo "Usage: make release-dry V=v2.15.0"; exit 1)
-	@./scripts/release.sh $(V) --dry-run
-
-release-hotfix: ## Hotfix release from tag (usage: make release-hotfix V=v2.14.1)
-	@test -n "$(V)" || (echo "Usage: make release-hotfix V=v2.14.1"; exit 1)
-	@./scripts/release.sh $(V) --hotfix
 
 install: ## Install the binary
 	go install $(LDFLAGS) ./cmd/moai
@@ -84,14 +72,6 @@ constitution-check: build ## Verify zone registry integrity (SPEC-V3R2-CON-001)
 
 run: build ## Build and run
 	./bin/$(BINARY_NAME)
-
-dev-sync: build install ## Build + install + sync templates -> this dev project (.claude/, .moai/)
-	@echo ""
-	@echo "Syncing embedded templates to this dev project (3-way merge preserves local mods)..."
-	moai update --templates-only --yes
-	@echo ""
-	@echo "Sync complete. Run 'git diff' to review template-driven changes."
-	@echo "Note: settings.local.json, CLAUDE.local.md, .moai/specs/, dev-only commands (98-, 99-) are preserved."
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'

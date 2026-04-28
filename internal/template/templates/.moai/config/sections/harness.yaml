@@ -47,6 +47,21 @@ harness:
     standard: "high"     # Balanced quality: moderate reasoning budget
     thorough: "xhigh"    # Critical features: maximum reasoning budget
 
+  # [HARD] Global plan_audit override — prevents 2026-04-21 incident recurrence
+  #
+  # On 2026-04-21, 30 SPECs were generated without going through the plan-auditor
+  # gate because: (a) /moai project scope creep bypassed /moai plan entirely, and
+  # (b) the minimal level had plan_audit.enabled: false. Result: 386 cross-SPEC
+  # defects (100% FAIL rate) that required emergency remediation.
+  #
+  # This global override enforces plan_audit on ALL levels regardless of
+  # auto_detection output. The per-level plan_audit.enabled below is now
+  # treated as a hint for max_iterations only — the gate itself is always on.
+  plan_audit_global:
+    always_enabled: true              # [HARD] Cannot be disabled by auto_detection
+    enforce_gate_on_spec_creation: true  # [HARD] Blocks SPEC creation outside /moai plan
+    rationale: "SPEC-AUDIT-POSTMORTEM-2026-04-21 — prevent scope-creep SPEC generation"
+
   # Level definitions
   levels:
     minimal:
@@ -55,7 +70,11 @@ harness:
       evaluator: false
       sprint_contract: false
       plan_audit:
-        enabled: false
+        # NOTE: plan_audit_global.always_enabled overrides this to true.
+        # This field now controls max_iterations defaults only.
+        enabled: true
+        max_iterations: 1             # Minimal level: single-pass audit (fast)
+        require_must_pass: false      # Relaxed for minimal: warn but do not block
 
     standard:
       description: "Balanced quality for most development"

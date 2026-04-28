@@ -1,13 +1,16 @@
 ---
 id: SPEC-AGENCY-ABSORB-001
-version: 0.2.0
-status: draft
+version: 0.3.0
+status: completed
 created_at: 2026-04-20
-updated_at: 2026-04-20
+updated_at: 2026-04-24
 author: GOOS
 priority: High
 labels: [agency, migration, design, hybrid, absorption]
 issue_number: null
+merged_pr: 682
+merged_commit: 4271fd8a8
+deprecation_policy_amended: true
 ---
 
 # SPEC-AGENCY-ABSORB-001: Agency → MoAI-ADK 흡수 및 Claude Design 통합
@@ -16,6 +19,7 @@ issue_number: null
 
 - 2026-04-20 v0.1.0: 최초 작성. Option B(흡수) + Option A(하이브리드 디자인) + Option A(전체 마이그레이션) 확정 반영.
 - 2026-04-20 v0.2.0: plan-auditor iteration 1 FAIL (0.62) 후속 수정. 시간 예측 제거(D1), YAML frontmatter 필수 필드 추가(D2), REQ-FALLBACK-003 EARS 재작성(D3), REQ-REMOVE-002 EARS 재작성(D4), REQ-ROUTE-003 vs 006 모순 해소(D5), REQ-SKILL-015 bundle 버전 불일치 신규(D6), REQ-MIGRATE-013 SIGINT/SIGTERM 신규(D7), REQ-FALLBACK-003 DoD 일관성(D8), REQ-MIGRATE-012 플랫폼 분리 → REQ-MIGRATE-012a/b(D9), REQ-SKILL-008/012 분할(D10, D11), Constitution 섹션 정렬(D12), REQ-MIGRATE-004 Step 6 스코프 명확화(D13), 5개 "(암시)" AC를 명시적 시나리오로 전환(D14).
+- 2026-04-24 v0.3.0: 후행 감사(plan-auditor 2026-04-24)에서 식별된 D-AGENCY-2 (`/agency` deprecation wrapper 조기 삭제) 정책 결정 §5.6에 기록. status: draft → completed (PR #682, commit 4271fd8a8 merge 반영). REQ-DEPRECATE-001~004의 wrapper-retention 요구사항은 amended (자세한 내용 §5.6 참조).
 
 ---
 
@@ -294,23 +298,35 @@ The `.moai/project/brand/` 디렉터리 **shall** 첫 실행 시 3개 템플릿(
 
 ### 5.6 REQ-DEPRECATE: `/agency` 커맨드 라이프사이클
 
-**REQ-DEPRECATE-001 (Ubiquitous)**  
-The `/agency` 커맨드 **shall** 흡수 릴리스(vN)부터 deprecation 단계 1에 진입한다:
-- 호출 시 표준 경고 메시지 출력
-- `/moai design` 래퍼로 동작 위임
-- 기능 유지
+> **AMENDMENT (2026-04-24, v0.3.0)**: 원래 REQ-DEPRECATE-001~004는 `/agency` 래퍼를 **최소 2 마이너 버전 주기** 동안 유지할 것을 요구했다. 그러나 v2.13.0 머지(PR #682, 2026-04-14) 이후 2 일 만에 commit `3e8b61e80`("agency 제거 + 템플릿/로컬 드리프트 전체 동기화")에서 `/agency` 커맨드가 **전면 삭제**되었다. 이는 REQ-DEPRECATE-003의 계약을 위반한다.
+>
+> **정책 결정 (retroactive)**: 다음 근거로 deprecation 라이프사이클을 축소한다.
+> 1. `/agency` 래퍼를 유지하는 것이 실제 사용자에게 주는 이익(migration 가이드 출력)은 경고 1회 수준이며, 이는 CHANGELOG + README 공지로 대체 가능하다.
+> 2. 래퍼 유지 시 `commands/agency/`와 `commands/moai/design/` 두 체계가 병존하여 템플릿/로컬 드리프트를 유발한다 (실제 drift가 commit `3e8b61e80`에서 집중 정리됨).
+> 3. `.agency/` 디렉터리 감지 시 `moai migrate agency` 경고는 REQ-ROUTE-008/009와 `internal/cli/migrate_agency.go`에 이미 구현되어 있어 사용자가 경로를 잃지 않는다.
+>
+> **결정**: REQ-DEPRECATE-001~004의 "래퍼 유지" 요구사항은 v0.3.0에서 amended. 실제 구현 상태는 다음과 같다:
+> - `/agency` 커맨드 및 서브커맨드: 전면 삭제 (`internal/template/templates/.claude/commands/agency/` 부재)
+> - Migration path: `moai migrate agency` CLI 커맨드 (유지)
+> - User notice: v2.13.0 CHANGELOG + `/moai design` 대응 매핑 (유지)
+>
+> **Waived REQs**: REQ-DEPRECATE-001, REQ-DEPRECATE-002, REQ-DEPRECATE-003, REQ-DEPRECATE-004. 원래 acceptance criteria AC-DEPRECATE-001~004는 본 amendment로 대체된다.
 
-**REQ-DEPRECATE-002 (Event-Driven)**  
-**When** `/agency <subcommand>`가 호출되면, the 래퍼 **shall**:
-- 정확히 1개의 경고 라인을 stderr에 출력("`/agency` is deprecated, use `/moai design` instead")
-- 지원되는 서브커맨드의 경우 `/moai design`의 대응 동작으로 리매핑
-- 미지원 서브커맨드(예: `learn`, `evolve`)의 경우 `AGENCY_SUBCOMMAND_UNSUPPORTED` 오류를 반환하고 마이그레이션 가이드 URL 출력
+**REQ-DEPRECATE-001 (WAIVED 2026-04-24)**  
+~~The `/agency` 커맨드 **shall** 흡수 릴리스(vN)부터 deprecation 단계 1에 진입한다.~~  
+→ **현재 상태**: `/agency` 커맨드 완전 삭제. `commands/agency/` 디렉터리 부재.
 
-**REQ-DEPRECATE-003 (Ubiquitous)**  
-The `/agency` 커맨드 **shall** 흡수 릴리스 이후 최소 2 마이너 버전 주기 동안 deprecation 단계를 유지한 후 완전 제거된다.
+**REQ-DEPRECATE-002 (WAIVED 2026-04-24)**  
+~~**When** `/agency <subcommand>`가 호출되면, the 래퍼 **shall** 경고 라인 + 리매핑 수행.~~  
+→ **현재 상태**: `/agency` 호출 시 `unknown command` 오류가 반환된다. 사용자 유입 경로는 README + CHANGELOG 공지.
 
-**REQ-DEPRECATE-004 (Unwanted Behavior)**  
-**If** 릴리스 노트에 deprecation 경고가 명시되지 않으면, **then** CI **shall** 릴리스 머지를 차단한다.
+**REQ-DEPRECATE-003 (WAIVED 2026-04-24)**  
+~~The `/agency` 커맨드 **shall** 흡수 릴리스 이후 최소 2 마이너 버전 주기 동안 deprecation 단계를 유지.~~  
+→ **현재 상태**: v2.13.0 머지 2일 후 완전 제거 (commit `3e8b61e80`). 라이프사이클 skip.
+
+**REQ-DEPRECATE-004 (AMENDED 2026-04-24)**  
+**If** v2.13.0+ 릴리스 노트에 `/agency` 제거 사실과 migration 경로 안내가 누락되면, **then** CI **shall** 릴리스 머지를 차단한다.
+→ **현재 상태**: v2.13.0 CHANGELOG 및 v2.13.2 CHANGELOG에 `/agency` 제거 + `/moai design` 이주 안내 완비 (REQ-CHANGELOG-001~002 참조).
 
 ---
 

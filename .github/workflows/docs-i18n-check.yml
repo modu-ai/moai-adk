@@ -1,0 +1,165 @@
+name: docs i18n parity check
+
+# 4-locale documentation parity validator
+# Source: SPEC-DOCS-SITE-001 AC-G3-03, CLAUDE.local.md §17.3
+#
+# Phased rollout:
+#   Phase 1 (current): warn-only mode (DOCS_I18N_STRICT=0).
+#     The check runs on every PR touching docs-site/, surfaces drift in the
+#     job log, and produces a sticky comment summary — but does NOT block
+#     the merge. This gives contributors visibility into the 35 existing
+#     drifts without blocking routine work.
+#   Phase 2 (after baseline is cleared): flip DOCS_I18N_STRICT=1 to block
+#     further regressions.
+#
+# Manual runs are always strict so maintainers can validate a fix set
+# before flipping the env flag globally.
+
+on:
+  pull_request:
+    paths:
+      - 'docs-site/content/**'
+      - 'scripts/docs-i18n-check.sh'
+      - '.github/workflows/docs-i18n-check.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs-site/content/**'
+      - 'scripts/docs-i18n-check.sh'
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Run in strict mode (fail on any drift)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  parity:
+    name: Validate 4-locale parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Make script executable
+        run: chmod +x scripts/docs-i18n-check.sh
+
+      - name: Determine strictness
+        id: mode
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "strict=${{ inputs.strict }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # push to main: strict (blocks regressions after baseline is cleared)
+            echo "strict=true" >> "$GITHUB_OUTPUT"
+          else
+            # PRs: warn-only during Phase 1 rollout
+            echo "strict=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run docs i18n check (warn-only during rollout)
+        id: check
+        run: |
+          set +e
+          if [[ "${{ steps.mode.outputs.strict }}" == "true" ]]; then
+            DOCS_I18N_STRICT=1 scripts/docs-i18n-check.sh 2>&1 | tee check-output.txt
+          else
+            DOCS_I18N_STRICT=0 scripts/docs-i18n-check.sh 2>&1 | tee check-output.txt
+          fi
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit "${exit_code}"
+
+      - name: Extract error/warning counts
+        id: counts
+        if: always()
+        run: |
+          errors=$(grep -c '^❌ ERROR' check-output.txt 2>/dev/null || echo 0)
+          warnings=$(grep -c '^⚠️  WARN' check-output.txt 2>/dev/null || echo 0)
+          echo "errors=${errors}" >> "$GITHUB_OUTPUT"
+          echo "warnings=${warnings}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment PR summary
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const errors = ${{ steps.counts.outputs.errors || 0 }};
+            const warnings = ${{ steps.counts.outputs.warnings || 0 }};
+            const strict = '${{ steps.mode.outputs.strict }}' === 'true';
+            const fs = require('fs');
+            let output = '';
+            try { output = fs.readFileSync('check-output.txt', 'utf8'); } catch (e) { output = '(no output)'; }
+
+            // Show only the error and warning lines (trim the info/success noise).
+            const filteredLines = output
+              .split('\n')
+              .filter(l => l.startsWith('❌ ERROR') || l.startsWith('⚠️  WARN'))
+              .slice(0, 40); // cap to avoid oversized comments
+            const detailBlock = filteredLines.length > 0
+              ? '```\n' + filteredLines.join('\n') + '\n```'
+              : '_No drift detected._';
+
+            const mode = strict ? '**strict**' : '**warn-only** (Phase 1 rollout)';
+            const status = errors === 0 ? '✅ Pass' : (strict ? '❌ Fail' : '⚠️ Drift (non-blocking)');
+            const body = `### docs i18n parity — ${status}
+
+Mode: ${mode} · Errors: ${errors} · Warnings: ${warnings}
+
+${detailBlock}
+
+<details><summary>How to run locally</summary>
+
+\`\`\`bash
+# warn-only (shows drift, exits 0)
+DOCS_I18N_STRICT=0 scripts/docs-i18n-check.sh
+
+# strict (exits 1 on any error — CI mode)
+scripts/docs-i18n-check.sh
+\`\`\`
+
+See \`CLAUDE.local.md §17.3\` and \`SPEC-DOCS-SITE-001\` AC-G3-03 for the parity contract.
+</details>`;
+
+            const marker = '<!-- docs-i18n-check:comment -->';
+            const prefixed = marker + '\n' + body;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: prefixed,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: prefixed,
+              });
+            }
+
+      - name: Upload log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-i18n-check-log
+          path: check-output.txt
+          retention-days: 14

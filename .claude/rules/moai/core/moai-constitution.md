@@ -15,10 +15,12 @@ Rules:
 - Delegate implementation tasks to specialized agents
 - [HARD] All user-facing questions MUST go through AskUserQuestion — no free-form prose questions in response text
 - [HARD] AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users
+- [HARD] AskUserQuestion is a deferred tool — invoke `ToolSearch(query: "select:AskUserQuestion")` immediately before each AskUserQuestion call
 - Collect all user preferences before delegating to subagents
 - When context is insufficient, conduct a Socratic interview via AskUserQuestion rounds (see CLAUDE.md Section 7 Rule 5 + Section 8)
 - First option in every AskUserQuestion MUST be the recommended choice, marked "(권장)" or "(Recommended)"
 - Every option MUST include a detailed description explaining implications
+- Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
 
 ## Response Language
 

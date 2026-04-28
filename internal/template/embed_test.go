@@ -88,9 +88,8 @@ func TestEmbeddedTemplates_SkillDefinitions(t *testing.T) {
 		return nil
 	})
 
-	// Threshold updated for SPEC-V3R3-HARNESS-001 M2: 16 domain/library/tool skills removed.
-	if skillCount < 170 {
-		t.Errorf("expected at least 170 skill .md files, got %d", skillCount)
+	if skillCount < 260 {
+		t.Errorf("expected at least 260 skill .md files, got %d", skillCount)
 	}
 }
 
@@ -366,9 +365,8 @@ func TestEmbeddedTemplates_WalkDirTotalCount(t *testing.T) {
 		t.Fatalf("WalkDir error: %v", walkErr)
 	}
 
-	// Threshold updated for SPEC-V3R3-HARNESS-001 M2: 16 domain/library/tool skills removed.
-	if totalFiles < 350 {
-		t.Errorf("expected at least 350 embedded files, got %d", totalFiles)
+	if totalFiles < 440 {
+		t.Errorf("expected at least 440 embedded files, got %d", totalFiles)
 	}
 	t.Logf("total embedded files: %d", totalFiles)
 }

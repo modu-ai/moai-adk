@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	budgetruntime "github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
@@ -87,14 +86,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// Inject GLM environment variables into the current tmux session so that
-	// teammate tmux panes can inherit ANTHROPIC_AUTH_TOKEN in GLM team mode.
-	// Must run after ensureGLMCredentials writes the token to settings.local.json
-	// so the latest value can be read.
+	// GLM 팀 모드에서 팀원 tmux 팬이 ANTHROPIC_AUTH_TOKEN을 상속하도록
+	// 현재 tmux 세션에 GLM 환경변수를 주입합니다.
+	// ensureGLMCredentials가 settings.local.json에 토큰을 기록한 후에 실행해야
+	// 최신 값을 읽을 수 있습니다.
 	if input.ProjectDir != "" {
 		if msg := ensureTmuxGLMEnv(input.ProjectDir); msg != "" {
 			data["tmux_glm_env"] = msg
-			slog.Info("tmux GLM env vars injected", "message", msg)
+			slog.Info("tmux GLM 환경변수 주입", "message", msg)
 		}
 	}
 
@@ -144,43 +143,6 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			slog.Info("reflective_write: pending proposals available for review",
 				"session_id", input.SessionID,
 			)
-		}
-	}
-
-	// Initialize Token Circuit Breaker (SPEC-V3R3-ARCH-007).
-	// Load runtime.yaml and create a per-session Tracker.
-	// Errors are non-blocking: defaults are used when runtime.yaml is missing.
-	if input.ProjectDir != "" {
-		runtimeCfgPath := filepath.Join(input.ProjectDir, ".moai", "config", "sections", "runtime.yaml")
-		runtimeCfg, err := budgetruntime.LoadRuntime(runtimeCfgPath)
-		if err != nil {
-			slog.Debug("runtime.yaml not found, using defaults",
-				"path", runtimeCfgPath,
-				"error", err,
-			)
-			runtimeCfg = budgetruntime.DefaultRuntimeConfig()
-		}
-		tracker := budgetruntime.NewTracker(runtimeCfg)
-		tracker.SetProjectRoot(input.ProjectDir)
-		data["runtime_tracker_initialized"] = true
-		slog.Info("Token Circuit Breaker initialized",
-			"spec", "SPEC-V3R3-ARCH-007",
-			"pre_clear_threshold", runtimeCfg.PreClearThreshold,
-			"hard_clear_threshold", runtimeCfg.HardClearThreshold,
-			"stall_detection_seconds", runtimeCfg.StallDetectionSeconds,
-		)
-		// Store tracker in data for downstream use (debug info only).
-		// The tracker is not yet wired into a shared session context — that is
-		// deferred to the PreToolUse hook integration (future SPEC).
-		_ = tracker
-	}
-
-	// Check GitHub Actions runner version (REQ-CI-005, T-27, T-28).
-	// Non-blocking: warnings are logged and added to session data.
-	if input.ProjectDir != "" {
-		if msg := checkRunnerVersion(input.ProjectDir); msg != "" {
-			data["runner_version_warning"] = msg
-			slog.Warn("session start: runner version check", "message", msg)
 		}
 	}
 
@@ -453,12 +415,12 @@ func ensureNewSkillSymlinks(projectDir string) int {
 
 		name := entry.Name()
 
-		// Validate name: reject path traversal, null bytes, slashes, backslashes, and hidden files
-		// TOCTOU mitigation: use only names from ReadDir results without constructing paths directly
+		// 이름 검증: 경로 순회, null 바이트, 슬래시, 백슬래시, 숨김 파일 거부
+		// TOCTOU 완화: ReadDir 결과 이름만 사용하고 직접 경로 조합하지 않음
 		if name == "" || name == "." || name == ".." ||
 			strings.ContainsAny(name, "/\\\x00") ||
 			strings.HasPrefix(name, ".") {
-			slog.Warn("ensureNewSkillSymlinks: skipping invalid skill name",
+			slog.Warn("ensureNewSkillSymlinks: 잘못된 스킬 이름 건너뜀",
 				"name", name,
 			)
 			continue

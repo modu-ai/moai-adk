@@ -497,6 +497,94 @@ func TestMigrateAgency_EmptyAgencyDir(t *testing.T) {
 	}
 }
 
+// TestMigrateAgency_DiskFull은 AC-MIGRATE-011을 검증한다:
+// 가용 디스크 공간이 .agency/ 크기의 2배 미만일 때 MIGRATE_DISK_FULL 오류를 반환해야 한다.
+//
+// @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-011
+func TestMigrateAgency_DiskFull(t *testing.T) {
+	dir := t.TempDir()
+	setupAgencyFixture(t, dir)
+
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// checkDiskSpaceFn을 디스크 가득 참 상태로 모킹한다.
+	// 실제 디스크를 채우지 않고 함수 변수 주입 패턴을 사용한다.
+	original := checkDiskSpaceFn
+	t.Cleanup(func() { checkDiskSpaceFn = original })
+	checkDiskSpaceFn = func(_ string) error {
+		return &MigrateError{
+			Code:    ErrMigrateDiskFull,
+			Message: "테스트: 디스크 공간 부족 시뮬레이션",
+		}
+	}
+
+	m := &migrateAgencyRunner{
+		projectRoot: dir,
+		homeDir:     dir,
+	}
+
+	_, err := m.Run()
+	if err == nil {
+		t.Fatal("디스크 가득 참 상태에서 Run()이 오류 없이 반환됨 (오류 반환 필요)")
+	}
+
+	me, ok := err.(*MigrateError)
+	if !ok {
+		t.Fatalf("*MigrateError를 기대했으나 %T: %v", err, err)
+	}
+	if me.Code != ErrMigrateDiskFull {
+		t.Errorf("오류 코드 %s를 기대했으나 %s", ErrMigrateDiskFull, me.Code)
+	}
+
+	// 디스크 가득 참 오류 시 파일시스템에 변경이 없어야 한다.
+	if _, statErr := os.Stat(filepath.Join(dir, ".agency.archived")); !os.IsNotExist(statErr) {
+		t.Error("디스크 가득 참 오류 시 .agency.archived/가 생성되면 안 됨")
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, ".moai", "project", "brand")); !os.IsNotExist(statErr) {
+		t.Error("디스크 가득 참 오류 시 .moai/project/brand/가 생성되면 안 됨")
+	}
+}
+
+// TestMigrateAgency_DiskFull_AlsoBlocksDryRun은 --dry-run 모드에서도 디스크 검사가 실행됨을 검증한다.
+// REQ-MIGRATE-011은 dry-run 예외를 명시하지 않으므로 사전 검사는 모든 경로에서 수행된다.
+//
+// @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-011
+func TestMigrateAgency_DiskFull_AlsoBlocksDryRun(t *testing.T) {
+	dir := t.TempDir()
+	setupAgencyFixture(t, dir)
+
+	// checkDiskSpaceFn을 항상 실패로 모킹한다.
+	original := checkDiskSpaceFn
+	t.Cleanup(func() { checkDiskSpaceFn = original })
+	checkDiskSpaceFn = func(_ string) error {
+		return &MigrateError{
+			Code:    ErrMigrateDiskFull,
+			Message: "테스트: 디스크 공간 부족 시뮬레이션",
+		}
+	}
+
+	m := &migrateAgencyRunner{
+		projectRoot: dir,
+		homeDir:     dir,
+		dryRun:      true,
+	}
+
+	// REQ-MIGRATE-011은 dry-run 예외를 명시하지 않으므로 MIGRATE_DISK_FULL 오류가 반환되어야 한다.
+	_, err := m.Run()
+	if err == nil {
+		t.Fatal("디스크 가득 참 상태에서 dry-run도 오류를 반환해야 함")
+	}
+	me, ok := err.(*MigrateError)
+	if !ok {
+		t.Fatalf("*MigrateError를 기대했으나 %T: %v", err, err)
+	}
+	if me.Code != ErrMigrateDiskFull {
+		t.Errorf("오류 코드 %s를 기대했으나 %s", ErrMigrateDiskFull, me.Code)
+	}
+}
+
 // TestMigrateAgency_PhaseFailure4 verifies rollback when phase 4 (config conversion) fails.
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-006
 func TestMigrateAgency_PhaseFailure4(t *testing.T) {
