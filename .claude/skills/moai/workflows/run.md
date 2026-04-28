@@ -31,7 +31,7 @@ triggers:
 
 Implement SPEC requirements using the configured development methodology.
 
-For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR cycles, success criteria, brownfield enhancement), see: .claude/rules/moai/workflow/workflow-modes.md
+For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR cycles, success criteria, brownfield enhancement), see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
 
 ## Scope
 
@@ -538,11 +538,11 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 
 **If development_mode is "ddd":**
 - Route all tasks to manager-ddd subagent
-- Use ANALYZE-PRESERVE-IMPROVE cycle (see @workflow-modes.md for details)
+- Use ANALYZE-PRESERVE-IMPROVE cycle (see @spec-workflow.md for details)
 
 **If development_mode is "tdd":**
 - Route all tasks to manager-tdd subagent
-- Use RED-GREEN-REFACTOR cycle (see @workflow-modes.md for details)
+- Use RED-GREEN-REFACTOR cycle (see @spec-workflow.md for details)
 
 ### Phase 2.0: Sprint Contract Negotiation
 

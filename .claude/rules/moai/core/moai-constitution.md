@@ -1,6 +1,5 @@
 ---
-description: Core constitutional principles for MoAI orchestrator - HARD rules that must always be followed
-globs:
+paths: "**/.claude/**"
 ---
 
 # MoAI Constitution

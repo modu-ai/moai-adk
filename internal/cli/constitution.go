@@ -30,6 +30,7 @@ func newConstitutionCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newConstitutionListCmd())
 	cmd.AddCommand(newConstitutionGuardCmd())
+	cmd.AddCommand(newConstitutionAmendCmd())
 	return cmd
 }
 
@@ -268,4 +269,113 @@ func renderConstitutionTable(w io.Writer, entries []constitution.Rule) {
 	}
 
 	_, _ = fmt.Fprintf(w, "\n총 %d개 엔트리\n", len(entries))
+}
+
+// newConstitutionAmendCmd는 `moai constitution amend` 서브커맨드를 생성한다.
+// SPEC-V3R2-CON-002 구현. 5-layer safety gate를 통한 constitutional amendment.
+func newConstitutionAmendCmd() *cobra.Command {
+	var (
+		ruleIDFlag    string
+		beforeFlag    string
+		afterFlag     string
+		evidenceFlag  string
+		dryRunFlag    bool
+		dryRunEnv     = os.Getenv("MOAI_CONSTITUTION_DRY_RUN") == "true"
+	)
+
+	cmd := &cobra.Command{
+		Use:   "amend",
+		Short: "Propose a constitutional amendment with 5-layer safety gate",
+		Long: "Constitutional amendment proposal 실행. 5-layer safety gate (FrozenGuard → Canary → ContradictionDetector → RateLimiter → HumanOversight)를 통과해야 적용됩니다.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("working directory 확인 오류: %w", err)
+			}
+
+			// 필수 플래그 검증
+			if ruleIDFlag == "" {
+				return fmt.Errorf("--rule 필수")
+			}
+			if beforeFlag == "" || afterFlag == "" {
+				return fmt.Errorf("--before와 --after 필수")
+			}
+
+			// 환경변수 dry-run 우선
+			dryRun := dryRunFlag || dryRunEnv
+
+			return runConstitutionAmend(cmd.OutOrStdout(), cmd.ErrOrStderr(), cwd, ruleIDFlag, beforeFlag, afterFlag, evidenceFlag, dryRun)
+		},
+	}
+
+	cmd.Flags().StringVar(&ruleIDFlag, "rule", "", "Rule ID (CONST-V3R2-NNN) [필수]")
+	cmd.Flags().StringVar(&beforeFlag, "before", "", "현재 clause 텍스트 [필수]")
+	cmd.Flags().StringVar(&afterFlag, "after", "", "새로운 clause 텍스트 [필수]")
+	cmd.Flags().StringVar(&evidenceFlag, "evidence", "", "Amendment justification (Frozen zone 필수)")
+	cmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Dry-run 모드: 파일 수정 없이 시뮬레이션만")
+
+	return cmd
+}
+
+// runConstitutionAmend는 constitutional amendment pipeline을 실행한다.
+func runConstitutionAmend(w, wWarn io.Writer, projectDir, ruleID, before, after, evidence string, dryRun bool) error {
+	// Registry 로드
+	registryPath := resolveRegistryPath(projectDir)
+	registry, err := constitution.LoadRegistry(registryPath, projectDir)
+	if err != nil {
+		return fmt.Errorf("registry 로드 오류: %w", err)
+	}
+
+	// 경고 출력
+	for _, warn := range registry.Warnings {
+		_, _ = fmt.Fprintf(wWarn, "경고: %s\n", warn)
+	}
+
+	// Rule 존재 확인
+	rule, exists := registry.Get(ruleID)
+	if !exists {
+		return fmt.Errorf("rule %q을(를) 찾을 수 없음", ruleID)
+	}
+
+	// Before 검증 (현재 clause와 일치하는지 확인)
+	if rule.Clause != before {
+		return fmt.Errorf("clause 불일치: --before가 현재 clause와 다름\n현재: %s\n입력: %s", rule.Clause, before)
+	}
+
+	// Proposal 생성
+	proposal := &constitution.AmendmentProposal{
+		RuleID:   ruleID,
+		Before:   before,
+		After:    after,
+		Evidence: evidence,
+	}
+
+	// Pipeline 실행
+	pipeline := constitution.NewPipeline()
+	log, err := pipeline.Execute(proposal, projectDir, dryRun)
+	if err != nil {
+		return fmt.Errorf("amendment 실패: %w", err)
+	}
+
+	// 결과 출력
+	if dryRun {
+		_, _ = fmt.Fprintln(w, "=== Dry-run Results ===")
+		_, _ = fmt.Fprintf(w, "Rule ID: %s\n", log.RuleID)
+		_, _ = fmt.Fprintf(w, "Zone: %s\n", log.ZoneAfter)
+		_, _ = fmt.Fprintf(w, "Clause Before: %s\n", log.ClauseBefore)
+		_, _ = fmt.Fprintf(w, "Clause After: %s\n", log.ClauseAfter)
+		_, _ = fmt.Fprintf(w, "Canary Verdict: %s\n", log.CanaryVerdict)
+		if len(log.Contradictions) > 0 {
+			_, _ = fmt.Fprintln(w, "Contradictions:")
+			for _, c := range log.Contradictions {
+				_, _ = fmt.Fprintf(w, "  - %s\n", c)
+			}
+		}
+		_, _ = fmt.Fprintln(w, "\nDry-run 성공: 파일이 수정되지 않았습니다.")
+	} else {
+		_, _ = fmt.Fprintf(w, "Amendment 성공: %s\n", log.ID)
+		_, _ = fmt.Fprintf(w, "Rule %s가 업데이트되었습니다.\n", ruleID)
+	}
+
+	return nil
 }
