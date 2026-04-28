@@ -73,7 +73,7 @@ This rule applies to all MoAI workflows:
 ## Cross-references
 
 - `feedback_large_spec_wave_split.md` (auto-memory) — wave-split mitigation for SPECs with 30+ tasks
-- `.claude/rules/moai/workflow/file-reading-optimization.md` — token budget per file read
+- `.claude/skills/moai/references/file-reading-optimization.md` — token budget per file read
 - `output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow
 

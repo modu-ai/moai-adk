@@ -27,7 +27,7 @@ Rules and constraints governing all workflows are always loaded from these sourc
 - Core identity, orchestration principles, agent catalog: CLAUDE.md
 - Quality gates, security boundaries: .claude/rules/moai/core/moai-constitution.md
 - SPEC workflow phases, token budgets: .claude/rules/moai/workflow/spec-workflow.md
-- Development methodologies (DDD/TDD): .claude/rules/moai/workflow/workflow-modes.md
+- Development methodologies (DDD/TDD): .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
 - Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-agent subagent.
 - @MX tag rules and protocol: .claude/rules/moai/workflow/mx-tag-protocol.md
 

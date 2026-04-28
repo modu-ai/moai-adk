@@ -173,6 +173,12 @@ func loadDesignTemplateFS() (fs.FS, error) {
 func scaffoldDesignDir(projectRoot string, warnOut io.Writer) (bool, error) {
 	base := filepath.Join(projectRoot, designDir)
 
+	// REQ-DFF-003: Check for reserved filename collisions (strict mode for scaffold path).
+	// Must happen before the non-empty check so reserved files block scaffold even in empty dirs.
+	if err := checkReservedCollision(projectRoot, warnOut, true); err != nil {
+		return false, err
+	}
+
 	// REQ-010: Skip if .moai/design/ already has a regular file.
 	hasFile, err := designDirHasRegularFile(base)
 	if err != nil {
