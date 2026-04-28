@@ -45,7 +45,7 @@ func (v *egressValidator) ValidateGitHubAPI(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to connect to %s: %w", domain, err)
 		}
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	return nil
@@ -65,7 +65,7 @@ func (v *egressValidator) ValidateRunnerDownload(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to connect to %s: %w", domain, err)
 		}
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	return nil

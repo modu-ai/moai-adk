@@ -4,8 +4,6 @@ package cli
 
 import (
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/github/runner"
 )
 
 // TestNewRunnerInstallCmd는 install 서브커맨드를 테스트합니다.
@@ -119,24 +117,3 @@ func TestNewRunnerUpgradeCmd(t *testing.T) {
 	}
 }
 
-// --- Mock Factory Functions for Dependency Injection ---
-
-// mockInstallerFactory는 테스트용 Installer 생성자입니다.
-func mockInstallerFactory() *runner.Installer {
-	return runner.NewInstaller("/tmp", nil)
-}
-
-// mockRegistrarFactory는 테스트용 Registrar 생성자입니다.
-func mockRegistrarFactory() *runner.Registrar {
-	return runner.NewRegistrar("/tmp", nil)
-}
-
-// mockServiceManagerFactory는 테스트용 ServiceManager 생성자입니다.
-func mockServiceManagerFactory() runner.ServiceManager {
-	return runner.NewLaunchdManager("/tmp", nil)
-}
-
-// mockVersionCheckerFactory는 테스트용 VersionChecker 생성자입니다.
-func mockVersionCheckerFactory() *runner.VersionChecker {
-	return runner.NewVersionChecker("/tmp", nil)
-}

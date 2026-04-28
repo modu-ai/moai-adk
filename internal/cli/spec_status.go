@@ -84,7 +84,7 @@ func updateSpecStatus(cmd *cobra.Command, specID, newStatus string, dryRun bool)
 
 	// Dry run: just show what would change
 	if dryRun {
-		fmt.Fprintf(cmd.OutOrStdout(), "Would update: %s status %s → %s\n", specID, oldStatus, newStatus)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would update: %s status %s → %s\n", specID, oldStatus, newStatus)
 		return nil
 	}
 
@@ -93,7 +93,7 @@ func updateSpecStatus(cmd *cobra.Command, specID, newStatus string, dryRun bool)
 		return fmt.Errorf("Error: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s status updated: %s → %s\n", specID, oldStatus, newStatus)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s status updated: %s → %s\n", specID, oldStatus, newStatus)
 	return nil
 }
 
@@ -108,7 +108,7 @@ func listAllSpecs(cmd *cobra.Command) error {
 
 	// Check if directory exists
 	if _, err := os.Stat(specsDir); os.IsNotExist(err) {
-		fmt.Fprintf(cmd.OutOrStdout(), "No SPECs directory found at %s\n", specsDir)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No SPECs directory found at %s\n", specsDir)
 		return nil
 	}
 
@@ -119,8 +119,8 @@ func listAllSpecs(cmd *cobra.Command) error {
 	}
 
 	// Print header
-	fmt.Fprintf(cmd.OutOrStdout(), "%-30s %-15s %s\n", "SPEC-ID", "Status", "Modified")
-	fmt.Fprintln(cmd.OutOrStdout(), strings.Repeat("-", 80))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-30s %-15s %s\n", "SPEC-ID", "Status", "Modified")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), strings.Repeat("-", 80))
 
 	// List each SPEC
 	for _, entry := range entries {
@@ -144,7 +144,7 @@ func listAllSpecs(cmd *cobra.Command) error {
 		}
 		modTime := info.ModTime().Format("2006-01-02 15:04")
 
-		fmt.Fprintf(cmd.OutOrStdout(), "%-30s %-15s %s\n", specID, status, modTime)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-30s %-15s %s\n", specID, status, modTime)
 	}
 
 	return nil
@@ -164,7 +164,7 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 	}
 
 	if len(specIDsFromGit) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No SPEC-IDs found in git log.")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No SPEC-IDs found in git log.")
 		return nil
 	}
 
@@ -177,7 +177,7 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 		specDir := filepath.Join(specsDir, specID)
 
 		if _, err := os.Stat(filepath.Join(specDir, "spec.md")); os.IsNotExist(err) {
-			fmt.Fprintf(cmd.OutOrStdout(), "  skipped %s: not found in .moai/specs/\n", specID)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  skipped %s: not found in .moai/specs/\n", specID)
 			notFound++
 			continue
 		}
@@ -188,32 +188,32 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 		}
 
 		if currentStatus == "completed" || currentStatus == "implemented" {
-			fmt.Fprintf(cmd.OutOrStdout(), "  skipped %s: already %s\n", specID, currentStatus)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  skipped %s: already %s\n", specID, currentStatus)
 			skipped++
 			continue
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s → implemented\n", specID, currentStatus)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s → implemented\n", specID, currentStatus)
 
 		if !autoConfirm {
-			fmt.Fprintf(cmd.OutOrStdout(), "    Apply? [y/N]: ")
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Apply? [y/N]: ")
 			var response string
-			fmt.Scanln(&response)
+			_, _ = fmt.Scanln(&response)
 			if strings.ToLower(response) != "y" {
-				fmt.Fprintf(cmd.OutOrStdout(), "    skipped %s\n", specID)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    skipped %s\n", specID)
 				skipped++
 				continue
 			}
 		}
 
 		if err := spec.UpdateStatus(specDir, "implemented"); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "  error updating %s: %v\n", specID, err)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  error updating %s: %v\n", specID, err)
 			continue
 		}
 		updated++
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nSummary: updated %d, skipped %d (already done), %d not found\n", updated, skipped, notFound)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nSummary: updated %d, skipped %d (already done), %d not found\n", updated, skipped, notFound)
 	return nil
 }
 

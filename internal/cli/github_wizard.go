@@ -83,15 +83,15 @@ func (w *Wizard) Run() (*WizardState, error) {
 // checkInternetConnection verifies internet connectivity before proceeding.
 func (w *Wizard) checkInternetConnection() error {
 	if err := github.CheckInternetConnection(); err != nil {
-		fmt.Fprintf(w.out, "\n❌ %s\n\n", err.Error())
-		fmt.Fprintf(w.out, "moai github init requires an internet connection:\n")
-		fmt.Fprintf(w.out, "  • Download GitHub Actions Runner\n")
-		fmt.Fprintf(w.out, "  • Claude Code OAuth authentication\n")
-		fmt.Fprintf(w.out, "  • LLM API integration\n\n")
-		fmt.Fprintf(w.out, "Troubleshooting:\n")
-		fmt.Fprintf(w.out, "  1. Check your internet connection\n")
-		fmt.Fprintf(w.out, "  2. Verify firewall settings\n")
-		fmt.Fprintf(w.out, "  3. Configure proxy if needed\n\n")
+		_, _ = fmt.Fprintf(w.out, "\n❌ %s\n\n", err.Error())
+		_, _ = fmt.Fprintf(w.out, "moai github init requires an internet connection:\n")
+		_, _ = fmt.Fprintf(w.out, "  • Download GitHub Actions Runner\n")
+		_, _ = fmt.Fprintf(w.out, "  • Claude Code OAuth authentication\n")
+		_, _ = fmt.Fprintf(w.out, "  • LLM API integration\n\n")
+		_, _ = fmt.Fprintf(w.out, "Troubleshooting:\n")
+		_, _ = fmt.Fprintf(w.out, "  1. Check your internet connection\n")
+		_, _ = fmt.Fprintf(w.out, "  2. Verify firewall settings\n")
+		_, _ = fmt.Fprintf(w.out, "  3. Configure proxy if needed\n\n")
 		return fmt.Errorf("internet connection required")
 	}
 	return nil
@@ -175,16 +175,16 @@ func (w *Wizard) configureTriggers() error {
 
 // confirmAndFinishTUI displays configuration summary and confirms using Yes/No TUI.
 func (w *Wizard) confirmAndFinishTUI() error {
-	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "✅ Configuration Summary / 설정 요약:")
-	fmt.Fprintln(w.out)
-	fmt.Fprintf(w.out, "Language / 언어: %s\n", w.state.Language)
-	fmt.Fprintf(w.out, "LLMs: %v\n", w.state.SelectedLLMs)
-	fmt.Fprintf(w.out, "Models / 모델:\n")
+	_, _ = fmt.Fprintln(w.out)
+	_, _ = fmt.Fprintln(w.out, "✅ Configuration Summary / 설정 요약:")
+	_, _ = fmt.Fprintln(w.out)
+	_, _ = fmt.Fprintf(w.out, "Language / 언어: %s\n", w.state.Language)
+	_, _ = fmt.Fprintf(w.out, "LLMs: %v\n", w.state.SelectedLLMs)
+	_, _ = fmt.Fprintf(w.out, "Models / 모델:\n")
 	for llm, model := range w.state.ModelChoices {
-		fmt.Fprintf(w.out, "  - %s: %s\n", llm, model)
+		_, _ = fmt.Fprintf(w.out, "  - %s: %s\n", llm, model)
 	}
-	fmt.Fprintln(w.out)
+	_, _ = fmt.Fprintln(w.out)
 
 	// Use Yes/No TUI for confirmation
 	summary := "? Proceed with this configuration? / 이 설정으로 진행할까요?"

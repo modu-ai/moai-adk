@@ -8,7 +8,7 @@ import (
 )
 
 // ErrPublicRepoBlocked indicates that Codex usage is blocked on public repos.
-var ErrPublicRepoBlocked = errors.New("Codex auth blocked: OpenAI policy prohibits public repo usage (REQ-SEC-001)")
+var ErrPublicRepoBlocked = errors.New("codex auth blocked: OpenAI policy prohibits public repo usage (REQ-SEC-001)")
 
 // CodexAuthHandler handles Codex authentication with a private repo guard.
 type CodexAuthHandler struct {

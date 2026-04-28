@@ -99,44 +99,44 @@ func (r *FileAuditReporter) AppendRun(specID string, result *AuditResult) error 
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("\n## Audit Run %d\n\n", runNum))
-	sb.WriteString(fmt.Sprintf("- verdict: %s\n", result.Verdict))
+	fmt.Fprintf(&sb, "\n## Audit Run %d\n\n", runNum)
+	fmt.Fprintf(&sb, "- verdict: %s\n", result.Verdict)
 
 	if result.ReportPath != "" {
-		sb.WriteString(fmt.Sprintf("- report_path: %s\n", result.ReportPath))
+		fmt.Fprintf(&sb, "- report_path: %s\n", result.ReportPath)
 	}
 
-	sb.WriteString(fmt.Sprintf("- audit_at: %s\n", result.AuditAt.UTC().Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("- run_trigger: %s\n", trigger))
+	fmt.Fprintf(&sb, "- audit_at: %s\n", result.AuditAt.UTC().Format(time.RFC3339))
+	fmt.Fprintf(&sb, "- run_trigger: %s\n", trigger)
 
 	if result.AuditorVersion != "" {
-		sb.WriteString(fmt.Sprintf("- auditor_version: %s\n", result.AuditorVersion))
+		fmt.Fprintf(&sb, "- auditor_version: %s\n", result.AuditorVersion)
 	}
 
 	if result.CacheHit {
-		sb.WriteString(fmt.Sprintf("- cache_hit: true\n"))
-		sb.WriteString(fmt.Sprintf("- cached_audit_at: %s\n", result.CachedAuditAt.UTC().Format(time.RFC3339)))
+		fmt.Fprintf(&sb, "- cache_hit: true\n")
+		fmt.Fprintf(&sb, "- cached_audit_at: %s\n", result.CachedAuditAt.UTC().Format(time.RFC3339))
 	}
 
 	if result.Verdict == VerdictBypassed {
-		sb.WriteString(fmt.Sprintf("- bypass_user: %s\n", result.BypassUser))
-		sb.WriteString(fmt.Sprintf("- bypass_reason: %q\n", bypassReason))
+		fmt.Fprintf(&sb, "- bypass_user: %s\n", result.BypassUser)
+		fmt.Fprintf(&sb, "- bypass_reason: %q\n", bypassReason)
 	}
 
 	if result.InconclusiveAcknowledgedBy != "" {
-		sb.WriteString(fmt.Sprintf("- inconclusive_acknowledged_by: %s\n", result.InconclusiveAcknowledgedBy))
+		fmt.Fprintf(&sb, "- inconclusive_acknowledged_by: %s\n", result.InconclusiveAcknowledgedBy)
 	}
 
 	if result.GraceWindowActive {
-		sb.WriteString(fmt.Sprintf("- grace_window_active: true\n"))
-		sb.WriteString(fmt.Sprintf("- grace_window_remaining_days: %d\n", result.GraceWindowRemainingDays))
+		sb.WriteString("- grace_window_active: true\n")
+		fmt.Fprintf(&sb, "- grace_window_remaining_days: %d\n", result.GraceWindowRemainingDays)
 	}
 
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open report file %q: %w", filePath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(sb.String()); err != nil {
 		return fmt.Errorf("write report: %w", err)
@@ -205,25 +205,25 @@ type ProgressEntry struct {
 // REQ-WAG-003, AC-WAG-03
 func AppendToProgress(progressPath string, result *AuditResult) error {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("- audit_verdict: %s\n", result.Verdict))
-	sb.WriteString(fmt.Sprintf("- audit_report: %s\n", result.ReportPath))
-	sb.WriteString(fmt.Sprintf("- audit_at: %s\n", result.AuditAt.UTC().Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("- auditor_version: %s\n", result.AuditorVersion))
+	fmt.Fprintf(&sb, "- audit_verdict: %s\n", result.Verdict)
+	fmt.Fprintf(&sb, "- audit_report: %s\n", result.ReportPath)
+	fmt.Fprintf(&sb, "- audit_at: %s\n", result.AuditAt.UTC().Format(time.RFC3339))
+	fmt.Fprintf(&sb, "- auditor_version: %s\n", result.AuditorVersion)
 
 	if result.CacheHit {
 		sb.WriteString("- audit_cache_hit: true\n")
-		sb.WriteString(fmt.Sprintf("- cached_audit_at: %s\n", result.CachedAuditAt.UTC().Format(time.RFC3339)))
+		fmt.Fprintf(&sb, "- cached_audit_at: %s\n", result.CachedAuditAt.UTC().Format(time.RFC3339))
 	}
 
 	if result.InconclusiveAcknowledgedBy != "" {
-		sb.WriteString(fmt.Sprintf("- inconclusive_acknowledged_by: %s\n", result.InconclusiveAcknowledgedBy))
+		fmt.Fprintf(&sb, "- inconclusive_acknowledged_by: %s\n", result.InconclusiveAcknowledgedBy)
 	}
 
 	f, err := os.OpenFile(progressPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open progress.md %q: %w", progressPath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(sb.String()); err != nil {
 		return fmt.Errorf("write progress.md: %w", err)

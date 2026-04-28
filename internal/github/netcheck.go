@@ -16,7 +16,7 @@ func CheckInternetConnection() error {
 	if err != nil {
 		return fmt.Errorf("internet connection check failed: %w", err)
 	}
-	conn.Close()
+	_ = conn.Close()
 	return nil
 }
 

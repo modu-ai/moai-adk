@@ -95,7 +95,7 @@ func (i *Installer) downloadWithRetry(ctx context.Context, url, destPath string)
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
@@ -106,7 +106,7 @@ func (i *Installer) downloadWithRetry(ctx context.Context, url, destPath string)
 		if err != nil {
 			return fmt.Errorf("create file: %w", err)
 		}
-		defer outFile.Close()
+		defer func() { _ = outFile.Close() }()
 
 		// 다운로드 복사
 		if _, err := io.Copy(outFile, resp.Body); err != nil {
@@ -126,7 +126,7 @@ func (i *Installer) downloadWithRetry(ctx context.Context, url, destPath string)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
@@ -137,7 +137,7 @@ func (i *Installer) downloadWithRetry(ctx context.Context, url, destPath string)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	// 다운로드 복사
 	if _, err := io.Copy(outFile, resp.Body); err != nil {
@@ -165,7 +165,7 @@ func (i *Installer) VerifyChecksum(ctx context.Context, filePath, expectedHash s
 	// 검증
 	if actualHash != expectedHash {
 		// 불일치 시 파일 삭제
-		os.Remove(filePath)
+		_ = os.Remove(filePath)
 		return fmt.Errorf("checksum mismatch: expected %s, got %s (file deleted)", expectedHash, actualHash)
 	}
 

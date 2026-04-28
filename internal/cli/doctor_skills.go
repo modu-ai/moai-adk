@@ -4,9 +4,6 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -60,56 +57,3 @@ func classifySkill(name string) string {
 	return "INFO"
 }
 
-// runSkillsCheck inspects .claude/skills/ in projectRoot and classifies each
-// entry by its directory name. Returns a DiagnosticCheck summarising results.
-//
-// Status mapping:
-//   - Any WARN classification → CheckWarn for the aggregate check
-//   - Otherwise              → CheckOK with counts detail line
-func runSkillsCheck(projectRoot string) DiagnosticCheck {
-	check := DiagnosticCheck{Name: "Skills Allowlist"}
-
-	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
-	entries, err := os.ReadDir(skillsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			check.Status = CheckOK
-			check.Message = ".claude/skills/ not found (run 'moai init')"
-			return check
-		}
-		check.Status = CheckWarn
-		check.Message = fmt.Sprintf("cannot read .claude/skills/: %v", err)
-		return check
-	}
-
-	var passCount, warnCount, infoCount int
-	var warnNames []string
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		class := classifySkill(entry.Name())
-		switch class {
-		case "PASS":
-			passCount++
-		case "WARN":
-			warnCount++
-			warnNames = append(warnNames, entry.Name())
-		default:
-			infoCount++
-		}
-	}
-
-	if warnCount > 0 {
-		check.Status = CheckWarn
-		check.Message = fmt.Sprintf("%d unknown moai- skill(s) outside static core: %s",
-			warnCount, strings.Join(warnNames, ", "))
-		check.Detail = "Unknown moai- skills may be stale. Run 'moai update' to sync or remove manually."
-		return check
-	}
-
-	check.Status = CheckOK
-	check.Message = fmt.Sprintf("skills OK — %d core, %d user/info", passCount, infoCount)
-	return check
-}

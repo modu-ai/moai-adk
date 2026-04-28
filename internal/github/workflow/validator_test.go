@@ -264,6 +264,7 @@ func TestValidator_ValidateTemplate_YAMLSyntax(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ValidateTemplate failed: %v", err)
 	}
+	_ = result
 
 	// YAML 파서는 tab을 허용하므로 실제로는 에러가 아닐 수 있음
 	// 대신 진짜 invalid YAML: unmatched brackets

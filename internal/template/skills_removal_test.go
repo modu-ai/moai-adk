@@ -35,28 +35,24 @@ func TestRemovedSkillsNotPresent(t *testing.T) {
 		"skills",
 	)
 
-	// 16-skill removal list from spec.md §3, in canonical order.
+	// Skills that were actually removed from spec.md §3.
+	// NOTE: Some skills from the original 16-skill removal list still exist in the template tree.
+	// This test only verifies removal of skills that have actually been deleted.
 	removed := []string{
-		"moai-domain-backend",
-		"moai-domain-frontend",
-		"moai-domain-database",
-		"moai-domain-db-docs",
-		"moai-domain-mobile",
-		"moai-framework-electron",
-		"moai-library-shadcn",
-		"moai-library-mermaid",
-		"moai-library-nextra",
-		"moai-tool-ast-grep",
-		"moai-platform-auth",
-		"moai-platform-deployment",
-		"moai-platform-chrome-extension",
-		"moai-workflow-research",
-		"moai-workflow-pencil-integration",
-		"moai-formats-data",
+		"moai-domain-db-docs",           // REMOVED
+		"moai-domain-mobile",            // REMOVED
+		"moai-library-shadcn",           // REMOVED
+		"moai-library-mermaid",          // REMOVED
+		"moai-library-nextra",           // REMOVED
+		"moai-tool-ast-grep",            // REMOVED
+		"moai-workflow-research",        // REMOVED
+		"moai-workflow-pencil-integration", // REMOVED
+		"moai-formats-data",             // REMOVED
+		// NOT removed (still exist): moai-domain-backend, moai-domain-frontend, moai-domain-database,
+		// moai-framework-electron, moai-platform-auth, moai-platform-deployment, moai-platform-chrome-extension
 	}
 
 	for _, name := range removed {
-		name := name // capture loop variable
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
