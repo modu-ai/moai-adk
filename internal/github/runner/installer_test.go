@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -299,6 +300,10 @@ func TestInstaller_DownloadRunner_WithoutHTTPClient(t *testing.T) {
 
 // TestInstaller_downloadWithRetry_FileCreationError 확인 파일 생성 실패 처리.
 func TestInstaller_downloadWithRetry_FileCreationError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows에서는 디렉토리 권한으로 쓰기 차단이 불가하여 건너뜁니다")
+	}
+
 	tmpDir := t.TempDir()
 
 	// 쓰기 금지 디렉토리 생성
