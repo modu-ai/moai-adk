@@ -1,0 +1,31 @@
+# Enforce LF line endings across all platforms.
+# Without this, Windows clients with autocrlf=true convert LF to CRLF on checkout,
+# which causes TestOutputStylesEncoding to fail because the Go embed directive
+# captures the working tree contents (with CR bytes) at build time.
+#
+# Refs:
+# - internal/template/output_styles_audit_test.go (TestOutputStylesEncoding)
+# - https://git-scm.com/docs/gitattributes#_eol
+
+# Default: detect text files, normalize to LF in repository.
+* text=auto eol=lf
+
+# Force LF for content the tooling embeds as bytes:
+*.md text eol=lf
+*.go text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.tmpl text eol=lf
+*.sh text eol=lf
+
+# Mark binary files explicitly.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary

@@ -10,7 +10,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 )
 
-// TestNewScanner_DefaultConfig: 기본 Config로 Scanner 생성이 성공하는지 검증
+// TestNewScanner_DefaultConfig: verifies that Scanner creation succeeds with default Config
 func TestNewScanner_DefaultConfig(t *testing.T) {
 	cfg := astgrep.DefaultScannerConfig()
 	s := astgrep.NewScanner(cfg)
@@ -19,7 +19,7 @@ func TestNewScanner_DefaultConfig(t *testing.T) {
 	}
 }
 
-// TestNewScanner_NilConfig: nil Config 전달 시 패닉 없이 기본값으로 동작하는지 검증
+// TestNewScanner_NilConfig: verifies that passing nil Config falls back to defaults without panicking
 func TestNewScanner_NilConfig(t *testing.T) {
 	s := astgrep.NewScanner(nil)
 	if s == nil {
@@ -27,29 +27,29 @@ func TestNewScanner_NilConfig(t *testing.T) {
 	}
 }
 
-// TestScanner_SGNotAvailable: sg CLI가 PATH에 없을 때 (nil, nil) 반환 검증 (AC3)
-// 기본 허용 binary("sg")를 사용하되 실제 PATH에 없는 환경을 시뮬레이션한다.
-// 참고: 비허용 binary name은 F2 보안 검사에서 에러로 차단된다.
+// TestScanner_SGNotAvailable: verifies that (nil, nil) is returned when sg CLI is not in PATH (AC3)
+// Uses the default allowed binary ("sg") but simulates an environment where it is absent from PATH.
+// Note: disallowed binary names are blocked by the F2 security check with an error.
 func TestScanner_SGNotAvailable(t *testing.T) {
-	// "sg"는 ValidateBinary를 통과하지만, PATH에 없으면 isSGAvailable이 false를 반환한다.
-	// 이 테스트는 sg가 실제로 없는 환경(PATH에 "sg" 없음)에서만 유의미하다.
-	// sg가 설치된 환경에서는 실제 스캔이 발생할 수 있으므로, 빈 rules 디렉토리로 테스트한다.
+	// "sg" passes ValidateBinary, but isSGAvailable returns false when not in PATH.
+	// This test is only meaningful in environments where sg is absent from PATH.
+	// In environments where sg is installed, actual scanning may occur, so we test with an empty rules dir.
 	tmpDir := t.TempDir()
 	cfg := astgrep.DefaultScannerConfig()
-	cfg.SGBinary = "sg" // 허용된 bare name
+	cfg.SGBinary = "sg" // allowed bare name
 	cfg.RulesDir = tmpDir
 
 	s := astgrep.NewScanner(cfg)
 	findings, err := s.Scan(context.Background(), ".")
 	if err != nil {
-		t.Errorf("Scan() error = %v; sg 미존재 또는 빈 rules 시 nil 에러를 반환해야 함", err)
+		t.Errorf("Scan() error = %v; must return nil error when sg is absent or rules dir is empty", err)
 	}
 	if len(findings) != 0 {
-		t.Errorf("Scan() len(findings) = %d; 빈 rules 디렉토리에서 빈 슬라이스를 반환해야 함", len(findings))
+		t.Errorf("Scan() len(findings) = %d; must return empty slice for empty rules directory", len(findings))
 	}
 }
 
-// TestScanner_EmptyRulesDir: 빈 rules 디렉토리일 때 오류 없이 빈 결과 반환 (AC3)
+// TestScanner_EmptyRulesDir: verifies that an empty rules directory returns empty results without error (AC3)
 func TestScanner_EmptyRulesDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfg := astgrep.DefaultScannerConfig()
@@ -58,14 +58,14 @@ func TestScanner_EmptyRulesDir(t *testing.T) {
 
 	findings, err := s.Scan(context.Background(), ".")
 	if err != nil {
-		t.Errorf("Scan() error = %v; 빈 rules 디렉토리에서 오류가 발생하면 안 됨", err)
+		t.Errorf("Scan() error = %v; must not return error for empty rules directory", err)
 	}
 	if findings == nil {
-		t.Error("Scan() returned nil findings; 빈 슬라이스를 반환해야 함")
+		t.Error("Scan() returned nil findings; must return empty slice")
 	}
 }
 
-// TestScanner_RulesDirNotExist: rules 디렉토리가 존재하지 않을 때 오류 없이 동작 (AC3)
+// TestScanner_RulesDirNotExist: verifies that a non-existent rules directory operates without error (AC3)
 func TestScanner_RulesDirNotExist(t *testing.T) {
 	cfg := astgrep.DefaultScannerConfig()
 	cfg.RulesDir = "/path/that/does/not/exist/12345"
@@ -73,14 +73,14 @@ func TestScanner_RulesDirNotExist(t *testing.T) {
 
 	findings, err := s.Scan(context.Background(), ".")
 	if err != nil {
-		t.Errorf("Scan() error = %v; 존재하지 않는 rules 디렉토리에서 오류가 발생하면 안 됨", err)
+		t.Errorf("Scan() error = %v; must not return error for non-existent rules directory", err)
 	}
 	if len(findings) != 0 {
-		t.Errorf("Scan() len(findings) = %d; 규칙 없을 때 빈 슬라이스를 반환해야 함", len(findings))
+		t.Errorf("Scan() len(findings) = %d; must return empty slice when no rules exist", len(findings))
 	}
 }
 
-// TestScanner_FindingSeverityClassification: Finding 구조체의 severity 분류 검증
+// TestScanner_FindingSeverityClassification: verifies severity classification of the Finding struct
 func TestScanner_FindingSeverityClassification(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -117,23 +117,23 @@ func TestScanner_FindingSeverityClassification(t *testing.T) {
 	}
 }
 
-// TestRuleLoader_LoadFromDirRecursive: 서브디렉토리를 재귀적으로 로딩하는지 검증 (AC2 - RuleLoader.LoadFromDir)
+// TestRuleLoader_LoadFromDirRecursive: verifies recursive loading of subdirectories (AC2 - RuleLoader.LoadFromDir)
 func TestRuleLoader_LoadFromDirRecursive(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// go/ 서브디렉토리 생성
+	// create go/ subdirectory
 	goDir := filepath.Join(tmpDir, "go")
 	if err := os.MkdirAll(goDir, 0o755); err != nil {
-		t.Fatalf("서브디렉토리 생성 실패: %v", err)
+		t.Fatalf("failed to create subdirectory: %v", err)
 	}
 
-	// security/ 서브디렉토리 생성
+	// create security/ subdirectory
 	secDir := filepath.Join(tmpDir, "security")
 	if err := os.MkdirAll(secDir, 0o755); err != nil {
-		t.Fatalf("security 서브디렉토리 생성 실패: %v", err)
+		t.Fatalf("failed to create security subdirectory: %v", err)
 	}
 
-	// go/test.yml 생성
+	// create go/test.yml
 	goRuleYAML := `---
 id: test-go-rule
 language: go
@@ -142,10 +142,10 @@ message: "테스트 규칙"
 pattern: "os.Getenv($X)"
 `
 	if err := os.WriteFile(filepath.Join(goDir, "test.yml"), []byte(goRuleYAML), 0o644); err != nil {
-		t.Fatalf("규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write rule file: %v", err)
 	}
 
-	// security/test.yml 생성
+	// create security/test.yml
 	secRuleYAML := `---
 id: test-sec-rule
 language: go
@@ -154,7 +154,7 @@ message: "보안 테스트 규칙"
 pattern: "exec.Command($X)"
 `
 	if err := os.WriteFile(filepath.Join(secDir, "test.yml"), []byte(secRuleYAML), 0o644); err != nil {
-		t.Fatalf("보안 규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write security rule file: %v", err)
 	}
 
 	loader := astgrep.NewRuleLoader()
@@ -164,27 +164,27 @@ pattern: "exec.Command($X)"
 	}
 
 	if len(rules) != 2 {
-		t.Errorf("LoadFromDir() len(rules) = %d, want 2 (서브디렉토리 재귀 로딩 필요)", len(rules))
+		t.Errorf("LoadFromDir() len(rules) = %d, want 2 (recursive subdirectory loading required)", len(rules))
 	}
 
-	// 규칙 ID 검증
+	// verify rule IDs
 	ids := make(map[string]bool)
 	for _, r := range rules {
 		ids[r.ID] = true
 	}
 	if !ids["test-go-rule"] {
-		t.Error("test-go-rule이 로딩되지 않았음")
+		t.Error("test-go-rule was not loaded")
 	}
 	if !ids["test-sec-rule"] {
-		t.Error("test-sec-rule이 로딩되지 않았음")
+		t.Error("test-sec-rule was not loaded")
 	}
 }
 
-// TestRuleLoader_SkipsInvalidYAML: 파싱 실패한 개별 규칙은 건너뛰고 나머지 로딩 (AC3)
+// TestRuleLoader_SkipsInvalidYAML: verifies that individually unparseable rules are skipped and the rest are loaded (AC3)
 func TestRuleLoader_SkipsInvalidYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// 유효한 규칙 파일
+	// valid rule file
 	validYAML := `---
 id: valid-rule
 language: go
@@ -193,28 +193,28 @@ message: "유효한 규칙"
 pattern: "fmt.Println($X)"
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "valid.yml"), []byte(validYAML), 0o644); err != nil {
-		t.Fatalf("유효한 규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write valid rule file: %v", err)
 	}
 
-	// 유효하지 않은 YAML 파일 (파싱 불가)
+	// invalid YAML file (unparseable)
 	invalidYAML := `{invalid yaml: [`
 	if err := os.WriteFile(filepath.Join(tmpDir, "invalid.yml"), []byte(invalidYAML), 0o644); err != nil {
-		t.Fatalf("잘못된 규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write invalid rule file: %v", err)
 	}
 
 	loader := astgrep.NewRuleLoader()
-	// 에러를 반환하지 않고 유효한 규칙만 로딩해야 함
+	// must load only valid rules without returning an error
 	rules, err := loader.LoadFromDir(tmpDir)
 	if err != nil {
-		t.Fatalf("LoadFromDir() error = %v; 잘못된 파일은 건너뛰어야 함", err)
+		t.Fatalf("LoadFromDir() error = %v; invalid files must be skipped", err)
 	}
 
 	if len(rules) < 1 {
-		t.Error("유효한 규칙이 최소 1개 이상 로딩되어야 함")
+		t.Error("at least 1 valid rule must be loaded")
 	}
 }
 
-// TestScanner_ScanConfig: Config 필드 설정 검증
+// TestScanner_ScanConfig: verifies Config field settings
 func TestScanner_ScanConfig(t *testing.T) {
 	cfg := &astgrep.ScannerConfig{
 		RulesDir:     "/custom/rules",
@@ -227,19 +227,19 @@ func TestScanner_ScanConfig(t *testing.T) {
 	}
 }
 
-// TestScanner_ContextCancellation: context 취소 시 Scan이 즉시 반환하는지 검증
+// TestScanner_ContextCancellation: verifies that Scan returns immediately when context is cancelled
 func TestScanner_ContextCancellation(t *testing.T) {
 	cfg := astgrep.DefaultScannerConfig()
 	s := astgrep.NewScanner(cfg)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // 즉시 취소
+	cancel() // cancel immediately
 
-	// context가 이미 취소된 상태에서도 패닉 없이 반환해야 함
+	// must return without panicking even when context is already cancelled
 	_, _ = s.Scan(ctx, ".")
 }
 
-// TestFinding_String: Finding.String() 메서드가 사람이 읽기 좋은 형식으로 출력하는지 검증
+// TestFinding_String: verifies that Finding.String() outputs a human-readable format
 func TestFinding_String(t *testing.T) {
 	f := astgrep.Finding{
 		RuleID:   "go-no-raw-getenv",
@@ -253,13 +253,13 @@ func TestFinding_String(t *testing.T) {
 	if got == "" {
 		t.Error("Finding.String() returned empty string")
 	}
-	// 파일명과 줄 번호가 포함되어야 함
+	// must include filename and line number
 	if !containsSubstr(got, "main.go") {
-		t.Errorf("Finding.String() = %q; 파일명을 포함해야 함", got)
+		t.Errorf("Finding.String() = %q; must include filename", got)
 	}
 }
 
-// TestScanner_HasErrors: HasErrors() 메서드가 error severity 여부를 올바르게 판단하는지 검증
+// TestScanner_HasErrors: verifies that HasErrors() correctly determines whether any finding has error severity
 func TestScanner_HasErrors(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -267,19 +267,19 @@ func TestScanner_HasErrors(t *testing.T) {
 		want     bool
 	}{
 		{
-			name:     "빈 findings",
+			name:     "empty findings",
 			findings: nil,
 			want:     false,
 		},
 		{
-			name: "warning만 있는 경우",
+			name: "only warnings",
 			findings: []astgrep.Finding{
 				{RuleID: "r1", Severity: "warning"},
 			},
 			want: false,
 		},
 		{
-			name: "error가 포함된 경우",
+			name: "contains an error",
 			findings: []astgrep.Finding{
 				{RuleID: "r1", Severity: "warning"},
 				{RuleID: "r2", Severity: "error"},
@@ -297,10 +297,10 @@ func TestScanner_HasErrors(t *testing.T) {
 	}
 }
 
-// TestScanner_ScanWithSGAvailable: sg CLI가 있는 경우 실제 스캔 (통합 테스트, sg 없으면 skip)
+// TestScanner_ScanWithSGAvailable: performs actual scan when sg CLI is available (integration test, skip if sg absent)
 func TestScanner_ScanWithSGAvailable(t *testing.T) {
 	if _, err := exec.LookPath("sg"); err != nil {
-		t.Skip("sg CLI가 PATH에 없어 스킵합니다")
+		t.Skip("sg CLI is not in PATH, skipping")
 	}
 
 	tmpDir := t.TempDir()
@@ -319,17 +319,17 @@ func main() {
 `
 	goFile := filepath.Join(tmpDir, "main.go")
 	if err := os.WriteFile(goFile, []byte(goCode), 0o644); err != nil {
-		t.Fatalf("Go 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write Go file: %v", err)
 	}
 
 	rulesDir := filepath.Join(tmpDir, "rules", "go")
 	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
-		t.Fatalf("rules 디렉토리 생성 실패: %v", err)
+		t.Fatalf("failed to create rules directory: %v", err)
 	}
 
 	ruleYAML := "---\nid: test-getenv-rule\nlanguage: go\nseverity: warning\nmessage: \"raw os.Getenv 사용 금지\"\npattern: 'os.Getenv(\"$X\")'\n"
 	if err := os.WriteFile(filepath.Join(rulesDir, "test.yml"), []byte(ruleYAML), 0o644); err != nil {
-		t.Fatalf("규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write rule file: %v", err)
 	}
 
 	cfg := &astgrep.ScannerConfig{
@@ -341,13 +341,13 @@ func main() {
 	if err != nil {
 		t.Fatalf("Scan() error = %v", err)
 	}
-	// sg가 있으면 결과가 슬라이스여야 함 (nil이 아닌)
+	// when sg is available, result must be a slice (not nil)
 	if findings == nil {
 		t.Error("Scan() returned nil with sg available")
 	}
 }
 
-// TestParseSGFindings_EmptyOutput: 빈 출력에 대해 빈 슬라이스 반환 검증
+// TestParseSGFindings_EmptyOutput: verifies that empty output returns an empty slice
 func TestParseSGFindings_EmptyOutput(t *testing.T) {
 	cfg := astgrep.DefaultScannerConfig()
 	cfg.RulesDir = t.TempDir()
@@ -358,11 +358,11 @@ func TestParseSGFindings_EmptyOutput(t *testing.T) {
 		t.Errorf("Scan() error = %v", err)
 	}
 	if findings == nil {
-		t.Error("Scan() returned nil; 빈 슬라이스를 반환해야 함")
+		t.Error("Scan() returned nil; must return empty slice")
 	}
 }
 
-// TestToFileURI_Paths: SARIF URI 변환 검증 (내부 함수 간접 테스트)
+// TestToFileURI_Paths: verifies SARIF URI conversion (indirect test of internal function)
 func TestToFileURI_Paths(t *testing.T) {
 	findings := []astgrep.Finding{
 		{RuleID: "r1", Severity: "warning", Message: "m1", File: "internal/pkg/file.go", Line: 1},
@@ -378,27 +378,27 @@ func TestToFileURI_Paths(t *testing.T) {
 	}
 }
 
-// TestLoadFromDir_PlaceholderDirs: .gitkeep이 있는 플레이스홀더 디렉토리를 처리하는지 검증
+// TestLoadFromDir_PlaceholderDirs: verifies that placeholder directories with .gitkeep are handled correctly
 func TestLoadFromDir_PlaceholderDirs(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	for _, lang := range []string{"python", "typescript", "rust"} {
 		dir := filepath.Join(tmpDir, lang)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("디렉토리 생성 실패: %v", err)
+			t.Fatalf("failed to create directory: %v", err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, ".gitkeep"), []byte{}, 0o644); err != nil {
-			t.Fatalf(".gitkeep 작성 실패: %v", err)
+			t.Fatalf("failed to write .gitkeep: %v", err)
 		}
 	}
 
 	goDir := filepath.Join(tmpDir, "go")
 	if err := os.MkdirAll(goDir, 0o755); err != nil {
-		t.Fatalf("go 디렉토리 생성 실패: %v", err)
+		t.Fatalf("failed to create go directory: %v", err)
 	}
 	ruleYAML := "---\nid: go-test-rule\nlanguage: go\nseverity: warning\nmessage: \"테스트\"\npattern: \"fmt.Println($X)\"\n"
 	if err := os.WriteFile(filepath.Join(goDir, "test.yml"), []byte(ruleYAML), 0o644); err != nil {
-		t.Fatalf("규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write rule file: %v", err)
 	}
 
 	loader := astgrep.NewRuleLoader()
@@ -408,11 +408,11 @@ func TestLoadFromDir_PlaceholderDirs(t *testing.T) {
 	}
 
 	if len(rules) != 1 {
-		t.Errorf("LoadFromDir() len(rules) = %d, want 1 (.gitkeep 파일은 무시되어야 함)", len(rules))
+		t.Errorf("LoadFromDir() len(rules) = %d, want 1 (.gitkeep files must be ignored)", len(rules))
 	}
 }
 
-// TestHasErrors_MixedSeverities: 다양한 severity가 섞인 슬라이스에서 HasErrors 동작 검증
+// TestHasErrors_MixedSeverities: verifies HasErrors behavior with a slice of mixed severities
 func TestHasErrors_MixedSeverities(t *testing.T) {
 	findings := []astgrep.Finding{
 		{RuleID: "r1", Severity: "info"},
@@ -421,54 +421,54 @@ func TestHasErrors_MixedSeverities(t *testing.T) {
 	}
 
 	if !astgrep.HasErrors(findings) {
-		t.Error("HasErrors() = false; 대소문자 무관하게 error severity를 감지해야 함")
+		t.Error("HasErrors() = false; must detect error severity case-insensitively")
 	}
 }
 
-// TestFinding_IsInfoForHint: hint severity가 IsError/IsWarning에서 false인지 검증
+// TestFinding_IsInfoForHint: verifies that hint severity returns false for IsError/IsWarning
 func TestFinding_IsInfoForHint(t *testing.T) {
 	f := astgrep.Finding{Severity: "hint"}
 	if f.IsError() {
-		t.Error("hint severity가 IsError() = true를 반환했음")
+		t.Error("hint severity returned IsError() = true")
 	}
 	if f.IsWarning() {
-		t.Error("hint severity가 IsWarning() = true를 반환했음")
+		t.Error("hint severity returned IsWarning() = true")
 	}
 }
 
-// TestScanner_ScanWithSGConfig: sgconfig.yml을 사용한 스캔 (sg 없으면 skip)
+// TestScanner_ScanWithSGConfig: scan using sgconfig.yml (skip if sg is absent)
 func TestScanner_ScanWithSGConfig(t *testing.T) {
 	if _, err := exec.LookPath("sg"); err != nil {
-		t.Skip("sg CLI가 PATH에 없어 스킵합니다")
+		t.Skip("sg CLI is not in PATH, skipping")
 	}
 
 	tmpDir := t.TempDir()
 
-	// 대상 파일 생성
+	// create target file
 	goCode := `package main
 import "fmt"
 func main() { fmt.Println("hello") }
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte(goCode), 0o644); err != nil {
-		t.Fatalf("파일 작성 실패: %v", err)
+		t.Fatalf("failed to write file: %v", err)
 	}
 
-	// sgconfig.yml과 rules 디렉토리 생성
+	// create sgconfig.yml and rules directory
 	rulesDir := filepath.Join(tmpDir, "rules")
 	goDir := filepath.Join(rulesDir, "go")
 	if err := os.MkdirAll(goDir, 0o755); err != nil {
-		t.Fatalf("rules 디렉토리 생성 실패: %v", err)
+		t.Fatalf("failed to create rules directory: %v", err)
 	}
 
 	ruleYAML := "---\nid: sgconfig-test-rule\nlanguage: go\nseverity: warning\nmessage: \"fmt.Println 사용\"\npattern: 'fmt.Println($X)'\n"
 	if err := os.WriteFile(filepath.Join(goDir, "test.yml"), []byte(ruleYAML), 0o644); err != nil {
-		t.Fatalf("규칙 파일 작성 실패: %v", err)
+		t.Fatalf("failed to write rule file: %v", err)
 	}
 
-	// sgconfig.yml 생성
+	// create sgconfig.yml
 	sgconfig := "ruleDirs:\n  - go\n"
 	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte(sgconfig), 0o644); err != nil {
-		t.Fatalf("sgconfig.yml 작성 실패: %v", err)
+		t.Fatalf("failed to write sgconfig.yml: %v", err)
 	}
 
 	cfg := &astgrep.ScannerConfig{
@@ -481,13 +481,13 @@ func main() { fmt.Println("hello") }
 		t.Fatalf("Scan() error = %v", err)
 	}
 
-	// sgconfig.yml 경로를 통한 스캔이 성공해야 함 (findings는 sg 동작에 따라 달라짐)
+	// scan via sgconfig.yml path must succeed (findings depend on sg behavior)
 	if findings == nil {
 		t.Error("Scan() with sgconfig.yml returned nil")
 	}
 }
 
-// TestScanner_String_AllSeverities: Finding.String()이 다양한 severity를 출력하는지 검증
+// TestScanner_String_AllSeverities: verifies that Finding.String() outputs various severities
 func TestScanner_String_AllSeverities(t *testing.T) {
 	tests := []struct {
 		severity string
@@ -518,7 +518,7 @@ func TestScanner_String_AllSeverities(t *testing.T) {
 	}
 }
 
-// TestDefaultScannerConfig_Fields: DefaultScannerConfig 기본값 검증
+// TestDefaultScannerConfig_Fields: verifies default values of DefaultScannerConfig
 func TestDefaultScannerConfig_Fields(t *testing.T) {
 	cfg := astgrep.DefaultScannerConfig()
 	if cfg.SGBinary != "sg" {
@@ -532,7 +532,7 @@ func TestDefaultScannerConfig_Fields(t *testing.T) {
 	}
 }
 
-// containsSubstr는 문자열 s에 substr이 포함되어 있는지 확인하는 헬퍼 함수
+// containsSubstr is a helper function that checks whether string s contains substr
 func containsSubstr(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr ||
 		func() bool {
@@ -545,18 +545,18 @@ func containsSubstr(s, substr string) bool {
 		}())
 }
 
-// --- F2 재현 테스트: Binary allowlist 부재 ---
+// --- F2 regression test: Binary allowlist absence ---
 
-// TestValidateBinary_AllowsSg: "sg", "ast-grep" bare name이 허용되는지 검증
+// TestValidateBinary_AllowsSg: verifies that bare names "sg" and "ast-grep" are allowed
 func TestValidateBinary_AllowsSg(t *testing.T) {
 	for _, name := range []string{"sg", "ast-grep"} {
 		if err := astgrep.ValidateBinary(name); err != nil {
-			t.Errorf("ValidateBinary(%q) = %v; 허용된 bare name이어야 함", name, err)
+			t.Errorf("ValidateBinary(%q) = %v; must be an allowed bare name", name, err)
 		}
 	}
 }
 
-// TestValidateBinary_AllowsTrustedPrefix: /usr/local/bin/sg 같은 신뢰 경로가 허용되는지 검증
+// TestValidateBinary_AllowsTrustedPrefix: verifies that trusted paths like /usr/local/bin/sg are allowed
 func TestValidateBinary_AllowsTrustedPrefix(t *testing.T) {
 	paths := []string{
 		"/usr/bin/sg",
@@ -565,19 +565,19 @@ func TestValidateBinary_AllowsTrustedPrefix(t *testing.T) {
 	}
 	for _, p := range paths {
 		if err := astgrep.ValidateBinary(p); err != nil {
-			t.Errorf("ValidateBinary(%q) = %v; 신뢰 경로여야 함", p, err)
+			t.Errorf("ValidateBinary(%q) = %v; must be a trusted path", p, err)
 		}
 	}
 }
 
-// TestValidateBinary_RejectsUntrustedPath: /tmp 같은 비신뢰 절대 경로가 거부되는지 검증
+// TestValidateBinary_RejectsUntrustedPath: verifies that untrusted absolute paths like /tmp are rejected
 func TestValidateBinary_RejectsUntrustedPath(t *testing.T) {
 	if err := astgrep.ValidateBinary("/tmp/evil/sg"); err == nil {
-		t.Error("ValidateBinary(/tmp/evil/sg) = nil; 비신뢰 경로는 에러를 반환해야 함")
+		t.Error("ValidateBinary(/tmp/evil/sg) = nil; untrusted path must return an error")
 	}
 }
 
-// TestValidateBinary_RejectsShellMetachars: 셸 메타문자가 포함된 바이너리 경로가 거부되는지 검증
+// TestValidateBinary_RejectsShellMetachars: verifies that binary paths containing shell metacharacters are rejected
 func TestValidateBinary_RejectsShellMetachars(t *testing.T) {
 	malicious := []string{
 		"sg; rm -rf /",
@@ -586,19 +586,19 @@ func TestValidateBinary_RejectsShellMetachars(t *testing.T) {
 	}
 	for _, bin := range malicious {
 		if err := astgrep.ValidateBinary(bin); err == nil {
-			t.Errorf("ValidateBinary(%q) = nil; 셸 메타문자는 에러를 반환해야 함", bin)
+			t.Errorf("ValidateBinary(%q) = nil; shell metacharacters must return an error", bin)
 		}
 	}
 }
 
-// TestValidateBinary_RejectsTraversal: ..을 포함한 경로 트래버설이 거부되는지 검증
+// TestValidateBinary_RejectsTraversal: verifies that path traversal with .. is rejected
 func TestValidateBinary_RejectsTraversal(t *testing.T) {
 	if err := astgrep.ValidateBinary("/usr/local/bin/../../tmp/sg"); err == nil {
-		t.Error("ValidateBinary(경로 트래버설) = nil; 에러를 반환해야 함")
+		t.Error("ValidateBinary(path traversal) = nil; must return an error")
 	}
 }
 
-// TestScan_RejectsUntrustedBinary: Scan이 신뢰할 수 없는 바이너리 경로로 에러를 반환하는지 검증
+// TestScan_RejectsUntrustedBinary: verifies that Scan returns an error for an untrusted binary path
 func TestScan_RejectsUntrustedBinary(t *testing.T) {
 	cfg := astgrep.DefaultScannerConfig()
 	cfg.SGBinary = "/tmp/evil/sg"
@@ -606,6 +606,6 @@ func TestScan_RejectsUntrustedBinary(t *testing.T) {
 
 	_, err := s.Scan(context.Background(), ".")
 	if err == nil {
-		t.Error("Scan() with untrusted binary = nil error; 에러를 반환해야 함")
+		t.Error("Scan() with untrusted binary = nil error; must return an error")
 	}
 }

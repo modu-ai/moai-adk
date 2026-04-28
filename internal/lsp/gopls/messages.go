@@ -1,14 +1,18 @@
 package gopls
 
-import "encoding/json"
+import (
+	"encoding/json"
 
-// ─── JSON-RPC 2.0 봉투 타입 ────────────────────────────────────────────────
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
+)
+
+// ─── JSON-RPC 2.0 envelope types ─────────────────────────────────────────────
 //
-// REQ-GB-030: LSP 메시지는 Content-Length 헤더로 프레이밍된 JSON-RPC 2.0 형식이다.
-// REQ-GB-033: id 필드로 요청-응답을 상관시킨다.
-// REQ-GB-034: id가 없는 메시지는 알림으로 처리한다.
+// REQ-GB-030: LSP messages use the JSON-RPC 2.0 format framed with Content-Length headers.
+// REQ-GB-033: correlate requests and responses using the id field.
+// REQ-GB-034: messages without an id are treated as notifications.
 
-// Request는 JSON-RPC 2.0 요청 봉투다. 클라이언트가 서버에 보내는 메시지에 사용한다.
+// Request is a JSON-RPC 2.0 request envelope. Used for messages sent from client to server.
 type Request struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      int64           `json:"id"`
@@ -16,16 +20,16 @@ type Request struct {
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
-// Notification은 id 없는 JSON-RPC 2.0 알림 봉투다.
-// 클라이언트가 서버에, 또는 서버가 클라이언트에 단방향으로 보낸다.
+// Notification is a JSON-RPC 2.0 notification envelope without an id.
+// Sent one-way from client to server, or from server to client.
 type Notification struct {
 	JSONRPC string          `json:"jsonrpc"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
-// Response는 서버에서 클라이언트로 오는 JSON-RPC 2.0 응답 봉투다.
-// 응답(id 있음)과 알림(id 없음, Method 있음) 양쪽을 표현한다.
+// Response is the JSON-RPC 2.0 response envelope received from server to client.
+// It represents both responses (with id) and notifications (without id, with Method).
 type Response struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -34,147 +38,132 @@ type Response struct {
 	Error   *ResponseError  `json:"error,omitempty"`
 }
 
-// IsNotification은 이 메시지가 알림(id 없음)인지 판별한다.
-// REQ-GB-034: id 필드가 없으면 알림으로 분류한다.
+// IsNotification returns true if this message is a notification (no id).
+// REQ-GB-034: messages without an id field are classified as notifications.
 func (r *Response) IsNotification() bool {
 	return len(r.ID) == 0
 }
 
-// ResponseError는 JSON-RPC 2.0 에러 객체다.
+// ResponseError is a JSON-RPC 2.0 error object.
 type ResponseError struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Data    json.RawMessage `json:"data,omitempty"`
 }
 
-// ─── LSP 초기화 메시지 ─────────────────────────────────────────────────────
+// ─── LSP initialization messages ─────────────────────────────────────────────
 //
-// REQ-GB-010: initialize 요청 params
-// REQ-GB-011: initialized 알림
+// REQ-GB-010: initialize request params
+// REQ-GB-011: initialized notification
 // REQ-GB-013: initializationOptions.staticcheck: true
 
-// InitializeParams는 LSP `initialize` 요청의 파라미터다.
+// InitializeParams holds the parameters for the LSP `initialize` request.
 type InitializeParams struct {
-	// RootURI는 프로젝트 루트 디렉토리의 파일 URI다.
+	// RootURI is the file URI of the project root directory.
 	RootURI string `json:"rootUri"`
-	// ClientCapabilities는 클라이언트가 지원하는 기능 목록이다.
+	// ClientCapabilities lists the features supported by the client.
 	ClientCapabilities ClientCapabilities `json:"capabilities"`
-	// InitializationOptions는 서버별 초기화 옵션이다.
-	// REQ-GB-013: gopls에서 staticcheck를 활성화한다.
+	// InitializationOptions holds server-specific initialization options.
+	// REQ-GB-013: enables staticcheck in gopls.
 	InitializationOptions map[string]any `json:"initializationOptions,omitempty"`
 }
 
-// ClientCapabilities는 클라이언트가 지원하는 기능 집합이다.
+// ClientCapabilities is the set of features supported by the client.
 type ClientCapabilities struct {
 	TextDocument TextDocumentClientCapabilities `json:"textDocument,omitempty"`
 }
 
-// TextDocumentClientCapabilities는 텍스트 문서 관련 클라이언트 기능이다.
+// TextDocumentClientCapabilities holds the client capabilities for text documents.
 type TextDocumentClientCapabilities struct {
 	PublishDiagnostics PublishDiagnosticsClientCapabilities `json:"publishDiagnostics,omitempty"`
 }
 
-// PublishDiagnosticsClientCapabilities는 publishDiagnostics 알림 관련 클라이언트 기능이다.
-// REQ-GB-010: relatedInformation: true를 설정해야 한다.
+// PublishDiagnosticsClientCapabilities holds client capabilities for the publishDiagnostics notification.
+// REQ-GB-010: relatedInformation must be set to true.
 type PublishDiagnosticsClientCapabilities struct {
 	RelatedInformation bool `json:"relatedInformation,omitempty"`
 }
 
-// InitializeResult는 LSP `initialize` 응답의 결과다.
+// InitializeResult holds the result of the LSP `initialize` response.
 type InitializeResult struct {
 	Capabilities ServerCapabilities `json:"capabilities"`
 }
 
-// ServerCapabilities는 gopls 서버가 지원하는 기능 집합이다.
-// 현재는 사용하지 않지만 구조체 역직렬화를 위해 정의한다.
+// ServerCapabilities is the set of features supported by the gopls server.
+// Currently unused but defined for struct deserialization purposes.
 type ServerCapabilities struct{}
 
-// InitializedParams는 LSP `initialized` 알림의 파라미터다. 항상 빈 객체다.
-// REQ-GB-011: initialize 응답 수신 후 전송한다.
+// InitializedParams holds the parameters for the LSP `initialized` notification. Always an empty object.
+// REQ-GB-011: sent after receiving the initialize response.
 type InitializedParams struct{}
 
-// ─── 텍스트 문서 메시지 ────────────────────────────────────────────────────
+// ─── Text document messages ────────────────────────────────────────────────
 
-// DidOpenTextDocumentParams는 LSP `textDocument/didOpen` 알림의 파라미터다.
-// REQ-GB-020: 파일을 열어 diagnostics를 수집한다.
+// DidOpenTextDocumentParams holds the parameters for the LSP `textDocument/didOpen` notification.
+// REQ-GB-020: opens a file to collect diagnostics.
 type DidOpenTextDocumentParams struct {
 	TextDocument TextDocumentItem `json:"textDocument"`
 }
 
-// TextDocumentItem은 LSP 텍스트 문서를 표현한다.
+// TextDocumentItem represents an LSP text document.
 type TextDocumentItem struct {
-	// URI는 문서의 파일 URI다. (예: "file:///workspace/main.go")
+	// URI is the file URI of the document (e.g., "file:///workspace/main.go").
 	URI string `json:"uri"`
-	// LanguageID는 언어 식별자다. Go 파일은 "go"다.
+	// LanguageID is the language identifier. Go files use "go".
 	LanguageID string `json:"languageId"`
-	// Version은 문서 버전 번호다. 1부터 시작한다.
+	// Version is the document version number. Starts at 1.
 	Version int `json:"version"`
-	// Text는 문서의 전체 텍스트 내용이다.
+	// Text is the full text content of the document.
 	Text string `json:"text"`
 }
 
-// ─── 진단 메시지 ──────────────────────────────────────────────────────────
+// ─── Diagnostic messages ──────────────────────────────────────────────────
 //
-// REQ-GB-023: severity, source, code, message, range 필드를 포함해야 한다.
+// REQ-GB-023: must include severity, source, code, message, and range fields.
+// REQ-UTIL-003-007: gopls.Diagnostic / Range / Position / DiagnosticSeverity are
+// type aliases for the types defined in the lsp package. This guarantees a single source of truth.
+// Existing gopls callers compile without modification due to type alias identity semantics.
 
-// PublishDiagnosticsParams는 `textDocument/publishDiagnostics` 알림의 파라미터다.
+// PublishDiagnosticsParams holds the parameters for the `textDocument/publishDiagnostics` notification.
 type PublishDiagnosticsParams struct {
-	// URI는 이 진단이 속하는 문서의 파일 URI다.
+	// URI is the file URI of the document to which these diagnostics belong.
 	URI string `json:"uri"`
-	// Diagnostics는 이 문서에 대한 진단 목록이다. 빈 슬라이스면 문제 없음을 의미한다.
+	// Diagnostics is the list of diagnostics for this document. An empty slice means no issues.
 	Diagnostics []Diagnostic `json:"diagnostics"`
 }
 
-// Diagnostic은 LSP 진단 항목이다.
-// REQ-GB-023: severity, source, code, message, range 필드를 포함한다.
-type Diagnostic struct {
-	// Range는 문서 내 진단 위치다.
-	Range Range `json:"range"`
-	// Severity는 진단의 심각도다. (1=Error, 2=Warning, 3=Information, 4=Hint)
-	Severity DiagnosticSeverity `json:"severity,omitempty"`
-	// Code는 진단 코드다. (예: "SA1001", "undeclared name")
-	Code string `json:"code,omitempty"`
-	// Source는 진단의 출처다. (예: "compiler", "staticcheck", "gopls")
-	Source string `json:"source,omitempty"`
-	// Message는 진단 메시지 본문이다.
-	Message string `json:"message"`
-}
+// Diagnostic is a type alias for lsp.Diagnostic (REQ-UTIL-003-007).
+// Guarantees reflect.TypeOf(gopls.Diagnostic{}) == reflect.TypeOf(lsp.Diagnostic{}).
+type Diagnostic = lsp.Diagnostic
 
-// Range는 문서 내 텍스트 범위를 나타낸다.
-type Range struct {
-	Start Position `json:"start"`
-	End   Position `json:"end"`
-}
+// Range is a type alias for lsp.Range (REQ-UTIL-003-007).
+type Range = lsp.Range
 
-// Position은 문서 내 커서 위치를 나타낸다. 줄과 문자는 0부터 시작한다.
-type Position struct {
-	// Line은 0-indexed 줄 번호다.
-	Line int `json:"line"`
-	// Character는 0-indexed UTF-16 코드 유닛 오프셋이다.
-	Character int `json:"character"`
-}
+// Position is a type alias for lsp.Position (REQ-UTIL-003-007).
+type Position = lsp.Position
 
-// DiagnosticSeverity는 진단 심각도 열거형이다.
-// LSP 3.17 사양의 DiagnosticSeverity 값과 일치한다.
-type DiagnosticSeverity int
+// DiagnosticSeverity is a type alias for lsp.DiagnosticSeverity (REQ-UTIL-003-007).
+// Matches the DiagnosticSeverity values from LSP 3.17 spec (int-based: 1=Error, 2=Warning, 3=Info, 4=Hint).
+type DiagnosticSeverity = lsp.DiagnosticSeverity
 
 const (
-	// SeverityError는 오류 진단이다 (값: 1).
+	// SeverityError is an error diagnostic (value: 1).
 	SeverityError DiagnosticSeverity = 1
-	// SeverityWarning은 경고 진단이다 (값: 2).
+	// SeverityWarning is a warning diagnostic (value: 2).
 	SeverityWarning DiagnosticSeverity = 2
-	// SeverityInformation은 정보성 진단이다 (값: 3).
+	// SeverityInformation is an informational diagnostic (value: 3).
+	// Note: the lsp package names the same value SeverityInfo.
 	SeverityInformation DiagnosticSeverity = 3
-	// SeverityHint는 힌트 진단이다 (값: 4).
+	// SeverityHint is a hint diagnostic (value: 4).
 	SeverityHint DiagnosticSeverity = 4
 )
 
-// ─── 종료 메시지 ──────────────────────────────────────────────────────────
+// ─── Shutdown messages ──────────────────────────────────────────────────────
 //
-// REQ-GB-004: shutdown/exit 시퀀스로 gopls를 종료한다.
+// REQ-GB-004: terminates gopls using the shutdown/exit sequence.
 
-// ShutdownParams는 LSP `shutdown` 요청의 파라미터다. 항상 null이다.
+// ShutdownParams holds the parameters for the LSP `shutdown` request. Always null.
 type ShutdownParams struct{}
 
-// ExitParams는 LSP `exit` 알림의 파라미터다. 항상 null이다.
+// ExitParams holds the parameters for the LSP `exit` notification. Always null.
 type ExitParams struct{}

@@ -62,6 +62,14 @@ outputs:
   page: [HTML]
   section: [HTML, RSS]
 
+# Cascade — all pages inherit type=docs to enable Hextra's sidebar-enabled layout.
+# Without this cascade, Hextra's default `single.html` is used which sets
+# `disableSidebar: true`. Only `docs/single.html` renders the left sidebar.
+cascade:
+  - target:
+      path: /**
+    type: docs
+
 # Default params (Hextra-specific)
 params:
   description: "MoAI-ADK online documentation — Agentic Development Kit for Claude Code"

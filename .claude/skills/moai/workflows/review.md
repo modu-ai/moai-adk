@@ -71,7 +71,34 @@ If no --team flag (default single-agent mode): Delegate to manager-quality subag
 - Authentication and authorization logic
 - Secrets exposure (API keys, passwords, tokens)
 - Injection risks (SQL, command, XSS, CSRF)
-- Dependency vulnerability check
+
+#### Dependency Vulnerability Scan
+
+Enumerate project manifest files and run a vulnerability scan for each detected file:
+`go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
+
+Auto-detect language from project markers; invoke `expert-security` with the detected manifest.
+Full procedure: `${CLAUDE_SKILL_DIR}/workflows/security.md`.
+
+#### Secrets Scan (Full Git History)
+
+Scan the full git history — not just the working tree — for credential leaks:
+
+```bash
+git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+```
+
+Cross-reference findings against `.gitignore` to distinguish historical leaks from working-tree exposure.
+This scan is separate from working-tree-only scanners and must cover all commits reachable via `--all`.
+
+#### Data Isolation Check
+
+Verify the following boundaries are intact:
+- **Multi-tenant**: No cross-tenant data flow; tenant ID is enforced at every query boundary.
+- **PII separation**: PII is never written to logs, metrics, or telemetry endpoints.
+- **Shared-state leakage**: No mutable globals that carry request-scoped data across concurrent requests.
+
+For all three subsections above, the canonical security procedure is `Skill("moai")` `security` workflow.
 
 If --security flag: This perspective receives primary focus with deeper analysis.
 

@@ -1,7 +1,7 @@
 ---
 title: 设计系统
 description: 结合Claude Design和代码路径的混合设计工作流
-weight: 10
+weight: 60
 draft: false
 ---
 

@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// TestPendingRegistry_RegisterAndDispatch는 Register로 채널을 등록하고
-// Dispatch로 payload를 전달하는 기본 흐름을 검증한다.
+// TestPendingRegistry_RegisterAndDispatch verifies the basic flow of registering
+// a channel via Register and delivering a payload via Dispatch.
 func TestPendingRegistry_RegisterAndDispatch(t *testing.T) {
 	t.Parallel()
 
@@ -28,24 +28,24 @@ func TestPendingRegistry_RegisterAndDispatch(t *testing.T) {
 			t.Errorf("payload = %s, want %s", got, payload)
 		}
 	case <-time.After(100 * time.Millisecond):
-		t.Fatal("채널에서 payload를 받지 못함")
+		t.Fatal("did not receive payload from channel")
 	}
 }
 
-// TestPendingRegistry_DispatchUnknownID는 등록되지 않은 ID로 Dispatch할 때
-// false를 반환하는지 검증한다.
+// TestPendingRegistry_DispatchUnknownID verifies that Dispatch with an unregistered
+// ID returns false.
 func TestPendingRegistry_DispatchUnknownID(t *testing.T) {
 	t.Parallel()
 
 	r := &PendingRegistry{}
 	dispatched := r.Dispatch(999, json.RawMessage(`{}`))
 	if dispatched {
-		t.Error("알 수 없는 ID로 Dispatch() = true, want false")
+		t.Error("Dispatch() with unknown ID = true, want false")
 	}
 }
 
-// TestPendingRegistry_UnregisterRemovesEntry는 Unregister 후 Dispatch가 false를
-// 반환하는지 검증한다.
+// TestPendingRegistry_UnregisterRemovesEntry verifies that Dispatch returns false
+// after Unregister.
 func TestPendingRegistry_UnregisterRemovesEntry(t *testing.T) {
 	t.Parallel()
 
@@ -55,12 +55,12 @@ func TestPendingRegistry_UnregisterRemovesEntry(t *testing.T) {
 
 	dispatched := r.Dispatch(10, json.RawMessage(`{}`))
 	if dispatched {
-		t.Error("Unregister 후 Dispatch() = true, want false")
+		t.Error("Dispatch() after Unregister = true, want false")
 	}
 }
 
-// TestPendingRegistry_Concurrent는 동시에 여러 고루틴이 Register/Dispatch를 호출할 때
-// 데이터 경쟁 없이 동작하는지 경쟁 감지기로 검증한다.
+// TestPendingRegistry_Concurrent verifies that concurrent goroutines calling
+// Register/Dispatch operate without data races (verified by the race detector).
 func TestPendingRegistry_Concurrent(t *testing.T) {
 	t.Parallel()
 
@@ -70,13 +70,13 @@ func TestPendingRegistry_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	results := make([]json.RawMessage, numRequests)
 
-	// 모든 채널을 먼저 등록한다.
+	// Register all channels first.
 	channels := make([]<-chan json.RawMessage, numRequests)
 	for i := int64(0); i < numRequests; i++ {
 		channels[i] = r.Register(i)
 	}
 
-	// 수신 고루틴들을 먼저 시작한다.
+	// Start receiver goroutines first.
 	for i := 0; i < numRequests; i++ {
 		wg.Add(1)
 		go func(idx int) {
@@ -85,12 +85,12 @@ func TestPendingRegistry_Concurrent(t *testing.T) {
 			case got := <-channels[idx]:
 				results[idx] = got
 			case <-time.After(2 * time.Second):
-				t.Errorf("고루틴 %d: 타임아웃", idx)
+				t.Errorf("goroutine %d: timeout", idx)
 			}
 		}(i)
 	}
 
-	// Dispatch 고루틴들을 동시에 실행한다.
+	// Run Dispatch goroutines concurrently.
 	var dispatchWg sync.WaitGroup
 	for i := int64(0); i < numRequests; i++ {
 		dispatchWg.Add(1)
@@ -104,15 +104,16 @@ func TestPendingRegistry_Concurrent(t *testing.T) {
 	dispatchWg.Wait()
 	wg.Wait()
 
-	// 모든 결과가 수신되었는지 확인한다.
+	// Verify that all results were received.
 	for i, res := range results {
 		if res == nil {
-			t.Errorf("결과 %d가 nil", i)
+			t.Errorf("result %d is nil", i)
 		}
 	}
 }
 
-// TestNotificationDispatcher_Dispatch는 등록된 핸들러가 올바른 메서드로 호출되는지 검증한다.
+// TestNotificationDispatcher_Dispatch verifies that the registered handler is
+// invoked for the correct method.
 func TestNotificationDispatcher_Dispatch(t *testing.T) {
 	t.Parallel()
 
@@ -129,25 +130,25 @@ func TestNotificationDispatcher_Dispatch(t *testing.T) {
 	d.Dispatch("textDocument/publishDiagnostics", payload)
 
 	if !called {
-		t.Fatal("핸들러가 호출되지 않음")
+		t.Fatal("handler was not invoked")
 	}
 	if string(receivedPayload) != string(payload) {
 		t.Errorf("payload = %s, want %s", receivedPayload, payload)
 	}
 }
 
-// TestNotificationDispatcher_UnknownMethod는 등록되지 않은 메서드에 대해
-// 패닉 없이 무시하는지 검증한다.
+// TestNotificationDispatcher_UnknownMethod verifies that an unregistered method
+// is silently ignored without panic.
 func TestNotificationDispatcher_UnknownMethod(t *testing.T) {
 	t.Parallel()
 
 	d := NewNotificationDispatcher()
-	// 패닉이 발생하지 않아야 한다.
+	// Must not panic.
 	d.Dispatch("window/logMessage", json.RawMessage(`{"message":"hello"}`))
 }
 
-// TestNotificationDispatcher_MultipleHandlers는 여러 메서드에 대한 핸들러를
-// 독립적으로 등록하고 호출하는지 검증한다.
+// TestNotificationDispatcher_MultipleHandlers verifies that handlers for
+// different methods are registered and invoked independently.
 func TestNotificationDispatcher_MultipleHandlers(t *testing.T) {
 	t.Parallel()
 
@@ -170,26 +171,27 @@ func TestNotificationDispatcher_MultipleHandlers(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	if !called["textDocument/publishDiagnostics"] {
-		t.Error("publishDiagnostics 핸들러가 호출되지 않음")
+		t.Error("publishDiagnostics handler was not invoked")
 	}
 	if !called["window/logMessage"] {
-		t.Error("logMessage 핸들러가 호출되지 않음")
+		t.Error("logMessage handler was not invoked")
 	}
 }
 
-// TestPendingRegistry_Timeout은 Dispatch가 호출되지 않을 때 채널이 블록 상태를
-// 유지하다가 컨텍스트 취소로 타임아웃되는 패턴을 검증한다.
+// TestPendingRegistry_Timeout verifies that the channel remains blocked when
+// Dispatch is not invoked, and that the wait can be terminated by a context
+// cancellation pattern.
 func TestPendingRegistry_Timeout(t *testing.T) {
 	t.Parallel()
 
 	r := &PendingRegistry{}
 	ch := r.Register(99)
 
-	// Dispatch 없이 짧은 타임아웃으로 채널이 블록되는지 확인한다.
+	// Without Dispatch, verify with a short timeout that the channel stays blocked.
 	select {
 	case <-ch:
-		t.Fatal("Dispatch 없이 채널에서 데이터를 받음")
+		t.Fatal("received data from channel without Dispatch")
 	case <-time.After(50 * time.Millisecond):
-		// 예상대로 타임아웃
+		// timed out as expected
 	}
 }

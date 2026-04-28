@@ -451,9 +451,9 @@ func TestReadInput_FlatCamelCase(t *testing.T) {
 			},
 		},
 		{
-			// hook_event_name이 없어도 CLI 명령명에서 유추 가능한 경우에 대비.
-			// 현재는 hook_event_name 필수이므로, reason만 있으면 에러가 맞음.
-			// 이 테스트는 graceful 에러 처리를 확인함.
+			// guards against cases where hook_event_name is absent but inferrable from CLI command name.
+			// currently hook_event_name is required, so having only reason is an expected error.
+			// this test verifies graceful error handling.
 			name:  "SessionEnd with flat camelCase and reason field",
 			input: `{"sessionId":"sess-flat-3","hookEventName":"SessionEnd","cwd":"/tmp","reason":"logout"}`,
 			check: func(t *testing.T, got *HookInput) {

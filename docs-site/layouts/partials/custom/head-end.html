@@ -57,3 +57,29 @@
 {{- if hugo.IsProduction -}}
 <script defer src="/_vercel/insights/script.js"></script>
 {{- end -}}
+
+{{/*
+  Sidebar + TOC breakpoint override.
+  Hextra 기본: 일반 문서 페이지는 md~xl 범위(768~1279px)에서 좌측 사이드바를
+  햄버거 메뉴로 전환하고 우측 TOC를 완전히 숨김. 13" 노트북(1440×900)이나
+  일반 창(1024~1280px)에서 좌/우 사이드바를 바로 쓰고 싶은 독자가 많으므로
+  lg(1024px+)부터 양쪽 사이드바를 표시하도록 오버라이드.
+  Tailwind JIT 이스케이프 클래스는 런타임에 주입 불가하므로 media query 직접 작성.
+*/}}
+<style>
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    /* 좌측 네비 사이드바 복원 (일반 문서 페이지 레이아웃) */
+    aside.hextra-sidebar-container {
+      display: flex !important;
+      position: sticky !important;
+      top: 4rem !important;
+      align-self: flex-start !important;
+      flex-shrink: 0 !important;
+      width: 16rem !important;
+    }
+    /* 우측 TOC 복원 */
+    nav.hextra-toc {
+      display: block !important;
+    }
+  }
+</style>

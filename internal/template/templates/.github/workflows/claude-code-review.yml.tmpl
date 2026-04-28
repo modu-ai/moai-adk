@@ -1,0 +1,44 @@
+name: Claude Code Review (PR)
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # SHA-pin broken range exclusion (REQ-CI-018.1)
+          fetch-depth: 0  # Full history for accurate diff
+
+      - name: Detect Language
+        id: detect
+        uses: ./.github/actions/detect-language
+
+      - name: Setup Claude
+        shell: bash
+        run: |
+          if ! command -v claude &> /dev/null; then
+            echo "::error::Claude CLI not found"
+            exit 1
+          fi
+
+      - name: Get Changed Files
+        id: changes
+        shell: bash
+        run: |
+          # Get list of changed files (excluding merge commits)
+          git diff --name-only origin/main...HEAD | grep -v '^$' > /tmp/changed_files.txt
+          echo "files_count=$(wc -l < /tmp/changed_files.txt)" >> $GITHUB_OUTPUT
+
+      - name: Run Claude Review
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ "{{" }} secrets.CLAUDE_CODE_OAUTH_TOKEN }}}
+        run: |
+          claude code review $(cat /tmp/changed_files.txt)

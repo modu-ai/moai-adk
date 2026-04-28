@@ -39,6 +39,22 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Assert zero exec.Command in MX validator (AC-UTIL-001-04)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          count=$(grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/" | wc -l)
+          if [ "$count" -ne "0" ]; then
+            echo "FAIL: exec.Command found in internal/hook/mx/ (AC-UTIL-001-04):"
+            grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/"
+            exit 1
+          fi
+          echo "PASS: zero exec.Command in internal/hook/mx/ (AC-UTIL-001-04)"
+
+      - name: Run MX validator tests (Windows cross-platform AC-UTIL-001-05)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: go test -race ./internal/hook/mx/...
+
       - name: Run tests with race detector
         shell: bash
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
@@ -50,6 +66,36 @@ jobs:
           files: coverage.out
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Integration Tests: Harness Learning Subsystem (SPEC-V3R3-HARNESS-LEARNING-001)
+  # build tag `integration`으로 격리된 통합 테스트를 별도 job으로 실행한다.
+  # ---------------------------------------------------------------------------
+  test-integration:
+    name: Integration Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run harness integration tests
+        shell: bash
+        run: go test -tags=integration -race -timeout 180s ./test/integration/harness/...
 
   # ---------------------------------------------------------------------------
   # Lint: Static analysis with golangci-lint

@@ -6,7 +6,7 @@
 | -------- | ------------------------------------------------------ |
 | SPEC ID  | SPEC-HOOK-008                                          |
 | Title    | Complete Hook Event System - Add 7 Missing Hook Events |
-| Status   | Active                                                 |
+| Status   | Completed                                              |
 | Priority | P0 (Critical)                                          |
 | Created  | 2026-02-14                                             |
 | Domain   | internal/hook, internal/cli, internal/template          |

@@ -1,7 +1,7 @@
 ---
 title: 数据库架构管理
 description: 自动跟踪和管理架构、迁移和种子数据
-weight: 15
+weight: 70
 draft: false
 ---
 

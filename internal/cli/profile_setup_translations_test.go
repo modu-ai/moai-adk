@@ -110,8 +110,8 @@ func containsSubstr(s, sub string) bool {
 	return false
 }
 
-// TestGetProfileText_PermAutoRuntimeWarning W-3: PermAuto 라벨에 런타임 오류 경고가
-// 포함되어 있는지 언어별로 확인한다.
+// TestGetProfileText_PermAutoRuntimeWarning W-3: verifies that the PermAuto label contains
+// a runtime error warning for each language.
 func TestGetProfileText_PermAutoRuntimeWarning(t *testing.T) {
 	runtimeErrByLang := map[string]string{
 		"en": "Session errors at runtime",
@@ -128,8 +128,8 @@ func TestGetProfileText_PermAutoRuntimeWarning(t *testing.T) {
 	}
 }
 
-// TestGetProfileText_MigrationNoticeFields W-4: MigrationNotice 필드가 4개 언어에서
-// 모두 채워져 있고 %q 형식 동사가 포함되어 있는지 확인한다.
+// TestGetProfileText_MigrationNoticeFields W-4: verifies that MigrationNotice fields are populated
+// in all 4 languages and contain the %q format verb.
 func TestGetProfileText_MigrationNoticeFields(t *testing.T) {
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		txt := getProfileText(lang)
@@ -139,37 +139,37 @@ func TestGetProfileText_MigrationNoticeFields(t *testing.T) {
 		if txt.MigrationNoticeStatuslineTheme == "" {
 			t.Errorf("lang=%q: MigrationNoticeStatuslineTheme is empty", lang)
 		}
-		// %q 형식 동사가 2개 포함되어 있어야 한다 (이전 값, 새 값)
+		// Must contain 2 %q format verbs (old value, new value)
 		if !containsStr(txt.MigrationNoticeStatuslineMode, "%q") {
 			t.Errorf("lang=%q: MigrationNoticeStatuslineMode %q should contain %%q format verb", lang, txt.MigrationNoticeStatuslineMode)
 		}
 	}
 }
 
-// TestGetProfileText_SummarySyncSkippedNeutral W-5: SummarySyncSkipped가
-// 중립적인 표현(프로젝트별 동기화 없음)을 사용하는지 확인한다.
+// TestGetProfileText_SummarySyncSkippedNeutral W-5: verifies that SummarySyncSkipped uses
+// neutral wording (no project-level sync).
 func TestGetProfileText_SummarySyncSkippedNeutral(t *testing.T) {
-	// "Sync skipped" 같은 오류성 표현이 없어야 한다
+	// Must not contain error-prone wording like "Sync skipped"
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		txt := getProfileText(lang)
 		if txt.SummarySyncSkipped == "" {
 			t.Errorf("lang=%q: SummarySyncSkipped is empty", lang)
 		}
 	}
-	// en: 중립 메시지 확인
+	// en: verify neutral message
 	en := getProfileText("en")
 	if !containsStr(en.SummarySyncSkipped, "No project-level sync") {
 		t.Errorf("en SummarySyncSkipped should be neutral, got: %q", en.SummarySyncSkipped)
 	}
-	// ko: 중립 메시지 확인
+	// ko: verify neutral message
 	ko := getProfileText("ko")
 	if !containsStr(ko.SummarySyncSkipped, "프로젝트별 동기화 없음") {
 		t.Errorf("ko SummarySyncSkipped should be neutral, got: %q", ko.SummarySyncSkipped)
 	}
 }
 
-// TestGetProfileText_SummaryHeaderUpdated S-3: ko/ja SummaryHeader가 업데이트된
-// 표현을 사용하는지 확인한다.
+// TestGetProfileText_SummaryHeaderUpdated S-3: verifies that the ko/ja SummaryHeader uses
+// updated wording.
 func TestGetProfileText_SummaryHeaderUpdated(t *testing.T) {
 	ko := getProfileText("ko")
 	if !containsStr(ko.SummaryHeader, "저장된 설정값") {

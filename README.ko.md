@@ -43,9 +43,9 @@ Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 
 
 ---
 
-## v2.12.0의 새로운 기능
+## v2.17.0의 새로운 기능
 
-MoAI-ADK v2.12.0은 디자인 시스템, Claude Code 원어민 통합, Opus 4.7 지원의 주요 업그레이드를 소개합니다.
+MoAI-ADK v2.17.0 (V3R3 Phase C)은 프로젝트별 맞춤 AI 에이전트 생성을 위한 메타-하니스 스킬을 제공하며, 고정 스킬 카탈로그에서 동적 하니스 기반 아키텍처로 전환합니다.
 
 ### 주요 마일스톤
 
@@ -55,6 +55,7 @@ MoAI-ADK v2.12.0은 디자인 시스템, Claude Code 원어민 통합, Opus 4.7 
 | **v2.10.x** | LSP 스위트 확장, SPEC-CC297-001 `permissionMode` 속성 지원, Opus 4.7 프리뷰 |
 | **v2.11.x** | 자기진화 시스템 통합, 다중 소스 문서 로딩, 강화된 메모리 관리 |
 | **v2.12.0** | **[SPEC-AGENCY-ABSORB-001]** /agency → /moai design 흡수, Opus 4.7 완전 지원, Adaptive Thinking 원어민 통합 |
+| **v2.17.0** | **[BC-V3R3-007]** 메타-하니스 스킬 (revfactory/harness Apache 2.0), 정적 스킬 16개 제거, namespace 분리 (moai-* / my-harness-*) |
 
 ### 주요 변경사항
 

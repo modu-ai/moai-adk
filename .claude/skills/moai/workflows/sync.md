@@ -334,7 +334,14 @@ Delegate to expert-security with the security workflow (workflows/security.md) i
 - Only CRITICAL findings block the sync pipeline
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report
-- Dependency scan runs only if package files (go.mod, package.json, requirements.txt, etc.) changed
+
+**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)**:
+
+Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
+`go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
+
+When any manifest is detected, invoke `expert-security` for a dependency vulnerability scan of that manifest.
+Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
 
 #### Step 0.55.2: Security Gate Decision
 
@@ -698,6 +705,12 @@ Update SPEC status based on lifecycle level and implementation completeness:
 - Level 1 (spec-first): Set status to "completed". No further maintenance required.
 - Level 2 (spec-anchored): Set status to "completed" if all requirements met, or "in-progress" if partial. Schedule next review based on quarterly maintenance policy.
 - Level 3 (spec-as-source): Set status based on implementation-SPEC alignment. Flag discrepancies for resolution.
+
+**Implementation** (SPEC-STATUS-AUTO-001 REQ-4):
+```bash
+moai spec status <SPEC-ID> completed
+```
+Failure to update status does not block the sync workflow (warning only).
 
 Record version changes, status transitions, and divergence summary. Include in sync report.
 
@@ -1155,3 +1168,11 @@ All of the following must be verified:
 Version: 3.7.0
 Updated: 2026-03-30
 Changes: Added test scenarios.
+
+---
+
+## Custom Harness Extension (Optional)
+
+@.moai/harness/sync-extension.md
+
+*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*

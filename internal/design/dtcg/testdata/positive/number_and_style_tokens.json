@@ -1,0 +1,45 @@
+{
+  "opacity-full": {
+    "$type": "number",
+    "$value": 1,
+    "$description": "완전 불투명"
+  },
+  "opacity-half": {
+    "$type": "number",
+    "$value": 0.5
+  },
+  "z-index-modal": {
+    "$type": "number",
+    "$value": 1000
+  },
+  "border-style-dashed": {
+    "$type": "strokeStyle",
+    "$value": "dashed"
+  },
+  "border-style-custom": {
+    "$type": "strokeStyle",
+    "$value": {
+      "dashArray": ["4px", "2px"],
+      "lineCap": "round"
+    }
+  },
+  "shadow-multi": {
+    "$type": "shadow",
+    "$value": [
+      {
+        "color": "#000000",
+        "offsetX": "0px",
+        "offsetY": "1px",
+        "blur": "2px",
+        "spread": "0px"
+      },
+      {
+        "color": "rgba(0, 0, 0, 0.05)",
+        "offsetX": "0px",
+        "offsetY": "4px",
+        "blur": "8px",
+        "spread": "0px"
+      }
+    ]
+  }
+}

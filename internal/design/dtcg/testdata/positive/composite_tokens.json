@@ -1,0 +1,42 @@
+{
+  "shadow-sm": {
+    "$type": "shadow",
+    "$value": {
+      "color": "rgba(0, 0, 0, 0.1)",
+      "offsetX": "0px",
+      "offsetY": "2px",
+      "blur": "4px",
+      "spread": "0px"
+    }
+  },
+  "border-default": {
+    "$type": "border",
+    "$value": {
+      "color": "#e2e8f0",
+      "width": { "value": 1, "unit": "px" },
+      "style": "solid"
+    }
+  },
+  "transition-fast": {
+    "$type": "transition",
+    "$value": {
+      "duration": { "value": 150, "unit": "ms" },
+      "timingFunction": [0.4, 0.0, 0.2, 1.0]
+    }
+  },
+  "easing-standard": {
+    "$type": "cubicBezier",
+    "$value": [0.4, 0.0, 0.2, 1.0]
+  },
+  "gradient-brand": {
+    "$type": "gradient",
+    "$value": [
+      { "color": "#0066ff", "position": 0 },
+      { "color": "#00ccff", "position": 1 }
+    ]
+  },
+  "duration-base": {
+    "$type": "duration",
+    "$value": { "value": 300, "unit": "ms" }
+  }
+}

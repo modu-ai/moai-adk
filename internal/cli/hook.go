@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
 )
@@ -87,6 +88,15 @@ func init() {
 		RunE:  runAgentHook,
 	})
 
+	// harness-observe 서브커맨드 추가 (SPEC-V3R3-HARNESS-LEARNING-001 T-P1-03)
+	// PostToolUse hook에서 stdin JSON을 받아 usage-log.jsonl에 이벤트를 기록한다.
+	hookCmd.AddCommand(&cobra.Command{
+		Use:   "harness-observe",
+		Short: "Record PostToolUse event to harness usage log",
+		Long:  "Reads hook stdin JSON and appends an event to .moai/harness/usage-log.jsonl. Called from handle-harness-observe.sh.",
+		RunE:  runHarnessObserve,
+	})
+
 	// Add "db-schema-sync" subcommand (SPEC-DB-SYNC-001)
 	dbSchemaSyncCmd := &cobra.Command{
 		Use:   "db-schema-sync",
@@ -96,6 +106,15 @@ func init() {
 	}
 	dbSchemaSyncCmd.Flags().String("file", "", "File path from PostToolUse hook stdin")
 	hookCmd.AddCommand(dbSchemaSyncCmd)
+
+	// Add "spec-status" subcommand (SPEC-STATUS-AUTO-001)
+	specStatusCmd := &cobra.Command{
+		Use:   "spec-status",
+		Short: "Auto-update SPEC status on git commit",
+		Long:  "Extract SPEC-IDs from git commit messages and update their status to 'implemented'. Called from handle-spec-status.sh.",
+		RunE:  runSpecStatus,
+	}
+	hookCmd.AddCommand(specStatusCmd)
 }
 
 // @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
@@ -285,6 +304,39 @@ func runDBSchemaSync(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// runSpecStatus handles the spec-status hook subcommand.
+// It reads hook input from stdin and dispatches to the spec status handler.
+func runSpecStatus(cmd *cobra.Command, _ []string) error {
+	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
+		return fmt.Errorf("hook system not initialized")
+	}
+
+	// Read hook input from stdin
+	input, err := deps.HookProtocol.ReadInput(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("read hook input: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	defer cancel()
+
+	// Create spec status handler and execute
+	handler := hook.NewSpecStatusHandler()
+	output, err := handler.Handle(ctx, input)
+	if err != nil {
+		// Log but don't fail - hook is non-blocking
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "spec-status: error:", err)
+		return nil
+	}
+
+	if writeErr := deps.HookProtocol.WriteOutput(cmd.OutOrStdout(), output); writeErr != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "spec-status: write output:", writeErr)
+	}
+
+	// Always exit 0 (non-blocking)
+	return nil
+}
+
 // defaultMigrationPatterns are the built-in migration patterns from SPEC-DB-SYNC-001.
 var defaultMigrationPatterns = []string{
 	"prisma/schema.prisma",
@@ -359,4 +411,51 @@ func trimSpace(s string) string {
 		right--
 	}
 	return s[left:right]
+}
+
+// runHarnessObserve는 PostToolUse hook stdin JSON을 읽어 usage-log.jsonl에 이벤트를 기록한다.
+// T-P1-03: handle-harness-observe.sh → moai hook harness-observe 라우팅 구현.
+//
+// stdin JSON 구조 (PostToolUse 표준):
+//
+//	{
+//	  "toolName": "Bash" | "Edit" | "Write" | "Agent" | "AskUserQuestion",
+//	  "toolInput": { ... }
+//	}
+//
+// @MX:NOTE: [AUTO] learning.enabled 설정 gate는 Phase 4에서 추가 예정 (T-P4-XX).
+func runHarnessObserve(cmd *cobra.Command, _ []string) error {
+	// stdin에서 JSON 읽기
+	var hookInput struct {
+		ToolName string `json:"toolName"`
+	}
+
+	decoder := json.NewDecoder(os.Stdin)
+	// 파싱 실패 시에도 exit 0 (non-blocking: 부모 tool call을 블록하지 않는다)
+	_ = decoder.Decode(&hookInput)
+
+	// 프로젝트 루트 감지: cwd 기반
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+
+	retention := harness.NewRetention(logPath, archiveDir, nil)
+	obs := harness.NewObserverWithRetention(logPath, retention)
+
+	// tool name을 subject로 사용, context hash는 빈 문자열
+	subject := hookInput.ToolName
+	if subject == "" {
+		subject = "unknown"
+	}
+
+	// 에러는 stderr에 기록하되 exit 0으로 반환 (non-blocking)
+	if err := obs.RecordEvent(harness.EventTypeAgentInvocation, subject, ""); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe: 이벤트 기록 실패: %v\n", err)
+	}
+
+	return nil
 }

@@ -1,17 +1,21 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 )
 
-// astGrepFlags는 ast-grep 서브커맨드의 플래그 값을 담습니다.
+// astGrepFlags holds flag values for the ast-grep subcommand.
 type astGrepFlags struct {
 	format   string
 	lang     string
@@ -20,22 +24,22 @@ type astGrepFlags struct {
 	rulesDir string
 }
 
-// NewAstGrepCmd는 `moai ast-grep` Cobra 커맨드를 생성하여 반환합니다.
+// NewAstGrepCmd creates and returns the `moai ast-grep` Cobra command.
 // REQ-ASTG-UPG-020, REQ-ASTG-UPG-021
 func NewAstGrepCmd() *cobra.Command {
 	flags := &astGrepFlags{}
 
 	cmd := &cobra.Command{
 		Use:   "ast-grep [path]",
-		Short: "ast-grep을 사용하여 코드를 스캔합니다",
-		Long: `ast-grep (sg) CLI를 사용하여 지정된 경로에서 코드 품질 및 보안 규칙을 적용합니다.
+		Short: "Scan code using ast-grep",
+		Long: `Applies code quality and security rules to the specified path using the ast-grep (sg) CLI.
 
-지원하는 출력 형식:
-  text   - 사람이 읽을 수 있는 텍스트 (기본값)
-  json   - 기계 판독 가능한 JSON 배열
-  sarif  - SARIF 2.1.0 형식 (GitHub code scanning 업로드용)
+Supported output formats:
+  text   - Human-readable text (default)
+  json   - Machine-readable JSON array
+  sarif  - SARIF 2.1.0 format (for uploading to GitHub code scanning)
 
-예시:
+Examples:
   moai ast-grep ./
   moai ast-grep --format=sarif --lang=go ./internal/
   moai ast-grep --severity=error ./
@@ -52,17 +56,17 @@ func NewAstGrepCmd() *cobra.Command {
 		},
 	}
 
-	// 플래그 등록 (REQ-ASTG-UPG-021)
-	cmd.Flags().StringVar(&flags.format, "format", "text", "출력 형식: text, json, sarif")
-	cmd.Flags().StringVar(&flags.lang, "lang", "", "특정 언어만 스캔 (예: go, python, typescript)")
-	cmd.Flags().StringVar(&flags.severity, "severity", "", "표시할 최소 severity (error, warning, info)")
-	cmd.Flags().BoolVar(&flags.dry, "dry", false, "적용될 규칙 목록만 출력하고 실제 스캔 미실행")
-	cmd.Flags().StringVar(&flags.rulesDir, "rules-dir", ".moai/config/astgrep-rules", "ast-grep 규칙 디렉토리 경로")
+	// Register flags (REQ-ASTG-UPG-021)
+	cmd.Flags().StringVar(&flags.format, "format", "text", "Output format: text, json, sarif")
+	cmd.Flags().StringVar(&flags.lang, "lang", "", "Scan only the specified language (e.g. go, python, typescript)")
+	cmd.Flags().StringVar(&flags.severity, "severity", "", "Minimum severity to display (error, warning, info)")
+	cmd.Flags().BoolVar(&flags.dry, "dry", false, "Print only the list of rules that would be applied without running the actual scan")
+	cmd.Flags().StringVar(&flags.rulesDir, "rules-dir", ".moai/config/astgrep-rules", "ast-grep rules directory path")
 
 	return cmd
 }
 
-// runAstGrep는 ast-grep 스캔을 실행하고 결과를 출력합니다.
+// runAstGrep runs the ast-grep scan and outputs the results.
 func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 	cfg := &astgrep.ScannerConfig{
 		RulesDir:     flags.rulesDir,
@@ -70,7 +74,7 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 		WarnOnlyMode: false,
 	}
 
-	// --dry: 규칙 목록만 출력
+	// --dry: print only the list of rules
 	if flags.dry {
 		return runDryMode(cmd, cfg, flags)
 	}
@@ -83,20 +87,20 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 
 	findings, err := scanner.Scan(ctx, path)
 	if err != nil {
-		return fmt.Errorf("ast-grep 스캔: %w", err)
+		return fmt.Errorf("ast-grep scan: %w", err)
 	}
 
-	// --lang 필터 적용
+	// Apply --lang filter.
 	if flags.lang != "" {
 		findings = filterByLang(findings, flags.lang)
 	}
 
-	// --severity 필터 적용
+	// Apply --severity filter.
 	if flags.severity != "" {
 		findings = filterBySeverity(findings, flags.severity)
 	}
 
-	// 출력 형식에 따라 결과 출력
+	// Output results in the selected format.
 	switch strings.ToLower(flags.format) {
 	case "json":
 		return outputJSON(cmd, findings)
@@ -106,7 +110,7 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 		outputText(cmd, findings)
 	}
 
-	// error severity 발견 시 exit code 1 (AC4)
+	// exit code 1 when error-severity findings are found (AC4)
 	if astgrep.HasErrors(findings) {
 		os.Exit(1)
 	}
@@ -114,21 +118,21 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 	return nil
 }
 
-// runDryMode는 --dry 플래그가 설정된 경우 규칙 목록만 출력합니다.
+// runDryMode prints only the list of rules when the --dry flag is set.
 func runDryMode(cmd *cobra.Command, cfg *astgrep.ScannerConfig, flags *astGrepFlags) error {
 	loader := astgrep.NewRuleLoader()
 	rules, err := loader.LoadFromDir(cfg.RulesDir)
 	if err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "rules 디렉토리를 읽을 수 없습니다: %v\n", err)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "cannot read rules directory: %v\n", err)
 		return nil
 	}
 
 	if len(rules) == 0 {
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "적용될 규칙이 없습니다.")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no rules to apply")
 		return nil
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "적용될 규칙 목록 (%d개):\n", len(rules))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "rules to apply (%d):\n", len(rules))
 	for _, r := range rules {
 		lang := r.Language
 		if lang == "" {
@@ -143,24 +147,24 @@ func runDryMode(cmd *cobra.Command, cfg *astgrep.ScannerConfig, flags *astGrepFl
 	return nil
 }
 
-// outputText는 finding을 텍스트 형식으로 출력합니다.
+// outputText prints findings in text format.
 func outputText(cmd *cobra.Command, findings []astgrep.Finding) {
 	out := cmd.OutOrStdout()
 	if len(findings) == 0 {
-		_, _ = fmt.Fprintln(out, "발견된 항목이 없습니다.")
+		_, _ = fmt.Fprintln(out, "no findings")
 		return
 	}
 
-	_, _ = fmt.Fprintf(out, "발견된 항목 (%d개):\n\n", len(findings))
+	_, _ = fmt.Fprintf(out, "findings (%d):\n\n", len(findings))
 	for _, f := range findings {
 		_, _ = fmt.Fprintln(out, f.String())
 		if f.Note != "" {
-			_, _ = fmt.Fprintf(out, "  메모: %s\n", f.Note)
+			_, _ = fmt.Fprintf(out, "  note: %s\n", f.Note)
 		}
 	}
 }
 
-// outputJSON은 finding을 JSON 배열로 출력합니다.
+// outputJSON prints findings as a JSON array.
 func outputJSON(cmd *cobra.Command, findings []astgrep.Finding) error {
 	if findings == nil {
 		findings = []astgrep.Finding{}
@@ -169,38 +173,76 @@ func outputJSON(cmd *cobra.Command, findings []astgrep.Finding) error {
 	enc := json.NewEncoder(cmd.OutOrStdout())
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(findings); err != nil {
-		return fmt.Errorf("JSON 인코딩: %w", err)
+		return fmt.Errorf("JSON encoding: %w", err)
 	}
 
 	return nil
 }
 
-// outputSARIF는 finding을 SARIF 2.1.0 형식으로 출력합니다.
+// outputSARIF prints findings in SARIF 2.1.0 format.
 func outputSARIF(cmd *cobra.Command, findings []astgrep.Finding) error {
-	// sg 버전 감지 (실패 시 "unknown" 사용)
+	// Detect the sg version (falls back to "unknown" on failure).
 	sgVersion := detectSGVersion()
 
 	output, err := astgrep.ToSARIF(findings, sgVersion)
 	if err != nil {
-		return fmt.Errorf("SARIF 생성: %w", err)
+		return fmt.Errorf("SARIF generation: %w", err)
 	}
 
 	_, err = cmd.OutOrStdout().Write(output)
 	return err
 }
 
-// detectSGVersion은 sg --version의 출력을 파싱하여 버전 문자열을 반환합니다.
-func detectSGVersion() string {
-	cfg := &astgrep.ScannerConfig{SGBinary: "sg"}
-	s := astgrep.NewScanner(cfg)
-	_ = s // 미래 구현을 위한 플레이스홀더
-	return "unknown"
+// sgVersionOnce and sgVersionResult are package-level variables for sync.Once caching in detectSGVersion.
+// Using a pointer allows tests to swap in a new instance (sync.Once cannot be copied).
+// REQ-UTIL-002-009: sg --version is executed at most once within the same process.
+var (
+	sgVersionOnce   = new(sync.Once)
+	sgVersionResult string
+)
+
+// sgVersionExec is the function responsible for running sg --version.
+// It is injectable and can be replaced in tests, enabling unit tests without the sg binary.
+// REQ-UTIL-002-008: runs sg --version within a 5-second timeout and returns the trimmed stdout.
+var sgVersionExec = func(sgBinary string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, sgBinary, "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }
 
-// filterByLang은 지정된 언어의 규칙에서 발생한 finding만 반환합니다.
-// lang이 빈 문자열이면 전체를 반환합니다.
-// finding.Language가 빈 문자열이면 언어-중립 규칙으로 간주하여 항상 포함합니다.
-// 대소문자를 무시합니다.
+// detectSGVersion parses the output of sg --version and returns the version string.
+// Results are cached via sync.Once, so sg --version runs at most once per process.
+// Returns "unknown" on error (binary not found, timeout, abnormal exit, or empty output).
+// REQ-UTIL-002-008, REQ-UTIL-002-009
+func detectSGVersion() string {
+	sgVersionOnce.Do(func() {
+		v, err := sgVersionExec("sg")
+		if err != nil {
+			sgVersionResult = "unknown"
+			return
+		}
+		v = strings.TrimSpace(v)
+		if v == "" {
+			sgVersionResult = "unknown"
+			return
+		}
+		sgVersionResult = v
+	})
+	return sgVersionResult
+}
+
+// NOTE: sgVersionOnce is a *sync.Once (pointer type).
+// Tests can achieve the equivalent of resetting sync.Once by replacing the pointer with a new instance.
+
+// filterByLang returns only findings produced by rules targeting the specified language.
+// Returns all findings when lang is empty.
+// Findings with an empty Language are treated as language-neutral rules and always included.
+// Comparison is case-insensitive.
 func filterByLang(findings []astgrep.Finding, lang string) []astgrep.Finding {
 	if lang == "" {
 		return findings
@@ -209,7 +251,7 @@ func filterByLang(findings []astgrep.Finding, lang string) []astgrep.Finding {
 	out := make([]astgrep.Finding, 0, len(findings))
 	for _, f := range findings {
 		fl := strings.ToLower(f.Language)
-		// 언어 정보가 없는 finding은 포함 (언어-중립 규칙 허용)
+		// Include findings with no language info (language-neutral rules).
 		if fl == "" || fl == target {
 			out = append(out, f)
 		}
@@ -217,7 +259,7 @@ func filterByLang(findings []astgrep.Finding, lang string) []astgrep.Finding {
 	return out
 }
 
-// filterBySeverity는 지정된 severity 이상의 finding만 반환합니다.
+// filterBySeverity returns only findings at or above the specified severity.
 func filterBySeverity(findings []astgrep.Finding, minSeverity string) []astgrep.Finding {
 	var filtered []astgrep.Finding
 	for _, f := range findings {
@@ -230,7 +272,7 @@ func filterBySeverity(findings []astgrep.Finding, minSeverity string) []astgrep.
 			if f.IsError() || f.IsWarning() {
 				filtered = append(filtered, f)
 			}
-		default: // info: 모두 포함
+		default: // info: include all
 			filtered = append(filtered, f)
 		}
 	}

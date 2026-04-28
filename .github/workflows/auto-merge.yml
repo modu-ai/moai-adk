@@ -10,6 +10,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# Auto-merge — PR별 mutex, in-flight cancel 시 race condition 위험
+concurrency:
+  group: auto-merge-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   auto-merge:
     # CI가 성공한 경우에만 실행

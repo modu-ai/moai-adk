@@ -1004,3 +1004,11 @@ All of the following must be verified:
 Version: 2.11.0
 Updated: 2026-03-30
 Changes: Added Phase 0.9 JIT Language Detection, Phase 0.95 Scale-Based Mode Selection, test scenarios.
+
+---
+
+## Custom Harness Extension (Optional)
+
+@.moai/harness/run-extension.md
+
+*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*

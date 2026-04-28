@@ -22,6 +22,12 @@ type Deployer interface {
 	// .tmpl are rendered with the context and saved without the .tmpl suffix.
 	Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) error
 
+	// ValidateAll validates all templates without writing any files.
+	// This is used to implement transactional deployment: validate first,
+	// then deploy. If any template fails to parse or render, the error is
+	// returned immediately and no files are written.
+	ValidateAll(ctx context.Context, tmplCtx *TemplateContext) error
+
 	// ExtractTemplate returns the raw content of a single template by name.
 	ExtractTemplate(name string) ([]byte, error)
 
@@ -208,6 +214,56 @@ func (d *deployer) ListTemplates() []string {
 	})
 
 	return list
+}
+
+// @MX:NOTE: [AUTO] Implements transactional validation - renders all templates in memory without writing to disk
+// ValidateAll validates all templates without writing any files.
+// This implements transactional deployment: validate first, then deploy.
+// If any template fails to parse or render, the error is returned immediately.
+func (d *deployer) ValidateAll(ctx context.Context, tmplCtx *TemplateContext) error {
+	// Only validate if we have a renderer configured
+	if d.renderer == nil {
+		return nil
+	}
+
+	var validationErrors []error
+	walkErr := fs.WalkDir(d.fsys, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check context cancellation during validation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Skip directories and non-templates
+		if path == "." || entry.IsDir() || !strings.HasSuffix(path, ".tmpl") {
+			return nil
+		}
+
+		// Try to render the template (this will catch parse errors)
+		_, renderErr := d.renderer.Render(path, tmplCtx)
+		if renderErr != nil {
+			validationErrors = append(validationErrors,
+				fmt.Errorf("template %q: %w", path, renderErr))
+		}
+
+		return nil
+	})
+
+	if walkErr != nil {
+		return walkErr
+	}
+
+	if len(validationErrors) > 0 {
+		// Return the first validation error
+		return validationErrors[0]
+	}
+
+	return nil
 }
 
 // validateDeployPath ensures a template path does not escape projectRoot.

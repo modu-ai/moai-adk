@@ -73,8 +73,9 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
 {{- end}}
-            "timeout": 60,
-            "type": "command"
+            "timeout": 10,
+            "type": "command",
+            "async": true
           }
         ],
         "matcher": "Write|Edit"
@@ -617,6 +618,11 @@
     "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"
   },
   "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [
+    "chrome-devtools",
+    "context7",
+    "sequential-thinking"
+  ],
   "respectGitignore": true,
   "teammateMode": "auto",
   "effortLevel": "medium",

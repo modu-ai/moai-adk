@@ -1,0 +1,10 @@
+{
+  "button": {
+    "variant": "primary",
+    "states": ["default", "hover", "active", "disabled"]
+  },
+  "card": {
+    "variant": "outlined",
+    "padding": "spacing-md"
+  }
+}

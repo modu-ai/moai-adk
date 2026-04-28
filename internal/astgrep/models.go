@@ -70,10 +70,16 @@ type ReplaceResult struct {
 
 // Rule represents an ast-grep rule loaded from YAML.
 type Rule struct {
-	ID       string `json:"id" yaml:"id"`
-	Language string `json:"language" yaml:"language"`
-	Severity string `json:"severity" yaml:"severity"`
-	Message  string `json:"message" yaml:"message"`
-	Pattern  string `json:"pattern" yaml:"pattern"`
-	Fix      string `json:"fix,omitempty" yaml:"fix,omitempty"`
+	ID       string            `json:"id" yaml:"id"`
+	Language string            `json:"language" yaml:"language"`
+	Severity string            `json:"severity" yaml:"severity"`
+	Message  string            `json:"message" yaml:"message"`
+	Pattern  string            `json:"pattern" yaml:"pattern"`
+	Fix      string            `json:"fix,omitempty" yaml:"fix,omitempty"`
+	// Note is the educational description of the rule. Propagated to Finding.Note on match.
+	// REQ-UTIL-002-001
+	Note     string            `json:"note,omitempty" yaml:"note,omitempty"`
+	// Metadata is classification metadata such as CWE/OWASP. Propagated to Finding.Metadata on match.
+	// REQ-UTIL-002-002
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }

@@ -8,8 +8,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 
-// mockBridge는 테스트용 gopls.Bridge 대역이다.
-// GetDiagnostics 호출 결과를 미리 설정할 수 있다.
+// mockBridge is a test double for gopls.Bridge.
+// The result of GetDiagnostics calls can be preconfigured.
 type mockBridge struct {
 	diagnostics []gopls.Diagnostic
 	err         error
@@ -21,22 +21,22 @@ func (m *mockBridge) GetDiagnostics(ctx context.Context, path string) ([]gopls.D
 	return m.diagnostics, m.err
 }
 
-// TestGoFeedbackGenerator_NilBridge는 bridge가 nil일 때 기존 동작이
-// 그대로 유지되는지 검증한다 (하위 호환성).
+// TestGoFeedbackGenerator_NilBridge verifies that the existing behavior is preserved
+// when bridge is nil (backward compatibility).
 func TestGoFeedbackGenerator_NilBridge(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	// bridge=nil로 생성
+	// Create with bridge=nil
 	gen := NewGoFeedbackGeneratorWithBridge(projectRoot, nil)
 
 	if gen == nil {
-		t.Fatal("NewGoFeedbackGeneratorWithBridge()는 nil을 반환해선 안 된다")
+		t.Fatal("NewGoFeedbackGeneratorWithBridge() must not return nil")
 	}
 }
 
-// TestGoFeedbackGenerator_NilBridgeCollect는 bridge가 nil일 때
-// Collect()가 Diagnostics 필드를 비워두고 정상 반환하는지 검증한다.
+// TestGoFeedbackGenerator_NilBridgeCollect verifies that Collect() leaves the Diagnostics
+// field empty and returns normally when bridge is nil.
 func TestGoFeedbackGenerator_NilBridgeCollect(t *testing.T) {
 	t.Parallel()
 
@@ -48,19 +48,19 @@ func TestGoFeedbackGenerator_NilBridgeCollect(t *testing.T) {
 
 	fb, err := gen.Collect(ctx)
 	if err != nil {
-		t.Fatalf("Collect() 오류 = %v, 기대값: nil", err)
+		t.Fatalf("Collect() error = %v, expected: nil", err)
 	}
 	if fb == nil {
-		t.Fatal("Collect()가 nil Feedback을 반환했다")
+		t.Fatal("Collect() returned nil Feedback")
 	}
-	// bridge가 nil이면 Diagnostics는 nil이어야 한다.
+	// Diagnostics must be nil when bridge is nil.
 	if fb.Diagnostics != nil {
-		t.Errorf("Diagnostics = %v, 기대값: nil (bridge가 nil이므로)", fb.Diagnostics)
+		t.Errorf("Diagnostics = %v, expected: nil (because bridge is nil)", fb.Diagnostics)
 	}
 }
 
-// TestGoFeedbackGenerator_WithBridge_PopulatesDiagnostics는
-// bridge가 있을 때 GetDiagnostics 결과가 Feedback.Diagnostics에 채워지는지 검증한다.
+// TestGoFeedbackGenerator_WithBridge_PopulatesDiagnostics verifies that
+// GetDiagnostics results are populated into Feedback.Diagnostics when bridge is present.
 func TestGoFeedbackGenerator_WithBridge_PopulatesDiagnostics(t *testing.T) {
 	t.Parallel()
 
@@ -86,33 +86,32 @@ func TestGoFeedbackGenerator_WithBridge_PopulatesDiagnostics(t *testing.T) {
 
 	fb, err := gen.Collect(ctx)
 	if err != nil {
-		t.Fatalf("Collect() 오류 = %v, 기대값: nil", err)
+		t.Fatalf("Collect() error = %v, expected: nil", err)
 	}
 	if fb == nil {
-		t.Fatal("Collect()가 nil Feedback을 반환했다")
+		t.Fatal("Collect() returned nil Feedback")
 	}
 
 	if !mock.called {
-		t.Error("bridge.GetDiagnostics()가 호출되지 않았다")
+		t.Error("bridge.GetDiagnostics() was not called")
 	}
 
 	if len(fb.Diagnostics) != len(expectedDiags) {
-		t.Errorf("Diagnostics 수 = %d, 기대값 %d", len(fb.Diagnostics), len(expectedDiags))
+		t.Errorf("Diagnostics count = %d, expected %d", len(fb.Diagnostics), len(expectedDiags))
 	}
 
 	for i, d := range fb.Diagnostics {
 		if d.Severity != expectedDiags[i].Severity {
-			t.Errorf("[%d] Severity = %d, 기대값 %d", i, d.Severity, expectedDiags[i].Severity)
+			t.Errorf("[%d] Severity = %d, expected %d", i, d.Severity, expectedDiags[i].Severity)
 		}
 		if d.Message != expectedDiags[i].Message {
-			t.Errorf("[%d] Message = %q, 기대값 %q", i, d.Message, expectedDiags[i].Message)
+			t.Errorf("[%d] Message = %q, expected %q", i, d.Message, expectedDiags[i].Message)
 		}
 	}
 }
 
-// TestGoFeedbackGenerator_WithBridge_ErrorIsSilent는
-// bridge.GetDiagnostics가 오류를 반환해도 Collect()가 오류 없이
-// 빈 Diagnostics를 반환하는지 검증한다.
+// TestGoFeedbackGenerator_WithBridge_ErrorIsSilent verifies that Collect() returns
+// empty Diagnostics without error even when bridge.GetDiagnostics returns an error.
 func TestGoFeedbackGenerator_WithBridge_ErrorIsSilent(t *testing.T) {
 	t.Parallel()
 
@@ -125,32 +124,32 @@ func TestGoFeedbackGenerator_WithBridge_ErrorIsSilent(t *testing.T) {
 
 	fb, err := gen.Collect(ctx)
 	if err != nil {
-		t.Fatalf("Collect()는 bridge 오류를 상위로 전파해선 안 된다. 오류 = %v", err)
+		t.Fatalf("Collect() must not propagate bridge errors. error = %v", err)
 	}
 	if fb == nil {
-		t.Fatal("Collect()가 nil Feedback을 반환했다")
+		t.Fatal("Collect() returned nil Feedback")
 	}
-	// 오류 시 Diagnostics는 nil이어야 한다 (부분 결과 아님).
+	// On error, Diagnostics must be nil (not a partial result).
 	if len(fb.Diagnostics) != 0 {
-		t.Errorf("bridge 오류 시 Diagnostics는 비어야 함, got %v", fb.Diagnostics)
+		t.Errorf("Diagnostics must be empty on bridge error, got %v", fb.Diagnostics)
 	}
 }
 
-// TestGoFeedbackGenerator_BackwardCompat은 NewGoFeedbackGenerator(기존 시그니처)가
-// 여전히 동작하는지 검증한다 (하위 호환성).
+// TestGoFeedbackGenerator_BackwardCompat verifies that NewGoFeedbackGenerator (original signature)
+// still works (backward compatibility).
 func TestGoFeedbackGenerator_BackwardCompat(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	// 기존 생성자가 여전히 컴파일되어야 한다.
+	// The original constructor must still compile.
 	gen := NewGoFeedbackGenerator(projectRoot)
 	if gen == nil {
-		t.Fatal("NewGoFeedbackGenerator()는 nil을 반환해선 안 된다")
+		t.Fatal("NewGoFeedbackGenerator() must not return nil")
 	}
 }
 
-// TestGoFeedbackGenerator_WithBridge_EmptyDiagnostics는
-// bridge가 빈 슬라이스를 반환할 때 Diagnostics가 비어있는지 검증한다.
+// TestGoFeedbackGenerator_WithBridge_EmptyDiagnostics verifies that Diagnostics is empty
+// when bridge returns an empty slice.
 func TestGoFeedbackGenerator_WithBridge_EmptyDiagnostics(t *testing.T) {
 	t.Parallel()
 
@@ -163,9 +162,9 @@ func TestGoFeedbackGenerator_WithBridge_EmptyDiagnostics(t *testing.T) {
 
 	fb, err := gen.Collect(ctx)
 	if err != nil {
-		t.Fatalf("Collect() 오류 = %v, 기대값: nil", err)
+		t.Fatalf("Collect() error = %v, expected: nil", err)
 	}
 	if len(fb.Diagnostics) != 0 {
-		t.Errorf("Diagnostics = %v, 기대값: 빈 슬라이스", fb.Diagnostics)
+		t.Errorf("Diagnostics = %v, expected: empty slice", fb.Diagnostics)
 	}
 }

@@ -24,6 +24,11 @@ type ValidationConfig struct {
 
 	// EnforcementLevels configures per-priority enforcement modes.
 	EnforcementLevels EnforcementLevels `yaml:"enforcement_levels"`
+
+	// TransitionMode downgrades newly-surfaced violations (method-receiver P2/P3/P4,
+	// paired-REASON P1/P2) from blocking to advisory for one minor cycle.
+	// Default false. Set to true to enable a grace period during v2.14 → v2.15 migration.
+	TransitionMode bool `yaml:"transition_mode,omitempty" json:"transition_mode,omitempty"`
 }
 
 // PostToolUseConfig configures the PostToolUse hook MX validation.

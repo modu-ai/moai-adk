@@ -1,0 +1,27 @@
+{
+  "color-primary": {
+    "$type": "color",
+    "$value": "#0066ff",
+    "$description": "주 브랜드 색상"
+  },
+  "color-secondary": {
+    "$type": "color",
+    "$value": "rgb(0, 128, 255)"
+  },
+  "color-success": {
+    "$type": "color",
+    "$value": "#00cc66"
+  },
+  "color-danger": {
+    "$type": "color",
+    "$value": "hsl(0, 100%, 50%)"
+  },
+  "color-white": {
+    "$type": "color",
+    "$value": "#ffffff"
+  },
+  "color-transparent": {
+    "$type": "color",
+    "$value": "transparent"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "shadow-missing-color": {
+    "$type": "shadow",
+    "$value": {
+      "offsetX": "0px",
+      "offsetY": "4px",
+      "blur": "8px",
+      "spread": "0px"
+    },
+    "$description": "color 필드 누락 (오류 예상)"
+  },
+  "border-invalid-color": {
+    "$type": "border",
+    "$value": {
+      "color": "notacolor",
+      "width": "1px",
+      "style": "solid"
+    }
+  },
+  "transition-missing-duration": {
+    "$type": "transition",
+    "$value": {
+      "timingFunction": [0.25, 0.1, 0.25, 1.0]
+    }
+  }
+}

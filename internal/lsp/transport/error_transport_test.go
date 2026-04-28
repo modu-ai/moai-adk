@@ -106,13 +106,13 @@ func TestPnTransport_WithMockConn_OnNotification(t *testing.T) {
 		called = true
 	})
 
-	// 등록된 핸들러가 있어야 함
+	// A handler must be registered.
 	h, ok := mock.handlers["textDocument/publishDiagnostics"]
 	if !ok {
 		t.Fatal("handler not registered in mockRPCConn")
 	}
 
-	// 핸들러 호출 — pnTransport 내부 래퍼가 json.RawMessage를 전달해야 함
+	// Invoke the handler — pnTransport's internal wrapper must forward json.RawMessage.
 	h(context.Background(), "textDocument/publishDiagnostics", json.RawMessage(`{}`))
 	if !called {
 		t.Error("handler was not called after dispatch")
@@ -190,7 +190,7 @@ func TestErrorTransport_AllMethods(t *testing.T) {
 		t.Errorf("Notify error = %v, want %v", err, wantErr)
 	}
 
-	// OnNotification은 empty body — 패닉 없이 호출 가능해야 함
+	// OnNotification has an empty body — must be callable without panic.
 	et.OnNotification("method", nil)
 
 	if err := et.Close(); err != nil {

@@ -22,7 +22,7 @@ var ErrRequestTimeout = errors.New("lsp: request timeout")
 //
 //	return WrapCallError(method, uri, lang, transport.Call(...))
 //
-// @MX:NOTE: [AUTO] 에러 래핑 규칙: fmt.Errorf("%w" 패턴 사용 — errors.Is/As 체인 유지
+// @MX:NOTE: [AUTO] Error wrapping rule: use fmt.Errorf("%w" pattern — preserves errors.Is/As chain
 func WrapCallError(method, uri, language string, err error) error {
 	if err == nil {
 		return nil
@@ -55,12 +55,12 @@ func CallWithTimeout(ctx context.Context, t Transport, method string, params, re
 		return nil
 	}
 
-	// 컨텍스트 타임아웃/취소 여부 확인 (REQ-LC-041)
+	// Check for context timeout/cancellation (REQ-LC-041)
 	if isContextErr(ctx, err) {
 		return fmt.Errorf("lsp call %s (lang=%s): %w", method, language, ErrRequestTimeout)
 	}
 
-	// 일반 프로토콜 에러: method + language 컨텍스트 추가
+	// General protocol error: add method + language context
 	return WrapCallError(method, "", language, err)
 }
 

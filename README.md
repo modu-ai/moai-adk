@@ -43,9 +43,9 @@ A single binary written in Go -- runs instantly on any platform with zero depend
 
 ---
 
-## What's New in v2.12.0
+## What's New in v2.17.0
 
-MoAI-ADK v2.12.0 introduces major upgrades to the design system, Claude Code native integration, and Opus 4.7 support.
+MoAI-ADK v2.17.0 (V3R3 Phase C) introduces the meta-harness skill for project-specific AI agent generation and transitions from a fixed skill catalog to dynamic harness-based architecture.
 
 ### Key Milestones
 
@@ -55,6 +55,7 @@ MoAI-ADK v2.12.0 introduces major upgrades to the design system, Claude Code nat
 | **v2.10.x** | LSP suite expansion, SPEC-CC297-001 `permissionMode` attribute support, Opus 4.7 preview |
 | **v2.11.x** | Self-Research System integration, multi-source documentation loading, enhanced memory management |
 | **v2.12.0** | **[SPEC-AGENCY-ABSORB-001]** /agency → /moai design absorption, full Opus 4.7 support, Adaptive Thinking native integration |
+| **v2.17.0** | **[BC-V3R3-007]** Meta-Harness skill (revfactory/harness Apache 2.0), static skill removal (16), namespace separation (moai-* / my-harness-*) |
 
 ### Major Changes
 

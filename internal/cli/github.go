@@ -41,7 +41,7 @@ func ghCardStyle() lipgloss.Style {
 }
 
 func ghSuccessCard(title string, details ...string) string {
-	titleLine := ghSuccess.Render("\u2713") + " " + title
+	titleLine := ghSuccess.Render("✓") + " " + title
 	var body strings.Builder
 	body.WriteString(titleLine)
 	if len(details) > 0 {
@@ -69,10 +69,36 @@ var githubCmd = &cobra.Command{
 	Long:    "Commands for GitHub issue parsing, SPEC linking, and workflow automation.",
 }
 
+// T-01: --dry-run 지속적 플래그 추가
+var dryRun bool
+
 func init() {
 	rootCmd.AddCommand(githubCmd)
+
+	// T-01: --dry-run 플래그 등록
+	githubCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "미리 실행하지 않고 수행할 작업을 표시만 함 (Show what would be done without making changes)")
+
+	// 기존 명령 보존
 	githubCmd.AddCommand(newParseIssueCmd())
 	githubCmd.AddCommand(newLinkSpecCmd())
+
+	// T-01: 새로운 서브커맨드 그룹 추가
+	githubCmd.AddGroup(&cobra.Group{
+		ID:    "runner",
+		Title: "Runner Commands:",
+	})
+
+	githubCmd.AddGroup(&cobra.Group{
+		ID:    "auth",
+		Title: "Auth Commands:",
+	})
+
+	// Wave 4: 새로운 서브커먼드 등록 (구현 파일에서 정의)
+	githubCmd.AddCommand(newInitCmd())
+	githubCmd.AddCommand(newRunnerCmd())
+	githubCmd.AddCommand(newAuthCmd())
+	githubCmd.AddCommand(newWorkflowCmd())
+	githubCmd.AddCommand(newStatusCmd())
 }
 
 func newParseIssueCmd() *cobra.Command {

@@ -9,6 +9,11 @@ permissions:
   contents: write
   packages: write
 
+# Release publish — cancel-in-progress: false (tag publish + GoReleaser cancel 시 partial release 위험)
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Release

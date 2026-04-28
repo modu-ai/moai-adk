@@ -934,7 +934,7 @@ func TestIsWSL2_ProcVersionFallback_NonWSL(t *testing.T) {
 	}
 }
 
-// --- SPEC-DB-SYNC-RELOC-001: db-schema-change PostToolUse 훅이 제거되었음을 검증 ---
+// --- SPEC-DB-SYNC-RELOC-001: verify db-schema-change PostToolUse hook is removed ---
 
 // TestRender_DbSchemaChangeHook_Removed verifies that SPEC-DB-SYNC-RELOC-001
 // has relocated the per-edit PostToolUse hook for `handle-db-schema-change.sh`

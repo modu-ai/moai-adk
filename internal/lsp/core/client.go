@@ -17,12 +17,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/transport"
 )
 
-// launchFunc은 subprocess.Launcher.Launch와 동일한 시그니처의 함수형 타입.
-// 테스트에서 의존성 주입을 위해 사용합니다.
+// launchFunc is a function type with the same signature as subprocess.Launcher.Launch.
+// Used for dependency injection in tests.
 type launchFunc func(ctx context.Context, cfg config.ServerConfig) (*subprocess.LaunchResult, error)
 
-// transportFactory은 io.ReadWriteCloser를 받아 Transport를 생성하는 함수형 타입.
-// 테스트에서 fakeTransport를 주입하기 위해 사용합니다.
+// transportFactory is a function type that creates a Transport from an io.ReadWriteCloser.
+// Used to inject a fakeTransport in tests.
 type transportFactory func(stream io.ReadWriteCloser) transport.Transport
 
 // supervisorIface abstracts subprocess.Supervisor for testability.
@@ -97,11 +97,11 @@ type client struct {
 	logger          *slog.Logger
 	serverCaps      ServerCapabilities
 
-	// docs는 열린 문서 캐시입니다. T-011 이후 사용됩니다.
+	// docs is the open document cache. Used from T-011 onwards.
 	docs *documentCache
 
-	// diagnostics는 서버가 push한 textDocument/publishDiagnostics 결과를 저장합니다.
-	// T-013 이후 사용됩니다.
+	// diagnostics stores textDocument/publishDiagnostics results pushed by the server.
+	// Used from T-013 onwards.
 	diagnostics   map[string][]lsp.Diagnostic
 	diagnosticsMu sync.RWMutex
 }
@@ -172,11 +172,11 @@ func NewClient(cfg config.ServerConfig, opts ...Option) *client {
 	}
 	c.state = NewStateMachine(c.logger)
 
-	// 기본 launcher: 실제 subprocess.Launcher 사용
+	// Default launcher: use real subprocess.Launcher.
 	defaultLauncher := subprocess.NewLauncher()
 	c.launcher = defaultLauncher.Launch
 
-	// 기본 transport factory: powernap Transport
+	// Default transport factory: powernap Transport.
 	c.trFactory = transport.NewPowernapTransport
 
 	for _, opt := range opts {
@@ -192,10 +192,10 @@ func NewClient(cfg config.ServerConfig, opts ...Option) *client {
 //   - on ErrBinaryNotFound: spawning → shutdown
 //   - on initialize failure: initializing → degraded
 func (c *client) Start(ctx context.Context) error {
-	// subprocess 실행
+	// Spawn the subprocess.
 	result, err := c.launcher(ctx, c.cfg)
 	if err != nil {
-		// ErrBinaryNotFound: warn_and_skip 패턴 (REQ-LC-004)
+		// ErrBinaryNotFound: warn_and_skip pattern (REQ-LC-004).
 		if errors.Is(err, subprocess.ErrBinaryNotFound) {
 			_ = c.state.Transition(StateShutdown)
 			return fmt.Errorf("lsp client start (lang=%s): %w", c.cfg.Language, err)
@@ -204,12 +204,24 @@ func (c *client) Start(ctx context.Context) error {
 		return fmt.Errorf("lsp client start (lang=%s): launch: %w", c.cfg.Language, err)
 	}
 
-	// Supervisor 생성 (Cmd가 nil이면 skip — 테스트 전용 경로)
+	// Create Supervisor (skip when Cmd is nil — test-only path).
 	if result.Cmd != nil {
 		c.supervisor = subprocess.NewSupervisor(result)
 	}
 
-	// subprocess stdio로 Transport 생성
+	// stderr drain goroutine: prevents subprocess stderr buffer deadlock (REQ-UTIL-003-001, REQ-UTIL-003-002).
+	// No goroutine is started when result.Stderr is nil (test-only LaunchResult).
+	// When Supervisor terminates the subprocess the stderr pipe is closed and io.Copy returns naturally (C-06).
+	// @MX:WARN: [AUTO] subprocess stderr drain goroutine — bound to the subprocess stderr pipe lifetime without a context.Context
+	// @MX:REASON: Purpose is to prevent stderr buffer deadlock. When Supervisor closes stderr on subprocess exit, io.Copy returns naturally with no goroutine leak (C-06 guarantee; validated by REQ-UTIL-003-010 test with 128 KiB burst).
+	if result.Stderr != nil {
+		go func() {
+			io.Copy(io.Discard, result.Stderr) //nolint:errcheck
+			result.Stderr.Close()              //nolint:errcheck
+		}()
+	}
+
+	// Create Transport from subprocess stdio.
 	stream := &readWriteCloser{
 		r: result.Stdout,
 		w: result.Stdin,
@@ -217,20 +229,20 @@ func (c *client) Start(ctx context.Context) error {
 	}
 	c.tr = c.trFactory(stream)
 
-	// initializing 상태 전환
+	// Transition to the initializing state.
 	if err := c.state.Transition(StateInitializing); err != nil {
 		c.cleanupTransport()
 		return fmt.Errorf("lsp client start: state transition: %w", err)
 	}
 
-	// LSP initialize 요청 전송
+	// Send the LSP initialize request.
 	if err := c.initialize(ctx); err != nil {
 		_ = c.state.Transition(StateDegraded)
 		return fmt.Errorf("lsp client initialize (lang=%s): %w", c.cfg.Language, err)
 	}
 
-	// publishDiagnostics 핸들러 등록: 서버가 push한 진단 결과를 diagnostics 캐시에 저장합니다.
-	// @MX:NOTE: [AUTO] NotificationRouter를 통해 비동기 publishDiagnostics 알림을 진단 캐시로 라우팅
+	// Register publishDiagnostics handler: stores server-pushed diagnostics in the diagnostics cache.
+	// @MX:NOTE: [AUTO] Routes async publishDiagnostics notifications to the diagnostic cache via NotificationRouter
 	_ = c.router.RegisterPublishDiagnostics(func(uri string, diags []lsp.Diagnostic) error {
 		c.diagnosticsMu.Lock()
 		c.diagnostics[uri] = diags
@@ -239,7 +251,7 @@ func (c *client) Start(ctx context.Context) error {
 	})
 	c.router.Attach(c.tr)
 
-	// ready 상태 전환
+	// Transition to the ready state.
 	if err := c.state.Transition(StateReady); err != nil {
 		return fmt.Errorf("lsp client start: state transition to ready: %w", err)
 	}
@@ -251,8 +263,8 @@ func (c *client) Start(ctx context.Context) error {
 func (c *client) initialize(ctx context.Context) error {
 	caps := DefaultClientCapabilities()
 
-	// rootUri + workspaceFolders: cfg.RootDir이 설정되어 있으면 file:// URI로 변환.
-	// gopls 등 서버는 workspaceFolders를 더 신뢰성 있게 처리하므로 두 필드 모두 전달.
+	// rootUri + workspaceFolders: convert to file:// URI when cfg.RootDir is set.
+	// Servers such as gopls handle workspaceFolders more reliably, so both fields are provided.
 	var rootURI any
 	var workspaceFolders any
 	if c.cfg.RootDir != "" {
@@ -278,8 +290,8 @@ func (c *client) initialize(ctx context.Context) error {
 		return fmt.Errorf("initialize request: %w", err)
 	}
 
-	// LSP 프로토콜: initialize 응답 수신 후 반드시 initialized 알림 전송 (fire-and-forget)
-	// 이 알림 없이는 gopls 등 서버가 workspace를 활성화하지 않음
+	// LSP protocol: the initialized notification MUST be sent after receiving the initialize response (fire-and-forget).
+	// Without this notification, servers such as gopls will not activate the workspace.
 	if notifyErr := c.tr.Notify(ctx, "initialized", map[string]any{}); notifyErr != nil {
 		c.logger.Warn("lsp: initialized notification failed",
 			slog.String("language", c.cfg.Language),
@@ -287,7 +299,7 @@ func (c *client) initialize(ctx context.Context) error {
 		)
 	}
 
-	// サーバーケイパビリティ解析
+	// Parse server capabilities.
 	serverCaps, err := ParseServerCapabilities(result.Capabilities)
 	if err != nil {
 		// Parse failure is non-fatal — degrade gracefully
@@ -306,13 +318,13 @@ func (c *client) initialize(ctx context.Context) error {
 //
 // State transitions: any → shutdown
 func (c *client) Shutdown(ctx context.Context) error {
-	// transport이 없으면 (Start 전 호출) 즉시 shutdown 전환
+	// No transport (called before Start): transition to shutdown immediately.
 	if c.tr == nil {
 		_ = c.state.Transition(StateShutdown)
 		return nil
 	}
 
-	// LSP shutdown 요청 (best-effort: 에러는 로그만)
+	// LSP shutdown request (best-effort: errors are only logged).
 	shutCtx, cancel := context.WithTimeout(ctx, c.shutdownTimeout)
 	defer cancel()
 
@@ -323,10 +335,10 @@ func (c *client) Shutdown(ctx context.Context) error {
 		)
 	}
 
-	// exit 알림 (fire-and-forget)
+	// exit notification (fire-and-forget).
 	_ = c.tr.Notify(ctx, "exit", nil)
 
-	// Supervisor를 통해 프로세스 종료
+	// Terminate the process via Supervisor.
 	if c.supervisor != nil {
 		if err := c.supervisor.Signal(syscall.SIGTERM); err != nil {
 			c.logger.Warn("lsp: SIGTERM failed, sending SIGKILL",
@@ -335,7 +347,7 @@ func (c *client) Shutdown(ctx context.Context) error {
 			)
 			_ = c.supervisor.Kill()
 		} else {
-			// shutdownTimeout 내에 종료되지 않으면 SIGKILL
+			// Send SIGKILL if the process does not exit within shutdownTimeout.
 			killTimer := time.NewTimer(c.shutdownTimeout)
 			defer killTimer.Stop()
 
@@ -345,7 +357,7 @@ func (c *client) Shutdown(ctx context.Context) error {
 			exitCh := c.supervisor.Watch(watchCtx)
 			select {
 			case <-exitCh:
-				// 정상 종료
+				// Clean exit.
 			case <-killTimer.C:
 				_ = c.supervisor.Kill()
 			}

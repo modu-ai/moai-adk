@@ -1,7 +1,7 @@
 ---
 title: デザインシステム
 description: Claude Designとコードベースパスを組み合わせたハイブリッド設計ワークフロー
-weight: 10
+weight: 60
 draft: false
 ---
 

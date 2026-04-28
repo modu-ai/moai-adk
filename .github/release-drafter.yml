@@ -1,0 +1,149 @@
+# Release Drafter config (Enhanced GitHub Flow §18.9)
+#
+# 역할: PR merge 시마다 next release draft 자동 업데이트 → CHANGELOG.md 작성 보조
+# 관계: GoReleaser와 병존 (Release Drafter = preview/draft, GoReleaser = final binary release)
+#
+# 사용 흐름:
+#   1. PR merged to main → Release Drafter가 draft release 업데이트
+#   2. 릴리스 준비 시 draft release body 확인 → CHANGELOG.md에 섹션 추가 (영문+한국어)
+#   3. ./scripts/release.sh vX.Y.Z → tag push → GoReleaser가 final release 생성
+#
+# CLAUDE.local.md §18.6 label 3축 체계 준수
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+# 카테고리: type:* label 기반 분류 (§18.6 축 1)
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'type:feature'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'type:fix'
+  - title: '🔒 Security'
+    labels:
+      - 'type:security'
+  - title: '⚡️ Performance'
+    labels:
+      - 'type:performance'
+  - title: '♻️ Refactoring'
+    labels:
+      - 'type:refactor'
+  - title: '📚 Documentation'
+    labels:
+      - 'type:docs'
+  - title: '🧪 Tests'
+    labels:
+      - 'type:test'
+  - title: '⚙️ CI/CD'
+    labels:
+      - 'type:ci'
+  - title: '🔧 Chores & Maintenance'
+    labels:
+      - 'type:chore'
+      - 'dependencies'
+
+# 제외: draft/CHANGELOG-only PRs (순환 방지)
+exclude-labels:
+  - 'skip-changelog'
+  - 'status:needs-info'
+
+# 각 change entry template (PR title + number + author)
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+# Version 자동 추정 (SemVer, §18.4 cadence 정렬)
+version-resolver:
+  major:
+    labels:
+      - 'breaking'
+      - 'type:breaking'
+  minor:
+    labels:
+      - 'type:feature'
+  patch:
+    labels:
+      - 'type:fix'
+      - 'type:security'
+      - 'type:performance'
+      - 'type:refactor'
+      - 'type:docs'
+      - 'type:test'
+      - 'type:ci'
+      - 'type:chore'
+  default: patch
+
+# 전체 Release Notes Template
+template: |
+  ## $RESOLVED_VERSION Release Notes (Draft)
+
+  > ⚠️ **이 문서는 Release Drafter가 PR merge 시마다 자동 업데이트하는 draft입니다.**
+  > 실제 릴리스 시 이 내용을 기반으로 `CHANGELOG.md`를 영문+한국어로 작성한 후 `./scripts/release.sh` 실행.
+
+  ## Changes
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+  ---
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+  **Enhanced GitHub Flow**: CLAUDE.local.md §18
+
+# PR auto-labeling (type 축 자동 추론 — labeler.yml과 상호 보완)
+autolabeler:
+  - label: 'type:feature'
+    title:
+      - '/^feat(\(.+\))?!?:/i'
+    branch:
+      - '/^feat\/.+/'
+      - '/^feature\/.+/'
+  - label: 'type:fix'
+    title:
+      - '/^fix(\(.+\))?!?:/i'
+      - '/^hotfix(\(.+\))?!?:/i'
+    branch:
+      - '/^fix\/.+/'
+      - '/^hotfix\/.+/'
+  - label: 'type:docs'
+    title:
+      - '/^docs(\(.+\))?!?:/i'
+    branch:
+      - '/^docs\/.+/'
+    files:
+      - '**/*.md'
+  - label: 'type:chore'
+    title:
+      - '/^chore(\(.+\))?!?:/i'
+    branch:
+      - '/^chore\/.+/'
+  - label: 'type:ci'
+    title:
+      - '/^ci(\(.+\))?!?:/i'
+    branch:
+      - '/^ci\/.+/'
+    files:
+      - '.github/**'
+  - label: 'type:refactor'
+    title:
+      - '/^refactor(\(.+\))?!?:/i'
+    branch:
+      - '/^refactor\/.+/'
+  - label: 'type:security'
+    title:
+      - '/^(sec|security)(\(.+\))?!?:/i'
+    branch:
+      - '/^security\/.+/'
+      - '/^audit\/.+/'
+  - label: 'type:test'
+    title:
+      - '/^test(\(.+\))?!?:/i'
+    files:
+      - '**/*_test.go'
+  - label: 'breaking'
+    title:
+      - '/^[a-z]+(\(.+\))?!:/i'

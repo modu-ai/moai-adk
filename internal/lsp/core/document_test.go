@@ -16,8 +16,8 @@ import (
 // fakeNotifyTransport — captures Notify calls with params for document sync
 // ---------------------------------------------------------------------------
 
-// fakeNotifyTransport는 Notify 호출을 파라미터 포함하여 기록하는 테스트 전용 Transport.
-// fakeTransport(client_test.go)와 달리 Notify params도 저장합니다.
+// fakeNotifyTransport is a test-only Transport that records Notify calls including params.
+// Unlike fakeTransport (client_test.go), it also stores Notify params.
 type fakeNotifyTransport struct {
 	mu       sync.Mutex
 	notifies []notifyCall
@@ -39,7 +39,7 @@ func (f *fakeNotifyTransport) Call(_ context.Context, method string, _, result a
 	defer f.mu.Unlock()
 	f.callLog = append(f.callLog, method)
 	if result != nil && method == "initialize" {
-		// initialize 응답: capabilities = {}
+		// initialize response: capabilities = {}
 		raw := json.RawMessage(`{"capabilities":{}}`)
 		_ = json.Unmarshal(raw, result)
 	}
@@ -62,7 +62,7 @@ func (f *fakeNotifyTransport) Close() error {
 	return nil
 }
 
-// notifyCount는 해당 method로 Notify가 호출된 횟수를 반환합니다.
+// notifyCount returns the number of times Notify was called with the given method.
 func (f *fakeNotifyTransport) notifyCount(method string) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -99,7 +99,7 @@ func TestDocumentCache_OpenNew(t *testing.T) {
 		t.Errorf("expected 0 textDocument/didChange, got %d", got)
 	}
 
-	// 버전이 1로 초기화되었는지 확인
+	// verify version is initialized to 1
 	snap := cache.snapshot()
 	entry, ok := snap["file:///foo.go"]
 	if !ok {
@@ -123,17 +123,17 @@ func TestDocumentCache_SameContent(t *testing.T) {
 
 	content := "package main\n"
 	_ = cache.openOrChange(ctx, ft, "file:///bar.go", "go", content)
-	// 같은 내용으로 두 번째 호출
+	// second call with the same content
 	err := cache.openOrChange(ctx, ft, "file:///bar.go", "go", content)
 	if err != nil {
 		t.Fatalf("openOrChange (same content): unexpected error: %v", err)
 	}
 
-	// didOpen은 최초 1회만
+	// didOpen only once (first call)
 	if got := ft.notifyCount(methodDidOpen); got != 1 {
 		t.Errorf("expected 1 textDocument/didOpen total, got %d", got)
 	}
-	// didChange는 0회
+	// didChange 0 times
 	if got := ft.notifyCount(methodDidChange); got != 0 {
 		t.Errorf("expected 0 textDocument/didChange for same content, got %d", got)
 	}
@@ -232,7 +232,7 @@ func TestDocumentCache_ReapIdle_Expired(t *testing.T) {
 
 	_ = cache.openOrChange(ctx, ft, "file:///old.go", "go", "package main")
 
-	// 직접 lastActivity를 과거로 설정
+	// directly set lastActivity to a past time
 	cache.mu.Lock()
 	entry := cache.entries["file:///old.go"]
 	entry.lastActivity = time.Now().Add(-10 * time.Minute)
@@ -262,7 +262,7 @@ func TestDocumentCache_ReapIdle_Active(t *testing.T) {
 	ctx := context.Background()
 
 	_ = cache.openOrChange(ctx, ft, "file:///active.go", "go", "package main")
-	// lastActivity는 방금 전 — idle timeout 5분 이내
+	// lastActivity is just now — within 5-minute idle timeout
 
 	reaped := cache.reapIdle(ctx, ft, 5*time.Minute)
 
@@ -310,7 +310,7 @@ func TestDocumentCache_DidSave_Untracked(t *testing.T) {
 // T-011: Client.OpenFile integration (pathToURI + languageID resolution)
 // ---------------------------------------------------------------------------
 
-// makeNotifyClient는 fakeNotifyTransport를 사용하는 테스트용 클라이언트를 생성합니다.
+// makeNotifyClient creates a test client that uses fakeNotifyTransport.
 func makeNotifyClient(cfg config.ServerConfig, ft *fakeNotifyTransport) *client {
 	return NewClient(cfg,
 		WithLauncherFunc((&fakeLauncher{}).Launch),
@@ -397,7 +397,7 @@ func TestDocumentCache_Touch(t *testing.T) {
 
 	_ = cache.openOrChange(ctx, ft, "file:///touch.go", "go", "package main")
 
-	// 과거 시간으로 강제 설정
+	// force lastActivity to a past time
 	cache.mu.Lock()
 	entry := cache.entries["file:///touch.go"]
 	old := time.Now().Add(-1 * time.Minute)
@@ -436,7 +436,7 @@ func TestClient_DidSave(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	// 파일을 먼저 열어야 함
+	// file must be opened first
 	_ = c.OpenFile(ctx, "/tmp/save.go", "package main")
 
 	err := c.DidSave(ctx, "/tmp/save.go")

@@ -18,8 +18,8 @@ import (
 // Test helpers: fakeClient, fakeClientFactory
 // ---------------------------------------------------------------------------
 
-// fakeClient는 테스트용 Client 구현체입니다.
-// 실제 subprocess를 생성하지 않고 동작을 시뮬레이션합니다.
+// fakeClient is a test Client implementation.
+// It simulates behavior without spawning a real subprocess.
 type fakeClient struct {
 	mu           sync.Mutex
 	state        ClientState
@@ -69,8 +69,8 @@ func (f *fakeClient) Capabilities() ServerCapabilities {
 	return ServerCapabilities{}
 }
 
-// fakeClientFactory는 fakeClient를 생성하는 팩토리 함수를 반환합니다.
-// spawnCount로 생성 횟수를 추적합니다.
+// fakeClientFactory returns a factory function that creates fakeClients.
+// It tracks the number of creations via spawnCount.
 func fakeClientFactory(spawnCount *atomic.Int32, clients *[]*fakeClient, mu *sync.Mutex, startErr error) func(config.ServerConfig) Client {
 	return func(cfg config.ServerConfig) Client {
 		spawnCount.Add(1)
@@ -87,7 +87,7 @@ func fakeClientFactory(spawnCount *atomic.Int32, clients *[]*fakeClient, mu *syn
 	}
 }
 
-// makeTestServersConfig는 테스트용 ServersConfig를 생성합니다.
+// makeTestServersConfig creates a ServersConfig for testing.
 func makeTestServersConfig() *config.ServersConfig {
 	return &config.ServersConfig{
 		Servers: map[string]config.ServerConfig{
@@ -117,10 +117,10 @@ func makeTestServersConfig() *config.ServersConfig {
 }
 
 // ---------------------------------------------------------------------------
-// T-015: detectLanguage 테스트
+// T-015: detectLanguage tests
 // ---------------------------------------------------------------------------
 
-// TestDetectLanguage_GoExtension은 .go 파일이 "go" 언어로 감지되는지 테스트합니다.
+// TestDetectLanguage_GoExtension tests that .go files are detected as "go" language.
 func TestDetectLanguage_GoExtension(t *testing.T) {
 	cfg := makeTestServersConfig()
 	m := NewManager(cfg)
@@ -134,7 +134,7 @@ func TestDetectLanguage_GoExtension(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_PythonExtension은 .py 파일이 "python" 언어로 감지되는지 테스트합니다.
+// TestDetectLanguage_PythonExtension tests that .py files are detected as "python" language.
 func TestDetectLanguage_PythonExtension(t *testing.T) {
 	cfg := makeTestServersConfig()
 	m := NewManager(cfg)
@@ -148,7 +148,7 @@ func TestDetectLanguage_PythonExtension(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_TypeScriptExtension은 .ts 파일이 "typescript" 언어로 감지되는지 테스트합니다.
+// TestDetectLanguage_TypeScriptExtension tests that .ts files are detected as "typescript" language.
 func TestDetectLanguage_TypeScriptExtension(t *testing.T) {
 	cfg := makeTestServersConfig()
 	m := NewManager(cfg)
@@ -162,7 +162,7 @@ func TestDetectLanguage_TypeScriptExtension(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_TsxExtension은 .tsx 파일이 "typescript" 언어로 감지되는지 테스트합니다.
+// TestDetectLanguage_TsxExtension tests that .tsx files are detected as "typescript" language.
 func TestDetectLanguage_TsxExtension(t *testing.T) {
 	cfg := makeTestServersConfig()
 	m := NewManager(cfg)
@@ -176,7 +176,7 @@ func TestDetectLanguage_TsxExtension(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_UnknownExtension은 알 수 없는 확장자에 대해 (empty, false)를 반환하는지 테스트합니다.
+// TestDetectLanguage_UnknownExtension tests that unknown extensions return (empty, false).
 func TestDetectLanguage_UnknownExtension(t *testing.T) {
 	cfg := makeTestServersConfig()
 	m := NewManager(cfg)
@@ -190,7 +190,7 @@ func TestDetectLanguage_UnknownExtension(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_NoExtension은 확장자가 없는 파일에 대해 (empty, false)를 반환하는지 테스트합니다.
+// TestDetectLanguage_NoExtension tests that files without an extension return (empty, false).
 func TestDetectLanguage_NoExtension(t *testing.T) {
 	cfg := makeTestServersConfig()
 	m := NewManager(cfg)
@@ -204,11 +204,11 @@ func TestDetectLanguage_NoExtension(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_AmbiguousExtension_ResolvedByMarker는 확장자 중복 시 프로젝트 마커로
-// 언어가 결정되는지 테스트합니다.
-// tsconfig.json이 있는 임시 디렉토리에서 .ts 확장자를 사용합니다.
+// TestDetectLanguage_AmbiguousExtension_ResolvedByMarker tests that language is determined
+// by project markers when multiple languages share the same extension.
+// Uses .ts extension in a temp directory with tsconfig.json.
 func TestDetectLanguage_AmbiguousExtension_ResolvedByMarker(t *testing.T) {
-	// 두 언어가 같은 확장자를 공유하는 설정 구성
+	// configure two languages sharing the same extension
 	cfg := &config.ServersConfig{
 		Servers: map[string]config.ServerConfig{
 			"typescript": {
@@ -226,7 +226,7 @@ func TestDetectLanguage_AmbiguousExtension_ResolvedByMarker(t *testing.T) {
 		},
 	}
 
-	// tsconfig.json이 있는 임시 디렉토리 구성
+	// set up a temp directory with tsconfig.json
 	dir := t.TempDir()
 	tsconfig := filepath.Join(dir, "tsconfig.json")
 	if err := os.WriteFile(tsconfig, []byte("{}"), 0o644); err != nil {
@@ -244,10 +244,10 @@ func TestDetectLanguage_AmbiguousExtension_ResolvedByMarker(t *testing.T) {
 	}
 }
 
-// TestDetectLanguage_AmbiguousExtension_FallsBackToFirstCandidate는
-// 마커가 없을 때 첫 번째 후보 언어(설정 순서 기준)가 선택되는지 테스트합니다.
+// TestDetectLanguage_AmbiguousExtension_FallsBackToFirstCandidate tests that the first
+// candidate language (by config order) is selected when no marker is present.
 func TestDetectLanguage_AmbiguousExtension_FallsBackToFirstCandidate(t *testing.T) {
-	// 명확한 순서를 위해 두 언어가 .ext를 공유하는 설정
+	// two languages sharing .ext for unambiguous ordering
 	cfg := &config.ServersConfig{
 		Servers: map[string]config.ServerConfig{
 			"langA": {
@@ -265,7 +265,7 @@ func TestDetectLanguage_AmbiguousExtension_FallsBackToFirstCandidate(t *testing.
 		},
 	}
 
-	// 마커 파일이 없는 임시 디렉토리
+	// temp directory with no marker files
 	dir := t.TempDir()
 	m := NewManager(cfg)
 	filePath := filepath.Join(dir, "file.ext")
@@ -274,14 +274,14 @@ func TestDetectLanguage_AmbiguousExtension_FallsBackToFirstCandidate(t *testing.
 	if !ok {
 		t.Fatal("expected ok=true for known extension even without markers")
 	}
-	// langA 또는 langB 중 하나여야 함 (결정론적으로 첫 번째)
+	// must be one of langA or langB (deterministically the first)
 	if lang != "langA" && lang != "langB" {
 		t.Fatalf("expected one of langA or langB, got %q", lang)
 	}
 }
 
-// TestRouteFor_NoLanguageDetected는 알 수 없는 파일 확장자로 RouteFor를 호출하면
-// ErrNoLanguageDetected가 반환되는지 테스트합니다.
+// TestRouteFor_NoLanguageDetected tests that ErrNoLanguageDetected is returned
+// when RouteFor is called with an unknown file extension.
 func TestRouteFor_NoLanguageDetected(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -299,10 +299,10 @@ func TestRouteFor_NoLanguageDetected(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// T-016: Manager lazy spawn 테스트
+// T-016: Manager lazy spawn tests
 // ---------------------------------------------------------------------------
 
-// TestRouteFor_SpawnsClientOnFirstCall은 RouteFor 최초 호출 시 클라이언트를 생성하는지 테스트합니다.
+// TestRouteFor_SpawnsClientOnFirstCall tests that a client is spawned on the first RouteFor call.
 func TestRouteFor_SpawnsClientOnFirstCall(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -322,8 +322,8 @@ func TestRouteFor_SpawnsClientOnFirstCall(t *testing.T) {
 	}
 }
 
-// TestRouteFor_ReturnsSameClientOnSecondCall은 동일 언어로 두 번 RouteFor를 호출해도
-// 팩토리가 한 번만 호출되는지 테스트합니다.
+// TestRouteFor_ReturnsSameClientOnSecondCall tests that the factory is called only once
+// even when RouteFor is called twice for the same language.
 func TestRouteFor_ReturnsSameClientOnSecondCall(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -350,8 +350,8 @@ func TestRouteFor_ReturnsSameClientOnSecondCall(t *testing.T) {
 	}
 }
 
-// TestRouteFor_ConcurrentSpawnOnlyOnce는 50개 고루틴이 동일 언어로 RouteFor를 동시에
-// 호출해도 팩토리가 정확히 1번만 호출되는지 테스트합니다.
+// TestRouteFor_ConcurrentSpawnOnlyOnce tests that the factory is called exactly once
+// even when 50 goroutines call RouteFor concurrently for the same language.
 func TestRouteFor_ConcurrentSpawnOnlyOnce(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -385,22 +385,22 @@ func TestRouteFor_ConcurrentSpawnOnlyOnce(t *testing.T) {
 	}
 }
 
-// TestRouteFor_SpawnErrorReleasesClient는 Start가 실패하면 클라이언트가 해제되고
-// 다음 호출 시 재시도하는지 테스트합니다.
+// TestRouteFor_SpawnErrorReleasesClient tests that the client is released when Start fails
+// and the next call retries.
 func TestRouteFor_SpawnErrorReleasesClient(t *testing.T) {
 	cfg := makeTestServersConfig()
 
 	startErr := errors.New("fake start error")
 	var callCount atomic.Int32
 
-	// 첫 번째 호출은 실패, 두 번째 호출은 성공하는 팩토리
+	// factory that fails on the first call and succeeds on the second
 	factory := func(sc config.ServerConfig) Client {
 		callCount.Add(1)
 		call := callCount.Load()
 		if call == 1 {
 			return &fakeClient{state: StateSpawning, startErr: startErr}
 		}
-		return &fakeClient{state: StateSpawning} // 두 번째는 성공
+		return &fakeClient{state: StateSpawning} // second call succeeds
 	}
 
 	m := NewManager(cfg, WithClientFactory(factory))
@@ -410,7 +410,7 @@ func TestRouteFor_SpawnErrorReleasesClient(t *testing.T) {
 	}
 	defer m.Shutdown(context.Background()) //nolint:errcheck
 
-	// 첫 번째 호출: Start 실패
+	// first call: Start fails
 	_, err := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err == nil {
 		t.Fatal("expected error from RouteFor with failing client start, got nil")
@@ -419,7 +419,7 @@ func TestRouteFor_SpawnErrorReleasesClient(t *testing.T) {
 		t.Fatalf("expected startErr in chain, got: %v", err)
 	}
 
-	// 두 번째 호출: 성공해야 함 (첫 번째 실패한 클라이언트가 해제됨)
+	// second call: must succeed (failed client from first call is released)
 	_, err2 := m.RouteFor(context.Background(), "/path/to/main.go")
 	if err2 != nil {
 		t.Fatalf("expected second RouteFor to succeed, got: %v", err2)
@@ -429,7 +429,7 @@ func TestRouteFor_SpawnErrorReleasesClient(t *testing.T) {
 	}
 }
 
-// TestRouteFor_UpdatesLastActivity는 RouteFor가 lastActivity를 업데이트하는지 테스트합니다.
+// TestRouteFor_UpdatesLastActivity tests that RouteFor updates lastActivity.
 func TestRouteFor_UpdatesLastActivity(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -457,11 +457,11 @@ func TestRouteFor_UpdatesLastActivity(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// T-017: Manager idle shutdown 테스트
+// T-017: Manager idle shutdown tests
 // ---------------------------------------------------------------------------
 
-// TestManager_ReaperShutsDownIdleClient는 유휴 타임아웃 후 클라이언트가 종료되는지 테스트합니다.
-// WithIdleShutdownSeconds(0) + 매우 짧은 reaper 간격을 사용합니다.
+// TestManager_ReaperShutsDownIdleClient tests that a client is shut down after the idle timeout.
+// Uses WithIdleShutdownSeconds(0) + a very short reaper interval.
 func TestManager_ReaperShutsDownIdleClient(t *testing.T) {
 	cfg := makeTestServersConfig()
 
@@ -472,7 +472,7 @@ func TestManager_ReaperShutsDownIdleClient(t *testing.T) {
 	factory := fakeClientFactory(&spawnCount, &clients, &clientsMu, nil)
 	m := NewManager(cfg,
 		WithClientFactory(factory),
-		WithIdleShutdownSeconds(0),         // 0초 = 즉시 만료
+		WithIdleShutdownSeconds(0),         // 0 seconds = expires immediately
 		WithReaperInterval(5*time.Millisecond),
 	)
 
@@ -482,13 +482,13 @@ func TestManager_ReaperShutsDownIdleClient(t *testing.T) {
 	}
 	defer m.Shutdown(ctx) //nolint:errcheck
 
-	// 클라이언트 생성 (RouteFor 호출)
+	// create a client (via RouteFor call)
 	_, err := m.RouteFor(ctx, "/path/to/main.go")
 	if err != nil {
 		t.Fatalf("RouteFor failed: %v", err)
 	}
 
-	// reaper가 idle 클라이언트를 종료할 때까지 대기
+	// wait until reaper shuts down the idle client
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
 		clientsMu.Lock()
@@ -501,15 +501,15 @@ func TestManager_ReaperShutsDownIdleClient(t *testing.T) {
 		}
 		clientsMu.Unlock()
 		if count > 0 && shutCalled > 0 {
-			return // 성공
+			return // success
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("reaper did not shut down idle client within deadline")
 }
 
-// TestManager_ReaperDoesNotShutdownActiveClient는 활성 클라이언트는 reaper가 종료하지
-// 않는지 테스트합니다.
+// TestManager_ReaperDoesNotShutdownActiveClient tests that the reaper does not
+// shut down an active client.
 func TestManager_ReaperDoesNotShutdownActiveClient(t *testing.T) {
 	cfg := makeTestServersConfig()
 
@@ -520,7 +520,7 @@ func TestManager_ReaperDoesNotShutdownActiveClient(t *testing.T) {
 	factory := fakeClientFactory(&spawnCount, &clients, &clientsMu, nil)
 	m := NewManager(cfg,
 		WithClientFactory(factory),
-		WithIdleShutdownSeconds(60),        // 60초 타임아웃 — 테스트 중에는 만료되지 않음
+		WithIdleShutdownSeconds(60),        // 60-second timeout — will not expire during test
 		WithReaperInterval(5*time.Millisecond),
 	)
 
@@ -535,7 +535,7 @@ func TestManager_ReaperDoesNotShutdownActiveClient(t *testing.T) {
 		t.Fatalf("RouteFor failed: %v", err)
 	}
 
-	// reaper가 몇 번 돌 시간 동안 대기
+	// wait for the reaper to cycle a few times
 	time.Sleep(50 * time.Millisecond)
 
 	clientsMu.Lock()
@@ -547,8 +547,8 @@ func TestManager_ReaperDoesNotShutdownActiveClient(t *testing.T) {
 	}
 }
 
-// TestManager_Shutdown_CancelsReaperPromptly는 Shutdown 호출 시 reaper가 100ms 이내에
-// 종료되는지 테스트합니다.
+// TestManager_Shutdown_CancelsReaperPromptly tests that the reaper terminates within
+// 100ms when Shutdown is called.
 func TestManager_Shutdown_CancelsReaperPromptly(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -573,8 +573,8 @@ func TestManager_Shutdown_CancelsReaperPromptly(t *testing.T) {
 	}
 }
 
-// TestManager_Shutdown_AggregatesClientErrors는 클라이언트 종료 시 에러가 집계되어
-// 반환되는지 테스트합니다.
+// TestManager_Shutdown_AggregatesClientErrors tests that errors from client shutdown
+// are aggregated and returned.
 func TestManager_Shutdown_AggregatesClientErrors(t *testing.T) {
 	cfg := makeTestServersConfig()
 
@@ -594,13 +594,13 @@ func TestManager_Shutdown_AggregatesClientErrors(t *testing.T) {
 		t.Fatalf("Manager.Start failed: %v", err)
 	}
 
-	// 클라이언트 생성
+	// create a client
 	_, err := m.RouteFor(ctx, "/path/to/main.go")
 	if err != nil {
 		t.Fatalf("RouteFor failed: %v", err)
 	}
 
-	// Shutdown — 클라이언트 에러가 집계되어야 함
+	// Shutdown — client errors must be aggregated
 	shutErr := m.Shutdown(ctx)
 	if shutErr == nil {
 		t.Fatal("expected Shutdown to return aggregated error, got nil")
@@ -610,7 +610,7 @@ func TestManager_Shutdown_AggregatesClientErrors(t *testing.T) {
 	}
 }
 
-// TestManager_Shutdown_ClearsClientsMap는 Shutdown 후 clients 맵이 비워지는지 테스트합니다.
+// TestManager_Shutdown_ClearsClientsMap tests that the clients map is emptied after Shutdown.
 func TestManager_Shutdown_ClearsClientsMap(t *testing.T) {
 	cfg := makeTestServersConfig()
 	var spawnCount atomic.Int32
@@ -639,15 +639,15 @@ func TestManager_Shutdown_ClearsClientsMap(t *testing.T) {
 	}
 }
 
-// TestErrNoLanguageDetected_Sentinel은 ErrNoLanguageDetected가 errors.Is로 감지 가능한
-// 센티넬인지 테스트합니다.
+// TestErrNoLanguageDetected_Sentinel tests that ErrNoLanguageDetected is a sentinel
+// detectable via errors.Is.
 func TestErrNoLanguageDetected_Sentinel(t *testing.T) {
 	if ErrNoLanguageDetected == nil {
 		t.Fatal("ErrNoLanguageDetected should not be nil")
 	}
 	wrapped := errors.New("outer: " + ErrNoLanguageDetected.Error())
-	// wrapped는 errors.Is로 감지되지 않음 (의도적)
-	// 진짜 sentinel은 직접 비교 가능해야 함
+	// wrapped is not detectable via errors.Is (intentional)
+	// the true sentinel must be directly comparable
 	if !errors.Is(ErrNoLanguageDetected, ErrNoLanguageDetected) {
 		t.Fatal("ErrNoLanguageDetected should be detectable via errors.Is with itself")
 	}

@@ -6,10 +6,30 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
+
+// skipOnWindows skips wrapper tests on Windows runners.
+//
+// The hook wrapper is a POSIX shell script (#!/bin/bash) that depends on:
+//   - bash (Git Bash / WSL on Windows is unreliable in GitHub Actions runners)
+//   - POSIX-style temp files and trap semantics
+//   - Linux/macOS process management for subprocess kill/wait
+//
+// On Windows GitHub Actions runners these tests fail with "signal: killed"
+// because the wrapperTestTimeout (5s) elapses before the bash subprocess
+// finishes its handshake. The wrapper itself is only invoked from POSIX
+// hooks managed by Claude Code on Linux/macOS, so Windows coverage is not
+// in scope. See PR #715/#716/#717 Windows test failures (pre-existing).
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("hook wrapper tests require POSIX bash; skipped on Windows")
+	}
+}
 
 const (
 	// wrapperTestTimeout is the maximum time to wait for a wrapper script to execute
@@ -20,6 +40,7 @@ const (
 
 // TestHookWrapper_SizeLimit verifies that input larger than 1MB is truncated.
 func TestHookWrapper_SizeLimit(t *testing.T) {
+	skipOnWindows(t)
 	t.Parallel()
 
 	// Create a temporary hook wrapper script
@@ -70,6 +91,7 @@ func TestHookWrapper_SizeLimit(t *testing.T) {
 
 // TestHookWrapper_EmptyInput verifies empty input exits gracefully.
 func TestHookWrapper_EmptyInput(t *testing.T) {
+	skipOnWindows(t)
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -106,6 +128,7 @@ func TestHookWrapper_EmptyInput(t *testing.T) {
 
 // TestHookWrapper_ValidJSON verifies valid JSON is forwarded correctly.
 func TestHookWrapper_ValidJSON(t *testing.T) {
+	skipOnWindows(t)
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -162,6 +185,7 @@ func TestHookWrapper_ValidJSON(t *testing.T) {
 
 // TestHookWrapper_MalformedInput verifies malformed input doesn't crash.
 func TestHookWrapper_MalformedInput(t *testing.T) {
+	skipOnWindows(t)
 	t.Parallel()
 
 	tests := []struct {
@@ -238,6 +262,7 @@ func TestHookWrapper_MalformedInput(t *testing.T) {
 
 // TestHookWrapper_MoaiBinaryFallback verifies the fallback binary search path.
 func TestHookWrapper_MoaiBinaryFallback(t *testing.T) {
+	skipOnWindows(t)
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -324,6 +349,7 @@ exit 0
 
 // TestHookWrapper_TempFileCleanup verifies temp files are cleaned up.
 func TestHookWrapper_TempFileCleanup(t *testing.T) {
+	skipOnWindows(t)
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -374,6 +400,7 @@ func TestHookWrapper_TempFileCleanup(t *testing.T) {
 
 // TestHookWrapper_SignalHandling verifies wrapper handles signals gracefully.
 func TestHookWrapper_SignalHandling(t *testing.T) {
+	skipOnWindows(t)
 	if testing.Short() {
 		t.Skip("skipping signal handling test in short mode")
 	}

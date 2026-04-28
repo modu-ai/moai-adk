@@ -1,7 +1,7 @@
 ---
 title: 디자인 시스템
 description: 클로드 디자인과 코드 기반 경로를 결합한 하이브리드 설계 워크플로우
-weight: 10
+weight: 60
 draft: false
 ---
 

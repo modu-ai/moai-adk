@@ -1,5 +1,10 @@
 # SPEC-CC297-001: Claude Code 2.1.97 Feature Adoption
 
+---
+id: SPEC-CC297-001
+status: completed
+---
+
 ## Overview
 
 Claude Code 2.1.94~2.1.97 릴리즈에서 추가된 기능을 moai-adk-go에 채택한다.
