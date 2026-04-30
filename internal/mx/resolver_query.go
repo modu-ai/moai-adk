@@ -356,11 +356,13 @@ func applyFilters(tag Tag, query Query, dangerMatcher *DangerCategoryMatcher, sp
 }
 
 // FormatMarkdown은 QueryResult를 마크다운 테이블로 변환합니다 (REQ-SPC-004-031).
+// 출력에는 Kind, File, Line, Body, FanIn, Danger, SPECs 컬럼이 포함됩니다.
+// TruncationNotice가 있으면 테이블 앞에 경고 blockquote가 추가됩니다.
 func FormatMarkdown(result QueryResult) string {
 	var sb strings.Builder
 
 	if result.TruncationNotice {
-		sb.WriteString(fmt.Sprintf("> **TruncationNotice**: 전체 %d개 중 %d개만 표시됩니다.\n\n", result.TotalCount, len(result.Tags)))
+		_, _ = fmt.Fprintf(&sb, "> **TruncationNotice**: 전체 %d개 중 %d개만 표시됩니다.\n\n", result.TotalCount, len(result.Tags))
 	}
 
 	sb.WriteString("| Kind | File | Line | Body | FanIn | Danger | SPECs |\n")
@@ -372,16 +374,17 @@ func FormatMarkdown(result QueryResult) string {
 		if tag.FanIn > 0 || tag.FanInMethod != "" {
 			fanIn = fmt.Sprintf("%d (%s)", tag.FanIn, tag.FanInMethod)
 		}
-		sb.WriteString(fmt.Sprintf("| %s | %s | %d | %s | %s | %s | %s |\n",
+		_, _ = fmt.Fprintf(&sb, "| %s | %s | %d | %s | %s | %s | %s |\n",
 			tag.Kind, tag.File, tag.Line,
 			truncateStr(tag.Body, 40),
-			fanIn, tag.DangerCategory, specs))
+			fanIn, tag.DangerCategory, specs)
 	}
 
 	return sb.String()
 }
 
 // FormatTable은 QueryResult를 사람이 읽을 수 있는 텍스트 테이블로 변환합니다 (REQ-SPC-004-004).
+// KIND, FILE, LINE, BODY 컬럼을 포함하며 빈 결과 시 "(결과 없음)"을 출력합니다.
 func FormatTable(result QueryResult) string {
 	if len(result.Tags) == 0 {
 		return "(결과 없음)\n"
@@ -390,7 +393,7 @@ func FormatTable(result QueryResult) string {
 	var sb strings.Builder
 
 	if result.TruncationNotice {
-		sb.WriteString(fmt.Sprintf("TruncationNotice: 전체 %d개 중 %d개만 표시됩니다.\n\n", result.TotalCount, len(result.Tags)))
+		_, _ = fmt.Fprintf(&sb, "TruncationNotice: 전체 %d개 중 %d개만 표시됩니다.\n\n", result.TotalCount, len(result.Tags))
 	}
 
 	// 컬럼 너비 계산
@@ -401,11 +404,11 @@ func FormatTable(result QueryResult) string {
 	sb.WriteString(separator)
 
 	for _, tag := range result.Tags {
-		sb.WriteString(fmt.Sprintf("%-8s %-50s %5d %-40s\n",
+		_, _ = fmt.Fprintf(&sb, "%-8s %-50s %5d %-40s\n",
 			tag.Kind,
 			truncateStr(tag.File, 50),
 			tag.Line,
-			truncateStr(tag.Body, 40)))
+			truncateStr(tag.Body, 40))
 	}
 
 	return sb.String()
