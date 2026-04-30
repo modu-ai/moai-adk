@@ -97,6 +97,33 @@ func matchContextWindow(model string, table map[string]int) int {
 	return matchedSize
 }
 
+// ResolveGLMContextWindow returns the context window size in tokens for the
+// given GLM model name, or 0 if no match is found. The lookup honors
+// project-level overrides in `.moai/config/sections/llm.yaml`
+// (`glm.context_windows` map) before falling back to the built-in
+// `glmContextWindows` table.
+//
+// This is the single source of truth used by `moai cg` / `moai glm` to
+// pre-compute MOAI_STATUSLINE_CONTEXT_SIZE for tmux session env injection
+// (Issue #742). It is exported so callers outside the statusline package can
+// resolve a model's context window without reimplementing the lookup priority.
+func ResolveGLMContextWindow(model string) int {
+	val := strings.ToLower(strings.TrimSpace(model))
+	if val == "" || strings.HasPrefix(val, "claude") {
+		return 0
+	}
+
+	// Priority 1: project-level llm.yaml overrides.
+	if userTable := readLLMYAMLContextWindows(); len(userTable) > 0 {
+		if size := matchContextWindow(val, userTable); size > 0 {
+			return size
+		}
+	}
+
+	// Priority 2: built-in glmContextWindows table.
+	return matchContextWindow(val, glmContextWindows)
+}
+
 // resolveContextWindowOverride returns a non-zero context window override when
 // the user is running through GLM (or another non-Claude provider) so that the
 // memory gauge reflects the actual provider limit rather than the Claude slot's

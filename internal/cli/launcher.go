@@ -243,6 +243,9 @@ func removeGLMEnv(settingsPath string) error {
 		delete(settings.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 		// Remove teammate display env var override (CG/GLM set this)
 		delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+		// Issue #742: drop GLM context-size hint when leaving GLM mode so the
+		// statusline reverts to the Claude slot's nominal size.
+		delete(settings.Env, "MOAI_STATUSLINE_CONTEXT_SIZE")
 
 		if len(settings.Env) == 0 {
 			settings.Env = nil
