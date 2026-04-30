@@ -90,5 +90,5 @@ func writeHookMetric(input *HookInput, hookName, outcome string) {
 	}
 	defer func() { _ = f.Close() }()
 
-	fmt.Fprintf(f, "%s\n", line)
+	_, _ = fmt.Fprintf(f, "%s\n", line)
 }
