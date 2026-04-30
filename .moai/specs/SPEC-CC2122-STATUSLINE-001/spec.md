@@ -1,7 +1,7 @@
 ---
 id: SPEC-CC2122-STATUSLINE-001
 version: "0.1.0"
-status: draft
+status: in_review
 created_at: 2026-04-30
 updated_at: 2026-04-30
 author: manager-spec
