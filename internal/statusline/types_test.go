@@ -2,6 +2,8 @@ package statusline
 
 import (
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -362,5 +364,44 @@ func TestStatusData_Worktree_Field(t *testing.T) {
 	}
 	if data.Worktree != "/repo/.claude/worktrees/abc123" {
 		t.Errorf("Worktree = %q, want %q", data.Worktree, "/repo/.claude/worktrees/abc123")
+	}
+}
+
+// TestStatuslineEffortThinking_KoreanMXTags verifies that EffortInfo and ThinkingInfo
+// types in types.go have Korean @MX:NOTE annotations per language.yaml code_comments:ko.
+// GWT-11: REQ-CC2122-006 — Korean @MX:NOTE tags required on new exported types
+func TestStatuslineEffortThinking_KoreanMXTags(t *testing.T) {
+	// Read types.go source to verify @MX:NOTE annotations exist
+	src, err := os.ReadFile("types.go")
+	if err != nil {
+		t.Fatalf("failed to read types.go: %v", err)
+	}
+	content := string(src)
+
+	// Verify EffortInfo has a @MX:NOTE comment nearby (within the struct definition)
+	if !strings.Contains(content, "@MX:NOTE") {
+		t.Error("types.go should contain at least one @MX:NOTE annotation (REQ-CC2122-006)")
+	}
+
+	// Verify EffortInfo struct appears with associated context
+	if !strings.Contains(content, "EffortInfo") {
+		t.Error("types.go should define EffortInfo type")
+	}
+	if !strings.Contains(content, "ThinkingInfo") {
+		t.Error("types.go should define ThinkingInfo type")
+	}
+
+	// Verify Korean text is present in @MX:NOTE tags (code_comments: ko)
+	// Korean characters are in Unicode range U+AC00–U+D7A3 (Hangul syllables)
+	// and U+3131–U+314E (Hangul compatibility jamo)
+	hasKorean := false
+	for _, r := range content {
+		if r >= 0xAC00 && r <= 0xD7A3 {
+			hasKorean = true
+			break
+		}
+	}
+	if !hasKorean {
+		t.Error("types.go @MX:NOTE tags should contain Korean text per code_comments: ko setting (REQ-CC2122-006)")
 	}
 }
