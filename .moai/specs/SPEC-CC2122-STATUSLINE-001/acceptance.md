@@ -128,5 +128,6 @@
 | GWT-7 | `go test ./internal/statusline/...` (builder_test.go 또는 types_test.go) | 자동화 |
 | GWT-8, GWT-9 | `go test ./internal/statusline/...` (renderer_test.go, mode 분기) | 자동화 |
 | GWT-10 | `go test -cover -race ./internal/statusline/...` | 자동화 |
+| GWT-11 | `go test -run TestStatuslineEffortThinking_KoreanMXTags ./internal/statusline/...` + grep `'@MX:NOTE: \p{Hangul}'` | 자동화 |
 | Edge cases | 위와 동일 테스트 파일에 추가 | 자동화 |
 | Definition of Done #7, #8 | manager-git PR 머지 후 plan-auditor 호출 | 수동 트리거 (자동 검증) |

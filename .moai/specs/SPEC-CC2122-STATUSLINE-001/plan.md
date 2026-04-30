@@ -84,7 +84,7 @@
 
 ### M5 — Test Coverage (Priority: High)
 
-**목표**: 테이블 드리븐 테스트로 acceptance.md 의 GWT-1 ~ GWT-10 시나리오를 커버한다.
+**목표**: 테이블 드리븐 테스트로 acceptance.md 의 GWT-1 ~ GWT-11 시나리오를 커버한다.
 
 **작업 항목:**
 
