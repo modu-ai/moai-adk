@@ -1409,3 +1409,95 @@ func TestCollectAll_ExtractsWorktree(t *testing.T) {
 		})
 	}
 }
+
+// TestBuild_EffortThinking_FullPipeline verifies end-to-end rendering of effort/thinking
+// fields through the full Build() pipeline.
+// GWT-7: effort+thinking present → e:LEVEL·t appears in output
+// GWT-8: segment disabled via SegmentConfig → indicator absent
+// GWT-9: nil input → no panic, output does not contain e: or ·t
+// GWT-10: backward compat — input without effort/thinking fields works normally
+func TestBuild_EffortThinking_FullPipeline(t *testing.T) {
+	clearGLMEnv(t)
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
+	tests := []struct {
+		name          string
+		jsonInput     string
+		segmentConfig map[string]bool
+		wantContains  []string
+		wantAbsent    []string
+	}{
+		{
+			// GWT-7: effort=high + thinking=true → e:high·t in output
+			name: "GWT-7: effort=high thinking=true produces e:high·t",
+			jsonInput: `{
+				"effort": {"level": "high"},
+				"thinking": {"enabled": true},
+				"context_window": {"used_percentage": 25, "context_window_size": 200000},
+				"cost": {"total_cost_usd": 0.01}
+			}`,
+			wantContains: []string{"e:high·t"},
+			wantAbsent:   []string{},
+		},
+		{
+			// GWT-8: segment disabled → e: indicator absent
+			name: "GWT-8: segment disabled → effort_thinking absent from output",
+			jsonInput: `{
+				"effort": {"level": "max"},
+				"thinking": {"enabled": true},
+				"context_window": {"used_percentage": 25, "context_window_size": 200000},
+				"cost": {"total_cost_usd": 0.01}
+			}`,
+			segmentConfig: map[string]bool{
+				SegmentEffortThinking: false,
+			},
+			wantContains: []string{},
+			wantAbsent:   []string{"e:max", "·t"},
+		},
+		{
+			// GWT-9: nil-equivalent input (no effort/thinking fields) → no panic, no e:/·t
+			name:      "GWT-9: missing effort/thinking fields → no indicator",
+			jsonInput: `{"context_window": {"used_percentage": 10, "context_window_size": 200000}}`,
+			wantContains: []string{},
+			wantAbsent:   []string{"e:", "·t"},
+		},
+		{
+			// GWT-10: backward compat — pre-v2.1.122 input without effort/thinking → output unchanged
+			name: "GWT-10: backward compat input without effort/thinking fields",
+			jsonInput: `{
+				"model": {"id": "claude-opus-4-6", "display_name": "Opus"},
+				"context_window": {"used_percentage": 30, "context_window_size": 200000},
+				"cost": {"total_cost_usd": 0.02},
+				"workspace": {"current_dir": "/home/user/project", "project_dir": "/home/user/project"}
+			}`,
+			wantContains: []string{"Opus"},
+			wantAbsent:   []string{"e:", "·t"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := New(Options{
+				Mode:          ModeDefault,
+				NoColor:       true,
+				SegmentConfig: tt.segmentConfig,
+			})
+
+			got, err := builder.Build(context.Background(), strings.NewReader(tt.jsonInput))
+			if err != nil {
+				t.Fatalf("Build() error: %v", err)
+			}
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(got, want) {
+					t.Errorf("output should contain %q\ngot: %s", want, got)
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if strings.Contains(got, absent) {
+					t.Errorf("output should NOT contain %q\ngot: %s", absent, got)
+				}
+			}
+		})
+	}
+}
