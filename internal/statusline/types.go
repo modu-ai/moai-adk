@@ -86,11 +86,17 @@ type RateLimitWindow struct {
 
 // EffortInfo holds the effort level from Claude Code v2.1.122+.
 // The Level field is raw-passthrough — unknown values are not rejected (REQ-CC2122-004).
+//
+// @MX:NOTE: [AUTO] Claude Code v2.1.122+에서 추가된 effort 레벨 정보 구조체.
+// low/medium/high/xhigh/max 값을 받으며, 알 수 없는 값도 그대로 통과 (REQ-CC2122-004).
 type EffortInfo struct {
 	Level string `json:"level"` // e.g., "low", "medium", "high", "xhigh", "max"
 }
 
 // ThinkingInfo holds the extended reasoning (thinking) activation flag from Claude Code v2.1.122+.
+//
+// @MX:NOTE: [AUTO] Claude Code v2.1.122+에서 추가된 확장 추론(thinking) 활성화 플래그 구조체.
+// Enabled=true일 때 statusline에 ·t 접미사로 표시 (REQ-CC2122-002).
 type ThinkingInfo struct {
 	Enabled bool `json:"enabled"` // true when extended reasoning is active
 }
