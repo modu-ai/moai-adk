@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -450,5 +451,153 @@ func TestMaskAPIKey(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("maskAPIKey(%q) = %q, want %q", tt.key, got, tt.want)
 		}
+	}
+}
+
+// TestInjectGLMEnvForTeam_StatuslineContextSize verifies Issue #742:
+// when the GLM High slot maps to a known context window, the function persists
+// MOAI_STATUSLINE_CONTEXT_SIZE in settings.local.json so the SessionStart hook
+// can later propagate it through tmux env to the statusline.
+func TestInjectGLMEnvForTeam_StatuslineContextSize(t *testing.T) {
+	cases := []struct {
+		name      string
+		highModel string
+		wantSize  string // "" means key should be absent
+	}{
+		{"glm-5.1 maps to 200K", "glm-5.1", "200000"},
+		{"glm-4.6 maps to 128K", "glm-4.6", "128000"},
+		{"glm-4.5-air maps to 128K (longest match)", "glm-4.5-air", "128000"},
+		{"unknown model omits the hint", "totally-unknown-model", ""},
+		{"claude prefix omits the hint (not GLM)", "claude-opus-4.7", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			claudeDir := filepath.Join(tmpDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			settingsPath := filepath.Join(claudeDir, "settings.local.json")
+
+			glmCfg := &GLMConfigFromYAML{
+				BaseURL: "https://api.z.ai",
+				EnvVar:  "TEST_KEY",
+			}
+			glmCfg.Models.High = tc.highModel
+			glmCfg.Models.Medium = "ignored"
+			glmCfg.Models.Low = "ignored"
+
+			if err := injectGLMEnvForTeam(settingsPath, glmCfg, "test-api-key"); err != nil {
+				t.Fatalf("injectGLMEnvForTeam error: %v", err)
+			}
+
+			data, err := os.ReadFile(settingsPath)
+			if err != nil {
+				t.Fatalf("read settings: %v", err)
+			}
+			var settings SettingsLocal
+			if err := json.Unmarshal(data, &settings); err != nil {
+				t.Fatalf("parse settings: %v", err)
+			}
+
+			got, present := settings.Env["MOAI_STATUSLINE_CONTEXT_SIZE"]
+			if tc.wantSize == "" {
+				if present {
+					t.Errorf("MOAI_STATUSLINE_CONTEXT_SIZE present=%q for unknown model %q (expected absent)",
+						got, tc.highModel)
+				}
+				return
+			}
+			if !present {
+				t.Errorf("MOAI_STATUSLINE_CONTEXT_SIZE absent for known model %q (expected %q)",
+					tc.highModel, tc.wantSize)
+			}
+			if got != tc.wantSize {
+				t.Errorf("MOAI_STATUSLINE_CONTEXT_SIZE = %q, want %q", got, tc.wantSize)
+			}
+		})
+	}
+}
+
+// TestInjectGLMEnvForTeam_StatuslineContextSize_StaleCleanup verifies that
+// switching the High slot from a known model to an unknown model removes the
+// previously injected MOAI_STATUSLINE_CONTEXT_SIZE so the stale value is not
+// propagated to a different GLM model.
+func TestInjectGLMEnvForTeam_StatuslineContextSize_StaleCleanup(t *testing.T) {
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+
+	cfg := &GLMConfigFromYAML{BaseURL: "https://api.z.ai", EnvVar: "TEST_KEY"}
+
+	// First call: glm-5.1 -> 200000 written.
+	cfg.Models.High = "glm-5.1"
+	cfg.Models.Medium = "ignored"
+	cfg.Models.Low = "ignored"
+	if err := injectGLMEnvForTeam(settingsPath, cfg, "key1"); err != nil {
+		t.Fatalf("first inject: %v", err)
+	}
+
+	// Second call with an unknown model: stale 200000 must be cleared.
+	cfg.Models.High = "unknown-future-model"
+	if err := injectGLMEnvForTeam(settingsPath, cfg, "key2"); err != nil {
+		t.Fatalf("second inject: %v", err)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings: %v", err)
+	}
+	var settings SettingsLocal
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("parse settings: %v", err)
+	}
+	if v, present := settings.Env["MOAI_STATUSLINE_CONTEXT_SIZE"]; present {
+		t.Errorf("stale MOAI_STATUSLINE_CONTEXT_SIZE = %q after switch to unknown model (expected absent)", v)
+	}
+}
+
+// TestRemoveGLMEnv_DropsStatuslineContextSize verifies that switching from GLM
+// mode back to Claude mode (moai cc) clears the GLM-specific context size hint.
+func TestRemoveGLMEnv_DropsStatuslineContextSize(t *testing.T) {
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+
+	// Seed settings.local.json with a GLM payload that includes the hint.
+	seed := map[string]any{
+		"env": map[string]string{
+			"ANTHROPIC_AUTH_TOKEN":         "glm-key",
+			"ANTHROPIC_BASE_URL":           "https://api.z.ai",
+			"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1",
+			"MOAI_STATUSLINE_CONTEXT_SIZE": "200000",
+		},
+	}
+	seedData, _ := json.MarshalIndent(seed, "", "  ")
+	if err := os.WriteFile(settingsPath, seedData, 0o600); err != nil {
+		t.Fatalf("seed write: %v", err)
+	}
+
+	if err := removeGLMEnv(settingsPath); err != nil {
+		t.Fatalf("removeGLMEnv error: %v", err)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read after remove: %v", err)
+	}
+	var settings SettingsLocal
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("parse after remove: %v", err)
+	}
+	if v, present := settings.Env["MOAI_STATUSLINE_CONTEXT_SIZE"]; present {
+		t.Errorf("removeGLMEnv left MOAI_STATUSLINE_CONTEXT_SIZE = %q (expected absent)", v)
 	}
 }
