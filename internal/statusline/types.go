@@ -65,7 +65,9 @@ type StdinData struct {
 	ContextWindow  *ContextWindowInfo `json:"context_window"`
 	OutputStyle    *OutputStyleInfo   `json:"output_style"`
 	RateLimits     *RateLimitInfo     `json:"rate_limits"`
-	Version        string             `json:"version"` // Claude Code version (e.g., "1.0.80")
+	Effort         *EffortInfo        `json:"effort"`   // Claude Code v2.1.122+ effort level (nil if absent)
+	Thinking       *ThinkingInfo      `json:"thinking"` // Claude Code v2.1.122+ thinking flag (nil if absent)
+	Version        string             `json:"version"`  // Claude Code version (e.g., "1.0.80")
 }
 
 // RateLimitInfo represents Claude.ai rate limit usage from Claude Code (v2.1.80+).
@@ -80,6 +82,17 @@ type RateLimitInfo struct {
 type RateLimitWindow struct {
 	UsedPercentage float64 `json:"used_percentage"` // 0-100
 	ResetsAt       int64   `json:"resets_at"`       // Unix epoch seconds (official schema)
+}
+
+// EffortInfo holds the effort level from Claude Code v2.1.122+.
+// The Level field is raw-passthrough — unknown values are not rejected (REQ-CC2122-004).
+type EffortInfo struct {
+	Level string `json:"level"` // e.g., "low", "medium", "high", "xhigh", "max"
+}
+
+// ThinkingInfo holds the extended reasoning (thinking) activation flag from Claude Code v2.1.122+.
+type ThinkingInfo struct {
+	Enabled bool `json:"enabled"` // true when extended reasoning is active
 }
 
 // ModelInfo represents the model information from Claude Code.
@@ -183,6 +196,8 @@ type StatusData struct {
 	Usage             *UsageResult   // API usage (nil when unavailable)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
 	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
+	Effort            *EffortInfo    // Effort level from Claude Code v2.1.122+ (nil when unavailable, REQ-CC2122-001)
+	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.122+ (nil when unavailable, REQ-CC2122-002)
 }
 
 // GitStatusData holds git repository status information.
@@ -238,6 +253,9 @@ const (
 
 	// REQ-CC297-003: git worktree segment (Claude Code 2.1.97+)
 	SegmentWorktree = "worktree" // Active worktree indicator [WT]
+
+	// REQ-CC2122-001: effort/thinking segment (Claude Code 2.1.122+)
+	SegmentEffortThinking = "effort_thinking" // Effort level + thinking flag indicator
 )
 
 // UsageData represents API usage information.
