@@ -220,6 +220,15 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.RateLimits = input.RateLimits
 	}
 
+	// Extract effort and thinking info from Claude Code (v2.1.122+)
+	// Nil pointer pattern: absent fields remain nil (backward compat with < v2.1.122)
+	if input != nil && input.Effort != nil {
+		data.Effort = input.Effort
+	}
+	if input != nil && input.Thinking != nil {
+		data.Thinking = input.Thinking
+	}
+
 	// Parallel collectors (may involve I/O)
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData
