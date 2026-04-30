@@ -1269,6 +1269,96 @@ func TestBuilderSetModeNormalizes(t *testing.T) {
 	}
 }
 
+// TestCollectAll_ExtractsEffortThinking verifies that collectAll correctly maps
+// effort and thinking from stdin to StatusData fields.
+// REQ-CC2122-001: collectAll passes StdinData.Effort → StatusData.Effort
+// REQ-CC2122-002: collectAll passes StdinData.Thinking → StatusData.Thinking
+// REQ-CC2122-003: nil input → StatusData.Effort/Thinking remain nil
+func TestCollectAll_ExtractsEffortThinking(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        *StdinData
+		wantEffort   *EffortInfo
+		wantThinking *ThinkingInfo
+	}{
+		{
+			name: "effort level present: propagated to StatusData",
+			input: &StdinData{
+				Effort: &EffortInfo{Level: "high"},
+			},
+			wantEffort:   &EffortInfo{Level: "high"},
+			wantThinking: nil,
+		},
+		{
+			name: "thinking enabled: propagated to StatusData",
+			input: &StdinData{
+				Thinking: &ThinkingInfo{Enabled: true},
+			},
+			wantEffort:   nil,
+			wantThinking: &ThinkingInfo{Enabled: true},
+		},
+		{
+			name: "both present: both propagated",
+			input: &StdinData{
+				Effort:   &EffortInfo{Level: "max"},
+				Thinking: &ThinkingInfo{Enabled: true},
+			},
+			wantEffort:   &EffortInfo{Level: "max"},
+			wantThinking: &ThinkingInfo{Enabled: true},
+		},
+		{
+			name:         "both absent: StatusData fields remain nil",
+			input:        &StdinData{},
+			wantEffort:   nil,
+			wantThinking: nil,
+		},
+		{
+			name:         "nil input: StatusData fields remain nil",
+			input:        nil,
+			wantEffort:   nil,
+			wantThinking: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &defaultBuilder{
+				renderer: NewRenderer("default", true, nil),
+				mode:     ModeDefault,
+			}
+			data := b.collectAll(context.Background(), tt.input)
+
+			// Verify Effort field
+			if tt.wantEffort == nil {
+				if data.Effort != nil {
+					t.Errorf("Effort = %+v, want nil", data.Effort)
+				}
+			} else {
+				if data.Effort == nil {
+					t.Fatalf("Effort is nil, want %+v", tt.wantEffort)
+				}
+				if data.Effort.Level != tt.wantEffort.Level {
+					t.Errorf("Effort.Level = %q, want %q", data.Effort.Level, tt.wantEffort.Level)
+				}
+			}
+
+			// Verify Thinking field
+			if tt.wantThinking == nil {
+				if data.Thinking != nil {
+					t.Errorf("Thinking = %+v, want nil", data.Thinking)
+				}
+			} else {
+				if data.Thinking == nil {
+					t.Fatalf("Thinking is nil, want %+v", tt.wantThinking)
+				}
+				if data.Thinking.Enabled != tt.wantThinking.Enabled {
+					t.Errorf("Thinking.Enabled = %v, want %v", data.Thinking.Enabled, tt.wantThinking.Enabled)
+				}
+			}
+		})
+	}
+}
+
 // TestCollectAll_ExtractsWorktree verifies that collectAll correctly extracts
 // git_worktree from workspace input data.
 // REQ-CC297-003: collectAll passes WorkspaceInfo.GitWorktree to StatusData.Worktree
