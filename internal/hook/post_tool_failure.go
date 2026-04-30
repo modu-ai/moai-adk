@@ -61,6 +61,9 @@ func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput
 		"category", category,
 	)
 
+	// REQ-CC2122-HOOK-001-006: PostToolUseFailure에서 outcome: "failure" 필드 포함.
+	writeHookMetric(input, "handle-post-tool-failure", "failure")
+
 	return &HookOutput{
 		SystemMessage: message,
 	}, nil
