@@ -1,0 +1,12 @@
+observability:
+  # enabled controls whether structured hook trace logging is active.
+  # When false, no trace files are written (REQ-OBS-005).
+  enabled: true
+  # trace_dir is the directory where per-session JSONL trace files are written.
+  trace_dir: .moai/logs
+  # report_dir is the directory where per-session Markdown summary reports are written.
+  report_dir: .moai/reports
+  # max_file_size_mb is the maximum trace file size in MB before rotation (REQ-OBS-006).
+  max_file_size_mb: 10
+  # retention_days is the number of days to retain trace files (REQ-OBS-007).
+  retention_days: 30

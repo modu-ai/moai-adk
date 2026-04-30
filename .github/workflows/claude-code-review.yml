@@ -1,75 +1,44 @@
-name: Claude Code Review
-
+name: Claude Code Review (PR)
 on:
   pull_request:
-    # C3 Fix: Removed 'synchronize' to prevent a full review on every commit push.
-    # 'synchronize' was triggering N reviews for N commits in a PR (unbounded cost).
-    types: [opened, ready_for_review, reopened]
-    # CI 설정 파일 변경만 있는 PR은 AI 코드 리뷰 생략 (불필요한 비용 방지)
-    paths-ignore:
-      - ".github/**"
+    types: [opened, synchronize]
 
-# I1 Fix: Added concurrency control to prevent duplicate parallel runs on the same PR.
-concurrency:
-  group: claude-code-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  claude-review:
-    # C5 Fix: Skip fork PRs. GitHub blocks `id-token: write` on cross-repository
-    # PRs for security reasons, causing OIDC token acquisition to fail with
-    # `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL`. Example: PR #690.
-    # Fork PR reviews should be triggered manually via `@claude` on `claude.yml`.
-    if: github.event.pull_request.head.repo.full_name == github.repository
-
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+  review:
     runs-on: ubuntu-latest
-    # I2 Fix: Added timeout to prevent runaway jobs (default was 360 min).
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: read
-      # C2 Fix: id-token: write is required by claude-code-action for OIDC-based
-      # authentication to Anthropic's API when using OAuth tokens.
-      # See: https://github.com/anthropics/claude-code-action
-      id-token: write
-
     steps:
-      - name: Checkout repository
-        # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v5.0.0 | SHA: 08c6903cd8c0fde910a37f88322edcfb5dd907a8 (Node 24 runtime)
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # SHA-pin broken range exclusion (REQ-CI-018.1)
+          fetch-depth: 0  # Full history for accurate diff
 
-      - name: Run Claude Code Review
-        id: claude-review
-        # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v1.0.82 | SHA: 88c168b39e7e64da0286d812b6e9fbebb6708185
-        uses: anthropics/claude-code-action@567fe954a4527e81f132d87d1bdbcc94f7737434
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          allowed_bots: 'dependabot'
-          # Use Opus model with high effort for thorough code reviews.
-          # C4 Fix: Added --max-turns to cap runaway executions and control costs.
-          # History:
-          #   C4a: 10 — initial value, hit error_max_turns on multi-file PRs
-          #        (e.g. PR #688 docs 4-language sync, run #24720853092)
-          #   C4b: 10 → 40 — reviews need to read N files across locales.
-          #   C4c: 40 → 80 — align with claude.yml (issue fixes). Code reviews
-          #        on SPEC-level changes frequently exceed 40 turns when the PR
-          #        touches cross-cutting code + tests + docs. 80 matches the
-          #        budget used by the sibling issue-fix workflow.
-          claude_args: |
-            --model claude-opus-4-7
-            --effort high
-            --max-turns 80
+      - name: Detect Language
+        id: detect
+        uses: ./.github/actions/detect-language
+
+      - name: Setup Claude
+        shell: bash
+        run: |
+          if ! command -v claude &> /dev/null; then
+            echo "::error::Claude CLI not found"
+            exit 1
+          fi
+
+      - name: Get Changed Files
+        id: changes
+        shell: bash
+        run: |
+          # Get list of changed files (excluding merge commits)
+          git diff --name-only origin/main...HEAD | grep -v '^$' > /tmp/changed_files.txt
+          echo "files_count=$(wc -l < /tmp/changed_files.txt)" >> $GITHUB_OUTPUT
+
+      - name: Run Claude Review
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}}
+        run: |
+          claude code review $(cat /tmp/changed_files.txt)

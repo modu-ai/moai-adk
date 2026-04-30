@@ -1,0 +1,42 @@
+name: Codex Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  private-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Repository Visibility
+        id: visibility
+        shell: bash
+        run: |
+          if [[ "${{ github.repository_visibility }}}}" == "public" ]]; then
+            echo "::error::Codex review is restricted to private repositories (REQ-SEC-001)"
+            echo "See OpenAI policy: https://openai.com/policies"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Codex Bootstrap
+        uses: ./.github/actions/codex-bootstrap
+        with:
+          repo-is-private: ${{ github.repository_visibility == 'private' }}}
+
+      - name: Detect Language
+        id: detect
+        uses: ./.github/actions/detect-language
+
+      - name: Run Codex Review
+        shell: bash
+        env:
+          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}}
+
+        run: |
+          codex review --diff ${{ steps.detect.outputs.language }}}
+

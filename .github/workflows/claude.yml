@@ -1,64 +1,33 @@
-name: Claude Code
-
+name: Claude Code Review (Issue)
 on:
-  # Issues only: PR lifecycle events (opened, ready_for_review, reopened) are handled in claude-code-review.yml
-  issue_comment:
-    types: [created]
   issues:
-    types: [opened, assigned]
+    types: [opened]
 
-# I1 Fix: Added concurrency control to prevent duplicate parallel runs on the same issue/PR.
-concurrency:
-  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.event.comment.id }}
-  cancel-in-progress: false
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  claude:
-    if: |
-      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude') &&
-       (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
-       (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
+  review:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: read
-      # C2 Fix: id-token: write is required by claude-code-action for OIDC-based
-      # authentication to Anthropic's API when using OAuth tokens.
-      id-token: write
     steps:
-      - name: Checkout repository
-        # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v5.0.0 | SHA: 08c6903cd8c0fde910a37f88322edcfb5dd907a8 (Node 24 runtime)
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-        with:
-          fetch-depth: 1
+      - uses: actions/checkout@v4
 
-      # C5 Fix: Restored setup-go step so @claude can run Go commands (go test, go build, etc.)
-      - name: Setup Go
-        # Tag: v6.0.0 | SHA: 44694675825211faa026b3c33043df3e48a5fa00 (Node 24 runtime)
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
-        with:
-          go-version: "1.26"
-          cache: true
+      - name: Detect Language
+        id: detect
+        uses: ./.github/actions/detect-language
 
-      - name: Run Claude Code
-        id: claude
-        # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
-        # Tag: v1.0.82 | SHA: 88c168b39e7e64da0286d812b6e9fbebb6708185
-        uses: anthropics/claude-code-action@567fe954a4527e81f132d87d1bdbcc94f7737434
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      - name: Setup Claude
+        shell: bash
+        run: |
+          if ! command -v claude &> /dev/null; then
+            echo "::error::Claude CLI not found. Install from https://claude.ai/download"
+            exit 1
+          fi
 
-          # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
-          # Use Opus model with high effort for better reasoning on issue fixes.
-          # History:
-          #   C4a: 20 — initial value, exceeded on moderate issues
-          #   C4b: 20 → 40 — still exceeded on complex multi-file issues
-          #   C4c: 40 → 80 — run #24700719267 (issue #683 LSP TypeScript detection)
-          #        hit error_max_turns at 40. Multi-language LSP investigation requires
-          #        reading many files + cross-referencing config — 80 budget is safer.
-          claude_args: |
-            --model claude-opus-4-7
-            --effort high
-            --max-turns 80
+      - name: Run Claude Review
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}}
+        run: |
+          claude code review --diff ${{ github.event.issue.body }}}

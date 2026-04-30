@@ -14,6 +14,11 @@ workflow:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
+    memory:
+        audit_enabled: true
+        index_line_cap: 200
+        stale_aggregate_threshold: 10
+        staleness_threshold_hours: 24
     team:
         auto_selection:
             min_complexity_score: 7
@@ -23,42 +28,6 @@ workflow:
         delegate_mode: true
         enabled: true
         max_teammates: 10
-        role_profiles:
-            researcher:
-                mode: plan
-                model: haiku
-                isolation: none
-                description: "Read-only codebase exploration and analysis (speed-critical)"
-            analyst:
-                mode: plan
-                model: sonnet
-                isolation: none
-                description: "Requirements analysis and validation"
-            architect:
-                mode: plan
-                model: opus
-                isolation: none
-                description: "Solution design and architecture decisions (deep reasoning)"
-            implementer:
-                mode: acceptEdits
-                model: sonnet
-                isolation: worktree
-                description: "Code implementation (backend, frontend, full-stack)"
-            tester:
-                mode: acceptEdits
-                model: sonnet
-                isolation: worktree
-                description: "Test creation and coverage validation"
-            designer:
-                mode: acceptEdits
-                model: sonnet
-                isolation: worktree
-                description: "UI/UX design with MCP design tools"
-            reviewer:
-                mode: plan
-                model: sonnet
-                isolation: none
-                description: "Code review and quality validation (context-aware analysis)"
         patterns:
             design_implementation:
                 description: Cross-layer feature implementation with UI/UX design
@@ -106,20 +75,46 @@ workflow:
                     - quality-reviewer
                     - ux-reviewer
         require_plan_approval: true
+        role_profiles:
+            analyst:
+                description: Requirements analysis and validation
+                isolation: none
+                mode: plan
+                model: sonnet
+            architect:
+                description: Solution design and architecture decisions (deep reasoning)
+                isolation: none
+                mode: plan
+                model: opus
+            designer:
+                description: UI/UX design with MCP design tools
+                isolation: worktree
+                mode: acceptEdits
+                model: sonnet
+            implementer:
+                description: Code implementation (backend, frontend, full-stack)
+                isolation: worktree
+                mode: acceptEdits
+                model: sonnet
+            researcher:
+                description: Read-only codebase exploration and analysis (speed-critical)
+                isolation: none
+                mode: plan
+                model: haiku
+            reviewer:
+                description: Code review and quality validation (context-aware analysis)
+                isolation: none
+                mode: plan
+                model: sonnet
+            tester:
+                description: Test creation and coverage validation
+                isolation: worktree
+                mode: acceptEdits
+                model: sonnet
     token_budget:
         plan: 30000
         run: 180000
         sync: 40000
-    # SPEC-V3R2-EXT-001: Typed Memory Taxonomy settings
-    memory:
-        # staleness_threshold_hours: memory files older than this trigger a staleness warning
-        staleness_threshold_hours: 24
-        # index_line_cap: MEMORY.md lines beyond this cap trigger MEMORY_INDEX_OVERFLOW
-        index_line_cap: 200
-        # stale_aggregate_threshold: stale file count at or above this collapses per-file warnings into one
-        stale_aggregate_threshold: 10
-        # audit_enabled: set to false (or env MOAI_MEMORY_AUDIT=0) to disable all taxonomy auditing
-        audit_enabled: true
     worktree:
         auto_cleanup: true
         auto_create: true

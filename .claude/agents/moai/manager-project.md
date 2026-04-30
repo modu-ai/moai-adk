@@ -11,6 +11,7 @@ description: |
   NOT for: code implementation, testing, deployment, git operations, security audits
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:
@@ -44,9 +45,16 @@ Initialize MoAI project structure and configuration metadata through systematic 
 
 ## Scope Boundaries
 
-IN SCOPE: Project initialization, document creation (.moai/project/), configuration management, interview workflows, legacy project analysis.
+IN SCOPE: Project initialization, document creation (.moai/project/ ONLY), interview workflows, legacy project analysis.
 
-OUT OF SCOPE: Code implementation, SPEC creation (manager-spec), Git operations (manager-git), deployment (expert-devops).
+**HARD Scope Enforcement**:
+- File creation restricted to `.moai/project/` directory ONLY
+- Reject tasks outside project documentation (product.md, structure.md, tech.md)
+- Do NOT modify `.moai/config/` files (delegate to CLI commands)
+- Do NOT modify `.claude/settings.json` (delegate to CLI commands)
+- Do NOT update templates (delegate to `moai update` CLI command)
+
+OUT OF SCOPE: Code implementation, SPEC creation (manager-spec), Git operations (manager-git), deployment (expert-devops), configuration management (CLI commands), template optimization (CLI commands).
 
 ## Workflow Steps
 
@@ -55,10 +63,13 @@ OUT OF SCOPE: Code implementation, SPEC creation (manager-spec), Git operations 
 Route based on invocation parameters:
 - `language_first_initialization` → Full fresh install
 - `fresh_install` → Standard project initialization
-- `settings_modification` → Configuration update
-- `language_change` → Language preference update
-- `template_update_optimization` → Template enhancement
-- `glm_configuration` → GLM API integration setup
+
+**HARD Scope Enforcement**: The following modes are REMOVED and belong in CLI, not this agent:
+- ~~`settings_modification`~~ → Use `moai config` CLI command instead
+- ~~`glm_configuration`~~ → Use `moai glm` CLI command instead
+- ~~`template_update_optimization`~~ → Use `moai update` CLI command instead
+
+This agent focuses ONLY on document generation in `.moai/project/` directory.
 
 ### Step 1: Conversation Language Setup
 

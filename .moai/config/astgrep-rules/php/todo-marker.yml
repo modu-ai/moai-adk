@@ -1,9 +1,0 @@
-id: php-todo-marker
-language: php
-severity: info
-message: "Stub implementation using die() detected. Remove before deploying to production."
-note: "die('TODO') terminates script execution without a proper response and leaks implementation intent. Replace with a proper implementation. If a temporary placeholder is needed, throw a RuntimeException with a descriptive message and handle it in the error middleware instead."
-metadata:
-  owasp: "A05:2021 - Security Misconfiguration"
-  cwe: "CWE-710"
-pattern: die("TODO")

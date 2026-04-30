@@ -1,9 +1,0 @@
-id: kotlin-null-deref
-language: kotlin
-severity: warning
-message: "Non-null assertion operator (!!) used. This throws NullPointerException if the expression is null."
-note: "The !! operator bypasses Kotlin's null-safety system. If the value turns out to be null at runtime, a NullPointerException is thrown — defeating Kotlin's primary safety guarantee. Replace with safe call (?.), the Elvis operator (?:), or requireNotNull()/checkNotNull() which give meaningful error messages. Reserve !! only for cases where you have external proof the value cannot be null, and document why."
-metadata:
-  owasp: "A04:2021 - Insecure Design"
-  cwe: "CWE-476"
-pattern: $EXPR!!

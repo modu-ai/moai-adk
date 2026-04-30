@@ -25,5 +25,10 @@ if [ -f "$HOME/go/bin/moai" ]; then
 	exec "$HOME/go/bin/moai" hook harness-observe < "$temp_file" 2>/dev/null
 fi
 
+# ~/.local/bin/moai (Linux 설치 경로)
+if [ -f "$HOME/.local/bin/moai" ]; then
+	exec "$HOME/.local/bin/moai" hook harness-observe < "$temp_file" 2>/dev/null
+fi
+
 # 미발견 - 조용히 종료 (Claude Code는 누락된 훅을 정상 처리한다)
 exit 0

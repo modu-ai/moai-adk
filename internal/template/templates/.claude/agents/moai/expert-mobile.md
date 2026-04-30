@@ -11,6 +11,7 @@ description: |
   NOT for: web frontend, backend APIs, CLI tools, DevOps/deployment, security audits, mobile CI/CD
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, Agent, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: high
 permissionMode: bypassPermissions
 memory: project
 skills:

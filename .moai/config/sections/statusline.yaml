@@ -10,4 +10,5 @@ statusline:
         moai_version: true
         model: true
         output_style: true
+        worktree: true
     theme: catppuccin-mocha

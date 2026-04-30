@@ -1,176 +1,124 @@
-# Harness Depth Configuration
-# Defines quality pipeline depth levels and auto-detection thresholds.
-# The system automatically selects the appropriate level based on SPEC complexity.
-
 harness:
-  # Default evaluator profile (used when SPEC has no evaluator_profile field)
-  default_profile: "default"
-
-  # Execution mode defaults
-  mode_defaults:
-    solo: auto            # Sub-agent mode: auto-detect level
-    team: auto            # Team mode: auto-detect level
-    cg: thorough          # CG mode: always thorough (natural Generator-Evaluator split)
-
-  # Automatic level detection (Complexity Estimator)
-  auto_detection:
-    enabled: true
-    rules:
-      minimal:
-        conditions:
-          - "file_count <= 3 AND single_domain"
-          - "spec_type in [bugfix, docs, config]"
-      standard:
-        conditions:
-          - "file_count > 3 OR multi_domain"
-          - "spec_type in [feature, refactor]"
-      thorough:
-        conditions:
-          - "security_keywords OR payment_keywords present"
-          - "spec_priority == critical"
-          - "domain in [auth, payment, migration, public_api]"
-
-  # Failure-triggered escalation
-  escalation:
-    enabled: true
-    triggers:
-      - quality_gate_fail    # Phase 2.5 FAIL -> escalate one level
-      - review_critical      # Phase 2.8 CRITICAL -> escalate to thorough
-      - test_coverage_low    # Coverage < 70% -> escalate to standard+
-    max_escalations: 2
-
-  # Effort level mapping
-  # Maps harness depth to CLAUDE_CODE_EFFORT_LEVEL for Opus 4.7 adaptive thinking.
-  # Deeper harness = more extended reasoning budget for evaluator and planner agents.
-  effort_mapping:
-    minimal:  "medium"   # Fast iteration: no extended reasoning
-    standard: "high"     # Balanced quality: moderate reasoning budget
-    thorough: "xhigh"    # Critical features: maximum reasoning budget
-
-  # [HARD] Global plan_audit override — prevents 2026-04-21 incident recurrence
-  #
-  # On 2026-04-21, 30 SPECs were generated without going through the plan-auditor
-  # gate because: (a) /moai project scope creep bypassed /moai plan entirely, and
-  # (b) the minimal level had plan_audit.enabled: false. Result: 386 cross-SPEC
-  # defects (100% FAIL rate) that required emergency remediation.
-  #
-  # This global override enforces plan_audit on ALL levels regardless of
-  # auto_detection output. The per-level plan_audit.enabled below is now
-  # treated as a hint for max_iterations only — the gate itself is always on.
-  plan_audit_global:
-    always_enabled: true              # [HARD] Cannot be disabled by auto_detection
-    enforce_gate_on_spec_creation: true  # [HARD] Blocks SPEC creation outside /moai plan
-    rationale: "SPEC-AUDIT-POSTMORTEM-2026-04-21 — prevent scope-creep SPEC generation"
-
-  # Level definitions
-  levels:
-    minimal:
-      description: "Fast iteration for simple changes"
-      skip_phases: [0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]
-      evaluator: false
-      sprint_contract: false
-      plan_audit:
-        # NOTE: plan_audit_global.always_enabled overrides this to true.
-        # This field now controls max_iterations defaults only.
+    auto_detection:
         enabled: true
-        max_iterations: 1             # Minimal level: single-pass audit (fast)
-        require_must_pass: false      # Relaxed for minimal: warn but do not block
-
-    standard:
-      description: "Balanced quality for most development"
-      skip_phases: []
-      evaluator: true
-      evaluator_mode: "final-pass"
-      sprint_contract: false
-      plan_audit:
+        rules:
+            minimal:
+                conditions:
+                    - file_count <= 3 AND single_domain
+                    - spec_type in [bugfix, docs, config]
+            standard:
+                conditions:
+                    - file_count > 3 OR multi_domain
+                    - spec_type in [feature, refactor]
+            thorough:
+                conditions:
+                    - security_keywords OR payment_keywords present
+                    - spec_priority == critical
+                    - domain in [auth, payment, migration, public_api]
+    default_profile: default
+    effort_mapping:
+        minimal: medium
+        standard: high
+        thorough: xhigh
+    escalation:
         enabled: true
-        max_iterations: 3
-        require_must_pass: true
-
-    thorough:
-      description: "Maximum quality for critical features"
-      skip_phases: []
-      evaluator: true
-      evaluator_mode: "per-sprint"
-      evaluator_profile: "strict"
-      sprint_contract: true
-      playwright_testing: true
-      plan_audit:
+        max_escalations: 2
+        triggers:
+            - quality_gate_fail
+            - review_critical
+            - test_coverage_low
+    levels:
+        minimal:
+            description: Fast iteration for simple changes
+            evaluator: false
+            plan_audit:
+                enabled: true
+                max_iterations: 1
+                require_must_pass: false
+            skip_phases:
+                - 0
+                - 0.5
+                - 2
+                - 2.5
+                - 2.75
+                - 2.8a
+                - 2.9
+                - 2.1
+            sprint_contract: false
+        standard:
+            description: Balanced quality for most development
+            evaluator: true
+            evaluator_mode: final-pass
+            plan_audit:
+                enabled: true
+                max_iterations: 3
+                require_must_pass: true
+            skip_phases: []
+            sprint_contract: false
+        thorough:
+            description: Maximum quality for critical features
+            evaluator: true
+            evaluator_mode: per-sprint
+            evaluator_profile: strict
+            plan_audit:
+                cross_validate_with_evaluator_active: true
+                enabled: true
+                max_iterations: 3
+                require_must_pass: true
+            playwright_testing: true
+            skip_phases: []
+            sprint_contract: true
+    mode_defaults:
+        cg: thorough
+        solo: auto
+        team: auto
+    model_upgrade_review:
+        checklist:
+            - action: If model handles longer coherent work, switch evaluator_mode from per-sprint to final-pass
+              affects: levels.thorough.evaluator_mode
+              id: sprint_necessity
+              question: Are per-sprint evaluations still needed, or can the model handle end-to-run evaluation?
+            - action: If no context anxiety, reduce auto_clear frequency or increase token_threshold
+              affects: workflow.yaml auto_clear.token_threshold
+              id: context_reset_necessity
+              question: Does the model still exhibit context anxiety near window limits?
+            - action: If self-evaluation is reliable, consider reducing gan_loop.max_iterations
+              affects: config.yaml gan_loop.max_iterations
+              id: evaluator_skepticism
+              question: Has model self-evaluation improved enough to reduce evaluator iterations?
+            - action: If coordination improved, consider increasing parallel agent limits
+              affects: workflow.yaml team settings
+              id: parallel_safety
+              question: Can the model safely coordinate more parallel agents without conflicts?
+            - action: Review each skipped phase — remove skip if model can handle the phase efficiently
+              affects: levels.minimal.skip_phases
+              id: guardrail_necessity
+              question: Are any minimal-level skip_phases still necessary for the upgraded model?
+            - action: If model handles complexity better, raise minimal threshold (more tasks qualify as minimal)
+              affects: auto_detection.rules
+              id: harness_level_thresholds
+              question: Should auto_detection thresholds be adjusted for improved model capabilities?
         enabled: true
-        max_iterations: 3
-        require_must_pass: true
-        cross_validate_with_evaluator_active: true
-
-  # Model Upgrade Review Process
-  # When Claude model is upgraded, review harness components for simplification.
-  # Reference: Anthropic "Harness Design for Long-Running Apps" (2025)
-  model_upgrade_review:
-    enabled: true
-    # Checklist items to evaluate after model upgrade
-    checklist:
-      - id: sprint_necessity
-        question: "Are per-sprint evaluations still needed, or can the model handle end-to-run evaluation?"
-        action: "If model handles longer coherent work, switch evaluator_mode from per-sprint to final-pass"
-        affects: "levels.thorough.evaluator_mode"
-
-      - id: context_reset_necessity
-        question: "Does the model still exhibit context anxiety near window limits?"
-        action: "If no context anxiety, reduce auto_clear frequency or increase token_threshold"
-        affects: "workflow.yaml auto_clear.token_threshold"
-
-      - id: evaluator_skepticism
-        question: "Has model self-evaluation improved enough to reduce evaluator iterations?"
-        action: "If self-evaluation is reliable, consider reducing gan_loop.max_iterations"
-        affects: "config.yaml gan_loop.max_iterations"
-
-      - id: parallel_safety
-        question: "Can the model safely coordinate more parallel agents without conflicts?"
-        action: "If coordination improved, consider increasing parallel agent limits"
-        affects: "workflow.yaml team settings"
-
-      - id: guardrail_necessity
-        question: "Are any minimal-level skip_phases still necessary for the upgraded model?"
-        action: "Review each skipped phase — remove skip if model can handle the phase efficiently"
-        affects: "levels.minimal.skip_phases"
-
-      - id: harness_level_thresholds
-        question: "Should auto_detection thresholds be adjusted for improved model capabilities?"
-        action: "If model handles complexity better, raise minimal threshold (more tasks qualify as minimal)"
-        affects: "auto_detection.rules"
-
-    # When to trigger review
-    trigger:
-      on_model_change: true           # Auto-trigger when model version changes
-      manual_command: "moai review --harness"  # Manual trigger command
-      review_interval_days: 90        # Periodic review even without model change
-
-    # Review output
-    output:
-      report_path: ".moai/reports/harness-review.md"
-      require_approval: true          # Human must approve harness changes
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Harness Learning Subsystem Configuration
-# REQ-HL-010: 학습 동작 파라미터. learning: 키 하위에 정의된다.
-# ─────────────────────────────────────────────────────────────────────────────
+        output:
+            report_path: .moai/reports/harness-review.md
+            require_approval: true
+        trigger:
+            manual_command: moai review --harness
+            on_model_change: true
+            review_interval_days: 90
+    plan_audit_global:
+        always_enabled: true
+        enforce_gate_on_spec_creation: true
+        rationale: SPEC-AUDIT-POSTMORTEM-2026-04-21 — prevent scope-creep SPEC generation
 learning:
-  # observer + learner 활성화 여부 (기본 true).
-  # false로 설정하면 RecordEvent, AggregatePatterns 모두 no-op.
-  enabled: true
-
-  # Tier 4 도달 시 자동 적용 여부 (기본 false).
-  # false이면 AskUserQuestion으로 사용자 승인 필요.
-  # REQ-HL-005: auto_apply 기본값은 반드시 false이어야 한다.
-  auto_apply: false
-
-  # tier 승격 임계값 [Observation, Heuristic, Rule, AutoUpdate].
-  # 기본값 [1, 3, 5, 10] — 변경 시 ClassifyTier 동작이 달라진다.
-  tier_thresholds: [1, 3, 5, 10]
-
-  # 자동 업데이트 횟수 제한.
-  rate_limit:
-    max_per_week: 3       # 7일 슬라이딩 윈도우 내 최대 허용 횟수
-    cooldown_hours: 24    # 업데이트 간 최소 대기 시간 (시간)
-
-  # usage-log.jsonl 보존 기간 (일).
-  log_retention_days: 90
+    auto_apply: false
+    enabled: true
+    log_retention_days: 90
+    rate_limit:
+        cooldown_hours: 24
+        max_per_week: 3
+    tier_thresholds:
+        - 1
+        - 3
+        - 5
+        - 10

@@ -1,9 +1,0 @@
-id: php-unused-var
-language: php
-severity: warning
-message: "Function returns null explicitly. Consider returning a typed value or throwing an exception instead."
-note: "Returning null from a PHP function creates an implicit nullable return type, which forces callers to perform null checks. Prefer returning a typed value, throwing an exception, or using PHP 8's null-safe operator pattern. If null is truly intended, document it with a @return ?Type PHPDoc annotation."
-metadata:
-  owasp: "A05:2021 - Security Misconfiguration"
-  cwe: "CWE-476"
-pattern: return null
