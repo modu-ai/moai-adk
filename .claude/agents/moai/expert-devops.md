@@ -11,6 +11,7 @@ description: |
   NOT for: application code, frontend UI, database schema design, security audits, performance profiling, testing strategy
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:

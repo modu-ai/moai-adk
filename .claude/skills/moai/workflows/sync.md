@@ -706,12 +706,6 @@ Update SPEC status based on lifecycle level and implementation completeness:
 - Level 2 (spec-anchored): Set status to "completed" if all requirements met, or "in-progress" if partial. Schedule next review based on quarterly maintenance policy.
 - Level 3 (spec-as-source): Set status based on implementation-SPEC alignment. Flag discrepancies for resolution.
 
-**Implementation** (SPEC-STATUS-AUTO-001 REQ-4):
-```bash
-moai spec status <SPEC-ID> completed
-```
-Failure to update status does not block the sync workflow (warning only).
-
 Record version changes, status transitions, and divergence summary. Include in sync report.
 
 #### Step 2.4.1: GitHub Issue Status Sync

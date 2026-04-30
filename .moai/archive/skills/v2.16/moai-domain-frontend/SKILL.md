@@ -1,0 +1,205 @@
+---
+name: moai-domain-frontend
+description: >
+  Frontend development specialist covering React 19, Next.js 16, Vue 3.5,
+  and modern UI/UX patterns with component architecture. Use when building
+  web UIs, implementing components, optimizing frontend performance, or
+  integrating state management.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+user-invocable: false
+metadata:
+  version: "2.1.0"
+  category: "domain"
+  status: "active"
+  updated: "2026-03-28"
+  modularized: "true"
+  tags: "frontend, react, nextjs, vue, ui, components"
+  author: "MoAI-ADK Team"
+  context7-libraries: "/facebook/react, /vercel/next.js, /vuejs/vue"
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["frontend", "UI", "component", "React", "Next.js", "Vue", "user interface", "responsive", "TypeScript", "JavaScript", "state management", "hooks", "props", "JSX", "TSX", "client-side", "browser", "DOM", "CSS", "Tailwind"]
+---
+
+# Frontend Development Specialist
+
+## Quick Reference
+
+Modern Frontend Development - Comprehensive patterns for React 19, Next.js 16, Vue 3.5.
+
+Core Capabilities:
+
+- React 19: Server components, concurrent features, cache(), Suspense
+- Next.js 16: App Router, Server Actions, ISR, Route handlers
+- Vue 3.5: Composition API, TypeScript, Pinia state management
+- Component Architecture: Design systems, compound components, CVA
+- Performance: Code splitting, dynamic imports, memoization, Framer Motion animations
+
+When to Use:
+
+- Modern web application development
+- Component library creation
+- Frontend performance optimization
+- UI/UX with accessibility
+
+---
+
+## Module Index
+
+Load specific modules for detailed patterns:
+
+### Framework Patterns
+
+React 19 Patterns in modules/react19-patterns.md:
+
+- Server Components, Concurrent features, cache() API, Form handling
+
+Next.js 16 Patterns in modules/nextjs16-patterns.md:
+
+- App Router, Server Actions, ISR, Route Handlers, Parallel Routes
+
+Vue 3.5 Patterns in modules/vue35-patterns.md:
+
+- Composition API, Composables, Reactivity, Pinia, Provide/Inject
+
+### Architecture Patterns
+
+Component Architecture in modules/component-architecture.md:
+
+- Design tokens, CVA variants, Compound components, Accessibility
+
+State Management in modules/state-management.md:
+
+- Zustand, Redux Toolkit, React Context, Pinia
+
+Performance Optimization in modules/performance-optimization.md:
+
+- Code splitting, Dynamic imports, Image optimization, Memoization
+
+AI-Assisted Frontend Patterns in modules/ai-frontend-patterns.md:
+
+- Visual reference strategy, Playwright verification, motion design, reasoning-level tuning
+
+Vercel React Best Practices in modules/vercel-react-best-practices.md:
+
+- 45 rules across 8 categories from Vercel Engineering
+- Eliminating waterfalls, bundle optimization, server-side performance
+- Client-side data fetching, re-render optimization, rendering performance
+
+---
+
+## Implementation Quickstart
+
+### React 19 Server Component
+
+Create an async page component that uses the cache function from React to memoize data fetching. Import Suspense for loading states. Define a getData function that fetches from the API endpoint with an id parameter and returns JSON. In the page component, wrap the DataDisplay component with Suspense using a Skeleton fallback, and pass the awaited getData result as the data prop.
+
+### Next.js Server Action
+
+Create a server action file with the use server directive. Import revalidatePath from next/cache and z from zod for validation. Define a schema with title (minimum 1 character) and content (minimum 10 characters). The createPost function accepts FormData, validates with safeParse, returns errors on failure, creates the post in the database, and calls revalidatePath for the posts page.
+
+### Vue Composable
+
+Create a useUser composable that accepts a userId ref parameter. Define user as a nullable ref, loading as a boolean ref, and fullName as a computed property that concatenates firstName and lastName. Use watchEffect to set loading true, fetch the user data asynchronously, assign to user ref, and set loading false. Return the user, loading, and fullName refs.
+
+### CVA Component
+
+Import cva and VariantProps from class-variance-authority. Define buttonVariants with base classes for inline-flex, items-center, justify-center, rounded-md, and font-medium. Add variants object with variant options for default (primary background with hover) and outline (border with hover accent). Add size options for sm (h-9, px-3, text-sm), default (h-10, px-4), and lg (h-11, px-8). Set defaultVariants for variant and size. Export a Button component that applies the variants to a button element className.
+
+---
+
+## Works Well With
+
+- moai-domain-backend - Full-stack development
+- moai-library-shadcn - Component library integration
+- moai-domain-uiux - UI/UX design principles
+- moai-lang-typescript - TypeScript patterns
+- moai-workflow-testing - Frontend testing
+
+---
+
+## Technology Stack
+
+Frameworks: React 19, Next.js 16, Vue 3.5, Nuxt 3
+
+Languages: TypeScript 5.9+, JavaScript ES2024
+
+Styling: Tailwind CSS 3.4+, CSS Modules, shadcn/ui
+
+Animation: Framer Motion
+
+State: Zustand, Redux Toolkit, Pinia
+
+Testing: Vitest, Testing Library, Playwright
+
+Verification: Playwright (visual inspection, functional testing)
+
+---
+
+## Resources
+
+Module files in the modules directory contain detailed patterns.
+
+For working code examples, see [examples.md](examples.md).
+
+Official documentation:
+
+- React: https://react.dev/
+- Next.js: https://nextjs.org/docs
+- Vue: https://vuejs.org/
+
+---
+
+Version: 2.1.0
+Last Updated: 2026-03-28
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Accessibility can be added after launch" | Post-launch accessibility is a rewrite, not an addition. Semantic HTML and ARIA are foundational, not decorative. |
+| "This component is too simple to need its own test" | Simple components compose into complex UIs. A broken simple component cascades failures everywhere it is used. |
+| "Server components are always faster" | Server components add network round trips. Client components with proper caching can outperform naive server components. Measure, do not assume. |
+| "I will just use any as the TypeScript type for now" | any disables the type checker for everything downstream. One any infects the entire call chain. |
+| "Global CSS is fine for this project" | Global CSS creates specificity conflicts as the project grows. Scoped styles (CSS modules, Tailwind) prevent collisions. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Component renders user-provided HTML without sanitization (XSS vector)
+- TypeScript `any` type used in component props or state definitions
+- No loading or error states defined for async data fetching components
+- Accessibility attributes (aria-label, role) missing from interactive elements
+- Bundle size increased by more than 50KB without justification
+- Component has more than 300 lines without extraction into sub-components
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] All interactive elements have accessible names (aria-label or visible text)
+- [ ] Components handle loading, error, and empty states
+- [ ] No TypeScript `any` in new or modified code (show grep results)
+- [ ] Bundle size impact measured for new dependencies (show analyzer output)
+- [ ] User-provided content rendered with proper escaping or sanitization
+- [ ] Components under 300 lines or decomposed with clear sub-component boundaries
+
+<!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — router-only skill pointing to moai-ref-react-patterns and moai-library-nextra
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 262
+**Refactor scope** (deferred to future sub-SPEC):
+- Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
+- Extract framework-specific deep-dives into Level-3 modules
+- Remove content that duplicates coverage in library and reference skills
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

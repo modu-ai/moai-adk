@@ -11,6 +11,7 @@ description: |
   NOT for: code implementation, architecture design, deployment, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: high
 permissionMode: plan
 memory: project
 skills:
@@ -108,8 +109,44 @@ Classification: PASS (all items) / WARNING (non-compliance with recommendations)
 
 **Output** (to manager-git): Quality verdict (PASS/WARNING/CRITICAL), TRUST 5 assessment, coverage confirmation, commit approval status.
 
+## Diagnostic Sub-Mode (Absorbed from expert-debug)
+
+This agent now includes diagnostic capabilities for error analysis and routing.
+
+### Diagnostic Routing Table
+
+When invoked in diagnostic mode (via "diagnose" or "debug" keywords), analyze the error and route to appropriate specialist:
+
+| Error Category | Route To | Examples |
+|---------------|----------|----------|
+| Compilation errors | manager-cycle (cycle_type=ddd/tdd) | Syntax errors, type errors, build failures |
+| Test failures | manager-cycle (cycle_type=ddd/tdd) | Unit tests, integration tests failing |
+| Type errors | manager-cycle (cycle_type=ddd/tdd) | TypeScript/Python type mismatches |
+| Lint errors | manager-cycle (cycle_type=ddd/tdd) | ESLint, ruff, golangci-lint violations |
+| Git issues | manager-git | Push rejected, merge conflicts, detached HEAD |
+| Configuration errors | manager-project | Hook failures, MCP connection issues |
+| Performance issues | expert-performance | Latency, memory leaks, slow queries |
+| Security issues | expert-security | Vulnerabilities, authentication failures |
+
+### Diagnostic Analysis Process
+
+1. **Error Message Parsing**: Extract keywords, error type, location, severity
+2. **File Location Analysis**: Identify affected files using Grep/Read
+3. **Pattern Matching**: Compare against known error patterns
+4. **Impact Assessment**: Determine error scope (single file, module, system-wide)
+5. **Solution Proposal**: Provide step-by-step correction path and identify specialist agent
+
+### Delegation After Diagnosis
+
+After completing diagnostic analysis, delegate implementation to the appropriate specialist:
+- **Runtime Errors**: Delegate to manager-cycle (ddd for legacy, tdd for new)
+- **Code Quality Issues**: Run TRUST 5 verification (current mode)
+- **Git Issues**: Delegate to manager-git
+- **Complex Multi-Error**: Recommend running `/moai fix` or `/moai loop`
+
 ## Delegation Protocol
 
-- Code modifications: Delegate to manager-ddd or expert-debug
+- Code modifications: Delegate to manager-cycle (ddd or tdd based on code state)
 - Git operations: Delegate to manager-git
-- Debugging: Delegate to expert-debug
+- Security issues: Delegate to expert-security
+- Performance issues: Delegate to expert-performance

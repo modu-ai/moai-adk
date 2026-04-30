@@ -183,6 +183,13 @@ secret-*.*
 .moai/worktrees/
 
 # ===========================================
+# Plan Audit Reports (local artifacts)
+# See SPEC-WF-AUDIT-GATE-001
+# ===========================================
+.moai/reports/plan-audit/*.md
+!.moai/reports/plan-audit/.gitkeep
+
+# ===========================================
 # Evolution Telemetry (local-only usage data)
 # Learnings and new-skills are git-tracked for team sharing.
 # ===========================================
@@ -212,14 +219,10 @@ dist-ssr/
 .netlify/
 .firebase/
 
-# ===========================================
-# docs-site Hugo build artifacts
-# ===========================================
+# User Custom Patterns (preserved by moai update)
 /docs-site/public/
 /docs-site/resources/_gen/
 /docs-site/.hugo_build.lock
-
-# User Custom Patterns (preserved by moai update)
 /moai
 /moai_test
 /quality.test
@@ -233,12 +236,7 @@ pencil/
 .moai/logs/
 .moai/state/
 .moai/reports/*.md
-# Plan audit reports are local artifacts; only .gitkeep is tracked (SPEC-WF-AUDIT-GATE-001)
-.moai/reports/plan-audit/*.md
-!.moai/reports/plan-audit/.gitkeep
 .moai/temp/
 temp/
-
-# docs-site Hugo build artifacts (root stray outputs)
 /public/
 /.hugo_build.lock

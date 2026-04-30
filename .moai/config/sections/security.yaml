@@ -1,23 +1,11 @@
-# Security Hardening Configuration (SPEC-SECURITY-001)
-# Extra patterns extend (never replace) DefaultSecurityPolicy hardcoded patterns.
-# Uses SOLID O-Principle: extend via config without modifying core.
-
 security:
-  # Additional dangerous Bash command patterns (regex, case-insensitive).
-  # These are APPENDED to the built-in deny patterns.
-  extra_dangerous_bash_patterns:
-    - 'curl\s+.*\|\s*(ba)?sh'      # curl pipe to shell
-    - 'wget\s+.*\|\s*(ba)?sh'      # wget pipe to shell
-    - 'chmod\s+777'                  # world-writable permissions
-    - 'rm\s+-rf\s+/[^.]'            # rm -rf targeting root paths
-    - 'mkfs\.'                       # filesystem format commands
-    - 'dd\s+if=.*of=/dev/'          # raw disk write
-
-  # Additional file deny patterns (regex, case-insensitive).
-  extra_deny_patterns: []
-
-  # Additional file ask patterns (regex, case-insensitive).
-  extra_ask_patterns: []
-
-  # Additional sensitive content patterns (regex, case-insensitive).
-  extra_sensitive_content_patterns: []
+    extra_ask_patterns: []
+    extra_dangerous_bash_patterns:
+        - curl\s+.*\|\s*(ba)?sh
+        - wget\s+.*\|\s*(ba)?sh
+        - chmod\s+777
+        - rm\s+-rf\s+/[^.]
+        - mkfs\.
+        - dd\s+if=.*of=/dev/
+    extra_deny_patterns: []
+    extra_sensitive_content_patterns: []

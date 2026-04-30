@@ -4,13 +4,14 @@ description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
   MUST INVOKE when ANY of these keywords appear in user request:
   --deepthink flag: Activate Sequential Thinking MCP for deep analysis of git strategies, branch management, and version control workflows.
-  EN: git, commit, push, pull, branch, PR, pull request, merge, release, version control, checkout, rebase, stash
-  KO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스
-  JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
-  ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
+  EN: git, commit, push, pull, branch, merge, release, rebase
+  KO: git, 커밋, 푸시, 풀, 브랜치, 머지, 릴리즈, 리베이스
+  JA: git, コミット, プッシュ, プル, ブランチ, マージ, リリース
+  ZH: git, 提交, 推送, 拉取, 分支, 合并, 发布
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
 model: haiku
+effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:

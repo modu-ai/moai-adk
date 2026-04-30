@@ -1,8 +1,4 @@
 ralph:
-    # Lint-as-Instruction: inject LSP diagnostics as systemMessage (REQ-LAI-001)
-    lint_as_instruction: true
-    # Include warnings in systemMessage when no errors (REQ-LAI-006). Default: false.
-    warn_as_instruction: false
     ast_grep:
         auto_fix: false
         config_path: .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml
@@ -20,6 +16,7 @@ ralph:
         stop_loop_controller:
             check_completion: true
             enabled: true
+    lint_as_instruction: true
     loop:
         auto_fix: false
         completion:
@@ -35,3 +32,4 @@ ralph:
         graceful_degradation: true
         poll_interval_ms: 1000
         timeout_seconds: 15
+    warn_as_instruction: false

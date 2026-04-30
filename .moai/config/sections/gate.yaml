@@ -1,0 +1,32 @@
+gate:
+  # enabled controls whether the quality gate runs before git commit.
+  # The gate auto-detects project language (Go, Node.js, Python, Rust)
+  # and runs the appropriate toolchain. Set to false to skip all checks.
+  enabled: true
+
+  # skip_tests skips the test step when true.
+  # Useful during rapid development cycles when you want quick commits.
+  skip_tests: false
+
+  timeouts:
+    # vet is the maximum seconds allowed for the lint/vet step
+    vet: 30
+    # lint is the maximum seconds allowed for the linter step
+    lint: 60
+    # test is the maximum seconds allowed for the test step
+    test: 120
+
+  # ast_grep_gate controls structural code pattern scanning (SPEC-SLQG-001).
+  # Scans for domain-specific anti-patterns (hardcoding, duplication, etc.)
+  # using ast-grep rules in the specified directory.
+  ast_grep_gate:
+    # enabled controls whether ast-grep scanning runs in the quality gate.
+    # Requires sg CLI to be installed. Degrades gracefully if unavailable.
+    enabled: true
+    # rules_dir is the path to ast-grep rule YAML files (relative to project root).
+    rules_dir: ".moai/config/astgrep-rules"
+    # block_on_error blocks commits when error-severity rules are violated.
+    block_on_error: true
+    # warn_only_mode overrides block_on_error: never block, only warn.
+    # Useful during initial rule adoption period.
+    warn_only_mode: false

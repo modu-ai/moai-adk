@@ -11,6 +11,7 @@ description: |
   NOT for: new feature development, architecture design, security audits, DevOps, frontend UI design
 tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: high
 permissionMode: bypassPermissions
 memory: project
 skills:
@@ -71,12 +72,26 @@ OUT OF SCOPE:
 - Execute multi-layer profiling: application (CPU, memory, I/O), database (queries, locks, indexes), network (latency, bandwidth)
 - Analyze profiling data to identify bottlenecks
 
-### Step 3: Execute Load Testing
+### Step 3: Execute Load Testing (Enhanced Capability)
 
 - Design test scenarios based on production usage patterns
 - Run load tests with gradual load increase
 - Capture metrics: throughput (req/s), latency (p50/p95/p99/max), error rates (4xx/5xx), resource usage
 - Identify performance limits and saturation points
+
+**Load Testing Tools** (absorbed from expert-testing):
+- **k6**: JavaScript-based load testing, developer-friendly, good for API testing
+- **Locust**: Python-based, distributed load testing, realistic user simulation
+- **Apache JMeter**: Java-based, comprehensive protocol support, GUI for test design
+- **Gatling**: Scala-based, high-performance, excellent for CI/CD integration
+- **Artillery**: Node.js-based, serverless load testing, good for FaaS applications
+
+**Load Test Execution**:
+- Select appropriate tool based on stack and requirements
+- Design realistic user journeys and scenarios
+- Configure ramp-up patterns (gradual, spike, stress, endurance tests)
+- Execute tests in isolated environment (staging or dedicated load test environment)
+- Capture detailed metrics and generate reports
 
 ### Step 4: Develop Optimization Strategy
 

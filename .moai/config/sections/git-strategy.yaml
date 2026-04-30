@@ -1,32 +1,4 @@
 git_strategy:
-    # Enhanced GitHub Flow (CLAUDE.local.md §18)
-    # v2.14.0 이후 공식 채택. Gitflow 비채택 결정.
-    workflow_model: enhanced-github-flow
-    base_branch: main
-    merge_strategies:
-        feature: squash      # feat/ fix/ docs/ chore/ refactor/ plan/ → squash
-        release: merge       # release/vX.Y.Z → main: 반드시 merge commit (SPEC history 보존)
-        hotfix: merge        # hotfix/vX.Y.Z-* → main: merge commit
-        dependabot: squash   # auto-merge squash
-    branch_types:
-        feature: "feat/SPEC-"
-        fix: "fix/"
-        docs: "docs/"
-        chore: "chore/"
-        ci: "ci/"
-        refactor: "refactor/"
-        audit: "audit/"
-        release: "release/"
-        hotfix: "hotfix/"
-        plan: "plan/"
-    release_cadence:
-        patch: "as-needed (critical fix only)"
-        minor: "1-2 weeks (SPEC cluster)"
-        major: "3-6 months (breaking changes)"
-    release_tools:
-        tag_script: "scripts/release.sh"
-        make_target: "make release V=vX.Y.Z"
-        automation: "goreleaser (on tag push)"
     github_username: ""
     gitlab:
         instance_url: ""

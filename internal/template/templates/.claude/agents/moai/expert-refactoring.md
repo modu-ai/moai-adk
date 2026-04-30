@@ -11,8 +11,9 @@ description: |
   NOT for: new feature development, bug fixes, security audits, DevOps, testing strategy
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-effort: high
+effort: xhigh
 permissionMode: bypassPermissions
+isolation: worktree
 memory: project
 skills:
   - moai-foundation-core

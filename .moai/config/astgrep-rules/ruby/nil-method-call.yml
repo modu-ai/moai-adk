@@ -1,9 +1,0 @@
-id: ruby-nil-method-call
-language: ruby
-severity: error
-message: "Calling a method directly on nil raises NoMethodError at runtime."
-note: "In Ruby, NilClass does not respond to most methods. Use the safe navigation operator (&.) or add an explicit nil guard before calling methods on values that may be nil. Example: obj&.method instead of obj.method."
-metadata:
-  owasp: "A04:2021 - Insecure Design"
-  cwe: "CWE-476"
-pattern: nil.length
