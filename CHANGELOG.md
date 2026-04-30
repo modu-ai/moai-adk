@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **statusline (SPEC-CC2122-STATUSLINE-001)**: Claude Code v2.1.122 `effort.level` and `thinking.enabled` indicator
+  support in moai statusline. Compact segment rendering (e.g. `e:high·t`), silent omit on absent fields, graceful
+  fallback for unknown enum values. 11/11 GWT scenarios PASS, 87.0% coverage, TDD methodology (M2-M6).
 - **`internal/hook/memo/taxonomy` sub-package**: 4-type memory enum (`user | feedback | project | reference`) with
   `ParseFile`, `ValidateType`, `DetectStale`, `AggregateWarning`, `AuditFile`, `AuditIndex`, `AuditDuplicates`.
   91.7% test coverage. Source: SPEC-V3R2-EXT-001.

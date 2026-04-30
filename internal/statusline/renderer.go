@@ -249,12 +249,36 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
+	// Effort/thinking indicator (Claude Code v2.1.122+, REQ-CC2122-001/002)
+	if r.isSegmentEnabled(SegmentEffortThinking) {
+		if et := renderEffortThinking(data); et != "" {
+			segs = append(segs, et)
+		}
+	}
+
 	// Output style (integrated into L1)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
 		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
 	}
 
 	return r.joinSegments(segs)
+}
+
+// renderEffortThinking renders the effort/thinking indicator segment.
+// Returns "e:LEVEL" + optional "·t" suffix when either field is present and meaningful.
+// Returns "" when both are absent or effort level is empty (silent omit, REQ-CC2122-003).
+func renderEffortThinking(data *StatusData) string {
+	if data.Effort == nil && data.Thinking == nil {
+		return ""
+	}
+	var result string
+	if data.Effort != nil && data.Effort.Level != "" {
+		result = "e:" + data.Effort.Level
+	}
+	if data.Thinking != nil && data.Thinking.Enabled {
+		result += "·t"
+	}
+	return result
 }
 
 // renderBarsInline renders CW/5H/7D bars inline on a single line (default mode L2).
