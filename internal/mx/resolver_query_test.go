@@ -637,21 +637,7 @@ func TestFormatJSON(t *testing.T) {
 	}
 }
 
-// FormatMarkdown은 QueryResult를 마크다운 테이블로 변환합니다 (REQ-SPC-004-031).
-// AC-SPC-004-10 검증용 — 실제 구현은 resolver_query.go에 있어야 함.
-func FormatMarkdown(result QueryResult) string {
-	// RED 단계: 미구현 stub
-	// GREEN 단계에서 실제 구현으로 교체됩니다
-	return ""
-}
-
-// FormatTable은 QueryResult를 사람이 읽을 수 있는 테이블 형식으로 변환합니다 (REQ-SPC-004-004).
-// AC-SPC-004-06 검증용 — 실제 구현은 resolver_query.go에 있어야 함.
-func FormatTable(result QueryResult) string {
-	// RED 단계: 미구현 stub
-	// GREEN 단계에서 실제 구현으로 교체됩니다
-	return ""
-}
+// FormatMarkdown 및 FormatTable은 resolver_query.go에 구현되어 있습니다.
 
 // TestResolve_LargeSidecarTruncation은 대규모 사이드카에서 자동 limit 적용을 테스트합니다.
 // AC-SPC-004-08의 추가 검증
@@ -821,6 +807,179 @@ func TestResolve_SinceFilter(t *testing.T) {
 
 	if len(result.Tags) != 1 {
 		t.Errorf("since 필터 결과: 기대 1, 실제 %d", len(result.Tags))
+	}
+}
+
+// TestResolveLimit_MaxEnforcement는 limit 최대값 강제를 테스트합니다.
+func TestResolveLimit_MaxEnforcement(t *testing.T) {
+	stateDir := t.TempDir()
+	tags := make([]Tag, 5)
+	for i := range tags {
+		tags[i] = makeTag(MXNote, "file.go", "노트", i+1)
+	}
+	mgr := buildTestSidecar(t, stateDir, tags)
+	resolver := NewResolver(mgr)
+
+	// MaxLimit 초과 시 MaxLimit으로 클리핑
+	q := Query{Limit: MaxLimit + 1}
+	result, err := resolver.Resolve(q)
+	if err != nil {
+		t.Fatalf("오류: %v", err)
+	}
+	// 태그가 5개뿐이므로 5개 반환
+	if len(result.Tags) > 5 {
+		t.Errorf("태그 수 초과: %d", len(result.Tags))
+	}
+}
+
+// TestResolveLimit_Normalization은 resolveLimit 함수를 테스트합니다.
+func TestResolveLimit_Normalization(t *testing.T) {
+	if resolveLimit(0) != DefaultLimit {
+		t.Errorf("0 → DefaultLimit 기대")
+	}
+	if resolveLimit(-1) != DefaultLimit {
+		t.Errorf("-1 → DefaultLimit 기대")
+	}
+	if resolveLimit(MaxLimit+1) != MaxLimit {
+		t.Errorf("MaxLimit+1 → MaxLimit 기대")
+	}
+	if resolveLimit(50) != 50 {
+		t.Errorf("50 → 50 기대")
+	}
+}
+
+// TestSidecarUnavailableError는 오류 메시지를 테스트합니다.
+func TestSidecarUnavailableError(t *testing.T) {
+	e := &SidecarUnavailableError{}
+	if e.Error() == "" {
+		t.Error("오류 메시지가 비어있음")
+	}
+	if e.Unwrap() != nil {
+		t.Error("Cause 없을 때 Unwrap()은 nil 기대")
+	}
+
+	inner := os.ErrNotExist
+	e2 := &SidecarUnavailableError{Cause: inner}
+	if e2.Unwrap() != inner {
+		t.Error("Unwrap()이 내부 오류를 반환해야 함")
+	}
+}
+
+// TestInvalidQueryError는 InvalidQueryError 메시지를 테스트합니다.
+func TestInvalidQueryError(t *testing.T) {
+	e := &InvalidQueryError{Field: "kind", Value: "bad", Message: "test message"}
+	if !strings.Contains(e.Error(), "InvalidQuery") {
+		t.Errorf("오류 메시지에 'InvalidQuery' 없음: %s", e.Error())
+	}
+}
+
+// TestLSPRequiredError는 LSPRequiredError 메시지를 테스트합니다.
+func TestLSPRequiredError(t *testing.T) {
+	e := &LSPRequiredError{Language: "go"}
+	if !strings.Contains(e.Error(), "LSPRequired") {
+		t.Errorf("오류 메시지에 'LSPRequired' 없음: %s", e.Error())
+	}
+}
+
+// TestFormatTable_Empty는 빈 결과 테이블 출력을 테스트합니다.
+func TestFormatTable_Empty(t *testing.T) {
+	result := QueryResult{Tags: []TagResult{}, TotalCount: 0}
+	table := FormatTable(result)
+	if !strings.Contains(table, "결과 없음") {
+		t.Errorf("빈 결과 메시지 없음: %s", table)
+	}
+}
+
+// TestFormatMarkdown_WithTruncation은 TruncationNotice가 있는 마크다운 출력을 테스트합니다.
+func TestFormatMarkdown_WithTruncation(t *testing.T) {
+	result := QueryResult{
+		Tags:             []TagResult{},
+		TruncationNotice: true,
+		TotalCount:       500,
+	}
+	md := FormatMarkdown(result)
+	if !strings.Contains(md, "TruncationNotice") {
+		t.Errorf("TruncationNotice 없음: %s", md)
+	}
+}
+
+// TestTruncateStr는 문자열 잘라내기를 테스트합니다.
+func TestTruncateStr(t *testing.T) {
+	// 짧은 문자열: 변경 없음
+	got := truncateStr("short", 20)
+	if got != "short" {
+		t.Errorf("기대 'short', 실제 %q", got)
+	}
+
+	// 긴 문자열: 잘라내기
+	long := "abcdefghijklmnopqrstuvwxyz"
+	got = truncateStr(long, 10)
+	if len(got) > 10 {
+		t.Errorf("잘라낸 문자열이 10자 초과: %q", got)
+	}
+	if !strings.HasSuffix(got, "...") {
+		t.Errorf("잘라낸 문자열이 '...'로 끝나야 함: %q", got)
+	}
+}
+
+// TestResolve_ResolveAll은 기존 ResolveAll API를 테스트합니다.
+func TestResolve_ResolveAll(t *testing.T) {
+	stateDir := t.TempDir()
+	anchor1 := makeAnchorTag("pkg/a.go", "anchor-1", "앵커 1", 1)
+	anchor2 := makeAnchorTag("pkg/b.go", "anchor-2", "앵커 2", 1)
+	mgr := buildTestSidecar(t, stateDir, []Tag{anchor1, anchor2})
+	resolver := NewResolver(mgr)
+
+	// 두 anchorID 모두 존재
+	tags, err := resolver.ResolveAll([]string{"anchor-1", "anchor-2"})
+	if err != nil {
+		t.Fatalf("ResolveAll 오류: %v", err)
+	}
+	if len(tags) != 2 {
+		t.Errorf("ResolveAll 결과: 기대 2, 실제 %d", len(tags))
+	}
+
+	// 존재하지 않는 anchorID 포함
+	_, err = resolver.ResolveAll([]string{"anchor-1", "nonexistent"})
+	if err == nil {
+		t.Error("존재하지 않는 anchorID 포함 시 오류 기대")
+	}
+}
+
+// TestResolve_ListAnchors는 모든 ANCHOR 태그 나열을 테스트합니다.
+func TestResolve_ListAnchors(t *testing.T) {
+	stateDir := t.TempDir()
+	tags := []Tag{
+		makeAnchorTag("b.go", "anchor-b", "앵커 B", 1),
+		makeAnchorTag("a.go", "anchor-a", "앵커 A", 1),
+		makeTag(MXNote, "c.go", "노트", 1),
+	}
+	mgr := buildTestSidecar(t, stateDir, tags)
+	resolver := NewResolver(mgr)
+
+	anchors := resolver.ListAnchors()
+	if len(anchors) != 2 {
+		t.Errorf("ListAnchors: 기대 2, 실제 %d", len(anchors))
+	}
+
+	// 파일 경로 순 정렬 확인
+	if len(anchors) == 2 && anchors[0].File > anchors[1].File {
+		t.Error("파일 경로 오름차순 정렬 기대")
+	}
+}
+
+// TestResolve_AuditLowFanIn는 낮은 fan-in ANCHOR 목록을 테스트합니다.
+func TestResolve_AuditLowFanIn(t *testing.T) {
+	stateDir := t.TempDir()
+	tags := []Tag{
+		makeAnchorTag("a.go", "anchor-a", "앵커 A", 1),
+	}
+	mgr := buildTestSidecar(t, stateDir, tags)
+	resolver := NewResolver(mgr)
+
+	lowFanIn := resolver.AuditLowFanIn()
+	if len(lowFanIn) == 0 {
+		t.Error("AuditLowFanIn: 앵커가 있는데 빈 결과")
 	}
 }
 

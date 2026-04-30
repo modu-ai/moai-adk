@@ -1,9 +1,15 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
 // newMxQueryCmd는 'moai mx query' 서브커맨드를 생성합니다.
@@ -33,19 +39,132 @@ func newMxQueryCmd() *cobra.Command {
   moai mx query --danger concurrency
   moai mx query --file-prefix internal/auth/ --format table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// RED 단계: 미구현 stub
-			// GREEN 단계에서 실제 구현으로 교체됩니다
-			_ = specID
-			_ = kind
-			_ = fanInMin
-			_ = danger
-			_ = filePrefix
-			_ = since
-			_ = limit
-			_ = offset
-			_ = format
-			_ = includeTests
-			return fmt.Errorf("not implemented")
+			// 프로젝트 루트 확인
+			projectRoot, err := findProjectRootFn()
+			if err != nil {
+				return fmt.Errorf("프로젝트 루트 탐색 실패: %w", err)
+			}
+
+			// KIND 유효성 검증 (REQ-SPC-004-041)
+			if kind != "" {
+				validKinds := map[string]bool{
+					"note": true, "warn": true, "anchor": true,
+					"todo": true, "legacy": true,
+					"NOTE": true, "WARN": true, "ANCHOR": true,
+					"TODO": true, "LEGACY": true,
+				}
+				if !validKinds[kind] {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "InvalidQuery: --kind 값 '%s'이 잘못되었습니다. 허용 값: note, warn, anchor, todo, legacy\n", kind)
+					return &mx.InvalidQueryError{
+						Field:   "kind",
+						Value:   kind,
+						Message: "허용 값: note, warn, anchor, todo, legacy",
+					}
+				}
+			}
+
+			// SINCE 파싱
+			var sinceTime time.Time
+			if since != "" {
+				parsed, err := time.Parse(time.RFC3339, since)
+				if err != nil {
+					return &mx.InvalidQueryError{
+						Field:   "since",
+						Value:   since,
+						Message: "RFC3339 형식 필요 (예: 2006-01-02T15:04:05Z)",
+					}
+				}
+				sinceTime = parsed
+			}
+
+			// FORMAT 유효성 검증
+			validFormats := map[string]bool{"json": true, "table": true, "markdown": true}
+			if format != "" && !validFormats[format] {
+				return &mx.InvalidQueryError{
+					Field:   "format",
+					Value:   format,
+					Message: "허용 값: json, table, markdown",
+				}
+			}
+			if format == "" {
+				format = "json"
+			}
+
+			// 사이드카 경로 확인
+			stateDir := filepath.Join(projectRoot, ".moai", "state")
+			mgr := mx.NewManager(stateDir)
+
+			// 사이드카 파일 존재 확인 (REQ-SPC-004-013)
+			sidecarPath := filepath.Join(stateDir, mx.SidecarFileName)
+			if _, err := os.Stat(sidecarPath); os.IsNotExist(err) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+					"SidecarUnavailable: 사이드카 인덱스가 없습니다 — '/moai mx --full' 를 실행하여 인덱스를 재빌드하세요\n")
+				return fmt.Errorf("SidecarUnavailable: 사이드카 인덱스 없음")
+			}
+
+			// Resolver 생성
+			resolver := mx.NewResolver(mgr)
+
+			// KIND 문자열을 TagKind로 변환
+			var tagKind mx.TagKind
+			if kind != "" {
+				switch kind {
+				case "note", "NOTE":
+					tagKind = mx.MXNote
+				case "warn", "WARN":
+					tagKind = mx.MXWarn
+				case "anchor", "ANCHOR":
+					tagKind = mx.MXAnchor
+				case "todo", "TODO":
+					tagKind = mx.MXTodo
+				case "legacy", "LEGACY":
+					tagKind = mx.MXLegacy
+				}
+			}
+
+			// 쿼리 실행
+			query := mx.Query{
+				SpecID:       specID,
+				Kind:         tagKind,
+				FanInMin:     fanInMin,
+				Danger:       danger,
+				FilePrefix:   filePrefix,
+				Since:        sinceTime,
+				Limit:        limit,
+				Offset:       offset,
+				IncludeTests: includeTests,
+			}
+
+			result, err := resolver.Resolve(query)
+			if err != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%v\n", err)
+				return err
+			}
+
+			// 출력 형식별 렌더링
+			switch format {
+			case "table":
+				_, _ = fmt.Fprint(cmd.OutOrStdout(), mx.FormatTable(result))
+
+			case "markdown":
+				_, _ = fmt.Fprint(cmd.OutOrStdout(), mx.FormatMarkdown(result))
+
+			default: // json
+				data, err := json.MarshalIndent(result.Tags, "", "  ")
+				if err != nil {
+					return fmt.Errorf("JSON 직렬화 실패: %w", err)
+				}
+
+				if result.TruncationNotice {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+						"TruncationNotice: 전체 %d개 중 %d개만 표시됩니다. --limit 플래그로 더 보기 가능.\n",
+						result.TotalCount, len(result.Tags))
+				}
+
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			}
+
+			return nil
 		},
 	}
 

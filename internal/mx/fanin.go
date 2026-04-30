@@ -1,7 +1,11 @@
 package mx
 
 import (
+	"bufio"
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 // FanInCounter는 @MX:ANCHOR 태그의 코드 참조 수를 계산하는 인터페이스입니다.
@@ -23,10 +27,95 @@ type TextualFanInCounter struct {
 	ProjectRoot string
 }
 
+// isTestFile는 파일 경로가 테스트 파일인지 확인합니다 (REQ-SPC-004-040).
+// 테스트 파일 판별 기준: _test.go 접미사 또는 tests/, fixtures/ 디렉토리 하위.
+func isTestFile(filePath string) bool {
+	base := filepath.Base(filePath)
+	if strings.HasSuffix(base, "_test.go") {
+		return true
+	}
+
+	// 경로에 tests/ 또는 fixtures/ 디렉토리가 포함되면 테스트 파일로 간주
+	parts := strings.Split(filepath.ToSlash(filePath), "/")
+	for _, part := range parts {
+		if part == "tests" || part == "fixtures" || part == "testdata" {
+			return true
+		}
+	}
+	return false
+}
+
 // Count는 텍스트 검색을 통해 AnchorID의 참조 수를 계산합니다.
 // 결과의 fan_in_method는 항상 "textual"입니다.
 func (c *TextualFanInCounter) Count(_ context.Context, tag Tag, projectRoot string, excludeTests bool) (int, string, error) {
-	// RED 단계: 미구현 stub
-	// GREEN 단계에서 실제 구현으로 교체됩니다
-	return 0, "textual", nil
+	if tag.AnchorID == "" {
+		return 0, "textual", nil
+	}
+
+	if projectRoot == "" {
+		projectRoot = c.ProjectRoot
+	}
+
+	if projectRoot == "" {
+		return 0, "textual", nil
+	}
+
+	count := 0
+
+	// 프로젝트 루트를 재귀적으로 스캔하여 AnchorID 참조를 검색
+	err := filepath.Walk(projectRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // 오류 무시하고 계속
+		}
+
+		if info.IsDir() {
+			// vendor, node_modules 등 제외
+			base := filepath.Base(path)
+			if base == "vendor" || base == "node_modules" || base == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// 태그 자체 파일 제외 (자기 참조)
+		if path == tag.File {
+			return nil
+		}
+
+		// 테스트 파일 제외 (excludeTests=true인 경우)
+		if excludeTests && isTestFile(path) {
+			return nil
+		}
+
+		// 파일에서 AnchorID 참조 검색
+		refs := countReferencesInFile(path, tag.AnchorID)
+		count += refs
+		return nil
+	})
+
+	if err != nil {
+		return 0, "textual", nil
+	}
+
+	return count, "textual", nil
+}
+
+// countReferencesInFile는 파일에서 심볼 이름의 등장 횟수를 셉니다.
+// 단순 문자열 검색이므로 주석/문자열 내 오탐 가능성이 있습니다.
+func countReferencesInFile(filePath, symbol string) int {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return 0
+	}
+	defer func() { _ = f.Close() }()
+
+	count := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, symbol) {
+			count++
+		}
+	}
+	return count
 }

@@ -59,26 +59,39 @@ func NewDangerCategoryMatcher(config DangerCategoryConfig) *DangerCategoryMatche
 // Match는 reason 텍스트가 category의 패턴 중 하나와 매칭되는지 확인합니다.
 // 패턴 매칭은 대소문자 구분 없는 부분 문자열 검색을 사용합니다 (REQ-SPC-004-012).
 func (m *DangerCategoryMatcher) Match(reason, category string) bool {
-	// RED 단계: 미구현 stub
-	_ = reason
-	_ = category
+	patterns, ok := m.config.Categories[category]
+	if !ok {
+		return false
+	}
+
+	lowerReason := strings.ToLower(reason)
+	for _, pattern := range patterns {
+		if strings.Contains(lowerReason, strings.ToLower(pattern)) {
+			return true
+		}
+	}
 	return false
 }
 
 // CategoryOf는 reason 텍스트에 매칭되는 첫 번째 카테고리를 반환합니다.
 // 매칭되는 카테고리가 없으면 빈 문자열을 반환합니다.
 func (m *DangerCategoryMatcher) CategoryOf(reason string) string {
-	// RED 단계: 미구현 stub
-	_ = reason
+	lowerReason := strings.ToLower(reason)
+	for cat, patterns := range m.config.Categories {
+		for _, pattern := range patterns {
+			if strings.Contains(lowerReason, strings.ToLower(pattern)) {
+				return cat
+			}
+		}
+	}
 	return ""
 }
 
 // ValidateCategory는 주어진 category가 알려진 카테고리인지 확인합니다.
 // 알려진 카테고리가 아니면 false를 반환합니다.
 func (m *DangerCategoryMatcher) ValidateCategory(category string) bool {
-	// RED 단계: 미구현 stub
-	_ = strings.ToLower(category)
-	return false
+	_, ok := m.config.Categories[category]
+	return ok
 }
 
 // KnownCategories는 설정에 정의된 모든 카테고리 이름을 반환합니다.

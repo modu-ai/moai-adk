@@ -130,14 +130,24 @@ func TestMxQueryCmd_JSONOutput(t *testing.T) {
 
 	stdout, _, err := executeQueryCmd(t, []string{"--format", "json"})
 	if err != nil {
-		t.Logf("RED 단계: not implemented 오류 예상 - %v", err)
-		return // RED 단계에서는 실패 예상
+		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
 	// JSON 파싱 가능한지 확인
 	var result []map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+	if err := json.Unmarshal([]byte(strings.TrimSpace(stdout)), &result); err != nil {
 		t.Errorf("JSON 파싱 실패: %v\n출력: %s", err, stdout)
+		return
+	}
+
+	// REQ-SPC-004-005 필수 필드 확인
+	if len(result) > 0 {
+		requiredFields := []string{"kind", "file", "line", "body", "created_by", "last_seen_at", "spec_associations"}
+		for _, field := range requiredFields {
+			if _, ok := result[0][field]; !ok {
+				t.Errorf("JSON 스키마 누락 필드: %s", field)
+			}
+		}
 	}
 }
 
@@ -166,12 +176,13 @@ func TestMxQueryCmd_TableOutput(t *testing.T) {
 
 	stdout, _, err := executeQueryCmd(t, []string{"--format", "table"})
 	if err != nil {
-		t.Logf("RED 단계: not implemented 오류 예상 - %v", err)
-		return // RED 단계에서는 실패 예상
+		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// 테이블 출력에 컬럼 헤더가 있어야 함
-	_ = stdout
+	// 테이블 출력에 KIND 헤더가 있어야 함
+	if !strings.Contains(stdout, "KIND") {
+		t.Errorf("테이블 출력에 'KIND' 헤더 없음:\n%s", stdout)
+	}
 }
 
 // TestMxQueryCmd_MarkdownOutput은 마크다운 출력 형식을 테스트합니다.
@@ -199,12 +210,11 @@ func TestMxQueryCmd_MarkdownOutput(t *testing.T) {
 
 	stdout, _, err := executeQueryCmd(t, []string{"--format", "markdown"})
 	if err != nil {
-		t.Logf("RED 단계: not implemented 오류 예상 - %v", err)
-		return
+		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
 	if !strings.Contains(stdout, "|") {
-		t.Error("마크다운 테이블 구분자 '|' 없음")
+		t.Errorf("마크다운 테이블 구분자 '|' 없음:\n%s", stdout)
 	}
 }
 
@@ -234,13 +244,13 @@ func TestMxQueryCmd_EmptyResult(t *testing.T) {
 
 	stdout, _, err := executeQueryCmd(t, []string{"--kind", "anchor"})
 	if err != nil {
-		t.Logf("RED 단계: not implemented 오류 예상 - %v", err)
-		return
+		t.Fatalf("빈 결과 시 오류 없어야 함: %v", err)
 	}
 
 	// 빈 JSON 배열이어야 함
-	if strings.TrimSpace(stdout) != "[]" {
-		t.Errorf("빈 결과 시 [] 기대, 실제: %q", stdout)
+	trimmed := strings.TrimSpace(stdout)
+	if trimmed != "[]" {
+		t.Errorf("빈 결과 시 [] 기대, 실제: %q", trimmed)
 	}
 }
 

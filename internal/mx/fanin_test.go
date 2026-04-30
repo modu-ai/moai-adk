@@ -2,6 +2,8 @@ package mx
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -67,6 +69,130 @@ func TestMockFanInCounter(t *testing.T) {
 // TestFanInCounter_InterfaceCompliance는 FanInCounter 인터페이스 준수를 확인합니다.
 func TestFanInCounter_InterfaceCompliance(t *testing.T) {
 	var _ FanInCounter = &TextualFanInCounter{}
+}
+
+// TestIsTestFile는 테스트 파일 판별 함수를 테스트합니다.
+func TestIsTestFile(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected bool
+	}{
+		{"internal/auth/handler_test.go", true},
+		{"internal/auth/handler.go", false},
+		{"tests/fixtures/mock.go", true},
+		{"testdata/fixture.go", true},
+		{"internal/fixtures/data.go", true},
+		{"pkg/utils/helper.go", false},
+		{"cmd/moai/main.go", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			got := isTestFile(tt.path)
+			if got != tt.expected {
+				t.Errorf("isTestFile(%q): 기대 %v, 실제 %v", tt.path, tt.expected, got)
+			}
+		})
+	}
+}
+
+// TestTextualFanInCounter_CountWithRealFiles는 실제 파일에서 참조를 검색하는 테스트입니다.
+func TestTextualFanInCounter_CountWithRealFiles(t *testing.T) {
+	projectRoot := t.TempDir()
+
+	// anchor-auth 심볼이 있는 파일 생성
+	callerFile := filepath.Join(projectRoot, "internal", "caller.go")
+	if err := os.MkdirAll(filepath.Dir(callerFile), 0755); err != nil {
+		t.Fatalf("디렉토리 생성 실패: %v", err)
+	}
+	callerContent := `package internal
+
+// anchor-auth를 사용하는 코드
+func useAnchor() {
+    // anchor-auth 참조
+}`
+	if err := os.WriteFile(callerFile, []byte(callerContent), 0644); err != nil {
+		t.Fatalf("파일 쓰기 실패: %v", err)
+	}
+
+	// 태그 자체 파일 (참조 카운트에서 제외되어야 함)
+	tagFile := filepath.Join(projectRoot, "internal", "auth", "handler.go")
+	if err := os.MkdirAll(filepath.Dir(tagFile), 0755); err != nil {
+		t.Fatalf("디렉토리 생성 실패: %v", err)
+	}
+	tagContent := `package auth
+// anchor-auth 태그 위치
+`
+	if err := os.WriteFile(tagFile, []byte(tagContent), 0644); err != nil {
+		t.Fatalf("파일 쓰기 실패: %v", err)
+	}
+
+	counter := &TextualFanInCounter{}
+	tag := Tag{
+		Kind:       MXAnchor,
+		File:       tagFile,
+		AnchorID:   "anchor-auth",
+		CreatedBy:  "test",
+		LastSeenAt: time.Now(),
+	}
+
+	count, method, err := counter.Count(context.Background(), tag, projectRoot, false)
+	if err != nil {
+		t.Fatalf("Count 오류: %v", err)
+	}
+
+	if method != "textual" {
+		t.Errorf("method: 기대 textual, 실제 %s", method)
+	}
+
+	// callerFile에서 2회 참조 (주석 포함)
+	if count < 1 {
+		t.Errorf("count: 최소 1 기대, 실제 %d", count)
+	}
+}
+
+// TestTextualFanInCounter_CountEmptyAnchorID는 빈 AnchorID에서 0 반환을 확인합니다.
+func TestTextualFanInCounter_CountEmptyAnchorID(t *testing.T) {
+	counter := &TextualFanInCounter{}
+	tag := Tag{
+		Kind:      MXAnchor,
+		File:      "internal/auth.go",
+		AnchorID:  "", // 빈 AnchorID
+		CreatedBy: "test",
+	}
+
+	count, method, err := counter.Count(context.Background(), tag, "/tmp", false)
+	if err != nil {
+		t.Fatalf("예기치 않은 오류: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("빈 AnchorID: count 0 기대, 실제 %d", count)
+	}
+
+	if method != "textual" {
+		t.Errorf("method: 기대 textual, 실제 %s", method)
+	}
+}
+
+// TestTextualFanInCounter_CountEmptyProjectRoot는 빈 projectRoot에서 0 반환을 확인합니다.
+func TestTextualFanInCounter_CountEmptyProjectRoot(t *testing.T) {
+	counter := &TextualFanInCounter{}
+	tag := Tag{
+		Kind:      MXAnchor,
+		AnchorID:  "some-anchor",
+		CreatedBy: "test",
+	}
+
+	count, method, err := counter.Count(context.Background(), tag, "", false)
+	if err != nil {
+		t.Fatalf("예기치 않은 오류: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("빈 projectRoot: count 0 기대, 실제 %d", count)
+	}
+	_ = method
 }
 
 // TestTextualFanInCounter_ExcludeTests는 테스트 파일 제외를 확인합니다.
