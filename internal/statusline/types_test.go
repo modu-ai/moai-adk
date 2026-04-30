@@ -220,6 +220,131 @@ func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 	}
 }
 
+// TestStdinData_UnmarshalJSON_EffortThinking verifies that Claude Code v2.1.122
+// effort.level and thinking.enabled fields are parsed correctly from stdin JSON.
+// REQ-CC2122-001: effort.level → "e:LEVEL" indicator
+// REQ-CC2122-002: thinking.enabled=true → "·t" suffix
+// REQ-CC2122-003: both absent → silent omit
+func TestStdinData_UnmarshalJSON_EffortThinking(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		wantEffort    *EffortInfo
+		wantThinking  *ThinkingInfo
+	}{
+		{
+			name:         "effort level present: high",
+			input:        `{"effort":{"level":"high"}}`,
+			wantEffort:   &EffortInfo{Level: "high"},
+			wantThinking: nil,
+		},
+		{
+			name:         "thinking enabled: true",
+			input:        `{"thinking":{"enabled":true}}`,
+			wantEffort:   nil,
+			wantThinking: &ThinkingInfo{Enabled: true},
+		},
+		{
+			name:         "both present",
+			input:        `{"effort":{"level":"max"},"thinking":{"enabled":true}}`,
+			wantEffort:   &EffortInfo{Level: "max"},
+			wantThinking: &ThinkingInfo{Enabled: true},
+		},
+		{
+			name:         "thinking enabled: false",
+			input:        `{"thinking":{"enabled":false}}`,
+			wantEffort:   nil,
+			wantThinking: &ThinkingInfo{Enabled: false},
+		},
+		{
+			name:         "effort level empty string",
+			input:        `{"effort":{"level":""}}`,
+			wantEffort:   &EffortInfo{Level: ""},
+			wantThinking: nil,
+		},
+		{
+			name:         "effort absent: nil",
+			input:        `{"version":"1.0.0"}`,
+			wantEffort:   nil,
+			wantThinking: nil,
+		},
+		{
+			name:         "effort null: nil",
+			input:        `{"effort":null}`,
+			wantEffort:   nil,
+			wantThinking: nil,
+		},
+		{
+			name:         "unknown effort level: raw passthrough (REQ-CC2122-004)",
+			input:        `{"effort":{"level":"ultra"}}`,
+			wantEffort:   &EffortInfo{Level: "ultra"},
+			wantThinking: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data StdinData
+			if err := json.Unmarshal([]byte(tt.input), &data); err != nil {
+				t.Fatalf("json.Unmarshal failed: %v", err)
+			}
+
+			// Verify Effort field
+			if tt.wantEffort == nil {
+				if data.Effort != nil {
+					t.Errorf("Effort = %+v, want nil", data.Effort)
+				}
+			} else {
+				if data.Effort == nil {
+					t.Fatalf("Effort is nil, want %+v", tt.wantEffort)
+				}
+				if data.Effort.Level != tt.wantEffort.Level {
+					t.Errorf("Effort.Level = %q, want %q", data.Effort.Level, tt.wantEffort.Level)
+				}
+			}
+
+			// Verify Thinking field
+			if tt.wantThinking == nil {
+				if data.Thinking != nil {
+					t.Errorf("Thinking = %+v, want nil", data.Thinking)
+				}
+			} else {
+				if data.Thinking == nil {
+					t.Fatalf("Thinking is nil, want %+v", tt.wantThinking)
+				}
+				if data.Thinking.Enabled != tt.wantThinking.Enabled {
+					t.Errorf("Thinking.Enabled = %v, want %v", data.Thinking.Enabled, tt.wantThinking.Enabled)
+				}
+			}
+		})
+	}
+}
+
+// TestSegmentEffortThinking_Constant verifies that SegmentEffortThinking constant is defined.
+// REQ-CC2122-001: define effort_thinking segment constant
+func TestSegmentEffortThinking_Constant(t *testing.T) {
+	if SegmentEffortThinking != "effort_thinking" {
+		t.Errorf("SegmentEffortThinking = %q, want %q", SegmentEffortThinking, "effort_thinking")
+	}
+}
+
+// TestStatusData_EffortThinking_Fields verifies that StatusData has Effort and Thinking fields.
+// REQ-CC2122-001: add Effort/Thinking fields to StatusData
+func TestStatusData_EffortThinking_Fields(t *testing.T) {
+	effort := &EffortInfo{Level: "high"}
+	thinking := &ThinkingInfo{Enabled: true}
+	data := &StatusData{
+		Effort:   effort,
+		Thinking: thinking,
+	}
+	if data.Effort == nil || data.Effort.Level != "high" {
+		t.Errorf("StatusData.Effort = %+v, want &EffortInfo{Level:\"high\"}", data.Effort)
+	}
+	if data.Thinking == nil || !data.Thinking.Enabled {
+		t.Errorf("StatusData.Thinking = %+v, want &ThinkingInfo{Enabled:true}", data.Thinking)
+	}
+}
+
 // TestSegmentWorktree_Constant verifies that SegmentWorktree constant is defined.
 // REQ-CC297-003: define worktree segment constant
 func TestSegmentWorktree_Constant(t *testing.T) {
