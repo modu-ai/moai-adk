@@ -142,6 +142,7 @@ The current body already exhorts skepticism. Adding stronger language reproduces
 - **AC-10**: All four evaluator profiles (default, strict, lenient, frontend) are reviewed and updated for compatibility with the new must-pass criterion.
 - **AC-11**: The 16-language matrix is exercised by an automated dry-run test (in CI or in the verification step) that confirms each test command exists or is documented as optional.
 - **AC-12**: Differential measurement: on a curated test set of 10 known-broken changes, the post-SPEC evaluator-active correctly reports FAIL on at least 8 (rate >= 80%); the pre-SPEC baseline is captured for comparison. Acceptance: improvement of at least 30 percentage points over baseline (e.g., baseline 40% → pilot 70%+).
+- **AC-13**: For a project where the detected test command requires write permissions while evaluator-active runs in `permissionMode: plan` (read-only), evaluator-active emits a `permission_required: write` warning in the report, marks the Functionality dimension as UNVERIFIED, and SHALL NOT silently elevate its permission mode. Verifies REQ-VTE-018.
 
 ---
 
@@ -166,9 +167,9 @@ The current body already exhorts skepticism. Adding stronger language reproduces
 | REQ-VTE-015 | Where | High | Missing-tool fixture test | AC-8 |
 | REQ-VTE-016 | Ubiquitous | Critical | Profile content audit | AC-10 |
 | REQ-VTE-017 | Where | High | Profile content audit (per-profile) | AC-10 |
-| REQ-VTE-018 | State-Driven | High | Permission warning trace | AC-8 |
+| REQ-VTE-018 | State-Driven | High | Permission warning trace | AC-13 |
 
-**Total**: 18 requirements (4 Ubiquitous, 4 Event-Driven, 6 Where, 3 State-Driven, 1 Unwanted). Distribution covers Ubiquitous, Event-Driven, State-Driven, Where, Unwanted (Optional N/A).
+**Total**: 18 requirements (4 Ubiquitous, 4 Event-Driven, 5 Where, 4 State-Driven, 1 Unwanted, 0 Optional). Distribution covers Ubiquitous, Event-Driven, State-Driven, Where, Unwanted (Optional N/A for this scope).
 
 ---
 

@@ -93,19 +93,20 @@ Survey of all agent files via `ls .claude/agents/moai/*.md`:
 
 ### 2.3 Description Field Audit — PROACTIVELY Coverage
 
-`grep -l "Use PROACTIVELY" .claude/agents/moai/*.md` returns 18 of 23 files.
+`grep -l "Use PROACTIVELY" .claude/agents/moai/*.md` returns 18 of 23 files at research-capture time.
 
-Files MISSING the PROACTIVELY pattern:
+Files MISSING the PROACTIVELY pattern (5 of 23, per captured grep):
 - evaluator-active.md (description: "Skeptical code evaluator for independent quality assessment...")
-- manager-strategy.md (line 4: "Implementation strategy specialist. Use PROACTIVELY for...") — actually present, recount needed
-- manager-tdd.md, manager-ddd.md (need verification)
-- researcher.md (need verification)
-- plan-auditor.md (need verification)
-- expert-mobile.md (line 4 has "Use PROACTIVELY for iOS native...") — actually present
+- manager-tdd.md
+- manager-ddd.md
+- researcher.md
+- plan-auditor.md
 
-Re-survey result (more rigorous):
-- 18 files contain "Use PROACTIVELY" (per Bash grep result captured at research time)
-- 5 files are missing
+Files that DO contain the pattern but require trigger-centric refactor (sample, full list deferred to plan phase OQ-3):
+- manager-strategy.md (line 4: "Implementation strategy specialist. Use PROACTIVELY for...")
+- expert-mobile.md (line 4: "Use PROACTIVELY for iOS native...")
+
+Survey conclusion: 18 files contain "Use PROACTIVELY", 5 files are missing the pattern entirely. The exact authoritative list of 24 agents is deferred to plan phase OQ-3 (file inventory lock-in moment).
 
 The 5 files not yet using the pattern need conversion. For consistency:
 - All 24 agents should adopt the trigger-centric template `Use PROACTIVELY when: <conditions>`.

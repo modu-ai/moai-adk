@@ -174,7 +174,7 @@ Anthropic's blog (research.md §1.1 verbatim) says these triggers are "strong si
 | REQ-DEL-019 | Unwanted | Medium | Description style audit | AC-2 |
 | REQ-DEL-020 | Unwanted | Critical | Body content diff (must be empty) | AC-2, AC-10 |
 
-**Total**: 20 requirements (5 Ubiquitous, 6 Event-Driven, 4 Where, 1 State-Driven, 4 Unwanted, 0 Optional). Distribution covers all five EARS patterns except Optional.
+**Total**: 20 requirements (6 Ubiquitous, 6 Event-Driven, 4 Where, 1 State-Driven, 3 Unwanted, 0 Optional). Distribution covers all five EARS patterns except Optional.
 
 ---
 

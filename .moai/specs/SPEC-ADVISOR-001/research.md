@@ -21,16 +21,28 @@
 
 > "Haiku + Opus advisor: 41.2% on BrowseComp (vs 19.7% solo), 85% cheaper than Sonnet solo."
 
-**Verbatim API pattern** (target integration shape):
+**Verbatim API pattern** (target integration shape; quoted from https://claude.com/blog/the-advisor-strategy § "API Code Example"):
 
 ```python
-client.messages.create(
-    model="claude-sonnet-4-6",
-    tools=[{"type": "advisor_20260301", "name": "advisor",
-            "model": "claude-opus-4-6", "max_uses": 3}],
-    ...
+response = client.messages.create(
+    model="claude-sonnet-4-6",  # executor
+    tools=[
+        {
+            "type": "advisor_20260301",
+            "name": "advisor",
+            "model": "claude-opus-4-6",
+            "max_uses": 3,
+        },
+        # ... your other tools
+    ],
+    messages=[...]
 )
+
+# Advisor tokens reported separately
+# in the usage block.
 ```
+
+> **Verification (2026-04-30, WebFetch confirmed)**: The model IDs `claude-sonnet-4-6` and `claude-opus-4-6` and the tool type `advisor_20260301` are reproduced verbatim from the Anthropic blog example. The blog uses a hypothetical 4-6 era model lineup as the documented sample. moai-adk-go's current runtime is Opus 4.7 — when implementing in this project, substitute the model IDs with the actual deployed model identifiers (consult `.moai/config/sections/system.yaml` `claude.model` and Anthropic's current model documentation). The verbatim quote is preserved above to keep the citation auditable; it does not imply a binding model choice for our implementation.
 
 **Key insight**: The advisor is a *passive consultant*, not a delegated executor. It shares the executor's context window, reads it, and responds with guidance only. No tools. No user-facing turns. The executor remains the only agent that produces work product.
 

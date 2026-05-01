@@ -165,7 +165,7 @@ The following conditions MUST trigger advisor consultation (subject to `max_uses
 | REQ-ADV-016 | Unwanted | Critical | Audit trail review | AC-3 |
 | REQ-ADV-017 | State-Driven | High | Variance computation, rollback artifact | AC-3 |
 
-**Total**: 17 requirements (4 Ubiquitous, 6 Event-Driven, 5 Where, 1 State-Driven, 1 Unwanted) — wait, recount: 1 State-Driven, 3 Unwanted (REQ-002 is structural prohibition reframed as Ubiquitous). Net distribution covers all five EARS patterns except Optional (none warranted).
+**Total**: 17 requirements (4 Ubiquitous, 6 Event-Driven, 4 Where, 1 State-Driven, 2 Unwanted, 0 Optional). Distribution covers all five EARS patterns except Optional (none warranted for this scope).
 
 ---
 

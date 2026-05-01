@@ -120,7 +120,7 @@
 
 ---
 
-## Scenario 8 — Permission Elevation Required (REQ-VTE-018)
+## Scenario 8 — Permission Elevation Required (REQ-VTE-018, AC-13)
 
 **Given** a project whose tests write to disk (e.g., create a fixture database, generate snapshot files)
 **And** evaluator-active is running in `permissionMode: plan` (read-only)
