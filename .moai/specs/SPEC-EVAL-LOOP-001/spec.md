@@ -7,7 +7,8 @@ labels: [evaluator, harness, generator-verifier, feedback-loop, wave-2, tier-1]
 issue_number: null
 scope: [harness.yaml, evaluator-active.md, run.md]
 blockedBy: []
-dependents: [SPEC-LOOP-TERM-001, SPEC-EVAL-RUBRIC-001]
+dependents: []
+related_specs: [SPEC-LOOP-TERM-001, SPEC-EVAL-RUBRIC-001]
 created_at: 2026-04-30
 updated_at: 2026-04-30
 author: manager-spec
@@ -142,6 +143,24 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C2: thorough/minimal 레벨 동작 변경 금지
 - C3: design domain GAN Loop과 의미 충돌 방지 (별도 의미 유지)
 - C4: standard 레벨 default behavior 변경은 backward-compatible해야 함 (기본 활성화는 OK, 단 disable 경로 제공 필수)
+
+---
+
+## 9. Frontmatter Field Semantics (Wave 2 Tier 1 Standard)
+
+This section defines the canonical meaning of inter-SPEC reference fields used in `.moai/specs/*/spec.md` frontmatter. All 5 SPECs in Wave 2 Tier 1 (EVAL-LOOP-001, LOOP-TERM-001, EVAL-RUBRIC-001, REVIEW-MULTI-001, SKILL-TEST-001) follow this standard.
+
+| Field | Semantic | Blocking? |
+|-------|----------|-----------|
+| `blockedBy: [SPEC-X-001, ...]` | This SPEC's implementation cannot start until the listed SPECs are completed. HARD dependency. | Yes |
+| `dependents: [SPEC-Y-001, ...]` | The listed SPECs are blocked by this SPEC (inverse of `blockedBy`). Forward declarations to future SPECs are allowed. | Yes (transitively) |
+| `related_specs: [SPEC-Z-001, ...]` | Semantic association only; reference for context. NOT blocking. Cross-references for design coherence. | No |
+
+### Application to this SPEC
+
+- `blockedBy: []` — No prior SPEC must be completed first.
+- `dependents: []` — No SPEC currently waits on this one for unblocking.
+- `related_specs: [SPEC-LOOP-TERM-001, SPEC-EVAL-RUBRIC-001]` — These SPECs share the iterative-evaluation problem space and are designed to compose; they are NOT blocked by this SPEC and can develop in parallel.
 
 ---
 

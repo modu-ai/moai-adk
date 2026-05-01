@@ -37,28 +37,48 @@ author: manager-spec
 - [ ] `.claude/skills/moai/workflows/review.md`에 Phase 2 (Multi-Perspective Analysis) 재작성:
   - PR LOC 측정 단계 추가 (`git diff --shortstat`)
   - 50/1,000 LOC threshold 분기 명시
-  - 4 detection agent 병렬 spawn 명시:
+  - 4 detection agent 병렬 spawn 명시 (모두 `mode: "plan"` 읽기 전용):
     - expert-security: OWASP Top 10, secrets, injection, auth/session
     - expert-performance: latency, memory, complexity, hotspot
     - manager-quality: TRUST 5, style consistency, naming
     - expert-refactoring: code smell, duplication, maintainability
-  - Large PR (>1,000 LOC): expert-debug 추가 spawn
+  - Large PR (>1,000 LOC): expert-debug 추가 spawn (또한 read-only)
   - finding aggregation 형식 표준화 (file:line + symptom + originating_agent)
+  - HARD rule 준수: 4 detection agent 모두 reviewer role → `isolation: "worktree"` 사용 금지 (CLAUDE.md §14, REQ-RM-016)
 
-**Exit Criteria**: Stage 1 절 완성, agent 4종 병렬 spawn pattern 명시
+**Exit Criteria**: Stage 1 절 완성, agent 4종 병렬 spawn pattern 명시 (read-only, no worktree)
+
+### M1.1 — Read-Only / No-Worktree Isolation Matrix (Priority: Critical)
+
+본 SPEC의 모든 review agent는 **읽기 전용 (reviewer role)** 이며 CLAUDE.md §14 [HARD] 규칙에 따라 worktree isolation 을 사용하지 않는다.
+
+| Agent | Stage | Mode | Worktree isolation | Source REQ |
+|-------|-------|------|--------------------|------------|
+| expert-security | 1 (detection) | `plan` (read-only) | NEVER | REQ-RM-016 |
+| expert-performance | 1 (detection) | `plan` (read-only) | NEVER | REQ-RM-016 |
+| manager-quality | 1 (detection) | `plan` (read-only) | NEVER | REQ-RM-016 |
+| expert-refactoring | 1 (detection) | `plan` (read-only) | NEVER | REQ-RM-016 |
+| expert-debug (large PR) | 1 (detection) | `plan` (read-only) | NEVER | REQ-RM-016 |
+| general-purpose verifier | 2 (verification) | `plan` (read-only) | NEVER | REQ-RM-016 |
+| general-purpose ranker | 3 (severity) | `plan` (read-only) | NEVER | REQ-RM-016 |
+
+No flag, configuration override, or opt-in path may relax this constraint. EC-5 in acceptance.md describes the rejection behavior.
+
+**Exit Criteria**: 본 매트릭스가 plan.md에 명시되었고 review.md / team/review.md 구현이 이를 따른다.
 
 ### M2 — review.md Stage 2 (Verification) 구현 (Priority: High)
 
 - [ ] Stage 2 절 신설:
-  - finding당 verifier agent (general-purpose) spawn
-  - verifier prompt: "Independently re-examine this finding. Confirm with reproducer or strong evidence. If insufficient, drop."
-  - verifier output schema: `{verified: true|false, reasoning: "...", reproducer: "..."}`
-  - drop된 finding은 final report의 "Dropped Findings" 섹션에 메타데이터로만 보존
+  - finding당 verifier agent (general-purpose, `mode: "plan"` read-only) spawn
+  - verifier prompt: §5.6의 4-step algorithm (Step 1 Reproducer / Step 2 AST·grep / Step 3 OWASP·CWE / Step 4 Confidence floor)을 verbatim 인용
+  - verifier output schema (per §5.6): `{verified, total_confidence, step1, step2, step3, rationale, drop_reason?}`
+  - drop된 finding은 final report의 "Dropped Findings" 섹션에 메타데이터로만 보존 (failed_steps + total_confidence 포함)
 - [ ] independence 강제:
   - verifier는 originating agent와 다른 컨텍스트 (general-purpose)
-  - verifier에 originating agent identity 노출 금지
+  - verifier 프롬프트에서 originating_agent 필드 strip (Scenario 9)
+- [ ] HARD rule 준수: verifier는 read-only (`mode: "plan"`), worktree isolation 사용 금지 (REQ-RM-016)
 
-**Exit Criteria**: Stage 2 절 완성, verifier independence 규칙 명시
+**Exit Criteria**: Stage 2 절 완성, §5.6 algorithm verbatim 포함, verifier independence + read-only 규칙 명시
 
 ### M3 — review.md Stage 3 (Severity Ranking) 구현 (Priority: High)
 
@@ -125,16 +145,28 @@ candidates = aggregate(findings)  // file:line + symptom + originating_agent
 
 ### 4.2 Stage 2 Pseudocode
 
+The verifier prompt MUST encode the §5.6 4-step algorithm verbatim (steps 1–4 + confidence floor). The pseudocode below shows the orchestrator-side loop; the algorithmic decision is delegated to the verifier prompt.
+
 ```
 verified = []
 dropped = []
 for finding in candidates:
-  result = spawn(general-purpose, prompt=verifier_prompt(finding, diff))
-  if result.verified:
-    verified.append(finding + result.reasoning)
+  # verifier_prompt(finding, diff) renders the §5.6 algorithm with step1..step4
+  # plus the confidence floor (>= 0.50) and the strip of originating_agent metadata
+  result = spawn(general-purpose, mode="plan",
+                 prompt=verifier_prompt_with_algorithm(finding_minus_originating_agent, diff_hunks))
+  # result schema:
+  #   {verified, total_confidence, step1, step2, step3, rationale, drop_reason?}
+  if result.verified == true:
+    verified.append(finding | result)  # carry confidence breakdown forward
   else:
-    dropped.append(finding + result.drop_reason)
+    dropped.append(finding | result.drop_reason | failed_steps)
 ```
+
+Notes:
+- `mode="plan"` enforces read-only verifier (REQ-RM-016).
+- `finding_minus_originating_agent` removes the `originating_agent` field before serialization (REQ-RM-019, Scenario 9).
+- `verifier_prompt_with_algorithm` is a prompt template that quotes §5.6 Step 1–4 verbatim and asks the verifier to emit the exact `verifier_output` schema.
 
 ### 4.3 Stage 3 Pseudocode
 

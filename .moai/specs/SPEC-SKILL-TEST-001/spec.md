@@ -7,7 +7,7 @@ labels: [skill, testing, framework, builder, evaluation, wave-2, tier-1]
 issue_number: null
 scope: [builder-skill.md, skill-tests-framework]
 blockedBy: []
-dependents: []
+dependents: [SPEC-SKILL-DESC-001]
 related_specs: [SPEC-EVAL-RUBRIC-001, SPEC-EVAL-LOOP-001]
 created_at: 2026-04-30
 updated_at: 2026-04-30
@@ -166,5 +166,23 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C4: legacy skill 일괄 테스트 금지 (incremental만)
 - C5: test results는 gitignored (`.moai/research/skill-tests/`)
 - C6: testing은 LLM 평가, external binary 사용 금지
+
+---
+
+## 9. Frontmatter Field Semantics (Wave 2 Tier 1 Standard)
+
+This section defines the canonical meaning of inter-SPEC reference fields used in `.moai/specs/*/spec.md` frontmatter. All 5 SPECs in Wave 2 Tier 1 (EVAL-LOOP-001, LOOP-TERM-001, EVAL-RUBRIC-001, REVIEW-MULTI-001, SKILL-TEST-001) follow this standard.
+
+| Field | Semantic | Blocking? |
+|-------|----------|-----------|
+| `blockedBy: [SPEC-X-001, ...]` | This SPEC's implementation cannot start until the listed SPECs are completed. HARD dependency. | Yes |
+| `dependents: [SPEC-Y-001, ...]` | The listed SPECs are blocked by this SPEC (inverse of `blockedBy`). Forward declarations to future SPECs are allowed. | Yes (transitively) |
+| `related_specs: [SPEC-Z-001, ...]` | Semantic association only; reference for context. NOT blocking. Cross-references for design coherence. | No |
+
+### Application to this SPEC
+
+- `blockedBy: []` — No prior SPEC must be completed first.
+- `dependents: [SPEC-SKILL-DESC-001]` — Forward declaration: the planned Wave 3 SPEC SPEC-SKILL-DESC-001 (skill description optimization) is blocked by this SPEC's testing framework. Cross-worktree dependency noted; SPEC-SKILL-DESC-001 may not yet exist at the time of writing.
+- `related_specs: [SPEC-EVAL-RUBRIC-001, SPEC-EVAL-LOOP-001]` — Shares evaluator-rubric and Generator-Verifier themes (A/B comparator parallels); not blocked by or blocking this SPEC.
 
 End of spec.md (SPEC-SKILL-TEST-001 v0.1.0).

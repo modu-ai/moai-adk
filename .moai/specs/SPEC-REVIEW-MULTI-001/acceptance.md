@@ -61,16 +61,34 @@ author: manager-spec
 
 ---
 
-### Scenario 5: Verification drops a false positive
+### Scenario 5: Verification drops a false positive via the 4-step algorithm
 
-**Given** Stage 1 produces a finding "potential SQL injection at db.go:42"
-**And** Stage 2 verifier examines the code and determines that input is parametrized
+**Given** Stage 1 produces a finding `F-001` of category `security` at `db.go:42` with description "potential SQL injection via string concatenation"
+**And** the diff for `db.go:42` shows the call uses `db.QueryContext(ctx, "SELECT ... WHERE id = $1", userID)` (parameterized)
 
-**When** the verifier completes
+**When** the Stage 2 verifier executes the §5.6 4-step algorithm
 
-**Then** the finding SHALL be dropped
-**And** the drop SHALL be logged with rationale: "Input is parametrized via prepared statement; not exploitable"
+**Then** Step 1 (reproducer) SHALL fail because no input flow path produces concatenated SQL → `step1.verified = false, step1.confidence = 0.00`
+**And** Step 2 (AST/grep) SHALL fail because pattern reproduction finds no string concatenation flowing into a query call → `step2.verified = false, step2.confidence = 0.00`
+**And** Step 3 (CWE mapping) SHALL fail because no CWE-89 evidence is present → `step3.verified = false, step3.confidence = 0.00`
+**And** `total_confidence = 0.00 < 0.50` → `verified = false`
+**And** the finding SHALL be dropped with `drop_reason` recording `failed_steps: [1, 2, 3]` and the verifier rationale: "Query is parameterized; CWE-89 mapping inapplicable"
 **And** the finding SHALL appear in the "Dropped Findings" section with metadata only (no severity assignment)
+
+---
+
+### Scenario 5b: Verification confirms a true positive
+
+**Given** Stage 1 produces a finding `F-002` of category `security` at `auth.go:88` with description "SQL injection via fmt.Sprintf into Exec"
+**And** the diff for `auth.go:88` shows `db.Exec(fmt.Sprintf("DELETE FROM users WHERE name = '%s'", name))`
+
+**When** the Stage 2 verifier executes the §5.6 4-step algorithm
+
+**Then** Step 1 (reproducer) SHALL succeed by constructing input `name = "x'; DROP TABLE users; --"` → `step1.verified = true, step1.confidence = 0.40`
+**And** Step 2 (AST/grep) SHALL succeed by detecting `fmt.Sprintf(...)` flowing into `db.Exec(...)` in the same statement → `step2.verified = true, step2.confidence = 0.30`
+**And** Step 3 (CWE mapping) SHALL succeed mapping to CWE-89 (SQL Injection) with rationale tied to the diff → `step3.verified = true, step3.confidence = 0.20`
+**And** `total_confidence = 0.90 >= 0.50` → `verified = true`
+**And** the finding SHALL be retained for Stage 3 ranking with the verifier rationale and CWE-89 attached
 
 ---
 
@@ -139,9 +157,9 @@ If `git diff --shortstat` reports 0 LOC, the workflow SHALL exit with "No change
 
 If `.moai/project/tech.md` does not exist or has no domain declaration, the ranker SHALL skip risk-based severity elevation and use baseline severity rules.
 
-### EC-5: Worktree isolation requested but not available
+### EC-5: Worktree isolation requested but rejected (HARD rule)
 
-If `--isolated` flag is provided but worktree creation fails, the workflow SHALL emit a warning and proceed without isolation (read-only safety preserved).
+If a user attempts to opt review agents into worktree isolation (e.g., via a deprecated `--isolated` flag or a configuration file override), the workflow SHALL refuse the request with a non-zero exit and emit the message: "Review agents are read-only (reviewer role) and per CLAUDE.md §14 [HARD] MUST NOT use isolation: 'worktree'. Request rejected." No fallback path enables worktree isolation for review; this constraint is non-negotiable.
 
 ---
 
@@ -164,7 +182,7 @@ If `--isolated` flag is provided but worktree creation fails, the workflow SHALL
 
 ## Definition of Done
 
-- [ ] All 9 Given-When-Then scenarios PASS
+- [ ] All 10 Given-When-Then scenarios PASS (1, 2, 3, 4, 5, 5b, 6, 7, 8, 9)
 - [ ] All 5 edge cases documented and handled (EC-1 through EC-5)
 - [ ] All 10 quality gate criteria meet threshold
 - [ ] M0 baseline 5 PR comparison report at `.moai/reports/review-multi-validation/`

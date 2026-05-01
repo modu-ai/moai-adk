@@ -147,4 +147,72 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C3: invalidation은 초기엔 warning (점진 hardening)
 - C4: frontend profile의 design-specific dimension은 보존 (4-anchor 적용만)
 
+---
+
+## 9. Frontmatter Field Semantics (Wave 2 Tier 1 Standard)
+
+This section defines the canonical meaning of inter-SPEC reference fields used in `.moai/specs/*/spec.md` frontmatter. All 5 SPECs in Wave 2 Tier 1 (EVAL-LOOP-001, LOOP-TERM-001, EVAL-RUBRIC-001, REVIEW-MULTI-001, SKILL-TEST-001) follow this standard.
+
+| Field | Semantic | Blocking? |
+|-------|----------|-----------|
+| `blockedBy: [SPEC-X-001, ...]` | This SPEC's implementation cannot start until the listed SPECs are completed. HARD dependency. | Yes |
+| `dependents: [SPEC-Y-001, ...]` | The listed SPECs are blocked by this SPEC (inverse of `blockedBy`). Forward declarations to future SPECs are allowed. | Yes (transitively) |
+| `related_specs: [SPEC-Z-001, ...]` | Semantic association only; reference for context. NOT blocking. Cross-references for design coherence. | No |
+
+### Application to this SPEC
+
+- `blockedBy: []` — No prior SPEC must be completed first.
+- `dependents: []` — No SPEC currently waits on this one for unblocking.
+- `related_specs: [SPEC-EVAL-LOOP-001]` — Shares the rubric-anchoring problem space (iteration-aware evaluators benefit from anchored rubrics); not blocked by or blocking this SPEC.
+
+---
+
+## 10. Rubric Anchor Self-Contained Reference (Default Profile)
+
+This SPEC is self-verifying: the 16 anchors that comprise the canonical "default" profile are reproduced here verbatim so that Acceptance Scenario 1 ("16 anchor 검증") can be performed against this SPEC alone, without external file dependency. Strict / lenient / frontend profile anchors are derived from the default by the rules in REQ-ER-013/014/015 and are validated by Acceptance Scenarios 2/3/4 against their respective profile files.
+
+The 4 dimensions and their relative weights are: Functionality (40%), Security (25%), Craft (20%), Consistency (15%). Each dimension MUST have anchors at exactly four score levels: 0.25, 0.50, 0.75, 1.00. Total = 4 × 4 = 16 anchors.
+
+### 10.1 Functionality — Default Anchors (4)
+
+| Score | Anchor (observable criterion) |
+|-------|-------------------------------|
+| 1.00 | All acceptance criteria pass with edge cases verified |
+| 0.75 | All primary acceptance criteria pass; minor edge cases missing |
+| 0.50 | Core functionality works; 1-2 acceptance criteria fail or are unverified |
+| 0.25 | Basic skeleton present but multiple acceptance criteria fail |
+
+### 10.2 Security — Default Anchors (4)
+
+| Score | Anchor (observable criterion) |
+|-------|-------------------------------|
+| 1.00 | No findings of any severity; OWASP Top 10 checked |
+| 0.75 | No Critical/High findings; Medium findings documented with mitigations |
+| 0.50 | No Critical findings; High findings present but contained |
+| 0.25 | Critical or multiple High findings present (triggers overall FAIL) |
+
+### 10.3 Craft — Default Anchors (4)
+
+| Score | Anchor (observable criterion) |
+|-------|-------------------------------|
+| 1.00 | Coverage >= 85%, clean code, no duplication, clear naming |
+| 0.75 | Coverage >= 80%, minor style issues, acceptable naming |
+| 0.50 | Coverage >= 70%, some duplication or unclear naming |
+| 0.25 | Coverage < 70% or significant code quality issues |
+
+### 10.4 Consistency — Default Anchors (4)
+
+| Score | Anchor (observable criterion) |
+|-------|-------------------------------|
+| 1.00 | Fully consistent with project conventions and existing patterns |
+| 0.75 | Minor deviations from conventions; no structural inconsistencies |
+| 0.50 | Some pattern violations; deviations are localized |
+| 0.25 | Significant inconsistencies with existing codebase patterns |
+
+### 10.5 Verification Note
+
+These 16 anchors are the canonical reference for the default profile. The implementation in `.moai/config/evaluator-profiles/default.md` MUST match this table verbatim. Any divergence between this SPEC's §10 table and the file content is a schema violation and SHALL be reported by Acceptance Scenario 1.
+
+Profile-specific divergences (strict / lenient / frontend) are bounded by REQ-ER-013/014/015 and verified by Scenarios 2/3/4 against their respective profile files; the default profile remains the comparison baseline.
+
 End of spec.md (SPEC-EVAL-RUBRIC-001 v0.1.0).

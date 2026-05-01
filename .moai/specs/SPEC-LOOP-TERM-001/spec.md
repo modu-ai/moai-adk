@@ -92,7 +92,22 @@ tier: 1
 
 ### 5.1 Ubiquitous Requirements
 
-- **REQ-LT-001**: THE NEW CANONICAL REFERENCE `.claude/rules/moai/workflow/iteration-termination.md` SHALL define a standard termination schema with the following fields: `max_iterations`, `stagnation.detect_after`, `stagnation.improvement_min`, `escalation.target`, `escalation.reason_required`, `state_file`.
+- **REQ-LT-001**: THE NEW CANONICAL REFERENCE `.claude/rules/moai/workflow/iteration-termination.md` SHALL define a standard termination schema with the following fields (single source of truth — all field names use dot notation):
+
+  ```yaml
+  termination:
+    max_iterations: integer            # required; upper bound on iterations
+    stagnation:
+      detect_after: integer            # iteration index at which delta measurement begins (default 2)
+      improvement_min: float           # minimum acceptable score delta in absolute units (default 0.05)
+      consecutive: integer             # number of consecutive stagnating iterations required to trigger escalation (default 1)
+    escalation:
+      target: enum [user, log, abort]  # destination for escalation; default "user"
+      reason_required: boolean         # whether the escalation report MUST include a structured rationale (default true)
+    state_file: string                 # path template, default ".moai/state/{workflow}/{run_id}.json"
+  ```
+
+  All references to these fields throughout this SPEC, plan.md, and acceptance.md MUST use this dot notation (e.g., `stagnation.consecutive`, NOT `stagnation_consecutive`).
 - **REQ-LT-002**: THE TERMINATION SCHEMA SHALL be inheritable by any moai workflow that performs iterative computation.
 - **REQ-LT-003**: THE WORKFLOWS LOOP, FIX, COVERAGE, AND E2E SHALL all comply with the standardized termination schema.
 - **REQ-LT-004**: THE STATE FILE SHALL be persisted to `.moai/state/<workflow>/<run_id>.json` for resume capability.
@@ -114,7 +129,7 @@ tier: 1
 ### 5.4 Conditional Requirements
 
 - **REQ-LT-013**: WHERE iteration count is greater than or equal to `stagnation.detect_after` (default 2), THE WORKFLOW SHALL compute the score delta against the previous iteration.
-- **REQ-LT-014**: IF the score delta is less than `stagnation.improvement_min` (default 0.05) for `stagnation_consecutive` consecutive iterations, THEN THE WORKFLOW SHALL be flagged as stagnating and escalation SHALL be triggered.
+- **REQ-LT-014**: IF the score delta is less than `stagnation.improvement_min` (default 0.05) for `stagnation.consecutive` (default 1) consecutive iterations, THEN THE WORKFLOW SHALL be flagged as stagnating and escalation SHALL be triggered.
 - **REQ-LT-015**: WHERE a state file from a previous run exists at `.moai/state/<workflow>/<run_id>.json`, THE WORKFLOW SHALL offer resume option via AskUserQuestion before starting fresh.
 - **REQ-LT-016**: IF `escalation.reason_required = true`, THEN THE ESCALATION REPORT SHALL include a structured rationale section explaining why escalation was triggered.
 - **REQ-LT-017**: WHERE workflow is `loop`, THE DEFAULT max_iterations SHALL be 5.
@@ -154,5 +169,23 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C2: subagent의 AskUserQuestion 직접 호출 금지 (HARD rule)
 - C3: state file는 atomic write (race 방지)
 - C4: termination schema의 default 값은 보수적 (max_iter 작게, stagnation 임계 명확)
+
+---
+
+## 9. Frontmatter Field Semantics (Wave 2 Tier 1 Standard)
+
+This section defines the canonical meaning of inter-SPEC reference fields used in `.moai/specs/*/spec.md` frontmatter. All 5 SPECs in Wave 2 Tier 1 (EVAL-LOOP-001, LOOP-TERM-001, EVAL-RUBRIC-001, REVIEW-MULTI-001, SKILL-TEST-001) follow this standard.
+
+| Field | Semantic | Blocking? |
+|-------|----------|-----------|
+| `blockedBy: [SPEC-X-001, ...]` | This SPEC's implementation cannot start until the listed SPECs are completed. HARD dependency. | Yes |
+| `dependents: [SPEC-Y-001, ...]` | The listed SPECs are blocked by this SPEC (inverse of `blockedBy`). Forward declarations to future SPECs are allowed. | Yes (transitively) |
+| `related_specs: [SPEC-Z-001, ...]` | Semantic association only; reference for context. NOT blocking. Cross-references for design coherence. | No |
+
+### Application to this SPEC
+
+- `blockedBy: []` — No prior SPEC must be completed first.
+- `dependents: []` — No SPEC currently waits on this one for unblocking.
+- `related_specs: [SPEC-EVAL-LOOP-001]` — Shares iterative-evaluation problem space; not blocked by or blocking this SPEC.
 
 End of spec.md (SPEC-LOOP-TERM-001 v0.1.0).

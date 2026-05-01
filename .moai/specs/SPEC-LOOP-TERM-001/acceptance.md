@@ -22,6 +22,27 @@ author: manager-spec
 
 ---
 
+### Scenario 1b: Termination schema declares all required fields with dot notation
+
+**Given** the canonical reference `.claude/rules/moai/workflow/iteration-termination.md` is parsed for the termination schema
+**And** the schema is the single source of truth (REQ-LT-001)
+
+**When** the schema fields are enumerated
+
+**Then** the schema SHALL include exactly these fields with the following dot-notation keys:
+- `max_iterations`
+- `stagnation.detect_after`
+- `stagnation.improvement_min`
+- `stagnation.consecutive`
+- `escalation.target`
+- `escalation.reason_required`
+- `state_file`
+
+**And** no underscore-flattened variants (e.g., `stagnation_consecutive`) SHALL appear in any moai workflow document
+**And** plan.md §4.1 schema example SHALL match this field set verbatim
+
+---
+
 ### Scenario 2: Loop workflow respects max_iterations boundary
 
 **Given** `/moai loop` is invoked with a goal that requires more than 5 iterations

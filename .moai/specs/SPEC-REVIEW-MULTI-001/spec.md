@@ -112,10 +112,10 @@ Anthropic blog "Code Review (with Claude)"의 3-stage multi-agent 패턴 (parall
 
 ### 5.4 Conditional Requirements
 
-- **REQ-RM-013**: WHERE Stage 2 verification fails for a finding (no reproducer or weak evidence), THEN THE FINDING SHALL be dropped from the candidate list with the drop reason logged.
+- **REQ-RM-013**: WHERE the Stage 2 verifier executes the 4-step false-positive filter algorithm defined in §5.6 against a candidate finding AND the algorithm returns `verified: false` with `confidence < 0.50`, THEN THE FINDING SHALL be dropped from the candidate list. The drop reason SHALL record which of the 4 algorithm steps failed (reproducer attempt / pattern reproduction / OWASP-CWE mapping / confidence floor) and the verifier-emitted rationale.
 - **REQ-RM-014**: WHERE the project's `.moai/project/tech.md` declares a sensitive domain (auth, payment, public_api), THEN THE RANKER SHALL elevate Security findings by one severity level (e.g., Medium → High).
 - **REQ-RM-015**: IF the same finding is reported by multiple Stage 1 agents, THEN THE RANKER SHALL deduplicate by file:line + symptom signature, retaining all originating agents in metadata.
-- **REQ-RM-016**: WHERE the SPEC opts into worktree isolation via review flag `--isolated`, THEN Stage 1 agents SHALL run in `isolation: "worktree"` (read-only).
+- **REQ-RM-016**: THE STAGE 1 DETECTION AGENTS AND THE STAGE 2 VERIFIER AGENT SHALL run in read-only mode (Claude Code `mode: "plan"` or equivalent permission restriction that denies Write/Edit) AND SHALL NOT use `isolation: "worktree"`. Rationale: per CLAUDE.md §14 [HARD] "Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use isolation: 'worktree'". Review agents are categorized as reviewer role; therefore worktree isolation is prohibited regardless of any opt-in flag. Stage 3 ranker is similarly read-only and follows the same constraint.
 - **REQ-RM-017**: IF Stage 1 detection agents collectively produce zero candidate findings, THEN THE WORKFLOW SHALL skip Stage 2 and Stage 3, producing a "no findings" report.
 
 ### 5.5 Unwanted (Negative) Requirements
@@ -123,6 +123,54 @@ Anthropic blog "Code Review (with Claude)"의 3-stage multi-agent 패턴 (parall
 - **REQ-RM-018**: THE STAGE 1 DETECTION AGENTS SHALL NOT communicate with each other during parallel execution; their context isolation is essential for independence.
 - **REQ-RM-019**: THE STAGE 2 VERIFIER SHALL NOT be the same agent that produced the finding (independence requirement).
 - **REQ-RM-020**: THE WORKFLOW SHALL NOT proceed past Stage 2 with unverified findings included in the final report.
+
+### 5.6 Verification Algorithm (False-Positive Filter)
+
+The Stage 2 verifier MUST execute the following deterministic 4-step algorithm against each candidate finding produced by Stage 1. The algorithm output drives REQ-RM-013 (drop decision). The verifier is invoked as a `general-purpose` agent in read-only mode with the originating agent identity stripped from its prompt (REQ-RM-019, REQ-RM-016).
+
+**Algorithm input**:
+- `finding.file` (string, file path)
+- `finding.line` (integer, line number)
+- `finding.severity` (enum: Critical / High / Medium / Low — preliminary, may be re-ranked in Stage 3)
+- `finding.description` (string, symptom and suspected cause)
+- `finding.category` (enum: security / performance / quality / refactoring / debug)
+- The PR diff hunk(s) covering `finding.file:finding.line`
+
+**Step 1 — Reproducer attempt** (mandatory):
+- The verifier attempts to construct a minimal reproducer: a hypothetical input, code path, or call sequence that would exercise the alleged defect.
+- A reproducer is considered VALID when it (a) names a concrete entry point in the diff or surrounding code, (b) describes inputs or state that would trigger the symptom, and (c) explains the observable failure.
+- If a valid reproducer is constructed: emit `step1.verified = true`, `step1.confidence = 0.40`. Otherwise: `step1.verified = false`, `step1.confidence = 0.00`.
+
+**Step 2 — Pattern reproduction via AST/grep** (mandatory):
+- The verifier independently searches the diff hunks for the symptom pattern using language-aware AST inspection or `git grep` over the file at `finding.file:finding.line`.
+- For example, an alleged "unparameterized SQL string concatenation" finding is checked by searching for string concatenation flowing into a SQL execution call within the same scope.
+- If the pattern is independently reproducible: emit `step2.verified = true`, `step2.confidence += 0.30`. Otherwise: `step2.verified = false`, `step2.confidence += 0.00`.
+
+**Step 3 — OWASP / CWE mapping (Security findings only)** (conditional):
+- IF `finding.category == "security"`, the verifier attempts to map the symptom to an OWASP Top 10 category or CWE identifier (e.g., CWE-89 for SQL injection, CWE-79 for XSS).
+- A successful mapping requires a CWE/OWASP identifier AND a one-sentence justification anchored in the diff.
+- If mapping succeeds: emit `step3.verified = true`, `step3.confidence += 0.20`. If mapping fails or no obvious match exists: `step3.verified = false`, `step3.confidence += 0.00`.
+- For non-security findings (`category != "security"`), `step3.verified = null` (not applicable) and `step3.confidence += 0.00`. The aggregate confidence floor is then satisfied by Steps 1 and 2 alone.
+
+**Step 4 — Confidence floor decision** (mandatory):
+- Compute `total_confidence = step1.confidence + step2.confidence + step3.confidence` (capped at 1.00).
+- The verifier emits `verified = true` IF `total_confidence >= 0.50` AND at least Step 1 OR Step 2 returned `true`. Otherwise `verified = false`.
+- If `verified = false`, the finding is dropped per REQ-RM-013, and the drop reason records `failed_steps` (which steps returned `false`) and `total_confidence`.
+
+**Algorithm output**:
+```yaml
+verifier_output:
+  finding_id: F-NNN
+  verified: true | false
+  total_confidence: 0.00..1.00
+  step1: {verified: true|false, confidence: 0.0..0.40, reproducer: "..."}
+  step2: {verified: true|false, confidence: 0.0..0.30, ast_or_grep_evidence: "..."}
+  step3: {verified: true|false|null, confidence: 0.0..0.20, cwe_owasp: "CWE-89" | null}
+  rationale: "Concise summary of pass/fail reasoning across the 4 steps"
+  drop_reason: "<populated only when verified=false>"
+```
+
+This algorithm is the canonical false-positive filter; the verifier prompt MUST encode the 4 steps and the confidence floor verbatim. Stage 2 implementations MUST NOT substitute subjective heuristics for the algorithm.
 
 ---
 
@@ -152,5 +200,23 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C3: small PR (<50 LOC) 단일 agent 경로 유지 (token 절약)
 - C4: Stage 1 detection agent 간 통신 금지 (independence 핵심)
 - C5: verifier는 originating agent와 다른 컨텍스트여야 함
+
+---
+
+## 9. Frontmatter Field Semantics (Wave 2 Tier 1 Standard)
+
+This section defines the canonical meaning of inter-SPEC reference fields used in `.moai/specs/*/spec.md` frontmatter. All 5 SPECs in Wave 2 Tier 1 (EVAL-LOOP-001, LOOP-TERM-001, EVAL-RUBRIC-001, REVIEW-MULTI-001, SKILL-TEST-001) follow this standard.
+
+| Field | Semantic | Blocking? |
+|-------|----------|-----------|
+| `blockedBy: [SPEC-X-001, ...]` | This SPEC's implementation cannot start until the listed SPECs are completed. HARD dependency. | Yes |
+| `dependents: [SPEC-Y-001, ...]` | The listed SPECs are blocked by this SPEC (inverse of `blockedBy`). Forward declarations to future SPECs are allowed. | Yes (transitively) |
+| `related_specs: [SPEC-Z-001, ...]` | Semantic association only; reference for context. NOT blocking. Cross-references for design coherence. | No |
+
+### Application to this SPEC
+
+- `blockedBy: []` — No prior SPEC must be completed first.
+- `dependents: []` — No SPEC currently waits on this one for unblocking.
+- `related_specs: [SPEC-V3R3-PATTERNS-001, SPEC-EVAL-LOOP-001]` — Shares Generator-Verifier and parallel multi-agent design themes; not blocked by or blocking this SPEC.
 
 End of spec.md (SPEC-REVIEW-MULTI-001 v0.1.0).
