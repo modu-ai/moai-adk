@@ -7,6 +7,22 @@
 
 ---
 
+## 0. Cross-Worktree Dependency Notice
+
+본 SPEC은 다른 worktree에 위치한 SPEC을 참조합니다. plan-auditor가 현재 worktree (wave-3-tier2)만 보면 dependency 부재로 잘못 판정할 수 있으므로 명시합니다.
+
+| 의존 SPEC | 위치 | Branch | PR | 의존 유형 |
+|-----------|------|--------|------|-----------|
+| **SPEC-SKILL-TEST-001** | `wave-2-tier1` worktree | `feature/wave-2-tier1` | **#748** | blockedBy (Wave 2 산출물의 regression test framework 활용) |
+
+본 SPEC 구현 전 위 의존 SPEC이 main에 머지되어야 합니다. frontmatter `blockedBy: [SPEC-SKILL-TEST-001]` 그대로 유지하며, 이 의존은 **cross-worktree** 임을 인지하고 plan-auditor false alarm 가능성을 명시합니다.
+
+검증 방법:
+- main repo에서 `gh pr view 748 --json mergedAt`로 머지 여부 확인
+- 또는 `git fetch origin && git log origin/main --grep "SPEC-SKILL-TEST-001"`
+
+---
+
 ## 1. 출처 (Anthropic 공식 자료)
 
 ### 1.1 Verbatim 인용

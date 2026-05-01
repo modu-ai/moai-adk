@@ -1,6 +1,6 @@
 ---
 id: SPEC-MEM-SCOPE-001
-plan_version: "0.1.0"
+plan_version: "0.1.1"
 created_at: 2026-04-30
 updated_at: 2026-04-30
 author: manager-spec
@@ -10,19 +10,20 @@ author: manager-spec
 
 ## 1. Overview
 
-4-level memory scope (org/project/user/agent) + JSONL audit log + advisory file lock + 30-day rollback 메커니즘 신설. Anthropic Managed Agents Memory의 의미적 모델을 filesystem 인프라로 시뮬레이션.
+4-level memory scope (org/project/user/agent) + JSONL audit log + Content-Addressable Storage (CAS) + advisory file lock + 30-day rollback 메커니즘 신설. Anthropic Managed Agents Memory의 의미적 모델을 filesystem 인프라로 시뮬레이션. Privacy ↔ Reconstruct 양립을 위해 audit log (hash only) + CAS (raw blob) 이중 저장.
 
 ## 2. Approach Summary
 
-**전략**: Filesystem-Mounted-Simulation, JSONL-Append-Only, Cross-Platform-Lock.
+**전략**: Filesystem-Mounted-Simulation, JSONL-Append-Only, CAS-Blob-Storage, Cross-Platform-Lock.
 
 1. 4 scope 디렉토리 구조 정의
 2. `internal/memory/scope.go` — scope resolver (path → scope level 매핑)
-3. `internal/memory/audit.go` — JSONL audit logger (append-only, atomic)
-4. `internal/memory/lock.go` — flock (Unix) + LockFileEx (Windows)
-5. `internal/memory/rollback.go` — 30-day audit replay → file 복원
-6. `cmd/moai/memory.go` — list/read/write/rollback CLI
-7. `.claude/rules/moai/core/memory-scope.md` 정책 문서
+3. `internal/memory/audit.go` — JSONL audit logger (append-only, atomic, hash only)
+4. `internal/memory/cas.go` — Content-Addressable Storage (`<scope>/.cas/<sha256-hex>` blob, idempotent write, 30-day GC protection)
+5. `internal/memory/lock.go` — flock (Unix) + LockFileEx (Windows)
+6. `internal/memory/rollback.go` — audit log scan → hash 추출 → CAS lookup → file 복원
+7. `cmd/moai/memory.go` — list/read/write/rollback CLI
+8. `.claude/rules/moai/core/memory-scope.md` 정책 문서
 
 ## 3. Milestones (Priority-based, no time estimates)
 
@@ -66,9 +67,24 @@ author: manager-spec
   - 파일 경로: `<scope-root>/audit.jsonl`
   - JSON Lines (한 줄 = 한 entry)
 - [ ] atomic write: O_APPEND + flock LOCK_EX (또는 atomic rename pattern)
-- [ ] privacy: 메모리 파일 내용은 hash만 저장, raw content 절대 미기록
+- [ ] privacy: 메모리 파일 내용은 hash만 저장, raw content 절대 미기록 (audit.jsonl scope only)
 
 **Exit Criteria**: 100 read/write/delete simulation에서 100/100 entries
+
+### M3.5 — Content-Addressable Storage (CAS) (Priority: High)
+
+- [ ] `internal/memory/cas.go`:
+  - `func WriteBlob(scope Scope, content []byte) (hash string, err error)` — SHA-256 hash 계산 + blob write to `<scope>/.cas/<hash>` (idempotent)
+  - `func ReadBlob(scope Scope, hash string) ([]byte, error)` — CAS lookup
+  - `func ExistsBlob(scope Scope, hash string) bool` — duplicate write skip 결정
+  - 파일 권한 0644, 디렉토리 0755
+- [ ] CAS GC (`func GC(scope Scope, retentionDays int) error`):
+  - audit.jsonl 스캔 → 30일 이내 referenced hash set 구축
+  - `<scope>/.cas/` 내 unreferenced blob 만 삭제
+  - REQ-MS-019 보호: 30일 이내 referenced blob 절대 미삭제
+- [ ] privacy 검증: CAS 디렉토리는 local-only, 어떤 export path에도 포함 금지 (`.gitignore`에 `.cas/` 추가, `moai update`에서 제외)
+
+**Exit Criteria**: 100 write SHA-256 verification 100/100, GC 30-day window protection 100% PASS, idempotent write 검증
 
 ### M4 — File Lock (Concurrency) (Priority: High)
 
@@ -81,16 +97,22 @@ author: manager-spec
 
 **Exit Criteria**: 10 goroutine concurrent write에서 0 data loss
 
-### M5 — Rollback Logic (Priority: Medium)
+### M5 — Rollback Logic (audit + CAS lookup) (Priority: Medium)
 
 - [ ] `internal/memory/rollback.go`:
   - `func Rollback(file string, toTimestamp time.Time) error`
-  - audit log 읽기 → toTimestamp 시점의 file content 재구성
-  - audit log replay 알고리즘: 가장 최근 write entry부터 역순으로
+  - 알고리즘:
+    1. audit.jsonl 스캔 → file 매칭 entry 리스트 추출
+    2. timestamp <= toTimestamp 인 entry 중 가장 최근 entry 선택
+    3. 해당 entry의 `hash_after` 추출
+    4. `cas.ReadBlob(scope, hash)` 호출하여 raw content 획득
+    5. 대상 파일에 content 쓰기 (with file lock)
+    6. 새 audit entry 추가 (action: "rollback", hash_before=현재, hash_after=복원, rollback_to=target ISO)
   - 30일 초과 시점은 reject (REQ-MS-014)
+  - CAS blob 부재 시 명시 error (EC-7)
 - [ ] rollback 자체도 audit entry로 기록 (action: "rollback")
 
-**Exit Criteria**: 30일 이내 rollback 100% restore
+**Exit Criteria**: 30일 이내 rollback 100% restore (SHA-256 매치 검증), EC-7 CAS missing 시 명시 error + file unchanged
 
 ### M6 — Org Scope Read-Only Enforcement (Priority: Medium)
 
@@ -180,12 +202,36 @@ func ResolveScope(absPath string) (Scope, error) {
 }
 ```
 
-### 4.2 audit.jsonl entry 예시
+### 4.2 audit.jsonl entry 예시 + CAS layout
+
+audit.jsonl (hash only, no content):
 
 ```jsonl
 {"ts":"2026-04-30T12:34:56Z","agent":"manager-ddd","action":"write","file":"lessons.md","hash_before":"abc123","hash_after":"def456","scope":"project"}
 {"ts":"2026-04-30T12:35:01Z","agent":"manager-tdd","action":"read","file":"lessons.md","scope":"project"}
 {"ts":"2026-04-30T12:35:30Z","agent":"manager-ddd","action":"rollback","file":"lessons.md","hash_before":"def456","hash_after":"abc123","scope":"project","rollback_to":"2026-04-30T12:34:00Z"}
+```
+
+CAS layout (raw blob storage):
+
+```
+<project>/.moai/memory/
+├── audit.jsonl           # hash-only audit log (privacy-safe, exportable)
+├── lessons.md            # current memory file
+└── .cas/                 # local-only blob store (NEVER exported)
+    ├── abc123            # raw content blob keyed by SHA-256 hash
+    ├── def456            # idempotent: identical content → same hash → single blob
+    └── ...
+```
+
+Rollback flow (audit + CAS):
+
+```
+1. audit.jsonl scan: filter by file="lessons.md", ts <= target
+2. select latest entry; extract hash_after = "abc123"
+3. cas.ReadBlob("abc123") → raw content bytes
+4. write raw bytes to lessons.md (with LOCK_EX)
+5. append rollback audit entry
 ```
 
 ### 4.3 lock 패턴 (Unix 예시)
@@ -208,11 +254,14 @@ func WithExclusiveLock(file string, fn func() error) error {
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|-----------|
 | audit log 무한 성장 | High | Medium | M7 30-day rotation + archive |
+| CAS 디스크 사용량 증가 | High | Medium | CAS GC (M3.5) 30-day 미참조 blob 삭제 |
+| CAS blob 손상 (manual delete, FS corruption) | Low | High | EC-7 명시 error + audit.jsonl 보존 (rollback aborted, file unchanged) |
 | flock NFS/SMB 미작동 | Medium | High | local filesystem 권장 명시 + warning 로그 |
 | Windows LockFileEx complexity | Medium | High | well-tested library 사용 (`golang.org/x/sys/windows`) |
-| rollback 시 audit log 무결성 | Medium | High | rollback도 audit entry (action: "rollback") |
+| rollback 시 audit log 무결성 | Medium | High | rollback도 audit entry (action: "rollback"), CAS blob 미삭제 |
+| Privacy: CAS 실수 export | Medium | Critical | `.gitignore` 자동 추가, `moai update` 제외 path, 정책 문서 명시 |
 | backward compat (기존 위치 사용자) | High | Medium | 기존 user scope 유지, agent scope 이전은 optional migration |
-| 4-level 학습 곡선 | High | Medium | 정책 문서에 결정 트리 명시 |
+| 4-level + CAS 학습 곡선 | High | Medium | 정책 문서에 결정 트리 + CAS 흐름 명시 |
 
 ## 6. Dependencies
 
@@ -228,6 +277,8 @@ func WithExclusiveLock(file string, fn func() error) error {
 - **OQ3** (backward compat for `~/.claude/agent-memory/`): 기존 위치 유지, 이전은 optional `moai memory migrate-agent-scope` 명령
 - **OQ4** (archive 위치): `<scope>/archive/audit-<YYYY-MM>.jsonl`
 - **OQ5** (cross-scope read): default 허용 (특히 project/user/agent), org 만 read-only enforcement
+- **OQ6** (CAS hash algorithm): SHA-256 (cryptographic strength + collision resistance + 64-char hex 적정 size). Alternative considered: SHA-1 (rejected — collision attacks), Blake3 (rejected — Go stdlib 부재), SHA-512 (rejected — over-engineering)
+- **OQ7** (CAS GC schedule): manual `moai memory gc` 호출. Auto-schedule은 향후 SPEC (cron-like 부담 우려)
 
 ## 8. Rollout Plan
 

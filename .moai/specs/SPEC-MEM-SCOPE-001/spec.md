@@ -1,7 +1,7 @@
 ---
 id: SPEC-MEM-SCOPE-001
 status: draft
-version: "0.1.0"
+version: "0.1.1"
 priority: Medium
 labels: [memory-scope, audit-log, rollback, concurrency, file-lock, wave-3, tier-2]
 issue_number: null
@@ -20,12 +20,15 @@ tier: 2
 ## HISTORY
 
 - 2026-04-30 v0.1.0: 최초 작성. Wave 3 / Tier 2. Anthropic Managed Agents Memory의 scope hierarchy + audit log 권고를 본 프로젝트 filesystem-mounted memory 모델에 흡수. 4-level scope (org/project/user/agent) + JSONL audit + 30-day rollback + flock concurrency 보호.
+- 2026-04-30 v0.1.1: BLOCKING 결함 수정 — REQ-MS-008 (audit replay → reconstruct) 와 REQ-MS-016 (audit log content 미기록) 모순 해결. **Content-Addressable Storage (CAS)** 도입: audit.jsonl은 hash만 기록, content는 `<scope>/.cas/<hash>` 별도 저장소에 보관. Privacy (audit log에 raw content 없음) + Reconstruct (CAS lookup으로 hash → content 복원) 둘 다 충족.
 
 ---
 
 ## 1. Goal (목적)
 
-본 프로젝트의 단일 user 스코프 메모리 시스템을 **4-level scope architecture** (org / project / user / agent)로 확장하고, 각 scope에 audit log + 동시성 보호 (file lock) + 30-day rollback 메커니즘을 추가한다. Anthropic Managed Agents Memory의 의미적 모델을 filesystem 인프라로 시뮬레이션하여 멀티 sub-agent 환경의 메모리 무결성을 보장한다.
+본 프로젝트의 단일 user 스코프 메모리 시스템을 **4-level scope architecture** (org / project / user / agent)로 확장하고, 각 scope에 audit log + Content-Addressable Storage (CAS) + 동시성 보호 (file lock) + 30-day rollback 메커니즘을 추가한다. Anthropic Managed Agents Memory의 의미적 모델을 filesystem 인프라로 시뮬레이션하여 멀티 sub-agent 환경의 메모리 무결성을 보장한다.
+
+> **Privacy ↔ Reconstruct 양립 설계 (CAS)**: audit log (`<scope>/audit.jsonl`)는 timestamp/agent/action/file/hash만 기록 (raw content 미기록 — privacy 준수). Content는 별도 CAS 저장소 (`<scope>/.cas/<hash>` blob)에 SHA-256 hash 키로 저장. Rollback 시 audit log의 hash → CAS blob lookup으로 file content 복원. 이중 저장으로 privacy (audit log to be shared/exported) + reconstruct (CAS는 local-only, never exported) 둘 다 만족.
 
 ### 1.1 배경
 
@@ -55,12 +58,14 @@ tier: 2
   - `~/.claude/projects/<hash>/memory/` (user scope, 기존 유지)
   - `<project>/.moai/memory/<agent-name>/` (agent scope)
 - `internal/memory/scope.go` — scope resolver
-- `internal/memory/audit.go` — JSONL audit logger
+- `internal/memory/audit.go` — JSONL audit logger (hash only, no content)
+- `internal/memory/cas.go` — Content-Addressable Storage (SHA-256 keyed blob store at `<scope>/.cas/<hash>`)
 - `internal/memory/lock.go` — flock(2) / LockFileEx 기반 advisory lock
-- `internal/memory/rollback.go` — 30-day rollback 로직
+- `internal/memory/rollback.go` — 30-day rollback 로직 (audit hash → CAS lookup → file restore)
 - `cmd/moai/memory.go` — `moai memory <list|read|write|rollback>` 명령
 - `.claude/rules/moai/core/memory-scope.md` 정책 문서
-- audit.jsonl schema 정의 (timestamp, agent, action, file, hash_before, hash_after)
+- audit.jsonl schema 정의 (timestamp, agent, action, file, hash_before, hash_after) — content 미기록
+- CAS schema: `<scope>/.cas/<sha256-hex>` 파일에 raw content 저장, GC는 30+ days unreferenced blob 제거
 - Cross-platform 호환 (macOS/Linux/Windows)
 - Template-First 동기화
 
@@ -104,14 +109,15 @@ tier: 2
 - **REQ-MS-001**: THE MEMORY SYSTEM SHALL define 4 scope levels: org, project, user, agent.
 - **REQ-MS-002**: THE MEMORY SYSTEM SHALL maintain a separate `audit.jsonl` file per scope, recording every read/write/delete operation.
 - **REQ-MS-003**: THE AUDIT LOG ENTRY SHALL include timestamp (ISO 8601), agent identifier, action (read/write/delete), file path, and content hash (before/after for write/delete).
+- **REQ-MS-003b**: THE MEMORY SYSTEM SHALL maintain a Content-Addressable Storage (CAS) at `<scope>/.cas/<sha256-hex>` storing raw blob keyed by SHA-256 hash, ensuring rollback can reconstruct file content from audit log hash references.
 - **REQ-MS-004**: THE MEMORY SYSTEM SHALL provide rollback capability for changes within the past 30 days.
 
 ### 5.2 Event-Driven Requirements
 
 - **REQ-MS-005**: WHEN a memory write occurs, THE SYSTEM SHALL acquire an exclusive file lock on the target file before writing AND SHALL release the lock after the write completes (success or failure).
 - **REQ-MS-006**: WHEN a memory read occurs, THE SYSTEM SHALL acquire a shared file lock and release it after reading.
-- **REQ-MS-007**: WHEN a memory write completes, THE SYSTEM SHALL append an audit entry to the corresponding scope's `audit.jsonl`.
-- **REQ-MS-008**: WHEN the user invokes `moai memory rollback <file> --to <timestamp>`, THE SYSTEM SHALL replay the audit log entries to reconstruct the file state at that timestamp.
+- **REQ-MS-007**: WHEN a memory write completes, THE SYSTEM SHALL (a) write raw blob to `<scope>/.cas/<new-hash>` (idempotent — skip if blob already exists with same hash), AND (b) append an audit entry containing hash_before and hash_after to the corresponding scope's `audit.jsonl`.
+- **REQ-MS-008**: WHEN the user invokes `moai memory rollback <file> --to <timestamp>`, THE SYSTEM SHALL (a) scan audit log entries for the target file up to the requested timestamp, (b) identify the hash_after of the entry at or just before the timestamp, (c) lookup the corresponding blob in `<scope>/.cas/<hash>`, AND (d) restore file content from the CAS blob.
 
 ### 5.3 State-Driven Requirements
 
@@ -128,9 +134,11 @@ tier: 2
 ### 5.5 Unwanted (Negative) Requirements
 
 - **REQ-MS-015**: THE MEMORY SYSTEM SHALL NOT permit cross-org synchronization (single-user / single-machine boundary).
-- **REQ-MS-016**: THE AUDIT LOG SHALL NOT record memory file content (only hashes).
+- **REQ-MS-016**: THE `audit.jsonl` FILE SHALL NOT record memory file content directly (only timestamp/agent/action/file/hashes); raw content is stored exclusively in the CAS store at `<scope>/.cas/<hash>` (see REQ-MS-003b, REQ-MS-007).
+- **REQ-MS-016b**: THE CAS STORE (`<scope>/.cas/`) SHALL NOT be exported, shared, or transmitted outside the local machine (privacy boundary — CAS is local-only; only audit.jsonl with hashes may be shared if explicitly approved).
 - **REQ-MS-017**: THE ROLLBACK OPERATION SHALL NOT delete the audit log entries (rollback is also an audit entry of action "rollback").
 - **REQ-MS-018**: THE MEMORY SYSTEM SHALL NOT silently drop write operations on lock timeout (must surface error to caller).
+- **REQ-MS-019**: THE CAS GARBAGE COLLECTOR SHALL NOT delete blobs referenced by any audit entry within the past 30 days (rollback window protection).
 
 ---
 
@@ -140,9 +148,13 @@ tier: 2
 |-----------|-------------|--------|
 | 4 scope 디렉토리 생성 | unit test | EXISTS for all 4 |
 | Audit log 무결성 | 100 read/write/delete simulation | 100/100 entries |
+| CAS blob 저장 무결성 | 100 write SHA-256 검증 | 100/100 hash matches |
+| CAS GC 보호 | 30-day window blob 보존 검증 | 0 false deletion |
 | Concurrency safety | 10 goroutine concurrent write | 0 data loss |
-| Rollback 정확도 | within-30-day rollback test | 100% restore |
+| Rollback 정확도 (audit + CAS lookup) | within-30-day rollback test | 100% restore |
 | Out-of-window rejection | rollback older than 30 days | rejected |
+| Privacy: audit.jsonl content 미기록 | log scan for raw content | 0 violations |
+| Privacy: CAS local-only | CAS path not in any export | 0 leaks |
 | Windows 호환 | windows CI runner | PASS |
 | `moai memory` CLI | sub-commands list/read/write/rollback | 4/4 functional |
 

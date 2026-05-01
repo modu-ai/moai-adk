@@ -1,6 +1,6 @@
 ---
 id: SPEC-CONTEXT-INJ-001
-acceptance_version: "0.1.0"
+acceptance_version: "0.1.1"
 created_at: 2026-04-30
 updated_at: 2026-04-30
 author: manager-spec
@@ -23,14 +23,16 @@ author: manager-spec
 
 ---
 
-### Scenario 2: 5KB cap 명시
+### Scenario 2: 5000-token cap 명시
 
 **Given** the policy document exists
 
 **When** the user reads the "Token Budget Cap" section
 
-**Then** the section SHALL state "5000 tokens per sub-agent invocation" as default
-**And** the section SHALL describe the override path via `.moai/config/sections/observability.yaml.context_injection.cap`
+**Then** the section SHALL state "5000 tokens per sub-agent invocation" as default (unit: tokens)
+**And** the section SHALL describe the override path via `.moai/config/sections/observability.yaml.context_injection.cap_tokens` (integer, unit: tokens)
+**And** the section SHALL document the conversion formula (1 token ≈ 4 chars, Anthropic Tokenizer baseline)
+**And** the section SHALL document the measurement tool (`tiktoken` cl100k_base or `wc -m` × 0.25 approximation)
 
 ---
 
@@ -44,13 +46,13 @@ author: manager-spec
   1. SPEC progress.md (highest)
   2. Recent feedback (MEMORY.md excerpts)
   3. Domain lessons
-**And** the section SHALL explain the truncation strategy when total exceeds 5KB
+**And** the section SHALL explain the truncation strategy when total exceeds 5000 tokens
 
 ---
 
 ### Scenario 4: progress.md 자동 주입
 
-**Given** an active SPEC-XXX with `.moai/specs/SPEC-XXX/progress.md` of 2KB content
+**Given** an active SPEC-XXX with `.moai/specs/SPEC-XXX/progress.md` of ~500 tokens (~2KB chars) content
 **And** orchestrator invokes manager-ddd for SPEC-XXX
 
 **When** the orchestrator constructs the spawn prompt
@@ -68,15 +70,15 @@ author: manager-spec
 
 ### Scenario 5: Cap 초과 → priority truncation
 
-**Given** progress.md is 4KB
-**And** MEMORY.md excerpt is 2KB
-**And** domain lessons is 1KB
-**And** total = 7KB > 5KB cap
+**Given** progress.md is ~4000 tokens
+**And** MEMORY.md excerpt is ~2000 tokens
+**And** domain lessons is ~1000 tokens
+**And** total = ~7000 tokens > 5000-token cap
 
 **When** the orchestrator constructs the spawn prompt
 
-**Then** the orchestrator SHALL include progress.md (4KB, highest priority) in full
-**And** the orchestrator SHALL include MEMORY.md excerpt up to 1KB (truncate to fit)
+**Then** the orchestrator SHALL include progress.md (~4000 tokens, highest priority) in full
+**And** the orchestrator SHALL include MEMORY.md excerpt up to ~1000 tokens (truncate to fit within 5000-token cap)
 **And** the orchestrator SHALL exclude domain lessons (lowest priority)
 **And** the orchestrator SHALL emit a non-blocking note: "context truncated; 2 of 3 tiers retained"
 
@@ -122,8 +124,8 @@ author: manager-spec
 
 ## Edge Cases
 
-### EC-1: progress.md exceeds 5KB
-If progress.md alone exceeds 5KB, the orchestrator SHALL truncate progress.md to 5KB and exclude all lower-priority tiers. The truncation SHALL preserve the "Last Action" and "State" sections (most recent).
+### EC-1: progress.md exceeds 5000 tokens
+If progress.md alone exceeds 5000 tokens, the orchestrator SHALL truncate progress.md to 5000 tokens and exclude all lower-priority tiers. The truncation SHALL preserve the "Last Action" and "State" sections (most recent).
 
 ### EC-2: research-only sub-agent (researcher, analyst)
 For research-only sub-agents, the priority order MAY be relaxed. The orchestrator MAY inject domain lessons higher than progress.md if relevant to the research task.
@@ -144,14 +146,14 @@ If the orchestrator uses a templated spawn prompt (from `.claude/skills/.../work
 | Gate | Threshold | Evidence |
 |------|-----------|----------|
 | Policy document exists | both local + template | file existence |
-| 5KB cap statement | document section | grep verification |
+| 5000-token cap statement | document section (unit: tokens) | grep verification |
 | 3-tier priority | document section | grep verification |
 | Marker convention | document section | grep verification |
 | Cross-references in agents | >= 16 agent body files | grep count |
 | moai-foundation-core SKILL.md updated | Token Budget section refers to policy | grep verification |
 | CLAUDE.md cross-ref | section update | grep verification |
 | Template-First sync | clean | `make build` diff |
-| Sample 5 invocations <= 5KB | runtime test | log measurement |
+| Sample 5 invocations <= 5000 tokens | runtime test (tiktoken cl100k_base) | log measurement |
 | plan-auditor | PASS | auditor report |
 
 ---

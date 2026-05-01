@@ -65,9 +65,9 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 | 영역 | 현재 (As-Is) | 목표 (To-Be) | 격차 |
 |------|-------------|-------------|------|
 | sub-agent 메모리 자동 마운트 | ❌ (불가) | 명시 주입 표준화 | 패러다임 전환 |
-| progress.md 자동 로드 | ❌ | orchestrator가 5KB cap으로 주입 | 정책 신설 |
+| progress.md 자동 로드 | ❌ | orchestrator가 5000-token cap으로 주입 | 정책 신설 |
 | 주입 우선순위 | undefined | progress.md > recent feedback > domain lessons | 명시 |
-| 토큰 예산 cap | undefined | 5KB per agent invocation | 신규 cap |
+| 토큰 예산 cap | undefined | 5000 tokens per agent invocation | 신규 cap |
 | 주입 정책 문서 | 부재 | `.claude/rules/moai/development/context-injection.md` | 신규 문서 |
 | 형식 표준 | free-form | progress.md schema 권고 | 권장 schema |
 
@@ -88,7 +88,7 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 |------|----------|----------|
 | `.claude/agents/moai/manager-*.md` (orchestrator-callable) | 수정 (cross-ref) | "spawn 시 context-injection.md 정책 준수" |
 | `CLAUDE.md` §14 또는 §16 | 수정 (cross-ref) | 정책 문서 위치 안내 |
-| `.claude/skills/moai-foundation-core/SKILL.md` | 수정 (Token Budget 절 보강) | 5KB cap 명시 |
+| `.claude/skills/moai-foundation-core/SKILL.md` | 수정 (Token Budget 절 보강) | 5000-token cap 명시 |
 
 ### 4.3 progress.md schema (권장)
 
@@ -110,7 +110,7 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 - Related SPECs
 ```
 
-토큰 fingerprint: 약 1-3KB.
+토큰 fingerprint: 약 250-750 tokens (1-3KB chars × 0.25 conversion ratio).
 
 ---
 
@@ -120,7 +120,7 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
-| 5KB cap이 부족하여 핵심 context 누락 | Medium | High | 우선순위 정책 (progress > feedback > lessons) + truncation 시 경고 로깅 |
+| 5000-token cap이 부족하여 핵심 context 누락 | Medium | High | 우선순위 정책 (progress > feedback > lessons) + truncation 시 경고 로깅 |
 | orchestrator가 정책 미준수 (텍스트 가이드만) | High | Medium | Skill body 명시 + sub-agent 호출 시 prompt 자동 주입 helper (별도 SPEC 후보) |
 | progress.md 부재 SPEC | High | Low | `.moai/specs/<ID>/progress.md` 부재 시 silent skip, 경고 없음 |
 | 주입 텍스트가 user-facing prompt와 충돌 | Medium | Medium | injection 섹션을 prompt 앞부분 명시 마커 (`<!-- injected-context -->`)로 분리 |
@@ -129,8 +129,8 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 ### 5.2 Assumptions
 
 - A1: `Agent()` spawn prompt는 텍스트 형태이며 orchestrator가 자유 구성
-- A2: progress.md는 작성 시점에 토큰 효율적인 양 (5KB 이하) 유지 가능
-- A3: 5KB cap은 일반 sub-agent 호출 토큰 예산의 ~5% (200K 기준 10K)에 합리적 fit
+- A2: progress.md는 작성 시점에 토큰 효율적인 양 (5000 tokens 이하) 유지 가능
+- A3: 5000-token cap은 일반 sub-agent 호출 토큰 예산의 ~2.5% (200K 기준), ~0.5% (1M Opus 4.7 기준)에 합리적 fit
 - A4: 우선순위 정책에서 "recent feedback"은 ~/.claude/projects/<hash>/memory/MEMORY.md 발췌
 
 ---
@@ -141,7 +141,7 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 |--------|-------------------|------|
 | 정책 문서 존재 | file existence | EXISTS |
 | 우선순위 명시 | 문서 검토 | 3-tier 정의 |
-| 5KB cap 준수 | 샘플 5 호출 측정 | <= 5KB |
+| 5000-token cap 준수 | 샘플 5 호출 측정 (tiktoken cl100k_base) | <= 5000 tokens |
 | sub-agent 응답 품질 | 주입 ON/OFF 비교 5쌍 | 주입 시 동등 이상 |
 | 정책 적용 sub-agent 비율 | manager-*/expert-* 카운트 | 100% (cross-ref 명시) |
 
@@ -154,7 +154,7 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 | Managed Agents Memory mount 강제 | ❌ | Claude Code sub-agent에 미지원 |
 | 자동 주입 helper Go 구현 | ❌ (현재 SPEC 외) | 코드 변경 vs 문서 정책 — 우선 정책 표준화, 자동화는 후속 SPEC |
 | progress.md 강제 schema | ❌ | living document 형식 자유 보장, 권장 수준 유지 |
-| 토큰 cap 10KB로 확대 | ❌ | sub-agent context overflow 위험, 5KB가 안전 |
+| 토큰 cap 10000 tokens로 확대 | ❌ | sub-agent context overflow 위험, 5000 tokens가 안전 |
 | skills/agent-memory/ skill 신설 | ❌ | rules 위치가 적합 (skill은 동작) |
 
 ---
@@ -169,7 +169,7 @@ orchestrator가 `Agent(subagent_type, prompt)` 호출 시:
 
 ## 9. Open Questions (Plan 단계 해결 대상)
 
-- OQ1: 5KB cap을 Skill 형태로 LSP 검증 가능한가? → plan.md
+- OQ1: 5000-token cap을 Skill 형태로 LSP 검증 가능한가? → plan.md
 - OQ2: progress.md의 권장 schema를 hard rule로 격상할 시점은?
 - OQ3: domain lessons 출처가 multiple memory file일 때 우선순위 결정 알고리즘?
 - OQ4: 주입 정책이 적용되지 않는 예외 케이스 (e.g., research-only sub-agent) 정의?

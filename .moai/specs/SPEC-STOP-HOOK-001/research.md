@@ -7,6 +7,23 @@
 
 ---
 
+## 0. Cross-Worktree Dependency Notice
+
+본 SPEC은 다른 worktree에 위치한 SPEC들을 의미적으로 참조 (semantic reference). plan-auditor가 현재 worktree (wave-3-tier2)만 보면 dependency 부재로 잘못 판정할 수 있으므로 명시합니다.
+
+| 참조 SPEC | 위치 | Branch | PR | 참조 유형 |
+|-----------|------|--------|------|-----------|
+| **SPEC-VERIFY-TEST-001** | `wave-1-tier0` worktree | `feature/wave-1-tier0` | **#747** | semantic reference (test verification infra 활용 의도 — Stop hook이 의존하는 16-language test runner의 verification framework) |
+| **SPEC-GATE-001** (main) | main repo (이미 머지됨) | main | (head merged) | 직접 인용 — `/moai gate` 명령 내 16-language test runner 재사용 (REQ-SH-003, REQ-SH-005 implementation 기반) |
+
+본 SPEC은 "16-language test runner 재사용"이지 "구현 의존 (blockedBy)" 아님 — frontmatter `blockedBy: []` 그대로 유지. plan-auditor가 본 worktree 단독으로 분석 시 SPEC-VERIFY-TEST-001 (Wave 1) 부재로 false alarm 발생 가능, 본 Notice로 의도 명시.
+
+검증 방법:
+- main repo에서 `gh pr view 747 --json mergedAt`로 SPEC-VERIFY-TEST-001 머지 여부 확인
+- 또는 `git fetch origin && git log origin/main --grep "SPEC-VERIFY-TEST-001"`
+
+---
+
 ## 1. 출처 (Anthropic 공식 자료)
 
 ### 1.1 Verbatim 인용

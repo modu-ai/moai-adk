@@ -7,6 +7,22 @@
 
 ---
 
+## 0. Cross-Worktree Dependency Notice
+
+본 SPEC은 다른 worktree에 위치한 SPEC을 의미적으로 참조 (semantic reference, blocking dependency 아님). plan-auditor가 현재 worktree (wave-3-tier2)만 보면 dependency 부재로 잘못 판정할 수 있으므로 명시합니다.
+
+| 참조 SPEC | 위치 | Branch | PR | 참조 유형 |
+|-----------|------|--------|------|-----------|
+| **SPEC-LOOP-TERM-001** | `wave-2-tier1` worktree | `feature/wave-2-tier1` | **#748** | semantic reference (termination schema 의미적 확장 인용 — REQ-WD-004, REQ-WD-009) |
+
+본 SPEC은 "termination schema 인용"이지 "구현 의존" 아님 — frontmatter `blockedBy: []` 그대로 유지. 그러나 SPEC-LOOP-TERM-001이 main에 머지된 후 cross-ref가 안정적으로 작동합니다. plan-auditor가 본 worktree 단독으로 분석 시 LOOP-TERM 부재로 false alarm 발생 가능, 본 Notice로 의도 명시.
+
+검증 방법:
+- main repo에서 `gh pr view 748 --json mergedAt`로 머지 여부 확인
+- 또는 `git fetch origin && git log origin/main --grep "SPEC-LOOP-TERM-001"`
+
+---
+
 ## 1. 출처 (Anthropic 공식 자료)
 
 ### 1.1 Verbatim 인용
