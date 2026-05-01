@@ -31,7 +31,7 @@ Standard MCP servers in MoAI-ADK:
 - pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
 - claude-in-chrome: Browser automation
 
-MCP tools are deferred and must be loaded before use:
+MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
 
 1. Use ToolSearch to find and load the tool
 2. Then call the loaded tool directly
@@ -39,9 +39,10 @@ MCP tools are deferred and must be loaded before use:
 Example flow:
 - ToolSearch("context7 docs") loads mcp__context7__* tools
 - mcp__context7__resolve-library-id is then available
+- With `alwaysLoad: true`, this step is unnecessary for context7 and sequential-thinking
 
 MCP rules:
-- Always use ToolSearch before calling MCP tools
+- Always use ToolSearch before calling MCP tools (unless server has alwaysLoad: true)
 - Prefer MCP tools over manual alternatives
 - Authenticated URLs require specialized MCP tools
 
@@ -51,12 +52,23 @@ Example `.mcp.json` configuration:
 {
   "mcpServers": {
     "context7": {
+      "alwaysLoad": true,
       "command": "npx",
       "args": ["-y", "@context7/mcp"]
     }
   }
 }
 ```
+
+**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` and `sequential-thinking` to ensure `--deepthink` (Sequential Thinking MCP) and Context7 documentation lookup are available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
+
+**Claude Code v2.1.119-121 Hook Changes**:
+
+| Version | Change | Impact |
+|---------|--------|--------|
+| v2.1.119 | PostToolUse / PostToolUseFailure stdin JSON now includes `duration_ms` field | MoAI records slow hooks (>5000ms) to `.moai/observability/hook-metrics.jsonl` when observability dir exists |
+| v2.1.119 | `claude --print` mode honors agent `tools:` / `disallowedTools:` frontmatter | CG Mode regression risk — verify `disallowedTools` in agent frontmatter is intentional |
+| v2.1.121 | PostToolUse `hookSpecificOutput.updatedToolOutput` extended from MCP-only to all tools | `MOAI_HOOK_OUTPUT_TRANSFORM=1` env var activates output transform scaffold |
 
 **Context7 Usage** - For up-to-date library documentation:
 
