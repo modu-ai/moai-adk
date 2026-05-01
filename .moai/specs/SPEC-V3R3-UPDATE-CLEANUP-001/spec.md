@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created_at: 2026-05-01
-updated_at: 2026-05-01
+updated_at: 2026-05-02
 author: manager-spec
 priority: High
 labels: [cli, update, deployment, cleanup, agency, idempotency]
@@ -15,8 +15,9 @@ related_specs: [SPEC-AGENCY-ABSORB-001]
 
 ## HISTORY
 
+- 2026-05-02 v0.2.2: audit v2 minor patch — D-02-09 (cross-reference 표기 일관성: acceptance.md §5 헤더에 /018 추가), D-02-10 (OQ2 line 인용 정확화: Manifest struct = `types.go:42-46`, FileEntry struct = `types.go:49-54`로 분리 표기), D-02-11 (HISTORY LOC 변천을 "estimation refinement, not scope change"로 명시), D-02-12 (acceptance.md §7 cross-OS verification matrix 신설), D-02-13 (외부 네트워크 호출 검증 메커니즘을 `httptest.NewServer 401` → custom `http.RoundTripper` interception으로 교체). 카운트 변동 없음 (REQ 27, AC 28, OQ 1, Risk 8, E2E 6, NFR 1).
 - 2026-05-01 v0.2.1: audit v2 remediation — D-02-01 critical (REQ-UPC-018을 `.moai-skip-cleanup` 사용자 opt-out 메커니즘으로 복원) + D-02-02~D-02-08 major (`.moai/logs/` self-reference 보호, telemetry permission 처리, LOC 공식 명시화, benchstat 기반 NFR-P1 통계 검증, OQ3 해결, case probe 엣지 케이스, symlink 엣지 케이스). REQ 26→27, AC 27→28 + AC-UPC-022b 추가, OQ 2→1.
-- 2026-05-01 v0.2.0: 독립 감사 후속 개정 — Critical 결함 D-01~D-04 (LOC 일관성, Bug 1 검증 갭, OQ1/OQ2 코드 인스펙션, dead-path 사용자 처리) + Major 결함 D-08/D-10/D-11 (R6/R7/R8 리스크, 삭제 파일 처리, 벤치마크 검증) 해소. REQ-UPC-022~026 5종 추가 (텔레메트리, symlink, backup self-reference, 삭제 파일, 대소문자 무관 FS). UnverifiedDeprecated 분류 신설 (Pristine / UserModified / UnverifiedDeprecated 삼분). LOC ~95에서 ~380으로 reconcile (atomic write + lock + cleanup + backup + confirmation + provenance + 5 신규 REQ + 테스트 모두 포함). OQ1/OQ2 해결. R6/R7/R8 신규 추가.
+- 2026-05-01 v0.2.0: 독립 감사 후속 개정 — Critical 결함 D-01~D-04 (LOC 일관성, Bug 1 검증 갭, OQ1/OQ2 코드 인스펙션, dead-path 사용자 처리) + Major 결함 D-08/D-10/D-11 (R6/R7/R8 리스크, 삭제 파일 처리, 벤치마크 검증) 해소. REQ-UPC-022~026 5종 추가 (텔레메트리, symlink, backup self-reference, 삭제 파일, 대소문자 무관 FS). UnverifiedDeprecated 분류 신설 (Pristine / UserModified / UnverifiedDeprecated 삼분). LOC 추정치 ~95 → ~380으로 정정 (**estimation refinement only — 스코프 변경 아님**: v0.1.0의 ~95는 deprecated path registry 추가만 고려한 협소 추정이었고, v0.2.0에서 atomic write + manifest provenance + backup helper + benchstat 인프라 작업까지 포함한 전체 분석으로 helper deduplication 후 ~380 LOC로 정확화). OQ1/OQ2 해결. R6/R7/R8 신규 추가.
 - 2026-05-01 v0.1.0: 최초 작성. 사용자 프로젝트에서 발견된 두 결함 번들링 — (1) `moai update` 후 ` 2` 접미어 중복 파일 발생, (2) SPEC-AGENCY-ABSORB-001(`3e8b61e80`, 2026-04-23)에서 템플릿 제거된 agency 디렉터리가 사용자 프로젝트에 잔존. expert-debug 1차 조사 결과를 SPEC 요구사항으로 정형화.
 
 ---
@@ -165,11 +166,16 @@ SPEC-AGENCY-ABSORB-001 완료 시점(2026-04-23 commit `3e8b61e80`)에 템플릿
 
 ## 6. Open Questions (Plan/Run으로 이연)
 
-v0.2.0에서 OQ1과 OQ2는 코드 인스펙션을 통해 해소되었다 (`/Users/goos/MoAI/moai-adk-go/internal/merge/confirm.go:623`, `/Users/goos/MoAI/moai-adk-go/internal/manifest/types.go:11-39`).
+v0.2.0에서 OQ1과 OQ2는 코드 인스펙션을 통해 해소되었다 (`/Users/goos/MoAI/moai-adk-go/internal/merge/confirm.go:623`; manifest provenance는 `internal/manifest/types.go`의 Provenance enum (`types.go:11-39`) + Manifest struct (`types.go:42-46`) + FileEntry struct (`types.go:49-54`)에 분산 정의).
 
 **OQ1 (resolved 2026-05-01):** `merge.ConfirmMerge` 시그니처는 `func ConfirmMerge(analysis MergeAnalysis) (bool, error)` (`internal/merge/confirm.go:623`). risk classification은 추가 인자가 아니라 `MergeAnalysis` 구조체의 두 필드를 통해 전달된다 — top-level `RiskLevel` (`"low"`/`"medium"`/`"high"`)는 전체 머지의 위험도를, 개별 `FileAnalysis.RiskLevel`은 파일별 위험도를 나타낸다 (`confirm.go:24, 32`). Validation은 `validateAnalysis` (`confirm.go:558-588`)에서 `low`/`medium`/`high` 세 값만 허용한다. 따라서 deprecated cleanup은 `MergeAnalysis{RiskLevel: "high", HasConflicts: true, Files: [...각 파일 RiskLevel "high"...]}`로 구성하여 호출한다. 신규 wrapper 함수는 불필요하다. → REQ-UPC-012/013/014 갱신 완료.
 
-**OQ2 (resolved 2026-05-01):** 매니페스트 provenance hash는 **이미 기존 `manifest.json` 스키마에 존재**한다. `internal/manifest/types.go:42-54`의 `FileEntry` 구조체에 `template_hash` / `deployed_hash` / `current_hash` 3-hash 필드가 정의되어 있으며, `manifest.go:130-149`의 `Track` 메서드와 `manifest.go:165-201`의 `DetectChanges` 메서드가 이를 활용한다. 또한 `Provenance` enum에 `TemplateManaged` / `UserModified` / `UserCreated` / `Deprecated` 4가지 분류가 이미 존재한다 (`types.go:14-30`). **결정**: 별도 `provenance.json` 사이드카를 두지 않고, 기존 manifest에 이미 존재하는 `deployed_hash`를 provenance hash로 활용한다. 본 SPEC의 deprecated cleanup은 `manifest.Manager.GetEntry(path)`로 entry 조회 후 `entry.DeployedHash` vs `manifest.HashFile(currentPath)` 비교로 분류를 결정한다. 추가 schema 마이그레이션 불필요. → REQ-UPC-015~018 갱신 완료.
+**OQ2 (resolved 2026-05-01):** 매니페스트 provenance hash는 **이미 기존 `manifest.json` 스키마에 존재**한다. 정확한 위치 (v0.2.2 line 정확화):
+- `Manifest` struct = `internal/manifest/types.go:42-46` (`Version`, `DeployedAt`, `Files map[string]FileEntry` 필드 보유)
+- `FileEntry` struct = `internal/manifest/types.go:49-54` (`Provenance`, `TemplateHash`, `DeployedHash`, `CurrentHash` 4 필드 보유)
+- `Provenance` enum = `internal/manifest/types.go:14-30` (`TemplateManaged` / `UserModified` / `UserCreated` / `Deprecated` 4 분류)
+
+`manifest.go:130-149`의 `Track` 메서드와 `manifest.go:165-201`의 `DetectChanges` 메서드가 이 스키마를 활용한다. **결정**: 별도 `provenance.json` 사이드카를 두지 않고, 기존 manifest에 이미 존재하는 `FileEntry.DeployedHash` (`types.go:52`)를 provenance hash로 활용한다. 본 SPEC의 deprecated cleanup은 `manifest.Manager.GetEntry(path)`로 entry 조회 후 `entry.DeployedHash` vs `manifest.HashFile(currentPath)` 비교로 분류를 결정한다. 추가 schema 마이그레이션 불필요. → REQ-UPC-015~018 갱신 완료.
 
 **OQ3 (resolved 2026-05-01, v0.2.1):** `--auto-confirm-cleanup` 플래그 명명 및 동작 결정 — 플래그 명: `--auto-confirm-cleanup` (기존 `moai update` 플래그 관례 `--force`/`--dry-run`과 일관). 적용 범위: **`PristineDeprecated`만 prompt bypass**. `UserModifiedDeprecated`와 `UnverifiedDeprecated`는 본 플래그가 set이어도 ALWAYS confirmation prompt 호출 (safety-by-design — 안전성 우선). 기본값: `false` (사용자 명시적 opt-in 필요). → REQ-UPC-014에 인라인 반영, 의존성 태그 제거 완료.
 

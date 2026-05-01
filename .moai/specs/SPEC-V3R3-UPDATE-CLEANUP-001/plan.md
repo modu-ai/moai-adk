@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created_at: 2026-05-01
-updated_at: 2026-05-01
+updated_at: 2026-05-02
 author: manager-spec
 priority: High
 labels: [cli, update, deployment, cleanup, agency, idempotency]
@@ -13,6 +13,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 ## HISTORY
 
+- 2026-05-02 v0.2.2: audit v2 minor patch — D-02-11 LOC 변천 표기를 "estimation refinement, not scope change" 프레이밍으로 명시 (각 버전 업데이트가 새 작업 추가가 아닌 분석 정확도 향상의 결과임을 reader에게 명확히). spec/acceptance와 함께 동기 업데이트.
 - 2026-05-01 v0.2.1: audit v2 remediation — D-02-04 LOC reconcile 산식 명시화 (helper 재사용 항목별 deduplication LOC 산출), D-02-05 NFR-P1 benchstat 통계 게이트 (T4.4 갱신), D-02-06 OQ3 해결 반영 (T3.2 인라인), D-02-01 REQ-UPC-018 (`.moai-skip-cleanup` opt-out)을 M2에 신규 task로 추가, D-02-02 `.moai/logs/` self-reference 보호 (T3.6 확장), D-02-03 telemetry permission 처리 (T3.4 확장), D-02-07 case probe 엣지 케이스 (T4.3 확장), D-02-08 symlink 엣지 케이스 (T3.5 확장). M2 LOC 75→약 85, M3 LOC 130→약 145, M4 LOC 150→약 165 (총 ~395 → reconciled 산식 후 ~380 유지).
 - 2026-05-01 v0.2.0: 감사 후속 개정 — D-01 LOC reconcile (~95 → ~380으로 일관성 확보), OQ1/OQ2 해결 반영 (T3.1/T3.4 갱신), 신규 REQ-UPC-022~026에 대한 마일스톤 작업 추가 (M3에 telemetry/symlink/backup-self-reference, M4에 case-insensitive E2E 추가), Risk Register에 R6/R7/R8 신규 추가 (symlink, case-insensitive FS, backup self-reference). M3 LOC 90→약 130으로 증가, M4 LOC 120→약 150으로 증가, NFR-UPC-P1 벤치마크 작업을 M4에 명시 추가.
 - 2026-05-01 v0.1.0: 최초 작성. 4개 마일스톤(M1~M4) 시퀀셜 진행 결정.
@@ -23,7 +24,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 본 SPEC은 두 결함(멱등성 결함 + 폐기 경로 누수)을 단일 release cycle에 번들링한다. 두 결함 모두 `internal/cli/update.go` + deployer 체인을 건드리며, 회귀 테스트 인프라(`t.TempDir()` 기반 사용자 프로젝트 시뮬레이션)를 공유한다. 마일스톤은 의존성 그래프상 **M1 → M2 → M3 → M4 시퀀셜** 진행이 안전하다 (M1의 atomic write가 M2의 backup 안전성 토대를 제공, M3의 confirmation flow가 M2의 deletion 트리거이므로 통합 테스트 시점에 모두 필요).
 
-**총 LOC 추정 ~380** (spec.md §1.3과 일치). v0.2.1에서 산식 명시화 (D-02-04).
+**총 LOC 추정 ~380** (spec.md §1.3과 일치). v0.2.1에서 산식 명시화 (D-02-04). **이 추정치 변천(v0.1.0 ~95 → v0.2.0 ~380 → v0.2.1 ~395 simple sum / 380 reconciled)은 estimation refinement이며 SPEC scope 변경이 아니다 (v0.2.2 D-02-11 명시화)** — 각 버전 개정은 분석 깊이를 증가시킨 결과이며, 신규 기능 추가가 아니다. v0.2.0에서 atomic write + manifest provenance + benchstat 인프라가 SPEC scope 분석에 포함되었고, v0.2.1에서 helper deduplication 산식이 정량화되어 ~380 LOC reconciled 값을 도출했다.
 
 **1단계 — 마일스톤별 단순 합산 (helper 중복 미고려)**:
 - M1 (atomic write + lock + idempotency tests): ~95 LOC

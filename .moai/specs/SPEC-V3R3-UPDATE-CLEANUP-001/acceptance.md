@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created_at: 2026-05-01
-updated_at: 2026-05-01
+updated_at: 2026-05-02
 author: manager-spec
 priority: High
 labels: [cli, update, deployment, cleanup, agency, idempotency]
@@ -13,6 +13,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 ## HISTORY
 
+- 2026-05-02 v0.2.2: audit v2 minor patch — D-02-09 (§5 헤더에 /018 추가하여 cross-reference 표기 일관성 확보), D-02-12 (§7.5 Cross-OS Verification Matrix 신설: REQ-UPC-022/023/024/026 OS별 검증 책임 명시), D-02-13 (AC-UPC-022 외부 네트워크 검증 메커니즘을 `httptest.NewServer 401`에서 custom `http.RoundTripper` interception으로 교체하여 임의 host에 대한 dial 차단 검증 정확화). 카운트 변동 없음.
 - 2026-05-01 v0.2.1: audit v2 remediation — AC-UPC-018 신규 (`.moai-skip-cleanup` opt-out marker, REQ-UPC-018 복원), AC-UPC-022b 신규 (telemetry permission denied 처리, D-02-03), AC-UPC-024 확장 (`.moai/logs/` self-reference dual-path, D-02-02), AC-UPC-023 sub-cases (broken symlink, target collision, Windows reparse point — D-02-08), AC-UPC-026 sub-cases (probe failure fallback, frequency, APFS variant — D-02-07), AC-NFR-P1 benchstat 통계 게이트 (delta + p-value, D-02-05). AC 총 개수 26 → 28, E2E 시나리오는 6 유지.
 - 2026-05-01 v0.2.0: 감사 후속 개정 — REQ-UPC-015~018을 삼분 분류(015 / 015a / 015b / 015c / 016 / 017)로 재구성, REQ-UPC-022~026 5종에 대한 AC 추가 (telemetry / symlink / backup self-reference / deleted file / case-insensitive FS), Scenario E를 deterministic lock acquisition test로 명시 (D-07 후속), Scenario F (UnverifiedDeprecated) 추가, AC-NFR-P1 벤치마크 검증 항목 신설 (D-11 후속), AC 총 개수 21 → 26, E2E 시나리오 5 → 6.
 - 2026-05-01 v0.1.0: 최초 작성. 21개 REQ에 대한 Given/When/Then 시나리오 + 5개 E2E 회귀 시나리오 (A~E).
@@ -134,7 +135,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 ---
 
-## 5. Customization Safety — 삼분 분류 (REQ-UPC-015 / 015a / 015b / 015c / 016 / 017)
+## 5. Customization Safety — 삼분 분류 (REQ-UPC-015 / 015a / 015b / 015c / 016 / 017 / 018)
 
 ### AC-UPC-015 (REQ-UPC-015): manifest 조회 + SHA-256 hash 계산
 
@@ -234,7 +235,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
   - `.moai/logs/update-cleanup-{ISO8601}.jsonl` 파일이 생성되며, 단일 JSON line이 append된다
   - JSON 객체 키: `atomic_write_used` (bool), `pre_update_suffix2_files` ([string]), `backup_outcome` ("success"/"skipped"/"failed"), `backup_path` (string, optional), `cleanup_outcome` ("completed"/"deferred"/"aborted"), `user_opt_out_paths` ([string], v0.2.1 — REQ-UPC-018 marker로 skip된 경로)
   - 동일 line이 stderr에도 mirror 출력된다
-  - **외부 네트워크 호출이 발생하지 않는다** (테스트는 `httptest.NewServer` 401 + connection counter로 검증)
+  - **외부 네트워크 호출이 발생하지 않는다** — v0.2.2 D-02-13 정확화: 검증 메커니즘은 custom `http.RoundTripper` interception 패턴 사용. 테스트가 `http.DefaultTransport`를 zero-Dial-허용 round-tripper(모든 host의 `Dial` 시도를 기록 + 즉시 error 반환)로 교체한 뒤 `moai update --enable-telemetry` 실행. assertion: 테스트 종료 시점에 round-tripper의 dial counter가 0임을 검증. (이전 버전의 `httptest.NewServer 401` 방식은 단일 endpoint에 대한 reply만 검증할 뿐 임의 host로의 dial 시도를 차단하지 못했다.)
 - **Test type:** integration (`internal/cli/update_test.go::TestCleanup_TelemetryEmitted`)
 
 ### AC-UPC-022b (REQ-UPC-022 permission denied, v0.2.1, D-02-03): telemetry log 디렉터리 write 실패 graceful 처리
@@ -483,7 +484,37 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 ---
 
-## 10. Quality Gate Summary
+## 10. Cross-OS Verification Matrix (v0.2.2 신설, D-02-12)
+
+REQ별 OS 검증 책임 매트릭스. plan.md §5 DoD가 요구하는 CI 3-플랫폼(`ubuntu-latest`, `macos-latest`, `windows-latest`) 그린 조건과 결합하여 실행.
+
+| REQ | ubuntu (POSIX) | macos (POSIX + APFS) | windows (NTFS + reparse) | 비고 |
+|---|---|---|---|---|
+| REQ-UPC-022 (telemetry) | 필수 | 필수 | 필수 | jsonl 파일 생성 + stderr mirror 모두 OS 무관 검증 |
+| REQ-UPC-022b (permission denied) | 필수 (`chmod 0500`) | 필수 (`chmod 0500`) | 필수 (`icacls /deny` 또는 read-only attribute) | Windows는 POSIX chmod 미지원이므로 ACL 기반 동등 시뮬레이션 |
+| REQ-UPC-023a (정상 symlink) | 필수 | 필수 | 정보 제공용 (junction point) | POSIX symlink는 ubuntu/macos에서 full coverage |
+| REQ-UPC-023b (broken symlink) | 필수 | 필수 | 정보 제공용 | broken symlink 동작은 OS 별 ENOENT 처리 일관성 검증 |
+| REQ-UPC-023c (target collision) | 필수 | 필수 | 정보 제공용 | double-count 방지는 OS 무관 로직 |
+| REQ-UPC-023d (Windows fallback) | skip | skip | **필수 (실제 검증)** | `runtime.GOOS == "windows"` 게이트, junction/reparse 환경 또는 권한 부재 시뮬레이션 |
+| REQ-UPC-024 (backup + logs self-ref) | 필수 | 필수 | 필수 | path prefix matching은 OS 무관 |
+| REQ-UPC-025 (deleted file silent) | 필수 | 필수 | 필수 | OS 무관 |
+| REQ-UPC-026a (case-insensitive APFS) | skip | **필수** | skip | macOS APFS 기본 case-insensitive 환경 |
+| REQ-UPC-026b (case-sensitive ext4) | **필수** | skip | skip | ubuntu ext4 기본 case-sensitive 환경 |
+| REQ-UPC-026c (probe failure fallback) | 필수 | 필수 | 필수 | read-only FS 시뮬레이션 (`chmod 0500` 또는 동등) |
+| REQ-UPC-026d (probe frequency once) | 필수 | 필수 | 필수 | counter mock 기반, OS 무관 |
+| REQ-UPC-026e (APFS case-sensitive variant) | skip | **필수 (조건부)** | skip | macOS의 case-sensitive APFS variant 환경 (hdiutil dmg fixture 필요, fixture 부재 시 `t.Skip` with reason) |
+
+**Verification rules:**
+- "필수" = 해당 OS에서 테스트 실행 + PASS 필수 (CI gate fail-closed)
+- "정보 제공용" = 해당 OS에서 실행되더라도 결과는 PR 코멘트에만 첨부, 게이트 영향 없음
+- "skip" = 해당 OS에서 `t.Skip("not applicable on <OS>")` 명시적 호출
+- "조건부" = fixture (예: hdiutil dmg) 또는 환경 변수 존재 시에만 실행, 부재 시 skip
+
+**Constitution C1 정합성**: 본 매트릭스는 16-language neutrality (CLAUDE.local.md §15)와 OS neutrality를 분리한다. 16-language는 사용자 프로젝트 언어 동등 취급, OS neutrality는 `moai update` 자체의 cross-OS 거동 보장.
+
+---
+
+## 11. Quality Gate Summary
 
 - 총 AC 개수: **28개** (AC-UPC-001~005, 006~008, 009~011, 012~014, 015 / 015a / 015b / 015c / 016 / 017 / **018**, 019~021, 022 / **022b** / 023 / 023b / 023c / 023d / 024 / 025 / 026 / 026b / 026c / 026d / 026e + AC-NFR-P1)
   - 주요 카운트: AC-UPC-NNN 27개 + AC-NFR-P1 1개 = 28개. (sub-cases 023a~d, 026a~e는 단일 REQ에 종속된 시나리오 분할로 각각 독립 검증되나 상위 AC ID로 집계)
