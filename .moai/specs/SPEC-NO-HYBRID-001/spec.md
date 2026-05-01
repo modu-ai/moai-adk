@@ -29,8 +29,8 @@ tier: 3
 
 ### 1.1 배경
 
-- Anthropic blog "Seeing Like an Agent": "Hybrid tool confusion: Adding parameters to serve multiple purposes simultaneously (asking for both a plan AND questions about the plan) confuses agent behavior."
-- Anthropic blog "Seeing Like an Agent": "Format-based control: Attempting to constrain outputs through markdown formatting or structured instructions without proper tool support results in unreliable compliance."
+- Anthropic blog "Seeing Like an Agent" (https://claude.com/blog/seeing-like-an-agent), § "Attempt 1: Editing the ExitPlanTool": "This was the easiest fix to implement, but it confused Claude because we were simultaneously asking for a plan and a set of questions about the plan."
+- Anthropic blog 동일 출처, § "Attempt 2: Changing output format": "Claude could usually produce this format, but not reliably. It would append extra sentences, drop options, or abandon the structure altogether."
 - 본 프로젝트의 `/moai project` 등 일부 명령어는 init/analyze/generate/refresh 4 mode 처리
 
 ### 1.2 비목표 (Non-Goals)

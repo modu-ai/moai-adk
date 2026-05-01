@@ -29,9 +29,9 @@ tier: 3
 
 ### 1.1 배경
 
-- Anthropic blog "Using Claude Code: Session Management and 1M Context": "Bad autocompacts occur when the model can't predict the direction your work is going."
-- Anthropic blog 동일 출처: "When you start a new task, you should also start a new session."
-- Anthropic blog 동일 출처: "Three primary tools: /compact (lossy), /clear (manual but clean), /rewind (Esc Esc to jump back)."
+- Anthropic blog "Using Claude Code: Session Management and 1M Context" (https://claude.com/blog/using-claude-code-session-management-and-1m-context), § "What causes a bad autocompact?": "bad compacts can happen when the model can't predict the direction your work is going"
+- Anthropic blog 동일 출처, § "When to start a new session": "when you start a new task, you should also start a new session"
+- Anthropic blog 동일 출처, § "Compacting vs. launching a fresh session": three tools (`/compact` lossy summarization, `/clear` manual clean slate, `/rewind` double-Esc backtrack) — paraphrase; verbatim per-tool descriptions are spread across the section (see research.md §1.1)
 - 본 프로젝트의 `context-window-management.md`은 plan/run 전환만 다룸 → loop / design / sync 미적용
 
 ### 1.2 비목표 (Non-Goals)

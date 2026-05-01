@@ -9,13 +9,23 @@
 
 ## 1. 출처 (Anthropic 공식 자료)
 
-### 1.1 Verbatim 인용 (Anthropic blog "Using Claude Code: Session Management and 1M Context")
+**Source**: Anthropic blog "Using Claude Code: Session Management and 1M Context"
+**URL**: https://claude.com/blog/using-claude-code-session-management-and-1m-context
+**Accessed**: 2026-04-30 (verified via WebFetch)
 
-> "Bad autocompacts occur when the model can't predict the direction your work is going."
+### 1.1 Verbatim 인용
 
-> "When you start a new task, you should also start a new session."
+> "bad compacts can happen when the model can't predict the direction your work is going"
 
-> "Three primary tools: /compact (lossy), /clear (manual but clean), /rewind (Esc Esc to jump back)."
+— Section: "What causes a bad autocompact?"
+
+> "when you start a new task, you should also start a new session"
+
+— Section: "When to start a new session"
+
+> Three context-management tools described in § "Compacting vs. launching a fresh session": `/compact` (automatic summarization with potential information loss — lossy), `/clear` (manual context selection with clean slate), and `/rewind` (double-Esc to backtrack to previous messages and try again).
+
+— Section: "Compacting vs. launching a fresh session" (paraphrase of three-tool description; verbatim sub-quotes per tool not co-located in a single sentence)
 
 ### 1.2 Anthropic의 세션 관리 권고 핵심
 

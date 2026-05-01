@@ -206,19 +206,28 @@ progress.md 경로: .moai/specs/SPEC-<ID>/progress.md (또는 .moai/state/<sessi
 
 ### 4.4 Detection 신호 (orchestrator self-monitoring)
 
+**Unit conversions (Anthropic standard)**:
+- 1 token ≈ 4 characters
+- 1 KiB (1024 bytes) ≈ 256 tokens
+- 75% of 1M context (Opus 4.7) ≈ 750K tokens ≈ 3 MiB cumulative output
+- 75% of 200K context (Sonnet) ≈ 150K tokens ≈ 600 KiB cumulative output
+
 ```
-estimated_usage = (
-    cumulative_output_bytes / 5000  # 1KB ≈ 5 tokens
-  + system_reminder_volume * 200    # rules 인젝션
-  + large_tool_results * 1000       # 5KB+ Read/Bash
-  + agent_invocations * 5000        # Agent 컨텍스트 합산
+# bytes → estimated tokens: divide by 4 (≈ 4 chars/token)
+estimated_tokens = (
+    cumulative_output_bytes / 4         # text output (1 KiB ≈ 256 tokens)
+  + system_reminder_volume * 200        # per rule-file injection (large rule MD ≈ 200 tokens)
+  + large_tool_results * 1000           # 5 KiB+ Read/Bash result (≈ 1000 tokens each)
+  + agent_invocations * 5000            # Agent() return context (typical 5K tokens)
 )
 
-if estimated_usage / context_window > 0.75:
+if estimated_tokens / context_window > 0.75:
     save_state(); emit_resume_message()
-if estimated_usage / context_window > 0.90:
+if estimated_tokens / context_window > 0.90:
     announce("/clear 권장")
 ```
+
+**Sanity check**: 1 MiB cumulative output → ~262K tokens (well above Sonnet 200K limit, ~26% of Opus 1M limit). 75% threshold for Opus 1M is reached around ~3 MiB cumulative output.
 
 ## 5. Risks and Mitigations
 

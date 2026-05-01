@@ -9,17 +9,33 @@
 
 ## 1. 출처 (Anthropic 공식 자료)
 
-### 1.1 Verbatim 인용 (Anthropic blog "Introducing Routines in Claude Code")
+**Source**: Anthropic blog "Introducing Routines in Claude Code"
+**URL**: https://claude.com/blog/introducing-routines-in-claude-code
+**Accessed**: 2026-04-30 (verified via WebFetch)
+
+### 1.1 Verbatim 인용 (§ "How it works")
 
 > "A routine is a Claude Code automation you configure once — including a prompt, repo, and connectors — and then run on a schedule, from an API call, or in response to an event."
 
-> "Three execution modes exist: Scheduled (hourly, nightly, or weekly), API (POST a message, get back a session URL), Webhook (GitHub repository events create one session per PR)"
+— Section: "How it works" (definition)
 
-### 1.2 Verbatim 사용 예 (Anthropic blog 동일 출처)
+> "Give Claude Code a prompt and a cadence (hourly, nightly, or weekly) and it runs on that schedule"
+
+— Section: "How it works" → "Scheduled routines"
+
+> "You can also configure routines to be triggered by API calls. Every routine gets its own endpoint and auth token."
+
+— Section: "How it works" → "API routines"
+
+> "Subscribe a routine to automatically kick off in response to GitHub repository events."
+
+— Section: "How it works" → "Webhook routines"
+
+### 1.2 Verbatim 사용 예 (§ "Scheduled routines")
 
 > "Every night at 2am: pull the top bug from Linear, attempt a fix, and open a draft PR."
 
-> "Read the alert payload, find the owning service, and post a triage summary to #oncall."
+— Section: "Scheduled routines" (example use case)
 
 ### 1.3 Anthropic 권고의 핵심 포인트
 

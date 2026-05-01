@@ -9,13 +9,23 @@
 
 ## 1. 출처 (Anthropic 공식 자료)
 
-### 1.1 Verbatim 인용 (Anthropic blog "Claude Code Contribution Metrics")
+**Source**: Anthropic blog "Claude Code Contribution Metrics"
+**URL**: https://claude.com/blog/contribution-metrics
+**Accessed**: 2026-04-30 (verified via WebFetch)
+
+### 1.1 Verbatim 인용 (§ "How we're shipping at Anthropic" + § "Measure velocity with Claude Code")
 
 > "While pull requests alone are an incomplete measure of developer velocity, we've found them to be a close proxy for what engineering teams care about: shipping features, fixing bugs, and delighting users faster."
 
+— Section: "How we're shipping at Anthropic"
+
 > "67% increase in PRs merged per engineer per day. Across teams, 70–90% of code is now being written with Claude Code assistance."
 
+— Section: "How we're shipping at Anthropic"
+
 > "We calculate this conservatively, and only code where we have high confidence in Claude Code's involvement is counted as assisted."
+
+— Section: "Measure velocity with Claude Code"
 
 ### 1.2 Anthropic의 측정 철학
 
@@ -111,7 +121,7 @@ Confidence 0.70 threshold criteria (Anthropic 권고 적용):
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|-----------|
-| Metric 측정이 침해성 (사용자 추적) | Medium | High | opt-in 정책, `.moai/config.yaml metrics.enabled: false` 기본값 검토 |
+| Metric 측정이 침해성 (사용자 추적) | Medium | High | opt-in 정책, `.moai/config/sections/metrics.yaml metrics.enabled: false` 기본값 검토 |
 | Confidence threshold 부정확 | High | Medium | conservative bias (0.70+), false positive 회피 |
 | `.moai/metrics/contribution.jsonl` 누적 | Medium | Low | retention 정책 (예: 365일) |
 | GitHub Analytics 통합 복잡 | High | Medium | Phase 2로 분리, Phase 1은 local JSONL만 |

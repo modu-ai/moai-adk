@@ -21,7 +21,7 @@ author: manager-spec
 3. `/moai sync` 워크플로우에 metric 수집 단계 추가
 4. Confidence calculation 휴리스틱 정의
 5. Privacy 정책 (author = GitHub username, email 제외)
-6. Opt-in/out 정책 결정 + `.moai/config.yaml` 통합
+6. Opt-in/out 정책 결정 + `.moai/config/sections/metrics.yaml` 통합
 
 ## 3. Milestones (Priority-based, no time estimates)
 
@@ -83,7 +83,7 @@ author: manager-spec
 ### M3 — Opt-in/out 정책 + Privacy (Priority: High)
 
 - [ ] Opt-in vs opt-out 결정:
-  - **Opt-in default** 권고: `.moai/config.yaml metrics.enabled: false` (사용자 명시 활성화)
+  - **Opt-in default** 권고: `.moai/config/sections/metrics.yaml metrics.enabled: false` (사용자 명시 활성화)
   - 이유: privacy first, 명시 동의
   - 활성화 시: `metrics.enabled: true`
 - [ ] Privacy rules:
@@ -91,8 +91,8 @@ author: manager-spec
   - email 영속화 금지
   - PR body / commit message 원문 영속화 금지 (요약만)
   - PII 검출 시 entry skip
-- [ ] `.moai/config/sections/metrics.yaml` 신설 검토 또는 `quality.yaml` 통합
-  - 결정: 신규 `metrics.yaml` (단일 책임)
+- [ ] `.moai/config/sections/metrics.yaml` 신설 (단일 책임 — 다른 config section yaml 패턴과 일관)
+  - 결정: 신규 `metrics.yaml` 단일 책임 (other sections: quality.yaml, lsp.yaml, mx.yaml과 동일 위치)
 
 **Exit Criteria**: opt-in 결정 + privacy 5 rules 명시
 

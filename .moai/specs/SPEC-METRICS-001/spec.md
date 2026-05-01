@@ -55,7 +55,7 @@ tier: 3
 - `.claude/rules/moai/workflow/contribution-metrics.md` 정책 문서
 - `moai-workflow-project` SKILL.md cross-ref
 - Privacy 정책 (author = GitHub username, email 제외)
-- Opt-in 정책 검토 (`.moai/config.yaml metrics.enabled`)
+- Opt-in 정책 검토 (`.moai/config/sections/metrics.yaml metrics.enabled`)
 - Template-First 동기화
 
 ### 2.2 Exclusions (What NOT to Build)
@@ -108,7 +108,7 @@ tier: 3
 
 ### 5.3 State-Driven Requirements
 
-- **REQ-METRICS-008**: WHILE `.moai/config.yaml metrics.enabled` is `false`, THE WORKFLOW SHALL skip metric collection entirely.
+- **REQ-METRICS-008**: WHILE `.moai/config/sections/metrics.yaml metrics.enabled` is `false`, THE WORKFLOW SHALL skip metric collection entirely.
 
 ### 5.4 Conditional (WHERE / IF) Requirements
 
@@ -134,7 +134,7 @@ tier: 3
 | Schema 정의 | 9 필드 명시 | 100% |
 | Confidence threshold | 0.70 명시 | EXISTS |
 | Privacy 정책 | email 제외 명시 | EXISTS |
-| Opt-in/out 정책 | `.moai/config.yaml` reference | EXISTS |
+| Opt-in/out 정책 | `.moai/config/sections/metrics.yaml` reference | EXISTS |
 | Sample 5 sync 호출 | metric 생성 검증 | 100% |
 | Confidence < 0.70 → assisted = 0 | sample 검증 | 100% |
 | Cross-ref | grep | >= 2 |

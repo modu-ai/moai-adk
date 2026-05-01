@@ -9,17 +9,25 @@
 
 ## 1. 출처 (Anthropic 공식 자료)
 
-### 1.1 Verbatim 인용 (Anthropic blog "Seeing Like an Agent")
+**Source**: Anthropic blog "Seeing Like an Agent"
+**URL**: https://claude.com/blog/seeing-like-an-agent
+**Accessed**: 2026-04-30 (verified via WebFetch)
 
-> "Hybrid tool confusion: Adding parameters to serve multiple purposes simultaneously (asking for both a plan AND questions about the plan) confuses agent behavior."
+### 1.1 Verbatim 인용 (§ "Attempt 1: Editing the ExitPlanTool" + § "Attempt 2: Changing output format")
 
-> "Format-based control: Attempting to constrain outputs through markdown formatting or structured instructions without proper tool support results in unreliable compliance."
+> "This was the easiest fix to implement, but it confused Claude because we were simultaneously asking for a plan and a set of questions about the plan."
 
-### 1.2 Anthropic의 SRP 권고 핵심
+— Section: "Attempt 1: Editing the ExitPlanTool" (parameter overloading anti-pattern)
 
-- **Single purpose per tool**: 각 도구는 단일 명확한 책임
-- **Format vs Tool**: format-based output control은 unreliable, tool-level structuring이 reliable
-- **Parameter explosion warning**: 파라미터가 다목적 의미를 가질 때 agent가 혼동
+> "Claude could usually produce this format, but not reliably. It would append extra sentences, drop options, or abandon the structure altogether."
+
+— Section: "Attempt 2: Changing output format" (format-based control unreliability)
+
+### 1.2 Anthropic의 SRP 권고 핵심 (본 SPEC 해석)
+
+- **Single purpose per tool**: 각 도구는 단일 명확한 책임 (Anthropic의 "asking for both a plan AND questions about the plan" 사례 = 다목적 도구의 혼동 사례)
+- **Format vs Tool**: format-based output control은 unreliable ("not reliably ... append extra sentences, drop options, or abandon the structure"), tool-level structuring이 reliable
+- **Parameter overloading warning**: 단일 파라미터/단일 도구가 다목적 의미를 가질 때 agent가 혼동 (Anthropic의 ExitPlanTool 사례)
 - **Concrete examples**: "plan + questions"이 typical anti-pattern
 
 ### 1.3 SRP (Single Responsibility Principle) 적용

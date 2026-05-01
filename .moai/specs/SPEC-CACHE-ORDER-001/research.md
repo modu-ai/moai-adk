@@ -9,15 +9,27 @@
 
 ## 1. 출처 (Anthropic 공식 자료)
 
-### 1.1 Verbatim 인용 (Anthropic blog "Harnessing Claude's Intelligence")
+**Source**: Anthropic blog "Harnessing Claude's Intelligence"
+**URL**: https://claude.com/blog/harnessing-claudes-intelligence
+**Accessed**: 2026-04-30 (verified via WebFetch)
 
-> "Order static content before dynamic content."
+### 1.1 Verbatim 인용 (§ "Design context to maximize cache hits")
 
-> "Use `<system-reminder>` in messages rather than editing prompts"
+> "Order requests so that stable content (system prompt, tools) come first."
 
-> "Avoid switching models (breaks cache); use subagents for cheaper alternatives"
+— Section: "Design context to maximize cache hits" → principles table → "Static first, dynamic last"
 
-> "Cached tokens cost 10% the cost of base input tokens."
+> "Append a `<system-reminder>` in messages instead of editing the prompt."
+
+— Section: "Design context to maximize cache hits" → principles table → "Messages for updates"
+
+> "Avoid switching models during a session. Caches are model-specific; switching breaks them. If you need a cheaper model, use a subagent."
+
+— Section: "Design context to maximize cache hits" → principles table → "Don't change models"
+
+> "Cached tokens are 10% the cost of base input tokens"
+
+— Section: "Design context to maximize cache hits" → introductory paragraph (before principles table)
 
 ### 1.2 Anthropic의 Cache 활용 가이드 핵심
 
@@ -180,6 +192,12 @@
 - SPEC-ADVISOR-001 (Wave 1): advisor 패턴 — 본 SPEC의 모델 전환 회피와 정합
 - SPEC-CONTEXT-INJ-001 (Wave 3): context injection — 본 SPEC의 dynamic suffix 부분
 - SPEC-NO-HYBRID-001 (이번 wave sibling): 또 다른 Anthropic 권고 — 정합성
+
+## Cross-Worktree Dependency Notice
+
+본 SPEC은 SPEC-ADVISOR-001 (Wave 1, branch: `feature/wave-1-tier0`, PR #747)에 의존합니다 (REQ-CACHE-007 advisor 패턴 cross-ref 및 §3.3 model-switch avoidance). 본 SPEC 구현 전 SPEC-ADVISOR-001이 main에 머지되어야 합니다.
+
+frontmatter 표기: `blockedBy: [SPEC-ADVISOR-001]` (hard dependency, cross-ref 대상이 머지되지 않으면 본 SPEC의 advisor 패턴 인용이 dangling reference가 됨).
 
 ---
 

@@ -6,7 +6,7 @@ priority: Medium
 labels: [prompt-cache, optimization, cost, system-reminder, advisor, wave-4, tier-3]
 issue_number: null
 scope: [.claude/rules/moai/development, .claude/agents, .claude/skills, .moai/metrics]
-blockedBy: []
+blockedBy: [SPEC-ADVISOR-001]
 dependents: []
 created_at: 2026-04-30
 updated_at: 2026-04-30
@@ -29,10 +29,10 @@ Anthropic의 prompt cache는 **prefix 단위로 동작**하므로 static prefix�
 
 ### 1.1 배경
 
-- Anthropic blog "Harnessing Claude's Intelligence": "Order static content before dynamic content."
-- Anthropic blog 동일 출처: "Use `<system-reminder>` in messages rather than editing prompts"
-- Anthropic blog 동일 출처: "Avoid switching models (breaks cache); use subagents for cheaper alternatives"
-- Anthropic blog 동일 출처: "Cached tokens cost 10% the cost of base input tokens."
+- Anthropic blog "Harnessing Claude's Intelligence" (https://claude.com/blog/harnessing-claudes-intelligence), § "Design context to maximize cache hits" → "Static first, dynamic last": "Order requests so that stable content (system prompt, tools) come first."
+- Anthropic blog 동일 출처, § principles table → "Messages for updates": "Append a `<system-reminder>` in messages instead of editing the prompt."
+- Anthropic blog 동일 출처, § principles table → "Don't change models": "Avoid switching models during a session. Caches are model-specific; switching breaks them. If you need a cheaper model, use a subagent."
+- Anthropic blog 동일 출처, § introductory paragraph: "Cached tokens are 10% the cost of base input tokens"
 - 본 프로젝트는 SPEC-ADVISOR-001 (Wave 1)이 advisor 패턴 정착 → 본 SPEC이 cache 관점에서 강화
 
 ### 1.2 비목표 (Non-Goals)
