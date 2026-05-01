@@ -616,6 +616,153 @@ func TestMCPTemplateSchema(t *testing.T) {
 	}
 }
 
+// TestMCPTemplateAlwaysLoadOnContext7 verifies that the rendered .mcp.json sets
+// "alwaysLoad": true on the context7 server entry (REQ-001, REQ-002).
+func TestMCPTemplateAlwaysLoadOnContext7(t *testing.T) {
+	platforms := []string{"darwin", "linux", "windows"}
+
+	for _, platform := range platforms {
+		t.Run(platform, func(t *testing.T) {
+			ctx := testContext(platform)
+			output := renderTemplate(t, ".mcp.json.tmpl", ctx)
+
+			var config map[string]any
+			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			servers, ok := config["mcpServers"].(map[string]any)
+			if !ok {
+				t.Fatal("missing mcpServers")
+			}
+			server, ok := servers["context7"].(map[string]any)
+			if !ok {
+				t.Fatal("missing context7 server entry")
+			}
+			val, exists := server["alwaysLoad"]
+			if !exists {
+				t.Error("context7: alwaysLoad field is absent; want true")
+				return
+			}
+			if val != true {
+				t.Errorf("context7: alwaysLoad = %v, want true", val)
+			}
+		})
+	}
+}
+
+// TestMCPTemplateAlwaysLoadOnSequentialThinking verifies that the rendered
+// .mcp.json sets "alwaysLoad": true on the sequential-thinking server entry
+// (REQ-001, REQ-003).
+func TestMCPTemplateAlwaysLoadOnSequentialThinking(t *testing.T) {
+	platforms := []string{"darwin", "linux", "windows"}
+
+	for _, platform := range platforms {
+		t.Run(platform, func(t *testing.T) {
+			ctx := testContext(platform)
+			output := renderTemplate(t, ".mcp.json.tmpl", ctx)
+
+			var config map[string]any
+			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			servers, ok := config["mcpServers"].(map[string]any)
+			if !ok {
+				t.Fatal("missing mcpServers")
+			}
+			server, ok := servers["sequential-thinking"].(map[string]any)
+			if !ok {
+				t.Fatal("missing sequential-thinking server entry")
+			}
+			val, exists := server["alwaysLoad"]
+			if !exists {
+				t.Error("sequential-thinking: alwaysLoad field is absent; want true")
+				return
+			}
+			if val != true {
+				t.Errorf("sequential-thinking: alwaysLoad = %v, want true", val)
+			}
+		})
+	}
+}
+
+// TestMCPTemplateAlwaysLoadAbsentOnMoaiLSP verifies that the moai-lsp server
+// entry does NOT have alwaysLoad set to true (REQ-004).
+func TestMCPTemplateAlwaysLoadAbsentOnMoaiLSP(t *testing.T) {
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
+
+	var config map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	servers, ok := config["mcpServers"].(map[string]any)
+	if !ok {
+		t.Fatal("missing mcpServers")
+	}
+	server, ok := servers["moai-lsp"].(map[string]any)
+	if !ok {
+		t.Fatal("missing moai-lsp server entry")
+	}
+	if val, exists := server["alwaysLoad"]; exists && val == true {
+		t.Error("moai-lsp: alwaysLoad must not be true; it was explicitly excluded from REQ-004")
+	}
+}
+
+// TestMCPTemplateExistingFieldsPreserved verifies that adding alwaysLoad does
+// not disturb existing fields in any server entry (REQ-005).
+func TestMCPTemplateExistingFieldsPreserved(t *testing.T) {
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
+
+	var config map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	servers, ok := config["mcpServers"].(map[string]any)
+	if !ok {
+		t.Fatal("missing mcpServers")
+	}
+
+	// context7 must still have command and args
+	c7, ok := servers["context7"].(map[string]any)
+	if !ok {
+		t.Fatal("missing context7")
+	}
+	if c7["command"] == nil {
+		t.Error("context7: command field missing after alwaysLoad insertion")
+	}
+	if c7["args"] == nil {
+		t.Error("context7: args field missing after alwaysLoad insertion")
+	}
+
+	// sequential-thinking must still have command and args
+	st, ok := servers["sequential-thinking"].(map[string]any)
+	if !ok {
+		t.Fatal("missing sequential-thinking")
+	}
+	if st["command"] == nil {
+		t.Error("sequential-thinking: command field missing after alwaysLoad insertion")
+	}
+	if st["args"] == nil {
+		t.Error("sequential-thinking: args field missing after alwaysLoad insertion")
+	}
+
+	// moai-lsp must still have command, args, and timeout
+	lsp, ok := servers["moai-lsp"].(map[string]any)
+	if !ok {
+		t.Fatal("missing moai-lsp")
+	}
+	if lsp["command"] == nil {
+		t.Error("moai-lsp: command field missing")
+	}
+	if lsp["args"] == nil {
+		t.Error("moai-lsp: args field missing")
+	}
+	if lsp["timeout"] == nil {
+		t.Error("moai-lsp: timeout field missing")
+	}
+}
+
 // --- BuildSmartPATH and PathContainsDir tests ---
 
 // TestBuildSmartPATH_StableAcrossTerminalPATH is a regression test for issue #467:

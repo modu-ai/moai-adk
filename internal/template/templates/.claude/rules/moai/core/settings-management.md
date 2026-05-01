@@ -31,7 +31,36 @@ Standard MCP servers in MoAI-ADK:
 - pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
 - claude-in-chrome: Browser automation
 
+<<<<<<< HEAD
 MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
+=======
+**`alwaysLoad` field (Claude Code v2.1.119+)**
+
+Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": true` 필드가 추가되었다.
+이 필드가 `true`로 설정된 서버의 툴 스키마는 세션 시작 시 즉시 로드된다(기존 지연 로드 방식 대비).
+
+MoAI-ADK 기본 설정:
+- `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
+- `sequential-thinking`: `"alwaysLoad": true` — DeepThink 워크플로우에서 첫 호출 지연 제거
+- `moai-lsp`: `alwaysLoad` 미설정 — 프로젝트에 따라 LSP가 필요 없는 경우도 있으므로 지연 로드 유지
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "$comment": "Up-to-date documentation and code examples via Context7",
+      "alwaysLoad": true,
+      "command": "/bin/bash",
+      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
+    }
+  }
+}
+```
+
+Source: SPEC-CC2122-MCP-001 (2026-04-30)
+
+MCP tools are deferred and must be loaded before use:
+>>>>>>> 450661684 (docs(rules): M4 — settings-management alwaysLoad v2.1.119 노트 추가 (SPEC-CC2122-MCP-001))
 
 1. Use ToolSearch to find and load the tool
 2. Then call the loaded tool directly
