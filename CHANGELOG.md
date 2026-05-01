@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-WF-002: Commands Thin-Wrapper Enforcement (98-github/99-release extraction)
+
+### Added
+
+- **`moai-workflow-github` skill** (`.claude/skills/moai-workflow-github/SKILL.md`, 723 LOC): Dev-only orchestration skill for GitHub issues and pull requests workflow. Extracted from `.claude/commands/98-github.md` (698 LOC body). Includes full GitHub workflow configuration, argument parsing (issues/pr sub-commands), pre-execution context loading, AskUserQuestion fallback for user decisions. Frontmatter declares `user-invocable: false` (dev-only; not surfaced to end users).
+
+- **`moai-workflow-release` skill** (`.claude/skills/moai-workflow-release/SKILL.md`, 958 LOC): Dev-only orchestration skill for Enhanced GitHub Flow release orchestration. Extracted from `.claude/commands/99-release.md` (914 LOC body). Implements 9-phase release workflow (PHASE 0–8): pre-flight checks, quality gates, code review, version selection (AskUserQuestion), bilingual CHANGELOG generation (English-first per CLAUDE.local.md §18), final approval, release branch/tag, GitHub release notes, local environment update. Preserves all 11 metadata keys (`release_target`, `branch`, `tag_format`, `merge_strategy`, `reference_policy`, etc.). Frontmatter declares `user-invocable: false` (dev-only).
+
+- **`TestRootLevelCommandsThinPattern` test** (`internal/template/commands_root_audit_test.go`, 146 LOC): Extends command audit suite to validate thin-wrapper compliance (≤20 LOC body) for root-level dev-only commands `98-github.md` and `99-release.md` in addition to `/moai/*` subcommands. Implements partial migration gate (REQ-WF002-015): verifies that `Skill("<name>")` references resolve to existing skill directories, blocking incomplete extractions. Test methodology: TDD RED→GREEN→REFACTOR via manager-tdd.
+
+- **`TestDevOnlySkillLeak` test** (`internal/template/dev_only_skill_test.go`, 47 LOC): Negative-case validation that dev-only skills `moai-workflow-github` and `moai-workflow-release` do NOT appear in `EmbeddedTemplates()` (i.e., `internal/template/templates/.claude/skills/`). Fails with `DEV_ONLY_SKILL_LEAK` message if accidental template registration occurs. Enforces REQ-WF002-014.
+
+### Changed
+
+- **`.claude/commands/98-github.md`** (698 → 9 LOC total, 1 LOC body): Refactored to thin-wrapper delegating to `Skill("moai-workflow-github")` with `$ARGUMENTS` passthrough. Frontmatter preserved (`description`, `argument-hint`, `type: local`, `allowed-tools: Skill`). Version bumped 2.0.0 → 3.0.0 (extraction semantic change). Behavior preserved: `/98-github issues ...` and `/98-github pr ...` sub-commands now routed to skill implementation.
+
+- **`.claude/commands/99-release.md`** (933 → 21 LOC total, 1 LOC body): Refactored to thin-wrapper delegating to `Skill("moai-workflow-release")` with `$ARGUMENTS` passthrough. Frontmatter preserved including 11 metadata keys and `disable-model-invocation: true` flag. Version bumped 5.0.0 → 6.0.0 (extraction semantic change). Behavior preserved: `/99-release [VERSION] [--hotfix]` now routes logic to skill while maintaining release orchestration semantics.
+
+### Breaking Changes
+
+- **[BC-V3R2-012] Command thin-wrapper extraction**: Internal mechanism change for maintainers — `.claude/commands/98-github.md` and `99-release.md` now delegate to extracted skills instead of inline orchestration logic. **User projects unaffected** (these are dev-only commands not templated into user `.claude/commands/`). Maintainer internal behavior preserved (behavior-preserving extraction).
+
+### Technical
+
+- **TDD methodology** (manager-tdd agent): M4 and M5 implemented via RED→GREEN→REFACTOR cycle. 4 negative test cases verified: leak inject/remove, skill dir rename/restore.
+- **Behavior-preserving extraction**: H2 header count parity verified (98: 24→24, 99: 35→35). All GitHub sub-commands (issues/pr flags: --all, --label, --solo, --merge, NUMBER) preserved. All Release phases (PHASE 0–8) preserved with ordering parity check.
+- **Dev-only skill containment**: Both skills reside in `.claude/skills/` (local/dev) only. Embedded template tree `internal/template/templates/.claude/skills/` validated empty via `TestDevOnlySkillLeak` (CI gate).
+- **Partial migration prevention** (REQ-WF002-015): Commands audit test gate ensures `Skill("<name>")` wrapper dependencies are satisfied before allowing commit (skill dir must exist).
+- **Binary size delta**: +193 LOC test code, −1,905 LOC commands + 1,881 LOC skills = net −31 LOC. Binary size impact <50 KiB (CI policy).
+- **Coverage**: `go test ./internal/template/...` both new test files PASS. `go test -race ./...` no race conditions detected.
+
 ## [Unreleased] — SPEC-V3R2-EXT-001: Typed Memory Taxonomy (4-type enforcement)
 
 ### Added

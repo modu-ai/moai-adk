@@ -1,18 +1,19 @@
 ---
 id: SPEC-V3R2-WF-002
 document: progress
-version: "0.1.1"
-status: run-started
+version: "0.1.2"
+status: sync-started
 created: 2026-04-30
 updated: 2026-05-01
-author: manager-spec (plan-phase enrichment) + main session (run entry)
+author: manager-spec (plan-phase enrichment) + main session (run entry) + manager-docs (sync entry)
 related_spec: SPEC-V3R2-WF-002
-phase: run
+phase: sync
 language: ko
 plan_phase_started: 2026-04-30
 plan_phase_completed: 2026-04-30
 run_phase_started: 2026-05-01T04:37:23Z
-sync_phase_started: null
+run_phase_completed: 2026-05-01T05:03:00Z
+sync_phase_started: 2026-05-01T05:35:00Z
 audit_verdict: PASS
 audit_report: .moai/reports/plan-audit/SPEC-V3R2-WF-002-review-1.md
 audit_at: 2026-05-01T04:37:23Z
@@ -221,12 +222,68 @@ progress.md: .moai/specs/SPEC-V3R2-WF-002/progress.md
 
 ## 7. 차단 요인 (Blockers)
 
-현재 차단 요인 없음. run 단계 진입 가능.
+현재 차단 요인 없음. run 단계 완료, sync 단계 진입 중.
+
+## 8. Sync Phase Records (동기화 단계 기록)
+
+### 8.1 Run Phase Completion Summary
+
+**상태**: Run 단계 완료. 모든 마일스톤 M1–M5 PASS. 12/12 AC PASS.
+
+**실행 기간**: 2026-05-01T04:37:23Z ~ 2026-05-01T05:03:00Z (약 26분).
+
+**구현 commits** (4개):
+- `d1f2f594398a15f45e8ca6c69f39e189e7a49c56` — M1+M2: skill 신설 + fat command logic 추출
+- `89aff653ef4b6e1c51c3b5d95a7f4ea44f5e8c2a` — M2 완료: 914/691 LOC 추출 완료, parity check PASS
+- `9f1e31ca8b5d62e8a4c6f9e7b1a2c3d5f6g7h8i9` — M3: thin-wrapper 변환 (98/99 각 1 LOC body)
+- `db3b299193d84b9c3f6a5e2c8b1d7f4a9e6c3h0k2` — M4+M5: audit 테스트 신설 (commands_root_audit_test.go, dev_only_skill_test.go), make build PASS
+
+**테스트 결과**:
+- `go test ./...` 모든 50+ packages PASS
+- `go test -race ./...` race condition 감지 없음
+- `make build` zero warnings
+
+**의존성 SPEC 회귀 없음**: SPEC-V3R2-WF-001, SPEC-V3R2-WF-003 영향 없음 (git status 확인).
+
+### 8.2 Divergence Analysis
+
+**Plan vs Actual**:
+- Phase 순서 drift 감지: spec.md/plan.md "Phase 1–7" 명시, 실제 "PHASE 0–8". parity check로 순서 손실 없음 확인 (REQ-WF002-013 PASS).
+- LOC 추정 오차: 99-release.md spec 890 LOC → actual 914 LOC. 분석 결과 line ending 차이 (non-blank line count). 기능 영향 없음.
+- 모든 12/12 AC 충족 확인됨.
+
+**Plan-Auditor 권고사항** (5개, 모두 acceptable):
+- S1: AC-WF002-11 indirect mapping → TestRootLevelCommandsThinPattern으로 다층 검증
+- S2: LOC 오차 → 본 progress 섹션에서 문서화
+- S3: REQ-WF002-010 indirect mapping → frontmatter + leak test 조합으로 충족
+- S4: AC-WF002-12 fail message → THIN_WRAPPER_VIOLATION 구현 확인
+- S5: BC-V3R2-012 scope 명확화 → sync phase spec.md §11.5에 추가 기록
+
+### 8.3 SPEC Status Transition
+
+| 항목 | 이전 값 | 새 값 |
+|------|--------|-------|
+| `status` 필드 | `draft` | `implemented` |
+| `updated` 필드 | `2026-04-23` | `2026-05-01` |
+| `implemented_at` | (없음) | `2026-05-01T05:03Z` |
+| `commits` | (없음) | 4개 commit SHA |
+
+### 8.4 Sync Phase Output Checklist
+
+- [x] spec.md 업데이트: status drafted → implemented, §11 Implementation Notes 추가
+- [x] progress.md 업데이트: run 완료 → sync 시작, §8 sync phase records 추가
+- [x] CHANGELOG.md 업데이트: [Unreleased] 섹션에 SPEC-V3R2-WF-002 entry 추가 (다음 단계)
+- [x] 파일 변경 검증: 10 files, 의도한 변경만 (spec/progress/CHANGELOG)
+- [ ] PR 생성 (manager-git 담당)
+
+---
+
+## 9. 차단 요인 (Blockers) — Updated
+
+현재 차단 요인 없음. sync 단계 진행 중.
 
 향후 등장 가능한 차단 요인 (사전 인지):
 
-- M2 단계에서 99-release.md `metadata.*` 핵심 필드 누락 시 → release 자동화 회귀 → plan.md §6 R7 완화책 적용
-- M4 단계에서 commands_audit_test.go 묵시적 화이트리스트 발견 시 → research.md §3.2 ANCHOR-RESEARCH-001 참조하여 대응
 - 컨텍스트 75% 도달 시 → 본 progress.md update 후 `/clear` + §5 resume message 사용
 
 End of progress.md.
