@@ -1,0 +1,51 @@
+# Label Sync Workflow
+#
+# Synchronizes .github/labels.yml to the GitHub repository labels.
+# Triggers:
+#   - Manual: workflow_dispatch (admin-initiated, dry-run support)
+#   - Automatic: push to main when .github/labels.yml or this workflow file changes
+#
+# Reference: CLAUDE.local.md §18.6 (3축 라벨 체계)
+# Source of truth: .github/labels.yml
+
+name: Label Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview changes without applying (true/false)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/labels.yml"
+      - ".github/workflows/label-sync.yml"
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  sync:
+    name: Sync repository labels from labels.yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync labels
+        uses: EndBug/label-sync@v2
+        with:
+          config-file: .github/labels.yml
+          # delete-other-labels: false — preserve labels not in labels.yml (e.g., bot-managed labels)
+          # request-options: see https://github.com/EndBug/label-sync for advanced behavior
+          dry-run: ${{ github.event.inputs.dry_run || 'false' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
