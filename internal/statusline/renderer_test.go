@@ -1413,3 +1413,95 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 		})
 	}
 }
+
+// TestRenderer_EffortThinking_InfoLine verifies renderInfoLine integrates the
+// effort/thinking indicator according to GWT-1 through GWT-6 acceptance criteria.
+//
+// GWT-1: effort="high", thinking=false  → "e:high" present, "·t" absent
+// GWT-2: effort="max",  thinking=true   → "e:max·t" present
+// GWT-3: effort absent, thinking=true   → "·t" present without "e:" prefix
+// GWT-4: both absent                    → neither "e:" nor "·t" present
+// GWT-5: effort="", thinking=false      → silent omit (REQ-CC2122-003)
+// GWT-6: effort="ultra", thinking=false → "e:ultra" (unknown level passthrough, REQ-CC2122-004)
+func TestRenderer_EffortThinking_InfoLine(t *testing.T) {
+	tests := []struct {
+		name         string
+		effort       *EffortInfo
+		thinking     *ThinkingInfo
+		wantContains []string
+		wantAbsent   []string
+	}{
+		{
+			// GWT-1
+			name:         "GWT-1: effort=high, thinking=false → e:high present, ·t absent",
+			effort:       &EffortInfo{Level: "high"},
+			thinking:     &ThinkingInfo{Enabled: false},
+			wantContains: []string{"e:high"},
+			wantAbsent:   []string{"·t"},
+		},
+		{
+			// GWT-2
+			name:         "GWT-2: effort=max, thinking=true → e:max·t present",
+			effort:       &EffortInfo{Level: "max"},
+			thinking:     &ThinkingInfo{Enabled: true},
+			wantContains: []string{"e:max·t"},
+			wantAbsent:   nil,
+		},
+		{
+			// GWT-3
+			name:         "GWT-3: effort absent, thinking=true → ·t without e: prefix",
+			effort:       nil,
+			thinking:     &ThinkingInfo{Enabled: true},
+			wantContains: []string{"·t"},
+			wantAbsent:   []string{"e:"},
+		},
+		{
+			// GWT-4
+			name:         "GWT-4: both absent → neither e: nor ·t",
+			effort:       nil,
+			thinking:     nil,
+			wantContains: nil,
+			wantAbsent:   []string{"e:", "·t"},
+		},
+		{
+			// GWT-5: empty string treated same as absent
+			name:         "GWT-5: effort empty string → silent omit",
+			effort:       &EffortInfo{Level: ""},
+			thinking:     nil,
+			wantContains: nil,
+			wantAbsent:   []string{"e:", "·t"},
+		},
+		{
+			// GWT-6: unknown level passed through without filtering
+			name:         "GWT-6: unknown level ultra → e:ultra (raw passthrough)",
+			effort:       &EffortInfo{Level: "ultra"},
+			thinking:     &ThinkingInfo{Enabled: false},
+			wantContains: []string{"e:ultra"},
+			wantAbsent:   []string{"·t"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newTestRenderer()
+			data := &StatusData{
+				Metrics:  MetricsData{Model: "Opus 4.5", Available: true},
+				Memory:   MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+				Effort:   tt.effort,
+				Thinking: tt.thinking,
+			}
+			got := r.renderInfoLine(data, false)
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(got, want) {
+					t.Errorf("want %q in renderInfoLine output, got %q", want, got)
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if strings.Contains(got, absent) {
+					t.Errorf("want %q absent from renderInfoLine output, got %q", absent, got)
+				}
+			}
+		})
+	}
+}
