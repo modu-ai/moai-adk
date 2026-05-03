@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
-version: "0.2.2"
+version: "0.2.3"
 status: draft
 created_at: 2026-05-01
-updated_at: 2026-05-02
+updated_at: 2026-05-04
 author: manager-spec
 priority: High
 labels: [cli, update, deployment, cleanup, agency, idempotency]
@@ -13,6 +13,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 ## HISTORY
 
+- 2026-05-04 v0.2.3: CodeRabbit PR review remediation — Scenario B와 REQ-UPC-008 telemetry 동작 모호성 정정 (deprecated paths 부재 시에도 `.moai/logs/update-cleanup-{ts}.jsonl`은 emit되며 `backup_outcome: "skipped"` + `cleanup_outcome: "completed"` 기록 — REQ-UPC-008의 "silent skip"은 backup phase에만 해당하고 telemetry phase는 항상 실행됨을 §1과 §8에서 명시), MD038 markdownlint 위반 정정. 카운트 변동 없음.
 - 2026-05-02 v0.2.2: audit v2 minor patch — D-02-09 (§5 헤더에 /018 추가하여 cross-reference 표기 일관성 확보), D-02-12 (§7.5 Cross-OS Verification Matrix 신설: REQ-UPC-022/023/024/026 OS별 검증 책임 명시), D-02-13 (AC-UPC-022 외부 네트워크 검증 메커니즘을 `httptest.NewServer 401`에서 custom `http.RoundTripper` interception으로 교체하여 임의 host에 대한 dial 차단 검증 정확화). 카운트 변동 없음.
 - 2026-05-01 v0.2.1: audit v2 remediation — AC-UPC-018 신규 (`.moai-skip-cleanup` opt-out marker, REQ-UPC-018 복원), AC-UPC-022b 신규 (telemetry permission denied 처리, D-02-03), AC-UPC-024 확장 (`.moai/logs/` self-reference dual-path, D-02-02), AC-UPC-023 sub-cases (broken symlink, target collision, Windows reparse point — D-02-08), AC-UPC-026 sub-cases (probe failure fallback, frequency, APFS variant — D-02-07), AC-NFR-P1 benchstat 통계 게이트 (delta + p-value, D-02-05). AC 총 개수 26 → 28, E2E 시나리오는 6 유지.
 - 2026-05-01 v0.2.0: 감사 후속 개정 — REQ-UPC-015~018을 삼분 분류(015 / 015a / 015b / 015c / 016 / 017)로 재구성, REQ-UPC-022~026 5종에 대한 AC 추가 (telemetry / symlink / backup self-reference / deleted file / case-insensitive FS), Scenario E를 deterministic lock acquisition test로 명시 (D-07 후속), Scenario F (UnverifiedDeprecated) 추가, AC-NFR-P1 벤치마크 검증 항목 신설 (D-11 후속), AC 총 개수 21 → 26, E2E 시나리오 5 → 6.
@@ -34,7 +35,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 - **Given:** Deploy가 한 번 완료된 destination 디렉터리
 - **When:** 동일 입력으로 두 번째 `Deployer.Deploy()`를 호출
-- **Then:** 모든 destination 파일이 byte-identical 유지되며, ` 2` 접미어 또는 `.moai-tmp` 부산물이 발생하지 않는다 (디렉터리 entry 개수 변동 없음)
+- **Then:** 모든 destination 파일이 byte-identical 유지되며, `" 2"` 접미어 또는 `.moai-tmp` 부산물이 발생하지 않는다 (디렉터리 entry 개수 변동 없음)
 - **Test type:** unit (`internal/template/deployer_test.go::TestDeployer_Idempotent`)
 
 ### AC-UPC-003 (REQ-UPC-003): tmp 파일 잔존 금지
@@ -76,11 +77,14 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 - **Then:** stdout에 "found N deprecated paths" (N >= 1) 메시지가 출력되며, 탐지된 경로 목록이 사용자에게 표시된다
 - **Test type:** integration (`internal/cli/update_test.go::TestCleanup_AgencyPathsDetected`)
 
-### AC-UPC-008 (REQ-UPC-008): 부재 시 no-op
+### AC-UPC-008 (REQ-UPC-008): 부재 시 no-op (backup phase only)
 
 - **Given:** 사용자 프로젝트에 어떤 deprecated path도 부재
 - **When:** `moai update` 실행
-- **Then:** 백업 디렉터리(`.moai/backup/agency-*`)가 생성되지 않으며, 정리 관련 stdout 출력이 없다
+- **Then:**
+  - backup 디렉터리(`.moai/backup/agency-*`)가 생성되지 않으며, 정리 관련 stdout 출력이 없다
+  - **단, telemetry phase는 항상 실행됨 (REQ-UPC-022 무조건 실행)**: `.moai/logs/update-cleanup-{ts}.jsonl` 파일은 emit되며 `backup_outcome: "skipped"` + `cleanup_outcome: "completed"` + `pre_update_suffix2_files: []` 기록 (Scenario B 참조)
+  - "silent skip"의 의미: backup/deletion 작업은 silent하나, 관측성을 위한 telemetry는 일관 emit
 - **Test type:** integration (`internal/cli/update_test.go::TestCleanup_NoOpWhenAbsent`)
 
 ---
@@ -414,14 +418,14 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
   - MANIFEST.json의 해당 entry의 `classification == "UserModifiedDeprecated"`
 - **Test type:** E2E (`internal/cli/update_e2e_test.go::TestE2E_ScenarioC_UserModified`)
 
-### Scenario D: moai update 두 번 연속 → ` 2` 접미어 파일 미발생
+### Scenario D: moai update 두 번 연속 → `" 2"` 접미어 파일 미발생
 
 - **Given:** 깨끗한 사용자 프로젝트
 - **When:**
   - `moai update` 1차 실행 (성공)
   - `moai update` 2차 실행 (성공)
 - **Then:**
-  - 프로젝트 트리 walk 결과 ` 2` 접미어 파일이 0개
+  - 프로젝트 트리 walk 결과 `" 2"` 접미어 파일이 0개
   - `.moai-tmp` 접미어 파일이 0개
   - 1차/2차 결과 디렉터리가 byte-identical (file hash 비교)
   - 1차/2차 모두 `.moai/logs/update-cleanup-*.jsonl` 생성

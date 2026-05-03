@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
-version: "0.2.2"
+version: "0.2.3"
 status: draft
 created_at: 2026-05-01
-updated_at: 2026-05-02
+updated_at: 2026-05-04
 author: manager-spec
 priority: High
 labels: [cli, update, deployment, cleanup, agency, idempotency]
@@ -13,6 +13,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 ## HISTORY
 
+- 2026-05-04 v0.2.3: CodeRabbit PR review remediation — Files Modified 절대경로(`/Users/goos/MoAI/moai-adk-go/...`) → repo-relative path (예: `internal/template/deployer.go`)로 일괄 변경 (환경 정보 누수 제거), T1.3 lock file 형식이 spec.md OQ4 결정과 정합되도록 OQ4 참조 추가, MD038 markdownlint 위반 정정. 카운트 변동 없음.
 - 2026-05-02 v0.2.2: audit v2 minor patch — D-02-11 LOC 변천 표기를 "estimation refinement, not scope change" 프레이밍으로 명시 (각 버전 업데이트가 새 작업 추가가 아닌 분석 정확도 향상의 결과임을 reader에게 명확히). spec/acceptance와 함께 동기 업데이트.
 - 2026-05-01 v0.2.1: audit v2 remediation — D-02-04 LOC reconcile 산식 명시화 (helper 재사용 항목별 deduplication LOC 산출), D-02-05 NFR-P1 benchstat 통계 게이트 (T4.4 갱신), D-02-06 OQ3 해결 반영 (T3.2 인라인), D-02-01 REQ-UPC-018 (`.moai-skip-cleanup` opt-out)을 M2에 신규 task로 추가, D-02-02 `.moai/logs/` self-reference 보호 (T3.6 확장), D-02-03 telemetry permission 처리 (T3.4 확장), D-02-07 case probe 엣지 케이스 (T4.3 확장), D-02-08 symlink 엣지 케이스 (T3.5 확장). M2 LOC 75→약 85, M3 LOC 130→약 145, M4 LOC 150→약 165 (총 ~395 → reconciled 산식 후 ~380 유지).
 - 2026-05-01 v0.2.0: 감사 후속 개정 — D-01 LOC reconcile (~95 → ~380으로 일관성 확보), OQ1/OQ2 해결 반영 (T3.1/T3.4 갱신), 신규 REQ-UPC-022~026에 대한 마일스톤 작업 추가 (M3에 telemetry/symlink/backup-self-reference, M4에 case-insensitive E2E 추가), Risk Register에 R6/R7/R8 신규 추가 (symlink, case-insensitive FS, backup self-reference). M3 LOC 90→약 130으로 증가, M4 LOC 120→약 150으로 증가, NFR-UPC-P1 벤치마크 작업을 M4에 명시 추가.
@@ -63,10 +64,11 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
   - `os.Rename(tmpPath, destPath)`로 원자적 이동
   - 실패 시 `os.Remove(tmpPath)` defer
 - T1.2: `internal/template/deployer_mode.go:128` (transactional mode equivalent)도 동일 패턴 적용
-- T1.3: `.moai/.update.lock` 파일 기반 동시 실행 방지 (REQ-UPC-005):
+- T1.3: `.moai/.update.lock` 파일 기반 동시 실행 방지 (REQ-UPC-005, lock 형식은 spec.md OQ4 결정 준수):
   - Lock 파일 생성 위치: 프로젝트 루트의 `.moai/.update.lock`
-  - PID + timestamp + hostname을 JSON으로 기록
-  - signal handler (SIGINT/SIGTERM)로 정리 보장
+  - JSON 형식 `{"pid": int, "started_at": "ISO8601", "hostname": string}` (spec.md §6 OQ4 v0.2.3 확정)
+  - signal handler (SIGINT/SIGTERM)로 정리 보장 (NFR-UPC-S2)
+  - stale lock 감지: `started_at` age + `kill -0 <pid>` 조합으로 판정
 - T1.4: `internal/template/deployer_test.go` 신규 테스트:
   - `TestDeployer_Idempotent` — 동일 destination에 Deploy 두 번 호출 후 byte-identical 검증
   - `TestDeployer_NoTmpResidue` — 성공 후 `.moai-tmp` 파일 부재 검증
@@ -75,10 +77,10 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 **Files Modified:**
 
-- `/Users/goos/MoAI/moai-adk-go/internal/template/deployer.go` (~15 LOC)
-- `/Users/goos/MoAI/moai-adk-go/internal/template/deployer_mode.go` (~10 LOC)
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/update.go` (~20 LOC, lock file logic)
-- `/Users/goos/MoAI/moai-adk-go/internal/template/deployer_test.go` (~50 LOC, 4 new tests)
+- `internal/template/deployer.go` (~15 LOC)
+- `internal/template/deployer_mode.go` (~10 LOC)
+- `internal/cli/update.go` (~20 LOC, lock file logic)
+- `internal/template/deployer_test.go` (~50 LOC, 4 new tests)
 
 **LOC Estimate:** ~45 LOC code + ~50 LOC tests = ~95 LOC
 
@@ -86,7 +88,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 **Definition of Done:**
 - [ ] `go test ./internal/template/...` 통과
-- [ ] `TestDeployer_Idempotent` 두 번 연속 실행해도 ` 2` 접미어 파일 미생성 검증
+- [ ] `TestDeployer_Idempotent` 두 번 연속 실행해도 `" 2"` 접미어 파일 미생성 검증
 - [ ] Lock file이 정상/SIGINT 종료 모두에서 정리됨
 
 ---
@@ -129,9 +131,9 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 **Files Modified:**
 
-- `/Users/goos/MoAI/moai-adk-go/internal/defs/dirs.go` (~15 LOC)
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/update.go` (~40 LOC, cleanup + backup + skip marker)
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/update_test.go` (~40 LOC, 5 new tests)
+- `internal/defs/dirs.go` (~15 LOC)
+- `internal/cli/update.go` (~40 LOC, cleanup + backup + skip marker)
+- `internal/cli/update_test.go` (~40 LOC, 5 new tests)
 
 **LOC Estimate:** ~55 LOC code + ~40 LOC tests = ~95 LOC (단순 합산); helper dedup 후 ~85 LOC
 
@@ -172,7 +174,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
   - 헬퍼 함수 `emitCleanupTelemetry(event CleanupEvent)` 신규
   - `.moai/logs/update-cleanup-{ISO8601}.jsonl` append + stderr mirror
   - 필드: `atomic_write_used`, `pre_update_suffix2_files`, `backup_outcome`, `backup_path`, `cleanup_outcome`, `user_opt_out_paths` (REQ-UPC-018 marker로 skip된 경로)
-  - cleanup 시작 시 `find . -name "* 2.*"` 동등 스캔으로 ` 2` 접미어 파일 사전 캡처
+  - cleanup 시작 시 `find . -name "* 2.*"` 동등 스캔으로 `" 2"` 접미어 파일 사전 캡처
   - **D-02-03 permission denied 처리 (v0.2.1)**: `.moai/logs/` 디렉터리 생성 또는 write 실패 시 (e.g., chmod 0500) — `[WARN] telemetry persistence skipped: <reason>` stderr 출력 + file persistence skip + update 작업은 정상 계속. stderr mirror는 여전히 emit (관측성 보존).
 - T3.5: **REQ-UPC-023 symlink 안전** — backup/delete 직전 `os.Lstat`로 symlink 감지:
   - symlink일 경우: backup은 link target 경로 기록만 (`MANIFEST.json`의 `symlink_target` 필드), 실제 따라가지 않음
@@ -198,9 +200,9 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 **Files Modified:**
 
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/update.go` (~60 LOC, confirmation + provenance + telemetry + symlink edges + self-ref + permission)
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/flags.go` 또는 동등 위치 (~5 LOC, 플래그)
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/update_test.go` (~95 LOC, 12 new tests)
+- `internal/cli/update.go` (~60 LOC, confirmation + provenance + telemetry + symlink edges + self-ref + permission)
+- `internal/cli/flags.go` 또는 동등 위치 (~5 LOC, 플래그)
+- `internal/cli/update_test.go` (~95 LOC, 12 new tests)
 
 **LOC Estimate:** ~65 LOC code + ~95 LOC tests = ~160 LOC (단순 합산); helper dedup 후 ~145 LOC
 
@@ -230,7 +232,7 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
   - 시나리오 A: 사용자 프로젝트에 agency/ 존재 → moai update → 백업 + 삭제 (Pristine)
   - 시나리오 B: agency/ 부재 → moai update → no-op, 백업 미생성
   - 시나리오 C: 사용자가 agency.md 수정 → moai update → 백업 + 경고 (UserModified)
-  - 시나리오 D: moai update 두 번 연속 → ` 2` 접미어 파일 미발생
+  - 시나리오 D: moai update 두 번 연속 → `" 2"` 접미어 파일 미발생
   - 시나리오 E: 동시 moai update → lock 차단 (deterministic lock acquisition test, not timing-based race)
   - 추가 시나리오 F: manifest entry 부재 → UnverifiedDeprecated 경로 (REQ-UPC-015c)
 - T4.2: 테스트 헬퍼 작성:
@@ -262,10 +264,10 @@ labels: [cli, update, deployment, cleanup, agency, idempotency]
 
 **Files Modified:**
 
-- `/Users/goos/MoAI/moai-adk-go/internal/cli/update_e2e_test.go` (신규, ~165 LOC, 6 시나리오 + 3 case probe edge tests)
-- `/Users/goos/MoAI/moai-adk-go/internal/template/deployer_bench_test.go` (신규, ~30 LOC, 2 benchmarks)
-- `/Users/goos/MoAI/moai-adk-go/scripts/benchmark-overhead-check.sh` (신규, ~25 LOC, benchstat parsing + p-value 검증)
-- `/Users/goos/MoAI/moai-adk-go/.github/workflows/test.yml` (~10 LOC, benchstat install + benchmark step 추가)
+- `internal/cli/update_e2e_test.go` (신규, ~165 LOC, 6 시나리오 + 3 case probe edge tests)
+- `internal/template/deployer_bench_test.go` (신규, ~30 LOC, 2 benchmarks)
+- `scripts/benchmark-overhead-check.sh` (신규, ~25 LOC, benchstat parsing + p-value 검증)
+- `.github/workflows/test.yml` (~10 LOC, benchstat install + benchmark step 추가)
 
 **LOC Estimate:** ~165 LOC tests + ~30 LOC benchmark + ~30 LOC CI = ~225 LOC (단순 합산); 헬퍼 재사용 dedup 후 실효 ~165 LOC
 
