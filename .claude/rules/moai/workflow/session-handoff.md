@@ -2,13 +2,15 @@
 
 Long-running session continuity guidance: enables clean transitions across context boundaries via paste-ready resume messages.
 
+> **Loading scope**: This rule is intentionally always-loaded (no `paths:` frontmatter restriction) because Trigger #3 (user explicit session-end request) can fire from any session context, including those without SPEC files. The ~1,400-token cost is justified by the protocol's cross-cutting applicability. If future MoAI versions support conditional always-loaded rules with cheap probes, this restriction may be revisited.
+
 ## Why This Matters
 
 Long workflows (multi-SPEC waves, multi-milestone implementation, prolonged debugging) accumulate context that may exceed the conversation window or simply benefit from a fresh start. Without a standardized handoff format, session boundaries lose work-in-progress state and force the next session to rediscover context manually.
 
 This rule establishes:
 - When the orchestrator MUST emit a paste-ready resume message
-- The canonical 6-line format that the next session can execute without modification
+- The canonical 6-block structure that the next session can execute without modification
 - Auto-memory integration so the message persists across `/clear`
 
 ## When To Generate (5 Triggers)
@@ -18,7 +20,7 @@ This rule establishes:
 | # | Trigger | Detection |
 |---|---------|-----------|
 | 1 | Context usage crosses 75% (accumulated input+output) | Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics |
-| 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Workflow §Phase 4 Completion entry |
+| 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Phase boundary in `.claude/rules/moai/workflow/spec-workflow.md` §Completion Markers (after plan/run/sync phase finishes within a multi-SPEC SPEC ID series) |
 | 3 | User explicitly requests session end ("세션 종료", "이번 세션 마무리", "next session") | Intent detection in user message |
 | 4 | PR creation success when more SPECs remain in the current wave | After `gh pr create` success + memory indicates >0 pending SPECs |
 | 5 | Long-running multi-milestone task reaches a stable checkpoint | After milestone Mn complete + Mn+1 not yet started |
@@ -74,6 +76,8 @@ N) <verifiable precondition N>
 
 ### Verified Example (SPEC-V3R2-WF-002 session, 2026-05-01)
 
+> **Disclaimer**: The values below (commit `01801c922`, SPEC ID `SPEC-V3R2-WF-002`, file count `5`, etc.) are from the moai-adk-go dev project's verification session. They are preserved verbatim as historical evidence that the format was tested in production, not as a template you must match. Substitute your project's actual values when adapting.
+
 ```
 ultrathink. SPEC-V3R2-WF-002 implementation 진입.
 applied lessons: project_wave6_wf002_plan_ready, lessons #9 wave-split.
@@ -109,26 +113,28 @@ When emitting the resume message at session end, the orchestrator MUST display:
 2. The memory file path where the message is persisted.
 3. A one-sentence summary of what the next session will continue.
 
-Example output structure (Korean conversation_language):
+Example output structure (Korean conversation_language; substitute placeholders `<...>` with actual project values):
 
 ````markdown
-**다음 세션 paste-ready resume** (memory: `project_wave6_wf002_complete.md`)
+**다음 세션 paste-ready resume** (memory: `project_<wave>_<spec>_<status>.md`)
 
 ```text
-ultrathink. SPEC-V3R2-WF-004 plan phase 진입.
-applied lessons: project_wave6_wf002_complete (PR #761 머지 완료 가정), lessons #9 wave-split.
+ultrathink. SPEC-<NEXT-ID> <phase> 진입.
+applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 완료 가정), lessons #<lesson-number> <topic>.
 
 전제 검증:
-1) git log --oneline -2 → SPEC-V3R2-WF-002 머지 commit 확인
+1) git log --oneline -2 → SPEC-<previous-ID> 머지 commit 확인
 2) gh pr view <PR-number> → MERGED 상태 확인
 
-실행: /moai plan SPEC-V3R2-WF-004
+실행: /moai plan SPEC-<NEXT-ID>
 
-머지 후: WF-003 → WF-005
+머지 후: <next-spec-or-action>
 ```
 
 (다음 세션은 위 메시지를 그대로 붙여넣어 시작합니다.)
 ````
+
+> See §Verified Example above for a real example with concrete project values (preserved as historical evidence). The Output Surface example above uses generic placeholders for template adaptation across different projects.
 
 ## Anti-Patterns
 
@@ -142,7 +148,7 @@ applied lessons: project_wave6_wf002_complete (PR #761 머지 완료 가정), le
 ## Cross-references
 
 - `.claude/rules/moai/workflow/context-window-management.md` — 75% threshold detection heuristics, broader long-horizon session continuity policy
-- `output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
+- `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory write rules and `[SUPERSEDED by ...]` convention
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow
 - `feedback_large_spec_wave_split.md` (auto-memory) — wave-split rationale that often precedes a session handoff
