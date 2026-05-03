@@ -537,4 +537,28 @@ moai constitution list --format json
   anchor: "#33-relationship"
   clause: "Brand (.moai/project/brand/) = WHO the brand is; Design (.moai/design/) = WHAT each iteration produces; brand constraints win on conflict."
   canary_gate: true
+
+# ============================================================
+# 150-159: session-handoff.md HARD 조항 (신규 워크플로우 규칙, 2026-05-04)
+# ============================================================
+- id: CONST-V3R2-150
+  zone: Evolvable
+  file: .claude/rules/moai/workflow/session-handoff.md
+  anchor: "#when-to-generate-5-triggers"
+  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (75% context / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
+  canary_gate: false
+
+- id: CONST-V3R2-151
+  zone: Evolvable
+  file: .claude/rules/moai/workflow/session-handoff.md
+  anchor: "#canonical-format-verbatim-spec"
+  clause: "[HARD] Resume message MUST follow the exact 6-block structure (Block 1 ultrathink + SPEC-ID + phase, Block 2 applied lessons, Block 3 separator + 전제 검증/Preconditions header, Block 4 numbered preconditions, Block 5 separator + 실행/run, Block 6 separator + 머지 후/after-merge)"
+  canary_gate: false
+
+- id: CONST-V3R2-152
+  zone: Evolvable
+  file: .claude/rules/moai/workflow/session-handoff.md
+  anchor: "#auto-memory-integration-mandatory"
+  clause: "[HARD] When generating a resume message, the orchestrator MUST also persist it to a memory project entry (project_<wave>_<spec>_<status>.md), include verbatim under '## 다음 세션 시작점 (paste-ready resume message)' heading, update MEMORY.md index, and mark superseded entries with [SUPERSEDED by <new-file>] prefix"
+  canary_gate: false
 ```

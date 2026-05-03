@@ -119,8 +119,8 @@ ultrathink. SPEC-V3R2-WF-004 plan phase 진입.
 applied lessons: project_wave6_wf002_complete (PR #761 머지 완료 가정), lessons #9 wave-split.
 
 전제 검증:
-1) git -C /Users/goos/MoAI/moai-adk-go log --oneline -2 → SPEC-V3R2-WF-002 머지 commit 확인
-2) gh pr view 761 → MERGED 상태 확인
+1) git log --oneline -2 → SPEC-V3R2-WF-002 머지 commit 확인
+2) gh pr view <PR-number> → MERGED 상태 확인
 
 실행: /moai plan SPEC-V3R2-WF-004
 
