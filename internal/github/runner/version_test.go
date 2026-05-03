@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+// fixedTestNow는 시간 종속적 버전 검증 테스트의 결정적 기준 시각입니다.
+// fixedTestNow is the deterministic reference time for time-sensitive version tests.
+// Choice rationale: 2026-04-27 makes mockReleaseData entries hit threshold boundaries:
+//   - 2.700.0 (2026-04-17) -> 10 days (OK)
+//   - 2.699.0 (2026-04-02) -> 25 days (WARN)
+//   - 2.698.0 (2026-03-28) -> 30 days (FAIL)
+var fixedTestNow = time.Date(2026, 4, 27, 0, 0, 0, 0, time.UTC)
+
+// fakeClock는 테스트용 결정적 Clock 구현입니다.
+// fakeClock is a deterministic Clock implementation for tests.
+type fakeClock struct{ now time.Time }
+
+// Now는 고정된 시각을 반환합니다.
+func (f fakeClock) Now() time.Time { return f.now }
+
 // MockGitHubClient는 테스트용 GitHubClient 인터페이스 구현입니다.
 // MockGitHubClient is a test implementation of GitHubClient interface.
 type MockGitHubClient struct {
@@ -47,7 +62,7 @@ func TestVersionChecker_CheckVersion_OK(t *testing.T) {
 		},
 	}
 
-	checker := NewVersionChecker("/tmp/actions-runner", mockClient)
+	checker := NewVersionCheckerWithClock("/tmp/actions-runner", mockClient, fakeClock{now: fixedTestNow})
 
 	result, err := checker.CheckVersion(context.Background())
 	if err != nil {
@@ -58,9 +73,8 @@ func TestVersionChecker_CheckVersion_OK(t *testing.T) {
 		t.Errorf("Expected VersionCheckOK, got %s", result.Status)
 	}
 
-	// daysOld는 time.Now() 기준이므로 mockReleaseData 날짜(2026-04-17)와의
-	// 실제 차이를 계산하여 검증
-	wantDays := calculateDaysOld(parseDate("2026-04-17"), time.Now())
+	// fixedTestNow(2026-04-27) - mockReleaseData["2.700.0"](2026-04-17) = 10 days
+	wantDays := calculateDaysOld(parseDate("2026-04-17"), fixedTestNow)
 	if result.DaysOld != wantDays {
 		t.Errorf("Expected %d days old, got %d", wantDays, result.DaysOld)
 	}
@@ -79,7 +93,7 @@ func TestVersionChecker_CheckVersion_Warn25(t *testing.T) {
 		},
 	}
 
-	checker := NewVersionChecker("/tmp/actions-runner", mockClient)
+	checker := NewVersionCheckerWithClock("/tmp/actions-runner", mockClient, fakeClock{now: fixedTestNow})
 
 	result, err := checker.CheckVersion(context.Background())
 	if err != nil {
@@ -90,7 +104,8 @@ func TestVersionChecker_CheckVersion_Warn25(t *testing.T) {
 		t.Errorf("Expected VersionCheckWarn (25 days), got %s", result.Status)
 	}
 
-	wantDays := calculateDaysOld(parseDate("2026-04-02"), time.Now())
+	// fixedTestNow(2026-04-27) - mockReleaseData["2.699.0"](2026-04-02) = 25 days
+	wantDays := calculateDaysOld(parseDate("2026-04-02"), fixedTestNow)
 	if result.DaysOld != wantDays {
 		t.Errorf("Expected %d days old, got %d", wantDays, result.DaysOld)
 	}
@@ -109,7 +124,7 @@ func TestVersionChecker_CheckVersion_Fail30(t *testing.T) {
 		},
 	}
 
-	checker := NewVersionChecker("/tmp/actions-runner", mockClient)
+	checker := NewVersionCheckerWithClock("/tmp/actions-runner", mockClient, fakeClock{now: fixedTestNow})
 
 	result, err := checker.CheckVersion(context.Background())
 	if err != nil {
@@ -120,7 +135,8 @@ func TestVersionChecker_CheckVersion_Fail30(t *testing.T) {
 		t.Errorf("Expected VersionCheckFail (30 days), got %s", result.Status)
 	}
 
-	wantDays := calculateDaysOld(parseDate("2026-03-28"), time.Now())
+	// fixedTestNow(2026-04-27) - mockReleaseData["2.698.0"](2026-03-28) = 30 days
+	wantDays := calculateDaysOld(parseDate("2026-03-28"), fixedTestNow)
 	if result.DaysOld != wantDays {
 		t.Errorf("Expected %d days old, got %d", wantDays, result.DaysOld)
 	}
