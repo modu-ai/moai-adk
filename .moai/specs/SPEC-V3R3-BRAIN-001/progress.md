@@ -192,12 +192,26 @@ PATCH set: #5, #8, #10, #13, #14, #15, #17 (7)
 | REQ-BRAIN-011 (NO tech-stack) | moai-domain-ideation rule | (Wave 1) |
 | REQ-BRAIN-012 (AskUserQuestion only) | manager-brain ban prose | brain_test.go pattern check |
 
-### Phase 3 — Git Operations (in_progress)
+### Phase 3 — Git Operations (COMPLETE)
 
 - branch: feat/SPEC-V3R3-BRAIN-001-impl
-- strategy: single conventional commit (squash merge per CLAUDE.local.md §18)
-- commit_language: ko (per language.yaml git_commit_messages)
+- commit_1: 6c7181e0d (feat: 31 files, +4019 -7)
+- commit_2: 88aae9f55 (fix: mirror 보충 - moai-domain-ideation template + design.md, 2 files, +371)
+- strategy: 2 commits on impl branch (squash on PR merge per CLAUDE.local.md §18)
+- commit_language: ko (per language.yaml)
 - footer: 🗿 MoAI <email@mo.ai.kr>
+
+### Sync Phase (in_progress)
+
+- sync_started_at: 2026-05-04T08:55:00+09:00
+- delegated_to: manager-docs subagent
+- mode: auto
+- expected_outputs:
+  - CHANGELOG.md entry (한국어)
+  - PR creation via gh pr create (base: main)
+  - PR labels: type:feature, priority:P1, area:cli, area:templates (per CLAUDE.local.md §18.6)
+  - session-handoff resume message for Phase B (brain self-bootstrap → SPEC-V3R3-WEB-001)
+- docs_site_4lang: deferred to follow-up PR (per CLAUDE.local.md §17.3, large content allows 48h)
 
 ---
 
