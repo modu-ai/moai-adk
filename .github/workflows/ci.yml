@@ -55,9 +55,20 @@ jobs:
         shell: bash
         run: go test -race ./internal/hook/mx/...
 
-      - name: Run tests with race detector
+      # Linux + macOS: race detector + coverage (codecov upload from ubuntu only)
+      - name: Run tests with race detector and coverage
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      # Windows: race detector retained for cross-platform concurrency safety,
+      # but coverage profile generation is skipped because codecov upload only
+      # runs on ubuntu-latest (the file would be discarded). This shaves ~30-60s
+      # off Windows test time without losing race detection coverage.
+      - name: Run tests with race detector (Windows, no coverage)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: go test -race ./...
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
