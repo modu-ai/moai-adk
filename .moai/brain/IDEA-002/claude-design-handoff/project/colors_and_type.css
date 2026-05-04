@@ -1,0 +1,261 @@
+/* 모두의AI Design System — colors_and_type.css
+ * Source: Notion MoAI SNS 디자인 가이드라인 Ver 1.0
+ * All tokens FROZEN per design/system.md
+ */
+
+/* ── Pretendard (self-hosted brand font) ── */
+@font-face { font-family: "Pretendard"; font-weight: 100; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-Thin.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 200; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-ExtraLight.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 300; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-Light.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 400; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-Regular.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 500; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-Medium.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 600; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-SemiBold.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 700; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-Bold.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 800; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-ExtraBold.otf") format("opentype"); }
+@font-face { font-family: "Pretendard"; font-weight: 900; font-style: normal; font-display: swap;
+  src: url("./fonts/Pretendard-Black.otf") format("opentype"); }
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* ── Brand Color (Notion 가이드라인 명시 3색 — 변경 금지) ── */
+  --color-primary: #144a46;          /* 어두운 청록 — CTA, 타이틀, 아이콘 */
+  --color-primary-hover: #0e3835;
+  --color-primary-active: #0a2825;
+  --color-ink: #09110f;              /* 본문 텍스트 (#000 대체) */
+  --color-bg: #f3f3f3;               /* 페이지 배경 (#fff 대체 금지) */
+  --color-surface: #ffffff;          /* 카드/모달 */
+
+  /* ── Neutral Scale ── */
+  --neutral-50:  #f3f3f3;
+  --neutral-100: #eaeaea;
+  --neutral-200: #d4d4d4;
+  --neutral-300: #bcbcbc;
+  --neutral-400: #959595;
+  --neutral-500: #6e6e6e;
+  --neutral-600: #4c4c4c;
+  --neutral-700: #2e2e2e;
+  --neutral-800: #1a1f1d;
+  --neutral-900: #0e1513;
+  --neutral-950: #09110f;
+
+  /* ── Semantic ── */
+  --color-success: #1c7c70;
+  --color-warning: #c47b2a;
+  --color-danger:  #c44a3a;
+  --color-info:    #2a8a8c;
+
+  /* ── Foreground roles ── */
+  --fg-1: var(--color-ink);          /* primary text */
+  --fg-2: #4c4c4c;                   /* muted */
+  --fg-3: #6e6e6e;                   /* placeholder / caption */
+  --fg-on-primary: #ffffff;
+
+  /* ── Border ── */
+  --border-1: #d4d4d4;
+  --border-2: #eaeaea;
+  --border-strong: #bcbcbc;
+  --border-focus-ring: rgba(20, 74, 70, 0.12);
+
+  /* ── Signature gradient (코어 자산) ── */
+  --gradient-signature: linear-gradient(135deg, #144a46 0%, #09110f 100%);
+  --gradient-signature-soft: linear-gradient(135deg, rgba(20,74,70,0.08) 0%, rgba(9,17,15,0.04) 100%);
+  --gradient-signature-dark: linear-gradient(135deg, #22938a 0%, #144a46 100%);
+
+  /* ── Type families ── */
+  --font-sans: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-latin: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ── Weights ── */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-black: 900;
+
+  /* ── Letter-spacing (Notion 자간) ── */
+  --tracking-display-tight: -0.075em;  /* 히어로 -75 */
+  --tracking-display: -0.05em;          /* 메인 타이틀 -50 */
+  --tracking-heading: -0.05em;
+  --tracking-body: -0.025em;
+  --tracking-body-tight: -0.05em;
+  --tracking-caption: 0;
+
+  /* ── Sizes ── */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --text-display: clamp(2.25rem, 4.5vw, 4rem);
+
+  /* ── Line-heights ── */
+  --lh-tight: 1.05;
+  --lh-snug: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.75;
+
+  /* ── Spacing (4px base) ── */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* ── Radius ── */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 32px;
+  --radius-full: 9999px;
+
+  /* ── Shadow ── */
+  --shadow-xs: 0 1px 2px rgba(9, 17, 15, 0.04);
+  --shadow-sm: 0 2px 4px rgba(9, 17, 15, 0.06);
+  --shadow-md: 0 4px 12px rgba(9, 17, 15, 0.08);
+  --shadow-lg: 0 8px 24px rgba(9, 17, 15, 0.10);
+  --shadow-xl: 0 16px 48px rgba(9, 17, 15, 0.12);
+  --shadow-signature: 0 8px 32px rgba(20, 74, 70, 0.20); /* hover only */
+
+  /* ── Motion ── */
+  --duration-instant: 75ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-page: 600ms;
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-smooth:  cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Containers ── */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1440px;
+}
+
+/* Dark mode tokens */
+[data-theme="dark"] {
+  --color-bg: #0e1513;
+  --color-surface: #1a1f1d;
+  --color-primary: #22938a;
+  --color-primary-hover: #2bafa3;
+  --color-ink: #e8eae9;
+  --fg-1: #e8eae9;
+  --fg-2: #a8aeac;
+  --fg-3: #8a908e;
+  --border-1: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --gradient-signature: linear-gradient(135deg, #22938a 0%, #144a46 100%);
+}
+
+/* ── Base / semantic styles ── */
+html { lang: ko; }
+body {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-regular);
+  color: var(--fg-1);
+  background: var(--color-bg);
+  letter-spacing: var(--tracking-body);
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.display, h1.display {
+  font-weight: var(--fw-black);
+  font-size: var(--text-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display-tight);
+}
+
+h1, .h1 {
+  font-size: var(--text-4xl);
+  line-height: 2.5rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-display);
+}
+h2, .h2 {
+  font-size: var(--text-3xl);
+  line-height: 2.25rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-heading);
+}
+h3, .h3 {
+  font-size: var(--text-2xl);
+  line-height: 2rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-heading);
+}
+h4, .h4 {
+  font-size: var(--text-xl);
+  line-height: 1.75rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-heading);
+}
+p, .body {
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  letter-spacing: var(--tracking-body);
+}
+.body-lg {
+  font-size: var(--text-lg);
+  line-height: var(--lh-relaxed);
+  letter-spacing: var(--tracking-body);
+}
+.body-tight {
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  letter-spacing: var(--tracking-body);
+}
+.caption {
+  font-size: var(--text-xs);
+  line-height: 1rem;
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-caption);
+}
+code, .code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+}
+.latin, [lang="en"] {
+  font-family: var(--font-latin);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

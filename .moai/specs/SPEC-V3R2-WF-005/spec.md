@@ -1,12 +1,14 @@
 ---
 id: SPEC-V3R2-WF-005
 title: Language Rules vs Skills Boundary Codification
-version: "0.1.0"
+version: "0.2.0"
 status: draft
-created: 2026-04-23
-updated: 2026-04-23
+created_at: 2026-04-23
+updated_at: 2026-05-04
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
-priority: P2 Medium
+priority: P2
+labels: [languages, rules, skills, boundary, paths-frontmatter, v3]
+issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/rules/moai/languages/, .claude/skills/, .claude/rules/moai/development/skill-authoring.md"
 dependencies:
@@ -28,6 +30,7 @@ tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
 | Version | Date       | Author | Description                                                          |
 |---------|------------|--------|----------------------------------------------------------------------|
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — codify languages as rules (not skills) in v3           |
+| 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P2 Medium"` → `P2`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. |
 
 ---
 

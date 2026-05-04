@@ -3,6 +3,7 @@
   "mcpServers": {
     "context7": {
       "$comment": "Up-to-date documentation and code examples via Context7",
+      "alwaysLoad": true,
 {{- if eq .Platform "windows"}}
       "command": "cmd.exe",
       "args": ["/c", "npx -y @upstash/context7-mcp@latest"]
@@ -13,6 +14,7 @@
     },
     "sequential-thinking": {
       "$comment": "Step-by-step reasoning for complex problems",
+      "alwaysLoad": true,
 {{- if eq .Platform "windows"}}
       "command": "cmd.exe",
       "args": ["/c", "npx -y @modelcontextprotocol/server-sequential-thinking"]

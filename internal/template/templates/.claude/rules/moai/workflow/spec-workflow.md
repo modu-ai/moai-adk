@@ -11,7 +11,7 @@ MoAI's three-phase development workflow with token budget management.
 | Phase | Command | Agent | Token Budget | Purpose |
 |-------|---------|-------|--------------|---------|
 | Plan | /moai plan | manager-spec | 30K | Create SPEC document |
-| Run | /moai run | manager-ddd/tdd (per quality.yaml) | 180K | DDD/TDD implementation |
+| Run | /moai run | manager-cycle (per quality.yaml development_mode) | 180K | DDD/TDD implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
 ## Plan Phase
@@ -49,7 +49,7 @@ Development Methodology (configured in quality.yaml development_mode):
 
 ### DDD Mode — ANALYZE-PRESERVE-IMPROVE
 
-Best for existing projects with < 10% test coverage. Uses manager-ddd agent.
+Best for existing projects with < 10% test coverage. Uses manager-cycle agent with cycle_type=ddd.
 
 **ANALYZE**: Read existing code, map domain boundaries, identify side effects and implicit contracts.
 **PRESERVE**: Write characterization tests capturing current behavior. Create behavior snapshots for regression detection.
@@ -57,7 +57,7 @@ Best for existing projects with < 10% test coverage. Uses manager-ddd agent.
 
 ### TDD Mode — RED-GREEN-REFACTOR (default)
 
-Best for all development work, new projects, and brownfield with 10%+ coverage. Uses manager-tdd agent.
+Best for all development work, new projects, and brownfield with 10%+ coverage. Uses manager-cycle agent with cycle_type=tdd.
 
 **RED**: Write a failing test describing desired behavior. Verify it fails. One test at a time.
 **GREEN**: Write simplest implementation that passes. No premature optimization.
@@ -113,7 +113,7 @@ Triggers:
 - Agent explicitly reports inability to meet a SPEC requirement
 
 Communication path:
-- Implementation agent (manager-ddd/tdd) detects trigger condition
+- Implementation agent (manager-cycle) detects trigger condition
 - Agent returns structured stagnation report to MoAI (agents cannot call AskUserQuestion)
 - MoAI presents gap analysis to user via AskUserQuestion with options:
   - Continue with current approach (minor adjustments needed)

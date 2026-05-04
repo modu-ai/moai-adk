@@ -46,7 +46,7 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | Agent | PreToolUse | PostToolUse | SubagentStop |
 |-------|-----------|------------|-------------|
 | manager-ddd | ddd-pre-transformation | ddd-post-transformation | ddd-completion |
-| manager-tdd | tdd-pre-implementation | tdd-post-implementation | tdd-completion |
+| manager-cycle | cycle-pre-implementation | cycle-post-implementation | cycle-completion |
 | expert-backend | backend-validation | backend-verification | - |
 | expert-frontend | frontend-validation | frontend-verification | - |
 | expert-testing | - | testing-verification | testing-completion |

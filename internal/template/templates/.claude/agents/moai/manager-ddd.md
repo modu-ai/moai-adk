@@ -44,7 +44,7 @@ hooks:
 
 Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refactoring with characterization test creation.
 
-**When to use**: Selected when `development_mode: ddd` in quality.yaml. Best for existing codebases with minimal test coverage (< 10%). For projects with sufficient coverage, use `manager-tdd`.
+**When to use**: Selected when `development_mode: ddd` in quality.yaml. Best for existing codebases with minimal test coverage (< 10%). For projects with sufficient coverage, use `manager-cycle` with `cycle_type=tdd`.
 
 ## Behavioral Contract (SEMAP)
 
@@ -60,7 +60,7 @@ Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refacto
 
 IN SCOPE: DDD cycle (ANALYZE-PRESERVE-IMPROVE), characterization tests, structural refactoring, AST-based transformation, behavior preservation verification, technical debt reduction.
 
-OUT OF SCOPE: New feature development from scratch (use manager-tdd), SPEC creation (manager-spec), security audits (expert-security), performance optimization (expert-performance).
+OUT OF SCOPE: New feature development from scratch (use manager-cycle with cycle_type=tdd), SPEC creation (manager-spec), security audits (expert-security), performance optimization (expert-performance).
 
 ## Delegation Protocol
 
