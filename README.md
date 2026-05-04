@@ -41,52 +41,6 @@ MoAI-ADK is a **high-performance AI development environment** for Claude Code. 2
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
----
-
-## What's New in v2.17.0
-
-MoAI-ADK v2.17.0 (V3R3 Phase C) introduces the meta-harness skill for project-specific AI agent generation and transitions from a fixed skill catalog to dynamic harness-based architecture.
-
-### Key Milestones
-
-| Version | Highlights |
-|---------|-----------|
-| **v2.9.0** | Claude Code v2.1.89-90 native skill integration (Opus 4.6) |
-| **v2.10.x** | LSP suite expansion, SPEC-CC297-001 `permissionMode` attribute support, Opus 4.7 preview |
-| **v2.11.x** | Self-Research System integration, multi-source documentation loading, enhanced memory management |
-| **v2.12.0** | **[SPEC-AGENCY-ABSORB-001]** /agency → /moai design absorption, full Opus 4.7 support, Adaptive Thinking native integration |
-| **v2.17.0** | **[BC-V3R3-007]** Meta-Harness skill (revfactory/harness Apache 2.0), static skill removal (16), namespace separation (moai-* / my-harness-*) |
-
-### Major Changes
-
-**Design System Absorption (SPEC-AGENCY-ABSORB-001)**
-
-The legacy `/agency` command has been fully absorbed into `/moai design`. Existing `/agency/` projects migrate automatically via:
-
-```bash
-moai migrate agency
-```
-
-Benefits:
-- Single unified design workflow instead of dual `/moai` + `/agency` commands
-- Improved integration with MoAI core (brand context, quality gates, SPEC-driven workflows)
-- Enhanced documentation at [adk.mo.ai.kr/design](https://adk.mo.ai.kr/design)
-
-**Opus 4.7 Native Support**
-
-MoAI-ADK now targets Claude Opus 4.7 with native Adaptive Thinking:
-
-- Automatic dynamic token allocation for reasoning (no fixed budgets)
-- Faster inference through streamlined prompt phrasing
-- Better cost efficiency on complex tasks
-
-**Self-Research & Memory Evolution**
-
-v2.11+ self-research system now integrated with agent learnings:
-
-- Agents auto-capture lessons from corrections
-- Memory system persists across sessions (`.claude/agent-memory/`)
-- Documentation loads just-in-time based on task context
 
 ---
 
