@@ -47,7 +47,7 @@ func parseRetiredFields(fm map[string]string) retiredFrontmatter {
 	if val, ok := fm["skills"]; ok {
 		result.skills = strings.TrimSpace(val)
 	}
-	// legacy status: retired 필드 감지
+	// legacy status:retired 필드 감지
 	if val, ok := fm["status"]; ok && strings.TrimSpace(val) == "retired" {
 		result.hasStatusRetired = true
 	}
@@ -93,7 +93,6 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 	// 2. 비-retired 에이전트: retired: 키 자체 없어야 함
 	// 3. legacy status:retired 필드 금지
 	for _, path := range agentFiles {
-		path := path
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
 
@@ -159,6 +158,32 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 				"SPEC-V3R3-RETIRED-AGENT-001 M2에서 retired stub으로 교체 필요 (REQ-RA-002)")
 		}
 	})
+
+	// RED 트리거: manager-ddd.md가 retired:true를 가져야 한다는 명시적 단언
+	// M2에서 manager-ddd.md가 표준화되면 GREEN이 됨
+	t.Run("manager-ddd must be retired", func(t *testing.T) {
+		t.Parallel()
+
+		const dddPath = ".claude/agents/moai/manager-ddd.md"
+		data, readErr := fs.ReadFile(fsys, dddPath)
+		if readErr != nil {
+			t.Fatalf("manager-ddd.md 읽기 실패 (파일 존재해야 함): %v", readErr)
+		}
+
+		fm, _, parseErr := parseFrontmatterAndBody(string(data))
+		if parseErr != "" {
+			t.Fatalf("manager-ddd.md frontmatter 파싱 실패: %s", parseErr)
+		}
+
+		rf := parseRetiredFields(fm)
+
+		// SPEC-V3R3-RETIRED-DDD-001 REQ-RD-002: manager-ddd는 retired:true여야 함
+		// 현재는 full definition이므로 이 테스트가 FAIL (예상 RED)
+		if !rf.retired {
+			t.Errorf("RETIREMENT_INCOMPLETE_manager-ddd: manager-ddd.md에 'retired: true' 없음. " +
+				"SPEC-V3R3-RETIRED-DDD-001 M2에서 retired stub으로 교체 필요 (REQ-RD-002)")
+		}
+	})
 }
 
 // TestRetirementCompletenessAssertion은 retired:true 에이전트 각각에 대해
@@ -184,6 +209,19 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-tdd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
 				"SPEC-V3R3-RETIRED-AGENT-001 M2에서 manager-cycle.md 추가 필요 (REQ-RA-016)", replacementPath)
+		}
+	})
+
+	// manager-ddd → manager-cycle 대체 관계 명시적 단언 (M2 이전 RED 트리거)
+	// manager-ddd.md가 retired:true를 가질 때, manager-cycle.md가 embedded FS에 있어야 함
+	t.Run("manager-ddd replacement manager-cycle must exist", func(t *testing.T) {
+		t.Parallel()
+
+		const replacementPath = ".claude/agents/moai/manager-cycle.md"
+		_, statErr := fs.Stat(fsys, replacementPath)
+		if statErr != nil {
+			t.Errorf("RETIREMENT_INCOMPLETE_manager-ddd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
+				"SPEC-V3R3-RETIRED-DDD-001 M2에서 manager-cycle.md 추가 필요 (REQ-RD-012)", replacementPath)
 		}
 	})
 
@@ -274,7 +312,6 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 	}
 
 	for _, cf := range checkFiles {
-		cf := cf
 		t.Run(cf.path, func(t *testing.T) {
 			t.Parallel()
 
@@ -292,6 +329,176 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 			if len(orphanedRefs) > 0 {
 				t.Errorf("ORPHANED_MANAGER_TDD_REFERENCE in %s (%s): %d개 참조 발견. "+
 					"SPEC-V3R3-RETIRED-AGENT-001 M5에서 'manager-cycle'로 교체 필요 (REQ-RA-013):\n%s",
+					cf.path, cf.description, len(orphanedRefs), strings.Join(orphanedRefs, "\n"))
+			}
+		})
+	}
+}
+
+// TestNoOrphanedManagerDDDReference는 특정 핵심 파일들에서 manager-ddd 참조가
+// 남아 있지 않은지 검증한다.
+//
+// REQ-RD-010: manager-cycle이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
+// 예상 RED: 30 Cat A 파일에 manager-ddd 참조가 아직 남아 있으므로 FAIL
+func TestNoOrphanedManagerDDDReference(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
+	}
+
+	// manager-ddd 참조가 없어야 하는 파일들 (REQ-RD-010 §M3 Cat A substitution scope)
+	// 각 파일에서 "manager-ddd" 문자열이 발견되면 FAIL
+	// 예외: manager-ddd.md 파일 자체 (frontmatter name: 라인, 마이그레이션 노트)
+	checkFiles := []struct {
+		path        string
+		description string
+	}{
+		// Cat A1 — Rule files (3 files)
+		{
+			path:        ".claude/rules/moai/development/agent-authoring.md",
+			description: "agent-authoring.md Manager Agents 목록",
+		},
+		{
+			path:        ".claude/rules/moai/workflow/spec-workflow.md",
+			description: "spec-workflow.md Phase Overview 테이블",
+		},
+		{
+			path:        ".claude/rules/moai/workflow/worktree-integration.md",
+			description: "worktree-integration.md Worktree Isolation Rules",
+		},
+		// Cat A2 — Agent definition files (11 files)
+		{
+			path:        ".claude/agents/moai/manager-strategy.md",
+			description: "manager-strategy.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/manager-quality.md",
+			description: "manager-quality.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/manager-spec.md",
+			description: "manager-spec.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-backend.md",
+			description: "expert-backend.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-frontend.md",
+			description: "expert-frontend.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-testing.md",
+			description: "expert-testing.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-debug.md",
+			description: "expert-debug.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-devops.md",
+			description: "expert-devops.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-mobile.md",
+			description: "expert-mobile.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/expert-refactoring.md",
+			description: "expert-refactoring.md 에이전트 위임 참조",
+		},
+		{
+			path:        ".claude/agents/moai/evaluator-active.md",
+			description: "evaluator-active.md 에이전트 위임 참조",
+		},
+		// Cat A3 — Output-style file (1 file)
+		{
+			path:        ".claude/output-styles/moai/moai.md",
+			description: "moai.md Command Reference 테이블",
+		},
+		// Cat A4 — Skill files (15 files)
+		{
+			path:        ".claude/skills/moai/SKILL.md",
+			description: "moai SKILL.md Agent Catalog",
+		},
+		{
+			path:        ".claude/skills/moai/references/mx-tag.md",
+			description: "mx-tag.md @MX TAG Protocol",
+		},
+		{
+			path:        ".claude/skills/moai/references/reference.md",
+			description: "reference.md Reference Architecture",
+		},
+		{
+			path:        ".claude/skills/moai/workflows/moai.md",
+			description: "moai.md MoAI Unified Workflow",
+		},
+		{
+			path:        ".claude/skills/moai/workflows/run.md",
+			description: "run.md Run Phase Workflow",
+		},
+		{
+			path:        ".claude/skills/moai-foundation-cc/SKILL.md",
+			description: "foundation-cc SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-foundation-core/SKILL.md",
+			description: "foundation-core SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-foundation-quality/SKILL.md",
+			description: "foundation-quality SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-meta-harness/SKILL.md",
+			description: "meta-harness SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-workflow-ddd/SKILL.md",
+			description: "workflow-ddd SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-workflow-loop/SKILL.md",
+			description: "workflow-loop SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-workflow-spec/SKILL.md",
+			description: "workflow-spec SKILL.md",
+		},
+		{
+			path:        ".claude/skills/moai-workflow-spec/references/reference.md",
+			description: "workflow-spec reference.md",
+		},
+		{
+			path:        ".claude/skills/moai-workflow-spec/references/examples.md",
+			description: "workflow-spec examples.md",
+		},
+		{
+			path:        ".claude/skills/moai-workflow-testing/SKILL.md",
+			description: "workflow-testing SKILL.md",
+		},
+	}
+
+	for _, cf := range checkFiles {
+		t.Run(cf.path, func(t *testing.T) {
+			t.Parallel()
+
+			data, readErr := fs.ReadFile(fsys, cf.path)
+			if readErr != nil {
+				// 파일이 없으면 테스트 스킵 (M3에서 파일 존재 확인)
+				t.Skipf("파일 %q 읽기 실패 (make build 필요): %v", cf.path, readErr)
+				return
+			}
+
+			content := string(data)
+			// manager-ddd 참조 검색 (대소문자 구분)
+			// 단순 포함 검사: 정확한 단어 경계를 위해 공통 패턴 검색
+			orphanedRefs := findManagerDDDReferences(content)
+			if len(orphanedRefs) > 0 {
+				t.Errorf("ORPHANED_MANAGER_DDD_REFERENCE in %s (%s): %d개 참조 발견. "+
+					"SPEC-V3R3-RETIRED-DDD-001 M3에서 'manager-cycle'로 교체 필요 (REQ-RD-010):\n%s",
 					cf.path, cf.description, len(orphanedRefs), strings.Join(orphanedRefs, "\n"))
 			}
 		})
@@ -324,6 +531,33 @@ func findManagerTDDReferences(content string) []string {
 		// 허용 예외: 마이그레이션 노트 (# deprecated, # 이전 이름, <!-- , [DEPRECATED 등)
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "name: manager-tdd") {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") && strings.Contains(strings.ToLower(trimmed), "deprecated") {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "<!--") {
+			continue
+		}
+		refs = append(refs, fmt.Sprintf("  L%d: %s", i+1, trimmed))
+	}
+	return refs
+}
+
+// findManagerDDDReferences는 콘텐츠에서 manager-ddd 관련 참조를 찾아 반환한다.
+// frontmatter의 name: 라인 및 마이그레이션 노트는 허용한다.
+func findManagerDDDReferences(content string) []string {
+	var refs []string
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		// manager-ddd 참조 검색
+		if !strings.Contains(line, "manager-ddd") {
+			continue
+		}
+		// 허용 예외: frontmatter name 필드 (manager-ddd.md 자체의 name: manager-ddd)
+		// 허용 예외: 마이그레이션 노트 (# deprecated, # 이전 이름, <!-- , [DEPRECATED 등)
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "name: manager-ddd") {
 			continue
 		}
 		if strings.HasPrefix(trimmed, "#") && strings.Contains(strings.ToLower(trimmed), "deprecated") {

@@ -22,10 +22,11 @@ func NewFactory() *Factory {
 // Action format: {agent}-{action}
 // Examples: cycle-pre-implementation, backend-validation, docs-completion
 //
-// SPEC-V3R3-RETIRED-AGENT-001: cycle handler dispatches manager-cycle's unified
-// DDD/TDD workflow hooks (REQ-RA-009). manager-tdd retired stub uses no hooks
-// (frontmatter cleared) but `case "tdd":` is preserved for backward
-// compatibility with legacy user projects that have not run `moai update`.
+// SPEC-V3R3-RETIRED-AGENT-001 + SPEC-V3R3-RETIRED-DDD-001: cycle handler dispatches
+// manager-cycle's unified DDD/TDD workflow hooks. manager-tdd + manager-ddd retired
+// stubs use no hooks (frontmatter cleared) but `case "tdd":` and `case "ddd":` are
+// preserved for backward compatibility with legacy user projects that have not run
+// `moai update`.
 func (f *Factory) CreateHandler(action string) (hook.Handler, error) {
 	parts := strings.SplitN(action, "-", 2)
 	if len(parts) != 2 {
