@@ -1,6 +1,15 @@
 # Proposal: MoAI-ADK Console
 *Generated: 2026-05-04 | Idea: IDEA-002*
 
+> ⚠️ **DEFERRED to v3.0 release window** (2026-05-04 사용자 결정)
+>
+> 본 proposal의 stack 결정(Bun + Hono + **React** + **Claude Agent SDK**)은 paradigm shift로 v3.0까지 보류.
+> v3.0 재개 시 stack 재설계: **HTMX 기반** (server-rendered + 부분 업데이트), **Claude Agent SDK 미사용** (메커니즘 v3.0 plan 시 재결정).
+>
+> 현재 v2.x 사이클(~v2.20)은 Console 작업 정지. 본 문서는 v3.0 시 paradigm 재설계 input으로 보존.
+>
+> 결정 메모리: `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/project_idea002_console_deferred_v3.md`
+
 ## Executive Summary
 
 MoAI-ADK Console은 단일 사용자(GOOS) 로컬호스트 환경에서 동작하는 document-centric CRUD 워크벤치이다. 4종 settings 파일(`user/project/design/harness`), SPEC 트리(`.moai/specs/SPEC-*/`), rule 트리(`.claude/rules/**/*.md`)에 대해 schema-aware 폼과 frontmatter-aware 마크다운 에디터를 제공하고, 우측 사이드패널 채팅을 통해 Claude Agent SDK에 지시를 보내 SSE로 응답을 스트리밍한다. 기존 Claude Code의 generic 인터페이스와 달리 MoAI-ADK 도메인(EARS 검증, frontmatter 무결성, rule `paths:` 적용 범위)을 first-class 시민으로 다루며, 단일 사용자·인증 없음·로컬호스트만 가정하여 코드 단순성을 유지한다.
