@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub 호환성 수정 + manager-cycle 템플릿 정합화
+
+### Bug Fixes
+
+- **SPEC-V3R3-RETIRED-AGENT-001**: Retired agent stub 호환성 fix + manager-cycle 템플릿 정합화. mo.ai.kr 사이드 프로젝트 2026-05-04 21:14:54 incident (5-layer defect chain → `[ERROR] Path "/Users/.../{}/{}" does not exist`) 차단.
+  - 신규 `internal/template/templates/.claude/agents/moai/manager-cycle.md` (unified DDD/TDD implementation agent, SPEC-V3R2-ORC-001 retirement decision 완료).
+  - 표준화된 retirement frontmatter: `retired: true`, `retired_replacement`, `retired_param_hint`, `tools: []`, `skills: []`. legacy `status: retired` custom field 제거.
+  - SubagentStart hook retired-rejection guard 추가 (block decision JSON + exit code 2, 응답 시간 ≤500ms; 실측 0.056ms — mo.ai.kr 11.4s 대비 9000× 개선).
+  - `validateWorktreeReturn` 헬퍼 + WORKTREE_PATH_INVALID sentinel: empty string, literal `{}`, `[object Object]`, `null`, `undefined` 패턴 거부 (5-layer chain Layer 4 차단).
+  - manager-cycle workflow lifecycle hook dispatcher (`cycle-pre-implementation` / `cycle-post-implementation` / `cycle-completion`).
+  - Documentation 7 references / 6 files substituted (CLAUDE.md, agent-hooks.md, agent-authoring.md, spec-workflow.md, manager-strategy.md, manager-ddd.md).
+  - `agent_frontmatter_audit_test.go` CI assertion: retirement standardization 강제 + RETIREMENT_INCOMPLETE_<agent> sentinel.
+  - **사용자 action**: `moai update` 실행으로 신규 template 자동 sync. `.moai/specs/`, `.moai/project/` 사용자 데이터 보존.
+
 ## [Unreleased] — SPEC-V3R3-BRAIN-001: /moai brain 7-phase 아이디에이션 워크플로우
 
 ### Added
