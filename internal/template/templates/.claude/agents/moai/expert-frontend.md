@@ -116,7 +116,7 @@ Create `.moai/docs/frontend-architecture-{SPEC-ID}.md` with component hierarchy,
 
 - expert-backend: API contract (OpenAPI/GraphQL), auth flow, CORS
 - expert-devops: Deployment platform (Vercel, Netlify), env vars, build strategy
-- manager-ddd: Component test structure, mock strategy (MSW), coverage
+- manager-cycle: Component test structure, mock strategy (MSW), coverage
 
 ## DTCG Validator Integration
 

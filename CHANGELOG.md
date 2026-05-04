@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `agent_frontmatter_audit_test.go` CI assertion: retirement standardization 강제 + RETIREMENT_INCOMPLETE_<agent> sentinel.
   - **사용자 action**: `moai update` 실행으로 신규 template 자동 sync. `.moai/specs/`, `.moai/project/` 사용자 데이터 보존.
 
+### Changed
+
+- **SPEC-V3R3-RETIRED-DDD-001**: `manager-ddd` 에이전트 retired stub 표준화. 
+  `manager-cycle`(cycle_type=ddd)로 통합. 
+  33개 파일 내 `manager-ddd` → `manager-cycle` 치환 완료.
+  사용자는 `moai update` 실행 시 자동 반영.
+
+- **SPEC-V3R3-RETIRED-DDD-001**: Standardized `manager-ddd` agent as retired stub.
+  Consolidated into `manager-cycle` (cycle_type=ddd).
+  33 files updated with `manager-ddd` → `manager-cycle` substitution.
+  Users receive changes automatically via `moai update`.
+
 ## [Unreleased] — SPEC-V3R3-BRAIN-001: /moai brain 7-phase 아이디에이션 워크플로우
 
 ### Added

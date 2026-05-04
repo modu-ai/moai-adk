@@ -114,7 +114,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mod
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
-Agents: manager-strategy, manager-ddd or manager-tdd (per quality.yaml), manager-quality, manager-git
+Agents: manager-strategy, manager-cycle or manager-tdd (per quality.yaml), manager-quality, manager-git
 Flags: --resume SPEC-XXX, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
@@ -216,7 +216,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/db.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-ddd/tdd, manager-quality, manager-docs, manager-git
+Agents: Explore, manager-spec, manager-cycle/tdd, manager-quality, manager-docs, manager-git
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 

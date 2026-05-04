@@ -56,6 +56,10 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | manager-spec | - | - | spec-completion |
 | manager-docs | - | docs-verification | docs-completion |
 
+<!-- @MX:NOTE: manager-ddd retired (SPEC-V3R3-RETIRED-DDD-001), action set
+     preserved here for backward compat with pre-update user projects.
+     Active manager-cycle uses cycle-* actions. See manager-cycle.md. -->
+
 Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose")`) do not use agent-scoped hooks. Quality enforcement for teammates uses global TeammateIdle and TaskCompleted hooks in settings.json.
 
 ## Hook Command Interface

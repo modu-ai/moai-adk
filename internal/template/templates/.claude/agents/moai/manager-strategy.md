@@ -133,7 +133,7 @@ Dependency order when multiple: backend → frontend → devops.
 ### Step 7: Wait for Approval and Handover
 
 - Present plan to user, wait for approval
-- On approval: hand TAG chain, library versions, key decisions, task list to manager-ddd/tdd
+- On approval: hand TAG chain, library versions, key decisions, task list to manager-cycle/tdd
 
 ## Context Propagation
 

@@ -19,7 +19,7 @@
 ```yaml
 id: SPEC-V3R3-RETIRED-DDD-001
 version: "0.3.0"
-status: draft
+status: completed
 created_at: 2026-05-04
 updated_at: 2026-05-04
 author: Goos Kim

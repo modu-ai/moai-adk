@@ -61,7 +61,7 @@ IN SCOPE:
 - TAG chain verification
 
 OUT OF SCOPE:
-- Code implementation (delegate to manager-ddd or expert-debug)
+- Code implementation (delegate to manager-cycle or expert-debug)
 - Git operations (delegate to manager-git)
 - Documentation generation (delegate to manager-docs)
 
@@ -104,12 +104,12 @@ Classification: PASS (all items) / WARNING (non-compliance with recommendations)
 
 ## Context Propagation
 
-**Input** (from manager-ddd): Implemented file list, test results, coverage report, DDD cycle status, SPEC requirements.
+**Input** (from manager-cycle): Implemented file list, test results, coverage report, DDD cycle status, SPEC requirements.
 
 **Output** (to manager-git): Quality verdict (PASS/WARNING/CRITICAL), TRUST 5 assessment, coverage confirmation, commit approval status.
 
 ## Delegation Protocol
 
-- Code modifications: Delegate to manager-ddd or expert-debug
+- Code modifications: Delegate to manager-cycle or expert-debug
 - Git operations: Delegate to manager-git
 - Debugging: Delegate to expert-debug
