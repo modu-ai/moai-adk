@@ -97,6 +97,69 @@ func TestCommandsThinPattern(t *testing.T) {
 	t.Logf("audited %d command files", len(cmdFiles))
 }
 
+// TestBrainCommandThinPattern verifies that the moai/brain.md command file
+// satisfies all Thin Command Pattern requirements for SPEC-V3R3-BRAIN-001.
+//
+// Source: SPEC-V3R3-BRAIN-001 deliverable #7 (T-A5.1)
+func TestBrainCommandThinPattern(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+
+	const brainCmdPath = ".claude/commands/moai/brain.md"
+
+	data, readErr := fs.ReadFile(fsys, brainCmdPath)
+	if readErr != nil {
+		t.Fatalf("brain.md not found at %q: %v — did you run make build?", brainCmdPath, readErr)
+	}
+
+	content := string(data)
+	fm, body, parseErr := parseFrontmatterAndBody(content)
+	if parseErr != "" {
+		t.Fatalf("parse error for %q: %s", brainCmdPath, parseErr)
+	}
+
+	// R1: description フィールド必須
+	desc, ok := fm["description"]
+	if !ok || strings.TrimSpace(desc) == "" {
+		t.Error("brain.md: missing or empty 'description' frontmatter field")
+	}
+
+	// R2: argument-hint フィールド存在確認
+	if _, ok := fm["argument-hint"]; !ok {
+		t.Error("brain.md: missing 'argument-hint' frontmatter field")
+	}
+
+	// R3: allowed-tools フィールド必須 (CSV string)
+	allowedTools, ok := fm["allowed-tools"]
+	if !ok {
+		t.Error("brain.md: missing 'allowed-tools' frontmatter field")
+	} else if strings.HasPrefix(strings.TrimSpace(allowedTools), "-") {
+		t.Error("brain.md: allowed-tools must be CSV string, not YAML array")
+	}
+
+	// R4: body LOC < 20 (Thin Command Pattern)
+	bodyLines := countNonEmptyLines(body)
+	if bodyLines >= 20 {
+		t.Errorf("brain.md: body has %d non-empty lines (max 19 for thin commands)", bodyLines)
+	}
+
+	// R5: Skill() 호출 패턴 존재 확인
+	if !strings.Contains(body, "Skill(") {
+		t.Error("brain.md: body does not contain Skill() invocation")
+	}
+
+	// R6: brain 워크플로우로 라우팅하는지 확인
+	if !strings.Contains(body, "brain") {
+		t.Error("brain.md: body should reference 'brain' workflow routing")
+	}
+
+	t.Logf("brain.md: description=%q, bodyLines=%d, allowedTools=%q", desc, bodyLines, allowedTools)
+}
+
 // TestCommandsFrontmatterConsistency checks that all command files have
 // consistent frontmatter: description field present, allowed-tools as CSV,
 // and no deprecated fields.

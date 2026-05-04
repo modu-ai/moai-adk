@@ -94,6 +94,48 @@ Option 3: Path B2 (Pencil)
 
 ---
 
+## Brain Handoff Bundle Auto-Detection
+
+<!-- Verifies REQ-BRAIN-005: brain output (claude-design-handoff/) consumed by /moai design --path A -->
+
+When `/moai design --path A` is invoked WITHOUT a `--bundle` argument:
+
+**Step 0: Scan for brain handoff bundles**
+
+1. Glob for `.moai/brain/IDEA-*/claude-design-handoff/prompt.md` (indicates a completed brain Phase 7 output).
+2. Collect all matching IDEA directories as `brain_bundles` (sorted by IDEA number descending — newest first).
+3. If `brain_bundles` is non-empty AND no `--bundle` argument was provided:
+
+```
+ToolSearch(query: "select:AskUserQuestion")
+AskUserQuestion({
+  questions: [{
+    header: "Brain 워크플로우 핸드오프 번들 감지됨",
+    question: "Brain 워크플로우에서 생성된 Claude Design 핸드오프 패키지를 발견했습니다. 어떻게 진행하시겠습니까?",
+    options: [
+      {
+        label: "Brain 핸드오프 패키지 사용 (권장)",
+        description: ".moai/brain/IDEA-NNN/claude-design-handoff/ 의 prompt.md를 Claude Design에 붙여넣기하세요. 완료 후 다운로드한 번들 경로를 입력합니다."
+      },
+      {
+        label: "수동으로 번들 경로 입력",
+        description: "이미 Claude Design에서 디자인을 완료하고 번들을 다운로드한 경우 선택하세요."
+      }
+    ]
+  }]
+})
+```
+
+4. If user selects "Brain 핸드오프 패키지 사용":
+   - Display the path to the prompt.md: `.moai/brain/IDEA-NNN/claude-design-handoff/prompt.md`
+   - Output instructions: "Open the prompt.md file, copy its contents, and paste into Claude Design at https://claude.ai/design"
+   - Wait for user to complete the Claude Design session and download the bundle.
+   - Proceed to Step A2 (collect bundle path from user).
+
+5. If `brain_bundles` is empty OR `--bundle` was provided: skip this step, proceed directly to Phase A.
+
+---
+
 ## Phase A: Claude Design Import Path (REQ-ROUTE-004)
 
 When Path A (Claude Design) is selected:

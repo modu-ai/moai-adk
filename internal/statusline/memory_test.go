@@ -451,3 +451,67 @@ func TestCollectMemory_EnvOverridesLLMYAML(t *testing.T) {
 		t.Errorf("TokenBudget = %d, want %d (env wins over llm.yaml)", got.TokenBudget, wantBudget)
 	}
 }
+
+// TestResolveGLMContextWindow verifies the public helper used by
+// internal/cli/glm.go (Issue #742) to pre-compute context size for tmux env
+// injection. Lookup priority: llm.yaml override -> built-in glmContextWindows.
+func TestResolveGLMContextWindow(t *testing.T) {
+	t.Run("built-in table match", func(t *testing.T) {
+		// Use a tempDir without llm.yaml so the built-in table is consulted.
+		t.Chdir(t.TempDir())
+
+		cases := []struct {
+			name     string
+			model    string
+			wantSize int
+		}{
+			{"glm-5.1 substring match (longest wins)", "glm-5.1", 200_000},
+			{"glm-4.5-air longest match wins over glm-4.5", "glm-4.5-air", 128_000},
+			{"glm-4.5 fallback when no -air suffix", "glm-4.5", 128_000},
+			{"glm-4.6 known model", "glm-4.6", 128_000},
+			{"empty input returns 0", "", 0},
+			{"claude prefix returns 0 (not GLM)", "claude-sonnet-4.6", 0},
+			{"unknown model returns 0", "completely-unknown", 0},
+			{"case insensitive", "GLM-5.1", 200_000},
+			{"trims whitespace", "  glm-5.1  ", 200_000},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				got := ResolveGLMContextWindow(tc.model)
+				if got != tc.wantSize {
+					t.Errorf("ResolveGLMContextWindow(%q) = %d, want %d", tc.model, got, tc.wantSize)
+				}
+			})
+		}
+	})
+
+	t.Run("llm.yaml override wins over built-in", func(t *testing.T) {
+		tempDir := t.TempDir()
+		sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		yamlBody := `llm:
+  glm:
+    context_windows:
+      glm-5.1: 230000
+      custom-private: 96000
+`
+		if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(yamlBody), 0o644); err != nil {
+			t.Fatalf("write llm.yaml: %v", err)
+		}
+		t.Chdir(tempDir)
+
+		if got := ResolveGLMContextWindow("glm-5.1"); got != 230_000 {
+			t.Errorf("ResolveGLMContextWindow(glm-5.1) with override = %d, want 230000", got)
+		}
+		if got := ResolveGLMContextWindow("custom-private"); got != 96_000 {
+			t.Errorf("ResolveGLMContextWindow(custom-private) = %d, want 96000", got)
+		}
+		// Models not in override but in built-in table still resolve.
+		if got := ResolveGLMContextWindow("glm-4.5"); got != 128_000 {
+			t.Errorf("ResolveGLMContextWindow(glm-4.5) = %d, want 128000 (built-in fallback)", got)
+		}
+	})
+}

@@ -10,3 +10,10 @@ observability:
   max_file_size_mb: 10
   # retention_days is the number of days to retain trace files (REQ-OBS-007).
   retention_days: 30
+  # hook_metrics configures slow hook detection and JSONL metric logging (REQ-CC2122-HOOK-001-002/007).
+  hook_metrics:
+    # slow_hook_threshold_ms: hooks exceeding this duration are logged to hook-metrics.jsonl.
+    # Default is 5000ms. Override here to customize the threshold.
+    slow_hook_threshold_ms: 5000
+    # output_path: path (relative to project root) where slow hook metrics are appended.
+    output_path: .moai/observability/hook-metrics.jsonl

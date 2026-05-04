@@ -31,7 +31,32 @@ Standard MCP servers in MoAI-ADK:
 - pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
 - claude-in-chrome: Browser automation
 
-MCP tools are deferred and must be loaded before use:
+**`alwaysLoad` field (Claude Code v2.1.119+)**
+
+Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": true` 필드가 추가되었다.
+이 필드가 `true`로 설정된 서버의 툴 스키마는 세션 시작 시 즉시 로드된다(기존 지연 로드 방식 대비).
+
+MoAI-ADK 기본 설정:
+- `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
+- `sequential-thinking`: `"alwaysLoad": true` — DeepThink 워크플로우에서 첫 호출 지연 제거
+- `moai-lsp`: `alwaysLoad` 미설정 — 프로젝트에 따라 LSP가 필요 없는 경우도 있으므로 지연 로드 유지
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "$comment": "Up-to-date documentation and code examples via Context7",
+      "alwaysLoad": true,
+      "command": "/bin/bash",
+      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
+    }
+  }
+}
+```
+
+Source: SPEC-CC2122-MCP-001 (2026-04-30)
+
+MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
 
 1. Use ToolSearch to find and load the tool
 2. Then call the loaded tool directly
@@ -39,9 +64,10 @@ MCP tools are deferred and must be loaded before use:
 Example flow:
 - ToolSearch("context7 docs") loads mcp__context7__* tools
 - mcp__context7__resolve-library-id is then available
+- With `alwaysLoad: true`, this step is unnecessary for context7 and sequential-thinking
 
 MCP rules:
-- Always use ToolSearch before calling MCP tools
+- Always use ToolSearch before calling MCP tools (unless server has alwaysLoad: true)
 - Prefer MCP tools over manual alternatives
 - Authenticated URLs require specialized MCP tools
 
@@ -51,12 +77,23 @@ Example `.mcp.json` configuration:
 {
   "mcpServers": {
     "context7": {
+      "alwaysLoad": true,
       "command": "npx",
       "args": ["-y", "@context7/mcp"]
     }
   }
 }
 ```
+
+**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` and `sequential-thinking` to ensure `--deepthink` (Sequential Thinking MCP) and Context7 documentation lookup are available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
+
+**Claude Code v2.1.119-121 Hook Changes**:
+
+| Version | Change | Impact |
+|---------|--------|--------|
+| v2.1.119 | PostToolUse / PostToolUseFailure stdin JSON now includes `duration_ms` field | MoAI records slow hooks (>5000ms) to `.moai/observability/hook-metrics.jsonl` when observability dir exists |
+| v2.1.119 | `claude --print` mode honors agent `tools:` / `disallowedTools:` frontmatter | CG Mode regression risk — verify `disallowedTools` in agent frontmatter is intentional |
+| v2.1.121 | PostToolUse `hookSpecificOutput.updatedToolOutput` extended from MCP-only to all tools | `MOAI_HOOK_OUTPUT_TRANSFORM=1` env var activates output transform scaffold |
 
 **Context7 Usage** - For up-to-date library documentation:
 

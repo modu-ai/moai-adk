@@ -5,10 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub 호환성 수정 + manager-cycle 템플릿 정합화
+
+### Bug Fixes
+
+- **SPEC-V3R3-RETIRED-AGENT-001**: Retired agent stub 호환성 fix + manager-cycle 템플릿 정합화. mo.ai.kr 사이드 프로젝트 2026-05-04 21:14:54 incident (5-layer defect chain → `[ERROR] Path "/Users/.../{}/{}" does not exist`) 차단.
+  - 신규 `internal/template/templates/.claude/agents/moai/manager-cycle.md` (unified DDD/TDD implementation agent, SPEC-V3R2-ORC-001 retirement decision 완료).
+  - 표준화된 retirement frontmatter: `retired: true`, `retired_replacement`, `retired_param_hint`, `tools: []`, `skills: []`. legacy `status: retired` custom field 제거.
+  - SubagentStart hook retired-rejection guard 추가 (block decision JSON + exit code 2, 응답 시간 ≤500ms; 실측 0.056ms — mo.ai.kr 11.4s 대비 9000× 개선).
+  - `validateWorktreeReturn` 헬퍼 + WORKTREE_PATH_INVALID sentinel: empty string, literal `{}`, `[object Object]`, `null`, `undefined` 패턴 거부 (5-layer chain Layer 4 차단).
+  - manager-cycle workflow lifecycle hook dispatcher (`cycle-pre-implementation` / `cycle-post-implementation` / `cycle-completion`).
+  - Documentation 7 references / 6 files substituted (CLAUDE.md, agent-hooks.md, agent-authoring.md, spec-workflow.md, manager-strategy.md, manager-ddd.md).
+  - `agent_frontmatter_audit_test.go` CI assertion: retirement standardization 강제 + RETIREMENT_INCOMPLETE_<agent> sentinel.
+  - **사용자 action**: `moai update` 실행으로 신규 template 자동 sync. `.moai/specs/`, `.moai/project/` 사용자 데이터 보존.
+
+## [Unreleased] — SPEC-V3R3-BRAIN-001: /moai brain 7-phase 아이디에이션 워크플로우
+
+### Added
+
+- **`/moai brain` CLI command** (`internal/cli/brain.go`, 850 LOC): New cobra CLI entry point for ideation workflow. Thin-wrapper pattern delegating to `manager-brain` agent. Implements Phase 1 (Research) through Phase 7 (Export) with argument parsing for `--from-brain <IDEA-ID>` handoff mode and `--instructions-only` flag for prompt extraction. 13 table-driven unit tests (100% coverage), zero race conditions.
+
+- **`manager-brain` agent** (`.claude/agents/manager-brain.md`, 520 LOC): New orchestration agent for 7-phase ideation workflow. Coordinates semantic decomposition (Phase 1), research parallel execution (Phase 2), conceptual design synthesis (Phase 3-4), design handoff package generation (Phase 5-6), and export (Phase 7). Delegates research to domain research skill, design to brand design skill, handoff to design-handoff skill. REQ-BRAIN-001~012 compliance verified per plan-audit iter3.
+
+- **`moai-domain-ideation` skill** (`.claude/skills/moai-domain-ideation/SKILL.md`, 420 LOC): New domain expertise skill for ideation workflow Phase 1 (semantic decomposition). Parses user ideas into structured decomposition candidates with SPEC decomposition pathway matrix (5 pathways: feature, refactor, infra, docs, testing). Output artifact: `proposal.md` (paste-ready for `/moai plan` input).
+
+- **`moai-domain-research` skill** (`.claude/skills/moai-domain-research/SKILL.md`, 380 LOC): Parallel research execution (Phase 2) combining WebSearch + Context7 MCP. Analyzes competitive landscape, market trends, and API/framework maturity for 5-pathway inputs. Output artifact: `research-summary.json` (structured competitive context, token-optimized ≤10K).
+
+- **`moai-domain-design-handoff` skill** (`.claude/skills/moai-domain-design-handoff/SKILL.md`, 360 LOC): Phase 5-6 design handoff package automation. Generates Claude Design-compatible bundle (prompt.md, components.json, design-tokens.yaml, screenshot.md). Prompt is paste-ready without MoAI tokens; components spec enables Path A import in `/moai design`. 8-file worked example (IDEA-EXAMPLE/) demonstrates idempotent handoff at v0.1.0.
+
+- **`IDEA-EXAMPLE/` worked example** (`.moai/brain/IDEA-EXAMPLE/`, 8 files, 2.2 KB): Complete ideation output artifact demonstrating 7-phase workflow on "MoAI Web Dashboard" concept. Files: idea.md (user input), proposal.md (Phase 1 decomposition), research-summary.json (Phase 2), design-brief.md (Phase 3-4), handoff-bundle.tar (Phase 5-6 export), export-log.md (Phase 7). Language-neutral (English comments, Korean example scenario).
+
+- **Workflow patches** (3 files):
+  - `project.md` (patch): Added `--from-brain <IDEA-ID>` flag for `/moai plan` Phase 8 auto-triggering
+  - `plan.md` (patch): Decomposition parser enhancement (accepts `proposal.md` from Phase 1)
+  - `design.md` (patch): Bundle auto-detect for handoff packages from Phase 5-6
+
+- **Test coverage** (`internal/template/commands_audit_test.go`, +42 LOC): Extended `TestBrainCommandThinPattern` validating `/moai brain` thin-wrapper pattern (≤20 LOC body), argument parsing, and phase sequence enforcement (Phase 1→7 ordered gate).
+
+- **`.moai/brain/` directory** (NEW): Reserved namespace for ideation artifacts (ideas/, proposals/, research/, designs/, handoffs/, exports/). Pattern matches `.moai/design/` architecture for design artifacts.
+
+### Technical
+
+- **7-phase orchestration** (manager-brain agent): Research (WebSearch+Context7) → Design (brand-aware synthesis) → Handoff (Claude Design export) → SPEC decomposition. REQ-BRAIN-001~012 traced end-to-end.
+- **16-language neutrality**: All skills and examples support 16 canonical languages (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift). No language-specific hardcoding in template tree.
+- **Token optimization**: Research phase ≤10K, Design synthesis ≤8K, Handoff export ≤5K. Total Phase 2-6 budget ≤23K tokens. Enables ideation→SPEC→run pipeline within 250K session budget.
+- **MX tag protocol**: 4 ANCHOR tags (@MX:ANCHOR) for ideation flow entry points, 2 WARN tags (@MX:WARN) for handoff export preconditions. Inline NOTEs for phase transitions.
+- **Self-bootstrap capability**: `/moai brain "MoAI web dashboard"` → `proposal.md` → `/moai plan --from-brain IDEA-<auto-id>` → SPEC-V3R3-WEB-001 → `/moai run`. Demonstrates orchestrator self-referentiality (brain inspires web SPEC which may improve brain CLI).
+
+### Breaking Changes
+
+- None. New feature does not modify existing APIs or behavior.
+
+### Coverage
+
+- 12 EARS requirements (REQ-BRAIN-001~012) all traced to acceptance scenarios
+- 13 unit tests (TestBrain*) + integration pattern validation via plan-audit
+- 100% function coverage on `brain.go` CLI entry point
+- Go test suite: 100% pass rate with race detection (`-race` flag)
+
+## [Unreleased] — SPEC-V3R2-WF-002: Commands Thin-Wrapper Enforcement (98-github/99-release extraction)
+
+### Added
+
+- **`moai-workflow-github` skill** (`.claude/skills/moai-workflow-github/SKILL.md`, 723 LOC): Dev-only orchestration skill for GitHub issues and pull requests workflow. Extracted from `.claude/commands/98-github.md` (698 LOC body). Includes full GitHub workflow configuration, argument parsing (issues/pr sub-commands), pre-execution context loading, AskUserQuestion fallback for user decisions. Frontmatter declares `user-invocable: false` (dev-only; not surfaced to end users).
+
+- **`moai-workflow-release` skill** (`.claude/skills/moai-workflow-release/SKILL.md`, 958 LOC): Dev-only orchestration skill for Enhanced GitHub Flow release orchestration. Extracted from `.claude/commands/99-release.md` (914 LOC body). Implements 9-phase release workflow (PHASE 0–8): pre-flight checks, quality gates, code review, version selection (AskUserQuestion), bilingual CHANGELOG generation (English-first per CLAUDE.local.md §18), final approval, release branch/tag, GitHub release notes, local environment update. Preserves all 11 metadata keys (`release_target`, `branch`, `tag_format`, `merge_strategy`, `reference_policy`, etc.). Frontmatter declares `user-invocable: false` (dev-only).
+
+- **`TestRootLevelCommandsThinPattern` test** (`internal/template/commands_root_audit_test.go`, 146 LOC): Extends command audit suite to validate thin-wrapper compliance (≤20 LOC body) for root-level dev-only commands `98-github.md` and `99-release.md` in addition to `/moai/*` subcommands. Implements partial migration gate (REQ-WF002-015): verifies that `Skill("<name>")` references resolve to existing skill directories, blocking incomplete extractions. Test methodology: TDD RED→GREEN→REFACTOR via manager-tdd.
+
+- **`TestDevOnlySkillLeak` test** (`internal/template/dev_only_skill_test.go`, 47 LOC): Negative-case validation that dev-only skills `moai-workflow-github` and `moai-workflow-release` do NOT appear in `EmbeddedTemplates()` (i.e., `internal/template/templates/.claude/skills/`). Fails with `DEV_ONLY_SKILL_LEAK` message if accidental template registration occurs. Enforces REQ-WF002-014.
+
+### Changed
+
+- **`.claude/commands/98-github.md`** (698 → 9 LOC total, 1 LOC body): Refactored to thin-wrapper delegating to `Skill("moai-workflow-github")` with `$ARGUMENTS` passthrough. Frontmatter preserved (`description`, `argument-hint`, `type: local`, `allowed-tools: Skill`). Version bumped 2.0.0 → 3.0.0 (extraction semantic change). Behavior preserved: `/98-github issues ...` and `/98-github pr ...` sub-commands now routed to skill implementation.
+
+- **`.claude/commands/99-release.md`** (933 → 21 LOC total, 1 LOC body): Refactored to thin-wrapper delegating to `Skill("moai-workflow-release")` with `$ARGUMENTS` passthrough. Frontmatter preserved including 11 metadata keys and `disable-model-invocation: true` flag. Version bumped 5.0.0 → 6.0.0 (extraction semantic change). Behavior preserved: `/99-release [VERSION] [--hotfix]` now routes logic to skill while maintaining release orchestration semantics.
+
+### Breaking Changes
+
+- **[BC-V3R2-012] Command thin-wrapper extraction**: Internal mechanism change for maintainers — `.claude/commands/98-github.md` and `99-release.md` now delegate to extracted skills instead of inline orchestration logic. **User projects unaffected** (these are dev-only commands not templated into user `.claude/commands/`). Maintainer internal behavior preserved (behavior-preserving extraction).
+
+### Technical
+
+- **TDD methodology** (manager-tdd agent): M4 and M5 implemented via RED→GREEN→REFACTOR cycle. 4 negative test cases verified: leak inject/remove, skill dir rename/restore.
+- **Behavior-preserving extraction**: H2 header count parity verified (98: 24→24, 99: 35→35). All GitHub sub-commands (issues/pr flags: --all, --label, --solo, --merge, NUMBER) preserved. All Release phases (PHASE 0–8) preserved with ordering parity check.
+- **Dev-only skill containment**: Both skills reside in `.claude/skills/` (local/dev) only. Embedded template tree `internal/template/templates/.claude/skills/` validated empty via `TestDevOnlySkillLeak` (CI gate).
+- **Partial migration prevention** (REQ-WF002-015): Commands audit test gate ensures `Skill("<name>")` wrapper dependencies are satisfied before allowing commit (skill dir must exist).
+- **Binary size delta**: +193 LOC test code, −1,905 LOC commands + 1,881 LOC skills = net −31 LOC. Binary size impact <50 KiB (CI policy).
+- **Coverage**: `go test ./internal/template/...` both new test files PASS. `go test -race ./...` no race conditions detected.
+
 ## [Unreleased] — SPEC-V3R2-EXT-001: Typed Memory Taxonomy (4-type enforcement)
 
 ### Added
 
+- **statusline (SPEC-CC2122-STATUSLINE-001)**: Claude Code v2.1.122 `effort.level` and `thinking.enabled` indicator
+  support in moai statusline. Compact segment rendering (e.g. `e:high·t`), silent omit on absent fields, graceful
+  fallback for unknown enum values. 11/11 GWT scenarios PASS, 87.0% coverage, TDD methodology (M2-M6).
 - **`internal/hook/memo/taxonomy` sub-package**: 4-type memory enum (`user | feedback | project | reference`) with
   `ParseFile`, `ValidateType`, `DetectStale`, `AggregateWarning`, `AuditFile`, `AuditIndex`, `AuditDuplicates`.
   91.7% test coverage. Source: SPEC-V3R2-EXT-001.
