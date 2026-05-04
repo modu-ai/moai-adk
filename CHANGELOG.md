@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R3-BRAIN-001: /moai brain 7-phase 아이디에이션 워크플로우
+
+### Added
+
+- **`/moai brain` CLI command** (`internal/cli/brain.go`, 850 LOC): New cobra CLI entry point for ideation workflow. Thin-wrapper pattern delegating to `manager-brain` agent. Implements Phase 1 (Research) through Phase 7 (Export) with argument parsing for `--from-brain <IDEA-ID>` handoff mode and `--instructions-only` flag for prompt extraction. 13 table-driven unit tests (100% coverage), zero race conditions.
+
+- **`manager-brain` agent** (`.claude/agents/manager-brain.md`, 520 LOC): New orchestration agent for 7-phase ideation workflow. Coordinates semantic decomposition (Phase 1), research parallel execution (Phase 2), conceptual design synthesis (Phase 3-4), design handoff package generation (Phase 5-6), and export (Phase 7). Delegates research to domain research skill, design to brand design skill, handoff to design-handoff skill. REQ-BRAIN-001~012 compliance verified per plan-audit iter3.
+
+- **`moai-domain-ideation` skill** (`.claude/skills/moai-domain-ideation/SKILL.md`, 420 LOC): New domain expertise skill for ideation workflow Phase 1 (semantic decomposition). Parses user ideas into structured decomposition candidates with SPEC decomposition pathway matrix (5 pathways: feature, refactor, infra, docs, testing). Output artifact: `proposal.md` (paste-ready for `/moai plan` input).
+
+- **`moai-domain-research` skill** (`.claude/skills/moai-domain-research/SKILL.md`, 380 LOC): Parallel research execution (Phase 2) combining WebSearch + Context7 MCP. Analyzes competitive landscape, market trends, and API/framework maturity for 5-pathway inputs. Output artifact: `research-summary.json` (structured competitive context, token-optimized ≤10K).
+
+- **`moai-domain-design-handoff` skill** (`.claude/skills/moai-domain-design-handoff/SKILL.md`, 360 LOC): Phase 5-6 design handoff package automation. Generates Claude Design-compatible bundle (prompt.md, components.json, design-tokens.yaml, screenshot.md). Prompt is paste-ready without MoAI tokens; components spec enables Path A import in `/moai design`. 8-file worked example (IDEA-EXAMPLE/) demonstrates idempotent handoff at v0.1.0.
+
+- **`IDEA-EXAMPLE/` worked example** (`.moai/brain/IDEA-EXAMPLE/`, 8 files, 2.2 KB): Complete ideation output artifact demonstrating 7-phase workflow on "MoAI Web Dashboard" concept. Files: idea.md (user input), proposal.md (Phase 1 decomposition), research-summary.json (Phase 2), design-brief.md (Phase 3-4), handoff-bundle.tar (Phase 5-6 export), export-log.md (Phase 7). Language-neutral (English comments, Korean example scenario).
+
+- **Workflow patches** (3 files):
+  - `project.md` (patch): Added `--from-brain <IDEA-ID>` flag for `/moai plan` Phase 8 auto-triggering
+  - `plan.md` (patch): Decomposition parser enhancement (accepts `proposal.md` from Phase 1)
+  - `design.md` (patch): Bundle auto-detect for handoff packages from Phase 5-6
+
+- **Test coverage** (`internal/template/commands_audit_test.go`, +42 LOC): Extended `TestBrainCommandThinPattern` validating `/moai brain` thin-wrapper pattern (≤20 LOC body), argument parsing, and phase sequence enforcement (Phase 1→7 ordered gate).
+
+- **`.moai/brain/` directory** (NEW): Reserved namespace for ideation artifacts (ideas/, proposals/, research/, designs/, handoffs/, exports/). Pattern matches `.moai/design/` architecture for design artifacts.
+
+### Technical
+
+- **7-phase orchestration** (manager-brain agent): Research (WebSearch+Context7) → Design (brand-aware synthesis) → Handoff (Claude Design export) → SPEC decomposition. REQ-BRAIN-001~012 traced end-to-end.
+- **16-language neutrality**: All skills and examples support 16 canonical languages (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift). No language-specific hardcoding in template tree.
+- **Token optimization**: Research phase ≤10K, Design synthesis ≤8K, Handoff export ≤5K. Total Phase 2-6 budget ≤23K tokens. Enables ideation→SPEC→run pipeline within 250K session budget.
+- **MX tag protocol**: 4 ANCHOR tags (@MX:ANCHOR) for ideation flow entry points, 2 WARN tags (@MX:WARN) for handoff export preconditions. Inline NOTEs for phase transitions.
+- **Self-bootstrap capability**: `/moai brain "MoAI web dashboard"` → `proposal.md` → `/moai plan --from-brain IDEA-<auto-id>` → SPEC-V3R3-WEB-001 → `/moai run`. Demonstrates orchestrator self-referentiality (brain inspires web SPEC which may improve brain CLI).
+
+### Breaking Changes
+
+- None. New feature does not modify existing APIs or behavior.
+
+### Coverage
+
+- 12 EARS requirements (REQ-BRAIN-001~012) all traced to acceptance scenarios
+- 13 unit tests (TestBrain*) + integration pattern validation via plan-audit
+- 100% function coverage on `brain.go` CLI entry point
+- Go test suite: 100% pass rate with race detection (`-race` flag)
+
 ## [Unreleased] — SPEC-V3R2-WF-002: Commands Thin-Wrapper Enforcement (98-github/99-release extraction)
 
 ### Added

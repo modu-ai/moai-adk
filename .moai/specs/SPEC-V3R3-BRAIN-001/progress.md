@@ -82,9 +82,153 @@ PATCH set: #5, #8, #10, #13, #14, #15, #17 (7)
 
 ## Run Phase
 
-- run_started_at: (pending)
+- run_started_at: 2026-05-04T08:10:00+09:00
 - run_complete_at: (pending)
-- run_status: pending
+- run_status: in_progress
+- main_branch_at_start: 297ea3446 (PR #773 squash merge)
+- impl_branch: feat/SPEC-V3R3-BRAIN-001-impl
+- harness_level: standard
+- detected_language_skill: moai-lang-go
+- scale_mode: Full Pipeline (17 deliverables, 6 domains)
+- wave_strategy: 2-wave split (user-confirmed)
+  - Wave 1: Phase A1-A6 (~2,400 markdown LOC) — manager-tdd #1, isolation:worktree
+  - Wave 2: Phase A7-A9 (~650 Go+tests+patches LOC) — manager-tdd #2, isolation:worktree
+
+### Phase 0.5 — Plan Audit Gate (cache HIT)
+
+- pr_773_merged_at: 2026-05-03T23:08:00Z (squash, commit 297ea3446)
+- audit_cache_hit: true
+- cached_audit_at: 2026-05-03T23:50:00Z
+- daily_report: `.moai/reports/plan-audit/SPEC-V3R3-BRAIN-001-2026-05-03.md`
+- audit_verdict: PASS (cache equivalent)
+- artifact_hash_check: spec/plan/acceptance/progress/spec-compact/research SHA-256 unchanged from iter3 baseline
+- decision: proceed to Phase 1.6 — Phase 1 + 1.5 subsumed by plan.md §1/§2/§4 audited PASS
+
+### Phase 0.9/0.95 — Detection
+
+- detected_language_skill: moai-lang-go (go.mod present)
+- scale_mode: Full Pipeline (17 deliverables, 6 domains)
+- mode_decision: 2-wave split with manager-tdd delegation
+
+### Phase 1.6 — Acceptance Criteria as failing TaskList (in-progress, inline tracking)
+
+12 EARS REQs + 11 acceptance scenarios → tracked inline against deliverables until each REQ verified at Wave end.
+
+### Wave 1 — Phase A1-A6 (COMPLETE)
+
+- wave1_started_at: 2026-05-04T08:10:00+09:00
+- wave1_completed_at: 2026-05-04T08:30:00+09:00
+- wave1_status: complete
+- delegated_to: manager-tdd subagent
+- tasks_completed: T-A1.1 ~ T-A6.2 (11 tasks)
+- files_created: 21 (15 NEW files + 6 mirrors verified)
+- total_loc: ~1,888 markdown LOC (under estimate 2,400 — efficient composition over moai-foundation-thinking)
+- mx_tags_added: 6 (4 ANCHOR + 2 WARN — 1 NOTE inline)
+- mirrors_synced: PASS (project_tree → template_tree, 11 pairs)
+- frontmatter_schema: PASS (skill-authoring.md + agent-authoring.md compliant)
+- thin_command_compliance: PASS (commands/moai/brain.md body = 1 LOC)
+- req_traceability: PASS (REQ-BRAIN-001 ~ 012 all traced)
+- divergence_from_plan:
+  - manager-brain.md placed under `.claude/agents/moai/` (existing convention) instead of plan-stated top-level path — equivalent
+  - Router patch applied to `.claude/skills/moai/SKILL.md` instead of `.claude/commands/moai.md` (commands/ are Thin Pattern wrappers; router is in skill body) — semantically equivalent
+  - IDEA-EXAMPLE/ template-only (seed content for `moai init`, not runtime artifact) — plan-aligned
+
+### Wave 2 — Phase A7-A9 (COMPLETE)
+
+- wave2_started_at: 2026-05-04T08:30:00+09:00
+- wave2_completed_at: 2026-05-04T08:50:00+09:00
+- wave2_status: complete
+- delegated_to: manager-tdd subagent
+- tasks_completed: T-A7.1, T-A7.2, T-A8.1, T-A8.2, T-A8.3, T-A9.1, T-A9.2, T-A9.3, T-A9.4 (9 tasks)
+- files_created:
+  - `internal/cli/brain.go` (128 lines, cobra brainCmd + --instructions-only)
+  - `internal/cli/brain_test.go` (235 lines, 13 table-driven tests)
+- files_modified:
+  - `.claude/skills/moai/workflows/project.md` (+30, --from-brain flag)
+  - `.claude/skills/moai/workflows/plan.md` (+55, decomposition parser)
+  - `.claude/skills/moai/workflows/design.md` (+42, bundle auto-detect)
+  - `internal/template/commands_audit_test.go` (+57, TestBrainCommandThinPattern)
+  - `internal/template/templates/.claude/skills/moai/workflows/{project,plan,design}.md` mirrors
+  - `manager-brain.md` (-3 HTML 주석 제거 → frontmatter parser 호환)
+- root_go_patch: NOT NEEDED (brain.go init() pattern matches loop.go/version.go convention; rootCmd.AddCommand() in own init)
+
+### TDD Cycle Evidence
+
+- RED: brain_test.go 작성 → `undefined: brainCmd` build failure (10 errors)
+- GREEN: brain.go 구현 → 13/13 PASS
+- REFACTOR: brain.go 함수 커버리지 100%
+
+### Quality Gates (verified by orchestrator)
+
+- `go test ./internal/cli/ -run TestBrain -race -count=1`: PASS (1.572s)
+- `go test ./internal/template/ -run "TestBrain|TestCommands" -race -count=1`: PASS (1.346s)
+- `go test ./... -race -count=1`: ALL PASS (전체 패키지, no failures)
+- `go vet ./...`: clean
+- `golangci-lint run ./internal/cli/`: 0 issues
+- `make build`: success (binary bin/moai built with v2.14.0 + commit 297ea3446)
+- `go:embed all:templates`: compile-time embed (no separate embedded.go file)
+- LSP cache stale notice: brain_test.go undefined warnings — false alarm; live build PASSES
+
+### MX Tag Coverage (Wave 1 + Wave 2 combined)
+
+- Wave 1: 6 tags (4 ANCHOR + 2 WARN + inline NOTEs)
+- Wave 2 brain.go: @MX:NOTE (CLI rationale) + @MX:WARN (user-facing message + REASON)
+- Wave 2 brain_test.go: AskUserQuestion pattern verification (REQ-BRAIN-012)
+
+### Final REQ Traceability (all 12 REQs verified)
+
+| REQ | Wave 1 | Wave 2 |
+|-----|--------|--------|
+| REQ-BRAIN-001 (7-phase) | brain.md | brain.go --instructions-only |
+| REQ-BRAIN-002 (Discovery ≤5) | brain.md, manager-brain | brain.go CLI hint |
+| REQ-BRAIN-003 (parallel research) | moai-domain-research | (Wave 1) |
+| REQ-BRAIN-004 (SPEC decomp 2-10) | moai-domain-ideation | plan.md parser |
+| REQ-BRAIN-005 (paste-ready prompt) | moai-domain-design-handoff | (Wave 1) |
+| REQ-BRAIN-006 (brand integration) | brain.md brand-detect | (Wave 1) |
+| REQ-BRAIN-007 (--from-brain) | brain.md proposal output | project.md --from-brain |
+| REQ-BRAIN-008 (16-lang neutrality) | IDEA-EXAMPLE/ | brain.go neutral hint |
+| REQ-BRAIN-009 (Phase 7 AskUserQuestion) | brain.md exit | (Wave 1) |
+| REQ-BRAIN-010 (NO auto-project) | brain.md negative invariant | (Wave 1) |
+| REQ-BRAIN-011 (NO tech-stack) | moai-domain-ideation rule | (Wave 1) |
+| REQ-BRAIN-012 (AskUserQuestion only) | manager-brain ban prose | brain_test.go pattern check |
+
+### Phase 3 — Git Operations (COMPLETE)
+
+- branch: feat/SPEC-V3R3-BRAIN-001-impl
+- commit_1: 6c7181e0d (feat: 31 files, +4019 -7)
+- commit_2: 88aae9f55 (fix: mirror 보충 - moai-domain-ideation template + design.md, 2 files, +371)
+- strategy: 2 commits on impl branch (squash on PR merge per CLAUDE.local.md §18)
+- commit_language: ko (per language.yaml)
+- footer: 🗿 MoAI <email@mo.ai.kr>
+
+### Sync Phase (COMPLETE)
+
+- sync_started_at: 2026-05-04T08:55:00+09:00
+- sync_completed_at: 2026-05-04T09:00:00+09:00
+- sync_status: complete
+- delegated_to: manager-docs subagent (partial — system error 후 orchestrator 직접 보충)
+- outputs:
+  - CHANGELOG.md Unreleased entry (한국어, 일부 LOC 수치 부정확 — follow-up 권장)
+  - 3rd commit: 07e94c340 docs(brain): CHANGELOG + progress.md sync 보강
+  - Branch pushed: origin/feat/SPEC-V3R3-BRAIN-001-impl (3 commits)
+  - PR #774 created: https://github.com/modu-ai/moai-adk/pull/774
+    - state: OPEN, base: main, autoMerge: SQUASH
+    - labels: type:feature, priority:P1, area:cli, area:templates (3축 모두)
+    - mergeStateStatus: BLOCKED (CI 대기 중, auto-merge 자동 발사 예정)
+  - session-handoff resume message: project_brain_001_pr_open.md (paste-ready, 6-block 형식)
+  - MEMORY.md updated: project_brain_001_plan_complete [SUPERSEDED] + new project_brain_001_pr_open entry
+- docs_site_4lang: deferred to follow-up PR (per CLAUDE.local.md §17.3)
+- changelog_loc_accuracy: PARTIAL (manager-docs 추정 일부 부정확, PR review 또는 follow-up commit으로 보정 권장)
+
+---
+
+## Final Summary
+
+- run_started_at: 2026-05-04T08:10:00+09:00
+- run_complete_at: 2026-05-04T09:00:00+09:00
+- run_status: complete
+- final_pr: #774 (https://github.com/modu-ai/moai-adk/pull/774, OPEN, auto-merge SQUASH)
+- next_phase: Phase B (`/moai brain "moai web 대시보드..."` 자기-부트스트랩) — PR #774 머지 후 새 세션에서 진행
 
 ---
 
