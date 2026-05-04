@@ -39,11 +39,11 @@ Analyze SPECs to determine optimal implementation strategy, library versions, an
 
 IN SCOPE: SPEC analysis, architecture decisions, library selection, TAG chain design, implementation planning, expert delegation.
 
-OUT OF SCOPE: Code implementation (manager-ddd/tdd), quality verification (manager-quality), documentation (manager-docs), Git operations (manager-git).
+OUT OF SCOPE: Code implementation (manager-cycle), quality verification (manager-quality), documentation (manager-docs), Git operations (manager-git).
 
 ## Delegation Protocol
 
-- Code implementation: Delegate to manager-ddd or manager-tdd
+- Code implementation: Delegate to manager-cycle (specify cycle_type=ddd or cycle_type=tdd)
 - Quality verification: Delegate to manager-quality
 - Documentation: Delegate to manager-docs
 - Git operations: Delegate to manager-git

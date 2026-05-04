@@ -59,7 +59,7 @@ Route request based on command type:
 Execute using explicit agent invocation:
 
 - "Use the expert-backend subagent to develop the API"
-- "Use the manager-ddd subagent to implement with DDD approach"
+- "Use the manager-cycle subagent to implement with DDD approach (cycle_type=ddd)"
 - "Use the Explore subagent to analyze the codebase structure"
 
 ### Phase 4: Report
@@ -144,7 +144,7 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 ### MoAI Command Flow
 
 - /moai plan "description" → manager-spec subagent
-- /moai run SPEC-XXX → manager-ddd or manager-tdd subagent (per quality.yaml development_mode)
+- /moai run SPEC-XXX → manager-cycle subagent (with cycle_type per quality.yaml development_mode)
 - /moai sync SPEC-XXX → manager-docs subagent
 
 For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workflow.md

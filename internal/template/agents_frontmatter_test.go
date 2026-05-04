@@ -136,6 +136,13 @@ func TestAgentsFrontmatter_ToolsCSVFormat(t *testing.T) {
 				t.Fatalf("frontmatter 파싱 실패: %s", parseErr)
 			}
 
+			// retired:true 에이전트는 tools: [] / skills: [] 빈 배열이 허용된다.
+			// TestAgentFrontmatterAudit에서 별도로 검증하므로 여기서는 skip.
+			rf := parseRetiredFields(fm)
+			if rf.retired {
+				t.Skip("retired 에이전트: tools:[] 빈 배열은 TestAgentFrontmatterAudit에서 검증")
+			}
+
 			if msg := validateToolsCSVFormat("tools", fm["tools"]); msg != "" {
 				t.Errorf("REQ-CC2122-HOOK-002-005 위반: %s", msg)
 			}
