@@ -243,7 +243,7 @@ func ValidateWorkflowSyntax(content []byte) error {
 
 	// default structure validation (name, on, jobs fields)
 	if node.Kind != yaml.DocumentNode {
-		return fmt.Errorf("Not a valid YAML document")
+		return fmt.Errorf("not a valid YAML document")
 	}
 
 	return nil

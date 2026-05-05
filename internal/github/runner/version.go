@@ -54,6 +54,10 @@ type GitHubClient interface {
 // mockReleaseData is test release data.
 // TODO T-05: Actual implementation will call GitHub Release API
 var mockReleaseData = map[string]string{
+	"2.700.1": "2026-04-17", // 10 days ago
+	"2.700.0": "2026-04-17", // 10 days ago
+	"2.699.0": "2026-04-02", // 25 days ago
+	"2.698.0": "2026-03-28", // 30 days ago
 }
 
 // Clock abstracts current-time retrieval, enabling deterministic time injection in tests.
