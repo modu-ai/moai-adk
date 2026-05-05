@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// @MX:NOTE: [AUTO] MergedSettings implements 8-tier priority merge system with provenance tracking
+//
 // MergedSettings holds the merged configuration from all 8 tiers.
 // Values are keyed by "section.field" format.
 type MergedSettings struct {

@@ -2,6 +2,9 @@
 
 package cli
 
+// @MX:NOTE: [AUTO] Platform-specific UTF-8 console initialization (Windows)
+// @MX:NOTE: [AUTO] Sets code page 65001 to prevent mojibake in PowerShell/Command Prompt
+
 import "syscall"
 
 // initConsole enables UTF-8 console output on Windows by setting code page 65001.

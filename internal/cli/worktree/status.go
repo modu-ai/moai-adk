@@ -1,5 +1,8 @@
 package worktree
 
+// @MX:NOTE: [AUTO] Worktree status with auto-prune of stale references
+// @MX:NOTE: [AUTO] Shows repository root, total count, and per-worktree branch/HEAD/path
+
 import (
 	"fmt"
 	"strings"

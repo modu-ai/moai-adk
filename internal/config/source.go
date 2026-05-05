@@ -2,6 +2,8 @@ package config
 
 import "fmt"
 
+// @MX:NOTE: [AUTO] Source enum represents 8-tier priority system from policy (highest) to builtin (lowest)
+//
 // Source represents a configuration tier in the 8-tier priority system.
 // Higher priority sources override lower priority sources.
 type Source int

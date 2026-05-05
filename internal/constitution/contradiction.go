@@ -6,39 +6,39 @@ import (
 	"strings"
 )
 
-// contradictionDetector는 ContradictionDetector interface의 구현이다.
-// Rule 간 모순을 탐지한다.
+// contradictionDetector is an implementation of the ContradictionDetector interface.
+// Detects contradictions between rules.
 type contradictionDetector struct{}
 
-// NewContradictionDetector는 ContradictionDetector를 생성한다.
+// NewContradictionDetector creates a ContradictionDetector.
 func NewContradictionDetector() ContradictionDetector {
 	return &contradictionDetector{}
 }
 
-// Scan은 proposal이 registry의 다른 rule과 모순하는지 확인한다.
-// SPEC-V3R2-CON-002 REQ-CON-002-006 Layer 3 구현.
+// Scan checks if the proposal contradicts other rules in the registry.
+// SPEC-V3R2-CON-002 REQ-CON-002-006 Layer 3 implementation.
 //
-// 모순 탐지 전략:
-// 1. ID 충돌: 동일한 ID 재사용 → 차단
-// 2. Zone 모순: Frozen→Evolvable demotion 없이 Frozen 제약 완화 → 차단
-// 3. Clause 모순: "MUST X"와 "MUST NOT X" 동시 존재 → 차단
-// 4. 의미 모순: 반대 의미 키워드 쌍 → 경고
+// Contradiction detection strategy:
+// 1. ID conflict: Reusing the same ID → block
+// 2. Zone contradiction: Relaxing Frozen constraints without Frozen→Evolvable demotion → block
+// 3. Clause contradiction: "MUST X" and "MUST NOT X" coexist → block
+// 4. Semantic contradiction: Opposite meaning keyword pairs → warning
 func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Registry) (*ContradictionResult, error) {
 	result := &ContradictionResult{
 		Conflicts: []ConflictDetail{},
 	}
 
-	// Registry의 모든 rule과 비교
+	// Compare with all rules in the registry
 	for _, rule := range registry.Entries {
-		// 자기 자신은 스킵
+		// Skip self
 		if rule.ID == proposal.RuleID {
 			continue
 		}
 
-		// ID 충돌 (다른 rule이 같은 ID 사용 - 중복 불가)
-		// 이는 loader에서 이미 차단되므로 여기서는 추가 체크 안 함
+		// ID conflict (different rule using the same ID - not allowed)
+		// This is already blocked in the loader, so no additional check here
 
-		// Zone 모순 탐지
+		// Zone contradiction detection
 		if conflict := d.detectZoneContradiction(proposal, &rule); conflict != nil {
 			result.Conflicts = append(result.Conflicts, *conflict)
 			if conflict.IsBlocking {
@@ -46,7 +46,7 @@ func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Regi
 			}
 		}
 
-		// Clause 모순 탐지
+		// Clause contradiction detection
 		if conflict := d.detectClauseContradiction(proposal, &rule); conflict != nil {
 			result.Conflicts = append(result.Conflicts, *conflict)
 			if conflict.IsBlocking {
@@ -55,7 +55,7 @@ func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Regi
 		}
 	}
 
-	// 모순이 있으면 에러 반환
+	// Return error if there are contradictions
 	if result.HasBlockingContradiction {
 		conflictingIDs := make([]string, 0, len(result.Conflicts))
 		descriptions := make([]string, 0, len(result.Conflicts))
@@ -73,12 +73,12 @@ func (d *contradictionDetector) Scan(proposal *AmendmentProposal, registry *Regi
 	return result, nil
 }
 
-// detectZoneContradiction은 zone 변경 모순을 탐지한다.
+// detectZoneContradiction detects zone change contradictions.
 func (d *contradictionDetector) detectZoneContradiction(proposal *AmendmentProposal, rule *Rule) *ConflictDetail {
-	// proposal의 After clause에서 zone 힌트 추정
+	// Extract zone hints from proposal's After clause
 	afterUpper := strings.ToUpper(proposal.After)
 
-	// Frozen 제약 완화 감지: "MUST" 제거, "MAY" 또는 "SHOULD" 추가
+	// Detect Frozen constraint relaxation: Removing "MUST", adding "MAY" or "SHOULD"
 	beforeUpper := strings.ToUpper(proposal.Before)
 	hadMust := strings.Contains(beforeUpper, "MUST") || strings.Contains(beforeUpper, "SHALL") || strings.Contains(beforeUpper, "REQUIRED")
 	lostMust := hadMust && !strings.Contains(afterUpper, "MUST") && !strings.Contains(afterUpper, "SHALL") && !strings.Contains(afterUpper, "REQUIRED")
@@ -87,36 +87,36 @@ func (d *contradictionDetector) detectZoneContradiction(proposal *AmendmentPropo
 	if lostMust && addedMay {
 		return &ConflictDetail{
 			ConflictingRuleID: rule.ID,
-			Description:       fmt.Sprintf("제약 완화: %s의 강제 조항이 권장 사항으로 변경됨", rule.ID),
-			IsBlocking:        true, // Frozen zone은 제약 완화 차단
+			Description:       fmt.Sprintf("Constraint relaxation: %s's mandatory clause changed to recommendation", rule.ID),
+			IsBlocking:        true, // Frozen zone blocks constraint relaxation
 		}
 	}
 
 	return nil
 }
 
-// detectClauseContradiction은 clause 내용 모순을 탐지한다.
+// detectClauseContradiction detects clause content contradictions.
 func (d *contradictionDetector) detectClauseContradiction(proposal *AmendmentProposal, rule *Rule) *ConflictDetail {
-	// Proposal의 After clause와 기존 rule의 clause 비교
+	// Compare proposal's After clause with existing rule's clause
 
-	// 1. 반대 의미 키워드 쌍 탐지
+	// 1. Detect opposite meaning keyword pairs
 	afterWords := strings.Fields(strings.ToUpper(proposal.After))
 	ruleWords := strings.Fields(strings.ToUpper(rule.Clause))
 
-	// "MUST NOT" + "MUST" 조합 탐지
+	// Detect "MUST NOT" + "MUST" combination
 	proposalMustNot := containsSequence(afterWords, "MUST", "NOT")
 	ruleMust := containsWord(ruleWords, "MUST") || containsWord(ruleWords, "SHALL") || containsWord(ruleWords, "REQUIRED")
 
 	if proposalMustNot && ruleMust {
 		return &ConflictDetail{
 			ConflictingRuleID: rule.ID,
-			Description:       fmt.Sprintf("의미 모순: %s은(는) 요구사항인데 proposal은 'MUST NOT' 금지를 추가", rule.ID),
+			Description:       fmt.Sprintf("Semantic contradiction: %s is a requirement but proposal adds 'MUST NOT' prohibition", rule.ID),
 			IsBlocking:        true,
 		}
 	}
 
-	// 2. 대립되는 행동 패턴 탐지
-	// 예: "always X" vs "never X"
+	// 2. Detect opposing action patterns
+	// Example: "always X" vs "never X"
 	if extractAction(proposal.After) != "" && extractAction(proposal.After) == extractAction(rule.Clause) {
 		proposalMod := extractModifier(proposal.After)
 		ruleMod := extractModifier(rule.Clause)
@@ -124,7 +124,7 @@ func (d *contradictionDetector) detectClauseContradiction(proposal *AmendmentPro
 		if isOppositeModifier(proposalMod, ruleMod) {
 			return &ConflictDetail{
 				ConflictingRuleID: rule.ID,
-				Description:       fmt.Sprintf("행동 모순: %s('%s') vs proposal('%s')", rule.ID, ruleMod, proposalMod),
+				Description:       fmt.Sprintf("Action contradiction: %s('%s') vs proposal('%s')", rule.ID, ruleMod, proposalMod),
 				IsBlocking:        true,
 			}
 		}
@@ -133,7 +133,7 @@ func (d *contradictionDetector) detectClauseContradiction(proposal *AmendmentPro
 	return nil
 }
 
-// containsSequence는 슬라이스에서 연속 단어 시퀀스를 찾는다.
+// containsSequence finds a consecutive word sequence in a slice.
 func containsSequence(words []string, seq ...string) bool {
 	for i := 0; i <= len(words)-len(seq); i++ {
 		match := true
@@ -150,7 +150,7 @@ func containsSequence(words []string, seq ...string) bool {
 	return false
 }
 
-// containsWord는 슬라이스에서 단어를 찾는다.
+// containsWord finds a word in a slice.
 func containsWord(words []string, target string) bool {
 	for _, w := range words {
 		if w == target {
@@ -160,20 +160,20 @@ func containsWord(words []string, target string) bool {
 	return false
 }
 
-// extractAction은 clause에서 동작/대상을 추출한다.
-// 간단 구현: 따옴표 안의 내용 또는 첫 명사구.
+// extractAction extracts the action/object from a clause.
+// Simple implementation: Content in quotes or the first noun phrase.
 func extractAction(clause string) string {
-	// 따옴표 안의 내용 추출
+	// Extract content in quotes
 	re := regexp.MustCompile(`"([^"]+)"`)
 	matches := re.FindStringSubmatch(clause)
 	if len(matches) >= 2 {
 		return matches[1]
 	}
-	// TODO: 더 정교한 NLP 기반 추정 (SPEC-V3R2-CON-003)
+	// TODO: More sophisticated NLP-based estimation (SPEC-V3R2-CON-003)
 	return ""
 }
 
-// extractModifier는 clause에서 수식어(MUST/SHOULD/MAY/NOT 등)를 추출한다.
+// extractModifier extracts modifiers (MUST/SHOULD/MAY/NOT, etc.) from a clause.
 func extractModifier(clause string) string {
 	upper := strings.ToUpper(clause)
 	modifiers := []string{"MUST NOT", "MUST", "SHALL NOT", "SHALL", "REQUIRED", "SHOULD", "MAY", "OPTIONAL"}
@@ -185,7 +185,7 @@ func extractModifier(clause string) string {
 	return ""
 }
 
-// isOppositeModifier는 두 수식어가 대립 관계인지 판단한다.
+// isOppositeModifier determines if two modifiers are in an opposing relationship.
 func isOppositeModifier(mod1, mod2 string) bool {
 	opposites := map[string][]string{
 		"MUST NOT": {"MUST", "SHALL", "REQUIRED"},
@@ -203,5 +203,5 @@ func isOppositeModifier(mod1, mod2 string) bool {
 	return false
 }
 
-// contradictionDetector는 ContradictionDetector interface를 만족한다.
+// contradictionDetector satisfies the ContradictionDetector interface.
 var _ ContradictionDetector = (*contradictionDetector)(nil)

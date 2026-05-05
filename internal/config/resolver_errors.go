@@ -2,6 +2,8 @@ package config
 
 import "fmt"
 
+// @MX:NOTE: [AUTO] Resolver-specific error types for 8-tier configuration loading and validation
+//
 // ConfigTypeError is returned when a value cannot be parsed against its typed schema.
 // This maps to REQ-V3R2-RT-005-013.
 type ConfigTypeError struct {

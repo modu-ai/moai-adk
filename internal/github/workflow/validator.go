@@ -1,4 +1,4 @@
-// @MX:NOTE: Workflow 템플릿 검증기 - GitHub Actions 워크플로우와 액션 템플릿의 규정 준수를 검사
+// @MX:NOTE: Workflow template validator - Checks compliance of GitHub Actions workflows and action templates
 package workflow
 
 import (
@@ -13,13 +13,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// WorkflowValidator는 워크플로우 템플릿 검증 인터페이스
+// WorkflowValidator is the workflow template validation interface
 type WorkflowValidator interface {
 	ValidateTemplate(templatePath string) (*ValidationResult, error)
 	ValidateAllTemplates(templateDir string) ([]*ValidationResult, error)
 }
 
-// ValidationResult는 검증 결과를 담는 구조체
+// ValidationResult is a struct that holds validation results
 type ValidationResult struct {
 	TemplatePath string
 	IsValid      bool
@@ -27,20 +27,19 @@ type ValidationResult struct {
 	Warnings     []string
 }
 
-// Validator는 워크플로우 검증을 수행하는 구현체
+// Validator is the implementation that performs workflow validation
 type Validator struct {
-	templateFS embed.FS //nolint:unused // 템플릿 파일 읽기용 파일시스템
+	templateFS embed.FS //nolint:unused // filesystem for file reading
 }
 
-// NewValidator는 새로운 Validator 인스턴스를 생성
+// NewValidator creates a new Validator instance
 func NewValidator() *Validator {
 	return &Validator{
-		// templateFS는 실제로는 사용하지 않음 (os.ReadFile로 직접 읽기)
-		// 향후 임베디드 파일시스템 사용 시 활용 가능
+		// templateFS is not actually used (reads directly via os.ReadFile)
 	}
 }
 
-// ValidateTemplate은 단일 템플릿 파일을 검증
+// ValidateTemplate validates a single template file
 func (v *Validator) ValidateTemplate(templatePath string) (*ValidationResult, error) {
 	result := &ValidationResult{
 		TemplatePath: templatePath,
@@ -49,66 +48,63 @@ func (v *Validator) ValidateTemplate(templatePath string) (*ValidationResult, er
 		Warnings:     []string{},
 	}
 
-	// 파일 읽기
 	content, err := os.ReadFile(templatePath)
 	if err != nil {
 		result.IsValid = false
-		result.Errors = append(result.Errors, fmt.Sprintf("파일 읽기 실패: %v", err))
+		result.Errors = append(result.Errors, fmt.Sprintf("file read failure: %v", err))
 		return result, nil
 	}
 
-	// 빈 파일 검증 (REQ-CI-018)
+	// File validation (REQ-CI-018)
 	if len(content) == 0 {
 		result.IsValid = false
-		result.Errors = append(result.Errors, "빈 템플릿 파일입니다")
+		result.Errors = append(result.Errors, "empty template file")
 		return result, nil
 	}
 
-	// YAML 문법 검증
+	// YAML syntax validation
 	var node yaml.Node
 	if err := yaml.Unmarshal(content, &node); err != nil {
 		result.IsValid = false
-		result.Errors = append(result.Errors, fmt.Sprintf("YAML 문법 오류: %v", err))
+		result.Errors = append(result.Errors, fmt.Sprintf("YAML syntax error: %v", err))
 		return result, nil
 	}
 
-	// 빈 문서 검증
 	if len(node.Content) == 0 {
 		result.IsValid = false
-		result.Errors = append(result.Errors, "빈 YAML 문서입니다")
+		result.Errors = append(result.Errors, "empty YAML document")
 		return result, nil
 	}
 
-	// 내용을 문자열로 변환하여 검사
 	contentStr := string(content)
 
-	// REQ-CI-018: SHA-pin 검증 (타사 액션)
+	// REQ-CI-018: SHA-pin validation (third-party actions)
 	v.validateSHAPin(contentStr, result)
 
-	// REQ-SEC-001: Codex private repo guard 검증
+	// REQ-SEC-001: Codex private repo guard validation
 	v.validateCodexPrivateGuard(contentStr, result)
 
-	// SEC-003: 하드코딩된 credential 검증
+	// SEC-003: hardcoded credential validation
 	v.validateHardcodedCredentials(contentStr, result)
 
-	// SEC-005: 권한 검증
+	// SEC-005: authorization validation
 	v.validatePermissions(contentStr, result)
 
 	return result, nil
 }
 
-// validateSHAPin는 타사 GitHub 액션의 SHA-pin을 검증 (REQ-CI-018)
+// validateSHAPin validates SHA-pinning for third-party GitHub actions (REQ-CI-018)
 func (v *Validator) validateSHAPin(content string, result *ValidationResult) {
-	// GitHub Actions uses 키워드 찾기
+	// Find GitHub Actions uses keyword
 	lines := strings.Split(content, "\n")
 	foundActionsWithoutSHA := false
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		// "- uses:" 또는 "uses:" 형식을 모두 허용
+		// Allow both "- uses:" and "uses:" formats
 		if (strings.HasPrefix(trimmed, "- uses:") || strings.HasPrefix(trimmed, "uses:")) &&
 			strings.Contains(trimmed, "actions/") {
-			// SHA가 있는지 확인 (@v4는 버전만, SHA는 @a로 시작하는 40자리 hex)
+			// Check if SHA exists (@v4 is version only, SHA starts with @a and is 40 hex chars)
 			hasSHA := regexp.MustCompile(`@a[a-fA-F0-9]{40}`).MatchString(trimmed) ||
 				strings.Contains(trimmed, "# SHA:")
 			hasVersionOnly := regexp.MustCompile(`@v\d+`).MatchString(trimmed)
@@ -116,7 +112,7 @@ func (v *Validator) validateSHAPin(content string, result *ValidationResult) {
 			if hasVersionOnly && !hasSHA {
 				foundActionsWithoutSHA = true
 				result.Errors = append(result.Errors,
-					fmt.Sprintf("SHA 누락: %s (REQ-CI-018)", trimmed))
+					fmt.Sprintf("SHA missing: %s (REQ-CI-018)", trimmed))
 			}
 		}
 	}
@@ -126,39 +122,38 @@ func (v *Validator) validateSHAPin(content string, result *ValidationResult) {
 	}
 }
 
-// validateCodexPrivateGuard는 Codex 워크플로우의 private repo guard를 검증 (REQ-SEC-001)
+// validateCodexPrivateGuard validates Codex workflow private repo guard (REQ-SEC-001)
 func (v *Validator) validateCodexPrivateGuard(content string, result *ValidationResult) {
-	// Codex 관련 워크플로우인지 확인
 	isCodexWorkflow := strings.Contains(strings.ToLower(content), "codex") ||
 		strings.Contains(strings.ToLower(content), "CODEX_AUTH_JSON")
 
 	if !isCodexWorkflow {
-		return // Codex 워크플로우가 아니면 검증 스킵
+		return // Skip validation if not Codex workflow
 	}
 
-	// repository_visibility 체크가 있는지 확인
+	// Check if repository_visibility check exists
 	hasVisibilityCheck := strings.Contains(content, "repository_visibility") ||
 		strings.Contains(content, "github.repository_visibility")
 
 	if !hasVisibilityCheck {
 		result.IsValid = false
 		result.Errors = append(result.Errors,
-			"Codex 워크플로우에 private repo guard가 없습니다 (REQ-SEC-001)")
+			"Codex workflow missing private repo guard (REQ-SEC-001)")
 	}
 }
 
-// validateHardcodedCredentials는 하드코딩된 credential을 검증 (SEC-003)
+// validateHardcodedCredentials validates hardcoded credentials (SEC-003)
 func (v *Validator) validateHardcodedCredentials(content string, result *ValidationResult) {
-	// 테스트용 패턴: sk-1234567890abcdef
+	// Test pattern: sk-1234567890abcdef
 	testPattern := regexp.MustCompile(`sk-[0-9a-f]{16,}`)
 	if testPattern.MatchString(content) {
 		result.IsValid = false
 		result.Errors = append(result.Errors,
-			"하드코딩된 credential 발견: OpenAI API key 패턴 (SEC-003)")
+			"hardcoded credential found: OpenAI API key pattern (SEC-003)")
 		return
 	}
 
-	// 일반적인 credential 패턴
+	// Credential patterns
 	patterns := []string{
 		`sk-[a-zA-Z0-9]{32,}`,  // OpenAI API key
 		`ghp_[a-zA-Z0-9]{36,}`, // GitHub personal access token
@@ -172,15 +167,14 @@ func (v *Validator) validateHardcodedCredentials(content string, result *Validat
 		if re.MatchString(content) {
 			result.IsValid = false
 			result.Errors = append(result.Errors,
-				fmt.Sprintf("하드코딩된 credential 발견: %s (SEC-003)", pattern))
-			break // 하나만 발견해도 실패
+				fmt.Sprintf("hardcoded credential found: %s (SEC-003)", pattern))
+			break
 		}
 	}
 }
 
-// validatePermissions는 과도한 권한 부여를 검증 (SEC-005)
+// validatePermissions validates excessive authorization grants (SEC-005)
 func (v *Validator) validatePermissions(content string, result *ValidationResult) {
-	// 위험한 권한 레벨
 	dangerousPerms := []string{
 		"write-all",
 		"read-all",
@@ -190,30 +184,29 @@ func (v *Validator) validatePermissions(content string, result *ValidationResult
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "permissions:") {
-			// permissions 블록 내용 검사
+			// Check permissions block content
 			for _, perm := range dangerousPerms {
 				if strings.Contains(trimmed, perm) {
 					result.Warnings = append(result.Warnings,
-						fmt.Sprintf("과도한 권한 부여: %s (SEC-005)", perm))
-					result.IsValid = false // 경고를 에러로 처리
+						fmt.Sprintf("excessive authorization grant: %s (SEC-005)", perm))
+					result.IsValid = false // Process as error
 					return
 				}
 			}
 		}
 	}
 
-	// 최소 권한 원칙 경고
 	if !strings.Contains(content, "permissions:") {
 		result.Warnings = append(result.Warnings,
-			"permissions 필드가 없습니다. 기본값은 read-only입니다 (SEC-005)")
+			"permissions field is missing. default value is read-only (SEC-005)")
 	}
 }
 
-// ValidateAllTemplates는 디렉토리 내 모든 템플릿을 검증
+// ValidateAllTemplates validates all templates in directory
 func (v *Validator) ValidateAllTemplates(templateDir string) ([]*ValidationResult, error) {
 	var results []*ValidationResult
 
-	// 템플릿 파일 찾기 (.yml.tmpl 또는 .yaml.tmpl)
+	// Find files ((.yml.tmpl or .yaml.tmpl))
 	err := filepath.Walk(templateDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -223,11 +216,10 @@ func (v *Validator) ValidateAllTemplates(templateDir string) ([]*ValidationResul
 			return nil
 		}
 
-		// 템플릿 파일만 처리
 		if strings.HasSuffix(path, ".yml.tmpl") || strings.HasSuffix(path, ".yaml.tmpl") {
 			result, err := v.ValidateTemplate(path)
 			if err != nil {
-				return fmt.Errorf("%s 검증 실패: %w", path, err)
+				return fmt.Errorf("%s validation failure: %w", path, err)
 			}
 			results = append(results, result)
 		}
@@ -236,43 +228,42 @@ func (v *Validator) ValidateAllTemplates(templateDir string) ([]*ValidationResul
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("템플릿 디렉토리 탐색 실패: %w", err)
+		return nil, fmt.Errorf("template directory traversal failure: %w", err)
 	}
 
 	return results, nil
 }
 
-// ValidateWorkflowSyntax는 워크플로우 YAML 구문을 검증
+// ValidateWorkflowSyntax validates workflow YAML syntax
 func ValidateWorkflowSyntax(content []byte) error {
 	var node yaml.Node
 	if err := yaml.Unmarshal(content, &node); err != nil {
-		return fmt.Errorf("YAML 구문 오류: %w", err)
+		return fmt.Errorf("YAML syntax error: %w", err)
 	}
 
-	// 기본 구조 검증 (name, on, jobs 필드)
+	// default structure validation (name, on, jobs fields)
 	if node.Kind != yaml.DocumentNode {
-		return fmt.Errorf("유효한 YAML 문서가 아닙니다")
+		return fmt.Errorf("Not a valid YAML document")
 	}
 
 	return nil
 }
 
-// ParseWorkflowTemplate은 워크플로우 템플릿을 파싱
 func ParseWorkflowTemplate(templatePath string) (map[string]interface{}, error) {
 	content, err := os.ReadFile(templatePath)
 	if err != nil {
-		return nil, fmt.Errorf("템플릿 파일 읽기 실패: %w", err)
+		return nil, fmt.Errorf("template file read failure: %w", err)
 	}
 
 	var workflow map[string]interface{}
 	if err := yaml.Unmarshal(content, &workflow); err != nil {
-		return nil, fmt.Errorf("YAML 파싱 실패: %w", err)
+		return nil, fmt.Errorf("YAML parsing failure: %w", err)
 	}
 
 	return workflow, nil
 }
 
-// ScanForActions는 워크플로우에서 사용된 모든 GitHub Actions를 추출
+// ScanForActions extracts all GitHub Actions used in workflow
 func ScanForActions(workflowContent string) []string {
 	var actions []string
 	scanner := bufio.NewScanner(strings.NewReader(workflowContent))

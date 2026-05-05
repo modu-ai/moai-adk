@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Pre-push hook validates commit messages against git convention
+// @MX:NOTE: [AUTO] Reads commits from stdin, exits code 2 on violation per Claude Code protocol
+// @MX:NOTE: [AUTO] Priority: MOAI_GIT_CONVENTION env > config > default "auto"
+
 import (
 	"fmt"
 	"os"

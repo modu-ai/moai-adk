@@ -16,7 +16,7 @@ import (
 // Multiple runs on the same day append to the same file (AC-WAG-04).
 //
 // @MX:ANCHOR: [AUTO] AuditReporter is the primary interface for persisting audit verdicts
-// @MX:REASON: fan_in >= 3 (GateConfig.Invoke, test mocks, daily report validation)
+// @MX:REASON: [AUTO] fan_in >= 3 (GateConfig.Invoke, test mocks, daily report validation)
 type AuditReporter interface {
 	// AppendRun appends a single audit run record to the daily report file.
 	//

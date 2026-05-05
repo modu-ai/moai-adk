@@ -1,4 +1,3 @@
-// Package runner는 네트워크 egress 검증 및 감사 로깅을 제공합니다.
 // Package runner provides network egress validation and audit logging.
 package runner
 
@@ -11,19 +10,19 @@ import (
 	"time"
 )
 
-// EgressValidator는 네트워크 액세스를 검증합니다.
+// EgressValidator validates network access.
 // REQ-SEC-007, REQ-CI-007.1, REQ-CI-007.2
 type EgressValidator interface {
 	ValidateGitHubAPI(ctx context.Context) error
 	ValidateRunnerDownload(ctx context.Context) error
 }
 
-// egressValidator는 EgressValidator의 구현체입니다.
+// egressValidator implements EgressValidator.
 type egressValidator struct {
 	dialer *net.Dialer
 }
 
-// NewEgressValidator는 새로운 EgressValidator를 생성합니다.
+// NewEgressValidator creates a new EgressValidator.
 func NewEgressValidator() EgressValidator {
 	return &egressValidator{
 		dialer: &net.Dialer{
@@ -32,9 +31,9 @@ func NewEgressValidator() EgressValidator {
 	}
 }
 
-// ValidateGitHubAPI는 GitHub API 액세스를 검증합니다.
+// ValidateGitHubAPI validates GitHub API access.
 func (v *egressValidator) ValidateGitHubAPI(ctx context.Context) error {
-	// GitHub API 도메인 목록
+	// GitHub API domain list
 	domains := []string{
 		"api.github.com:443",
 		"github.com:443",
@@ -51,9 +50,9 @@ func (v *egressValidator) ValidateGitHubAPI(ctx context.Context) error {
 	return nil
 }
 
-// ValidateRunnerDownload는 runner 다운로드 액세스를 검증합니다.
+// ValidateRunnerDownload validates runner download access.
 func (v *egressValidator) ValidateRunnerDownload(ctx context.Context) error {
-	// GitHub runner 다운로드 도메인
+	// GitHub runner download domains
 	domains := []string{
 		"github.com:443",
 		"objects.githubusercontent.com:443",
@@ -71,19 +70,19 @@ func (v *egressValidator) ValidateRunnerDownload(ctx context.Context) error {
 	return nil
 }
 
-// AuditLogger는 runner 작업을 기록합니다.
+// AuditLogger logs runner operations.
 // REQ-SEC-008
 type AuditLogger interface {
 	LogInstall(ctx context.Context, version string) error
 	LogRegister(ctx context.Context, runnerID string) error
 }
 
-// auditLogger는 AuditLogger의 구현체입니다.
+// auditLogger implements AuditLogger.
 type auditLogger struct {
 	auditDir string
 }
 
-// NewAuditLogger는 새로운 AuditLogger를 생성합니다.
+// NewAuditLogger creates a new AuditLogger.
 func NewAuditLogger(auditDir string) AuditLogger {
 	if auditDir == "" {
 		homeDir, err := os.UserHomeDir()
@@ -98,18 +97,18 @@ func NewAuditLogger(auditDir string) AuditLogger {
 	}
 }
 
-// LogInstall은 설치 작업을 기록합니다.
+// LogInstall logs installation operations.
 func (l *auditLogger) LogInstall(ctx context.Context, version string) error {
 	if version == "" {
 		return fmt.Errorf("version cannot be empty")
 	}
 
-	// 감사 디렉토리 생성
+	// Create audit directory
 	if err := os.MkdirAll(l.auditDir, 0755); err != nil {
 		return fmt.Errorf("create audit directory: %w", err)
 	}
 
-	// 감사 로그 파일 생성
+	// Create audit log file
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	logPath := filepath.Join(l.auditDir, fmt.Sprintf("install_%s.log", timestamp))
 
@@ -122,18 +121,18 @@ func (l *auditLogger) LogInstall(ctx context.Context, version string) error {
 	return nil
 }
 
-// LogRegister는 등록 작업을 기록합니다.
+// LogRegister logs registration operations.
 func (l *auditLogger) LogRegister(ctx context.Context, runnerID string) error {
 	if runnerID == "" {
 		return fmt.Errorf("runner ID cannot be empty")
 	}
 
-	// 감사 디렉토리 생성
+	// Create audit directory
 	if err := os.MkdirAll(l.auditDir, 0755); err != nil {
 		return fmt.Errorf("create audit directory: %w", err)
 	}
 
-	// 감사 로그 파일 생성
+	// Create audit log file
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	logPath := filepath.Join(l.auditDir, fmt.Sprintf("register_%s.log", timestamp))
 

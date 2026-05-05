@@ -47,7 +47,7 @@ func interpolateGradientColor(blockPct float64) (r, g, b int) {
 // Returns plain block string when noColor or width <= 0 (REQ-V3-BAR-003).
 //
 // @MX:ANCHOR: [AUTO] Core function for all usage bar (CW/5H/7D) rendering - called from renderer.go
-// @MX:REASON: fan_in >= 3 (renderUsageBar → called from 3 bar rendering paths)
+// @MX:REASON: [AUTO] fan_in >= 3 (renderUsageBar → called from 3 bar rendering paths)
 func BuildGradientBar(pct int, width int, noColor bool) string {
 	if width <= 0 {
 		return ""

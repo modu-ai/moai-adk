@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// allowedDimensionUnits: DTCG 2025.10 §8.2 허용 단위.
+// allowedDimensionUnits: DTCG 2025.10 §8.2 allowed units.
 var allowedDimensionUnits = map[string]bool{
 	"px":  true,
 	"rem": true,
@@ -14,14 +14,14 @@ var allowedDimensionUnits = map[string]bool{
 	"%":   true,
 }
 
-// legacyDimensionPattern: "16px", "1.5rem", "0%" 형식의 레거시 string.
+// legacyDimensionPattern: Legacy string format like "16px", "1.5rem", "0%".
 var legacyDimensionPattern = regexp.MustCompile(`^-?[0-9]*\.?[0-9]+(px|rem|em|%)$`)
 
-// ValidateDimension: DTCG 2025.10 §8.2 dimension 카테고리 검증.
-// 구조화된 형식: {value: number, unit: "px"|"rem"|"em"|"%"}
-// 레거시 string 형식: "16px", "1.5rem", "0%" (하위 호환)
+// ValidateDimension: DTCG 2025.10 §8.2 dimension category validation.
+// Structured format: {value: number, unit: "px"|"rem"|"em"|"%"}
+// Legacy string format: "16px", "1.5rem", "0%" (backward compatibility)
 func ValidateDimension(tokenPath string, value any) error {
-	// 에일리어스 참조 통과
+	// Alias reference passes
 	if s, ok := value.(string); ok && IsAlias(s) {
 		return nil
 	}
@@ -32,52 +32,52 @@ func ValidateDimension(tokenPath string, value any) error {
 	case string:
 		return validateDimensionString(tokenPath, v)
 	default:
-		return fmt.Errorf("토큰 '%s': dimension 값은 map 또는 string이어야 함 (got %T)", tokenPath, value)
+		return fmt.Errorf("token '%s': dimension value must be map or string (got %T)", tokenPath, value)
 	}
 }
 
-// validateDimensionMap: 구조화된 {value, unit} 형식 검증.
+// validateDimensionMap: Structured {value, unit} format validation.
 func validateDimensionMap(tokenPath string, m map[string]any) error {
-	// value 필드 검증
+	// value field validation
 	rawValue, hasValue := m["value"]
 	if !hasValue {
-		return fmt.Errorf("토큰 '%s': dimension map에 'value' 필드 누락", tokenPath)
+		return fmt.Errorf("token '%s': dimension map missing 'value' field", tokenPath)
 	}
 	if !isNumeric(rawValue) {
-		return fmt.Errorf("토큰 '%s': dimension 'value'는 숫자여야 함 (got %T)", tokenPath, rawValue)
+		return fmt.Errorf("token '%s': dimension 'value' must be numeric (got %T)", tokenPath, rawValue)
 	}
 
-	// unit 필드 검증
+	// unit field validation
 	unit, ok := m["unit"]
 	if !ok {
-		return fmt.Errorf("토큰 '%s': dimension map에 'unit' 필드 누락", tokenPath)
+		return fmt.Errorf("token '%s': dimension map missing 'unit' field", tokenPath)
 	}
 	unitStr, ok := unit.(string)
 	if !ok {
-		return fmt.Errorf("토큰 '%s': dimension 'unit'는 문자열이어야 함", tokenPath)
+		return fmt.Errorf("token '%s': dimension 'unit' must be string", tokenPath)
 	}
 	if !allowedDimensionUnits[unitStr] {
-		return fmt.Errorf("토큰 '%s': dimension unit '%s' 미지원 (허용: px, rem, em, %%)", tokenPath, unitStr)
+		return fmt.Errorf("token '%s': dimension unit '%s' not supported (allowed: px, rem, em, %%)", tokenPath, unitStr)
 	}
 
 	return nil
 }
 
-// validateDimensionString: 레거시 "16px" 형식 검증.
+// validateDimensionString: Legacy "16px" format validation.
 func validateDimensionString(tokenPath, s string) error {
 	if s == "" {
-		return fmt.Errorf("토큰 '%s': dimension 값이 빈 문자열", tokenPath)
+		return fmt.Errorf("token '%s': dimension value is empty string", tokenPath)
 	}
-	// "0" 같은 단위 없는 순수 숫자는 레거시 spec에서도 거부
+	// Pure numbers without units like "0" are rejected even in legacy spec
 	if !legacyDimensionPattern.MatchString(s) {
-		// 단위만 있는 경우 (예: "px") 또는 잘못된 단위 처리
-		return fmt.Errorf("토큰 '%s': dimension string '%s' 잘못된 형식 (허용: 숫자+단위, 예: 16px, 1.5rem, 100%%)", tokenPath, s)
+		// Handle unit-only cases (e.g., "px") or invalid units
+		return fmt.Errorf("token '%s': dimension string '%s' invalid format (allowed: number+unit, e.g., 16px, 1.5rem, 100%%)", tokenPath, s)
 	}
 
-	// 단위 추출하여 허용 목록 확인
+	// Extract unit and verify against allowed list
 	unit := extractUnit(s)
 	if !allowedDimensionUnits[unit] {
-		return fmt.Errorf("토큰 '%s': dimension unit '%s' 미지원 (허용: px, rem, em, %%)", tokenPath, unit)
+		return fmt.Errorf("token '%s': dimension unit '%s' not supported (allowed: px, rem, em, %%)", tokenPath, unit)
 	}
 
 	return nil
@@ -93,7 +93,7 @@ func extractUnit(s string) string {
 	return ""
 }
 
-// isNumeric: 값이 숫자형(float64, int, float32 등)인지 확인.
+// isNumeric: Check if value is numeric type (float64, int, float32, etc.).
 func isNumeric(v any) bool {
 	switch v.(type) {
 	case float64, float32, int, int8, int16, int32, int64,

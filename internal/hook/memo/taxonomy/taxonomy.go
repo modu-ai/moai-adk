@@ -45,6 +45,9 @@ type Frontmatter struct {
 
 // ValidateType returns nil if t is one of the 4 canonical MemoryType values,
 // or an error otherwise. Implements REQ-EXT001-001.
+//
+// @MX:ANCHOR: [AUTO] ValidateType is a shared Validate interface implementation
+// @MX:REASON: fan_in >= 3 — taxonomy validator, memory management, agent runtime all call this
 func ValidateType(t MemoryType) error {
 	for _, v := range ValidTypes {
 		if t == v {

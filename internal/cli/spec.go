@@ -1,5 +1,8 @@
 package cli
 
+// @MX:NOTE: [AUTO] SPEC document management commands for .moai/specs/ directory
+// @MX:NOTE: [AUTO] Supports status, view, and lint subcommands for SPEC documents
+
 import (
 	"github.com/spf13/cobra"
 )

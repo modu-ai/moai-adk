@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Self-Research System for autonomous moai-adk component experimentation
+// @MX:NOTE: [AUTO] Research data stored in .moai/research/ with experiments/ and evals/ subdirs
+// @MX:NOTE: [AUTO] Eval suites defined as *.eval.yaml files for automated testing
+
 import (
 	"fmt"
 	"io"

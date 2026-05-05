@@ -54,6 +54,8 @@ type Manager struct {
 }
 
 // NewManager creates a new sidecar manager.
+// @MX:ANCHOR: [AUTO] NewManager is a core factory called from 4+ packages
+// @MX:REASON: Multi-package dependency — signature changes have wide blast radius
 func NewManager(stateDir string) *Manager {
 	return &Manager{
 		stateDir:    stateDir,

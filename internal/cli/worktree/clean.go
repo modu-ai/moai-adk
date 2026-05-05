@@ -1,5 +1,8 @@
 package worktree
 
+// @MX:NOTE: [AUTO] Clean stale worktree references and merged branch worktrees
+// @MX:NOTE: [AUTO] --merged-only flag removes only fully merged branches
+
 import (
 	"fmt"
 

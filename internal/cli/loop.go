@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Ralph feedback loop for autonomous code quality improvement
+// @MX:NOTE: [AUTO] Iterates through Analyze -> Implement -> Test -> Review phases
+// @MX:NOTE: [AUTO] Uses LSP diagnostics and test results to drive loop decisions
+
 import (
 	"fmt"
 

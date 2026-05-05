@@ -2,6 +2,8 @@
 // (SPEC-REFLECT-001).  It analyzes per-session telemetry produced by
 // SPEC-TELEMETRY-001 and proposes targeted improvements to evolvable zones
 // inside MoAI skill files.
+
+// @MX:NOTE: [AUTO] Reflective Learning engine: observation→graduation→proposal pipeline with user approval requirement
 //
 // Design constraints:
 //   - User approval is ALWAYS required before any change is applied to disk.

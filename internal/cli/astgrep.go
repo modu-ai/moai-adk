@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] ast-grep integration provides code quality scanning with sg CLI
+// @MX:NOTE: [AUTO] Supports multiple output formats: text, json, SARIF 2.1.0
+// @MX:NOTE: [AUTO] REQ-ASTG-UPG-020, REQ-ASTG-UPG-021 define scan interface
+
 import (
 	"context"
 	"encoding/json"

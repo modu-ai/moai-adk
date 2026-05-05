@@ -91,8 +91,8 @@ func IsAllowedPath(path string) (bool, error) {
 	return false, nil
 }
 
-// @MX:ANCHOR: [AUTO] EnsureAllowed — meta-harness 쓰기 전 반드시 호출되는 FROZEN 게이트
-// @MX:REASON: 모든 Phase 6 쓰기 경로의 첫 번째 체크포인트 (REQ-PH-011). fan_in >= 3 예상.
+// @MX:ANCHOR: [AUTO] EnsureAllowed — FROZEN gate that must be called before meta-harness writes
+// @MX:REASON: First checkpoint of all Phase 6 write paths (REQ-PH-011). Expected fan_in >= 3.
 // @MX:SPEC: SPEC-V3R3-PROJECT-HARNESS-001 T-P2-02
 
 // EnsureAllowed returns nil only if path is an explicitly allowed write

@@ -1,5 +1,10 @@
+// Package config provides configuration management for MoAI-ADK Go Edition.
+// It loads YAML section files, applies defaults, validates, and provides
+// thread-safe access to configuration values.
 package config
 
+// @MX:NOTE: [AUTO] Environment variable key constants centralize all env var names to prevent typos and enable IDE navigation
+//
 // Environment variable key constants.
 //
 // Centralizes all environment variable names used across the codebase
