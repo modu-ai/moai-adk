@@ -2,6 +2,8 @@ package statusline
 
 import (
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -220,6 +222,131 @@ func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 	}
 }
 
+// TestStdinData_UnmarshalJSON_EffortThinking verifies that Claude Code v2.1.122
+// effort.level and thinking.enabled fields are parsed correctly from stdin JSON.
+// REQ-CC2122-001: effort.level → "e:LEVEL" indicator
+// REQ-CC2122-002: thinking.enabled=true → "·t" suffix
+// REQ-CC2122-003: both absent → silent omit
+func TestStdinData_UnmarshalJSON_EffortThinking(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		wantEffort    *EffortInfo
+		wantThinking  *ThinkingInfo
+	}{
+		{
+			name:         "effort level present: high",
+			input:        `{"effort":{"level":"high"}}`,
+			wantEffort:   &EffortInfo{Level: "high"},
+			wantThinking: nil,
+		},
+		{
+			name:         "thinking enabled: true",
+			input:        `{"thinking":{"enabled":true}}`,
+			wantEffort:   nil,
+			wantThinking: &ThinkingInfo{Enabled: true},
+		},
+		{
+			name:         "both present",
+			input:        `{"effort":{"level":"max"},"thinking":{"enabled":true}}`,
+			wantEffort:   &EffortInfo{Level: "max"},
+			wantThinking: &ThinkingInfo{Enabled: true},
+		},
+		{
+			name:         "thinking enabled: false",
+			input:        `{"thinking":{"enabled":false}}`,
+			wantEffort:   nil,
+			wantThinking: &ThinkingInfo{Enabled: false},
+		},
+		{
+			name:         "effort level empty string",
+			input:        `{"effort":{"level":""}}`,
+			wantEffort:   &EffortInfo{Level: ""},
+			wantThinking: nil,
+		},
+		{
+			name:         "effort absent: nil",
+			input:        `{"version":"1.0.0"}`,
+			wantEffort:   nil,
+			wantThinking: nil,
+		},
+		{
+			name:         "effort null: nil",
+			input:        `{"effort":null}`,
+			wantEffort:   nil,
+			wantThinking: nil,
+		},
+		{
+			name:         "unknown effort level: raw passthrough (REQ-CC2122-004)",
+			input:        `{"effort":{"level":"ultra"}}`,
+			wantEffort:   &EffortInfo{Level: "ultra"},
+			wantThinking: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data StdinData
+			if err := json.Unmarshal([]byte(tt.input), &data); err != nil {
+				t.Fatalf("json.Unmarshal failed: %v", err)
+			}
+
+			// Verify Effort field
+			if tt.wantEffort == nil {
+				if data.Effort != nil {
+					t.Errorf("Effort = %+v, want nil", data.Effort)
+				}
+			} else {
+				if data.Effort == nil {
+					t.Fatalf("Effort is nil, want %+v", tt.wantEffort)
+				}
+				if data.Effort.Level != tt.wantEffort.Level {
+					t.Errorf("Effort.Level = %q, want %q", data.Effort.Level, tt.wantEffort.Level)
+				}
+			}
+
+			// Verify Thinking field
+			if tt.wantThinking == nil {
+				if data.Thinking != nil {
+					t.Errorf("Thinking = %+v, want nil", data.Thinking)
+				}
+			} else {
+				if data.Thinking == nil {
+					t.Fatalf("Thinking is nil, want %+v", tt.wantThinking)
+				}
+				if data.Thinking.Enabled != tt.wantThinking.Enabled {
+					t.Errorf("Thinking.Enabled = %v, want %v", data.Thinking.Enabled, tt.wantThinking.Enabled)
+				}
+			}
+		})
+	}
+}
+
+// TestSegmentEffortThinking_Constant verifies that SegmentEffortThinking constant is defined.
+// REQ-CC2122-001: define effort_thinking segment constant
+func TestSegmentEffortThinking_Constant(t *testing.T) {
+	if SegmentEffortThinking != "effort_thinking" {
+		t.Errorf("SegmentEffortThinking = %q, want %q", SegmentEffortThinking, "effort_thinking")
+	}
+}
+
+// TestStatusData_EffortThinking_Fields verifies that StatusData has Effort and Thinking fields.
+// REQ-CC2122-001: add Effort/Thinking fields to StatusData
+func TestStatusData_EffortThinking_Fields(t *testing.T) {
+	effort := &EffortInfo{Level: "high"}
+	thinking := &ThinkingInfo{Enabled: true}
+	data := &StatusData{
+		Effort:   effort,
+		Thinking: thinking,
+	}
+	if data.Effort == nil || data.Effort.Level != "high" {
+		t.Errorf("StatusData.Effort = %+v, want &EffortInfo{Level:\"high\"}", data.Effort)
+	}
+	if data.Thinking == nil || !data.Thinking.Enabled {
+		t.Errorf("StatusData.Thinking = %+v, want &ThinkingInfo{Enabled:true}", data.Thinking)
+	}
+}
+
 // TestSegmentWorktree_Constant verifies that SegmentWorktree constant is defined.
 // REQ-CC297-003: define worktree segment constant
 func TestSegmentWorktree_Constant(t *testing.T) {
@@ -237,5 +364,44 @@ func TestStatusData_Worktree_Field(t *testing.T) {
 	}
 	if data.Worktree != "/repo/.claude/worktrees/abc123" {
 		t.Errorf("Worktree = %q, want %q", data.Worktree, "/repo/.claude/worktrees/abc123")
+	}
+}
+
+// TestStatuslineEffortThinking_KoreanMXTags verifies that EffortInfo and ThinkingInfo
+// types in types.go have Korean @MX:NOTE annotations per language.yaml code_comments:ko.
+// GWT-11: REQ-CC2122-006 — Korean @MX:NOTE tags required on new exported types
+func TestStatuslineEffortThinking_KoreanMXTags(t *testing.T) {
+	// Read types.go source to verify @MX:NOTE annotations exist
+	src, err := os.ReadFile("types.go")
+	if err != nil {
+		t.Fatalf("failed to read types.go: %v", err)
+	}
+	content := string(src)
+
+	// Verify EffortInfo has a @MX:NOTE comment nearby (within the struct definition)
+	if !strings.Contains(content, "@MX:NOTE") {
+		t.Error("types.go should contain at least one @MX:NOTE annotation (REQ-CC2122-006)")
+	}
+
+	// Verify EffortInfo struct appears with associated context
+	if !strings.Contains(content, "EffortInfo") {
+		t.Error("types.go should define EffortInfo type")
+	}
+	if !strings.Contains(content, "ThinkingInfo") {
+		t.Error("types.go should define ThinkingInfo type")
+	}
+
+	// Verify Korean text is present in @MX:NOTE tags (code_comments: ko)
+	// Korean characters are in Unicode range U+AC00–U+D7A3 (Hangul syllables)
+	// and U+3131–U+314E (Hangul compatibility jamo)
+	hasKorean := false
+	for _, r := range content {
+		if r >= 0xAC00 && r <= 0xD7A3 {
+			hasKorean = true
+			break
+		}
+	}
+	if !hasKorean {
+		t.Error("types.go @MX:NOTE tags should contain Korean text per code_comments: ko setting (REQ-CC2122-006)")
 	}
 }

@@ -152,7 +152,7 @@ This skill fills the skeleton with domain-specific content:
 
 1. Generate agent definitions (`.claude/agents/my-harness/*.md`) referencing
    existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-tdd`,
-   `manager-ddd`, `manager-quality`, `manager-docs`, `manager-git`,
+   `manager-cycle`, `manager-quality`, `manager-docs`, `manager-git`,
    `expert-backend`, `expert-frontend`, `expert-debug`, `expert-testing`,
    `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`,
    `expert-mobile`, `builder-agent`, `builder-skill`, `builder-plugin`,
@@ -212,7 +212,7 @@ referenced below are static MoAI agents — no new agents are introduced.
 
 **Workflow Managers**
 
-- `manager-ddd` — DDD-flavored harness workflow templates
+- `manager-cycle` — DDD-flavored harness workflow templates
 - `manager-tdd` — TDD-flavored harness workflow templates
 - `manager-quality` — Quality gate configuration in generated harnesses
 - `manager-docs` — Documentation generation patterns

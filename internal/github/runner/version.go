@@ -69,19 +69,48 @@ var mockReleaseData = map[string]string{
 	"2.698.0": "2026-03-28", // 30일 전
 }
 
+// Clock은 현재 시각 조회를 추상화합니다 (테스트 시 결정적 시간 주입용).
+// Clock abstracts current-time retrieval, enabling deterministic time injection in tests.
+type Clock interface {
+	Now() time.Time
+}
+
+// RealClock은 실제 시스템 시각을 반환합니다.
+// RealClock returns actual system time.
+type RealClock struct{}
+
+// Now는 현재 시각을 반환합니다.
+func (RealClock) Now() time.Time { return time.Now() }
+
 // VersionChecker는 runner 버전을 확인합니다.
 // VersionChecker checks runner version against latest.
 type VersionChecker struct {
 	ghRunnerDir string
 	ghClient    GitHubClient
+	clock       Clock
 }
 
-// NewVersionChecker는 새로운 VersionChecker 인스턴스를 생성합니다.
-// NewVersionChecker creates a new VersionChecker instance.
+// NewVersionChecker는 새로운 VersionChecker 인스턴스를 생성합니다 (실제 시각 사용).
+// NewVersionChecker creates a new VersionChecker instance with real system clock.
 func NewVersionChecker(ghRunnerDir string, ghClient GitHubClient) *VersionChecker {
 	return &VersionChecker{
 		ghRunnerDir: ghRunnerDir,
 		ghClient:    ghClient,
+		clock:       RealClock{},
+	}
+}
+
+// NewVersionCheckerWithClock은 사용자 지정 Clock으로 VersionChecker를 생성합니다 (테스트 전용).
+// NewVersionCheckerWithClock creates a VersionChecker with a custom Clock (for tests).
+// nil clock is normalized to RealClock for safety.
+func NewVersionCheckerWithClock(ghRunnerDir string, ghClient GitHubClient, clock Clock) *VersionChecker {
+	if clock == nil {
+		clock = RealClock{}
+	}
+	return &VersionChecker{
+		ghRunnerDir: ghRunnerDir,
+		ghClient:    ghClient,
+		clock:       clock,
 	}
 }
 
@@ -106,12 +135,13 @@ func (v *VersionChecker) CheckVersion(ctx context.Context) (*CheckResult, error)
 	}
 
 	// 3. 릴리즈 날짜 계산 (테스트용 mock 데이터)
+	now := v.clock.Now()
 	publishedDate, ok := mockReleaseData[installed]
 	if !ok {
-		publishedDate = time.Now().Format("2006-01-02")
+		publishedDate = now.Format("2006-01-02")
 	}
 	parsed, _ := time.Parse("2006-01-02", publishedDate)
-	daysOld := calculateDaysOld(parsed, time.Now())
+	daysOld := calculateDaysOld(parsed, now)
 
 	// 4. 상태 결정
 	var status VersionCheckStatus

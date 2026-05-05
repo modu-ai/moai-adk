@@ -132,7 +132,7 @@ Is this a one-shot sub-agent task?
 
 - [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
 - [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
-- [HARD] One-shot sub-agents that write files (expert-backend, expert-frontend, manager-ddd, manager-tdd) SHOULD use `isolation: "worktree"` when making cross-file changes
+- [HARD] One-shot sub-agents that write files (expert-backend, expert-frontend, manager-cycle) SHOULD use `isolation: "worktree"` when making cross-file changes
 - [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
 
 ### When to Use Which

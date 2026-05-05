@@ -46,7 +46,7 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | Agent | PreToolUse | PostToolUse | SubagentStop |
 |-------|-----------|------------|-------------|
 | manager-ddd | ddd-pre-transformation | ddd-post-transformation | ddd-completion |
-| manager-tdd | tdd-pre-implementation | tdd-post-implementation | tdd-completion |
+| manager-cycle | cycle-pre-implementation | cycle-post-implementation | cycle-completion |
 | expert-backend | backend-validation | backend-verification | - |
 | expert-frontend | frontend-validation | frontend-verification | - |
 | expert-testing | - | testing-verification | testing-completion |
@@ -55,6 +55,10 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | manager-quality | - | - | quality-completion |
 | manager-spec | - | - | spec-completion |
 | manager-docs | - | docs-verification | docs-completion |
+
+<!-- @MX:NOTE: manager-ddd retired (SPEC-V3R3-RETIRED-DDD-001), action set
+     preserved here for backward compat with pre-update user projects.
+     Active manager-cycle uses cycle-* actions. See manager-cycle.md. -->
 
 Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose")`) do not use agent-scoped hooks. Quality enforcement for teammates uses global TeammateIdle and TaskCompleted hooks in settings.json.
 

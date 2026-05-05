@@ -276,7 +276,8 @@ type HookSpecificOutput struct {
 	AdditionalContext        string          `json:"additionalContext,omitempty"`
 	SessionTitle             string          `json:"sessionTitle,omitempty"`             // UserPromptSubmit: sets session title in Claude Code UI
 	UpdatedInput             json.RawMessage `json:"updatedInput,omitempty"`             // PreToolUse: modifies tool input before execution
-	UpdatedMCPToolOutput     string          `json:"updatedMCPToolOutput,omitempty"`     // PostToolUse: replaces MCP tool output
+	UpdatedMCPToolOutput     string          `json:"updatedMCPToolOutput,omitempty"`     // PostToolUse: replaces MCP tool output (MCP-only, pre-v2.1.121)
+	UpdatedToolOutput        string          `json:"updatedToolOutput,omitempty"`        // PostToolUse: replaces any tool output (v2.1.121+, all tools)
 }
 
 // HookOutput represents the JSON payload written to stdout for Claude Code.

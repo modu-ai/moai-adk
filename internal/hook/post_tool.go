@@ -215,6 +215,9 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
+	// REQ-CC2122-HOOK-001-001~004: duration_ms 기반 slow hook 메트릭 기록 (observation-only).
+	writeHookMetric(input, "handle-post-tool", "")
+
 	jsonData, err := json.Marshal(metrics)
 	if err != nil {
 		slog.Error("failed to marshal post-tool metrics",
@@ -223,13 +226,24 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		return NewPostToolOutput(""), nil
 	}
 
-	return &HookOutput{
+	// REQ-CC2122-HOOK-001-005: updatedToolOutput scaffold (v2.1.121+).
+	// MOAI_HOOK_OUTPUT_TRANSFORM=1 환경변수가 설정된 경우에만 활성화.
+	// 기본값(env 미설정): 기존 동작 보존 (updatedToolOutput 출력 없음).
+	var updatedToolOutput string
+	if os.Getenv("MOAI_HOOK_OUTPUT_TRANSFORM") == "1" {
+		// 변환 로직은 향후 SPEC에서 정의됨 (현재 no-op).
+		updatedToolOutput = ""
+	}
+
+	out := &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
-			HookEventName: "PostToolUse",
+			HookEventName:     "PostToolUse",
+			UpdatedToolOutput: updatedToolOutput,
 		},
 		SystemMessage: systemMessage,
 		Data:          jsonData,
-	}, nil
+	}
+	return out, nil
 }
 
 // runAstScan performs an AST-based scan on the modified file.

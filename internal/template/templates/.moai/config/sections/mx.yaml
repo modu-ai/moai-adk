@@ -194,6 +194,32 @@ mx:
       - ".moai/project/product.md"
       - "README.md"
 
+  # SPEC-V3R2-SPC-004: danger_categories 기본 매핑 (REQ-SPC-004-012)
+  # WARN 태그의 REASON 텍스트를 카테고리로 분류하는 패턴 맵입니다.
+  # 키: 카테고리 이름, 값: 대소문자 무관 부분 문자열 패턴 목록
+  danger_categories:
+    concurrency:
+      - goroutine leak
+      - unbounded channel
+      - race condition
+    resource-leak:
+      - missing Close
+      - fd leak
+    cleanup:
+      - defer missing
+      - Close not called
+    security:
+      - hardcoded credential
+      - sql injection
+      - xss
+
+  # 테스트 파일 경로 패턴 (fan-in 계산 시 기본적으로 제외, REQ-SPC-004-040)
+  test_paths:
+    - "*_test.go"
+    - "tests/**"
+    - "testdata/**"
+    - "fixtures/**"
+
   # Auto-tagging behavior
   auto_tag: true
 
