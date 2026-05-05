@@ -1,0 +1,32 @@
+# C# security and quality rules for moai-adk-go
+# SPEC: SPEC-UTIL-002 (5-language rule seeding)
+---
+id: csharp-todo-comment
+language: csharp
+severity: warning
+message: "TODO comment detected. Replace with a tracked issue and real implementation."
+pattern: "// TODO: $MSG"
+note: "TODO comments represent unfinished work. Create a tracking issue and resolve before merging to main."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-390"
+---
+id: csharp-null-assignment
+language: csharp
+severity: warning
+message: "Assigning null may cause NullReferenceException. Prefer nullable reference types or null-conditional operators."
+pattern: "$VAR = null"
+note: "Explicit null assignments are a common source of NullReferenceException. Use nullable reference types (T?) and null-conditional operators (?.) to make nullability explicit."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-476"
+---
+id: csharp-throw-not-implemented
+language: csharp
+severity: error
+message: "NotImplementedException stub detected. Implement the method before merging."
+pattern: 'throw new NotImplementedException()'
+note: "NotImplementedException stubs indicate incomplete implementation. Finish the method body or create a tracking issue."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-617"

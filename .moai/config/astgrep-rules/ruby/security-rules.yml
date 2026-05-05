@@ -1,0 +1,32 @@
+# Ruby security and quality rules for moai-adk-go
+# SPEC: SPEC-UTIL-002 (5-language rule seeding)
+---
+id: ruby-nil-assignment
+language: ruby
+severity: warning
+message: "Assigning nil to a variable may cause NoMethodError on nil. Prefer explicit checks or safe navigation (&.)."
+pattern: "$VAR = nil"
+note: "Variables assigned nil are risky if dereferenced without a guard. Use nil? or the safe-navigation operator &. to avoid NoMethodError at runtime."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-476"
+---
+id: ruby-todo-stub
+language: ruby
+severity: warning
+message: "TODO/raise stub detected. Replace with a real implementation before merging."
+pattern: 'raise "TODO"'
+note: "Stub implementations that raise TODO errors indicate incomplete code. Finish the implementation or open a tracking issue."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-390"
+---
+id: ruby-nil-method-call
+language: ruby
+severity: error
+message: "Calling a method directly on nil will raise NoMethodError. Use nil? guard or safe-navigation operator."
+pattern: "nil.$METHOD"
+note: "Calling methods on nil without a guard is a common cause of runtime crashes. Use &. or an explicit nil? check."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-476"

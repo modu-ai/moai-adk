@@ -1,0 +1,32 @@
+# PHP security and quality rules for moai-adk-go
+# SPEC: SPEC-UTIL-002 (5-language rule seeding)
+---
+id: php-die-todo
+language: php
+severity: error
+message: "die(\"TODO\") stub detected. Implement the function before merging."
+pattern: 'die("TODO")'
+note: "Using die() as a TODO stub causes runtime termination. Replace with a real implementation or throw a proper exception."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-617"
+---
+id: php-json-decode-null
+language: php
+severity: error
+message: "Passing null to json_decode() will produce null output. Pass a valid JSON string instead."
+pattern: "json_decode(null)"
+note: "json_decode(null) silently returns null, hiding bugs caused by missing or uninitialized data. Validate the input before decoding."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-476"
+---
+id: php-todo-comment
+language: php
+severity: warning
+message: "TODO comment detected. Replace with a tracked issue and real implementation."
+pattern: "// TODO: $MSG"
+note: "TODO comments accumulate technical debt. Convert them to tracked issues and resolve before merging to main."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-390"

@@ -1,0 +1,32 @@
+# Kotlin security and quality rules for moai-adk-go
+# SPEC: SPEC-UTIL-002 (5-language rule seeding)
+---
+id: kotlin-todo-comment
+language: kotlin
+severity: warning
+message: "TODO comment detected. Replace with a tracked issue and real implementation."
+pattern: "// TODO: $MSG"
+note: "TODO comments accumulate technical debt. Convert them to tracked issues and resolve before merging to main."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-390"
+---
+id: kotlin-null-assignment
+language: kotlin
+severity: warning
+message: "Assigning null may cause NullPointerException if not guarded. Use Kotlin nullable types and safe calls."
+pattern: "var $VAR: $TYPE = null"
+note: "Kotlin's type system distinguishes nullable (T?) from non-nullable (T). Explicitly use T? and safe-call operators (?.) to handle null safely."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-476"
+---
+id: kotlin-todo-stub
+language: kotlin
+severity: error
+message: "TODO() stub detected. Implement the function before merging."
+pattern: "TODO()"
+note: "TODO() throws NotImplementedError at runtime. Replace with a real implementation or document the intentional deferral with a tracking issue."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-617"

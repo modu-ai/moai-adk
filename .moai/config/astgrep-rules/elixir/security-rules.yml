@@ -1,0 +1,32 @@
+# Elixir security and quality rules for moai-adk-go
+# SPEC: SPEC-UTIL-002 (5-language rule seeding)
+---
+id: elixir-todo-marker
+language: elixir
+severity: warning
+message: "TODO marker detected. Replace with a tracked issue and complete implementation."
+pattern: "# TODO: $MSG"
+note: "TODO markers indicate incomplete work. Convert to tracked issues and resolve before shipping."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-390"
+---
+id: elixir-raise-todo
+language: elixir
+severity: error
+message: "raise/1 used as a TODO stub. Implement the function body or document the intentional error."
+pattern: 'raise "TODO"'
+note: "Using raise as a stub causes runtime crashes. Implement the function or replace with a meaningful error."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-617"
+---
+id: elixir-nil-pattern
+language: elixir
+severity: warning
+message: "Assigning nil without a guard clause may cause FunctionClauseError. Add a nil guard or pattern match."
+pattern: "$VAR = nil"
+note: "Unguarded nil assignments in Elixir lead to FunctionClauseError when the value is passed to functions expecting non-nil. Add a guard clause or a with block."
+metadata:
+  owasp: "A04:2021 - Insecure Design"
+  cwe: "CWE-476"
