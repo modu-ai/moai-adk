@@ -220,7 +220,7 @@ PLAN Phase (/moai:1-plan):
 
 RUN Phase (/moai:2-run):
 
-- manager-cycle agent loads SPEC document
+- manager-develop agent loads SPEC document
 - ANALYZE-PRESERVE-IMPROVE DDD cycle execution
 - moai-workflow-testing skill reference for test patterns
 - Domain Expert agent delegation (expert-backend, expert-frontend, etc.)
@@ -353,7 +353,7 @@ Validation Checklist:
 - moai-workflow-project: Project initialization and configuration
 - moai-workflow-worktree: Git Worktree management for parallel development
 - manager-spec: SPEC creation and requirement analysis agent
-- manager-cycle: DDD implementation based on SPEC requirements
+- manager-develop: DDD implementation based on SPEC requirements
 - manager-quality: TRUST 5 quality validation and gate enforcement
 
 ### Integration Examples

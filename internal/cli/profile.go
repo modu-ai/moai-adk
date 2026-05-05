@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Profile management for Claude configuration directories
+// @MX:NOTE: [AUTO] Each profile is an isolated CLAUDE_CONFIG_DIR in ~/.moai/claude-profiles/
+// @MX:NOTE: [AUTO] Used with -p/--profile flag on cc, cg, glm commands
+
 import (
 	"fmt"
 

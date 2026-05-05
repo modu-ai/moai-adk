@@ -1,5 +1,8 @@
 package cli
 
+// @MX:NOTE: [AUTO] Project status command showing SPEC progress, quality metrics, config
+// @MX:NOTE: [AUTO] Counts SPECs in .moai/specs/ and config sections in .moai/config/sections/
+
 import (
 	"fmt"
 	"os"

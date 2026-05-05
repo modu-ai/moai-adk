@@ -51,7 +51,7 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 //   - unknown                               → 3-line default layout (fallback)
 //
 // @MX:ANCHOR: [AUTO] Single entry point for all mode rendering - called from Build() in builder.go
-// @MX:REASON: Public API boundary; contains mode routing logic
+// @MX:REASON: [AUTO] Public API boundary; contains mode routing logic
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	if data == nil {
 		return "MoAI"

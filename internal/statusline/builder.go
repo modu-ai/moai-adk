@@ -67,7 +67,7 @@ type Options struct {
 // If UsageProvider is nil, attempts to create usage collector automatically (Phase 5).
 //
 // @MX:ANCHOR: [AUTO] Public constructor for statusline package - all external callers create Builder through this function
-// @MX:REASON: Public API boundary; contains auto-detection logic (git/update/usage provider)
+// @MX:REASON: [AUTO] Public API boundary; contains auto-detection logic (git/update/usage provider)
 func New(opts Options) Builder {
 	mode := opts.Mode
 	if mode == "" {
@@ -130,7 +130,7 @@ func New(opts Options) Builder {
 // The output never contains newline characters.
 //
 // @MX:ANCHOR: [AUTO] Core method of the statusline build pipeline
-// @MX:REASON: Builder interface implementation; orchestrates parseStdin + collectAll + Render 3-stage pipeline
+// @MX:REASON: [AUTO] Builder interface implementation; orchestrates parseStdin + collectAll + Render 3-stage pipeline
 func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error) {
 	mode := b.getMode()
 

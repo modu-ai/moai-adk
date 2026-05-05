@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Session state management for workflow phases and checkpoints
+// @MX:NOTE: [AUTO] State stored in .moai/state/ with blocker reports for unresolved issues
+// @MX:NOTE: [AUTO] Supports dump, show-blocker subcommands for state inspection
+
 import (
 	"encoding/json"
 	"fmt"

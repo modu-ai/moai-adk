@@ -3,6 +3,8 @@
 // thread-safe access to configuration values.
 package config
 
+// @MX:NOTE: [AUTO] Sentinel errors for configuration operations including validation errors with field context
+
 import (
 	"errors"
 	"fmt"

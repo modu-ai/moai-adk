@@ -9,6 +9,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/merge"
 )
 
+// @MX:NOTE: [AUTO] ApplyProposal appends to evolvable zones with backup (.bak) and atomic rename (single-writer pattern)
+//
 // ApplyProposal reads the skill file identified by proposal.TargetFile,
 // locates the evolvable zone proposal.ZoneID, and appends proposal.Addition
 // to the zone content.

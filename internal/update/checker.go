@@ -158,6 +158,8 @@ func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
 
 // downloadChecksum downloads and parses the checksums.txt file to extract
 // the checksum for the specified archive filename.
+// @MX:WARN: [AUTO] HTTP client timeout without explicit context cancellation propagation
+// @MX:REASON: [AUTO] context.WithTimeout is created but cancel() is deferred; if caller cancels parent ctx, this goroutine may leak
 func (c *checker) downloadChecksum(checksumsURL, archiveName string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

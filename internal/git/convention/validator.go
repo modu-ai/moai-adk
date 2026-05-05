@@ -8,6 +8,9 @@ import (
 
 // Validate checks a commit message against a convention.
 // If conv is nil the message is considered valid.
+//
+// @MX:ANCHOR: [AUTO] Validate is a shared Validate interface implementation
+// @MX:REASON: fan_in >= 3 — used by manager-spec, quality gate, CLI commit commands
 func Validate(message string, conv *Convention) ValidationResult {
 	if conv == nil {
 		return ValidationResult{Valid: true, Message: message}

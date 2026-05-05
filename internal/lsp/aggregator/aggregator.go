@@ -71,6 +71,8 @@ func WithQueryTimeout(d time.Duration) Option {
 }
 
 // WithLogger sets the logger for lifecycle events.
+// @MX:ANCHOR: [AUTO] WithLogger is a functional option used across 3+ packages
+// @MX:REASON: Multi-package dependency — signature changes affect Ralph, QGATE, LOOP
 func WithLogger(logger *slog.Logger) Option {
 	return func(a *Aggregator) {
 		a.logger = logger

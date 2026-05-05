@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// @MX:NOTE: [AUTO] Graduation pipeline: observation→heuristic (3x)→rule (5x+0.80 conf)→high-confidence (10x)→graduated
+//
 // EvaluateGraduation returns the target status tier for entry based on its
 // current observation count and confidence score.
 //

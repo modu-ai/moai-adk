@@ -10,22 +10,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// evolutionLogPath는 기본 evolution-log.md 경로를 반환한다.
-// SPEC-V3R2-CON-003에서 사용 예정.
+// evolutionLogPath returns the default evolution-log.md path.
+// To be used in SPEC-V3R2-CON-003.
 var _ = filepath.Join // referenced by LoadEvolutionLogs path construction
 
-// LoadEvolutionLogs는 evolution-log.md 파일에서 로그 목록을 로드한다.
-// 파일이 없으면 빈 목록과 nil 에러를 반환한다.
+// LoadEvolutionLogs loads the log list from the evolution-log.md file.
+// Returns empty list and nil error if the file doesn't exist.
 func LoadEvolutionLogs(path string) ([]AmendmentLog, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []AmendmentLog{}, nil
 		}
-		return nil, fmt.Errorf("evolution-log.md 읽기 오류: %w", err)
+		return nil, fmt.Errorf("error reading evolution-log.md: %w", err)
 	}
 
-	// 마크다운에서 YAML frontmatter 추출
+	// Extract YAML frontmatter from markdown
 	entries := strings.Split(string(data), "---")
 	var logs []AmendmentLog
 
@@ -37,7 +37,7 @@ func LoadEvolutionLogs(path string) ([]AmendmentLog, error) {
 
 		var log AmendmentLog
 		if err := yaml.Unmarshal([]byte(yamlBlock), &log); err != nil {
-			// 파싱 오류는 무시하고 다음 엔트리로 진행
+			// Ignore parsing errors and proceed to next entry
 			continue
 		}
 
@@ -49,49 +49,49 @@ func LoadEvolutionLogs(path string) ([]AmendmentLog, error) {
 	return logs, nil
 }
 
-// AppendEvolutionLog는 evolution-log.md 파일에 새 로그를 추가한다.
-// Append-only 전략: 기존 내용을 보존하고 파일 끝에 추가한다.
+// AppendEvolutionLog appends a new log to the evolution-log.md file.
+// Append-only strategy: preserves existing content and adds to the end of the file.
 func AppendEvolutionLog(path string, log *AmendmentLog) error {
-	// 검증
+	// Validation
 	if err := log.Validate(); err != nil {
-		return fmt.Errorf("amendment log 검증 오류: %w", err)
+		return fmt.Errorf("amendment log validation error: %w", err)
 	}
 
-	// YAML frontmatter 생성
+	// Generate YAML frontmatter
 	yamlData, err := yaml.Marshal(log)
 	if err != nil {
-		return fmt.Errorf("YAML 마샬링 오류: %w", err)
+		return fmt.Errorf("YAML marshaling error: %w", err)
 	}
 
-	// 파일 열기 (쓰기 전용, 생성, 추가)
+	// Open file (write-only, create, append)
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("파일 열기 오류: %w", err)
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
-	// 엔트리 작성: --- 구분자 + YAML + ---
+	// Write entry: --- delimiter + YAML + ---
 	entry := fmt.Sprintf("---\n%s---\n", string(yamlData))
 	if _, err := f.WriteString(entry); err != nil {
-		return fmt.Errorf("파일 쓰기 오류: %w", err)
+		return fmt.Errorf("error writing file: %w", err)
 	}
 
 	return nil
 }
 
-// MarkRolledBack은 evolution-log.md에서 해당 rule의 로그를 찾아 rolled_back을 true로 설정한다.
-// SPEC-V3R2-CON-002 REQ-CON-002-008 구현.
+// MarkRolledBack finds the log for the given rule in evolution-log.md and sets rolled_back to true.
+// SPEC-V3R2-CON-002 REQ-CON-002-008 implementation.
 //
-// Rollback 트리거:
-// - Amendment 이후 다음 SPEC 평가에서 score가 0.10 이상 하락
-// - evaluator-active가 regression 탐지
+// Rollback triggers:
+// - After amendment, score drops by 0.10 or more in the next SPEC evaluation
+// - evaluator-active detects regression
 func MarkRolledBack(path, ruleID string, reason string) error {
 	logs, err := LoadEvolutionLogs(path)
 	if err != nil {
 		return err
 	}
 
-	// 해당 rule의 가장 최신 로그 찾기
+	// Find the most recent log for the given rule
 	var found bool
 	for i := len(logs) - 1; i >= 0; i-- {
 		if logs[i].RuleID == ruleID && !logs[i].RolledBack {
@@ -105,38 +105,38 @@ func MarkRolledBack(path, ruleID string, reason string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("rule %s의 active 로그를 찾을 수 없음", ruleID)
+		return fmt.Errorf("active log for rule %s not found", ruleID)
 	}
 
-	// 전체 파일 다시 쓰기 (append-only이나 rollback은 기존 엔트리 수정)
+	// Rewrite entire file (append-only but rollback modifies existing entry)
 	return rewriteEvolutionLog(path, logs)
 }
 
-// rewriteEvolutionLog는 로그 목록으로 파일을 다시 쓴다.
+// rewriteEvolutionLog rewrites the file with the given log list.
 func rewriteEvolutionLog(path string, logs []AmendmentLog) error {
-	// 디렉토리 확인
+	// Check directory
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return fmt.Errorf("디렉토리 생성 오류: %w", err)
+		return fmt.Errorf("error creating directory: %w", err)
 	}
 
-	// 임시 파일에 쓰기
+	// Write to temporary file
 	tmpPath := path + ".tmp"
 	f, err := os.Create(tmpPath)
 	if err != nil {
-		return fmt.Errorf("임시 파일 생성 오류: %w", err)
+		return fmt.Errorf("error creating temporary file: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
-	// 헤더 작성
+	// Write header
 	if _, err := f.WriteString("# Evolution Log\n\n"); err != nil {
 		return err
 	}
 
-	// 각 로그 작성
+	// Write each log
 	for _, log := range logs {
 		yamlData, err := yaml.Marshal(log)
 		if err != nil {
-			return fmt.Errorf("YAML 마샬링 오류: %w", err)
+			return fmt.Errorf("YAML marshaling error: %w", err)
 		}
 
 		entry := fmt.Sprintf("---\n%s---\n", string(yamlData))
@@ -145,23 +145,23 @@ func rewriteEvolutionLog(path string, logs []AmendmentLog) error {
 		}
 	}
 
-	// 원자적 교체 (rename)
+	// Atomic replacement (rename)
 	if err := f.Close(); err != nil {
 		return err
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("파일 교체 오류: %w", err)
+		return fmt.Errorf("error replacing file: %w", err)
 	}
 
 	return nil
 }
 
-// GenerateLogID는 새 로그 ID를 생성한다.
-// LEARN-YYYYMMDD-NNN 형식.
+// GenerateLogID generates a new log ID.
+// LEARN-YYYYMMDD-NNN format.
 func GenerateLogID(now time.Time, lastLogs []AmendmentLog) string {
 	dateStr := now.Format("20060102")
 
-	// 해당 날짜의 마지막 시퀀스 번호 찾기
+	// Find the last sequence number for the given date
 	maxSeq := 0
 	for _, log := range lastLogs {
 		prefix := "LEARN-" + dateStr + "-"
@@ -176,6 +176,6 @@ func GenerateLogID(now time.Time, lastLogs []AmendmentLog) string {
 		}
 	}
 
-	// 다음 시퀀스 번호
+	// Next sequence number
 	return fmt.Sprintf("LEARN-%s-%03d", dateStr, maxSeq+1)
 }

@@ -91,7 +91,7 @@ The "Evaluation Dimensions" table above reflects the built-in default profile. W
 ## Sprint Contract Negotiation (Phase 2.0, thorough only)
 
 When invoked for contract negotiation before implementation:
-1. Review implementation plan from manager-cycle/tdd
+1. Review implementation plan from manager-develop/tdd
 2. Identify missing edge cases, untested scenarios, security gaps
 3. Produce contract.md with agreed Done criteria and hard thresholds
 4. Maximum 2 negotiation rounds

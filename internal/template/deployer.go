@@ -12,7 +12,7 @@ import (
 )
 
 // @MX:ANCHOR: [AUTO] Deployer is the core interface that extracts templates from embedded filesystem and deploys to project root. Each file is tracked in manifest.
-// @MX:REASON: fan_in=8+, entry point for all project initialization, core contract for template deployment
+// @MX:REASON: [AUTO] fan_in=8+, entry point for all project initialization, core contract for template deployment
 // Deployer extracts and deploys templates from an embedded filesystem
 // to a project root directory, tracking each file in the manifest.
 type Deployer interface {

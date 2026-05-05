@@ -6,6 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
+// @MX:NOTE: [AUTO] DDD workflow hook handler for pre/post-transformation and completion events
+//
 // dddHandler handles DDD (Domain-Driven Development) workflow hooks.
 type dddHandler struct {
 	baseHandler

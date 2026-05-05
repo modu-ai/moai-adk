@@ -1,5 +1,8 @@
 package cli
 
+// @MX:NOTE: [AUTO] Version command displays moai-adk version, commit hash, build date
+// @MX:NOTE: [AUTO] Version injected at build time via ldflags -X github.com/modu-ai/moai-adk/pkg/version.Version
+
 import (
 	"fmt"
 

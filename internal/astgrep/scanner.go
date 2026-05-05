@@ -134,6 +134,8 @@ func trustedBinaryPrefixes() []string {
 // Bare names are restricted to "sg" or "ast-grep".
 // Absolute paths must be in the trusted prefix list.
 // Shell metacharacters or path traversal (..) return ErrUntrustedBinary.
+// @MX:ANCHOR: [AUTO] ValidateBinary is a security-critical validation used across 3+ packages
+// @MX:REASON: [AUTO] fan_in >= 3 — Scanner, CLI, quality gate, PostToolUse hook all call this
 func ValidateBinary(binary string) error {
 	if binary == "" {
 		// Empty value falls back to the default "sg".
@@ -174,7 +176,7 @@ func ValidateBinary(binary string) error {
 // It replaces the separate implementations in the quality gate and post-tool hook.
 //
 // @MX:ANCHOR: [AUTO] Scanner.Scan is the single entry point for all ast-grep scans
-// @MX:REASON: fan_in >= 3: quality gate hook, PostToolUse hook, and CLI subcommand all call this method
+// @MX:REASON: [AUTO] fan_in >= 3: quality gate hook, PostToolUse hook, and CLI subcommand all call this method
 type Scanner struct {
 	cfg *ScannerConfig
 }

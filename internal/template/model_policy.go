@@ -130,7 +130,7 @@ func insertEffortInFrontmatter(content []byte, effortLevel string) []byte {
 // Manifest hashes are updated for every file that is written.
 //
 // @MX:ANCHOR: [AUTO] ApplyEffortPolicy — called from initializer and update paths; mirrors ApplyModelPolicy contract
-// @MX:REASON: fan_in >= 2 (initializer.go + update.go); public API boundary for effort wiring
+// @MX:REASON: [AUTO] fan_in >= 2 (initializer.go + update.go); public API boundary for effort wiring
 func ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error {
 	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "moai")
 	entries, err := os.ReadDir(agentsDir)

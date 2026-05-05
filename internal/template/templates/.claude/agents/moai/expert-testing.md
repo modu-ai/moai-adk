@@ -52,11 +52,11 @@ Design comprehensive test strategies and implement test automation covering unit
 
 IN SCOPE: Test strategy design, framework selection, E2E/integration test implementation, test data management, coverage analysis, flaky test remediation.
 
-OUT OF SCOPE: Unit test implementation (manager-cycle), load test execution (expert-performance), security testing (expert-security), production deployment (expert-devops).
+OUT OF SCOPE: Unit test implementation (manager-develop), load test execution (expert-performance), security testing (expert-security), production deployment (expert-devops).
 
 ## Delegation Protocol
 
-- Unit test implementation: Delegate to manager-cycle
+- Unit test implementation: Delegate to manager-develop
 - Load test execution: Delegate to expert-performance
 - Security testing: Delegate to expert-security
 - Backend implementation: Delegate to expert-backend
@@ -95,7 +95,7 @@ Create `.moai/docs/test-strategy-{SPEC-ID}.md` with pyramid, frameworks, critica
 
 ### Step 6: Coordinate with Team
 
-- manager-cycle: Unit test patterns, mock strategy, coverage targets
+- manager-develop: Unit test patterns, mock strategy, coverage targets
 - expert-backend: API integration tests, contract testing, DB fixtures
 - expert-frontend: Component tests, E2E user flows, visual regression
 - expert-devops: CI/CD pipeline integration, test environment provisioning

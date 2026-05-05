@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Doctor command runs comprehensive system diagnostics
+// @MX:NOTE: [AUTO] Checks Go runtime, Git, MoAI/Claude config, binary freshness, MCP duplicates, constitution
+// @MX:NOTE: [AUTO] Binary freshness check detects stale builds via commit hash comparison
+
 import (
 	"encoding/json"
 	"fmt"
@@ -426,19 +430,19 @@ func statusIcon(s CheckStatus) string {
 	}
 }
 
-// constitutionStrictEnvKey는 strict mode를 활성화하는 환경 변수 이름이다.
+// constitutionStrictEnvKey is the environment variable name to enable strict mode.
 const constitutionStrictEnvKey = "MOAI_CONSTITUTION_STRICT"
 
-// checkConstitution은 zone registry 상태를 점검한다.
-// - registry 파일 없음: Warn (선택적 기능)
-// - 로드 오류(중복 ID, 잘못된 YAML 등): Fail
-// - Frozen 엔트리 0개: Warn
-// - orphan 경고 있음 + strictMode: Fail; 아니면 Warn
-// - 정상: OK
+// checkConstitution checks the zone registry status.
+// - registry file not found: Warn (optional feature)
+// - load error (duplicate ID, invalid YAML, etc.): Fail
+// - zero Frozen entries: Warn
+// - orphan warnings present + strictMode: Fail; otherwise Warn
+// - normal/OK: OK
 func checkConstitution(projectDir, registryPath string, verbose, strictMode bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Constitution Registry"}
 
-	// registry 파일 존재 여부 확인
+	// Check if registry file exists
 	if _, err := os.Stat(registryPath); err != nil {
 		check.Status = CheckWarn
 		check.Message = fmt.Sprintf("zone-registry.md not found at %q — run `moai constitution list` to verify", registryPath)
@@ -452,7 +456,7 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 		return check
 	}
 
-	// orphan 경고 확인
+	// Check orphan warnings
 	if len(reg.Warnings) > 0 && strictMode {
 		check.Status = CheckFail
 		check.Message = fmt.Sprintf("%d orphan/overflow warning(s) detected (strict mode)", len(reg.Warnings))
@@ -462,7 +466,7 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 		return check
 	}
 
-	// Frozen 엔트리 수 확인
+	// Check Frozen entry count
 	frozen := reg.FilterByZone(constitution.ZoneFrozen)
 	if len(frozen) == 0 {
 		check.Status = CheckWarn
@@ -470,7 +474,7 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 		return check
 	}
 
-	// orphan 경고만 있는 경우 (non-strict)
+	// Only orphan warnings case (non-strict)
 	if len(reg.Warnings) > 0 {
 		check.Status = CheckWarn
 		check.Message = fmt.Sprintf("registry OK (%d entries, %d Frozen), %d orphan/overflow warning(s)",

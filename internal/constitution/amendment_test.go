@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// TestFrozenGuard_Check는 FrozenGuard의 동작을 검증한다.
+// TestFrozenGuard_Check verifies the behavior of FrozenGuard.
 func TestFrozenGuard_Check(t *testing.T) {
 	guard := NewFrozenGuard()
 
@@ -16,7 +16,7 @@ func TestFrozenGuard_Check(t *testing.T) {
 		wantErr     error
 	}{
 		{
-			name: "Evolvable zone은 통과",
+			name: "Evolvable zone passes",
 			proposal: &AmendmentProposal{
 				RuleID:   "CONST-V3R2-008",
 				Before:   "Old clause",
@@ -27,7 +27,7 @@ func TestFrozenGuard_Check(t *testing.T) {
 			wantErr:     nil,
 		},
 		{
-			name: "Frozen zone은 Evidence 필수",
+			name: "Frozen zone requires Evidence",
 			proposal: &AmendmentProposal{
 				RuleID:   "CONST-V3R2-001",
 				Before:   "Old clause",
@@ -37,16 +37,16 @@ func TestFrozenGuard_Check(t *testing.T) {
 			currentZone: ZoneFrozen,
 			wantErr: &ErrFrozenAmendment{
 				RuleID: "CONST-V3R2-001",
-				Reason: "Frozen zone rule 수정에는 Evidence(증거)가 필수이다. Frozen→Evolvable demotion 사유를 설명하라.",
+				Reason: "Frozen zone rule modification requires Evidence. Explain the Frozen→Evolvable demotion reason.",
 			},
 		},
 		{
-			name: "Frozen zone + Evidence는 통과 (demotion 가정)",
+			name: "Frozen zone + Evidence passes (assuming demotion)",
 			proposal: &AmendmentProposal{
 				RuleID:   "CONST-V3R2-001",
 				Before:   "Old clause",
 				After:    "New clause",
-				Evidence: "이 rule은 더 이상 유효하지 않음. 패턴 변경으로 인해 제약 완화 필요.",
+				Evidence: "This rule is no longer valid. Constraint relaxation needed due to pattern change.",
 			},
 			currentZone: ZoneFrozen,
 			wantErr:     nil,
@@ -71,7 +71,7 @@ func TestFrozenGuard_Check(t *testing.T) {
 	}
 }
 
-// TestAmendmentLog_Validate는 AmendmentLog 검증을 테스트한다.
+// TestAmendmentLog_Validate tests AmendmentLog validation.
 func TestAmendmentLog_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -79,7 +79,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "유효한 log",
+			name: "Valid log",
 			log: AmendmentLog{
 				ID:            "LEARN-20260428-001",
 				RuleID:        "CONST-V3R2-008",
@@ -95,7 +95,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "ID 비어있음",
+			name: "Empty ID",
 			log: AmendmentLog{
 				RuleID:     "CONST-V3R2-008",
 				ClauseBefore: "Old",
@@ -106,7 +106,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "RuleID 비어있음",
+			name: "Empty RuleID",
 			log: AmendmentLog{
 				ID:          "LEARN-20260428-001",
 				ClauseBefore: "Old",
@@ -117,7 +117,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Clause 비어있음",
+			name: "Empty Clause",
 			log: AmendmentLog{
 				ID:         "LEARN-20260428-001",
 				RuleID:     "CONST-V3R2-008",
@@ -127,7 +127,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "ApprovedBy 비어있음",
+			name: "Empty ApprovedBy",
 			log: AmendmentLog{
 				ID:           "LEARN-20260428-001",
 				RuleID:       "CONST-V3R2-008",
@@ -138,7 +138,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "ApprovedAt 비어있음",
+			name: "Empty ApprovedAt",
 			log: AmendmentLog{
 				ID:           "LEARN-20260428-001",
 				RuleID:       "CONST-V3R2-008",
@@ -160,7 +160,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 	}
 }
 
-// TestGenerateLogID는 로그 ID 생성을 테스트한다.
+// TestGenerateLogID tests log ID generation.
 func TestGenerateLogID(t *testing.T) {
 	now := time.Date(2026, 4, 28, 0, 0, 0, 0, time.UTC)
 
@@ -171,13 +171,13 @@ func TestGenerateLogID(t *testing.T) {
 		want     string
 	}{
 		{
-			name:     "첫 번째 로그",
+			name:     "First log",
 			now:      now,
 			lastLogs: []AmendmentLog{},
 			want:     "LEARN-20260428-001",
 		},
 		{
-			name: "같은 날짜의 두 번째 로그",
+			name: "Second log on same date",
 			now: now,
 			lastLogs: []AmendmentLog{
 				{ID: "LEARN-20260428-001"},
@@ -185,7 +185,7 @@ func TestGenerateLogID(t *testing.T) {
 			want: "LEARN-20260428-002",
 		},
 		{
-			name: "시퀀스 009 이후",
+			name: "After sequence 009",
 			now: now,
 			lastLogs: []AmendmentLog{
 				{ID: "LEARN-20260428-009"},
@@ -193,7 +193,7 @@ func TestGenerateLogID(t *testing.T) {
 			want: "LEARN-20260428-010",
 		},
 		{
-			name: "다른 날짜의 첫 번째 로그",
+			name: "First log on different date",
 			now: time.Date(2026, 4, 29, 0, 0, 0, 0, time.UTC),
 			lastLogs: []AmendmentLog{
 				{ID: "LEARN-20260428-009"},
@@ -212,19 +212,19 @@ func TestGenerateLogID(t *testing.T) {
 	}
 }
 
-// TestErrFrozenAmendment_Error는 에러 메시지를 테스트한다.
+// TestErrFrozenAmendment_Error tests the error message.
 func TestErrFrozenAmendment_Error(t *testing.T) {
 	err := &ErrFrozenAmendment{
 		RuleID: "CONST-V3R2-001",
-		Reason: "Evidence 없음",
+		Reason: "No evidence",
 	}
-	want := "Frozen zone amendment 거부: CONST-V3R2-001 - Evidence 없음"
+	want := "Frozen zone amendment rejected: CONST-V3R2-001 - No evidence"
 	if got := err.Error(); got != want {
 		t.Errorf("Error() = %v, want %v", got, want)
 	}
 }
 
-// TestErrCanaryRejected_Error는 에러 메시지를 테스트한다.
+// TestErrCanaryRejected_Error tests the error message.
 func TestErrCanaryRejected_Error(t *testing.T) {
 	err := &ErrCanaryRejected{
 		RuleID:        "CONST-V3R2-008",
@@ -233,13 +233,13 @@ func TestErrCanaryRejected_Error(t *testing.T) {
 		AffectedSpecs: []string{"SPEC-001", "SPEC-002"},
 	}
 	got := err.Error()
-	expected := "Canary rejected: CONST-V3R2-008 점수 하락 0.15 > 임계값 0.10"
+	expected := "Canary rejected: CONST-V3R2-008 score drop 0.15 > threshold 0.10"
 	if !contains(got, expected) {
 		t.Errorf("Error() = %v, want contain %v", got, expected)
 	}
 }
 
-// contains는 문자열 포함 여부를 확인한다.
+// contains checks if a string contains a substring.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || indexOf(s, substr) >= 0))
 }

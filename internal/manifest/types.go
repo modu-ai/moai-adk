@@ -77,7 +77,7 @@ var (
 )
 
 // @MX:ANCHOR: [AUTO] Manifest data structure creation - called from 3 or more paths including Load, corrupt recovery, and Track
-// @MX:REASON: fan_in=3, responsible for Files map initialization; single exit point preventing nil map panics
+// @MX:REASON: [AUTO] fan_in=3, responsible for Files map initialization; single exit point preventing nil map panics
 // NewManifest creates a new empty Manifest with initialized Files map.
 func NewManifest() *Manifest {
 	return &Manifest{

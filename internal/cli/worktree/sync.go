@@ -1,5 +1,8 @@
 package worktree
 
+// @MX:NOTE: [AUTO] Sync worktree with base branch using merge or rebase strategy
+// @MX:NOTE: [AUTO] Accepts branch name or uses current directory; defaults to main base
+
 import (
 	"fmt"
 	"os"

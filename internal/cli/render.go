@@ -1,5 +1,8 @@
 package cli
 
+// @MX:NOTE: [AUTO] Rendering utilities for CLI output using lipgloss styling
+// @MX:NOTE: [AUTO] Provides card, key-value, status, success/info card renderers
+
 import (
 	"fmt"
 	"strings"

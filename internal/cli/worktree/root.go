@@ -1,4 +1,8 @@
 // Package worktree provides Git worktree management subcommands.
+// @MX:NOTE: [AUTO] Worktree management for parallel SPEC development with isolated working directories
+// @MX:NOTE: [AUTO] Dependency injection pattern: WorktreeProvider set from parent CLI package
+// @MX:NOTE: [AUTO] Supports create, list, switch, sync, remove, clean, recover, config, status
+
 package worktree
 
 import (
