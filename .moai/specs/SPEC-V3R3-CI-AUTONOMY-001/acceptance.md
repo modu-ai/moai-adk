@@ -43,7 +43,8 @@ breaking: false
 | AC-CIAUT-016 | T7 | i18n validator blocks PR #783 mockReleaseData regression |
 | AC-CIAUT-017 | T7 | i18n:translatable magic comment exempt |
 | AC-CIAUT-018 | T8 | BODP recommends "main에서 분기" (current session replay) |
-| AC-CIAUT-019 | T8 | BODP recommends stacked PR (signal a positive) |
+| AC-CIAUT-019 | T8 | BODP recommends stacked PR via `/moai plan --branch` (signal a positive) |
+| AC-CIAUT-019b | T8 | BODP via `moai worktree new` CLI (default origin/main) |
 | AC-CIAUT-020 | Cross | 5-PR sweep replay (manual validation) |
 | AC-CIAUT-021 | T5 | required_status_checks SSoT in `.github/required-checks.yml` (REQ-027) |
 | AC-CIAUT-022 | T5 | `gh` auth-failure graceful exit with manual command (REQ-028) |
@@ -354,49 +355,63 @@ const errMsg = "Failed to load config" // i18n:translatable
 
 ## 9. T8 — Branch Origin Decision Protocol
 
-### AC-CIAUT-018: BODP recommends "main에서 분기" (current session replay)
+### AC-CIAUT-018: BODP recommends "main에서 분기" via `/moai plan --branch` (current session replay)
 
-**Given**: 현재 세션 상태:
+**Given**: 현재 세션 상태 (실제 발생):
 - 현재 브랜치: `chore/translation-batch-b`
 - Working tree untracked: `.moai/specs/SPEC-V3R3-MX-INJECT-001/`
 - 사용자 요청: "create SPEC-V3R3-CI-AUTONOMY-001"
 - 현재 브랜치의 open PR 없음 (이미 머지됨 또는 closed)
 
-**When**: 사용자가 `moai branch new plan/SPEC-V3R3-CI-AUTONOMY-001 --spec SPEC-V3R3-CI-AUTONOMY-001` 실행.
+**When**: 사용자가 `/moai plan "Autonomous CI/CD pipeline" --branch` 실행 (또는 SPEC ID와 함께 `/moai plan SPEC-V3R3-CI-AUTONOMY-001 --branch --resume`). **새 명령어 추가 없이 기존 `/moai plan --branch` 흐름 사용**.
 
 **Then**:
-1. Signal (a) check: SPEC-V3R3-CI-AUTONOMY-001은 chore/translation-batch-b의 diff와 무관 → negative
-2. Signal (b) check: untracked SPEC-V3R3-MX-INJECT-001은 다른 SPEC ID → negative
-3. Signal (c) check: open PR with head=chore/translation-batch-b 없음 → negative
-4. AskUserQuestion 1번째 옵션: `main에서 분기 (권장)`
-5. 사용자 confirm 후: `git fetch origin main && git checkout -B plan/SPEC-V3R3-CI-AUTONOMY-001 origin/main`
-6. `.moai/branches/decisions/plan-SPEC-V3R3-CI-AUTONOMY-001.md` audit trail 생성
+1. plan workflow Phase 3 Branch Path 진입 직전, `internal/bodp/relatedness.go`가 3-signal 검사 실행
+2. Signal (a) check: SPEC-V3R3-CI-AUTONOMY-001은 chore/translation-batch-b의 diff와 무관 → negative
+3. Signal (b) check: untracked SPEC-V3R3-MX-INJECT-001은 다른 SPEC ID → negative
+4. Signal (c) check: open PR with head=chore/translation-batch-b 없음 → negative
+5. orchestrator AskUserQuestion: 1번째 옵션 `main에서 분기 (권장)`, 2번째 `현재 브랜치에서 분기 (stacked)`
+6. 사용자 confirm 후 `manager-git` 호출이 base를 `origin/main`으로 강제: `git fetch origin main && git checkout -B feat/SPEC-V3R3-CI-AUTONOMY-001 origin/main`
+7. `.moai/branches/decisions/feat-SPEC-V3R3-CI-AUTONOMY-001.md` audit trail 생성 (entry point: `plan-branch`)
 
-### AC-CIAUT-019: BODP recommends stacked PR (signal a positive)
+### AC-CIAUT-019: BODP recommends stacked PR via `/moai plan --branch` (signal a positive)
 
 **Given**:
 - 현재 브랜치: `feat/SPEC-AUTH-001-base`
-- 사용자: `moai branch new feat/SPEC-AUTH-002 --spec SPEC-AUTH-002`
+- 사용자가 `/moai plan SPEC-AUTH-002 --branch --resume` 실행
 - SPEC-AUTH-002 plan에 `depends_on: [SPEC-AUTH-001]` 명시
 
-**When**: 실행.
+**When**: plan workflow Phase 3 진입.
 
 **Then**:
-1. Signal (a) check: dependency 매칭 + 파일 경로 overlap (예: 동일 `internal/auth/` 디렉토리 변경)
+1. BODP signal (a): SPEC-AUTH-002.depends_on에 SPEC-AUTH-001 명시 → 현재 브랜치(SPEC-AUTH-001-base)와 매칭 → positive
 2. AskUserQuestion 1번째 옵션: `현재 브랜치에서 분기 (stacked PR, base=feat/SPEC-AUTH-001-base) (권장)`
-3. 사용자 confirm 후: `git checkout -B feat/SPEC-AUTH-002` (현재 HEAD에서)
-4. Audit trail에 "stacked PR rationale: depends_on detected" 기록
+3. 사용자 confirm 후 `manager-git`이 stacked branch 생성: `git checkout -B feat/SPEC-AUTH-002` (현재 HEAD 유지)
+4. PR 생성 시 base가 `feat/SPEC-AUTH-001-base`로 자동 설정 (manager-git에 parameter 전달)
+5. Audit trail에 "stacked PR rationale: depends_on detected" + entry point `plan-branch` 기록
+
+### AC-CIAUT-019b: BODP via `moai worktree new` CLI (default origin/main)
+
+**Given**: 현재 브랜치 `chore/translation-batch-b`, 사용자가 `moai worktree new SPEC-AUTH-001` 직접 실행 (slash 우회).
+
+**When**: CLI 호출.
+
+**Then**:
+1. CLI는 AskUserQuestion 호출하지 않음 (orchestrator-only HARD 준수)
+2. Default behavior: base = `origin/main`. `git fetch origin main` 실행 후 `git worktree add ... origin/main`
+3. Audit trail entry point: `worktree-cli` 기록
+4. `--from-current` flag 사용 시 기존 동작 (current HEAD에서 worktree) — opt-out 명시적
 
 ### AC-CIAUT-024: `moai status` off-protocol branch reminder (REQ-CIAUT-050)
 
-**Given**: 사용자가 `/moai branch new` 또는 `moai branch new` CLI를 우회하고 raw `git checkout -b feat/quick-fix` 실행. BODP는 호출되지 않음. `.moai/branches/decisions/feat-quick-fix.md` audit trail 파일은 미생성.
+**Given**: 사용자가 BODP-aware 경로 (`/moai plan --branch`, `/moai plan --worktree`, `moai worktree new`)를 우회하고 raw `git checkout -b feat/quick-fix` 실행. BODP는 호출되지 않음. `.moai/branches/decisions/feat-quick-fix.md` audit trail 파일은 미생성.
 
 **When**: 사용자가 다음 `moai status` 또는 `/moai sync` 등 MoAI 명령 실행.
 
 **Then**:
 1. `moai status`가 현재 브랜치 (`feat/quick-fix`) 감지 후 audit trail 디렉토리에서 매칭 파일 검색
 2. 매칭 파일 없음 → "off-protocol branch detected" friendly reminder 출력 (warning level, error 아님)
-3. Reminder 내용: "Branch `feat/quick-fix` was created without `/moai branch new`. Future branches: use `/moai branch new <name>` for relatedness check + audit trail. Skip with `--no-bodp` if intentional."
+3. Reminder 내용: "Branch `feat/quick-fix` was created without going through MoAI entry points. Future branches: use `/moai plan --branch <name>` (SPEC-tied) or `moai worktree new <SPEC-ID>` for relatedness check + audit trail. Skip with `MOAI_NO_BODP_REMINDER=1` if intentional."
 4. Reminder는 hard block 안 함 — 작업 흐름 유지
 5. 사용자가 `--no-bodp-reminder` 환경변수 설정 시 reminder 비활성화 (`MOAI_NO_BODP_REMINDER=1`)
 
@@ -412,10 +427,13 @@ const errMsg = "Failed to load config" // i18n:translatable
 1. §18 (Enhanced GitHub Flow) 하위에 §18.12 (Branch Origin Decision Protocol) subsection 존재
 2. subsection 내용:
    - BODP 알고리즘 요약 (3-axis relatedness check)
-   - 두 invocation path 명시 (`/moai branch new` slash command + `moai branch new` CLI)
+   - **3개 invocation path 명시 (모두 기존 entry, 새 명령어 ZERO)**:
+     - `/moai plan --branch [name]` — SPEC-tied feature 브랜치
+     - `/moai plan --worktree` — SPEC-tied worktree
+     - `moai worktree new <SPEC-ID>` — 직접 worktree CLI
    - default recommendation = "main에서 분기"
    - audit trail 위치 (`.moai/branches/decisions/`)
-   - opt-out 방법 (`--no-bodp` flag, raw `git checkout -b` 허용)
+   - opt-out 방법: `MOAI_NO_BODP_REMINDER=1` 환경변수 또는 raw `git checkout -b` 사용 (자기 책임)
 3. CLAUDE.local.md table of contents 또는 §18 인덱스에 §18.12 entry 추가
 4. PR description에 CLAUDE.local.md diff 포함
 
