@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -211,26 +210,3 @@ func (c *canary) sortMostRecent(specs []string, specsDir string, limit int) []st
 
 // canary는 Canary interface를 만족한다.
 var _ Canary = (*canary)(nil)
-
-// parseScoreFromProgress는 progress.md에서 evaluator-active score를 파싱한다.
-// TODO: SPEC-V3R2-CON-003에서 구현. 현재는 더미.
-func parseScoreFromProgress(progressPath string) (float64, error) {
-	// 간단 구현: 파일에서 "Score: 0.XX" 패턴 찾기
-	data, err := os.ReadFile(progressPath)
-	if err != nil {
-		return 0.8, err // 기본값 반환
-	}
-
-	re := regexp.MustCompile(`Score:\s*([0-9.]+)`)
-	matches := re.FindStringSubmatch(string(data))
-	if len(matches) < 2 {
-		return 0.8, nil // 기본값 반환
-	}
-
-	score, err := strconv.ParseFloat(matches[1], 64)
-	if err != nil {
-		return 0.8, err
-	}
-
-	return score, nil
-}
