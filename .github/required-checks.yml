@@ -1,0 +1,32 @@
+version: 1
+# SSoT for required CI status checks (REQ-CIAUT-027 / AC-CIAUT-021).
+# Consumed by:
+#   - internal/cli/branch_protection.go (renders gh api PUT branch protection JSON)
+#   - Wave 2 CI watch loop (filters required vs auxiliary failures)
+# Update: edit this file ONLY. Hardcoding contexts elsewhere is prohibited (AC-CIAUT-021).
+
+branches:
+  main:
+    contexts:
+      - Lint
+      - "Test (ubuntu-latest)"
+      - "Test (macos-latest)"
+      - "Test (windows-latest)"
+      - "Build (linux/amd64)"
+      - "Build (linux/arm64)"
+      - "Build (darwin/amd64)"
+      - "Build (darwin/arm64)"
+      - "Build (windows/amd64)"
+      - CodeQL
+  release/*:
+    contexts:
+      - Lint
+      - "Test (ubuntu-latest)"
+      - "Test (macos-latest)"
+
+# Auxiliary checks run on PRs but DO NOT block merge (advisory only).
+# Wave 2 watch loop reads this list to discriminate failures.
+auxiliary:
+  - claude-code-review
+  - llm-panel
+  - docs-i18n-check
