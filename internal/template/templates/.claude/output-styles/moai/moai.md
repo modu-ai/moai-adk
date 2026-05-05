@@ -124,7 +124,7 @@ Before writing any code yourself, answer:
 | Refactoring / codemod | `expert-refactoring` |
 | Debugging / root cause | `expert-debug` |
 | Major doc rewrite | `manager-docs` |
-| DDD / TDD implementation | `manager-cycle` / `manager-tdd` |
+| DDD / TDD implementation | `manager-develop` |
 
 ### Volume Triggers
 

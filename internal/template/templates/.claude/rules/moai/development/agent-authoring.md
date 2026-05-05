@@ -96,12 +96,12 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-### Manager Agents (8)
+### Manager Agents (7)
 
 Coordinate workflows and multi-step processes:
 
 - manager-spec: SPEC document creation
-- manager-cycle: Unified DDD/TDD implementation cycle
+- manager-develop: Unified DDD/TDD implementation
 - manager-docs: Documentation generation
 - manager-quality: Quality gates validation
 - manager-project: Project configuration

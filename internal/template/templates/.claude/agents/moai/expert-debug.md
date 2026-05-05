@@ -56,7 +56,7 @@ IN SCOPE:
 - Error pattern matching and impact assessment
 
 OUT OF SCOPE:
-- Code implementation (delegate to manager-cycle)
+- Code implementation (delegate to manager-develop)
 - Code quality verification (delegate to manager-quality)
 - Git operations (delegate to manager-git)
 - Documentation updates (delegate to manager-docs)
@@ -87,7 +87,7 @@ OUT OF SCOPE:
 
 ## Delegation Rules
 
-- **Runtime Errors**: Delegate to manager-cycle (requires DDD cycle with testing)
+- **Runtime Errors**: Delegate to manager-develop (requires DDD cycle with testing)
 - **Code Quality Issues**: Delegate to manager-quality (TRUST verification)
 - **Git Issues**: Delegate to manager-git (repository operations)
 - **Complex Multi-Error**: Recommend running `/moai fix` or `/moai loop`

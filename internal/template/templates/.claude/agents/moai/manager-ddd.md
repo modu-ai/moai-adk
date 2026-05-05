@@ -1,11 +1,11 @@
 ---
 name: manager-ddd
 description: |
-  Retired (SPEC-V3R3-RETIRED-DDD-001) — use manager-cycle with cycle_type=ddd.
-  This agent has been consolidated into the unified manager-cycle agent.
-  See manager-cycle.md for the active replacement.
+  Retired (SPEC-V3R3-RETIRED-DDD-001) — use manager-develop with cycle_type=ddd.
+  This agent has been consolidated into the unified manager-develop agent.
+  See manager-develop.md for the active replacement.
 retired: true
-retired_replacement: manager-cycle
+retired_replacement: manager-develop
 retired_param_hint: "cycle_type=ddd"
 tools: []
 skills: []
@@ -17,18 +17,18 @@ This agent has been retired as part of SPEC-V3R3-RETIRED-DDD-001 (following SPEC
 
 ## Replacement
 
-Use **manager-cycle** with `cycle_type=ddd` instead.
+Use **manager-develop** with `cycle_type=ddd` instead.
 
 ## Migration Guide
 
 | Old Invocation | New Invocation |
 |----------------|----------------|
-| `Use the manager-ddd subagent to implement the feature` | `Use the manager-cycle subagent with cycle_type=ddd to implement the feature` |
-| `manager-ddd: run ANALYZE-PRESERVE-IMPROVE cycle` | `manager-cycle: run DDD cycle (cycle_type=ddd)` |
+| `Use the manager-ddd subagent to implement the feature` | `Use the manager-develop subagent with cycle_type=ddd to implement the feature` |
+| `manager-ddd: run ANALYZE-PRESERVE-IMPROVE cycle` | `manager-develop: run DDD cycle (cycle_type=ddd)` |
 
 ## Why This Change
 
-The `manager-ddd` agent has been consolidated into the `manager-cycle` agent, which supports DDD (ANALYZE-PRESERVE-IMPROVE) cycles through the `cycle_type` parameter. This unification:
+The `manager-ddd` agent has been consolidated into the `manager-develop` agent, which supports DDD (ANALYZE-PRESERVE-IMPROVE) cycles through the `cycle_type` parameter. This unification:
 
 - Eliminates duplication between the two agents
 - Provides a single entry point for all implementation cycles
@@ -36,4 +36,4 @@ The `manager-ddd` agent has been consolidated into the `manager-cycle` agent, wh
 
 ## Active Agent
 
-See `.claude/agents/moai/manager-cycle.md` for the full agent definition.
+See `.claude/agents/moai/manager-develop.md` for the full agent definition.

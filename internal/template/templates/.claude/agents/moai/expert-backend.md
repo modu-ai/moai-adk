@@ -59,7 +59,7 @@ OUT OF SCOPE: Frontend implementation (expert-frontend), DevOps deployment (expe
 - Frontend work: Delegate to expert-frontend
 - Security audit: Delegate to expert-security
 - DevOps deployment: Delegate to expert-devops
-- DDD implementation: Delegate to manager-cycle
+- DDD implementation: Delegate to manager-develop
 
 ## Framework Detection
 
@@ -116,7 +116,7 @@ Create `.moai/docs/backend-architecture-{SPEC-ID}.md` with framework, DB, endpoi
 
 - expert-frontend: API contract (OpenAPI/GraphQL), error format, CORS config
 - expert-devops: Health checks, env vars, migrations, CI/CD
-- manager-cycle: Test structure, mock strategy, coverage requirements
+- manager-develop: Test structure, mock strategy, coverage requirements
 
 ## @MX Tag Obligations
 

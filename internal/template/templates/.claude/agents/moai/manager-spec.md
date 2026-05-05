@@ -55,7 +55,7 @@ Generate EARS-style SPEC documents for implementation planning. Translates busin
 
 IN SCOPE: SPEC creation, EARS specifications, acceptance criteria, implementation planning, expert consultation recommendations.
 
-OUT OF SCOPE: Code implementation (manager-cycle/tdd), Git operations (manager-git), documentation sync (manager-docs).
+OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager-git), documentation sync (manager-docs).
 
 ## SPEC Scope Boundaries (What/Why vs How)
 

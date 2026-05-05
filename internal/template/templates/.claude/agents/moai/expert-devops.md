@@ -56,7 +56,7 @@ OUT OF SCOPE: Application code (expert-backend/frontend), security audits (exper
 
 - Backend readiness: Coordinate with expert-backend (health checks, startup commands, env vars)
 - Frontend deployment: Coordinate with expert-frontend (build strategy, env vars)
-- Test execution: Coordinate with manager-cycle (CI/CD test integration)
+- Test execution: Coordinate with manager-develop (CI/CD test integration)
 
 ## Platform Detection
 
@@ -111,7 +111,7 @@ Platform comparison: Railway ($5-50/mo, auto DB, zero-config), Vercel (Free-$20/
 
 - expert-backend: Health endpoint, startup/shutdown commands, env vars, migrations
 - expert-frontend: Deployment platform, API URL config, CORS settings
-- manager-cycle: CI/CD test execution, coverage enforcement
+- manager-develop: CI/CD test execution, coverage enforcement
 
 ## Success Criteria
 

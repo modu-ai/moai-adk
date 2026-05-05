@@ -132,7 +132,7 @@ func TestAgentStartHandler_RoutesViaFactory(t *testing.T) {
 func TestAgentStartHandler_BlocksRetiredAgent(t *testing.T) {
 	t.Parallel()
 
-	projectDir := buildRetiredAgentDir(t, "manager-tdd", "manager-cycle", "cycle_type=tdd")
+	projectDir := buildRetiredAgentDir(t, "manager-tdd", "manager-develop", "cycle_type=tdd")
 	handler := NewAgentStartHandler()
 	input := buildHookInputForAgent("manager-tdd", projectDir)
 
@@ -148,8 +148,8 @@ func TestAgentStartHandler_BlocksRetiredAgent(t *testing.T) {
 		t.Errorf("retired agent에 대해 block/deny 결정이 없음, got: %q", output.Decision)
 	}
 	// reason에 replacement 에이전트 이름 포함 (REQ-RA-007)
-	if !strings.Contains(output.Reason, "manager-cycle") {
-		t.Errorf("reason에 'manager-cycle' 없음: %q", output.Reason)
+	if !strings.Contains(output.Reason, "manager-develop") {
+		t.Errorf("reason에 'manager-develop' 없음: %q", output.Reason)
 	}
 	// reason에 cycle_type=tdd 힌트 포함 (REQ-RA-007)
 	if !strings.Contains(output.Reason, "cycle_type") && !strings.Contains(output.Reason, "tdd") {
@@ -164,9 +164,9 @@ func TestAgentStartHandler_BlocksRetiredAgent(t *testing.T) {
 func TestAgentStartHandler_AllowsActiveAgent(t *testing.T) {
 	t.Parallel()
 
-	projectDir := buildActiveAgentDir(t, "manager-cycle")
+	projectDir := buildActiveAgentDir(t, "manager-develop")
 	handler := NewAgentStartHandler()
-	input := buildHookInputForAgent("manager-cycle", projectDir)
+	input := buildHookInputForAgent("manager-develop", projectDir)
 
 	output, err := handler.Handle(context.Background(), input)
 	if err != nil {
@@ -209,7 +209,7 @@ func TestAgentStartHandler_PerformanceUnder500ms(t *testing.T) {
 		t.Skip("성능 테스트: -short 플래그로 스킵")
 	}
 
-	projectDir := buildRetiredAgentDir(t, "manager-tdd", "manager-cycle", "cycle_type=tdd")
+	projectDir := buildRetiredAgentDir(t, "manager-tdd", "manager-develop", "cycle_type=tdd")
 	handler := NewAgentStartHandler()
 	input := buildHookInputForAgent("manager-tdd", projectDir)
 
@@ -239,7 +239,7 @@ func TestAgentStartHandler_PerformanceUnder500ms(t *testing.T) {
 func TestAgentStartHandler_OutputFormat(t *testing.T) {
 	t.Parallel()
 
-	projectDir := buildRetiredAgentDir(t, "manager-tdd", "manager-cycle", "cycle_type=tdd")
+	projectDir := buildRetiredAgentDir(t, "manager-tdd", "manager-develop", "cycle_type=tdd")
 	handler := NewAgentStartHandler()
 	input := buildHookInputForAgent("manager-tdd", projectDir)
 
