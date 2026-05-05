@@ -28,10 +28,15 @@ func TestFactory_CreateHandler_ValidActions(t *testing.T) {
 		{"ddd-post-transformation", hook.EventPostToolUse},
 		{"ddd-completion", hook.EventSubagentStop},
 
-		// TDD handler actions
+		// TDD handler actions (legacy retired stub backward compat)
 		{"tdd-pre-implementation", hook.EventPreToolUse},
 		{"tdd-post-implementation", hook.EventPostToolUse},
 		{"tdd-completion", hook.EventSubagentStop},
+
+		// Cycle handler actions (manager-cycle unified DDD/TDD, SPEC-V3R3-RETIRED-AGENT-001)
+		{"cycle-pre-implementation", hook.EventPreToolUse},
+		{"cycle-post-implementation", hook.EventPostToolUse},
+		{"cycle-completion", hook.EventSubagentStop},
 
 		// Backend handler actions
 		{"backend-validation", hook.EventPreToolUse},

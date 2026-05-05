@@ -13,6 +13,10 @@ import (
 
 // glmTmuxKeys is the list of GLM-related environment variables to inject into the tmux session.
 // New tmux panes (teammates) must have these variables set at the session level to use the GLM API.
+//
+// Issue #742: MOAI_STATUSLINE_CONTEXT_SIZE is included so the Claude Code
+// statusline reflects the real GLM model context window (128K/200K/etc.)
+// instead of the Claude slot's nominal size (1M for the Opus slot).
 var glmTmuxKeys = []string{
 	"ANTHROPIC_AUTH_TOKEN",
 	"ANTHROPIC_BASE_URL",
@@ -23,6 +27,7 @@ var glmTmuxKeys = []string{
 	"DISABLE_PROMPT_CACHING",
 	"API_TIMEOUT_MS",
 	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+	"MOAI_STATUSLINE_CONTEXT_SIZE",
 }
 
 // buildGLMTmuxEnvVars extracts only GLM-related variables from the env map in settings.local.json.

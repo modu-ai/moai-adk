@@ -74,6 +74,57 @@ Pre-execution commands: git status, git branch, git log, git diff, find .moai/sp
 
 ---
 
+## Brain Context Auto-Detection
+
+<!-- Verifies REQ-BRAIN-004: SPEC Decomposition Candidates surfaced to user via AskUserQuestion -->
+<!-- Verifies REQ-BRAIN-007: /moai plan detects proposal.md and presents SPEC candidates -->
+
+When `/moai plan` is invoked (with or without arguments), perform this pre-execution check:
+
+### Step 0: Brain Proposal Detection
+
+1. **Scan** for `.moai/brain/IDEA-*/proposal.md` files (Glob: `.moai/brain/IDEA-[0-9]*/proposal.md`).
+2. If any proposal.md files are found:
+   a. Read the most recent file (highest IDEA-NNN number by directory name).
+   b. Parse the `### SPEC Decomposition Candidates` section using grammar:
+      ```
+      Grammar: ^- SPEC-[A-Z][A-Z0-9]+-[0-9]{3}: .+$
+      ```
+   c. Collect all matching entries as `brain_candidates`.
+   d. Non-matching entries emit a WARNING in output (but do NOT error out — defensive parser).
+
+3. If `brain_candidates` is non-empty AND user did not provide a specific SPEC title in $ARGUMENTS:
+   - Surface candidates via AskUserQuestion (per `askuser-protocol.md`):
+     ```
+     ToolSearch(query: "select:AskUserQuestion")
+     AskUserQuestion({
+       questions: [{
+         header: "Brain 워크플로우 SPEC 후보",
+         question: "Brain 워크플로우에서 생성된 SPEC 분해 후보가 있습니다. 어느 것을 계획하시겠습니까?",
+         options: [
+           { label: "<first candidate> (권장)", description: "Brain IDEA에서 자동 감지된 첫 번째 후보" },
+           { label: "<second candidate>", description: "..." },
+           ...up to 4 options total (use "직접 입력" as last option for custom SPEC title)
+         ]
+       }]
+     })
+     ```
+   - User selection becomes the SPEC title for Phase 1B.
+   - [HARD] NEVER auto-create SPECs from candidates — user MUST select explicitly.
+
+4. If user provided a specific SPEC title OR selected "직접 입력": proceed normally to Phase 1A.
+
+5. If no brain candidates found: skip this check, proceed normally.
+
+**Defensive Parser Rules**:
+- Entries matching the grammar are offered as candidates.
+- Entries NOT matching (e.g., `- AUTH-001: missing prefix`, `- SPEC-001: missing domain`) emit:
+  `[WARNING] Skipped malformed brain candidate: "<entry>" — expected format: - SPEC-{DOMAIN}-{NNN}: {scope}`
+- Parser warnings do NOT block plan execution.
+- Maximum 9 candidates surfaced (AskUserQuestion option limit: 4 per question, minus "직접 입력").
+
+---
+
 ## Phase Sequence
 
 ### Phase 1A: Project Exploration (Optional)
