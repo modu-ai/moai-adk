@@ -132,35 +132,6 @@ func generateDockerArgs(opts SandboxOptions) ([]string, error) {
 	return args, nil
 }
 
-// generateDockerfile은 CI 환경용 Dockerfile 스니펫을 생성합니다.
-// 사용자는 이 스니펫을 기반으로 이미지를 빌드해야 합니다.
-func generateDockerfile(opts SandboxOptions) (string, error) {
-	var builder strings.Builder
-
-	builder.WriteString("# Sandbox Dockerfile for moai-adk-go\n")
-	builder.WriteString("FROM golang:1.22-alpine\n\n")
-
-	// 작업 디렉토리 설정
-	if opts.WorktreeRoot != "" {
-		fmt.Fprintf(&builder, "WORKDIR %s\n\n", opts.WorktreeRoot)
-	}
-
-	// 네트워크 제한
-	if len(opts.NetworkAllow) == 0 {
-		builder.WriteString("# 네트워크가 비활성화됨\n")
-	} else {
-		builder.WriteString("# 네트워크 허용목록 (방화벽 규칙 필요):\n")
-		for _, host := range opts.NetworkAllow {
-			fmt.Fprintf(&builder, "# # %s\n", host)
-		}
-	}
-
-	builder.WriteString("\n# 명령 실행:\n")
-	builder.WriteString("# CMD [\"go\", \"test\", \"./...\"]\n")
-
-	return builder.String(), nil
-}
-
 // scrubEnv는 비밀 환경 변수를 제거하고 지정된 변수만 유지합니다.
 // SPEC-RT-003 REQ-006: AWS_*, GITHUB_TOKEN, ANTHROPIC_API_KEY, OPENAI_API_KEY, NPM_TOKEN, GH_TOKEN 제거
 func scrubEnv(passthrough []string) []string {

@@ -83,38 +83,3 @@ func getDockerVersion() (string, error) {
 	return version, nil
 }
 
-// generateDockerRunSnippet은 Docker 실행 명령 스니펫을 생성합니다.
-// 사용자는 이 스니펫을 사용하여 수동으로 Docker를 실행할 수 있습니다.
-func generateDockerRunSnippet(opts SandboxOptions, cmd []string) (string, error) {
-	var builder strings.Builder
-
-	// Docker 실행
-	builder.WriteString("docker run --rm")
-
-	// 네트워크 격리
-	if len(opts.NetworkAllow) == 0 {
-		builder.WriteString(" --network=none")
-	}
-
-	// 볼륨 마운트
-	if opts.WorktreeRoot != "" {
-		fmt.Fprintf(&builder, " -v %s:%s", opts.WorktreeRoot, opts.WorktreeRoot)
-	}
-
-	for _, path := range opts.WritablePaths {
-		fmt.Fprintf(&builder, " -v %s:%s", path, path)
-	}
-
-	for _, path := range opts.ReadOnlyDirs {
-		fmt.Fprintf(&builder, " -v %s:%s:ro", path, path)
-	}
-
-	// 이미지 및 명령
-	image := "golang:1.22-alpine"
-	fmt.Fprintf(&builder, " %s", image)
-	for _, arg := range cmd {
-		fmt.Fprintf(&builder, " %s", arg)
-	}
-
-	return builder.String(), nil
-}

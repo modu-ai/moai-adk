@@ -549,14 +549,20 @@ func TestCheckDockerAvailableMock(t *testing.T) {
 	originalCI := os.Getenv("CI")
 	defer func() {
 		if originalCI == "" {
-			os.Unsetenv("CI")
+			if err := os.Unsetenv("CI"); err != nil {
+				t.Logf("failed to unset CI: %v", err)
+			}
 		} else {
-			os.Setenv("CI", originalCI)
+			if err := os.Setenv("CI", originalCI); err != nil {
+				t.Logf("failed to restore CI: %v", err)
+			}
 		}
 	}()
 
 	// CI가 설정되지 않은 시나리오
-	os.Unsetenv("CI")
+	if err := os.Unsetenv("CI"); err != nil {
+		t.Fatalf("failed to unset CI: %v", err)
+	}
 
 	result := checkDockerAvailable()
 	if result {
@@ -564,7 +570,9 @@ func TestCheckDockerAvailableMock(t *testing.T) {
 	}
 
 	// CI가 설정된 시나리오 (실제 Docker 설치 여부는 시스템에 따라 다름)
-	os.Setenv("CI", "1")
+	if err := os.Setenv("CI", "1"); err != nil {
+		t.Fatalf("failed to set CI: %v", err)
+	}
 	result = checkDockerAvailable()
 
 	t.Logf("checkDockerAvailable() with CI=1 = %v", result)
@@ -614,6 +622,13 @@ func TestValidateSandboxConfiguration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateSandboxConfiguration(tt.opts)
+			// For the "valid configuration" case, the recommended backend may not be installed
+			// in CI or dev environments. Skip if the only error is backend unavailability.
+			if !tt.wantErr && err != nil {
+				if isErrSandboxRequired(err) {
+					t.Skipf("skipping: %v", err)
+				}
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateSandboxConfiguration() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -653,6 +668,15 @@ func TestSanitizePath(t *testing.T) {
 			}
 		})
 	}
+}
+
+// isErrSandboxRequired reports whether err wraps ErrSandboxRequired.
+// Used to skip tests when the recommended backend is simply not installed.
+func isErrSandboxRequired(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), ErrSandboxRequired.Error())
 }
 
 func TestGetSandboxBackendForRole(t *testing.T) {
