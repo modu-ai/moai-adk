@@ -14,7 +14,7 @@ lifecycle: spec-anchored
 depends_on: []
 related_specs: [SPEC-V3R3-MX-INJECT-001, SPEC-CI-MULTI-LLM-001]
 phase: "v3.0.0 R3 — CI/CD Autonomy"
-module: "internal/cli/branch_new.go, internal/template/templates/.git_hooks/, internal/template/templates/.github/workflows/, internal/template/templates/.claude/skills/moai-workflow-ci-watch/, scripts/ci-mirror/, .claude/rules/moai/development/branch-origin-protocol.md"
+module: "internal/bodp/, internal/cli/worktree/new.go, internal/cli/status.go, internal/template/templates/.git_hooks/, internal/template/templates/.github/workflows/, internal/template/templates/.claude/skills/moai-workflow-ci-watch/, .claude/skills/moai/workflows/plan.md, scripts/ci-mirror/, .claude/rules/moai/development/branch-origin-protocol.md"
 tags: "ci-mirror, auto-fix-loop, worktree-state-guard, auxiliary-workflow-hygiene, branch-protection, branch-origin-decision-protocol, i18n-validator, v3r3"
 related_theme: "Quality Pipeline Autonomy + GitHub Flow Hardening"
 ---
@@ -217,37 +217,46 @@ CI/CD 품질 파이프라인을 사용자 개입 없이 자율적으로 실행·
 
 ### 3.8 T8 — Branch Origin Decision Protocol (BODP)
 
-**Architecture decision (resolves F-001 audit finding)**: BODP is delivered as a two-component system to comply with the AskUserQuestion-orchestrator-only HARD constraint:
-- **Slash command `/moai branch new`** (orchestrator scope, AskUserQuestion-capable) — primary user-facing entry
-- **CLI binary `moai branch new`** (non-interactive executor, NO AskUserQuestion) — used by the slash command and for automation/scripts via positional flags
+**Design principle (resolves user critique 2026-05-05)**: BODP is implemented as **behavior inside existing branch-creation entry points**, NOT as new slash commands or CLI subcommands. User-facing surface remains unchanged; BODP is invisible to users who already use `/moai plan --branch`, `/moai plan --worktree`, and `moai worktree new`. Goal: minimize cognitive load + avoid command proliferation.
 
-**REQ-CIAUT-042a (Ubiquitous)**: The MoAI orchestrator **shall** provide a slash command `/moai branch new <branch-name> [--spec SPEC-XXX]` that runs the BODP algorithm with AskUserQuestion confirmation in orchestrator scope.
+**Existing entry points (reused without breaking changes)**:
 
-**REQ-CIAUT-042b (Ubiquitous)**: The CLI binary **shall** provide a `moai branch new <branch-name> [--spec SPEC-XXX] [--main | --stack | --continue]` non-interactive executor used by the slash command and for direct invocation in CI/automation contexts. The CLI **shall NOT** invoke AskUserQuestion (HARD per `.claude/rules/moai/core/askuser-protocol.md`).
+| Entry Point | 위치 | 기존 동작 | BODP 추가 |
+|------------|------|----------|----------|
+| `/moai plan --branch [name]` | `.claude/skills/moai/workflows/plan.md` Phase 3 Branch Path | `feature/SPEC-{ID}-{desc}` 생성 (현재 HEAD에서) | 생성 전 BODP 검사 + AskUserQuestion으로 base 선택 |
+| `/moai plan --worktree` | `.claude/skills/moai/workflows/plan.md` Phase 3 Worktree Path | `moai worktree new` 호출 | worktree 호출 전 BODP 검사 + base 결정 |
+| `moai worktree new <SPEC-ID>` | `internal/cli/worktree/new.go` | 현재 HEAD에서 worktree 생성 | default = origin/main; `--from-current` flag로 opt-out |
+| raw `git checkout -b ...` | git 자체 | MoAI 무관 | `moai status`가 audit trail 부재 감지 → reminder |
 
-**REQ-CIAUT-043 (Event-Driven)**: **When** the slash command or CLI is invoked, the system **shall** run a 3-axis relatedness check:
-- (a) Does the new work depend on the current branch's commits? (signal: SPEC-ID dependency in `--spec` argument matches current branch's diff vs main; file-path overlap)
-- (b) Are working tree untracked files related to the new work? (signal: SPEC-ID directory match in `git status --porcelain` untracked entries)
-- (c) Is there an open PR with current branch as head, that new work should stack on? (signal: `gh pr list --head <current> --state open` returns ≥1 PR)
+**REQ-CIAUT-042 (Event-Driven)**: **When** `/moai plan --branch` is invoked, the orchestrator **shall** run the BODP relatedness check (REQ-044) before delegating branch creation to `manager-git`. The orchestrator **shall** present the user with a base-branch choice via AskUserQuestion when relatedness signals are present, and pass the chosen base to `manager-git` as a parameter.
 
-**REQ-CIAUT-044 (Event-Driven)**: **When** invoked via `/moai branch new` AND all 3 relatedness signals are negative, the orchestrator **shall** recommend "main에서 분기" (branch from main) as the first AskUserQuestion option, marked `(권장)`. **When** invoked via the CLI without a `--main|--stack|--continue` flag, the CLI **shall** print the recommendation as text + exit non-zero, requiring the user to re-run with the chosen flag.
+**REQ-CIAUT-043 (Event-Driven)**: **When** `/moai plan --worktree` is invoked, the orchestrator **shall** run the same BODP check before invoking `moai worktree new`. The chosen base branch **shall** be propagated via a new flag `--base <branch>` on `moai worktree new`.
 
-**REQ-CIAUT-045 (Event-Driven)**: **When** signal (a) is positive, the orchestrator (slash command path) **shall** recommend "현재 브랜치에서 분기 (stacked PR)" as the first AskUserQuestion option with rationale citing the detected dependency. The CLI (flag path) **shall** print the recommendation and require explicit `--stack` flag.
+**REQ-CIAUT-043b (Event-Driven)**: **When** `moai worktree new <SPEC-ID>` CLI is invoked directly (bypassing `/moai plan`), it **shall** default to `origin/main` as the base. A new flag `--from-current` **shall** allow opt-out (preserve old default of current HEAD). The CLI **shall NOT** invoke AskUserQuestion (orchestrator-only HARD per `.claude/rules/moai/core/askuser-protocol.md`); decisions in this path are flag-based only.
 
-**REQ-CIAUT-046 (Event-Driven)**: **When** signal (b) is positive, the orchestrator **shall** recommend "현재 브랜치에 계속 작업" as the first AskUserQuestion option. The CLI **shall** print the recommendation and require explicit `--continue` flag.
+**REQ-CIAUT-044 (Event-Driven)**: BODP relatedness check **shall** evaluate three signals on every invocation:
+- (a) Does the new SPEC depend on the current branch's commits? (signal: SPEC `depends_on:` field referencing an in-progress SPEC on this branch; file-path overlap with current branch's diff vs main)
+- (b) Are working tree untracked files related to the new SPEC? (signal: SPEC-ID directory match in `git status --porcelain` untracked entries)
+- (c) Is there an open PR with current branch as head? (signal: `gh pr list --head <current> --state open` returns ≥1 PR)
 
-**REQ-CIAUT-047 (Event-Driven)**: **When** signal (c) is positive, the orchestrator **shall** recommend "stacked PR (base=현재 브랜치)" as the first AskUserQuestion option AND warn about the parent-merge gotcha (CLAUDE.local.md §18.11 Case Study). The CLI **shall** print the recommendation + warning and require explicit `--stack` flag.
+**REQ-CIAUT-045 (Event-Driven)**: **When** all 3 signals are negative, the orchestrator (slash command path) **shall** recommend "main에서 분기" (branch from `origin/main`) as the first AskUserQuestion option marked `(권장)`. The CLI path uses `origin/main` automatically without prompting.
 
-**REQ-CIAUT-048 (Ubiquitous)**: After confirmation (orchestrator AskUserQuestion or CLI flag), the system **shall** execute the appropriate git commands:
+**REQ-CIAUT-046 (Event-Driven)**: **When** signal (a) is positive, the orchestrator **shall** recommend "현재 브랜치에서 분기 (stacked PR)" as the first option with rationale citing the detected dependency.
+
+**REQ-CIAUT-047 (Event-Driven)**: **When** signal (b) is positive, the orchestrator **shall** recommend "현재 브랜치에 계속 작업" as the first option (no new branch creation; user proceeds on current).
+
+**REQ-CIAUT-047b (Event-Driven)**: **When** signal (c) is positive, the orchestrator **shall** recommend "stacked PR (base=현재 브랜치)" as the first option and warn about parent-merge gotcha (CLAUDE.local.md §18.11 Case Study).
+
+**REQ-CIAUT-048 (Ubiquitous)**: After confirmation (slash command AskUserQuestion or CLI flag default), the existing branch-creation handler **shall** execute the appropriate git commands with the chosen base:
 - main 분기: `git fetch origin main && git checkout -B <new> origin/main`
 - stacked: `git checkout -B <new>` (from current HEAD)
-- continue: no-op, just log decision
+- continue: no-op, just record decision
 
-**REQ-CIAUT-049 (Ubiquitous)**: Every BODP decision **shall** be recorded at `.moai/branches/decisions/<branch-name>.md` with: timestamp, invocation path (`slash` or `cli`), current branch, relatedness signals (a/b/c with evidence), user choice, executed command — for audit trail.
+**REQ-CIAUT-049 (Ubiquitous)**: Every BODP decision **shall** be recorded at `.moai/branches/decisions/<branch-name>.md` with: timestamp, invocation entry point (`plan-branch`, `plan-worktree`, `worktree-cli`), current branch, relatedness signals (a/b/c with evidence), user choice, executed command — for audit trail.
 
-**REQ-CIAUT-050 (Unwanted Behavior)**: **If** the user invokes raw `git checkout -b` without going through `/moai branch new` or `moai branch new`, **then** the system **shall NOT** intervene (BODP is opt-in), but the next `moai status` invocation **shall** detect off-protocol branch creation and emit a friendly reminder.
+**REQ-CIAUT-050 (Unwanted Behavior)**: **If** the user invokes raw `git checkout -b` (bypassing all MoAI entry points), **then** the system **shall NOT** intervene (BODP is opt-in via the existing entry points), but the next `moai status` invocation **shall** detect the off-protocol branch (absence of audit trail file) and emit a friendly reminder pointing to `/moai plan --branch` or `moai worktree new` as the BODP-aware paths.
 
-**REQ-CIAUT-051 (Ubiquitous)**: CLAUDE.local.md §18 (Enhanced GitHub Flow) **shall** be amended with a new subsection §18.12 (Branch Origin Decision Protocol) that documents the algorithm, default recommendation, and both invocation paths (slash command + CLI).
+**REQ-CIAUT-051 (Ubiquitous)**: CLAUDE.local.md §18 (Enhanced GitHub Flow) **shall** be amended with a new subsection §18.12 (Branch Origin Decision Protocol) that documents the algorithm, the three existing entry points where BODP is enforced, and the raw-git-checkout reminder. **No new slash command or CLI subcommand is introduced.**
 
 ---
 

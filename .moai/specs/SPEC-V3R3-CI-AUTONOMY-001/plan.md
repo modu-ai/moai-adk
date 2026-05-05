@@ -266,31 +266,31 @@ priority-based, no time estimates (per CLAUDE.md §4 + agent-common-protocol §T
 
 ---
 
-## 9. Wave 7 — Branch Origin Decision Protocol (T8) — ~9 tasks
+## 9. Wave 7 — Branch Origin Decision Protocol (T8) — ~6 tasks
 
-**Goal**: 새 브랜치 생성 시 main에서 분기를 default로 강제. 관련성 있는 경우만 stacked PR.
+**Goal**: 새 브랜치 생성 시 main에서 분기를 default로 강제. **새 명령어 추가 없이** 기존 entry points (`/moai plan --branch`, `/moai plan --worktree`, `moai worktree new`)에 BODP 로직 내장.
 
 **Files**:
-- `internal/cli/branch_new.go` (new)
-- `internal/cli/branch_new_test.go` (new)
-- `internal/cli/cmd_branch.go` (new, `moai branch` parent command)
+- `internal/bodp/relatedness.go` (new) — 3-signal check + decision matrix (pure-Go library, no CLI)
+- `internal/bodp/relatedness_test.go` (new)
+- `internal/bodp/audit_trail.go` (new) — `.moai/branches/decisions/<branch>.md` writer
+- `.claude/skills/moai/workflows/plan.md` Phase 3 (extend Branch Path + Worktree Path with BODP gate)
+- `internal/cli/worktree/new.go` (extend with `--from-current` flag + default origin/main + BODP audit trail)
+- `internal/cli/status.go` (extend with off-protocol branch detection)
 - `internal/template/templates/.claude/rules/moai/development/branch-origin-protocol.md` (new)
-- `CLAUDE.local.md` §18.12 추가 (extend)
+- `internal/template/templates/CLAUDE.local.md` §18.12 추가 (mirror)
 - `.moai/branches/decisions/.gitkeep` (new directory)
 
 **Tasks**:
 
-> Architecture (audit F-001 resolved): 2-component delivery — `/moai branch new` slash command (orchestrator, AskUserQuestion-capable) + `moai branch new` CLI executor (positional flags `--main|--stack|--continue`, no AskUserQuestion).
+> Architecture (resolves user critique 2026-05-05): 새 슬래시 명령/CLI 서브명령 ZERO. 기존 `/moai plan --branch`, `/moai plan --worktree`, `moai worktree new` 핸들러에 BODP 로직 내장. T8 작업량 9 → 6 tasks (~33% 감소).
 
-1. **W7-T01**: `moai branch` parent command + `moai branch new <name> [--spec SPEC-XXX] [--main|--stack|--continue]` CLI 등록 (cobra)
-2. **W7-T02**: relatedness signal (a) — SPEC-ID dependency check (현재 브랜치 diff vs main에서 SPEC-ID 추출 후 `--spec` argument와 매칭)
-3. **W7-T03**: relatedness signal (b) — `git status --porcelain` untracked entries에서 SPEC-ID 디렉토리 추출
-4. **W7-T04**: relatedness signal (c) — `gh pr list --head <current> --state open` 결과 카운트
-5. **W7-T05**: 신호 → 권장 옵션 매핑 함수 (CLI에서는 stdout text 출력, slash command에서는 AskUserQuestion option ranking 입력)
-6. **W7-T06**: `/moai branch new` slash command 구현 (`.claude/skills/moai/workflows/branch.md` 또는 별도 skill) — orchestrator 측에서 AskUserQuestion → CLI invoke `moai branch new <name> --<choice>`
-7. **W7-T07**: 결정 후 git command 실행 (main 분기 / stacked / continue) — CLI 측에서 수행
-8. **W7-T08**: audit trail `.moai/branches/decisions/<branch-name>.md` writer (timestamp, invocation path slash|cli, current branch, signals, decision, command)
-9. **W7-T09**: `moai status` 확장 — off-protocol 브랜치 (raw `git checkout -b`) 감지 시 friendly reminder + CLAUDE.local.md §18.12 BODP subsection 추가 + `branch-origin-protocol.md` rule 작성
+1. **W7-T01**: BODP 라이브러리 `internal/bodp/relatedness.go` — 3-signal check 함수 + decision matrix. Pure-Go 모듈, CLI 또는 슬래시 명령 ZERO. 단위 테스트 4-5 case (all-negative, signal-a-only, signal-b-only, signal-c-only).
+2. **W7-T02**: `/moai plan` skill body Phase 3 확장 — Branch Path와 Worktree Path 모두에서 manager-git 위임 전 BODP 검사 + AskUserQuestion으로 base 결정 + 결정사항을 manager-git에게 parameter로 전달
+3. **W7-T03**: `moai worktree new` CLI (`internal/cli/worktree/new.go`) 확장 — default base를 `origin/main`으로 변경, `--from-current` flag로 기존 동작 opt-out. 변경 전 audit trail 기록.
+4. **W7-T04**: `internal/bodp/audit_trail.go` writer — `.moai/branches/decisions/<branch>.md` 생성 (timestamp, invocation path, signals, decision, command). W7-T02 + W7-T03에서 호출.
+5. **W7-T05**: `moai status` 확장 — `.moai/branches/decisions/`에 audit trail 없는 off-protocol 브랜치 감지 시 friendly reminder ("이 브랜치는 BODP 경로 외에서 생성되었습니다. 향후 `/moai plan --branch` 또는 `moai worktree new` 사용 권장")
+6. **W7-T06**: 문서화 — `CLAUDE.local.md` §18.12 신규 subsection (BODP 알고리즘, 3개 entry points, raw-git-checkout reminder) + `.claude/rules/moai/development/branch-origin-protocol.md` rule + Template-First mirror
 
 **Tests**:
 - `internal/cli/branch_new_test.go` — 4개 signal scenario 테이블 기반 (all negative / a only / b only / c only / a+c)
@@ -345,22 +345,29 @@ regex/keyword set:
 
 snapshot은 in-memory struct, divergence는 deterministic comparison. `untracked` set은 sorted slice.
 
-### 10.5 BODP 2-Component Architecture (T8)
+### 10.5 BODP Embedded-in-Existing-Entries Pattern (T8)
 
-audit finding F-001로 해결: BODP는 두 component로 분리하여 AskUserQuestion-orchestrator-only HARD 준수.
+User critique resolution (2026-05-05): "추가 명령어는 자제. 기존 명령어 옵션을 분석해서 제대로 사용하자". BODP는 **새 명령어 0개**, 기존 entry points 3개에 동작 내장.
 
-**Component A — Slash command `/moai branch new`** (orchestrator scope):
-- AskUserQuestion으로 사용자 confirmation 수행
-- relatedness check 결과에 따라 권장 옵션 ranking
-- 사용자 선택 후 CLI binary로 실제 git command 위임 (`moai branch new <name> --main` 등)
+**Existing entries reused**:
 
-**Component B — CLI binary `moai branch new`** (non-interactive executor):
-- positional flag 기반: `--main` / `--stack` / `--continue`
-- AskUserQuestion 호출 금지 (HARD per `.claude/rules/moai/core/askuser-protocol.md`)
-- flag 없이 직접 실행 시: relatedness check 결과 출력 + non-zero exit (사용자가 flag 선택해 재실행)
-- audit trail 기록은 항상 실행 (`.moai/branches/decisions/<branch>.md`)
+1. **`/moai plan --branch`** (skill, orchestrator):
+   - 현재: `manager-git` 위임 → `feature/SPEC-{ID}-{desc}` 생성 (현재 HEAD에서)
+   - 변경: 위임 직전 BODP 검사 → AskUserQuestion(권장 base) → 사용자 선택을 manager-git에 parameter로 전달
 
-cobra command 패턴은 기존 `moai cg`, `moai glm` 재사용. CLI는 자동화/CI 스크립트에서 사용 가능.
+2. **`/moai plan --worktree`** (skill, orchestrator):
+   - 현재: `moai worktree new <SPEC-ID>` 호출
+   - 변경: 호출 직전 BODP → AskUserQuestion → `moai worktree new <SPEC-ID> --base <chosen>` (W7-T03 신규 flag)
+
+3. **`moai worktree new <SPEC-ID>`** (CLI):
+   - 현재: 현재 HEAD에서 worktree 생성
+   - 변경: default base = `origin/main`. `--from-current` flag로 기존 동작 opt-out. AskUserQuestion 호출 안 함 (HARD orchestrator-only). 호출 시 자동 audit trail 기록.
+
+**Library design**:
+- `internal/bodp/relatedness.go` — 3-signal check 함수 (3개 entry에서 공유)
+- `internal/bodp/audit_trail.go` — `.moai/branches/decisions/` writer
+
+**Cognitive load**: 사용자는 **새 명령어를 학습할 필요 없음**. 기존 `/moai plan --branch` 흐름이 자동으로 더 안전해짐.
 
 ---
 
