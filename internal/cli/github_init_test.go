@@ -25,6 +25,20 @@ func TestNewInitCmd(t *testing.T) {
 	}
 }
 
+// TestNewInitCmd_YesBranchProtectionFlag verifies the --yes-branch-protection flag exists.
+func TestNewInitCmd_YesBranchProtectionFlag(t *testing.T) {
+	cmd := newInitCmd()
+
+	flag := cmd.Flags().Lookup("yes-branch-protection")
+	if flag == nil {
+		t.Fatal("--yes-branch-protection flag should be defined on the init command")
+	}
+
+	if flag.DefValue != "false" {
+		t.Errorf("--yes-branch-protection default should be false, got %q", flag.DefValue)
+	}
+}
+
 func TestRunInit(t *testing.T) {
 	tests := []struct {
 		name    string
