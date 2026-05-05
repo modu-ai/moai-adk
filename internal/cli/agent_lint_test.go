@@ -431,7 +431,9 @@ name: test
 
 		tmpDir := t.TempDir()
 		path := filepath.Join(tmpDir, "agent1.md")
-		os.WriteFile(path, []byte(content), 0644)
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("write agent file: %v", err)
+		}
 
 		violations := checkDuplicateMandateBlocks([]string{path})
 
@@ -460,8 +462,12 @@ name: test2
 		tmpDir := t.TempDir()
 		path1 := filepath.Join(tmpDir, "agent1.md")
 		path2 := filepath.Join(tmpDir, "agent2.md")
-		os.WriteFile(path1, []byte(content1), 0644)
-		os.WriteFile(path2, []byte(content2), 0644)
+		if err := os.WriteFile(path1, []byte(content1), 0644); err != nil {
+			t.Fatalf("write agent file 1: %v", err)
+		}
+		if err := os.WriteFile(path2, []byte(content2), 0644); err != nil {
+			t.Fatalf("write agent file 2: %v", err)
+		}
 
 		violations := checkDuplicateMandateBlocks([]string{path1, path2})
 
@@ -495,8 +501,12 @@ skills:
 		tmpDir := t.TempDir()
 		path1 := filepath.Join(tmpDir, "agent1.md")
 		path2 := filepath.Join(tmpDir, "agent2.md")
-		os.WriteFile(path1, []byte(content1), 0644)
-		os.WriteFile(path2, []byte(content2), 0644)
+		if err := os.WriteFile(path1, []byte(content1), 0644); err != nil {
+			t.Fatalf("write agent file 1: %v", err)
+		}
+		if err := os.WriteFile(path2, []byte(content2), 0644); err != nil {
+			t.Fatalf("write agent file 2: %v", err)
+		}
 
 		violations := checkSkillPreloadDrift([]string{path1, path2})
 
@@ -524,8 +534,12 @@ skills:
 		tmpDir := t.TempDir()
 		path1 := filepath.Join(tmpDir, "agent1.md")
 		path2 := filepath.Join(tmpDir, "agent2.md")
-		os.WriteFile(path1, []byte(content1), 0644)
-		os.WriteFile(path2, []byte(content2), 0644)
+		if err := os.WriteFile(path1, []byte(content1), 0644); err != nil {
+			t.Fatalf("write agent file 1: %v", err)
+		}
+		if err := os.WriteFile(path2, []byte(content2), 0644); err != nil {
+			t.Fatalf("write agent file 2: %v", err)
+		}
 
 		violations := checkSkillPreloadDrift([]string{path1, path2})
 
@@ -551,7 +565,9 @@ AskUserQuestion here`
 
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "test.md")
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
 
 	// We can't easily run the full cobra command here,
 	// but we can test the output structure

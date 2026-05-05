@@ -148,7 +148,7 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 
 	if len(agentFiles) == 0 {
 		out := cmd.OutOrStdout()
-		fmt.Fprintf(out, "No agent files found in %s\n", strings.Join(scanPaths, ", "))
+		_, _ = fmt.Fprintf(out, "No agent files found in %s\n", strings.Join(scanPaths, ", "))
 		return nil
 	}
 
@@ -198,11 +198,11 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("marshal JSON: %w", err)
 		}
-		fmt.Fprintln(out, string(data))
+		_, _ = fmt.Fprintln(out, string(data))
 	} else {
 		// Text format
 		if len(allViolations) == 0 {
-			fmt.Fprintf(out, "%s No violations found\n", cliSuccess.Render("✓"))
+			_, _ = fmt.Fprintf(out, "%s No violations found\n", cliSuccess.Render("✓"))
 		} else {
 			for _, v := range allViolations {
 				icon := "⚠"
@@ -212,9 +212,9 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 				} else {
 					icon = cliWarn.Render(icon)
 				}
-				fmt.Fprintf(out, "%s [%s] %s:%d: %s\n", icon, v.Rule, v.File, v.Line, v.Message)
+				_, _ = fmt.Fprintf(out, "%s [%s] %s:%d: %s\n", icon, v.Rule, v.File, v.Line, v.Message)
 			}
-			fmt.Fprintf(out, "\nSummary: %d total (%d errors, %d warnings)\n", len(allViolations), errors, warnings)
+			_, _ = fmt.Fprintf(out, "\nSummary: %d total (%d errors, %d warnings)\n", len(allViolations), errors, warnings)
 		}
 	}
 

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -323,12 +322,12 @@ func ClaimTask(stateDir, teamID, teammateID, taskID string) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	// Acquire exclusive lock
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+	// Acquire exclusive lock (platform-specific implementation in team_spawn_lock_*.go)
+	if err := lockFile(f); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}
 	defer func() {
-		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		_ = unlockFile(f)
 	}()
 
 	// Read current content to find task
