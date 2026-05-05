@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,8 @@ func TestInstallPrePushHook_FreshRepo(t *testing.T) {
 	}
 
 	// Verify executable bit is set (mode & 0o111).
-	if info.Mode()&0o111 == 0 {
+	// Windows does not support Unix executable bits; skip this check on Windows.
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 		t.Errorf("hook file is not executable: mode %v", info.Mode())
 	}
 
