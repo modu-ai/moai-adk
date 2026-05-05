@@ -102,7 +102,7 @@ Key technologies: Dart, Flutter SDK, Provider/Riverpod/BLoC, go_router, Dio, Pla
 - Backend API design: Delegate to expert-backend
 - Security audit: Delegate to expert-security
 - DevOps deployment: Delegate to expert-devops
-- DDD implementation: Delegate to manager-ddd
+- DDD implementation: Delegate to manager-cycle
 
 ## Escalation Protocol
 

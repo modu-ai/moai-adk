@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["reference", "pattern", "flag", "config", "resume", "legacy", "mapping"]
-  agents: ["manager-spec", "manager-ddd", "manager-tdd", "manager-docs", "manager-quality", "manager-git"]
+  agents: ["manager-spec", "manager-cycle", "manager-tdd", "manager-docs", "manager-quality", "manager-git"]
   phases: ["plan", "run", "sync"]
 ---
 

@@ -2,7 +2,7 @@
 name: moai-workflow-run
 description: >
   DDD/TDD implementation workflow for SPEC requirements. Second step
-  of the Plan-Run-Sync workflow. Routes to manager-ddd or manager-tdd based
+  of the Plan-Run-Sync workflow. Routes to manager-cycle or manager-tdd based
   on quality.yaml development_mode setting.
 user-invocable: false
 metadata:
@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["run", "implement", "build", "create", "develop", "code"]
-  agents: ["manager-ddd", "manager-tdd", "manager-strategy", "manager-quality", "manager-git"]
+  agents: ["manager-cycle", "manager-tdd", "manager-strategy", "manager-quality", "manager-git"]
   phases: ["run"]
 ---
 
@@ -537,7 +537,7 @@ See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 Before Phase 2, determine the development methodology by reading `.moai/config/sections/quality.yaml`:
 
 **If development_mode is "ddd":**
-- Route all tasks to manager-ddd subagent
+- Route all tasks to manager-cycle subagent
 - Use ANALYZE-PRESERVE-IMPROVE cycle (see @spec-workflow.md for details)
 
 **If development_mode is "tdd":**
@@ -596,11 +596,11 @@ If no delta markers are present in the SPEC, delta processing is silently skippe
 
 ### Phase 2: Implementation (Mode-Dependent)
 
-**[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-ddd, manager-tdd) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See "Worktree Path Rules [HARD]" section above.
+**[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-cycle, manager-tdd) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See "Worktree Path Rules [HARD]" section above.
 
 #### Phase 2A: DDD Implementation (for ddd mode)
 
-Agent: manager-ddd subagent
+Agent: manager-cycle subagent
 
 Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
 
@@ -616,7 +616,7 @@ Output: files_modified list, characterization_tests_created list, test_results (
 
 Implementation Divergence Tracking:
 
-The manager-ddd subagent must track deviations from the original SPEC plan during implementation:
+The manager-cycle subagent must track deviations from the original SPEC plan during implementation:
 
 - planned_files: Files listed in plan.md that were expected to be created or modified
 - actual_files: Files actually created or modified during the DDD cycle
@@ -980,7 +980,7 @@ All of the following must be verified:
 - Phase 0.95: SPEC has 8 files, 2 domains → Standard Mode selected
 - Phase 1: manager-strategy creates execution plan with 5 tasks
 - Decision Point: User approves plan
-- Phase 2: Implementation via manager-ddd (DDD mode)
+- Phase 2: Implementation via manager-cycle (DDD mode)
 - Phase 2.5: TRUST 5 validation passes
 - Phase 3: Commits created on feature branch
 

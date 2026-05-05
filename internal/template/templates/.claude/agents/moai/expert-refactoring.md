@@ -51,7 +51,7 @@ OUT OF SCOPE:
 ## Delegation Protocol
 
 - Errors after refactoring: Delegate to expert-debug
-- Tests after refactoring: Delegate to manager-ddd
+- Tests after refactoring: Delegate to manager-cycle
 - Quality validation: Delegate to manager-quality
 - Security pattern review: Delegate to expert-security
 

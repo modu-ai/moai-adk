@@ -66,6 +66,28 @@ Enforcement layers (defense in depth):
 
 ---
 
+## Flag: --from-brain IDEA-NNN
+
+<!-- Verifies REQ-BRAIN-007: /moai project --from-brain consumes proposal.md -->
+
+When invoked as `/moai project --from-brain IDEA-NNN`:
+
+1. **Load brain context**: Read `.moai/brain/IDEA-NNN/proposal.md` before any Phase 0 detection.
+2. **Prepend to generation prompt**: The proposal.md content becomes the primary product scope input — it takes precedence over codebase scanning for product vision.
+3. **Precedence order**: `proposal.md` (primary) > codebase scan (secondary) > interview answers (tertiary).
+4. **Skip redundant interview questions**: When `--from-brain` is set, Phase 0.3 / Phase 1.5 interview MAY skip questions already answered in the brain workflow (target user, core problem, success metric, scope).
+5. **Carry SPEC candidates forward**: If `proposal.md` contains a `### SPEC Decomposition Candidates` section, surface it in Phase 4 completion AskUserQuestion as "Recommended next steps from brain workflow" (informational — do NOT auto-create SPECs).
+
+[HARD] If `IDEA-NNN` directory does not exist or `proposal.md` is missing, emit a clear error:
+```
+Error: .moai/brain/IDEA-NNN/proposal.md not found.
+Run `/moai brain "<idea>"` first to generate a brain workflow output.
+```
+
+[HARD] `--from-brain` does NOT bypass the NO SPEC Generation scope boundary above. The prohibition on writing to `.moai/specs/` remains absolute.
+
+---
+
 ## Phase 0: Project Type Detection
 
 [HARD] Auto-detect project type by checking for existing source code files FIRST.

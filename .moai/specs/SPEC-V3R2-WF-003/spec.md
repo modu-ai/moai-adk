@@ -1,12 +1,14 @@
 ---
 id: SPEC-V3R2-WF-003
 title: Multi-Mode Router (--mode flag, loop/run/design)
-version: "0.1.0"
+version: "0.3.0"
 status: draft
-created: 2026-04-23
-updated: 2026-04-23
+created_at: 2026-04-23
+updated_at: 2026-05-04
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
-priority: P1 High
+priority: P1
+labels: [multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, v3]
+issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/skills/moai/workflows/, internal/cli/, .claude/commands/moai/"
 dependencies:
@@ -26,9 +28,11 @@ tags: "multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, 
 
 ## HISTORY
 
-| Version | Date       | Author | Description                                                             |
-|---------|------------|--------|-------------------------------------------------------------------------|
-| 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — unify /moai loop (Ralph) + /moai run + /moai design      |
+| Version | Date       | Author              | Description                                                                                                                                                  |
+|---------|------------|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0.1.0   | 2026-04-23 | Wave 2              | Initial SPEC — unify /moai loop (Ralph) + /moai run + /moai design                                                                                           |
+| 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P1 High"` → `P1`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. Stacked PR base: feature/SPEC-V3R2-WF-004 (PR #765). |
+| 0.3.0   | 2026-05-04 | MoAI Plan Workflow  | AC-WF003-16/17 추가 (REQ-WF003-007/015 매핑) — plan-auditor iteration 1 D1/D2 fix. §10 traceability claim 갱신 (15→17 ACs). EARS REQ 본문 변경 없음. |
 
 ---
 
@@ -182,6 +186,8 @@ The skill documentation **shall** publish a subcommand × mode matrix showing wh
 - **AC-WF003-13**: Given CLI `--mode autopilot` AND `workflow.yaml default_mode: team` When executed Then CLI wins and autopilot runs (maps REQ-WF003-018).
 - **AC-WF003-14**: Given Ralph loop reaches convergence When loop ends Then final iteration output is reported and loop terminates (maps REQ-WF003-017).
 - **AC-WF003-15**: Given `/moai design --mode import` When executed Then only design-import runs, skipping copy + brand (maps REQ-WF003-013).
+- **AC-WF003-16**: Given the published `## Subcommand Classification` section in `.claude/rules/moai/workflow/spec-workflow.md` (extended by SPEC-V3R2-WF-004 M4 and further by SPEC-V3R2-WF-003 M5) When inspected post-commit Then a matrix lists subcommand × mode validity (utility 5 = pipeline-only, implementation `run`/`design` = autopilot|loop|team, implementation `plan`/`sync`/`project`/`db` = mode-NA) (maps REQ-WF003-007).
+- **AC-WF003-17**: Given a future v3.x version that introduces a new mode value (e.g., `ultrawork`) When the existing `--mode` consumers parse the new value Then the schema accepts the addition without breaking REQ-WF003-001 valid-set enforcement (validated via documentation contract, no Go enum freeze) (maps REQ-WF003-015).
 
 ---
 
@@ -230,7 +236,7 @@ The skill documentation **shall** publish a subcommand × mode matrix showing wh
 ## 10. Traceability (추적성)
 
 - REQ 총 18개: Ubiquitous 7, Event-Driven 4, State-Driven 2, Optional 2, Complex 3.
-- AC 총 15개, 모든 REQ에 최소 1개 AC 매핑 (100% 커버리지).
+- AC 총 17개, 모든 REQ에 최소 1개 AC 매핑 (100% 커버리지: REQ-WF003-001..018 모두 매핑).
 - Wave 2 소스 앵커: pattern-library §O-4, R2 §3 OMC 6-mode, `.claude/rules/moai/workflow/workflow-modes.md`.
 - BC 영향: 없음 (additive flag, 기존 command behavior 보존).
 - 구현 경로 예상:

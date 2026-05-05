@@ -3,7 +3,6 @@ package subprocess_test
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -14,51 +13,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/subprocess"
 )
 
-// writeFakeBinary writes a minimal shell script to dir with the given name
-// and marks it executable. The script acts as a minimal "read from stdin, write
-// nothing" stub to allow pipe smoke tests without spawning real language servers.
-//
-// Implementation note (ETXTBSY mitigation):
-// On Linux, os.WriteFile followed immediately by fork/exec can fail with
-// "text file busy" (ETXTBSY) because the kernel still considers the file to be
-// open for writing when exec() is called. This is especially reproducible when
-// multiple t.Parallel() tests create and execute binaries concurrently.
-//
-// The fix is to explicitly Create → Write → Sync → Close the file *before*
-// applying executable permission via Chmod. That way, by the time the caller
-// invokes Launcher.Launch(), the kernel has closed all writer fds and fork/exec
-// succeeds. See:
-//   - https://github.com/golang/go/issues/22315 (os/exec: ETXTBSY on Linux)
-//   - https://github.com/golang/go/issues/3001 (ETXTBSY race in test helpers)
-func writeFakeBinary(t *testing.T, dir, name string) string {
-	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("shell script stubs not supported on Windows")
-	}
-	path := filepath.Join(dir, name)
-
-	// Minimal stub that reads stdin and writes nothing.
-	// ETXTBSY mitigation: close the writer fd before chmod.
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("writeFakeBinary create: %v", err)
-	}
-	if _, err := f.Write([]byte("#!/bin/sh\ncat\n")); err != nil {
-		_ = f.Close()
-		t.Fatalf("writeFakeBinary write: %v", err)
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		t.Fatalf("writeFakeBinary sync: %v", err)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatalf("writeFakeBinary close: %v", err)
-	}
-	if err := os.Chmod(path, 0o755); err != nil {
-		t.Fatalf("writeFakeBinary chmod: %v", err)
-	}
-	return path
-}
+// @MX:NOTE: [AUTO] launcher_test.go — fork-exec ETXTBSY race를 피하기 위해
+// fake binary가 필요한 테스트는 sharedFakeBinaryPath(t)로 패키지 전역 공유
+// 바이너리를 사용한다. 고유 파일이 필요한 테스트(TestLauncher_Launch_StartFails 등)만
+// t.TempDir() + os.WriteFile로 직접 생성한다.
+// @MX:SPEC: SPEC-LSP-FLAKY-001 REQ-LSP-FLAKY-001-001 ~ 005
 
 // launchWithETXTBSYRetry calls Launcher.Launch and retries up to maxAttempts
 // times when the kernel returns ETXTBSY ("text file busy") on Linux.
@@ -93,11 +52,12 @@ func launchWithETXTBSYRetry(t *testing.T, l *subprocess.Launcher, cfg config.Ser
 // TestLauncher_Launch_HappyPath verifies that Launcher.Launch succeeds when the
 // binary exists, returns a non-nil LaunchResult, and all three stdio pipes are
 // non-nil (REQ-LC-005).
+//
+// @MX:NOTE: [AUTO] HappyPath — 공유 fake binary 사용, ETXTBSY race 제거
 func TestLauncher_Launch_HappyPath(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
-	binPath := writeFakeBinary(t, dir, "fake-lsp")
+	binPath := sharedFakeBinaryPath(t)
 
 	cfg := config.ServerConfig{
 		Language: "go",
@@ -151,11 +111,12 @@ func TestLauncher_Launch_BinaryNotFound(t *testing.T) {
 
 // TestLauncher_Launch_StdioPipesNonNil verifies each stdio pipe is independently
 // non-nil and writable/readable (REQ-LC-005 isolation).
+//
+// @MX:NOTE: [AUTO] StdioPipesNonNil — 공유 fake binary 사용, ETXTBSY race 제거
 func TestLauncher_Launch_StdioPipesNonNil(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
-	binPath := writeFakeBinary(t, dir, "pipe-lsp")
+	binPath := sharedFakeBinaryPath(t)
 
 	cfg := config.ServerConfig{
 		Language: "typescript",
@@ -182,11 +143,12 @@ func TestLauncher_Launch_StdioPipesNonNil(t *testing.T) {
 
 // TestLauncher_Launch_WithArgs verifies that additional Args from ServerConfig
 // are forwarded to the subprocess (REQ-LC-005).
+//
+// @MX:NOTE: [AUTO] WithArgs — 공유 fake binary 사용, ETXTBSY race 제거
 func TestLauncher_Launch_WithArgs(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
-	binPath := writeFakeBinary(t, dir, "arg-lsp")
+	binPath := sharedFakeBinaryPath(t)
 
 	cfg := config.ServerConfig{
 		Language: "go",
@@ -251,6 +213,9 @@ func TestLauncher_Launch_EmptyCommand(t *testing.T) {
 
 // TestLauncher_Launch_StartFails verifies that Launch returns an error when the
 // binary exists but cannot be executed (e.g., not executable).
+//
+// 이 테스트는 비실행(0o644) 파일이 필요하므로 공유 fake binary를 사용할 수 없다.
+// exec()이 발생하지 않으므로 ETXTBSY race도 영향이 없다.
 func TestLauncher_Launch_StartFails(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -317,7 +282,6 @@ func TestLauncher_Launch_FallbackBinary(t *testing.T) {
 		t.Skip("shell script stubs not supported on Windows")
 	}
 
-	dir := t.TempDir()
 	// Primary binary does not exist; fallback binary is the real "sh"
 	cfg := config.ServerConfig{
 		Language:         "python",
@@ -325,7 +289,6 @@ func TestLauncher_Launch_FallbackBinary(t *testing.T) {
 		FallbackBinaries: []string{"also-does-not-exist-fallback-1", "sh"},
 		Args:             []string{"-c", "exit 0"},
 	}
-	_ = dir // dir not needed since we use "sh" from PATH
 
 	l := subprocess.NewLauncher()
 	result, err := launchWithETXTBSYRetry(t, l, cfg)

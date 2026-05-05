@@ -3,7 +3,7 @@ name: moai-workflow-mx-tag
 description: >
   @MX TAG annotation protocol reference for AI agent code context delivery.
   Provides detailed tag syntax grammar, fan-in analysis method, agent report
-  format, and edge case handling. Used by manager-ddd and manager-tdd agents.
+  format, and edge case handling. Used by manager-cycle and manager-tdd agents.
 user-invocable: false
 metadata:
   version: "2.5.0"
@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["mx", "tag", "annotation", "anchor", "invariant", "context"]
-  agents: ["manager-ddd", "manager-tdd", "manager-quality"]
+  agents: ["manager-cycle", "manager-tdd", "manager-quality"]
   phases: ["run"]
 ---
 

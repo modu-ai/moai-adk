@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -346,6 +348,11 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 }
 
 // injectTmuxSessionEnv sets GLM environment variables at the tmux session level.
+//
+// Issue #742: Pre-computes MOAI_STATUSLINE_CONTEXT_SIZE from the High slot
+// (Opus equivalent) so the Claude Code statusline reflects the real GLM model
+// context window (128K/200K/etc.) instead of the Claude slot's nominal size
+// (1M for the Opus slot).
 func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 	if isTestEnvironment() {
 		return nil
@@ -365,6 +372,12 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"DISABLE_PROMPT_CACHING":                    "1",
 		"API_TIMEOUT_MS":                            "3000000",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+	}
+
+	// Issue #742: Map the High slot model to its real context window so
+	// statusline gauge reflects GLM limits, not Claude's Opus slot 1M nominal.
+	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
+		vars[config.EnvStatuslineContextSize] = strconv.Itoa(size)
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -398,6 +411,8 @@ func clearTmuxSessionEnv() error {
 		"DISABLE_PROMPT_CACHING",
 		"API_TIMEOUT_MS",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+		// Issue #742: clear GLM context-size hint when leaving GLM mode
+		config.EnvStatuslineContextSize,
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -533,6 +548,14 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
 	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
+	// Issue #742: pre-compute statusline context size from the High slot
+	// (Opus equivalent) so SessionStart hook propagates it via tmux env.
+	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
+		settings.Env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
+	} else {
+		// Clean up stale value from a prior session that resolved a known model.
+		delete(settings.Env, config.EnvStatuslineContextSize)
+	}
 
 	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).

@@ -10,6 +10,9 @@ on:
       - main
   pull_request:
     types: [opened, reopened, synchronize]
+  # Manual trigger 옵션. Draft 가 stale 상태이거나 target_commitish 가 손상된 경우
+  # admin 이 직접 재실행할 수 있도록 workflow_dispatch 를 추가한다.
+  workflow_dispatch:
 
 permissions:
   contents: read

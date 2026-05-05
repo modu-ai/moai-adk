@@ -17,7 +17,7 @@ metadata:
   tags: "workflow, refactoring, ddd, domain-driven, behavior-preservation, ast-grep, characterization-tests"
   author: "MoAI-ADK Team"
   context: "fork"
-  agent: "manager-ddd"
+  agent: "manager-cycle"
   related-skills: "moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality"
 ---
 

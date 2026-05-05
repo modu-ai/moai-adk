@@ -2,7 +2,7 @@
 name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
-  language or subcommands (plan, run, sync, design, db, project, fix,
+  language or subcommands (brain, plan, run, sync, design, db, project, fix,
   loop, mx, feedback, review, clean, codemaps, coverage, e2e) to
   specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
@@ -55,6 +55,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 
 [HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
 
+- **brain** (aliases: ideate, idea): Pre-spec ideation workflow — 7-phase idea-to-proposal pipeline with Claude Design handoff package. Runs BEFORE project and plan.
 - **plan** (aliases: spec): SPEC document creation workflow
 - **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
@@ -113,7 +114,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mod
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
-Agents: manager-strategy, manager-ddd or manager-tdd (per quality.yaml), manager-quality, manager-git
+Agents: manager-strategy, manager-cycle or manager-tdd (per quality.yaml), manager-quality, manager-git
 Flags: --resume SPEC-XXX, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
@@ -215,7 +216,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/db.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-ddd/tdd, manager-quality, manager-docs, manager-git
+Agents: Explore, manager-spec, manager-cycle/tdd, manager-quality, manager-docs, manager-git
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
