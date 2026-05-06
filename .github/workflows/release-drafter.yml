@@ -8,10 +8,9 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    types: [opened, reopened, synchronize]
-  # Manual trigger 옵션. Draft 가 stale 상태이거나 target_commitish 가 손상된 경우
-  # admin 이 직접 재실행할 수 있도록 workflow_dispatch 를 추가한다.
+  # pull_request 트리거 제거 (2026-05): GitHub Releases API 가 PR ref(refs/pull/N/merge)를
+  # target_commitish 로 받지 못하므로 모든 PR check 가 빨간 X 노이즈로 남는 문제 발생.
+  # main push 시에만 draft 갱신; PR 단계에서 preview 가 필요하면 workflow_dispatch 사용.
   workflow_dispatch:
 
 permissions:
