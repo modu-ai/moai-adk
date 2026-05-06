@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R3-CI-AUTONOMY-001 Wave 2: CI Watch Loop
+
+### Added
+
+- **SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (T2)**: CI watch loop — `moai-workflow-ci-watch` skill + `gh pr checks` polling engine.
+  - `internal/ciwatch/` — Classifier (IsRequired via SSoT), WatchState (atomic YAML state file), Handoff (FailedCheck JSON schema for Wave 3 expert-debug).
+  - `internal/cli/pr/` — EmitReadyToMergeReport (markdown, `(권장)` first option), EmitFailureHandoff (JSON T3 pipe).
+  - `internal/cli/pr_watch_cmd.go` — `moai pr watch --abort` (SetAbortFlag) and `--report` subcommands.
+  - `scripts/ci-watch/` — POSIX sh polling loop (mock-injectable via `MOAI_CIWATCH_GH`), lib/_common.sh, lib/classify.sh (yq+grep fallback), lib/timeout.sh (30-min wall-clock guard).
+  - `.claude/skills/moai-workflow-ci-watch/` — 3-tier Progressive Disclosure skill (SKILL.md 222 lines, modules/).
+  - `.claude/rules/moai/workflow/ci-watch-protocol.md` — HARD invocation contract with auto-load paths frontmatter.
+  - Template-First: all .claude/ artifacts mirrored to `internal/template/templates/.claude/`.
+  - Coverage: ciwatch 87.6%, cli/pr 95.0%. Shell tests: 9/9 pass. make ci-local: PASS.
+
 ## [Unreleased] — SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub 호환성 수정 + manager-cycle 템플릿 정합화
 
 ### Bug Fixes
