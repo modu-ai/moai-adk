@@ -83,18 +83,39 @@
   - cache_source: Wave 1 audit (audit_at 2026-05-05T19:35Z, ~6h elapsed, ~18h remaining in 24h window)
   - spec_content_equivalence: cherry-pick from plan/ branch identical to Wave 1 audit baseline
   - hash_note: combined hash f885bb5a... differs from Wave 1 hash 48fc1f7d... (algorithm difference); content identity verified via git commit hash
-- Phase 1 (Strategy): in_progress
-  - delegated_to: manager-strategy
-  - target_artifacts: strategy-wave2.md, tasks-wave2.md
-- Phase 1.5 (Task Decomp + AC Init): pending
-- Phase 2 (TDD via Agent Teams): pending
-- Phase 2.5 (Quality TRUST 5): pending
-- Phase 2.75 (Pre-Review Gate): pending
-- Phase 2.8a (Evaluator-active): pending
-- Phase 2.8b (Static analysis): pending
-- Phase 2.9 (MX Update): pending
-- Phase 3 (Git Commit + PR): pending
-- Phase 4 (Handoff + auto-memory): pending
+- Phase 1 (Strategy): completed
+  - delegated_to: manager-strategy (agentId aa4b0def2a1ddcc20)
+  - artifacts: strategy-wave2.md, tasks-wave2.md
+  - decisions: OQ1 resolved (new skill `moai-workflow-ci-watch`), gh CLI polling schema, state file location, 8 atomic commits planned (executed as 6 with merges)
+- Phase 1.5 (Task Decomp + AC Init): completed (tasks-wave2.md table with 10 atomic tasks + AC mapping + file ownership)
+- Phase 2 (TDD via sub-agent): completed
+  - mode: sub-agent (NOT --team — structural mismatch between SPEC worktree and Agent isolation:worktree base; documented in PR #788 § "--team Structural Note")
+  - delegated_to: manager-tdd (agentId a5e2c8b6293ec9941)
+  - tasks: 10/10 (W2-T01 ~ W2-T10)
+  - commits: 6 (d48676292, 051998e51, 02eac00ae, 2c1025ef7 + 2 cherry-picked plan commits 821017178, 10fc20e33)
+  - LOC: ~3,600 (Go + Shell + Markdown)
+- Phase 2.5 (Quality TRUST 5): completed
+  - Tested: ciwatch 87.6%, cli/pr 91.7% (target 85%) PASS
+  - Readable: golangci-lint 0 issues PASS, shellcheck (skip locally — CI verified)
+  - Unified: gofmt + goimports clean PASS
+  - Secured: no token storage, no command injection, gh CLI handles auth PASS
+  - Trackable: 6 commits Conventional Commits + 🗿 MoAI co-author trailer PASS
+- Phase 2.75 (Pre-Review Gate): completed (`make ci-local` PASS, race detector clean, 6 cross-compile)
+- Phase 2.8a (Evaluator-active): completed
+  - verdict: PASS
+  - scores: Functionality 88, Security 88, Craft 85, Consistency 90 (all ≥75)
+  - findings: 1 MEDIUM (runPRWatchReport "0/0 pass" — follow-up before Wave 3) + 3 LOW (PR_NUMBER guard, BRANCH JSON escape, WriteState coverage) + 2 INFO (itoa, mixed-pending test)
+  - 0 CRITICAL, 0 HIGH
+- Phase 2.8b (Static analysis): completed (golangci-lint 0 issues, go vet clean throughout)
+- Phase 2.9 (MX Update): skipped (new functions all fan_in<3, no dangerous patterns; @MX:NOTE applied in handoff.go for FailedCheck schema, @MX:ANCHOR for state.go atomic write)
+- Phase 3 (Git Commit + PR): completed
+  - branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-2 → origin
+  - PR: #788 OPEN (https://github.com/modu-ai/moai-adk/pull/788)
+  - target: main (base origin/main 0b028bfaa)
+- Phase 4 (Handoff + auto-memory): in_progress
+  - lesson_added: pending — lessons.md #13 (--team + SPEC worktree 구조 모순)
+  - project_memory: pending — project_ciaut_wave2_complete.md
+  - resume_message: pending — paste-ready for Wave 3
 
 ### Wave 2 Task List (provisional, refined by manager-strategy)
 
