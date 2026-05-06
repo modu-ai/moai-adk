@@ -4,7 +4,10 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/lsp/config"
 	"github.com/modu-ai/moai-adk/internal/lsp/subprocess"
@@ -15,6 +18,36 @@ import (
 // 바이너리를 사용한다. 고유 파일이 필요한 테스트(TestLauncher_Launch_StartFails 등)만
 // t.TempDir() + os.WriteFile로 직접 생성한다.
 // @MX:SPEC: SPEC-LSP-FLAKY-001 REQ-LSP-FLAKY-001-001 ~ 005
+
+// launchWithETXTBSYRetry calls Launcher.Launch and retries up to maxAttempts
+// times when the kernel returns ETXTBSY ("text file busy") on Linux.
+//
+// ETXTBSY occurs when fork/exec is called while another goroutine still holds an
+// open write fd to the same executable, even after the file is closed by the
+// test helper. The race is reproducible under -race on Linux because the race
+// detector inserts additional instrumentation that shifts goroutine scheduling.
+// Retrying with linear backoff reliably resolves the race.
+//
+// Reference: https://github.com/golang/go/issues/22315
+func launchWithETXTBSYRetry(t *testing.T, l *subprocess.Launcher, cfg config.ServerConfig) (*subprocess.LaunchResult, error) {
+	t.Helper()
+	const maxAttempts = 5
+	var result *subprocess.LaunchResult
+	var err error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		result, err = l.Launch(t.Context(), cfg)
+		if err == nil {
+			return result, nil
+		}
+		if errors.Is(err, syscall.ETXTBSY) || strings.Contains(err.Error(), "text file busy") {
+			time.Sleep(time.Duration(50*(attempt+1)) * time.Millisecond)
+			continue
+		}
+		// Non-ETXTBSY error — return immediately.
+		return nil, err
+	}
+	return result, err
+}
 
 // TestLauncher_Launch_HappyPath verifies that Launcher.Launch succeeds when the
 // binary exists, returns a non-nil LaunchResult, and all three stdio pipes are
@@ -32,7 +65,7 @@ func TestLauncher_Launch_HappyPath(t *testing.T) {
 	}
 
 	l := subprocess.NewLauncher()
-	result, err := l.Launch(t.Context(), cfg)
+	result, err := launchWithETXTBSYRetry(t, l, cfg)
 	if err != nil {
 		t.Fatalf("Launch returned unexpected error: %v", err)
 	}
@@ -92,7 +125,7 @@ func TestLauncher_Launch_StdioPipesNonNil(t *testing.T) {
 	}
 
 	l := subprocess.NewLauncher()
-	result, err := l.Launch(t.Context(), cfg)
+	result, err := launchWithETXTBSYRetry(t, l, cfg)
 	if err != nil {
 		t.Fatalf("Launch: %v", err)
 	}
@@ -124,7 +157,7 @@ func TestLauncher_Launch_WithArgs(t *testing.T) {
 	}
 
 	l := subprocess.NewLauncher()
-	result, err := l.Launch(t.Context(), cfg)
+	result, err := launchWithETXTBSYRetry(t, l, cfg)
 	if err != nil {
 		t.Fatalf("Launch with args: %v", err)
 	}
@@ -258,7 +291,7 @@ func TestLauncher_Launch_FallbackBinary(t *testing.T) {
 	}
 
 	l := subprocess.NewLauncher()
-	result, err := l.Launch(t.Context(), cfg)
+	result, err := launchWithETXTBSYRetry(t, l, cfg)
 	if err != nil {
 		t.Fatalf("Launch with fallback to 'sh': unexpected error = %v", err)
 	}
