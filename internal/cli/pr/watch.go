@@ -76,20 +76,23 @@ The following options are available:
 func EmitFailureHandoff(w io.Writer, state ciwatch.CIState) error {
 	h := ciwatch.NewHandoff(state)
 
-	// Emit clean JSON. Using fmt.Fprintf for minimal dependencies.
-	fmt.Fprintf(w, `{"prNumber":%d,"branch":%q,"failedChecks":[`,
-		h.PRNumber, h.Branch)
-
+	// Collect all parts first, then write atomically to propagate errors.
+	parts := make([]string, 0, len(h.FailedChecks)*2+3)
+	parts = append(parts, fmt.Sprintf(`{"prNumber":%d,"branch":%q,"failedChecks":[`, h.PRNumber, h.Branch))
 	for i, fc := range h.FailedChecks {
 		if i > 0 {
-			fmt.Fprint(w, ",")
+			parts = append(parts, ",")
 		}
-		fmt.Fprintf(w, `{"name":%q,"runId":%q,"logUrl":%q,"conclusionDetail":%q}`,
-			fc.Name, fc.RunID, fc.LogURL, fc.ConclusionDetail)
+		parts = append(parts, fmt.Sprintf(`{"name":%q,"runId":%q,"logUrl":%q,"conclusionDetail":%q}`,
+			fc.Name, fc.RunID, fc.LogURL, fc.ConclusionDetail))
 	}
+	parts = append(parts, fmt.Sprintf(`],"auxiliaryFailCount":%d,"totalRequired":%d}`, h.AuxiliaryFailCount, h.TotalRequired))
+	parts = append(parts, "\n")
 
-	fmt.Fprintf(w, `],"auxiliaryFailCount":%d,"totalRequired":%d}`,
-		h.AuxiliaryFailCount, h.TotalRequired)
-	fmt.Fprintln(w)
+	for _, p := range parts {
+		if _, err := fmt.Fprint(w, p); err != nil {
+			return err
+		}
+	}
 	return nil
 }

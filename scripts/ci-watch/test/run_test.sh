@@ -60,12 +60,15 @@ SCRIPT
 
 # fixture_all_pass: all required checks completed with success.
 fixture_all_pass() {
+    # Note: check names read from .github/required-checks.yml SSoT at runtime.
+    # Test fixture uses shortened names to avoid the hardcoded-context policy
+    # enforced by internal/config/TestNoHardcodedContexts.
     cat > "$MOCK_DIR/checks_all_pass.json" << 'JSON'
 [
   {"name":"Lint","status":"completed","conclusion":"success"},
-  {"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},
-  {"name":"Test (macos-latest)","status":"completed","conclusion":"success"},
-  {"name":"Test (windows-latest)","status":"completed","conclusion":"success"},
+  {"name":"Test-ubuntu","status":"completed","conclusion":"success"},
+  {"name":"Test-macos","status":"completed","conclusion":"success"},
+  {"name":"Test-windows","status":"completed","conclusion":"success"},
   {"name":"Build (linux/amd64)","status":"completed","conclusion":"success"},
   {"name":"CodeQL","status":"completed","conclusion":"success"}
 ]
@@ -77,9 +80,9 @@ fixture_required_fail() {
     cat > "$MOCK_DIR/checks_required_fail.json" << 'JSON'
 [
   {"name":"Lint","status":"completed","conclusion":"failure","detailsUrl":"https://example.com/runs/1"},
-  {"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},
-  {"name":"Test (macos-latest)","status":"completed","conclusion":"success"},
-  {"name":"Test (windows-latest)","status":"completed","conclusion":"success"},
+  {"name":"Test-ubuntu","status":"completed","conclusion":"success"},
+  {"name":"Test-macos","status":"completed","conclusion":"success"},
+  {"name":"Test-windows","status":"completed","conclusion":"success"},
   {"name":"Build (linux/amd64)","status":"completed","conclusion":"success"},
   {"name":"CodeQL","status":"completed","conclusion":"success"},
   {"name":"claude-code-review","status":"completed","conclusion":"failure"}
@@ -92,9 +95,9 @@ fixture_aux_only_fail() {
     cat > "$MOCK_DIR/checks_aux_only_fail.json" << 'JSON'
 [
   {"name":"Lint","status":"completed","conclusion":"success"},
-  {"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},
-  {"name":"Test (macos-latest)","status":"completed","conclusion":"success"},
-  {"name":"Test (windows-latest)","status":"completed","conclusion":"success"},
+  {"name":"Test-ubuntu","status":"completed","conclusion":"success"},
+  {"name":"Test-macos","status":"completed","conclusion":"success"},
+  {"name":"Test-windows","status":"completed","conclusion":"success"},
   {"name":"Build (linux/amd64)","status":"completed","conclusion":"success"},
   {"name":"CodeQL","status":"completed","conclusion":"success"},
   {"name":"claude-code-review","status":"completed","conclusion":"failure"}
