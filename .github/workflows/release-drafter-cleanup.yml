@@ -102,23 +102,18 @@ jobs:
           dry_run="${{ steps.env.outputs.dry_run }}"
 
           if [ ! -f .github/release-drafter-cleanup-log.md ]; then
-            cat > .github/release-drafter-cleanup-log.md <<'LOGEOF'
-# Release Drafter Cleanup Log
-
-Audit trail for automated cleanup of stale Release Drafter drafts.
-See .github/workflows/release-drafter-cleanup.yml for details.
-
-## Cleanup History
-
-LOGEOF
+            {
+              printf '# Release Drafter Cleanup Log\n\n'
+              printf 'Audit trail for automated cleanup of stale Release Drafter drafts.\n'
+              printf 'See .github/workflows/release-drafter-cleanup.yml for details.\n\n'
+              printf '## Cleanup History\n\n'
+            } > .github/release-drafter-cleanup-log.md
           fi
 
           mode="normal"
           [ "$dry_run" = "1" ] && mode="dry-run"
 
-          cat >> .github/release-drafter-cleanup-log.md <<LOGEOF
-- \`${timestamp}\` [$mode] Processed $stale_count stale draft(s)
-LOGEOF
+          printf -- '- `%s` [%s] Processed %s stale draft(s)\n' "${timestamp}" "${mode}" "${stale_count}" >> .github/release-drafter-cleanup-log.md
 
       - name: Show results
         run: |
