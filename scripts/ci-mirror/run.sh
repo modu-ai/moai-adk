@@ -35,4 +35,10 @@ for lang in $LANGS; do
     sh "$MODULE" || exit $?
 done
 
+# Wave 4 validation: required-checks.yml SSoT integrity
+if [ -f "$SCRIPT_DIR/validate-required-checks.sh" ]; then
+    log_step "Validating .github/required-checks.yml SSoT integrity (W4-T05)"
+    sh "$SCRIPT_DIR/validate-required-checks.sh" || exit $?
+fi
+
 log_step "ci-local complete"
