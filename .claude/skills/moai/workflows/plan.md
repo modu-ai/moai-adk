@@ -650,6 +650,35 @@ Prerequisite: SPEC files MUST be committed before worktree creation.
 - Create worktree: `moai worktree new SPEC-{ID}`
 - Display worktree path and navigation instructions
 
+##### Worktree-Anchored Resume Output [HARD]
+
+When `--worktree` is used, the plan-phase output MUST include a paste-ready resume message with **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. This anchors the user to start the next session inside the worktree, preventing main-cwd drift.
+
+Block 0 format (prepended before Block 1):
+
+```
+[New Terminal — START IN WORKTREE]
+$ cd <worktree-absolute-path>
+$ <session-launcher>            # claude | moai cc | moai cg | moai glm
+   └─ Claude Code session starts here (cwd = worktree)
+```
+
+Block 4 (preconditions) MUST include `0)` as the first item:
+
+```
+0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
+```
+
+Recommended session-launcher per execution mode:
+
+- `--team` → `tmux new-session -s moai-<spec> && moai cg` (teammate spawn via tmux split-window inherits worktree cwd + tmux session env)
+- single-session → `moai cc` (or `claude`) directly inside worktree
+- GLM-only → `moai glm`
+
+[HARD] Single-session corollary: If the user is NOT comfortable with multi-terminal/multi-session workflow, recommend converting to `--branch` next time. `--worktree` only realizes its isolation value when the user actually starts a separate session inside the worktree path. Forcing Block 0 onto a single-session user is friction without benefit.
+
+See `.claude/rules/moai/workflow/session-handoff.md` "Worktree-Anchored Resume Pattern" for the canonical Block 0 specification and lessons #14 for the failure-mode rationale.
+
 #### Branch Path (--branch flag or user choice)
 
 Agent: manager-git subagent
