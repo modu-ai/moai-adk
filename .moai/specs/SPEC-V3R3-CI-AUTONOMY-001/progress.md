@@ -112,10 +112,12 @@
   - branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-2 → origin
   - PR: #788 OPEN (https://github.com/modu-ai/moai-adk/pull/788)
   - target: main (base origin/main 0b028bfaa)
-- Phase 4 (Handoff + auto-memory): in_progress
-  - lesson_added: pending — lessons.md #13 (--team + SPEC worktree 구조 모순)
-  - project_memory: pending — project_ciaut_wave2_complete.md
-  - resume_message: pending — paste-ready for Wave 3
+- Phase 4 (Handoff + auto-memory): completed
+  - lesson_added: lessons.md #13 (--team + SPEC worktree 구조 모순)
+  - project_memory: project_ciaut_wave2_complete.md
+  - resume_message: paste-ready for Wave 3
+  - merged_at: 2026-05-06 (PR #788 → main commit 5d3f6a4c1)
+  - status: completed
 
 ### Wave 2 Task List (provisional, refined by manager-strategy)
 
@@ -131,3 +133,89 @@
 | W2-T08 | ready-to-merge + auto-merge AskUserQuestion trigger metadata | (in skill body) | REQ-CIAUT-011 | — | pending |
 | W2-T09 | T3 auto-fix metadata capture on required check failure | (in skill body) | REQ-CIAUT-012 | — | pending |
 | W2-T10 | 30min timeout + .moai/state/ci-watch-active.flag abort path | scripts/ci-watch/, state file | — | — | pending |
+
+---
+
+## Wave 3 — T3 Auto-Fix Loop on CI Fail
+
+- Started: 2026-05-07T21:09:00Z
+- Branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-3 (from origin/main 5d3f6a4c1, single-session --branch mode)
+- Worktree: none (main project direct attach per resume message; lessons #13 avoids --team + SPEC worktree base mismatch)
+- Methodology: TDD (per quality.yaml development_mode=tdd)
+- Harness: standard (file_count=5 > 3, multi-domain skill+rule+agent+scripts)
+- Mode: sub-agent (lessons #13 — Agent isolation:worktree base mismatch with current branch)
+- Goal: 5-PR sweep P9 후속 — CI 실패 시 mechanical fix는 expert-debug 자동, semantic은 즉시 escalate, max 3 iterations
+- Wave 3 Tasks: W3-T01 ~ W3-T10 (per plan.md §5)
+- AC Coverage: AC-CIAUT-006 (mechanical), AC-CIAUT-007 (semantic), AC-CIAUT-008 (cap 3)
+
+### Phase Checkpoints (Wave 3)
+
+- Phase 0 (Setup): in_progress
+  - branch_created: yes (feat/SPEC-V3R3-CI-AUTONOMY-001-wave-3 from origin/main)
+  - working_tree: clean (llm.yaml runtime change reverted, stale untracked SPEC dirs removed)
+  - progress_initialized: yes
+- Phase 0.5 (Plan Audit Gate): completed
+  - audit_verdict: PASS
+  - audit_report: .moai/reports/plan-audit/SPEC-V3R3-CI-AUTONOMY-001-review-2.md
+  - audit_at: 2026-05-07T21:15:00Z
+  - auditor_version: plan-auditor v1.0.0
+  - cache_status: MISS → fresh audit invoked (Wave 1 audit 2026-05-05T19:35Z exceeded 24h window)
+  - findings: 1 MEDIUM (D1: REQ-015 vs §7 OQ2 contradiction — plan.md W3-T01 authoritative, follow-up cleanup) + 2 LOW (D2: metadata handoff schema, D3: AC-008 silent-timeout invariant) + 2 INFO (D4: T8 sub-letter REQ, D5: iter persistence location)
+  - blocking_findings: 0
+  - wave3_readiness: confirmed — plan.md §5 task list adequately covers REQ-CIAUT-014~019 + AC-CIAUT-006/007/008
+
+### Wave 3 Task List (per plan.md §5)
+
+| Task | Description | Files | REQ | AC | Status |
+|------|-------------|-------|-----|----|---|
+| W3-T01 | Iteration cadence state machine (iter1 confirm; iter2-3 trivial silent, non-trivial mechanical confirm) | (orchestrator skill body) | REQ-CIAUT-015 | AC-CIAUT-008 | completed |
+| W3-T02 | failure classifier — mechanical vs semantic + trivial sub-classifier | scripts/ci-autofix/classify.sh | REQ-CIAUT-016/017 | AC-CIAUT-006/007 | completed |
+| W3-T03 | scripts/ci-autofix/log-fetch.sh — gh run view --log-failed wrapper + PR diff | scripts/ci-autofix/log-fetch.sh | REQ-CIAUT-014 | AC-CIAUT-006 | completed |
+| W3-T04 | expert-debug agent prompt extension — CI failure log + diff context for patch proposal | internal/template/templates/.claude/agents/expert-debug.md | REQ-CIAUT-014 | AC-CIAUT-006 | completed |
+| W3-T05 | orchestrator iteration loop (max 3) — propose→AskUser→apply→push→re-watch | (skill body) | REQ-CIAUT-015 | AC-CIAUT-008 | completed |
+| W3-T06 | semantic immediate escalation path — expert-debug diagnoses only, no patch | (skill + agent prompt) | REQ-CIAUT-017 | AC-CIAUT-007 | completed |
+| W3-T07 | iteration count == 3 mandatory escalation AskUser (continue/revise/abandon) | (skill body) | REQ-CIAUT-018 | AC-CIAUT-008 | completed |
+| W3-T08 | .moai/reports/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md logging schema + writer | (in skill or separate script) | REQ-CIAUT-019 | — | completed |
+| W3-T09 | Integration with Wave 2 watch loop (W2-T09 metadata consumption) | (skill cross-reference) | REQ-CIAUT-014 | — | completed |
+| W3-T10 | ci-autofix-protocol.md rule — max iter, no force-push, all patches new commit | internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md | REQ-CIAUT-015/019 | AC-CIAUT-008 | completed |
+
+### Phase 2B (TDD Wave 3) — Completion Entry
+
+- Phase 2B (TDD): completed (2026-05-07T22:00:00Z)
+  - delegated_to: manager-tdd (current session, single-turn fully-loaded)
+  - mode: sub-agent (lessons #13 — Agent isolation:worktree base mismatch; direct branch mode)
+  - tasks: 10/10 (W3-T01 ~ W3-T10) all completed
+  - commits: 6 atomic commits on feat/SPEC-V3R3-CI-AUTONOMY-001-wave-3
+    - 48677ed80: test RED phase (classify_test.sh + log_fetch_test.sh)
+    - 5e5b34339: classify.sh 9 regex patterns
+    - a4386529d: log-fetch.sh 200KB cap + mock injection
+    - f0bd6bff4: expert-debug.md additive extension (CI Failure Interpretation)
+    - 8dfef8229: SKILL.md (state machine + OQ2 cadence + audit log + all W3 tasks)
+    - 49f76867c: ci-autofix-protocol.md (10 HARD rules)
+  - make build: PASS (binary rebuilt with new templates embedded)
+  - go test ./...: PASS (Wave 2 ciwatch package no regression)
+  - bash classify_test.sh: 9/9 PASS
+  - bash log_fetch_test.sh: 4/4 PASS
+  - sh -n syntax checks: classify.sh + log-fetch.sh + test/*.sh all PASS
+  - HARD count in ci-autofix-protocol.md: 10 (minimum 5 required)
+  - expert-debug.md additive only: 0 removals, 107 additions
+  - shellcheck: not installed locally (CI will verify via shellcheck in wave)
+  - Template-First: 3 .claude/ files in internal/template/templates/ (embedded via go:embed)
+  - scripts/ci-autofix/: repo-rooted (no template mirror required per Wave 1 pattern)
+
+### Phase 1 + 1.5 Outputs (manager-strategy)
+
+- Phase 1 (Strategy): completed
+  - delegated_to: manager-strategy (agentId a652fa1096e00fd2b)
+  - artifacts: strategy-wave3.md (289 lines, 20K), tasks-wave3.md (119 lines, 14K)
+  - decisions:
+    - 9 classifier regex constants (RX_TRIVIAL_*/RX_MECH_*/RX_SEMANTIC_*) — semantic-first ordering, unknown→semantic (conservative)
+    - state file: .moai/state/ci-autofix-<PR>.json (defect D5 resolution)
+    - W3-T07 acceptance: "AskUserQuestion blocking call (no timer); 사용자 응답 전까지 무한 대기" (D3 resolution)
+    - Wave 2→3 handoff schema verified against internal/ciwatch/handoff.go::Handoff (origin/main 5d3f6a4c1)
+    - D1 (REQ-015 vs OQ2 contradiction): plan.md authoritative, spec.md L156 cleanup deferred to follow-up commit (out of Wave 3)
+    - D2 (handoff schema): strategy-wave3.md §5 documents schema as de-facto contract
+- Phase 1.5 (Task Decomp): completed
+  - artifact: tasks-wave3.md (10 atomic tasks W3-T01..T10 with REQ/AC mapping + file ownership boundaries)
+  - file_ownership_assigned: implementer scope (3 .claude/ paths + scripts/ci-autofix/), tester scope (scripts/ci-autofix/test/), read-only (Wave 1+2 산출물)
+  - 4 honest scope concerns documented: classifier false-negative, state file race, log cap truncation, blocking AskUser at iter 3+
