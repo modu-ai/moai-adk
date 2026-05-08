@@ -33,5 +33,8 @@ func init() {
 		newDoneCmd(),
 		newConfigCmd(),
 		newStatusCmd(),
+		newGuardSnapshotCmd(),
+		newGuardVerifyCmd(),
+		newGuardRestoreCmd(),
 	)
 }
