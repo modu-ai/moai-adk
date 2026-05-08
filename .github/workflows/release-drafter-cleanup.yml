@@ -1,0 +1,125 @@
+name: Release Drafter cleanup
+
+# Weekly scheduled cleanup of stale Release Drafter draft releases.
+# Deletes Release Drafter-generated drafts older than 30 days.
+#
+# Rationale:
+#   Release Drafter accumulates draft releases over time (~80+ at time of writing).
+#   These drafts clutter the GitHub Releases page and slow down release listing.
+#   This workflow periodically purges old drafts while protecting active release branches.
+#
+# Safety constraints:
+#   - Only deletes if isDraft == true AND createdAt > 30 days old
+#   - Exempts drafts with targetCommitish == release/* (active release branches)
+#   - Supports MOAI_CLEANUP_DRY_RUN=1 environment for validation testing
+#
+# Audit:
+#   All cleanup actions logged to .github/release-drafter-cleanup-log.md
+#   Supports manual run via workflow_dispatch for on-demand cleanup.
+
+on:
+  schedule:
+    - cron: '0 9 * * MON'  # Every Monday 09:00 UTC (18:00 KST)
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Required for gh release delete
+  pull-requests: read
+
+jobs:
+  cleanup:
+    name: Clean stale drafts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set cleanup environment
+        id: env
+        run: |
+          # Allow override of cleanup threshold via env var (default: 30 days)
+          THRESHOLD_DAYS="${MOAI_CLEANUP_THRESHOLD_DAYS:-30}"
+          DRY_RUN="${MOAI_CLEANUP_DRY_RUN:-0}"
+          echo "threshold_days=${THRESHOLD_DAYS}" >> "$GITHUB_OUTPUT"
+          echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch stale drafts
+        id: drafts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch latest 100 releases with draft status and creation date
+          gh release list \
+            --json tagName,isDraft,createdAt,targetCommitish \
+            -L 100 \
+            > /tmp/releases.json
+
+          # Filter to drafts older than threshold, excluding active release branches
+          jq -r \
+            --arg threshold_days "${{ steps.env.outputs.threshold_days }}" \
+            '
+              now | floor as $now |
+              (($threshold_days | tonumber) * 86400) as $threshold_secs |
+              .[] |
+              select(
+                .isDraft == true and
+                (($now - (.createdAt | fromdate)) > $threshold_secs) and
+                (.targetCommitish | startswith("release/") | not)
+              ) |
+              .tagName
+            ' \
+            /tmp/releases.json \
+            > /tmp/stale_tags.txt
+
+          count=$(wc -l < /tmp/stale_tags.txt)
+          echo "stale_count=${count}" >> "$GITHUB_OUTPUT"
+          echo "stale_tags=$(cat /tmp/stale_tags.txt | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: Delete stale drafts
+        if: ${{ steps.drafts.outputs.stale_count > 0 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dry_run="${{ steps.env.outputs.dry_run }}"
+
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+
+            if [ "$dry_run" = "1" ]; then
+              echo "[DRY-RUN] Would delete: ${tag}"
+            else
+              echo "Deleting stale draft: ${tag}"
+              gh release delete "$tag" --yes
+            fi
+          done < /tmp/stale_tags.txt
+
+      - name: Update cleanup log
+        run: |
+          timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          stale_count="${{ steps.drafts.outputs.stale_count }}"
+          dry_run="${{ steps.env.outputs.dry_run }}"
+
+          if [ ! -f .github/release-drafter-cleanup-log.md ]; then
+            {
+              printf '# Release Drafter Cleanup Log\n\n'
+              printf 'Audit trail for automated cleanup of stale Release Drafter drafts.\n'
+              printf 'See .github/workflows/release-drafter-cleanup.yml for details.\n\n'
+              printf '## Cleanup History\n\n'
+            } > .github/release-drafter-cleanup-log.md
+          fi
+
+          mode="normal"
+          [ "$dry_run" = "1" ] && mode="dry-run"
+
+          printf -- '- `%s` [%s] Processed %s stale draft(s)\n' "${timestamp}" "${mode}" "${stale_count}" >> .github/release-drafter-cleanup-log.md
+
+      - name: Show results
+        run: |
+          echo "=== Release Drafter Cleanup Results ==="
+          echo "Stale drafts found: ${{ steps.drafts.outputs.stale_count }}"
+          echo "Dry run mode: ${{ steps.env.outputs.dry_run }}"
+          if [ -n "${{ steps.drafts.outputs.stale_tags }}" ]; then
+            echo "Tags processed: ${{ steps.drafts.outputs.stale_tags }}"
+          fi

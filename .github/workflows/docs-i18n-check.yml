@@ -1,5 +1,6 @@
 name: docs i18n parity check
 
+# ADVISORY ONLY — NOT BLOCKING
 # 4-locale documentation parity validator
 # Source: SPEC-DOCS-SITE-001 AC-G3-03, CLAUDE.local.md §17.3
 #
@@ -46,6 +47,7 @@ jobs:
   parity:
     name: Validate 4-locale parity
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

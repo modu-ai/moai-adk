@@ -28,5 +28,5 @@ branches:
 # Wave 2 watch loop reads this list to discriminate failures.
 auxiliary:
   - claude-code-review
-  - llm-panel
   - docs-i18n-check
+  # llm-panel.yml: removed 2026-05-08, placeholder only

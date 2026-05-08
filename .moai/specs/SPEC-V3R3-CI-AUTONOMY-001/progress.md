@@ -219,3 +219,67 @@
   - artifact: tasks-wave3.md (10 atomic tasks W3-T01..T10 with REQ/AC mapping + file ownership boundaries)
   - file_ownership_assigned: implementer scope (3 .claude/ paths + scripts/ci-autofix/), tester scope (scripts/ci-autofix/test/), read-only (Wave 1+2 산출물)
   - 4 honest scope concerns documented: classifier false-negative, state file race, log cap truncation, blocking AskUser at iter 3+
+
+### Phase 3 (Git Commit + PR) — Wave 3 Completion Entry
+
+- Phase 3 (Git): completed (2026-05-07T22:30:00Z+ admin merge 2026-05-08)
+  - branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-3 → origin
+  - commits: 6 atomic commits (test RED → classify → log-fetch → expert-debug → SKILL → protocol)
+  - PR: #790 OPEN+ALL GREEN (Lint, Test ubuntu/macos/windows, Build linux/darwin/windows × amd64/arm64, CodeQL, Constitution Check, Integration Tests, claude-review)
+  - admin_merged_at: 2026-05-08 (PR #790 → main commit d7bd9c453)
+  - status: completed
+- Phase 4 (Handoff): completed
+  - lesson_added: lessons.md #14 (--worktree paste-ready Block 0 cwd anchoring) — applies to Wave 4+ resume messages with --worktree flag
+  - project_memory: project_ciaut_wave3_complete.md (paste-ready resume for Wave 4)
+  - resume_message: paste-ready in project memory pointed to /moai run SPEC-V3R3-CI-AUTONOMY-001 Wave 4 (T4 auxiliary workflow cleanup, P1) --branch
+  - merged_at: 2026-05-08 (PR #790 → main d7bd9c453, admin squash merge)
+
+---
+
+## Wave 4 — T4 Auxiliary Workflow Cleanup
+
+- Started: 2026-05-08T (current session)
+- Branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-4 (from origin/main d7bd9c453, single-session --branch mode per paste-ready resume)
+- Worktree: none (lessons #13 — Agent isolation:worktree base mismatch avoided in --branch mode)
+- Methodology: TDD (per quality.yaml development_mode=tdd)
+- Harness: standard (file_count=5, single-domain CI/CD)
+- Mode: sub-agent + --branch (lessons #13)
+- Goal: claude-code-review/llm-panel/Release Drafter 노이즈 제거, docs-i18n-check non-blocking 전환. CI signal 회복.
+- Wave 4 Tasks: W4-T01 ~ W4-T05 (per plan.md §6)
+- AC Coverage: AC-CIAUT-009/010 (auxiliary not blocking, stale draft cleanup) — actual AC IDs to be confirmed in strategy-wave4.md
+
+### Phase Checkpoints (Wave 4)
+
+- Phase 0 (Setup): in_progress
+  - branch_created: yes (feat/SPEC-V3R3-CI-AUTONOMY-001-wave-4 from origin/main d7bd9c453)
+  - working_tree: clean
+  - progress_initialized: yes (this entry)
+  - paste_ready_preconditions_verified: yes (4/4 PASS — PR #790 admin merged, branch off origin/main, strategy-wave3.md/tasks-wave3.md/scripts/ci-autofix/ present on origin/main)
+- Phase 0.5 (Plan Audit Gate): completed (cache HIT)
+  - audit_verdict: PASS (Wave 3 audit cache, 24h window valid)
+  - cache_source: Wave 3 audit (audit_at 2026-05-07T21:15Z, ~12h elapsed, ~12h remaining in 24h window)
+  - spec_content_equivalence: plan.md §6 (Wave 4) unchanged since Wave 1 SPEC creation; no plan amendment commit since Wave 3 audit
+  - cache_window_check: 2026-05-07T21:15Z + 24h = 2026-05-08T21:15Z; current invocation within window
+  - blocking_findings: 0 (Wave 3 audit baseline)
+- Phase 1 (Strategy): pending — delegated to manager-strategy
+  - artifacts_planned: strategy-wave4.md + tasks-wave4.md
+  - decisions_to_resolve:
+    - llm-panel.yml mapping (review-quality-gate.yml? or claude.yml? or new file required?)
+    - .github/workflows/optional/ trigger preservation (gh runs from optional/ subdirectory? trigger semantics)
+    - release-drafter-cleanup.yml schedule (cron weekly recommended in plan.md §6 W4-T03)
+    - Template-First mirror scope: required-checks.yml mirror exists at internal/template/templates/.github/required-checks.yml; .github/workflows/* may not need mirror (project-level only, not template) — verify
+- Phase 1.5 (Task Decomp): pending
+- Phase 2 (TDD): pending
+- Phase 2.5/2.75/2.8a/2.8b/2.9: pending
+- Phase 3 (Git): pending
+- Phase 4 (Handoff): pending
+
+### Wave 4 Task List (per plan.md §6)
+
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| W4-T01 | claude-code-review.yml + llm-panel.yml → .github/workflows/optional/ 이동 | .github/workflows/optional/ (new dir) | pending |
+| W4-T02 | docs-i18n-check.yml에 continue-on-error: true + advisory PR comment | .github/workflows/docs-i18n-check.yml | pending |
+| W4-T03 | release-drafter-cleanup.yml 스케줄 workflow (30일+ stale draft auto-close, cron 주1회) | .github/workflows/release-drafter-cleanup.yml (new) | pending |
+| W4-T04 | make ci-disable WORKFLOW=<name> Makefile target | Makefile | pending |
+| W4-T05 | .github/required-checks.yml auxiliary 검증 (claude-code-review/llm-panel/docs-i18n-check) | .github/required-checks.yml (verify) | pending |
