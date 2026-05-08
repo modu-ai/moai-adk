@@ -283,3 +283,141 @@
 | W4-T03 | release-drafter-cleanup.yml 스케줄 workflow (30일+ stale draft auto-close, cron 주1회) | .github/workflows/release-drafter-cleanup.yml (new) | pending |
 | W4-T04 | make ci-disable WORKFLOW=<name> Makefile target | Makefile | pending |
 | W4-T05 | .github/required-checks.yml auxiliary 검증 (claude-code-review/llm-panel/docs-i18n-check) | .github/required-checks.yml (verify) | pending |
+
+---
+
+## Wave 5 — T6 Worktree State Guard
+
+- Started: 2026-05-08T03:49:00Z (current session)
+- Branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-5 (from origin/main 311f27a2a, single-session --branch mode per paste-ready resume)
+- Worktree: none (lessons #13 — Agent isolation:worktree base mismatch avoided in --branch mode)
+- Methodology: TDD (per quality.yaml development_mode=tdd)
+- Harness: standard (file_count=5 new + 1 extend, single-domain orchestrator/worktree, complexity score ~6)
+- Mode: sub-agent + --branch (lessons #13)
+- Goal: `Agent(isolation: "worktree")` pre/post-call state assertion + auto-restore + claude-code-guide upstream investigation 위임. R4 worktree regression guard.
+- Wave 5 Tasks: W5-T01 ~ W5-T08 (per plan.md §7)
+- AC Coverage: AC-CIAUT-014 (worktree state divergence detection), AC-CIAUT-015 (empty worktreePath suspect handling)
+- REQ Coverage: REQ-CIAUT-031 ~ REQ-CIAUT-036
+- Dependencies: independent (Wave 1과 무관, plan.md §7)
+
+### Phase Checkpoints (Wave 5)
+
+- Phase 0 (Setup): completed
+  - branch_created: yes (feat/SPEC-V3R3-CI-AUTONOMY-001-wave-5 from origin/main 311f27a2a)
+  - working_tree: clean (.moai/reports/evaluator-active/ untracked from prior Wave 4 — preserved per .gitignore semantics)
+  - progress_initialized: yes (this entry)
+  - paste_ready_preconditions_verified: yes (4/4 PASS — PR #791 admin merged, branch off origin/main, strategy-wave4.md/tasks-wave4.md/scripts/ci-mirror/validate-required-checks.sh/release-drafter-cleanup.yml present on origin/main)
+- Phase 0.5 (Plan Audit Gate): completed (cache HIT)
+  - audit_verdict: PASS (Wave 3 audit cache, 24h window valid)
+  - cache_source: .moai/reports/plan-audit/SPEC-V3R3-CI-AUTONOMY-001-review-2.md (Wave 3 audit, audit_at 2026-05-07T21:15Z, hash 8238cfd69...)
+  - cache_window_check: 2026-05-07T21:15Z + 24h = 2026-05-08T21:15Z; current 2026-05-08T03:49Z within window (~17h 26m remaining)
+  - spec_content_equivalence: spec.md/plan.md/acceptance.md last commit on origin/main = 5d3f6a4c1 (Wave 2), unchanged since Wave 3 audit; plan_artifact_hash equivalent
+  - blocking_findings: 0 (Wave 3 audit baseline, MEDIUM D1 is REQ-015 stale text — out of Wave 5 scope)
+  - audit_at: 2026-05-08T03:49Z (cache hit, no new auditor invocation)
+  - auditor_version: plan-auditor v1.0 (cached)
+- Phase 1 (Strategy): completed (2026-05-08)
+  - delegated_to: manager-strategy (current session, single-turn fully-loaded per Opus 4.7 prompt philosophy)
+  - artifacts: strategy-wave5.md (~26K), tasks-wave5.md (~13K)
+  - decisions_resolved (OQ1-OQ6):
+    - OQ1 (Package location): `internal/worktree/` (new lib) + `internal/cli/worktree/guard.go` (CLI extension). Plan.md 의 `internal/orchestrator/` 가정은 패키지 부재로 정정. orchestrator 는 Claude Code runtime (Go 코드 부재) → Bash CLI 가 유일한 invocation 경로.
+    - OQ2 (Serialization): 디스크 기반 JSON `.moai/state/worktree-snapshot-<UUID>.json` (schema_version "1.0.0"). Go memory 공유 불가 (orchestrator non-Go) → 디스크 only.
+    - OQ3 (Untracked scope): `.moai/specs/` only + defaultExclusions const (`.moai/reports/`, `.moai/cache/`, `.moai/logs/`, `.moai/state/`). spec.md REQ-031 strict reading 준수.
+    - OQ4 (Divergence threshold): binary detection (any difference = divergence). Configurable threshold 은 Wave 5 외 follow-up.
+    - OQ5 (claude-code-guide trigger): 자동 trigger on first suspect detection per session. Subsequent suspects 동일 session 내 re-trigger 안 함.
+    - OQ6 (Template-First mirror): rule + agent 모두 `internal/template/templates/.claude/...` 에 source. Go 패키지 (`internal/worktree/`, `internal/cli/worktree/`) 는 binary 컴파일 → 미러 불필요.
+  - honest_concerns (10 documented in tasks-wave5.md §"Honest Scope Concerns"):
+    - C-1: claude-code-guide 가 NEW (extension 아님) — plan.md wording 정정 follow-up
+    - C-2: orchestrator wiring (Skill body 변경) 은 Wave 5 외 follow-up
+    - C-3: untracked content snapshot 부재 → W5-T06 paths-only restoration
+    - C-5: AskUserQuestion 호출 orchestrator-only (Go 는 exit code + JSON 만)
+    - C-6: Wave 4 sub-agent context error 재발 가능성 → main-session 직접 구현 fallback 명시
+    - + perf, test isolation, false-positive scope, root.go registration location
+  - file_ownership_assigned: implementer scope (4 internal/worktree/*.go + 2 internal/cli/worktree/* + 2 .claude/templates/* + 1 placeholder report + 3 spec docs), tester scope (3 _test.go), read-only (Wave 1-4 산출물 + spec.md/plan.md/acceptance.md frozen)
+- Phase 1.5 (Task Decomp): completed (2026-05-08)
+  - artifact: tasks-wave5.md (8 atomic tasks W5-T01..T08 with REQ/AC mapping + dependency graph + file ownership boundaries)
+  - dependency_graph: T01 → T02 → T03 → {T04, T05, T06}; T07 + T08 parallel (markdown-only, no Go dependency)
+  - 10 honest scope concerns documented (vs Wave 4 의 5)
+  - methodology_note: TDD for Go primitives (W5-T01..T06) + verify-via-grep for markdown (W5-T07, T08); Wave 1-3 mixed Go+shell 패턴에 가까움 (Wave 4 의 verify-via-replay CI/CD config 패턴과 다름)
+- Phase 2 (TDD): pending
+- Phase 2.5/2.75/2.8a/2.8b/2.9: pending
+- Phase 3 (Git): pending
+- Phase 4 (Handoff): pending
+
+### Wave 5 Task List (per plan.md §7)
+
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| W5-T01 | state snapshot 함수 (git status --porcelain, HEAD SHA, branch, untracked under .moai/specs/) | internal/orchestrator/worktree_guard.go (new) | pending |
+| W5-T02 | state diff 함수 (pre vs post, divergence dimension 분류) | internal/orchestrator/worktree_guard.go (extend) | pending |
+| W5-T03 | orchestrator wrapper (Agent() 인접 위치 hook) | internal/orchestrator/worktree_guard.go (extend) | pending |
+| W5-T04 | divergence 발생 시 .moai/reports/worktree-guard/<YYYY-MM-DD>.md 로깅 + AskUserQuestion 통지 | internal/orchestrator/worktree_guard.go (extend) | pending |
+| W5-T05 | empty worktreePath: {} 감지 + suspect flag 설정 + push 차단 | internal/orchestrator/worktree_guard.go (extend) | pending |
+| W5-T06 | state restore 옵션 (git restore --source=<sha> --staged --worktree :/) | internal/orchestrator/worktree_guard.go (extend) | pending |
+| W5-T07 | claude-code-guide 위임 (Anthropic upstream 회귀 조사 + bug report) | internal/template/templates/.claude/agents/claude-code-guide.md (extend) + .moai/reports/upstream/agent-isolation-regression.md (placeholder) | pending |
+| W5-T08 | worktree-state-guard.md 규칙 문서 (snapshot timing, divergence threshold, escalation path) | internal/template/templates/.claude/rules/moai/workflow/worktree-state-guard.md (new) | pending |
+
+
+### Phase 2 (TDD Implementation): completed (main-session direct, lessons #6 + Wave 4 fallback per C-6)
+- methodology: TDD (4 mandatory unit cases RED → GREEN → REFACTOR for state_guard.go; verify-via-grep for markdown deliverables)
+- main_session_direct: yes (sub-agent 1M context inheritance error mitigation, strategy §10 W5-R7)
+- files_created:
+  - internal/worktree/state_guard.go (211 LOC)
+  - internal/worktree/snapshot_io.go (44 LOC)
+  - internal/worktree/divergence_log.go (134 LOC)
+  - internal/worktree/doc.go (16 LOC)
+  - internal/worktree/state_guard_test.go (148 LOC)
+  - internal/worktree/snapshot_io_test.go (65 LOC)
+  - internal/worktree/divergence_log_test.go (165 LOC)
+  - internal/cli/worktree/guard.go (290 LOC)
+  - internal/cli/worktree/guard_test.go (227 LOC)
+  - internal/template/templates/.claude/agents/moai/claude-code-guide.md (105 lines)
+  - internal/template/templates/.claude/rules/moai/workflow/worktree-state-guard.md (155 lines)
+  - .moai/reports/upstream/agent-isolation-regression.md (placeholder, 35 lines)
+- files_modified:
+  - cmd/moai/main.go (ExitCoder interface for 0/1/2/3 propagation)
+  - internal/cli/worktree/root.go (register guard subcommands)
+  - internal/cli/worktree/root_test.go (subcommand count 11 → 14)
+  - .claude/agents/moai/claude-code-guide.md (sync from template)
+  - .claude/rules/moai/workflow/worktree-state-guard.md (sync from template)
+- W5-T01..T08 status: all 8 tasks completed
+- task_outcomes:
+  - W5-T01: Snapshot capture (git rev-parse + porcelain + ls-files) — DONE
+  - W5-T02: Diff function (4-dimension binary detection) — DONE
+  - W5-T03: CLI subcommands snapshot/verify (cobra) — DONE
+  - W5-T04: Divergence markdown logger + JSON sidecar — DONE
+  - W5-T05: Empty worktreePath suspect detection + flag file — DONE
+  - W5-T06: Restore subcommand (git restore + untracked notification) — DONE
+  - W5-T07: NEW claude-code-guide agent + placeholder report — DONE
+  - W5-T08: worktree-state-guard.md rule doc — DONE
+
+### Phase 2.5/2.75 (Quality + Pre-Review Gate): completed
+- go test ./internal/worktree/... ./internal/cli/worktree/...: PASS (test count: 19 worktree + 7 cli = 26 total)
+- go test -race ./...: PASS (no data races detected)
+- go test -cover ./internal/worktree/...: 87.6% (target 85% ✓)
+- go test -cover ./internal/cli/worktree/...: 82.5% (target 80% ✓)
+- golangci-lint run ./internal/worktree/... ./internal/cli/worktree/...: 0 issues
+- make ci-local: PASS
+  - lint: PASS
+  - test: PASS (full ./...)
+  - cross-compile: 6 targets (linux/amd64+arm64, darwin/amd64+arm64, windows/amd64+arm64) all built
+  - SSoT validation (W4-T05): 3 dimensions all PASS
+
+### Phase 2.8a/2.8b (Evaluator + TRUST 5): self-check (sub-agent skipped per Wave 4 1M context fallback)
+- Tested: 87.6% + 82.5% coverage, race detector clean, 4 mandatory unit cases + JSON roundtrip + CLI integration cases all PASS
+- Readable: godoc on all exported types/functions; package doc.go for `internal/worktree`; markdown rule + agent file with H2/H3 structure; 0 lint issues
+- Unified: cobra subcommand naming `<verb>` (snapshot/verify/restore) consistent with `new/list/status/...` pattern; rule doc tone matches worktree-integration.md; agent frontmatter pattern matches researcher.md
+- Secured: snapshot JSON contains paths only (no file contents); restore CLI emits explicit "WARNING: this will discard local changes" before execution; .moai/state/ permissions 0644; restore uses git pathspec :/ scope
+- Trackable: commits will reference SPEC-V3R3-CI-AUTONOMY-001 W5; Conventional Commits + 🗿 MoAI co-author trailer; divergence log + suspect flag audit trails
+
+### Phase 2.9 (MX Tag Update): completed
+- @MX:ANCHOR added to internal/worktree/state_guard.go (Snapshot/Diff primitives — fan_in >= 3 from snapshot_io.go, divergence_log.go, internal/cli/worktree/guard.go); @MX:REASON cited.
+- @MX:NOTE added to internal/cli/worktree/guard.go (orchestrator-facing CLI primitive)
+- @MX:ANCHOR updated in cmd/moai/main.go (ExitCoder interface contract for 0/1/2/3 propagation); @MX:REASON cited
+- No @MX:WARN required (no goroutines, no async patterns, complexity well below 15)
+- No @MX:TODO (all REQ-CIAUT-031~036 implemented)
+
+### Phase 3 (Git Commit + PR): pending
+- branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-5
+- commit_strategy: ~6-8 atomic commits per strategy-wave5 §9 cadence
+- pr_labels: type:feature, priority:P1, area:cli, area:workflow
+
