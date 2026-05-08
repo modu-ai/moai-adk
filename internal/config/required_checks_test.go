@@ -102,11 +102,16 @@ func TestNoHardcodedContexts(t *testing.T) {
 	}
 
 	// Also check scripts/ci-mirror directory.
+	// Test fixtures intentionally hardcode context names — exclude */test/* and *_test.sh.
 	scriptsDir := filepath.Join(root, "scripts")
 	if _, err := os.Stat(scriptsDir); err == nil {
 		err = filepath.Walk(scriptsDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
+			}
+			rel := strings.TrimPrefix(path, scriptsDir)
+			if strings.Contains(rel, "/test/") || strings.HasSuffix(rel, "_test.sh") {
+				return nil
 			}
 			data, err2 := os.ReadFile(path)
 			if err2 != nil {
