@@ -65,12 +65,83 @@
 - Phase 1.7 File Scaffolding: delegated to manager-tdd (RED phase creates stubs + failing tests)
 - Phase 1.8 MX Context Scan: SKIP (greenfield — `internal/tui/` does not yet exist)
 
-### Phase 2B: TDD Implementation (M1)
+### Phase 2B: TDD Implementation (M1) — COMPLETE
 
 - Methodology: TDD RED-GREEN-REFACTOR (per quality.yaml development_mode: tdd)
 - Agent: manager-tdd subagent
 - Worktree isolation: NOT applied (main session cwd is already SPEC worktree `cli-tui-v2`; nested isolation would create base mismatch per lessons #13)
-- Status: pending agent invocation
+- Status: COMPLETE — merged via PR #803 (commit `6df7d140d`, 2026-05-09T10:37:58Z)
+- Artifacts shipped:
+  - `internal/tui/theme.go` + `theme_test.go` (28 light/dark tokens, REQ-CLI-TUI-002)
+  - `internal/tui/box.go` + `box_test.go` (Box / ThickBox + 8 golden snapshots)
+  - `internal/tui/pill.go` + `pill_test.go` (6 variants × 2 themes × 2 solid = 24 snapshots)
+  - `internal/tui/doc.go` (godoc + `source/project/tui.jsx` attribution)
+  - `internal/tui/internal/runeguard.go` + `runeguard_test.go` (ko-width helper)
+  - 35 testdata/*.golden files committed
+- Follow-up shipped same wave: runeguard EastAsianWidth=true locale fix + Windows flaky test mitigations (PRs #802 / #803)
+- Open follow-ups (deferred to later milestones, not blocking M2): fixture leak partial fix (PR #795 carry-over), docs-i18n-check warnings, Windows TestObserver_TickPersistence flaky
 
+### Phase 0.5: Plan Audit Gate (M2 entry) — CACHE HIT
+
+- Source cache: `.moai/reports/plan-audit/SPEC-V3R3-CLI-TUI-001-2026-05-09.md` (Run 1 of 1, verdict=PASS)
+- audit_cache_hit: true
+- cached_audit_at: 2026-05-09T08:18:37Z (~12h ago, within 24h window)
+- plan_artifact_hash carry-forward: `39d853cd40b5cae85a0a1ad94bc89ea6371454def0c20ca6c1167691cd21e095` (post D1-D5)
+- Hash match basis: `git rev-list --left-right --count origin/main...HEAD = 0/0` → SPEC files (`spec.md` / `plan.md` / `acceptance.md`) unchanged since M1 entry; recompute would yield same hash.
+- Decision: skip Step 3 plan-auditor re-invocation, proceed directly to Phase 1 per run.md Step 2.
+- Note: M1 implementation modified `internal/tui/*` only — outside SPEC artifact set; cache lookup hash basis (spec/plan/acceptance/tasks) intact.
+
+---
+
+## Phase 1: Analysis and Planning (M2 scope) — ENTRY
+
+- Phase 1 Strategy: plan.md §3 (M2) is the analysis output. plan-auditor PASS 0.82 (M1 entry) + main↔branch diff=0 carry forward; Phase 0.5 cache HIT expected.
+- Phase 0.95 Mode: Standard Mode (12 files: 6 source + 6 tests, single domain `internal/tui/`)
+- Phase 1.5 Task Decomposition (6-step from plan.md §3.1, 10):
+  - M2-S1: status.go + status_test.go (StatusIcon / Spinner / Progress / Stepper)
+  - M2-S2: form.go + form_test.go (RadioRow / CheckRow huh helpers)
+  - M2-S3: table.go + table_test.go (KV / CheckLine / Section)
+  - M2-S4: prompt.go + prompt_test.go (Prompt / Cursor)
+  - M2-S5: term.go + term_test.go (Term chrome, MOAI_SCREENSHOT=1 only)
+  - M2-S6: help.go + help_test.go (HelpBar [KeyHint])
+- Phase 1.6 AC Failing Checklist for M2:
+  - AC-CLI-TUI-001 (extends to 6 of 9 component files; full coverage after M2 merge)
+  - AC-CLI-TUI-007 mixed 18 ko-en cases — M2 enables, full validation per plan.md §2.3
+  - AC-CLI-TUI-011 no hand-drawn box characters in production code (continuous)
+  - AC-CLI-TUI-015 prefers-reduced-motion static fallback (M2 starting point — Spinner / Progress in S1)
+- Phase 1.7 Scaffolding: delegated to manager-tdd (RED phase creates stubs)
+- Phase 1.8 MX Context Scan: SKIP (greenfield additions to `internal/tui/`)
+
+### Phase 2B: TDD Implementation (M2) — COMPLETE
+
+- Methodology: TDD RED-GREEN-REFACTOR (committed per plan.md M2 row)
+- Agent: manager-tdd subagent (single delegation, 6-step internal TodoList)
+- Worktree isolation: NOT applied (lessons #13 — same rationale as M1)
+- Status: COMPLETE — 2026-05-09T20:47:00Z (estimated)
+- Artifacts shipped:
+  - `internal/tui/status.go` + `status_test.go` (StatusIcon/Spinner/Progress/Stepper; AC-CLI-TUI-015 reduced-motion fallback; 13 golden snapshots)
+  - `internal/tui/form.go` + `form_test.go` (RadioRow/CheckRow; ◆/◇ prefix; 5 golden snapshots)
+  - `internal/tui/table.go` + `table_test.go` (KV/CheckLine/Section; 18 mixed ko-en × 2 themes = 36 snapshots; plus 7 component snapshots = 43 total)
+  - `internal/tui/prompt.go` + `prompt_test.go` (Prompt/Cursor; pure functions; 7 golden snapshots)
+  - `internal/tui/term.go` + `term_test.go` (Term; MOAI_SCREENSHOT=1 gate; 2 screenshot golden snapshots)
+  - `internal/tui/help.go` + `help_test.go` (HelpBar/KeyHint; ko-en mixed; 4 golden snapshots)
+- Total M2 golden snapshots: 74 new files (total testdata/ count: 106)
+- AC coverage newly satisfied:
+  - AC-CLI-TUI-007: 18 mixed ko-en cases × 2 themes = 36 snapshots GREEN
+  - AC-CLI-TUI-015: MOAI_REDUCED_MOTION=1 → Spinner(●) + Progress(filled) static fallback GREEN
+  - AC-CLI-TUI-011: zero hand-drawn box chars in all 6 M2 source files
+  - AC-CLI-TUI-013: zero hex literals in all 6 M2 source files
+  - AC-CLI-TUI-017: zero emoji codepoints in all 6 M2 source files
+  - AC-CLI-TUI-001: 9/9 component files now exist (theme+box+pill+status+form+table+prompt+term+help)
+- Implementation Divergence:
+  - Section() uses ASCII dash "-" as rule instead of lipgloss.Border() — box chars (U+2500 ─) are forbidden by AC-CLI-TUI-011 in source files; plan implied a visual rule but the constraint takes precedence
+  - Spinner uses Braille U+2808 (⠋) for animated frame — not "animated" in the goroutine sense; plan §3.3 confirmed stateless only; frame character is caller-re-rendered
+  - StatusIcon returns single glyphs without lipgloss styling — caller applies styling via CheckLine
+- Quality gate:
+  - `go test ./internal/tui/... -count=1 -race` GREEN
+  - `go vet ./internal/tui/...` CLEAN
+  - `golangci-lint run ./internal/tui/...` CLEAN
+  - `go mod tidy` produces zero diff
+- Open follow-ups: none blocking M3
 
 
