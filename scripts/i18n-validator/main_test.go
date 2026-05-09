@@ -382,7 +382,7 @@ func TestBudget_TimeoutExitOnExcess(t *testing.T) {
 
 	// Create a synthetic corpus with many files to trigger timeout
 	dir := t.TempDir()
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		name := filepath.Join(dir, strings.Repeat("a", 5)+strings.Repeat("b", i%10)+".go")
 		_ = os.WriteFile(name, []byte(`package foobar_test
 

@@ -27,6 +27,7 @@ import (
 	"go/token"
 	"io"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"strings"
 	"time"
@@ -84,9 +85,7 @@ func (ls *Lockset) Freeze() *Lockset {
 		BuiltAt:  ls.BuiltAt,
 		Corpus:   append([]string(nil), ls.Corpus...),
 	}
-	for k, v := range ls.Literals {
-		frozen.Literals[k] = v
-	}
+	maps.Copy(frozen.Literals, ls.Literals)
 	return frozen
 }
 

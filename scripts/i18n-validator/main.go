@@ -161,7 +161,7 @@ type BudgetResult struct {
 // parseGoFile parses a Go file at the given path into an AST.
 func parseGoFile(t interface {
 	Helper()
-	Fatal(...interface{})
+	Fatal(...any)
 }, path string) (*token.FileSet, *ast.File) {
 	t.Helper()
 	fset := token.NewFileSet()
