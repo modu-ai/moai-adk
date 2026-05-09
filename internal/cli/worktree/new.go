@@ -35,6 +35,19 @@ var getProjectNameFunc = func() string { return detectProjectName(".") }
 // Overridable in tests.
 var isTmuxAvailableFunc = IsTmuxAvailable
 
+// gitRepoRootFunc returns the absolute path of the git repository root via
+// `git rev-parse --show-toplevel`. Overridable in tests to avoid cwd leak:
+// BODP audit trail must always anchor on git root, never os.Getwd(), because
+// test processes run with cwd=package-dir which differs from the repo root.
+//
+// @MX:NOTE BODP audit trail 경로 버그 수정 (SPEC-V3R3-CI-AUTONOMY-001 Wave 7):
+// os.Getwd()는 테스트 실행 시 패키지 디렉터리를 반환하여 audit trail이
+// internal/cli/worktree/.moai/... 에 누수됨. 이 var로 테스트가 tempDir 주입 가능.
+var gitRepoRootFunc = func() (string, error) {
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	return strings.TrimSpace(string(out)), err
+}
+
 // legacyWorktreeDir is the project-local worktrees path checked for migration warnings.
 // Overridable in tests.
 var legacyWorktreeDir = filepath.Join(".", ".moai", "worktrees")
@@ -117,7 +130,16 @@ func runNew(cmd *cobra.Command, args []string) error {
 
 	// BODP audit trail (W7-T04 reused). Failures are non-fatal — surface a
 	// warning but keep the worktree creation result.
-	if err := writeWorktreeAuditTrail(specID, branchName, effectiveBase, wtPath); err != nil {
+	//
+	// gitRepoRootFunc is used instead of os.Getwd() to ensure audit trail is
+	// always written under the git repository root, not the process cwd (which
+	// diverges during test execution to the package directory).
+	repoRoot, rootErr := gitRepoRootFunc()
+	if rootErr != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: cannot determine repo root for audit trail: %v\n", rootErr)
+		repoRoot = "." // non-fatal fallback
+	}
+	if err := writeWorktreeAuditTrail(repoRoot, specID, branchName, effectiveBase); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: BODP audit trail write failed: %v\n", err)
 	}
 
@@ -176,23 +198,24 @@ func determineBase(baseFlag string, fromCurrent bool) string {
 // creation. The CLI path never prompts the user (orchestrator-only HARD), so
 // UserChoice mirrors the recommendation.
 //
+// repoRoot MUST be the git repository root returned by gitRepoRootFunc, NOT
+// os.Getwd(). The two diverge during test execution: Go runs tests with
+// cwd=package-dir, which would leak audit trail files into
+// internal/cli/worktree/.moai/branches/decisions/ instead of the repo root.
+//
 // @MX:NOTE CLI path은 사용자 프롬프트 호출 절대 금지 — agent-common-protocol
 // §User Interaction Boundary HARD (orchestrator-only). BODP signal collection
 // 은 audit trail 목적 (decision input은 사용자가 plan/worktree 직접 선택).
-func writeWorktreeAuditTrail(specID, branchName, base, _ string) error {
+func writeWorktreeAuditTrail(repoRoot, specID, branchName, base string) error {
 	currentBranch, _ := gitWorktreeCmd("rev-parse", "--abbrev-ref", "HEAD")
 	currentBranch = strings.TrimSpace(currentBranch)
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getwd: %w", err)
-	}
 	decision, _ := bodp.Check(bodp.CheckInput{
 		CurrentBranch: currentBranch,
 		NewSpecID:     specID,
-		RepoRoot:      cwd,
+		RepoRoot:      repoRoot,
 		EntryPoint:    bodp.EntryWorktreeCLI,
 	})
-	return bodp.WriteDecision(cwd, bodp.AuditEntry{
+	return bodp.WriteDecision(repoRoot, bodp.AuditEntry{
 		Timestamp:     time.Now().UTC(),
 		EntryPoint:    bodp.EntryWorktreeCLI,
 		CurrentBranch: currentBranch,
