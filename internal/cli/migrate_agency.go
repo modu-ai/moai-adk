@@ -631,7 +631,7 @@ resumeTxID: resumeTxID,
 
 result, err := m.Run()
 if err != nil {
-fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+fmt.Fprintln(os.Stderr, RenderError(err))
 if me, ok := err.(*MigrateError); ok {
 switch me.Code {
 case ErrMigrateNoSource:

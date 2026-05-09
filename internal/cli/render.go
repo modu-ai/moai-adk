@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // cardStyle returns a lipgloss style for a rounded-border card.
@@ -90,4 +91,30 @@ func renderSummaryLine(ok, warn, fail int) string {
 		cliMuted.Render("\u00b7"),
 		cliError.Render(fmt.Sprintf("%d", fail)),
 	)
+}
+
+// RenderError renders an error inside a ThickBox with a danger theme border
+// and a StatusIcon("err") prefix, matching the ScreenError design
+// (screens.jsx::ScreenError \u2014 ThickBox color=danger + StatusIcon "err").
+//
+// All colours are sourced from tui.LightTheme()/DarkTheme() via ThickBox;
+// no hex literal appears in this function (AC-CLI-TUI-013).
+//
+// @MX:ANCHOR: [AUTO] RenderError is the global error render surface for M6-S6
+// @MX:REASON: rootCmd error handler and key command RunE paths call this function
+func RenderError(err error) string {
+	th := tui.LightTheme()
+	icon := tui.StatusIcon("err")
+	// Compose title line: error icon + styled label using the danger token.
+	dangerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Danger, Dark: tui.DarkTheme().Danger}).
+		Bold(true)
+	titleLine := icon + " " + dangerStyle.Render("Error")
+	body := titleLine + "\n" + err.Error()
+
+	return tui.ThickBox(tui.BoxOpts{
+		Body:   body,
+		Theme:  &th,
+		Accent: false,
+	})
 }

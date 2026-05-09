@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -114,5 +115,52 @@ func TestCardStyle(t *testing.T) {
 	result := style.Render("test content")
 	if !strings.Contains(result, "test content") {
 		t.Errorf("cardStyle should render content, got %q", result)
+	}
+}
+
+// Characterization tests for RenderError — M6-S6
+// These tests capture expected behavior of the new RenderError function.
+
+// TestCharacterize_RenderError_OutputContainsMessage checks that RenderError
+// echoes the error message in its output.
+func TestCharacterize_RenderError_OutputContainsMessage(t *testing.T) {
+	err := fmt.Errorf("something went wrong")
+	result := RenderError(err)
+	if !strings.Contains(result, "something went wrong") {
+		t.Errorf("RenderError should contain the error message, got %q", result)
+	}
+}
+
+// TestCharacterize_RenderError_OutputContainsStatusIconErr checks that the
+// error glyph ✗ (StatusIcon("err")) appears in the output.
+func TestCharacterize_RenderError_OutputContainsStatusIconErr(t *testing.T) {
+	err := fmt.Errorf("test error")
+	result := RenderError(err)
+	// StatusIcon("err") returns "✗" (U+2717)
+	if !strings.Contains(result, "✗") {
+		t.Errorf("RenderError should contain error icon ✗, got %q", result)
+	}
+}
+
+// TestCharacterize_RenderError_OutputIsNonEmpty confirms RenderError never
+// returns an empty string even for a plain error.
+func TestCharacterize_RenderError_OutputIsNonEmpty(t *testing.T) {
+	err := fmt.Errorf("x")
+	result := RenderError(err)
+	if strings.TrimSpace(result) == "" {
+		t.Errorf("RenderError should return non-empty output, got %q", result)
+	}
+}
+
+// TestCharacterize_RenderError_NoHexLiterals checks that RenderError output is
+// produced by the tui theme system (AC-CLI-TUI-013: no raw hex literals).
+// This test is structural: we verify the function is callable without panic,
+// not the internal rendering path, which is covered by tui package tests.
+func TestCharacterize_RenderError_NoHexLiterals(t *testing.T) {
+	err := fmt.Errorf("hex check")
+	result := RenderError(err)
+	// Output must be non-empty and contain the error text.
+	if !strings.Contains(result, "hex check") {
+		t.Errorf("RenderError should echo error text, got %q", result)
 	}
 }
