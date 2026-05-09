@@ -8,6 +8,110 @@ import (
 	"testing"
 )
 
+// ---------------------------------------------------------------------------
+// SPEC-V3R3-CI-AUTONOMY-001 W7-T05: BODP off-protocol branch reminder tests.
+// ---------------------------------------------------------------------------
+
+const auditTrailDirRel = ".moai/branches/decisions"
+
+// seedAuditDir creates the canonical .moai/branches/decisions/ directory under
+// repoRoot, optionally seeding a markdown file for branchName.
+func seedAuditDir(t *testing.T, repoRoot string, branchName string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot, auditTrailDirRel)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if branchName == "" {
+		return
+	}
+	fname := strings.ReplaceAll(branchName, "/", "-") + ".md"
+	if err := os.WriteFile(filepath.Join(dir, fname), []byte("# audit\n"), 0o644); err != nil {
+		t.Fatalf("seed audit file: %v", err)
+	}
+}
+
+// TestStatus_OffProtocolBranchReminder: branch lacks audit trail in an existing
+// audit dir → reminder text is written to the writer.
+func TestStatus_OffProtocolBranchReminder(t *testing.T) {
+	repoRoot := t.TempDir()
+	seedAuditDir(t, repoRoot, "")
+	t.Setenv("MOAI_NO_BODP_REMINDER", "")
+
+	buf := &bytes.Buffer{}
+	emitOffProtocolReminder(repoRoot, "feat/quick-fix", buf)
+
+	out := buf.String()
+	if !strings.Contains(out, "feat/quick-fix") {
+		t.Errorf("expected reminder to mention branch name, got:\n%s", out)
+	}
+	if !strings.Contains(out, "MOAI_NO_BODP_REMINDER") {
+		t.Errorf("expected reminder to mention opt-out env var, got:\n%s", out)
+	}
+}
+
+// TestStatus_AuditTrailExistsNoReminder: pre-existing audit file for the
+// current branch suppresses the reminder.
+func TestStatus_AuditTrailExistsNoReminder(t *testing.T) {
+	repoRoot := t.TempDir()
+	seedAuditDir(t, repoRoot, "feat/SPEC-X")
+	t.Setenv("MOAI_NO_BODP_REMINDER", "")
+
+	buf := &bytes.Buffer{}
+	emitOffProtocolReminder(repoRoot, "feat/SPEC-X", buf)
+
+	if buf.Len() != 0 {
+		t.Errorf("expected no reminder when audit trail exists, got:\n%s", buf.String())
+	}
+}
+
+// TestStatus_AuditTrailDirAbsentNoFalsePositive: audit dir absent (fresh
+// project) suppresses the reminder so newly-cloned repos do not see noise.
+func TestStatus_AuditTrailDirAbsentNoFalsePositive(t *testing.T) {
+	repoRoot := t.TempDir()
+	t.Setenv("MOAI_NO_BODP_REMINDER", "")
+
+	buf := &bytes.Buffer{}
+	emitOffProtocolReminder(repoRoot, "feat/anything", buf)
+
+	if buf.Len() != 0 {
+		t.Errorf("expected no reminder when audit dir absent, got:\n%s", buf.String())
+	}
+}
+
+// TestStatus_EnvVarDisablesReminder: MOAI_NO_BODP_REMINDER=1 universally
+// silences the reminder.
+func TestStatus_EnvVarDisablesReminder(t *testing.T) {
+	repoRoot := t.TempDir()
+	seedAuditDir(t, repoRoot, "")
+	t.Setenv("MOAI_NO_BODP_REMINDER", "1")
+
+	buf := &bytes.Buffer{}
+	emitOffProtocolReminder(repoRoot, "feat/anything", buf)
+
+	if buf.Len() != 0 {
+		t.Errorf("expected env var to silence reminder, got:\n%s", buf.String())
+	}
+}
+
+// TestStatus_MainBranchNoReminder: main / master branches are themselves the
+// canonical default base, so the reminder must not fire on them.
+func TestStatus_MainBranchNoReminder(t *testing.T) {
+	repoRoot := t.TempDir()
+	seedAuditDir(t, repoRoot, "")
+	t.Setenv("MOAI_NO_BODP_REMINDER", "")
+
+	for _, branch := range []string{"main", "master"} {
+		t.Run(branch, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			emitOffProtocolReminder(repoRoot, branch, buf)
+			if buf.Len() != 0 {
+				t.Errorf("expected no reminder on %q, got:\n%s", branch, buf.String())
+			}
+		})
+	}
+}
+
 // --- DDD PRESERVE: Characterization tests for status command behavior ---
 
 func TestStatusCmd_Exists(t *testing.T) {

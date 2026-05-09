@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -9,6 +10,15 @@ import (
 
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
+
+// emitOffProtocolReminder writes a friendly notice when the user is on a
+// branch that was created without going through MoAI's BODP entry points
+// (skill plan-branch / plan-worktree / `moai worktree new`). RED phase stub —
+// the GREEN phase (W7-T05) wires env opt-out, main-branch skip, audit-trail
+// detection, and dir-absent false-positive suppression.
+func emitOffProtocolReminder(repoRoot, currentBranch string, w io.Writer) {
+	_, _, _ = repoRoot, currentBranch, w
+}
 
 var statusCmd = &cobra.Command{
 	Use:     "status",
