@@ -39,6 +39,11 @@ func Execute() error {
 func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("moai-adk %s\n", version.GetVersion()))
 
+	// M6-S5: Install tui-based help renderer for rootCmd.
+	// SetHelpFunc applies to "moai --help" and "moai help" (cobra's built-in help subcommand).
+	// Subcommand-level help (e.g. "moai doctor --help") still uses cobra's default template.
+	rootCmd.SetHelpFunc(renderRootHelp)
+
 	// Command groups
 	rootCmd.AddGroup(
 		&cobra.Group{ID: "launch", Title: "Launch Commands:"},
