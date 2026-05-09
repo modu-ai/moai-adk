@@ -44,6 +44,7 @@ import (
 	"go/token"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -465,9 +466,12 @@ func findRepoRoot() (string, error) {
 
 // isExcluded はパスが除外リストに含まれるか確認します。
 // isExcluded checks whether a path matches any corpus exclusion pattern.
+// Path is normalized to forward-slash separators so Windows backslash paths match
+// the canonical "vendor/", "node_modules/", ".git/", "testdata/", ".moai/" patterns.
 func isExcluded(path string) bool {
+	normalized := filepath.ToSlash(path)
 	for _, excl := range corpusExclusions {
-		if strings.Contains(path, excl) {
+		if strings.Contains(normalized, excl) {
 			return true
 		}
 	}
