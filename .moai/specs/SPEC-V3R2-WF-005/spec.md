@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-WF-005
 title: Language Rules vs Skills Boundary Codification
-version: "0.2.1"
-status: draft
+version: "0.2.2"
+status: completed
 created_at: 2026-04-23
 updated_at: 2026-05-09
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
@@ -32,6 +32,7 @@ tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — codify languages as rules (not skills) in v3           |
 | 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P2 Medium"` → `P2`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. |
 | 0.2.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → 6 mechanical fixes (D1 AC citations, D2 task count, D3 path placeholder, D4 flutter.md sequencing, D5 test scope caveat, D7 typo). EARS REQ body unchanged. Targets PASS at iteration 2. |
+| 0.2.2   | 2026-05-09 | /moai sync (status transition) | Run+sync 완료 후 status: draft → completed. M1-M5 implementation 완료, 4 audit tests GREEN, evaluator-active iter 2 PASS, plan-audit iter 2 PASS 0.93. EARS REQ/AC 본문 변경 없음. |
 
 ---
 
