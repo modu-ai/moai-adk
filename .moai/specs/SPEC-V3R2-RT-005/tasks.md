@@ -7,7 +7,8 @@
 
 | Version | Date       | Author                       | Description                                                              |
 |---------|------------|------------------------------|--------------------------------------------------------------------------|
-| 0.1.0   | 2026-05-10 | manager-spec (Plan workflow) | Initial task decomposition — 28 tasks across M1-M5 milestones (TDD mode) |
+| 0.1.0   | 2026-05-10 | manager-spec (Plan workflow) | Initial task decomposition — **40 tasks** across M1-M5 milestones (TDD mode); count corrected from "28 tasks" wording (28 was the abstract milestone-level count; granular breakdown is 40) |
+| 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2) | +5 audit-fix tasks T-RT005-41..45 in M5: T-41 Diff merged-view delta semantics (D1 fix per audit AC-03→T-RT005-15 mismapping); T-42 SettingsResolver interface signature alignment (D4 fix); T-43 BenchmarkResolver_Load (p99 < 100ms); T-44 BenchmarkResolver_Reload (p99 < 20ms); T-45 MemoryFootprint test (RSS < 2MiB). Total: **45 tasks**. |
 
 ---
 
@@ -108,9 +109,14 @@ M4 산출물: 2 GREEN AC (AC-04/13). Concurrency safety 보장.
 | T-RT005-37 | Run `go test ./...` from repo root → ALL tests GREEN, zero cascading regressions per `CLAUDE.local.md` §6 | (verification only) | M5 gate | expert-backend | T-RT005-36 | - | ❌ |
 | T-RT005-38 | Run `go test -race ./internal/config/` → race detector clean | (verification only) | concurrency gate | expert-backend | T-RT005-37 | - | ❌ |
 | T-RT005-39 | Run `go vet ./...` + `golangci-lint run` → 0 warnings | (verification only) | Lint gate | expert-backend | T-RT005-37 | - | ❌ |
-| T-RT005-40 | Update `progress.md` with `run_complete_at: <ISO timestamp>` + `run_status: implementation-complete` + acceptance counter (15/15) | `progress.md` | Trackable | manager-docs | T-RT005-37..39 | ~20 lines update | ❌ |
+| T-RT005-40 | Update `progress.md` with `run_complete_at: <ISO timestamp>` + `run_status: implementation-complete` + acceptance counter (18/18) | `progress.md` | Trackable | manager-docs | T-RT005-37..39 + T-RT005-41..45 | ~20 lines update | ❌ |
+| T-RT005-41 | Implement `(*resolver).Diff(a, b Source)` merged-view delta semantics per REQ-V3R2-RT-005-051: 8-tier full Load → for each key, compare winner.Source ∈ {a, b} → output keys where winner.Source equals one tier but not the other, OR same key has different winning Value across the two tiers. Add `TestResolver_Diff_MergedViewDelta` documenting convention | `internal/config/resolver.go` (~50 LOC), `internal/config/resolver_test.go` (~40 LOC) | REQ-007/051, AC-03 | expert-backend | T-RT005-22 | ~90 | ✅ |
+| T-RT005-42 | Align `internal/config/resolver.go::SettingsResolver` interface (line 24-28) with spec REQ-V3R2-RT-005-004: change `Dump(writer any) error` → `Dump(writer io.Writer) error`; change `Diff(a, b Source) (map[string]Value[any], error)` → `Diff(a, b Source) map[string]Value[any]` (no error return per spec). Update all callers (resolver impl, doctor_config.go, tests). Add `import "io"` | `internal/config/resolver.go`, `internal/cli/doctor_config.go`, `internal/config/resolver_test.go`, callers | REQ-V3R2-RT-005-004 (drift fix per audit D4) | expert-backend | T-RT005-22 | ~50 (signature + caller updates) | ❌ |
+| T-RT005-43 | Add `BenchmarkResolver_Load` in new file `internal/config/resolver_bench_test.go` measuring cold-load p99 latency on a synthetic typical project (23 yaml sections × 8 tiers populated). Target: p99 < 100ms via `testing.B` with `-benchtime=10s`. Compute p99 via 100-iteration histogram using `math/rand` seeded benchmark | `internal/config/resolver_bench_test.go` (new) | spec §7 Constraints (cold load p99 < 100ms), AC-V3R2-RT-005-16 | expert-backend | T-RT005-27 | ~80 | ✅ |
+| T-RT005-44 | Add `BenchmarkResolver_Reload` in `resolver_bench_test.go` measuring single-tier reload p99 latency. Target: p99 < 20ms. Re-uses synthetic project from T-43 + modifies single yaml file mid-benchmark | `internal/config/resolver_bench_test.go` | spec §7 Constraints (reload p99 < 20ms), AC-V3R2-RT-005-17 | expert-backend | T-RT005-43 | ~50 | ❌ |
+| T-RT005-45 | Add `TestResolver_MemoryFootprint` in `resolver_bench_test.go` (or `resolver_test.go`) measuring merged settings RSS via `runtime.ReadMemStats` before+after Load on synthetic project. Assert delta `< 2 * 1024 * 1024` bytes (2 MiB) | `internal/config/resolver_bench_test.go` or `resolver_test.go` | spec §7 Constraints (RSS < 2 MiB), AC-V3R2-RT-005-18 | expert-backend | T-RT005-27 | ~40 | ✅ |
 
-M5 산출물: 4 GREEN AC (AC-10/14, AC-02 byte-stability strengthening). 모든 15 ACs GREEN. Trackable artifacts in place.
+M5 산출물: 4 GREEN AC (AC-10/14, AC-02 byte-stability strengthening) + 4 audit-fix GREEN (AC-03 merged-view delta via T-41, AC-16/17/18 perf budget via T-43/44/45). 모든 18 ACs GREEN. Trackable artifacts in place. SettingsResolver interface signature aligned with spec REQ-004 (T-42 closes D4 audit defect).
 
 ---
 
@@ -122,23 +128,30 @@ M5 산출물: 4 GREEN AC (AC-10/14, AC-02 byte-stability strengthening). 모든 
 | M2 (GREEN p1) | 6 | ~80 (audit_registry) | ~145 (audit/resolver) | expert-backend |
 | M3 (GREEN p2) | 6 | ~15 (MarshalJSON) | ~125 (merge/provenance) | expert-backend |
 | M4 (GREEN p3) | 8 | ~110 (reload/log) | ~145 (resolver) | expert-backend |
-| M5 (GREEN p4 + Trackable) | 13 | ~50 (cli) | ~150 (resolver/types/validation) | expert-backend + manager-docs |
+| M5 (GREEN p4 + Trackable + audit-fix) | 18 (13 baseline + 5 audit-fix T-41..45) | ~220 (cli + bench_test) | ~200 (resolver/types/validation + interface signature) | expert-backend + manager-docs |
 
-**Total**: 40 tasks, ~1,195 new LOC + ~565 modified LOC = ~1,760 LOC delta across 6 source + 5 test + 1 CHANGELOG file.
+**Total**: 45 tasks, ~1,365 new LOC + ~615 modified LOC = ~1,980 LOC delta across 7 source + 6 test + 1 CHANGELOG file.
 
-[NOTE] Plan §1.4 §3.1 §3.2 references "28 tasks" but milestone-level decomposition revealed 40 sub-tasks. The traceability matrix in plan.md §1.4 is task-level abstract; this tasks.md is the executable breakdown.
+[NOTE] Initial draft plan §1.4 §3.1 §3.2 referenced "28 tasks" (abstract milestone-level grouping), but granular decomposition revealed 40 sub-tasks (v0.1.0). v0.1.1 audit-fix iteration added 5 tasks (T-RT005-41..45) addressing plan-auditor v1 defects D1, D4, D8 → final count **45 tasks**. The traceability matrix in plan.md §1.4 is updated to cite all 45 tasks.
 
 ---
 
 ## Dependency Graph (Critical Path)
 
 ```
-M1 (T-01..07) → M2 (T-08..13) → M3 (T-14..19) → M4 (T-20..27) → M5 (T-28..40)
+M1 (T-01..07) → M2 (T-08..13) → M3 (T-14..19) → M4 (T-20..27) → M5 (T-28..40, T-41..45)
                     ↓                  ↓               ↓               ↓
-                AC-05/08/11/12   AC-01/02/07/09   AC-04/13       AC-10/14 + final
+                AC-05/08/11/12   AC-01/02/07/09   AC-04/13       AC-10/14 + AC-03/16/17/18 (audit-fix) + final
 ```
 
 각 milestone 의 verification gate (T-07/13/19/27/37) 통과 후에만 다음 milestone 진입.
+
+Audit-fix tasks T-41..45 (M5, v0.1.1) parallelism:
+- T-41 (Diff merged-view delta) depends on T-22 (Reload method); produces AC-03 GREEN.
+- T-42 (interface signature alignment) depends on T-22; updates callers; standalone (no AC mapping — closes D4 audit defect, not a REQ behavioral change).
+- T-43 (BenchmarkResolver_Load) depends on T-27 (M4 verification); produces AC-16 GREEN.
+- T-44 (BenchmarkResolver_Reload) depends on T-43; produces AC-17 GREEN.
+- T-45 (MemoryFootprint test) depends on T-27; produces AC-18 GREEN.
 
 ---
 

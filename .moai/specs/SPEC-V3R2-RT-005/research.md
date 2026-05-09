@@ -8,6 +8,7 @@
 | Version | Date       | Author                                  | Description                                                              |
 |---------|------------|-----------------------------------------|--------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-10 | manager-spec (Plan workflow Phase 0.5)  | Initial deep research per `.claude/skills/moai/workflows/plan.md` Phase 0.5. Substantiates spec.md §1-§8 with 30+ file:line evidence anchors. |
+| 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2)         | D10 fix per plan-auditor v1 audit: §11 validator/v10 row reconciled with §10.5 / §5 risk row 1 — was contradicting "already in go.mod via SCH-001" while §10.5 correctly states SCH-001 has not yet introduced it. Now: "ADOPT (will be added directly at M5d if SCH-001 not merged; see §10.5 / §5 risk)". §10.5 unchanged. |
 
 ---
 
@@ -545,7 +546,7 @@ Decision (per spec §4 Assumptions): plugin contribution 은 추가 only — Sou
 
 | Library / Source | Purpose | Decision |
 |------------------|---------|----------|
-| `github.com/go-playground/validator/v10` | Schema validation | **ADOPT** (already in go.mod via SCH-001) |
+| `github.com/go-playground/validator/v10` | Schema validation | **ADOPT** (will be added directly at M5d if SCH-001 not merged; see §10.5 / §5 risk row 1). [v0.1.1 reconciliation per plan-auditor v1 audit defect D10: contradicted §10.5 statement "SCH-001 has not yet introduced it"] |
 | `gopkg.in/yaml.v3` | YAML parsing | **ADOPT** (already in go.mod, used in loader.go) |
 | `encoding/json` | JSON tier parsing (.claude/settings.json) | **ADOPT** (stdlib, used in resolver.go:243-249) |
 | `reflect` | type-aware zero check + struct existence | **ADOPT** (stdlib, used in merge.go:138-162) |

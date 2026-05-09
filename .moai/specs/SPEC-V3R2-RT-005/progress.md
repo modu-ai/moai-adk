@@ -8,6 +8,7 @@
 | Version | Date       | Author                            | Description                                                            |
 |---------|------------|-----------------------------------|------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-10 | manager-spec (Plan workflow)      | Initial progress tracker — plan documents written; ready for plan-auditor |
+| 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2)   | Mechanical fixes per plan-auditor v1 audit (REVISE 0.83): D5 Worktree field clarified post-run pending; D6 task count 28→45 (+5 audit-fix tasks); AC count 15→18 (perf budget ACs); references to plan-audit report `.moai/reports/plan-audit/SPEC-V3R2-RT-005-2026-05-10.md`. |
 
 ---
 
@@ -18,21 +19,21 @@
 | Phase | `plan` |
 | Status | `plan-complete-pending-audit` |
 | Branch | `plan/SPEC-V3R2-RT-005` |
-| Worktree | `/Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-RT-005` |
+| Worktree | `(post-run, pending creation via 'moai worktree new')` |
 | Base | `origin/main` (`496595c3f`) |
-| Plan-auditor | not yet run (PR will trigger) |
-| Run-phase entry | pending plan-auditor PASS |
+| Plan-auditor | iteration 2 in progress (audit report v1 score 0.83, REVISE; mechanical fixes applied per audit report `.moai/reports/plan-audit/SPEC-V3R2-RT-005-2026-05-10.md`) |
+| Run-phase entry | pending plan-auditor iteration 2 PASS |
 
 ---
 
 ## Plan Phase Deliverables (this session)
 
-- [x] `spec.md` v0.1.0 (27 EARS REQs across 6 categories, 15 ACs, 7 risks, 9 dependencies — pre-existing input)
-- [x] `plan.md` v0.1.0 (5 milestones M1-M5, 29 file:line anchors, traceability matrix 27 REQ → 15 AC → 40 tasks, mx_plan with 7 MX tag insertions and measured fan_in evidence, plan-audit-ready checklist 15/15 PASS with measured evidence)
-- [x] `research.md` v0.1.0 (14 sections, 33 file:line anchors, library evaluation, breaking-change analysis, dependency status, 5 Open Questions resolved)
-- [x] `acceptance.md` v0.1.0 (15 ACs in G/W/T format with happy-path + edge cases + test mapping)
-- [x] `tasks.md` v0.1.0 (40 tasks T-RT005-01..40 across M1-M5, owner roles, dependencies, critical path graph)
-- [x] `progress.md` v0.1.0 (this file)
+- [x] `spec.md` v0.1.1 (27 EARS REQs across 6 categories, 18 ACs (15 baseline + 3 perf budget), 7 risks, 11 dependencies frontmatter; body §1-§10 unchanged from v0.1.0)
+- [x] `plan.md` v0.1.1 (5 milestones M1-M5, 29 file:line anchors, traceability matrix 27 REQ → 18 AC → 45 tasks, mx_plan with 7 MX tag insertions and measured fan_in evidence (D12: Source enum fan_in updated 49→71 per 2026-05-10 grep), plan-audit-ready checklist 15/15 PASS with measured evidence)
+- [x] `research.md` v0.1.1 (14 sections, 33 file:line anchors, library evaluation; D10 fix: validator/v10 contradiction reconciled — §11 says "ADOPT (will be added directly at M5d if SCH-001 not merged; see §10.5 / §5 risk)")
+- [x] `acceptance.md` v0.1.1 (18 ACs in G/W/T format with happy-path + edge cases + test mapping; +3 perf budget ACs AC-16/17/18)
+- [x] `tasks.md` v0.1.1 (45 tasks T-RT005-01..45 across M1-M5; +5 audit-fix tasks T-41 Diff merged-view delta, T-42 interface signature alignment, T-43 BenchmarkResolver_Load, T-44 BenchmarkResolver_Reload, T-45 MemoryFootprint test)
+- [x] `progress.md` v0.1.1 (this file)
 - [x] `issue-body.md` (GitHub issue body for tracking)
 
 ---
@@ -47,7 +48,7 @@ Per `plan.md` §9 Implementation Order Summary:
 4. **M4 (P0)**: Resolver mutex (sync.RWMutex) + tierData cache + Reload(path) method + loadSkillTier real impl + ClearSessionTier + dedicated config.log (T-RT005-26..28). AC-04, AC-06, AC-13 GREEN.
 5. **M5 (P1)**: validator/v10 integration + 7 MX tag insertions + CHANGELOG entry + make build + go test ./... + go test -race + progress.md closure (T-RT005-M5a..M5f). AC-02 hardening + final verification.
 
-Total: 28 tasks across 5 milestones. Estimated scope: ~410 LOC new + ~350 LOC modified across 4 new files + 7 modified files.
+Total: **45 tasks** across 5 milestones (was 28 in initial draft, expanded to 40 for granularity in tasks.md v0.1.0, then +5 audit-fix tasks T-RT005-41..45 in v0.1.1: T-41 Diff merged-view delta semantics, T-42 SettingsResolver interface alignment, T-43/44/45 performance budget benchmarks). Estimated scope: ~470 LOC new + ~380 LOC modified across 5 new files + 8 modified files.
 
 > NOTE: This SPEC has minimal external dependencies (only CON-001 confirmed merged + SCH-001 at-risk per §5 risk table + RT-004 SrcSession contract). RT-005 is a foundation SPEC that **blocks** RT-002 (permission stack), RT-003 (sandbox routing), RT-006 (ConfigChange hook), RT-007 (hardcoded path migration), and MIG-003 (5 loader additions). Its merge unblocks the v3 Round-2 RT/MIG sequence.
 
@@ -106,7 +107,7 @@ Per `.claude/rules/moai/workflow/session-handoff.md` §When To Generate:
 | `run_started_at` | _pending_ | run-phase orchestrator (M1 start) |
 | `run_complete_at` | _pending_ | run-phase orchestrator (M5f close) |
 | `run_status` | _pending_ → `implementation-complete` | run-phase orchestrator |
-| `acs_passed` | _pending_ → 15/15 | manager-tdd verification |
+| `acs_passed` | _pending_ → 18/18 (15 baseline + 3 perf budget AC-16/17/18) | manager-tdd verification |
 | `tests_added` | _pending_ → ~38 (across audit/merge/resolver/reload/audit_registry/doctor_config test files) | manager-tdd verification |
 | `mx_tags_inserted` | _pending_ → 7 (3 ANCHOR + 2 NOTE + 2 WARN + 0 TODO) | manager-docs (T-RT005-M5b) |
 | `pr_number` | _to be filled by manager-git_ | manager-git |

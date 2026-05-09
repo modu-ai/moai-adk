@@ -28,7 +28,8 @@ All three paths consume `internal/bodp.Check()` and `internal/bodp.WriteDecision
 ## HARD Rules
 
 - [HARD] CLI path (`moai worktree new`) MUST NOT invoke `AskUserQuestion` — see `agent-common-protocol.md` § User Interaction Boundary. Static check: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion`.
-- [HARD] Default base for `moai worktree new` is `origin/main` (from `internal/bodp.DefaultBase`). The legacy default `"main"` is replaced.
+- [HARD] Default base for `moai worktree new` is `origin/main` (from `internal/bodp.DefaultBase`). Rationale: team-safe — auto-fetches latest from remote, preventing stale local main from contaminating new worktrees when teammates have merged PRs the user hasn't pulled. The legacy default `"main"` was replaced for this reason.
+- [HARD] `--base main` is the explicit opt-in for solo workflows where the user has committed locally to main without pushing. Use this when `git log main` shows commits the user wants in the new worktree's parent that may not yet be on `origin/main`.
 - [HARD] `--base` and `--from-current` are mutually exclusive flags on `moai worktree new`.
 - [HARD] Every BODP decision (skill or CLI) MUST be persisted to `.moai/branches/decisions/<normalized-branch>.md` via `bodp.WriteDecision`. Failure is non-fatal; absence of the file is the diagnostic signal for the off-protocol reminder.
 - [HARD] Skill body BODP gate MUST follow the askuser-protocol Socratic structure: `(권장)` first, ≤4 options, conversation_language match, "Other" auto-appended.

@@ -247,6 +247,33 @@ Extract subcommand keywords and flags from the Raw User Input. Recognized global
 - `ultrathink` keyword detected → Activate Claude's native extended reasoning (high effort mode). Do NOT invoke Sequential Thinking MCP. This is native Claude behavior with no MCP dependency.
 - Both can coexist: `ultrathink --deepthink` activates BOTH independently.
 
+Step 1.5 - Flag-Subcommand Compatibility Validation:
+[HARD] After parsing the subcommand and flags (Step 1), validate flag-subcommand compatibility BEFORE routing. If a forbidden combination is detected, STOP all further processing and output an error in the user's conversation_language. Do NOT proceed to Step 2.
+
+Forbidden flag-subcommand combinations:
+
+| Flag | Allowed subcommands | Forbidden subcommands |
+|------|---------------------|------------------------|
+| `--worktree` | `plan`, default (autonomous) | `run`, `sync` |
+| `--branch` | `plan`, default (autonomous) | `run`, `sync` |
+
+Rationale: `--worktree` (and `--branch`) provision the workspace at SPEC initialization. `/moai plan` is the sole entry point that creates the worktree/branch. `/moai run` and `/moai sync` MUST operate within the worktree/branch already established during `plan`. Re-creating during run/sync corrupts the SPEC lifecycle and is rejected at the router level.
+
+Error message template (Korean conversation_language; substitute the actual flag and subcommand):
+```
+에러: --worktree 플래그는 /moai plan 전용입니다.
+/moai run 과 /moai sync 는 plan 단계에서 생성된 기존 worktree/branch를 재사용합니다.
+
+올바른 사용법:
+  /moai plan SPEC-XXX --worktree    (worktree 생성)
+  /moai run SPEC-XXX                (기존 worktree/branch 재사용)
+  /moai sync SPEC-XXX               (기존 worktree/branch 재사용)
+
+다시 실행하려면 --worktree 플래그를 제거한 형태로 호출하세요.
+```
+
+For English (`en` conversation_language), translate the message; the structure remains identical.
+
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
 

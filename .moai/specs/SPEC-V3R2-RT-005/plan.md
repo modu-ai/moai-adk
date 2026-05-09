@@ -9,6 +9,7 @@
 | Version | Date       | Author                         | Description                                                              |
 |---------|------------|--------------------------------|--------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-10 | manager-spec (Plan workflow)   | Initial implementation plan per `.claude/skills/moai/workflows/plan.md` Phase 1B. Scope: harden existing 14-file `internal/config/` skeleton to fully satisfy 27 EARS REQs and 15 ACs declared in `spec.md`. |
+| 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2) | Mechanical fixes per plan-auditor v1 audit (REVISE 0.83/1.00, threshold 0.85): D1/D2/D3 traceability matrix §1.4 corrected (AC-03→T-RT005-41 Diff merged-view delta; AC-06→T-RT005-13+T-RT005-03 verification; AC-11→T-RT005-10 schema_version); D4 SettingsResolver interface alignment task added (T-RT005-42); D8 perf budget benchmark tasks added (T-RT005-43/44/45) + 3 ACs (AC-16/17/18); D11 mx_plan layering note added in §6.2; D12 fan_in 49→71 updated in §6.1. Audit report: `.moai/reports/plan-audit/SPEC-V3R2-RT-005-2026-05-10.md`. Expected re-audit score ≥ 0.90. |
 
 ---
 
@@ -58,7 +59,10 @@ spec.md §1을 구체적 milestone으로 변환: 기존 `internal/config/` 14개
 | Resolver mutex (sync.RWMutex) | `internal/config/resolver.go` (extend `resolver` struct, ~10 LOC) | concurrency safety |
 | validator/v10 integration | `internal/config/types.go` (add validate tags, ~50 LOC), `internal/config/validation.go` (extend Validate w/ validator.New, ~30 LOC) | REQ-013 hardening |
 | YAMLAuditExceptions map for 5 pending yaml | `internal/config/audit_registry.go` (~15 LOC) | unblock MIG-003 |
-| Sentinel test cases for 15 ACs | extend 8 existing `*_test.go` files + 2 new test files | REQ→AC traceability |
+| Sentinel test cases for 15 baseline ACs + 3 perf budget ACs (v0.1.1) | extend 8 existing `*_test.go` files + 3 new test files (`reload_test.go`, `audit_registry_test.go`, `resolver_bench_test.go`) | REQ→AC traceability |
+| **Diff merged-view delta semantics implementation (audit-fix v0.1.1, T-RT005-41)** | `internal/config/resolver.go` (new behavior) + `resolver_test.go` (TestResolver_Diff_MergedViewDelta) | REQ-V3R2-RT-005-051, AC-03 (D1 audit fix) |
+| **SettingsResolver interface signature alignment (audit-fix v0.1.1, T-RT005-42)** | `internal/config/resolver.go` (line 24-28 signatures), `internal/cli/doctor_config.go` (callers), `internal/config/resolver_test.go` (callers) | REQ-V3R2-RT-005-004 (D4 audit fix) |
+| **Performance budget benchmarks (audit-fix v0.1.1, T-RT005-43/44/45)** | `internal/config/resolver_bench_test.go` (new file) | spec §7 Constraints, AC-V3R2-RT-005-16/17/18 (D8 audit fix) |
 | CHANGELOG entry | `CHANGELOG.md` Unreleased section | Trackable (TRUST 5) |
 | MX tags per §6 | 6 files (per §6 below) | mx_plan |
 
@@ -73,16 +77,16 @@ Per plan-auditor PASS criterion #2 (every REQ maps to at least one AC and at lea
 | REQ-V3R2-RT-005-001 | Ubiquitous (Source enum 8 values) | (baseline; verified by existing `source_test.go::TestAllSources`) | T-RT005-01 |
 | REQ-V3R2-RT-005-002 | Ubiquitous (Provenance fields populated) | AC-01, AC-02 | T-RT005-02 |
 | REQ-V3R2-RT-005-003 | Ubiquitous (Value[T] + Unwrap/Origin methods) | AC-02 | T-RT005-02 |
-| REQ-V3R2-RT-005-004 | Ubiquitous (SettingsResolver interface) | AC-02, AC-10 | T-RT005-03 |
+| REQ-V3R2-RT-005-004 | Ubiquitous (SettingsResolver interface) | AC-02, AC-10 | T-RT005-03, **T-RT005-42** (signature alignment per audit D4) |
 | REQ-V3R2-RT-005-005 | Ubiquitous (deterministic merge) | AC-01 | T-RT005-04, T-RT005-13 |
 | REQ-V3R2-RT-005-006 | Ubiquitous (`config dump` JSON) | AC-02 | T-RT005-05, T-RT005-14 |
-| REQ-V3R2-RT-005-007 | Ubiquitous (`config diff`) | AC-03 | T-RT005-06, T-RT005-15 |
+| REQ-V3R2-RT-005-007 | Ubiquitous (`config diff`) | AC-03 | T-RT005-06, T-RT005-28 (CLI verify), **T-RT005-41** (Diff merged-view delta semantics per audit D1) |
 | REQ-V3R2-RT-005-008 | Ubiquitous (audit_test fail on orphan yaml) | AC-08 | T-RT005-07, T-RT005-16 |
 | REQ-V3R2-RT-005-010 | Event-Driven (Load reads 8 tiers) | AC-02, AC-06 | T-RT005-04, T-RT005-13 |
 | REQ-V3R2-RT-005-011 | Event-Driven (ConfigChange diff-aware reload) | AC-04 | T-RT005-08, T-RT005-17 |
 | REQ-V3R2-RT-005-012 | Event-Driven (OverriddenBy population) | AC-01 | T-RT005-04, T-RT005-13 |
 | REQ-V3R2-RT-005-013 | Event-Driven (ConfigTypeError) | AC-05 | T-RT005-09, T-RT005-18 |
-| REQ-V3R2-RT-005-014 | Event-Driven (policy file absent → empty tier) | AC-06 | T-RT005-13 |
+| REQ-V3R2-RT-005-014 | Event-Driven (policy file absent → empty tier) | AC-06 | T-RT005-03 (RED tests `TestResolver_PolicyAbsent*`), T-RT005-13 (M2 verification gate). Baseline implementation already in `resolver.go:115` `loadPolicyTier` (`os.IsNotExist` returns empty tier without error); tasks listed are verification-only per audit D2 clarification. |
 | REQ-V3R2-RT-005-015 | Event-Driven (plugin tag SrcPlugin) | (slot only, no contributor in v3.0; verified by negative test) | T-RT005-19 |
 | REQ-V3R2-RT-005-020 | State-Driven (`"default"` flag for SrcBuiltin) | AC-14 | T-RT005-14 |
 | REQ-V3R2-RT-005-021 | State-Driven (audit_test fail on yaml/struct count delta) | AC-08 | T-RT005-07, T-RT005-16 |
@@ -90,15 +94,18 @@ Per plan-auditor PASS criterion #2 (every REQ maps to at least one AC and at lea
 | REQ-V3R2-RT-005-030 | Optional (`--format yaml` w/ comments) | AC-09 | T-RT005-14 |
 | REQ-V3R2-RT-005-031 | Optional (filepath.Abs normalization) | (cosmetic; verified by Origin assertion) | T-RT005-21 |
 | REQ-V3R2-RT-005-032 | Optional (`--key <name>`) | AC-10 | T-RT005-15 |
-| REQ-V3R2-RT-005-033 | Optional (Provenance.SchemaVersion) | AC-11 | T-RT005-22 |
+| REQ-V3R2-RT-005-033 | Optional (Provenance.SchemaVersion) | AC-11 | **T-RT005-10** (schema_version extraction in loadYAMLFile real parsing per audit D3 fix; was incorrectly mapped to T-RT005-22 which is Reload, not schema_version) |
 | REQ-V3R2-RT-005-040 | Unwanted (skip tier on read failure + log) | (negative test) | T-RT005-23 |
 | REQ-V3R2-RT-005-041 | Unwanted (ConfigAmbiguous on yaml/yml siblings) | AC-12 | T-RT005-11, T-RT005-24 |
 | REQ-V3R2-RT-005-042 | Unwanted (ConfigSchemaMismatch) | AC-15 | T-RT005-25 |
 | REQ-V3R2-RT-005-043 | Unwanted (audit_test fail on orphan yaml) | AC-08 | T-RT005-07, T-RT005-16 |
 | REQ-V3R2-RT-005-050 | Complex (SrcSession session-scoped reset) | AC-13 | T-RT005-12 |
-| REQ-V3R2-RT-005-051 | Complex (`config diff` merged-view delta) | AC-03 | T-RT005-15 |
+| REQ-V3R2-RT-005-051 | Complex (`config diff` merged-view delta) | AC-03 | **T-RT005-41** (Diff merged-view delta semantics implementation per audit D1 fix; was incorrectly mapped to T-RT005-15 which is dumpYAML alphabetical sort) |
+| spec §7 Constraints (cold load p99 < 100ms) | Perf budget (added v0.1.1) | **AC-16** | **T-RT005-43** (`BenchmarkResolver_Load`) |
+| spec §7 Constraints (reload p99 < 20ms) | Perf budget (added v0.1.1) | **AC-17** | **T-RT005-44** (`BenchmarkResolver_Reload`) |
+| spec §7 Constraints (RSS < 2 MiB) | Perf budget (added v0.1.1) | **AC-18** | **T-RT005-45** (`TestResolver_MemoryFootprint`) |
 
-Coverage: **27 REQs mapped to 15 ACs and 40 tasks (T-RT005-01..40)** (count measured 2026-05-10 via `grep -c "^| T-RT005-" tasks.md` = 40; some ACs and tasks map to multiple REQs). The matrix above cites representative task IDs at the abstract milestone level; actual `tasks.md` provides the granular 40-task breakdown across M1 (7 tasks T-01..07 RED) → M2 (6 tasks T-08..13) → M3 (6 tasks T-14..19) → M4 (8 tasks T-20..27) → M5 (13 tasks T-28..40).
+Coverage: **27 REQs + 3 perf-budget constraints mapped to 18 ACs (15 baseline + 3 perf budget added v0.1.1) and 45 tasks (T-RT005-01..45)** (count measured 2026-05-10 via `grep -c "^| T-RT005-" tasks.md` = 45 after audit-fix v0.1.1; some ACs and tasks map to multiple REQs). The matrix above cites representative task IDs at the abstract milestone level; actual `tasks.md` provides the granular 45-task breakdown across M1 (7 tasks T-01..07 RED) → M2 (6 tasks T-08..13) → M3 (6 tasks T-14..19) → M4 (8 tasks T-20..27) → M5 (18 tasks T-28..45 = 13 baseline + 5 audit-fix T-41..45).
 
 ---
 
@@ -259,12 +266,24 @@ Scope:
 1. Extend each `loadXxxTier` to call `filepath.Abs()` on origin path before populating `Provenance.Origin`.
 2. Already partial in `resolver.go:115` (policyPath uses absolute by definition); apply same pattern to user/project/local tiers.
 
+#### M5g: Audit-fix tasks (v0.1.1, per plan-auditor v1 audit defects D1/D4/D8)
+
+1. **T-RT005-41** (D1 fix): Implement `(*resolver).Diff(a, b Source)` merged-view delta semantics per REQ-V3R2-RT-005-051. Algorithm: 8-tier full Load → for each key, compare winner.Source ∈ {a, b} → output keys where winner.Source equals one tier but not the other, OR same key has different winning Value across the two tiers. Add `TestResolver_Diff_MergedViewDelta` in `resolver_test.go`. Test case: tier_a=user, tier_b=project, with 3 keys (one in user only, one in both with same value, one in both with different values) → expect 2 keys in delta output.
+2. **T-RT005-42** (D4 fix): Align `internal/config/resolver.go::SettingsResolver` interface (line 24-28) with spec REQ-V3R2-RT-005-004:
+   - Change `Dump(writer any) error` → `Dump(writer io.Writer) error`
+   - Change `Diff(a, b Source) (map[string]Value[any], error)` → `Diff(a, b Source) map[string]Value[any]` (no error return per spec)
+   - Add `import "io"` at file top
+   - Update all callers: `(*resolver).Dump`, `(*resolver).Diff`, `internal/cli/doctor_config.go::runConfigDump/runConfigDiff`, all test files invoking these methods
+3. **T-RT005-43** (D8 fix part 1): Create `internal/config/resolver_bench_test.go` with `BenchmarkResolver_Load(b *testing.B)`. Synthetic project setup: `t.TempDir()` + 23 yaml sections × 8 tiers populated. Compute p99 via 100-iteration histogram. Assert p99 < 100ms via `b.ReportMetric` + post-bench check. Variant: `BenchmarkResolver_Load_EmptyProject` (sanity floor).
+4. **T-RT005-44** (D8 fix part 2): Add `BenchmarkResolver_Reload(b *testing.B)` in same file. Reload single yaml file mid-benchmark via fixture rotation. Assert p99 < 20ms.
+5. **T-RT005-45** (D8 fix part 3): Add `TestResolver_MemoryFootprint(t *testing.T)` measuring `runtime.MemStats.HeapAlloc` delta before+after Load. Assert delta < 2 * 1024 * 1024 bytes (2 MiB). Variant: `TestResolver_MemoryFootprint_StressOverriddenBy` (max OverriddenBy entries scenario).
+
 #### M5f: CHANGELOG + MX tags + final verification
 
 1. Add CHANGELOG entry under `## [Unreleased]`:
    ```
    ### Added
-   - SPEC-V3R2-RT-005: Multi-Layer Settings Resolution with Provenance Tags. Hardens existing `internal/config/` 8-tier resolver to fully satisfy 27 EARS REQs and 15 ACs. New: real `TestAuditParity` enforcing yaml↔Go struct parity (with YAMLAuditExceptions for 5 MIG-003-pending sections); diff-aware `Reload(path)` API; ConfigTypeError/ConfigAmbiguous/PolicyOverrideRejected raises in 8-tier merge; byte-stable JSON/YAML `dump`; resolver mutex for concurrent Read/Reload safety; Skill frontmatter `config:` block loading; dedicated `.moai/logs/config.log` for tier read failures; validator/v10 schema tags on Config struct.
+   - SPEC-V3R2-RT-005: Multi-Layer Settings Resolution with Provenance Tags. Hardens existing `internal/config/` 8-tier resolver to fully satisfy 27 EARS REQs and **18 ACs (15 baseline + 3 perf budget)**. New: real `TestAuditParity` enforcing yaml↔Go struct parity (with YAMLAuditExceptions for 5 MIG-003-pending sections); diff-aware `Reload(path)` API; ConfigTypeError/ConfigAmbiguous/PolicyOverrideRejected raises in 8-tier merge; byte-stable JSON/YAML `dump`; resolver mutex for concurrent Read/Reload safety; Skill frontmatter `config:` block loading; dedicated `.moai/logs/config.log` for tier read failures; validator/v10 schema tags on Config struct; **Diff merged-view delta semantics per REQ-V3R2-RT-005-051**; **SettingsResolver interface signature alignment with spec REQ-V3R2-RT-005-004 (Dump io.Writer + Diff returns map only)**; **performance budget benchmarks (BenchmarkResolver_Load p99<100ms, BenchmarkResolver_Reload p99<20ms, TestResolver_MemoryFootprint <2MiB)**.
    ```
 2. Insert MX tags per §6 below.
 3. Run full `go test ./...` from repo root. Verify ALL tests pass + 0 cascading failures (per `CLAUDE.local.md` §6 HARD rule).
@@ -292,7 +311,8 @@ Scope:
 | `internal/config/resolver.go:46-74` | `(*resolver).Load()` | Wrap with `mu.Lock()`; populate `tierData`/`tierOrigins` for later Reload | M4 / REQ-010, REQ-011 |
 | `internal/config/resolver.go:298-305` | `(*resolver).Key` | Wrap with `mu.RLock()` | M4 / concurrency |
 | `internal/config/resolver.go:308-320` | `(*resolver).Dump` | Wrap with `mu.RLock()` | M4 / concurrency |
-| `internal/config/resolver.go:323-355` | `(*resolver).Diff` | Wrap with `mu.RLock()` and align with spec REQ-051 "merged-view delta" semantics | M4 / REQ-007, REQ-051 |
+| `internal/config/resolver.go:24-28` | `SettingsResolver` interface signatures | **Align with spec REQ-V3R2-RT-005-004 (D4 fix)**: change `Dump(writer any) error` → `Dump(writer io.Writer) error`; change `Diff(a, b Source) (map[string]Value[any], error)` → `Diff(a, b Source) map[string]Value[any]` (no error return per spec). Add `import "io"`. | **M5 / T-RT005-42 (audit-fix v0.1.1)** / REQ-V3R2-RT-005-004 |
+| `internal/config/resolver.go:323-355` | `(*resolver).Diff` | Wrap with `mu.RLock()` and align with spec REQ-051 "merged-view delta" semantics (full implementation in **T-RT005-41**, audit-fix v0.1.1) | M4 / REQ-007, REQ-051 |
 | `internal/config/resolver.go:end` | new method `Reload(path string) error` | Add diff-aware reload | M4 / REQ-011 |
 | `internal/config/resolver.go:end` | new helper `logTierReadFailure(source, path, err)` | Append to `.moai/logs/config.log` | M4 / REQ-040 |
 | `internal/config/merge.go:63-134` | `MergeAll` | Add `policy.strict_mode` enforcement raising `PolicyOverrideRejected`; verify OverriddenBy population | M3 / REQ-012, REQ-022 |
@@ -314,8 +334,9 @@ Scope:
 | `internal/config/audit_registry_test.go` | registry consistency tests | ~60 |
 | `internal/config/reload_test.go` | diff-aware reload test scenarios | ~120 |
 | `internal/cli/doctor_config_test.go` | CLI tests if not exists (extend if exists) | ~150 |
+| **`internal/config/resolver_bench_test.go`** | **Performance budget benchmarks (added v0.1.1 per audit D8): `BenchmarkResolver_Load`, `BenchmarkResolver_Reload`, `TestResolver_MemoryFootprint` + variants** | **~170** |
 
-Total new: ~410 LOC. Total modified: ~350 LOC. Net additions: ~760 LOC across 4 new files + 7 modified files.
+Total new: ~580 LOC (was ~410 in v0.1.0; +170 LOC for audit-fix v0.1.1). Total modified: ~400 LOC (was ~350; +50 for T-RT005-41 Diff merged-view delta + T-RT005-42 interface signature). Net additions: ~980 LOC across **5 new files + 8 modified files** (+1 new file, +1 modified file vs v0.1.0).
 
 ### 3.3 NOT to be touched (preserved by reference)
 
@@ -421,7 +442,7 @@ fan_in counts measured 2026-05-10 via `grep -rn "config\.<symbol>" --include="*.
 
 | Target file:line | Tag content | Measured fan_in | Rationale |
 |------------------|-------------|-----------------|-----------|
-| `internal/config/source.go:11-44` (`Source` enum constants) | `@MX:ANCHOR fan_in=49 — SPEC-V3R2-RT-005 REQ-001 8-tier priority enum; consumed by RT-002 (permission stack), RT-003 (sandbox), RT-006 (hook), MIG-003 (5 loaders), and 5 internal config files (merge.go, resolver.go, doctor_config.go, source_test.go, merge_test.go).` | 49 | Source enum is the constitutional backbone of the 8-tier system. ANY change ripples to 4+ downstream SPECs. |
+| `internal/config/source.go:11-44` (`Source` enum constants) | `@MX:ANCHOR fan_in=71 — SPEC-V3R2-RT-005 REQ-001 8-tier priority enum; consumed by RT-002 (permission stack), RT-003 (sandbox), RT-006 (hook), MIG-003 (5 loaders), and 5 internal config files (merge.go, resolver.go, doctor_config.go, source_test.go, merge_test.go).` | 71 (re-measured 2026-05-10 per audit D12 fix; was 49 in v0.1.0; command `grep -r "config\.Src\|config\.Source" --include="*.go" \| wc -l` = 71. Breakdown: 48 SrcXxx const refs + 23 Source type refs.) | Source enum is the constitutional backbone of the 8-tier system. ANY change ripples to 4+ downstream SPECs. |
 | `internal/config/provenance.go:34-60` (`Value[T any]` generic + `Provenance`) | `@MX:ANCHOR fan_in=2 (current) → 8+ (post-RT-002/003/006) — SPEC-V3R2-RT-005 REQ-002, REQ-003 typed-state contract; every config field that needs to answer "where from?" wraps via Value[T].` | 2 (current; will grow as MIG-003 + RT-002 land) | Generic wrapper is the type-safety contract. Adding a new tier requires no Value[T] change but new consumers reach via `cfg.<field>.V`. |
 | `internal/config/resolver.go:17-29` (`SettingsResolver` interface) | `@MX:ANCHOR fan_in=1 (current) → 4+ (post-RT-002/003/006) — SPEC-V3R2-RT-005 REQ-004 single resolver contract; methods Load/Key/Dump/Diff/Reload form the substrate. Adding methods is breaking; reordering signatures breaks RT-002 imports.` | 1 (current); future consumers RT-002, RT-003, RT-006, MIG-003 | Interface defines the SPEC-V3R2-RT-005 reader-layer API surface. |
 
@@ -429,7 +450,7 @@ fan_in counts measured 2026-05-10 via `grep -rn "config\.<symbol>" --include="*.
 
 | Target file:line | Tag content | Rationale |
 |------------------|-------------|-----------|
-| `internal/config/merge.go:63-134` (`MergeAll`) | `@MX:NOTE — SPEC-V3R2-RT-005 deterministic 8-tier merge. Identical tier inputs MUST produce byte-identical merged output (cache-prefix discipline; problem-catalog P-C05). Map iteration order is non-deterministic; sort keys before serialization (see merge.go:dumpJSON).` | Documents the byte-stability invariant and the implementation detail that addresses it. |
+| `internal/config/merge.go:63-134` (`MergeAll`) — function-level | `@MX:NOTE — SPEC-V3R2-RT-005 deterministic 8-tier merge. Identical tier inputs MUST produce byte-identical merged output (cache-prefix discipline; problem-catalog P-C05). Map iteration order is non-deterministic; sort keys before serialization (see merge.go:dumpJSON).` | Documents the byte-stability invariant and the implementation detail that addresses it. **Layering note (per audit D11)**: this is a NEW function-level `@MX:NOTE` on `MergeAll` (lines 63-134); it COEXISTS with the EXISTING struct-level `@MX:NOTE` on `MergedSettings` at `merge.go:10` (the struct-level tag documents the system; the function-level tag documents the algorithm contract). The two tags target different semantic levels (struct vs function) and do not conflict. |
 | `internal/config/audit_test.go:TestAuditParity` (post-M2) | `@MX:NOTE — SPEC-V3R2-RT-005 REQ-008/043 yaml↔Go struct parity. New yaml under .moai/config/sections/ MUST register in audit_registry.go::YAMLToStructRegistry OR be added to YAMLAuditExceptions. MIG-003 will register the 5 currently-excepted files (constitution/context/interview/design/harness) progressively.` | Carries the workflow rule for future contributors adding yaml files. |
 
 ### 6.3 @MX:WARN targets (danger zones)
@@ -476,17 +497,17 @@ These criteria are checked by `plan-auditor` at `/moai run` Phase 0.5 (Plan Audi
 - [x] **C1: Frontmatter v0.1.0 schema** — `spec.md:1-22` frontmatter measured: 21 fields including `id`, `version`, `status`, `created`, `updated`, `author`, `priority`, `phase`, `module`, `dependencies`, `bc_id`, `breaking`, `lifecycle`, `tags`. Verified by `Read spec.md` line 1-22.
 - [x] **C2: HISTORY entry for v0.1.0** — `spec.md:30` HISTORY table has v0.1.0 row; measured by `grep -c "^| 0.1.0" spec.md` = 1.
 - [x] **C3: 27 EARS REQs across 6 categories** — `grep -c "^- REQ-V3R2-RT-005-" spec.md` = **27**. Distribution verified: Ubiquitous 8 (REQ-001..008), Event-Driven 6 (REQ-010..015), State-Driven 3 (REQ-020..022), Optional 4 (REQ-030..033), Unwanted 4 (REQ-040..043), Complex 2 (REQ-050..051). Sum = 8+6+3+4+4+2 = 27 ✅.
-- [x] **C4: 15 ACs all map to REQs (100% coverage)** — `grep -c "^- AC-V3R2-RT-005-" spec.md` = **15**. Each AC explicitly cites the REQ(s) it maps to (verified by inspection of spec.md:166-181). Plan §1.4 traceability matrix confirms all 27 REQs map to ≥1 AC and ≥1 task.
+- [x] **C4: 18 ACs all map to REQs / Constraints (100% coverage; v0.1.1 expanded)** — `grep -c "^- AC-V3R2-RT-005-" spec.md` = 15 (baseline; spec.md body §6 unchanged); +3 perf budget ACs (AC-16/17/18) added in `acceptance.md` v0.1.1 mapping to spec.md §7 Constraints. Each AC explicitly cites the REQ(s) or Constraint it maps to. Plan §1.4 traceability matrix confirms all 27 REQs + 3 perf-budget constraints map to ≥1 AC and ≥1 task.
 - [x] **C5: BC scope clarity** — `spec.md:19` `breaking: true` + `spec.md:14` `bc_id: [BC-V3R2-015]` + spec.md §1 documents AUTO migration: "reader layer only; settings.json files on disk remain unchanged; flat-merge consumers are internal and require no user API change."
 - [x] **C6: File:line anchors ≥10** — research.md §13 cites **33 anchors**; this plan §3.4 cites **29 anchors**. Both exceed minimum.
 - [x] **C7: Exclusions section present** — `spec.md:65-72` Out-of-scope (6 entries, each mapped to other SPECs: RT-002, MIG-003, RT-003, RT-006, MIG-003, v3.1+).
 - [x] **C8: TDD methodology declared** — this plan §1.2 + `.moai/config/sections/quality.yaml` `development_mode: tdd` confirmed via `grep development_mode .moai/config/sections/quality.yaml` (file present in repo).
-- [x] **C9: mx_plan section** — this plan §6 defines 7 MX tag insertions across 4 categories (3 ANCHOR with measured fan_in, 2 NOTE, 2 WARN, 0 TODO). fan_in for Source enum measured = 49 via `grep -rn "config\.Source\|config\.SrcPolicy\|config\.SrcUser\|config\.SrcProject\|config\.SrcLocal\|config\.SrcSession" --include="*.go" | wc -l`.
+- [x] **C9: mx_plan section** — this plan §6 defines 7 MX tag insertions across 4 categories (3 ANCHOR with measured fan_in, 2 NOTE, 2 WARN, 0 TODO). fan_in for Source enum re-measured 2026-05-10 = **71** (was 49 in v0.1.0; updated per audit D12 fix) via `grep -r "config\.Src\|config\.Source" --include="*.go" \| wc -l`. Breakdown: 48 SrcXxx const refs + 23 Source type refs.
 - [x] **C10: Risk table with mitigations** — `spec.md:195-204` (7 risks) + this plan §5 (14 risks, all with file-anchored mitigations).
 - [x] **C11: Plan phase checkout discipline** — this plan §7 (HARD rules per spec-workflow.md SPEC Phase Discipline Step 1: plan-phase in main checkout, branch `plan/SPEC-V3R2-RT-005` checked out at `/Users/goos/MoAI/moai-adk-go`).
 - [x] **C12: No implementation code in plan documents** — verified self-check: this plan, research.md, acceptance.md, tasks.md contain only natural-language descriptions, file paths, code-block templates, and pseudo-Go for interface declarations. No executable Go function bodies.
 - [x] **C13: Acceptance.md G/W/T format with edge cases** — verified in acceptance.md sections AC-01 through AC-15 (each has Happy/Edge/Test mapping).
-- [x] **C14: tasks.md owner roles aligned with TDD methodology** — verified in tasks.md M1-M5 (manager-cycle / expert-backend / manager-docs / manager-git assignments). Total task count measured by `grep -c "^| T-RT005-" tasks.md` = **40** (the §1.4 traceability matrix cites representative task IDs at milestone abstract level; tasks.md provides the granular 40-task breakdown).
+- [x] **C14: tasks.md owner roles aligned with TDD methodology** — verified in tasks.md M1-M5 (manager-cycle / expert-backend / manager-docs / manager-git assignments). Total task count measured by `grep -c "^| T-RT005-" tasks.md` = **45** (40 baseline + 5 audit-fix tasks T-41..45 added v0.1.1; the §1.4 traceability matrix cites representative task IDs at milestone abstract level; tasks.md provides the granular 45-task breakdown).
 - [x] **C15: Cross-SPEC consistency** — blocked-by dependencies verified per spec.md §9: SPEC-V3R2-CON-001 (FROZEN zone — completed Wave 6), SPEC-V3R2-SCH-001 (validator/v10 — at-risk per §5 risk table; mitigation defined), SPEC-V3R2-RT-004 (SrcSession content — RT-004 plan complete, in-flight). RT-005 blocks RT-002, RT-003, RT-006, RT-007, MIG-003 per spec.md §9.2.
 
 All 15 criteria PASS → plan is **audit-ready**.
@@ -501,9 +522,9 @@ Run-phase agent executes in this order (P0 first, dependencies resolved):
 2. **M2 (P0)**: Audit registry (`audit_registry.go` new, `audit_test.go` rewrite) + ConfigTypeError (yaml.v3 strict mode in `loadYAMLFile`) + ConfigAmbiguous (`loadYAMLSections` sibling detection) + schema_version propagation. Confirm `TestAuditParity_*`, `TestResolver_ConfigTypeError`, `TestResolver_ConfigAmbiguous`, `TestResolver_SchemaVersionPropagation` GREEN.
 3. **M3 (P0)**: Real JSON dumper (`encoding/json.MarshalIndent` replacing `formatMapAsJSON`) + OverriddenBy population verification + PolicyOverrideRejected enforcement + dumpYAML alphabetical sort. Confirm `TestMergeAll_OverriddenByPopulated`, `TestMergeAll_ByteStableJSON`, `TestMergeAll_PolicyOverrideRejected` GREEN. AC-01, AC-07 satisfied.
 4. **M4 (P0)**: Diff-aware reload (`Reload(path string) error`) + Skill frontmatter loader + dedicated `.moai/logs/config.log` + resolver mutex (sync.RWMutex). Confirm `TestResolver_Reload_*`, `TestResolver_LoadAll8Tiers` (with skill tier) GREEN. AC-04 satisfied. `go test -race` clean.
-5. **M5 (P1)**: validator/v10 integration on Config struct + filename normalization + CHANGELOG entry + 7 MX tag insertions per §6 + final `make build` + `go test ./...` + `go test -race ./internal/config/`. Update `progress.md` with `run_complete_at` and `run_status: implementation-complete`.
+5. **M5 (P1)**: validator/v10 integration on Config struct + filename normalization + **audit-fix M5g tasks T-RT005-41 (Diff merged-view delta), T-42 (SettingsResolver interface signature alignment), T-43/44/45 (performance budget benchmarks)** + CHANGELOG entry + 7 MX tag insertions per §6 + final `make build` + `go test ./...` + `go test -race ./internal/config/` + `go test -bench=. -benchtime=10s ./internal/config/`. Update `progress.md` with `run_complete_at` and `run_status: implementation-complete` and `acs_passed: 18/18`.
 
-Total milestones: 5. Total file edits (existing): ~7. Total file creations (new): 4. Total CHANGELOG entries: 1. Total MX tag insertions: 7.
+Total milestones: 5 (with M5g sub-section added v0.1.1). Total file edits (existing): ~8 (was ~7; +1 for caller updates per T-42). Total file creations (new): 5 (was 4; +1 `resolver_bench_test.go`). Total CHANGELOG entries: 1. Total MX tag insertions: 7. **Total tasks: 45** (40 baseline + 5 audit-fix). **Total ACs: 18** (15 baseline + 3 perf budget).
 
 ---
 

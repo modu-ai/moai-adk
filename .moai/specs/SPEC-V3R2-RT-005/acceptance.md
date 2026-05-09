@@ -8,12 +8,13 @@
 | Version | Date       | Author                        | Description                                                            |
 |---------|------------|-------------------------------|------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-10 | manager-spec (Plan workflow)  | Initial G/W/T conversion of 15 ACs (AC-V3R2-RT-005-01 through -15)     |
+| 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2) | +3 performance budget ACs (AC-V3R2-RT-005-16/17/18) per plan-auditor v1 audit defect D8 (spec §7 declares perf budgets but had zero benchmark tasks/ACs). AC-16 = Load p99 < 100ms (REQ-V3R2-RT-005 §7 Constraints), AC-17 = Reload p99 < 20ms, AC-18 = RSS < 2 MiB. Maps to T-RT005-43/44/45. |
 
 ---
 
 ## Scope
 
-This document converts each of the 15 ACs from `spec.md` §6 into Given/When/Then format with happy-path + edge-case + test-mapping notation.
+This document converts each of the 18 ACs (15 baseline from spec.md §6 + 3 performance budget ACs added in v0.1.1 from spec.md §7 Constraints per plan-auditor v1 audit defect D8) into Given/When/Then format with happy-path + edge-case + test-mapping notation.
 
 Notation:
 - **Test mapping** identifies which Go test function (or manual verification step) covers the AC.
@@ -536,6 +537,102 @@ Maps to: REQ-V3R2-RT-005-042.
 
 ---
 
+## AC-V3R2-RT-005-16 — Cold-load p99 latency < 100ms (performance budget)
+
+Maps to: spec.md §7 Constraints "Full Load() cold cache MUST complete in under 100 ms p99 for a typical project (23 yaml sections, all tiers populated)".
+
+> Added in v0.1.1 (2026-05-10) per plan-auditor v1 audit defect D8 — spec §7 declared a hard performance budget but had zero corresponding benchmark task or AC. T-RT005-43 implements the benchmark.
+
+### Happy path
+
+- **Given** a synthetic typical project staged in `t.TempDir()` with 23 yaml sections × 8 tiers populated (using `defaults.go::NewDefaultConfig()` as builtin baseline)
+- **When** `BenchmarkResolver_Load` runs with `-benchtime=10s` (≥ 100 iterations)
+- **Then** the p99 latency (computed from sorted iteration histogram, index `int(0.99 * len(samples))`) is `< 100ms`
+- **And** the benchmark reports the p50, p95, p99 values to `b.ReportMetric` for visibility in `go test -bench`
+
+### Edge case — empty project (only builtin tier)
+
+- **Given** an empty project (no user/project/local/skill yaml files)
+- **When** `BenchmarkResolver_Load` runs
+- **Then** p99 latency is well under budget (likely < 5ms; sanity floor)
+
+### Edge case — large yaml sections (synthetic stress)
+
+- **Given** a project with 23 yaml sections, each containing 100 keys (synthetic stress; ~2300 keys total)
+- **When** Load runs once
+- **Then** still < 100ms p99 (stress test for plausibility, not formal AC requirement)
+
+### Test mapping
+
+- `internal/config/resolver_bench_test.go::BenchmarkResolver_Load` (new, T-RT005-43)
+- `internal/config/resolver_bench_test.go::BenchmarkResolver_Load_EmptyProject` (new, T-RT005-43; sanity floor)
+
+---
+
+## AC-V3R2-RT-005-17 — Diff-aware reload p99 latency < 20ms (performance budget)
+
+Maps to: spec.md §7 Constraints "Diff-aware reload for a single file change MUST complete in under 20 ms p99".
+
+> Added in v0.1.1 (2026-05-10) per plan-auditor v1 audit defect D8. T-RT005-44 implements the benchmark.
+
+### Happy path
+
+- **Given** a fully-loaded resolver from the same synthetic project as AC-16
+- **When** `BenchmarkResolver_Reload` runs `(*resolver).Reload(".moai/config/sections/quality.yaml")` with `-benchtime=10s` (≥ 100 iterations) — each iteration mutates the file mid-benchmark via fixture rotation
+- **Then** p99 latency is `< 20ms`
+- **And** the benchmark reports p50, p95, p99 metrics to `b.ReportMetric`
+
+### Edge case — reload on path outside any tier
+
+- **Given** Reload called with `/nonexistent/random.yaml`
+- **When** Reload returns no-op
+- **Then** latency is well under budget (likely < 1ms; only path-prefix matching cost)
+
+### Test mapping
+
+- `internal/config/resolver_bench_test.go::BenchmarkResolver_Reload` (new, T-RT005-44)
+- `internal/config/resolver_bench_test.go::BenchmarkResolver_Reload_NoOp` (new, T-RT005-44; sanity floor)
+
+---
+
+## AC-V3R2-RT-005-18 — Merged settings RSS < 2 MiB (memory budget)
+
+Maps to: spec.md §7 Constraints "Memory: Merged settings representation MUST NOT exceed 2 MiB RSS for typical projects".
+
+> Added in v0.1.1 (2026-05-10) per plan-auditor v1 audit defect D8. T-RT005-45 implements the test.
+
+### Happy path
+
+- **Given** the same synthetic typical project as AC-16 (23 yaml sections × 8 tiers populated)
+- **When** `TestResolver_MemoryFootprint` runs:
+  1. `runtime.GC()` to baseline
+  2. `runtime.ReadMemStats(&before)`
+  3. resolver, _ := NewResolver(); merged, _ := resolver.Load()
+  4. `runtime.ReadMemStats(&after)`
+  5. delta := after.HeapAlloc - before.HeapAlloc
+- **Then** delta is `< 2 * 1024 * 1024` bytes (2 MiB)
+
+### Edge case — no Provenance overhead inflation
+
+- **Given** the same synthetic project, but Provenance struct has 0 OverriddenBy entries (single-tier scenario)
+- **When** memory footprint measured
+- **Then** still < 2 MiB (Provenance per-key overhead ≤ 256 bytes per spec §8 risk row 2)
+
+### Edge case — stress: 100 keys × 8 tiers all populated
+
+- **Given** synthetic project where every key has all 8 tiers contributing (max OverriddenBy entries)
+- **When** memory measured
+- **Then** still < 2 MiB (verifies spec §8 risk row 2 calculation: 100 keys × 256 bytes Provenance = 25 KiB; well under 2 MiB ceiling)
+
+### Test mapping
+
+- `internal/config/resolver_bench_test.go::TestResolver_MemoryFootprint` (new, T-RT005-45)
+- `internal/config/resolver_bench_test.go::TestResolver_MemoryFootprint_StressOverriddenBy` (new, T-RT005-45)
+
+[NOTE] Memory measurement via `runtime.MemStats.HeapAlloc` is approximate; OS-level RSS (e.g., `process.RSS`) is harder to measure cross-platform. The test uses HeapAlloc as a proxy; the 2 MiB constraint is a Go-heap budget, not a process-RSS budget.
+
+---
+
 ## Summary table — AC → REQ → Test
 
 | AC | REQs covered | Test files |
@@ -555,8 +652,11 @@ Maps to: REQ-V3R2-RT-005-042.
 | AC-13 | REQ-050 | `reload_test.go::TestResolver_SessionEnd_*` (2 cases, stub for RT-006) |
 | AC-14 | REQ-020 | `doctor_config_test.go::TestDoctorConfigDump_BuiltinDefaultFlag`, `TestDoctorConfigDump_UserOverridesBuiltin` |
 | AC-15 | REQ-042 | `resolver_test.go::TestResolver_ConfigSchemaMismatch`, `TestResolver_MigrationRegistered* ` (stub for EXT-004) |
+| AC-16 | spec §7 Constraints (cold load p99 < 100ms) | `resolver_bench_test.go::BenchmarkResolver_Load`, `BenchmarkResolver_Load_EmptyProject` (new in v0.1.1, T-RT005-43) |
+| AC-17 | spec §7 Constraints (reload p99 < 20ms) | `resolver_bench_test.go::BenchmarkResolver_Reload`, `BenchmarkResolver_Reload_NoOp` (new in v0.1.1, T-RT005-44) |
+| AC-18 | spec §7 Constraints (RSS < 2 MiB) | `resolver_bench_test.go::TestResolver_MemoryFootprint`, `TestResolver_MemoryFootprint_StressOverriddenBy` (new in v0.1.1, T-RT005-45) |
 
-Total new test functions: **~38 across 4 existing test files extended (`audit_test.go`, `merge_test.go`, `resolver_test.go`, `doctor_config_test.go`) and 1 new test file (`reload_test.go`)**.
+Total new test functions: **~44 across 4 existing test files extended (`audit_test.go`, `merge_test.go`, `resolver_test.go`, `doctor_config_test.go`) and 2 new test files (`reload_test.go`, `resolver_bench_test.go`)** (was ~38 in v0.1.0; +6 added in v0.1.1: 2 benchmarks × 2 each = 4 + 2 memory tests = 6).
 
 ---
 
@@ -564,7 +664,7 @@ Total new test functions: **~38 across 4 existing test files extended (`audit_te
 
 This SPEC is considered done when ALL of the following are true:
 
-1. All 15 ACs above pass under `go test ./internal/config/ ./internal/cli/`.
+1. All 18 ACs above pass under `go test ./internal/config/ ./internal/cli/` (15 baseline + 3 perf budget AC-16/17/18 added in v0.1.1).
 2. Full `go test ./...` from the repo root passes with zero failures and zero cascading regressions.
 3. `go test -race ./internal/config/` passes (mutex correctness verified).
 4. `make build` succeeds and `internal/template/embedded.go` regenerates cleanly (no template content drift).
