@@ -4,20 +4,58 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/bodp"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
-// emitOffProtocolReminder writes a friendly notice when the user is on a
-// branch that was created without going through MoAI's BODP entry points
-// (skill plan-branch / plan-worktree / `moai worktree new`). RED phase stub —
-// the GREEN phase (W7-T05) wires env opt-out, main-branch skip, audit-trail
-// detection, and dir-absent false-positive suppression.
+const (
+	envNoBODPReminder = "MOAI_NO_BODP_REMINDER"
+	bodpAuditTrailDir = ".moai/branches/decisions"
+)
+
+// mainBranches enumerates the canonical default branches that BODP treats as
+// "in-protocol" without an audit trail. Reminder must not fire on these.
+var mainBranches = []string{"main", "master"}
+
+const reminderMessage = `⚠️  Branch %q was created without going through MoAI BODP entry points.
+Future branches: use ` + "`/moai plan --branch <SPEC-ID>`" + ` or ` + "`moai worktree new <SPEC-ID>`" + ` for relatedness check + audit trail.
+Skip with %s=1 if intentional.
+`
+
+// emitOffProtocolReminder writes a notice to w when the user is on an
+// off-protocol branch with no BODP audit trail. The reminder is purely
+// informative (exit code unaffected by callers).
+//
+// Skip conditions (any one short-circuits to no-op):
+//   - %s env var is "1"
+//   - currentBranch is "main" or "master"
+//   - bodp.HasAuditTrail returns true for currentBranch
+//   - audit trail directory does not exist (fresh project — false-positive guard)
+//
+// @MX:NOTE Reminder는 status command 끝에 호출. Block 안 함 (REQ-CIAUT-050).
 func emitOffProtocolReminder(repoRoot, currentBranch string, w io.Writer) {
-	_, _, _ = repoRoot, currentBranch, w
+	if os.Getenv(envNoBODPReminder) == "1" {
+		return
+	}
+	if slices.Contains(mainBranches, currentBranch) {
+		return
+	}
+	if bodp.HasAuditTrail(repoRoot, currentBranch) {
+		return
+	}
+	dirPath := filepath.Join(repoRoot, bodpAuditTrailDir)
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return
+	}
+	_, _ = fmt.Fprintln(w)
+	_, _ = fmt.Fprintf(w, reminderMessage, currentBranch, envNoBODPReminder)
 }
 
 var statusCmd = &cobra.Command{
@@ -74,7 +112,23 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	_, _ = fmt.Fprintln(out, renderCard("Project Status", renderKeyValueLines(pairs)))
 
+	// W7-T05: BODP off-protocol branch reminder. Failures are silent — git
+	// missing or non-repo cwd simply suppresses the reminder.
+	if currentBranch, err := detectCurrentBranch(); err == nil {
+		emitOffProtocolReminder(cwd, currentBranch, cmd.ErrOrStderr())
+	}
+
 	return nil
+}
+
+// detectCurrentBranch resolves the current git branch via `git rev-parse`.
+// Returns an error when git is missing or cwd is not a git repository.
+func detectCurrentBranch() (string, error) {
+	out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // countDirs counts the number of subdirectories in a directory.
