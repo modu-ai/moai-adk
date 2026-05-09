@@ -3,11 +3,14 @@ package hook
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -70,9 +73,23 @@ func TestHookWrapper_SizeLimit(t *testing.T) {
 		t.Fatalf("failed to start wrapper: %v", err)
 	}
 
-	// Write large input
+	// Write large input.
+	//
+	// Broken pipe (EPIPE) is the expected outcome on systems with small pipe
+	// buffers (notably macOS, ~16 KiB) because the wrapper script does
+	// `head -c 1048576` and closes stdin once it has read the configured
+	// 1 MiB ceiling. Subsequent writes from this side then race the wrapper's
+	// stdin close and may legitimately fail with EPIPE before all bytes are
+	// drained. That race is a successful enforcement of the size limit, not
+	// a test failure, so we accept EPIPE / "broken pipe" / io.ErrClosedPipe
+	// as a passing condition. Any other write error remains fatal.
 	if _, err := stdin.Write([]byte(largeInput)); err != nil {
-		t.Fatalf("failed to write stdin: %v", err)
+		if !errors.Is(err, syscall.EPIPE) &&
+			!errors.Is(err, io.ErrClosedPipe) &&
+			!strings.Contains(err.Error(), "broken pipe") {
+			t.Fatalf("failed to write stdin: %v", err)
+		}
+		t.Logf("wrapper closed stdin after enforcing 1 MiB limit (expected): %v", err)
 	}
 	_ = stdin.Close()
 
