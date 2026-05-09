@@ -19,7 +19,7 @@
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 ls internal/tui/{theme,box,pill,status,form,table,prompt,term,help}.go
 go test ./internal/tui/... -run "TestLightTokens|TestDarkTokens" -v
 ```
@@ -263,7 +263,7 @@ ls internal/tui/testdata/mixed-*.golden | wc -l  # >= 18 (light) + 18 (dark) = 3
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 
 # 1) 신규 require 0건 검증
 git diff origin/main..HEAD -- go.mod | \
@@ -287,38 +287,43 @@ git diff origin/main..HEAD -- go.sum | wc -l  # = 0 또는 minimal
 
 ---
 
-## AC-CLI-TUI-009: 16개 언어 i18n 메시지 카탈로그 골격
+## AC-CLI-TUI-009: 인간 언어 i18n 메시지 카탈로그 골격 (ko + en)
 
 **관련 REQ**: REQ-CLI-TUI-019, REQ-CLI-TUI-003
+
+> **Taxonomy 분리 (D3 정정)**: 본 AC는 **인간 언어 i18n 카탈로그**(ISO 639-1 코드 기준)를 다룬다. CLAUDE.local.md §15 "16-language neutrality"는 **프로그래밍 언어** 중립성(go/python/typescript/.../swift)이며 별개 개념. 본 SPEC scope는 `ko` + `en` 두 카탈로그를 채우고, 나머지 인간 언어는 별도 SPEC에서 확장한다.
 
 ### Given-When-Then
 
 - **Given** M7가 머지된 상태이고
 - **When** `ls internal/tui/messages/` 명령 실행
-- **Then** 16개 언어 yaml 파일이 모두 존재해야 한다 (ko, en, zh, ja, go, py, ts, js, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift 중 본 프로젝트 16-language 정의에 따른 16개).
-- **And** ko.yaml과 en.yaml은 동일한 키 셋을 가져야 한다 (M7에서 양쪽 모두 채움).
-- **And** 나머지 14개 언어는 빈 yaml 또는 placeholder만 존재 (별도 SPEC에서 채움).
+- **Then** 최소 `ko.yaml` + `en.yaml` 두 개가 존재해야 한다 (본 SPEC scope).
+- **And** ko.yaml과 en.yaml은 **동일한 키 셋**을 가져야 한다 (M7에서 양쪽 모두 채움).
+- **And** `tui.Translate(key, lang)` 함수가 존재하며, 부재 키는 영어로 fallback해야 한다 (REQ-CLI-TUI-019).
 
 ### 검증 명령
 
 ```bash
-# 1) 16개 yaml 파일 존재 검증 (16-language list 참조)
-SUPPORTED_LANGS="go python typescript javascript rust java kotlin csharp ruby php elixir cpp scala r flutter swift"
-# 단, messages/ 는 conversation 언어 기준 (16개 중 ko/en/zh/ja 4개 + nullable placeholder 12개) 
-# OR 별도 i18n 정책에 따름
-ls internal/tui/messages/ | grep -cE '\.yaml$' | awk '$1 >= 16 { print "PASS"; exit 0 } { print "FAIL"; exit 1 }'
+# 1) 본 SPEC 필수 카탈로그 존재 (ko + en)
+test -f internal/tui/messages/ko.yaml && \
+  test -f internal/tui/messages/en.yaml && \
+  echo "PASS: ko + en 카탈로그 존재" || echo "FAIL"
 
-# 2) ko + en 키 셋 동일성
-diff <(yq eval 'keys' internal/tui/messages/ko.yaml) <(yq eval 'keys' internal/tui/messages/en.yaml) && echo "PASS: keys match"
+# 2) ko + en 키 셋 동일성 (yq 필요)
+diff <(yq eval 'keys' internal/tui/messages/ko.yaml | sort) \
+     <(yq eval 'keys' internal/tui/messages/en.yaml | sort) && \
+  echo "PASS: 키 셋 일치" || echo "FAIL: 키 불일치"
 
-# 3) tui.Translate 함수 존재 + fallback 동작
-go test ./internal/tui/... -run "TestI18n_FallbackToEn" -v
+# 3) tui.Translate 함수 + fallback 단위 테스트
+go test ./internal/tui/... -run "TestI18n_FallbackToEn" -v -count=1
 ```
 
 ### Edge Cases
 
 - 누락된 언어 키 lookup은 영어로 fallback (REQ-CLI-TUI-019)
-- conversation_language 설정값이 16개 언어 중 부재한 값일 시 영어 fallback
+- `conversation_language` 설정값이 카탈로그 부재 코드일 시 영어 fallback
+- 향후 zh/ja/기타 인간 언어 카탈로그는 별도 SPEC (예: `SPEC-V3R3-I18N-EXPAND-001`)에서 추가
+- 프로그래밍 언어 중립성(go..swift 16종)은 본 AC 범위 외 — 별도 검증 (예: `SPEC-V3R2-WF-002` 위임 정책)
 
 ---
 
@@ -336,7 +341,7 @@ go test ./internal/tui/... -run "TestI18n_FallbackToEn" -v
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 
 # 1) 전체 테스트 + race
 go test ./... -count=1 -race -timeout 5m
@@ -373,7 +378,7 @@ go test ./internal/cli/... -count=1 -run "TestInit|TestDoctor|TestStatus|TestVer
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 
 # 1) 텍스트 박스 문자 sweep (production 코드만, _test.go 제외)
 grep -RnE '╭|─|╮|│|└|┘|━|┃|┏|┓|┗|┛|┌|┐|├|┤|┬|┴|┼' \
@@ -421,7 +426,7 @@ grep -RnE 'lipgloss\.(RoundedBorder|NormalBorder|ThickBorder|DoubleBorder|Hidden
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 go test -run TestThemeResolve ./internal/tui/... -v -count=1
 ```
 
@@ -446,7 +451,7 @@ go test -run TestThemeResolve ./internal/tui/... -v -count=1
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 
 # 마젠타·오렌지·핑크 계열 금지 hex 10종 sweep
 grep -RniE '#(FF00FF|E91E63|FF9800|FF5722|FF1493|FF6347|EE82EE|DA70D6|C71585|9932CC)' \
@@ -482,7 +487,7 @@ grep -RniE 'gradient.*(magenta|orange|pink)' \
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 
 # 1) hex 직접 sweep (대소문자 변형 포함)
 grep -RnE '#(FFFFFF|FFFFff|ffffff|Ffffff|FfffFf|000000)' \
@@ -517,7 +522,7 @@ grep -RnE '#fbfaf6|#0a110f' internal/tui/theme.go | wc -l  # >= 2 (라이트 bg 
 ### 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 
 # 1) 환경변수 설정 후 Spinner/Progress 정적 출력 검증
 MOAI_REDUCED_MOTION=1 go test -run "TestSpinnerStatic|TestProgressStatic" ./internal/tui/... -v -count=1
@@ -538,6 +543,131 @@ diff internal/tui/testdata/spinner-reduced.golden internal/tui/testdata/spinner-
 
 ---
 
+## AC-CLI-TUI-016: 글로벌 hex 색상 sweep (REQ-CLI-TUI-013)
+
+**관련 REQ**: REQ-CLI-TUI-013
+
+> **D4 정정**: AC-CLI-TUI-002는 banner.go scope만 검증. 본 AC는 14개 마이그레이션 surface 전체에서 hex 색상 코드가 `internal/tui/` 외부에 0건 존재함을 검증한다.
+
+### Given-When-Then
+
+- **Given** 본 SPEC의 모든 milestone (M1~M7)이 머지된 상태이고
+- **When** production Go 코드 (`internal/cli/`, `internal/statusline/`, `pkg/`, `cmd/`) 전체에서 hex 색상 패턴(`#[0-9a-fA-F]{3,8}`)을 grep
+- **Then** `_test.go`/`testdata/`/주석 내 substring을 제외한 hex 코드는 **0건**이어야 한다.
+- **And** `internal/tui/theme.go` 내부의 hex 토큰 정의는 양수 evidence (≥28 unique tokens) 으로 존재해야 한다.
+
+### 검증 명령
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+
+# 1) 글로벌 hex sweep — production Go 코드 (테스트/스냅샷 제외)
+grep -RnE '#[0-9a-fA-F]{6}' \
+  internal/cli/ internal/statusline/ pkg/ cmd/ \
+  --include='*.go' \
+  | grep -v '_test.go' \
+  | grep -vE '//.*#[0-9a-fA-F]{6}' \
+  | awk 'END { exit (NR > 0) }' && echo "PASS: no hex outside tui/" || echo "FAIL"
+
+# 2) internal/tui/theme.go positive evidence (>= 28 unique tokens)
+grep -oE '#[0-9a-fA-F]{6}' internal/tui/theme.go | sort -u | wc -l \
+  | awk '$1 >= 28 { print "PASS: theme tokens 28+"; exit 0 } { print "FAIL: insufficient tokens"; exit 1 }'
+
+# 3) (선택) 3-digit hex 단축 표기(#FFF) 도 sweep — 표현 일관성 강제
+grep -RnE '#[0-9a-fA-F]{3}\b' \
+  internal/cli/ internal/statusline/ pkg/ cmd/ \
+  --include='*.go' \
+  | grep -v '_test.go' | wc -l  # = 0 권장 (informational)
+```
+
+### Edge Cases
+
+- `_test.go` golden snapshot 비교 substring literal은 검증 데이터로 허용
+- `testdata/*.golden` 자체에 ANSI escape 안 hex가 들어가는 것은 정상 (output capture)
+- 주석 내 hex 표기 (예: `// terra cotta #C45A3C 제거`)는 grep filter `grep -vE '//.*#'`로 제외 가능 — 또는 제거 권장
+- 디자인 소스 핸드오프 번들 (`.moai/design/SPEC-V3R3-CLI-TUI-001/source/`)은 grep target 외 (참조 자산)
+
+---
+
+## AC-CLI-TUI-017: 글로벌 emoji 출력 sweep (REQ-CLI-TUI-014)
+
+**관련 REQ**: REQ-CLI-TUI-014
+
+> **D5 정정**: AC-CLI-TUI-004는 `moai init` scope만 검증. 본 AC는 14개 마이그레이션 surface 전체 production 코드에서 emoji codepoint(U+1F300~U+1FAFF + 일반 변형)가 0건 출현함을 검증한다.
+
+### Given-When-Then
+
+- **Given** 본 SPEC의 모든 milestone (M1~M7)이 머지된 상태이고
+- **When** production Go 코드 + 템플릿 + 메시지 카탈로그 (`internal/cli/`, `internal/statusline/`, `pkg/`, `cmd/`, `internal/tui/messages/`) 전체에서 emoji codepoint 매칭
+- **Then** `_test.go`/`testdata/`/주석을 제외한 emoji 출현은 **0건**이어야 한다.
+- **And** 시각 기호로는 `tui.StatusIcon()` 의 단색 unicode (`✓`, `✗`, `!`, `·`, `●`, `○` 등)만 허용된다 — 이들은 emoji codepoint 범위 외.
+
+### 검증 명령
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+
+# 1) Python codepoint sweep — production code 전역
+python3 - <<'PY'
+import os, re, sys
+
+EMOJI_RANGES = [
+    (0x1F300, 0x1FAFF),   # Misc symbols & pictographs + supplemental
+    (0x2600, 0x26FF),     # Misc symbols (☀ ☂ etc.)
+    (0x2700, 0x27BF),     # Dingbats (✅ ❌ ❎ etc.)
+    (0x1F000, 0x1F2FF),   # Mahjong + Domino + Playing cards
+    (0x1F600, 0x1F64F),   # Emoticons
+]
+
+scan_paths = ["internal/cli", "internal/statusline", "pkg", "cmd", "internal/tui/messages"]
+allowed_unicode = set("✓✗!·●○◆◇┌┐└┘─│┃━┏┓┗┛├┤┬┴┼╭╮╯╰")
+
+violations = []
+for base in scan_paths:
+    if not os.path.isdir(base):
+        continue
+    for root, _, files in os.walk(base):
+        for f in files:
+            if f.endswith("_test.go") or f.endswith(".golden"):
+                continue
+            if not (f.endswith(".go") or f.endswith(".yaml") or f.endswith(".yml") or f.endswith(".tmpl")):
+                continue
+            path = os.path.join(root, f)
+            with open(path, encoding="utf-8", errors="ignore") as fh:
+                for lineno, line in enumerate(fh, 1):
+                    if line.lstrip().startswith("//") or line.lstrip().startswith("#"):
+                        continue
+                    for ch in line:
+                        cp = ord(ch)
+                        for lo, hi in EMOJI_RANGES:
+                            if lo <= cp <= hi and ch not in allowed_unicode:
+                                violations.append(f"{path}:{lineno} U+{cp:04X} '{ch}'")
+                                break
+
+if violations:
+    print("FAIL: emoji codepoints found:")
+    for v in violations[:20]:
+        print(f"  {v}")
+    print(f"  ({len(violations)} total)" if len(violations) > 20 else "")
+    sys.exit(1)
+else:
+    print("PASS: zero emoji codepoints in production code")
+PY
+
+# 2) Go 단위 테스트 (선택, 공통 헬퍼 활용)
+go test ./internal/tui/... -run "TestNoEmojiInProductionCatalog" -v -count=1
+```
+
+### Edge Cases
+
+- `tui.StatusIcon()` 의 `✓`(U+2713), `✗`(U+2717), `!`(U+0021), `·`(U+00B7), `●`(U+25CF), `○`(U+25CB), `◆`(U+25C6), `◇`(U+25C7) 는 단색 시각 기호로 허용 (emoji 범위 외)
+- 박스 그리기 문자(`┌─┐│└┘╭╮╯╰` 등)는 별도 AC-CLI-TUI-011 scope (이중 검증)
+- `_test.go` golden snapshot 안 emoji 비교 substring은 검증 데이터로 허용
+- `.moai/design/SPEC-V3R3-CLI-TUI-001/source/` 핸드오프 번들은 sweep target 외 (참조 자산)
+- 템플릿 메시지 카탈로그 (`internal/tui/messages/*.yaml`)는 사용자 한글 카피 안 emoji 0건 강제
+
+---
+
 ## Quality Gate (TRUST 5 Mapping)
 
 본 SPEC의 acceptance 통과는 곧 TRUST 5 quality gate 통과를 의미한다.
@@ -554,8 +684,9 @@ diff internal/tui/testdata/spinner-reduced.golden internal/tui/testdata/spinner-
 
 ## Definition of Done (전체 SPEC)
 
-- [ ] AC-CLI-TUI-001 ~ 015 모두 검증 명령 GREEN
+- [ ] AC-CLI-TUI-001 ~ 017 모두 검증 명령 GREEN (D4/D5 정정 후 17개)
 - [ ] EARS REQ-CLI-TUI-001 ~ 019 모두 코드/테스트로 evidence 존재 (AC 매핑 완전 커버)
+- [ ] 글로벌 hex sweep (AC-016) + 글로벌 emoji sweep (AC-017) PASS
 - [ ] golden snapshot 100+ files commit
 - [ ] `internal/tui/` 패키지 godoc 100% (모든 export 함수에 //)
 - [ ] `internal/tui/CHANGELOG.md` (또는 commit log) 에 디자인 소스 출처(`source/project/tui.jsx`, `source/project/screens.jsx`) 명시

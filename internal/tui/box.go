@@ -114,10 +114,7 @@ func renderBox(opts BoxOpts, thick bool) string {
 	if opts.Width > 0 {
 		// Width includes border (1 cell each side) and padding (2 cells each side).
 		// lipgloss.Style.Width sets the inner content width.
-		innerW := opts.Width - 2 - 4 // 2 border cols + 4 padding cols
-		if innerW < 1 {
-			innerW = 1
-		}
+		innerW := max(opts.Width-2-4, 1) // 2 border cols + 4 padding cols, min 1
 		style = style.Width(innerW)
 	}
 

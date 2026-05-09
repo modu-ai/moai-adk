@@ -57,7 +57,7 @@ REFACTOR phase:
 ### 2.3 검증 명령
 
 ```bash
-cd /Users/goos/.moai/worktrees/moai-adk/cli-tui-v2
+cd "$(git rev-parse --show-toplevel)"
 go test ./internal/tui/... -run "TestLight|TestDark|TestBox|TestPill" -v
 go vet ./internal/tui/...
 golangci-lint run ./internal/tui/...
