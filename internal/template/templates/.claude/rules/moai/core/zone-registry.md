@@ -539,13 +539,15 @@ moai constitution list --format json
   canary_gate: true
 
 # ============================================================
-# 150-159: session-handoff.md HARD 조항 (신규 워크플로우 규칙, 2026-05-04)
+# 150-159: session-handoff.md HARD 조항 (신규 워크플로우 규칙, 2026-05-04;
+#          2026-05-09 model-specific threshold revision:
+#          Trigger #1 = 1M context 75% / 200K context 90%; 5 triggers retained)
 # ============================================================
 - id: CONST-V3R2-150
   zone: Evolvable
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#when-to-generate-5-triggers"
-  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (75% context / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
+  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold — 1M context model 75% / 200K context model 90% — / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
   canary_gate: false
 
 - id: CONST-V3R2-151
