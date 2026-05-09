@@ -1,26 +1,48 @@
 package wizard
 
-import "github.com/charmbracelet/lipgloss"
-
-// MoAI brand colors
-const (
-	// ColorPrimary is the MoAI brand orange color.
-	ColorPrimary = "#DA7756"
-	// ColorSecondary is a complementary color for highlights.
-	ColorSecondary = "#7C3AED"
-	// ColorSuccess is used for success messages.
-	ColorSuccess = "#10B981"
-	// ColorWarning is used for warning messages.
-	ColorWarning = "#F59E0B"
-	// ColorError is used for error messages.
-	ColorError = "#EF4444"
-	// ColorMuted is used for less important text.
-	ColorMuted = "#6B7280"
-	// ColorText is the default text color.
-	ColorText = "#F9FAFB"
-	// ColorBorder is used for borders and dividers.
-	ColorBorder = "#4B5563"
+import (
+	"github.com/charmbracelet/lipgloss"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
+
+// wizardColors returns the adaptive brand colors derived from internal/tui tokens.
+// All hex values originate from tui.LightTheme() / tui.DarkTheme() exclusively
+// (AC-CLI-TUI-013: no hex literals outside internal/tui/).
+func wizardColors() wizardColorSet {
+	lt := tui.LightTheme()
+	dt := tui.DarkTheme()
+	return wizardColorSet{
+		// Primary: deep teal accent (replaces terra cotta #DA7756 / #C45A3C)
+		Primary: lipgloss.AdaptiveColor{Light: lt.Accent, Dark: dt.Accent},
+		// Secondary: info color (replaces purple #7C3AED / #5B21B6)
+		Secondary: lipgloss.AdaptiveColor{Light: lt.Info, Dark: dt.Info},
+		// Success / error / muted / border from tui tokens
+		Success:  lipgloss.AdaptiveColor{Light: lt.Success, Dark: dt.Success},
+		Warning:  lipgloss.AdaptiveColor{Light: lt.Warning, Dark: dt.Warning},
+		Error:    lipgloss.AdaptiveColor{Light: lt.Danger, Dark: dt.Danger},
+		Muted:    lipgloss.AdaptiveColor{Light: lt.Dim, Dark: dt.Dim},
+		Text:     lipgloss.AdaptiveColor{Light: lt.Fg, Dark: dt.Fg},
+		Border:   lipgloss.AdaptiveColor{Light: lt.Rule, Dark: dt.Rule},
+		// Button foreground (white text on filled button)
+		ButtonFg: lipgloss.AdaptiveColor{Light: lt.Bg, Dark: dt.Fg},
+		// Button blurred background
+		ButtonBlurredBg: lipgloss.AdaptiveColor{Light: lt.Panel, Dark: dt.Panel},
+	}
+}
+
+// wizardColorSet holds resolved adaptive colors for the wizard theme.
+type wizardColorSet struct {
+	Primary         lipgloss.AdaptiveColor
+	Secondary       lipgloss.AdaptiveColor
+	Success         lipgloss.AdaptiveColor
+	Warning         lipgloss.AdaptiveColor
+	Error           lipgloss.AdaptiveColor
+	Muted           lipgloss.AdaptiveColor
+	Text            lipgloss.AdaptiveColor
+	Border          lipgloss.AdaptiveColor
+	ButtonFg        lipgloss.AdaptiveColor
+	ButtonBlurredBg lipgloss.AdaptiveColor
+}
 
 // Styles holds all lipgloss styles used by the wizard.
 type Styles struct {
@@ -54,57 +76,58 @@ type Styles struct {
 
 // NewStyles creates a new Styles instance with MoAI branding.
 func NewStyles() *Styles {
+	c := wizardColors()
 	return &Styles{
 		Title: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorPrimary)).
+			Foreground(c.Primary).
 			Bold(true).
 			MarginBottom(1),
 
 		Description: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorMuted)).
+			Foreground(c.Muted).
 			Italic(true),
 
 		Progress: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorSecondary)).
+			Foreground(c.Secondary).
 			Bold(true),
 
 		Option: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorText)),
+			Foreground(c.Text),
 
 		SelectedOption: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorPrimary)).
+			Foreground(c.Primary).
 			Bold(true),
 
 		Cursor: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorPrimary)).
+			Foreground(c.Primary).
 			Bold(true),
 
 		Input: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorText)).
+			Foreground(c.Text).
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color(ColorBorder)).
+			BorderForeground(c.Border).
 			Padding(0, 1),
 
 		Placeholder: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorMuted)).
+			Foreground(c.Muted).
 			Italic(true),
 
 		Error: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorError)),
+			Foreground(c.Error),
 
 		Success: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorSuccess)),
+			Foreground(c.Success),
 
 		Muted: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorMuted)),
+			Foreground(c.Muted),
 
 		Help: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorMuted)).
+			Foreground(c.Muted).
 			MarginTop(1),
 
 		Border: lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(ColorBorder)).
+			BorderForeground(c.Border).
 			Padding(1, 2),
 	}
 }

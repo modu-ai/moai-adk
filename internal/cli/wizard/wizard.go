@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // Run executes the wizard and returns the result.
@@ -22,7 +23,14 @@ func RunWithDefaults(projectRoot, locale string) (*WizardResult, error) {
 	return RunWithLocale(questions, nil, locale)
 }
 
+// wizardTotalSteps is the canonical step count for the init wizard (AC-CLI-TUI-007).
+// It reflects the 6-step init flow from screens.jsx:ScreenInit.
+const wizardTotalSteps = 6
+
 // RunWithLocale initializes the locale and runs the wizard.
+//
+// @MX:NOTE: [AUTO] Each visible question is rendered with tui.Stepper(current, wizardTotalSteps)
+// printed to stdout before the huh form. Stepper uses nil Theme (auto light/dark via lipgloss).
 func RunWithLocale(questions []Question, styles *Styles, locale string) (*WizardResult, error) {
 	if len(questions) == 0 {
 		return nil, ErrNoQuestions
@@ -31,14 +39,20 @@ func RunWithLocale(questions []Question, styles *Styles, locale string) (*Wizard
 	result := &WizardResult{}
 	currentLocale := locale
 	theme := newMoAIWizardTheme()
+	visibleIdx := 0
 
 	for i := range questions {
 		q := &questions[i]
 
-		// Skip questions whose condition is not met
+		// Skip questions whose condition is not met.
 		if q.Condition != nil && !q.Condition(result) {
 			continue
 		}
+
+		visibleIdx++
+		// Display step indicator above the huh form (AC-CLI-TUI-007).
+		// Stepper uses nil Theme so it auto-selects light/dark via lipgloss adaptive color.
+		fmt.Println(tui.Stepper(visibleIdx, wizardTotalSteps, nil))
 
 		g := buildQuestionGroup(q, result, &currentLocale)
 		form := huh.NewForm(g).
@@ -205,43 +219,43 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 }
 
 // newMoAIWizardTheme creates a huh.Theme with MoAI wizard branding.
+//
+// All colour values are derived from internal/tui.LightTheme / DarkTheme tokens
+// (AC-CLI-TUI-013: no hex literals outside internal/tui/).
+//
+// @MX:ANCHOR: [AUTO] Called by every RunWithLocale invocation; single huh.Theme factory
+// @MX:REASON: All wizard forms share one theme; changes here affect the entire init wizard UX
 func newMoAIWizardTheme() *huh.Theme {
 	t := huh.ThemeBase()
 
-	// Map wizard brand colors to huh theme.
-	primary := lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: ColorPrimary}
-	secondary := lipgloss.AdaptiveColor{Light: "#5B21B6", Dark: ColorSecondary}
-	green := lipgloss.AdaptiveColor{Light: "#059669", Dark: ColorSuccess}
-	red := lipgloss.AdaptiveColor{Light: "#DC2626", Dark: ColorError}
-	text := lipgloss.AdaptiveColor{Light: "#111827", Dark: ColorText}
-	muted := lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: ColorMuted}
-	border := lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: ColorBorder}
+	// Resolve tui design tokens into adaptive colour values.
+	c := wizardColors()
 
-	t.Focused.Base = t.Focused.Base.BorderForeground(border)
+	t.Focused.Base = t.Focused.Base.BorderForeground(c.Border)
 	t.Focused.Card = t.Focused.Base
-	t.Focused.Title = t.Focused.Title.Foreground(primary).Bold(true)
-	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(primary).Bold(true).MarginBottom(1)
-	t.Focused.Description = t.Focused.Description.Foreground(muted)
-	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(red)
-	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(red)
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary).SetString("▸ ")
-	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(primary)
-	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(primary)
-	t.Focused.Option = t.Focused.Option.Foreground(text)
-	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(primary)
-	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(green)
-	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("◆ ")
-	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(text)
-	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("◇ ")
-	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(primary)
-	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(muted)
-	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(secondary)
+	t.Focused.Title = t.Focused.Title.Foreground(c.Primary).Bold(true)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(c.Primary).Bold(true).MarginBottom(1)
+	t.Focused.Description = t.Focused.Description.Foreground(c.Muted)
+	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(c.Error)
+	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(c.Error)
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(c.Primary).SetString("▸ ")
+	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(c.Primary)
+	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(c.Primary)
+	t.Focused.Option = t.Focused.Option.Foreground(c.Text)
+	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(c.Primary)
+	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(c.Success)
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(c.Success).SetString("◆ ")
+	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(c.Text)
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(c.Muted).SetString("◇ ")
+	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(c.Primary)
+	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(c.Muted)
+	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(c.Secondary)
 	t.Focused.FocusedButton = t.Focused.FocusedButton.
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"}).
-		Background(primary)
+		Foreground(c.ButtonFg).
+		Background(c.Primary)
 	t.Focused.BlurredButton = t.Focused.BlurredButton.
-		Foreground(text).
-		Background(lipgloss.AdaptiveColor{Light: "#E5E7EB", Dark: "#374151"})
+		Foreground(c.Text).
+		Background(c.ButtonBlurredBg)
 	t.Focused.Next = t.Focused.FocusedButton
 
 	t.Blurred = t.Focused

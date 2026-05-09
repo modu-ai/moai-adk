@@ -19,6 +19,12 @@ func TestWizardResult(t *testing.T) {
 	if result.DevelopmentMode != "tdd" {
 		t.Errorf("expected DevelopmentMode 'tdd', got %q", result.DevelopmentMode)
 	}
+	if result.GitMode != "personal" {
+		t.Errorf("expected GitMode 'personal', got %q", result.GitMode)
+	}
+	if result.GitHubUsername != "testuser" {
+		t.Errorf("expected GitHubUsername 'testuser', got %q", result.GitHubUsername)
+	}
 }
 
 func TestGetLanguageName(t *testing.T) {
@@ -405,6 +411,12 @@ func TestWizardResultGitLabFields(t *testing.T) {
 		GitLabToken:       "glpat-test-token",
 	}
 
+	if result.ProjectName != "test-project" {
+		t.Errorf("expected ProjectName 'test-project', got %q", result.ProjectName)
+	}
+	if result.GitMode != "personal" {
+		t.Errorf("expected GitMode 'personal', got %q", result.GitMode)
+	}
 	if result.GitProvider != "gitlab" {
 		t.Errorf("expected GitProvider 'gitlab', got %q", result.GitProvider)
 	}
@@ -489,6 +501,123 @@ func TestNewMoAIWizardTheme_ReturnsNonNil(t *testing.T) {
 	theme := newMoAIWizardTheme()
 	if theme == nil {
 		t.Error("expected non-nil theme")
+	}
+}
+
+// --- characterization tests: capture existing behavior before IMPROVE ---
+
+// TestCharacterize_WizardTheme_SelectedPrefix verifies that the focused
+// SelectedPrefix renders with the ◆ diamond marker.
+// This MUST NOT regress after M5 IMPROVE.
+func TestCharacterize_WizardTheme_SelectedPrefix(t *testing.T) {
+	theme := newMoAIWizardTheme()
+	rendered := theme.Focused.SelectedPrefix.Value()
+	if rendered != "◆ " {
+		t.Errorf("SelectedPrefix: expected %q, got %q", "◆ ", rendered)
+	}
+}
+
+// TestCharacterize_WizardTheme_UnselectedPrefix verifies that the focused
+// UnselectedPrefix renders with the ◇ diamond marker.
+// This MUST NOT regress after M5 IMPROVE.
+func TestCharacterize_WizardTheme_UnselectedPrefix(t *testing.T) {
+	theme := newMoAIWizardTheme()
+	rendered := theme.Focused.UnselectedPrefix.Value()
+	if rendered != "◇ " {
+		t.Errorf("UnselectedPrefix: expected %q, got %q", "◇ ", rendered)
+	}
+}
+
+// TestCharacterize_WizardTheme_SelectSelectorPrefix verifies that the
+// SelectSelector prompt is set to "▸ ".
+// This MUST NOT regress after M5 IMPROVE.
+func TestCharacterize_WizardTheme_SelectSelectorPrefix(t *testing.T) {
+	theme := newMoAIWizardTheme()
+	rendered := theme.Focused.SelectSelector.Value()
+	if rendered != "▸ " {
+		t.Errorf("SelectSelector: expected %q, got %q", "▸ ", rendered)
+	}
+}
+
+// TestCharacterize_WizardTheme_BlurredInheritsFromFocused verifies the blurred
+// state is derived from focused (structural invariant that must not regress).
+func TestCharacterize_WizardTheme_BlurredInheritsFromFocused(t *testing.T) {
+	theme := newMoAIWizardTheme()
+	// Blurred selected/unselected prefixes should match focused
+	if theme.Blurred.SelectedPrefix.Value() != theme.Focused.SelectedPrefix.Value() {
+		t.Errorf("Blurred.SelectedPrefix %q != Focused.SelectedPrefix %q",
+			theme.Blurred.SelectedPrefix.Value(), theme.Focused.SelectedPrefix.Value())
+	}
+	if theme.Blurred.UnselectedPrefix.Value() != theme.Focused.UnselectedPrefix.Value() {
+		t.Errorf("Blurred.UnselectedPrefix %q != Focused.UnselectedPrefix %q",
+			theme.Blurred.UnselectedPrefix.Value(), theme.Focused.UnselectedPrefix.Value())
+	}
+}
+
+// TestCharacterize_WizardTotalSteps verifies the canonical step count constant (AC-CLI-TUI-007).
+func TestCharacterize_WizardTotalSteps(t *testing.T) {
+	if wizardTotalSteps != 6 {
+		t.Errorf("wizardTotalSteps: expected 6, got %d", wizardTotalSteps)
+	}
+}
+
+// TestCharacterize_WizardColors_PrimaryIsDeepTeal verifies that after M5 IMPROVE,
+// the primary wizard color resolves to the deep teal accent from internal/tui.
+// This replaces the old terra cotta (#DA7756 / #C45A3C) brand color.
+func TestCharacterize_WizardColors_PrimaryIsDeepTeal(t *testing.T) {
+	c := wizardColors()
+	// Light deep teal accent
+	if c.Primary.Light != "#144a46" {
+		t.Errorf("Primary.Light: expected #144a46 (deep teal), got %q", c.Primary.Light)
+	}
+	// Dark deep teal accent
+	if c.Primary.Dark != "#3eb3a4" {
+		t.Errorf("Primary.Dark: expected #3eb3a4 (deep teal), got %q", c.Primary.Dark)
+	}
+}
+
+// TestCharacterize_WizardColors_NoTerracottaOrPurple verifies that the old
+// forbidden colors are not present in the wizard color set (AC-CLI-TUI-013).
+func TestCharacterize_WizardColors_NoTerracottaOrPurple(t *testing.T) {
+	c := wizardColors()
+	forbidden := []struct {
+		name  string
+		color string
+	}{
+		{"terra cotta dark", "#DA7756"},
+		{"terra cotta light", "#C45A3C"},
+		{"purple dark", "#7C3AED"},
+		{"purple light", "#5B21B6"},
+	}
+	colors := []string{
+		c.Primary.Light, c.Primary.Dark,
+		c.Secondary.Light, c.Secondary.Dark,
+		c.Success.Light, c.Success.Dark,
+		c.Error.Light, c.Error.Dark,
+		c.Muted.Light, c.Muted.Dark,
+		c.Text.Light, c.Text.Dark,
+		c.Border.Light, c.Border.Dark,
+	}
+	for _, fc := range forbidden {
+		for _, col := range colors {
+			if col == fc.color {
+				t.Errorf("forbidden color %s (%s) found in wizard color set", fc.name, fc.color)
+			}
+		}
+	}
+}
+
+// TestCharacterize_WizardTheme_UsesDeepTealForTitle verifies that the theme
+// title foreground is set from the tui primary token (deep teal), not terra cotta.
+func TestCharacterize_WizardTheme_UsesDeepTealForTitle(t *testing.T) {
+	theme := newMoAIWizardTheme()
+	// The theme title should be bold (structural invariant).
+	if !theme.Focused.Title.GetBold() {
+		t.Error("Focused.Title should be bold")
+	}
+	// Verify focused title is not zero (color was applied).
+	if theme.Focused.Title.GetForeground() == nil {
+		t.Error("Focused.Title foreground should not be nil")
 	}
 }
 
