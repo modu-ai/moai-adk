@@ -105,10 +105,7 @@ func Progress(value, max int, opts ProgressOpts) string {
 		filled = width
 	} else {
 		if max > 0 {
-			filled = (value * width) / max
-			if filled > width {
-				filled = width
-			}
+			filled = min((value*width)/max, width)
 		}
 	}
 	empty := width - filled

@@ -399,9 +399,9 @@ return nil
 
 // extractValue finds the value after a given key prefix on the same line.
 func extractValue(content, key string) string {
-for _, line := range strings.Split(content, "\n") {
-if idx := strings.Index(line, key); idx >= 0 {
-return strings.TrimSpace(line[idx+len(key):])
+for line := range strings.SplitSeq(content, "\n") {
+if _, after, ok := strings.Cut(line, key); ok {
+return strings.TrimSpace(after)
 }
 }
 return ""

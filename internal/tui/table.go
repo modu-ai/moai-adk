@@ -128,10 +128,7 @@ func Section(title string, opts SectionOpts) string {
 		width = tuiinternal.StringWidth(title) + 4
 	}
 
-	ruleWidth := width - tuiinternal.StringWidth(title)
-	if ruleWidth < 1 {
-		ruleWidth = 1
-	}
+	ruleWidth := max(width-tuiinternal.StringWidth(title), 1)
 
 	// Use ASCII dash "-" repeated to approximate a rule line.
 	// Hand-drawn box drawing characters (U+2500 series) are forbidden in M2
