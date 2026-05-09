@@ -46,7 +46,7 @@ The MoAI orchestrator MUST proactively recognize the model-specific boundary and
 
 [HARD] Resume message format: include all of the following so the next session is self-sufficient:
 ```
-ultrathink. Wave <N> 이어서 진행. SPEC-<ID>부터 <approach 요약>.
+ultrathink. Sprint <N> 이어서 진행. SPEC-<ID>부터 <approach 요약>.
 applied lessons: <memory file names>.
 progress.md 경로: .moai/specs/SPEC-<ID>/progress.md
 다음 단계: <one-line command>.
@@ -70,7 +70,7 @@ When uncertain, prefer to under-estimate remaining capacity. A premature `/clear
 
 This rule applies to all MoAI workflows:
 - `/moai plan`, `/moai run`, `/moai sync` — long phases that accumulate context
-- Multi-SPEC waves (Wave 1 / Wave 2 multi-SPEC delegation) — most likely to hit the model-specific threshold
+- Multi-SPEC sprints (Sprint 1 / Sprint 2 multi-SPEC delegation) — most likely to hit the model-specific threshold
 - Iterative loops (`/moai loop`, GAN loop) — context accumulates linearly per iteration
 
 ## Cross-references
