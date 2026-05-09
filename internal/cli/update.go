@@ -81,6 +81,7 @@ func init() {
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
+	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -711,6 +712,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	if err := ensureGlobalSettingsEnv(); err != nil {
 		_, _ = fmt.Fprintf(out, "Warning: Failed to update global settings env: %v\n", err)
 	}
+
+	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
+	installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out)
 
 	return nil
 }

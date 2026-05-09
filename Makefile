@@ -13,7 +13,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate help release-local constitution-check
+.PHONY: all build test lint fix clean install generate help release-local constitution-check ci-local pr-merge
 
 all: lint test build ## Run lint, test, and build
 
@@ -75,5 +75,12 @@ run: build ## Build and run
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+ci-local: ## Run CI mirror locally (lint + vet + test + cross-compile)
+	@./scripts/ci-mirror/run.sh
+
+pr-merge: ## Enable GitHub auto-merge for a PR (Usage: make pr-merge PR=N [STRATEGY=squash|merge])
+	@test -n "$(PR)" || (printf 'Usage: make pr-merge PR=<number> [STRATEGY=squash|merge]\n' >&2 && exit 1)
+	@gh pr merge $(PR) --auto --$(or $(STRATEGY),squash)
 
 .DEFAULT_GOAL := help
