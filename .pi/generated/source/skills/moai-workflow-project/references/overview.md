@@ -117,7 +117,7 @@ moai-menu-project/
 
 - moai-cc-configuration: Claude Code configuration patterns
 - moai-core-workflow: Workflow-based configuration management
-- moai-quality-security: Security validation and compliance
+- `moai-foundation-quality` + `moai-ref-owasp-checklist`: Security validation and compliance
 
 ### External Systems
 

@@ -1,22 +1,22 @@
 ---
 name: moai-workflow-project
 description: >
-  Integrated project management system with documentation, language
-  initialization, and template optimization modules. Use when setting up
-  projects, generating documentation, configuring multilingual support,
-  or optimizing templates.
+  Integrated project management system covering documentation, language initialization,
+  template optimization, docs generation, and JIT document loading. Absorbed from
+  moai-workflow-templates, moai-docs-generation, and moai-workflow-jit-docs.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash(git:*) Bash(npm:*) Bash(npx:*) Bash(uv:*) Bash(pip:*) Bash(ls:*) Bash(mkdir:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(uv:*), Bash(pip:*), Bash(ls:*), Bash(mkdir:*), Grep, Glob, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "3.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-01-08"
+  updated: "2026-04-25"
   modularized: "true"
-  tags: "workflow, project, documentation, initialization, templates"
+  tags: "workflow, project, documentation, initialization, templates, boilerplate, scaffolding, jit-docs, docs-generation"
   aliases: "moai-workflow-project"
+  related-skills: "moai-workflow-templates, moai-docs-generation, moai-workflow-jit-docs"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -26,9 +26,9 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization"]
-  phases: ["plan", "run"]
-  agents: ["manager-project", "manager-docs"]
+  keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization", "template", "boilerplate", "scaffolding", "code template", "feedback template", "docs", "documentation", "API reference", "docs generation", "Sphinx", "MkDocs", "TypeDoc", "OpenAPI", "jit docs", "just in time docs", "project template", "GitHub issue", "template optimization", "how to", "implement", "best practices", "technology guide", "framework documentation"]
+  phases: ["plan", "run", "sync"]
+  agents: ["manager-project", "manager-docs", "builder-skill", "manager-spec", "expert-backend", "expert-frontend"]
 ---
 
 # MoAI Workflow Project - Integrated Project Management System
@@ -292,7 +292,125 @@ File Size Impact:
 ## Works Well With
 
 - moai-foundation-core: Core execution patterns and SPEC-driven development workflows
-- moai-foundation-claude: Claude Code integration and configuration
+- moai-foundation-cc: Claude Code integration and configuration
 - moai-workflow-docs: Unified documentation management
 - moai-workflow-templates: Template optimization strategies
 - moai-library-nextra: Advanced documentation architecture
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "project docs are a one-time setup, no need to keep them current" | Stale product.md and tech.md mislead every SPEC written against them. They are living documents. |
+| "structure.md will stay accurate since the codebase does not change much" | Every PR that adds a directory invalidates structure.md. Sync on every /moai project invocation. |
+| "I know the tech stack, I do not need tech.md" | tech.md is not for you. It is for every agent that consults the project context before acting. |
+| "codemaps take too long to generate" | codemaps are the only artifact that gives agents file-level awareness without reading every file. The cost pays for itself. |
+| "I will write project docs after the feature is done" | Post-hoc docs capture what was built, not what was intended. Pre-feature docs guide the build. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- product.md references features that do not exist in the codebase
+- tech.md lists a framework version that differs from the actual dependency file
+- structure.md missing directories that exist on disk
+- codemaps/ directory is empty or missing while the project has 10+ source files
+- /moai project last ran more than 30 days ago (check file modification dates)
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] product.md exists and describes the current product scope (compare with README)
+- [ ] tech.md lists dependencies that match the actual lock file (package.json, go.mod, etc.)
+- [ ] structure.md top-level directories match `ls` output of the project root
+- [ ] codemaps/ contains at least one codemap file per major package or module
+- [ ] All three docs updated within the current session or since last structural change
+- [ ] No placeholder text ("TODO", "TBD") remains in generated documents
+
+<!-- moai:evolvable-end -->
+
+---
+
+## Template Optimization (absorbed from moai-workflow-templates)
+
+Code boilerplates, feedback templates, scaffolding, and project template optimization.
+
+### Core Capabilities
+
+- Code template library: FastAPI, React, Vue, Next.js boilerplates
+- GitHub issue feedback templates: 6 types (bug, feature, question, docs, perf, security)
+- Project template optimization: size reduction, complexity analysis, smart merging
+- Template version management, backup discovery and restoration
+
+### Template Application Workflow
+
+1. Identify template category: code boilerplate, feedback template, or project scaffold
+2. Select template variant matching the project stack and language
+3. Apply customization variables (project name, author, license, framework version)
+4. Validate rendered output against schema or existing conventions
+5. Optionally run template optimizer to reduce redundancy
+
+### Template Optimization Process
+
+Analysis metrics: file size, complexity score, redundancy ratio, load performance.
+Optimization techniques: whitespace reduction, deduplication, structure simplification.
+Always create backup before applying optimization (`backup: true`).
+
+Full template library and optimization patterns: [modules/templates.md](modules/templates.md)
+
+---
+
+## Documentation Generation (absorbed from moai-docs-generation)
+
+Technical documentation generation using Sphinx, MkDocs, TypeDoc, OpenAPI, and Nextra.
+
+### Supported Generators
+
+| Generator | Use Case | Primary Format |
+|-----------|----------|----------------|
+| Sphinx | Python projects, API docs | RST / Markdown |
+| MkDocs | General projects | Markdown |
+| TypeDoc | TypeScript libraries | TypeScript JSDoc |
+| OpenAPI / Swagger | REST APIs | YAML / JSON |
+| Nextra | Next.js docs sites | MDX |
+
+### Generation Workflow
+
+1. Detect project type and select appropriate generator
+2. Extract documentation sources: docstrings, JSDoc, OpenAPI specs, SPEC documents
+3. Apply project language and branding from `.moai/config/sections/language.yaml`
+4. Generate output in configured format (Markdown, HTML, PDF)
+5. Update `/moai sync` artifacts: README, CHANGELOG, API reference
+
+Full generator configurations: [modules/docs-generation.md](modules/docs-generation.md)
+
+---
+
+## JIT Document Loading (absorbed from moai-workflow-jit-docs)
+
+On-demand documentation discovery and loading based on user intent and conversation context.
+
+### Primary Tools
+
+- Context7 MCP (`mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`): Official library docs
+- WebFetch / WebSearch: Latest online documentation
+- Read, Grep, Glob: Local project documentation
+
+### Trigger Patterns
+
+- User asks specific technical questions about a library or framework
+- Technology keyword detected (library name, framework name, API name)
+- Domain expertise required (authentication, database, deployment)
+- Implementation guidance needed during run phase
+
+### Loading Priority
+
+1. Local project docs (`.moai/`, README, SPEC documents)
+2. Context7 MCP (official, version-matched library docs)
+3. WebSearch + WebFetch (latest online resources)
+
+Token budget: 5000 tokens per JIT load. Summarize if source exceeds budget.

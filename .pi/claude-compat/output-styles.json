@@ -5,11 +5,8 @@
     "moai": {
       "source": "./generated/source/output-styles/moai/moai.md"
     },
-    "r2d2": {
-      "source": "./generated/source/output-styles/moai/r2d2.md"
-    },
-    "yoda": {
-      "source": "./generated/source/output-styles/moai/yoda.md"
+    "einstein": {
+      "source": "./generated/source/output-styles/moai/einstein.md"
     }
   },
   "runtime": {

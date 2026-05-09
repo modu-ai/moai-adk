@@ -1,4 +1,9 @@
 workflow:
+    # SPEC-V3R2-WF-003 REQ-WF003-014: Optional default mode for /moai run and /moai design.
+    # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+    # Precedence: CLI --mode flag > this field > harness auto.
+    # @MX:WARN - Default mode field is utility-skill-only consumer. REQ-WF003-018 lock-in. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+    default_mode: ""
     auto_clear:
         after_plan: true
         after_run: false
@@ -19,7 +24,7 @@ workflow:
             min_complexity_score: 7
             min_domains_for_team: 3
             min_files_for_team: 10
-        default_model: sonnet
+        default_model: opus[1m]
         delegate_mode: true
         enabled: true
         max_teammates: 10
@@ -28,7 +33,7 @@ workflow:
                 mode: plan
                 model: haiku
                 isolation: none
-                description: "Read-only codebase exploration and analysis"
+                description: "Read-only codebase exploration and analysis (speed-critical)"
             analyst:
                 mode: plan
                 model: sonnet
@@ -36,9 +41,9 @@ workflow:
                 description: "Requirements analysis and validation"
             architect:
                 mode: plan
-                model: sonnet
+                model: opus
                 isolation: none
-                description: "Solution design and architecture decisions"
+                description: "Solution design and architecture decisions (deep reasoning)"
             implementer:
                 mode: acceptEdits
                 model: sonnet
@@ -56,9 +61,9 @@ workflow:
                 description: "UI/UX design with MCP design tools"
             reviewer:
                 mode: plan
-                model: haiku
+                model: sonnet
                 isolation: none
-                description: "Code review and quality validation"
+                description: "Code review and quality validation (context-aware analysis)"
         patterns:
             design_implementation:
                 description: Cross-layer feature implementation with UI/UX design
@@ -106,11 +111,20 @@ workflow:
                     - quality-reviewer
                     - ux-reviewer
         require_plan_approval: true
-        teammate_display: auto
     token_budget:
         plan: 30000
         run: 180000
         sync: 40000
+    # SPEC-V3R2-EXT-001: Typed Memory Taxonomy settings
+    memory:
+        # staleness_threshold_hours: memory files older than this trigger a staleness warning
+        staleness_threshold_hours: 24
+        # index_line_cap: MEMORY.md lines beyond this cap trigger MEMORY_INDEX_OVERFLOW
+        index_line_cap: 200
+        # stale_aggregate_threshold: stale file count at or above this collapses per-file warnings into one
+        stale_aggregate_threshold: 10
+        # audit_enabled: set to false (or env MOAI_MEMORY_AUDIT=0) to disable all taxonomy auditing
+        audit_enabled: true
     worktree:
         auto_cleanup: true
         auto_create: true

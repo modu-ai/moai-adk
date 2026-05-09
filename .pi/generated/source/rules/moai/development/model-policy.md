@@ -1,5 +1,5 @@
 ---
-paths: "**/.pi/agents/overrides/**"
+paths: "**/.claude/agents/**"
 ---
 
 # Model Policy

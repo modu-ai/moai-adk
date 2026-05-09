@@ -6,7 +6,7 @@ description: >
   setting up parallel development environments.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Write, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.1.0"
@@ -238,3 +238,39 @@ Module Deep Dives:
 
 Full Examples: Refer to examples.md
 External Resources: Refer to reference.md
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Worktree isolation is overkill for this small change" | Small changes on main cause merge conflicts when parallel work is in progress. Worktrees prevent this. |
+| "I will just work on the main branch, it is faster" | Working on main blocks other agents from writing. Worktrees enable parallelism. |
+| "Read-only agents need worktree isolation too, for safety" | Read-only agents (mode: plan) cannot write. Adding isolation wastes resources with no benefit. |
+| "I can skip worktree cleanup, git handles it" | Stale worktree branches accumulate and confuse git worktree list. Always prune after use. |
+| "Absolute paths in agent prompts are fine since the worktree has the same structure" | Absolute paths to the main repo bypass worktree isolation entirely. Use relative paths. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Implementation agent spawned without isolation: worktree in team mode
+- Read-only agent spawned with isolation: worktree (unnecessary overhead)
+- Agent prompt contains absolute path to the main project directory for write targets
+- Worktree not pruned after team session completes (stale branches remain)
+- cd /absolute/project/path in Bash commands inside worktree-isolated agent prompts
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Implementation teammates use isolation: worktree (check agent spawn parameters)
+- [ ] Read-only teammates do NOT use isolation: worktree (verify mode: plan is sufficient)
+- [ ] Agent prompts reference write-target files by relative paths only
+- [ ] `git worktree list` shows no stale worktrees after session ends
+- [ ] Worktree CWD isolation verified on Claude Code >= 2.1.97 (check version)
+- [ ] Hook scripts (handle-worktree-create.sh, handle-worktree-remove.sh) are present and executable
+
+<!-- moai:evolvable-end -->

@@ -1,0 +1,13 @@
+interview:
+  enabled: true
+  clarity_threshold: 4
+  plan:
+    max_rounds: 5
+    questions_per_round: 3
+  project:
+    max_rounds: 3
+    questions_per_round: 3
+  skip_conditions:
+    - resume_spec_id_present
+    - skip_interview_flag
+    - technical_keywords_gte_5

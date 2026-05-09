@@ -109,7 +109,7 @@ This is intentionally approximate. AST-level precision is not required for taggi
 
 ### Auto-Generated File Exclusion
 
-**WHEN** a file matches a pattern in `.pi/generated/source/moai-config/sections/mx.yaml` exclude list: The agent does not add, modify, or validate @MX tags in that file.
+**WHEN** a file matches a pattern in `.moai/config/sections/mx.yaml` exclude list: The agent does not add, modify, or validate @MX tags in that file.
 
 ### Broken SPEC Links
 

@@ -33,7 +33,7 @@ Common patterns, flag reference, and legacy command mapping used across all MoAI
 For configuration file paths, see: .pi/generated/source/CLAUDE.md Section 9
 For error handling delegation, see: .pi/generated/source/CLAUDE.md Section 11
 For completion markers, see: .pi/generated/source/rules/moai/core/moai-constitution.md
-For development mode details, see: .pi/generated/source/rules/moai/workflow/workflow-modes.md
+For development mode details, see: .pi/generated/source/rules/moai/workflow/spec-workflow.md (Run Phase section)
 
 ---
 

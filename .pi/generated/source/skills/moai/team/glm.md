@@ -95,7 +95,7 @@ sessions in their own tmux panes, visible via `tmux list-panes`.
 
 ## LLM Mode Detection
 
-Read `.pi/generated/source/moai-config/sections/llm.yaml` for `team_mode` value:
+Read `.moai/config/sections/llm.yaml` for `team_mode` value:
 
 | team_mode | Execution Mode | Leader | Teammates |
 |-----------|---------------|--------|-----------|
@@ -104,7 +104,7 @@ Read `.pi/generated/source/moai-config/sections/llm.yaml` for `team_mode` value:
 | glm | GLM-only | GLM | GLM |
 
 Detection steps:
-1. Read `.pi/generated/source/moai-config/sections/llm.yaml`
+1. Read `.moai/config/sections/llm.yaml`
 2. If `team_mode == "cg"`: Activate CG mode (this skill)
 3. If `team_mode == "glm"`: All-GLM mode (no hybrid)
 4. If `team_mode == ""`: Fall back to sub-agent mode

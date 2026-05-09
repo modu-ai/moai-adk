@@ -1,0 +1,61 @@
+{
+  "name": "manager-brain",
+  "description": "Brain workflow orchestrator. Use for /moai brain invocations — converts vague ideas into\nvalidated product proposals with SPEC decomposition candidates and Claude Design handoff package.\nExecutes 7-phase pipeline: Discovery, Diverge, Research, Converge, Critical Evaluation, Proposal, Handoff.\nMUST INVOKE when: /moai brain, ideation request, pre-spec exploration, \"help me think through this idea\"\nNOT for: code implementation (manager-tdd/ddd), SPEC creation (manager-spec), documentation (manager-docs)",
+  "model": "inherit",
+  "thinking": "high",
+  "tools": [
+    "ask_user_question",
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-thinking",
+    "moai-domain-ideation",
+    "moai-domain-research",
+    "moai-domain-design-handoff"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-brain.md",
+  "sourceHash": "2f1dbcb868921443",
+  "generatedAt": "2026-05-09T19:36:21.030Z",
+  "compatibility": {
+    "permissionMode": "bypassPermissions",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "opus",
+    "originalMaxTurns": "unspecified",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "ToolSearch",
+      "AskUserQuestion",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Glob": "bash:find",
+      "Grep": "bash:rg",
+      "Bash": "bash",
+      "WebSearch": "pi-web-access:web_search",
+      "WebFetch": "pi-web-access:fetch_content",
+      "ToolSearch": "toolsearch",
+      "AskUserQuestion": "@juicesharp/rpiv-ask-user-question",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": false
+  }
+}

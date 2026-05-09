@@ -248,7 +248,7 @@ print(f"Warnings: {status.warnings}")
 ### Related Skills
 
 - moai-foundation-core - Core execution patterns and SPEC workflow
-- moai-foundation-claude - Claude Code integration patterns
+- moai-foundation-cc - Claude Code integration patterns
 - moai-workflow-docs - Unified documentation management
 - moai-workflow-templates - Template optimization strategies
 - moai-library-nextra - Advanced documentation architecture

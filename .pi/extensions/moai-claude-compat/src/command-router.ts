@@ -11,15 +11,22 @@ import { loadRuntimeManifest, resolveCompatSource, type RuntimeManifest } from "
 const PI_PROMPTS_PATH = ".pi/prompts";
 
 const FALLBACK_MOAI_SUBCOMMANDS = [
-  "plan", "run", "sync", "project", "fix", "loop", "mx", "review",
-  "clean", "codemaps", "coverage", "e2e", "feedback", "context", "gate", "security",
+  "brain", "plan", "run", "sync", "design", "db", "project", "feedback",
+  "fix", "loop", "mx", "review", "clean", "codemaps", "coverage", "e2e",
+  "gate", "security",
 ] as const;
 
 const MOAI_SUBCOMMAND_ALIASES: Record<string, string> = {
+  ideate: "brain",
+  idea: "brain",
   spec: "plan",
   impl: "run",
   docs: "sync",
   pr: "sync",
+  brief: "design",
+  brand: "design",
+  database: "db",
+  schema: "db",
   fb: "feedback",
   bug: "feedback",
   issue: "feedback",
@@ -27,8 +34,6 @@ const MOAI_SUBCOMMAND_ALIASES: Record<string, string> = {
   "dead-code": "clean",
   cov: "coverage",
   "e2e-test": "e2e",
-  ctx: "context",
-  memory: "context",
   check: "gate",
   "pre-commit": "gate",
   audit: "security",

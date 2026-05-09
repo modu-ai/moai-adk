@@ -107,7 +107,7 @@ Create an optimized SQLAlchemy engine with QueuePool, pool_size 20, max_overflow
 - moai-domain-frontend - Full-stack development integration
 - moai-domain-database - Advanced database patterns
 - moai-foundation-core - MCP server development patterns for backend services
-- moai-quality-security - Security validation and compliance
+- `moai-foundation-quality` + `moai-ref-owasp-checklist` - Security validation and compliance
 - moai-foundation-core - Core architectural principles
 
 ---
@@ -141,3 +141,55 @@ For working code examples, see [examples.md](examples.md).
 Status: Production Ready
 Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Backend Team
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Input validation can happen on the frontend" | Frontend validation is UX. Backend validation is security. They serve different purposes and both are required. |
+| "This endpoint is internal, it does not need authentication" | Internal endpoints are reachable from compromised services. Zero-trust means every endpoint validates identity. |
+| "I will add error handling later" | Unhandled errors leak stack traces, connection strings, and internal state. Error handling is day-one work. |
+| "The ORM handles SQL injection" | ORMs protect parameterized queries. Raw queries, dynamic filters, and ORDER BY clauses still need escaping. |
+| "This API is backward-compatible, no version bump needed" | Removing optional fields, changing defaults, or altering error formats are breaking changes to existing callers. |
+| "Microservices are overkill, I will just add another endpoint" | Unbounded endpoint growth creates a monolith-in-disguise. Evaluate service boundaries before adding. |
+
+**Hyrum's Law**: With a sufficient number of users, every observable behavior of your API will be depended on by somebody. Changing anything, no matter how trivial, can break someone.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- API endpoint accepts user input without validation or sanitization
+- Error response includes stack trace or internal path information
+- Database credentials hardcoded in source code instead of environment variables
+- No rate limiting configured on public-facing endpoints
+- API returns 200 OK for every failure case with error in the response body
+- Raw SQL queries built with string concatenation
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Every endpoint validates input before processing (show validation middleware or checks)
+- [ ] Error responses use standard format without internal details (show sample error response)
+- [ ] Credentials sourced from environment variables, not config files (grep for hardcoded secrets)
+- [ ] Rate limiting configured on public endpoints (show middleware registration)
+- [ ] API versioning strategy documented and enforced
+- [ ] Database queries use parameterized statements (no string concatenation with user input)
+- [ ] Authentication required on all non-public endpoints (show auth middleware)
+
+<!-- moai:evolvable-end -->
+
+## Refactor Notes
+
+**R4 audit verdict** (2026-04-23): REFACTOR — narrow to "API design decision matrix" focused content
+**SPEC**: SPEC-V3R2-WF-001 §6.2 line 261
+**Refactor scope** (deferred to future sub-SPEC):
+- Narrow body to API design decision matrix (REST vs GraphQL vs tRPC vs gRPC)
+- Extract language-specific implementation details into Level-3 modules
+- Remove framework-specific content that duplicates language skill coverage
+
+This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

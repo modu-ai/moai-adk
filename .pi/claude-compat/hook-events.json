@@ -3,11 +3,13 @@
   "mapping": {
     "SessionStart": "session_start",
     "PreCompact": "session_before_compact",
+    "PostCompact": "session_after_compact (mapped script present; no native pi lifecycle event)",
     "SessionEnd": "session_shutdown",
     "PreToolUse": "tool_call",
     "PostToolUse": "tool_result",
     "PostToolUseFailure": "tool_result:isError",
     "Stop": "agent_end",
+    "StopFailure": "agent_end failure wrapper (mapped script present; no native pi lifecycle event)",
     "SubagentStart": "team/subagent wrapper start (mapped script present; runtime event depends on team backend)",
     "SubagentStop": "team/subagent wrapper end (mapped script present; runtime event depends on team backend)",
     "AgentHook": "agent hook wrapper (mapped script present; no native pi lifecycle event)",
@@ -15,13 +17,20 @@
     "UserPromptSubmit": "input",
     "PermissionRequest": "guardrail confirm (mapped script present; native ask/deny handled by guardrails)",
     "TeammateIdle": "agent-teams lifecycle or fallback state (mapped script present; runtime event depends on team backend)",
+    "TaskCreated": "agent-teams task create event or fallback state (mapped script present; runtime event depends on team backend)",
     "TaskCompleted": "agent-teams task event or fallback state (mapped script present; runtime event depends on team backend)",
     "WorktreeCreate": "worktree wrapper (mapped script present; runtime event depends on worktree backend)",
-    "WorktreeRemove": "worktree wrapper (mapped script present; runtime event depends on worktree backend)"
+    "WorktreeRemove": "worktree wrapper (mapped script present; runtime event depends on worktree backend)",
+    "ConfigChange": "configuration change wrapper (mapped script present; no native pi lifecycle event)",
+    "CwdChanged": "cwd changed wrapper (mapped script present; no native pi lifecycle event)",
+    "Elicitation": "elicitation request wrapper (mapped script present; AskUserQuestion package owns runtime UI)",
+    "ElicitationResult": "elicitation result wrapper (mapped script present; AskUserQuestion package owns runtime UI)",
+    "FileChanged": "file changed wrapper (mapped script present; no native pi lifecycle event)",
+    "InstructionsLoaded": "instructions loaded wrapper (mapped script present; no native pi lifecycle event)"
   },
   "runtimeBridge": {
-    "connected": ["SessionStart", "PreCompact", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop"],
-    "statusOnly": ["SubagentStart", "SubagentStop", "AgentHook", "Notification", "PermissionRequest", "TeammateIdle", "TaskCompleted", "WorktreeCreate", "WorktreeRemove"],
+    "connected": ["SessionStart", "PreCompact", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "Notification"],
+    "statusOnly": ["PostCompact", "StopFailure", "SubagentStart", "SubagentStop", "AgentHook", "PermissionRequest", "TeammateIdle", "TaskCreated", "TaskCompleted", "WorktreeCreate", "WorktreeRemove", "ConfigChange", "CwdChanged", "Elicitation", "ElicitationResult", "FileChanged", "InstructionsLoaded"],
     "failurePolicy": "non-blocking warning"
   },
   "primaryPackage": "pi-yaml-hooks",

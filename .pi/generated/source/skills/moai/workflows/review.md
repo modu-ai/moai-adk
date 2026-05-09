@@ -71,7 +71,34 @@ If no --team flag (default single-agent mode): Delegate to manager-quality subag
 - Authentication and authorization logic
 - Secrets exposure (API keys, passwords, tokens)
 - Injection risks (SQL, command, XSS, CSRF)
-- Dependency vulnerability check
+
+#### Dependency Vulnerability Scan
+
+Enumerate project manifest files and run a vulnerability scan for each detected file:
+`go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
+
+Auto-detect language from project markers; invoke `expert-security` with the detected manifest.
+Full procedure: `${CLAUDE_SKILL_DIR}/workflows/security.md`.
+
+#### Secrets Scan (Full Git History)
+
+Scan the full git history — not just the working tree — for credential leaks:
+
+```bash
+git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+```
+
+Cross-reference findings against `.gitignore` to distinguish historical leaks from working-tree exposure.
+This scan is separate from working-tree-only scanners and must cover all commits reachable via `--all`.
+
+#### Data Isolation Check
+
+Verify the following boundaries are intact:
+- **Multi-tenant**: No cross-tenant data flow; tenant ID is enforced at every query boundary.
+- **PII separation**: PII is never written to logs, metrics, or telemetry endpoints.
+- **Shared-state leakage**: No mutable globals that carry request-scoped data across concurrent requests.
+
+For all three subsections above, the canonical security procedure is `Skill("moai")` `security` workflow.
 
 If --security flag: This perspective receives primary focus with deeper analysis.
 
@@ -145,20 +172,6 @@ Produce a consolidated review report organized by severity:
 - TRUST 5 Score: N/5
 ```
 
-### Simplify Pass [MANDATORY EVALUATION]
-
-After Phase 4 consolidation, MoAI MUST evaluate whether to call Skill("simplify").
-
-Condition: Any of the following Quality perspective findings exist:
-- At least 1 Warning-level or higher Quality finding
-- TRUST 5 compliance score < 5/5
-- At least 3 Suggestion-level Quality findings
-
-Decision:
-
-- If condition is met: Execute Skill("simplify") directly on the files identified in Phase 1. Do not delegate to a subagent — call it directly. Skill("simplify") will use parallel agents to resolve code quality issues found in the review. After completion, re-run the Quality perspective (Phase 2, Perspective 3 only) to verify the findings are resolved and update the report.
-- If condition is not met: Proceed directly to Phase 5.
-
 ## Phase 5: Next Steps
 
 Present options via AskUserQuestion:
@@ -186,7 +199,7 @@ For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/review.md.
 Fallback: If team mode is unavailable, standard single-agent sequential review continues.
 
 Team Prerequisites:
-- workflow.team.enabled: true in .pi/generated/source/moai-config/sections/workflow.yaml
+- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
 - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
 - If prerequisites not met: Falls back to single-agent review
 

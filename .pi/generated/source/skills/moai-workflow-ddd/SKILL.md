@@ -6,7 +6,7 @@ description: >
   legacy code or reducing technical debt safely.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash(git:*) Bash(pytest:*) Bash(ruff:*) Bash(npm:*) Bash(npx:*) Bash(node:*) Bash(uv:*) Bash(make:*) Bash(cargo:*) Bash(go:*) Bash(mix:*) Bash(bundle:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(git:*), Bash(pytest:*), Bash(ruff:*), Bash(npm:*), Bash(npx:*), Bash(node:*), Bash(uv:*), Bash(make:*), Bash(cargo:*), Bash(go:*), Bash(mix:*), Bash(bundle:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -25,7 +25,7 @@ metadata:
 
 ## Development Mode Configuration (CRITICAL)
 
-[NOTE] This workflow is selected based on `.pi/generated/source/moai-config/sections/quality.yaml`:
+[NOTE] This workflow is selected based on `.moai/config/sections/quality.yaml`:
 
 ```yaml
 constitution:
@@ -392,3 +392,44 @@ When DDD session encounters issues:
 Version: 1.0.0
 Status: Active
 Last Updated: 2026-01-16
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "This legacy code is obviously broken, I will just rewrite it" | The broken-looking code may encode production behavior callers depend on. ANALYZE first, rewrite with tests. |
+| "Characterization tests are just busywork" | They are the safety net that lets you refactor without fear. Without them, refactor equals rewrite. |
+| "I understand this module well enough to skip ANALYZE" | Understanding is not verification. ANALYZE forces you to name assumptions and confront callers. |
+| "This function has no tests because it has no behavior worth testing" | If it has callers, it has contract. The contract is the thing to characterize. |
+| "I will preserve behavior by being careful" | Carefulness is not a mechanism. Tests are the only mechanism that catches regressions. |
+| "This refactor is too small to need DDD" | Small refactors cause silent regressions exactly because people skip the safety net. |
+
+**Chesterton's Fence**: Do not remove or replace code whose purpose you cannot explain. ANALYZE phase exists specifically to uncover the reasoning behind code that looks wrong.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Refactor commit with zero new tests and zero existing test changes
+- ANALYZE artifact absent or reduced to a one-line summary
+- Characterization tests that only assert on return values, ignoring side effects and state changes
+- IMPROVE phase introduces new public API without test coverage
+- Behavior-preserving claim made without before/after test evidence
+- Legacy tests deleted during IMPROVE rather than updated
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] ANALYZE artifact exists and names every caller of the modified code
+- [ ] Characterization tests exist for every public entry point before IMPROVE begins
+- [ ] Characterization tests pass on the pre-refactor commit (baseline verified)
+- [ ] Characterization tests still pass after every IMPROVE step
+- [ ] No existing test was deleted without an equivalent replacement
+- [ ] Coverage for the modified package is equal to or higher than before the change
+- [ ] Side effects (I/O, global state) are captured in at least one test assertion
+
+<!-- moai:evolvable-end -->

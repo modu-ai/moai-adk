@@ -33,11 +33,13 @@ interface HookEventsConfig {
 const DEFAULT_CLAUDE_EVENT_TO_BRIDGE_EVENT: Record<string, string> = {
   SessionStart: "session-start",
   PreCompact: "compact",
+  PostCompact: "post-compact",
   SessionEnd: "session-end",
   PreToolUse: "pre-tool",
   PostToolUse: "post-tool",
   PostToolUseFailure: "post-tool-failure",
   Stop: "stop",
+  StopFailure: "stop-failure",
   AgentHook: "agent-hook",
   SubagentStart: "subagent-start",
   SubagentStop: "subagent-stop",
@@ -45,9 +47,16 @@ const DEFAULT_CLAUDE_EVENT_TO_BRIDGE_EVENT: Record<string, string> = {
   UserPromptSubmit: "user-prompt-submit",
   PermissionRequest: "permission-request",
   TeammateIdle: "teammate-idle",
+  TaskCreated: "task-created",
   TaskCompleted: "task-completed",
   WorktreeCreate: "worktree-create",
   WorktreeRemove: "worktree-remove",
+  ConfigChange: "config-change",
+  CwdChanged: "cwd-changed",
+  Elicitation: "elicitation",
+  ElicitationResult: "elicitation-result",
+  FileChanged: "file-changed",
+  InstructionsLoaded: "instructions-loaded",
 };
 
 const DEFAULT_CONNECTED_CLAUDE_EVENTS = [
@@ -77,6 +86,7 @@ const DEFAULT_HOOK_RUNTIME_CLASSIFICATION: Record<string, HookRuntimeClassificat
   notification: { state: "extension-connected", detail: "mapped for MoAI compat internal notifyMoai calls; Pi-global notification interception is not available" },
   "permission-request": { state: "intentionally-excluded", detail: "Claude permissionMode parity is excluded by design; pi-yaml-hooks guardrails replace it" },
   "teammate-idle": { state: "package-backed-adapter-available", detail: "pi-agent-teams optional idle hooks can call project-local MoAI adapter scripts when explicitly enabled" },
+  "task-created": { state: "package-backed-adapter-available", detail: "pi-agent-teams task creation lifecycle can call project-local MoAI adapter scripts when explicitly enabled" },
   "task-completed": { state: "package-backed-adapter-available", detail: "pi-agent-teams optional task_completed hooks can call project-local MoAI adapter scripts when explicitly enabled" },
   "worktree-create": { state: "package-backed-bridge-missing", detail: "pi-agent-teams supports worktree creation internally, but exposes no compat extension hook for this lifecycle" },
   "worktree-remove": { state: "package-backed-bridge-missing", detail: "pi-agent-teams cleans worktrees internally, but exposes no compat extension hook for this lifecycle" },

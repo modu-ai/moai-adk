@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PI_AGENTS_SOURCE_PATH, PI_HOOKS_SOURCE_PATH, PI_RULES_SOURCE_PATH, PI_SKILLS_SOURCE_PATH, SOURCE_MAP_PATH } from "./constants.ts";
 import { getAgentConversionStatus } from "./agent-converter.ts";
-import { analyzePackageConflicts, formatFindings } from "./package-conflicts.ts";
+import { analyzePackageConflicts, formatFindings, normalizePackageSpecs, type PackageSpec } from "./package-conflicts.ts";
 import { formatTeamSchemaReport } from "./team-schema.ts";
 import { getSkillIndexStatus } from "./trigger-indexer.ts";
 import {
@@ -33,18 +33,67 @@ function status(label: string, ok: boolean, detail = ""): string {
   return `${ok ? "ok" : "missing"}: ${label}${detail ? ` ${detail}` : ""}`;
 }
 
-function configuredPackages(): string[] {
-  const settings = readJson(".pi/settings.json") as { packages?: string[] } | null;
-  return settings?.packages ?? [];
+interface MoaiSettings {
+  packages?: PackageSpec[];
+  moaiCompat?: {
+    defaultPackages?: string[];
+    securityAdvisories?: Array<{
+      package?: string;
+      severity?: string;
+      via?: string;
+      mitigation?: string;
+    }>;
+  };
+}
+
+function readMoaiSettings(): MoaiSettings | null {
+  return readJson(".pi/settings.json") as MoaiSettings | null;
+}
+
+function configuredPackages(): PackageSpec[] {
+  return readMoaiSettings()?.packages ?? [];
+}
+
+function packageSetupReport(settings: MoaiSettings | null): string[] {
+  const configured = settings?.packages ?? [];
+  const defaults = settings?.moaiCompat?.defaultPackages ?? [];
+  const configuredNames = new Set(normalizePackageSpecs(configured));
+  const runtimeOnly = new Set(["moai-claude-compat", "pi-notify-glass.ts"]);
+  const missing = normalizePackageSpecs(defaults)
+    .filter((name) => !runtimeOnly.has(name))
+    .filter((name) => !configuredNames.has(name));
+
+  return [
+    missing.length
+      ? `missing: MoAI default pi packages not active ${missing.join(", ")}`
+      : `ok: MoAI default pi package set active (${configured.length} package specs)`,
+    defaults.length
+      ? `ok: MoAI default package manifest present (${defaults.length} entries; runtime-only entries excluded from package activation checks)`
+      : "missing: MoAI default package manifest absent",
+  ];
+}
+
+function securityAdvisoryReport(settings: MoaiSettings | null): string[] {
+  const advisories = settings?.moaiCompat?.securityAdvisories ?? [];
+  if (advisories.length === 0) return ["ok: no active MoAI package security advisories recorded"];
+  return advisories.map((advisory) => {
+    const pkg = advisory.package ?? "unknown package";
+    const severity = advisory.severity ?? "unknown severity";
+    const via = advisory.via ? ` via ${advisory.via}` : "";
+    const mitigation = advisory.mitigation ? `; mitigation: ${advisory.mitigation}` : "";
+    return `warn(non-blocking): security advisory recorded for ${pkg} (${severity})${via}${mitigation}`;
+  });
 }
 
 const CLAUDE_HOOK_EVENT_TO_BRIDGE_EVENT: Record<string, string> = {
   SessionStart: "session-start",
   PreCompact: "compact",
+  PostCompact: "post-compact",
   SessionEnd: "session-end",
   PreToolUse: "pre-tool",
   PostToolUse: "post-tool",
   Stop: "stop",
+  StopFailure: "stop-failure",
   SubagentStop: "subagent-stop",
   PostToolUseFailure: "post-tool-failure",
   Notification: "notification",
@@ -52,7 +101,16 @@ const CLAUDE_HOOK_EVENT_TO_BRIDGE_EVENT: Record<string, string> = {
   UserPromptSubmit: "user-prompt-submit",
   PermissionRequest: "permission-request",
   TeammateIdle: "teammate-idle",
+  TaskCreated: "task-created",
   TaskCompleted: "task-completed",
+  WorktreeCreate: "worktree-create",
+  WorktreeRemove: "worktree-remove",
+  ConfigChange: "config-change",
+  CwdChanged: "cwd-changed",
+  Elicitation: "elicitation",
+  ElicitationResult: "elicitation-result",
+  FileChanged: "file-changed",
+  InstructionsLoaded: "instructions-loaded",
 };
 
 function claudeSettingsHookParityReport(): string[] {
@@ -99,7 +157,8 @@ function hookParityReport(): string[] {
 }
 
 export function buildDoctorReport(): string[] {
-  const packages = configuredPackages();
+  const settings = readMoaiSettings();
+  const packages = settings?.packages ?? [];
   let config: ReturnType<typeof loadMoaiCompatConfig> | null = null;
   let configError = "";
   try {
@@ -129,7 +188,9 @@ export function buildDoctorReport(): string[] {
     ...hookParityReport(),
     teamRuntimeStatus(),
     ...teamHookAdapterStatus(),
+    ...packageSetupReport(settings),
     ...packageFindings,
+    ...securityAdvisoryReport(settings),
   ];
 }
 

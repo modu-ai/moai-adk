@@ -1,0 +1,40 @@
+{
+  "name": "evaluator-active",
+  "description": "Skeptical code evaluator for independent quality assessment. Actively tests implementations\nagainst SPEC acceptance criteria. Tuned toward finding defects, not rationalizing acceptance.\nMUST INVOKE when ANY of these keywords appear in user request:\nEN: evaluate, quality assessment, independent review, code audit, defect analysis, acceptance criteria test\nKO: 평가, 품질 평가, 독립 검토, 코드 감사, 결함 분석, 인수 기준 테스트\nJA: 評価, 品質評価, 独立レビュー, コード監査, 欠陥分析, 受入基準テスト\nZH: 评估, 质量评估, 独立审查, 代码审计, 缺陷分析, 验收标准测试\nNOT for: code implementation, architecture design, documentation writing, git operations",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "mcp",
+    "read"
+  ],
+  "skills": [
+    "moai-foundation-core",
+    "moai-foundation-quality"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/evaluator-active.md",
+  "sourceHash": "71ecc0a520bf9b8c",
+  "generatedAt": "2026-05-09T19:36:21.029Z",
+  "compatibility": {
+    "permissionMode": "plan",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "sonnet",
+    "originalMaxTurns": "unspecified",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash",
+      "mcp__sequential-thinking__sequentialthinking"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "Bash": "bash",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway"
+    },
+    "hasAgentHooks": true
+  }
+}

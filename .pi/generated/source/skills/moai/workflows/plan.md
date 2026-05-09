@@ -57,13 +57,27 @@ For phase overview and token budgets, see: .pi/generated/source/rules/moai/workf
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
 
+## Mode Flag Compatibility
+
+Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
+
+- This subcommand is multi-agent (open-ended) but does NOT participate in the
+  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+- Any `--mode` value supplied to `/moai plan` is silently ignored. The plan workflow
+  proceeds with its default behavior.
+- The `pipeline` value is the only special case: passing `--mode pipeline` triggers
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
+full subcommand × mode matrix.
+
 ## Context Loading
 
 Before execution, load these essential files:
 
 - .moai/config/config.yaml (git strategy, language settings)
-- .pi/generated/source/moai-config/sections/git-strategy.yaml (auto_branch, branch creation policy)
-- .pi/generated/source/moai-config/sections/language.yaml (git_commit_messages setting)
+- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
+- .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/project/product.md (product context)
 - .moai/project/structure.md (architecture context)
 - .moai/project/tech.md (technology context)
@@ -71,6 +85,57 @@ Before execution, load these essential files:
 - .moai/specs/ directory listing (existing SPECs for deduplication)
 
 Pre-execution commands: git status, git branch, git log, git diff, find .moai/specs.
+
+---
+
+## Brain Context Auto-Detection
+
+<!-- Verifies REQ-BRAIN-004: SPEC Decomposition Candidates surfaced to user via AskUserQuestion -->
+<!-- Verifies REQ-BRAIN-007: /moai plan detects proposal.md and presents SPEC candidates -->
+
+When `/moai plan` is invoked (with or without arguments), perform this pre-execution check:
+
+### Step 0: Brain Proposal Detection
+
+1. **Scan** for `.moai/brain/IDEA-*/proposal.md` files (Glob: `.moai/brain/IDEA-[0-9]*/proposal.md`).
+2. If any proposal.md files are found:
+   a. Read the most recent file (highest IDEA-NNN number by directory name).
+   b. Parse the `### SPEC Decomposition Candidates` section using grammar:
+      ```
+      Grammar: ^- SPEC-[A-Z][A-Z0-9]+-[0-9]{3}: .+$
+      ```
+   c. Collect all matching entries as `brain_candidates`.
+   d. Non-matching entries emit a WARNING in output (but do NOT error out — defensive parser).
+
+3. If `brain_candidates` is non-empty AND user did not provide a specific SPEC title in $ARGUMENTS:
+   - Surface candidates via AskUserQuestion (per `askuser-protocol.md`):
+     ```
+     ToolSearch(query: "select:AskUserQuestion")
+     AskUserQuestion({
+       questions: [{
+         header: "Brain 워크플로우 SPEC 후보",
+         question: "Brain 워크플로우에서 생성된 SPEC 분해 후보가 있습니다. 어느 것을 계획하시겠습니까?",
+         options: [
+           { label: "<first candidate> (권장)", description: "Brain IDEA에서 자동 감지된 첫 번째 후보" },
+           { label: "<second candidate>", description: "..." },
+           ...up to 4 options total (use "직접 입력" as last option for custom SPEC title)
+         ]
+       }]
+     })
+     ```
+   - User selection becomes the SPEC title for Phase 1B.
+   - [HARD] NEVER auto-create SPECs from candidates — user MUST select explicitly.
+
+4. If user provided a specific SPEC title OR selected "직접 입력": proceed normally to Phase 1A.
+
+5. If no brain candidates found: skip this check, proceed normally.
+
+**Defensive Parser Rules**:
+- Entries matching the grammar are offered as candidates.
+- Entries NOT matching (e.g., `- AUTH-001: missing prefix`, `- SPEC-001: missing domain`) emit:
+  `[WARNING] Skipped malformed brain candidate: "<entry>" — expected format: - SPEC-{DOMAIN}-{NNN}: {scope}`
+- Parser warnings do NOT block plan execution.
+- Maximum 9 candidates surfaced (AskUserQuestion option limit: 4 per question, minus "직접 입력").
 
 ---
 
@@ -99,6 +164,92 @@ Tasks for the Explore subagent:
 - Study cross-module interactions in great detail — trace data flow through the system
 - Go through related test files to understand expected behavior and edge cases
 - Report comprehensive results for Phase 1B context
+
+### Phase 0.3: Clarity Evaluation (Conditional)
+
+Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
+
+**Skip conditions (any one is sufficient):**
+- `--skip-interview` flag is present in $ARGUMENTS
+- Input matches `resume SPEC-XXX` pattern (resuming an existing draft)
+- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)
+- `interview.enabled: false` in `.moai/config/sections/interview.yaml`
+
+**Clarity Scoring (1-10):**
+
+Evaluate the user's input against five dimensions:
+
+1. Technical keyword count: 2+ points for 3-4 keywords; 1 point for 1-2; 0 for none
+2. Action verbs specificity: "add CRUD endpoints for user profile" scores higher than "improve the app"
+3. File or module mentions: explicit file paths or module names each add 1 point
+4. Generic nouns penalty: deduct 1 point for each vague noun like "system", "feature", "thing"
+5. Scope boundary clarity: a defined boundary ("only the POST /users endpoint, no auth changes") adds 2 points
+
+**Score-to-rounds mapping:**
+
+| Clarity Score | Interview Rounds |
+|---|---|
+| 1-3 | 0 (request too vague — ask one broad clarification question instead) |
+| 4-6 | 2 rounds maximum |
+| 7-10 | 5 rounds maximum |
+
+Log the score: "Clarity score: {N}/10 — proceeding with {M} interview round(s)."
+
+If score is 1-3: Use a single AskUserQuestion asking for a clearer description, then re-evaluate. Do not enter the full interview loop.
+
+### Phase 0.3.1: Deep Interview Loop (Conditional)
+
+Purpose: Gather missing context through a structured, topic-focused interview before research begins. Each round presents curated options so the user can answer quickly.
+
+**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 0.3).
+
+**Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
+
+**Round topics:**
+
+| Round | Focus Topic | Example Questions |
+|---|---|---|
+| 1 | Scope | What is included and explicitly excluded? |
+| 2 | Constraints | Performance, security, compatibility, technology limits |
+| 3 | Success criteria | How do we know when this is done and working correctly? |
+| 4 | Edge cases | What unusual or failure scenarios must be handled? |
+| 5 | Priority | What is the minimum viable slice if scope must be cut? |
+
+**Per-round execution:**
+
+For each round:
+
+1. Formulate 3 recommended options relevant to the current topic and the user's request context.
+2. Present via AskUserQuestion with exactly 4 options:
+   - Option 1: [Recommended based on context] (Recommended): [Detailed description of this answer]
+   - Option 2: [Alternative]: [Description]
+   - Option 3: [Alternative]: [Description]
+   - Option 4: Type your own answer: Enter a custom response if none of the above match
+3. Record the user's answer.
+4. Re-evaluate clarity score after each round.
+5. If updated clarity score drops to 3 or below: end the loop early (user's answers added no useful information).
+6. If updated clarity score reaches 8 or above: end the loop early (sufficient clarity achieved).
+7. Display round counter: "Interview round {N}/{max_rounds}"
+
+**Output:** Write all interview answers to `.moai/specs/SPEC-{ID}/interview.md` with this structure:
+
+```
+# Interview: {SPEC Title}
+
+## Round 1: Scope
+Question: {question asked}
+Answer: {user's answer}
+
+## Round 2: Constraints
+...
+
+## Clarity Score
+Initial: {N}/10
+Final: {N}/10
+Rounds completed: {N}
+```
+
+**Context passing:** Pass `interview.md` to Phase 0.5 (Deep Research) and Phase 1B (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
 
 ### Phase 0.4: UltraThink Auto-Activation (Conditional)
 
@@ -218,6 +369,18 @@ Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MU
 
 ### Decision Point 1: Plan Review and Annotation Cycle
 
+<!-- moai:evolvable-start id="gate-plan-1" -->
+### HUMAN GATE: Plan Review
+
+**Previous phase output:** SPEC draft with EARS-format requirements and acceptance criteria
+**Approval question:** Does this SPEC capture the correct requirements and scope?
+**Cannot proceed until:**
+- [ ] User has reviewed the SPEC document
+- [ ] User has confirmed acceptance criteria are testable
+- [ ] User has approved the proposed file changes
+- [ ] No open questions remain in the SPEC
+<!-- moai:evolvable-end -->
+
 Tool: AskUserQuestion (at orchestrator level only)
 
 Options:
@@ -276,11 +439,37 @@ Input: Approved plan from Phase 1B, validated SPEC ID from Phase 1.5.
 File generation (all three files created simultaneously):
 
 - .moai/specs/SPEC-{ID}/spec.md
-  - YAML frontmatter with 8 required fields (id, version, status, created, updated, author, priority, issue_number)
-  - issue_number: GitHub Issue number linked to this SPEC (0 if --no-issue or Issue creation skipped)
+  - YAML frontmatter with **9 required fields** (canonical schema — see checklist below)
   - HISTORY section immediately after frontmatter
   - Complete EARS structure with all 5 requirement types
   - Content written in conversation_language
+
+#### [HARD] Pre-Write Frontmatter Checklist
+
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 9 required fields AND rejects 4 legacy aliases. This checklist blocks the 2026-04-21 mass-SPEC-drift pattern where 30 SPECs shipped with `created`/`updated` (wrong) and no `labels`.
+
+Required 9 fields (canonical order):
+- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
+- [ ] `status: draft` — enum: draft | approved | completed | superseded | archived
+- [ ] `created_at: YYYY-MM-DD` — ISO date (NEVER `created`, NEVER `date`)
+- [ ] `updated_at: YYYY-MM-DD` — ISO date (NEVER `updated`)
+- [ ] `author: <name>` — string, not empty
+- [ ] `priority: High|Medium|Low|Critical` — Title-case (alt: P0|P1|P2|P3 uppercase)
+- [ ] `labels: [tag1, tag2, ...]` — YAML array, lowercase tags
+- [ ] `issue_number: null` — integer or null (0 if --no-issue)
+
+Rejected legacy aliases (fail closed — do NOT accept):
+- `created:` (use `created_at:`)
+- `updated:` (use `updated_at:`)
+- `spec_id:` (use `id:`)
+- `title:` in frontmatter (put in H1 heading, not frontmatter)
+
+Pre-write gate behavior:
+1. manager-spec generates frontmatter draft in memory.
+2. manager-spec self-audits against the 9-field checklist above.
+3. If any required field is missing OR any rejected alias appears: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
+4. Phase 2.3 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
 
 - .moai/specs/SPEC-{ID}/plan.md
   - Implementation plan with task decomposition
@@ -292,10 +481,107 @@ File generation (all three files created simultaneously):
   - Edge case testing scenarios
   - Performance and quality gate criteria
 
+### Delta Markers for Brownfield Projects
+
+When the SPEC modifies existing code (detected via research.md analysis), apply delta markers:
+
+```
+### [DELTA] {Module Name}
+- [EXISTING] {description} - unchanged context, characterization tests only
+- [MODIFY] {description} - existing code to change, requires characterization tests before modification
+- [NEW] {description} - new code to create, full implementation + new tests
+- [REMOVE] {description} - code to delete, requires dependency analysis and migration verification
+```
+
+Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfield projects skip this.
+
+### spec-compact.md Auto-Generation
+
+After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
+
+Extract from spec.md:
+- All REQ-XXX requirements (EARS format entries)
+- All acceptance criteria (Given/When/Then scenarios)
+- Files to modify list
+- Exclusions (What NOT to Build) section
+
+Exclude: Overview, technical approach, research references, annotation history.
+
+Purpose: Run phase loads spec-compact.md (~30% token savings) instead of full spec.md.
+Fallback: If generation fails, Run phase uses full spec.md.
+
 Quality constraints:
 - Requirement modules limited to 5 or fewer per SPEC
 - Acceptance criteria minimum 2 Given/When/Then scenarios
 - Technical terms and function names remain in English
+- Exclusions section MUST contain at least 1 entry
+
+### Phase 2.3: Independent SPEC Review (Conditional)
+
+Purpose: Prevent confirmation bias by running an adversarial audit of the just-created SPEC before user approval and GitHub Issue creation. The reviewer sees only the final spec.md — not the author's reasoning — and is prompted to find defects, not rationalize acceptance.
+
+Execution conditions:
+- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true`
+- Current harness level is `standard` or `thorough` (default: enabled)
+- SPEC files were successfully created in Phase 2
+
+Skip conditions:
+- Harness level is `minimal` (fast iteration path, plan_audit.enabled: false)
+- `--no-review` flag is present in $ARGUMENTS
+- spec.md was not created (Phase 2 failed)
+
+#### Step 2.3.1: Invoke plan-auditor
+
+Agent: plan-auditor subagent
+
+Delegation pattern: "Use the plan-auditor subagent to audit the SPEC at .moai/specs/{SPEC-ID}/ — this is iteration 1."
+
+Do NOT pass the author's reasoning or conversation history to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the SPEC directory path.
+
+#### Step 2.3.2: Read Verdict
+
+After plan-auditor completes, read the report at `.moai/reports/plan-audit/{SPEC-ID}-review-1.md`.
+
+Extract the verdict line: `Verdict: PASS | FAIL`
+
+#### Step 2.3.3: PASS Path
+
+If verdict is PASS: proceed directly to Phase 2.5 (GitHub Issue Creation).
+
+Log: "SPEC review passed (iteration 1). Proceeding to Phase 2.5."
+
+#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
+
+If verdict is FAIL:
+
+1. Delegate back to manager-spec: "Use the manager-spec subagent to revise .moai/specs/{SPEC-ID}/spec.md based on the review report at .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md. Address all defects listed in the report. DO NOT implement any code."
+
+2. After manager-spec revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit .moai/specs/{SPEC-ID}/ — this is iteration {N+1}. Previous review report: .moai/reports/plan-audit/{SPEC-ID}-review-{N}.md"
+
+3. Read new verdict from `.moai/reports/plan-audit/{SPEC-ID}-review-{N+1}.md`.
+
+4. Repeat until PASS or 3 iterations exhausted.
+
+Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
+
+#### Step 2.3.5: Escalation after 3 FAIL Iterations
+
+If all three iterations result in FAIL, do NOT proceed to Phase 2.5 automatically.
+
+Present the full defect history to the user:
+- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
+- Summarize blocking defects that persisted across all iterations
+- Use AskUserQuestion with options:
+  - Force-accept SPEC with known defects (proceed to Phase 2.5): "Accept SPEC with known defects — I will fix them manually before /moai run"
+  - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
+  - Abort plan workflow: "Abort — start over with a clearer feature description"
+
+Harness configuration reference (harness.yaml):
+- `minimal`: plan_audit.enabled: false (skip this entire phase)
+- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
+
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke evaluator-active in SPEC-review mode to cross-validate must-pass criteria. If evaluator-active disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
 
 ### Phase 2.5: GitHub Issue Creation (Conditional)
 
@@ -370,21 +656,77 @@ Execution conditions: Phase 2 completed successfully AND one of the following:
 
 Skipped when: develop_direct workflow, no flags and user chooses "Use current branch".
 
+#### Phase 3.0: BODP Gate (공통)
+
+Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: SPEC-V3R3-CI-AUTONOMY-001 W7-T02.
+
+Steps:
+
+1. **Relatedness Check** — Orchestrator calls `internal/bodp/Check()` with `CheckInput{CurrentBranch, NewSpecID, RepoRoot, EntryPoint}` (`EntryPlanBranch` for Branch Path; `EntryPlanWorktree` for Worktree Path). Result: `BODPDecision{SignalA, SignalB, SignalC, Recommended, Rationale, BaseBranch}`.
+
+2. **AskUserQuestion Gate** — Orchestrator-only HARD (see `.pi/generated/source/rules/moai/core/askuser-protocol.md`):
+   - Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+   - Options (max 4, conversation_language=ko):
+     - First option: the recommended Choice with `(권장)` suffix; description = `BODPDecision.Rationale`.
+     - Remaining options: the other Choice values (e.g. when Recommended is `ChoiceMain`, present `ChoiceStacked` and `ChoiceContinue`).
+   - The "Other" option is auto-appended by Claude Code.
+   - User response yields the chosen Choice + base branch.
+
+3. **Audit Trail Write** — Call `internal/bodp.WriteDecision()` with EntryPoint matching the path (`EntryPlanBranch` or `EntryPlanWorktree`), `UserChoice` from the AskUserQuestion answer, and `ExecutedCmd` describing the upcoming git operation. Failure is non-fatal.
+
+4. **Path-Specific Delegation** — Branch Path: pass `base=<chosenBase>` parameter to `manager-git`. Worktree Path: invoke `moai worktree new <SPEC-ID> --base <chosenBase>` (or `--from-current` when chosenBase is `HEAD`).
+
+Out of Scope (BODP Gate):
+- "Other" free-form base interpretation: orchestrator parses input as a base branch name; invalid input falls back to `origin/main` with a warning.
+- Concurrent invocation safety: single-session orchestrator assumed (W7-R5 follow-up).
+
 #### Worktree Path (--worktree flag)
 
 Prerequisite: SPEC files MUST be committed before worktree creation.
+- Run **Phase 3.0: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
-- Create worktree: `moai worktree new SPEC-{ID}`
+- Create worktree: `moai worktree new SPEC-{ID} --base <chosenBase>` (or `--from-current` when the user chose to continue on the current HEAD).
 - Display worktree path and navigation instructions
+
+##### Worktree-Anchored Resume Output [HARD]
+
+When `--worktree` is used, the plan-phase output MUST include a paste-ready resume message with **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. This anchors the user to start the next session inside the worktree, preventing main-cwd drift.
+
+Block 0 format (prepended before Block 1):
+
+```
+[New Terminal — START IN WORKTREE]
+$ cd <worktree-absolute-path>
+$ <session-launcher>            # claude | moai cc | moai cg | moai glm
+   └─ Claude Code session starts here (cwd = worktree)
+```
+
+Block 4 (preconditions) MUST include `0)` as the first item:
+
+```
+0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
+```
+
+Recommended session-launcher per execution mode:
+
+- `--team` → `tmux new-session -s moai-<spec> && moai cg` (teammate spawn via tmux split-window inherits worktree cwd + tmux session env)
+- single-session → `moai cc` (or `claude`) directly inside worktree
+- GLM-only → `moai glm`
+
+[HARD] Single-session corollary: If the user is NOT comfortable with multi-terminal/multi-session workflow, recommend converting to `--branch` next time. `--worktree` only realizes its isolation value when the user actually starts a separate session inside the worktree path. Forcing Block 0 onto a single-session user is friction without benefit.
+
+See `.pi/generated/source/rules/moai/workflow/session-handoff.md` "Worktree-Anchored Resume Pattern" for the canonical Block 0 specification and lessons #14 for the failure-mode rationale.
 
 #### Branch Path (--branch flag or user choice)
 
 Agent: manager-git subagent
-- Create branch: feature/SPEC-{ID}-{description}
-- Set tracking upstream if remote exists
-- Switch to new branch
-- Team mode: Create draft PR via manager-git subagent
+- Run **Phase 3.0: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
+- Delegate to manager-git with `base=<chosenBase>` derived from the gate answer.
+- Create branch: feature/SPEC-{ID}-{description} from `<chosenBase>`.
+- Set tracking upstream if remote exists.
+- Switch to new branch.
+- Team mode: Create draft PR via manager-git subagent.
 
 #### Current Branch Path (no flag or user choice)
 
@@ -407,6 +749,17 @@ Tasks:
 - Output: `mx_plan` section in SPEC document with annotation targets and priorities
 
 ### Phase 3.6: SPEC Quality Gate
+
+<!-- moai:evolvable-start id="gate-plan-2" -->
+### HUMAN GATE: SPEC Quality Validation
+
+**Previous phase output:** Validated SPEC with quality score
+**Approval question:** Is the SPEC ready for execution mode selection and implementation?
+**Cannot proceed until:**
+- [ ] SPEC quality gate shows PASS
+- [ ] No HARD rule violations detected
+- [ ] User has selected execution mode (sub-agent vs team)
+<!-- moai:evolvable-end -->
 
 Purpose: Verify SPEC document quality before proceeding to implementation. Catches incomplete or inconsistent specs early.
 
@@ -449,39 +802,44 @@ Options:
 
 Triggered when: User selects "Start Implementation" in Decision Point 3.
 
-**Step 1 — Detect active mode:**
-Read `.pi/generated/source/moai-config/sections/llm.yaml` → `llm.team_mode` field:
-- `""` (empty) = CC mode (all agents use Claude)
-- `"glm"` = GLM mode (all agents use GLM)
-- `"cg"` = CG mode (Leader=Claude, Workers=GLM)
+Purpose: After SPEC creation, detect execution environment and present optimal implementation mode.
 
-**Step 2 — Detect tmux availability:**
-Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
+**Step 1: Detect active LLM mode**
+Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
+- `""` (empty) or `"cc"`: CC mode (Claude-only)
+- `"glm"`: GLM mode (GLM-only)
+- `"cg"`: CG mode (Claude Leader + GLM Workers)
 
-**Step 3 — Present options when tmux is available:**
-AskUserQuestion with 3 options (descriptions adapt to active_mode):
+**Step 2: Detect tmux availability**
+Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
+
+**Step 3: Present options based on detection**
+
+When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to active_mode):
 - Option 1 (Recommended): Worktree + {active_mode}
-  - CC: "독립 worktree에서 CC 모드 실행. 모든 에이전트 Claude. 최고 품질."
-  - GLM: "독립 worktree에서 GLM 모드 실행. 모든 에이전트 GLM. 비용 최적화."
-  - CG: "독립 worktree에서 CG 모드 실행. Leader=Claude, Workers=GLM. 품질-비용 균형."
-- Option 2: Team Mode — 현재 세션에서 Agent Teams 실행. Worktree 없이 직접 실행.
-- Option 3: Sub-agent Mode — 순차 실행. 가장 안정적이고 토큰 효율적.
+  - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
+  - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
+  - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
+- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session. Best for multi-domain features.
+- Option 3: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks.
 
-**Step 3 (tmux unavailable):** AskUserQuestion with 2 options:
-- Option 1 (Recommended): Sub-agent Mode — 순차 실행. tmux 없이 가장 안정적.
-- Option 2: Team Mode (in-process) — 현재 세션에서 Agent Teams 실행.
+When tmux is NOT available: AskUserQuestion with 2 options:
+- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation.
+- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session.
 
-**Step 4 — Worktree 선택 시 실행:**
-- CC: 추가 env 설정 불필요. worktree 생성 후 새 tmux 세션에서 claude 실행.
-- GLM: 새 tmux 세션에 injectTmuxSessionEnv()로 GLM env 주입 후 실행.
-- CG: 새 tmux 세션에 injectTmuxSessionEnv() 적용 + settings.local.json에서 GLM env 제거(Leader 격리).
-- 새 tmux 세션에서 worktree 디렉터리로 이동 후 `/moai run SPEC-{ID}` 실행.
-- 현재 세션 종료 (worktree 세션이 독립적으로 실행됨).
+**Step 4: Execute selected mode**
+- **Worktree mode**: Execute `moai worktree new SPEC-{ID} --tmux` to create worktree with tmux session. The tmux session will:
+  - CC mode: Create session, cd to worktree, run `/moai run SPEC-{ID}`
+  - GLM mode: Create session, inject GLM env, cd to worktree, run `/moai run SPEC-{ID}`
+  - CG mode: Create session, inject GLM env to session, clear GLM from settings.local.json, cd to worktree, run `/moai run SPEC-{ID}`
+  - Display: "Implementation started in tmux session: moai-{ProjectName}-{SPEC-ID}"
+- **Team mode**: Proceed to `/moai run SPEC-{ID} --team`
+- **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 
-**Step 5 — Gate 결과를 run 워크플로우에 전달:**
-- `execution_mode`: worktree | team | sub-agent
-- `active_mode`: cc | glm | cg
-- `tmux_available`: true | false
+**Step 5: Gate result passing**
+- Pass the selected execution mode to the run workflow
+- If worktree mode: Run workflow executes in the tmux session (no further action needed from plan)
+- If team/sub-agent mode: Continue to run workflow in current session
 
 ---
 
@@ -505,17 +863,64 @@ All of the following must be verified:
 
 - Phase 1: manager-spec analyzed project and proposed SPEC candidates
 - User approval obtained via AskUserQuestion before SPEC creation
-- Phase 2: All 3 SPEC files created (spec.md, plan.md, acceptance.md)
+- Phase 2: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
 - Directory naming follows .moai/specs/SPEC-{ID}/ format
 - YAML frontmatter contains all 8 required fields (including issue_number)
 - EARS structure is complete
+- Exclusions section present with at least 1 entry
+- Delta markers applied for brownfield requirements (if applicable)
+- spec-compact.md auto-generated with requirements + acceptance criteria only
 - Phase 2.5: GitHub Issue created and linked (unless --no-issue)
 - Phase 3: Appropriate git action taken based on flags and user choice
 - If --worktree: SPEC committed before worktree creation
 - Next steps presented to user
+- **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
+  ```
+  - plan_complete_at: {ISO-8601 timestamp}
+  - plan_status: audit-ready
+  ```
+  This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
+  and ready for Plan Audit Gate validation at `/moai run` Phase 0.5 (SPEC-WF-AUDIT-GATE-001).
 
 ---
 
-Version: 2.7.0
-Updated: 2026-03-11
-Changes: Added Phase 2.5 GitHub Issue creation with bidirectional SPEC-Issue linking, --no-issue flag, issue_number SPEC frontmatter field.
+## Test Scenarios
+
+### Normal Flow
+**Prompt**: "/moai plan JWT authentication with refresh token rotation"
+**Expected Result**:
+- Phase 1A: Explore discovers existing auth files if any
+- Phase 1B: manager-spec designs EARS requirements for JWT auth
+- Annotation cycle: 1-3 iterations refining requirements
+- Phase 2: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
+- Phase 2.5: GitHub Issue created and linked to SPEC
+- Phase 3: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
+
+### Existing Assets Flow
+**Prompt**: "/moai plan add payment gateway" (existing e-commerce codebase)
+**Expected Result**:
+- Explore discovers existing order, product, user models
+- SPEC references existing models as dependencies
+- plan.md identifies extension points in existing architecture
+- No duplicate functionality proposed
+
+### Error Flow
+**Prompt**: "/moai plan" (no description provided)
+**Expected Result**:
+- AskUserQuestion prompts user for feature description
+- After user provides description, normal flow continues
+- If user cancels, graceful exit with no files created
+
+---
+
+Version: 2.8.0
+Updated: 2026-03-30
+Changes: Added test scenarios, Phase 0.9 JIT Language Detection.
+
+---
+
+## Custom Harness Extension (Optional)
+
+@.moai/harness/plan-extension.md
+
+*(이 파일은 `/moai project --harness`로 생성됩니다. 파일이 없으면 자동으로 skip됩니다.)*

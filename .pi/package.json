@@ -24,7 +24,7 @@
     "permissionMode": "excluded-by-design"
   },
   "scripts": {
-    "check": "for f in extensions/moai-claude-compat/index.ts extensions/moai-claude-compat/src/*.ts; do node --experimental-strip-types --check \"$f\" || exit 1; done; node --experimental-strip-types extensions/moai-claude-compat/statusline-footer.test.mjs",
+    "check": "for f in extensions/moai-claude-compat/index.ts extensions/moai-claude-compat/src/*.ts; do node --experimental-strip-types --check \"$f\" || exit 1; done; node --experimental-strip-types extensions/moai-claude-compat/statusline-footer.test.mjs; node extensions/moai-claude-compat/package-defaults.test.mjs",
     "doctor": "pi /moai-pi-doctor"
   }
 }

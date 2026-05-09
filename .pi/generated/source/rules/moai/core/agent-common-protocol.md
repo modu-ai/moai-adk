@@ -1,0 +1,196 @@
+# Agent Common Protocol
+
+Shared protocol for all MoAI agent definitions. This rule is automatically loaded for all agents, eliminating the need to duplicate these sections in each agent body.
+
+## User Interaction Boundary
+
+`AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
+
+### Subagent Prohibitions
+
+[HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
+
+Rules for subagents:
+- If required context is missing, return a blocker report to the orchestrator — do not output free-form questions
+- Never surface AskUserQuestion calls from within a subagent prompt body
+- All user preferences must arrive via the orchestrator's spawn prompt
+- If the orchestrator omitted critical data, respond with a structured "missing inputs" section and stop
+
+Rationale:
+- Subagents run in isolated, stateless contexts and CANNOT interact with users directly
+- Attempting to prompt inside a subagent produces a dead channel — no response arrives
+- This rule preserves the orchestrator's single-point-of-contact with the user (see .pi/generated/source/CLAUDE.md Section 8)
+
+### Orchestrator Obligations
+
+The MoAI orchestrator MUST follow these obligations when using AskUserQuestion:
+
+- [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
+- [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
+- Collect all user preferences before delegating to subagents via Agent()
+- On receiving a blocker report from a subagent: run an AskUserQuestion round, inject the user's responses into a fresh subagent prompt, and re-delegate
+
+Canonical reference: see `.pi/generated/source/rules/moai/core/askuser-protocol.md` for full preload sequence, Socratic interview structure, and anti-pattern catalog.
+
+### Blocker Report Format
+
+When a subagent requires user input not provided in the spawn prompt, it MUST return a structured blocker report:
+
+```markdown
+## Missing Inputs
+
+The following parameters are required but were not provided:
+
+| Parameter | Type | Expected Values | Rationale |
+|-----------|------|-----------------|-----------|
+| [name]    | [type] | [values]      | [why needed] |
+
+**Blocker**: Cannot proceed without the above inputs. Please re-delegate with these values injected into the prompt.
+```
+
+### Re-delegation Procedure
+
+On receiving a blocker report, the orchestrator:
+1. Invokes `ToolSearch(query: "select:AskUserQuestion")`
+2. Runs an AskUserQuestion round to collect the missing inputs from the user
+3. Constructs a fresh subagent prompt with the user's answers injected
+4. Re-delegates to the subagent
+
+## Language Handling
+
+[HARD] All agents receive and respond in user's configured conversation_language.
+
+Output language rules:
+- Analysis, documentation, reports: User's conversation_language
+- Code examples and syntax: Always English
+- Code comments: Per code_comments setting in language.yaml (default: English)
+- Commit messages: Per git_commit_messages setting in language.yaml
+- Skill names and technical identifiers: Always English
+- Function/variable/class names: Always English
+
+## Output Format
+
+[HARD] User-Facing: Always use Markdown formatting. Never display XML tags to users.
+
+- Reports, architecture docs, analysis results: Markdown with code blocks
+- Progress updates and status: Markdown
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+- Use semantic XML sections for structured data exchange between agents
+- Never surface XML structure in user-facing output
+
+## MCP Fallback Strategy
+
+[HARD] Maintain effectiveness without MCP servers.
+
+When Context7 MCP is unavailable:
+1. Detect unavailability immediately when MCP tools fail or return errors
+2. Inform user that Context7 is unavailable and provide alternative approach
+3. Use WebFetch to access official documentation as fallback
+4. Deliver established best practice patterns based on industry experience
+5. Continue work — architecture/analysis quality must not depend on MCP availability
+
+## .pi/generated/source/CLAUDE.md Reference
+
+Agents follow MoAI's core execution directives defined in .pi/generated/source/CLAUDE.md. Since .pi/generated/source/CLAUDE.md is automatically loaded as project instructions, agents do not need to restate its rules. Key applicable principles:
+
+- SPEC-based workflow (Plan-Run-Sync)
+- TRUST 5 quality framework
+- Agent delegation hierarchy
+- Parallel execution safeguards
+
+## Agent Invocation Pattern
+
+[HARD] Agents are invoked through MoAI's natural language delegation pattern:
+- "Use the {agent-name} subagent to {task description}"
+- Natural language conveys full context including constraints, dependencies, and rationale
+
+Architecture:
+- Commands orchestrate through natural language delegation
+- Agents own domain-specific expertise
+- Skills auto-load based on YAML frontmatter configuration
+
+## Background Agent Execution
+
+[HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
+
+Background agents auto-deny all non-pre-approved permission prompts because they cannot interact with the user. Even with `mode: "bypassPermissions"`, the background execution context does not fully inherit the parent session's permission allowlist.
+
+Rules for agent spawning:
+- **Read-only tasks** (research, analysis, review): `run_in_background: true` is safe
+- **Write tasks** (implementation, refactoring, file creation): `run_in_background: false` required
+- **Parallel writes needed**: Process directly from the main session, or use sequential foreground agents
+- **Pre-approved writes**: Add path patterns to settings.json `permissions.allow` for background write support
+
+Decision matrix:
+- Agent reads files only → `run_in_background: true` (parallel, fast)
+- Agent writes files → `run_in_background: false` (sequential, reliable)
+- Multiple agents need to write different files → Use main session directly or foreground agents in sequence
+
+## Tool Usage Guidelines
+
+[HARD] Agents must follow tool usage patterns optimized for accuracy and efficiency.
+
+### File Operations Pattern
+
+Read-before-write rule:
+- ALWAYS Read a file before using Edit on it
+- Use Grep to locate specific line numbers before targeted Read with offset/limit
+- Use Glob to discover files before reading — never guess file paths
+- Prefer Edit over Write for existing files (sends only the diff, preserves context)
+
+Path handling:
+- Use absolute paths for all file operations
+- Never construct paths from assumptions — verify with Glob or Bash `ls` first
+- When working in worktrees, use project-root-relative paths for write targets
+
+### Search Pattern
+
+Progressive narrowing:
+1. Glob to find candidate files by pattern
+2. Grep with `files_with_matches` to narrow by content
+3. Grep with `content` mode + context lines for detailed inspection
+4. Read with offset/limit for full section understanding
+
+Avoid:
+- Reading entire large files when only a specific section is needed
+- Using Bash grep/find when Grep/Glob tools are available
+- Searching without file type filters when the target language is known
+
+### Tool Selection by Task
+
+| Task | Preferred Tool | Avoid |
+|------|---------------|-------|
+| Find files by name | Glob | Bash find, Bash ls |
+| Search file contents | Grep | Bash grep, Bash rg |
+| Read file contents | Read | Bash cat, Bash head |
+| Modify existing file | Edit | Bash sed, Write (overwrites) |
+| Create new file | Write | Bash echo/cat heredoc |
+| Run system commands | Bash | — |
+| Explore codebase | Agent(Explore) | Multiple sequential Grep calls |
+
+### Bash Timeout
+
+The Bash tool supports an optional `timeout` parameter (milliseconds):
+
+- Default: 120,000ms (2 minutes)
+- Maximum: 600,000ms (10 minutes)
+- Use for long-running commands: builds, test suites, installs
+
+Specify via the `timeout` field when the command is expected to run longer than 2 minutes.
+
+### Error Recovery Pattern
+
+When a tool call fails:
+1. Read the error message carefully — diagnose root cause
+2. Verify assumptions: does the file/path exist? (Glob check)
+3. Try an alternative approach — do not retry the identical call
+4. After 3 failures on the same operation, report the blocker
+
+## Time Estimation
+
+[HARD] Never use time predictions in plans or reports.
+- Use priority labels: Priority High / Medium / Low
+- Use phase ordering: "Complete A, then start B"
+- Prohibited: "2-3 days", "1 week", "as soon as possible"

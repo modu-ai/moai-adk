@@ -13,10 +13,14 @@
     }
   },
   "moaiSubcommands": [
+    "brain",
     "plan",
     "run",
     "sync",
+    "design",
+    "db",
     "project",
+    "feedback",
     "fix",
     "loop",
     "mx",
@@ -25,8 +29,6 @@
     "codemaps",
     "coverage",
     "e2e",
-    "feedback",
-    "context",
     "gate",
     "security"
   ]

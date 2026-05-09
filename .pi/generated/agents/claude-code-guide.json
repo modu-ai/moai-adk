@@ -1,0 +1,40 @@
+{
+  "name": "claude-code-guide",
+  "description": "Anthropic upstream investigation specialist for Claude Code regressions.\nActivates when the orchestrator detects Agent(isolation: \"worktree\") regressions\n(empty worktreePath responses, post-call working tree divergence). The agent\nperforms local analysis and drafts a paste-ready bug report skeleton at\n.moai/reports/upstream/agent-isolation-regression.md so the user can file\nthe issue upstream. The agent does NOT contact Anthropic directly.\nMUST INVOKE when ANY of these keywords appear in user request:\nEN: claude code regression, agent isolation bug, worktreePath empty, upstream investigation\nKO: 클로드 코드 회귀, 에이전트 격리 버그, worktreePath 빈응답, 업스트림 조사\nJA: クロードコード回帰, エージェント分離バグ, worktreePath空, アップストリーム調査\nZH: Claude Code 回归, agent 隔离 bug, worktreePath 空, 上游调查\nNOT for: production code implementation, SPEC creation, testing, security review",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "fetch_content",
+    "read",
+    "web_search"
+  ],
+  "skills": [
+    "moai-foundation-core"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/claude-code-guide.md",
+  "sourceHash": "ae3d22048a9e68a5",
+  "generatedAt": "2026-05-09T19:36:21.029Z",
+  "compatibility": {
+    "permissionMode": "plan",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "sonnet",
+    "originalMaxTurns": "unspecified",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search"
+    },
+    "hasAgentHooks": false
+  }
+}

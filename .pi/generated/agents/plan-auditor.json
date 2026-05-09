@@ -1,0 +1,43 @@
+{
+  "name": "plan-auditor",
+  "description": "Independent plan-phase document auditor. Adversarial stance: finds defects in SPECs, BRIEFs, and project documents.\nMUST INVOKE for SPEC audit, BRIEF audit, project document review, plan audit, independent review, bias prevention, EARS compliance check, document validation.\nEN: SPEC audit, BRIEF audit, project document review, plan audit, independent review, bias prevention, EARS compliance, document validation\nKO: SPEC 감사, BRIEF 감사, 프로젝트 문서 검수, 계획 감사, 독립 검토, 편향 방지, EARS 준수, 문서 검증\nJA: SPEC 監査, BRIEF 監査, プロジェクト文書レビュー, 計画監査, 独立レビュー, 偏見防止, EARS 準拠, 文書検証\nZH: SPEC 审计, BRIEF 审计, 项目文档审查, 计划审计, 独立审查, 偏见防止, EARS 合规, 文档验证\nNOT for: code implementation, code review, documentation writing, git operations, running tests",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "edit",
+    "mcp",
+    "read",
+    "write"
+  ],
+  "skills": [],
+  "sourcePath": ".pi/generated/source/agents/moai/plan-auditor.md",
+  "sourceHash": "6cf35045b6cd1681",
+  "generatedAt": "2026-05-09T19:36:21.031Z",
+  "compatibility": {
+    "permissionMode": "default",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "inherit",
+    "originalMaxTurns": "unspecified",
+    "originalMemory": "unspecified",
+    "originalTools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Write",
+      "Edit"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "Bash": "bash",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "Write": "write",
+      "Edit": "edit"
+    },
+    "hasAgentHooks": false
+  }
+}

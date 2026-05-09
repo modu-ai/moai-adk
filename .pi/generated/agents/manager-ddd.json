@@ -1,6 +1,6 @@
 {
   "name": "manager-ddd",
-  "description": "DDD (Domain-Driven Development) implementation specialist. Use for ANALYZE-PRESERVE-IMPROVE\ncycle when working with existing codebases that have minimal test coverage.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategy, behavior preservation, and legacy code transformation.\nEN: DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring\nKO: DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링\nJA: DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング\nZH: DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构",
+  "description": "DDD (Domain-Driven Development) implementation specialist. Use for ANALYZE-PRESERVE-IMPROVE\ncycle when working with existing codebases that have minimal test coverage.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategy, behavior preservation, and legacy code transformation.\nEN: DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring\nKO: DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링\nJA: DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング\nZH: DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构\nNOT for: greenfield development (use TDD), deployment, documentation, git operations, security audits",
   "model": "inherit",
   "thinking": "medium",
   "tools": [
@@ -11,24 +11,18 @@
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
     "moai-foundation-core",
-    "moai-foundation-context",
-    "moai-foundation-quality",
     "moai-workflow-ddd",
-    "moai-workflow-tdd",
-    "moai-workflow-testing",
-    "moai-workflow-mx-tag",
-    "moai-tool-ast-grep"
+    "moai-workflow-testing"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/manager-ddd.md",
-  "sourceHash": "191a83fef1f6e90e",
-  "generatedAt": "2026-05-09T06:56:22.162Z",
+  "sourceHash": "c6f71b2274bf6bbc",
+  "generatedAt": "2026-05-09T19:36:21.031Z",
   "compatibility": {
-    "permissionMode": "default",
+    "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "sonnet",
-    "originalMaxTurns": "150",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "project",
     "originalTools": [
       "Read",

@@ -1,6 +1,6 @@
 {
   "name": "manager-project",
-  "description": "Project setup specialist. Use PROACTIVELY for initialization, .moai configuration, scaffolding, and new project creation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of project structure, configuration strategies, and scaffolding approaches.\nEN: project setup, initialization, .moai, project configuration, scaffold, new project\nKO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트\nJA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド\nZH: 项目设置, 初始化, .moai, 项目配置, 脚手架",
+  "description": "Project setup specialist. Use PROACTIVELY for initialization, .moai configuration, scaffolding, and new project creation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of project structure, configuration strategies, and scaffolding approaches.\nEN: project setup, initialization, .moai, project configuration, scaffold, new project\nKO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트\nJA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド\nZH: 项目设置, 初始化, .moai, 项目配置, 脚手架\nNOT for: code implementation, testing, deployment, git operations, security audits",
   "model": "inherit",
   "thinking": "medium",
   "tools": [
@@ -11,24 +11,19 @@
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
     "moai-foundation-core",
-    "moai-foundation-philosopher",
     "moai-foundation-thinking",
     "moai-workflow-project",
-    "moai-workflow-templates",
-    "moai-workflow-worktree",
-    "moai-workflow-spec",
-    "moai-foundation-context"
+    "moai-workflow-project"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/manager-project.md",
-  "sourceHash": "3498c8695997eb97",
-  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "sourceHash": "7821891267a330f6",
+  "generatedAt": "2026-05-09T19:36:21.031Z",
   "compatibility": {
-    "permissionMode": "default",
+    "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "sonnet",
-    "originalMaxTurns": "150",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "project",
     "originalTools": [
       "Read",

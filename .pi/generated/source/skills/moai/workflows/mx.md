@@ -58,6 +58,22 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .pi/
 | `--no-discovery` | Skip Phase 0 codebase discovery |
 | `--team` | Parallel scan by language (Agent Teams mode) |
 
+## Pipeline Contract (Agentless Classification)
+
+<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+
+This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+It executes a deterministic 3-phase contract: **localize → repair → validate**.
+
+- **Phase mapping**: localize ← Pass 1+2; repair ← Pass 3; validate ← post-edit MX scan
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases but never select the next phase.
+- **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
+- **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
+- **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
+- **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## Priority Levels
 
 | Priority | Condition | Tag Type |
@@ -94,7 +110,7 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .pi/
    | C++ | CMakeLists.txt, Makefile (with C++) | `//` |
    | Scala | build.sbt, build.sc | `//` |
    | R | DESCRIPTION, .Rproj, renv.lock | `#` |
-   | Flutter/Dart | pubspec.yaml | `//` |
+   | Flutter | pubspec.yaml | `//` |
    | Swift | Package.swift, .xcodeproj | `//` |
 
 2. **Project Context Loading**
@@ -107,22 +123,6 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .pi/
    - Count files per language
    - Estimate token budget
    - Apply exclude patterns
-
-### Batch Mode Decision [MANDATORY EVALUATION]
-
-After Phase 0, MoAI MUST evaluate whether to use Skill("batch") before scanning.
-
-Condition: total_source_files >= 50 (from Phase 0 scan scope calculation)
-
-Decision:
-
-- If condition is met: Execute Skill("batch") directly. Batch mode divides the source files by language or package into independent scan units. Each batch agent runs the full 3-Pass workflow (scan → deep read → edit) on its assigned files in an isolated git worktree. After all agents complete, MoAI collects all tag reports and generates a unified summary report.
-- If condition is not met: Continue to standard sequential Pass 1 below.
-
-Batch execution instructions when triggered:
-1. Divide files by language group (all Go files to batch A, all TypeScript files to batch B, etc.)
-2. Each batch agent receives: its assigned file list, project context (tech.md, structure.md, product.md), language.yaml code_comments setting, and mx.yaml thresholds
-3. Each agent must produce a tag report in the standard format defined in the Output section
 
 ### Pass 1: Full File Scan
 

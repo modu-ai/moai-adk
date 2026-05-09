@@ -1,5 +1,5 @@
 ---
-paths: "**/.pi/generated/source/hooks/**,**/.pi/generated/source/settings/claude-settings.json,**/.pi/overrides/settings.local.json"
+paths: "**/.pi/generated/source/hooks/**,**/.claude/settings.json,**/.claude/settings.local.json"
 ---
 
 # Hooks System
@@ -8,34 +8,42 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-All 24 available hook event types:
+27 hook event types (+ 1 special event, 28 total):
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
-| UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
-| SessionStart | No | No | Runs when a new session begins |
-| Setup | No | No | Runs via --init, --init-only, or --maintenance flags (v2.1.10+) |
-| PreCompact | No | No | Runs before context compaction |
-| PostCompact | No | No | Runs after context compaction completes (v2.1.76+) |
+| SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
+| SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |
-| PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
-| Notification | Type | No | Runs when Claude Code sends notifications |
-| InstructionsLoaded | No | No | Runs when .pi/generated/source/CLAUDE.md or .pi/generated/source/rules/*.md files are loaded (v2.1.69+) |
+| PreCompact | Trigger | No | Runs before context compaction. Matchers: manual, auto |
+| PostCompact | Trigger | No | Runs after context compaction completes (v2.1.76+). Matchers: manual, auto |
+| Stop | No | Yes | Runs when Claude finishes responding |
+| StopFailure | Error type | No | Runs when a turn ends due to API error (v2.1.78+). Matchers: rate_limit, authentication_failed, billing_error, max_output_tokens |
 | SubagentStart | Agent type | No | Runs when a subagent spawns |
-| SubagentStop | No | No | Runs when a subagent terminates |
-| Stop | No | No | Runs when conversation stops |
-| StopFailure | No | No | Runs when a turn ends due to an API error (v2.1.78+) |
+| SubagentStop | Agent type | Yes | Runs when a subagent terminates |
+| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog |
+| UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
+| PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
+| PermissionDenied | Tool name | No | Runs after auto mode denies a tool call. Return {retry: true} to retry (v2.1.89+) |
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete |
-| TaskCreated | No | No | Runs when a task is created via TaskCreate (v2.1.84+) |
-| SessionEnd | Reason | No | Runs when session terminates |
-| ConfigChange | No | No | Runs when settings.json is modified (v2.1.49+) |
-| WorktreeCreate | No | No | Runs when a worktree is created for agent isolation (v2.1.49+) |
+| TaskCreated | No | Yes | Runs when a task is created via TaskCreate (v2.1.84+) |
+| WorktreeCreate | No | Yes | Runs when a worktree is created for agent isolation (v2.1.49+) |
 | WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+) |
-| CwdChanged | No | No | Runs when working directory changes (v2.1.83+) |
-| FileChanged | No | No | Runs when a file is changed externally (v2.1.83+) |
+| ConfigChange | Config source | Yes | Runs when config files change (v2.1.49+). Matchers: user_settings, project_settings, local_settings, policy_settings, skills |
+| CwdChanged | No | No | Runs when working directory changes (v2.1.83+). Receives CLAUDE_ENV_FILE |
+| FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). Receives CLAUDE_ENV_FILE |
+| InstructionsLoaded | Load reason | No | Runs when .pi/generated/source/CLAUDE.md or rules loaded (v2.1.69+). Matchers: session_start, nested_traversal, path_glob_match, include, compact |
+| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+) |
+| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+) |
+
+**Special Event:**
+
+| Event | Matcher | Can Block | Description |
+|-------|---------|-----------|-------------|
+| Setup | No | No | Runs via --init, --init-only, or --maintenance flags (v2.1.10+) |
 
 ### Event Categories
 
@@ -43,7 +51,7 @@ All 24 available hook event types:
 
 **Context Events**: PreCompact, PostCompact, FileChanged, CwdChanged, WorktreeCreate, WorktreeRemove
 
-**Prompt and Notification Events**: UserPromptSubmit, PermissionRequest, Notification
+**Prompt and Notification Events**: UserPromptSubmit, PermissionRequest, PermissionDenied, Notification, Elicitation, ElicitationResult
 
 **Tool Events**: PreToolUse, PostToolUse, PostToolUseFailure
 
@@ -57,6 +65,7 @@ All 24 available hook event types:
 |-------|-------|--------|-------|
 | UserPromptSubmit | `prompt` | `additionalContext`, `reason` | Exit 2 blocks prompt |
 | PermissionRequest | `toolName`, `toolInput` | `reason` | Exit 0 = allow, exit 2 = deny |
+| PermissionDenied | `toolName`, `toolInput` | `{retry: true}` | Return retry to allow model to retry (v2.1.89+) |
 | PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `systemMessage` | Non-blocking |
 | Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog |
 | Setup | `trigger` | `systemMessage` | trigger: init, init-only, or maintenance (v2.1.10+) |
@@ -68,6 +77,11 @@ All 24 available hook event types:
 | Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
 | SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `systemMessage` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69 |
 | ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+) |
+| StopFailure | `error_type`, `error_message` | `systemMessage` | Error types: rate_limit, authentication_failed, billing_error, max_output_tokens (v2.1.78+) |
+| CwdChanged | `old_cwd`, `new_cwd` | - | Receives CLAUDE_ENV_FILE env var for environment persistence |
+| FileChanged | `file_path`, `change_type` | - | change_type: modified, created, deleted. Receives CLAUDE_ENV_FILE |
+| Elicitation | `mcp_server_name`, `mcp_tool_name`, `elicitation_request` | `action`, `content` | action: accept, decline, cancel |
+| ElicitationResult | `mcp_server_name`, `mcp_tool_name` | `action`, `content` | Overrides user response |
 
 All hook events include `agent_id` and `agent_type` fields when triggered from a subagent context (v2.1.69+).
 
@@ -83,6 +97,8 @@ Default hook type. Executes a shell command, communicates via stdin/stdout JSON.
 - stdin: JSON with event data
 - stdout: JSON with response (optional `systemMessage`, `additionalContext`, `reason`)
 - Exit codes: 0 = success, 1 = error (shown to user), 2 = block/reject (for blocking events)
+- PreToolUse permission decisions: `allow`, `deny`, `ask`, `defer` (defer pauses headless sessions for --resume, v2.1.89+)
+- Hook stdout over 50K characters is saved to disk; only a file path + preview is injected into context (v2.1.89+)
 
 ### Prompt Hooks (type: "prompt")
 
@@ -157,7 +173,7 @@ Hooks are defined in `.pi/generated/source/hooks/` directory:
 
 ## Configuration
 
-Define hooks in `.pi/generated/source/settings/claude-settings.json`:
+Define hooks in `.claude/settings.json`:
 
 ```json
 {
@@ -179,7 +195,8 @@ Define hooks in `.pi/generated/source/settings/claude-settings.json`:
     "PostToolUse": [{
       "matcher": "Write|Edit",
       "command": "\"$CLAUDE_PROJECT_DIR/.pi/generated/source/hooks/moai/handle-post-tool.sh\"",
-      "timeout": 60
+      "timeout": 10,
+      "async": true
     }],
     "Stop": [{
       "command": "\"$CLAUDE_PROJECT_DIR/.pi/generated/source/hooks/moai/handle-stop.sh\"",
@@ -238,6 +255,17 @@ Wrapper scripts are located at:
 - `.pi/generated/source/hooks/moai/handle-stop.sh`
 - `.pi/generated/source/hooks/moai/handle-agent-hook.sh`: TeammateIdle, TaskCompleted events (team mode)
 
+## Smart Hook Behaviors (v2.10.1)
+
+MoAI-ADK implements intelligent handler logic beyond simple logging:
+
+- **PermissionDenied auto-retry**: Read-only tools (Read, Grep, Glob, WebFetch, WebSearch, Skill) automatically return `{retry: true}` when denied by auto mode
+- **StopFailure error-type responses**: Returns targeted `systemMessage` based on `error_type` (rate_limit, authentication_failed, billing_error, max_output_tokens)
+- **PostCompact memo restoration**: Reads session-memo.md saved by PreCompact and injects it as `systemMessage` for context recovery
+- **SubagentStart context injection**: Injects project metadata (name, type, language, active SPEC) via `additionalContext` into spawned subagents
+- **CwdChanged environment persistence**: Writes project-specific env vars to `CLAUDE_ENV_FILE` when directory changes to a MoAI project
+- **UserPromptSubmit session title**: Sets Claude Code session title via `sessionTitle` field with SPEC ID or project/branch info
+
 ## Rules
 
 - Hook feedback is treated as user input
@@ -276,7 +304,7 @@ PostToolUse hooks can trigger MX tag validation after code modifications:
 
 **PostToolUse MX Check Flow:**
 1. Detect if modified file is a source code file
-2. Check if file has `.pi/generated/source/moai-config/sections/mx.yaml` exclusion
+2. Check if file has `.moai/config/sections/mx.yaml` exclusion
 3. If new exported function added without @MX tag, log warning
 4. If function with @MX:ANCHOR modified, flag for review
 

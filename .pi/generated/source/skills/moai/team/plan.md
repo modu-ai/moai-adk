@@ -38,8 +38,8 @@ See .pi/generated/source/rules/moai/workflow/spec-workflow.md for team mode prer
 ## Phase 0: Team Setup
 
 1. Read configuration:
-   - .pi/generated/source/moai-config/sections/workflow.yaml for team settings
-   - .pi/generated/source/moai-config/sections/quality.yaml for development mode
+   - .moai/config/sections/workflow.yaml for team settings
+   - .moai/config/sections/quality.yaml for development mode
 
 2. Create team:
    ```

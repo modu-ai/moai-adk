@@ -47,18 +47,22 @@ Flow: Tool Selection -> Installation -> Journey Mapping -> Test Script Creation 
 
 ### Tool Comparison
 
-| Feature | Agent Browser | Playwright CLI | Claude in Chrome |
-|---------|--------------|----------------|------------------|
-| **Token Cost** | Low (CLI output) | Low (CLI output) | High (MCP round-trips) |
-| **Setup** | npm install | npx playwright install | Chrome extension required |
-| **Headless** | Yes | Yes | No (requires visible Chrome) |
-| **Cross-Browser** | Chromium only | Chromium, Firefox, WebKit | Chrome only |
-| **GIF Recording** | Via Playwright trace | Via Playwright trace | Via mcp__claude-in-chrome__gif_creator |
-| **AI Navigation** | Built-in AI agent | Script-based | MCP tool-based AI |
-| **Best For** | AI-driven exploration | Deterministic test suites | Interactive debugging |
-| **Install Size** | ~50MB | ~200MB | N/A (extension) |
-| **CI/CD** | Yes | Yes | No |
-| **Source** | github.com/vercel-labs/agent-browser | playwright.dev | Built-in MCP |
+| Feature | Agent Browser | Playwright CLI | Claude in Chrome | Chrome DevTools MCP |
+|---------|--------------|----------------|------------------|---------------------|
+| **Token Cost** | Low (CLI output) | Low (CLI output) | High (MCP round-trips) | Low (native CDP, compact responses) |
+| **Setup** | npm install | npx playwright install | Chrome extension required | npx chrome-devtools-mcp (MCP server) |
+| **Headless** | Yes | Yes | No (requires visible Chrome) | Yes (viewport up to 3840x2160) |
+| **Cross-Browser** | Chromium only | Chromium, Firefox, WebKit | Chrome only | Chrome / Chrome for Testing only |
+| **GIF Recording** | Via Playwright trace | Via Playwright trace | Via mcp__claude-in-chrome__gif_creator | Via take_screenshot sequences |
+| **AI Navigation** | Built-in AI agent | Script-based | MCP tool-based AI | MCP tool-based (29 tools across 6 categories) |
+| **Best For** | AI-driven exploration | Deterministic test suites | Interactive debugging | Performance profiling (LCP/FID/CLS), Lighthouse audits, CSS/DOM inspection |
+| **Install Size** | ~50MB | ~200MB | N/A (extension) | ~100MB (Puppeteer + Chrome) |
+| **CI/CD** | Yes | Yes | No | Partial (attach-first debugging designed for local) |
+| **Performance Traces** | Limited | Limited timing | No | Native (performance_start_trace, performance_analyze_insight) |
+| **Lighthouse Audits** | No | Via external integration | No | Native (lighthouse_audit tool) |
+| **Network Monitoring** | Basic | Basic | Basic | Native (list_network_requests, get_network_request) |
+| **autoConnect to live Chrome** | No | Via extension bridge | Extension-based | Native (CDP attach with user approval) |
+| **Source** | github.com/vercel-labs/agent-browser | playwright.dev | Built-in MCP | github.com/ChromeDevTools/chrome-devtools-mcp |
 
 ### Auto-Detection Priority
 
@@ -66,7 +70,8 @@ When --tool flag is not provided, auto-detect in this order:
 
 1. Check if `agent-browser` is installed: `npx agent-browser --version` or `bunx agent-browser --version`
 2. Check if Playwright is installed: `npx playwright --version` or `bunx playwright --version`
-3. Check if Chrome MCP is available: Verify mcp__claude-in-chrome tools exist
+3. Check if Chrome DevTools MCP is available: Verify mcp__chrome-devtools__* tools exist in current session
+4. Check if Claude in Chrome MCP is available: Verify mcp__claude-in-chrome__* tools exist in current session
 
 Detection results are used to mark availability status in AskUserQuestion options.
 
@@ -81,6 +86,10 @@ Detection results are used to mark availability status in AskUserQuestion option
 | Journey requires AI exploration | Agent Browser | Built-in AI navigation |
 | Deterministic test suite needed | Playwright CLI | Most stable, cross-browser |
 | Interactive debugging | Claude in Chrome | Visual real-time feedback |
+| Performance profiling (LCP/FID/CLS) | Chrome DevTools MCP | Native performance traces and Web Vitals analysis |
+| Lighthouse audit needed | Chrome DevTools MCP | Built-in lighthouse_audit tool |
+| CSS/DOM / Mermaid render debugging | Chrome DevTools MCP | Direct access to computed styles, DOM snapshots |
+| Network request inspection | Chrome DevTools MCP | Native list_network_requests with detail |
 | Default (no special condition) | Playwright CLI | Best balance of features and token efficiency |
 
 ## Phase 0: Tool Selection & Installation
@@ -92,7 +101,8 @@ Detection results are used to mark availability status in AskUserQuestion option
 Detection commands (run in parallel):
 - Agent Browser: `npx agent-browser --version 2>/dev/null || echo "not-installed"`
 - Playwright: `npx playwright --version 2>/dev/null || echo "not-installed"`
-- Chrome MCP: Check if mcp__claude-in-chrome tools are available in current session
+- Chrome DevTools MCP: Check if mcp__chrome-devtools__* tools are available in current session (also verify `npx chrome-devtools-mcp@latest --help` exits 0 for config readiness)
+- Claude in Chrome MCP: Check if mcp__claude-in-chrome__* tools are available in current session
 
 ### Step 0.2: User Selection
 
@@ -104,6 +114,7 @@ If --tool flag NOT provided: Always present via AskUserQuestion with detection s
 
 - Playwright CLI: Deterministic test execution with cross-browser support. Most stable and token-efficient. Ideal for CI/CD pipelines and comprehensive test suites. (Mark with availability status from detection)
 - Agent Browser: AI-powered browser navigation by Vercel. The agent autonomously explores and interacts with web pages. Best for exploratory testing and AI-driven user journey validation. (Mark with availability status from detection)
+- Chrome DevTools MCP: Google's official CDP-native MCP server with 29 tools for performance profiling (LCP/FID/CLS traces), Lighthouse audits, CSS/DOM inspection (computed styles, virtual CSS injection), network monitoring, and console access. Headless-capable, low token overhead, CI-compatible with autoConnect flow. Best for performance baselines, render debugging, and Web Vitals measurement. (Mark with availability status from detection)
 - Claude in Chrome: Real-time browser automation via MCP tools. Best for interactive debugging, visual verification, and GIF recording. Requires Chrome with Claude extension. (Mark with availability status from detection)
 
 Mark the recommended tool with "(Recommended)" based on the Recommendation Logic above. Include installation status (installed/not installed) in each option description so the user can make an informed choice.
@@ -133,6 +144,22 @@ npm install --save-dev agent-browser
 # Verify
 npx agent-browser --version
 ```
+
+**Chrome DevTools MCP Installation:**
+```bash
+# Add to .mcp.json at project root (project-scoped, loads at Claude Code restart)
+# Example entry:
+#   "chrome-devtools": {
+#     "command": "/bin/bash",
+#     "args": ["-l", "-c", "exec npx -y chrome-devtools-mcp@latest --headless"]
+#   }
+# Windows: replace command/args with cmd.exe equivalent
+
+# Verify standalone
+npx chrome-devtools-mcp@latest --help
+```
+
+After adding to `.mcp.json`, Claude Code must be restarted for the MCP server to load. On restart, `mcp__chrome-devtools__*` tools become available. Requires Google Chrome or Chrome for Testing; Chromium/Edge/Firefox are not supported.
 
 **Claude in Chrome:** No installation needed (built-in MCP). If Chrome MCP tools are not available, inform user to:
 - Install Claude Code Chrome extension
@@ -272,6 +299,52 @@ Execution flow per journey step:
 4. Verify expected outcome (read_page, get_page_text)
 5. Capture screenshot if verification point
 
+### Chrome DevTools MCP Execution
+
+Execute via mcp__chrome-devtools__* tools (29 tools, 6 categories). Lower token overhead than Claude in Chrome due to native CDP and compact responses.
+
+Navigation and interaction (9 tools): mcp__chrome-devtools__navigate_page, new_page, close_page, list_pages, select_page, click, fill, fill_form, hover.
+
+Input automation (additional): mcp__chrome-devtools__drag, type_text, press_key, upload_file, handle_dialog, resize_page, wait_for.
+
+Performance analysis (4 tools, flagship):
+- mcp__chrome-devtools__performance_start_trace: begin trace with reload/autoStop options
+- mcp__chrome-devtools__performance_stop_trace: stop and aggregate insights
+- mcp__chrome-devtools__performance_analyze_insight: run insight generator on recorded trace
+- mcp__chrome-devtools__lighthouse_audit: official Lighthouse audit (performance, accessibility, best-practices, SEO)
+
+Network and console (4 tools): mcp__chrome-devtools__list_network_requests, get_network_request, list_console_messages, get_console_message.
+
+Debugging and snapshots (6 tools): mcp__chrome-devtools__evaluate_script, take_snapshot (DOM), take_screenshot, take_memory_snapshot, emulate (CPU/network throttling).
+
+Journey execution pattern:
+1. new_page with target URL (or navigate_page if reusing page)
+2. wait_for element or URL condition
+3. take_snapshot for DOM structure verification
+4. evaluate_script for in-page JS assertions (selector existence, computed style values, JSON-LD schema validation)
+5. list_network_requests for resource inspection (OG images, API calls, asset sizes)
+6. performance_start_trace and performance_stop_trace for Web Vitals (LCP, FID, CLS) per page
+7. lighthouse_audit for comprehensive audit at key milestones
+8. take_screenshot at verification points
+
+Execution flow for performance baseline (Phase 7 G4-07 precursor):
+1. Start trace: mcp__chrome-devtools__performance_start_trace(autoStop=true)
+2. Navigate: mcp__chrome-devtools__navigate_page(url)
+3. Stop trace: mcp__chrome-devtools__performance_stop_trace() returns insights
+4. For each locale: repeat with URL swap (/ko, /en, /ja, /zh)
+5. Persist metrics to `.moai/plans/<SPEC>/phase-7-e2e-baseline.md`
+
+Mermaid render verification pattern:
+1. navigate_page to a doc with Mermaid block
+2. evaluate_script: `document.querySelectorAll('svg[aria-roledescription]').length`
+3. take_snapshot to confirm svg children exist for each code block
+4. list_console_messages to catch any Mermaid parse errors
+
+CSS/DOM inspection pattern:
+1. take_snapshot to get element hierarchy
+2. evaluate_script with `window.getComputedStyle()` to read applied styles
+3. Compare against expected design tokens from Hextra theme
+
 ### Common Options (all tools)
 
 - If --headless flag: Force headless mode (Playwright/Agent Browser only)
@@ -358,8 +431,8 @@ Next Steps (AskUserQuestion):
 - Phase 0: expert-testing subagent (tool detection and installation)
 - Phase 1: expert-testing subagent (journey mapping)
 - Phase 2: expert-testing subagent (test script creation)
-- Phase 3: expert-testing or expert-frontend subagent (test execution)
-- Phase 4: expert-frontend subagent (GIF recording via Chrome MCP) or expert-testing (Playwright/Agent Browser traces)
+- Phase 3: expert-testing or expert-frontend subagent (test execution). For Chrome DevTools MCP performance baselines and Lighthouse audits, delegate to expert-performance subagent.
+- Phase 4: expert-frontend subagent (GIF recording via Chrome MCP / Chrome DevTools MCP screenshot sequences) or expert-testing (Playwright/Agent Browser traces)
 - Phase 5: MoAI orchestrator (report and user interaction)
 
 ## Execution Summary

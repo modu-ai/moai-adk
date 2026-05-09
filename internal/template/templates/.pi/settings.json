@@ -1,0 +1,35 @@
+{
+  "$schema": "https://pi.dev/schemas/settings.json",
+  "packages": [
+    "npm:@juicesharp/rpiv-ask-user-question@1.3.0",
+    "npm:@tmustier/pi-agent-teams@0.5.5",
+    "npm:@zenobius/pi-worktrees@0.5.1",
+    {
+      "source": "npm:context-mode@1.0.111",
+      "extensions": [],
+      "skills": ["./skills"]
+    },
+    "npm:pi-docparser@1.1.1",
+    "npm:pi-markdown-preview@0.9.8",
+    "npm:pi-mcp-adapter@2.4.2",
+    "npm:pi-subagents@0.24.0",
+    "npm:pi-web-access@0.10.7",
+    "npm:pi-yaml-hooks@2026.5.8"
+  ],
+  "moaiCompat": {
+    "packageActivationPolicy": "MoAI setup activates the verified runtime package set by default so a fresh MoAI configuration includes package-backed Pi tools.",
+    "defaultPackages": [
+      "@juicesharp/rpiv-ask-user-question@1.3.0",
+      "@tmustier/pi-agent-teams@0.5.5",
+      "@zenobius/pi-worktrees@0.5.1",
+      "context-mode@1.0.111",
+      "pi-docparser@1.1.1",
+      "pi-markdown-preview@0.9.8",
+      "pi-mcp-adapter@2.4.2",
+      "pi-subagents@0.24.0",
+      "pi-web-access@0.10.7",
+      "pi-yaml-hooks@2026.5.8"
+    ]
+  },
+  "enableSkillCommands": true
+}

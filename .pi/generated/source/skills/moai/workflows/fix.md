@@ -43,6 +43,22 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
 - --team: Enable team-based debugging (see team-debug.md for competing hypothesis investigation)
 
+## Pipeline Contract (Agentless Classification)
+
+<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+
+This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+It executes a deterministic 3-phase contract: **localize → repair → validate**.
+
+- **Phase mapping**: localize ← Phase 1+2+2.5; repair ← Phase 3; validate ← Phase 4
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., `expert-backend` for auto-fix) but never select the next phase.
+- **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
+- **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
+- **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
+- **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## Phase 1: Parallel Scan
 
 Launch three diagnostic tools simultaneously using Bash with run_in_background for 3-4x speedup (8s vs 30s).
@@ -116,7 +132,7 @@ Normalize all scanner output into a unified issue record format regardless of la
 
 This normalization enables language-agnostic fix agents to work without language-specific logic.
 
-Language auto-detection uses indicator files: pyproject.toml (Python), package.json (TypeScript/JavaScript), go.mod (Go), Cargo.toml (Rust). Supports 16 languages.
+Language auto-detection uses indicator files and covers all 16 MoAI-supported languages equally (C++, C#, Elixir, Flutter, Go, Java, JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, TypeScript). Each language has its own marker files (for example `go.mod` for Go, `pyproject.toml` for Python, `tsconfig.json` for TypeScript, `Cargo.toml` for Rust, `pubspec.yaml` for Flutter); the scanner inspects project root and activates the corresponding toolchain. See `.pi/generated/source/skills/moai/workflows/sync.md` Phase 0.6.1 for the complete Language Detection table.
 
 Error handling: If any scanner fails, continue with results from successful scanners. Note the failed scanner in the report.
 
@@ -153,6 +169,8 @@ Before applying fixes, scan target files for existing @MX tags to understand con
 See .pi/generated/source/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
 ## Phase 3: Auto-Fix
+
+<!-- @MX:WARN @MX:REASON - Future PRs may be tempted to add LLM-driven Level-to-agent dispatch here. The current static lookup table (lines 175-179) MUST remain a fixed mapping. Any LLM-decided dispatch fails TestAgentlessUtilityNoLLMControlFlow. -->
 
 [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
 
@@ -264,7 +282,7 @@ For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/debug.md.
 Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
 
 Team Prerequisites:
-- workflow.team.enabled: true in .pi/generated/source/moai-config/sections/workflow.yaml
+- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
 - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
 - If prerequisites not met: Falls back to standard single-agent fix workflow
 

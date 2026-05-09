@@ -6,7 +6,7 @@ description: >
   Electron Forge. Use when building cross-platform desktop applications.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.0.0"
@@ -16,7 +16,7 @@ metadata:
   modularized: "false"
   tags: "electron, desktop, cross-platform, nodejs, chromium, ipc, auto-update, electron-builder, electron-forge"
   context7-libraries: "/electron/electron, /electron/forge, /electron-userland/electron-builder"
-  related-skills: "moai-lang-typescript, moai-domain-frontend, moai-lang-javascript"
+  related-skills: "moai-domain-frontend"
 ---
 
 # Electron 33+ Desktop Development
@@ -225,9 +225,9 @@ Performance Optimization:
 
 ## Works Well With
 
-- moai-lang-typescript - TypeScript patterns for type-safe Electron development
+- `.pi/generated/source/rules/moai/languages/typescript.md` - TypeScript patterns for type-safe Electron development (auto-loaded via paths frontmatter)
 - moai-domain-frontend - React, Vue, or Svelte renderer development
-- moai-lang-javascript - Node.js patterns for main process
+- `.pi/generated/source/rules/moai/languages/javascript.md` - Node.js patterns for main process (auto-loaded via paths frontmatter)
 - moai-domain-backend - Backend API integration
 - moai-workflow-testing - Testing strategies for desktop apps
 
@@ -277,3 +277,52 @@ For latest documentation, use Context7 to query:
 Version: 2.0.0
 Last Updated: 2026-01-10
 Changes: Restructured to comply with .pi/generated/source/CLAUDE.md Documentation Standards - removed all code examples, converted to narrative text format
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I can use Node.js APIs directly in the renderer process" | Renderer process runs untrusted content. Direct Node.js access is a remote code execution vector. Use IPC through the preload bridge. |
+| "contextIsolation is unnecessary since I trust my own code" | Context isolation prevents prototype pollution from web content reaching Node.js. It is not about trusting your code, it is about isolating contexts. |
+| "Auto-update can be configured after release" | Shipping without auto-update means users stay on vulnerable versions. Configure it before the first release. |
+| "I will package the app later, development builds are enough for testing" | Development builds have different file paths, permissions, and code signing. Only production-packaged builds reveal real distribution issues. |
+| "IPC is slow, I will share state through global variables" | IPC overhead is microseconds. Global variables bypass process isolation, which exists for security. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- nodeIntegration set to true in BrowserWindow options
+- contextIsolation set to false without documented security justification
+- Renderer process imports directly from electron or node modules (bypass preload)
+- No auto-update mechanism configured
+- IPC handler does not validate or sanitize arguments from renderer
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] nodeIntegration is false and contextIsolation is true in all BrowserWindows
+- [ ] All renderer-to-main communication uses contextBridge and IPC
+- [ ] IPC handlers validate input arguments before processing
+- [ ] Auto-update configured and tested (show update configuration)
+- [ ] Application packages successfully with Electron Forge (show build output)
+- [ ] No direct require('electron') in renderer process code
+
+<!-- moai:evolvable-end -->
+
+## Telemetry Window
+
+**Status**: UNCLEAR (60-day window)
+**R4 audit verdict**: KEEP (monitor)
+**SPEC**: SPEC-V3R2-WF-001 §6.2 (REQ-WF001-013)
+**Window start**: 2026-04-25 (Wave 1.5 commit date)
+**Window end**: 2026-06-24 (60 days)
+**Re-audit trigger**: SessionStart hook activation count for this skill
+**Decision criteria**:
+- If activation count >= 5 during window → retain permanently
+- If activation count = 0 during window → schedule RETIRE in v3.1
+- If 0 < count < 5 → retain with "low-use" tag

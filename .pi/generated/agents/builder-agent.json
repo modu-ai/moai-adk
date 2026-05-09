@@ -1,6 +1,6 @@
 {
   "name": "builder-agent",
-  "description": "Agent creation specialist. Use PROACTIVELY for creating sub-agents, agent blueprints, and custom agent definitions.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of agent design, capability boundaries, and integration patterns.\nEN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent\nKO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트\nJA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント\nZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义",
+  "description": "Agent creation specialist. Use PROACTIVELY for creating sub-agents, agent blueprints, and custom agent definitions.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of agent design, capability boundaries, and integration patterns.\nEN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent\nKO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트\nJA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント\nZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义\nNOT for: skill creation (use builder-skill), plugin creation (use builder-plugin), code implementation, testing, documentation",
   "model": "inherit",
   "thinking": "medium",
   "tools": [
@@ -14,18 +14,18 @@
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
+    "moai-foundation-cc",
     "moai-foundation-core",
     "moai-workflow-project"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/builder-agent.md",
-  "sourceHash": "4a4e8a3e05487cef",
-  "generatedAt": "2026-05-09T06:56:22.159Z",
+  "sourceHash": "408e3c9fe40ebec3",
+  "generatedAt": "2026-05-09T19:36:21.027Z",
   "compatibility": {
     "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "sonnet",
-    "originalMaxTurns": "50",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "user",
     "originalTools": [
       "Read",

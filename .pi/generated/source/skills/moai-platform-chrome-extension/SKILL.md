@@ -6,7 +6,7 @@ description: >
   and Chrome Web Store publishing. Use when building browser extensions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash(npm:*) Bash(npx:*) Bash(node:*) WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(node:*), WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -16,7 +16,7 @@ metadata:
   modularized: "true"
   tags: "chrome-extension, manifest-v3, service-worker, content-script, messaging, chrome-api, browser-extension, web-store, side-panel, declarative-net-request"
   context7-libraries: "/nicedoc/chrome-extension-doc"
-  related-skills: "moai-lang-typescript, moai-lang-javascript, moai-domain-frontend"
+  related-skills: "moai-domain-frontend"
   aliases: "chrome-ext, browser-extension, crx"
 
 # MoAI Extension: Progressive Disclosure
@@ -275,8 +275,8 @@ Open chrome://extensions to view all installed extensions and their status. Enab
 
 ## Works Well With
 
-- moai-lang-typescript for TypeScript patterns in extension development
-- moai-lang-javascript for JavaScript patterns and ES module usage
+- `.pi/generated/source/rules/moai/languages/typescript.md` for TypeScript patterns in extension development (auto-loaded via paths frontmatter)
+- `.pi/generated/source/rules/moai/languages/javascript.md` for JavaScript patterns and ES module usage (auto-loaded via paths frontmatter)
 - moai-domain-frontend for React or framework-based popup and side panel UI
 - moai-domain-backend for server-side API integration
 - moai-workflow-testing for extension testing strategies
@@ -316,3 +316,52 @@ Generated with: MoAI-ADK Skill Factory v1.0
 Last Updated: 2026-02-01
 Version: 1.0.0 (Initial Release)
 Coverage: Manifest V3, Service Workers, Content Scripts, Messaging, Chrome APIs, UI, Security, Publishing
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I will request broad permissions and narrow them later" | Users see permissions at install time. Broad permissions deter installation and may trigger Chrome Web Store rejection. |
+| "Content scripts can access everything on the page, so security is the page's problem" | Content scripts run in the user's context. Injecting untrusted content via a content script is an XSS vector in the extension. |
+| "Manifest V2 still works, I do not need to migrate" | Chrome Web Store no longer accepts MV2 submissions. MV2 extensions will be disabled in future Chrome releases. |
+| "Service workers are the same as background pages" | Service workers are event-driven and terminate when idle. Persistent state must use chrome.storage, not global variables. |
+| "I will add CSP later, it is just a security header" | Missing CSP in manifest.json allows inline scripts and eval(), which are the primary extension exploit vectors. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- manifest.json requests `<all_urls>` or `*://*/*` host permission without justification
+- Content script uses eval() or innerHTML with untrusted content
+- Service worker stores state in global variables (lost on termination)
+- Missing content_security_policy in manifest.json
+- Extension communicates with external servers without origin validation
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Permissions in manifest.json are minimal and each is justified in documentation
+- [ ] Content Security Policy defined in manifest.json (no unsafe-eval, no unsafe-inline)
+- [ ] Service worker uses chrome.storage for persistent state (no global variable state)
+- [ ] Message passing validates sender origin before processing
+- [ ] Extension tested in Chrome with developer mode (show test results)
+- [ ] Manifest V3 compliance verified (no MV2-only APIs used)
+
+<!-- moai:evolvable-end -->
+
+## Telemetry Window
+
+**Status**: UNCLEAR (60-day window)
+**R4 audit verdict**: KEEP (monitor)
+**SPEC**: SPEC-V3R2-WF-001 §6.2 (REQ-WF001-013)
+**Window start**: 2026-04-25 (Wave 1.5 commit date)
+**Window end**: 2026-06-24 (60 days)
+**Re-audit trigger**: SessionStart hook activation count for this skill
+**Decision criteria**:
+- If activation count >= 5 during window → retain permanently
+- If activation count = 0 during window → schedule RETIRE in v3.1
+- If 0 < count < 5 → retain with "low-use" tag

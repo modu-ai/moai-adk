@@ -1,5 +1,5 @@
 ---
-paths: "**/.pi/agents/overrides/**,**/.pi/generated/source/hooks/**"
+paths: "**/.claude/agents/**,**/.pi/generated/source/hooks/**"
 ---
 
 # Agent Hooks

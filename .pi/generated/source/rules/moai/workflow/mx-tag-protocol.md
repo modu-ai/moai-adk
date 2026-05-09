@@ -87,7 +87,7 @@ This rule applies to all agents working with source code in the supported progra
 
 ## File Exclusion Rules
 
-Files matching patterns in `.pi/generated/source/moai-config/sections/mx.yaml` exclude list are not tagged:
+Files matching patterns in `.moai/config/sections/mx.yaml` exclude list are not tagged:
 
 Default exclude patterns:
 - `**/*_generated.go`
@@ -96,7 +96,7 @@ Default exclude patterns:
 
 ## Hard Limits
 
-Per-file limits from `.pi/generated/source/moai-config/sections/mx.yaml` (defaults):
+Per-file limits from `.moai/config/sections/mx.yaml` (defaults):
 - `anchor_per_file`: 3
 - `warn_per_file`: 5
 
@@ -127,7 +127,7 @@ In Agent Teams mode, @MX tag operations follow file ownership rules:
 
 ## Configuration
 
-Project-level settings in `.pi/generated/source/moai-config/sections/mx.yaml`:
+Project-level settings in `.moai/config/sections/mx.yaml`:
 - thresholds: fan_in_anchor, complexity_warn, branch_warn
 - limits: anchor_per_file, warn_per_file
 - exclude: file patterns to skip
@@ -136,7 +136,7 @@ Project-level settings in `.pi/generated/source/moai-config/sections/mx.yaml`:
 
 ## Language Settings
 
-**IMPORTANT**: @MX tag descriptions MUST respect the `code_comments` setting from `.pi/generated/source/moai-config/sections/language.yaml`.
+**IMPORTANT**: @MX tag descriptions MUST respect the `code_comments` setting from `.moai/config/sections/language.yaml`.
 
 The `code_comments` setting controls the language used for:
 - @MX tag descriptions (NOTE, WARN, ANCHOR, TODO)
@@ -150,11 +150,11 @@ Available languages:
 - `zh` - Chinese
 
 **How to read the setting:**
-Before adding @MX tags, agents MUST read `.pi/generated/source/moai-config/sections/language.yaml` and use the `code_comments` value to determine the tag language.
+Before adding @MX tags, agents MUST read `.moai/config/sections/language.yaml` and use the `code_comments` value to determine the tag language.
 
 **Example:**
 ```yaml
-# .pi/generated/source/moai-config/sections/language.yaml
+# .moai/config/sections/language.yaml
 language:
   code_comments: ko  # Tags will be in Korean
 ```

@@ -41,6 +41,22 @@ Flow: Measure Coverage -> Identify Gaps -> Generate Tests -> Verify -> Report
 - --uncovered: Show only uncovered lines/functions
 - --critical: Focus on critical paths (high fan_in, public API)
 
+## Pipeline Contract (Agentless Classification)
+
+<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+
+This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+It executes a deterministic 3-phase contract: **localize → repair → validate**.
+
+- **Phase mapping**: localize ← Phase 1+2; repair ← Phase 3; validate ← Phase 4
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., `expert-testing` for measurement) but never select the next phase.
+- **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
+- **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
+- **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
+- **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## Phase 1: Coverage Measurement
 
 [HARD] Delegate coverage measurement to the expert-testing subagent.
@@ -108,22 +124,6 @@ Gap Report Structure:
 ### Low Priority Gaps (P4)
 - file_generated.go (excluded from target)
 ```
-
-### Batch Mode Decision [MANDATORY EVALUATION]
-
-After Phase 2, before generating tests, MoAI MUST evaluate whether to use Skill("batch").
-
-Condition: total_gap_count (P1 + P2 gaps) >= 10
-
-Decision:
-
-- If condition is met: Execute Skill("batch") directly. Batch mode assigns each gap file to an independent agent running in a git worktree. Each agent generates tests for its assigned file, runs them to verify, and reports results. MoAI collects all generated test files and proceeds to Phase 4.
-- If condition is not met: Continue to standard sequential Phase 3 below.
-
-Batch execution instructions when triggered:
-1. Group gaps by file (one batch unit = one file with its gaps)
-2. Each batch agent receives: its assigned file path, gap list (functions to cover), development_mode from quality.yaml, existing test patterns from nearby test files, coverage target
-3. Each agent must write tests, run them, and confirm they pass before completing
 
 ## Phase 3: Test Generation
 

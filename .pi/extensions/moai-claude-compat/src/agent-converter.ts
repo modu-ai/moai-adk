@@ -262,7 +262,7 @@ export function writeConvertedAgents(
   return agents;
 }
 
-export function getAgentConversionStatus(expected = 19): string[] {
+export function getAgentConversionStatus(expected = 25): string[] {
   const agents = convertAgents();
   const generatedJsonDir = ".pi/generated/agents";
   const generatedMarkdownDir = ".pi/agents/moai";

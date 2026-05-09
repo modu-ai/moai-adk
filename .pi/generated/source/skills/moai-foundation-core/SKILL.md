@@ -3,18 +3,20 @@ name: moai-foundation-core
 description: >
   Provides MoAI-ADK foundational principles including TRUST 5 quality framework,
   SPEC-First DDD methodology, delegation patterns, progressive disclosure,
-  and agent catalog reference. Use when referencing TRUST 5 gates or SPEC workflow.
+  agent catalog reference, and token budget management (absorbed from moai-foundation-context).
+  Use when referencing TRUST 5 gates, SPEC workflow, or context window optimization.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.5.0"
+  version: "3.0.0"
   category: "foundation"
   status: "active"
-  updated: "2026-01-21"
+  updated: "2026-04-25"
   modularized: "true"
-  tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd"
+  tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd, token-budget, context-window, session-state"
+  related-skills: "moai-foundation-context"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -24,7 +26,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format"]
+  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format", "context window", "token budget", "token limit", "session state", "/clear", "context management", "multi-agent handoff", "session persistence", "context", "session", "budget", "optimization", "handoff", "state", "memory", "multi-agent"]
   agents:
     - "manager-spec"
     - "manager-ddd"
@@ -32,6 +34,8 @@ triggers:
     - "manager-quality"
     - "builder-agent"
     - "builder-skill"
+    - "manager-docs"
+    - "manager-project"
   phases:
     - "plan"
     - "run"
@@ -262,3 +266,94 @@ Module Deep Dives: modules/trust-5-framework.md, modules/spec-first-ddd.md, modu
 
 Full Examples: examples.md
 External Resources: reference.md
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "TRUST 5 is a guideline, not a gate" | TRUST 5 is a HARD quality gate. All five dimensions must pass before completion. |
+| "I can skip the SPEC for this small change" | Every change without a SPEC is untracked. SPEC-less changes accumulate into unmanageable technical debt. |
+| "Delegation to an agent is overhead for simple tasks" | MoAI is an orchestrator, not an implementer. Skipping delegation bypasses domain expertise and quality checks. |
+| "I will skip the quality gate, the code is clearly correct" | Clearly correct code still needs evidence. Tests and linting are mechanisms; confidence is not. |
+| "Progressive disclosure is not important for this project" | Even small projects benefit from token-efficient skill loading. Disclosure is about context budget, not project size. |
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- MoAI executing implementation code directly instead of delegating to an agent
+- TRUST 5 dimensions partially checked (only Tested and Readable, ignoring Secured)
+- SPEC document exists but has no acceptance criteria
+- Agent selected without consulting the selection decision tree
+- Quality gate skipped with "will check later" comment
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] All five TRUST 5 dimensions addressed (Tested, Readable, Unified, Secured, Trackable)
+- [ ] Agent selection documented with rationale matching the decision tree
+- [ ] SPEC document has acceptance criteria with observable evidence requirements
+- [ ] Delegation chain traceable: MoAI -> agent -> execution
+- [ ] Progressive disclosure levels configured in skill frontmatter
+
+<!-- moai:evolvable-end -->
+
+---
+
+## Token Budget (absorbed from moai-foundation-context)
+
+Context window optimization, /clear strategy, session state persistence, and multi-agent handoff patterns.
+
+### Context Window Targets
+
+| Model class | Window | 75% threshold | /clear trigger |
+|-------------|--------|---------------|----------------|
+| Opus 4.7 (1M) | 1,000,000 tokens | ~750,000 | Above threshold |
+| Sonnet/Opus standard | 200,000 tokens | ~150,000 | Above threshold |
+| Haiku | 200,000 tokens | ~150,000 | Above threshold |
+
+### Phase Token Allocation
+
+| Phase | Budget | Strategy |
+|-------|--------|----------|
+| /moai plan | 30,000 | Load requirements only, /clear after completion |
+| /moai run | 180,000 | Selective file loading, on-demand skill loading |
+| /moai sync | 40,000 | Result caching, reduced redundant reads |
+
+### /clear Strategy
+
+Mandatory /clear points:
+1. After `/moai plan` completion (before `/moai run`)
+2. When context exceeds 150,000 tokens (Sonnet/standard)
+3. Before major phase transitions
+
+Never use /clear when: In the middle of an agent task, when session state has not been persisted.
+
+### Session State Persistence
+
+Before /clear, persist in-flight state to `.moai/specs/<SPEC-ID>/progress.md`:
+- Current task status (completed, in-progress, blocked)
+- File modification summary
+- Next action required
+- Resume message for paste-back after /clear
+
+Resume message format:
+```
+Wave <N> 이어서 진행. SPEC-<ID>부터 <approach>.
+progress.md: .moai/specs/<ID>/progress.md
+다음 단계: <command>.
+```
+
+### Multi-Agent Handoff
+
+When delegating to a sub-agent near context ceiling:
+1. Summarize findings in progress.md before Agent() call
+2. Pass only necessary context in spawn prompt (avoid full file dumps)
+3. Sub-agent result contributes to parent context on return — factor this in
+4. If parent context > 120,000 tokens after return, save and /clear
+
+Full optimization patterns: [modules/token-budget-allocation.md](modules/token-budget-allocation.md)

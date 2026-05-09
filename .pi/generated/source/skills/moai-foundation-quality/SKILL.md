@@ -6,7 +6,7 @@ description: >
   gate checks, or TRUST 5 compliance.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.2.0"
@@ -207,3 +207,43 @@ Integration Ready: CI/CD pipelines, GitHub Actions, REST APIs, real-time monitor
 Enterprise Features: Custom rules, ML prediction, real-time monitoring, benchmarking, comprehensive reporting
 
 Quality Standards: OWASP compliance, TRUST 5 framework, Context7 integration, automated improvement recommendations
+
+<!-- moai:evolvable-start id="rationalizations" -->
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The linter warnings are false positives" | False positives should be suppressed with inline comments. Ignoring them trains the team to ignore real issues. |
+| "Security scanning can wait until before release" | Security vulnerabilities compound. Late discovery means expensive rework. Scan continuously. |
+| "Coverage is high enough, the remaining 15% is edge cases" | Edge cases are where production bugs live. The uncovered code is the riskiest code. |
+| "Code review is subjective, automation is sufficient" | Automation catches syntax and patterns. Reviews catch design flaws, naming confusion, and missing abstractions. |
+| "TRUST 5 is too bureaucratic for a hotfix" | Hotfixes without quality gates introduce the next hotfix. TRUST 5 on a hotfix is the minimum, not the maximum. |
+
+**Chesterton's Fence**: Before removing a quality check, understand why it was added. Removing a gate without understanding its history repeats the failure it was designed to prevent.
+
+**Shift Left**: The earlier a defect is found, the cheaper it is to fix. Quality checks belong in the development loop, not at the end of it.
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="red-flags" -->
+## Red Flags
+
+- Linter or type-checker warnings suppressed globally instead of per-line
+- OWASP checklist not consulted when handling user input or authentication
+- Coverage report not generated for a commit that adds new functionality
+- TRUST 5 dimension skipped with "not applicable" without justification
+- Quality report generated but no action taken on identified issues
+
+<!-- moai:evolvable-end -->
+
+<!-- moai:evolvable-start id="verification" -->
+## Verification
+
+- [ ] Linter runs clean or remaining warnings have inline suppression comments with reasons
+- [ ] OWASP checklist reviewed for security-relevant changes (show checklist references)
+- [ ] Coverage report generated and threshold met (show tool output)
+- [ ] All five TRUST 5 dimensions assessed (show assessment for each)
+- [ ] Quality report issues triaged with resolution plan for each finding
+- [ ] No global rule disabling in linter configuration
+
+<!-- moai:evolvable-end -->

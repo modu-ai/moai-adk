@@ -1,0 +1,43 @@
+{
+  "name": "researcher",
+  "description": "Active self-research agent that optimizes moai-adk components\n(skills, agents, rules, CLAUDE.md) through iterative experimentation\nwith binary eval criteria. Uses worktree isolation for safe mutation.\nImplements the autoresearch pattern adapted for multi-tier component types.\nMUST INVOKE when ANY of these keywords appear in user request:\nEN: research, self-research, optimize component, experiment, binary eval, autoresearch\nKO: 연구, 자체 연구, 컴포넌트 최적화, 실험, 바이너리 평가, 오토리서치\nJA: リサーチ, 自己研究, コンポーネント最適化, 実験, バイナリ評価, オートリサーチ\nZH: 研究, 自研究, 组件优化, 实验, 二元评估, 自动研究\nNOT for: production code implementation, feature development, documentation writing, git operations, security audits",
+  "model": "inherit",
+  "thinking": "high",
+  "tools": [
+    "bash",
+    "edit",
+    "read",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-core",
+    "moai-workflow-research"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/researcher.md",
+  "sourceHash": "e57d63f8d4ab693e",
+  "generatedAt": "2026-05-09T19:36:21.031Z",
+  "compatibility": {
+    "permissionMode": "acceptEdits",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "opus",
+    "originalMaxTurns": "unspecified",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "Bash": "bash"
+    },
+    "hasAgentHooks": false
+  }
+}

@@ -1,31 +1,27 @@
 {
   "name": "manager-git",
-  "description": "Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of git strategies, branch management, and version control workflows.\nEN: git, commit, push, pull, branch, PR, pull request, merge, release, version control, checkout, rebase, stash\nKO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스\nJA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース\nZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布",
+  "description": "Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of git strategies, branch management, and version control workflows.\nEN: git, commit, push, pull, branch, PR, pull request, merge, release, version control, checkout, rebase, stash\nKO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스\nJA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース\nZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布\nNOT for: code implementation, testing, architecture design, documentation content, security audits",
   "model": "inherit",
   "thinking": "low",
   "tools": [
     "bash",
     "edit",
-    "mcp",
     "read",
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
     "moai-foundation-core",
     "moai-workflow-project",
-    "moai-workflow-worktree",
-    "moai-workflow-testing",
-    "moai-foundation-quality"
+    "moai-workflow-worktree"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/manager-git.md",
-  "sourceHash": "b49716f099fec946",
-  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "sourceHash": "914b69836a9613d6",
+  "generatedAt": "2026-05-09T19:36:21.031Z",
   "compatibility": {
-    "permissionMode": "default",
+    "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "haiku",
-    "originalMaxTurns": "150",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "project",
     "originalTools": [
       "Read",
@@ -35,10 +31,7 @@
       "Glob",
       "Bash",
       "TodoWrite",
-      "Skill",
-      "mcp__sequential-thinking__sequentialthinking",
-      "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "Skill"
     ],
     "toolAliases": {
       "Read": "read",
@@ -48,10 +41,7 @@
       "Glob": "bash:find",
       "Bash": "bash",
       "TodoWrite": "@juicesharp/rpiv-todo",
-      "Skill": "pi skills/read",
-      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
-      "mcp__context7__resolve-library-id": "mcp gateway",
-      "mcp__context7__get-library-docs": "mcp gateway"
+      "Skill": "pi skills/read"
     },
     "hasAgentHooks": false
   }

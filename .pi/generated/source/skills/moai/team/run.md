@@ -50,7 +50,7 @@ Teammates are spawned using the Agent tool with runtime overrides:
 
 ### Role Profile Reference
 
-From `.pi/generated/source/moai-config/sections/workflow.yaml` → `team.role_profiles`:
+From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 
 | Profile | mode | model | isolation | Use For |
 |---------|------|-------|-----------|---------|
@@ -64,14 +64,15 @@ From `.pi/generated/source/moai-config/sections/workflow.yaml` → `team.role_pr
 
 ## Mode Selection
 
-Before executing, check `.pi/generated/source/moai-config/sections/llm.yaml`:
+This workflow is loaded ONLY when team mode has been explicitly selected (via `--team` flag or auto-selection). Check `.moai/config/sections/llm.yaml` to determine WHICH team mode to use:
 
-| team_mode | Execution Mode | Agent Teams? | Description |
-|-----------|---------------|-------------|-------------|
-| (empty) | Sub-agent | N/A | Single session, Agent() subagents |
-| glm | GLM Mode | **Supported** | All GLM, credentials in settings.local.json |
-| cg | CG Mode | **Sub-agent only** | Claude Leader + GLM Teammates via tmux session env |
-| agent-teams | Agent Teams | **Supported** | All same API, parallel teammates |
+| team_mode | Execution Mode | Description |
+|-----------|---------------|-------------|
+| (empty) or agent-teams | **Agent Teams** | All same API, parallel teammates (default for `--team` flag) |
+| glm | GLM Mode | All GLM, credentials in settings.local.json |
+| cg | CG Mode (tmux required) | Claude Leader + GLM Teammates via tmux session env |
+
+[HARD] When this workflow is loaded, team mode is already decided. Empty `team_mode` defaults to Agent Teams, NOT sub-agent fallback. Sub-agent mode uses a different workflow (`workflows/run.md`).
 
 ---
 
@@ -120,6 +121,31 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 2. **User Approval** via AskUserQuestion
 
 3. **Output**: `.moai/specs/SPEC-XXX/spec.md`
+
+### Phase 0.5: Plan Audit Gate
+
+**Purpose**: Mandatory independent audit of plan artifacts before any teammate is spawned.
+Source: SPEC-WF-AUDIT-GATE-001 REQ-WAG-005.
+
+**Team mode rules**:
+- Gate executes in the **main session (Leader)** only — not inside any teammate
+- Gate runs **before** any `TeamCreate`, `Agent(subagent_type: ...)`, or teammate spawn
+- plan-auditor is invoked exactly once per `/moai run --team` call (no per-teammate duplication)
+- If cache HIT (24h valid PASS): skip plan-auditor invocation, log cache hit, proceed to Phase 2
+- Verdict=FAIL blocks Phase 2 entirely — no TeamCreate, no teammate spawn occurs
+- `--skip-audit` / `MOAI_SKIP_PLAN_AUDIT=1`: bypass applies equally in team mode
+
+**Implementation**: Follow the identical 5-step logic defined in `workflows/run.md` Phase 0.5:
+Step 1 (hash), Step 2 (24h cache), Step 3 (plan-auditor invocation), Step 4 (verdict routing),
+Step 5 (persist verdict + daily report). The only team-mode difference is enforcement point:
+verdict=PASS is required before the Phase 2 TeamCreate call below.
+
+Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
+
+If FAIL (grace window expired): present options via AskUserQuestion before any team ops:
+- Option 1 (Recommended): Revise SPEC, then re-run `/moai run --team`
+- Option 2: Override and proceed (records BYPASSED)
+- Option 3: Abort
 
 ### Phase 2: Run (Dynamic Teams — Teammates on GLM)
 
@@ -287,7 +313,19 @@ Agent(
 
 ## Agent Teams Mode
 
-When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the same API.
+When `team_mode` is empty or `"agent-teams"` in llm.yaml, use parallel teammates all on the same API. This is the default team execution mode when `--team` flag is used.
+
+### Phase 0.5: Plan Audit Gate
+
+Same as CG Mode Phase 0.5 above — execute in main session before TeamCreate.
+Verdict=PASS required before `TeamCreate(team_name: "moai-run-SPEC-XXX")` is called.
+
+Invokes plan-auditor subagent once in main session. INCONCLUSIVE verdict (timeout/malformed/error)
+falls back to AskUserQuestion (retry/proceed/abort) — never auto-PASS.
+Reports persist to `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md`.
+`--skip-audit` / `MOAI_SKIP_PLAN_AUDIT=1` records BYPASSED verdict in the same report.
+
+Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
 
 ### Phase 1: Team Setup
 
@@ -343,7 +381,7 @@ When teammates submit plans, respond immediately with plan_approval_response.
 | Quality | Highest (Claude reviews) | High | High |
 | Requires tmux | Yes | No (optional) | No |
 | Isolation | tmux env + worktree (HARD) | File ownership + worktree (HARD) | None |
-| Agent definitions | None (dynamic) | None (dynamic) | Static (.pi/agents/overrides/) |
+| Agent definitions | None (dynamic) | None (dynamic) | Static (.claude/agents/) |
 
 ## Fallback
 
@@ -355,6 +393,6 @@ If team mode fails at any point:
 
 ---
 
-Version: 4.0.0 (Dynamic Team Generation)
-Last Updated: 2026-03-31
+Version: 4.1.0 (Fix --team flag routing: empty team_mode defaults to Agent Teams)
+Last Updated: 2026-04-09
 Source: SPEC-TEAM-001

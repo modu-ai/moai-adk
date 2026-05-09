@@ -67,7 +67,7 @@ export function buildSkillTriggerHints(input: string, limit = 5): string[] {
     .map((s) => `Relevant MoAI skill hint: read ${s.entry.path} (${s.entry.name}) before acting.`);
 }
 
-export function getSkillIndexStatus(expected = 51): string {
+export function getSkillIndexStatus(expected = 38): string {
   const index = buildSkillTriggerIndex();
   let latest = 0;
   for (const entry of index) latest = Math.max(latest, statSync(entry.path).mtimeMs);

@@ -1,6 +1,6 @@
 {
   "name": "expert-devops",
-  "description": "DevOps specialist. Use PROACTIVELY for CI/CD, Docker, Kubernetes, deployment, and infrastructure automation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of deployment strategies, CI/CD pipelines, and infrastructure architecture.\nEN: DevOps, CI/CD, Docker, Kubernetes, deployment, pipeline, infrastructure, container\nKO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너\nJA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ\nZH: DevOps, CI/CD, Docker, Kubernetes, 部署, 流水线, 基础设施",
+  "description": "DevOps specialist. Use PROACTIVELY for CI/CD, Docker, Kubernetes, deployment, and infrastructure automation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of deployment strategies, CI/CD pipelines, and infrastructure architecture.\nEN: DevOps, CI/CD, Docker, Kubernetes, deployment, pipeline, infrastructure, container\nKO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너\nJA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ\nZH: DevOps, CI/CD, Docker, Kubernetes, 部署, 流水线, 基础设施\nNOT for: application code, frontend UI, database schema design, security audits, performance profiling, testing strategy",
   "model": "inherit",
   "thinking": "medium",
   "tools": [
@@ -9,30 +9,22 @@
     "fetch_content",
     "mcp",
     "read",
-    "subagent",
     "web_search",
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
     "moai-foundation-core",
-    "moai-foundation-philosopher",
-    "moai-foundation-quality",
-    "moai-workflow-project",
-    "moai-workflow-jit-docs",
-    "moai-workflow-templates",
     "moai-platform-deployment",
-    "moai-platform-database-cloud",
-    "moai-framework-electron"
+    "moai-workflow-project"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/expert-devops.md",
-  "sourceHash": "40a0db83b728d655",
-  "generatedAt": "2026-05-09T06:56:22.161Z",
+  "sourceHash": "617f80b618e38fc5",
+  "generatedAt": "2026-05-09T19:36:21.030Z",
   "compatibility": {
-    "permissionMode": "default",
+    "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "sonnet",
-    "originalMaxTurns": "100",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "project",
     "originalTools": [
       "Read",
@@ -44,7 +36,6 @@
       "WebSearch",
       "Bash",
       "TodoWrite",
-      "Agent",
       "Skill",
       "mcp__sequential-thinking__sequentialthinking",
       "mcp__github__create-or-update-file",
@@ -62,7 +53,6 @@
       "WebSearch": "pi-web-access:web_search",
       "Bash": "bash",
       "TodoWrite": "@juicesharp/rpiv-todo",
-      "Agent": "pi-subagents:subagent",
       "Skill": "pi skills/read",
       "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
       "mcp__github__create-or-update-file": "mcp gateway",

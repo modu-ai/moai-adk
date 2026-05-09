@@ -1,0 +1,64 @@
+{
+  "name": "expert-mobile",
+  "description": "Mobile native and cross-platform application specialist. Use PROACTIVELY for iOS native (Swift, SwiftUI), Android native (Kotlin, Jetpack Compose), React Native, and Flutter development.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for mobile architecture decisions, paradigm selection, and cross-platform trade-offs.\nEN: mobile, ios, android, swift, swiftui, kotlin, jetpack compose, react-native, react native, expo, flutter, dart, mobile app, native app, cross-platform app\nKO: 모바일, 아이폰, 안드로이드, 스위프트, 코틀린, 플러터, 리액트네이티브, 네이티브앱, 크로스플랫폼\nJA: モバイル, アイフォン, アンドロイド, スイフト, コトリン, フラッター, リアクトネイティブ\nZH: 移动, 移动应用, 苹果, 安卓, 移动开发, 跨平台\nNOT for: web frontend, backend APIs, CLI tools, DevOps/deployment, security audits, mobile CI/CD",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "subagent",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-core",
+    "moai-domain-mobile",
+    "moai-workflow-testing"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/expert-mobile.md",
+  "sourceHash": "f117323ccb01b76b",
+  "generatedAt": "2026-05-09T19:36:21.030Z",
+  "compatibility": {
+    "permissionMode": "bypassPermissions",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "sonnet",
+    "originalMaxTurns": "unspecified",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "WebSearch",
+      "Bash",
+      "TodoWrite",
+      "Skill",
+      "Agent",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search",
+      "Bash": "bash",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Skill": "pi skills/read",
+      "Agent": "pi-subagents:subagent",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": true
+  }
+}

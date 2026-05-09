@@ -8,7 +8,7 @@ export const TOOL_ALIASES_PATH = ".pi/claude-compat/tool-aliases.json";
 export const OUTPUT_STYLES_CONFIG_PATH = ".pi/claude-compat/output-styles.json";
 export const HOOK_EVENTS_CONFIG_PATH = ".pi/claude-compat/hook-events.json";
 export const CLAUDE_RULES_SOURCE_PATH = ".claude/rules/moai";
-export const EXPECTED_MOAI_RULE_COUNT = 31;
+export const EXPECTED_MOAI_RULE_COUNT = 46;
 export const PI_SOURCE_ROOT = ".pi/generated/source";
 export const PI_SKILLS_SOURCE_PATH = `${PI_SOURCE_ROOT}/skills`;
 export const PI_COMMANDS_SOURCE_PATH = `${PI_SOURCE_ROOT}/commands`;
@@ -27,7 +27,6 @@ export const TEAM_BACKEND_PRIORITY = [
   "@tmustier/pi-agent-teams",
   "pi-teams",
   "pi-crew",
-  "pi-subagents",
 ] as const;
 
 export const QUOTA_FOOTER_PRIORITY = [

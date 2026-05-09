@@ -1,6 +1,6 @@
 {
   "name": "expert-security",
-  "description": "Security analysis specialist. Use PROACTIVELY for OWASP, vulnerability assessment, XSS, CSRF, and secure code review.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of security threats, vulnerability patterns, and OWASP compliance.\nEN: security, vulnerability, OWASP, injection, XSS, CSRF, penetration, audit, threat\nKO: 보안, 취약점, OWASP, 인젝션, XSS, CSRF, 침투, 감사, 위협\nJA: セキュリティ, 脆弱性, OWASP, インジェクション, XSS, CSRF, ペネトレーション, 監査\nZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计",
+  "description": "Security analysis specialist. Use PROACTIVELY for OWASP, vulnerability assessment, XSS, CSRF, and secure code review.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of security threats, vulnerability patterns, and OWASP compliance.\nEN: security, vulnerability, OWASP, injection, XSS, CSRF, penetration, audit, threat\nKO: 보안, 취약점, OWASP, 인젝션, XSS, CSRF, 침투, 감사, 위협\nJA: セキュリティ, 脆弱性, OWASP, インジェクション, XSS, CSRF, ペネトレーション, 監査\nZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计\nNOT for: general backend development, frontend UI, performance optimization, database design, DevOps deployment",
   "model": "inherit",
   "thinking": "high",
   "tools": [
@@ -14,22 +14,18 @@
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
     "moai-foundation-core",
     "moai-foundation-quality",
-    "moai-foundation-philosopher",
-    "moai-workflow-testing",
-    "moai-platform-auth",
-    "moai-tool-ast-grep"
+    "moai-platform-auth"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/expert-security.md",
-  "sourceHash": "3cf349aee042fa20",
-  "generatedAt": "2026-05-09T06:56:22.162Z",
+  "sourceHash": "2eade9ea5705ca82",
+  "generatedAt": "2026-05-09T19:36:21.030Z",
   "compatibility": {
-    "permissionMode": "default",
+    "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "opus",
-    "originalMaxTurns": "80",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "project",
     "originalTools": [
       "Read",

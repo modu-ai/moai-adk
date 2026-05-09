@@ -1,6 +1,6 @@
 {
   "name": "builder-skill",
-  "description": "Skill creation specialist. Use PROACTIVELY for creating skills, YAML frontmatter design, and knowledge organization.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of skill design, knowledge organization, and YAML frontmatter structure.\nEN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter\nKO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터\nJA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター\nZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息",
+  "description": "Skill creation specialist. Use PROACTIVELY for creating skills, YAML frontmatter design, and knowledge organization.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of skill design, knowledge organization, and YAML frontmatter structure.\nEN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter\nKO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터\nJA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター\nZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息\nNOT for: agent creation (use builder-agent), plugin creation (use builder-plugin), code implementation, testing",
   "model": "inherit",
   "thinking": "medium",
   "tools": [
@@ -14,19 +14,18 @@
     "write"
   ],
   "skills": [
-    "moai-foundation-claude",
     "moai-foundation-core",
-    "moai-workflow-project",
-    "moai-workflow-templates"
+    "moai-foundation-cc",
+    "moai-workflow-project"
   ],
   "sourcePath": ".pi/generated/source/agents/moai/builder-skill.md",
-  "sourceHash": "895f99d38384ffd3",
-  "generatedAt": "2026-05-09T06:56:22.161Z",
+  "sourceHash": "27a2048e497ac514",
+  "generatedAt": "2026-05-09T19:36:21.029Z",
   "compatibility": {
     "permissionMode": "bypassPermissions",
     "permissionModePolicy": "metadata-only",
     "originalModel": "sonnet",
-    "originalMaxTurns": "50",
+    "originalMaxTurns": "unspecified",
     "originalMemory": "user",
     "originalTools": [
       "Read",
