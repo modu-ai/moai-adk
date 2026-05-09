@@ -466,3 +466,55 @@
   - Sub-agent context inheritance fallback: if delegation fails, main-session direct implementation per Wave 5 §C-6 lesson.
 - audit_report_path: .moai/reports/plan-audit/SPEC-V3R3-CI-AUTONOMY-001-2026-05-09.md (iteration 1 + iteration 2 appended)
 
+
+## Wave 6 — Phase 2 (TDD Implementation) — COMPLETE
+
+- date: 2026-05-09
+- author: manager-tdd (delegated) + orchestrator (cleanup + modernizers)
+- methodology: TDD (RED-GREEN-REFACTOR collapsed to 3 atomic commits)
+- artifacts:
+  - scripts/i18n-validator/main.go (18,122 bytes — Layer 1 AST parser, magic comment, --all-files oracle, budget enforcement, CLI main)
+  - scripts/i18n-validator/lockset.go (13,114 bytes — Layer 2 cross-file resolver + Layer 3 lockset builder)
+  - scripts/i18n-validator/diff.go (7,345 bytes — Layer 4 --diff mode, git CLI shell-out, baseline lockset)
+  - scripts/i18n-validator/main_test.go (10,655 bytes — W6-T01/T03/T04/T05 --all-files / T07 budget tests)
+  - scripts/i18n-validator/lockset_test.go (6,077 bytes — W6-T02/T03 resolver + lockset tests)
+  - scripts/i18n-validator/diff_test.go (6,068 bytes — W6-T05 --diff mode + canonical AC-CIAUT-016)
+  - scripts/i18n-validator/testdata/{normal, translatable_comment, pr783_diff/baseline, pr783_diff/head}/ (4 fixtures; budget_corpus deferred to runtime synthesis)
+  - scripts/ci-mirror/lib/go.sh (extended with step 5/5 i18n-validator invocation; step counters N/4 → N/5)
+- commits:
+  - 20a435df9 test(i18n-validator): W6-T01/T02/T03/T04/T05/T07 RED — full test suite
+  - 27a3c0c2c feat(i18n-validator): W6-T01..T07 GREEN — full implementation
+  - e4f98dd51 feat(ci-mirror): W6-T06 add i18n-validator as step 5/5 in go.sh
+  - de55c9835 chore(i18n-validator): apply Go modernizers (mapsloop, any, rangeint)
+- quality_gate:
+  - go test -race -count=1 -short ./scripts/i18n-validator/... — PASS (1.781s, 0 races)
+  - go vet ./scripts/i18n-validator/... — clean
+  - golangci-lint run ./scripts/i18n-validator/... — 0 issues
+  - make ci-local — ALL 5/5 STEPS GREEN (vet, lint, test-race, cross-compile, i18n-validator)
+  - W4 SSoT auxiliary validation — PASS
+- ac_verification:
+  - AC-CIAUT-016 (PR #783 mockReleaseData replay): PASS via TestDiff_ExitsNonZeroOnPR783Mockreleasedata. Korean baseline → English head transition exits 1 with canonical stderr `"string literal at <file>:<line> is referenced by <test>:<line>, translation requires test update"` (R-1 alignment achieved at main.go:504, diff.go:154)
+  - AC-CIAUT-017 (i18n:translatable magic comment): PASS via TestMagicComment_* cases (testdata/translatable_comment/ fixture)
+  - AC-CIAUT-023 (30s budget): PASS via TestBudget_FullRepoScanWithin30Sec (full repo scan well under 30s threshold)
+- post_audit_cosmetic_findings_resolved:
+  - N1 (os/exec optional → required): FIXED in plan artifact
+  - N2 (LOC inventory): FIXED in plan artifact
+  - N3 (fixture count consistency): FIXED in plan artifact
+  - R-1 (canonical AC-CIAUT-016 wording): IMPLEMENTED in validator stderr
+- agent_session_artifacts_cleaned:
+  - i18n-validator (3.4MB stale binary at project root) — removed
+  - {}/ literal-placeholder directory — removed
+- honest_concerns:
+  - Commit cadence collapsed from prescribed 15 atomic commits to 3 (RED + GREEN + ci-mirror) due to single-agent batched execution. Strategy §10 cadence intent preserved in commit messages but not in granularity.
+  - manager-tdd subagent reported `worktreePath: {}` (empty) — agent did NOT use isolation:worktree as instructed (lessons #12 P1 violation, similar to Wave 5 §C-6). Implementation was performed in main project cwd directly. Quality gates still pass.
+  - parseHunkHeader removed (unused); if line-level diff precision needed in follow-up wave, must be re-added.
+  - --all-files intra-state mismatch detection is limited to test-file vs test-file; production const changes without test update fall through (acceptable per spec §3.7 scope).
+
+## Wave 6 — Phase 3 (Git Push + PR) — IN PROGRESS
+
+- branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-6
+- base: origin/main (8760b89cd, Wave 5 baseline)
+- commits_total: 5 (1 chore plan + 1 RED + 1 GREEN + 1 ci-mirror + 1 modernizers)
+- pr_labels: type:feature, priority:P2, area:ci, area:workflow
+- merge_strategy: squash (per CLAUDE.local.md §18.3 feature → main)
+
