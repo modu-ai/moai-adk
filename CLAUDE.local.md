@@ -1137,5 +1137,37 @@ Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD
 ---
 
 **Status**: Active (Local Development)
-**Version**: 3.4.0 (Phase 9: §19 AskUserQuestion Enforcement Protocol 공식 채택)
-**Last Updated**: 2026-04-24
+**Version**: 3.5.0 (Phase 10: §20 Vercel Build Externalization Policy 채택)
+**Last Updated**: 2026-05-09
+
+---
+
+## 20. Vercel Build Externalization Policy
+
+### [HARD] Vercel 자동 빌드 금지
+
+이 프로젝트는 Vercel에서 빌드하지 않는다. 빌드는 로컬 또는 GitHub Actions에서 수행하고, 결과만 prebuilt deployment로 Vercel에 업로드한다 (Vercel은 호스팅만).
+
+- **Git 차단**: 프로젝트의 Vercel Settings → Git에서 **Disconnect**, 또는 vercel.json으로 차단
+- **vercel.json**: `"git": { "deploymentEnabled": false }` 명시
+- **`vercel deploy`**: 반드시 `--prebuilt` 플래그 동반 (없으면 Vercel이 빌드)
+- **PR Preview auto-deploy**: 금지 (필요 시 manual `workflow_dispatch`만)
+
+### 빌드 경로 (택1)
+
+| 경로 | 명령 |
+|---|---|
+| 로컬 | `cd docs-site && hugo --minify --gc && vercel deploy --prebuilt --prod` |
+| GitHub Actions | `.github/workflows/docs-deploy.yml` (docs-site/ 변경 + main push 시만) |
+
+### 기존 §17 docs-site 규칙과의 관계
+
+- §17.6 Vercel 프로젝트 바인딩 그대로 유지
+- §17.6 빌드/배포 체크리스트는 GitHub Actions/로컬 빌드 결과물 기준 검증
+- §18 release 프로세스는 release 시점에 GitHub Actions로 prebuilt deploy
+
+### 향후 Claude Code 세션 지시
+
+- `vercel deploy` 명령에 `--prebuilt` 플래그 누락 발견 시 즉시 수정
+- vercel.json 변경 시 `git.deploymentEnabled: false` 유지 확인
+- 새 워크플로우 작성 시 빌드는 GitHub Actions/로컬에서, Vercel은 호스팅만
