@@ -14,6 +14,47 @@ MoAI's three-phase development workflow with token budget management.
 | Run | /moai run | manager-ddd/tdd (per quality.yaml) | 180K | DDD/TDD implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
+<!-- @MX:ANCHOR fan_in=9 - Subcommand classification single source of truth; cross-referenced by 9 workflow skills. Changes here affect all workflow contracts. -->
+
+## Subcommand Classification (Pipeline vs Multi-Agent)
+
+Source: SPEC-V3R2-WF-004. Each MoAI subcommand is classified along the
+*control-flow style* axis. The classification governs which agents are spawned,
+how the `--mode` flag is interpreted, and which CI guards apply.
+
+| Subcommand   | Class          | 3-phase contract (localize → repair → validate)                | `--mode` honored? | Reference                                                    |
+|--------------|----------------|-----------------------------------------------------------------|-------------------|--------------------------------------------------------------|
+| `/moai fix`      | Pipeline (Agentless) | Parallel Scan + Classify + MX context → Auto-Fix → Verify        | No (info log)     | `.claude/skills/moai/workflows/fix.md`                       |
+| `/moai coverage` | Pipeline (Agentless) | Measure + Gap Analysis → Test Generation → Verify                 | No (info log)     | `.claude/skills/moai/workflows/coverage.md`                  |
+| `/moai mx`       | Pipeline (Agentless) | Pass 1 + Pass 2 → Pass 3 → Post-edit scan                         | No (info log)     | `.claude/skills/moai/workflows/mx.md`                        |
+| `/moai codemaps` | Pipeline (Agentless) | Explore → Analyze + Generate → Verify                             | No (info log)     | `.claude/skills/moai/workflows/codemaps.md`                  |
+| `/moai clean`    | Pipeline (Agentless) | Static Analysis + Usage Graph → Safe Removal → Test Verification  | No (info log)     | `.claude/skills/moai/workflows/clean.md`                     |
+| `/moai plan`     | Multi-Agent    | n/a — open-ended (`autopilot` / `loop` / `team` per WF-003)        | Yes (rejects `pipeline`) | `.claude/skills/moai/workflows/plan.md`               |
+| `/moai run`      | Multi-Agent    | n/a — open-ended                                                  | Yes (rejects `pipeline`) | `.claude/skills/moai/workflows/run.md`                |
+| `/moai sync`     | Multi-Agent    | n/a — open-ended                                                  | Yes (rejects `pipeline`) | `.claude/skills/moai/workflows/sync.md`               |
+| `/moai design`   | Multi-Agent    | n/a — open-ended (`autopilot` / `import` / `team` per WF-003)      | Yes (rejects `pipeline`) | `.claude/skills/moai/workflows/design.md`             |
+
+### Pipeline Class — Contract
+
+Pipeline-classified subcommands MUST satisfy:
+- Three deterministic phases (localize → repair → validate); no LLM dispatcher selects the next phase.
+- `Agent()` invocations are permitted only as **executor delegation within a phase** (e.g., `expert-testing` runs the coverage tool); never to decide phase order.
+- When localize finds zero targets, exit with status `no-op` and exit code 0.
+- When repair encounters an unresolvable error, fail-fast (no multi-agent fallback).
+- The CI guard `internal/template/agentless_audit_test.go` enforces the no-LLM-dispatch rule via static text scan.
+
+### Out of scope of this matrix
+
+`/moai feedback`, `/moai review`, `/moai e2e` are *not* yet classified.
+See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
+
+### Cross-references
+
+- `--mode` flag matrix: SPEC-V3R2-WF-003 (sibling SPEC, defines `autopilot|loop|team|pipeline`).
+- Pipeline regression guard: `internal/template/agentless_audit_test.go` (REQ-WF004-013).
+- Pattern source: `.moai/design/v3-redesign/synthesis/pattern-library.md` §O-6 (Agentless).
+- Research source: `.moai/design/v3-redesign/research/r1-ai-harness-papers.md` §25 (Xia et al. 2024).
+
 ## Plan Phase
 
 Create comprehensive specification using EARS format.

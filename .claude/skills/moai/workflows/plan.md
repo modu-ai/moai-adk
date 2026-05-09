@@ -57,6 +57,15 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
 
+## Mode Flag Compatibility
+
+Per SPEC-V3R2-WF-004, this subcommand is multi-agent (open-ended) and supports the
+`--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003. The `pipeline` mode
+is **not valid** for this subcommand; passing `--mode pipeline` here triggers
+`MODE_PIPELINE_ONLY_UTILITY` (the same error key used by WF-003 REQ-WF003-016).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## Context Loading
 
 Before execution, load these essential files:

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — SPEC-V3R3-CI-AUTONOMY-001: 8-Tier Autonomous CI/CD + Branch Origin Decision Protocol
 
+### Added
+
+- SPEC-V3R2-WF-004: Agentless fixed-pipeline classification for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Multi-agent classification preserved for `plan`, `run`, `sync`, `design`. Subcommand × class matrix published in `.claude/rules/moai/workflow/spec-workflow.md#subcommand-classification`. CI guard `TestAgentlessUtilityNoLLMControlFlow` enforces no-LLM-dispatch in utility skills. Sentinels `MODE_FLAG_IGNORED_FOR_UTILITY` and `MODE_PIPELINE_ONLY_UTILITY` added.
+
 ### English
 
 - **SPEC-V3R3-CI-AUTONOMY-001 (8 Waves, 8 Tiers)**: Establishes autonomous CI/CD pipeline with self-correcting watch+fix loops and pre-merge protocol enforcement. Eliminates manual debug/fix/push cycles for routine PR sweeps.

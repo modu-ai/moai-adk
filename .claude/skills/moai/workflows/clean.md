@@ -40,6 +40,22 @@ Flow: Static Analysis -> Usage Graph -> Classification -> Safe Removal -> Test V
 - --type TYPE: Focus on specific code type (functions, imports, types, variables, files)
 - --aggressive: Include code with low usage (1 caller that is also dead)
 
+## Pipeline Contract (Agentless Classification)
+
+<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+
+This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+It executes a deterministic 3-phase contract: **localize → repair → validate**.
+
+- **Phase mapping**: localize ← Phase 1+2; repair ← Phase 4; validate ← Phase 5+5.5
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., `expert-refactoring` for removal) but never select the next phase.
+- **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
+- **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
+- **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
+- **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## Phase 1: Static Analysis Scan
 
 [HARD] Delegate static analysis to the expert-refactoring subagent.
@@ -129,6 +145,8 @@ Options:
 If --dry flag: Display analysis results and exit without removing anything.
 
 ## Phase 4: Safe Removal
+
+<!-- @MX:WARN @MX:REASON - Phase 4 delegates to expert-refactoring subagent for *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate REQ-WF004-004. -->
 
 [HARD] Delegate removal to the expert-refactoring subagent.
 

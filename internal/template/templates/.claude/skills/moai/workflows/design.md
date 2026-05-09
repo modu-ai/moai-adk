@@ -7,6 +7,17 @@ SPEC-V3R3-DESIGN-PIPELINE-001: REQ-DPL-005, REQ-DPL-008 (Phase 2 — Workflow Ro
 
 ---
 
+## Mode Flag Compatibility
+
+Per SPEC-V3R2-WF-004, this subcommand is multi-agent (open-ended) and supports the
+`--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003. The `pipeline` mode
+is **not valid** for this subcommand; passing `--mode pipeline` here triggers
+`MODE_PIPELINE_ONLY_UTILITY` (the same error key used by WF-003 REQ-WF003-016).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
+---
+
 ## Phase 0: Pre-flight Checks
 
 Before presenting the route selection, perform these checks in order:

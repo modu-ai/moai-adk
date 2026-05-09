@@ -45,6 +45,15 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
 - --team: Enable team-based implementation (see ${CLAUDE_SKILL_DIR}/team/run.md for parallel implementation team)
 
+## Mode Flag Compatibility
+
+Per SPEC-V3R2-WF-004, this subcommand is multi-agent (open-ended) and supports the
+`--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003. The `pipeline` mode
+is **not valid** for this subcommand; passing `--mode pipeline` here triggers
+`MODE_PIPELINE_ONLY_UTILITY` (the same error key used by WF-003 REQ-WF003-016).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## UltraThink Auto-Activation
 
 When the run phase begins, evaluate whether to activate deep analysis mode for the strategy phase:

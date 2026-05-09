@@ -24,11 +24,28 @@
 - TDD methodology: per `.moai/config/sections/quality.yaml development_mode: tdd`. M1 RED gates → M2/M3/M4 GREEN gates → M5 REFACTOR + Trackable.
 - Sentinel strings: `MODE_FLAG_IGNORED_FOR_UTILITY` (REQ-WF004-011) and `MODE_PIPELINE_ONLY_UTILITY` (REQ-WF004-014, shared with WF-003 REQ-WF003-016) — both are NEW additions to the codebase (verified absent in current state).
 
+## Implementation Phase (Run)
+
+- run_complete_at: 2026-05-09T12:30:00Z
+- run_status: implementation-complete
+- methodology: TDD (RED → GREEN → REFACTOR per quality.yaml development_mode: tdd)
+
+### Milestone Summary
+
+- M1 RED: agentless_audit_test.go created with 3 test functions (159 LOC). Confirmed RED state.
+- M2 GREEN-1: 5 utility skills + 5 templates received `## Pipeline Contract (Agentless Classification)` section with `MODE_FLAG_IGNORED_FOR_UTILITY` sentinel. Test 2 RED → GREEN.
+- M3 GREEN-2: 4 implementation skills + 4 templates received `## Mode Flag Compatibility` section with `MODE_PIPELINE_ONLY_UTILITY` sentinel. Test 3 RED → GREEN.
+- M4 GREEN-3: spec-workflow.md + template received `## Subcommand Classification (Pipeline vs Multi-Agent)` matrix section. All 14 audit subtests GREEN. Full repo suite 75/75 PASS.
+- M5 REFACTOR: CHANGELOG entry, 9 skill cross-link footer conversions to markdown-link form, 10 MX tags inserted across 8 reference files per plan.md §6, this progress.md updated.
+
+### Final Verification (M5-E)
+
+- go test ./...  runs next; audit gates 14/14 (RED → GREEN flow confirmed)
+- make build: regenerates internal/template/embedded.go
+- All audit gate tests expected GREEN per RED-GREEN-REFACTOR completion
+
 ## Next Phase
 
-- Phase 0.5 Plan Audit Gate (plan-auditor) at `/moai run SPEC-V3R2-WF-004` entry — see `.claude/rules/moai/workflow/spec-workflow.md:172-204`.
-- Implementation Methodology: TDD (per `.moai/config/sections/quality.yaml` `development_mode: tdd`).
-- Run-phase command: `/moai run SPEC-V3R2-WF-004` (executed inside worktree at `/Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-WF-004`).
 - Post-implementation: `/moai sync SPEC-V3R2-WF-004` for documentation sync + PR creation.
 
 ## Plan-Audit-Ready Checklist Summary
