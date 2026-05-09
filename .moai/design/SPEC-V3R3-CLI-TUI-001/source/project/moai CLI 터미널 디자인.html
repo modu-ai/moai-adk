@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>moai-adk CLI 터미널 디자인 — 모두의AI</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<style>
+  html, body { margin: 0; background: #f3f3f3; }
+  body { font-family: "Pretendard", system-ui, sans-serif; color: #09110f; }
+  @keyframes blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+  @keyframes pulse { 0%, 100% { opacity: 0.55 } 50% { opacity: 1 } }
+  .term ::selection { background: rgba(20,74,70,0.18); }
+  .header-strip {
+    padding: 28px 36px 22px;
+    background: linear-gradient(135deg, #144a46 0%, #09110f 100%);
+    color: #fff;
+  }
+  .header-strip h1 {
+    margin: 0; font-weight: 900; letter-spacing: -0.05em; font-size: 28px;
+  }
+  .header-strip p {
+    margin: 6px 0 0; opacity: 0.78; font-size: 14px; letter-spacing: -0.025em;
+    max-width: 720px; line-height: 1.55;
+  }
+  .header-strip .tag-row { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .header-strip .tag {
+    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.14);
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .legend {
+    padding: 14px 36px; background: #fff; border-bottom: 1px solid #d4d4d4;
+    display: flex; gap: 22px; flex-wrap: wrap; font-size: 12.5px; color: #4c4c4c;
+    letter-spacing: -0.015em;
+  }
+  .legend strong { color: #09110f; font-weight: 700; }
+  .legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -3px; margin-right: 6px; border: 1px solid rgba(0,0,0,0.08); }
+  .canvas-host { background: #f3f3f3; }
+  /* override: design canvas pane background per theme card */
+  .pane-light { background: #f3f3f3; padding: 28px 36px; border-radius: 18px; }
+  .pane-dark { background: #09110f; padding: 28px 36px; border-radius: 18px; }
+  .pane-title {
+    font-family: "Pretendard", sans-serif; font-weight: 800; letter-spacing: -0.04em;
+    font-size: 18px; margin: 0 0 4px;
+  }
+  .pane-light .pane-title { color: #09110f; }
+  .pane-dark .pane-title { color: #f3f3f3; }
+  .pane-sub { font-size: 12.5px; letter-spacing: -0.015em; }
+  .pane-light .pane-sub { color: #6e6e6e; }
+  .pane-dark .pane-sub { color: #9aa3a0; }
+</style>
+</head>
+<body>
+
+<div class="header-strip">
+  <h1>moai-adk · CLI 터미널 디자인</h1>
+  <p>모두의AI 디자인 시스템에 맞춰 재해석한 터미널 출력 — 어두운 청록 단일 코어, ASCII 박스 드로잉, Pretendard 한국어 + JetBrains Mono. 라이트와 다크 두 변형으로 모든 핵심 명령어와 설치 스크립트를 다룹니다.</p>
+  <div class="tag-row">
+    <span class="tag">설치 스크립트 3종</span>
+    <span class="tag">명령어 16종</span>
+    <span class="tag">Light + Dark</span>
+    <span class="tag">CX 7원칙 준수</span>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="sw" style="background:#144a46"></span><strong>#144a46</strong> Primary teal — 강조·CTA·헤더</span>
+  <span><span class="sw" style="background:#09110f"></span><strong>#09110f</strong> Ink — 본문 (다크 배경)</span>
+  <span><span class="sw" style="background:#1c7c70"></span><strong>#1c7c70</strong> Success</span>
+  <span><span class="sw" style="background:#c47b2a"></span><strong>#c47b2a</strong> Warning</span>
+  <span><span class="sw" style="background:#c44a3a"></span><strong>#c44a3a</strong> Danger</span>
+  <span><span class="sw" style="background:#2a8a8c"></span><strong>#2a8a8c</strong> Info</span>
+</div>
+
+<div class="canvas-host" id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="terminals.jsx"></script>
+<script type="text/babel" src="scenes.jsx"></script>
+
+<script type="text/babel">
+  const { useState } = React;
+
+  function Themed({ theme, children }) {
+    return <ThemeCtx.Provider value={theme}>{children}</ThemeCtx.Provider>;
+  }
+
+  // Order all scenes; render twice — light + dark
+  const ALL_SCENES = [
+    { id: "install-sh",     label: "install.sh — macOS / Linux",   Comp: SceneInstallSh,     w: 760, h: 720 },
+    { id: "install-ps1",    label: "install.ps1 — Windows",         Comp: SceneInstallPs,     w: 760, h: 540 },
+    { id: "install-bat",    label: "install.bat — cmd 폴백",        Comp: SceneInstallBat,    w: 760, h: 480 },
+    { id: "banner",         label: "moai · 배너 + 메인 도움말",     Comp: SceneBanner,        w: 760, h: 760 },
+    { id: "init",           label: "moai init · 대화형 위저드",     Comp: SceneInit,          w: 760, h: 720 },
+    { id: "doctor",         label: "moai doctor · 진단",            Comp: SceneDoctor,        w: 760, h: 720 },
+    { id: "status",         label: "moai status",                   Comp: SceneStatus,        w: 760, h: 620 },
+    { id: "version",        label: "moai version",                  Comp: SceneVersion,       w: 540, h: 280 },
+    { id: "cc",             label: "moai cc · Claude Code 런처",    Comp: SceneCC,            w: 760, h: 700 },
+    { id: "loop",           label: "moai loop · 자율 개발 루프",    Comp: SceneLoop,          w: 760, h: 680 },
+    { id: "spec",           label: "moai spec view",                Comp: SceneSpec,          w: 760, h: 660 },
+    { id: "update",         label: "moai update --project",         Comp: SceneUpdate,        w: 760, h: 640 },
+    { id: "worktree",       label: "moai worktree",                 Comp: SceneWorktree,      w: 760, h: 460 },
+    { id: "constitution",   label: "moai constitution check",       Comp: SceneConstitution,  w: 760, h: 600 },
+    { id: "mx",             label: "moai mx graph",                 Comp: SceneMX,            w: 760, h: 540 },
+    { id: "telemetry",      label: "moai telemetry report",         Comp: SceneTelemetry,     w: 760, h: 580 },
+    { id: "error",          label: "에러 상태",                     Comp: SceneError,         w: 760, h: 620 },
+    { id: "statusline",     label: "moai statusline (1줄)",         Comp: SceneStatusline,    w: 760, h: 480 },
+    { id: "help",           label: "moai help · 레퍼런스 카드",     Comp: SceneHelp,          w: 760, h: 760 },
+  ];
+
+  function Pane({ theme, children }) {
+    const cls = theme === "dark" ? "pane-dark" : "pane-light";
+    const title = theme === "dark" ? "다크 변형 · Dark Theme" : "라이트 변형 · Light Theme";
+    const sub = theme === "dark"
+      ? "심야 작업·테마틱 런처용 — ink 베이스에 청록 강조"
+      : "기본·문서·녹화 캡처용 — ivory 베이스에 어두운 청록";
+    return (
+      <div className={cls} data-screen-label={`${theme === "dark" ? "Dark" : "Light"}`}>
+        <div style={{ marginBottom: 14 }}>
+          <h2 className="pane-title">{title}</h2>
+          <div className="pane-sub">{sub}</div>
+        </div>
+        <ThemeCtx.Provider value={theme}>{children}</ThemeCtx.Provider>
+      </div>
+    );
+  }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        {["light", "dark"].map((theme) => (
+          <DCSection
+            key={theme}
+            id={`theme-${theme}`}
+            title={theme === "dark" ? "다크 (Dark)" : "라이트 (Light)"}
+          >
+            {ALL_SCENES.map(({ id, label, Comp, w, h }) => (
+              <DCArtboard
+                key={id}
+                id={`${id}-${theme}`}
+                label={label}
+                width={w}
+                height={h}
+              >
+                <div style={{
+                  width: w, height: h,
+                  background: theme === "dark" ? "#09110f" : "#f3f3f3",
+                  padding: 24,
+                  boxSizing: "border-box",
+                  display: "flex", alignItems: "flex-start", justifyContent: "center",
+                }}>
+                  <ThemeCtx.Provider value={theme}>
+                    <Comp />
+                  </ThemeCtx.Provider>
+                </div>
+              </DCArtboard>
+            ))}
+          </DCSection>
+        ))}
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body>
+</html>
