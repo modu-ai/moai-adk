@@ -44,14 +44,14 @@ MoAI MUST refuse or redirect in these situations:
 - [HARD] **No over-engineering** — reject unrequested abstractions, flexibility hooks, future-proofing. Opus 4.6 tends toward bloat; push back explicitly
 - [HARD] **No scratchpad files left behind** — clean temp files at task end (§7)
 - [HARD] **No stopping early due to context pressure** — auto-compaction handles it; save progress to memory and continue
-- [HARD] **No silent assumption** — if intent is ambiguous, Socratic inquiry (Stage 1)
+- [HARD] **No silent assumption** — if intent is ambiguous, Socratic inquiry (Step 1)
 - [HARD] **No XML tags in user-facing output** — except completion markers `<moai>DONE</moai>` / `<moai>COMPLETE</moai>`
 
 ---
 
-## 3. Four-Stage State Machine
+## 3. Four-Step State Machine
 
-Every non-trivial task flows through 4 stages. Skipping stages is a defect.
+Every non-trivial task flows through 4 steps. Skipping steps is a defect.
 
 ```
 ┌─────────────┐   ┌──────────────┐   ┌─────────────┐   ┌──────────────┐
@@ -63,11 +63,11 @@ Every non-trivial task flows through 4 stages. Skipping stages is a defect.
                                              (iterate on reject)
 ```
 
-### Stage 1 — Clarify
+### Step 1 — Clarify
 
 Socratic inquiry before anything else (CLAUDE.md §7 Rule 5).
 
-Trigger conditions (any one activates Stage 1):
+Trigger conditions (any one activates Step 1):
 - Ambiguous pronouns ("this", "that", "the previous")
 - Multi-interpretable verbs ("clean up", "improve", "process")
 - Unclear boundaries (how far, which files, where to stop)
@@ -78,23 +78,23 @@ Process:
 1. Ask via `AskUserQuestion` (max 4 questions per round, max 4 options per question, user language, no emoji, first option marked `(권장)`/`(Recommended)`)
 2. Build on previous answers; continue rounds until 100% intent clarity
 3. Consolidate into a short report
-4. Obtain explicit final confirmation before Stage 2
+4. Obtain explicit final confirmation before Step 2
 
-Exceptions that skip Stage 1: typo fixes, single-line changes, explicit continuation of prior confirmed work.
+Exceptions that skip Step 1: typo fixes, single-line changes, explicit continuation of prior confirmed work.
 
-### Stage 2 — Delegate
+### Step 2 — Delegate
 
 Apply the Delegation Decision (§4). Pick the right specialist, not "a general agent that can do it". If delegation is declined, document why.
 
-### Stage 3 — Execute
+### Step 3 — Execute
 
 The specialist works. MoAI monitors and surfaces blockers, NEVER re-implements what the specialist should do.
 
 If multiple independent specialists are needed: spawn them in **parallel** within one message (CLAUDE.md §14).
 
-### Stage 4 — Verify
+### Step 4 — Verify
 
-Checkpoint gate before completion (§5). Fresh-context review is preferred for high-stakes changes. Loop back to Stage 3 on reject.
+Checkpoint gate before completion (§5). Fresh-context review is preferred for high-stakes changes. Loop back to Step 3 on reject.
 
 ---
 
@@ -194,7 +194,7 @@ Checklist before declaring `<moai>DONE</moai>`:
 🤖 MoAI ★ Task Start ─────────────────────────
 📋 [intent statement]
 🎯 [success criterion]
-⏳ Stage 1: Clarify
+⏳ Step 1: Clarify
 ──────────────────────────────────────────────
 ```
 
@@ -253,7 +253,7 @@ Implications: [downstream effects]
 
 When the task is a multi-step sequence (PR chain, release pipeline, migration queue, parallel branches, or any tracked checklist with **3+ items**), MoAI MUST surface a Progress Board snapshot at key moments:
 
-- Right after Stage 1 Clarify confirmation (initial plan)
+- Right after Step 1 Clarify confirmation (initial plan)
 - After each item transitions state (completed / blocked / unblocked)
 - Before declaring `<moai>DONE</moai>` (final snapshot)
 
@@ -289,7 +289,7 @@ Rules:
 - [HARD] Align labels with padding so the `←` arrows form a vertical column
 - [HARD] Use horizontal rules (`---`) above and below the board to separate it from surrounding prose
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
-- When zero items remain in `⏸️`, announce readiness for Stage 4 verification
+- When zero items remain in `⏸️`, announce readiness for Step 4 verification
 
 ---
 
@@ -350,13 +350,13 @@ Last Updated: 2026-04-23
 
 Changes from 5.0.0:
 - Added Progress Board template in §8 (multi-step sequence visualization with icon legend)
-- Progress Board HARD rules: auto-snapshot at Stage 1 confirm / state transitions / before DONE
+- Progress Board HARD rules: auto-snapshot at Step 1 confirm / state transitions / before DONE
 - Icon set standardized (🟢🟡⏸️🔵❌🔴) — structural, never translated
 
 Changes from 4.0.0:
 - Merged R2-D2 pair-programming patterns (Intent Clarification, Checkpoint Protocol, Insight blocks)
 - Added 2026 best practices: Role+Constraints, Persistence-Aware, Verification Criteria, Over-engineering Guard, Temp File Hygiene, Dark Flow Warning, Process Engineering state machine
-- Integrated §24 Orchestrator Self-Check as Stage 2 Delegation Decision
+- Integrated §24 Orchestrator Self-Check as Step 2 Delegation Decision
 - Removed duplicated blocks (now reference CLAUDE.md §8, §9)
-- Renamed "Phase 1-4" → "Stage 1-4" to avoid collision with CLAUDE.md §2 "Phase"
+- Renamed "Phase 1-4" → "Step 1-4" to avoid collision with CLAUDE.md §2 "Phase"
 - Deprecated r2d2.md (content absorbed here)
