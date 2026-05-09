@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-WF-004
 title: Agentless Fixed-Pipeline Classification for Utility Subcommands
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: implemented
 created_at: 2026-04-23
-updated_at: 2026-05-02
+updated_at: 2026-05-10
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1
 labels: [agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3]
@@ -31,6 +31,7 @@ tags: "agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3"
 |---------|------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — classify utility subcommands as fixed pipeline                                                                                                |
 | 0.2.0   | 2026-05-02 | MoAI Plan Workflow | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P1 High"` → `P1`, `labels` 추가, `issue_number` 추가. §1.2 Non-Goals에 v2 `--mode agent` escape hatch 1줄 추가 (plan-auditor D3 advisory 처리). EARS REQ/AC 본문 변경 없음. |
+| 0.3.0   | 2026-05-10 | MoAI Sync Workflow | Retrofit sync — PR #798 (commit `3ef362193`) merged 2026-05-09 prior to `/moai sync`. Frontmatter status `draft` → `implemented` drift fix, CHANGELOG 한국어 `### 추가됨` entry append, docs-site 4-locale 영향 평가 (no change — rationale recorded in progress.md Phase 3). Body unchanged. |
 
 ---
 

@@ -76,4 +76,40 @@ All 15 criteria PASS per plan.md §8:
 
 ---
 
+## Phase 3: Sync (Complete)
+
+- sync_complete_at: 2026-05-10
+- sync_status: implementation-complete-retrofit
+- methodology: Direct main-session execution (retrofit scope, no manager-docs delegation per CLAUDE.local.md §16 simplicity check — 4 files, no code changes)
+- branch: `docs/SPEC-V3R2-WF-004-sync`
+- worktree: `~/.moai/worktrees/moai-adk/wf-004-sync` (base: origin/main `ab0fc4dda`)
+
+### Retrofit Context
+
+PR #798 (commit `3ef362193`) was merged 2026-05-09T08:23:20Z without `/moai sync` execution. This sync PR captures post-merge documentation cleanup that the standard sync workflow would have produced:
+
+1. **spec.md frontmatter status drift fix**: `draft` → `implemented`, version `0.2.0` → `0.3.0`, updated_at `2026-05-10`. HISTORY v0.3.0 row appended.
+2. **progress.md Phase 3 Sync section append** (this section).
+3. **CHANGELOG.md 한국어 `### 추가됨` entry append**: 영문 `### Added` entry was already present from PR #798 (line 18); 한국어 mirror was missing. WF-004 한국어 entry added; WF-003 한국어 entry deferred to its own SPEC closeout per scope discipline.
+4. **docs-site 4-locale evaluation**: no changes (rationale below).
+
+### docs-site 4-locale Evaluation
+
+WF-004 modifies `.claude/rules/moai/workflow/spec-workflow.md` (internal workflow rule) and adds CI guard `internal/template/agentless_audit_test.go`. Neither is user-facing.
+
+Grep across `docs-site/content/{ko,en,ja,zh}/` for `--mode|MODE_` returned 5/4/4/4 file matches, but inspection of `moai-run.md` and `moai-fix.md` shows no existing `--mode` flag documentation. The user-facing `--mode` semantics were introduced by SPEC-V3R2-WF-003 (Multi-Mode Router, PR #805 merged `2d153c471`). docs-site updates for `--mode` semantics belong to WF-003 sync closeout, not WF-004.
+
+Conclusion: WF-004 sync makes zero docs-site changes. CLAUDE.local.md §17.3 4-locale [HARD] simultaneous-update rule does not apply (no ko changes triggered).
+
+### Files Modified (4 total)
+
+| File | Change |
+|------|--------|
+| `.moai/specs/SPEC-V3R2-WF-004/spec.md` | frontmatter (status/version/updated_at) + HISTORY v0.3.0 row |
+| `.moai/specs/SPEC-V3R2-WF-004/progress.md` | this Phase 3 Sync section appended |
+| `CHANGELOG.md` | new `### 추가됨` sub-section under existing `## [Unreleased] — SPEC-V3R3-CI-AUTONOMY-001` block (한국어 mirror of `### Added`) |
+| (none in `docs-site/`) | evaluation skipped per rationale above |
+
+---
+
 End of progress.md.

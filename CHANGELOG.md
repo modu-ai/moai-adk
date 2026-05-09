@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **No hardcoded URLs/models**: Verified per CLAUDE.local.md §14.
 - **Quality gates**: All Waves pass `make ci-local` (5/5 steps) + `go test -race ./...` + `golangci-lint run`. Coverage targets met: bodp 85.9%, ciwatch 87.6%, cli/pr 95.0%, internal/worktree 87.6%, internal/cli/worktree 82.5%.
 
+### 추가됨
+
+- **SPEC-V3R2-WF-004**: utility 서브커맨드(`fix`, `coverage`, `mx`, `codemaps`, `clean`)에 대한 Agentless 고정 파이프라인 분류. `plan`, `run`, `sync`, `design`은 multi-agent 라우팅 유지. Subcommand × class matrix는 `.claude/rules/moai/workflow/spec-workflow.md#subcommand-classification`에 게시. CI guard `TestAgentlessUtilityNoLLMControlFlow`가 utility skill에서 LLM-dispatch 금지를 강제. Sentinel `MODE_FLAG_IGNORED_FOR_UTILITY`(info-only)와 `MODE_PIPELINE_ONLY_UTILITY`(WF-003과 공유) 추가. (PR #798 — sync retrofit PR)
+
 ### 한국어
 
 - **SPEC-V3R3-CI-AUTONOMY-001 (8 Wave, 8 Tier)**: 자율 CI/CD 파이프라인 + self-correcting watch+fix loop + pre-merge 프로토콜 enforcement. 통상적 PR sweep에서 수동 debug/fix/push 사이클 제거 목표.
