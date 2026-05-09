@@ -421,3 +421,48 @@
 - commit_strategy: ~6-8 atomic commits per strategy-wave5 §9 cadence
 - pr_labels: type:feature, priority:P1, area:cli, area:workflow
 
+
+---
+
+## Wave 6 — Phase 1 (Strategy + Tasks) — v0.2.0 (Rework)
+
+- date: 2026-05-09
+- author: manager-strategy
+- artifacts:
+  - .moai/specs/SPEC-V3R3-CI-AUTONOMY-001/strategy-wave6.md (status: draft, version 0.2.0)
+  - .moai/specs/SPEC-V3R3-CI-AUTONOMY-001/tasks-wave6.md (status: draft, version 0.2.0)
+- summary:
+  - Wave 6 scope: T7 i18n validator (P2). Standalone Go static analyzer at scripts/i18n-validator/.
+  - 7 atomic tasks (W6-T01..W6-T07) covering 4-layer architecture (AST parser → cross-file resolver → lockset → diff comparator with DUAL ORACLE) + magic comment escape (cross-cutting) + ci-mirror integration + budget validation.
+  - W6-T05 ships BOTH `--all-files` (intra-state oracle, default) AND `--diff <git-rev>` (temporal/baseline oracle, mandatory per plan.md:252) per plan-auditor rework path A.
+  - REQ mapping: REQ-CIAUT-037..041 all bound to tasks.
+  - AC mapping: AC-CIAUT-016 (mockReleaseData block via `--diff` mode dual-tree fixture), AC-CIAUT-017 (magic comment exempt), AC-CIAUT-023 (30s budget) all bound to tasks.
+  - 4 Open Questions resolved inline (strategy §6 Wave6-Q1..Q4): vendor exclusion, testify suite receiver heuristic, const reference tracking, dual-mode oracle design.
+  - Solo mode (--branch pattern, lessons #13). Wave Base: origin/main 8760b89cd.
+  - No template-first mirror (dev-project tooling per strategy-wave6 §7).
+
+## Wave 6 — Phase 1.5 (Plan Audit) — Iteration 2 PASS
+
+- date: 2026-05-09T01:53Z
+- author: plan-auditor
+- previous_verdict: FAIL (iteration 1; W6-T05 lacked temporal/baseline oracle, contradicted plan.md:252)
+- iteration_2_verdict: **PASS** (with minor non-blocking recommendations)
+- iteration_1_findings_resolution:
+  - F1 (W6-T05 cannot satisfy AC-CIAUT-016): RESOLVED via `--diff` oracle ship in v0.2.0
+  - F2 (plan.md:252 prescribes diff input): RESOLVED — `--diff <git-rev>` mode now in scope
+  - F3 (strategy:289-296 internal contradiction): RESOLVED — §5 W6-T05 rewritten with dual-mode design statement
+  - F4 (byte-count miscitation): VERIFIED CORRECT — actual `wc -c scripts/ci-mirror/lib/go.sh` = 834 bytes
+  - F5 (OQ4 namespace collision): RESOLVED — internal section renamed Wave6-Q1..Q4
+  - F6 (commit cadence missing trailer text): RESOLVED — verbatim "🗿 MoAI <email@mo.ai.kr>" trailer present
+- iteration_2_minor_findings (non-blocking, addressed by orchestrator post-audit):
+  - N1 (strategy:218 os/exec "(optional)"): FIXED — clarified as REQUIRED for `--diff` mode
+  - N2 (tasks:250 LOC inventory drift): FIXED — updated to 3 source + 3 test + 5 fixtures
+  - N3 (strategy:496 vs tasks:137 fixture count mismatch): FIXED — strategy now reads 5 fixture directories
+  - R-1 (error wording AC vs strategy): DEFERRED to Phase 2 implementation (validator emits canonical AC-CIAUT-016 wording from acceptance.md)
+- ac_replay_verification:
+  - AC-CIAUT-016 walk-through validated by plan-auditor: dual-tree fixture (`pr783_diff/baseline/` Korean + `pr783_diff/head/` English) → temp git repo → `i18n-validator --diff <baseline-rev>` → exit 1 + canonical stderr
+- next:
+  - Phase 2 (manager-tdd delegation): begin W6-T01 (Go AST parser) — TDD RED-GREEN-REFACTOR.
+  - Sub-agent context inheritance fallback: if delegation fails, main-session direct implementation per Wave 5 §C-6 lesson.
+- audit_report_path: .moai/reports/plan-audit/SPEC-V3R3-CI-AUTONOMY-001-2026-05-09.md (iteration 1 + iteration 2 appended)
+
