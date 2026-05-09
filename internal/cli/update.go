@@ -42,14 +42,18 @@ const (
 	maxConfigSize = 10 * 1024 * 1024 // 10MB
 )
 
-// CLI output styles for consistent MoAI-themed terminal output.
+// CLI output styles sourced from tui.LightTheme/DarkTheme — single source of truth.
+// AC-CLI-TUI-013: no hex literals outside internal/tui/. M4-S4d cleanup uses
+// AdaptiveColor with tui.LightTheme()/DarkTheme() values evaluated at package init.
+// cliPrimary now resolves to tui.Accent (deep teal) replacing the deprecated
+// terra cotta accent — brand consistency restored per M3 banner.go.
 var (
-	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"})
-	cliWarn    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"})
-	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
-	cliMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: "#6B7280"})
-	cliPrimary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"})
-	cliBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#4B5563"})
+	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Success, Dark: tui.DarkTheme().Success})
+	cliWarn    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Warning, Dark: tui.DarkTheme().Warning})
+	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Danger, Dark: tui.DarkTheme().Danger})
+	cliMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Dim, Dark: tui.DarkTheme().Dim})
+	cliPrimary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Accent, Dark: tui.DarkTheme().Accent})
+	cliBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Rule, Dark: tui.DarkTheme().Rule})
 )
 
 func symSuccess() string  { return cliSuccess.Render("\u2713") }
