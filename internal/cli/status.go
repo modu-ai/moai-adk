@@ -116,7 +116,9 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	// Section: Configuration
 	bodyLines = append(bodyLines, tui.Section("Configuration", tui.SectionOpts{Theme: &th}))
-	bodyLines = append(bodyLines, tui.KV("Config", filepath.Join(".moai", "config", "sections"), tui.KVOpts{Theme: &th, KeyWidth: 8}))
+	// Use forward-slash separator in display so the value is identical on
+	// Windows (\) and macOS/Linux (/) golden tests.
+	bodyLines = append(bodyLines, tui.KV("Config", filepath.ToSlash(filepath.Join(".moai", "config", "sections")), tui.KVOpts{Theme: &th, KeyWidth: 8}))
 
 	// Count SPECs
 	specsDir := filepath.Join(moaiDir, "specs")

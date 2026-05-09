@@ -593,7 +593,9 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 	if _, err := os.Stat(registryPath); err != nil {
 		displayPath := registryPath
 		if rel, relErr := filepath.Rel(projectDir, registryPath); relErr == nil {
-			displayPath = rel
+			// Force forward-slash separators so the message is identical on
+			// Windows (\) and macOS/Linux (/) golden tests.
+			displayPath = filepath.ToSlash(rel)
 		}
 		check.Status = CheckWarn
 		check.Message = fmt.Sprintf("zone-registry.md not found at %q — run `moai constitution list` to verify", displayPath)
