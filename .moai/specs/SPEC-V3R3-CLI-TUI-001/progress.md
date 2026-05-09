@@ -282,8 +282,8 @@
 
 | Sub-step | Region | Commit | Status | Print sites | Cascade fix |
 |---------|--------|--------|--------|-------------|-------------|
-| M4-S4d-1 | update.go L102-373 (runUpdate + binary update + reexec) | (pending commit) | ✅ DIRECT | 16 sites → 13 KV/CheckLine/Pill | coverage_improvement_test.go × 3 |
-| M4-S4d-2 | update.go L375-1175 (runTemplateSync* + merge + analyze) | — | ⏸️ PENDING | ~50 sites estimated | TBD |
+| M4-S4d-1 | update.go L102-373 (runUpdate + binary update + reexec) | `96695e908` | ✅ DIRECT | 16 sites → 13 KV/CheckLine/Pill | coverage_improvement_test.go × 3 |
+| M4-S4d-2 | update.go L388-1188 (runTemplateSync* + runShellEnvConfig) | (pending commit) | ✅ DIRECT | ~25 top-level sites → KV/Section/CheckLine/Pill mix; sub-step micro msgs(\r sym*) 보존 | type cast fix (string(rec.Shell)) |
 | M4-S4d-3 | update.go L1176-end + update_archive.go (cleanup + restore + wizard) | — | ⏸️ PENDING | ~30+4 sites | TBD |
 | M4-S4d cleanup | golden snapshots + helpers cleanup (cliSuccess/cliWarn 제거) | — | ⏸️ PENDING | testdata/update-{light,dark,nocolor}.golden | — |
 

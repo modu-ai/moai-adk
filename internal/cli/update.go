@@ -389,9 +389,14 @@ func runTemplateSync(cmd *cobra.Command) error {
 	return runTemplateSyncWithReporter(cmd, nil, false)
 }
 
+// @MX:NOTE: [AUTO] runTemplateSyncWithReporter — M4-S4d-2 DDD 마이그레이션. Top-level header/section/
+// final outcome을 tui.KV / tui.Section / tui.CheckLine / tui.Pill로 변환. Sub-step micro 메시지
+// (\r-prefixed sym* helpers)는 progress 표시 특성상 보존. 디자인 소스: screens.jsx ScreenUpdate.
+//
 // runTemplateSyncWithReporter synchronizes templates with progress reporting.
 func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool) error {
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 	ctx := cmd.Context()
 
 	// Get flags for template sync
@@ -402,8 +407,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	projectRoot := "."
 
 	currentVersion := version.GetVersion()
-	_, _ = fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
-	_, _ = fmt.Fprintln(out, "Syncing templates from embedded filesystem...")
+	_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Syncing templates", "from embedded filesystem", "", &th))
 
 	if reporter != nil {
 		reporter.StepStart("Version Check", "Checking template version...")
@@ -418,7 +423,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		if reporter != nil {
 			reporter.StepComplete("Already up-to-date")
 		}
-		_, _ = fmt.Fprintf(out, "\n%s Template version up-to-date. Skipping sync.\n", symSuccess())
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
 		return nil
 	}
 
@@ -470,7 +476,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Analyze merge and get user confirmation
 	analysis := analyzeMergeChanges(deployer, projectRoot)
 
-	_, _ = fmt.Fprintln(out, "\nAnalyzing merge changes...")
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
 
 	if reporter != nil {
 		reporter.StepUpdate("Found " + fmt.Sprintf("%d files to sync", len(analysis.Files)))
@@ -482,7 +489,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		proceed = true
 	} else if autoConfirm {
 		proceed = true
-		_, _ = fmt.Fprintln(out, "Auto-confirming merge (CI/CD mode)...")
+		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "Auto-confirm", "CI/CD mode", "", &th))
 	} else {
 		var err error
 		proceed, err = merge.ConfirmMerge(analysis)
@@ -496,7 +503,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	if !proceed {
-		_, _ = fmt.Fprintln(out, "\nMerge cancelled by user.")
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillNeutral, Solid: false, Label: "Merge cancelled by user", Theme: &th}))
 		if reporter != nil {
 			reporter.StepError(errors.New("cancelled by user"))
 		}
@@ -504,7 +512,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	// Deploy templates
-	_, _ = fmt.Fprintln(out, "\nProceeding with template deployment...")
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, tui.Section("Proceeding with template deployment", tui.SectionOpts{Theme: &th}))
 	_, _ = fmt.Fprintln(out)
 
 	// Define deployment steps
@@ -715,7 +724,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 
-	_, _ = fmt.Fprintf(out, "\n%s Template sync complete.\n", symSuccess())
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template sync complete", Theme: &th}))
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
@@ -723,7 +733,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
-		_, _ = fmt.Fprintf(out, "Warning: Failed to update global settings env: %v\n", err)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Global settings env", "update failed", err.Error(), &th))
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
@@ -732,9 +742,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	return nil
 }
 
+// @MX:NOTE: [AUTO] runTemplateSyncWithProgress — M4-S4d-2 DDD 마이그레이션. Console reporter
+// wrapper. tui.Pill (skip), tui.Section (analyzing), tui.Pill (cancel) 핵심 출력만 변환.
+//
 // runTemplateSyncWithProgress runs template sync with simple console output.
 func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 	projectRoot := "."
 	autoConfirm := getBoolFlag(cmd, "yes")
 	forceUpdate := getBoolFlag(cmd, "force")
@@ -746,7 +760,8 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 	packageVersion := version.GetVersion()
 	projectVersion, err := getProjectConfigVersion(projectRoot)
 	if err == nil && packageVersion == projectVersion && !forceUpdate {
-		_, _ = fmt.Fprintf(out, "\n%s Template version up-to-date. Skipping sync.\n", symSuccess())
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
 		return nil
 	}
 
@@ -760,14 +775,16 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 		deployer := template.NewDeployerWithForceUpdate(embedded, true)
 		analysis := analyzeMergeChanges(deployer, projectRoot)
 
-		_, _ = fmt.Fprintln(out, "\nAnalyzing merge changes...")
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
 		proceed, err := merge.ConfirmMerge(analysis)
 		if err != nil {
 			return fmt.Errorf("confirm merge for %d files (risk: %s): %w",
 				len(analysis.Files), analysis.RiskLevel, err)
 		}
 		if !proceed {
-			_, _ = fmt.Fprintln(out, "\nMerge cancelled by user.")
+			_, _ = fmt.Fprintln(out)
+			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillNeutral, Solid: false, Label: "Merge cancelled by user", Theme: &th}))
 			return nil
 		}
 	}
@@ -1142,22 +1159,26 @@ func analyzeMergeChanges(deployer template.Deployer, projectRoot string) merge.M
 	return buildMergeAnalysis(files)
 }
 
+// @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD 마이그레이션. tui.Section header,
+// tui.KV (Shell/Config/Explanation), tui.CheckLine (Changes list), tui.Pill (final outcome).
+//
 // runShellEnvConfig configures shell environment variables for Claude Code.
 func runShellEnvConfig(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 
-	_, _ = fmt.Fprintln(out, "Configuring shell environment for Claude Code...")
+	_, _ = fmt.Fprintln(out, tui.Section("Configuring shell environment for Claude Code", tui.SectionOpts{Theme: &th}))
 
 	// Get recommendation first
 	configurator := shell.NewEnvConfigurator(nil)
 	rec := configurator.GetRecommendation()
 
-	_, _ = fmt.Fprintf(out, "  Shell: %s\n", rec.Shell)
-	_, _ = fmt.Fprintf(out, "  Config file: %s\n", rec.ConfigFile)
-	_, _ = fmt.Fprintf(out, "  Explanation: %s\n", rec.Explanation)
-	_, _ = fmt.Fprintln(out, "  Changes to add:")
+	_, _ = fmt.Fprintln(out, tui.KV("Shell", string(rec.Shell), tui.KVOpts{Theme: &th, KeyWidth: 12}))
+	_, _ = fmt.Fprintln(out, tui.KV("Config file", rec.ConfigFile, tui.KVOpts{Theme: &th, KeyWidth: 12}))
+	_, _ = fmt.Fprintln(out, tui.KV("Explanation", rec.Explanation, tui.KVOpts{Theme: &th, KeyWidth: 12}))
+	_, _ = fmt.Fprintln(out, tui.Section("Changes to add", tui.SectionOpts{Theme: &th}))
 	for _, change := range rec.Changes {
-		_, _ = fmt.Fprintf(out, "    - %s\n", change)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "·", change, "", &th))
 	}
 	_, _ = fmt.Fprintln(out)
 
@@ -1173,11 +1194,11 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 	}
 
 	if result.Skipped {
-		_, _ = fmt.Fprintf(out, "Shell environment already configured in %s\n", result.ConfigFile)
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: "Shell environment already configured in " + result.ConfigFile, Theme: &th}))
 	} else {
-		_, _ = fmt.Fprintf(out, "Shell environment configured in %s\n", result.ConfigFile)
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Shell environment configured in " + result.ConfigFile, Theme: &th}))
 		_, _ = fmt.Fprintln(out, "Please restart your terminal or run:")
-		_, _ = fmt.Fprintf(out, "  source %s\n", result.ConfigFile)
+		_, _ = fmt.Fprintln(out, tui.KV("source", result.ConfigFile, tui.KVOpts{Theme: &th, KeyWidth: 8}))
 	}
 
 	return nil
