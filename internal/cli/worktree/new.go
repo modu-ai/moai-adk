@@ -3,6 +3,7 @@ package worktree
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,16 @@ import (
 // userHomeDirFunc resolves the user's home directory.
 // Overridable in tests.
 var userHomeDirFunc = os.UserHomeDir
+
+// gitWorktreeCmd executes a git subcommand for the worktree CLI.
+// Overridable in tests.
+//
+// @MX:NOTE Used by W7-T03 BODP integration (audit trail + git fetch). Default
+// implementation shells out to git; tests inject fakes to avoid network/IO.
+var gitWorktreeCmd = func(args ...string) (string, error) {
+	out, err := exec.Command("git", args...).Output()
+	return string(out), err
+}
 
 // getProjectNameFunc resolves the project name for worktree path construction.
 // Overridable in tests.

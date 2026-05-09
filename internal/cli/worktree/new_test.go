@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -487,5 +488,237 @@ func TestRunNew_TmuxNotAvailable_GracefulDegradation(t *testing.T) {
 	if !contains(output, "cd") && !contains(output, "/moai run") {
 		t.Log("Output should contain manual cd instructions when tmux unavailable")
 		t.Logf("Output: %s", output)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SPEC-V3R3-CI-AUTONOMY-001 W7-T03: BODP integration tests for `moai worktree new`.
+// ---------------------------------------------------------------------------
+
+// fakeWorktreeGit overrides gitWorktreeCmd for the duration of a test.
+//
+// Tests using this helper MUST NOT call t.Parallel() because the override
+// mutates package-level state.
+func fakeWorktreeGit(t *testing.T, fn func(args ...string) (string, error)) {
+	t.Helper()
+	orig := gitWorktreeCmd
+	gitWorktreeCmd = fn
+	t.Cleanup(func() { gitWorktreeCmd = orig })
+}
+
+// runNewCmd invokes the new subcommand with the supplied flag arguments.
+// args[0] is the SPEC-ID (or branch name); subsequent entries set flags.
+func runNewCmd(t *testing.T, args []string, flags map[string]string) error {
+	t.Helper()
+	cmd := newNewCmd()
+	cmd.SetArgs(args)
+	for k, v := range flags {
+		if err := cmd.Flags().Set(k, v); err != nil {
+			t.Fatalf("set flag %s=%s: %v", k, v, err)
+		}
+	}
+	return cmd.RunE(cmd, args)
+}
+
+// TestNew_FromCurrentFlagRegistered ensures the new --from-current flag is
+// registered on the command.
+func TestNew_FromCurrentFlagRegistered(t *testing.T) {
+	cmd := newNewCmd()
+	flag := cmd.Flags().Lookup("from-current")
+	if flag == nil {
+		t.Fatal("--from-current flag is not registered")
+	}
+	if flag.Value.String() != "false" {
+		t.Errorf("expected --from-current default false, got %q", flag.Value.String())
+	}
+}
+
+// TestNew_BaseFlagDefaultIsOriginMain ensures the --base flag default is the
+// canonical BODP-aligned origin/main rather than legacy "main".
+func TestNew_BaseFlagDefaultIsOriginMain(t *testing.T) {
+	cmd := newNewCmd()
+	flag := cmd.Flags().Lookup("base")
+	if flag == nil {
+		t.Fatal("--base flag is not registered")
+	}
+	if got := flag.DefValue; got != "origin/main" {
+		t.Errorf("expected --base default origin/main, got %q", got)
+	}
+}
+
+// TestNew_BaseAndFromCurrentMutuallyExclusive: providing both flags must
+// produce an error before any worktree creation occurs.
+func TestNew_BaseAndFromCurrentMutuallyExclusive(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Chdir(tempDir)
+
+	mockProvider, cleanup := setupMockProvider(t)
+	defer cleanup()
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldGetProjectNameFunc := getProjectNameFunc
+	defer func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		getProjectNameFunc = oldGetProjectNameFunc
+	}()
+	userHomeDirFunc = func() (string, error) { return tempDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+
+	fakeWorktreeGit(t, func(args ...string) (string, error) {
+		return "", nil
+	})
+
+	err := runNewCmd(t, []string{"SPEC-FOO-001"}, map[string]string{
+		"base":         "feat/some-branch",
+		"from-current": "true",
+	})
+	if err == nil {
+		t.Fatal("expected mutual-exclusion error, got nil")
+	}
+	if !contains(err.Error(), "mutually exclusive") && !contains(err.Error(), "--from-current") {
+		t.Errorf("expected mutual-exclusion error mentioning --from-current, got: %v", err)
+	}
+	if mockProvider.addCalled {
+		t.Errorf("WorktreeProvider.Add must not be called when flags conflict")
+	}
+}
+
+// TestNew_AuditTrailWritten: any successful invocation persists a BODP audit
+// trail under .moai/branches/decisions/<branch>.md with EntryWorktreeCLI.
+func TestNew_AuditTrailWritten(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Chdir(tempDir)
+
+	_, cleanup := setupMockProvider(t)
+	defer cleanup()
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldGetProjectNameFunc := getProjectNameFunc
+	defer func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		getProjectNameFunc = oldGetProjectNameFunc
+	}()
+	userHomeDirFunc = func() (string, error) { return tempDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+
+	fakeWorktreeGit(t, func(args ...string) (string, error) {
+		// rev-parse → return current branch; status → empty; diff → empty; fetch → empty
+		if len(args) > 0 && args[0] == "rev-parse" {
+			return "feat/source-branch\n", nil
+		}
+		return "", nil
+	})
+
+	if err := runNewCmd(t, []string{"SPEC-FOO-001"}, nil); err != nil {
+		t.Fatalf("RunE returned error: %v", err)
+	}
+
+	auditFile := filepath.Join(tempDir, ".moai", "branches", "decisions", "feature-SPEC-FOO-001.md")
+	body, err := os.ReadFile(auditFile)
+	if err != nil {
+		t.Fatalf("expected audit file %q: %v", auditFile, err)
+	}
+	if !strings.Contains(string(body), "entry_point: worktree-cli") {
+		t.Errorf("expected audit trail entry_point=worktree-cli, got:\n%s", body)
+	}
+	if !strings.Contains(string(body), "new_branch: feature/SPEC-FOO-001") {
+		t.Errorf("expected audit trail new_branch=feature/SPEC-FOO-001, got:\n%s", body)
+	}
+}
+
+// TestNew_FetchOriginMainWhenDefaultBase: default base origin/main triggers an
+// upfront `git fetch origin main` before worktree creation.
+func TestNew_FetchOriginMainWhenDefaultBase(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Chdir(tempDir)
+
+	_, cleanup := setupMockProvider(t)
+	defer cleanup()
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldGetProjectNameFunc := getProjectNameFunc
+	defer func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		getProjectNameFunc = oldGetProjectNameFunc
+	}()
+	userHomeDirFunc = func() (string, error) { return tempDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+
+	var calls [][]string
+	fakeWorktreeGit(t, func(args ...string) (string, error) {
+		calls = append(calls, append([]string(nil), args...))
+		if len(args) > 0 && args[0] == "rev-parse" {
+			return "feat/x\n", nil
+		}
+		return "", nil
+	})
+
+	if err := runNewCmd(t, []string{"SPEC-FOO-001"}, nil); err != nil {
+		t.Fatalf("RunE: %v", err)
+	}
+
+	found := false
+	for _, c := range calls {
+		if len(c) >= 3 && c[0] == "fetch" && c[1] == "origin" && c[2] == "main" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected `git fetch origin main` to be invoked, calls=%v", calls)
+	}
+}
+
+// TestNew_NoFetchWhenFromCurrent: --from-current must skip the upfront
+// `git fetch origin main` call (no remote round-trip when staying local).
+func TestNew_NoFetchWhenFromCurrent(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Chdir(tempDir)
+
+	_, cleanup := setupMockProvider(t)
+	defer cleanup()
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldGetProjectNameFunc := getProjectNameFunc
+	defer func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		getProjectNameFunc = oldGetProjectNameFunc
+	}()
+	userHomeDirFunc = func() (string, error) { return tempDir, nil }
+	getProjectNameFunc = func() string { return "test-project" }
+
+	var calls [][]string
+	fakeWorktreeGit(t, func(args ...string) (string, error) {
+		calls = append(calls, append([]string(nil), args...))
+		if len(args) > 0 && args[0] == "rev-parse" {
+			return "feat/x\n", nil
+		}
+		return "", nil
+	})
+
+	err := runNewCmd(t, []string{"SPEC-FOO-001"}, map[string]string{
+		"from-current": "true",
+	})
+	if err != nil {
+		t.Fatalf("RunE: %v", err)
+	}
+
+	for _, c := range calls {
+		if len(c) >= 1 && c[0] == "fetch" {
+			t.Errorf("expected no `git fetch` when --from-current; observed: %v", c)
+		}
+	}
+}
+
+// TestNew_NoAskUserQuestion: static check — the CLI path must not import or
+// invoke AskUserQuestion. The orchestrator owns user interaction; the CLI
+// returns exit codes / writes audit trails only (agent-common-protocol).
+func TestNew_NoAskUserQuestion(t *testing.T) {
+	src, err := os.ReadFile("new.go")
+	if err != nil {
+		t.Fatalf("read new.go: %v", err)
+	}
+	if strings.Contains(string(src), "AskUserQuestion") {
+		t.Errorf("internal/cli/worktree/new.go must NOT reference AskUserQuestion (orchestrator-only HARD)")
 	}
 }
