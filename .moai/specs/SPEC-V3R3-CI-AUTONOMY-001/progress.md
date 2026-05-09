@@ -599,7 +599,7 @@
 - waves_total: 7 (Wave 1-7) + 1 follow-up fix
 - prs_merged: #785, #788, #790, #791, #792, #793, #794, #795
 - main_head_at_closure: 9ecd8c765 (PR #795 squash, BODP cwd leak fix)
-- ac_replay_window_active: 2026-05-09 → 2026-06-08 (30 days, AC-CIAUT-020 manual validation)
+- ac_replay_window_active: 2026-05-09 → 2026-06-08 (30 days, AC-CIAUT-020 manual validation, anchor PR #794 merged 2026-05-09T04:48:01Z UTC sha 02bed9c14, NOT PR #795 follow-up fix)
 - retrospective: .moai/reports/post-merge-validation/SPEC-V3R3-CI-AUTONOMY-001.md
 - closure_session_learnings:
   - sub-agent 1M context limit → main-session direct implementation (lesson #12 reinforcement)
