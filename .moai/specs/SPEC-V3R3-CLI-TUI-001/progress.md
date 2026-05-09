@@ -223,5 +223,49 @@
 - Open follow-ups (deferred to later milestones, not blocking M4):
   - banner.go L49 godoc/comments 영문 유지는 16-language neutrality 일관성 위함 (mx-tag-protocol L113 @MX 태그만 code_comments=ko 적용)
 
+### Phase 0.5: Plan Audit Gate (M4 entry) — CACHE HIT
 
+- Source cache: `.moai/reports/plan-audit/SPEC-V3R3-CLI-TUI-001-2026-05-09.md` (Run 1 of 1, verdict=PASS)
+- audit_cache_hit: true
+- cached_audit_at: 2026-05-09T08:18:37Z (~14h ago, within 24h window)
+- plan_artifact_hash carry-forward: `39d853cd40b5cae85a0a1ad94bc89ea6371454def0c20ca6c1167691cd21e095`
+- Hash match basis: M3 implementation (`f359a0fb2`) modified `internal/cli/banner.go` + tests + `pkg/version/version.go` only — outside SPEC artifact set; spec/plan/acceptance unchanged since cache write (`git diff origin/main HEAD -- spec/plan/acceptance = 0 lines`).
+- Decision: skip Step 3 plan-auditor re-invocation, proceed directly to Phase 1 per run.md Step 2.
+- M4 branch base: `feat/SPEC-V3R3-CLI-TUI-001-m4` (forked from `origin/main` after PR #807 admin squash merge at 2026-05-09T13:13:56Z).
+
+---
+
+## Phase 1: Analysis and Planning (M4 scope) — ENTRY
+
+- Phase 1 Strategy: plan.md §5 (M4) is the analysis output. Phase 0.5 cache HIT carry forward.
+- Phase 0.95 Mode: Standard Mode (4-step batch, single domain `internal/cli/`, ~10 source files + ~16 test files)
+- Methodology: DDD ANALYZE-PRESERVE-IMPROVE (committed per plan.md §1 milestone table, M4 row "DDD")
+- Phase 1.5 Task Decomposition (4-step from plan.md §5.1, §10):
+  - M4-S4a: version DDD (internal/cli/version.go + pkg/version/version.go getters + extended test) per ScreenVersion
+  - M4-S4b: doctor DDD (5 source + 4 test extend, D8 Placeholder warn + lesson NEW Go env override) per ScreenDoctor
+  - M4-S4c: status DDD (status.go only; statusline.go deferred to M6 R-07) per ScreenStatus
+  - M4-S4d: update DDD (86KB scope=print 함수만, single wave per user approval) per ScreenUpdate
+- Phase 1.6 AC Failing Checklist for M4:
+  - AC-CLI-TUI-013 (no hex literals outside `internal/tui/`) — M4 spans 4 commands; full coverage at M7
+  - AC-CLI-TUI-016 (global hex sweep) — M4 partial (4 commands); full coverage at M7
+  - AC-CLI-TUI-003 (doctor floor >=19 항목) — D8 Placeholder warn 유지로 floor 충족
+  - AC-CLI-TUI-001 (9 tui components + 4 commands integration)
+  - AC-CLI-TUI-011 (zero hand-drawn box chars in 4 commands)
+- Phase 1.7 Scaffolding: delegated to manager-ddd (per-step ANALYZE creates characterization tests)
+- Phase 1.8 MX Context Scan: required (existing files have callers — ANALYZE step performs grep per step)
+- Worktree isolation: NOT applied (main session cwd is already SPEC worktree `cli-tui-v2`; lessons #13 base mismatch 회피)
+
+### User Decisions (Phase 1.5 entry)
+
+- M4 plan: APPROVED — 4-step sequential DDD as planned
+- D8 (glamour cache): Placeholder warn 유지 — design source `screens.jsx:ScreenDoctor` 충실 재현, AC-003 floor 충족, 후속 SPEC에서 actual check 교체
+- update.go strategy: Single wave 4d, scope=print 함수만 (~10 print site만 변경, 86KB 본문 보존)
+
+### Surfaced Assumptions (Behavior 1)
+
+1. M3에서 도입된 `goVersion()` + `MOAI_GO_VERSION_OVERRIDE` env override 패턴이 lesson NEW의 canonical reference. M4-S4b doctor.go L154 `runtime.Version()`도 동일 패턴 적용 (banner.go L36-44 mirror).
+2. `claudeVersion()` 패턴 (CLAUDE_CODE_VERSION env fallback "claude")도 doctor에서 사용하는 Claude Code 검사 항목에 동일 적용.
+3. Each step의 4-command 외부 caller (root.go, init.go 등)는 변경 금지 — public signature 보존.
+4. Golden snapshot 명명 규칙: `internal/cli/testdata/{cmd}-{theme}-{nocolor?}.golden` (M3 banner-* 동일 컨벤션).
+5. M4 전체 PR 1건 (4-step git commit 4개 + final golden snapshot commit) — Wave-split per lessons #9.
 
