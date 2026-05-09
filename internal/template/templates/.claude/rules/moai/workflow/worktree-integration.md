@@ -290,11 +290,16 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ## SPEC-to-Worktree Mapping
 
-| SPEC Phase | Worktree Type | Location |
-|------------|--------------|----------|
-| Plan | Claude Native | `.claude/worktrees/` (ephemeral) |
-| Run | MoAI | `~/.moai/worktrees/{Project}/{SPEC}/` |
-| Sync | MoAI | Same as Run phase |
+[HARD] Per-step worktree applicability is governed by `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (canonical source). This table summarizes the mapping for quick reference; on conflict, spec-workflow.md wins.
+
+| Step | Phase   | Worktree?                | Location                              | Lifecycle event              |
+|------|---------|--------------------------|---------------------------------------|------------------------------|
+| 1    | Plan    | **NO** (main checkout)   | n/a — `plan/SPEC-XXX` branch on main  | plan PR merged               |
+| 2    | Run     | **YES** (MoAI worktree)  | `~/.moai/worktrees/{project}/{SPEC}/` | run PR merged                |
+| 3    | Sync    | **YES** — same as Step 2 | same path as Step 2 (do NOT recreate) | sync PR merged               |
+| 4    | Cleanup | n/a                      | host checkout                         | `moai worktree done SPEC-XXX` |
+
+[HARD] Disposal contract: `moai worktree done SPEC-XXX` MUST run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
 
 ## Team Protocol
 

@@ -16,6 +16,30 @@ MoAI's three-phase development workflow with token budget management.
 
 <!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
 
+## SPEC Phase Discipline
+
+[HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location (main checkout vs SPEC worktree), branch convention, and PR merge strategy.
+
+| Step | Location        | Command                                                                 | Branch                                       | PR strategy | Lifecycle event              |
+|------|-----------------|-------------------------------------------------------------------------|----------------------------------------------|-------------|------------------------------|
+| 1    | main checkout   | `/moai plan SPEC-XXX`                                                   | `plan/SPEC-XXX`                              | squash      | plan PR merged into main     |
+| 2    | SPEC worktree   | `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX` | `feat/SPEC-XXX`                              | squash      | run PR merged into main      |
+| 3    | SPEC worktree   | `/moai sync SPEC-XXX` (same worktree as Step 2)                         | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`)   | squash      | sync PR merged into main     |
+| 4    | host checkout   | `moai worktree done SPEC-XXX`                                           | n/a                                          | n/a         | worktree disposed            |
+
+[HARD] Step ordering rules:
+- Step 1 (plan) MUST execute in main checkout. NO worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
+- Step 2 (run) MUST create a fresh worktree from the plan-merged main HEAD (`--base origin/main`). The worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
+- Step 3 (sync) MUST reuse the SAME worktree as Step 2. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh worktree at sync would lose run-state context.
+- Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3.
+
+[HARD] Anti-patterns:
+- Creating a worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
+- Stacking plan + run in the same worktree. Once the plan PR merges, the worktree base becomes stale; subsequent run work either rebases (extra cost) or proceeds against a stale tree (correctness risk).
+- Disposing the worktree after run merge but before sync merge. Sync re-enters the tree with codemap / MX / docs writes; the host checkout cannot stand in for a disposed worktree.
+
+Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SPEC-to-Worktree Mapping for per-step worktree applicability and decision tree.
+
 ## Subcommand Classification (Pipeline vs Multi-Agent)
 
 Source: SPEC-V3R2-WF-004. Each MoAI subcommand is classified along the
@@ -85,6 +109,8 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 ## Plan Phase
 
+[HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
+
 Create comprehensive specification using EARS format.
 
 Sub-phases:
@@ -106,6 +132,8 @@ Output:
 - Technical approach
 
 ## Run Phase
+
+[HARD] Execute in a fresh SPEC worktree created at run start: `moai worktree new SPEC-XXX --base origin/main`. See § SPEC Phase Discipline (Step 2).
 
 Implement specification using configured development methodology.
 
@@ -199,6 +227,8 @@ Integration: Referenced by run.md Phase 2.7 and loop.md iteration checks
 
 ## Sync Phase
 
+[HARD] Continue in the SAME SPEC worktree as run. Do NOT create a new worktree. See § SPEC Phase Discipline (Step 3).
+
 Generate documentation and prepare for deployment.
 
 Token Strategy:
@@ -233,9 +263,9 @@ Progressive Disclosure:
 ## Phase Transitions
 
 Plan to Run:
-- Trigger: SPEC document approved (annotation cycle completed, user confirmed "Proceed")
-- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md
-- Action: Execute /clear, then /moai run SPEC-XXX
+- Trigger: Plan PR merged into main (squash) AND SPEC document approved (annotation cycle completed, user confirmed "Proceed")
+- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; plan PR is in MERGED state
+- Action: Execute /clear, then `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the worktree
 - Gate: `/moai run` Phase 0.5 (Plan Audit Gate) executes automatically before any implementation.
   See "Phase 0.5: Plan Audit Gate" section below for details.
 
@@ -273,8 +303,14 @@ not blocking. After grace window expires, FAIL verdicts block Phase 1 unconditio
 Grace window start: `.moai/state/audit-gate-merge-at.txt` (ISO-8601 timestamp).
 
 Run to Sync:
-- Trigger: Implementation complete, tests passing
-- Action: Execute /moai sync SPEC-XXX
+- Trigger: Run PR merged into main, tests passing
+- Action: Execute `/moai sync SPEC-XXX` in the SAME worktree as run (do NOT create a new worktree)
+
+Sync to Cleanup:
+- Trigger: Sync PR merged into main
+- Pre-condition: BOTH run PR AND sync PR are in MERGED state (verify via `gh pr view <PR>`)
+- Action: `moai worktree done SPEC-XXX` (executed from host checkout, not from inside the worktree)
+- See § SPEC Phase Discipline (Step 4)
 
 ## Agent Teams Variant
 
