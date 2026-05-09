@@ -208,6 +208,73 @@ func TestRelatedness_SignalsAandC_RecommendsStacked(t *testing.T) {
 	}
 }
 
+// TestExtractFrontmatter covers the YAML frontmatter slicing edge cases.
+func TestExtractFrontmatter(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		want string
+		ok   bool
+	}{
+		{
+			name: "valid frontmatter",
+			raw:  "---\nid: SPEC-X\ndepends_on: [SPEC-Y]\n---\n# body\n",
+			want: "id: SPEC-X\ndepends_on: [SPEC-Y]",
+			ok:   true,
+		},
+		{
+			name: "no leading delimiter",
+			raw:  "# just a body\nid: SPEC-X\n",
+			ok:   false,
+		},
+		{
+			name: "no closing delimiter",
+			raw:  "---\nid: SPEC-X\n",
+			ok:   false,
+		},
+		{
+			name: "CRLF line endings normalize",
+			raw:  "---\r\nid: SPEC-X\r\n---\r\n# body\r\n",
+			want: "id: SPEC-X",
+			ok:   true,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, ok := extractFrontmatter([]byte(c.raw))
+			if ok != c.ok {
+				t.Fatalf("ok = %t, want %t", ok, c.ok)
+			}
+			if c.ok && string(got) != c.want {
+				t.Errorf("frontmatter = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestParseDependsOn_FileMissing covers the missing-file error path.
+func TestParseDependsOn_FileMissing(t *testing.T) {
+	repoRoot := t.TempDir()
+	if _, err := parseDependsOn(repoRoot, "SPEC-NONE-001"); err == nil {
+		t.Fatalf("expected error for missing spec file, got nil")
+	}
+}
+
+// TestParseDependsOn_NoFrontmatter covers the missing-frontmatter error path.
+func TestParseDependsOn_NoFrontmatter(t *testing.T) {
+	repoRoot := t.TempDir()
+	dir := filepath.Join(repoRoot, ".moai", "specs", "SPEC-PLAIN-001")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "spec.md"), []byte("# title only\nbody\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if _, err := parseDependsOn(repoRoot, "SPEC-PLAIN-001"); err == nil {
+		t.Fatalf("expected error for missing frontmatter, got nil")
+	}
+}
+
 // TestRelatedness_GhCommandUnavailable_GracefulSkip: gh missing → SignalC=false
 // without aborting Check; other signals still evaluated normally.
 func TestRelatedness_GhCommandUnavailable_GracefulSkip(t *testing.T) {

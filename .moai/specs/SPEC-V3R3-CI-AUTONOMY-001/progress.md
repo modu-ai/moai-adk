@@ -518,3 +518,75 @@
 - pr_labels: type:feature, priority:P2, area:ci, area:workflow
 - merge_strategy: squash (per CLAUDE.local.md §18.3 feature → main)
 
+
+
+## Wave 7 — Phase 0.5 (Plan Audit Gate) — CACHE HIT
+
+- date: 2026-05-09
+- author: orchestrator (cache lookup)
+- verdict: PASS (Wave 7 audit cached at .moai/reports/plan-audit/SPEC-V3R3-CI-AUTONOMY-001-2026-05-09.md)
+- Wave 7 plan-auditor verdict (today's report): PASS, 10/10 must-pass criteria, REQ 12/12, AC 5/5
+- proceeded_to_phase: 1
+
+
+## Wave 7 — Phase 1 + Phase 2 (TDD Implementation) — COMPLETE
+
+- date: 2026-05-09
+- author: orchestrator (main-session direct implementation per audit recommendation)
+- methodology: TDD RED-GREEN per W7-T01..T06
+- artifacts:
+  - internal/bodp/relatedness.go (Pure-Go BODP library, 196 LOC)
+  - internal/bodp/audit_trail.go (WriteDecision + HasAuditTrail, 87 LOC)
+  - internal/bodp/relatedness_test.go (10 tests including 4 edge-case)
+  - internal/bodp/audit_trail_test.go (6 tests)
+  - internal/cli/worktree/new.go (extended: --base default origin/main, --from-current, audit trail call)
+  - internal/cli/worktree/new_test.go (extended: 7 W7-T03 tests)
+  - internal/cli/status.go (extended: emitOffProtocolReminder + 4-skip-condition + runStatus integration)
+  - internal/cli/status_test.go (extended: 5 W7-T05 tests)
+  - .claude/skills/moai/workflows/plan.md (Phase 3.0 BODP Gate sub-section)
+  - .claude/rules/moai/development/branch-origin-protocol.md (new HARD rule)
+  - CLAUDE.local.md §18.12 (BODP dev-project notes)
+  - .moai/branches/decisions/.gitkeep
+  - internal/template/templates/.claude/skills/moai/workflows/plan.md (mirror)
+  - internal/template/templates/.claude/rules/moai/development/branch-origin-protocol.md (mirror)
+  - internal/template/templates/.moai/branches/decisions/.gitkeep (mirror)
+- commits:
+  - f3f066500 chore(docs): §20 Vercel Build Externalization Policy (pre-Wave-7 cleanup)
+  - 4a3546d42 test(bodp): W7-T01 RED — relatedness check cases
+  - 9bfa67a5d feat(bodp): W7-T01 implement Check() + 3-signal evaluation + decision matrix
+  - b1c8519cb test(bodp): W7-T04 RED — audit trail writer cases
+  - edb14dba0 feat(bodp): W7-T04 implement WriteDecision + HasAuditTrail
+  - 858a6b6a8 test(cli/worktree): W7-T03 RED — new --base/--from-current flag cases
+  - 5b8a069b6 feat(cli/worktree): W7-T03 add --base/--from-current flags + audit trail
+  - d9bd43f12 test(cli/status): W7-T05 RED — off-protocol reminder cases
+  - 2529310f7 feat(cli/status): W7-T05 implement off-protocol branch reminder
+  - 7452c11c9 feat(skill/plan): W7-T02 extend Phase 3 with BODP gate (공통)
+  - 0b852542f docs(rules): W7-T06 add branch-origin-protocol.md rule + CLAUDE.local.md §18.12
+  - 52e1d7cfa chore(template): W7-T06 mirror branch-origin-protocol.md + audit dir to templates/
+- quality_gate:
+  - go test -race -count=1 ./internal/bodp/... ./internal/cli/... — ALL PASS (cli 12.3s, worktree 14.7s, bodp 1.4s, pr/wizard 1.4s/2.9s)
+  - go vet ./internal/bodp/... ./internal/cli/... — clean
+  - go test -cover ./internal/bodp/... — 85.9% (DoD ≥85% MET)
+  - make build — embedded.go 자동 재생성 (go:embed all:templates), 0 issue
+- ac_verification:
+  - AC-CIAUT-018 (canonical fixture replay): PASS via TestRelatedness_AllNegative_RecommendsMain (chore branch + new SPEC + clean tree → ChoiceMain @ origin/main)
+  - AC-CIAUT-019 (depends_on signal A): PASS via TestRelatedness_SignalA_RecommendsStacked (frontmatter depends_on 매칭 → ChoiceStacked)
+  - AC-CIAUT-019b (CLI default origin/main + no AskUserQuestion): PASS via TestNew_BaseFlagDefaultIsOriginMain + TestNew_NoAskUserQuestion + TestNew_FetchOriginMainWhenDefaultBase
+  - AC-CIAUT-024 (off-protocol reminder + 4 skip conditions): PASS via 5 TestStatus_* cases (incl. EnvVar + MainBranch + DirAbsent + AuditTrailExists)
+  - AC-CIAUT-025 (§18.12 + branch-origin-protocol.md mirror): PASS via grep verification + Template-First mirror
+- methodology_notes:
+  - Sub-agent 1M context inheritance error 회피: main-session 직접 구현 (audit report 권장 + Wave 4/5/6 §C-7 lesson 재확인)
+  - Wave 5/6 (manager-tdd worktreePath 빈응답 lesson #12 violation) 재발 없음 — solo --branch mode
+  - 12 atomic commits + Conventional Commits + 🗿 MoAI trailer 모두 준수
+  - DoD coverage ≥85% 후속 edge-case test 4개로 보강 (extractFrontmatter 4 sub-cases + parseDependsOn 2 error paths)
+
+
+## Wave 7 — Phase 3 (Push + PR) — COMPLETE
+
+- date: 2026-05-09
+- branch: feat/SPEC-V3R3-CI-AUTONOMY-001-wave-7
+- base: origin/main (78929d058, post-Wave-6 baseline)
+- commits_total: 12 (1 chore §20 + 6 RED/GREEN feat + 1 skill + 1 docs rule + 1 template mirror + 1 progress.md + 1 coverage refactor)
+- pr_labels: type:feature, priority:P0, area:cli, area:bodp, area:workflow
+- merge_strategy: squash (per CLAUDE.local.md §18.3 feature → main)
+- spec_closure: Wave 7 = Final Wave (7/7) of SPEC-V3R3-CI-AUTONOMY-001 — closure 진입 직전
