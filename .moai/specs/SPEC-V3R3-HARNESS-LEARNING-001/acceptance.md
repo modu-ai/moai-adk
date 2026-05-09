@@ -28,9 +28,10 @@ All acceptance scenarios use Given-When-Then format. Each AC explicitly referenc
 **Given** `.moai/harness/usage-log.jsonl` contains 4 prior events for pattern `subcommand:/moai design`,
 **When** a 5th matching event is recorded and the learner runs,
 **Then**:
-- `.moai/harness/learning-history/tier-promotions.jsonl` gains one line with `from_tier: "rule"` and `to_tier: "rule"` (or `from_tier: "heuristic"`, `to_tier: "rule"` if the prior tier was heuristic).
+- `.moai/harness/learning-history/tier-promotions.jsonl` gains one line with `from_tier: "heuristic"` and `to_tier: "rule"` (promotion from Tier 2 to Tier 3 at 5th observation).
 - At Tier 2 (3rd observation), only the `description` field of the matching `.claude/skills/my-harness-*/SKILL.md` frontmatter changed; body is byte-identical.
 - The description change is a single appended line prefixed with `# heuristic:`.
+- **Verification note** (2026-05-10): Tier progression verified against PR #728 implementation. Pattern reaches Tier 2 at 3 observations (promotes description), Tier 3 at 5 observations (promotes triggers), Tier 4 at 10 observations (surfaces proposal).
 
 ### Edge Cases
 - Pattern with confidence below 0.70 → remains classified as Observation regardless of count (verified by injecting a low-confidence pattern with 5+ events).

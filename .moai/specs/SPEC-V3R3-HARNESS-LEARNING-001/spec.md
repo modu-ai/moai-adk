@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-HARNESS-LEARNING-001
 title: Self-Learning Dynamic Harness — User-area Auto-Evolution from Activity Signals
-version: "0.1.0"
-status: draft
+version: "1.0.0"
+status: implemented
 created: 2026-04-26
-updated: 2026-04-26
+updated: 2026-05-10
 author: manager-spec
 priority: P1 High
 phase: "v3.0.0 R3 — Phase D — Adaptive Harness"
@@ -20,8 +20,9 @@ bc_id: []
 lifecycle: spec-anchored
 tags: "harness, learning, adaptive, auto-evolution, frozen-guard, user-area, observer, v3r3, phase-d"
 related_theme: "Phase D — Adaptive Harness"
-target_release: v2.17.0
+target_release: v2.19.0
 issue_number: null
+implemented_pr: 728
 ---
 
 # SPEC-V3R3-HARNESS-LEARNING-001: Self-Learning Dynamic Harness
@@ -30,6 +31,7 @@ issue_number: null
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 1.0.0   | 2026-05-10 | manager-docs | Status implemented (PR #728 merged); sync cleanup applied. All 5 phases (Observer + Tier Classifier + 5-Layer Safety + CLI + Integration Tests) complete and merged. target_release updated v2.17.0 → v2.19.0 per plan-auditor finding. |
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. Phase D P1 — User-area dynamic harness self-learning from activity signals (PostToolUse-driven). |
 
 ---
@@ -130,9 +132,13 @@ The system **shall** record every `/moai` subcommand invocation, agent invocatio
 
 **When** the system prepares to apply a Tier 3 or Tier 4 change, it **shall** shadow-evaluate the proposed change against the most recent 3 sessions in `.moai/harness/usage-log.jsonl` and **shall** reject the change if the projected effectiveness score drops by more than 0.10 versus baseline. Rejection events **shall** be logged with rationale.
 
-### REQ-HL-008 (Event-Driven — Contradiction Detector + Rate Limiter)
+### REQ-HL-008a (Event-Driven — Contradiction Detector)
 
-**When** a proposed auto-update conflicts with an existing user customization (defined as overlapping trigger keywords or contradictory chaining rules), the system **shall** flag both versions and surface them via `AskUserQuestion` rather than silently overriding. Independently, the system **shall** enforce a maximum of 3 auto-updates per 7-day window with a minimum 24-hour cooldown between updates.
+**When** a proposed auto-update conflicts with an existing user customization (defined as overlapping trigger keywords or contradictory chaining rules), the system **shall** flag both versions and surface them via `AskUserQuestion` rather than silently overriding.
+
+### REQ-HL-008b (Event-Driven — Rate Limiter)
+
+**When** attempting an auto-update, the system **shall** enforce a maximum of 3 auto-updates per 7-day window with a minimum 24-hour cooldown between updates.
 
 ### REQ-HL-009 (Ubiquitous — CLI Subcommand)
 
@@ -159,13 +165,13 @@ The system **shall** read all learning behavior parameters from `.moai/config/se
 | AC-01 | REQ-HL-001 |
 | AC-02 | REQ-HL-002, REQ-HL-003 |
 | AC-03 | REQ-HL-004 |
-| AC-04 | REQ-HL-005, REQ-HL-008 (rate limit + human gate) |
+| AC-04 | REQ-HL-005, REQ-HL-008b (rate limit + human gate) |
 | AC-05 | REQ-HL-006 (Frozen Guard) |
-| AC-06 | REQ-HL-007 (Canary), REQ-HL-008 (Contradiction) |
+| AC-06 | REQ-HL-007 (Canary), REQ-HL-008a (Contradiction) |
 | AC-07 | REQ-HL-009 (CLI) |
 | AC-08 | REQ-HL-010, REQ-HL-011 (Config + Retention) |
 
-Coverage: 11 REQs ↔ 8 ACs, 100% (every REQ appears in at least one AC).
+Coverage: 12 REQs (REQ-HL-001~011 + REQ-HL-008a/b split) ↔ 8 ACs, 100% (every REQ appears in at least one AC).
 
 ---
 
@@ -211,4 +217,6 @@ Coverage: 11 REQs ↔ 8 ACs, 100% (every REQ appears in at least one AC).
 - **Tier**: Confidence classification (Observation 1x, Heuristic 3x, Rule 5x, Auto-update 10x).
 - **Frozen Guard**: Layer 1 of safety architecture — path-based write blocker.
 - **Canary Check**: Layer 2 — shadow-evaluation against recent sessions.
+- **Contradiction Detector**: Layer 3 — conflict detection for trigger keywords and chaining rules (REQ-HL-008a).
+- **Rate Limiter**: Layer 4 — sliding-window enforcer for auto-update frequency (REQ-HL-008b).
 - **Pattern**: Unique combination of (event_type, subject, context_hash) used as the observation key.

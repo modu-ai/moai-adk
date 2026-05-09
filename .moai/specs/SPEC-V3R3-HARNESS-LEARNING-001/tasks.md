@@ -123,14 +123,14 @@ Task ID format: `T-P{phase}-{NN}` where `{phase}` is the phase number (1-5) and 
 
 ### T-P3-04: Implement L3 Contradiction Detector
 - **Type**: Implementation
-- **REQ-IDs**: REQ-HL-008
+- **REQ-IDs**: REQ-HL-008a (Contradiction Detector)
 - **Dependencies**: T-P2-05
 - **Output**: `internal/harness/safety/contradiction.go` detects (a) overlapping trigger keywords across skills, (b) contradictory chaining-rules entries. Returns `ContradictionReport` for surfacing via L5.
 - **Done when**: Unit test with crafted overlapping triggers returns report; non-conflicting case returns empty report.
 
 ### T-P3-05: Implement L4 Rate Limiter
 - **Type**: Implementation
-- **REQ-IDs**: REQ-HL-008 (rate dimension)
+- **REQ-IDs**: REQ-HL-008b (Rate Limiter)
 - **Dependencies**: None
 - **Output**: `internal/harness/safety/rate_limit.go` sliding-window counter persisted to `.moai/harness/learning-history/rate-limit-state.json`. Functions: `CheckLimit() (allowed bool, retryAfter time.Duration)`, `RecordUpdate()`.
 - **Done when**: Unit test verifies max 3 updates per 7-day window + 24h cooldown between updates; persistence survives process restart.
@@ -144,7 +144,7 @@ Task ID format: `T-P{phase}-{NN}` where `{phase}` is the phase number (1-5) and 
 
 ### T-P3-07: Compose safety pipeline
 - **Type**: Implementation
-- **REQ-IDs**: REQ-HL-005, REQ-HL-006, REQ-HL-007, REQ-HL-008
+- **REQ-IDs**: REQ-HL-005, REQ-HL-006, REQ-HL-007, REQ-HL-008a, REQ-HL-008b
 - **Dependencies**: T-P3-01 through T-P3-06
 - **Output**: `internal/harness/safety/pipeline.go` `Evaluate(proposal Proposal) (Decision, error)` runs L1 → L2 → L3 → L4 → L5 in order, short-circuits on rejection.
 - **Done when**: Integration test with synthetic proposal exercises all 5 layers in correct order; ordering enforced by test (mock layer counters).
@@ -331,9 +331,10 @@ Task ID format: `T-P{phase}-{NN}` where `{phase}` is the phase number (1-5) and 
 | REQ-HL-005 | T-P3-06, T-P3-07, T-P3-08, T-P4-01, T-P4-03, T-P5-03 |
 | REQ-HL-006 | T-P3-01, T-P3-02, T-P3-08, T-P5-04 |
 | REQ-HL-007 | T-P3-03, T-P3-08 |
-| REQ-HL-008 | T-P3-04, T-P3-05, T-P3-06, T-P3-07, T-P3-08, T-P5-05 |
+| REQ-HL-008a | T-P3-04, T-P3-07, T-P3-08 |
+| REQ-HL-008b | T-P3-05, T-P3-07, T-P3-08, T-P5-05 |
 | REQ-HL-009 | T-P4-02, T-P4-03, T-P4-04, T-P4-05, T-P4-09, T-P5-06, T-P5-08 |
 | REQ-HL-010 | T-P4-05, T-P4-07, T-P4-08, T-P5-07, T-P5-08 |
 | REQ-HL-011 | T-P1-04, T-P1-05 |
 
-Coverage: 11/11 REQ-IDs mapped to ≥1 task each (100%).
+Coverage: 12/12 REQ-IDs (REQ-HL-001~011 + REQ-HL-008a/b split) mapped to ≥1 task each (100%).
