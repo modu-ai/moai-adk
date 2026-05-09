@@ -376,22 +376,28 @@ func TestRunNew_WithTmuxFlag_TmuxAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
+			// Arrange: isolate cwd and gitRepoRootFunc to prevent BODP audit
+			// trail from leaking into the package directory.
+			// See: BODP audit trail cwd leak fix (SPEC-V3R3-CI-AUTONOMY-001 Wave 7).
 			tempDir := t.TempDir()
+			t.Chdir(tempDir)
 
 			// Set up mock functions
 			oldUserHomeDirFunc := userHomeDirFunc
 			oldGetProjectNameFunc := getProjectNameFunc
 			oldIsTmuxAvailableFunc := isTmuxAvailableFunc
+			oldGitRepoRoot := gitRepoRootFunc
 			defer func() {
 				userHomeDirFunc = oldUserHomeDirFunc
 				getProjectNameFunc = oldGetProjectNameFunc
 				isTmuxAvailableFunc = oldIsTmuxAvailableFunc
+				gitRepoRootFunc = oldGitRepoRoot
 			}()
 
 			userHomeDirFunc = func() (string, error) { return tempDir, nil }
 			getProjectNameFunc = func() string { return "test-project" }
 			isTmuxAvailableFunc = func() bool { return tt.tmuxAvailable }
+			gitRepoRootFunc = func() (string, error) { return tempDir, nil }
 
 			mockProvider, cleanup := setupMockProvider(t)
 			defer cleanup()
@@ -436,22 +442,28 @@ func TestRunNew_TmuxNotAvailable_GracefulDegradation(t *testing.T) {
 	// This test verifies that when --tmux flag is set but tmux is unavailable,
 	// worktree is still created and manual instructions are printed
 
-	// Arrange
+	// Arrange: isolate cwd and gitRepoRootFunc to prevent BODP audit trail
+	// from leaking into the package directory.
+	// See: BODP audit trail cwd leak fix (SPEC-V3R3-CI-AUTONOMY-001 Wave 7).
 	tempDir := t.TempDir()
+	t.Chdir(tempDir)
 	specID := "SPEC-TEST-001"
 
 	oldUserHomeDirFunc := userHomeDirFunc
 	oldGetProjectNameFunc := getProjectNameFunc
 	oldIsTmuxAvailableFunc := isTmuxAvailableFunc
+	oldGitRepoRoot := gitRepoRootFunc
 	defer func() {
 		userHomeDirFunc = oldUserHomeDirFunc
 		getProjectNameFunc = oldGetProjectNameFunc
 		isTmuxAvailableFunc = oldIsTmuxAvailableFunc
+		gitRepoRootFunc = oldGitRepoRoot
 	}()
 
 	userHomeDirFunc = func() (string, error) { return tempDir, nil }
 	getProjectNameFunc = func() string { return "test-project" }
 	isTmuxAvailableFunc = func() bool { return false } // tmux unavailable
+	gitRepoRootFunc = func() (string, error) { return tempDir, nil }
 
 	mockProvider, cleanup := setupMockProvider(t)
 	defer cleanup()

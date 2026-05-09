@@ -66,8 +66,19 @@ func (m *mockWorktreeManager) Root() string {
 // --- Tests for runNew ---
 
 func TestRunNew_Success(t *testing.T) {
+	// Isolate cwd and gitRepoRootFunc so that writeWorktreeAuditTrail does not
+	// leak audit trail files into the package directory.
+	// See: BODP audit trail cwd leak fix (SPEC-V3R3-CI-AUTONOMY-001 Wave 7).
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
 	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
+	origGitRepoRoot := gitRepoRootFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		gitRepoRootFunc = origGitRepoRoot
+	}()
+	gitRepoRootFunc = func() (string, error) { return tmpDir, nil }
 
 	var capturedPath, capturedBranch string
 	WorktreeProvider = &mockWorktreeManager{
@@ -108,8 +119,18 @@ func TestRunNew_Success(t *testing.T) {
 }
 
 func TestRunNew_AddError(t *testing.T) {
+	// Isolate cwd and gitRepoRootFunc to prevent audit trail from leaking
+	// into the package directory when runNew is invoked with a failing Add.
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
 	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
+	origGitRepoRoot := gitRepoRootFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		gitRepoRootFunc = origGitRepoRoot
+	}()
+	gitRepoRootFunc = func() (string, error) { return tmpDir, nil }
 
 	WorktreeProvider = &mockWorktreeManager{
 		addFunc: func(_, _ string) error {
