@@ -276,13 +276,43 @@
 | M4-S4a version | `04bd7a6ab` | ✅ COMPLETE | 3 golden + tui.Box + 3 Pill, hex 0건 |
 | M4-S4b doctor | `f01c1dc9e` | ✅ COMPLETE | 19항목 CheckLine + D8 Placeholder + lesson NEW (goVersion 헬퍼) |
 | M4-S4c status | `395920756` | ✅ COMPLETE | Box + Section + KV + Pill, M6 영역 0 변경 |
-| M4-S4d update | (deferred) | 🛑 SUB-SPLIT REQUIRED | 1M context 환경 차단 — 다음 세션에서 d-1/d-2/d-3 sub-split 진행 |
+| M4-S4d update | (sub-split) | 🟡 IN PROGRESS | 4d-1 ✅ direct, 4d-2/4d-3 다음 — sub-table 참조 |
 
-### M4-S4d Environment Block (다음 세션 진입 컨텍스트)
+#### M4-S4d Sub-table (orchestrator direct execution per lessons #15)
 
-**원인**: manager-ddd subagent spawn 시 `API Error: Extra usage is required for 1M context` 3회 연속 발생. parent session(claude-opus-4-7[1m])이 spawned subagent에 1M context를 자동 inherit 시도하나 환경 활성화 안 됨. sonnet override + sub-split 모두 동일 에러.
+| Sub-step | Region | Commit | Status | Print sites | Cascade fix |
+|---------|--------|--------|--------|-------------|-------------|
+| M4-S4d-1 | update.go L102-373 (runUpdate + binary update + reexec) | (pending commit) | ✅ DIRECT | 16 sites → 13 KV/CheckLine/Pill | coverage_improvement_test.go × 3 |
+| M4-S4d-2 | update.go L375-1175 (runTemplateSync* + merge + analyze) | — | ⏸️ PENDING | ~50 sites estimated | TBD |
+| M4-S4d-3 | update.go L1176-end + update_archive.go (cleanup + restore + wizard) | — | ⏸️ PENDING | ~30+4 sites | TBD |
+| M4-S4d cleanup | golden snapshots + helpers cleanup (cliSuccess/cliWarn 제거) | — | ⏸️ PENDING | testdata/update-{light,dark,nocolor}.golden | — |
 
-**복구 결정**: User chose Paste-ready resume + 다음 세션 (session-handoff.md Trigger #4 공식 패턴).
+**M4-S4d-1 ANALYZE/PRESERVE/IMPROVE summary** (2026-05-10):
+- ANALYZE: tui 패키지 시그니처(Box/KV/CheckLine/Pill/StatusIcon) 확인, version.go(M4-S4a)/doctor.go(M4-S4b)/status.go(M4-S4c) IMPROVE 패턴 참조, update_test.go assertion 의존성 매핑.
+- PRESERVE: 베이스라인 테스트 PASS 확인 (`go test ./internal/cli/... -run TestUpdate` 0.479s).
+- IMPROVE: import에 `internal/tui` 추가 + `resolveTheme()` 헬퍼 활용. runUpdate(L102-255) 13 sites + runBinaryUpdateStep(L290-332) 3 sites = 총 16 sites 변환. @MX:NOTE 2개 추가. 외부 caller(root.go, init.go) 무영향, public signature 보존.
+- 검증: `go vet ./...` PASS, `go build ./...` PASS, `go test ./... -count=1` 전체 PASS, 4d-1 region (L102-373) hex literal 0건 (AC-CLI-TUI-013 부분 충족).
+- Cascade fix: coverage_improvement_test.go L3640/L3672/L5231 — substring assertion 3건 새 출력 형식에 맞게 변경 ("Update checker not available" → "Update checker" + "not available", "Binary update skipped" → "Skipped" + "--binary"). 11 update_*_test.go 본체 어느 것도 수정 불요.
+- 환경 컨텍스트: manager-ddd subagent 1M context 차단 4회 누적 → user-approved direct execution bypass. lesson #15 등록.
+
+### M4-S4d Environment Block (4-attempt incident + bypass 결정)
+
+**원인**: manager-ddd subagent spawn 시 `API Error: Extra usage is required for 1M context` **누적 4회** 발생.
+- Attempt #1-3 (이전 세션 2026-05-09): single-wave + sonnet override + sub-split (1.5KB prompt) — 모두 reject.
+- Attempt #4 (본 세션 2026-05-10): paste-ready resume의 precondition #4 (`/model standard 또는 /extra-usage 활성화 확인`)를 사용자가 자가 보고했으나 동일 reject (`tool_uses: 0`, `total_tokens: 0`, `duration_ms: 367ms`).
+
+**근본 원인** (5 Whys):
+1. parent session model = `claude-opus-4-7[1m]` (suffix `[1m]`) → 런타임이 child Agent() 호출에 1M context flag 자동 inheritance.
+2. Anthropic 계정 측 `/extra-usage` feature flag 미활성 → billing/entitlement reject (토큰 처리 전).
+3. `Agent({model: "sonnet"})` override 도 inheritance bypass 못함 (Claude Code v2.1.x runtime 가설).
+4. precondition 자가 보고는 검증 메커니즘 부재 → 약속과 실제 환경 상태가 괴리.
+5. ROOT: 1M context model 사용 시 subagent spawn 정책 불투명 + orchestrator/사용자 양쪽 검증 부재.
+
+**복구 결정** (Attempt #4): User-approved direct execution bypass (HARD §16 일회성 면제, `AskUserQuestion(2026-05-10)` 응답 기록). orchestrator가 4d-1/4d-2/4d-3 + Phase 2.5/2.8a/2.9 직접 수행.
+
+**Lesson 등록**: `lessons.md #15` — "1M context subagent inheritance block — pre-spawn probe 의무화" (5-Layer Defense + Mitigation Cascade + Anti-patterns 명시). 후속 SPEC `SPEC-V3R3-1M-PROBE-001` (deferred, plan은 별도 세션에서).
+
+**Sub-split 분할** (4-attempt 무관, 직접 실행으로 동일 분할 적용):
 
 **Sub-split 분할** (다음 세션에서 manager-ddd 표준 context로 처리):
 - **M4-S4d-1**: update.go L102-373 (runUpdate + shouldSkipBinaryUpdate + runBinaryUpdateStep + reexecNewBinary). ~18 print sites, ~80 LOC change estimated. tui.Box header + tui.KV pre-flight + tui.CheckLine binary progress + tui.Pill result.

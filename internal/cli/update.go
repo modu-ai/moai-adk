@@ -31,6 +31,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -86,6 +87,11 @@ func init() {
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
 // @MX:REASON: [AUTO] fan_in=3, called from update.go init(), coverage_test.go, remaining_coverage_test.go
+// @MX:NOTE: [AUTO] M4-S4d-1 DDD 마이그레이션 — 18개 print site를 tui primitives로 변환.
+// 패턴: tui.KV (Current/Latest/New version), tui.CheckLine (warn/run/err 상태), tui.Pill
+// (Binary updated · Already up to date · Skipped 등 final outcome). 본문 보존, 외부 caller
+// 무영향. 디자인 소스: screens.jsx ScreenUpdate (M4-S4a~c IMPROVE 패턴 mirror).
+//
 // runUpdate checks for binary updates first, then synchronizes embedded
 // templates with the project directory. If a newer binary is installed,
 // the process re-execs itself so the latest templates are used.
@@ -106,6 +112,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	binaryOnly := getBoolFlag(cmd, "binary")
 	templatesOnly := getBoolFlag(cmd, "templates-only")
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 
 	// Validate mutually exclusive flags
 	if binaryOnly && templatesOnly {
@@ -137,7 +144,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	}
 
 	currentVersion := version.GetVersion()
-	_, _ = fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
+	_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
 
 	// Handle shell-env mode
 	if shellEnv {
@@ -154,7 +161,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 
 		if deps == nil || deps.UpdateChecker == nil {
-			_, _ = fmt.Fprintln(out, "Update checker not available. Using current version.")
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Update checker", "not available", "using current version", &th))
 			return nil
 		}
 
@@ -165,8 +172,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("check latest version: %w", err)
 		}
-		_, _ = fmt.Fprintf(out, "Latest version:  %s\n", info.Version)
-		_, _ = fmt.Fprintln(out, "\nNote: Binary updates happen automatically at session start.")
+		_, _ = fmt.Fprintln(out, tui.KV("Latest version", info.Version, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "Note", "Binary updates happen automatically at session start", "", &th))
 		return nil
 	}
 
@@ -175,30 +183,30 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		updated, err := runBinaryUpdateStep(cmd)
 		if err != nil {
 			// Binary update failure is never fatal; warn and continue
-			_, _ = fmt.Fprintf(out, "Warning: binary update check failed: %v\n", err)
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Binary update", "check failed", err.Error(), &th))
 		}
 		if updated {
 			if binaryOnly {
 				// --binary mode: skip re-exec and template sync
-				_, _ = fmt.Fprintln(out, "Binary updated successfully (template sync skipped).")
+				_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Binary updated (template sync skipped)", Theme: &th}))
 				return nil
 			}
 			// New binary installed; re-exec so the latest templates are used
 			if err := reexecNewBinary(); err != nil {
-				_, _ = fmt.Fprintf(out, "Warning: failed to re-exec new binary: %v\n", err)
+				_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Re-exec", "failed", err.Error(), &th))
 				// Fall through to template sync with the current binary
 			}
 			// reexecNewBinary replaces the process on success, so we only
 			// reach here if it failed.
 		} else if binaryOnly {
-			_, _ = fmt.Fprintln(out, "Already up to date (no newer binary available).")
+			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: "Already up to date", Theme: &th}))
 			return nil
 		}
 	}
 
 	// Step 2: Template sync (skipped when --binary is set)
 	if binaryOnly {
-		_, _ = fmt.Fprintln(out, "Binary update skipped (dev build). Template sync skipped (--binary).")
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillNeutral, Solid: false, Label: "Skipped (dev build, --binary)", Theme: &th}))
 		return nil
 	}
 
@@ -223,20 +231,20 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("get working directory for archive: %w", err)
 		}
 		if _, archiveErr := archiveLegacySkills(cwd, out); archiveErr != nil {
-			_, _ = fmt.Fprintf(out, "Warning: legacy skill archive failed: %v\n", archiveErr)
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
 		}
 	}
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects
 	// that predate the evolution infrastructure (R2: Directory Scaffolding).
 	if err := scaffoldEvolutionDir("."); err != nil {
-		_, _ = fmt.Fprintf(out, "  Warning: failed to scaffold evolution directory: %v\n", err)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Evolution dir", "scaffold failed", err.Error(), &th))
 	}
 
 	// Sync .moai/design/ templates (REQ-005, REQ-008).
 	// Preserves user-modified files (SHA-256 mismatch) and rejects reserved filename collisions.
 	if err := updateDesignDir(".", out); err != nil {
-		_, _ = fmt.Fprintf(out, "  Error: .moai/design/ update: %v\n", err)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("err", ".moai/design/ update", "failed", err.Error(), &th))
 		return err
 	}
 
@@ -244,10 +252,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	profileName := profile.GetCurrentName()
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
-		_, _ = fmt.Fprintf(out, "Warning: failed to read profile preferences: %v\n", err)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Profile preferences", "read failed", err.Error(), &th))
 	} else {
 		if err := profile.SyncToProjectConfig(".", prefs); err != nil {
-			_, _ = fmt.Fprintf(out, "Warning: failed to sync profile to project config: %v\n", err)
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Profile sync", "failed", err.Error(), &th))
 		}
 	}
 
@@ -281,6 +289,9 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 	return false
 }
 
+// @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD 마이그레이션. New version 알림은
+// tui.KV 두 줄(New / Current), 진행 상태는 tui.CheckLine "run", 결과는 tui.Pill PillOk.
+//
 // runBinaryUpdateStep checks whether a newer moai binary is available and,
 // if so, downloads and installs it. The caller should re-exec the process
 // when updated is true.
@@ -289,6 +300,7 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 // continue with the original operation (template sync or init).
 func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 
 	// Lazily initialise update dependencies
 	if deps != nil {
@@ -312,8 +324,9 @@ func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
 		return false, nil
 	}
 
-	_, _ = fmt.Fprintf(out, "New version available: %s (current: %s)\n", info.Version, currentVersion)
-	_, _ = fmt.Fprintln(out, "Installing update...")
+	_, _ = fmt.Fprintln(out, tui.KV("New version", info.Version, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+	_, _ = fmt.Fprintln(out, tui.KV("Current version", currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Installing update", "", "", &th))
 
 	if deps.UpdateOrch == nil {
 		return false, nil
@@ -327,7 +340,7 @@ func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
 		return false, fmt.Errorf("install update: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(out, "Updated: %s -> %s\n", result.PreviousVersion, result.NewVersion)
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Updated " + result.PreviousVersion + " → " + result.NewVersion, Theme: &th}))
 	return true, nil
 }
 

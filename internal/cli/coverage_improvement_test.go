@@ -3637,7 +3637,10 @@ func TestRunUpdate_CheckOnly_WithNilDeps2(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Update checker not available") {
+	// SPEC-V3R3-CLI-TUI-001 M4-S4d-1: tui.CheckLine 변환 후 출력 형식 변경
+	// 이전: "Update checker not available." (single space)
+	// 변경: "<icon>  Update checker  not available · using current version" (CheckLine 포맷)
+	if !strings.Contains(output, "Update checker") || !strings.Contains(output, "not available") {
 		t.Errorf("expected update checker not available, got: %s", output)
 	}
 }
@@ -3669,7 +3672,10 @@ func TestRunUpdate_BinaryOnly_SkipsBinaryDevBuild(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Binary update skipped") || !strings.Contains(output, "--binary") {
+	// SPEC-V3R3-CLI-TUI-001 M4-S4d-1: tui.Pill 변환 후 출력 형식 변경
+	// 이전: "Binary update skipped (dev build). Template sync skipped (--binary)."
+	// 변경: "Skipped (dev build, --binary)" (Pill 포맷)
+	if !strings.Contains(output, "Skipped") || !strings.Contains(output, "--binary") {
 		t.Errorf("expected binary skip message, got: %s", output)
 	}
 }
@@ -5228,7 +5234,8 @@ func TestRunUpdate_CheckMode_NilDeps(t *testing.T) {
 		t.Fatalf("expected no error for --check with nil deps, got: %v", err)
 	}
 	output := buf.String()
-	if !strings.Contains(output, "Update checker not available") {
+	// SPEC-V3R3-CLI-TUI-001 M4-S4d-1: tui.CheckLine 변환 후 출력 형식 변경 (위와 동일)
+	if !strings.Contains(output, "Update checker") || !strings.Contains(output, "not available") {
 		t.Errorf("expected 'Update checker not available' message, got: %s", output)
 	}
 }
