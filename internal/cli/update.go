@@ -1952,8 +1952,11 @@ func deepMergeMaps(newMap, oldMap map[string]any) map[string]any {
 
 // runInitWizard runs the configuration wizard for reconfiguring an existing project.
 // Used by 'moai update -c/--config' to edit project settings.
+// @MX:NOTE: [AUTO] runInitWizard — M4-S4d-3 DDD 마이그레이션. tui.Pill (uninitialized warning,
+// cancelled, success) + tui.Section (Reconfiguration header, AC-017 emoji 제거).
 func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 
 	// Verify the project is initialized
 	cwd, err := os.Getwd()
@@ -1962,15 +1965,14 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	}
 
 	if _, err := os.Stat(filepath.Join(cwd, defs.MoAIDir)); os.IsNotExist(err) {
-		_, _ = fmt.Fprintln(out, "Project not initialized. Run 'moai init' first.")
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: "Project not initialized · Run 'moai init' first", Theme: &th}))
 		return fmt.Errorf("project not initialized")
 	}
 
 	// Print banner and welcome message
 	PrintBanner(version.GetVersion())
 	if reconfigure {
-		_, _ = fmt.Fprintln(out, "🔧 Project Reconfiguration Wizard")
-		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.Section("Project Reconfiguration Wizard", tui.SectionOpts{Theme: &th}))
 		_, _ = fmt.Fprintln(out, "This wizard will help you update your project configuration.")
 	} else {
 		PrintWelcomeMessage()
@@ -2009,7 +2011,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	result, err := wizard.RunWithLocale(questions, nil, locale)
 	if err != nil {
 		if errors.Is(err, wizard.ErrCancelled) {
-			_, _ = fmt.Fprintln(out, "Configuration cancelled.")
+			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillNeutral, Solid: false, Label: "Configuration cancelled", Theme: &th}))
 			return nil
 		}
 		return fmt.Errorf("wizard failed: %w", err)
@@ -2021,7 +2023,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		return fmt.Errorf("apply configuration: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(out, "%s Configuration updated successfully.\n", symSuccess())
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Configuration updated successfully", Theme: &th}))
 
 	return nil
 }

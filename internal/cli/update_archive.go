@@ -18,6 +18,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // archiveVersion은 아카이브 디렉토리에 사용되는 버전 태그이다.
@@ -225,7 +227,11 @@ func copyDirAll(srcDir, dstDir string) error {
 //
 // @MX:ANCHOR: [AUTO] archiveLegacySkills는 update 흐름의 레거시 스킬 아카이브 진입점
 // @MX:REASON: [AUTO] runUpdate, dry-run, idempotency 테스트에서 fan_in >= 3
+// @MX:NOTE: [AUTO] M4-S4d-3 DDD 마이그레이션 — archive progress: tui.CheckLine "ok",
+// summary: tui.Pill PillOk. dryRun은 PillInfo + CheckLine "info". "archive:"/"total:"
+// keyword 보존 (test contains assertion).
 func archiveLegacySkills(projectRoot string, out io.Writer) (int, error) {
+	th := resolveTheme()
 	archived := 0
 	for _, id := range legacySkillIDs {
 		srcDir := filepath.Join(projectRoot, ".claude", "skills", id)
@@ -251,17 +257,18 @@ func archiveLegacySkills(projectRoot string, out io.Writer) (int, error) {
 		}
 
 		archiveDst := filepath.Join(".moai", "archive", "skills", archiveVersion, id)
-		_, _ = fmt.Fprintf(out, "archive: %s → %s\n", id, archiveDst)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("ok", "archive: "+id, "→ "+archiveDst, "", &th))
 		archived++
 	}
 
-	_, _ = fmt.Fprintf(out, "total: %d skills archived, 0 user customizations modified\n", archived)
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("total: %d skills archived, 0 user customizations modified", archived), Theme: &th}))
 	return archived, nil
 }
 
 // dryRunArchiveLegacySkills는 --dry-run 모드로 실행되며
 // 실제 파일시스템 변경 없이 계획된 작업을 출력한다.
 func dryRunArchiveLegacySkills(projectRoot string, out io.Writer) error {
+	th := resolveTheme()
 	planned := 0
 	for _, id := range legacySkillIDs {
 		srcDir := filepath.Join(projectRoot, ".claude", "skills", id)
@@ -269,10 +276,10 @@ func dryRunArchiveLegacySkills(projectRoot string, out io.Writer) error {
 			continue
 		}
 		archiveDst := filepath.Join(".moai", "archive", "skills", archiveVersion, id)
-		_, _ = fmt.Fprintf(out, "[dry-run] archive: %s → %s\n", id, archiveDst)
+		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "[dry-run] archive: "+id, "→ "+archiveDst, "", &th))
 		planned++
 	}
-	_, _ = fmt.Fprintf(out, "[dry-run] total: %d skills archived, 0 user customizations modified\n", planned)
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: fmt.Sprintf("[dry-run] total: %d skills archived, 0 user customizations modified", planned), Theme: &th}))
 	return nil
 }
 
