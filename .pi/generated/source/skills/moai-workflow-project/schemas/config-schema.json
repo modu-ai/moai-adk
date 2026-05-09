@@ -1,0 +1,316 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://moai-adk.github.io/schemas/moai-menu-project-config.json",
+  "title": "MoAI Menu Project Configuration",
+  "description": "Unified configuration schema for menu project management system",
+  "type": "object",
+  "version": "1.0.0",
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Configuration version following semantic versioning",
+      "default": "1.0.0"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Configuration creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Configuration last update timestamp"
+        },
+        "migration_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from_version": {"type": "string"},
+              "to_version": {"type": "string"},
+              "timestamp": {"type": "string", "format": "date-time"},
+              "description": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "project_settings": {
+      "type": "object",
+      "description": "Core project configuration",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Project display name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["web", "mobile", "desktop", "api", "library", "cli"],
+          "description": "Project type classification"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Brief project description"
+        },
+        "author": {
+          "type": "string",
+          "description": "Project author or team"
+        },
+        "license": {
+          "type": "string",
+          "enum": ["MIT", "Apache-2.0", "GPL-3.0", "BSD-3-Clause", "ISC", "UNLICENSED"],
+          "description": "Project license type"
+        }
+      },
+      "required": ["name", "type"]
+    },
+    "batch_questions": {
+      "type": "object",
+      "description": "Batch questions processing configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable batch questions functionality"
+        },
+        "max_questions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50,
+          "description": "Maximum number of questions to process in batch"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 3600,
+          "default": 300,
+          "description": "Timeout for batch processing in seconds"
+        },
+        "retry_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Number of retry attempts for failed questions"
+        },
+        "output_format": {
+          "type": "string",
+          "enum": ["json", "yaml", "markdown", "csv"],
+          "default": "json",
+          "description": "Default output format for batch results"
+        },
+        "caching": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean", "default": true},
+            "ttl_hours": {"type": "integer", "minimum": 1, "default": 24},
+            "max_cache_size_mb": {"type": "integer", "minimum": 1, "default": 100}
+          }
+        }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "description": "Documentation generation and management settings",
+      "properties": {
+        "auto_generate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically generate documentation on changes"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["markdown", "html", "pdf", "all"],
+          "default": "markdown",
+          "description": "Documentation output format"
+        },
+        "include_api_docs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include API documentation"
+        },
+        "include_examples": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include code examples in documentation"
+        },
+        "template_engine": {
+          "type": "string",
+          "enum": ["jinja2", "handlebars", "mustache"],
+          "default": "jinja2",
+          "description": "Template engine for documentation generation"
+        },
+        "output_directory": {
+          "type": "string",
+          "default": "docs",
+          "description": "Directory for generated documentation"
+        },
+        "custom_templates": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "string",
+              "description": "Path to custom template file"
+            }
+          }
+        }
+      }
+    },
+    "language_config": {
+      "type": "object",
+      "description": "Language and localization settings",
+      "properties": {
+        "default_language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "default": "en",
+          "description": "Default language code (ISO 639-1)"
+        },
+        "supported_languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          },
+          "uniqueItems": true,
+          "description": "List of supported language codes"
+        },
+        "auto_detect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect user language preference"
+        },
+        "fallback_language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "default": "en",
+          "description": "Fallback language when translation not available"
+        },
+        "translation_service": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": ["google", "azure", "aws", "deepl", "local"],
+              "default": "local"
+            },
+            "api_key": {
+              "type": "string",
+              "description": "API key for translation service (if required)"
+            },
+            "cache_enabled": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      },
+      "required": ["default_language"]
+    },
+    "template_optimizer": {
+      "type": "object",
+      "description": "Template optimization and management settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable template optimization"
+        },
+        "optimization_level": {
+          "type": "string",
+          "enum": ["none", "basic", "aggressive", "maximum"],
+          "default": "basic",
+          "description": "Template optimization level"
+        },
+        "minification": {
+          "type": "boolean",
+          "default": false,
+          "description": "Minimize template output size"
+        },
+        "caching": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean", "default": true},
+            "strategy": {
+              "type": "string",
+              "enum": ["memory", "disk", "redis"],
+              "default": "memory"
+            },
+            "ttl_minutes": {"type": "integer", "minimum": 1, "default": 60}
+          }
+        },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "strict_mode": {"type": "boolean", "default": false},
+            "check_syntax": {"type": "boolean", "default": true},
+            "check_security": {"type": "boolean", "default": true}
+          }
+        },
+        "custom_variables": {
+          "type": "object",
+          "description": "Custom template variables and their default values",
+          "additionalProperties": true
+        }
+      }
+    },
+    "project_initializer": {
+      "type": "object",
+      "description": "Project initialization configuration",
+      "properties": {
+        "default_template": {
+          "type": "string",
+          "description": "Default project template to use"
+        },
+        "auto_dependencies": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically install dependencies"
+        },
+        "git_init": {
+          "type": "boolean",
+          "default": true,
+          "description": "Initialize Git repository"
+        },
+        "create_virtual_env": {
+          "type": "boolean",
+          "default": true,
+          "description": "Create Python virtual environment"
+        },
+        "license_template": {
+          "type": "string",
+          "description": "Default license template"
+        },
+        "package_managers": {
+          "type": "object",
+          "properties": {
+            "python": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean", "default": true},
+                "tool": {"type": "string", "enum": ["pip", "poetry", "pipenv"], "default": "pip"}
+              }
+            },
+            "node": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean", "default": false},
+                "tool": {"type": "string", "enum": ["npm", "yarn", "pnpm"], "default": "npm"}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["version", "project_settings"],
+  "additionalProperties": false
+}

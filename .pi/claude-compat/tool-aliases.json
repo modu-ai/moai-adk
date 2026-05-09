@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "aliases": {
+    "Read": "read",
+    "Write": "write",
+    "Edit": "edit",
+    "MultiEdit": "edit",
+    "Grep": "bash:rg",
+    "Glob": "bash:find",
+    "Bash": "bash",
+    "TodoWrite": "@juicesharp/rpiv-todo",
+    "Agent": "pi-subagents:subagent",
+    "Skill": "pi skills/read",
+    "AskUserQuestion": "@juicesharp/rpiv-ask-user-question",
+    "WebSearch": "pi-web-access:web_search",
+    "WebFetch": "pi-web-access:fetch_content",
+    "TeamCreate": "@tmustier/pi-agent-teams",
+    "SendMessage": "@tmustier/pi-agent-teams",
+    "TaskCreate": "@tmustier/pi-agent-teams or pi-crew task state",
+    "TaskUpdate": "@tmustier/pi-agent-teams or pi-crew task state",
+    "TaskList": "@tmustier/pi-agent-teams or pi-crew task state",
+    "TaskGet": "@tmustier/pi-agent-teams or pi-crew task state",
+    "TeamDelete": "@tmustier/pi-agent-teams"
+  },
+  "notes": [
+    "MultiEdit maps to one pi edit call with multiple edits.",
+    "Subagents cannot ask the user directly; parent must bridge AskUserQuestion.",
+    "permissionMode is intentionally not mapped."
+  ]
+}

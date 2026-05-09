@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "default": "moai",
+  "styles": {
+    "moai": {
+      "source": "./generated/source/output-styles/moai/moai.md"
+    },
+    "r2d2": {
+      "source": "./generated/source/output-styles/moai/r2d2.md"
+    },
+    "yoda": {
+      "source": "./generated/source/output-styles/moai/yoda.md"
+    }
+  },
+  "runtime": {
+    "mechanism": "prompt-injection + ctx.ui.setStatus/widget",
+    "userFacingXml": "forbidden",
+    "internalCompletionMarker": "extension-state-only"
+  }
+}

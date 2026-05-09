@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "created_at": "{{ timestamp }}",
+    "updated_at": "{{ timestamp }}",
+    "migration_history": []
+  },
+  "project_settings": {
+    "name": "{{ project_name }}",
+    "type": "{{ project_type }}",
+    "description": "{{ project_description }}",
+    "author": "{{ author }}",
+    "license": "{{ license }}"
+  },
+  "batch_questions": {
+    "enabled": true,
+    "max_questions": 50,
+    "timeout_seconds": 300,
+    "retry_attempts": 3,
+    "output_format": "json",
+    "caching": {
+      "enabled": true,
+      "ttl_hours": 24,
+      "max_cache_size_mb": 100
+    }
+  },
+  "documentation": {
+    "auto_generate": true,
+    "format": "markdown",
+    "include_api_docs": true,
+    "include_examples": true,
+    "template_engine": "jinja2",
+    "output_directory": "docs"
+  },
+  "language_config": {
+    "default_language": "{{ default_language }}",
+    "supported_languages": {{ supported_languages }},
+    "auto_detect": true,
+    "fallback_language": "en",
+    "translation_service": {
+      "provider": "local",
+      "cache_enabled": true
+    }
+  },
+  "template_optimizer": {
+    "enabled": true,
+    "optimization_level": "basic",
+    "minification": false,
+    "caching": {
+      "enabled": true,
+      "strategy": "memory",
+      "ttl_minutes": 60
+    },
+    "validation": {
+      "strict_mode": false,
+      "check_syntax": true,
+      "check_security": true
+    }
+  },
+  "project_initializer": {
+    "auto_dependencies": true,
+    "git_init": true,
+    "create_virtual_env": true,
+    "package_managers": {
+      "python": {
+        "enabled": true,
+        "tool": "pip"
+      }
+    }
+  }
+}

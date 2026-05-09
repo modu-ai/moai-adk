@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "mapping": {
+    "SessionStart": "session_start",
+    "PreCompact": "session_before_compact",
+    "SessionEnd": "session_shutdown",
+    "PreToolUse": "tool_call",
+    "PostToolUse": "tool_result",
+    "PostToolUseFailure": "tool_result:isError",
+    "Stop": "agent_end",
+    "SubagentStart": "team/subagent wrapper start (mapped script present; runtime event depends on team backend)",
+    "SubagentStop": "team/subagent wrapper end (mapped script present; runtime event depends on team backend)",
+    "AgentHook": "agent hook wrapper (mapped script present; no native pi lifecycle event)",
+    "Notification": "ui.notify/custom event (mapped script present; no native global interception)",
+    "UserPromptSubmit": "input",
+    "PermissionRequest": "guardrail confirm (mapped script present; native ask/deny handled by guardrails)",
+    "TeammateIdle": "agent-teams lifecycle or fallback state (mapped script present; runtime event depends on team backend)",
+    "TaskCompleted": "agent-teams task event or fallback state (mapped script present; runtime event depends on team backend)",
+    "WorktreeCreate": "worktree wrapper (mapped script present; runtime event depends on worktree backend)",
+    "WorktreeRemove": "worktree wrapper (mapped script present; runtime event depends on worktree backend)"
+  },
+  "runtimeBridge": {
+    "connected": ["SessionStart", "PreCompact", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop"],
+    "statusOnly": ["SubagentStart", "SubagentStop", "AgentHook", "Notification", "PermissionRequest", "TeammateIdle", "TaskCompleted", "WorktreeCreate", "WorktreeRemove"],
+    "failurePolicy": "non-blocking warning"
+  },
+  "primaryPackage": "pi-yaml-hooks",
+  "fallbackPackage": "pi-autohooks"
+}

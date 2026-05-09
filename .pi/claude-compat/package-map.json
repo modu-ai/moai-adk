@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "primary": {
+    "subagents": "pi-subagents",
+    "agentTeams": "@tmustier/pi-agent-teams",
+    "askUserQuestion": "@juicesharp/rpiv-ask-user-question",
+    "todo": "@juicesharp/rpiv-todo",
+    "hooks": "pi-yaml-hooks",
+    "permissions": "@gotgenes/pi-permission-system",
+    "guardrails": "@aliou/pi-guardrails",
+    "worktrees": "@zenobius/pi-worktrees",
+    "mcp": "pi-mcp-adapter",
+    "web": "pi-web-access",
+    "documents": "pi-docparser",
+    "context": "context-mode",
+    "planning": "@ifi/pi-plan",
+    "triggerPreload": "pi-prompt-template-model",
+    "quotaFooter": "moai-claude-compat-native-codex-quota"
+  },
+  "fallbacks": {
+    "agentTeams": ["pi-teams", "pi-crew", "pi-subagents"],
+    "quotaFooter": ["pi-chatgpt-limit", "pi-usage"],
+    "memory": ["pi-total-recall", "claude-recall"],
+    "ui": ["pi-claude-style-tools", "@plannotator/pi-extension"]
+  },
+  "conflictPolicy": {
+    "footerQuota": "MoAI native quota footer owns Codex quota display; do not also enable @kmiyh/pi-codex-plan-limits, pi-chatgpt-limit, pi-codexbar",
+    "agentTeams": "select exactly one primary team backend per run",
+    "permissionMode": "ignore runtime semantics by design"
+  }
+}

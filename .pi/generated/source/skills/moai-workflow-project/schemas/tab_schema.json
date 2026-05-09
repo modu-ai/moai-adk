@@ -1,0 +1,1412 @@
+{
+  "version": "2.1.0",
+  "schema_updated": "2025-12-22",
+  "config_version": "0.29.0",
+  "description": "Tab-based configuration schema for /moai:0-project with INITIALIZATION mode (Tab 0) and SETTINGS mode (Tabs 1-5) support",
+  "total_settings": 60,
+  "total_tabs": 6,
+  "total_batches": 18,
+  "tabs": [
+    {
+      "id": "tab_0_initialization",
+      "label": "Tab 0: Project Initialization",
+      "description": "Essential project setup with minimal questions and smart recommendations (INITIALIZATION mode only)",
+      "priority": "REQUIRED",
+      "mode_condition": "INITIALIZATION",
+      "order": 0,
+      "special_features": {
+        "trigger_web_search": true,
+        "generate_proposal": true,
+        "complexity_detection": true
+      },
+      "batches": [
+        {
+          "batch_id": "0.1",
+          "label": "Essential Project Information",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "Choose a project name. Use only lowercase letters and hyphens (-).",
+              "header": "Project Name",
+              "field": "project.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Example: snake-game",
+                  "description": "A game project",
+                  "value": "snake-game"
+                },
+                {
+                  "label": "Example: my-first-app",
+                  "description": "First application",
+                  "value": "my-first-app"
+                },
+                {
+                  "label": "Example: todo-list",
+                  "description": "Task management app",
+                  "value": "todo-list"
+                }
+              ],
+              "current_value_path": "project.name",
+              "required": true,
+              "validation": {
+                "type": "pattern",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "error_message": "Project name must be lowercase, start with letter, use only letters, numbers, and hyphens"
+              }
+            },
+            {
+              "question": "What kind of project would you like to create?",
+              "header": "Project Type",
+              "field": "project.type",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Web Browser App",
+                  "description": "Programs that open in Chrome, Safari (games, websites, etc.)",
+                  "value": "web_browser_app",
+                  "tech_hint": "HTML, CSS, JavaScript or React, Vue"
+                },
+                {
+                  "label": "Mobile App",
+                  "description": "Apps installed on iPhone or Android",
+                  "value": "mobile_app",
+                  "tech_hint": "React Native, Flutter"
+                },
+                {
+                  "label": "Command Line Tool",
+                  "description": "Programs that run in terminal (automation scripts, etc.)",
+                  "value": "cli_tool",
+                  "tech_hint": "Python, Node.js, Go"
+                },
+                {
+                  "label": "Backend API",
+                  "description": "Server programs that store and process data",
+                  "value": "backend_api",
+                  "tech_hint": "FastAPI, Express, Django"
+                }
+              ],
+              "current_value_path": "project.type",
+              "required": true
+            },
+            {
+              "question": "Describe what you want to build in one sentence.",
+              "header": "Description",
+              "field": "project.description",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Example description",
+                  "description": "A game where you control a snake to eat food",
+                  "value": "{{prompt_user}}"
+                }
+              ],
+              "current_value_path": "project.description",
+              "required": true,
+              "validation": {
+                "type": "required",
+                "min_length": 10,
+                "error_message": "Please provide a description of at least 10 characters"
+              }
+            }
+          ]
+        }
+      ],
+      "post_collection": {
+        "web_search": {
+          "enabled": true,
+          "parallel_queries": 3,
+          "query_templates": [
+            "{project_type} best practices 2025",
+            "{project_type} recommended tech stack 2025",
+            "{project_type} {description_keywords} architecture patterns"
+          ]
+        },
+        "proposal": {
+          "generate": true,
+          "sections": ["Technology Stack", "Architecture", "Quality Standards"]
+        },
+        "approval": {
+          "required": true,
+          "options": ["approve", "modify_tech", "modify_arch", "restart"]
+        }
+      }
+    },
+    {
+      "id": "tab_1_user_language",
+      "label": "Tab 1: User & Language",
+      "description": "Configure user name, conversation language, agent prompt language",
+      "priority": "REQUIRED",
+      "batches": [
+        {
+          "batch_id": "1.1",
+          "label": "Basic Settings",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "What is your name? To change, type your name in the text field below. (current: {{user.name}})",
+              "header": "User Name",
+              "field": "user.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Keep Current Value",
+                  "description": "Continue using {{user.name}} (to change, type in the field below)",
+                  "value": "{{current}}"
+                }
+              ],
+              "current_value_path": "user.name",
+              "required": true
+            },
+            {
+              "question": "What language should MoAI use in conversations? (current: {{language.conversation_language}})",
+              "header": "Conversation Language",
+              "field": "language.conversation_language",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Korean (ko)",
+                  "description": "All content will be generated in Korean",
+                  "value": "ko"
+                },
+                {
+                  "label": "English (en)",
+                  "description": "All content will be generated in English",
+                  "value": "en"
+                },
+                {
+                  "label": "Japanese (ja)",
+                  "description": "All content will be generated in Japanese",
+                  "value": "ja"
+                },
+                {
+                  "label": "Spanish (es)",
+                  "description": "All content will be generated in Spanish",
+                  "value": "es"
+                }
+              ],
+              "current_value_path": "language.conversation_language",
+              "required": true,
+              "auto_update_fields": [
+                {
+                  "field": "language.conversation_language_name",
+                  "mapping": {
+                    "ko": "Korean",
+                    "en": "English",
+                    "ja": "Japanese",
+                    "es": "Spanish"
+                  }
+                }
+              ]
+            },
+            {
+              "question": "What language should agent prompts use? (current: {{language.agent_prompt_language}})",
+              "header": "Agent Prompt Language",
+              "field": "language.agent_prompt_language",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Same as Conversation",
+                  "description": "Use conversation language for agent prompts",
+                  "value": "{{language.conversation_language}}"
+                },
+                {
+                  "label": "English",
+                  "description": "Always use English for agent prompts (recommended for consistency)",
+                  "value": "en"
+                }
+              ],
+              "current_value_path": "language.agent_prompt_language",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_2_project_info",
+      "label": "Tab 2: Project Basic Information",
+      "description": "Configure project name, description, owner, mode",
+      "priority": "RECOMMENDED",
+      "batches": [
+        {
+          "batch_id": "2.1",
+          "label": "Project Metadata",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "What is the project name? (current: {{project.name}})",
+              "header": "Project Name",
+              "field": "project.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Keep Current Value",
+                  "description": "Continue using {{project.name}} (to change, type in the field below)",
+                  "value": "{{current}}"
+                }
+              ],
+              "current_value_path": "project.name",
+              "required": true
+            },
+            {
+              "question": "Project description? To change, type in the text field below. (current: {{project.description}})",
+              "header": "Description",
+              "field": "project.description",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Keep Current Value",
+                  "description": "Continue using current description (to change, type in the field below)",
+                  "value": "{{current}}"
+                }
+              ],
+              "current_value_path": "project.description",
+              "required": true
+            },
+            {
+              "question": "Project owner? To change, type in the text field below. (current: {{project.owner}})",
+              "header": "Owner",
+              "field": "project.owner",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Keep Current Value",
+                  "description": "Continue using {{project.owner}} (to change, type in the field below)",
+                  "value": "{{current}}"
+                }
+              ],
+              "current_value_path": "project.owner",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_3_git_strategy",
+      "label": "Tab 3: Git Strategy & Workflow",
+      "description": "Configure Personal/Team Git settings, commit/branch strategy (conditional batches based on mode)",
+      "priority": "RECOMMENDED",
+      "batches": [
+        {
+          "batch_id": "3.0",
+          "label": "Workflow Mode Selection",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "Which Git workflow mode would you like to use? (current: {{git_strategy.mode}})",
+              "header": "Git Mode",
+              "field": "git_strategy.mode",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Manual (Local)",
+                  "description": "Local Git only, no GitHub integration, manual branch creation",
+                  "value": "manual"
+                },
+                {
+                  "label": "Personal (GitHub Individual)",
+                  "description": "GitHub individual project with automation (recommended for solo developers)",
+                  "value": "personal"
+                },
+                {
+                  "label": "Team (GitHub Team)",
+                  "description": "GitHub team project with full governance and code review",
+                  "value": "team"
+                }
+              ],
+              "current_value_path": "git_strategy.mode",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.1",
+          "label": "Manual Core Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "manual"
+          },
+          "questions": [
+            {
+              "question": "Workflow style for Manual mode? (current: {{git_strategy.manual.workflow}})",
+              "header": "Workflow",
+              "field": "git_strategy.manual.workflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "GitHub Flow",
+                  "description": "Simple branch-based workflow (recommended)",
+                  "value": "github-flow"
+                },
+                {
+                  "label": "Git Flow",
+                  "description": "Multi-branch workflow (develop, release, hotfix)",
+                  "value": "git-flow"
+                }
+              ],
+              "current_value_path": "git_strategy.manual.workflow",
+              "required": true
+            },
+            {
+              "question": "Environment for Manual mode? (current: {{git_strategy.manual.environment}})",
+              "header": "Environment",
+              "field": "git_strategy.manual.environment",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Local",
+                  "description": "Local Git only, no remote",
+                  "value": "local"
+                }
+              ],
+              "current_value_path": "git_strategy.manual.environment",
+              "required": true
+            },
+            {
+              "question": "Enable GitHub integration for Manual mode? (current: {{git_strategy.manual.github_integration}})",
+              "header": "GitHub Integration",
+              "field": "git_strategy.manual.github_integration",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Disabled",
+                  "description": "No GitHub features (recommended for Manual mode)",
+                  "value": false
+                },
+                {
+                  "label": "Enabled",
+                  "description": "Enable GitHub features",
+                  "value": true
+                }
+              ],
+              "current_value_path": "git_strategy.manual.github_integration",
+              "required": true
+            },
+            {
+              "question": "Auto-checkpoint for Manual mode? (current: {{git_strategy.manual.auto_checkpoint}})",
+              "header": "Auto Checkpoint",
+              "field": "git_strategy.manual.auto_checkpoint",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Disabled",
+                  "description": "No automatic checkpoints (recommended for Manual mode)",
+                  "value": "disabled"
+                }
+              ],
+              "current_value_path": "git_strategy.manual.auto_checkpoint",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.2",
+          "label": "Manual Push Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "manual"
+          },
+          "questions": [
+            {
+              "question": "Push to remote for Manual mode? (current: {{git_strategy.manual.push_to_remote}})",
+              "header": "Push Remote",
+              "field": "git_strategy.manual.push_to_remote",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Disabled",
+                  "description": "No automatic push (recommended for Manual mode)",
+                  "value": false
+                },
+                {
+                  "label": "Enabled",
+                  "description": "Enable automatic push",
+                  "value": true
+                }
+              ],
+              "current_value_path": "git_strategy.manual.push_to_remote",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.3",
+          "label": "Personal Core Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "personal"
+          },
+          "questions": [
+            {
+              "question": "Workflow style for Personal mode? (current: {{git_strategy.personal.workflow}})",
+              "header": "Workflow",
+              "field": "git_strategy.personal.workflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "GitHub Flow",
+                  "description": "Simple branch-based workflow (recommended)",
+                  "value": "github-flow"
+                },
+                {
+                  "label": "Git Flow",
+                  "description": "Multi-branch workflow (develop, release, hotfix)",
+                  "value": "git-flow"
+                }
+              ],
+              "current_value_path": "git_strategy.personal.workflow",
+              "required": true
+            },
+            {
+              "question": "Environment for Personal mode? (current: {{git_strategy.personal.environment}})",
+              "header": "Environment",
+              "field": "git_strategy.personal.environment",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "GitHub",
+                  "description": "GitHub repository with automation",
+                  "value": "github"
+                }
+              ],
+              "current_value_path": "git_strategy.personal.environment",
+              "required": true
+            },
+            {
+              "question": "Enable GitHub integration for Personal mode? (current: {{git_strategy.personal.github_integration}})",
+              "header": "GitHub Integration",
+              "field": "git_strategy.personal.github_integration",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Full GitHub features (recommended for Personal mode)",
+                  "value": true
+                }
+              ],
+              "current_value_path": "git_strategy.personal.github_integration",
+              "required": true
+            },
+            {
+              "question": "Auto-create branches for Personal mode? (current: {{git_strategy.personal.auto_branch}})",
+              "header": "Auto Branch",
+              "field": "git_strategy.personal.auto_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically create feature branches (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual branch creation",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.personal.auto_branch",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.4",
+          "label": "Personal Commit & Push Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "personal"
+          },
+          "questions": [
+            {
+              "question": "Auto-commit for Personal mode? (current: {{git_strategy.personal.auto_commit}})",
+              "header": "Auto Commit",
+              "field": "git_strategy.personal.auto_commit",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically commit after phase completion (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual commit",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.personal.auto_commit",
+              "required": true
+            },
+            {
+              "question": "Auto-PR for Personal mode? (current: {{git_strategy.personal.auto_pr}})",
+              "header": "Auto PR",
+              "field": "git_strategy.personal.auto_pr",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Disabled",
+                  "description": "No automatic PR (recommended for Personal mode)",
+                  "value": false
+                },
+                {
+                  "label": "Enabled",
+                  "description": "Automatically create PRs",
+                  "value": true
+                }
+              ],
+              "current_value_path": "git_strategy.personal.auto_pr",
+              "required": true
+            },
+            {
+              "question": "Auto-push for Personal mode? (current: {{git_strategy.personal.auto_push}})",
+              "header": "Auto Push",
+              "field": "git_strategy.personal.auto_push",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically push to remote (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual push",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.personal.auto_push",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.5",
+          "label": "Personal Branch Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "personal"
+          },
+          "questions": [
+            {
+              "question": "Branch prefix for Personal mode? To change, type the new prefix (e.g., feature/SPEC-) in the text field below. (current: {{git_strategy.personal.branch_prefix}})",
+              "header": "Branch Prefix",
+              "field": "git_strategy.personal.branch_prefix",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Keep Current Value",
+                  "description": "Continue using {{git_strategy.personal.branch_prefix}} (to change, type in the field below)",
+                  "value": "{{current}}"
+                }
+              ],
+              "current_value_path": "git_strategy.personal.branch_prefix",
+              "required": true
+            },
+            {
+              "question": "Main branch for Personal mode? (current: {{git_strategy.personal.main_branch}})",
+              "header": "Main Branch",
+              "field": "git_strategy.personal.main_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "main",
+                  "description": "Use 'main' as primary branch (recommended)",
+                  "value": "main"
+                },
+                {
+                  "label": "master",
+                  "description": "Use 'master' as primary branch",
+                  "value": "master"
+                }
+              ],
+              "current_value_path": "git_strategy.personal.main_branch",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.6",
+          "label": "Team Core Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "team"
+          },
+          "questions": [
+            {
+              "question": "Workflow style for Team mode? (current: {{git_strategy.team.workflow}})",
+              "header": "Workflow",
+              "field": "git_strategy.team.workflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "GitHub Flow",
+                  "description": "Simple branch-based workflow (recommended)",
+                  "value": "github-flow"
+                },
+                {
+                  "label": "Git Flow",
+                  "description": "Multi-branch workflow (develop, release, hotfix)",
+                  "value": "git-flow"
+                }
+              ],
+              "current_value_path": "git_strategy.team.workflow",
+              "required": true
+            },
+            {
+              "question": "Environment for Team mode? (current: {{git_strategy.team.environment}})",
+              "header": "Environment",
+              "field": "git_strategy.team.environment",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "GitHub",
+                  "description": "GitHub repository with team features",
+                  "value": "github"
+                }
+              ],
+              "current_value_path": "git_strategy.team.environment",
+              "required": true
+            },
+            {
+              "question": "Enable GitHub integration for Team mode? (current: {{git_strategy.team.github_integration}})",
+              "header": "GitHub Integration",
+              "field": "git_strategy.team.github_integration",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Full GitHub team features (required for Team mode)",
+                  "value": true
+                }
+              ],
+              "current_value_path": "git_strategy.team.github_integration",
+              "required": true
+            },
+            {
+              "question": "Auto-create branches for Team mode? (current: {{git_strategy.team.auto_branch}})",
+              "header": "Auto Branch",
+              "field": "git_strategy.team.auto_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically create feature branches (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual branch creation",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.team.auto_branch",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.7",
+          "label": "Team Commit & PR Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "team"
+          },
+          "questions": [
+            {
+              "question": "Auto-commit for Team mode? (current: {{git_strategy.team.auto_commit}})",
+              "header": "Auto Commit",
+              "field": "git_strategy.team.auto_commit",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically commit after phase completion (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual commit",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.team.auto_commit",
+              "required": true
+            },
+            {
+              "question": "Auto-PR for Team mode? (current: {{git_strategy.team.auto_pr}})",
+              "header": "Auto PR",
+              "field": "git_strategy.team.auto_pr",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically create PRs (recommended for Team mode)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual PR creation",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.team.auto_pr",
+              "required": true
+            },
+            {
+              "question": "Auto-push for Team mode? (current: {{git_strategy.team.auto_push}})",
+              "header": "Auto Push",
+              "field": "git_strategy.team.auto_push",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically push to remote (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Manual push",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.team.auto_push",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.8",
+          "label": "Team Branch & Protection Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "team"
+          },
+          "questions": [
+            {
+              "question": "Create draft PRs for Team mode? (current: {{git_strategy.team.draft_pr}})",
+              "header": "Draft PR",
+              "field": "git_strategy.team.draft_pr",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Create PRs as draft (recommended for Team mode)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Create PRs as ready for review",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.team.draft_pr",
+              "required": true
+            },
+            {
+              "question": "Required reviews for Team mode? (current: {{git_strategy.team.required_reviews}})",
+              "header": "Required Reviews",
+              "field": "git_strategy.team.required_reviews",
+              "type": "number_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "1 reviewer",
+                  "description": "Minimum 1 approval (recommended)",
+                  "value": 1
+                },
+                {
+                  "label": "2 reviewers",
+                  "description": "Minimum 2 approvals",
+                  "value": 2
+                },
+                {
+                  "label": "Other",
+                  "description": "Select Other to enter custom number",
+                  "value": "{{prompt_user}}"
+                }
+              ],
+              "current_value_path": "git_strategy.team.required_reviews",
+              "required": true
+            },
+            {
+              "question": "Enable branch protection for Team mode? (current: {{git_strategy.team.branch_protection}})",
+              "header": "Branch Protection",
+              "field": "git_strategy.team.branch_protection",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Protect main branch (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "No branch protection",
+                  "value": false
+                }
+              ],
+              "current_value_path": "git_strategy.team.branch_protection",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.9",
+          "label": "Team Branch Naming Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "equals",
+            "value": "team"
+          },
+          "questions": [
+            {
+              "question": "Branch prefix for Team mode? To change, type the new prefix (e.g., feature/SPEC-) in the text field below. (current: {{git_strategy.team.branch_prefix}})",
+              "header": "Branch Prefix",
+              "field": "git_strategy.team.branch_prefix",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Keep Current Value",
+                  "description": "Continue using {{git_strategy.team.branch_prefix}} (to change, type in the field below)",
+                  "value": "{{current}}"
+                }
+              ],
+              "current_value_path": "git_strategy.team.branch_prefix",
+              "required": true
+            },
+            {
+              "question": "Main branch for Team mode? (current: {{git_strategy.team.main_branch}})",
+              "header": "Main Branch",
+              "field": "git_strategy.team.main_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "main",
+                  "description": "Use 'main' as primary branch (recommended)",
+                  "value": "main"
+                },
+                {
+                  "label": "master",
+                  "description": "Use 'master' as primary branch",
+                  "value": "master"
+                }
+              ],
+              "current_value_path": "git_strategy.team.main_branch",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.10",
+          "label": "GitHub Automation Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "not_equals",
+            "value": "manual"
+          },
+          "questions": [
+            {
+              "question": "Enable TRUST 5 in GitHub PR templates? (current: {{github.enable_trust_5}})",
+              "header": "TRUST 5",
+              "field": "github.enable_trust_5",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Include TRUST 5 sections in PR templates (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Omit TRUST 5 sections",
+                  "value": false
+                }
+              ],
+              "current_value_path": "github.enable_trust_5",
+              "required": true
+            },
+            {
+              "question": "Auto-delete merged branches? (current: {{github.auto_delete_branches}})",
+              "header": "Auto Delete",
+              "field": "github.auto_delete_branches",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Delete branches after merge (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Keep branches after merge",
+                  "value": false
+                }
+              ],
+              "current_value_path": "github.auto_delete_branches",
+              "required": false
+            },
+            {
+              "question": "How should SPEC implementations be committed? (current: {{github.spec_git_workflow}})",
+              "header": "SPEC Workflow",
+              "field": "github.spec_git_workflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "note": "Only relevant when auto_branch is enabled. If auto_branch is disabled, commits go to current branch.",
+              "options": [
+                {
+                  "label": "Direct Commit",
+                  "description": "Commit directly to base branch (main/develop) - fast for personal projects",
+                  "value": "develop_direct"
+                },
+                {
+                  "label": "Feature Branch",
+                  "description": "Create feature/SPEC-xxx branch for each SPEC - better for code review",
+                  "value": "feature_branch"
+                },
+                {
+                  "label": "Per SPEC",
+                  "description": "Ask for branching strategy on each SPEC creation",
+                  "value": "per_spec"
+                }
+              ],
+              "current_value_path": "github.spec_git_workflow",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_4_quality_reports",
+      "label": "Tab 4: Quality Principles & Reports",
+      "description": "Configure TRUST 5, test coverage, report generation",
+      "priority": "OPTIONAL",
+      "batches": [
+        {
+          "batch_id": "4.1",
+          "label": "Constitution Settings",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "Enforce TDD (Test-Driven Development)? (current: {{constitution.enforce_tdd}})",
+              "header": "Enforce TDD",
+              "field": "constitution.enforce_tdd",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Require tests before implementation (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Allow implementation without tests",
+                  "value": false
+                }
+              ],
+              "current_value_path": "constitution.enforce_tdd",
+              "required": true
+            },
+            {
+              "question": "Test coverage target percentage? (current: {{constitution.test_coverage_target}})",
+              "header": "Coverage Target",
+              "field": "constitution.test_coverage_target",
+              "type": "number_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "85%",
+                  "description": "Standard coverage (recommended)",
+                  "value": 85
+                },
+                {
+                  "label": "90%",
+                  "description": "High quality coverage",
+                  "value": 90
+                },
+                {
+                  "label": "Other",
+                  "description": "Select Other to enter custom percentage (0-100)",
+                  "value": "{{prompt_user}}"
+                }
+              ],
+              "current_value_path": "constitution.test_coverage_target",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "4.2",
+          "label": "Report Generation Policy",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "Enable report generation? (current: {{report_generation.enabled}})",
+              "header": "Enable Reports",
+              "field": "report_generation.enabled",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Generate reports (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "No report generation",
+                  "value": false
+                }
+              ],
+              "current_value_path": "report_generation.enabled",
+              "required": true
+            },
+            {
+              "question": "Auto-create full reports? (current: {{report_generation.auto_create}})",
+              "header": "Auto Create",
+              "field": "report_generation.auto_create",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Automatically generate full reports",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Generate minimal reports (recommended, saves tokens)",
+                  "value": false
+                }
+              ],
+              "current_value_path": "report_generation.auto_create",
+              "required": true
+            },
+            {
+              "question": "Warn user before report creation? (current: {{report_generation.warn_user}})",
+              "header": "Warn User",
+              "field": "report_generation.warn_user",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Ask user before generating reports (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Generate reports without asking",
+                  "value": false
+                }
+              ],
+              "current_value_path": "report_generation.warn_user",
+              "required": true
+            },
+            {
+              "question": "Default user choice for reports? (current: {{report_generation.user_choice}})",
+              "header": "User Choice",
+              "field": "report_generation.user_choice",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Minimal",
+                  "description": "Generate minimal reports (recommended)",
+                  "value": "Minimal"
+                },
+                {
+                  "label": "Full",
+                  "description": "Generate full reports",
+                  "value": "Full"
+                },
+                {
+                  "label": "None",
+                  "description": "Skip report generation",
+                  "value": "None"
+                }
+              ],
+              "current_value_path": "report_generation.user_choice",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_5_system",
+      "label": "Tab 5: System Settings",
+      "description": "Configure MoAI system settings (version check, cache). GitHub automation moved to Tab 3.",
+      "priority": "OPTIONAL",
+      "batches": [
+        {
+          "batch_id": "5.1",
+          "label": "MoAI System Settings",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "MoAI version check frequency? (current: {{moai.update_check_frequency}})",
+              "header": "Update Check",
+              "field": "moai.update_check_frequency",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Daily",
+                  "description": "Check for updates daily (recommended)",
+                  "value": "daily"
+                },
+                {
+                  "label": "Weekly",
+                  "description": "Check for updates weekly",
+                  "value": "weekly"
+                },
+                {
+                  "label": "Never",
+                  "description": "Disable update checks",
+                  "value": "never"
+                }
+              ],
+              "current_value_path": "moai.update_check_frequency",
+              "required": true
+            },
+            {
+              "question": "Enable version checking? (current: {{moai.version_check.enabled}})",
+              "header": "Version Check",
+              "field": "moai.version_check.enabled",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Enable version checking (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Disable version checking",
+                  "value": false
+                }
+              ],
+              "current_value_path": "moai.version_check.enabled",
+              "required": true
+            },
+            {
+              "question": "Version check cache TTL hours? (current: {{moai.version_check.cache_ttl_hours}})",
+              "header": "Cache TTL",
+              "field": "moai.version_check.cache_ttl_hours",
+              "type": "number_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "24 hours",
+                  "description": "Cache version info for 24 hours (recommended)",
+                  "value": 24
+                },
+                {
+                  "label": "Other",
+                  "description": "Select Other to enter custom hours",
+                  "value": "{{prompt_user}}"
+                }
+              ],
+              "current_value_path": "moai.version_check.cache_ttl_hours",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "navigation_flow": {
+    "mode_specific_order": {
+      "INITIALIZATION": [
+        "tab_0_initialization"
+      ],
+      "SETTINGS": [
+        "tab_1_user_language",
+        "tab_2_project_info",
+        "tab_3_git_strategy",
+        "tab_4_quality_reports",
+        "tab_5_system"
+      ]
+    },
+    "completion_order": [
+      "tab_0_initialization",
+      "tab_1_user_language",
+      "tab_2_project_info",
+      "tab_3_git_strategy",
+      "tab_4_quality_reports",
+      "tab_5_system"
+    ],
+    "validation_sequence": [
+      {
+        "checkpoint": "after_tab_0",
+        "mode_condition": "INITIALIZATION",
+        "rules": [
+          {
+            "name": "validate_project_name",
+            "description": "Project name must be valid directory name",
+            "field": "project.name",
+            "validation": "pattern",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          {
+            "name": "validate_project_type",
+            "description": "Project type must be one of allowed values",
+            "field": "project.type",
+            "validation": "enum",
+            "allowed_values": ["web_browser_app", "mobile_app", "cli_tool", "backend_api"]
+          },
+          {
+            "name": "validate_project_description",
+            "description": "Project description must not be empty",
+            "field": "project.description",
+            "validation": "required"
+          }
+        ]
+      },
+      {
+        "checkpoint": "after_tab_1",
+        "rules": [
+          {
+            "name": "validate_conversation_language",
+            "description": "Verify conversation_language is valid (ko, en, ja, es, etc)",
+            "field": "language.conversation_language",
+            "validation": "enum",
+            "allowed_values": ["ko", "en", "ja", "es"]
+          },
+          {
+            "name": "validate_agent_prompt_language",
+            "description": "Verify agent_prompt_language consistency",
+            "field": "language.agent_prompt_language",
+            "validation": "enum",
+            "allowed_values": ["ko", "en", "ja", "es"]
+          }
+        ]
+      },
+      {
+        "checkpoint": "after_tab_3",
+        "rules": [
+          {
+            "name": "validate_git_mode_consistency",
+            "description": "Validate Personal/Team mode conflicts",
+            "conditions": [
+              {
+                "if": "git_strategy.mode == 'personal'",
+                "then": "git_strategy.personal.main_branch != 'develop'",
+                "error": "Personal mode should not use 'develop' as main branch"
+              },
+              {
+                "if": "git_strategy.mode == 'team'",
+                "then": "git_strategy.team.branch_protection == true",
+                "error": "Team mode should enable branch protection"
+              }
+            ]
+          },
+          {
+            "name": "validate_branch_naming",
+            "description": "Check branch naming consistency",
+            "validation": "pattern",
+            "fields": [
+              "git_strategy.personal.branch_prefix",
+              "git_strategy.team.branch_prefix"
+            ]
+          }
+        ]
+      },
+      {
+        "checkpoint": "before_final_update",
+        "rules": [
+          {
+            "name": "validate_all_required_fields",
+            "description": "Check all required fields are set",
+            "validation": "required",
+            "check_all_tabs": true
+          },
+          {
+            "name": "validate_field_types",
+            "description": "Verify field value types (string, bool, number, array)",
+            "validation": "type_check",
+            "check_all_tabs": true
+          }
+        ]
+      }
+    ]
+  },
+  "field_mapping_rules": {
+    "dot_notation": "Use dot notation for nested fields (e.g., user.name, language.conversation_language)",
+    "template_variables": "Use {{field_path}} for current value interpolation",
+    "special_values": {
+      "{{current}}": "Keep current value from config.json"
+    },
+    "deprecated_values": {
+      "{{prompt_user}}": "DEPRECATED - For text_input, users type directly in 'Type something' field. Do not use 'Change' option."
+    },
+    "auto_update_fields": "Some fields auto-update when related fields change (e.g., conversation_language_name when conversation_language changes)"
+  },
+  "implementation_notes": {
+    "conditional_batches": "Batches in Tab 3 show/hide based on git_strategy.mode selection",
+    "atomic_updates": "All updates delegated to UnifiedConfigManager from moai-workflow-project skill",
+    "backup_rollback": "Manager handles backup/rollback internally, not in command",
+    "validation_checkpoints": "Run validation after Tab 1, Tab 3, and before final update",
+    "language_aware": "All user-facing questions use conversation_language, no emojis in AskUserQuestion"
+  }
+}

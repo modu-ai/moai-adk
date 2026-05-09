@@ -1,0 +1,27 @@
+# Context Search Configuration
+# Enables searching previous Claude Code sessions for missing context
+
+context_search:
+  enabled: true
+
+  auto_detect:
+    enabled: true
+
+  search:
+    max_results: 5
+    max_tokens_per_result: 1000
+    date_range_days: 30
+    project_scope_only: true
+
+  performance:
+    timeout_seconds: 10
+    cache_ttl_seconds: 300
+
+  token_budget:
+    max_injection_tokens: 5000
+    skip_if_usage_above: 150000
+
+  memory_integration:
+    enabled: true
+    priority_over_search: true
+    include_in_context: true

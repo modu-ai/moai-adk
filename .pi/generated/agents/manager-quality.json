@@ -1,0 +1,65 @@
+{
+  "name": "manager-quality",
+  "description": "Code quality specialist. Use PROACTIVELY for TRUST 5 validation, code review, quality gates, and lint compliance.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of quality standards, code review strategies, and compliance patterns.\nEN: quality, TRUST 5, code review, compliance, quality gate, lint, code quality\nKO: 품질, TRUST 5, 코드리뷰, 준수, 품질게이트, 린트, 코드품질\nJA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント\nZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint",
+  "model": "inherit",
+  "thinking": "low",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-foundation-context",
+    "moai-foundation-quality",
+    "moai-workflow-testing",
+    "moai-tool-ast-grep",
+    "moai-workflow-loop"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-quality.md",
+  "sourceHash": "2f773e8d0778e2d8",
+  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "compatibility": {
+    "permissionMode": "bypassPermissions",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "haiku",
+    "originalMaxTurns": "150",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "WebSearch",
+      "Bash",
+      "TodoWrite",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search",
+      "Bash": "bash",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": true
+  }
+}

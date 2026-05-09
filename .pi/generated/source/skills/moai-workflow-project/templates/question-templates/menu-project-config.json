@@ -1,0 +1,130 @@
+{
+  "id": "menu-project-config",
+  "title": "Menu Project Configuration",
+  "description": "Configure interactive menu system for project management",
+  "questions": [
+    {
+      "id": "menu_system.enable",
+      "text": "Enable interactive menu system for project management?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Provide interactive menus for common project operations"
+    },
+    {
+      "id": "menu_system.style",
+      "text": "Choose menu interface style:",
+      "type": "single_choice",
+      "required": true,
+      "default_value": "interactive",
+      "options": [
+        {
+          "label": "Interactive (step-by-step)",
+          "value": "interactive",
+          "description": "Guided step-by-step menu navigation"
+        },
+        {
+          "label": "Quick Access",
+          "value": "quick",
+          "description": "Fast access to common operations"
+        },
+        {
+          "label": "Comprehensive",
+          "value": "comprehensive",
+          "description": "Full-featured menu with all options"
+        },
+        {
+          "label": "Minimal",
+          "value": "minimal",
+          "description": "Essential options only"
+        }
+      ]
+    },
+    {
+      "id": "menu_system.auto_save",
+      "text": "Automatically save menu preferences?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Remember your menu choices for future sessions"
+    },
+    {
+      "id": "menu_system.categories",
+      "text": "Which menu categories would you like to enable?",
+      "type": "multi_choice",
+      "required": true,
+      "default_value": ["project_setup", "development", "configuration"],
+      "options": [
+        {
+          "label": "Project Setup",
+          "value": "project_setup",
+          "description": "Initialize and configure new projects"
+        },
+        {
+          "label": "Development",
+          "value": "development",
+          "description": "Code generation, testing, and implementation"
+        },
+        {
+          "label": "Configuration",
+          "value": "configuration",
+          "description": "Project settings and preferences management"
+        },
+        {
+          "label": "Quality & Testing",
+          "value": "quality",
+          "description": "Code quality, linting, and testing tools"
+        },
+        {
+          "label": "Documentation",
+          "value": "documentation",
+          "description": "Generate and manage project documentation"
+        },
+        {
+          "label": "Deployment",
+          "value": "deployment",
+          "description": "Build and deployment configurations"
+        },
+        {
+          "label": "Monitoring",
+          "value": "monitoring",
+          "description": "Performance and error monitoring setup"
+        },
+        {
+          "label": "Security",
+          "value": "security",
+          "description": "Security configuration and analysis tools"
+        }
+      ]
+    },
+    {
+      "id": "menu_system.shortcuts",
+      "text": "Enable keyboard shortcuts for menu navigation?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Use keyboard shortcuts for faster menu operation"
+    },
+    {
+      "id": "menu_system.confirmation",
+      "text": "Require confirmation for destructive operations?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Ask for confirmation before operations like delete, reset, etc."
+    },
+    {
+      "id": "menu_system.logging",
+      "text": "Enable menu operation logging?",
+      "type": "boolean",
+      "required": true,
+      "default_value": false,
+      "description": "Log all menu operations for audit and debugging"
+    }
+  ],
+  "metadata": {
+    "skill": "moai-menu-project",
+    "category": "project_configuration",
+    "version": "1.0.0"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "moai-pi-overlay",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Project-local pi overlay for running the Claude-oriented MoAI harness with semantic parity.",
+  "pi": {
+    "extensions": [
+      "./extensions/moai-claude-compat"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "prompts": [
+      "./prompts"
+    ]
+  },
+  "dependencies": {},
+  "optionalDependencies": {},
+  "moaiCompat": {
+    "quotaFooterPrimary": "moai-claude-compat-native-codex-quota",
+    "quotaFooterSource": "Adapted from @kmiyh/pi-codex-plan-limits@1.0.1 (MIT)",
+    "agentTeamsPrimary": "@tmustier/pi-agent-teams",
+    "permissionMode": "excluded-by-design"
+  },
+  "scripts": {
+    "check": "for f in extensions/moai-claude-compat/index.ts extensions/moai-claude-compat/src/*.ts; do node --experimental-strip-types --check \"$f\" || exit 1; done; node --experimental-strip-types extensions/moai-claude-compat/statusline-footer.test.mjs",
+    "doctor": "pi /moai-pi-doctor"
+  }
+}

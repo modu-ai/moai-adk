@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-09T00:00:00.000Z",
+  "policy": {
+    "permissionMode": "excluded-by-design; record as metadata only; do not enforce runtime semantics",
+    "packageFirst": true
+  },
+  "sources": {
+    "claudeSettings": "./generated/source/settings/claude-settings.json",
+    "commands": "./generated/source/commands",
+    "agents": "./generated/source/agents/moai",
+    "skills": "./generated/source/skills",
+    "rules": "./generated/source/rules/moai",
+    "outputStyles": "./generated/source/output-styles/moai",
+    "hooks": "./generated/source/hooks/moai",
+    "moaiConfig": "./generated/source/moai-config/sections",
+    "moaiSpecs": "../.moai/specs",
+    "moaiProject": "../.moai/project"
+  },
+  "generatedRoot": "./generated",
+  "compatRoot": "./claude-compat",
+  "expectedCounts": {
+    "agents": 19,
+    "skills": 51,
+    "outputStyles": 3
+  },
+  "packagePriority": {
+    "agentTeams": [
+      "@tmustier/pi-agent-teams",
+      "pi-teams",
+      "pi-crew",
+      "pi-subagents"
+    ],
+    "hooks": [
+      "pi-yaml-hooks",
+      "pi-autohooks",
+      "moai-claude-compat"
+    ],
+    "permissions": [
+      "@gotgenes/pi-permission-system",
+      "@aliou/pi-guardrails",
+      "pi-yaml-hooks",
+      "moai-claude-compat"
+    ],
+    "quotaFooter": [
+      "moai-claude-compat-native-codex-quota",
+      "@kmiyh/pi-codex-plan-limits",
+      "pi-chatgpt-limit",
+      "pi-usage"
+    ],
+    "triggerPreload": [
+      "pi-prompt-template-model",
+      "moai-claude-compat trigger indexer"
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "name": "manager-tdd",
+  "description": "TDD (Test-Driven Development) implementation specialist. Use for RED-GREEN-REFACTOR\ncycle. Default methodology for new projects and feature development.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of test strategy, implementation approach, and coverage optimization.\nEN: TDD, test-driven development, red-green-refactor, test-first, new feature, specification test, greenfield\nKO: TDD, 테스트주도개발, 레드그린리팩터, 테스트우선, 신규기능, 명세테스트, 그린필드\nJA: TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド\nZH: TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "edit",
+    "mcp",
+    "read",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-foundation-quality",
+    "moai-workflow-tdd",
+    "moai-workflow-testing",
+    "moai-workflow-ddd",
+    "moai-workflow-mx-tag"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-tdd.md",
+  "sourceHash": "e6f2520d82dc847f",
+  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "compatibility": {
+    "permissionMode": "default",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "sonnet",
+    "originalMaxTurns": "150",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "TodoWrite",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "MultiEdit": "edit",
+      "Bash": "bash",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": true
+  }
+}

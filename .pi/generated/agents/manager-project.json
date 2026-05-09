@@ -1,0 +1,63 @@
+{
+  "name": "manager-project",
+  "description": "Project setup specialist. Use PROACTIVELY for initialization, .moai configuration, scaffolding, and new project creation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of project structure, configuration strategies, and scaffolding approaches.\nEN: project setup, initialization, .moai, project configuration, scaffold, new project\nKO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트\nJA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド\nZH: 项目设置, 初始化, .moai, 项目配置, 脚手架",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "edit",
+    "mcp",
+    "read",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-foundation-philosopher",
+    "moai-foundation-thinking",
+    "moai-workflow-project",
+    "moai-workflow-templates",
+    "moai-workflow-worktree",
+    "moai-workflow-spec",
+    "moai-foundation-context"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-project.md",
+  "sourceHash": "3498c8695997eb97",
+  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "compatibility": {
+    "permissionMode": "default",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "sonnet",
+    "originalMaxTurns": "150",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "TodoWrite",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "MultiEdit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "Bash": "bash",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": false
+  }
+}

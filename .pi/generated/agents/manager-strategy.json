@@ -1,0 +1,67 @@
+{
+  "name": "manager-strategy",
+  "description": "Implementation strategy specialist. Use PROACTIVELY for architecture decisions, technology evaluation, and implementation planning.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of architecture decisions, technology selection, and implementation strategies.\nEN: strategy, implementation plan, architecture decision, technology evaluation, planning\nKO: 전략, 구현계획, 아키텍처결정, 기술평가, 계획\nJA: 戦略, 実装計画, アーキテクチャ決定, 技術評価\nZH: 策略, 实施计划, 架构决策, 技术评估",
+  "model": "inherit",
+  "thinking": "high",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-foundation-philosopher",
+    "moai-foundation-thinking",
+    "moai-workflow-spec",
+    "moai-workflow-project",
+    "moai-workflow-thinking",
+    "moai-foundation-context",
+    "moai-workflow-worktree"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-strategy.md",
+  "sourceHash": "8490133c82f5f287",
+  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "compatibility": {
+    "permissionMode": "default",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "opus",
+    "originalMaxTurns": "150",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebFetch",
+      "WebSearch",
+      "TodoWrite",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "Bash": "bash",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": false
+  }
+}

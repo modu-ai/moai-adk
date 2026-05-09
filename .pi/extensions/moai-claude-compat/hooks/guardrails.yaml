@@ -1,0 +1,27 @@
+# MoAI pi guardrail skeleton.
+# Packages: @gotgenes/pi-permission-system, @aliou/pi-guardrails, pi-yaml-hooks.
+
+permissionMode: excluded-by-design
+
+ask:
+  - pattern: "rm*"
+    scope: bash
+  - pattern: "sudo*"
+    scope: bash
+  - pattern: "chmod*"
+    scope: bash
+  - pattern: "chown*"
+    scope: bash
+  - pattern: ".env*"
+    scope: read
+
+deny:
+  - description: secrets and private keys
+    patterns:
+      - "id_rsa"
+      - "id_ed25519"
+      - "*.pem"
+  - description: destructive git without explicit policy
+    patterns:
+      - "git reset --hard"
+      - "git clean -fd"

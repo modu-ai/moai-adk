@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "workflows": {
+    "plan": {
+      "source": "./generated/source/skills/moai/workflows/plan.md",
+      "primaryAgents": ["manager-spec", "manager-strategy"]
+    },
+    "run": {
+      "source": "./generated/source/skills/moai/workflows/run.md",
+      "modeSource": "./generated/source/moai-config/sections/quality.yaml",
+      "primaryAgents": ["manager-tdd", "manager-ddd"]
+    },
+    "sync": {
+      "source": "./generated/source/skills/moai/workflows/sync.md",
+      "primaryAgents": ["manager-docs", "manager-quality", "manager-git"]
+    }
+  },
+  "teamBackendPriority": ["@tmustier/pi-agent-teams", "pi-teams", "pi-crew", "pi-subagents"],
+  "tddDdd": "read .pi/generated/source/moai-config/sections/quality.yaml"
+}

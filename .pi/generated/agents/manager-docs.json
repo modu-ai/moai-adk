@@ -1,0 +1,67 @@
+{
+  "name": "manager-docs",
+  "description": "Documentation specialist. Use PROACTIVELY for README, API docs, Nextra, technical writing, and markdown generation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of documentation structure, content organization, and technical writing strategies.\nEN: documentation, README, API docs, Nextra, markdown, technical writing, docs\nKO: 문서, README, API문서, Nextra, 마크다운, 기술문서, 문서화\nJA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書\nZH: 文档, README, API文档, Nextra, markdown, 技术写作",
+  "model": "inherit",
+  "thinking": "low",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-docs-generation",
+    "moai-workflow-jit-docs",
+    "moai-workflow-templates",
+    "moai-library-mermaid",
+    "moai-library-nextra",
+    "moai-formats-data",
+    "moai-foundation-context"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-docs.md",
+  "sourceHash": "a6a88a8f91a00e6f",
+  "generatedAt": "2026-05-09T06:56:22.162Z",
+  "compatibility": {
+    "permissionMode": "acceptEdits",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "haiku",
+    "originalMaxTurns": "150",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebFetch",
+      "WebSearch",
+      "TodoWrite",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "Bash": "bash",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": true
+  }
+}

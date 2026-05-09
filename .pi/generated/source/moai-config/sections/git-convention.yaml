@@ -1,0 +1,23 @@
+git_convention:
+    convention: auto
+    auto_detection:
+        enabled: true
+        sample_size: 100
+        confidence_threshold: 0.5
+        fallback: conventional-commits
+    validation:
+        enabled: true
+        enforce_on_commit: false
+        enforce_on_push: false
+        max_length: 100
+    formatting:
+        show_examples: true
+        show_suggestions: true
+        verbose: false
+    custom:
+        name: ""
+        pattern: ""
+        types: []
+        scopes: []
+        max_length: 0
+        examples: []

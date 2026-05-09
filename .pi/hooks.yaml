@@ -1,0 +1,4 @@
+imports:
+  - ./extensions/moai-claude-compat/hooks/yaml-hooks.yaml
+
+hooks: []

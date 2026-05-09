@@ -1,0 +1,13 @@
+statusline:
+    mode: default
+    preset: full
+    segments:
+        claude_version: true
+        context: true
+        directory: true
+        git_branch: true
+        git_status: true
+        moai_version: true
+        model: true
+        output_style: true
+    theme: catppuccin-mocha

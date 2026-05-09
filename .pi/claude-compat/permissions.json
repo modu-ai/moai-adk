@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "policy": {
+    "permissionMode": "excluded-by-design",
+    "allowAskDeny": "semantic-equivalent guardrails",
+    "nonInteractiveAskDefault": "block"
+  },
+  "ask": [
+    "Bash(rm*)",
+    "Bash(sudo*)",
+    "Bash(chmod*)",
+    "Bash(chown*)",
+    "Read(.env*)"
+  ],
+  "deny": [
+    "Read/Write/Edit/Grep/Glob(./secrets/**)",
+    "Read/Write/Edit/Grep/Glob(~/.ssh/**)",
+    "Read/Write/Edit/Grep/Glob(~/.aws/**)",
+    "Read/Write/Edit/Grep/Glob(~/.config/gcloud/**)",
+    "Bash(git push --force*)",
+    "Bash(git push -f*)",
+    "Bash(git push --force-with-lease*)",
+    "Bash(git reset --hard*)",
+    "Bash(git clean -fd*)",
+    "Bash(git clean -fdx*)",
+    "Bash(git rebase -i*)",
+    "Bash(chmod 777*)",
+    "Bash(chmod -R 777*)",
+    "Bash(DROP DATABASE*)",
+    "Bash(DROP TABLE*)",
+    "Bash(TRUNCATE*)",
+    "Bash(DELETE FROM*)",
+    "Bash(redis-cli FLUSHALL*)",
+    "Bash(redis-cli FLUSHDB*)",
+    "Bash(psql -c DROP*)",
+    "Bash(mysql -e DROP*)",
+    "Bash(curl|wget pipe-to-shell*)"
+  ],
+  "guardrailPackages": [
+    "@gotgenes/pi-permission-system",
+    "@aliou/pi-guardrails",
+    "pi-yaml-hooks"
+  ]
+}

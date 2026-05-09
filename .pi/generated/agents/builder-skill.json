@@ -1,0 +1,65 @@
+{
+  "name": "builder-skill",
+  "description": "Skill creation specialist. Use PROACTIVELY for creating skills, YAML frontmatter design, and knowledge organization.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of skill design, knowledge organization, and YAML frontmatter structure.\nEN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter\nKO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터\nJA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター\nZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息",
+  "model": "inherit",
+  "thinking": "medium",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "subagent",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-workflow-project",
+    "moai-workflow-templates"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/builder-skill.md",
+  "sourceHash": "895f99d38384ffd3",
+  "generatedAt": "2026-05-09T06:56:22.161Z",
+  "compatibility": {
+    "permissionMode": "bypassPermissions",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "sonnet",
+    "originalMaxTurns": "50",
+    "originalMemory": "user",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "WebSearch",
+      "Bash",
+      "TodoWrite",
+      "Agent",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search",
+      "Bash": "bash",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Agent": "pi-subagents:subagent",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": false
+  }
+}

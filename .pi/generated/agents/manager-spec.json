@@ -1,0 +1,68 @@
+{
+  "name": "manager-spec",
+  "description": "SPEC creation specialist. Use PROACTIVELY for EARS-format requirements, acceptance criteria, and user story documentation.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of requirements, acceptance criteria, and user story design.\nEN: SPEC, requirement, specification, EARS, acceptance criteria, user story, planning\nKO: SPEC, 요구사항, 명세서, EARS, 인수조건, 유저스토리, 기획\nJA: SPEC, 要件, 仕様書, EARS, 受入基準, ユーザーストーリー\nZH: SPEC, 需求, 规格书, EARS, 验收标准, 用户故事",
+  "model": "inherit",
+  "thinking": "high",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-foundation-context",
+    "moai-foundation-philosopher",
+    "moai-foundation-thinking",
+    "moai-workflow-spec",
+    "moai-workflow-project",
+    "moai-workflow-thinking",
+    "moai-workflow-jit-docs",
+    "moai-workflow-worktree",
+    "moai-platform-database-cloud",
+    "moai-lang-python",
+    "moai-lang-typescript"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/manager-spec.md",
+  "sourceHash": "4a39c4fd58f883f0",
+  "generatedAt": "2026-05-09T06:56:22.163Z",
+  "compatibility": {
+    "permissionMode": "default",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "opus",
+    "originalMaxTurns": "150",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "Glob",
+      "Grep",
+      "TodoWrite",
+      "WebFetch",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "MultiEdit": "edit",
+      "Bash": "bash",
+      "Glob": "bash:find",
+      "Grep": "bash:rg",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "WebFetch": "pi-web-access:fetch_content",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": true
+  }
+}

@@ -1,0 +1,30 @@
+hooks:
+  - id: moai-protect-read
+    event: tool.before.read
+    actions:
+      - bash: 'node ./.pi/extensions/moai-claude-compat/hooks/pre-tool-policy.mjs'
+
+  - id: moai-protect-write
+    event: tool.before.write
+    actions:
+      - bash: 'node ./.pi/extensions/moai-claude-compat/hooks/pre-tool-policy.mjs'
+
+  - id: moai-protect-edit
+    event: tool.before.edit
+    actions:
+      - bash: 'node ./.pi/extensions/moai-claude-compat/hooks/pre-tool-policy.mjs'
+
+  - id: moai-protect-grep
+    event: tool.before.grep
+    actions:
+      - bash: 'node ./.pi/extensions/moai-claude-compat/hooks/pre-tool-policy.mjs'
+
+  - id: moai-protect-glob
+    event: tool.before.glob
+    actions:
+      - bash: 'node ./.pi/extensions/moai-claude-compat/hooks/pre-tool-policy.mjs'
+
+  - id: moai-protect-bash
+    event: tool.before.bash
+    actions:
+      - bash: 'node ./.pi/extensions/moai-claude-compat/hooks/pre-tool-policy.mjs'

@@ -1,0 +1,68 @@
+{
+  "name": "expert-security",
+  "description": "Security analysis specialist. Use PROACTIVELY for OWASP, vulnerability assessment, XSS, CSRF, and secure code review.\nMUST INVOKE when ANY of these keywords appear in user request:\n--deepthink flag: Activate Sequential Thinking MCP for deep analysis of security threats, vulnerability patterns, and OWASP compliance.\nEN: security, vulnerability, OWASP, injection, XSS, CSRF, penetration, audit, threat\nKO: 보안, 취약점, OWASP, 인젝션, XSS, CSRF, 침투, 감사, 위협\nJA: セキュリティ, 脆弱性, OWASP, インジェクション, XSS, CSRF, ペネトレーション, 監査\nZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计",
+  "model": "inherit",
+  "thinking": "high",
+  "tools": [
+    "bash",
+    "edit",
+    "fetch_content",
+    "mcp",
+    "read",
+    "subagent",
+    "web_search",
+    "write"
+  ],
+  "skills": [
+    "moai-foundation-claude",
+    "moai-foundation-core",
+    "moai-foundation-quality",
+    "moai-foundation-philosopher",
+    "moai-workflow-testing",
+    "moai-platform-auth",
+    "moai-tool-ast-grep"
+  ],
+  "sourcePath": ".pi/generated/source/agents/moai/expert-security.md",
+  "sourceHash": "3cf349aee042fa20",
+  "generatedAt": "2026-05-09T06:56:22.162Z",
+  "compatibility": {
+    "permissionMode": "default",
+    "permissionModePolicy": "metadata-only",
+    "originalModel": "opus",
+    "originalMaxTurns": "80",
+    "originalMemory": "project",
+    "originalTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "WebSearch",
+      "Bash",
+      "TodoWrite",
+      "Agent",
+      "Skill",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
+    ],
+    "toolAliases": {
+      "Read": "read",
+      "Write": "write",
+      "Edit": "edit",
+      "Grep": "bash:rg",
+      "Glob": "bash:find",
+      "WebFetch": "pi-web-access:fetch_content",
+      "WebSearch": "pi-web-access:web_search",
+      "Bash": "bash",
+      "TodoWrite": "@juicesharp/rpiv-todo",
+      "Agent": "pi-subagents:subagent",
+      "Skill": "pi skills/read",
+      "mcp__sequential-thinking__sequentialthinking": "mcp gateway",
+      "mcp__context7__resolve-library-id": "mcp gateway",
+      "mcp__context7__get-library-docs": "mcp gateway"
+    },
+    "hasAgentHooks": false
+  }
+}

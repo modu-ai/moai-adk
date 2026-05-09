@@ -107,6 +107,7 @@ ehthumbs.db
 logs/
 *.tmp
 *.temp
+tmp/
 *.bak
 *.backup
 
@@ -197,6 +198,18 @@ node_modules/
 .tscache/
 .next/
 out/
+
+# ===========================================
+# Pi Local Runtime & Install Artifacts
+# ===========================================
+.pi/npm/*
+!.pi/npm/.gitignore
+.pi/cache/
+.pi/state/*
+!.pi/state/.gitkeep
+!.pi/state/sessions/
+.pi/state/sessions/*
+!.pi/state/sessions/.gitkeep
 
 # ===========================================
 # Build Tools & Frameworks

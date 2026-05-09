@@ -1,0 +1,871 @@
+# Web Interface Guidelines
+
+Comprehensive web interface guidelines compliance checker from Vercel Labs. Review UI code for compliance with accessibility, performance, UX, and implementation best practices.
+
+---
+
+## Overview
+
+The Web Interface Guidelines provide a comprehensive set of rules for building accessible, performant, and user-friendly web interfaces. These guidelines cover HTML structure, accessibility (a11y), forms, animation, typography, content handling, images, performance, navigation, touch interaction, layout, and theming.
+
+### Guidelines Source
+
+The latest guidelines are maintained at:
+https://github.com/vercel-labs/web-interface-guidelines
+
+### Usage Patterns
+
+Use these guidelines when:
+- Reviewing UI code for compliance issues
+- Implementing new components or pages
+- Conducting accessibility audits
+- Optimizing web performance
+- Ensuring consistent UX patterns
+
+---
+
+## HTML Structure
+
+### Document Structure
+
+- Use semantic HTML5 elements (`<nav>`, `<main>`, `<article>`, `<section>`, `<aside>`, `<footer>`)
+- Include proper lang attribute on `<html>` element
+- Ensure proper heading hierarchy (no skipped levels)
+- Include skip link for main content
+- Add `scroll-margin-top` on heading anchors for proper scroll position
+
+Example:
+```tsx
+export default function Layout() {
+  return (
+    <html lang="en">
+      <body>
+        <a href="#main" className="sr-only focus:not-sr-only">
+          Skip to main content
+        </a>
+        <Header />
+        <main id="main" style={{ scrollMarginTop: 80 }}>
+          {children}
+        </main>
+        <Footer />
+      </body>
+    </html>
+  )
+}
+```
+
+### Semantic HTML
+
+Use appropriate semantic elements over generic divs:
+- `<nav>` for navigation menus
+- `<main>` for primary content
+- `<article>` for self-contained content
+- `<section>` for thematic grouping
+- `<aside>` for tangentially related content
+- `<header>` and `<footer>` for section headers/footers
+
+---
+
+## Accessibility (a11y)
+
+### Focus States
+
+- Interactive elements need visible focus: `focus-visible:ring-*` or equivalent
+- Never `outline-none` / `outline: none` without focus replacement
+- Use `:focus-visible` over `:focus` (avoid focus ring on click)
+- Group focus with `:focus-within` for compound controls
+
+Example:
+```tsx
+// Correct focus states
+<button className="focus-visible:ring-2 focus-visible:ring-blue-500">
+  Click me
+</button>
+
+// Compound control focus
+<div className="focus-within:ring-2 focus-within:ring-blue-500">
+  <input type="text" placeholder="Search..." />
+  <button>Search</button>
+</div>
+```
+
+### ARIA Attributes
+
+- Use `aria-label` for icon-only buttons
+- Use `aria-describedby` for additional context
+- Use `aria-live` for dynamic content regions
+- Use `aria-expanded` for toggle controls
+- Use proper heading hierarchy before ARIA (use native HTML first)
+- Ensure `role` is used only when necessary (prefer semantic HTML)
+
+Example:
+```tsx
+// Icon button with aria-label
+<button aria-label="Close dialog">
+  <XIcon />
+</button>
+
+// Described by additional context
+<input
+  type="text"
+  aria-describedby="password-hint"
+/>
+<p id="password-hint">Must be at least 8 characters</p>
+
+// Live region for dynamic content
+<div aria-live="polite" aria-atomic="true">
+  {statusMessage}
+</div>
+```
+
+### Keyboard Navigation
+
+- All interactive elements must be keyboard accessible
+- Provide visible focus indicators
+- Support Tab, Enter, Escape, and Arrow keys where appropriate
+- Ensure logical tab order
+- Implement keyboard traps for modals
+
+---
+
+## Forms
+
+### Input Best Practices
+
+- Inputs need `autocomplete` and meaningful `name`
+- Use correct `type` (`email`, `tel`, `url`, `number`) and `inputmode`
+- Never block paste (`onPaste` + `preventDefault`)
+- Labels clickable (`htmlFor` or wrapping control)
+- Disable spellcheck on emails, codes, usernames (`spellCheck={false}`)
+
+Example:
+```tsx
+<form>
+  <label htmlFor="email">Email</label>
+  <input
+    id="email"
+    type="email"
+    name="email"
+    autoComplete="email"
+    inputMode="email"
+    spellCheck={false}
+    placeholder="you@example.com"
+    required
+  />
+</form>
+```
+
+### Checkboxes and Radios
+
+- Label + control share single hit target (no dead zones)
+- Use proper grouping with `<fieldset>` and `<legend>`
+
+Example:
+```tsx
+// Correct: label wraps control for single hit target
+<label className="flex items-center gap-2 cursor-pointer">
+  <input type="checkbox" name="subscribe" value="yes" />
+  <span>Subscribe to newsletter</span>
+</label>
+
+// Grouping with fieldset
+<fieldset>
+  <legend>Notification preferences</legend>
+  <label>
+    <input type="radio" name="notifications" value="email" />
+    Email
+  </label>
+  <label>
+    <input type="radio" name="notifications" value="sms" />
+    SMS
+  </label>
+</fieldset>
+```
+
+### Form Validation
+
+- Submit button stays enabled until request starts; spinner during request
+- Errors inline next to fields; focus first error on submit
+- Placeholders end with `…` and show example pattern
+- `autocomplete="off"` on non-auth fields to avoid password manager triggers
+- Warn before navigation with unsaved changes
+
+Example:
+```tsx
+function ContactForm() {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate(formData)
+    setErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      // Focus first error
+      const firstErrorField = document.getElementById(Object.keys(newErrors)[0])
+      firstErrorField?.focus()
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await submitForm(formData)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label htmlFor="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          placeholder="you@example.com…"
+          aria-invalid={errors.email ? 'true' : 'false'}
+          aria-describedby={errors.email ? 'email-error' : undefined}
+        />
+        {errors.email && (
+          <p id="email-error" className="error">
+            {errors.email}
+          </p>
+        )}
+      </div>
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? <Spinner /> : 'Submit'}
+      </button>
+    </form>
+  )
+}
+```
+
+---
+
+## Animation
+
+### Performance Guidelines
+
+- Honor `prefers-reduced-motion` (provide reduced variant or disable)
+- Animate `transform`/`opacity` only (compositor-friendly)
+- Never `transition: all`—list properties explicitly
+- Set correct `transform-origin`
+- SVG: transforms on `<g>` wrapper with `transform-box: fill-box; transform-origin: center`
+- Animations interruptible—respond to user input mid-animation
+
+Example:
+```tsx
+// Correct: explicit properties with reduced-motion support
+const buttonVariants = cva({
+  base: 'transition-transform duration-200',
+  variants: {
+    hover: {
+      true: 'hover:scale-105'
+    }
+  }
+})
+
+function AnimatedButton() {
+  return (
+    <button className={buttonVariants({ hover: true })}>
+      Click me
+    </button>
+  )
+}
+
+// Reduced motion query
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+---
+
+## Typography
+
+### Best Practices
+
+- Use ellipsis (`…`) not three dots (`...`)
+- Use curly quotes (`""`) not straight quotes (`""`)
+- Non-breaking spaces for: `10 MB`, `⌘ K`, brand names
+- Loading states end with ellipsis: `"Loading…"`, `"Saving…"`
+- `font-variant-numeric: tabular-nums` for number columns/comparisons
+- Use `text-wrap: balance` or `text-wrap: pretty` on headings (prevents widows)
+
+Example:
+```tsx
+function Typography() {
+  return (
+    <div>
+      <h1 className="text-wrap-balance">
+        Headline that should not have widows
+      </h1>
+      <p>Loading…</p>
+      <table>
+        <td className="font-variant-numeric: tabular-nums">
+          1,234,567
+        </td>
+      </table>
+    </div>
+  )
+}
+```
+
+---
+
+## Content Handling
+
+### Text Containers
+
+- Text containers handle long content: `truncate`, `line-clamp-*`, or `break-words`
+- Flex children need `min-w-0` to allow text truncation
+- Handle empty states—don't render broken UI for empty strings/arrays
+- User-generated content: anticipate short, average, and very long inputs
+
+Example:
+```tsx
+// Text truncation in flex container
+<div className="flex min-w-0">
+  <span className="truncate">{longTitle}</span>
+</div>
+
+// Line clamping
+<p className="line-clamp-3">
+  {longDescription}
+</p>
+
+// Empty state handling
+function PostList({ posts }: { posts: Post[] }) {
+  if (posts.length === 0) {
+    return <EmptyState message="No posts yet" />
+  }
+  return posts.map(post => <PostCard key={post.id} post={post} />)
+}
+```
+
+---
+
+## Images
+
+### Best Practices
+
+- `<img>` needs explicit `width` and `height` (prevents CLS)
+- Below-fold images: `loading="lazy"`
+- Above-fold critical images: `priority` or `fetchpriority="high"`
+
+Example:
+```tsx
+// Next.js Image component
+import Image from 'next/image'
+
+// Above-fold: priority
+function Hero() {
+  return (
+    <Image
+      src="/hero.jpg"
+      alt="Hero image"
+      width={1200}
+      height={600}
+      priority
+    />
+  )
+}
+
+// Below-fold: lazy loading
+function Gallery() {
+  return (
+    <Image
+      src="/photo.jpg"
+      alt="Gallery photo"
+      width={800}
+      height={600}
+      loading="lazy"
+    />
+  )
+}
+```
+
+---
+
+## Performance
+
+### Optimization Guidelines
+
+- Large lists (>50 items): virtualize (`virtua`, `content-visibility: auto`)
+- No layout reads in render (`getBoundingClientRect`, `offsetHeight`, `offsetWidth`, `scrollTop`)
+- Batch DOM reads/writes; avoid interleaving
+- Prefer uncontrolled inputs; controlled inputs must be cheap per keystroke
+- Add `<link rel="preconnect">` for CDN/asset domains
+- Critical fonts: `<link rel="preload">` with `font-display: swap`
+
+Example:
+```tsx
+// Virtual list for large datasets
+import { useVirtualizer } from '@tanstack/react-virtual'
+
+function VirtualList({ items }: { items: Item[] }) {
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 50,
+  })
+
+  return (
+    <div ref={parentRef} className="h-96 overflow-auto">
+      <div style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        {virtualizer.getVirtualItems().map((virtualItem) => (
+          <div
+            key={virtualItem.key}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: `${virtualItem.size}px`,
+              transform: `translateY(${virtualItem.start}px)`,
+            }}
+          >
+            {items[virtualItem.index].name}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Preconnect for CDN domains
+export default function RootLayout() {
+  return (
+    <html>
+      <head>
+        <link rel="preconnect" href="https://cdn.example.com" />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+---
+
+## Navigation & State
+
+### URL State Management
+
+- URL reflects state—filters, tabs, pagination, expanded panels in query params
+- Links use `<Link>`/`<a>` (Cmd/Ctrl+click, middle-click support)
+- Deep-link all stateful UI (if uses `useState`, consider URL sync via nuqs or similar)
+- Destructive actions need confirmation modal or undo window—never immediate
+
+Example:
+```tsx
+// URL state with nuqs
+import { useQueryState } from 'nuqs'
+
+function ProductList() {
+  const [category, setCategory] = useQueryState('category')
+  const [page, setPage] = useQueryState('page', { defaultValue: '1' })
+
+  return (
+    <div>
+      <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        <option value="">All</option>
+        <option value="electronics">Electronics</option>
+      </select>
+      <ProductGrid category={category} page={page} />
+      <Link href={`?category=${category}&page=${Number(page) + 1}`}>
+        Next page
+      </Link>
+    </div>
+  )
+}
+
+// Destructive action with confirmation
+function DeleteButton({ id }: { id: string }) {
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  const handleDelete = async () => {
+    await deleteItem(id)
+    setShowConfirm(false)
+  }
+
+  return (
+    <>
+      <button onClick={() => setShowConfirm(true)}>Delete</button>
+      {showConfirm && (
+        <ConfirmDialog
+          message="Are you sure you want to delete this item?"
+          onConfirm={handleDelete}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
+    </>
+  )
+}
+```
+
+---
+
+## Touch & Interaction
+
+### Touch Guidelines
+
+- `touch-action: manipulation` (prevents double-tap zoom delay)
+- `-webkit-tap-highlight-color` set intentionally
+- `overscroll-behavior: contain` in modals/drawers/sheets
+- During drag: disable text selection, `inert` on dragged elements
+- `autoFocus` sparingly—desktop only, single primary input; avoid on mobile
+
+Example:
+```tsx
+// Touch-friendly button
+const button = cva({
+  base: 'touch-action-manipulation -webkit-tap-highlight-color-transparent'
+})
+
+// Modal with overscroll containment
+function Modal() {
+  return (
+    <div className="overscroll-behavior-contain">
+      <div className="backdrop">...</div>
+      <div className="content">...</div>
+    </div>
+  )
+}
+```
+
+### Mobile-First UX Patterns
+
+#### Touch Target Sizing
+- Minimum touch target: 44x44px (WCAG 2.5.5)
+- Recommended: 48x48px for primary actions
+- Spacing between targets: minimum 8px
+- Thumb zone optimization: place primary actions in bottom 1/3 of screen
+
+#### Gesture Design
+- Swipe: horizontal for navigation, vertical for scroll/dismiss
+- Long press: secondary actions, context menus
+- Pinch: zoom and scale operations
+- Pull-to-refresh: top-of-list refresh pattern
+
+#### Mobile Interaction Patterns
+- Bottom sheet for contextual actions (replaces desktop modals)
+- Pull-to-refresh for content updates
+- Floating action button (FAB) for primary creation action
+- Tab bar for top-level navigation (max 5 items)
+- Haptic feedback for confirmations and state changes
+
+---
+
+## Safe Areas & Layout
+
+### Layout Guidelines
+
+- Full-bleed layouts need `env(safe-area-inset-*)` for notches
+- Avoid unwanted scrollbars: `overflow-x-hidden` on containers, fix content overflow
+- Flex/grid over JS measurement for layout
+
+Example:
+```tsx
+// Safe area handling for notched devices
+function FullBleedLayout() {
+  return (
+    <div
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+```
+
+---
+
+## Dark Mode & Theming
+
+### Theme Implementation
+
+- `color-scheme: dark` on `<html>` for dark themes (fixes scrollbar, inputs)
+- `<body>` matches page background
+
+Example:
+```tsx
+// Dark mode with color-scheme
+export default function RootLayout() {
+  return (
+    <html className="dark" style={{ colorScheme: 'dark' }}>
+      <body className="bg-gray-950 text-gray-50">
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+---
+
+## Design Direction and Anti-AI Slop Prevention
+
+### Design Thinking Process
+
+Every UI project must go through a deliberate design direction process before implementation:
+
+1. **Purpose**: What is this interface trying to achieve? What feeling should it evoke?
+2. **Tone**: What personality does this product have? (formal/casual, playful/serious, warm/cool)
+3. **Constraints**: What are the brand guidelines, technical limitations, accessibility requirements?
+4. **Differentiation**: How will this look different from generic AI-generated interfaces?
+
+### Banned Patterns (AI Slop Indicators)
+
+These patterns indicate lazy, undifferentiated AI-generated design:
+
+**Typography**:
+- BANNED: Inter, Roboto, Arial as primary fonts
+- BANNED: System font stacks without intentional pairing
+- BANNED: Space Grotesk as a "modern" default
+- INSTEAD: Choose distinctive font pairings that reflect the product's personality
+
+**Color**:
+- BANNED: Purple-to-blue gradients on white backgrounds
+- BANNED: Generic teal/coral accent colors
+- INSTEAD: Dominant brand color with sharp, intentional accent colors
+- INSTEAD: Monochromatic schemes with texture variation
+
+**Layout**:
+- BANNED: Predictable hero → features grid → testimonials → CTA pattern
+- BANNED: Symmetric card grids with identical spacing
+- INSTEAD: Asymmetric spatial composition
+- INSTEAD: Intentional whitespace as a design element
+
+### Style Extremes Guide
+
+Choose a design direction from these extremes rather than defaulting to "clean and modern":
+
+| Style | Characteristics | When to Use |
+|-------|----------------|-------------|
+| Brutally Minimal | Max whitespace, single typeface, no decoration | Developer tools, productivity apps |
+| Maximalist Chaos | Dense information, overlapping elements, rich color | Creative tools, entertainment |
+| Retro-Futuristic | CRT aesthetics, monospace fonts, terminal-inspired | Tech-forward products, CLI tools |
+| Organic/Natural | Soft curves, earth tones, hand-drawn elements | Wellness, sustainability brands |
+| Luxury/Refined | Serif fonts, generous spacing, muted palette | Premium products, finance |
+| Playful/Toy-like | Rounded shapes, bright colors, bouncy animations | Consumer apps, children's products |
+| Editorial/Magazine | Strong typography hierarchy, grid-based, photographic | Content-heavy sites, blogs |
+| Brutalist/Raw | Exposed structure, system fonts, minimal CSS | Art, experimental projects |
+| Art Deco/Geometric | Gold accents, symmetrical patterns, decorative fonts | Fashion, hospitality |
+| Soft/Pastel | Muted colors, rounded corners, gentle gradients | Health, education |
+| Industrial/Utilitarian | Monospace, high contrast, dense information | Data dashboards, monitoring |
+
+### Atmospheric Backgrounds
+
+Replace flat white/gray backgrounds with textured alternatives:
+
+- Gradient meshes with subtle color shifts
+- Noise textures (SVG filter: feTurbulence)
+- Grain overlays (CSS: background-image with noise)
+- Subtle pattern backgrounds (dots, lines, crosshatch)
+- Glassmorphism with backdrop-filter
+
+---
+
+## Motion and Microinteraction Design
+
+### Transition Timing
+
+- Default duration: 200-300ms for UI state changes
+- Page transitions: 400-600ms
+- Complex animations: 600-1000ms
+- Easing: Use cubic-bezier curves, never linear for UI elements
+  - Enter: cubic-bezier(0, 0, 0.2, 1) — decelerate
+  - Exit: cubic-bezier(0.4, 0, 1, 1) — accelerate
+  - Standard: cubic-bezier(0.4, 0, 0.2, 1) — standard ease
+
+### Entrance and Exit Patterns
+
+- Fade + translate (8-16px) for content appearing
+- Scale from 0.95 to 1.0 for modals and dialogs
+- Slide from edge for drawers and panels
+- Never use bounce or elastic easing for professional UIs
+
+### Stagger Patterns
+
+- List items: 50ms stagger between items
+- Grid items: 30-50ms stagger, row-first or diagonal
+- Maximum stagger group: 8-10 items (beyond that, use batch reveal)
+
+### Scroll-Triggered Effects
+
+- Intersection Observer for scroll-based reveals
+- Parallax: subtle (0.1-0.3 factor), never extreme
+- Progressive disclosure on scroll (lazy content loading)
+- Scroll-linked progress indicators
+
+### Reduced Motion
+
+- Always respect prefers-reduced-motion
+- Provide instant state changes as fallback
+- Keep essential motion (loading indicators) even in reduced mode
+
+---
+
+## Review Checklist
+
+When reviewing UI code, check for:
+
+### HTML & Structure
+- [ ] Semantic HTML5 elements used appropriately
+- [ ] Proper heading hierarchy (no skipped levels)
+- [ ] Skip link for main content included
+- [ ] `scroll-margin-top` on heading anchors
+
+### Accessibility
+- [ ] Visible focus states on all interactive elements
+- [ ] `:focus-visible` used instead of `:focus`
+- [ ] ARIA labels on icon-only buttons
+- [ ] Keyboard navigation implemented
+- [ ] Screen reader optimization applied
+
+### Forms
+- [ ] Inputs have `autocomplete` and meaningful `name`
+- [ ] Correct `type` and `inputmode` used
+- [ ] Paste not blocked
+- [ ] Labels clickable (wrapping control or `htmlFor`)
+- [ ] Spellcheck disabled on appropriate fields
+- [ ] Checkboxes/radios have single hit target
+- [ ] Inline error messages with focus management
+- [ ] Placeholders end with `…`
+
+### Animation
+- [ ] `prefers-reduced-motion` honored
+- [ ] Only `transform`/`opacity` animated
+- [ ] Properties listed explicitly (no `transition: all`)
+- [ ] Animations interruptible
+
+### Typography
+- [ ] Ellipsis (`…`) used instead of three dots
+- [ ] Curly quotes used
+- [ ] Non-breaking spaces for appropriate content
+- [ ] Loading states end with `…`
+- [ ] `tabular-nums` for number columns
+- [ ] `text-wrap: balance` on headings
+
+### Content
+- [ ] Text containers handle overflow (`truncate`, `line-clamp`, `break-words`)
+- [ ] Flex children have `min-w-0` for truncation
+- [ ] Empty states handled gracefully
+
+### Images
+- [ ] Explicit `width` and `height` on images
+- [ ] Lazy loading on below-fold images
+- [ ] Priority on above-fold critical images
+
+### Performance
+- [ ] Large lists virtualized
+- [ ] No layout reads in render
+- [ ] DOM reads/writes batched
+- [ ] Preconnect tags for CDN domains
+- [ ] Font preloading for critical fonts
+
+### Navigation
+- [ ] URL state reflected in query params
+- [ ] Links use proper anchor tags
+- [ ] Deep linking implemented
+- [ ] Destructive actions have confirmation
+
+### Touch
+- [ ] `touch-action: manipulation` applied
+- [ ] `overscroll-behavior: contain` in modals
+- [ ] `autoFocus` used sparingly
+
+### Layout
+- [ ] Safe area insets handled for notched devices
+- [ ] Unwanted scrollbars prevented
+- [ ] Flex/grid used over JS measurement
+
+### Theming
+- [ ] `color-scheme: dark` on html element for dark themes
+- [ ] Body background matches page background
+
+---
+
+## Resources
+
+- Official Repository: https://github.com/vercel-labs/web-interface-guidelines
+- Related: WAI-ARIA Authoring Practices: https://www.w3.org/WAI/ARIA/apg/
+- Related: WCAG 2.2 Quick Reference: https://www.w3.org/WAI/WCAG22/quickref/
+
+---
+
+Version: 1.0.0
+Last Updated: 2026-01-15
+Source: Vercel Labs Web Interface Guidelines
+
+---
+
+## Frontend Composition Rules
+
+Design composition guidelines derived from OpenAI's GPT-5.4 frontend research (Mar 2026). These complement the Vercel Web Interface Guidelines above.
+
+### Viewport Composition
+
+One Composition Rule: The first viewport must read as one composition, not a dashboard. Apply a "hero budget" — limit the first viewport to brand, one headline, one supporting sentence, one CTA group, and one dominant image.
+
+Full-Bleed Hero: On landing pages and promotional surfaces, the hero image should be a dominant edge-to-edge visual plane. Do not use boxed or center-column heroes when the brief calls for full bleed.
+
+Viewport Sizing: When using 100vh/100svh heroes, subtract persistent UI chrome (header height). If a sticky header exists, it counts against the hero budget.
+
+### Typography and Color
+
+Use expressive, purposeful fonts. Avoid default stacks (Inter, Roboto, Arial, system-ui). Limit to two typefaces without clear reason.
+
+Default to one accent color unless the product has a strong multi-color system. Background treatment should never rely on flat single-color backgrounds — use gradients, images, or subtle patterns.
+
+### Design System Tokens
+
+Establish a clear design system early with core tokens:
+- Surface tokens: background, surface, primary text, muted text, accent
+- Typography roles: display, headline, body, caption
+- Spacing scale: consistent increment system
+
+### Copy Strategy
+
+For marketing and promotional pages:
+- Let the headline carry the meaning
+- Supporting copy should usually be one short sentence
+- Cut repetition between sections
+- Write in product language, not design commentary
+
+For product UI (dashboards, admin tools, workspaces):
+- Prioritize orientation, status, and action over promise, mood, or brand voice
+- Section headings should say what the area is or what the user can do there
+- Start with the working surface itself: KPIs, charts, filters, tables, status
+
+### Imagery Guidelines
+
+- Imagery should show the product, place, atmosphere, or context
+- Decorative gradients and abstract backgrounds do not count as the main visual idea
+- Use at least one strong, real-looking image for brands, venues, and lifestyle products
+- Prefer in-situ photography over abstract gradients or fake 3D objects
+- Do not use images with embedded signage, logos, or typographic clutter
+- Choose or crop images with a stable tonal area for text overlay
+
+### Motion Principles
+
+Ship at least 2-3 intentional motions for visually-led work. Use motion to create presence and hierarchy, not noise.
+
+Motion types to consider:
+- Entrance sequences: how elements appear on load
+- Scroll-linked effects: parallax, progressive reveal
+- Hover/reveal transitions: micro-interactions for engagement
+
+Preferred library: Framer Motion for React projects.

@@ -1,0 +1,9 @@
+{
+  "name": "moai-claude-compat",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Project-local pi extension that maps the Claude-oriented MoAI harness onto pi.",
+  "main": "index.ts",
+  "dependencies": {}
+}
