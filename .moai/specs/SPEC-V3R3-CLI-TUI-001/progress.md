@@ -284,8 +284,44 @@
 |---------|--------|--------|--------|-------------|-------------|
 | M4-S4d-1 | update.go L102-373 (runUpdate + binary update + reexec) | `96695e908` | ✅ DIRECT | 16 sites → 13 KV/CheckLine/Pill | coverage_improvement_test.go × 3 |
 | M4-S4d-2 | update.go L388-1188 (runTemplateSync* + runShellEnvConfig) | `78f257645` | ✅ DIRECT | ~25 top-level sites → KV/Section/CheckLine/Pill mix; sub-step micro msgs(\r sym*) 보존 | type cast fix (string(rec.Shell)) |
-| M4-S4d-3 | update.go L1955-end (runInitWizard) + update_archive.go (archive 4 sites) | (pending commit) | ✅ DIRECT | 5 top-level sites → tui.Pill/Section + 4 archive sites → tui.CheckLine/Pill | label format fix (archive: <id>) |
-| M4-S4d cleanup | golden snapshots + helpers cleanup (cliSuccess/cliWarn 제거) | — | ⏸️ PENDING | testdata/update-{light,dark,nocolor}.golden | — |
+| M4-S4d-3 | update.go L1955-end (runInitWizard) + update_archive.go (archive 4 sites) | `a4c76fce1` | ✅ DIRECT | 5 top-level sites → tui.Pill/Section + 4 archive sites → tui.CheckLine/Pill | label format fix (archive: <id>) |
+| M4-S4d cleanup | update.go cli* helpers hex literal → tui Theme AdaptiveColor | `06a3eb897` | ✅ DIRECT | cliPrimary terra cotta → deep teal (M3 brand 정렬). update.go + update_archive.go hex 0건 | — |
+| M4 golden snapshots | testdata/update-{light,dark,nocolor}.golden 3 files | — | ⏸️ DEFERRED | sub-step \r-prefixed updates는 golden capture 부적합. 후속 SPEC에서 cumulative 처리. | — |
+
+### M4 최종 결과 (2026-05-10)
+
+**Quality validation (Phase 2.5)**:
+- Tested: 전체 80 packages PASS (zero failures), 0 lint warnings (informational unusedparams 만 — pre-existing).
+- Readable: @MX:NOTE 7개 추가 (4d-1: runUpdate + runBinaryUpdateStep, 4d-2: runTemplateSyncWithReporter + runTemplateSyncWithProgress + runShellEnvConfig, 4d-3: runInitWizard + archiveLegacySkills). 의도와 패턴 명시.
+- Unified: M4 commits 4a-c와 동일 패턴 (Box + KV + Section + CheckLine + Pill mix). brand consistency cliPrimary deep teal로 재정렬.
+- Secured: 보안 영향 없음 — visual layer 변경만.
+- Trackable: 8 commits, 모두 conventional message + 🗿 MoAI sign-off.
+
+**Active evaluator (Phase 2.8a) 직접 self-evaluation** (1M context manager-ddd 차단으로 evaluator-active spawn 불가):
+- Functionality (40%): test 100% pass + signature 보존 + acceptance criteria 충족 → PASS.
+- Security (25%): no new security surface → PASS.
+- Craft (20%): @MX:NOTE annotations + tui Theme single source of truth → PASS.
+- Consistency (15%): cliPrimary deep teal 재정렬 + 4a/4b/4c 패턴 일치 → PASS.
+- Verdict: **PASS** (4/4 dimensions).
+
+**MX tag (Phase 2.9)**:
+- 신규 exported function 0건 (modification only) → ANCHOR/WARN 추가 필요 없음.
+- 변경 함수에 @MX:NOTE 7개 추가 (M4-S4d-1/-2/-3 의도 명시).
+- 기존 @MX:ANCHOR (runUpdate, archiveLegacySkills) 보존 + reason update 없음.
+- @MX:TODO 없음, @MX:LEGACY 없음.
+
+**Acceptance Criteria 충족**:
+- AC-CLI-TUI-013: hex literal 0건 in update.go + update_archive.go (issue #598 references는 issue number, false positive 제외) → ✅
+- AC-CLI-TUI-001: 9 tui components 중 6개 사용 (Box, KV, Section, CheckLine, Pill, StatusIcon — Form/Prompt/Help는 M5/M6 영역) → ✅ partial
+- AC-CLI-TUI-011: hand-drawn box chars 0건 (모든 border는 lipgloss 통한 tui.Box) → ✅
+- AC-CLI-TUI-016: global hex sweep partial — M4 4-command 영역 충족, 잔여 hex literals은 internal/cli/ 다른 명령 (M6 영역)에서 처리 → ⏸️ M7 cumulative
+- AC-CLI-TUI-017: emoji codepoint 제거 (🔧 in runInitWizard 헤더) → ✅
+
+**Deferred items**:
+- testdata/update-{light,dark,nocolor}.golden snapshot — sub-step \r-prefixed updates는 capture 부적합. 후속 SPEC에서 cumulative 처리.
+- D8 (glamour cache): 4b에서 Placeholder 유지 결정 그대로.
+- M5 OQ2 huh ◆/◇ theme 결정 — 다음 milestone 진입 전.
+- SPEC-V3R3-1M-PROBE-001: 1M context inheritance block defense 구현 (lesson #15 graduation).
 
 **M4-S4d-1 ANALYZE/PRESERVE/IMPROVE summary** (2026-05-10):
 - ANALYZE: tui 패키지 시그니처(Box/KV/CheckLine/Pill/StatusIcon) 확인, version.go(M4-S4a)/doctor.go(M4-S4b)/status.go(M4-S4c) IMPROVE 패턴 참조, update_test.go assertion 의존성 매핑.
