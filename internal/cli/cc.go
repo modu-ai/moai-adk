@@ -3,6 +3,7 @@ package cli
 // @MX:NOTE: [AUTO] cc command switches LLM backend to Claude-only mode
 // @MX:NOTE: [AUTO] Removes GLM env vars and resets team mode before launching Claude Code
 // @MX:NOTE: [AUTO] Supports profile switching via CLAUDE_CONFIG_DIR
+// @MX:NOTE: [AUTO] M6-S1 DDD: cc is a thin delegate-only entry point; print sites live in launcher.go::launchClaudeDefault
 
 import (
 	"github.com/spf13/cobra"
