@@ -63,8 +63,10 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "strict=${{ inputs.strict }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == "push" ]]; then
-            # push to main: strict (blocks regressions after baseline is cleared)
-            echo "strict=true" >> "$GITHUB_OUTPUT"
+            # push to main: warn-only during Phase 1 rollout (matches PR behavior).
+            # Flip to strict after the baseline 35 drifts are cleared (Phase 2)
+            # via SPEC-V3R3-DOCS-PARITY-001 or equivalent — see CLAUDE.local.md §17.3.
+            echo "strict=false" >> "$GITHUB_OUTPUT"
           else
             # PRs: warn-only during Phase 1 rollout
             echo "strict=false" >> "$GITHUB_OUTPUT"
