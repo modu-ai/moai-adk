@@ -590,3 +590,19 @@
 - pr_labels: type:feature, priority:P0, area:cli, area:bodp, area:workflow
 - merge_strategy: squash (per CLAUDE.local.md §18.3 feature → main)
 - spec_closure: Wave 7 = Final Wave (7/7) of SPEC-V3R3-CI-AUTONOMY-001 — closure 진입 직전
+
+
+## SPEC Closure — 2026-05-09
+
+- date: 2026-05-09
+- status: completed
+- waves_total: 7 (Wave 1-7) + 1 follow-up fix
+- prs_merged: #785, #788, #790, #791, #792, #793, #794, #795
+- main_head_at_closure: 9ecd8c765 (PR #795 squash, BODP cwd leak fix)
+- ac_replay_window_active: 2026-05-09 → 2026-06-08 (30 days, AC-CIAUT-020 manual validation)
+- retrospective: .moai/reports/post-merge-validation/SPEC-V3R3-CI-AUTONOMY-001.md
+- closure_session_learnings:
+  - sub-agent 1M context limit → main-session direct implementation (lesson #12 reinforcement)
+  - auto-merge race during follow-up fix work → orphan branch warning (new candidate #15)
+  - functor-mock pattern for cwd-dependent code (new candidate #16)
+- next_action: 다음 SPEC scoping (사용자 결정 예정)

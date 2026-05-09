@@ -5,19 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — SPEC-V3R3-CI-AUTONOMY-001 Wave 2: CI Watch Loop
+## [Unreleased] — SPEC-V3R3-CI-AUTONOMY-001: 8-Tier Autonomous CI/CD + Branch Origin Decision Protocol
 
-### Added
+### English
 
-- **SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (T2)**: CI watch loop — `moai-workflow-ci-watch` skill + `gh pr checks` polling engine.
-  - `internal/ciwatch/` — Classifier (IsRequired via SSoT), WatchState (atomic YAML state file), Handoff (FailedCheck JSON schema for Wave 3 expert-debug).
-  - `internal/cli/pr/` — EmitReadyToMergeReport (markdown, `(권장)` first option), EmitFailureHandoff (JSON T3 pipe).
-  - `internal/cli/pr_watch_cmd.go` — `moai pr watch --abort` (SetAbortFlag) and `--report` subcommands.
-  - `scripts/ci-watch/` — POSIX sh polling loop (mock-injectable via `MOAI_CIWATCH_GH`), lib/_common.sh, lib/classify.sh (yq+grep fallback), lib/timeout.sh (30-min wall-clock guard).
-  - `.claude/skills/moai-workflow-ci-watch/` — 3-tier Progressive Disclosure skill (SKILL.md 222 lines, modules/).
-  - `.claude/rules/moai/workflow/ci-watch-protocol.md` — HARD invocation contract with auto-load paths frontmatter.
-  - Template-First: all .claude/ artifacts mirrored to `internal/template/templates/.claude/`.
-  - Coverage: ciwatch 87.6%, cli/pr 95.0%. Shell tests: 9/9 pass. make ci-local: PASS.
+- **SPEC-V3R3-CI-AUTONOMY-001 (8 Waves, 8 Tiers)**: Establishes autonomous CI/CD pipeline with self-correcting watch+fix loops and pre-merge protocol enforcement. Eliminates manual debug/fix/push cycles for routine PR sweeps.
+  - **Wave 1 (T1+T5)**: `make ci-local` 16-language detection + Bash skeleton with parallel test/lint/build (PR #785).
+  - **Wave 2 (T2)**: CI watch loop. `internal/ciwatch/` (Classifier + WatchState + Handoff JSON), `internal/cli/pr/` (EmitReadyToMergeReport + EmitFailureHandoff), `moai pr watch --abort/--report`. POSIX shell polling at `scripts/ci-watch/` with 30-min wall-clock guard. (PR #788)
+  - **Wave 3 (T3)**: Auto-fix loop. Mechanical (lint/format) vs semantic (test) failure classification, mechanical auto-fix, semantic immediate escalation. (PR #790)
+  - **Wave 4**: Auxiliary workflow cleanup. claude-review (org quota) and Release Drafter (stale draft) marked non-blocking; required CI checks SSoT in `.github/required-checks.yml`. (PR #791)
+  - **Wave 5 (T6)**: Worktree State Guard. `internal/worktree/` snapshot/verify/restore primitives, `moai worktree snapshot|verify|restore` CLI subcommands, divergence log + suspect flag for `Agent(isolation: "worktree")` regressions. (PR #792)
+  - **Wave 6 (T7)**: i18n validator. Standalone Go static analyzer at `scripts/i18n-validator/` with dual-mode oracle (`--all-files` intra-state default + `--diff <git-rev>` temporal/baseline). Magic comment escape (`// i18n:translatable`) supported. (PR #793)
+  - **Wave 7 (T8)**: Branch Origin Decision Protocol (BODP). `internal/bodp/` Pure-Go library with 3-signal evaluation (depends_on + co-location + open PR head) and 8-row decision matrix. Three invocation paths (`/moai plan --branch`, `/moai plan --worktree`, `moai worktree new`). Audit trail at `.moai/branches/decisions/<normalized-branch>.md`. Off-protocol reminder in `moai status` with 4-skip-condition (env var + main/master + audit trail exists + dir absent). (PR #794)
+  - **Follow-up #795**: BODP audit trail anchored to git repository root via `git rev-parse --show-toplevel` (overridable in tests). Replaces `os.Getwd()` which leaked audit trail files into the package directory during test execution. CLAUDE.local.md §6 Test Isolation compliance restored for 4 tests (`TestRunNew_Success`, `TestRunNew_AddError`, `TestRunNew_WithTmuxFlag_TmuxAvailable`, `TestRunNew_TmuxNotAvailable_GracefulDegradation`). (PR #795)
+  - **AC-CIAUT-020 5-PR sweep replay (manual validation)**: 30-day grace window active **2026-05-09 → 2026-06-08**. SPEC author + 1 reviewer to retrospectively measure manual debug intervention reduction across the next dev cycle (3+ PRs). Target: ≥50% reduction vs pre-SPEC baseline (~3-4 manual debugs/PR). Output: `.moai/reports/post-merge-validation/SPEC-V3R3-CI-AUTONOMY-001.md`.
+
+### Technical Highlights
+
+- **Methodology preservation**: Wave 5/6 surfaced sub-agent context inheritance failures (manager-tdd `worktreePath: {}`) — main-session direct implementation fallback applied per session lesson #12.
+- **Template-First mirror**: All `.claude/` artifacts (rules, skills, agents) mirrored to `internal/template/templates/.claude/` per CLAUDE.local.md §2.
+- **No release/tag automation**: Verified — none of the 8 PRs trigger GoReleaser auto-tag (T5 explicitly avoids tag mutation).
+- **16-language neutrality**: Verified for T1 (make ci-local) and T7 (i18n validator) per CLAUDE.local.md §15.
+- **No hardcoded URLs/models**: Verified per CLAUDE.local.md §14.
+- **Quality gates**: All Waves pass `make ci-local` (5/5 steps) + `go test -race ./...` + `golangci-lint run`. Coverage targets met: bodp 85.9%, ciwatch 87.6%, cli/pr 95.0%, internal/worktree 87.6%, internal/cli/worktree 82.5%.
+
+### 한국어
+
+- **SPEC-V3R3-CI-AUTONOMY-001 (8 Wave, 8 Tier)**: 자율 CI/CD 파이프라인 + self-correcting watch+fix loop + pre-merge 프로토콜 enforcement. 통상적 PR sweep에서 수동 debug/fix/push 사이클 제거 목표.
+  - **Wave 1 (T1+T5)**: `make ci-local` 16개 언어 자동 감지 + 병렬 test/lint/build Bash skeleton (PR #785).
+  - **Wave 2 (T2)**: CI watch 루프. `internal/ciwatch/` (Classifier + WatchState + Handoff JSON), `internal/cli/pr/` (EmitReadyToMergeReport + EmitFailureHandoff), `moai pr watch --abort/--report` 서브커맨드. POSIX shell polling (`scripts/ci-watch/`) + 30분 wall-clock guard. (PR #788)
+  - **Wave 3 (T3)**: Auto-fix 루프. mechanical (lint/format) vs semantic (test) 분류, mechanical 자동 수정, semantic 즉시 escalation. (PR #790)
+  - **Wave 4**: Auxiliary workflow 정리. claude-review (org quota) / Release Drafter (stale draft) 비차단 마킹, required CI check SSoT (`.github/required-checks.yml`). (PR #791)
+  - **Wave 5 (T6)**: Worktree State Guard. `internal/worktree/` snapshot/verify/restore primitive, `moai worktree snapshot|verify|restore` CLI, divergence log + `Agent(isolation: "worktree")` 회귀 감지용 suspect flag. (PR #792)
+  - **Wave 6 (T7)**: i18n validator. `scripts/i18n-validator/` Go static analyzer + dual-mode oracle (`--all-files` 기본 + `--diff <git-rev>` temporal). magic comment escape (`// i18n:translatable`). (PR #793)
+  - **Wave 7 (T8)**: Branch Origin Decision Protocol (BODP). `internal/bodp/` Pure-Go 라이브러리 — 3시그널 평가(depends_on + co-location + open PR head) + 8행 decision matrix. 3개 invocation path (`/moai plan --branch`, `/moai plan --worktree`, `moai worktree new`). Audit trail (`.moai/branches/decisions/<normalized-branch>.md`). `moai status`에 off-protocol reminder + 4-skip-condition. (PR #794)
+  - **Follow-up #795**: BODP audit trail이 git repo root (`git rev-parse --show-toplevel`)에 anchor되도록 수정. test 시 cwd가 패키지 디렉터리가 되어 audit trail이 `internal/cli/worktree/.moai/`에 누수되던 결함 제거. CLAUDE.local.md §6 Test Isolation 위반 4건 해소. (PR #795)
+  - **AC-CIAUT-020 5-PR sweep replay (수동 검증)**: 30일 grace window 활성 **2026-05-09 ~ 2026-06-08**. SPEC 작성자 + 1 reviewer가 다음 dev cycle (3+ PR) 회고하여 수동 debug 개입 감소율 측정. 목표: SPEC 머지 전 baseline (~3-4회/PR) 대비 50% 이상 감소. 결과물: `.moai/reports/post-merge-validation/SPEC-V3R3-CI-AUTONOMY-001.md`.
+
+### 기술 하이라이트
+
+- **방법론 보존**: Wave 5/6에서 sub-agent context 상속 실패 (manager-tdd `worktreePath: {}`) 발견 → main-session 직접 구현 fallback (lesson #12).
+- **Template-First mirror**: 모든 `.claude/` 산출물 `internal/template/templates/.claude/` mirror (CLAUDE.local.md §2).
+- **release/tag 자동화 없음**: 8개 PR 어느 것도 GoReleaser auto-tag 트리거 안 함 (T5는 tag mutation 명시적 회피).
+- **16개 언어 중립성**: T1 (make ci-local) + T7 (i18n validator) 검증 (CLAUDE.local.md §15).
+- **하드코딩 URL/model 없음**: CLAUDE.local.md §14 검증.
+- **품질 게이트**: 모든 Wave가 `make ci-local` (5/5 단계) + `go test -race ./...` + `golangci-lint run` 통과. Coverage: bodp 85.9%, ciwatch 87.6%, cli/pr 95.0%, internal/worktree 87.6%, internal/cli/worktree 82.5%.
 
 ## [Unreleased] — SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub 호환성 수정 + manager-cycle 템플릿 정합화
 
