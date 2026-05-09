@@ -6,6 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
+// @MX:NOTE: [AUTO] Backend development hook handler for validation and verification actions
+//
 // backendHandler handles backend development hooks.
 type backendHandler struct {
 	baseHandler

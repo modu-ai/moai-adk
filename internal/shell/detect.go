@@ -27,6 +27,8 @@ type detector struct {
 }
 
 // NewDetector creates a new Detector instance.
+// @MX:ANCHOR: [AUTO] NewDetector is a factory called from 3+ packages
+// @MX:REASON: [AUTO] Multi-package dependency — used by CLI, SessionStart hook, tests
 func NewDetector() Detector {
 	return &detector{}
 }

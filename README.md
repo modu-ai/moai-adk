@@ -341,8 +341,7 @@ MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Cod
 |-------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
 | manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-ddd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-tdd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
 | manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |

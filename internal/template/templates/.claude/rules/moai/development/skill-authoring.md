@@ -246,3 +246,39 @@ Skills can exist at multiple levels. When the same name exists across levels, hi
 - Mark MoAI extension fields with standardized comments
 - Use `${CLAUDE_SKILL_DIR}` for self-referencing paths within skill content
 - Keep skill descriptions under 250 characters for menu display (v2.1.86+)
+
+## Language Guidance Lives in Rules, Not Skills
+
+<!-- @MX:NOTE: [AUTO] Language-as-rules per SPEC-V3R2-WF-005; do not propose moai-lang-* skills. See REQ-WF005-012 for atomic reversal gate. -->
+<!-- @MX:ANCHOR: [AUTO] Language-as-rules canonical decision; cross-referenced by all skill authors. Changes here affect every future language-related SPEC. -->
+<!-- @MX:REASON: fan_in=N — this section is the single source of truth for language vs skill classification; consulted by every skill author and plan-auditor on every language-related SPEC. -->
+
+Per SPEC-V3R2-WF-005, the 16 supported languages live as **rules** under
+`.claude/rules/moai/languages/*.md`, never as skills.
+
+- **No `moai-lang-<name>` skill** may be created. Any PR adding such a
+  skill directory triggers `LANG_AS_SKILL_FORBIDDEN` in CI.
+- **Canonical location**: `.claude/rules/moai/languages/<name>.md` for all
+  16 supported languages: `cpp`, `csharp`, `elixir`, `flutter`, `go`,
+  `java`, `javascript`, `kotlin`, `php`, `python`, `r`, `ruby`, `rust`,
+  `scala`, `swift`, `typescript`. Canonical Dart name is `flutter` per
+  `CLAUDE.local.md` §15.
+- **Loading mechanism**: each language rule uses `paths:` frontmatter for
+  conditional loading (e.g., `paths: "**/*.py,**/pyproject.toml"`).
+  Path-based loading is the structurally correct primary mechanism for
+  language-scoped guidance; keyword-based skill activation is the wrong
+  abstraction for files-on-disk language detection.
+- **Adding a 17th language**: create a new `.md` file under
+  `.claude/rules/moai/languages/` with a `paths:` frontmatter; never a new
+  skill. A reversal of this decision requires a new SPEC with an atomic
+  migration plan covering all languages (no partial adoption).
+- **Cross-language abstraction**: when guidance applies across languages
+  (general API design, security checklists), use the `moai-ref-*` skills
+  (`moai-ref-api-patterns`, `moai-ref-owasp-checklist`) — not a
+  `moai-lang-*` composite.
+- **CI guard**: `internal/template/lang_boundary_audit_test.go` enforces
+  this principle.
+
+See `.claude/rules/moai/languages/*.md` (16 files) for the canonical
+per-language guidance, and `CLAUDE.local.md` §15 for the 16-language
+neutrality contract.

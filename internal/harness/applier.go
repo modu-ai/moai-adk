@@ -1,7 +1,7 @@
-// Package harness — frontmatter 수정 applier.
+// Package harness — frontmatter modification applier.
 // REQ-HL-003: description enrichment (Tier 2 heuristic).
 // REQ-HL-004: trigger injection (Tier 3 rule, feature-gated).
-// REQ-HL-005: Apply() — snapshot 우선 생성 후 파일 수정 (Phase 4).
+// REQ-HL-005: Apply() — create snapshot first then modify files (Phase 4).
 package harness
 
 import (
@@ -13,43 +13,43 @@ import (
 	"time"
 )
 
-// enableTriggerInjectionWrites는 InjectTrigger의 실제 파일 쓰기를 활성화하는 feature flag이다.
-// Phase 2에서는 기본 OFF — dedup 로직만 검증하고 실제 write는 수행하지 않는다.
+// enableTriggerInjectionWrites is a feature flag that enables actual file writes in InjectTrigger.
+// Phase 2 defaults to OFF — only verifies dedup logic without performing actual writes.
 //
 // @MX:TODO: [AUTO] Phase 4: wire learning.auto_apply config to enable writes
 // @MX:SPEC: SPEC-V3R3-HARNESS-LEARNING-001 REQ-HL-004 (T-P2-05)
 var enableTriggerInjectionWrites = false
 
-// Applier는 SKILL.md 파일의 frontmatter를 수정하는 컴포넌트이다.
-// 모든 수정은 description 또는 triggers 필드만 대상으로 하며,
-// 다른 frontmatter 필드와 body는 byte-identical하게 보존된다.
+// Applier is a component that modifies SKILL.md file frontmatter.
+// All modifications target only description or triggers fields,
+// other frontmatter fields and body are preserved byte-identically.
 //
-// @MX:ANCHOR: [AUTO] EnrichDescription, InjectTrigger는 학습 파이프라인 write 경로.
+// @MX:ANCHOR: [AUTO] EnrichDescription, InjectTrigger are learning pipeline write paths.
 // @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, safety.go(Phase 3), CLI apply(Phase 4)
 type Applier struct {
-	// allowWrites는 InjectTrigger의 실제 파일 쓰기를 허용하는 인스턴스 레벨 flag이다.
-	// 기본값은 enableTriggerInjectionWrites (패키지 레벨 flag).
-	// 테스트에서 newApplierWithWritesEnabled()로 true 설정 가능.
+	// allowWrites is an instance-level flag that allows actual file writes in InjectTrigger.
+	// Default value is enableTriggerInjectionWrites (package-level flag).
+	// Can be set to true in tests via newApplierWithWritesEnabled().
 	allowWrites bool
 }
 
-// NewApplier는 기본 Applier를 생성한다.
-// InjectTrigger의 실제 파일 쓰기는 패키지 레벨 flag(enableTriggerInjectionWrites)에 따른다.
+// NewApplier creates a default Applier.
+// Actual file writes in InjectTrigger follow package-level flag (enableTriggerInjectionWrites).
 func NewApplier() *Applier {
 	return &Applier{allowWrites: enableTriggerInjectionWrites}
 }
 
-// newApplierWithWritesEnabled는 InjectTrigger 실제 쓰기가 활성화된 Applier를 생성한다.
-// 테스트 전용 함수이다.
+// newApplierWithWritesEnabled creates an Applier with InjectTrigger actual writes enabled.
+// Test-only function.
 func newApplierWithWritesEnabled() *Applier {
 	return &Applier{allowWrites: true}
 }
 
-// EnrichDescription은 SKILL.md의 description 필드에 heuristicNote를 추가한다.
-// REQ-HL-003: description 필드만 수정하며 다른 frontmatter와 body는 보존된다.
-// 이미 동일 노트가 있으면 idempotent하게 처리한다 (중복 추가 없음).
+// EnrichDescription adds heuristicNote to SKILL.md description field.
+// REQ-HL-003: modifies only description field, preserves other frontmatter and body.
+// Handles idempotently if same note already exists (no duplicate addition).
 //
-// heuristicNote는 "# heuristic: <note>" 형식으로 description에 추가된다.
+// heuristicNote is added to description in "# heuristic: <note>" format.
 func (a *Applier) EnrichDescription(skillPath, heuristicNote string) error {
 	content, err := os.ReadFile(skillPath)
 	if err != nil {
@@ -61,14 +61,14 @@ func (a *Applier) EnrichDescription(skillPath, heuristicNote string) error {
 		return fmt.Errorf("applier: frontmatter 파싱 실패 %s: %w", skillPath, err)
 	}
 
-	// description 필드 찾기 및 수정
+	// Find and modify description field
 	newFM, changed := enrichDescriptionInFrontmatter(fm, heuristicNote)
 	if !changed {
-		// 변경 없음 (이미 해당 노트 포함) — idempotent
+		// No change (already includes that note) — idempotent
 		return nil
 	}
 
-	// 재결합
+	// Rejoin
 	newContent := "---\n" + newFM + "---\n" + body
 
 	if err := os.WriteFile(skillPath, []byte(newContent), 0o644); err != nil {
@@ -77,11 +77,11 @@ func (a *Applier) EnrichDescription(skillPath, heuristicNote string) error {
 	return nil
 }
 
-// InjectTrigger는 SKILL.md의 triggers 목록에 keyword를 추가한다.
-// REQ-HL-004: 중복 키워드는 추가하지 않는다 (dedup).
+// InjectTrigger adds keyword to SKILL.md triggers list.
+// REQ-HL-004: does not add duplicate keywords (dedup).
 //
-// @MX:WARN: [AUTO] enableTriggerInjectionWrites가 OFF(Phase 2)면 실제 파일 write 생략.
-// @MX:REASON: [AUTO] Phase 4 이전에는 파일 변경 없이 dedup 로직만 검증한다.
+// @MX:WARN: [AUTO] If enableTriggerInjectionWrites is OFF (Phase 2), skip actual file write.
+// @MX:REASON: [AUTO] Before Phase 4, verify only dedup logic without file changes.
 func (a *Applier) InjectTrigger(skillPath, keyword string) error {
 	content, err := os.ReadFile(skillPath)
 	if err != nil {
@@ -93,19 +93,19 @@ func (a *Applier) InjectTrigger(skillPath, keyword string) error {
 		return fmt.Errorf("applier: frontmatter 파싱 실패 %s: %w", skillPath, err)
 	}
 
-	// dedup: 이미 존재하는 키워드인지 확인
+	// dedup: check if keyword already exists
 	newFM, changed := injectTriggerInFrontmatter(fm, keyword)
 	if !changed {
-		// 이미 존재하거나 변경 없음
+		// Already exists or no change
 		return nil
 	}
 
-	// feature flag 확인 — OFF이면 실제 write 생략 (Phase 2 gate)
+	// Check feature flag — if OFF, skip actual write (Phase 2 gate)
 	if !a.allowWrites {
 		return nil
 	}
 
-	// 실제 파일 쓰기 (Phase 4에서 config로 활성화)
+	// Actual file write (enabled via config in Phase 4)
 	newContent := "---\n" + newFM + "---\n" + body
 	if err := os.WriteFile(skillPath, []byte(newContent), 0o644); err != nil {
 		return fmt.Errorf("applier: 파일 쓰기 실패 %s: %w", skillPath, err)
@@ -114,132 +114,132 @@ func (a *Applier) InjectTrigger(skillPath, keyword string) error {
 }
 
 // ─────────────────────────────────────────────
-// Phase 4: Apply() — snapshot + safety pipeline 통합
+// Phase 4: Apply() — snapshot + safety pipeline integration
 // ─────────────────────────────────────────────
 
-// SafetyEvaluator는 safety pipeline의 Evaluate 메서드 인터페이스이다.
-// 순환 임포트 방지: harness → safety 직접 임포트 불가.
-// safety.Pipeline이 이 인터페이스를 구현한다.
+// SafetyEvaluator is the Evaluate method interface of safety pipeline.
+// Prevent circular import: cannot directly import harness → safety.
+// safety.Pipeline implements this interface.
 type SafetyEvaluator interface {
 	Evaluate(proposal Proposal, sessions []Session) (Decision, error)
 }
 
-// ApplyPendingError는 safety pipeline이 pending_approval을 반환할 때 발생하는 오류이다.
-// orchestrator(moai-harness-learner skill)가 이 오류를 받아 OversightProposal을
-// AskUserQuestion으로 사용자에게 제시한다.
+// ApplyPendingError is an error that occurs when safety pipeline returns pending_approval.
+// orchestrator (moai-harness-learner skill) receives this error and presents
+// OversightProposal to users via AskUserQuestion.
 //
-// @MX:ANCHOR: [AUTO] ApplyPendingError는 subagent→orchestrator 경계 타입이다.
+// @MX:ANCHOR: [AUTO] ApplyPendingError is the subagent→orchestrator boundary type.
 // @MX:REASON: [AUTO] fan_in >= 3: applier.go, applier_test.go, harness CLI apply, moai-harness-learner skill
 type ApplyPendingError struct {
-	// OversightPayload는 orchestrator가 AskUserQuestion에 사용할 페이로드이다.
+	// OversightPayload is the payload orchestrator uses for AskUserQuestion.
 	OversightPayload *OversightProposal
 }
 
 func (e *ApplyPendingError) Error() string {
 	if e.OversightPayload != nil {
-		return fmt.Sprintf("apply: 사용자 승인 대기 중 (proposal_id=%s)", e.OversightPayload.ProposalID)
+		return fmt.Sprintf("apply: awaiting user approval (proposal_id=%s)", e.OversightPayload.ProposalID)
 	}
-	return "apply: 사용자 승인 대기 중"
+	return "apply: awaiting user approval"
 }
 
-// snapshotManifest는 snapshot 디렉토리의 manifest.json 스키마이다.
+// snapshotManifest is the manifest.json schema of snapshot directory.
 type snapshotManifest struct {
-	// ProposalID는 이 스냅샷을 생성한 제안 ID이다.
+	// ProposalID is the proposal ID that created this snapshot.
 	ProposalID string `json:"proposal_id"`
 
-	// CreatedAt은 스냅샷 생성 시각 (UTC).
+	// CreatedAt is the snapshot creation time (UTC).
 	CreatedAt time.Time `json:"created_at"`
 
-	// Files는 백업된 파일 목록이다.
+	// Files is the list of backed up files.
 	Files []snapshotFile `json:"files"`
 }
 
-// snapshotFile은 단일 백업 파일 정보이다.
+// snapshotFile is the single backup file information.
 type snapshotFile struct {
-	// OriginalPath는 원본 파일 경로이다.
+	// OriginalPath is the original file path.
 	OriginalPath string `json:"original_path"`
 
-	// BackupName은 스냅샷 디렉토리 내 백업 파일명이다.
+	// BackupName is the backup filename within snapshot directory.
 	BackupName string `json:"backup_name"`
 }
 
-// Apply는 Proposal을 safety pipeline 평가 후 안전하게 적용한다.
-// [HARD] 반드시 evaluator.Evaluate()를 먼저 호출하고, 거부 시 즉시 반환한다.
-// [HARD] 스냅샷은 파일 write보다 먼저 생성되어야 한다. 스냅샷 실패 시 write 중단.
+// Apply safely applies Proposal after safety pipeline evaluation.
+// [HARD] Must call evaluator.Evaluate() first, return immediately if rejected.
+// [HARD] Snapshot must be created before file write. Abort write on snapshot failure.
 //
-// evaluator는 SafetyEvaluator 인터페이스(safety.Pipeline이 구현)이다.
-// snapshotBase는 ".moai/harness/learning-history/snapshots/" 형식의 기본 경로이다.
-// sessions는 L2 canary check에 사용되는 최근 세션 목록이다.
+// evaluator is the SafetyEvaluator interface (implemented by safety.Pipeline).
+// snapshotBase is the base path in ".moai/harness/learning-history/snapshots/" format.
+// sessions is the list of recent sessions used for L2 canary check.
 //
-// @MX:ANCHOR: [AUTO] Apply는 Phase 4 학습 적용 파이프라인의 단일 진입점이다.
+// @MX:ANCHOR: [AUTO] Apply is the single entry point of Phase 4 learning application pipeline.
 // @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI apply, moai-harness-learner skill
 func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBase string, sessions []Session) error {
-	// ── Step 1: Safety Pipeline 평가 ─────────────────────────────────────────
-	// [HARD] Frozen Guard를 포함한 5-Layer를 반드시 통과해야 한다.
+	// ── Step 1: Safety Pipeline Evaluation ─────────────────────────────────────────
+	// [HARD] Must pass all 5-Layers including Frozen Guard.
 	decision, err := evaluator.Evaluate(proposal, sessions)
 	if err != nil {
-		return fmt.Errorf("applier: safety pipeline 평가 오류: %w", err)
+		return fmt.Errorf("applier: safety pipeline evaluation error: %w", err)
 	}
 
 	switch decision.Kind {
 	case DecisionRejected:
-		return fmt.Errorf("applier: 제안 거부됨 (L%d, rejected)", decision.RejectedBy)
+		return fmt.Errorf("applier: proposal rejected (L%d, rejected)", decision.RejectedBy)
 
 	case DecisionPendingApproval:
-		// [HARD] subagent는 AskUserQuestion을 직접 호출하지 않는다.
-		// orchestrator에게 payload를 반환하여 사용자 승인을 위임한다.
+		// [HARD] subagent must not call AskUserQuestion directly.
+		// Return payload to orchestrator to delegate user approval.
 		return &ApplyPendingError{OversightPayload: decision.OversightProposal}
 
 	case DecisionApproved:
-		// approved — 계속 진행
+		// approved — continue
 	}
 
-	// ── Step 2: Snapshot 생성 (write보다 먼저) ───────────────────────────────
-	// [HARD] snapshot 실패 시 write를 중단한다.
+	// ── Step 2: Create Snapshot (before write) ───────────────────────────────
+	// [HARD] Abort write on snapshot failure.
 	if err := a.createSnapshot(proposal, snapshotBase); err != nil {
-		return fmt.Errorf("applier: snapshot 생성 실패 — write 중단: %w", err)
+		return fmt.Errorf("applier: snapshot creation failed — abort write: %w", err)
 	}
 
-	// ── Step 3: 실제 파일 수정 ───────────────────────────────────────────────
+	// ── Step 3: Actual File Modification ───────────────────────────────────────────────
 	switch proposal.FieldKey {
 	case "description":
 		return a.EnrichDescription(proposal.TargetPath, proposal.NewValue)
 	case "triggers":
-		// 쓰기 활성화된 Applier로 InjectTrigger 수행
+		// Perform InjectTrigger with write-enabled Applier
 		w := newApplierWithWritesEnabled()
 		return w.InjectTrigger(proposal.TargetPath, proposal.NewValue)
 	default:
-		return fmt.Errorf("applier: 지원하지 않는 fieldKey %q", proposal.FieldKey)
+		return fmt.Errorf("applier: unsupported fieldKey %q", proposal.FieldKey)
 	}
 }
 
-// createSnapshot은 proposal.TargetPath의 현재 내용을 snapshotBase/<ISO-DATE>/ 에 백업한다.
-// manifest.json을 생성한 후 파일 복사를 수행한다.
+// createSnapshot backs up current content of proposal.TargetPath to snapshotBase/<ISO-DATE>/.
+// Creates manifest.json then performs file copy.
 func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) error {
-	// ISO-DATE 형식 디렉토리명 생성 (날짜 + nano 충돌 방지)
+	// Generate ISO-DATE format directory name (date + nano collision prevention)
 	now := time.Now().UTC()
 	dirName := now.Format("2006-01-02T15-04-05.000000000Z")
 	snapshotDir := filepath.Join(snapshotBase, dirName)
 
 	if err := os.MkdirAll(snapshotDir, 0o755); err != nil {
-		return fmt.Errorf("createSnapshot: 디렉토리 생성 실패 %s: %w", snapshotDir, err)
+		return fmt.Errorf("createSnapshot: directory creation failed %s: %w", snapshotDir, err)
 	}
 
-	// 원본 파일 읽기
+	// Read original file
 	originalData, err := os.ReadFile(proposal.TargetPath)
 	if err != nil {
-		return fmt.Errorf("createSnapshot: 원본 파일 읽기 실패 %s: %w", proposal.TargetPath, err)
+		return fmt.Errorf("createSnapshot: original file read failed %s: %w", proposal.TargetPath, err)
 	}
 
-	// 백업 파일명: 원본 파일명 그대로 사용
+	// Backup filename: use original filename as-is
 	backupName := filepath.Base(proposal.TargetPath)
 	backupPath := filepath.Join(snapshotDir, backupName)
 
 	if err := os.WriteFile(backupPath, originalData, 0o644); err != nil {
-		return fmt.Errorf("createSnapshot: 백업 파일 쓰기 실패 %s: %w", backupPath, err)
+		return fmt.Errorf("createSnapshot: backup file write failed %s: %w", backupPath, err)
 	}
 
-	// manifest.json 생성
+	// Create manifest.json
 	manifest := snapshotManifest{
 		ProposalID: proposal.ID,
 		CreatedAt:  now,
@@ -253,21 +253,21 @@ func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) error {
 
 	manifestData, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
-		return fmt.Errorf("createSnapshot: manifest 직렬화 실패: %w", err)
+		return fmt.Errorf("createSnapshot: manifest serialization failed: %w", err)
 	}
 
 	manifestPath := filepath.Join(snapshotDir, "manifest.json")
 	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
-		return fmt.Errorf("createSnapshot: manifest 쓰기 실패: %w", err)
+		return fmt.Errorf("createSnapshot: manifest write failed: %w", err)
 	}
 
 	return nil
 }
 
-// RestoreSnapshot은 snapshotDir의 manifest.json을 읽어 원본 파일을 복원한다.
-// REQ-HL-009: rollback <date> verb에서 사용된다.
+// RestoreSnapshot reads manifest.json from snapshotDir and restores original files.
+// REQ-HL-009: used in rollback <date> verb.
 //
-// @MX:ANCHOR: [AUTO] RestoreSnapshot은 rollback 기능의 핵심 함수이다.
+// @MX:ANCHOR: [AUTO] RestoreSnapshot is the core function of rollback functionality.
 // @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI rollback, Phase 5 IT
 func RestoreSnapshot(snapshotDir string) error {
 	manifestPath := filepath.Join(snapshotDir, "manifest.json")
@@ -288,7 +288,7 @@ func RestoreSnapshot(snapshotDir string) error {
 			return fmt.Errorf("RestoreSnapshot: 백업 파일 읽기 실패 %s: %w", backupPath, err)
 		}
 
-		// 원본 경로에 복원
+		// Restore to original path
 		if err := os.WriteFile(f.OriginalPath, backupData, 0o644); err != nil {
 			return fmt.Errorf("RestoreSnapshot: 원본 파일 복원 실패 %s: %w", f.OriginalPath, err)
 		}
@@ -298,83 +298,83 @@ func RestoreSnapshot(snapshotDir string) error {
 }
 
 // ─────────────────────────────────────────────
-// 내부 헬퍼: frontmatter 파싱 및 수정
+// Internal helpers: frontmatter parsing and modification
 // ─────────────────────────────────────────────
 
-// splitFrontmatterBody는 SKILL.md 내용을 frontmatter와 body로 분리한다.
-// frontmatter는 --- 구분자 안의 내용이고, body는 두 번째 --- 이후이다.
-// frontmatter가 없으면 오류를 반환한다.
+// splitFrontmatterBody splits SKILL.md content into frontmatter and body.
+// frontmatter is content within --- delimiters, body is after the second ---.
+// Returns error if frontmatter does not exist.
 func splitFrontmatterBody(content string) (fm, body string, err error) {
-	// 개행 통일 (CRLF → LF)
+	// Normalize newlines (CRLF → LF)
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	const sep = "---"
 
-	// 첫 번째 줄이 ---로 시작해야 함
+	// First line must start with ---
 	if !strings.HasPrefix(content, sep+"\n") && content != sep {
 		return "", "", fmt.Errorf("frontmatter 시작 구분자 없음")
 	}
 
-	// 첫 번째 --- 제거 후 두 번째 ---를 찾는다
-	rest := content[len(sep)+1:] // "---\n" 이후
+	// Remove first --- then find second ---
+	rest := content[len(sep)+1:] // "---\n" after
 
 	idx := strings.Index(rest, "\n"+sep+"\n")
 	if idx == -1 {
-		// 끝에 ---만 있는 경우 ("---\n" 없이 파일 끝)
+		// Case with only --- at end (no "\n---" at file end)
 		idx = strings.Index(rest, "\n"+sep)
 		if idx == -1 {
 			return "", "", fmt.Errorf("frontmatter 종료 구분자 없음")
 		}
-		fm = rest[:idx+1]  // '\n' 포함
+		fm = rest[:idx+1]  // '\n' included
 		body = ""
 		return fm, body, nil
 	}
 
-	fm = rest[:idx+1]               // '\n' 포함
-	body = rest[idx+1+len(sep)+1:]  // "---\n" 이후 body
+	fm = rest[:idx+1]               // '\n' included
+	body = rest[idx+1+len(sep)+1:]  // "---\n" body after
 	return fm, body, nil
 }
 
-// enrichDescriptionInFrontmatter는 frontmatter YAML 텍스트에서 description 필드에
-// "# heuristic: <note>"를 추가한다. 이미 존재하면 changed=false를 반환한다.
-// 줄 기반 파싱을 사용하여 다른 필드를 보존한다.
+// enrichDescriptionInFrontmatter adds "# heuristic: <note>" to description field in frontmatter YAML text.
+// Returns changed=false if already exists.
+// Uses line-based parsing to preserve other fields.
 func enrichDescriptionInFrontmatter(fm, heuristicNote string) (newFM string, changed bool) {
 	targetLine := "# heuristic: " + heuristicNote
 	lines := strings.Split(fm, "\n")
 
-	// 이미 존재하는지 확인 (idempotent)
+	// Check if already exists (idempotent)
 	for _, line := range lines {
 		if strings.Contains(line, targetLine) {
 			return fm, false
 		}
 	}
 
-	// description 필드를 찾아 수정
+	// Find and modify description field
 	var result []string
 	inDescription := false
 	descModified := false
 
 	for i, line := range lines {
-		// description: 로 시작하는 줄 탐지
+		// Detect line starting with description:
 		if !descModified && strings.HasPrefix(strings.TrimLeft(line, " \t"), "description:") {
 			trimmed := strings.TrimLeft(line, " \t")
 			indent := line[:len(line)-len(trimmed)]
 
-			// description: value (단일 라인)
+			// description: value (single line)
 			after := strings.TrimPrefix(trimmed, "description:")
 			after = strings.TrimLeft(after, " ")
 
 			if after == "" || after == "|" || after == "|-" || after == "|+" {
-				// 블록 스칼라 — 이 케이스는 단순 처리 불가, 줄 뒤에 추가
+				// Block scalar — cannot handle simply, add after line
 				result = append(result, line)
 				inDescription = true
 			} else {
-				// 인라인 값: description: original value
+				// Inline value: description: original value
 				result = append(result, line)
-				// 다음 줄에 heuristic note 삽입 (동일 indent, 줄 연속)
-				// 단순하게 description 값에 "\n# heuristic: ..." 를 append
-				// 그러나 단일 라인 YAML이므로 multi-line 블록으로 변환 필요
-				// 더 단순한 방법: description 뒤 바로 다음 줄에 삽입
+				// Insert heuristic note on next line (same indent, line continuation)
+				// Simply append "\n# heuristic: ..." to description value
+				// However, single-line YAML requires conversion to multi-line block
+				// Simpler approach: insert immediately after description line
 				_ = i
 				result = append(result, indent+"# heuristic: "+heuristicNote)
 				descModified = true
@@ -383,9 +383,9 @@ func enrichDescriptionInFrontmatter(fm, heuristicNote string) (newFM string, cha
 		}
 
 		if inDescription {
-			// description 블록 내부
+			// Inside description block
 			if line == "" || (!strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t")) {
-				// 블록 종료 — heuristic note 삽입 후 현재 줄 추가
+				// Block end — insert heuristic note then add current line
 				result = append(result, "# heuristic: "+heuristicNote)
 				result = append(result, line)
 				inDescription = false
@@ -403,13 +403,13 @@ func enrichDescriptionInFrontmatter(fm, heuristicNote string) (newFM string, cha
 	return strings.Join(result, "\n"), true
 }
 
-// injectTriggerInFrontmatter는 frontmatter의 triggers 목록에 keyword를 추가한다.
-// 이미 존재하면 changed=false를 반환한다.
-// triggers 필드가 없으면 추가하지 않고 changed=false를 반환한다.
+// injectTriggerInFrontmatter adds keyword to triggers list in frontmatter.
+// Returns changed=false if already exists.
+// Returns changed=false without adding if triggers field does not exist.
 func injectTriggerInFrontmatter(fm, keyword string) (newFM string, changed bool) {
 	targetEntry := `keyword: "` + keyword + `"`
 
-	// 이미 존재하는지 확인
+	// Check if already exists
 	if strings.Contains(fm, targetEntry) {
 		return fm, false
 	}
@@ -419,7 +419,7 @@ func injectTriggerInFrontmatter(fm, keyword string) (newFM string, changed bool)
 	triggersFound := false
 	lastTriggerIdx := -1
 
-	// triggers: 섹션과 마지막 trigger 항목 위치를 찾는다
+	// Find triggers: section and last trigger item position
 	for i, line := range lines {
 		trimmed := strings.TrimLeft(line, " \t")
 		if strings.HasPrefix(trimmed, "triggers:") {
@@ -431,16 +431,16 @@ func injectTriggerInFrontmatter(fm, keyword string) (newFM string, changed bool)
 	}
 
 	if !triggersFound || lastTriggerIdx == -1 {
-		// triggers 섹션 없음 — 변경 없이 반환
+		// No triggers section — return without changes
 		return fm, false
 	}
 
-	// lastTriggerIdx 줄의 들여쓰기 수준을 참고하여 새 항목 삽입
+	// Insert new item referencing indentation level of lastTriggerIdx line
 	lastLine := lines[lastTriggerIdx]
 	lastTrimmed := strings.TrimLeft(lastLine, " \t")
 	indent := lastLine[:len(lastLine)-len(lastTrimmed)]
 
-	// 마지막 trigger 항목 바로 다음에 새 항목 삽입
+	// Insert new item immediately after last trigger item
 	for i, line := range lines {
 		result = append(result, line)
 		if i == lastTriggerIdx {

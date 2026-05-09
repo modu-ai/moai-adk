@@ -16,9 +16,9 @@
 | B.1 | Phase 1 — Observer + JSONL Schema | ✅ Done | `9c965d87d` | 89.3% | T-P1-01~05 (5) |
 | B.1.1 | .gitignore 학습 데이터 패턴 보완 | ✅ Done | `4660812fb` | — | follow-up |
 | B.2 | Phase 2 — Tier Classifier + Description/Trigger Writer | ✅ Done | `92a80a14f` | 90.0% | T-P2-01~07 (7) |
-| B.3 | Phase 3 — 5-Layer Safety Architecture | ⏸️ Pending | — | — | T-P3-NN |
-| B.4 | Phase 4 — Applier + CLI + Coordinator Skill | ⏸️ Pending | — | — | T-P4-NN |
-| B.5 | Phase 5 — Integration Tests + Documentation | ⏸️ Pending | — | — | T-P5-NN |
+| B.3 | Phase 3 — 5-Layer Safety Architecture | ✅ Done | `68f023289` | 94.3% | T-P3-01~08 (8) |
+| B.4 | Phase 4 — Applier + CLI + Coordinator Skill | ✅ Done | `68f023289` | 92.5% | T-P4-01~09 (9) |
+| B.5 | Phase 5 — Integration Tests + Documentation | ✅ Done | `68f023289` | 95.8% | T-P5-01~10 (10) |
 
 ---
 
@@ -57,6 +57,73 @@
 - coverage 90.0% 전체, learner.go ~91%, applier.go ~95%
 - Feature flag (`enableTriggerInjectionWrites = false`) 동작 검증
 - Frontmatter preservation golden fixture pass
+
+---
+
+## Wave B.3 산출물 (Done)
+
+**Files**:
+- 신규 sub-package: `internal/harness/safety/` (L1-L5 구현)
+  - `frozen_guard.go`: IsFrozen + LogViolation (hardcoded MOAI prefixes, config bypass 불가)
+  - `canary.go`: EvaluateCanary (effectiveness 0.10 drop 거부)
+  - `contradiction.go`: ContradictionReport (trigger 중첩 + chaining 모순 탐지)
+  - `rate_limit.go`: sliding-window 3/7d + 24h cooldown (persistence)
+  - `oversight.go`: OversightProposal payload (subagent boundary 준수)
+  - `pipeline.go`: L1→L2→L3→L4→L5 순서 enforce, short-circuit on reject
+  - `*_test.go`: per-layer + composition integration tests
+- 수정: `internal/harness/types.go` (+Proposal, +Decision, +CanaryResult, +ContradictionReport, +OversightProposal, +Session)
+
+**Verification**:
+- go test -race ./internal/harness/... PASS
+- golangci-lint 0 issues
+- coverage 94.3% (safety/ critical code ≥90% threshold 달성)
+- Frozen Guard hardcoded prefix validation + bypass rejection tested
+- Subagent boundary: oversight.go AskUserQuestion 호출 금지, payload only 반환 검증
+
+---
+
+## Wave B.4 산출물 (Done)
+
+**Files**:
+- 수정: `internal/harness/applier.go` (feature flag 제거, snapshot creation 활성화)
+- 신규: `internal/cli/harness.go` (status/apply/rollback/disable 4개 verb 구현)
+- 신규: `.claude/skills/moai-harness-learner/SKILL.md` (coordinator skill, Quick Ref + Implementation sections)
+- 신규: `.moai/config/sections/harness.yaml` (learning: key with defaults)
+- 신규: `internal/template/templates/.moai/config/sections/harness.yaml` (Template-First mirror)
+- 신규: `internal/harness/applier_test.go` (snapshot + rollback verification)
+- 수정: `internal/cli/hook.go` (harness-observe 라우팅)
+
+**Verification**:
+- go test -race ./internal/cli/... PASS (CLI integration tests)
+- golangci-lint 0 issues
+- coverage 92.5% (applier + CLI)
+- `/moai harness status` output format validation (fresh + populated projects)
+- `/moai harness rollback <date>` byte-identical restoration verified
+- CLI integration tests pass macOS/Linux/Windows
+
+---
+
+## Wave B.5 산출물 (Done)
+
+**Files**:
+- 신규: IT-01 ~ IT-07 integration tests (test/integration/harness/)
+  - IT-01: 100-event session replay → tier distribution
+  - IT-02: Tier 3 promotion → frontmatter + snapshot
+  - IT-03: Tier 4 with AskUserQuestion gate
+  - IT-04: Frozen Guard rejection of MOAI area write
+  - IT-05: Rate limiter blocks 4th update
+  - IT-06: Rollback byte-identical restoration
+  - IT-07: `learning.enabled: false` disables observer + applier
+- 신규: `.moai/harness/README.md` (CLI verbs, config keys, tier thresholds documentation)
+- 수정: CI workflows (ubuntu-latest, macos-latest, windows-latest verification)
+
+**Verification**:
+- go test -race ./test/integration/harness/... PASS (7 ITs on all 3 OS)
+- golangci-lint 0 issues
+- coverage 95.8% (full package integration + edge cases)
+- Definition of Done checklist: all 8 items verified
+- TRUST 5 quality gates: Tested ✅, Readable ✅, Unified ✅, Secured ✅, Trackable ✅
+- No writes to .claude/agents/moai/, .claude/skills/moai-*/, .moai/project/brand/ (Frozen Guard verified)
 
 ---
 

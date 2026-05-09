@@ -117,7 +117,7 @@ Library Documentation Access:
 ---
 
 
-- `moai-lang-go` - Go systems programming patterns
+- `.claude/rules/moai/languages/go.md` - Go systems programming patterns
 - `moai-domain-backend` - REST API architecture and microservices patterns
 - `moai-foundation-quality` - Security hardening for Rust applications
 - `moai-workflow-testing` - Test-driven development workflows

@@ -11,6 +11,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// @MX:NOTE: [AUTO] Thread-safe configuration loader that reads YAML section files and applies defaults
+//
 // Loader reads configuration from YAML section files.
 // It is thread-safe via sync.RWMutex.
 type Loader struct {

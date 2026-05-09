@@ -1,10 +1,8 @@
-// docs-version-snapshot: docs 버전 스냅샷 자동화 스크립트
 // SPEC-DOCS-SITE-001 Phase 5, REQ-DS-17/18
 //
-// 릴리스 시 이전 버전의 docs-site/content/{locale}/ 콘텐츠를
-// content/{locale}/v<previous-minor>/ 폴더로 복사한다.
+// At release time, copies docs-site/content/{locale}/ content of the previous version
+// to content/{locale}/v<previous-minor>/ folder
 //
-// 사용법:
 //
 //	docs-version-snapshot \
 //	  --current-version v2.13.0 \
@@ -12,10 +10,9 @@
 //	  --content-dir docs-site/content \
 //	  [--dry-run]
 //
-// 동작 규칙:
-//   - Patch 릴리스 (v2.12.1 → v2.12.2): 스냅샷 없음, exit 0
-//   - Minor 릴리스 (v2.12.x → v2.13.0): content/{locale}/v2.12/ 생성
-//   - Major 릴리스 (v2.x.y → v3.0.0): content/{locale}/v2/ 생성
+//   - Patch release (v2.12.1 → v2.12.2): no snapshot, exit 0
+//   - Minor release (v2.12.x → v2.13.0): content/{locale}/v2.12/ creation
+//   - Major release (v2.x.y → v3.0.0): content/{locale}/v2/ creation
 
 package main
 
@@ -34,7 +31,7 @@ import (
 // locales supported by the docs site
 var locales = []string{"ko", "en", "ja", "zh"}
 
-// semver holds a parsed semantic version.
+// semver holds a parsed semantic version
 type semver struct {
 	Major int
 	Minor int
@@ -42,7 +39,7 @@ type semver struct {
 	Raw   string
 }
 
-// parseSemver parses a version string like "v2.13.0" or "2.13.0".
+// parseSemver parses a version string like "v2.13.0" or "2.13.0"
 func parseSemver(raw string) (semver, error) {
 	s := strings.TrimPrefix(raw, "v")
 	parts := strings.Split(s, ".")
@@ -64,7 +61,7 @@ func parseSemver(raw string) (semver, error) {
 	return semver{Major: major, Minor: minor, Patch: patch, Raw: raw}, nil
 }
 
-// releaseType represents the kind of version bump.
+// releaseType represents the kind of version bump
 type releaseType int
 
 const (
@@ -73,10 +70,10 @@ const (
 	majorRelease
 )
 
-// classifyRelease compares two versions and returns the release type.
+// classifyRelease compares two versions and returns the release type
 //
 // @MX:ANCHOR: [AUTO] Version classification — called by main + all unit tests
-// @MX:REASON: Core decision gate; wrong classification silently skips or incorrectly creates snapshots
+// @MX:REASON: [AUTO] Core decision gate; wrong classification silently skips or incorrectly creates snapshots
 func classifyRelease(prev, curr semver) (releaseType, error) {
 	if curr.Major > prev.Major {
 		return majorRelease, nil
@@ -95,13 +92,13 @@ func classifyRelease(prev, curr semver) (releaseType, error) {
 	return patchRelease, nil
 }
 
-// snapshotDirName returns the version folder name to create.
+// snapshotDirName returns the version folder name to create
 // Minor release:  "v2.12"  (from previous v2.12.x)
 // Major release:  "v2.12"  (from previous v2.12.0 — last minor of the old major)
 //
 // Both Minor and Major releases snapshot the previous Minor version (MAJOR.MINOR),
-// because that is the most precise stable identifier for the docs snapshot.
-// Per AC-G3-04: v2.12.0 -> v3.0.0 must produce content/{locale}/v2.12/.
+// because that is the most precise stable identifier for the docs snapshot
+// Per AC-G3-04: v2.12.0 -> v3.0.0 must produce content/{locale}/v2.12/
 func snapshotDirName(prev semver, rt releaseType) string {
 	switch rt {
 	case minorRelease, majorRelease:
@@ -111,7 +108,7 @@ func snapshotDirName(prev semver, rt releaseType) string {
 	}
 }
 
-// Config holds the parsed CLI flags.
+// Config holds the parsed CLI flags
 type Config struct {
 	CurrentVersion  string
 	PreviousVersion string
@@ -121,10 +118,10 @@ type Config struct {
 }
 
 // @MX:WARN: [AUTO] Calls os/exec (git archive) — subprocess execution
-// @MX:REASON: git archive extracts previous tag content; failure must be detected early before any copy starts
+// @MX:REASON: [AUTO] git archive extracts previous tag content; failure must be detected early before any copy starts
 
-// extractTagContent uses "git show <tag>:<path>" to read file content from a git tag.
-// Returns ErrTagNotFound if the tag does not exist in the repository.
+// extractTagContent uses "git show <tag>:<path>" to read file content from a git tag
+// Returns ErrTagNotFound if the tag does not exist in the repository
 var errTagNotFound = errors.New("git tag not found")
 
 func extractTagContent(tag, gitPath string) ([]byte, error) {
@@ -140,7 +137,7 @@ func extractTagContent(tag, gitPath string) ([]byte, error) {
 	return out, nil
 }
 
-// tagExists checks whether a given tag is present in the repo.
+// tagExists checks whether a given tag is present in the repo
 func tagExists(tag string) bool {
 	cmd := exec.Command("git", "tag", "-l", tag)
 	out, err := cmd.Output()
@@ -150,7 +147,7 @@ func tagExists(tag string) bool {
 	return strings.TrimSpace(string(out)) == tag
 }
 
-// listTagFiles lists files under <tag>:contentDir/{locale}/ using "git ls-tree".
+// listTagFiles lists files under <tag>:contentDir/{locale}/ using "git ls-tree"
 func listTagFiles(tag, contentDir, locale string) ([]string, error) {
 	treePath := fmt.Sprintf("%s/%s", contentDir, locale)
 	cmd := exec.Command("git", "ls-tree", "-r", "--name-only", tag, treePath)
@@ -169,7 +166,7 @@ func listTagFiles(tag, contentDir, locale string) ([]string, error) {
 }
 
 // copyFromTag copies all files under contentDir/{locale}/ at the given tag
-// into destDir (which is contentDir/{locale}/vX.Y/).
+// into destDir (which is contentDir/{locale}/vX.Y/)
 func copyFromTag(tag, contentDir, locale, destDir string, dryRun bool) (int, error) {
 	srcPrefix := fmt.Sprintf("%s/%s/", contentDir, locale)
 	files, err := listTagFiles(tag, contentDir, locale)
@@ -221,7 +218,7 @@ func copyFromTag(tag, contentDir, locale, destDir string, dryRun bool) (int, err
 	return count, nil
 }
 
-// rollback removes all directories created during a failed snapshot.
+// rollback removes all directories created during a failed snapshot
 func rollback(dirs []string) {
 	for _, d := range dirs {
 		fmt.Fprintf(os.Stderr, "[rollback] removing %s\n", d)
@@ -229,7 +226,7 @@ func rollback(dirs []string) {
 	}
 }
 
-// run executes the snapshot logic. Returns an error if any step fails.
+// run executes the snapshot logic. Returns an error if any step fails
 func run(cfg Config) error {
 	prev, err := parseSemver(cfg.PreviousVersion)
 	if err != nil {
@@ -304,7 +301,7 @@ func run(cfg Config) error {
 	return nil
 }
 
-// copyFile copies a single file from src to dst.
+// copyFile copies a single file from src to dst
 func copyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err

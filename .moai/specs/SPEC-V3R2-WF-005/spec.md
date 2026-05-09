@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-WF-005
 title: Language Rules vs Skills Boundary Codification
-version: "0.2.0"
-status: draft
+version: "0.2.2"
+status: completed
 created_at: 2026-04-23
-updated_at: 2026-05-04
+updated_at: 2026-05-09
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P2
 labels: [languages, rules, skills, boundary, paths-frontmatter, v3]
@@ -31,12 +31,14 @@ tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
 |---------|------------|--------|----------------------------------------------------------------------|
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — codify languages as rules (not skills) in v3           |
 | 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P2 Medium"` → `P2`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. |
+| 0.2.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → 6 mechanical fixes (D1 AC citations, D2 task count, D3 path placeholder, D4 flutter.md sequencing, D5 test scope caveat, D7 typo). EARS REQ body unchanged. Targets PASS at iteration 2. |
+| 0.2.2   | 2026-05-09 | /moai sync (status transition) | Run+sync 완료 후 status: draft → completed. M1-M5 implementation 완료, 4 audit tests GREEN, evaluator-active iter 2 PASS, plan-audit iter 2 PASS 0.93. EARS REQ/AC 본문 변경 없음. |
 
 ---
 
 ## 1. Goal (목적)
 
-R4 audit는 "moai-lang-* skills referenced but absent"를 단일 최대 구조적 불일치로 지목한다: 16개 language rules(`go`, `python`, `typescript`, `javascript`, `rust`, `java`, `kotlin`, `csharp`, `ruby`, `php`, `elixir`, `cpp`, `scala`, `r`, `flutter`, `swift`)가 `.claude/rules/moai/languages/` 아래에 **rules**로 존재하지만, 여러 skill의 `related-skills` 필드와 문서는 `moai-lang-*` **skills**을 가리키고 있다. 본 SPEC은 **v3.0.0 결정: 언어별 가이드는 rules로 유지**를 명문화하고, `moai-lang-*` skill 창설을 거부하며, 모든 쟈랑 reference를 rules 경로로 수정한다.
+R4 audit는 "moai-lang-* skills referenced but absent"를 단일 최대 구조적 불일치로 지목한다: 16개 language rules(`go`, `python`, `typescript`, `javascript`, `rust`, `java`, `kotlin`, `csharp`, `ruby`, `php`, `elixir`, `cpp`, `scala`, `r`, `flutter`, `swift`)가 `.claude/rules/moai/languages/` 아래에 **rules**로 존재하지만, 여러 skill의 `related-skills` 필드와 문서는 `moai-lang-*` **skills**을 가리키고 있다. 본 SPEC은 **v3.0.0 결정: 언어별 가이드는 rules로 유지**를 명문화하고, `moai-lang-*` skill 창설을 거부하며, 모든 잔존 reference를 rules 경로로 수정한다.
 
 ### 1.1 배경
 
@@ -164,13 +166,13 @@ References to non-existent skills (`moai-lang-*`, `moai-infra-docker`, `moai-ess
 
 - **AC-WF005-01**: Given the v3 skill tree When inspected Then no directory matches `moai-lang-*` (maps REQ-WF005-002).
 - **AC-WF005-02**: Given `.claude/rules/moai/development/skill-authoring.md` When inspected Then "language guidance lives in rules" principle section is present (maps REQ-WF005-003).
-- **AC-WF005-03**: Given all 16 language rules When frontmatter is parsed Then each has `paths:` declaration (maps REQ-WF005-004).
+- **AC-WF005-03**: Given all 16 language rules When frontmatter is parsed Then each has `paths:` declaration (maps REQ-WF005-001, REQ-WF005-004).
 - **AC-WF005-04**: Given a Python project When Claude Code session starts Then `.claude/rules/moai/languages/python.md` auto-loads (maps REQ-WF005-006).
 - **AC-WF005-05**: Given a PR adding `.claude/skills/moai-lang-rust/` When CI runs Then `LANG_AS_SKILL_FORBIDDEN` rejection (maps REQ-WF005-007).
 - **AC-WF005-06**: Given a skill's `related-skills` listing `moai-lang-typescript` When refactor commit runs Then the entry is removed (maps REQ-WF005-005, REQ-WF005-008).
-- **AC-WF005-07**: Given a skill body referencing `moai-quality-testing` When audit runs Then reference is replaced with `moai-foundation-quality` + `moai-ref-testing-pyramid` per REQ-WF005-015.
+- **AC-WF005-07**: Given a skill body referencing `moai-quality-testing` When audit runs Then reference is replaced with `moai-foundation-quality` + `moai-ref-testing-pyramid` per REQ-WF005-015 (also maps REQ-WF005-011).
 - **AC-WF005-08**: Given a skill body referencing `moai-essentials-debug` When audit runs Then reference is replaced with "delegate to expert-debug agent" note (maps REQ-WF005-015).
-- **AC-WF005-09**: Given a PR adding a 17th language as skill When CI runs Then `LANG_AS_SKILL_FORBIDDEN` rejection (maps REQ-WF005-009).
+- **AC-WF005-09**: Given a PR adding a 17th language as skill When CI runs Then `LANG_AS_SKILL_FORBIDDEN` rejection (maps REQ-WF005-009, REQ-WF005-012).
 - **AC-WF005-10**: Given `.claude/rules/moai/languages/flutter.md` When opened Then filename is "flutter" (not "dart") (maps REQ-WF005-010).
 - **AC-WF005-11**: Given a skill body claiming "go is primary; other languages are planned" When CI runs Then `LANG_NEUTRALITY_VIOLATION` fires (maps REQ-WF005-014).
 - **AC-WF005-12**: Given a skill body mentioning `moai-lang-python` in prose When audit runs Then `DEAD_LANG_SKILL_REFERENCE` warning fires with rule-path suggestion (maps REQ-WF005-013).

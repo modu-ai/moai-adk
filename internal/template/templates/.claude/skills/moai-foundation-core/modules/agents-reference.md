@@ -265,21 +265,21 @@ The following skills are organized for token efficiency and domain specializatio
 
 | Category | Skills | Purpose |
 |----------|--------|---------|
-| Language (Separated) | moai-lang-python, moai-lang-typescript, moai-lang-systems, moai-lang-jvm, moai-lang-mobile | Domain-specific language skills for 40-60% token savings |
+| Language (Rules) | `.claude/rules/moai/languages/*.md` (16 files) | Language-specific guidance via paths frontmatter auto-load — not skills |
 | Platform (Separated) | moai-platform-auth, moai-platform-database, moai-platform-deploy | Domain-specific platform skills for 30-50% token savings |
 | Foundation | moai-foundation-core, moai-foundation-cc, moai-foundation-context, moai-foundation-quality | Core principles and quality gates |
 | Workflow | moai-workflow-spec, moai-workflow-project, moai-workflow-testing, moai-workflow-jit-docs | Workflow automation and testing |
 | Domain | moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-uiux | Domain expertise patterns |
 
-Language Skills Selection Guide:
+Language Rules Selection Guide (auto-loaded via paths frontmatter, per SPEC-V3R2-WF-005):
 
-| Language Skill | Coverage | Use When |
-|----------------|----------|----------|
-| moai-lang-python | Python 3.13, FastAPI, Django, pytest | Backend APIs, data science, automation |
-| moai-lang-typescript | TypeScript 5.9, React 19, Next.js 16, tRPC | Frontend, full-stack web development |
-| moai-lang-systems | Go 1.23, Rust 1.91, Fiber, Axum | Microservices, CLI tools, systems programming |
-| moai-lang-jvm | Java 21, Kotlin 2.0, Scala 3.4, Spring | Enterprise applications, big data |
-| moai-lang-mobile | Swift 6, Kotlin Android, Flutter 3.24 | iOS, Android, cross-platform mobile |
+| Language Rule | Coverage | Auto-loads When |
+|---------------|----------|-----------------|
+| `.claude/rules/moai/languages/python.md` | Python 3.13, FastAPI, Django, pytest | `**/*.py`, `**/pyproject.toml` present |
+| `.claude/rules/moai/languages/typescript.md` | TypeScript 5.9, React 19, Next.js 16 | `**/*.ts`, `**/*.tsx` present |
+| `.claude/rules/moai/languages/go.md` | Go 1.23, Fiber | `**/*.go`, `**/go.mod` present |
+| `.claude/rules/moai/languages/java.md` | Java 21, Spring | `**/pom.xml`, `**/build.gradle` present |
+| `.claude/rules/moai/languages/kotlin.md` | Kotlin 2.0, Android | `**/*.kt` present |
 
 Platform Skills Selection Guide:
 
@@ -289,7 +289,7 @@ Platform Skills Selection Guide:
 | moai-platform-database | Supabase, Neon, Convex, Firestore | Database platform integration |
 | moai-platform-deploy | Vercel, Railway | Deployment and CI/CD |
 
-Note: Agents now use specific skills based on their domain. Cross-language agents include moai-lang-python and moai-lang-typescript by default.
+Note: Language guidance lives in rules (`.claude/rules/moai/languages/*.md`), not skills. These rules auto-load via paths frontmatter when project files match. See SPEC-V3R2-WF-005 for the canonical decision.
 
 ---
 

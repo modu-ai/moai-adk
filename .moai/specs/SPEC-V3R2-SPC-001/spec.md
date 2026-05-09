@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-SPC-001
 title: "EARS + hierarchical acceptance criteria"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-10
 author: Wave 4 SPEC Writer
 priority: P0 Critical
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"
@@ -34,6 +34,7 @@ tags: "v3r2, spec, ears, hierarchical-acceptance, agent-as-judge"
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft from Agent-as-a-Judge R1 §9 hierarchical shape |
+| 0.1.1 | 2026-05-10 | manager-spec (Batch 3 fix) | Sync spec.md §6 AC count 14→17 to match acceptance.md §3 hierarchical authoring (added AC-SPC-001-15/16/17 as flat entries). |
 
 ---
 
@@ -140,6 +141,9 @@ Reference: R1 §9 Agent-as-a-Judge (Zhuge et al. 2024) demonstrates 55 → 365 r
 - AC-SPC-001-12: Given a top-level acceptance with no children and no REQ-mapping tail, When parsed, Then the parser emits a `MissingRequirementMapping` warning (since leaf synthesized child inherits no mapping). (maps REQ-SPC-001-004)
 - AC-SPC-001-13: Given a SPEC where parent `AC-X-01` omits its REQ tail but all three children `AC-X-01.a/b/c` carry distinct tails, When parsed, Then no warning is emitted because each leaf has its own mapping. (maps REQ-SPC-001-004)
 - AC-SPC-001-14: Given a SPEC with 365 leaf acceptance nodes across 55 top-level parents (Agent-as-a-Judge DevAI shape), When parsed, Then the parser succeeds within a 500ms budget and the tree is well-formed. (maps REQ-SPC-001-001, REQ-SPC-001-003)
+- AC-SPC-001-15: Given an acceptance ID `AC-XYZ-007-42`, When `Acceptance.ValidateID()` (`internal/spec/ears.go:28-33`) runs the `topLevelIDPattern` regex, Then the ID is accepted. Conversely given `AC-X-07` (3 segments), Then `ValidateID()` returns an error. (maps REQ-SPC-001-002)
+- AC-SPC-001-16: Given a markdown source where a `- AC-X-09` line is followed by a `  - AC-X-09.a` line (2-space indent), When `extractACLines` (`internal/spec/parser.go:90-117`) extracts entries, Then the second line's `indentLevel` is 1 greater than the first's, signalling child relationship to `buildTree`. (maps REQ-SPC-001-007)
+- AC-SPC-001-17: Given a hierarchical SPEC with parents that omit REQ tails and leaves that carry them, When `internal/spec/lint.go:394-403` `collectAllREQIDs(criteria)` computes coverage, Then the returned set includes every REQ declared on **both** parent and leaf nodes; a SPEC achieves 100% coverage when every declared REQ appears at least once across the tree. (maps REQ-SPC-001-042)
 
 ## 7. Constraints (제약)
 

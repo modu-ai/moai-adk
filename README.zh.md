@@ -377,8 +377,7 @@ MoAI-ADK 根据您的 Claude Code 订阅方案，为 26 个智能体分配最优
 |--------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
 | manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-ddd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-tdd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
 | manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |

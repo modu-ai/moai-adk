@@ -41,6 +41,9 @@ func (e *HookSpecificOutputMismatch) Error() string {
 // Returns a HookResponse that combines both JSON and exit-code interpretations.
 // If stdout contains valid JSON, exitCode is ignored (JSON takes precedence).
 // If stdout is empty or invalid JSON, the response is synthesized from exitCode.
+//
+// @MX:ANCHOR: [AUTO] ParseHookOutput is a shared Validate interface implementation
+// @MX:REASON: fan_in >= 3 — called by all hook handlers (SessionStart, PostToolUse, SessionEnd)
 func ParseHookOutput(stdout []byte, exitCode int, stderr string) (*HookResponse, error) {
 	trimmed := strings.TrimSpace(string(stdout))
 

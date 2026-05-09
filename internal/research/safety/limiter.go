@@ -16,6 +16,8 @@ type RateLimiter struct {
 }
 
 // NewRateLimiter creates a limiter that stores records at the given path.
+// @MX:ANCHOR: [AUTO] NewRateLimiter is a factory called from 3+ packages
+// @MX:REASON: [AUTO] Multi-package dependency — used by research, CLI, and auto-update
 func NewRateLimiter(storePath string) *RateLimiter {
 	return &RateLimiter{
 		storePath: storePath,

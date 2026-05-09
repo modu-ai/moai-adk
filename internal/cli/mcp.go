@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] MCP server integration for Claude Code
+// @MX:NOTE: [AUTO] LSP stdio server provides goto-def, find-refs, hover, diagnostics, rename
+// @MX:NOTE: [AUTO] Communicates via newline-delimited JSON-RPC 2.0 on stdin/stdout
+
 import (
 	"context"
 	"os"

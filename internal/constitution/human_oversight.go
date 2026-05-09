@@ -7,16 +7,16 @@ import (
 	"strings"
 )
 
-// humanOversight는 HumanOversight interface의 구현이다.
-// CLI에서 terminal Y/N prompt로 승인을 받는다.
+// humanOversight is an implementation of the HumanOversight interface.
+// It receives approval through terminal Y/N prompts in the CLI.
 type humanOversight struct {
-	// reader는 표준 입력 reader이다.
+	// reader is the standard input reader.
 	reader *bufio.Reader
-	// writer는 표준 출력 writer이다.
+	// writer is the standard output writer.
 	writer *bufio.Writer
 }
 
-// NewHumanOversight는 HumanOversight를 생성한다.
+// NewHumanOversight creates a HumanOversight.
 func NewHumanOversight() HumanOversight {
 	return &humanOversight{
 		reader: bufio.NewReader(os.Stdin),
@@ -24,16 +24,16 @@ func NewHumanOversight() HumanOversight {
 	}
 }
 
-// Approve는 사용자에게 proposal diff를 보여고 승인을 요청한다.
-// Dry-run mode에서는 항상 true 반환 (실제 승인 없음).
-// SPEC-V3R2-CON-002 REQ-CON-002-009 Layer 5 구현.
+// Approve shows the proposal diff to the user and requests approval.
+// In dry-run mode, always returns true (no actual approval).
+// SPEC-V3R2-CON-002 REQ-CON-002-009 Layer 5 implementation.
 func (h *humanOversight) Approve(proposal *AmendmentProposal, dryRun bool) (bool, error) {
-	// Dry-run: 자동 승인
+	// Dry-run: auto-approve
 	if dryRun {
 		return true, nil
 	}
 
-	// Proposal diff 출력
+	// Print proposal diff
 	if err := h.printDiff(proposal); err != nil {
 		return false, err
 	}
@@ -58,7 +58,7 @@ func (h *humanOversight) Approve(proposal *AmendmentProposal, dryRun bool) (bool
 	}
 }
 
-// printDiff는 proposal의 변경 사항을 출력한다.
+// printDiff prints the changes of the proposal.
 func (h *humanOversight) printDiff(proposal *AmendmentProposal) error {
 	fmt.Printf("\n=== Constitutional Amendment Proposal ===\n")
 	fmt.Printf("Rule ID: %s\n", proposal.RuleID)
@@ -69,7 +69,7 @@ func (h *humanOversight) printDiff(proposal *AmendmentProposal) error {
 		fmt.Printf("\nEvidence: %s\n", proposal.Evidence)
 	}
 
-	// Canary 결과
+	// Canary results
 	if proposal.CanaryResult != nil {
 		fmt.Printf("\n--- Canary Evaluation ---\n")
 		if proposal.CanaryResult.Available {
@@ -83,7 +83,7 @@ func (h *humanOversight) printDiff(proposal *AmendmentProposal) error {
 		}
 	}
 
-	// 모순 탐지 결과
+	// Contradiction detection results
 	if proposal.Contradicts != nil && len(proposal.Contradicts.Conflicts) > 0 {
 		fmt.Printf("\n--- Contradiction Detection ---\n")
 		for _, conflict := range proposal.Contradicts.Conflicts {
@@ -98,5 +98,5 @@ func (h *humanOversight) printDiff(proposal *AmendmentProposal) error {
 	return nil
 }
 
-// humanOversight는 HumanOversight interface를 만족한다.
+// humanOversight satisfies the HumanOversight interface.
 var _ HumanOversight = (*humanOversight)(nil)

@@ -1,5 +1,10 @@
 package cli
 
+// @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
+// @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
+// @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/204K context windows per model tier
+// @MX:NOTE: [AUTO] DISABLE_PROMPT_CACHING=1 disables prompt caching for Z.AI compatibility
+
 import (
 	"bufio"
 	"context"
@@ -165,6 +170,8 @@ func containsPermissionMode(args []string, mode string) bool {
 }
 
 // setGLMEnv sets GLM environment variables in the current process.
+// @MX:WARN: [AUTO] Global environment variable mutation without rollback mechanism
+// @MX:REASON: Process-level state mutation affects all subsequent goroutines; no cleanup on error
 func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_AUTH_TOKEN", apiKey)                            //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_BASE_URL", glmConfig.BaseURL)                   //nolint:errcheck

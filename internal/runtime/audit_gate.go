@@ -50,7 +50,7 @@ const EnvSkipAudit = "MOAI_SKIP_PLAN_AUDIT"
 // AuditResult holds the complete result of a single audit gate invocation.
 //
 // @MX:ANCHOR: [AUTO] AuditResult is the primary output type of the gate
-// @MX:REASON: returned by GateConfig.Invoke, consumed by progress.md writer and daily report writer
+// @MX:REASON: [AUTO] returned by GateConfig.Invoke, consumed by progress.md writer and daily report writer
 type AuditResult struct {
 	// Verdict is the gate decision: PASS, FAIL, FAIL_WARNED, BYPASSED, INCONCLUSIVE.
 	Verdict Verdict
@@ -100,7 +100,7 @@ type AuditResult struct {
 // Test implementation: returns deterministic verdicts without actual agent calls.
 //
 // @MX:ANCHOR: [AUTO] PlanAuditor is the primary abstraction for plan-auditor invocation
-// @MX:REASON: fan_in >= 3 (GateConfig.Invoke, cache validation, integration tests)
+// @MX:REASON: [AUTO] fan_in >= 3 (GateConfig.Invoke, cache validation, integration tests)
 type PlanAuditor interface {
 	// Audit invokes plan-auditor against the SPEC directory and returns the verdict.
 	//

@@ -234,7 +234,7 @@ def calculate_coverage(docstrings, total_elements):
 
 ## Works Well With
 
-- [`moai-lang-python`](../moai-lang-python/SKILL.md) - Python-specific patterns
+- `.claude/rules/moai/languages/python.md` - Python-specific patterns (auto-loaded via paths frontmatter)
 - [`moai-code-quality`](../moai-code-quality/SKILL.md) - General code quality assessment
 - [`moai-cc-claude-md`](../moai-cc-claude-md/SKILL.md) - Documentation generation
 
@@ -424,7 +424,7 @@ pytest --cov=src --cov-report=html # With coverage report
 
 ## Works Well With
 
-- [`moai-lang-python`](../moai-lang-python/SKILL.md) - Python language patterns
+- `.claude/rules/moai/languages/python.md` - Python language patterns (auto-loaded via paths frontmatter)
 - [`moai-workflow-ddd`](../moai-workflow-ddd/SKILL.md) - DDD methodology
 - [`moai-quality-gate`](../moai-quality-gate/SKILL.md) - Quality validation
 

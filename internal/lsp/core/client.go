@@ -139,6 +139,8 @@ func WithIdleTimeout(d time.Duration) Option {
 }
 
 // WithLogger sets the logger for state transitions and lifecycle events.
+// @MX:ANCHOR: [AUTO] WithLogger is a functional option used across 3+ packages
+// @MX:REASON: Multi-package dependency — signature changes affect Manager, tests, MCP
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *client) {
 		c.logger = logger

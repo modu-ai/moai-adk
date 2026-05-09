@@ -1,5 +1,5 @@
 // Package safety — Layer 3: Contradiction Detector (REQ-HL-008).
-// trigger 키워드 중첩 및 chaining rules 모순을 탐지한다.
+// Detects trigger keyword overlaps and chaining rules contradictions.
 package safety
 
 import (
@@ -8,29 +8,29 @@ import (
 	harness "github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// SkillTriggers는 단일 skill의 trigger 목록이다.
-// DetectOverlappingTriggers의 입력 타입으로 사용된다.
+// SkillTriggers is the trigger list for a single skill.
+// Used as input type for DetectOverlappingTriggers.
 type SkillTriggers struct {
-	// SkillPath는 skill 파일 경로이다.
+	// SkillPath is the skill file path.
 	SkillPath string
 
-	// Keywords는 이 skill의 trigger keyword 목록이다.
+	// Keywords is the trigger keyword list for this skill.
 	Keywords []string
 }
 
-// DetectOverlappingTriggers는 여러 skill의 trigger keyword 중첩을 탐지한다.
-// REQ-HL-008: 중첩된 keyword가 있으면 ContradictionReport에 기록한다.
+// DetectOverlappingTriggers detects trigger keyword overlaps across multiple skills.
+// REQ-HL-008: Records overlapping keywords in ContradictionReport.
 //
-// 같은 SkillPath 간의 중첩은 conflict로 간주하지 않는다.
+// Overlaps within the same SkillPath are not considered conflicts.
 //
-// @MX:ANCHOR: [AUTO] DetectOverlappingTriggers는 trigger 중첩 탐지 진입점이다.
+// @MX:ANCHOR: [AUTO] DetectOverlappingTriggers is the trigger overlap detection entry point.
 // @MX:REASON: [AUTO] fan_in >= 3: contradiction_test.go, pipeline.go, Phase 4 coordinator
 func DetectOverlappingTriggers(skillTriggers []SkillTriggers) harness.ContradictionReport {
 	if len(skillTriggers) == 0 {
 		return harness.ContradictionReport{}
 	}
 
-	// keyword → 해당 keyword를 사용하는 skill 경로 목록
+	// keyword → list of skill paths using that keyword
 	keywordToSkills := make(map[string][]string)
 
 	for _, st := range skillTriggers {
@@ -42,17 +42,17 @@ func DetectOverlappingTriggers(skillTriggers []SkillTriggers) harness.Contradict
 	var items []harness.ContradictionItem
 
 	for kw, paths := range keywordToSkills {
-		// 중복 경로 제거 (같은 skill이 여러 번 들어온 경우)
+		// Remove duplicate paths (same skill entered multiple times)
 		uniquePaths := deduplicatePaths(paths)
 		if len(uniquePaths) <= 1 {
-			// 하나의 skill만 사용하면 conflict 없음
+			// No conflict if only one skill uses it
 			continue
 		}
 
 		items = append(items, harness.ContradictionItem{
 			Type: harness.ContradictionOverlappingTriggers,
 			Description: fmt.Sprintf(
-				"trigger keyword '%s'가 %d개 skill에서 중첩 사용됨: %v",
+				"trigger keyword '%s' used in %d skills overlapping: %v",
 				kw, len(uniquePaths), uniquePaths,
 			),
 			ConflictingPaths:  uniquePaths,
@@ -63,7 +63,7 @@ func DetectOverlappingTriggers(skillTriggers []SkillTriggers) harness.Contradict
 	return harness.ContradictionReport{Items: items}
 }
 
-// deduplicatePaths는 경로 슬라이스에서 중복을 제거한다.
+// deduplicatePaths removes duplicates from a path slice.
 func deduplicatePaths(paths []string) []string {
 	seen := make(map[string]bool, len(paths))
 	var result []string
@@ -76,13 +76,13 @@ func deduplicatePaths(paths []string) []string {
 	return result
 }
 
-// DetectChainRuleContradictions는 기존 chaining rules와 제안된 rules 간의 모순을 탐지한다.
-// REQ-HL-008: 같은 phase에 서로 다른 insert_before/insert_after가 있으면 모순으로 탐지한다.
+// DetectChainRuleContradictions detects contradictions between existing and proposed chaining rules.
+// REQ-HL-008: Detects as contradiction if different insert_before/insert_after exist for the same phase.
 //
-// @MX:ANCHOR: [AUTO] DetectChainRuleContradictions는 chaining rule 모순 탐지 진입점이다.
+// @MX:ANCHOR: [AUTO] DetectChainRuleContradictions is the chaining rule contradiction detection entry point.
 // @MX:REASON: [AUTO] fan_in >= 3: contradiction_test.go, pipeline.go, Phase 4 coordinator
 func DetectChainRuleContradictions(existing, proposed harness.ChainingRules) harness.ContradictionReport {
-	// 기존 rules를 phase → entry로 인덱싱
+	// Index existing rules by phase → entry
 	existingByPhase := make(map[string]harness.ChainEntry, len(existing.Chains))
 	for _, entry := range existing.Chains {
 		existingByPhase[entry.Phase] = entry
@@ -93,11 +93,11 @@ func DetectChainRuleContradictions(existing, proposed harness.ChainingRules) har
 	for _, proposedEntry := range proposed.Chains {
 		existingEntry, ok := existingByPhase[proposedEntry.Phase]
 		if !ok {
-			// 기존에 없는 phase → conflict 없음
+			// No existing phase → no conflict
 			continue
 		}
 
-		// 같은 phase에서 insert_before 충돌 검사
+		// Check insert_before conflict in the same phase
 		if conflict := findChainConflict(existingEntry, proposedEntry); conflict != "" {
 			items = append(items, harness.ContradictionItem{
 				Type:              harness.ContradictionChainRules,
@@ -111,24 +111,24 @@ func DetectChainRuleContradictions(existing, proposed harness.ChainingRules) har
 	return harness.ContradictionReport{Items: items}
 }
 
-// findChainConflict는 두 ChainEntry 간의 충돌을 탐지한다.
-// 같은 phase에 서로 다른 agent가 insert_before에 있으면 충돌로 간주한다.
+// findChainConflict detects conflicts between two ChainEntry.
+// Considers as conflict if different agents are in insert_before for the same phase.
 func findChainConflict(existing, proposed harness.ChainEntry) string {
-	// insert_before 충돌: 기존과 제안이 모두 비어 있지 않고 다른 경우
+	// insert_before conflict: both existing and proposed are non-empty and different
 	if len(existing.InsertBefore) > 0 && len(proposed.InsertBefore) > 0 {
 		if !stringSlicesEqual(existing.InsertBefore, proposed.InsertBefore) {
 			return fmt.Sprintf(
-				"phase '%s'의 insert_before 충돌: 기존=%v, 제안=%v",
+				"phase '%s' insert_before conflict: existing=%v, proposed=%v",
 				existing.Phase, existing.InsertBefore, proposed.InsertBefore,
 			)
 		}
 	}
 
-	// insert_after 충돌: 기존과 제안이 모두 비어 있지 않고 다른 경우
+	// insert_after conflict: both existing and proposed are non-empty and different
 	if len(existing.InsertAfter) > 0 && len(proposed.InsertAfter) > 0 {
 		if !stringSlicesEqual(existing.InsertAfter, proposed.InsertAfter) {
 			return fmt.Sprintf(
-				"phase '%s'의 insert_after 충돌: 기존=%v, 제안=%v",
+				"phase '%s' insert_after conflict: existing=%v, proposed=%v",
 				existing.Phase, existing.InsertAfter, proposed.InsertAfter,
 			)
 		}
@@ -137,7 +137,7 @@ func findChainConflict(existing, proposed harness.ChainEntry) string {
 	return ""
 }
 
-// stringSlicesEqual은 두 string 슬라이스가 순서까지 동일한지 확인한다.
+// stringSlicesEqual checks whether two string slices are identical including order.
 func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

@@ -63,7 +63,7 @@ type renderer struct {
 }
 
 // @MX:ANCHOR: [AUTO] Go text/template renderer factory - used from 3 or more paths including deployer, init, and update
-// @MX:REASON: fan_in=3, single entry point for missingkey=error mode and claudeCodePassthroughTokens validation logic
+// @MX:REASON: [AUTO] fan_in=3, single entry point for missingkey=error mode and claudeCodePassthroughTokens validation logic
 // NewRenderer creates a Renderer backed by the given filesystem.
 func NewRenderer(fsys fs.FS) Renderer {
 	return &renderer{fsys: fsys}

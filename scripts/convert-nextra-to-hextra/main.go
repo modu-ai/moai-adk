@@ -1,11 +1,11 @@
 // convert-nextra-to-hextra: Bulk Nextra MDX → Hextra Markdown converter
 // SPEC-DOCS-SITE-001 Phase 3
 //
-// 변환 규격:
-//   T1 — Callout JSX → Hextra shortcode (735건)
-//   T2 — _meta.ts → _meta.yaml (38개)
-//   T3 — YAML frontmatter 주입 (219페이지)
-//   T4 — .mdx → .md 확장자 변경
+// Conversion specification:
+//   T1 — Callout JSX → Hextra shortcode (735 items)
+//   T2 — _meta.ts → _meta.yaml (38 files)
+//   T3 — YAML frontmatter injection (219 pages)
+//   T4 — .mdx → .md extension change
 package main
 
 import (
@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-// MetaEntry: _meta.ts 한 항목
+// MetaEntry: single item from _meta.ts
 type MetaEntry struct {
 	Key     string
 	Title   string
@@ -28,7 +28,7 @@ type MetaEntry struct {
 	Weight  int
 }
 
-// Stats: 변환 통계
+// Stats: conversion statistics
 type Stats struct {
 	FilesProcessed  int
 	CalloutsChanged int
@@ -39,52 +39,50 @@ type Stats struct {
 }
 
 var (
-	// nextra import 패턴 (여러 변형)
+	// nextra import pattern (multiple variations)
 	reImportCallout = regexp.MustCompile(`(?m)^import\s*\{[^}]*Callout[^}]*\}\s*from\s*["']nextra/components["'];?\s*\n?`)
 	reImportMeta    = regexp.MustCompile(`(?m)^import\s+type\s*\{[^}]*MetaRecord[^}]*\}\s*from\s*["']nextra["'];?\s*\n?`)
 
-	// <Callout type="..."> 패턴 — 태그 시작 매핑
+	// <Callout type="..."> pattern — tag start mapping
 	reCalloutOpen  = regexp.MustCompile(`(?m)<Callout(\s+type\s*=\s*"([^"]*)")?\s*/?>`)
 	reCalloutClose = regexp.MustCompile(`</Callout>`)
 
-	// H1 추출
 	reH1 = regexp.MustCompile(`(?m)^#\s+(.+)$`)
 
-	// _meta.ts 파싱 — 라인 단위 파서에서 사용
 	reMetaKeyStr = regexp.MustCompile(`^\s*"([^"]+)"\s*:\s*"([^"]+)"\s*,?\s*$`)
 	reMetaKeyBare = regexp.MustCompile(`^\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*:\s*"([^"]+)"\s*,?\s*$`)
 	reObjTitle   = regexp.MustCompile(`title\s*:\s*"([^"]+)"`)
 	reObjDisplay = regexp.MustCompile(`display\s*:\s*"([^"]+)"`)
 	reObjType    = regexp.MustCompile(`\btype\s*:\s*"([^"]+)"`)
-	// 객체 시작 라인: "key": { 또는 key: {
+	// Object start line: "key": { or key: {
 	reObjStart = regexp.MustCompile(`^\s*"?([a-zA-Z][a-zA-Z0-9_-]*)"?\s*:\s*\{`)
 )
 
 func main() {
-	dryRun := flag.Bool("dry-run", false, "시뮬레이션 모드 — 파일 수정 없이 통계만 출력")
-	contentDir := flag.String("content", "docs-site/content", "변환 대상 content 디렉토리 경로")
+	dryRun := flag.Bool("dry-run", false, "simulation mode — print statistics without file modification")
+	contentDir := flag.String("content", "docs-site/content", "target content directory path")
 	flag.Parse()
 
-	// 작업 루트 감지 (go run ./scripts/... 실행 위치)
+	// go run ./scripts/... execution location
 	root, err := findProjectRoot()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "프로젝트 루트 감지 실패: %v\n", err)
+		fmt.Fprintf(os.Stderr, "project root detection failed: %v\n", err)
 		os.Exit(1)
 	}
 	absContentDir := filepath.Join(root, *contentDir)
 
-	fmt.Printf("변환 시작: %s\n", absContentDir)
+	fmt.Printf("conversion start: %s\n", absContentDir)
 	if *dryRun {
-		fmt.Println("[DRY-RUN 모드] 파일을 수정하지 않습니다.")
+		fmt.Println("[DRY-RUN mode] will not modify files")
 	}
 
 	stats := &Stats{}
 
-	// 1단계: _meta.ts 파싱 (weight 맵 구성) + T2 변환
-	// locale별로 처리 (각 locale 루트의 _meta.ts 먼저, 그 다음 섹션별)
+	// Phase 1: _meta.ts parsing (build weight map) + T2 conversion
+	// Process per locale (first _meta.ts at each locale root, then by section)
 	locales := []string{"ko", "en", "ja", "zh"}
 
-	// (locale + dir) → []MetaEntry 순서 보존 맵
+	// (locale + dir) → []MetaEntry order-preserving map
 	weightMaps := make(map[string]map[string]int) // key: locale+"/"+relDir, val: filename→weight
 
 	for _, locale := range locales {
@@ -101,38 +99,38 @@ func main() {
 
 			entries, parseErr := parseMetaTS(path)
 			if parseErr != nil {
-				stats.Errors = append(stats.Errors, fmt.Sprintf("_meta.ts 파싱 실패 [%s]: %v", path, parseErr))
+				stats.Errors = append(stats.Errors, fmt.Sprintf("_meta.ts parsing failure [%s]: %v", path, parseErr))
 				return nil
 			}
 
-			// weight 맵 등록
+			// Register weight map
 			wmap := make(map[string]int)
 			for _, e := range entries {
 				wmap[e.Key] = e.Weight
 			}
 			weightMaps[relDir] = wmap
 
-			// T2: _meta.yaml 생성
+			// T2: _meta.yaml creation
 			if !*dryRun {
 				yamlPath := filepath.Join(dir, "_meta.yaml")
 				if writeErr := writeMetaYAML(entries, yamlPath); writeErr != nil {
-					stats.Errors = append(stats.Errors, fmt.Sprintf("_meta.yaml 쓰기 실패 [%s]: %v", yamlPath, writeErr))
+					stats.Errors = append(stats.Errors, fmt.Sprintf("_meta.yaml write failure [%s]: %v", yamlPath, writeErr))
 					return nil
 				}
-				// 원본 _meta.ts 삭제
+				// meta.ts deletion
 				if rmErr := os.Remove(path); rmErr != nil {
-					stats.Errors = append(stats.Errors, fmt.Sprintf("_meta.ts 삭제 실패 [%s]: %v", path, rmErr))
+					stats.Errors = append(stats.Errors, fmt.Sprintf("_meta.ts deletion failure [%s]: %v", path, rmErr))
 				}
 			}
 			stats.MetaConverted++
 			return nil
 		})
 		if err != nil {
-			stats.Errors = append(stats.Errors, fmt.Sprintf("locale Walk 오류 [%s]: %v", locale, err))
+			stats.Errors = append(stats.Errors, fmt.Sprintf("locale Walk error [%s]: %v", locale, err))
 		}
 	}
 
-	// 2단계: .mdx 파일 처리 (T1, T3, T4)
+	// Phase 2: .mdx file process (T1, T3, T4)
 	for _, locale := range locales {
 		localeDir := filepath.Join(absContentDir, locale)
 		err := filepath.Walk(localeDir, func(path string, info os.FileInfo, err error) error {
@@ -143,12 +141,12 @@ func main() {
 				return nil
 			}
 
-			// 이 파일의 디렉토리 기준 weight 맵 조회
+			// Query weight map based on file's directory
 			dir := filepath.Dir(path)
 			relDir, _ := filepath.Rel(absContentDir, dir)
 			wmap := weightMaps[relDir]
 
-			// 파일명 → weight 계산
+			// Filename → weight calculation
 			baseName := strings.TrimSuffix(filepath.Base(path), ".mdx")
 			weight := 99
 			if wmap != nil {
@@ -157,19 +155,18 @@ func main() {
 				}
 			}
 
-			// 파일 읽기
 			content, readErr := os.ReadFile(path)
 			if readErr != nil {
-				stats.Errors = append(stats.Errors, fmt.Sprintf("읽기 실패 [%s]: %v", path, readErr))
+				stats.Errors = append(stats.Errors, fmt.Sprintf("read failure [%s]: %v", path, readErr))
 				return nil
 			}
 			original := string(content)
 
-			// T1: import 제거 + Callout 변환
+			// T1: import remove + Callout conversion
 			converted, calloutCount := convertContent(original)
 			stats.CalloutsChanged += calloutCount
 
-			// T3: frontmatter 주입
+			// T3: frontmatter injection
 			title := extractH1Title(converted)
 			if title == "" {
 				title = toTitleCase(baseName)
@@ -182,16 +179,15 @@ func main() {
 			stats.FilesProcessed++
 
 			if !*dryRun {
-				// .mdx 파일에 변환된 내용 저장
 				if writeErr := os.WriteFile(path, []byte(converted), 0644); writeErr != nil {
-					stats.Errors = append(stats.Errors, fmt.Sprintf("쓰기 실패 [%s]: %v", path, writeErr))
+					stats.Errors = append(stats.Errors, fmt.Sprintf("write failure [%s]: %v", path, writeErr))
 					return nil
 				}
 
-				// T4: .mdx → .md 이름 변경
+				// T4: .mdx → .md rename
 				newPath := strings.TrimSuffix(path, ".mdx") + ".md"
 				if renameErr := os.Rename(path, newPath); renameErr != nil {
-					stats.Errors = append(stats.Errors, fmt.Sprintf("이름 변경 실패 [%s]: %v", path, renameErr))
+					stats.Errors = append(stats.Errors, fmt.Sprintf("rename failure [%s]: %v", path, renameErr))
 					return nil
 				}
 				stats.FilesRenamed++
@@ -200,11 +196,10 @@ func main() {
 			return nil
 		})
 		if err != nil {
-			stats.Errors = append(stats.Errors, fmt.Sprintf("mdx Walk 오류 [%s]: %v", locale, err))
+			stats.Errors = append(stats.Errors, fmt.Sprintf("mdx Walk error [%s]: %v", locale, err))
 		}
 	}
 
-	// 결과 출력
 	printReport(stats, *dryRun)
 
 	if len(stats.Errors) > 0 {
@@ -212,7 +207,7 @@ func main() {
 	}
 }
 
-// findProjectRoot: go.mod 파일이 있는 루트 디렉토리를 찾는다
+// findProjectRoot finds the root directory containing go.mod file
 func findProjectRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -229,12 +224,12 @@ func findProjectRoot() (string, error) {
 		}
 		dir = parent
 	}
-	// fallback: cwd 사용
+	// fallback: cwd use
 	return cwd, nil
 }
 
-// parseMetaTS: _meta.ts 파일을 파싱하여 MetaEntry 슬라이스 반환
-// brace-depth 카운팅으로 최상위 객체 본문을 추출한다.
+// parseMetaTS: Parse _meta.ts file and return MetaEntry slice
+// Extracts top-level object body by counting brace depth
 func parseMetaTS(path string) ([]MetaEntry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -242,28 +237,27 @@ func parseMetaTS(path string) ([]MetaEntry, error) {
 	}
 	content := string(data)
 
-	// 최상위 export 객체 위치 찾기: const meta = { ... }; 또는 export default { ... };
-	// brace-depth 카운팅으로 중첩 객체 안전하게 처리
+	// Find export object location: const meta = { ... }; or export default { ... };
+	// Safely process nested objects by counting brace depth
 	body, extractErr := extractTopLevelObjectBody(content)
 	if extractErr != nil {
-		return nil, fmt.Errorf("메타 객체를 찾을 수 없음 [%s]: %w", path, extractErr)
+		return nil, fmt.Errorf("cannot find meta object [%s]: %w", path, extractErr)
 	}
 
 	return parseMetaBody(body), nil
 }
 
-// extractTopLevelObjectBody: TypeScript 소스에서 최상위 export 객체의 본문(내용)을 추출한다.
-// brace-depth 카운팅으로 중첩 객체 안전하게 처리.
+// extractTopLevelObjectBody: extracts the body (content) of the top-level export object from TypeScript source
+// Safely processes nested objects by counting brace depth
 func extractTopLevelObjectBody(content string) (string, error) {
-	// "const meta" 또는 "export default" 뒤에 오는 첫 번째 { 위치 찾기
+	// Find first { after "const meta" or "export default"
 	reObjEntryPoint := regexp.MustCompile(`(?:const\s+meta\s*(?::\s*\w+)?\s*=\s*|export\s+default\s+)\{`)
 	loc := reObjEntryPoint.FindStringIndex(content)
 	if loc == nil {
-		return "", fmt.Errorf("export 객체를 찾을 수 없음")
+		return "", fmt.Errorf("cannot find export object")
 	}
 
-	// {부터 시작하여 brace-depth 카운팅
-	startIdx := loc[1] - 1 // { 위치
+	startIdx := loc[1] - 1 // { position
 	depth := 0
 	for i := startIdx; i < len(content); i++ {
 		switch content[i] {
@@ -272,15 +266,14 @@ func extractTopLevelObjectBody(content string) (string, error) {
 		case '}':
 			depth--
 			if depth == 0 {
-				// 최상위 } 찾음 — 내부 본문 반환
 				return content[startIdx+1 : i], nil
 			}
 		}
 	}
-	return "", fmt.Errorf("객체 닫는 brace를 찾을 수 없음")
+	return "", fmt.Errorf("cannot find object closing brace")
 }
 
-// parseMetaBody: 메타 객체 본문을 파싱하여 순서가 보존된 MetaEntry 슬라이스 반환
+// parseMetaBody: parses meta object body and returns order-preserved MetaEntry slice
 func parseMetaBody(body string) []MetaEntry {
 	var entries []MetaEntry
 	weight := 10
@@ -295,7 +288,6 @@ func parseMetaBody(body string) []MetaEntry {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
 
-		// 주석 스킵
 		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "*") || strings.HasPrefix(trimmed, "/*") {
 			continue
 		}
@@ -311,7 +303,6 @@ func parseMetaBody(body string) []MetaEntry {
 				}
 			}
 			if braceDepth <= 0 {
-				// 객체 종료
 				objContent := strings.Join(objLines, "\n")
 				entry := parseObjectEntry(objKey, objContent)
 				if entry != nil {
@@ -326,23 +317,22 @@ func parseMetaBody(body string) []MetaEntry {
 			continue
 		}
 
-		// 단순 문자열 값 패턴: "key": "value"
+		// string value pattern: "key": "value"
 		if m := reMetaKeyStr.FindStringSubmatch(trimmed); m != nil {
 			entries = append(entries, MetaEntry{Key: m[1], Title: m[2], Weight: weight})
 			weight += 10
 			continue
 		}
-		// bare key 패턴: key: "value"
+		// bare key pattern: key: "value"
 		if m := reMetaKeyBare.FindStringSubmatch(trimmed); m != nil {
 			entries = append(entries, MetaEntry{Key: m[1], Title: m[2], Weight: weight})
 			weight += 10
 			continue
 		}
-		// 객체 시작 감지 (단일 라인 완결: "key": { ... } 또는 멀티라인 시작: "key": {)
+		// Object start detection (single-line complete: "key": { ... } or multiline start: "key": {)
 		if mo := reObjStart.FindStringSubmatch(trimmed); mo != nil {
 			objKey = mo[1]
 			inObj = true
-			// 초기 depth: 이 줄에서 { } 카운트
 			for _, ch := range trimmed {
 				switch ch {
 				case '{':
@@ -353,7 +343,6 @@ func parseMetaBody(body string) []MetaEntry {
 			}
 			objLines = []string{trimmed}
 			if braceDepth <= 0 {
-				// 단일 라인 완결 객체
 				objContent := strings.Join(objLines, "\n")
 				entry := parseObjectEntry(objKey, objContent)
 				if entry != nil {
@@ -373,7 +362,7 @@ func parseMetaBody(body string) []MetaEntry {
 	return entries
 }
 
-// parseObjectEntry: 객체 값에서 title/display/type을 추출
+// parseObjectEntry: extracts title/display/type from object value
 func parseObjectEntry(key, objContent string) *MetaEntry {
 	key = strings.Trim(key, `"`)
 	e := &MetaEntry{Key: key}
@@ -391,11 +380,10 @@ func parseObjectEntry(key, objContent string) *MetaEntry {
 	return e
 }
 
-// writeMetaYAML: _meta.yaml 파일 생성
+// writeMetaYAML: creates _meta.yaml file
 func writeMetaYAML(entries []MetaEntry, path string) error {
 	var sb strings.Builder
 	for _, e := range entries {
-		// key 인용 여부 판단 (- 포함 시 인용)
 		key := e.Key
 		if strings.Contains(key, "-") {
 			key = fmt.Sprintf(`"%s"`, key)
@@ -412,17 +400,17 @@ func writeMetaYAML(entries []MetaEntry, path string) error {
 	return os.WriteFile(path, []byte(sb.String()), 0644)
 }
 
-// convertContent: Nextra import 제거 + Callout JSX → Hextra shortcode 변환
+// convertContent: removes Nextra imports + converts Callout JSX to Hextra shortcode
 func convertContent(content string) (string, int) {
-	// T1-1: import 라인 제거
+	// T1-1: remove import lines
 	content = reImportCallout.ReplaceAllString(content, "")
 	content = reImportMeta.ReplaceAllString(content, "")
 
-	// T1-2: <Callout type="..."> 단일 태그 (self-closing or 여는 태그)
+	// T1-2: <Callout type="..."> single tag (self-closing or multiple tags)
 	calloutCount := 0
 
-	// 여는 태그 변환: <Callout type="info"> → {{< callout type="info" >}}
-	// <Callout> (타입 없음) → {{< callout >}}
+	// Tag conversion: <Callout type="info"> → {{< callout type="info" >}}
+	// <Callout> (no type) → {{< callout >}}
 	content = reCalloutOpen.ReplaceAllStringFunc(content, func(match string) string {
 		calloutCount++
 		sub := reCalloutOpen.FindStringSubmatch(match)
@@ -437,18 +425,15 @@ func convertContent(content string) (string, int) {
 		return fmt.Sprintf(`{{< callout type="%s" >}}`, typeVal)
 	})
 
-	// 닫는 태그 변환: </Callout> → {{< /callout >}}
 	content = reCalloutClose.ReplaceAllString(content, "{{< /callout >}}")
 
-	// 연속된 빈 줄 정리 (import 제거 후 빈 줄 3개 이상 → 2개로)
 	reTripleBlank := regexp.MustCompile(`\n{3,}`)
 	content = reTripleBlank.ReplaceAllString(content, "\n\n")
 
 	return content, calloutCount
 }
 
-// normalizeCalloutType: Hextra 지원 타입으로 정규화
-// Hextra 기본 지원: info, warning, error (default 타입은 type 없이)
+// Hextra default support: info, warning, error (default type is no type attribute)
 func normalizeCalloutType(t string) string {
 	switch t {
 	case "info":
@@ -458,24 +443,23 @@ func normalizeCalloutType(t string) string {
 	case "error":
 		return "error"
 	case "tip":
-		// tip → info (Hextra에서 tip은 별도 타입이 아님, info로 매핑)
+		// tip → info (tip is not a separate type in Hextra, map to info)
 		return "info"
 	case "success":
 		// success → info fallback
 		return "info"
 	default:
-		// 알 수 없는 타입 → default (타입 속성 없이)
+		// other types → default (no type attribute)
 		return ""
 	}
 }
 
-// extractH1Title: 콘텐츠에서 첫 번째 H1 헤더 텍스트 추출
+// extractH1Title: extracts first H1 header text from content
 func extractH1Title(content string) string {
 	m := reH1.FindStringSubmatch(content)
 	if m == nil {
 		return ""
 	}
-	// 인라인 마크다운 제거 (볼드, 이탤릭, 코드)
 	title := m[1]
 	title = regexp.MustCompile(`\*+`).ReplaceAllString(title, "")
 	title = regexp.MustCompile("`"+"[^`]+`").ReplaceAllString(title, "")
@@ -483,15 +467,14 @@ func extractH1Title(content string) string {
 	return title
 }
 
-// hasFrontmatter: 파일이 이미 frontmatter를 가지고 있는지 확인
+// hasFrontmatter: verifies if file already has frontmatter
 func hasFrontmatter(content string) bool {
 	trimmed := strings.TrimSpace(content)
 	return strings.HasPrefix(trimmed, "---")
 }
 
-// buildFrontmatter: YAML frontmatter 문자열 생성
+// buildFrontmatter: creates YAML frontmatter string
 func buildFrontmatter(title string, weight int) string {
-	// 제목의 특수문자 이스케이프 (: 포함 시 인용)
 	titleStr := title
 	if strings.ContainsAny(titleStr, `:"{}[]|>&*!`) {
 		titleStr = fmt.Sprintf(`"%s"`, strings.ReplaceAll(titleStr, `"`, `\"`))
@@ -499,7 +482,7 @@ func buildFrontmatter(title string, weight int) string {
 	return fmt.Sprintf("---\ntitle: %s\nweight: %d\ndraft: false\n---\n", titleStr, weight)
 }
 
-// toTitleCase: kebab-case → Title Case 변환
+// toTitleCase: converts kebab-case to Title Case
 func toTitleCase(s string) string {
 	words := strings.Split(s, "-")
 	for i, w := range words {
@@ -508,52 +491,49 @@ func toTitleCase(s string) string {
 		}
 	}
 	result := strings.Join(words, " ")
-	// 인덱스 파일 처리
 	if result == "Index" {
 		result = "Overview"
 	}
 	return result
 }
 
-// printReport: 변환 결과 리포트 출력
 func printReport(stats *Stats, dryRun bool) {
-	mode := "실행"
+	mode := "execution"
 	if dryRun {
 		mode = "DRY-RUN"
 	}
-	fmt.Printf("\n========== 변환 결과 [%s] ==========\n", mode)
-	fmt.Printf("처리된 MDX 파일:    %d\n", stats.FilesProcessed)
-	fmt.Printf("Callout 변환:       %d\n", stats.CalloutsChanged)
-	fmt.Printf("_meta.ts 변환:      %d\n", stats.MetaConverted)
-	fmt.Printf("Frontmatter 주입:   %d\n", stats.FrontmatterAdded)
+	fmt.Printf("\n========== conversion result [%s] ==========\n", mode)
+	fmt.Printf("MDX files processed:    %d\n", stats.FilesProcessed)
+	fmt.Printf("Callout conversions:       %d\n", stats.CalloutsChanged)
+	fmt.Printf("_meta.ts conversions:      %d\n", stats.MetaConverted)
+	fmt.Printf("Frontmatter injections:   %d\n", stats.FrontmatterAdded)
 	if !dryRun {
-		fmt.Printf("파일명 변경 (.md):  %d\n", stats.FilesRenamed)
+		fmt.Printf("file name changes (.md):  %d\n", stats.FilesRenamed)
 	}
 
-	// 검증 힌트
 	if stats.CalloutsChanged != 735 {
-		fmt.Printf("\n[경고] Callout 변환 수가 예상(735)과 다릅니다: %d\n", stats.CalloutsChanged)
+		fmt.Printf("\n[warning] Callout conversion count differs from expected (735): %d\n", stats.CalloutsChanged)
 	} else {
-		fmt.Printf("\n[OK] Callout 735건 정확히 변환\n")
+		fmt.Printf("\n[OK] Callout 735 items converted exactly\n")
 	}
 	if stats.MetaConverted != 38 {
-		fmt.Printf("[경고] _meta.ts 변환 수가 예상(38)과 다릅니다: %d\n", stats.MetaConverted)
+		fmt.Printf("[warning] _meta.ts conversion count differs from expected (38): %d\n", stats.MetaConverted)
 	} else {
-		fmt.Printf("[OK] _meta.ts 38개 변환\n")
+		fmt.Printf("[OK] _meta.ts 38 files converted\n")
 	}
 	if stats.FilesProcessed != 219 {
-		fmt.Printf("[경고] 처리 파일 수가 예상(219)과 다릅니다: %d\n", stats.FilesProcessed)
+		fmt.Printf("[warning] processed file count differs from expected (219): %d\n", stats.FilesProcessed)
 	} else {
-		fmt.Printf("[OK] MDX 219페이지 처리\n")
+		fmt.Printf("[OK] MDX 219 pages processed\n")
 	}
 
 	if len(stats.Errors) > 0 {
-		fmt.Printf("\n오류 목록 (%d건):\n", len(stats.Errors))
+		fmt.Printf("\nerror list (%d items):\n", len(stats.Errors))
 		sort.Strings(stats.Errors)
 		for _, e := range stats.Errors {
 			fmt.Printf("  - %s\n", e)
 		}
 	} else {
-		fmt.Println("\n[OK] 오류 0건")
+		fmt.Println("\n[OK] 0 errors")
 	}
 }

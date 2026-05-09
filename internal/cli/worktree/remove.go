@@ -1,5 +1,8 @@
 package worktree
 
+// @MX:NOTE: [AUTO] Remove worktree at specified path with optional force flag
+// @MX:NOTE: [AUTO] Force flag bypasses uncommitted changes safety check
+
 import (
 	"fmt"
 

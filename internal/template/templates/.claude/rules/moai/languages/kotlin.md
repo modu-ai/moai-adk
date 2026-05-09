@@ -103,11 +103,10 @@ Consider Alternatives When:
 ---
 
 
-- `moai-lang-java` - Java interoperability and Spring Boot patterns
+- `.claude/rules/moai/languages/java.md` - Java interoperability and Spring Boot patterns
 - `moai-domain-backend` - REST API, GraphQL, microservices architecture
 - `moai-domain-database` - JPA, Exposed, R2DBC patterns
-- `moai-quality-testing` - JUnit 5, MockK, TestContainers integration
-- `moai-infra-docker` - JVM container optimization
+- `moai-foundation-quality` + `moai-ref-testing-pyramid` - JUnit 5, MockK, TestContainers integration
 
 ---
 

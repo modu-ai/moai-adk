@@ -21,8 +21,8 @@ func NewResolver(manager *Manager) *Resolver {
 // ResolveAnchor looks up an AnchorID and returns the corresponding tag.
 // Returns error if AnchorID is not found.
 //
-// @MX:ANCHOR: [AUTO] ResolveAnchor — AnchorID 단일 조회 API의 불변 계약
-// @MX:REASON: fan_in >= 3 — ResolveAll 내부 호출, CLI, 코드맵 생성 도구에서 사용
+// @MX:ANCHOR: [AUTO] ResolveAnchor — invariant contract of AnchorID single lookup API
+// @MX:REASON: fan_in >= 3 — ResolveAll internal calls, CLI, code map generation tools usage
 func (r *Resolver) ResolveAnchor(anchorID string) (Tag, error) {
 	tags := r.manager.GetAllTags()
 

@@ -172,7 +172,7 @@ async def test_async_api_call():
 
 ## Works Well With
 
-- moai-lang-python - Python 3.13+ patterns
+- `.claude/rules/moai/languages/python.md` - Python 3.13+ patterns (auto-loaded via paths frontmatter)
 - moai-domain-backend - Backend testing strategies
 - moai-workflow-ddd - DDD workflow integration
 ```

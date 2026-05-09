@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] GitHub integration for issue parsing, SPEC linking, and workflow automation
+// @MX:NOTE: [AUTO] Dependency injection pattern for testability (GithubIssueParser, GithubSpecLinkerFactory)
+// @MX:NOTE: [AUTO] T-01: --dry-run flag for previewing actions without execution
+
 import (
 	"context"
 	"fmt"
@@ -69,20 +73,20 @@ var githubCmd = &cobra.Command{
 	Long:    "Commands for GitHub issue parsing, SPEC linking, and workflow automation.",
 }
 
-// T-01: --dry-run 지속적 플래그 추가
+// T-01: --dry-run persistent flag addition
 var dryRun bool
 
 func init() {
 	rootCmd.AddCommand(githubCmd)
 
-	// T-01: --dry-run 플래그 등록
-	githubCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "미리 실행하지 않고 수행할 작업을 표시만 함 (Show what would be done without making changes)")
+	// T-01: --dry-run flag Register
+	githubCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 
-	// 기존 명령 보존
+	// Preserve existing commands
 	githubCmd.AddCommand(newParseIssueCmd())
 	githubCmd.AddCommand(newLinkSpecCmd())
 
-	// T-01: 새로운 서브커맨드 그룹 추가
+	// T-01: Add new subcommand group
 	githubCmd.AddGroup(&cobra.Group{
 		ID:    "runner",
 		Title: "Runner Commands:",
@@ -93,7 +97,7 @@ func init() {
 		Title: "Auth Commands:",
 	})
 
-	// Wave 4: 새로운 서브커먼드 등록 (구현 파일에서 정의)
+	// Wave 4: Register new subcommands (implementation filefrom/in/at definition)
 	githubCmd.AddCommand(newInitCmd())
 	githubCmd.AddCommand(newRunnerCmd())
 	githubCmd.AddCommand(newAuthCmd())
@@ -109,7 +113,7 @@ func newParseIssueCmd() *cobra.Command {
 Uses the gh CLI to fetch issue data from the current repository.
 
 Example:
-  moai github parse-issue 123`,
+moai github parse-issue 123`,
 		Args: cobra.ExactArgs(1),
 		RunE: runParseIssue,
 	}
@@ -144,16 +148,16 @@ func runParseIssue(cmd *cobra.Command, args []string) error {
 
 	// Format issue details.
 	var details []string
-	details = append(details, fmt.Sprintf("Number:  #%d", issue.Number))
-	details = append(details, fmt.Sprintf("Title:   %s", issue.Title))
-	details = append(details, fmt.Sprintf("Author:  %s", issue.Author.Login))
+	details = append(details, fmt.Sprintf("Number: #%d", issue.Number))
+	details = append(details, fmt.Sprintf("Title: %s", issue.Title))
+	details = append(details, fmt.Sprintf("Author: %s", issue.Author.Login))
 
 	if len(issue.Labels) > 0 {
 		names := make([]string, len(issue.Labels))
 		for i, l := range issue.Labels {
 			names[i] = l.Name
 		}
-		details = append(details, fmt.Sprintf("Labels:  %s", strings.Join(names, ", ")))
+		details = append(details, fmt.Sprintf("Labels: %s", strings.Join(names, ", ")))
 	}
 
 	if issue.Body != "" {
@@ -186,7 +190,7 @@ func newLinkSpecCmd() *cobra.Command {
 The mapping is stored in .moai/github-spec-registry.json.
 
 Example:
-  moai github link-spec 123 SPEC-ISSUE-123`,
+moai github link-spec 123 SPEC-ISSUE-123`,
 		Args: cobra.ExactArgs(2),
 		RunE: runLinkSpec,
 	}
@@ -221,9 +225,9 @@ func runLinkSpec(cmd *cobra.Command, args []string) error {
 
 	_, _ = fmt.Fprintln(out, ghSuccessCard(
 		fmt.Sprintf("Linked Issue #%d to %s", issueNum, specID),
-		fmt.Sprintf("Issue:     #%d", issueNum),
-		fmt.Sprintf("SPEC:      %s", specID),
-		fmt.Sprintf("Registry:  .moai/%s", github.RegistryFileName),
+		fmt.Sprintf("Issue: #%d", issueNum),
+		fmt.Sprintf("SPEC: %s", specID),
+		fmt.Sprintf("Registry: .moai/%s", github.RegistryFileName),
 		fmt.Sprintf("Linked at: %s", time.Now().Format("2006-01-02 15:04:05")),
 	))
 	return nil

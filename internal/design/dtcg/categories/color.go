@@ -1,5 +1,5 @@
-// Package categories: DTCG 2025.10 §8 카테고리별 검증 함수 모음.
-// 각 파일은 하나의 DTCG 카테고리를 담당한다.
+// Package categories: DTCG 2025.10 §8 Category-specific validation function collection.
+// Each file handles one DTCG category.
 package categories
 
 import (
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// hex 색상 패턴 - #rgb, #rgba, #rrggbb, #rrggbbaa
+// Hex color patterns - #rgb, #rgba, #rrggbb, #rrggbbaa
 var (
 	hexColor3  = regexp.MustCompile(`^#[0-9a-fA-F]{3}$`)
 	hexColor4  = regexp.MustCompile(`^#[0-9a-fA-F]{4}$`)
@@ -18,8 +18,8 @@ var (
 	hslPattern = regexp.MustCompile(`^hsla?\(`)
 )
 
-// namedColors: DTCG 2025.10에서 허용하는 CSS named 색상 (sRGB 기본 집합).
-// CSS Level 1/2/3 named colors 전체 지원.
+// namedColors: CSS named colors allowed in DTCG 2025.10 (sRGB base set).
+// Full support for CSS Level 1/2/3 named colors.
 var namedColors = map[string]bool{
 	"aliceblue": true, "antiquewhite": true, "aqua": true, "aquamarine": true,
 	"azure": true, "beige": true, "bisque": true, "black": true,
@@ -61,95 +61,95 @@ var namedColors = map[string]bool{
 	"transparent": true,
 }
 
-// ValidateColor: DTCG 2025.10 §8.1 color 카테고리 검증.
-// 허용 형식: hex(#rgb, #rgba, #rrggbb, #rrggbbaa), rgb(), rgba(), hsl(), hsla(), named colors.
-// sRGB 색공간만 지원 (DTCG 2025.10 minimum requirement).
+// ValidateColor: DTCG 2025.10 §8.1 color category validation.
+// Allowed formats: hex(#rgb, #rgba, #rrggbb, #rrggbbaa), rgb(), rgba(), hsl(), hsla(), named colors.
+// Only sRGB color space supported (DTCG 2025.10 minimum requirement).
 func ValidateColor(tokenPath string, value any) error {
-	// 에일리어스 참조는 검증 통과
+	// Alias references pass validation
 	if s, ok := value.(string); ok && IsAlias(s) {
 		return nil
 	}
 
 	s, ok := value.(string)
 	if !ok || s == "" {
-		return fmt.Errorf("토큰 '%s': color 값은 문자열이어야 함 (got %T)", tokenPath, value)
+		return fmt.Errorf("token '%s': color value must be a string (got %T)", tokenPath, value)
 	}
 
-	// hex 색상 검증
+	// Hex color validation
 	if strings.HasPrefix(s, "#") {
 		if hexColor3.MatchString(s) || hexColor4.MatchString(s) ||
 			hexColor6.MatchString(s) || hexColor8.MatchString(s) {
 			return nil
 		}
-		return fmt.Errorf("토큰 '%s': 잘못된 hex 색상 형식 '%s' (허용: #rgb, #rgba, #rrggbb, #rrggbbaa)", tokenPath, s)
+		return fmt.Errorf("token '%s': invalid hex color format '%s' (allowed: #rgb, #rgba, #rrggbb, #rrggbbaa)", tokenPath, s)
 	}
 
-	// rgb()/rgba() 검증
+	// rgb()/rgba() validation
 	if rgbPattern.MatchString(s) {
 		return validateRGBColor(tokenPath, s)
 	}
 
-	// hsl()/hsla() 검증
+	// hsl()/hsla() validation
 	if hslPattern.MatchString(s) {
 		return validateHSLColor(tokenPath, s)
 	}
 
-	// named color 검증
+	// Named color validation
 	if namedColors[strings.ToLower(s)] {
 		return nil
 	}
 
-	return fmt.Errorf("토큰 '%s': 알 수 없는 색상 값 '%s'", tokenPath, s)
+	return fmt.Errorf("token '%s': unknown color value '%s'", tokenPath, s)
 }
 
-// validateRGBColor: rgb()/rgba() 형식 검증.
-// 공백 포함 여부에 관계없이 파싱한다.
+// validateRGBColor: rgb()/rgba() format validation.
+// Parses regardless of whitespace inclusion.
 func validateRGBColor(tokenPath, s string) error {
-	// 괄호 내용 추출
+	// Extract bracket contents
 	start := strings.Index(s, "(")
 	end := strings.LastIndex(s, ")")
 	if start < 0 || end < 0 || end <= start {
-		return fmt.Errorf("토큰 '%s': 잘못된 rgb() 형식 '%s'", tokenPath, s)
+		return fmt.Errorf("token '%s': invalid rgb() format '%s'", tokenPath, s)
 	}
 
 	inner := s[start+1 : end]
 	parts := strings.Split(inner, ",")
 
-	// rgb()는 3개, rgba()는 4개 인수
+	// rgb() takes 3, rgba() takes 4 arguments
 	isRGBA := strings.HasPrefix(strings.ToLower(s), "rgba")
 	expected := 3
 	if isRGBA {
 		expected = 4
 	}
 	if len(parts) != expected {
-		return fmt.Errorf("토큰 '%s': rgb() 인수 %d개 필요, %d개 제공됨", tokenPath, expected, len(parts))
+		return fmt.Errorf("token '%s': rgb() requires %d arguments, got %d", tokenPath, expected, len(parts))
 	}
 
-	// r, g, b 채널 검증 (0-255 정수 또는 0%-100%)
+	// r, g, b channel validation (0-255 integer or 0%-100%)
 	for i, p := range parts[:3] {
 		p = strings.TrimSpace(p)
 		if strings.HasSuffix(p, "%") {
-			// 퍼센트 형식 허용
+			// Allow percent format
 			continue
 		}
 		var v float64
 		if _, err := fmt.Sscanf(p, "%f", &v); err != nil {
-			return fmt.Errorf("토큰 '%s': rgb() %d번째 채널 '%s' 파싱 실패", tokenPath, i+1, p)
+			return fmt.Errorf("token '%s': rgb() channel %d failed to parse '%s'", tokenPath, i+1, p)
 		}
 		if v < 0 || v > 255 {
-			return fmt.Errorf("토큰 '%s': rgb() %d번째 채널 %g 범위 초과 (0-255)", tokenPath, i+1, v)
+			return fmt.Errorf("token '%s': rgb() channel %d value %g out of range (0-255)", tokenPath, i+1, v)
 		}
 	}
 
 	return nil
 }
 
-// validateHSLColor: hsl()/hsla() 형식 검증.
+// validateHSLColor: hsl()/hsla() format validation.
 func validateHSLColor(tokenPath, s string) error {
 	start := strings.Index(s, "(")
 	end := strings.LastIndex(s, ")")
 	if start < 0 || end < 0 || end <= start {
-		return fmt.Errorf("토큰 '%s': 잘못된 hsl() 형식 '%s'", tokenPath, s)
+		return fmt.Errorf("token '%s': invalid hsl() format '%s'", tokenPath, s)
 	}
 
 	inner := s[start+1 : end]
@@ -161,14 +161,14 @@ func validateHSLColor(tokenPath, s string) error {
 		expected = 4
 	}
 	if len(parts) != expected {
-		return fmt.Errorf("토큰 '%s': hsl() 인수 %d개 필요, %d개 제공됨", tokenPath, expected, len(parts))
+		return fmt.Errorf("token '%s': hsl() requires %d arguments, got %d", tokenPath, expected, len(parts))
 	}
 
 	return nil
 }
 
-// IsAlias: DTCG 에일리어스 문법 ({group.token}) 감지.
-// 에일리어스는 중괄호로 감싸인 비어있지 않은 참조 경로를 가진다.
+// IsAlias: DTCG alias syntax ({group.token}) detection.
+// Aliases have non-empty reference paths wrapped in curly braces.
 func IsAlias(s string) bool {
 	if len(s) < 3 {
 		return false

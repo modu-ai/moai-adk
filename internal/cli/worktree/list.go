@@ -1,5 +1,8 @@
 package worktree
 
+// @MX:NOTE: [AUTO] List active worktrees with branch, path, and HEAD information
+// @MX:NOTE: [AUTO] Verbose mode shows full details; default shows compact table
+
 import (
 	"fmt"
 	"strings"

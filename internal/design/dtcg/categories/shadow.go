@@ -2,30 +2,30 @@ package categories
 
 import "fmt"
 
-// shadowRequiredFields: shadow 복합 토큰의 필수 필드 목록.
+// shadowRequiredFields: Required field list for shadow composite token.
 var shadowRequiredFields = []string{"color", "offsetX", "offsetY", "blur", "spread"}
 
-// ValidateShadow: DTCG 2025.10 shadow 복합 카테고리 검증.
-// 허용: 단일 {color, offsetX, offsetY, blur, spread, inset?} 또는 다층 배열.
+// ValidateShadow: DTCG 2025.10 shadow composite category validation.
+// Allowed: single {color, offsetX, offsetY, blur, spread, inset?} or multi-layer array.
 func ValidateShadow(tokenPath string, value any) error {
-	// 에일리어스 참조 통과
+	// Alias reference passes
 	if s, ok := value.(string); ok && IsAlias(s) {
 		return nil
 	}
 
 	switch v := value.(type) {
 	case map[string]any:
-		// 단일 그림자
+		// Single shadow
 		return validateShadowLayer(tokenPath, v)
 	case []any:
-		// 다층 그림자 배열
+		// Multi-layer shadow array
 		if len(v) == 0 {
-			return fmt.Errorf("토큰 '%s': shadow 배열이 비어있음", tokenPath)
+			return fmt.Errorf("token '%s': shadow array is empty", tokenPath)
 		}
 		for i, item := range v {
 			layer, ok := item.(map[string]any)
 			if !ok {
-				return fmt.Errorf("토큰 '%s': shadow 배열 %d번째 원소가 map이 아님 (got %T)", tokenPath, i, item)
+				return fmt.Errorf("token '%s': shadow array element %d is not map (got %T)", tokenPath, i, item)
 			}
 			if err := validateShadowLayer(fmt.Sprintf("%s[%d]", tokenPath, i), layer); err != nil {
 				return err
@@ -33,25 +33,25 @@ func ValidateShadow(tokenPath string, value any) error {
 		}
 		return nil
 	default:
-		return fmt.Errorf("토큰 '%s': shadow 값은 map 또는 배열이어야 함 (got %T)", tokenPath, value)
+		return fmt.Errorf("token '%s': shadow value must be map or array (got %T)", tokenPath, value)
 	}
 }
 
-// validateShadowLayer: 단일 그림자 레이어 {color, offsetX, offsetY, blur, spread, inset?} 검증.
+// validateShadowLayer: Single shadow layer {color, offsetX, offsetY, blur, spread, inset?} validation.
 func validateShadowLayer(tokenPath string, m map[string]any) error {
-	// 필수 필드 존재 확인 및 검증
+	// Required field existence check and validation
 	for _, field := range shadowRequiredFields {
 		v, ok := m[field]
 		if !ok {
-			return fmt.Errorf("토큰 '%s': shadow '%s' 필드 누락", tokenPath, field)
+			return fmt.Errorf("token '%s': shadow missing '%s' field", tokenPath, field)
 		}
 
-		// 에일리어스 참조 통과
+		// Alias reference passes
 		if s, isStr := v.(string); isStr && IsAlias(s) {
 			continue
 		}
 
-		// color 필드는 ValidateColor로 검증
+		// color field validated with ValidateColor
 		if field == "color" {
 			if err := ValidateColor(tokenPath+".color", v); err != nil {
 				return err
@@ -59,39 +59,39 @@ func validateShadowLayer(tokenPath string, m map[string]any) error {
 			continue
 		}
 
-		// offsetX, offsetY, blur, spread는 dimension 검증
+		// offsetX, offsetY, blur, spread validated with dimension
 		if err := ValidateDimension(tokenPath+"."+field, v); err != nil {
 			return err
 		}
 	}
 
-	// inset 선택 필드 - bool이어야 함
+	// inset optional field - must be bool
 	if inset, exists := m["inset"]; exists {
 		if _, ok := inset.(bool); !ok {
-			return fmt.Errorf("토큰 '%s': shadow 'inset' 필드는 bool이어야 함 (got %T)", tokenPath, inset)
+			return fmt.Errorf("token '%s': shadow 'inset' field must be bool (got %T)", tokenPath, inset)
 		}
 	}
 
 	return nil
 }
 
-// ValidateBorder: DTCG 2025.10 border 복합 카테고리 검증.
+// ValidateBorder: DTCG 2025.10 border composite category validation.
 // {color: color, width: dimension, style: strokeStyle}.
 func ValidateBorder(tokenPath string, value any) error {
-	// 에일리어스 참조 통과
+	// Alias reference passes
 	if s, ok := value.(string); ok && IsAlias(s) {
 		return nil
 	}
 
 	m, ok := value.(map[string]any)
 	if !ok {
-		return fmt.Errorf("토큰 '%s': border 값은 map이어야 함 (got %T)", tokenPath, value)
+		return fmt.Errorf("token '%s': border value must be map (got %T)", tokenPath, value)
 	}
 
-	// color 필드 검증
+	// color field validation
 	colorVal, ok := m["color"]
 	if !ok {
-		return fmt.Errorf("토큰 '%s': border 'color' 필드 누락", tokenPath)
+		return fmt.Errorf("token '%s': border missing 'color' field", tokenPath)
 	}
 	if s, isStr := colorVal.(string); !isStr || !IsAlias(s) {
 		if err := ValidateColor(tokenPath+".color", colorVal); err != nil {
@@ -99,10 +99,10 @@ func ValidateBorder(tokenPath string, value any) error {
 		}
 	}
 
-	// width 필드 검증 (dimension)
+	// width field validation (dimension)
 	widthVal, ok := m["width"]
 	if !ok {
-		return fmt.Errorf("토큰 '%s': border 'width' 필드 누락", tokenPath)
+		return fmt.Errorf("token '%s': border missing 'width' field", tokenPath)
 	}
 	if s, isStr := widthVal.(string); !isStr || !IsAlias(s) {
 		if err := ValidateDimension(tokenPath+".width", widthVal); err != nil {
@@ -110,10 +110,10 @@ func ValidateBorder(tokenPath string, value any) error {
 		}
 	}
 
-	// style 필드 검증 (strokeStyle)
+	// style field validation (strokeStyle)
 	styleVal, ok := m["style"]
 	if !ok {
-		return fmt.Errorf("토큰 '%s': border 'style' 필드 누락", tokenPath)
+		return fmt.Errorf("token '%s': border missing 'style' field", tokenPath)
 	}
 	if s, isStr := styleVal.(string); !isStr || !IsAlias(s) {
 		if err := ValidateStrokeStyle(tokenPath+".style", styleVal); err != nil {

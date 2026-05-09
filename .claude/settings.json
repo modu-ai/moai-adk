@@ -301,6 +301,7 @@
     "command": ".moai/status_line.sh"
   },
   "outputStyle": "MoAI",
+  "skillListingBudgetFraction": 0.02,
   "cleanupPeriodDays": 30,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",

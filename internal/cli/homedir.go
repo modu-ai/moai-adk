@@ -1,5 +1,8 @@
 package cli
 
+// @MX:NOTE: [AUTO] Cross-platform home directory resolution with test override support
+// @MX:NOTE: [AUTO] Checks HOME env first (Windows: os.UserHomeDir ignores HOME)
+
 import "os"
 
 // userHomeDir returns the current user's home directory.

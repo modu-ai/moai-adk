@@ -10,6 +10,8 @@ import (
 // Config is the root configuration aggregate containing all sections.
 // It imports types from pkg/models for shared types (UserConfig, LanguageConfig,
 // QualityConfig, ProjectConfig) and defines internal types for the rest.
+// @MX:WARN: [AUTO] Large mutable struct with 20+ fields — global configuration state
+// @MX:REASON: Any field change can affect entire system; concurrent access requires synchronization
 type Config struct {
 	User          models.UserConfig          `yaml:"user"`
 	Language      models.LanguageConfig      `yaml:"language"`

@@ -44,6 +44,8 @@ func WithRunFunc(fn RunFunc) DetectorOption {
 }
 
 // NewDetector creates a new SystemDetector.
+// @MX:ANCHOR: [AUTO] NewDetector is a factory called from 3+ packages
+// @MX:REASON: [AUTO] Multi-package dependency — used by CLI, GLM/CG commands, SessionStart hook
 func NewDetector(opts ...DetectorOption) *SystemDetector {
 	d := &SystemDetector{
 		run: defaultRun,

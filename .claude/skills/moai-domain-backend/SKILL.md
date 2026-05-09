@@ -107,7 +107,7 @@ Create an optimized SQLAlchemy engine with QueuePool, pool_size 20, max_overflow
 - moai-domain-frontend - Full-stack development integration
 - moai-domain-database - Advanced database patterns
 - moai-foundation-core - MCP server development patterns for backend services
-- moai-quality-security - Security validation and compliance
+- `moai-foundation-quality` + `moai-ref-owasp-checklist` - Security validation and compliance
 - moai-foundation-core - Core architectural principles
 
 ---

@@ -395,8 +395,8 @@ For detailed platform-specific patterns, configuration options, and advanced use
 
 - moai-domain-backend for backend architecture patterns
 - moai-domain-frontend for frontend integration
-- moai-lang-typescript for TypeScript best practices
-- moai-lang-python for Python deployment (Railway)
+- `.claude/rules/moai/languages/typescript.md` for TypeScript best practices (auto-loaded via paths frontmatter)
+- `.claude/rules/moai/languages/python.md` for Python deployment on Railway (auto-loaded via paths frontmatter)
 - moai-platform-auth for authentication integration
 - moai-platform-database for database patterns
 

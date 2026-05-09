@@ -102,8 +102,8 @@ Basic Actor for Thread Safety: Define actor type with private dictionary for cac
 Async Test with MainActor: Apply @MainActor attribute to test class extending XCTestCase. Define test function with async throws. Create mock API and set mock data. Initialize system under test with mock. Call await on async method. Use XCTAssertEqual for count verification and XCTAssertFalse for boolean state checks.
 
 
-- `moai-lang-kotlin` - Android counterpart for cross-platform projects
-- `moai-lang-flutter` - Flutter/Dart for cross-platform mobile
+- `.claude/rules/moai/languages/kotlin.md` - Android counterpart for cross-platform projects
+- `.claude/rules/moai/languages/flutter.md` - Flutter/Dart for cross-platform mobile
 - `moai-domain-backend` - API integration and backend communication
 - `moai-foundation-quality` - iOS security best practices
 - `moai-workflow-testing` - Xcode debugging and profiling

@@ -377,8 +377,7 @@ MoAI-ADKは、Claude Codeサブスクリプションプランに基づいて、2
 |------------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
 | manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-ddd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-tdd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
 | manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |

@@ -1,5 +1,5 @@
-// Package constitution은 MoAI-ADK 규칙 트리의 FROZEN/EVOLVABLE zone 모델을 구현한다.
-// amendment는 SPEC-V3R2-CON-002의 5-layer safety gate를 통한 constitutional amendment protocol을 구현한다.
+// Package constitution implements the FROZEN/EVOLVABLE zone model of the MoAI-ADK rule tree.
+// amendment implements the constitutional amendment protocol through the 5-layer safety gate of SPEC-V3R2-CON-002.
 package constitution
 
 import (
@@ -7,28 +7,28 @@ import (
 	"time"
 )
 
-// ErrFrozenAmendment는 Frozen zone rule에 대한 amendment 시도를 나타내는 에러이다.
-// Frozen→Evolvable demotion 증거가 없을 때 반환된다.
+// ErrFrozenAmendment represents an error for amendment attempts to Frozen zone rules.
+// Returned when there is no evidence for Frozen→Evolvable demotion.
 type ErrFrozenAmendment struct {
 	RuleID string
 	Reason string
 }
 
 func (e *ErrFrozenAmendment) Error() string {
-	return fmt.Sprintf("Frozen zone amendment 거부: %s - %s", e.RuleID, e.Reason)
+	return fmt.Sprintf("Frozen zone amendment rejected: %s - %s", e.RuleID, e.Reason)
 }
 
-// ErrCanaryUnavailable는 Canary evaluation을 실행할 SPEC이 부족할 때 반환된다.
+// ErrCanaryUnavailable is returned when there are insufficient SPECs to run Canary evaluation.
 type ErrCanaryUnavailable struct {
 	RequiredCount int
 	ActualCount   int
 }
 
 func (e *ErrCanaryUnavailable) Error() string {
-	return fmt.Sprintf("Canary unavailable: 최소 %d개 SPEC 필요 (현재: %d)", e.RequiredCount, e.ActualCount)
+	return fmt.Sprintf("Canary unavailable: minimum %d SPECs required (current: %d)", e.RequiredCount, e.ActualCount)
 }
 
-// ErrCanaryRejected는 Canary evaluation에서 점수 하락이 탐지되었을 때 반환된다.
+// ErrCanaryRejected is returned when a score drop is detected during Canary evaluation.
 type ErrCanaryRejected struct {
 	RuleID         string
 	ScoreDrop      float64
@@ -37,23 +37,23 @@ type ErrCanaryRejected struct {
 }
 
 func (e *ErrCanaryRejected) Error() string {
-	return fmt.Sprintf("Canary rejected: %s 점수 하락 %.2f > 임계값 %.2f (영향받은 SPEC: %v)",
+	return fmt.Sprintf("Canary rejected: %s score drop %.2f > threshold %.2f (affected SPECs: %v)",
 		e.RuleID, e.ScoreDrop, e.Threshold, e.AffectedSpecs)
 }
 
-// ErrContradictionDetected는 amendment가 기존 rule과 모순될 때 반환된다.
+// ErrContradictionDetected is returned when an amendment contradicts existing rules.
 type ErrContradictionDetected struct {
 	NewRuleID      string
 	ConflictingIDs []string
-	Conflicts      []string // 모순 설명
+	Conflicts      []string // Contradiction descriptions
 }
 
 func (e *ErrContradictionDetected) Error() string {
-	return fmt.Sprintf("Contradiction detected: %s가 다음 rule과 모순됨: %v\n상세: %v",
+	return fmt.Sprintf("Contradiction detected: %s contradicts the following rules: %v\nDetails: %v",
 		e.NewRuleID, e.ConflictingIDs, e.Conflicts)
 }
 
-// ErrRateLimitExceeded는 amendment 빈도 제한을 초과했을 때 반환된다.
+// ErrRateLimitExceeded is returned when the amendment frequency limit is exceeded.
 type ErrRateLimitExceeded struct {
 	MaxPerWeek    int
 	CooldownHours int
@@ -61,21 +61,21 @@ type ErrRateLimitExceeded struct {
 }
 
 func (e *ErrRateLimitExceeded) Error() string {
-	return fmt.Sprintf("Rate limit exceeded: 최대 %d회/주, %d시간 쿨다운 (다음 가능: %s)",
+	return fmt.Sprintf("Rate limit exceeded: maximum %d times/week, %d hour cooldown (next allowed: %s)",
 		e.MaxPerWeek, e.CooldownHours, e.NextAllowedAt.Format(time.RFC3339))
 }
 
-// ErrAmendmentInProgress는 다른 amendment가 이미 진행 중일 때 반환된다.
-// Single-writer lock 위반.
+// ErrAmendmentInProgress is returned when another amendment is already in progress.
+// Violates single-writer lock.
 type ErrAmendmentInProgress struct {
 	LockFilePath string
 }
 
 func (e *ErrAmendmentInProgress) Error() string {
-	return fmt.Sprintf("Amendment already in progress: lock file %s 존재", e.LockFilePath)
+	return fmt.Sprintf("Amendment already in progress: lock file %s exists", e.LockFilePath)
 }
 
-// ErrRolledBack은 이미 rollback된 rule을 재-amendment하려 할 때 반환된다.
+// ErrRolledBack is returned when attempting to re-amend a rule that has already been rolled back.
 type ErrRolledBack struct {
 	RuleID       string
 	RolledBackAt time.Time
@@ -83,157 +83,157 @@ type ErrRolledBack struct {
 }
 
 func (e *ErrRolledBack) Error() string {
-	return fmt.Sprintf("Rolled back rule: %s는 %s에 rollback됨. %d일 쿨다운 중",
+	return fmt.Sprintf("Rolled back rule: %s was rolled back at %s. %d day cooldown in progress",
 		e.RuleID, e.RolledBackAt.Format(time.RFC3339), e.CooldownDays)
 }
 
-// AmendmentProposal은 constitutional amendment proposal을 나타낸다.
-// SPEC-V3R2-CON-002 REQ-CON-002-001 직접 구현.
+// AmendmentProposal represents a constitutional amendment proposal.
+// Direct implementation of SPEC-V3R2-CON-002 REQ-CON-002-001.
 type AmendmentProposal struct {
-	// RuleID는 수정하려는 rule의 ID이다 (CONST-V3R2-NNN).
+	// RuleID is the ID of the rule to be modified (CONST-V3R2-NNN).
 	RuleID string
-	// Before는 현재 clause 텍스트이다.
+	// Before is the current clause text.
 	Before string
-	// After는 새로운 clause 텍스트이다.
+	// After is the new clause text.
 	After string
-	// Evidence는 amendment justification이다 (Frozen zone 필수).
+	// Evidence is the amendment justification (required for Frozen zone).
 	Evidence string
-	// CanaryResult는 canary evaluation 결과이다.
+	// CanaryResult is the canary evaluation result.
 	CanaryResult *CanaryResult
-	// Contradicts는 모순 탐지 결과이다.
+	// Contradicts is the contradiction detection result.
 	Contradicts *ContradictionResult
-	// Approved는 승인 여부이다 (HumanOversight layer).
+	// Approved indicates whether it has been approved (HumanOversight layer).
 	Approved bool
-	// ApprovedBy는 승인자 식별자이다 ("human" 또는 시스템 ID).
+	// ApprovedBy is the approver identifier ("human" or system ID).
 	ApprovedBy string
-	// ApprovedAt은 승인 시각이다.
+	// ApprovedAt is the approval timestamp.
 	ApprovedAt time.Time
 }
 
-// CanaryResult는 canary evaluation 결과를 나타낸다.
+// CanaryResult represents the canary evaluation result.
 type CanaryResult struct {
-	// Available은 canary 실행 가능 여부이다.
+	// Available indicates whether canary execution is possible.
 	Available bool
-	// EvaluatedSpecs는 평가한 SPEC ID 목록이다 (최대 3개).
+	// EvaluatedSpecs is the list of evaluated SPEC IDs (maximum 3).
 	EvaluatedSpecs []string
-	// ScoreBefore는 amendment 전 평균 점수이다.
+	// ScoreBefore is the average score before amendment.
 	ScoreBefore float64
-	// ScoreAfter는 amendment 후 평균 점수이다 (shadow evaluation).
+	// ScoreAfter is the average score after amendment (shadow evaluation).
 	ScoreAfter float64
-	// MaxDrop은 최대 점수 하락이다.
+	// MaxDrop is the maximum score drop.
 	MaxDrop float64
-	// Passed는 canary 통과 여부이다 (ScoreDrop <= 0.10).
+	// Passed indicates whether canary passed (ScoreDrop <= 0.10).
 	Passed bool
-	// Reason은 canary 불가 또는 실패 사유이다.
+	// Reason is the cause for canary unavailability or failure.
 	Reason string
 }
 
-// ContradictionResult는 모순 탐지 결과를 나타낸다.
+// ContradictionResult represents the contradiction detection result.
 type ContradictionResult struct {
-	// Conflicts는 충돌하는 rule ID와 설명이다.
+	// Conflicts are the conflicting rule IDs and descriptions.
 	Conflicts []ConflictDetail
-	// HasBlockingContradiction은 차단 모순 존재 여부이다.
+	// HasBlockingContradiction indicates whether a blocking contradiction exists.
 	HasBlockingContradiction bool
 }
 
-// ConflictDetail은 단일 모순 상세를 나타낸다.
+// ConflictDetail represents a single contradiction detail.
 type ConflictDetail struct {
 	ConflictingRuleID string
 	Description       string
-	IsBlocking        bool // true면 해결 없이 진행 불가
+	IsBlocking        bool // If true, cannot proceed without resolution
 }
 
-// FrozenGuard는 Layer 1 safety gate이다.
-// Frozen zone rule 수정을 차단한다.
+// FrozenGuard is Layer 1 safety gate.
+// Blocks modifications to Frozen zone rules.
 type FrozenGuard interface {
-	// Check는 proposal이 Frozen zone rule을 수정하는지 확인한다.
-	// Frozen→Evolvable demotion은 Evidence로 허용.
+	// Check checks if the proposal modifies a Frozen zone rule.
+	// Frozen→Evolvable demotion is allowed with Evidence.
 	Check(proposal *AmendmentProposal, currentZone Zone) error
 }
 
-// Canary는 Layer 2 safety gate이다.
-// Shadow evaluation으로 점수 하락을 탐지한다.
+// Canary is Layer 2 safety gate.
+// Detects score drops through shadow evaluation.
 type Canary interface {
-	// Evaluate는 proposal의 영향을 last 3 completed SPECs에 대해 평가한다.
+	// Evaluate evaluates the proposal's impact on the last 3 completed SPECs.
 	// < 3 SPECs → CanaryUnavailable error.
 	// ScoreDrop > 0.10 → CanaryRejected error.
-	// canary_gate: false인 rule → CanaryUnavailable (skip).
+	// canary_gate: false rule → CanaryUnavailable (skip).
 	Evaluate(proposal *AmendmentProposal, projectDir string) (*CanaryResult, error)
 }
 
-// ContradictionDetector는 Layer 3 safety gate이다.
-// 기존 rule과의 모순을 탐지한다.
+// ContradictionDetector is Layer 3 safety gate.
+// Detects contradictions with existing rules.
 type ContradictionDetector interface {
-	// Scan은 proposal이 registry의 다른 rule과 모순하는지 확인한다.
-	// 모순을 찾으면 ConflictDetail 목록을 반환한다.
+	// Scan checks if the proposal contradicts other rules in the registry.
+	// Returns a list of ConflictDetail if contradictions are found.
 	Scan(proposal *AmendmentProposal, registry *Registry) (*ContradictionResult, error)
 }
 
-// RateLimiter는 Layer 4 safety gate이다.
-// Amendment 빈도를 제한한다.
+// RateLimiter is Layer 4 safety gate.
+// Limits amendment frequency.
 type RateLimiter interface {
-	// Admit는 proposal이 rate limit 내에 있는지 확인한다.
+	// Admit checks if the proposal is within rate limits.
 	// Max 3 amendments/7-day window, 24h cooldown, 50 active learnings cap.
-	// Rolled-back rules는 30-day cooldown.
+	// Rolled-back rules have 30-day cooldown.
 	Admit(proposal *AmendmentProposal, evolutionLogPath string) error
 }
 
-// HumanOversight는 Layer 5 safety gate이다.
-// CLI에서 terminal Y/N prompt로 승인을 받는다.
-// (AskUserQuestion은 orchestrator-only이므로 CLI에서 직접 구현).
+// HumanOversight is Layer 5 safety gate.
+// Obtains approval through terminal Y/N prompt in CLI.
+// (AskUserQuestion is orchestrator-only, so implemented directly in CLI).
 type HumanOversight interface {
-	// Approve는 사용자에게 proposal diff를 보여고 승인을 요청한다.
-	// Dry-run mode에서는 항상 true 반환 (실제 승인 없음).
+	// Approve shows the proposal diff to the user and requests approval.
+	// In dry-run mode, always returns true (no actual approval).
 	Approve(proposal *AmendmentProposal, dryRun bool) (bool, error)
 }
 
-// AmendmentLog는 evolution-log.md 엔트리를 나타낸다.
-// SPEC-V3R2-CON-002 REQ-CON-002-003 직접 구현.
+// AmendmentLog represents an evolution-log.md entry.
+// Direct implementation of SPEC-V3R2-CON-002 REQ-CON-002-003.
 type AmendmentLog struct {
-	// ID는 LEARN-YYYYMMDD-NNN 형식의 고유 식별자이다.
+	// ID is the unique identifier in LEARN-YYYYMMDD-NNN format.
 	ID string
-	// RuleID는 수정된 rule ID이다 (CONST-V3R2-NNN).
+	// RuleID is the modified rule ID (CONST-V3R2-NNN).
 	RuleID string
-	// ZoneBefore는 수정 전 zone이다.
+	// ZoneBefore is the zone before modification.
 	ZoneBefore Zone
-	// ZoneAfter는 수정 후 zone이다.
+	// ZoneAfter is the zone after modification.
 	ZoneAfter Zone
-	// ClauseBefore는 수정 전 clause 텍스트이다.
+	// ClauseBefore is the clause text before modification.
 	ClauseBefore string
-	// ClauseAfter는 수정 후 clause 텍스트이다.
+	// ClauseAfter is the clause text after modification.
 	ClauseAfter string
-	// CanaryVerdict는 canary evaluation 결과이다.
+	// CanaryVerdict is the canary evaluation result.
 	CanaryVerdict string // "passed", "skipped", "rejected", "unavailable"
-	// Contradictions는 모순 탐지 결과이다.
+	// Contradictions are the contradiction detection results.
 	Contradictions []string
-	// ApprovedBy는 승인자이다 ("human" 또는 시스템 ID).
+	// ApprovedBy is the approver ("human" or system ID).
 	ApprovedBy string
-	// ApprovedAt은 승인 시각이다.
+	// ApprovedAt is the approval timestamp.
 	ApprovedAt time.Time
-	// RolledBack은 rollback 여부이다.
+	// RolledBack indicates whether it has been rolled back.
 	RolledBack bool
-	// RollbackReason은 rollback 사유이다 (선택).
+	// RollbackReason is the rollback reason (optional).
 	RollbackReason string
-	// RollbackAt은 rollback 시각이다 (선택).
+	// RollbackAt is the rollback timestamp (optional).
 	RollbackAt *time.Time
 }
 
-// Validate는 AmendmentLog의 필수 필드를 검증한다.
+// Validate validates the required fields of AmendmentLog.
 func (l *AmendmentLog) Validate() error {
 	if l.ID == "" {
-		return fmt.Errorf("amendment log ID가 비어 있다")
+		return fmt.Errorf("amendment log ID is empty")
 	}
 	if l.RuleID == "" {
-		return fmt.Errorf("rule ID가 비어 있다")
+		return fmt.Errorf("rule ID is empty")
 	}
 	if l.ClauseBefore == "" || l.ClauseAfter == "" {
-		return fmt.Errorf("clause가 비어 있다")
+		return fmt.Errorf("clause is empty")
 	}
 	if l.ApprovedBy == "" {
-		return fmt.Errorf("approved by가 비어 있다")
+		return fmt.Errorf("approved by is empty")
 	}
 	if l.ApprovedAt.IsZero() {
-		return fmt.Errorf("approved at이 비어 있다")
+		return fmt.Errorf("approved at is empty")
 	}
 	return nil
 }

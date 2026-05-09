@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newMxCmd는 'moai mx' 부모 명령을 생성합니다.
-// @MX TAG 관련 서브커맨드(query 등)를 포함합니다.
+// newMxCmd creates the 'moai mx' parent command.
+// Includes @MX TAG related subcommands (query, etc.).
 func newMxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "mx",
@@ -17,7 +17,7 @@ func newMxCmd() *cobra.Command {
 		},
 	}
 
-	// SPEC-V3R2-SPC-004: query 서브커맨드 등록
+	// SPEC-V3R2-SPC-004: Register query subcommand
 	cmd.AddCommand(newMxQueryCmd())
 
 	return cmd

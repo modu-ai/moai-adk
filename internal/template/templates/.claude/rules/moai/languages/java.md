@@ -114,11 +114,10 @@ Library mappings for latest documentation:
 ---
 
 
-- moai-lang-kotlin for Kotlin interoperability and Spring Kotlin extensions
+- `.claude/rules/moai/languages/kotlin.md` for Kotlin interoperability and Spring Kotlin extensions
 - moai-domain-backend for REST API, GraphQL, and microservices architecture
 - moai-domain-database for JPA, Hibernate, and R2DBC patterns
 - moai-foundation-quality for JUnit 5, Mockito, and TestContainers integration
-- moai-infra-docker for JVM container optimization
 
 ---
 

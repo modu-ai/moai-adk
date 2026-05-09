@@ -25,7 +25,7 @@ import (
 var embeddedRaw embed.FS
 
 // @MX:ANCHOR: [AUTO] go:embed template filesystem access point - depended on by 6 or more callers including init/update/deployer
-// @MX:REASON: fan_in=6, sole embedded template source in the binary; the "templates/" prefix strip rule maps 1:1 to deployment paths
+// @MX:REASON: [AUTO] fan_in=6, sole embedded template source in the binary; the "templates/" prefix strip rule maps 1:1 to deployment paths
 // EmbeddedTemplates returns the embedded template filesystem with the
 // "templates/" prefix stripped so that paths match deployment targets.
 //

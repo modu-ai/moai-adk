@@ -386,30 +386,32 @@ Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 - Phase 0.6 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
+<!-- @MX:WARN: [AUTO] Future PRs may be tempted to revert to moai-lang-* skill references here. The current rule-path mapping (post-SPEC-V3R2-WF-005) MUST remain pointing to .claude/rules/moai/languages/<name>.md. Frontmatter `related-skills:` regressions fail TestRelatedSkillsNoLangReference (DEAD_LANG_FRONTMATTER_REFERENCE); body-prose regressions fail TestSkillBodyNoLangReference (DEAD_LANG_SKILL_REFERENCE). -->
+<!-- @MX:REASON: High-traffic section — language detection mapping is frequently referenced by agent authors who may inadvertently reintroduce moai-lang-* skill IDs. -->
 ### Phase 0.9: JIT Language Skill Detection
 
 Purpose: Detect the project's primary language and prepare the appropriate language skill reference for agent spawn prompts. Since language skills are not statically bound to agents, the orchestrator must inject them at spawn time.
 
 Steps:
 1. Check project root for language indicator files:
-   - go.mod → moai-lang-go
-   - package.json with "typescript" in devDependencies → moai-lang-typescript
-   - package.json without typescript → moai-lang-javascript
-   - pyproject.toml or requirements.txt → moai-lang-python
-   - Cargo.toml → moai-lang-rust
-   - pom.xml or build.gradle → moai-lang-java
-   - build.gradle.kts → moai-lang-kotlin
-   - *.csproj or *.sln → moai-lang-csharp
-   - Gemfile → moai-lang-ruby
-   - mix.exs → moai-lang-elixir
-   - build.sbt → moai-lang-scala
-   - Package.swift → moai-lang-swift
-   - pubspec.yaml → moai-lang-flutter
-   - DESCRIPTION (with R content) → moai-lang-r
-   - CMakeLists.txt or *.cpp → moai-lang-cpp
-2. Store the detected language skill name(s) as context for subsequent phases
-3. When spawning any expert or manager agent, include in the prompt: "Load Skill({detected-language-skill}) for language-specific patterns and conventions."
-4. If multiple languages detected (e.g., monorepo), include all relevant language skills
+   - go.mod → `.claude/rules/moai/languages/go.md` (auto-loaded via paths frontmatter)
+   - package.json with "typescript" in devDependencies → `.claude/rules/moai/languages/typescript.md`
+   - package.json without typescript → `.claude/rules/moai/languages/javascript.md`
+   - pyproject.toml or requirements.txt → `.claude/rules/moai/languages/python.md`
+   - Cargo.toml → `.claude/rules/moai/languages/rust.md`
+   - pom.xml or build.gradle → `.claude/rules/moai/languages/java.md`
+   - build.gradle.kts → `.claude/rules/moai/languages/kotlin.md`
+   - *.csproj or *.sln → `.claude/rules/moai/languages/csharp.md`
+   - Gemfile → `.claude/rules/moai/languages/ruby.md`
+   - mix.exs → `.claude/rules/moai/languages/elixir.md`
+   - build.sbt → `.claude/rules/moai/languages/scala.md`
+   - Package.swift → `.claude/rules/moai/languages/swift.md`
+   - pubspec.yaml → `.claude/rules/moai/languages/flutter.md`
+   - DESCRIPTION (with R content) → `.claude/rules/moai/languages/r.md`
+   - CMakeLists.txt or *.cpp → `.claude/rules/moai/languages/cpp.md`
+2. Store the detected language rule path(s) as context for subsequent phases
+3. Language rules are auto-loaded via paths frontmatter when project files match; no explicit Skill() invocation required for language rules.
+4. If multiple languages detected (e.g., monorepo), all relevant language rules are auto-loaded
 
 Output: detected_language_skills list passed to all subsequent agent spawn prompts.
 
@@ -1033,7 +1035,7 @@ All of the following must be verified:
 ### Normal Flow
 **Prompt**: "/moai run SPEC-AUTH-001"
 **Expected Result**:
-- Phase 0.9: Detects Go project (go.mod) → loads moai-lang-go
+- Phase 0.9: Detects Go project (go.mod) → references `.claude/rules/moai/languages/go.md`
 - Phase 0.95: SPEC has 8 files, 2 domains → Standard Mode selected
 - Phase 1: manager-strategy creates execution plan with 5 tasks
 - Decision Point: User approves plan

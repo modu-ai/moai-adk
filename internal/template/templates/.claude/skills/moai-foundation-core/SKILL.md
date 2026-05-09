@@ -29,7 +29,7 @@ triggers:
   keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format", "context window", "token budget", "token limit", "session state", "/clear", "context management", "multi-agent handoff", "session persistence", "context", "session", "budget", "optimization", "handoff", "state", "memory", "multi-agent"]
   agents:
     - "manager-spec"
-    - "manager-cycle"
+    - "manager-develop"
     - "manager-strategy"
     - "manager-quality"
     - "builder-agent"

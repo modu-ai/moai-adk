@@ -1,6 +1,6 @@
-// Package spec은 SPEC 문서 파싱 및 검증 기능을 제공한다.
-// lint.go는 moai spec lint CLI의 핵심 엔진으로, Rule 인터페이스와
-// Linter 구조체를 통해 SPEC 문서의 EARS 준수성, 커버리지, DAG 등을 검증한다.
+// Package spec provides SPEC document parsing and validation functionality
+// lint.go is the core engine of moai spec lint CLI, validating SPEC documents
+// for EARS compliance, coverage, DAG, etc. through Rule interface and Linter struct
 package spec
 
 import (
@@ -16,21 +16,20 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// Severity는 finding의 심각도를 나타낸다.
+// Severity represents the severity of a finding.
 type Severity string
 
 const (
-	// SeverityError는 linter가 비정상 종료를 유발하는 치명적 오류이다.
+	// SeverityError is a critical error that causes linter abnormal termination.
 	SeverityError Severity = "error"
-	// SeverityWarning은 기본 모드에서는 종료 코드에 영향을 주지 않는 경고이다.
-	// --strict 플래그 사용 시 error로 승격된다.
+	// SeverityWarning is a warning that does not affect exit code in default mode.
+	// Escalated to error when --strict flag is used.
 	SeverityWarning Severity = "warning"
-	// SeverityInfo는 정보성 메시지이다.
+	// SeverityInfo is an informational message.
 	SeverityInfo Severity = "info"
 )
 
-// Finding은 linter가 발견한 단일 문제를 나타낸다.
-// JSON 직렬화 시 file, line, severity, code, message 필드가 포함된다.
+// JSON serialization includes file, line, severity, code, message fields.
 type Finding struct {
 	File     string   `json:"file"`
 	Line     int      `json:"line"`
@@ -39,16 +38,15 @@ type Finding struct {
 	Message  string   `json:"message"`
 }
 
-// Report는 lint 실행 결과를 나타낸다.
+// Report represents lint execution results
 type Report struct {
-	// Findings는 모든 finding의 목록이다.
+	// Findings is a list of all findings
 	Findings []Finding
-	// Strict는 --strict 플래그 상태이다. HasErrors() 계산에 영향을 준다.
+	// Strict is the state of --strict flag. Affects HasErrors() calculation
 	Strict bool
 }
 
-// HasErrors는 비정상 종료가 필요한 상태인지 반환한다.
-// strict 모드에서는 warning도 error로 간주한다.
+// In strict mode, warnings are also considered errors
 func (r *Report) HasErrors() bool {
 	for _, f := range r.Findings {
 		if f.Severity == SeverityError {
@@ -61,8 +59,8 @@ func (r *Report) HasErrors() bool {
 	return false
 }
 
-// ToJSON은 findings를 JSON 바이트 슬라이스로 직렬화한다.
-// findings가 nil인 경우 빈 JSON 배열([])을 반환한다.
+// ToJSON serializes findings to JSON byte slice
+// Returns empty JSON array ([]) if findings is nil
 func (r *Report) ToJSON() ([]byte, error) {
 	findings := r.Findings
 	if findings == nil {
@@ -71,39 +69,37 @@ func (r *Report) ToJSON() ([]byte, error) {
 	return json.Marshal(findings)
 }
 
-// ToSARIF는 findings를 SARIF 2.1.0 형식의 JSON 바이트 슬라이스로 직렬화한다.
+// ToSARIF serializes findings to JSON byte slice in SARIF 2.1.0 format
 func (r *Report) ToSARIF() ([]byte, error) {
 	return marshalSARIF(r.Findings)
 }
 
-// LinterOptions는 Linter 생성 옵션이다.
+// LinterOptions is the options for creating Linter
 type LinterOptions struct {
-	// RegistryPath는 zone registry 마크다운 파일 경로이다.
-	// 비어 있으면 DanglingRuleReference 검사를 건너뛴다.
+	// RegistryPath is the path to zone registry markdown file
+	// Skips DanglingRuleReference check
 	RegistryPath string
-	// BaseDir는 no-args 실행 시 SPEC 파일을 탐색하는 기준 디렉토리이다.
-	// 의존성 SPEC 존재 확인에도 사용된다.
+	// BaseDir is the base directory for SPEC file search in no-args execution
 	BaseDir string
-	// Strict는 --strict 플래그 상태이다.
+	// Strict is the state of --strict flag
 	Strict bool
 }
 
-// Linter는 SPEC 문서를 검증하는 엔진이다.
 //
 // @MX:ANCHOR: [AUTO] Linter is the central lint engine; all lint rules are dispatched through it.
-// @MX:REASON: Fan-in hub — CLI, tests, and future integrations all call Linter.Lint.
+// @MX:REASON: [AUTO] Fan-in hub — CLI, tests, and future integrations all call Linter.Lint.
 type Linter struct {
 	opts     LinterOptions
 	registry *constitution.Registry
 	rules    []Rule
 }
 
-// NewLinter는 새로운 Linter 인스턴스를 생성한다.
-// options.RegistryPath가 지정된 경우 zone registry를 로드한다.
+// NewLinter creates a new Linter instance
+// Loads zone registry if options.RegistryPath is specified
 func NewLinter(opts LinterOptions) *Linter {
 	l := &Linter{opts: opts}
 
-	// zone registry 로드
+	// Load zone registry
 	if opts.RegistryPath != "" {
 		projectDir := opts.BaseDir
 		if projectDir == "" {
@@ -113,10 +109,9 @@ func NewLinter(opts LinterOptions) *Linter {
 		if err == nil {
 			l.registry = reg
 		}
-		// registry 로드 실패는 silent — DanglingRuleReference 체크를 건너뜀
+		// registry load failure is silent — skip DanglingRuleReference check
 	}
 
-	// 규칙 등록
 	l.rules = []Rule{
 		&EARSModalityRule{},
 		&REQIDUniquenessRule{},
@@ -125,32 +120,30 @@ func NewLinter(opts LinterOptions) *Linter {
 		&DependencyExistsRule{},
 		&OutOfScopeRule{},
 		&BreakingChangeIDRule{},
-		// cross-SPEC 규칙
+		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
-		// registry 필요
+		// Registry required
 		&ZoneRegistryRule{registry: l.registry},
 	}
 
 	return l
 }
 
-// Lint는 지정된 SPEC 파일 경로들을 검증한다.
-// paths가 nil이거나 비어 있으면 opts.BaseDir 아래의 spec.md 파일들을 자동 탐색한다.
+// If paths is nil or empty, automatically discover spec.md files under opts.BaseDir
 //
-// @MX:ANCHOR: [AUTO] Lint is the primary entry point; orchestrates rule execution across all SPECs.
-// @MX:REASON: Fan-in hub — all callers (CLI, tests) go through this method.
+// @MX:ANCHOR: [AUTO] Lint is the primary entry point; orchestrates rule execution across all SPECs
+// @MX:REASON: [AUTO] Fan-in hub — all callers (CLI, tests) go through this method
 func (l *Linter) Lint(paths []string) (*Report, error) {
-	// 경로 미지정 시 BaseDir에서 자동 탐색
 	if len(paths) == 0 {
 		discovered, err := discoverSPECs(l.opts.BaseDir)
 		if err != nil {
-			return nil, fmt.Errorf("SPEC 탐색 실패: %w", err)
+			return nil, fmt.Errorf("SPEC discovery failed: %w", err)
 		}
 		paths = discovered
 	}
 
-	// SPEC 문서 파싱
+	// Parse SPEC documents
 	var docs []*SPECDoc
 	var findings []Finding
 
@@ -163,18 +156,17 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 				Line:     1,
 				Severity: SeverityError,
 				Code:     "ParseFailure",
-				Message:  fmt.Sprintf("SPEC 파싱 실패: %v", doc.ParseError),
+				Message:  fmt.Sprintf("SPEC parsing failed: %v", doc.ParseError),
 			})
 		}
 	}
 
-	// 단일 SPEC 규칙 실행
 	for _, doc := range docs {
 		if doc.ParseError != nil {
-			continue // 파싱 실패 SPEC은 규칙 건너뜀
+			continue // Skip rules for failed SPEC
 		}
 		for _, rule := range l.rules {
-			// cross-SPEC 규칙은 나중에 처리
+			// cross-SPEC rules are processed later
 			if _, ok := rule.(crossSPECRule); ok {
 				continue
 			}
@@ -184,7 +176,6 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 		}
 	}
 
-	// cross-SPEC 규칙 실행 (모든 문서를 한번에 검사)
 	for _, rule := range l.rules {
 		if cr, ok := rule.(crossSPECRule); ok {
 			crossFindings := cr.CheckAll(docs)
@@ -198,24 +189,19 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 	}, nil
 }
 
-// crossSPECRule은 모든 SPEC 문서를 함께 검사하는 규칙 인터페이스이다.
 type crossSPECRule interface {
 	CheckAll(docs []*SPECDoc) []Finding
 }
 
-// Rule은 단일 lint 규칙 인터페이스이다.
 //
-// @MX:NOTE: [AUTO] Rule 인터페이스는 단일 SPEC 문서를 검사한다.
-// crossSPECRule은 모든 SPEC을 함께 검사하는 별도 인터페이스이다.
+// @MX:NOTE: [AUTO] Rule interface inspects a single SPEC document
 type Rule interface {
-	// Code는 규칙의 고유 코드를 반환한다.
 	Code() string
-	// Check는 단일 SPEC 문서를 검사하고 findings를 반환한다.
-	// all은 다른 SPEC 문서들이며 규칙이 참조 가능하다.
+	// Check inspects a single SPEC document and returns findings
 	Check(doc *SPECDoc, all []*SPECDoc) []Finding
 }
 
-// applylintSkip은 doc의 lint.skip 코드 목록에 해당하는 findings를 제거한다.
+// applylintSkip removes findings that match doc's lint.skip code list
 func applylintSkip(findings []Finding, skipCodes []string) []Finding {
 	if len(skipCodes) == 0 {
 		return findings
@@ -233,8 +219,7 @@ func applylintSkip(findings []Finding, skipCodes []string) []Finding {
 	return result
 }
 
-// discoverSPECs는 baseDir/.moai/specs/SPEC-*/spec.md 또는 baseDir/SPEC-*/spec.md 패턴으로
-// SPEC 파일들을 탐색한다.
+// discoverSPECs finds spec.md files matching baseDir/.moai/specs/SPEC-*/spec.md or baseDir/SPEC-*/spec.md pattern
 func discoverSPECs(baseDir string) ([]string, error) {
 	if baseDir == "" {
 		baseDir = "."
@@ -242,10 +227,10 @@ func discoverSPECs(baseDir string) ([]string, error) {
 
 	var paths []string
 
-	// baseDir 바로 아래 SPEC-*/spec.md 패턴
+	// SPEC-*/spec.md pattern directly under baseDir
 	entries, err := os.ReadDir(baseDir)
 	if err != nil {
-		return nil, fmt.Errorf("디렉토리 읽기 실패 %q: %w", baseDir, err)
+		return nil, fmt.Errorf("failed to read directory %q: %w", baseDir, err)
 	}
 
 	for _, entry := range entries {
@@ -266,7 +251,7 @@ func discoverSPECs(baseDir string) ([]string, error) {
 
 // --- SPECDoc ---
 
-// SPECFrontmatter는 SPEC 문서의 YAML 프론트매터를 나타낸다.
+// SPECFrontmatter represents the YAML frontmatter of a SPEC document
 type SPECFrontmatter struct {
 	ID           string   `yaml:"id"`
 	Title        string   `yaml:"title"`
@@ -284,20 +269,19 @@ type SPECFrontmatter struct {
 	Tags         string   `yaml:"tags"`
 	Breaking     bool     `yaml:"breaking"`
 	RelatedRule  []string `yaml:"related_rule"`
-	// LintConfig는 lint.skip 코드 목록을 담는 중첩 구조이다.
+	// LintConfig is a nested structure containing lint.skip code list.
 	LintConfig struct {
 		Skip []string `yaml:"skip"`
 	} `yaml:"lint"`
 }
 
-// REQEntry는 파싱된 단일 요구사항이다.
 type REQEntry struct {
 	ID   string
 	Text string
 	Line int
 }
 
-// SPECDoc은 파싱된 SPEC 문서를 나타낸다.
+// SPECDoc represents a parsed SPEC document.
 type SPECDoc struct {
 	Path        string
 	Frontmatter SPECFrontmatter
@@ -308,30 +292,27 @@ type SPECDoc struct {
 	LintSkip    []string
 }
 
-// reqIDPattern는 REQ-<DOMAIN>-<NNN>-<NNN> 형식을 검증하는 정규표현식이다.
+// reqIDPattern is a regular expression to validate REQ-<DOMAIN>-<NNN>-<NNN> format
 var reqIDPattern = regexp.MustCompile(`^REQ-[A-Z]{2,5}-\d{3}-\d{3}$`)
 
-// reqLinePattern은 마크다운 REQ 라인을 파싱하는 정규표현식이다.
-// 예: "- REQ-SPC-003-001: The system SHALL do X."
+// REQ-SPC-003-001: The system SHALL do X."
 var reqLinePattern = regexp.MustCompile(`-\s+(REQ-[A-Z]{2,5}-\d{3}-\d{3})\s*:\s*(.+)`)
 
-// parseSPECDoc은 주어진 경로의 SPEC 문서를 파싱한다.
-// 파싱 실패 시 ParseError 필드에 오류를 설정한다.
+// parseSPECDoc parses the SPEC document at the given path
 func parseSPECDoc(path string) *SPECDoc {
 	doc := &SPECDoc{Path: path}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		doc.ParseError = fmt.Errorf("파일 읽기 실패: %w", err)
+		doc.ParseError = fmt.Errorf("failed to read file: %w", err)
 		return doc
 	}
 
 	content := string(data)
 
-	// YAML 프론트매터 추출 및 파싱
 	fm, body, err := extractFrontmatter(content)
 	if err != nil {
-		doc.ParseError = fmt.Errorf("프론트매터 파싱 오류: %w", err)
+		doc.ParseError = fmt.Errorf("frontmatter parsing error: %w", err)
 		return doc
 	}
 
@@ -339,42 +320,39 @@ func parseSPECDoc(path string) *SPECDoc {
 	doc.Body = body
 	doc.LintSkip = fm.LintConfig.Skip
 
-	// REQ 목록 파싱
+	// Parse REQ list
 	doc.REQs = parseREQs(body)
 
-	// Acceptance Criteria 파싱
+	// Parse Acceptance Criteria
 	criteria, _ := ParseAcceptanceCriteria(body, false)
 	doc.Criteria = criteria
 
 	return doc
 }
 
-// extractFrontmatter는 마크다운 문서에서 YAML 프론트매터를 추출하고 파싱한다.
 func extractFrontmatter(content string) (SPECFrontmatter, string, error) {
 	var fm SPECFrontmatter
 
 	if !strings.HasPrefix(content, "---") {
-		return fm, content, fmt.Errorf("YAML 프론트매터가 없거나 '---'로 시작하지 않음")
+		return fm, content, fmt.Errorf("YAML frontmatter missing or does not start with '---'")
 	}
 
-	// 두 번째 --- 찾기
 	rest := content[3:]
 	endIdx := strings.Index(rest, "\n---")
 	if endIdx < 0 {
-		return fm, content, fmt.Errorf("프론트매터 닫는 '---'를 찾을 수 없음")
+		return fm, content, fmt.Errorf("could not find closing '---' for frontmatter")
 	}
 
 	yamlPart := rest[:endIdx]
-	body := rest[endIdx+4:] // "\n---" 이후
+	body := rest[endIdx+4:] // After "\n---"
 
 	if err := yaml.Unmarshal([]byte(yamlPart), &fm); err != nil {
-		return fm, body, fmt.Errorf("YAML 파싱 오류: %w", err)
+		return fm, body, fmt.Errorf("YAML parsing error: %w", err)
 	}
 
 	return fm, body, nil
 }
 
-// parseREQs는 마크다운 본문에서 REQ 항목들을 파싱한다.
 func parseREQs(body string) []REQEntry {
 	var reqs []REQEntry
 	lines := strings.Split(body, "\n")
@@ -391,7 +369,7 @@ func parseREQs(body string) []REQEntry {
 	return reqs
 }
 
-// collectAllREQIDs는 Acceptance 트리의 모든 노드(리프+비리프)에서 REQ ID를 수집한다.
+// collectAllREQIDs collects REQ IDs from all nodes (leaf + non-leaf) in Acceptance tree
 func collectAllREQIDs(criteria []Acceptance) map[string]bool {
 	covered := make(map[string]bool)
 	var visit func(ac *Acceptance)
@@ -409,10 +387,10 @@ func collectAllREQIDs(criteria []Acceptance) map[string]bool {
 	return covered
 }
 
-// --- Rule 구현체들 ---
+// --- Rule implementations ---
 
-// EARSModalityRule은 REQ 텍스트의 EARS 모달리티 준수성을 검사한다.
-// REQ-SPC-003-003, REQ-SPC-003-050 구현.
+// EARSModalityRule checks REQ text for EARS modality compliance
+// Implements REQ-SPC-003-003, REQ-SPC-003-050
 type EARSModalityRule struct{}
 
 func (r *EARSModalityRule) Code() string { return "ModalityMalformed" }
@@ -426,52 +404,45 @@ func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Line:     req.Line,
 				Severity: SeverityError,
 				Code:     "ModalityMalformed",
-				Message:  fmt.Sprintf("REQ %s: EARS 모달리티 위반 — SHALL이 없거나 형식 불일치: %q", req.ID, req.Text),
+				Message:  fmt.Sprintf("REQ %s: EARS modality violation — SHALL missing or format mismatch: %q", req.ID, req.Text),
 			})
 		}
 	}
 	return findings
 }
 
-// isModalityMalformed는 REQ 텍스트가 EARS 모달리티를 위반하는지 검사한다.
-// EARS 형식: 모든 요구사항은 정확히 하나의 모달리티 키워드를 사용하고 SHALL을 포함해야 한다.
+// isModalityMalformed checks if REQ text violates EARS modality
 func isModalityMalformed(text string) bool {
-	// EARS 모달리티 키워드로 시작하는지 확인
 	upper := strings.ToUpper(text)
 
-	// WHEN으로 시작하지만 SHALL이 없는 경우
 	if strings.HasPrefix(upper, "WHEN ") && !strings.Contains(upper, " SHALL") {
 		return true
 	}
-	// WHILE로 시작하지만 SHALL이 없는 경우
 	if strings.HasPrefix(upper, "WHILE ") && !strings.Contains(upper, " SHALL") {
 		return true
 	}
-	// WHERE로 시작하지만 SHALL이 없는 경우
 	if strings.HasPrefix(upper, "WHERE ") && !strings.Contains(upper, " SHALL") {
 		return true
 	}
-	// IF로 시작하지만 SHALL이 없는 경우
 	if strings.HasPrefix(upper, "IF ") && !strings.Contains(upper, " SHALL") {
 		return true
 	}
-	// Ubiquitous 형식: "The [system] SHALL"으로 시작해야 함
-	// 대문자 THE로 시작하면서 SHALL이 없는 경우
+	// Ubiquitous format: Must start with "The [system] SHALL"
 	if strings.HasPrefix(upper, "THE ") && !strings.Contains(upper, " SHALL") {
 		return true
 	}
 	return false
 }
 
-// REQIDUniquenessRule은 SPEC 내에서 REQ ID 유일성을 검사한다.
-// REQ-SPC-003-004 구현.
+// REQIDUniquenessRule checks REQ ID uniqueness within SPEC
+// Implements REQ-SPC-003-004
 type REQIDUniquenessRule struct{}
 
 func (r *REQIDUniquenessRule) Code() string { return "DuplicateREQID" }
 
 func (r *REQIDUniquenessRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	var findings []Finding
-	seen := make(map[string]int) // ID → 첫 번째 발견 라인
+	seen := make(map[string]int) // ID → first occurrence line
 
 	for _, req := range doc.REQs {
 		if !reqIDPattern.MatchString(req.ID) {
@@ -480,7 +451,7 @@ func (r *REQIDUniquenessRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Line:     req.Line,
 				Severity: SeverityError,
 				Code:     "InvalidREQID",
-				Message:  fmt.Sprintf("REQ ID %q가 패턴 REQ-[A-Z]{{2,5}}-NNN-NNN에 맞지 않음", req.ID),
+				Message:  fmt.Sprintf("REQ ID %q does not match pattern REQ-[A-Z]{{2,5}}-NNN-NNN", req.ID),
 			})
 			continue
 		}
@@ -490,7 +461,7 @@ func (r *REQIDUniquenessRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Line:     req.Line,
 				Severity: SeverityError,
 				Code:     "DuplicateREQID",
-				Message:  fmt.Sprintf("REQ ID %q가 중복됨 (첫 번째 등장: 라인 %d)", req.ID, firstLine),
+				Message:  fmt.Sprintf("REQ ID %q is duplicated (first occurrence: line %d)", req.ID, firstLine),
 			})
 		} else {
 			seen[req.ID] = req.Line
@@ -499,9 +470,8 @@ func (r *REQIDUniquenessRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	return findings
 }
 
-// CoverageRule은 AC→REQ 커버리지를 검사한다.
-// 모든 REQ는 최소 하나의 AC 리프 노드에서 참조되어야 한다.
-// REQ-SPC-003-005 구현.
+// CoverageRule checks AC→REQ coverage
+// Implements REQ-SPC-003-005
 type CoverageRule struct{}
 
 func (r *CoverageRule) Code() string { return "CoverageIncomplete" }
@@ -511,7 +481,6 @@ func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		return nil
 	}
 
-	// 모든 AC 노드(리프+비리프)에서 참조된 REQ ID 수집
 	covered := collectAllREQIDs(doc.Criteria)
 
 	var findings []Finding
@@ -522,23 +491,22 @@ func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Line:     req.Line,
 				Severity: SeverityError,
 				Code:     "CoverageIncomplete",
-				Message:  fmt.Sprintf("REQ %s가 어떤 AC에도 참조되지 않음", req.ID),
+				Message:  fmt.Sprintf("REQ %s is not referenced by any AC", req.ID),
 			})
 		}
 	}
 	return findings
 }
 
-// FrontmatterSchemaRule은 SPEC 프론트매터 스키마를 검사한다.
-// REQ-SPC-003-006 구현.
+// FrontmatterSchemaRule checks SPEC frontmatter schema
+// Implements REQ-SPC-003-006
 type FrontmatterSchemaRule struct{}
 
 func (r *FrontmatterSchemaRule) Code() string { return "FrontmatterInvalid" }
 
-// specIDPattern은 SPEC ID 형식을 검증하는 정규표현식이다.
+// specIDPattern is a regular expression to validate SPEC ID format
 var specIDPattern = regexp.MustCompile(`^SPEC-[A-Z][A-Z0-9]+-[A-Z]{2,5}-\d{3}$`)
 
-// semverPattern은 시맨틱 버전 형식을 검증하는 정규표현식이다.
 var semverPattern = regexp.MustCompile(`^\d+\.\d+\.\d+`)
 
 func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
@@ -570,41 +538,38 @@ func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Line:     1,
 				Severity: SeverityError,
 				Code:     "FrontmatterInvalid",
-				Message:  fmt.Sprintf("프론트매터 필수 필드 누락: %s", field.name),
+				Message:  fmt.Sprintf("Frontmatter required field missing: %s", field.name),
 			})
 		}
 	}
 
-	// id 형식 검증
 	if fm.ID != "" && !specIDPattern.MatchString(fm.ID) {
 		findings = append(findings, Finding{
 			File:     doc.Path,
 			Line:     1,
 			Severity: SeverityError,
 			Code:     "FrontmatterInvalid",
-			Message:  fmt.Sprintf("id %q가 SPEC-<PREFIX>-<DOMAIN>-<NNN> 형식에 맞지 않음", fm.ID),
+			Message:  fmt.Sprintf("id %q does not match SPEC-<PREFIX>-<DOMAIN>-<NNN> format", fm.ID),
 		})
 	}
 
-	// version 시맨틱 버전 검증
+	// version semantic version verification
 	if fm.Version != "" && !semverPattern.MatchString(fm.Version) {
 		findings = append(findings, Finding{
 			File:     doc.Path,
 			Line:     1,
 			Severity: SeverityError,
 			Code:     "FrontmatterInvalid",
-			Message:  fmt.Sprintf("version %q이 시맨틱 버전 형식(X.Y.Z)에 맞지 않음", fm.Version),
+			Message:  fmt.Sprintf("version %q does not match semantic version format (X.Y.Z)", fm.Version),
 		})
 	}
 
-	// bc_id는 항상 배열이어야 함 (nil이 아닌 빈 배열 허용)
-	// 타입 검사는 YAML 파싱 시 이미 처리됨
 
 	return findings
 }
 
-// DependencyExistsRule은 dependencies 필드의 SPEC이 실제로 존재하는지 검사한다.
-// REQ-SPC-003-007 구현.
+// DependencyExistsRule checks if SPECs in dependencies field actually exist
+// Implements REQ-SPC-003-007
 type DependencyExistsRule struct{}
 
 func (r *DependencyExistsRule) Code() string { return "MissingDependency" }
@@ -614,7 +579,6 @@ func (r *DependencyExistsRule) Check(doc *SPECDoc, all []*SPECDoc) []Finding {
 		return nil
 	}
 
-	// 알려진 SPEC ID 집합 구성
 	knownIDs := make(map[string]bool, len(all))
 	for _, d := range all {
 		if d.Frontmatter.ID != "" {
@@ -624,13 +588,11 @@ func (r *DependencyExistsRule) Check(doc *SPECDoc, all []*SPECDoc) []Finding {
 
 	var findings []Finding
 	for _, dep := range doc.Frontmatter.Dependencies {
-		// 알려진 SPECs에 없으면 디스크에서 확인
 		if knownIDs[dep] {
 			continue
 		}
 
-		// dep 디렉토리가 실제로 존재하는지 확인
-		// doc.Path의 부모 디렉토리를 기준으로 탐색
+		// Search based on doc.Path's parent directory
 		docDir := filepath.Dir(filepath.Dir(doc.Path))
 		depDir := filepath.Join(docDir, dep)
 		depSpec := filepath.Join(depDir, "spec.md")
@@ -640,22 +602,22 @@ func (r *DependencyExistsRule) Check(doc *SPECDoc, all []*SPECDoc) []Finding {
 				Line:     1,
 				Severity: SeverityError,
 				Code:     "MissingDependency",
-				Message:  fmt.Sprintf("의존 SPEC %q를 찾을 수 없음", dep),
+				Message:  fmt.Sprintf("Dependency SPEC %q not found", dep),
 			})
 		}
 	}
 	return findings
 }
 
-// OutOfScopeRule은 "Out of Scope" 섹션의 존재를 검사한다.
-// REQ-SPC-003-009 구현.
+// OutOfScopeRule checks existence of "Out of Scope" section
+// Implements REQ-SPC-003-009
 type OutOfScopeRule struct{}
 
 func (r *OutOfScopeRule) Code() string { return "MissingExclusions" }
 
 func (r *OutOfScopeRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	body := strings.ToLower(doc.Body)
-	// "out of scope" 또는 "2.2 out of scope" 패턴
+	// "out of scope" or "2.2 out of scope" pattern
 	hasOutOfScope := strings.Contains(body, "out of scope")
 	if !hasOutOfScope {
 		return []Finding{{
@@ -663,11 +625,10 @@ func (r *OutOfScopeRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Line:     1,
 			Severity: SeverityError,
 			Code:     "MissingExclusions",
-			Message:  "'Out of Scope' 섹션이 없음 — 최소 하나의 항목이 있는 Out of Scope 서브섹션 필수",
+			Message:  "'Out of Scope' section missing — minimum one item in Out of Scope subsection required",
 		}}
 	}
 
-	// Out of Scope 섹션이 있지만 내용이 없는 경우 확인
 	lines := strings.Split(doc.Body, "\n")
 	inOutOfScope := false
 	hasContent := false
@@ -681,7 +642,7 @@ func (r *OutOfScopeRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			continue
 		}
 		if strings.HasPrefix(lowerTrimmed, "##") && !strings.Contains(lowerTrimmed, "out of scope") && inOutOfScope {
-			break // 다른 섹션 시작
+			break
 		}
 		if inOutOfScope && strings.HasPrefix(trimmed, "-") && len(strings.TrimPrefix(trimmed, "-")) > 0 {
 			hasContent = true
@@ -695,15 +656,15 @@ func (r *OutOfScopeRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Line:     1,
 			Severity: SeverityError,
 			Code:     "MissingExclusions",
-			Message:  "'Out of Scope' 섹션에 항목이 없음 — 최소 하나의 항목 필수",
+			Message:  "'Out of Scope' section has no items — minimum one item required",
 		}}
 	}
 
 	return nil
 }
 
-// BreakingChangeIDRule은 breaking:true이면서 bc_id가 비어 있을 때 오류를 보고한다.
-// REQ-SPC-003-052 구현.
+// BreakingChangeIDRule reports error when breaking:true but bc_id is empty
+// Implements REQ-SPC-003-052
 type BreakingChangeIDRule struct{}
 
 func (r *BreakingChangeIDRule) Code() string { return "BreakingChangeMissingID" }
@@ -718,7 +679,7 @@ func (r *BreakingChangeIDRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Line:     1,
 			Severity: SeverityError,
 			Code:     "BreakingChangeMissingID",
-			Message:  "breaking: true이지만 bc_id가 비어 있음 — breaking change에는 bc_id가 필요함",
+			Message:  "breaking: true but bc_id is empty — breaking change requires bc_id",
 		})
 	}
 
@@ -735,8 +696,8 @@ func (r *BreakingChangeIDRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	return findings
 }
 
-// ZoneRegistryRule은 related_rule 필드의 CONST-V3R2-NNN 참조가 zone registry에 존재하는지 검사한다.
-// REQ-SPC-003-010 구현.
+// ZoneRegistryRule checks if CONST-V3R2-NNN references in related_rule field exist in zone registry
+// Implements REQ-SPC-003-010
 type ZoneRegistryRule struct {
 	registry *constitution.Registry
 }
@@ -756,27 +717,26 @@ func (r *ZoneRegistryRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Line:     1,
 				Severity: SeverityWarning,
 				Code:     "DanglingRuleReference",
-				Message:  fmt.Sprintf("related_rule %q가 zone registry에 없음", ruleID),
+				Message:  fmt.Sprintf("related_rule %q not found in zone registry", ruleID),
 			})
 		}
 	}
 	return findings
 }
 
-// DependencyCycleRule은 SPEC 의존성 DAG에서 사이클을 탐지한다.
-// REQ-SPC-003-008 구현.
-// crossSPECRule 인터페이스를 구현하여 Linter.Lint에서 cross-SPEC 단계에 실행된다.
+// DependencyCycleRule detects cycles in SPEC dependency DAG
+// Implements REQ-SPC-003-008
+// Implements crossSPECRule interface, executed in cross-SPEC phase of Linter.Lint
 type DependencyCycleRule struct{}
 
 func (r *DependencyCycleRule) Code() string { return "DependencyCycle" }
 
 func (r *DependencyCycleRule) Check(_ *SPECDoc, _ []*SPECDoc) []Finding {
-	// single-spec check는 사용하지 않음; CheckAll에서 처리
+	// single-spec check not used; processed in CheckAll
 	return nil
 }
 
 func (r *DependencyCycleRule) CheckAll(docs []*SPECDoc) []Finding {
-	// ID → 인덱스 맵
 	idToIdx := make(map[string]int, len(docs))
 	for i, doc := range docs {
 		if doc.Frontmatter.ID != "" {
@@ -784,7 +744,6 @@ func (r *DependencyCycleRule) CheckAll(docs []*SPECDoc) []Finding {
 		}
 	}
 
-	// 인접 리스트 구성 (인덱스 기반)
 	adj := make([][]int, len(docs))
 	for i, doc := range docs {
 		for _, dep := range doc.Frontmatter.Dependencies {
@@ -794,7 +753,7 @@ func (r *DependencyCycleRule) CheckAll(docs []*SPECDoc) []Finding {
 		}
 	}
 
-	// Tarjan SCC로 사이클 탐지
+	// Cycle detection via Tarjan SCC
 	cycles := findCyclesTarjan(adj, len(docs))
 
 	if len(cycles) == 0 {
@@ -815,15 +774,15 @@ func (r *DependencyCycleRule) CheckAll(docs []*SPECDoc) []Finding {
 			Line:     1,
 			Severity: SeverityError,
 			Code:     "DependencyCycle",
-			Message:  fmt.Sprintf("의존성 사이클 탐지: %s", strings.Join(names, " → ")),
+			Message:  fmt.Sprintf("Dependency cycle detected: %s", strings.Join(names, " → ")),
 		})
 	}
 	return findings
 }
 
-// DuplicateSPECIDRule은 여러 SPEC이 동일한 id를 선언하는지 검사한다.
-// REQ-SPC-003-031 구현.
-// crossSPECRule 인터페이스를 구현한다.
+// DuplicateSPECIDRule checks if multiple SPECs declare the same id
+// Implements REQ-SPC-003-031
+// Implements crossSPECRule interface
 type DuplicateSPECIDRule struct{}
 
 func (r *DuplicateSPECIDRule) Code() string { return "DuplicateSPECID" }
@@ -833,7 +792,7 @@ func (r *DuplicateSPECIDRule) Check(_ *SPECDoc, _ []*SPECDoc) []Finding {
 }
 
 func (r *DuplicateSPECIDRule) CheckAll(docs []*SPECDoc) []Finding {
-	seen := make(map[string]string) // ID → 첫 번째 파일 경로
+	seen := make(map[string]string) // ID → first file path
 	var findings []Finding
 
 	for _, doc := range docs {
@@ -847,7 +806,7 @@ func (r *DuplicateSPECIDRule) CheckAll(docs []*SPECDoc) []Finding {
 				Line:     1,
 				Severity: SeverityError,
 				Code:     "DuplicateSPECID",
-				Message:  fmt.Sprintf("SPEC ID %q 중복 선언 (첫 번째 위치: %s)", id, firstPath),
+				Message:  fmt.Sprintf("SPEC ID %q declared multiple times (first location: %s)", id, firstPath),
 			})
 		} else {
 			seen[id] = doc.Path

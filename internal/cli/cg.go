@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] cg command launches Claude + GLM hybrid mode for cost optimization
+// @MX:NOTE: [AUTO] Requires tmux session for pane-level environment isolation
+// @MX:NOTE: [AUTO] Sets teammateMode=tmux and injects GLM env for teammates
+
 import (
 	"github.com/spf13/cobra"
 )

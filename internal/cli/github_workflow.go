@@ -1,5 +1,4 @@
-// Package cli는 GitHub workflow 명령을 제공합니다.
-// Package cli provides GitHub workflow command.
+// Package cli provides GitHub workflow commands.
 package cli
 
 import (
@@ -9,12 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newWorkflowCmd는 workflow 명령을 생성합니다.
+// newWorkflowCmd creates the workflow command.
 func newWorkflowCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workflow",
 		Short: "GitHub Actions 워크플로우 관리 (Manage CI/CD workflows)",
-		Long:  `GitHub Actions 워크플로우 템플릿을 동기화하고 검증합니다.`,
+		Long:  `Synchronize and validate GitHub Actions workflow templates.`,
 	}
 
 	cmd.AddCommand(newWorkflowSyncCmd())
@@ -23,7 +22,7 @@ func newWorkflowCmd() *cobra.Command {
 	return cmd
 }
 
-// newWorkflowSyncCmd는 sync 서브커맨드를 생성합니다.
+// newWorkflowSyncCmd creates the sync subcommand.
 func newWorkflowSyncCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sync",
@@ -36,7 +35,7 @@ func newWorkflowSyncCmd() *cobra.Command {
 	}
 }
 
-// newWorkflowValidateCmd는 validate 서브커맨드를 생성합니다.
+// newWorkflowValidateCmd creates the validate subcommand.
 func newWorkflowValidateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "validate",
@@ -49,14 +48,14 @@ func newWorkflowValidateCmd() *cobra.Command {
 	}
 }
 
-// syncTemplates는 워크플로우 템플릿을 동기화합니다.
+// syncTemplates synchronizes workflow templates.
 func syncTemplates(ctx context.Context) error {
-	// TODO: template deployer를 통한 실제 동기화 로직 구현
+	// TODO: Implement actual synchronization logic via template deployer
 	return fmt.Errorf("syncTemplates: not yet implemented")
 }
 
-// validateWorkflows는 워크플로우를 검증합니다.
+// validateWorkflows validates workflows.
 func validateWorkflows(ctx context.Context) error {
-	// TODO: 워크플로우 검증 로직 구현
+	// TODO: Implement workflow validation logic
 	return fmt.Errorf("validateWorkflows: not yet implemented")
 }

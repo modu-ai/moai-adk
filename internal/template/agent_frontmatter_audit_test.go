@@ -6,7 +6,7 @@
 //
 // 예상 RED 상태:
 //   - TestAgentFrontmatterAudit: manager-tdd.md에 retired:true가 없으므로 FAIL (M2에서 GREEN)
-//   - TestRetirementCompletenessAssertion: manager-cycle.md가 embedded FS에 없으므로 FAIL (M2에서 GREEN)
+//   - TestRetirementCompletenessAssertion: manager-develop.md가 embedded FS에 없으므로 FAIL (M2에서 GREEN)
 //   - TestNoOrphanedManagerTDDReference: 여러 파일에 manager-tdd 참조가 남아 있으므로 FAIL (M5에서 GREEN)
 package template
 
@@ -190,7 +190,7 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 // 교체 에이전트 파일이 embedded FS에 존재하는지 검증한다.
 //
 // REQ-RA-016: CI에서 RETIREMENT_INCOMPLETE_<agent> 검사
-// 예상 RED: manager-cycle.md가 embedded FS에 없으므로 FAIL
+// 예상 RED: manager-develop.md가 embedded FS에 없으므로 FAIL
 func TestRetirementCompletenessAssertion(t *testing.T) {
 	t.Parallel()
 
@@ -199,29 +199,29 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
 	}
 
-	// manager-tdd → manager-cycle 대체 관계 명시적 단언 (M2 이전 RED 트리거)
-	// manager-tdd.md가 retired:true를 가질 때, manager-cycle.md가 embedded FS에 있어야 함
-	t.Run("manager-tdd replacement manager-cycle must exist", func(t *testing.T) {
+	// manager-tdd → manager-develop 대체 관계 명시적 단언 (M2 이전 RED 트리거)
+	// manager-tdd.md가 retired:true를 가질 때, manager-develop.md가 embedded FS에 있어야 함
+	t.Run("manager-tdd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
-		const replacementPath = ".claude/agents/moai/manager-cycle.md"
+		const replacementPath = ".claude/agents/moai/manager-develop.md"
 		_, statErr := fs.Stat(fsys, replacementPath)
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-tdd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
-				"SPEC-V3R3-RETIRED-AGENT-001 M2에서 manager-cycle.md 추가 필요 (REQ-RA-016)", replacementPath)
+				"SPEC-V3R3-RETIRED-AGENT-001 M2에서 manager-develop.md 추가 필요 (REQ-RA-016)", replacementPath)
 		}
 	})
 
-	// manager-ddd → manager-cycle 대체 관계 명시적 단언 (M2 이전 RED 트리거)
-	// manager-ddd.md가 retired:true를 가질 때, manager-cycle.md가 embedded FS에 있어야 함
-	t.Run("manager-ddd replacement manager-cycle must exist", func(t *testing.T) {
+	// manager-ddd → manager-develop 대체 관계 명시적 단언 (M2 이전 RED 트리거)
+	// manager-ddd.md가 retired:true를 가질 때, manager-develop.md가 embedded FS에 있어야 함
+	t.Run("manager-ddd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
-		const replacementPath = ".claude/agents/moai/manager-cycle.md"
+		const replacementPath = ".claude/agents/moai/manager-develop.md"
 		_, statErr := fs.Stat(fsys, replacementPath)
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-ddd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
-				"SPEC-V3R3-RETIRED-DDD-001 M2에서 manager-cycle.md 추가 필요 (REQ-RD-012)", replacementPath)
+				"SPEC-V3R3-RETIRED-DDD-001 M2에서 manager-develop.md 추가 필요 (REQ-RD-012)", replacementPath)
 		}
 	})
 
@@ -268,7 +268,7 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 // TestNoOrphanedManagerTDDReference는 특정 핵심 파일들에서 manager-tdd 참조가
 // 남아 있지 않은지 검증한다.
 //
-// REQ-RA-013: manager-cycle이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
+// REQ-RA-013: manager-develop이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
 // 예상 RED: 여러 파일에 manager-tdd 참조가 아직 남아 있으므로 FAIL
 func TestNoOrphanedManagerTDDReference(t *testing.T) {
 	t.Parallel()
@@ -328,7 +328,7 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 			orphanedRefs := findManagerTDDReferences(content)
 			if len(orphanedRefs) > 0 {
 				t.Errorf("ORPHANED_MANAGER_TDD_REFERENCE in %s (%s): %d개 참조 발견. "+
-					"SPEC-V3R3-RETIRED-AGENT-001 M5에서 'manager-cycle'로 교체 필요 (REQ-RA-013):\n%s",
+					"SPEC-V3R3-RETIRED-AGENT-001 M5에서 'manager-develop'로 교체 필요 (REQ-RA-013):\n%s",
 					cf.path, cf.description, len(orphanedRefs), strings.Join(orphanedRefs, "\n"))
 			}
 		})
@@ -338,7 +338,7 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 // TestNoOrphanedManagerDDDReference는 특정 핵심 파일들에서 manager-ddd 참조가
 // 남아 있지 않은지 검증한다.
 //
-// REQ-RD-010: manager-cycle이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
+// REQ-RD-010: manager-develop이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
 // 예상 RED: 30 Cat A 파일에 manager-ddd 참조가 아직 남아 있으므로 FAIL
 func TestNoOrphanedManagerDDDReference(t *testing.T) {
 	t.Parallel()
@@ -498,7 +498,7 @@ func TestNoOrphanedManagerDDDReference(t *testing.T) {
 			orphanedRefs := findManagerDDDReferences(content)
 			if len(orphanedRefs) > 0 {
 				t.Errorf("ORPHANED_MANAGER_DDD_REFERENCE in %s (%s): %d개 참조 발견. "+
-					"SPEC-V3R3-RETIRED-DDD-001 M3에서 'manager-cycle'로 교체 필요 (REQ-RD-010):\n%s",
+					"SPEC-V3R3-RETIRED-DDD-001 M3에서 'manager-develop'로 교체 필요 (REQ-RD-010):\n%s",
 					cf.path, cf.description, len(orphanedRefs), strings.Join(orphanedRefs, "\n"))
 			}
 		})

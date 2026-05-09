@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] Telemetry reporting for skill usage effectiveness analysis
+// @MX:NOTE: [AUTO] Data stored locally in .moai/evolution/telemetry/, never sent externally
+// @MX:NOTE: [AUTO] All context hashed to prevent PII storage
+
 import (
 	"fmt"
 	"os"

@@ -1,35 +1,35 @@
 package constitution
 
-// frozenGuard는 FrozenGuard interface의 구현이다.
-// Frozen zone rule amendment를 차단한다.
+// frozenGuard is an implementation of the FrozenGuard interface.
+// Blocks Frozen zone rule amendments.
 type frozenGuard struct{}
 
-// NewFrozenGuard는 FrozenGuard를 생성한다.
+// NewFrozenGuard creates a FrozenGuard.
 func NewFrozenGuard() FrozenGuard {
 	return &frozenGuard{}
 }
 
-// Check는 proposal이 Frozen zone rule을 수정하는지 확인한다.
-// Frozen→Evolvable demotion은 Evidence로 허용.
-// SPEC-V3R2-CON-002 REQ-CON-002-004 Layer 1 구현.
+// Check checks if the proposal modifies a Frozen zone rule.
+// Frozen→Evolvable demotion is allowed with Evidence.
+// SPEC-V3R2-CON-002 REQ-CON-002-004 Layer 1 implementation.
 func (g *frozenGuard) Check(proposal *AmendmentProposal, currentZone Zone) error {
 	if currentZone != ZoneFrozen {
-		// Evolvable zone은 통과
+		// Evolvable zone passes
 		return nil
 	}
 
-	// Frozen zone: Evidence 필수
+	// Frozen zone: Evidence required
 	if proposal.Evidence == "" {
 		return &ErrFrozenAmendment{
 			RuleID: proposal.RuleID,
-			Reason: "Frozen zone rule 수정에는 Evidence(증거)가 필수이다. Frozen→Evolvable demotion 사유를 설명하라.",
+			Reason: "Frozen zone rule modification requires Evidence. Explain the Frozen→Evolvable demotion reason.",
 		}
 	}
 
-	// Evidence가 있는 Frozen zone 수정은 허용 (demotion 가정)
-	// 실제 zone 변경 여부는 registry 업데이트 시 검증
+	// Frozen zone modification with Evidence is allowed (assuming demotion)
+	// Actual zone change is verified during registry update
 	return nil
 }
 
-// frozenGuard는 FrozenGuard interface를 만족한다.
+// frozenGuard satisfies the FrozenGuard interface.
 var _ FrozenGuard = (*frozenGuard)(nil)

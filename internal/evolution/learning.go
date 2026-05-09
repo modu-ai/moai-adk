@@ -12,6 +12,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
+// @MX:NOTE: [AUTO] Learning persistence with LEARN-YYYYMMDD-NNN format, atomic write, max 50 active cap, auto-archive oldest
+//
 // reLearningID matches the canonical learning ID format: LEARN-YYYYMMDD-NNN.
 // IDs outside this format are rejected as they pose security risks such as path traversal.
 var reLearningID = regexp.MustCompile(`^LEARN-\d{8}-\d{3}$`)

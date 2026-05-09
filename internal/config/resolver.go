@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// @MX:NOTE: [AUTO] SettingsResolver implements 8-tier configuration loading with platform-specific paths
+//
 // SettingsResolver defines the interface for loading and querying configuration.
 // This maps to REQ-V3R2-RT-005-004.
 type SettingsResolver interface {

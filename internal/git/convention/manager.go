@@ -9,6 +9,8 @@ type Manager struct {
 }
 
 // NewManager creates a Manager for the given repository path.
+// @MX:ANCHOR: [AUTO] NewManager is a core factory called from 4+ packages
+// @MX:REASON: Multi-package dependency — signature changes have wide blast radius
 func NewManager(repoPath string) *Manager {
 	return &Manager{repoPath: repoPath}
 }

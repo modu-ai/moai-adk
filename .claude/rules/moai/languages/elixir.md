@@ -92,7 +92,7 @@ See:
 - `moai-domain-backend` - REST API and microservices architecture
 - `moai-domain-database` - SQL patterns and query optimization
 - `moai-workflow-testing` - DDD and testing strategies
-- `moai-essentials-debug` - AI-powered debugging
+- delegate to `expert-debug` agent for AI-powered debugging
 - `moai-platform-deploy` - Deployment and infrastructure
 
 ---

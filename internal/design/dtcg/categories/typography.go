@@ -2,21 +2,21 @@ package categories
 
 import "fmt"
 
-// ValidateTypography: DTCG 2025.10 typography 복합 카테고리 검증.
-// font 카테고리의 상위 집합: 추가로 letterSpacing, textDecoration, textTransform 지원.
-// 필수: family, size, weight / 선택: style, lineHeight, letterSpacing, textDecoration, textTransform.
+// ValidateTypography: DTCG 2025.10 typography composite category validation.
+// Superset of font category: additionally supports letterSpacing, textDecoration, textTransform.
+// Required: family, size, weight / Optional: style, lineHeight, letterSpacing, textDecoration, textTransform.
 func ValidateTypography(tokenPath string, value any) error {
-	// 에일리어스 참조 통과
+	// Alias reference passes
 	if s, ok := value.(string); ok && IsAlias(s) {
 		return nil
 	}
 
 	m, ok := value.(map[string]any)
 	if !ok {
-		return fmt.Errorf("토큰 '%s': typography 값은 map이어야 함 (got %T)", tokenPath, value)
+		return fmt.Errorf("token '%s': typography value must be map (got %T)", tokenPath, value)
 	}
 
-	// font 카테고리와 동일한 필수 필드 검증 (family, size, weight)
+	// Required field validation same as font category (family, size, weight)
 	if err := validateFontField(tokenPath, m, "family", func(v any) error {
 		return ValidateFontFamily(tokenPath+".family", v)
 	}); err != nil {
@@ -35,12 +35,12 @@ func ValidateTypography(tokenPath string, value any) error {
 		return err
 	}
 
-	// typography 확장 선택 필드 - 존재하면 string이어야 함
+	// Typography extension optional fields - if present, must be string
 	optionalStringFields := []string{"style", "lineHeight", "letterSpacing", "textDecoration", "textTransform"}
 	for _, field := range optionalStringFields {
 		if v, exists := m[field]; exists {
 			if _, ok := v.(string); !ok {
-				return fmt.Errorf("토큰 '%s': typography '%s' 필드는 string이어야 함 (got %T)", tokenPath, field, v)
+				return fmt.Errorf("token '%s': typography '%s' field must be string (got %T)", tokenPath, field, v)
 			}
 		}
 	}

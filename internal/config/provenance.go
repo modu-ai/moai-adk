@@ -2,6 +2,8 @@ package config
 
 import "time"
 
+// @MX:NOTE: [AUTO] Provenance tracks configuration value origin across 8-tier priority system
+//
 // Provenance tracks where a configuration value came from.
 // Every config value carries provenance to answer "which file set this?"
 // without needing to grep through files.

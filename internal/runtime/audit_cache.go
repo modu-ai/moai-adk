@@ -39,7 +39,7 @@ type CachedEntry struct {
 // - entry age < 24h
 //
 // @MX:ANCHOR: [AUTO] AuditCache is the primary caching interface for the audit gate
-// @MX:REASON: fan_in >= 3 (GateConfig.Invoke, test mocks, audit_cache_test)
+// @MX:REASON: [AUTO] fan_in >= 3 (GateConfig.Invoke, test mocks, audit_cache_test)
 type AuditCache interface {
 	// ComputeHash computes a combined SHA-256 hash of all plan artifacts in specDir.
 	//

@@ -34,7 +34,7 @@ func HashFile(path string) (hashResult string, hashErr error) {
 }
 
 // @MX:ANCHOR: [AUTO] SHA-256 hash computation utility - used by 6 or more callers throughout the manifest
-// @MX:REASON: fan_in=6, the return format ("sha256:<hex>") is directly coupled with FileEntry.TemplateHash/DeployedHash/CurrentHash; do not change the format
+// @MX:REASON: [AUTO] fan_in=6, the return format ("sha256:<hex>") is directly coupled with FileEntry.TemplateHash/DeployedHash/CurrentHash; do not change the format
 // HashBytes computes the SHA-256 hash of a byte slice.
 // Returns the hash as "sha256:<hex>" format.
 func HashBytes(data []byte) string {

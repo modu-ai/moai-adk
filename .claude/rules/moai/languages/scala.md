@@ -128,7 +128,7 @@ Effect System Issues:
 ---
 
 
-- moai-lang-java - JVM interoperability, Spring Boot integration
+- `.claude/rules/moai/languages/java.md` - JVM interoperability, Spring Boot integration
 - moai-domain-backend - REST API, GraphQL, microservices patterns
 - moai-domain-database - Doobie, Slick, database patterns
 - moai-workflow-testing - ScalaTest, MUnit, property-based testing

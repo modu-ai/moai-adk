@@ -1,5 +1,9 @@
 package cli
 
+// @MX:NOTE: [AUTO] cc command switches LLM backend to Claude-only mode
+// @MX:NOTE: [AUTO] Removes GLM env vars and resets team mode before launching Claude Code
+// @MX:NOTE: [AUTO] Supports profile switching via CLAUDE_CONFIG_DIR
+
 import (
 	"github.com/spf13/cobra"
 )

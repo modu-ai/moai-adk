@@ -17,7 +17,7 @@ type TemplateContext struct {
 
 	// Language settings
 	ConversationLanguage     string // e.g., "ko", "en"
-	ConversationLanguageName string // e.g., "Korean (한국어)"
+	ConversationLanguageName string // e.g., "Korean", "English"
 	AgentPromptLanguage      string // e.g., "en"
 	GitCommitMessages        string // e.g., "en"
 	CodeComments             string // e.g., "en"
