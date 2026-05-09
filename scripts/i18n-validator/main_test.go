@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -380,10 +381,13 @@ func TestBudget_FullRepoScanWithin30Sec(t *testing.T) {
 func TestBudget_TimeoutExitOnExcess(t *testing.T) {
 	t.Parallel()
 
-	// Create a synthetic corpus with many files to trigger timeout
+	// Create a synthetic corpus with many files to trigger timeout.
+	// Use unique filenames so all 100 files are written (previous "i%10"
+	// pattern caused name collisions and only 10 unique files were emitted,
+	// which left the 1ns budget able to finish in time on fast runners).
 	dir := t.TempDir()
 	for i := range 100 {
-		name := filepath.Join(dir, strings.Repeat("a", 5)+strings.Repeat("b", i%10)+".go")
+		name := filepath.Join(dir, fmt.Sprintf("file_%03d_test.go", i))
 		_ = os.WriteFile(name, []byte(`package foobar_test
 
 import (
