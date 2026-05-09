@@ -240,7 +240,9 @@ func checkGoRuntime(verbose bool) DiagnosticCheck {
 	// MOAI_GO_VERSION_OVERRIDE env first for deterministic test output.
 	goVer := goVersion()
 	check.Status = CheckOK
-	check.Message = fmt.Sprintf("go %s (%s/%s)", goVer, runtime.GOOS, runtime.GOARCH)
+	// goosArch() reads MOAI_GOOS_OVERRIDE/MOAI_GOARCH_OVERRIDE for golden-test
+	// determinism across CI runners (linux/amd64, darwin/arm64, windows/amd64).
+	check.Message = fmt.Sprintf("go %s (%s)", goVer, goosArch())
 	if verbose {
 		check.Detail = fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH"))
 	}
@@ -260,8 +262,15 @@ func GitInstallHint() string {
 }
 
 // checkGit verifies Git is installed and accessible.
+// MOAI_GIT_VERSION_OVERRIDE env short-circuits exec for golden-test determinism
+// across CI runners (Apple Git 2.50.x on macOS-latest vs git 2.53.x on ubuntu-latest).
 func checkGit(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Git"}
+	if v := gitVersionOverride(); v != "" {
+		check.Status = CheckOK
+		check.Message = v
+		return check
+	}
 	gitPath, err := exec.LookPath("git")
 	if err != nil {
 		check.Status = CheckFail
@@ -306,8 +315,15 @@ func checkClaudeCode(_ bool) DiagnosticCheck {
 }
 
 // checkGitHubCLI verifies the GitHub CLI (gh) is installed.
+// MOAI_GH_VERSION_OVERRIDE env short-circuits exec for golden-test determinism
+// across CI runners (gh release lag differs between ubuntu-latest and macOS).
 func checkGitHubCLI(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "GitHub CLI"}
+	if v := ghVersionOverride(); v != "" {
+		check.Status = CheckOK
+		check.Message = v
+		return check
+	}
 	ghPath, err := exec.LookPath("gh")
 	if err != nil {
 		check.Status = CheckWarn
@@ -570,10 +586,17 @@ const constitutionStrictEnvKey = "MOAI_CONSTITUTION_STRICT"
 func checkConstitution(projectDir, registryPath string, verbose, strictMode bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Constitution Registry"}
 
-	// Check if registry file exists
+	// Check if registry file exists.
+	// Use a project-relative path in the message so doctor output is stable
+	// across CI runners (otherwise /home/runner/work/... vs /Users/goos/...
+	// drift breaks golden tests).
 	if _, err := os.Stat(registryPath); err != nil {
+		displayPath := registryPath
+		if rel, relErr := filepath.Rel(projectDir, registryPath); relErr == nil {
+			displayPath = rel
+		}
 		check.Status = CheckWarn
-		check.Message = fmt.Sprintf("zone-registry.md not found at %q — run `moai constitution list` to verify", registryPath)
+		check.Message = fmt.Sprintf("zone-registry.md not found at %q — run `moai constitution list` to verify", displayPath)
 		return check
 	}
 

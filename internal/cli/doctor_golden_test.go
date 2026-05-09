@@ -77,6 +77,10 @@ func TestDoctor_Current_Light(t *testing.T) {
 	t.Setenv("MOAI_THEME", "light")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
 	if len(got) == 0 {
@@ -92,6 +96,10 @@ func TestDoctor_Current_Dark(t *testing.T) {
 	t.Setenv("MOAI_THEME", "dark")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
 	if len(got) == 0 {
@@ -106,6 +114,10 @@ func TestDoctor_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
 	if len(got) == 0 {
@@ -129,6 +141,10 @@ func TestDoctor_GroupsPresent(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
 	for _, group := range []string{"System", "MoAI-ADK", "Workspace"} {
@@ -143,6 +159,10 @@ func TestDoctor_GlamourCachePlaceholder(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
 	if !strings.Contains(got, "Glamour Cache") {
@@ -158,6 +178,10 @@ func TestDoctor_SummaryPillsPresent(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
 	// 통과/주의/실패 Pill 중 최소 하나는 출력에 있어야 함.
@@ -170,6 +194,10 @@ func TestDoctor_SummaryPillsPresent(t *testing.T) {
 func TestDoctor_GoVersionDeterministic(t *testing.T) {
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 	t.Setenv("NO_COLOR", "1")
 
 	got := captureDoctorCmd(t)
@@ -182,6 +210,10 @@ func TestDoctor_GoVersionDeterministic(t *testing.T) {
 func TestDoctor_ClaudeVersionDeterministic(t *testing.T) {
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
+	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
+	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 	t.Setenv("NO_COLOR", "1")
 
 	got := captureDoctorCmd(t)

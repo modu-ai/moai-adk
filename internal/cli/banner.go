@@ -51,6 +51,39 @@ func claudeVersion() string {
 	return "claude"
 }
 
+// gitVersionOverride returns the MOAI_GIT_VERSION_OVERRIDE env var (empty if unset).
+// When set, doctor.go's checkGit uses this string as the message instead of
+// executing `git --version`. Lesson NEW (M4-S4a) extension for CI portability:
+// ubuntu-latest runner ships git 2.53.x while macOS runners ship Apple Git 2.50.x,
+// causing golden test drift on otherwise-identical doctor output.
+func gitVersionOverride() string {
+	return os.Getenv("MOAI_GIT_VERSION_OVERRIDE")
+}
+
+// ghVersionOverride returns the MOAI_GH_VERSION_OVERRIDE env var (empty if unset).
+// When set, doctor.go's checkGitHubCLI uses this string as the message instead
+// of executing `gh --version`. Lesson NEW (M4-S4a) extension for CI portability:
+// ubuntu-latest ships newer gh releases than macOS-latest, causing drift.
+func ghVersionOverride() string {
+	return os.Getenv("MOAI_GH_VERSION_OVERRIDE")
+}
+
+// goosArch returns the platform string used in doctor output ("goos/goarch").
+// MOAI_GOOS_OVERRIDE / MOAI_GOARCH_OVERRIDE env vars allow pinning the values
+// for deterministic test output across CI runners (linux/amd64 vs darwin/arm64
+// vs windows/amd64). Lesson NEW (M4-S4a) extension for CI portability.
+func goosArch() string {
+	goos := runtime.GOOS
+	if v := os.Getenv("MOAI_GOOS_OVERRIDE"); v != "" {
+		goos = v
+	}
+	goarch := runtime.GOARCH
+	if v := os.Getenv("MOAI_GOARCH_OVERRIDE"); v != "" {
+		goarch = v
+	}
+	return goos + "/" + goarch
+}
+
 // @MX:NOTE: [AUTO] CLI 배너 출력 — root/init/update/version 4+ entry point에서 호출됨
 // PrintBanner displays the MoAI ASCII art banner with version information.
 // The banner uses MoAI's deep teal accent colour from internal/tui Theme.Accent

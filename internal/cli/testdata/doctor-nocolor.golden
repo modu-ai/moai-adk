@@ -1,31 +1,31 @@
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                                                                                                                            │
-│  System Diagnostics                                                                                                                                                                                        │
-│  System ---                                                                                                                                                                                                │
-│  ✓  Go Runtime  go 1.99.99 (darwin/arm64)                                                                                                                                                                  │
-│  ✓  Git  git version 2.50.1 (Apple Git-155)                                                                                                                                                                │
-│  ✓  Claude Code  test-claude-99                                                                                                                                                                            │
-│  ✓  GitHub CLI  gh version 2.86.0 (2026-01-21)                                                                                                                                                             │
-│                                                                                                                                                                                                            │
-│  MoAI-ADK ---                                                                                                                                                                                              │
-│  !  MoAI Config  .moai/ directory not found (run 'moai init')                                                                                                                                              │
-│  !  Claude Config  .claude/ directory not found                                                                                                                                                            │
-│  ✓  MoAI Version  moai-adk v2.17.0                                                                                                                                                                         │
-│  ✓  Binary Freshness  development build (no commit metadata)                                                                                                                                               │
-│  ✓  MCP Scope Duplicates  no MCP configuration found (project or global)                                                                                                                                   │
-│  !  Constitution Registry  zone-registry.md not found at "/Users/goos/.moai/worktrees/MoAI-ADK/cli-tui-v2/internal/cli/.claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
-│  ✓  Harness 5-Layer  .moai/harness/ not present (no harness configured)                                                                                                                                    │
-│                                                                                                                                                                                                            │
-│  Workspace ---                                                                                                                                                                                             │
-│  !  Hooks Config  .claude/hooks/ not found — hook handlers unavailable                                                                                                                                     │
-│  !  Slash Commands  .claude/commands/ not found — slash commands unavailable                                                                                                                               │
-│  !  Skills Allowlist  .claude/skills/ not found                                                                                                                                                            │
-│  !  MX Tag Config  .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                                                                                         │
-│  !  Worktree State  .moai/state/ not found — worktree checkpoint storage unavailable                                                                                                                       │
-│  !  BODP Config  .moai/branches/ not found — BODP audit trail disabled                                                                                                                                     │
-│  !  Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                                                                             │
-│  !  Glamour Cache  glamour 미도입                                                                                                                                                                          │
-│                                                                                                                                                                                                            │
-│  [통과 8]  [주의 11]  [실패 0]                                                                                                                                                                             │
-│                                                                                                                                                                                                            │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                               │
+│  System Diagnostics                                                                                                                           │
+│  System ---                                                                                                                                   │
+│  ✓  Go Runtime  go 1.99.99 (testos/testarch)                                                                                                  │
+│  ✓  Git  git version 9.99.99                                                                                                                  │
+│  ✓  Claude Code  test-claude-99                                                                                                               │
+│  ✓  GitHub CLI  gh version 9.99.99 (2099-12-31)                                                                                               │
+│                                                                                                                                               │
+│  MoAI-ADK ---                                                                                                                                 │
+│  !  MoAI Config  .moai/ directory not found (run 'moai init')                                                                                 │
+│  !  Claude Config  .claude/ directory not found                                                                                               │
+│  ✓  MoAI Version  moai-adk v2.17.0                                                                                                            │
+│  ✓  Binary Freshness  development build (no commit metadata)                                                                                  │
+│  ✓  MCP Scope Duplicates  no MCP configuration found (project or global)                                                                      │
+│  !  Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
+│  ✓  Harness 5-Layer  .moai/harness/ not present (no harness configured)                                                                       │
+│                                                                                                                                               │
+│  Workspace ---                                                                                                                                │
+│  !  Hooks Config  .claude/hooks/ not found — hook handlers unavailable                                                                        │
+│  !  Slash Commands  .claude/commands/ not found — slash commands unavailable                                                                  │
+│  !  Skills Allowlist  .claude/skills/ not found                                                                                               │
+│  !  MX Tag Config  .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                            │
+│  !  Worktree State  .moai/state/ not found — worktree checkpoint storage unavailable                                                          │
+│  !  BODP Config  .moai/branches/ not found — BODP audit trail disabled                                                                        │
+│  !  Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
+│  !  Glamour Cache  glamour 미도입                                                                                                             │
+│                                                                                                                                               │
+│  [통과 8]  [주의 11]  [실패 0]                                                                                                                │
+│                                                                                                                                               │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
