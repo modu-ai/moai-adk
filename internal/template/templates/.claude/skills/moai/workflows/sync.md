@@ -48,12 +48,17 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 
 ## Mode Flag Compatibility
 
-Per SPEC-V3R2-WF-004, this subcommand is multi-agent (open-ended) and supports the
-`--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003. The `pipeline` mode
-is **not valid** for this subcommand; passing `--mode pipeline` here triggers
-`MODE_PIPELINE_ONLY_UTILITY` (the same error key used by WF-003 REQ-WF003-016).
+Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
 
-See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+- This subcommand is multi-agent (open-ended) but does NOT participate in the
+  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+- Any `--mode` value supplied to `/moai sync` is silently ignored. The sync workflow
+  proceeds with its default behavior.
+- The `pipeline` value is the only special case: passing `--mode pipeline` triggers
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
+full subcommand × mode matrix.
 
 ## Supported Modes
 

@@ -1,9 +1,20 @@
-// agentless_audit_test.go: Audit suite for SPEC-V3R2-WF-004 Agentless contract.
+// agentless_audit_test.go: Audit suite for SPEC-V3R2-WF-004 Agentless contract
+// and SPEC-V3R2-WF-003 execution-mode routing sentinels.
 //
+// SPEC-V3R2-WF-004 tests (three):
 // @MX:NOTE - Audit suite for SPEC-V3R2-WF-004 Agentless contract. Three tests:
 // TestAgentlessUtilityNoLLMControlFlow (REQ-WF004-013),
 // TestUtilitySkillsContainModeFlagIgnoredSentinel (REQ-WF004-011),
 // TestImplementationSkillsContainPipelineRejectionSentinel (REQ-WF004-014).
+//
+// SPEC-V3R2-WF-003 tests (three — RED phase, M1):
+// TestRunDesignSkillsContainModeUnknownSentinel (REQ-WF003-010),
+// TestRunSkillContainsModeTeamUnavailableSentinel (REQ-WF003-011),
+// TestLoopAliasCrossReference (REQ-WF003-004).
+// @MX:ANCHOR fan_in=2 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
+// run.md and design.md against sentinel drift. Touching this test signature
+// affects mode dispatch contract for both implementation skills.
+// @MX:REASON - Two implementation skills depend on this audit; dropping it permits silent contract regression.
 package template
 
 import (
@@ -64,7 +75,6 @@ func TestAgentlessUtilityNoLLMControlFlow(t *testing.T) {
 	}
 
 	for _, skillPath := range utilitySkillPaths {
-		skillPath := skillPath // capture for subtest
 		t.Run(path.Base(skillPath), func(t *testing.T) {
 			t.Parallel()
 
@@ -117,7 +127,6 @@ func TestUtilitySkillsContainModeFlagIgnoredSentinel(t *testing.T) {
 	const sentinel = "MODE_FLAG_IGNORED_FOR_UTILITY"
 
 	for _, skillPath := range utilitySkillPaths {
-		skillPath := skillPath // capture for subtest
 		t.Run(path.Base(skillPath), func(t *testing.T) {
 			t.Parallel()
 
@@ -148,7 +157,6 @@ func TestImplementationSkillsContainPipelineRejectionSentinel(t *testing.T) {
 	const sentinel = "MODE_PIPELINE_ONLY_UTILITY"
 
 	for _, skillPath := range implementationSkillPaths {
-		skillPath := skillPath // capture for subtest
 		t.Run(path.Base(skillPath), func(t *testing.T) {
 			t.Parallel()
 
@@ -162,4 +170,108 @@ func TestImplementationSkillsContainPipelineRejectionSentinel(t *testing.T) {
 			}
 		})
 	}
+}
+
+// @MX:ANCHOR fan_in=2 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
+// run.md and design.md against sentinel drift. Touching this test signature
+// affects mode dispatch contract for both implementation skills.
+// @MX:REASON - Two implementation skills depend on this audit; dropping it permits silent contract regression.
+//
+// TestRunDesignSkillsContainModeUnknownSentinel verifies that run.md and design.md
+// each contain the literal sentinel string MODE_UNKNOWN (REQ-WF003-010).
+// At M1 (RED), both subtests fail because the sentinel has not yet been added.
+//
+// @MX:NOTE: [AUTO] REQ-WF003-010 enforcer — run.md and design.md must document
+// MODE_UNKNOWN handling for unrecognized --mode values passed to implementation skills.
+func TestRunDesignSkillsContainModeUnknownSentinel(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+
+	const sentinel = "MODE_UNKNOWN"
+
+	runDesignSkillPaths := []string{
+		".claude/skills/moai/workflows/run.md",
+		".claude/skills/moai/workflows/design.md",
+	}
+
+	for _, skillPath := range runDesignSkillPaths {
+		t.Run(path.Base(skillPath), func(t *testing.T) {
+			t.Parallel()
+
+			data, readErr := fs.ReadFile(fsys, skillPath)
+			if readErr != nil {
+				t.Fatalf("ReadFile(%q) error: %v", skillPath, readErr)
+			}
+
+			if !strings.Contains(string(data), sentinel) {
+				t.Errorf("file %s missing sentinel %s", skillPath, sentinel)
+			}
+		})
+	}
+}
+
+// TestRunSkillContainsModeTeamUnavailableSentinel verifies that run.md contains the
+// literal sentinel string MODE_TEAM_UNAVAILABLE (REQ-WF003-011).
+// At M1 (RED), the single subtest fails because the sentinel has not yet been added.
+//
+// @MX:NOTE: [AUTO] REQ-WF003-011 enforcer — run.md must document MODE_TEAM_UNAVAILABLE
+// fallback behavior when --mode team is requested but Agent Teams are unavailable.
+func TestRunSkillContainsModeTeamUnavailableSentinel(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+
+	const sentinel = "MODE_TEAM_UNAVAILABLE"
+
+	const skillPath = ".claude/skills/moai/workflows/run.md"
+	t.Run(path.Base(skillPath), func(t *testing.T) {
+		t.Parallel()
+
+		data, readErr := fs.ReadFile(fsys, skillPath)
+		if readErr != nil {
+			t.Fatalf("ReadFile(%q) error: %v", skillPath, readErr)
+		}
+
+		if !strings.Contains(string(data), sentinel) {
+			t.Errorf("file %s missing sentinel %s", skillPath, sentinel)
+		}
+	})
+}
+
+// TestLoopAliasCrossReference verifies that loop.md contains the literal string
+// "/moai run --mode loop" documenting the alias relationship (REQ-WF003-004).
+// At M1 (RED), the single subtest fails because the cross-reference has not yet been added.
+//
+// @MX:NOTE: [AUTO] REQ-WF003-004 enforcer — loop.md must cross-reference
+// "/moai run --mode loop" to document the alias so users understand the equivalence.
+func TestLoopAliasCrossReference(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+
+	const crossRef = "/moai run --mode loop"
+
+	const skillPath = ".claude/skills/moai/workflows/loop.md"
+	t.Run(path.Base(skillPath), func(t *testing.T) {
+		t.Parallel()
+
+		data, readErr := fs.ReadFile(fsys, skillPath)
+		if readErr != nil {
+			t.Fatalf("ReadFile(%q) error: %v", skillPath, readErr)
+		}
+
+		if !strings.Contains(string(data), crossRef) {
+			t.Errorf("file %s missing cross-reference %q", skillPath, crossRef)
+		}
+	})
 }

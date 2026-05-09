@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - SPEC-V3R2-WF-004: Agentless fixed-pipeline classification for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Multi-agent classification preserved for `plan`, `run`, `sync`, `design`. Subcommand × class matrix published in `.claude/rules/moai/workflow/spec-workflow.md#subcommand-classification`. CI guard `TestAgentlessUtilityNoLLMControlFlow` enforces no-LLM-dispatch in utility skills. Sentinels `MODE_FLAG_IGNORED_FOR_UTILITY` and `MODE_PIPELINE_ONLY_UTILITY` added.
+- SPEC-V3R2-WF-003: Multi-Mode Router (`--mode {autopilot|loop|team|pipeline}` flag) for `/moai run` and `/moai design`. `/moai loop` becomes an alias for `/moai run --mode loop` (REQ-WF003-004). Mode auto-selection by harness level (REQ-WF003-002, 003) with silent downgrade fallback (REQ-WF003-012). New optional `workflow.default_mode` config field (REQ-WF003-014). Sentinels: `MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`. Subcommand × mode matrix extended in `.claude/rules/moai/workflow/spec-workflow.md#subcommand-classification` (5→8 columns, 9→10 rows incl. `/moai loop`). CI guards: `TestRunDesignSkillsContainModeUnknownSentinel`, `TestRunSkillContainsModeTeamUnavailableSentinel`, `TestLoopAliasCrossReference`.
 
 ### English
 
