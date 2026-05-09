@@ -269,3 +269,38 @@
 4. Golden snapshot 명명 규칙: `internal/cli/testdata/{cmd}-{theme}-{nocolor?}.golden` (M3 banner-* 동일 컨벤션).
 5. M4 전체 PR 1건 (4-step git commit 4개 + final golden snapshot commit) — Wave-split per lessons #9.
 
+### Phase 2A: DDD Implementation (M4) — PARTIAL (3 of 4 steps complete)
+
+| Step | Commit | Status | Notes |
+|------|--------|--------|-------|
+| M4-S4a version | `04bd7a6ab` | ✅ COMPLETE | 3 golden + tui.Box + 3 Pill, hex 0건 |
+| M4-S4b doctor | `f01c1dc9e` | ✅ COMPLETE | 19항목 CheckLine + D8 Placeholder + lesson NEW (goVersion 헬퍼) |
+| M4-S4c status | `395920756` | ✅ COMPLETE | Box + Section + KV + Pill, M6 영역 0 변경 |
+| M4-S4d update | (deferred) | 🛑 SUB-SPLIT REQUIRED | 1M context 환경 차단 — 다음 세션에서 d-1/d-2/d-3 sub-split 진행 |
+
+### M4-S4d Environment Block (다음 세션 진입 컨텍스트)
+
+**원인**: manager-ddd subagent spawn 시 `API Error: Extra usage is required for 1M context` 3회 연속 발생. parent session(claude-opus-4-7[1m])이 spawned subagent에 1M context를 자동 inherit 시도하나 환경 활성화 안 됨. sonnet override + sub-split 모두 동일 에러.
+
+**복구 결정**: User chose Paste-ready resume + 다음 세션 (session-handoff.md Trigger #4 공식 패턴).
+
+**Sub-split 분할** (다음 세션에서 manager-ddd 표준 context로 처리):
+- **M4-S4d-1**: update.go L102-373 (runUpdate + shouldSkipBinaryUpdate + runBinaryUpdateStep + reexecNewBinary). ~18 print sites, ~80 LOC change estimated. tui.Box header + tui.KV pre-flight + tui.CheckLine binary progress + tui.Pill result.
+- **M4-S4d-2**: update.go L375-1175 (runTemplateSync* + mergeGitignoreFile + mergeUserFiles + analyzeMergeChanges + runShellEnvConfig). ~50 print sites, ~150 LOC change estimated. tui.Section + tui.CheckLine for steps + tui.Pill summary.
+- **M4-S4d-3**: update.go L1176-end (cleanMoaiManagedPaths + migrateLegacyMemoryDir + cleanup_old_backups + restoreMoaiConfig + runReconfigure) + update_archive.go 전체. ~30 print sites + 4 archive sites, ~70 LOC change estimated.
+
+**ANALYZE 결과 (M4-S4d 다음 세션 reference)**:
+- update.go: 110 print sites total (cmd.OutOrStdout / fmt.Print* / style.Render / Render*)
+- update_archive.go: 4 print sites at L254, L258, L272, L275
+- 함수 boundaries: runUpdate(L102) · shouldSkipBinaryUpdate(L264) · runBinaryUpdateStep(L290) · reexecNewBinary(L342) · runTemplateSync(L375) · runTemplateSyncWithReporter(L380) · runTemplateSyncWithProgress(L723) · mergeGitignoreFile(L811) · mergeUserFiles(L861) · analyzeMergeChanges(L1126) · runShellEnvConfig(L1133) · backupMoaiConfig(L1222) · saveTemplateDefaults(L1344) · cleanMoaiManagedPaths(L1405) · migrateLegacyMemoryDir(L1512) · cleanup_old_backups(L1555) · restoreMoaiConfig(L1619) · runReconfigure(L1922)
+
+**M4-S4d acceptance (3 sub-step 누적 후)**:
+- AC-CLI-TUI-013: hex 0건 in update.go + update_archive.go
+- AC-CLI-TUI-001: 9 tui components + update integration
+- 11 update_*_test.go 모두 PASS (cascade fix 5개 이하 권장)
+- 외부 caller 변경 0건
+- 변경 LOC < 600 (drift guard)
+- testdata/update-{light,dark,nocolor}.golden 3 files (cumulative through 4d-3)
+
+**M5 진입 전 결정 (deferred)**: D6 OQ — huh v0.8.0 라디오 prefix `◆/◇` 커스터마이징 가능 여부 (custom Theme 작성 vs wrapper 직접 그리기).
+
