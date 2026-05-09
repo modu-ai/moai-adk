@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/bodp"
+	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -70,9 +71,12 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-// runStatus displays the current project status.
+// @MX:NOTE: [AUTO] status 명령어 출력 — tui.Box + tui.Section + tui.KV + tui.Pill로 구성.
+// runStatus displays the current project status using the internal/tui design system.
+// All colours are sourced from resolveTheme(); no hex literals appear in this function.
 func runStatus(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -81,36 +85,58 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	projectName := filepath.Base(cwd)
 
-	pairs := []kvPair{
-		{"Project", projectName},
-		{"Path", cwd},
-		{"ADK", "moai-adk " + version.GetVersion()},
-	}
+	// Build body lines using tui primitives.
+	var bodyLines []string
+
+	// Section: 프로젝트 (Project information)
+	bodyLines = append(bodyLines, tui.Section("Project", tui.SectionOpts{Theme: &th}))
+	bodyLines = append(bodyLines, tui.KV("Project", projectName, tui.KVOpts{Theme: &th, KeyWidth: 8}))
+	bodyLines = append(bodyLines, tui.KV("ADK", "moai-adk "+version.GetVersion(), tui.KVOpts{Theme: &th, KeyWidth: 8}))
+	bodyLines = append(bodyLines, "")
 
 	// Check .moai/ directory
 	moaiDir := filepath.Join(cwd, ".moai")
 	if _, statErr := os.Stat(moaiDir); statErr != nil {
-		pairs = append(pairs,
-			kvPair{"Status", "Not initialized (run 'moai init')"},
-		)
-		_, _ = fmt.Fprintln(out, renderCard("Project Status", renderKeyValueLines(pairs)))
+		// Not initialized path: show single status pill.
+		bodyLines = append(bodyLines, tui.Section("Status", tui.SectionOpts{Theme: &th}))
+		pill := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: "Not initialized", Theme: &th})
+		bodyLines = append(bodyLines, pill+" run 'moai init'")
+
+		box := tui.Box(tui.BoxOpts{
+			Title: "Project Status",
+			Body:  strings.Join(bodyLines, "\n"),
+			Theme: &th,
+		})
+		_, _ = fmt.Fprintln(out, box)
 		return nil
 	}
-	pairs = append(pairs, kvPair{"Config", filepath.Join(".moai", "config", "sections")})
+
+	// Section: Configuration
+	bodyLines = append(bodyLines, tui.Section("Configuration", tui.SectionOpts{Theme: &th}))
+	bodyLines = append(bodyLines, tui.KV("Config", filepath.Join(".moai", "config", "sections"), tui.KVOpts{Theme: &th, KeyWidth: 8}))
 
 	// Count SPECs
 	specsDir := filepath.Join(moaiDir, "specs")
 	specCount := countDirs(specsDir)
-	pairs = append(pairs, kvPair{"SPECs", fmt.Sprintf("%d found", specCount)})
+	bodyLines = append(bodyLines, tui.KV("SPECs", fmt.Sprintf("%d found", specCount), tui.KVOpts{Theme: &th, KeyWidth: 8}))
 
-	// Check config sections
+	// Count config section files
 	sectionsDir := filepath.Join(moaiDir, "config", "sections")
 	sectionFiles := countFiles(sectionsDir, ".yaml")
-	pairs = append(pairs, kvPair{"Configs", fmt.Sprintf("%d section files", sectionFiles)})
+	bodyLines = append(bodyLines, tui.KV("Configs", fmt.Sprintf("%d section files", sectionFiles), tui.KVOpts{Theme: &th, KeyWidth: 8}))
+	bodyLines = append(bodyLines, "")
 
-	pairs = append(pairs, kvPair{"Status", "Initialized"})
+	// Summary pill row: status indicator
+	pillStatus := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Initialized", Theme: &th})
+	pillSpecs := tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: fmt.Sprintf("SPECs %d", specCount), Theme: &th})
+	bodyLines = append(bodyLines, pillStatus+"  "+pillSpecs)
 
-	_, _ = fmt.Fprintln(out, renderCard("Project Status", renderKeyValueLines(pairs)))
+	box := tui.Box(tui.BoxOpts{
+		Title: "Project Status",
+		Body:  strings.Join(bodyLines, "\n"),
+		Theme: &th,
+	})
+	_, _ = fmt.Fprintln(out, box)
 
 	// W7-T05: BODP off-protocol branch reminder. Failures are silent — git
 	// missing or non-repo cwd simply suppresses the reminder.
