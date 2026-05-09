@@ -750,3 +750,209 @@ func TestInjectGLMEnvForTeam_NeverModifiesSettingsJson(t *testing.T) {
 		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
 	}
 }
+
+// ── Characterization tests: capture existing behavior of glm.go (M6-S2 DDD) ──
+
+// TestCharacterize_GLM_ModeIsAlwaysGLM verifies runGLM always passes
+// modeOverride="glm" to unifiedLaunch regardless of extra flags.
+func TestCharacterize_GLM_ModeIsAlwaysGLM(t *testing.T) {
+	t.Setenv(config.EnvTestGLMKey, "test-key-12345")
+
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+
+	var capturedMode string
+	unifiedLaunchFunc = func(_ string, mode string, _ []string) error {
+		capturedMode = mode
+		return nil
+	}
+
+	var buf strings.Builder
+	glmCmd.SetOut(&buf)
+	glmCmd.SetErr(&buf)
+
+	err := runGLM(glmCmd, []string{})
+	if err != nil {
+		t.Fatalf("runGLM should not error with valid key, got: %v", err)
+	}
+	const wantMode = "glm"
+	if capturedMode != wantMode {
+		t.Errorf("modeOverride must always be %q, got %q", wantMode, capturedMode)
+	}
+}
+
+// TestCharacterize_GLM_AutoModeRejected verifies that --permission-mode auto
+// returns an error before calling unifiedLaunch (GLM does not support auto mode).
+func TestCharacterize_GLM_AutoModeRejected(t *testing.T) {
+	t.Setenv(config.EnvTestGLMKey, "test-key-12345")
+
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+
+	called := false
+	unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+		called = true
+		return nil
+	}
+
+	var buf strings.Builder
+	glmCmd.SetOut(&buf)
+	glmCmd.SetErr(&buf)
+
+	err := runGLM(glmCmd, []string{"--permission-mode", "auto"})
+	if err == nil {
+		t.Fatal("runGLM with --permission-mode auto should return an error")
+	}
+	if called {
+		t.Error("unifiedLaunchFunc must NOT be called when auto mode is requested")
+	}
+	if !strings.Contains(err.Error(), "auto mode is not available with GLM") {
+		t.Errorf("error message should mention auto mode limitation, got: %v", err)
+	}
+}
+
+// TestCharacterize_GLM_AutoModeEqualsSyntaxRejected verifies the --permission-mode=auto
+// equals-syntax is also blocked.
+func TestCharacterize_GLM_AutoModeEqualsSyntaxRejected(t *testing.T) {
+	t.Setenv(config.EnvTestGLMKey, "test-key-12345")
+
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+
+	called := false
+	unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+		called = true
+		return nil
+	}
+
+	var buf strings.Builder
+	glmCmd.SetOut(&buf)
+	glmCmd.SetErr(&buf)
+
+	err := runGLM(glmCmd, []string{"--permission-mode=auto"})
+	if err == nil {
+		t.Fatal("runGLM with --permission-mode=auto should return an error")
+	}
+	if called {
+		t.Error("unifiedLaunchFunc must NOT be called when --permission-mode=auto is requested")
+	}
+}
+
+// TestCharacterize_GLM_HelpFlagShortCircuits verifies that -h / --help flags
+// skip profile parsing and launch entirely.
+func TestCharacterize_GLM_HelpFlagShortCircuits(t *testing.T) {
+	for _, flag := range []string{"--help", "-h"} {
+		t.Run(flag, func(t *testing.T) {
+			origLaunch := unifiedLaunchFunc
+			defer func() { unifiedLaunchFunc = origLaunch }()
+
+			called := false
+			unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+				called = true
+				return nil
+			}
+
+			var buf strings.Builder
+			glmCmd.SetOut(&buf)
+			glmCmd.SetErr(&buf)
+
+			err := runGLM(glmCmd, []string{flag})
+			if err != nil {
+				t.Errorf("runGLM(%s) should not error, got: %v", flag, err)
+			}
+			if called {
+				t.Errorf("unifiedLaunchFunc must not be called when %s is present", flag)
+			}
+		})
+	}
+}
+
+// TestCharacterize_GLM_SetupSubcommandRouted verifies that "setup" as first arg
+// is routed to runGLMSetup (not to profile parsing / unifiedLaunch).
+func TestCharacterize_GLM_SetupSubcommandRouted(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
+
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+
+	called := false
+	unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+		called = true
+		return nil
+	}
+
+	var buf strings.Builder
+	glmCmd.SetOut(&buf)
+	glmCmd.SetErr(&buf)
+
+	err := runGLM(glmCmd, []string{"setup", "sk-testkey-0001"})
+	if err != nil {
+		t.Fatalf("runGLM setup should not error, got: %v", err)
+	}
+	if called {
+		t.Error("unifiedLaunchFunc must NOT be called when routing to setup subcommand")
+	}
+}
+
+// TestCharacterize_GLM_WarningPrintedToStderr verifies that the WARNING about
+// GLM main-session limitations is always printed to stderr before launch.
+func TestCharacterize_GLM_WarningPrintedToStderr(t *testing.T) {
+	t.Setenv(config.EnvTestGLMKey, "test-key-12345")
+
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+	unifiedLaunchFunc = func(_ string, _ string, _ []string) error { return nil }
+
+	var errBuf strings.Builder
+	glmCmd.SetOut(&errBuf)
+	glmCmd.SetErr(&errBuf)
+
+	err := runGLM(glmCmd, []string{})
+	if err != nil {
+		t.Fatalf("runGLM should not error, got: %v", err)
+	}
+	got := errBuf.String()
+	if !strings.Contains(got, "WARNING") {
+		t.Errorf("stderr should contain WARNING about GLM limitations, got: %q", got)
+	}
+	if !strings.Contains(got, "moai cg") {
+		t.Errorf("stderr should mention 'moai cg' as alternative, got: %q", got)
+	}
+}
+
+// TestCharacterize_GLM_ContainsPermissionMode_SpaceSyntax verifies containsPermissionMode
+// detects the space-separated "--permission-mode auto" form.
+func TestCharacterize_GLM_ContainsPermissionMode_SpaceSyntax(t *testing.T) {
+	args := []string{"--permission-mode", "auto"}
+	if !containsPermissionMode(args, "auto") {
+		t.Error("containsPermissionMode should detect --permission-mode auto (space)")
+	}
+}
+
+// TestCharacterize_GLM_ContainsPermissionMode_EqualSyntax verifies containsPermissionMode
+// detects the equals-form "--permission-mode=auto".
+func TestCharacterize_GLM_ContainsPermissionMode_EqualSyntax(t *testing.T) {
+	args := []string{"--permission-mode=auto"}
+	if !containsPermissionMode(args, "auto") {
+		t.Error("containsPermissionMode should detect --permission-mode=auto (equals)")
+	}
+}
+
+// TestCharacterize_GLM_ContainsPermissionMode_OtherModeNotMatched verifies that
+// containsPermissionMode does NOT match a different mode value.
+func TestCharacterize_GLM_ContainsPermissionMode_OtherModeNotMatched(t *testing.T) {
+	args := []string{"--permission-mode", "bypassPermissions"}
+	if containsPermissionMode(args, "auto") {
+		t.Error("containsPermissionMode(auto) should not match bypassPermissions")
+	}
+}
+
+// TestCharacterize_GLM_ContainsPermissionMode_Empty verifies containsPermissionMode
+// returns false on an empty arg list.
+func TestCharacterize_GLM_ContainsPermissionMode_Empty(t *testing.T) {
+	if containsPermissionMode([]string{}, "auto") {
+		t.Error("containsPermissionMode should return false for empty args")
+	}
+}

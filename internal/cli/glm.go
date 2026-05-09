@@ -4,6 +4,7 @@ package cli
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
 // @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/204K context windows per model tier
 // @MX:NOTE: [AUTO] DISABLE_PROMPT_CACHING=1 disables prompt caching for Z.AI compatibility
+// @MX:NOTE: [AUTO] M6-S2 DDD: renderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
 	"bufio"
