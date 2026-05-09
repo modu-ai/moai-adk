@@ -60,12 +60,27 @@ func newNewCmd() *cobra.Command {
 If the branch does not exist, it is created automatically.
 
 SPEC-ID patterns (e.g., SPEC-AUTH-001) are automatically converted
-to branch names using the feature/ prefix convention.`,
+to branch names using the feature/ prefix convention.
+
+Base branch selection (mutually exclusive):
+  --base origin/main    Default. Fetches latest from remote before checkout.
+                        Team-safe: includes any teammate-merged PRs even if
+                        local main has not been pulled yet.
+  --base main           Use local main ref. Includes local-only commits that
+                        are not yet on the remote. Use this when you have
+                        committed directly to main locally and want them
+                        in the new worktree's parent.
+  --from-current        Use current HEAD as base (any branch). Skips
+                        'git fetch origin main' entirely.
+
+For solo development with local-only commits, prefer --base main.
+For team workflows where origin is the source of truth, the default
+origin/main is safer because it always reflects the latest merged state.`,
 		Args: cobra.ExactArgs(1),
 		RunE: runNew,
 	}
 	cmd.Flags().String("path", "", "Custom path for the worktree (default: .moai/worktrees/<SPEC-ID> for SPEC IDs, ../<branch-name> otherwise)")
-	cmd.Flags().String("base", bodp.DefaultBase, "Base branch to create the worktree from (default origin/main per BODP)")
+	cmd.Flags().String("base", bodp.DefaultBase, "Base branch (default origin/main, auto-fetched). Use --base main for local-only commits, --from-current for current HEAD.")
 	cmd.Flags().Bool("from-current", false, "Use current HEAD as the worktree base (skips `git fetch origin main`)")
 	cmd.Flags().Bool("tmux", false, "Create a tmux session after worktree creation")
 	return cmd
