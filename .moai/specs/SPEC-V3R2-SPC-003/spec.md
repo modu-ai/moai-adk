@@ -1,14 +1,14 @@
 ---
 id: SPEC-V3R2-SPC-003
 title: "SPEC linter (moai spec lint)"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: implemented
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-10
 author: Wave 4 SPEC Writer
 priority: P1 High
 phase: "v3.0.0 — Phase 7 — Extension"
-module: "internal/spec/, cmd/moai/spec.go"
+module: "internal/spec/, internal/cli/spec_lint.go"
 dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-SPC-001
@@ -33,6 +33,7 @@ tags: "v3r2, spec, linter, ears-compliance, dag-validation, coverage"
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft |
+| 0.1.1 | 2026-05-10 | manager-spec (Batch 3 backfill) | Status: implemented (PR #745 merged Wave 5). plan-phase artifacts back-filled. |
 
 ---
 
