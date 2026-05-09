@@ -6,8 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/bodp"
 )
 
 // userHomeDirFunc resolves the user's home directory.
@@ -49,7 +52,8 @@ to branch names using the feature/ prefix convention.`,
 		RunE: runNew,
 	}
 	cmd.Flags().String("path", "", "Custom path for the worktree (default: .moai/worktrees/<SPEC-ID> for SPEC IDs, ../<branch-name> otherwise)")
-	cmd.Flags().String("base", "main", "Base branch to create the worktree from")
+	cmd.Flags().String("base", bodp.DefaultBase, "Base branch to create the worktree from (default origin/main per BODP)")
+	cmd.Flags().Bool("from-current", false, "Use current HEAD as the worktree base (skips `git fetch origin main`)")
 	cmd.Flags().Bool("tmux", false, "Create a tmux session after worktree creation")
 	return cmd
 }
@@ -62,6 +66,22 @@ func runNew(cmd *cobra.Command, args []string) error {
 	if WorktreeProvider == nil {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
+
+	// W7-T03: BODP flag handling — must precede any worktree side-effect.
+	baseFlag, err := cmd.Flags().GetString("base")
+	if err != nil {
+		return fmt.Errorf("get base flag: %w", err)
+	}
+	fromCurrent, err := cmd.Flags().GetBool("from-current")
+	if err != nil {
+		return fmt.Errorf("get from-current flag: %w", err)
+	}
+	// @MX:WARN --base and --from-current must be mutually exclusive.
+	// @MX:REASON 사용자 의도 모호성 방지 (BODP rationale clarity).
+	if baseFlag != bodp.DefaultBase && fromCurrent {
+		return fmt.Errorf("--base and --from-current are mutually exclusive")
+	}
+	effectiveBase := determineBase(baseFlag, fromCurrent)
 
 	wtPath, err := cmd.Flags().GetString("path")
 	if err != nil {
@@ -84,8 +104,21 @@ func runNew(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Warning: Legacy worktrees detected in .moai/worktrees/. Consider moving to ~/.moai/worktrees/{Project}/.")
 	}
 
+	// BODP gate: fetch origin/main when defaulting; skip on --from-current.
+	if effectiveBase == bodp.DefaultBase {
+		if _, err := gitWorktreeCmd("fetch", "origin", "main"); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: git fetch origin main failed (continuing): %v\n", err)
+		}
+	}
+
 	if err := WorktreeProvider.Add(wtPath, branchName); err != nil {
 		return fmt.Errorf("create worktree: %w", err)
+	}
+
+	// BODP audit trail (W7-T04 reused). Failures are non-fatal — surface a
+	// warning but keep the worktree creation result.
+	if err := writeWorktreeAuditTrail(specID, branchName, effectiveBase, wtPath); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: BODP audit trail write failed: %v\n", err)
 	}
 
 	_, _ = fmt.Fprintln(out, wtSuccessCard(
@@ -123,6 +156,51 @@ func runNew(cmd *cobra.Command, args []string) error {
 func dirHasEntries(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	return err == nil && len(entries) > 0
+}
+
+// determineBase resolves the effective base branch from CLI flags. The caller
+// is responsible for verifying mutual exclusion of --base and --from-current.
+//
+// @MX:NOTE 결정 우선순위: --from-current > --base > default (origin/main).
+func determineBase(baseFlag string, fromCurrent bool) string {
+	if fromCurrent {
+		return "HEAD"
+	}
+	if baseFlag != "" {
+		return baseFlag
+	}
+	return bodp.DefaultBase
+}
+
+// writeWorktreeAuditTrail records the BODP decision for a CLI-driven worktree
+// creation. The CLI path never prompts the user (orchestrator-only HARD), so
+// UserChoice mirrors the recommendation.
+//
+// @MX:NOTE CLI path은 사용자 프롬프트 호출 절대 금지 — agent-common-protocol
+// §User Interaction Boundary HARD (orchestrator-only). BODP signal collection
+// 은 audit trail 목적 (decision input은 사용자가 plan/worktree 직접 선택).
+func writeWorktreeAuditTrail(specID, branchName, base, _ string) error {
+	currentBranch, _ := gitWorktreeCmd("rev-parse", "--abbrev-ref", "HEAD")
+	currentBranch = strings.TrimSpace(currentBranch)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getwd: %w", err)
+	}
+	decision, _ := bodp.Check(bodp.CheckInput{
+		CurrentBranch: currentBranch,
+		NewSpecID:     specID,
+		RepoRoot:      cwd,
+		EntryPoint:    bodp.EntryWorktreeCLI,
+	})
+	return bodp.WriteDecision(cwd, bodp.AuditEntry{
+		Timestamp:     time.Now().UTC(),
+		EntryPoint:    bodp.EntryWorktreeCLI,
+		CurrentBranch: currentBranch,
+		NewBranch:     branchName,
+		Decision:      decision,
+		UserChoice:    decision.Recommended,
+		ExecutedCmd:   fmt.Sprintf("git worktree add %s %s", branchName, base),
+	})
 }
 
 // resolveSpecBranch converts SPEC-ID patterns to branch names.
