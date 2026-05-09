@@ -7,6 +7,7 @@ import { EXTENSION_ID, PI_RULES_SOURCE_PATH } from "./src/constants.ts";
 import { NON_BLOCKING_HOOK_BRIDGE_POLICY, runMoaiHook } from "./src/hook-bridge.ts";
 import { registerCodexQuota } from "./src/codex-quota.ts";
 import { notifyMoai, type MoaiNotificationContext } from "./src/notification-adapter.ts";
+import { registerMoaiGlassNotifications } from "./src/pi-notify-glass.ts";
 import { updateMoaiStatus } from "./src/statusline.ts";
 import { buildSkillTriggerHints } from "./src/trigger-indexer.ts";
 
@@ -76,6 +77,7 @@ export default function moaiClaudeCompat(pi: ExtensionAPI) {
   let pendingPromptContext: { prompt: string; context: string } | undefined;
 
   registerCommands(pi, config);
+  registerMoaiGlassNotifications(pi);
 
   async function invokeHook(eventName: string, payload: unknown, ctx?: MoaiNotificationContext) {
     // Compatibility hooks intentionally do not block Pi tool execution here.
