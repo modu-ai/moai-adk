@@ -1056,6 +1056,58 @@ v2.14.0 릴리스 과정에서 다음 문제 발생 → v2.15부터 방지:
 
 ---
 
+### §18.12 Branch Origin Decision Protocol (BODP)
+
+SPEC-V3R3-CI-AUTONOMY-001 Wave 7 (T8) 도입 — 신규 SPEC plan 또는 worktree 생성 시 base branch 결정을 표준화. 새 슬래시/CLI 명령어 ZERO 원칙 — 기존 3개 entry point에 BODP 게이트만 삽입.
+
+#### 알고리즘 (3-Signal Evaluation)
+
+`internal/bodp/relatedness.go` `Check()` 함수가 다음 3개 시그널을 평가한다:
+
+| 시그널 | 출처 | 의미 |
+|-------|------|------|
+| Signal A | SPEC frontmatter `depends_on` 매칭 + diff path overlap | 코드 의존성 |
+| Signal B | `git status --porcelain` 에서 `.moai/specs/<NewSpecID>/` 매칭 | 작업 트리 co-location |
+| Signal C | `gh pr list --head <currentBranch> --state open` ≥ 1 | 현재 브랜치 open PR head |
+
+#### Decision Matrix (8 rows)
+
+`internal/bodp/relatedness.go` `applyMatrix()` — SignalB 우선순위 dominates A/C:
+
+| ¬a ¬b ¬c | → main      @ origin/main |
+| a  ¬b ¬c | → stacked   @ currentBranch |
+| ¬a  b ¬c | → continue  @ "" |
+| ¬a ¬b  c | → stacked   @ currentBranch |
+| a   b ¬c | → continue  @ "" (b dominates) |
+| a  ¬b  c | → stacked   @ currentBranch |
+| ¬a  b  c | → continue  @ "" (b dominates) |
+| a   b  c | → continue  @ "" (b dominates) |
+
+SignalC positive 시 Rationale 에 `parent-merge gotcha 주의: §18.11 Case Study 참조` suffix 자동 추가 (REQ-CIAUT-047b).
+
+#### 3 Invocation Paths (Verbatim)
+
+1. **`/moai plan --branch`** (skill body) — Phase 3.0 BODP Gate → AskUserQuestion → manager-git delegation with `base=<chosenBase>`. Skill: `.claude/skills/moai/workflows/plan.md` Phase 3.0.
+
+2. **`/moai plan --worktree`** (skill body) — Phase 3.0 BODP Gate → AskUserQuestion → `moai worktree new <SPEC-ID> --base <chosenBase>`.
+
+3. **`moai worktree new <SPEC-ID>`** (CLI) — `--base` (default `origin/main`) + `--from-current` (HEAD) flags. **AskUserQuestion 호출 절대 금지** (orchestrator-only HARD per agent-common-protocol). signal collection 만 수행 후 audit trail 기록.
+
+#### Audit Trail
+
+`.moai/branches/decisions/<normalized-branch-name>.md` (slash → dash 정규화). 각 BODP 결정마다 markdown frontmatter + body (Signals/Decision/Executed sections) 기록.
+
+#### Off-Protocol Reminder
+
+`moai status` 끝에서 `internal/cli/status.go` `emitOffProtocolReminder()` 호출. 4-skip-condition: `MOAI_NO_BODP_REMINDER=1` env, main/master branch, audit trail 존재, audit dir 부재 (false-positive 방지).
+
+#### Out of Scope (Wave 7)
+
+- Audit trail concurrent write race (orchestrator 단일 세션 가정).
+- Reminder 빈도 제한 / 자동 mute pattern (env var 1회 비활성화만).
+- Untracked content 복구 (W5 동일 — 경로만 기록).
+- Lint custom rule for AskUserQuestion 정적 검사 (단일 import grep 만).
+
 ---
 
 ## 19. AskUserQuestion Enforcement Protocol
@@ -1137,5 +1189,16 @@ Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD
 ---
 
 **Status**: Active (Local Development)
-**Version**: 3.4.0 (Phase 9: §19 AskUserQuestion Enforcement Protocol 공식 채택)
-**Last Updated**: 2026-04-24
+**Version**: 3.5.0 (Phase 10: §20 Vercel Build Externalization Policy 채택)
+**Last Updated**: 2026-05-09
+
+---
+
+## 20. Vercel Build Cost Guard
+
+### [HARD] Build Machine = Elastic 유지
+
+- Vercel Team default + 각 프로젝트 모두 **Elastic** 머신 사용. Turbo($0.126/min) 또는 Standard로 변경 금지 — Elastic은 $0.0035/CPU min로 약 40배 저렴
+- 새 프로젝트 추가 시 Settings → Build and Deployment → Build Machine = Elastic 확인
+- 비용 폭탄 의심 시 **가장 먼저 Build Machine 설정 점검**
+- docs-site는 §17.6 Vercel 프로젝트 바인딩과 함께 운영 — 비용 의심 시 §17.6과 본 정책 동시 점검

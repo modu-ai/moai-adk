@@ -56,6 +56,7 @@ func init() {
 	initCmd.Flags().String("gitlab-instance-url", "", "GitLab instance URL for self-hosted")
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
+	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -356,6 +357,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err := ensureGlobalSettingsEnv(); err != nil {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to update global settings env: %v\n", err)
 	}
+
+	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
+	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.OutOrStdout())
 
 	return nil
 }

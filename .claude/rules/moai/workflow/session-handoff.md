@@ -19,13 +19,15 @@ This rule establishes:
 
 | # | Trigger | Detection |
 |---|---------|-----------|
-| 1 | Context usage crosses 75% (accumulated input+output) | Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics |
+| 1 | Context usage crosses model-specific threshold (cumulative input+output) | **1M context model (Opus 4.7): 75%** (~750,000 tokens). **200K context model (Sonnet/Opus standard, Haiku): 90%** (~180,000 tokens). Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics. |
 | 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Phase boundary in `.claude/rules/moai/workflow/spec-workflow.md` §Completion Markers (after plan/run/sync phase finishes within a multi-SPEC SPEC ID series) |
 | 3 | User explicitly requests session end ("세션 종료", "이번 세션 마무리", "next session") | Intent detection in user message |
 | 4 | PR creation success when more SPECs remain in the current wave | After `gh pr create` success + memory indicates >0 pending SPECs |
 | 5 | Long-running multi-milestone task reaches a stable checkpoint | After milestone Mn complete + Mn+1 not yet started |
 
 When NONE of these apply (single-turn, trivial task, read-only query), the orchestrator emits a brief completion confirmation without paste-ready format. Forcing the format on trivial tasks is anti-pattern.
+
+The model-specific threshold in Trigger #1 reflects asymmetric stall risk: 1M context models tolerate higher absolute load before SSE stalls, while 200K models hit the operational ceiling earlier in absolute terms but later in percentage terms. The `/clear` recommendation policy in `context-window-management.md` is co-anchored to the same threshold per model class.
 
 ## Canonical Format (Verbatim Spec)
 
@@ -145,15 +147,93 @@ applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 
 - Multiple memory entries for the same context without `[SUPERSEDED by ...]` markers — index pollution; next session cannot identify the canonical entry.
 - Forcing the format on trivial tasks (typo fix, single config edit) — pollutes memory with noise.
 
+## Worktree-Anchored Resume Pattern
+
+[HARD] When the SPEC was initialized via `/moai plan --worktree` (creating a SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking SPEC worktree isolation expectations.
+
+### Why Block 0 is required
+
+The standard 6-block format implicitly assumes the next session inherits the previous session's cwd (main project). With `--worktree`, SPEC artifacts and `Agent(isolation: "worktree")` base expectations live in a **different cwd** (the worktree path). If the user pastes a resume into a Claude Code session that starts in main project cwd:
+
+- `Agent(isolation: "worktree")` base = main project HEAD ≠ worktree HEAD → lessons #13 (--team + SPEC worktree base mismatch)
+- Bash commands and file operations target main project → lessons #12 (수동 worktree isolation 위배) anti-pattern
+- Build/test results come from the wrong tree
+
+Block 0 forces the user to start a NEW terminal session **inside** the worktree, anchoring main session cwd before any orchestrator action.
+
+### Block 0 Format
+
+Block 0 is **prepended** before Block 1 in the canonical 6-block format:
+
+```
+[New Terminal — START IN WORKTREE]
+$ cd <worktree-absolute-path>
+$ <session-launcher>
+   └─ Claude Code session starts here (cwd = worktree)
+```
+
+Where `<session-launcher>` is one of:
+
+| Launcher | When to use |
+|---|---|
+| `claude` | Default Claude Code session (Anthropic API) |
+| `moai cc` | Claude with optional profile (`-p <name>`) — recommended for normal SPEC work |
+| `moai cc --bypass` | Bypass permissions (sandbox/isolated environments only) |
+| `moai cg` | CG mode: Claude leader + GLM teammates (requires `tmux new-session` first) |
+| `moai glm` | GLM-only backend (Z.AI proxy, cost-optimized) |
+
+For `--team` execution, the session-launcher SHOULD be `moai cg` inside an explicit `tmux new-session -s <name>` so that teammate spawn via `tmux split-window` inherits worktree cwd + tmux session env.
+
+### Updated Block 4 (preconditions)
+
+When Block 0 is present, the **first precondition (0)** verifies the user's compliance:
+
+```
+0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
+```
+
+If verification 0) fails (output ≠ worktree path), the next session MUST stop and instruct the user to restart inside the worktree. No orchestrator action proceeds until cwd matches.
+
+### Single-Session vs Multi-Session Decision
+
+Block 0 is REQUIRED only when SPEC was initialized with `--worktree`. For SPECs initialized with `--branch` (or no flag), the standard 6-block structure suffices because main session cwd already follows the branch — `Agent(isolation: "worktree")` base aligns naturally.
+
+[HARD] If `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+
+### Verified Example (with Block 0)
+
+```
+[New Terminal — START IN WORKTREE]
+$ cd /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R3-CI-AUTONOMY-001
+$ tmux new-session -s moai-ci-autonomy
+$ moai cg
+   └─ Claude Code session starts here (cwd = worktree)
+
+ultrathink. SPEC-V3R3-CI-AUTONOMY-001 Wave 3 (T3 auto-fix loop) 진입.
+applied lessons: project_ciaut_wave2_complete, lessons #12 #13 #14, lessons #9 wave-split.
+
+전제 검증:
+0) git rev-parse --show-toplevel → /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R3-CI-AUTONOMY-001 (★ critical)
+1) git branch --show-current → feat/SPEC-V3R3-CI-AUTONOMY-001-wave-3
+2) gh pr view 788 → MERGED
+3) ls .moai/specs/SPEC-V3R3-CI-AUTONOMY-001/ → 8 files
+
+실행: /moai run SPEC-V3R3-CI-AUTONOMY-001 --team
+
+머지 후: Wave 4 → Wave 5 → Wave 6 → Wave 7
+```
+
 ## Cross-references
 
-- `.claude/rules/moai/workflow/context-window-management.md` — 75% threshold detection heuristics, broader long-horizon session continuity policy
+- `.claude/rules/moai/workflow/context-window-management.md` — model-specific context-window threshold (1M = 75%, 200K = 90%) for `/clear` recommendations and Trigger #1 of this rule. The two policies share the same threshold table.
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory write rules and `[SUPERSEDED by ...]` convention
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow
 - `feedback_large_spec_wave_split.md` (auto-memory) — wave-split rationale that often precedes a session handoff
+- lessons #14 (auto-memory) — `--worktree` paste-ready Block 0 강제 rationale + single-session/multi-session decision
+- lessons #12, #13 (auto-memory) — worktree isolation discipline + --team base mismatch context
 
 ---
 
-Source: 2026-05-01 SPEC-V3R2-WF-002 session evidence (verified 6-block format)
+Source: 2026-05-01 SPEC-V3R2-WF-002 session evidence (verified 6-block format) + 2026-05-06 SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (Block 0 addition) + 2026-05-09 model-specific threshold revision (Trigger #1: 1M context = 75%, 200K context = 90%; 5 triggers retained)
 Status: HARD operational rule, applies to all multi-phase MoAI workflows

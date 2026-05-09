@@ -57,6 +57,20 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
 
+## Mode Flag Compatibility
+
+Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
+
+- This subcommand is multi-agent (open-ended) but does NOT participate in the
+  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+- Any `--mode` value supplied to `/moai plan` is silently ignored. The plan workflow
+  proceeds with its default behavior.
+- The `pipeline` value is the only special case: passing `--mode pipeline` triggers
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
+full subcommand × mode matrix.
+
 ## Context Loading
 
 Before execution, load these essential files:
@@ -642,21 +656,77 @@ Execution conditions: Phase 2 completed successfully AND one of the following:
 
 Skipped when: develop_direct workflow, no flags and user chooses "Use current branch".
 
+#### Phase 3.0: BODP Gate (공통)
+
+Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: SPEC-V3R3-CI-AUTONOMY-001 W7-T02.
+
+Steps:
+
+1. **Relatedness Check** — Orchestrator calls `internal/bodp/Check()` with `CheckInput{CurrentBranch, NewSpecID, RepoRoot, EntryPoint}` (`EntryPlanBranch` for Branch Path; `EntryPlanWorktree` for Worktree Path). Result: `BODPDecision{SignalA, SignalB, SignalC, Recommended, Rationale, BaseBranch}`.
+
+2. **AskUserQuestion Gate** — Orchestrator-only HARD (see `.claude/rules/moai/core/askuser-protocol.md`):
+   - Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+   - Options (max 4, conversation_language=ko):
+     - First option: the recommended Choice with `(권장)` suffix; description = `BODPDecision.Rationale`.
+     - Remaining options: the other Choice values (e.g. when Recommended is `ChoiceMain`, present `ChoiceStacked` and `ChoiceContinue`).
+   - The "Other" option is auto-appended by Claude Code.
+   - User response yields the chosen Choice + base branch.
+
+3. **Audit Trail Write** — Call `internal/bodp.WriteDecision()` with EntryPoint matching the path (`EntryPlanBranch` or `EntryPlanWorktree`), `UserChoice` from the AskUserQuestion answer, and `ExecutedCmd` describing the upcoming git operation. Failure is non-fatal.
+
+4. **Path-Specific Delegation** — Branch Path: pass `base=<chosenBase>` parameter to `manager-git`. Worktree Path: invoke `moai worktree new <SPEC-ID> --base <chosenBase>` (or `--from-current` when chosenBase is `HEAD`).
+
+Out of Scope (BODP Gate):
+- "Other" free-form base interpretation: orchestrator parses input as a base branch name; invalid input falls back to `origin/main` with a warning.
+- Concurrent invocation safety: single-session orchestrator assumed (W7-R5 follow-up).
+
 #### Worktree Path (--worktree flag)
 
 Prerequisite: SPEC files MUST be committed before worktree creation.
+- Run **Phase 3.0: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
-- Create worktree: `moai worktree new SPEC-{ID}`
+- Create worktree: `moai worktree new SPEC-{ID} --base <chosenBase>` (or `--from-current` when the user chose to continue on the current HEAD).
 - Display worktree path and navigation instructions
+
+##### Worktree-Anchored Resume Output [HARD]
+
+When `--worktree` is used, the plan-phase output MUST include a paste-ready resume message with **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. This anchors the user to start the next session inside the worktree, preventing main-cwd drift.
+
+Block 0 format (prepended before Block 1):
+
+```
+[New Terminal — START IN WORKTREE]
+$ cd <worktree-absolute-path>
+$ <session-launcher>            # claude | moai cc | moai cg | moai glm
+   └─ Claude Code session starts here (cwd = worktree)
+```
+
+Block 4 (preconditions) MUST include `0)` as the first item:
+
+```
+0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
+```
+
+Recommended session-launcher per execution mode:
+
+- `--team` → `tmux new-session -s moai-<spec> && moai cg` (teammate spawn via tmux split-window inherits worktree cwd + tmux session env)
+- single-session → `moai cc` (or `claude`) directly inside worktree
+- GLM-only → `moai glm`
+
+[HARD] Single-session corollary: If the user is NOT comfortable with multi-terminal/multi-session workflow, recommend converting to `--branch` next time. `--worktree` only realizes its isolation value when the user actually starts a separate session inside the worktree path. Forcing Block 0 onto a single-session user is friction without benefit.
+
+See `.claude/rules/moai/workflow/session-handoff.md` "Worktree-Anchored Resume Pattern" for the canonical Block 0 specification and lessons #14 for the failure-mode rationale.
 
 #### Branch Path (--branch flag or user choice)
 
 Agent: manager-git subagent
-- Create branch: feature/SPEC-{ID}-{description}
-- Set tracking upstream if remote exists
-- Switch to new branch
-- Team mode: Create draft PR via manager-git subagent
+- Run **Phase 3.0: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
+- Delegate to manager-git with `base=<chosenBase>` derived from the gate answer.
+- Create branch: feature/SPEC-{ID}-{description} from `<chosenBase>`.
+- Set tracking upstream if remote exists.
+- Switch to new branch.
+- Team mode: Create draft PR via manager-git subagent.
 
 #### Current Branch Path (no flag or user choice)
 

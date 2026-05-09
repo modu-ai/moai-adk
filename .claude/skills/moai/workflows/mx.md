@@ -58,6 +58,22 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
 | `--no-discovery` | Skip Phase 0 codebase discovery |
 | `--team` | Parallel scan by language (Agent Teams mode) |
 
+## Pipeline Contract (Agentless Classification)
+
+<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+
+This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+It executes a deterministic 3-phase contract: **localize → repair → validate**.
+
+- **Phase mapping**: localize ← Pass 1+2; repair ← Pass 3; validate ← post-edit MX scan
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases but never select the next phase.
+- **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
+- **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
+- **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
+- **Repeatability**: Even when the parent invocation supplies `--mode loop`, the pipeline runs once per command invocation. Re-entry requires explicit user re-invocation.
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
+
 ## Priority Levels
 
 | Priority | Condition | Tag Type |

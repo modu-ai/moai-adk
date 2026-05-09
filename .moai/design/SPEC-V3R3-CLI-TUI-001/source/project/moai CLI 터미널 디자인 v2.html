@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>moai-adk · TUI 디자인 v2</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+
+<style>
+  html, body { margin: 0; padding: 0; background: #d8d4cc; font-family: "Pretendard Variable", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  @keyframes blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  ::selection { background: rgba(20,74,70,0.25); }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tui.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+function pair(theme, prefix, label, width, height, children) {
+  return (
+    <DCArtboard
+      id={`${prefix}-${theme}`}
+      label={`${label} · ${theme === "dark" ? "다크" : "라이트"}`}
+      width={width}
+      height={height}
+    >
+      <ThemeCtx.Provider value={theme}>
+        <div style={{
+          width: "100%", minHeight: "100%",
+          background: theme === "dark" ? "#0c1413" : "#e8e6e0",
+          padding: 20, display: "flex", justifyContent: "center", alignItems: "flex-start",
+        }}>
+          {children}
+        </div>
+      </ThemeCtx.Provider>
+    </DCArtboard>
+  );
+}
+
+function App() {
+  const W = 800, H = 600;
+  const sections = [
+    { id: "install",       title: "설치 스크립트",        sub: "macOS · Linux · Windows · 오프라인 폴백" },
+    { id: "main",          title: "메인 인터페이스",      sub: "배너 · 도움말 · 부트스트랩" },
+    { id: "project",       title: "프로젝트 명령",        sub: "init · doctor · status · version · update" },
+    { id: "launcher",      title: "런처",                sub: "Claude Code · 자율 루프" },
+    { id: "knowledge",     title: "지식 · 워크트리",     sub: "spec · worktree" },
+    { id: "governance",    title: "거버넌스 · 관측",     sub: "CX 7원칙 · MX · 텔레메트리" },
+    { id: "system",        title: "시스템",              sub: "statusline · 에러" },
+  ];
+
+  return (
+    <DesignCanvas
+      title="moai-adk · TUI 디자인 v2"
+      subtitle="bubbletea + lipgloss + bubbles + huh + glamour 기반 · 라이트 / 다크"
+    >
+      <DCSection id="install" title="설치 스크립트" sub="macOS · Linux · Windows · 오프라인 폴백">
+        {pair("light", "install-sh", "install.sh — macOS · Linux", W, H, <ScreenInstallSh />)}
+        {pair("dark",  "install-sh", "install.sh — macOS · Linux", W, H, <ScreenInstallSh />)}
+        {pair("light", "install-ps1", "install.ps1 — Windows", W, H, <ScreenInstallPs1 />)}
+        {pair("dark",  "install-ps1", "install.ps1 — Windows", W, H, <ScreenInstallPs1 />)}
+        {pair("light", "install-bat", "install.bat — cmd 폴백", W, H, <ScreenInstallBat />)}
+        {pair("dark",  "install-bat", "install.bat — cmd 폴백", W, H, <ScreenInstallBat />)}
+      </DCSection>
+
+      <DCSection id="main" title="메인 인터페이스" sub="배너 · 도움말">
+        {pair("light", "banner", "moai · 배너", W, H, <ScreenBanner />)}
+        {pair("dark",  "banner", "moai · 배너", W, H, <ScreenBanner />)}
+        {pair("light", "help", "moai help", W, H + 80, <ScreenHelp />)}
+        {pair("dark",  "help", "moai help", W, H + 80, <ScreenHelp />)}
+      </DCSection>
+
+      <DCSection id="project" title="프로젝트 명령" sub="init · doctor · status · version · update">
+        {pair("light", "init", "moai init · 위저드", W, H, <ScreenInit />)}
+        {pair("dark",  "init", "moai init · 위저드", W, H, <ScreenInit />)}
+        {pair("light", "doctor", "moai doctor", W, H, <ScreenDoctor />)}
+        {pair("dark",  "doctor", "moai doctor", W, H, <ScreenDoctor />)}
+        {pair("light", "status", "moai status", W, H, <ScreenStatus />)}
+        {pair("dark",  "status", "moai status", W, H, <ScreenStatus />)}
+        {pair("light", "version", "moai version", W, H, <ScreenVersion />)}
+        {pair("dark",  "version", "moai version", W, H, <ScreenVersion />)}
+        {pair("light", "update", "moai update", W, H, <ScreenUpdate />)}
+        {pair("dark",  "update", "moai update", W, H, <ScreenUpdate />)}
+      </DCSection>
+
+      <DCSection id="launcher" title="런처 · 자율 개발" sub="Claude Code · loop">
+        {pair("light", "cc", "moai cc · Claude Code 부트스트랩", W, H, <ScreenCC />)}
+        {pair("dark",  "cc", "moai cc · Claude Code 부트스트랩", W, H, <ScreenCC />)}
+        {pair("light", "loop", "moai loop start", W, H + 60, <ScreenLoop />)}
+        {pair("dark",  "loop", "moai loop start", W, H + 60, <ScreenLoop />)}
+      </DCSection>
+
+      <DCSection id="knowledge" title="지식 · 워크트리" sub="spec view · worktree list">
+        {pair("light", "spec", "moai spec view", W, H + 40, <ScreenSpec />)}
+        {pair("dark",  "spec", "moai spec view", W, H + 40, <ScreenSpec />)}
+        {pair("light", "worktree", "moai worktree list", W, H, <ScreenWorktree />)}
+        {pair("dark",  "worktree", "moai worktree list", W, H, <ScreenWorktree />)}
+      </DCSection>
+
+      <DCSection id="governance" title="거버넌스 · 관측" sub="CX 7원칙 · MX 그래프 · 텔레메트리">
+        {pair("light", "constitution", "moai constitution check", W, H + 40, <ScreenConstitution />)}
+        {pair("dark",  "constitution", "moai constitution check", W, H + 40, <ScreenConstitution />)}
+        {pair("light", "mx", "moai mx graph", W, H, <ScreenMx />)}
+        {pair("dark",  "mx", "moai mx graph", W, H, <ScreenMx />)}
+        {pair("light", "telemetry", "moai telemetry report", W, H, <ScreenTelemetry />)}
+        {pair("dark",  "telemetry", "moai telemetry report", W, H, <ScreenTelemetry />)}
+      </DCSection>
+
+      <DCSection id="system" title="시스템 · 통합" sub="statusline · 에러">
+        {pair("light", "statusline", "moai statusline · tmux/vim", W, H, <ScreenStatusline />)}
+        {pair("dark",  "statusline", "moai statusline · tmux/vim", W, H, <ScreenStatusline />)}
+        {pair("light", "error", "에러 · 거버넌스 위반", W, H, <ScreenError />)}
+        {pair("dark",  "error", "에러 · 거버넌스 위반", W, H, <ScreenError />)}
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

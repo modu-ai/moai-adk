@@ -46,6 +46,20 @@ Synchronize documentation with code changes, verify project quality, and finaliz
   - Path: Optional synchronization target path (e.g., src/auth/)
   - Flag: --merge
 
+## Mode Flag Compatibility
+
+Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
+
+- This subcommand is multi-agent (open-ended) but does NOT participate in the
+  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+- Any `--mode` value supplied to `/moai sync` is silently ignored. The sync workflow
+  proceeds with its default behavior.
+- The `pipeline` value is the only special case: passing `--mode pipeline` triggers
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
+full subcommand × mode matrix.
+
 ## Supported Modes
 
 - auto (default): Smart selective sync of changed files only. PR Ready conversion. Daily development workflow.

@@ -1,4 +1,9 @@
 workflow:
+    # SPEC-V3R2-WF-003 REQ-WF003-014: Optional default mode for /moai run and /moai design.
+    # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+    # Precedence: CLI --mode flag > this field > harness auto.
+    # @MX:WARN - Default mode field is utility-skill-only consumer. REQ-WF003-018 lock-in. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+    default_mode: ""
     auto_clear:
         after_plan: true
         after_run: false

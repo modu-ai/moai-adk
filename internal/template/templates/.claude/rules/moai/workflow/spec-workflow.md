@@ -14,6 +14,75 @@ MoAI's three-phase development workflow with token budget management.
 | Run | /moai run | manager-cycle (per quality.yaml development_mode) | 180K | DDD/TDD implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
+<!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
+
+## Subcommand Classification (Pipeline vs Multi-Agent)
+
+Source: SPEC-V3R2-WF-004. Each MoAI subcommand is classified along the
+*control-flow style* axis. The classification governs which agents are spawned,
+how the `--mode` flag is interpreted, and which CI guards apply.
+
+| Subcommand   | Class          | 3-phase contract (localize → repair → validate)                | `--mode` honored? | Default mode | Valid `--mode` values | Sentinel on invalid mode | Reference                                                    |
+|--------------|----------------|-----------------------------------------------------------------|-------------------|--------------|-----------------------|--------------------------|--------------------------------------------------------------|
+| `/moai fix`      | Pipeline (Agentless) | Parallel Scan + Classify + MX context → Auto-Fix → Verify        | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/fix.md`                       |
+| `/moai coverage` | Pipeline (Agentless) | Measure + Gap Analysis → Test Generation → Verify                 | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/coverage.md`                  |
+| `/moai mx`       | Pipeline (Agentless) | Pass 1 + Pass 2 → Pass 3 → Post-edit scan                         | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/mx.md`                        |
+| `/moai codemaps` | Pipeline (Agentless) | Explore → Analyze + Generate → Verify                             | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/codemaps.md`                  |
+| `/moai clean`    | Pipeline (Agentless) | Static Analysis + Usage Graph → Safe Removal → Test Verification  | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/clean.md`                     |
+| `/moai plan`     | Multi-Agent    | n/a — open-ended (mode-NA per REQ-WF003-005)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/plan.md`               |
+| `/moai run`      | Multi-Agent    | n/a — open-ended (`autopilot` / `loop` / `team` per WF-003)        | Yes (rejects `pipeline`) | `autopilot` (harness `minimal`/`standard`); `team` (harness `thorough` + prereqs) | `autopilot`, `loop`, `team` | `MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`, `MODE_PIPELINE_ONLY_UTILITY` | `.claude/skills/moai/workflows/run.md`                |
+| `/moai sync`     | Multi-Agent    | n/a — open-ended (mode-NA per REQ-WF003-005)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/sync.md`               |
+| `/moai design`   | Multi-Agent    | n/a — open-ended (`autopilot` / `import` / `team` per WF-003)      | Yes (rejects `pipeline`) | `autopilot` (harness `minimal`/`standard`); `team` (harness `thorough` + prereqs) | `autopilot`, `import`, `team` | `MODE_UNKNOWN`, `MODE_PIPELINE_ONLY_UTILITY` | `.claude/skills/moai/workflows/design.md`             |
+| `/moai loop`     | Multi-Agent (alias for `/moai run --mode loop`) | n/a — delegates to `/moai run` mode dispatch | Yes (alias semantics) | (inherits from `run --mode loop`) | (alias only — `--mode` resolves via `run`) | (delegates to `run` sentinels) | `.claude/skills/moai/workflows/loop.md`               |
+
+### Mode Dispatch Cross-Reference
+
+Source: SPEC-V3R2-WF-003. The `--mode` axis values are valid only on multi-agent subcommands that explicitly support mode dispatch: `/moai run` and `/moai design`. Other multi-agent subcommands (`/moai plan`, `/moai sync`, `/moai project`, `/moai db`) ignore `--mode` per REQ-WF003-005, except they REJECT `--mode pipeline` with `MODE_PIPELINE_ONLY_UTILITY` per REQ-WF003-016 (shared with WF-004 REQ-WF004-014).
+
+`/moai loop` is an alias for `/moai run --mode loop` per REQ-WF003-004. Both routes invoke the Ralph Engine identically; the alias preserves the historical entry point.
+
+Mode precedence (REQ-WF003-018, hard-coded):
+
+1. CLI flag `--mode <value>` — highest priority.
+2. Config field `workflow.default_mode` in `.moai/config/sections/workflow.yaml`.
+3. Harness auto-selection — lowest priority (per `harness.yaml` level).
+
+Auto-selection rules (REQ-WF003-002, REQ-WF003-003):
+
+- Harness `minimal` or `standard` → default mode = `autopilot`
+- Harness `thorough` AND `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` → default mode = `team`
+- Otherwise (thorough but team prereqs missing) → fallback to `autopilot` with `[mode-auto-downgrade]` info log per REQ-WF003-012.
+
+Sentinel error keys:
+
+- `MODE_UNKNOWN` (REQ-WF003-010, owned by WF-003): invalid `--mode` value supplied.
+- `MODE_TEAM_UNAVAILABLE` (REQ-WF003-011, owned by WF-003): explicit `--mode team` request without prerequisites.
+- `MODE_PIPELINE_ONLY_UTILITY` (REQ-WF003-016 ↔ REQ-WF004-014, shared): `--mode pipeline` on a multi-agent subcommand.
+- `MODE_FLAG_IGNORED_FOR_UTILITY` (REQ-WF004-011, owned by WF-004): `--mode <any>` on a utility subcommand (info log only).
+
+See `.claude/skills/moai/workflows/run.md` § Mode Dispatch and `.claude/skills/moai/workflows/design.md` § Mode Dispatch for the per-skill dispatch rules.
+
+### Pipeline Class — Contract
+
+Pipeline-classified subcommands MUST satisfy:
+- Three deterministic phases (localize → repair → validate); no LLM dispatcher selects the next phase.
+- `Agent()` invocations are permitted only as **executor delegation within a phase** (e.g., `expert-testing` runs the coverage tool); never to decide phase order.
+- When localize finds zero targets, exit with status `no-op` and exit code 0.
+- When repair encounters an unresolvable error, fail-fast (no multi-agent fallback).
+- The CI guard `internal/template/agentless_audit_test.go` enforces the no-LLM-dispatch rule via static text scan.
+
+### Out of scope of this matrix
+
+`/moai feedback`, `/moai review`, `/moai e2e` are *not* yet classified.
+See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
+
+### Cross-references
+
+- `--mode` flag matrix: SPEC-V3R2-WF-003 (sibling SPEC, defines `autopilot|loop|team|pipeline`).
+- Pipeline regression guard: `internal/template/agentless_audit_test.go` (REQ-WF004-013).
+- Pattern source: `.moai/design/v3-redesign/synthesis/pattern-library.md` §O-6 (Agentless).
+- Research source: `.moai/design/v3-redesign/research/r1-ai-harness-papers.md` §25 (Xia et al. 2024).
+
 ## Plan Phase
 
 Create comprehensive specification using EARS format.

@@ -34,7 +34,10 @@ func TestWorktreeCmd_Short(t *testing.T) {
 }
 
 func TestWorktreeCmd_HasSubcommands(t *testing.T) {
-	expected := []string{"new", "list", "switch", "go", "sync", "remove", "clean", "recover", "done", "config", "status"}
+	expected := []string{
+		"new", "list", "switch", "go", "sync", "remove", "clean", "recover", "done", "config", "status",
+		"snapshot", "verify", "restore", // Wave 5 (T6 worktree state guard)
+	}
 	for _, name := range expected {
 		found := false
 		for _, cmd := range WorktreeCmd.Commands() {
@@ -51,8 +54,9 @@ func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	if count != 11 {
-		t.Errorf("worktree should have 11 subcommands, got %d", count)
+	const expected = 14 // 11 original + 3 Wave 5 (snapshot, verify, restore)
+	if count != expected {
+		t.Errorf("worktree should have %d subcommands, got %d", expected, count)
 	}
 }
 

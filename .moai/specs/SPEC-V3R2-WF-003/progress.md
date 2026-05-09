@@ -2,6 +2,12 @@
 
 - plan_complete_at: 2026-05-04T12:00:00Z
 - plan_status: audit-ready (iteration 2)
+- run_complete_at: 2026-05-09T13:21:00Z
+- run_status: refactor-complete (M5 Trackable phase)
+- sync_complete_at: 2026-05-09T11:41:53Z
+- sync_status: pr-pending (commit + push + PR open; awaiting CI green + admin squash merge)
+- spec_lifecycle: spec-anchored (Level 2)
+- spec_status_transition: draft → completed (all 18 REQs / 17 ACs satisfied per Phase 1.5 divergence analysis = 0)
 
 ## Artifacts
 

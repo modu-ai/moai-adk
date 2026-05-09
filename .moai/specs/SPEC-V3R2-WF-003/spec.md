@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-WF-003
 title: Multi-Mode Router (--mode flag, loop/run/design)
-version: "0.3.0"
-status: draft
+version: "0.3.1"
+status: completed
 created_at: 2026-04-23
-updated_at: 2026-05-04
+updated_at: 2026-05-09
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1
 labels: [multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, v3]
@@ -33,6 +33,7 @@ tags: "multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, 
 | 0.1.0   | 2026-04-23 | Wave 2              | Initial SPEC — unify /moai loop (Ralph) + /moai run + /moai design                                                                                           |
 | 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P1 High"` → `P1`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. Stacked PR base: feature/SPEC-V3R2-WF-004 (PR #765). |
 | 0.3.0   | 2026-05-04 | MoAI Plan Workflow  | AC-WF003-16/17 추가 (REQ-WF003-007/015 매핑) — plan-auditor iteration 1 D1/D2 fix. §10 traceability claim 갱신 (15→17 ACs). EARS REQ 본문 변경 없음. |
+| 0.3.1   | 2026-05-09 | MoAI Sync Workflow  | Status `draft` → `completed` (Level 2 spec-anchored). Phase 1.5 divergence analysis = 0; all 18 REQs / 17 ACs satisfied; mx_plan 8/8 tags applied. EARS REQ/AC 본문 변경 없음 (implementation matched plan exactly). |
 
 ---
 

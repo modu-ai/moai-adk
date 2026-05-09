@@ -66,8 +66,19 @@ func (m *mockWorktreeManager) Root() string {
 // --- Tests for runNew ---
 
 func TestRunNew_Success(t *testing.T) {
+	// Isolate cwd and gitRepoRootFunc so that writeWorktreeAuditTrail does not
+	// leak audit trail files into the package directory.
+	// See: BODP audit trail cwd leak fix (SPEC-V3R3-CI-AUTONOMY-001 Wave 7).
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
 	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
+	origGitRepoRoot := gitRepoRootFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		gitRepoRootFunc = origGitRepoRoot
+	}()
+	gitRepoRootFunc = func() (string, error) { return tmpDir, nil }
 
 	var capturedPath, capturedBranch string
 	WorktreeProvider = &mockWorktreeManager{
@@ -108,8 +119,18 @@ func TestRunNew_Success(t *testing.T) {
 }
 
 func TestRunNew_AddError(t *testing.T) {
+	// Isolate cwd and gitRepoRootFunc to prevent audit trail from leaking
+	// into the package directory when runNew is invoked with a failing Add.
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
 	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
+	origGitRepoRoot := gitRepoRootFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		gitRepoRootFunc = origGitRepoRoot
+	}()
+	gitRepoRootFunc = func() (string, error) { return tmpDir, nil }
 
 	WorktreeProvider = &mockWorktreeManager{
 		addFunc: func(_, _ string) error {
@@ -1253,6 +1274,9 @@ func TestRunNew_SpecID(t *testing.T) {
 	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
 	getProjectNameFunc = func() string { return "test-project" }
 	legacyWorktreeDir = t.TempDir() // empty dir → no legacy warning
+	// Isolate cwd so the BODP audit trail does not leak into the real repo
+	// root (gitRepoRootFunc falls back to "." which becomes this tempDir).
+	t.Chdir(t.TempDir())
 
 	var capturedPath, capturedBranch string
 	WorktreeProvider = &mockWorktreeManager{
@@ -1306,6 +1330,8 @@ func TestRunNew_DefaultPath(t *testing.T) {
 	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
 	getProjectNameFunc = func() string { return "test-project" }
 	legacyWorktreeDir = t.TempDir() // empty dir → no legacy warning
+	// Isolate cwd so the BODP audit trail does not leak into the real repo root.
+	t.Chdir(t.TempDir())
 
 	tests := []struct {
 		name     string
@@ -2013,6 +2039,8 @@ func TestRunNew_LegacyWarning(t *testing.T) {
 		t.Fatal(err)
 	}
 	legacyWorktreeDir = legacyDir
+	// Isolate cwd so the BODP audit trail does not leak into the real repo root.
+	t.Chdir(t.TempDir())
 
 	WorktreeProvider = &mockWorktreeManager{
 		addFunc: func(_, _ string) error { return nil },
@@ -2055,6 +2083,8 @@ func TestRunNew_NoLegacyWarning_EmptyDir(t *testing.T) {
 	userHomeDirFunc = func() (string, error) { return fakeHomeDir, nil }
 	getProjectNameFunc = func() string { return "test-project" }
 	legacyWorktreeDir = t.TempDir() // empty dir → no warning
+	// Isolate cwd so the BODP audit trail does not leak into the real repo root.
+	t.Chdir(t.TempDir())
 
 	WorktreeProvider = &mockWorktreeManager{
 		addFunc: func(_, _ string) error { return nil },

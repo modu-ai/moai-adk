@@ -104,3 +104,110 @@ OUT OF SCOPE:
 - Root cause identification: 90%+ of cases
 - Appropriate agent referral rate: >95%
 - Clear next steps in 100% of reports
+
+---
+
+## CI Failure Interpretation (Wave 3 Extension)
+
+> Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 3 — Additive section; existing body unchanged.
+
+When invoked by the `moai-workflow-ci-autofix` skill orchestrator, `expert-debug`
+receives additional CI-specific context and operates in one of two modes:
+
+### Input Format
+
+The orchestrator injects the following context into the spawn prompt:
+
+```markdown
+## CI Auto-Fix Context
+
+**Wave 2 Handoff JSON:**
+{"prNumber":785,"branch":"feat/...","failedChecks":[{"name":"Lint","runId":"...","logUrl":"..."}],...}
+
+**Classification Result:**
+- classification: <mechanical|semantic|unknown>
+- sub_class: <trivial|non-trivial|none>
+
+**Failed CI Log + PR Diff:**
+=== CI RUN LOG (run-id: 12345678) ===
+<log content up to 200KB>
+
+=== PR DIFF (pr: #785) ===
+<unified diff>
+```
+
+### Mode 1 — Mechanical (Patch Proposal)
+
+When `classification=mechanical`, `expert-debug` MUST:
+
+1. Analyze the failed log to identify the root cause (lint violation, errcheck, import issue, etc.)
+2. Examine the PR diff to understand the change context
+3. Propose a minimal patch that resolves the failure:
+   - For **trivial** (gofmt/whitespace): provide the exact `gofmt` or `goimports` command
+   - For **non-trivial** (errcheck/lint): provide a unified diff of the minimal fix
+4. Return the response in this format:
+
+```markdown
+## CI Failure Diagnosis
+
+**Root Cause**: <one-line description>
+**Affected File(s)**: <file:line references>
+
+## Proposed Patch
+
+```diff
+--- a/path/to/file.go
++++ b/path/to/file.go
+@@ -45,6 +45,9 @@
+-    os.Setenv("KEY", val)
++    if err := os.Setenv("KEY", val); err != nil {
++        return fmt.Errorf("setting env: %w", err)
++    }
+```
+
+**Apply**: `git apply patch.diff && go test ./...`
+```
+
+### Mode 2 — Semantic (Diagnosis Only)
+
+When `classification=semantic` or `classification=unknown`, `expert-debug` MUST:
+
+1. Analyze the log for root cause (race condition, deadlock, panic, assertion failure)
+2. Identify the specific test/goroutine/line involved
+3. Return a diagnosis report WITHOUT any patch:
+
+```markdown
+## CI Failure Diagnosis (Semantic — No Auto-Patch)
+
+**Failure Type**: data race / deadlock / panic / assertion failure
+**Root Cause**: <detailed analysis>
+**Affected Location**: <file:line or test name>
+
+## Analysis
+
+<detailed explanation of why this is a semantic failure and why auto-patching
+is not safe>
+
+## Suggested Manual Mitigations
+
+1. <first mitigation option>
+2. <second mitigation option>
+3. <third mitigation option>
+
+**Note**: Patch field intentionally empty. Orchestrator will present this
+diagnosis to the user via AskUserQuestion for manual decision.
+```
+
+### Critical Constraints
+
+**[HARD] AskUserQuestion 호출 금지** — `expert-debug`는 subagent이므로 절대
+AskUserQuestion을 호출하지 않는다. 사용자와의 모든 상호작용은 orchestrator(메인 세션)가
+담당한다. 진단 결과 또는 patch 제안을 Markdown으로 반환하는 것으로 역할이 종료된다.
+
+**[HARD] Secrets 미수정** — auto-fix patch는 `.env`, credentials, API key 파일을
+절대 포함하지 않는다.
+
+**[HARD] Force-push 지시 금지** — patch apply 지시에 `git push --force` 또는
+`git push -f` 명령을 포함하지 않는다.
+
+참조: `.claude/rules/moai/workflow/ci-autofix-protocol.md`

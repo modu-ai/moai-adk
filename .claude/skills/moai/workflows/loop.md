@@ -32,6 +32,20 @@ Purpose: Iterative autonomous fixing until all issues resolved. AI scans, fixes,
 
 Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 
+<!-- @MX:NOTE - REQ-WF003-004 alias relationship: /moai loop and /moai run --mode loop are equivalent. Alias enforced by TestLoopAliasCrossReference audit. -->
+
+## Invocation Routes (SPEC-V3R2-WF-003)
+
+This skill is invocable via two equivalent routes:
+- Direct: `/moai loop $ARGUMENTS` — historical entry point, preserved as thin wrapper.
+- Via run dispatch: `/moai run --mode loop` — per SPEC-V3R2-WF-003 REQ-WF003-004, the
+  `/moai run` skill delegates to this skill (e.g., `/moai run SPEC-XXX --mode loop`) when supplied.
+
+Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by the audit
+test `TestLoopAliasCrossReference` in `internal/template/agentless_audit_test.go`.
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
+
 ## Supported Flags
 
 - --max N (alias --max-iterations): Maximum iteration count (default 100)
