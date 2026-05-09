@@ -1,16 +1,18 @@
 ---
 id: SPEC-V3R2-RT-005
 title: "Multi-Layer Settings Resolution with Provenance Tags"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-10
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 1 — Constitution & Foundation"
 module: "internal/config/"
 dependencies:
   - SPEC-V3R2-CON-001
+  - SPEC-V3R2-SCH-001
+  - SPEC-V3R2-RT-004
 bc_id: [BC-V3R2-015]
 related_principle: [P6 Permission Bubble, P7 Sandbox Default, P12 Constitutional Governance]
 related_pattern: [X-2, S-1, T-5]
@@ -28,6 +30,7 @@ tags: "settings, provenance, multi-layer, v3r2, breaking, runtime, config"
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C04 (no config provenance, HIGH) and prerequisites P-H06 (5 yaml sections without Go loaders, CRITICAL). |
+| 0.1.1 | 2026-05-10 | manager-spec | Frontmatter `dependencies:` synced with §9.1 — added `SPEC-V3R2-SCH-001` and `SPEC-V3R2-RT-004` (D9 fix per plan-auditor v1 audit report 2026-05-10). Body §1-§10 unchanged; only frontmatter and HISTORY edited. |
 
 ---
 
