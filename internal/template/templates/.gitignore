@@ -181,6 +181,7 @@ secret-*.*
 .moai/status_line.sh
 .moai/memory/
 .moai/worktrees/
+.moai/branches/
 
 # ===========================================
 # Plan Audit Reports (local artifacts)
