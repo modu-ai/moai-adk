@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -36,6 +37,12 @@ type DiagnosticCheck struct {
 	Detail  string      `json:"detail,omitempty"`
 }
 
+// checkGroup holds a named group of DiagnosticCheck items for grouped rendering.
+type checkGroup struct {
+	title  string
+	checks []DiagnosticCheck
+}
+
 var doctorCmd = &cobra.Command{
 	Use:     "doctor",
 	Short:   "Run system diagnostics",
@@ -53,6 +60,7 @@ func init() {
 	doctorCmd.Flags().String("check", "", "Run a specific check only (e.g., git, go, config)")
 }
 
+// @MX:NOTE: [AUTO] doctor 명령어 출력 — tui.Section + 19+ CheckLine + 요약 Box/Pill로 구성.
 // runDoctor executes the system diagnostics workflow.
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	verbose := getBoolFlag(cmd, "verbose")
@@ -61,24 +69,18 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkName := getStringFlag(cmd, "check")
 
 	out := cmd.OutOrStdout()
+	th := resolveTheme()
 
-	checks := runDiagnosticChecks(verbose, checkName)
+	groups := runGroupedChecks(verbose, checkName)
 
-	// Compute max label width for alignment.
-	maxLabel := 0
-	for _, c := range checks {
-		if len(c.Name) > maxLabel {
-			maxLabel = len(c.Name)
-		}
+	// Flatten for export / fix path.
+	var allChecks []DiagnosticCheck
+	for _, g := range groups {
+		allChecks = append(allChecks, g.checks...)
 	}
 
 	okCount, warnCount, failCount := 0, 0, 0
-	var lines []string
-	for _, c := range checks {
-		lines = append(lines, renderStatusLine(c.Status, c.Name, c.Message, maxLabel))
-		if verbose && c.Detail != "" {
-			lines = append(lines, fmt.Sprintf("    %s", cliMuted.Render(c.Detail)))
-		}
+	for _, c := range allChecks {
 		switch c.Status {
 		case CheckOK:
 			okCount++
@@ -89,14 +91,41 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	summary := renderSummaryLine(okCount, warnCount, failCount)
-	content := strings.Join(lines, "\n") + "\n\n" + summary
+	// Render grouped output.
+	var bodyLines []string
+	for _, g := range groups {
+		if len(g.checks) == 0 {
+			continue
+		}
+		bodyLines = append(bodyLines, tui.Section(g.title, tui.SectionOpts{Theme: &th}))
+		for _, c := range g.checks {
+			status := checkStatusToTUI(c.Status)
+			bodyLines = append(bodyLines, tui.CheckLine(status, c.Name, c.Message, "", &th))
+			if verbose && c.Detail != "" {
+				bodyLines = append(bodyLines, "    "+c.Detail)
+			}
+		}
+		bodyLines = append(bodyLines, "")
+	}
 
-	_, _ = fmt.Fprintln(out, renderCard("System Diagnostics", content))
+	// Summary pill row.
+	pPass := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("통과 %d", okCount), Theme: &th})
+	pWarn := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: fmt.Sprintf("주의 %d", warnCount), Theme: &th})
+	pErr := tui.Pill(tui.PillOpts{Kind: tui.PillErr, Solid: false, Label: fmt.Sprintf("실패 %d", failCount), Theme: &th})
+	summaryPills := pPass + "  " + pWarn + "  " + pErr
+
+	bodyLines = append(bodyLines, summaryPills)
+
+	box := tui.Box(tui.BoxOpts{
+		Title: "System Diagnostics",
+		Body:  strings.Join(bodyLines, "\n"),
+		Theme: &th,
+	})
+	_, _ = fmt.Fprintln(out, box)
 
 	if fix && failCount > 0 {
 		var fixes []string
-		for _, c := range checks {
+		for _, c := range allChecks {
 			if c.Status == CheckFail {
 				fixes = append(fixes, fmt.Sprintf("- %s: run 'moai init' to initialize project", c.Name))
 			}
@@ -106,7 +135,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	if exportPath != "" {
-		if err := exportDiagnostics(exportPath, checks); err != nil {
+		if err := exportDiagnostics(exportPath, allChecks); err != nil {
 			return fmt.Errorf("export diagnostics: %w", err)
 		}
 		_, _ = fmt.Fprintf(out, "\nDiagnostics exported to %s\n", exportPath)
@@ -115,17 +144,38 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// runDiagnosticChecks runs all diagnostic checks and returns results.
-func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
+// checkStatusToTUI converts a CheckStatus to the tui.CheckLine status string.
+func checkStatusToTUI(s CheckStatus) string {
+	switch s {
+	case CheckOK:
+		return "ok"
+	case CheckWarn:
+		return "warn"
+	case CheckFail:
+		return "err"
+	default:
+		return "info"
+	}
+}
+
+// runGroupedChecks runs all diagnostic checks grouped into sections.
+// It returns groups in a deterministic order: System, MoAI-ADK, Workspace.
+func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
+	cwd, _ := os.Getwd()
+
 	type checkFunc struct {
 		name string
 		fn   func(bool) DiagnosticCheck
 	}
 
-	cwd, _ := os.Getwd()
-	allChecks := []checkFunc{
+	systemChecks := []checkFunc{
 		{"Go Runtime", checkGoRuntime},
 		{"Git", checkGit},
+		{"Claude Code", checkClaudeCode},
+		{"GitHub CLI", checkGitHubCLI},
+	}
+
+	moaiChecks := []checkFunc{
 		{"MoAI Config", checkMoAIConfig},
 		{"Claude Config", checkClaudeConfig},
 		{"MoAI Version", checkMoAIVersion},
@@ -136,14 +186,45 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"
 			return checkConstitution(cwd, registryPath, v, strictMode)
 		}},
+		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 	}
 
-	var results []DiagnosticCheck
-	for _, c := range allChecks {
-		if filterCheck != "" && c.name != filterCheck {
-			continue
+	workspaceChecks := []checkFunc{
+		{"Hooks Config", func(v bool) DiagnosticCheck { return checkHooksConfig(cwd, v) }},
+		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
+		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
+		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
+		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
+		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
+		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
+		{"Glamour Cache", checkGlamourCache},
+	}
+
+	run := func(items []checkFunc) []DiagnosticCheck {
+		var results []DiagnosticCheck
+		for _, c := range items {
+			if filterCheck != "" && c.name != filterCheck {
+				continue
+			}
+			results = append(results, c.fn(verbose))
 		}
-		results = append(results, c.fn(verbose))
+		return results
+	}
+
+	return []checkGroup{
+		{title: "System", checks: run(systemChecks)},
+		{title: "MoAI-ADK", checks: run(moaiChecks)},
+		{title: "Workspace", checks: run(workspaceChecks)},
+	}
+}
+
+// runDiagnosticChecks runs all diagnostic checks and returns a flat list.
+// Kept for backward compatibility with JSON export and existing tests.
+func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
+	groups := runGroupedChecks(verbose, filterCheck)
+	var results []DiagnosticCheck
+	for _, g := range groups {
+		results = append(results, g.checks...)
 	}
 	return results
 }
@@ -151,9 +232,11 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 // checkGoRuntime verifies the Go runtime is available.
 func checkGoRuntime(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Go Runtime"}
-	goVersion := runtime.Version()
+	// goVersion() is defined in banner.go (same package). It reads
+	// MOAI_GO_VERSION_OVERRIDE env first for deterministic test output.
+	goVer := goVersion()
 	check.Status = CheckOK
-	check.Message = fmt.Sprintf("%s (%s/%s)", goVersion, runtime.GOOS, runtime.GOARCH)
+	check.Message = fmt.Sprintf("go %s (%s/%s)", goVer, runtime.GOOS, runtime.GOARCH)
 	if verbose {
 		check.Detail = fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH"))
 	}
@@ -194,6 +277,51 @@ func checkGit(verbose bool) DiagnosticCheck {
 	check.Message = string(out[:len(out)-1]) // trim newline
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", gitPath)
+	}
+	return check
+}
+
+// checkClaudeCode verifies the Claude Code CLI version.
+// Reads CLAUDE_CODE_VERSION env first (deterministic for tests), then exec fallback.
+func checkClaudeCode(_ bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Claude Code"}
+	cv := claudeVersion()
+	if cv == "claude" {
+		// env not set — try exec
+		out, err := exec.Command("claude", "--version").Output()
+		if err != nil {
+			check.Status = CheckWarn
+			check.Message = "claude CLI not found (CLAUDE_CODE_VERSION unset)"
+			return check
+		}
+		cv = strings.TrimSpace(string(out))
+	}
+	check.Status = CheckOK
+	check.Message = cv
+	return check
+}
+
+// checkGitHubCLI verifies the GitHub CLI (gh) is installed.
+func checkGitHubCLI(verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "GitHub CLI"}
+	ghPath, err := exec.LookPath("gh")
+	if err != nil {
+		check.Status = CheckWarn
+		check.Message = "gh not found — GitHub Actions and PR workflows unavailable"
+		return check
+	}
+	out, err := exec.Command("gh", "--version").Output()
+	if err != nil {
+		check.Status = CheckWarn
+		check.Message = "gh found but version check failed"
+		return check
+	}
+	// gh --version prints "gh version X.Y.Z (YYYY-MM-DD)\n..."
+	first := strings.SplitN(string(out), "\n", 2)[0]
+	check.Status = CheckOK
+	check.Message = strings.TrimSpace(first)
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", ghPath)
 	}
 	return check
 }
@@ -416,11 +544,11 @@ func parseMCPJSON(path string) map[string]struct{} {
 func statusIcon(s CheckStatus) string {
 	switch s {
 	case CheckOK:
-		return cliSuccess.Render("\u2713")
+		return cliSuccess.Render("✓")
 	case CheckWarn:
-		return cliWarn.Render("\u26A0")
+		return cliWarn.Render("⚠")
 	case CheckFail:
-		return cliError.Render("\u2717")
+		return cliError.Render("✗")
 	default:
 		return "?"
 	}
@@ -485,6 +613,161 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 	check.Message = fmt.Sprintf("registry OK — %d entries (%d Frozen, %d Evolvable)",
 		len(reg.Entries), len(frozen), len(reg.Entries)-len(frozen))
 	return check
+}
+
+// checkHooksConfig verifies the Claude Code hooks configuration exists.
+func checkHooksConfig(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Hooks Config"}
+	hooksDir := filepath.Join(projectRoot, ".claude", "hooks")
+	info, err := os.Stat(hooksDir)
+	if err != nil || !info.IsDir() {
+		check.Status = CheckWarn
+		check.Message = ".claude/hooks/ not found — hook handlers unavailable"
+		return check
+	}
+	check.Status = CheckOK
+	check.Message = "hook handlers directory found"
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", hooksDir)
+	}
+	return check
+}
+
+// checkSlashCommands verifies .claude/commands/ directory exists.
+func checkSlashCommands(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Slash Commands"}
+	cmdsDir := filepath.Join(projectRoot, ".claude", "commands")
+	info, err := os.Stat(cmdsDir)
+	if err != nil || !info.IsDir() {
+		check.Status = CheckWarn
+		check.Message = ".claude/commands/ not found — slash commands unavailable"
+		return check
+	}
+	entries, _ := os.ReadDir(cmdsDir)
+	check.Status = CheckOK
+	check.Message = fmt.Sprintf("%d command file(s) registered", len(entries))
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", cmdsDir)
+	}
+	return check
+}
+
+// checkSkillsAllowlist verifies skill directories against the static allowlist.
+func checkSkillsAllowlist(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Skills Allowlist"}
+	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			check.Status = CheckWarn
+			check.Message = ".claude/skills/ not found"
+			return check
+		}
+		check.Status = CheckFail
+		check.Message = fmt.Sprintf("cannot read skills directory: %v", err)
+		return check
+	}
+	warnCount := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if classifySkill(e.Name()) == "WARN" {
+			warnCount++
+		}
+	}
+	if warnCount > 0 {
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("%d unknown moai- skill(s) detected (run 'moai update' to sync)", warnCount)
+		if verbose {
+			check.Detail = "Unknown skills may be outdated or removed. Verify with 'moai update'."
+		}
+		return check
+	}
+	check.Status = CheckOK
+	check.Message = fmt.Sprintf("%d skill(s) verified", len(entries))
+	return check
+}
+
+// checkMXTagConfig verifies the MX tag configuration file exists.
+func checkMXTagConfig(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "MX Tag Config"}
+	mxPath := filepath.Join(projectRoot, ".moai", "config", "sections", "mx.yaml")
+	if _, err := os.Stat(mxPath); err != nil {
+		check.Status = CheckWarn
+		check.Message = ".moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults"
+		return check
+	}
+	check.Status = CheckOK
+	check.Message = "MX tag configuration present"
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", mxPath)
+	}
+	return check
+}
+
+// checkWorktreeState verifies the .moai/state/ directory exists.
+func checkWorktreeState(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Worktree State"}
+	statePath := filepath.Join(projectRoot, ".moai", "state")
+	info, err := os.Stat(statePath)
+	if err != nil || !info.IsDir() {
+		check.Status = CheckWarn
+		check.Message = ".moai/state/ not found — worktree checkpoint storage unavailable"
+		return check
+	}
+	check.Status = CheckOK
+	check.Message = "worktree state directory found"
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", statePath)
+	}
+	return check
+}
+
+// checkBODPConfig verifies the BODP audit trail directory exists.
+func checkBODPConfig(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "BODP Config"}
+	bodpPath := filepath.Join(projectRoot, ".moai", "branches")
+	info, err := os.Stat(bodpPath)
+	if err != nil || !info.IsDir() {
+		check.Status = CheckWarn
+		check.Message = ".moai/branches/ not found — BODP audit trail disabled"
+		return check
+	}
+	check.Status = CheckOK
+	check.Message = "BODP audit trail directory found"
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", bodpPath)
+	}
+	return check
+}
+
+// checkTelemetryConfig verifies telemetry configuration section exists.
+func checkTelemetryConfig(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Telemetry Config"}
+	telPath := filepath.Join(projectRoot, ".moai", "config", "sections", "telemetry.yaml")
+	if _, err := os.Stat(telPath); err != nil {
+		check.Status = CheckWarn
+		check.Message = ".moai/config/sections/telemetry.yaml not found — telemetry uses defaults"
+		return check
+	}
+	check.Status = CheckOK
+	check.Message = "telemetry configuration present"
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", telPath)
+	}
+	return check
+}
+
+// checkGlamourCache is a D8 Placeholder check for Glamour cache health.
+// The actual Glamour integration is scheduled for a follow-up SPEC.
+func checkGlamourCache(_ bool) DiagnosticCheck {
+	return DiagnosticCheck{
+		Name:    "Glamour Cache",
+		Status:  CheckWarn,
+		Message: "glamour 미도입",
+		Detail:  "후속 SPEC에서 실제 검사로 교체 예정",
+	}
 }
 
 // exportDiagnostics writes check results to a JSON file.

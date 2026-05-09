@@ -78,8 +78,9 @@ func TestDoctorCmd_Execution(t *testing.T) {
 	if !strings.Contains(output, "System Diagnostics") {
 		t.Errorf("doctor output should contain 'System Diagnostics', got %q", output)
 	}
-	if !strings.Contains(output, "passed") {
-		t.Errorf("doctor output should contain 'passed' in summary, got %q", output)
+	// tui 마이그레이션 후 요약은 Pill 포맷 "통과 N" 으로 변경됨.
+	if !strings.Contains(output, "통과") {
+		t.Errorf("doctor output should contain '통과' in summary, got %q", output)
 	}
 }
 
