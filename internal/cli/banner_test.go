@@ -183,7 +183,8 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 func TestBanner_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "0")
 	t.Setenv("MOAI_THEME", "light")
-	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18") // pinned for deterministic golden
+	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18")        // pinned for deterministic golden
+	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
 
 	got, err := captureStdout(func() {
 		PrintBanner("1.0.0")
@@ -203,7 +204,8 @@ func TestBanner_Current_Light(t *testing.T) {
 func TestBanner_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "0")
 	t.Setenv("MOAI_THEME", "dark")
-	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18") // pinned for deterministic golden
+	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18")        // pinned for deterministic golden
+	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
 
 	got, err := captureStdout(func() {
 		PrintBanner("1.0.0")
@@ -221,7 +223,8 @@ func TestBanner_Current_Dark(t *testing.T) {
 // tui.MonochromeTheme() is used; all colours are empty; Pill degrades to [label] plain text.
 func TestBanner_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18") // pinned for deterministic golden
+	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18")        // pinned for deterministic golden
+	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
 
 	got, err := captureStdout(func() {
 		PrintBanner("1.0.0")

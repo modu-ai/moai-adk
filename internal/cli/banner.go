@@ -33,7 +33,12 @@ func resolveTheme() tui.Theme {
 }
 
 // goVersion returns a short Go version string (e.g. "1.21.5" from "go1.21.5").
+// MOAI_GO_VERSION_OVERRIDE env var allows pinning the value for deterministic
+// test output across Go toolchain versions (CI vs local).
 func goVersion() string {
+	if v := os.Getenv("MOAI_GO_VERSION_OVERRIDE"); v != "" {
+		return v
+	}
 	v := runtime.Version()
 	return strings.TrimPrefix(v, "go")
 }
