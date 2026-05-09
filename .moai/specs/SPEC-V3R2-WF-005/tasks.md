@@ -7,7 +7,8 @@
 
 | Version | Date       | Author                            | Description                                                            |
 |---------|------------|-----------------------------------|------------------------------------------------------------------------|
-| 0.1.0   | 2026-05-04 | MoAI Plan Workflow (Phase 1B)     | Initial task breakdown — 23 tasks (T-WF005-01..23) across M1-M5         |
+| 0.1.0   | 2026-05-04 | MoAI Plan Workflow (Phase 1B)     | Initial task breakdown — 25 tasks (T-WF005-01..25) across M1-M5         |
+| 0.1.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → mechanical fixes (D2 task count corrected to 25, D4 flutter.md sequencing note added). No task body changes. |
 
 ---
 
@@ -96,6 +97,8 @@ T-WF005-14 through T-WF005-18 may execute in parallel — they touch independent
 ---
 
 ## M5: Other dead-skill-ID cleanup + CHANGELOG + MX tags (GREEN, part 4 + REFACTOR + Trackable)
+
+> [HARD] flutter.md serialization: M5a (line 98 substitution) and M5c (line 97 substitution) MUST run sequentially after M4 (lines 94-95) completes for flutter.md. No parallel execution within this file.
 
 Goal: TRUST 5 Trackable + complete dead-skill-ID cleanup per REQ-WF005-015.
 

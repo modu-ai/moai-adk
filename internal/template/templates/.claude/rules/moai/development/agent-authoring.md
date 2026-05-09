@@ -161,7 +161,7 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 [HARD] Field format constraints:
 - `tools`: Comma-separated string ONLY (`tools: Read, Write, Edit`). YAML arrays NOT supported.
 - `disallowedTools`: Comma-separated string ONLY. Same format as tools.
-- `skills`: YAML array format (`skills:\n  - moai-lang-go`). Exception to CSV convention.
+- `skills`: YAML array format (`skills:\n  - moai-domain-backend`). Exception to CSV convention. <!-- @MX:WARN: [AUTO] Example skill ID must be an existing skill (e.g., moai-domain-backend). Reverting to moai-lang-go or any moai-lang-* triggers either TestRelatedSkillsNoLangReference (frontmatter, DEAD_LANG_FRONTMATTER_REFERENCE) or TestSkillBodyNoLangReference (body prose, DEAD_LANG_SKILL_REFERENCE) depending on placement. @MX:REASON: Illustrative example easily reverted by refactoring — both CI sentinels catch any reintroduction. -->
 - `model`: One of: `inherit`, `opus`, `sonnet`, `haiku`. Never use `glm`, `high`, `medium`, `low`.
 - `permissionMode`: One of: `default`, `acceptEdits`, `auto`, `delegate`, `dontAsk`, `bypassPermissions`, `plan`.
 

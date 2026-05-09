@@ -91,8 +91,8 @@ Navigation and Storage:
 - `/isar/isar` - NoSQL database
 
 
-- `moai-lang-swift` - iOS native integration for platform channels
-- `moai-lang-kotlin` - Android native integration for platform channels
+- `.claude/rules/moai/languages/swift.md` - iOS native integration for platform channels
+- `.claude/rules/moai/languages/kotlin.md` - Android native integration for platform channels
 - `moai-domain-backend` - API integration and backend communication
-- `moai-quality-security` - Mobile security best practices
-- `moai-essentials-debug` - Flutter debugging and DevTools
+- `moai-foundation-quality` + `moai-ref-owasp-checklist` - Mobile security best practices
+- delegate to `expert-debug` agent for AI-powered debugging

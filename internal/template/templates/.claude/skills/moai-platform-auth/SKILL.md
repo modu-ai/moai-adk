@@ -17,7 +17,7 @@ metadata:
   platforms: "Auth0, Clerk, Firebase Auth"
   tags: "auth0, clerk, firebase, authentication, authorization, mfa, sso, passkeys, webauthn, social-login, security"
   context7-libraries: "/auth0/docs, /clerk/clerk-docs, /firebase/firebase-docs"
-  related-skills: "moai-platform-supabase, moai-platform-vercel, moai-lang-typescript, moai-domain-backend, moai-expert-security"
+  related-skills: "moai-platform-supabase, moai-platform-vercel, moai-domain-backend, moai-expert-security"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -222,7 +222,7 @@ Access up-to-date platform documentation using Context7 MCP:
 
 - moai-platform-supabase: Database with auth integration
 - moai-platform-vercel: Deployment with edge authentication
-- moai-lang-typescript: TypeScript patterns for auth SDKs
+- `.claude/rules/moai/languages/typescript.md`: TypeScript patterns for auth SDKs (auto-loaded via paths frontmatter)
 - moai-domain-backend: Backend architecture with authentication
 - moai-domain-frontend: React/Next.js frontend integration
 - moai-expert-security: Security audit and threat modeling

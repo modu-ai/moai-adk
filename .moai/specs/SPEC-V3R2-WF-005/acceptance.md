@@ -8,6 +8,7 @@
 | Version | Date       | Author                            | Description                                                            |
 |---------|------------|-----------------------------------|------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-04 | MoAI Plan Workflow (Phase 1B)     | Initial G/W/T conversion of 12 ACs (AC-WF005-01 through AC-WF005-12)   |
+| 0.1.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → mechanical fix (D5 test scope caveat for AC-WF005-12 body-text coverage gap). No G/W/T scenario changes. |
 
 ---
 
@@ -392,6 +393,8 @@ Note: The test func `TestRelatedSkillsNoLangReference` primarily targets frontma
 
 - Primary: `TestRelatedSkillsNoLangReference` in `internal/template/lang_boundary_audit_test.go` (M1).
 - Manual verification: post-M4, `grep -rn "moai-lang-" .claude/skills .claude/rules` returns zero non-test matches.
+
+> [Coverage closed 2026-05-09] `TestRelatedSkillsNoLangReference` scans frontmatter only (DEAD_LANG_FRONTMATTER_REFERENCE sentinel; covers REQ-WF005-005, REQ-WF005-008). Body-prose enforcement is covered by `TestSkillBodyNoLangReference` (DEAD_LANG_SKILL_REFERENCE sentinel; covers REQ-WF005-013, AC-WF005-12) added during evaluator-active iteration 1. Both sentinels are CI-enforced via `internal/template/lang_boundary_audit_test.go`.
 
 ---
 

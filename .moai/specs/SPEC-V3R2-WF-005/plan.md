@@ -2,13 +2,14 @@
 
 > Implementation plan for Language Rules vs Skills Boundary Codification.
 > Companion to `spec.md` v0.2.0 and `research.md` v0.1.0.
-> Authored against branch `feature/SPEC-V3R2-WF-005-language-rules-boundary` at `/Users/goos/MoAI/moai-adk-go` (solo mode, no worktree).
+> Authored against branch `feature/SPEC-V3R2-WF-005-language-rules-boundary` at `<worktree-root>` (solo mode, no worktree). See §7 for the cwd resolution rule.
 
 ## HISTORY
 
 | Version | Date       | Author                        | Description                                                              |
 |---------|------------|-------------------------------|--------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-04 | MoAI Plan Workflow (Phase 1B) | Initial implementation plan per `.claude/skills/moai/workflows/plan.md` Phase 1B |
+| 0.1.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → mechanical fixes (D3 absolute path → `<worktree-root>` placeholder). No milestone or REQ body changes. |
 
 ---
 
@@ -407,14 +408,16 @@ This SPEC is a documentation/audit publication, not a feature build. No `@MX:TOD
 [HARD] All run-phase work for SPEC-V3R2-WF-005 executes in:
 
 ```
-/Users/goos/MoAI/moai-adk-go
+<worktree-root>
 ```
 
 Branch: `feature/SPEC-V3R2-WF-005-language-rules-boundary` (already checked out per session context).
 
 [HARD] No worktree is used for this SPEC (per user directive: solo mode, no worktree). All Read/Write/Edit tool invocations use absolute paths under the main project root.
 
-[HARD] `make build` and `go test ./...` execute from the repo root: `cd /Users/goos/MoAI/moai-adk-go && make build && go test ./...`.
+[HARD] `make build` and `go test ./...` execute from the repo root: `cd <worktree-root> && make build && go test ./...`.
+
+> Note: Run-phase agent operates from the actual worktree cwd; absolute paths shown for reference only. The `<worktree-root>` placeholder resolves to the directory returned by `git rev-parse --show-toplevel` at run time.
 
 ---
 

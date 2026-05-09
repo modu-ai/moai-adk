@@ -198,7 +198,7 @@ Loading: Skills available automatically, no explicit invocation needed
 Examples:
 ```yaml
 # Load language and domain skills
-skills: moai-lang-python, moai-domain-backend, moai-context7-integration
+skills: moai-domain-backend, moai-context7-integration
 
 # Load quality and documentation skills
 skills: moai-foundation-quality, moai-docs-generation, moai-cc-claude-code
@@ -389,7 +389,7 @@ name: workflow-ddd
 description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet
-skills: moai-lang-python, moai-domain-testing, moai-foundation-quality
+skills: moai-domain-testing, moai-foundation-quality
 ---
 
 # DDD Implementation Expert

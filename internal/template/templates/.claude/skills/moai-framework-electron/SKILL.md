@@ -16,7 +16,7 @@ metadata:
   modularized: "false"
   tags: "electron, desktop, cross-platform, nodejs, chromium, ipc, auto-update, electron-builder, electron-forge"
   context7-libraries: "/electron/electron, /electron/forge, /electron-userland/electron-builder"
-  related-skills: "moai-lang-typescript, moai-domain-frontend, moai-lang-javascript"
+  related-skills: "moai-domain-frontend"
 ---
 
 # Electron 33+ Desktop Development
@@ -225,9 +225,9 @@ Performance Optimization:
 
 ## Works Well With
 
-- moai-lang-typescript - TypeScript patterns for type-safe Electron development
+- `.claude/rules/moai/languages/typescript.md` - TypeScript patterns for type-safe Electron development (auto-loaded via paths frontmatter)
 - moai-domain-frontend - React, Vue, or Svelte renderer development
-- moai-lang-javascript - Node.js patterns for main process
+- `.claude/rules/moai/languages/javascript.md` - Node.js patterns for main process (auto-loaded via paths frontmatter)
 - moai-domain-backend - Backend API integration
 - moai-workflow-testing - Testing strategies for desktop apps
 

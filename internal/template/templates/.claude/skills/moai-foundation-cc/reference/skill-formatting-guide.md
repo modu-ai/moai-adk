@@ -110,7 +110,6 @@ Length: Maximum 64 characters
 Pattern: `[prefix]-[domain]-[function]`
 Examples:
 - `moai-cc-commands`
-- `moai-lang-python`
 - `moai-domain-backend`
 - `MyAwesomeSkill` (uppercase, spaces)
 - `skill_v2` (underscore)

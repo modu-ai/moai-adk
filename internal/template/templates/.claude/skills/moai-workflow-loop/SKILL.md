@@ -145,8 +145,8 @@ Skills:
 - moai-foundation-quality: TRUST 5 validation
 - moai-tool-ast-grep: Security scanning patterns
 - moai-workflow-testing: DDD integration
-- moai-lang-python: Python-specific patterns
-- moai-lang-typescript: TypeScript patterns
+- `.claude/rules/moai/languages/python.md`: Python-specific patterns (auto-loaded via paths frontmatter)
+- `.claude/rules/moai/languages/typescript.md`: TypeScript patterns (auto-loaded via paths frontmatter)
 
 Agents:
 

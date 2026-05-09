@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification
+
+### Changed
+
+- SPEC-V3R2-WF-005: Codified that language guidance lives as rules (`.claude/rules/moai/languages/*.md`), not as skills. Added "Language Guidance Lives in Rules, Not Skills" section to `.claude/rules/moai/development/skill-authoring.md`. Removed dead `moai-lang-*` references from ~17 skills/rules. Substituted `moai-essentials-debug`, `moai-quality-testing`, `moai-quality-security`, and `moai-infra-docker` references per REQ-WF005-015. CI guard `lang_boundary_audit_test.go` enforces forward-looking compliance.
+
 ## [Unreleased] — SPEC-V3R3-CI-AUTONOMY-001: 8-Tier Autonomous CI/CD + Branch Origin Decision Protocol
 
 ### Added
