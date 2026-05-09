@@ -40,7 +40,9 @@ func TestMixedKoEnAlignment(t *testing.T) {
 		{"Layer 1", 7},
 		{"환경 감지 Layer 1", 17}, // 9 + space(1) + 7 = 17
 		{"한자漢字", 8},
-		{"v3.2.4 · 2026-04-28", 20}, // U+00B7 middle dot has width=2 in go-runewidth
+		// U+00B7(·) is Unicode "ambiguous". runeguard pins EastAsianWidth=true so
+		// it always renders as 2 cells regardless of the runtime locale.
+		{"v3.2.4 · 2026-04-28", 20},
 	}
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {
