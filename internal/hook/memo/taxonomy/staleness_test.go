@@ -236,4 +236,3 @@ func makeStaleReports(n int) []taxonomy.StaleReport {
 	}
 	return reports
 }
-

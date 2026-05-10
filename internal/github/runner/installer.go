@@ -20,8 +20,8 @@ type HTTPClient interface {
 
 // Installer handles downloading and installing the GitHub Actions runner.
 type Installer struct {
-	ghRunnerDir string          // Runner installation directory
-	httpClient  HTTPClient      // HTTP client interface for testing
+	ghRunnerDir string     // Runner installation directory
+	httpClient  HTTPClient // HTTP client interface for testing
 }
 
 // NewInstaller creates a new Installer instance.

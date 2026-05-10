@@ -18,7 +18,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-
 )
 
 // --- protocol.go: WriteOutput nil output branch ---

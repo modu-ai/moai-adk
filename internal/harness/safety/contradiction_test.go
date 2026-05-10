@@ -232,7 +232,7 @@ func TestDetectContradictions_InsertAfterConflict(t *testing.T) {
 		Version: 1,
 		Chains: []harness.ChainEntry{
 			{
-				Phase:       "run",
+				Phase:        "run",
 				InsertBefore: []string{},
 				InsertAfter:  []string{"agent-X"},
 			},
@@ -243,7 +243,7 @@ func TestDetectContradictions_InsertAfterConflict(t *testing.T) {
 		Version: 1,
 		Chains: []harness.ChainEntry{
 			{
-				Phase:       "run",
+				Phase:        "run",
 				InsertBefore: []string{},
 				InsertAfter:  []string{"agent-Y"}, // 다른 agent-Y (충돌)
 			},

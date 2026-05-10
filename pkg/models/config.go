@@ -47,9 +47,9 @@ type LanguageConfig struct {
 // @MX:NOTE: [AUTO] Contains TRUST 5 quality gate settings. Manages LSP integration, test coverage, and development methodology (DDD/TDD) configuration.
 // QualityConfig represents the quality configuration section.
 type QualityConfig struct {
-	DevelopmentMode    DevelopmentMode    `yaml:"development_mode" validate:"omitempty,oneof=ddd tdd"`
-	EnforceQuality     bool               `yaml:"enforce_quality"`
-	TestCoverageTarget int                `yaml:"test_coverage_target"`
+	DevelopmentMode    DevelopmentMode `yaml:"development_mode" validate:"omitempty,oneof=ddd tdd"`
+	EnforceQuality     bool            `yaml:"enforce_quality"`
+	TestCoverageTarget int             `yaml:"test_coverage_target"`
 	// CoverageThreshold is an alias for TestCoverageTarget used in some yaml files.
 	// SPEC-V3R2-RT-005 M2: adds typed field so ConfigTypeError is detectable
 	// when string is provided where int is expected (AC-05).

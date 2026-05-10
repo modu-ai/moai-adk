@@ -42,28 +42,28 @@ type langEntry struct {
 // seededLanguages maps language identifiers to their tree-sitter configuration.
 var seededLanguages = map[string]*langEntry{
 	"go": {
-		language:    golang.GetLanguage(),
-		decisionSCM: queryGo,
+		language:     golang.GetLanguage(),
+		decisionSCM:  queryGo,
 		funcNodeType: []string{"function_declaration", "method_declaration"},
 	},
 	"python": {
-		language:    python.GetLanguage(),
-		decisionSCM: queryPython,
+		language:     python.GetLanguage(),
+		decisionSCM:  queryPython,
 		funcNodeType: []string{"function_definition"},
 	},
 	"typescript": {
-		language:    typescript.GetLanguage(),
-		decisionSCM: queryTypeScript,
+		language:     typescript.GetLanguage(),
+		decisionSCM:  queryTypeScript,
 		funcNodeType: []string{"function_declaration", "method_definition", "function"},
 	},
 	"javascript": {
-		language:    javascript.GetLanguage(),
-		decisionSCM: queryJavaScript,
+		language:     javascript.GetLanguage(),
+		decisionSCM:  queryJavaScript,
 		funcNodeType: []string{"function_declaration", "method_definition", "function"},
 	},
 	"rust": {
-		language:    rust.GetLanguage(),
-		decisionSCM: queryRust,
+		language:     rust.GetLanguage(),
+		decisionSCM:  queryRust,
 		funcNodeType: []string{"function_item"},
 	},
 }

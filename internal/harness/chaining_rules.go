@@ -12,10 +12,10 @@ import (
 // ChainEntry is one row in `.moai/harness/chaining-rules.yaml` describing how
 // a phase-bound agent invocation is augmented with my-harness/* agents.
 type ChainEntry struct {
-	Phase         string            `yaml:"phase"`
-	When          map[string]string `yaml:"when"`
-	InsertBefore  []string          `yaml:"insert_before"`
-	InsertAfter   []string          `yaml:"insert_after"`
+	Phase        string            `yaml:"phase"`
+	When         map[string]string `yaml:"when"`
+	InsertBefore []string          `yaml:"insert_before"`
+	InsertAfter  []string          `yaml:"insert_after"`
 }
 
 // ChainingRules is the top-level document for chaining-rules.yaml.

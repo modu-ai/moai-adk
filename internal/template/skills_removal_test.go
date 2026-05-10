@@ -39,15 +39,15 @@ func TestRemovedSkillsNotPresent(t *testing.T) {
 	// NOTE: Some skills from the original 16-skill removal list still exist in the template tree.
 	// This test only verifies removal of skills that have actually been deleted.
 	removed := []string{
-		"moai-domain-db-docs",           // REMOVED
-		"moai-domain-mobile",            // REMOVED
-		"moai-library-shadcn",           // REMOVED
-		"moai-library-mermaid",          // REMOVED
-		"moai-library-nextra",           // REMOVED
-		"moai-tool-ast-grep",            // REMOVED
-		"moai-workflow-research",        // REMOVED
+		"moai-domain-db-docs",              // REMOVED
+		"moai-domain-mobile",               // REMOVED
+		"moai-library-shadcn",              // REMOVED
+		"moai-library-mermaid",             // REMOVED
+		"moai-library-nextra",              // REMOVED
+		"moai-tool-ast-grep",               // REMOVED
+		"moai-workflow-research",           // REMOVED
 		"moai-workflow-pencil-integration", // REMOVED
-		"moai-formats-data",             // REMOVED
+		"moai-formats-data",                // REMOVED
 		// NOT removed (still exist): moai-domain-backend, moai-domain-frontend, moai-domain-database,
 		// moai-framework-electron, moai-platform-auth, moai-platform-deployment, moai-platform-chrome-extension
 	}

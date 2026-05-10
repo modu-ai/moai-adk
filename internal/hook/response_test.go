@@ -152,7 +152,7 @@ func TestHookResponseContinue(t *testing.T) {
 		cont     *bool
 		expected bool // true if continue should be true
 	}{
-		{"nil continue", nil, true},          // nil means no opinion, defaults to true
+		{"nil continue", nil, true}, // nil means no opinion, defaults to true
 		{"continue true", boolPtr(true), true},
 		{"continue false", boolPtr(false), false},
 	}

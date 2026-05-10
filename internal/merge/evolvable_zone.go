@@ -279,8 +279,8 @@ func ReplaceEvolvableZone(content, zoneID, newZoneContent string) (string, error
 
 	// target.StartLine: start marker line index (inclusive)
 	// target.EndLine: end marker line index (end marker line; not included in content)
-	before := lines[:target.StartLine+1]    // up to and including the start marker
-	after := lines[target.EndLine:]         // from the end marker (inclusive)
+	before := lines[:target.StartLine+1] // up to and including the start marker
+	after := lines[target.EndLine:]      // from the end marker (inclusive)
 
 	// Build new content: guarantee exactly one trailing newline
 	trimmedNew := strings.TrimRight(newZoneContent, "\n")

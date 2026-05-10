@@ -122,4 +122,3 @@ func (l *rateLimiter) Admit(proposal *AmendmentProposal, evolutionLogPath string
 
 // rateLimiter satisfies the RateLimiter interface.
 var _ RateLimiter = (*rateLimiter)(nil)
-

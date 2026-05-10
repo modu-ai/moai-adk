@@ -8,7 +8,7 @@ type Checkpoint interface {
 // PlanCheckpoint holds state after the plan phase completes.
 type PlanCheckpoint struct {
 	SPECID       string `json:"spec_id"`
-	Status       string `json:"status"`        // "approved", "draft", "rejected"
+	Status       string `json:"status"` // "approved", "draft", "rejected"
 	ResearchPath string `json:"research_path"`
 }
 
@@ -20,7 +20,7 @@ func (c *PlanCheckpoint) PhaseName() Phase {
 // RunCheckpoint holds state after the run phase.
 type RunCheckpoint struct {
 	SPECID        string `json:"spec_id"`
-	Status        string `json:"status"`  // "pass", "fail", "partial"
+	Status        string `json:"status"` // "pass", "fail", "partial"
 	TestsTotal    int    `json:"tests_total"`
 	TestsPassed   int    `json:"tests_passed"`
 	FilesModified int    `json:"files_modified"`

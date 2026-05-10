@@ -71,7 +71,6 @@ func TestListLearnings_FilterByStatus(t *testing.T) {
 	}
 }
 
-
 // TestListLearnings_FilterBySkillID verifies skill-based filtering.
 func TestListLearnings_FilterBySkillID(t *testing.T) {
 	projectRoot := t.TempDir()

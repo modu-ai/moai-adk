@@ -21,48 +21,48 @@ func (e profileEnv) ColorProfile() colorprofile.Profile { return e.profile }
 // Matrix: 4 ColorProfile values × 2 theme selections (light / dark).
 func TestProfileDegradation(t *testing.T) {
 	tests := []struct {
-		name    string
-		env     profileEnv
+		name     string
+		env      profileEnv
 		wantMono bool
 	}{
 		{
-			name:    "TrueColor + dark theme",
-			env:     profileEnv{staticEnv{false, "dark", true}, colorprofile.TrueColor},
+			name:     "TrueColor + dark theme",
+			env:      profileEnv{staticEnv{false, "dark", true}, colorprofile.TrueColor},
 			wantMono: false,
 		},
 		{
-			name:    "TrueColor + light theme",
-			env:     profileEnv{staticEnv{false, "light", false}, colorprofile.TrueColor},
+			name:     "TrueColor + light theme",
+			env:      profileEnv{staticEnv{false, "light", false}, colorprofile.TrueColor},
 			wantMono: false,
 		},
 		{
-			name:    "ANSI256 + dark theme",
-			env:     profileEnv{staticEnv{false, "dark", true}, colorprofile.ANSI256},
+			name:     "ANSI256 + dark theme",
+			env:      profileEnv{staticEnv{false, "dark", true}, colorprofile.ANSI256},
 			wantMono: false,
 		},
 		{
-			name:    "ANSI256 + light theme",
-			env:     profileEnv{staticEnv{false, "light", false}, colorprofile.ANSI256},
+			name:     "ANSI256 + light theme",
+			env:      profileEnv{staticEnv{false, "light", false}, colorprofile.ANSI256},
 			wantMono: false,
 		},
 		{
-			name:    "ANSI + dark theme",
-			env:     profileEnv{staticEnv{false, "dark", true}, colorprofile.ANSI},
+			name:     "ANSI + dark theme",
+			env:      profileEnv{staticEnv{false, "dark", true}, colorprofile.ANSI},
 			wantMono: false,
 		},
 		{
-			name:    "ANSI + light theme",
-			env:     profileEnv{staticEnv{false, "light", false}, colorprofile.ANSI},
+			name:     "ANSI + light theme",
+			env:      profileEnv{staticEnv{false, "light", false}, colorprofile.ANSI},
 			wantMono: false,
 		},
 		{
-			name:    "NoTTY + dark theme → MonochromeTheme",
-			env:     profileEnv{staticEnv{false, "dark", true}, colorprofile.NoTTY},
+			name:     "NoTTY + dark theme → MonochromeTheme",
+			env:      profileEnv{staticEnv{false, "dark", true}, colorprofile.NoTTY},
 			wantMono: true,
 		},
 		{
-			name:    "ASCII + light theme → MonochromeTheme",
-			env:     profileEnv{staticEnv{false, "light", false}, colorprofile.ASCII},
+			name:     "ASCII + light theme → MonochromeTheme",
+			env:      profileEnv{staticEnv{false, "light", false}, colorprofile.ASCII},
 			wantMono: true,
 		},
 	}

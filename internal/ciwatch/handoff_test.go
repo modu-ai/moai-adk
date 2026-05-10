@@ -15,12 +15,12 @@ func TestNewHandoff_SingleRequiredFailure(t *testing.T) {
 		Branch:   "feat/SPEC-V3R3-CI-AUTONOMY-001-wave-2",
 		RequiredFailed: []ciwatch.CheckResult{
 			{
-				Name:              "Lint",
-				Status:            "completed",
-				Conclusion:        "failure",
-				RunID:             "12345678",
-				LogURL:            "https://github.com/modu-ai/moai-adk/actions/runs/12345678",
-				ConclusionDetail:  "golangci-lint found 2 issues",
+				Name:             "Lint",
+				Status:           "completed",
+				Conclusion:       "failure",
+				RunID:            "12345678",
+				LogURL:           "https://github.com/modu-ai/moai-adk/actions/runs/12345678",
+				ConclusionDetail: "golangci-lint found 2 issues",
 			},
 		},
 		AuxiliaryFailed: nil,

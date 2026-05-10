@@ -299,8 +299,8 @@ func TestClassifyRelease(t *testing.T) {
 		{"v2.12.0", "v3.0.0", majorRelease, false},
 		{"v2.0.0", "v2.1.0", minorRelease, false},
 		{"v1.5.0", "v2.0.0", majorRelease, false},
-		{"v2.12.0", "v2.12.0", patchRelease, false},   // same version -> patch
-		{"v2.13.0", "v2.12.0", patchRelease, true},    // downgrade -> error
+		{"v2.12.0", "v2.12.0", patchRelease, false}, // same version -> patch
+		{"v2.13.0", "v2.12.0", patchRelease, true},  // downgrade -> error
 	}
 
 	for _, tt := range tests {

@@ -197,8 +197,8 @@ func TestCheckLimit_ExpiredWindowEntries(t *testing.T) {
 	// 7일 초과 기록 3개 + 25시간 전 기록 1개
 	state := rateLimitState{
 		Updates: []time.Time{
-			now.Add(-8 * 24 * time.Hour), // 만료
-			now.Add(-9 * 24 * time.Hour), // 만료
+			now.Add(-8 * 24 * time.Hour),  // 만료
+			now.Add(-9 * 24 * time.Hour),  // 만료
 			now.Add(-10 * 24 * time.Hour), // 만료
 			now.Add(-25 * time.Hour),      // 유효 (cooldown 통과)
 		},

@@ -26,8 +26,8 @@ type fakeClient struct {
 	callCount   int
 }
 
-func (f *fakeClient) Start(_ context.Context) error          { return nil }
-func (f *fakeClient) Shutdown(_ context.Context) error       { return nil }
+func (f *fakeClient) Start(_ context.Context) error                 { return nil }
+func (f *fakeClient) Shutdown(_ context.Context) error              { return nil }
 func (f *fakeClient) OpenFile(_ context.Context, _, _ string) error { return nil }
 func (f *fakeClient) DidSave(_ context.Context, _ string) error     { return nil }
 func (f *fakeClient) FindReferences(_ context.Context, _ string, _ lsp.Position) ([]lsp.Location, error) {
@@ -154,8 +154,8 @@ type blockingClient struct {
 	mu          sync.Mutex
 }
 
-func (b *blockingClient) Start(_ context.Context) error          { return nil }
-func (b *blockingClient) Shutdown(_ context.Context) error       { return nil }
+func (b *blockingClient) Start(_ context.Context) error                 { return nil }
+func (b *blockingClient) Shutdown(_ context.Context) error              { return nil }
 func (b *blockingClient) OpenFile(_ context.Context, _, _ string) error { return nil }
 func (b *blockingClient) DidSave(_ context.Context, _ string) error     { return nil }
 func (b *blockingClient) FindReferences(_ context.Context, _ string, _ lsp.Position) ([]lsp.Location, error) {
@@ -198,8 +198,8 @@ type errorClient struct {
 	err error
 }
 
-func (e *errorClient) Start(_ context.Context) error          { return nil }
-func (e *errorClient) Shutdown(_ context.Context) error       { return nil }
+func (e *errorClient) Start(_ context.Context) error                 { return nil }
+func (e *errorClient) Shutdown(_ context.Context) error              { return nil }
 func (e *errorClient) OpenFile(_ context.Context, _, _ string) error { return nil }
 func (e *errorClient) DidSave(_ context.Context, _ string) error     { return nil }
 func (e *errorClient) FindReferences(_ context.Context, _ string, _ lsp.Position) ([]lsp.Location, error) {
@@ -461,8 +461,8 @@ type slowClient struct {
 	mu          sync.Mutex
 }
 
-func (s *slowClient) Start(_ context.Context) error          { return nil }
-func (s *slowClient) Shutdown(_ context.Context) error       { return nil }
+func (s *slowClient) Start(_ context.Context) error                 { return nil }
+func (s *slowClient) Shutdown(_ context.Context) error              { return nil }
 func (s *slowClient) OpenFile(_ context.Context, _, _ string) error { return nil }
 func (s *slowClient) DidSave(_ context.Context, _ string) error     { return nil }
 func (s *slowClient) FindReferences(_ context.Context, _ string, _ lsp.Position) ([]lsp.Location, error) {
@@ -598,8 +598,8 @@ func TestDetectLanguageFromPath_variousExtensions(t *testing.T) {
 		"/project/analysis.R",
 		"/project/widget.dart",
 		"/project/view.swift",
-		"/project/noext",    // no extension → "unknown"
-		"/project/.hidden",  // dot-only → "unknown"
+		"/project/noext",   // no extension → "unknown"
+		"/project/.hidden", // dot-only → "unknown"
 	}
 
 	cbCfg := resilience.CircuitBreakerConfig{Threshold: 3, Timeout: 30 * time.Second}

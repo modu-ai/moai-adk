@@ -66,8 +66,8 @@ const (
 	DefaultStateDir = ".moai/state"
 
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
-	DefaultMemoryStalenessHours         = 24  // files older than this are wrapped in staleness caveat
-	DefaultMemoryIndexLineCap           = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
+	DefaultMemoryStalenessHours          = 24  // files older than this are wrapped in staleness caveat
+	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
 )
 
@@ -122,7 +122,7 @@ func NewDefaultResearchConfig() ResearchConfig {
 			},
 		},
 		Dashboard: ResearchDashboardConfig{
-			DefaultMode:    "terminal",
+			DefaultMode:     "terminal",
 			HTMLOpenBrowser: true,
 		},
 	}

@@ -146,15 +146,15 @@ func TestClassifyTier_BoundaryValues(t *testing.T) {
 		confidence float64
 		wantTier   Tier
 	}{
-		{0, 0.90, TierObservation},  // count=0: 아직 미관찰
-		{1, 0.90, TierObservation},  // count=1: Observation
-		{2, 0.90, TierObservation},  // count=2: 아직 Observation
-		{3, 0.90, TierHeuristic},    // count=3: Heuristic
-		{4, 0.90, TierHeuristic},    // count=4: 아직 Heuristic
-		{5, 0.90, TierRule},         // count=5: Rule
-		{9, 0.90, TierRule},         // count=9: 아직 Rule
-		{10, 0.90, TierAutoUpdate},  // count=10: AutoUpdate
-		{11, 0.90, TierAutoUpdate},  // count=11: 여전히 AutoUpdate
+		{0, 0.90, TierObservation}, // count=0: 아직 미관찰
+		{1, 0.90, TierObservation}, // count=1: Observation
+		{2, 0.90, TierObservation}, // count=2: 아직 Observation
+		{3, 0.90, TierHeuristic},   // count=3: Heuristic
+		{4, 0.90, TierHeuristic},   // count=4: 아직 Heuristic
+		{5, 0.90, TierRule},        // count=5: Rule
+		{9, 0.90, TierRule},        // count=9: 아직 Rule
+		{10, 0.90, TierAutoUpdate}, // count=10: AutoUpdate
+		{11, 0.90, TierAutoUpdate}, // count=11: 여전히 AutoUpdate
 	}
 
 	for _, tc := range cases {

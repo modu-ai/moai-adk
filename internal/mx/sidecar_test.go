@@ -338,13 +338,13 @@ func TestArchiveStaleBoundary(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name      string
-		lastSeen  time.Time
+		name         string
+		lastSeen     time.Time
 		shouldRemain bool
 	}{
 		{"1 hour ago", now.Add(-1 * time.Hour), true},
 		{"6 days ago", now.Add(-6 * 24 * time.Hour), true},
-		{"7 days ago", now.Add(-7 * 24 * time.Hour), true}, // Exactly 7 days stays
+		{"7 days ago", now.Add(-7 * 24 * time.Hour), true},  // Exactly 7 days stays
 		{"8 days ago", now.Add(-8 * 24 * time.Hour), false}, // Archived
 	}
 

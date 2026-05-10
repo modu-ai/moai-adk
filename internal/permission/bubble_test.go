@@ -237,9 +237,9 @@ func TestBubbleDispatcher_IsParentAvailable(t *testing.T) {
 	dispatcher := NewBubbleDispatcher()
 
 	tests := []struct {
-		name              string
-		parentSessionID   string
-		parentAvailable   bool
+		name            string
+		parentSessionID string
+		parentAvailable bool
 	}{
 		{
 			name:            "valid session ID - available",

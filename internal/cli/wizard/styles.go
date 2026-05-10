@@ -17,12 +17,12 @@ func wizardColors() wizardColorSet {
 		// Secondary: info color (replaces purple #7C3AED / #5B21B6)
 		Secondary: lipgloss.AdaptiveColor{Light: lt.Info, Dark: dt.Info},
 		// Success / error / muted / border from tui tokens
-		Success:  lipgloss.AdaptiveColor{Light: lt.Success, Dark: dt.Success},
-		Warning:  lipgloss.AdaptiveColor{Light: lt.Warning, Dark: dt.Warning},
-		Error:    lipgloss.AdaptiveColor{Light: lt.Danger, Dark: dt.Danger},
-		Muted:    lipgloss.AdaptiveColor{Light: lt.Dim, Dark: dt.Dim},
-		Text:     lipgloss.AdaptiveColor{Light: lt.Fg, Dark: dt.Fg},
-		Border:   lipgloss.AdaptiveColor{Light: lt.Rule, Dark: dt.Rule},
+		Success: lipgloss.AdaptiveColor{Light: lt.Success, Dark: dt.Success},
+		Warning: lipgloss.AdaptiveColor{Light: lt.Warning, Dark: dt.Warning},
+		Error:   lipgloss.AdaptiveColor{Light: lt.Danger, Dark: dt.Danger},
+		Muted:   lipgloss.AdaptiveColor{Light: lt.Dim, Dark: dt.Dim},
+		Text:    lipgloss.AdaptiveColor{Light: lt.Fg, Dark: dt.Fg},
+		Border:  lipgloss.AdaptiveColor{Light: lt.Rule, Dark: dt.Rule},
 		// Button foreground (white text on filled button)
 		ButtonFg: lipgloss.AdaptiveColor{Light: lt.Bg, Dark: dt.Fg},
 		// Button blurred background

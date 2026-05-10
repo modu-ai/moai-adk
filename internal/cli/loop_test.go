@@ -235,8 +235,8 @@ func TestCharacterize_Loop_PhaseIndex(t *testing.T) {
 		{"sync", 4},
 		{"Sync", 4},
 		{"", 0},
-		{"analyze", 0},  // internal loop phase, not a display phase
-		{"review", 0},   // internal loop phase, not a display phase
+		{"analyze", 0}, // internal loop phase, not a display phase
+		{"review", 0},  // internal loop phase, not a display phase
 		{"unknown", 0},
 	}
 	for _, tt := range tests {

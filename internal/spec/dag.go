@@ -5,14 +5,14 @@ package spec
 
 // tarjanState is the execution state of Tarjan's SCC algorithm
 type tarjanState struct {
-	adj      [][]int
-	n        int
-	index    []int
-	lowlink  []int
-	onStack  []bool
-	stack    []int
-	counter  int
-	sccs     [][]int // List of node indices for SCCs
+	adj     [][]int
+	n       int
+	index   []int
+	lowlink []int
+	onStack []bool
+	stack   []int
+	counter int
+	sccs    [][]int // List of node indices for SCCs
 }
 
 // SCC returns strongly connected components (size > 1 or size 1 with self-loop)

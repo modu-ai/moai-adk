@@ -315,11 +315,11 @@ func (r *PermissionResolver) handleBubbleAsk(_ string, _ string, tier config.Sou
 
 	// Return "ask" - the orchestrator will route to parent AskUserQuestion
 	return &ResolveResult{
-		Decision: DecisionAsk,
-		ResolvedBy: tier,
-		Origin:     rule.Origin,
+		Decision:      DecisionAsk,
+		ResolvedBy:    tier,
+		Origin:        rule.Origin,
 		SystemMessage: "Bubble mode: routing to parent session",
-		Trace:      *trace,
+		Trace:         *trace,
 	}
 }
 

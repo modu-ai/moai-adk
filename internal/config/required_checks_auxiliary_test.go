@@ -42,8 +42,8 @@ auxiliary:
 	}
 
 	tests := []struct {
-		ctx        string
-		isAuxWant  bool
+		ctx       string
+		isAuxWant bool
 	}{
 		{"claude-code-review", true},
 		{"llm-panel", true},

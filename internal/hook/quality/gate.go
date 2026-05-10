@@ -212,7 +212,7 @@ var toolchains = []langToolchain{
 	// Zig: build.zig
 	{
 		markerFiles: []string{"build.zig"},
-		testStep: &gateStep{name: "zig test", binary: "zig", args: []string{"test"}, optional: true},
+		testStep:    &gateStep{name: "zig test", binary: "zig", args: []string{"test"}, optional: true},
 	},
 }
 
@@ -223,9 +223,9 @@ type QualityGate struct {
 	config *GateConfig
 
 	// stagedCache caches the git diff --cached result exactly once per Run call.
-	stagedCache        []string
-	stagedCacheReady   bool // true when the query is complete (even if result is nil)
-	stagedCacheNil     bool // true when nil was returned (conservative fallback)
+	stagedCache      []string
+	stagedCacheReady bool // true when the query is complete (even if result is nil)
+	stagedCacheNil   bool // true when nil was returned (conservative fallback)
 }
 
 // NewQualityGate creates a QualityGate with the given configuration.

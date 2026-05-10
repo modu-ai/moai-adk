@@ -125,7 +125,7 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 
 func TestFileChangedHandler_SupportedExtensions(t *testing.T) {
 	tests := []struct {
-		ext      string
+		ext       string
 		supported bool
 	}{
 		{".go", true},

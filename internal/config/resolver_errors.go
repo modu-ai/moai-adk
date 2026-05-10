@@ -7,10 +7,10 @@ import "fmt"
 // ConfigTypeError is returned when a value cannot be parsed against its typed schema.
 // This maps to REQ-V3R2-RT-005-013.
 type ConfigTypeError struct {
-	File          string
-	Key           string
-	ExpectedType  string
-	ActualValue   any
+	File         string
+	Key          string
+	ExpectedType string
+	ActualValue  any
 }
 
 func (e *ConfigTypeError) Error() string {
@@ -36,8 +36,8 @@ func (e *ConfigAmbiguous) Error() string {
 // a policy-designated key while policy.strict_mode is true.
 // This maps to REQ-V3R2-RT-005-022.
 type PolicyOverrideRejected struct {
-	Key            string
-	PolicySource   string
+	Key             string
+	PolicySource    string
 	AttemptedSource string
 }
 
@@ -50,10 +50,10 @@ func (e *PolicyOverrideRejected) Error() string {
 // schema versions without a migration.
 // This maps to REQ-V3R2-RT-005-042.
 type ConfigSchemaMismatch struct {
-	Field             string
-	OldType           string
-	NewType           string
-	MigrationVersion  string
+	Field            string
+	OldType          string
+	NewType          string
+	MigrationVersion string
 }
 
 func (e *ConfigSchemaMismatch) Error() string {

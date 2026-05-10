@@ -2,10 +2,11 @@
 // SPEC-DOCS-SITE-001 Phase 3
 //
 // Conversion specification:
-//   T1 — Callout JSX → Hextra shortcode (735 items)
-//   T2 — _meta.ts → _meta.yaml (38 files)
-//   T3 — YAML frontmatter injection (219 pages)
-//   T4 — .mdx → .md extension change
+//
+//	T1 — Callout JSX → Hextra shortcode (735 items)
+//	T2 — _meta.ts → _meta.yaml (38 files)
+//	T3 — YAML frontmatter injection (219 pages)
+//	T4 — .mdx → .md extension change
 package main
 
 import (
@@ -30,12 +31,12 @@ type MetaEntry struct {
 
 // Stats: conversion statistics
 type Stats struct {
-	FilesProcessed  int
-	CalloutsChanged int
-	MetaConverted   int
+	FilesProcessed   int
+	CalloutsChanged  int
+	MetaConverted    int
 	FrontmatterAdded int
-	FilesRenamed    int
-	Errors          []string
+	FilesRenamed     int
+	Errors           []string
 }
 
 var (
@@ -49,11 +50,11 @@ var (
 
 	reH1 = regexp.MustCompile(`(?m)^#\s+(.+)$`)
 
-	reMetaKeyStr = regexp.MustCompile(`^\s*"([^"]+)"\s*:\s*"([^"]+)"\s*,?\s*$`)
+	reMetaKeyStr  = regexp.MustCompile(`^\s*"([^"]+)"\s*:\s*"([^"]+)"\s*,?\s*$`)
 	reMetaKeyBare = regexp.MustCompile(`^\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*:\s*"([^"]+)"\s*,?\s*$`)
-	reObjTitle   = regexp.MustCompile(`title\s*:\s*"([^"]+)"`)
-	reObjDisplay = regexp.MustCompile(`display\s*:\s*"([^"]+)"`)
-	reObjType    = regexp.MustCompile(`\btype\s*:\s*"([^"]+)"`)
+	reObjTitle    = regexp.MustCompile(`title\s*:\s*"([^"]+)"`)
+	reObjDisplay  = regexp.MustCompile(`display\s*:\s*"([^"]+)"`)
+	reObjType     = regexp.MustCompile(`\btype\s*:\s*"([^"]+)"`)
 	// Object start line: "key": { or key: {
 	reObjStart = regexp.MustCompile(`^\s*"?([a-zA-Z][a-zA-Z0-9_-]*)"?\s*:\s*\{`)
 )

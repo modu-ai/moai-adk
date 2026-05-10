@@ -6,9 +6,9 @@ type Priority int
 
 const (
 	P1Required Priority = iota + 1 // Active SPEC-ID, workflow phase, execution mode
-	P2High                          // TaskList summary, active agents
-	P3Medium                        // Last 3 agent execution result summaries
-	P4Low                           // User decision history, errors/warnings
+	P2High                         // TaskList summary, active agents
+	P3Medium                       // Last 3 agent execution result summaries
+	P4Low                          // User decision history, errors/warnings
 )
 
 // Section represents a single section of the session memo.

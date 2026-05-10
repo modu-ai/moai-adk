@@ -20,10 +20,10 @@ func TestFormatStatusUpdate(t *testing.T) {
 		{
 			name: "all_pending",
 			state: ciwatch.CIState{
-				PRNumber:        785,
-				Branch:          "main",
-				RequiredPassed:  0,
-				RequiredFailed:  nil,
+				PRNumber:       785,
+				Branch:         "main",
+				RequiredPassed: 0,
+				RequiredFailed: nil,
 				RequiredPending: []ciwatch.CheckResult{
 					{Name: "Lint", Status: "in_progress"},
 					{Name: "Test (ubuntu-latest)", Status: "queued"},

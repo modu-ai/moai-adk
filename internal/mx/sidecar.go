@@ -46,11 +46,11 @@ type Archive struct {
 
 // Manager manages the sidecar index file.
 type Manager struct {
-	mu            sync.RWMutex
-	stateDir      string
-	sidecarPath   string
-	archivePath   string
-	currentTags   map[string]Tag // Key() -> Tag
+	mu          sync.RWMutex
+	stateDir    string
+	sidecarPath string
+	archivePath string
+	currentTags map[string]Tag // Key() -> Tag
 }
 
 // NewManager creates a new sidecar manager.

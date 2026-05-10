@@ -13,10 +13,10 @@ func TestConvertHookDiagsToLSP_AllSeverities(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    []lsphook.Diagnostic
-		wantSev  lsp.DiagnosticSeverity
-		wantNil  bool
+		name    string
+		input   []lsphook.Diagnostic
+		wantSev lsp.DiagnosticSeverity
+		wantNil bool
 	}{
 		{
 			name:    "error severity",

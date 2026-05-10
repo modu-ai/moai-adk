@@ -56,23 +56,23 @@ func TestScanAll16Languages(t *testing.T) {
 
 	// Map of extension to sample comment with @MX tag
 	testCases := map[string]string{
-		".go":     "// @MX:NOTE: Go tag",
-		".py":     "# @MX:NOTE: Python tag",
-		".ts":     "// @MX:NOTE: TypeScript tag",
-		".js":     "// @MX:NOTE: JavaScript tag",
-		".rs":     "// @MX:NOTE: Rust tag",
-		".java":   "// @MX:NOTE: Java tag",
-		".kt":     "// @MX:NOTE: Kotlin tag",
-		".cs":     "// @MX:NOTE: C# tag",
-		".rb":     "# @MX:NOTE: Ruby tag",
-		".php":    "// @MX:NOTE: PHP tag",
-		".ex":     "# @MX:NOTE: Elixir tag",
-		".exs":    "# @MX:NOTE: Elixir script tag",
-		".cpp":    "// @MX:NOTE: C++ tag",
-		".scala":  "// @MX:NOTE: Scala tag",
-		".R":      "# @MX:NOTE: R tag",
-		".dart":   "// @MX:NOTE: Dart tag",
-		".swift":  "// @MX:NOTE: Swift tag",
+		".go":    "// @MX:NOTE: Go tag",
+		".py":    "# @MX:NOTE: Python tag",
+		".ts":    "// @MX:NOTE: TypeScript tag",
+		".js":    "// @MX:NOTE: JavaScript tag",
+		".rs":    "// @MX:NOTE: Rust tag",
+		".java":  "// @MX:NOTE: Java tag",
+		".kt":    "// @MX:NOTE: Kotlin tag",
+		".cs":    "// @MX:NOTE: C# tag",
+		".rb":    "# @MX:NOTE: Ruby tag",
+		".php":   "// @MX:NOTE: PHP tag",
+		".ex":    "# @MX:NOTE: Elixir tag",
+		".exs":   "# @MX:NOTE: Elixir script tag",
+		".cpp":   "// @MX:NOTE: C++ tag",
+		".scala": "// @MX:NOTE: Scala tag",
+		".R":     "# @MX:NOTE: R tag",
+		".dart":  "// @MX:NOTE: Dart tag",
+		".swift": "// @MX:NOTE: Swift tag",
 	}
 
 	scanner := NewScanner()
@@ -119,8 +119,8 @@ func TestScanFileWithWarnReason(t *testing.T) {
 			expectReason: true,
 		},
 		{
-			name: "WARN without REASON",
-			content: `// @MX:WARN: missing timeout`,
+			name:         "WARN without REASON",
+			content:      `// @MX:WARN: missing timeout`,
 			expectWarn:   true,
 			expectReason: false,
 		},
@@ -296,9 +296,9 @@ func TestDetectChanges(t *testing.T) {
 	}
 
 	newTags := []Tag{
-		{Kind: MXNote, File: "file1.go", Line: 1, Body: "old note"}, // unchanged
+		{Kind: MXNote, File: "file1.go", Line: 1, Body: "old note"},     // unchanged
 		{Kind: MXWarn, File: "file1.go", Line: 2, Body: "updated warn"}, // changed
-		{Kind: MXTodo, File: "file3.go", Line: 1, Body: "new todo"}, // added
+		{Kind: MXTodo, File: "file3.go", Line: 1, Body: "new todo"},     // added
 		// old ANCHOR removed
 	}
 
@@ -451,44 +451,44 @@ func TestExtractReason(t *testing.T) {
 // TestExtractTagContent tests extraction of @MX tag content from comment lines.
 func TestExtractTagContent(t *testing.T) {
 	tests := []struct {
-		name         string
-		line         string
-		prefix       string
-		expectOk     bool
+		name          string
+		line          string
+		prefix        string
+		expectOk      bool
 		expectContent string
 	}{
 		{
-			name:         "valid Go comment",
-			line:         "// @MX:NOTE some text",
-			prefix:       "//",
-			expectOk:     true,
+			name:          "valid Go comment",
+			line:          "// @MX:NOTE some text",
+			prefix:        "//",
+			expectOk:      true,
 			expectContent: "NOTE some text",
 		},
 		{
-			name:         "valid Python comment",
-			line:         "# @MX:WARN: danger",
-			prefix:       "#",
-			expectOk:     true,
+			name:          "valid Python comment",
+			line:          "# @MX:WARN: danger",
+			prefix:        "#",
+			expectOk:      true,
 			expectContent: "WARN: danger",
 		},
 		{
-			name:         "comment without @MX",
-			line:         "// regular comment",
-			prefix:       "//",
-			expectOk:     false,
+			name:     "comment without @MX",
+			line:     "// regular comment",
+			prefix:   "//",
+			expectOk: false,
 		},
 		{
-			name:         "comment before @MX prefix",
-			line:         "// text before @MX:NOTE: tag",
-			prefix:       "//",
-			expectOk:     true,
+			name:          "comment before @MX prefix",
+			line:          "// text before @MX:NOTE: tag",
+			prefix:        "//",
+			expectOk:      true,
 			expectContent: "NOTE: tag",
 		},
 		{
-			name:         "wrong comment prefix",
-			line:         "# @MX:NOTE tag",
-			prefix:       "//",
-			expectOk:     false,
+			name:     "wrong comment prefix",
+			line:     "# @MX:NOTE tag",
+			prefix:   "//",
+			expectOk: false,
 		},
 	}
 

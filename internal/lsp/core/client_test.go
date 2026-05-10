@@ -703,4 +703,3 @@ func TestClient_Capabilities_BeforeStart(t *testing.T) {
 		t.Error("Capabilities() before Start should return all-false ServerCapabilities")
 	}
 }
-

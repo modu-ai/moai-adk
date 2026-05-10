@@ -18,7 +18,7 @@ type NotificationHandler func(payload json.RawMessage)
 // @MX:ANCHOR: [AUTO] Core type for request-response correlation. Used by readLoop and sendRequest in bridge.go.
 // @MX:REASON: fan_in >= 3 (Register, Dispatch, Unregister call sites)
 type PendingRegistry struct {
-		// sync.Map manages map[int64]chan json.RawMessage in a concurrency-safe manner.
+	// sync.Map manages map[int64]chan json.RawMessage in a concurrency-safe manner.
 	m sync.Map
 }
 

@@ -12,7 +12,7 @@ import (
 // WizardState stores the current state of the GitHub Init Wizard.
 type WizardState struct {
 	Language     string            // ko, en, ja, zh
-	SelectedLLMs  []string          // claude, codex, gemini, glm
+	SelectedLLMs []string          // claude, codex, gemini, glm
 	ModelChoices map[string]string // llm -> model mapping
 	Triggers     TriggerConfig     // auto, comment, both
 	ProjectDir   string

@@ -4,7 +4,7 @@ import "time"
 
 // BlockerReport represents an interrupt signal from a subagent.
 type BlockerReport struct {
-	Kind            string         `json:"kind"`              // "missing_input", "ambiguous", "error", "quality_gate"
+	Kind            string         `json:"kind"` // "missing_input", "ambiguous", "error", "quality_gate"
 	Message         string         `json:"message"`
 	Context         map[string]any `json:"context,omitempty"`
 	RequestedAction string         `json:"requested_action"`

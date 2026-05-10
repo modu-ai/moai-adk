@@ -17,9 +17,9 @@ type PhaseState struct {
 
 // ProvenanceTag identifies the source of a state mutation.
 type ProvenanceTag struct {
-	Source  string    `json:"source"`  // "user", "project", "local", "session", "hook"
-	Origin  string    `json:"origin"`  // file path or "cli"
-	Loaded  time.Time `json:"loaded"`
+	Source string    `json:"source"` // "user", "project", "local", "session", "hook"
+	Origin string    `json:"origin"` // file path or "cli"
+	Loaded time.Time `json:"loaded"`
 }
 
 // MarshalJSON implements custom JSON marshaling for PhaseState to handle

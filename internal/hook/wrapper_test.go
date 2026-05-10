@@ -206,27 +206,27 @@ func TestHookWrapper_MalformedInput(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
+		name           string
 		malformedInput string
 	}{
 		{
-			name:         "incomplete JSON",
+			name:           "incomplete JSON",
 			malformedInput: `{"session_id":"test",`,
 		},
 		{
-			name:         "random garbage",
+			name:           "random garbage",
 			malformedInput: "!@#$%^&*()_+{}[]|\\:;<>?,./",
 		},
 		{
-			name:         "binary data",
+			name:           "binary data",
 			malformedInput: string([]byte{0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD}),
 		},
 		{
-			name:         "null bytes in middle",
+			name:           "null bytes in middle",
 			malformedInput: `{"test":"value` + "\x00" + `"continue"}`,
 		},
 		{
-			name:         "unicode with nulls",
+			name:           "unicode with nulls",
 			malformedInput: "한글\x00테스트\x00😀🚀",
 		},
 	}

@@ -13,9 +13,9 @@ import (
 
 // prCmd is the top-level "moai pr" command group.
 var prCmd = &cobra.Command{
-	Use:   "pr",
-	Short: "PR-related commands (watch, abort)",
-	Long:  "Commands for monitoring and managing pull requests in CI/CD workflows.",
+	Use:     "pr",
+	Short:   "PR-related commands (watch, abort)",
+	Long:    "Commands for monitoring and managing pull requests in CI/CD workflows.",
 	GroupID: "project",
 }
 

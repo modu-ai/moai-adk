@@ -66,7 +66,7 @@ func TestDetectAliasCycle_Cycle(t *testing.T) {
 		{
 			name: "2-노드 순환 A→B→A",
 			graph: map[string]string{
-				"color.primary":  "color.secondary",
+				"color.primary":   "color.secondary",
 				"color.secondary": "color.primary",
 			},
 		},

@@ -42,9 +42,9 @@ const (
 // 지원 도구명 목록
 var validToolNames = map[string]bool{
 	"vision":    true,
-	"websearch":  true,
-	"webreader":  true,
-	"all":        true,
+	"websearch": true,
+	"webreader": true,
+	"all":       true,
 }
 
 // errNodeNotFound 는 PATH 에서 node 를 찾지 못했을 때 반환하는 센티넬 에러
@@ -448,7 +448,7 @@ func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 		}
 		// 토큰 불일치 → 에러 반환 (REQ-GMC-006 (b))
 		return false, fmt.Errorf(
-			"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
+			"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
 				"강제 덮어쓰기: moai glm tools enable --force",
 		)
 	}

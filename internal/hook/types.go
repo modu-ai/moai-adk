@@ -233,7 +233,7 @@ type HookInput struct {
 	AgentName      string `json:"agent_name,omitempty"`      // Name of the agent using the worktree
 
 	// ConfigChange fields (v2.1.49+)
-	ConfigFilePath      string `json:"config_file_path,omitempty"`      // Path to the changed configuration file
+	ConfigFilePath      string `json:"config_file_path,omitempty"`     // Path to the changed configuration file
 	ConfigurationSource string `json:"configuration_source,omitempty"` // user_settings, project_settings, local_settings, policy_settings, skills
 
 	// TaskCreated fields (v2.1.84+)
@@ -253,12 +253,12 @@ type HookInput struct {
 	ElicitationRequest    json.RawMessage `json:"elicitation_request,omitempty"`     // Form fields for elicitation
 
 	// InstructionsLoaded fields (v2.1.69+)
-	InstructionFilePath  string `json:"instruction_file_path,omitempty"`  // Absolute path to loaded file
-	MemoryType           string `json:"memory_type,omitempty"`            // User, Project, Local, Managed
-	LoadReason           string `json:"load_reason,omitempty"`            // session_start, nested_traversal, path_glob_match, include, compact
-	Globs                string `json:"globs,omitempty"`                  // Glob patterns that triggered load
-	TriggerFilePath      string `json:"trigger_file_path,omitempty"`      // File that triggered the load
-	ParentFilePath       string `json:"parent_file_path,omitempty"`       // Parent file that included this
+	InstructionFilePath string `json:"instruction_file_path,omitempty"` // Absolute path to loaded file
+	MemoryType          string `json:"memory_type,omitempty"`           // User, Project, Local, Managed
+	LoadReason          string `json:"load_reason,omitempty"`           // session_start, nested_traversal, path_glob_match, include, compact
+	Globs               string `json:"globs,omitempty"`                 // Glob patterns that triggered load
+	TriggerFilePath     string `json:"trigger_file_path,omitempty"`     // File that triggered the load
+	ParentFilePath      string `json:"parent_file_path,omitempty"`      // Parent file that included this
 
 	// PermissionRequest fields
 	PermissionSuggestions json.RawMessage `json:"permission_suggestions,omitempty"` // Suggested permission rules
@@ -274,10 +274,10 @@ type HookSpecificOutput struct {
 	PermissionDecision       string          `json:"permissionDecision,omitempty"`
 	PermissionDecisionReason string          `json:"permissionDecisionReason,omitempty"`
 	AdditionalContext        string          `json:"additionalContext,omitempty"`
-	SessionTitle             string          `json:"sessionTitle,omitempty"`             // UserPromptSubmit: sets session title in Claude Code UI
-	UpdatedInput             json.RawMessage `json:"updatedInput,omitempty"`             // PreToolUse: modifies tool input before execution
-	UpdatedMCPToolOutput     string          `json:"updatedMCPToolOutput,omitempty"`     // PostToolUse: replaces MCP tool output (MCP-only, pre-v2.1.121)
-	UpdatedToolOutput        string          `json:"updatedToolOutput,omitempty"`        // PostToolUse: replaces any tool output (v2.1.121+, all tools)
+	SessionTitle             string          `json:"sessionTitle,omitempty"`         // UserPromptSubmit: sets session title in Claude Code UI
+	UpdatedInput             json.RawMessage `json:"updatedInput,omitempty"`         // PreToolUse: modifies tool input before execution
+	UpdatedMCPToolOutput     string          `json:"updatedMCPToolOutput,omitempty"` // PostToolUse: replaces MCP tool output (MCP-only, pre-v2.1.121)
+	UpdatedToolOutput        string          `json:"updatedToolOutput,omitempty"`    // PostToolUse: replaces any tool output (v2.1.121+, all tools)
 }
 
 // HookOutput represents the JSON payload written to stdout for Claude Code.

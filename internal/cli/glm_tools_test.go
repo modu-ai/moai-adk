@@ -355,10 +355,10 @@ func TestGLMToolsDisable_PreservesOtherEntries(t *testing.T) {
 	other3 := map[string]any{"command": "node", "args": []any{"moai-lsp"}}
 
 	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
-		"context7":             other1,
-		"sequential-thinking":  other2,
-		"moai-lsp":             other3,
-		zaiMCPServerKey:        buildZAIMCPEntry("test-token"),
+		"context7":            other1,
+		"sequential-thinking": other2,
+		"moai-lsp":            other3,
+		zaiMCPServerKey:       buildZAIMCPEntry("test-token"),
 	})
 
 	_, err := disableMCPServerSafe(claudeJSONPath)
@@ -965,7 +965,7 @@ func TestGLMToolsDisableCmd_NothingToDisable(t *testing.T) {
 // runGLMToolsEnable 은 loadGLMKey() 를 호출하는데, 이 함수는 MOAI_TEST_GLM_KEY env 를 먼저 확인한다.
 // 테스트 격리: MOAI_TEST_GLM_KEY 를 빈 문자열로 설정 + HOME 을 .env.glm 없는 tmpDir 로 오버라이드.
 func TestGLMToolsEnableCmd_NoToken(t *testing.T) {
-	t.Setenv("HOME", t.TempDir()) // loadGLMKey() 의 getGLMEnvPath() 가 빈 DIR 를 보도록
+	t.Setenv("HOME", t.TempDir())     // loadGLMKey() 의 getGLMEnvPath() 가 빈 DIR 를 보도록
 	t.Setenv("MOAI_TEST_GLM_KEY", "") // loadGLMKey() 의 테스트 키 env 비워둠
 	defer makeNodeOK(t)()
 

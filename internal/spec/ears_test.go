@@ -53,14 +53,14 @@ func TestAcceptance_GenerateChildID_Level1(t *testing.T) {
 	parent := &Acceptance{ID: "AC-SPC-001-05"}
 
 	tests := []struct {
-		index      int
-		wantID     string
-		expectErr  bool
+		index     int
+		wantID    string
+		expectErr bool
 	}{
 		{0, "AC-SPC-001-05.a", false},
 		{1, "AC-SPC-001-05.b", false},
 		{25, "AC-SPC-001-05.z", false},
-		{26, "", true},  // out of range
+		{26, "", true}, // out of range
 		{-1, "", true}, // negative
 	}
 
@@ -88,15 +88,15 @@ func TestAcceptance_GenerateChildID_Level2(t *testing.T) {
 	parent := &Acceptance{ID: "AC-SPC-001-05.a"}
 
 	tests := []struct {
-		index      int
-		wantID     string
-		expectErr  bool
+		index     int
+		wantID    string
+		expectErr bool
 	}{
 		{0, "AC-SPC-001-05.a.i", false},
 		{1, "AC-SPC-001-05.a.ii", false},
 		{10, "AC-SPC-001-05.a.xi", false},
 		{25, "AC-SPC-001-05.a.xxvi", false},
-		{26, "", true},  // out of range
+		{26, "", true}, // out of range
 		{-1, "", true}, // negative
 	}
 
@@ -151,9 +151,9 @@ func TestAcceptance_InheritGiven(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		childGiven     string
-		expectedGiven  string
+		name          string
+		childGiven    string
+		expectedGiven string
 	}{
 		{"empty child inherits", "", "user is authenticated"},
 		{"non-empty child keeps own", "user is admin", "user is admin"},
