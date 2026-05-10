@@ -1,0 +1,74 @@
+# en.yaml - English message catalog for MoAI-ADK TUI
+# Key naming convention: <surface>.<section>.<role>
+# All values must be free of emoji codepoints (U+1F300-U+1FAFF, U+2600-U+27BF).
+# NOTE: This catalog is the fallback catalog. Keys must be identical to ko.yaml.
+
+# doctor surface
+doctor.summary.pass: "Pass"
+doctor.summary.warn: "Warn"
+doctor.summary.fail: "Fail"
+doctor.group.system: "System"
+doctor.group.moai: "MoAI-ADK"
+doctor.section.summary: "Summary"
+doctor.item.go: "Go"
+doctor.item.git: "Git"
+doctor.item.claude: "Claude Code"
+doctor.item.gh: "GitHub CLI"
+doctor.item.config: "Config file"
+doctor.item.hooks: "Hooks & slash commands"
+doctor.item.mx: "MX anchors"
+doctor.item.glamour: "Glamour cache"
+doctor.item.telemetry: "Telemetry"
+
+# init wizard surface
+init.wizard.step: "Step"
+init.wizard.title: "Initialize project"
+init.wizard.prompt.name: "Project name"
+init.wizard.prompt.lang: "Programming language"
+init.wizard.prompt.runtime: "Runtime"
+init.wizard.prompt.confirm: "Confirm"
+init.wizard.action.back: "Back"
+init.wizard.action.next: "Next"
+init.wizard.action.finish: "Finish"
+init.wizard.action.cancel: "Cancel"
+
+# loop surface
+loop.phase.spec: "Spec"
+loop.phase.plan: "Plan"
+loop.phase.impl: "Impl"
+loop.phase.sync: "Sync"
+loop.status.running: "Running"
+loop.status.done: "Done"
+loop.status.failed: "Failed"
+
+# error surface
+error.generic: "An error occurred"
+error.config.missing: "Config file not found"
+error.config.invalid: "Config file is invalid"
+error.network.timeout: "Network connection timed out"
+error.permission.denied: "Permission denied"
+
+# banner surface
+banner.tagline: "AI-powered development workflow"
+banner.version: "Version"
+
+# status surface
+status.branch: "Branch"
+status.ahead: "ahead"
+status.behind: "behind"
+status.clean: "clean"
+status.dirty: "modified"
+
+# help surface
+help.usage: "Usage"
+help.commands: "Commands"
+help.flags: "Flags"
+help.examples: "Examples"
+
+# common
+common.yes: "Yes"
+common.no: "No"
+common.ok: "OK"
+common.cancel: "Cancel"
+common.loading: "Loading"
+common.unknown: "Unknown"

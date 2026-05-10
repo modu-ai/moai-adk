@@ -566,7 +566,7 @@ func statusIcon(s CheckStatus) string {
 	case CheckOK:
 		return cliSuccess.Render("✓")
 	case CheckWarn:
-		return cliWarn.Render("⚠")
+		return cliWarn.Render("!")
 	case CheckFail:
 		return cliError.Render("✗")
 	default:

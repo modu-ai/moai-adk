@@ -21,10 +21,10 @@ func TestRender_MinimalMode(t *testing.T) {
 
 	got := r.Render(data, ModeMinimal)
 
-	if !strings.Contains(got, "🤖 Opus 4.5") {
+	if !strings.Contains(got, "[ai] Opus 4.5") {
 		t.Errorf("minimal mode should contain model name with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔋") {
+	if !strings.Contains(got, "[hi]") {
 		t.Errorf("minimal mode should contain battery emoji, got %q", got)
 	}
 	if !strings.Contains(got, "25%") {
@@ -46,19 +46,19 @@ func TestRender_DefaultMode(t *testing.T) {
 	got := r.Render(data, ModeDefault)
 
 	// Check all sections are present with emojis
-	if !strings.Contains(got, "🤖 Opus 4.5") {
+	if !strings.Contains(got, "[ai] Opus 4.5") {
 		t.Errorf("default mode should contain model with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔋") {
+	if !strings.Contains(got, "[hi]") {
 		t.Errorf("default mode should contain battery emoji, got %q", got)
 	}
-	if !strings.Contains(got, "💬 Mr.Alfred") {
+	if !strings.Contains(got, "[out] Mr.Alfred") {
 		t.Errorf("default mode should contain output style with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "📁 moai-adk-go") {
+	if !strings.Contains(got, "[dir] moai-adk-go") {
 		t.Errorf("default mode should contain directory with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "📊") {
+	if !strings.Contains(got, "[git]") {
 		t.Errorf("default mode should contain git status with emoji, got %q", got)
 	}
 	if !strings.Contains(got, "+3") {
@@ -70,10 +70,10 @@ func TestRender_DefaultMode(t *testing.T) {
 	if !strings.Contains(got, "?1") {
 		t.Errorf("default mode should contain untracked count, got %q", got)
 	}
-	if !strings.Contains(got, "🗿 v1.14.5") {
-		t.Errorf("default mode should contain MoAI version with 🗿 emoji, got %q", got)
+	if !strings.Contains(got, "moai v1.14.5") {
+		t.Errorf("default mode should contain MoAI version with moai emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔀 main") {
+	if !strings.Contains(got, "main") {
 		t.Errorf("default mode should contain branch with emoji, got %q", got)
 	}
 }
@@ -101,13 +101,13 @@ func TestRender_VerboseMode_MultiLine(t *testing.T) {
 	lines := strings.Split(got, "\n")
 
 	// v3 full L1: Model, Claude version, MoAI version (no prefix)
-	if !strings.Contains(lines[0], "🤖 Sonnet 4") {
+	if !strings.Contains(lines[0], "[ai] Sonnet 4") {
 		t.Errorf("full line 1 should contain model, got %q", lines[0])
 	}
-	if !strings.Contains(lines[0], "🔅 v1.0.80") {
+	if !strings.Contains(lines[0], "v1.0.80") {
 		t.Errorf("full line 1 should contain Claude version, got %q", lines[0])
 	}
-	if !strings.Contains(lines[0], "🗿 v1.2.0") {
+	if !strings.Contains(lines[0], "moai v1.2.0") {
 		t.Errorf("full line 1 should contain MoAI version, got %q", lines[0])
 	}
 	// v3 does not render cost (REQ-V3-TIME-005)
@@ -130,7 +130,7 @@ func TestRender_VerboseMode_OmitsEmptyLines(t *testing.T) {
 	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
 	// Line 2 (directory/branch/git) should be omitted since all are unavailable
 	for _, line := range lines {
-		if strings.Contains(line, "📁") || strings.Contains(line, "🔀") || strings.Contains(line, "📊") {
+		if strings.Contains(line, "📁") || strings.Contains(line, "🔀") || strings.Contains(line, "[git]") {
 			t.Errorf("verbose mode should omit empty line 2, but found git/dir segment in %q", line)
 		}
 	}
@@ -152,7 +152,7 @@ func TestRender_VerboseMode_CostRendering(t *testing.T) {
 		t.Errorf("full mode should NOT render cost in v3, got %q", got)
 	}
 	// Version info should still be displayed (no prefix in full mode)
-	if !strings.Contains(got, "🔅 v1.0.80") {
+	if !strings.Contains(got, "v1.0.80") {
 		t.Errorf("full mode should still contain Claude version, got %q", got)
 	}
 }
@@ -202,17 +202,17 @@ func TestRender_EmptyGit(t *testing.T) {
 	got := r.Render(data, ModeDefault)
 
 	// Should not contain any git info
-	if strings.Contains(got, "📊") {
+	if strings.Contains(got, "[git]") {
 		t.Errorf("should not contain git status emoji when unavailable, got %q", got)
 	}
 	if strings.Contains(got, "🔀") {
 		t.Errorf("should not contain branch emoji when unavailable, got %q", got)
 	}
 	// But should still have model and context
-	if !strings.Contains(got, "🤖") {
+	if !strings.Contains(got, "[ai]") {
 		t.Errorf("should still contain model emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔋") {
+	if !strings.Contains(got, "[hi]") {
 		t.Errorf("should still contain context, got %q", got)
 	}
 }
@@ -227,7 +227,7 @@ func TestRender_EmptyMemory(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🔀 main") {
+	if !strings.Contains(got, "main") {
 		t.Errorf("should contain git info, got %q", got)
 	}
 	// CW bar should not display when memory is unavailable
@@ -270,11 +270,11 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🔀 main") {
+	if !strings.Contains(got, "main") {
 		t.Errorf("should show branch name, got %q", got)
 	}
 	// Should not have git status emoji when all counts are zero
-	if strings.Contains(got, "📊") {
+	if strings.Contains(got, "[git]") {
 		t.Errorf("should not show git status when all counts are zero, got %q", got)
 	}
 }
@@ -380,8 +380,8 @@ func TestRender_ContextBarGraph(t *testing.T) {
 	if !strings.Contains(got, "41%") {
 		t.Errorf("should contain percentage, got %q", got)
 	}
-	// Should use 🔋 emoji (<=70% used)
-	if !strings.Contains(got, "🔋") {
+	// Should use [hi] emoji (<=70% used)
+	if !strings.Contains(got, "[hi]") {
 		t.Errorf("should use battery emoji for <=70%% usage, got %q", got)
 	}
 }
@@ -395,8 +395,8 @@ func TestRender_HighContextUsage(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Should use 🪫 emoji (>70% used)
-	if !strings.Contains(got, "🪫") {
+	// Should use [lo] emoji (>70% used)
+	if !strings.Contains(got, "[lo]") {
 		t.Errorf("should use empty battery emoji for >70%% usage, got %q", got)
 	}
 	if !strings.Contains(got, "90%") {
@@ -437,7 +437,7 @@ func TestRender_WithOutputStyle(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "💬 R2-D2") {
+	if !strings.Contains(got, "[out] R2-D2") {
 		t.Errorf("should contain output style with emoji, got %q", got)
 	}
 }
@@ -457,10 +457,10 @@ func TestRender_VersionUpdateNotification(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🗿 v2.0.0") {
+	if !strings.Contains(got, "moai v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
-	if !strings.Contains(got, "⬆️ v2.0.1") {
+	if !strings.Contains(got, "-> v2.0.1") {
 		t.Errorf("should contain update notification with emoji, got %q", got)
 	}
 }
@@ -479,7 +479,7 @@ func TestRender_VersionNoUpdate(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🗿 v2.0.0") {
+	if !strings.Contains(got, "moai v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
 	if strings.Contains(got, "⬆️") {
@@ -497,7 +497,7 @@ func TestRender_WithDirectory(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "📁 my-awesome-project") {
+	if !strings.Contains(got, "[dir] my-awesome-project") {
 		t.Errorf("should contain directory with emoji, got %q", got)
 	}
 }
@@ -524,12 +524,12 @@ func TestRender_SegmentFiltering(t *testing.T) {
 		{
 			name:          "nil config shows all segments",
 			segmentConfig: nil,
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "📊", "🔅 v1.0.80", "🗿 v2.3.1", "🔀 main"},
+			wantContain:   []string{"[ai] Opus 4.5", "[hi]", "[out] MoAI", "[dir] moai-adk-go", "[git]", "v1.0.80", "moai v2.3.1", "main"},
 		},
 		{
 			name:          "empty config shows all segments",
 			segmentConfig: map[string]bool{},
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "📊", "🔅 v1.0.80", "🗿 v2.3.1", "🔀 main"},
+			wantContain:   []string{"[ai] Opus 4.5", "[hi]", "[out] MoAI", "[dir] moai-adk-go", "[git]", "v1.0.80", "moai v2.3.1", "main"},
 		},
 		{
 			name: "model disabled hides model",
@@ -538,7 +538,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 				SegmentDirectory: true, SegmentGitStatus: true, SegmentClaudeVersion: true,
 				SegmentMoaiVersion: true, SegmentGitBranch: true,
 			},
-			wantContain:    []string{"🔋", "💬 MoAI", "📁 moai-adk-go"},
+			wantContain:    []string{"[hi]", "[out] MoAI", "[dir] moai-adk-go"},
 			wantNotContain: []string{"🤖"},
 		},
 		{
@@ -548,7 +548,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 				SegmentDirectory: false, SegmentGitStatus: true, SegmentClaudeVersion: false,
 				SegmentMoaiVersion: false, SegmentGitBranch: true,
 			},
-			wantContain:    []string{"🤖 Opus 4.5", "🔋", "📊", "🔀 main"},
+			wantContain:    []string{"[ai] Opus 4.5", "[hi]", "[git]", "main"},
 			wantNotContain: []string{"💬", "📁", "🔅", "🗿"},
 		},
 		{
@@ -567,7 +567,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 				"unknown_segment": false,
 				SegmentModel:      true,
 			},
-			wantContain: []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go"},
+			wantContain: []string{"[ai] Opus 4.5", "[hi]", "[out] MoAI", "[dir] moai-adk-go"},
 		},
 		{
 			name: "only context disabled",
@@ -577,7 +577,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 				SegmentMoaiVersion: true, SegmentGitBranch: true,
 				SegmentUsage5H: false, SegmentUsage7D: false,
 			},
-			wantContain:    []string{"🤖 Opus 4.5", "💬 MoAI", "📁 moai-adk-go", "🔀 main"},
+			wantContain:    []string{"[ai] Opus 4.5", "[out] MoAI", "[dir] moai-adk-go", "main"},
 			wantNotContain: []string{"CW:"},
 		},
 	}
@@ -647,14 +647,14 @@ func TestRenderGitBranchV3(t *testing.T) {
 		git  GitStatusData
 		want string
 	}{
-		// REQ-V3-GIT-001: Ahead only → "🔀 main ↑3"
-		{"ahead only", GitStatusData{Branch: "main", Ahead: 3, Behind: 0, Available: true}, "🔀 main ↑3"},
-		// REQ-V3-GIT-002: Behind only → "🔀 main ↓2"
-		{"behind only", GitStatusData{Branch: "main", Ahead: 0, Behind: 2, Available: true}, "🔀 main ↓2"},
-		// REQ-V3-GIT-003: Both present → "🔀 feat/auth ↑2↓1"
-		{"both", GitStatusData{Branch: "feat/auth", Ahead: 2, Behind: 1, Available: true}, "🔀 feat/auth ↑2↓1"},
+		// REQ-V3-GIT-001: Ahead only → "main ↑3"
+		{"ahead only", GitStatusData{Branch: "main", Ahead: 3, Behind: 0, Available: true}, "main ↑3"},
+		// REQ-V3-GIT-002: Behind only → "main ↓2"
+		{"behind only", GitStatusData{Branch: "main", Ahead: 0, Behind: 2, Available: true}, "main ↓2"},
+		// REQ-V3-GIT-003: Both present → "feat/auth ↑2↓1"
+		{"both", GitStatusData{Branch: "feat/auth", Ahead: 2, Behind: 1, Available: true}, "feat/auth ↑2↓1"},
 		// REQ-V3-GIT-004: Neither present → branch name only
-		{"neither", GitStatusData{Branch: "main", Ahead: 0, Behind: 0, Available: true}, "🔀 main"},
+		{"neither", GitStatusData{Branch: "main", Ahead: 0, Behind: 0, Available: true}, "main"},
 		// Unavailable → empty string
 		{"unavailable", GitStatusData{Available: false}, ""},
 	}
@@ -763,7 +763,7 @@ func TestRenderDefaultV3_ThreeLines(t *testing.T) {
 		t.Errorf("default mode must be 3 lines, got: %d lines\noutput: %q", len(lines), got)
 	}
 	// Output style must be merged into L1
-	if !strings.Contains(lines[0], "💬 MoAI") {
+	if !strings.Contains(lines[0], "[out] MoAI") {
 		t.Errorf("default L1 must contain output style, got: %q", lines[0])
 	}
 }
@@ -784,13 +784,13 @@ func TestRenderDefaultV3_Line1(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l1 := lines[0]
 
-	if !strings.Contains(l1, "🤖 Opus 4.6") {
+	if !strings.Contains(l1, "[ai] Opus 4.6") {
 		t.Errorf("default L1 must contain model, got: %q", l1)
 	}
-	if !strings.Contains(l1, "🔅 v2.1.50") {
+	if !strings.Contains(l1, "v2.1.50") {
 		t.Errorf("default L1 must contain Claude version, got: %q", l1)
 	}
-	if !strings.Contains(l1, "🗿 v2.8.0") {
+	if !strings.Contains(l1, "moai v2.8.0") {
 		t.Errorf("default L1 must contain MoAI version, got: %q", l1)
 	}
 	// Session time (9240000ms = 154min = 2h 34m)
@@ -864,13 +864,13 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l3 := lines[2]
 
-	if !strings.Contains(l3, "📁 moai-adk-go") {
+	if !strings.Contains(l3, "[dir] moai-adk-go") {
 		t.Errorf("default L3 must contain directory, got: %q", l3)
 	}
-	if !strings.Contains(l3, "🔀 feat/auth ↑2↓1") {
+	if !strings.Contains(l3, "feat/auth ↑2↓1") {
 		t.Errorf("default L3 must contain branch + ahead/behind, got: %q", l3)
 	}
-	if !strings.Contains(l3, "📊") {
+	if !strings.Contains(l3, "[git]") {
 		t.Errorf("default L3 must contain git status, got: %q", l3)
 	}
 }
@@ -896,7 +896,7 @@ func TestRenderDefaultV3_StyleInL1(t *testing.T) {
 	}
 
 	// Output style must be merged into L1
-	if !strings.Contains(lines[0], "💬 MoAI") {
+	if !strings.Contains(lines[0], "[out] MoAI") {
 		t.Errorf("default L1 must contain output style, got: %q", lines[0])
 	}
 	// Task (📋) is no longer displayed
@@ -940,7 +940,7 @@ func TestRenderFullV3_FiveLines(t *testing.T) {
 		t.Errorf("full mode must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
 	}
 	// Output style must be merged into L1
-	if !strings.Contains(lines[0], "💬 MoAI") {
+	if !strings.Contains(lines[0], "[out] MoAI") {
 		t.Errorf("full L1 must contain output style, got: %q", lines[0])
 	}
 }
@@ -965,15 +965,15 @@ func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	l1 := lines[0]
 
-	if !strings.Contains(l1, "🤖 Opus 4.6") {
+	if !strings.Contains(l1, "[ai] Opus 4.6") {
 		t.Errorf("full L1 must contain model, got: %q", l1)
 	}
 	// full mode: no prefix, same as default
-	if !strings.Contains(l1, "🔅 v2.1.50") {
-		t.Errorf("full L1 should contain '🔅 v2.1.50', got: %q", l1)
+	if !strings.Contains(l1, "v2.1.50") {
+		t.Errorf("full L1 should contain 'v2.1.50', got: %q", l1)
 	}
-	if !strings.Contains(l1, "🗿 v2.8.0") {
-		t.Errorf("full L1 should contain '🗿 v2.8.0', got: %q", l1)
+	if !strings.Contains(l1, "moai v2.8.0") {
+		t.Errorf("full L1 should contain 'moai v2.8.0', got: %q", l1)
 	}
 	if !strings.Contains(l1, "⏳") {
 		t.Errorf("full L1 must contain session time, got: %q", l1)
@@ -1056,13 +1056,13 @@ func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
 	}
 	l5 := lines[4]
 
-	if !strings.Contains(l5, "📁 moai-adk-go") {
+	if !strings.Contains(l5, "[dir] moai-adk-go") {
 		t.Errorf("full L5 must contain directory, got: %q", l5)
 	}
-	if !strings.Contains(l5, "🔀 feat/auth ↑2↓1") {
+	if !strings.Contains(l5, "feat/auth ↑2↓1") {
 		t.Errorf("full L5 must contain branch + ahead/behind, got: %q", l5)
 	}
-	if !strings.Contains(l5, "📊") {
+	if !strings.Contains(l5, "[git]") {
 		t.Errorf("full L5 must contain git status, got: %q", l5)
 	}
 }
@@ -1092,7 +1092,7 @@ func TestRenderFullV3_StyleInL1(t *testing.T) {
 	}
 
 	// Output style must be merged into L1
-	if !strings.Contains(lines[0], "💬 MoAI") {
+	if !strings.Contains(lines[0], "[out] MoAI") {
 		t.Errorf("full L1 must contain output style, got: %q", lines[0])
 	}
 }
@@ -1203,7 +1203,7 @@ func TestRenderUsageBar(t *testing.T) {
 			pct:     88,
 			width:   10,
 			noColor: true,
-			wantPfx: "CW: 🪫",
+			wantPfx: "CW: [lo]",
 		},
 		{
 			name:    "5H 45% noColor",
@@ -1211,7 +1211,7 @@ func TestRenderUsageBar(t *testing.T) {
 			pct:     45,
 			width:   10,
 			noColor: true,
-			wantPfx: "5H: 🔋",
+			wantPfx: "5H: [hi]",
 		},
 	}
 

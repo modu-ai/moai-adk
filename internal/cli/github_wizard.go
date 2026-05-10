@@ -83,7 +83,7 @@ func (w *Wizard) Run() (*WizardState, error) {
 // checkInternetConnection verifies internet connectivity before proceeding.
 func (w *Wizard) checkInternetConnection() error {
 	if err := github.CheckInternetConnection(); err != nil {
-		_, _ = fmt.Fprintf(w.out, "\n❌ %s\n\n", err.Error())
+		_, _ = fmt.Fprintf(w.out, "\n[x] %s\n\n", err.Error())
 		_, _ = fmt.Fprintf(w.out, "moai github init requires an internet connection:\n")
 		_, _ = fmt.Fprintf(w.out, "  • Download GitHub Actions Runner\n")
 		_, _ = fmt.Fprintf(w.out, "  • Claude Code OAuth authentication\n")
@@ -176,7 +176,7 @@ func (w *Wizard) configureTriggers() error {
 // confirmAndFinishTUI displays configuration summary and confirms using Yes/No TUI.
 func (w *Wizard) confirmAndFinishTUI() error {
 	_, _ = fmt.Fprintln(w.out)
-	_, _ = fmt.Fprintln(w.out, "✅ Configuration Summary / 설정 요약:")
+	_, _ = fmt.Fprintln(w.out, "✓ Configuration Summary / 설정 요약:")
 	_, _ = fmt.Fprintln(w.out)
 	_, _ = fmt.Fprintf(w.out, "Language / 언어: %s\n", w.state.Language)
 	_, _ = fmt.Fprintf(w.out, "LLMs: %v\n", w.state.SelectedLLMs)

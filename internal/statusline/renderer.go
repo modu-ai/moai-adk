@@ -216,15 +216,15 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 
 	// Model
 	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
-		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
+		segs = append(segs, fmt.Sprintf("[ai] %s", data.Metrics.Model))
 	}
 
 	// Claude version
 	if r.isSegmentEnabled(SegmentClaudeVersion) && data.ClaudeCodeVersion != "" {
 		if withPrefix {
-			segs = append(segs, fmt.Sprintf("🔅 Claude v%s", data.ClaudeCodeVersion))
+			segs = append(segs, fmt.Sprintf("cc v%s", data.ClaudeCodeVersion))
 		} else {
-			segs = append(segs, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
+			segs = append(segs, fmt.Sprintf("v%s", data.ClaudeCodeVersion))
 		}
 	}
 
@@ -232,12 +232,12 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	if r.isSegmentEnabled(SegmentMoaiVersion) && data.Version.Available && data.Version.Current != "" {
 		var versionStr string
 		if withPrefix {
-			versionStr = fmt.Sprintf("🗿 MoAI v%s", data.Version.Current)
+			versionStr = fmt.Sprintf("moai v%s", data.Version.Current)
 		} else {
-			versionStr = fmt.Sprintf("🗿 v%s", data.Version.Current)
+			versionStr = fmt.Sprintf("moai v%s", data.Version.Current)
 		}
 		if data.Version.UpdateAvailable && data.Version.Latest != "" {
-			versionStr += fmt.Sprintf(" ⬆️ v%s", data.Version.Latest)
+			versionStr += fmt.Sprintf(" -> v%s", data.Version.Latest)
 		}
 		segs = append(segs, versionStr)
 	}
@@ -258,7 +258,7 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 
 	// Output style (integrated into L1)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
-		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
+		segs = append(segs, fmt.Sprintf("[out] %s", data.OutputStyle))
 	}
 
 	return r.joinSegments(segs)
@@ -327,7 +327,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 
 	// Directory
 	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
-		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
+		segs = append(segs, fmt.Sprintf("[dir] %s", data.Directory))
 	}
 
 	// Branch + ahead/behind (+ worktree indicator)
@@ -344,7 +344,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	// Git status
 	if r.isSegmentEnabled(SegmentGitStatus) {
 		if git := r.renderGitStatus(data); git != "" {
-			segs = append(segs, fmt.Sprintf("📊 %s", git))
+			segs = append(segs, fmt.Sprintf("[git] %s", git))
 		}
 	}
 
@@ -477,7 +477,7 @@ func renderGitBranch(data *StatusData) string {
 		suffix = fmt.Sprintf(" ↓%d", data.Git.Behind)
 	}
 
-	return fmt.Sprintf("🔀 %s%s", branch, suffix)
+	return fmt.Sprintf("%s%s", branch, suffix)
 }
 
 // renderSessionTime converts milliseconds to a session time string in "⏳ Xh Ym" format.

@@ -88,7 +88,7 @@ func BuildGradientBar(pct int, width int, noColor bool) string {
 // @MX:NOTE: [AUTO] 70% threshold per AC-V3-13 - update BatteryIcon tests in usage_test.go if changed
 func BatteryIcon(pct int) string {
 	if pct > 70 {
-		return "🪫"
+		return "[lo]"
 	}
-	return "🔋"
+	return "[hi]"
 }

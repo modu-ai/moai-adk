@@ -87,10 +87,10 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	}
 
 	// Default mode: model + context graph + output style + git status + version + branch
-	if !strings.Contains(got, "🤖 Sonnet 4") {
+	if !strings.Contains(got, "[ai] Sonnet 4") {
 		t.Errorf("should contain model name with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔋 ") {
+	if !strings.Contains(got, "[hi] ") {
 		t.Errorf("should contain context bar graph, got %q", got)
 	}
 	if !strings.Contains(got, "█") {
@@ -99,19 +99,19 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	if !strings.Contains(got, "25%") {
 		t.Errorf("should contain context percentage, got %q", got)
 	}
-	if !strings.Contains(got, "💬 Mr.Alfred") {
+	if !strings.Contains(got, "[out] Mr.Alfred") {
 		t.Errorf("should contain output style, got %q", got)
 	}
-	if !strings.Contains(got, "📁 my-project") {
+	if !strings.Contains(got, "[dir] my-project") {
 		t.Errorf("should contain directory, got %q", got)
 	}
-	if !strings.Contains(got, "📊 +3 M2") {
+	if !strings.Contains(got, "[git] +3 M2") {
 		t.Errorf("should contain git status, got %q", got)
 	}
-	if !strings.Contains(got, "🗿 v1.2.0") {
-		t.Errorf("should contain MoAI version with 🗿 emoji, got %q", got)
+	if !strings.Contains(got, "moai v1.2.0") {
+		t.Errorf("should contain MoAI version with moai emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔀 main") {
+	if !strings.Contains(got, "main") {
 		t.Errorf("should contain branch, got %q", got)
 	}
 }
@@ -191,10 +191,10 @@ func TestBuilder_Build_GitProviderFailure(t *testing.T) {
 	}
 
 	// Should still have model and context, without git
-	if !strings.Contains(got, "🤖 Opus 4.5") {
+	if !strings.Contains(got, "[ai] Opus 4.5") {
 		t.Errorf("should contain model despite git failure, got %q", got)
 	}
-	if !strings.Contains(got, "🔋 ") {
+	if !strings.Contains(got, "[hi] ") {
 		t.Errorf("should contain context despite git failure, got %q", got)
 	}
 	if !strings.Contains(got, "█") {
@@ -266,7 +266,7 @@ func TestBuilder_SetMode(t *testing.T) {
 	}
 
 	// Full mode should contain context bar graph
-	if !strings.Contains(gotFull, "🔋 ") {
+	if !strings.Contains(gotFull, "[hi] ") {
 		t.Errorf("full mode should contain context bar graph, got %q", gotFull)
 	}
 	if !strings.Contains(gotFull, "█") {
@@ -347,7 +347,7 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when context window missing, got %q", got)
 	}
-	// 5H/7D always shown at 0% (with 🔋 icon)
+	// 5H/7D always shown at 0% (with [hi] icon)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -375,7 +375,7 @@ func TestBuilder_Build_MissingCost(t *testing.T) {
 	if !strings.Contains(got, "Sonnet 4") {
 		t.Errorf("should contain model, got %q", got)
 	}
-	if !strings.Contains(got, "🔋 ") {
+	if !strings.Contains(got, "[hi] ") {
 		t.Errorf("should contain context, got %q", got)
 	}
 	if !strings.Contains(got, "█") {
@@ -890,8 +890,8 @@ func TestIntegration_NoColor(t *testing.T) {
 
 // TestIntegration_BatteryIcon verifies battery icon based on usage percentage (AC-V3-13).
 func TestIntegration_BatteryIcon(t *testing.T) {
-	// AC-V3-13: 75% usage → CW bar shows 🪫 (low battery icon)
-	t.Run("AC-V3-13: 75% → CW 🪫", func(t *testing.T) {
+	// AC-V3-13: 75% usage → CW bar shows [lo] (low battery icon)
+	t.Run("AC-V3-13: 75% → CW [lo]", func(t *testing.T) {
 		// 75% context window usage
 		input := &StdinData{
 			Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
@@ -930,14 +930,14 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 		if cwPart == "" {
 			t.Fatalf("CW bar must be in output\noutput:\n%s", got)
 		}
-		// 75% > 70% threshold, so CW bar should show 🪫 icon
-		if !strings.Contains(cwPart, "🪫") {
-			t.Errorf("AC-V3-13: CW 75%% usage should show 🪫 icon\nCW: %q\noutput:\n%s", cwPart, got)
+		// 75% > 70% threshold, so CW bar should show [lo] icon
+		if !strings.Contains(cwPart, "[lo]") {
+			t.Errorf("AC-V3-13: CW 75%% usage should show [lo] icon\nCW: %q\noutput:\n%s", cwPart, got)
 		}
 	})
 
 	// Opposite case: 60% → CW shows 🔋
-	t.Run("60% → CW 🔋", func(t *testing.T) {
+	t.Run("60% → CW [hi]", func(t *testing.T) {
 		input := &StdinData{
 			Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
 			ContextWindow: &ContextWindowInfo{Used: 60000, Total: 100000},
@@ -955,8 +955,8 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 		}
 
 		// CW bar should have 🔋
-		if !strings.Contains(got, "🔋") {
-			t.Errorf("60%% usage should show 🔋 icon\noutput:\n%s", got)
+		if !strings.Contains(got, "[hi]") {
+			t.Errorf("60%% usage should show [hi] icon\noutput:\n%s", got)
 		}
 	})
 }

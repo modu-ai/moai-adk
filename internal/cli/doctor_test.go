@@ -261,7 +261,7 @@ func TestStatusIcon(t *testing.T) {
 		contains string
 	}{
 		{CheckOK, "\u2713"},   // ✓
-		{CheckWarn, "\u26A0"}, // ⚠
+		{CheckWarn, "!"}, // ⚠
 		{CheckFail, "\u2717"}, // ✗
 		{CheckStatus("unknown"), "?"},
 	}

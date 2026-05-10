@@ -28,7 +28,7 @@ const (
 // "in-protocol" without an audit trail. Reminder must not fire on these.
 var mainBranches = []string{"main", "master"}
 
-const reminderMessage = `⚠️  Branch %q was created without going through MoAI BODP entry points.
+const reminderMessage = `[!] Branch %q was created without going through MoAI BODP entry points.
 Future branches: use ` + "`/moai plan --branch <SPEC-ID>`" + ` or ` + "`moai worktree new <SPEC-ID>`" + ` for relatedness check + audit trail.
 Skip with %s=1 if intentional.
 `

@@ -13,7 +13,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks
+.PHONY: all build test lint fix clean install generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify
 
 all: lint test build ## Run lint, test, and build
 
@@ -94,5 +94,13 @@ ci-disable: ## Disable a workflow (set on: workflow_dispatch only). Usage: make 
 
 verify-required-checks: ## Verify SSoT integrity of .github/required-checks.yml
 	@./scripts/ci-mirror/validate-required-checks.sh
+
+tui-snapshot: ## Regenerate all internal/tui golden snapshots (UPDATE_GOLDEN=1)
+	UPDATE_GOLDEN=1 go test ./internal/tui/... ./internal/tui/golden/... -v
+	@echo "Golden snapshots regenerated. Review diffs before committing."
+
+tui-snapshot-verify: ## Verify all internal/tui golden snapshots match on-disk state (no update)
+	go test ./internal/tui/... ./internal/tui/golden/... -v -count=1
+	@echo "All golden snapshots verified."
 
 .DEFAULT_GOAL := help

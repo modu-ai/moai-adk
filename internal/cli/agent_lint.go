@@ -212,7 +212,7 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 			_, _ = fmt.Fprintf(out, "%s No violations found\n", cliSuccess.Render("✓"))
 		} else {
 			for _, v := range allViolations {
-				icon := "⚠"
+				icon := "!"
 				if v.Severity == SeverityError {
 					icon = "✗"
 					icon = cliError.Render(icon)

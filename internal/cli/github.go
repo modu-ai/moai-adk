@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/github"
+	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/internal/workflow"
 )
 
@@ -29,23 +30,41 @@ var GithubSpecLinkerFactory = func(projectRoot string) (github.SpecLinker, error
 	return github.NewSpecLinker(projectRoot)
 }
 
-// GitHub CLI styles.
-var (
-	ghPrimary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"})
-	ghBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#4B5563"})
-	ghSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"})
-	ghMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#9CA3AF"})
-)
+// GitHub CLI styles use internal/tui design tokens (REQ-CLI-TUI-013).
+// Styles are resolved per-call to respect NO_COLOR and MOAI_THEME at runtime.
+func ghStyles() (primary, border, success, muted lipgloss.Style) {
+	light := tui.LightTheme()
+	dark := tui.DarkTheme()
+	primary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: light.Accent,
+		Dark:  dark.Accent,
+	})
+	border = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: light.Rule,
+		Dark:  dark.Rule,
+	})
+	success = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: light.Success,
+		Dark:  dark.Success,
+	})
+	muted = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: light.Dim,
+		Dark:  dark.Dim,
+	})
+	return
+}
 
 func ghCardStyle() lipgloss.Style {
+	_, border, _, _ := ghStyles()
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ghBorder.GetForeground()).
+		BorderForeground(border.GetForeground()).
 		Padding(0, 2)
 }
 
 func ghSuccessCard(title string, details ...string) string {
-	titleLine := ghSuccess.Render("✓") + " " + title
+	_, _, success, _ := ghStyles()
+	titleLine := success.Render("✓") + " " + title
 	var body strings.Builder
 	body.WriteString(titleLine)
 	if len(details) > 0 {
@@ -61,7 +80,8 @@ func ghSuccessCard(title string, details ...string) string {
 }
 
 func ghInfoCard(title, content string) string {
-	titleLine := ghPrimary.Bold(true).Render(title)
+	primary, _, _, _ := ghStyles()
+	titleLine := primary.Bold(true).Render(title)
 	body := titleLine + "\n\n" + content
 	return ghCardStyle().Render(body)
 }
@@ -167,7 +187,8 @@ func runParseIssue(cmd *cobra.Command, args []string) error {
 			body = body[:200] + "..."
 		}
 		details = append(details, "")
-		details = append(details, ghMuted.Render(body))
+		_, _, _, muted := ghStyles()
+		details = append(details, muted.Render(body))
 	}
 
 	if len(issue.Comments) > 0 {

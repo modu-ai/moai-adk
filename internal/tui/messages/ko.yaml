@@ -1,0 +1,74 @@
+# ko.yaml - Korean (한국어) message catalog for MoAI-ADK TUI
+# Key naming convention: <surface>.<section>.<role>
+# All values must be free of emoji codepoints (U+1F300-U+1FAFF, U+2600-U+27BF).
+# NOTE: This catalog is the primary/reference catalog. en.yaml must have identical keys.
+
+# doctor surface
+doctor.summary.pass: "통과"
+doctor.summary.warn: "주의"
+doctor.summary.fail: "실패"
+doctor.group.system: "시스템"
+doctor.group.moai: "MoAI-ADK"
+doctor.section.summary: "요약"
+doctor.item.go: "Go"
+doctor.item.git: "Git"
+doctor.item.claude: "Claude Code"
+doctor.item.gh: "GitHub CLI"
+doctor.item.config: "설정 파일"
+doctor.item.hooks: "훅 및 슬래시 명령"
+doctor.item.mx: "MX 앵커"
+doctor.item.glamour: "Glamour 캐시"
+doctor.item.telemetry: "텔레메트리"
+
+# init wizard surface
+init.wizard.step: "단계"
+init.wizard.title: "프로젝트 초기화"
+init.wizard.prompt.name: "프로젝트 이름"
+init.wizard.prompt.lang: "프로그래밍 언어"
+init.wizard.prompt.runtime: "런타임"
+init.wizard.prompt.confirm: "확인"
+init.wizard.action.back: "뒤로"
+init.wizard.action.next: "다음"
+init.wizard.action.finish: "완료"
+init.wizard.action.cancel: "취소"
+
+# loop surface
+loop.phase.spec: "명세"
+loop.phase.plan: "계획"
+loop.phase.impl: "구현"
+loop.phase.sync: "동기화"
+loop.status.running: "실행 중"
+loop.status.done: "완료"
+loop.status.failed: "실패"
+
+# error surface
+error.generic: "오류가 발생했습니다"
+error.config.missing: "설정 파일을 찾을 수 없습니다"
+error.config.invalid: "설정 파일이 올바르지 않습니다"
+error.network.timeout: "네트워크 연결 시간 초과"
+error.permission.denied: "권한이 없습니다"
+
+# banner surface
+banner.tagline: "AI 기반 개발 워크플로우"
+banner.version: "버전"
+
+# status surface
+status.branch: "브랜치"
+status.ahead: "앞서"
+status.behind: "뒤처짐"
+status.clean: "깨끗함"
+status.dirty: "변경 있음"
+
+# help surface
+help.usage: "사용법"
+help.commands: "명령어"
+help.flags: "플래그"
+help.examples: "예시"
+
+# common
+common.yes: "예"
+common.no: "아니오"
+common.ok: "확인"
+common.cancel: "취소"
+common.loading: "로드 중"
+common.unknown: "알 수 없음"
