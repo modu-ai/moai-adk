@@ -25,7 +25,7 @@ The orchestrator SHOULD invoke `moai worktree snapshot` immediately before any
 
 - Modifies tracked files (any agent with `permissionMode: acceptEdits`)
 - Operates in team mode where parallel teammates are spawned with isolation
-- Performs cross-file refactors (e.g., expert-refactoring, manager-cycle)
+- Performs cross-file refactors (e.g., expert-refactoring, manager-develop)
 - Has historically triggered worktree regressions on this project
 
 Snapshots SHOULD be skipped for:

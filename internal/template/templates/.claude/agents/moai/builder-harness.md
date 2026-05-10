@@ -1,5 +1,5 @@
 ---
-name: builder-platform
+name: builder-harness
 description: |
   Unified artifact creation specialist. Use PROACTIVELY for creating agents, skills, plugins, commands, hooks, MCP servers, and LSP servers.
   MUST INVOKE when ANY of these keywords appear in user request:
@@ -54,14 +54,14 @@ This agent consolidates three previously separate builder agents.
 
 | Old Usage | New Usage |
 |-----------|-----------|
-| Use `builder-agent` subagent | Use `builder-platform` subagent with `artifact_type=agent` |
-| Use `builder-skill` subagent | Use `builder-platform` subagent with `artifact_type=skill` |
-| Use `builder-plugin` subagent | Use `builder-platform` subagent with `artifact_type=plugin` |
+| Use `builder-agent` subagent | Use `builder-harness` subagent with `artifact_type=agent` |
+| Use `builder-skill` subagent | Use `builder-harness` subagent with `artifact_type=skill` |
+| Use `builder-plugin` subagent | Use `builder-harness` subagent with `artifact_type=plugin` |
 
 **Deprecated agents** (retired stubs still present for compatibility):
-- `builder-agent` → replaced by `builder-platform` with `artifact_type=agent`
-- `builder-skill` → replaced by `builder-platform` with `artifact_type=skill`
-- `builder-plugin` → replaced by `builder-platform` with `artifact_type=plugin`
+- `builder-agent` → replaced by `builder-harness` with `artifact_type=agent`
+- `builder-skill` → replaced by `builder-harness` with `artifact_type=skill`
+- `builder-plugin` → replaced by `builder-harness` with `artifact_type=plugin`
 
 ## Scope Boundaries
 
@@ -75,7 +75,7 @@ IN SCOPE:
 OUT OF SCOPE:
 - Implementing actual business logic: Delegate to expert agents
 - Code implementation within artifacts: Delegate to expert-backend/expert-frontend
-- Running tests: Delegate to manager-cycle with cycle_type=tdd
+- Running tests: Delegate to manager-develop with cycle_type=tdd
 
 ## Workflow
 

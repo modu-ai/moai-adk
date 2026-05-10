@@ -1,5 +1,6 @@
-// cycle_handler.go: manager-cycle unified DDD/TDD lifecycle hook handling.
-// SPEC-V3R3-RETIRED-AGENT-001 D-EVAL-01 fix: added `case "cycle":` to factory dispatch.
+// cycle_handler.go: manager-develop unified DDD/TDD lifecycle hook handling.
+// Originally manager-cycle (SPEC-V3R3-RETIRED-AGENT-001); renamed to manager-develop
+// per ORC-001 follow-up rename.
 // REQ-RA-009 acceptance criterion (factory dispatch).
 package agents
 
@@ -9,24 +10,24 @@ import (
 "github.com/modu-ai/moai-adk/internal/hook"
 )
 
-// @MX:NOTE: [AUTO] cycleHandler is the unified DDD/TDD agent (manager-cycle) lifecycle hook dispatcher.
-// Maps cycle-pre-implementation / cycle-post-implementation / cycle-completion actions to
+// @MX:NOTE: [AUTO] developHandler is the unified DDD/TDD agent (manager-develop) lifecycle hook dispatcher.
+// Maps develop-pre-implementation / develop-post-implementation / develop-completion actions to
 // PreToolUse / PostToolUse / SubagentStop events. Currently pass-through (default allow);
-// subsequent SPEC can add cycle-specific validation (e.g., RED phase test existence enforcement).
+// subsequent SPEC can add develop-specific validation (e.g., RED phase test existence enforcement).
 //
-// cycleHandler handles unified DDD/TDD workflow hooks for the manager-cycle agent.
-// SPEC-V3R2-ORC-001 retirement decision integrated manager-tdd / manager-ddd with manager-cycle,
-// and this handler processes cycle-* actions.
-type cycleHandler struct {
+// developHandler handles unified DDD/TDD workflow hooks for the manager-develop agent.
+// Originally manager-cycle (SPEC-V3R2-ORC-001); ORC-001 follow-up rename changed canonical
+// name to manager-develop. This handler processes develop-* actions.
+type developHandler struct {
 baseHandler
 }
 
-// NewCycleHandler creates a manager-cycle handler for the given action.
+// NewDevelopHandler creates a manager-develop handler for the given action.
 // Actions: pre-implementation, post-implementation, completion
 //
 // SubagentStart is also handled by agentStartHandler in internal/hook/subagent_start.go
 // (REQ-RA-007 retired-rejection guard).
-func NewCycleHandler(action string) hook.Handler {
+func NewDevelopHandler(action string) hook.Handler {
 event := hook.EventPreToolUse
 switch action {
 case "post-implementation":
@@ -35,24 +36,30 @@ case "completion":
 event = hook.EventSubagentStop
 }
 
-return &cycleHandler{
+return &developHandler{
 baseHandler: baseHandler{
 action: action,
 event: event,
-agent: "cycle",
+agent: "develop",
 },
 }
 }
 
-// Handle handles cycle workflow hooks.
-// Currently pass-through (default allow). Subsequent SPEC can add cycle-specific validation.
-func (h *cycleHandler) Handle(ctx context.Context, input *hook.HookInput) (*hook.HookOutput, error) {
+// NewCycleHandler is a backward-compatibility alias for NewDevelopHandler.
+// Preserved for factory dispatch backward compat (legacy "cycle" case in factory.go).
+func NewCycleHandler(action string) hook.Handler {
+return NewDevelopHandler(action)
+}
+
+// Handle handles develop workflow hooks.
+// Currently pass-through (default allow). Subsequent SPEC can add develop-specific validation.
+func (h *developHandler) Handle(ctx context.Context, input *hook.HookInput) (*hook.HookOutput, error) {
 // pre-implementation: RED/ANALYZE phase pre-validation
 // post-implementation: GREEN/PRESERVE/IMPROVE/REFACTOR phase verification
-// completion: cycle workflow completion report
+// completion: develop workflow completion report
 return hook.NewAllowOutput(), nil
 }
 
-func (h *cycleHandler) EventType() hook.EventType {
+func (h *developHandler) EventType() hook.EventType {
 return h.event
 }

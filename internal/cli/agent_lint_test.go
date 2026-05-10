@@ -291,8 +291,8 @@ func TestCheckMissingIsolation(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name:      "write-heavy manager-cycle without worktree",
-			agentName: "manager-cycle",
+			name:      "write-heavy manager-develop without worktree",
+			agentName: "manager-develop",
 			isolation: "",
 			wantCount: 1,
 		},

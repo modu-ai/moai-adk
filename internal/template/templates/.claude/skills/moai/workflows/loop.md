@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["loop", "iterate", "repeat", "until done", "keep fixing", "all errors"]
-  agents: ["manager-quality", "expert-backend", "expert-frontend", "manager-cycle"]
+  agents: ["manager-quality", "expert-backend", "expert-frontend", "manager-develop"]
   phases: ["loop"]
 ---
 
@@ -120,7 +120,7 @@ Step 6 - Fix Execution:
 Agent selection by issue type:
 - Type errors, logic bugs: manager-quality subagent
 - Import/module issues: expert-backend or expert-frontend subagent
-- Test failures: manager-cycle subagent
+- Test failures: manager-develop subagent
 - Security issues: expert-security subagent
 - Performance issues: expert-performance subagent
 

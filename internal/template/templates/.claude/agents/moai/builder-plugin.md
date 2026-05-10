@@ -1,11 +1,11 @@
 ---
 name: builder-plugin
 description: |
-  Retired (SPEC-V3R2-ORC-001) — use builder-platform with artifact_type=plugin.
-  This agent has been consolidated into the unified builder-platform agent.
-  See builder-platform.md for the active replacement.
+  Retired (SPEC-V3R2-ORC-001) — use builder-harness with artifact_type=plugin.
+  This agent has been consolidated into the unified builder-harness agent.
+  See builder-harness.md for the active replacement.
 retired: true
-retired_replacement: builder-platform
+retired_replacement: builder-harness
 retired_param_hint: "artifact_type=plugin"
 tools: []
 skills: []
@@ -19,15 +19,15 @@ This agent has been retired as part of SPEC-V3R2-ORC-001 (Agent roster consolida
 
 ## Replacement
 
-Use **builder-platform** with `artifact_type=plugin` instead.
+Use **builder-harness** with `artifact_type=plugin` instead.
 
 ## Migration Guide
 
 | Old Invocation | New Invocation |
 |----------------|----------------|
-| `Use the builder-plugin subagent to create a plugin` | `Use the builder-platform subagent with artifact_type=plugin to create a plugin` |
-| `builder-plugin: build a marketplace plugin` | `builder-platform: build a marketplace plugin (artifact_type=plugin)` |
+| `Use the builder-plugin subagent to create a plugin` | `Use the builder-harness subagent with artifact_type=plugin to create a plugin` |
+| `builder-plugin: build a marketplace plugin` | `builder-harness: build a marketplace plugin (artifact_type=plugin)` |
 
 ## Active Agent
 
-See `.claude/agents/moai/builder-platform.md` for the full agent definition.
+See `.claude/agents/moai/builder-harness.md` for the full agent definition.

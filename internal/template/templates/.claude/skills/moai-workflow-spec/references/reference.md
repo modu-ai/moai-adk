@@ -16,7 +16,7 @@ This document provides comprehensive reference information for SPEC workflow man
 Created: YYYY-MM-DD
 Status: Planned
 Priority: Medium
-Assigned: manager-cycle
+Assigned: manager-develop
 
 ## Description
 [Brief description of the feature]
@@ -67,7 +67,7 @@ Business:
 Created: YYYY-MM-DD
 Status: Planned
 Priority: High
-Assigned: manager-cycle
+Assigned: manager-develop
 Related SPECs: SPEC-YYY, SPEC-ZZZ
 
 ## Description
@@ -269,7 +269,7 @@ Technical:
 - Low: Enhancement or optional feature
 
 **Assigned Agents**:
-- manager-cycle: DDD-based implementation
+- manager-develop: DDD-based implementation
 - manager-spec: SPEC refinement and updates
 - expert-backend: Backend-specific features
 - expert-frontend: Frontend-specific features
@@ -530,7 +530,7 @@ manager-spec creates SPEC-001
     ↓
 /moai:2-run SPEC-001
     ↓
-manager-cycle implements with ANALYZE-PRESERVE-IMPROVE
+manager-develop implements with ANALYZE-PRESERVE-IMPROVE
     ↓
 /moai:3-sync SPEC-001
     ↓

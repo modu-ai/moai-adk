@@ -33,7 +33,12 @@ func TestFactory_CreateHandler_ValidActions(t *testing.T) {
 		{"tdd-post-implementation", hook.EventPostToolUse},
 		{"tdd-completion", hook.EventSubagentStop},
 
-		// Cycle handler actions (manager-cycle unified DDD/TDD, SPEC-V3R3-RETIRED-AGENT-001)
+		// Develop handler actions (manager-develop unified DDD/TDD, ORC-001 follow-up rename)
+		{"develop-pre-implementation", hook.EventPreToolUse},
+		{"develop-post-implementation", hook.EventPostToolUse},
+		{"develop-completion", hook.EventSubagentStop},
+
+		// Cycle handler actions (backward compat alias for develop, pre-rename projects)
 		{"cycle-pre-implementation", hook.EventPreToolUse},
 		{"cycle-post-implementation", hook.EventPostToolUse},
 		{"cycle-completion", hook.EventSubagentStop},
@@ -175,6 +180,60 @@ func TestFactory_CreateHandler_HandleReturnsAllowOutput(t *testing.T) {
 			}
 			if output == nil {
 				t.Fatalf("Handle() for %q returned nil output", action)
+			}
+		})
+	}
+}
+
+func TestDevelopHandler_ActionBranches(t *testing.T) {
+	t.Parallel()
+
+	// Develop handler has a switch statement on action; exercise every branch.
+	actions := []string{
+		"pre-implementation",
+		"post-implementation",
+		"completion",
+		"unknown-develop-action", // default branch
+	}
+
+	ctx := context.Background()
+
+	for _, action := range actions {
+		t.Run(action, func(t *testing.T) {
+			t.Parallel()
+
+			h := NewDevelopHandler(action)
+			output, err := h.Handle(ctx, &hook.HookInput{})
+			if err != nil {
+				t.Fatalf("DevelopHandler.Handle(%q) error: %v", action, err)
+			}
+			if output == nil {
+				t.Fatalf("DevelopHandler.Handle(%q) returned nil output", action)
+			}
+		})
+	}
+}
+
+func TestDevelopHandler_EventTypes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		action    string
+		wantEvent hook.EventType
+	}{
+		{"pre-implementation", hook.EventPreToolUse},
+		{"post-implementation", hook.EventPostToolUse},
+		{"completion", hook.EventSubagentStop},
+		{"unknown", hook.EventPreToolUse}, // default
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			t.Parallel()
+
+			h := NewDevelopHandler(tt.action)
+			if got := h.EventType(); got != tt.wantEvent {
+				t.Errorf("NewDevelopHandler(%q).EventType() = %q, want %q", tt.action, got, tt.wantEvent)
 			}
 		})
 	}

@@ -50,7 +50,7 @@ Design and implement CI/CD pipelines, infrastructure as code, and production dep
 
 IN SCOPE: CI/CD pipeline design, containerization, deployment strategy, infrastructure automation, secrets management, monitoring/health checks.
 
-OUT OF SCOPE: Application code (expert-backend/frontend), security audits (expert-security), performance profiling (expert-performance), testing strategy (manager-cycle).
+OUT OF SCOPE: Application code (expert-backend/frontend), security audits (expert-security), performance profiling (expert-performance), testing strategy (manager-develop).
 
 ## Delegation Protocol
 

@@ -150,7 +150,7 @@ Skills:
 
 Agents:
 
-- manager-cycle: DDD implementation
+- manager-develop: DDD implementation
 - manager-quality: Quality validation
 - manager-quality: Complex debugging
 

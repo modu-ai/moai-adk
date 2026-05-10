@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestBuilderSkillPathStructure verifies that the builder-platform agent instructions
+// TestBuilderSkillPathStructure verifies that the builder-harness agent instructions
 // explicitly enforce the correct skill file path structure.
 //
 // Regression test for: https://github.com/modu-ai/moai-adk/issues/443
@@ -19,7 +19,7 @@ import (
 //
 //	.claude/skills/moai-library-pykrx/SKILL.md  (CORRECT)
 //
-// SPEC-V3R2-ORC-001: builder-skill.md retired; guidance now lives in builder-platform.md.
+// SPEC-V3R2-ORC-001: builder-skill.md retired; guidance now lives in builder-harness.md.
 func TestBuilderSkillPathStructure(t *testing.T) {
 	t.Parallel()
 
@@ -29,8 +29,8 @@ func TestBuilderSkillPathStructure(t *testing.T) {
 	}
 
 	// builder-skill.md is a retired stub (SPEC-V3R2-ORC-001); skill authoring
-	// guidance has moved to builder-platform.md (artifact_type=skill workflow).
-	const agentPath = ".claude/agents/moai/builder-platform.md"
+	// guidance has moved to builder-harness.md (artifact_type=skill workflow).
+	const agentPath = ".claude/agents/moai/builder-harness.md"
 
 	data, err := fs.ReadFile(fsys, agentPath)
 	if err != nil {

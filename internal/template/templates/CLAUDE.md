@@ -133,7 +133,7 @@ Role profiles (in `workflow.yaml`): researcher, analyst, architect, implementer,
 
 Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in workflow.yaml.
 
-For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-platform subagent or see `.claude/rules/moai/development/agent-authoring.md`.
+For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-harness subagent or see `.claude/rules/moai/development/agent-authoring.md`.
 
 ---
 
