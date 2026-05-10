@@ -1,0 +1,12 @@
+gate:
+    ast_grep_gate:
+        block_on_error: true
+        enabled: true
+        rules_dir: .moai/config/astgrep-rules
+        warn_only_mode: false
+    enabled: true
+    skip_tests: false
+    timeouts:
+        lint: 60
+        test: 120
+        vet: 30

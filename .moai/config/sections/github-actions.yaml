@@ -1,0 +1,27 @@
+github_actions:
+    auto_panel:
+        enabled: true
+        trigger: pr_open
+    enabled: true
+    review:
+        enabled: true
+        llms:
+            claude:
+                enabled: true
+                secret: CLAUDE_CODE_OAUTH_TOKEN
+            codex:
+                enabled: true
+                private_only: true
+                secret: CODEX_AUTH_JSON
+            gemini:
+                enabled: true
+                secret: GEMINI_API_KEY
+            glm:
+                enabled: true
+                secret: GLM_API_KEY
+    runner:
+        mode: self-hosted
+        os: linux
+    sha_pin:
+        actions_checkout: actions/checkout@a81bbbf8298c0fa03ea29cdc473d45769f9536
+        exclude_broken_range: true

@@ -1,0 +1,14 @@
+name: 'Codex Bootstrap'
+description: 'Bootstraps Codex with conditional seeding for private repos'
+inputs:
+  repo-is-private:
+    description: 'Whether the repository is private'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        if [[ "{{ inputs.repo-is-private }}}" == "true" ]]; then
+          echo "CODex conditional seeding enabled for private repo"
+        fi
