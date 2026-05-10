@@ -215,8 +215,6 @@ func TestDiff(t *testing.T) {
 // When SrcProject tries to override the key, Then PolicyOverrideRejected error is returned.
 //
 // REQ-V3R2-RT-005-022, AC-07
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (MergeAll strict_mode enforcement)
 func TestMergeAll_PolicyOverrideRejected(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -263,8 +261,6 @@ func TestMergeAll_PolicyOverrideRejected(t *testing.T) {
 // When Load() merges, Then winner=policy, OverriddenBy=[user_path, project_path].
 //
 // REQ-V3R2-RT-005-012, AC-01
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (OverriddenBy accumulation in MergeAll)
 func TestMergeAll_OverriddenByPopulated(t *testing.T) {
 	// Arrange: all 3 tiers have the same key with non-zero values
 	now := time.Now()
@@ -323,8 +319,6 @@ func TestMergeAll_OverriddenByPopulated(t *testing.T) {
 // OverriddenBy should contain only [project_path], user excluded (zero value).
 //
 // REQ-V3R2-RT-005-005, REQ-V3R2-RT-005-012, AC-01
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (zero value exclusion from OverriddenBy)
 func TestMergeAll_ZeroValuesExcluded(t *testing.T) {
 	now := time.Now()
 
@@ -360,8 +354,6 @@ func TestMergeAll_ZeroValuesExcluded(t *testing.T) {
 // TestMergeAll_ByteStableJSON verifies that identical tier inputs produce byte-identical merged output.
 //
 // REQ-V3R2-RT-005 §7 Constraints (Determinism), AC-02 byte-stability
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (encoding/json.MarshalIndent + sort.Strings keys)
 func TestMergeAll_ByteStableJSON(t *testing.T) {
 	now := time.Now()
 
@@ -405,8 +397,6 @@ func TestMergeAll_ByteStableJSON(t *testing.T) {
 // AC-V3R2-RT-005-07 edge case: strict_mode=false allows normal priority-based override without error.
 //
 // REQ-V3R2-RT-005-022, AC-07
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (strict_mode=false branch in MergeAll)
 func TestMergeAll_StrictModeFalseAllowsOverride(t *testing.T) {
 	now := time.Now()
 

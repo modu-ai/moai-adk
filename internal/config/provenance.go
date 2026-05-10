@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // @MX:NOTE: [AUTO] Provenance tracks configuration value origin across 8-tier priority system
 //
@@ -68,4 +71,33 @@ func (v Value[T]) IsBuiltin() bool {
 // This is used in `moai doctor config dump` output.
 func (v Value[T]) IsDefault() bool {
 	return v.IsBuiltin()
+}
+
+// provenanceJSON is the JSON-serializable representation of Provenance.
+// It uses Source.String() for the human-readable source name instead of the numeric int,
+// ensuring stable and readable JSON output.
+type provenanceJSON struct {
+	Source        string   `json:"source"`
+	Origin        string   `json:"origin"`
+	Loaded        string   `json:"loaded"`
+	SchemaVersion int      `json:"schema_version,omitempty"`
+	OverriddenBy  []string `json:"overridden_by,omitempty"`
+}
+
+// MarshalJSON implements json.Marshaler for Provenance.
+// Source is serialized using Source.String() (e.g., "policy", "user") instead of the
+// raw int value, producing stable and human-readable JSON for `moai doctor config dump`.
+//
+// REQ-V3R2-RT-005-006, AC-02: every key has {V, P: {Source, Origin, Loaded}} in JSON.
+//
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M3 GREEN — Source.String() in MarshalJSON prevents int leakage.
+func (p Provenance) MarshalJSON() ([]byte, error) {
+	pj := provenanceJSON{
+		Source:        p.Source.String(),
+		Origin:        p.Origin,
+		Loaded:        p.Loaded.Format(time.RFC3339),
+		SchemaVersion: p.SchemaVersion,
+		OverriddenBy:  p.OverriddenBy,
+	}
+	return json.Marshal(pj)
 }
