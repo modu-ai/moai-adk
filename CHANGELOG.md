@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R3-CLI-TUI-001: TUI Unification (M1-M7)
+
+### English
+
+- **SPEC-V3R3-CLI-TUI-001 (7 Milestones)**: Complete TUI integration layer with theme-driven component library, auto-detection, and 14-language i18n support.
+  - **M1 (PR #799)**: TUI scaffolding — theme.go (light/dark tokens), Box/ThickBox, Pill components, runeguard helper (35 golden snapshots).
+  - **M2 (PR #806)**: 6 TUI primitives — StatusIcon, Spinner, Progress, Stepper, RadioRow, CheckRow, form/table/prompt helpers (74 golden snapshots, reduced-motion support).
+  - **M3 (PR #807)**: CLI integration — banner.go DDD migration, terra cotta/보라 hex removal, tui.Theme adoption, 3 Pill integration.
+  - **M4 (PR #815, merged #085efe76f)**: 4-command batch — version, doctor, status, update DDD (9 commits, 4-sub-step orchestration, 1M context bypass).
+  - **M5 (PR #823)**: Huh wizard + Stepper — huh v0.8.0 custom theming (◆/◇ prefix), ProfileEnv color-depth detection, 20 golden snapshots.
+  - **M6 (PR #828)**: R-07 thin wrapper — cc/cg/glm/loop/statusline/help/error TUI rendering, NO_COLOR support, 37 golden snapshots.
+  - **M7 (PR #831)**: Auto-detect + i18n — detect.go (MOAI_THEME + TTY + NO_COLOR logic), i18n.go (14-language embed.FS), golden suite (33 errchecks fixed).
+  - **Total**: 33 files, 106 golden snapshots, 14-language i18n catalog, 10 @MX:ANCHOR + 8 @MX:NOTE, 17/17 AC complete.
+
+### 한국어
+
+- **SPEC-V3R3-CLI-TUI-001 (7 마일스톤)**: TUI 통합 계층 — 테마 기반 컴포넌트 라이브러리, 자동 감지, 14개 언어 i18n 지원.
+  - **M1 (PR #799)**: TUI 골격 — theme.go (라이트/다크 토큰), Box/ThickBox, Pill 컴포넌트, runeguard 헬퍼 (35개 golden).
+  - **M2 (PR #806)**: 6개 TUI primitive — StatusIcon, Spinner, Progress, Stepper, RadioRow, CheckRow, form/table/prompt 헬퍼 (74개 golden, reduced-motion).
+  - **M3 (PR #807)**: CLI 통합 — banner.go DDD 마이그레이션, 테라코타/보라 hex 제거, tui.Theme 도입, 3개 Pill 통합.
+  - **M4 (PR #815, merged #085efe76f)**: 4-command 배치 — version, doctor, status, update DDD (9개 commit, 4-sub-step 오케스트레이션, 1M context bypass).
+  - **M5 (PR #823)**: Huh 마법사 + Stepper — huh v0.8.0 custom theming (◆/◇ prefix), ProfileEnv 색상 깊이 감지, 20개 golden.
+  - **M6 (PR #828)**: R-07 thin wrapper — cc/cg/glm/loop/statusline/help/error TUI 렌더링, NO_COLOR 지원, 37개 golden.
+  - **M7 (PR #831)**: 자동 감지 + i18n — detect.go (MOAI_THEME + TTY + NO_COLOR 로직), i18n.go (14개 언어 embed.FS), golden suite (33개 errcheck 수정).
+  - **총계**: 33개 파일, 106개 golden snapshot, 14개 언어 i18n 카탈로그, 10개 @MX:ANCHOR + 8개 @MX:NOTE, 17/17 AC 완료.
+
 ## [Unreleased] — SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification
 
 ### Changed

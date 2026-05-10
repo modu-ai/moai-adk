@@ -50,16 +50,16 @@ moai
 │   └── remove [name]         → git.WorktreeManager.Remove()
 │
 ├── cc                        internal/cli/cc.go
-│   └── (no subcommands)      → Removes GLM env vars from ~/.claude/settings.json
+│   └── (no subcommands)      → Removes GLM env vars + TUI Box render (via internal/tui/)
 │
 ├── glm [api-key]             internal/cli/glm.go
-│   └── (no subcommands)      → Sets GLM env vars in ~/.claude/settings.json
+│   └── (no subcommands)      → Sets GLM env vars + TUI Pill/CheckLine render (via internal/tui/)
 │
 ├── cg                        internal/cli/cg.go
-│   └── (no subcommands)      → Opens tmux split; leader=Claude, workers=GLM
+│   └── (no subcommands)      → Opens tmux split; leader=Claude, workers=GLM + TUI renders
 │
 ├── doctor                    internal/cli/doctor.go
-│   └── (no subcommands)      → Runs health checks on project configuration
+│   └── (no subcommands)      → Runs health checks + TUI CheckLine (19+ items) render
 │
 ├── github                    internal/cli/github.go
 │   └── [subcommands: setup, workflow]
@@ -68,13 +68,68 @@ moai
 │   └── [subcommands: login, status, history]
 │
 ├── statusline                internal/cli/statusline.go
-│   └── [subcommands: install, uninstall, render]
+│   └── [subcommands: install, uninstall, render] + TUI theme auto-detect (internal/tui/detect.go)
 │
 ├── status                    internal/cli/status.go
-│   └── (no subcommands)      → Prints project phase, quality, and config status
+│   └── (no subcommands)      → TUI Box + KV render via internal/tui/
 │
-└── version                   internal/cli/version.go
-    └── (no subcommands)      → Prints semver from pkg/version
+├── version                   internal/cli/version.go
+│   └── (no subcommands)      → TUI Box + Pill render (go version, claude version, moai version)
+│
+├── loop                      internal/cli/loop.go
+│   └── (no subcommands)      → Iterative fix loop + TUI Spinner/Progress render
+│
+└── help                      internal/cli/help.go
+    └── (no subcommands)      → Enhanced via internal/tui/help.go HelpBar rendering
+```
+
+---
+
+## TUI Rendering Layer
+
+The **TUI rendering layer** (`internal/tui/`) provides theme-driven output for all CLI commands. The layer auto-detects light/dark mode, respects NO_COLOR, and integrates with reduced-motion preferences (MOAI_REDUCED_MOTION).
+
+### Command Integration Points
+
+| Command | TUI Component Used | Purpose |
+|---------|-------------------|---------| 
+| `moai cc` | Box, StatusIcon, CheckLine | Visual progress through 3 mode checks |
+| `moai cg` | Box, Banner, CheckLine | Tmux split initialization feedback |
+| `moai glm` | Pill, CheckLine, Section | GLM credential setup + settings validation |
+| `moai doctor` | CheckLine (≥19 items), Box | Health check items + summary panel |
+| `moai statusline render` | Theme, detect.go | Auto-detect + render inline status |
+| `moai status` | Box, KV, Table, Section | Project phase + config status summary |
+| `moai version` | Box, Pill (3 items) | Display moai/go/claude versions in cards |
+| `moai loop` | Spinner, Progress, CheckLine | Iteration progress + fix feedback |
+| `moai init` | Stepper, Form (RadioRow/CheckRow), Pill | Wizard UI (via internal/tui/huh.go) |
+| `moai update` | KV, Section, CheckLine, Pill | Template sync progress + conflict resolution |
+| All commands (help text) | HelpBar, KeyHint | Command-line help formatting |
+
+### Detection & Fallback
+
+Theme auto-detection (`internal/tui/detect.go`) implements 4-signal priority:
+
+1. **MOAI_THEME env** — explicit override (`light` / `dark` / `auto`)
+2. **TTY detection** — if not a terminal, fallback to NO_COLOR mode
+3. **NO_COLOR env** — if set, use monochrome mode
+4. **TERM variable** — detect color capability (Truecolor → 256 → basic)
+
+Color profile (`internal/tui/profile.go`) auto-detects depth via termenv:
+- Truecolor (16.7M) → use full #RRGGBB palette
+- 256-color → Catppuccin palette mapping
+- Basic (16) → grayscale fallback
+
+---
+
+## Hook Integration
+
+| Hook Event | TUI Layer Usage | Component |
+|-----------|-----------------|-----------|
+| `SessionStart` | Banner display + status checks | Box, Pill, StatusIcon |
+| `PostToolUse` | LSP diagnostic summary | Table, CheckLine |
+| `TeammateIdle` | Quality gate feedback | CheckLine, Pill |
+| `PreCompact` | Context compaction warning | Box, HelpBar |
+
 ```
 
 ---

@@ -63,6 +63,70 @@ Detailed reference for all packages in moai-adk-go, grouped by architectural lay
 | LOC | ~1,500 |
 | Key Exports | `RunInitWizard()`, `SelectionModel`, `ConfirmPrompt` |
 
+### `internal/tui/`
+
+| Attribute | Detail |
+|-----------|--------|
+| Path | `internal/tui/` |
+| Purpose | Theme-driven TUI rendering layer (SPEC-V3R3-CLI-TUI-001). Provides 14 reusable primitives with auto-detection, i18n support, and NO_COLOR compliance. Single source of truth for brand-consistent styling across all CLI commands. |
+| LOC | ~8,500 (including tests + i18n catalogs) |
+| Key Exports | `Theme()`, `Box()`, `Pill()`, `StatusIcon()`, `Spinner()`, `Progress()`, `Stepper()`, `Table()`, `Form()`, `Prompt()`, `Help()`, `Term()`, `Resolve()`, `LoadCatalog()` |
+
+**Core Primitives (14 surface APIs):**
+
+| Component | Purpose | Golden Snapshots |
+|-----------|---------|------------------|
+| `theme.go` | Light/Dark token singleton, Catppuccin palette, adaptive color profiles | 28 light/dark |
+| `box.go` | Panel/card borders via lipgloss (Box, ThickBox, rounded variants) | 8 + 8 |
+| `pill.go` | Colored badges with variant support (Primary/Ok/Info/Warn/Error) | 24 |
+| `status.go` | StatusIcon glyphs, Spinner (animated + reduced-motion fallback), Progress | 13 |
+| `form.go` | RadioRow/CheckRow wrappers around huh, custom theming (◆/◇ prefix) | 5 |
+| `table.go` | KV pairs, CheckLine rows, Section dividers with Unicode fallback | 43 |
+| `prompt.go` | Text input + cursor control (pure functions, no lifecycle) | 7 |
+| `help.go` | HelpBar + KeyHint elements for command usage | 4 |
+| `term.go` | Screenshot capture mode (MOAI_SCREENSHOT=1 gate) | 2 |
+| `detect.go` | Auto-detect Theme based on MOAI_THEME / TTY / NO_COLOR / TERM | 12 |
+| `i18n.go` | 14-language message catalog loading (embed.FS, zero filesystem) | 6 |
+| `profile.go` | ColorProfile detection via termenv, fallback levels (Truecolor→256→basic) | (integration) |
+
+**Files:**
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `theme.go` + `theme_test.go` | Token definitions, singleton instance, color palette | 100 + 140 |
+| `box.go` + `box_test.go` | Panel/card rendering via lipgloss borders | 85 + 110 |
+| `pill.go` + `pill_test.go` | Colored badge badges (Primary/Ok/Info/Warn/Error) | 120 + 45 |
+| `status.go` + `status_test.go` | StatusIcon, Spinner, Progress — reduced-motion support | 145 + 170 |
+| `form.go` + `form_test.go` | RadioRow/CheckRow huh wrappers with theming | 90 + 85 |
+| `table.go` + `table_test.go` | KV, CheckLine, Section — Unicode escape handling | 130 + 180 |
+| `prompt.go` + `prompt_test.go` | Text prompt + cursor rendering | 60 + 70 |
+| `help.go` + `help_test.go` | HelpBar/KeyHint elements | 45 + 60 |
+| `term.go` + `term_test.go` | Screenshot-mode capture (MOAI_SCREENSHOT=1) | 80 + 65 |
+| `detect.go` + `detect_test.go` | Auto-detect theme logic + TTY/NO_COLOR/TERM | 120 + 140 |
+| `i18n.go` + `i18n_test.go` | 14-language catalog loader via embed.FS | 130 + 110 |
+| `profile.go` + `profile_test.go` | ColorProfile detection interface + production implementation | 95 + 80 |
+| `doc.go` | Godoc + design source attribution | 30 |
+| `catppuccin.go` | Catppuccin palette constants (Mocha/Latte) | 60 |
+| `golden/index_test.go` | Golden snapshot validation suite (33 errchecks fixed) | 180 |
+
+**Subdirectory:**
+
+| Subdirectory | Purpose |
+|-------------|---------|
+| `internal/tui/internal/` | `runeguard.go` helper — East Asian width detection for Korean text (고정폭 character measurement) |
+| `internal/tui/messages/` | 14-language YAML catalogs (ko.yaml complete + ja/zh/en + 10 stubs with @MX:TODO for future translation) |
+| `internal/tui/testdata/` | 106 golden snapshot files (visual regression guards for all primitives) |
+
+**Quality & Standards:**
+
+- **TRUST 5 Compliance**: ✅ All five pillars (Tested 100%, Readable with @MX:ANCHOR/NOTE, Unified theming, Secured no-new-surface, Trackable commit trail)
+- **AC Coverage**: ✅ 17/17 acceptance criteria complete (AC-CLI-TUI-001 through AC-CLI-TUI-017)
+- **No Hex Literals**: ✅ zero hardcoded `#RRGGBB` outside theme.go (brand source of truth)
+- **No Hand-Drawn Box Chars**: ✅ all borders via lipgloss (no U+2500 ─ / U+2502 │)
+- **NO_COLOR Support**: ✅ detect.go applies throughout rendering layer
+- **Reduced-Motion**: ✅ Spinner/Progress fallback to static characters when `MOAI_REDUCED_MOTION=1`
+- **i18n Foundation**: ✅ 14-language message catalog with embed.FS (zero filesystem dependency at runtime)
+
 ---
 
 ## Layer 3: Interface / Protocol
