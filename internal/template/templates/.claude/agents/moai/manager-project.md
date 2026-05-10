@@ -50,15 +50,40 @@ OUT OF SCOPE: Code implementation, SPEC creation (manager-spec), Git operations 
 
 ## Workflow Steps
 
+<!-- @MX:NOTE: [AUTO] scope-shrink — SPEC-V3R2-ORC-001 M3.2 reduced routing modes to init/fresh_install/language_change only; CLI-owned modes moved to moai CLI binary -->
+
+## Scope Boundary
+
+**[HARD] File creation restricted to `.moai/project/` only.** manager-project MUST NOT write to `.claude/settings.json`, `.moai/config/sections/`, GLM endpoint files, or any file outside `.moai/project/`.
+
+For out-of-scope tasks, return a blocker report pointing to the correct CLI:
+
+| Out-of-scope task | Correct tool |
+|-------------------|-------------|
+| Language/model/mode settings changes | `moai update -c` (configuration wizard) |
+| GLM API integration setup | `moai glm` (GLM configuration CLI) |
+| Template sync or upgrade | `moai update` (template sync CLI) |
+| Claude Code settings.json changes | `moai cc` (Claude Code launcher) |
+
+**Blocker Report Template**:
+
+```markdown
+## Out-of-Scope Request
+
+manager-project scope is restricted to `.moai/project/` document generation only.
+
+**Requested task**: <describe the out-of-scope task>
+**Correct tool**: <moai update -c | moai glm | moai update | moai cc>
+
+Please run the correct CLI command listed above.
+```
+
 ### Step 0: Mode Detection and Routing
 
 Route based on invocation parameters:
 - `language_first_initialization` → Full fresh install
 - `fresh_install` → Standard project initialization
-- `settings_modification` → Configuration update
 - `language_change` → Language preference update
-- `template_update_optimization` → Template enhancement
-- `glm_configuration` → GLM API integration setup
 
 ### Step 1: Conversation Language Setup
 

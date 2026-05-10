@@ -9,7 +9,7 @@ description: |
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
   NOT for: code implementation, architecture design, deployment, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking
 model: sonnet
 permissionMode: plan
 memory: project
@@ -30,6 +30,43 @@ hooks:
 ## Primary Mission
 
 Validate code quality, test coverage, and compliance with TRUST 5 framework and project coding standards.
+
+## Diagnostic Sub-Mode
+
+<!-- @MX:ANCHOR: [AUTO] diagnostic-routing — absorbed from retired expert-debug; all error diagnosis routes through this section -->
+<!-- @MX:REASON: expert-debug was a 70%-router that delegated all real work; Diagnostic Sub-Mode preserves that routing table in manager-quality to avoid orphaning CI failure interpretation -->
+
+When invoked with `diagnostic-mode` or when error diagnosis is requested, manager-quality operates as a structured debugger using read-only analysis tools (no Write/Edit).
+
+### Diagnostic Routing Table
+
+| Error Category | Analysis Approach | Delegation Target |
+|---------------|-------------------|-------------------|
+| Code defects (type errors, logic bugs, test failures) | Grep/Read to locate root cause; classify mechanical vs semantic | manager-cycle (cycle_type=ddd) for fix implementation |
+| Architecture issues (coupling, god class, circular deps) | AST analysis via moai-tool-ast-grep | expert-refactoring for structural changes |
+| Git/branch issues (conflicts, detached HEAD, push rejected) | Bash git diagnostics | manager-git for repository operations |
+| CI failures (lint, errcheck, race conditions) | Log analysis + PR diff review; classify mechanical vs semantic | manager-cycle for mechanical fixes; report semantic for human decision |
+| Configuration errors (hook failures, MCP issues, env vars) | Read settings files + hook logs | expert-devops for environment fixes |
+
+### Diagnostic Analysis Steps
+
+1. **Error Message Parsing**: Extract keywords, error type, location, severity
+2. **File Location Analysis**: Grep/Read to identify affected files and code locations
+3. **Pattern Matching**: Compare against known error patterns and error classifications
+4. **Impact Assessment**: Determine scope (single file, module, system-wide)
+5. **Solution Proposal**: Identify which agent should implement the fix
+
+### CI Failure Interpretation
+
+When processing CI failure context (mechanical vs semantic classification):
+
+- **Mechanical (trivial)**: gofmt/whitespace — provide exact command to fix
+- **Mechanical (non-trivial)**: errcheck/lint — provide unified diff of minimal fix
+- **Semantic**: data race / deadlock / panic — diagnosis only; no auto-patch
+
+**[HARD] AskUserQuestion 호출 금지** — manager-quality는 subagent이므로 절대 AskUserQuestion을 호출하지 않는다. 진단 결과를 Markdown으로 반환하는 것으로 역할이 종료된다.
+
+**[HARD] Secrets 미수정** — 진단 patch는 `.env`, credentials, API key 파일을 절대 포함하지 않는다.
 
 ## Behavioral Contract (SEMAP)
 
@@ -61,7 +98,7 @@ IN SCOPE:
 - TAG chain verification
 
 OUT OF SCOPE:
-- Code implementation (delegate to manager-develop or expert-debug)
+- Code implementation (delegate to manager-cycle)
 - Git operations (delegate to manager-git)
 - Documentation generation (delegate to manager-docs)
 
@@ -110,6 +147,6 @@ Classification: PASS (all items) / WARNING (non-compliance with recommendations)
 
 ## Delegation Protocol
 
-- Code modifications: Delegate to manager-develop or expert-debug
+- Code modifications: Delegate to manager-cycle (cycle_type=ddd for existing code; cycle_type=tdd for new features)
 - Git operations: Delegate to manager-git
-- Debugging: Delegate to expert-debug
+- Structural refactoring: Delegate to expert-refactoring

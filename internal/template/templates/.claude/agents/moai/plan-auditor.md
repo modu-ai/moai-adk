@@ -12,6 +12,7 @@ tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking, Wri
 model: inherit
 effort: high
 permissionMode: default
+memory: project
 ---
 
 # plan-auditor - Independent SPEC Auditor

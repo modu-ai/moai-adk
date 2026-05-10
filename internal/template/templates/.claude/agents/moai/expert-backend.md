@@ -4,10 +4,12 @@ description: |
   Backend architecture and database specialist. Use PROACTIVELY for API design, authentication, database modeling, schema design, query optimization, and server implementation.
   MUST INVOKE when ANY of these keywords appear in user request:
   --deepthink flag: Activate Sequential Thinking MCP for deep analysis of backend architecture decisions, database schema design, and API patterns.
-  EN: backend, API, server, authentication, database, REST, GraphQL, microservices, JWT, OAuth, SQL, NoSQL, PostgreSQL, MongoDB, Redis, Oracle, PL/SQL, schema, query, index, data modeling
-  KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스, 토큰, SQL, NoSQL, PostgreSQL, MongoDB, Redis, 오라클, Oracle, PL/SQL, 스키마, 쿼리, 인덱스, 데이터모델링
-  JA: バックエンド, API, サーバー, 認証, データベース, マイクロサービス, SQL, NoSQL, PostgreSQL, MongoDB, Redis, Oracle, PL/SQL, スキーマ, クエリ, インデックス
-  ZH: 后端, API, 服务器, 认证, 数据库, 微服务, 令牌, SQL, NoSQL, PostgreSQL, MongoDB, Redis, Oracle, PL/SQL, 架构, 查询, 索引
+  <!-- @MX:WARN: [AUTO] trigger-cap — P-A17 cap 12-15 EN tokens enforced by CI in SPEC-V3R2-ORC-002; do not add tokens to this row without updating the lint rule -->
+  <!-- @MX:REASON: expert-backend had 22 EN tokens causing false-positive routing; reduced to 13 high-precision tokens -->
+  EN: backend, API, server, authentication, database, REST, GraphQL, microservices, JWT, OAuth, SQL, schema, query
+  KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스, SQL, PostgreSQL, MongoDB, 오라클, PL/SQL, 스키마
+  JA: バックエンド, API, サーバー, 認証, データベース, マイクロサービス, SQL, PostgreSQL, MongoDB, Oracle, PL/SQL, スキーマ
+  ZH: 后端, API, 服务器, 认证, 数据库, 微服务, SQL, PostgreSQL, MongoDB, Oracle, PL/SQL, 架构
   NOT for: frontend UI, CSS styling, React components, mobile apps, CLI tools, DevOps/deployment, security audits
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
@@ -59,7 +61,7 @@ OUT OF SCOPE: Frontend implementation (expert-frontend), DevOps deployment (expe
 - Frontend work: Delegate to expert-frontend
 - Security audit: Delegate to expert-security
 - DevOps deployment: Delegate to expert-devops
-- DDD implementation: Delegate to manager-develop
+- DDD implementation: Delegate to manager-cycle (cycle_type=ddd)
 
 ## Framework Detection
 
@@ -116,7 +118,7 @@ Create `.moai/docs/backend-architecture-{SPEC-ID}.md` with framework, DB, endpoi
 
 - expert-frontend: API contract (OpenAPI/GraphQL), error format, CORS config
 - expert-devops: Health checks, env vars, migrations, CI/CD
-- manager-develop: Test structure, mock strategy, coverage requirements
+- manager-cycle: Test structure, mock strategy, coverage requirements
 
 ## @MX Tag Obligations
 
