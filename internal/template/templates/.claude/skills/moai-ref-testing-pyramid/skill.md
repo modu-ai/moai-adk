@@ -2,7 +2,7 @@
 name: moai-ref-testing-pyramid
 description: >
   Test pyramid strategy, coverage targets, test patterns, and quality metrics
-  reference. Agent-extending skill that amplifies expert-testing and manager-tdd
+  reference. Agent-extending skill that amplifies manager-cycle and manager-quality
   expertise with production-grade testing patterns.
   NOT for: production code implementation, architecture design, DevOps, security audits.
 user-invocable: false
@@ -12,7 +12,7 @@ metadata:
   status: "active"
   updated: "2026-03-30"
   tags: "testing, pyramid, coverage, tdd, patterns, reference"
-  agent: "expert-testing"
+  agent: "manager-cycle"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -23,7 +23,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["test", "coverage", "tdd", "unit test", "integration", "e2e"]
-  agents: ["expert-testing", "manager-tdd"]
+  agents: ["manager-cycle", "manager-quality"]
   phases: ["run"]
 ---
 
@@ -31,8 +31,8 @@ triggers:
 
 ## Target Agents
 
-- `expert-testing` - Primary: applies patterns during test creation and coverage analysis
-- `manager-tdd` - Secondary: applies during RED-GREEN-REFACTOR cycles
+- `manager-cycle` - Primary: applies patterns during test creation and coverage analysis
+- `manager-cycle` - Secondary: applies during RED-GREEN-REFACTOR cycles
 
 ## Test Pyramid Ratios
 

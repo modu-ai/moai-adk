@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestBuilderSkillPathStructure verifies that the builder-skill agent instructions
+// TestBuilderSkillPathStructure verifies that the builder-platform agent instructions
 // explicitly enforce the correct skill file path structure.
 //
 // Regression test for: https://github.com/modu-ai/moai-adk/issues/443
@@ -18,6 +18,8 @@ import (
 // instead of the correct flat structure:
 //
 //	.claude/skills/moai-library-pykrx/SKILL.md  (CORRECT)
+//
+// SPEC-V3R2-ORC-001: builder-skill.md retired; guidance now lives in builder-platform.md.
 func TestBuilderSkillPathStructure(t *testing.T) {
 	t.Parallel()
 
@@ -26,7 +28,9 @@ func TestBuilderSkillPathStructure(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	const agentPath = ".claude/agents/moai/builder-skill.md"
+	// builder-skill.md is a retired stub (SPEC-V3R2-ORC-001); skill authoring
+	// guidance has moved to builder-platform.md (artifact_type=skill workflow).
+	const agentPath = ".claude/agents/moai/builder-platform.md"
 
 	data, err := fs.ReadFile(fsys, agentPath)
 	if err != nil {

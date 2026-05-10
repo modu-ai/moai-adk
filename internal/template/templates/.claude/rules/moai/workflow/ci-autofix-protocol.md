@@ -81,7 +81,7 @@ the watch loop for the same PR.
 
 [HARD] AskUserQuestion is the **exclusive user interaction channel** for the
 auto-fix loop. All user confirmations and escalations go through AskUserQuestion.
-The CLI, shell scripts, and `expert-debug` subagent MUST NOT call AskUserQuestion.
+The CLI, shell scripts, and `manager-quality` subagent MUST NOT call AskUserQuestion.
 
 [HARD] The orchestrator MUST preload AskUserQuestion via
 `ToolSearch(query: "select:AskUserQuestion")` before every AskUserQuestion call.
@@ -99,13 +99,13 @@ Interaction surfaces:
 
 [HARD] Semantic failures (data race, deadlock, panic, test assertion failure) MUST
 NOT be automatically patched. The orchestrator MUST immediately escalate via
-AskUserQuestion with the `expert-debug` diagnosis report.
+AskUserQuestion with the `manager-quality` diagnosis report.
 
 Semantic classification is determined by `scripts/ci-autofix/classify.sh`:
 - `classification=semantic` → immediate escalation
 - `classification=unknown` → treated as semantic (conservative) → immediate escalation
 
-The `expert-debug` subagent in semantic mode returns diagnosis only (no patch field).
+The `manager-quality` subagent in semantic mode returns diagnosis only (no patch field).
 The orchestrator presents the diagnosis to the user and waits for user decision.
 
 ---
@@ -120,7 +120,7 @@ File patterns that MUST NOT be touched by auto-fix:
 - `**/credentials*`, `**/*_key.json`, `**/*secret*`
 - `.claude/settings.json`, `.claude/settings.local.json`
 
-If a patch proposed by `expert-debug` touches these files, the orchestrator MUST
+If a patch proposed by `manager-quality` touches these files, the orchestrator MUST
 reject the patch and escalate to the user.
 
 ---

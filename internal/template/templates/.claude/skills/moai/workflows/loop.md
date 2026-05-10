@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["loop", "iterate", "repeat", "until done", "keep fixing", "all errors"]
-  agents: ["expert-debug", "expert-backend", "expert-frontend", "expert-testing"]
+  agents: ["manager-quality", "expert-backend", "expert-frontend", "manager-cycle"]
   phases: ["loop"]
 ---
 
@@ -118,9 +118,9 @@ Step 6 - Fix Execution:
 - [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
 
 Agent selection by issue type:
-- Type errors, logic bugs: expert-debug subagent
+- Type errors, logic bugs: manager-quality subagent
 - Import/module issues: expert-backend or expert-frontend subagent
-- Test failures: expert-testing subagent
+- Test failures: manager-cycle subagent
 - Security issues: expert-security subagent
 - Performance issues: expert-performance subagent
 

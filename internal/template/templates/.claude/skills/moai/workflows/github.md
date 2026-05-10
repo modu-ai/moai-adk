@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["github", "issue", "pr", "pull request"]
-  agents: ["expert-debug", "expert-backend", "manager-quality"]
+  agents: ["manager-quality", "expert-backend"]
   phases: ["github"]
 ---
 
@@ -77,7 +77,7 @@ Classify by title/labels/body:
 [HARD] Delegate all implementation to specialized agents.
 
 Step 2.1: Analyze root cause
-- Delegate to expert-debug subagent (bugs) or expert-backend subagent (features)
+- Delegate to manager-quality subagent (bugs) or expert-backend subagent (features)
 - Agent reads issue body, explores codebase, identifies affected files and fix approach
 
 Step 2.2: Create branch and implement

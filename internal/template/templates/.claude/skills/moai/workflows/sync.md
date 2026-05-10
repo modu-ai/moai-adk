@@ -157,7 +157,7 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - Auto-fix any fixable issues (lint auto-fix, format auto-fix)
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
-  - Fix errors (Recommended): Delegate to expert-debug subagent for targeted fixes
+  - Fix errors (Recommended): Delegate to manager-quality subagent for targeted fixes
   - Skip gate: Proceed to Phase 0.1 (errors will be caught later but at higher cost)
   - Abort: Exit sync workflow
 
@@ -217,7 +217,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry (Recommended): Delegate to expert-debug subagent
+  - Fix and retry (Recommended): Delegate to manager-quality subagent
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 
@@ -306,7 +306,7 @@ Review Perspectives:
 - UX: User flow integrity, error states, accessibility (WCAG/ARIA), breaking changes in public interfaces
 
 Auto-Fix Behavior:
-- If critical issues found: Delegate auto-fix to expert-debug or appropriate expert subagent
+- If critical issues found: Delegate auto-fix to manager-quality or appropriate expert subagent
 - Re-run review after fix to verify resolution
 - Maximum 3 auto-fix iterations for critical issues before escalating to user
 - Warnings and suggestions are logged in report but do not block pipeline
@@ -478,7 +478,7 @@ Purpose: Measure test coverage, identify gaps, and generate missing tests to mee
 
 #### Step 0.7.1: Coverage Measurement
 
-Agent: expert-testing subagent
+Agent: manager-cycle subagent
 
 Measure current coverage using language-specific tools:
 - Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`
@@ -490,7 +490,7 @@ Output: Overall coverage percentage, per-file coverage, per-function data.
 
 #### Step 0.7.2: Gap Analysis
 
-Agent: expert-testing subagent
+Agent: manager-cycle subagent
 
 Identify files below the coverage target (from quality.yaml test_coverage_target, default 85%).
 
@@ -502,7 +502,7 @@ Prioritize gaps by risk:
 
 #### Step 0.7.3: Test Generation
 
-Agent: expert-testing subagent
+Agent: manager-cycle subagent
 
 Generate missing tests for P1 and P2 gaps:
 - Follow development_mode for test style (TDD: table-driven tests, DDD: characterization tests)
@@ -902,7 +902,7 @@ CI Mirror: Skipped checks
 
 **Any check fails**: Present failure summary via AskUserQuestion:
 
-- Fix now — delegate to expert-debug subagent with failure details, then re-run CI mirror
+- Fix now — delegate to manager-quality subagent with failure details, then re-run CI mirror
 - Push anyway — proceed to Step 3.2 with warning embedded in PR description
 - Abort — exit sync workflow, preserve commit (allow local fix and re-run)
 

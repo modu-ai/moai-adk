@@ -152,7 +152,7 @@ Agents:
 
 - manager-cycle: DDD implementation
 - manager-quality: Quality validation
-- expert-debug: Complex debugging
+- manager-quality: Complex debugging
 
 Commands:
 

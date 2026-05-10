@@ -6,8 +6,9 @@ description: |
   Load test execution belongs in expert-performance with --deepthink load-test.
   See manager-cycle.md and expert-performance.md for the active replacements.
 retired: true
-retired_replacement: "manager-cycle | expert-performance"
-retired_param_hint: "strategy: manager-cycle cycle_type=tdd; load: expert-performance --deepthink load-test"
+retired_replacement: "manager-cycle"
+retired_replacement_alt: "expert-performance"
+retired_param_hint: "strategy: cycle_type=tdd; load: use expert-performance --deepthink load-test"
 tools: []
 skills: []
 ---

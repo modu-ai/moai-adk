@@ -105,15 +105,15 @@ For detailed design rules, see .claude/rules/moai/design/constitution.md
 
 ### Manager Agents (7)
 
-spec, develop, docs, quality, project, strategy, git
+spec, cycle, docs, quality, project, strategy, git
 
-### Expert Agents (8)
+### Expert Agents (6)
 
-backend, frontend, security, devops, performance, debug, testing, refactoring
+backend, frontend, security, devops, performance, refactoring
 
-### Builder Agents (3)
+### Builder Agents (1)
 
-agent, skill, plugin
+platform
 
 ### Evaluator Agents (2)
 
@@ -133,7 +133,7 @@ Role profiles (in `workflow.yaml`): researcher, analyst, architect, implementer,
 
 Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in workflow.yaml.
 
-For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-agent subagent or see `.claude/rules/moai/development/agent-authoring.md`.
+For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-platform subagent or see `.claude/rules/moai/development/agent-authoring.md`.
 
 ---
 
@@ -375,7 +375,7 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 
 ### Error Recovery
 
-- Agent execution errors: Use expert-debug subagent
+- Agent execution errors: Use manager-quality subagent
 - Token limit errors: Execute /clear, then guide user to resume
 - Permission errors: Review settings.json manually
 - Integration errors: Use expert-devops subagent

@@ -45,20 +45,20 @@ Actions follow the naming pattern `{agent}-{phase}`:
 
 | Agent | PreToolUse | PostToolUse | SubagentStop |
 |-------|-----------|------------|-------------|
-| manager-ddd | ddd-pre-transformation | ddd-post-transformation | ddd-completion |
+| manager-cycle | cycle-pre-transformation | cycle-post-transformation | cycle-completion |
 | manager-develop | develop-pre-implementation | develop-post-implementation | develop-completion |
 | expert-backend | backend-validation | backend-verification | - |
 | expert-frontend | frontend-validation | frontend-verification | - |
-| expert-testing | - | testing-verification | testing-completion |
-| expert-debug | - | debug-verification | debug-completion |
 | expert-devops | - | devops-verification | devops-completion |
-| manager-quality | - | - | quality-completion |
+| manager-quality | - | quality-verification | quality-completion |
 | manager-spec | - | - | spec-completion |
 | manager-docs | - | docs-verification | docs-completion |
 
-<!-- @MX:NOTE: manager-ddd retired (SPEC-V3R3-RETIRED-DDD-001), action set
-     preserved here for backward compat with pre-update user projects.
-     Active manager-develop uses develop-* actions. See manager-develop.md. -->
+<!-- @MX:NOTE: manager-ddd/manager-tdd retired (SPEC-V3R3-RETIRED-DDD-001 + ORC-001),
+     consolidated into manager-cycle. expert-debug absorbed by manager-quality (diagnostic-mode).
+     expert-testing absorbed by manager-cycle (cycle_type=tdd) + expert-performance.
+     Legacy hook actions (ddd-*, testing-*, debug-*) preserved in handler for backward compat
+     with pre-update user projects. See manager-cycle.md. -->
 
 Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose")`) do not use agent-scoped hooks. Quality enforcement for teammates uses global TeammateIdle and TaskCompleted hooks in settings.json.
 
@@ -80,7 +80,7 @@ stdin JSON structure:
   "toolInput": null,
   "toolOutput": null,
   "session": { "id": "sess-123", "cwd": "/path/to/project", "projectDir": "/path/to/project" },
-  "data": { "agent": "manager-ddd", "action": "ddd-completion" }
+  "data": { "agent": "manager-cycle", "action": "cycle-completion" }
 }
 ```
 

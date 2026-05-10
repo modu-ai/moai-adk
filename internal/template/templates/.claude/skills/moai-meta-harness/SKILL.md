@@ -144,18 +144,18 @@ This skill (`moai-meta-harness`) generates the harness skeleton:
 3. Write extension files: `.moai/harness/agents.md`, `.moai/harness/skills.md`
 4. Create agent definition stubs in `.claude/agents/my-harness/`
 
-Agents involved: `builder-agent`, `builder-skill` for artifact generation.
+Agents involved: `builder-platform` for artifact generation.
 
 #### Phase 5 — Customization
 
 This skill fills the skeleton with domain-specific content:
 
 1. Generate agent definitions (`.claude/agents/my-harness/*.md`) referencing
-   existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-tdd`,
-   `manager-cycle`, `manager-quality`, `manager-docs`, `manager-git`,
-   `expert-backend`, `expert-frontend`, `expert-debug`, `expert-testing`,
+   existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-cycle`,
+   `manager-quality`, `manager-docs`, `manager-git`,
+   `expert-backend`, `expert-frontend`,
    `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`,
-   `expert-mobile`, `builder-agent`, `builder-skill`, `builder-plugin`,
+   `expert-mobile`, `builder-platform`,
    `evaluator-active`, `plan-auditor`.
 2. Generate domain skills (`.claude/skills/my-harness-*/SKILL.md`) following
    the skill-authoring.md schema with `my-harness-*` prefix.
@@ -199,21 +199,21 @@ referenced below are static MoAI agents — no new agents are introduced.
 - `expert-mobile` — Mobile domain harness templates
 - `expert-devops` — DevOps/platform domain harness templates
 - `expert-security` — Security review of generated permissions
-- `expert-testing` — Test harness pattern generation
-- `expert-debug` — Debug agent patterns
+- `manager-cycle` — Test harness pattern generation
+- `manager-quality` — Quality gates + diagnostic patterns
 - `expert-refactoring` — Refactoring workflow patterns
 - `expert-performance` — Performance profiling patterns
 
 **Builders**
 
-- `builder-agent` — Generates `.claude/agents/my-harness/*.md` content
-- `builder-skill` — Generates `.claude/skills/my-harness-*/SKILL.md` content
-- `builder-plugin` — Optional plugin bundling of generated artifacts
+- `builder-platform` (artifact_type=agent) — Generates `.claude/agents/my-harness/*.md` content
+- `builder-platform` (artifact_type=skill) — Generates `.claude/skills/my-harness-*/SKILL.md` content
+- `builder-platform` (artifact_type=plugin) — Optional plugin bundling of generated artifacts
 
 **Workflow Managers**
 
-- `manager-cycle` — DDD-flavored harness workflow templates
-- `manager-tdd` — TDD-flavored harness workflow templates
+- `manager-cycle` (cycle_type=ddd) — DDD-flavored harness workflow templates
+- `manager-cycle` (cycle_type=tdd) — TDD-flavored harness workflow templates
 - `manager-quality` — Quality gate configuration in generated harnesses
 - `manager-docs` — Documentation generation patterns
 - `manager-git` — Git workflow patterns for generated harnesses
@@ -335,7 +335,7 @@ The following capabilities are explicitly NOT implemented by this skill:
 - `moai-foundation-cc` — Claude Code skill/agent authoring standards
 - `manager-spec` — Conducts Discovery and Synthesis phases
 - `evaluator-active` — Sprint Contract evaluation in Phase 6
-- `builder-agent` / `builder-skill` — Artifact generation helpers
+- `builder-platform` — Artifact generation helpers
 
 ---
 

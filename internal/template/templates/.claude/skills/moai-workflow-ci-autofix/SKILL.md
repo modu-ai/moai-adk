@@ -23,13 +23,13 @@ Wave 2 CI watch loop(`moai-workflow-ci-watch`)가 required check 실패(exit 2 +
 
 1. `scripts/ci-autofix/log-fetch.sh`로 실패 로그 + PR diff 캡처
 2. `scripts/ci-autofix/classify.sh`로 실패 유형 분류 (mechanical / semantic / unknown)
-3. OQ2 cadence matrix에 따라 `expert-debug` subagent에 진단 위임
+3. OQ2 cadence matrix에 따라 `manager-quality` subagent에 진단 위임
 4. mechanical 실패: patch 제안 → orchestrator가 AskUserQuestion → apply → push → ci-watch 재호출
 5. semantic 실패: 즉시 AskUserQuestion 에스컬레이션 (patch 시도 없음)
 6. 최대 3회 반복 후 mandatory blocking AskUserQuestion
 
 **[HARD]** AskUserQuestion은 orchestrator(이 skill을 실행하는 메인 세션)만 호출한다.
-`expert-debug` subagent는 절대 AskUserQuestion을 호출하지 않는다.
+`manager-quality` subagent는 절대 AskUserQuestion을 호출하지 않는다.
 
 ### 상태 파일
 
@@ -147,12 +147,12 @@ SUB=$(printf '%s\n' "$CLASSIFICATION" | grep '^sub_class=' | cut -d= -f2)
 [confirm-required]
   → ToolSearch(query: "select:AskUserQuestion")
   → AskUserQuestion 패치 내용 제시 (1순위 = "패치 적용 (권장)")
-  → user accepts → expert-debug patch apply → git add/commit/push (force-push 금지)
+  → user accepts → manager-quality patch apply → git add/commit/push (force-push 금지)
                  → ci-watch run.sh 재호출
   → user rejects → [escalate-user-choice]
 
 [silent-apply]
-  → expert-debug patch apply → git commit/push (force-push 금지)
+  → manager-quality patch apply → git commit/push (force-push 금지)
   → audit log에 iteration 결과 기록 (AskUserQuestion 없음)
   → ci-watch run.sh 재호출
 
@@ -172,9 +172,9 @@ SUB=$(printf '%s\n' "$CLASSIFICATION" | grep '^sub_class=' | cut -d= -f2)
   → audit log에 escalation 이유 기록
 ```
 
-### expert-debug Subagent 호출 패턴
+### manager-quality Subagent 호출 패턴
 
-orchestrator가 `expert-debug`를 호출할 때 spawn prompt에 주입할 컨텍스트:
+orchestrator가 `manager-quality`를 호출할 때 spawn prompt에 주입할 컨텍스트:
 
 ```
 ## CI Auto-Fix Context
@@ -196,7 +196,7 @@ orchestrator가 `expert-debug`를 호출할 때 spawn prompt에 주입할 컨텍
 [HARD] AskUserQuestion 호출 금지. patch 제안 또는 diagnosis를 Markdown으로 반환만 한다.
 ```
 
-expert-debug는 mechanical 실패 시 patch를 제안하고, semantic 실패 시 진단 보고서만 반환한다.
+manager-quality는 mechanical 실패 시 patch를 제안하고, semantic 실패 시 진단 보고서만 반환한다.
 orchestrator가 patch를 받은 후 AskUserQuestion으로 사용자 컨펌을 받는다.
 
 ### Audit Log 작성
@@ -251,7 +251,7 @@ printf '\n## Iteration %s\n\n- **classification**: %s\n- **sub_class**: %s\n- **
 
 | 트리거 | 경로 |
 |--------|------|
-| classification == semantic / unknown (any iter) | escalate-immediate: expert-debug = diagnosis only; patch 없음 |
+| classification == semantic / unknown (any iter) | escalate-immediate: manager-quality = diagnosis only; patch 없음 |
 | iter 1, mechanical, user rejects patch | escalate-user-choice: 이유 기록 + loop halt |
 | iter == 3 + still failing (mechanical) | mandatory AskUserQuestion (blocking, no timer) |
 | log-fetch.sh 실패 (gh auth, 네트워크) | exit 1 + remediation hint: user에게 manual fallback 안내 |
@@ -274,7 +274,7 @@ printf '\n## Iteration %s\n\n- **classification**: %s\n- **sub_class**: %s\n- **
 ## Works Well With
 
 - `moai-workflow-ci-watch` → Wave 2 handoff 소스
-- `expert-debug` → 실패 로그 진단 + patch 제안
+- `manager-quality` → 실패 로그 진단 + patch 제안
 - `scripts/ci-autofix/classify.sh` → mechanical vs semantic 분류
 - `scripts/ci-autofix/log-fetch.sh` → 실패 로그 + PR diff 캡처
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md` → HARD invocation contract
@@ -293,7 +293,7 @@ printf '\n## Iteration %s\n\n- **classification**: %s\n- **sub_class**: %s\n- **
 <!-- moai:evolvable-start id="red-flags" -->
 ## Red Flags
 
-- expert-debug subagent가 AskUserQuestion을 호출하려 함 (HARD 위반: orchestrator 전용)
+- manager-quality subagent가 AskUserQuestion을 호출하려 함 (HARD 위반: orchestrator 전용)
 - iteration 4에서 auto-continue (no AskUserQuestion) — blocking call 누락
 - git push --force 또는 push -f 사용 — force-push 금지 invariant 위반
 - semantic 실패에 대해 patch 생성 시도 — 즉시 escalate 경로 누락

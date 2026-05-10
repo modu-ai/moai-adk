@@ -29,7 +29,7 @@ triggers:
   agents:
     - "manager-quality"
     - "manager-cycle"
-    - "expert-testing"
+    - "manager-cycle"
     - "expert-security"
     - "expert-refactoring"
   phases:

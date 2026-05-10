@@ -127,7 +127,7 @@ For Node.js documentation, use context7 get library docs with nodejs/node and to
 - moai-domain-database for database integration and ORM patterns
 - moai-workflow-testing for DDD workflows and testing strategies
 - moai-foundation-quality for code quality standards
-- delegate to `expert-debug` agent for AI-powered debugging
+- delegate to `manager-quality` agent for AI-powered debugging
 
 ---
 

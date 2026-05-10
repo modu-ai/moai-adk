@@ -29,7 +29,7 @@ progressive_disclosure:
 triggers:
   keywords: ["DDD", "domain-driven development", "characterization tests", "behavior preservation", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
   phases: ["run", "sync"]
-  agents: ["manager-cycle", "expert-testing", "expert-debug", "expert-performance", "manager-quality"]
+  agents: ["manager-cycle", "manager-quality", "expert-performance"]
 ---
 
 # Development Workflow Specialist

@@ -32,8 +32,7 @@ triggers:
     - "manager-develop"
     - "manager-strategy"
     - "manager-quality"
-    - "builder-agent"
-    - "builder-skill"
+    - "builder-platform"
     - "manager-docs"
     - "manager-project"
   phases:

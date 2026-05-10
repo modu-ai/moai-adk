@@ -74,7 +74,7 @@ constitution:
 *DDD adapts for greenfield (ANALYZE requirements -> PRESERVE with spec tests -> IMPROVE)
 
 **Agent Selection**:
-- **TDD cycle**: `manager-tdd` subagent (RED-GREEN-REFACTOR)
+- **TDD cycle**: `manager-cycle` subagent (RED-GREEN-REFACTOR)
 - **DDD cycle**: `manager-cycle` subagent (ANALYZE-PRESERVE-IMPROVE)
 
 For methodology details, see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
@@ -144,14 +144,14 @@ This iterative refinement catches architectural misunderstandings before impleme
 
 [HARD] Methodology selection based on `.moai/config/sections/quality.yaml`:
 
-- **development_mode: tdd** (default): Use `manager-tdd` (RED-GREEN-REFACTOR)
+- **development_mode: tdd** (default): Use `manager-cycle` (RED-GREEN-REFACTOR)
 - **development_mode: ddd**: Use `manager-cycle` (ANALYZE-PRESERVE-IMPROVE)
 
 Expert agent selection (for domain-specific work):
 - Backend logic: expert-backend subagent
 - Frontend components: expert-frontend subagent
-- Test creation: expert-testing subagent
-- Bug fixing: expert-debug subagent
+- Test creation: manager-cycle subagent
+- Bug fixing: manager-quality subagent
 - Refactoring: expert-refactoring subagent
 - Security fixes: expert-security subagent
 
@@ -236,7 +236,7 @@ Mode selection:
 13. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)
    - worktree: Already running in isolated tmux+worktree session (Gate handled transition)
    - team: Read ${CLAUDE_SKILL_DIR}/team/run.md and follow team orchestration
-   - sub-agent: manager-tdd or manager-cycle (per quality.yaml development_mode)
+   - sub-agent: manager-cycle (cycle_type=ddd or tdd, per quality.yaml development_mode)
    - Harness level determines phase skipping and evaluator involvement
 14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
 15. Terminate with completion marker

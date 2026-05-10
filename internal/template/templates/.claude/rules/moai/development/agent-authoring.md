@@ -101,14 +101,14 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 Coordinate workflows and multi-step processes:
 
 - manager-spec: SPEC document creation
-- manager-develop: Unified DDD/TDD implementation
+- manager-cycle: Unified DDD/TDD implementation (cycle_type=ddd|tdd; consolidated from retired agents)
 - manager-docs: Documentation generation
-- manager-quality: Quality gates validation
+- manager-quality: Quality gates validation + diagnostic sub-mode (replaces expert-debug)
 - manager-project: Project configuration
 - manager-strategy: System design, architecture decisions
 - manager-git: Git operations, branching strategy
 
-### Expert Agents (8)
+### Expert Agents (6)
 
 Domain-specific implementation:
 
@@ -116,18 +116,20 @@ Domain-specific implementation:
 - expert-frontend: UI and client development
 - expert-security: Security analysis
 - expert-devops: CI/CD and infrastructure
-- expert-performance: Performance optimization
-- expert-debug: Debugging and troubleshooting
-- expert-testing: Test creation and strategy
+- expert-performance: Performance optimization and testing
 - expert-refactoring: Code refactoring
 
-### Builder Agents (3)
+<!-- @MX:NOTE: expert-debug absorbed by manager-quality (diagnostic-mode, SPEC-V3R2-ORC-001).
+              expert-testing absorbed by manager-cycle (cycle_type=tdd) + expert-performance. -->
+
+### Builder Agents (1)
 
 Create new MoAI components:
 
-- builder-agent: New agent definitions
-- builder-skill: New skill creation
-- builder-plugin: Plugin creation
+- builder-platform: New agents, skills, plugins, commands, hooks, MCP/LSP servers (use artifact_type param)
+
+<!-- @MX:NOTE: builder-agent/builder-skill/builder-plugin consolidated into builder-platform (SPEC-V3R2-ORC-001).
+              Use builder-platform with artifact_type=agent|skill|plugin|command|hook|mcp-server|lsp-server. -->
 
 ### Dynamic Team Generation (Experimental)
 

@@ -100,7 +100,7 @@ See:
 - `.claude/rules/moai/languages/rust.md` - Systems programming comparison and interop
 - `moai-domain-backend` - Backend service architecture
 - `moai-workflow-testing` - DDD and testing strategies
-- delegate to `expert-debug` agent for AI-powered debugging
+- delegate to `manager-quality` agent for AI-powered debugging
 - `moai-foundation-quality` - TRUST 5 quality principles
 
 ---
