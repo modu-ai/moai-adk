@@ -96,3 +96,53 @@ End of progress.
   - BenchmarkParse365Leaves: 6.0ms (<500ms ✅)
   - AC-004/005/006/007/019: 5 tests passing
   - No regressions
+
+- audit_verdict: FAIL
+- audit_report: .moai/reports/plan-audit/SPEC-V3R2-SPC-001-review-1.md
+- audit_at: 2026-05-11T00:00:00Z
+- auditor_version: plan-auditor
+- plan_artifact_hash: 217b2940c5f4c91f85949b8c3830ddadcda3ba02762851d419d67b19e18b8547
+- grace_window: EXPIRED (T0=2026-04-25, expired=2026-05-02)
+
+- audit_verdict: BYPASSED
+- bypass_at: 2026-05-11T00:00:00Z
+- bypass_user: Goos Kim
+- bypass_reason: "plan-auditor MP-1/MP-2 findings are project-convention mismatches (intentional EARS modality block numbering; AC=Gherkin is project standard). User chose Override."
+
+### Wave B Complete (2026-05-11)
+- wave: B
+- milestone: M3 (Docs)
+- agents: expert-backend (T-05), manager-docs (T-06~08)
+- tasks: T-05, T-06, T-07, T-08
+- status: COMPLETE
+- commit: d74e9ac3e
+- results:
+  - T-05: --shape-trace audit complete, 4 tests added
+  - T-06: spec-workflow.md +37 lines (hierarchical schema)
+  - T-07: SKILL.md +32 lines (Hierarchical Acceptance subsection)
+  - T-08: zone-registry.md CONST-V3R2-001 cross-link added
+
+### Wave C Complete (2026-05-11)
+- wave: C
+- milestone: M4
+- agent: manager-spec
+- tasks: T-09
+- status: COMPLETE
+- commit: 01b5cbd96
+- results:
+  - MIG-001 §11 handoff note added (19 lines)
+  - SPC-001/MIG-001 responsibility division documented
+  - @MX:TODO resolved tag added
+
+---
+## Run Phase Summary (2026-05-11)
+
+Waves A-C COMPLETE:
+- Wave A (M2): T-03 perf benchmark, T-04 edge cases → PR #849
+- Wave B (M3): T-05 shape-trace, T-06~08 docs → PR #849
+- Wave C (M4): T-09 MIG-001 handoff → PR #849
+
+Remaining: Wave D (M5) — CON-002 amendment (T-10~T-12)
+- T-10: Canary re-parse (manager-quality)
+- T-11: MX tags (manager-quality)
+- T-12: CON-002 evidence (manager-spec)

@@ -220,16 +220,10 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	}
 
 	// Effort/thinking indicator (Claude Code v2.1.122+, REQ-CC2122-001/002)
-	// Moved before output style per user request
 	if r.isSegmentEnabled(SegmentEffortThinking) {
 		if et := renderEffortThinking(data); et != "" {
 			segs = append(segs, et)
 		}
-	}
-
-	// Output style (integrated into L1)
-	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
-		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
 	}
 
 	// Claude version
@@ -244,11 +238,7 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	// MoAI version
 	if r.isSegmentEnabled(SegmentMoaiVersion) && data.Version.Available && data.Version.Current != "" {
 		var versionStr string
-		if withPrefix {
-			versionStr = fmt.Sprintf("🗿 moai v%s", data.Version.Current)
-		} else {
-			versionStr = fmt.Sprintf("🗿 moai v%s", data.Version.Current)
-		}
+		versionStr = fmt.Sprintf("🗿 v%s", data.Version.Current)
 		if data.Version.UpdateAvailable && data.Version.Latest != "" {
 			versionStr += fmt.Sprintf(" -> 🗿 v%s", data.Version.Latest)
 		}
@@ -262,6 +252,11 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
+	// Output style (moved to end of L1 per user request)
+	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
+		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
+	}
+
 	return r.joinSegments(segs)
 }
 
@@ -269,17 +264,13 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 // Returns "🧠 LEVEL" + optional "·t" suffix when either field is present and meaningful.
 // Returns "" when both are absent or effort level is empty (silent omit, REQ-CC2122-003).
 func renderEffortThinking(data *StatusData) string {
-	if data.Effort == nil && data.Thinking == nil {
+	if data.Effort == nil {
 		return ""
 	}
-	var result string
-	if data.Effort != nil && data.Effort.Level != "" {
-		result = "🧠 " + data.Effort.Level
+	if data.Effort.Level == "" {
+		return ""
 	}
-	if data.Thinking != nil && data.Thinking.Enabled {
-		result += "·t"
-	}
-	return result
+	return "🧠 " + data.Effort.Level
 }
 
 // renderBarsInline renders CW/5H/7D bars inline on a single line (default mode L2).
@@ -297,24 +288,30 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
 	if r.isSegmentEnabled(SegmentUsage5H) {
 		pct5H := 0
+		var reset5H string
 		if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
 			pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
+			reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
 		} else if data.Usage != nil && data.Usage.Usage5H != nil {
 			pct5H = int(data.Usage.Usage5H.Percentage)
+			reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
 		}
-		segs = append(segs, renderUsageBar("5H:", pct5H, width, r.noColor))
+		segs = append(segs, renderUsageBarWithReset("5H:", pct5H, width, r.noColor, reset5H))
 	}
 
 	// 7D bar - always shown, defaults to 0% when no data.
 	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
 	if r.isSegmentEnabled(SegmentUsage7D) {
 		pct7D := 0
+		var reset7D string
 		if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
 			pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
+			reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
 		} else if data.Usage != nil && data.Usage.Usage7D != nil {
 			pct7D = int(data.Usage.Usage7D.Percentage)
+			reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
 		}
-		segs = append(segs, renderUsageBar("7D:", pct7D, width, r.noColor))
+		segs = append(segs, renderUsageBarWithReset("7D:", pct7D, width, r.noColor, reset7D))
 	}
 
 	return r.joinSegments(segs)
@@ -375,27 +372,40 @@ func renderUsageBarWithReset(label string, pct int, width int, noColor bool, res
 	return fmt.Sprintf("%s (Resets %s)", base, resetStr)
 }
 
-// formatResetTimeRelative formats a reset time as relative "in Xh Ym" or "just reset".
-// Returns "just reset" if the reset time is zero, in the past, or unparseable.
+// formatResetTimeRelative formats a reset time as "1D+3:30" (days+hours:minutes for 7D),
+// "3:30" (hours:minutes for 5H), or "30" (minutes only).
+// Returns "0:0" if the reset time is zero, in the past, or unparseable.
 // Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeRelative(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
-		return "just reset"
+		return "0:0"
 	}
 	remaining := time.Until(t)
 	if remaining <= 0 {
-		return "just reset"
+		return "0:0"
 	}
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
-	if hours > 0 {
-		return fmt.Sprintf("in %dh%dm", hours, minutes)
+
+	// For 7D bar: show days+hours:minutes format (e.g., "1D+3:30")
+	if hours >= 24 {
+		days := hours / 24
+		hoursRemain := hours % 24
+		if hoursRemain > 0 {
+			return fmt.Sprintf("%dD+%d:%d", days, hoursRemain, minutes)
+		}
+		return fmt.Sprintf("%dD", days)
 	}
-	return fmt.Sprintf("in %dm", minutes)
+
+	// For 5H bar: show hours:minutes format (e.g., "3:30")
+	if hours > 0 {
+		return fmt.Sprintf("%d:%d", hours, minutes)
+	}
+	return fmt.Sprintf("%d", minutes)
 }
 
-// formatResetTimeAbsolute formats a reset time as "Jan 21 at 2pm" or "rolling".
+// formatResetTimeAbsolute formats a reset time as "Jan 21" or "rolling".
 // Returns "rolling" (sliding window) if the reset time is zero or unparseable.
 // Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeAbsolute(resetTime interface{}) string {
@@ -405,16 +415,7 @@ func formatResetTimeAbsolute(resetTime interface{}) string {
 	}
 	// Convert to local time for display
 	t = t.Local()
-	hour := t.Hour()
-	ampm := "am"
-	if hour >= 12 {
-		ampm = "pm"
-	}
-	hour12 := hour % 12
-	if hour12 == 0 {
-		hour12 = 12
-	}
-	return fmt.Sprintf("%s at %d%s", t.Format("Jan 2"), hour12, ampm)
+	return t.Format("Jan 2")
 }
 
 // parseResetTime converts a reset time value to time.Time.
@@ -457,28 +458,39 @@ func (r *Renderer) contextPercent(data *StatusData) int {
 	return usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 }
 
-// renderGitBranch renders the git branch string with ahead/behind info.
-// REQ-V3-GIT-001: Ahead > 0 → "🔀 branch ↑N"
-// REQ-V3-GIT-002: Behind > 0 → "🔀 branch ↓N"
-// REQ-V3-GIT-003: Both → "🔀 branch ↑N↓M"
-// REQ-V3-GIT-004: Neither → "🔀 branch"
+// renderGitBranch renders the git branch string with status emoji indicators.
+// REQ-V3-GIT-005: Status emoji prefixes: 📦(staged), 🔨(modified)
+// REQ-V3-GIT-006: Clean state → "🔀 branch +0", Dirty → "🔀 emoji branch +N"
+// Note: 🌿(worktree) prefix is added by renderDirGitLine when segment is enabled
 func renderGitBranch(data *StatusData) string {
 	if !data.Git.Available || data.Git.Branch == "" {
 		return ""
 	}
 
 	branch := data.Git.Branch
-	var suffix string
 
-	if data.Git.Ahead > 0 && data.Git.Behind > 0 {
-		suffix = fmt.Sprintf(" ↑%d↓%d", data.Git.Ahead, data.Git.Behind)
-	} else if data.Git.Ahead > 0 {
-		suffix = fmt.Sprintf(" ↑%d", data.Git.Ahead)
-	} else if data.Git.Behind > 0 {
-		suffix = fmt.Sprintf(" ↓%d", data.Git.Behind)
+	// Determine status emoji (priority: staged > modified)
+	var emoji string
+	if data.Git.Staged > 0 {
+		emoji = "📦"
+	} else if data.Git.Modified > 0 {
+		emoji = "🔨"
 	}
 
-	return fmt.Sprintf("%s%s", branch, suffix)
+	// Calculate dirty count (modified + staged + untracked)
+	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
+
+	var suffix string
+	if dirty > 0 {
+		suffix = fmt.Sprintf(" +%d", dirty)
+	} else {
+		suffix = " +0"
+	}
+
+	if emoji != "" {
+		return fmt.Sprintf("%s🔀 %s%s", emoji, branch, suffix)
+	}
+	return fmt.Sprintf("🔀 %s%s", branch, suffix)
 }
 
 // renderSessionTime converts milliseconds to a session time string in "⏳ Xh Ym" format.

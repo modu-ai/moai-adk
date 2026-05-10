@@ -1,0 +1,41 @@
+#!/bin/sh
+# MoAI-ADK pre-push hook — runs make ci-local; logs invocation outcome
+# Bypass via: SKIP_MOAI_PREPUSH=1 git push   (logged on next invocation)
+# To disable permanently: remove this file or pass --no-hooks to moai update
+set -eu
+
+if [ "${SKIP_MOAI_PREPUSH:-0}" = "1" ]; then
+    printf '[pre-push] SKIP_MOAI_PREPUSH=1 -- bypass requested\n' >&2
+    exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+LOG_DIR="$REPO_ROOT/.moai/logs"
+LOG_FILE="$LOG_DIR/prepush-bypass.log"
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+
+START_TS="$(date +%s)"
+
+if make -C "$REPO_ROOT" -s ci-local >/dev/null; then
+    OUTCOME="pass"
+    EXIT_CODE=0
+else
+    EXIT_CODE=$?
+    OUTCOME="fail"
+fi
+
+END_TS="$(date +%s)"
+DURATION=$((END_TS - START_TS))
+USER_NAME="${USER:-$(id -un 2>/dev/null || printf 'unknown')}"
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf 'unknown')"
+
+printf '%s\t%s\t%s\t%s\t%ds\n' "$END_TS" "$USER_NAME" "$BRANCH" "$OUTCOME" "$DURATION" >> "$LOG_FILE" 2>/dev/null || true
+
+if [ "$OUTCOME" = "fail" ]; then
+    printf '\n[pre-push] FAILED: local CI mirror reported errors.\n' >&2
+    printf '[pre-push] Hint: make fmt && make lint && make test\n' >&2
+    printf '[pre-push] Override (logged on next invocation): SKIP_MOAI_PREPUSH=1 git push\n' >&2
+    exit "$EXIT_CODE"
+fi
+
+exit 0

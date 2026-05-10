@@ -1,0 +1,9 @@
+memo:
+    enabled: true
+    max_tokens: 2200
+    priorities:
+        p1_budget: 200
+        p2_budget: 500
+        p3_budget: 1000
+        p4_budget: 500
+    storage_path: .moai/state/session-memo.md

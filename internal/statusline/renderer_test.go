@@ -70,7 +70,7 @@ func TestRender_DefaultMode(t *testing.T) {
 	if !strings.Contains(got, "?1") {
 		t.Errorf("default mode should contain untracked count, got %q", got)
 	}
-	if !strings.Contains(got, "moai v1.14.5") {
+	if !strings.Contains(got, "🗿 v1.14.5") {
 		t.Errorf("default mode should contain MoAI version with moai emoji, got %q", got)
 	}
 	if !strings.Contains(got, "main") {
@@ -107,7 +107,7 @@ func TestRender_VerboseMode_MultiLine(t *testing.T) {
 	if !strings.Contains(lines[0], "v1.0.80") {
 		t.Errorf("full line 1 should contain Claude version, got %q", lines[0])
 	}
-	if !strings.Contains(lines[0], "moai v1.2.0") {
+	if !strings.Contains(lines[0], "🗿 v1.2.0") {
 		t.Errorf("full line 1 should contain MoAI version, got %q", lines[0])
 	}
 	// v3 does not render cost (REQ-V3-TIME-005)
@@ -270,12 +270,8 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "main") {
-		t.Errorf("should show branch name, got %q", got)
-	}
-	// Should not have git status emoji when all counts are zero
-	if strings.Contains(got, "🔀") {
-		t.Errorf("should not show git status when all counts are zero, got %q", got)
+	if !strings.Contains(got, "🔀 main +0") {
+		t.Errorf("should show clean branch as '🔀 main +0', got %q", got)
 	}
 }
 
@@ -457,7 +453,7 @@ func TestRender_VersionUpdateNotification(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🗿 moai v2.0.0") {
+	if !strings.Contains(got, "🗿 v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
 	if !strings.Contains(got, "🗿 v2.0.1") {
@@ -479,7 +475,7 @@ func TestRender_VersionNoUpdate(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "moai v2.0.0") {
+	if !strings.Contains(got, "🗿 v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
 	if strings.Contains(got, "⬆️") {
@@ -524,12 +520,12 @@ func TestRender_SegmentFiltering(t *testing.T) {
 		{
 			name:          "nil config shows all segments",
 			segmentConfig: nil,
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "moai v2.3.1", "main"},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "🗿 v2.3.1", "main"},
 		},
 		{
 			name:          "empty config shows all segments",
 			segmentConfig: map[string]bool{},
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "moai v2.3.1", "main"},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "🗿 v2.3.1", "main"},
 		},
 		{
 			name: "model disabled hides model",
@@ -643,25 +639,26 @@ func TestCostNotRendered(t *testing.T) {
 
 func TestRenderGitBranchV3(t *testing.T) {
 	tests := []struct {
-		name string
-		git  GitStatusData
-		want string
+		name     string
+		git      GitStatusData
+		worktree string
+		want     string
 	}{
-		// REQ-V3-GIT-001: Ahead only → "main ↑3"
-		{"ahead only", GitStatusData{Branch: "main", Ahead: 3, Behind: 0, Available: true}, "main ↑3"},
-		// REQ-V3-GIT-002: Behind only → "main ↓2"
-		{"behind only", GitStatusData{Branch: "main", Ahead: 0, Behind: 2, Available: true}, "main ↓2"},
-		// REQ-V3-GIT-003: Both present → "feat/auth ↑2↓1"
-		{"both", GitStatusData{Branch: "feat/auth", Ahead: 2, Behind: 1, Available: true}, "feat/auth ↑2↓1"},
-		// REQ-V3-GIT-004: Neither present → branch name only
-		{"neither", GitStatusData{Branch: "main", Ahead: 0, Behind: 0, Available: true}, "main"},
+		// REQ-V3-GIT-006: Clean state → "🔀 main +0"
+		{"clean", GitStatusData{Branch: "main", Available: true}, "", "🔀 main +0"},
+		// REQ-V3-GIT-005: Modified → "🔨🔀 feat +2"
+		{"modified", GitStatusData{Branch: "feat", Modified: 2, Available: true}, "", "🔨🔀 feat +2"},
+		// REQ-V3-GIT-005: Staged → "📦🔀 main +1"
+		{"staged", GitStatusData{Branch: "main", Staged: 1, Available: true}, "", "📦🔀 main +1"},
+		// REQ-V3-GIT-005: Modified + Staged (staged takes priority) → "📦🔀 main +3"
+		{"modified+staged", GitStatusData{Branch: "main", Modified: 2, Staged: 1, Available: true}, "", "📦🔀 main +3"},
 		// Unavailable → empty string
-		{"unavailable", GitStatusData{Available: false}, ""},
+		{"unavailable", GitStatusData{Available: false}, "", ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			data := &StatusData{Git: tt.git}
+			data := &StatusData{Git: tt.git, Worktree: tt.worktree}
 			got := renderGitBranch(data)
 			if got != tt.want {
 				t.Errorf("renderGitBranch() = %q, want %q", got, tt.want)
@@ -790,7 +787,7 @@ func TestRenderDefaultV3_Line1(t *testing.T) {
 	if !strings.Contains(l1, "v2.1.50") {
 		t.Errorf("default L1 must contain Claude version, got: %q", l1)
 	}
-	if !strings.Contains(l1, "moai v2.8.0") {
+	if !strings.Contains(l1, "🗿 v2.8.0") {
 		t.Errorf("default L1 must contain MoAI version, got: %q", l1)
 	}
 	// Session time (9240000ms = 154min = 2h 34m)
@@ -867,8 +864,8 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	if !strings.Contains(l3, "📁 moai-adk-go") {
 		t.Errorf("default L3 must contain directory, got: %q", l3)
 	}
-	if !strings.Contains(l3, "feat/auth ↑2↓1") {
-		t.Errorf("default L3 must contain branch + ahead/behind, got: %q", l3)
+	if !strings.Contains(l3, "📦🔀 feat/auth +6") {
+		t.Errorf("default L3 must contain branch with dirty count, got: %q", l3)
 	}
 	if !strings.Contains(l3, "🔀") {
 		t.Errorf("default L3 must contain git status, got: %q", l3)
@@ -972,7 +969,7 @@ func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 	if !strings.Contains(l1, "v2.1.50") {
 		t.Errorf("full L1 should contain 'v2.1.50', got: %q", l1)
 	}
-	if !strings.Contains(l1, "moai v2.8.0") {
+	if !strings.Contains(l1, "🗿 v2.8.0") {
 		t.Errorf("full L1 should contain 'moai v2.8.0', got: %q", l1)
 	}
 	if !strings.Contains(l1, "⏳") {
@@ -1059,8 +1056,8 @@ func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
 	if !strings.Contains(l5, "📁 moai-adk-go") {
 		t.Errorf("full L5 must contain directory, got: %q", l5)
 	}
-	if !strings.Contains(l5, "feat/auth ↑2↓1") {
-		t.Errorf("full L5 must contain branch + ahead/behind, got: %q", l5)
+	if !strings.Contains(l5, "📦🔀 feat/auth +6") {
+		t.Errorf("full L5 must contain branch with dirty count, got: %q", l5)
 	}
 	if !strings.Contains(l5, "🔀") {
 		t.Errorf("full L5 must contain git status, got: %q", l5)
@@ -1252,14 +1249,16 @@ func TestFormatResetTimeRelative(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
-		wantPfx   string // expected prefix (e.g. "in ")
+		wantSub   string // expected substring (e.g. "2:", "D+")
 		wantEmpty bool
 	}{
 		{"empty string", "", "", false},
 		{"invalid format", "not-a-date", "", false},
-		{"future 2h30m", time.Now().Add(2*time.Hour + 30*time.Minute).UTC().Format(time.RFC3339), "in 2h", false},
-		{"future 45m", time.Now().Add(45 * time.Minute).UTC().Format(time.RFC3339), "in 4", false},
+		{"future 2h30m", time.Now().Add(2*time.Hour + 30*time.Minute).UTC().Format(time.RFC3339), "2:", false},
+		{"future 45m", time.Now().Add(45 * time.Minute).UTC().Format(time.RFC3339), "4", false},
 		{"past time", time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339), "", false},
+		{"7D: future 1d3h30m", time.Now().Add(27*time.Hour + 30*time.Minute).UTC().Format(time.RFC3339), "1D+3:", false},
+		{"7D: future 2d only", time.Now().Add(48 * time.Hour).UTC().Format(time.RFC3339), "D+", false},
 	}
 
 	for _, tt := range tests {
@@ -1268,8 +1267,8 @@ func TestFormatResetTimeRelative(t *testing.T) {
 			if tt.wantEmpty && got != "" {
 				t.Errorf("expected empty, got %q", got)
 			}
-			if !tt.wantEmpty && !strings.HasPrefix(got, tt.wantPfx) {
-				t.Errorf("expected prefix %q, got %q", tt.wantPfx, got)
+			if !tt.wantEmpty && !strings.Contains(got, tt.wantSub) {
+				t.Errorf("expected substring %q, got %q", tt.wantSub, got)
 			}
 		})
 	}
@@ -1286,7 +1285,7 @@ func TestFormatResetTimeAbsolute(t *testing.T) {
 	}{
 		{"empty string", "", false, ""},
 		{"invalid format", "not-a-date", false, ""},
-		{"valid RFC3339", "2026-01-21T14:00:00Z", false, "at "},
+		{"valid RFC3339", "2026-01-21T14:00:00Z", false, "Jan"},
 	}
 
 	for _, tt := range tests {
@@ -1326,9 +1325,9 @@ func TestRenderFullV3_WithResetTimes(t *testing.T) {
 		t.Fatalf("full mode should have 5 lines, got %d: %q", len(lines), got)
 	}
 
-	// L3 (5H) should contain "Resets in"
-	if !strings.Contains(lines[2], "Resets in") {
-		t.Errorf("5H line should contain 'Resets in', got: %q", lines[2])
+	// L3 (5H) should contain "Resets "
+	if !strings.Contains(lines[2], "Resets ") {
+		t.Errorf("5H line should contain 'Resets ', got: %q", lines[2])
 	}
 
 	// L4 (7D) should contain "Resets" with a date

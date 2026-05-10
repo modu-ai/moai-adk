@@ -1,0 +1,11 @@
+name: 'Setup GLM Environment'
+description: 'Configures environment variables for GLM integration (SPEC-GLM-001)'
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        echo "DISABLE_BETAS=true" >> $GITHUB_ENV
+        echo "DISABLE_PROMPT_CACHING=true" >> $GITHUB_ENV
+        echo "CLAUDE_CODE_USE_bedrock=0" >> $GITHUB_ENV
+        echo "CLAUDE_CODE_USE_vertex=0" >> $GITHUB_ENV

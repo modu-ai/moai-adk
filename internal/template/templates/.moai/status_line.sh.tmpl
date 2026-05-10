@@ -18,17 +18,26 @@ fi
 
 # Try moai command in PATH first
 if command -v moai &> /dev/null; then
+	# Add vertical padding
+	echo ""
 	exec moai statusline < "$temp_file"
+	echo ""
 fi
 
 # Try detected Go bin path from initialization
 if [ -f "{{posixPath .GoBinPath}}/moai" ]; then
+	# Add vertical padding
+	echo ""
 	exec "{{posixPath .GoBinPath}}/moai" statusline < "$temp_file"
+	echo ""
 fi
 
 # Try user local bin directory
 if [ -f "$HOME/.local/bin/moai" ]; then
+	# Add vertical padding
+	echo ""
 	exec "$HOME/.local/bin/moai" statusline < "$temp_file"
+	echo ""
 fi
 
 # Not found - exit silently (Claude Code handles missing statusline gracefully)
