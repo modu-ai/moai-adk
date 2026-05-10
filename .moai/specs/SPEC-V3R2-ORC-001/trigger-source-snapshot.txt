@@ -1,0 +1,6 @@
+=== builder-agent EN triggers ===
+  EN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent
+=== builder-skill EN triggers ===
+  EN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter
+=== builder-plugin EN triggers ===
+  EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin, marketplace creation, marketplace.json, plugin distribution
