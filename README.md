@@ -513,7 +513,7 @@ All subcommands are invoked within Claude Code as `/moai <subcommand>`.
 
 | Subcommand | Aliases | Purpose | Key Flags |
 |------------|---------|---------|-----------|
-| `plan` | `spec` | Create SPEC document (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team` |
+| `plan` | `spec` | Create SPEC document (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team`, `--tmux` |
 | `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX`, `--team` |
 | `sync` | `docs`, `pr` | Sync documentation, codemaps, and create PR | `--merge`, `--skip-mx` |
 
@@ -650,7 +650,7 @@ All hook events follow the Claude Code hooks protocol with JSON stdin/stdout com
 | `moai update` | Update to the latest version (with automatic rollback support) |
 | `moai update --check` | Check for updates without installing |
 | `moai update --project` | Sync project templates only |
-| `moai worktree new <name>` | Create a new Git worktree (parallel branch development) |
+| `moai worktree new <name>` | Create a new Git worktree (parallel branch development). Add `--tmux` to auto-create a tmux session in the worktree |
 | `moai worktree list` | List active worktrees |
 | `moai worktree switch <name>` | Switch to a worktree |
 | `moai worktree sync` | Sync with upstream |

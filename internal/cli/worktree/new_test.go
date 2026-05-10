@@ -1,12 +1,14 @@
 package worktree
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
 // setupMockProvider sets up a MockWorktreeProvider for testing
@@ -387,17 +389,22 @@ func TestRunNew_WithTmuxFlag_TmuxAvailable(t *testing.T) {
 			oldGetProjectNameFunc := getProjectNameFunc
 			oldIsTmuxAvailableFunc := isTmuxAvailableFunc
 			oldGitRepoRoot := gitRepoRootFunc
+			oldTmuxSessionFactory := tmuxSessionFactory
 			defer func() {
 				userHomeDirFunc = oldUserHomeDirFunc
 				getProjectNameFunc = oldGetProjectNameFunc
 				isTmuxAvailableFunc = oldIsTmuxAvailableFunc
 				gitRepoRootFunc = oldGitRepoRoot
+				tmuxSessionFactory = oldTmuxSessionFactory
 			}()
 
 			userHomeDirFunc = func() (string, error) { return tempDir, nil }
 			getProjectNameFunc = func() string { return "test-project" }
 			isTmuxAvailableFunc = func() bool { return tt.tmuxAvailable }
 			gitRepoRootFunc = func() (string, error) { return tempDir, nil }
+			tmuxSessionFactory = func() tmux.SessionManager {
+				return &mockSessionManager{}
+			}
 
 			mockProvider, cleanup := setupMockProvider(t)
 			defer cleanup()
@@ -733,4 +740,22 @@ func TestNew_NoAskUserQuestion(t *testing.T) {
 	if strings.Contains(string(src), "AskUserQuestion") {
 		t.Errorf("internal/cli/worktree/new.go must NOT reference AskUserQuestion (orchestrator-only HARD)")
 	}
+}
+
+// mockSessionManager is a test double for tmux.SessionManager.
+type mockSessionManager struct {
+	created bool
+}
+
+func (m *mockSessionManager) Create(_ context.Context, _ *tmux.SessionConfig) (*tmux.SessionResult, error) {
+	m.created = true
+	return &tmux.SessionResult{SessionName: "test-session", PaneCount: 1}, nil
+}
+
+func (m *mockSessionManager) InjectEnv(_ context.Context, _ map[string]string) error {
+	return nil
+}
+
+func (m *mockSessionManager) ClearEnv(_ context.Context, _ []string) error {
+	return nil
 }

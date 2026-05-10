@@ -549,7 +549,7 @@ graph LR
 
 | 子命令 | 别名 | 目的 | 关键标志 |
 |--------|------|------|----------|
-| `plan` | `spec` | 创建 SPEC 文档（EARS 格式） | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team` |
+| `plan` | `spec` | 创建 SPEC 文档（EARS 格式） | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team`, `--tmux` |
 | `run` | `impl` | SPEC 的 DDD/TDD 实现 | `--resume SPEC-XXX`, `--team` |
 | `sync` | `docs`, `pr` | 文档同步、代码地图和创建 PR | `--merge`, `--skip-mx` |
 
@@ -676,7 +676,7 @@ MoAI-ADK 在开发会话期间自动捕获任务工具指标：
 | `moai update` | 更新到最新版本（支持自动回滚） |
 | `moai update --check` | 仅检查更新，不安装 |
 | `moai update --project` | 仅同步项目模板 |
-| `moai worktree new <name>` | 创建新 Git worktree（并行分支开发） |
+| `moai worktree new <name>` | 创建新 Git worktree（并行分支开发）。添加 `--tmux` 可在 worktree 中自动创建 tmux 会话 |
 | `moai worktree list` | 列出活跃的 worktree |
 | `moai worktree switch <name>` | 切换 worktree |
 | `moai worktree sync` | 与上游同步 |
