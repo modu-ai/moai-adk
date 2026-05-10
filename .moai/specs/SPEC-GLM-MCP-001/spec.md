@@ -1,7 +1,7 @@
 ---
 id: SPEC-GLM-MCP-001
 version: "0.1.0"
-status: draft
+status: completed
 created_at: 2026-05-01
 updated_at: 2026-05-01
 author: manager-spec
@@ -19,7 +19,7 @@ related_specs: [SPEC-GLM-001, SPEC-CC2122-MCP-001, SPEC-LSPMCP-001]
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-01 | manager-spec | 초기 작성 — Z.AI `@z_ai/mcp-server` 통합. Opt-in subcommand (`moai glm tools enable/disable`) 권장. Mainland China (Z_AI_MODE=ZHIPU) 는 v0.2 로 연기. |
 
-## Status: Draft
+## Status: Completed
 
 ## Metadata
 

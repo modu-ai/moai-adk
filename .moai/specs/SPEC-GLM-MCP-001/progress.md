@@ -4,7 +4,7 @@ created: 2026-05-01
 updated: 2026-05-01
 plan_complete_at: 2026-05-01T14:18:00+09:00
 plan_status: audit-ready
-phase: plan
+phase: sync
 harness_level: standard
 development_mode: tdd
 ---
@@ -59,28 +59,29 @@ development_mode: tdd
 - [x] 모든 REQ에 ≥1 acceptance criterion (traceability 100%)
 - [x] 16-language neutrality 무관 (internal CLI feature, templates/.claude/ 미수정)
 
-## Phase 2: Run (Pending)
+## Phase 2: Run (Complete)
 
-Trigger: `/moai run SPEC-GLM-MCP-001` (별도 세션 권장 — context 격리)
+Implementation: manager-tdd 위임 (단일 웨이브 TDD cycle)
 
-Pre-flight:
-- Plan-Auditor PASS 확인됨 (Phase 0.5 audit gate 자동 통과)
-- Methodology: TDD (RED-GREEN-REFACTOR, quality.yaml `development_mode: tdd`)
-- Min coverage per commit: 80%
+Artifacts:
+- `internal/cli/glm_tools.go` (~600 LOC) — enable/disable/status 서브커맨드
+- `internal/cli/glm_tools_test.go` (~1,150 LOC, 22 GWT scenarios, coverage ≥85%)
+- `internal/cli/glm.go` — getGLMEnvPath userHomeDirFn 수정
+- `CHANGELOG.md` — SPEC-GLM-MCP-001 엔트리
+- `.claude/rules/moai/core/settings-management.md` — zai-mcp-server 등록 노트
 
-Milestone plan (plan.md §M1~M5):
-- M1: CLI skeleton (`moai glm tools` 서브커맨드 트리)
-- M2: Node.js prerequisite + GLM_AUTH_TOKEN 재사용
-- M3: settings/`.claude.json` writer (mcpServers 주입)
-- M4: enable/disable/status idempotent 동작
-- M5: 회귀 가드 (mode-switch glm↔cc↔cg 무영향)
+Run PR: #832 (admin squash merged → main `9666c03fe`)
+CI: 18/18 PASS (Test 3+3 Integration, Build 5, Lint, CodeQL, Constitution Check)
 
-## Phase 3: Sync (Pending)
+Post-merge fixes:
+- `getGLMEnvPath()` — `userHomeDir()` → `userHomeDirFn()` (테스트 오버라이드 전파)
+- `TestWriteClaudeJSONAtomic_BadDir` — Windows 스킵 (경로 해석 차이)
 
-Trigger: `/moai sync SPEC-GLM-MCP-001` (M5 완료 후)
+## Phase 3: Sync (In Progress)
+
+Trigger: `/moai sync SPEC-GLM-MCP-001` (run PR merged 후)
 
 Sub-tasks:
-- Run-stage MX 태깅 검증
-- CHANGELOG.md entry
-- docs-site 4-locale 가이드 (ko/en/ja/zh) — `moai glm tools` 사용법
-- Conventional commits + PR 생성
+- SPEC status → completed
+- progress.md 업데이트
+- Conventional commits + sync PR 생성
