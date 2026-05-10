@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R3-STATUSLINE-FALLBACK-001: Statusline Stdin Fallback
+
+### Added
+
+- **SPEC-V3R3-STATUSLINE-FALLBACK-001**: `moai statusline` Go 바이너리의 stdin JSON empty/partial/null 시 모든 핵심 segment 눐락 문제 해결. cwd guard(삭제된 directory → HOME fallback), model name fallback chain(stdin → `MOAI_LAST_MODEL` env → cache file), project directory 4-level fallback(workspace.project_dir → workspace.current_dir → cwd → os.Getwd) 구현. `model_cache.go` 신규 파일(atomic write, EC-SF-003 silent ignore). AC-SF-001~008 + EC-SF-001~005 충족. MX tags 6개(ANCHOR 3, NOTE 3) 적용. 9 files, +614/-22 LOC, CI 16/16 ALL GREEN.
+
+### English
+
+- **SPEC-V3R3-STATUSLINE-FALLBACK-001**: Fixed `moai statusline` Go binary missing all critical segments when stdin JSON is empty/partial/null. Added cwd guard (deleted directory → HOME fallback), model name fallback chain (stdin → `MOAI_LAST_MODEL` env → cache file), and project directory 4-level fallback. New `model_cache.go` with atomic write. AC-SF-001~008 + EC-SF-001~005 met. 6 MX tags applied. 9 files, +614/-22 LOC, CI 16/16 green.
+
 ## [Unreleased] — SPEC-GLM-MCP-001: Z.AI MCP Server Integration
 
 ### Added
