@@ -3,12 +3,14 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -33,21 +35,38 @@ type SettingsResolver interface {
 }
 
 // resolver implements SettingsResolver.
+//
+// @MX:ANCHOR: [AUTO] resolver is the central 8-tier config struct; concurrency via RWMutex
+// @MX:REASON: fan_in >= 3 — Load/Reload/ClearSessionTier/Key/Diff all mutate or read merged
 type resolver struct {
-	loadedAt time.Time
-	merged   *MergedSettings
+	mu          sync.RWMutex
+	loadedAt    time.Time
+	merged      *MergedSettings
+	tierData    map[Source]map[string]any // per-tier raw data cache for diff-aware reload
+	tierOrigins map[Source]string         // per-tier origin path cache
 }
 
 // NewResolver creates a new SettingsResolver instance.
 func NewResolver() SettingsResolver {
 	return &resolver{
-		loadedAt: time.Now(),
+		loadedAt:    time.Now(),
+		tierData:    make(map[Source]map[string]any),
+		tierOrigins: make(map[Source]string),
 	}
 }
 
 // Load reads all 8 tier sources and produces merged settings.
 // This maps to REQ-V3R2-RT-005-010.
+// Load acquires a full write lock to protect concurrent access.
 func (r *resolver) Load() (*MergedSettings, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.loadLocked()
+}
+
+// loadLocked performs the actual tier loading; caller must hold r.mu (write lock).
+func (r *resolver) loadLocked() (*MergedSettings, error) {
 	tiers := make(map[Source]map[string]any)
 	origins := make(map[Source]string)
 
@@ -56,6 +75,7 @@ func (r *resolver) Load() (*MergedSettings, error) {
 		data, origin, err := r.loadTier(source)
 		if err != nil {
 			if _, ok := err.(*TierReadError); ok {
+				logTierReadFailure(source, origin, err)
 				continue
 			}
 			return nil, err
@@ -67,6 +87,10 @@ func (r *resolver) Load() (*MergedSettings, error) {
 		}
 	}
 
+	// Cache per-tier data for diff-aware reload.
+	r.tierData = tiers
+	r.tierOrigins = origins
+
 	// Merge all tiers
 	merged, err := MergeAll(tiers, origins, r.loadedAt)
 	if err != nil {
@@ -75,6 +99,153 @@ func (r *resolver) Load() (*MergedSettings, error) {
 
 	r.merged = merged
 	return merged, nil
+}
+
+// Reload re-parses only the tier that contains the given file path and re-merges.
+// If the path does not match any known tier, this is a no-op (returns nil).
+// Reload acquires a full write lock and performs an atomic cache update.
+//
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-011, AC-04: diff-aware reload
+//
+// REQ-V3R2-RT-005-011, AC-04
+func (r *resolver) Reload(path string) error {
+	tier, ok := r.detectTier(path)
+	if !ok {
+		// Unrelated path — no-op.
+		return nil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Re-parse only the affected tier.
+	data, origin, err := r.loadTier(tier)
+	if err != nil {
+		if _, ok2 := err.(*TierReadError); ok2 {
+			logTierReadFailure(tier, path, err)
+			// Non-fatal: keep old tier data, still re-merge below.
+			data = r.tierData[tier]
+			origin = r.tierOrigins[tier]
+		} else {
+			return fmt.Errorf("reload tier %s: %w", tier, err)
+		}
+	}
+
+	// Atomic update: replace only this tier's entry.
+	newTiers := make(map[Source]map[string]any, len(r.tierData))
+	newOrigins := make(map[Source]string, len(r.tierOrigins))
+	for k, v := range r.tierData {
+		newTiers[k] = v
+	}
+	for k, v := range r.tierOrigins {
+		newOrigins[k] = v
+	}
+	if data != nil {
+		newTiers[tier] = data
+		newOrigins[tier] = origin
+	} else {
+		delete(newTiers, tier)
+		delete(newOrigins, tier)
+	}
+
+	merged, err := MergeAll(newTiers, newOrigins, time.Now())
+	if err != nil {
+		return fmt.Errorf("reload merge: %w", err)
+	}
+
+	r.tierData = newTiers
+	r.tierOrigins = newOrigins
+	r.merged = merged
+	return nil
+}
+
+// ClearSessionTier removes all SrcSession-tier values from the merged settings
+// and re-merges the remaining tiers.
+// This is called on SessionEnd (SPEC-V3R2-RT-006 wiring).
+//
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-050, AC-13: session tier cleanup
+//
+// REQ-V3R2-RT-005-050, AC-13
+func (r *resolver) ClearSessionTier() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Build new tier map without SrcSession.
+	newTiers := make(map[Source]map[string]any, len(r.tierData))
+	newOrigins := make(map[Source]string, len(r.tierOrigins))
+	for k, v := range r.tierData {
+		if k == SrcSession {
+			continue
+		}
+		newTiers[k] = v
+	}
+	for k, v := range r.tierOrigins {
+		if k == SrcSession {
+			continue
+		}
+		newOrigins[k] = v
+	}
+
+	merged, err := MergeAll(newTiers, newOrigins, time.Now())
+	if err != nil {
+		return fmt.Errorf("clear session tier merge: %w", err)
+	}
+
+	r.tierData = newTiers
+	r.tierOrigins = newOrigins
+	r.merged = merged
+	return nil
+}
+
+// detectTier maps a file path to the tier it belongs to.
+// Returns (tier, true) if the path belongs to a known tier, or (0, false) for unrelated paths.
+func (r *resolver) detectTier(path string) (Source, bool) {
+	// Normalise separators for cross-platform comparison.
+	clean := filepath.ToSlash(filepath.Clean(path))
+
+	// SrcLocal: .claude/settings.local.json or .moai/config/local/
+	if strings.Contains(clean, ".claude/settings.local.json") ||
+		strings.Contains(clean, ".moai/config/local/") {
+		return SrcLocal, true
+	}
+
+	// SrcSkill: .claude/skills/
+	if strings.Contains(clean, ".claude/skills/") {
+		return SrcSkill, true
+	}
+
+	// SrcProject: .moai/config/ (sections or top-level config.yaml)
+	if strings.Contains(clean, ".moai/config/") {
+		return SrcProject, true
+	}
+
+	// SrcUser: ~/.moai/
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		userBase := filepath.ToSlash(homeDir) + "/.moai/"
+		if strings.HasPrefix(clean, userBase) {
+			return SrcUser, true
+		}
+	}
+
+	// SrcPolicy: platform-specific policy paths.
+	switch runtime.GOOS {
+	case "darwin":
+		if strings.HasPrefix(clean, "/Library/Application Support/moai/") {
+			return SrcPolicy, true
+		}
+	case "windows":
+		programData := filepath.ToSlash(os.Getenv("ProgramData"))
+		if programData != "" && strings.HasPrefix(clean, programData+"/moai/") {
+			return SrcPolicy, true
+		}
+	default:
+		if strings.HasPrefix(clean, "/etc/moai/") {
+			return SrcPolicy, true
+		}
+	}
+
+	return 0, false
 }
 
 // loadTier loads configuration from a single tier.
@@ -122,7 +293,9 @@ func (r *resolver) loadPolicyTier() (map[string]any, string, error) {
 
 	data, err := r.loadJSONFile(policyPath)
 	if err != nil {
-		return nil, "", &TierReadError{Source: SrcPolicy, Path: policyPath, Err: err}
+		tierErr := &TierReadError{Source: SrcPolicy, Path: policyPath, Err: err}
+		logTierReadFailure(SrcPolicy, policyPath, err)
+		return nil, "", tierErr
 	}
 
 	return data, policyPath, nil
@@ -143,7 +316,9 @@ func (r *resolver) loadUserTier() (map[string]any, string, error) {
 	if _, err := os.Stat(settingsPath); err == nil {
 		settingsData, err := r.loadJSONFile(settingsPath)
 		if err != nil {
-			return nil, "", &TierReadError{Source: SrcUser, Path: settingsPath, Err: err}
+			tierErr := &TierReadError{Source: SrcUser, Path: settingsPath, Err: err}
+			logTierReadFailure(SrcUser, settingsPath, err)
+			return nil, "", tierErr
 		}
 		maps.Copy(data, settingsData)
 	}
@@ -174,7 +349,9 @@ func (r *resolver) loadProjectTier() (map[string]any, string, error) {
 			if isConfigError(err) {
 				return nil, "", err
 			}
-			return nil, "", &TierReadError{Source: SrcProject, Path: configPath, Err: err}
+			tierErr := &TierReadError{Source: SrcProject, Path: configPath, Err: err}
+			logTierReadFailure(SrcProject, configPath, err)
+			return nil, "", tierErr
 		}
 		maps.Copy(data, configData)
 	}
@@ -202,7 +379,9 @@ func (r *resolver) loadLocalTier() (map[string]any, string, error) {
 	if _, err := os.Stat(settingsPath); err == nil {
 		settingsData, err := r.loadJSONFile(settingsPath)
 		if err != nil {
-			return nil, "", &TierReadError{Source: SrcLocal, Path: settingsPath, Err: err}
+			tierErr := &TierReadError{Source: SrcLocal, Path: settingsPath, Err: err}
+			logTierReadFailure(SrcLocal, settingsPath, err)
+			return nil, "", tierErr
 		}
 		maps.Copy(data, settingsData)
 	}
@@ -220,10 +399,109 @@ func (r *resolver) loadLocalTier() (map[string]any, string, error) {
 	return data, settingsPath, nil
 }
 
-// loadSkillTier loads from .claude/skills/**/SKILL.md frontmatter config blocks.
-// Placeholder - full implementation would parse markdown frontmatter.
+// loadSkillTier loads from .claude/skills/**/SKILL.md frontmatter `config:` blocks.
+// It walks .claude/skills/ recursively and extracts only the `config:` key from each
+// SKILL.md frontmatter (YAML between the first pair of `---` delimiters).
+// Files without frontmatter or without a `config:` key are silently skipped.
+//
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-001 (skill tier walked), REQ-015 partial
 func (r *resolver) loadSkillTier() (map[string]any, string, error) {
-	return nil, "", nil
+	const skillsRoot = ".claude/skills"
+
+	if _, err := os.Stat(skillsRoot); os.IsNotExist(err) {
+		return nil, "", nil
+	}
+
+	combined := make(map[string]any)
+	origin := skillsRoot
+
+	walkErr := filepath.WalkDir(skillsRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// Log I/O errors on individual files; continue walking.
+			logTierReadFailure(SrcSkill, path, err)
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() != "SKILL.md" {
+			return nil
+		}
+
+		configData, parseErr := r.parseSkillFrontmatter(path)
+		if parseErr != nil {
+			logTierReadFailure(SrcSkill, path, parseErr)
+			return nil // non-fatal; keep walking
+		}
+		if configData == nil {
+			return nil
+		}
+
+		// Merge skill config into combined map (later files override earlier on conflict).
+		for k, v := range configData {
+			combined[k] = v
+		}
+		return nil
+	})
+
+	if walkErr != nil {
+		return nil, "", &TierReadError{Source: SrcSkill, Path: skillsRoot, Err: walkErr}
+	}
+
+	if len(combined) == 0 {
+		return nil, "", nil
+	}
+
+	return combined, origin, nil
+}
+
+// parseSkillFrontmatter reads a SKILL.md file, extracts the YAML frontmatter, and
+// returns only the contents of the `config:` key as a flat map[string]any.
+// Returns nil (no error) when the file has no frontmatter or no `config:` key.
+func (r *resolver) parseSkillFrontmatter(path string) (map[string]any, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Frontmatter: content between first `---\n` and second `---\n`.
+	content := string(raw)
+	if !strings.HasPrefix(content, "---\n") && !strings.HasPrefix(content, "---\r\n") {
+		return nil, nil // no frontmatter
+	}
+
+	// Find the closing `---`.
+	rest := content[4:]
+	end := strings.Index(rest, "\n---")
+	if end < 0 {
+		return nil, nil // unclosed frontmatter — skip
+	}
+	frontmatter := rest[:end]
+
+	// Parse the frontmatter YAML.
+	var fm map[string]any
+	if err := yaml.Unmarshal([]byte(frontmatter), &fm); err != nil {
+		return nil, fmt.Errorf("frontmatter parse error: %w", err)
+	}
+	if fm == nil {
+		return nil, nil
+	}
+
+	// Extract only the `config:` key.
+	configVal, ok := fm["config"]
+	if !ok {
+		return nil, nil
+	}
+
+	configMap, ok := configVal.(map[string]any)
+	if !ok {
+		return nil, nil // config: present but not a mapping — skip
+	}
+
+	// Flatten the config map (config.key → value).
+	result := make(map[string]any)
+	flattenMap("", configMap, result)
+	return result, nil
 }
 
 // loadSessionTier loads session-scoped configuration from runtime checkpoint.
@@ -649,7 +927,11 @@ func (r *resolver) loadYAMLSections(dirPath string) (map[string]any, error) {
 }
 
 // Key retrieves a single key's value from the merged settings.
+// Key acquires a read lock for safe concurrent access.
 func (r *resolver) Key(section, field string) (Value[any], bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if r.merged == nil {
 		return Value[any]{}, false
 	}
@@ -659,7 +941,11 @@ func (r *resolver) Key(section, field string) (Value[any], bool) {
 }
 
 // Dump writes the merged settings to a writer.
+// Dump acquires a read lock for safe concurrent access.
 func (r *resolver) Dump(_ any) error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if r.merged == nil {
 		return fmt.Errorf("settings not loaded - call Load() first")
 	}
@@ -674,7 +960,11 @@ func (r *resolver) Dump(_ any) error {
 }
 
 // Diff compares two tiers and returns their differences.
+// Diff acquires a read lock for safe concurrent access.
 func (r *resolver) Diff(a, b Source) (map[string]Value[any], error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if r.merged == nil {
 		return nil, fmt.Errorf("settings not loaded - call Load() first")
 	}
