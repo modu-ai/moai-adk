@@ -3,6 +3,7 @@ package worktree
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -147,5 +148,36 @@ llm:
 
 	if len(cfg.GLMEnvVars) != 0 {
 		t.Errorf("GLMEnvVars should be empty in CC mode, got %d vars", len(cfg.GLMEnvVars))
+	}
+}
+
+// TestBuildTmuxInitialCommand_ModeSelection tests that the initial command
+// matches the active mode (cc/glm/cg).
+func TestBuildTmuxInitialCommand_ModeSelection(t *testing.T) {
+	tests := []struct {
+		name       string
+		activeMode string
+		wantCmd    string
+	}{
+		{"cc mode", "cc", "moai cc"},
+		{"glm mode", "glm", "moai glm"},
+		{"cg mode uses glm", "cg", "moai glm"},
+		{"empty defaults to cc", "", "moai cc"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &TmuxSessionConfig{
+				WorktreePath: "/tmp/test-wt",
+				ActiveMode:   tt.activeMode,
+			}
+			cmd := buildTmuxInitialCommand(cfg)
+			if !strings.Contains(cmd, tt.wantCmd) {
+				t.Errorf("buildTmuxInitialCommand(mode=%q) = %q, want containing %q", tt.activeMode, cmd, tt.wantCmd)
+			}
+			if !strings.Contains(cmd, "cd /tmp/test-wt") {
+				t.Errorf("buildTmuxInitialCommand should cd to worktree, got %q", cmd)
+			}
+		})
 	}
 }

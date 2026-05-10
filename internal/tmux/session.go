@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 )
 
 const defaultMaxVisible = 3
@@ -110,14 +112,31 @@ func (m *DefaultSessionManager) Create(ctx context.Context, cfg *SessionConfig) 
 	}
 
 	// Step 1: Create the session with the first pane.
-	if _, err := m.run(ctx, "tmux", "new-session", "-d", "-s", cfg.Name); err != nil {
+	// Use -c flag to set starting directory when the command contains a cd target.
+	startDir := extractCdTarget(cfg.Panes[0].Command)
+	args := []string{"new-session", "-d", "-s", cfg.Name}
+	if startDir != "" {
+		args = append(args, "-c", startDir)
+	}
+	if _, err := m.run(ctx, "tmux", args...); err != nil {
 		return nil, fmt.Errorf("create session %q: %w", cfg.Name, err)
 	}
 
 	m.logger.Debug("tmux session created", "name", cfg.Name)
 
-	// Step 2: Send command to the first pane.
-	if err := m.sendKeys(ctx, cfg.Name, 0, cfg.Panes[0].Command); err != nil {
+	// Step 2: Wait for shell to initialize, then send command.
+	// tmux new-session returns before the shell inside the pane is ready
+	// to accept input. A brief pause prevents the command from being lost.
+	time.Sleep(500 * time.Millisecond)
+
+	// When startDir was set via -c, the shell already starts in the
+	// worktree directory. Strip the leading "cd <path> ; " so we only
+	// send the actual command (e.g., "moai cc").
+	cmd := cfg.Panes[0].Command
+	if startDir != "" {
+		cmd = stripCdPrefix(cmd)
+	}
+	if err := m.sendKeys(ctx, cfg.Name, 0, cmd); err != nil {
 		m.logger.Warn("failed to send command to first pane",
 			"session", cfg.Name,
 			"error", err,
@@ -192,4 +211,31 @@ func (m *DefaultSessionManager) sendKeys(ctx context.Context, session string, pa
 	target := fmt.Sprintf("%s:0.%d", session, paneIndex)
 	_, err := m.run(ctx, "tmux", "send-keys", "-t", target, command, "Enter")
 	return err
+}
+
+// extractCdTarget parses "cd <path> ; <rest>" and returns <path>.
+// Returns empty string if the command doesn't start with "cd ".
+func extractCdTarget(cmd string) string {
+	if !strings.HasPrefix(cmd, "cd ") {
+		return ""
+	}
+	rest := cmd[3:]
+	sep := strings.Index(rest, " ; ")
+	if sep >= 0 {
+		return rest[:sep]
+	}
+	return rest
+}
+
+// stripCdPrefix removes "cd <path> ; " prefix from a command.
+// If no cd prefix is found, returns the original command.
+func stripCdPrefix(cmd string) string {
+	if !strings.HasPrefix(cmd, "cd ") {
+		return cmd
+	}
+	sep := strings.Index(cmd, " ; ")
+	if sep >= 0 {
+		return cmd[sep+3:]
+	}
+	return ""
 }
