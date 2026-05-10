@@ -216,7 +216,7 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 
 	// Model
 	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
-		segs = append(segs, fmt.Sprintf("[ai] %s", data.Metrics.Model))
+		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
 	}
 
 	// Claude version
@@ -258,14 +258,14 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 
 	// Output style (integrated into L1)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
-		segs = append(segs, fmt.Sprintf("[out] %s", data.OutputStyle))
+		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
 	}
 
 	return r.joinSegments(segs)
 }
 
 // renderEffortThinking renders the effort/thinking indicator segment.
-// Returns "e:LEVEL" + optional "·t" suffix when either field is present and meaningful.
+// Returns "🧠 LEVEL" + optional "·t" suffix when either field is present and meaningful.
 // Returns "" when both are absent or effort level is empty (silent omit, REQ-CC2122-003).
 func renderEffortThinking(data *StatusData) string {
 	if data.Effort == nil && data.Thinking == nil {
@@ -273,7 +273,7 @@ func renderEffortThinking(data *StatusData) string {
 	}
 	var result string
 	if data.Effort != nil && data.Effort.Level != "" {
-		result = "e:" + data.Effort.Level
+		result = "🧠 " + data.Effort.Level
 	}
 	if data.Thinking != nil && data.Thinking.Enabled {
 		result += "·t"
@@ -327,7 +327,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 
 	// Directory
 	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
-		segs = append(segs, fmt.Sprintf("[dir] %s", data.Directory))
+		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
 	// Branch + ahead/behind (+ worktree indicator)
@@ -335,7 +335,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		if branch := renderGitBranch(data); branch != "" {
 			// REQ-CC297-003: Add [WT] prefix when the worktree segment is enabled and an active worktree is present
 			if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-				branch = "[WT] " + branch
+				branch = "🌿 " + branch
 			}
 			segs = append(segs, branch)
 		}
@@ -344,7 +344,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	// Git status
 	if r.isSegmentEnabled(SegmentGitStatus) {
 		if git := r.renderGitStatus(data); git != "" {
-			segs = append(segs, fmt.Sprintf("[git] %s", git))
+			segs = append(segs, fmt.Sprintf("🔀 %s", git))
 		}
 	}
 
