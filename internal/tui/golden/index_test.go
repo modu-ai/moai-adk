@@ -128,11 +128,11 @@ func writeManifest(m map[string]string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	w := bufio.NewWriter(f)
 	for _, k := range keys {
-		fmt.Fprintf(w, "%s  %s\n", m[k], k)
+		_, _ = fmt.Fprintf(w, "%s  %s\n", m[k], k)
 	}
 	return w.Flush()
 }
@@ -143,7 +143,7 @@ func readManifest() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	out := map[string]string{}
 	s := bufio.NewScanner(f)
