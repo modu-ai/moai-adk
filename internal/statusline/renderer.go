@@ -219,37 +219,8 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
 	}
 
-	// Claude version
-	if r.isSegmentEnabled(SegmentClaudeVersion) && data.ClaudeCodeVersion != "" {
-		if withPrefix {
-			segs = append(segs, fmt.Sprintf("cc v%s", data.ClaudeCodeVersion))
-		} else {
-			segs = append(segs, fmt.Sprintf("v%s", data.ClaudeCodeVersion))
-		}
-	}
-
-	// MoAI version
-	if r.isSegmentEnabled(SegmentMoaiVersion) && data.Version.Available && data.Version.Current != "" {
-		var versionStr string
-		if withPrefix {
-			versionStr = fmt.Sprintf("moai v%s", data.Version.Current)
-		} else {
-			versionStr = fmt.Sprintf("moai v%s", data.Version.Current)
-		}
-		if data.Version.UpdateAvailable && data.Version.Latest != "" {
-			versionStr += fmt.Sprintf(" -> v%s", data.Version.Latest)
-		}
-		segs = append(segs, versionStr)
-	}
-
-	// Session time
-	if r.isSegmentEnabled(SegmentSessionTime) && data.Metrics.Available {
-		if st := renderSessionTime(data.Metrics.SessionDurationMS); st != "" {
-			segs = append(segs, st)
-		}
-	}
-
 	// Effort/thinking indicator (Claude Code v2.1.122+, REQ-CC2122-001/002)
+	// Moved before output style per user request
 	if r.isSegmentEnabled(SegmentEffortThinking) {
 		if et := renderEffortThinking(data); et != "" {
 			segs = append(segs, et)
@@ -259,6 +230,36 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	// Output style (integrated into L1)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
 		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
+	}
+
+	// Claude version
+	if r.isSegmentEnabled(SegmentClaudeVersion) && data.ClaudeCodeVersion != "" {
+		if withPrefix {
+			segs = append(segs, fmt.Sprintf("🔅 cc v%s", data.ClaudeCodeVersion))
+		} else {
+			segs = append(segs, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
+		}
+	}
+
+	// MoAI version
+	if r.isSegmentEnabled(SegmentMoaiVersion) && data.Version.Available && data.Version.Current != "" {
+		var versionStr string
+		if withPrefix {
+			versionStr = fmt.Sprintf("🗿 moai v%s", data.Version.Current)
+		} else {
+			versionStr = fmt.Sprintf("🗿 moai v%s", data.Version.Current)
+		}
+		if data.Version.UpdateAvailable && data.Version.Latest != "" {
+			versionStr += fmt.Sprintf(" -> 🗿 v%s", data.Version.Latest)
+		}
+		segs = append(segs, versionStr)
+	}
+
+	// Session time
+	if r.isSegmentEnabled(SegmentSessionTime) && data.Metrics.Available {
+		if st := renderSessionTime(data.Metrics.SessionDurationMS); st != "" {
+			segs = append(segs, st)
+		}
 	}
 
 	return r.joinSegments(segs)
