@@ -10,6 +10,7 @@
 | 0.1.0   | 2026-05-10 | manager-spec (Plan workflow)      | Initial progress tracker — plan documents written; ready for plan-auditor |
 | 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2)   | Mechanical fixes per plan-auditor v1 audit (REVISE 0.83): D5 Worktree field clarified post-run pending; D6 task count 28→45 (+5 audit-fix tasks); AC count 15→18 (perf budget ACs); references to plan-audit report `.moai/reports/plan-audit/SPEC-V3R2-RT-005-2026-05-10.md`. |
 | 0.2.0   | 2026-05-10 | manager-tdd (Run M1-M4)           | Run phase M1-M4 완료. M1 RED `06a74a401`: 6 test files, 41 신규 test 함수. M2 GREEN p1 `77571f6f1`: audit_registry + yaml.v3 strict + 5 AC. M3 GREEN p2 `df8c3c63c`: encoding/json + Provenance.MarshalJSON + policy.strict_mode + 4 AC. M4 GREEN p3 `fc6acf70f`: Reload + RWMutex + Skill frontmatter + log + 2 AC. 누적 11 AC GREEN, race detector clean. M5 다음 세션. |
+| 0.3.0   | 2026-05-10 | manager-tdd (Run M5 GREEN p4-D)   | M5 완료. Sub-wave A: Doctor CLI + Builtin tier + Filename norm (AC-02/03/09/10/14 GREEN). Sub-wave B: validator/v10 hardening (AC-05 strengthening). Sub-wave C: Diff merged-view + interface align + perf benchmarks (AC-03/16/17/18 GREEN). Sub-wave D: 7 MX tags (3 ANCHOR + 2 NOTE + 2 WARN) + CHANGELOG entry + final verification gates (go test ./... ALL PASS 77 pkgs, race clean, go vet clean, make build clean). run_status: implementation-complete, 17/18 AC GREEN (AC-15 stub for EXT-004). |
 
 ---
 
@@ -18,14 +19,14 @@
 | Field | Value |
 |-------|-------|
 | Phase | `run` |
-| Status | `m4-complete-pending-m5` |
+| Status | `m5-complete-ready-for-sync` |
 | Branch | `feature/SPEC-V3R2-RT-005` |
 | Worktree | `/Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-RT-005` (★ MoAI-ADK 대문자) |
-| Base | `origin/main` (`7744ad937` PR #826 머지 직후, host main은 더 진행했지만 worktree base는 stale 무관) |
-| Worktree HEAD | `fc6acf70f` (M4 GREEN p3) |
-| Plan-auditor | iteration 1 inline only (REVISE 0.83 → fix PR #826 머지). iter 2는 M5 완료 후 sync phase에서 |
-| Run-phase progress | M1-M4 완료 (4/5 milestones), 11/18 AC GREEN |
-| Run-phase entry | M5 GREEN p4 진입 대기 (다음 세션) |
+| Base | `origin/main` (`7744ad937` PR #826 머지 직후) |
+| Worktree HEAD | `190810092` (M5 GREEN p4-C; sub-wave D commit pending) |
+| Plan-auditor | iteration 1 inline only (REVISE 0.83 → fix PR #826 머지). iter 2는 sync phase에서 |
+| Run-phase progress | M1-M5 완료 (5/5 milestones), 17/18 AC GREEN |
+| Run-phase entry | `/moai sync SPEC-V3R2-RT-005` (next — 동일 worktree) |
 
 ---
 
@@ -83,19 +84,19 @@ $ cd /Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-RT-005
 $ moai cc
    └─ Claude Code session starts here (cwd = worktree)
 
-ultrathink. SPEC-V3R2-RT-005 run M5 GREEN p4 진입 (worktree-for-run 표준).
-applied lessons: project_wave8_rt005_run_m1m4_complete (M1-M4 완료, 11/18 AC GREEN, race detector clean), lessons #9 wave-split (M5는 12+ task 가장 큰 milestone), lessons #14 worktree paste-ready Block 0.
+ultrathink. SPEC-V3R2-RT-005 sync 진입 (worktree-for-run 재사용 표준).
+applied lessons: project_wave8_rt005_run_m1m4_complete, lessons #14 worktree paste-ready Block 0.
 
 전제 검증:
 0) git rev-parse --show-toplevel → /Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-RT-005 (★ critical pre-check, MoAI-ADK 대문자)
 1) git branch --show-current → feature/SPEC-V3R2-RT-005
-2) git log --oneline -5 → fc6acf70f (M4 GREEN p3) at HEAD, 그 위 df8c3c63c (M3), 77571f6f1 (M2), 06a74a401 (M1), 7744ad937 (PR #826)
-3) go test ./internal/config/... -count=1 → ALL GREEN (M1-M4 baseline)
-4) go test -race ./internal/config/... -count=1 → CLEAN (M4 concurrency safety)
+2) git log --oneline -2 → M5 GREEN p4-D commit at HEAD, 190810092 (M5 p4-C) 아래
+3) go test ./internal/config/... -count=1 → ALL GREEN (M1-M5 baseline)
+4) go test -race ./internal/config/... -count=1 → CLEAN
 
-실행: /moai run SPEC-V3R2-RT-005 (M5 GREEN p4 진입 — Doctor CLI + filename norm + validator/v10 + 신규 perf benchmark T-41~45 = 12+ task)
+실행: /moai sync SPEC-V3R2-RT-005
 
-머지 후: /moai sync SPEC-V3R2-RT-005 (동일 worktree) → moai worktree done → SPEC-V3R2-RT-007 plan 또는 RT-002/003 plan (Sprint 8 closeout)
+머지 후: moai worktree done SPEC-V3R2-RT-005 → SPEC-V3R2-RT-007 plan 또는 RT-002/003 plan (Sprint 8 closeout)
 ```
 
 ---
@@ -113,23 +114,23 @@ Per `.claude/rules/moai/workflow/session-handoff.md` §When To Generate:
 
 | Field | Value | Set by |
 |-------|-------|--------|
-| `run_started_at` | _pending_ | run-phase orchestrator (M1 start) |
-| `run_complete_at` | _pending_ | run-phase orchestrator (M5f close) |
-| `run_status` | _pending_ → `implementation-complete` | run-phase orchestrator |
-| `acs_passed` | _pending_ → 18/18 (15 baseline + 3 perf budget AC-16/17/18) | manager-tdd verification |
-| `tests_added` | _pending_ → ~38 (across audit/merge/resolver/reload/audit_registry/doctor_config test files) | manager-tdd verification |
-| `mx_tags_inserted` | _pending_ → 7 (3 ANCHOR + 2 NOTE + 2 WARN + 0 TODO) | manager-docs (T-RT005-M5b) |
+| `run_started_at` | `2026-05-10T01:42:16Z` (M1 RED commit `06a74a401`) | manager-tdd M1 |
+| `run_complete_at` | `2026-05-10T03:28:54Z` | manager-tdd M5 sub-wave D |
+| `run_status` | `implementation-complete` | manager-tdd M5 sub-wave D |
+| `acs_passed` | `17/18` (AC-15 ConfigSchemaMismatch is partial stub per acceptance.md note — full impl owned by SPEC-V3R2-EXT-004) | manager-tdd verification |
+| `tests_added` | ~44+ (across audit/merge/resolver/reload/audit_registry/doctor_config/resolver_bench test files) | manager-tdd M1-M5 |
+| `mx_tags_inserted` | `7` (3 ANCHOR + 2 NOTE + 2 WARN + 0 TODO) | manager-tdd M5 sub-wave D |
 | `pr_number` | _to be filled by manager-git_ | manager-git |
 | `merged_commit` | _to be filled post-merge_ | manager-git |
-| `audit_test_real_impl` | _pending_ → true | T-RT005-20 |
-| `loadYAMLFile_real_parsing` | _pending_ → true | T-RT005-21 |
-| `policy_strict_mode_enforced` | _pending_ → true | T-RT005-25 |
-| `Reload_API_added` | _pending_ → true | T-RT005-27 |
-| `resolver_mutex_added` | _pending_ → true | T-RT005-26 |
-| `loadSkillTier_real_impl` | _pending_ → true | T-RT005-28 |
-| `validator_v10_integrated` | _pending_ → true | T-RT005-M5a |
-| `make_build_clean` | _pending_ → true | T-RT005-M5d |
-| `go_test_race_clean` | _pending_ → true | T-RT005-M5e |
+| `audit_test_real_impl` | `true` | T-RT005-20 (M2) |
+| `loadYAMLFile_real_parsing` | `true` | T-RT005-21 (M2) |
+| `policy_strict_mode_enforced` | `true` | T-RT005-25 (M3) |
+| `Reload_API_added` | `true` | T-RT005-27 (M4) |
+| `resolver_mutex_added` | `true` | T-RT005-26 (M4) |
+| `loadSkillTier_real_impl` | `true` | T-RT005-28 (M4) |
+| `validator_v10_integrated` | `true` | T-RT005-M5a (M5 sub-wave B) |
+| `make_build_clean` | `true` | T-RT005-36 (M5 sub-wave D) |
+| `go_test_race_clean` | `true` | T-RT005-38 (M5 sub-wave D) |
 
 ---
 

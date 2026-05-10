@@ -18,7 +18,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// @MX:NOTE: [AUTO] SettingsResolver implements 8-tier configuration loading with platform-specific paths
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-005 REQ-004 — single resolver contract; methods Load/Key/Dump/Diff/Reload form the substrate. Adding methods is breaking; reordering signatures breaks RT-002/003/006 imports.
+// @MX:REASON: Adding methods is breaking; reordering signatures breaks RT-002/003/006 imports.
 //
 // SettingsResolver defines the interface for loading and querying configuration.
 // This maps to REQ-V3R2-RT-005-004.
@@ -110,7 +111,8 @@ func (r *resolver) loadLocked() (*MergedSettings, error) {
 // If the path does not match any known tier, this is a no-op (returns nil).
 // Reload acquires a full write lock and performs an atomic cache update.
 //
-// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-011, AC-04: diff-aware reload
+// @MX:WARN: [AUTO] SPEC-V3R2-RT-005 REQ-011 — diff-aware reload. Mutex held during entire reload.
+// @MX:REASON: Callbacks invoked from within Reload would deadlock; if a future feature needs post-reload notification, dispatch via channel from outside the locked region — see merge.go:MergeAll for the pattern.
 //
 // REQ-V3R2-RT-005-011, AC-04
 func (r *resolver) Reload(path string) error {

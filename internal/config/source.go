@@ -2,7 +2,8 @@ package config
 
 import "fmt"
 
-// @MX:NOTE: [AUTO] Source enum represents 8-tier priority system from policy (highest) to builtin (lowest)
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-005 REQ-001 — 8-tier priority enum, fan_in=71. ANY change ripples to RT-002, RT-003, RT-006, MIG-003.
+// @MX:REASON: Source enum is the constitutional backbone of the 8-tier system; ANY change ripples to RT-002, RT-003, RT-006, MIG-003.
 //
 // Source represents a configuration tier in the 8-tier priority system.
 // Higher priority sources override lower priority sources.

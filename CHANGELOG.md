@@ -31,6 +31,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **M7 (PR #831)**: 자동 감지 + i18n — detect.go (MOAI_THEME + TTY + NO_COLOR 로직), i18n.go (14개 언어 embed.FS), golden suite (33개 errcheck 수정).
   - **총계**: 33개 파일, 106개 golden snapshot, 14개 언어 i18n 카탈로그, 10개 @MX:ANCHOR + 8개 @MX:NOTE, 17/17 AC 완료.
 
+## [Unreleased] — SPEC-V3R2-RT-005: Multi-Layer Settings Resolution with Provenance Tags
+
+### English
+
+- **SPEC-V3R2-RT-005 (5 Milestones, M1-M5 with M5 split into 4 sub-waves)**: Multi-layer settings resolution with 8-tier priority chain and Provenance tags.
+  - **M1 RED (commit 06a74a401)**: 6 new test files, 41 new test functions establishing baseline (~940 LOC test scaffolding).
+  - **M2 GREEN p1 (commit 77571f6f1)**: audit_registry.go with YAMLToStructRegistry + YAMLAuditExceptions (5 MIG-003 exceptions); yaml.v3 strict mode (KnownFields(true)); ConfigTypeError + ConfigAmbiguous + schema_version propagation. ACs: AC-05/08/11/12.
+  - **M3 GREEN p2 (commit df8c3c63c)**: encoding/json byte-stable dump (sorted keys); Provenance.MarshalJSON; policy.strict_mode enforcement → PolicyOverrideRejected; YAML alphabetical sort + `# source: <tier>` comments. ACs: AC-01/02/07/09.
+  - **M4 GREEN p3 (commit fc6acf70f)**: sync.RWMutex on resolver; tierData diff-cache; (\*resolver).Reload(path) API with tier-isolation; loadSkillTier real impl walks .claude/skills/\*\*/SKILL.md frontmatter; .moai/logs/config.log dedicated logger; ClearSessionTier for SessionEnd hook. ACs: AC-04/13.
+  - **M5 Sub-wave A (commit fee736dfd)**: Doctor CLI (`moai doctor config dump|diff|--key`) verified with cmd.OutOrStdout(); loadBuiltinTier reflect-walks Config struct → 60+ keys; IsDefault flag for SrcBuiltin keys; filepath.Abs() normalization across 8 tier loaders. ACs: AC-02/09/10/14.
+  - **M5 Sub-wave B (commit f54ab8d7b)**: validator/v10 v10.30.2 dependency; runStructValidation prepended to Validate(); 4 fields tagged (User.Name required, Quality.DevelopmentMode/LLM.PerformanceTier/GitConvention.Convention oneof). AC-05 strengthened.
+  - **M5 Sub-wave C (commit 190810092)**: Diff merged-view delta semantics (REQ-051); SettingsResolver interface aligned (Dump io.Writer, Diff returns map without error); BenchmarkResolver_Load + Reload + TestResolver_MemoryFootprint with p50/p95/p99 reporting. ACs: AC-03/16/17/18.
+  - **M5 Sub-wave D (commit a8e49371b)**: 7 MX tags inserted (3 ANCHOR + 2 NOTE + 2 WARN); CHANGELOG entry; full verification (go test ./..., go test -race, go vet, make build all clean); progress.md run_status: implementation-complete.
+  - **Total**: 22 source/test files, +3759/-195 LOC, 17/18 AC GREEN (AC-15 ConfigSchemaMismatch stub deferred to SPEC-V3R2-EXT-004), 7 MX tags, 1549+ tests passing, race detector clean. Performance budgets verified far under target: Load p99=1011µs (100x margin), Reload p99=749µs (26x margin), HeapAlloc delta=645 KiB (3x margin).
+  - **Unblocks downstream SPECs**: SPEC-V3R2-RT-002 (permission stack), RT-003 (sandbox routing), RT-006 (ConfigChange hook), RT-007 (hardcoded path migration), MIG-003 (5 loader additions).
+
+### 한국어
+
+- **SPEC-V3R2-RT-005 (5 마일스톤, M5는 4 sub-wave로 분할)**: 8-tier 우선순위 체인과 Provenance 태그를 가진 다층 설정 해상도.
+  - **M1 RED (커밋 06a74a401)**: 6개 신규 테스트 파일, 41개 신규 테스트 함수로 baseline 구축 (~940 LOC 테스트 스캐폴딩).
+  - **M2 GREEN p1 (커밋 77571f6f1)**: audit_registry.go (YAMLToStructRegistry + 5개 MIG-003 예외); yaml.v3 strict mode (KnownFields(true)); ConfigTypeError + ConfigAmbiguous + schema_version 전파. AC: AC-05/08/11/12.
+  - **M3 GREEN p2 (커밋 df8c3c63c)**: encoding/json 바이트 안정 dump (정렬된 키); Provenance.MarshalJSON; policy.strict_mode 시행 → PolicyOverrideRejected; YAML 알파벳 정렬 + `# source: <tier>` 주석. AC: AC-01/02/07/09.
+  - **M4 GREEN p3 (커밋 fc6acf70f)**: resolver에 sync.RWMutex; tierData diff 캐시; (\*resolver).Reload(path) API와 tier 격리; loadSkillTier 실제 구현 (.claude/skills/\*\*/SKILL.md frontmatter 워크); .moai/logs/config.log 전용 로거; SessionEnd hook용 ClearSessionTier. AC: AC-04/13.
+  - **M5 Sub-wave A (커밋 fee736dfd)**: Doctor CLI (`moai doctor config dump|diff|--key`) cmd.OutOrStdout() 검증; loadBuiltinTier가 Config 구조체 reflect-walk → 60개 이상 키; SrcBuiltin 키에 IsDefault 플래그; 8개 tier loader 전반 filepath.Abs() 정규화. AC: AC-02/09/10/14.
+  - **M5 Sub-wave B (커밋 f54ab8d7b)**: validator/v10 v10.30.2 의존성; runStructValidation을 Validate() 앞에 추가; 4개 필드 태그 (User.Name required, Quality.DevelopmentMode/LLM.PerformanceTier/GitConvention.Convention oneof). AC-05 강화.
+  - **M5 Sub-wave C (커밋 190810092)**: Diff 병합 뷰 델타 의미론 (REQ-051); SettingsResolver 인터페이스 정렬 (Dump io.Writer, Diff는 error 없이 map 반환); BenchmarkResolver_Load + Reload + TestResolver_MemoryFootprint와 p50/p95/p99 보고. AC: AC-03/16/17/18.
+  - **M5 Sub-wave D (커밋 a8e49371b)**: 7개 MX 태그 삽입 (3 ANCHOR + 2 NOTE + 2 WARN); CHANGELOG 항목; 전체 검증 (go test ./..., go test -race, go vet, make build 모두 클린); progress.md run_status: implementation-complete.
+  - **총계**: 22개 source/test 파일, +3759/-195 LOC, 17/18 AC GREEN (AC-15 ConfigSchemaMismatch 스텁은 SPEC-V3R2-EXT-004로 이연), 7개 MX 태그, 1549+ 테스트 통과, race detector 클린. 성능 예산은 목표를 크게 밑돌음: Load p99=1011µs (100배 여유), Reload p99=749µs (26배 여유), HeapAlloc 델타=645 KiB (3배 여유).
+  - **다운스트림 SPEC 잠금 해제**: SPEC-V3R2-RT-002 (퍼미션 스택), RT-003 (샌드박스 라우팅), RT-006 (ConfigChange hook), RT-007 (하드코딩 경로 이주), MIG-003 (5개 loader 추가).
+
 ## [Unreleased] — SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification
 
 ### Changed

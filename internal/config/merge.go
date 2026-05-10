@@ -60,11 +60,7 @@ func (m *MergedSettings) All() map[string]Value[any] {
 //
 // This maps to REQ-V3R2-RT-005-005, REQ-V3R2-RT-005-010, REQ-V3R2-RT-005-022, AC-01, AC-07.
 //
-// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 deterministic 8-tier merge.
-// Identical tier inputs MUST produce byte-identical merged output (cache-prefix discipline;
-// problem-catalog P-C05). Map iteration order is non-deterministic; sort keys before
-// serialization (see dumpJSON). The schemaVersionKey sentinel is stripped from the
-// merged key space and applied to Provenance.SchemaVersion instead.
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 — deterministic 8-tier merge. Identical tier inputs MUST produce byte-identical merged output (cache-prefix discipline; problem-catalog P-C05). Map iteration order is non-deterministic; sort keys before serialization (see merge.go:dumpJSON).
 //
 // Parameters:
 //   - tiers: map of source to raw configuration values (map[string]any where key is "section.field")
@@ -89,6 +85,9 @@ func MergeAll(
 			}
 		}
 	}
+
+	// @MX:WARN: [AUTO] SPEC-V3R2-RT-005 REQ-022 — policy override enforcement.
+	// @MX:REASON: Disabling this check (e.g., commenting out the strict_mode enforcement) defeats the constitutional governance contract. Enterprise rollouts depend on PolicyOverrideRejected to enforce policy precedence.
 
 	// Determine strict_mode from the SrcPolicy tier.
 	// policy.strict_mode: true means lower tiers cannot override policy-designated keys.

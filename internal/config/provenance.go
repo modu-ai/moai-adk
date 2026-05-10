@@ -5,7 +5,8 @@ import (
 	"time"
 )
 
-// @MX:NOTE: [AUTO] Provenance tracks configuration value origin across 8-tier priority system
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-005 REQ-002, REQ-003 — typed-state contract; every config field that needs to answer "where from?" wraps via Value[T].
+// @MX:REASON: Generic wrapper is the type-safety contract; consumers reach via cfg.<field>.V.
 //
 // Provenance tracks where a configuration value came from.
 // Every config value carries provenance to answer "which file set this?"
