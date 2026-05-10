@@ -457,11 +457,11 @@ func TestRender_VersionUpdateNotification(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "moai v2.0.0") {
+	if !strings.Contains(got, "🗿 moai v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
-	if !strings.Contains(got, "-> v2.0.1") {
-		t.Errorf("should contain update notification with emoji, got %q", got)
+	if !strings.Contains(got, "🗿 v2.0.1") {
+		t.Errorf("should contain update notification, got %q", got)
 	}
 }
 
