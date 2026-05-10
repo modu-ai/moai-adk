@@ -140,9 +140,9 @@ func (m *ModelInfo) UnmarshalJSON(data []byte) error {
 // WorkspaceInfo represents the workspace directory information from Claude Code.
 // Claude Code 2.1.97+ adds git_worktree field for active worktree path.
 type WorkspaceInfo struct {
-	CurrentDir  string `json:"current_dir"`   // Current working directory
-	ProjectDir  string `json:"project_dir"`   // Original project directory (used for display)
-	GitWorktree string `json:"git_worktree"`  // Active git worktree path (2.1.97+, empty string if none)
+	CurrentDir  string `json:"current_dir"`  // Current working directory
+	ProjectDir  string `json:"project_dir"`  // Original project directory (used for display)
+	GitWorktree string `json:"git_worktree"` // Active git worktree path (2.1.97+, empty string if none)
 }
 
 // OutputStyleInfo represents the output style from Claude Code.

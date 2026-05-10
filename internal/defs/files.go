@@ -13,7 +13,6 @@ const (
 
 	// ClaudeMD is the main Claude Code execution directive file.
 	ClaudeMD = "CLAUDE.md"
-
 )
 
 // Section YAML file names under .moai/config/sections/.

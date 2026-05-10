@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/modu-ai/moai-adk/internal/spec"
+	"github.com/spf13/cobra"
 )
 
 // specIDPattern matches SPEC-XXX patterns in git commit messages

@@ -24,11 +24,11 @@ func TestPermissionResolver_Resolve_PreAllowlist(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
-		RulesByTier:    make(map[config.Source][]PermissionRule),
+		IsInteractive:   true,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
 	}
 
 	result, err := resolver.Resolve("Bash", json.RawMessage("go test ./..."), ctx)
@@ -53,10 +53,10 @@ func TestPermissionResolver_Resolve_ProjectDeny(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
+		IsInteractive:   true,
 		RulesByTier: map[config.Source][]PermissionRule{
 			config.SrcProject: {
 				{
@@ -91,10 +91,10 @@ func TestPermissionResolver_Resolve_PolicyDenyWins(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
+		IsInteractive:   true,
 		RulesByTier: map[config.Source][]PermissionRule{
 			config.SrcPolicy: {
 				{
@@ -134,11 +134,11 @@ func TestPermissionResolver_Resolve_PlanModeDeniesWrites(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModePlan,
-		IsFork:         false,
+		Mode:            ModePlan,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
-		RulesByTier:    make(map[config.Source][]PermissionRule),
+		IsInteractive:   true,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
 	}
 
 	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/x"), ctx)
@@ -157,12 +157,12 @@ func TestPermissionResolver_Resolve_PlanModeDeniesWrites(t *testing.T) {
 func TestPermissionResolver_Resolve_BypassPermissions(t *testing.T) {
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeBypassPermissions,
-		IsFork:         false,
+		Mode:            ModeBypassPermissions,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
-		StrictMode:     false,
-		RulesByTier:    make(map[config.Source][]PermissionRule),
+		IsInteractive:   true,
+		StrictMode:      false,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
 	}
 
 	result, err := resolver.Resolve("Bash", json.RawMessage("rm -rf /"), ctx)
@@ -182,13 +182,13 @@ func TestPermissionResolver_Resolve_BypassPermissionsInFork(t *testing.T) {
 	// REQ-V3R2-RT-002-021: Fork agents with bypassPermissions are degraded to bubble/ask
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeBypassPermissions,
-		IsFork:         true,
+		Mode:            ModeBypassPermissions,
+		IsFork:          true,
 		ParentAvailable: true,
-		ForkDepth:      1,
-		IsInteractive:  true,
-		StrictMode:     false,
-		RulesByTier:    make(map[config.Source][]PermissionRule),
+		ForkDepth:       1,
+		IsInteractive:   true,
+		StrictMode:      false,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
 	}
 
 	result, err := resolver.Resolve("Bash", json.RawMessage("rm -rf /"), ctx)
@@ -210,11 +210,11 @@ func TestPermissionResolver_Resolve_BubbleMode(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeBubble,
-		IsFork:         true,
+		Mode:            ModeBubble,
+		IsFork:          true,
 		ParentAvailable: true,
-		ForkDepth:      1,
-		IsInteractive:  true,
+		ForkDepth:       1,
+		IsInteractive:   true,
 		RulesByTier: map[config.Source][]PermissionRule{
 			config.SrcProject: {
 				{
@@ -246,11 +246,11 @@ func TestPermissionResolver_Resolve_BubbleModeParentUnavailable(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeBubble,
-		IsFork:         true,
+		Mode:            ModeBubble,
+		IsFork:          true,
 		ParentAvailable: false,
-		ForkDepth:      1,
-		IsInteractive:  true,
+		ForkDepth:       1,
+		IsInteractive:   true,
 		RulesByTier: map[config.Source][]PermissionRule{
 			config.SrcProject: {
 				{
@@ -282,11 +282,11 @@ func TestPermissionResolver_Resolve_NonInteractive(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  false,
-		RulesByTier:    make(map[config.Source][]PermissionRule),
+		IsInteractive:   false,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
 	}
 
 	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/test.txt"), ctx)
@@ -308,10 +308,10 @@ func TestPermissionResolver_Resolve_HookOverride(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
+		IsInteractive:   true,
 		HookResponse: &hook.HookResponse{
 			PermissionDecision: hook.PermissionDecisionAllow,
 		},
@@ -348,10 +348,10 @@ func TestPermissionResolver_Resolve_HookUpdatedInput(t *testing.T) {
 	updatedInput := json.RawMessage(`/safe/path`)
 
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
+		IsInteractive:   true,
 		HookResponse: &hook.HookResponse{
 			// No PermissionDecision - only UpdatedInput
 			UpdatedInput: updatedInput,
@@ -387,12 +387,12 @@ func TestPermissionResolver_Resolve_ForkDepthExceedsLimit(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeAcceptEdits,
-		IsFork:         true,
+		Mode:            ModeAcceptEdits,
+		IsFork:          true,
 		ParentAvailable: true,
-		ForkDepth:      4,
-		IsInteractive:  true,
-		RulesByTier:    make(map[config.Source][]PermissionRule),
+		ForkDepth:       4,
+		IsInteractive:   true,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
 	}
 
 	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/test.txt"), ctx)
@@ -421,11 +421,11 @@ func TestPermissionResolver_ValidateMode(t *testing.T) {
 		errContains string
 	}{
 		{
-			name:       "bypassPermissions rejected in strict mode",
-			mode:       ModeBypassPermissions,
-			strictMode: true,
-			isFork:     false,
-			wantErr:    true,
+			name:        "bypassPermissions rejected in strict mode",
+			mode:        ModeBypassPermissions,
+			strictMode:  true,
+			isFork:      false,
+			wantErr:     true,
 			errContains: "not allowed in strict mode",
 		},
 		{
@@ -474,11 +474,11 @@ func TestPermissionResolver_Resolve_TraceGeneration(t *testing.T) {
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
-		Mode:           ModeDefault,
-		IsFork:         false,
+		Mode:            ModeDefault,
+		IsFork:          false,
 		ParentAvailable: true,
-		IsInteractive:  true,
-		RulesByTier:    make(map[config.Source][]PermissionRule), // No rules - will walk all tiers
+		IsInteractive:   true,
+		RulesByTier:     make(map[config.Source][]PermissionRule), // No rules - will walk all tiers
 	}
 
 	result, err := resolver.Resolve("UnknownTool", json.RawMessage("some input"), ctx)

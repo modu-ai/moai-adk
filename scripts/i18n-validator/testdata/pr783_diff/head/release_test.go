@@ -3,8 +3,8 @@
 package pr783_head_test
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 // mockReleaseData는 릴리스 오류 메시지 맵입니다 (영어 번역 버전).

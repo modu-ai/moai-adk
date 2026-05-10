@@ -330,4 +330,3 @@ func TestInstaller_downloadWithRetry_FileCreationError(t *testing.T) {
 		t.Error("DownloadRunner should error when file creation fails")
 	}
 }
-

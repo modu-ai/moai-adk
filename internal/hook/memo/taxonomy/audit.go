@@ -45,11 +45,11 @@ var feedbackBodyRegex = regexp.MustCompile(`(?s).+?\*\*Why:\*\*.+?\*\*How to app
 // Each entry maps a category name to a list of case-insensitive substrings.
 // When any keyword matches the file body, the category is flagged.
 var excludedCategoryKeywords = map[string][]string{
-	"code_pattern":   {"```go", "```python", "```typescript", "```js", "```javascript", "```rust", "func ", "def ", "class "},
-	"git_history":    {"commit ", "git log", "git blame", "HEAD~", "git diff"},
-	"debug_recipe":   {"fix recipe", "debug solution", "root cause:", "fixed in commit"},
+	"code_pattern":     {"```go", "```python", "```typescript", "```js", "```javascript", "```rust", "func ", "def ", "class "},
+	"git_history":      {"commit ", "git log", "git blame", "HEAD~", "git diff"},
+	"debug_recipe":     {"fix recipe", "debug solution", "root cause:", "fixed in commit"},
 	"claude_md_mirror": {"CLAUDE.md", "TRUST 5", "MoAI-ADK"},
-	"ephemeral_state": {"currently working on", "in progress:", "TODO for this session", "current branch"},
+	"ephemeral_state":  {"currently working on", "in progress:", "TODO for this session", "current branch"},
 }
 
 // claudeMdMirrorThreshold is the minimum number of claude_md_mirror keywords

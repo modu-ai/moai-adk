@@ -1163,9 +1163,9 @@ func TestRender_ModeRouting(t *testing.T) {
 	}{
 		{ModeDefault, 1, 4},
 		{ModeFull, 1, 6},
-		{ModeCompact, 1, 4},  // deprecated → default
-		{ModeMinimal, 1, 4},  // deprecated → default
-		{ModeVerbose, 1, 6},  // deprecated → full
+		{ModeCompact, 1, 4}, // deprecated → default
+		{ModeMinimal, 1, 4}, // deprecated → default
+		{ModeVerbose, 1, 6}, // deprecated → full
 	}
 
 	for _, tt := range tests {
@@ -1398,9 +1398,9 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 			}
 			r := NewRenderer("default", true, segCfg)
 			data := &StatusData{
-				Git:      GitStatusData{Branch: "feat/test", Available: true},
+				Git:       GitStatusData{Branch: "feat/test", Available: true},
 				Directory: "myproject",
-				Worktree: tt.worktree,
+				Worktree:  tt.worktree,
 			}
 			got := r.renderDirGitLine(data)
 			if tt.wantWT && !strings.Contains(got, "🌿") {

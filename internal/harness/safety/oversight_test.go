@@ -81,9 +81,9 @@ func TestBuildOversightProposal_MaxFourOptions(t *testing.T) {
 	t.Parallel()
 
 	proposal := harness.Proposal{
-		ID:        "test-003",
+		ID:         "test-003",
 		TargetPath: ".moai/harness/test.yaml",
-		CreatedAt: time.Now(),
+		CreatedAt:  time.Now(),
 	}
 
 	op := BuildOversightProposal(proposal, "contradiction detected")

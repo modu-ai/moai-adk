@@ -49,12 +49,12 @@ type langTestCase struct {
 // All 16 languages are listed alphabetically; no language is primary.
 var allLanguageCases = []langTestCase{
 	{
-		language:      "cpp",
-		command:       "clangd",
-		args:          []string{},
-		fileExt:       ".cpp",
-		errorContent:  "int main() { undefined_symbol; return 0; }\n",
-		projectMarker: "compile_commands.json",
+		language:       "cpp",
+		command:        "clangd",
+		args:           []string{},
+		fileExt:        ".cpp",
+		errorContent:   "int main() { undefined_symbol; return 0; }\n",
+		projectMarker:  "compile_commands.json",
 		projectContent: `[{"directory": ".", "command": "clang -c main.cpp", "file": "main.cpp"}]`,
 	},
 	{
@@ -68,13 +68,13 @@ var allLanguageCases = []langTestCase{
 		projectContent: `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup></Project>`,
 	},
 	{
-		language:      "elixir",
-		command:       "elixir-ls",
-		fallbacks:     []string{"lexical"},
-		args:          []string{},
-		fileExt:       ".ex",
-		errorContent:  "defmodule Test do\n  def run, do: UndefinedModule.call()\nend\n",
-		projectMarker: "mix.exs",
+		language:       "elixir",
+		command:        "elixir-ls",
+		fallbacks:      []string{"lexical"},
+		args:           []string{},
+		fileExt:        ".ex",
+		errorContent:   "defmodule Test do\n  def run, do: UndefinedModule.call()\nend\n",
+		projectMarker:  "mix.exs",
 		projectContent: `defmodule Test.MixProject do\n  use Mix.Project\n  def project, do: [app: :test, version: "0.1.0"]\nend\n`,
 	},
 	{

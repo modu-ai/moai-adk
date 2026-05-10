@@ -15,10 +15,10 @@ import (
 
 // mockRPCConn is a test double for the rpcConn interface.
 type mockRPCConn struct {
-	callErr   error
-	notifyErr error
+	callErr     error
+	notifyErr   error
 	closeCalled bool
-	handlers  map[string]pntr.NotificationHandler
+	handlers    map[string]pntr.NotificationHandler
 }
 
 func newMockRPCConn() *mockRPCConn {

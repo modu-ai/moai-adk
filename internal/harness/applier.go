@@ -325,13 +325,13 @@ func splitFrontmatterBody(content string) (fm, body string, err error) {
 		if idx == -1 {
 			return "", "", fmt.Errorf("frontmatter 종료 구분자 없음")
 		}
-		fm = rest[:idx+1]  // '\n' included
+		fm = rest[:idx+1] // '\n' included
 		body = ""
 		return fm, body, nil
 	}
 
-	fm = rest[:idx+1]               // '\n' included
-	body = rest[idx+1+len(sep)+1:]  // "---\n" body after
+	fm = rest[:idx+1]              // '\n' included
+	body = rest[idx+1+len(sep)+1:] // "---\n" body after
 	return fm, body, nil
 }
 

@@ -32,10 +32,10 @@ func (h *GLMAuthHandler) Setup(ctx context.Context, repo, token string) error {
 
 	// 2. Inject SPEC-GLM-001 environment variable metadata
 	envVars := map[string]string{
-		"DISABLE_BETAS":            "true",
-		"DISABLE_PROMPT_CACHING":   "true",
-		"CLAUDE_CODE_USE_bedrock":  "0",
-		"CLAUDE_CODE_USE_vertex":   "0",
+		"DISABLE_BETAS":           "true",
+		"DISABLE_PROMPT_CACHING":  "true",
+		"CLAUDE_CODE_USE_bedrock": "0",
+		"CLAUDE_CODE_USE_vertex":  "0",
 	}
 
 	for name, value := range envVars {

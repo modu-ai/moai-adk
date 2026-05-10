@@ -89,7 +89,6 @@ func (m *mockUpdateOrchestrator) Update(ctx context.Context) (*update.UpdateResu
 	return &update.UpdateResult{PreviousVersion: "v0.0.0", NewVersion: "v0.0.1"}, nil
 }
 
-
 // mockHandler implements hook.Handler for testing.
 type mockHandler struct {
 	eventType hook.EventType

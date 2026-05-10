@@ -303,10 +303,10 @@ func marshalLearning(e *LearningEntry) string {
 
 // Header field regexes.
 var (
-	reHeaderID       = regexp.MustCompile(`^#\s+Learning:\s+(\S+)`)
-	reHeaderField    = regexp.MustCompile(`^([A-Za-z]+):\s*(.*)`)
-	reEvidenceStart  = regexp.MustCompile(`^-\s+SessionID:\s+(.+)`)
-	reEvidenceField  = regexp.MustCompile(`^\s+(Date|Context):\s+(.+)`)
+	reHeaderID      = regexp.MustCompile(`^#\s+Learning:\s+(\S+)`)
+	reHeaderField   = regexp.MustCompile(`^([A-Za-z]+):\s*(.*)`)
+	reEvidenceStart = regexp.MustCompile(`^-\s+SessionID:\s+(.+)`)
+	reEvidenceField = regexp.MustCompile(`^\s+(Date|Context):\s+(.+)`)
 )
 
 func unmarshalLearning(content string) (*LearningEntry, error) {

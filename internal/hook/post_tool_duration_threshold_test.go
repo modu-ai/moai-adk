@@ -101,7 +101,7 @@ observability:
 `,
 		},
 		{
-			name: "empty_file",
+			name:    "empty_file",
 			content: ``,
 		},
 	}
@@ -135,6 +135,7 @@ func TestLoadSlowHookThreshold_EmptyProjectRoot(t *testing.T) {
 // duration_ms=3000 일 때:
 //   - default(5000) 기준: skip
 //   - custom(2000) 기준: write
+//
 // 따라서 yaml read가 정상 동작하면 메트릭이 기록되어야 한다.
 // REQ-CC2122-HOOK-002-001 (E2E 검증)
 func TestPostToolDuration_HonorsCustomThreshold(t *testing.T) {

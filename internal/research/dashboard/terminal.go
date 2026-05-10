@@ -10,10 +10,10 @@ import (
 // Style definitions (lipgloss-based)
 var (
 	headerStyle = lipgloss.NewStyle().Bold(true).Underline(true)
-	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))  // green (improvement)
-	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))  // red (regression)
-	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // gray (no change)
-	mustStyle   = lipgloss.NewStyle().Bold(true)                       // MUST label
+	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2")) // green (improvement)
+	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("1")) // red (regression)
+	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // gray (no change)
+	mustStyle   = lipgloss.NewStyle().Bold(true)                      // MUST label
 )
 
 // RenderDashboard renders the full terminal dashboard including
@@ -30,12 +30,12 @@ func RenderDashboard(data *DashboardData) string {
 	b.WriteString("\n\n")
 
 	// Target and score summary
-	fmt.Fprintf(&b,"  Target: %s\n", data.Target)
+	fmt.Fprintf(&b, "  Target: %s\n", data.Target)
 
 	// Current score + percentage
 	scorePct := int(data.CurrentScore * 100)
 	targetPct := int(data.TargetScore * 100)
-	fmt.Fprintf(&b,"  Score:  %d%% / %d%% (target)\n", scorePct, targetPct)
+	fmt.Fprintf(&b, "  Score:  %d%% / %d%% (target)\n", scorePct, targetPct)
 
 	// Delta display (current - baseline)
 	delta := data.CurrentScore - data.Baseline
@@ -48,16 +48,16 @@ func RenderDashboard(data *DashboardData) string {
 	} else {
 		deltaStr = dimStyle.Render("0%")
 	}
-	fmt.Fprintf(&b,"  Delta:  %s from baseline\n", deltaStr)
+	fmt.Fprintf(&b, "  Delta:  %s from baseline\n", deltaStr)
 
 	// Overall progress bar
 	scoreRatio := data.CurrentScore
-	fmt.Fprintf(&b,"  Progress: %s %d%%\n", renderProgressBar(scoreRatio, 25), scorePct)
+	fmt.Fprintf(&b, "  Progress: %s %d%%\n", renderProgressBar(scoreRatio, 25), scorePct)
 	b.WriteString("\n")
 
 	// Experiment statistics
-	fmt.Fprintf(&b,"  Experiments: %d/%d", data.Experiments, data.MaxExperiments)
-	fmt.Fprintf(&b,"  (Keep: %d, Discard: %d)\n", data.KeepCount, data.DiscardCount)
+	fmt.Fprintf(&b, "  Experiments: %d/%d", data.Experiments, data.MaxExperiments)
+	fmt.Fprintf(&b, "  (Keep: %d, Discard: %d)\n", data.KeepCount, data.DiscardCount)
 
 	// Per-criterion breakdown
 	if len(data.PerCriterion) > 0 {

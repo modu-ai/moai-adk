@@ -21,28 +21,28 @@ func TestAnalyzeSession_ErrorOutcomeGeneratesProposal(t *testing.T) {
 	sessionID := "test-session-error-001"
 	writeRecords(t, projectRoot, sessionID, []telemetry.UsageRecord{
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Bash",
-			Outcome:             telemetry.OutcomeError,
-						DurationMs:0,
+			Timestamp:  time.Now(),
+			SessionID:  sessionID,
+			SkillID:    "moai-lang-go",
+			AgentType:  "Bash",
+			Outcome:    telemetry.OutcomeError,
+			DurationMs: 0,
 		},
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Bash",
-			Outcome:             telemetry.OutcomeError,
-						DurationMs:1,
+			Timestamp:  time.Now(),
+			SessionID:  sessionID,
+			SkillID:    "moai-lang-go",
+			AgentType:  "Bash",
+			Outcome:    telemetry.OutcomeError,
+			DurationMs: 1,
 		},
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Write",
-			Outcome:             telemetry.OutcomeSuccess,
-			DurationMs:2,
+			Timestamp:  time.Now(),
+			SessionID:  sessionID,
+			SkillID:    "moai-lang-go",
+			AgentType:  "Write",
+			Outcome:    telemetry.OutcomeSuccess,
+			DurationMs: 2,
 		},
 	})
 
@@ -64,12 +64,12 @@ func TestAnalyzeSession_SkipsTrivialSession(t *testing.T) {
 	sessionID := "test-session-trivial-001"
 	writeRecords(t, projectRoot, sessionID, []telemetry.UsageRecord{
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Read",
-			Outcome:             telemetry.OutcomeSuccess,
-			DurationMs:0,
+			Timestamp:  time.Now(),
+			SessionID:  sessionID,
+			SkillID:    "moai-lang-go",
+			AgentType:  "Read",
+			Outcome:    telemetry.OutcomeSuccess,
+			DurationMs: 0,
 		},
 	})
 
@@ -99,13 +99,13 @@ func TestAnalyzeSession_CapsAt3Proposals(t *testing.T) {
 	for i, sk := range skills {
 		for j := 0; j < 4; j++ {
 			records = append(records, telemetry.UsageRecord{
-				Timestamp:           time.Now(),
-				SessionID:           sessionID,
-				SkillID:             sk,
-				AgentType:"Bash",
-				Outcome:             telemetry.OutcomeError,
-				ContextHash:"build failed",
-				DurationMs: int64(i*4 + j),
+				Timestamp:   time.Now(),
+				SessionID:   sessionID,
+				SkillID:     sk,
+				AgentType:   "Bash",
+				Outcome:     telemetry.OutcomeError,
+				ContextHash: "build failed",
+				DurationMs:  int64(i*4 + j),
 			})
 		}
 	}
@@ -134,30 +134,30 @@ func TestAnalyzeSession_SafetyFiltersFrozenFiles(t *testing.T) {
 	// must still hold if something upstream misbehaves).
 	writeRecords(t, projectRoot, sessionID, []telemetry.UsageRecord{
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Bash",
-			Outcome:             telemetry.OutcomeError,
-			ContextHash:"error",
-			DurationMs:0,
+			Timestamp:   time.Now(),
+			SessionID:   sessionID,
+			SkillID:     "moai-lang-go",
+			AgentType:   "Bash",
+			Outcome:     telemetry.OutcomeError,
+			ContextHash: "error",
+			DurationMs:  0,
 		},
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Bash",
-			Outcome:             telemetry.OutcomeError,
-			ContextHash:"error",
-			DurationMs:1,
+			Timestamp:   time.Now(),
+			SessionID:   sessionID,
+			SkillID:     "moai-lang-go",
+			AgentType:   "Bash",
+			Outcome:     telemetry.OutcomeError,
+			ContextHash: "error",
+			DurationMs:  1,
 		},
 		{
-			Timestamp:           time.Now(),
-			SessionID:           sessionID,
-			SkillID:             "moai-lang-go",
-			AgentType:"Write",
-			Outcome:             telemetry.OutcomeSuccess,
-			DurationMs:2,
+			Timestamp:  time.Now(),
+			SessionID:  sessionID,
+			SkillID:    "moai-lang-go",
+			AgentType:  "Write",
+			Outcome:    telemetry.OutcomeSuccess,
+			DurationMs: 2,
 		},
 	})
 

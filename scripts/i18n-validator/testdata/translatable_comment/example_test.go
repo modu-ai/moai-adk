@@ -3,8 +3,8 @@
 package translatable_comment_test
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 // errMsg는 번역 가능한 CLI 메시지입니다.

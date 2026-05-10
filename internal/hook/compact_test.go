@@ -23,11 +23,11 @@ func TestCompactHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name            string
-		input           *HookInput
-		setupDir        bool
-		setProjectDir   bool
-		wantDecision    string
+		name          string
+		input         *HookInput
+		setupDir      bool
+		setProjectDir bool
+		wantDecision  string
 	}{
 		{
 			name: "normal context preservation",
@@ -35,9 +35,9 @@ func TestCompactHandler_Handle(t *testing.T) {
 				SessionID:     "sess-compact-1",
 				HookEventName: "PreCompact",
 			},
-			setupDir:     true,
+			setupDir:      true,
 			setProjectDir: true,
-			wantDecision: DecisionAllow,
+			wantDecision:  DecisionAllow,
 		},
 		{
 			name: "compact without memory dir auto-creates it",

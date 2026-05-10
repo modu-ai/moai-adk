@@ -14,10 +14,10 @@ const (
 
 // MoAI subdirectory segments (relative to MoAIDir).
 const (
-	ConfigSubdir    = "config"
-	SectionsSubdir  = "config/sections"
-	StateSubdir     = "state"
-	LogsSubdir      = "logs"
+	ConfigSubdir   = "config"
+	SectionsSubdir = "config/sections"
+	StateSubdir    = "state"
+	LogsSubdir     = "logs"
 
 	// EvolutionSubdir is the subdirectory for the Reflective Learning system.
 	// It holds telemetry records, learning entries, and rate-limit state.

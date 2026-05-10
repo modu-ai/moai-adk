@@ -3,10 +3,11 @@
 // REQ-RA-003 mapping.
 //
 // History:
-//   SPEC-V3R2-RT-005 M1-M2: manager-develop.md was a full active agent (transitional name).
-//   SPEC-V3R2-ORC-001 M5: renamed to manager-cycle; manager-develop became a retired stub.
-//   ORC-001 follow-up rename: manager-develop restored as the canonical active agent name;
-//   manager-cycle is now the retired stub.
+//
+//	SPEC-V3R2-RT-005 M1-M2: manager-develop.md was a full active agent (transitional name).
+//	SPEC-V3R2-ORC-001 M5: renamed to manager-cycle; manager-develop became a retired stub.
+//	ORC-001 follow-up rename: manager-develop restored as the canonical active agent name;
+//	manager-cycle is now the retired stub.
 package template
 
 import (

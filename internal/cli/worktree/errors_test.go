@@ -8,16 +8,16 @@ import (
 // TestWorktreeError_Error tests that WorktreeError implements error interface correctly
 func TestWorktreeError_Error(t *testing.T) {
 	tests := []struct {
-		name      string
-		err       *WorktreeError
+		name       string
+		err        *WorktreeError
 		wantSubstr string // substring that must be in error message
 	}{
 		{
 			name: "error message includes SPEC-ID",
 			err: &WorktreeError{
-				prefix:  "Worktree creation failed",
-				SpecID:  "SPEC-TEST-001",
-				Err:     errors.New("git error"),
+				prefix:   "Worktree creation failed",
+				SpecID:   "SPEC-TEST-001",
+				Err:      errors.New("git error"),
 				Recovery: "moai worktree new SPEC-TEST-001",
 			},
 			wantSubstr: "SPEC-TEST-001",
@@ -25,9 +25,9 @@ func TestWorktreeError_Error(t *testing.T) {
 		{
 			name: "error message includes recovery command",
 			err: &WorktreeError{
-				prefix:  "Worktree creation failed",
-				SpecID:  "SPEC-TEST-001",
-				Err:     errors.New("git error"),
+				prefix:   "Worktree creation failed",
+				SpecID:   "SPEC-TEST-001",
+				Err:      errors.New("git error"),
 				Recovery: "moai worktree new SPEC-TEST-001",
 			},
 			wantSubstr: "moai worktree new SPEC-TEST-001",
@@ -35,9 +35,9 @@ func TestWorktreeError_Error(t *testing.T) {
 		{
 			name: "error message includes prefix",
 			err: &WorktreeError{
-				prefix:  "Worktree creation failed",
-				SpecID:  "SPEC-TEST-001",
-				Err:     errors.New("git error"),
+				prefix:   "Worktree creation failed",
+				SpecID:   "SPEC-TEST-001",
+				Err:      errors.New("git error"),
 				Recovery: "moai worktree new SPEC-TEST-001",
 			},
 			wantSubstr: "Worktree creation failed",

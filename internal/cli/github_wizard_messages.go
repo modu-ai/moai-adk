@@ -8,10 +8,10 @@ type Messages struct {
 	SuccessBody  string
 
 	// Model selection prompts
-	SelectClaudeModel  string
-	SelectCodexModel   string
-	SelectGeminiModel  string
-	SelectZAIModel     string
+	SelectClaudeModel string
+	SelectCodexModel  string
+	SelectGeminiModel string
+	SelectZAIModel    string
 
 	// Yes/No labels
 	YesLabel string
@@ -35,13 +35,13 @@ func GetMessages(lang string) *Messages {
 			YesLabel:          "예",
 			NoLabel:           "아니오",
 			ModelNames: map[string]string{
-				"claude-opus-4-7":  "Claude Opus 4.7 (최고 성능)",
+				"claude-opus-4-7":   "Claude Opus 4.7 (최고 성능)",
 				"claude-sonnet-4-6": "Claude Sonnet 4.6 (균형)",
-				"gpt-5.5":         "GPT-5.5 (최신)",
-				"gpt-5.3-codex":   "GPT-5.3-Codex (코드 최적화)",
+				"gpt-5.5":           "GPT-5.5 (최신)",
+				"gpt-5.3-codex":     "GPT-5.3-Codex (코드 최적화)",
 				"gemini-pro-latest": "Gemini Pro (최신)",
-				"glm-5.1":         "GLM-5.1 (최신)",
-				"glm-4.7":         "GLM-4.7 (추론 특화)",
+				"glm-5.1":           "GLM-5.1 (최신)",
+				"glm-4.7":           "GLM-4.7 (추론 특화)",
 			},
 		},
 		"en": {
@@ -55,13 +55,13 @@ func GetMessages(lang string) *Messages {
 			YesLabel:          "Yes",
 			NoLabel:           "No",
 			ModelNames: map[string]string{
-				"claude-opus-4-7":  "Claude Opus 4.7 (Highest performance)",
+				"claude-opus-4-7":   "Claude Opus 4.7 (Highest performance)",
 				"claude-sonnet-4-6": "Claude Sonnet 4.6 (Balanced)",
-				"gpt-5.5":         "GPT-5.5 (Latest)",
-				"gpt-5.3-codex":   "GPT-5.3-Codex (Code-optimized)",
+				"gpt-5.5":           "GPT-5.5 (Latest)",
+				"gpt-5.3-codex":     "GPT-5.3-Codex (Code-optimized)",
 				"gemini-pro-latest": "Gemini Pro (Latest)",
-				"glm-5.1":         "GLM-5.1 (Latest)",
-				"glm-4.7":         "GLM-4.7 (Reasoning)",
+				"glm-5.1":           "GLM-5.1 (Latest)",
+				"glm-4.7":           "GLM-4.7 (Reasoning)",
 			},
 		},
 		"ja": {
@@ -75,13 +75,13 @@ func GetMessages(lang string) *Messages {
 			YesLabel:          "はい",
 			NoLabel:           "いいえ",
 			ModelNames: map[string]string{
-				"claude-opus-4-7":  "Claude Opus 4.7 (最高性能)",
+				"claude-opus-4-7":   "Claude Opus 4.7 (最高性能)",
 				"claude-sonnet-4-6": "Claude Sonnet 4.6 (バランス)",
-				"gpt-5.5":         "GPT-5.5 (最新)",
-				"gpt-5.3-codex":   "GPT-5.3-Codex (コード最適化)",
+				"gpt-5.5":           "GPT-5.5 (最新)",
+				"gpt-5.3-codex":     "GPT-5.3-Codex (コード最適化)",
 				"gemini-pro-latest": "Gemini Pro (最新)",
-				"glm-5.1":         "GLM-5.1 (最新)",
-				"glm-4.7":         "GLM-4.7 (推論特化)",
+				"glm-5.1":           "GLM-5.1 (最新)",
+				"glm-4.7":           "GLM-4.7 (推論特化)",
 			},
 		},
 		"zh": {
@@ -95,13 +95,13 @@ func GetMessages(lang string) *Messages {
 			YesLabel:          "是",
 			NoLabel:           "否",
 			ModelNames: map[string]string{
-				"claude-opus-4-7":  "Claude Opus 4.7 (最高性能)",
+				"claude-opus-4-7":   "Claude Opus 4.7 (最高性能)",
 				"claude-sonnet-4-6": "Claude Sonnet 4.6 (均衡)",
-				"gpt-5.5":         "GPT-5.5 (最新)",
-				"gpt-5.3-codex":   "GPT-5.3-Codex (代码优化)",
+				"gpt-5.5":           "GPT-5.5 (最新)",
+				"gpt-5.3-codex":     "GPT-5.3-Codex (代码优化)",
 				"gemini-pro-latest": "Gemini Pro (最新)",
-				"glm-5.1":         "GLM-5.1 (最新)",
-				"glm-4.7":         "GLM-4.7 (推理优化)",
+				"glm-5.1":           "GLM-5.1 (最新)",
+				"glm-4.7":           "GLM-4.7 (推理优化)",
 			},
 		},
 	}

@@ -279,18 +279,18 @@ func renderConstitutionTable(w io.Writer, entries []constitution.Rule) {
 // SPEC-V3R2-CON-002 implementation. Constitutional amendment via 5-layer safety gate.
 func newConstitutionAmendCmd() *cobra.Command {
 	var (
-		ruleIDFlag    string
-		beforeFlag    string
-		afterFlag     string
-		evidenceFlag  string
-		dryRunFlag    bool
-		dryRunEnv     = os.Getenv("MOAI_CONSTITUTION_DRY_RUN") == "true"
+		ruleIDFlag   string
+		beforeFlag   string
+		afterFlag    string
+		evidenceFlag string
+		dryRunFlag   bool
+		dryRunEnv    = os.Getenv("MOAI_CONSTITUTION_DRY_RUN") == "true"
 	)
 
 	cmd := &cobra.Command{
 		Use:   "amend",
 		Short: "Propose a constitutional amendment with 5-layer safety gate",
-		Long: "Execute constitutional amendment proposal. Must pass 5-layer safety gate (FrozenGuard → Canary → ContradictionDetector → RateLimiter → HumanOversight) to apply.",
+		Long:  "Execute constitutional amendment proposal. Must pass 5-layer safety gate (FrozenGuard → Canary → ContradictionDetector → RateLimiter → HumanOversight) to apply.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {

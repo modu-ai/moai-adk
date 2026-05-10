@@ -156,7 +156,7 @@ func resolveLimit(limit int) int {
 	return limit
 }
 
-	// Resolve queries @MX TAG based on Query.
+// Resolve queries @MX TAG based on Query.
 //
 // @MX:ANCHOR: [AUTO] Resolve — invariant contract of Query API entry point
 // @MX:REASON: fan_in >= 3 -- called by CLI mx_query.go, code map generation tools, evaluator (evaluator-active)

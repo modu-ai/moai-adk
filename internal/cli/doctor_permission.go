@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/permission"
+	"github.com/spf13/cobra"
 )
 
 var permissionCmd = &cobra.Command{
-	Use:     "permission",
-	Short:   "Diagnose permission resolution",
-	Long:    "Diagnose permission stack resolution with trace output and rule provenance.",
-	RunE:    runDoctorPermission,
+	Use:   "permission",
+	Short: "Diagnose permission resolution",
+	Long:  "Diagnose permission stack resolution with trace output and rule provenance.",
+	RunE:  runDoctorPermission,
 }
 
 func init() {
@@ -28,8 +28,9 @@ func init() {
 // runDoctorPermission executes the permission diagnostic workflow.
 //
 // Usage:
-//   moai doctor permission --tool Bash --input "go test ./..." --trace
-//   moai doctor permission --tool Write --input "/tmp/test.txt" --dry-run
+//
+//	moai doctor permission --tool Bash --input "go test ./..." --trace
+//	moai doctor permission --tool Write --input "/tmp/test.txt" --dry-run
 func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 	tool := getStringFlag(cmd, "tool")
 	input := getStringFlag(cmd, "input")

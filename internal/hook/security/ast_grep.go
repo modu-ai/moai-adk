@@ -177,9 +177,11 @@ func (s *astGrepScanner) Scan(ctx context.Context, filePath string, configPath s
 
 // @MX:WARN: [AUTO] Parallel file scan using goroutines — bounded by semaphore (SPEC-UTIL-002).
 // @MX:REASON: REQ-UTIL-002-007: ScanMultiple now caps concurrent Scan invocations at
-//   runtime.NumCPU()*2 via a buffered channel semaphore to prevent unbounded goroutine spawning.
-//   Context timeout propagates to individual Scan calls; wg.Wait remains blocking after context cancel
-//   but the semaphore prevents resource exhaustion on large file sets.
+//
+//	runtime.NumCPU()*2 via a buffered channel semaphore to prevent unbounded goroutine spawning.
+//	Context timeout propagates to individual Scan calls; wg.Wait remains blocking after context cancel
+//	but the semaphore prevents resource exhaustion on large file sets.
+//
 // ScanMultiple runs ast-grep scan on multiple files.
 // Implements REQ-HOOK-123, REQ-UTIL-002-007.
 func (s *astGrepScanner) ScanMultiple(ctx context.Context, filePaths []string, configPath string) ([]*ScanResult, error) {

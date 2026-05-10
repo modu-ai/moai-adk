@@ -16,7 +16,7 @@ import (
 // resetSGVersionCache は sgVersionOnce と sgVersionResult をリセットし、
 // defer で元の状態に戻すためのクリーンアップ関数を返します。
 func resetSGVersionCache(newExec func(string) (string, error)) func() {
-	origOnce := sgVersionOnce   // save pointer (not copy)
+	origOnce := sgVersionOnce // save pointer (not copy)
 	origResult := sgVersionResult
 	origExec := sgVersionExec
 

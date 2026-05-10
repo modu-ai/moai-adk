@@ -8,8 +8,8 @@ type UsageRecord struct {
 	Timestamp   time.Time `json:"ts"`
 	SessionID   string    `json:"session_id"`
 	SkillID     string    `json:"skill_id"`
-	Trigger     string    `json:"trigger"`       // "explicit" | "auto"
-	ContextHash string    `json:"context_hash"`  // SHA-256 first 8 chars (no PII)
+	Trigger     string    `json:"trigger"`      // "explicit" | "auto"
+	ContextHash string    `json:"context_hash"` // SHA-256 first 8 chars (no PII)
 	AgentType   string    `json:"agent_type"`
 	Phase       string    `json:"phase"` // plan|run|sync|none
 	DurationMs  int64     `json:"duration_ms"`

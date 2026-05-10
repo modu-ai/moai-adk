@@ -46,8 +46,8 @@ var commentPrefixes = map[string]string{
 	".scala": "//",
 
 	// R
-	".R":  "#",
-	".r":  "#",
+	".R": "#",
+	".r": "#",
 
 	// Flutter/Dart
 	".dart": "//",

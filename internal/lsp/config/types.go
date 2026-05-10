@@ -74,7 +74,7 @@ type ServersConfig struct {
 
 // Valid LSP client implementations (REQ-LC-010).
 const (
-	ClientImplGoplsBridge = "gopls_bridge"
+	ClientImplGoplsBridge  = "gopls_bridge"
 	ClientImplPowernapCore = "powernap_core"
 )
 

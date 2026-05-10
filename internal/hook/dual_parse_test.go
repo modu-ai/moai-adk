@@ -134,10 +134,10 @@ func TestValidateHookResponse_ContextTruncation(t *testing.T) {
 	const maxSize = 64 * 1024
 
 	tests := []struct {
-		name          string
-		contextSize   int
-		expectTrunc   bool
-		expectNotice  bool
+		name         string
+		contextSize  int
+		expectTrunc  bool
+		expectNotice bool
 	}{
 		{
 			name:        "under limit",
@@ -150,9 +150,9 @@ func TestValidateHookResponse_ContextTruncation(t *testing.T) {
 			expectTrunc: false,
 		},
 		{
-			name:        "over limit",
-			contextSize: maxSize + 1000,
-			expectTrunc: true,
+			name:         "over limit",
+			contextSize:  maxSize + 1000,
+			expectTrunc:  true,
 			expectNotice: true,
 		},
 	}
@@ -210,8 +210,8 @@ func TestToHookOutput_AllowDecision(t *testing.T) {
 func TestToHookOutput_ContinueFalse(t *testing.T) {
 	f := false
 	resp := &HookResponse{
-		Continue:       &f,
-		SystemMessage:  "Stopping execution",
+		Continue:      &f,
+		SystemMessage: "Stopping execution",
 	}
 
 	output := ToHookOutput(resp)
@@ -270,39 +270,39 @@ func TestToHookResponse_RoundTrip(t *testing.T) {
 
 func TestSynthesizeFromExitCode_AllCases(t *testing.T) {
 	tests := []struct {
-		name          string
-		exitCode      int
-		stderr        string
+		name           string
+		exitCode       int
+		stderr         string
 		expectDecision PermissionDecision
-		expectMessage string
+		expectMessage  string
 	}{
 		{
-			name:          "exit 0 - allow",
-			exitCode:      0,
-			stderr:        "",
+			name:           "exit 0 - allow",
+			exitCode:       0,
+			stderr:         "",
 			expectDecision: "",
-			expectMessage: "",
+			expectMessage:  "",
 		},
 		{
-			name:          "exit 2 - deny",
-			exitCode:      2,
-			stderr:        "Access denied",
+			name:           "exit 2 - deny",
+			exitCode:       2,
+			stderr:         "Access denied",
 			expectDecision: PermissionDecisionDeny,
-			expectMessage: "Access denied",
+			expectMessage:  "Access denied",
 		},
 		{
-			name:          "exit 1 - error",
-			exitCode:      1,
-			stderr:        "Hook failed",
+			name:           "exit 1 - error",
+			exitCode:       1,
+			stderr:         "Hook failed",
 			expectDecision: "",
-			expectMessage: "Hook failed",
+			expectMessage:  "Hook failed",
 		},
 		{
-			name:          "exit 3 - error",
-			exitCode:      3,
-			stderr:        "Unknown error",
+			name:           "exit 3 - error",
+			exitCode:       3,
+			stderr:         "Unknown error",
 			expectDecision: "",
-			expectMessage: "Unknown error",
+			expectMessage:  "Unknown error",
 		},
 	}
 

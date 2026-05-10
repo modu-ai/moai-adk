@@ -76,7 +76,6 @@ func TestElicitationResultHandler_Handle_ReturnsAllow(t *testing.T) {
 // --- fileChangedHandler ---
 // Tests moved to file_changed_test.go for better organization
 
-
 // --- genericHandler ---
 
 // TestGenericHandler_EventType returns the configured event type.

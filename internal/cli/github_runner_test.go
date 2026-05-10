@@ -116,4 +116,3 @@ func TestNewRunnerUpgradeCmd(t *testing.T) {
 		t.Errorf("Expected Use=%s, got %s", expectedUse, cmd.Use)
 	}
 }
-

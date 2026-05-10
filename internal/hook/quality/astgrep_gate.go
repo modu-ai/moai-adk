@@ -124,11 +124,11 @@ const astGrepScanTimeout = 30 * time.Second
 // REQ-UTIL-002-010/011
 type SuppressionViolation struct {
 	// Type is always "SUPPRESSION_WITHOUT_REASON".
-	Type    string `json:"type"`
+	Type string `json:"type"`
 	// File is the path of the file where the violation occurred.
-	File    string `json:"file"`
+	File string `json:"file"`
 	// Line is the 1-indexed line number.
-	Line    int    `json:"line"`
+	Line int `json:"line"`
 	// Message is a human-readable error message.
 	Message string `json:"message"`
 }

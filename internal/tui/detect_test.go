@@ -14,16 +14,16 @@ type staticEnv struct {
 	darkBg    bool
 }
 
-func (e staticEnv) NoColor() bool    { return e.noColor }
+func (e staticEnv) NoColor() bool     { return e.noColor }
 func (e staticEnv) MoaiTheme() string { return e.moaiTheme }
 func (e staticEnv) DetectDark() bool  { return e.darkBg }
 
 // TestResolve verifies Resolve priority chain: NO_COLOR > MOAI_THEME > DetectDark > default-dark.
 func TestResolve(t *testing.T) {
 	tests := []struct {
-		name        string
-		env         staticEnv
-		wantType    string // "monochrome", "light", "dark"
+		name     string
+		env      staticEnv
+		wantType string // "monochrome", "light", "dark"
 	}{
 		{
 			name:     "NO_COLOR=1 forces MonochromeTheme regardless of MOAI_THEME",
@@ -98,9 +98,9 @@ func TestResolve(t *testing.T) {
 // TestThemeResolve is the matrix from AC-CLI-TUI-012 (8 cases).
 func TestThemeResolve(t *testing.T) {
 	tests := []struct {
-		name        string
-		env         staticEnv
-		wantType    string
+		name     string
+		env      staticEnv
+		wantType string
 	}{
 		{"1 unset unset light-bg", staticEnv{false, "", false}, "light"},
 		{"2 unset unset dark-bg", staticEnv{false, "", true}, "dark"},

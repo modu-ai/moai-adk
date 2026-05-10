@@ -172,13 +172,13 @@ func TestEnsureTmuxGLMEnv_HandlesTmuxBinaryMissing(t *testing.T) {
 	settings := map[string]any{
 		"teammateMode": "tmux",
 		"env": map[string]string{
-			"ANTHROPIC_AUTH_TOKEN":                     "test-token",
-			"ANTHROPIC_BASE_URL":                       "https://api.z.ai/api/anthropic",
-			"ANTHROPIC_DEFAULT_OPUS_MODEL":             "glm-5.1",
-			"ANTHROPIC_DEFAULT_SONNET_MODEL":           "glm-4.7",
-			"ANTHROPIC_DEFAULT_HAIKU_MODEL":            "glm-4.7-flash",
-			"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-			"DISABLE_PROMPT_CACHING":                   "1",
+			"ANTHROPIC_AUTH_TOKEN":                   "test-token",
+			"ANTHROPIC_BASE_URL":                     "https://api.z.ai/api/anthropic",
+			"ANTHROPIC_DEFAULT_OPUS_MODEL":           "glm-5.1",
+			"ANTHROPIC_DEFAULT_SONNET_MODEL":         "glm-4.7",
+			"ANTHROPIC_DEFAULT_HAIKU_MODEL":          "glm-4.7-flash",
+			"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+			"DISABLE_PROMPT_CACHING":                 "1",
 		},
 	}
 	data, _ := json.MarshalIndent(settings, "", "  ")

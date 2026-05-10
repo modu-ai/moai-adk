@@ -84,72 +84,72 @@ func TestPermissionMode_IsValid(t *testing.T) {
 
 func TestPermissionRule_Matches(t *testing.T) {
 	tests := []struct {
-		name   string
-		rule   PermissionRule
-		tool   string
-		input  string
-		match  bool
+		name  string
+		rule  PermissionRule
+		tool  string
+		input string
+		match bool
 	}{
 		{
-			name: "wildcard pattern matches all",
-			rule: PermissionRule{Pattern: "*"},
-			tool: "Bash",
+			name:  "wildcard pattern matches all",
+			rule:  PermissionRule{Pattern: "*"},
+			tool:  "Bash",
 			input: "go test",
 			match: true,
 		},
 		{
-			name: "exact tool match",
-			rule: PermissionRule{Pattern: "Read(*)"},
-			tool: "Read",
+			name:  "exact tool match",
+			rule:  PermissionRule{Pattern: "Read(*)"},
+			tool:  "Read",
 			input: "/path/to/file",
 			match: true,
 		},
 		{
-			name: "tool mismatch",
-			rule: PermissionRule{Pattern: "Read(*)"},
-			tool: "Write",
+			name:  "tool mismatch",
+			rule:  PermissionRule{Pattern: "Read(*)"},
+			tool:  "Write",
 			input: "/path/to/file",
 			match: false,
 		},
 		{
-			name: "Bash go test pattern matches",
-			rule: PermissionRule{Pattern: "Bash(go test:*)"},
-			tool: "Bash",
+			name:  "Bash go test pattern matches",
+			rule:  PermissionRule{Pattern: "Bash(go test:*)"},
+			tool:  "Bash",
 			input: "go test ./...",
 			match: true,
 		},
 		{
-			name: "Bash go test pattern does not match other bash",
-			rule: PermissionRule{Pattern: "Bash(go test:*)"},
-			tool: "Bash",
+			name:  "Bash go test pattern does not match other bash",
+			rule:  PermissionRule{Pattern: "Bash(go test:*)"},
+			tool:  "Bash",
 			input: "rm -rf /",
 			match: false,
 		},
 		{
-			name: "prefix glob pattern",
-			rule: PermissionRule{Pattern: "Write(/tmp/*)"},
-			tool: "Write",
+			name:  "prefix glob pattern",
+			rule:  PermissionRule{Pattern: "Write(/tmp/*)"},
+			tool:  "Write",
 			input: "/tmp/test.txt",
 			match: true,
 		},
 		{
-			name: "prefix glob pattern no match",
-			rule: PermissionRule{Pattern: "Write(/tmp/*)"},
-			tool: "Write",
+			name:  "prefix glob pattern no match",
+			rule:  PermissionRule{Pattern: "Write(/tmp/*)"},
+			tool:  "Write",
 			input: "/home/test.txt",
 			match: false,
 		},
 		{
-			name: "suffix glob pattern",
-			rule: PermissionRule{Pattern: "Read(*.go)"},
-			tool: "Read",
+			name:  "suffix glob pattern",
+			rule:  PermissionRule{Pattern: "Read(*.go)"},
+			tool:  "Read",
 			input: "main.go",
 			match: true,
 		},
 		{
-			name: "suffix glob pattern no match",
-			rule: PermissionRule{Pattern: "Read(*.go)"},
-			tool: "Read",
+			name:  "suffix glob pattern no match",
+			rule:  PermissionRule{Pattern: "Read(*.go)"},
+			tool:  "Read",
 			input: "main.py",
 			match: false,
 		},
@@ -207,10 +207,10 @@ func TestPreAllowlist(t *testing.T) {
 
 func TestIsWriteOperation(t *testing.T) {
 	tests := []struct {
-		name     string
-		tool     string
-		input    string
-		isWrite  bool
+		name    string
+		tool    string
+		input   string
+		isWrite bool
 	}{
 		{
 			name:    "Write tool is write",

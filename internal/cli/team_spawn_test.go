@@ -90,12 +90,12 @@ func TestValidateSpawn(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		role       string
-		isolation  string
-		wantErr    bool
-		errMsg     string
-		acCheck    string // acceptance criteria
+		name      string
+		role      string
+		isolation string
+		wantErr   bool
+		errMsg    string
+		acCheck   string // acceptance criteria
 	}{
 		{
 			name:      "write-heavy with worktree passes",
@@ -156,38 +156,38 @@ func TestValidateSpawn(t *testing.T) {
 // TestValidateRoster tests team roster size validation.
 func TestValidateRoster(t *testing.T) {
 	tests := []struct {
-		name        string
-		roster      []string
+		name         string
+		roster       []string
 		maxTeammates int
-		wantErr     bool
-		errMsg      string
-		acCheck     string
+		wantErr      bool
+		errMsg       string
+		acCheck      string
 	}{
 		{
-			name:        "within limit passes",
-			roster:      []string{"researcher", "analyst", "architect"},
+			name:         "within limit passes",
+			roster:       []string{"researcher", "analyst", "architect"},
 			maxTeammates: 10,
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "exactly at limit passes",
-			roster:      make([]string, 10),
+			name:         "exactly at limit passes",
+			roster:       make([]string, 10),
 			maxTeammates: 10,
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "exceeds limit fails",
-			roster:      make([]string, 11),
+			name:         "exceeds limit fails",
+			roster:       make([]string, 11),
 			maxTeammates: 10,
-			wantErr:     true,
-			errMsg:      ErrORCTeamRosterLimit,
-			acCheck:     "AC-09",
+			wantErr:      true,
+			errMsg:       ErrORCTeamRosterLimit,
+			acCheck:      "AC-09",
 		},
 		{
-			name:        "empty roster passes",
-			roster:      []string{},
+			name:         "empty roster passes",
+			roster:       []string{},
 			maxTeammates: 10,
-			wantErr:     false,
+			wantErr:      false,
 		},
 	}
 
@@ -314,10 +314,10 @@ func TestMailboxMessageRoundTrip(t *testing.T) {
 // TestMailboxMessageDefaultType tests default type behavior.
 func TestMailboxMessageDefaultType(t *testing.T) {
 	tests := []struct {
-		name       string
-		msgType    string
-		wantType   string
-		acCheck    string
+		name     string
+		msgType  string
+		wantType string
+		acCheck  string
 	}{
 		{
 			name:     "empty type defaults to message",
@@ -722,4 +722,3 @@ role_profiles:
 		t.Error("tester should be write-heavy")
 	}
 }
-

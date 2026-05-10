@@ -20,23 +20,25 @@ MoAI's three-phase development workflow with token budget management.
 
 [HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location (main checkout vs SPEC worktree), branch convention, and PR merge strategy.
 
-| Step | Location        | Command                                                                 | Branch                                       | PR strategy | Lifecycle event              |
-|------|-----------------|-------------------------------------------------------------------------|----------------------------------------------|-------------|------------------------------|
-| 1    | main checkout   | `/moai plan SPEC-XXX`                                                   | `plan/SPEC-XXX`                              | squash      | plan PR merged into main     |
-| 2    | SPEC worktree   | `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX` | `feat/SPEC-XXX`                              | squash      | run PR merged into main      |
-| 3    | SPEC worktree   | `/moai sync SPEC-XXX` (same worktree as Step 2)                         | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`)   | squash      | sync PR merged into main     |
-| 4    | host checkout   | `moai worktree done SPEC-XXX`                                           | n/a                                          | n/a         | worktree disposed            |
+| Step | Location                      | Command                                                                    | Branch                                       | PR strategy | Lifecycle event              |
+|------|-------------------------------|----------------------------------------------------------------------------|----------------------------------------------|-------------|------------------------------|
+| 1a   | main checkout (default)       | `/moai plan SPEC-XXX`                                                      | `plan/SPEC-XXX`                              | squash      | plan PR merged into main     |
+| 1b   | SPEC worktree (`--worktree`)  | `/moai plan SPEC-XXX --worktree` → spec created in worktree                | `feat/SPEC-XXX`                              | squash      | plan PR merged into main     |
+| 2    | SPEC worktree                 | `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX`  | `feat/SPEC-XXX`                              | squash      | run PR merged into main      |
+| 3    | SPEC worktree                 | `/moai sync SPEC-XXX` (same worktree as Step 2)                            | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`)   | squash      | sync PR merged into main     |
+| 4    | host checkout                 | `moai worktree done SPEC-XXX`                                              | n/a                                          | n/a         | worktree disposed            |
 
 [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout. NO worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
-- Step 2 (run) MUST create a fresh worktree from the plan-merged main HEAD (`--base origin/main`). The worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
+- Step 1a (plan, default): Plan executes in main checkout. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
+- Step 1b (plan, `--worktree`): When `--worktree` flag is provided, plan executes entirely inside the worktree. This enables full isolation for parallel SPEC development — each SPEC gets its own worktree from the start. Plan PR is squash-merged from the worktree branch. After merge, Step 2 reuses the SAME worktree (base alignment via `git merge origin/main` after plan PR merge).
+- Step 2 (run) MUST execute in a SPEC worktree. For Step 1a path: create fresh worktree from plan-merged main HEAD (`--base origin/main`). For Step 1b path: reuse the existing worktree with `git merge origin/main` to incorporate the merged plan. The worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
 - Step 3 (sync) MUST reuse the SAME worktree as Step 2. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh worktree at sync would lose run-state context.
 - Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3.
 
 [HARD] Anti-patterns:
-- Creating a worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
-- Stacking plan + run in the same worktree. Once the plan PR merges, the worktree base becomes stale; subsequent run work either rebases (extra cost) or proceeds against a stale tree (correctness risk).
+- Stacking plan + run in the same worktree WITHOUT `--worktree` flag. The default path (1a → 2) creates a fresh worktree at run start; mixing the two paths causes base misalignment.
 - Disposing the worktree after run merge but before sync merge. Sync re-enters the tree with codemap / MX / docs writes; the host checkout cannot stand in for a disposed worktree.
+- Creating a worktree for plan (Step 1b) and then creating ANOTHER worktree for run (Step 2). The `--worktree` path reuses the same worktree across all steps.
 
 Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SPEC-to-Worktree Mapping for per-step worktree applicability and decision tree.
 
@@ -109,7 +111,7 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 ## Plan Phase
 
-[HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
+[HARD] Default: Execute in main checkout (Step 1a). With `--worktree` flag: Execute in SPEC worktree (Step 1b). See § SPEC Phase Discipline.
 
 Create comprehensive specification using EARS format.
 

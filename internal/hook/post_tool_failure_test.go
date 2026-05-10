@@ -19,10 +19,10 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name            string
-		input           *HookInput
+		name             string
+		input            *HookInput
 		expectedCategory ErrorCategory
-		wantMessage     bool
+		wantMessage      bool
 	}{
 		{
 			name: "timeout error",
@@ -35,7 +35,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: TimeoutError,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
 			name: "permission denied",
@@ -48,7 +48,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: PermissionDenied,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
 			name: "context cancelled",
@@ -61,7 +61,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: ContextCancelled,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
 			name: "sandbox violation",
@@ -74,7 +74,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: SandboxViolation,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
 			name: "oom killed",
@@ -87,7 +87,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: OOMKilled,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
 			name: "exit error",
@@ -100,7 +100,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: ExitError,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
 			name: "unknown failure",
@@ -113,10 +113,10 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: UnknownFailure,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 		{
-			name:  "empty error",
+			name: "empty error",
 			input: &HookInput{
 				SessionID:     "sess-008",
 				ToolName:      "Bash",
@@ -124,7 +124,7 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 				HookEventName: "PostToolUseFailure",
 			},
 			expectedCategory: UnknownFailure,
-			wantMessage:     true,
+			wantMessage:      true,
 		},
 	}
 

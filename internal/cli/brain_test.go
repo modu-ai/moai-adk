@@ -178,10 +178,10 @@ func TestBrainCmd_GroupID(t *testing.T) {
 // Table-driven: various idea inputs should all produce /moai brain guidance.
 func TestBrainCmd_VariousIdeaInputs(t *testing.T) {
 	tests := []struct {
-		name           string
-		args           []string
-		wantSubstring  string
-		wantNoError    bool
+		name          string
+		args          []string
+		wantSubstring string
+		wantNoError   bool
 	}{
 		{
 			name:          "english idea",

@@ -75,4 +75,3 @@ func TestCircuitStateIsValid(t *testing.T) {
 		})
 	}
 }
-

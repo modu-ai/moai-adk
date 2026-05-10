@@ -15,20 +15,20 @@ type categoryValidator func(tokenPath string, value any) error
 // @MX:ANCHOR: [AUTO] Validate dispatch core map - fan_in increase expected
 // @MX:REASON: All category validations dispatch through this map (covers entire DTCG §8)
 var categoryValidators = map[string]categoryValidator{
-	"color":        categories.ValidateColor,
-	"dimension":    categories.ValidateDimension,
-	"fontFamily":   categories.ValidateFontFamily,
-	"fontWeight":   categories.ValidateFontWeight,
-	"font":         categories.ValidateFont,
-	"typography":   categories.ValidateTypography,
-	"duration":     categories.ValidateDuration,
-	"cubicBezier":  categories.ValidateCubicBezier,
-	"number":       categories.ValidateNumber,
-	"strokeStyle":  categories.ValidateStrokeStyle,
-	"border":       categories.ValidateBorder,
-	"transition":   categories.ValidateTransition,
-	"shadow":       categories.ValidateShadow,
-	"gradient":     categories.ValidateGradient,
+	"color":       categories.ValidateColor,
+	"dimension":   categories.ValidateDimension,
+	"fontFamily":  categories.ValidateFontFamily,
+	"fontWeight":  categories.ValidateFontWeight,
+	"font":        categories.ValidateFont,
+	"typography":  categories.ValidateTypography,
+	"duration":    categories.ValidateDuration,
+	"cubicBezier": categories.ValidateCubicBezier,
+	"number":      categories.ValidateNumber,
+	"strokeStyle": categories.ValidateStrokeStyle,
+	"border":      categories.ValidateBorder,
+	"transition":  categories.ValidateTransition,
+	"shadow":      categories.ValidateShadow,
+	"gradient":    categories.ValidateGradient,
 }
 
 // Validate: Validates entire token map according to DTCG 2025.10 spec.

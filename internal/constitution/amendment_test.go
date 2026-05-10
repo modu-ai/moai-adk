@@ -97,7 +97,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 		{
 			name: "Empty ID",
 			log: AmendmentLog{
-				RuleID:     "CONST-V3R2-008",
+				RuleID:       "CONST-V3R2-008",
 				ClauseBefore: "Old",
 				ClauseAfter:  "New",
 				ApprovedBy:   "human",
@@ -108,7 +108,7 @@ func TestAmendmentLog_Validate(t *testing.T) {
 		{
 			name: "Empty RuleID",
 			log: AmendmentLog{
-				ID:          "LEARN-20260428-001",
+				ID:           "LEARN-20260428-001",
 				ClauseBefore: "Old",
 				ClauseAfter:  "New",
 				ApprovedBy:   "human",
@@ -178,7 +178,7 @@ func TestGenerateLogID(t *testing.T) {
 		},
 		{
 			name: "Second log on same date",
-			now: now,
+			now:  now,
 			lastLogs: []AmendmentLog{
 				{ID: "LEARN-20260428-001"},
 			},
@@ -186,7 +186,7 @@ func TestGenerateLogID(t *testing.T) {
 		},
 		{
 			name: "After sequence 009",
-			now: now,
+			now:  now,
 			lastLogs: []AmendmentLog{
 				{ID: "LEARN-20260428-009"},
 			},
@@ -194,7 +194,7 @@ func TestGenerateLogID(t *testing.T) {
 		},
 		{
 			name: "First log on different date",
-			now: time.Date(2026, 4, 29, 0, 0, 0, 0, time.UTC),
+			now:  time.Date(2026, 4, 29, 0, 0, 0, 0, time.UTC),
 			lastLogs: []AmendmentLog{
 				{ID: "LEARN-20260428-009"},
 			},

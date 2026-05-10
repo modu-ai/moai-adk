@@ -229,10 +229,10 @@ func TestWorkspaceInfo_UnmarshalJSON_GitWorktree(t *testing.T) {
 // REQ-CC2122-003: both absent → silent omit
 func TestStdinData_UnmarshalJSON_EffortThinking(t *testing.T) {
 	tests := []struct {
-		name          string
-		input         string
-		wantEffort    *EffortInfo
-		wantThinking  *ThinkingInfo
+		name         string
+		input        string
+		wantEffort   *EffortInfo
+		wantThinking *ThinkingInfo
 	}{
 		{
 			name:         "effort level present: high",

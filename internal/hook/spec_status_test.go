@@ -35,9 +35,9 @@ func TestSpecStatusHandler_PostToolUse(t *testing.T) {
 	commitMsg := "feat(SPEC-HOOK-001): Implement feature"
 	input := &HookInput{
 		SessionID:     "test-session",
-		ProjectDir:   tmpDir,
+		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:         buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
+		Data:          buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
 	}
 
 	ctx := context.Background()
@@ -96,9 +96,9 @@ func TestSpecStatusHandler_MultipleSPECs(t *testing.T) {
 	commitMsg := "feat(SPEC-MULTI-001, SPEC-MULTI-002): Implement features"
 	input := &HookInput{
 		SessionID:     "test-session",
-		ProjectDir:   tmpDir,
+		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:         buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
+		Data:          buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
 	}
 
 	ctx := context.Background()
@@ -147,9 +147,9 @@ func TestSpecStatusHandler_NonGitCommand(t *testing.T) {
 
 	input := &HookInput{
 		SessionID:     "test-session",
-		ProjectDir:   tmpDir,
+		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:         buildHookData("Bash", "go test ./..."),
+		Data:          buildHookData("Bash", "go test ./..."),
 	}
 
 	ctx := context.Background()
@@ -174,9 +174,9 @@ func TestSpecStatusHandler_NoSpecsDirectory(t *testing.T) {
 
 	input := &HookInput{
 		SessionID:     "test-session",
-		ProjectDir:   tmpDir,
+		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:         buildHookData("Bash", "git commit -m 'feat(SPEC-NOEXIST-001): test'"),
+		Data:          buildHookData("Bash", "git commit -m 'feat(SPEC-NOEXIST-001): test'"),
 	}
 
 	ctx := context.Background()
@@ -195,34 +195,34 @@ func TestSpecStatusHandler_NoSpecsDirectory(t *testing.T) {
 // TestExtractSPECIDs tests the SPEC-ID extraction pattern
 func TestExtractSPECIDs(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		commitMsg string
-		expected []string
+		expected  []string
 	}{
 		{
-			name:     "single SPEC",
+			name:      "single SPEC",
 			commitMsg: "feat(SPEC-TEST-001): Implement feature",
-			expected: []string{"SPEC-TEST-001"},
+			expected:  []string{"SPEC-TEST-001"},
 		},
 		{
-			name:     "multiple SPECs",
+			name:      "multiple SPECs",
 			commitMsg: "feat(SPEC-TEST-001, SPEC-AUTH-002): Implement features",
-			expected: []string{"SPEC-TEST-001", "SPEC-AUTH-002"},
+			expected:  []string{"SPEC-TEST-001", "SPEC-AUTH-002"},
 		},
 		{
-			name:     "SPEC with dash in name",
+			name:      "SPEC with dash in name",
 			commitMsg: "feat(SPEC-V3R2-CON-001): Add constitution",
-			expected: []string{"SPEC-V3R2-CON-001"},
+			expected:  []string{"SPEC-V3R2-CON-001"},
 		},
 		{
-			name:     "no SPEC patterns",
+			name:      "no SPEC patterns",
 			commitMsg: "feat: add some feature",
-			expected: nil,
+			expected:  nil,
 		},
 		{
-			name:     "conventional commit without SPEC",
+			name:      "conventional commit without SPEC",
 			commitMsg: "fix(auth): handle edge case",
-			expected: nil,
+			expected:  nil,
 		},
 	}
 

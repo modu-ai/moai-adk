@@ -294,12 +294,12 @@ type QualityGateEnforcer interface {
 // It mirrors models.LSPQualityGates so callers in this package have a local type
 // without a hard dependency on pkg/models in every file.
 type LSPQualityGatesConfig struct {
-	Enabled         bool               `json:"enabled"`
-	Plan            LSPPlanGateConfig  `json:"plan"`
-	Run             LSPRunGateConfig   `json:"run"`
-	Sync            LSPSyncGateConfig  `json:"sync"`
-	CacheTTLSeconds int                `json:"cacheTTLSeconds"`
-	TimeoutSeconds  int                `json:"timeoutSeconds"`
+	Enabled         bool              `json:"enabled"`
+	Plan            LSPPlanGateConfig `json:"plan"`
+	Run             LSPRunGateConfig  `json:"run"`
+	Sync            LSPSyncGateConfig `json:"sync"`
+	CacheTTLSeconds int               `json:"cacheTTLSeconds"`
+	TimeoutSeconds  int               `json:"timeoutSeconds"`
 }
 
 // LSPPlanGateConfig holds plan-phase gate settings.

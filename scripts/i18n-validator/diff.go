@@ -218,4 +218,3 @@ func getBaselineContent(dir, rev, relFile string) ([]byte, error) {
 	}
 	return out, nil
 }
-

@@ -122,7 +122,7 @@ func ToHookOutput(resp *HookResponse) *HookOutput {
 	}
 
 	output := &HookOutput{
-		SystemMessage: resp.SystemMessage,
+		SystemMessage:  resp.SystemMessage,
 		SuppressOutput: false, // Not mapped in HookResponse
 	}
 
@@ -141,10 +141,10 @@ func ToHookOutput(resp *HookResponse) *HookOutput {
 	// Map PermissionDecision to HookSpecificOutput
 	if resp.PermissionDecision != "" || resp.AdditionalContext != "" || len(resp.UpdatedInput) > 0 {
 		output.HookSpecificOutput = &HookSpecificOutput{
-			HookEventName:            "", // Will be set by caller based on event type
-			PermissionDecision:       string(resp.PermissionDecision),
-			AdditionalContext:        resp.AdditionalContext,
-			UpdatedInput:             resp.UpdatedInput,
+			HookEventName:      "", // Will be set by caller based on event type
+			PermissionDecision: string(resp.PermissionDecision),
+			AdditionalContext:  resp.AdditionalContext,
+			UpdatedInput:       resp.UpdatedInput,
 		}
 	}
 

@@ -172,10 +172,10 @@ func TestIsExpired(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		maxMinutes     int
-		startedAgo     time.Duration
-		wantExpired    bool
+		name        string
+		maxMinutes  int
+		startedAgo  time.Duration
+		wantExpired bool
 	}{
 		{
 			name:        "no limit, never expires",

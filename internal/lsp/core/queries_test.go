@@ -21,12 +21,12 @@ import (
 // fakeQueryTransport records Call responses and Notify calls and supports
 // OnNotification handlers.
 type fakeQueryTransport struct {
-	mu               sync.Mutex
-	callLog          []string
-	notifyLog        []string
-	closed           bool
-	callResponses    map[string]callResponse
-	notifHandlers    map[string]func(json.RawMessage)
+	mu            sync.Mutex
+	callLog       []string
+	notifyLog     []string
+	closed        bool
+	callResponses map[string]callResponse
+	notifHandlers map[string]func(json.RawMessage)
 }
 
 func newFakeQueryTransport() *fakeQueryTransport {

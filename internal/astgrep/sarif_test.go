@@ -116,7 +116,7 @@ func TestToSARIF_SeverityMapping(t *testing.T) {
 		{"error", "error"},
 		{"warning", "warning"},
 		{"info", "note"},
-		{"", "note"},  // empty string → note (SARIF default)
+		{"", "note"}, // empty string → note (SARIF default)
 	}
 
 	for _, tt := range tests {
@@ -475,13 +475,13 @@ func TestSARIF_BackwardCompatibility(t *testing.T) {
 func TestToSARIF_RoundTrip(t *testing.T) {
 	findings := []astgrep.Finding{
 		{
-			RuleID:   "test-rule-1",
-			Severity: "error",
-			Message:  "첫 번째 테스트 규칙",
-			File:     "file1.go",
-			Line:     10,
-			Column:   5,
-			EndLine:  10,
+			RuleID:    "test-rule-1",
+			Severity:  "error",
+			Message:   "첫 번째 테스트 규칙",
+			File:      "file1.go",
+			Line:      10,
+			Column:    5,
+			EndLine:   10,
 			EndColumn: 20,
 		},
 		{

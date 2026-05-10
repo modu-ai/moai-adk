@@ -221,8 +221,8 @@ func TestMergeAll_PolicyOverrideRejected(t *testing.T) {
 
 	tiers := map[Source]map[string]any{
 		SrcPolicy: {
-			"policy.strict_mode":            true,
-			"permission.network_allowlist":   []string{"host1"},
+			"policy.strict_mode":           true,
+			"permission.network_allowlist": []string{"host1"},
 		},
 		SrcProject: {
 			"permission.network_allowlist": []string{"host1", "host2"}, // attempted override
@@ -267,7 +267,7 @@ func TestMergeAll_OverriddenByPopulated(t *testing.T) {
 
 	tiers := map[Source]map[string]any{
 		SrcPolicy:  {"test.key": true},
-		SrcUser:    {"test.key": false},  // false is zero for bool → should be excluded
+		SrcUser:    {"test.key": false}, // false is zero for bool → should be excluded
 		SrcProject: {"test.key": "project_value"},
 	}
 	origins := map[Source]string{
@@ -324,7 +324,7 @@ func TestMergeAll_ZeroValuesExcluded(t *testing.T) {
 
 	tiers := map[Source]map[string]any{
 		SrcPolicy:  {"perm.mode": "strict"},
-		SrcUser:    {"perm.mode": ""},        // empty string = zero
+		SrcUser:    {"perm.mode": ""}, // empty string = zero
 		SrcProject: {"perm.mode": "lenient"},
 	}
 	origins := map[Source]string{
@@ -402,7 +402,7 @@ func TestMergeAll_StrictModeFalseAllowsOverride(t *testing.T) {
 
 	tiers := map[Source]map[string]any{
 		SrcPolicy: {
-			"policy.strict_mode":          false, // strict mode disabled
+			"policy.strict_mode":           false, // strict mode disabled
 			"permission.network_allowlist": []string{"host1"},
 		},
 		SrcProject: {

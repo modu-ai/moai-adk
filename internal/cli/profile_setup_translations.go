@@ -52,12 +52,12 @@ type profileSetupText struct {
 	// Permission mode (replaces legacy bypass)
 	PermissionModeTitle string
 	PermissionModeDesc  string
-	PermDefault     string
-	PermAcceptEdits string
-	PermPlan        string
-	PermAuto        string
-	PermBypass      string
-	PermDontAsk     string
+	PermDefault         string
+	PermAcceptEdits     string
+	PermPlan            string
+	PermAuto            string
+	PermBypass          string
+	PermDontAsk         string
 
 	// Section: Display
 	DisplayTitle string
@@ -140,14 +140,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		EffortLevelHigh:      "high - deep reasoning",
 		EffortLevelXHigh:     "xhigh - extended reasoning (Opus 4.7+)",
 		EffortLevelMax:       "max - maximum effort (Opus 4.7+)",
-		PermissionModeTitle: "Permission mode",
-		PermissionModeDesc:  "Controls how Claude asks for permission before taking actions.",
-		PermAcceptEdits:     "Auto accept edits - Auto-accept file edits, ask for commands",
-		PermDefault:         "Ask permissions - Prompt for file edits and commands",
-		PermPlan:            "Plan mode - Read-only exploration and planning",
-		PermAuto:            "Auto mode (auto) - Classifier-gated approvals. REQUIRES Max/Team/Enterprise/API plan + Sonnet 4.6+. Session errors at runtime if unsupported.",
-		PermBypass:          "Bypass permissions - Skip all checks (isolated environments only)",
-		PermDontAsk:         "Don't ask - Only pre-approved tools (CI/locked-down environments)",
+		PermissionModeTitle:  "Permission mode",
+		PermissionModeDesc:   "Controls how Claude asks for permission before taking actions.",
+		PermAcceptEdits:      "Auto accept edits - Auto-accept file edits, ask for commands",
+		PermDefault:          "Ask permissions - Prompt for file edits and commands",
+		PermPlan:             "Plan mode - Read-only exploration and planning",
+		PermAuto:             "Auto mode (auto) - Classifier-gated approvals. REQUIRES Max/Team/Enterprise/API plan + Sonnet 4.6+. Session errors at runtime if unsupported.",
+		PermBypass:           "Bypass permissions - Skip all checks (isolated environments only)",
+		PermDontAsk:          "Don't ask - Only pre-approved tools (CI/locked-down environments)",
 		DisplayTitle:         "Display",
 		StatuslineModeTitle:  "Statusline display mode",
 		StatuslineModeDesc:   "Controls the layout style of the statusline.",
@@ -216,14 +216,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		EffortLevelHigh:      "high - 심층 추론",
 		EffortLevelXHigh:     "xhigh - 확장 추론 (Opus 4.7+)",
 		EffortLevelMax:       "max - 최대 추론 (Opus 4.7+)",
-		PermissionModeTitle: "권한 모드",
-		PermissionModeDesc:  "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.",
-		PermAcceptEdits:     "자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인",
-		PermDefault:         "권한 요청 (default) - 파일 편집과 명령어에 대해 매번 확인",
-		PermPlan:            "계획 모드 (plan) - 읽기 전용 탐색 및 계획",
-		PermAuto:            "자동 모드 (auto) - 분류기 기반 자동 승인. Max/Team/Enterprise/API 플랜 + Sonnet 4.6+ 필수. 미지원 환경에서는 런타임 오류 발생.",
-		PermBypass:          "권한 건너뛰기 (bypassPermissions) - 모든 검사 생략 (격리된 환경 전용)",
-		PermDontAsk:         "묻지 않기 (dontAsk) - 사전 승인된 도구만 사용 (CI/잠금 환경)",
+		PermissionModeTitle:  "권한 모드",
+		PermissionModeDesc:   "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.",
+		PermAcceptEdits:      "자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인",
+		PermDefault:          "권한 요청 (default) - 파일 편집과 명령어에 대해 매번 확인",
+		PermPlan:             "계획 모드 (plan) - 읽기 전용 탐색 및 계획",
+		PermAuto:             "자동 모드 (auto) - 분류기 기반 자동 승인. Max/Team/Enterprise/API 플랜 + Sonnet 4.6+ 필수. 미지원 환경에서는 런타임 오류 발생.",
+		PermBypass:           "권한 건너뛰기 (bypassPermissions) - 모든 검사 생략 (격리된 환경 전용)",
+		PermDontAsk:          "묻지 않기 (dontAsk) - 사전 승인된 도구만 사용 (CI/잠금 환경)",
 		DisplayTitle:         "화면 표시",
 		StatuslineModeTitle:  "상태줄 표시 모드",
 		StatuslineModeDesc:   "상태줄의 레이아웃 스타일을 제어합니다.",
@@ -292,14 +292,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		EffortLevelHigh:      "high - 深い推論",
 		EffortLevelXHigh:     "xhigh - 拡張推論 (Opus 4.7+)",
 		EffortLevelMax:       "max - 最大推論 (Opus 4.7+)",
-		PermissionModeTitle: "権限モード",
-		PermissionModeDesc:  "Claudeがアクション実行前に権限を要求する方法を制御します。",
-		PermAcceptEdits:     "編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認",
-		PermDefault:         "権限を確認 (default) - ファイル編集とコマンドの都度確認",
-		PermPlan:            "プランモード (plan) - 読み取り専用の探索と計画",
-		PermAuto:            "オートモード (auto) - 分類器による自動承認。Max/Team/Enterprise/APIプラン + Sonnet 4.6+ 必須。未対応環境では実行時エラーが発生します。",
-		PermBypass:          "権限スキップ (bypassPermissions) - 全チェックを省略（隔離環境専用）",
-		PermDontAsk:         "確認しない (dontAsk) - 事前承認済みツールのみ（CI/制限環境）",
+		PermissionModeTitle:  "権限モード",
+		PermissionModeDesc:   "Claudeがアクション実行前に権限を要求する方法を制御します。",
+		PermAcceptEdits:      "編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認",
+		PermDefault:          "権限を確認 (default) - ファイル編集とコマンドの都度確認",
+		PermPlan:             "プランモード (plan) - 読み取り専用の探索と計画",
+		PermAuto:             "オートモード (auto) - 分類器による自動承認。Max/Team/Enterprise/APIプラン + Sonnet 4.6+ 必須。未対応環境では実行時エラーが発生します。",
+		PermBypass:           "権限スキップ (bypassPermissions) - 全チェックを省略（隔離環境専用）",
+		PermDontAsk:          "確認しない (dontAsk) - 事前承認済みツールのみ（CI/制限環境）",
 		DisplayTitle:         "表示設定",
 		StatuslineModeTitle:  "ステータスライン表示モード",
 		StatuslineModeDesc:   "ステータスラインのレイアウトスタイルを制御します。",
@@ -368,14 +368,14 @@ var profileSetupTexts = map[string]profileSetupText{
 		EffortLevelHigh:      "high - 深度推理",
 		EffortLevelXHigh:     "xhigh - 扩展推理 (Opus 4.7+)",
 		EffortLevelMax:       "max - 最大推理 (Opus 4.7+)",
-		PermissionModeTitle: "权限模式",
-		PermissionModeDesc:  "控制Claude在执行操作前如何请求权限。",
-		PermAcceptEdits:     "自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令",
-		PermDefault:         "请求权限 (default) - 每次文件编辑和命令都需确认",
-		PermPlan:            "计划模式 (plan) - 只读探索和规划",
-		PermAuto:            "自动模式 (auto) - 分类器把关自动批准。需要 Max/Team/Enterprise/API 计划 + Sonnet 4.6+。不支持时会产生运行时错误。",
-		PermBypass:          "跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）",
-		PermDontAsk:         "不询问 (dontAsk) - 仅预批准工具（CI/锁定环境）",
+		PermissionModeTitle:  "权限模式",
+		PermissionModeDesc:   "控制Claude在执行操作前如何请求权限。",
+		PermAcceptEdits:      "自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令",
+		PermDefault:          "请求权限 (default) - 每次文件编辑和命令都需确认",
+		PermPlan:             "计划模式 (plan) - 只读探索和规划",
+		PermAuto:             "自动模式 (auto) - 分类器把关自动批准。需要 Max/Team/Enterprise/API 计划 + Sonnet 4.6+。不支持时会产生运行时错误。",
+		PermBypass:           "跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）",
+		PermDontAsk:          "不询问 (dontAsk) - 仅预批准工具（CI/锁定环境）",
 		DisplayTitle:         "显示设置",
 		StatuslineModeTitle:  "状态栏显示模式",
 		StatuslineModeDesc:   "控制状态栏的布局样式。",

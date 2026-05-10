@@ -72,10 +72,10 @@ func TestSpecAssociator_Associate_ByBody(t *testing.T) {
 	associator := NewSpecAssociator(map[string][]string{})
 
 	tag := Tag{
-		Kind:  MXAnchor,
-		File:  "internal/auth/handler.go",
-		Line:  10,
-		Body:  "ANCHOR for SPEC-AUTH-001 handler",
+		Kind:     MXAnchor,
+		File:     "internal/auth/handler.go",
+		Line:     10,
+		Body:     "ANCHOR for SPEC-AUTH-001 handler",
 		AnchorID: "anchor-auth",
 	}
 
@@ -104,10 +104,10 @@ func TestSpecAssociator_Associate_ByModulePath(t *testing.T) {
 	associator := NewSpecAssociator(specModules)
 
 	tag := Tag{
-		Kind:  MXNote,
-		File:  "internal/auth/handler.go",
-		Body:  "일반 설명 (SPEC ID 없음)",
-		Line:  5,
+		Kind: MXNote,
+		File: "internal/auth/handler.go",
+		Body: "일반 설명 (SPEC ID 없음)",
+		Line: 5,
 	}
 
 	specs := associator.Associate(tag)

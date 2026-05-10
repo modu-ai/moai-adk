@@ -16,8 +16,8 @@ func (e *mockGHError) Error() string {
 
 // MockGHSecretExecutor는 테스트용 GHSecretExecutor 모의 구현입니다.
 type MockGHSecretExecutor struct {
-	RunGHFunc         func(ctx context.Context, args ...string) error
-	RunGHOutputFunc   func(ctx context.Context, args ...string) (string, error)
+	RunGHFunc          func(ctx context.Context, args ...string) error
+	RunGHOutputFunc    func(ctx context.Context, args ...string) (string, error)
 	RunGHWithStdinFunc func(ctx context.Context, stdin string, args ...string) error
 }
 

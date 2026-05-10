@@ -3,8 +3,8 @@
 package pr783_baseline_test
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 // mockReleaseData는 릴리스 오류 메시지 맵입니다 (한국어 버전).

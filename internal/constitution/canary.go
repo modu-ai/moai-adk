@@ -104,11 +104,11 @@ func (c *canary) Evaluate(proposal *AmendmentProposal, projectDir string) (*Cana
 	scoreAfter := c.estimateScoreImpact(proposal)
 
 	result := &CanaryResult{
-		Available:     true,
+		Available:      true,
 		EvaluatedSpecs: selectedSpecs,
-		ScoreBefore:   scoreBefore,
-		ScoreAfter:    scoreAfter,
-		MaxDrop:       scoreBefore - scoreAfter,
+		ScoreBefore:    scoreBefore,
+		ScoreAfter:     scoreAfter,
+		MaxDrop:        scoreBefore - scoreAfter,
 	}
 
 	// Determine Passed status
@@ -214,6 +214,7 @@ var _ Canary = (*canary)(nil)
 
 // parseScoreFromProgress parses the evaluator-active score from progress.md.
 // TODO: To be implemented in SPEC-V3R2-CON-003. Currently unused.
+//
 //nolint:unused
 func parseScoreFromProgress(progressPath string) (float64, error) {
 	// Simple implementation: Find "Score: 0.XX" pattern in file

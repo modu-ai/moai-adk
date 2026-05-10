@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 	"github.com/modu-ai/moai-adk/internal/loop"
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 )
 
 // TestClassifyFeedback_SourceAware_CompilerError tests REQ-LL-005 rule 1:

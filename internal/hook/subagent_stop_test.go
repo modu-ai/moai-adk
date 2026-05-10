@@ -73,15 +73,15 @@ func TestSubagentStopHandler_Handle_TeamConfigCleanup(t *testing.T) {
 		Name: "test-team",
 		Members: []teamMemberDb{
 			{
-				Name:      "teammate-1",
-				AgentID:   "agent-1",
-				AgentType: "backend",
+				Name:       "teammate-1",
+				AgentID:    "agent-1",
+				AgentType:  "backend",
 				TmuxPaneID: "test-session:0.0",
 			},
 			{
-				Name:      "teammate-2",
-				AgentID:   "agent-2",
-				AgentType: "frontend",
+				Name:       "teammate-2",
+				AgentID:    "agent-2",
+				AgentType:  "frontend",
 				TmuxPaneID: "test-session:0.1",
 			},
 		},
@@ -152,8 +152,8 @@ func TestSubagentStopHandler_Handle_MissingTeammate(t *testing.T) {
 		Name: "test-team",
 		Members: []teamMemberDb{
 			{
-				Name:      "other-teammate",
-				AgentID:   "agent-2",
+				Name:       "other-teammate",
+				AgentID:    "agent-2",
 				TmuxPaneID: "test-session:0.1",
 			},
 		},
@@ -192,8 +192,8 @@ func TestSubagentStopHandler_Handle_NoTmuxPaneID(t *testing.T) {
 		Name: "test-team",
 		Members: []teamMemberDb{
 			{
-				Name:      "teammate-1",
-				AgentID:   "agent-1",
+				Name:    "teammate-1",
+				AgentID: "agent-1",
 				// No TmuxPaneID
 			},
 		},

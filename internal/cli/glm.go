@@ -185,9 +185,9 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
 	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")    //nolint:errcheck
-	_ = os.Setenv("DISABLE_PROMPT_CACHING", "1")                    //nolint:errcheck
-	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                      //nolint:errcheck
+	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")   //nolint:errcheck
+	_ = os.Setenv("DISABLE_PROMPT_CACHING", "1")                   //nolint:errcheck
+	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                     //nolint:errcheck
 	_ = os.Setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1") //nolint:errcheck
 }
 
@@ -338,15 +338,15 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			"",
 			"Role model mapping (dynamic teams):",
 			"  - lead: glm-5.1",
-				"Role model mapping (dynamic teams):",
-				"  - lead: glm-5.1",
-				"  - researcher/reviewer: glm-4.7-flash (read-only roles)",
-				"  - analyst/architect: glm-5.1 (planning roles)",
-				"  - implementer/tester/designer: glm-4.7 (write roles)",
-				"",
-				"Available models: glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
-				"",
-				"Next steps:",
+			"Role model mapping (dynamic teams):",
+			"  - lead: glm-5.1",
+			"  - researcher/reviewer: glm-4.7-flash (read-only roles)",
+			"  - analyst/architect: glm-5.1 (planning roles)",
+			"  - implementer/tester/designer: glm-4.7 (write roles)",
+			"",
+			"Available models: glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
+			"",
+			"Next steps:",
 			"",
 			"Next steps:",
 			"  1. Ensure you're in a tmux session (tmux new -s moai)",
@@ -381,9 +381,9 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":    "1",
-		"DISABLE_PROMPT_CACHING":                    "1",
-		"API_TIMEOUT_MS":                            "3000000",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
+		"DISABLE_PROMPT_CACHING":                   "1",
+		"API_TIMEOUT_MS":                           "3000000",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
 
@@ -836,9 +836,9 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":    "1",
-		"DISABLE_PROMPT_CACHING":                    "1",
-		"API_TIMEOUT_MS":                            "3000000",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
+		"DISABLE_PROMPT_CACHING":                   "1",
+		"API_TIMEOUT_MS":                           "3000000",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
 }

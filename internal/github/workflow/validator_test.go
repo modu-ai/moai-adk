@@ -316,9 +316,9 @@ func TestNewValidator(t *testing.T) {
 func TestValidationResult_ResultStructure(t *testing.T) {
 	result := &ValidationResult{
 		TemplatePath: "/test/path.yml.tmpl",
-		IsValid:     false,
-		Errors:      []string{"error 1", "error 2"},
-		Warnings:    []string{"warning 1"},
+		IsValid:      false,
+		Errors:       []string{"error 1", "error 2"},
+		Warnings:     []string{"warning 1"},
 	}
 
 	if result.TemplatePath != "/test/path.yml.tmpl" {

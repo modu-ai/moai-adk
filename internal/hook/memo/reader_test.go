@@ -55,11 +55,11 @@ func TestRead_TokenTrimming(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		sections      []Section
-		maxTokens     int
-		wantContains  []string
-		wantAbsent    []string
+		name         string
+		sections     []Section
+		maxTokens    int
+		wantContains []string
+		wantAbsent   []string
 	}{
 		{
 			name: "no trimming needed",
@@ -151,9 +151,9 @@ func TestEstimateTokens(t *testing.T) {
 		want  int
 	}{
 		{"", 0},
-		{"abcd", 1},      // 4 chars = 1 token
-		{"abcde", 2},     // 5 chars = ceil(5/4) = 2 tokens
-		{"abcdefgh", 2},  // 8 chars = 2 tokens
+		{"abcd", 1},     // 4 chars = 1 token
+		{"abcde", 2},    // 5 chars = ceil(5/4) = 2 tokens
+		{"abcdefgh", 2}, // 8 chars = 2 tokens
 	}
 
 	for _, tt := range tests {
