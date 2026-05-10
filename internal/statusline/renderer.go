@@ -375,17 +375,17 @@ func renderUsageBarWithReset(label string, pct int, width int, noColor bool, res
 	return fmt.Sprintf("%s (Resets %s)", base, resetStr)
 }
 
-// formatResetTimeRelative formats a reset time as relative "in Xh Ym".
-// Returns empty string if the reset time is zero, in the past, or unparseable.
+// formatResetTimeRelative formats a reset time as relative "in Xh Ym" or "just reset".
+// Returns "just reset" if the reset time is zero, in the past, or unparseable.
 // Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeRelative(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
-		return ""
+		return "just reset"
 	}
 	remaining := time.Until(t)
 	if remaining <= 0 {
-		return ""
+		return "just reset"
 	}
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
@@ -395,13 +395,13 @@ func formatResetTimeRelative(resetTime interface{}) string {
 	return fmt.Sprintf("in %dm", minutes)
 }
 
-// formatResetTimeAbsolute formats a reset time as "Jan 21 at 2pm".
-// Returns empty string if the reset time is zero or unparseable.
+// formatResetTimeAbsolute formats a reset time as "Jan 21 at 2pm" or "rolling".
+// Returns "rolling" (sliding window) if the reset time is zero or unparseable.
 // Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeAbsolute(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
-		return ""
+		return "rolling"
 	}
 	// Convert to local time for display
 	t = t.Local()

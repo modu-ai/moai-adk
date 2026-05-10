@@ -1255,11 +1255,11 @@ func TestFormatResetTimeRelative(t *testing.T) {
 		wantPfx   string // expected prefix (e.g. "in ")
 		wantEmpty bool
 	}{
-		{"empty string", "", "", true},
-		{"invalid format", "not-a-date", "", true},
+		{"empty string", "", "", false},
+		{"invalid format", "not-a-date", "", false},
 		{"future 2h30m", time.Now().Add(2*time.Hour + 30*time.Minute).UTC().Format(time.RFC3339), "in 2h", false},
 		{"future 45m", time.Now().Add(45 * time.Minute).UTC().Format(time.RFC3339), "in 4", false},
-		{"past time", time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339), "", true},
+		{"past time", time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339), "", false},
 	}
 
 	for _, tt := range tests {
@@ -1284,8 +1284,8 @@ func TestFormatResetTimeAbsolute(t *testing.T) {
 		wantEmpty bool
 		wantSub   string // substring to check
 	}{
-		{"empty string", "", true, ""},
-		{"invalid format", "not-a-date", true, ""},
+		{"empty string", "", false, ""},
+		{"invalid format", "not-a-date", false, ""},
 		{"valid RFC3339", "2026-01-21T14:00:00Z", false, "at "},
 	}
 
