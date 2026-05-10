@@ -262,15 +262,25 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 
 // renderEffortThinking renders the effort/thinking indicator segment.
 // Returns "🧠 LEVEL" + optional "·t" suffix when either field is present and meaningful.
+// renderEffortThinking renders "🧠 LEVEL" + optional "·t" suffix when either field is present.
 // Returns "" when both are absent or effort level is empty (silent omit, REQ-CC2122-003).
 func renderEffortThinking(data *StatusData) string {
-	if data.Effort == nil {
-		return ""
+	// GWT-3: thinking only (no effort) → "·t" without 🧠 prefix
+	if data.Thinking != nil && data.Thinking.Enabled {
+		if data.Effort == nil || data.Effort.Level == "" {
+			return "·t"
+		}
 	}
-	if data.Effort.Level == "" {
-		return ""
+	// GWT-2: effort + thinking → "🧠 LEVEL·t"
+	// GWT-1: effort only → "🧠 LEVEL"
+	if data.Effort != nil && data.Effort.Level != "" {
+		result := "🧠 " + data.Effort.Level
+		if data.Thinking != nil && data.Thinking.Enabled {
+			result += "·t"
+		}
+		return result
 	}
-	return "🧠 " + data.Effort.Level
+	return ""
 }
 
 // renderBarsInline renders CW/5H/7D bars inline on a single line (default mode L2).
