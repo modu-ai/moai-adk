@@ -11,6 +11,8 @@ tools: []
 skills: []
 ---
 
+<!-- @MX:NOTE: [AUTO] retirement-pattern — matches SPEC-V3R3-RETIRED-DDD-001 stub migration; use manager-cycle cycle_type=ddd -->
+
 # manager-ddd — Retired Agent
 
 This agent has been retired as part of SPEC-V3R3-RETIRED-DDD-001 (following SPEC-V3R3-RETIRED-AGENT-001).

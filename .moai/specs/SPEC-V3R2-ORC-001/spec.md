@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R2-ORC-001
 title: "Agent roster consolidation (22 → 17)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-04-23
 updated: 2026-04-23
@@ -40,6 +40,7 @@ tags: "agent, roster, consolidation, manager-cycle, builder-platform, manager-qu
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
+| 0.1.1   | 2026-05-10 | ORC-001 run | M2-M5 implementation complete; manager-develop retired (post-R5 name collision resolved); §10.1 post-R5 additions table added; 8 retired stubs (vs 7 planned — manager-develop is additional) |
 
 ---
 
@@ -329,6 +330,15 @@ Core criteria:
 | 22 | researcher | meta | KEEP (or RETIRE) | KEEP selected per Master §7.2; worktree add in ORC-004 |
 
 **Net delta: 22 → 17 (−5): manager-ddd, manager-tdd, expert-debug, expert-testing, 3 builders retire; manager-cycle and builder-platform appear net +2; arithmetic: −4 − 3 + 2 = −5 (correct).**
+
+#### Post-R5 additions (not in original 22-agent baseline)
+
+| # | Agent | Category | v3r2 Destiny | Notes |
+|---|-------|----------|--------------|-------|
+| P1 | claude-code-guide | guide | OUT OF SCOPE | Not an orchestration agent; MoAI documentation stub; excluded from roster count |
+| P2 | expert-mobile | expert | OUT OF SCOPE (this SPEC) | Added post-R5 audit; future SPEC will assign roster slot |
+| P3 | manager-brain | manager | OUT OF SCOPE (this SPEC) | Experimental creative agent added post-R5; not yet in canonical roster |
+| P4 | manager-develop | manager | RETIRE → manager-cycle | Transitional name from SPEC-V3R2-RT-005; ORC-001 canonizes manager-cycle; retired stub added (M5) |
 
 ---
 

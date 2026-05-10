@@ -43,6 +43,9 @@ hooks:
         timeout: 10
 ---
 
+<!-- @MX:ANCHOR: [AUTO] cycle-dispatch — unified entry point for all DDD+TDD implementation; fan_in >= 5 (manager-ddd, manager-tdd, expert-security, expert-devops, expert-refactoring all route here) -->
+<!-- @MX:REASON: ORC-001 consolidation: manager-ddd + manager-tdd merged into single cycle_type dispatch; any change to cycle routing must preserve backward compatibility -->
+
 # Development Implementer - Unified DDD/TDD Agent
 
 ## Primary Mission
@@ -62,12 +65,12 @@ This agent consolidates the previously separate `manager-ddd` and `manager-tdd` 
 
 | Old Usage | New Usage |
 |-----------|-----------|
-| Use `manager-ddd` subagent | Use `manager-develop` subagent with `cycle_type=ddd` |
-| Use `manager-tdd` subagent | Use `manager-develop` subagent with `cycle_type=tdd` |
+| Use `manager-ddd` subagent | Use `manager-cycle` subagent with `cycle_type=ddd` |
+| Use `manager-tdd` subagent | Use `manager-cycle` subagent with `cycle_type=tdd` |
 
 **Deprecated agents** (retired stubs still present for compatibility):
-- `manager-tdd` → replaced by `manager-develop` with `cycle_type=tdd`
-- `manager-ddd` → replaced by `manager-develop` with `cycle_type=ddd`
+- `manager-tdd` → replaced by `manager-cycle` with `cycle_type=tdd`
+- `manager-ddd` → replaced by `manager-cycle` with `cycle_type=ddd`
 
 ## Behavioral Contract (SEMAP)
 
