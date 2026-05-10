@@ -81,3 +81,18 @@ worktree_path: /Users/goos/.moai/worktrees/MoAI-ADK/spc-001-plan
 - SPEC-V3R2-MIG-001 (cosmetic AC rewrite) — handoff note from T-SPC001-09.
 
 End of progress.
+
+## Run Phase Entry (2026-05-11)
+
+### Wave A Complete (2026-05-11)
+- wave: A
+- milestone: M2 (TDD)
+- agent: expert-backend
+- tasks: T-03, T-04
+- status: COMPLETE
+- pr: #849
+- commit: 6ac07bf81
+- results:
+  - BenchmarkParse365Leaves: 6.0ms (<500ms ✅)
+  - AC-004/005/006/007/019: 5 tests passing
+  - No regressions

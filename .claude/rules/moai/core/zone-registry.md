@@ -51,7 +51,7 @@ moai constitution list --format json
   zone: Frozen
   file: .claude/rules/moai/workflow/spec-workflow.md
   anchor: "#phase-overview"
-  clause: "SPEC+EARS format"
+  clause: "SPEC+EARS format (amended by SPEC-V3R2-SPC-001 to add hierarchical AC schema)"
   canary_gate: true
 
 - id: CONST-V3R2-002

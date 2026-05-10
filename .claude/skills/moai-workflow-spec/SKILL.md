@@ -148,6 +148,38 @@ Optional Requirements - Enhancement Features:
 - Examples: OAuth login, dark mode, offline mode
 - Test strategy: Conditional test execution based on implementation status
 
+### Hierarchical Acceptance Criteria
+
+> **Amended by SPEC-V3R2-SPC-001 (2026-05-11)**
+
+MoAI supports tree-structured ACs for complex SPECs. A parent AC captures shared Given context; children inherit or override it.
+
+**Quick Reference:**
+- Maximum depth: 3 levels (top + 2 child levels)
+- Identifier suffixes: `-NN` (top) → `.a-z` (depth 1) → `.i-xxvi` (depth 2)
+- Given inheritance: Child inherits nearest ancestor's Given unless explicitly overridden
+- REQ mapping: `(maps REQ-...)` required on every leaf; optional on intermediates
+
+**Structure Example:**
+```markdown
+- AC-AUTH-001: User logs in with valid credentials
+  - AC-AUTH-001.a: With email/password, When submitted, Then redirect to dashboard
+    - AC-AUTH-001.a.i: With 2FA enabled, When code verified, Then grant access
+    - AC-AUTH-001.a.ii: With 2FA disabled, Then grant access immediately
+  - AC-AUTH-001.b: With SSO, When provider redirects, Then create session
+```
+
+**When to Use:**
+- Complex features with shared preconditions (authentication, payment flows)
+- Test matrices where Given context varies across scenarios
+- Reduce duplication in long AC lists
+
+**Parsing Rules:**
+- Parser auto-wraps flat ACs into synthetic `.a` children (backward compatible)
+- `acceptance_format: flat` frontmatter disables hierarchical parsing
+- MaxDepth enforced by `internal/spec/ears.go:21` (REQ-SPC-001-005)
+
+
 ### Requirement Clarification Process
 
 Step 0 - Assumption Analysis (Philosopher Framework):

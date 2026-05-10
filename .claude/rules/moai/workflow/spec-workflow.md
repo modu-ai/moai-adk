@@ -131,6 +131,43 @@ Output:
 - Acceptance criteria
 - Technical approach
 
+### Hierarchical Acceptance Criteria Schema
+
+> **@MX:NOTE** reason="Hierarchical AC schema per SPC-001 §11.2, amended 2026-05-11"
+> Canonical form: `.moai/specs/SPEC-V3R2-SPC-001/research.md` §6
+
+MoAI supports hierarchical (tree-structured) acceptance criteria for complex SPECs. A parent AC captures shared Given context; children inherit or override it.
+
+**Structure (maximum depth 3):**
+```
+- AC-<DOMAIN>-<NNN>-<NN>: Given <parent context>
+  - AC-<DOMAIN>-<NNN>-<NN>.a: When variant-A, Then result-A. (maps REQ-…)
+  - AC-<DOMAIN>-<NNN>-<NN>.b: When variant-B, Then result-B. (maps REQ-…)
+```
+
+**With grandchildren (depth 2):**
+```
+- AC-<DOMAIN>-<NNN>-<NN>: Given <parent context>
+  - AC-<DOMAIN>-<NNN>-<NN>.a: Given <child context override>, When X, Then Y.
+    - AC-<DOMAIN>-<NNN>-<NN>.a.i: When sub-case-1, Then result-1. (maps REQ-…)
+    - AC-<DOMAIN>-<NNN>-<NN>.a.ii: When sub-case-2, Then result-2. (maps REQ-…)
+```
+
+**Inheritance rules:**
+- Child without explicit `Given` inherits nearest ancestor's Given (REQ-SPC-001-006)
+- Child's explicit Given overrides the ancestor
+- `When` and `Then` MUST be specified on every leaf
+- `(maps REQ-...)` tail MUST appear on every leaf; MAY be omitted on intermediates
+
+**Identifier conventions:**
+| Depth | Suffix | Example |
+|-------|--------|---------|
+| 0 (top-level) | `-NN` | `AC-SPC-001-05` |
+| 1 | `.a`–`.z` | `AC-SPC-001-05.a` |
+| 2 | `.i`–`.xxvi` | `AC-SPC-001-05.a.i` |
+
+**Compatibility:** Parser auto-wraps flat ACs into synthetic `.a` children. Existing SPECs remain parseable with zero edits (see SPC-001 §6.4).
+
 ## Run Phase
 
 [HARD] Execute in a fresh SPEC worktree created at run start: `moai worktree new SPEC-XXX --base origin/main`. See § SPEC Phase Discipline (Step 2).
