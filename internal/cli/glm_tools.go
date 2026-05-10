@@ -546,7 +546,7 @@ func checkNodeVersion() error {
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
 			return fmt.Errorf(
-				"Node.js not found on PATH\n"+
+				"no Node.js executable found on PATH\n"+
 					"최소 요구 버전: >= v%d.0.0\n"+
 					"설치: https://nodejs.org/ 또는 nvm install %d",
 				nodeMinMajorVersion, nodeMinMajorVersion,
@@ -556,7 +556,7 @@ func checkNodeVersion() error {
 	}
 	if major < nodeMinMajorVersion {
 		return fmt.Errorf(
-			"Node.js 버전이 너무 낮습니다: 감지된 버전 %s, 최소 요구 >= v%d.0.0\n"+
+			"감지된 Node.js 버전이 너무 낮습니다: %s, 최소 요구 >= v%d.0.0\n"+
 				"업그레이드: https://nodejs.org/ 또는 nvm install %d",
 			versionStr, nodeMinMajorVersion, nodeMinMajorVersion,
 		)
