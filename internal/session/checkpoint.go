@@ -33,7 +33,7 @@ func (c *PlanCheckpoint) Validate() error {
 		"rejected": true,
 	}
 	if !validStatuses[c.Status] {
-		return fmt.Errorf("Status: must be oneof=[approved draft rejected], got %q", c.Status)
+		return fmt.Errorf("status: must be oneof=[approved draft rejected], got %q", c.Status)
 	}
 	return nil
 }
@@ -65,10 +65,10 @@ func (c *RunCheckpoint) Validate() error {
 		"partial": true,
 	}
 	if !validStatuses[c.Status] {
-		return fmt.Errorf("Status: must be oneof=[pass fail partial], got %q", c.Status)
+		return fmt.Errorf("status: must be oneof=[pass fail partial], got %q", c.Status)
 	}
 	if c.Harness == "" {
-		return fmt.Errorf("Harness: required field is empty")
+		return fmt.Errorf("harness: required field is empty")
 	}
 	validHarnesses := map[string]bool{
 		"minimal":  true,
@@ -76,7 +76,7 @@ func (c *RunCheckpoint) Validate() error {
 		"thorough": true,
 	}
 	if !validHarnesses[c.Harness] {
-		return fmt.Errorf("Harness: must be oneof=[minimal standard thorough], got %q", c.Harness)
+		return fmt.Errorf("harness: must be oneof=[minimal standard thorough], got %q", c.Harness)
 	}
 	return nil
 }

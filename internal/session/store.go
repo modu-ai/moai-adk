@@ -82,7 +82,9 @@ func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 	if err := acquireWithRetry(lock, filename, 3, 10*time.Millisecond); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}
-	defer lock.release()
+	defer func() {
+		_ = lock.release() // Lock 해제 실패는 무시 (이미 checkpoint 기록됨)
+	}()
 
 	// Write to temporary file
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {

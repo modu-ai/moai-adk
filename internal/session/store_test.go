@@ -2,6 +2,7 @@ package session
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -349,10 +350,10 @@ func TestCheckpoint_ValidatorRejectsBadHarness(t *testing.T) {
 		return
 	}
 
-	// 에러 메시지에 "Harness" 문자열 포함 확인 (AC-15 요구사항)
+	// 에러 메시지에 "harness" 문자열 포함 확인 (AC-15 요구사항)
 	errMsg := err.Error()
-	if !contains(errMsg, "Harness") {
-		t.Errorf("Error message should contain 'Harness', got: %v", errMsg)
+	if !contains(errMsg, "harness") && !contains(errMsg, "Harness") {
+		t.Errorf("Error message should contain 'harness' or 'Harness', got: %v", errMsg)
 	}
 }
 
@@ -436,9 +437,10 @@ func TestCheckpoint_ConcurrentRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			err := store.Checkpoint(state)
-			if err == nil {
+			switch {
+			case err == nil:
 				successCount++
-			} else if err == ErrCheckpointConcurrent {
+			case errors.Is(err, ErrCheckpointConcurrent):
 				concurrentErrCount++
 			}
 		}()
