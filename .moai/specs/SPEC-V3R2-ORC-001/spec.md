@@ -2,9 +2,9 @@
 id: SPEC-V3R2-ORC-001
 title: "Agent roster consolidation (22 → 17)"
 version: "0.1.1"
-status: draft
+status: implemented
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-10
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 3 — Agent Cleanup"

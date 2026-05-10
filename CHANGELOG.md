@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-ORC-001: Agent Roster Consolidation (22 → 17)
+
+### Added
+
+- **SPEC-V3R2-ORC-001**: 에이전트 카탈로그 22개에서 17개로 통합. manager-cycle → manager-develop(DDD/TDD 통합), agency 에이전트 6개 흡수(copywriter → moai-domain-copywriting skill, designer → moai-domain-brand-design skill), plan-auditor/evaluator-active 독립 유지. ORC-002~005 선행 작업. PR #843.
+
+### English
+
+- **SPEC-V3R2-ORC-001**: Agent catalog consolidation from 22 to 17 agents. manager-cycle → manager-develop (DDD/TDD unified), 6 agency agents absorbed into skills (copywriter → moai-domain-copywriting, designer → moai-domain-brand-design), plan-auditor/evaluator-active retained as independent. Prerequisite for ORC-002~005. PR #843.
+
+## [Unreleased] — SPEC-V3R2-ORC-005: Dynamic Team Generation Formalization
+
+### Added
+
+- **SPEC-V3R2-ORC-005**: Agent Teams 동적 생성 공식화. 정적 team-* 에이전트 파일 삭제, `Agent(subagent_type: "general-purpose")` + workflow.yaml role_profiles로 런타임 생성. Mailbox Protocol v2, file ownership 전략, tmux pane lifecycle 관리. PR #743.
+
+### English
+
+- **SPEC-V3R2-ORC-005**: Dynamic Agent Teams generation formalization. Removed static team-* agent files; spawn via `Agent(subagent_type: "general-purpose")` with workflow.yaml role profiles at runtime. Mailbox Protocol v2, file ownership strategy, tmux pane lifecycle management. PR #743.
+
 ## [Unreleased] — SPEC-V3R3-STATUSLINE-FALLBACK-001: Statusline Stdin Fallback
 
 ### Added
