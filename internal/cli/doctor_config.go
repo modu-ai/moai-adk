@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -67,7 +68,7 @@ func runConfigDump(cmd *cobra.Command, _ []string) error {
 
 		// Print single key with provenance
 		// This maps to REQ-V3R2-RT-005-032
-		printKeyValue(key, val)
+		printKeyValue(cmd.OutOrStdout(), key, val)
 		return nil
 	}
 
@@ -77,7 +78,7 @@ func runConfigDump(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to dump configuration: %w", err)
 	}
 
-	fmt.Println(output)
+	fmt.Fprintln(cmd.OutOrStdout(), output)
 	return nil
 }
 
@@ -111,7 +112,7 @@ func runConfigDiff(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print diff
-	printConfigDiff(diff, tierA, tierB)
+	printConfigDiff(cmd.OutOrStdout(), diff, tierA, tierB)
 	return nil
 }
 
@@ -126,41 +127,41 @@ func parseKey(key string) (string, string, error) {
 	return "", "", fmt.Errorf("key must contain a dot separator (e.g., 'section.field')")
 }
 
-// printKeyValue prints a single key with its provenance.
-func printKeyValue(key string, val config.Value[any]) {
-	fmt.Printf("Key: %s\n", key)
-	fmt.Printf("  Value: %v\n", val.V)
-	fmt.Printf("  Source: %s\n", val.P.Source)
-	fmt.Printf("  Origin: %s\n", val.P.Origin)
-	fmt.Printf("  Loaded: %s\n", val.P.Loaded.Format("2006-01-02 15:04:05"))
+// printKeyValue prints a single key with its provenance to w.
+func printKeyValue(w io.Writer, key string, val config.Value[any]) {
+	fmt.Fprintf(w, "Key: %s\n", key)
+	fmt.Fprintf(w, "  Value: %v\n", val.V)
+	fmt.Fprintf(w, "  Source: %s\n", val.P.Source)
+	fmt.Fprintf(w, "  Origin: %s\n", val.P.Origin)
+	fmt.Fprintf(w, "  Loaded: %s\n", val.P.Loaded.Format("2006-01-02 15:04:05"))
 	if val.IsDefault() {
-		fmt.Printf("  Default: true\n")
+		fmt.Fprintf(w, "  Default: true\n")
 	}
 	if len(val.P.OverriddenBy) > 0 {
-		fmt.Printf("  Overridden by:\n")
+		fmt.Fprintf(w, "  Overridden by:\n")
 		for _, override := range val.P.OverriddenBy {
-			fmt.Printf("    - %s\n", override)
+			fmt.Fprintf(w, "    - %s\n", override)
 		}
 	}
 }
 
-// printConfigDiff prints the differences between two tiers.
-func printConfigDiff(diff map[string]config.Value[any], tierA, tierB config.Source) {
+// printConfigDiff prints the differences between two tiers to w.
+func printConfigDiff(w io.Writer, diff map[string]config.Value[any], tierA, tierB config.Source) {
 	if len(diff) == 0 {
-		fmt.Printf("No differences found between %s and %s tiers\n", tierA, tierB)
+		fmt.Fprintf(w, "No differences found between %s and %s tiers\n", tierA, tierB)
 		return
 	}
 
-	fmt.Printf("Differences between %s and %s tiers:\n", tierA, tierB)
-	fmt.Printf("Count: %d key(s)\n\n", len(diff))
+	fmt.Fprintf(w, "Differences between %s and %s tiers:\n", tierA, tierB)
+	fmt.Fprintf(w, "Count: %d key(s)\n\n", len(diff))
 
 	for key, val := range diff {
-		fmt.Printf("Key: %s\n", key)
+		fmt.Fprintf(w, "Key: %s\n", key)
 		if val.V != nil {
-			fmt.Printf("  Value: %v\n", val.V)
+			fmt.Fprintf(w, "  Value: %v\n", val.V)
 		}
-		fmt.Printf("  Source: %s\n", val.P.Source)
-		fmt.Printf("  Origin: %s\n", val.P.Origin)
-		fmt.Println()
+		fmt.Fprintf(w, "  Source: %s\n", val.P.Source)
+		fmt.Fprintf(w, "  Origin: %s\n", val.P.Origin)
+		fmt.Fprintln(w)
 	}
 }

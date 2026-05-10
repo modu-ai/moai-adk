@@ -462,11 +462,17 @@ func TestResolver_SchemaVersionPropagation(t *testing.T) {
 	// In RED: loadYAMLFile returns empty map, so no keys from quality.yaml appear.
 	// This test will effectively pass in RED because the loop over keys from quality.yaml is empty.
 	// The test becomes meaningful in GREEN when loadYAMLFile actually parses yaml.
+	// M5 update: builtin tier now populates quality.* keys with SchemaVersion=0; skip
+	// those when verifying that project-tier keys carry the expected SchemaVersion=3.
 	foundQualityKey := false
 	for _, key := range merged.Keys() {
 		if strings.HasPrefix(key, "quality.") || strings.HasPrefix(key, "constitution.") {
 			foundQualityKey = true
 			val, _ := merged.Get(key)
+			// Skip builtin-sourced keys: they carry SchemaVersion=0 by design (no yaml file).
+			if val.P.Source == SrcBuiltin {
+				continue
+			}
 			if val.P.SchemaVersion != 3 {
 				t.Errorf("key %q Provenance.SchemaVersion = %d, want 3", key, val.P.SchemaVersion)
 			}

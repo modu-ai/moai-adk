@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -337,9 +338,16 @@ func (r *resolver) loadUserTier() (map[string]any, string, error) {
 }
 
 // loadProjectTier loads from .moai/config/config.yaml and .moai/config/sections/*.yaml.
+// Origin paths are normalized to absolute paths via filepath.Abs (T-RT005-31).
 func (r *resolver) loadProjectTier() (map[string]any, string, error) {
 	configPath := ".moai/config/config.yaml"
 	sectionsPath := ".moai/config/sections"
+
+	// Normalize origin to absolute path (REQ-V3R2-RT-005, T-RT005-31).
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		absConfigPath = configPath
+	}
 
 	data := make(map[string]any)
 
@@ -349,8 +357,8 @@ func (r *resolver) loadProjectTier() (map[string]any, string, error) {
 			if isConfigError(err) {
 				return nil, "", err
 			}
-			tierErr := &TierReadError{Source: SrcProject, Path: configPath, Err: err}
-			logTierReadFailure(SrcProject, configPath, err)
+			tierErr := &TierReadError{Source: SrcProject, Path: absConfigPath, Err: err}
+			logTierReadFailure(SrcProject, absConfigPath, err)
 			return nil, "", tierErr
 		}
 		maps.Copy(data, configData)
@@ -366,21 +374,28 @@ func (r *resolver) loadProjectTier() (map[string]any, string, error) {
 		return nil, "", nil
 	}
 
-	return data, configPath, nil
+	return data, absConfigPath, nil
 }
 
 // loadLocalTier loads from .claude/settings.local.json and .moai/config/local/*.yaml.
+// Origin paths are normalized to absolute paths via filepath.Abs (T-RT005-31).
 func (r *resolver) loadLocalTier() (map[string]any, string, error) {
 	settingsPath := ".claude/settings.local.json"
 	localPath := ".moai/config/local"
+
+	// Normalize origin to absolute path (REQ-V3R2-RT-005, T-RT005-31).
+	absSettingsPath, err := filepath.Abs(settingsPath)
+	if err != nil {
+		absSettingsPath = settingsPath
+	}
 
 	data := make(map[string]any)
 
 	if _, err := os.Stat(settingsPath); err == nil {
 		settingsData, err := r.loadJSONFile(settingsPath)
 		if err != nil {
-			tierErr := &TierReadError{Source: SrcLocal, Path: settingsPath, Err: err}
-			logTierReadFailure(SrcLocal, settingsPath, err)
+			tierErr := &TierReadError{Source: SrcLocal, Path: absSettingsPath, Err: err}
+			logTierReadFailure(SrcLocal, absSettingsPath, err)
 			return nil, "", tierErr
 		}
 		maps.Copy(data, settingsData)
@@ -396,13 +411,14 @@ func (r *resolver) loadLocalTier() (map[string]any, string, error) {
 		return nil, "", nil
 	}
 
-	return data, settingsPath, nil
+	return data, absSettingsPath, nil
 }
 
 // loadSkillTier loads from .claude/skills/**/SKILL.md frontmatter `config:` blocks.
 // It walks .claude/skills/ recursively and extracts only the `config:` key from each
 // SKILL.md frontmatter (YAML between the first pair of `---` delimiters).
 // Files without frontmatter or without a `config:` key are silently skipped.
+// Origin is normalized to an absolute path (T-RT005-31).
 //
 // @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-001 (skill tier walked), REQ-015 partial
 func (r *resolver) loadSkillTier() (map[string]any, string, error) {
@@ -413,7 +429,12 @@ func (r *resolver) loadSkillTier() (map[string]any, string, error) {
 	}
 
 	combined := make(map[string]any)
-	origin := skillsRoot
+	// Normalize origin to absolute path (T-RT005-31).
+	absSkillsRoot, err := filepath.Abs(skillsRoot)
+	if err != nil {
+		absSkillsRoot = skillsRoot
+	}
+	origin := absSkillsRoot
 
 	walkErr := filepath.WalkDir(skillsRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -511,11 +532,146 @@ func (r *resolver) loadSessionTier() (map[string]any, string, error) {
 }
 
 // loadBuiltinTier loads compiled-in defaults from internal/config/defaults.go.
-// Placeholder - actual implementation would reference defaults.go.
+// It reflect-walks the Config struct returned by NewDefaultConfig() and produces
+// a flat map of "section.field" keys using yaml struct tags.
+//
+// REQ-V3R2-RT-005-020, AC-14: builtin defaults are loaded from compiled-in values.
+// The origin is set to "internal/config/defaults.go" (non-filesystem path, kept as-is).
+//
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M5 GREEN — REQ-020/014, AC-14: reflect-walk defaults
 func (r *resolver) loadBuiltinTier() (map[string]any, string, error) {
 	origin := "internal/config/defaults.go"
-	data := make(map[string]any)
+	cfg := NewDefaultConfig()
+	data := flattenStruct(reflect.ValueOf(cfg).Elem())
+	if len(data) == 0 {
+		return nil, "", nil
+	}
 	return data, origin, nil
+}
+
+// flattenStruct reflect-walks a struct value and returns a flat map of
+// "section.field" keys using yaml struct tags. Top-level fields become
+// the section prefix; nested struct fields become the field name.
+// Only primitive, bool, string, int, float, and slice/map values are emitted.
+func flattenStruct(rv reflect.Value) map[string]any {
+	result := make(map[string]any)
+	if rv.Kind() != reflect.Struct {
+		return result
+	}
+	rt := rv.Type()
+	for i := range rt.NumField() {
+		field := rt.Field(i)
+		val := rv.Field(i)
+
+		// Get the yaml tag name (fall back to lowercase field name).
+		sectionName := yamlTagName(field)
+		if sectionName == "" || sectionName == "-" {
+			continue
+		}
+
+		// Dereference pointer.
+		if val.Kind() == reflect.Pointer {
+			if val.IsNil() {
+				continue
+			}
+			val = val.Elem()
+		}
+
+		// Walk nested struct as the section.
+		if val.Kind() == reflect.Struct {
+			flattenStructInto(sectionName, val, result)
+			continue
+		}
+
+		// Top-level non-struct field: emit directly.
+		if v := primitiveValue(val); v != nil {
+			result[sectionName] = v
+		}
+	}
+	return result
+}
+
+// flattenStructInto walks a struct and emits "prefix.field" keys into dst.
+func flattenStructInto(prefix string, rv reflect.Value, dst map[string]any) {
+	if rv.Kind() != reflect.Struct {
+		return
+	}
+	rt := rv.Type()
+	for i := range rt.NumField() {
+		field := rt.Field(i)
+		val := rv.Field(i)
+
+		fieldName := yamlTagName(field)
+		if fieldName == "" || fieldName == "-" {
+			continue
+		}
+		key := prefix + "." + fieldName
+
+		// Dereference pointer.
+		if val.Kind() == reflect.Pointer {
+			if val.IsNil() {
+				continue
+			}
+			val = val.Elem()
+		}
+
+		if val.Kind() == reflect.Struct {
+			// Recurse into nested structs.
+			flattenStructInto(key, val, dst)
+			continue
+		}
+
+		if v := primitiveValue(val); v != nil {
+			dst[key] = v
+		}
+	}
+}
+
+// yamlTagName returns the yaml tag name for a struct field, or the lowercase
+// field name if no yaml tag is present. Returns "" for unexported fields.
+func yamlTagName(field reflect.StructField) string {
+	if !field.IsExported() {
+		return ""
+	}
+	tag := field.Tag.Get("yaml")
+	if tag == "" {
+		return strings.ToLower(field.Name)
+	}
+	name, _, _ := strings.Cut(tag, ",")
+	return name
+}
+
+// primitiveValue extracts a primitive value from a reflect.Value.
+// Returns nil for zero/nil/struct/chan/func values that should be skipped.
+func primitiveValue(v reflect.Value) any {
+	switch v.Kind() {
+	case reflect.Bool:
+		return v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int()
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return v.Uint()
+	case reflect.Float32, reflect.Float64:
+		return v.Float()
+	case reflect.String:
+		s := v.String()
+		if s == "" {
+			return nil
+		}
+		return s
+	case reflect.Slice:
+		if v.IsNil() || v.Len() == 0 {
+			return nil
+		}
+		return v.Interface()
+	case reflect.Map:
+		if v.IsNil() || v.Len() == 0 {
+			return nil
+		}
+		return v.Interface()
+	default:
+		return nil
+	}
 }
 
 // loadJSONFile loads and parses a JSON file.
