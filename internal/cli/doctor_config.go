@@ -105,11 +105,8 @@ func runConfigDiff(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Get diff between tiers
-	diff, err := resolver.Diff(tierA, tierB)
-	if err != nil {
-		return fmt.Errorf("failed to compute diff: %w", err)
-	}
+	// Get diff between tiers (merged-view delta; no error return per T-RT005-42)
+	diff := resolver.Diff(tierA, tierB)
 
 	// Print diff
 	printConfigDiff(cmd.OutOrStdout(), diff, tierA, tierB)

@@ -771,3 +771,88 @@ func TestTierReadError(t *testing.T) {
 		t.Error("TierReadError.Unwrap() did not return inner error")
 	}
 }
+
+// TestResolver_Diff_MergedViewDelta verifies merged-view delta semantics for Diff.
+//
+// AC-V3R2-RT-005-03 edge case: merged-view delta.
+// REQ-V3R2-RT-005-051, AC-03, T-RT005-41/42.
+//
+// Diff(a, b) must return keys whose winner.Source is one of {a, b}.
+// The return type is map[string]Value[any] (no error return, per T-RT005-42).
+func TestResolver_Diff_MergedViewDelta(t *testing.T) {
+	dir := t.TempDir()
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer func() { _ = os.Chdir(old) }()
+
+	// Set up a project-tier section with a known key.
+	// Note: yaml keys at the ROOT level of the section file become flat keys (no filename prefix).
+	// The yaml file testsection.yaml with root key "testkey" produces flat key "testkey".
+	sectionsDir := filepath.Join(".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("mkdir sections: %v", err)
+	}
+	projectYAML := "schema_version: 3\ntestkey: project_value\n"
+	if err := os.WriteFile(filepath.Join(sectionsDir, "testsection.yaml"), []byte(projectYAML), 0o644); err != nil {
+		t.Fatalf("write project yaml: %v", err)
+	}
+
+	r := NewResolver()
+	_, loadErr := r.Load()
+	if loadErr != nil {
+		t.Fatalf("Load: %v", loadErr)
+	}
+
+	// Diff returns map[string]Value[any] (no error) — T-RT005-42.
+	result := r.Diff(SrcProject, SrcBuiltin)
+
+	// result must be non-nil even when empty.
+	if result == nil {
+		t.Fatal("Diff() returned nil map, want non-nil")
+	}
+
+	// The project key should appear: "testkey" winner is SrcProject (root-level yaml key).
+	const expectedKey = "testkey"
+	val, found := result[expectedKey]
+	if !found {
+		t.Errorf("Diff(project, builtin) should include key %q (won by project tier); got keys: %v", expectedKey, mapKeys(result))
+	} else {
+		if val.P.Source != SrcProject {
+			t.Errorf("key %q: Source = %v, want %v", expectedKey, val.P.Source, SrcProject)
+		}
+		if val.V != "project_value" {
+			t.Errorf("key %q: V = %v, want project_value", expectedKey, val.V)
+		}
+	}
+
+	// Builtin keys should appear: winners from SrcBuiltin.
+	for k, v := range result {
+		if v.P.Source != SrcProject && v.P.Source != SrcBuiltin {
+			t.Errorf("key %q: Source = %v, want SrcProject or SrcBuiltin", k, v.P.Source)
+		}
+	}
+
+	// Diff with two tiers that won nothing should return empty (or only builtin defaults).
+	// Using SrcSession (which has no data) against SrcPlugin (also empty) → empty result.
+	emptyDiff := r.Diff(SrcSession, SrcPlugin)
+	if emptyDiff == nil {
+		t.Fatal("Diff(session, plugin) returned nil map, want empty non-nil")
+	}
+	if len(emptyDiff) != 0 {
+		t.Errorf("Diff(session, plugin) returned %d keys, want 0 (neither tier has winners)", len(emptyDiff))
+	}
+}
+
+// mapKeys returns the sorted keys of a map for diagnostic output.
+func mapKeys(m map[string]Value[any]) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"os"
@@ -28,11 +29,14 @@ type SettingsResolver interface {
 	// Key retrieves a single key's value from the merged settings.
 	Key(section, field string) (Value[any], bool)
 
-	// Dump writes the merged settings to a writer.
-	Dump(writer any) error
+	// Dump writes the merged settings to the provided writer.
+	// REQ-V3R2-RT-005-004, T-RT005-42.
+	Dump(writer io.Writer) error
 
-	// Diff compares two tiers and returns their differences.
-	Diff(a, b Source) (map[string]Value[any], error)
+	// Diff returns merged-view delta: keys whose winner.Source is a or b.
+	// Returns an empty map (never an error) when settings are not loaded.
+	// REQ-V3R2-RT-005-051, T-RT005-41/42.
+	Diff(a, b Source) map[string]Value[any]
 }
 
 // resolver implements SettingsResolver.
@@ -1096,9 +1100,10 @@ func (r *resolver) Key(section, field string) (Value[any], bool) {
 	return r.merged.Get(key)
 }
 
-// Dump writes the merged settings to a writer.
+// Dump writes the merged settings as JSON to the provided writer.
 // Dump acquires a read lock for safe concurrent access.
-func (r *resolver) Dump(_ any) error {
+// REQ-V3R2-RT-005-004, T-RT005-42: Dump(io.Writer) — aligned spec signature.
+func (r *resolver) Dump(writer io.Writer) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -1111,45 +1116,39 @@ func (r *resolver) Dump(_ any) error {
 		return err
 	}
 
-	fmt.Println(output)
+	fmt.Fprintln(writer, output)
 	return nil
 }
 
-// Diff compares two tiers and returns their differences.
+// Diff returns merged-view delta: keys from the full 8-tier merged view
+// whose winning source is either a or b.
+//
+// Semantics (REQ-V3R2-RT-005-051, T-RT005-41):
+//   - After a full Load(), every key has exactly one winner (highest-priority tier that defines it).
+//   - Diff(a, b) returns the subset of keys where winner.Source ∈ {a, b}.
+//   - Keys won by neither tier are excluded.
+//   - Returns an empty (non-nil) map when no settings are loaded.
+//
 // Diff acquires a read lock for safe concurrent access.
-func (r *resolver) Diff(a, b Source) (map[string]Value[any], error) {
+// T-RT005-42: returns map (no error) — error return dropped per spec interface alignment.
+func (r *resolver) Diff(a, b Source) map[string]Value[any] {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	if r.merged == nil {
-		return nil, fmt.Errorf("settings not loaded - call Load() first")
-	}
-
-	tiers := make(map[Source]map[string]any)
-	origins := make(map[Source]string)
-
-	for _, source := range []Source{a, b} {
-		data, origin, err := r.loadTier(source)
-		if err != nil {
-			return nil, err
-		}
-		if data != nil {
-			tiers[source] = data
-			origins[source] = origin
-		}
-	}
-
-	merged, err := MergeAll(tiers, origins, r.loadedAt)
-	if err != nil {
-		return nil, err
-	}
-
 	result := make(map[string]Value[any])
-	for _, key := range merged.Keys() {
-		if val, ok := merged.Get(key); ok {
+	if r.merged == nil {
+		return result
+	}
+
+	for _, key := range r.merged.Keys() {
+		val, ok := r.merged.Get(key)
+		if !ok {
+			continue
+		}
+		if val.P.Source == a || val.P.Source == b {
 			result[key] = val
 		}
 	}
 
-	return result, nil
+	return result
 }

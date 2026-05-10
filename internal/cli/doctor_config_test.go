@@ -193,11 +193,9 @@ func TestDoctorConfigDump_BuiltinOnly(t *testing.T) {
 
 // TestDoctorConfigDiff_TierComparison verifies that diff lists keys with different values between tiers.
 //
-// AC-V3R2-RT-005-03: permission.strict_mode differs; permission.allowlist identical → only former listed.
+// AC-V3R2-RT-005-03: merged-view delta semantics — keys whose winner is one of the two tiers.
 //
-// REQ-V3R2-RT-005-007, AC-03
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (diff command with real merged-view semantics)
+// REQ-V3R2-RT-005-007, REQ-V3R2-RT-005-051, AC-03
 func TestDoctorConfigDiff_TierComparison(t *testing.T) {
 	runInTempDir(t, func(_ string) {
 		cmd := setupDoctorConfigCmd(t)
@@ -207,14 +205,16 @@ func TestDoctorConfigDiff_TierComparison(t *testing.T) {
 		cmd.SetArgs([]string{"doctor", "config", "diff", "user", "project"})
 		err := cmd.Execute()
 
-		// In RED: may succeed or fail depending on environment
+		// diff should succeed (no error) even when no config files exist
 		if err != nil {
-			t.Logf("diff command error (may be expected in RED): %v", err)
+			t.Errorf("diff command error: %v", err)
 		}
 
-		// Output should contain tier names or "No differences" message
+		// Output should contain a valid response (either "No differences" or a count)
 		output := out.String()
-		_ = output // In GREEN: parse and validate specific keys
+		if output == "" {
+			t.Error("diff command produced no output")
+		}
 	})
 }
 
@@ -223,8 +223,6 @@ func TestDoctorConfigDiff_TierComparison(t *testing.T) {
 // AC-V3R2-RT-005-03 edge case: `config diff foo bar` → exit non-zero, stderr contains invalid tier error.
 //
 // REQ-V3R2-RT-005-007, AC-03
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (ParseSource error propagation)
 func TestDoctorConfigDiff_InvalidTier(t *testing.T) {
 	runInTempDir(t, func(_ string) {
 		cmd := setupDoctorConfigCmd(t)
@@ -455,30 +453,43 @@ func TestDoctorConfigDump_UserOverridesBuiltin(t *testing.T) {
 
 // TestDoctorConfigDiff_MergedViewDelta verifies that diff uses merged-view semantics (AC-03 requirement).
 //
-// AC-V3R2-RT-005-03 edge case: merged-view delta (T-RT005-41 implements resolver.Diff merged-view semantics).
+// Merged-view delta: keys whose winner.Source is one of the requested tiers.
+// AC-03 GREEN: diff command succeeds and output reflects merged-view winners.
 //
 // REQ-V3R2-RT-005-007, REQ-V3R2-RT-005-051, AC-03
-//
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (after T-RT005-41 Diff merged-view semantics)
 func TestDoctorConfigDiff_MergedViewDelta(t *testing.T) {
-	runInTempDir(t, func(_ string) {
-		// The diff command should use resolver.Diff() which implements merged-view semantics.
-		// In RED: the current Diff() returns raw two-tier comparison (not merged-view delta).
-		// In GREEN (after T-RT005-41): merged-view delta shows how the 8-tier merge result
-		// differs between the two specified tiers.
+	runInTempDir(t, func(dir string) {
+		// Set up a project-tier section so diff(builtin, project) returns project-won keys.
+		// The yaml key structure: top-level key "difftest" becomes flat key "difftest" in the
+		// merged settings (flattenMap keeps root-level keys as-is when no parent prefix).
+		sectionsDir := dir + "/.moai/config/sections"
+		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		// Write a key that won't collide with any builtin default.
+		projectYAML := "schema_version: 3\ndifftest_unique_key: project_val\n"
+		if err := os.WriteFile(sectionsDir+"/difftest.yaml", []byte(projectYAML), 0o644); err != nil {
+			t.Fatalf("write yaml: %v", err)
+		}
 
 		cmd := setupDoctorConfigCmd(t)
 		var out bytes.Buffer
 		cmd.SetOut(&out)
 		cmd.SetErr(&out)
-		cmd.SetArgs([]string{"doctor", "config", "diff", "user", "project"})
+		cmd.SetArgs([]string{"doctor", "config", "diff", "builtin", "project"})
 		err := cmd.Execute()
 		if err != nil {
-			t.Logf("diff command error (RED): %v", err)
+			t.Errorf("diff command error: %v", err)
 		}
 
-		// Output should at minimum list 0 differences (empty project dir)
+		// Output should contain the project-sourced key.
 		output := out.String()
-		_ = output // In GREEN: parse and verify merged-view delta semantics
+		if !strings.Contains(output, "difftest_unique_key") {
+			t.Errorf("diff output missing expected key 'difftest_unique_key'; got: %s", output)
+		}
+		// Source should reference project
+		if !strings.Contains(output, "project") {
+			t.Errorf("diff output should reference 'project' tier; got: %s", output)
+		}
 	})
 }
