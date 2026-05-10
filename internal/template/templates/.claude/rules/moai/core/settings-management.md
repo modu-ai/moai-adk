@@ -30,10 +30,8 @@ Standard MCP servers in MoAI-ADK:
 - sequential-thinking: Complex problem analysis
 - pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
 - claude-in-chrome: Browser automation
+- zai-mcp-server (optional): Z.AI hosted MCP for Vision OCR / WebSearch / WebReader. Registered via `moai glm tools enable [vision|websearch|webreader|all]` (SPEC-GLM-MCP-001).
 
-<<<<<<< HEAD
-MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
-=======
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
 Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": true` 필드가 추가되었다.
@@ -59,8 +57,7 @@ MoAI-ADK 기본 설정:
 
 Source: SPEC-CC2122-MCP-001 (2026-04-30)
 
-MCP tools are deferred and must be loaded before use:
->>>>>>> 450661684 (docs(rules): M4 — settings-management alwaysLoad v2.1.119 노트 추가 (SPEC-CC2122-MCP-001))
+MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
 
 1. Use ToolSearch to find and load the tool
 2. Then call the loaded tool directly

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-GLM-MCP-001: Z.AI MCP Server Integration
+
+### Added
+
+- **SPEC-GLM-MCP-001**: `moai glm tools enable|disable [vision|websearch|webreader|all]` 서브커맨드 추가. Z.AI 공식 MCP 서버(`zai-mcp-server`)를 사용자(`~/.claude.json`) 또는 프로젝트(`--scope project` → `.mcp.json`) 범위로 등록/해제합니다. Pre-flight로 Node.js >= v22.0.0과 GLM API 키 존재를 검증하고, `~/.claude.json` 수정 시 ISO 타임스탬프 백업과 atomic write로 손실을 방지합니다. 다른 `mcpServers` 항목은 byte-for-byte 보존되며, SPEC-GLM-001의 `DISABLE_BETAS=1` / `DISABLE_PROMPT_CACHING=1` env 정책과 직교(orthogonal)입니다 (REQ-GMC-001~010). 신규 파일: `internal/cli/glm_tools.go` (~600 LOC) + `internal/cli/glm_tools_test.go` (~1,150 LOC, 22 GWT scenarios, coverage ≥85%). `settings-management.md` (template + mirror)에 짧은 등록 노트 추가.
+
+### English
+
+- **SPEC-GLM-MCP-001**: Added `moai glm tools enable|disable [vision|websearch|webreader|all]` subcommand for registering or removing the official Z.AI MCP server (`zai-mcp-server`) at user (`~/.claude.json`) or project (`--scope project` → `.mcp.json`) scope. Pre-flight validates Node.js >= v22.0.0 and the GLM API key. ISO-timestamped backup + atomic write of `~/.claude.json` prevent loss; other `mcpServers` entries are preserved byte-for-byte. Orthogonal to SPEC-GLM-001 env policy (`DISABLE_BETAS=1` / `DISABLE_PROMPT_CACHING=1`). New `internal/cli/glm_tools.go` (~600 LOC) + `internal/cli/glm_tools_test.go` (~1,150 LOC, 22 GWT scenarios, coverage ≥85%). Short registration note added to `settings-management.md` (template + mirror).
+
 ## [Unreleased] — SPEC-V3R3-CLI-TUI-001: TUI Unification (M1-M7)
 
 ### English
