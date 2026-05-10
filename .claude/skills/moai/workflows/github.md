@@ -1,16 +1,16 @@
 ---
 name: moai-workflow-github
 description: >
-  GitHub issue fixing and PR code review workflow using gh CLI.
+  GitHub workflow for issue fixing, PR code review, and dependency updates.
   Analyzes issues, implements fixes with test verification, creates PRs,
-  and performs multi-perspective code reviews.
+  performs multi-perspective code reviews, and manages library updates.
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "workflow"
   status: "active"
-  updated: "2026-04-02"
-  tags: "github, issues, pr, review, gh"
+  updated: "2026-05-11"
+  tags: "github, issues, pr, review, deps, gh"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -20,7 +20,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["github", "issue", "pr", "pull request"]
+  keywords: ["github", "issue", "pr", "pull request", "deps", "dependencies", "libraries"]
   agents: ["expert-debug", "expert-backend", "manager-quality"]
   phases: ["github"]
 ---
@@ -46,6 +46,7 @@ Flow: Discovery -> Analysis -> Implementation -> PR Creation -> Report
 First argument determines the workflow:
 - **issues** (aliases: issue, fix): Fix GitHub issues
 - **pr** (aliases: review, pull-request): Review PRs
+- **deps** (aliases: dependencies, libraries): Update Go dependencies
 - No argument: AskUserQuestion to choose
 
 ---
@@ -207,6 +208,105 @@ Display review summary:
 AskUserQuestion for next steps:
 - Review another PR
 - Done
+
+---
+
+## Sub-command: deps
+
+Dependency update workflow following CLAUDE.local.md §21 Library Update Checklist.
+
+### Phase 1: Check Available Updates
+
+Step 1.1: List available updates
+```bash
+# All available updates
+go list -m -u all
+
+# Filter stable versions only (exclude pre-release)
+go list -m -u all | grep -v "\-alpha\|\-beta\|\-rc"
+```
+
+Step 1.2: Classify by version type
+- **Patch** (v1.2.3 → v1.2.4): Always safe, update immediately
+- **Minor** (v1.2.3 → v1.3.0): Stable, update with test verification
+- **Major** (v1.2.3 → v2.0.0): Breaking changes, requires careful review
+
+**Forbidden versions** (do not update):
+- Pre-release: `-alpha`, `-beta`, `-rc` suffixes
+- Unstable: `-dev`, `-unstable`
+- Commit hash only: `v0.0.0-20240101...`
+
+### Phase 2: Update Dependencies
+
+Step 2.1: Update stable versions
+```bash
+# Update all stable dependencies (Minor + Patch)
+go get -u ./...
+
+# Update specific package
+go get -u github.com/charmbracelet/huh@latest
+```
+
+Step 2.2: Clean up dependencies
+```bash
+go mod tidy
+```
+
+### Phase 3: Verify Compatibility
+
+Step 3.1: Run test suite
+```bash
+go test ./... -race
+```
+
+Step 3.2: Verify build
+```bash
+go build ./...
+```
+
+### Phase 4: Commit and Report
+
+Step 4.1: Commit changes
+```bash
+git add go.mod go.sum
+git commit -m "chore(deps): 안정 버전 라이브러리 업데이트
+
+업데이트된 라이브러리:
+- github.com/pkg/errors v0.9.1 → v0.11.0
+- github.com/charmbracelet/lipgloss v0.6.0 → v0.7.0
+
+테스트: 62 packages PASS
+
+🗿 MoAI <email@mo.ai.kr>"
+```
+
+Step 4.2: Report summary
+```markdown
+## Dependency Update Complete
+
+Updated: {count} packages
+- Patch: {count}
+- Minor: {count}
+- Major: {count}
+
+Test Status: ✅ PASS (62 packages)
+Build Status: ✅ OK
+```
+
+### Flags
+
+- **--check**: Only check available updates, don't update (default)
+- **--update**: Apply updates (requires explicit flag)
+
+### Examples
+
+```bash
+# Check for available updates
+/moai:github deps --check
+
+# Apply all stable updates
+/moai:github deps --update
+```
 
 ---
 
