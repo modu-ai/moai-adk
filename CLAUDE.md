@@ -59,7 +59,7 @@ Route request based on command type:
 Execute using explicit agent invocation:
 
 - "Use the expert-backend subagent to develop the API"
-- "Use the manager-ddd subagent to implement with DDD approach"
+- "Use the manager-cycle subagent with cycle_type=ddd to implement with DDD approach"
 - "Use the Explore subagent to analyze the codebase structure"
 
 ### Phase 4: Report
@@ -103,17 +103,17 @@ For detailed design rules, see .claude/rules/moai/design/constitution.md
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
 
-### Manager Agents (8)
+### Manager Agents (7)
 
-spec, ddd, tdd, docs, quality, project, strategy, git
+spec, cycle, docs, quality, project, strategy, git
 
-### Expert Agents (8)
+### Expert Agents (6)
 
-backend, frontend, security, devops, performance, debug, testing, refactoring
+backend, frontend, security, devops, performance, refactoring
 
-### Builder Agents (3)
+### Builder Agents (1)
 
-agent, skill, plugin
+platform (artifact_type: agent|skill|plugin|command|hook|mcp-server|lsp-server)
 
 ### Evaluator Agents (2)
 
@@ -133,7 +133,7 @@ Role profiles (in `workflow.yaml`): researcher, analyst, architect, implementer,
 
 Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in workflow.yaml.
 
-For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-agent subagent or see `.claude/rules/moai/development/agent-authoring.md`.
+For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-platform subagent (artifact_type=agent) or see `.claude/rules/moai/development/agent-authoring.md`.
 
 ---
 
@@ -144,7 +144,7 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 ### MoAI Command Flow
 
 - /moai plan "description" → manager-spec subagent
-- /moai run SPEC-XXX → manager-ddd or manager-tdd subagent (per quality.yaml development_mode)
+- /moai run SPEC-XXX → manager-cycle subagent (cycle_type=ddd|tdd per quality.yaml development_mode)
 - /moai sync SPEC-XXX → manager-docs subagent
 
 For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workflow.md
@@ -375,7 +375,7 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 
 ### Error Recovery
 
-- Agent execution errors: Use expert-debug subagent
+- Agent execution errors: Use manager-quality subagent (diagnostic-mode)
 - Token limit errors: Execute /clear, then guide user to resume
 - Permission errors: Review settings.json manually
 - Integration errors: Use expert-devops subagent

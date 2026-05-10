@@ -28,7 +28,7 @@ Rules and constraints governing all workflows are always loaded from these sourc
 - Quality gates, security boundaries: .claude/rules/moai/core/moai-constitution.md
 - SPEC workflow phases, token budgets: .claude/rules/moai/workflow/spec-workflow.md
 - Development methodologies (DDD/TDD): .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
-- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-agent subagent.
+- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-platform subagent (artifact_type=agent).
 - @MX tag rules and protocol: .claude/rules/moai/workflow/mx-tag-protocol.md
 
 ---
@@ -114,7 +114,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mod
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
-Agents: manager-strategy, manager-ddd or manager-tdd (per quality.yaml), manager-quality, manager-git
+Agents: manager-strategy, manager-cycle (cycle_type=ddd|tdd per quality.yaml), manager-quality, manager-git
 Flags: --resume SPEC-XXX, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
@@ -143,14 +143,14 @@ For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moa
 ### fix - Auto-Fix Errors
 
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
-Agents: expert-debug (diagnosis), expert-backend/expert-frontend (fixes)
+Agents: manager-quality (diagnostic-mode), expert-backend/expert-frontend (fixes)
 Flags: --dry, --sequential, --level N, --resume, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
 
 Purpose: Repeatedly fix issues until completion marker detected or max iterations reached.
-Agents: expert-debug, expert-backend, expert-frontend, expert-testing
+Agents: manager-quality (diagnostic-mode), expert-backend, expert-frontend, manager-cycle
 Flags: --max N, --auto-fix, --seq
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
@@ -171,7 +171,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team m
 ### clean - Dead Code Removal
 
 Purpose: Identify and safely remove unused code with test verification.
-Agents: expert-refactoring, expert-testing
+Agents: expert-refactoring, manager-cycle
 Flags: --dry, --safe-only, --file PATH
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
 
@@ -185,14 +185,14 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
 ### coverage - Test Coverage Analysis
 
 Purpose: Analyze test coverage gaps and generate missing tests.
-Agents: expert-testing
+Agents: manager-cycle (cycle_type=tdd)
 Flags: --target N, --file PATH, --report
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/coverage.md
 
 ### e2e - End-to-End Testing
 
 Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
-Agents: expert-testing, expert-frontend
+Agents: manager-cycle (cycle_type=tdd), expert-frontend
 Flags: --record, --url URL, --journey NAME
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
@@ -216,7 +216,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/db.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-ddd/tdd, manager-quality, manager-docs, manager-git
+Agents: Explore, manager-spec, manager-cycle, manager-quality, manager-docs, manager-git
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
