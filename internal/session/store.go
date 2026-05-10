@@ -51,6 +51,7 @@ func NewFileSessionStore(stateDir string, staleTTL time.Duration) *FileSessionSt
 }
 
 // Checkpoint persists the phase state to disk with atomic write.
+// SPEC-V3R2-RT-004 REQ-040: advisory lock으로 concurrent write 방지 (3-retry / 10ms-backoff).
 func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 	if err := fs.ensureStateDir(); err != nil {
 		return fmt.Errorf("create state dir: %w", err)
@@ -61,6 +62,13 @@ func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 		return ErrBlockerOutstanding
 	}
 
+	// SPEC-V3R2-RT-004 REQ-004: Validate checkpoint before write
+	if state.Checkpoint != nil {
+		if err := state.Checkpoint.Validate(); err != nil {
+			return fmt.Errorf("%w: %v", ErrCheckpointInvalid, err)
+		}
+	}
+
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
@@ -68,6 +76,13 @@ func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 
 	filename := fs.checkpointPath(state.Phase, state.SPECID)
 	tmpFile := filename + ".tmp"
+
+	// SPEC-V3R2-RT-004 REQ-040: Advisory lock 획득 (3-retry / 10ms-backoff)
+	lock := newFileLock()
+	if err := acquireWithRetry(lock, filename, 3, 10*time.Millisecond); err != nil {
+		return fmt.Errorf("acquire lock: %w", err)
+	}
+	defer lock.release()
 
 	// Write to temporary file
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
@@ -98,6 +113,13 @@ func (fs *FileSessionStore) Hydrate(phase Phase, specID string) (*PhaseState, er
 	var state PhaseState
 	if err := json.Unmarshal(data, &state); err != nil {
 		return nil, fmt.Errorf("unmarshal state: %w", err)
+	}
+
+	// SPEC-V3R2-RT-004 REQ-004: Validate checkpoint after read (AC-09 corrupted checkpoint)
+	if state.Checkpoint != nil {
+		if err := state.Checkpoint.Validate(); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrCheckpointInvalid, err)
+		}
 	}
 
 	// Check for staleness
