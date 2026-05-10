@@ -738,7 +738,7 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 
 // getGLMEnvPath returns the path to ~/.moai/.env.glm.
 func getGLMEnvPath() string {
-	home, err := userHomeDir()
+	home, err := userHomeDirFn()
 	if err != nil {
 		return ""
 	}

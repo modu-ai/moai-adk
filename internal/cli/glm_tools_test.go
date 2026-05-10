@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1073,6 +1074,9 @@ func TestMaskPartial_Long(t *testing.T) {
 func TestWriteClaudeJSONAtomic_BadDir(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("root 권한에서는 권한 테스트 불가")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows에서는 /nonexistent-dir 경로가 드라이브 루트로 해석됨")
 	}
 	// 존재하지 않는 경로에 쓰기 시도 (임시 파일 생성 시도 실패 예상)
 	badPath := filepath.Join("/nonexistent-dir-xyz", ".claude.json")
