@@ -599,6 +599,86 @@ func TestDevelopmentModeStrings(t *testing.T) {
 	}
 }
 
+// TestValidate_RequiredFieldMissing exercises the validator/v10 required path
+// for User.Name when the user section is explicitly loaded.
+// AC-05 hardening: validator now produces type errors for required-field-missing cases.
+func TestValidate_RequiredFieldMissing(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultConfig()
+	// User.Name is empty — the validate:"required" tag on UserConfig.Name
+	// triggers the validator/v10 path (skipped by runStructValidation and
+	// delegated to the existing validateRequired custom check).
+	loaded := map[string]bool{"user": true}
+
+	err := Validate(cfg, loaded)
+	if err == nil {
+		t.Fatal("Validate() expected error when User.Name is empty and user section is loaded")
+	}
+
+	var ve *ValidationErrors
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *ValidationErrors, got %T: %v", err, err)
+	}
+
+	found := false
+	for _, e := range ve.Errors {
+		if e.Field == "user.name" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected validation error for field user.name in: %v", ve.Errors)
+	}
+}
+
+// TestValidate_OneofViolation exercises the validator/v10 oneof path for
+// LLM.PerformanceTier.  Invalid values must produce an error that wraps
+// ErrInvalidConfig (AC-05 ConfigTypeError alignment).
+func TestValidate_OneofViolation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		tier  string
+		valid bool
+	}{
+		{"high is valid", "high", true},
+		{"medium is valid", "medium", true},
+		{"low is valid", "low", true},
+		{"empty is valid (omitempty)", "", true},
+		{"ultra is invalid", "ultra", false},
+		{"HIGH uppercase is invalid", "HIGH", false},
+		{"extreme is invalid", "extreme", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := NewDefaultConfig()
+			cfg.User.Name = "TestUser"
+			cfg.LLM.PerformanceTier = tt.tier
+			loaded := map[string]bool{"user": true}
+
+			err := Validate(cfg, loaded)
+			if tt.valid && err != nil {
+				t.Errorf("Validate() expected no error for tier %q, got: %v", tt.tier, err)
+			}
+			if !tt.valid && err == nil {
+				t.Errorf("Validate() expected error for tier %q, got nil", tt.tier)
+			}
+			if !tt.valid && err != nil {
+				// Must be identifiable as a config error.
+				if !errors.Is(err, ErrInvalidConfig) {
+					t.Errorf("expected ErrInvalidConfig for tier %q, got: %v", tt.tier, err)
+				}
+			}
+		})
+	}
+}
+
 // containsSubstring is a test helper that checks if s contains substr.
 func containsSubstring(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))

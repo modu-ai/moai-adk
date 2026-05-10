@@ -30,7 +30,7 @@ func (m DevelopmentMode) IsValid() bool {
 
 // UserConfig represents the user configuration section.
 type UserConfig struct {
-	Name string `yaml:"name"`
+	Name string `yaml:"name" validate:"required"`
 }
 
 // LanguageConfig represents the language configuration section.
@@ -47,7 +47,7 @@ type LanguageConfig struct {
 // @MX:NOTE: [AUTO] Contains TRUST 5 quality gate settings. Manages LSP integration, test coverage, and development methodology (DDD/TDD) configuration.
 // QualityConfig represents the quality configuration section.
 type QualityConfig struct {
-	DevelopmentMode    DevelopmentMode    `yaml:"development_mode"`
+	DevelopmentMode    DevelopmentMode    `yaml:"development_mode" validate:"omitempty,oneof=ddd tdd"`
 	EnforceQuality     bool               `yaml:"enforce_quality"`
 	TestCoverageTarget int                `yaml:"test_coverage_target"`
 	// CoverageThreshold is an alias for TestCoverageTarget used in some yaml files.
@@ -205,7 +205,7 @@ type StatuslineConfig struct {
 // GitConventionConfig represents commit message convention settings.
 type GitConventionConfig struct {
 	// Convention name: auto, conventional-commits, angular, karma, custom
-	Convention string `yaml:"convention"`
+	Convention string `yaml:"convention" validate:"omitempty,oneof=auto conventional-commits angular karma custom"`
 
 	// AutoDetection settings for convention discovery
 	AutoDetection AutoDetectionConfig `yaml:"auto_detection"`

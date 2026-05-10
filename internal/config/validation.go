@@ -1,12 +1,18 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
+
+// validate is the package-level validator instance (singleton).
+var validate = validator.New()
 
 // Dynamic token patterns that must not appear in configuration values.
 // These indicate unexpanded template variables (ADR-011 compliance).
@@ -24,6 +30,12 @@ var dynamicTokenPatterns = []*regexp.Regexp{
 // to sections that were explicitly loaded.
 func Validate(cfg *Config, loadedSections map[string]bool) error {
 	var errs []ValidationError
+
+	// Run validator/v10 struct validation as the first pass.
+	// Only fields without existing custom checks produce errors here
+	// (currently: LLM.PerformanceTier oneof).  Fields gated by loadedSections
+	// or with existing custom checks are skipped inside runStructValidation.
+	errs = append(errs, runStructValidation(cfg, loadedSections)...)
 
 	// Check required fields for loaded sections
 	errs = append(errs, validateRequired(cfg, loadedSections)...)
@@ -246,4 +258,77 @@ func developmentModeStrings() []string {
 		strs[i] = string(m)
 	}
 	return strs
+}
+
+// runStructValidation runs validator/v10 struct tag checks on cfg and converts
+// field errors into ValidationError entries compatible with the existing error
+// contract.  Fields controlled by loadedSections gating are skipped here so
+// that the existing custom checks (validateRequired, validateDevelopmentMode,
+// validateGitConventionConfig) remain the authoritative source for those fields.
+// validator/v10 catches type violations (e.g. oneof) for oneof-only fields like
+// LLM.PerformanceTier where no custom check exists.
+func runStructValidation(cfg *Config, loadedSections map[string]bool) []ValidationError {
+	if err := validate.Struct(cfg); err != nil {
+		var ve validator.ValidationErrors
+		if !errors.As(err, &ve) {
+			// Unexpected error type; surface as a generic validation error.
+			return []ValidationError{{
+				Field:   "config",
+				Message: err.Error(),
+				Wrapped: ErrInvalidConfig,
+			}}
+		}
+		var errs []ValidationError
+		for _, fe := range ve {
+			ns := fe.Namespace()
+			tag := fe.Tag()
+
+			// User.Name required: skip here — handled by validateRequired which
+			// gates on loadedSections["user"].
+			if ns == "Config.User.Name" && tag == "required" {
+				continue
+			}
+
+			// DevelopmentMode oneof: skip here — handled by validateDevelopmentMode
+			// which wraps ErrInvalidDevelopmentMode expected by existing tests.
+			if ns == "Config.Quality.DevelopmentMode" && tag == "oneof" {
+				continue
+			}
+
+			// GitConvention.Convention oneof: skip here — handled by
+			// validateGitConventionConfig which wraps ErrInvalidConfig.
+			if ns == "Config.GitConvention.Convention" && tag == "oneof" {
+				continue
+			}
+
+			// LLM.PerformanceTier oneof: no existing custom check; emit
+			// ConfigTypeError wrapped in ValidationError for AC-05 compliance.
+			errs = append(errs, ValidationError{
+				Field:   fieldNamespace(ns),
+				Message: fmt.Sprintf("must be one of valid values (validator tag: %s)", tag),
+				Value:   fmt.Sprintf("%v", reflect.ValueOf(fe.Value())),
+				Wrapped: ErrInvalidConfig,
+			})
+		}
+		return errs
+	}
+	return nil
+}
+
+// fieldNamespace converts a validator namespace (e.g. "Config.LLM.PerformanceTier")
+// into a dotted field path (e.g. "llm.performance_tier") for error messages.
+// Falls back to the raw namespace when the mapping is unknown.
+func fieldNamespace(ns string) string {
+	switch ns {
+	case "Config.LLM.PerformanceTier":
+		return "llm.performance_tier"
+	case "Config.User.Name":
+		return "user.name"
+	case "Config.Quality.DevelopmentMode":
+		return "quality.development_mode"
+	case "Config.GitConvention.Convention":
+		return "git_convention.convention"
+	default:
+		return ns
+	}
 }

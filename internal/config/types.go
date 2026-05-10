@@ -60,7 +60,7 @@ type LLMConfig struct {
 	GLMEnvVar string `yaml:"glm_env_var"`
 	// Performance tier: "high", "medium", "low"
 	// Controls model selection for all sub-agents and team agents
-	PerformanceTier string `yaml:"performance_tier"`
+	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=high medium low"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
