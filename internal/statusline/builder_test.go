@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -275,10 +277,11 @@ func TestBuilder_SetMode(t *testing.T) {
 }
 
 func TestBuilder_Build_NoNewline(t *testing.T) {
-	// Default mode without git produces 2 lines (L1 info + L2 bars)
+	// Default mode without git produces 3 lines (L1 info + L2 bars + L3 directory)
+	// AC-SF-001: Even with nil/partial stdin, directory is shown via os.Getwd() fallback
 	builder := New(Options{
 		GitProvider: &mockGitProvider{
-			data: &GitStatusData{Available: false}, // no git → no L3
+			data: &GitStatusData{Available: false}, // no git → no L4 (git branch)
 		},
 		Mode:    ModeDefault,
 		NoColor: true,
@@ -294,10 +297,10 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Without git data, default renders L1 (info) + L2 (bars) = 2 lines
+	// Without git data, default renders L1 (info) + L2 (bars) + L3 (directory) = 3 lines
 	lines := strings.Split(got, "\n")
-	if len(lines) != 2 {
-		t.Errorf("default without git should be 2 lines, got %d lines: %q", len(lines), got)
+	if len(lines) != 3 {
+		t.Errorf("default without git should be 3 lines, got %d lines: %q", len(lines), got)
 	}
 }
 
@@ -1499,5 +1502,107 @@ func TestBuild_EffortThinking_FullPipeline(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TDD RED: M1 Tests for Cwd Guard + Project Directory Fallback
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestExtractProjectDirectory_SandboxCwdPriority tests AC-SF-007: Sandbox Cwd Priority.
+// When stdin JSON's cwd is /sandbox/project and process's os.Getwd() is /home/user/project,
+// extractProjectDirectory() shall prefer stdin's cwd value.
+//
+// RED Phase: This test should PASS because current implementation already prioritizes stdin cwd.
+func TestExtractProjectDirectory_SandboxCwdPriority(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *StdinData
+		wantBase string // expected basename (extractProjectDirectory returns basename)
+	}{
+		{
+			name: "stdin workspace.project_dir takes priority",
+			input: &StdinData{
+				Workspace: &WorkspaceInfo{
+					ProjectDir: "/sandbox/project",
+				},
+				CWD: "/home/user/project", // different from workspace.project_dir
+			},
+			wantBase: "project", // basename of /sandbox/project
+		},
+		{
+			name: "stdin workspace.current_dir as fallback",
+			input: &StdinData{
+				Workspace: &WorkspaceInfo{
+					CurrentDir: "/sandbox/current",
+				},
+			},
+			wantBase: "current", // basename of /sandbox/current
+		},
+		{
+			name: "stdin cwd as final fallback",
+			input: &StdinData{
+				CWD: "/sandbox/fallback",
+			},
+			wantBase: "fallback", // basename of /sandbox/fallback
+		},
+		{
+			name:     "nil input falls back to os.Getwd()",
+			input:    nil,
+			wantBase: "statusline", // will be current dir basename (internal/statusline package)
+		},
+		{
+			name: "empty workspace fields fall back to cwd",
+			input: &StdinData{
+				Workspace: &WorkspaceInfo{
+					ProjectDir: "",
+					CurrentDir: "",
+				},
+				CWD: "/home/user/project",
+			},
+			wantBase: "project", // basename of cwd
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractProjectDirectory(tt.input)
+			if got != tt.wantBase {
+				t.Errorf("extractProjectDirectory() = %q, want %q", got, tt.wantBase)
+			}
+		})
+	}
+}
+
+// TestExtractProjectDirectory_GetwdFallback tests AC-SF-001 part 2: os.Getwd() basename fallback.
+// When stdin has no workspace/cwd fields, extractProjectDirectory shall use os.Getwd().
+//
+// RED Phase: This test should FAIL because extractProjectDirectory currently returns "" when input is nil.
+func TestExtractProjectDirectory_GetwdFallback(t *testing.T) {
+	// This test verifies the 4th fallback: os.Getwd() → filepath.Base()
+	// Current implementation returns "" for nil input - this is the RED failure
+
+	// Save original working directory
+	origWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get current working directory: %v", err)
+	}
+	defer os.Chdir(origWd)
+
+	// Change to a known directory
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("failed to chdir to temp: %v", err)
+	}
+
+	// Test with nil input (should fallback to os.Getwd())
+	got := extractProjectDirectory(nil)
+
+	// Get expected basename from tempDir path
+	wantBase := filepath.Base(tempDir)
+
+	if got != wantBase {
+		// RED phase: this will fail because got == ""
+		t.Errorf("extractProjectDirectory(nil) = %q, want %q (basename of cwd)", got, wantBase)
 	}
 }

@@ -23,7 +23,20 @@ var StatuslineCmd = &cobra.Command{
 }
 
 // runStatusline renders a statusline string suitable for Claude Code's status bar.
+//
+// @MX:ANCHOR: statusline CLI entry point (fan_in >= 3: shell wrapper, direct CLI, tests)
+// @MX:REASON: public entry point for statusline rendering — cwd guard is critical for stability
+// @MX:SPEC: SPEC-V3R3-STATUSLINE-FALLBACK-001
 func runStatusline(cmd *cobra.Command, _ []string) error {
+	// AC-SF-006: cwd guard — deleted directory fallback
+	// os.Getwd() may succeed on macOS even with deleted cwd, so also check with os.Stat()
+	if wd, err := os.Getwd(); err != nil || !dirExists(wd) {
+		home, _ := os.UserHomeDir()
+		if home != "" {
+			_ = os.Chdir(home)
+		}
+	}
+
 	out := cmd.OutOrStdout()
 	ctx := context.Background()
 
@@ -78,6 +91,12 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 
 	_, _ = fmt.Fprintln(out, result)
 	return nil
+}
+
+// dirExists checks whether a directory exists at the given path.
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // readStdinWithTimeout reads stdin with TTY detection.

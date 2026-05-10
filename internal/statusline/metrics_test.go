@@ -79,7 +79,7 @@ func TestCollectMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CollectMetrics(tt.input)
+			got := CollectMetrics(tt.input, "")
 
 			if got.Model != tt.wantModel {
 				t.Errorf("Model = %q, want %q", got.Model, tt.wantModel)
@@ -146,7 +146,7 @@ func TestCollectMetrics_SessionDuration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := CollectMetrics(tt.input)
+			m := CollectMetrics(tt.input, "")
 			if m.SessionDurationMS != tt.wantMS {
 				t.Errorf("SessionDurationMS = %d, want %d", m.SessionDurationMS, tt.wantMS)
 			}
@@ -286,7 +286,7 @@ func TestCollectMetrics_GLMMode(t *testing.T) {
 	input := &StdinData{
 		Model: &ModelInfo{DisplayName: "Opus"},
 	}
-	got := CollectMetrics(input)
+	got := CollectMetrics(input, "")
 	if got.Model != "glm-5.1" {
 		t.Errorf("Model = %q in GLM mode, want %q", got.Model, "glm-5.1")
 	}
@@ -300,7 +300,7 @@ func TestCollectMetrics_GLMMode_Strips1M(t *testing.T) {
 	input := &StdinData{
 		Model: &ModelInfo{DisplayName: "Opus[1m]"},
 	}
-	got := CollectMetrics(input)
+	got := CollectMetrics(input, "")
 	if got.Model != "glm-5.1" {
 		t.Errorf("Model = %q with Opus[1m] display, want %q", got.Model, "glm-5.1")
 	}
@@ -310,7 +310,7 @@ func TestCollectMetrics_GLMMode_Strips1M(t *testing.T) {
 	input2 := &StdinData{
 		Model: &ModelInfo{ID: "glm-5.1[1m]"},
 	}
-	got2 := CollectMetrics(input2)
+	got2 := CollectMetrics(input2, "")
 	if got2.Model != "glm-5.1" {
 		t.Errorf("Model = %q with glm-5.1[1m] ID, want %q", got2.Model, "glm-5.1")
 	}

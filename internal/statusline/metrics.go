@@ -9,9 +9,20 @@ import (
 
 // CollectMetrics extracts session cost and model information from stdin data.
 // Returns a MetricsData with Available=false if input is nil.
-func CollectMetrics(input *StdinData) *MetricsData {
+// Model name fallback chain (AC-SF-002/003/004):
+// 1. stdin model field
+// 2. MOAI_LAST_MODEL env var
+// 3. Cache file (~/.moai/state/last-model.txt)
+// 4. Unavailable
+//
+// AC-SF-005: When model is available, writes to cache file for future fallback.
+//
+// @MX:NOTE: [AUTO] Fallback chain: stdin → MOAI_LAST_MODEL → cache file → unavailable
+// @MX:SPEC: SPEC-V3R3-STATUSLINE-FALLBACK-001
+func CollectMetrics(input *StdinData, homeDir string) *MetricsData {
 	if input == nil {
-		return &MetricsData{Available: false}
+		// Try fallback chain for nil input (AC-SF-001/003/004)
+		return collectMetricsFromFallback(homeDir)
 	}
 
 	// Extract model name from nested structure
@@ -28,9 +39,19 @@ func CollectMetrics(input *StdinData) *MetricsData {
 		}
 	}
 
+	// If no model in stdin, try fallback chain (AC-SF-002/003/004)
+	if modelName == "" {
+		modelName = getModelNameFromFallback(homeDir)
+	}
+
 	// Override display name with actual GLM model when running in GLM mode.
 	// Claude Code reports "Opus"/"Sonnet"/"Haiku" even when env vars route to GLM models.
 	modelName = resolveGLMModelName(modelName)
+
+	// AC-SF-005: Write model name to cache for future fallback
+	if modelName != "" && homeDir != "" {
+		WriteModelCache(homeDir, modelName) // Error silently ignored per EC-SF-003
+	}
 
 	data := &MetricsData{
 		Model:     modelName,
@@ -49,6 +70,38 @@ func CollectMetrics(input *StdinData) *MetricsData {
 	}
 
 	return data
+}
+
+// collectMetricsFromFallback attempts to get model name from fallback sources.
+// Called when stdin is nil (AC-SF-001).
+func collectMetricsFromFallback(homeDir string) *MetricsData {
+	modelName := getModelNameFromFallback(homeDir)
+
+	return &MetricsData{
+		Model:     modelName,
+		Available: modelName != "",
+	}
+}
+
+// getModelNameFromFallback implements the fallback chain:
+// 1. MOAI_LAST_MODEL env var (AC-SF-003)
+// 2. Cache file (AC-SF-004)
+// 3. Empty string (unavailable)
+func getModelNameFromFallback(homeDir string) string {
+	// Priority 1: MOAI_LAST_MODEL env var (AC-SF-003)
+	if envModel := os.Getenv("MOAI_LAST_MODEL"); envModel != "" {
+		return ShortenModelName(envModel)
+	}
+
+	// Priority 2: Cache file (AC-SF-004)
+	if homeDir != "" {
+		if cachedModel, err := ReadModelCache(homeDir); err == nil && cachedModel != "" {
+			return cachedModel
+		}
+	}
+
+	// Priority 3: No fallback available
+	return ""
 }
 
 // ShortenModelName abbreviates a Claude model name to match Python's format.

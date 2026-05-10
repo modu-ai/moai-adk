@@ -21,6 +21,7 @@ type defaultBuilder struct {
 	usageProvider  UsageProvider // @MX:NOTE: [AUTO] API usage collection (Phase 5, REQ-V3-API-001)
 	renderer       *Renderer
 	mode           StatuslineMode
+	homeDir        string // Home directory for model cache (M2, AC-SF-002/003/004/005)
 	mu             sync.RWMutex
 }
 
@@ -100,8 +101,8 @@ func New(opts Options) Builder {
 	}
 
 	// Auto-create usage provider if not provided (Phase 5, REQ-V3-API-001)
+	homeDir := opts.HomeDir
 	if usageProvider == nil {
-		homeDir := opts.HomeDir
 		if homeDir == "" {
 			// Auto-detect home directory
 			if h, err := os.UserHomeDir(); err == nil {
@@ -121,6 +122,7 @@ func New(opts Options) Builder {
 		usageProvider:  usageProvider,
 		renderer:       NewRenderer(opts.ThemeName, opts.NoColor, opts.SegmentConfig),
 		mode:           mode,
+		homeDir:        homeDir, // Store homeDir for model cache (M2)
 	}
 }
 
@@ -187,7 +189,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	if mem := CollectMemory(input); mem != nil {
 		data.Memory = *mem
 	}
-	if met := CollectMetrics(input); met != nil {
+	if met := CollectMetrics(input, b.homeDir); met != nil {
 		data.Metrics = *met
 	}
 	// Collect active task info (rendering enabled in Phase 4, REQ-V3 Cycle 5)
@@ -288,26 +290,34 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 }
 
 // extractProjectDirectory extracts the project directory name from workspace.
-// Priority: workspace.project_dir > workspace.current_dir > cwd (legacy)
+// Priority: workspace.project_dir > workspace.current_dir > cwd (legacy) > os.Getwd() (fallback)
 // Per https://code.claude.com/docs/en/statusline documentation.
+//
+// AC-SF-001: When stdin is empty/partial, fallback to os.Getwd() basename.
+// AC-SF-007: Sandbox cwd priority - stdin values take precedence over os.Getwd().
+//
+// @MX:NOTE: [AUTO] 4-level fallback chain for project directory extraction
+// @MX:SPEC: SPEC-V3R3-STATUSLINE-FALLBACK-001
 func extractProjectDirectory(input *StdinData) string {
-	if input == nil {
-		return ""
-	}
-
 	// Priority 1: Use workspace.project_dir (preferred)
-	if input.Workspace != nil && input.Workspace.ProjectDir != "" {
+	if input != nil && input.Workspace != nil && input.Workspace.ProjectDir != "" {
 		return filepath.Base(input.Workspace.ProjectDir)
 	}
 
 	// Priority 2: Use workspace.current_dir
-	if input.Workspace != nil && input.Workspace.CurrentDir != "" {
+	if input != nil && input.Workspace != nil && input.Workspace.CurrentDir != "" {
 		return filepath.Base(input.Workspace.CurrentDir)
 	}
 
 	// Priority 3: Fall back to legacy cwd field
-	if input.CWD != "" {
+	if input != nil && input.CWD != "" {
 		return filepath.Base(input.CWD)
+	}
+
+	// Priority 4 (AC-SF-001): Fallback to os.Getwd() basename
+	// This handles nil input and partial JSON with no directory fields
+	if cwd, err := os.Getwd(); err == nil {
+		return filepath.Base(cwd)
 	}
 
 	return ""
