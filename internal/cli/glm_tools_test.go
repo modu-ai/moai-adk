@@ -137,21 +137,6 @@ func makeNodeOld(t *testing.T) func() {
 	return func() { detectNodeFn = origFn }
 }
 
-// runGLMTools 는 glmToolsCmd 를 실행하고 stdout/stderr 을 반환한다.
-func runGLMTools(t *testing.T, args ...string) (stdout, stderr string, exitCode int) {
-	t.Helper()
-	outBuf := new(strings.Builder)
-	errBuf := new(strings.Builder)
-	cmd := glmToolsCmd
-	cmd.SetOut(outBuf)
-	cmd.SetErr(errBuf)
-	err := cmd.RunE(cmd, args)
-	if err != nil {
-		exitCode = 1
-	}
-	return outBuf.String(), errBuf.String(), exitCode
-}
-
 // ─── GWT-1: tools enable subcommand 라우팅 + idempotent ──────────────────
 
 // TestGLMTools_Cmd_Exists — glmToolsCmd 가 glmCmd 의 서브커맨드로 등록됨을 검증 (REQ-GMC-001)

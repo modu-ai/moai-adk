@@ -48,7 +48,7 @@ var validToolNames = map[string]bool{
 }
 
 // errNodeNotFound 는 PATH 에서 node 를 찾지 못했을 때 반환하는 센티넬 에러
-var errNodeNotFound = errors.New("Node.js not found on PATH")
+var errNodeNotFound = errors.New("no Node.js executable found on PATH")
 
 // ─── 테스트 주입 지점 (함수 변수) ─────────────────────────────────────────
 
@@ -142,7 +142,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
 			return fmt.Errorf(
-				"Node.js not found on PATH\n\n"+
+				"no Node.js executable found on PATH\n\n"+
 					"최소 요구 버전: >= v%d.0.0\n\n"+
 					"설치 방법:\n"+
 					"  https://nodejs.org/ 에서 다운로드 또는\n"+
@@ -154,7 +154,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 	}
 	if major < nodeMinMajorVersion {
 		return fmt.Errorf(
-			"Node.js 버전이 너무 낮습니다: 감지된 버전 %s, 최소 요구 >= v%d.0.0\n\n"+
+			"감지된 Node.js 버전이 너무 낮습니다: %s, 최소 요구 >= v%d.0.0\n\n"+
 				"업그레이드 방법:\n"+
 				"  https://nodejs.org/ 에서 최신 버전 다운로드 또는\n"+
 				"  nvm install %d",
