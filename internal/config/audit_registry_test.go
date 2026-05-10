@@ -22,7 +22,7 @@ import (
 //
 // REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021, AC-08
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (audit_registry.go + YAMLToStructRegistry impl)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021 all registered structs verified
 func TestAuditRegistry_AllRegisteredStructsExist(t *testing.T) {
 	// GetYAMLToStructRegistry is undefined in RED phase → compile error signals RED.
 	registry := GetYAMLToStructRegistry()
@@ -70,7 +70,7 @@ func TestAuditRegistry_AllRegisteredStructsExist(t *testing.T) {
 //
 // REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-043, AC-08
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (ScanYAMLOrphans + IsRegisteredOrException)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-043 ScanYAMLOrphans detects unexpected yaml
 func TestAuditRegistry_NoUnexpectedYAMLOrphans(t *testing.T) {
 	// Arrange: create a workspace where only known yaml files exist
 	dir := t.TempDir()

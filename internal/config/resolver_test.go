@@ -167,7 +167,7 @@ func TestConfigSchemaMismatch(t *testing.T) {
 //
 // REQ-V3R2-RT-005-013, AC-05
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (loadYAMLFile type checking implementation)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for string-where-int
 func TestResolver_ConfigTypeError_StringForInt(t *testing.T) {
 	// Arrange: create a temp dir with a quality.yaml that has a string where int is expected
 	dir := t.TempDir()
@@ -221,7 +221,7 @@ func TestResolver_ConfigTypeError_StringForInt(t *testing.T) {
 //
 // REQ-V3R2-RT-005-013, AC-05
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (nested field type checking in loadYAMLFile)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for nested field
 func TestResolver_ConfigTypeError_NestedField(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -272,7 +272,7 @@ func TestResolver_ConfigTypeError_NestedField(t *testing.T) {
 //
 // REQ-V3R2-RT-005-013, AC-05
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (array type checking in loadYAMLFile)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for array-where-string
 func TestResolver_ConfigTypeError_ArrayType(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -324,7 +324,7 @@ func TestResolver_ConfigTypeError_ArrayType(t *testing.T) {
 //
 // REQ-V3R2-RT-005-014, AC-06
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (policy tier absent = empty, already partially implemented)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-014 policy absent = empty tier
 func TestResolver_PolicyAbsentNoError(t *testing.T) {
 	// Arrange: work in temp dir where no policy file exists
 	dir := t.TempDir()
@@ -361,7 +361,7 @@ func TestResolver_PolicyAbsentNoError(t *testing.T) {
 //
 // REQ-V3R2-RT-005-014, AC-06
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (empty JSON policy tier)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-014 empty policy tier no error
 func TestResolver_PolicyEmptyJSON(t *testing.T) {
 	// This test validates the error message format for PolicyAbsent cases.
 	// A genuine policy path exists but is empty — no error expected.
@@ -433,7 +433,7 @@ func TestResolver_PolicyUnreadableLogs(t *testing.T) {
 //
 // REQ-V3R2-RT-005-033, AC-11
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (schema_version extraction in loadYAMLFile)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-033 schema_version propagated to Provenance
 func TestResolver_SchemaVersionPropagation(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -482,7 +482,7 @@ func TestResolver_SchemaVersionPropagation(t *testing.T) {
 //
 // REQ-V3R2-RT-005-033, AC-11
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (schema_version defaults to 0 when absent)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-033 schema_version absent = 0
 func TestResolver_SchemaVersionAbsentZero(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -525,7 +525,7 @@ func TestResolver_SchemaVersionAbsentZero(t *testing.T) {
 //
 // REQ-V3R2-RT-005-033, REQ-V3R2-RT-005-013, AC-11
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (schema_version type validation in loadYAMLFile)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 schema_version non-int = ConfigTypeError
 func TestResolver_SchemaVersionInvalidType(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -570,7 +570,7 @@ func TestResolver_SchemaVersionInvalidType(t *testing.T) {
 //
 // REQ-V3R2-RT-005-041, AC-12
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (yaml/yml sibling detection in loadYAMLSections)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 sibling yaml/yml conflict = ConfigAmbiguous
 func TestResolver_ConfigAmbiguous(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -617,7 +617,7 @@ func TestResolver_ConfigAmbiguous(t *testing.T) {
 //
 // REQ-V3R2-RT-005-041, AC-12
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (identical sibling values: no error)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 identical sibling values = no error
 func TestResolver_AmbiguousIdenticalAccepted(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -657,7 +657,7 @@ func TestResolver_AmbiguousIdenticalAccepted(t *testing.T) {
 //
 // REQ-V3R2-RT-005-041, AC-12
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (different basename = different section, no conflict)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 different basenames = no ambiguity
 func TestResolver_DifferentSectionsNoAmbiguity(t *testing.T) {
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")

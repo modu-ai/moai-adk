@@ -50,9 +50,16 @@ func (m *MergedSettings) All() map[string]Value[any] {
 
 // MergeAll walks all tiers in priority order and produces merged settings.
 // For each (section, field) key, the first non-zero value wins.
-// Provenance is captured from the winning tier.
+// Provenance is captured from the winning tier, including SchemaVersion when
+// loadYAMLFile embedded the schemaVersionKey sentinel.
 //
 // This maps to REQ-V3R2-RT-005-005 and REQ-V3R2-RT-005-010.
+//
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 deterministic 8-tier merge.
+// Identical tier inputs MUST produce byte-identical merged output (cache-prefix discipline;
+// problem-catalog P-C05). Map iteration order is non-deterministic; sort keys before
+// serialization (see dumpJSON). The schemaVersionKey sentinel is stripped from the
+// merged key space and applied to Provenance.SchemaVersion instead.
 //
 // Parameters:
 //   - tiers: map of source to raw configuration values (map[string]any where key is "section.field")
@@ -67,19 +74,34 @@ func MergeAll(
 ) (*MergedSettings, error) {
 	result := NewMergedSettings()
 
-	// Collect all keys across all tiers
+	// Extract per-tier schema versions from the sentinel key.
+	// These are not config keys and must never appear in the merged output.
+	tierSchemaVersions := make(map[Source]int)
+	for source, tierData := range tiers {
+		if sv, ok := tierData[schemaVersionSentinel]; ok {
+			if svInt, ok := sv.(int); ok {
+				tierSchemaVersions[source] = svInt
+			}
+		}
+	}
+
+	// Collect all keys across all tiers, excluding the sentinel.
 	allKeys := make(map[string]bool)
 	for _, tierData := range tiers {
 		for key := range tierData {
+			if key == schemaVersionSentinel {
+				continue
+			}
 			allKeys[key] = true
 		}
 	}
 
-	// For each key, walk tiers in priority order and take the first non-zero value
+	// For each key, walk tiers in priority order and take the first non-zero value.
 	for key := range allKeys {
 		var winningValue any
 		var winningSource Source
 		var winningOrigin string
+		var winningSchemaVersion int
 		var overriddenBy []string
 
 		// Walk tiers in priority order (SrcPolicy = 0 is highest)
@@ -112,15 +134,17 @@ func MergeAll(
 			winningValue = value
 			winningSource = source
 			winningOrigin = origins[source]
+			winningSchemaVersion = tierSchemaVersions[source]
 		}
 
 		// If we found a winning value, store it with provenance
 		if winningValue != nil {
 			provenance := Provenance{
-				Source:       winningSource,
-				Origin:       winningOrigin,
-				Loaded:       loadedAt,
-				OverriddenBy: overriddenBy,
+				Source:        winningSource,
+				Origin:        winningOrigin,
+				Loaded:        loadedAt,
+				SchemaVersion: winningSchemaVersion,
+				OverriddenBy:  overriddenBy,
 			}
 
 			result.Set(key, Value[any]{

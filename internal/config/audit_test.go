@@ -9,19 +9,36 @@ import (
 
 // TestAuditParity checks that every .moai/config/sections/*.yaml has a corresponding Go struct.
 // This maps to REQ-V3R2-RT-005-008 and REQ-V3R2-RT-005-043.
+//
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/043 yaml↔Go struct parity enforcement.
+// New yaml under .moai/config/sections/ MUST register in audit_registry.go::YAMLToStructRegistry
+// OR be added to YAMLAuditExceptions. MIG-003 will register the 5 currently-excepted files
+// (constitution/context/interview/design/harness) progressively.
 func TestAuditParity(t *testing.T) {
-	// This test uses a registry map to track yaml files and their corresponding Go structs.
-	// In a real implementation, this would check internal/config/types.go for struct definitions.
-	//
-	// For this implementation, we provide a basic framework that can be extended.
+	// Use the project's actual .moai/config/sections/ directory.
+	// When running from the worktree, cwd is the repo root.
+	sectionsDir := ".moai/config/sections"
 
-	t.Skip("Audit test requires full type registry implementation - placeholder for SPEC-V3R2-MIG-003")
+	if _, err := os.Stat(sectionsDir); os.IsNotExist(err) {
+		t.Skipf("sections dir %s not found (test environment may not have project yaml files)", sectionsDir)
+		return
+	}
 
-	// The implementation would:
-	// 1. Scan .moai/config/sections/ directory for *.yaml files
-	// 2. Check internal/config/types.go for corresponding structs
-	// 3. Report any orphan yaml files (no Go struct) or orphan structs (no yaml file)
-	// 4. Support an exceptions registry for legitimate divergences
+	registry := GetYAMLToStructRegistry()
+	exceptions := GetYAMLAuditExceptions()
+
+	// 1. Scan for orphan yaml files (yaml with no Go struct mapping)
+	orphanYAMLs := ScanYAMLOrphans(sectionsDir, registry, exceptions)
+	for _, orphan := range orphanYAMLs {
+		base := strings.TrimSuffix(orphan, filepath.Ext(orphan))
+		t.Errorf("orphan yaml file (no Go struct mapping): %s (add to audit_registry.go or YAMLAuditExceptions)", base+".yaml")
+	}
+
+	// 2. Check for orphan structs (registry entries with no yaml on disk)
+	orphanStructs := ScanOrphanStructs(sectionsDir, registry)
+	for _, orphan := range orphanStructs {
+		t.Errorf("registry maps %s → struct but no %s.yaml found in %s", orphan, orphan, sectionsDir)
+	}
 }
 
 // TestAuditParity_OrphanYAMLFails verifies that an unregistered yaml file causes the audit to fail.
@@ -31,7 +48,7 @@ func TestAuditParity(t *testing.T) {
 //
 // REQ-V3R2-RT-005-043, REQ-V3R2-RT-005-008
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (audit_registry.go + registry-driven scan)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-043/008 orphan yaml detection
 func TestAuditParity_OrphanYAMLFails(t *testing.T) {
 	// Arrange: create a temp workspace with an orphan yaml file not in the registry
 	dir := t.TempDir()
@@ -67,7 +84,7 @@ func TestAuditParity_OrphanYAMLFails(t *testing.T) {
 //
 // REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (requires audit_registry.go + YAMLToStructRegistry)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008 all registered yaml sections recognized
 func TestAuditParity_AllRegisteredYAMLPass(t *testing.T) {
 	// Act: verify all entries in YAMLToStructRegistry are recognized
 	// YAMLToStructRegistry should not exist yet (RED phase) → will fail to compile or be empty
@@ -97,7 +114,7 @@ func TestAuditParity_AllRegisteredYAMLPass(t *testing.T) {
 //
 // REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (requires audit_registry.go)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021 orphan struct detection
 func TestAuditParity_OrphanStructFails(t *testing.T) {
 	// Verify the audit can detect a registry entry with no corresponding yaml file.
 	// ScanOrphanStructs should not exist yet (RED phase) → will fail to compile.
@@ -122,7 +139,7 @@ func TestAuditParity_OrphanStructFails(t *testing.T) {
 //
 // REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
 //
-// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M2 (requires YAMLAuditExceptions map in audit_registry.go)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008 MIG-003-pending exceptions respected
 func TestAuditParity_ExceptionsRespected(t *testing.T) {
 	// Verify the MIG-003-pending exception files are in the exceptions registry
 	// YAMLAuditExceptions should not exist yet (RED phase) → will fail to compile.

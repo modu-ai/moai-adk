@@ -50,6 +50,10 @@ type QualityConfig struct {
 	DevelopmentMode    DevelopmentMode    `yaml:"development_mode"`
 	EnforceQuality     bool               `yaml:"enforce_quality"`
 	TestCoverageTarget int                `yaml:"test_coverage_target"`
+	// CoverageThreshold is an alias for TestCoverageTarget used in some yaml files.
+	// SPEC-V3R2-RT-005 M2: adds typed field so ConfigTypeError is detectable
+	// when string is provided where int is expected (AC-05).
+	CoverageThreshold  int                `yaml:"coverage_threshold"`
 	DDDSettings        DDDSettings        `yaml:"ddd_settings"`
 	TDDSettings        TDDSettings        `yaml:"tdd_settings"`
 	CoverageExemptions CoverageExemptions `yaml:"coverage_exemptions"`
