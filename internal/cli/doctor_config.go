@@ -78,7 +78,7 @@ func runConfigDump(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to dump configuration: %w", err)
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), output)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), output)
 	return nil
 }
 
@@ -126,18 +126,18 @@ func parseKey(key string) (string, string, error) {
 
 // printKeyValue prints a single key with its provenance to w.
 func printKeyValue(w io.Writer, key string, val config.Value[any]) {
-	fmt.Fprintf(w, "Key: %s\n", key)
-	fmt.Fprintf(w, "  Value: %v\n", val.V)
-	fmt.Fprintf(w, "  Source: %s\n", val.P.Source)
-	fmt.Fprintf(w, "  Origin: %s\n", val.P.Origin)
-	fmt.Fprintf(w, "  Loaded: %s\n", val.P.Loaded.Format("2006-01-02 15:04:05"))
+	_, _ = fmt.Fprintf(w, "Key: %s\n", key)
+	_, _ = fmt.Fprintf(w, "  Value: %v\n", val.V)
+	_, _ = fmt.Fprintf(w, "  Source: %s\n", val.P.Source)
+	_, _ = fmt.Fprintf(w, "  Origin: %s\n", val.P.Origin)
+	_, _ = fmt.Fprintf(w, "  Loaded: %s\n", val.P.Loaded.Format("2006-01-02 15:04:05"))
 	if val.IsDefault() {
-		fmt.Fprintf(w, "  Default: true\n")
+		_, _ = fmt.Fprintf(w, "  Default: true\n")
 	}
 	if len(val.P.OverriddenBy) > 0 {
-		fmt.Fprintf(w, "  Overridden by:\n")
+		_, _ = fmt.Fprintf(w, "  Overridden by:\n")
 		for _, override := range val.P.OverriddenBy {
-			fmt.Fprintf(w, "    - %s\n", override)
+			_, _ = fmt.Fprintf(w, "    - %s\n", override)
 		}
 	}
 }
@@ -145,20 +145,20 @@ func printKeyValue(w io.Writer, key string, val config.Value[any]) {
 // printConfigDiff prints the differences between two tiers to w.
 func printConfigDiff(w io.Writer, diff map[string]config.Value[any], tierA, tierB config.Source) {
 	if len(diff) == 0 {
-		fmt.Fprintf(w, "No differences found between %s and %s tiers\n", tierA, tierB)
+		_, _ = fmt.Fprintf(w, "No differences found between %s and %s tiers\n", tierA, tierB)
 		return
 	}
 
-	fmt.Fprintf(w, "Differences between %s and %s tiers:\n", tierA, tierB)
-	fmt.Fprintf(w, "Count: %d key(s)\n\n", len(diff))
+	_, _ = fmt.Fprintf(w, "Differences between %s and %s tiers:\n", tierA, tierB)
+	_, _ = fmt.Fprintf(w, "Count: %d key(s)\n\n", len(diff))
 
 	for key, val := range diff {
-		fmt.Fprintf(w, "Key: %s\n", key)
+		_, _ = fmt.Fprintf(w, "Key: %s\n", key)
 		if val.V != nil {
-			fmt.Fprintf(w, "  Value: %v\n", val.V)
+			_, _ = fmt.Fprintf(w, "  Value: %v\n", val.V)
 		}
-		fmt.Fprintf(w, "  Source: %s\n", val.P.Source)
-		fmt.Fprintf(w, "  Origin: %s\n", val.P.Origin)
-		fmt.Fprintln(w)
+		_, _ = fmt.Fprintf(w, "  Source: %s\n", val.P.Source)
+		_, _ = fmt.Fprintf(w, "  Origin: %s\n", val.P.Origin)
+		_, _ = fmt.Fprintln(w)
 	}
 }

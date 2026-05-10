@@ -1118,7 +1118,7 @@ func (r *resolver) Dump(writer io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintln(writer, output)
+	_, _ = fmt.Fprintln(writer, output)
 	return nil
 }
 

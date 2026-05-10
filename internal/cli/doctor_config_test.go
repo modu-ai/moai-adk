@@ -4,11 +4,27 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
+
+// loadedTimestampRE matches the per-call volatile "loaded" timestamp field in dump
+// JSON output. Used to normalize byte-stability comparisons (AC-V3R2-RT-005-02): the
+// timestamp reflects the resolver-instance wall-clock load time, which can cross a
+// second boundary between two consecutive resolver instances on slower runners
+// (observed on macos-latest GitHub Actions). All other fields (source, origin, value,
+// overridden, default) are byte-stable per the AC.
+var loadedTimestampRE = regexp.MustCompile(`"loaded":\s*"[^"]*"`)
+
+// stripLoadedTimestamps replaces the "loaded" field value with a fixed placeholder so
+// that two dump outputs separated by a second boundary remain byte-equal for
+// AC-02 verification.
+func stripLoadedTimestamps(s string) string {
+	return loadedTimestampRE.ReplaceAllString(s, `"loaded":"<stripped>"`)
+}
 
 // doctor_config_test.go — M1 RED phase tests for moai doctor config dump/diff commands.
 //
@@ -136,11 +152,16 @@ func TestDoctorConfigDump_ByteStableAcrossCalls(t *testing.T) {
 			return out.String()
 		}
 
-		out1 := execute()
-		out2 := execute()
+		// Strip per-call volatile "loaded" timestamps; AC-02 byte-stability covers all
+		// non-volatile fields (value, source, origin, overridden, default). The Loaded
+		// timestamp legitimately differs between resolver instances; the test must
+		// normalize it to verify the byte-stability of the rest of the output. See
+		// loadedTimestampRE comment above.
+		out1 := stripLoadedTimestamps(execute())
+		out2 := stripLoadedTimestamps(execute())
 
 		if out1 != out2 {
-			t.Errorf("consecutive dump calls produced different output:\nfirst: %s\nsecond: %s", out1, out2)
+			t.Errorf("consecutive dump calls produced different output (loaded timestamps normalized):\nfirst: %s\nsecond: %s", out1, out2)
 		}
 	})
 }
