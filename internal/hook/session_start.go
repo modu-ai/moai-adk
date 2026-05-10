@@ -14,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
+	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
@@ -142,6 +143,38 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			data["skill_proposals"] = summary
 			slog.Info("reflective_write: pending proposals available for review",
 				"session_id", input.SessionID,
+			)
+		}
+	}
+
+	// @MX:WARN @MX:REASON - SPEC-V3R2-RT-007 REQ-020 silent migration apply at session start.
+	// Errors must NOT block session (REQ-021). Surface via SystemMessage but allow handler
+	// to return success. Bypassing this preserves migration-version-file unchanged → next
+	// session retries. NEVER let migration error abort session-start handler.
+	// 자동 마이그레이션 적용 (REQ-020, REQ-021).
+	// session-start 시점에서 pending migrations를 자동으로 실행합니다.
+	// 실패해도 세션은 차단하지 않고 SystemMessage로 사용자에게 알립니다 (REQ-021).
+	if input.ProjectDir != "" {
+		cfg := h.getConfig()
+		if cfg == nil || !cfg.System.Migrations.Disabled {
+			runner := migration.NewRunner(input.ProjectDir)
+			applied, err := runner.Apply(ctx)
+			if err != nil {
+				slog.Warn("session start: migration apply failed",
+					"error", err.Error(),
+					"project_dir", input.ProjectDir,
+				)
+				data["migration_error"] = err.Error()
+			} else if len(applied) > 0 {
+				data["migrations_applied"] = len(applied)
+				slog.Info("session start: migrations applied successfully",
+					"count", len(applied),
+					"versions", applied,
+				)
+			}
+		} else {
+			slog.Info("session start: migrations disabled via config",
+				"project_dir", input.ProjectDir,
 			)
 		}
 	}

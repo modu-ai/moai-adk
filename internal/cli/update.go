@@ -28,6 +28,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -2552,31 +2553,9 @@ func execCommand(name string, args ...string) (string, error) {
 
 // detectGoBinPathForUpdate detects the Go binary installation path for template rendering.
 // Returns the path where Go binaries are installed (e.g., "/home/user/go/bin").
+// REQ-V3R2-RT-007-001: gobin.Detect helper를 사용하여 중복 제거.
 func detectGoBinPathForUpdate(homeDir string) string {
-	// Try GOBIN first (explicit override)
-	if output, err := execCommand("go", "env", "GOBIN"); err == nil {
-		if goBin := strings.TrimSpace(output); goBin != "" {
-			return goBin
-		}
-	}
-
-	// Try GOPATH/bin (user's Go workspace)
-	if output, err := execCommand("go", "env", "GOPATH"); err == nil {
-		if goPath := strings.TrimSpace(output); goPath != "" {
-			return filepath.Join(goPath, "bin")
-		}
-	}
-
-	// Fallback to default ~/go/bin
-	if homeDir != "" {
-		return filepath.Join(homeDir, "go", "bin")
-	}
-
-	// Last resort: platform-aware fallback
-	if runtime.GOOS == "windows" {
-		return filepath.Join("C:\\", "Go", "bin")
-	}
-	return "/usr/local/go/bin"
+	return gobin.Detect(homeDir)
 }
 
 // scaffoldEvolutionDir ensures the .moai/evolution/ directory tree exists.

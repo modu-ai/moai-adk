@@ -43,11 +43,18 @@ type GitStrategyConfig struct {
 
 // SystemConfig represents the system configuration section.
 type SystemConfig struct {
-	Version        string `yaml:"version"`
-	LogLevel       string `yaml:"log_level"`
-	LogFormat      string `yaml:"log_format"`
-	NoColor        bool   `yaml:"no_color"`
-	NonInteractive bool   `yaml:"non_interactive"`
+	Version        string        `yaml:"version"`
+	LogLevel       string        `yaml:"log_level"`
+	LogFormat      string        `yaml:"log_format"`
+	NoColor        bool          `yaml:"no_color"`
+	NonInteractive bool          `yaml:"non_interactive"`
+	Migrations     MigrationsConfig `yaml:"migrations"`
+}
+
+// MigrationsConfig represents the migrations configuration section.
+// REQ-V3R2-RT-007-032: migrations.disabled로 session-start migration을 비활성화할 수 있습니다.
+type MigrationsConfig struct {
+	Disabled bool `yaml:"disabled"`
 }
 
 // LLMConfig represents the LLM configuration section.

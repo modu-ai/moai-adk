@@ -84,4 +84,7 @@ func init() {
 
 	// SPEC-V3R2-RT-004: register state subcommand
 	rootCmd.AddCommand(newStateCmd())
+
+	// SPEC-V3R2-RT-007: register migration subcommand group
+	rootCmd.AddCommand(migrationCmd)
 }
