@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -204,6 +205,249 @@ func TestDiff(t *testing.T) {
 		if diffA.A.V != 3 || diffA.B.V != 5 {
 			t.Errorf("Diff() 'different' values = (%v, %v), want (3, 5)", diffA.A.V, diffA.B.V)
 		}
+	}
+}
+
+// TestMergeAll_PolicyOverrideRejected verifies that strict_mode in the policy tier
+// causes a lower-tier override attempt to return PolicyOverrideRejected error.
+//
+// AC-V3R2-RT-005-07: Given policy tier sets strict_mode: true and a policy-designated key,
+// When SrcProject tries to override the key, Then PolicyOverrideRejected error is returned.
+//
+// REQ-V3R2-RT-005-022, AC-07
+//
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (MergeAll strict_mode enforcement)
+func TestMergeAll_PolicyOverrideRejected(t *testing.T) {
+	// Arrange
+	now := time.Now()
+
+	tiers := map[Source]map[string]any{
+		SrcPolicy: {
+			"policy.strict_mode":            true,
+			"permission.network_allowlist":   []string{"host1"},
+		},
+		SrcProject: {
+			"permission.network_allowlist": []string{"host1", "host2"}, // attempted override
+		},
+	}
+	origins := map[Source]string{
+		SrcPolicy:  "/etc/moai/settings.json",
+		SrcProject: ".moai/config/config.yaml",
+	}
+
+	// Act
+	_, err := MergeAll(tiers, origins, now)
+
+	// Assert: PolicyOverrideRejected error expected
+	if err == nil {
+		t.Fatal("MergeAll() with strict_mode=true and lower-tier override should return error")
+	}
+
+	var policyErr *PolicyOverrideRejected
+	if !errors.As(err, &policyErr) {
+		t.Errorf("MergeAll() error type = %T, want *PolicyOverrideRejected", err)
+	} else {
+		if policyErr.Key == "" {
+			t.Error("PolicyOverrideRejected.Key is empty, want the offending key name")
+		}
+		if policyErr.PolicySource == "" {
+			t.Error("PolicyOverrideRejected.PolicySource is empty, want the policy file path")
+		}
+	}
+}
+
+// TestMergeAll_OverriddenByPopulated verifies that when multiple tiers have non-zero values,
+// the lower-tier origins are collected in Provenance.OverriddenBy.
+//
+// AC-V3R2-RT-005-01: Given policy=true, user=false, project=true (all non-zero),
+// When Load() merges, Then winner=policy, OverriddenBy=[user_path, project_path].
+//
+// REQ-V3R2-RT-005-012, AC-01
+//
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (OverriddenBy accumulation in MergeAll)
+func TestMergeAll_OverriddenByPopulated(t *testing.T) {
+	// Arrange: all 3 tiers have the same key with non-zero values
+	now := time.Now()
+
+	tiers := map[Source]map[string]any{
+		SrcPolicy:  {"test.key": true},
+		SrcUser:    {"test.key": false},  // false is zero for bool → should be excluded
+		SrcProject: {"test.key": "project_value"},
+	}
+	origins := map[Source]string{
+		SrcPolicy:  "/etc/moai/settings.json",
+		SrcUser:    "~/.moai/settings.json",
+		SrcProject: ".moai/config/config.yaml",
+	}
+
+	// Act
+	merged, err := MergeAll(tiers, origins, now)
+	if err != nil {
+		t.Fatalf("MergeAll() unexpected error: %v", err)
+	}
+
+	// Assert
+	val, ok := merged.Get("test.key")
+	if !ok {
+		t.Fatal("MergeAll() key 'test.key' not found in result")
+	}
+
+	// Policy should win
+	if val.P.Source != SrcPolicy {
+		t.Errorf("winning source = %v, want SrcPolicy", val.P.Source)
+	}
+
+	// OverriddenBy should contain project (user=false is zero, excluded)
+	// At minimum, project path should be in OverriddenBy
+	foundProject := false
+	for _, path := range val.P.OverriddenBy {
+		if path == ".moai/config/config.yaml" {
+			foundProject = true
+		}
+	}
+	if !foundProject {
+		t.Errorf("OverriddenBy %v does not contain project path '.moai/config/config.yaml'", val.P.OverriddenBy)
+	}
+
+	// User (false = zero) should NOT be in OverriddenBy
+	for _, path := range val.P.OverriddenBy {
+		if path == "~/.moai/settings.json" {
+			t.Errorf("OverriddenBy contains user path %q, but user had zero value (false)", path)
+		}
+	}
+}
+
+// TestMergeAll_ZeroValuesExcluded verifies that zero values are excluded from OverriddenBy.
+//
+// AC-V3R2-RT-005-01 edge case: policy=true, user="" (zero), project=true.
+// OverriddenBy should contain only [project_path], user excluded (zero value).
+//
+// REQ-V3R2-RT-005-005, REQ-V3R2-RT-005-012, AC-01
+//
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (zero value exclusion from OverriddenBy)
+func TestMergeAll_ZeroValuesExcluded(t *testing.T) {
+	now := time.Now()
+
+	tiers := map[Source]map[string]any{
+		SrcPolicy:  {"perm.mode": "strict"},
+		SrcUser:    {"perm.mode": ""},        // empty string = zero
+		SrcProject: {"perm.mode": "lenient"},
+	}
+	origins := map[Source]string{
+		SrcPolicy:  "/etc/moai/settings.json",
+		SrcUser:    "~/.moai/settings.json",
+		SrcProject: ".moai/config/config.yaml",
+	}
+
+	merged, err := MergeAll(tiers, origins, now)
+	if err != nil {
+		t.Fatalf("MergeAll() unexpected error: %v", err)
+	}
+
+	val, ok := merged.Get("perm.mode")
+	if !ok {
+		t.Fatal("MergeAll() key not found")
+	}
+
+	// Verify no zero-value tier appears in OverriddenBy
+	for _, path := range val.P.OverriddenBy {
+		if path == "~/.moai/settings.json" {
+			t.Errorf("zero-value user tier should not appear in OverriddenBy, got: %v", val.P.OverriddenBy)
+		}
+	}
+}
+
+// TestMergeAll_ByteStableJSON verifies that identical tier inputs produce byte-identical merged output.
+//
+// REQ-V3R2-RT-005 §7 Constraints (Determinism), AC-02 byte-stability
+//
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (encoding/json.MarshalIndent + sort.Strings keys)
+func TestMergeAll_ByteStableJSON(t *testing.T) {
+	now := time.Now()
+
+	tiers := map[Source]map[string]any{
+		SrcUser:    {"quality.coverage_threshold": 85, "llm.mode": "claude"},
+		SrcBuiltin: {"quality.coverage_threshold": 80},
+	}
+	origins := map[Source]string{
+		SrcUser:    "~/.moai/settings.json",
+		SrcBuiltin: "internal/config/defaults.go",
+	}
+
+	// Act: produce merged settings twice
+	merged1, err := MergeAll(tiers, origins, now)
+	if err != nil {
+		t.Fatalf("first MergeAll() error: %v", err)
+	}
+	merged2, err := MergeAll(tiers, origins, now)
+	if err != nil {
+		t.Fatalf("second MergeAll() error: %v", err)
+	}
+
+	// Assert: JSON output must be byte-identical
+	json1, err := merged1.Dump("json")
+	if err != nil {
+		t.Fatalf("Dump() first call error: %v", err)
+	}
+	json2, err := merged2.Dump("json")
+	if err != nil {
+		t.Fatalf("Dump() second call error: %v", err)
+	}
+
+	if json1 != json2 {
+		t.Errorf("Dump() is not byte-stable:\nfirst: %s\nsecond: %s", json1, json2)
+	}
+}
+
+// TestMergeAll_StrictModeFalseAllowsOverride verifies that when strict_mode is false (or unset),
+// policy-designated keys can be overridden by lower tiers (policy still wins by priority, no error).
+//
+// AC-V3R2-RT-005-07 edge case: strict_mode=false allows normal priority-based override without error.
+//
+// REQ-V3R2-RT-005-022, AC-07
+//
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (strict_mode=false branch in MergeAll)
+func TestMergeAll_StrictModeFalseAllowsOverride(t *testing.T) {
+	now := time.Now()
+
+	tiers := map[Source]map[string]any{
+		SrcPolicy: {
+			"policy.strict_mode":          false, // strict mode disabled
+			"permission.network_allowlist": []string{"host1"},
+		},
+		SrcProject: {
+			"permission.network_allowlist": []string{"host1", "host2"},
+		},
+	}
+	origins := map[Source]string{
+		SrcPolicy:  "/etc/moai/settings.json",
+		SrcProject: ".moai/config/config.yaml",
+	}
+
+	// Act: should NOT return PolicyOverrideRejected when strict_mode=false
+	merged, err := MergeAll(tiers, origins, now)
+	if err != nil {
+		t.Fatalf("MergeAll() with strict_mode=false should not return error, got: %v", err)
+	}
+
+	// Policy still wins by priority
+	val, ok := merged.Get("permission.network_allowlist")
+	if !ok {
+		t.Fatal("key 'permission.network_allowlist' not found in merged result")
+	}
+	if val.P.Source != SrcPolicy {
+		t.Errorf("source = %v, want SrcPolicy (policy always wins by priority)", val.P.Source)
+	}
+
+	// Project path should appear in OverriddenBy (not rejected, just overridden)
+	foundProject := false
+	for _, path := range val.P.OverriddenBy {
+		if path == ".moai/config/config.yaml" {
+			foundProject = true
+		}
+	}
+	if !foundProject {
+		t.Errorf("OverriddenBy %v should contain project path when strict_mode=false", val.P.OverriddenBy)
 	}
 }
 
