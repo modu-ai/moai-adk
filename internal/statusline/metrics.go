@@ -50,7 +50,7 @@ func CollectMetrics(input *StdinData, homeDir string) *MetricsData {
 
 	// AC-SF-005: Write model name to cache for future fallback
 	if modelName != "" && homeDir != "" {
-		WriteModelCache(homeDir, modelName) // Error silently ignored per EC-SF-003
+		_ = WriteModelCache(homeDir, modelName) //nolint:errcheck // EC-SF-003: silent ignore
 	}
 
 	data := &MetricsData{

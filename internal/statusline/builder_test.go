@@ -1587,7 +1587,7 @@ func TestExtractProjectDirectory_GetwdFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get current working directory: %v", err)
 	}
-	defer os.Chdir(origWd)
+	defer func() { _ = os.Chdir(origWd) }()
 
 	// Change to a known directory
 	tempDir := t.TempDir()

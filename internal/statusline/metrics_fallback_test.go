@@ -1,7 +1,6 @@
 package statusline
 
 import (
-	"os"
 	"testing"
 )
 
@@ -67,8 +66,9 @@ func TestCollectMetrics_ModelFallbackChain(t *testing.T) {
 
 			// Set up environment
 			if tt.envModel != "" {
-				os.Setenv("MOAI_LAST_MODEL", tt.envModel)
-				defer os.Unsetenv("MOAI_LAST_MODEL")
+				t.Setenv("MOAI_LAST_MODEL", tt.envModel)
+			} else {
+				t.Setenv("MOAI_LAST_MODEL", "")
 			}
 
 			// Set up cache file if needed

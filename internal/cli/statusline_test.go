@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -358,6 +359,10 @@ func TestLoadStatuslineFileConfig(t *testing.T) {
 //
 // RED Phase: This test should fail because cwd guard is not yet implemented in runStatusline.
 func TestCwdGuard_DeletedDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow deleting cwd of a running process")
+	}
+
 	// Create a temporary directory
 	tempDir := t.TempDir()
 
@@ -366,7 +371,7 @@ func TestCwdGuard_DeletedDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get current working directory: %v", err)
 	}
-	defer os.Chdir(origWd) // Always restore original directory
+	defer func() { _ = os.Chdir(origWd) }() // Always restore original directory
 
 	// Change to temp directory
 	if err := os.Chdir(tempDir); err != nil {

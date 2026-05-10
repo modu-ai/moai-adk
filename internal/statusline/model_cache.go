@@ -70,7 +70,7 @@ func WriteModelCache(homeDir, modelName string) error {
 	if err := os.Rename(tempPath, cachePath); err != nil {
 		// EC-SF-003: Silent ignore on write failure
 		// Clean up temp file
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath) //nolint:errcheck // cleanup best-effort
 		return nil
 	}
 
