@@ -9,6 +9,7 @@
 |---------|------------|-----------------------------------|------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-10 | manager-spec (Plan workflow)      | Initial progress tracker — plan documents written; ready for plan-auditor |
 | 0.1.1   | 2026-05-10 | manager-spec (audit-fix iter 2)   | Mechanical fixes per plan-auditor v1 audit (REVISE 0.83): D5 Worktree field clarified post-run pending; D6 task count 28→45 (+5 audit-fix tasks); AC count 15→18 (perf budget ACs); references to plan-audit report `.moai/reports/plan-audit/SPEC-V3R2-RT-005-2026-05-10.md`. |
+| 0.2.0   | 2026-05-10 | manager-tdd (Run M1-M4)           | Run phase M1-M4 완료. M1 RED `06a74a401`: 6 test files, 41 신규 test 함수. M2 GREEN p1 `77571f6f1`: audit_registry + yaml.v3 strict + 5 AC. M3 GREEN p2 `df8c3c63c`: encoding/json + Provenance.MarshalJSON + policy.strict_mode + 4 AC. M4 GREEN p3 `fc6acf70f`: Reload + RWMutex + Skill frontmatter + log + 2 AC. 누적 11 AC GREEN, race detector clean. M5 다음 세션. |
 
 ---
 
@@ -16,13 +17,15 @@
 
 | Field | Value |
 |-------|-------|
-| Phase | `plan` |
-| Status | `plan-complete-pending-audit` |
-| Branch | `plan/SPEC-V3R2-RT-005` |
-| Worktree | `(post-run, pending creation via 'moai worktree new')` |
-| Base | `origin/main` (`496595c3f`) |
-| Plan-auditor | iteration 2 in progress (audit report v1 score 0.83, REVISE; mechanical fixes applied per audit report `.moai/reports/plan-audit/SPEC-V3R2-RT-005-2026-05-10.md`) |
-| Run-phase entry | pending plan-auditor iteration 2 PASS |
+| Phase | `run` |
+| Status | `m4-complete-pending-m5` |
+| Branch | `feature/SPEC-V3R2-RT-005` |
+| Worktree | `/Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-RT-005` (★ MoAI-ADK 대문자) |
+| Base | `origin/main` (`7744ad937` PR #826 머지 직후, host main은 더 진행했지만 worktree base는 stale 무관) |
+| Worktree HEAD | `fc6acf70f` (M4 GREEN p3) |
+| Plan-auditor | iteration 1 inline only (REVISE 0.83 → fix PR #826 머지). iter 2는 M5 완료 후 sync phase에서 |
+| Run-phase progress | M1-M4 완료 (4/5 milestones), 11/18 AC GREEN |
+| Run-phase entry | M5 GREEN p4 진입 대기 (다음 세션) |
 
 ---
 
@@ -75,18 +78,24 @@ Each downstream SPEC's plan phase has been written assuming RT-005 contract exis
 > Per `.claude/rules/moai/workflow/session-handoff.md` canonical 6-block format. Use this verbatim after `/clear` or in the next session if plan-auditor PASSes and run phase begins.
 
 ```text
-ultrathink. SPEC-V3R2-RT-005 run 진입.
-applied lessons: project_v3_master_plan_post_v214 (RT-005 plan PR open), lessons #11 retired-agent stub chain, lessons #14 worktree paste-ready Block 0.
+[New Terminal — START IN WORKTREE]
+$ cd /Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-RT-005
+$ moai cc
+   └─ Claude Code session starts here (cwd = worktree)
+
+ultrathink. SPEC-V3R2-RT-005 run M5 GREEN p4 진입 (worktree-for-run 표준).
+applied lessons: project_wave8_rt005_run_m1m4_complete (M1-M4 완료, 11/18 AC GREEN, race detector clean), lessons #9 wave-split (M5는 12+ task 가장 큰 milestone), lessons #14 worktree paste-ready Block 0.
 
 전제 검증:
-1) git -C /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-RT-005 log --oneline -1 → plan commit hash 확인
-2) ls /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-RT-005/.moai/specs/SPEC-V3R2-RT-005/ → 7 files (spec/plan/research/acceptance/tasks/progress + issue-body)
-3) gh pr view <PR-number> → MERGEABLE 또는 MERGED 상태 확인
-4) cd /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-RT-005 → worktree 활성
+0) git rev-parse --show-toplevel → /Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-RT-005 (★ critical pre-check, MoAI-ADK 대문자)
+1) git branch --show-current → feature/SPEC-V3R2-RT-005
+2) git log --oneline -5 → fc6acf70f (M4 GREEN p3) at HEAD, 그 위 df8c3c63c (M3), 77571f6f1 (M2), 06a74a401 (M1), 7744ad937 (PR #826)
+3) go test ./internal/config/... -count=1 → ALL GREEN (M1-M4 baseline)
+4) go test -race ./internal/config/... -count=1 → CLEAN (M4 concurrency safety)
 
-실행: /moai run SPEC-V3R2-RT-005
+실행: /moai run SPEC-V3R2-RT-005 (M5 GREEN p4 진입 — Doctor CLI + filename norm + validator/v10 + 신규 perf benchmark T-41~45 = 12+ task)
 
-머지 후: SPEC-V3R2-RT-002 (permission stack, depends on RT-005 Source enum) → SPEC-V3R2-RT-003 (sandbox) → /moai sync
+머지 후: /moai sync SPEC-V3R2-RT-005 (동일 worktree) → moai worktree done → SPEC-V3R2-RT-007 plan 또는 RT-002/003 plan (Sprint 8 closeout)
 ```
 
 ---
