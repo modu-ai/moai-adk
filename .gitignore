@@ -243,3 +243,11 @@ temp/
 # docs-site Hugo build artifacts (root stray outputs)
 /public/
 /.hugo_build.lock
+
+# ===========================================
+# Claude Code session transcript dumps
+# ===========================================
+# 세션 트랜스크립트가 repo root에 떨어지면 git에 들어가지 않도록 차단.
+# 예: 2026-05-11-020042-this-session-is-being-continued-from-a-previous-c.txt
+/20[0-9][0-9]-[01][0-9]-[0-3][0-9]-[0-9]*-this-session-*.txt
+/*-claude-session*.txt
