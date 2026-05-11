@@ -194,8 +194,8 @@ func (h *agentStartHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		return &HookOutput{}, nil
 	}
 
-	// Prevent path traversal: reject if slash or double-dot is included
-	if strings.Contains(agentName, "/") || strings.Contains(agentName, "..") {
+	// Prevent path traversal: reject if slash, backslash, or double-dot is included
+	if strings.Contains(agentName, "/") || strings.Contains(agentName, "\\") || strings.Contains(agentName, "..") {
 		slog.Warn("agentStartHandler: rejecting potential path traversal agent name",
 			"agent_name", agentName)
 		return &HookOutput{}, nil

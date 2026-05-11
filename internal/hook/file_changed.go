@@ -84,9 +84,24 @@ func (h *fileChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hoo
 		return &HookOutput{}, nil
 	}
 
-	// Compare with existing sidecar tags
-	// For now, just report the count of tags found
-	// TODO: Implement sidecar comparison when mx.Manager is available
+	// Compare with existing sidecar tags and update index
+	// This tracks MX tag deltas across file edits for monitoring and validation
+	projectDir := input.CWD
+	if projectDir != "" {
+		stateDir := filepath.Join(projectDir, ".moai", "state")
+		manager := mx.NewManager(stateDir)
+
+		// Update the sidecar index with new tags from this file
+		_, err := manager.UpdateFile(input.FilePath, tags)
+		if err != nil {
+			slog.Warn("failed to update MX sidecar",
+				"path", input.FilePath,
+				"error", err,
+			)
+		}
+	}
+
+	// Format summary message for the tags found
 	msg := h.formatTagDelta(input.FilePath, tags)
 	if msg != "" {
 		return &HookOutput{
