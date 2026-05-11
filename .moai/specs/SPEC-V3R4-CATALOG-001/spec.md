@@ -7,7 +7,7 @@ updated_at: 2026-05-12
 author: GOOS행님
 priority: High
 labels: [catalog, manifest, tier, audit, infrastructure]
-issue_number: null
+issue_number: 859
 ---
 
 # SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest

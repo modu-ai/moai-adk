@@ -141,7 +141,7 @@ research.md 의 6 Open Questions 각각에 권장안 제시. 사용자가 Decisi
 
 (D8 권장 수정 반영 — 이전 v0.1.0 의 LOC 추정이 optimistic 했음. catalog.yaml ~600 lines 가 spec.md 의 ~80KB anticipated 와 불일치, audit test ~350 LOC 가 `lang_boundary_audit_test.go` ~250 LOC (9 sub-tests) 대비 underestimate. v0.2.0 은 sentinel discipline + 10 sub-test 기반 재계산.)
 
-- **Task count**: ~17 (M1: 4, M2: 7, M3: 10 (T3.10 신규), M4: 5, M5: 2). sub-task 포함 시 ~26.
+- **Task count**: ~28 (M1: 4, M2: 7, M3: 10 (T3.10 신규), M4: 5, M5: 2). Grouped into M1-M5 milestones; leaf tasks ~28 including sub-steps.
 - **LOC delta**:
   - `catalog.yaml`: **800-1200 lines (~80-120KB)** — 65 entries × ~6 fields × YAML indentation + 9개 pack 정의 + comments. spec.md §"Files to Modify" 와 일관.
   - `catalog_tier_audit_test.go`: **~450-550 LOC** — 10 sub-tests (T3.1-T3.10), sentinel-based assertions, parallel test 패턴, helper functions (walkSkills, walkAgents, parseManifest, dagCycleDetect). `lang_boundary_audit_test.go` ~250 LOC (9 sub-tests) 대비 entry 65개의 walk + hash 검증 + DAG 추가.
