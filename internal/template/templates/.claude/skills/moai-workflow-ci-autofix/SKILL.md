@@ -12,6 +12,7 @@ triggers:
   - "ci.*autofix"
 paths:
   - ".claude/rules/moai/workflow/ci-autofix-protocol.md"
+user-invocable: false
 ---
 
 # CI Auto-Fix Loop (`moai-workflow-ci-autofix`)

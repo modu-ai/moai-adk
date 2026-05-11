@@ -12,6 +12,7 @@ triggers:
   - "check.*status.*PR"
 paths:
   - ".claude/rules/moai/workflow/ci-watch-protocol.md"
+user-invocable: false
 ---
 
 # CI Watch Loop (`moai-workflow-ci-watch`)
