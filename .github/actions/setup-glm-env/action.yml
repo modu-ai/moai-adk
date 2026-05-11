@@ -5,7 +5,10 @@ runs:
   steps:
     - shell: bash
       run: |
-        echo "DISABLE_BETAS=true" >> $GITHUB_ENV
-        echo "DISABLE_PROMPT_CACHING=true" >> $GITHUB_ENV
-        echo "CLAUDE_CODE_USE_bedrock=0" >> $GITHUB_ENV
-        echo "CLAUDE_CODE_USE_vertex=0" >> $GITHUB_ENV
+        # PR #855 review fix: align with glm.go env vars (standard names, UPPER_SNAKE_CASE).
+        # - Drop DISABLE_PROMPT_CACHING: Z.AI 프롬프트 캐싱 호환성을 위해 제거 (glm.go와 동일 의도).
+        # - DISABLE_BETAS → CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: Claude Code 표준명.
+        # - CLAUDE_CODE_USE_{bedrock,vertex} → UPPER_SNAKE_CASE: 환경변수 컨벤션 준수.
+        echo "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1" >> $GITHUB_ENV
+        echo "CLAUDE_CODE_USE_BEDROCK=0" >> $GITHUB_ENV
+        echo "CLAUDE_CODE_USE_VERTEX=0" >> $GITHUB_ENV
