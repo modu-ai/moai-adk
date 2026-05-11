@@ -2,6 +2,7 @@ package gobin
 
 import (
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ func Detect(homeDir string) string {
 
 	// 3. $HOME/go/bin 기본값
 	if homeDir != "" {
-		return homeDir + "/go/bin"
+		return filepath.Join(homeDir, "go", "bin")
 	}
 
 	// 4. Last resort: 빈 문자열 (호출자가 처리)
@@ -61,5 +62,5 @@ func goEnvGOPATHBin() string {
 		return ""
 	}
 
-	return gopath + "/bin"
+	return filepath.Join(gopath, "bin")
 }
