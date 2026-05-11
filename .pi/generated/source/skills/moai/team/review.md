@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team review", "multi-perspective review", "parallel review"]
-  agents: ["team-validator"]
+  agents: ["general-purpose", "expert-security", "expert-performance", "manager-quality", "expert-frontend"]
   phases: ["review"]
 ---
 # Workflow: Team Review - Multi-Perspective Code Review
@@ -55,15 +55,25 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
 
 ## Phase 1: Spawn Review Team
 
-Use the review team pattern. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all four in a single response for parallel execution:
+Use the review team pattern. All spawns MUST use Agent() with `team_name` and `name` parameters. The Pi Agent Teams runtime keeps reviewers team-capable via `subagent_type: "general-purpose"`; each reviewer MUST adopt the mapped MoAI profile before work:
+
+| Reviewer | MoAI profile to adopt |
+|---|---|
+| security-reviewer | `expert-security` |
+| perf-reviewer | `expert-performance` |
+| quality-reviewer | `manager-quality` |
+| ux-reviewer | `expert-frontend` |
+
+Launch all four in a single response for parallel execution:
 
 ```
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   team_name: "moai-review-{target}",
   name: "security-reviewer",
   mode: "plan",
   prompt: "You are a security reviewer on team moai-review-{target}.
+    Adopt MoAI profile: expert-security. Read .pi/agents/moai/expert-security.md or .pi/generated/source/agents/moai/expert-security.md before review.
     Review the following changes for security issues.
     Check OWASP Top 10 compliance, input validation, authentication/authorization,
     secrets exposure, injection risks.
@@ -72,11 +82,12 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   team_name: "moai-review-{target}",
   name: "perf-reviewer",
   mode: "plan",
   prompt: "You are a performance reviewer on team moai-review-{target}.
+    Adopt MoAI profile: expert-performance. Read .pi/agents/moai/expert-performance.md or .pi/generated/source/agents/moai/expert-performance.md before review.
     Review the following changes for performance issues.
     Check algorithmic complexity, database query efficiency, memory usage,
     caching opportunities, bundle size impact.
@@ -85,11 +96,12 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   team_name: "moai-review-{target}",
   name: "quality-reviewer",
   mode: "plan",
   prompt: "You are a code quality reviewer on team moai-review-{target}.
+    Adopt MoAI profile: manager-quality. Read .pi/agents/moai/manager-quality.md or .pi/generated/source/agents/moai/manager-quality.md before review.
     Review the following changes for code quality.
     Check TRUST 5 compliance, naming conventions, error handling,
     test coverage, documentation, consistency with project patterns.
@@ -98,11 +110,12 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   team_name: "moai-review-{target}",
   name: "ux-reviewer",
   mode: "plan",
   prompt: "You are a UX reviewer on team moai-review-{target}.
+    Adopt MoAI profile: expert-frontend. Read .pi/agents/moai/expert-frontend.md or .pi/generated/source/agents/moai/expert-frontend.md before UX review.
     Review the following changes for user experience impact.
     Validate user flows remain functional, check error states and edge cases
     from the user's perspective, verify accessibility compliance,

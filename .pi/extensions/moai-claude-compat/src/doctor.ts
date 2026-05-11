@@ -12,9 +12,10 @@ import {
   hookBridgeParityStatus,
   hookBridgeStatus,
 } from "./hook-bridge.ts";
-import { teamRuntimeStatus } from "./team-runtime.ts";
+import { teamMoaiProfileMappingStatus, teamRuntimeStatus } from "./team-runtime.ts";
 import { teamHookAdapterStatus } from "./team-hook-adapter.ts";
 import { loadMoaiCompatConfig, outputStyleStatus, rulesStatus } from "./config.ts";
+import { workflowDispatchStatus } from "./agent-dispatch.ts";
 import { runtimeManifestStatus } from "./runtime-config.ts";
 
 function exists(path: string): boolean {
@@ -179,6 +180,7 @@ export function buildDoctorReport(): string[] {
     status("pi-local hooks source", exists(PI_HOOKS_SOURCE_PATH)),
     "ok: runtime prompts/code use pi-local snapshots",
     ...runtimeManifestStatus(),
+    ...workflowDispatchStatus(),
     "ok: permissionMode excluded-by-design; metadata only",
     getSkillIndexStatus(),
     ...getAgentConversionStatus(),
@@ -187,6 +189,7 @@ export function buildDoctorReport(): string[] {
     hookBridgeStatus(),
     ...hookParityReport(),
     teamRuntimeStatus(),
+    ...teamMoaiProfileMappingStatus(),
     ...teamHookAdapterStatus(),
     ...packageSetupReport(settings),
     ...packageFindings,
@@ -201,6 +204,7 @@ export function buildAuditReport(): string[] {
     ...formatTeamSchemaReport(),
     ...hookParityReport(),
     teamRuntimeStatus(),
+    ...teamMoaiProfileMappingStatus(),
     ...teamHookAdapterStatus(),
     "pending: invoke actual teams tool after @tmustier/pi-agent-teams package activation",
     "partial: pi-yaml-hooks is the blocking guardrail; extension hook bridge is non-blocking compatibility telemetry",

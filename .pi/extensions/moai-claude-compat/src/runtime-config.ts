@@ -22,9 +22,20 @@ export interface CommandMapConfig {
   moaiSubcommands: string[];
 }
 
+export type WorkflowDispatchMode = "skill" | "subagent" | "direct";
+
+export interface WorkflowMapEntry {
+  source?: string;
+  modeSource?: string;
+  primaryAgents?: string[];
+  dispatchMode?: WorkflowDispatchMode;
+  entryAgent?: string;
+  agentAliases?: Record<string, string>;
+}
+
 export interface WorkflowMapConfig {
   version: number;
-  workflows: Record<string, { source?: string; modeSource?: string; primaryAgents?: string[] }>;
+  workflows: Record<string, WorkflowMapEntry>;
   teamBackendPriority: string[];
   tddDdd: string;
 }
@@ -144,31 +155,33 @@ const DEFAULT_COMMAND_MAP: CommandMapConfig = {
 const DEFAULT_WORKFLOW_MAP: WorkflowMapConfig = {
   version: 1,
   workflows: {
-    brain: { source: "./generated/source/skills/moai/workflows/brain.md", primaryAgents: ["manager-brain"] },
-    plan: { source: "./generated/source/skills/moai/workflows/plan.md", primaryAgents: ["manager-spec", "manager-strategy"] },
+    brain: { source: "./generated/source/skills/moai/workflows/brain.md", dispatchMode: "subagent", entryAgent: "manager-brain", primaryAgents: ["manager-brain"] },
+    plan: { source: "./generated/source/skills/moai/workflows/plan.md", dispatchMode: "skill", primaryAgents: ["manager-spec", "manager-strategy"] },
     run: {
       source: "./generated/source/skills/moai/workflows/run.md",
       modeSource: "./generated/source/moai-config/sections/quality.yaml",
+      dispatchMode: "skill",
       primaryAgents: ["manager-tdd", "manager-ddd"],
     },
     sync: {
       source: "./generated/source/skills/moai/workflows/sync.md",
+      dispatchMode: "skill",
       primaryAgents: ["manager-docs", "manager-quality", "manager-git"],
     },
-    design: { source: "./generated/source/skills/moai/workflows/design.md" },
-    db: { source: "./generated/source/skills/moai/workflows/db.md" },
-    project: { source: "./generated/source/skills/moai/workflows/project.md", primaryAgents: ["manager-project", "manager-docs"] },
-    feedback: { source: "./generated/source/skills/moai/workflows/feedback.md", primaryAgents: ["manager-quality"] },
-    fix: { source: "./generated/source/skills/moai/workflows/fix.md", primaryAgents: ["expert-debug"] },
-    loop: { source: "./generated/source/skills/moai/workflows/loop.md", primaryAgents: ["expert-debug", "expert-testing"] },
-    mx: { source: "./generated/source/skills/moai/workflows/mx.md" },
-    review: { source: "./generated/source/skills/moai/workflows/review.md", primaryAgents: ["manager-quality", "expert-security"] },
-    clean: { source: "./generated/source/skills/moai/workflows/clean.md", primaryAgents: ["expert-refactoring", "expert-testing"] },
-    codemaps: { source: "./generated/source/skills/moai/workflows/codemaps.md", primaryAgents: ["manager-docs"] },
-    coverage: { source: "./generated/source/skills/moai/workflows/coverage.md", primaryAgents: ["expert-testing"] },
-    e2e: { source: "./generated/source/skills/moai/workflows/e2e.md", primaryAgents: ["expert-testing", "expert-frontend"] },
-    gate: { source: "./generated/source/skills/moai/workflows/gate.md" },
-    security: { source: "./generated/source/skills/moai/workflows/security.md", primaryAgents: ["expert-security"] },
+    design: { source: "./generated/source/skills/moai/workflows/design.md", dispatchMode: "skill" },
+    db: { source: "./generated/source/skills/moai/workflows/db.md", dispatchMode: "skill" },
+    project: { source: "./generated/source/skills/moai/workflows/project.md", dispatchMode: "skill", primaryAgents: ["manager-project", "manager-docs"] },
+    feedback: { source: "./generated/source/skills/moai/workflows/feedback.md", dispatchMode: "subagent", entryAgent: "manager-quality", primaryAgents: ["manager-quality"] },
+    fix: { source: "./generated/source/skills/moai/workflows/fix.md", dispatchMode: "subagent", entryAgent: "expert-debug", primaryAgents: ["expert-debug"] },
+    loop: { source: "./generated/source/skills/moai/workflows/loop.md", dispatchMode: "subagent", entryAgent: "expert-debug", primaryAgents: ["expert-debug", "expert-testing"] },
+    mx: { source: "./generated/source/skills/moai/workflows/mx.md", dispatchMode: "skill" },
+    review: { source: "./generated/source/skills/moai/workflows/review.md", dispatchMode: "subagent", entryAgent: "manager-quality", primaryAgents: ["manager-quality", "expert-security"] },
+    clean: { source: "./generated/source/skills/moai/workflows/clean.md", dispatchMode: "subagent", entryAgent: "expert-refactoring", primaryAgents: ["expert-refactoring", "expert-testing"] },
+    codemaps: { source: "./generated/source/skills/moai/workflows/codemaps.md", dispatchMode: "subagent", entryAgent: "manager-docs", primaryAgents: ["manager-docs"] },
+    coverage: { source: "./generated/source/skills/moai/workflows/coverage.md", dispatchMode: "subagent", entryAgent: "expert-testing", primaryAgents: ["expert-testing"] },
+    e2e: { source: "./generated/source/skills/moai/workflows/e2e.md", dispatchMode: "subagent", entryAgent: "expert-testing", primaryAgents: ["expert-testing", "expert-frontend"] },
+    gate: { source: "./generated/source/skills/moai/workflows/gate.md", dispatchMode: "direct" },
+    security: { source: "./generated/source/skills/moai/workflows/security.md", dispatchMode: "subagent", entryAgent: "expert-security", primaryAgents: ["expert-security"] },
   },
   teamBackendPriority: ["@tmustier/pi-agent-teams", "pi-teams", "pi-crew"],
   tddDdd: "read .pi/generated/source/moai-config/sections/quality.yaml",

@@ -64,6 +64,25 @@ workflow:
                 model: sonnet
                 isolation: none
                 description: "Code review and quality validation (context-aware analysis)"
+        # Pi Agent Teams currently keep teammates team-capable via general-purpose
+        # spawns. Each role must adopt the mapped MoAI profile from .pi/agents/moai
+        # before work; scout is the Explore-compatible Pi read-only fallback.
+        moai_profile_mappings:
+            plan:
+                researcher: scout
+                analyst: manager-spec
+                architect: manager-strategy
+            run:
+                backend-dev: expert-backend
+                frontend-dev: expert-frontend
+                tester: expert-testing
+                quality: manager-quality
+                reviewer: manager-quality
+            review:
+                security-reviewer: expert-security
+                perf-reviewer: expert-performance
+                quality-reviewer: manager-quality
+                ux-reviewer: expert-frontend
         patterns:
             design_implementation:
                 description: Cross-layer feature implementation with UI/UX design

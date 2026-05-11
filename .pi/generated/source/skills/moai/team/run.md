@@ -30,7 +30,9 @@ triggers:
 
 Purpose: Implement SPEC requirements using dynamically generated teammates.
 All teammates use `subagent_type: "general-purpose"` with runtime parameter
-overrides from `workflow.yaml` role profiles. No static team agent definitions.
+overrides from `workflow.yaml` role profiles, then explicitly adopt the mapped
+MoAI agent profile from `.pi/agents/moai/<agent>.md` before work. No direct
+static team-agent spawning is claimed unless the runtime schema adds that field.
 
 Flow: Mode Detection -> Plan (Leader) -> Run (Dynamic Teams) -> Quality (Leader) -> Sync (Leader)
 
@@ -40,7 +42,7 @@ Teammates are spawned using the Agent tool with runtime overrides:
 
 | Parameter | Source | Purpose |
 |-----------|--------|---------|
-| subagent_type | Always "general-purpose" | Full tool access |
+| subagent_type | Always "general-purpose" | Team-capable runtime; MoAI profile is adopted from prompt instructions |
 | team_name | TeamCreate result | Team coordination |
 | name | Pattern role name | Addressable via SendMessage |
 | model | workflow.yaml role_profiles | Cost optimization |
@@ -50,7 +52,7 @@ Teammates are spawned using the Agent tool with runtime overrides:
 
 ### Role Profile Reference
 
-From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
+From `.moai/config/sections/workflow.yaml` → `team.role_profiles` and `team.moai_profile_mappings`:
 
 | Profile | mode | model | isolation | Use For |
 |---------|------|-------|-----------|---------|
@@ -61,6 +63,15 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 | tester | acceptEdits | sonnet | worktree | Test creation, coverage validation |
 | designer | acceptEdits | sonnet | worktree | UI/UX with MCP design tools |
 | reviewer | plan | haiku | none | Code review, quality validation |
+
+MoAI profile mappings for this workflow:
+
+| Teammate | MoAI profile to adopt |
+|---|---|
+| backend-dev | `expert-backend` |
+| frontend-dev | `expert-frontend` |
+| tester | `expert-testing` |
+| quality / reviewer | `manager-quality` |
 
 ## Mode Selection
 
@@ -167,7 +178,7 @@ If FAIL (grace window expired): present options via AskUserQuestion before any t
 
 #### 2.2 Spawn Teammates (Dynamic Generation)
 
-Spawn teammates using `Agent(subagent_type: "general-purpose")` with role profile overrides.
+Spawn teammates using `Agent(subagent_type: "general-purpose")` with role profile overrides and explicit MoAI profile adoption. Teammates MUST read the mapped profile from `.pi/agents/moai/<agent>.md` or `.pi/generated/source/agents/moai/<agent>.md` before work.
 
 **Path Rules for Worktree Teammates:**
 - All file references in teammate prompts MUST use project-root-relative paths
@@ -184,6 +195,7 @@ Agent(
   isolation: "worktree",
   prompt: "You are backend-dev on team moai-run-SPEC-XXX.
 
+    Adopt MoAI profile: expert-backend. Read .pi/agents/moai/expert-backend.md or .pi/generated/source/agents/moai/expert-backend.md before editing.
     SPEC: .moai/specs/SPEC-XXX/spec.md
     Project type: {detected_language} ({detected_framework})
     Methodology: {development_mode} (from quality.yaml)
@@ -209,6 +221,7 @@ Agent(
   isolation: "worktree",
   prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
 
+    Adopt MoAI profile: expert-frontend. Read .pi/agents/moai/expert-frontend.md or .pi/generated/source/agents/moai/expert-frontend.md before editing.
     SPEC: .moai/specs/SPEC-XXX/spec.md
     Project type: {detected_language} ({detected_framework})
 
@@ -231,6 +244,7 @@ Agent(
   isolation: "worktree",
   prompt: "You are tester on team moai-run-SPEC-XXX.
 
+    Adopt MoAI profile: expert-testing. Read .pi/agents/moai/expert-testing.md or .pi/generated/source/agents/moai/expert-testing.md before editing tests.
     SPEC: .moai/specs/SPEC-XXX/spec.md
     Project type: {detected_language}
 
@@ -246,9 +260,25 @@ Agent(
     Claim tasks via TaskUpdate. Mark tasks completed when done.
     Send results to team lead via SendMessage."
 )
+
+Agent(
+  subagent_type: "general-purpose",
+  team_name: "moai-run-SPEC-XXX",
+  name: "quality",
+  model: "sonnet",
+  mode: "plan",
+  isolation: "none",
+  prompt: "You are quality on team moai-run-SPEC-XXX.
+
+    Adopt MoAI profile: manager-quality. Read .pi/agents/moai/manager-quality.md or .pi/generated/source/agents/moai/manager-quality.md before review.
+    Validate TRUST 5, SPEC acceptance, test evidence, and cross-teammate consistency.
+
+    Claim quality tasks via TaskUpdate. Mark tasks completed when done.
+    Send results to team lead via SendMessage."
+)
 ```
 
-All teammates spawn in parallel. Implementation teammates use `isolation: "worktree"` for file safety.
+All teammates spawn in parallel. Implementation teammates use `isolation: "worktree"` for file safety; quality/reviewer teammates stay read-only with `mode: "plan"` and `isolation: "none"`.
 
 #### 2.3 Monitor and Coordinate
 
@@ -298,6 +328,7 @@ Agent(
    SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
    SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Phase complete")
    SendMessage(type: "shutdown_request", recipient: "tester", content: "Phase complete")
+   SendMessage(type: "shutdown_request", recipient: "quality", content: "Phase complete")
    ```
 
 2. Wait for shutdown_response from each teammate
@@ -338,12 +369,13 @@ Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
 
 ### Phase 2: Spawn Implementation Team
 
-Spawn teammates with role profile overrides and worktree isolation:
+Spawn teammates with role profile overrides, worktree isolation where appropriate, and MoAI profile adoption:
 
 ```
-Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "backend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Backend role. File ownership: server-side code. ...")
-Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Frontend role. File ownership: client-side code. ...")
-Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Testing role. File ownership: test files exclusively. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "backend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Adopt MoAI profile: expert-backend. Read .pi/agents/moai/expert-backend.md before editing. Backend role. File ownership: server-side code. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Adopt MoAI profile: expert-frontend. Read .pi/agents/moai/expert-frontend.md before editing. Frontend role. File ownership: client-side code. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Adopt MoAI profile: expert-testing. Read .pi/agents/moai/expert-testing.md before editing tests. Testing role. File ownership: test files exclusively. ...")
+Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "quality", model: "sonnet", mode: "plan", isolation: "none", prompt: "Adopt MoAI profile: manager-quality. Read .pi/agents/moai/manager-quality.md before review. Quality validation role. ...")
 ```
 
 [HARD] All implementation teammates MUST use `isolation: "worktree"` for parallel file safety.
@@ -365,7 +397,7 @@ When teammates submit plans, respond immediately with plan_approval_response.
 ### Phase 5: Quality and Shutdown
 
 1. Quality validation via manager-quality subagent (or reviewer teammate)
-2. Shutdown all teammates via SendMessage shutdown_request
+2. Shutdown all teammates via SendMessage shutdown_request, including backend-dev, frontend-dev, tester, and quality
 3. Wait for shutdown_response from each
 4. TeamDelete to clean up resources
 

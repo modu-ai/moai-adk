@@ -89,8 +89,8 @@ Run agent without blocking the main conversation (v2.1.46+):
 
 ```yaml
 ---
-name: team-coder
-background: true   # Returns immediately; results delivered on next turn
+name: implementation teammate
+background: true   # Returns immediately; results delivered on next turn; adopt the task-appropriate MoAI expert profile before editing
 ---
 ```
 

@@ -178,11 +178,13 @@ Spawn analysis teammates in parallel (one per issue, max 3 concurrent):
 
 ```
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "github-issues-{repo-slug}",
   name: "analyst-{number}",
   mode: "plan",
-  prompt: "Analyze GitHub issue #{number}.
+  prompt: "Adopt MoAI profile: manager-spec for issue analysis, or scout/Explore-compatible read-only exploration when codebase tracing is primary.
+    Read .pi/agents/moai/manager-spec.md or .pi/generated/source/agents/moai/manager-spec.md before analysis when available.
+    Analyze GitHub issue #{number}.
     Title: {title}
     Body: {body}
     Comments: {comments}
@@ -195,12 +197,14 @@ After analysis completes, spawn implementation teammates:
 
 ```
 Agent(
-  subagent_type: "team-coder",  // role (backend/frontend) specified in prompt
+  subagent_type: "general-purpose",
   team_name: "github-issues-{repo-slug}",
   name: "fixer-{number}",
   mode: "acceptEdits",
   isolation: "worktree",
-  prompt: "Fix GitHub issue #{number} based on analysis findings.
+  prompt: "Adopt the task-appropriate MoAI expert profile before editing: expert-debug for bugs, expert-backend for server/API changes, or expert-frontend for UI/client changes.
+    Read .pi/agents/moai/<profile>.md or .pi/generated/source/agents/moai/<profile>.md before implementation.
+    Fix GitHub issue #{number} based on analysis findings.
     Analysis: {analyst_findings}
     Affected files: {file_list} (use project-root-relative paths only)
     Create feature branch: {prefix}/issue-{number}
@@ -465,12 +469,12 @@ Spawn 3 reviewers in parallel:
 
 ```
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "github-pr-review-{number}",
   name: "security-reviewer",
   mode: "plan",
-  prompt: "You are a security reviewer for PR #{number} in {repo}.
-    Review the following diff for security vulnerabilities:
+  prompt: "Adopt MoAI profile: expert-security. Read .pi/agents/moai/expert-security.md or .pi/generated/source/agents/moai/expert-security.md before review.
+    Review PR #{number} in {repo} for security vulnerabilities:
     - Injection risks (SQL, XSS, command injection)
     - Authentication/authorization issues
     - Sensitive data exposure
@@ -481,12 +485,12 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "github-pr-review-{number}",
   name: "perf-reviewer",
   mode: "plan",
-  prompt: "You are a performance reviewer for PR #{number} in {repo}.
-    Review the following diff for performance issues:
+  prompt: "Adopt MoAI profile: expert-performance. Read .pi/agents/moai/expert-performance.md or .pi/generated/source/agents/moai/expert-performance.md before review.
+    Review PR #{number} in {repo} for performance issues:
     - Algorithm complexity (O(n^2) loops, unnecessary allocations)
     - Database query patterns (N+1, missing indexes)
     - Memory leaks and resource management
@@ -497,12 +501,12 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "github-pr-review-{number}",
   name: "quality-reviewer",
   mode: "plan",
-  prompt: "You are a code quality reviewer for PR #{number} in {repo}.
-    Review the following diff for quality issues:
+  prompt: "Adopt MoAI profile: manager-quality. Read .pi/agents/moai/manager-quality.md or .pi/generated/source/agents/moai/manager-quality.md before review.
+    Review PR #{number} in {repo} for quality issues:
     - Code correctness and edge cases
     - Test coverage for changes
     - Naming conventions and readability

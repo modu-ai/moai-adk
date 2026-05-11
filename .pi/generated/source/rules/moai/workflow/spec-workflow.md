@@ -154,7 +154,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Team Mode Methodology
 
-Each teammate applies the methodology within their file ownership scope. team-validator validates compliance. team-tester exclusively owns test files.
+Each teammate applies the methodology within their file ownership scope. The validation teammate uses `general-purpose` with MoAI profile adoption for `manager-quality`. The testing teammate uses `general-purpose` with MoAI profile adoption for `expert-testing` and exclusively owns test files.
 
 ### MX Tag Integration
 

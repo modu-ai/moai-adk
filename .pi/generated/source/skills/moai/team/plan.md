@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team plan", "parallel research", "team spec"]
-  agents: ["team-reader"]
+  agents: ["general-purpose", "manager-spec", "manager-strategy"]
   phases: ["plan"]
 ---
 # Workflow: Team Plan - Agent Teams SPEC Creation
@@ -56,16 +56,25 @@ See .pi/generated/source/rules/moai/workflow/spec-workflow.md for team mode prer
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
+Spawn 3 team-capable teammates using `subagent_type: "general-purpose"` with role-specific prompts, model overrides, and explicit MoAI profile adoption. The Pi Agent Teams runtime does not currently prove a direct static MoAI agent binding field, so teammates remain team-capable and MUST adopt the mapped MoAI profile before work:
+
+| Teammate | MoAI profile mapping |
+|---|---|
+| researcher | `scout` / Explore-compatible Pi read-only fallback |
+| analyst | `manager-spec` |
+| architect | `manager-strategy` |
+
+All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
 
 ```
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "moai-plan-{feature-slug}",
   name: "researcher",
   model: "haiku",
   mode: "plan",
   prompt: "You are a codebase researcher on team moai-plan-{feature-slug}.
+    Adopt MoAI profile: scout / Explore-compatible read-only researcher only. Follow Pi scout-style read-only exploration; do not load any separate researcher profile.
     Explore the codebase for {feature_description}.
     Read target code areas IN DEPTH — understand deeply how each module works, its intricacies and side effects.
     Study cross-module interactions IN GREAT DETAIL — trace data flow through the system.
@@ -77,12 +86,13 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "moai-plan-{feature-slug}",
   name: "analyst",
   model: "sonnet",
   mode: "plan",
   prompt: "You are a requirements analyst on team moai-plan-{feature-slug}.
+    Adopt MoAI profile: manager-spec. Read .pi/agents/moai/manager-spec.md or .pi/generated/source/agents/moai/manager-spec.md before analysis.
     Analyze requirements for {feature_description}.
     Identify user stories, acceptance criteria, edge cases, risks, and constraints.
     Define acceptance criteria using EARS format.
@@ -91,12 +101,13 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   team_name: "moai-plan-{feature-slug}",
   name: "architect",
   model: "opus",
   mode: "plan",
   prompt: "You are a technical architect on team moai-plan-{feature-slug}.
+    Adopt MoAI profile: manager-strategy. Read .pi/agents/moai/manager-strategy.md or .pi/generated/source/agents/moai/manager-strategy.md before design.
     Design the technical approach for {feature_description}.
     Evaluate implementation alternatives, assess trade-offs, propose architecture.
     Consider existing patterns found by the researcher — build on reference implementations rather than designing from scratch.
@@ -197,4 +208,4 @@ If team creation fails or AGENT_TEAMS not enabled:
 
 ---
 
-Version: 3.0.0 (Dynamic team-reader profiles + Annotation Cycle)
+Version: 3.1.0 (Dynamic general-purpose teammates + MoAI profile adoption + Annotation Cycle)

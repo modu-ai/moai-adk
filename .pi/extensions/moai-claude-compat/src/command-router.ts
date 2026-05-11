@@ -6,6 +6,7 @@ import { inferPhaseFromCommand, setMoaiWidget, updateMoaiStatus } from "./status
 import type { MoaiCompatConfig } from "./config.ts";
 import { writeConvertedAgents } from "./agent-converter.ts";
 import { notifyMoai } from "./notification-adapter.ts";
+import { buildSubagentDelegationPrompt, resolveWorkflowAgentDispatch } from "./agent-dispatch.ts";
 import { loadRuntimeManifest, resolveCompatSource, type RuntimeManifest } from "./runtime-config.ts";
 
 const PI_PROMPTS_PATH = ".pi/prompts";
@@ -115,6 +116,15 @@ async function dispatchMoai(pi: ExtensionAPI, args: string, ctx: ExtensionComman
   const subcommand = canonical ?? "auto";
   const remaining = canonical ? rest.join(" ") : args.trim();
   updateMoaiStatus(ctx, config, { phase: inferPhaseFromCommand(subcommand), specId: remaining.match(SPEC_ID_PATTERN)?.[0] });
+
+  if (canonical) {
+    const dispatch = resolveWorkflowAgentDispatch(subcommand, remaining, runtime);
+    if (dispatch.kind === "subagent") {
+      pi.sendUserMessage(buildSubagentDelegationPrompt(dispatch));
+      return;
+    }
+  }
+
   pi.sendUserMessage(buildMoaiPrompt(subcommand, remaining, runtime));
 }
 
