@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -428,8 +429,9 @@ func TestCheckpoint_ConcurrentRace(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	successCount := 0
-	concurrentErrCount := 0
+	// SPEC-V3R2-RT-004: atomic counter로 goroutine 간 race-free 집계
+	// (이전 int++ 사용은 go test -race에서 WARNING: DATA RACE 발동)
+	var successCount, concurrentErrCount atomic.Int64
 
 	// 2개의 goroutine이 동시에 Checkpoint 시도
 	for i := 0; i < 2; i++ {
@@ -439,9 +441,9 @@ func TestCheckpoint_ConcurrentRace(t *testing.T) {
 			err := store.Checkpoint(state)
 			switch {
 			case err == nil:
-				successCount++
+				successCount.Add(1)
 			case errors.Is(err, ErrCheckpointConcurrent):
-				concurrentErrCount++
+				concurrentErrCount.Add(1)
 			}
 		}()
 	}
@@ -449,12 +451,12 @@ func TestCheckpoint_ConcurrentRace(t *testing.T) {
 	wg.Wait()
 
 	// 적어도 하나는 성공해야 함
-	if successCount < 1 {
-		t.Errorf("Expected at least 1 successful checkpoint, got %d", successCount)
+	if successCount.Load() < 1 {
+		t.Errorf("Expected at least 1 successful checkpoint, got %d", successCount.Load())
 	}
 
 	// lock 구현이 없으면 둘 다 성공해버림 (현재 skeleton 동작)
-	if concurrentErrCount < 1 {
+	if concurrentErrCount.Load() < 1 {
 		t.Log("WARNING: No ErrCheckpointConcurrent returned - advisory lock not yet implemented (expected in RED phase)")
 	}
 }
