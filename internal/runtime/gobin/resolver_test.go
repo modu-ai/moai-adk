@@ -2,6 +2,7 @@ package gobin_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
@@ -55,7 +56,7 @@ func TestDetect_HomeFallback(t *testing.T) {
 
 	result := gobin.Detect(homeDir)
 
-	expected := homeDir + "/go/bin"
+	expected := filepath.Join(homeDir, "go", "bin")
 	if result != expected && result != "" {
 		t.Errorf("Home fallback 실패: expected=%s, got=%s", expected, result)
 	}
