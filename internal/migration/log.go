@@ -42,7 +42,7 @@ func Append(projectRoot string, entry LogEntry) error {
 	if err != nil {
 		return fmt.Errorf("로그 파일 열기 실패: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// JSONL 행 + 개행 문자
 	if _, err := f.Write(append(data, '\n')); err != nil {

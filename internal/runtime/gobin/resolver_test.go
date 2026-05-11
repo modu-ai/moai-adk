@@ -92,19 +92,19 @@ func setupDetectTest(t *testing.T) (string, func()) {
 	// cleanup 함수 반환
 	cleanup := func() {
 		if oldGOBIN != "" {
-			os.Setenv("GOBIN", oldGOBIN)
+			_ = os.Setenv("GOBIN", oldGOBIN)
 		} else {
-			os.Unsetenv("GOBIN")
+			_ = os.Unsetenv("GOBIN")
 		}
 		if oldGOPATH != "" {
-			os.Setenv("GOPATH", oldGOPATH)
+			_ = os.Setenv("GOPATH", oldGOPATH)
 		} else {
-			os.Unsetenv("GOPATH")
+			_ = os.Unsetenv("GOPATH")
 		}
 		if oldHOME != "" {
-			os.Setenv("HOME", oldHOME)
+			_ = os.Setenv("HOME", oldHOME)
 		} else {
-			os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		}
 	}
 

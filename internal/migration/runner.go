@@ -59,6 +59,18 @@ func NewRunner(projectRoot string) MigrationRunner {
 // REQ-V3R2-RT-007-013: 각 성공 후 version-file을 atomic update합니다.
 // REQ-V3R2-RT-007-021: 실패 시 version-file을 업데이트하지 않습니다.
 func (r *runner) Apply(ctx context.Context) ([]int, error) {
+	// REQ-V3R2-RT-007-031: crash 후 in-flight .tmp 파일이 남아있으면 정리합니다.
+	// detectInFlightState가 true를 반환하면 cleanupInFlightState로 제거 후 진행합니다.
+	// 이미 적용된 version-file은 변경되지 않았으므로 안전합니다.
+	if detectInFlightState(r.projectRoot) {
+		slog.LogAttrs(ctx, slog.LevelWarn, "in-flight migration state detected, cleaning up before apply")
+		if err := cleanupInFlightState(r.projectRoot); err != nil {
+			slog.LogAttrs(ctx, slog.LevelWarn, "failed to clean up in-flight state",
+				slogAttr("error", err.Error()))
+			// non-fatal: continue even if cleanup fails
+		}
+	}
+
 	current, err := readVersion(r.projectRoot)
 	if err != nil {
 		return nil, fmt.Errorf("version 읽기 실패: %w", err)
@@ -109,7 +121,7 @@ func (r *runner) Apply(ctx context.Context) ([]int, error) {
 			StartedAt:   nil, // TODO: 추적 추가
 			CompletedAt: nil,
 			Result:      "success",
-			Details:     fmt.Sprintf("적용 완료"),
+			Details:     "적용 완료",
 		})
 
 		applied = append(applied, m.Version)

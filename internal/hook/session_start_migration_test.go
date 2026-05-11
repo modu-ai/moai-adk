@@ -1,7 +1,6 @@
 package hook_test
 
 import (
-	"context"
 	"testing"
 )
 
@@ -33,30 +32,3 @@ func TestSessionStart_EnabledByDefault(t *testing.T) {
 	t.Skip("waiting for system.yaml migrations.disabled implementation")
 }
 
-// stubMigrationRunner는 테스트용 stub runner입니다.
-type stubMigrationRunner struct {
-	applyFunc   func(ctx context.Context) (applied []int, err error)
-	statusFunc  func() (current int, pending []int, lastApplied interface{}, err error)
-	rollbackFunc func(version int) error
-}
-
-func (s *stubMigrationRunner) Apply(ctx context.Context) (applied []int, err error) {
-	if s.applyFunc != nil {
-		return s.applyFunc(ctx)
-	}
-	return []int{}, nil
-}
-
-func (s *stubMigrationRunner) Status() (current int, pending []int, lastApplied interface{}, err error) {
-	if s.statusFunc != nil {
-		return s.statusFunc()
-	}
-	return 0, []int{}, nil, nil
-}
-
-func (s *stubMigrationRunner) Rollback(version int) error {
-	if s.rollbackFunc != nil {
-		return s.rollbackFunc(version)
-	}
-	return nil
-}

@@ -56,14 +56,14 @@ func writeVersion(projectRoot string, version int) error {
 	if err != nil {
 		return fmt.Errorf("lock 파일 열기 실패: %w", err)
 	}
-	defer unix.Close(lockFd)
+	defer func() { _ = unix.Close(lockFd) }()
 
 	// F_SETLK (비차단 lock) 시도
 	err = unix.Flock(lockFd, unix.LOCK_EX)
 	if err != nil {
 		return fmt.Errorf("lock 획득 실패: %w", err)
 	}
-	defer unix.Flock(lockFd, unix.LOCK_UN)
+	defer func() { _ = unix.Flock(lockFd, unix.LOCK_UN) }()
 
 	// 임시 파일에 버전 기록
 	if err := os.WriteFile(versionTmpFile, []byte(strconv.Itoa(version)), 0644); err != nil {
