@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-CLI-TUI-001
 version: "0.1.0"
-status: draft
+status: completed
 created_at: 2026-05-09
-updated_at: 2026-05-09
+updated_at: 2026-05-12
 author: manager-spec
 priority: Medium
 labels: [cli, tui, design-system, lipgloss, bubbletea, theme, brand, i18n-neutral]

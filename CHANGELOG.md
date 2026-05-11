@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-RT-007: Hardcoded Path Fix + Versioned Migration
+
+### Added
+
+- **SPEC-V3R2-RT-007**: 하드코딩된 경로 제거 및 버전 기반 마이그레이션 도입. `internal/migration/` 신규 패키지(runner, registry, version 추적, JSONL log appender, m001_hardcoded_path 마이그레이션). `internal/runtime/gobin/` 신규 패키지(Detect helper로 GOBIN/GOPATH/$HOME/go/bin 폴백 체인 일원화 — `initializer.go`와 `update.go`의 하드코딩 경로 제거). `moai migration {run,status,rollback}` CLI 3-subcommand 추가. `doctor migration` 헬스체크 통합. `session_start` 훅이 migration runner를 호출하여 세션 시작 시 자동 적용. Cross-platform lock: Unix는 `unix.Flock(LOCK_EX)`, Windows는 `O_EXCL` 파일 mutex(bounded retry 1s)로 분리. 29 files +2068/-667 LOC, CI all-GREEN. PR #846.
+
+### English
+
+- **SPEC-V3R2-RT-007**: Removed hardcoded paths and introduced versioned migration. New `internal/migration/` package (runner, registry, version tracking, JSONL log appender, m001_hardcoded_path migration). New `internal/runtime/gobin/` package (Detect helper unifies GOBIN/GOPATH/$HOME/go/bin fallback chain, eliminating hardcoded paths in `initializer.go` and `update.go`). Added `moai migration {run,status,rollback}` CLI subcommands and `doctor migration` health check. `session_start` hook now invokes the migration runner for automatic application at session start. Cross-platform lock: Unix uses `unix.Flock(LOCK_EX)`, Windows uses `O_EXCL` file mutex (bounded retry, 1s). 29 files +2068/-667 LOC, CI all-green. PR #846.
+
 ## [Unreleased] — SPEC-V3R2-ORC-001: Agent Roster Consolidation (22 → 17)
 
 ### Added

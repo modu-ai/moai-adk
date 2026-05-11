@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-STATUSLINE-FALLBACK-001
 version: "0.1.0"
-status: draft
+status: completed
 created_at: 2026-05-10
-updated_at: 2026-05-10
+updated_at: 2026-05-12
 author: GOOS행님
 priority: High
 labels: [statusline, fallback, cli]

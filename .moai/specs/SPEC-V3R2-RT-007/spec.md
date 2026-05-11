@@ -2,9 +2,9 @@
 id: SPEC-V3R2-RT-007
 title: "Hardcoded Path Fix + Versioned Migration"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-12
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"

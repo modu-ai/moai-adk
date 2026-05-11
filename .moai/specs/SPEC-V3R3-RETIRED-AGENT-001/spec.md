@@ -2,9 +2,9 @@
 id: SPEC-V3R3-RETIRED-AGENT-001
 title: Retired Agent Stub Compatibility + manager-cycle Template Alignment
 version: "0.1.0"
-status: draft
+status: completed
 created_at: 2026-05-04
-updated_at: 2026-05-04
+updated_at: 2026-05-12
 author: MoAI Plan Workflow
 priority: P0
 labels: [agent-runtime, templates, retired-stub, manager-cycle, manager-tdd, hooks, bug-fix, v3r3]
