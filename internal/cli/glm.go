@@ -416,6 +416,7 @@ func clearTmuxSessionEnv() error {
 		"CLAUDE_CONFIG_DIR",
 		// Z.AI proxy compatibility flags
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+		"API_TIMEOUT_MS",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 		// Issue #742: clear GLM context-size hint when leaving GLM mode
 		config.EnvStatuslineContextSize,
