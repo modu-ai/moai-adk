@@ -136,44 +136,7 @@ if ! grep -q "^## \[$CHANGELOG_VERSION\]" CHANGELOG.md; then
 fi
 log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
 
-# ─── Validation 9: Library updates check (CLAUDE.local.md §21) ──────────────
-log_info "Checking for library updates..."
-
-# Check available stable updates (exclude pre-release)
-AVAILABLE_UPDATES=$(go list -m -u all 2>/dev/null | grep -v "\-alpha\|\-beta\|\-rc" | grep -v "github.com/modu-ai/moai-adk" || true)
-
-if [[ -n "$AVAILABLE_UPDATES" ]]; then
-    log_warn "Library updates available:"
-    echo "$AVAILABLE_UPDATES" | head -20
-
-    # Auto-update stable dependencies (Minor + Patch)
-    log_info "Applying stable library updates..."
-    go get -u ./... >/dev/null 2>&1 || die "go get -u failed"
-    go mod tidy >/dev/null 2>&1 || die "go mod tidy failed"
-
-    # Run tests to verify compatibility
-    log_info "Verifying compatibility..."
-    if ! go test ./... -race >/dev/null 2>&1; then
-        die "Library updates broke tests. Please review and fix manually."
-    fi
-
-    # Commit the updates
-    git add go.mod go.sum >/dev/null 2>&1 || die "git add failed"
-    git commit -m "$(cat <<EOF
-chore(deps): 안정 버전 라이브러리 업데이트 (릴리스 전)
-
-CLAUDE.local.md §21 자동 체크로 업데이트 적용
-
-🗿 MoAI <email@mo.ai.kr>
-EOF
-)" >/dev/null 2>&1 || die "git commit failed"
-
-    log_ok "Library updates applied and committed"
-else
-    log_ok "No stable library updates available"
-fi
-
-# ─── Validation 10: CI status on HEAD (optional) ────────────────────────
+# ─── Validation 8: CI status on HEAD (optional) ────────────────────────────
 if [[ "$SKIP_CI_CHECK" != true ]]; then
     if command -v gh >/dev/null 2>&1; then
         CI_STATE="$(gh pr list --head "$CURRENT_BRANCH" --state merged --limit 1 --json number --jq '.[0].number // ""' 2>/dev/null || echo "")"

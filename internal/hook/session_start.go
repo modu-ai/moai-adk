@@ -275,9 +275,6 @@ func ensureGLMCredentials(projectDir string) string {
 	if settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "" {
 		settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	}
-	if settings.Env["DISABLE_PROMPT_CACHING"] == "" {
-		settings.Env["DISABLE_PROMPT_CACHING"] = "1"
-	}
 
 	// Re-read original file to preserve all fields (not just env)
 	var raw map[string]json.RawMessage

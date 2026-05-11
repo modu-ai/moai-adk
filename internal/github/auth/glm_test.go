@@ -32,7 +32,7 @@ func TestGLMAuthHandler_Setup(t *testing.T) {
 		}
 
 		// 5 secrets should be set (GLM_API_KEY + 4 env vars)
-		expectedCount := 5
+		expectedCount := 4
 		if len(setSecretCalls) != expectedCount {
 			t.Errorf("SetSecret call count = %d, want %d", len(setSecretCalls), expectedCount)
 		}
@@ -44,7 +44,6 @@ func TestGLMAuthHandler_Setup(t *testing.T) {
 		// SPEC-GLM-001 env vars should be set
 		expectedEnvVars := []string{
 			"DISABLE_BETAS",
-			"DISABLE_PROMPT_CACHING",
 			"CLAUDE_CODE_USE_bedrock",
 			"CLAUDE_CODE_USE_vertex",
 		}

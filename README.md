@@ -1247,14 +1247,14 @@ The statusline v3 features a **multi-line layout** with real-time API usage moni
 CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
 5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
 7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
-📁 moai-adk-go │ 🔀 main │ 📊 +0 M38 ?2
+📁 moai-adk-go │ 🅱️ main │ 📭 +0 M38 ?2
 ```
 
 **Default mode** (3 lines — 10-block inline bars):
 ```
 🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
 CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
+📁 moai-adk-go │ 🅱️ fix/my-feature │ 📭 +0 M38 ?2
 ```
 
 2 display modes are available:

@@ -4,7 +4,7 @@ package cli
 //
 // @MX:NOTE: [AUTO] Z.AI 공식 @z_ai/mcp-server 를 ~/.claude.json mcpServers 에 등록/해제하는 CLI
 // @MX:NOTE: [AUTO] 토큰은 기존 loadGLMKey() 헬퍼 재사용 (GLM_API_KEY from ~/.moai/.env.glm)
-// @MX:NOTE: [AUTO] glm.go 의 SPEC-GLM-001 env 정책 (DISABLE_BETAS/DISABLE_PROMPT_CACHING) 과 완전 독립
+// @MX:NOTE: [AUTO] glm.go 의 SPEC-GLM-001 env 정책 (DISABLE_BETAS) 과 완전 독립
 //
 // @MX:WARN: [AUTO] ~/.claude.json 에 atomic write (temp file + rename) 사용
 // @MX:REASON: 비원자적 쓰기는 Claude Code 세션 중 파일 손상 가능, POSIX rename atomicity 로 방어

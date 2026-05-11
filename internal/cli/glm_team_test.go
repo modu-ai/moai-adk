@@ -43,7 +43,6 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
-				"DISABLE_PROMPT_CACHING",
 				"API_TIMEOUT_MS",
 				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 			},
@@ -53,6 +52,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":             "glm-5.1",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL":           "glm-4.7",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":            "glm-4.5-air",
+				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
 				"API_TIMEOUT_MS":                           "3000000",
 				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 			},
@@ -80,7 +80,6 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
-				"DISABLE_PROMPT_CACHING",
 				"API_TIMEOUT_MS",
 				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 			},
@@ -90,6 +89,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":             "custom-high",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL":           "custom-medium",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":            "custom-low",
+				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
 				"API_TIMEOUT_MS":                           "3000000",
 				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 			},
@@ -117,7 +117,6 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
-				"DISABLE_PROMPT_CACHING",
 				"API_TIMEOUT_MS",
 				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 			},
@@ -127,6 +126,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":             "glm-5.1",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL":           "glm-4.7",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":            "glm-4.5-air",
+				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
 				"API_TIMEOUT_MS":                           "3000000",
 				"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 			},
@@ -137,9 +137,9 @@ func TestBuildGLMEnvVars(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildGLMEnvVars(tt.glmConfig, tt.apiKey)
 
-			// Verify the map has exactly 9 keys (5 GLM + 4 compatibility flags)
-			if len(got) != 9 {
-				t.Errorf("buildGLMEnvVars() returned %d keys, want 9", len(got))
+			// Verify the map has exactly 8 keys (5 GLM + 3 compatibility flags)
+			if len(got) != 8 {
+				t.Errorf("buildGLMEnvVars() returned %d keys, want 8", len(got))
 			}
 
 			// Verify all required keys exist

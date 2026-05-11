@@ -690,7 +690,6 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 // write GLM env vars to settings.local.json. Regression test for #676.
 //
 // Before the fix, injectGLMEnvForTeam() in applyGLMMode permanently wrote
-// ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, DISABLE_PROMPT_CACHING, etc. to
 // settings.local.json, causing GLM mode to leak into all subsequent `claude`
 // invocations after `moai glm` exited.
 //
@@ -742,9 +741,6 @@ func TestApplyGLMMode_NoSettingsLocalPollution(t *testing.T) {
 	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
 		t.Error("settings.local.json must NOT contain ANTHROPIC_BASE_URL (regression: #676)")
 	}
-	if strings.Contains(content, "DISABLE_PROMPT_CACHING") {
-		t.Error("settings.local.json must NOT contain DISABLE_PROMPT_CACHING (regression: #676)")
-	}
 	if strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
 		t.Error("settings.local.json must NOT contain ANTHROPIC_AUTH_TOKEN (regression: #676)")
 	}
@@ -766,7 +762,6 @@ func TestApplyGLMMode_ProcessEnvIsSet(t *testing.T) {
 	t.Setenv("GLM_API_KEY", "test-glm-key-676-proc")
 	// Ensure a clean baseline for the vars we check.
 	t.Setenv("ANTHROPIC_BASE_URL", "")
-	t.Setenv("DISABLE_PROMPT_CACHING", "")
 
 	origFn := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return tmpDir, nil }
@@ -789,8 +784,5 @@ func TestApplyGLMMode_ProcessEnvIsSet(t *testing.T) {
 	// Process env must have GLM vars set (inherited by syscall.Exec into claude).
 	if got := os.Getenv("ANTHROPIC_BASE_URL"); got == "" {
 		t.Error("ANTHROPIC_BASE_URL must be set in process env after applyGLMMode")
-	}
-	if got := os.Getenv("DISABLE_PROMPT_CACHING"); got != "1" {
-		t.Errorf("DISABLE_PROMPT_CACHING must be '1' after applyGLMMode, got %q", got)
 	}
 }

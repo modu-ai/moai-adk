@@ -3,7 +3,6 @@ package cli
 // @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
 // @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/204K context windows per model tier
-// @MX:NOTE: [AUTO] DISABLE_PROMPT_CACHING=1 disables prompt caching for Z.AI compatibility
 // @MX:NOTE: [AUTO] M6-S2 DDD: renderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
@@ -150,12 +149,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 
 	// Warn about main-session GLM limitations before launch.
-	// DISABLE_PROMPT_CACHING=1 forces full system prompt re-send per request (~30-40K tokens),
-	// which hits GLM context limits faster than expected. Z.AI concurrency limits (1-3 in-flight
-	// requests per paid tier) are sometimes misreported by Claude Code as "context window limit".
+	// Z.AI concurrency limits (1-3 in-flight requests per paid tier) are sometimes
+	// misreported by Claude Code as "context window limit".
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 204K (glm-5.1)")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - DISABLE_PROMPT_CACHING=1 causes full system prompt re-send per request")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
 
@@ -184,9 +181,8 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
-	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+	// Z.AI proxy compatibility: strip Anthropic beta headers
 	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")   //nolint:errcheck
-	_ = os.Setenv("DISABLE_PROMPT_CACHING", "1")                   //nolint:errcheck
 	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                     //nolint:errcheck
 	_ = os.Setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1") //nolint:errcheck
 }
@@ -380,9 +376,8 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
-		// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+		// Z.AI proxy compatibility: strip Anthropic beta headers
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-		"DISABLE_PROMPT_CACHING":                   "1",
 		"API_TIMEOUT_MS":                           "3000000",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
@@ -421,8 +416,6 @@ func clearTmuxSessionEnv() error {
 		"CLAUDE_CONFIG_DIR",
 		// Z.AI proxy compatibility flags
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
-		"DISABLE_PROMPT_CACHING",
-		"API_TIMEOUT_MS",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 		// Issue #742: clear GLM context-size hint when leaving GLM mode
 		config.EnvStatuslineContextSize,
@@ -556,9 +549,8 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
 	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 	// Issue #742: pre-compute statusline context size from the High slot
@@ -837,7 +829,6 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-		"DISABLE_PROMPT_CACHING":                   "1",
 		"API_TIMEOUT_MS":                           "3000000",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
@@ -880,9 +871,8 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	// Z.AI proxy compatibility: strip Anthropic beta headers and prompt caching
+	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	settings.Env["DISABLE_PROMPT_CACHING"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
 	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 

@@ -107,7 +107,7 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	if !strings.Contains(got, "📁 my-project") {
 		t.Errorf("should contain directory, got %q", got)
 	}
-	if !strings.Contains(got, "🔀 +3 M2") {
+	if !strings.Contains(got, "📬 +3 M2") {
 		t.Errorf("should contain git status, got %q", got)
 	}
 	if !strings.Contains(got, "🗿 v1.2.0") {
@@ -1367,16 +1367,16 @@ func TestCollectAll_ExtractsEffortThinking(t *testing.T) {
 // REQ-CC297-003: collectAll passes WorkspaceInfo.GitWorktree to StatusData.Worktree
 func TestCollectAll_ExtractsWorktree(t *testing.T) {
 	tests := []struct {
-		name   string
-		input  *StdinData
-		wantWT string
+		name      string
+		input     *StdinData
+		wantWT    string
 	}{
 		{
 			name: "worktree path present: stored in StatusData.Worktree",
 			input: &StdinData{
 				Workspace: &WorkspaceInfo{
-					CurrentDir:  "/repo/.claude/worktrees/abc123",
-					ProjectDir:  "/repo",
+					CurrentDir: "/repo/.claude/worktrees/abc123",
+					ProjectDir: "/repo",
 					GitWorktree: "/repo/.claude/worktrees/abc123",
 				},
 			},
@@ -1415,7 +1415,7 @@ func TestCollectAll_ExtractsWorktree(t *testing.T) {
 
 // TestBuild_EffortThinking_FullPipeline verifies end-to-end rendering of effort/thinking
 // fields through the full Build() pipeline.
-// GWT-7: effort+thinking present → e:LEVEL·t appears in output
+// GWT-7: effort+thinking present → 🧠 LEVEL appears in output (no ·t suffix)
 // GWT-8: segment disabled via SegmentConfig → indicator absent
 // GWT-9: nil input → no panic, output does not contain e: or ·t
 // GWT-10: backward compat — input without effort/thinking fields works normally
@@ -1431,8 +1431,8 @@ func TestBuild_EffortThinking_FullPipeline(t *testing.T) {
 		wantAbsent    []string
 	}{
 		{
-			// GWT-7: effort=high + thinking=true → e:high·t in output
-			name: "GWT-7: effort=high thinking=true produces e:high·t",
+			// GWT-7: effort=high + thinking=true → 🧠 high·t in output
+			name: "GWT-7: effort=high thinking=true produces 🧠 high·t",
 			jsonInput: `{
 				"effort": {"level": "high"},
 				"thinking": {"enabled": true},
@@ -1459,8 +1459,8 @@ func TestBuild_EffortThinking_FullPipeline(t *testing.T) {
 		},
 		{
 			// GWT-9: nil-equivalent input (no effort/thinking fields) → no panic, no e:/·t
-			name:         "GWT-9: missing effort/thinking fields → no indicator",
-			jsonInput:    `{"context_window": {"used_percentage": 10, "context_window_size": 200000}}`,
+			name:      "GWT-9: missing effort/thinking fields → no indicator",
+			jsonInput: `{"context_window": {"used_percentage": 10, "context_window_size": 200000}}`,
 			wantContains: []string{},
 			wantAbsent:   []string{"🧠", "·t"},
 		},

@@ -238,7 +238,6 @@ func removeGLMEnv(settingsPath string) error {
 		delete(settings.Env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
 		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
 		delete(settings.Env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
-		delete(settings.Env, "DISABLE_PROMPT_CACHING")
 		delete(settings.Env, "API_TIMEOUT_MS")
 		delete(settings.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 		// Remove teammate display env var override (CG/GLM set this)
