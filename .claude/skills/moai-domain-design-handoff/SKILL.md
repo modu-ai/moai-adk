@@ -1,6 +1,3 @@
-<!-- Verifies REQ-BRAIN-005: prompt.md is paste-ready (no MoAI tokens) -->
-<!-- Verifies REQ-BRAIN-006: Brand voice integrated when present; graceful default when absent -->
-<!-- Verifies REQ-BRAIN-009: Phase 7 exit AskUserQuestion with 3 options -->
 ---
 name: moai-domain-design-handoff
 description: >
@@ -32,6 +29,10 @@ triggers:
   agents: ["manager-brain"]
   phases: ["brain"]
 ---
+
+<!-- Verifies REQ-BRAIN-005: prompt.md is paste-ready (no MoAI tokens) -->
+<!-- Verifies REQ-BRAIN-006: Brand voice integrated when present; graceful default when absent -->
+<!-- Verifies REQ-BRAIN-009: Phase 7 exit AskUserQuestion with 3 options -->
 
 <!-- @MX:ANCHOR: [AUTO] 5-section prompt.md template structure — canonical definition -->
 <!-- @MX:REASON: Consumed by every brain workflow Phase 7 execution (high fan_in). Structural changes affect user trust — prompt.md is pasted directly into external claude.com Design session. -->
