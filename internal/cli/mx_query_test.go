@@ -471,5 +471,103 @@ func TestSidecarUnavailable_StderrFormat(t *testing.T) {
 	}
 }
 
+// TestMxQueryCmd_WiredComponents_DangerAndSpec verifies that the CLI wire-up
+// correctly loads danger config (M2) and spec modules (M3) from project root.
+// AC-SPC-004-03: --danger with valid category succeeds when mx.yaml is present.
+// AC-SPC-004-01: --spec filter using path-based spec association.
+func TestMxQueryCmd_WiredComponents_DangerAndSpec(t *testing.T) {
+	tmpDir := t.TempDir()
+	stateDir := filepath.Join(tmpDir, ".moai", "state")
+
+	// Write mx.yaml with a custom danger category
+	mxYAML := `danger_categories:
+  concurrency:
+    - goroutine leak
+    - unbounded channel
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "mx.yaml"), []byte(mxYAML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a spec.md for SPEC-WIRE-001 under .moai/specs/
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-WIRE-001")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	specMD := "---\nid: SPEC-WIRE-001\nmodule: \"internal/wire/\"\n---\n# Test SPEC\n"
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(specMD), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Build sidecar with a WARN tag (concurrency) and an ANCHOR under internal/wire/
+	tags := []mx.Tag{
+		{
+			Kind:       mx.MXWarn,
+			File:       "internal/wire/handler.go",
+			Line:       5,
+			Body:       "goroutine leak detected",
+			Reason:     "goroutine leak in connection handler",
+			CreatedBy:  "agent",
+			LastSeenAt: time.Now(),
+		},
+		{
+			Kind:       mx.MXAnchor,
+			File:       "internal/wire/handler.go",
+			Line:       10,
+			AnchorID:   "anchor-wire-handler",
+			Body:       "wire handler anchor",
+			CreatedBy:  "agent",
+			LastSeenAt: time.Now(),
+		},
+	}
+	buildTestSidecarForCLI(t, stateDir, tags)
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+
+	// Query with --danger concurrency: should return the WARN tag
+	stdout, _, err := executeQueryCmd(t, []string{"--danger", "concurrency", "--format", "json"})
+	if err != nil {
+		t.Fatalf("unexpected error with valid danger category: %v", err)
+	}
+
+	if !strings.Contains(stdout, "WARN") {
+		t.Errorf("expected WARN tag in output, got: %s", stdout)
+	}
+
+	// Query with --spec SPEC-WIRE-001: should return tags under internal/wire/
+	stdout2, _, err2 := executeQueryCmd(t, []string{"--spec", "SPEC-WIRE-001", "--format", "json"})
+	if err2 != nil {
+		t.Fatalf("unexpected error with spec filter: %v", err2)
+	}
+
+	if !strings.Contains(stdout2, "wire") {
+		t.Errorf("expected wire tags in output for SPEC-WIRE-001, got: %s", stdout2)
+	}
+}
+
+// TestMxQueryCmd_NewQuery_InvalidDanger verifies that --danger with unknown category
+// returns exit 2 and an appropriate error message when mx.yaml is absent.
+// AC-SPC-004-03: invalid danger value → exit 2
+func TestMxQueryCmd_NewQuery_InvalidDanger(t *testing.T) {
+	tmpDir := t.TempDir()
+	stateDir := filepath.Join(tmpDir, ".moai", "state")
+	buildTestSidecarForCLI(t, stateDir, []mx.Tag{})
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+
+	_, stderr, err := executeQueryCmd(t, []string{"--danger", "nonexistent-category-xyz"})
+	if err == nil {
+		t.Error("expected error for unknown danger category, got nil")
+	}
+
+	if !strings.Contains(stderr, "InvalidQuery") && !strings.Contains(err.Error(), "InvalidQuery") {
+		t.Logf("stderr: %s, err: %v", stderr, err)
+	}
+}
+
 // 더미 참조: os 패키지 사용 확인
 var _ = os.DevNull

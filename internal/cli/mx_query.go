@@ -105,6 +105,18 @@ moai mx query --file-prefix internal/auth/ --format table`,
 			// create Resolver
 			resolver := mx.NewResolver(mgr)
 
+			// load danger config from mx.yaml (M2 wire-up, REQ-SPC-004-012)
+			dangerCfg, _ := mx.LoadDangerConfig(projectRoot)
+			dangerMatcher := mx.NewDangerCategoryMatcher(dangerCfg)
+
+			// load spec modules from .moai/specs/*/spec.md (M3 wire-up, REQ-SPC-004-006)
+			specModules, _ := mx.LoadSpecModules(projectRoot)
+			specAssociator := mx.NewSpecAssociator(specModules)
+
+			// fan-in counter: use LSPFanInCounter with nil client (falls back to textual)
+			// TestPaths from danger config (M5 wire-up, REQ-SPC-004-040)
+			fanInCounter := mx.NewTextualFanInCounterWithTestPaths(dangerCfg.TestPaths)
+
 			// convert KIND string to TagKind
 			var tagKind mx.TagKind
 			if kind != "" {
@@ -122,18 +134,22 @@ moai mx query --file-prefix internal/auth/ --format table`,
 				}
 			}
 
-			// execute query
-			query := mx.Query{
-				SpecID:       specID,
-				Kind:         tagKind,
-				FanInMin:     fanInMin,
-				Danger:       danger,
-				FilePrefix:   filePrefix,
-				Since:        sinceTime,
-				Limit:        limit,
-				Offset:       offset,
-				IncludeTests: includeTests,
-			}
+			// execute query (with wired components)
+			query := mx.NewQuery(mx.QueryParams{
+				SpecID:         specID,
+				Kind:           tagKind,
+				FanInMin:       fanInMin,
+				Danger:         danger,
+				FilePrefix:     filePrefix,
+				Since:          sinceTime,
+				Limit:          limit,
+				Offset:         offset,
+				IncludeTests:   includeTests,
+				ProjectRoot:    projectRoot,
+				DangerMatcher:  dangerMatcher,
+				SpecAssociator: specAssociator,
+				FanInCounter:   fanInCounter,
+			})
 
 			result, err := resolver.Resolve(query)
 			if err != nil {

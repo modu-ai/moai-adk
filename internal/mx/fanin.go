@@ -100,6 +100,13 @@ func matchesGlobPattern(slashPath, pattern string) bool {
 	return false
 }
 
+// NewTextualFanInCounterWithTestPaths creates a TextualFanInCounter pre-configured with
+// user-supplied test path glob patterns from mx.yaml (REQ-SPC-004-040).
+// Callers that prefer a zero-value struct may still use &TextualFanInCounter{} directly.
+func NewTextualFanInCounterWithTestPaths(testPaths []string) *TextualFanInCounter {
+	return &TextualFanInCounter{TestPaths: testPaths}
+}
+
 // Count calculates the caller count of AnchorID through text search.
 // result's fan_in_method is always "textual".
 func (c *TextualFanInCounter) Count(_ context.Context, tag Tag, projectRoot string, excludeTests bool) (int, string, error) {
