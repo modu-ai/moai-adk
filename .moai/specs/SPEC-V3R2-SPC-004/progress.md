@@ -58,12 +58,21 @@ Commits: RED `7237ae2bc`, GREEN `25a9f6594`, REFACTOR `8c439a4ac`
 Verification gate: `go test ./internal/mx/ -run "TestLSPFanInCounter|TestResolver_AC9_StrictMode"` → all PASS.
 Coverage: 88.8% (목표 85% 초과). Race detector: PASS.
 
-### M2: `mx.yaml` `danger_categories:` user wire-up (G-02) — Priority P1
+### M2: `mx.yaml` `danger_categories:` user wire-up (G-02) — Priority P1 ✅ COMPLETE
 
-- [ ] T-SPC004-03: LoadDangerConfig helper + 4 RED tests
-- [ ] T-SPC004-06: validateQuery danger 분기 + CLI exit-2 fixture
+- [x] T-SPC004-03: LoadDangerConfig helper + 2 RED tests
+  - commit: 94586497f (RED), 6534a2097 (GREEN)
+  - `internal/mx/danger_category.go` +24 LOC (LoadDangerConfig)
+- [x] T-SPC004-06: validateQuery danger 분기 + 1 RED test
+  - commit: 94586497f (RED), 6534a2097 (GREEN)
+  - `internal/mx/resolver_query.go` +23 LOC (danger validation branch)
 
-Verification gate: `go test ./internal/mx/ ./internal/cli/ -run "TestLoadDangerConfig|TestValidateQuery_UnknownDanger|TestMxQueryCmd_AC13_DangerInvalid"` → all PASS.
+M2 Status: COMPLETE (2026-05-13)
+Commits: RED `94586497f`, GREEN `6534a2097`
+
+Verification gate: `go test -race ./internal/mx/... -count=1` → all PASS.
+Coverage: 88.4% (M1 end: 88.8% — slight decrease from new LoadDangerConfig statements; >85% target met).
+Race detector: PASS. go vet: PASS.
 
 ### M3: `.moai/specs/*/spec.md` `module:` 자동 로드 (G-03) — Priority P1
 
@@ -109,7 +118,7 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 |---|---|---|---|---|
 | AC-01 | pending | T-SPC004-04, T-SPC004-05, T-SPC004-12 | YES | (TBD) |
 | AC-02 | verified | T-SPC004-01, T-SPC004-02 | YES | 2026-05-13 M1 |
-| AC-03 | pending | T-SPC004-03, T-SPC004-12 | YES | (TBD) |
+| AC-03 | partial | T-SPC004-03, T-SPC004-06 (M2 DONE); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M2 |
 | AC-04 | pending | T-SPC004-09, T-SPC004-12 | PARTIAL → fixture added | (TBD) |
 | AC-05 | pending | T-SPC004-15 (sweep) | YES | (TBD) |
 | AC-06 | pending | (existing) | YES | (TBD) |
@@ -119,7 +128,7 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 | AC-10 | pending | (existing) | YES | (TBD) |
 | AC-11 | pending | T-SPC004-07, T-SPC004-08 | YES → user_paths added | (TBD) |
 | AC-12 | pending | (existing) | YES | (TBD) |
-| AC-13 | pending | T-SPC004-06 (exit code 2) | PARTIAL → exit code fix | (TBD) |
+| AC-13 | partial | T-SPC004-06 (danger InvalidQuery done); T-SPC004-12 (CLI exit-2 pending M6) | PARTIAL → validateQuery danger branch done | 2026-05-13 M2 |
 | AC-14 | pending | (existing) | YES | (TBD) |
 | AC-15 | pending | T-SPC004-04, T-SPC004-05, T-SPC004-15 | YES → 16-lang sweep extended | (TBD) |
 
@@ -132,6 +141,7 @@ Per `.claude/rules/moai/workflow/spec-workflow.md` § Re-planning Gate, append p
 | Iteration | Date | AC completed | Error delta | Notes |
 |---|---|---|---|---|
 | M1        | 2026-05-13 | 3/15 (AC-02, AC-07, AC-09) | 0 | RED 7237ae2bc → GREEN 25a9f6594 → REFACTOR 8c439a4ac |
+| M2        | 2026-05-13 | +2 partial (AC-03, AC-13) | 0 | RED 94586497f → GREEN 6534a2097 (REFACTOR skipped: no cleanup opportunity) |
 
 ---
 
