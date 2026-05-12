@@ -88,6 +88,9 @@ At invocation, load the active evaluator profile to determine dimension weights 
 Profile determines: dimension weights, pass thresholds, must-pass criteria, and hard thresholds.
 The "Evaluation Dimensions" table above reflects the built-in default profile. When a non-default profile is loaded, its weights and thresholds override these defaults.
 
+<!-- @MX:NOTE: Cross-references design-constitution §11.4.1 (SPEC-V3R2-HRN-002) -->
+Per design-constitution §11.4.1, evaluator judgment memory is ephemeral per iteration. The orchestrator MUST respawn evaluator-active via a fresh `Agent()` call at each GAN-loop iteration boundary; prior iteration's evaluator transcript MUST NOT appear in the new spawn prompt.
+
 ## Sprint Contract Negotiation (Phase 2.0, thorough only)
 
 When invoked for contract negotiation before implementation:
