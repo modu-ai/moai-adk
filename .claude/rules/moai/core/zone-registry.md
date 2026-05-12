@@ -563,4 +563,14 @@ moai constitution list --format json
   anchor: "#auto-memory-integration-mandatory"
   clause: "[HARD] When generating a resume message, the orchestrator MUST also persist it to a memory project entry (project_<wave>_<spec>_<status>.md), include verbatim under '## 다음 세션 시작점 (paste-ready resume message)' heading, update MEMORY.md index, and mark superseded entries with [SUPERSEDED by <new-file>] prefix"
   canary_gate: false
+
+# ============================================================
+# 153: design/constitution.md §11.4.1 FROZEN 조항 (SPEC-V3R2-HRN-002, 2026-05-13)
+# ============================================================
+- id: CONST-V3R2-153
+  zone: Frozen
+  file: .claude/rules/moai/design/constitution.md
+  anchor: "#1141-evaluator-memory-scope-principle-4"
+  clause: "§11.4.1 Evaluator Memory Scope (Principle 4) — evaluator.memory_scope FROZEN at per_iteration; GAN loop runner MUST respawn evaluator-active fresh each iteration; prior iteration judgment MUST NOT appear in new spawn prompt"
+  canary_gate: true
 ```

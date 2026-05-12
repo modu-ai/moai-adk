@@ -1,12 +1,13 @@
 ---
 spec_id: SPEC-V3R2-HRN-002
-plan_status: audit-ready
-plan_complete_at: 2026-05-13
-phase: plan
-branch: plan/SPEC-V3R2-HRN-002
+plan_status: complete
+run_status: complete
+run_complete_at: 2026-05-13
+phase: run
+branch: feature/SPEC-V3R2-HRN-002
 base_branch: main
-base_commit: 07dabe011
-worktree_path: n/a (plan-in-main)
+base_commit: d7c2ec397
+worktree_path: /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-HRN-002
 ---
 
 # Progress — SPEC-V3R2-HRN-002
@@ -16,6 +17,7 @@ worktree_path: n/a (plan-in-main)
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-13 | manager-spec (HRN-002 plan author) | Plan phase complete; status `audit-ready`. |
+| 1.0.0 | 2026-05-13 | manager-develop (run-phase, cycle_type=tdd) | Run phase complete; M2-M5 all milestones done; status `complete`. 8 commits (T-03 through T-12). |
 
 ## Plan Phase Snapshot
 
