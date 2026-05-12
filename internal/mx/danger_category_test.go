@@ -1,6 +1,8 @@
 package mx
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -157,6 +159,62 @@ func TestDangerCategoryMatcher_CustomConfig(t *testing.T) {
 	// 기본 카테고리는 사용되지 않아야 함
 	if matcher.Match("goroutine leak", "concurrency") {
 		t.Error("커스텀 설정 시 기본 카테고리 사용됨")
+	}
+}
+
+// TestLoadDangerConfig_UserCustomCategories는 mx.yaml에 사용자 정의 카테고리가 있을 때
+// LoadDangerConfig가 이를 올바르게 로드하는지 테스트합니다.
+// SPEC-V3R2-SPC-004 M2 RED — T-SPC004-03
+func TestLoadDangerConfig_UserCustomCategories(t *testing.T) {
+	tempDir := t.TempDir()
+	mxYAML := `danger_categories:
+  critical:
+    - "unwrap()"
+    - "panic()"
+`
+	if err := os.WriteFile(filepath.Join(tempDir, "mx.yaml"), []byte(mxYAML), 0o600); err != nil {
+		t.Fatalf("mx.yaml 작성 실패: %v", err)
+	}
+
+	cfg, err := LoadDangerConfig(tempDir)
+	if err != nil {
+		t.Fatalf("LoadDangerConfig 오류: %v", err)
+	}
+
+	patterns, ok := cfg.Categories["critical"]
+	if !ok {
+		t.Fatalf("'critical' 카테고리 없음: %v", cfg.Categories)
+	}
+
+	found := false
+	for _, p := range patterns {
+		if p == "unwrap()" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("'unwrap()' 패턴 없음: %v", patterns)
+	}
+}
+
+// TestLoadDangerConfig_FileMissing_DefaultUsed는 mx.yaml이 없을 때
+// LoadDangerConfig가 빈 DangerCategoryConfig를 반환하는지 테스트합니다.
+// SPEC-V3R2-SPC-004 M2 RED — T-SPC004-03
+func TestLoadDangerConfig_FileMissing_DefaultUsed(t *testing.T) {
+	tempDir := t.TempDir()
+	// mx.yaml 파일 없음
+
+	cfg, err := LoadDangerConfig(tempDir)
+	if err != nil {
+		t.Fatalf("mx.yaml 없을 때 오류 없어야 함: %v", err)
+	}
+
+	if len(cfg.Categories) != 0 {
+		t.Errorf("mx.yaml 없을 때 빈 Categories 기대, 실제: %v", cfg.Categories)
+	}
+	if len(cfg.TestPaths) != 0 {
+		t.Errorf("mx.yaml 없을 때 빈 TestPaths 기대, 실제: %v", cfg.TestPaths)
 	}
 }
 

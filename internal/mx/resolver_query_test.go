@@ -2,6 +2,7 @@ package mx
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -667,6 +668,32 @@ func TestResolve_LargeSidecarTruncation(t *testing.T) {
 
 	if result.TotalCount > DefaultLimit && !result.TruncationNotice {
 		t.Error("TruncationNotice가 true여야 함")
+	}
+}
+
+// TestValidateQuery_UnknownDanger_InvalidQueryError는 알 수 없는 danger 카테고리에 대해
+// validateQuery가 InvalidQueryError를 반환하는지 테스트합니다.
+// SPEC-V3R2-SPC-004 M2 RED — T-SPC004-06 / AC-SPC-004-13
+func TestValidateQuery_UnknownDanger_InvalidQueryError(t *testing.T) {
+	query := Query{Danger: "frobnicate"}
+
+	err := validateQuery(query)
+	if err == nil {
+		t.Fatal("알 수 없는 danger 카테고리에 대해 오류 기대, 실제 nil")
+	}
+
+	var iqErr *InvalidQueryError
+	// errors.As로 타입 검증
+	if !errors.As(err, &iqErr) {
+		t.Fatalf("*InvalidQueryError 기대, 실제: %T (%v)", err, err)
+	}
+
+	if iqErr.Field != "danger" {
+		t.Errorf("Field: 기대 'danger', 실제 %q", iqErr.Field)
+	}
+
+	if !strings.Contains(iqErr.Message, "allowed") {
+		t.Errorf("Message에 'allowed' 없음: %q", iqErr.Message)
 	}
 }
 
