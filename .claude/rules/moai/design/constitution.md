@@ -2,6 +2,7 @@
 
 ## HISTORY
 
+- 2026-05-13 (SPEC-V3R2-HRN-002): §11.4.1 Evaluator Memory Scope (Principle 4) inserted — per-iteration ephemeral judgment + durable Sprint Contract state. Version 3.4.0 → 3.5.0.
 - 2026-04-26 (SPEC-V3R3-DESIGN-PIPELINE-001): §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
 - 2026-04-26 (SPEC-V3R3-DESIGN-FOLDER-FIX-001): §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
 - 2026-04-20 (SPEC-DESIGN-CONST-AMEND-001): Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
@@ -334,6 +335,19 @@ Rules:
 - [HARD] expert-frontend MUST NOT claim criteria as met without evidence
 - Sprint Contract artifacts are stored in `.moai/sprints/` (from design.yaml `sprint_contract.artifact_dir`)
 
+<!-- @MX:WARN: FROZEN-zone amendment per CON-002 §5 Layer 1 (Frozen Guard); modifications require full 5-layer cycle -->
+<!-- @MX:REASON: §11.4.1 inserted by SPEC-V3R2-HRN-002; per-iteration ephemeral evaluator judgment is a constitutional invariant -->
+
+### §11.4.1 Evaluator Memory Scope (Principle 4)
+
+Evaluator judgment memory SHALL be ephemeral per iteration. Each GAN-loop iteration invokes evaluator-active with a fresh LM context seeing only: (a) the SPEC + BRIEF, (b) the current Sprint Contract criterion states, (c) the artifact path under review. Prior iteration judgment rationales, scoring internals, or reflection traces MUST NOT appear in the evaluator's context window.
+
+Sprint Contract state SHALL be durable across iterations. Passed criteria carry forward (no regression allowed). Failed criteria carry forward with refined expectations. New criteria MAY be added by evaluator-active when the prior iteration revealed gaps.
+
+Implementation: the GAN loop runner SHALL respawn evaluator-active for each iteration (no session persistence). The Sprint Contract file at `.moai/sprints/{team-id}/contract.yaml` (or `.moai/sprints/{spec-id}/contract.yaml` for solo mode) is the sole cross-iteration carrier of evaluation state.
+
+Configuration: `evaluator.memory_scope: per_iteration` in both `design.yaml` and `harness.yaml` is FROZEN at `per_iteration`; any attempt to set another value (e.g., `cumulative`) fails loader validation with `HRN_EVAL_MEMORY_FROZEN`.
+
 ---
 
 ## 12. Evaluator Leniency Prevention
@@ -402,9 +416,9 @@ If a graduated learning causes regression:
 
 ---
 
-Version: 3.4.0
+Version: 3.5.0
 Classification: FROZEN_AMENDMENT
 Original Source: agency/constitution.md v3.2.0
-Last Updated: 2026-04-26
+Last Updated: 2026-05-13
 Relocated: 2026-04-20 (SPEC-AGENCY-ABSORB-001 M1)
 REQ coverage: REQ-CONST-001, REQ-CONST-002, REQ-CONST-003, REQ-CONST-004
