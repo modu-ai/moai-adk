@@ -346,6 +346,28 @@ func ValidSectionNames() []string {
 	return result
 }
 
+// HarnessConfig는 harness.yaml 최상위 설정 구조체입니다.
+// HRN-002 run-phase minimal substrate: memory_scope 필드 검증만 포함합니다.
+// HRN-001 run-phase에서 routing/profile 확장 예정입니다.
+type HarnessConfig struct {
+	DefaultProfile string         `yaml:"default_profile"`
+	Evaluator      EvaluatorConfig `yaml:"evaluator"`
+}
+
+// EvaluatorConfig는 evaluator 하위 설정 구조체입니다.
+// @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1 (SPEC-V3R2-HRN-002)
+type EvaluatorConfig struct {
+	// MemoryScope는 evaluator 메모리 범위 설정입니다.
+	// design-constitution §11.4.1에 의해 per_iteration 값으로 FROZEN됩니다.
+	// 다른 값(e.g., cumulative)은 HRN_EVAL_MEMORY_FROZEN 오류를 반환합니다.
+	MemoryScope string `yaml:"memory_scope"`
+}
+
+// harnessFileWrapper는 harness.yaml 파일 언마샬링용 래퍼입니다.
+type harnessFileWrapper struct {
+	Harness HarnessConfig `yaml:"harness"`
+}
+
 // YAML file wrapper types for proper unmarshaling with top-level keys.
 // Each section file wraps its content under a top-level key.
 

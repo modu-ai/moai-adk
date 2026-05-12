@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -484,5 +485,81 @@ func TestLoaderGitConventionDefaults(t *testing.T) {
 	sections := loader.LoadedSections()
 	if sections["git_convention"] {
 		t.Error("expected git_convention section to NOT be loaded")
+	}
+}
+
+// TestLoadHarnessConfigValid는 per_iteration 값을 가진 유효한 harness 설정이
+// 오류 없이 로드되는지 검증합니다 (AC-HRN-002-04).
+func TestLoadHarnessConfigValid(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	src := filepath.Join("testdata", "eval-memory-valid", "harness.yaml")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("failed to read fixture %s: %v", src, err)
+	}
+	dst := filepath.Join(tempDir, "harness.yaml")
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
+		t.Fatalf("failed to write harness.yaml: %v", err)
+	}
+
+	cfg, err := LoadHarnessConfig(dst)
+	if err != nil {
+		t.Fatalf("LoadHarnessConfig() error = %v, want nil", err)
+	}
+	if cfg.Evaluator.MemoryScope != "per_iteration" {
+		t.Errorf("MemoryScope = %q, want %q", cfg.Evaluator.MemoryScope, "per_iteration")
+	}
+}
+
+// TestLoadHarnessConfigFrozenViolation은 cumulative 값이 로더 검증에서
+// ErrEvalMemoryFrozen 오류로 거부되는지 검증합니다 (AC-HRN-002-04).
+func TestLoadHarnessConfigFrozenViolation(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	src := filepath.Join("testdata", "eval-memory-frozen-violation", "harness.yaml")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("failed to read fixture %s: %v", src, err)
+	}
+	dst := filepath.Join(tempDir, "harness.yaml")
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
+		t.Fatalf("failed to write harness.yaml: %v", err)
+	}
+
+	_, err = LoadHarnessConfig(dst)
+	if err == nil {
+		t.Fatal("LoadHarnessConfig() error = nil, want ErrEvalMemoryFrozen")
+	}
+	if !errors.Is(err, ErrEvalMemoryFrozen) {
+		t.Errorf("LoadHarnessConfig() error = %v, want errors.Is(ErrEvalMemoryFrozen)", err)
+	}
+}
+
+// TestLoadHarnessConfigMissingField는 evaluator 키가 없는 경우
+// 필수 필드 오류를 반환하는지 검증합니다 (AC-HRN-002-04).
+func TestLoadHarnessConfigMissingField(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	src := filepath.Join("testdata", "eval-memory-missing", "harness.yaml")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("failed to read fixture %s: %v", src, err)
+	}
+	dst := filepath.Join(tempDir, "harness.yaml")
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
+		t.Fatalf("failed to write harness.yaml: %v", err)
+	}
+
+	_, err = LoadHarnessConfig(dst)
+	if err == nil {
+		t.Fatal("LoadHarnessConfig() error = nil, want required-field error")
+	}
+	// missing field도 ErrEvalMemoryFrozen으로 표현되거나 ErrInvalidConfig 계열이어야 함
+	if !errors.Is(err, ErrEvalMemoryFrozen) && !errors.Is(err, ErrInvalidConfig) {
+		t.Errorf("LoadHarnessConfig() error = %v, want ErrEvalMemoryFrozen or ErrInvalidConfig", err)
 	}
 }

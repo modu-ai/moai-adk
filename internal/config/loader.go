@@ -220,6 +220,47 @@ func (l *Loader) loadResearchSection(dir string, cfg *Config) {
 	}
 }
 
+// LoadHarnessConfig는 주어진 경로의 harness.yaml 파일을 읽어 HarnessConfig를 반환합니다.
+// evaluator.memory_scope가 per_iteration이 아니거나 비어 있는 경우
+// ErrEvalMemoryFrozen 또는 ErrInvalidConfig 오류를 반환합니다.
+// HRN-002 run-phase minimal substrate — HRN-001 run-phase에서 routing/profile 확장 예정.
+func LoadHarnessConfig(path string) (*HarnessConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("LoadHarnessConfig: %w", ErrConfigNotFound)
+		}
+		return nil, fmt.Errorf("LoadHarnessConfig read %s: %w", path, err)
+	}
+
+	var wrapper harnessFileWrapper
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return nil, fmt.Errorf("LoadHarnessConfig parse %s: %w", path, ErrInvalidYAML)
+	}
+
+	cfg := &wrapper.Harness
+
+	// evaluator.memory_scope는 per_iteration으로 FROZEN됩니다
+	// design-constitution §11.4.1 (SPEC-V3R2-HRN-002) 참조
+	if cfg.Evaluator.MemoryScope == "" {
+		return nil, &ValidationError{
+			Field:   "evaluator.memory_scope",
+			Message: "required field missing; must be 'per_iteration'",
+			Wrapped: ErrEvalMemoryFrozen,
+		}
+	}
+	if cfg.Evaluator.MemoryScope != "per_iteration" {
+		return nil, &ValidationError{
+			Field:   "evaluator.memory_scope",
+			Message: "value is FROZEN at 'per_iteration' per design-constitution §11.4.1",
+			Value:   cfg.Evaluator.MemoryScope,
+			Wrapped: ErrEvalMemoryFrozen,
+		}
+	}
+
+	return cfg, nil
+}
+
 // loadYAMLFile reads a YAML file from the given directory and unmarshals it
 // into the target struct. Returns (true, nil) if the file was found and parsed,
 // (false, nil) if the file does not exist, or (false, error) on failure.

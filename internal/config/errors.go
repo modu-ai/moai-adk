@@ -36,6 +36,12 @@ var (
 
 	// ErrInvalidYAML indicates invalid YAML syntax in a configuration file.
 	ErrInvalidYAML = errors.New("config: invalid YAML syntax")
+
+	// ErrEvalMemoryFrozen은 evaluator.memory_scope가 per_iteration이 아닌 값으로
+	// 설정된 경우 로더 검증에서 반환됩니다.
+	// HRN-002 run-phase minimal substrate — design-constitution §11.4.1에 의거
+	// per_iteration은 FROZEN 값이며 다른 값은 허용되지 않습니다.
+	ErrEvalMemoryFrozen = errors.New("HRN_EVAL_MEMORY_FROZEN: evaluator.memory_scope must be 'per_iteration' (FROZEN per design-constitution §11.4.1)")
 )
 
 // ValidationError represents a single validation error with field context.

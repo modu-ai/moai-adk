@@ -1,0 +1,4 @@
+# 이 픽스처는 의도적으로 FROZEN 값 위반을 포함합니다 — ErrEvalMemoryFrozen 반환 기대
+harness:
+  evaluator:
+    memory_scope: cumulative

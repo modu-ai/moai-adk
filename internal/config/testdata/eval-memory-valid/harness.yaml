@@ -1,0 +1,4 @@
+# @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1; loader enforces via HRN_EVAL_MEMORY_FROZEN
+harness:
+  evaluator:
+    memory_scope: per_iteration
