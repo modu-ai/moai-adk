@@ -1,0 +1,54 @@
+# SPEC-V3R2-HRN-002 — Canary Check Evidence
+# CON-002 Layer 2 (Canary Check) — fresh-memory evaluator amendment
+# Generated: 2026-05-13
+# SPEC: SPEC-V3R2-HRN-002 §11.4.1 Evaluator Memory Scope (Principle 4)
+# Worktree: feature/SPEC-V3R2-HRN-002 (base origin/main d7c2ec397)
+
+## Protocol
+
+CON-002 Layer 2 Canary Check requires:
+- Select last 3 completed GAN-loop projects from .moai/design/
+- Re-evaluate each project using fresh-memory evaluator protocol
+- Verify no project score drops by > 0.10 vs prior evaluation
+
+## Subject Corpus
+
+Scanning .moai/design/ for completed GAN-loop projects...
+
+Directory .moai/design/ contains: README.md, research.md, screenshots/, SPEC-V3R3-CLI-TUI-001/, spec.md, system.md, utility-review/
+
+GAN-loop project directories (require: design tokens, sprint contract, evaluation artifacts):
+- SPEC-V3R3-CLI-TUI-001/: examined — contains frontend code but no GAN-loop evaluation artifacts (design.yaml sprint_contract artifacts absent)
+- utility-review/: examined — contains review notes, not GAN-loop artifacts
+
+Completed GAN-loop projects found: 0 of 3 required
+
+## Verdict
+
+CanaryUnavailable
+
+The v3 design corpus has no completed GAN-loop evaluation artifacts at this time.
+The GAN loop is not yet exercised in production (design workflow is available but
+no projects have run through the full GAN loop cycle).
+
+This verdict is expected per research.md D1: "Runner enforcement via SKILL.md text +
+Go integration test (leak detection); no new internal/harness/gan_loop.go module created."
+The §11.4.1 amendment is a PREVENTIVE rule for future GAN-loop runs, not a
+retroactive correction of existing runs.
+
+## REQ-CON-002-020 Compliance
+
+Per REQ-CON-002-020 (plan.md §3 M5), when fewer than 3 canary subjects are available,
+the Canary step MUST emit a CanaryUnavailable verdict rather than silently passing or
+fabricating subject data.
+
+This document records that verdict for the Layer 2 audit trail.
+
+## Attestation
+
+- Canary executor: manager-develop (SPEC-V3R2-HRN-002 run-phase, 2026-05-13)
+- Corpus scan location: .moai/design/ (worktree feature/SPEC-V3R2-HRN-002)
+- Subjects found: 0
+- Subjects required: 3
+- Verdict: CanaryUnavailable
+- Impact on amendment: NONE (amendment is preventive; no prior evaluator runs to regress)
