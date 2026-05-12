@@ -1,6 +1,23 @@
+# catalog.yaml — MoAI-ADK 3-Tier Catalog Manifest
+#
+# Lists every skill and agent shipped with moai-adk-go, organized into three tiers:
+#   core           — Always installed by `moai init`
+#   optional-pack  — Domain-specific packs installed on demand
+#   harness-generated — Components created at runtime by the builder-harness workflow
+#
+# Hash normalization: CRLF→LF, trailing whitespace trim per line, single trailing newline,
+# then sha256 hex-encoded. Re-generate with:
+#   go run internal/template/scripts/gen-catalog-hashes.go --all
+#
+# SPEC: SPEC-V3R4-CATALOG-001
+# Schema docs: internal/template/catalog_doc.md
+# Proposal: .moai/brain/IDEA-003/proposal.md
 version: 1.0.0
 generated_at: "2026-05-12T03:00:00Z"
 catalog:
+    # ─────────────────────────────────────────────────────────────────────────
+    # TIER: core — Always installed by `moai init` (20 skills, 20 agents)
+    # ─────────────────────────────────────────────────────────────────────────
     core:
         skills:
             - name: moai
@@ -204,6 +221,12 @@ catalog:
               path: templates/.claude/agents/moai/researcher.md
               hash: e57d63f8d4ab693e99eb04da56fef2265853db2250ca5deff8643fb8f2fd4063
               version: 1.0.0
+    # ─────────────────────────────────────────────────────────────────────────
+    # TIER: optional-pack — Domain packs (9 packs, ~17 skills, 8 agents)
+    # Dependency graph (acyclic): auth→backend, deployment→backend,
+    #   devops→backend, design→frontend
+    # Install via: moai catalog install <pack>  (SPEC-V3R4-CATALOG-004)
+    # ─────────────────────────────────────────────────────────────────────────
     optional_packs:
         auth:
             description: Authentication and authorization with Auth0, Clerk, Firebase Auth, and WebAuthn
@@ -374,6 +397,12 @@ catalog:
                   path: templates/.claude/agents/moai/expert-testing.md
                   hash: 7332539ae5b8539c36bdfb89ff68f6ee9cc804d977121f3ec5962a0cc46e21f7
                   version: 1.0.0
+    # ─────────────────────────────────────────────────────────────────────────
+    # TIER: harness-generated — Components created by builder-harness workflow
+    # Entries are added automatically when `moai project` runs on a new project.
+    # builder-harness.md is the sole static harness agent; my-harness-* entries
+    # are injected at runtime and are NOT part of this static manifest.
+    # ─────────────────────────────────────────────────────────────────────────
     harness_generated:
         skills: []
         agents:

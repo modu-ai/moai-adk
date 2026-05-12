@@ -5,6 +5,10 @@ package template
 // TestCatalogReferencesValid, TestCatalogTierValid, TestPackDependencyDAG,
 // TestManifestHashFormat, TestWorkflowTriggerCoverage, TestCatalogNoDuplicateEntries,
 // TestCatalogReservedFieldType.
+//
+// T-022 (SPEC-V3R4-CATALOG-001 M4.4): Refactored to use LoadCatalog() from
+// catalog_loader.go instead of inline yaml.Unmarshal. Local struct definitions
+// replaced by the exported types Catalog, Entry, Pack, TierSection.
 
 import (
 	"crypto/sha256"
@@ -14,82 +18,24 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
-// catalogManifest mirrors the top-level YAML structure of internal/template/catalog.yaml.
-// yaml.v3 is used for YAML unmarshalling; struct tags match the YAML field names.
-type catalogManifest struct {
-	Version     string          `yaml:"version"`
-	GeneratedAt string          `yaml:"generated_at"`
-	Catalog     catalogSections `yaml:"catalog"`
-}
-
-type catalogSections struct {
-	Core             catalogTierSection        `yaml:"core"`
-	OptionalPacks    map[string]*catalogPack   `yaml:"optional_packs"`
-	HarnessGenerated catalogTierSection        `yaml:"harness_generated"`
-}
-
-type catalogTierSection struct {
-	Skills []catalogEntry `yaml:"skills"`
-	Agents []catalogEntry `yaml:"agents"`
-}
-
-type catalogEntry struct {
-	Name    string `yaml:"name"`
-	Tier    string `yaml:"tier"`
-	Path    string `yaml:"path"`
-	Hash    string `yaml:"hash"`
-	Version string `yaml:"version"`
-}
-
-type catalogPack struct {
-	Description   string         `yaml:"description"`
-	DependsOn     []string       `yaml:"depends_on"`
-	Skills        []catalogEntry `yaml:"skills"`
-	Agents        []catalogEntry `yaml:"agents"`
-	// Reserved optional marketplace fields (REQ-024)
-	MarketplaceID  interface{} `yaml:"marketplace_id,omitempty"`
-	MarketplaceURL interface{} `yaml:"marketplace_url,omitempty"`
-	Publisher      interface{} `yaml:"publisher,omitempty"`
-}
-
-// loadCatalogManifest reads and parses internal/template/catalog.yaml from the
-// raw embedded FS (before "templates/" prefix strip). This is used by M2 audit tests
-// before catalog_loader.go (M4) is implemented.
-//
-// Note: catalog.yaml lives at "catalog.yaml" relative to embedded root (not inside templates/).
-// M4 will implement the full LoadCatalog() accessor used at runtime.
-func loadCatalogManifest(t *testing.T) *catalogManifest {
+// loadCatalog is the test helper that calls LoadCatalog(embeddedRaw).
+// embeddedRaw exposes catalog.yaml at its root before the "templates/" prefix strip.
+func loadCatalog(t *testing.T) *Catalog {
 	t.Helper()
 
-	data, err := embeddedRaw.ReadFile("catalog.yaml")
+	cat, err := LoadCatalog(embeddedRaw)
 	if err != nil {
-		t.Fatalf("CATALOG_MANIFEST_ABSENT: catalog.yaml not found in embedded binary: %v", err)
+		t.Fatalf("LoadCatalog() error (CATALOG_MANIFEST_ABSENT): %v", err)
 	}
-
-	var m catalogManifest
-	if err := yaml.Unmarshal(data, &m); err != nil {
-		t.Fatalf("catalog.yaml parse error: %v", err)
-	}
-	return &m
+	return cat
 }
 
-// allCatalogEntries returns a flat list of all (name, tier) pairs across all tier sections.
-// Used by duplicate and orphan checks.
-func allCatalogEntries(m *catalogManifest) []catalogEntry {
-	var entries []catalogEntry
-	entries = append(entries, m.Catalog.Core.Skills...)
-	entries = append(entries, m.Catalog.Core.Agents...)
-	for _, pack := range m.Catalog.OptionalPacks {
-		entries = append(entries, pack.Skills...)
-		entries = append(entries, pack.Agents...)
-	}
-	entries = append(entries, m.Catalog.HarnessGenerated.Skills...)
-	entries = append(entries, m.Catalog.HarnessGenerated.Agents...)
-	return entries
+// allCatalogEntries returns a flat list of all entries across all tier sections.
+// Used by orphan, tier, duplicate, and hash checks.
+func allCatalogEntries(cat *Catalog) []Entry {
+	return cat.AllEntries()
 }
 
 // TestCatalogManifestPresent asserts that catalog.yaml is embedded in the binary
@@ -100,29 +46,29 @@ func allCatalogEntries(m *catalogManifest) []catalogEntry {
 func TestCatalogManifestPresent(t *testing.T) {
 	t.Parallel()
 
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
-	if m.Version == "" {
+	if cat.Version == "" {
 		t.Errorf("CATALOG_MANIFEST_ABSENT: catalog.yaml missing top-level 'version' field")
 	}
-	if m.GeneratedAt == "" {
+	if cat.GeneratedAt == "" {
 		t.Errorf("CATALOG_MANIFEST_ABSENT: catalog.yaml missing top-level 'generated_at' field")
 	}
 
 	// Validate semver-like pattern for version
 	semverPattern := regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-	if m.Version != "" && !semverPattern.MatchString(m.Version) {
-		t.Errorf("catalog.yaml version %q does not match semver format X.Y.Z", m.Version)
+	if cat.Version != "" && !semverPattern.MatchString(cat.Version) {
+		t.Errorf("catalog.yaml version %q does not match semver format X.Y.Z", cat.Version)
 	}
 
 	// Validate ISO 8601 date pattern (at least YYYY-MM-DD)
 	datePattern := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`)
-	if m.GeneratedAt != "" && !datePattern.MatchString(m.GeneratedAt) {
-		t.Errorf("catalog.yaml generated_at %q does not match ISO 8601 date format", m.GeneratedAt)
+	if cat.GeneratedAt != "" && !datePattern.MatchString(cat.GeneratedAt) {
+		t.Errorf("catalog.yaml generated_at %q does not match ISO 8601 date format", cat.GeneratedAt)
 	}
 
 	// Validate 3 sub-sections exist
-	if m.Catalog.OptionalPacks == nil {
+	if cat.Catalog.OptionalPacks == nil {
 		t.Errorf("CATALOG_MANIFEST_ABSENT: catalog.yaml missing 'catalog.optional_packs' section")
 	}
 }
@@ -139,19 +85,19 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
 	// Build catalog name set (union of all tier sections)
 	catalogSkills := make(map[string]bool)
-	for _, e := range m.Catalog.Core.Skills {
+	for _, e := range cat.Catalog.Core.Skills {
 		catalogSkills[e.Name] = true
 	}
-	for _, pack := range m.Catalog.OptionalPacks {
+	for _, pack := range cat.Catalog.OptionalPacks {
 		for _, e := range pack.Skills {
 			catalogSkills[e.Name] = true
 		}
 	}
-	for _, e := range m.Catalog.HarnessGenerated.Skills {
+	for _, e := range cat.Catalog.HarnessGenerated.Skills {
 		catalogSkills[e.Name] = true
 	}
 
@@ -205,19 +151,19 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
 	// Build catalog name set (union of all tier sections)
 	catalogAgents := make(map[string]bool)
-	for _, e := range m.Catalog.Core.Agents {
+	for _, e := range cat.Catalog.Core.Agents {
 		catalogAgents[e.Name] = true
 	}
-	for _, pack := range m.Catalog.OptionalPacks {
+	for _, pack := range cat.Catalog.OptionalPacks {
 		for _, e := range pack.Agents {
 			catalogAgents[e.Name] = true
 		}
 	}
-	for _, e := range m.Catalog.HarnessGenerated.Agents {
+	for _, e := range cat.Catalog.HarnessGenerated.Agents {
 		catalogAgents[e.Name] = true
 	}
 
@@ -269,9 +215,9 @@ func TestCatalogReferencesValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
-	entries := allCatalogEntries(m)
+	entries := allCatalogEntries(cat)
 	for _, e := range entries {
 		if e.Path == "" {
 			t.Errorf("CATALOG_ENTRY_ORPHAN: entry %q has empty path", e.Name)
@@ -298,12 +244,12 @@ func TestCatalogReferencesValid(t *testing.T) {
 func TestCatalogTierValid(t *testing.T) {
 	t.Parallel()
 
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
 	// tier must be: "core" | "optional-pack:<name>" | "harness-generated"
 	tierPattern := regexp.MustCompile(`^(core|optional-pack:[a-z][a-z0-9-]{1,30}|harness-generated)$`)
 
-	entries := allCatalogEntries(m)
+	entries := allCatalogEntries(cat)
 	for _, e := range entries {
 		if !tierPattern.MatchString(e.Tier) {
 			t.Errorf("CATALOG_TIER_INVALID: %s tier=%q does not match allowed pattern (core|optional-pack:<name>|harness-generated)", e.Name, e.Tier)
@@ -320,15 +266,15 @@ func TestCatalogTierValid(t *testing.T) {
 func TestPackDependencyDAG(t *testing.T) {
 	t.Parallel()
 
-	m := loadCatalogManifest(t)
-	if len(m.Catalog.OptionalPacks) == 0 {
+	cat := loadCatalog(t)
+	if len(cat.Catalog.OptionalPacks) == 0 {
 		t.Log("no optional packs defined — vacuously passes DAG check")
 		return
 	}
 
 	// Build adjacency map
 	adj := make(map[string][]string)
-	for packName, pack := range m.Catalog.OptionalPacks {
+	for packName, pack := range cat.Catalog.OptionalPacks {
 		adj[packName] = pack.DependsOn
 	}
 
@@ -374,8 +320,7 @@ func TestPackDependencyDAG(t *testing.T) {
 // TestManifestHashFormat asserts that every catalog entry's `hash` field is either
 // empty (placeholder) or a valid 64-char lowercase hex string (sha256).
 //
-// After T-008 populates hashes, this test also re-computes the hash and verifies
-// it matches the stored value (hash stability check).
+// Also re-computes the hash and verifies it matches the stored value (hash stability).
 //
 // Sentinel: CATALOG_HASH_INVALID: <entry>
 // REQ: REQ-007, REQ-020, REQ-022, REQ-023
@@ -386,16 +331,13 @@ func TestManifestHashFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
 	hashPattern := regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-	entries := allCatalogEntries(m)
+	entries := allCatalogEntries(cat)
 	for _, e := range entries {
 		if e.Hash == "" || e.Hash == "TODO" {
-			// Phase 2B: hashes will be populated by T-008 (gen-catalog-hashes.go --all)
-			// After T-008 runs, no entry should have empty/TODO hash.
-			// For now, log as warning (will fail post-T-008 if not populated).
 			t.Logf("CATALOG_HASH_INVALID (warning): %s hash=%q is placeholder — run gen-catalog-hashes.go --all", e.Name, e.Hash)
 			continue
 		}
@@ -406,8 +348,6 @@ func TestManifestHashFormat(t *testing.T) {
 		}
 
 		// Hash stability check: re-compute hash from the source file and compare.
-		// Skill entries: hash only the root SKILL.md or skill.md.
-		// Agent entries: hash the .md file at path.
 		fsPath := strings.TrimPrefix(e.Path, "templates/")
 		fsPath = strings.TrimSuffix(fsPath, "/")
 
@@ -467,14 +407,14 @@ func TestWorkflowTriggerCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
 	// Build set of all known skill names (for dependency resolution)
 	knownSkills := make(map[string]bool)
-	for _, e := range m.Catalog.Core.Skills {
+	for _, e := range cat.Catalog.Core.Skills {
 		knownSkills[e.Name] = true
 	}
-	for packName, pack := range m.Catalog.OptionalPacks {
+	for packName, pack := range cat.Catalog.OptionalPacks {
 		for _, e := range pack.Skills {
 			knownSkills[fmt.Sprintf("optional-pack:%s:%s", packName, e.Name)] = true
 			knownSkills[e.Name] = true
@@ -533,7 +473,7 @@ func TestWorkflowTriggerCoverage(t *testing.T) {
 func TestCatalogNoDuplicateEntries(t *testing.T) {
 	t.Parallel()
 
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
 	// Track where each entry name was seen
 	seenIn := make(map[string][]string) // name → list of tier sections
@@ -542,13 +482,13 @@ func TestCatalogNoDuplicateEntries(t *testing.T) {
 		seenIn[name] = append(seenIn[name], tierSection)
 	}
 
-	for _, e := range m.Catalog.Core.Skills {
+	for _, e := range cat.Catalog.Core.Skills {
 		addSeen(e.Name, "core.skills")
 	}
-	for _, e := range m.Catalog.Core.Agents {
+	for _, e := range cat.Catalog.Core.Agents {
 		addSeen(e.Name, "core.agents")
 	}
-	for packName, pack := range m.Catalog.OptionalPacks {
+	for packName, pack := range cat.Catalog.OptionalPacks {
 		for _, e := range pack.Skills {
 			addSeen(e.Name, fmt.Sprintf("optional_packs.%s.skills", packName))
 		}
@@ -556,10 +496,10 @@ func TestCatalogNoDuplicateEntries(t *testing.T) {
 			addSeen(e.Name, fmt.Sprintf("optional_packs.%s.agents", packName))
 		}
 	}
-	for _, e := range m.Catalog.HarnessGenerated.Skills {
+	for _, e := range cat.Catalog.HarnessGenerated.Skills {
 		addSeen(e.Name, "harness_generated.skills")
 	}
-	for _, e := range m.Catalog.HarnessGenerated.Agents {
+	for _, e := range cat.Catalog.HarnessGenerated.Agents {
 		addSeen(e.Name, "harness_generated.agents")
 	}
 
@@ -580,9 +520,9 @@ func TestCatalogNoDuplicateEntries(t *testing.T) {
 func TestCatalogReservedFieldType(t *testing.T) {
 	t.Parallel()
 
-	m := loadCatalogManifest(t)
+	cat := loadCatalog(t)
 
-	for packName, pack := range m.Catalog.OptionalPacks {
+	for packName, pack := range cat.Catalog.OptionalPacks {
 		if pack.MarketplaceID != nil {
 			if _, ok := pack.MarketplaceID.(string); !ok {
 				t.Errorf("CATALOG_RESERVED_FIELD_INVALID: %s marketplace_id is not a string (got %T)",
@@ -603,7 +543,7 @@ func TestCatalogReservedFieldType(t *testing.T) {
 		}
 	}
 
-	t.Logf("audited %d packs for reserved field type compliance", len(m.Catalog.OptionalPacks))
+	t.Logf("audited %d packs for reserved field type compliance", len(cat.Catalog.OptionalPacks))
 }
 
 // extractRequiredSkills parses YAML frontmatter from a workflow .md file and returns
