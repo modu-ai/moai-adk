@@ -55,11 +55,7 @@ func (c *LSPFanInCounter) Count(ctx context.Context, tag Tag, projectRoot string
 	// LSP 가용성 확인
 	if !c.isLSPAvailable() {
 		if strictMode {
-			lang := c.Language
-			if lang == "" {
-				lang = "unknown"
-			}
-			return 0, "", &LSPRequiredError{Language: lang}
+			return 0, "", &LSPRequiredError{Language: c.language()}
 		}
 		// LSP 사용 불가 → textual fallback
 		return c.textualFallback(ctx, tag, projectRoot, excludeTests)
@@ -74,11 +70,7 @@ func (c *LSPFanInCounter) Count(ctx context.Context, tag Tag, projectRoot string
 	if err != nil {
 		// LSP 오류 → textual fallback (non-strict 모드에서는 graceful)
 		if strictMode {
-			lang := c.Language
-			if lang == "" {
-				lang = "unknown"
-			}
-			return 0, "", &LSPRequiredError{Language: lang}
+			return 0, "", &LSPRequiredError{Language: c.language()}
 		}
 		return c.textualFallback(ctx, tag, projectRoot, excludeTests)
 	}
@@ -104,6 +96,15 @@ func (c *LSPFanInCounter) isLSPAvailable() bool {
 	return c.Client.IsAvailable()
 }
 
+// language는 LSPRequiredError에 사용할 언어 식별자를 반환합니다.
+// Language 필드가 비어있으면 "unknown"을 반환합니다.
+func (c *LSPFanInCounter) language() string {
+	if c.Language == "" {
+		return "unknown"
+	}
+	return c.Language
+}
+
 // textualFallback은 TextualFanInCounter를 사용하여 fan-in을 계산합니다.
 func (c *LSPFanInCounter) textualFallback(ctx context.Context, tag Tag, projectRoot string, excludeTests bool) (int, string, error) {
 	root := projectRoot
@@ -114,22 +115,30 @@ func (c *LSPFanInCounter) textualFallback(ctx context.Context, tag Tag, projectR
 	return fallback.Count(ctx, tag, root, excludeTests)
 }
 
-// uriToPath는 LSP URI (file:///path/to/file.go)를 파일시스템 경로로 변환합니다.
-// Windows 경로 형식 (file:///C:/...)도 처리합니다.
+// uriToPath는 LSP URI를 파일시스템 경로로 변환합니다.
+//
+// 변환 규칙:
+//   - "file:///path/to/file.go"  → "/path/to/file.go"   (Unix)
+//   - "file:///C:/path/file.go"  → "C:/path/file.go"    (Windows)
+//   - "file://path"              → "path"                (scheme-only, passthrough)
+//   - 기타 URI                   → uri 그대로 반환
 func uriToPath(uri string) string {
-	const fileScheme = "file://"
-	if !strings.HasPrefix(uri, fileScheme) {
-		return uri
-	}
-	path := strings.TrimPrefix(uri, fileScheme)
-	// Unix: file:///path → /path (슬래시 하나 제거)
-	// Windows: file:///C:/path → C:/path (슬래시 세 개 제거 후 드라이브 문자)
-	if len(path) > 0 && path[0] == '/' {
-		// 추가 슬래시 제거 (file:/// → /)
-		// Unix: //path → /path
-		if len(path) > 1 && path[1] != '/' {
+	const fileTripleSlash = "file:///"
+	const fileDoubleSlash = "file://"
+
+	if strings.HasPrefix(uri, fileTripleSlash) {
+		path := strings.TrimPrefix(uri, fileTripleSlash)
+		// Windows: "C:/path" — 드라이브 문자 감지 (길이 >= 2, 두 번째 문자가 ':')
+		if len(path) >= 2 && path[1] == ':' {
 			return path
 		}
+		// Unix: "/path" 형식으로 복원
+		return "/" + path
 	}
-	return path
+
+	if strings.HasPrefix(uri, fileDoubleSlash) {
+		return strings.TrimPrefix(uri, fileDoubleSlash)
+	}
+
+	return uri
 }

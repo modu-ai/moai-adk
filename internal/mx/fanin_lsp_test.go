@@ -10,8 +10,6 @@ import (
 )
 
 // mockLSPReferencesClient는 LSPReferencesClient 인터페이스의 테스트용 mock 구현체입니다.
-//
-// @MX:TODO: [AUTO] mockLSPReferencesClient — resolved in GREEN phase once LSPReferencesClient interface is defined
 type mockLSPReferencesClient struct {
 	// locations는 FindReferences 호출 시 반환할 위치 목록입니다.
 	locations []lsp.Location
