@@ -6,4 +6,4 @@ allowed-tools: Skill
 version: 1.0.0
 ---
 
-Use Skill("moai-workflow-release-update") with arguments: $ARGUMENTS
+Use Skill("moai") with arguments: release-update $ARGUMENTS

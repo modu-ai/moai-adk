@@ -1,13 +1,19 @@
 ---
 id: SPEC-V3R4-CATALOG-001
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: completed
 created_at: 2026-05-12
 updated_at: 2026-05-12
 author: GOOS행님
 priority: High
 labels: [catalog, manifest, tier, audit, infrastructure]
 issue_number: 859
+implementation:
+  run_pr: 862
+  eval_fix_pr: 863
+  evaluation_pass_at: 2026-05-12T03:30:00Z
+  evaluation_overall_score: 0.82
+  coverage: "84.0% (LoadCatalog: 100%)"
 ---
 
 # SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest
@@ -18,6 +24,7 @@ issue_number: 859
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-12 | GOOS행님 | Initial draft from /moai brain IDEA-003 (Wave 1 첫 SPEC, manifest schema + tier lock-in) |
 | 0.2.0 | 2026-05-12 | manager-spec | plan-auditor iter 1 FAIL (0.72) 11 defects 반영: D1 (REQ-013 자체 모순 제거), D2 (REQ-027 duplicate sentinel 추가), D3 (37 skills + 28 agents = 65 entries 카운트 통일 + "catalog entry" 정의 명시), D4 (REQ-021 vacuously-true 재작성, workflows flat-md layout 반영), D5 (gen-catalog-hashes.go [NEW] 등록), D6 (15 untracked REQ → AC mapping 보강), D7 (deployer.go no-modify 명확화), D9 (REQ-024 약화). |
+| 0.3.0 | 2026-05-12 | sync | status: draft → completed. PR #862 (M1-M5 implementation, main `ec80c8845`) + PR #863 (eval-1 follow-up: EC3 hash sentinel `t.Logf` → `t.Errorf`, LoadCatalog coverage 71.4% → 100%, main `0d4bf14ef`) 모두 머지. evaluator-active 독립 eval PASS 0.82 (2 required fixes 모두 PR #863에서 해결). Implementation Notes 섹션 추가. |
 
 ## Overview
 
@@ -204,3 +211,60 @@ The following are explicitly **OUT OF SCOPE** for SPEC-V3R4-CATALOG-001 and defe
 - `.claude/rules/moai/development/skill-authoring.md` — Skill YAML frontmatter 스키마 (manifest 설계의 cross-reference; tier 필드는 frontmatter 가 아닌 manifest 에만).
 - `.claude/rules/moai/development/coding-standards.md` — Template-First, 16-language neutrality, single source of truth 원칙.
 - `.claude/rules/moai/core/zone-registry.md` CONST-V3R2-005 — Template-First discipline (catalog.yaml 도 templates/ 외부지만 templates → user project 흐름 일관 유지).
+
+## Implementation Notes
+
+본 SPEC 은 Sprint 11 / Wave 15 에서 단일 run 세션으로 M1-M5 를 모두 완료했다. 핵심 산출물과 분기 결정은 다음과 같다.
+
+### Delivered Artifacts (main 머지 완료)
+
+| 파일 | LOC | 역할 | 참조 |
+|------|-----|------|------|
+| `internal/template/catalog.yaml` | 413 | 65-entry 3-tier manifest (37 skills + 28 agents) | REQ-001..006, REQ-011..012 |
+| `internal/template/catalog_loader.go` | 196 | `LoadCatalog(fs.FS)` + typed Catalog/Entry/Pack 구조 + Lookup 헬퍼 | REQ-001, REQ-004, REQ-021 |
+| `internal/template/catalog_tier_audit_test.go` | 615 | 10 audit sub-tests (sentinel 기반) | REQ-014..020, REQ-022..023, REQ-026..027 |
+| `internal/template/catalog_hash_norm.go` | 46 | `NormalizeForHash` 공유 (loader + scripts) — R7 mitigation (progress.md M2 supplemental) | REQ-007, REQ-022..023 |
+| `internal/template/catalog_loader_test.go` | 154 | typed loader 단위 테스트 (PR #863에서 100% coverage 완성) | REQ-001, REQ-004 |
+| `internal/template/scripts/gen-catalog-hashes.go` | 267 | offline 헬퍼 (`--entry` / `--all` / `--check`) | REQ-007, REQ-022 |
+| `internal/template/catalog_doc.md` | 156 | 스키마 docstring + tier semantics + hash normalization spec | M5 deliverable |
+| `internal/template/embed.go` | +5 | `//go:embed catalog.yaml` 추가 directive (additive) | REQ-026 |
+
+### Divergence Summary (planned vs actual)
+
+- **Scope expansion (minor)**: `catalog_hash_norm.go` (46 LOC) + `catalog_loader_test.go` (154 LOC) 는 spec.md "Files to Modify / Create" 표에 직접 명시되지 않았으나 progress.md M2/M4 "Supplemental Files Created" 에 사전 기재됨. 전자는 hash 정규화 로직 공유 (loader + offline tool 간 single source-of-truth, R7 risk mitigation), 후자는 typed loader 의 단위 테스트로서 TDD 규율상 필수. 두 파일 모두 SPEC 의도와 정렬됨.
+- **Directory creation**: `internal/template/scripts/` 신규 디렉토리 1개 (spec.md 의 gen-catalog-hashes.go 경로 자체에 명시되어 있음 — 의도된 추가).
+- **No deferred items**: 모든 27 REQ + 8 AC 가 implementation 으로 매핑됨.
+- **No deployer.go modification (D7 lock 준수)**: regression 검증은 `deployer_test.go` 등 기존 케이스 GREEN 으로 확인.
+
+### Quality Gates (Final)
+
+| Gate | Verdict | Score |
+|------|---------|-------|
+| Phase 0.5 plan-auditor (iter 1) | PASS | 0.94 |
+| `go test -race ./internal/template/...` | PASS | 4.7s |
+| `golangci-lint run ./internal/template/...` | PASS | 0 issues |
+| `go vet ./internal/template/...` | PASS | clean |
+| `internal/template` 커버리지 | PASS | 84.0% (LoadCatalog 100%) |
+| Phase 2.8a evaluator-active (iter 1, fresh-context) | PASS | 0.82 |
+| PR #862 핵심 CI (Test×3 / Build×5 / Lint / Constitution / CodeQL) | PASS | All green |
+| PR #863 핵심 CI (Test ubuntu/macos / Build×5 / Lint / CodeQL) | PASS | aux reviews FAILURE (per `feedback_ci_aux_workflow_failures` 비차단) |
+
+### Evaluator-Active Required Fixes (PR #863에서 해결)
+
+1. **EC3 hash sentinel enforcement**: `catalog_tier_audit_test.go:341` 의 `t.Logf` → `t.Errorf` 로 변경. 이전에는 hash mismatch 가 advisory log 였으나, CI 시점에 fail 하도록 강화.
+2. **LoadCatalog coverage 71.4% → 100%**: `catalog_loader_test.go` 에 `TestLoadCatalog_MalformedYAML` (3 sub-cases) + `TestLoadCatalog_ManifestAbsent` (`testing/fstest.MapFS` 기반) 추가.
+
+### Deferred to Follow-up SPECs (Exclusions per spec.md 와 일관)
+
+- Directory relocation (`packs/<pack>/` 구조) → SPEC-V3R4-CATALOG-002
+- `moai pack add|remove|list|available` CLI → SPEC-V3R4-CATALOG-003
+- `moai update --catalog-sync` drift detection + 3-way merge + snapshot/rollback → SPEC-V3R4-CATALOG-004
+- `/moai project` harness opt-out interview → SPEC-V3R4-CATALOG-005
+- `moai doctor catalog` diagnostic → SPEC-V3R4-CATALOG-006
+- 4개국어 migration docs (CHANGELOG breaking-vs-non-breaking, docs-site ko/en/ja/zh) → SPEC-V3R4-CATALOG-007
+- evaluator-active nice-to-have 3건 (path containment, REQ-011/012 pack regex test, BenchmarkLoadCatalog) → CATALOG-002~007 후속 처리
+- Skill module sub-files hash coverage 확장 → 별도 SPEC (현재 entry root 만 hash)
+
+### Wave 1 Foundation Complete
+
+본 SPEC 은 catalog initiative 7-SPEC 체인의 **foundation** 으로서, 후속 6개 SPEC 이 본 manifest 의 typed API (`LoadCatalog`) + hash 필드 + tier 분류 + depends_on 그래프를 입력으로 사용한다. Wave 2 (Distribution: 002+003), Wave 3 (Safety: 004), Wave 4 (Polish: 005+006+007) 진입 자격 충족.
