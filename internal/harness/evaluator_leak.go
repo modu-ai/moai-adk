@@ -34,8 +34,8 @@ var priorEvaluatorPattern = regexp.MustCompile(`(?i)\b(previous|prior)\s+evaluat
 // 이전 iteration 판단 흔적(score, feedback, verdict, iteration 번호 참조 등)을 탐지합니다.
 // 탐지된 경우 ErrPriorJudgmentLeak을 반환합니다.
 //
-// // @MX:WARN reason="prior-judgment leak detection per REQ-HRN-002-017"
-// design-constitution §11.4.1: Prior iteration judgment rationales, scoring internals,
+// @MX:WARN reason="prior-judgment leak detection per REQ-HRN-002-017"
+// @MX:REASON: design-constitution §11.4.1 — prior iteration judgment rationales, scoring internals,
 // or reflection traces MUST NOT appear in the evaluator's context window.
 func DetectPriorJudgmentLeak(spawnPrompt string) error {
 	// 금지 서브스트링 탐지
