@@ -6,6 +6,10 @@ harness:
   # Default evaluator profile (used when SPEC has no evaluator_profile field)
   default_profile: "default"
 
+  # @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1; loader enforces via HRN_EVAL_MEMORY_FROZEN
+  evaluator:
+    memory_scope: per_iteration
+
   # Execution mode defaults
   mode_defaults:
     solo: auto            # Sub-agent mode: auto-detect level

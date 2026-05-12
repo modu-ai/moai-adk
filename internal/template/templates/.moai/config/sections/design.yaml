@@ -10,6 +10,10 @@ design:
   # Default tech stack for code-based design (path B)
   default_framework: "next.js"
 
+  # @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1; loader enforces via HRN_EVAL_MEMORY_FROZEN
+  evaluator:
+    memory_scope: per_iteration
+
   # GAN Loop (Builder <-> Evaluator)
   gan_loop:
     max_iterations: 5
