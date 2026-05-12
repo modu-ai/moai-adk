@@ -117,22 +117,89 @@
 - internal/template/catalog_loader_test.go (TestLoadCatalog, 11 sub-assertions)
 - internal/template/catalog_doc.md (schema documentation ~100 lines)
 
+## Phase 2.5 Quality Validation
+
+- go vet ./internal/template/...: PASS (clean)
+- go test -race -count=1 ./internal/template/...: PASS (4.7s)
+- golangci-lint run --timeout=5m ./internal/template/...: PASS (0 issues)
+- `internal/template` 커버리지: 84.0% (LoadCatalog 100%, FormatOptionalPackTier 100%, AllEntries 100%, NormalizeForHash 100%)
+- status: done (sync phase 검증)
+
+## Phase 2.75 Pre-Review Gate
+
+- gate workflow (lint + format + type-check + test 병렬): PASS
+- status: done
+
+## Phase 2.8a evaluator-active (independent fresh-context)
+
+- iter 1 verdict: PASS
+- overall_score: 0.82
+- required_fixes: 2건 (EC3 hash sentinel + LoadCatalog 100% coverage)
+- nice_to_have: 3건 (path containment, pack regex test, BenchmarkLoadCatalog) — CATALOG-002~007 후속 deferred
+- required fixes 적용 PR: #863 (cherry-pick from worktree commit `6b4c40085` → merge commit `0d4bf14ef` on main)
+- evaluation_report: .moai/reports/evaluation/SPEC-V3R4-CATALOG-001-eval-1.md
+- status: done
+
+## Phase 2.8b TRUST 5 Static
+
+- Tested: 84.0% coverage (LoadCatalog 100% — eval-1 required fix)
+- Readable: Go conventions + godoc + catalog_doc.md
+- Unified: existing audit test pattern (lang_boundary_audit_test.go precedent)
+- Secured: no secrets, no injection, no goroutines, OWASP clean (manifest는 데이터 layer)
+- Trackable: 4 conventional commits (M1+M2 → M3+M4+M5 → progress update → eval-1 fix) + SPEC reference + Fixes #859
+- status: done
+
+## Phase 2.9 MX Tag Update
+
+- `@MX:ANCHOR` + `@MX:REASON` on `LoadCatalog` (catalog_loader.go:111-112) — fan_in ≥ 3 (audit suite, downstream SPEC loaders, deployer follow-up)
+- `@MX:NOTE` on `catalog_hash_norm.go` (shared hash normalization)
+- `@MX:NOTE` on `catalog_tier_audit_test.go` (audit suite intent)
+- P1/P2 violations: 0
+- status: done
+
+## Phase 3 Git Operations
+
+- Run PR: #862 admin SQUASH merged 2026-05-12T03:41:11Z → main `ec80c8845` (M1-M5 implementation, 8 files +1852 LOC)
+- Eval-1 follow-up PR: #863 admin SQUASH merged 2026-05-12T03:49:54Z → main `0d4bf14ef` (2 required fixes, 2 files +59/-1 LOC)
+- Sync branch: `sync/SPEC-V3R4-CATALOG-001` (base `0d4bf14ef`)
+- Sync PR: (이번 sync phase 산출 — TBD on push)
+- status: in progress (sync PR 생성 대기)
+
+## Phase 4 Completion
+
+- spec.md status: draft → completed (v0.3.0)
+- Implementation Notes section appended
+- progress.md final-state recorded
+- tasks.md T-001..T-026 all done
+- CHANGELOG.md Unreleased entry added
+- Next: SPEC-V3R4-CATALOG-002 (Wave 2 Distribution — directory relocation)
+- status: pending (sync PR 머지 + worktree cleanup 후 closure)
+
 ## Phase Status
 
 - [x] Phase 0.5 Plan Audit Gate — PASS 0.94
 - [x] Phase 0.9 Language Detection — go
 - [x] Phase 0.95 Scale Selection — Standard Mode
-- [ ] Phase 1 Strategy
-- [ ] Phase 1.5 Task Decomposition
-- [ ] Phase 1.6 AC Initialization
-- [ ] Phase 1.7 File Scaffolding
-- [ ] Phase 1.8 MX Context Scan
+- [x] Phase 1 Strategy — implicit (M-decomposition from plan.md)
+- [x] Phase 1.5 Task Decomposition — tasks.md (T-001..T-026)
+- [x] Phase 1.6 AC Initialization — acceptance.md 8 ACs
+- [x] Phase 1.7 File Scaffolding — 5 NEW + 1 MODIFY 모두 생성
+- [x] Phase 1.8 MX Context Scan — LoadCatalog ANCHOR 식별
 - [x] Phase 2B TDD Implementation M1+M2 — COMPLETE (commit cc4c54bd7)
-- [x] Phase 2B TDD Implementation M3+M4+M5 — COMPLETE
-- [ ] Phase 2.5 Quality Validation
-- [ ] Phase 2.75 Pre-Review Gate
-- [ ] Phase 2.8a evaluator-active
-- [ ] Phase 2.8b TRUST 5 Static
-- [ ] Phase 2.9 MX Tag Update
-- [ ] Phase 3 Git Operations
-- [ ] Phase 4 Completion
+- [x] Phase 2B TDD Implementation M3+M4+M5 — COMPLETE (commit a48456d36)
+- [x] Phase 2.5 Quality Validation — vet/test/lint/coverage PASS
+- [x] Phase 2.75 Pre-Review Gate — gate workflow PASS
+- [x] Phase 2.8a evaluator-active — PASS 0.82 (2 required fixes resolved in #863)
+- [x] Phase 2.8b TRUST 5 Static — Tested/Readable/Unified/Secured/Trackable PASS
+- [x] Phase 2.9 MX Tag Update — LoadCatalog ANCHOR + 2 NOTE applied
+- [x] Phase 3 Git Operations — Run PR #862 + Eval Fix PR #863 모두 MERGED, sync PR TBD
+- [ ] Phase 4 Completion — sync PR 머지 + worktree cleanup 후 close
+
+## Run Final State (main HEAD: `0d4bf14ef`)
+
+- Implementation files in main: 8 (catalog.yaml + catalog_loader.go + catalog_loader_test.go + catalog_tier_audit_test.go + catalog_hash_norm.go + catalog_doc.md + scripts/gen-catalog-hashes.go + embed.go +5 lines)
+- Tests: 10 audit sub-tests + 4 loader tests = 14 sub-tests, all GREEN
+- Coverage: `internal/template` 84.0%, `LoadCatalog` 100% (eval-1 required fix met)
+- MX tags: 1 ANCHOR + 2 NOTE
+- deployer.go: untouched (D7 lock honored)
+- Worktree branch (`feature/SPEC-V3R4-CATALOG-001`): orphan post-squash, replaced by `sync/SPEC-V3R4-CATALOG-001` from main HEAD.

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest (Foundation)
+
+### Added
+
+- **SPEC-V3R4-CATALOG-001**: 3-tier (`core` / `optional-pack:<name>` / `harness-generated`) 카탈로그 매니페스트 도입 — moai-adk-go skill/agent 슬림화 initiative 의 foundation SPEC. `internal/template/catalog.yaml` (37 skills + 28 agents = 65 entries, 9 optional packs, depends_on DAG) + `catalog_loader.go` (typed `LoadCatalog(fs.FS)` API, `LookupSkill`/`LookupAgent` accessors) + `catalog_tier_audit_test.go` (10 sentinel 기반 audit sub-tests: `CATALOG_MANIFEST_ABSENT`, `CATALOG_ENTRY_MISSING`, `CATALOG_ENTRY_ORPHAN`, `CATALOG_TIER_INVALID`, `PACK_DEPENDENCY_CYCLE`, `CATALOG_HASH_INVALID`, `CATALOG_DUPLICATE_ENTRY` 등) + `catalog_hash_norm.go` (LF + trailing-whitespace 정규화 후 sha256) + `scripts/gen-catalog-hashes.go` (offline 헬퍼) + `catalog_doc.md` (schema spec). `embed.go`에 `//go:embed catalog.yaml` directive 추가 (additive). `deployer.go` 미수정 (D7 lock). evaluator-active 독립 평가 PASS 0.82, LoadCatalog coverage 100%. 8 files, +1852/-0 LOC. PR #862 + #863. Wave 2 (Distribution: CATALOG-002+003), Wave 3 (Safety: 004), Wave 4 (Polish: 005+006+007) 진입 자격 충족. Fixes #859.
+
+### English
+
+- **SPEC-V3R4-CATALOG-001**: Introduced 3-tier (`core` / `optional-pack:<name>` / `harness-generated`) catalog manifest as the foundation SPEC of the moai-adk-go skill/agent slim-down initiative. New `internal/template/catalog.yaml` (37 skills + 28 agents = 65 entries, 9 optional packs, acyclic depends_on graph) + `catalog_loader.go` (typed `LoadCatalog(fs.FS)` API with `LookupSkill`/`LookupAgent` accessors) + `catalog_tier_audit_test.go` (10 sentinel-driven audit sub-tests including `CATALOG_MANIFEST_ABSENT`, `CATALOG_ENTRY_MISSING`, `CATALOG_ENTRY_ORPHAN`, `CATALOG_TIER_INVALID`, `PACK_DEPENDENCY_CYCLE`, `CATALOG_HASH_INVALID`, `CATALOG_DUPLICATE_ENTRY`) + `catalog_hash_norm.go` (LF + trailing-whitespace normalization → sha256) + `scripts/gen-catalog-hashes.go` (offline helper) + `catalog_doc.md` (schema spec). Added `//go:embed catalog.yaml` directive in `embed.go` (additive). `deployer.go` untouched (D7 lock). evaluator-active independent review PASS 0.82, LoadCatalog coverage 100%. 8 files, +1852/-0 LOC. PR #862 + #863. Unblocks Wave 2 (Distribution: CATALOG-002+003), Wave 3 (Safety: 004), Wave 4 (Polish: 005+006+007). Fixes #859.
+
 ## [Unreleased] — SPEC-V3R2-RT-007: Hardcoded Path Fix + Versioned Migration
 
 ### Added

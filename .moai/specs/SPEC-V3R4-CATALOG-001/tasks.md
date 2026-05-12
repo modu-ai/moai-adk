@@ -7,6 +7,8 @@
 > **TDD style**: M3 (T-009..T-018) is RED-driven (audit tests written first, will fail against empty manifest). M2 (T-002..T-008) is procedural data lock-in. M4 (T-019..T-023) is GREEN consolidation. M5 (T-024..T-026) is documentation.
 >
 > **Catalog Entry**: 37 skills + 28 agents = 65 entries (verified via `find ... | wc -l`).
+>
+> **Sync status (2026-05-12)**: All 26 tasks complete via PR #862 (M1-M5, main `ec80c8845`) + PR #863 (eval-1 fixes, main `0d4bf14ef`). Status `pending` markers in the table below are historical (Phase 1.5 snapshot); final completion is recorded in `progress.md` § "Run Final State".
 
 ## Task Table
 
