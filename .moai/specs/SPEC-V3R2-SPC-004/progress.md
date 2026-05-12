@@ -105,13 +105,19 @@ Commits: RED `7b032e38b`, GREEN `d41fccfad` (REFACTOR skipped: coverage 87.9% �
 Verification gate: `go test ./internal/mx/ -run "TestResolver_ResolveAnchorCallsites|TestResolver_ResolveAnchor_BackwardCompat"` → all PASS.
 Coverage: 87.9% (M3 end: 88.0% — -0.1% from uncovered walkErr path; >85% target met). Race detector: PASS. go vet: PASS.
 
-### M5: test_paths glob (G-05) + stderr verify (G-06) — Priority P1
+### M5: test_paths glob (G-05) + stderr verify (G-06) — Priority P1 ✅ COMPLETE
 
-- [ ] T-SPC004-07: isTestFile glob 패턴 wire-up + TextualFanInCounter 확장
-- [ ] T-SPC004-08: isTestFile RED tests (3 sub-tests) + integration
-- [ ] T-SPC004-09: stderr format regression fixture (G-06)
+- [x] T-SPC004-07: isTestFileWithPatterns + matchesGlobPattern (doublestar heuristic, no new deps)
+- [x] T-SPC004-08: TextualFanInCounter.TestPaths field wired into walk filter
+- [x] T-SPC004-09: TestSidecarUnavailable_StderrFormat (AC-04 verified: existing code already correct)
 
-Verification gate: `go test ./internal/mx/ ./internal/cli/ -run "TestIsTestFile_UserPattern|TestTextualFanInCounter_RespectsUserTestPaths|TestSidecarUnavailable_StderrFormat"` → all PASS.
+M5 Status: COMPLETE (2026-05-13)
+Commits: RED `3bf66d963`, GREEN `3342c098a` (REFACTOR skipped: all new functions 100% covered, no duplication)
+
+Verification gate: `go test ./internal/mx/ ./internal/cli/ -run "TestIsTestFile_UserPattern|TestTextualFanInCounter_RespectsUserTestPaths|TestSidecarUnavailable_StderrFormat"` → all PASS (4/4).
+Coverage: internal/mx 88.0% (+0.1% from M4). isTestFileWithPatterns 100%, isTestFile 100%, TextualFanInCounter.Count 92.0%. Race detector: PASS. go vet: PASS.
+
+Note on doublestar: No new dependency added. `matchesGlobPattern` uses filepath.Match + path-component heuristic for `**`. Standard library only.
 
 ### M6: 16-언어 sweep (G-08) + benchmark (G-07) + verification — Priority P0
 
@@ -136,14 +142,14 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 | AC-01 | partial | T-SPC004-04+05 DONE (path loader+associator); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M3 |
 | AC-02 | verified+ | T-SPC004-01+02 (fan_in count); T-SPC004-10+11 (callsite locations, M4) | YES | 2026-05-13 M4 |
 | AC-03 | partial | T-SPC004-03, T-SPC004-06 (M2 DONE); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M2 |
-| AC-04 | pending | T-SPC004-09, T-SPC004-12 | PARTIAL → fixture added | (TBD) |
+| AC-04 | verified | T-SPC004-09 (TestSidecarUnavailable_StderrFormat PASS); stderr "SidecarUnavailable" + "/moai mx --full" confirmed | YES | 2026-05-13 M5 |
 | AC-05 | pending | T-SPC004-15 (sweep) | YES | (TBD) |
 | AC-06 | pending | (existing) | YES | (TBD) |
 | AC-07 | verified | T-SPC004-01, T-SPC004-02 | YES | 2026-05-13 M1 |
 | AC-08 | pending | T-SPC004-13 | YES | (TBD) |
 | AC-09 | verified | T-SPC004-02 (LSP-detect path) | strictMode 강화 완료 | 2026-05-13 M1 |
 | AC-10 | pending | (existing) | YES | (TBD) |
-| AC-11 | pending | T-SPC004-07, T-SPC004-08 | YES → user_paths added | (TBD) |
+| AC-11 | verified | T-SPC004-07+08 (isTestFileWithPatterns + TextualFanInCounter.TestPaths); TestTextualFanInCounter_RespectsUserTestPaths PASS | YES | 2026-05-13 M5 |
 | AC-12 | pending | (existing) | YES | (TBD) |
 | AC-13 | partial | T-SPC004-06 (danger InvalidQuery done); T-SPC004-12 (CLI exit-2 pending M6) | PARTIAL → validateQuery danger branch done | 2026-05-13 M2 |
 | AC-14 | pending | (existing) | YES | (TBD) |
@@ -161,6 +167,7 @@ Per `.claude/rules/moai/workflow/spec-workflow.md` § Re-planning Gate, append p
 | M2        | 2026-05-13 | +2 partial (AC-03, AC-13) | 0 | RED 94586497f → GREEN 6534a2097 (REFACTOR skipped: no cleanup opportunity) |
 | M3        | 2026-05-13 | +2 partial (AC-01, AC-15) | 0 | RED adfa3a53a → GREEN fe57d9107 (REFACTOR skipped: clean implementation) |
 | M4        | 2026-05-13 | AC-02 → verified+ (Callsite location list) | 0 | RED 7b032e38b → GREEN d41fccfad (REFACTOR skipped: 87.9% ≥ 85%) |
+| M5        | 2026-05-13 | AC-04 verified, AC-11 verified | 0 | RED 3bf66d963 → GREEN 3342c098a (REFACTOR skipped: all new fns 100% covered) |
 
 ---
 
