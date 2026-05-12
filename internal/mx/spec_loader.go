@@ -19,6 +19,9 @@ type specFrontmatter struct {
 // LoadSpecModules는 projectRoot/.moai/specs/*/spec.md 를 순회하여
 // SPEC ID → []modulePath 맵을 반환합니다 (REQ-SPC-004-005).
 //
+// @MX:ANCHOR: [AUTO] LoadSpecModules — SPEC 모듈 경로 로더; CLI, Resolver, SpecAssociator 모두 이 함수를 통해 경로 기반 연결을 설정
+// @MX:REASON: fan_in >= 3 — CLI mx_query.go, Resolver 초기화 경로, 향후 codemaps 생성기 모두 호출
+//
 // module 필드 지원 형식:
 //   - 문자열: "internal/mx/, cmd/moai/" → 쉼표 분리 + TrimSpace
 //   - YAML 시퀀스: [internal/foo/, internal/bar/] → as-is

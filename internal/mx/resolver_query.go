@@ -76,6 +76,9 @@ type QueryParams struct {
 
 // NewQuery constructs a Query from QueryParams, injecting wired components.
 // CLI callers should prefer NewQuery over constructing Query literals directly.
+//
+// @MX:ANCHOR: [AUTO] NewQuery — CLI 및 외부 호출자용 Query 생성자; 내부 unexported 필드를 안전하게 주입
+// @MX:REASON: fan_in >= 3 — CLI mx_query.go, 통합 테스트, 향후 codemaps 생성기 모두 이 경로로 Query를 생성
 func NewQuery(p QueryParams) Query {
 	return Query{
 		SpecID:         p.SpecID,

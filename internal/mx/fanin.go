@@ -103,6 +103,9 @@ func matchesGlobPattern(slashPath, pattern string) bool {
 // NewTextualFanInCounterWithTestPaths creates a TextualFanInCounter pre-configured with
 // user-supplied test path glob patterns from mx.yaml (REQ-SPC-004-040).
 // Callers that prefer a zero-value struct may still use &TextualFanInCounter{} directly.
+//
+// @MX:NOTE: [AUTO] NewTextualFanInCounterWithTestPaths — mx.yaml test_paths를 주입하는 공개 생성자.
+// CLI wire-up(M6)에서 dangerCfg.TestPaths를 전달할 때 사용.
 func NewTextualFanInCounterWithTestPaths(testPaths []string) *TextualFanInCounter {
 	return &TextualFanInCounter{TestPaths: testPaths}
 }

@@ -10,6 +10,10 @@ var specIDRegex = regexp.MustCompile(`SPEC-[A-Z0-9][A-Z0-9-]*`)
 
 // SpecAssociator connects @MX TAG with SPEC IDs.
 //  1. When the tag's file path is under the module paths listed in SPEC's frontmatter
+//  2. When the tag's Body contains a SPEC ID pattern (body-based association)
+//
+// @MX:NOTE: [AUTO] SpecAssociator — 경로 기반(path-based) + 본문 기반(body-based) SPEC 연결 두 경로를 통합.
+// 경로 기반: SPEC frontmatter module: 필드와 tag.File 접두사 매칭. 본문 기반: SPEC-[A-Z0-9-]+ 정규식.
 type SpecAssociator struct {
 	// specModules is the specID → []modulePath mapping.
 	specModules map[string][]string
