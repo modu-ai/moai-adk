@@ -1,11 +1,11 @@
 ---
 name: moai-workflow-release-update
 description: >
-  Claude Code upstream change tracker for moai-adk-go maintainers (dev-only; user-invocable: false).
-  NOT distributed to user projects. Tracks CC release notes since last analyzed version,
-  classifies changes by impact tier (Hook/Agent/MCP/TUI/Platform), cross-references official docs,
-  generates update plan or umbrella SPEC, synchronizes docs-site 4-locale + README via manager-docs,
-  and commits via manager-git. Activated by /release-update command.
+  Claude Code upstream change tracker → moai-adk update plan + docs sync workflow (dev-only).
+  Tracks new CC release notes, classifies changes by impact tier, cross-references official docs,
+  generates update plan at .moai/research/ or .moai/specs/, and synchronizes docs-site 4-locale + README.
+  NOT distributed to user projects (moai-adk-go maintainers only).
+license: Apache-2.0
 user-invocable: false
 allowed-tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep, Agent, ToolSearch, TaskCreate, TaskUpdate, TaskList, TaskGet
 metadata:
