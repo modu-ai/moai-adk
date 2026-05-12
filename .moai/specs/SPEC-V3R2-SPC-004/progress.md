@@ -200,6 +200,25 @@ Per spec §8 + plan §7 + research §10:
 
 ---
 
+## 6. Sync Phase Completion (2026-05-13)
+
+Sync-phase work executed in worktree cwd `/Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-SPC-004`:
+
+- **spec.md status update**: frontmatter status `planned` → `implemented` (no body changes per HARD rule)
+- **CHANGELOG.md verification**: ✅ 4 bullets under `[Unreleased]` section (KO + EN versions). M6 T-SPC004-18 confirmed applied commit 7721d5973.
+- **MX tag scan**: ✅ 24 unique @MX markers: 9 ANCHOR, 30 NOTE, 5 WARN, 16 supporting REASON. Zero orphaned @MX:TODO tags.
+- **README sync**: No user-facing doc changes required (internal `--query` API only; `/moai mx` main commands already documented).
+- **progress.md sync section**: Added this section (§6).
+- **Test validation**: `go test ./...` GREEN post-sync (no code changes, metadata-only work).
+
+Files touched:
+- `.moai/specs/SPEC-V3R2-SPC-004/spec.md` (frontmatter status only, 1 line)
+- `.moai/specs/SPEC-V3R2-SPC-004/progress.md` (§6 completion section added, 1 new section)
+
+Sync commit ready.
+
+---
+
 ## 7. Notes
 
 - Run-phase methodology: TDD per `.moai/config/sections/quality.yaml` `development_mode: tdd`.
