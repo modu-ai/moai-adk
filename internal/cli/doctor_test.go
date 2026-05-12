@@ -261,7 +261,7 @@ func TestStatusIcon(t *testing.T) {
 		contains string
 	}{
 		{CheckOK, "\u2713"},   // ✓
-		{CheckWarn, "!"}, // ⚠
+		{CheckWarn, "!"},      // ⚠
 		{CheckFail, "\u2717"}, // ✗
 		{CheckStatus("unknown"), "?"},
 	}
@@ -382,7 +382,7 @@ func TestCheckMCPScopeDuplicates_WithDuplicate(t *testing.T) {
 	// We simulate a duplicate by listing the same server name twice via the
 	// parsed structure (for unit test isolation we test the detection logic).
 	servers := map[string]int{
-		"context7":             2, // duplicate
+		"context7":            2, // duplicate
 		"sequential-thinking": 1,
 	}
 	dups := findMCPDuplicates(servers)

@@ -109,17 +109,17 @@ func TestAppendEvolutionLog(t *testing.T) {
 		logPath := filepath.Join(tmpDir, "evolution-log.md")
 
 		log := &AmendmentLog{
-			ID:            "LEARN-20260428-001",
-			RuleID:        "CONST-V3R2-008",
-			ZoneBefore:    ZoneEvolvable,
-			ZoneAfter:     ZoneEvolvable,
-			ClauseBefore:  "Old clause",
-			ClauseAfter:   "New clause",
-			CanaryVerdict: "passed",
+			ID:             "LEARN-20260428-001",
+			RuleID:         "CONST-V3R2-008",
+			ZoneBefore:     ZoneEvolvable,
+			ZoneAfter:      ZoneEvolvable,
+			ClauseBefore:   "Old clause",
+			ClauseAfter:    "New clause",
+			CanaryVerdict:  "passed",
 			Contradictions: []string{},
-			ApprovedBy:    "human",
-			ApprovedAt:    time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC),
-			RolledBack:    false,
+			ApprovedBy:     "human",
+			ApprovedAt:     time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC),
+			RolledBack:     false,
 		}
 
 		if err := AppendEvolutionLog(logPath, log); err != nil {
@@ -150,16 +150,16 @@ func TestAppendEvolutionLog(t *testing.T) {
 
 		// 첫 번째 엔트리
 		log1 := &AmendmentLog{
-			ID:           "LEARN-20260428-001",
-			RuleID:       "CONST-V3R2-008",
-			ZoneBefore:   ZoneEvolvable,
-			ZoneAfter:    ZoneEvolvable,
-			ClauseBefore: "Old 1",
-			ClauseAfter:  "New 1",
+			ID:            "LEARN-20260428-001",
+			RuleID:        "CONST-V3R2-008",
+			ZoneBefore:    ZoneEvolvable,
+			ZoneAfter:     ZoneEvolvable,
+			ClauseBefore:  "Old 1",
+			ClauseAfter:   "New 1",
 			CanaryVerdict: "passed",
-			ApprovedBy:   "human",
-			ApprovedAt:   time.Now(),
-			RolledBack:   false,
+			ApprovedBy:    "human",
+			ApprovedAt:    time.Now(),
+			RolledBack:    false,
 		}
 		if err := AppendEvolutionLog(logPath, log1); err != nil {
 			t.Fatal(err)
@@ -167,16 +167,16 @@ func TestAppendEvolutionLog(t *testing.T) {
 
 		// 두 번째 엔트리
 		log2 := &AmendmentLog{
-			ID:           "LEARN-20260428-002",
-			RuleID:       "CONST-V3R2-009",
-			ZoneBefore:   ZoneEvolvable,
-			ZoneAfter:    ZoneEvolvable,
-			ClauseBefore: "Old 2",
-			ClauseAfter:  "New 2",
+			ID:            "LEARN-20260428-002",
+			RuleID:        "CONST-V3R2-009",
+			ZoneBefore:    ZoneEvolvable,
+			ZoneAfter:     ZoneEvolvable,
+			ClauseBefore:  "Old 2",
+			ClauseAfter:   "New 2",
 			CanaryVerdict: "passed",
-			ApprovedBy:   "human",
-			ApprovedAt:   time.Now(),
-			RolledBack:   false,
+			ApprovedBy:    "human",
+			ApprovedAt:    time.Now(),
+			RolledBack:    false,
 		}
 		if err := AppendEvolutionLog(logPath, log2); err != nil {
 			t.Fatal(err)
@@ -221,16 +221,16 @@ func TestMarkRolledBack(t *testing.T) {
 
 		// 초기 로그 생성
 		log := &AmendmentLog{
-			ID:           "LEARN-20260428-001",
-			RuleID:       "CONST-V3R2-008",
-			ZoneBefore:   ZoneEvolvable,
-			ZoneAfter:    ZoneEvolvable,
-			ClauseBefore: "Old",
-			ClauseAfter:  "New",
+			ID:            "LEARN-20260428-001",
+			RuleID:        "CONST-V3R2-008",
+			ZoneBefore:    ZoneEvolvable,
+			ZoneAfter:     ZoneEvolvable,
+			ClauseBefore:  "Old",
+			ClauseAfter:   "New",
 			CanaryVerdict: "passed",
-			ApprovedBy:   "human",
-			ApprovedAt:   time.Now(),
-			RolledBack:   false,
+			ApprovedBy:    "human",
+			ApprovedAt:    time.Now(),
+			RolledBack:    false,
 		}
 		if err := AppendEvolutionLog(logPath, log); err != nil {
 			t.Fatal(err)

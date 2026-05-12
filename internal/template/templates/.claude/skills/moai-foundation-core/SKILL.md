@@ -32,7 +32,7 @@ triggers:
     - "manager-develop"
     - "manager-strategy"
     - "manager-quality"
-    - "builder-platform"
+    - "builder-harness"
     - "manager-docs"
     - "manager-project"
   phases:

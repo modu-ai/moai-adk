@@ -21,11 +21,11 @@ import (
 // fakeClient is a test Client implementation.
 // It simulates behavior without spawning a real subprocess.
 type fakeClient struct {
-	mu           sync.Mutex
-	state        ClientState
-	startErr     error
-	shutdownErr  error
-	startCalled  int
+	mu             sync.Mutex
+	state          ClientState
+	startErr       error
+	shutdownErr    error
+	startCalled    int
 	shutdownCalled int
 }
 
@@ -472,7 +472,7 @@ func TestManager_ReaperShutsDownIdleClient(t *testing.T) {
 	factory := fakeClientFactory(&spawnCount, &clients, &clientsMu, nil)
 	m := NewManager(cfg,
 		WithClientFactory(factory),
-		WithIdleShutdownSeconds(0),         // 0 seconds = expires immediately
+		WithIdleShutdownSeconds(0), // 0 seconds = expires immediately
 		WithReaperInterval(5*time.Millisecond),
 	)
 
@@ -520,7 +520,7 @@ func TestManager_ReaperDoesNotShutdownActiveClient(t *testing.T) {
 	factory := fakeClientFactory(&spawnCount, &clients, &clientsMu, nil)
 	m := NewManager(cfg,
 		WithClientFactory(factory),
-		WithIdleShutdownSeconds(60),        // 60-second timeout — will not expire during test
+		WithIdleShutdownSeconds(60), // 60-second timeout — will not expire during test
 		WithReaperInterval(5*time.Millisecond),
 	)
 

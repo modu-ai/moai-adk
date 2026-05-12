@@ -118,14 +118,14 @@ Anti-pattern: silent absorption of out-of-scope work. Maintain Scope Discipline 
 
 ## Harness Era: Sub-Skill Generation
 
-This agent does NOT bundle full iOS/Android/RN/Flutter sub-skills inline. Instead, use `builder-platform` (artifact_type=skill) to dynamically generate deep sub-skills when the project requires them:
+This agent does NOT bundle full iOS/Android/RN/Flutter sub-skills inline. Instead, use `builder-harness` (artifact_type=skill) to dynamically generate deep sub-skills when the project requires them:
 
 ```
 # Generate iOS-specific deep skill
-Use the builder-platform subagent (artifact_type=skill) to create moai-framework-ios with SwiftUI, UIKit, Core Data patterns.
+Use the builder-harness subagent (artifact_type=skill) to create moai-framework-ios with SwiftUI, UIKit, Core Data patterns.
 
 # Generate Flutter deep skill
-Use the builder-platform subagent (artifact_type=skill) to create moai-framework-flutter-deep with Riverpod, go_router, Dio, Platform Channels.
+Use the builder-harness subagent (artifact_type=skill) to create moai-framework-flutter-deep with Riverpod, go_router, Dio, Platform Channels.
 ```
 
 This keeps `expert-mobile` lean and allows harness-generated skills to be tailored to project-specific iOS/Android/RN/Flutter versions and patterns.

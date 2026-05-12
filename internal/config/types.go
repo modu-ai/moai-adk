@@ -44,11 +44,18 @@ type GitStrategyConfig struct {
 
 // SystemConfig represents the system configuration section.
 type SystemConfig struct {
-	Version        string `yaml:"version"`
-	LogLevel       string `yaml:"log_level"`
-	LogFormat      string `yaml:"log_format"`
-	NoColor        bool   `yaml:"no_color"`
-	NonInteractive bool   `yaml:"non_interactive"`
+	Version        string        `yaml:"version"`
+	LogLevel       string        `yaml:"log_level"`
+	LogFormat      string        `yaml:"log_format"`
+	NoColor        bool          `yaml:"no_color"`
+	NonInteractive bool          `yaml:"non_interactive"`
+	Migrations     MigrationsConfig `yaml:"migrations"`
+}
+
+// MigrationsConfig represents the migrations configuration section.
+// REQ-V3R2-RT-007-032: migrations.disabled로 session-start migration을 비활성화할 수 있습니다.
+type MigrationsConfig struct {
+	Disabled bool `yaml:"disabled"`
 }
 
 // LLMConfig represents the LLM configuration section.
@@ -126,10 +133,10 @@ type RalphConfig struct {
 
 // WorkflowConfig represents the workflow configuration section.
 type WorkflowConfig struct {
-	AutoClear     bool                   `yaml:"auto_clear"`
-	PlanTokens    int                    `yaml:"plan_tokens"`
-	RunTokens     int                    `yaml:"run_tokens"`
-	SyncTokens    int                    `yaml:"sync_tokens"`
+	AutoClear     bool                    `yaml:"auto_clear"`
+	PlanTokens    int                     `yaml:"plan_tokens"`
+	RunTokens     int                     `yaml:"run_tokens"`
+	SyncTokens    int                     `yaml:"sync_tokens"`
 	AutoSelection TeamAutoSelectionConfig `yaml:"auto_selection"`
 }
 
@@ -269,18 +276,18 @@ type SunsetCondition struct {
 
 // ResearchConfig represents the Self-Research System configuration section.
 type ResearchConfig struct {
-	Enabled bool                   `yaml:"enabled"`
-	Passive ResearchPassiveConfig  `yaml:"passive"`
-	Active  ResearchActiveConfig   `yaml:"active"`
-	Safety  ResearchSafetyConfig   `yaml:"safety"`
+	Enabled   bool                    `yaml:"enabled"`
+	Passive   ResearchPassiveConfig   `yaml:"passive"`
+	Active    ResearchActiveConfig    `yaml:"active"`
+	Safety    ResearchSafetyConfig    `yaml:"safety"`
 	Dashboard ResearchDashboardConfig `yaml:"dashboard"`
 }
 
 // ResearchPassiveConfig represents passive observation settings.
 type ResearchPassiveConfig struct {
-	Enabled                bool                       `yaml:"enabled"`
+	Enabled                 bool                      `yaml:"enabled"`
 	CorrectionWindowSeconds int                       `yaml:"correction_window_seconds"`
-	PatternThresholds      ResearchPatternThresholds  `yaml:"pattern_thresholds"`
+	PatternThresholds       ResearchPatternThresholds `yaml:"pattern_thresholds"`
 }
 
 // ResearchPatternThresholds defines observation count thresholds for pattern classification.
@@ -301,9 +308,9 @@ type ResearchActiveConfig struct {
 
 // ResearchSafetyConfig represents safety layer settings.
 type ResearchSafetyConfig struct {
-	WorktreeIsolation          bool                    `yaml:"worktree_isolation"`
-	CanaryRegressionThreshold  float64                 `yaml:"canary_regression_threshold"`
-	RateLimits                 ResearchRateLimitConfig `yaml:"rate_limits"`
+	WorktreeIsolation         bool                    `yaml:"worktree_isolation"`
+	CanaryRegressionThreshold float64                 `yaml:"canary_regression_threshold"`
+	RateLimits                ResearchRateLimitConfig `yaml:"rate_limits"`
 }
 
 // ResearchRateLimitConfig represents rate limiting settings.
@@ -316,7 +323,7 @@ type ResearchRateLimitConfig struct {
 // ResearchDashboardConfig represents dashboard display settings.
 type ResearchDashboardConfig struct {
 	DefaultMode     string `yaml:"default_mode"`
-	HTMLOpenBrowser  bool   `yaml:"html_open_browser"`
+	HTMLOpenBrowser bool   `yaml:"html_open_browser"`
 }
 
 // sectionNames lists all valid configuration section names.

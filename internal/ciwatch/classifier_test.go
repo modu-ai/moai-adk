@@ -48,10 +48,10 @@ auxiliary:
 	}
 
 	tests := []struct {
-		name       string
-		check      string
-		branch     string
-		wantReq    bool
+		name    string
+		check   string
+		branch  string
+		wantReq bool
 	}{
 		// Case 1: main branch, required check
 		{

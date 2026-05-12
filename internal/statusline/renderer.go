@@ -117,7 +117,7 @@ func (r *Renderer) joinSegments(segments []string) string {
 //
 // L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
 // L2: CW: 🪫 ██████████ 88% │ 5H: 🔋 ██████████ 45% │ 7D: 🪫 ██████████ 82%
-// L3: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L3: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	var lines []string
 
@@ -151,7 +151,7 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 // L2: CW: 🪫 ████████████████████████████████████░░░░ 88%
 // L3: 5H: 🔋 ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%
 // L4: 7D: 🪫 ████████████████████████████████░░░░░░░░ 82%
-// L5: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L5: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
 func (r *Renderer) renderFullV3(data *StatusData) string {
 	var lines []string
 
@@ -216,28 +216,31 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 
 	// Model
 	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
-		segs = append(segs, fmt.Sprintf("[ai] %s", data.Metrics.Model))
+		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
+	}
+
+	// Effort/thinking indicator (Claude Code v2.1.122+, REQ-CC2122-001/002)
+	if r.isSegmentEnabled(SegmentEffortThinking) {
+		if et := renderEffortThinking(data); et != "" {
+			segs = append(segs, et)
+		}
 	}
 
 	// Claude version
 	if r.isSegmentEnabled(SegmentClaudeVersion) && data.ClaudeCodeVersion != "" {
 		if withPrefix {
-			segs = append(segs, fmt.Sprintf("cc v%s", data.ClaudeCodeVersion))
+			segs = append(segs, fmt.Sprintf("🔅 cc v%s", data.ClaudeCodeVersion))
 		} else {
-			segs = append(segs, fmt.Sprintf("v%s", data.ClaudeCodeVersion))
+			segs = append(segs, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
 		}
 	}
 
 	// MoAI version
 	if r.isSegmentEnabled(SegmentMoaiVersion) && data.Version.Available && data.Version.Current != "" {
 		var versionStr string
-		if withPrefix {
-			versionStr = fmt.Sprintf("moai v%s", data.Version.Current)
-		} else {
-			versionStr = fmt.Sprintf("moai v%s", data.Version.Current)
-		}
+		versionStr = fmt.Sprintf("🗿 v%s", data.Version.Current)
 		if data.Version.UpdateAvailable && data.Version.Latest != "" {
-			versionStr += fmt.Sprintf(" -> v%s", data.Version.Latest)
+			versionStr += fmt.Sprintf(" -> 🗿 v%s", data.Version.Latest)
 		}
 		segs = append(segs, versionStr)
 	}
@@ -249,32 +252,28 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
-	// Effort/thinking indicator (Claude Code v2.1.122+, REQ-CC2122-001/002)
-	if r.isSegmentEnabled(SegmentEffortThinking) {
-		if et := renderEffortThinking(data); et != "" {
-			segs = append(segs, et)
-		}
-	}
-
-	// Output style (integrated into L1)
+	// Output style (moved to end of L1 per user request)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
-		segs = append(segs, fmt.Sprintf("[out] %s", data.OutputStyle))
+		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
 	}
 
 	return r.joinSegments(segs)
 }
 
 // renderEffortThinking renders the effort/thinking indicator segment.
-// Returns "e:LEVEL" + optional "·t" suffix when either field is present and meaningful.
+// Returns "🧠 LEVEL" + optional "·t" suffix when either field is present and meaningful.
 // Returns "" when both are absent or effort level is empty (silent omit, REQ-CC2122-003).
 func renderEffortThinking(data *StatusData) string {
-	if data.Effort == nil && data.Thinking == nil {
+	if data.Effort == nil {
+		if data.Thinking != nil && data.Thinking.Enabled {
+			return "·t"
+		}
 		return ""
 	}
-	var result string
-	if data.Effort != nil && data.Effort.Level != "" {
-		result = "e:" + data.Effort.Level
+	if data.Effort.Level == "" {
+		return ""
 	}
+	result := "🧠 " + data.Effort.Level
 	if data.Thinking != nil && data.Thinking.Enabled {
 		result += "·t"
 	}
@@ -296,55 +295,62 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
 	if r.isSegmentEnabled(SegmentUsage5H) {
 		pct5H := 0
+		var reset5H string
 		if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
 			pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
+			reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
 		} else if data.Usage != nil && data.Usage.Usage5H != nil {
 			pct5H = int(data.Usage.Usage5H.Percentage)
+			reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
 		}
-		segs = append(segs, renderUsageBar("5H:", pct5H, width, r.noColor))
+		segs = append(segs, renderUsageBarWithReset("5H:", pct5H, width, r.noColor, reset5H))
 	}
 
 	// 7D bar - always shown, defaults to 0% when no data.
 	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
 	if r.isSegmentEnabled(SegmentUsage7D) {
 		pct7D := 0
+		var reset7D string
 		if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
 			pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
+			reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
 		} else if data.Usage != nil && data.Usage.Usage7D != nil {
 			pct7D = int(data.Usage.Usage7D.Percentage)
+			reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
 		}
-		segs = append(segs, renderUsageBar("7D:", pct7D, width, r.noColor))
+		segs = append(segs, renderUsageBarWithReset("7D:", pct7D, width, r.noColor, reset7D))
 	}
 
 	return r.joinSegments(segs)
 }
 
 // renderDirGitLine renders the directory + branch + git status line (default L3, full L5).
-// Format: 📁 moai-adk-go │ 🔀 feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-// When worktree is active: 🔀 [WT] feat/auth ↑2↓1
+// Format: 📁 moai-adk-go │ 🅱️ main +6 │ 📬 +0 M6 ?0
+// When worktree is active: 🌿 replaces 🅱️ prefix
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
 	// Directory
 	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
-		segs = append(segs, fmt.Sprintf("[dir] %s", data.Directory))
+		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
 	// Branch + ahead/behind (+ worktree indicator)
 	if r.isSegmentEnabled(SegmentGitBranch) {
 		if branch := renderGitBranch(data); branch != "" {
-			// REQ-CC297-003: Add [WT] prefix when the worktree segment is enabled and an active worktree is present
 			if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-				branch = "[WT] " + branch
+				branch = "🌿 " + branch
 			}
 			segs = append(segs, branch)
 		}
 	}
 
-	// Git status
+	// Git status with mailbox emoji: 📬(staged) > 📫(modified) > 📪(untracked) > 📭(clean)
 	if r.isSegmentEnabled(SegmentGitStatus) {
-		if git := r.renderGitStatus(data); git != "" {
-			segs = append(segs, fmt.Sprintf("[git] %s", git))
+		if emoji := mailboxEmoji(data); emoji != "" {
+			if git := r.renderGitStatusDetail(data); git != "" {
+				segs = append(segs, fmt.Sprintf("%s %s", emoji, git))
+			}
 		}
 	}
 
@@ -365,55 +371,63 @@ func renderUsageBar(label string, pct int, width int, noColor bool) string {
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
-// Format: {label} {icon} {bar} {pct}% (Resets {resetStr})
+// Format: {label} {icon} {bar} {pct}% ({resetStr})
 func renderUsageBarWithReset(label string, pct int, width int, noColor bool, resetStr string) string {
 	base := renderUsageBar(label, pct, width, noColor)
 	if resetStr == "" {
 		return base
 	}
-	return fmt.Sprintf("%s (Resets %s)", base, resetStr)
+	return fmt.Sprintf("%s (%s)", base, resetStr)
 }
 
-// formatResetTimeRelative formats a reset time as relative "in Xh Ym".
-// Returns empty string if the reset time is zero, in the past, or unparseable.
+// formatResetTimeRelative formats a reset time as "4h 30m", "1D, 4h 30m", or "30m".
+// Returns "rolling" if the reset time is zero, in the past, or unparseable.
 // Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeRelative(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
-		return ""
+		return "rolling"
 	}
 	remaining := time.Until(t)
 	if remaining <= 0 {
-		return ""
+		return "rolling"
 	}
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
-	if hours > 0 {
-		return fmt.Sprintf("in %dh%dm", hours, minutes)
+
+	if hours >= 24 {
+		days := hours / 24
+		hoursRemain := hours % 24
+		parts := []string{fmt.Sprintf("%dD", days)}
+		if hoursRemain > 0 {
+			parts = append(parts, fmt.Sprintf("%dh", hoursRemain))
+		}
+		if minutes > 0 {
+			parts = append(parts, fmt.Sprintf("%dm", minutes))
+		}
+		return strings.Join(parts, ", ")
 	}
-	return fmt.Sprintf("in %dm", minutes)
+
+	if hours > 0 {
+		if minutes > 0 {
+			return fmt.Sprintf("%dh %dm", hours, minutes)
+		}
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dm", minutes)
 }
 
-// formatResetTimeAbsolute formats a reset time as "Jan 21 at 2pm".
-// Returns empty string if the reset time is zero or unparseable.
+// formatResetTimeAbsolute formats a reset time as "Jan 21" or "rolling".
+// Returns "rolling" (sliding window) if the reset time is zero or unparseable.
 // Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeAbsolute(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
-		return ""
+		return "rolling"
 	}
 	// Convert to local time for display
 	t = t.Local()
-	hour := t.Hour()
-	ampm := "am"
-	if hour >= 12 {
-		ampm = "pm"
-	}
-	hour12 := hour % 12
-	if hour12 == 0 {
-		hour12 = 12
-	}
-	return fmt.Sprintf("%s at %d%s", t.Format("Jan 2"), hour12, ampm)
+	return t.Format("Jan 2")
 }
 
 // parseResetTime converts a reset time value to time.Time.
@@ -456,28 +470,39 @@ func (r *Renderer) contextPercent(data *StatusData) int {
 	return usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 }
 
-// renderGitBranch renders the git branch string with ahead/behind info.
-// REQ-V3-GIT-001: Ahead > 0 → "🔀 branch ↑N"
-// REQ-V3-GIT-002: Behind > 0 → "🔀 branch ↓N"
-// REQ-V3-GIT-003: Both → "🔀 branch ↑N↓M"
-// REQ-V3-GIT-004: Neither → "🔀 branch"
+// renderGitBranch renders the git branch string with status emoji indicators.
+// REQ-V3-GIT-005: Status emoji prefixes: 📦(staged), 🔨(modified)
+// REQ-V3-GIT-006: Clean state → "🅱️ branch +0", Dirty → "emoji🅱️ branch +N"
+// Note: 🌿(worktree) prefix is added by renderDirGitLine when segment is enabled
 func renderGitBranch(data *StatusData) string {
 	if !data.Git.Available || data.Git.Branch == "" {
 		return ""
 	}
 
 	branch := data.Git.Branch
-	var suffix string
 
-	if data.Git.Ahead > 0 && data.Git.Behind > 0 {
-		suffix = fmt.Sprintf(" ↑%d↓%d", data.Git.Ahead, data.Git.Behind)
-	} else if data.Git.Ahead > 0 {
-		suffix = fmt.Sprintf(" ↑%d", data.Git.Ahead)
-	} else if data.Git.Behind > 0 {
-		suffix = fmt.Sprintf(" ↓%d", data.Git.Behind)
+	// Determine status emoji (priority: staged > modified)
+	var emoji string
+	if data.Git.Staged > 0 {
+		emoji = "📦"
+	} else if data.Git.Modified > 0 {
+		emoji = "🔨"
 	}
 
-	return fmt.Sprintf("%s%s", branch, suffix)
+	// Calculate dirty count (modified + staged + untracked)
+	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
+
+	var suffix string
+	if dirty > 0 {
+		suffix = fmt.Sprintf(" +%d", dirty)
+	} else {
+		suffix = " +0"
+	}
+
+	if emoji != "" {
+		return fmt.Sprintf("%s🅱️ %s%s", emoji, branch, suffix)
+	}
+	return fmt.Sprintf("🅱️ %s%s", branch, suffix)
 }
 
 // renderSessionTime converts milliseconds to a session time string in "⏳ Xh Ym" format.
@@ -508,29 +533,29 @@ func renderSessionTime(ms int) string {
 	return fmt.Sprintf("⏳ %dm", totalMinutes)
 }
 
-// renderGitStatus renders git status in Python format.
-// Format: +{staged} M{modified} ?{untracked}
-// Example: "+0 M1066 ?2" (0 staged, 1066 modified, 2 untracked)
-func (r *Renderer) renderGitStatus(data *StatusData) string {
+// mailboxEmoji returns a single mailbox emoji based on git status priority:
+// 📬(staged) > 📫(modified) > 📪(untracked) > 📭(clean)
+func mailboxEmoji(data *StatusData) string {
 	if !data.Git.Available {
 		return ""
 	}
+	if data.Git.Staged > 0 {
+		return "📬"
+	}
+	if data.Git.Modified > 0 {
+		return "📫"
+	}
+	if data.Git.Untracked > 0 {
+		return "📪"
+	}
+	return "📭"
+}
 
-	// Only show git status if there are changes
-	if data.Git.Staged == 0 && data.Git.Modified == 0 && data.Git.Untracked == 0 {
+// renderGitStatusDetail renders detailed git status string (+N M?N).
+// Always renders when git is available, including clean state (+0 M0 ?0).
+func (r *Renderer) renderGitStatusDetail(data *StatusData) string {
+	if !data.Git.Available {
 		return ""
 	}
-
-	var parts []string
-
-	// Staged files
-	parts = append(parts, fmt.Sprintf("+%d", data.Git.Staged))
-
-	// Modified files (uses M instead of ~)
-	parts = append(parts, fmt.Sprintf("M%d", data.Git.Modified))
-
-	// Untracked files
-	parts = append(parts, fmt.Sprintf("?%d", data.Git.Untracked))
-
-	return strings.Join(parts, " ")
+	return fmt.Sprintf("+%d M%d ?%d", data.Git.Staged, data.Git.Modified, data.Git.Untracked)
 }

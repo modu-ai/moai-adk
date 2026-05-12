@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/loop"
+	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
 // mockDiagnosticsCollectorWithLSP is a test double that returns lsphook.Diagnostic results.

@@ -38,10 +38,10 @@ var yamlToStructRegistry = map[string]string{
 	"sunset":         "SunsetConfig",
 	"research":       "ResearchConfig",
 	// Additional sections with partial/specialized loaders:
-	"lsp":     "LSPQualityGates",
-	"mx":      "MXConfig",
+	"lsp":      "LSPQualityGates",
+	"mx":       "MXConfig",
 	"security": "SecurityConfig",
-	"runtime": "RuntimeConfig",
+	"runtime":  "RuntimeConfig",
 }
 
 // yamlAuditExceptions registers yaml files that intentionally do NOT have Go struct

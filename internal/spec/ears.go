@@ -9,12 +9,12 @@ import (
 // Acceptance represents an Acceptance Criteria in EARS format.
 // Supports hierarchical structure up to 3 levels deep.
 type Acceptance struct {
-	ID             string        // AC-<DOMAIN>-<NNN>-<NN> format (e.g., AC-SPC-001-05)
-	Given          string        // Precondition
-	When           string        // Trigger event
-	Then           string        // Expected result
-	RequirementIDs []string      // Referenced REQ IDs (e.g., ["SPC-001", "SPC-002"])
-	Children       []Acceptance  // Child Acceptance Criteria (hierarchical)
+	ID             string       // AC-<DOMAIN>-<NNN>-<NN> format (e.g., AC-SPC-001-05)
+	Given          string       // Precondition
+	When           string       // Trigger event
+	Then           string       // Expected result
+	RequirementIDs []string     // Referenced REQ IDs (e.g., ["SPC-001", "SPC-002"])
+	Children       []Acceptance // Child Acceptance Criteria (hierarchical)
 }
 
 // MaxDepth is the maximum allowed depth of Acceptance tree

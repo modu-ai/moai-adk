@@ -82,7 +82,7 @@ func TestPermissionRequestHandler_UpdatedInputDeny(t *testing.T) {
 
 	// Simulate tool input that was modified by a PreToolUse hook
 	updatedRaw, _ := json.Marshal(map[string]interface{}{
-		"command":               "echo hello",
+		"command":                  "echo hello",
 		"__updated_input_marker__": true,
 	})
 	input := &HookInput{

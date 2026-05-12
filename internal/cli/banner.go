@@ -20,16 +20,26 @@ const moaiBanner = `
 ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
 `
 
-// resolveTheme returns a Theme based on the NO_COLOR env and MOAI_THEME env.
-// NO_COLOR=1 → MonochromeTheme; MOAI_THEME=dark → DarkTheme; otherwise LightTheme.
+// resolveTheme returns a Theme appropriate for the current terminal.
+//
+// Delegates to tui.ResolveOS() which applies the canonical priority chain:
+//  1. NO_COLOR set (any non-empty value, per https://no-color.org) → MonochromeTheme
+//  2. MOAI_THEME="light" → LightTheme
+//  3. MOAI_THEME="dark"  → DarkTheme
+//  4. MOAI_THEME="auto"/unset → lipgloss.HasDarkBackground() auto-detect
+//     - dark terminal background → DarkTheme (bright colours visible on dark bg)
+//     - light terminal background → LightTheme (deep colours visible on light bg)
+//  5. invalid MOAI_THEME → DarkTheme (safe default, REQ-CLI-TUI-010)
+//
+// Prior to this fix, the cli-local implementation forced LightTheme as the
+// fallback regardless of terminal background, rendering deep-teal accents
+// invisible against navy/black terminal backgrounds. The single source of
+// truth lives in internal/tui/detect.go.
+//
+// All cli package callers (banner, version, update, help, status, doctor,
+// update_archive) automatically benefit from this delegation.
 func resolveTheme() tui.Theme {
-	if os.Getenv("NO_COLOR") == "1" {
-		return tui.MonochromeTheme()
-	}
-	if strings.ToLower(os.Getenv("MOAI_THEME")) == "dark" {
-		return tui.DarkTheme()
-	}
-	return tui.LightTheme()
+	return tui.ResolveOS()
 }
 
 // goVersion returns a short Go version string (e.g. "1.21.5" from "go1.21.5").

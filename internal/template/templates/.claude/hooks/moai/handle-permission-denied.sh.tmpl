@@ -9,8 +9,12 @@
 temp_file=$(mktemp)
 trap 'rm -f "$temp_file"' EXIT
 
-# Read stdin into temp file
-cat > "$temp_file"
+# Read stdin into temp file (64KB limit)
+head -c 65536 > "$temp_file"
+if [ $(stat -f%z "$temp_file" 2>/dev/null || stat -c%s "$temp_file" 2>/dev/null || wc -c < "$temp_file") -ge 65536 ]; then
+    echo '{"decision":"block","reason":"stdin exceeds 64KB limit"}'
+    exit 0
+fi
 
 # Try moai command in PATH
 if command -v moai &> /dev/null; then

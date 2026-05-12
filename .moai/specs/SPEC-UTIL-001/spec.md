@@ -2,7 +2,7 @@
 id: SPEC-UTIL-001
 title: "MX Validator Correctness + Tree-sitter 16-Language Complexity + Windows Go-Native Scan + @MX:REASON Enforcement"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-04-24
 updated: 2026-04-24
 author: Wave v2.14 SPEC Writer

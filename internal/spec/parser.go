@@ -57,12 +57,12 @@ func parseAcceptanceCriteriaInternal(markdown string, isFlatFormat bool) *ParseR
 }
 
 type acParsedLine struct {
-	id      string
-	given   string
-	when    string
-	then    string
-	reqIDs  []string
-	indent  int
+	id     string
+	given  string
+	when   string
+	then   string
+	reqIDs []string
+	indent int
 }
 
 // findACSectionStart finds the start index of Acceptance Criteria section in markdown
@@ -121,9 +121,9 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance {
 	// stack: [root_level_node, level_1_node, ...]
 	type stackEntry struct {
-		node     *Acceptance
-		indent   int
-		lineIdx  int
+		node    *Acceptance
+		indent  int
+		lineIdx int
 	}
 
 	var roots []Acceptance

@@ -131,14 +131,14 @@ func TestDetectDuplicate_MatchFound(t *testing.T) {
 
 	// Create an existing learning.
 	existing := &evolution.LearningEntry{
-		ID:          "LEARN-20260101-001",
-		SkillID:     "moai-lang-go",
-		ZoneID:      "best-practices",
-		Observation: "go test fails when context is missing from function signatures",
-		Status:      evolution.StatusObservation,
+		ID:           "LEARN-20260101-001",
+		SkillID:      "moai-lang-go",
+		ZoneID:       "best-practices",
+		Observation:  "go test fails when context is missing from function signatures",
+		Status:       evolution.StatusObservation,
 		Observations: 1,
-		Created:     time.Now(),
-		Updated:     time.Now(),
+		Created:      time.Now(),
+		Updated:      time.Now(),
 	}
 	if err := evolution.CreateLearning(projectRoot, existing); err != nil {
 		t.Fatalf("setup: failed to create learning: %v", err)
@@ -167,14 +167,14 @@ func TestDetectDuplicate_NoMatch(t *testing.T) {
 	mustInitMoAI(t, projectRoot)
 
 	existing := &evolution.LearningEntry{
-		ID:          "LEARN-20260101-001",
-		SkillID:     "moai-lang-go",
-		ZoneID:      "best-practices",
-		Observation: "go test fails when context is missing",
-		Status:      evolution.StatusObservation,
+		ID:           "LEARN-20260101-001",
+		SkillID:      "moai-lang-go",
+		ZoneID:       "best-practices",
+		Observation:  "go test fails when context is missing",
+		Status:       evolution.StatusObservation,
 		Observations: 1,
-		Created:     time.Now(),
-		Updated:     time.Now(),
+		Created:      time.Now(),
+		Updated:      time.Now(),
 	}
 	if err := evolution.CreateLearning(projectRoot, existing); err != nil {
 		t.Fatalf("setup: %v", err)

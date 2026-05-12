@@ -75,19 +75,19 @@ type RetryHint struct {
 
 // PreToolUseOutput represents the PreToolUse event-specific output.
 type PreToolUseOutput struct {
-	EventName               string          `json:"hookEventName,omitempty"`
-	PermissionDecision      PermissionDecision `json:"permissionDecision,omitempty"`
-	PermissionDecisionReason string          `json:"permissionDecisionReason,omitempty"`
-	AdditionalContext       string          `json:"additionalContext,omitempty"`
-	UpdatedInput            json.RawMessage `json:"updatedInput,omitempty"`
+	EventName                string             `json:"hookEventName,omitempty"`
+	PermissionDecision       PermissionDecision `json:"permissionDecision,omitempty"`
+	PermissionDecisionReason string             `json:"permissionDecisionReason,omitempty"`
+	AdditionalContext        string             `json:"additionalContext,omitempty"`
+	UpdatedInput             json.RawMessage    `json:"updatedInput,omitempty"`
 }
 
 func (e *PreToolUseOutput) HookEventName() string { return "PreToolUse" }
 
 // PostToolUseOutput represents the PostToolUse event-specific output.
 type PostToolUseOutput struct {
-	EventName          string `json:"hookEventName,omitempty"`
-	AdditionalContext  string `json:"additionalContext,omitempty"`
+	EventName            string `json:"hookEventName,omitempty"`
+	AdditionalContext    string `json:"additionalContext,omitempty"`
 	UpdatedMCPToolOutput string `json:"updatedMCPToolOutput,omitempty"`
 }
 
@@ -95,18 +95,18 @@ func (e *PostToolUseOutput) HookEventName() string { return "PostToolUse" }
 
 // SessionStartOutput represents the SessionStart event-specific output.
 type SessionStartOutput struct {
-	EventName    string `json:"hookEventName,omitempty"`
+	EventName     string `json:"hookEventName,omitempty"`
 	SystemMessage string `json:"systemMessage,omitempty"`
-	Continue     *bool  `json:"continue,omitempty"`
+	Continue      *bool  `json:"continue,omitempty"`
 }
 
 func (e *SessionStartOutput) HookEventName() string { return "SessionStart" }
 
 // SessionEndOutput represents the SessionEnd event-specific output.
 type SessionEndOutput struct {
-	EventName    string `json:"hookEventName,omitempty"`
+	EventName     string `json:"hookEventName,omitempty"`
 	SystemMessage string `json:"systemMessage,omitempty"`
-	Continue     *bool  `json:"continue,omitempty"`
+	Continue      *bool  `json:"continue,omitempty"`
 }
 
 func (e *SessionEndOutput) HookEventName() string { return "SessionEnd" }
@@ -171,9 +171,9 @@ func (e *UserPromptSubmitOutput) HookEventName() string { return "UserPromptSubm
 
 // PermissionRequestOutput represents the PermissionRequest event-specific output.
 type PermissionRequestOutput struct {
-	EventName               string          `json:"hookEventName,omitempty"`
-	PermissionDecision      PermissionDecision `json:"permissionDecision,omitempty"`
-	PermissionDecisionReason string          `json:"permissionDecisionReason,omitempty"`
+	EventName                string             `json:"hookEventName,omitempty"`
+	PermissionDecision       PermissionDecision `json:"permissionDecision,omitempty"`
+	PermissionDecisionReason string             `json:"permissionDecisionReason,omitempty"`
 }
 
 func (e *PermissionRequestOutput) HookEventName() string { return "PermissionRequest" }
@@ -195,7 +195,7 @@ func (e *ConfigChangeOutput) HookEventName() string { return "ConfigChange" }
 
 // InstructionsLoadedOutput represents the InstructionsLoaded event-specific output.
 type InstructionsLoadedOutput struct {
-	EventName string   `json:"hookEventName,omitempty"`
+	EventName  string   `json:"hookEventName,omitempty"`
 	WatchPaths []string `json:"watchPaths,omitempty"`
 }
 
@@ -203,7 +203,7 @@ func (e *InstructionsLoadedOutput) HookEventName() string { return "Instructions
 
 // FileChangedOutput represents the FileChanged event-specific output.
 type FileChangedOutput struct {
-	EventName string   `json:"hookEventName,omitempty"`
+	EventName  string   `json:"hookEventName,omitempty"`
 	WatchPaths []string `json:"watchPaths,omitempty"`
 }
 

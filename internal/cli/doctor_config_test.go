@@ -83,7 +83,7 @@ func runInTempDir(t *testing.T, fn func(dir string)) {
 //
 // AC-V3R2-RT-005-02: Every key has {value, source, origin, loaded, overridden} in JSON output.
 //
-// REQ-V3R2-RT-005-006, AC-02
+// # REQ-V3R2-RT-005-006, AC-02
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (real JSON dump with provenance)
 func TestDoctorConfigDump_HappyPath(t *testing.T) {
@@ -171,7 +171,7 @@ func TestDoctorConfigDump_ByteStableAcrossCalls(t *testing.T) {
 //
 // AC-V3R2-RT-005-02 edge case: partial population (only builtin).
 //
-// REQ-V3R2-RT-005-006, REQ-V3R2-RT-005-020, AC-02
+// # REQ-V3R2-RT-005-006, REQ-V3R2-RT-005-020, AC-02
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (builtin tier wired from defaults.go)
 func TestDoctorConfigDump_BuiltinOnly(t *testing.T) {
@@ -270,7 +270,7 @@ func TestDoctorConfigDiff_InvalidTier(t *testing.T) {
 //
 // AC-V3R2-RT-005-09: dump --format yaml → each key has "# source: <tier>" comment.
 //
-// REQ-V3R2-RT-005-030, AC-09
+// # REQ-V3R2-RT-005-030, AC-09
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (dumpYAML with sorted keys + source comments)
 func TestDoctorConfigDump_FormatYAML(t *testing.T) {
@@ -301,7 +301,7 @@ func TestDoctorConfigDump_FormatYAML(t *testing.T) {
 //
 // AC-V3R2-RT-005-10: dump --key permission.strict_mode → only that key printed, no others.
 //
-// REQ-V3R2-RT-005-032, AC-10
+// # REQ-V3R2-RT-005-032, AC-10
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (--key single-key output mode)
 func TestDoctorConfigDump_SingleKey(t *testing.T) {
@@ -335,7 +335,7 @@ func TestDoctorConfigDump_SingleKey(t *testing.T) {
 //
 // AC-V3R2-RT-005-10 edge case: --key nonexistent.key → exit non-zero, error message.
 //
-// REQ-V3R2-RT-005-032, AC-10
+// # REQ-V3R2-RT-005-032, AC-10
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (--key error handling)
 func TestDoctorConfigDump_KeyNotFound(t *testing.T) {
@@ -363,7 +363,7 @@ func TestDoctorConfigDump_KeyNotFound(t *testing.T) {
 //
 // AC-V3R2-RT-005-10 edge case: --key invalidformat → exit non-zero, "must contain a dot separator".
 //
-// REQ-V3R2-RT-005-032, AC-10
+// # REQ-V3R2-RT-005-032, AC-10
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (parseKey validation)
 func TestDoctorConfigDump_InvalidKeyFormat(t *testing.T) {
@@ -390,7 +390,7 @@ func TestDoctorConfigDump_InvalidKeyFormat(t *testing.T) {
 //
 // AC-V3R2-RT-005-14: builtin value for permission.pre_allowlist → "default": true in output.
 //
-// REQ-V3R2-RT-005-020, AC-14
+// # REQ-V3R2-RT-005-020, AC-14
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (IsDefault flag in JSON/YAML dump output)
 func TestDoctorConfigDump_BuiltinDefaultFlag(t *testing.T) {
@@ -437,7 +437,7 @@ func TestDoctorConfigDump_BuiltinDefaultFlag(t *testing.T) {
 //
 // AC-V3R2-RT-005-14 edge case: user overrides builtin → "source": "user", "default" absent or false.
 //
-// REQ-V3R2-RT-005-020, AC-14
+// # REQ-V3R2-RT-005-020, AC-14
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (user tier overrides builtin, default flag absent)
 func TestDoctorConfigDump_UserOverridesBuiltin(t *testing.T) {

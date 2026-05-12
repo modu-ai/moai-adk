@@ -85,7 +85,6 @@ type LinterOptions struct {
 	Strict bool
 }
 
-//
 // @MX:ANCHOR: [AUTO] Linter is the central lint engine; all lint rules are dispatched through it.
 // @MX:REASON: [AUTO] Fan-in hub — CLI, tests, and future integrations all call Linter.Lint.
 type Linter struct {
@@ -193,7 +192,6 @@ type crossSPECRule interface {
 	CheckAll(docs []*SPECDoc) []Finding
 }
 
-//
 // @MX:NOTE: [AUTO] Rule interface inspects a single SPEC document
 type Rule interface {
 	Code() string
@@ -563,7 +561,6 @@ func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Message:  fmt.Sprintf("version %q does not match semantic version format (X.Y.Z)", fm.Version),
 		})
 	}
-
 
 	return findings
 }

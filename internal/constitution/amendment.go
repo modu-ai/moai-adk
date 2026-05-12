@@ -30,10 +30,10 @@ func (e *ErrCanaryUnavailable) Error() string {
 
 // ErrCanaryRejected is returned when a score drop is detected during Canary evaluation.
 type ErrCanaryRejected struct {
-	RuleID         string
-	ScoreDrop      float64
-	Threshold      float64
-	AffectedSpecs  []string
+	RuleID        string
+	ScoreDrop     float64
+	Threshold     float64
+	AffectedSpecs []string
 }
 
 func (e *ErrCanaryRejected) Error() string {

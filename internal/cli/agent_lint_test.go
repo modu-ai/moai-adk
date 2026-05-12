@@ -104,9 +104,9 @@ Clean content without issues`,
 // Test LR-02: Agent in tools list
 func TestCheckAgentInTools(t *testing.T) {
 	tests := []struct {
-		name      string
+		name        string
 		frontmatter string
-		wantCount int
+		wantCount   int
 	}{
 		{
 			name: `tools: "Agent" should fail`,
@@ -172,10 +172,10 @@ func extractToolsFromFrontmatter(content string) string {
 // Test LR-03: Missing effort field
 func TestCheckMissingEffort(t *testing.T) {
 	tests := []struct {
-		name      string
+		name        string
 		frontmatter string
-		wantCount int
-		wantSev   LintSeverity
+		wantCount   int
+		wantSev     LintSeverity
 	}{
 		{
 			name: "missing effort",
@@ -291,8 +291,8 @@ func TestCheckMissingIsolation(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name:      "write-heavy manager-cycle without worktree",
-			agentName: "manager-cycle",
+			name:      "write-heavy manager-develop without worktree",
+			agentName: "manager-develop",
 			isolation: "",
 			wantCount: 1,
 		},
@@ -373,10 +373,10 @@ func TestCheckReadOnlyIsolation(t *testing.T) {
 // Test LR-06: Deepthink boilerplate
 func TestCheckDeepthinkBoilerplate(t *testing.T) {
 	tests := []struct {
-		name      string
+		name        string
 		frontmatter string
-		strict    bool
-		wantCount int
+		strict      bool
+		wantCount   int
 	}{
 		{
 			name: "deepthink boilerplate present",
@@ -605,11 +605,11 @@ name: test
 Some content without closing delimiter`,
 		},
 		{
-			name: "only one delimiter",
+			name:    "only one delimiter",
 			content: `---name: test`,
 		},
 		{
-			name: "empty file",
+			name:    "empty file",
 			content: "",
 		},
 	}

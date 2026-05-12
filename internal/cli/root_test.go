@@ -190,9 +190,9 @@ func TestCharacterize_Help_RootGroupsContent(t *testing.T) {
 	output := buf.String()
 
 	expected := []string{
-		"moai init",       // 프로젝트 group
-		"moai cc",         // 런처 group
-		"moai loop",       // 자율 개발 group
+		"moai init",         // 프로젝트 group
+		"moai cc",           // 런처 group
+		"moai loop",         // 자율 개발 group
 		"moai constitution", // 거버넌스 group
 	}
 	for _, cmd := range expected {

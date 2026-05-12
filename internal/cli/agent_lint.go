@@ -469,7 +469,7 @@ func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
 
 	// Write-heavy standalone agents that require isolation: worktree (SPEC-V3R2-ORC-004)
 	writeHeavyAgents := []string{
-		"manager-cycle", "expert-backend", "expert-frontend",
+		"manager-develop", "expert-backend", "expert-frontend",
 		"expert-refactoring", "researcher",
 	}
 

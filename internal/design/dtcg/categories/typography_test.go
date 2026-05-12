@@ -26,14 +26,14 @@ func TestValidateTypography_Positive(t *testing.T) {
 		{
 			name: "모든 확장 필드 포함",
 			value: map[string]any{
-				"family":          []any{"Roboto", "sans-serif"},
-				"size":            "1rem",
-				"weight":          "bold",
-				"style":           "normal",
-				"lineHeight":      "1.5",
-				"letterSpacing":   "0.02em",
-				"textDecoration":  "none",
-				"textTransform":   "uppercase",
+				"family":         []any{"Roboto", "sans-serif"},
+				"size":           "1rem",
+				"weight":         "bold",
+				"style":          "normal",
+				"lineHeight":     "1.5",
+				"letterSpacing":  "0.02em",
+				"textDecoration": "none",
+				"textTransform":  "uppercase",
 			},
 		},
 		{

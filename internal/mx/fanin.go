@@ -20,7 +20,7 @@ type FanInCounter interface {
 // TextualFanInCounter is the implementation that calculates fan-in using text-based grep method.
 // Used as a fallback for languages without LSP server (REQ-SPC-004-020).
 //
-	// @MX:WARN: [AUTO] TextualFanInCounter — text search method has false positive risk on strings/comments
+// @MX:WARN: [AUTO] TextualFanInCounter — text search method has false positive risk on strings/comments
 type TextualFanInCounter struct {
 	// ProjectRoot is the project root directory path.
 	ProjectRoot string

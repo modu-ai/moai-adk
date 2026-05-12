@@ -990,7 +990,7 @@ func TestIsUserScopedWindowsPath(t *testing.T) {
 	}{
 		{"/mnt/c/Users/alice/AppData/Local/Programs/bin", true},
 		{"/mnt/c/Users/alice/AppData/Roaming/npm", true},
-		{"/mnt/c/users/bob/appdata/local/bin", true},  // case-insensitive
+		{"/mnt/c/users/bob/appdata/local/bin", true}, // case-insensitive
 		{"/mnt/c/Documents and Settings/alice/bin", true},
 		{"/mnt/c/Windows/System32", false},
 		{"/mnt/c/Windows/System32/WindowsPowerShell/v1.0", false},
@@ -1018,11 +1018,11 @@ func TestIsWSL2DrivePath(t *testing.T) {
 		{"/mnt/d/tools/bin", true},
 		{"/mnt/z/", true},
 		{"/mnt/c", true},
-		{"/mnt/wslg/distro", false},  // not a single-letter drive
-		{"/mnt/foo/bar", false},       // not a drive letter
-		{"/mnt/", false},              // no drive letter
-		{"/usr/bin", false},           // not /mnt/
-		{"/mnt/C/Windows", false},     // uppercase not matched
+		{"/mnt/wslg/distro", false}, // not a single-letter drive
+		{"/mnt/foo/bar", false},     // not a drive letter
+		{"/mnt/", false},            // no drive letter
+		{"/usr/bin", false},         // not /mnt/
+		{"/mnt/C/Windows", false},   // uppercase not matched
 		{"", false},
 	}
 	for _, tt := range tests {

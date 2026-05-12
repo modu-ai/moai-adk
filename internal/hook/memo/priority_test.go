@@ -9,8 +9,8 @@ func TestPriorityOrdering(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		sections []Section
+		name      string
+		sections  []Section
 		wantOrder []Priority
 	}{
 		{

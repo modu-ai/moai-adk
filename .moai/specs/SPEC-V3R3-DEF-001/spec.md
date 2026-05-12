@@ -2,7 +2,7 @@
 id: SPEC-V3R3-DEF-001
 title: ORC Dependency Cycle Resolution — D-CRIT-001 해소 + WF/MIG 단방향 정리
 version: "1.0.0"
-status: implemented
+status: completed
 created: 2026-04-25
 updated: 2026-04-26
 author: manager-spec

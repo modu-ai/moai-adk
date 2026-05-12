@@ -28,11 +28,11 @@ type Pipeline struct {
 // NewPipeline creates a Pipeline with default implementations.
 func NewPipeline() *Pipeline {
 	return &Pipeline{
-		FrozenGuard:          NewFrozenGuard(),
-		Canary:               NewCanary(),
+		FrozenGuard:           NewFrozenGuard(),
+		Canary:                NewCanary(),
 		ContradictionDetector: NewContradictionDetector(),
-		RateLimiter:          NewRateLimiter(),
-		HumanOversight:       NewHumanOversight(),
+		RateLimiter:           NewRateLimiter(),
+		HumanOversight:        NewHumanOversight(),
 	}
 }
 
@@ -171,17 +171,17 @@ func (p *Pipeline) createLogEntry(proposal *AmendmentProposal, originalZone Zone
 	}
 
 	return &AmendmentLog{
-		ID:            "", // Generated later in Execute
-		RuleID:        proposal.RuleID,
-		ZoneBefore:    originalZone,
-		ZoneAfter:     originalZone, // Zone changes only allowed with demotion evidence
-		ClauseBefore:  proposal.Before,
-		ClauseAfter:   proposal.After,
-		CanaryVerdict: canaryVerdict,
+		ID:             "", // Generated later in Execute
+		RuleID:         proposal.RuleID,
+		ZoneBefore:     originalZone,
+		ZoneAfter:      originalZone, // Zone changes only allowed with demotion evidence
+		ClauseBefore:   proposal.Before,
+		ClauseAfter:    proposal.After,
+		CanaryVerdict:  canaryVerdict,
 		Contradictions: contradictions,
-		ApprovedBy:    proposal.ApprovedBy,
-		ApprovedAt:    proposal.ApprovedAt,
-		RolledBack:    false,
+		ApprovedBy:     proposal.ApprovedBy,
+		ApprovedAt:     proposal.ApprovedAt,
+		RolledBack:     false,
 	}
 }
 

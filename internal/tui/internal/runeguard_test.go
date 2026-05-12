@@ -14,10 +14,10 @@ func TestRunewidthBasic(t *testing.T) {
 		want  int
 	}{
 		{"hello", 5},
-		{"환경 감지", 9},     // 환(2)+경(2)+space(1)+감(2)+지(2) = 9
+		{"환경 감지", 9}, // 환(2)+경(2)+space(1)+감(2)+지(2) = 9
 		{"Layer 1", 7},
 		{"v3.2.4", 6},
-		{"한자漢字", 8},       // 한(2)+자(2)+漢(2)+字(2) = 8
+		{"한자漢字", 8}, // 한(2)+자(2)+漢(2)+字(2) = 8
 	}
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {
@@ -62,9 +62,9 @@ func TestTruncate(t *testing.T) {
 		want  string
 	}{
 		{"hello world", 5, "hello"},
-		{"환경 감지 Layer", 5, "환경 "},   // 환(2)+경(2)+space(1) = 5
+		{"환경 감지 Layer", 5, "환경 "}, // 환(2)+경(2)+space(1) = 5
 		{"abcdef", 3, "abc"},
-		{"한한한", 4, "한한"},             // each 한=2 cells, 4 cells = 2 chars
+		{"한한한", 4, "한한"}, // each 한=2 cells, 4 cells = 2 chars
 	}
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {

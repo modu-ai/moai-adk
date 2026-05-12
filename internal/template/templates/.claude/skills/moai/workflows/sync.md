@@ -478,7 +478,7 @@ Purpose: Measure test coverage, identify gaps, and generate missing tests to mee
 
 #### Step 0.7.1: Coverage Measurement
 
-Agent: manager-cycle subagent
+Agent: manager-develop subagent
 
 Measure current coverage using language-specific tools:
 - Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`
@@ -490,7 +490,7 @@ Output: Overall coverage percentage, per-file coverage, per-function data.
 
 #### Step 0.7.2: Gap Analysis
 
-Agent: manager-cycle subagent
+Agent: manager-develop subagent
 
 Identify files below the coverage target (from quality.yaml test_coverage_target, default 85%).
 
@@ -502,7 +502,7 @@ Prioritize gaps by risk:
 
 #### Step 0.7.3: Test Generation
 
-Agent: manager-cycle subagent
+Agent: manager-develop subagent
 
 Generate missing tests for P1 and P2 gaps:
 - Follow development_mode for test style (TDD: table-driven tests, DDD: characterization tests)

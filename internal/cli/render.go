@@ -103,7 +103,7 @@ func renderSummaryLine(ok, warn, fail int) string {
 // @MX:ANCHOR: [AUTO] RenderError is the global error render surface for M6-S6
 // @MX:REASON: rootCmd error handler and key command RunE paths call this function
 func RenderError(err error) string {
-	th := tui.LightTheme()
+	th := resolveTheme()
 	icon := tui.StatusIcon("err")
 	// Compose title line: error icon + styled label using the danger token.
 	dangerStyle := lipgloss.NewStyle().

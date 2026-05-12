@@ -46,7 +46,7 @@ func TestAuditParity(t *testing.T) {
 // AC-V3R2-RT-005-08: Given a new file .moai/config/sections/foo.yaml is added without a Go struct,
 // When TestAuditParity runs, Then the test fails naming foo.yaml as orphan.
 //
-// REQ-V3R2-RT-005-043, REQ-V3R2-RT-005-008
+// # REQ-V3R2-RT-005-043, REQ-V3R2-RT-005-008
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-043/008 orphan yaml detection
 func TestAuditParity_OrphanYAMLFails(t *testing.T) {
@@ -82,7 +82,7 @@ func TestAuditParity_OrphanYAMLFails(t *testing.T) {
 // AC-V3R2-RT-005-08 edge case: Given the current registered yaml files plus MIG-003-pending exceptions,
 // When TestAuditParity runs, Then the test passes.
 //
-// REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
+// # REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008 all registered yaml sections recognized
 func TestAuditParity_AllRegisteredYAMLPass(t *testing.T) {
@@ -112,7 +112,7 @@ func TestAuditParity_AllRegisteredYAMLPass(t *testing.T) {
 // AC-V3R2-RT-005-08 edge case: Given registry maps "phantom" → "PhantomConfig" but no phantom.yaml exists,
 // When TestAuditParity runs, Then the test fails with sentinel naming the absent struct.
 //
-// REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
+// # REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021 orphan struct detection
 func TestAuditParity_OrphanStructFails(t *testing.T) {
@@ -137,7 +137,7 @@ func TestAuditParity_OrphanStructFails(t *testing.T) {
 
 // TestAuditParity_ExceptionsRespected verifies that yaml files in YAMLAuditExceptions do not fail audit.
 //
-// REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
+// # REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008 MIG-003-pending exceptions respected
 func TestAuditParity_ExceptionsRespected(t *testing.T) {

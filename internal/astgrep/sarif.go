@@ -32,9 +32,9 @@ type sarifTool struct {
 
 // sarifDriver holds tool driver metadata.
 type sarifDriver struct {
-	Name    string       `json:"name"`
-	Version string       `json:"version"`
-	Rules   []sarifRule  `json:"rules,omitempty"`
+	Name    string      `json:"name"`
+	Version string      `json:"version"`
+	Rules   []sarifRule `json:"rules,omitempty"`
 }
 
 // sarifRule is a SARIF rule definition.
@@ -46,10 +46,10 @@ type sarifRule struct {
 
 // sarifResult is a single finding result.
 type sarifResult struct {
-	RuleID     string           `json:"ruleId"`
-	Level      string           `json:"level"`
-	Message    sarifMessage     `json:"message"`
-	Locations  []sarifLocation  `json:"locations"`
+	RuleID    string          `json:"ruleId"`
+	Level     string          `json:"level"`
+	Message   sarifMessage    `json:"message"`
+	Locations []sarifLocation `json:"locations"`
 	// Properties is a SARIF 2.1.0 §3.52 property bag.
 	// Uses map[string]any to accommodate both existing string values and tags []string.
 	// REQ-UTIL-002-005/006: when owasp/cwe keys are present, external/owasp/* and external/cwe/* tags are appended to tags.
@@ -103,7 +103,7 @@ func ToSARIF(findings []Finding, sgVersion string) ([]byte, error) {
 		}
 		if _, exists := ruleSet[f.RuleID]; !exists {
 			rule := sarifRule{
-				ID: f.RuleID,
+				ID:               f.RuleID,
 				ShortDescription: &sarifMessage{Text: f.Message},
 			}
 			if len(f.Metadata) > 0 {

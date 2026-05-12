@@ -17,7 +17,7 @@ metadata:
   tags: "workflow, ddd, testing, debugging, performance, quality, review, pr-review"
   author: "MoAI-ADK Team"
   context: "fork"
-  agent: "manager-cycle"
+  agent: "manager-develop"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -29,7 +29,7 @@ progressive_disclosure:
 triggers:
   keywords: ["DDD", "domain-driven development", "characterization tests", "behavior preservation", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
   phases: ["run", "sync"]
-  agents: ["manager-cycle", "manager-quality", "expert-performance"]
+  agents: ["manager-develop", "manager-quality", "expert-performance"]
 ---
 
 # Development Workflow Specialist

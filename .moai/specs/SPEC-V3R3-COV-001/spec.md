@@ -2,7 +2,7 @@
 id: SPEC-V3R3-COV-001
 title: Mobile Native Coverage — expert-mobile + iOS/Android/RN/Flutter strategy
 version: "1.0.0"
-status: implemented
+status: completed
 created: 2026-04-25
 updated: 2026-04-26
 author: manager-spec

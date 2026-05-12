@@ -90,9 +90,9 @@ type teamConfigFile struct {
 
 // teamMemberDb represents a teammate in the team config
 type teamMemberDb struct {
-	Name      string `json:"name"`
-	AgentID   string `json:"agentId,omitempty"`
-	AgentType string `json:"agentType,omitempty"`
+	Name       string `json:"name"`
+	AgentID    string `json:"agentId,omitempty"`
+	AgentType  string `json:"agentType,omitempty"`
 	TmuxPaneID string `json:"tmuxPaneId,omitempty"`
 }
 

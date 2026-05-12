@@ -27,9 +27,9 @@ progressive_disclosure:
 triggers:
   keywords: ["skill", "agent", "plugin", "slash command", "hook", "sandbox", "headless", "memory", "settings", "claude code", "sub-agent", "agent pattern", "orchestration", "delegation"]
   agents:
-    - "builder-platform"
-    - "builder-platform"
-    - "builder-platform"
+    - "builder-harness"
+    - "builder-harness"
+    - "builder-harness"
   phases:
     - "plan"
     - "run"

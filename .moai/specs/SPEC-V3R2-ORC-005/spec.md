@@ -2,7 +2,7 @@
 id: SPEC-V3R2-ORC-005
 title: "Dynamic Team Generation Formalization + Mailbox Protocol v2"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-04-23
 updated: 2026-05-10
 author: GOOS

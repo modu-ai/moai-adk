@@ -36,9 +36,9 @@ func TestQualityGatePhaseField(t *testing.T) {
 	t.Parallel()
 
 	gate := QualityGate{
-		Phase:       PhaseRun,
-		MaxErrors:   0,
-		MaxWarnings: 10,
+		Phase:        PhaseRun,
+		MaxErrors:    0,
+		MaxWarnings:  10,
 		BlockOnError: true,
 	}
 
@@ -476,12 +476,12 @@ func TestRegressionCheck_ErrorThreshold(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name            string
-		baseline        SeverityCounts
-		current         SeverityCounts
-		errorThreshold  int
-		warnThreshold   int
-		wantRegression  bool
+		name           string
+		baseline       SeverityCounts
+		current        SeverityCounts
+		errorThreshold int
+		warnThreshold  int
+		wantRegression bool
 	}{
 		{
 			name:           "no regression - same counts",

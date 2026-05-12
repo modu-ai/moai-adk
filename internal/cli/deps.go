@@ -19,8 +19,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
-	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
+	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -395,5 +395,3 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 		}, nil
 	}
 }
-
-

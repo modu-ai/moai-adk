@@ -105,11 +105,11 @@ func (b *BubbleDispatcher) DispatchToParent(req *BubbleRequest) (*BubbleResponse
 // This converts the parent's decision back into a ResolveResult.
 func (b *BubbleDispatcher) HandleBubbleResponse(req *BubbleRequest, resp *BubbleResponse, originalTrace ResolutionTrace) *ResolveResult {
 	return &ResolveResult{
-		Decision:   resp.Decision,
-		ResolvedBy: originalTrace.Tries[len(originalTrace.Tries)-1].Tier, // Use last-checked tier
-		Origin:     req.Origin,
+		Decision:      resp.Decision,
+		ResolvedBy:    originalTrace.Tries[len(originalTrace.Tries)-1].Tier, // Use last-checked tier
+		Origin:        req.Origin,
 		SystemMessage: fmt.Sprintf("Bubbled to parent session - user decided: %s", resp.Decision),
-		Trace:      originalTrace,
+		Trace:         originalTrace,
 	}
 }
 

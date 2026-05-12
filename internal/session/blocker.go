@@ -7,7 +7,7 @@ import "time"
 // orchestrator surfaces via AskUserQuestion. Subagents MUST NOT call AskUserQuestion directly.
 // See agent-common-protocol.md §User Interaction Boundary.
 type BlockerReport struct {
-	Kind            string         `json:"kind"`              // "missing_input", "ambiguous", "error", "quality_gate"
+	Kind            string         `json:"kind"` // "missing_input", "ambiguous", "error", "quality_gate"
 	Message         string         `json:"message"`
 	Context         map[string]any `json:"context,omitempty"`
 	RequestedAction string         `json:"requested_action"`

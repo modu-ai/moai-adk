@@ -132,7 +132,7 @@ func checkStatusGoldenAbs(t *testing.T, pkgDir, name, got string) {
 // TestStatus_Current_Light captures statusCmd output with light-theme env.
 // 특징: tui.Section + tui.KV + tui.Box + tui.Pill 요약.
 func TestStatus_Current_Light(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 
 	got, pkgDir := captureStatusCmdWithPkgDir(t)
@@ -145,7 +145,7 @@ func TestStatus_Current_Light(t *testing.T) {
 // TestStatus_Current_Dark captures statusCmd output with dark-theme env.
 // 특징: tui.DarkTheme() 적용, Section + KV + Box + Pill 요약.
 func TestStatus_Current_Dark(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 
 	got, pkgDir := captureStatusCmdWithPkgDir(t)

@@ -33,7 +33,7 @@ type DiagnosticCache struct {
 	cleanupInterval time.Duration
 
 	// ctx and cancel manage the cleanup goroutine lifecycle.
-	ctx    context.Context    //nolint:containedctx
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 }
 

@@ -225,8 +225,8 @@ func (c *client) Start(ctx context.Context) error {
 
 	// Create Transport from subprocess stdio.
 	stream := &readWriteCloser{
-		r: result.Stdout,
-		w: result.Stdin,
+		r:       result.Stdout,
+		w:       result.Stdin,
 		closers: []io.Closer{result.Stdin, result.Stdout},
 	}
 	c.tr = c.trFactory(stream)

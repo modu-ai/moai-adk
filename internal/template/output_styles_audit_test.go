@@ -18,20 +18,20 @@ import (
 
 // Output style name and file name constants — single source of truth (CLAUDE.local.md §14).
 const (
-	styleNameMoAI    = "MoAI"
+	styleNameMoAI     = "MoAI"
 	styleNameEinstein = "Einstein"
-	styleFileMoAI    = "moai.md"
+	styleFileMoAI     = "moai.md"
 	styleFileEinstein = "einstein.md"
 
 	// Frontmatter key names.
-	keyName                 = "name"
-	keyDescription          = "description"
+	keyName                   = "name"
+	keyDescription            = "description"
 	keyKeepCodingInstructions = "keep-coding-instructions"
 
 	// Error code prefixes (REQ-WF006-007, 008, 010, 013, 014).
-	errPrefixSchemaError  = "OUTPUT_STYLE_SCHEMA_ERROR"
-	errPrefixDrift        = "OUTPUT_STYLE_DRIFT"
-	errPrefixUnverified   = "OUTPUT_STYLE_UNVERIFIED"
+	errPrefixSchemaError = "OUTPUT_STYLE_SCHEMA_ERROR"
+	errPrefixDrift       = "OUTPUT_STYLE_DRIFT"
+	errPrefixUnverified  = "OUTPUT_STYLE_UNVERIFIED"
 
 	// Output styles directory path (relative to embedded template root).
 	outputStylesDir = ".claude/output-styles/moai"
@@ -42,8 +42,8 @@ const (
 
 // outputStyleFrontmatter holds parsed frontmatter fields for an output style file.
 type outputStyleFrontmatter struct {
-	name                 string
-	description          string
+	name                   string
+	description            string
 	keepCodingInstructions string // raw string: "true" or "false"
 }
 
@@ -168,9 +168,9 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 
 	// Real files: validate actual output style files in the embedded template.
 	realCases := []struct {
-		fileName              string
-		wantName              string
-		wantKeepCodingInstr   string
+		fileName            string
+		wantName            string
+		wantKeepCodingInstr string
 	}{
 		{styleFileMoAI, styleNameMoAI, "true"},
 		{styleFileEinstein, styleNameEinstein, "false"},
@@ -319,7 +319,7 @@ func TestOutputStylesExactlyTwo(t *testing.T) {
 	}
 
 	expectedNames := map[string]bool{
-		styleFileMoAI:    true,
+		styleFileMoAI:     true,
 		styleFileEinstein: true,
 	}
 	for _, name := range mdFiles {

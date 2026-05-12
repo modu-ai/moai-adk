@@ -11,7 +11,7 @@ MoAI's three-phase development workflow with token budget management.
 | Phase | Command | Agent | Token Budget | Purpose |
 |-------|---------|-------|--------------|---------|
 | Plan | /moai plan | manager-spec | 30K | Create SPEC document |
-| Run | /moai run | manager-cycle (per quality.yaml development_mode) | 180K | DDD/TDD implementation |
+| Run | /moai run | manager-develop (per quality.yaml development_mode) | 180K | DDD/TDD implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
 <!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
@@ -20,23 +20,25 @@ MoAI's three-phase development workflow with token budget management.
 
 [HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location (main checkout vs SPEC worktree), branch convention, and PR merge strategy.
 
-| Step | Location        | Command                                                                 | Branch                                       | PR strategy | Lifecycle event              |
-|------|-----------------|-------------------------------------------------------------------------|----------------------------------------------|-------------|------------------------------|
-| 1    | main checkout   | `/moai plan SPEC-XXX`                                                   | `plan/SPEC-XXX`                              | squash      | plan PR merged into main     |
-| 2    | SPEC worktree   | `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX` | `feat/SPEC-XXX`                              | squash      | run PR merged into main      |
-| 3    | SPEC worktree   | `/moai sync SPEC-XXX` (same worktree as Step 2)                         | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`)   | squash      | sync PR merged into main     |
-| 4    | host checkout   | `moai worktree done SPEC-XXX`                                           | n/a                                          | n/a         | worktree disposed            |
+| Step | Location                      | Command                                                                    | Branch                                       | PR strategy | Lifecycle event              |
+|------|-------------------------------|----------------------------------------------------------------------------|----------------------------------------------|-------------|------------------------------|
+| 1a   | main checkout (default)       | `/moai plan SPEC-XXX`                                                      | `plan/SPEC-XXX`                              | squash      | plan PR merged into main     |
+| 1b   | SPEC worktree (`--worktree`)  | `/moai plan SPEC-XXX --worktree` → spec created in worktree                | `feat/SPEC-XXX`                              | squash      | plan PR merged into main     |
+| 2    | SPEC worktree                 | `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX`  | `feat/SPEC-XXX`                              | squash      | run PR merged into main      |
+| 3    | SPEC worktree                 | `/moai sync SPEC-XXX` (same worktree as Step 2)                            | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`)   | squash      | sync PR merged into main     |
+| 4    | host checkout                 | `moai worktree done SPEC-XXX`                                              | n/a                                          | n/a         | worktree disposed            |
 
 [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout. NO worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
-- Step 2 (run) MUST create a fresh worktree from the plan-merged main HEAD (`--base origin/main`). The worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
+- Step 1a (plan, default): Plan executes in main checkout. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
+- Step 1b (plan, `--worktree`): When `--worktree` flag is provided, plan executes entirely inside the worktree. This enables full isolation for parallel SPEC development — each SPEC gets its own worktree from the start. Plan PR is squash-merged from the worktree branch. After merge, Step 2 reuses the SAME worktree (base alignment via `git merge origin/main` after plan PR merge).
+- Step 2 (run) MUST execute in a SPEC worktree. For Step 1a path: create fresh worktree from plan-merged main HEAD (`--base origin/main`). For Step 1b path: reuse the existing worktree with `git merge origin/main` to incorporate the merged plan. The worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
 - Step 3 (sync) MUST reuse the SAME worktree as Step 2. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh worktree at sync would lose run-state context.
 - Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3.
 
 [HARD] Anti-patterns:
-- Creating a worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
-- Stacking plan + run in the same worktree. Once the plan PR merges, the worktree base becomes stale; subsequent run work either rebases (extra cost) or proceeds against a stale tree (correctness risk).
+- Stacking plan + run in the same worktree WITHOUT `--worktree` flag. The default path (1a → 2) creates a fresh worktree at run start; mixing the two paths causes base misalignment.
 - Disposing the worktree after run merge but before sync merge. Sync re-enters the tree with codemap / MX / docs writes; the host checkout cannot stand in for a disposed worktree.
+- Creating a worktree for plan (Step 1b) and then creating ANOTHER worktree for run (Step 2). The `--worktree` path reuses the same worktree across all steps.
 
 Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SPEC-to-Worktree Mapping for per-step worktree applicability and decision tree.
 
@@ -109,7 +111,7 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 ## Plan Phase
 
-[HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
+[HARD] Default: Execute in main checkout (Step 1a). With `--worktree` flag: Execute in SPEC worktree (Step 1b). See § SPEC Phase Discipline.
 
 Create comprehensive specification using EARS format.
 
@@ -131,6 +133,43 @@ Output:
 - Acceptance criteria
 - Technical approach
 
+### Hierarchical Acceptance Criteria Schema
+
+> **@MX:NOTE** reason="Hierarchical AC schema per SPC-001 §11.2, amended 2026-05-11"
+> Canonical form: `.moai/specs/SPEC-V3R2-SPC-001/research.md` §6
+
+MoAI supports hierarchical (tree-structured) acceptance criteria for complex SPECs. A parent AC captures shared Given context; children inherit or override it.
+
+**Structure (maximum depth 3):**
+```
+- AC-<DOMAIN>-<NNN>-<NN>: Given <parent context>
+  - AC-<DOMAIN>-<NNN>-<NN>.a: When variant-A, Then result-A. (maps REQ-…)
+  - AC-<DOMAIN>-<NNN>-<NN>.b: When variant-B, Then result-B. (maps REQ-…)
+```
+
+**With grandchildren (depth 2):**
+```
+- AC-<DOMAIN>-<NNN>-<NN>: Given <parent context>
+  - AC-<DOMAIN>-<NNN>-<NN>.a: Given <child context override>, When X, Then Y.
+    - AC-<DOMAIN>-<NNN>-<NN>.a.i: When sub-case-1, Then result-1. (maps REQ-…)
+    - AC-<DOMAIN>-<NNN>-<NN>.a.ii: When sub-case-2, Then result-2. (maps REQ-…)
+```
+
+**Inheritance rules:**
+- Child without explicit `Given` inherits nearest ancestor's Given (REQ-SPC-001-006)
+- Child's explicit Given overrides the ancestor
+- `When` and `Then` MUST be specified on every leaf
+- `(maps REQ-...)` tail MUST appear on every leaf; MAY be omitted on intermediates
+
+**Identifier conventions:**
+| Depth | Suffix | Example |
+|-------|--------|---------|
+| 0 (top-level) | `-NN` | `AC-SPC-001-05` |
+| 1 | `.a`–`.z` | `AC-SPC-001-05.a` |
+| 2 | `.i`–`.xxvi` | `AC-SPC-001-05.a.i` |
+
+**Compatibility:** Parser auto-wraps flat ACs into synthetic `.a` children. Existing SPECs remain parseable with zero edits (see SPC-001 §6.4).
+
 ## Run Phase
 
 [HARD] Execute in a fresh SPEC worktree created at run start: `moai worktree new SPEC-XXX --base origin/main`. See § SPEC Phase Discipline (Step 2).
@@ -146,7 +185,7 @@ Development Methodology (configured in quality.yaml development_mode):
 
 ### DDD Mode — ANALYZE-PRESERVE-IMPROVE
 
-Best for existing projects with < 10% test coverage. Uses manager-cycle agent with cycle_type=ddd.
+Best for existing projects with < 10% test coverage. Uses manager-develop agent with cycle_type=ddd.
 
 **ANALYZE**: Read existing code, map domain boundaries, identify side effects and implicit contracts.
 **PRESERVE**: Write characterization tests capturing current behavior. Create behavior snapshots for regression detection.
@@ -154,7 +193,7 @@ Best for existing projects with < 10% test coverage. Uses manager-cycle agent wi
 
 ### TDD Mode — RED-GREEN-REFACTOR (default)
 
-Best for all development work, new projects, and brownfield with 10%+ coverage. Uses manager-cycle agent with cycle_type=tdd.
+Best for all development work, new projects, and brownfield with 10%+ coverage. Uses manager-develop agent with cycle_type=tdd.
 
 **RED**: Write a failing test describing desired behavior. Verify it fails. One test at a time.
 **GREEN**: Write simplest implementation that passes. No premature optimization.
@@ -210,7 +249,7 @@ Triggers:
 - Agent explicitly reports inability to meet a SPEC requirement
 
 Communication path:
-- Implementation agent (manager-cycle) detects trigger condition
+- Implementation agent (manager-develop) detects trigger condition
 - Agent returns structured stagnation report to MoAI (agents cannot call AskUserQuestion)
 - MoAI presents gap analysis to user via AskUserQuestion with options:
   - Continue with current approach (minor adjustments needed)
@@ -321,7 +360,7 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 | Phase | Sub-agent Mode | Team Mode | Condition |
 |-------|---------------|-----------|-----------|
 | Plan | manager-spec (single) | Dynamic teammates: researcher + analyst + architect (parallel, general-purpose) | Complexity >= threshold |
-| Run | manager-cycle (sequential) | Dynamic teammates: backend-dev + frontend-dev + tester (parallel, general-purpose) | Domains >= 3 or files >= 10 |
+| Run | manager-develop (sequential) | Dynamic teammates: backend-dev + frontend-dev + tester (parallel, general-purpose) | Domains >= 3 or files >= 10 |
 | Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
 
 All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles. No static team agent definitions are used. See `.claude/skills/moai/team/run.md` for complete orchestration.

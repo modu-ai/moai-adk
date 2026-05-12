@@ -42,7 +42,7 @@ type ExitEvent struct {
 type Supervisor struct {
 	cmd    *exec.Cmd
 	doneCh chan struct{} // closed when cmd.Wait completes
-	exitEv ExitEvent    // stored result from cmd.Wait; safe after doneCh is closed
+	exitEv ExitEvent     // stored result from cmd.Wait; safe after doneCh is closed
 }
 
 // NewSupervisor creates a Supervisor for the already-started subprocess described

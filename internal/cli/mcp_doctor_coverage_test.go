@@ -252,9 +252,9 @@ func TestReadSettingsLocalForLaunch_ValidFile(t *testing.T) {
 
 	settings := map[string]any{
 		"env": map[string]string{
-			"DO_CLAUDE_MODEL":   "claude-opus-4-7",
-			"DO_CLAUDE_BYPASS":  "true",
-			"DO_CLAUDE_CHROME":  "false",
+			"DO_CLAUDE_MODEL":  "claude-opus-4-7",
+			"DO_CLAUDE_BYPASS": "true",
+			"DO_CLAUDE_CHROME": "false",
 		},
 	}
 	data, _ := json.MarshalIndent(settings, "", "  ")

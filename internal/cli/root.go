@@ -87,4 +87,7 @@ func init() {
 
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand
 	rootCmd.AddCommand(newCleanCmd())
+
+	// SPEC-V3R2-RT-007: register migration subcommand group
+	rootCmd.AddCommand(migrationCmd)
 }

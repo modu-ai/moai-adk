@@ -156,11 +156,11 @@ func TestRenderProgressBar(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		ratio       float64
-		width       int
-		wantFilled  int
-		wantEmpty   int
+		name       string
+		ratio      float64
+		width      int
+		wantFilled int
+		wantEmpty  int
 	}{
 		{
 			name:       "100% filled",

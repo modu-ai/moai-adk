@@ -45,7 +45,7 @@ Actions follow the naming pattern `{agent}-{phase}`:
 
 | Agent | PreToolUse | PostToolUse | SubagentStop |
 |-------|-----------|------------|-------------|
-| manager-cycle | cycle-pre-transformation | cycle-post-transformation | cycle-completion |
+| manager-develop | cycle-pre-transformation | cycle-post-transformation | cycle-completion |
 | manager-develop | develop-pre-implementation | develop-post-implementation | develop-completion |
 | expert-backend | backend-validation | backend-verification | - |
 | expert-frontend | frontend-validation | frontend-verification | - |
@@ -55,10 +55,10 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | manager-docs | - | docs-verification | docs-completion |
 
 <!-- @MX:NOTE: manager-ddd/manager-tdd retired (SPEC-V3R3-RETIRED-DDD-001 + ORC-001),
-     consolidated into manager-cycle. expert-debug absorbed by manager-quality (diagnostic-mode).
-     expert-testing absorbed by manager-cycle (cycle_type=tdd) + expert-performance.
+     consolidated into manager-develop. expert-debug absorbed by manager-quality (diagnostic-mode).
+     expert-testing absorbed by manager-develop (cycle_type=tdd) + expert-performance.
      Legacy hook actions (ddd-*, testing-*, debug-*) preserved in handler for backward compat
-     with pre-update user projects. See manager-cycle.md. -->
+     with pre-update user projects. See manager-develop.md. -->
 
 Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose")`) do not use agent-scoped hooks. Quality enforcement for teammates uses global TeammateIdle and TaskCompleted hooks in settings.json.
 
@@ -80,7 +80,7 @@ stdin JSON structure:
   "toolInput": null,
   "toolOutput": null,
   "session": { "id": "sess-123", "cwd": "/path/to/project", "projectDir": "/path/to/project" },
-  "data": { "agent": "manager-cycle", "action": "cycle-completion" }
+  "data": { "agent": "manager-develop", "action": "cycle-completion" }
 }
 ```
 

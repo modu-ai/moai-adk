@@ -2,7 +2,7 @@
 id: SPEC-V3R3-DEF-007
 title: Convention Compliance Sweep — manager-git body + 11 skills progressive_disclosure
 version: "1.0.0"
-status: implemented
+status: completed
 created: 2026-04-25
 updated: 2026-04-26
 author: manager-spec

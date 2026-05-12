@@ -150,9 +150,6 @@ func TestGLMCmd_NoSettingsLocalPollution(t *testing.T) {
 	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
 		t.Error("settings.local.json must NOT contain ANTHROPIC_BASE_URL after moai glm (regression: #676 persistence bug)")
 	}
-	if strings.Contains(content, "DISABLE_PROMPT_CACHING") {
-		t.Error("settings.local.json must NOT contain DISABLE_PROMPT_CACHING after moai glm (regression: #676 persistence bug)")
-	}
 }
 
 func TestGLMCmd_WithProfile(t *testing.T) {

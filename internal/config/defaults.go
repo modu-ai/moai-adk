@@ -44,8 +44,9 @@ const (
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
 	// Additional GLM models (available but not default-mapped)
-	DefaultGLM45 = "glm-4.5"
-	DefaultGLM46 = "glm-4.6"
+	DefaultGLM45     = "glm-4.5"
+	DefaultGLM46     = "glm-4.6"
+	DefaultGLM5Turbo = "glm-5-turbo"
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"
@@ -70,8 +71,8 @@ const (
 	DefaultStaleSeconds = 3600
 
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
-	DefaultMemoryStalenessHours         = 24  // files older than this are wrapped in staleness caveat
-	DefaultMemoryIndexLineCap           = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
+	DefaultMemoryStalenessHours          = 24  // files older than this are wrapped in staleness caveat
+	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
 )
 
@@ -127,7 +128,7 @@ func NewDefaultResearchConfig() ResearchConfig {
 			},
 		},
 		Dashboard: ResearchDashboardConfig{
-			DefaultMode:    "terminal",
+			DefaultMode:     "terminal",
 			HTMLOpenBrowser: true,
 		},
 	}

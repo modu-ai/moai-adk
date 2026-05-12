@@ -1,0 +1,22 @@
+db:
+    auto_sync:
+        debounce_seconds: 10
+        enabled: true
+        excluded_patterns:
+            - .moai/project/db/**
+            - .moai/cache/**
+            - '**/*.lock'
+        require_user_approval: true
+    dir: .moai/project/db
+    enabled: false
+    engine: _TBD_
+    migration_patterns:
+        - prisma/schema.prisma
+        - alembic/versions/**/*.py
+        - db/migrate/**/*.rb
+        - migrations/**/*.sql
+        - supabase/migrations/**/*.sql
+        - sql/migrations/**/*.sql
+    migration_tool: _TBD_
+    multi_tenant: none
+    orm: _TBD_

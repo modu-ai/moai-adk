@@ -84,9 +84,9 @@ func TestResolverPublicInterface(t *testing.T) {
 
 func TestParseSourceErrors(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		wantErr  bool
+		name    string
+		input   string
+		wantErr bool
 	}{
 		{"invalid", "invalid", true},
 		{"empty", "", true},
@@ -133,8 +133,8 @@ func TestConfigAmbiguous(t *testing.T) {
 
 func TestPolicyOverrideRejected(t *testing.T) {
 	err := &PolicyOverrideRejected{
-		Key:            "test.key",
-		PolicySource:   "/etc/moai/settings.json",
+		Key:             "test.key",
+		PolicySource:    "/etc/moai/settings.json",
 		AttemptedSource: ".moai/config/config.yaml",
 	}
 
@@ -165,7 +165,7 @@ func TestConfigSchemaMismatch(t *testing.T) {
 // AC-V3R2-RT-005-05: Given quality.yaml has coverage_threshold: "high" (string where int expected),
 // When loader runs, Then error ConfigTypeError is returned naming file/key/expected type.
 //
-// REQ-V3R2-RT-005-013, AC-05
+// # REQ-V3R2-RT-005-013, AC-05
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for string-where-int
 func TestResolver_ConfigTypeError_StringForInt(t *testing.T) {
@@ -219,7 +219,7 @@ func TestResolver_ConfigTypeError_StringForInt(t *testing.T) {
 //
 // AC-V3R2-RT-005-05 edge case: nested struct field type mismatch.
 //
-// REQ-V3R2-RT-005-013, AC-05
+// # REQ-V3R2-RT-005-013, AC-05
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for nested field
 func TestResolver_ConfigTypeError_NestedField(t *testing.T) {
@@ -270,7 +270,7 @@ func TestResolver_ConfigTypeError_NestedField(t *testing.T) {
 //
 // AC-V3R2-RT-005-05 edge case: array where string expected.
 //
-// REQ-V3R2-RT-005-013, AC-05
+// # REQ-V3R2-RT-005-013, AC-05
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for array-where-string
 func TestResolver_ConfigTypeError_ArrayType(t *testing.T) {
@@ -322,7 +322,7 @@ func TestResolver_ConfigTypeError_ArrayType(t *testing.T) {
 // AC-V3R2-RT-005-06: Given no policy file exists, When Load() is called,
 // Then no error and SrcPolicy tier is empty.
 //
-// REQ-V3R2-RT-005-014, AC-06
+// # REQ-V3R2-RT-005-014, AC-06
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-014 policy absent = empty tier
 func TestResolver_PolicyAbsentNoError(t *testing.T) {
@@ -359,7 +359,7 @@ func TestResolver_PolicyAbsentNoError(t *testing.T) {
 //
 // AC-V3R2-RT-005-06 edge case: policy file is empty JSON {}.
 //
-// REQ-V3R2-RT-005-014, AC-06
+// # REQ-V3R2-RT-005-014, AC-06
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-014 empty policy tier no error
 func TestResolver_PolicyEmptyJSON(t *testing.T) {
@@ -386,7 +386,7 @@ func TestResolver_PolicyEmptyJSON(t *testing.T) {
 // AC-V3R2-RT-005-06 edge case: policy file exists but unreadable (chmod 000).
 // Per REQ-V3R2-RT-005-040: loader MUST skip tier with warning, never silently default.
 //
-// REQ-V3R2-RT-005-014, REQ-V3R2-RT-005-040, AC-06
+// # REQ-V3R2-RT-005-014, REQ-V3R2-RT-005-040, AC-06
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (logTierReadFailure wired into loadPolicyTier)
 func TestResolver_PolicyUnreadableLogs(t *testing.T) {
@@ -431,7 +431,7 @@ func TestResolver_PolicyUnreadableLogs(t *testing.T) {
 // AC-V3R2-RT-005-11: Given quality.yaml declares schema_version: 3,
 // When Load() is called, Then Provenance.SchemaVersion == 3 for all keys from that file.
 //
-// REQ-V3R2-RT-005-033, AC-11
+// # REQ-V3R2-RT-005-033, AC-11
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-033 schema_version propagated to Provenance
 func TestResolver_SchemaVersionPropagation(t *testing.T) {
@@ -486,7 +486,7 @@ func TestResolver_SchemaVersionPropagation(t *testing.T) {
 //
 // AC-V3R2-RT-005-11 edge case: yaml without schema_version → SchemaVersion == 0.
 //
-// REQ-V3R2-RT-005-033, AC-11
+// # REQ-V3R2-RT-005-033, AC-11
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-033 schema_version absent = 0
 func TestResolver_SchemaVersionAbsentZero(t *testing.T) {
@@ -497,7 +497,7 @@ func TestResolver_SchemaVersionAbsentZero(t *testing.T) {
 	}
 
 	qualityYAML := filepath.Join(sectionsDir, "quality.yaml")
-	content := "constitution:\n  development_mode: tdd\n"  // no schema_version
+	content := "constitution:\n  development_mode: tdd\n" // no schema_version
 	if err := os.WriteFile(qualityYAML, []byte(content), 0o644); err != nil {
 		t.Fatalf("write yaml: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestResolver_SchemaVersionAbsentZero(t *testing.T) {
 //
 // AC-V3R2-RT-005-11 edge case: schema_version: "v3" (string) → ConfigTypeError.
 //
-// REQ-V3R2-RT-005-033, REQ-V3R2-RT-005-013, AC-11
+// # REQ-V3R2-RT-005-033, REQ-V3R2-RT-005-013, AC-11
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 schema_version non-int = ConfigTypeError
 func TestResolver_SchemaVersionInvalidType(t *testing.T) {
@@ -574,7 +574,7 @@ func TestResolver_SchemaVersionInvalidType(t *testing.T) {
 // AC-V3R2-RT-005-12: Given quality.yaml and quality.yml both define coverage_threshold with different values,
 // When Load() runs, Then ConfigAmbiguous error naming both files is returned.
 //
-// REQ-V3R2-RT-005-041, AC-12
+// # REQ-V3R2-RT-005-041, AC-12
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 sibling yaml/yml conflict = ConfigAmbiguous
 func TestResolver_ConfigAmbiguous(t *testing.T) {
@@ -621,7 +621,7 @@ func TestResolver_ConfigAmbiguous(t *testing.T) {
 //
 // AC-V3R2-RT-005-12 edge case: both yaml/yml have identical coverage_threshold: 80.
 //
-// REQ-V3R2-RT-005-041, AC-12
+// # REQ-V3R2-RT-005-041, AC-12
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 identical sibling values = no error
 func TestResolver_AmbiguousIdenticalAccepted(t *testing.T) {
@@ -661,7 +661,7 @@ func TestResolver_AmbiguousIdenticalAccepted(t *testing.T) {
 //
 // AC-V3R2-RT-005-12 edge case: quality.yaml and state.yml (different basenames) — no ambiguity.
 //
-// REQ-V3R2-RT-005-041, AC-12
+// # REQ-V3R2-RT-005-041, AC-12
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 different basenames = no ambiguity
 func TestResolver_DifferentSectionsNoAmbiguity(t *testing.T) {
@@ -703,7 +703,7 @@ func TestResolver_DifferentSectionsNoAmbiguity(t *testing.T) {
 // AC-V3R2-RT-005-15: Given a field changed from int to string in schema without migration,
 // When Load() reads old file, Then ConfigSchemaMismatch is returned.
 //
-// REQ-V3R2-RT-005-042, AC-15
+// # REQ-V3R2-RT-005-042, AC-15
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (ConfigSchemaMismatch detection)
 func TestResolver_ConfigSchemaMismatch(t *testing.T) {
@@ -735,7 +735,7 @@ func TestResolver_ConfigSchemaMismatch(t *testing.T) {
 //
 // AC-V3R2-RT-005-15 edge case: migration registered → no error.
 //
-// REQ-V3R2-RT-005-042, AC-15
+// # REQ-V3R2-RT-005-042, AC-15
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (stub for EXT-004 migration runner integration)
 func TestResolver_MigrationRegisteredAccepts(t *testing.T) {

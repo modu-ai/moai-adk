@@ -61,8 +61,8 @@ type runtimeYAML struct {
 			PreClearThreshold  float64 `yaml:"pre_clear_threshold"`
 			HardClearThreshold float64 `yaml:"hard_clear_threshold"`
 		} `yaml:"context_window"`
-		PerAgentBudget     map[string]int `yaml:"per_agent_budget"`
-		CircuitBreaker     struct {
+		PerAgentBudget map[string]int `yaml:"per_agent_budget"`
+		CircuitBreaker struct {
 			StallDetectionSeconds int    `yaml:"stall_detection_seconds"`
 			RetryMax              int    `yaml:"retry_max"`
 			Fallback              string `yaml:"fallback"`

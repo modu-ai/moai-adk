@@ -62,7 +62,7 @@ func TestValidateWorktreeReturn_AcceptsValidPath(t *testing.T) {
 		WorktreeBranch: "feat/SPEC-V3R3-RETIRED-AGENT-001",
 		IsolationMode:  "worktree",
 	}
-	err := validateWorktreeReturn(result, "worktree", "manager-cycle")
+	err := validateWorktreeReturn(result, "worktree", "manager-develop")
 	if err != nil {
 		t.Errorf("유효한 worktreePath에 대해 오류가 반환되면 안 됨: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestValidateWorktreeReturn_SkipsWhenIsolationNotWorktree(t *testing.T) {
 			WorktreePath:  "", // 빈 경로
 			IsolationMode: mode,
 		}
-		err := validateWorktreeReturn(result, mode, "manager-cycle")
+		err := validateWorktreeReturn(result, mode, "manager-develop")
 		if err != nil {
 			t.Errorf("isolation=%q + 빈 WorktreePath에 오류 반환됨 (스킵해야 함): %v", mode, err)
 		}
@@ -140,7 +140,7 @@ func TestPathTemplateRejectsNonStringValue(t *testing.T) {
 		patterns := []string{"{}", "[object Object]", "null", "undefined"}
 		for _, p := range patterns {
 			r := &worktreeReturn{WorktreePath: p, IsolationMode: "worktree"}
-			err := validateWorktreeReturn(r, "worktree", "manager-cycle")
+			err := validateWorktreeReturn(r, "worktree", "manager-develop")
 			if err == nil {
 				t.Errorf("worktreePath=%q should trigger WORKTREE_PATH_INVALID, got nil", p)
 				continue

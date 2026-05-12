@@ -237,4 +237,24 @@ The subcommand **shall** exit with code 0 on full success, non-zero on any step 
 
 ---
 
+## 11. Handoff Notes (인계 사항)
+
+### 11.1 SPC-001 Hierarchical AC Runtime Compatibility
+
+> **@MX:TODO resolved="SPEC-V3R2-SPC-001 run phase (2026-05-11)"**
+
+SPEC-V3R2-SPC-001 implements hierarchical acceptance criteria with automatic flat-to-tree wrapping in `internal/spec/parser.go:200-227`. This provides:
+
+- **Runtime compatibility**: All 185 existing flat SPECs parse correctly without source edits
+- **Zero-loss upgrade**: MIG-001's 1-child wrapping preserves content verbatim
+- **Optional cosmetic rewrite**: MIG-001 may optionally rewrite flat ACs to make the wrap explicit (non-functional)
+
+**Division of responsibility:**
+- SPC-001: Parser runtime (auto-wrap synthesis, tree validation, MaxDepth enforcement)
+- MIG-001: Cosmetic rewrite tool (optional, makes parent `.a` explicit in markdown)
+
+No behavioral conflict: SPC-001's runtime auto-wrap covers compatibility; MIG-001's optional rewrite is purely visual.
+
+---
+
 End of SPEC.

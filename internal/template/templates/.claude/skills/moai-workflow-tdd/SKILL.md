@@ -18,7 +18,7 @@ metadata:
   tags: "workflow, tdd, test-driven, red-green-refactor, test-first"
   author: "MoAI-ADK Team"
   context: "fork"
-  agent: "manager-cycle"
+  agent: "manager-develop"
   related-skills: "moai-workflow-ddd, moai-workflow-testing, moai-foundation-quality"
 
 # MoAI Extension: Progressive Disclosure
@@ -31,7 +31,7 @@ progressive_disclosure:
 triggers:
   keywords: ["TDD", "test-driven development", "red-green-refactor", "test-first", "new feature", "greenfield"]
   phases: ["run"]
-  agents: ["manager-cycle", "expert-backend", "expert-frontend"]
+  agents: ["manager-develop", "expert-backend", "expert-frontend"]
 ---
 
 # Test-Driven Development (TDD) Workflow
@@ -192,7 +192,7 @@ After each refactoring step:
 
 ### Standard TDD Session
 
-When executing TDD through manager-cycle:
+When executing TDD through manager-develop:
 
 Step 1 - Understand Requirements:
 

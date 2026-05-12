@@ -5,7 +5,7 @@ description: |
   validated product proposals with SPEC decomposition candidates and Claude Design handoff package.
   Executes 7-phase pipeline: Discovery, Diverge, Research, Converge, Critical Evaluation, Proposal, Handoff.
   MUST INVOKE when: /moai brain, ideation request, pre-spec exploration, "help me think through this idea"
-  NOT for: code implementation (manager-cycle), SPEC creation (manager-spec), documentation (manager-docs)
+  NOT for: code implementation (manager-develop), SPEC creation (manager-spec), documentation (manager-docs)
 tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, ToolSearch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: opus
 effort: xhigh
@@ -28,7 +28,7 @@ Execute the `/moai brain` 7-phase ideation workflow: Discovery, Diverge, Researc
 
 IN SCOPE: 7-phase brain workflow execution, IDEA-NNN directory management, AskUserQuestion Socratic interview, parallel research execution, Lean Canvas assembly, SPEC decomposition list generation, Claude Design handoff package assembly.
 
-OUT OF SCOPE: SPEC creation (manager-spec), code implementation (manager-cycle), documentation sync (manager-docs), Git operations (manager-git).
+OUT OF SCOPE: SPEC creation (manager-spec), code implementation (manager-develop), documentation sync (manager-docs), Git operations (manager-git).
 
 ## Pre-Execution Setup
 

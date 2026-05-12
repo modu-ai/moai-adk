@@ -12,16 +12,16 @@ import (
 
 // TestEmitReadyToMergeReport_AllPass verifies the ready-to-merge report format.
 // The report must:
-//  - Contain PR number
-//  - Include "(권장)" in the first option (per AskUserQuestion protocol)
-//  - Be markdown formatted
-//  - NOT include AskUserQuestion call (orchestrator handles that)
+//   - Contain PR number
+//   - Include "(권장)" in the first option (per AskUserQuestion protocol)
+//   - Be markdown formatted
+//   - NOT include AskUserQuestion call (orchestrator handles that)
 func TestEmitReadyToMergeReport_AllPass(t *testing.T) {
 	state := ciwatch.CIState{
-		PRNumber:       785,
-		Branch:         "feat/SPEC-V3R3-CI-AUTONOMY-001-wave-2",
-		RequiredPassed: 6,
-		RequiredFailed: nil,
+		PRNumber:        785,
+		Branch:          "feat/SPEC-V3R3-CI-AUTONOMY-001-wave-2",
+		RequiredPassed:  6,
+		RequiredFailed:  nil,
 		RequiredPending: nil,
 		AuxiliaryFailed: nil,
 	}
@@ -63,10 +63,10 @@ func TestEmitReadyToMergeReport_AllPass(t *testing.T) {
 // mentioned but do NOT block the merge recommendation.
 func TestEmitReadyToMergeReport_WithAdvisoryFail(t *testing.T) {
 	state := ciwatch.CIState{
-		PRNumber:       786,
-		Branch:         "main",
-		RequiredPassed: 6,
-		RequiredFailed: nil,
+		PRNumber:        786,
+		Branch:          "main",
+		RequiredPassed:  6,
+		RequiredFailed:  nil,
 		RequiredPending: nil,
 		AuxiliaryFailed: []ciwatch.CheckResult{
 			{Name: "claude-code-review", Conclusion: "failure"},

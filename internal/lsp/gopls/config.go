@@ -77,10 +77,10 @@ type goplsBridgeYAML struct {
 }
 
 type timeoutsYAML struct {
-	InitializeSeconds      int `yaml:"initialize_seconds"`
-	RequestSeconds         int `yaml:"request_seconds"`
-	ShutdownSeconds        int `yaml:"shutdown_seconds"`
-	DiagnosticsDebounceMs  int `yaml:"diagnostics_debounce_ms"`
+	InitializeSeconds     int `yaml:"initialize_seconds"`
+	RequestSeconds        int `yaml:"request_seconds"`
+	ShutdownSeconds       int `yaml:"shutdown_seconds"`
+	DiagnosticsDebounceMs int `yaml:"diagnostics_debounce_ms"`
 }
 
 // LoadConfig loads the gopls bridge settings from the YAML file at configPath.

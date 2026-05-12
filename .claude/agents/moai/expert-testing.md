@@ -1,12 +1,12 @@
 ---
 name: expert-testing
 description: |
-  Retired (SPEC-V3R2-ORC-001) — split across manager-cycle (test strategy) and expert-performance (load testing).
-  Test strategy design belongs in manager-cycle RED phase planning.
+  Retired (SPEC-V3R2-ORC-001) — split across manager-develop (test strategy) and expert-performance (load testing).
+  Test strategy design belongs in manager-develop RED phase planning.
   Load test execution belongs in expert-performance with --deepthink load-test.
-  See manager-cycle.md and expert-performance.md for the active replacements.
+  See manager-develop.md and expert-performance.md for the active replacements.
 retired: true
-retired_replacement: "manager-cycle"
+retired_replacement: "manager-develop"
 retired_replacement_alt: "expert-performance"
 retired_param_hint: "strategy: cycle_type=tdd; load: use expert-performance --deepthink load-test"
 tools: []
@@ -25,18 +25,18 @@ Test strategy and load testing are split between two active agents:
 
 | Scope | Replacement Agent |
 |-------|-------------------|
-| Test strategy design (E2E, integration, coverage, QA framework selection) | `manager-cycle` with `cycle_type=tdd` (RED phase planning) |
+| Test strategy design (E2E, integration, coverage, QA framework selection) | `manager-develop` with `cycle_type=tdd` (RED phase planning) |
 | Load test execution (k6, Locust, JMeter, throughput benchmarks) | `expert-performance` with `--deepthink load-test` flag |
 
 ## Migration Guide
 
 | Old Invocation | New Invocation |
 |----------------|----------------|
-| `Use the expert-testing subagent to design test strategy` | `Use the manager-cycle subagent with cycle_type=tdd to design test strategy in RED phase` |
+| `Use the expert-testing subagent to design test strategy` | `Use the manager-develop subagent with cycle_type=tdd to design test strategy in RED phase` |
 | `expert-testing: run load test with k6` | `Use the expert-performance subagent with --deepthink load-test to run load tests` |
-| `expert-testing: set up E2E with Playwright` | `Use the manager-cycle subagent with cycle_type=tdd to set up E2E testing` |
+| `expert-testing: set up E2E with Playwright` | `Use the manager-develop subagent with cycle_type=tdd to set up E2E testing` |
 
 ## Active Agents
 
-- Test strategy: `.claude/agents/moai/manager-cycle.md`
+- Test strategy: `.claude/agents/moai/manager-develop.md`
 - Load testing: `.claude/agents/moai/expert-performance.md`

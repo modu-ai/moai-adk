@@ -4,7 +4,7 @@ package cli
 //
 // @MX:NOTE: [AUTO] Z.AI 공식 @z_ai/mcp-server 를 ~/.claude.json mcpServers 에 등록/해제하는 CLI
 // @MX:NOTE: [AUTO] 토큰은 기존 loadGLMKey() 헬퍼 재사용 (GLM_API_KEY from ~/.moai/.env.glm)
-// @MX:NOTE: [AUTO] glm.go 의 SPEC-GLM-001 env 정책 (DISABLE_BETAS/DISABLE_PROMPT_CACHING) 과 완전 독립
+// @MX:NOTE: [AUTO] glm.go 의 SPEC-GLM-001 env 정책 (DISABLE_BETAS) 과 완전 독립
 //
 // @MX:WARN: [AUTO] ~/.claude.json 에 atomic write (temp file + rename) 사용
 // @MX:REASON: 비원자적 쓰기는 Claude Code 세션 중 파일 손상 가능, POSIX rename atomicity 로 방어
@@ -42,9 +42,9 @@ const (
 // 지원 도구명 목록
 var validToolNames = map[string]bool{
 	"vision":    true,
-	"websearch":  true,
-	"webreader":  true,
-	"all":        true,
+	"websearch": true,
+	"webreader": true,
+	"all":       true,
 }
 
 // errNodeNotFound 는 PATH 에서 node 를 찾지 못했을 때 반환하는 센티넬 에러
@@ -448,7 +448,7 @@ func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 		}
 		// 토큰 불일치 → 에러 반환 (REQ-GMC-006 (b))
 		return false, fmt.Errorf(
-			"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
+			"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
 				"강제 덮어쓰기: moai glm tools enable --force",
 		)
 	}

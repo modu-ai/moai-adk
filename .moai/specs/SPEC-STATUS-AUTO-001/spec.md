@@ -1,7 +1,7 @@
 ---
 id: SPEC-STATUS-AUTO-001
 version: "1.0.0"
-status: implemented
+status: completed
 created: "2026-04-27"
 updated: "2026-04-27"
 author: GOOS

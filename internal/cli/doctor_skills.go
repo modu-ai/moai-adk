@@ -56,4 +56,3 @@ func classifySkill(name string) string {
 	// Everything else (third-party, moai unified dir, etc.) → INFO
 	return "INFO"
 }
-

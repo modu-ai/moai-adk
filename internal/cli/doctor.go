@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -191,6 +192,7 @@ func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
 			return checkConstitution(cwd, registryPath, v, strictMode)
 		}},
 		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
+		{"Migration", func(v bool) DiagnosticCheck { return checkMigration(cwd, v) }},
 	}
 
 	workspaceChecks := []checkFunc{
@@ -797,6 +799,41 @@ func checkGlamourCache(_ bool) DiagnosticCheck {
 		Message: "glamour 미도입",
 		Detail:  "후속 SPEC에서 실제 검사로 교체 예정",
 	}
+}
+
+// checkMigration verifies migration framework status.
+// REQ-V3R2-RT-007-015: doctor 명령에 마이그레이션 체크 추가.
+func checkMigration(projectDir string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Migration"}
+
+	runner := migration.NewRunner(projectDir)
+	current, pending, lastApplied, err := runner.Status()
+	if err != nil {
+		check.Status = CheckFail
+		check.Message = "마이그레이션 상태 조회 실패"
+		check.Detail = err.Error()
+		return check
+	}
+
+	check.Status = CheckOK
+	check.Message = fmt.Sprintf("현재 버전 %d", current)
+
+	if len(pending) > 0 {
+		check.Status = CheckWarn
+		check.Message = fmt.Sprintf("%d개 pending 마이그레이션", len(pending))
+		if verbose {
+			check.Detail = fmt.Sprintf("Pending 버전: %v", pending)
+		}
+	}
+
+	if lastApplied != nil && verbose {
+		if check.Detail != "" {
+			check.Detail += "\n"
+		}
+		check.Detail += fmt.Sprintf("최근 적용: %s (버전 %d)", lastApplied.Name, lastApplied.Version)
+	}
+
+	return check
 }
 
 // exportDiagnostics writes check results to a JSON file.

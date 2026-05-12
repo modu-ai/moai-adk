@@ -30,7 +30,7 @@ func DefaultRunnerDir() string {
 type VersionCheckStatus string
 
 const (
-	VersionCheckOK VersionCheckStatus = "OK"
+	VersionCheckOK   VersionCheckStatus = "OK"
 	VersionCheckWarn VersionCheckStatus = "WARN"
 	VersionCheckFail VersionCheckStatus = "FAIL"
 	VersionCheckSkip VersionCheckStatus = "SKIP"
@@ -38,11 +38,11 @@ const (
 
 // CheckResult holds version check results.
 type CheckResult struct {
-	InstalledVersion string              // Installed version
-	LatestVersion    string              // Latest version
-	DaysOld          int                 // Days since release
-	Status           VersionCheckStatus  // Status
-	Message          string              // Message
+	InstalledVersion string             // Installed version
+	LatestVersion    string             // Latest version
+	DaysOld          int                // Days since release
+	Status           VersionCheckStatus // Status
+	Message          string             // Message
 }
 
 // GitHubClient fetches latest release info.

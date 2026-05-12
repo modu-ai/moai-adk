@@ -7,14 +7,13 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -283,45 +282,9 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 
 // detectGoBinPath detects the Go binary installation path.
 // Returns the path where Go binaries are installed (e.g., "/home/user/go/bin").
+// REQ-V3R2-RT-007-001: gobin.Detect helper를 사용하여 중복 제거.
 func detectGoBinPath(homeDir string) string {
-	// Try GOBIN first (explicit override)
-	if output, err := exec.Command("go", "env", "GOBIN").Output(); err == nil {
-		if goBin := strings.TrimSpace(string(output)); goBin != "" {
-			return goBin
-		}
-	}
-
-	// Try GOPATH/bin (user's Go workspace)
-	if output, err := exec.Command("go", "env", "GOPATH").Output(); err == nil {
-		if goPath := strings.TrimSpace(string(output)); goPath != "" {
-			return filepath.Join(goPath, "bin")
-		}
-	}
-
-	// Fallback to default ~/go/bin
-	if homeDir != "" {
-		return filepath.Join(homeDir, "go", "bin")
-	}
-
-	// Last resort: platform-specific common Go install locations
-	if runtime.GOOS == "windows" {
-		// Windows common install paths
-		candidates := []string{
-			filepath.Join(os.Getenv("PROGRAMFILES"), "Go", "bin"),
-			`C:\Go\bin`,
-		}
-		for _, candidate := range candidates {
-			if candidate != "" && candidate != `\Go\bin` { // Skip if PROGRAMFILES is empty
-				if _, err := os.Stat(candidate); err == nil {
-					return candidate
-				}
-			}
-		}
-		// Final fallback for Windows
-		return filepath.Join(os.Getenv("USERPROFILE"), "go", "bin")
-	}
-	// Unix-like systems (Linux, macOS, etc.)
-	return "/usr/local/go/bin"
+	return gobin.Detect(homeDir)
 }
 
 // generateConfigsFallback creates config YAML files directly when no deployer is available.

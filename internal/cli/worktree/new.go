@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/bodp"
+	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
 // userHomeDirFunc resolves the user's home directory.
@@ -34,6 +35,12 @@ var getProjectNameFunc = func() string { return detectProjectName(".") }
 // isTmuxAvailableFunc checks if tmux is available.
 // Overridable in tests.
 var isTmuxAvailableFunc = IsTmuxAvailable
+
+// tmuxSessionFactory creates a new tmux.SessionManager.
+// Overridable in tests to avoid real tmux CLI calls.
+var tmuxSessionFactory = func() tmux.SessionManager {
+	return tmux.NewSessionManager()
+}
 
 // gitRepoRootFunc returns the absolute path of the git repository root via
 // `git rev-parse --show-toplevel`. Overridable in tests to avoid cwd leak:
@@ -164,21 +171,21 @@ func runNew(cmd *cobra.Command, args []string) error {
 	))
 
 	// R5: tmux session creation after worktree creation
-	// Check if --tmux flag is set
 	tmuxFlag, _ := cmd.Flags().GetBool("tmux")
 	if tmuxFlag || isTmuxPreferred() {
 		if isTmuxAvailableFunc() {
-			// Create tmux session with environment isolation
 			projectName := getProjectNameFunc()
-			_, err := BuildTmuxSessionConfig(projectName, specID, wtPath, ".")
+			cfg, err := BuildTmuxSessionConfig(projectName, specID, wtPath, ".")
 			if err != nil {
-				return fmt.Errorf("build tmux config: %w", err)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: tmux config build failed: %v\n", err)
+			} else {
+				mgr := tmuxSessionFactory()
+				if err := CreateTmuxSession(cmd.Context(), cfg, mgr); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: tmux session creation failed: %v\n", err)
+					sessionName := GenerateTmuxSessionName(projectName, specID)
+					_, _ = fmt.Fprintf(out, "To manually create session: tmux new-session -s %s -c %s\n", sessionName, wtPath)
+				}
 			}
-
-			// Note: Using a nil tmux manager for now - will need proper initialization
-			// This is a simplified implementation for the TDD cycle
-			_, _ = fmt.Fprintln(out, "Tmux session creation requested but tmux manager not yet initialized.")
-			_, _ = fmt.Fprintf(out, "To manually create session: tmux new-session -s %s -c %s\n", GenerateTmuxSessionName(projectName, specID), wtPath)
 		} else {
 			// Graceful degradation: print manual instructions
 			err := NewTmuxNotAvailableError(specID, wtPath)
@@ -309,12 +316,29 @@ func ShouldAutoMerge(noMergeFlag bool) bool {
 }
 
 // isTmuxPreferred checks if tmux session creation is preferred in workflow config.
-// This is a placeholder for future workflow.yaml integration.
+// Reads worktree.tmux_preferred from .moai/config/sections/workflow.yaml.
 //
 // @MX:NOTE: SPEC-WORKTREE-002 workflow config integration point
 // @MX:SPEC: SPEC-WORKTREE-002
 func isTmuxPreferred() bool {
-	// TODO: Read from .moai/config/sections/workflow.yaml
-	// For now, return false to require explicit --tmux flag
+	repoRoot, err := gitRepoRootFunc()
+	if err != nil {
+		return false
+	}
+	configPath := filepath.Join(repoRoot, ".moai", "config", "sections", "workflow.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "tmux_preferred:") {
+			parts := strings.SplitN(trimmed, "tmux_preferred:", 2)
+			if len(parts) == 2 {
+				value := strings.TrimSpace(parts[1])
+				return value == "true"
+			}
+		}
+	}
 	return false
 }

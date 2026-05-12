@@ -496,9 +496,9 @@ func TestHandleDBSchemaSync_TableDrivenEdges(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		setup      func(t *testing.T, dir string) (filePath string)
-		wantExit   int
+		name         string
+		setup        func(t *testing.T, dir string) (filePath string)
+		wantExit     int
 		wantDecision string
 	}{
 		{

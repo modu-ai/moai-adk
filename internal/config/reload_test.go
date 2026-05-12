@@ -19,7 +19,7 @@ import (
 // AC-V3R2-RT-005-04: Given resolver loaded, When Reload(".moai/config/sections/quality.yaml") called,
 // Then only SrcProject tier re-parses, merged value updated with new Loaded timestamp.
 //
-// REQ-V3R2-RT-005-011, AC-04
+// # REQ-V3R2-RT-005-011, AC-04
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (resolver.Reload() implementation)
 func TestResolver_Reload_TierIsolation(t *testing.T) {
@@ -86,7 +86,7 @@ func TestResolver_Reload_TierIsolation(t *testing.T) {
 //
 // AC-V3R2-RT-005-04: After Reload, merged.Get("quality.coverage_threshold") returns V==90.
 //
-// REQ-V3R2-RT-005-011, AC-04
+// # REQ-V3R2-RT-005-011, AC-04
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (Reload + loadYAMLFile real implementation)
 func TestResolver_Reload_DeltaApplied(t *testing.T) {
@@ -146,7 +146,7 @@ func TestResolver_Reload_DeltaApplied(t *testing.T) {
 //
 // AC-V3R2-RT-005-04 edge case: Reload("/random/unrelated.yaml") → nil (no-op).
 //
-// REQ-V3R2-RT-005-011, AC-04
+// # REQ-V3R2-RT-005-011, AC-04
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (Reload tier-detection by path prefix)
 func TestResolver_Reload_UnrelatedPathNoOp(t *testing.T) {
@@ -248,7 +248,7 @@ func TestResolver_Reload_ConcurrentReadSafe(t *testing.T) {
 // AC-V3R2-RT-005-13: Given session-scoped value "runtime.iter_id" set via SrcSession,
 // When ClearSessionTier() called, Then Key("runtime", "iter_id") returns false.
 //
-// REQ-V3R2-RT-005-050, AC-13
+// # REQ-V3R2-RT-005-050, AC-13
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (ClearSessionTier() method on resolver)
 func TestResolver_SessionEnd_ClearsSessionTier(t *testing.T) {
@@ -297,7 +297,7 @@ func TestResolver_SessionEnd_ClearsSessionTier(t *testing.T) {
 //
 // AC-V3R2-RT-005-13 edge case: no session tier values → ClearSessionTier() returns nil.
 //
-// REQ-V3R2-RT-005-050, AC-13
+// # REQ-V3R2-RT-005-050, AC-13
 //
 // @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (ClearSessionTier() method on resolver)
 func TestResolver_SessionEnd_NoSessionValuesNoError(t *testing.T) {

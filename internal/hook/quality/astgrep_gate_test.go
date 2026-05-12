@@ -255,7 +255,7 @@ func TestRunAstGrepGate_OutputContainsRuleInfo(t *testing.T) {
 		line := m.Range.Start.Line + 1
 		sb.WriteString(
 			strings.TrimSpace(
-				strings.Join([]string{m.File, ":", string(rune('0'+line)), ": [", m.RuleID, "] ", m.Message, " (", m.Severity, ")\n"}, ""),
+				strings.Join([]string{m.File, ":", string(rune('0' + line)), ": [", m.RuleID, "] ", m.Message, " (", m.Severity, ")\n"}, ""),
 			) + "\n",
 		)
 	}

@@ -11,6 +11,7 @@ triggers:
   - keyword: "tier 4"
   - keyword: "auto update proposal"
 allowed-tools: Bash,Read,Write,Edit,AskUserQuestion
+user-invocable: false
 ---
 
 # moai-harness-learner

@@ -28,8 +28,8 @@ triggers:
   keywords: ["quality", "testing", "test", "validation", "trust-5", "best practice", "code review", "linting", "coverage", "pytest", "security", "ci/cd", "quality gate", "proactive", "code smell", "technical debt", "refactoring"]
   agents:
     - "manager-quality"
-    - "manager-cycle"
-    - "manager-cycle"
+    - "manager-develop"
+    - "manager-develop"
     - "expert-security"
     - "expert-refactoring"
   phases:

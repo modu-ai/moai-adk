@@ -36,7 +36,7 @@ type DiagnosticsAggregator interface {
 // REQ-LL-002: also collects Aggregator-based lsp.Diagnostic when the aggregator field is non-nil.
 type GoFeedbackGenerator struct {
 	projectRoot string
-	bridge      GoplsBridge          // nil disables gopls diagnostic collection
+	bridge      GoplsBridge           // nil disables gopls diagnostic collection
 	aggregator  DiagnosticsAggregator // nil disables Aggregator diagnostic collection (REQ-LL-002)
 }
 

@@ -35,7 +35,7 @@ func setupAgencyFixture(t *testing.T, dir string) string {
   pipeline:
     phases: [planner, builder]
 `,
-		filepath.Join(learningsDir, "LEARN-001.md"): "# Learning 001\nObservation: test\n",
+		filepath.Join(learningsDir, "LEARN-001.md"):    "# Learning 001\nObservation: test\n",
 		filepath.Join(agencyDir, "fork-manifest.yaml"): "version: 1\nforks: []\n",
 	}
 
@@ -423,10 +423,10 @@ func TestMigrateAgency_Resume(t *testing.T) {
 	// Write a fake checkpoint: already completed phases 1 and 2
 	txID := "test-tx-001"
 	cp := migrationCheckpoint{
-		TxID:          txID,
-		ProjectRoot:   dir,
+		TxID:            txID,
+		ProjectRoot:     dir,
 		CompletedPhases: []int{1, 2},
-		RemainingFiles:  []string{
+		RemainingFiles: []string{
 			filepath.Join(dir, ".agency", "learnings", "LEARN-001.md"),
 		},
 	}

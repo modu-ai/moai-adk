@@ -155,10 +155,10 @@ func (v *Validator) validateHardcodedCredentials(content string, result *Validat
 
 	// Credential patterns
 	patterns := []string{
-		`sk-[a-zA-Z0-9]{32,}`,  // OpenAI API key
-		`ghp_[a-zA-Z0-9]{36,}`, // GitHub personal access token
-		`AKIA[0-9A-Z]{16}`,     // AWS access key
-		`AIza[0-9A-Za-z\\-_]{35}`, // Google API key
+		`sk-[a-zA-Z0-9]{32,}`,                                // OpenAI API key
+		`ghp_[a-zA-Z0-9]{36,}`,                               // GitHub personal access token
+		`AKIA[0-9A-Z]{16}`,                                   // AWS access key
+		`AIza[0-9A-Za-z\\-_]{35}`,                            // Google API key
 		`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}:\S+`, // email:password
 	}
 

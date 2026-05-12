@@ -2,7 +2,7 @@
 id: SPEC-UTIL-003
 title: "LSP Subprocess Hygiene (stderr drain + singleflight spawn + Diagnostic Alias)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-04-24
 updated: 2026-04-24
 author: Wave v2.14 SPEC Writer

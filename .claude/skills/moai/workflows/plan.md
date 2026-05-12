@@ -48,7 +48,8 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 
 ## Supported Flags
 
-- --worktree: Create isolated Git worktree environment (highest priority)
+- --worktree: Create isolated Git worktree environment (highest priority). SPEC files are generated INSIDE the worktree for full isolation.
+- --tmux: (requires --worktree) Automatically create a tmux session in the worktree after plan phase. Enables hands-off transition to `/moai run`.
 - --branch: Create traditional feature branch (second priority)
 - No flag: SPEC only by default; user may be prompted based on config
 - --team: Enable team-based exploration (see ${CLAUDE_SKILL_DIR}/team/plan.md for parallel research team)

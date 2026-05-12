@@ -102,7 +102,7 @@ func (r *AsyncRecorder) run() {
 
 	// Per-day file handle cache (CRITICAL 6: open each day's file only once)
 	var (
-		currentDay string
+		currentDay  string
 		currentFile *os.File
 		currentBuf  *bufio.Writer
 	)

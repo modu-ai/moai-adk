@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
+	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
 // canonicalHookDiagnostics returns the canonical fixture for AC-UTIL-003-009.

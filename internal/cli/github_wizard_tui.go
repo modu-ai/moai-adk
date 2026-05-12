@@ -10,8 +10,8 @@ import (
 
 // LanguageModel is the bubbletea Model for language selection.
 type LanguageModel struct {
-	Choices []string
-	Cursor  int
+	Choices  []string
+	Cursor   int
 	Selected bool
 }
 
@@ -82,11 +82,11 @@ func (m LanguageModel) GetSelectedLanguage() string {
 
 // LLMModel is the bubbletea Model for LLM selection (multiple).
 type LLMModel struct {
-	Choices     []LLMChoice
-	Selected    map[string]bool
-	Cursor      int
-	Finished    bool
-	Messages    *Messages
+	Choices  []LLMChoice
+	Selected map[string]bool
+	Cursor   int
+	Finished bool
+	Messages *Messages
 }
 
 // LLMChoice represents an LLM option.
@@ -205,13 +205,13 @@ func (m LLMModel) GetSelectedLLMs() []string {
 
 // ModelChoiceModel is the bubbletea Model for model selection for a specific LLM.
 type ModelChoiceModel struct {
-	LLMName     string
-	LLMNameKey   string // For message lookup
-	Choices     []ModelChoice
-	Cursor      int
-	Selected    string
-	Cancelled   bool
-	Messages    *Messages
+	LLMName    string
+	LLMNameKey string // For message lookup
+	Choices    []ModelChoice
+	Cursor     int
+	Selected   string
+	Cancelled  bool
+	Messages   *Messages
 }
 
 // ModelChoice represents a model option.
@@ -324,8 +324,8 @@ func (m ModelChoiceModel) GetModelSelectionPrompt(key string) (string, bool) {
 	}
 
 	prompts := map[string]string{
-		"SelectClaudeModel":  m.Messages.SelectClaudeModel,
-		"SelectCodexModel":   m.Messages.SelectCodexModel,
+		"SelectClaudeModel": m.Messages.SelectClaudeModel,
+		"SelectCodexModel":  m.Messages.SelectCodexModel,
 		"SelectGeminiModel": m.Messages.SelectGeminiModel,
 		"SelectZAIModel":    m.Messages.SelectZAIModel,
 	}
@@ -338,10 +338,10 @@ func (m ModelChoiceModel) GetModelSelectionPrompt(key string) (string, bool) {
 
 // YesNoModel is the bubbletea Model for Yes/No confirmation.
 type YesNoModel struct {
-	Message    string
+	Message   string
 	Confirmed bool
 	Cancelled bool
-	Messages   *Messages
+	Messages  *Messages
 }
 
 // NewYesNoModel creates a new Yes/No confirmation model.
@@ -386,7 +386,7 @@ func (m YesNoModel) View() string {
 		yesLabel, noLabel = "Yes", "No"
 	}
 
-	left := selectedStyle.Render("← "+yesLabel)
+	left := selectedStyle.Render("← " + yesLabel)
 	right := noLabel + " →"
 
 	return m.Message + "\n\n" + left + "    " + right

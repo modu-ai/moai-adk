@@ -94,15 +94,20 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 }
 
 // buildTmuxInitialCommand builds the initial command to run in the tmux pane.
-// R5.4: cd to worktree + execute /moai run
+// cc → moai cc (Claude), glm/cg → moai glm (GLM worker).
+// In CG mode the main session is already the Claude leader;
+// the worktree pane runs as a GLM worker.
 func buildTmuxInitialCommand(cfg *TmuxSessionConfig) string {
-	// cd to the worktree path
 	cdCmd := fmt.Sprintf("cd %s", cfg.WorktreePath)
 
-	// Execute the /moai run command
-	moaiCmd := fmt.Sprintf("/moai run %s", cfg.SpecID)
+	var moaiCmd string
+	switch cfg.ActiveMode {
+	case "glm", "cg":
+		moaiCmd = "moai glm"
+	default:
+		moaiCmd = "moai cc"
+	}
 
-	// Chain the two commands (separated by ;)
 	return fmt.Sprintf("%s ; %s", cdCmd, moaiCmd)
 }
 

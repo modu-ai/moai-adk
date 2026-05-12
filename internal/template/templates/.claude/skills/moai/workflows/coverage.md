@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["coverage", "test coverage", "coverage gap", "missing tests", "coverage target"]
-  agents: ["manager-cycle"]
+  agents: ["manager-develop"]
   phases: ["coverage"]
 ---
 
@@ -49,7 +49,7 @@ This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-0
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
 
 - **Phase mapping**: localize ← Phase 1+2; repair ← Phase 3; validate ← Phase 4
-- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., `manager-cycle` for measurement) but never select the next phase.
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., `manager-develop` for measurement) but never select the next phase.
 - **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
 - **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
 - **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
@@ -59,7 +59,7 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 ## Phase 1: Coverage Measurement
 
-[HARD] Delegate coverage measurement to the manager-cycle subagent.
+[HARD] Delegate coverage measurement to the manager-develop subagent.
 
 Language-specific coverage tools:
 
@@ -80,7 +80,7 @@ Expected Output:
 
 ## Phase 2: Gap Analysis
 
-[HARD] Delegate gap analysis to the manager-cycle subagent.
+[HARD] Delegate gap analysis to the manager-develop subagent.
 
 Pre-Analysis MX Tag Scan:
 
@@ -129,7 +129,7 @@ Gap Report Structure:
 
 If --report flag: Skip this phase. Display gap report and exit.
 
-[HARD] Delegate test generation to the manager-cycle subagent.
+[HARD] Delegate test generation to the manager-develop subagent.
 
 Test Generation Strategy (based on quality.yaml development_mode):
 
@@ -201,20 +201,20 @@ Next Steps (AskUserQuestion):
 
 ## Agent Chain Summary
 
-- Phase 1-2: manager-cycle subagent (measurement and analysis)
-- Phase 3: manager-cycle subagent (test generation)
-- Phase 4: manager-cycle subagent (verification)
+- Phase 1-2: manager-develop subagent (measurement and analysis)
+- Phase 3: manager-develop subagent (test generation)
+- Phase 4: manager-develop subagent (verification)
 - Phase 5: MoAI orchestrator (report and user interaction)
 
 ## Execution Summary
 
 1. Parse arguments (extract flags: --target, --file, --report, --package, --uncovered, --critical)
 2. Read coverage target from quality.yaml if --target not specified
-3. Delegate coverage measurement to manager-cycle subagent
+3. Delegate coverage measurement to manager-develop subagent
 4. Scan target files for @MX tags (Pre-Analysis MX Tag Scan)
-5. Delegate gap analysis to manager-cycle subagent (with MX context)
+5. Delegate gap analysis to manager-develop subagent (with MX context)
 6. If --report: Display gap report and exit
-7. Delegate test generation to manager-cycle subagent
+7. Delegate test generation to manager-develop subagent
 8. Verify tests pass and re-measure coverage
 9. TaskCreate/TaskUpdate for all gaps and generated tests
 10. Report results with next step options

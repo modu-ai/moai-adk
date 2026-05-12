@@ -55,7 +55,7 @@ OUT OF SCOPE:
 - Actual implementation of optimizations (delegate to expert-backend/expert-frontend)
 - Security audits (delegate to expert-security)
 - Infrastructure provisioning (delegate to expert-devops)
-- Unit test strategy design (delegate to manager-cycle cycle_type=tdd)
+- Unit test strategy design (delegate to manager-develop cycle_type=tdd)
 
 ## Delegation Protocol
 

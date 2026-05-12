@@ -1,4 +1,3 @@
-<!-- Verifies REQ-BRAIN-003: Parallel WebSearch + Context7 in single message for Phase 3 -->
 ---
 name: moai-domain-research
 description: >
@@ -30,6 +29,8 @@ triggers:
   agents: ["manager-brain"]
   phases: ["brain"]
 ---
+
+<!-- Verifies REQ-BRAIN-003: Parallel WebSearch + Context7 in single message for Phase 3 -->
 
 # Research Domain Specialist
 

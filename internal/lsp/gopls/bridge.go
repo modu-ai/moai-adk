@@ -69,9 +69,9 @@ type Bridge struct {
 	initialized atomic.Bool
 
 	// Circuit breaker state.
-	cbMu          sync.Mutex
-	cbFailures    int
-	cbOpenUntil   time.Time
+	cbMu        sync.Mutex
+	cbFailures  int
+	cbOpenUntil time.Time
 
 	config *Config
 }
@@ -81,7 +81,8 @@ type Bridge struct {
 //
 // REQ-GB-002: gopls not found → log slog.Warn and return (nil, nil).
 // REQ-GB-003: Initialize on explicit call, not on the first GetDiagnostics call.
-//             (This implementation initializes at NewBridge call time; lazy init is left as an option.)
+//
+//	(This implementation initializes at NewBridge call time; lazy init is left as an option.)
 func NewBridge(ctx context.Context, projectRoot string, cfg *Config) (*Bridge, error) {
 	if cfg == nil {
 		cfg = DefaultConfig()

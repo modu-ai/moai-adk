@@ -12,10 +12,10 @@ import (
 
 // Scanner scans source files for @MX tags.
 type Scanner struct {
-	ignorePatterns []string // .gitignore-style patterns to skip
+	ignorePatterns []string          // .gitignore-style patterns to skip
 	anchorIDs      map[string]string // AnchorID -> file:line (for duplicate detection)
-	warnings      []string // Scanner warnings
-	errors        []string // Scanner errors
+	warnings       []string          // Scanner warnings
+	errors         []string          // Scanner errors
 }
 
 // NewScanner creates a new tag scanner.

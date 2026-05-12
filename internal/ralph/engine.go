@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 	"github.com/modu-ai/moai-adk/internal/loop"
+	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 

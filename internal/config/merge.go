@@ -317,24 +317,24 @@ func (m *MergedSettings) dumpJSON() (string, error) {
 	// Build output in sorted key order using a slice of key-value pairs
 	// to preserve insertion order in the JSON output.
 	type jsonEntry struct {
-		Value     any      `json:"value"`
-		Source    string   `json:"source"`
-		Origin    string   `json:"origin"`
-		Loaded    string   `json:"loaded"`
-		Overridden bool    `json:"overridden"`
-		Default   bool     `json:"default,omitempty"`
+		Value      any    `json:"value"`
+		Source     string `json:"source"`
+		Origin     string `json:"origin"`
+		Loaded     string `json:"loaded"`
+		Overridden bool   `json:"overridden"`
+		Default    bool   `json:"default,omitempty"`
 	}
 
 	output := make(map[string]jsonEntry, len(keys))
 	for _, key := range keys {
 		value := m.values[key]
 		output[key] = jsonEntry{
-			Value:     value.V,
-			Source:    value.P.Source.String(),
-			Origin:    value.P.Origin,
-			Loaded:    value.P.Loaded.Format("2006-01-02T15:04:05Z07:00"),
+			Value:      value.V,
+			Source:     value.P.Source.String(),
+			Origin:     value.P.Origin,
+			Loaded:     value.P.Loaded.Format("2006-01-02T15:04:05Z07:00"),
 			Overridden: len(value.P.OverriddenBy) > 0,
-			Default:   value.IsDefault(),
+			Default:    value.IsDefault(),
 		}
 	}
 

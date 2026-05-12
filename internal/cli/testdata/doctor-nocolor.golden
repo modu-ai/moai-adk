@@ -15,6 +15,7 @@
 │  ✓  MCP Scope Duplicates  no MCP configuration found (project or global)                                                                      │
 │  !  Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │  ✓  Harness 5-Layer  .moai/harness/ not present (no harness configured)                                                                       │
+│  ✓  Migration  현재 버전 0                                                                                                                    │
 │                                                                                                                                               │
 │  Workspace ---                                                                                                                                │
 │  !  Hooks Config  .claude/hooks/ not found — hook handlers unavailable                                                                        │
@@ -26,6 +27,6 @@
 │  !  Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
 │  !  Glamour Cache  glamour 미도입                                                                                                             │
 │                                                                                                                                               │
-│  [통과 8]  [주의 11]  [실패 0]                                                                                                                │
+│  [통과 9]  [주의 11]  [실패 0]                                                                                                                │
 │                                                                                                                                               │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

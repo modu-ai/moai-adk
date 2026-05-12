@@ -2,7 +2,7 @@
 id: SPEC-UTIL-002
 title: "ast-grep Integration Hardening + Suppression Policy + 5-Language Rule Seeding"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-04-24
 updated: 2026-04-24
 author: Wave v2.14 SPEC Writer

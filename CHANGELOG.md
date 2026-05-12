@@ -15,6 +15,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **SPEC-V3R2-RT-004**: Typed session state management system. `PhaseState` + `Checkpoint` interface atomically persists plan/run/sync phase state to `.moai/state/`. Features: validator/v10 schema checks, cross-platform advisory locks (Unix flock + Windows LockFileEx), blocker file scanning, staleness TTL (`stale_seconds` config), in-flight transition detection, team-mode checkpoint merge with bubble-mode. Added `moai state dump/show-blocker` CLI subcommands, cache-prefix invariant (`HydrateForPrompt`), `retention_days`-based artifact cleanup, and AskUserQuestion audit lint. 7 MX tags (ANCHOR 3, NOTE 2, WARN 2). AC-01~15 met.
 
+## [Unreleased] — SPEC-V3R4-CATALOG-002: Wave 2 Distribution — Slim init via catalog tier filter
+
+### Changed (BREAKING CHANGE)
+
+- **`moai init` 기본 동작 변경**: catalog manifest 의 `tier == core` 자산만 배포 (20 core skills + 20 core agents + non-catalog 템플릿). Optional packs 9 종 (backend / frontend / mobile / auth / deployment / design / devops / testing / chrome-extension — 합계 17 skills + 7 agents) 및 builder-harness agent 1 개는 기본 배포에서 제외 → 약 38% (25/65 entries) 슬림. 두 가지 opt-out 경로: `moai init --all` flag 또는 `MOAI_DISTRIBUTE_ALL=1` 환경변수 (case-insensitive `"true"` 도 허용). `moai update` 동작은 영향 없음 (full FS 유지). Optional pack 인터랙티브 설치는 SPEC-V3R4-CATALOG-003 (`moai pack add`) 에서 제공 예정. 기존 프로젝트의 update drift sync 는 SPEC-V3R4-CATALOG-004. Builder-harness 자동 부트스트랩은 SPEC-V3R4-CATALOG-005.
+
+### Added
+
+- **SlimFS wrapper** (`internal/template/slim_fs.go`, +235 LOC): `fs.FS` 레벨 tier 필터. `SlimFS(rawFS fs.FS, cat *Catalog) (fs.FS, error)` API. `deployer.go` / `update.go` 미수정 (D7 lock 보존, REQ-005/006). 65 entries 중 25 non-core 자산이 `fs.ErrNotExist` 반환. `testing/fstest` 호환 (REQ-001/002/003/010/011/014/015). Coverage 91.1%.
+- **encapsulated slim deployer constructor** (`internal/template/embed_catalog.go`, +59 LOC): `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)` 두 export. `embeddedRaw` unexported 유지 (DEFECT-5 encapsulation invariant — `git grep 'EmbeddedRaw[A-Za-z]*' internal/cli/` zero matches).
+- **builder-harness 친절 에러 가드** (`internal/template/slim_guard.go`, +36 LOC): `AssertBuilderHarnessAvailable(projectFS) error` — slim mode 에서 builder-harness 부재 시 `CATALOG_SLIM_HARNESS_MISSING` sentinel + `MOAI_DISTRIBUTE_ALL=1` + `moai init --all` + `SPEC-V3R4-CATALOG-005` 4 substring 안내 (REQ-021). Coverage 100%.
+- **audit suite** (`internal/template/catalog_slim_audit_test.go`, +242 LOC): 6 sub-tests — `TestSlimFS_HidesNonCoreEntries` (REQ-014 `CATALOG_SLIM_LEAK`, 25 non-core 검증), `TestSlimFS_PreservesCoreEntries` + EC4 nested (REQ-015 `CATALOG_SLIM_CORE_MISSING`, 40 core + `.claude/skills/moai/workflows/plan.md` nested), `TestSlimFS_PreservesNonCatalogFiles` (REQ-016 `CATALOG_SLIM_OVER_FILTER`, 5 non-catalog paths), `TestSlimFS_WalkDirNoLeak` (REQ-017 `CATALOG_SLIM_WALK_LEAK`, 523 paths visited zero leaks), `TestSlimFS_ReadOnlyInvariant` (REQ-003, reflective struct check + 32-goroutine × 50 iteration race-clean, `CATALOG_SLIM_NOT_READONLY`). 모든 sentinel `t.Errorf` 사용 (CATALOG-001 eval-1 EC3 lesson 흡수).
+- **`--all` flag + `shouldDistributeAll(cmd)` helper** (`internal/cli/init.go`, +42/-3): 좁은 env 매칭 (`"1"` exact OR case-insensitive `"true"`). EC2 idempotent (env+flag 동시 set 시 한번만 bypass).
+- **slim mode 진입 안내**: `cmd.OutOrStdout()` 로 4 substring 1-line 출력 (REQ-021 notice — `"slim mode"` + `"--all"` + `"MOAI_DISTRIBUTE_ALL=1"` + `"SPEC-V3R4-CATALOG-005"`).
+
+plan-auditor PASS 0.91 (≥ 0.88 stretch). 8 new files (slim_fs.go/_test, embed_catalog.go/_test, slim_guard.go/_test, catalog_slim_audit_test.go, init_slim_branch_test.go) + 1 modified (init.go +42/-3). DEFECT-5 encapsulation gate enforced. Fixes part of #859.
+
+### English
+
+- **BREAKING CHANGE — `moai init` default behavior**: deploys only `tier == core` catalog entries by default (20 core skills + 20 core agents + non-catalog templates). The 9 optional packs (backend / frontend / mobile / auth / deployment / design / devops / testing / chrome-extension — 17 skills + 7 agents total) and the builder-harness agent are no longer deployed by default — approximately 38% (25 / 65 entries) slim. Two opt-out paths: `moai init --all` flag OR `MOAI_DISTRIBUTE_ALL=1` environment variable (also accepts case-insensitive `"true"`). `moai update` behavior is unchanged (always full FS). Interactive optional-pack installation arrives in SPEC-V3R4-CATALOG-003 (`moai pack add`). Update drift sync for existing projects lands in SPEC-V3R4-CATALOG-004. Builder-harness auto-bootstrap lands in SPEC-V3R4-CATALOG-005.
+
+- New `internal/template/slim_fs.go` SlimFS wrapper applies the tier filter at the `fs.FS` layer; `deployer.go` and `update.go` remain untouched (D7 lock). New `internal/template/embed_catalog.go` provides the encapsulated `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer()` entry points while keeping `embeddedRaw` unexported (DEFECT-5 invariant). New `internal/template/slim_guard.go` surfaces a friendly four-substring error when the builder-harness agent is absent. New `internal/template/catalog_slim_audit_test.go` adds 6 audit sub-tests (`CATALOG_SLIM_LEAK` / `CATALOG_SLIM_CORE_MISSING` + EC4 nested / `CATALOG_SLIM_OVER_FILTER` / `CATALOG_SLIM_WALK_LEAK` / `CATALOG_SLIM_NOT_READONLY` reflective + 32-goroutine race-clean) against the real production catalog. All sentinels use `t.Errorf` per the CATALOG-001 EC3 lesson.
+
+- plan-auditor PASS 0.91 (≥ 0.88 stretch target). 8 new files + 1 modified. `git grep 'EmbeddedRaw[A-Za-z]*' internal/cli/` returns zero matches. Fixes part of #859.
+
+## [Unreleased] — Dev Tooling: release-update workflow harness
+
+### Added
+
+- **release-update 워크플로우 하네스** (dev-only): CC 업스트림 릴리스 노트 추적 + moai-adk-go 문서 업데이트 자동화. `.claude/commands/97-release-update.md` (thin-wrapper), `.claude/skills/moai/workflows/release-update.md` (8-Phase 워크플로우), `.moai/state/last-cc-version.json` (상태 파일). `--since`, `--dry`, `--docs-only`, `--report-only`, `--master-spec` 플래그 지원. manager-docs (4개 locale 동기화) + manager-git (PR) 위임. `internal/template/templates/`에 미포함 (dev-only).
+
+### English
+
+- **release-update workflow harness** (dev-only): Automates CC upstream release note tracking and moai-adk-go documentation updates. `.claude/commands/97-release-update.md` (thin wrapper), `.claude/skills/moai/workflows/release-update.md` (8-phase workflow), `.moai/state/last-cc-version.json` (state file). Supports `--since`, `--dry`, `--docs-only`, `--report-only`, `--master-spec` flags. Delegates to manager-docs (4-locale sync) and manager-git (PR). Not included in `internal/template/templates/` (dev-only).
+
+## [Unreleased] — SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest (Foundation)
+
+### Added
+
+- **SPEC-V3R4-CATALOG-001**: 3-tier (`core` / `optional-pack:<name>` / `harness-generated`) 카탈로그 매니페스트 도입 — moai-adk-go skill/agent 슬림화 initiative 의 foundation SPEC. `internal/template/catalog.yaml` (37 skills + 28 agents = 65 entries, 9 optional packs, depends_on DAG) + `catalog_loader.go` (typed `LoadCatalog(fs.FS)` API, `LookupSkill`/`LookupAgent` accessors) + `catalog_tier_audit_test.go` (10 sentinel 기반 audit sub-tests: `CATALOG_MANIFEST_ABSENT`, `CATALOG_ENTRY_MISSING`, `CATALOG_ENTRY_ORPHAN`, `CATALOG_TIER_INVALID`, `PACK_DEPENDENCY_CYCLE`, `CATALOG_HASH_INVALID`, `CATALOG_DUPLICATE_ENTRY` 등) + `catalog_hash_norm.go` (LF + trailing-whitespace 정규화 후 sha256) + `scripts/gen-catalog-hashes.go` (offline 헬퍼) + `catalog_doc.md` (schema spec). `embed.go`에 `//go:embed catalog.yaml` directive 추가 (additive). `deployer.go` 미수정 (D7 lock). evaluator-active 독립 평가 PASS 0.82, LoadCatalog coverage 100%. 8 files, +1852/-0 LOC. PR #862 + #863. Wave 2 (Distribution: CATALOG-002+003), Wave 3 (Safety: 004), Wave 4 (Polish: 005+006+007) 진입 자격 충족. Fixes #859.
+
+### English
+
+- **SPEC-V3R4-CATALOG-001**: Introduced 3-tier (`core` / `optional-pack:<name>` / `harness-generated`) catalog manifest as the foundation SPEC of the moai-adk-go skill/agent slim-down initiative. New `internal/template/catalog.yaml` (37 skills + 28 agents = 65 entries, 9 optional packs, acyclic depends_on graph) + `catalog_loader.go` (typed `LoadCatalog(fs.FS)` API with `LookupSkill`/`LookupAgent` accessors) + `catalog_tier_audit_test.go` (10 sentinel-driven audit sub-tests including `CATALOG_MANIFEST_ABSENT`, `CATALOG_ENTRY_MISSING`, `CATALOG_ENTRY_ORPHAN`, `CATALOG_TIER_INVALID`, `PACK_DEPENDENCY_CYCLE`, `CATALOG_HASH_INVALID`, `CATALOG_DUPLICATE_ENTRY`) + `catalog_hash_norm.go` (LF + trailing-whitespace normalization → sha256) + `scripts/gen-catalog-hashes.go` (offline helper) + `catalog_doc.md` (schema spec). Added `//go:embed catalog.yaml` directive in `embed.go` (additive). `deployer.go` untouched (D7 lock). evaluator-active independent review PASS 0.82, LoadCatalog coverage 100%. 8 files, +1852/-0 LOC. PR #862 + #863. Unblocks Wave 2 (Distribution: CATALOG-002+003), Wave 3 (Safety: 004), Wave 4 (Polish: 005+006+007). Fixes #859.
+
+## [Unreleased] — SPEC-V3R2-RT-007: Hardcoded Path Fix + Versioned Migration
+
+### Added
+
+- **SPEC-V3R2-RT-007**: 하드코딩된 경로 제거 및 버전 기반 마이그레이션 도입. `internal/migration/` 신규 패키지(runner, registry, version 추적, JSONL log appender, m001_hardcoded_path 마이그레이션). `internal/runtime/gobin/` 신규 패키지(Detect helper로 GOBIN/GOPATH/$HOME/go/bin 폴백 체인 일원화 — `initializer.go`와 `update.go`의 하드코딩 경로 제거). `moai migration {run,status,rollback}` CLI 3-subcommand 추가. `doctor migration` 헬스체크 통합. `session_start` 훅이 migration runner를 호출하여 세션 시작 시 자동 적용. Cross-platform lock: Unix는 `unix.Flock(LOCK_EX)`, Windows는 `O_EXCL` 파일 mutex(bounded retry 1s)로 분리. 29 files +2068/-667 LOC, CI all-GREEN. PR #846.
+
+### English
+
+- **SPEC-V3R2-RT-007**: Removed hardcoded paths and introduced versioned migration. New `internal/migration/` package (runner, registry, version tracking, JSONL log appender, m001_hardcoded_path migration). New `internal/runtime/gobin/` package (Detect helper unifies GOBIN/GOPATH/$HOME/go/bin fallback chain, eliminating hardcoded paths in `initializer.go` and `update.go`). Added `moai migration {run,status,rollback}` CLI subcommands and `doctor migration` health check. `session_start` hook now invokes the migration runner for automatic application at session start. Cross-platform lock: Unix uses `unix.Flock(LOCK_EX)`, Windows uses `O_EXCL` file mutex (bounded retry, 1s). 29 files +2068/-667 LOC, CI all-green. PR #846.
+
 ## [Unreleased] — SPEC-V3R2-ORC-001: Agent Roster Consolidation (22 → 17)
 
 ### Added

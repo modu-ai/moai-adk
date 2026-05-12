@@ -20,7 +20,7 @@ import (
 // If registry maps "phantom" → "PhantomConfig" but PhantomConfig is not in Config struct,
 // the audit should fail.
 //
-// REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021, AC-08
+// # REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021, AC-08
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021 all registered structs verified
 func TestAuditRegistry_AllRegisteredStructsExist(t *testing.T) {
@@ -68,7 +68,7 @@ func TestAuditRegistry_AllRegisteredStructsExist(t *testing.T) {
 //
 // AC-V3R2-RT-005-08: Every yaml file is either registered or in exceptions; orphans fail the audit.
 //
-// REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-043, AC-08
+// # REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-043, AC-08
 //
 // @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-043 ScanYAMLOrphans detects unexpected yaml
 func TestAuditRegistry_NoUnexpectedYAMLOrphans(t *testing.T) {
@@ -84,7 +84,7 @@ func TestAuditRegistry_NoUnexpectedYAMLOrphans(t *testing.T) {
 		"user.yaml",
 		"language.yaml",
 		"quality.yaml",
-		"constitution.yaml",  // exception (MIG-003 pending)
+		"constitution.yaml", // exception (MIG-003 pending)
 	}
 	for _, f := range knownFiles {
 		if err := os.WriteFile(filepath.Join(sectionsDir, f), []byte("# test\n"), 0o644); err != nil {

@@ -28,7 +28,7 @@ Rules and constraints governing all workflows are always loaded from these sourc
 - Quality gates, security boundaries: .claude/rules/moai/core/moai-constitution.md
 - SPEC workflow phases, token budgets: .claude/rules/moai/workflow/spec-workflow.md
 - Development methodologies (DDD/TDD): .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
-- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-platform subagent (artifact_type=agent).
+- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-harness subagent (artifact_type=agent).
 - @MX tag rules and protocol: .claude/rules/moai/workflow/mx-tag-protocol.md
 
 ---
@@ -73,6 +73,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **e2e** (aliases: e2e-test): Create and run E2E tests
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
+- **release-update** (aliases: cc-update, release-track) *(dev-only)*: CC upstream change tracker → update plan + docs-site 4-locale sync
 
 
 ### Priority 2: SPEC-ID Detection
@@ -114,7 +115,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mod
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
-Agents: manager-strategy, manager-cycle (cycle_type=ddd|tdd per quality.yaml), manager-quality, manager-git
+Agents: manager-strategy, manager-develop (cycle_type=ddd|tdd per quality.yaml), manager-quality, manager-git
 Flags: --resume SPEC-XXX, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
@@ -150,7 +151,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 ### loop - Iterative Auto-Fix
 
 Purpose: Repeatedly fix issues until completion marker detected or max iterations reached.
-Agents: manager-quality (diagnostic-mode), expert-backend, expert-frontend, manager-cycle
+Agents: manager-quality (diagnostic-mode), expert-backend, expert-frontend, manager-develop
 Flags: --max N, --auto-fix, --seq
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
@@ -171,7 +172,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team m
 ### clean - Dead Code Removal
 
 Purpose: Identify and safely remove unused code with test verification.
-Agents: expert-refactoring, manager-cycle
+Agents: expert-refactoring, manager-develop
 Flags: --dry, --safe-only, --file PATH
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
 
@@ -185,14 +186,14 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
 ### coverage - Test Coverage Analysis
 
 Purpose: Analyze test coverage gaps and generate missing tests.
-Agents: manager-cycle (cycle_type=tdd)
+Agents: manager-develop (cycle_type=tdd)
 Flags: --target N, --file PATH, --report
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/coverage.md
 
 ### e2e - End-to-End Testing
 
 Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
-Agents: manager-cycle (cycle_type=tdd), expert-frontend
+Agents: manager-develop (cycle_type=tdd), expert-frontend
 Flags: --record, --url URL, --journey NAME
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
@@ -216,7 +217,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/db.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-cycle, manager-quality, manager-docs, manager-git
+Agents: Explore, manager-spec, manager-develop, manager-quality, manager-docs, manager-git
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --no-issue
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
@@ -232,6 +233,15 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
 Purpose: Collect user feedback and create GitHub issues.
 Agents: manager-quality
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
+
+### release-update - CC Upstream Change Tracker *(dev-only)*
+
+Purpose: Track Claude Code release notes since last analyzed version, classify by impact tier, generate update plan, sync docs-site 4-locale + README, open PR.
+Agents: manager-docs (Phase 6 docs sync), manager-git (Phase 7 PR)
+Flags: --since vX.Y.Z, --dry, --report-only, --docs-only, --master-spec
+State: .moai/state/last-cc-version.json
+For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/release-update.md
+NOT distributed to user projects (dev-only; entry: .claude/commands/97-release-update.md)
 
 ---
 

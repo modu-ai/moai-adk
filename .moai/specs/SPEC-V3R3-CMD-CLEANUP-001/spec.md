@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R3-CMD-CLEANUP-001
 version: "1.0.0"
-status: implemented
+status: completed
 created_at: 2026-04-26
 updated_at: 2026-04-26
 author: manager-spec

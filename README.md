@@ -513,7 +513,7 @@ All subcommands are invoked within Claude Code as `/moai <subcommand>`.
 
 | Subcommand | Aliases | Purpose | Key Flags |
 |------------|---------|---------|-----------|
-| `plan` | `spec` | Create SPEC document (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team` |
+| `plan` | `spec` | Create SPEC document (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team`, `--tmux` |
 | `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX`, `--team` |
 | `sync` | `docs`, `pr` | Sync documentation, codemaps, and create PR | `--merge`, `--skip-mx` |
 
@@ -650,7 +650,7 @@ All hook events follow the Claude Code hooks protocol with JSON stdin/stdout com
 | `moai update` | Update to the latest version (with automatic rollback support) |
 | `moai update --check` | Check for updates without installing |
 | `moai update --project` | Sync project templates only |
-| `moai worktree new <name>` | Create a new Git worktree (parallel branch development) |
+| `moai worktree new <name>` | Create a new Git worktree (parallel branch development). Add `--tmux` to auto-create a tmux session in the worktree |
 | `moai worktree list` | List active worktrees |
 | `moai worktree switch <name>` | Switch to a worktree |
 | `moai worktree sync` | Sync with upstream |
@@ -1247,14 +1247,14 @@ The statusline v3 features a **multi-line layout** with real-time API usage moni
 CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
 5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
 7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
-📁 moai-adk-go │ 🔀 main │ 📊 +0 M38 ?2
+📁 moai-adk-go │ 🅱️ main │ 📭 +0 M38 ?2
 ```
 
 **Default mode** (3 lines — 10-block inline bars):
 ```
 🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
 CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-📁 moai-adk-go │ 🔀 fix/my-feature │ 📊 +0 M38 ?2
+📁 moai-adk-go │ 🅱️ fix/my-feature │ 📭 +0 M38 ?2
 ```
 
 2 display modes are available:

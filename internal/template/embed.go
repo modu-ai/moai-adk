@@ -21,7 +21,12 @@ import (
 // The all: prefix ensures dot-prefixed directories (.claude/, .moai/) and
 // dot-prefixed files (.gitignore) are included.
 //
+// catalog.yaml is a sibling of the templates/ directory (not inside templates/)
+// so it requires an explicit separate embed directive.
+// Added in SPEC-V3R4-CATALOG-001 T-023 (embed gap confirmation).
+//
 //go:embed all:templates
+//go:embed catalog.yaml
 var embeddedRaw embed.FS
 
 // @MX:ANCHOR: [AUTO] go:embed template filesystem access point - depended on by 6 or more callers including init/update/deployer

@@ -6,24 +6,24 @@ import (
 
 func TestCheckpointPhaseName(t *testing.T) {
 	tests := []struct {
-		name     string
+		name       string
 		checkpoint Checkpoint
-		expected Phase
+		expected   Phase
 	}{
 		{
-			name:     "PlanCheckpoint",
+			name:       "PlanCheckpoint",
 			checkpoint: &PlanCheckpoint{},
-			expected: PhasePlan,
+			expected:   PhasePlan,
 		},
 		{
-			name:     "RunCheckpoint",
+			name:       "RunCheckpoint",
 			checkpoint: &RunCheckpoint{},
-			expected: PhaseRun,
+			expected:   PhaseRun,
 		},
 		{
-			name:     "SyncCheckpoint",
+			name:       "SyncCheckpoint",
 			checkpoint: &SyncCheckpoint{},
-			expected: PhaseSync,
+			expected:   PhaseSync,
 		},
 	}
 

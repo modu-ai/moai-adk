@@ -47,7 +47,9 @@ func NewRegistryWithTimeout(cfg ConfigProvider, timeout time.Duration) *registry
 // Register adds a handler to the registry for its declared event type.
 func (r *registry) Register(handler Handler) {
 	event := handler.EventType()
+	r.mu.Lock()
 	r.handlers[event] = append(r.handlers[event], handler)
+	r.mu.Unlock()
 	slog.Debug("handler registered",
 		"event", string(event),
 		"handler_count", len(r.handlers[event]),
@@ -63,7 +65,11 @@ func (r *registry) Register(handler Handler) {
 // Note: Stop and SessionEnd events should NOT include hookSpecificOutput per
 // Claude Code protocol. These events return empty JSON {} instead.
 func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInput) (*HookOutput, error) {
-	handlers := r.handlers[event]
+	r.mu.Lock()
+	handlers := make([]Handler, len(r.handlers[event]))
+	copy(handlers, r.handlers[event])
+	r.mu.Unlock()
+
 	if len(handlers) == 0 {
 		slog.Debug("no handlers registered for event", "event", string(event))
 		return r.defaultOutputForEvent(event), nil

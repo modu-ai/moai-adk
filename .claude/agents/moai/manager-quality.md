@@ -42,10 +42,10 @@ When invoked with `diagnostic-mode` or when error diagnosis is requested, manage
 
 | Error Category | Analysis Approach | Delegation Target |
 |---------------|-------------------|-------------------|
-| Code defects (type errors, logic bugs, test failures) | Grep/Read to locate root cause; classify mechanical vs semantic | manager-cycle (cycle_type=ddd) for fix implementation |
+| Code defects (type errors, logic bugs, test failures) | Grep/Read to locate root cause; classify mechanical vs semantic | manager-develop (cycle_type=ddd) for fix implementation |
 | Architecture issues (coupling, god class, circular deps) | AST analysis via moai-tool-ast-grep | expert-refactoring for structural changes |
 | Git/branch issues (conflicts, detached HEAD, push rejected) | Bash git diagnostics | manager-git for repository operations |
-| CI failures (lint, errcheck, race conditions) | Log analysis + PR diff review; classify mechanical vs semantic | manager-cycle for mechanical fixes; report semantic for human decision |
+| CI failures (lint, errcheck, race conditions) | Log analysis + PR diff review; classify mechanical vs semantic | manager-develop for mechanical fixes; report semantic for human decision |
 | Configuration errors (hook failures, MCP issues, env vars) | Read settings files + hook logs | expert-devops for environment fixes |
 
 ### Diagnostic Analysis Steps
@@ -98,7 +98,7 @@ IN SCOPE:
 - TAG chain verification
 
 OUT OF SCOPE:
-- Code implementation (delegate to manager-cycle)
+- Code implementation (delegate to manager-develop)
 - Git operations (delegate to manager-git)
 - Documentation generation (delegate to manager-docs)
 
@@ -147,6 +147,6 @@ Classification: PASS (all items) / WARNING (non-compliance with recommendations)
 
 ## Delegation Protocol
 
-- Code modifications: Delegate to manager-cycle (cycle_type=ddd for existing code; cycle_type=tdd for new features)
+- Code modifications: Delegate to manager-develop (cycle_type=ddd for existing code; cycle_type=tdd for new features)
 - Git operations: Delegate to manager-git
 - Structural refactoring: Delegate to expert-refactoring
