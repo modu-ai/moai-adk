@@ -141,16 +141,47 @@ tier := template.FormatOptionalPackTier("backend") // → "optional-pack:backend
 
 ---
 
+## Tier filter consumers
+
+The catalog manifest is consumed at runtime through typed accessors and tier
+filters. The primary consumers are:
+
+- **`LoadCatalog(fs.FS) (*Catalog, error)`** — typed loader (CATALOG-001).
+  Returns the parsed manifest including all 65 entries grouped by tier.
+- **`LoadEmbeddedCatalog() (*Catalog, error)`** — convenience wrapper
+  (CATALOG-002) around `LoadCatalog(embeddedRaw)`. External packages SHOULD
+  use this entry point rather than constructing their own catalog loader so
+  that `embeddedRaw` remains unexported (DEFECT-5 encapsulation invariant).
+- **`SlimFS(rawFS fs.FS, cat *Catalog) (fs.FS, error)`** — tier filter at
+  the `fs.FS` level (CATALOG-002). Applies the `tier == TierCore` filter so
+  only core-tier entries (and non-catalog templates) are visible through the
+  returned FS. Optional packs and harness-generated entries return
+  `fs.ErrNotExist`. The wrapper is read-only (no `sync.*`, no chan, no
+  mutation after construction) and goroutine-safe under parallel reads.
+- **`NewSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error)`** —
+  encapsulated slim deployer constructor (CATALOG-002). Wraps `embeddedRaw`
+  in `SlimFS` and returns a `Deployer` ready for `Deploy()`. This is the
+  sole external surface for slim mode; callers do not see the raw embedded
+  FS.
+
+The `moai init` command currently routes through `LoadEmbeddedCatalog()` +
+`NewSlimDeployerWithRenderer()` for the default slim path and through
+`EmbeddedTemplates()` + `NewDeployerWithRenderer()` for the `--all` /
+`MOAI_DISTRIBUTE_ALL=1` opt-out path.
+
+---
+
 ## Follow-up SPECs
 
-This document covers SPEC-V3R4-CATALOG-001 (manifest + loader + audit suite).
-Later SPECs in the CATALOG series extend this foundation:
+This document covers SPEC-V3R4-CATALOG-001 (manifest + loader + audit suite)
+and the tier filter consumers introduced in SPEC-V3R4-CATALOG-002. Remaining
+SPECs in the CATALOG series extend the foundation:
 
 | SPEC | Topic |
 |------|-------|
-| SPEC-V3R4-CATALOG-002 | `moai catalog list` CLI command |
-| SPEC-V3R4-CATALOG-003 | `moai catalog verify` hash integrity check |
-| SPEC-V3R4-CATALOG-004 | `moai catalog install <pack>` optional-pack installation |
-| SPEC-V3R4-CATALOG-005 | `moai catalog update` selective template refresh |
-| SPEC-V3R4-CATALOG-006 | Marketplace registry integration |
-| SPEC-V3R4-CATALOG-007 | Harness-generated entries lifecycle management |
+| SPEC-V3R4-CATALOG-002 | `moai init` slim default + `SlimFS` tier filter (this consumer) ✅ |
+| SPEC-V3R4-CATALOG-003 | `moai pack add` / `pack remove` / `pack list` interactive installer |
+| SPEC-V3R4-CATALOG-004 | `moai update --catalog-sync` drift-aware update |
+| SPEC-V3R4-CATALOG-005 | `/moai project` interview + harness bootstrap (builder-harness auto-deploy) |
+| SPEC-V3R4-CATALOG-006 | `moai doctor catalog` diagnostic + repair |
+| SPEC-V3R4-CATALOG-007 | Migration docs (4-locale docs-site sync, BREAKING CHANGE rollout) |

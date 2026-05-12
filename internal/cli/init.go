@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
@@ -21,6 +23,20 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
+
+// @MX:NOTE: [AUTO] CATALOG-002 REQ-021 4-substring informational notice — extracted as a helper so the contract is unit-testable without running the full runInit pipeline.
+//
+// emitSlimModeNotice prints the slim-mode informational notice to the given
+// writer. The notice MUST contain the four substrings "slim mode", "--all",
+// "MOAI_DISTRIBUTE_ALL=1", and "SPEC-V3R4-CATALOG-005" so downstream tooling
+// (moai doctor) can pattern-match on them. See SPEC-V3R4-CATALOG-002 REQ-021
+// and acceptance scenario S1.
+func emitSlimModeNotice(out io.Writer) {
+	_, _ = fmt.Fprintln(out,
+		"Deploying core templates only (slim mode). "+
+			"Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. "+
+			"Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).")
+}
 
 var initCmd = &cobra.Command{
 	Use:     "init [project-name]",
@@ -36,7 +52,8 @@ Usage patterns:
 Examples:
   moai init my-app           Creates ./my-app/ and initializes MoAI inside
   moai init .                Initializes MoAI in the current directory
-  moai init --mode tdd       Initialize with specific development mode (default: tdd)`,
+  moai init --mode tdd       Initialize with specific development mode (default: tdd)
+  moai init --all            Deploy all catalog entries (default is core-only slim mode; SPEC-V3R4-CATALOG-002)`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: validateInitFlags,
 	RunE:    runInit,
@@ -57,6 +74,7 @@ func init() {
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
+	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -110,6 +128,23 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
+//
+// shouldDistributeAll returns true when the user has opted out of the slim
+// init default by passing --all on the command line or setting the
+// MOAI_DISTRIBUTE_ALL environment variable to "1" (exact) or "true"
+// (case-insensitive). Any other value — including "0", "yes", "", or unset —
+// returns false (slim mode remains active).
+//
+// Source: SPEC-V3R4-CATALOG-002 REQ-012, REQ-013, EC3.
+func shouldDistributeAll(cmd *cobra.Command) bool {
+	if all, _ := cmd.Flags().GetBool("all"); all {
+		return true
+	}
+	v := os.Getenv("MOAI_DISTRIBUTE_ALL")
+	return v == "1" || strings.EqualFold(v, "true")
 }
 
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
@@ -291,14 +326,31 @@ func runInit(cmd *cobra.Command, args []string) error {
 	mgr := manifest.NewManager()
 
 	// Wire embedded template deployer (REQ-E-030)
+	// Load catalog manifest (SPEC-V3R4-CATALOG-001) for slim/full deploy routing (CATALOG-002).
+	cat, catErr := template.LoadEmbeddedCatalog()
+	if catErr != nil {
+		return fmt.Errorf("CATALOG_LOAD_FAILED: %w", catErr)
+	}
+
+	// Both paths share the same renderer baseline (raw embedded FS).
 	embeddedFS, err := template.EmbeddedTemplates()
 	if err != nil {
 		return fmt.Errorf("load embedded templates: %w", err)
 	}
-
-	// Create renderer for template processing
 	renderer := template.NewRenderer(embeddedFS)
-	deployer := template.NewDeployerWithRenderer(embeddedFS, renderer)
+
+	var deployer template.Deployer
+	if shouldDistributeAll(cmd) {
+		deployer = template.NewDeployerWithRenderer(embeddedFS, renderer)
+	} else {
+		var slimErr error
+		deployer, slimErr = template.NewSlimDeployerWithRenderer(cat, renderer)
+		if slimErr != nil {
+			return fmt.Errorf("CATALOG_LOAD_FAILED: slim deployer: %w", slimErr)
+		}
+		// REQ-021 informational notice on slim mode (4 substring guarantee).
+		emitSlimModeNotice(cmd.OutOrStdout())
+	}
 
 	initializer := project.NewInitializer(deployer, mgr, nil)
 	executor := project.NewPhaseExecutor(detector, methDetector, validator, initializer, nil)

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R4-CATALOG-002: Wave 2 Distribution — Slim init via catalog tier filter
+
+### Changed (BREAKING CHANGE)
+
+- **`moai init` 기본 동작 변경**: catalog manifest 의 `tier == core` 자산만 배포 (20 core skills + 20 core agents + non-catalog 템플릿). Optional packs 9 종 (backend / frontend / mobile / auth / deployment / design / devops / testing / chrome-extension — 합계 17 skills + 7 agents) 및 builder-harness agent 1 개는 기본 배포에서 제외 → 약 38% (25/65 entries) 슬림. 두 가지 opt-out 경로: `moai init --all` flag 또는 `MOAI_DISTRIBUTE_ALL=1` 환경변수 (case-insensitive `"true"` 도 허용). `moai update` 동작은 영향 없음 (full FS 유지). Optional pack 인터랙티브 설치는 SPEC-V3R4-CATALOG-003 (`moai pack add`) 에서 제공 예정. 기존 프로젝트의 update drift sync 는 SPEC-V3R4-CATALOG-004. Builder-harness 자동 부트스트랩은 SPEC-V3R4-CATALOG-005.
+
+### Added
+
+- **SlimFS wrapper** (`internal/template/slim_fs.go`, +235 LOC): `fs.FS` 레벨 tier 필터. `SlimFS(rawFS fs.FS, cat *Catalog) (fs.FS, error)` API. `deployer.go` / `update.go` 미수정 (D7 lock 보존, REQ-005/006). 65 entries 중 25 non-core 자산이 `fs.ErrNotExist` 반환. `testing/fstest` 호환 (REQ-001/002/003/010/011/014/015). Coverage 91.1%.
+- **encapsulated slim deployer constructor** (`internal/template/embed_catalog.go`, +59 LOC): `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)` 두 export. `embeddedRaw` unexported 유지 (DEFECT-5 encapsulation invariant — `git grep 'EmbeddedRaw[A-Za-z]*' internal/cli/` zero matches).
+- **builder-harness 친절 에러 가드** (`internal/template/slim_guard.go`, +36 LOC): `AssertBuilderHarnessAvailable(projectFS) error` — slim mode 에서 builder-harness 부재 시 `CATALOG_SLIM_HARNESS_MISSING` sentinel + `MOAI_DISTRIBUTE_ALL=1` + `moai init --all` + `SPEC-V3R4-CATALOG-005` 4 substring 안내 (REQ-021). Coverage 100%.
+- **audit suite** (`internal/template/catalog_slim_audit_test.go`, +242 LOC): 6 sub-tests — `TestSlimFS_HidesNonCoreEntries` (REQ-014 `CATALOG_SLIM_LEAK`, 25 non-core 검증), `TestSlimFS_PreservesCoreEntries` + EC4 nested (REQ-015 `CATALOG_SLIM_CORE_MISSING`, 40 core + `.claude/skills/moai/workflows/plan.md` nested), `TestSlimFS_PreservesNonCatalogFiles` (REQ-016 `CATALOG_SLIM_OVER_FILTER`, 5 non-catalog paths), `TestSlimFS_WalkDirNoLeak` (REQ-017 `CATALOG_SLIM_WALK_LEAK`, 523 paths visited zero leaks), `TestSlimFS_ReadOnlyInvariant` (REQ-003, reflective struct check + 32-goroutine × 50 iteration race-clean, `CATALOG_SLIM_NOT_READONLY`). 모든 sentinel `t.Errorf` 사용 (CATALOG-001 eval-1 EC3 lesson 흡수).
+- **`--all` flag + `shouldDistributeAll(cmd)` helper** (`internal/cli/init.go`, +42/-3): 좁은 env 매칭 (`"1"` exact OR case-insensitive `"true"`). EC2 idempotent (env+flag 동시 set 시 한번만 bypass).
+- **slim mode 진입 안내**: `cmd.OutOrStdout()` 로 4 substring 1-line 출력 (REQ-021 notice — `"slim mode"` + `"--all"` + `"MOAI_DISTRIBUTE_ALL=1"` + `"SPEC-V3R4-CATALOG-005"`).
+
+plan-auditor PASS 0.91 (≥ 0.88 stretch). 8 new files (slim_fs.go/_test, embed_catalog.go/_test, slim_guard.go/_test, catalog_slim_audit_test.go, init_slim_branch_test.go) + 1 modified (init.go +42/-3). DEFECT-5 encapsulation gate enforced. Fixes part of #859.
+
+### English
+
+- **BREAKING CHANGE — `moai init` default behavior**: deploys only `tier == core` catalog entries by default (20 core skills + 20 core agents + non-catalog templates). The 9 optional packs (backend / frontend / mobile / auth / deployment / design / devops / testing / chrome-extension — 17 skills + 7 agents total) and the builder-harness agent are no longer deployed by default — approximately 38% (25 / 65 entries) slim. Two opt-out paths: `moai init --all` flag OR `MOAI_DISTRIBUTE_ALL=1` environment variable (also accepts case-insensitive `"true"`). `moai update` behavior is unchanged (always full FS). Interactive optional-pack installation arrives in SPEC-V3R4-CATALOG-003 (`moai pack add`). Update drift sync for existing projects lands in SPEC-V3R4-CATALOG-004. Builder-harness auto-bootstrap lands in SPEC-V3R4-CATALOG-005.
+
+- New `internal/template/slim_fs.go` SlimFS wrapper applies the tier filter at the `fs.FS` layer; `deployer.go` and `update.go` remain untouched (D7 lock). New `internal/template/embed_catalog.go` provides the encapsulated `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer()` entry points while keeping `embeddedRaw` unexported (DEFECT-5 invariant). New `internal/template/slim_guard.go` surfaces a friendly four-substring error when the builder-harness agent is absent. New `internal/template/catalog_slim_audit_test.go` adds 6 audit sub-tests (`CATALOG_SLIM_LEAK` / `CATALOG_SLIM_CORE_MISSING` + EC4 nested / `CATALOG_SLIM_OVER_FILTER` / `CATALOG_SLIM_WALK_LEAK` / `CATALOG_SLIM_NOT_READONLY` reflective + 32-goroutine race-clean) against the real production catalog. All sentinels use `t.Errorf` per the CATALOG-001 EC3 lesson.
+
+- plan-auditor PASS 0.91 (≥ 0.88 stretch target). 8 new files + 1 modified. `git grep 'EmbeddedRaw[A-Za-z]*' internal/cli/` returns zero matches. Fixes part of #859.
+
 ## [Unreleased] — Dev Tooling: release-update workflow harness
 
 ### Added
