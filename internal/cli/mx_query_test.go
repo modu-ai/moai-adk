@@ -447,5 +447,29 @@ func TestMxQueryCmd_FormatDefault(t *testing.T) {
 	}
 }
 
+// TestSidecarUnavailable_StderrFormat은 사이드카 없을 때 stderr 형식을 정확히 검증합니다.
+// AC-SPC-004-04: SidecarUnavailable → stderr에 "SidecarUnavailable" + "/moai mx --full" 포함 (G-06)
+func TestSidecarUnavailable_StderrFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	// 사이드카 파일 생성하지 않음 (부재 시뮬레이션)
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+
+	_, stderr, err := executeQueryCmd(t, []string{"--kind", "anchor"})
+	if err == nil {
+		t.Fatal("사이드카 없을 때 오류 기대, 실제 nil")
+	}
+
+	if !strings.Contains(stderr, "SidecarUnavailable") {
+		t.Errorf("stderr에 'SidecarUnavailable' 없음\nstderr: %q", stderr)
+	}
+
+	if !strings.Contains(stderr, "/moai mx --full") {
+		t.Errorf("stderr에 '/moai mx --full' 없음\nstderr: %q", stderr)
+	}
+}
+
 // 더미 참조: os 패키지 사용 확인
 var _ = os.DevNull

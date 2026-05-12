@@ -195,6 +195,95 @@ func TestTextualFanInCounter_CountEmptyProjectRoot(t *testing.T) {
 	_ = method
 }
 
+// TestIsTestFile_UserPattern_IntegrationDir는 사용자 glob 패턴으로 integration 디렉토리를 테스트 파일로 판별합니다.
+// AC-SPC-004-11: 사용자 정의 TestPaths glob 지원 (G-05)
+func TestIsTestFile_UserPattern_IntegrationDir(t *testing.T) {
+	// isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"}) → true
+	got := isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"})
+	if !got {
+		t.Errorf("isTestFileWithPatterns: **/integration/** 패턴으로 integration 디렉토리 파일을 테스트 파일로 판별해야 함")
+	}
+}
+
+// TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded는 사용자 패턴 불일치 시 하드코딩 폴백을 테스트합니다.
+// AC-SPC-004-11: 사용자 패턴 불일치 시 _test.go 하드코딩 폴백 (G-05)
+func TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded(t *testing.T) {
+	// isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"}) → true (하드코딩 _test.go 폴백)
+	got := isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"})
+	if !got {
+		t.Errorf("isTestFileWithPatterns: 사용자 패턴 불일치 시 _test.go 하드코딩 폴백으로 true 반환해야 함")
+	}
+}
+
+// TestTextualFanInCounter_RespectsUserTestPaths는 TextualFanInCounter.TestPaths 필드를 테스트합니다.
+// AC-SPC-004-11: TestPaths 필드로 사용자 glob 패턴 주입 (G-06)
+func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
+	projectRoot := t.TempDir()
+
+	// integration 디렉토리에 anchor 참조 파일 생성 (테스트 파일로 처리되어야 함)
+	integrationFile := filepath.Join(projectRoot, "internal", "myfeature", "integration", "anchor_caller.go")
+	if err := os.MkdirAll(filepath.Dir(integrationFile), 0755); err != nil {
+		t.Fatalf("디렉토리 생성 실패: %v", err)
+	}
+	integrationContent := "package integration\n// anchor-test-userpath 참조\n"
+	if err := os.WriteFile(integrationFile, []byte(integrationContent), 0644); err != nil {
+		t.Fatalf("파일 쓰기 실패: %v", err)
+	}
+
+	// 일반 파일 생성 (테스트 파일이 아님)
+	regularFile := filepath.Join(projectRoot, "internal", "myfeature", "foo.go")
+	if err := os.MkdirAll(filepath.Dir(regularFile), 0755); err != nil {
+		t.Fatalf("디렉토리 생성 실패: %v", err)
+	}
+	regularContent := "package myfeature\n// anchor-test-userpath 참조\n"
+	if err := os.WriteFile(regularFile, []byte(regularContent), 0644); err != nil {
+		t.Fatalf("파일 쓰기 실패: %v", err)
+	}
+
+	// 앵커 태그 파일 (참조 카운트에서 제외)
+	tagFile := filepath.Join(projectRoot, "internal", "myfeature", "anchor.go")
+	if err := os.WriteFile(tagFile, []byte("package myfeature\n"), 0644); err != nil {
+		t.Fatalf("파일 쓰기 실패: %v", err)
+	}
+
+	tag := Tag{
+		Kind:       MXAnchor,
+		File:       tagFile,
+		AnchorID:   "anchor-test-userpath",
+		CreatedBy:  "test",
+		LastSeenAt: time.Now(),
+	}
+
+	// TestPaths 있을 때: integration 파일 제외 → count=1 (foo.go만)
+	counterWithPaths := &TextualFanInCounter{
+		TestPaths: []string{"**/integration/**"},
+	}
+	countWithPaths, _, err := counterWithPaths.Count(context.Background(), tag, projectRoot, true)
+	if err != nil {
+		t.Fatalf("TestPaths 있을 때 오류: %v", err)
+	}
+
+	// TestPaths 없을 때: integration 파일 포함 → count=2 (foo.go + integration/anchor_caller.go)
+	counterNoPaths := &TextualFanInCounter{}
+	countNoPaths, _, err := counterNoPaths.Count(context.Background(), tag, projectRoot, false)
+	if err != nil {
+		t.Fatalf("TestPaths 없을 때 오류: %v", err)
+	}
+
+	if countWithPaths >= countNoPaths {
+		t.Errorf("TestPaths 있을 때(%d) < 없을 때(%d) 기대 (integration 파일 제외 효과)",
+			countWithPaths, countNoPaths)
+	}
+
+	if countWithPaths != 1 {
+		t.Errorf("TestPaths 있을 때 count=1 기대 (foo.go만), 실제 %d", countWithPaths)
+	}
+
+	if countNoPaths != 2 {
+		t.Errorf("TestPaths 없을 때 count=2 기대 (foo.go + integration/anchor_caller.go), 실제 %d", countNoPaths)
+	}
+}
+
 // TestTextualFanInCounter_ExcludeTests는 테스트 파일 제외를 확인합니다.
 func TestTextualFanInCounter_ExcludeTests(t *testing.T) {
 	counter := &TextualFanInCounter{}
