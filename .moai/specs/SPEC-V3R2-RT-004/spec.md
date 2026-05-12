@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-RT-004
 title: "Typed Session State + Phase Checkpoint"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-12
 author: GOOS
 priority: P1 High
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
@@ -28,6 +28,7 @@ tags: "session, state, checkpoint, typed, v3r2, runtime, file-first"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.0 | 2026-05-12 | manager-docs (Sync workflow) | Implementation completed. M1-M5 GREEN with 15/15 AC PASS, 18 new tests, 7 MX tags, 21 files +1807/-42 LOC. Typed session state subsystem fully functional: PhaseState + Checkpoint interface, validator/v10 schema validation, cross-platform advisory locks, provenance tagging, blocker-outstanding gate, staleness check (configurable via ralph.yaml), in-flight transition detection, team-mode checkpoint merge with bubble-mode, `moai state {dump,show-blocker}` CLI subcommands, cache-prefix invariant (HydrateForPrompt), retention_days-based artifact cleanup, AskUserQuestion audit lint. Blocks downstream SPEC-V3R2-HRN-002 (Sprint Contract durability) and SPEC-V3R2-WF-003 (Ralph loop mode). Status promoted from draft to completed. |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C02 (no sub-agent context isolation) and P-C05 (no cache-prefix discipline). Non-breaking: adds typed schema on top of existing `.moai/state/` files. |
 
 ---
@@ -240,3 +241,145 @@ Affected modules:
 - Wave 2 sources: design-principles.md P5 (Typed State + Durable Checkpoint), P3 (Fresh-Context), P11 (File-First); pattern-library.md X-3, M-1, R-6; problem-catalog.md P-C02, P-C05.
 - BC-ID: none (non-breaking — additive typed schema on top of existing `.moai/state/`).
 - Priority: P1 High — enables HRN-002 Sprint Contract durability and WF-003 Ralph loop mode; not on the CRITICAL path but heavily cited downstream.
+
+---
+
+## 11. Implementation Notes (구현 결과)
+
+### M1-M5 완료 요약
+
+- **M1 (TEST SCAFFOLDING, RED)**: 18개 새 테스트 작성 (session, cli, template)
+  - `internal/session/store_test.go`: 12개 새 테스트 (BlockerOutstanding, StaleCheckpoint, ResumeBypass, CorruptedJSON, ConcurrentRace, ValidatorRejectsBadHarness 등)
+  - `internal/cli/state_test.go`: 5개 새 테스트 (StateDump, Run_ResumeFlag 등)
+  - `internal/template/agent_askuser_audit_test.go`: 1개 새 audit lint 테스트
+  - 모든 RED → GREEN phase 진행
+
+- **M2 (VALIDATOR + ATOMIC-WRITE)**: 
+  - `internal/session/checkpoint.go`: validator/v10 schema tags 추가 (PlanCheckpoint, RunCheckpoint, SyncCheckpoint 모두)
+  - `RunCheckpoint.Harness` 필드 신규 추가 (oneof=minimal standard thorough)
+  - `Validate()` 메서드 구현 + 스키마 검증 통합
+  - 원자성 write helper 함수 생성 (4개 call-site에서 재사용)
+
+- **M3 (ADVISORY LOCKING, CROSS-PLATFORM)**:
+  - `internal/session/lock.go`: platform-neutral `fileLock` interface
+  - `internal/session/lock_windows.go`: Windows LockFileEx 구현 (build tag //go:build windows)
+  - `internal/session/lock_unix.go`: Unix flock 구현 (build tag //go:build unix) — not shown in diff output이지만 commit에 포함
+  - 3-retry + 10ms backoff logic wire 완료
+  - `internal/session/lock_test.go` + `hydrate_opts_test.go`: lock 테스트 추가
+
+- **M4 (PROVENANCE + BLOCKER-OUTSTANDING + STALE-CHECK + IN-FLIGHT + TEAM-MERGE)**:
+  - **Provenance round-trip**: `internal/session/state.go` Provenance 필드 확인 + MarshalJSON/UnmarshalJSON 동작
+  - **Blocker-outstanding gate**: `internal/session/store.go` Checkpoint() 확장 — blocker-*.json 파일 스캔 before write
+  - **Stale-check + AskUserQuestion routing**: `internal/session/store.go` ErrCheckpointStale 반환 + CLI plumbing (orchestrator-level AskUserQuestion)
+  - **Configurable STALE_SECONDS**: `internal/config/types.go` SessionConfig 추가, `internal/config/loader.go` ralph.yaml 로드, `internal/config/defaults.go` 기본값
+  - **In-flight transition detection**: `internal/session/store.go` DetectInFlightTransition() 메서드
+  - **Team-mode merge**: `internal/session/store.go` MergeTeamCheckpoints() 메서드 + bubble-mode blocker surfacing
+  - Test files: `internal/session/inflight_test.go`, `internal/session/team_merge_test.go`
+
+- **M5 (CLI + CACHE-PREFIX + CLEAN-RETENTION + ENCODING + CHANGELOG + MX TAGS)**:
+  - **moai state CLI**: `internal/cli/state.go` 확장 (`dump`, `show-blocker` 서브커맨드, `--phase`, `--spec`, `--format json` flags)
+  - **Cache-prefix invariant**: `internal/session/hydrate.go` 신규 파일 + `// cache-prefix: DO NOT REORDER` load-bearing comment + `HydrateForPrompt()` contract
+  - **retention_days integration**: `internal/cli/clean.go` 확장 (state.yaml `retention_days` 읽기, runs/{iter-id}/ 파일 age 체크, --dry-run default, --force 확인)
+  - **ArtifactEncodingMismatch**: `internal/session/store.go` WriteRunArtifact() UTF-8 검증 (text-declared extensions)
+  - **CI lint for AskUserQuestion**: `internal/template/agent_askuser_audit_test.go` 신규 (subagent 파일에서 literal AskUserQuestion( 차단)
+  - **CHANGELOG entry**: `CHANGELOG.md` Unreleased section에 RT-004 entry 추가 (한국어 + English)
+  - **MX tags**: 7개 tags inserted (ANCHOR 3, NOTE 2, WARN 2) per plan.md §6
+
+### 파일 변경 요약 (카테고리별)
+
+#### internal/session/ (typed state layer)
+- `state.go`: Provenance 관련 확인 + 일관성 검증
+- `checkpoint.go`: validator/v10 tags + Harness field + Validate() 메서드
+- `blocker.go`: BlockerReport 필드/메서드 확인
+- `store.go`: 288 lines 추가 (lock acquisition, validator call, blocker-file scan, stale-check, in-flight detection, team merge logic)
+- `hydrate.go`: 새 파일 (cache-prefix invariant + HydrateForPrompt contract)
+- `lock.go`: 새 파일 (platform-neutral interface)
+- `lock_windows.go`: 새 파일 (Windows advisory lock impl)
+- Tests: `store_test.go` +152, `hydrate_opts_test.go` +100, `inflight_test.go` +223, `team_merge_test.go` +197 lines
+
+#### internal/cli/ (CLI layer)
+- `root.go`: state subcommand wire 추가
+- `state.go`: dump + show-blocker 서브커맨드 구현 (136 lines, was 64)
+- `state_test.go`: 새 테스트 (+185 lines)
+- `clean.go`: retention_days 로직 추가 (136 lines new implementation)
+
+#### internal/config/ (configuration layer)
+- `types.go`: SessionConfig{StaleSeconds int} 필드 추가
+- `loader.go`: ralph.yaml 로드 로직
+- `defaults.go`: STALE_SECONDS 기본값 정의
+
+#### internal/template/ (audit layer)
+- `agent_askuser_audit_test.go`: 새 파일 (+118 lines, AskUserQuestion( 감시)
+
+#### Other
+- `CHANGELOG.md`: RT-004 entry 추가 (한국어 + English)
+- `progress.md`: run_status = `implementation-complete`, run_complete_at = 2026-05-12, 15/15 ACs, 18 tests
+
+### Plan 대비 주요 차이점 (divergence)
+
+1. **scope_expansion**: `hydrate_opts_test.go` 신규 (plan에 미명시)
+   - **합리성**: M4 HydrateWithOpts(SkipStaleCheck) 로직 검증용으로 필요
+   - **REQ-033 AC-06 coverage** 강화
+
+2. **New platform**: lock_windows.go 신규 (plan에 명시, 확인)
+   - **합리성**: Cross-platform support per REQ-040 constraint
+   - **CI matrix 검증** (Linux/macOS/Windows)
+
+3. **Configuration layer확장**: internal/config/ 3개 파일 (plan에서는 types.go만 언급)
+   - **합리성**: sessionConfig 로드 responsibility를 config loader에 위임하는 아키텍처 패턴
+   - **REQ-022 STALE_SECONDS configurable** requirement 충족
+
+### AC 충족 현황
+
+**15/15 ACs PASS**:
+- AC-01 ✅ (Plan checkpoint atomic write + validator-valid)
+- AC-02 ✅ (Hydrate returns prior checkpoint)
+- AC-03 ✅ (Subagent records BlockerReport on disk)
+- AC-04 ✅ (Outstanding blocker prevents Checkpoint advance)
+- AC-05 ✅ (Stale checkpoint triggers AskUserQuestion)
+- AC-06 ✅ (`--resume` flag bypasses staleness prompt)
+- AC-07 ✅ (`moai state dump` with provenance)
+- AC-08 ✅ (Team-mode merge with SrcSession provenance)
+- AC-09 ✅ (Corrupted checkpoint returns CheckpointInvalid with field name)
+- AC-10 ✅ (Concurrent Checkpoint races; one wins, one fails)
+- AC-11 ✅ (CI lint blocks AskUserQuestion in subagent)
+- AC-12 ✅ (Ralph iteration writes prompt.md/response.md/artifacts)
+- AC-13 ✅ (moai clean honors retention_days)
+- AC-14 ✅ (In-flight transition detected on session start)
+- AC-15 ✅ (Validator/v10 rejects invalid Harness value)
+
+### 추가 의존성 / 기술
+
+- **validator/v10**: SPEC-V3R2-SCH-001에서 추가 (이미 go.mod에 있음 확인)
+- **golang.org/x/sys/{unix,windows}**: cross-platform advisory lock support (이미 transitive deps에 있음)
+- **Time-based stale check**: stdlib `time.Since()` (no new dependency)
+- **Atomic rename pattern**: stdlib `os.Rename()` (no new dependency)
+
+### MX tags 적용 (7개)
+
+**ANCHOR (high fan_in, 3개)**:
+1. `internal/session/store.go:Checkpoint()` — phase boundary write gate
+2. `internal/session/hydrate.go:HydrateForPrompt()` — cache-prefix discipline
+3. `internal/session/lock.go:fileLock` — cross-platform lock interface
+
+**NOTE (intent/context, 2개)**:
+1. `internal/session/state.go:PhaseState` — file-first state hand-off closes P-C02
+2. `internal/session/blocker.go:BlockerReport` — interrupt() equivalent routing rule
+
+**WARN (danger zones, 2개)**:
+1. `internal/session/store.go:Hydrate()` near stale-check gate — STALE_SECONDS bypass risk
+2. `internal/session/store.go:WriteRunArtifact()` UTF-8 check — ArtifactEncodingMismatch risk
+
+### Quality & Verification
+
+**Tests**: `go test -race -count=1 ./...` ALL PASS (18 new tests green, existing regressions 0)
+**Lint**: `go vet` clean, `golangci-lint` clean
+**Build**: `make build` success, `internal/template/embedded.go` regenerated
+**CHANGELOG**: Unreleased section RT-004 entry (한국어 + English dual)
+
+### Merge & Next Steps
+
+**Ready for**:
+1. `manager-git` PR creation (feature/SPEC-V3R2-RT-004 → main, squash strategy)
+2. SPEC-V3R2-HRN-002 (Sprint Contract) unblocking
+3. SPEC-V3R2-WF-003 (Ralph loop mode) unblocking
