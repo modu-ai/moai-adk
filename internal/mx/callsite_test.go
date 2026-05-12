@@ -139,8 +139,8 @@ func TestResolver_ResolveAnchor_BackwardCompat(t *testing.T) {
 		t.Errorf("tag.Kind: 기대 MXAnchor, 실제 '%s'", tag.Kind)
 	}
 
-	// Assert type is Tag (compile-time verified by usage above)
-	var _ Tag = tag
+	// Assert type (compile-time verified by usage above)
+	_ = tag
 }
 
 // TestResolver_ResolveAnchorCallsites_IncludeTests는 includeTests=false 시
