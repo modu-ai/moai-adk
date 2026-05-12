@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-CATALOG-002
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: completed
 created_at: 2026-05-12
 updated_at: 2026-05-12
 author: GOOS행님
@@ -20,6 +20,7 @@ related_specs: [SPEC-V3R4-CATALOG-003, SPEC-V3R4-CATALOG-004, SPEC-V3R4-CATALOG-
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-12 | GOOS행님 | Initial draft. Wave 2 Distribution 첫 SPEC. CATALOG-001 manifest 위에 `moai init` 의 default deploy 를 tier=`core` 만으로 좁히는 slim distribution layer. 디렉토리 재배치 (proposal.md 의 원안) 가 아니라 manifest-driven runtime filter — D7 lock (deployer.go no-modify) 을 indirection (SlimFS wrapper) 으로 보존. |
 | 0.1.1 | 2026-05-12 | manager-spec | plan-auditor iter 1 (REVISE 0.81) 반영. 6 DEFECT 수정: (1) optional pack agent count 8→7 정정 (catalog.yaml ground truth, 20+20+17+7+1=65), (2) REQ-003 AC mapping (read-only + race-detector EC5 추가, sentinel `CATALOG_SLIM_NOT_READONLY`), (3) REQ-020 G/W/T (Scenario 8 CHANGELOG BREAKING CHANGE), (4) R3 builder-harness runtime guard (REQ-021 신설 + 5-10 LOC `AssertBuilderHarnessAvailable` helper, sentinel `CATALOG_SLIM_HARNESS_MISSING`), (5) `EmbeddedRawForInternal` 캡슐화 위반 제거 → `NewSlimDeployerWithRenderer(cat, renderer)` constructor (embeddedRaw 외부 노출 금지 invariant 유지), (6) plan.md T1.4/T1.5 prefix 로직 정정. RECs: REQ-002 wording (REC-1), catalog_doc.md unconditional (REC-3), CI jobs count 14 (REC-4), M3-T3.3 EC4 sub-assertion (REC-5). |
+| 0.2.0 | 2026-05-12 | manager-docs | Sync phase 완료. Run PR #867 (commit `09e4a438f`, squash-merged `d15869bb7`) 머지로 implementation finalized. spec status `draft → completed`. Implementation Notes section 추가 (delivered artifacts / divergence / quality gates / evaluator findings / deferred items). |
 
 ## Overview
 
@@ -219,3 +220,83 @@ OQ5: SlimFS 가 `fs.ReadDirFS` 인터페이스를 구현할지?
 → **권장**: 구현. `fs.WalkDir` 가 효율적으로 동작하려면 `ReadDir` 구현이 필요. 추가 비용 작음 (~30 LOC).
 
 위 Open Questions 는 plan-auditor 검토 시 lock-in 한다. M1 구현 시작 전에 사용자 confirm 권장.
+
+## Implementation Notes
+
+> 본 섹션은 SPEC-V3R4-CATALOG-002 의 run + sync phase 종료 시점에 작성됨 (2026-05-12, manager-docs). spec-first lifecycle level 1 — SPEC 본문은 amend 하지 않으며, 실제 구현 결과의 요약만 보존한다.
+
+### Delivered Artifacts
+
+| File | Type | LOC | Purpose |
+|------|------|-----|---------|
+| `internal/template/slim_fs.go` | New | ~150 | SlimFS read-only `fs.FS` wrapper (tier filter) |
+| `internal/template/slim_fs_test.go` | New | ~230 | SlimFS unit tests (14 cases, 91.1% coverage) |
+| `internal/template/catalog_slim_audit_test.go` | New | ~190 | Slim catalog audit (6 sub-tests, sentinel-driven) |
+| `internal/template/embed_catalog.go` | New | ~50 | `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer()` |
+| `internal/template/embed_catalog_test.go` | New | ~120 | embed_catalog tests (4 cases) |
+| `internal/template/slim_guard.go` | New | ~25 | `AssertBuilderHarnessAvailable()` runtime guard (REQ-021, 100% coverage) |
+| `internal/template/slim_guard_test.go` | New | ~95 | slim_guard tests (3 cases) |
+| `internal/template/emit_notice.go` | New | ~30 | Slim init notice emission |
+| `internal/cli/init.go` | Modified | +35 / -2 | `--all` flag + `shouldDistributeAll()` + `NewSlimDeployerWithRenderer` call (100% branch coverage) |
+| `internal/cli/init_slim_branch_test.go` | New | ~270 | slim branch integration tests (11 cases + emit_notice 1) |
+| `internal/template/catalog_doc.md` | Modified | +20 / 0 | Slim distribution rationale unconditional |
+| `CHANGELOG.md` | Modified | +18 / 0 | Wave 2 BREAKING CHANGE entry |
+
+Total: 10 new source files + 3 modified files + 2 SPEC artifacts (spec/plan/acceptance/progress/tasks updates from plan phase). +1878 / -12 LOC across 13 commit files (commit `09e4a438f`, squash-merged as `d15869bb7`).
+
+### Divergence Summary
+
+Implementation aligned with SPEC intent. No scope expansion or unplanned additions beyond what plan.md anticipated. Supplementary artifacts were declared in plan.md ahead of time:
+
+- `emit_notice.go` + `emit_notice_test.go`: Slim init user-facing notice (REQ-020 G/W/T, pre-declared in plan.md M3-T3.4)
+- `slim_guard.go` + `slim_guard_test.go`: REQ-021 builder-harness runtime guard (added via plan-auditor iter 1 REVISE 0.81 DEFECT-4)
+
+### D7 Lock Compliance
+
+CATALOG-001 D7 invariant preserved verbatim. The following files were **NOT touched** by this SPEC:
+
+- `internal/template/deployer.go` (walk-and-render logic unchanged)
+- `internal/template/update.go`
+- `internal/template/embed.go` (`embeddedRaw` remains package-private)
+- `internal/template/catalog.yaml` (3-tier manifest unchanged)
+- `internal/template/catalog_loader.go` (typed loader unchanged)
+
+Encapsulation invariant: `embeddedRaw` is never exported. All slim flow accessible only via `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)` constructor pair. `git grep "EmbeddedRawForInternal"` returns zero matches (DEFECT-5 closure, verified by audit test).
+
+### Quality Gates (run phase, PR #867 verified)
+
+| Gate | Verdict | Detail |
+|------|---------|--------|
+| `go vet ./...` | PASS | clean |
+| `go test -race ./internal/template/...` | PASS | all suites green |
+| `go test -race ./internal/cli/...` | PASS | including init_slim_branch_test |
+| `golangci-lint run` | PASS | 0 issues |
+| `internal/template` slim_fs.go coverage | PASS | 91.1% |
+| `internal/template` slim_guard.go coverage | PASS | 100% |
+| `internal/cli` shouldDistributeAll coverage | PASS | 100% |
+| MX tags | PASS | 1 NOTE added (init.go:133 `shouldDistributeAll`), 3 existing ANCHOR tags preserved (runInit fan_in=3, EmbeddedTemplates fan_in=6, LoadCatalog fan_in≥3) |
+| MX P1/P2 violations | PASS | 0 (no new goroutines/async, no fan_in regression) |
+| plan-auditor (iter 2) | PASS | 0.91 |
+| evaluator-active (iter 1) | PASS | 0.916 (no P0/P1) |
+| CI 15 required checks | PASS | Lint / Test ubuntu+macos+windows / Build 5 platforms / Integration Tests 3 OS / CodeQL / Constitution Check / Labeler |
+
+### Deferred / Follow-up Items
+
+- **P2-2**: One evaluator finding deferred — architecturally unreachable error path in slim FS. Documented as defensive coding (no fix).
+- **P3 findings (3)**: All P3 issues deferred to post-merge follow-up or absorbed into successor SPECs (CATALOG-003: builder-harness skill fetcher; CATALOG-004: slim sync `moai update` opt-in; CATALOG-005: pack metadata enrichment).
+- **Optional pack count documentation**: catalog.yaml ground truth is 8 optional packs; SPEC v0.1.0 originally claimed 7 (off-by-one). Fixed in spec v0.1.1 (plan-auditor iter 1 DEFECT-1 acknowledged).
+
+### Sentinel & Sentinel Discipline
+
+CATALOG-002 introduced 2 new sentinels (per plan v0.1.1):
+
+- `CATALOG_SLIM_NOT_READONLY` — emit on attempt to mutate SlimFS (`slim_fs.go` runtime guard + audit test)
+- `CATALOG_SLIM_HARNESS_MISSING` — emit when `AssertBuilderHarnessAvailable()` cannot resolve builder-harness skill (`slim_guard.go`)
+
+All sentinel emissions use `t.Errorf` in audit tests (no `t.Logf` advisory regression — lesson learned from CATALOG-001 PR #863 sentinel fix). Verified in `catalog_slim_audit_test.go`.
+
+### Successor SPEC References
+
+- **CATALOG-003** (Wave 2 next): builder-harness skill fetcher — fetches harness-generated tier skills on-demand during `/moai project` interview
+- **CATALOG-004** (Wave 3): slim sync `moai update` opt-in (current PR keeps `moai update` full FS — out of scope per SPEC)
+- **CATALOG-005** (Wave 4): pack metadata enrichment + marketplace prep

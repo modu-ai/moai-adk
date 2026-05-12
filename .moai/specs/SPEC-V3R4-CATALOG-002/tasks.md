@@ -111,3 +111,7 @@ Per user choice (HUMAN GATE 1): M1 → M2 → M3 → M4 → M5 sequential delega
 | P3-2 | S6 git baseline `0d4bf14ef` staleness (사용자 측정 시점) | M4-T4.2 verification 시 최신 HEAD 기준 적용 |
 | P3-3 | EC5(a) denySet immutability godoc-only invariant | M5-T5.2 godoc에 명시 |
 | P3-4 | EC5(b) 32-goroutine 통계적 근거 | M3-T3.6 godoc comment에 race 검증 의도 명시 |
+
+## Sync Status (2026-05-12)
+
+All tasks completed via PR #867 (run phase, squash-merged `d15869bb7`). Sync PR adds spec.md status + Implementation Notes only; no new task content.
