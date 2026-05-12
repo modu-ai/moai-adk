@@ -16,7 +16,7 @@
 | Phase   | Status       | Started     | Completed | Notes |
 |---------|--------------|-------------|-----------|-------|
 | Plan    | completed    | 2026-05-10  | 2026-05-10 | PR #837 admin merged into main |
-| Run     | in-progress  | 2026-05-13  | -         | M1 COMPLETE (G-01 LSP fan-in counter) |
+| Run     | in-progress  | 2026-05-13  | -         | M1+M2+M3 COMPLETE (G-01/G-02/G-03) |
 | Sync    | pending      | -           | -         | Awaits run PR merge |
 | Cleanup | pending      | -           | -         | Awaits sync PR merge |
 
@@ -74,12 +74,20 @@ Verification gate: `go test -race ./internal/mx/... -count=1` → all PASS.
 Coverage: 88.4% (M1 end: 88.8% — slight decrease from new LoadDangerConfig statements; >85% target met).
 Race detector: PASS. go vet: PASS.
 
-### M3: `.moai/specs/*/spec.md` `module:` 자동 로드 (G-03) — Priority P1
+### M3: `.moai/specs/*/spec.md` `module:` 자동 로드 (G-03) — Priority P1 ✅ COMPLETE
 
-- [ ] T-SPC004-04: spec_loader.go LoadSpecModules helper
-- [ ] T-SPC004-05: spec_loader RED tests (5 cases) + SpecAssociator integration
+- [x] T-SPC004-04: spec_loader.go LoadSpecModules helper
+  - commit: fe57d9107 (GREEN)
+  - `internal/mx/spec_loader.go` (126 LOC)
+- [x] T-SPC004-05: spec_loader RED tests (5 cases) + SpecAssociator integration
+  - commit: adfa3a53a (RED), fe57d9107 (GREEN)
+  - `internal/mx/spec_loader_test.go` (161 LOC)
+
+M3 Status: COMPLETE (2026-05-13)
+Commits: RED `adfa3a53a`, GREEN `fe57d9107` (REFACTOR skipped: clean implementation)
 
 Verification gate: `go test ./internal/mx/ -run "TestLoadSpecModules|TestSpecAssociator_PathBased_FromLoader"` → all PASS.
+Coverage: 88.0% (stable vs M2 88.4%). Race detector: PASS. go vet: PASS.
 
 ### M4: `Resolver.ResolveAnchorCallsites()` API parity (G-04) — Priority P1
 
@@ -116,7 +124,7 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 
 | AC ID | Status | Verified by | Existing test? | Verified at |
 |---|---|---|---|---|
-| AC-01 | pending | T-SPC004-04, T-SPC004-05, T-SPC004-12 | YES | (TBD) |
+| AC-01 | partial | T-SPC004-04+05 DONE (path loader+associator); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M3 |
 | AC-02 | verified | T-SPC004-01, T-SPC004-02 | YES | 2026-05-13 M1 |
 | AC-03 | partial | T-SPC004-03, T-SPC004-06 (M2 DONE); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M2 |
 | AC-04 | pending | T-SPC004-09, T-SPC004-12 | PARTIAL → fixture added | (TBD) |
@@ -130,7 +138,7 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 | AC-12 | pending | (existing) | YES | (TBD) |
 | AC-13 | partial | T-SPC004-06 (danger InvalidQuery done); T-SPC004-12 (CLI exit-2 pending M6) | PARTIAL → validateQuery danger branch done | 2026-05-13 M2 |
 | AC-14 | pending | (existing) | YES | (TBD) |
-| AC-15 | pending | T-SPC004-04, T-SPC004-05, T-SPC004-15 | YES → 16-lang sweep extended | (TBD) |
+| AC-15 | partial | T-SPC004-04+05 DONE (path-based associator + body-based both active); T-SPC004-15 (M6 sweep pending) | YES | 2026-05-13 M3 |
 
 ---
 
@@ -142,6 +150,7 @@ Per `.claude/rules/moai/workflow/spec-workflow.md` § Re-planning Gate, append p
 |---|---|---|---|---|
 | M1        | 2026-05-13 | 3/15 (AC-02, AC-07, AC-09) | 0 | RED 7237ae2bc → GREEN 25a9f6594 → REFACTOR 8c439a4ac |
 | M2        | 2026-05-13 | +2 partial (AC-03, AC-13) | 0 | RED 94586497f → GREEN 6534a2097 (REFACTOR skipped: no cleanup opportunity) |
+| M3        | 2026-05-13 | +2 partial (AC-01, AC-15) | 0 | RED adfa3a53a → GREEN fe57d9107 (REFACTOR skipped: clean implementation) |
 
 ---
 
