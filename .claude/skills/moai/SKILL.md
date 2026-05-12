@@ -73,6 +73,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **e2e** (aliases: e2e-test): Create and run E2E tests
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
+- **release-update** (aliases: cc-update, release-track) *(dev-only)*: CC upstream change tracker → update plan + docs-site 4-locale sync
 
 
 ### Priority 2: SPEC-ID Detection
@@ -232,6 +233,15 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
 Purpose: Collect user feedback and create GitHub issues.
 Agents: manager-quality
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
+
+### release-update - CC Upstream Change Tracker *(dev-only)*
+
+Purpose: Track Claude Code release notes since last analyzed version, classify by impact tier, generate update plan, sync docs-site 4-locale + README, open PR.
+Agents: manager-docs (Phase 6 docs sync), manager-git (Phase 7 PR)
+Flags: --since vX.Y.Z, --dry, --report-only, --docs-only, --master-spec
+State: .moai/state/last-cc-version.json
+For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/release-update.md
+NOT distributed to user projects (dev-only; entry: .claude/commands/97-release-update.md)
 
 ---
 

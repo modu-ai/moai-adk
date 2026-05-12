@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Dev Tooling: release-update workflow harness
+
+### Added
+
+- **release-update 워크플로우 하네스** (dev-only): CC 업스트림 릴리스 노트 추적 + moai-adk-go 문서 업데이트 자동화. `.claude/commands/97-release-update.md` (thin-wrapper), `.claude/skills/moai/workflows/release-update.md` (8-Phase 워크플로우), `.moai/state/last-cc-version.json` (상태 파일). `--since`, `--dry`, `--docs-only`, `--report-only`, `--master-spec` 플래그 지원. manager-docs (4개 locale 동기화) + manager-git (PR) 위임. `internal/template/templates/`에 미포함 (dev-only).
+
+### English
+
+- **release-update workflow harness** (dev-only): Automates CC upstream release note tracking and moai-adk-go documentation updates. `.claude/commands/97-release-update.md` (thin wrapper), `.claude/skills/moai/workflows/release-update.md` (8-phase workflow), `.moai/state/last-cc-version.json` (state file). Supports `--since`, `--dry`, `--docs-only`, `--report-only`, `--master-spec` flags. Delegates to manager-docs (4-locale sync) and manager-git (PR). Not included in `internal/template/templates/` (dev-only).
+
 ## [Unreleased] — SPEC-V3R2-RT-007: Hardcoded Path Fix + Versioned Migration
 
 ### Added
