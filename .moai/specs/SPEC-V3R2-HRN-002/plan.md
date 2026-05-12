@@ -135,7 +135,7 @@ Exit criteria:
 
 ### M5 — REFACTOR + MX tags + completion gate (CON-002 paperwork) — Priority Critical
 
-Owner: `manager-quality` + `manager-spec`
+Owner (milestone-level): `manager-quality` for T-HRN002-10 (Canary) + T-HRN002-11 (MX tags); `manager-spec` for T-HRN002-12 (CON-002 evidence + completion gate). Per-task owner assignments are authoritative in `tasks.md`; this milestone header lists the union.
 
 File:line anchors:
 - `.moai/specs/SPEC-V3R2-HRN-002/spec.md:104-110` — §2.1 In Scope declares the CON-002 amendment graduation protocol invocation; M5 produces the evidence.

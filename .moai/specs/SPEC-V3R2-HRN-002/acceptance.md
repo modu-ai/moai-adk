@@ -21,6 +21,14 @@
 - Each leaf carries `(maps REQ-...)`. Intermediate nodes MAY omit when all leaves carry a tail.
 - Children inherit parent's Given when the child's own Given is empty (`internal/spec/ears.go:77-81`).
 
+## 1.1 Drift Reconciliation Notes (post-SPC-001 merge, 2026-05-13)
+
+`spec.md` was authored 2026-04-23 against `.claude/rules/moai/design/constitution.md` v3.3.0. Between authorship and plan delivery (2026-05-13), SPEC-V3R2-SPC-001 (PR #870, main `07dabe011`) advanced the constitution to v3.4.0. `spec.md` remains FROZEN per CON-001 zone model; this plan adapts the deltas downstream.
+
+- **Version delta**: spec.md REQ-HRN-002-002 / AC-HRN-002-02 cite "Version: 3.3.0 → 3.4.0". This plan targets `Version: 3.4.0 → 3.5.0` (the next bump after the already-landed v3.4.0). The intent of REQ-HRN-002-002 (HISTORY entry + version bump for the evaluator memory amendment) is preserved; only the version numerals are adapted to current main state. AC-HRN-002-02 verbiage in this acceptance.md (`3.4.0 → 3.5.0`) supersedes the stale spec.md figure for run-phase verification.
+- **SKILL.md path**: spec.md §3 module list cites `.claude/skills/moai/moai-workflow-gan-loop/SKILL.md`. The actual path on main is `.claude/skills/moai-workflow-gan-loop/SKILL.md` (no intermediate `/moai/` subdirectory). plan.md, research.md, and tasks.md use the correct path; spec.md path is preserved verbatim per FROZEN rule.
+- **No further drift expected**: research.md §11 D1–D10 captured all other plan-time decisions; this reconciliation block is the only deviation from spec.md and is bounded by the two items above.
+
 ## 2. REQ ↔ AC Traceability Matrix
 
 | REQ ID | EARS modality | Mapped AC(s) | Notes |
