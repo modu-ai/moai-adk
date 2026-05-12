@@ -2,9 +2,9 @@
 id: SPEC-V3R2-SPC-004
 title: "@MX anchor resolver (query by SPEC ID, fan_in, danger category)"
 version: "0.1.0"
-status: draft
+status: planned
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-13
 author: Wave 4 SPEC Writer
 priority: P2 Medium
 phase: "v3.0.0 — Phase 7 — Extension"

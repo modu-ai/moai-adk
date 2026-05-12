@@ -2,9 +2,9 @@
 id: SPEC-V3R2-ORC-002
 title: "Agent Common Protocol CI Lint (moai agent lint)"
 version: "0.1.0"
-status: draft
+status: planned
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-13
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 3 — Agent Cleanup"

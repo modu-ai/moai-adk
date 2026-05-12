@@ -2,9 +2,9 @@
 id: SPEC-V3R2-SPC-001
 title: "EARS + hierarchical acceptance criteria"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-04-23
-updated: 2026-05-10
+updated: 2026-05-13
 author: Wave 4 SPEC Writer
 priority: P0 Critical
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"

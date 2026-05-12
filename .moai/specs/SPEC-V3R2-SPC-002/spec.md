@@ -2,9 +2,9 @@
 id: SPEC-V3R2-SPC-002
 title: "@MX TAG v2 with hook JSON integration and sidecar index"
 version: "0.1.0"
-status: draft
+status: planned
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-13
 author: Wave 4 SPEC Writer
 priority: P1 High
 phase: "v3.0.0 — Phase 7 — Extension"

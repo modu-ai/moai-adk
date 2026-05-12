@@ -2,9 +2,9 @@
 id: SPEC-V3R2-RT-001
 title: "Hook JSON-OR-ExitCode Dual Protocol"
 version: "0.1.0"
-status: draft
+status: planned
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-13
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
