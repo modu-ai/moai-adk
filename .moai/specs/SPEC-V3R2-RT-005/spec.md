@@ -2,7 +2,7 @@
 id: SPEC-V3R2-RT-005
 title: "Multi-Layer Settings Resolution with Provenance Tags"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-04-23
 updated: 2026-05-10
 author: GOOS

@@ -2,7 +2,7 @@
 id: SPEC-V3R3-ARCH-007
 title: Token Circuit Breaker — runtime.yaml + Go runtime per-agent budget enforcement
 version: "1.0.0"
-status: implemented
+status: completed
 created: 2026-04-25
 updated: 2026-04-26
 author: manager-spec

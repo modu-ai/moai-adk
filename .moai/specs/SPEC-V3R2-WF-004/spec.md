@@ -2,7 +2,7 @@
 id: SPEC-V3R2-WF-004
 title: Agentless Fixed-Pipeline Classification for Utility Subcommands
 version: "0.3.0"
-status: implemented
+status: completed
 created_at: 2026-04-23
 updated_at: 2026-05-10
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)

@@ -2,7 +2,7 @@
 id: SPEC-V3R2-SPC-003
 title: "SPEC linter (moai spec lint)"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-04-23
 updated: 2026-05-10
 author: Wave 4 SPEC Writer
