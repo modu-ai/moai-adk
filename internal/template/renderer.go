@@ -47,6 +47,8 @@ var claudeCodePassthroughTokens = []string{
 	"$GITHUB_STEP_SUMMARY",
 	// Shell local variables (legitimate in GitHub Actions run scripts)
 	"$LANG_COUNT",
+	// Hook wrapper stderr log path (resolved at shell runtime)
+	"$MOAI_HOOK_STDERR_LOG",
 }
 
 // Renderer renders Go text/template files with strict mode enabled.

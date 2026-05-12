@@ -6,4 +6,4 @@ allowed-tools: Skill
 version: 3.0.0
 ---
 
-Use Skill("moai-workflow-github") with arguments: $ARGUMENTS
+Use Skill("moai/workflows/github") with arguments: $ARGUMENTS

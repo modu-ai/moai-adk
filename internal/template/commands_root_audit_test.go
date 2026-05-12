@@ -134,7 +134,10 @@ func checkSkillDirExists(t *testing.T, body, skillsDir, cmdPath string) {
 		skillName := after[:end]
 		if skillName != "" {
 			skillPath := filepath.Join(skillsDir, skillName)
-			if _, err := os.Stat(skillPath); os.IsNotExist(err) {
+			skillPathMD := skillPath + ".md"
+			_, errDir := os.Stat(skillPath)
+			_, errMD := os.Stat(skillPathMD)
+			if os.IsNotExist(errDir) && os.IsNotExist(errMD) {
 				t.Errorf(
 					"THIN_WRAPPER_PARTIAL_MIGRATION: %s references Skill(%q) but .claude/skills/%s/ does not exist (REQ-WF002-015)",
 					cmdPath, skillName, skillName,
