@@ -18,53 +18,94 @@ Wave 2 Distribution 의 첫 SPEC. CATALOG-001 manifest 위에 **`fs.FS` 레벨 t
 
 ## Task Decomposition
 
-전체 task ~22개. M1 (5) + M2 (4) + M3 (5) + M4 (4) + M5 (4). development_mode 는 quality.yaml 기준 TDD 가정 — M3 audit suite 가 TDD RED → GREEN 진입점.
+전체 task ~25개. M1 (5) + M2 (6) + M3 (5) + M4 (4) + M5 (5). development_mode 는 quality.yaml 기준 TDD 가정 — M3 audit suite 가 TDD RED → GREEN 진입점.
 
 ### M1 — SlimFS Wrapper API + Implementation
 
 - T1.1: `internal/template/slim_fs.go` 생성. Package docstring + `SlimFS(rawFS fs.FS, cat *Catalog) (fs.FS, error)` 시그니처 정의. 입력 검증 (nil rawFS / nil cat → error).
-- T1.2: private `slimFS` struct 정의 (필드: `underlying fs.FS`, `denySet map[string]struct{}`). `fs.FS` interface (`Open(name string) (fs.File, error)`) 구현. `fs.StatFS` 와 `fs.ReadDirFS` interface 추가 구현 (audit + WalkDir 효율).
-- T1.3: `computeDenySet(cat *Catalog) map[string]struct{}` 헬퍼 — `cat.AllEntries()` 순회하여 `tier != TierCore` 인 entry 의 `Path` 를 deny set 에 추가. Path 정규화 (templates/ prefix 유지, trailing slash 제거).
-- T1.4: `(*slimFS) Open(name string) (fs.File, error)` — `name` (post-Sub view) 을 `templates/` prefix 와 결합하여 deny set 매칭. 매칭 시 `fs.ErrNotExist` wrap 한 error 반환. 매칭 안 되면 underlying.Open 으로 pass-through.
-- T1.5: `(*slimFS) ReadDir(name string) ([]fs.DirEntry, error)` — underlying ReadDir 결과를 필터링. deny set prefix 매칭되는 entry 제거. 동시에 sub-directory 진입 차단을 위해 디렉토리 entry 도 deny 매칭 처리. 마지막으로 `fs.Sub(slimWrapper, "templates")` 로 templates/ 제거된 view 반환. 
+- T1.2: private `slimFS` struct 정의 (필드: `underlying fs.FS`, `denySet map[string]struct{}`). `fs.FS` interface (`Open(name string) (fs.File, error)`) 구현. `fs.StatFS` 와 `fs.ReadDirFS` interface 추가 구현 (audit + WalkDir 효율). 필드 전부 unexported + immutable (no `sync.*`, no chan, no mutable map mutation after construction) — REQ-003 invariant.
+- T1.3: `computeDenySet(cat *Catalog) map[string]struct{}` 헬퍼 — `cat.AllEntries()` 순회하여 `tier != TierCore` 인 entry 의 `Path` 를 deny set 에 추가. Deny set 엔트리 형식은 catalog.yaml 의 `path` 필드 원본 그대로 — 즉 `templates/` prefix **유지** (예: `templates/.claude/skills/moai-domain-backend/`, `templates/.claude/agents/moai/expert-mobile.md`, `templates/.claude/agents/moai/builder-harness.md`). 디렉토리 표기는 trailing slash 유지, 단일 파일은 그대로. **이 매칭 namespace 는 wrapper Open() 이 받는 `name` 과 동일한 prefix space** (T1.4 참조).
+- T1.4: `(*slimFS) Open(name string) (fs.File, error)` — `slimFS` 는 raw `embeddedRaw` 를 underlying 으로 받으므로 `Open` 이 받는 `name` 은 항상 `templates/` prefix 가 포함된 path (예: `"templates/.claude/skills/foo/spec.md"`). 이 `name` 을 **추가 prefix 결합 없이 그대로 deny set 의 각 entry 와 prefix 매칭** 한다. 매칭 시 `&fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}` 반환. 매칭 없으면 `underlying.Open(name)` 으로 pass-through. (Anti-pattern: `name` 에 `"templates/"` 를 prepend 해서는 안 됨 — double-prefix bug. ground truth: `slimFS.Open` 은 raw FS layer 에서 동작.)
+- T1.5: `(*slimFS) ReadDir(name string) ([]fs.DirEntry, error)` 및 `(*slimFS) Stat(name string) (fs.FileInfo, error)` — T1.4 와 동일한 prefix space (`templates/`-prefixed) 에서 deny set prefix 매칭. ReadDir 결과는 underlying 호출 후 deny prefix 와 매칭되는 child entry 제거 (sub-directory 진입 차단). Stat 은 deny match 시 즉시 `fs.ErrNotExist`.
+- T1.6: `SlimFS()` 마지막 단계 — `slimWrapper := &slimFS{underlying: rawFS, denySet: computeDenySet(cat)}` 구성 후 `return fs.Sub(slimWrapper, "templates")`. 호출자 (init.go) 입장에서는 `templates/` prefix 가 제거된 view 만 보인다 (REQ-002). 단, internal 의 wrapper Open/Stat/ReadDir 는 여전히 `templates/`-prefixed name 을 받는다 (`fs.Sub` 가 prefix 를 자동으로 prepend 하여 wrapper 에 전달하기 때문). 이 invariant 가 deny set namespace 와 wrapper 입력 namespace 의 일치를 보장.
 
-**Risk in M1**: deny set 키 정규화 (slash 처리, 디렉토리 vs 파일 구분) 가 오타나면 leak 발생. 해결: T1.5 의 prefix matching 을 sentinel 테스트 (M3-T3.1) 가 잡는다. 또한 deny set 빌드 단계에서 catalog 의 entry.Path 가 `templates/.claude/skills/<name>/` 또는 `templates/.claude/agents/moai/<name>.md` 형태임을 단위 테스트로 확정 (slim_fs_test.go).
+**Risk in M1**: deny set 키 정규화 (slash 처리, 디렉토리 vs 파일 구분) 가 오타나면 leak 발생. 해결: T1.5 의 prefix matching 을 sentinel 테스트 (M3-T3.1) 가 잡는다. 또한 deny set 빌드 단계에서 catalog 의 entry.Path 가 `templates/.claude/skills/<name>/` 또는 `templates/.claude/agents/moai/<name>.md` 형태임을 단위 테스트로 확정 (slim_fs_test.go). **추가 risk**: `fs.Sub` 가 wrapper Open 에 전달하는 name 이 `templates/`-prefixed 라는 가정이 잘못되면 T1.4 의 prefix matching 이 fail — `testing/fstest.TestFS` helper 로 calling convention 검증 (R7 mitigation).
 
-### M2 — CLI Integration (init.go)
+### M2 — CLI Integration (init.go) + Encapsulated Slim Deployer Constructor
+
+[ENCAPSULATION] 본 SPEC 은 `embeddedRaw` 를 `internal/template/` 패키지 외부로 노출하지 않는다. 외부 호출 surface 는 `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)` 두 함수로 한정 (REQ-004).
 
 - T2.1: `internal/cli/init.go:60` 의 flag 정의 블록에 `initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (CATALOG-002).")` 추가.
 - T2.2: `shouldDistributeAll(cmd *cobra.Command) bool` 헬퍼 함수 추가 (init.go 또는 init_helpers.go 신규 파일). 로직: `cmd.Flags().GetBool("all")` OR `os.Getenv("MOAI_DISTRIBUTE_ALL") == "1"` OR `strings.EqualFold(os.Getenv("MOAI_DISTRIBUTE_ALL"), "true")`.
-- T2.3: `internal/cli/init.go:293-301` 블록 수정 — `embeddedFS, err := template.EmbeddedTemplates()` 호출 후 `shouldDistributeAll(cmd) == false` 시 다음을 수행:
+- T2.3: `internal/cli/init.go:293-301` 블록 수정 — 기존 `embeddedFS, err := template.EmbeddedTemplates()` + `template.NewDeployerWithRenderer(embeddedFS, renderer)` 흐름을 다음과 같이 분기:
   ```go
   cat, catErr := template.LoadEmbeddedCatalog()
   if catErr != nil {
       return fmt.Errorf("CATALOG_LOAD_FAILED: %w", catErr)
   }
-  slim, slimErr := template.SlimFS(template.EmbeddedRawForInternal(), cat)
-  if slimErr != nil {
-      return fmt.Errorf("CATALOG_LOAD_FAILED: slim fs construction: %w", slimErr)
+  var deployer template.Deployer
+  if shouldDistributeAll(cmd) {
+      embeddedFS, err := template.EmbeddedTemplates()
+      if err != nil { return fmt.Errorf("embedded templates: %w", err) }
+      deployer = template.NewDeployerWithRenderer(embeddedFS, renderer)
+  } else {
+      var slimErr error
+      deployer, slimErr = template.NewSlimDeployerWithRenderer(cat, renderer)
+      if slimErr != nil {
+          return fmt.Errorf("CATALOG_LOAD_FAILED: slim deployer: %w", slimErr)
+      }
+      // REQ-021 informational notice on slim mode
+      fmt.Fprintln(os.Stdout, "Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).")
   }
-  embeddedFS = slim
+  // ... existing deployer.Deploy() call unchanged
   ```
-  (T2.4 의 `EmbeddedRawForInternal` 가 raw FS 노출 helper.)
-- T2.4: `internal/template/embed_catalog.go` 신규 파일. exports:
-  - `LoadEmbeddedCatalog() (*Catalog, error)` — `LoadCatalog(embeddedRaw)` wrap.
-  - `EmbeddedRawForInternal() fs.FS` — `embeddedRaw` 그대로 노출 (raw 의 의미: `templates/` prefix 유지). 명명에 `Internal` 을 붙여 사용 범위가 internal/cli 임을 시그널링.
-  - Slim 모드 활성화 시 stdout 에 1-line 안내 출력: `"Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy."`
+  **raw FS 가 외부 코드에서 직접 보이지 않음** — `NewSlimDeployerWithRenderer` 내부에서만 `embeddedRaw` 가 소비된다.
+- T2.4: `internal/template/embed_catalog.go` 신규 파일. Exports:
+  - `LoadEmbeddedCatalog() (*Catalog, error)` — internally `LoadCatalog(embeddedRaw)`.
+  - `NewSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error)` — internally:
+    ```go
+    if cat == nil { return nil, fmt.Errorf("nil catalog") }
+    slim, err := SlimFS(embeddedRaw, cat)
+    if err != nil { return nil, fmt.Errorf("slim fs: %w", err) }
+    return NewDeployerWithRenderer(slim, renderer), nil
+    ```
+  - **NO** `EmbeddedRawForInternal` / `EmbeddedRawForTest` exports. `embeddedRaw` 패키지 변수는 unexported 유지 (D7 lock 정신의 encapsulation 보호). 테스트는 `LoadEmbeddedCatalog()` 또는 `testing/fstest.MapFS` 합성 catalog 로 충당.
+- T2.5: `internal/template/slim_guard.go` 신규 파일 (~5-10 LOC) — REQ-021 가드:
+  ```go
+  // AssertBuilderHarnessAvailable returns a CATALOG_SLIM_HARNESS_MISSING-tagged
+  // error when the builder-harness agent is absent from the given project FS.
+  func AssertBuilderHarnessAvailable(projectFS fs.FS) error {
+      _, err := fs.Stat(projectFS, ".claude/agents/moai/builder-harness.md")
+      if err == nil { return nil }
+      return fmt.Errorf(
+          "CATALOG_SLIM_HARNESS_MISSING: builder-harness omitted in slim mode. "+
+              "Run `moai init --all` or set MOAI_DISTRIBUTE_ALL=1, or wait for SPEC-V3R4-CATALOG-005 auto-bootstrap. (underlying: %w)", err)
+  }
+  ```
+  Companion `slim_guard_test.go` — present case (PASS), missing case (sentinel substring assert), nil FS (defensive return). ~25 LOC.
+- T2.6: `internal/cli/init.go` 의 slim 분기 마지막 (deploy 성공 후) 에서 `template.AssertBuilderHarnessAvailable` 호출은 NOT 필수 (이미 deploy 결과로 absent 확정). 단, `moai doctor` 후속 사용을 위해 helper export 가 충분.
 
-**Risk in M2**: `EmbeddedRawForInternal` 가 외부 패키지에 raw FS 를 노출하여 SlimFS bypass 가 너무 쉬워질 수 있음. 대안: `template.NewDeployerSlim(cat *Catalog) (Deployer, error)` 헬퍼로 raw FS 노출을 완전히 가린다. 그러나 init.go 의 기존 `NewDeployerWithRenderer` 호출 패턴을 보존하기 위해 fs.FS 교체 방식을 채택 (D7 indirection 의 자연스러운 결과). README + godoc 에 "external packages MUST NOT call EmbeddedRawForInternal" 명시.
+**Risk in M2 (resolved)**: 이전 안 (EmbeddedRawForInternal export) 의 캡슐화 위반 risk → `NewSlimDeployerWithRenderer` constructor 패턴으로 해결. R5 (former Risks table 항목) 제거. plan-auditor REC: encapsulation invariant 가 spec.md §"Overview" `[INVARIANT]` block 으로 명문화됨.
 
 ### M3 — Audit Suite (TDD RED → GREEN)
 
-모든 sentinel emission 은 **`t.Errorf` 사용 (NOT `t.Logf`)** — CATALOG-001 evaluator-active iter 1 의 EC3 hash sentinel 교훈을 처음부터 적용.
+모든 sentinel emission 은 **`t.Errorf` 사용 (NOT `t.Logf`)** — CATALOG-001 evaluator-active iter 1 의 EC3 hash sentinel 교훈을 처음부터 적용. 본 M3 는 7 sub-tests (T3.1 helper + T3.2~T3.5 audit invariants + T3.6 read-only invariant + T3.7 harness guard).
 
 - T3.1: `internal/template/catalog_slim_audit_test.go` 골격 작성 — `package template` + imports (`io/fs`, `strings`, `testing`, `testing/fstest`). Helper `loadSlimFS(t *testing.T) (fs.FS, *Catalog)` — `LoadCatalog(embeddedRaw)` + `SlimFS()` 일괄 호출.
 - T3.2: `TestSlimFS_HidesNonCoreEntries` — REQ-014 강제. `cat.AllEntries()` 순회하여 `tier != TierCore` 인 entry 의 `Path` 에 대해 `fs.Stat(slim, strings.TrimPrefix(entry.Path, "templates/"))` 호출. err 없거나 `errors.Is(err, fs.ErrNotExist)` 가 false 면 fail. Sentinel: `CATALOG_SLIM_LEAK: <path> tier=<tier>`.
-- T3.3: `TestSlimFS_PreservesCoreEntries` — REQ-015 강제. tier == TierCore 인 entry 의 path 에 대해 `fs.Stat` 호출. err 가 있거나 not found 면 fail. Sentinel: `CATALOG_SLIM_CORE_MISSING: <path>`.
+- T3.3: `TestSlimFS_PreservesCoreEntries` — REQ-015 강제. tier == TierCore 인 entry 의 path 에 대해 `fs.Stat` 호출. err 가 있거나 not found 면 fail. Sentinel: `CATALOG_SLIM_CORE_MISSING: <path>`. **추가 EC4 sub-assertion (REC-5)**: 본 테스트는 `cat.AllEntries()` core entry 순회 끝에 nested path 검증 1건 — 예: `t.Run("nested_moai_workflows_plan", func(t *testing.T) { _, err := fs.Stat(slim, ".claude/skills/moai/workflows/plan.md"); if err != nil { t.Errorf("CATALOG_SLIM_CORE_MISSING: nested .claude/skills/moai/workflows/plan.md: %v", err) } })` 를 포함. (catalog entry granularity 가 top-level 이지만 sub-files 도 reachable 임을 명시적으로 보증; spec.md §Open Questions OQ4 + acceptance.md EC4 와 일치.)
 - T3.4: `TestSlimFS_PreservesNonCatalogFiles` — REQ-016 강제. 미리 정의한 non-catalog path 목록 (`.claude/rules/moai/core/zone-registry.md`, `.claude/output-styles/`, `.moai/config/sections/quality.yaml`, `CLAUDE.md`, `.gitignore`) 각각에 대해 `fs.Stat`. 누락되면 fail. Sentinel: `CATALOG_SLIM_OVER_FILTER: <path>`.
 - T3.5: `TestSlimFS_WalkDirNoLeak` — REQ-017 강제. `fs.WalkDir(slim, ".", walkFn)` 실행. walk 가 방문하는 모든 path 를 수집한 뒤, 그 중 어느 하나라도 deny set 의 prefix 와 매칭되면 fail. Sentinel: `CATALOG_SLIM_WALK_LEAK: <path>`. 추가로 `t.Parallel()` 사용 (lang_boundary_audit_test.go 선례).
+- T3.6: `TestSlimFS_ReadOnlyInvariant` — REQ-003 강제. 두 부분으로 구성:
+  - **(a) Reflective check**: `reflect.TypeOf(slimWrapper).Elem()` 의 모든 field 를 순회하여 `sync.*` 타입, chan 타입, 또는 mutable map (denySet 외) 발견 시 fail. Sentinel: `CATALOG_SLIM_NOT_READONLY: field=<name> kind=<kind>`. denySet 은 construction 후 immutable 임을 godoc 으로 명시 + 테스트가 lookup-only 호출만 사용함을 검증.
+  - **(b) Race-detector check**: 32 goroutine 가 동시에 `fs.Stat`, `fs.ReadFile`, `fs.WalkDir` 를 random core/non-core path 에 대해 호출. `go test -race -run TestSlimFS_ReadOnlyInvariant` 가 race report 없이 PASS 해야 함. race detection 시 sentinel: `CATALOG_SLIM_NOT_READONLY: data race during concurrent reads`.
+- T3.7: `TestAssertBuilderHarnessAvailable` (in `slim_guard_test.go`) — REQ-021 강제. 세 케이스:
+  - present: `.claude/agents/moai/builder-harness.md` 가 있는 synthetic FS → `AssertBuilderHarnessAvailable` returns nil.
+  - missing: builder-harness 부재 FS → returned error 가 substring `CATALOG_SLIM_HARNESS_MISSING`, `MOAI_DISTRIBUTE_ALL=1`, `SPEC-V3R4-CATALOG-005` 모두 포함.
+  - nil FS: defensive `nil err`. (또는 panic 방지 — implementer 재량.)
+  All sentinel emissions: `t.Errorf`.
 
-**Risk in M3**: harness-generated tier 의 `builder-harness` agent 가 hidden 인데, 만약 미래의 manifest 가 `builder-harness` 를 `tier: core` 로 옮기면 T3.3 가 fail 한다 — 의도된 회귀 (manifest 변경은 SPEC 으로 추적). plan-auditor 가 manifest 변경의 SPEC 참조를 강제하므로 (REQ-CATALOG-001-013), 본 SPEC 단독으로는 안전.
+**Risk in M3**: harness-generated tier 의 `builder-harness` agent 가 hidden 인데, 만약 미래의 manifest 가 `builder-harness` 를 `tier: core` 로 옮기면 T3.3 가 fail 한다 — 의도된 회귀 (manifest 변경은 SPEC 으로 추적). plan-auditor 가 manifest 변경의 SPEC 참조를 강제하므로 (REQ-CATALOG-001-013), 본 SPEC 단독으로는 안전. **REQ-003 race-detector test 의 비용**: 32 goroutine × 약간의 random path = ms 단위, CI 회귀 부담 무시 가능.
 
 ### M4 — Backward Compat & Regression
 
@@ -91,7 +132,8 @@ Wave 2 Distribution 의 첫 SPEC. CATALOG-001 manifest 위에 **`fs.FS` 레벨 t
   ```
 - T5.2: `internal/template/slim_fs.go` 의 godoc 작성. SlimFS 가 D7 lock 을 indirection 으로 보존하는 정당성 명시. 사용 예제 (init.go 에서의 호출 패턴).
 - T5.3: `internal/cli/init.go` 의 `initCmd.Long` 텍스트에 slim mode 안내 1줄 추가. 예: `"By default, only core templates are deployed (~50% lighter). Use --all or set MOAI_DISTRIBUTE_ALL=1 for full deploy."`
-- T5.4: `internal/template/catalog_doc.md` (CATALOG-001 산출물) 에 SlimFS 관련 1개 paragraph 추가 — "Tier filter consumer: SlimFS()" cross-reference. 미존재 시 생략 가능 (optional).
+- T5.4: `internal/template/catalog_doc.md` (CATALOG-001 산출물 — `internal/template/catalog.yaml:13` 의 `reserved.docs_ref` 필드가 참조) 에 SlimFS 관련 1개 paragraph 추가 — "Tier filter consumer: `SlimFS()` + `NewSlimDeployerWithRenderer()` 가 `tier == TierCore` filter 를 어떻게 적용하는지" cross-reference. CATALOG-001 머지 시 파일 존재가 확정되므로 unconditional 작업.
+- T5.5: `internal/template/slim_guard.go` 의 `AssertBuilderHarnessAvailable` godoc — REQ-021 의 sentinel + 두 가지 안내 substring (MOAI_DISTRIBUTE_ALL=1, SPEC-V3R4-CATALOG-005) 명시. 사용 예제 (moai doctor 가 호출하는 패턴).
 
 ## Risks & Mitigations
 
@@ -99,9 +141,9 @@ Wave 2 Distribution 의 첫 SPEC. CATALOG-001 manifest 위에 **`fs.FS` 레벨 t
 |---|------|-----------|--------|------------|
 | R1 | SlimFS deny set 의 path normalization 버그 (trailing slash, leading slash, OS path separator) 로 leak 발생 | 중 | 높음 | M3-T3.5 의 `TestSlimFS_WalkDirNoLeak` 가 fs.WalkDir 전체 walk 결과를 deny set 과 cross-check. unit test (T1.5 의 slim_fs_test.go) 가 동일 invariant 를 synthetic catalog 로도 검증. |
 | R2 | `moai init` 의 기존 사용자가 slim 모드를 인지하지 못해 누락된 자산을 발견 후 confusion | 중 | 중 | M5-T5.1 CHANGELOG BREAKING CHANGE 명시 + M2-T2.4 stdout 1-line 안내 + M5-T5.3 init --help 텍스트. CATALOG-003 (`moai pack add`) 머지 전 사용자에게 "현재는 pack opt-in 명령이 없으므로 `--all` 사용 권장" 안내 가능. |
-| R3 | harness-generated tier 의 builder-harness 가 hidden 되어 harness workflow 가 즉시 fail | 중 | 높음 | 본 SPEC Exclusions 에 명시 + SPEC-V3R4-CATALOG-005 의 `/moai project` 인터뷰에서 부트스트랩 책임. CATALOG-002 단독 머지 후 harness 호출 시 친절한 error 메시지 ("SPEC-V3R4-CATALOG-005 의 harness 부트스트랩 미적용") 출력은 follow-up SPEC 영역. |
+| R3 | harness-generated tier 의 builder-harness 가 hidden 되어 harness workflow 가 즉시 fail | 중 | 낮 (downgraded) | REQ-021 + `AssertBuilderHarnessAvailable` (5-10 LOC) 런타임 가드 + init.go slim path stdout notice. 두 substring (`MOAI_DISTRIBUTE_ALL=1`, `SPEC-V3R4-CATALOG-005`) 가 모든 error message 에 포함되므로 사용자 confusion 최소. CATALOG-005 의 부트스트랩이 머지되면 가드가 silent 로 PASS. (이전 평가: 높음 — but mitigated by in-SPEC runtime guard, not deferred.) |
 | R4 | init_test.go 가 deployed file count 를 hardcode 하여 회귀 발생 | 중 | 낮 | M4-T4.1 전략 B (기존 테스트 보존 + slim 별도) 채택. 추가 작업 부담 최소. |
-| R5 | `EmbeddedRawForInternal` 가 외부 패키지에서 오용되어 D7 indirection 의 보호가 우회됨 | 낮 | 중 | godoc 에 "internal use only — external packages MUST use EmbeddedTemplates" 명시. linter 룰 (`internal/` 패키지 import 제한) 검토 후속 SPEC 영역. |
+| R5 | ~~`EmbeddedRawForInternal` 가 외부 패키지에서 오용되어 D7 indirection 의 보호가 우회됨~~ — **RESOLVED**: `EmbeddedRawForInternal` 미도입. 외부 surface 는 `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer()` 두 함수로 한정 (DEFECT-5 fix). 캡슐화 invariant 가 spec.md `[INVARIANT]` block 으로 명문화. |
 | R6 | SlimFS 성능 회귀 — Open / ReadDir 호출마다 deny set lookup | 낮 | 낮 | deny set 은 map[string]struct{} 로 O(1) lookup. 65 entries 규모에서 무시 가능. M4-T4.4 의 `go test -race` 가 race condition 없음을 확인. |
 | R7 | `fs.Sub` 의 sub-FS 가 wrapped FS 의 Open/Stat/ReadDir 를 호출하지 않을 가능성 (Go stdlib 동작 불확실) | 중 | 높음 | M1-T1.5 가 wrapper 의 인터페이스 구현을 `fs.FS` + `fs.StatFS` + `fs.ReadDirFS` 3종 모두 보장. `testing/fstest` 의 `TestFS` helper 로 calling convention 검증. 만약 `fs.Sub` 가 일부 인터페이스를 bypass 하면 wrapper 안에서 `templates/` prefix 매칭을 직접 수행하는 두 번째 전략으로 fallback. |
 | R8 | catalog.yaml 의 entry path 가 trailing slash 유무 불일치 (디렉토리 vs 파일) | 낮 | 중 | T1.3 의 `computeDenySet` 가 정규화 로직 (trailing slash 제거, leading "templates/" 보장) 을 포함. unit test (slim_fs_test.go) 가 양쪽 케이스 모두 커버. |
@@ -132,18 +174,19 @@ P0 / P1 / P2 위반 0 을 목표로 한다.
 
 ## Estimated Complexity
 
-- **Task count**: 22 (M1: 5, M2: 4, M3: 5, M4: 4, M5: 4).
+- **Task count**: 27 (M1: 6 [T1.1~T1.6], M2: 6 [T2.1~T2.6], M3: 7 [T3.1~T3.7], M4: 4, M5: 5 [T5.1~T5.5]). +5 from baseline due to DEFECT-4 (T2.5/T2.6/T3.7 harness guard), DEFECT-2 (T3.6 read-only audit), DEFECT-6 (T1.6 split), REC-3 (T5.4 unconditional), REC-5 (T3.3 EC4 sub-assertion within existing task).
 - **LOC delta**:
   - `slim_fs.go`: 150-200 LOC.
   - `slim_fs_test.go`: 200-260 LOC.
-  - `catalog_slim_audit_test.go`: 180-240 LOC.
-  - `embed_catalog.go`: 30-50 LOC.
-  - `init.go` modifications: ~30 LOC.
+  - `catalog_slim_audit_test.go`: 220-300 LOC (+40 LOC for T3.6 read-only audit + EC4 sub-assertion).
+  - `embed_catalog.go`: 35-55 LOC (no EmbeddedRawForInternal; +5 LOC for `NewSlimDeployerWithRenderer`).
+  - `slim_guard.go` + `slim_guard_test.go`: 10 + 25 = ~35 LOC (REQ-021).
+  - `init.go` modifications: ~30-35 LOC (slim branch + REQ-021 notice).
   - `init_test.go` 신규 sub-test (M4-T4.1 전략 B): ~60 LOC.
   - `CHANGELOG.md` entry: ~12 lines.
-  - godoc / help text: ~20 lines.
-  - **Total: ~700-900 LOC** (Go + Markdown).
-- **Risk level**: **Medium** — D7 indirection + Go fs.FS interface 가 상대적으로 신선한 패턴. R7 (fs.Sub interface bypass) 이 mitigation 강도가 가장 큼.
+  - godoc / help text: ~25 lines (+5 for slim_guard.go).
+  - **Total: ~770-1000 LOC** (Go + Markdown).
+- **Risk level**: **Low-to-Medium** (downgraded from Medium) — R3 builder-harness 가 in-SPEC guard 로 mitigation. R5 (EmbeddedRawForInternal misuse) eliminated. R7 (fs.Sub interface bypass) 이 mitigation 강도가 가장 큼.
 - **사용자 검토 필요 지점**: Open Decisions 5건 confirm (pre-M1), `init_test.go` 전략 선택 (M4-T4.1).
 
 ## plan-in-main + plan-auditor PASS Criteria
@@ -152,12 +195,12 @@ P0 / P1 / P2 위반 0 을 목표로 한다.
 
 plan-auditor PASS 기준 (예상 dimensions):
 
-- Functionality (40%): EARS 20 REQ 가 verifiable + AC mapping 완전 (REQ 누락 0). Filter semantics 가 명확하고 회귀 테스트 (M4) 가 포함.
-- Security (25%): D7 lock 보존 (deployer.go no-modify). Read-only wrapper. Path traversal 등 보안 회귀 0. catalog.yaml 미존재 시 fail-fast (REQ-008).
-- Craft (20%): EARS 5 분류 (Ubiquitous / Event-Driven / State-Driven / Optional / Unwanted Behavior) 모두 표현. Sentinel discipline (`t.Errorf` not `t.Logf`) 처음부터 명시.
-- Consistency (15%): CATALOG-001 의 D7 lock + tier semantics + LoadCatalog API 와 일관. proposal.md scope 명시적 재정의 (directory relocation → manifest-driven filter) 가 Background 와 Exclusions 양쪽에 정합.
+- Functionality (40%): EARS 21 REQ 가 verifiable + AC mapping 완전 (REQ 누락 0; REQ-003은 EC5 read-only audit, REQ-020 은 Scenario 8 CHANGELOG G/W/T, REQ-021 은 EC6 builder-harness guard 로 매핑). Filter semantics 가 명확하고 회귀 테스트 (M4) 가 포함.
+- Security (25%): D7 lock 보존 (deployer.go no-modify). Read-only wrapper (REQ-003 가 reflective + race-detector 두 가지로 검증). Path traversal 등 보안 회귀 0. catalog.yaml 미존재 시 fail-fast (REQ-008). `embeddedRaw` encapsulation invariant 유지 (DEFECT-5 fix).
+- Craft (20%): EARS 6 분류 (Ubiquitous / Event-Driven / State-Driven / Optional / Unwanted Behavior + Runtime Guard) 모두 표현. Sentinel discipline (`t.Errorf` not `t.Logf`) 처음부터 명시. Plan tasks 가 prefix logic 명확화 (T1.4/T1.5/T1.6 fs.Sub calling convention) 와 encapsulated constructor 패턴 (T2.4) 으로 implementer ambiguity 제거.
+- Consistency (15%): CATALOG-001 의 D7 lock + tier semantics + LoadCatalog API 와 일관. proposal.md scope 명시적 재정의 (directory relocation → manifest-driven filter) 가 Background 와 Exclusions 양쪽에 정합. catalog.yaml ground truth (20+20+17+7+1=65) 가 spec.md / acceptance.md / spec-compact.md 모두에서 일치.
 
-목표 overall_score: **≥ 0.88** (CATALOG-001 plan PASS 0.94 대비 약간 낮음 — 새 패턴 도입 risk premium).
+목표 overall_score: **≥ 0.88** (iter 1: 0.81 with 6 unresolved defects → iter 2 projection: 0.89-0.92 after full fix).
 
 ## Cross-SPEC Boundary Definitions
 

@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R4-CATALOG-002
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created_at: 2026-05-12
 updated_at: 2026-05-12
@@ -19,6 +19,7 @@ related_specs: [SPEC-V3R4-CATALOG-003, SPEC-V3R4-CATALOG-004, SPEC-V3R4-CATALOG-
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-12 | GOOS행님 | Initial draft. Wave 2 Distribution 첫 SPEC. CATALOG-001 manifest 위에 `moai init` 의 default deploy 를 tier=`core` 만으로 좁히는 slim distribution layer. 디렉토리 재배치 (proposal.md 의 원안) 가 아니라 manifest-driven runtime filter — D7 lock (deployer.go no-modify) 을 indirection (SlimFS wrapper) 으로 보존. |
+| 0.1.1 | 2026-05-12 | manager-spec | plan-auditor iter 1 (REVISE 0.81) 반영. 6 DEFECT 수정: (1) optional pack agent count 8→7 정정 (catalog.yaml ground truth, 20+20+17+7+1=65), (2) REQ-003 AC mapping (read-only + race-detector EC5 추가, sentinel `CATALOG_SLIM_NOT_READONLY`), (3) REQ-020 G/W/T (Scenario 8 CHANGELOG BREAKING CHANGE), (4) R3 builder-harness runtime guard (REQ-021 신설 + 5-10 LOC `AssertBuilderHarnessAvailable` helper, sentinel `CATALOG_SLIM_HARNESS_MISSING`), (5) `EmbeddedRawForInternal` 캡슐화 위반 제거 → `NewSlimDeployerWithRenderer(cat, renderer)` constructor (embeddedRaw 외부 노출 금지 invariant 유지), (6) plan.md T1.4/T1.5 prefix 로직 정정. RECs: REQ-002 wording (REC-1), catalog_doc.md unconditional (REC-3), CI jobs count 14 (REC-4), M3-T3.3 EC4 sub-assertion (REC-5). |
 
 ## Overview
 
@@ -31,7 +32,9 @@ CATALOG-001 이 lock-in 한 3-tier manifest (`internal/template/catalog.yaml`, 6
 
 기존 동작 (`init` 이 모든 자산을 deploy) 으로의 복귀는 두 가지 opt-out 경로로 보장된다: `MOAI_DISTRIBUTE_ALL=1` 환경변수 또는 `moai init --all` CLI flag. `moai update` 는 본 SPEC 의 영향을 받지 않는다 (full FS 유지) — slim 동기화는 SPEC-V3R4-CATALOG-004 의 책임.
 
-본 SPEC 의 결과물은 (1) `internal/template/slim_fs.go` `SlimFS()` wrapper, (2) `internal/template/slim_fs_test.go` 단위 테스트, (3) `internal/template/catalog_slim_audit_test.go` invariant audit, (4) `internal/cli/init.go` 의 `--all` flag + `shouldDistributeAll()` helper + SlimFS 적용 (~30 LOC delta), (5) CHANGELOG.md BREAKING CHANGE 항목이다.
+본 SPEC 의 결과물은 (1) `internal/template/slim_fs.go` `SlimFS()` wrapper, (2) `internal/template/slim_fs_test.go` 단위 테스트, (3) `internal/template/catalog_slim_audit_test.go` invariant audit, (4) `internal/template/embed_catalog.go` 의 `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)` constructor (raw FS 외부 노출 없이 캡슐화), (5) `internal/template/slim_guard.go` 의 `AssertBuilderHarnessAvailable()` 런타임 가드 (~10 LOC, REQ-021), (6) `internal/cli/init.go` 의 `--all` flag + `shouldDistributeAll()` helper + `NewSlimDeployerWithRenderer` 호출 (~30 LOC delta), (7) CHANGELOG.md BREAKING CHANGE 항목이다.
+
+[INVARIANT] 패키지 변수 `embeddedRaw` 는 `internal/template/` 패키지 외부에 노출되지 않는다 (D7 lock 정신 — encapsulation 보호). 모든 slim 동작은 `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer()` 두 export 만으로 호출 가능하다.
 
 ## Background
 
@@ -57,11 +60,11 @@ CATALOG-001 이 lock-in 한 3-tier manifest (`internal/template/catalog.yaml`, 6
 
 REQ-CATALOG-002-001: The system shall provide a function `template.SlimFS(rawFS fs.FS, cat *Catalog) (fs.FS, error)` in `internal/template/slim_fs.go` that returns a read-only filesystem view exposing only files reachable through tier=`core` catalog entries plus all non-catalog template files.
 
-REQ-CATALOG-002-002: SlimFS shall return a filesystem rooted at the `templates/` sub-tree (i.e., paths in the returned FS shall NOT include the `templates/` prefix) so that the resulting FS is drop-in compatible with the existing `EmbeddedTemplates()` consumer contract.
+REQ-CATALOG-002-002: The `fs.FS` returned by `SlimFS(...)` (after the internal `fs.Sub` step) shall NOT include the `templates/` prefix in its path namespace, matching the contract of `EmbeddedTemplates()` so the result is a drop-in replacement for the existing consumer chain.
 
-REQ-CATALOG-002-003: SlimFS shall be a read-only wrapper that performs no I/O on `rawFS` other than the lookup needed to answer `fs.ReadFile`, `fs.Stat`, and `fs.WalkDir` queries, and shall hold no goroutine or mutable state beyond an immutable allowed-path set computed at construction time.
+REQ-CATALOG-002-003: SlimFS shall be a read-only wrapper. The implementation shall satisfy the following observable invariants verifiable at test time: (a) the `slimFS` struct contains no `sync.*` field, no channel field, and no unexported mutable field beyond the immutable allowed-path set computed at construction time; (b) parallel `fs.Stat` / `fs.ReadFile` / `fs.WalkDir` calls under `go test -race` produce no data races; (c) no goroutine is started by `SlimFS()` or by any method on the returned FS. Violations are detected by the audit suite with sentinel `CATALOG_SLIM_NOT_READONLY`.
 
-REQ-CATALOG-002-004: The package shall export a convenience function `template.LoadEmbeddedCatalog() (*Catalog, error)` that loads `catalog.yaml` from the package-private `embeddedRaw` FS, returning the same `*Catalog` type as `LoadCatalog`, so callers in `internal/cli/` need not access `embeddedRaw` directly.
+REQ-CATALOG-002-004: The package shall export a convenience function `template.LoadEmbeddedCatalog() (*Catalog, error)` that loads `catalog.yaml` from the package-private `embeddedRaw` FS, returning the same `*Catalog` type as `LoadCatalog`, so callers in `internal/cli/` need not access `embeddedRaw` directly. The package shall also export a `template.NewSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error)` constructor that builds the slim Deployer end-to-end (internal `SlimFS` wrap + Deployer composition); external packages MUST use this constructor and MUST NOT receive `embeddedRaw` directly. The symbol `embeddedRaw` shall remain unexported.
 
 ### 2. Non-Modification Invariants (Ubiquitous — preserves CATALOG-001 D7 lock)
 
@@ -109,17 +112,23 @@ REQ-CATALOG-002-019: If both `MOAI_DISTRIBUTE_ALL=1` and `--all` are set simulta
 
 REQ-CATALOG-002-020: The system shall record the slim-init behavior change in `CHANGELOG.md` under the Unreleased section with an explicit `BREAKING CHANGE` annotation, listing both opt-out mechanisms (`MOAI_DISTRIBUTE_ALL` env var, `--all` flag).
 
+### 9. Runtime Guard for Missing Builder-Harness (Event-Driven)
+
+REQ-CATALOG-002-021: When `moai` (the CLI binary or any code path under `internal/`) attempts to access the `builder-harness` agent (`.claude/agents/moai/builder-harness.md`) and the file is absent on disk (i.e., omitted by slim init), the system shall return a non-nil error wrapped with the sentinel substring `CATALOG_SLIM_HARNESS_MISSING` whose error message includes BOTH (a) the opt-out instruction `MOAI_DISTRIBUTE_ALL=1` (or equivalently `moai init --all`) AND (b) the deferral reference `SPEC-V3R4-CATALOG-005`. This guard shall be implemented as `template.AssertBuilderHarnessAvailable(projectFS fs.FS) error` in `internal/template/slim_guard.go` (estimated 5-10 LOC) and shall be consumable by future callers (e.g., `moai doctor`, harness workflow loaders). Additionally, `moai init` slim path shall print a one-line informational notice on stdout containing both strings immediately after successful slim deploy, so that users discover the constraint without invoking the guard directly.
+
 ## Acceptance Criteria
 
-See `acceptance.md` for the full Given-When-Then scenarios (**7 scenarios + 4 edge cases**, 20 REQ all mapped). High-level acceptance:
+See `acceptance.md` for the full Given-When-Then scenarios (**8 scenarios + 6 edge cases**, 21 REQ all mapped). High-level acceptance:
 
-- AC-CATALOG-002-01: Default `moai init` produces a project with only core-tier skills/agents (37 skills → 20 core, 28 agents → 20 core per catalog.yaml; non-core 17 skills + 8 agents hidden). All non-catalog files (rules/, output-styles/, .moai/config/, CLAUDE.md, .gitignore) deploy unchanged. (maps REQ-001, REQ-002, REQ-004, REQ-007, REQ-010, REQ-011)
+- AC-CATALOG-002-01: Default `moai init` produces a project with only core-tier skills/agents. The catalog ground truth is `20 core skills + 20 core agents + 17 optional-pack skills + 7 optional-pack agents + 1 harness-generated agent = 65 total`; slim mode deploys the 40 core entries and hides the 25 non-core entries (17 skills + 7 optional agents + 1 harness agent). All non-catalog files (rules/, output-styles/, .moai/config/, CLAUDE.md, .gitignore) deploy unchanged. (maps REQ-001, REQ-002, REQ-004, REQ-007, REQ-010, REQ-011)
 - AC-CATALOG-002-02: SlimFS opt-out via `MOAI_DISTRIBUTE_ALL=1` or `--all` flag restores full deploy bit-identical to pre-CATALOG-002 behavior. (maps REQ-012, REQ-013, REQ-019)
 - AC-CATALOG-002-03: SlimFS audit suite (4 sub-tests) guards leak / over-filter / walk leak / core-missing invariants. All sentinel emissions use `t.Errorf` (NOT `t.Logf`). (maps REQ-014, REQ-015, REQ-016, REQ-017)
-- AC-CATALOG-002-04: D7 lock preserved — `git diff` of `internal/template/deployer.go` is empty post-merge. `internal/cli/update.go` likewise unchanged. (maps REQ-005, REQ-006, REQ-018)
+- AC-CATALOG-002-04: D7 lock preserved — `git diff` of `internal/template/deployer.go` is empty post-merge. `internal/cli/update.go` likewise unchanged. `embeddedRaw` is NOT exported from the `template` package; external callers route through `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)`. (maps REQ-005, REQ-006, REQ-018)
 - AC-CATALOG-002-05: Catalog load failure fails init fast with `CATALOG_LOAD_FAILED` substring BEFORE writing any files to disk. (maps REQ-008)
 - AC-CATALOG-002-06: `moai update` deploys full FS (no slim filter applied). (maps REQ-009)
-- AC-CATALOG-002-07: CHANGELOG documents BREAKING CHANGE with opt-out mechanisms. (maps REQ-020)
+- AC-CATALOG-002-07: CHANGELOG documents BREAKING CHANGE with opt-out mechanisms (verified by Scenario 8 G/W/T). (maps REQ-020)
+- AC-CATALOG-002-08: SlimFS is observably read-only — reflective struct inspection finds no mutable/sync/channel field, and `go test -race` over parallel `fs.Stat`/`fs.ReadFile` calls produces no race report. Sentinel `CATALOG_SLIM_NOT_READONLY` fires on violation. (maps REQ-003 via Scenario EC5)
+- AC-CATALOG-002-09: Slim-mode user attempting to invoke harness workflow receives a friendly error from `AssertBuilderHarnessAvailable` containing both `MOAI_DISTRIBUTE_ALL=1` and `SPEC-V3R4-CATALOG-005`. Init slim path also prints the notice on stdout. Sentinel `CATALOG_SLIM_HARNESS_MISSING`. (maps REQ-021 via Scenario EC6)
 
 ## Files to Modify / Create
 
@@ -129,9 +138,11 @@ See `acceptance.md` for the full Given-When-Then scenarios (**7 scenarios + 4 ed
 
 [NEW] `internal/template/catalog_slim_audit_test.go` — Integration audit suite (4 parallel sub-tests) against real embedded FS + catalog. Sentinels: `CATALOG_SLIM_LEAK`, `CATALOG_SLIM_CORE_MISSING`, `CATALOG_SLIM_OVER_FILTER`, `CATALOG_SLIM_WALK_LEAK`. All emissions via `t.Errorf` (CATALOG-001 evaluator-active lesson). Estimated 180-240 LOC.
 
-[NEW] `internal/template/embed_catalog.go` — Tiny helper exporting `LoadEmbeddedCatalog() (*Catalog, error)` and (test-only) `EmbeddedRawForTest() fs.FS`. Decouples package-private `embeddedRaw` from external consumers in `internal/cli/` while keeping the FS field unexported. Estimated 30-50 LOC. (Alternative: extend `embed.go` directly; chosen separate file to keep `embed.go` minimal per CATALOG-001 SPEC scope.)
+[NEW] `internal/template/embed_catalog.go` — Tiny helper exporting `LoadEmbeddedCatalog() (*Catalog, error)` and `NewSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error)`. The constructor internally calls `SlimFS(embeddedRaw, cat)` and composes the standard `NewDeployerWithRenderer`. The package variable `embeddedRaw` remains unexported — NO `EmbeddedRawForInternal` / `EmbeddedRawForTest` export. External packages (`internal/cli/`) consume slim deploy through these two exports only. Estimated 35-55 LOC. (Alternative: extend `embed.go` directly; chosen separate file to keep `embed.go` minimal per CATALOG-001 SPEC scope.)
 
-[MODIFY] `internal/cli/init.go` — Add `--all` flag definition (~3 LOC). Add `shouldDistributeAll(cmd) bool` helper (~10 LOC). Insert SlimFS application between `template.EmbeddedTemplates()` and `template.NewDeployerWithRenderer` (~15 LOC). Total delta ~30 LOC. Existing tests in `init_test.go` / `init_coverage_test.go` may require updates to handle the new default; those updates are tracked under M4-T4.1.
+[NEW] `internal/template/slim_guard.go` — Runtime guard helper. Exports `AssertBuilderHarnessAvailable(projectFS fs.FS) error` that returns a wrapped error with sentinel `CATALOG_SLIM_HARNESS_MISSING` when `.claude/agents/moai/builder-harness.md` is absent. Error message MUST include both `MOAI_DISTRIBUTE_ALL=1` and `SPEC-V3R4-CATALOG-005` substrings. Estimated 5-10 LOC + ~25 LOC test in `slim_guard_test.go`. (REQ-021.)
+
+[MODIFY] `internal/cli/init.go` — Add `--all` flag definition (~3 LOC). Add `shouldDistributeAll(cmd) bool` helper (~10 LOC). Replace the SlimFS wiring block: when slim mode is active, call `cat, _ := template.LoadEmbeddedCatalog()` (failure → `CATALOG_LOAD_FAILED`) then `deployer, _ := template.NewSlimDeployerWithRenderer(cat, renderer)`; when full mode is active, retain `template.EmbeddedTemplates()` + `template.NewDeployerWithRenderer(fs, renderer)`. After successful slim deploy, print the REQ-021 informational notice (~3 LOC). Total delta ~30-35 LOC. Existing tests in `init_test.go` / `init_coverage_test.go` may require updates to handle the new default; those updates are tracked under M4-T4.1.
 
 [MODIFY] `CHANGELOG.md` — Unreleased section: BREAKING CHANGE entry documenting slim init + opt-out mechanisms. ~12 lines.
 
@@ -177,7 +188,7 @@ The following are explicitly **OUT OF SCOPE** for SPEC-V3R4-CATALOG-002 and defe
 - `.moai/specs/SPEC-V3R4-CATALOG-001/progress.md` — CATALOG-001 evaluator-active iter 1 lessons (sentinel discipline: `t.Errorf` not `t.Logf`).
 
 ### Code Reference
-- `internal/template/catalog.yaml` — 65-entry manifest (20 core skills + 20 core agents in `catalog.core`; 9 optional packs in `catalog.optional_packs`; 1 builder-harness in `catalog.harness_generated`).
+- `internal/template/catalog.yaml` — 65-entry manifest. Tier breakdown: 20 core skills + 20 core agents in `catalog.core`; 9 optional packs in `catalog.optional_packs` containing 17 skills + 7 agents (ground truth verified by `awk 'NR>=230 && NR<406' catalog.yaml | grep -c "path: templates/.claude/<agents|skills>"`); 1 builder-harness agent in `catalog.harness_generated`. Total entries: 20+20+17+7+1 = 65.
 - `internal/template/catalog_loader.go:113-125` — `LoadCatalog(fs.FS) (*Catalog, error)` typed accessor, depended on by SlimFS construction.
 - `internal/template/embed.go:28-44` — `embeddedRaw` (package-private) + `EmbeddedTemplates() (fs.FS, error)` (sub-FS at `templates/`).
 - `internal/template/deployer.go:18-36` (`Deployer` interface) + `:72-185` (`Deploy()` walk-and-render). **D7 lock target — no modification by this SPEC.**

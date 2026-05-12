@@ -1,7 +1,8 @@
 # SPEC-V3R4-CATALOG-002 — Compact
 
-> Auto-extracted from spec.md + acceptance.md. ~30% token savings for `/moai run`.
+> Auto-extracted from spec.md + acceptance.md (v0.1.1 — plan-auditor iter 1 REVISE→fix). ~30% token savings for `/moai run`.
 > Wave 2 Distribution 첫 SPEC. CATALOG-001 manifest 위의 manifest-driven slim init filter.
+> Ground truth: catalog.yaml 65 entries = 20 core skills + 20 core agents + 17 optional skills + 7 optional agents + 1 harness-generated agent.
 
 ## Scope (1-line)
 
@@ -14,13 +15,13 @@
 - **vs CATALOG-004**: 본 SPEC = init-only filter, CATALOG-004 = update-only drift sync. `update.go` 미수정 invariant 가 경계.
 - **vs CATALOG-005**: 본 SPEC = user interaction 변경 0, CATALOG-005 = `/moai project` 인터뷰 + harness 부트스트랩.
 
-## EARS Requirements (20)
+## EARS Requirements (21)
 
 ### SlimFS Wrapper Contract (Ubiquitous)
 - REQ-001: `template.SlimFS(rawFS fs.FS, cat *Catalog) (fs.FS, error)` in `internal/template/slim_fs.go`.
-- REQ-002: SlimFS 결과는 `templates/` prefix 제거된 view (drop-in `EmbeddedTemplates()` 대체).
-- REQ-003: SlimFS 는 read-only wrapper, goroutine/mutable state 없음.
-- REQ-004: `template.LoadEmbeddedCatalog() (*Catalog, error)` convenience export.
+- REQ-002: `fs.FS` returned by `SlimFS(...)` (after internal `fs.Sub`) shall NOT include `templates/` prefix — drop-in match for `EmbeddedTemplates()` contract (REC-1 reword).
+- REQ-003: SlimFS read-only wrapper: (a) no `sync.*` / chan / mutable field, (b) `go test -race` clean under parallel reads, (c) no goroutines spawned. Sentinel `CATALOG_SLIM_NOT_READONLY` (EC5 verifies).
+- REQ-004: Exports `template.LoadEmbeddedCatalog() (*Catalog, error)` + `template.NewSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error)`. **`embeddedRaw` remains unexported** — NO `EmbeddedRawForInternal` (DEFECT-5 encapsulation).
 
 ### Non-Modification Invariants (Ubiquitous, D7 lock 보존)
 - REQ-005: `internal/template/deployer.go` 미수정.
@@ -50,14 +51,17 @@
 - REQ-019: If env + flag 둘 다 set → idempotent, full deploy.
 
 ### Documentation (Ubiquitous)
-- REQ-020: `CHANGELOG.md` Unreleased 에 BREAKING CHANGE 항목.
+- REQ-020: `CHANGELOG.md` Unreleased 에 BREAKING CHANGE 항목 (S8 verifies).
 
-## Acceptance Criteria (7 G/W/T + 4 Edge Cases)
+### Runtime Guard for Missing Builder-Harness (Event-Driven)
+- REQ-021: When `builder-harness.md` agent file 부재 → `template.AssertBuilderHarnessAvailable(projectFS) error` 가 `CATALOG_SLIM_HARNESS_MISSING` sentinel + `MOAI_DISTRIBUTE_ALL=1` + `SPEC-V3R4-CATALOG-005` 세 substring 모두 포함하는 wrapped error 반환. Init slim path 도 stdout notice 출력. ~10 LOC in `slim_guard.go` (EC6 verifies).
 
-### S1: Default slim init = core + non-catalog (REQ-001/002/004/007/010/011)
-- G: catalog.yaml 65 entries, empty target dir, no env/flag opt-out.
-- W: `runInit` → `EmbeddedTemplates()` → `LoadEmbeddedCatalog()` → `SlimFS(rawFS, cat)` → `NewDeployerWithRenderer(slim, renderer)` → `Deploy()`.
-- T: 20 core skills + 20 core agents deployed; optional pack (9) + builder-harness 미배포; non-catalog (rules/output-styles/.moai/CLAUDE.md/.gitignore) verbatim; stdout `"slim mode"` + `"--all"` 안내.
+## Acceptance Criteria (8 G/W/T + 6 Edge Cases)
+
+### S1: Default slim init = core + non-catalog (REQ-001/002/004/007/010/011/021-notice)
+- G: catalog.yaml 65 entries (20+20+17+7+1), empty target dir, no env/flag opt-out.
+- W: `runInit` → `LoadEmbeddedCatalog()` → `NewSlimDeployerWithRenderer(cat, renderer)` (internally `SlimFS(embeddedRaw, cat)` + `NewDeployerWithRenderer`) → `Deploy()`. **embeddedRaw 외부 노출 0**.
+- T: 20 core skills + 20 core agents deployed; 17 optional skills + 7 optional agents + 1 builder-harness 미배포 (25 hidden); non-catalog (rules/output-styles/.moai/CLAUDE.md/.gitignore) verbatim; stdout 4 substrings: `"slim mode"`, `"--all"`, `"MOAI_DISTRIBUTE_ALL=1"`, `"SPEC-V3R4-CATALOG-005"` (REQ-021 notice).
 
 ### S2: Env var opt-out = full deploy (REQ-012)
 - G: `MOAI_DISTRIBUTE_ALL=1` (or `true`/`True`/`TRUE`).
@@ -89,6 +93,11 @@
 - W: `runUpdate` 의 `EmbeddedTemplates()` 호출 경로.
 - T: SlimFS 미호출. 65 entries + non-catalog 전체 deploy. (Drift sync 는 CATALOG-004 영역.)
 
+### S8: CHANGELOG BREAKING CHANGE entry (REQ-020)
+- G: Post-merge `CHANGELOG.md` Unreleased section.
+- W: `grep -E 'BREAKING CHANGE' CHANGELOG.md`, `grep MOAI_DISTRIBUTE_ALL`, `grep -- '--all'`, `grep 'moai init'`.
+- T: All grep exit 0; entry mentions BOTH opt-out mechanisms; recommended (not required) refs to CATALOG-002/003/004.
+
 ### EC1: catalog.yaml absent/corrupt (REQ-008)
 - C: 잘못된 빌드로 catalog.yaml missing, 또는 YAML 깨짐.
 - B: `LoadEmbeddedCatalog()` 실패 → `CATALOG_LOAD_FAILED:` prefix error 즉시 반환. 파일 쓰기 0건.
@@ -106,34 +115,47 @@
 ### EC4: Nested path under core skill (REQ-010/015)
 - C: `moai` skill tier=core, sub-files `workflows/plan.md` 등 존재.
 - B: SlimFS 가 core 디렉토리 하위 모든 path 통과. `fs.Stat(slim, ".claude/skills/moai/workflows/plan.md")` 성공.
-- 검증: `TestSlimFS_PreservesCoreEntries` 가 nested path sub-assertion 포함.
+- 검증 (REC-5): `TestSlimFS_PreservesCoreEntries` 가 명시적 sub-assertion 1개 — `t.Run("nested_moai_workflows_plan", ...)` 로 nested path stat 결과 확인. Sentinel: `CATALOG_SLIM_CORE_MISSING: nested .claude/skills/moai/workflows/plan.md`.
+
+### EC5: SlimFS read-only invariant (REQ-003)
+- C: `TestSlimFS_ReadOnlyInvariant` 가 (a) reflect 로 slimFS struct field 검사 + (b) 32 goroutine `fs.Stat`/`fs.ReadFile`/`fs.WalkDir` 동시 호출.
+- B: (a) `sync.*` / chan / mutable field 발견 시 `t.Errorf("CATALOG_SLIM_NOT_READONLY: field=<name>")`. (b) `go test -race` race report 시 `t.Errorf("CATALOG_SLIM_NOT_READONLY: data race")`.
+- 검증: 두 sub-assertion 모두 PASS 필수. denySet 은 construction-time immutable.
+
+### EC6: Builder-harness guard friendly error (REQ-021)
+- C: Slim-mode init 후 `template.AssertBuilderHarnessAvailable(projectFS)` 호출.
+- B: builder-harness 부재 → returned error 의 `.Error()` 가 `CATALOG_SLIM_HARNESS_MISSING` + `MOAI_DISTRIBUTE_ALL=1` + `moai init --all` + `SPEC-V3R4-CATALOG-005` 4 substring 포함.
+- 검증: `TestAssertBuilderHarnessAvailable` 가 `strings.Contains` 로 4 substring 모두 assert. Init slim path 도 stdout notice 출력 (S1 검증).
 
 ## Files to Modify / Create
 
-- [NEW] `internal/template/slim_fs.go` (~150-200 LOC) — SlimFS constructor + private slimFS struct (fs.FS + fs.StatFS + fs.ReadDirFS).
+- [NEW] `internal/template/slim_fs.go` (~150-200 LOC) — SlimFS constructor + private slimFS struct (fs.FS + fs.StatFS + fs.ReadDirFS). Wrapper Open/Stat/ReadDir 가 받는 `name` 은 항상 `templates/`-prefixed (T1.4 prefix discipline; double-prefix bug 방지).
 - [NEW] `internal/template/slim_fs_test.go` (~200-260 LOC) — unit tests (synthetic + real catalog).
-- [NEW] `internal/template/catalog_slim_audit_test.go` (~180-240 LOC) — 4 parallel sub-tests (all sentinels `t.Errorf`).
-- [NEW] `internal/template/embed_catalog.go` (~30-50 LOC) — `LoadEmbeddedCatalog()` + `EmbeddedRawForInternal()` exports.
-- [MODIFY] `internal/cli/init.go` (~30 LOC delta) — `--all` flag, `shouldDistributeAll()`, SlimFS wiring, stdout 안내.
+- [NEW] `internal/template/catalog_slim_audit_test.go` (~220-300 LOC) — 6 parallel sub-tests: 4 invariants (LEAK/CORE_MISSING/OVER_FILTER/WALK_LEAK) + 1 read-only (NOT_READONLY) + 1 harness guard (HARNESS_MISSING). All sentinels `t.Errorf`.
+- [NEW] `internal/template/embed_catalog.go` (~35-55 LOC) — `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer(cat, renderer)` constructor. **NO `EmbeddedRawForInternal` export** (DEFECT-5 encapsulation).
+- [NEW] `internal/template/slim_guard.go` + `slim_guard_test.go` (~35 LOC total) — `AssertBuilderHarnessAvailable(projectFS) error` REQ-021 runtime guard.
+- [MODIFY] `internal/cli/init.go` (~30-35 LOC delta) — `--all` flag, `shouldDistributeAll()`, `NewSlimDeployerWithRenderer` wiring (no raw FS visibility), 4-substring slim notice.
 - [MODIFY] `CHANGELOG.md` (~12 lines) — BREAKING CHANGE Unreleased entry.
+- [MODIFY] `internal/template/catalog_doc.md` (~5 lines, REC-3) — "Tier filter consumer: SlimFS() + NewSlimDeployerWithRenderer()" cross-reference (unconditional, file existence confirmed by catalog.yaml:13 `reserved.docs_ref`).
 - [NO MODIFY] `internal/template/deployer.go` — D7 lock 보존.
 - [NO MODIFY] `internal/cli/update.go` — CATALOG-004 영역.
-- [NO MODIFY] `internal/template/embed.go` — 기존 directive 그대로 사용.
+- [NO MODIFY] `internal/template/embed.go` — 기존 directive 그대로 사용. `embeddedRaw` 외부 노출 금지.
 - [NO MODIFY] `internal/template/catalog.yaml` — manifest 데이터 변경 없음.
 
 ## Implementation Notes (for /moai run)
 
-- M1: SlimFS API + impl (5 tasks). T1.5 의 `fs.Sub` 호환성이 R7 (높음 impact) — `testing/fstest.TestFS` helper 로 calling convention 검증.
-- M2: init.go integration (4 tasks). T2.4 의 `EmbeddedRawForInternal` 가 raw FS 노출 — godoc 에 "internal only" 명시.
-- M3: Audit suite (5 tasks). 모든 sentinel emission `t.Errorf` (CATALOG-001 eval-1 EC3 lesson 처음부터 적용).
+- M1: SlimFS API + impl (6 tasks T1.1-T1.6). T1.4-T1.6 의 `fs.Sub` prefix convention (DEFECT-6 fix): wrapper Open 이 받는 `name` 은 `templates/`-prefixed; deny set 도 동일 namespace; final `fs.Sub(wrapper, "templates")` 가 호출자 view 에서 prefix 제거.
+- M2: init.go integration + encapsulated constructor (6 tasks T2.1-T2.6). `NewSlimDeployerWithRenderer(cat, renderer)` 가 raw FS 외부 노출 차단 (DEFECT-5). `slim_guard.go` + REQ-021 notice 포함.
+- M3: Audit suite (7 tasks T3.1-T3.7). 모든 sentinel emission `t.Errorf`. T3.6 `TestSlimFS_ReadOnlyInvariant` (REQ-003 DEFECT-2 fix) + T3.7 `TestAssertBuilderHarnessAvailable` (REQ-021 DEFECT-4) 추가.
 - M4: Backward compat (4 tasks). init_test.go 전략 B (기존 보존 + slim 별도 신규) 권장.
-- M5: Documentation (4 tasks). CHANGELOG BREAKING CHANGE + slim_fs godoc + init --help 텍스트.
+- M5: Documentation (5 tasks T5.1-T5.5). CHANGELOG BREAKING CHANGE + slim_fs godoc + init --help 텍스트 + catalog_doc.md cross-ref (REC-3, unconditional) + slim_guard.go godoc.
 
 ## Risk Highlights
 
-- R3 (high impact): builder-harness hidden → harness workflow fail 가능. CATALOG-005 부트스트랩으로 mitigation. **CATALOG-002 단독 머지 후 CATALOG-005 머지 전 사이 윈도우 좁게**.
-- R7 (high impact): `fs.Sub` 의 wrapped FS interface bypass 가능성. M1-T1.5 가 fs.FS + fs.StatFS + fs.ReadDirFS 3종 모두 구현으로 mitigation.
-- R1 (high impact): deny set path 정규화 버그 → leak. M3-T3.5 fs.WalkDir 전체 cross-check 로 mitigation.
+- R3 (downgraded high→low): builder-harness hidden 시 친절 에러 보장. REQ-021 `AssertBuilderHarnessAvailable` (5-10 LOC) + init slim 4-substring notice 로 in-SPEC mitigation. CATALOG-005 부트스트랩까지의 윈도우 동안 사용자 confusion 최소화.
+- R7 (high impact): `fs.Sub` 의 wrapped FS interface bypass 가능성. M1-T1.6 의 `fs.Sub(wrapper, "templates")` 호출 convention + wrapper 가 fs.FS + fs.StatFS + fs.ReadDirFS 3종 구현으로 mitigation. `testing/fstest.TestFS` helper.
+- R1 (high impact): deny set path 정규화 버그 → leak. M3-T3.5 fs.WalkDir 전체 cross-check 로 mitigation. T1.4 prefix discipline 가 single source of truth.
+- R5 (resolved): `EmbeddedRawForInternal` 미도입. 외부 surface = `LoadEmbeddedCatalog()` + `NewSlimDeployerWithRenderer()` 두 함수 (DEFECT-5).
 
 ## Exclusions (defer to follow-up SPECs)
 
@@ -152,11 +174,12 @@
 
 ## Quality Gates Targets
 
-- `go test -race -count=1 ./internal/template/... ./internal/cli/...` PASS.
-- `internal/template/slim_fs.go` 커버리지 ≥ 90%.
-- All 7 scenarios + 4 edge cases verifiable.
-- CI 6 jobs GREEN (Lint, Test×3 OS, Build, CodeQL).
+- `go test -race -count=1 ./internal/template/... ./internal/cli/...` PASS (race detector clean on TestSlimFS_ReadOnlyInvariant 32-goroutine sub-test).
+- `internal/template/slim_fs.go` 커버리지 ≥ 90%; `slim_guard.go` 커버리지 ≥ 90%.
+- All 8 scenarios (S1-S8) + 6 edge cases (EC1-EC6) verifiable.
+- CI 14 jobs GREEN (REC-4: Test×3 OS + Build×5 + Lint + Constitution + Integration×3 + CodeQL).
 - D7 lock: `git diff deployer.go update.go` empty.
+- Encapsulation gate: `git grep 'EmbeddedRaw[A-Za-z]*' internal/cli/` zero matches (DEFECT-5).
 - Cross-platform: Linux/macOS/Windows hash + slim 정상.
-- CHANGELOG BREAKING CHANGE entry present.
-- plan-auditor target: ≥ 0.88.
+- CHANGELOG BREAKING CHANGE entry present (S8 G/W/T verifies).
+- plan-auditor target: **≥ 0.88** (iter 1: 0.81 → iter 2 projection 0.89-0.92).
