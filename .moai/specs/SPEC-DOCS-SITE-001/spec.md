@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-SITE-001
 version: 0.2.0
-status: Planned
+status: planned
 created: 2026-04-17
 updated: 2026-04-20
 author: manager-spec

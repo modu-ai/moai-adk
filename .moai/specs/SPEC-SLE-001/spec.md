@@ -1,3 +1,8 @@
+---
+id: SPEC-SLE-001
+status: completed
+---
+
 # SPEC-SLE-001: Statusline Enhancement
 
 ## Metadata

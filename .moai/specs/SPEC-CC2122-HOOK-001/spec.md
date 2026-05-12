@@ -1,3 +1,8 @@
+---
+id: SPEC-CC2122-HOOK-001
+status: completed
+---
+
 # SPEC-CC2122-HOOK-001: Claude Code v2.1.119-121 Hook Feature Integration
 
 ## Status: COMPLETED

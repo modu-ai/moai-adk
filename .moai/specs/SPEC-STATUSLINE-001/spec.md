@@ -1,3 +1,8 @@
+---
+id: SPEC-STATUSLINE-001
+status: completed
+---
+
 # SPEC-STATUSLINE-001: Statusline Segment Configuration
 
 ## Metadata

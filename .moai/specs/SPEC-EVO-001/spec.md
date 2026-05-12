@@ -1,3 +1,8 @@
+---
+id: SPEC-EVO-001
+status: draft
+---
+
 # SPEC-EVO-001: Skill Evolution Preservation Infrastructure
 
 ## Meta

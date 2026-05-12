@@ -119,6 +119,8 @@ func NewLinter(opts LinterOptions) *Linter {
 		&DependencyExistsRule{},
 		&OutOfScopeRule{},
 		&BreakingChangeIDRule{},
+		&StatusValueEnumRule{},
+		&StatusCaseNormalizationRule{},
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
@@ -688,6 +690,67 @@ func (r *BreakingChangeIDRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Code:     "OrphanBCID",
 			Message:  "breaking: false이지만 bc_id가 비어 있지 않음 — orphan breaking change ID",
 		})
+	}
+
+	return findings
+}
+
+// StatusValueEnumRule checks if status value is in the canonical 8-value enum
+// Implements REQ-STATUS-LIFECYCLE-001-03.1
+type StatusValueEnumRule struct{}
+
+func (r *StatusValueEnumRule) Code() string { return "StatusValueInvalid" }
+
+func (r *StatusValueEnumRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
+	fm := doc.Frontmatter
+	var findings []Finding
+
+	if fm.Status == "" {
+		// Empty status is handled by FrontmatterSchemaRule
+		return nil
+	}
+
+	if !IsValidStatus(fm.Status) {
+		findings = append(findings, Finding{
+			File:     doc.Path,
+			Line:     1,
+			Severity: SeverityError,
+			Code:     "StatusValueInvalid",
+			Message:  fmt.Sprintf("status %q is not in the canonical 8-value enum %v", fm.Status, ValidStatuses),
+		})
+	}
+
+	return findings
+}
+
+// StatusCaseNormalizationRule checks if status value contains uppercase letters
+// Implements REQ-STATUS-LIFECYCLE-001-03.2
+type StatusCaseNormalizationRule struct{}
+
+func (r *StatusCaseNormalizationRule) Code() string { return "StatusCaseInvalid" }
+
+func (r *StatusCaseNormalizationRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
+	fm := doc.Frontmatter
+	var findings []Finding
+
+	if fm.Status == "" {
+		// Empty status is handled by FrontmatterSchemaRule
+		return nil
+	}
+
+	// Check if status contains uppercase
+	if fm.Status != strings.ToLower(fm.Status) {
+		lowerStatus := strings.ToLower(fm.Status)
+		// Only report error if the lowercased version is valid
+		if IsValidStatus(lowerStatus) {
+			findings = append(findings, Finding{
+				File:     doc.Path,
+				Line:     1,
+				Severity: SeverityError,
+				Code:     "StatusCaseInvalid",
+				Message:  fmt.Sprintf("status %q contains uppercase; use lowercase %q instead", fm.Status, lowerStatus),
+			})
+		}
 	}
 
 	return findings

@@ -1,3 +1,8 @@
+---
+id: SPEC-DESIGN-001
+status: completed
+---
+
 # SPEC-DESIGN-001: interface-design Plugin Integration
 
 ## Metadata

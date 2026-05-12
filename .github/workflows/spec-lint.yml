@@ -1,0 +1,19 @@
+name: SPEC Lint
+
+on:
+  pull_request:
+    paths:
+      - '.moai/specs/**'
+
+jobs:
+  spec-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build moai
+        run: make build && make install
+      - name: Run SPEC lint
+        run: moai spec lint --strict

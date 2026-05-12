@@ -1,3 +1,8 @@
+---
+id: SPEC-TELEMETRY-001
+status: implemented
+---
+
 # SPEC-TELEMETRY-001: Skill Usage Telemetry
 
 ## Meta

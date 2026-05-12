@@ -1,3 +1,8 @@
+---
+id: SPEC-PSR-001
+status: completed
+---
+
 # SPEC-PSR-001: Profile Setup Redesign -- StatuslineMode Exposure
 
 ## Metadata

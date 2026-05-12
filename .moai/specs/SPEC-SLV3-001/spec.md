@@ -1,3 +1,8 @@
+---
+id: SPEC-SLV3-001
+status: completed
+---
+
 # SPEC-SLV3-001: Statusline v3 Upgrade
 
 | 항목 | 내용 |

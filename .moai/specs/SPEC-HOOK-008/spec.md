@@ -1,3 +1,8 @@
+---
+id: SPEC-HOOK-008
+status: completed
+---
+
 # SPEC-HOOK-008: Complete Hook Event System
 
 ## Metadata

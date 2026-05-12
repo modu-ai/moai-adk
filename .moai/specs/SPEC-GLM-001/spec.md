@@ -1,3 +1,8 @@
+---
+id: SPEC-GLM-001
+status: completed
+---
+
 # SPEC-GLM-001: GLM Compatibility Automation
 
 **Status**: Implemented

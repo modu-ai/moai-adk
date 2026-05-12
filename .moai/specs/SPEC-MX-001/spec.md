@@ -1,3 +1,8 @@
+---
+id: SPEC-MX-001
+status: completed
+---
+
 # SPEC-MX-001: @MX TAG System -- MoAI eXtension Code Annotation System
 
 | Field       | Value                                         |

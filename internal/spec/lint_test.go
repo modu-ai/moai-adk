@@ -570,3 +570,121 @@ func TestLinter_NoArgs_DiscoversSPECs(t *testing.T) {
 		t.Errorf("expected no errors for valid SPEC, got: %v", errors)
 	}
 }
+
+// TestStatusValueEnumRule_Valid는 유효한 status 값에서 findings가 없음을 검증한다.
+func TestStatusValueEnumRule_Valid(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Frontmatter: spec.SPECFrontmatter{
+			Status: "planned",
+		},
+	}
+
+	rule := &spec.StatusValueEnumRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 0 {
+		t.Errorf("expected no findings for valid status, got: %v", findings)
+	}
+}
+
+// TestStatusValueEnumRule_Invalid는 유효하지 않은 status 값에서 오류를 보고함을 검증한다.
+func TestStatusValueEnumRule_Invalid(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Frontmatter: spec.SPECFrontmatter{
+			Status: "Planned", // uppercase, not in enum
+		},
+	}
+
+	rule := &spec.StatusValueEnumRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %v", len(findings), findings)
+	}
+
+	if findings[0].Code != "StatusValueInvalid" {
+		t.Errorf("expected code StatusValueInvalid, got %s", findings[0].Code)
+	}
+}
+
+// TestStatusValueEnumRule_Empty는 빈 status 값에서 findings가 없음을 검증한다.
+func TestStatusValueEnumRule_Empty(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Frontmatter: spec.SPECFrontmatter{
+			Status: "",
+		},
+	}
+
+	rule := &spec.StatusValueEnumRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 0 {
+		t.Errorf("expected no findings for empty status (handled by FrontmatterSchemaRule), got: %v", findings)
+	}
+}
+
+// TestStatusCaseNormalizationRule_Lowercase는 소문자 status에서 findings가 없음을 검증한다.
+func TestStatusCaseNormalizationRule_Lowercase(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Frontmatter: spec.SPECFrontmatter{
+			Status: "planned",
+		},
+	}
+
+	rule := &spec.StatusCaseNormalizationRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 0 {
+		t.Errorf("expected no findings for lowercase status, got: %v", findings)
+	}
+}
+
+// TestStatusCaseNormalizationRule_Uppercase는 대문자 status에서 오류를 보고함을 검증한다.
+func TestStatusCaseNormalizationRule_Uppercase(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Frontmatter: spec.SPECFrontmatter{
+			Status: "COMPLETED",
+		},
+	}
+
+	rule := &spec.StatusCaseNormalizationRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %v", len(findings), findings)
+	}
+
+	if findings[0].Code != "StatusCaseInvalid" {
+		t.Errorf("expected code StatusCaseInvalid, got %s", findings[0].Code)
+	}
+
+	expectedMsg := `status "COMPLETED" contains uppercase; use lowercase "completed" instead`
+	if findings[0].Message != expectedMsg {
+		t.Errorf("expected message %q, got %q", expectedMsg, findings[0].Message)
+	}
+}
+
+// TestStatusCaseNormalizationRule_MixedCase는 혼합 케이스 status에서 오류를 보고함을 검증한다.
+func TestStatusCaseNormalizationRule_MixedCase(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Frontmatter: spec.SPECFrontmatter{
+			Status: "In-Progress",
+		},
+	}
+
+	rule := &spec.StatusCaseNormalizationRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %v", len(findings), findings)
+	}
+
+	if findings[0].Code != "StatusCaseInvalid" {
+		t.Errorf("expected code StatusCaseInvalid, got %s", findings[0].Code)
+	}
+
+	expectedMsg := `status "In-Progress" contains uppercase; use lowercase "in-progress" instead`
+	if findings[0].Message != expectedMsg {
+		t.Errorf("expected message %q, got %q", expectedMsg, findings[0].Message)
+	}
+}

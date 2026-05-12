@@ -1,3 +1,8 @@
+---
+id: SPEC-CC2122-HOOK-002
+status: draft
+---
+
 # SPEC-CC2122-HOOK-002: HOOK-001 Follow-up (REQ-007 + REQ-008)
 
 ## Status: DRAFT

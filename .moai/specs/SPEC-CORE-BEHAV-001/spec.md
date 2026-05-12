@@ -1,3 +1,8 @@
+---
+id: SPEC-CORE-BEHAV-001
+status: draft
+---
+
 # SPEC-CORE-BEHAV-001: Agent Core Behaviors and SPEC Workflow Gates
 
 ## Meta

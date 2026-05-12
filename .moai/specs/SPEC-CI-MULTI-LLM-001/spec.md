@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-MULTI-LLM-001
 version: 1.0.0
-status: Planned
+status: planned
 created: 2026-04-27
 updated: 2026-04-27
 author: manager-spec

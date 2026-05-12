@@ -1,3 +1,8 @@
+---
+id: SPEC-TEAM-001
+status: completed
+---
+
 # SPEC-TEAM-001: Agent Teams Dynamic Generation Architecture
 
 **Status**: Draft

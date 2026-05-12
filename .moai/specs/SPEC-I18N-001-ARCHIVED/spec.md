@@ -1,3 +1,8 @@
+---
+id: SPEC-I18N-001-ARCHIVED
+status: archived
+---
+
 ARCHIVED — SPEC-I18N-001
 
 이 SPEC은 moai-docs 레포(archived)에서 이관된 원본 문서입니다.

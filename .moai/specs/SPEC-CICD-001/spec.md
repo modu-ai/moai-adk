@@ -1,3 +1,8 @@
+---
+id: SPEC-CICD-001
+status: completed
+---
+
 # SPEC-CICD-001: CI/CD AI 자동화 재설계
 
 ## 메타데이터

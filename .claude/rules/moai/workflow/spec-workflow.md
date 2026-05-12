@@ -16,6 +16,34 @@ MoAI's three-phase development workflow with token budget management.
 
 <!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
 
+## Status Lifecycle
+
+The SPEC status field follows a canonical 8-value enum. The single source of truth for these values is `internal/spec/status.go` (`ValidStatuses`).
+
+### Canonical Status Values
+
+| Value | Description | Entry Trigger |
+|-------|-------------|---------------|
+| `draft` | Initial state, SPEC created but not yet planned | SPEC file created |
+| `planned` | Plan PR merged, ready for run phase | Plan PR merge |
+| `in-progress` | Run started, acceptance criteria partially met | Run PR merge (partial AC) |
+| `implemented` | Run complete, all AC GREEN, sync not yet done | Run PR merge (all AC) |
+| `completed` | Sync PR merged, lifecycle terminal-success | Sync PR merge |
+| `superseded` | Replaced by another SPEC | Manual or follow-up SPEC |
+| `archived` | Historical record, not active | Manual |
+| `rejected` | Never implemented, lifecycle terminal-decline | Manual |
+
+### Transition Map
+
+```
+draft → planned → in-progress → implemented → completed
+                                             ↓
+                                        superseded | archived | rejected
+```
+
+- Hyphen form `in-progress` is canonical (not underscore `in_progress`)
+- Status values are always lowercase in frontmatter
+
 ## SPEC Phase Discipline
 
 [HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location (main checkout vs SPEC worktree), branch convention, and PR merge strategy.

@@ -1,3 +1,8 @@
+---
+id: SPEC-SLQG-001
+status: draft
+---
+
 # SPEC-SLQG-001: Self-Learning Quality Guard
 
 ## Overview

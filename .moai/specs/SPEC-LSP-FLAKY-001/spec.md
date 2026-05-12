@@ -1,3 +1,8 @@
+---
+id: SPEC-LSP-FLAKY-001
+status: draft
+---
+
 # SPEC-LSP-FLAKY-001: Ubuntu LSP Launcher ETXTBSY Flake Stabilization
 
 ## Status: DRAFT

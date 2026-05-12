@@ -1,3 +1,8 @@
+---
+id: SPEC-REFLECT-001
+status: draft
+---
+
 # SPEC-REFLECT-001: Reflective Write Hook
 
 ## Meta

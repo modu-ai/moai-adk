@@ -1,3 +1,8 @@
+---
+id: SPEC-SKILL-ENHANCE-001
+status: draft
+---
+
 # SPEC-SKILL-ENHANCE-001: Skill Anti-Rationalization, Red Flags, and Verification
 
 ## Meta

@@ -1,3 +1,8 @@
+---
+id: SPEC-LSP-FLAKY-002
+status: draft
+---
+
 # SPEC-LSP-FLAKY-002: LSP Launcher ETXTBSY Eager Initialization Hotfix
 
 ## Status: DRAFT

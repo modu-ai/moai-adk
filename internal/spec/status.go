@@ -17,6 +17,8 @@ var ValidStatuses = []string{
 	"implemented",
 	"completed",
 	"superseded",
+	"archived",
+	"rejected",
 }
 
 // IsValidStatus checks if a status value is valid
