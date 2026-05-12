@@ -95,9 +95,11 @@ func (r *renderer) Render(templateName string, data any) ([]byte, error) {
 
 	// Verify no unexpanded tokens remain (ADR-011).
 	// Mask Claude Code runtime env vars before validation.
+	// Handle both $VAR and ${VAR} forms.
 	masked := string(result)
 	for _, tok := range claudeCodePassthroughTokens {
 		masked = strings.ReplaceAll(masked, tok, "")
+		masked = strings.ReplaceAll(masked, "${"+tok[1:]+"}", "")
 	}
 	if loc := unexpandedTokenPattern.Find([]byte(masked)); loc != nil {
 		return nil, fmt.Errorf("%w: found %q", ErrUnexpandedToken, string(loc))

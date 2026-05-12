@@ -8,47 +8,29 @@ mkdir -p "$(dirname "$MOAI_HOOK_STDERR_LOG")" 2>/dev/null || true
 #
 # v2.1.119+: stdin JSON includes duration_ms field for slow hook detection.
 # v2.1.121+: hookSpecificOutput.updatedToolOutput extends to all tools (not MCP-only).
+# Tool-name filtering (Write|Edit|MultiEdit vs others) is handled by the Go handler.
 
-# Create temp file to store stdin
-temp_file=$(mktemp)
-trap 'rm -f "$temp_file"' EXIT
-
-# Read stdin into temp file (64KB limit)
-head -c 65536 > "$temp_file"
-if [ $(stat -f%z "$temp_file" 2>/dev/null || stat -c%s "$temp_file" 2>/dev/null || wc -c < "$temp_file") -ge 65536 ]; then
-    echo '{"decision":"block","reason":"stdin exceeds 64KB limit"}'
-    exit 0
+# Single-level rotation at 10MB (best-effort, non-blocking)
+if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
+    hook_log_size=$(stat -f%z "$MOAI_HOOK_STDERR_LOG" 2>/dev/null || stat -c%s "$MOAI_HOOK_STDERR_LOG" 2>/dev/null || echo 0)
+    if [ "$hook_log_size" -gt 10485760 ]; then
+        mv -f "$MOAI_HOOK_STDERR_LOG" "${MOAI_HOOK_STDERR_LOG}.1" 2>/dev/null || true
+    fi
 fi
-
-# Guard: only apply LSP/AST/MX analysis for Write, Edit, and MultiEdit tools.
-# duration_ms metrics are processed for all tools (no tool filter).
-# Claude Code has a known bug where the matcher pattern in settings.json is
-# not always respected, causing PostToolUse to fire for unrelated tools such
-# as AskUserQuestion. We extract tool_name here to decide the processing path.
-tool_name=$(grep -oE '"(toolName|tool_name)"\s*:\s*"[^"]*"' "$temp_file" | head -1 | sed 's/.*:.*"\([^"]*\)"/\1/')
-case "$tool_name" in
-  Write|Edit|MultiEdit)
-    # Proceed: file-modifying tool — full LSP/AST/MX pipeline + duration_ms metrics
-    ;;
-  *)
-    # Non-file-modifying tool: only duration_ms metrics are collected (no LSP/AST analysis).
-    # Pass through to moai binary which handles slow hook detection for all tools.
-    ;;
-esac
 
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
-	exec moai hook post-tool < "$temp_file" 2>>"$MOAI_HOOK_STDERR_LOG"
+    exec moai hook post-tool 2>>"$MOAI_HOOK_STDERR_LOG"
 fi
 
 # Try default ~/go/bin/moai
 if [ -f "$HOME/go/bin/moai" ]; then
-	exec "$HOME/go/bin/moai" hook post-tool < "$temp_file" 2>>"$MOAI_HOOK_STDERR_LOG"
+    exec "$HOME/go/bin/moai" hook post-tool 2>>"$MOAI_HOOK_STDERR_LOG"
 fi
 
 # Try ~/.local/bin/moai (Linux install location)
 if [ -f "$HOME/.local/bin/moai" ]; then
-	exec "$HOME/.local/bin/moai" hook post-tool < "$temp_file" 2>>"$MOAI_HOOK_STDERR_LOG"
+    exec "$HOME/.local/bin/moai" hook post-tool 2>>"$MOAI_HOOK_STDERR_LOG"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)
