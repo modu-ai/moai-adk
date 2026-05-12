@@ -15,8 +15,8 @@
 
 | Phase   | Status       | Started     | Completed | Notes |
 |---------|--------------|-------------|-----------|-------|
-| Plan    | in-progress  | 2026-05-10  | (TBD)     | plan/SPEC-V3R2-SPC-004 branch open; PR pending squash-merge |
-| Run     | pending      | -           | -         | Awaits plan PR merge + worktree setup |
+| Plan    | completed    | 2026-05-10  | 2026-05-10 | PR #837 admin merged into main |
+| Run     | in-progress  | 2026-05-13  | -         | M1 COMPLETE (G-01 LSP fan-in counter) |
 | Sync    | pending      | -           | -         | Awaits run PR merge |
 | Cleanup | pending      | -           | -         | Awaits sync PR merge |
 
@@ -43,12 +43,20 @@ Plan-phase status fields:
 
 ## 3. Milestone Tracker (Run Phase)
 
-### M1: LSP `find-references` 통합 (G-01) — Priority P0
+### M1: LSP `find-references` 통합 (G-01) — Priority P0 ✅ COMPLETE
 
-- [ ] T-SPC004-01: LSPFanInCounter struct + interface implementation
-- [ ] T-SPC004-02: LSPFanInCounter RED tests (4 sub-tests) + strictMode 강화
+- [x] T-SPC004-01: LSPFanInCounter struct + interface implementation
+  - commit: 25a9f6594 (GREEN), 8c439a4ac (REFACTOR)
+  - `internal/mx/fanin_lsp.go` (135 LOC)
+- [x] T-SPC004-02: LSPFanInCounter RED tests (7 sub-tests) + strictMode 강화
+  - commit: 7237ae2bc (RED)
+  - `internal/mx/fanin_lsp_test.go` (246 LOC)
+
+M1 Status: COMPLETE (2026-05-13)
+Commits: RED `7237ae2bc`, GREEN `25a9f6594`, REFACTOR `8c439a4ac`
 
 Verification gate: `go test ./internal/mx/ -run "TestLSPFanInCounter|TestResolver_AC9_StrictMode"` → all PASS.
+Coverage: 88.8% (목표 85% 초과). Race detector: PASS.
 
 ### M2: `mx.yaml` `danger_categories:` user wire-up (G-02) — Priority P1
 
@@ -100,14 +108,14 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 | AC ID | Status | Verified by | Existing test? | Verified at |
 |---|---|---|---|---|
 | AC-01 | pending | T-SPC004-04, T-SPC004-05, T-SPC004-12 | YES | (TBD) |
-| AC-02 | pending | T-SPC004-01, T-SPC004-02 | YES | (TBD) |
+| AC-02 | verified | T-SPC004-01, T-SPC004-02 | YES | 2026-05-13 M1 |
 | AC-03 | pending | T-SPC004-03, T-SPC004-12 | YES | (TBD) |
 | AC-04 | pending | T-SPC004-09, T-SPC004-12 | PARTIAL → fixture added | (TBD) |
 | AC-05 | pending | T-SPC004-15 (sweep) | YES | (TBD) |
 | AC-06 | pending | (existing) | YES | (TBD) |
-| AC-07 | pending | T-SPC004-01, T-SPC004-02 | YES | (TBD) |
+| AC-07 | verified | T-SPC004-01, T-SPC004-02 | YES | 2026-05-13 M1 |
 | AC-08 | pending | T-SPC004-13 | YES | (TBD) |
-| AC-09 | pending | T-SPC004-02 (LSP-detect path) | PARTIAL → strictMode 강화 | (TBD) |
+| AC-09 | verified | T-SPC004-02 (LSP-detect path) | strictMode 강화 완료 | 2026-05-13 M1 |
 | AC-10 | pending | (existing) | YES | (TBD) |
 | AC-11 | pending | T-SPC004-07, T-SPC004-08 | YES → user_paths added | (TBD) |
 | AC-12 | pending | (existing) | YES | (TBD) |
@@ -123,7 +131,7 @@ Per `.claude/rules/moai/workflow/spec-workflow.md` § Re-planning Gate, append p
 
 | Iteration | Date | AC completed | Error delta | Notes |
 |---|---|---|---|---|
-| (TBD)     | (TBD) | 0/15        | 0           | First run-phase iteration baseline |
+| M1        | 2026-05-13 | 3/15 (AC-02, AC-07, AC-09) | 0 | RED 7237ae2bc → GREEN 25a9f6594 → REFACTOR 8c439a4ac |
 
 ---
 
