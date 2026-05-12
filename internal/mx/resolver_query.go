@@ -271,6 +271,24 @@ func validateQuery(query Query) error {
 			Message: fmt.Sprintf("allowed values: note, warn, anchor, todo, legacy (actual: %s)", query.Kind),
 		}
 	}
+
+	// danger カテゴリ검증 (REQ-SPC-004-012, AC-SPC-004-13)
+	if query.Danger != "" {
+		matcher := query.dangerMatcher
+		if matcher == nil {
+			// dangerMatcher가 없으면 기본 카테고리로 검증
+			matcher = NewDangerCategoryMatcher(DangerCategoryConfig{})
+		}
+		if !matcher.ValidateCategory(query.Danger) {
+			known := strings.Join(matcher.KnownCategories(), ", ")
+			return &InvalidQueryError{
+				Field:   "danger",
+				Value:   query.Danger,
+				Message: fmt.Sprintf("unknown danger category; allowed: %s", known),
+			}
+		}
+	}
+
 	return nil
 }
 

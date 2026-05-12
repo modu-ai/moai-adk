@@ -1,7 +1,12 @@
 package mx
 
 import (
+	"log"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // DangerCategoryConfig represents the danger_categories configuration from mx.yaml.
@@ -37,6 +42,30 @@ var DefaultDangerCategories = map[string][]string{
 		"sql injection",
 		"xss",
 	},
+}
+
+// LoadDangerConfig reads mx.yaml from projectRoot and returns the DangerCategoryConfig.
+// When mx.yaml is absent, it returns an empty DangerCategoryConfig{} (callers fall back to DefaultDangerCategories).
+// When mx.yaml is present but malformed, it logs a warning and returns an empty DangerCategoryConfig{}.
+func LoadDangerConfig(projectRoot string) (DangerCategoryConfig, error) {
+	mxPath := filepath.Join(projectRoot, "mx.yaml")
+	data, err := os.ReadFile(mxPath)
+	if os.IsNotExist(err) {
+		// 파일 없음 — 정상; 호출자가 DefaultDangerCategories를 사용하도록 빈 config 반환
+		return DangerCategoryConfig{}, nil
+	}
+	if err != nil {
+		log.Printf("[mx] LoadDangerConfig: mx.yaml 읽기 실패 (graceful fallback): %v", err)
+		return DangerCategoryConfig{}, nil
+	}
+
+	var cfg DangerCategoryConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		log.Printf("[mx] LoadDangerConfig: mx.yaml 파싱 실패 (graceful fallback): %v", err)
+		return DangerCategoryConfig{}, nil
+	}
+
+	return cfg, nil
 }
 
 // DangerCategoryMatcher matches WARN REASON text to danger categories.
