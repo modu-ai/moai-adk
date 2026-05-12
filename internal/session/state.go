@@ -6,6 +6,8 @@ import (
 )
 
 // PhaseState holds the typed session state for a workflow phase.
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-004 file-first state hand-off; the next phase reads this struct from disk, not the prior conversation.
+// Closes problem-catalog P-C02 (no sub-agent context isolation primitive).
 type PhaseState struct {
 	Phase      Phase          `json:"phase"`
 	SPECID     string         `json:"spec_id"`

@@ -12,6 +12,8 @@ import (
 
 // fileLock는 cross-platform advisory lock 인터페이스입니다.
 // SPEC-V3R2-RT-004 REQ-040: concurrent checkpoint write 방지를 위한 lock primitive.
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-004 REQ-040 cross-platform lock contract
+// @MX:REASON: lock_unix.go and lock_windows.go are the two implementations. New platforms add a new file with the same interface.
 type fileLock interface {
 	acquire(path string, retries int, backoff time.Duration) error
 	release() error

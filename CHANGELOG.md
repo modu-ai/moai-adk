@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-RT-004: Typed Session State + Phase Checkpoint
+
+### Added
+
+- **SPEC-V3R2-RT-004**: 타입이 보장된 세션 상태 관리 시스템 구현. `PhaseState` + `Checkpoint` 인터페이스로 plan/run/sync phase별 상태를 `.moai/state/`에 원자적으로 저장. validator/v10 스키마 검증, cross-platform advisory lock(Unix flock + Windows LockFileEx), blocker 파일 스캔, staleness 검사(`stale_seconds` 설정), in-flight transition 감지, team-mode 체크포인트 병합(bubble-mode). `moai state dump/show-blocker` CLI 서브커맨드, cache-prefix 불변 조건(`HydrateForPrompt`), `retention_days` 기반 artifact 정리, AskUserQuestion 감사 lint. 7 MX 태그(ANCHOR 3, NOTE 2, WARN 2) 적용. AC-01~15 충족.
+
+### English
+
+- **SPEC-V3R2-RT-004**: Typed session state management system. `PhaseState` + `Checkpoint` interface atomically persists plan/run/sync phase state to `.moai/state/`. Features: validator/v10 schema checks, cross-platform advisory locks (Unix flock + Windows LockFileEx), blocker file scanning, staleness TTL (`stale_seconds` config), in-flight transition detection, team-mode checkpoint merge with bubble-mode. Added `moai state dump/show-blocker` CLI subcommands, cache-prefix invariant (`HydrateForPrompt`), `retention_days`-based artifact cleanup, and AskUserQuestion audit lint. 7 MX tags (ANCHOR 3, NOTE 2, WARN 2). AC-01~15 met.
+
 ## [Unreleased] — SPEC-V3R2-ORC-001: Agent Roster Consolidation (22 → 17)
 
 ### Added

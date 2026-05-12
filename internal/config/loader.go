@@ -58,6 +58,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load LLM section
 	l.loadLLMSection(sectionsDir, cfg)
 
+	// Load ralph section (RalphConfig + Session.StaleSeconds)
+	l.loadRalphSection(sectionsDir, cfg)
+
 	// Load state section
 	l.loadStateSection(sectionsDir, cfg)
 
@@ -178,6 +181,28 @@ func (l *Loader) loadStatuslineSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.Statusline = wrapper.Statusline
 		l.loadedSections["statusline"] = true
+	}
+}
+
+// loadRalphSection loads the ralph configuration section from ralph.yaml.
+// ralph.yaml의 ralph.stale_seconds 키를 Config.Session.StaleSeconds에 주입합니다.
+// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS 기본값 3600, ralph.yaml에서 오버라이드 가능.
+func (l *Loader) loadRalphSection(dir string, cfg *Config) {
+	wrapper := &ralphFileWrapper{}
+	// ralph.yaml 기본값 초기화 (inline 필드)
+	wrapper.Ralph.RalphConfig = cfg.Ralph
+	loaded, err := loadYAMLFile(dir, "ralph.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load ralph config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Ralph = wrapper.Ralph.RalphConfig
+		// stale_seconds가 0이 아닌 경우에만 오버라이드 (0은 명시적 설정 없음으로 간주)
+		if wrapper.Ralph.StaleSeconds > 0 {
+			cfg.Session.StaleSeconds = wrapper.Ralph.StaleSeconds
+		}
+		l.loadedSections["ralph"] = true
 	}
 }
 

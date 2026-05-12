@@ -29,6 +29,7 @@ type Config struct {
 	Gate          GateConfig                 `yaml:"gate"`
 	Sunset        SunsetConfig               `yaml:"sunset"`
 	Research      ResearchConfig             `yaml:"research"`
+	Session       SessionConfig              `yaml:"session"` // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -148,7 +149,16 @@ type TeamAutoSelectionConfig struct {
 // It controls the directory where structured state data (checkpoints,
 // coverage, diagnostics) is stored.
 type StateConfig struct {
-	StateDir string `yaml:"state_dir"`
+	StateDir      string `yaml:"state_dir"`
+	RetentionDays int    `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: runs/ 디렉토리 보존 일수
+}
+
+// SessionConfig holds session state management configuration.
+// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS 설정.
+type SessionConfig struct {
+	// StaleSeconds는 checkpoint가 stale로 판정되는 기준 시간 (초).
+	// 기본값: 3600 (1시간). ralph.yaml의 stale_seconds 키로 설정.
+	StaleSeconds int `yaml:"stale_seconds"`
 }
 
 // LSPQualityGates represents LSP quality gate configuration.
@@ -369,4 +379,14 @@ type statuslineFileWrapper struct {
 // researchFileWrapper handles the research.yaml section file.
 type researchFileWrapper struct {
 	Research ResearchConfig `yaml:"research"`
+}
+
+// ralphFileWrapper handles the ralph.yaml section file.
+// stale_seconds는 ralph.yaml의 ralph: 키 하위에 위치하며 Config.Session.StaleSeconds에 주입됩니다.
+// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS 설정 소스.
+type ralphFileWrapper struct {
+	Ralph struct {
+		RalphConfig  `yaml:",inline"`
+		StaleSeconds int `yaml:"stale_seconds"` // → Config.Session.StaleSeconds
+	} `yaml:"ralph"`
 }

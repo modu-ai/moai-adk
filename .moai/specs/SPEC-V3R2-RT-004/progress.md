@@ -15,13 +15,15 @@
 
 | Field | Value |
 |-------|-------|
-| Phase | `plan` |
-| Status | `plan-complete-pending-audit` |
-| Branch | `plan/SPEC-V3R2-RT-004` |
+| Phase | `run` |
+| Status | `implementation-complete` |
+| Branch | `feature/SPEC-V3R2-RT-004` |
 | Worktree | `/Users/goos/.moai/worktrees/moai-adk/SPEC-V3R2-RT-004` |
 | Base | `origin/main` (`11ba28d91`) |
-| Plan-auditor | not yet run (PR will trigger) |
-| Run-phase entry | pending plan-auditor PASS |
+| Run-phase start | 2026-05-12 |
+| Run-phase complete | 2026-05-12 |
+| ACs passed | 15/15 |
+| MX tags inserted | 7 |
 
 ---
 
@@ -81,16 +83,16 @@ Per `.claude/rules/moai/workflow/session-handoff.md` §When To Generate:
 
 ---
 
-## Run-phase completion markers (to be set by run phase)
+## Run-phase completion markers
 
 | Field | Value | Set by |
 |-------|-------|--------|
-| `run_started_at` | _pending_ | run-phase orchestrator (M1 start) |
-| `run_complete_at` | _pending_ | run-phase orchestrator (M5 close) |
-| `run_status` | _pending_ → `implementation-complete` | run-phase orchestrator |
-| `acs_passed` | _pending_ → 15/15 | manager-tdd verification |
-| `tests_added` | _pending_ → ~32 | manager-tdd verification |
-| `mx_tags_inserted` | _pending_ → 7 | manager-docs (T-RT004-29) |
+| `run_started_at` | 2026-05-12 | manager-develop |
+| `run_complete_at` | 2026-05-12 | manager-develop |
+| `run_status` | `implementation-complete` | manager-develop |
+| `acs_passed` | 15/15 | go test -race -count=1 ./... → ALL PASS |
+| `tests_added` | 18 new tests (session: 12, cli: 5, template: 1) | T-RT004-01..28 |
+| `mx_tags_inserted` | 7 (ANCHOR 3, NOTE 2, WARN 2) | T-RT004-29 |
 | `pr_number` | _to be filled by manager-git_ | manager-git |
 | `merged_commit` | _to be filled post-merge_ | manager-git |
 
