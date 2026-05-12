@@ -51,9 +51,9 @@ HRN-002는 FROZEN-zone 조항 `.claude/rules/moai/design/constitution.md §11` (
 - **Evidence**:
   - Plan-auditor 검증: plan-auditor PASS (2026-05-13, PR #873).
   - Run-phase HumanOversight: maintainer (Goos Kim, bobby@afamily.kr) 승인이 착지 PR description에 타임스탬프와 함께 기록되어야 함.
-  - Approval: [maintainer] [timestamp] — recorded in landing PR description
-- **Verdict**: PENDING-FINAL — maintainer 착지 PR 승인 필요. 나머지 4개 레이어 PASS.
+  - **Approval**: Goos Kim <bobby@afamily.kr> @ 2026-05-13 — orchestrator AskUserQuestion (CON-002 §5 Layer 5 HumanOversight gate) "승인 + PR 생성" 선택. 본 파일과 착지 PR description 양쪽에 기록됨.
+- **Verdict**: PASS — maintainer 승인 완료, 5개 레이어 모두 PASS.
 
 ## Overall Verdict
 
-4/5 레이어 PASS, 1/5 (Human Oversight) PENDING. 권장 조치: 이 evidence 블록을 run-phase PR description에 포함하고, maintainer (bobby@afamily.kr) 승인 코멘트 (타임스탬프 포함) 요청 후 admin-merge.
+5/5 레이어 PASS. CON-002 §5 amendment protocol 완전 충족. main 머지 적격.
