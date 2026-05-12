@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-SPC-004: @MX Query Engine — Fan-in + SPEC Association + 16-Language Sweep
+
+### Added
+
+- **SPEC-V3R2-SPC-004**: `internal/mx` 패키지에 `Resolver.Resolve(Query)` API 구현. LSP `find-references` 통합(powernap)을 통해 `LSPFanInCounter`가 정확한 호출자 수를 계산하고, LSP 미사용 시 `TextualFanInCounter`로 graceful fallback.
+- **SPEC-V3R2-SPC-004**: `mx.yaml` `danger_categories:` + `test_paths:` 사용자 설정 wire-up. `LoadDangerConfig(projectRoot)` → `DangerCategoryMatcher` → CLI `--danger` 플래그와 연결.
+- **SPEC-V3R2-SPC-004**: `.moai/specs/*/spec.md` `module:` frontmatter 로더(`LoadSpecModules`) + 경로 기반 `SpecAssociator`. SPEC ID → 모듈 경로 맵으로 `@MX` 태그를 해당 SPEC에 자동 연결.
+- **SPEC-V3R2-SPC-004**: `Resolver.ResolveAnchorCallsites()` additive API. 위치 정보(파일+라인+컬럼+method)를 포함한 `[]Callsite` 반환. LSP 경로와 textual fallback 모두 지원.
+
+### English
+
+- **SPEC-V3R2-SPC-004**: Implemented `Resolver.Resolve(Query)` API in `internal/mx` package. `LSPFanInCounter` computes precise caller counts via LSP `find-references` (powernap integration), falling back to `TextualFanInCounter` when LSP is unavailable.
+- **SPEC-V3R2-SPC-004**: Wired `mx.yaml` `danger_categories:` + `test_paths:` user configuration. `LoadDangerConfig(projectRoot)` → `DangerCategoryMatcher` → CLI `--danger` flag.
+- **SPEC-V3R2-SPC-004**: `.moai/specs/*/spec.md` `module:` frontmatter loader (`LoadSpecModules`) + path-based `SpecAssociator`. Automatically associates `@MX` tags with their governing SPEC via module path prefix matching.
+- **SPEC-V3R2-SPC-004**: Additive `Resolver.ResolveAnchorCallsites()` API returning `[]Callsite` with file/line/column/method. Supports both LSP and textual fallback paths.
+
 ## [Unreleased] — SPEC-V3R2-RT-004: Typed Session State + Phase Checkpoint
 
 ### Added
