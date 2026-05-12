@@ -414,6 +414,9 @@ func clearTmuxSessionEnv() error {
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 		"API_TIMEOUT_MS",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+		// Legacy: DISABLE_PROMPT_CACHING was previously used for Z.AI compat
+		// but Z.AI now supports prompt caching. Cleanup residual values.
+		"DISABLE_PROMPT_CACHING",
 		// Issue #742: clear GLM context-size hint when leaving GLM mode
 		config.EnvStatuslineContextSize,
 	}
