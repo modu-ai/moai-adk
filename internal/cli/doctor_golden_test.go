@@ -73,7 +73,7 @@ func captureDoctorCmd(t *testing.T) string {
 // TestDoctor_Current_Light captures doctorCmd output with light-theme env.
 // 특징: tui.Section + 19+ tui.CheckLine + tui.Box + tui.Pill 요약.
 func TestDoctor_Current_Light(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
@@ -92,7 +92,7 @@ func TestDoctor_Current_Light(t *testing.T) {
 // TestDoctor_Current_Dark captures doctorCmd output with dark-theme env.
 // 특징: tui.DarkTheme() 적용, Section 헤더 + CheckLine + Pill 요약.
 func TestDoctor_Current_Dark(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")

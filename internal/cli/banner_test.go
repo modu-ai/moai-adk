@@ -181,7 +181,7 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 // 특징: deep teal Accent 색상 (tui.Theme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Light(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18")      // pinned for deterministic golden
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
@@ -202,7 +202,7 @@ func TestBanner_Current_Light(t *testing.T) {
 // 특징: deep teal Accent 색상 (tui.DarkTheme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Dark(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 	t.Setenv("CLAUDE_CODE_VERSION", "1.0.18")      // pinned for deterministic golden
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
@@ -241,7 +241,7 @@ func TestBanner_NoColor(t *testing.T) {
 // TestWelcome_Current_Light captures PrintWelcomeMessage output with light-theme env.
 // 특징: deep teal Accent 색상 (tui.LightTheme().Accent), bold title.
 func TestWelcome_Current_Light(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 
 	got, err := captureStdout(func() {
@@ -259,7 +259,7 @@ func TestWelcome_Current_Light(t *testing.T) {
 // TestWelcome_Current_Dark captures PrintWelcomeMessage output with dark-theme env.
 // 특징: deep teal Accent 색상 (tui.DarkTheme().Accent), bold title.
 func TestWelcome_Current_Dark(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 
 	got, err := captureStdout(func() {

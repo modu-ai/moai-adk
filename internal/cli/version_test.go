@@ -174,7 +174,7 @@ func TestShortCommit_ExactlyNinePassthrough(t *testing.T) {
 
 // TestVersion_Current_Light captures versionCmd output with light-theme env.
 func TestVersion_Current_Light(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 
 	// Pin build-time variables for deterministic golden output.
@@ -197,7 +197,7 @@ func TestVersion_Current_Light(t *testing.T) {
 
 // TestVersion_Current_Dark captures versionCmd output with dark-theme env.
 func TestVersion_Current_Dark(t *testing.T) {
-	t.Setenv("NO_COLOR", "0")
+	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 
 	orig, origC, origD := version.Version, version.Commit, version.Date

@@ -151,7 +151,7 @@ func runLoopStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("loop start: %w", err)
 	}
 
-	th := tui.LightTheme()
+	th := resolveTheme()
 	pill := tui.Pill(tui.PillOpts{Kind: tui.PillPrimary, Solid: true, Label: "실행 중", Theme: &th})
 	stepper := tui.Stepper(1, 4, &th)
 	header := tui.Section("자율 개발 루프", tui.SectionOpts{Theme: &th})
@@ -175,7 +175,7 @@ func runLoopStatus(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	th := tui.LightTheme()
+	th := resolveTheme()
 	out := cmd.OutOrStdout()
 
 	// Header: section title
@@ -218,7 +218,7 @@ func runLoopPause(cmd *cobra.Command, _ []string) error {
 	if err := deps.LoopController.Pause(); err != nil {
 		return fmt.Errorf("loop pause: %w", err)
 	}
-	th := tui.LightTheme()
+	th := resolveTheme()
 	pill := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Label: "일시정지", Theme: &th})
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), tui.KV("루프", pill, tui.KVOpts{Theme: &th, KeyWidth: 8}))
 	return nil
@@ -233,7 +233,7 @@ func runLoopResume(cmd *cobra.Command, args []string) error {
 	if err := deps.LoopController.ResumeFromStorage(cmd.Context(), specID); err != nil {
 		return fmt.Errorf("loop resume: %w", err)
 	}
-	th := tui.LightTheme()
+	th := resolveTheme()
 	stepper := tui.Stepper(1, 4, &th)
 	pill := tui.Pill(tui.PillOpts{Kind: tui.PillPrimary, Solid: true, Label: "재시작", Theme: &th})
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), tui.KV("SPEC", specID, tui.KVOpts{Theme: &th, KeyWidth: 10}))
@@ -250,7 +250,7 @@ func runLoopCancel(cmd *cobra.Command, _ []string) error {
 	if err := deps.LoopController.Cancel(); err != nil {
 		return fmt.Errorf("loop cancel: %w", err)
 	}
-	th := tui.LightTheme()
+	th := resolveTheme()
 	pill := tui.Pill(tui.PillOpts{Kind: tui.PillErr, Label: "취소됨", Theme: &th})
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), tui.KV("루프", pill, tui.KVOpts{Theme: &th, KeyWidth: 8}))
 	return nil
