@@ -113,6 +113,8 @@ Coverage check: 18 REQs declared in spec.md §5 (REQ-SPC-001-001 through 042, sp
 
 ### 3.14 DevAI-shape performance
 
+<!-- @MX:ANCHOR fan_in=4 -->
+<!-- @MX:REASON: "self-demonstrating hierarchical AC reference cited by SPC-002/SPC-003/HRN-002/HRN-003" -->
 - AC-SPC-001-14: Given a SPEC with 365 leaf acceptance nodes distributed across 55 top-level parents (Agent-as-a-Judge DevAI shape per spec.md §1)
   - AC-SPC-001-14.a: When the parser at `internal/spec/parser.go:36-58` processes the SPEC, Then it succeeds within a 500ms wall-clock budget on a baseline laptop. (maps REQ-SPC-001-001, REQ-SPC-001-003)
   - AC-SPC-001-14.b: When the resulting tree is traversed, Then `Acceptance.CountLeaves()` (`internal/spec/ears.go:89-99`) returns 365. (maps REQ-SPC-001-001)

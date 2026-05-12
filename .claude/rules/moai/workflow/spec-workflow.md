@@ -136,6 +136,7 @@ Output:
 ### Hierarchical Acceptance Criteria Schema
 
 > **@MX:NOTE** reason="Hierarchical AC schema per SPC-001 §11.2, amended 2026-05-11"
+> **@MX:WARN** reason="FROZEN-zone amendment per CON-002 §5 Layer 1 (Frozen Guard); modifications require full Canary + HumanOversight cycle"
 > Canonical form: `.moai/specs/SPEC-V3R2-SPC-001/research.md` §6
 
 MoAI supports hierarchical (tree-structured) acceptance criteria for complex SPECs. A parent AC captures shared Given context; children inherit or override it.

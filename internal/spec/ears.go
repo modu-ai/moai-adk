@@ -8,6 +8,7 @@ import (
 
 // Acceptance represents an Acceptance Criteria in EARS format.
 // Supports hierarchical structure up to 3 levels deep.
+// @MX:NOTE: "Hierarchical AC schema per SPEC-V3R2-SPC-001 §11.2"
 type Acceptance struct {
 	ID             string       // AC-<DOMAIN>-<NNN>-<NN> format (e.g., AC-SPC-001-05)
 	Given          string       // Precondition
