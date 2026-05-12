@@ -16,7 +16,7 @@
 | Phase   | Status       | Started     | Completed | Notes |
 |---------|--------------|-------------|-----------|-------|
 | Plan    | completed    | 2026-05-10  | 2026-05-10 | PR #837 admin merged into main |
-| Run     | in-progress  | 2026-05-13  | -         | M1+M2+M3 COMPLETE (G-01/G-02/G-03) |
+| Run     | in-progress  | 2026-05-13  | -         | M1+M2+M3+M4 COMPLETE (G-01/G-02/G-03/G-04) |
 | Sync    | pending      | -           | -         | Awaits run PR merge |
 | Cleanup | pending      | -           | -         | Awaits sync PR merge |
 
@@ -89,12 +89,21 @@ Commits: RED `adfa3a53a`, GREEN `fe57d9107` (REFACTOR skipped: clean implementat
 Verification gate: `go test ./internal/mx/ -run "TestLoadSpecModules|TestSpecAssociator_PathBased_FromLoader"` → all PASS.
 Coverage: 88.0% (stable vs M2 88.4%). Race detector: PASS. go vet: PASS.
 
-### M4: `Resolver.ResolveAnchorCallsites()` API parity (G-04) — Priority P1
+### M4: `Resolver.ResolveAnchorCallsites()` API parity (G-04) — Priority P1 ✅ COMPLETE
 
-- [ ] T-SPC004-10: Callsite struct + helpers
-- [ ] T-SPC004-11: ResolveAnchorCallsites + 4 RED tests (LSP/textual/exclude-tests/backward-compat)
+- [x] T-SPC004-10: Callsite struct + helpers
+  - commit: d41fccfad (GREEN)
+  - `internal/mx/callsite.go` (20 LOC)
+- [x] T-SPC004-11: ResolveAnchorCallsites + 5 RED tests (LSP/textual/exclude-tests/backward-compat/not-found)
+  - commit: 7b032e38b (RED), d41fccfad (GREEN)
+  - `internal/mx/callsite_test.go` (229 LOC)
+  - `internal/mx/resolver.go` +117 LOC (ResolveAnchorCallsites, resolveCallsitesTextual, callerLinesInFile)
+
+M4 Status: COMPLETE (2026-05-13)
+Commits: RED `7b032e38b`, GREEN `d41fccfad` (REFACTOR skipped: coverage 87.9% ≥ 85%; uncovered branch is error-resilience only)
 
 Verification gate: `go test ./internal/mx/ -run "TestResolver_ResolveAnchorCallsites|TestResolver_ResolveAnchor_BackwardCompat"` → all PASS.
+Coverage: 87.9% (M3 end: 88.0% — -0.1% from uncovered walkErr path; >85% target met). Race detector: PASS. go vet: PASS.
 
 ### M5: test_paths glob (G-05) + stderr verify (G-06) — Priority P1
 
@@ -125,7 +134,7 @@ Verification gate: All AC-SPC-004-01..15 verified per acceptance.md.
 | AC ID | Status | Verified by | Existing test? | Verified at |
 |---|---|---|---|---|
 | AC-01 | partial | T-SPC004-04+05 DONE (path loader+associator); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M3 |
-| AC-02 | verified | T-SPC004-01, T-SPC004-02 | YES | 2026-05-13 M1 |
+| AC-02 | verified+ | T-SPC004-01+02 (fan_in count); T-SPC004-10+11 (callsite locations, M4) | YES | 2026-05-13 M4 |
 | AC-03 | partial | T-SPC004-03, T-SPC004-06 (M2 DONE); T-SPC004-12 (M6 CLI wire-up pending) | YES | 2026-05-13 M2 |
 | AC-04 | pending | T-SPC004-09, T-SPC004-12 | PARTIAL → fixture added | (TBD) |
 | AC-05 | pending | T-SPC004-15 (sweep) | YES | (TBD) |
@@ -151,6 +160,7 @@ Per `.claude/rules/moai/workflow/spec-workflow.md` § Re-planning Gate, append p
 | M1        | 2026-05-13 | 3/15 (AC-02, AC-07, AC-09) | 0 | RED 7237ae2bc → GREEN 25a9f6594 → REFACTOR 8c439a4ac |
 | M2        | 2026-05-13 | +2 partial (AC-03, AC-13) | 0 | RED 94586497f → GREEN 6534a2097 (REFACTOR skipped: no cleanup opportunity) |
 | M3        | 2026-05-13 | +2 partial (AC-01, AC-15) | 0 | RED adfa3a53a → GREEN fe57d9107 (REFACTOR skipped: clean implementation) |
+| M4        | 2026-05-13 | AC-02 → verified+ (Callsite location list) | 0 | RED 7b032e38b → GREEN d41fccfad (REFACTOR skipped: 87.9% ≥ 85%) |
 
 ---
 
