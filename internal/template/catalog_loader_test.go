@@ -3,6 +3,7 @@ package template
 import (
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 // TestLoadCatalog verifies the typed LoadCatalog() accessor introduced in M4 (T-019..T-021).
@@ -93,4 +94,61 @@ func TestLoadCatalog(t *testing.T) {
 
 	t.Logf("LoadCatalog: version=%s, generated_at=%s, total_entries=%d",
 		cat.Version, cat.GeneratedAt, len(all))
+}
+
+// TestLoadCatalog_MalformedYAML covers the yaml.Unmarshal error path of LoadCatalog.
+// Required by evaluator-active (eval-1) to satisfy the 85%+ coverage gate for catalog_loader.go.
+// Sentinel-style: LoadCatalog must return a non-nil error on malformed YAML input.
+func TestLoadCatalog_MalformedYAML(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "unbalanced_bracket",
+			data: []byte("version: 1.0.0\ncatalog: [invalid yaml structure\n"),
+		},
+		{
+			name: "tab_indentation_invalid",
+			data: []byte("version: 1.0.0\n\tcatalog:\n\t  core: {}\n"),
+		},
+		{
+			name: "incomplete_mapping",
+			data: []byte("version: 1.0.0\ncatalog:\n  core:\n    skills: [\n"),
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			fsys := fstest.MapFS{
+				"catalog.yaml": &fstest.MapFile{Data: tc.data},
+			}
+			cat, err := LoadCatalog(fsys)
+			if err == nil {
+				t.Errorf("LoadCatalog(%s) returned nil error and cat=%+v; want yaml.Unmarshal error", tc.name, cat)
+			}
+		})
+	}
+}
+
+// TestLoadCatalog_ManifestAbsent covers the fs.ReadFile error branch of LoadCatalog
+// when catalog.yaml is missing from the provided FS (CATALOG_MANIFEST_ABSENT sentinel).
+// REQ-CATALOG-001-026.
+func TestLoadCatalog_ManifestAbsent(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{} // empty FS, no catalog.yaml
+	cat, err := LoadCatalog(fsys)
+	if err == nil {
+		t.Errorf("LoadCatalog(empty FS) returned nil error and cat=%+v; want CATALOG_MANIFEST_ABSENT error", cat)
+		return
+	}
+	if !strings.Contains(err.Error(), "CATALOG_MANIFEST_ABSENT") {
+		t.Errorf("LoadCatalog(empty FS) error = %q, want sentinel CATALOG_MANIFEST_ABSENT", err.Error())
+	}
 }

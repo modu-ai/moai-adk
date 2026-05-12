@@ -338,7 +338,7 @@ func TestManifestHashFormat(t *testing.T) {
 	entries := allCatalogEntries(cat)
 	for _, e := range entries {
 		if e.Hash == "" || e.Hash == "TODO" {
-			t.Logf("CATALOG_HASH_INVALID (warning): %s hash=%q is placeholder — run gen-catalog-hashes.go --all", e.Name, e.Hash)
+			t.Errorf("CATALOG_HASH_INVALID: %s hash=%q is placeholder — run gen-catalog-hashes.go --all to populate (EC3, REQ-007, REQ-020)", e.Name, e.Hash)
 			continue
 		}
 
