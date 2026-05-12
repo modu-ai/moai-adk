@@ -6,6 +6,7 @@
 - Branch: feature/SPEC-V3R4-CATALOG-001
 - Worktree: /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R4-CATALOG-001
 - Plan PR: #860 MERGED 2026-05-11T19:27:40Z (commit 2c2ede402 on main)
+- Run PR: #862 OPEN (feature/SPEC-V3R4-CATALOG-001 → main, 2 commits: cc4c54bd7 + a48456d36)
 - Issue: #859
 
 ## Phase 0.5: Plan Audit Gate
