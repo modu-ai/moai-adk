@@ -130,6 +130,11 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return fmt.Errorf("read hook input: %w", err)
 	}
 
+	// Inject event name from CLI subcommand when Claude Code omits it.
+	if input.HookEventName == "" || input.HookEventName == "unknown" {
+		input.HookEventName = string(event)
+	}
+
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()
 

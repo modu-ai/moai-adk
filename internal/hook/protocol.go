@@ -91,8 +91,11 @@ func validateInput(input *HookInput) error {
 			input.CWD = projectDir
 		}
 	}
+	// hook_event_name is not strictly required: CLI subcommands (moai hook stop, etc.)
+	// already know the event type and inject it via runHookEvent after parsing.
+	// Claude Code may omit hook_event_name for events like Stop and SubagentStop.
 	if input.HookEventName == "" {
-		return fmt.Errorf("%w: missing required field hook_event_name", ErrHookInvalidInput)
+		input.HookEventName = "unknown"
 	}
 	return nil
 }

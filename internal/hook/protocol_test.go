@@ -151,16 +151,27 @@ func TestReadInput(t *testing.T) {
 			},
 		},
 		{
-			name:      "missing hook_event_name",
-			input:     `{"session_id": "sess-1", "cwd": "/tmp"}`,
-			wantErr:   true,
-			errTarget: ErrHookInvalidInput,
+			name:    "missing hook_event_name defaults to unknown",
+			input:   `{"session_id": "sess-1", "cwd": "/tmp"}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				if got.HookEventName != "unknown" {
+					t.Errorf("HookEventName = %q, want %q", got.HookEventName, "unknown")
+				}
+				if got.SessionID != "sess-1" {
+					t.Errorf("SessionID = %q, want %q", got.SessionID, "sess-1")
+				}
+			},
 		},
 		{
-			name:      "empty JSON object",
-			input:     `{}`,
-			wantErr:   true,
-			errTarget: ErrHookInvalidInput,
+			name:    "empty JSON object defaults to unknown event",
+			input:   `{}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				if got.HookEventName != "unknown" {
+					t.Errorf("HookEventName = %q, want %q", got.HookEventName, "unknown")
+				}
+			},
 		},
 		{
 			name:      "malformed JSON",
