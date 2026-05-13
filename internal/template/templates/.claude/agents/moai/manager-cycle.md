@@ -4,6 +4,7 @@ description: |
   Retired (SPEC-V3R2-ORC-001 follow-up rename) — use manager-develop with cycle_type=ddd or cycle_type=tdd.
   This agent has been renamed to manager-develop for clearer naming.
   See manager-develop.md for the active replacement.
+  NOT for: New implementations — use manager-develop instead.
 retired: true
 retired_replacement: manager-develop
 retired_param_hint: "cycle_type=ddd|tdd"
