@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -37,7 +38,7 @@ Examples:
 				if err != nil {
 					return fmt.Errorf("failed to count drift: %w", err)
 				}
-				fmt.Fprintln(cmd.OutOrStdout(), count)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), count)
 				return nil
 			}
 
@@ -51,11 +52,11 @@ Examples:
 				if err != nil {
 					return fmt.Errorf("failed to marshal JSON: %w", err)
 				}
-				fmt.Fprintln(cmd.OutOrStdout(), string(data))
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 				return nil
 			}
 
-			return printDriftReport(cmd, report)
+			return printDriftReport(cmd.OutOrStdout(), report)
 		},
 		PostRunE: func(cmd *cobra.Command, args []string) error {
 			if exitCodeOnDrift {
@@ -84,11 +85,9 @@ Examples:
 	return cmd
 }
 
-func printDriftReport(cmd *cobra.Command, report *spec.DriftReport) error {
-	out := cmd.OutOrStdout()
-
-	fmt.Fprintf(out, "%-30s %-20s %-20s %-10s\n", "SPEC-ID", "Frontmatter", "Git-Implied", "Drift?")
-	fmt.Fprintln(out, strings.Repeat("-", 85))
+func printDriftReport(out io.Writer, report *spec.DriftReport) error {
+	_, _ = fmt.Fprintf(out, "%-30s %-20s %-20s %-10s\n", "SPEC-ID", "Frontmatter", "Git-Implied", "Drift?")
+	_, _ = fmt.Fprintln(out, strings.Repeat("-", 85))
 
 	for _, record := range report.Records {
 		driftMark := "aligned"
@@ -96,7 +95,7 @@ func printDriftReport(cmd *cobra.Command, report *spec.DriftReport) error {
 			driftMark = "DRIFT"
 		}
 
-		fmt.Fprintf(out, "%-30s %-20s %-20s %-10s\n",
+		_, _ = fmt.Fprintf(out, "%-30s %-20s %-20s %-10s\n",
 			record.SPECID,
 			record.FrontmatterStatus,
 			record.GitImpliedStatus,
@@ -104,8 +103,8 @@ func printDriftReport(cmd *cobra.Command, report *spec.DriftReport) error {
 		)
 	}
 
-	fmt.Fprintln(out, strings.Repeat("-", 85))
-	fmt.Fprintf(out, "Summary: %d/%d SPECs have status drift\n", report.Count, len(report.Records))
+	_, _ = fmt.Fprintln(out, strings.Repeat("-", 85))
+	_, _ = fmt.Fprintf(out, "Summary: %d/%d SPECs have status drift\n", report.Count, len(report.Records))
 
 	return nil
 }
