@@ -6,7 +6,6 @@ package harness
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -236,7 +235,7 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ParseRubricMarkdown: open %q: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// 프로필 이름은 파일명(확장자 제외)에서 추출합니다.
 	profileName := extractProfileName(path)
@@ -415,7 +414,7 @@ func parseMustPassSection(path string) ([]Dimension, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parseMustPassSection: open %q: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var result []Dimension
 	inSection := false
@@ -520,8 +519,3 @@ func extractProfileName(path string) string {
 
 // Unwrap is needed for errors.Is to work with ErrUnknownDimension wrapped inside ValidationError.
 var _ error = (*config.ValidationErrors)(nil)
-
-// isErrUnknownDimension은 error chain에서 ErrUnknownDimension를 탐지하는 헬퍼입니다.
-func isErrUnknownDimension(err error) bool {
-	return errors.Is(err, config.ErrUnknownDimension)
-}

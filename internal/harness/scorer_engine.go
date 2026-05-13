@@ -314,22 +314,22 @@ func buildContractYAML(card *ScoreCard, items []ContractItem) string {
 	sb.WriteString("# Sprint Contract — HRN-003 sub-criterion status\n")
 	sb.WriteString("# format: HRN-003 WriteContract v1\n")
 	sb.WriteString("# HRN-002 §11.4.1: passed criteria carry forward; evaluator memory is per-iteration\n\n")
-	sb.WriteString(fmt.Sprintf("spec_id: %q\n", card.SpecID))
-	sb.WriteString(fmt.Sprintf("schema_version: %q\n", card.SchemaVersion))
-	sb.WriteString(fmt.Sprintf("verdict: %q\n", string(card.Verdict)))
+	fmt.Fprintf(&sb, "spec_id: %q\n", card.SpecID)
+	fmt.Fprintf(&sb, "schema_version: %q\n", card.SchemaVersion)
+	fmt.Fprintf(&sb, "verdict: %q\n", string(card.Verdict))
 	if card.Rationale != "" {
-		sb.WriteString(fmt.Sprintf("rationale: %q\n", card.Rationale))
+		fmt.Fprintf(&sb, "rationale: %q\n", card.Rationale)
 	}
 	sb.WriteString("\nacceptance_checklist:\n")
 	for _, item := range items {
-		sb.WriteString(fmt.Sprintf("  - id: %q\n", item.ID))
-		sb.WriteString(fmt.Sprintf("    criterion: %q\n", item.Criterion))
+		fmt.Fprintf(&sb, "  - id: %q\n", item.ID)
+		fmt.Fprintf(&sb, "    criterion: %q\n", item.Criterion)
 		if item.Evidence != "" {
-			sb.WriteString(fmt.Sprintf("    evidence: %q\n", item.Evidence))
+			fmt.Fprintf(&sb, "    evidence: %q\n", item.Evidence)
 		}
-		sb.WriteString(fmt.Sprintf("    score: %.2f\n", item.Score))
-		sb.WriteString(fmt.Sprintf("    rubric_anchor: %q\n", item.Anchor))
-		sb.WriteString(fmt.Sprintf("    status: %q\n", item.Status))
+		fmt.Fprintf(&sb, "    score: %.2f\n", item.Score)
+		fmt.Fprintf(&sb, "    rubric_anchor: %q\n", item.Anchor)
+		fmt.Fprintf(&sb, "    status: %q\n", item.Status)
 	}
 	return sb.String()
 }
