@@ -17,6 +17,7 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: bypassPermissions
+isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
