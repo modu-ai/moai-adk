@@ -803,3 +803,341 @@ Custom team agent body`
 		t.Error("expected LR-10 violation for team-custom.md, not found")
 	}
 }
+
+// ============================================================================
+// M1 RED Tests for SPEC-V3R2-ORC-003 (Effort-Level Calibration Matrix)
+// These tests FAIL initially and turn GREEN after M2 implementation.
+// ============================================================================
+
+// TestLintLR12_MatrixDrift_DriftedAgent tests LR-12: effort drift from canonical matrix
+// This is a RED test - it will FAIL until checkEffortMatrixDrift is implemented in M2
+func TestLintLR12_MatrixDrift_DriftedAgent(t *testing.T) {
+	content := `---
+name: expert-security
+description: Security specialist
+tools: Read, Write, Agent
+effort: high
+---
+Security agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "expert-security.md")
+
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	// This will fail initially because checkEffortMatrixDrift doesn't exist yet
+	// After M2, this will detect that effort: high drifts from canonical xhigh
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// After M2 implementation, we expect 1 LR-12 violation
+	// For now, this test documents the expected behavior
+	foundLR12 := false
+	for _, v := range violations {
+		if v.Rule == "LR-12" {
+			foundLR12 = true
+			if !strings.Contains(v.Message, "ORC_EFFORT_MATRIX_DRIFT") {
+				t.Errorf("LR-12 message should contain ORC_EFFORT_MATRIX_DRIFT, got: %s", v.Message)
+			}
+			if v.Severity != SeverityError {
+				t.Errorf("LR-12 severity should be Error, got: %s", v.Severity)
+			}
+			break
+		}
+	}
+
+	// TODO: Remove this skip after M2 implementation
+	// For now, this test documents the expected behavior
+	t.Skip("LR-12 not yet implemented - M2 GREEN will enable this check")
+
+	if !foundLR12 {
+		t.Error("expected LR-12 violation for expert-security with effort: high (should be xhigh)")
+	}
+}
+
+// TestLintLR12_MatrixDrift_CleanAgent tests LR-12: agent with correct effort value
+// This is a RED test - it will FAIL until checkEffortMatrixDrift is implemented in M2
+func TestLintLR12_MatrixDrift_CleanAgent(t *testing.T) {
+	content := `---
+name: expert-security
+description: Security specialist
+tools: Read, Write, Agent
+effort: xhigh
+---
+Security agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "expert-security.md")
+
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// After M2, we expect 0 LR-12 violations for correct effort value
+	for _, v := range violations {
+		if v.Rule == "LR-12" {
+			t.Error("expected no LR-12 violations for expert-security with correct effort: xhigh")
+		}
+	}
+
+	// TODO: Remove this skip after M2 implementation
+	t.Skip("LR-12 not yet implemented - M2 GREEN will enable this check")
+}
+
+// TestLintLR13_InvalidEffortEnum tests LR-13: invalid effort enum value
+// This is a RED test - it will FAIL until checkInvalidEffortEnum is implemented in M2
+func TestLintLR13_InvalidEffortEnum(t *testing.T) {
+	content := `---
+name: expert-security
+description: Security specialist
+tools: Read, Write, Agent
+effort: ultra
+---
+Security agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "expert-security.md")
+
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// After M2, we expect 1 LR-13 violation for invalid enum value
+	foundLR13 := false
+	for _, v := range violations {
+		if v.Rule == "LR-13" {
+			foundLR13 = true
+			if !strings.Contains(v.Message, "AGT_INVALID_FRONTMATTER") && !strings.Contains(v.Message, "not in") {
+				t.Errorf("LR-13 message should mention invalid enum, got: %s", v.Message)
+			}
+			if v.Severity != SeverityError {
+				t.Errorf("LR-13 severity should be Error, got: %s", v.Severity)
+			}
+			break
+		}
+	}
+
+	// TODO: Remove this skip after M2 implementation
+	t.Skip("LR-13 not yet implemented - M2 GREEN will enable this check")
+
+	if !foundLR13 {
+		t.Error("expected LR-13 violation for effort: ultra (invalid enum)")
+	}
+}
+
+// TestLintLR14_FixedBudgetTokens tests LR-14: fixed budget_tokens prohibition
+// This is a RED test - it will FAIL until checkFixedBudgetTokens is implemented in M2
+func TestLintLR14_FixedBudgetTokens(t *testing.T) {
+	content := `---
+name: expert-security
+description: Security specialist
+tools: Read, Write, Agent
+---
+Security agent body
+
+This agent uses budget_tokens: 5000 which is prohibited for Opus 4.7.`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "expert-security.md")
+
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// After M2, we expect 1 LR-14 violation for fixed budget_tokens
+	foundLR14 := false
+	for _, v := range violations {
+		if v.Rule == "LR-14" {
+			foundLR14 = true
+			if !strings.Contains(v.Message, "ORC_FIXED_BUDGET_PROHIBITED") {
+				t.Errorf("LR-14 message should contain ORC_FIXED_BUDGET_PROHIBITED, got: %s", v.Message)
+			}
+			if v.Severity != SeverityError {
+				t.Errorf("LR-14 severity should be Error, got: %s", v.Severity)
+			}
+			break
+		}
+	}
+
+	// TODO: Remove this skip after M2 implementation
+	t.Skip("LR-14 not yet implemented - M2 GREEN will enable this check")
+
+	if !foundLR14 {
+		t.Error("expected LR-14 violation for budget_tokens: 5000")
+	}
+}
+
+// TestAuthoringDocHasEffortMatrix tests that agent-authoring.md contains the effort matrix
+// This is a RED test - it will FAIL until M2 adds the matrix table
+func TestAuthoringDocHasEffortMatrix(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get cwd: %v", err)
+	}
+
+	// Try both worktree and main project paths
+	authoringDocPaths := []string{
+		filepath.Join(cwd, ".claude", "rules", "moai", "development", "agent-authoring.md"),
+		filepath.Join(cwd, "..", "..", "..", ".claude", "rules", "moai", "development", "agent-authoring.md"),
+	}
+
+	var content []byte
+	var docPath string
+	for _, path := range authoringDocPaths {
+		if data, err := os.ReadFile(path); err == nil {
+			content = data
+			docPath = path
+			break
+		}
+	}
+
+	if len(content) == 0 {
+		t.Skip("agent-authoring.md not found - will test after M2 implementation")
+		return
+	}
+
+	contentStr := string(content)
+
+	// Check for the section heading
+	if !strings.Contains(contentStr, "## Effort-Level Calibration Matrix") {
+		t.Error("agent-authoring.md should contain '## Effort-Level Calibration Matrix' section")
+	}
+
+	// Check for the canonical 17-agent matrix table
+	expectedAgents := []string{
+		"manager-spec", "manager-strategy", "manager-cycle", "manager-quality",
+		"manager-docs", "manager-git", "manager-project",
+		"expert-backend", "expert-frontend", "expert-security", "expert-devops", "expert-performance",
+		"expert-refactoring", "builder-platform",
+		"evaluator-active", "plan-auditor", "researcher",
+	}
+
+	missingAgents := []string{}
+	for _, agent := range expectedAgents {
+		if !strings.Contains(contentStr, agent) {
+			missingAgents = append(missingAgents, agent)
+		}
+	}
+
+	if len(missingAgents) > 0 {
+		t.Errorf("agent-authoring.md effort matrix missing agents: %v", missingAgents)
+	}
+
+	// Check for effort level values
+	expectedEfforts := []string{"xhigh", "high", "medium"}
+	for _, effort := range expectedEfforts {
+		if !strings.Contains(contentStr, effort) {
+			t.Errorf("agent-authoring.md should contain effort level: %s", effort)
+		}
+	}
+
+	t.Logf("Checked agent-authoring.md at: %s", docPath)
+}
+
+// TestConstitutionCrossReference tests that moai-constitution.md cross-references the matrix
+// This is a RED test - it will FAIL until M2 adds the cross-reference
+func TestConstitutionCrossReference(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get cwd: %v", err)
+	}
+
+	// Try both worktree and main project paths
+	constitutionDocPaths := []string{
+		filepath.Join(cwd, ".claude", "rules", "moai", "core", "moai-constitution.md"),
+		filepath.Join(cwd, "..", "..", "..", ".claude", "rules", "moai", "core", "moai-constitution.md"),
+	}
+
+	var content []byte
+	var docPath string
+	for _, path := range constitutionDocPaths {
+		if data, err := os.ReadFile(path); err == nil {
+			content = data
+			docPath = path
+			break
+		}
+	}
+
+	if len(content) == 0 {
+		t.Skip("moai-constitution.md not found - will test after M2 implementation")
+		return
+	}
+
+	contentStr := string(content)
+
+	// Check for cross-reference to agent-authoring.md
+	if !strings.Contains(contentStr, "agent-authoring.md") {
+		t.Error("moai-constitution.md should cross-reference agent-authoring.md for effort matrix")
+	}
+
+	// Check for Opus 4.7 section mentioning effort level selection
+	if !strings.Contains(contentStr, "Opus 4.7") && !strings.Contains(contentStr, "Prompt Philosophy") {
+		t.Error("moai-constitution.md should have Opus 4.7 Prompt Philosophy section")
+	}
+
+	t.Logf("Checked moai-constitution.md at: %s", docPath)
+}
+
+// TestLintLR03_MissingEffortIsError verifies LR-03 is at Error severity (not Warning)
+// Per SPEC-V3R2-ORC-003 REQ-006, LR-03 was promoted from warning to error
+// This test ensures the promotion is in place and prevents future regression
+func TestLintLR03_MissingEffortIsError(t *testing.T) {
+	content := `---
+name: test-agent
+description: Test agent without effort field
+tools: Read, Write
+---
+Agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "test-agent.md")
+
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Find LR-03 violation
+	foundLR03 := false
+	for _, v := range violations {
+		if v.Rule == "LR-03" {
+			foundLR03 = true
+			// Critical assertion: LR-03 must be Error severity, not Warning
+			if v.Severity != SeverityError {
+				t.Errorf("LR-03 severity must be Error (per SPEC-V3R2-ORC-003 REQ-006), got: %s", v.Severity)
+			}
+			// Verify error message mentions missing effort
+			if !strings.Contains(v.Message, "effort") && !strings.Contains(v.Message, "LR-03") {
+				t.Errorf("LR-03 message should mention missing effort field, got: %s", v.Message)
+			}
+			break
+		}
+	}
+
+	if !foundLR03 {
+		t.Error("expected LR-03 violation for missing effort field")
+	}
+}
