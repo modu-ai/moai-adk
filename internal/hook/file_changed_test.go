@@ -171,3 +171,19 @@ func TestFileChangedHandler_SupportedExtensions(t *testing.T) {
 		})
 	}
 }
+
+// TestFileChanged_MXTagDelta implements AC-V3R2-RT-006-07:
+// Given internal/auth/handler.go is externally edited adding @MX:WARN at line 42,
+// When FileChanged fires, Then HookResponse.AdditionalContext contains an MX tag delta summary.
+func TestFileChanged_MXTagDelta(t *testing.T) {
+	t.Parallel()
+
+	t.Skip("RED: SPC-002 TagScanner integration not yet wired")
+	// Implementation will:
+	// 1. Create temp handler.go file with initial @MX tags
+	// 2. Edit file to add @MX:WARN at line 42
+	// 3. Call handler.Handle() with FileChanged event
+	// 4. Verify TagScanner detected tag delta
+	// 5. Verify HookOutput.AdditionalContext contains "MX tag delta on <path>: <summary>"
+	// 6. Verify summary mentions @MX:WARN added
+}

@@ -159,3 +159,48 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 		})
 	}
 }
+
+// TestPostToolFailure_TimeoutClassification implements AC-V3R2-RT-006-08:
+// Given a Bash tool fails with exit code 124 (timeout),
+// When PostToolUseFailure fires, Then SystemMessage classifies the error as "TimeoutError"
+// with actionable hint.
+func TestPostToolFailure_TimeoutClassification(t *testing.T) {
+	t.Parallel()
+
+	h := NewPostToolUseFailureHandler()
+
+	// Simulate Bash tool failure with timeout (exit code 124)
+	input := &HookInput{
+		SessionID:     "test-session",
+		ToolName:      "Bash",
+		ToolUseID:     "tool-timeout-124",
+		ExitCode:      124,
+		Error:         "exit status 124",
+		Stderr:        "command timed out after 30s",
+		IsInterrupt:   false,
+		HookEventName: "PostToolUseFailure",
+	}
+
+	out, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// AC-08: SystemMessage MUST classify as TimeoutError
+	if out.SystemMessage == "" {
+		t.Error("expected SystemMessage for timeout error (AC-08)")
+	}
+
+	// Verify classification
+	expectedPrefix := "TimeoutError:"
+	if len(out.SystemMessage) < len(expectedPrefix) || out.SystemMessage[:len(expectedPrefix)] != expectedPrefix {
+		t.Errorf("AC-08: expected 'TimeoutError:' prefix, got: %v", out.SystemMessage)
+	}
+
+	// Verify actionable hint (AdditionalContext should contain diagnostic hints)
+	if out.AdditionalContext == "" {
+		t.Error("AC-08: expected AdditionalContext with actionable hint")
+	}
+
+	t.Logf("AC-08 verified: SystemMessage = %v", out.SystemMessage)
+}

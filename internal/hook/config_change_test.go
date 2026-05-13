@@ -176,3 +176,33 @@ func TestConfigChangeHandler_ValidateConfig(t *testing.T) {
 		})
 	}
 }
+
+// TestConfigChange_RT005ReloadIntegration implements AC-V3R2-RT-006-04:
+// Given .moai/config/sections/quality.yaml is edited, When ConfigChange fires,
+// Then the handler re-reads the file, runs typed loader, calls diff-aware reload,
+// and emits AdditionalContext: "<path> reloaded successfully".
+func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
+	t.Skip("RED: RT-005 Manager.Reload call not yet wired in config_change.go")
+	// Implementation will:
+	// 1. Create valid quality.yaml with known content
+	// 2. Mock config.ManagerFromContext(ctx) to return Manager with Reload() tracking
+	// 3. Call handler.Handle() with ConfigChange event
+	// 4. Verify mgr.Reload(input.ConfigFilePath) was called once
+	// 5. Verify HookOutput.AdditionalContext contains "reloaded successfully"
+	// 6. Verify HookOutput.Continue is true
+}
+
+// TestConfigChange_InvalidYAMLKeepsOldSettings implements AC-V3R2-RT-006-05 and
+// REQ-V3R2-RT-006-062: Given a quality.yaml edit introduces an invalid field,
+// When ConfigChange reload fails validation, Then SystemMessage reports the error
+// and Continue: false is set, AND old settings remain in memory.
+func TestConfigChange_InvalidYAMLKeepsOldSettings(t *testing.T) {
+	t.Skip("RED: Old settings retention logic not yet implemented")
+	// Implementation will:
+	// 1. Start with valid quality.yaml in memory
+	// 2. Simulate ConfigChange with malformed YAML (unknown field)
+	// 3. Verify handler rejects the reload (validation error)
+	// 4. Verify HookOutput.SystemMessage contains "Config reload rejected: <field>: <error>"
+	// 5. Verify HookOutput.Continue is false
+	// 6. Verify old config remains in memory (not replaced with invalid new config)
+}

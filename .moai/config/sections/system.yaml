@@ -33,3 +33,10 @@ moai:
     version_check:
         cache_ttl_hours: 24
         enabled: true
+hook:
+    # Events available for observability opt-in (RETIRE-OBS-ONLY from settings.json)
+    # These events have no business logic in moai v3; they emit structured logs only when opted in.
+    # Valid values: notification, elicitation, elicitationResult, taskCreated
+    observability_events: []
+    # Strict mode: if true, all hook failures block execution. Used by SPEC-V3R2-RT-001.
+    strict_mode: false

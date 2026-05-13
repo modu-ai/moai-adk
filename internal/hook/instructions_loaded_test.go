@@ -164,3 +164,60 @@ func TestInstructionsLoadedHandler_CheckCharacterBudget(t *testing.T) {
 		})
 	}
 }
+
+// TestInstructionsLoaded_42kCLAUDE implements AC-V3R2-RT-006-06:
+// Given CLAUDE.md is 42,000 characters, When InstructionsLoaded fires,
+// Then HookResponse.SystemMessage names the file and the budget overage.
+func TestInstructionsLoaded_42kCLAUDE(t *testing.T) {
+	t.Parallel()
+
+	h := NewInstructionsLoadedHandler()
+
+	// Create a 42KB CLAUDE.md file (2000 chars over 40k budget)
+	overageContent := string(make([]byte, 42000))
+
+	tempDir := t.TempDir()
+	claudeMDPath := filepath.Join(tempDir, "CLAUDE.md")
+	if err := os.WriteFile(claudeMDPath, []byte(overageContent), 0644); err != nil {
+		t.Fatalf("failed to create CLAUDE.md: %v", err)
+	}
+
+	input := &HookInput{
+		SessionID:           "test-session",
+		InstructionFilePath: claudeMDPath,
+		CWD:                 tempDir,
+		HookEventName:       "InstructionsLoaded",
+	}
+
+	out, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// AC-06: SystemMessage MUST name the file and report the overage
+	if out.SystemMessage == "" {
+		t.Error("expected SystemMessage for 42k CLAUDE.md (AC-06)")
+	}
+
+	// Verify it mentions the file path
+	if !contains(out.SystemMessage, claudeMDPath) && !contains(out.SystemMessage, "CLAUDE.md") {
+		t.Errorf("SystemMessage should mention CLAUDE.md path, got: %v", out.SystemMessage)
+	}
+
+	// Verify it mentions the budget (40,000 characters)
+	if !contains(out.SystemMessage, "40,000") && !contains(out.SystemMessage, "40000") {
+		t.Errorf("SystemMessage should mention 40,000 char budget, got: %v", out.SystemMessage)
+	}
+
+	t.Logf("AC-06 verified: SystemMessage = %v", out.SystemMessage)
+}
+
+// Helper function to check if string contains substring
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

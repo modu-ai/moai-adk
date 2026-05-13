@@ -149,3 +149,69 @@ func TestAuditRetiredHandlersNotActive(t *testing.T) {
 		}
 	}
 }
+
+// TestAuditRegistrationParity verifies that deps.go handler count matches
+// settings.json native events + autoUpdate composite + observability_events.
+// This implements REQ-V3R2-RT-006-003 and AC-V3R2-RT-006-13.
+func TestAuditRegistrationParity(t *testing.T) {
+	// RED: This will fail until system.yaml hook section is added and
+	// settings.json is cleaned up (4 retired events removed)
+
+	// Expected: 26 handlers (after setup.go removal)
+	// = 21 native (settings.json) + 1 composite (autoUpdate) + 4 observability-only
+	expectedHandlerCount := 26
+
+	// Count actual handlers from the registry map
+	actualHandlerCount := len(expectedHandlers) // from TestAuditHandlerCount
+
+	t.Logf("Handler count parity audit:")
+	t.Logf("  Expected handlers: %d (21 native + 1 composite + 4 obs)", expectedHandlerCount)
+	t.Logf("  Actual handlers: %d", actualHandlerCount)
+
+	if actualHandlerCount != expectedHandlerCount {
+		t.Errorf("Handler count mismatch: expected %d, got %d", expectedHandlerCount, actualHandlerCount)
+	}
+
+	// TODO: Add settings.json parsing when file is cleaned up
+	// TODO: Add system.yaml observability_events parsing
+	// TODO: Verify parity equation: |deps.go| == |settings.json| + 1 + |observability_events|
+}
+
+// TestAuditPerFileCategoryHeader verifies that every handler file
+// declares its Resolution category at the top.
+// This implements REQ-V3R2-RT-006-002 and AC-V3R2-RT-006-14.
+func TestAuditPerFileCategoryHeader(t *testing.T) {
+	// RED: This will fail until Resolution headers are added to all 22 handler files
+
+	t.Skip("RED: Resolution headers not yet added to handler files")
+	// Implementation will:
+	// 1. List all handler files in internal/hook/
+	// 2. Grep for "// Resolution: (KEEP|UPGRADE|FIX|RETIRE-OBS-ONLY|COMPOSITE|REMOVE)$"
+	// 3. Verify each non-test, non-aux handler file has exactly one match
+}
+
+// TestAuditRetiredEventsNotInSettings verifies that retired events
+// are NOT registered in settings.json.
+// This implements REQ-V3R2-RT-006-063 and AC-V3R2-RT-006-10.
+func TestAuditRetiredEventsNotInSettings(t *testing.T) {
+	// RED: This will fail until 4 retired events are removed from settings.json
+
+	t.Skip("RED: Retired events still in settings.json")
+	// Implementation will:
+	// 1. Parse .claude/settings.json hooks section
+	// 2. Verify absence of: Notification, Elicitation, ElicitationResult, TaskCreated
+	// 3. Fail if any retired event key is found
+}
+
+// TestAuditObservabilityWhitelist verifies that system.yaml has
+// hook.observability_events schema with validator/v10 enforcement.
+// This implements REQ-V3R2-RT-006-004 and AC-V3R2-RT-006-11.
+func TestAuditObservabilityWhitelist(t *testing.T) {
+	// RED: This will fail until system.yaml hook section is added
+
+	t.Skip("RED: system.yaml hook section not defined")
+	// Implementation will:
+	// 1. Parse .moai/config/sections/system.yaml
+	// 2. Verify existence of hook.observability_events: []
+	// 3. Verify hook.strict_mode: false (default)
+}

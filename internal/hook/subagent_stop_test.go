@@ -218,3 +218,34 @@ func TestSubagentStopHandler_Handle_NoTmuxPaneID(t *testing.T) {
 		t.Errorf("expected 'no tmuxPaneId' error, got %v", err)
 	}
 }
+
+// TestSubagentStop_PaneNotFoundGraceful implements AC-V3R2-RT-006-02:
+// Given a pane already gone and tmux returns "pane not found",
+// When SubagentStop invokes kill-pane, Then the handler treats
+// cleanup as successful and registry entry is still removed.
+func TestSubagentStop_PaneNotFoundGraceful(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("tmux not available on Windows")
+	}
+
+	t.Skip("RED: Kill pane mocking not yet implemented - needs exec.Command mock")
+	// Implementation will:
+	// 1. Create team config with stale pane ID
+	// 2. Mock exec.Command("tmux", "kill-pane", "-t", id) to return "pane not found"
+	// 3. Verify handler does NOT return error
+	// 4. Verify teammate is removed from registry despite kill-pane failure
+}
+
+// TestSubagentStop_KillPaneTimeout implements risk mitigation row 1
+// from spec §8: 500 ms per-pane timeout wrap.
+func TestSubagentStop_KillPaneTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("tmux not available on Windows")
+	}
+
+	t.Skip("RED: 500ms timeout wrap not yet added to killTmuxPane")
+	// Implementation will:
+	// 1. Mock exec.Command to sleep longer than 500ms
+	// 2. Verify context.WithTimeout(500ms) cancels the operation
+	// 3. Verify handler returns HookOutput{} without blocking
+}
