@@ -13,13 +13,17 @@ dependencies:
   - SPEC-HOOK-001
   - SPEC-HOOK-002
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, lsp, diagnostics, quality-gate, regression-detection, P2"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: []
-lifecycle: spec-anchored
-tags: "hook, lsp, diagnostics, quality-gate, regression-detection, P2"
----
+------
 
 # SPEC-HOOK-004: LSP Diagnostics Integration
 
@@ -361,3 +365,7 @@ LSP Diagnostics Integration for real-time feedback after code modifications. Col
 - `gate.go`: ~200 LOC
 - Test files: ~600 LOC
 - Total: ~1,900 LOC
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

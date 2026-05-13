@@ -12,15 +12,15 @@ module: "internal/session/"
 dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-RT-005
-bc_id: []
-related_principle: [P5 Typed State + Durable Checkpoint, P3 Fresh-Context Iteration, P11 File-First Primitives]
-related_pattern: [X-3, M-1, R-6]
 related_problem: [P-C02, P-C05]
 related_theme: "Layer 3: Runtime"
 breaking: false
+bc_id: []
 lifecycle: spec-anchored
 tags: "session, state, checkpoint, typed, v3r2, runtime, file-first"
----
+related_principle: [P5 Typed State + Durable Checkpoint, P3 Fresh-Context Iteration, P11 File-First Primitives]
+related_pattern: [X-3, M-1, R-6]
+------
 
 # SPEC-V3R2-RT-004: Typed Session State + Phase Checkpoint
 
@@ -383,3 +383,7 @@ Affected modules:
 1. `manager-git` PR creation (feature/SPEC-V3R2-RT-004 → main, squash strategy)
 2. SPEC-V3R2-HRN-002 (Sprint Contract) unblocking
 3. SPEC-V3R2-WF-003 (Ralph loop mode) unblocking
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

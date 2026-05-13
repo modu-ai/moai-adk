@@ -1,16 +1,25 @@
 ---
 id: SPEC-V3R4-HOOK-HARDEN-001
+title: "Hook Wrapper Hardening"
 version: "0.1.0"
 status: implemented
-created_at: 2026-05-13
-updated_at: 2026-05-13
+created: 2026-05-13
+updated: 2026-05-13
 author: GOOS행님
 priority: High
-labels: [hooks, observability, reliability, claude-code, template]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r4, hook, harden"
 issue_number: null
 depends_on: []
 related_specs: [SPEC-CC2122-HOOK-001, SPEC-CC2122-HOOK-002]
----
+------
 
 # SPEC-V3R4-HOOK-HARDEN-001: Hook Wrapper Hardening
 

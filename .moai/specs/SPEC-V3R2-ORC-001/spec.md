@@ -31,7 +31,7 @@ breaking: true
 bc_id: [BC-V3R2-005, BC-V3R2-009, BC-V3R2-016]
 lifecycle: spec-anchored
 tags: "agent, roster, consolidation, manager-cycle, builder-platform, manager-quality, v3r2"
----
+------
 
 # SPEC-V3R2-ORC-001: Agent roster consolidation (22 → 17)
 
@@ -343,3 +343,7 @@ Core criteria:
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

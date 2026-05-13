@@ -1,16 +1,25 @@
 ---
 id: SPEC-PROJECT-DB-HINT-001
+title: "`/moai project` Phase 4 DB 감지 → `/moai db init` Next Step 힌트"
 version: 0.2.1
 status: draft
-created_at: 2026-04-20
-updated_at: 2026-04-21
+created: 2026-04-20
+updated: 2026-04-21
 author: moai-adk-go
 priority: Low
-labels: [project, db-detection, workflow-extension, next-steps, hint, multi-language]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, project, db, hint"
 issue_number: null
 depends_on: [SPEC-DB-CMD-001]
 related_specs: [SPEC-DB-TEMPLATES-001, SPEC-DB-SYNC-001]
----
+------
 
 # SPEC-PROJECT-DB-HINT-001: `/moai project` Phase 4 DB 감지 → `/moai db init` Next Step 힌트
 

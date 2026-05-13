@@ -13,15 +13,15 @@ dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-SCH-001
   - SPEC-V3R2-RT-004
-bc_id: [BC-V3R2-015]
-related_principle: [P6 Permission Bubble, P7 Sandbox Default, P12 Constitutional Governance]
-related_pattern: [X-2, S-1, T-5]
 related_problem: [P-C04, P-H06]
 related_theme: "Layer 3: Runtime"
 breaking: true
+bc_id: [BC-V3R2-015]
 lifecycle: spec-anchored
 tags: "settings, provenance, multi-layer, v3r2, breaking, runtime, config"
----
+related_principle: [P6 Permission Bubble, P7 Sandbox Default, P12 Constitutional Governance]
+related_pattern: [X-2, S-1, T-5]
+------
 
 # SPEC-V3R2-RT-005: Multi-Layer Settings Resolution with Provenance Tags
 
@@ -245,3 +245,7 @@ Affected modules:
   - `docs/design/major-v3-master.md:L974` (§8 BC-V3R2-015 — multi-layer settings)
   - `docs/design/major-v3-master.md:L988` (§9 Phase 1 Constitution & Foundation — reconciled)
   - `.moai/design/v3-redesign/synthesis/problem-catalog.md` Cluster 4 (P-C04, P-H06)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

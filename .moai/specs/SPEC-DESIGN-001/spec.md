@@ -1,7 +1,22 @@
 ---
 id: SPEC-DESIGN-001
+title: "interface-design Plugin Integration"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, design, 001"
+------
 
 # SPEC-DESIGN-001: interface-design Plugin Integration
 
@@ -226,3 +241,7 @@ MoAI 네임스페이스 일관성 유지 (.moai/project/, .moai/specs/, .moai/de
 | `.claude/skills/moai/workflows/review.md` | +--design/--critique flags |
 
 All template changes mirrored to local copies. `make build` required after changes.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

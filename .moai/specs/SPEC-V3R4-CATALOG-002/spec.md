@@ -1,16 +1,25 @@
 ---
 id: SPEC-V3R4-CATALOG-002
+title: "Slim Init via Catalog Tier Filter"
 version: "0.2.0"
 status: completed
-created_at: 2026-05-12
-updated_at: 2026-05-12
+created: 2026-05-12
+updated: 2026-05-12
 author: GOOS행님
 priority: High
-labels: [catalog, distribution, slim-init, deployer, tier-filter]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r4, catalog, 002"
 issue_number: null
 depends_on: [SPEC-V3R4-CATALOG-001]
 related_specs: [SPEC-V3R4-CATALOG-003, SPEC-V3R4-CATALOG-004, SPEC-V3R4-CATALOG-005]
----
+------
 
 # SPEC-V3R4-CATALOG-002: Slim Init via Catalog Tier Filter
 
@@ -300,3 +309,7 @@ All sentinel emissions use `t.Errorf` in audit tests (no `t.Logf` advisory regre
 - **CATALOG-003** (Wave 2 next): builder-harness skill fetcher — fetches harness-generated tier skills on-demand during `/moai project` interview
 - **CATALOG-004** (Wave 3): slim sync `moai update` opt-in (current PR keeps `moai update` full FS — out of scope per SPEC)
 - **CATALOG-005** (Wave 4): pack metadata enrichment + marketplace prep
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

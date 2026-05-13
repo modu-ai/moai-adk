@@ -1,21 +1,26 @@
 ---
 id: SPEC-LSP-CORE-002
+title: "Multi-Language LSP Client Core (powernap-based)"
 version: "1.0.0"
 status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P2
-issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/lsp/core/, internal/lsp/transport/, internal/lsp/subprocess/"
-estimated_loc: 2500
 dependencies:
   - SPEC-GOPLS-BRIDGE-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: lsp, powernap, json-rpc, multi-language, client
+tags: "lsp, powernap, json-rpc, multi-language, client"
+issue_number: 0
+estimated_loc: 2500
 supersedes: SPEC-LSP-001
----
+------
 
 # SPEC-LSP-CORE-002: Multi-Language LSP Client Core (powernap-based)
 
@@ -146,3 +151,7 @@ Deliver a production-grade LSP client core that:
 - [powernap library](https://github.com/charmbracelet/powernap)
 - SPEC-LSP-001 (superseded)
 - SPEC-GOPLS-BRIDGE-001 (complementary)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

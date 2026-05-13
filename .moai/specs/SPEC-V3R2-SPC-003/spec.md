@@ -12,19 +12,19 @@ module: "internal/spec/, internal/cli/spec_lint.go"
 dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-SPC-001
-related_gap: []
 related_problem: []
-related_pattern:
-  - X-1
-related_principle:
-  - P1
-  - P12
 related_theme: "Layer 2: SPEC & TAG"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, spec, linter, ears-compliance, dag-validation, coverage"
----
+related_gap: []
+related_pattern:
+  - X-1
+related_principle:
+  - P1
+  - P12
+------
 
 # SPEC-V3R2-SPC-003: SPEC linter (moai spec lint)
 
@@ -188,3 +188,7 @@ References: skill moai-workflow-spec (EARS modality table + required sections); 
 - Patterns: X-1 Markdown + YAML Frontmatter validation (pattern-library.md §X-1).
 - Wave 1 sources: R1 §7 MetaGPT (typed intermediate artifacts must be validated), R2 §A Top-5 Pattern 3 (markdown + YAML universal).
 - Wave 2 sources: design-principles.md §P1, pattern-library.md §X-1.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

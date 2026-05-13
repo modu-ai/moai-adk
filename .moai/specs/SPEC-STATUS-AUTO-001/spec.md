@@ -1,13 +1,22 @@
 ---
 id: SPEC-STATUS-AUTO-001
+title: "SPEC Status Auto-Update System"
 version: "1.0.0"
 status: completed
 created: "2026-04-27"
 updated: "2026-04-27"
 author: GOOS
 priority: P1
-labels: [spec-status, automation, hooks, cli, sync-workflow]
----
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, status, auto, 001"
+------
 
 # SPEC-STATUS-AUTO-001: SPEC Status Auto-Update System
 

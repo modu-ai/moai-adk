@@ -12,13 +12,17 @@ module: "internal/hook/quality/"
 dependencies:
   - SPEC-HOOK-001
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, formatter, linter, tool-registry, code-quality, P1"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: []
-lifecycle: spec-anchored
-tags: "hook, formatter, linter, tool-registry, code-quality, P1"
----
+------
 
 # SPEC-HOOK-002: Code Quality Automation
 
@@ -375,3 +379,7 @@ Code Quality Automation system for automatic code formatting and linting after W
 - `change_detector.go`: ~200 LOC
 - `tool_registry_test.go`: ~400 LOC
 - Total: ~1,900 LOC
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

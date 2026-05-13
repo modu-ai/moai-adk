@@ -11,15 +11,15 @@ phase: "v2.14.0 — Phase 3 — Utility Hardening"
 module: "internal/lsp/core/, internal/hook/, internal/lsp/gopls/"
 dependencies: []
 related_problem: [IMP-V3U-002, IMP-V3U-003]
-related_pattern: []
-related_principle: []
-related_decision: [D2, D3]
 related_theme: "v2.14.0 Utility Hardening"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "lsp, subprocess, stderr, singleflight, diagnostic, v2.14"
----
+related_pattern: []
+related_principle: []
+related_decision: [D2, D3]
+------
 
 # SPEC-UTIL-003: LSP Subprocess Hygiene — stderr drain + singleflight spawn + Diagnostic Alias
 
@@ -304,3 +304,7 @@ Version: 0.1.0
 Status: draft
 Author: Wave v2.14 SPEC Writer
 Last Updated: 2026-04-24
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

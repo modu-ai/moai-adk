@@ -1,14 +1,23 @@
 ---
 id: SPEC-V3R3-WEB-001
+title: "Cockpit Foundation + Workflow Tracker capability"
 version: "0.2.0"
 status: archived
-created_at: 2026-05-04
-updated_at: 2026-05-04
+created: 2026-05-04
+updated: 2026-05-04
 author: Goos
 priority: High
-labels: [web, cockpit, foundation, capability-c1, idea-001, archived]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r3, web, 001"
 issue_number: null
----
+------
 
 ## HISTORY
 
@@ -117,3 +126,7 @@ The following items are **explicitly out of scope** for SPEC-V3R3-WEB-001. Each 
 - `.moai/project/brand/brand-voice.md` — panel title tone (concise, optimistic, technically precise)
 - `.moai/project/brand/visual-identity.md` — color palette + typography tokens (referenced only, not bound here)
 - `.moai/project/brand/target-audience.md` — persona alignment with Phase 1 Discovery
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

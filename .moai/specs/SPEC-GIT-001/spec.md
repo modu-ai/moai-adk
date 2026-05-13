@@ -1,4 +1,22 @@
-# SPEC-GIT-001: Git Operations Module
+---
+id: SPEC-GIT-001
+title: "Git Operations Module"
+version: "1.0.0"
+status: completed
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, git, 001"
+---# SPEC-GIT-001: Git Operations Module
 
 ---
 spec_id: SPEC-GIT-001
@@ -481,3 +499,7 @@ Git operations package implemented with dual-backend architecture: go-git for in
 - `internal/core/git/types.go`
 - `internal/core/git/worktree.go`
 - `internal/core/git/worktree_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

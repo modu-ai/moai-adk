@@ -1,17 +1,26 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
+title: "dbsync 훅 견고화 (5 warning 통합)"
 version: 0.3.0
 status: completed
-created_at: 2026-04-21
-updated_at: 2026-04-24
+created: 2026-04-21
+updated: 2026-04-24
 author: moai-adk-go
 priority: medium
-labels: [db, hook, hardening, follow-up, debounce, atomicity, windows-compat, coverage, mx-tag]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, db, sync, harden"
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001]
 related_specs: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
 partially_superseded_by: [SPEC-DB-SYNC-RELOC-001]
----
+------
 
 # SPEC-DB-SYNC-HARDEN-001: dbsync 훅 견고화 (5 warning 통합)
 

@@ -1,23 +1,25 @@
 ---
 id: SPEC-V3R3-DESIGN-FOLDER-FIX-001
+title: "moai update Reserved Filename Collision — Warning 격하 (Update Path)"
 version: "0.1.0"
 status: draft
-created_at: 2026-04-26
-updated_at: 2026-04-26
+created: 2026-04-26
+updated: 2026-04-26
 author: manager-spec
 priority: P0
-labels: [design-folder, update-path, bug-fix, reserved-collision, v3r3]
-issue_number: null
+phase: "v3.0.0 R3 — Phase B — Bug Fix"
+module: "internal/cli/design_folder.go, .claude/rules/moai/design/constitution.md"
+dependencies: []
+related_problem: []
+related_theme: "Phase B — Update Path Hardening"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+tags: "design-folder, moai-update, reserved-name, bug-fix, v3r3, phase-b"
+issue_number: null
 depends_on: []
 related_specs: [SPEC-DESIGN-CONST-AMEND-001]
-phase: "v3.0.0 R3 — Phase B — Bug Fix"
-module: "internal/cli/design_folder.go, .claude/rules/moai/design/constitution.md"
-tags: "design-folder, moai-update, reserved-name, bug-fix, v3r3, phase-b"
-related_theme: "Phase B — Update Path Hardening"
----
+------
 
 # SPEC-V3R3-DESIGN-FOLDER-FIX-001: moai update Reserved Filename Collision — Warning 격하 (Update Path)
 
@@ -270,3 +272,7 @@ Version: 0.1.0
 Classification: BUG_FIX
 Last Updated: 2026-04-26
 REQ coverage: REQ-DFF-001 ~ REQ-DFF-008
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

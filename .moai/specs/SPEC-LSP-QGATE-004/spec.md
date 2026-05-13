@@ -1,20 +1,25 @@
 ---
 id: SPEC-LSP-QGATE-004
+title: "Phase-Aware LSP Quality Gates"
 version: "1.0.0"
 status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P2
-issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/lsp/hook/, internal/hook/quality/"
-estimated_loc: 2400
 dependencies:
   - SPEC-LSP-AGG-003
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: lsp, quality-gate, phase-aware, trust5
----
+tags: "lsp, quality-gate, phase-aware, trust5"
+issue_number: 0
+estimated_loc: 2400
+------
 
 # SPEC-LSP-QGATE-004: Phase-Aware LSP Quality Gates
 
@@ -94,3 +99,7 @@ Additionally, `internal/lsp/hook/gate.go` bypasses the centralized `ConfigManage
 - Audit report A3 (orphaned config keys)
 - `pkg/models/config.go` (canonical QualityConfig)
 - `.moai/config/sections/quality.yaml` lsp_quality_gates section
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

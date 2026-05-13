@@ -1,13 +1,23 @@
 ---
 id: SPEC-SRS-002
+title: "Experiment Loop + Passive Observation"
 version: "1.0.0"
 status: completed
 created: "2026-04-09"
 updated: "2026-04-09"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, srs, 002"
 issue_number: 0
----
+------
 
 # SPEC-SRS-002: Experiment Loop + Passive Observation
 
@@ -306,3 +316,7 @@ internal/research/observe/    → 독립 (외부 의존성 없음)
 ### 기존 코드 수정 없음
 
 이 SPEC은 새 패키지만 생성. 기존 hook 통합(Phase 3의 나머지)은 별도 SPEC으로.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

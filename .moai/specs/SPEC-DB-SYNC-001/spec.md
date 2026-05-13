@@ -1,16 +1,25 @@
 ---
 id: SPEC-DB-SYNC-001
+title: "PostToolUse Hook + moai-domain-db-docs Skill + DB Drift Verification"
 version: 0.2.0
 status: draft
-created_at: 2026-04-20
-updated_at: 2026-04-21
+created: 2026-04-20
+updated: 2026-04-21
 author: moai-adk-go
 priority: Medium
-labels: [db, hook, post-tool-use, schema-sync, drift, moai-domain-db-docs, debounce]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, db, sync, 001"
 issue_number: null
 depends_on: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
 related_specs: [SPEC-PROJECT-DB-HINT-001]
----
+------
 
 # SPEC-DB-SYNC-001: PostToolUse Hook + moai-domain-db-docs Skill + DB Drift Verification
 

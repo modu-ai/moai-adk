@@ -11,7 +11,6 @@ phase: "v3.0.0 — Phase 1 — Constitution & Foundation"
 module: ".claude/rules/moai/, .moai/decisions/"
 dependencies:
   - SPEC-V3R2-CON-001
-related_gap: []
 related_problem:
   - P-H10
   - P-H11
@@ -20,18 +19,19 @@ related_problem:
   - P-H14
   - P-R02
   - P-R03
+related_theme: "Layer 1: Constitution"
+breaking: true
+bc_id: [BC-V3R2-014, BC-V3R2-017]
+lifecycle: spec-anchored
+tags: "v3r2, constitution, consolidation, rule-tree, frontmatter, relocate"
+related_gap: []
 related_pattern:
   - S-4
   - X-1
 related_principle:
   - P2
   - P12
-related_theme: "Layer 1: Constitution"
-breaking: true
-bc_id: [BC-V3R2-014, BC-V3R2-017]
-lifecycle: spec-anchored
-tags: "v3r2, constitution, consolidation, rule-tree, frontmatter, relocate"
----
+------
 
 # SPEC-V3R2-CON-003: Rule tree consolidation pass
 
@@ -198,3 +198,7 @@ Template-First discipline: every rule edit must be mirrored in `internal/templat
 - Patterns: S-4 FROZEN + Graduation (tree hygiene supports graduation clarity); X-1 Markdown + YAML Frontmatter (frontmatter migration is an X-1 schema unification).
 - Wave 1 sources: R6 §4 rules audit (35 + findings).
 - Wave 2 sources: problem-catalog.md Cluster 5 adjacency and §3 severity distribution.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

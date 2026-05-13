@@ -1,15 +1,24 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
+title: "`moai update` — 멱등 배포 + 폐기 경로 정리"
 version: "0.2.3"
 status: draft
-created_at: 2026-05-01
-updated_at: 2026-05-04
+created: 2026-05-01
+updated: 2026-05-04
 author: manager-spec
 priority: High
-labels: [cli, update, deployment, cleanup, agency, idempotency]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r3, update, cleanup"
 issue_number: null
 related_specs: [SPEC-AGENCY-ABSORB-001]
----
+------
 
 # SPEC-V3R3-UPDATE-CLEANUP-001: `moai update` — 멱등 배포 + 폐기 경로 정리
 
@@ -218,3 +227,7 @@ v0.2.0에서 OQ1과 OQ2는 코드 인스펙션을 통해 해소되었다 (`inter
 - 신규 분류 (v0.2.0): `PristineDeprecated`, `UserModifiedDeprecated`, `UnverifiedDeprecated`
 - 신규 사용자 메커니즘 (v0.2.1): `.moai-skip-cleanup` marker file (REQ-UPC-018)
 - LOC 추정: ~380 (atomic write + lock + cleanup + backup + provenance + telemetry + symlink/case-insensitive/self-reference 처리 + opt-out marker + 회귀 테스트 6 시나리오 + NFR 벤치마크). 상세 산식은 plan.md §1 참조.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

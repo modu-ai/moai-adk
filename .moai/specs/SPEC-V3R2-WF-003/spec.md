@@ -3,26 +3,26 @@ id: SPEC-V3R2-WF-003
 title: Multi-Mode Router (--mode flag, loop/run/design)
 version: "0.3.1"
 status: completed
-created_at: 2026-04-23
-updated_at: 2026-05-09
+created: 2026-04-23
+updated: 2026-05-09
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1
-labels: [multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, v3]
-issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/skills/moai/workflows/, internal/cli/, .claude/commands/moai/"
 dependencies:
   - SPEC-V3R2-WF-001
   - SPEC-V3R2-WF-004
-related_gap:
-  - pattern-library-O-4
-  - r2-opensource-tools-omc
+related_problem: []
 related_theme: "Theme 6 — Multi-Mode Execution Styles"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, v3"
----
+issue_number: null
+related_gap:
+  - pattern-library-O-4
+  - r2-opensource-tools-omc
+------
 
 # SPEC-V3R2-WF-003: Multi-Mode Router
 
@@ -250,3 +250,7 @@ The skill documentation **shall** publish a subcommand × mode matrix showing wh
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

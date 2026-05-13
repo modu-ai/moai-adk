@@ -3,26 +3,28 @@ id: SPEC-V3R3-DESIGN-PIPELINE-001
 title: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing
 version: "0.1.0"
 status: completed
-created_at: 2026-04-26
-updated_at: 2026-04-27
+created: 2026-04-26
+updated: 2026-04-27
 author: manager-spec
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Design Pipeline Hybridization"
 module: ".claude/skills/moai-workflow-design-import/, .claude/skills/moai-design-system/, internal/design/dtcg/, .claude/skills/moai/workflows/design.md, .claude/rules/moai/design/constitution.md"
+dependencies: []
+related_problem: []
+related_theme: "Phase C — Design Pipeline Hybridization"
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r3, design, pipeline"
 depends_on:
   - SPEC-V3R3-HARNESS-001
 related_specs:
   - SPEC-DESIGN-CONST-AMEND-001
   - SPEC-AGENCY-ABSORB-001
   - SPEC-V3R3-PROJECT-HARNESS-001
-breaking: false
-bc_id: []
-lifecycle: spec-anchored
-labels: [design, dtcg, figma, pencil, claude-design, hybrid-pipeline, v3r3, phase-c]
-related_theme: "Phase C — Design Pipeline Hybridization"
 target_release: v2.19.0
 issue_number: null
----
+------
 
 # SPEC-V3R3-DESIGN-PIPELINE-001: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing
 
@@ -226,3 +228,7 @@ Coverage: 12 REQs ↔ 7 ACs, 100% (every REQ appears in at least one AC).
 - **FROZEN zone**: Constitutional sections §2, §3.1, §3.2, §3.3, §5, §11, §12 — immutable to evolution per design constitution.
 - **Brand context**: `.moai/project/brand/{brand-voice.md, visual-identity.md, target-audience.md}` — constitutional parent that wins on conflict.
 - **Meta-harness**: SPEC-V3R3-HARNESS-001 skill that generates user-area skills dynamically.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

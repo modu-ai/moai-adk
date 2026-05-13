@@ -1,7 +1,22 @@
 ---
 id: SPEC-MX-001
+title: "@MX TAG System -- MoAI eXtension Code Annotation System"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, mx, 001"
+------
 
 # SPEC-MX-001: @MX TAG System -- MoAI eXtension Code Annotation System
 
@@ -585,3 +600,7 @@ The @MX system does not replace or modify any existing workflow. It augments the
 | REQ-EDGE-008   | AC-EDGE-008         | MILE-2         |
 | REQ-EDGE-009   | AC-EDGE-009         | MILE-2         |
 | REQ-EDGE-010   | AC-EDGE-010         | MILE-2         |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

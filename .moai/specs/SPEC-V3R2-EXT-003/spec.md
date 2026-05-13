@@ -11,14 +11,15 @@ phase: "v3.0.0 — Phase 7 — Extension"
 module: ".claude-plugin/, internal/plugin/ (future)"
 dependencies:
   - SPEC-V3R2-WF-001
-related_gap:
-  - r3-cc-architecture-plugins
+related_problem: []
 related_theme: "Theme 7 — Extension"
 breaking: false
 bc_id: []
 lifecycle: design-only
 tags: "plugin, manifest, scope, design-only, deferred, v3.1, v3"
----
+related_gap:
+  - r3-cc-architecture-plugins
+------
 
 # SPEC-V3R2-EXT-003: Plugin System (Design-Only)
 
@@ -232,3 +233,7 @@ Plugin-provided files **shall** live under `<plugin-root>/{skills,agents,command
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

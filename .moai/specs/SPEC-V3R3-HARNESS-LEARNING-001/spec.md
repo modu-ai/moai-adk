@@ -12,18 +12,19 @@ module: ".claude/skills/moai-harness-learner/, internal/harness/, .moai/harness/
 dependencies:
   - SPEC-V3R3-HARNESS-001
   - SPEC-V3R3-PROJECT-HARNESS-001
-related_specs:
-  - SPEC-DESIGN-CONST-AMEND-001
-  - SPEC-AGENCY-ABSORB-001
+related_problem: []
+related_theme: "Phase D — Adaptive Harness"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "harness, learning, adaptive, auto-evolution, frozen-guard, user-area, observer, v3r3, phase-d"
-related_theme: "Phase D — Adaptive Harness"
+related_specs:
+  - SPEC-DESIGN-CONST-AMEND-001
+  - SPEC-AGENCY-ABSORB-001
 target_release: v2.19.0
 issue_number: null
 implemented_pr: 728
----
+------
 
 # SPEC-V3R3-HARNESS-LEARNING-001: Self-Learning Dynamic Harness
 
@@ -220,3 +221,7 @@ Coverage: 12 REQs (REQ-HL-001~011 + REQ-HL-008a/b split) ↔ 8 ACs, 100% (every 
 - **Contradiction Detector**: Layer 3 — conflict detection for trigger keywords and chaining rules (REQ-HL-008a).
 - **Rate Limiter**: Layer 4 — sliding-window enforcer for auto-update frequency (REQ-HL-008b).
 - **Pattern**: Unique combination of (event_type, subject, context_hash) used as the observation key.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

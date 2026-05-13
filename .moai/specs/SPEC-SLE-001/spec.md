@@ -1,7 +1,22 @@
 ---
 id: SPEC-SLE-001
+title: "Statusline Enhancement"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, sle, 001"
+------
 
 # SPEC-SLE-001: Statusline Enhancement
 
@@ -400,3 +415,7 @@ Phase 4 (Multi-line Verbose)   Phase 5 (Wizard Enhancement)
 | REQ-SLE-040-043      | `internal/cli/profile_setup.go`, `profile_setup_translations.go`    | `profile_setup_test.go`                   |
 | REQ-SLE-050-055      | `internal/statusline/ratelimit.go`, `builder.go`                    | `ratelimit_test.go`, `builder_test.go`    |
 | REQ-SLE-NF-001-008   | All implementation files                                            | All test files                            |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

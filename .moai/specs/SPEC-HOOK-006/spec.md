@@ -12,13 +12,17 @@ module: "internal/resilience/"
 dependencies:
   - SPEC-HOOK-001
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, resilience, circuit-breaker, retry, health-check, P2"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: []
-lifecycle: spec-anchored
-tags: "hook, resilience, circuit-breaker, retry, health-check, P2"
----
+------
 
 # SPEC-HOOK-006: Resilience Patterns
 
@@ -300,3 +304,7 @@ Resilience patterns for external service integration. Circuit breaker prevents c
 - `monitor.go`: ~150 LOC
 - Test files: ~300 LOC
 - Total: ~1,150 LOC
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

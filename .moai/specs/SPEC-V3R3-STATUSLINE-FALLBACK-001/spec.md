@@ -1,14 +1,23 @@
 ---
 id: SPEC-V3R3-STATUSLINE-FALLBACK-001
+title: "moai statusline Go 바이너리 stdin fallback 강화"
 version: "0.1.0"
 status: completed
-created_at: 2026-05-10
-updated_at: 2026-05-12
+created: 2026-05-10
+updated: 2026-05-12
 author: GOOS행님
 priority: High
-labels: [statusline, fallback, cli]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r3, statusline, fallback"
 issue_number: null
----
+------
 
 # SPEC-V3R3-STATUSLINE-FALLBACK-001: moai statusline Go 바이너리 stdin fallback 강화
 
@@ -114,3 +123,7 @@ issue_number: null
 - Research: `.moai/specs/SPEC-V3R3-STATUSLINE-FALLBACK-001/research.md`
 - 기존 SPEC: SPEC-V3R3-CLI-TUI-001 (M7 이후 statusline fallback scoping 메모)
 - Memory: `project_statusline_disappearance_fix.md` (statusline 자주 사라짐 3 root cause 진단)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

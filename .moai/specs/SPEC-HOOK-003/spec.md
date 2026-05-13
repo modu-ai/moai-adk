@@ -13,13 +13,17 @@ dependencies:
   - SPEC-HOOK-001
   - SPEC-HOOK-002
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, security, ast-grep, scanning, vulnerability-detection, P1"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: []
-lifecycle: spec-anchored
-tags: "hook, security, ast-grep, scanning, vulnerability-detection, P1"
----
+------
 
 # SPEC-HOOK-003: Security & Scanning
 
@@ -363,3 +367,7 @@ AST-Grep integration for real-time security vulnerability detection in code. Sup
 - `reporter.go`: ~200 LOC
 - Test files: ~600 LOC
 - Total: ~1,700 LOC
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

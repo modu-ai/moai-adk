@@ -1,19 +1,24 @@
 ---
 id: SPEC-GOPLS-BRIDGE-001
+title: "Go-only gopls Subprocess Bridge"
 version: "1.0.0"
 status: draft
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P1
-issue_number: 0
 phase: "Phase 3 - Quality Infrastructure"
 module: "internal/lsp/gopls/, internal/loop/, internal/hook/quality/"
-estimated_loc: 2400
 dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: gopls, lsp, json-rpc, go-toolchain, quality-gate
----
+tags: "gopls, lsp, json-rpc, go-toolchain, quality-gate"
+issue_number: 0
+estimated_loc: 2400
+------
 
 # SPEC-GOPLS-BRIDGE-001: Go-only gopls Subprocess Bridge
 
@@ -194,3 +199,7 @@ Concrete Go type definitions (struct fields, method signatures, dependency types
 - [gopls v0.20.0 release notes](https://go.dev/gopls/release/v0.20.0)
 - [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specification)
 - CLAUDE.local.md Section 22 (Template Language Neutrality) — gopls bridge is scoped to local dev, does NOT become a template default
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

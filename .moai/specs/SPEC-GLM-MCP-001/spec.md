@@ -1,15 +1,24 @@
 ---
 id: SPEC-GLM-MCP-001
+title: "Z.AI 공식 MCP 서버 통합 (Vision + Web Search + Web Reader)"
 version: "0.1.0"
 status: completed
-created_at: 2026-05-01
-updated_at: 2026-05-01
+created: 2026-05-01
+updated: 2026-05-01
 author: manager-spec
 priority: Medium
-labels: [glm, mcp, vision, websearch, integration, enhancement]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, glm, mcp, 001"
 issue_number: 756
 related_specs: [SPEC-GLM-001, SPEC-CC2122-MCP-001, SPEC-LSPMCP-001]
----
+------
 
 # SPEC-GLM-MCP-001: Z.AI 공식 MCP 서버 통합 (Vision + Web Search + Web Reader)
 
@@ -202,3 +211,7 @@ Z.AI 의 공식 MCP 서버 패키지(`@z_ai/mcp-server`) 는 GLM-4.6V Vision (�
 - CLAUDE.local.md §15 (Template Language Neutrality)
 - `internal/cli/glm.go` — GLM 환경 주입 진입점 (참조만, 본 SPEC 단계에서 수정 없음)
 - `internal/cli/github_auth.go` — `moai github auth glm` 패턴 참조
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

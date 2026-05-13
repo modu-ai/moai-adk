@@ -1,23 +1,25 @@
 ---
 id: SPEC-V3R3-BRAIN-001
+title: "`/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package"
 version: "0.1.0"
 status: completed
-created_at: 2026-05-04
-updated_at: 2026-05-10
+created: 2026-05-04
+updated: 2026-05-10
 author: MoAI Plan Workflow
 priority: P1
-labels: [brain, ideation, workflow, handoff, claude-design, v3r3]
-issue_number: null
 phase: "v3.0.0 — Phase 8 — Brain Workflow Introduction"
 module: "internal/cli/, .claude/skills/moai/workflows/, .claude/skills/moai-domain-ideation/, .claude/skills/moai-domain-research/, .claude/skills/moai-domain-design-handoff/, .claude/agents/manager-brain.md, .claude/commands/moai-brain.md, .moai/brain/"
 dependencies: []
-related_specs: [SPEC-V3R3-WEB-001]
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "brain, ideation, workflow, handoff, claude-design, v3r3"
+issue_number: null
+related_specs: [SPEC-V3R3-WEB-001]
 harness: standard
----
+------
 
 # SPEC-V3R3-BRAIN-001: `/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package
 
@@ -313,3 +315,7 @@ See `acceptance.md` for full Given-When-Then scenarios. Minimum 5 scenarios requ
 ---
 
 **Status**: draft (audit-ready post-plan-auditor PASS)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

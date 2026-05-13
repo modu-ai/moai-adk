@@ -3,25 +3,25 @@ id: SPEC-V3R2-WF-004
 title: Agentless Fixed-Pipeline Classification for Utility Subcommands
 version: "0.3.0"
 status: completed
-created_at: 2026-04-23
-updated_at: 2026-05-10
+created: 2026-04-23
+updated: 2026-05-10
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1
-labels: [agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3]
-issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/skills/moai/workflows/, .claude/rules/moai/workflow/"
 dependencies:
   - SPEC-V3R2-WF-001
-related_gap:
-  - pattern-library-O-6
-  - r1-ai-harness-papers-agentless
+related_problem: []
 related_theme: "Theme 6 — Workflow Consolidation"
 breaking: true
 bc_id: [BC-V3R2-007]
 lifecycle: spec-anchored
 tags: "agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3"
----
+issue_number: null
+related_gap:
+  - pattern-library-O-6
+  - r1-ai-harness-papers-agentless
+------
 
 # SPEC-V3R2-WF-004: Agentless Fixed-Pipeline Classification
 
@@ -237,3 +237,7 @@ The classification **shall** be published as a matrix in `.claude/rules/moai/wor
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

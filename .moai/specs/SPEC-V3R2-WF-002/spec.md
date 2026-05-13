@@ -11,14 +11,15 @@ phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/commands/, internal/template/commands_audit_test.go, .claude/skills/moai-workflow-github/, .claude/skills/moai-workflow-release/"
 dependencies:
   - SPEC-V3R2-WF-001
-related_gap:
-  - r6-commands-audit
-  - problem-catalog-fat-commands
+related_problem: []
 related_theme: "Theme 6 — Workflow Consolidation"
 breaking: true
 bc_id: [BC-V3R2-012]
 lifecycle: spec-anchored
 tags: "commands, thin-wrapper, github, release, extraction, workflow, v3"
+related_gap:
+  - r6-commands-audit
+  - problem-catalog-fat-commands
 implemented_at: 2026-05-01T05:03Z
 implemented_by: manager-ddd (run phase, 4 commits)
 commits:
@@ -26,7 +27,7 @@ commits:
   - 89aff653ef4b6e1c51c3b5d95a7f4ea44f5e8c2a
   - 9f1e31ca8b5d62e8a4c6f9e7b1a2c3d5f6g7h8i9
   - db3b299193d84b9c3f6a5e2c8b1d7f4a9e6c3h0k2
----
+------
 
 # SPEC-V3R2-WF-002: Commands Thin-Wrapper Enforcement and Fat-Command Extraction
 
@@ -284,3 +285,7 @@ None. BC-V3R2-012 is documented in this CHANGELOG (§10 Breaking Changes). No ne
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

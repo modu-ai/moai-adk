@@ -1,13 +1,23 @@
 ---
-spec_id: SPEC-SDD-001
+id: SPEC-SDD-001
 title: "SDD Integration (Harness + Delta + Compact)"
-created: "2026-04-01"
-status: completed
-priority: high
-module: template
 version: "1.0.0"
+status: completed
+created: "2026-04-01"
+updated: 2026-05-13
+author: GOOS
+priority: high
+phase: "legacy — pre-v3.0"
+module: template
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, sdd, 001"
+spec_id: SPEC-SDD-001
+------
 
 # SDD Integration (Harness + Delta + Compact)
 
@@ -141,3 +151,7 @@ All research notes, plan details, discussion history, and overview text **shall*
 - `internal/template/templates/.claude/skills/moai/workflows/plan.md` (delta markers, compact generation)
 - `internal/template/templates/.claude/skills/moai/workflows/run.md` (harness routing, compact loading)
 - `internal/template/templates/.claude/skills/moai/workflows/moai.md` (Complexity Estimator)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

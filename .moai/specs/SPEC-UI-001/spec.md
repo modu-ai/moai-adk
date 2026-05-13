@@ -11,14 +11,19 @@ phase: "Phase 4 - UI and Integration"
 module: "internal/ui/"
 dependencies:
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "bubbletea, lipgloss, tui, elm-architecture, charmbracelet"
 adr_references:
   - ADR-010
 resolves:
   - "#268"
   - "#249"
   - "#286"
-tags: bubbletea, lipgloss, tui, elm-architecture, charmbracelet
----
+------
 
 # SPEC-UI-001: Terminal UI Framework
 
@@ -396,3 +401,7 @@ Terminal UI framework implemented using Charmbracelet bubbletea with Elm Archite
 - `internal/ui/ui_test.go`
 - `internal/ui/wizard.go`
 - `internal/ui/wizard_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

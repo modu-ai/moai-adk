@@ -20,7 +20,7 @@ breaking: true
 bc_id: [BC-V3R2-010]
 lifecycle: spec-anchored
 tags: "evaluator, agent-as-judge, sprint-contract, memory-scope, fresh-judgment, constitution-amendment, frozen-zone, v3r2"
----
+------
 
 # SPEC-V3R2-HRN-002: Evaluator Memory Scope Amendment (per-iteration fresh judgment)
 
@@ -331,3 +331,7 @@ Core criteria:
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

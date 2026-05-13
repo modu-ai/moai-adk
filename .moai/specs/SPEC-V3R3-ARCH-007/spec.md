@@ -10,13 +10,14 @@ priority: P1 High
 phase: "v3.0.0 R3 — Phase A — Runtime Safety Net"
 module: ".moai/config/sections/runtime.yaml, internal/runtime/budget.go, internal/template/templates/.moai/config/sections/runtime.yaml"
 dependencies: []
+related_problem: []
+related_theme: "Phase A — Iteration 4 Safety Net"
 breaking: false
 bc_id: [BC-V3R3-006]
 lifecycle: spec-anchored
 tags: "token-budget, circuit-breaker, runtime, per-agent, stall-detection, progress-persistence, v3r3, phase-a, safety-net"
-related_theme: "Phase A — Iteration 4 Safety Net"
 released_in: v2.15.0
----
+------
 
 # SPEC-V3R3-ARCH-007: Token Circuit Breaker
 
@@ -220,3 +221,7 @@ The Token Circuit Breaker **shall not** intercept or modify Claude API requests/
 | REQ-ARCH007-010 | (no acceptance, non-functional) | API non-interception policy |
 | REQ-ARCH007-011 | AC-ARCH007-01 (default fallback) | Robustness |
 | REQ-ARCH007-012 | AC-ARCH007-04 (90% behavior) | Hard threshold guidance |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -11,13 +11,14 @@ phase: "v3.0.0 R3 — Phase A — Coverage Gap Closure"
 module: ".claude/agents/moai/expert-mobile.md, .claude/skills/moai-domain-mobile/, .claude/skills/moai-framework-react-native/, .claude/skills/moai-framework-flutter-deep/, .claude/skills/moai/SKILL.md (routing keywords)"
 dependencies:
   - SPEC-V3R3-ARCH-003
+related_problem: []
+related_theme: "Phase A — Mobile Domain Coverage"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "expert-mobile, mobile-coverage, ios, android, react-native, flutter, skill-creation, agent-creation, v3r3, phase-a"
-related_theme: "Phase A — Mobile Domain Coverage"
 released_in: v2.15.0
----
+------
 
 # SPEC-V3R3-COV-001: Mobile Native Coverage
 
@@ -208,3 +209,7 @@ The new mobile coverage **shall not** introduce mobile-specific MCP tools into e
 | REQ-COV001-010 | (recommendation only) | Cross-paradigm guidance |
 | REQ-COV001-011 | AC-COV001-08 | 기존 SPEC 무수정 |
 | REQ-COV001-012 | AC-COV001-01 (tools 표준) | Standard tool set |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

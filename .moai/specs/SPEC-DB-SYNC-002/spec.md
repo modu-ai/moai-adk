@@ -1,16 +1,25 @@
 ---
 id: SPEC-DB-SYNC-002
+title: "Migration File Parser Backends for DB Schema Sync"
 version: 0.1.0
 status: draft
-created_at: 2026-04-24
-updated_at: 2026-04-24
+created: 2026-04-24
+updated: 2026-04-24
 author: manager-spec (follow-up to plan-auditor 2026-04-24)
 priority: High
-labels: [db, parser, migration, prisma, alembic, rails, raw-sql, follow-up]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, db, sync, 002"
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001]
 related_specs: [SPEC-DB-SYNC-RELOC-001, SPEC-DB-SYNC-HARDEN-001, SPEC-DB-CMD-001]
----
+------
 
 # SPEC-DB-SYNC-002: Migration File Parser Backends for DB Schema Sync
 
@@ -310,3 +319,7 @@ SPEC-DB-SYNC-002 (this SPEC — parser backends) ◄──────┘
 **Version**: 0.1.0
 **Status**: draft
 **Expected Next Step**: `/moai plan SPEC-DB-SYNC-002` 실행 → `plan.md`·`acceptance.md` 생성(본 세션 범위 외)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

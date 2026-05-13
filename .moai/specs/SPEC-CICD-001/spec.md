@@ -1,7 +1,22 @@
 ---
 id: SPEC-CICD-001
+title: "CI/CD AI 자동화 재설계"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, cicd, 001"
+------
 
 # SPEC-CICD-001: CI/CD AI 자동화 재설계
 
@@ -228,3 +243,7 @@ GitHub 내장 auto-merge 사용:
 | REQ-6 | `community.yml` | Welcome, Stale, Labeler만 동작 확인 |
 | REQ-7 | 문서 | GoosLab bot 설정 변경 가이드 확인 |
 | REQ-8 | N/A | CodeRabbit + Claude Review 동시 실행 확인 |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

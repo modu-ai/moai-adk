@@ -1,14 +1,24 @@
 ---
 id: SPEC-ASKUSER-ENFORCE-001
+title: "AskUserQuestion 의무화 + Socratic Interview 표준화 + ToolSearch 사전 로드 절차 정식화"
 version: "1.0.0"
 status: draft
 created: "2026-04-25"
 updated: "2026-04-25"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, askuser, enforce, 001"
 issue_number: 0
 depends_on: []
----
+------
 
 # SPEC-ASKUSER-ENFORCE-001: AskUserQuestion 의무화 + Socratic Interview 표준화 + ToolSearch 사전 로드 절차 정식화
 
@@ -169,3 +179,7 @@ The system **shall** document the deferred-tool ToolSearch procedure and AskUser
 ## 6. HISTORY
 
 - 2026-04-25: SPEC-ASKUSER-ENFORCE-001 v1.0.0 created. AskUserQuestion-only 사용자 상호작용 채널 의무화 + Socratic interview 절차 표준화 + deferred tool ToolSearch 사전 로드 절차 정식화. 5축 root cause 분석 (direct cause / asymmetric protocol / output style gap / trigger matrix gap / memory dead lesson) 기반.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

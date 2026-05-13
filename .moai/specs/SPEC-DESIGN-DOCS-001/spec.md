@@ -1,16 +1,25 @@
 ---
 id: SPEC-DESIGN-DOCS-001
+title: ".moai/design/ 폴더 구조와 템플릿 세트 정의"
 version: 0.2.0
 status: draft
-created_at: 2026-04-20
-updated_at: 2026-04-21
+created: 2026-04-20
+updated: 2026-04-21
 author: moai-adk-go
 priority: High
-labels: [design, templates, moai-design, folder-structure, template-first]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, design, docs, 001"
 issue_number: null
 depends_on: [SPEC-DESIGN-CONST-AMEND-001]
 related_specs: [SPEC-DESIGN-ATTACH-001, SPEC-DESIGN-PENCIL-001, SPEC-DB-CMD-001]
----
+------
 
 # SPEC-DESIGN-DOCS-001: .moai/design/ 폴더 구조와 템플릿 세트 정의
 
@@ -255,3 +264,7 @@ CLAUDE.local.md §2에 따라 `.claude/`, `.moai/`, `.agency/` 하위에 새 파
   - Downstream: SPEC-DESIGN-ATTACH-001 (/moai design auto-load integration)
   - Downstream: SPEC-DESIGN-PENCIL-001 (Pencil MCP plan template)
   - Related: SPEC-DB-CMD-001 (design DB command family)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

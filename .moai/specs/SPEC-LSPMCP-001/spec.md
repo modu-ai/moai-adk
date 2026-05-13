@@ -1,13 +1,23 @@
 ---
 id: SPEC-LSPMCP-001
+title: "LSP MCP Bridge (Go 바이너리 내장)"
 version: "1.0.0"
 status: draft
 created: "2026-04-07"
 updated: "2026-04-07"
 author: GOOS
 priority: P2
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, lspmcp, 001"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -112,3 +122,7 @@ diagnosticsCollector := lsphook.NewDiagnosticsCollector(lspProvider, fallbackDia
 - All languages (Phase 1: Go, TypeScript, Python)
 - Real-time LSP notifications (request-response only)
 - IDE-level features (completion, signature help)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,16 +1,25 @@
 ---
 id: SPEC-WF-AUDIT-GATE-001
+title: "Plan→Run 전이 의무 감사 게이트"
 version: "1.0.0"
 status: completed
-created_at: 2026-04-25
-updated_at: 2026-04-25
+created: 2026-04-25
+updated: 2026-04-25
 author: GOOS
 priority: High
-labels: [workflow, plan-audit, gate, governance, dogfood]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, wf, audit, gate"
 issue_number: null
 depends_on: []
 related_specs: []
----
+------
 
 # SPEC-WF-AUDIT-GATE-001: Plan→Run 전이 의무 감사 게이트
 
@@ -144,3 +153,7 @@ The system shall persist every plan-audit result (PASS, FAIL, or `INCONCLUSIVE`)
 ## 6. HISTORY
 
 - 2026-04-25: SPEC-WF-AUDIT-GATE-001 v1.0.0 created. v3R2 35-SPEC 패키지 작성 직후 진행한 전수 점검에서 SPEC-SKILL-001(892B archived) 사고를 발견함에 따라, plan→run 전이 사이에 plan-auditor 의무 게이트를 신설하기 위해 작성. 본 SPEC은 dogfood 대상이며 자기 자신을 첫 번째 감사 대상으로 제출 가능한 수준으로 작성됨.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

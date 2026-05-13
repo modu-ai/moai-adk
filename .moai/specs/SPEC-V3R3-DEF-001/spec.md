@@ -11,13 +11,14 @@ phase: "v3.0.0 R3 — Phase A — Dependency Graph Sanitization"
 module: ".moai/specs/SPEC-V3R2-ORC-*/, .moai/specs/SPEC-V3R2-WF-001/, .moai/specs/SPEC-V3R2-MIG-001/"
 dependencies:
   - SPEC-V3R3-DEF-007
+related_problem: []
+related_theme: "Phase A — Defect Cleanup"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "dependency-graph, cycle-break, orc, mig, wf, plan-audit, v3r3, phase-a"
-related_theme: "Phase A — Defect Cleanup"
 released_in: v2.15.0
----
+------
 
 # SPEC-V3R3-DEF-001: ORC Dependency Cycle Resolution
 
@@ -178,3 +179,7 @@ The cycle resolution **shall not** introduce new dependencies beyond the documen
 | REQ-DEF001-006 | AC-DEF001-05 | plan-auditor static analysis |
 | REQ-DEF001-007 | AC-DEF001-04 | §1.2 비목표 |
 | REQ-DEF001-008 | AC-DEF001-02, AC-DEF001-03 | §1.2 |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

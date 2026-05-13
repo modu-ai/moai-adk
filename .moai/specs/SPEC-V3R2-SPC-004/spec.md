@@ -11,18 +11,18 @@ phase: "v3.0.0 — Phase 7 — Extension"
 module: "internal/mx/resolver.go, cmd/moai/mx.go"
 dependencies:
   - SPEC-V3R2-SPC-002
-related_gap: []
 related_problem: []
-related_pattern:
-  - T-1
-related_principle:
-  - P2
 related_theme: "Layer 2: SPEC & TAG"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, mx, resolver, aci, fan-in, anchor"
----
+related_gap: []
+related_pattern:
+  - T-1
+related_principle:
+  - P2
+------
 
 # SPEC-V3R2-SPC-004: @MX anchor resolver
 
@@ -176,3 +176,7 @@ References: pattern-library.md §T-1 priority 1 ("strongest single leverage patt
 - Patterns: T-1 ACI (pattern-library.md §T-1 priority 1 — "6 commands" including `moai_locate_mx_anchor`).
 - Wave 1 sources: R1 §11 SWE-agent ACI (8× improvement), R2 §8 SWE-agent deep analysis.
 - Wave 2 sources: pattern-library.md §T-1 priority 1 ("strongest single leverage pattern"); master-v3 §5.3 ACI command list.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,14 +1,23 @@
 ---
 id: SPEC-MX-002
+title: "MX Tag Auto-Validation System"
 version: 1.0.0
 status: completed
 created: 2026-03-11
 updated: 2026-03-11
 author: GOOS
 priority: medium
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
+tags: "legacy, mx, 002"
 depends_on: SPEC-MX-001
----
+------
 
 # SPEC-MX-002: MX Tag Auto-Validation System
 
@@ -370,3 +379,7 @@ fan_in 분석은 기존 `internal/astgrep/analyzer.go`의 `FindPattern` 메서�
 | REQ-EDGE-003   | AC-EDGE-003         | TASK-1         |
 | REQ-EDGE-004   | AC-EDGE-004         | TASK-1         |
 | REQ-EDGE-005   | AC-EDGE-005         | TASK-3         |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

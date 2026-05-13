@@ -10,10 +10,15 @@ priority: P0 Critical
 phase: "v3.0.0 — Phase 1 — Constitution & Foundation"
 module: "internal/constitution/, .claude/rules/moai/core/"
 dependencies: []
-related_gap: []
 related_problem:
   - P-R02
   - P-R03
+related_theme: "Layer 1: Constitution"
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "v3r2, constitution, frozen-zone, evolvable-zone, zone-codification"
+related_gap: []
 related_pattern:
   - S-4
   - X-1
@@ -21,12 +26,7 @@ related_principle:
   - P1
   - P2
   - P12
-related_theme: "Layer 1: Constitution"
-breaking: false
-bc_id: []
-lifecycle: spec-anchored
-tags: "v3r2, constitution, frozen-zone, evolvable-zone, zone-codification"
----
+------
 
 # SPEC-V3R2-CON-001: FROZEN/EVOLVABLE zone codification for core constitution
 
@@ -205,3 +205,7 @@ Notes:
 - Patterns: S-4 FROZEN + Graduation (pattern-library.md §S-4); X-1 Markdown + YAML Frontmatter (pattern-library.md §X-1 — registry is markdown).
 - Wave 1 sources: R1 §18 Constitutional AI (declarative governance); R3 §4 Adoption Candidate 7 (typed taxonomy formalization).
 - Wave 2 sources: design-principles.md §P12 (zones as governance); problem-catalog.md Cluster 6 adjacency.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

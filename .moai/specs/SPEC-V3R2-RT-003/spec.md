@@ -13,15 +13,15 @@ dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-RT-002
   - SPEC-V3R2-RT-005
-bc_id: [BC-V3R2-003]
-related_principle: [P7 Sandbox Default, P6 Permission Bubble, P11 File-First]
-related_pattern: [S-3, S-1]
 related_problem: [P-C03, P-C01]
 related_theme: "Layer 3: Runtime"
 breaking: true
+bc_id: [BC-V3R2-003]
 lifecycle: spec-anchored
 tags: "sandbox, safety, security, v3r2, breaking, runtime, owasp"
----
+related_principle: [P7 Sandbox Default, P6 Permission Bubble, P11 File-First]
+related_pattern: [S-3, S-1]
+------
 
 # SPEC-V3R2-RT-003: Sandbox Execution Layer (Bubblewrap / Seatbelt / Docker)
 
@@ -239,3 +239,7 @@ Affected modules:
 - Wave 2 sources: design-principles.md P7 (Sandbox Default); pattern-library.md S-3; problem-catalog.md Cluster 5 P-C03.
 - BC-ID: BC-V3R2-003 (sandbox-by-default for implementer agents, AUTO migration on per-OS basis).
 - Priority: P0 Critical — master §1.2 commits v3 to correcting the ecosystem sandbox gap; blocks harness thorough and loop mode.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,23 +1,30 @@
 ---
 id: SPEC-LSP-001
 title: Language Server Protocol Client System
-phase: "Phase 2 - Core Domains"
+version: "1.0.0"
 status: superseded
-superseded_by: SPEC-LSP-CORE-002
-priority: High
 created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: High
+phase: "Phase 2 - Core Domains"
 module: "internal/lsp/"
+dependencies:
+  - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "lsp, json-rpc, diagnostics, multi-language, concurrency"
+superseded_by: SPEC-LSP-CORE-002
 files:
   - client.go
   - server.go
   - protocol.go
   - models.go
 estimated_loc: 1500
-dependencies:
-  - SPEC-CONFIG-001
-lifecycle: spec-anchored
-tags: lsp, json-rpc, diagnostics, multi-language, concurrency
----
+------
 
 # SPEC-LSP-001: Language Server Protocol Client System
 
@@ -425,3 +432,7 @@ LSP integration package implemented with multi-language server management suppor
 - `internal/lsp/protocol_test.go`
 - `internal/lsp/server.go`
 - `internal/lsp/server_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

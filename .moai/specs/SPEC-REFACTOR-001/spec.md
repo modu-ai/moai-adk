@@ -1,13 +1,23 @@
 ---
 id: SPEC-REFACTOR-001
+title: "moai rank 기능 완전 제거"
 version: "1.0.0"
 status: completed
 created: "2026-03-19"
 updated: "2026-03-20"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, refactor, 001"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -96,3 +106,7 @@ MoAI-ADK-Go에서 `moai rank` 리더보드 기능을 완전히 제거한다. 이
 - 이 SPEC은 다른 SPEC에 의존하지 않음
 - `internal/rank/`는 leaf 패키지로 다른 내부 패키지에 의존하지 않음
 - 제거 후 `go.mod`에 불필요한 의존성 발생 가능성 없음 (표준 라이브러리만 사용)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

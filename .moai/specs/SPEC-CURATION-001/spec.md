@@ -1,11 +1,23 @@
 ---
 id: SPEC-CURATION-001
 title: "Tool Curation & MCP Segregation"
+version: "1.0.0"
 status: draft
-priority: P1
 created: "2026-04-07"
+updated: 2026-05-13
+author: GOOS
+priority: P1
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, curation, 001"
 harness_pillar: "P1: Guardrails (SOLID I-Principle)"
----
+------
 
 # SPEC-CURATION-001: Tool Curation & MCP Segregation
 
@@ -41,3 +53,7 @@ expert-debug의 tools SHALL NOT include `Agent` (leaf-node specialist).
 
 ### Modified Files (Local)
 - Same files under `.claude/agents/moai/` for local project
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

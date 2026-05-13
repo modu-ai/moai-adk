@@ -1,4 +1,22 @@
-# SPEC-TEMPLATE-001: Template Deployment & File Manifest System
+---
+id: SPEC-TEMPLATE-001
+title: "Template Deployment & File Manifest System"
+version: "1.0.0"
+status: completed
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, template, 001"
+---# SPEC-TEMPLATE-001: Template Deployment & File Manifest System
 
 ---
 spec_id: SPEC-TEMPLATE-001
@@ -551,3 +569,7 @@ Template deployment system implemented with go:embed-based template bundling, Go
 - `internal/manifest/manifest_test.go`
 - `internal/manifest/types.go`
 - `internal/manifest/types_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

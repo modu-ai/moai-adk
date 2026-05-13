@@ -15,15 +15,15 @@ dependencies:
   - SPEC-V3R2-RT-002
   - SPEC-V3R2-RT-004
   - SPEC-V3R2-RT-005
-bc_id: [BC-V3R2-018]
-related_principle: [P8 Hook JSON, P2 ACI, P6 Permission Bubble]
-related_pattern: [T-5, T-1, S-1]
 related_problem: [P-H01, P-H02, P-H03, P-H15, P-H16, P-H17, P-H19, P-R01]
 related_theme: "Layer 3: Runtime"
 breaking: true
+bc_id: [BC-V3R2-018]
 lifecycle: spec-anchored
 tags: "hook, handlers, coverage, v3r2, breaking, runtime, tmux, p-h02"
----
+related_principle: [P8 Hook JSON, P2 ACI, P6 Permission Bubble]
+related_pattern: [T-5, T-1, S-1]
+------
 
 # SPEC-V3R2-RT-006: Hook Handler Completeness and 27-Event Coverage
 
@@ -282,3 +282,7 @@ Go handler count after this SPEC: 27 current − 1 removed (setupHandler) = 26 G
 - Wave 2 sources: problem-catalog.md Cluster 3 (Hook Completeness and Safety, CRITICAL).
 - BC-ID: BC-V3R2-018 (retired events removed from settings.json; observability tap via opt-in).
 - Priority: P0 Critical — contains P-H02 CRITICAL bug fix (known tmux pane leak); unblocks team-mode reliability.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

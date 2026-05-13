@@ -1,16 +1,25 @@
 ---
 id: SPEC-DESIGN-PENCIL-001
+title: "moai-workflow-pencil-integration Skill + /moai design Phase B2.6 Pencil Path"
 version: 0.2.0
 status: draft
-created_at: 2026-04-20
-updated_at: 2026-04-21
+created: 2026-04-20
+updated: 2026-04-21
 author: moai-adk-go
 priority: Medium
-labels: [design, pencil, mcp, batch-design, wireframe, skill, workflow-extension]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, design, pencil, 001"
 issue_number: null
 depends_on: [SPEC-DESIGN-DOCS-001, SPEC-DESIGN-ATTACH-001]
 related_specs: []
----
+------
 
 # SPEC-DESIGN-PENCIL-001: moai-workflow-pencil-integration Skill + /moai design Phase B2.6 Pencil Path
 
@@ -323,3 +332,7 @@ triggers:
 - 위험도: Low
 - 영향: 반복 실행 시 `.moai/design/screenshots/` 디렉토리가 계속 증가
 - 완화책: `.pen` 파일당 최근 5회 실행분만 보관하는 retention 정책 적용, 그 이상은 자동 cleanup. cleanup 로직은 본 skill 실행 종료 시 수행
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

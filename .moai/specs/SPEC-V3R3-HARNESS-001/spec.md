@@ -3,30 +3,31 @@ id: SPEC-V3R3-HARNESS-001
 title: Meta-Harness Skill — Static Core 22 + Dynamic ∞
 version: "0.1.2"
 status: completed
-created_at: 2026-04-26
-updated_at: 2026-04-27
+created: 2026-04-26
+updated: 2026-04-27
 author: manager-spec
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Extreme Aggressive Core"
 module: ".claude/skills/moai-meta-harness/, internal/template/templates/.claude/skills/moai-meta-harness/, internal/cli/update/, .moai/archive/skills/v2.16/"
 dependencies:
   - SPEC-V3R3-HARNESS-LEARNING-001
+related_problem: []
+related_theme: "Phase C — Extreme Aggressive Core (meta-harness + namespace separation)"
+breaking: true
+bc_id:
+  - BC-V3R3-007
+lifecycle: spec-anchored
+tags: "legacy, v3r3, harness, 001"
 related_specs:
   - SPEC-V3R3-PATTERNS-001
   - SPEC-V3R3-DESIGN-PIPELINE-001
   - SPEC-V3R3-PROJECT-HARNESS-001
   - SPEC-AGENCY-ABSORB-001
-breaking: true
-bc_id:
-  - BC-V3R3-007
-lifecycle: spec-anchored
-labels: [harness, meta-skill, breaking-change, namespace-separation, v3r3, phase-c, extreme-aggressive, apache-2-0-attribution]
-related_theme: "Phase C — Extreme Aggressive Core (meta-harness + namespace separation)"
 target_release: v2.17.0
 issue_number: null
 depends_on:
   - SPEC-V3R3-HARNESS-LEARNING-001
----
+------
 
 # SPEC-V3R3-HARNESS-001: Meta-Harness Skill — Static Core 22 + Dynamic ∞
 
@@ -260,3 +261,7 @@ Coverage: 10 REQs ↔ 7 ACs, 100% (every REQ appears in at least one AC). REQ-HA
 - **Archive**: Read-only preservation of removed skills under `.moai/archive/skills/v2.16/<skill-id>/` for restore via `moai migrate restore-skill`.
 - **revfactory/harness**: External Apache 2.0 project (`https://github.com/revfactory/harness`) that originated the 7-Phase meta-skill pattern. Cited per Apache 2.0 §4(c) attribution requirement.
 - **Sprint Contract**: The evaluator-active negotiation protocol from design constitution §11.5, reused here to validate generated harness artifacts.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,15 +1,24 @@
 ---
 id: SPEC-CC2122-MCP-001
+title: "Claude Code v2.1.119 MCP `alwaysLoad` 통합"
 version: "0.1.0"
 status: draft
-created_at: 2026-04-30
-updated_at: 2026-04-30
+created: 2026-04-30
+updated: 2026-04-30
 author: manager-spec
 priority: Medium
-labels: [mcp, claude-code-integration, templates, backward-compat]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, cc2122, mcp, 001"
 issue_number: null
 related_specs: [SPEC-CC2122-HOOK-001, SPEC-CC2122-STATUSLINE-001]
----
+------
 
 # SPEC-CC2122-MCP-001: Claude Code v2.1.119 MCP `alwaysLoad` 통합
 
@@ -99,3 +108,7 @@ Claude Code v2.1.119 릴리스 노트에 따라 `.mcp.json` 의 `mcpServers` 엔
 ## Implementation Reference
 
 마일스톤, 우선순위, 기술적 접근 방식은 `plan.md` 를 참조한다.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

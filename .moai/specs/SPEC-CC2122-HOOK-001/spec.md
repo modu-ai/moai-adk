@@ -1,7 +1,22 @@
 ---
 id: SPEC-CC2122-HOOK-001
+title: "Claude Code v2.1.119-121 Hook Feature Integration"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, cc2122, hook, 001"
+------
 
 # SPEC-CC2122-HOOK-001: Claude Code v2.1.119-121 Hook Feature Integration
 
@@ -66,3 +81,7 @@ Claude Code v2.1.119-121에서 추가된 3가지 기능을 moai-adk-go 템플릿
 
 **간접 영향:**
 - `internal/template/embedded.go` (make build로 재생성)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

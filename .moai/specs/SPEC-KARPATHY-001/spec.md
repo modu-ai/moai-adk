@@ -1,23 +1,28 @@
 ---
 id: SPEC-KARPATHY-001
+title: "Karpathy Coding Principles Integration into MoAI-ADK Orchestration"
 version: "0.1.0"
 status: completed
-created_at: 2026-04-28
-updated_at: 2026-04-28
+created: 2026-04-28
+updated: 2026-04-28
 author: manager-spec
 priority: High
-labels: [karpathy, anti-patterns, constitution, skills, rules, coding-principles, templates]
-issue_number: null
-title: "Karpathy Coding Principles Integration into MoAI-ADK Orchestration"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+tags: "legacy, karpathy, 001"
+issue_number: null
 related_specs: [SPEC-V3R3-PATTERNS-001, SPEC-V3R2-CON-001]
 complexity: 6
 harness_level: standard
 development_mode: ddd
 domains: [rules, skills, templates]
----
+------
 
 # SPEC-KARPATHY-001: Karpathy Coding Principles Integration into MoAI-ADK Orchestration
 
@@ -220,3 +225,7 @@ This is achieved through constitution amendments (always loaded) + skill trigger
 - `.claude/rules/moai/core/zone-registry.md` -- Zone registry (CONST-V3R2-025..046 Frozen zone confirmation)
 - SPEC-V3R3-PATTERNS-001 -- Pattern Cookbook (precedent for reference file integration)
 - SPEC-V3R2-CON-001 -- Zone Registry (frozen zone definitions, ensures no frozen zone violation)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

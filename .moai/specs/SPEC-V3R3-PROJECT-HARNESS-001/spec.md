@@ -3,24 +3,27 @@ id: SPEC-V3R3-PROJECT-HARNESS-001
 title: Project Harness Activation — 16Q Interview + 5-Layer
 version: "0.3.0"
 status: completed
-created_at: 2026-04-26
-updated_at: 2026-04-27
+created: 2026-04-26
+updated: 2026-04-27
 author: manager-spec
 priority: P0
-labels: [project, harness, interview, integration, v3r3, phase-c]
-issue_number: null
 phase: "v3.0.0 R3 — Phase C — Project Harness Activation"
 module: ".claude/skills/moai/workflows/project.md, .moai/harness/, .claude/agents/my-harness/, .claude/skills/my-harness-*/, internal/template/templates/.claude/skills/moai/workflows/{plan,run,sync,design}.md"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r3, project, harness"
+issue_number: null
 depends_on:
   - SPEC-V3R3-HARNESS-001
 related_specs:
   - SPEC-V3R3-HARNESS-LEARNING-001
   - SPEC-V3R3-DESIGN-PIPELINE-001
-breaking: false
-bc_id: []
-lifecycle: spec-anchored
 target_release: v2.19.0
----
+------
 
 # SPEC-V3R3-PROJECT-HARNESS-001: Project Harness Activation
 
@@ -172,3 +175,7 @@ AC ↔ REQ traceability 100% 매트릭스는 `acceptance.md` §5.
 - 디자인 시스템 헌법: `.claude/rules/moai/design/constitution.md` §2 (FROZEN zone), §11 (GAN Loop) — 미러링 참조만.
 - Reference SPEC: `.moai/specs/SPEC-V3R3-HARNESS-LEARNING-001/` (구조 동형, depends 관계).
 - 운영 정책: `CLAUDE.md` §8 (User Interaction Architecture), §10 (Worktree Isolation), `.claude/rules/moai/core/agent-common-protocol.md` (AskUserQuestion boundary).
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

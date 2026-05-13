@@ -11,15 +11,16 @@ phase: "v3.0.0 — Phase 8 — Migration Tool + Docs"
 module: "internal/hook/, internal/cli/deps.go, .claude/hooks/moai/, internal/template/templates/.claude/settings.json.tmpl"
 dependencies:
   - SPEC-V3R2-EXT-004
-related_gap:
-  - r6-hooks-audit
-  - r6-orphan-handlers
+related_problem: []
 related_theme: "Theme 2 — Runtime Hardening"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "hooks, cleanup, orphan, stub, divergence, handler, v3"
----
+related_gap:
+  - r6-hooks-audit
+  - r6-orphan-handlers
+------
 
 # SPEC-V3R2-MIG-002: Hook Registration Cleanup
 
@@ -249,3 +250,7 @@ The `postToolUseFailureHandler` **shall** classify errors into at least 3 catego
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

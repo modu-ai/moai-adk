@@ -11,9 +11,14 @@ phase: "v3.0.0 — Phase 1 — Constitution & Foundation"
 module: "internal/constitution/, .claude/rules/moai/core/, .moai/research/"
 dependencies:
   - SPEC-V3R2-CON-001
-related_gap: []
 related_problem:
   - P-R02
+related_theme: "Layer 1: Constitution"
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "v3r2, constitution, amendment, safety-gate, graduation-protocol"
+related_gap: []
 related_pattern:
   - S-4
   - S-5
@@ -21,12 +26,7 @@ related_principle:
   - P1
   - P2
   - P12
-related_theme: "Layer 1: Constitution"
-breaking: false
-bc_id: []
-lifecycle: spec-anchored
-tags: "v3r2, constitution, amendment, safety-gate, graduation-protocol"
----
+------
 
 # SPEC-V3R2-CON-002: Constitutional amendment protocol with 5-layer safety gate
 
@@ -183,3 +183,7 @@ References: master-v3 §4 Layer 1 Go type sketch; design-principles.md §P12 Con
 - Patterns: S-4 FROZEN + Graduation (pattern-library.md §S-4); S-5 5-Layer Safety (pattern-library.md §S-5).
 - Wave 1 sources: R1 §18 Constitutional AI; R1 §16 ADAS anti-pattern flag (meta-agents can drift unsafe — 5-layer gate is directly appropriate defense).
 - Wave 2 sources: design-principles.md §P12, pattern-library.md §S-5, design-constitution §5-7 prototype.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

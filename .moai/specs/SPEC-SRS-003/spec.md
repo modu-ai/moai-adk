@@ -1,13 +1,23 @@
 ---
 id: SPEC-SRS-003
+title: "Dashboard + CLI + Agency 통합"
 version: "1.0.0"
 status: completed
 created: "2026-04-09"
 updated: "2026-04-09"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, srs, 003"
 issue_number: 0
----
+------
 
 # SPEC-SRS-003: Dashboard + CLI + Agency 통합
 
@@ -219,3 +229,7 @@ Acceptance:
 dashboard/ → lipgloss (이미 go.mod에 있음)
 cli/research.go → research/dashboard, research/eval, research/experiment
 ```
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

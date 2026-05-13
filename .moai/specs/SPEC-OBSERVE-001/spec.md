@@ -1,11 +1,23 @@
 ---
 id: SPEC-OBSERVE-001
 title: "Structured Observability"
+version: "1.0.0"
 status: draft
-priority: P0
 created: "2026-04-07"
+updated: 2026-05-13
+author: GOOS
+priority: P0
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, observe, 001"
 harness_pillar: "P5: Observability"
----
+------
 
 # SPEC-OBSERVE-001: Structured Observability
 
@@ -94,3 +106,7 @@ SessionEnd handler
 - OpenTelemetry export (future consideration)
 - Token usage estimation (separate SPEC)
 - `moai observe` CLI command (P1, separate SPEC)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,7 +1,22 @@
 ---
 id: SPEC-PSR-001
+title: "Profile Setup Redesign -- StatuslineMode Exposure"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, psr, 001"
+------
 
 # SPEC-PSR-001: Profile Setup Redesign -- StatuslineMode Exposure
 
@@ -318,3 +333,7 @@ Phase 5 (Tests) -- runs after all phases
 | REQ-PWR-040-043    | `statusline.go` (passthrough only, renderer handles layout)        | `statusline_test.go`                   |
 | REQ-PWR-050-051    | `profile_setup_translations.go`                                    | `profile_setup_test.go`                |
 | REQ-PWR-NF-001-004 | All implementation files                                           | All test files                         |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

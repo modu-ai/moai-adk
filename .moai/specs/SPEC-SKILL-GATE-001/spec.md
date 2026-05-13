@@ -1,16 +1,25 @@
 ---
 id: SPEC-SKILL-GATE-001
+title: "도달 불가 / 비신뢰 스킬 참조 일괄 제거"
 version: 1.0.0
 status: completed
-created_at: 2026-04-21
-updated_at: 2026-04-21
+created: 2026-04-21
+updated: 2026-04-21
 author: moai-adk-go
 priority: medium
-labels: [workflow, skill, cleanup, claude-code-integration, batch, simplify]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, skill, gate, 001"
 issue_number: null
 depends_on: []
 related_specs: [SPEC-DB-SYNC-HARDEN-001]
----
+------
 
 # SPEC-SKILL-GATE-001: 도달 불가 / 비신뢰 스킬 참조 일괄 제거
 
@@ -181,3 +190,7 @@ Claude Code v2.1.116 바이너리에 번들된 두 built-in 스킬에 대한 MoA
 편집 후 `grep -rn 'Skill(\"batch\")\|Skill(\"simplify\")' .claude/` 결과 0건 확인, 전체 Go test green, `make build` 성공 — AC-1 ~ AC-10 전부 통과.
 
 향후 `/simplify` 강제 인프라 필요성이 재논의되면 별도 SPEC(예: `SPEC-SIMPLIFY-ENFORCEMENT-001`)으로 독립 추적한다.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

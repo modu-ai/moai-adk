@@ -1,13 +1,23 @@
 ---
 id: SPEC-HOOKWAVE-001
+title: "Hook Stub Improvement Wave 2"
 version: "1.0.0"
 status: draft
 created: "2026-04-07"
 updated: "2026-04-07"
 author: GOOS
 priority: P2
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, hookwave, 001"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -104,3 +114,7 @@ The system shall add missing EventType constants to types.go: TaskCreated, Permi
 - Agent-specific handlers (agents/ subdirectory)
 - Notification handler enhancement (per user feedback: not needed)
 - PermissionRequest auto-allow (deferred to separate SPEC)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

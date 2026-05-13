@@ -13,15 +13,15 @@ dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-RT-001
   - SPEC-V3R2-RT-006
-bc_id: [BC-V3R2-008]
-related_principle: [P11 File-First Primitives, P12 Constitutional Governance]
-related_pattern: [X-5, X-2]
 related_problem: [P-H04, P-C06]
 related_theme: "Layer 3: Runtime"
 breaking: true
+bc_id: [BC-V3R2-008]
 lifecycle: spec-anchored
 tags: "path, hardcoded, migration, v3r2, breaking, runtime, shell-wrappers"
----
+related_principle: [P11 File-First Primitives, P12 Constitutional Governance]
+related_pattern: [X-5, X-2]
+------
 
 # SPEC-V3R2-RT-007: Hardcoded Path Fix + Versioned Migration
 
@@ -252,3 +252,7 @@ Affected modules:
 - Wave 2 sources: problem-catalog.md P-H04 (CRITICAL), P-C06 (LOW but adoption); pattern-library.md X-5 (ADOPT).
 - BC-ID: BC-V3R2-008 (hardcoded path removed from 26 shell wrappers, AUTO via `make build` regeneration + migration 1).
 - Priority: P0 Critical — P-H04 is classified CRITICAL in problem-catalog.md (breaks every user except `goos`). The migration framework half is strategic but the path fix is urgent.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

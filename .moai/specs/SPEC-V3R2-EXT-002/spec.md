@@ -12,15 +12,16 @@ module: "internal/config/types.go, internal/config/loader.go, internal/template/
 dependencies:
   - SPEC-V3R2-WF-006
   - SPEC-V3R2-EXT-001
-related_gap:
-  - r6-template-only-loaders
-  - r3-cc-architecture-memdir
+related_problem: []
 related_theme: "Theme 7 — Extension"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "go-loader, output-styles, memdir, memory, config, v3"
----
+related_gap:
+  - r6-template-only-loaders
+  - r3-cc-architecture-memdir
+------
 
 # SPEC-V3R2-EXT-002: Output-Styles and Memdir Go Loader
 
@@ -230,3 +231,7 @@ The loader **shall** reject files with invalid frontmatter and return an aggrega
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

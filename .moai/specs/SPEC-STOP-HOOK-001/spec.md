@@ -1,19 +1,28 @@
 ---
 id: SPEC-STOP-HOOK-001
-status: draft
+title: "Stop Hook 테스트 강제"
 version: "0.1.0"
+status: draft
+created: 2026-04-30
+updated: 2026-04-30
+author: manager-spec
 priority: High
-labels: [stop-hook, quality-gate, hook-system, test-automation, wave-3, tier-2]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, stop, hook, 001"
 issue_number: null
 scope: [.claude/hooks, internal/hook, internal/template/templates/.claude/settings.json, cmd/moai]
 blockedBy: []
 dependents: []
-created_at: 2026-04-30
-updated_at: 2026-04-30
-author: manager-spec
 wave: 3
 tier: 2
----
+------
 
 # SPEC-STOP-HOOK-001: Stop Hook 테스트 강제
 
@@ -151,3 +160,7 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C5: timeout default 60s, 사용자가 더 길게 설정 가능 (settings.json `timeout` field)
 
 End of spec.md (SPEC-STOP-HOOK-001 v0.1.0).
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

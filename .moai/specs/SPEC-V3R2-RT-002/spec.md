@@ -13,15 +13,15 @@ dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-RT-001
   - SPEC-V3R2-RT-005
-bc_id: []
-related_principle: [P6 Permission Bubble, P7 Sandbox Default, P8 Hook JSON]
-related_pattern: [S-1, S-2, T-5]
 related_problem: [P-C01, P-C04]
 related_theme: "Layer 3: Runtime"
 breaking: false
+bc_id: []
 lifecycle: spec-anchored
 tags: "permission, bubble, provenance, v3r2, breaking, runtime, safety"
----
+related_principle: [P6 Permission Bubble, P7 Sandbox Default, P8 Hook JSON]
+related_pattern: [S-1, S-2, T-5]
+------
 
 # SPEC-V3R2-RT-002: Permission Stack + Bubble Mode
 
@@ -219,3 +219,7 @@ Affected modules:
   - `docs/design/major-v3-master.md:L974` (§8 BC-V3R2-015 — multi-layer settings, on which RT-002 layers bubble mode)
   - `docs/design/major-v3-master.md:L989` (§9 Phase 2 Runtime Hardening)
   - `.moai/design/v3-redesign/synthesis/problem-catalog.md` Cluster 5 (P-C01, P-C04)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

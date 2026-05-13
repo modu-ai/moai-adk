@@ -11,15 +11,15 @@ phase: "v2.15 — Utility Performance Backlog"
 module: "internal/hook/security/"
 dependencies: []
 related_problem: [IMP-V3U-022]
-related_pattern: []
-related_principle: []
-related_decision: []
 related_theme: "v2.15 Utility Performance"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "astgrep, goroutine, semaphore, performance"
----
+related_pattern: []
+related_principle: []
+related_decision: []
+------
 
 # SPEC-UTIL-004: ast-grep ScanMultiple Goroutine Spawn Pattern Alignment
 
@@ -126,3 +126,7 @@ SPEC-UTIL-002의 `AC-UTIL-002-07` (TestScanMultiple_SemaphoreBound)는 **활성 
 - **Blocked by**: 없음 (SPEC-UTIL-002는 `release/v2.14.0`에서 머지 대기, v2.15 착수 시점에는 main 반영됨)
 - **Blocks**: 없음
 - **Related**: SPEC-UTIL-002 (ast-grep 통합 원본), SPEC-UTIL-001 §4.2 (MX validator 세마포어 패턴 reference)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,7 +1,22 @@
 ---
 id: SPEC-REFLECT-001
+title: "Reflective Write Hook"
+version: "1.0.0"
 status: draft
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, reflect, 001"
+------
 
 # SPEC-REFLECT-001: Reflective Write Hook
 
@@ -213,3 +228,7 @@ WHEN a session starts and pending proposals exist, the SessionStart hook SHALL p
 - Cross-project learning sharing
 - LLM-based analysis (pure heuristic for v1; LLM analysis is future enhancement)
 - Modifying non-evolvable-zone content
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,13 +1,23 @@
 ---
 id: SPEC-AGENT-002
+title: "Agent Definition Optimization - Token Efficiency with Workflow Preservation"
 version: 1.0.0
 status: completed
 created: 2026-04-09
 updated: 2026-04-09
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, agent, 002"
 issue_number: 0
----
+------
 
 # SPEC-AGENT-002: Agent Definition Optimization - Token Efficiency with Workflow Preservation
 
@@ -132,3 +142,7 @@ WHEN Write, Edit, 또는 MultiEdit 도구가 사용될 때 THEN 해당 에이전
 - Shall NOT modify agent description multilingual keywords - 라우팅에 필요
 - Shall NOT create new per-agent workflow skills - 워크플로우는 본문에 간결하게 유지
 - Will NOT change model assignments (model_policy.go 관리)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

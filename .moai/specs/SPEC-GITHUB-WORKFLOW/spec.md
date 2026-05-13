@@ -1,11 +1,23 @@
 ---
 id: SPEC-GITHUB-WORKFLOW
 title: Enhanced GitHub Issues Workflow with SPEC Integration
+version: "1.0.0"
 status: draft
-created_at: 2026-02-16T16:05:00+09:00
+created: 2026-02-16T16:05:00+09:00
+updated: 2026-05-13
+author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, github, workflow"
 domains: [cli, git, workflow, integration]
----
+------
 
 # SPEC-GITHUB-WORKFLOW: Enhanced GitHub Issues Workflow
 
@@ -446,3 +458,7 @@ This SPEC relates to:
   - Phase 4: PR auto-review and merge requirements
   - Phase 5: Issue comment and closure requirements
   - Phase 6: Optional tmux session automation requirements
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

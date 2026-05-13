@@ -1,13 +1,23 @@
 ---
 id: SPEC-HOOK-009
+title: "신규 훅 이벤트 추가 (PostCompact, InstructionsLoaded, StopFailure)"
 version: "1.0.0"
 status: completed
 created: "2026-03-20"
 updated: "2026-03-20"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, hook, 009"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -57,3 +67,7 @@ Claude Code 턴이 API 오류(rate limit, auth 실패 등)로 종료되면, MoAI
 - 기존 Handler 인터페이스 준수 (EventType() + Handle())
 - 모든 핸들러는 non-blocking (오류 시 empty HookOutput 반환)
 - go build/test/vet 통과
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

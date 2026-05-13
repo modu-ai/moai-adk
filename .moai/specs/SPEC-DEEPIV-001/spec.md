@@ -1,13 +1,23 @@
 ---
 id: SPEC-DEEPIV-001
+title: "Deep Interview (심층 인터뷰)"
 version: "1.0.0"
 status: draft
 created: "2026-04-07"
 updated: "2026-04-07"
 author: GOOS
 priority: P1
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, deepiv, 001"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -197,3 +207,7 @@ interview:
 - Replacing existing AskUserQuestion decision points
 - Adding new Claude Code hook events
 - Modifying Go binary code (skill-only change)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

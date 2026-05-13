@@ -12,13 +12,17 @@ module: "internal/git/ops/"
 dependencies:
   - SPEC-HOOK-001
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, git, parallel-execution, caching, connection-pooling, P2"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: []
-lifecycle: spec-anchored
-tags: "hook, git, parallel-execution, caching, connection-pooling, P2"
----
+------
 
 # SPEC-HOOK-005: Git Operations Manager
 
@@ -362,3 +366,7 @@ Git Operations Manager for optimized Git command execution with parallel process
 - `stats.go`: ~100 LOC
 - Test files: ~400 LOC
 - Total: ~1,400 LOC
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,7 +1,22 @@
 ---
 id: SPEC-GLM-001
+title: "GLM Compatibility Automation"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, glm, 001"
+------
 
 # SPEC-GLM-001: GLM Compatibility Automation
 
@@ -69,3 +84,7 @@ Currently users must manually add this to settings.local.json. `moai cg/glm/cc` 
 | `internal/cli/glm_team_test.go` | Add DISABLE_BETAS assertions |
 | `internal/cli/glm_model_override_test.go` | Add DISABLE_BETAS assertions |
 | `internal/cli/glm_new_test.go` | Add DISABLE_BETAS assertions |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

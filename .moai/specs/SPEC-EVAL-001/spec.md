@@ -1,13 +1,23 @@
 ---
-spec_id: SPEC-EVAL-001
+id: SPEC-EVAL-001
 title: "evaluator-active Agent & Sprint Contract"
-created: "2026-04-01"
-status: planned
-priority: high
-module: template
 version: "1.0.0"
+status: planned
+created: "2026-04-01"
+updated: 2026-05-13
+author: GOOS
+priority: high
+phase: "legacy — pre-v3.0"
+module: template
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, eval, 001"
+spec_id: SPEC-EVAL-001
+------
 
 # evaluator-active Agent & Sprint Contract
 
@@ -132,3 +142,7 @@ evaluator-active는 MoAI-ADK의 독립적 품질 평가 에이전트로, 기존 
 
 - `internal/template/templates/.claude/agents/moai/evaluator-active.md` (NEW)
 - `internal/template/templates/.claude/skills/moai/workflows/run.md` (Phase 2.0, 2.8a/b split)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

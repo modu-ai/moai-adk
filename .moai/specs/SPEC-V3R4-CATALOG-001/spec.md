@@ -1,20 +1,24 @@
 ---
 id: SPEC-V3R4-CATALOG-001
+title: "3-Tier Catalog Manifest"
 version: "0.3.0"
 status: completed
-created_at: 2026-05-12
-updated_at: 2026-05-12
+created: 2026-05-12
+updated: 2026-05-12
 author: GOOS행님
 priority: High
-labels: [catalog, manifest, tier, audit, infrastructure]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r4, catalog, 001"
 issue_number: 859
-implementation:
-  run_pr: 862
-  eval_fix_pr: 863
-  evaluation_pass_at: 2026-05-12T03:30:00Z
-  evaluation_overall_score: 0.82
-  coverage: "84.0% (LoadCatalog: 100%)"
----
+implementation: None
+------
 
 # SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest
 
@@ -268,3 +272,7 @@ The following are explicitly **OUT OF SCOPE** for SPEC-V3R4-CATALOG-001 and defe
 ### Wave 1 Foundation Complete
 
 본 SPEC 은 catalog initiative 7-SPEC 체인의 **foundation** 으로서, 후속 6개 SPEC 이 본 manifest 의 typed API (`LoadCatalog`) + hash 필드 + tier 분류 + depends_on 그래프를 입력으로 사용한다. Wave 2 (Distribution: 002+003), Wave 3 (Safety: 004), Wave 4 (Polish: 005+006+007) 진입 자격 충족.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

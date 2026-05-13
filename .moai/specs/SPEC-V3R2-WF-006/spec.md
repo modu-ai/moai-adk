@@ -10,14 +10,15 @@ priority: P2 Medium
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/output-styles/moai/, internal/template/templates/.claude/output-styles/moai/"
 dependencies: []
-related_gap:
-  - r6-output-styles
+related_problem: []
 related_theme: "Theme 7 — Extension"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "output-styles, moai, einstein, claude-code-schema, precedence, v3"
----
+related_gap:
+  - r6-output-styles
+------
 
 # SPEC-V3R2-WF-006: Output Styles Alignment
 
@@ -279,3 +280,7 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

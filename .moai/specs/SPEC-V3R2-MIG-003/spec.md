@@ -11,15 +11,16 @@ phase: "v3.0.0 — Phase 8 — Migration Tool + Docs"
 module: "internal/config/types.go, internal/config/loader.go, .moai/config/sections/"
 dependencies:
   - SPEC-V3R2-EXT-004
-related_gap:
-  - r6-config-audit
-  - r6-unused-yaml-sections
+related_problem: []
 related_theme: "Theme 2 — Runtime Hardening"
 breaking: true
 bc_id: [BC-V3R2-013]
 lifecycle: spec-anchored
 tags: "config, yaml, loader, harness, constitution, context, interview, design, sunset, v3"
----
+related_gap:
+  - r6-config-audit
+  - r6-unused-yaml-sections
+------
 
 # SPEC-V3R2-MIG-003: Config Loader Completeness
 
@@ -250,3 +251,7 @@ Each new loader **shall** have unit tests under `internal/config/loader_test.go`
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

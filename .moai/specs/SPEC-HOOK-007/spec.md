@@ -13,13 +13,17 @@ dependencies:
   - SPEC-HOOK-001
   - SPEC-HOOK-005
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, session-lifecycle, session-start, session-end, auto-cleanup, P2"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: []
-lifecycle: spec-anchored
-tags: "hook, session-lifecycle, session-start, session-end, auto-cleanup, P2"
----
+------
 
 # SPEC-HOOK-007: Session Lifecycle Enhancements
 
@@ -332,3 +336,7 @@ Session lifecycle enhancements for improved user experience. SessionStart displa
 - `persistence.go`: ~150 LOC
 - Test files: ~300 LOC
 - Total: ~1,000 LOC
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

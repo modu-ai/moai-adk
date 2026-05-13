@@ -10,13 +10,14 @@ priority: P0 Critical
 phase: "v3.0.0 R3 — Phase A — Convention Compliance Baseline"
 module: ".claude/skills/, .claude/agents/moai/, internal/template/templates/.claude/"
 dependencies: []
+related_problem: []
+related_theme: "Phase A — Defect Cleanup"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "convention, compliance, baseline, skill-frontmatter, agent-body, template-sync, v3r3, phase-a"
-related_theme: "Phase A — Defect Cleanup"
 released_in: v2.15.0
----
+------
 
 # SPEC-V3R3-DEF-007: Convention Compliance Sweep
 
@@ -183,3 +184,7 @@ The convention sweep **shall not** alter the existing description, allowed-tools
 | REQ-DEF007-007 | AC-DEF007-04, AC-DEF007-05 | CLAUDE.local.md §2 |
 | REQ-DEF007-008 | AC-DEF007-03 | §1.2 |
 | REQ-DEF007-009 | AC-DEF007-03 | §1.2 |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

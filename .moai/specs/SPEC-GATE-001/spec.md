@@ -1,11 +1,23 @@
 ---
 id: SPEC-GATE-001
 title: "Deterministic Quality Gate"
+version: "1.0.0"
 status: draft
-priority: P0
 created: "2026-04-07"
+updated: 2026-05-13
+author: GOOS
+priority: P0
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, gate, 001"
 harness_pillar: "P3: Verification Loop"
----
+------
 
 # SPEC-GATE-001: Deterministic Quality Gate
 
@@ -78,3 +90,7 @@ Bash(git commit) detected in PreToolUse
 - Dynamic per-language gate detection (Go only for now)
 - Parallel step execution (sequential is simpler and sufficient)
 - Integration with CI/CD (this is local-only)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

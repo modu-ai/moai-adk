@@ -1,4 +1,22 @@
-# SPEC-TOOL-001: AST-Grep & Performance Ranking Integration
+---
+id: SPEC-TOOL-001
+title: "AST-Grep & Performance Ranking Integration"
+version: "1.0.0"
+status: completed
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, tool, 001"
+---# SPEC-TOOL-001: AST-Grep & Performance Ranking Integration
 
 ---
 id: SPEC-TOOL-001
@@ -631,3 +649,7 @@ Dual-module implementation covering AST-Grep code analysis and Rank API client. 
 - `internal/rank/client_test.go`
 - `internal/rank/config.go`
 - `internal/rank/config_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

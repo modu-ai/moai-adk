@@ -11,15 +11,15 @@ phase: "v2.15 — Utility Performance Backlog"
 module: "internal/hook/quality/"
 dependencies: []
 related_problem: [IMP-V3U-023]
-related_pattern: []
-related_principle: []
-related_decision: []
 related_theme: "v2.15 Utility Performance"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "hook, quality, walkSourceFiles, incremental, performance, monorepo"
----
+related_pattern: []
+related_principle: []
+related_decision: []
+------
 
 # SPEC-UTIL-005: walkSourceFiles Incremental Scan
 
@@ -122,3 +122,7 @@ post-tool-use 훅 payload 스키마(`internal/hook/payload.go`)에는 이미 `ch
 - **Blocked by**: SPEC-UTIL-002 Phase 3.2 구현 완료 (현재 `release/v2.14.0`에서 머지 대기). v2.15 착수 시점에는 main 반영됨
 - **Blocks**: 없음
 - **Related**: SPEC-UTIL-002 §3 (exclusion 규칙 원본), SPEC-UTIL-004 (동일 `internal/hook/` 트리 성능 backlog)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

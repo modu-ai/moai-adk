@@ -12,15 +12,15 @@ module: "internal/hook/"
 dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-RT-005
-bc_id: [BC-V3R2-001]
-related_principle: [P8 Hook Output = JSON Protocol, P2 ACI, P6 Permission Bubble]
-related_pattern: [T-5, T-1, S-1]
 related_problem: [P-H05, P-H19, P-C01]
 related_theme: "Layer 3: Runtime"
 breaking: true
+bc_id: [BC-V3R2-001]
 lifecycle: spec-anchored
 tags: "hook, protocol, json, v3r2, breaking, runtime"
----
+related_principle: [P8 Hook Output = JSON Protocol, P2 ACI, P6 Permission Bubble]
+related_pattern: [T-5, T-1, S-1]
+------
 
 # SPEC-V3R2-RT-001: Hook JSON-OR-ExitCode Dual Protocol
 
@@ -216,3 +216,7 @@ Affected modules:
 - Wave 2 sources: design-principles.md P8 (Hook JSON Protocol); pattern-library.md T-5 (priority 2); problem-catalog.md P-H05.
 - BC-ID: BC-V3R2-001 (hook handlers migrate to JSON-OR-ExitCode, AUTO migration).
 - Priority: P0 Critical — blocks every higher-value Runtime SPEC in v3.0 Phase 2.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

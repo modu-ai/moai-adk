@@ -1,19 +1,25 @@
 ---
 id: SPEC-V3R3-CLI-TUI-001
+title: "moai CLI 터미널 TUI 디자인 시스템 v2 마이그레이션"
 version: "0.1.0"
 status: completed
-created_at: 2026-05-09
-updated_at: 2026-05-12
+created: 2026-05-09
+updated: 2026-05-12
 author: manager-spec
 priority: Medium
-labels: [cli, tui, design-system, lipgloss, bubbletea, theme, brand, i18n-neutral]
-issue_number: null
-depends_on: []
-related_specs: []
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, v3r3, cli, tui"
+issue_number: null
+depends_on: []
+related_specs: []
+------
 
 # SPEC-V3R3-CLI-TUI-001: moai CLI 터미널 TUI 디자인 시스템 v2 마이그레이션
 
@@ -290,3 +296,7 @@ go.mod 직접 검증 결과 추가 의존성 0건이다.
 - [x] Section 5.1 색 토큰 라이트/다크 모두 디자인 소스와 1:1 매칭
 - [x] HARD-BRAND-1~7 모두 명시
 - [x] 이모지 0건 (✓ ! · ● → 등 ASCII 기호만)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

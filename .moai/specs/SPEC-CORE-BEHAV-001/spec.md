@@ -1,7 +1,22 @@
 ---
 id: SPEC-CORE-BEHAV-001
+title: "Agent Core Behaviors and SPEC Workflow Gates"
+version: "1.0.0"
 status: draft
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, core, behav, 001"
+------
 
 # SPEC-CORE-BEHAV-001: Agent Core Behaviors and SPEC Workflow Gates
 
@@ -143,3 +158,7 @@ CLAUDE.md Section 7 SHALL reference the new Agent Core Behaviors section in moai
 - Modifying existing CLAUDE.md Section 7 rules (only adding cross-references)
 - Adding gates to agency workflow skills (agency has its own GAN Loop contract)
 - Making gates blocking in headless/auto mode
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

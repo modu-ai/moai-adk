@@ -12,20 +12,20 @@ module: "internal/spec/, .moai/specs/, .claude/rules/moai/workflow/spec-workflow
 dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-CON-002
-related_gap: []
 related_problem: []
+related_theme: "Layer 2: SPEC & TAG"
+breaking: true
+bc_id: [BC-V3R2-011]
+lifecycle: spec-anchored
+tags: "v3r2, spec, ears, hierarchical-acceptance, agent-as-judge"
+related_gap: []
 related_pattern:
   - E-1
   - X-1
 related_principle:
   - P1
   - P4
-related_theme: "Layer 2: SPEC & TAG"
-breaking: true
-bc_id: [BC-V3R2-011]
-lifecycle: spec-anchored
-tags: "v3r2, spec, ears, hierarchical-acceptance, agent-as-judge"
----
+------
 
 # SPEC-V3R2-SPC-001: EARS + hierarchical acceptance criteria
 
@@ -234,3 +234,7 @@ Example:
 - **RateLimiter**: This is 1 of ≤3 FROZEN amendments per v3.x cycle (alongside HRN-002 evaluator memory amendment). Within bound.
 - **HumanOversight**: Maintainer approval required at plan-auditor iteration 2 sign-off. Approval record attached to landing commit.
 
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

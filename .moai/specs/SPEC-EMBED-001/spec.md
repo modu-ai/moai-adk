@@ -1,4 +1,22 @@
-# SPEC-EMBED-001: Template Content and Binary Bundling
+---
+id: SPEC-EMBED-001
+title: "Template Content and Binary Bundling"
+version: "1.0.0"
+status: completed
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, embed, 001"
+---# SPEC-EMBED-001: Template Content and Binary Bundling
 
 ---
 spec_id: SPEC-EMBED-001
@@ -496,3 +514,7 @@ This SPEC benefits from the following domain expert consultations:
 - **expert-security**: Template content audit for credential/secret leakage, path traversal validation with real template paths
 - **expert-testing**: Integration test strategy for embedded filesystem, CI validation for template completeness and binary size
 - **expert-devops**: CI pipeline for template content validation, binary size monitoring, goreleaser integration with embedded content
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

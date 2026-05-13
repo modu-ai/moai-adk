@@ -1,7 +1,22 @@
 ---
 id: SPEC-SKILL-ENHANCE-001
+title: "Skill Anti-Rationalization, Red Flags, and Verification"
+version: "1.0.0"
 status: draft
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, skill, enhance, 001"
+------
 
 # SPEC-SKILL-ENHANCE-001: Skill Anti-Rationalization, Red Flags, and Verification
 
@@ -171,3 +186,7 @@ Each batch: edit template → `make build` → verify local copy → run tests.
 - Modifying existing skill process/workflow content
 - Adding new skills (that's SPEC-REFLECT-001's output)
 - Changing YAML frontmatter or allowed-tools
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

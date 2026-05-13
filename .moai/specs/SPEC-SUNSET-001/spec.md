@@ -1,11 +1,23 @@
 ---
 id: SPEC-SUNSET-001
 title: "Build to Delete Framework"
+version: "1.0.0"
 status: draft
-priority: P2
 created: "2026-04-07"
+updated: 2026-05-13
+author: GOOS
+priority: P2
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, sunset, 001"
 harness_pillar: "All - Evolutionary"
----
+------
 
 # SPEC-SUNSET-001: Build to Delete Framework
 
@@ -64,3 +76,7 @@ sunset:
 - Automatic gate removal (advisory only for v1)
 - Per-agent sunset tracking (gate-level only)
 - UI dashboard for sunset metrics
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

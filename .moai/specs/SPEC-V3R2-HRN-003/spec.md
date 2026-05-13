@@ -20,7 +20,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "evaluator, scoring, hierarchical, acceptance-criteria, rubric, 4-dimension, agent-as-judge, v3r2"
----
+------
 
 # SPEC-V3R2-HRN-003: Hierarchical Acceptance Scoring (4-dimension × sub-criteria)
 
@@ -359,3 +359,7 @@ REQ-005 wording adapted from spec-time `.yaml` assumption to acknowledge the act
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

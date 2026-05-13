@@ -1,19 +1,24 @@
 ---
 id: SPEC-V3R3-PATTERNS-001
+title: "Pattern Cookbook — revfactory/harness Apache 2.0 6 reference docs 흡수"
 version: "0.1.0"
 status: draft
-created_at: 2026-04-26
-updated_at: 2026-04-26
+created: 2026-04-26
+updated: 2026-04-26
 author: manager-spec
 priority: High
-labels: [patterns, harness, agent-design, skill-design, apache2, cookbook, v3r3]
-issue_number: null
-title: "Pattern Cookbook — revfactory/harness Apache 2.0 6 reference docs 흡수"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+tags: "legacy, v3r3, patterns, 001"
+issue_number: null
 related_specs: [SPEC-V3R3-DEF-007, SPEC-V3R3-ARCH-003]
----
+------
 
 # SPEC-V3R3-PATTERNS-001: Pattern Cookbook — revfactory/harness 흡수
 
@@ -176,3 +181,7 @@ THE corresponding files SHALL also exist (byte-identical) in `internal/template/
 - SPEC-V3R3-ARCH-003 — Expert tool uplift (related: agent body 일관성 baseline)
 - Apache License 2.0 — https://www.apache.org/licenses/LICENSE-2.0
 - revfactory/harness — https://github.com/revfactory/harness
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

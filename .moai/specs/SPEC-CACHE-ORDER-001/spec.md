@@ -1,19 +1,28 @@
 ---
 id: SPEC-CACHE-ORDER-001
-status: draft
+title: "Cache-Friendly Prompt Order"
 version: "0.1.0"
+status: draft
+created: 2026-04-30
+updated: 2026-04-30
+author: manager-spec
 priority: Medium
-labels: [prompt-cache, optimization, cost, system-reminder, advisor, wave-4, tier-3]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, cache, order, 001"
 issue_number: null
 scope: [.claude/rules/moai/development, .claude/agents, .claude/skills, .moai/metrics]
 blockedBy: [SPEC-ADVISOR-001]
 dependents: []
-created_at: 2026-04-30
-updated_at: 2026-04-30
-author: manager-spec
 wave: 4
 tier: 3
----
+------
 
 # SPEC-CACHE-ORDER-001: Cache-Friendly Prompt Order
 
@@ -154,3 +163,7 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C5: Template-First Rule 준수
 
 End of spec.md (SPEC-CACHE-ORDER-001 v0.1.0).
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

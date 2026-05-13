@@ -1,20 +1,25 @@
 ---
 id: SPEC-LSP-LOOP-005
+title: "Loop/Ralph LSP Integration"
 version: "1.0.0"
 status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P2
-issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/loop/, internal/ralph/, internal/hook/post_tool.go"
-estimated_loc: 1200
 dependencies:
   - SPEC-LSP-AGG-003
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: lsp, loop, ralph, feedback, classification
----
+tags: "lsp, loop, ralph, feedback, classification"
+issue_number: 0
+estimated_loc: 1200
+------
 
 # SPEC-LSP-LOOP-005: Loop/Ralph LSP Integration
 
@@ -109,3 +114,7 @@ Loop controller
 - `internal/loop/feedback.go`, `internal/loop/go_feedback.go`
 - `internal/ralph/engine.go`
 - `.claude/rules/moai/core/agent-common-protocol.md`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

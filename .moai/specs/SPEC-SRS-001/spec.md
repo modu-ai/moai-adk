@@ -1,13 +1,23 @@
 ---
 id: SPEC-SRS-001
+title: "데드코드 정리 + Self-Research 기반 패키지"
 version: "1.0.0"
 status: completed
 created: "2026-04-09"
 updated: "2026-04-09"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, srs, 001"
 issue_number: 0
----
+------
 
 # SPEC-SRS-001: 데드코드 정리 + Self-Research 기반 패키지
 
@@ -277,3 +287,7 @@ Acceptance:
 | SPEC ID regex 변경으로 기존 동작 변경 | 훅 동작 변경 | 기존 테스트 + 새 테스트로 커버 |
 | circular import (hook → workflow) | 컴파일 실패 | workflow 패키지는 hook에 의존하지 않음 확인 |
 | config 변경으로 기존 설정 로드 실패 | 초기화 실패 | research는 optional section, 없어도 로드 성공 |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

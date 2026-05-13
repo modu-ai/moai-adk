@@ -10,16 +10,17 @@ priority: P1 High
 phase: "v3.0.0 — Phase 4 — Skill Consolidation (Stage 1)"
 module: ".claude/skills/, internal/template/templates/.claude/skills/"
 dependencies: []
-related_gap:
-  - r4-skill-audit
-  - problem-catalog-workflow-bloat
+related_problem: []
 related_theme: "Theme 6 — Workflow Consolidation"
 breaking: true
 bc_id: [BC-V3R2-006]
 lifecycle: spec-anchored
 tags: "skill-consolidation, skill-audit, merge, retire, v3, workflow, breaking, stage1"
+related_gap:
+  - r4-skill-audit
+  - problem-catalog-workflow-bloat
 follow_up_spec: SPEC-V3R3-WF-001  # Stage 2 (38 → 24), reserved; not yet drafted
----
+------
 
 # SPEC-V3R2-WF-001: Skill Consolidation — Stage 1 (48 to 38)
 
@@ -408,3 +409,7 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

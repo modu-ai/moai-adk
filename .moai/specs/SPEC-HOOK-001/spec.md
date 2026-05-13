@@ -11,13 +11,17 @@ phase: "Phase 1 - Foundation"
 module: "internal/hook/"
 dependencies:
   - SPEC-CONFIG-001
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "hook, claude-code, binary-subcommand, event-system, P0"
 adr_references:
   - ADR-006 (Hooks as Binary Subcommands)
   - ADR-012 (Hook Execution Contract)
 resolves_issues: 28
-lifecycle: spec-anchored
-tags: "hook, claude-code, binary-subcommand, event-system, P0"
----
+------
 
 # SPEC-HOOK-001: Compiled Hook System
 
@@ -431,3 +435,7 @@ Hook system implemented as a pure Go replacement for the Python hook infrastruct
 - `internal/hook/stop_test.go`
 - `internal/hook/types.go`
 - `internal/hook/types_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

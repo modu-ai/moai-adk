@@ -1,4 +1,22 @@
-# SPEC-CLI-001: CLI Command Composition & Integration
+---
+id: SPEC-CLI-001
+title: "CLI Command Composition & Integration"
+version: "1.0.0"
+status: completed
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, cli, 001"
+---# SPEC-CLI-001: CLI Command Composition & Integration
 
 ---
 spec_id: SPEC-CLI-001
@@ -623,3 +641,7 @@ CLI integration layer implemented using Cobra command framework with dependency 
 - `internal/cli/worktree/subcommands_test.go`
 - `internal/cli/worktree/switch.go`
 - `internal/cli/worktree/sync.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

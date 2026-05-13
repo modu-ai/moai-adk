@@ -11,15 +11,15 @@ phase: "v2.14.0 — Phase 2 — Utility Hardening"
 module: "internal/astgrep/, internal/hook/security/, internal/hook/quality/, .moai/config/astgrep-rules/"
 dependencies: []
 related_problem: [IMP-V3U-004, IMP-V3U-006]
-related_pattern: []
-related_principle: []
-related_decision: [D6, D7]
 related_theme: "v2.14.0 Utility Hardening"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "ast-grep, suppression, rule-seeding, multi-language, v2.14"
----
+related_pattern: []
+related_principle: []
+related_decision: [D6, D7]
+------
 
 # SPEC-UTIL-002: ast-grep Integration Hardening + Suppression Policy + 5-Language Rule Seeding
 
@@ -393,3 +393,7 @@ Owner: v2.14.0 release track
 Last updated: 2026-04-24
 Supersedes: none
 Referenced by: `docs/design/v2.14.0-release-plan.md` §2.2, §6.1
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

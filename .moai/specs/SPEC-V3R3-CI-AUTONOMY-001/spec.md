@@ -1,23 +1,25 @@
 ---
 id: SPEC-V3R3-CI-AUTONOMY-001
+title: "Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol"
 version: "0.1.0"
 status: completed
-created_at: 2026-05-05
-updated_at: 2026-05-05
+created: 2026-05-05
+updated: 2026-05-05
 author: manager-spec
 priority: P0
-labels: [ci-cd, automation, worktree, branch-protection, quality-gate, ci-mirror, auxiliary-workflow, branch-origin, v3r3]
-issue_number: null
+phase: "v3.0.0 R3 — CI/CD Autonomy"
+module: "internal/bodp/, internal/cli/worktree/new.go, internal/cli/status.go, internal/template/templates/.git_hooks/, internal/template/templates/.github/workflows/, internal/template/templates/.claude/skills/moai-workflow-ci-watch/, .claude/skills/moai/workflows/plan.md, scripts/ci-mirror/, .claude/rules/moai/development/branch-origin-protocol.md"
+dependencies: []
+related_problem: []
+related_theme: "Quality Pipeline Autonomy + GitHub Flow Hardening"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+tags: "ci-mirror, auto-fix-loop, worktree-state-guard, auxiliary-workflow-hygiene, branch-protection, branch-origin-decision-protocol, i18n-validator, v3r3"
+issue_number: null
 depends_on: []
 related_specs: [SPEC-V3R3-MX-INJECT-001, SPEC-CI-MULTI-LLM-001]
-phase: "v3.0.0 R3 — CI/CD Autonomy"
-module: "internal/bodp/, internal/cli/worktree/new.go, internal/cli/status.go, internal/template/templates/.git_hooks/, internal/template/templates/.github/workflows/, internal/template/templates/.claude/skills/moai-workflow-ci-watch/, .claude/skills/moai/workflows/plan.md, scripts/ci-mirror/, .claude/rules/moai/development/branch-origin-protocol.md"
-tags: "ci-mirror, auto-fix-loop, worktree-state-guard, auxiliary-workflow-hygiene, branch-protection, branch-origin-decision-protocol, i18n-validator, v3r3"
-related_theme: "Quality Pipeline Autonomy + GitHub Flow Hardening"
----
+------
 
 # SPEC-V3R3-CI-AUTONOMY-001: Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol
 

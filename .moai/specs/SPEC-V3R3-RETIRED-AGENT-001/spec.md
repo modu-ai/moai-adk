@@ -3,23 +3,24 @@ id: SPEC-V3R3-RETIRED-AGENT-001
 title: Retired Agent Stub Compatibility + manager-cycle Template Alignment
 version: "0.1.0"
 status: completed
-created_at: 2026-05-04
-updated_at: 2026-05-12
+created: 2026-05-04
+updated: 2026-05-12
 author: MoAI Plan Workflow
 priority: P0
-labels: [agent-runtime, templates, retired-stub, manager-cycle, manager-tdd, hooks, bug-fix, v3r3]
-issue_number: null
 phase: "v3.0.0 — Phase 7 — Agent Runtime Robustness"
 module: "internal/template/templates/.claude/agents/moai/, internal/template/templates/.claude/hooks/moai/, internal/hook/, internal/cli/"
 dependencies:
   - SPEC-V3R2-ORC-001
-related_specs:
-  - SPEC-V3R3-HYBRID-001
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "agent-runtime, retired-stub, manager-cycle, template-parity, hook-guard, worktree-empty-object, defect-chain, v3r3"
----
+issue_number: null
+related_specs:
+  - SPEC-V3R3-HYBRID-001
+------
 
 # SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub Compatibility + manager-cycle Template Alignment
 
@@ -416,3 +417,7 @@ CHANGELOG 항목 (proposed):
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

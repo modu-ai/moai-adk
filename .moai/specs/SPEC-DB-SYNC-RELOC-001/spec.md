@@ -1,16 +1,25 @@
 ---
 id: SPEC-DB-SYNC-RELOC-001
+title: "PostToolUse DB 훅 → `/moai sync` Phase 이관"
 version: 1.0.0
 status: completed
-created_at: 2026-04-21
-updated_at: 2026-04-21
+created: 2026-04-21
+updated: 2026-04-21
 author: moai-adk-go
 priority: medium
-labels: [db, hook, sync, performance, architecture, relocation]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, db, sync, reloc"
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001, SPEC-DB-SYNC-HARDEN-001, SPEC-DB-CMD-001, SPEC-SKILL-GATE-001]
 related_specs: []
----
+------
 
 # SPEC-DB-SYNC-RELOC-001: PostToolUse DB 훅 → `/moai sync` Phase 이관
 
@@ -121,3 +130,7 @@ v1.0.0 구현 절차:
 3. `make build`로 embedded.go 재생성
 4. `go test -race ./...` 전체 green 확인
 5. 커밋 + push
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

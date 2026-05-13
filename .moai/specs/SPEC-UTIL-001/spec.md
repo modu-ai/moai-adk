@@ -11,15 +11,15 @@ phase: "v2.14.0 — Phase 1 — Utility Hardening"
 module: "internal/hook/mx/"
 dependencies: []
 related_problem: [IMP-V3U-001, IMP-V3U-005, IMP-V3U-007]
-related_pattern: []
-related_principle: []
-related_decision: [D4, D5, D6]
 related_theme: "v2.14.0 Utility Hardening"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "mx, validator, tree-sitter, multi-language, windows, v2.14"
----
+related_pattern: []
+related_principle: []
+related_decision: [D4, D5, D6]
+------
 
 # SPEC-UTIL-001: MX Validator Correctness + Tree-sitter 16-Language Complexity + Windows Go-Native Scan + @MX:REASON Enforcement
 
@@ -291,3 +291,7 @@ Classification: release-scoped, non-breaking
 Owner: MoAI orchestrator + manager-ddd (Run phase)
 Last updated: 2026-04-24
 Referenced by: `docs/design/v2.14.0-release-plan.md` §2.2, `CHANGELOG.md` §v2.14.0 (to be written in Phase 5)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

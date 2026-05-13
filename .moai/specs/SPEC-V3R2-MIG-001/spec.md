@@ -13,14 +13,15 @@ dependencies:
   - SPEC-V3R2-EXT-004
   - SPEC-V3R2-MIG-002
   - SPEC-V3R2-MIG-003
-related_gap:
-  - problem-catalog-v2-migration
+related_problem: []
 related_theme: "Theme 8 — Migration Tool"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "migration, v2-to-v3, migrator, detector, report, dry-run, v3"
----
+related_gap:
+  - problem-catalog-v2-migration
+------
 
 # SPEC-V3R2-MIG-001: v2 to v3 Migrator
 
@@ -258,3 +259,7 @@ No behavioral conflict: SPC-001's runtime auto-wrap covers compatibility; MIG-00
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

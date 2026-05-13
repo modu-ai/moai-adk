@@ -21,7 +21,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "agent, worktree, isolation, implementer, tester, designer, v3r2"
----
+------
 
 # SPEC-V3R2-ORC-004: Worktree MUST Rule for write-heavy role profiles
 
@@ -275,3 +275,7 @@ Core criteria:
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

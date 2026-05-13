@@ -19,7 +19,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "harness, routing, complexity-estimator, evaluator-profiles, harness-yaml, go-loader, v3r2"
----
+------
 
 # SPEC-V3R2-HRN-001: Harness Routing + harness.yaml Go Loader
 
@@ -325,3 +325,7 @@ Core criteria:
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

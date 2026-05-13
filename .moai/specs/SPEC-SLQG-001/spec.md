@@ -1,7 +1,22 @@
 ---
 id: SPEC-SLQG-001
+title: "Self-Learning Quality Guard"
+version: "1.0.0"
 status: draft
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, slqg, 001"
+------
 
 # SPEC-SLQG-001: Self-Learning Quality Guard
 

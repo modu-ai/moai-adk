@@ -1,13 +1,23 @@
 ---
 id: SPEC-MEMO-001
+title: "Session Memo (컨텍스트 압축 보존)"
 version: "1.0.0"
 status: draft
 created: "2026-04-07"
 updated: "2026-04-07"
 author: GOOS
 priority: P1
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, memo, 001"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -121,3 +131,7 @@ memo:
 - Preserving conversation history (handled by Claude Code auto-compact)
 - Cross-session memory (handled by auto-memory system)
 - Real-time state streaming (single snapshot per compact event)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

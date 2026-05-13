@@ -11,15 +11,16 @@ phase: "v3.0.0 — Phase 1 — Constitution & Foundation"
 module: "internal/core/migration/, internal/cli/migrate.go, internal/cli/update.go"
 dependencies:
   - SPEC-V3R2-CON-001
-related_gap:
-  - r3-cc-architecture-preaction-hook
-  - problem-catalog-ad-hoc-migration
+related_problem: []
 related_theme: "Theme 7 — Extension"
 breaking: true
 bc_id: [BC-V3R2-019]
 lifecycle: spec-anchored
 tags: "migration, framework, idempotent, rollback, ordered, preaction, v3, breaking"
----
+related_gap:
+  - r3-cc-architecture-preaction-hook
+  - problem-catalog-ad-hoc-migration
+------
 
 # SPEC-V3R2-EXT-004: Versioned Migration Framework
 
@@ -252,3 +253,7 @@ Step ordering **shall** be determined by: primary by `Version()` (semver), secon
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

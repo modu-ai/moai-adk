@@ -1,21 +1,26 @@
 ---
 id: SPEC-LSP-MULTI-006
+title: "16-Language LSP Server Matrix"
 version: "1.0.0"
 status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P3
-issue_number: 0
 phase: "Phase 5 - Full Language Matrix"
 module: "internal/lsp/core/, .moai/config/sections/lsp.yaml"
-estimated_loc: 2900
 dependencies:
   - SPEC-LSP-CORE-002
   - SPEC-LSP-AGG-003
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: lsp, multi-language, 16-languages, neutrality, discovery
----
+tags: "lsp, multi-language, 16-languages, neutrality, discovery"
+issue_number: 0
+estimated_loc: 2900
+------
 
 # SPEC-LSP-MULTI-006: 16-Language LSP Server Matrix
 
@@ -89,3 +94,7 @@ The `lsp.yaml.tmpl` (PR #625, PR #627) declares 16 language server entries for d
 - `.claude/skills/moai/workflows/sync.md` Phase 0.6.1 (canonical 16-language list)
 - `.moai/config/sections/lsp.yaml.tmpl` (language matrix)
 - Section 22 audit reports (PRs #625, #627, #628)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

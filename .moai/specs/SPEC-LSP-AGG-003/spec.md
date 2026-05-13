@@ -1,20 +1,25 @@
 ---
 id: SPEC-LSP-AGG-003
+title: "Multi-Server Diagnostic Aggregator with TTL Cache"
 version: "1.0.0"
 status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P2
-issue_number: 0
 phase: "Phase 4 - Multi-Language LSP"
 module: "internal/lsp/aggregator/, internal/lsp/cache/"
-estimated_loc: 1650
 dependencies:
   - SPEC-LSP-CORE-002
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: lsp, aggregator, cache, ttl, parallel, diagnostics
----
+tags: "lsp, aggregator, cache, ttl, parallel, diagnostics"
+issue_number: 0
+estimated_loc: 1650
+------
 
 # SPEC-LSP-AGG-003: Multi-Server Diagnostic Aggregator with TTL Cache
 
@@ -109,3 +114,7 @@ CacheEntry {
 - Phase 1 reports R2 (reference tool architectures)
 - Deno optimization blog (TTL cache pattern) — https://deno.com/blog/optimizing-our-lsp
 - Golang singleflight package — https://pkg.go.dev/golang.org/x/sync/singleflight
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

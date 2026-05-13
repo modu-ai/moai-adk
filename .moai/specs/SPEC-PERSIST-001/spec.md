@@ -1,13 +1,23 @@
 ---
 id: SPEC-PERSIST-001
+title: "Stop Persistent Mode (종료 방지 모드)"
 version: "1.0.0"
 status: draft
 created: "2026-04-07"
 updated: "2026-04-07"
 author: GOOS
 priority: P1
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, persist, 001"
 issue_number: 0
----
+------
 
 ## HISTORY
 
@@ -142,3 +152,7 @@ Deactivation happens automatically via:
 
 - User-facing persistent mode toggle (implicit via workflow lifecycle)
 - Cross-session persistence (file is session-scoped, cleaned up by session_end)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,13 +1,23 @@
 ---
-spec_id: SPEC-PLAYWRIGHT-001
+id: SPEC-PLAYWRIGHT-001
 title: "Playwright Active Testing"
-created: "2026-04-01"
-status: planned
-priority: high
-module: template
 version: "1.0.0"
+status: planned
+created: "2026-04-01"
+updated: 2026-05-13
+author: GOOS
+priority: high
+phase: "legacy — pre-v3.0"
+module: template
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, playwright, 001"
+spec_id: SPEC-PLAYWRIGHT-001
+------
 
 # Playwright Active Testing
 
@@ -126,3 +136,7 @@ Playwright test failures **shall** contribute to the Functionality dimension sco
 
 - `internal/template/templates/.claude/agents/moai/evaluator-active.md` (add chrome MCP tools to allowed tools)
 - `internal/template/templates/.claude/skills/moai/workflows/run.md` (Playwright testing in Phase 2.8a)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

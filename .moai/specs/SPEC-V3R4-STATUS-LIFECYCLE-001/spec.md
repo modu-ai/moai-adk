@@ -1,16 +1,25 @@
 ---
 id: SPEC-V3R4-STATUS-LIFECYCLE-001
+title: "SPEC Status Lifecycle Automation — 7-Layer Defense in Depth"
 version: "0.1.0"
 status: draft
-created_at: 2026-05-13
-updated_at: 2026-05-13
+created: 2026-05-13
+updated: 2026-05-13
 author: manager-spec
 priority: High
-labels: [spec-status, lifecycle, lint, hook, github-actions, automation, drift-prevention]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, v3r4, status, lifecycle"
 issue_number: null
 depends_on: [SPEC-STATUS-AUTO-001]
 related_specs: [SPEC-V3R4-CATALOG-001, SPEC-V3R4-CATALOG-002, SPEC-V3R2-WF-003, SPEC-V3R2-WF-004]
----
+------
 
 # SPEC-V3R4-STATUS-LIFECYCLE-001: SPEC Status Lifecycle Automation — 7-Layer Defense in Depth
 
@@ -331,3 +340,7 @@ If M-1 fails, this SPEC's status MUST be re-evaluated and a follow-up SPEC opene
 - Hook handler: `internal/hook/spec_status.go`
 - CLI surface: `internal/cli/spec_status.go`
 - Existing CI: `.github/workflows/` (18 workflows)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

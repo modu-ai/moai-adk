@@ -11,8 +11,13 @@ phase: "Phase 4 - UI and Integration"
 module: "internal/ui/, internal/cli/wizard/"
 dependencies:
   - SPEC-UI-001
-tags: huh, glamour, lipgloss, tui-modernization, charmbracelet, theme, accessibility
----
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "huh, glamour, lipgloss, tui-modernization, charmbracelet, theme, accessibility"
+------
 
 # SPEC-UI-003: TUI Modernization
 
@@ -258,3 +263,7 @@ Completed on 2026-02-15 via Agent Teams mode (backend-dev + tester).
 - Interface compatibility preserved (REQ-6): zero caller changes required
 - Headless mode uses huh accessibility mode (REQ-7)
 - Coverage target (85%) partially met; remaining gap is structural (huh.Form.Run, tea.Program.Run are untestable without TTY)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

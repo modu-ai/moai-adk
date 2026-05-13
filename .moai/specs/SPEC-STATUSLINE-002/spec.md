@@ -1,13 +1,23 @@
 ---
 id: SPEC-STATUSLINE-002
+title: "rate_limits statusline 지원"
 version: "1.0.0"
 status: completed
 created: "2026-03-20"
 updated: "2026-03-20"
 author: GOOS
 priority: high
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, statusline, 002"
 issue_number: 0
----
+------
 
 # SPEC-STATUSLINE-002: rate_limits statusline 지원
 
@@ -30,3 +40,7 @@ StdinData에 `rate_limits` 필드를 추가하고, `RateLimitInfo` / `RateLimitW
 - `internal/statusline/types.go`: `RateLimitInfo`, `RateLimitWindow` 타입 추가, `StdinData`/`StatusData`에 필드 추가
 - `internal/statusline/builder.go`: `collectAll()`에서 RateLimits 전달
 - `internal/statusline/renderer.go`: `renderFullV3()`에서 RateLimits 우선 사용 로직
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

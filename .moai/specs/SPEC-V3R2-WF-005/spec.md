@@ -3,25 +3,25 @@ id: SPEC-V3R2-WF-005
 title: Language Rules vs Skills Boundary Codification
 version: "0.2.2"
 status: completed
-created_at: 2026-04-23
-updated_at: 2026-05-09
+created: 2026-04-23
+updated: 2026-05-09
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P2
-labels: [languages, rules, skills, boundary, paths-frontmatter, v3]
-issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/rules/moai/languages/, .claude/skills/, .claude/rules/moai/development/skill-authoring.md"
 dependencies:
   - SPEC-V3R2-WF-001
-related_gap:
-  - r4-skill-audit-lang-skills-absent
-  - r6-frontmatter-consistency
+related_problem: []
 related_theme: "Theme 6 — Workflow Consolidation"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
----
+issue_number: null
+related_gap:
+  - r4-skill-audit-lang-skills-absent
+  - r6-frontmatter-consistency
+------
 
 # SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification
 
@@ -232,3 +232,7 @@ References to non-existent skills (`moai-lang-*`, `moai-infra-docker`, `moai-ess
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

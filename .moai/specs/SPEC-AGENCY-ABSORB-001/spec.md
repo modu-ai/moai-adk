@@ -1,17 +1,26 @@
 ---
 id: SPEC-AGENCY-ABSORB-001
+title: "Agency → MoAI-ADK 흡수 및 Claude Design 통합"
 version: 0.3.0
 status: completed
-created_at: 2026-04-20
-updated_at: 2026-04-24
+created: 2026-04-20
+updated: 2026-04-24
 author: GOOS
 priority: High
-labels: [agency, migration, design, hybrid, absorption]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, agency, absorb, 001"
 issue_number: null
 merged_pr: 682
 merged_commit: 4271fd8a8
 deprecation_policy_amended: true
----
+------
 
 # SPEC-AGENCY-ABSORB-001: Agency → MoAI-ADK 흡수 및 Claude Design 통합
 
@@ -460,3 +469,7 @@ The 흡수 릴리스 **shall** `.claude/skills/agency-frontend-patterns/`를 `.c
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

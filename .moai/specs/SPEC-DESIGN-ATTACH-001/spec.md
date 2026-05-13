@@ -1,16 +1,25 @@
 ---
 id: SPEC-DESIGN-ATTACH-001
+title: "moai-workflow-design-context Skill + /moai design Phase B2.5 Auto-Loading"
 version: 0.2.0
 status: draft
-created_at: 2026-04-20
-updated_at: 2026-04-21
+created: 2026-04-20
+updated: 2026-04-21
 author: moai-adk-go
 priority: Medium
-labels: [design, context, auto-load, skill, workflow-extension, token-budget]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, design, attach, 001"
 issue_number: null
 depends_on: [SPEC-DESIGN-CONST-AMEND-001, SPEC-DESIGN-DOCS-001]
 related_specs: [SPEC-DESIGN-PENCIL-001]
----
+------
 
 # SPEC-DESIGN-ATTACH-001: moai-workflow-design-context Skill + /moai design Phase B2.5 Auto-Loading
 

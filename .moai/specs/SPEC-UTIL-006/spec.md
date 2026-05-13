@@ -11,15 +11,15 @@ phase: "v2.15 — Utility Performance Backlog"
 module: "internal/hook/mx/, internal/hook/mx/complexity/"
 dependencies: []
 related_problem: [IMP-V3U-024]
-related_pattern: []
-related_principle: []
-related_decision: []
 related_theme: "v2.15 Utility Performance"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "mx, tree-sitter, cache, performance"
----
+related_pattern: []
+related_principle: []
+related_decision: []
+------
 
 # SPEC-UTIL-006: analyzeFile Tree-sitter Parse Cache
 
@@ -126,3 +126,7 @@ func analyzeFile(path string, ...) ([]Violation, error) {
 - **Blocked by**: SPEC-UTIL-001 Phase 3.1 구현 완료 (`release/v2.14.0` 머지 대기). v2.15 착수 시점에는 main 반영됨
 - **Blocks**: 없음
 - **Related**: SPEC-UTIL-001 §4.2 (complexity 패키지 원본 구조), SPEC-UTIL-004 (동일 `internal/hook/` 트리 성능 backlog)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

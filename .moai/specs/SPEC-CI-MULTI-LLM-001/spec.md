@@ -1,11 +1,21 @@
 ---
 id: SPEC-CI-MULTI-LLM-001
+title: "Multi-LLM GitHub Actions Self-Hosted Runner Integration"
 version: 1.0.0
 status: planned
 created: 2026-04-27
 updated: 2026-04-27
 author: manager-spec
 priority: P1
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, ci, multi, llm"
 issue_number: null
 harness_level: standard
 language_policy: 16-language-neutral
@@ -14,7 +24,7 @@ related_specs:
   - SPEC-CICD-001
   - SPEC-GLM-001
 source_report: .moai/reports/devops/multi-llm-self-hosted-actions-2026-04-27.md
----
+------
 
 # SPEC-CI-MULTI-LLM-001: Multi-LLM GitHub Actions Self-Hosted Runner Integration
 
@@ -799,3 +809,7 @@ internal/github/             # 신규 패키지 (CLI와 분리된 도메인 로�
 - Z.ai GLM Pricing: https://docs.z.ai/guides/overview/pricing
 - 관련 규칙: `.claude/rules/moai/development/coding-standards.md` (Template-First, 16-language 중립성)
 - CLAUDE.local.md §15 (16개 언어 중립성), §2 (Template-First Rule), §18 (Git workflow)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

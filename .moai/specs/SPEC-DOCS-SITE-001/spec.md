@@ -1,13 +1,23 @@
 ---
 id: SPEC-DOCS-SITE-001
+title: "SPEC-DOCS-SITE-001 — moai-docs 흡수 및 Hextra 전면 전환"
 version: 0.2.0
 status: planned
 created: 2026-04-17
 updated: 2026-04-20
 author: manager-spec
 priority: High
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, docs, site, 001"
 issue_number: null
----
+------
 
 # SPEC-DOCS-SITE-001 — moai-docs 흡수 및 Hextra 전면 전환
 
@@ -263,3 +273,7 @@ moai-adk-go 프로젝트가 Go 단일 바이너리 기반으로 정리되면서,
 
 **Related SPECs**: SPEC-I18N-001 (absorbed, archived by this SPEC)
 **Supersedes**: SPEC-I18N-001
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

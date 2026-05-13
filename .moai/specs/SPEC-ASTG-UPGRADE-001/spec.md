@@ -1,19 +1,24 @@
 ---
 id: SPEC-ASTG-UPGRADE-001
+title: "ast-grep Quality & Security Modernization"
 version: "1.0.0"
 status: draft
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS
 priority: P1
-issue_number: 0
 phase: "Phase 3 - Quality Infrastructure"
 module: "internal/astgrep/, internal/hook/quality/, .moai/config/astgrep-rules/"
-estimated_loc: 1800
 dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: ast-grep, quality, security, 16-languages, owasp, sarif
----
+tags: "ast-grep, quality, security, 16-languages, owasp, sarif"
+issue_number: 0
+estimated_loc: 1800
+------
 
 # SPEC-ASTG-UPGRADE-001: ast-grep Quality & Security Modernization
 
@@ -172,3 +177,7 @@ internal/cli/
 - [ast-grep official docs](https://ast-grep.github.io/)
 - [SARIF 2.1.0 specification](https://docs.oasis-open.org/sarif/sarif/v2.1.0/)
 - [ast-grep-essentials rule library](https://github.com/coderabbitai/ast-grep-essentials)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

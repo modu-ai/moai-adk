@@ -1,13 +1,23 @@
 ---
-spec_id: SPEC-DRIFT-001
+id: SPEC-DRIFT-001
 title: "Spec Drift Guard & Persistent TASKS.md"
-created: "2026-04-01"
-status: planned
-priority: high
-module: template
 version: "1.0.0"
+status: planned
+created: "2026-04-01"
+updated: 2026-05-13
+author: GOOS
+priority: high
+phase: "legacy — pre-v3.0"
+module: template
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, drift, 001"
+spec_id: SPEC-DRIFT-001
+------
 
 # Spec Drift Guard & Persistent TASKS.md
 
@@ -109,3 +119,7 @@ The drift check step **shall** be added to run.md Phase 2A (DDD) and Phase 2B (T
 
 - `internal/template/templates/.claude/skills/moai/workflows/run.md` (Phase 1.5 tasks.md output, drift guard in Phase 2A/2B)
 - `internal/template/templates/.claude/rules/moai/workflow/workflow-modes.md` (drift check in cycle completion)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

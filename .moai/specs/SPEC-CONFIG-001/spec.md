@@ -1,12 +1,22 @@
 ---
 id: SPEC-CONFIG-001
+title: "Configuration Management System"
 version: "1.1.0"
 status: completed
 created: "2026-02-03"
 updated: "2026-02-03"
 author: GOOS
 priority: P0-Critical
----
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, config, 001"
+------
 
 # SPEC-CONFIG-001: Configuration Management System
 
@@ -608,3 +618,7 @@ Configuration management system implemented with YAML-based section loading, ato
 - `internal/config/types_test.go`
 - `internal/config/validation.go`
 - `internal/config/validation_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

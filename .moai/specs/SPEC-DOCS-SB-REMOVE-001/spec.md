@@ -1,16 +1,25 @@
 ---
 id: SPEC-DOCS-SB-REMOVE-001
+title: "docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거"
 version: 1.0.0
 status: completed
-created_at: 2026-04-21
-updated_at: 2026-04-21
+created: 2026-04-21
+updated: 2026-04-21
 author: moai-adk-go
 priority: high
-labels: [docs-site, i18n, simplify, batch, cleanup, consistency, 4-locale]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, docs, sb, remove"
 issue_number: null
 depends_on: [SPEC-SKILL-GATE-001]
 related_specs: []
----
+------
 
 # SPEC-DOCS-SB-REMOVE-001: docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거
 
@@ -120,3 +129,7 @@ v1.0.0 단일 세션 구현:
 5. `cd docs-site && hugo --minify` 검증
 6. AC-1 ~ AC-7 grep 전수 통과 확인
 7. 단일 `docs(site)` 커밋
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

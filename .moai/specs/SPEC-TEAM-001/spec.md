@@ -1,7 +1,22 @@
 ---
 id: SPEC-TEAM-001
+title: "Agent Teams Dynamic Generation Architecture"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, team, 001"
+------
 
 # SPEC-TEAM-001: Agent Teams Dynamic Generation Architecture
 

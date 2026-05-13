@@ -1,7 +1,22 @@
 ---
 id: SPEC-SLV3-001
+title: "Statusline v3 Upgrade"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, slv3, 001"
+------
 
 # SPEC-SLV3-001: Statusline v3 Upgrade
 
@@ -684,3 +699,7 @@ API 토큰, credentials 경로 등 민감 정보는 로그에 포함되지 않�
 |------|------|-----------|
 | 1.0.0 | 2026-03-05 | 초기 SPEC 작성 |
 | 1.1.0 | 2026-03-06 | 레이아웃 재설계: full 5줄→6줄, default 2줄→4줄. cost 제거. 시간 아이콘 ⏱→⏳. CW/5H/7D 라벨 추가. |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

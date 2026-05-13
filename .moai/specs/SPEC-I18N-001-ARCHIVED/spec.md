@@ -1,7 +1,22 @@
 ---
 id: SPEC-I18N-001-ARCHIVED
+title: "Complete Multilingual Translation of MoAI-ADK Documentation Site"
+version: "1.0.0"
 status: archived
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, i18n, 001, archived"
+------
 
 ARCHIVED — SPEC-I18N-001
 
@@ -223,3 +238,7 @@ Translate all `content/ja/` files from the completed English versions (`content/
 | REQ-5       | All Phases (plan.md)  | AC-5 (acceptance.md)       |
 | REQ-6       | All Phases (plan.md)  | AC-6 (acceptance.md)       |
 | REQ-7       | All Phases (plan.md)  | AC-7 (acceptance.md)       |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

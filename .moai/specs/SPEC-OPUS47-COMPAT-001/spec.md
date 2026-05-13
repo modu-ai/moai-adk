@@ -1,15 +1,25 @@
 ---
 id: SPEC-OPUS47-COMPAT-001
+title: "Claude Code v2.1.110/111 + Opus 4.7 프롬프트 철학 적용"
 version: 0.2.0
 status: completed
 created: 2026-04-17
 updated: 2026-04-24
 author: GOOS행님
 priority: critical
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, opus47, compat, 001"
 issue_number: 671
 merged_pr: [672, 673]
 merged_commits: [07525c7ae, 4a00aa304]
----
+------
 
 # SPEC-OPUS47-COMPAT-001: Claude Code v2.1.110/111 + Opus 4.7 프롬프트 철학 적용
 
@@ -182,3 +192,7 @@ The system **shall** support `claude-opus-4-7` as a first-class model in profile
 - Acceptance: [acceptance.md](./acceptance.md)
 - Research: [research.md](./research.md)
 - Compact: [spec-compact.md](./spec-compact.md)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

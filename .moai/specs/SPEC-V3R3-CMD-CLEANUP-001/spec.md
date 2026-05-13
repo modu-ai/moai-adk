@@ -1,19 +1,25 @@
 ---
 id: SPEC-V3R3-CMD-CLEANUP-001
+title: "SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거"
 version: "1.0.0"
 status: completed
-created_at: 2026-04-26
-updated_at: 2026-04-26
+created: 2026-04-26
+updated: 2026-04-26
 author: manager-spec
 priority: P0
-labels: [commands, skills, cleanup, security, template-first]
-issue_number: null
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+tags: "legacy, v3r3, cmd, cleanup"
+issue_number: null
 related_specs: [SPEC-THIN-CMDS-001, SPEC-V3R3-DEF-001, SPEC-V3R3-DEF-007]
 released_in: v2.15.0
----
+------
 
 # SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거
 
@@ -146,3 +152,7 @@ REQ-CMD-003 → AC-003 → tasks W2-T2 (plan.md)
 REQ-CMD-004 → AC-004 → tasks W3-T1, W3-T2, W3-T3 (plan.md)
 REQ-CMD-005 → AC-004 → tasks W1-T2, W3-T2 (plan.md, deployment + test)
 REQ-CMD-006 → AC-005 → tasks (verification only — no creation work) (plan.md)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

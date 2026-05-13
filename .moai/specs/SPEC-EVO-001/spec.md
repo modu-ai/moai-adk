@@ -1,7 +1,22 @@
 ---
 id: SPEC-EVO-001
+title: "Skill Evolution Preservation Infrastructure"
+version: "1.0.0"
 status: draft
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, evo, 001"
+------
 
 # SPEC-EVO-001: Skill Evolution Preservation Infrastructure
 
@@ -179,3 +194,7 @@ The `.moai/evolution/` directory SHALL be git-tracked by default.
 - Evolution UI/dashboard (future SPEC)
 - Cross-project evolution sharing (future SPEC)
 - Automatic conflict resolution for evolvable zones (user wins is sufficient)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

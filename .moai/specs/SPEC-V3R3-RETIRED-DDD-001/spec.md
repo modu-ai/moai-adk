@@ -1,19 +1,25 @@
 ---
 id: SPEC-V3R3-RETIRED-DDD-001
+title: "Manager-DDD Retired Stub Standardization (Follow-up to RETIRED-AGENT-001)"
 version: "0.3.0"
 status: completed
-created_at: 2026-05-04
-updated_at: 2026-05-04
+created: 2026-05-04
+updated: 2026-05-04
 author: Goos Kim
 priority: Medium
-labels: [retire, agent-runtime, ddd, standardization, follow-up]
-issue_number: 778
-depends_on: [SPEC-V3R3-RETIRED-AGENT-001]
-related_specs: [SPEC-V3R2-ORC-001, SPEC-V3R3-RETIRED-AGENT-001]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, v3r3, retired, ddd"
+issue_number: 778
+depends_on: [SPEC-V3R3-RETIRED-AGENT-001]
+related_specs: [SPEC-V3R2-ORC-001, SPEC-V3R3-RETIRED-AGENT-001]
+------
 
 # SPEC-V3R3-RETIRED-DDD-001: Manager-DDD Retired Stub Standardization (Follow-up to RETIRED-AGENT-001)
 
@@ -427,3 +433,7 @@ The MoAI agent runtime SubagentStart guard (`agentStartHandler` in `internal/hoo
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

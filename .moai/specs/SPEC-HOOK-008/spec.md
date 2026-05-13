@@ -1,7 +1,22 @@
 ---
 id: SPEC-HOOK-008
+title: "Complete Hook Event System"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, hook, 008"
+------
 
 # SPEC-HOOK-008: Complete Hook Event System
 
@@ -309,3 +324,7 @@ All 7 new subcommands are added to the `hookSubcommands` table in `internal/cli/
 | REQ-HOOK-008-060   | internal/hook/registry.go                                   | internal/hook/registry_test.go  |
 | REQ-HOOK-008-070-071 | internal/cli/hook.go                                      | (CLI integration tests)         |
 | REQ-HOOK-008-080   | internal/hook/types.go                                      | internal/hook/types_test.go     |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

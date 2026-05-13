@@ -1,13 +1,23 @@
 ---
-spec_id: SPEC-SEMAP-001
+id: SPEC-SEMAP-001
 title: "SEMAP Behavioral Contracts"
-created: "2026-04-01"
-status: planned
-priority: high
-module: template
 version: "1.0.0"
+status: planned
+created: "2026-04-01"
+updated: 2026-05-13
+author: GOOS
+priority: high
+phase: "legacy — pre-v3.0"
+module: template
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
----
+tags: "legacy, semap, 001"
+spec_id: SPEC-SEMAP-001
+------
 
 # SEMAP Behavioral Contracts
 
@@ -140,3 +150,7 @@ Each phase transition requires human approval based on violation data analysis.
 - `internal/template/templates/.claude/agents/moai/manager-ddd.md` (add ## Contract section)
 - `internal/template/templates/.claude/agents/moai/manager-quality.md` (add ## Contract section)
 - `internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md` (contract verification at phase completion)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

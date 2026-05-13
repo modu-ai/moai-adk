@@ -1,17 +1,25 @@
 ---
-spec_id: SPEC-CORE-001
+id: SPEC-CORE-001
 title: Foundation Methodologies
-created: 2026-02-03
+version: "1.0.0"
 status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
 priority: Medium
 phase: "Phase 5 - Knowledge (Phase 1 과 병렬 구현 가능)"
 module: internal/foundation/
-estimated_loc: ~1,000
 dependencies: "없음 (순수 데이터/로직 모듈, 외부 의존성 없음)"
-assigned: expert-backend
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
 lifecycle: spec-anchored
-tags: [foundation, ears, languages, trust5, domain-patterns]
----
+tags: "[foundation, ears, languages, trust5, domain-patterns]"
+spec_id: SPEC-CORE-001
+estimated_loc: ~1,000
+assigned: expert-backend
+------
 
 # SPEC-CORE-001: Foundation Methodologies
 
@@ -522,3 +530,7 @@ Foundation package implemented with EARS pattern types and validation, language 
 - `internal/foundation/methodology_test.go`
 - `internal/foundation/trust5.go`
 - `internal/foundation/trust5_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

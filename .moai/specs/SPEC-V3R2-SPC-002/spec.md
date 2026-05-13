@@ -12,8 +12,13 @@ module: "internal/mx/, .claude/rules/moai/workflow/mx-tag-protocol.md"
 dependencies:
   - SPEC-V3R2-CON-001
   - SPEC-V3R2-RT-001
-related_gap: []
 related_problem: []
+related_theme: "Layer 2: SPEC & TAG"
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "v3r2, mx-tag, hook, json-sidecar, anchor, post-tool-use"
+related_gap: []
 related_pattern:
   - T-1
   - T-5
@@ -21,12 +26,7 @@ related_pattern:
 related_principle:
   - P1
   - P8
-related_theme: "Layer 2: SPEC & TAG"
-breaking: false
-bc_id: []
-lifecycle: spec-anchored
-tags: "v3r2, mx-tag, hook, json-sidecar, anchor, post-tool-use"
----
+------
 
 # SPEC-V3R2-SPC-002: @MX TAG v2 with hook JSON integration and sidecar index
 
@@ -194,3 +194,7 @@ References: master-v3 §4 Layer 2 @MX Go type sketch; design-principles.md §P8 
 - Patterns: T-1 Agent-Computer Interface (sidecar is an ACI-shaped machine-readable response per T-1 priority 1); T-5 Hook JSON-OR-ExitCode Dual Protocol (PostToolUse mxTags emission); X-1 Markdown + YAML Frontmatter (sidecar JSON is a sibling convention).
 - Wave 1 sources: R1 §11 SWE-agent ACI, R3 §2 Dec 5 Hook JSON.
 - Wave 2 sources: design-principles.md §P8, pattern-library.md §T-5 priority 2.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

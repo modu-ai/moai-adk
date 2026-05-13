@@ -1,16 +1,25 @@
 ---
 id: SPEC-DB-TEMPLATES-001
+title: ".moai/project/db/ 7-File Template Set and db.yaml Config Section"
 version: 0.2.0
 status: draft
-created_at: 2026-04-20
-updated_at: 2026-04-21
+created: 2026-04-20
+updated: 2026-04-21
 author: moai-adk-go
 priority: High
-labels: [db, templates, schema-docs, erd, migrations, rls, template-first]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, db, templates, 001"
 issue_number: null
 depends_on: []
 related_specs: [SPEC-DB-CMD-001, SPEC-DB-SYNC-001]
----
+------
 
 # SPEC-DB-TEMPLATES-001: .moai/project/db/ 7-File Template Set and db.yaml Config Section
 

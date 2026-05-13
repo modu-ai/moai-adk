@@ -24,7 +24,7 @@ breaking: true
 bc_id: [BC-V3R2-004]
 lifecycle: spec-anchored
 tags: "agent, lint, ci, common-protocol, askuserquestion, moai-constitution, v3r2"
----
+------
 
 # SPEC-V3R2-ORC-002: Agent Common Protocol CI Lint (moai agent lint)
 
@@ -298,3 +298,7 @@ Core criteria:
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

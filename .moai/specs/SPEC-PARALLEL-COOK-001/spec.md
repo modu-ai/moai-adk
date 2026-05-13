@@ -1,19 +1,28 @@
 ---
 id: SPEC-PARALLEL-COOK-001
-status: draft
+title: "Parallel Sub-agent Cookbook"
 version: "0.1.0"
+status: draft
+created: 2026-04-30
+updated: 2026-04-30
+author: manager-spec
 priority: Medium
-labels: [parallel, sub-agent, cookbook, fan-out, fan-in, orchestration, wave-3, tier-2]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, parallel, cook, 001"
 issue_number: null
 scope: [.claude/rules/moai/development, .claude/rules/moai/workflow/team-pattern-cookbook.md, CLAUDE.md]
 blockedBy: []
 dependents: []
-created_at: 2026-04-30
-updated_at: 2026-04-30
-author: manager-spec
 wave: 3
 tier: 2
----
+------
 
 # SPEC-PARALLEL-COOK-001: Parallel Sub-agent Cookbook
 
@@ -150,3 +159,7 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C5: Template-First Rule 준수 (`internal/template/templates/` 동기화)
 
 End of spec.md (SPEC-PARALLEL-COOK-001 v0.1.0).
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

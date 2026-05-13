@@ -1,7 +1,22 @@
 ---
 id: SPEC-TELEMETRY-001
+title: "Skill Usage Telemetry"
+version: "1.0.0"
 status: implemented
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, telemetry, 001"
+------
 
 # SPEC-TELEMETRY-001: Skill Usage Telemetry
 
@@ -161,3 +176,7 @@ The system SHALL NOT store personally identifiable information and SHALL enforce
 - Cross-project telemetry aggregation
 - Sending telemetry to external services (all local)
 - Skill recommendation engine (that's SPEC-REFLECT-001)
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -1,19 +1,28 @@
 ---
 id: SPEC-WT-DOC-001
-status: draft
+title: "Worktree Shared State 명시"
 version: "0.1.0"
+status: draft
+created: 2026-04-30
+updated: 2026-04-30
+author: manager-spec
 priority: Low
-labels: [worktree, shared-state, documentation, anti-pattern, termination, wave-3, tier-2]
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, wt, doc, 001"
 issue_number: null
 scope: [.claude/rules/moai/workflow/worktree-integration.md, CLAUDE.md]
 blockedBy: []
 dependents: []
-created_at: 2026-04-30
-updated_at: 2026-04-30
-author: manager-spec
 wave: 3
 tier: 2
----
+------
 
 # SPEC-WT-DOC-001: Worktree Shared State 명시
 
@@ -150,3 +159,7 @@ See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 - C5: Template-First Rule 준수
 
 End of spec.md (SPEC-WT-DOC-001 v0.1.0).
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

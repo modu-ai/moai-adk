@@ -1,4 +1,22 @@
-# SPEC-QUALITY-001: TRUST 5 Quality Gates
+---
+id: SPEC-QUALITY-001
+title: "TRUST 5 Quality Gates"
+version: "1.0.0"
+status: completed
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, quality, 001"
+---# SPEC-QUALITY-001: TRUST 5 Quality Gates
 
 ---
 id: SPEC-QUALITY-001
@@ -535,3 +553,7 @@ Quality gates package implemented with TRUST 5 framework validation (Tested, Rea
 - `internal/core/quality/trust_test.go`
 - `internal/core/quality/validators.go`
 - `internal/core/quality/validators_test.go`
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

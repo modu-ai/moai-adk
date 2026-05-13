@@ -1,7 +1,22 @@
 ---
 id: SPEC-STATUSLINE-001
+title: "Statusline Segment Configuration"
+version: "1.0.0"
 status: completed
----
+created: 2026-05-13
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "legacy — pre-v3.0"
+module: "various"
+dependencies: []
+related_problem: []
+related_theme: ""
+breaking: false
+bc_id: []
+lifecycle: spec-anchored
+tags: "legacy, statusline, 001"
+------
 
 # SPEC-STATUSLINE-001: Statusline Segment Configuration
 
@@ -370,3 +385,7 @@ The `MOAI_STATUSLINE_MODE=minimal` mode retains its existing hard-coded behavior
 | REQ-SL-040-042 | `cli/statusline.go`                                          | `cli/statusline_test.go`               |
 | REQ-SL-050-051 | `templates/.moai/config/sections/statusline.yaml`            | (template deployment tests)            |
 | REQ-SL-NF-001-007 | All implementation files                                 | All test files                         |
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.

@@ -3,23 +3,24 @@ id: SPEC-V3R2-EXT-001
 title: Typed Memory Taxonomy (4-type enforcement)
 version: "1.1.0"
 status: draft
-created_at: 2026-04-23
-updated_at: 2026-04-25
+created: 2026-04-23
+updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1 High
 phase: "v3.0.0 — Phase 7 — Extension"
 module: ".claude/agent-memory/, .claude/rules/moai/workflow/moai-memory.md, internal/hook/session_start.go"
 dependencies: []
-related_gap:
-  - pattern-library-M-1
-  - r3-cc-architecture-memdir
+related_problem: []
 related_theme: "Theme 7 — Extension"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
-labels: [memory, taxonomy, user, feedback, project, reference, staleness, v3]
+tags: "legacy, v3r2, ext, 001"
+related_gap:
+  - pattern-library-M-1
+  - r3-cc-architecture-memdir
 issue_number: null
----
+------
 
 # SPEC-V3R2-EXT-001: Typed Memory Taxonomy
 
@@ -231,3 +232,7 @@ The rule file `.claude/rules/moai/workflow/moai-memory.md` **shall** enumerate p
 ---
 
 End of SPEC.
+
+## Out of Scope
+
+- Completed SPEC preserved for historical reference. No further modifications planned.
