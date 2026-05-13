@@ -514,3 +514,332 @@ func containsMiddle(s, substr string) bool {
 	}
 	return false
 }
+
+// ============================================================================
+// M1: New failing tests (RED phase)
+// ============================================================================
+
+// T-RT002-01: TestResolve_FrontmatterUnknownPermissionMode
+// Tests that unknown permissionMode values are handled gracefully
+func TestResolve_FrontmatterUnknownPermissionMode(t *testing.T) {
+	// Given an agent frontmatter declares permissionMode: "ultra-bypass"
+	// When ParsePermissionMode receives this value
+	// Then it should return ModeDefault with an error (caller handles fallback)
+	mode, err := ParsePermissionMode("ultra-bypass")
+	if err == nil {
+		t.Error("ParsePermissionMode() should return error for unknown mode")
+	}
+	if mode != ModeDefault {
+		t.Errorf("ParsePermissionMode() = %v, want ModeDefault on error", mode)
+	}
+}
+
+// T-RT002-02: TestResolve_HookUpdatedInputReMatch
+// Tests that hook UpdatedInput mutation allows re-matching against pre-allowlist
+func TestResolve_HookUpdatedInputReMatch(t *testing.T) {
+	// Given a hook mutates /dangerous/path to /safe/path
+	// And pre-allowlist has Write(/safe/*)
+	// When resolver processes hook UpdatedInput
+	// Then re-matching occurs and the mutated path matches pre-allowlist
+
+	resolver := NewPermissionResolver()
+	hookResponse := &hook.HookResponse{
+		UpdatedInput: json.RawMessage(`{"file_path": "/safe/path"}`),
+	}
+
+	ctx := ResolveContext{
+		Mode:            ModeDefault,
+		IsFork:          false,
+		ParentAvailable: true,
+		IsInteractive:   true,
+		HookResponse:    hookResponse,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
+	}
+
+	// Initial input is /dangerous/path which is NOT in pre-allowlist
+	result, err := resolver.Resolve("Write", json.RawMessage(`{"file_path": "/dangerous/path"}`), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	// Should match pre-allowlist after hook mutation to /safe/path
+	if result.Decision != DecisionAllow {
+		t.Errorf("Resolve() Decision = %v, want %v (re-match should find /safe/* in pre-allowlist)", result.Decision, DecisionAllow)
+	}
+	if result.ResolvedBy != config.SrcBuiltin {
+		t.Errorf("Resolve() ResolvedBy = %v, want %v (pre-allowlist)", result.ResolvedBy, config.SrcBuiltin)
+	}
+}
+
+// T-RT002-03: TestResolve_ForkDepth4DegradeToBubble
+// Tests that depth=4 with mode=acceptEdits degrades to bubble
+func TestResolve_ForkDepth4DegradeToBubble(t *testing.T) {
+	// Given a fork agent at depth 4 with permissionMode: acceptEdits
+	// When resolver is invoked
+	// Then systemMessage is emitted and decision=ask with Origin="fork depth limit"
+
+	resolver := NewPermissionResolver()
+	ctx := ResolveContext{
+		Mode:            ModeAcceptEdits,
+		IsFork:          true,
+		ParentAvailable: true,
+		ForkDepth:       4,
+		IsInteractive:   true,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
+	}
+
+	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/test.txt"), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	if result.Decision != DecisionAsk {
+		t.Errorf("Resolve() Decision = %v, want %v (depth 4 should degrade to bubble/ask)", result.Decision, DecisionAsk)
+	}
+	if result.SystemMessage == "" {
+		t.Error("Resolve() SystemMessage should warn about fork depth limit")
+	}
+	// Origin should mention fork depth limit
+	if !contains(result.Origin, "fork depth") {
+		t.Errorf("Resolve() Origin = %v, should mention 'fork depth'", result.Origin)
+	}
+}
+
+// T-RT002-04: TestResolve_BubbleParentClosed
+// Tests bubble mode when parent session is unavailable
+func TestResolve_BubbleParentClosed(t *testing.T) {
+	// Given IsFork=true and ParentAvailable=false
+	// When resolver encounters non-allowlisted tool
+	// Then result is deny with "parent unavailable" message
+
+	resolver := NewPermissionResolver()
+	ctx := ResolveContext{
+		Mode:            ModeBubble,
+		IsFork:          true,
+		ParentAvailable: false,
+		ForkDepth:       1,
+		IsInteractive:   true,
+		RulesByTier:     make(map[config.Source][]PermissionRule),
+	}
+
+	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/test.txt"), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	if result.Decision != DecisionDeny {
+		t.Errorf("Resolve() Decision = %v, want %v (bubble without parent should deny)", result.Decision, DecisionDeny)
+	}
+	if result.SystemMessage == "" {
+		t.Error("Resolve() SystemMessage should indicate parent unavailable")
+	}
+}
+
+// T-RT002-05: TestResolve_NonInteractiveAskBecomesDeny
+// Tests that non-interactive mode converts ask to deny with log
+func TestResolve_NonInteractiveAskBecomesDeny(t *testing.T) {
+	// Given IsInteractive=false
+	// And no matching rule
+	// When resolver would return ask
+	// Then result is deny with log entry at .moai/logs/permission.log
+
+	resolver := NewPermissionResolver()
+	ctx := ResolveContext{
+		Mode:            ModeDefault,
+		IsFork:          false,
+		ParentAvailable: true,
+		IsInteractive:   false, // Non-interactive (CI/CD)
+		RulesByTier:     make(map[config.Source][]PermissionRule),
+	}
+
+	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/test.txt"), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	if result.Decision != DecisionDeny {
+		t.Errorf("Resolve() Decision = %v, want %v (non-interactive fail-closed)", result.Decision, DecisionDeny)
+	}
+	// Origin should indicate non-interactive
+	if result.Origin == "" {
+		t.Error("Resolve() Origin should be set for non-interactive deny")
+	}
+}
+
+// T-RT002-06: TestResolve_ConflictSpecificityThenFsOrder
+// Tests same-tier conflict resolution with specificity then fs-order
+func TestResolve_ConflictSpecificityThenFsOrder(t *testing.T) {
+	// Given two SrcLocal rules matching same tool: "Bash(rm:*)" (specific) and "Bash(rm:*)" (less specific)
+	// Or equal specificity but different Origin paths
+	// When resolver processes the conflict
+	// Then specificity wins, or fs-order tiebreaks with log entry
+
+	// This test requires the resolveConflict function to be implemented
+	// For now, we'll test that multiple matches in same tier are handled
+
+	resolver := NewPermissionResolver()
+	ctx := ResolveContext{
+		Mode:            ModeDefault,
+		IsFork:          false,
+		ParentAvailable: true,
+		IsInteractive:   true,
+		RulesByTier: map[config.Source][]PermissionRule{
+			config.SrcLocal: {
+				{
+					Pattern: "Bash(rm:*)",      // More specific (fewer wildcards)
+					Action:  DecisionDeny,
+					Source:  config.SrcLocal,
+					Origin:  "/path/a/settings.json",
+				},
+				{
+					Pattern: "Bash(*)",          // Less specific (more wildcards)
+					Action:  DecisionAllow,
+					Source:  config.SrcLocal,
+					Origin:  "/path/b/settings.json",
+				},
+			},
+		},
+	}
+
+	result, err := resolver.Resolve("Bash", json.RawMessage("rm -rf /tmp/test"), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	// Should pick the more specific rule (deny over allow)
+	if result.Decision != DecisionDeny {
+		t.Errorf("Resolve() Decision = %v, want %v (specificity should win)", result.Decision, DecisionDeny)
+	}
+}
+
+// T-RT002-07: TestResolve_PolicyDenyOverridesProjectAllow
+// Tests that SrcPolicy deny overrides SrcProject allow
+func TestResolve_PolicyDenyOverridesProjectAllow(t *testing.T) {
+	// Given SrcPolicy has deny Bash(curl:*)
+	// And SrcProject has allow Bash(curl:*)
+	// When resolver walks the 8-tier stack
+	// Then policy tier wins (deny overrides allow)
+
+	resolver := NewPermissionResolver()
+	ctx := ResolveContext{
+		Mode:            ModeDefault,
+		IsFork:          false,
+		ParentAvailable: true,
+		IsInteractive:   true,
+		RulesByTier: map[config.Source][]PermissionRule{
+			config.SrcPolicy: {
+				{
+					Pattern: "Bash(curl:*)",
+					Action:  DecisionDeny,
+					Source:  config.SrcPolicy,
+					Origin:  "/etc/moai/policy.yaml",
+				},
+			},
+			config.SrcProject: {
+				{
+					Pattern: "Bash(curl:*)",
+					Action:  DecisionAllow,
+					Source:  config.SrcProject,
+					Origin:  ".claude/settings.json",
+				},
+			},
+		},
+	}
+
+	result, err := resolver.Resolve("Bash", json.RawMessage("curl https://example.com"), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	if result.Decision != DecisionDeny {
+		t.Errorf("Resolve() Decision = %v, want %v (policy deny should override project allow)", result.Decision, DecisionDeny)
+	}
+	if result.ResolvedBy != config.SrcPolicy {
+		t.Errorf("Resolve() ResolvedBy = %v, want %v", result.ResolvedBy, config.SrcPolicy)
+	}
+}
+
+// T-RT002-08: TestResolve_BypassPermissionsRejectedInStrictMode
+// Tests ValidateMode rejects bypassPermissions in strict mode
+func TestResolve_BypassPermissionsRejectedInStrictMode(t *testing.T) {
+	// Given security.yaml sets permission.strict_mode: true
+	// When ValidateMode is called with ModeBypassPermissions
+	// Then error PermissionModeRejected is returned
+
+	resolver := NewPermissionResolver()
+	err := resolver.ValidateMode(ModeBypassPermissions, false, true, 0)
+	if err == nil {
+		t.Error("ValidateMode() should reject bypassPermissions in strict mode")
+	}
+	if err != ErrPermissionModeRejected {
+		t.Errorf("ValidateMode() error = %v, want ErrPermissionModeRejected", err)
+	}
+}
+
+// T-RT002-09: TestResolve_LegacyBypassActionMigrated
+// Tests legacy bypassPermissions action is migrated to acceptEdits
+func TestResolve_LegacyBypassActionMigrated(t *testing.T) {
+	// Given a v2 rule with Action: "bypassPermissions"
+	// When MigrateLegacyBypassRules processes it
+	// Then Action is rerouted to DecisionAllow with deprecation warning
+
+	rules := []PermissionRule{
+		{
+			Pattern: "Bash(*)",
+			Action:  "bypassPermissions", // Legacy action string
+			Source:  config.SrcProject,
+			Origin:  ".claude/settings.json",
+		},
+	}
+
+	migrated, warnings := MigrateLegacyBypassRules(rules)
+
+	if len(migrated) == 0 {
+		t.Fatal("MigrateLegacyBypassRules() returned empty slice")
+	}
+
+	// Action should be changed to DecisionAllow
+	if migrated[0].Action != DecisionAllow {
+		t.Errorf("MigrateLegacyBypassRules() Action = %v, want %v", migrated[0].Action, DecisionAllow)
+	}
+
+	// Should return deprecation warning
+	if len(warnings) == 0 {
+		t.Error("MigrateLegacyBypassRules() should return deprecation warning")
+	}
+}
+
+// T-RT002-10: TestResolve_SessionRulesLoadedAsSrcSession
+// Tests session_rules are loaded as SrcSession tier
+func TestResolve_SessionRulesLoadedAsSrcSession(t *testing.T) {
+	// Given .claude/settings.local.json has permissions.session_rules key
+	// When resolver loads rules
+	// Then session_rules entries are in SrcSession tier
+
+	resolver := NewPermissionResolver()
+	ctx := ResolveContext{
+		Mode:            ModeDefault,
+		IsFork:          false,
+		ParentAvailable: true,
+		IsInteractive:   true,
+		RulesByTier: map[config.Source][]PermissionRule{
+			config.SrcSession: {
+				{
+					Pattern: "Read(*)",
+					Action:  DecisionAllow,
+					Source:  config.SrcSession,
+					Origin:  "session_rules",
+				},
+			},
+		},
+	}
+
+	result, err := resolver.Resolve("Read", json.RawMessage("/tmp/test.txt"), ctx)
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+
+	if result.ResolvedBy != config.SrcSession {
+		t.Errorf("Resolve() ResolvedBy = %v, want %v", result.ResolvedBy, config.SrcSession)
+	}
+}
