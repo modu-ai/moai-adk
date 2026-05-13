@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-STATUS-LIFECYCLE-001
 version: "0.1.0"
-status: in-progress
+status: draft
 created_at: 2026-05-13
 updated_at: 2026-05-13
 author: manager-spec

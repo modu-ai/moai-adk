@@ -1,0 +1,108 @@
+name: SPEC Status Auto-Sync
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  spec-status-sync:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build moai
+        run: make build && make install
+      - name: Sync SPEC statuses from PR title
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          SPEC_IDS=$(echo "$PR_TITLE" | grep -oE 'SPEC-[A-Z0-9-]+-[0-9]+' | tr '\n' ' ')
+          if [ -z "$SPEC_IDS" ]; then
+            echo "No SPEC-IDs found in PR title"
+            exit 0
+          fi
+
+          echo "Found SPEC-IDs: $SPEC_IDS"
+
+          # Classify PR title to determine target status
+          TITLE_LOWER=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]')
+
+          TARGET_STATUS=""
+          if echo "$TITLE_LOWER" | grep -q "^plan(spec)"; then
+            TARGET_STATUS="planned"
+          elif echo "$TITLE_LOWER" | grep -q "^docs(sync)"; then
+            TARGET_STATUS="completed"
+          elif echo "$TITLE_LOWER" | grep -qE "^(feat|fix|refactor|perf|test)"; then
+            TARGET_STATUS="implemented"
+          elif echo "$TITLE_LOWER" | grep -qE "^(chore|ci|style|docs\(spec-plan\))"; then
+            TARGET_STATUS="in-progress"
+          else
+            echo "Unknown PR title prefix, skipping status update"
+            exit 0
+          fi
+
+          echo "Target status: $TARGET_STATUS"
+
+          # Update each SPEC status with loop prevention
+          for SPEC_ID in $SPEC_IDS; do
+            SPEC_DIR=".moai/specs/$SPEC_ID"
+
+            if [ ! -f "$SPEC_DIR/spec.md" ]; then
+              echo "SPEC not found: $SPEC_ID"
+              continue
+            fi
+
+            # Loop prevention: check if last commit was auto-sync
+            LAST_COMMIT=$(git log -1 --pretty=format:"%s" "$SPEC_DIR/spec.md" 2>/dev/null || echo "")
+            if echo "$LAST_COMMIT" | grep -q "chore(spec): auto-sync status for #$PR_NUMBER"; then
+              echo "Already auto-synced $SPEC_ID in this PR, skipping"
+              continue
+            fi
+
+            # Update status using moai CLI
+            moai spec status "$SPEC_ID" "$TARGET_STATUS"
+
+            # Commit with auto-sync message
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$SPEC_DIR/spec.md"
+
+            if git diff --staged --quiet; then
+              echo "No changes to $SPEC_ID (already at $TARGET_STATUS)"
+              continue
+            fi
+
+            # Try to commit with rebase-on-conflict (max 3 attempts)
+            ATTEMPT=0
+            MAX_ATTEMPTS=3
+            while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+              if git commit -m "chore(spec): auto-sync status for #$PR_NUMBER"; then
+                echo "Committed $SPEC_ID status update"
+                break
+              else
+                ATTEMPT=$((ATTEMPT + 1))
+                if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                  echo "Conflict detected, rebasing (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+                  git rebase origin/main || git rebase --abort
+                else
+                  echo "Failed to commit after $MAX_ATTEMPTS attempts, creating issue"
+                  gh issue create \
+                    --title "SPEC Status Sync Conflict for $SPEC_ID (PR #$PR_NUMBER)" \
+                    --body "Failed to auto-sync status for $SPEC_ID to $TARGET_STATUS due to merge conflicts after $MAX_ATTEMPTS rebase attempts." \
+                    --label "spec-status,automation"
+                  exit 1
+                fi
+              fi
+            done
+          done
+
+          # Push changes if any commits were made
+          if [ "$(git rev-parse --short HEAD)" != "$(git rev-parse --short origin/main)" ]; then
+            git push origin main
+          fi

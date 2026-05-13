@@ -121,6 +121,7 @@ func NewLinter(opts LinterOptions) *Linter {
 		&BreakingChangeIDRule{},
 		&StatusValueEnumRule{},
 		&StatusCaseNormalizationRule{},
+		&StatusGitConsistencyRule{},
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
@@ -874,3 +875,41 @@ func (r *DuplicateSPECIDRule) CheckAll(docs []*SPECDoc) []Finding {
 	}
 	return findings
 }
+
+// StatusGitConsistencyRule checks if SPEC frontmatter status agrees with git log
+// Implements Wave 3: W3-T4
+// Default severity: warning (promoted to error under --strict)
+type StatusGitConsistencyRule struct{}
+
+func (r *StatusGitConsistencyRule) Code() string { return "StatusGitConsistency" }
+
+func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
+	fm := doc.Frontmatter
+	var findings []Finding
+
+	if fm.ID == "" || fm.Status == "" {
+		// Skip if ID or status is missing (handled by other rules)
+		return nil
+	}
+
+	// Get git-implied status
+	gitStatus, err := getGitImpliedStatus(fm.ID)
+	if err != nil {
+		// If git history is unavailable, skip this check
+		return nil
+	}
+
+	// Check for drift
+	if fm.Status != gitStatus {
+		findings = append(findings, Finding{
+			File:     doc.Path,
+			Line:     1,
+			Severity: SeverityWarning, // Default: warning
+			Code:     "StatusGitConsistency",
+			Message:  fmt.Sprintf("SPEC %s frontmatter status '%s' disagrees with git-implied status '%s'", fm.ID, fm.Status, gitStatus),
+		})
+	}
+
+	return findings
+}
+

@@ -15,6 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
+	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
@@ -142,6 +143,17 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		if summary := PresentPendingProposals(input.ProjectDir); summary != "" {
 			data["skill_proposals"] = summary
 			slog.Info("reflective_write: pending proposals available for review",
+				"session_id", input.SessionID,
+			)
+		}
+	}
+
+	// Check for SPEC status drift and emit warning if >= 5 SPECs drifted
+	// This is non-blocking: errors are silently ignored (Wave 3: W3-T3)
+	if input.ProjectDir != "" {
+		if driftMsg := detectStatusDrift(input.ProjectDir); driftMsg != "" {
+			data["status_drift_warning"] = driftMsg
+			slog.Info("session start: status drift detected",
 				"session_id", input.SessionID,
 			)
 		}
@@ -736,4 +748,22 @@ func detectAndWrapStaleMemories(projectDir string, now time.Time) string {
 // via os.Setenv). See TestSessionStartHandler_Handle_NonWindowsGuard.
 func claudeEnvFileGuard(goos string) bool {
 	return goos == "windows"
+}
+
+// detectStatusDrift checks for SPEC status drift and returns a warning message
+// if >= 5 SPECs have drifted. Returns empty string otherwise.
+// Non-blocking: errors are silently ignored.
+func detectStatusDrift(projectDir string) string {
+	// Import spec package for drift detection
+	count, err := spec.DriftCount(projectDir)
+	if err != nil {
+		// Silently ignore errors (e.g., git not available, no specs directory)
+		return ""
+	}
+
+	if count >= 5 {
+		return fmt.Sprintf("⚠ %d SPECs have status drift. Run 'moai spec drift' for details.", count)
+	}
+
+	return ""
 }
