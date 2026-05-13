@@ -325,8 +325,8 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 }
 
 // renderDirGitLine renders the directory + branch + git status line (default L3, full L5).
-// Format: 📁 moai-adk-go │ 🅱️ main +6 │ 📬 +0 M6 ?0
-// When worktree is active: 🌿 replaces 🅱️ prefix
+// Format: 📁 moai-adk-go │ 🅱️ main ↑2↓1 +6 │ 📬 +0 M6 ?0
+// When worktree is active: "[WT] " prefix is prepended to the branch segment.
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
@@ -339,7 +339,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	if r.isSegmentEnabled(SegmentGitBranch) {
 		if branch := renderGitBranch(data); branch != "" {
 			if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-				branch = "🌿 " + branch
+				branch = "[WT] " + branch
 			}
 			segs = append(segs, branch)
 		}
@@ -470,10 +470,17 @@ func (r *Renderer) contextPercent(data *StatusData) int {
 	return usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 }
 
-// renderGitBranch renders the git branch string with status emoji indicators.
-// REQ-V3-GIT-005: Status emoji prefixes: 📦(staged), 🔨(modified)
-// REQ-V3-GIT-006: Clean state → "🅱️ branch +0", Dirty → "emoji🅱️ branch +N"
-// Note: 🌿(worktree) prefix is added by renderDirGitLine when segment is enabled
+// renderGitBranch renders the git branch string with optional ahead/behind suffix.
+//
+// Format: "🅱️ <branch>[ ↑N][ ↓N] +<dirty>"
+//   - Ahead and Behind are shown only when non-zero (zero values are omitted).
+//   - The dirty count aggregates Modified + Staged + Untracked.
+//   - When data.Git is unavailable or branch is empty, returns "".
+//
+// Status emoji prefixes (legacy 🔨/📦) have been removed: the L3/L5 mailbox emoji
+// (📬/📫/📪/📭) plus the detailed `+S M_M ?U` counter already convey staged/modified
+// state, so prefixing the branch produced redundant visual noise.
+// Note: "[WT] " (worktree) prefix is added by renderDirGitLine when segment is enabled.
 func renderGitBranch(data *StatusData) string {
 	if !data.Git.Available || data.Git.Branch == "" {
 		return ""
@@ -481,28 +488,20 @@ func renderGitBranch(data *StatusData) string {
 
 	branch := data.Git.Branch
 
-	// Determine status emoji (priority: staged > modified)
-	var emoji string
-	if data.Git.Staged > 0 {
-		emoji = "📦"
-	} else if data.Git.Modified > 0 {
-		emoji = "🔨"
+	// Ahead/Behind suffix (0 values omitted).
+	var aheadBehind string
+	if data.Git.Ahead > 0 {
+		aheadBehind += fmt.Sprintf(" ↑%d", data.Git.Ahead)
+	}
+	if data.Git.Behind > 0 {
+		aheadBehind += fmt.Sprintf(" ↓%d", data.Git.Behind)
 	}
 
-	// Calculate dirty count (modified + staged + untracked)
+	// Dirty count (modified + staged + untracked); always rendered, includes +0.
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
+	dirtySuffix := fmt.Sprintf(" +%d", dirty)
 
-	var suffix string
-	if dirty > 0 {
-		suffix = fmt.Sprintf(" +%d", dirty)
-	} else {
-		suffix = " +0"
-	}
-
-	if emoji != "" {
-		return fmt.Sprintf("%s🅱️ %s%s", emoji, branch, suffix)
-	}
-	return fmt.Sprintf("🅱️ %s%s", branch, suffix)
+	return fmt.Sprintf("🅱️ %s%s%s", branch, aheadBehind, dirtySuffix)
 }
 
 // renderSessionTime converts milliseconds to a session time string in "⏳ Xh Ym" format.

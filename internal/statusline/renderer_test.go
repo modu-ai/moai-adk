@@ -644,14 +644,24 @@ func TestRenderGitBranchV3(t *testing.T) {
 		worktree string
 		want     string
 	}{
-		// REQ-V3-GIT-006: Clean state → "🅱️ main +0"
+		// Clean state → "🅱️ main +0"
 		{"clean", GitStatusData{Branch: "main", Available: true}, "", "🅱️ main +0"},
-		// REQ-V3-GIT-005: Modified → "🔨🅱️ feat +2"
-		{"modified", GitStatusData{Branch: "feat", Modified: 2, Available: true}, "", "🔨🅱️ feat +2"},
-		// REQ-V3-GIT-005: Staged → "📦🅱️ main +1"
-		{"staged", GitStatusData{Branch: "main", Staged: 1, Available: true}, "", "📦🅱️ main +1"},
-		// REQ-V3-GIT-005: Modified + Staged (staged takes priority) → "📦🅱️ main +3"
-		{"modified+staged", GitStatusData{Branch: "main", Modified: 2, Staged: 1, Available: true}, "", "📦🅱️ main +3"},
+		// Modified files (no longer prefixed with 🔨 — mailbox/M-count carry the signal)
+		{"modified", GitStatusData{Branch: "feat", Modified: 2, Available: true}, "", "🅱️ feat +2"},
+		// Staged files (no longer prefixed with 📦)
+		{"staged", GitStatusData{Branch: "main", Staged: 1, Available: true}, "", "🅱️ main +1"},
+		// Modified + Staged: dirty count is sum, no prefix emoji
+		{"modified+staged", GitStatusData{Branch: "main", Modified: 2, Staged: 1, Available: true}, "", "🅱️ main +3"},
+		// Ahead only → "🅱️ feat ↑2 +0"
+		{"ahead", GitStatusData{Branch: "feat", Ahead: 2, Available: true}, "", "🅱️ feat ↑2 +0"},
+		// Behind only → "🅱️ feat ↓1 +0"
+		{"behind", GitStatusData{Branch: "feat", Behind: 1, Available: true}, "", "🅱️ feat ↓1 +0"},
+		// Ahead + Behind → "🅱️ feat ↑2 ↓1 +0"
+		{"ahead+behind", GitStatusData{Branch: "feat", Ahead: 2, Behind: 1, Available: true}, "", "🅱️ feat ↑2 ↓1 +0"},
+		// Ahead + dirty → "🅱️ feat ↑2 +3"
+		{"ahead+dirty", GitStatusData{Branch: "feat", Ahead: 2, Modified: 3, Available: true}, "", "🅱️ feat ↑2 +3"},
+		// Zero ahead/behind explicitly omitted
+		{"zero ahead/behind", GitStatusData{Branch: "main", Ahead: 0, Behind: 0, Available: true}, "", "🅱️ main +0"},
 		// Unavailable → empty string
 		{"unavailable", GitStatusData{Available: false}, "", ""},
 	}
@@ -864,11 +874,13 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	if !strings.Contains(l3, "📁 moai-adk-go") {
 		t.Errorf("default L3 must contain directory, got: %q", l3)
 	}
-	if !strings.Contains(l3, "📦🅱️ feat/auth +6") {
-		t.Errorf("default L3 must contain branch with dirty count, got: %q", l3)
+	// Branch segment: 🅱️ <name> ↑<ahead> ↓<behind> +<dirty>
+	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
+	if !strings.Contains(l3, "🅱️ feat/auth ↑2 ↓1 +6") {
+		t.Errorf("default L3 must contain branch with ahead/behind and dirty count, got: %q", l3)
 	}
-	if !strings.Contains(l3, "🅱️") {
-		t.Errorf("default L3 must contain git status, got: %q", l3)
+	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
+		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)
 	}
 }
 
@@ -1056,11 +1068,13 @@ func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
 	if !strings.Contains(l5, "📁 moai-adk-go") {
 		t.Errorf("full L5 must contain directory, got: %q", l5)
 	}
-	if !strings.Contains(l5, "📦🅱️ feat/auth +6") {
-		t.Errorf("full L5 must contain branch with dirty count, got: %q", l5)
+	// Branch segment: 🅱️ <name> ↑<ahead> ↓<behind> +<dirty>
+	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
+	if !strings.Contains(l5, "🅱️ feat/auth ↑2 ↓1 +6") {
+		t.Errorf("full L5 must contain branch with ahead/behind and dirty count, got: %q", l5)
 	}
-	if !strings.Contains(l5, "🅱️") {
-		t.Errorf("full L5 must contain git status, got: %q", l5)
+	if strings.Contains(l5, "📦") || strings.Contains(l5, "🔨") {
+		t.Errorf("full L5 must not contain legacy 📦/🔨 prefix, got: %q", l5)
 	}
 }
 
@@ -1352,9 +1366,10 @@ func TestRenderUsageBarWithReset(t *testing.T) {
 	}
 }
 
-// TestRenderDirGitLine_WorktreeIndicator verifies that 🌿 prefix appears in branch
-// segment when worktree is active and SegmentWorktree is enabled.
-// REQ-CC297-003: 🌿 prefix shown in branch segment when worktree is active
+// TestRenderDirGitLine_WorktreeIndicator verifies that the "[WT] " prefix appears in
+// the branch segment when a worktree is active and SegmentWorktree is enabled.
+// REQ-CC297-003: worktree prefix shown in branch segment when worktree is active.
+// The legacy 🌿 emoji was replaced with the textual "[WT] " marker for clarity.
 func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1363,25 +1378,25 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 		wantWT         bool
 	}{
 		{
-			name:           "worktree present and segment enabled: shows 🌿",
+			name:           "worktree present and segment enabled: shows [WT]",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: true,
 			wantWT:         true,
 		},
 		{
-			name:           "worktree present but segment disabled: no 🌿",
+			name:           "worktree present but segment disabled: no [WT]",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: false,
 			wantWT:         false,
 		},
 		{
-			name:           "no worktree with segment enabled: no 🌿",
+			name:           "no worktree with segment enabled: no [WT]",
 			worktree:       "",
 			segmentEnabled: true,
 			wantWT:         false,
 		},
 		{
-			name:           "no worktree and segment disabled: no 🌿",
+			name:           "no worktree and segment disabled: no [WT]",
 			worktree:       "",
 			segmentEnabled: false,
 			wantWT:         false,
@@ -1398,16 +1413,20 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 			}
 			r := NewRenderer("default", true, segCfg)
 			data := &StatusData{
-				Git:      GitStatusData{Branch: "feat/test", Available: true},
+				Git:       GitStatusData{Branch: "feat/test", Available: true},
 				Directory: "myproject",
-				Worktree: tt.worktree,
+				Worktree:  tt.worktree,
 			}
 			got := r.renderDirGitLine(data)
-			if tt.wantWT && !strings.Contains(got, "🌿") {
-				t.Errorf("expected 🌿 when worktree is active, got %q", got)
+			// Legacy emoji must never appear regardless of state.
+			if strings.Contains(got, "🌿") {
+				t.Errorf("legacy 🌿 emoji must not appear, got %q", got)
 			}
-			if !tt.wantWT && strings.Contains(got, "🌿") {
-				t.Errorf("unexpected 🌿 when worktree is inactive, got %q", got)
+			if tt.wantWT && !strings.Contains(got, "[WT] ") {
+				t.Errorf("expected [WT] prefix when worktree is active, got %q", got)
+			}
+			if !tt.wantWT && strings.Contains(got, "[WT]") {
+				t.Errorf("unexpected [WT] prefix when worktree is inactive, got %q", got)
 			}
 		})
 	}
