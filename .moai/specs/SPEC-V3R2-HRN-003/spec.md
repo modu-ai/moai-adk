@@ -146,7 +146,7 @@ Sub-criteria flatten to single-level when the SPEC's acceptance.md uses flat Giv
 - Claude Code v2.1.111+ (Opus 4.7 Adaptive Thinking required for rubric-anchored judgment; agent effort: xhigh per SPEC-V3R2-ORC-003 for evaluator-active)
 - Canonical dimensions: `Functionality`, `Security`, `Craft`, `Consistency` (FROZEN enum for v3.0)
 - Rubric anchor levels: 0.25, 0.50, 0.75, 1.00 (FROZEN per design-constitution §12 Mechanism 1)
-- Evaluator profile files location: `.moai/config/evaluator-profiles/{default,strict,lenient,frontend}.yaml`
+- Evaluator profile files location: `.moai/config/evaluator-profiles/{default,strict,lenient,frontend}.md` (per §10.1 Drift Reconciliation #1; `.yaml` was the original assumption)
 - ScoreCard output format: structured JSON consumable by the GAN loop runner
 - Sprint Contract integration: `.moai/sprints/{spec-id}/contract.yaml` per HRN-002
 - Backward compat: flat acceptance trees from pre-v3r2 SPECs auto-wrap as single-level children (BC-V3R2-011 from Master §8)
@@ -343,10 +343,10 @@ REQ-005 wording adapted from spec-time `.yaml` assumption to acknowledge the act
   - `internal/harness/scorer_test.go` (new, AC regression fixtures)
   - `internal/harness/rubric.go` (new, REQ-003)
   - `internal/config/types.go` (modified, EvaluatorProfile struct extensions, REQ-012, REQ-013, REQ-014)
-  - `.moai/config/evaluator-profiles/default.yaml` (new or modified, REQ-005)
-  - `.moai/config/evaluator-profiles/strict.yaml` (new or modified, REQ-005)
-  - `.moai/config/evaluator-profiles/lenient.yaml` (new or modified, REQ-005)
-  - `.moai/config/evaluator-profiles/frontend.yaml` (new or modified, REQ-005, REQ-016)
+  - `.moai/config/evaluator-profiles/default.md` (modified — `.md` per §10.1 reconciliation #1, REQ-005)
+  - `.moai/config/evaluator-profiles/strict.md` (modified — `.md` per §10.1 reconciliation #1, REQ-005)
+  - `.moai/config/evaluator-profiles/lenient.md` (modified — `.md` per §10.1 reconciliation #1, REQ-005)
+  - `.moai/config/evaluator-profiles/frontend.md` (modified — `.md` per §10.1 reconciliation #1, REQ-005, REQ-016)
   - `.claude/agents/moai/evaluator-active.md` (modified, REQ-006)
   - `internal/harness/gan_loop.go` (NOT created — orchestrator-level runner via SKILL.md per HRN-002 D1; see §10.1 reconciliation #3)
   - `internal/template/templates/...` (template-first mirrors)
