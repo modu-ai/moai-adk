@@ -113,7 +113,6 @@ func init() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
-		GroupID: "tools",
 	}
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.AddCommand(agentLintCmd)
