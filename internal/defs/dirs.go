@@ -22,6 +22,10 @@ const (
 	// EvolutionSubdir is the subdirectory for the Reflective Learning system.
 	// It holds telemetry records, learning entries, and rate-limit state.
 	EvolutionSubdir = "evolution"
+
+	// SearchSubdir is the subdirectory for the search index database.
+	// It holds the SQLite FTS5 database for session search.
+	SearchSubdir = ".moai/search"
 )
 
 // Claude subdirectory segments (relative to ClaudeDir).

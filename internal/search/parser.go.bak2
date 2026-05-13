@@ -1,0 +1,112 @@
+package search
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"strings"
+)
+
+// Message represents a single message in a Claude Code session.
+type Message struct {
+	SessionID   string
+	Role        string
+	Text        string
+	Timestamp   string
+	GitBranch   string
+	ProjectPath string
+}
+
+// jsonlRecord represents a single line in a Claude Code JSONL file.
+type jsonlRecord struct {
+	Message struct {
+		Content string `json:"content"`
+		Role    string `json:"role"`
+	} `json:"message"`
+	Type string `json:"type"`
+}
+
+// ParseJSONL parses a Claude Code JSONL session file and extracts searchable messages.
+// It filters out noise (system messages, short text, XML tags) and returns only
+// user and assistant messages.
+func ParseJSONL(path, gitBranch, projectPath string) ([]Message, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open JSONL file: %w", err)
+	}
+	defer file.Close()
+
+	var messages []Message
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		var record jsonlRecord
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			// Skip invalid JSON lines
+			continue
+		}
+
+		// Filter: Only user and assistant roles
+		if record.Message.Role != "user" && record.Type != "assistant" {
+			continue
+		}
+
+		// Extract text content
+		text := record.Message.Content
+		if text == "" {
+			continue
+		}
+
+		// Filter: Remove XML system tags
+		text = removeXMLTags(text)
+
+		// Filter: Skip short messages (less than 20 chars)
+		if len(text) < 20 {
+			continue
+		}
+
+		messages = append(messages, Message{
+			SessionID:   "", // Will be set by indexer
+			Role:        record.Message.Role,
+			Text:        text,
+			Timestamp:   "", // Could be extracted from JSON if available
+			GitBranch:   gitBranch,
+			ProjectPath: projectPath,
+		})
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading JSONL file: %w", err)
+	}
+
+	return messages, nil
+}
+
+// removeXMLTags removes XML-style system tags from text content.
+// These are internal Claude Code messages that don't belong in search results.
+func removeXMLTags(text string) string {
+	// Pattern to match XML tags like <local-command-caveat>, <command-name>, etc.
+	xmlTagPattern := regexp.MustCompile(`<[^>]+>`)
+	cleaned := xmlTagPattern.ReplaceAllString(text, "")
+
+	// Also remove common system reminder text
+	systemReminders := []string{
+		"<system-reminder>",
+		"</system-reminder>",
+		"<function_calls>",
+		"</function_calls>",
+	}
+
+	for _, reminder := range systemReminders {
+		cleaned = strings.ReplaceAll(cleaned, reminder, "")
+	}
+
+	return strings.TrimSpace(cleaned)
+}

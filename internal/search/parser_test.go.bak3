@@ -1,0 +1,200 @@
+package search
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestParseJSONL_ValidRecords(t *testing.T) {
+	// Setup: Create a temporary JSONL file
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	jsonlContent := `{"message":{"content":"Hello world","role":"user"},"type":"user"}
+{"message":{"content":"Hi there!","role":"assistant"},"type":"assistant"}
+`
+	if err := os.WriteFile(jsonlPath, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL
+	messages, err := ParseJSONL(jsonlPath, "main", "/project/path")
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages, got %d", len(messages))
+	}
+	if messages[0].Text != "Hello world" {
+		t.Errorf("Expected first message text 'Hello world', got '%s'", messages[0].Text)
+	}
+	if messages[1].Role != "assistant" {
+		t.Errorf("Expected second message role 'assistant', got '%s'", messages[1].Role)
+	}
+}
+
+func TestParseJSONL_NoiseFiltering(t *testing.T) {
+	// Setup: Create JSONL with noise
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	jsonlContent := `{"message":{"content":"Hello world","role":"user"},"type":"user"}
+{"message":{"content":"<local-command-caveat>Some system message</local-command-caveat>","role":"system"},"type":"system"}
+{"message":{"content":"Hi","role":"assistant"},"type":"assistant"}
+{"message":{"content":"<command-name>test</command-name>","role":"system"},"type":"system"}
+`
+	if err := os.WriteFile(jsonlPath, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL
+	messages, err := ParseJSONL(jsonlPath, "main", "/project/path")
+
+	// Assert: Should only get user message (Hello world), assistant message too short
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 1 {
+		t.Errorf("Expected 1 message (filtered noise), got %d", len(messages))
+	}
+	if messages[0].Text != "Hello world" {
+		t.Errorf("Expected message text 'Hello world', got '%s'", messages[0].Text)
+	}
+}
+
+func TestParseJSONL_InvalidJSON(t *testing.T) {
+	// Setup: Create JSONL with invalid line
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	jsonlContent := `{"message":{"content":"Valid message","role":"user"},"type":"user"}
+this is not valid json
+{"message":{"content":"Another valid","role":"assistant"},"type":"assistant"}
+`
+	if err := os.WriteFile(jsonlPath, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL (should skip invalid line)
+	messages, err := ParseJSONL(jsonlPath, "main", "/project/path")
+
+	// Assert: Should only get valid messages
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages (skipped invalid JSON), got %d", len(messages))
+	}
+}
+
+func TestParseJSONL_EmptyFile(t *testing.T) {
+	// Setup: Create empty JSONL file
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	if err := os.WriteFile(jsonlPath, []byte(""), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL
+	messages, err := ParseJSONL(jsonlPath, "main", "/project/path")
+
+	// Assert: Should return empty slice, no error
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 0 {
+		t.Errorf("Expected 0 messages for empty file, got %d", len(messages))
+	}
+}
+
+func TestParseJSONL_RoleFiltering(t *testing.T) {
+	// Setup: Create JSONL with different roles
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	jsonlContent := `{"message":{"content":"User message","role":"user"},"type":"user"}
+{"message":{"content":"System message","role":"system"},"type":"system"}
+{"message":{"content":"Assistant message","role":"assistant"},"type":"assistant"}
+{"message":{"content":"Tool message","role":"tool"},"type":"tool"}
+`
+	if err := os.WriteFile(jsonlPath, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL
+	messages, err := ParseJSONL(jsonlPath, "main", "/project/path")
+
+	// Assert: Should only get user and assistant messages
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages (user + assistant), got %d", len(messages))
+	}
+	if messages[0].Role != "user" {
+		t.Errorf("Expected first role 'user', got '%s'", messages[0].Role)
+	}
+	if messages[1].Role != "assistant" {
+		t.Errorf("Expected second role 'assistant', got '%s'", messages[1].Role)
+	}
+}
+
+func TestParseJSONL_KoreanText(t *testing.T) {
+	// Setup: Create JSONL with Korean text
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	jsonlContent := `{"message":{"content":"인증 시스템을 구현해주세요","role":"user"},"type":"user"}
+{"message":{"content":"네, JWT 기반 인증을 구현하겠습니다","role":"assistant"},"type":"assistant"}
+`
+	if err := os.WriteFile(jsonlPath, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL
+	messages, err := ParseJSONL(jsonlPath, "main", "/project/path")
+
+	// Assert: Should parse Korean text correctly
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages, got %d", len(messages))
+	}
+	if messages[0].Text != "인증 시스템을 구현해주세요" {
+		t.Errorf("Expected Korean text, got '%s'", messages[0].Text)
+	}
+}
+
+func TestParseJSONL_SessionMetadata(t *testing.T) {
+	// Setup: Create JSONL file
+	tempDir := t.TempDir()
+	jsonlPath := filepath.Join(tempDir, "session.jsonl")
+
+	jsonlContent := `{"message":{"content":"Test message","role":"user"},"type":"user"}
+`
+	if err := os.WriteFile(jsonlPath, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test JSONL: %v", err)
+	}
+
+	// Act: Parse JSONL with custom metadata
+	messages, err := ParseJSONL(jsonlPath, "feat/auth", "/custom/project")
+
+	// Assert: Should include git branch and project path
+	if err != nil {
+		t.Fatalf("ParseJSONL failed: %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("Expected 1 message, got %d", len(messages))
+	}
+	if messages[0].GitBranch != "feat/auth" {
+		t.Errorf("Expected GitBranch 'feat/auth', got '%s'", messages[0].GitBranch)
+	}
+	if messages[0].ProjectPath != "/custom/project" {
+		t.Errorf("Expected ProjectPath '/custom/project', got '%s'", messages[0].ProjectPath)
+	}
+}

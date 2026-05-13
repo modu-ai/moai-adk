@@ -26,3 +26,9 @@ const (
 	SystemYAML      = "system.yaml"
 	StatuslineYAML  = "statusline.yaml"
 )
+
+// Search database file names.
+const (
+	// SearchDB is the SQLite FTS5 database file for session search.
+	SearchDB = "sessions.db"
+)
