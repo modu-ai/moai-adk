@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
 // DefaultHookTimeout is the default timeout for hook execution (30 seconds).
@@ -278,6 +279,7 @@ type HookSpecificOutput struct {
 	UpdatedInput             json.RawMessage `json:"updatedInput,omitempty"`         // PreToolUse: modifies tool input before execution
 	UpdatedMCPToolOutput     string          `json:"updatedMCPToolOutput,omitempty"` // PostToolUse: replaces MCP tool output (MCP-only, pre-v2.1.121)
 	UpdatedToolOutput        string          `json:"updatedToolOutput,omitempty"`    // PostToolUse: replaces any tool output (v2.1.121+, all tools)
+	MxTags                   []mx.Tag        `json:"mxTags,omitempty"`               // SPEC-V3R2-SPC-002: @MX TAG structured data from PostToolUse handler
 }
 
 // HookOutput represents the JSON payload written to stdout for Claude Code.

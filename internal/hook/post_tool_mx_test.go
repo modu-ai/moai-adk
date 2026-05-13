@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
 // TestNewPostToolHandlerWithMxValidator verifies the constructor.
@@ -273,5 +276,80 @@ func TestPostToolHandler_MxValidation_NilProjectRoot(t *testing.T) {
 	// No project root → no mx_validation
 	if _, ok := metrics["mx_validation"]; ok {
 		t.Error("mx_validation should not be present when project root is empty")
+	}
+}
+
+// TestHookSpecificOutput_MxTagsField_ExistsAndWorks verifies that MxTags field
+// exists and properly serializes to JSON. This is the GREEN test for T-SPC002-02.
+func TestHookSpecificOutput_MxTagsField_ExistsAndWorks(t *testing.T) {
+	t.Parallel()
+
+	// Create a sample tag
+	tag := mx.Tag{
+		Kind:     mx.MXNote,
+		File:     "foo.go",
+		Line:     42,
+		Body:     "test tag",
+		AnchorID: "",
+	}
+
+	out := &HookSpecificOutput{
+		HookEventName: "PostToolUse",
+		MxTags:        []mx.Tag{tag},
+	}
+
+	// Use reflection to verify field exists
+	typ := reflect.TypeOf(*out)
+	field, found := typ.FieldByName("MxTags")
+
+	if !found {
+		t.Fatal("MxTags field not found - should exist after GREEN phase")
+	}
+
+	// Verify JSON tag
+	if field.Tag.Get("json") != "mxTags,omitempty" {
+		t.Errorf("MxTags json tag = %q, want mxTags,omitempty", field.Tag.Get("json"))
+	}
+
+	// Test JSON marshalling
+	data, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	// Verify mxTags key exists in JSON
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	if _, ok := m["mxTags"]; !ok {
+		t.Error("mxTags key missing from JSON output")
+	}
+}
+
+// TestHookSpecificOutput_MxTagsField_Omitempty verifies that empty MxTags
+// is omitted from JSON (omitempty behavior).
+func TestHookSpecificOutput_MxTagsField_Omitempty(t *testing.T) {
+	t.Parallel()
+
+	out := &HookSpecificOutput{
+		HookEventName: "PostToolUse",
+		MxTags:        nil,
+	}
+
+	data, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	// Verify mxTags key is omitted when nil
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	if _, ok := m["mxTags"]; ok {
+		t.Error("mxTags key should be omitted when nil (omitempty not working)")
 	}
 }
