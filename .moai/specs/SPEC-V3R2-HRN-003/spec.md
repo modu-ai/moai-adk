@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-HRN-003
 title: "Hierarchical Acceptance Scoring (4-dimension × sub-criteria)"
-version: "0.2.0"
-status: implemented
+version: "0.3.0"
+status: completed
 created: 2026-04-23
-updated: 2026-05-14
+updated: 2026-05-13
 author: GOOS
 priority: P1 High
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"
@@ -30,6 +30,7 @@ tags: "evaluator, scoring, hierarchical, acceptance-criteria, rubric, 4-dimensio
 |---------|------------|--------|--------------------------------------|
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 | 0.2.0   | 2026-05-13 | manager-spec (HRN-003 plan author) | Plan-phase audit pass — refined REQ-005 (`.md` profile format already-on-main vs spec assumption of `.yaml`); refined REQ-006 (evaluator-active body augment, NOT introduce — body already cites §11.4.1 from HRN-002 M3 and lists 4 dimensions); added Drift Reconciliation note linking to acceptance.md §1.1; added §10 path verification (gan_loop.go does NOT exist — REQ-011 wires via SKILL.md per HRN-002 D1 precedent). |
+| 0.3.0   | 2026-05-13 | manager-docs (sync) | Sync-phase docs sync — advisory cleanup applied (lines 111/149/346-349 .yaml→.md per §10.1 reconciliation #1); status implemented → completed; CHANGELOG entry added. |
 
 ---
 
@@ -108,7 +109,7 @@ Sub-criteria flatten to single-level when the SPEC's acceptance.md uses flat Giv
   - for each sub-criterion, evaluator-active emits `{score, rubric_anchor, evidence, dimension}`,
   - aggregates sub-criterion scores per criterion (aggregation rule: min by default; mean available via profile flag),
   - aggregates criterion scores per dimension (same rule).
-- Author rubric template files `.moai/config/evaluator-profiles/{default,strict,lenient,frontend}.yaml`:
+- Consume existing rubric template files `.moai/config/evaluator-profiles/{default,strict,lenient,frontend}.md` (per §10.1 reconciliation #1; rubric template files are authored separately — this SPEC consumes the existing `.md` format):
   - each profile declares per-dimension rubric templates with 4 anchor levels,
   - strict profile has tighter 0.75 → 0.85 minimum pass bar for must-pass dimensions,
   - lenient profile softer for exploratory specs.
@@ -146,7 +147,7 @@ Sub-criteria flatten to single-level when the SPEC's acceptance.md uses flat Giv
 - Claude Code v2.1.111+ (Opus 4.7 Adaptive Thinking required for rubric-anchored judgment; agent effort: xhigh per SPEC-V3R2-ORC-003 for evaluator-active)
 - Canonical dimensions: `Functionality`, `Security`, `Craft`, `Consistency` (FROZEN enum for v3.0)
 - Rubric anchor levels: 0.25, 0.50, 0.75, 1.00 (FROZEN per design-constitution §12 Mechanism 1)
-- Evaluator profile files location: `.moai/config/evaluator-profiles/{default,strict,lenient,frontend}.yaml`
+- Evaluator profile files location: `.moai/config/evaluator-profiles/{default,strict,lenient,frontend}.md` (per §10.1 reconciliation #1; profile files are authored as Markdown, not YAML)
 - ScoreCard output format: structured JSON consumable by the GAN loop runner
 - Sprint Contract integration: `.moai/sprints/{spec-id}/contract.yaml` per HRN-002
 - Backward compat: flat acceptance trees from pre-v3r2 SPECs auto-wrap as single-level children (BC-V3R2-011 from Master §8)
@@ -348,6 +349,10 @@ REQ-005 wording adapted from spec-time `.yaml` assumption to acknowledge the act
   - `.moai/config/evaluator-profiles/lenient.yaml` (new or modified, REQ-005)
   - `.moai/config/evaluator-profiles/frontend.yaml` (new or modified, REQ-005, REQ-016)
   - `.claude/agents/moai/evaluator-active.md` (modified, REQ-006)
+  - `.moai/config/evaluator-profiles/default.md` (new or modified, REQ-005, modified — .md per §10.1 reconciliation #1)
+  - `.moai/config/evaluator-profiles/strict.md` (new or modified, REQ-005, modified — .md per §10.1 reconciliation #1)
+  - `.moai/config/evaluator-profiles/lenient.md` (new or modified, REQ-005, modified — .md per §10.1 reconciliation #1)
+  - `.moai/config/evaluator-profiles/frontend.md` (new or modified, REQ-005, REQ-016, modified — .md per §10.1 reconciliation #1)
   - `internal/harness/gan_loop.go` (NOT created — orchestrator-level runner via SKILL.md per HRN-002 D1; see §10.1 reconciliation #3)
   - `internal/template/templates/...` (template-first mirrors)
 

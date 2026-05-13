@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R2-HRN-003: Hierarchical Acceptance Scoring
+
+### Added
+
+- **SPEC-V3R2-HRN-003 — 계층 평가 채점 (Hierarchical Acceptance Scoring)**: evaluator-active의 평면 ScoreCard를 4-dimension × hierarchical sub-criterion 구조로 확장 (#885 / #887 / #889). 4 dimensions (Functionality / Security / Craft / Consistency) FROZEN, 4 rubric anchor levels {0.25, 0.50, 0.75, 1.00} FROZEN, must-pass firewall (Security 필수), 4 evaluator profiles (.md 포맷) loader, evaluator-active 본문 augment (3 augmentation), zone-registry CONST-V3R2-154/155 추가 등록. R1 §9 Agent-as-a-Judge + pattern-library E-1/E-3 ADOPT. (87 commits across 3 PRs, +1933 LOC, coverage 89.5%, MX 10 tags)
+
+### Added (English)
+
+- **SPEC-V3R2-HRN-003 — Hierarchical Acceptance Scoring**: Extended evaluator-active's flat ScoreCard to 4-dimension × hierarchical sub-criterion structure (#885 / #887 / #889). 4 canonical dimensions (Functionality / Security / Craft / Consistency) FROZEN, 4 rubric anchor levels {0.25, 0.50, 0.75, 1.00} FROZEN, must-pass firewall (Security mandatory), 4 evaluator profiles (.md format) loader, evaluator-active body augmentation (3 augmentations), zone-registry CONST-V3R2-154/155 additions. R1 §9 Agent-as-a-Judge + pattern-library E-1/E-3 ADOPTED. (87 commits across 3 PRs, +1933 LOC, coverage 89.5%, MX 10 tags)
+
 ## [Unreleased] — SPEC-V3R2-SPC-004: @MX Query Engine — Fan-in + SPEC Association + 16-Language Sweep
 
 ### Added

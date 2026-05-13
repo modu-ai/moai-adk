@@ -1,13 +1,15 @@
 ---
 spec_id: SPEC-V3R2-HRN-003
-status: planned
+status: completed
 plan_complete_at: 2026-05-13T03:41:47Z
-plan_status: audit-ready
-phase: plan
-branch: plan/SPEC-V3R2-HRN-003
+plan_status: merged
+run_complete_at: 2026-05-13T02:41:00Z
+sync_complete_at: 2026-05-13T12:15:00Z
+phase: sync
+branch: sync/SPEC-V3R2-HRN-003
 base_branch: main
-base_commit: 0ac27ee4e
-worktree_path: null
+base_commit: 0a79ab6b3
+worktree_path: /Users/goos/.moai/worktrees/MoAI-ADK/SPEC-V3R2-HRN-003
 ---
 
 # Progress — SPEC-V3R2-HRN-003
@@ -40,10 +42,11 @@ worktree_path: null
 | Phase | Status | Owner | Completion |
 |-------|--------|-------|------------|
 | M1 plan-phase artifacts | complete | manager-spec | 2026-05-13T03:41:47Z |
-| M2 type definitions + error sentinels | pending | expert-backend | — |
-| M3 scoring engine + Sprint Contract persistence | pending | expert-backend | — |
-| M4 profile loader + EvaluatorConfig + agent body augment + SKILL.md | pending | expert-backend + manager-docs | — |
-| M5 test fixtures + MX tags + zone-registry mirror entries (per OQ1) | pending | manager-quality + manager-spec | — |
+| M2 type definitions + error sentinels | complete | expert-backend | 2026-05-13 (PR #885) |
+| M3 scoring engine + Sprint Contract persistence | complete | expert-backend | 2026-05-13 (PR #887) |
+| M4 profile loader + EvaluatorConfig + agent body augment + SKILL.md | complete | expert-backend + manager-docs | 2026-05-13 (PR #887) |
+| M5 test fixtures + MX tags + zone-registry mirror entries (per OQ1) | complete | manager-quality + manager-spec | 2026-05-13 (PR #889) |
+| Sync phase — advisory cleanup + CHANGELOG + status: completed | complete | manager-docs | 2026-05-13T12:15:00Z |
 
 ## 2. Milestone Tracker
 
@@ -113,6 +116,12 @@ worktree_path: null
 3. **`internal/harness/gan_loop.go` does not exist (research.md §2.3)**: spec.md §10 traceability listed `gan_loop.go` as a touch point. Verified `ls /Users/goos/MoAI/moai-adk-go/internal/harness/gan_loop.go: No such file or directory`. HRN-002 D1 declared the orchestrator-level runner (`.claude/skills/moai-workflow-gan-loop/SKILL.md`) is the actual integration point; no Go-side runner module exists. Reconciliation: HRN-003 inherits HRN-002 D1 (Decision D6 in research.md §15). REQ-011 wires via Go-side `WriteContract()` helper (M3 task T-HRN003-14) called by orchestrator-level SKILL.md (M4 task T-HRN003-19 inserts the Phase 3b cross-reference).
 
 **Open Questions surfaced (research.md §14)**: OQ1-OQ5 with proposed defaults — see §5 above.
+
+### Iteration #2 — 2026-05-13T12:15:00Z (sync manager: manager-docs)
+
+**Sync phase milestone — all run-phase PRs merged to main**:
+
+Implementation complete: PR #885 (M2) merged `fc0e63984`, PR #887 (M3+M4) merged `1865dbd3d`, PR #889 (M5) merged `0a79ab6b3` (current HEAD). Worktree base updated. spec.md v0.2.0 advisory cleanup applied (lines 111/149/346-349, .yaml → .md per §10.1 reconciliation #1). CHANGELOG.md entry added. progress.md status: completed. Sync PR ready for merge.
 
 **Plan-Phase Self-Check**:
 - [x] research.md ≥25 file:line anchors → 50 achieved.
