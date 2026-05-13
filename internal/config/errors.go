@@ -42,6 +42,29 @@ var (
 	// HRN-002 run-phase minimal substrate — design-constitution §11.4.1에 의거
 	// per_iteration은 FROZEN 값이며 다른 값은 허용되지 않습니다.
 	ErrEvalMemoryFrozen = errors.New("HRN_EVAL_MEMORY_FROZEN: evaluator.memory_scope must be 'per_iteration' (FROZEN per design-constitution §11.4.1)")
+
+	// HRN-003 run-phase: 4-dimension × sub-criteria hierarchical scoring sentinels.
+
+	// ErrUnknownDimension은 프로필이 canonical 집합
+	// {Functionality, Security, Craft, Consistency} 외의 차원을 선언할 때 반환됩니다.
+	// REQ-HRN-003-019, AC-HRN-003-08.
+	ErrUnknownDimension = errors.New("HRN_UNKNOWN_DIMENSION: profile declares dimension outside canonical set {Functionality, Security, Craft, Consistency}")
+
+	// ErrRubricCitationMissing은 sub-criterion 점수에 rubric_anchor 필드가 없거나
+	// canonical anchor (0.25/0.50/0.75/1.00) 외의 값을 가질 때 반환됩니다.
+	// REQ-HRN-003-009, AC-HRN-003-05, design-constitution §12 Mechanism 1.
+	ErrRubricCitationMissing = errors.New("HRN_RUBRIC_CITATION_MISSING: sub-criterion score missing rubric_anchor field or non-canonical anchor (per design-constitution §12 Mechanism 1)")
+
+	// ErrFlatScoreCardProhibited은 GAN loop runner가 비계층(flat) ScoreCard를 반환하려 할 때
+	// CI 통합 테스트에서 발생합니다.
+	// REQ-HRN-003-017, AC-HRN-003-02.
+	ErrFlatScoreCardProhibited = errors.New("HRN_FLAT_SCORECARD_PROHIBITED: ScoreCard must be hierarchical; flat shape rejected per SPEC-V3R2-HRN-003 REQ-017")
+
+	// ErrMustPassBypassProhibited은 프로필이 design-constitution §12 Mechanism 3에서
+	// must-pass로 지정된 차원 (FROZEN Security + Functionality)에 대해 must_pass를 비활성화하려 할 때
+	// 로더 검증에서 반환됩니다.
+	// REQ-HRN-003-018, AC-HRN-003-11.
+	ErrMustPassBypassProhibited = errors.New("HRN_MUSTPASS_BYPASS_PROHIBITED: profile attempts to narrow must-pass set below floor [Security] (per design-constitution §12 Mechanism 3)")
 )
 
 // ValidationError represents a single validation error with field context.
