@@ -2,9 +2,9 @@
 id: SPEC-V3R2-HRN-002
 title: "Evaluator Memory Scope Amendment (per-iteration fresh judgment)"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-13
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"
