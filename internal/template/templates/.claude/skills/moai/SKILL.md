@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (brain, plan, run, sync, design, db, project, fix,
-  loop, mx, feedback, review, clean, codemaps, coverage, e2e) to
+  loop, mx, feedback, review, clean, codemaps, coverage, e2e, harness) to
   specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
@@ -73,6 +73,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **e2e** (aliases: e2e-test): Create and run E2E tests
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
+- **harness** (aliases: hrn, learn): Harness learning subsystem management (status / apply / rollback &lt;date&gt; / disable) — surfaces 4-tier proposals and 5-layer safety pipeline
 
 
 ### Priority 2: SPEC-ID Detection
@@ -232,6 +233,15 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
 Purpose: Collect user feedback and create GitHub issues.
 Agents: manager-quality
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
+
+### harness - Harness Learning Subsystem Management
+
+Purpose: Surface the harness learning subsystem (observer + 4-tier evolution + 5-layer safety) to the user. Thin orchestration over `moai harness` CLI; Tier 4 approval flows are bridged via `moai-harness-learner` skill (owns the AskUserQuestion contract).
+Agents/Skills: moai-harness-learner (AskUserQuestion bridge), moai-meta-harness (project-specific harness generation, indirect)
+Verbs: status (tier distribution + pending proposals) | apply (next Tier 4 proposal → AskUserQuestion → 5-layer pipeline) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
+Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`
+Authoritative SPEC: SPEC-V3R3-HARNESS-LEARNING-001 (REQ-HL-009)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 ---
 
