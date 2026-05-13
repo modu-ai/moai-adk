@@ -1,23 +1,6 @@
-# catalog.yaml — MoAI-ADK 3-Tier Catalog Manifest
-#
-# Lists every skill and agent shipped with moai-adk-go, organized into three tiers:
-#   core           — Always installed by `moai init`
-#   optional-pack  — Domain-specific packs installed on demand
-#   harness-generated — Components created at runtime by the builder-harness workflow
-#
-# Hash normalization: CRLF→LF, trailing whitespace trim per line, single trailing newline,
-# then sha256 hex-encoded. Re-generate with:
-#   go run internal/template/scripts/gen-catalog-hashes.go --all
-#
-# SPEC: SPEC-V3R4-CATALOG-001
-# Schema docs: internal/template/catalog_doc.md
-# Proposal: .moai/brain/IDEA-003/proposal.md
 version: 1.0.0
 generated_at: "2026-05-12T03:00:00Z"
 catalog:
-    # ─────────────────────────────────────────────────────────────────────────
-    # TIER: core — Always installed by `moai init` (20 skills, 20 agents)
-    # ─────────────────────────────────────────────────────────────────────────
     core:
         skills:
             - name: moai
@@ -174,12 +157,12 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 8655c6d6417e9c02f40f1c6c4995be19331e95ff5554d4531128d6d06e68332a
+              hash: efd357bca105eea09c6b48b6bd4c59917fa2b851394be8db3b10922ad32ff6ef
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: 9db63838d58b612471040fcec2f11b522d3899df1cdfb81671b0a4240252f13e
+              hash: c4cc7fa7aa7b86bbe647ddc8ecf0d8a37e83bc8f54c6f7da0f6dbf0c08205c62
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -199,7 +182,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: ccb725290ea1086cae6928e570724758f1ff29034c44419fbb5589b66902bd37
+              hash: 12b2485ba6dacce5243ad62ec9e6f71cbc4372e10ed0a43bf13f032be07e2c0c
               version: 1.0.0
             - name: manager-strategy
               tier: core
@@ -221,12 +204,6 @@ catalog:
               path: templates/.claude/agents/moai/researcher.md
               hash: e57d63f8d4ab693e99eb04da56fef2265853db2250ca5deff8643fb8f2fd4063
               version: 1.0.0
-    # ─────────────────────────────────────────────────────────────────────────
-    # TIER: optional-pack — Domain packs (9 packs, ~17 skills, 8 agents)
-    # Dependency graph (acyclic): auth→backend, deployment→backend,
-    #   devops→backend, design→frontend
-    # Install via: moai catalog install <pack>  (SPEC-V3R4-CATALOG-004)
-    # ─────────────────────────────────────────────────────────────────────────
     optional_packs:
         auth:
             description: Authentication and authorization with Auth0, Clerk, Firebase Auth, and WebAuthn
@@ -397,12 +374,6 @@ catalog:
                   path: templates/.claude/agents/moai/expert-testing.md
                   hash: 7332539ae5b8539c36bdfb89ff68f6ee9cc804d977121f3ec5962a0cc46e21f7
                   version: 1.0.0
-    # ─────────────────────────────────────────────────────────────────────────
-    # TIER: harness-generated — Components created by builder-harness workflow
-    # Entries are added automatically when `moai project` runs on a new project.
-    # builder-harness.md is the sole static harness agent; my-harness-* entries
-    # are injected at runtime and are NOT part of this static manifest.
-    # ─────────────────────────────────────────────────────────────────────────
     harness_generated:
         skills: []
         agents:
