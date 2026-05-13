@@ -451,7 +451,7 @@ File generation (all three files created simultaneously):
 Required 9 fields (canonical order):
 - [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
 - [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
-- [ ] `status: draft` — enum: draft | approved | completed | superseded | archived
+- [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
 - [ ] `created_at: YYYY-MM-DD` — ISO date (NEVER `created`, NEVER `date`)
 - [ ] `updated_at: YYYY-MM-DD` — ISO date (NEVER `updated`)
 - [ ] `author: <name>` — string, not empty

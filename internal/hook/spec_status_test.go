@@ -37,7 +37,7 @@ func TestSpecStatusHandler_PostToolUse(t *testing.T) {
 		SessionID:     "test-session",
 		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:          buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
+		ToolInput:     buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
 	}
 
 	ctx := context.Background()
@@ -98,7 +98,7 @@ func TestSpecStatusHandler_MultipleSPECs(t *testing.T) {
 		SessionID:     "test-session",
 		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:          buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
+		ToolInput:     buildHookData("Bash", "git commit -m '"+commitMsg+"'"),
 	}
 
 	ctx := context.Background()
@@ -149,7 +149,7 @@ func TestSpecStatusHandler_NonGitCommand(t *testing.T) {
 		SessionID:     "test-session",
 		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:          buildHookData("Bash", "go test ./..."),
+		ToolInput:     buildHookData("Bash", "go test ./..."),
 	}
 
 	ctx := context.Background()
@@ -176,7 +176,7 @@ func TestSpecStatusHandler_NoSpecsDirectory(t *testing.T) {
 		SessionID:     "test-session",
 		ProjectDir:    tmpDir,
 		HookEventName: "PostToolUse",
-		Data:          buildHookData("Bash", "git commit -m 'feat(SPEC-NOEXIST-001): test'"),
+		ToolInput:     buildHookData("Bash", "git commit -m 'feat(SPEC-NOEXIST-001): test'"),
 	}
 
 	ctx := context.Background()
@@ -228,7 +228,7 @@ func TestExtractSPECIDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			found := extractSPECIDs(tt.commitMsg)
+			found := spec.ExtractSPECIDs(tt.commitMsg)
 
 			if len(found) != len(tt.expected) {
 				t.Errorf("expected %d SPEC-IDs, got %d", len(tt.expected), len(found))
