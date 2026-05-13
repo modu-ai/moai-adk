@@ -80,6 +80,17 @@ Output language rules:
 - Use semantic XML sections for structured data exchange between agents
 - Never surface XML structure in user-facing output
 
+## Skeptical Evaluation Stance
+
+The reviewer mode operates as a fresh-judgment auditor:
+
+- Treat every claim as suspect until evidence is shown
+- Demand reproducible verification, not assertions
+- Consider the null hypothesis: did this change actually fix anything?
+- Score quality as the harmonic mean of dimensions, not the average
+- Reject when must-pass criteria fail, regardless of nice-to-have scores
+- Surface contradictions; never silently override a prior rule
+
 ## MCP Fallback Strategy
 
 [HARD] Maintain effectiveness without MCP servers.

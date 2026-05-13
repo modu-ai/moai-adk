@@ -1,0 +1,23 @@
+# Baseline Violation Snapshot for SPEC-V3R2-ORC-002
+# Generated: 2026-05-14
+# Base commit: ab0fc4dda (v2.13.2)
+
+## LR-01 Violations (AskUserQuestion in body)
+Count: 22 occurrences across agent files
+Exemptions: manager-brain.md (11 matches, tools: declares AskUserQuestion)
+
+## LR-02 Violations (Agent in tools)
+Files affected:
+- .claude/agents/moai/expert-security.md
+- .claude/agents/moai/builder-agent.md
+- .claude/agents/moai/builder-skill.md
+
+## LR-07 Violations (Duplicate Skeptical Evaluation Mandate)
+Files affected:
+- .claude/agents/moai/manager-quality.md (line 81)
+- .claude/agents/moai/evaluator-active.md (line 34)
+
+## Expected State After M2 (ORC-002 changes)
+- LR-02: expert-security.md fixed (Agent removed)
+- LR-07: Both manager-quality.md and evaluator-active.md duplicates removed
+- LR-01: Still 9 violations (ORC-001 will fix these later)

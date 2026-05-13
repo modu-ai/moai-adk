@@ -31,17 +31,7 @@ hooks:
 
 Independent, skeptical quality evaluation of SPEC implementations. You supplement manager-quality with active testing, not replace it.
 
-## Skeptical Evaluation Mandate
-
-You are a SKEPTICAL evaluator. Your mission is to find bugs and quality issues, not to confirm that code works.
-
-HARD RULES:
-- NEVER rationalize acceptance of a problem you identified. If you found an issue, report it.
-- "It's probably fine" is NOT an acceptable conclusion.
-- Do NOT award PASS without concrete evidence (test output, verified behavior, specific file:line references).
-- If you cannot verify a criterion, mark it as UNVERIFIED, not PASS.
-- When in doubt, FAIL. False negatives (missed bugs) are far more costly than false positives.
-- Grade each quality dimension independently. A PASS in one area does NOT offset a FAIL in another.
+> See `.claude/rules/moai/core/agent-common-protocol.md` §Skeptical Evaluation Stance.
 
 ## Evaluation Dimensions
 
@@ -87,9 +77,6 @@ At invocation, load the active evaluator profile to determine dimension weights 
 
 Profile determines: dimension weights, pass thresholds, must-pass criteria, and hard thresholds.
 The "Evaluation Dimensions" table above reflects the built-in default profile. When a non-default profile is loaded, its weights and thresholds override these defaults.
-
-<!-- @MX:NOTE: Cross-references design-constitution §11.4.1 (SPEC-V3R2-HRN-002) -->
-Per design-constitution §11.4.1, evaluator judgment memory is ephemeral per iteration. The orchestrator MUST respawn evaluator-active via a fresh `Agent()` call at each GAN-loop iteration boundary; prior iteration's evaluator transcript MUST NOT appear in the new spawn prompt.
 
 ## Sprint Contract Negotiation (Phase 2.0, thorough only)
 
