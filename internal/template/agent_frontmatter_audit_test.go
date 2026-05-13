@@ -570,3 +570,95 @@ func findManagerDDDReferences(content string) []string {
 	}
 	return refs
 }
+
+// T-RT002-12: TestAgentFrontmatter_PermissionModeStrictEnum
+// Tests that all agent frontmatters have valid permissionMode values
+//
+// Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-008, AC-09
+func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
+	}
+
+	var agentFiles []string
+	walkErr := fs.WalkDir(fsys, ".claude/agents", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".md") {
+			agentFiles = append(agentFiles, path)
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("WalkDir 오류: %v", walkErr)
+	}
+	if len(agentFiles) == 0 {
+		t.Fatal(".claude/agents 하위 에이전트 파일이 없음")
+	}
+
+	// Valid permissionMode values (5-enum)
+	validModes := map[string]bool{
+		"default":           true,
+		"acceptEdits":       true,
+		"bypassPermissions": true,
+		"plan":              true,
+		"bubble":            true,
+	}
+
+	for _, path := range agentFiles {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+
+			data, readErr := fs.ReadFile(fsys, path)
+			if readErr != nil {
+				t.Fatalf("파일 %q 읽기 실패: %v", path, readErr)
+			}
+
+			// Parse frontmatter (between --- delimiters)
+			content := string(data)
+			parts := strings.SplitN(content, "---", 3)
+			if len(parts) < 3 {
+				// No frontmatter - skip (not an agent file)
+				t.Skip("No frontmatter found")
+				return
+			}
+
+			fmText := parts[1]
+			fmLines := strings.Split(fmText, "\n")
+
+			// Extract permissionMode value
+			var permissionMode string
+			for _, line := range fmLines {
+				trimmed := strings.TrimSpace(line)
+				if strings.HasPrefix(trimmed, "permissionMode:") {
+					// Extract value after colon
+					parts := strings.SplitN(trimmed, ":", 2)
+					if len(parts) == 2 {
+						permissionMode = strings.TrimSpace(parts[1])
+						// Remove quotes if present
+						permissionMode = strings.Trim(permissionMode, `"'`)
+					}
+					break
+				}
+			}
+
+			// If permissionMode is not declared, that's OK (defaults to "default")
+			if permissionMode == "" {
+				return
+			}
+
+			// Check if it's a valid enum value
+			if !validModes[permissionMode] {
+				t.Errorf("PERMISSION_MODE_UNKNOWN_VALUE: %s declares permissionMode: %s; allowed: default|acceptEdits|bypassPermissions|plan|bubble",
+					path, permissionMode)
+			}
+		})
+	}
+}

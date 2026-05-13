@@ -21,3 +21,26 @@ security:
 
   # Additional sensitive content patterns (regex, case-insensitive).
   extra_sensitive_content_patterns: []
+
+# Permission Stack Configuration (SPEC-V3R2-RT-002)
+permission:
+  # When true, bypassPermissions mode is rejected at spawn time
+  strict_mode: false
+
+  # Pre-allowlist patterns (SrcBuiltin tier)
+  # These are automatically loaded as built-in allow rules
+  # Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-006
+  pre_allowlist:
+    - "Bash(go test:*)"
+    - "Bash(golangci-lint run:*)"
+    - "Bash(ruff check:*)"
+    - "Bash(npm test:*)"
+    - "Bash(pytest:*)"
+    - "Read(*)"
+    - "Glob(*)"
+    - "Grep(*)"
+
+  # Session-scoped rules (SrcSession tier)
+  # Loaded dynamically at runtime from settings
+  # Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-030
+  session_rules: []

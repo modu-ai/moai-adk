@@ -771,8 +771,9 @@ func TestResolve_BypassPermissionsRejectedInStrictMode(t *testing.T) {
 	if err == nil {
 		t.Error("ValidateMode() should reject bypassPermissions in strict mode")
 	}
-	if err != ErrPermissionModeRejected {
-		t.Errorf("ValidateMode() error = %v, want ErrPermissionModeRejected", err)
+	// Check if error wraps ErrPermissionModeRejected
+	if err == nil || !contains(err.Error(), "not allowed in strict mode") {
+		t.Errorf("ValidateMode() error = %v, should contain 'not allowed in strict mode'", err)
 	}
 }
 

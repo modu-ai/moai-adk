@@ -4,10 +4,18 @@
 package permission
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+// Errors
+var (
+	// ErrPermissionModeRejected is returned when a permission mode is rejected
+	// (e.g., bypassPermissions in strict mode).
+	ErrPermissionModeRejected = errors.New("permission mode rejected")
 )
 
 // PermissionMode defines how agent permissions are resolved.
@@ -267,4 +275,32 @@ func IsWriteOperation(tool, input string) bool {
 		}
 	}
 	return false
+}
+
+// MigrateLegacyBypassRules migrates v2 "bypassPermissions" action strings to v3 DecisionAllow.
+// Returns the migrated rules and a list of deprecation warnings.
+//
+// Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-040
+func MigrateLegacyBypassRules(rules []PermissionRule) ([]PermissionRule, []string) {
+	var migrated []PermissionRule
+	var warnings []string
+
+	for _, rule := range rules {
+		if rule.Action == "bypassPermissions" {
+			// Legacy action string - migrate to DecisionAllow
+			migrated = append(migrated, PermissionRule{
+				Pattern: rule.Pattern,
+				Action:  DecisionAllow,
+				Source:  rule.Source,
+				Origin:  rule.Origin,
+			})
+			warnings = append(warnings,
+				fmt.Sprintf("Legacy bypassPermissions action migrated in %s: pattern %s",
+					rule.Origin, rule.Pattern))
+		} else {
+			migrated = append(migrated, rule)
+		}
+	}
+
+	return migrated, warnings
 }
