@@ -1,16 +1,20 @@
 ---
 id: SPEC-AGENCY-ABSORB-001
-version: 0.3.0
+title: "Agency → MoAI-ADK Absorption Migration"
+version: "0.3.0"
 status: completed
-created_at: 2026-04-20
-updated_at: 2026-04-24
+created: 2026-04-20
+updated: 2026-05-13
 author: GOOS
-priority: High
-labels: [agency, migration, design, hybrid, absorption]
-issue_number: null
-merged_pr: 682
-merged_commit: 4271fd8a8
-deprecation_policy_amended: true
+priority: P1 High
+phase: "v3.0.0 — Migration"
+module: ".claude/rules/moai/, .claude/skills/moai/"
+dependencies: []
+breaking: false
+bc_id: []
+lifecycle: legacy
+tags: "legacy, backfill, agency, migration"
+---
 ---
 
 # SPEC-AGENCY-ABSORB-001: Agency → MoAI-ADK 흡수 및 Claude Design 통합
@@ -439,6 +443,11 @@ The 흡수 릴리스 **shall** `.claude/skills/agency-frontend-patterns/`를 `.c
 - `manager-spec`, `expert-frontend`, `evaluator-active` 에이전트 (기존)
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## 10. Traceability (추적성)
 

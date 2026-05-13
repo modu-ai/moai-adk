@@ -1,4 +1,17 @@
-# SPEC-UPDATE-001: Global/Local Installation Mode Redesign
+---
+id: SPEC-UPDATE-001
+title: "SPEC-UPDATE-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "template"
+lifecycle: completed
+tags: ""
+---# SPEC-UPDATE-001: Global/Local Installation Mode Redesign
 
 ```yaml
 ---
@@ -198,6 +211,11 @@ moai:
 3. 설정 병합 안전성: 백업 후 병합으로 데이터 손실 방지
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Traceability
 

@@ -1,25 +1,20 @@
 ---
-spec_id: SPEC-LOOP-001
-title: Ralph Feedback Loop Engine
+id: SPEC-LOOP-001
+title: "Ralph Feedback Loop Engine"
+version: "1.0.0"
 status: completed
-priority: Medium-High
-phase: "Phase 3 - Automation"
 created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: P2 Medium
+phase: "v1.0.0 — Phase 3 — Automation"
+module: "internal/loop/"
 dependencies:
   - SPEC-QUALITY-001
-  - SPEC-CONFIG-001
-modules:
-  - internal/loop/
-  - internal/ralph/
-estimated_loc: 1200
-tags:
-  - loop
-  - ralph
-  - feedback
-  - state-machine
-  - convergence
-  - automation
-lifecycle: spec-anchored
+breaking: false
+bc_id: []
+lifecycle: legacy
+tags: "legacy, backfill, loop, ralph"
 ---
 
 # SPEC-LOOP-001: Ralph Feedback Loop Engine
@@ -379,6 +374,11 @@ internal/ralph/ ---> internal/config/
 | REQ-UW-003 | storage.go | AC-UW-* |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

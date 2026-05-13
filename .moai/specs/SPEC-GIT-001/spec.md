@@ -1,4 +1,17 @@
-# SPEC-GIT-001: Git Operations Module
+---
+id: SPEC-GIT-001
+title: "SPEC-GIT-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "git"
+lifecycle: completed
+tags: ""
+---# SPEC-GIT-001: Git Operations Module
 
 ---
 spec_id: SPEC-GIT-001
@@ -453,6 +466,11 @@ type GitStrategyConfig struct {
 | REQ-GIT-X001~X006 | (all files) | (cross-cutting tests) |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

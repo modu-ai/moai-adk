@@ -1,4 +1,17 @@
-# SPEC-WORKTREE-002: Worktree End-to-End Automation
+---
+id: SPEC-WORKTREE-002
+title: "SPEC-WORKTREE-002"
+version: "1.0.0"
+status: completed
+created: 2026-03-11
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "worktree"
+lifecycle: completed
+tags: ""
+---# SPEC-WORKTREE-002: Worktree End-to-End Automation
 
 ---
 id: SPEC-WORKTREE-002

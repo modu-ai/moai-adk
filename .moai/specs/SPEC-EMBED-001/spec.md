@@ -1,4 +1,17 @@
-# SPEC-EMBED-001: Template Content and Binary Bundling
+---
+id: SPEC-EMBED-001
+title: "SPEC-EMBED-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "template"
+lifecycle: completed
+tags: ""
+---# SPEC-EMBED-001: Template Content and Binary Bundling
 
 ---
 spec_id: SPEC-EMBED-001
@@ -487,6 +500,11 @@ Note: Skills are the largest category. Binary size impact after compression (Go 
 | Python reference | `moai_adk/templates/` | Source content for template curation |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## 7. Expert Consultation Recommendations
 

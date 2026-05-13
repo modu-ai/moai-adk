@@ -1,4 +1,17 @@
-# SPEC-CC297-001: Claude Code 2.1.97 Feature Adoption
+---
+id: SPEC-CC297-001
+title: "SPEC-CC297-001"
+version: "1.0.0"
+status: completed
+created: 2026-04-09
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.12 — CC Adoption"
+module: "claude-code"
+lifecycle: completed
+tags: ""
+---# SPEC-CC297-001: Claude Code 2.1.97 Feature Adoption
 
 ---
 id: SPEC-CC297-001

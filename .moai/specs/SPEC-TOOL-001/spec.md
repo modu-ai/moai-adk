@@ -1,4 +1,17 @@
-# SPEC-TOOL-001: AST-Grep & Performance Ranking Integration
+---
+id: SPEC-TOOL-001
+title: "SPEC-TOOL-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "tools"
+lifecycle: completed
+tags: ""
+---# SPEC-TOOL-001: AST-Grep & Performance Ranking Integration
 
 ---
 id: SPEC-TOOL-001
@@ -606,6 +619,11 @@ const (
 | R-PERF-002 | internal/rank/client.go | internal/rank/client_test.go | Planned |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

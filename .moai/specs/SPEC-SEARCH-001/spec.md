@@ -1,10 +1,19 @@
 ---
 id: SPEC-SEARCH-001
 title: "moai search: JSONL Session Search with SQLite FTS5"
+version: "0.1.0"
 status: planned
 created: 2026-03-06
-branch: feat/spec-search-001
-tags: [search, sqlite, fts5, cli, hook]
+updated: 2026-05-13
+author: GOOS
+priority: P3 Low
+phase: "v2.0.0 — Search"
+module: "internal/search/"
+dependencies: []
+breaking: false
+bc_id: []
+lifecycle: legacy
+tags: "search, sqlite, fts5, cli"
 ---
 
 # SPEC-SEARCH-001: moai search - JSONL 세션 검색 (SQLite FTS5)
@@ -185,6 +194,11 @@ func triggerSessionIndex(sessionID, projectDir, gitBranch string) {
 - `internal/hook/session_end.go` - `triggerSessionIndex()` 호출 추가
 - `go.mod` - `modernc.org/sqlite v1.35.0` 추가
 - `internal/cli/root.go` - `newSearchCmd()` 등록
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## 추적성
 

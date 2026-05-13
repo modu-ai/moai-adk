@@ -1,4 +1,17 @@
-# SPEC-TEMPLATE-001: Template Deployment & File Manifest System
+---
+id: SPEC-TEMPLATE-001
+title: "SPEC-TEMPLATE-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "template"
+lifecycle: completed
+tags: ""
+---# SPEC-TEMPLATE-001: Template Deployment & File Manifest System
 
 ---
 spec_id: SPEC-TEMPLATE-001
@@ -522,6 +535,11 @@ internal/core/project/ --> internal/template/ (초기화 시 배포)
 - **expert-testing**: 테이블 기반 테스트, 퍼즈 테스트 전략, 계약 테스트 설계
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

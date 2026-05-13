@@ -1,16 +1,19 @@
 ---
-spec_id: SPEC-CORE-001
-title: Foundation Methodologies
-created: 2026-02-03
+id: SPEC-CORE-001
+title: "Foundation Methodologies"
+version: "1.0.0"
 status: completed
-priority: Medium
-phase: "Phase 5 - Knowledge (Phase 1 과 병렬 구현 가능)"
-module: internal/foundation/
-estimated_loc: ~1,000
-dependencies: "없음 (순수 데이터/로직 모듈, 외부 의존성 없음)"
-assigned: expert-backend
-lifecycle: spec-anchored
-tags: [foundation, ears, languages, trust5, domain-patterns]
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: P2 Medium
+phase: "v1.0.0 — Phase 5 — Knowledge"
+module: "internal/foundation/"
+dependencies: []
+breaking: false
+bc_id: []
+lifecycle: legacy
+tags: "legacy, backfill, foundation"
 ---
 
 # SPEC-CORE-001: Foundation Methodologies
@@ -497,6 +500,11 @@ func CalculateTRUST5Score(principleResults map[TRUSTPrinciple]PrincipleResult) T
 - **expert-testing**: 테스트 전략 패턴과 TRUST 5 체크리스트 항목의 실용성 검토
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

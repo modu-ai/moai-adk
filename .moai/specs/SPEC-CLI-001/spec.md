@@ -1,4 +1,17 @@
-# SPEC-CLI-001: CLI Command Composition & Integration
+---
+id: SPEC-CLI-001
+title: "SPEC-CLI-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "cli"
+lifecycle: completed
+tags: ""
+---# SPEC-CLI-001: CLI Command Composition & Integration
 
 ---
 spec_id: SPEC-CLI-001
@@ -573,6 +586,11 @@ func (b *BackupManager) Cleanup(keepCount int) error
 - Mock 생성 전략 (mockery + 인터페이스)
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

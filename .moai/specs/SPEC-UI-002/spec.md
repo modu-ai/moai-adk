@@ -1,4 +1,17 @@
-# SPEC-UI-002: Statusline Rendering
+---
+id: SPEC-UI-002
+title: "SPEC-UI-002"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "ui"
+lifecycle: completed
+tags: ""
+---# SPEC-UI-002: Statusline Rendering
 
 ---
 spec_id: SPEC-UI-002
@@ -409,6 +422,11 @@ SPEC-UI-002 (statusline)
 | **합계** | **11 files, 3,297 LOC** | **6 files, ~640 LOC** |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

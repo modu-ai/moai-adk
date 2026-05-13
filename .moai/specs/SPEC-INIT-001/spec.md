@@ -1,4 +1,17 @@
-# SPEC-INIT-001: 프로젝트 초기화 및 감지
+---
+id: SPEC-INIT-001
+title: "SPEC-INIT-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "template"
+lifecycle: completed
+tags: ""
+---# SPEC-INIT-001: 프로젝트 초기화 및 감지
 
 ---
 spec_id: SPEC-INIT-001
@@ -496,6 +509,11 @@ ELSE (coverage < 10%, 테스트 없는 brownfield):
 | REQ-O-001 ~ REQ-O-003 | `phase.go`, `initializer.go` | ACC-010 |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 

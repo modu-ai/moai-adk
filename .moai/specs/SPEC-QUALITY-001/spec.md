@@ -1,4 +1,17 @@
-# SPEC-QUALITY-001: TRUST 5 Quality Gates
+---
+id: SPEC-QUALITY-001
+title: "SPEC-QUALITY-001"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x — Legacy"
+module: "quality"
+lifecycle: completed
+tags: ""
+---# SPEC-QUALITY-001: TRUST 5 Quality Gates
 
 ---
 id: SPEC-QUALITY-001
@@ -517,6 +530,11 @@ Pass 기준: 총점 >= 0.7 이고 모든 Severity "error" 이슈가 0개
 | REQ-METH-005 | `trust.go:TrustGate.buildReport` | `trust_test.go:TestReportIncludesDevelopmentMode` |
 
 ---
+
+
+## Out of Scope
+
+- N/A (legacy SPEC — completed)
 
 ## Implementation Notes
 
