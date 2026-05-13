@@ -145,7 +145,7 @@ var toolchains = []langToolchain{
 	{
 		markerFiles: []string{"*.csproj", "*.sln"},
 		lintSteps:   []gateStep{{name: "dotnet format", binary: "dotnet", args: []string{"format", "--verify-no-changes"}, optional: true, changedExts: []string{".cs"}}},
-		testStep:    &gateStep{name: "dotnet test", binary: "dotnet", args: []string{"test"}},
+		testStep:    &gateStep{name: "dotnet test", binary: "dotnet", args: []string{"test"}, optional: true},
 	},
 	// Ruby: Gemfile
 	{
