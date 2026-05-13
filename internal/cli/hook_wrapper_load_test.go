@@ -43,7 +43,8 @@ func TestHookWrapper_LargeStdin_DoesNotExceedTimeout(t *testing.T) {
 
 	// Cold-start: first execution to warm caches
 	runWrapperOnce(t, wrapperCopy, payload, stderrLog)
-	os.Remove(stderrLog)
+	// Best-effort cleanup; failure is non-fatal for the warmup phase.
+	_ = os.Remove(stderrLog)
 
 	// Measured execution
 	start := time.Now()
@@ -87,7 +88,9 @@ func TestHookWrapper_OptOutStderrLog(t *testing.T) {
 		"MOAI_HOOK_STDERR_LOG=/dev/null",
 		"HOME="+tmpDir,
 	)
-	cmd.CombinedOutput()
+	// Run the wrapper; output/error are intentionally discarded because the
+	// assertion below only checks for absence of the stderr log file.
+	_, _ = cmd.CombinedOutput()
 
 	logFile := filepath.Join(tmpDir, ".moai", "logs", "hook-stderr.log")
 	if _, err := os.Stat(logFile); !os.IsNotExist(err) {
