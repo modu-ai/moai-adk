@@ -245,6 +245,9 @@ type SprintContractYAML struct {
 // 파일 경로의 디렉토리가 없으면 자동 생성합니다.
 // AC-HRN-003-10: 생성된 YAML은 HRN-002 DetectPriorJudgmentLeak 패턴을 트리거하지 않습니다.
 // (criterion state만 포함; evaluator 판단 rationale 없음).
+//
+// @MX:ANCHOR: [AUTO] WriteContract — fan_in=3 (scorer_engine_test + evaluator-active SKILL + future GAN loop runner)
+// @MX:REASON: SPEC-V3R2-HRN-003 REQ-011 — Sprint Contract 영속화 단일 진입점; GAN loop runner가 반복마다 호출
 func WriteContract(card *ScoreCard, path string) error {
 	if card == nil {
 		return fmt.Errorf("WriteContract: card is nil")
