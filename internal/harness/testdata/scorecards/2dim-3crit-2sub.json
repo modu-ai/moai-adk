@@ -1,0 +1,120 @@
+{
+  "spec_id": "TEST-001",
+  "schema_version": "v1",
+  "dimensions": {
+    "1": {
+      "aggregate": 0.87,
+      "criteria": {
+        "crit-func-a": {
+          "aggregate": 0.88,
+          "sub_criteria": {
+            "sub-func-a-1": {
+              "score": 0.90,
+              "rubric_anchor": "1.00",
+              "evidence": "기능 요구사항 완전 구현 확인",
+              "dimension": 1
+            },
+            "sub-func-a-2": {
+              "score": 0.85,
+              "rubric_anchor": "0.75",
+              "evidence": "경계 케이스 처리 검증됨",
+              "dimension": 1
+            }
+          }
+        },
+        "crit-func-b": {
+          "aggregate": 0.86,
+          "sub_criteria": {
+            "sub-func-b-1": {
+              "score": 0.85,
+              "rubric_anchor": "0.75",
+              "evidence": "API 계약 준수 확인",
+              "dimension": 1
+            },
+            "sub-func-b-2": {
+              "score": 0.87,
+              "rubric_anchor": "0.75",
+              "evidence": "에러 처리 경로 검증됨",
+              "dimension": 1
+            }
+          }
+        },
+        "crit-func-c": {
+          "aggregate": 0.88,
+          "sub_criteria": {
+            "sub-func-c-1": {
+              "score": 0.90,
+              "rubric_anchor": "1.00",
+              "evidence": "통합 테스트 전체 통과",
+              "dimension": 1
+            },
+            "sub-func-c-2": {
+              "score": 0.85,
+              "rubric_anchor": "0.75",
+              "evidence": "성능 임계값 충족",
+              "dimension": 1
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "aggregate": 0.88,
+      "criteria": {
+        "crit-sec-a": {
+          "aggregate": 0.88,
+          "sub_criteria": {
+            "sub-sec-a-1": {
+              "score": 0.90,
+              "rubric_anchor": "1.00",
+              "evidence": "입력 검증 및 산타이즈 구현 확인",
+              "dimension": 2
+            },
+            "sub-sec-a-2": {
+              "score": 0.85,
+              "rubric_anchor": "0.75",
+              "evidence": "OWASP Top 10 취약점 검사 통과",
+              "dimension": 2
+            }
+          }
+        },
+        "crit-sec-b": {
+          "aggregate": 0.88,
+          "sub_criteria": {
+            "sub-sec-b-1": {
+              "score": 0.85,
+              "rubric_anchor": "0.75",
+              "evidence": "인증/인가 경계 검증됨",
+              "dimension": 2
+            },
+            "sub-sec-b-2": {
+              "score": 0.90,
+              "rubric_anchor": "1.00",
+              "evidence": "시크릿 하드코딩 부재 확인",
+              "dimension": 2
+            }
+          }
+        },
+        "crit-sec-c": {
+          "aggregate": 0.88,
+          "sub_criteria": {
+            "sub-sec-c-1": {
+              "score": 0.88,
+              "rubric_anchor": "0.75",
+              "evidence": "의존성 취약점 스캔 통과",
+              "dimension": 2
+            },
+            "sub-sec-c-2": {
+              "score": 0.87,
+              "rubric_anchor": "0.75",
+              "evidence": "전송 계층 암호화 검증됨",
+              "dimension": 2
+            }
+          }
+        }
+      }
+    }
+  },
+  "verdict": "pass",
+  "rationale": "2 dimensions (Functionality=0.87, Security=0.88) x 3 criteria x 2 sub-criteria = 12 leaf entries. All must-pass dimensions (Functionality, Security) above 0.75 threshold."
+}

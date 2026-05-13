@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // EvaluatorRunner는 ScoreCard 계층 집계 + must-pass firewall 적용을 담당합니다.
@@ -43,6 +45,13 @@ func NewEvaluatorRunner(rubric *Rubric) *EvaluatorRunner {
 func (r *EvaluatorRunner) AggregateScoreCard(card *ScoreCard) (*ScoreCard, error) {
 	if card == nil {
 		return nil, fmt.Errorf("AggregateScoreCard: card is nil")
+	}
+
+	// REQ-HRN-003-017: flat ScoreCard 거부.
+	// flat = Dimensions 맵은 있지만 어떤 Dimension도 Criteria를 가지지 않거나,
+	// Criteria가 있지만 어떤 Criterion도 SubCriteria를 가지지 않는 경우.
+	if isFlat(card) {
+		return nil, config.ErrFlatScoreCardProhibited
 	}
 
 	result := &ScoreCard{
@@ -355,4 +364,26 @@ func sortedStringKeys[T any](m map[string]T) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// isFlat은 ScoreCard가 flat (비계층) 형태인지 검사합니다.
+// REQ-HRN-003-017: flat ScoreCard는 금지됩니다.
+// flat 조건: ScoreCard 전체에 SubCriterion이 하나도 존재하지 않는 경우.
+// - Dimensions 맵이 비어 있거나
+// - 모든 Dimension의 모든 Criterion에 SubCriteria가 없는 경우.
+// 일부 차원에만 SubCriteria가 있는 "partially populated" 카드는 허용됩니다.
+func isFlat(card *ScoreCard) bool {
+	if len(card.Dimensions) == 0 {
+		return true
+	}
+	for _, ds := range card.Dimensions {
+		for _, cs := range ds.Criteria {
+			if len(cs.SubCriteria) > 0 {
+				// 최소 1개의 SubCriterion이 존재하면 계층 구조로 간주합니다.
+				return false
+			}
+		}
+	}
+	// 모든 Criterion에 SubCriteria가 없으면 flat.
+	return true
 }

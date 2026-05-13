@@ -573,4 +573,21 @@ moai constitution list --format json
   anchor: "#1141-evaluator-memory-scope-principle-4"
   clause: "§11.4.1 Evaluator Memory Scope (Principle 4) — evaluator.memory_scope FROZEN at per_iteration; GAN loop runner MUST respawn evaluator-active fresh each iteration; prior iteration judgment MUST NOT appear in new spawn prompt"
   canary_gate: true
+
+# ============================================================
+# 154-155: internal/harness FROZEN 조항 (SPEC-V3R2-HRN-003, 2026-05-13)
+# ============================================================
+- id: CONST-V3R2-154
+  zone: Frozen
+  file: internal/harness/scorer.go
+  anchor: "#dimension-enum"
+  clause: "Dimension enum FROZEN at 4 values (Functionality | Security | Craft | Consistency); modifications require Canary + HumanOversight cycle per CON-002"
+  canary_gate: true
+
+- id: CONST-V3R2-155
+  zone: Frozen
+  file: internal/harness/rubric.go
+  anchor: "#anchor-validator"
+  clause: "Rubric anchor levels FROZEN at 4 levels (0.25 / 0.50 / 0.75 / 1.0); modifications require Canary + HumanOversight cycle per CON-002"
+  canary_gate: true
 ```

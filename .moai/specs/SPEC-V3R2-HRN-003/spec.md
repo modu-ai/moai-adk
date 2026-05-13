@@ -2,9 +2,9 @@
 id: SPEC-V3R2-HRN-003
 title: "Hierarchical Acceptance Scoring (4-dimension × sub-criteria)"
 version: "0.2.0"
-status: draft
+status: implemented
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-14
 author: GOOS
 priority: P1 High
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"
