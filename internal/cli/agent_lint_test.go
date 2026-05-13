@@ -852,7 +852,6 @@ Security agent body`
 
 	// TODO: Remove this skip after M2 implementation
 	// For now, this test documents the expected behavior
-	t.Skip("LR-12 not yet implemented - M2 GREEN will enable this check")
 
 	if !foundLR12 {
 		t.Error("expected LR-12 violation for expert-security with effort: high (should be xhigh)")
@@ -890,7 +889,6 @@ Security agent body`
 	}
 
 	// TODO: Remove this skip after M2 implementation
-	t.Skip("LR-12 not yet implemented - M2 GREEN will enable this check")
 }
 
 // TestLintLR13_InvalidEffortEnum tests LR-13: invalid effort enum value
@@ -932,7 +930,6 @@ Security agent body`
 	}
 
 	// TODO: Remove this skip after M2 implementation
-	t.Skip("LR-13 not yet implemented - M2 GREEN will enable this check")
 
 	if !foundLR13 {
 		t.Error("expected LR-13 violation for effort: ultra (invalid enum)")
@@ -979,7 +976,6 @@ This agent uses budget_tokens: 5000 which is prohibited for Opus 4.7.`
 	}
 
 	// TODO: Remove this skip after M2 implementation
-	t.Skip("LR-14 not yet implemented - M2 GREEN will enable this check")
 
 	if !foundLR14 {
 		t.Error("expected LR-14 violation for budget_tokens: 5000")

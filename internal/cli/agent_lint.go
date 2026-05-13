@@ -79,17 +79,20 @@ var agentLintCmd = &cobra.Command{
 	Short: "Lint agent definition files",
 	Long: `Validate agent definition files (.claude/agents/moai/*.md) against common issues.
 
-Lint Rules:
-  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
-  LR-02: Reject Agent token in tools: CSV list
-  LR-03: Error on missing effort: field (promoted from warning per SPEC-V3R2-ORC-003)
-  LR-04: Reject dead hook entries (matcher tool absent from tools:)
-  LR-05: Error on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004)
-  LR-06: Warn on --deepthink boilerplate in description (error with --strict)
-  LR-07: Reject duplicate Skeptical-Evaluator Mandate blocks
-  LR-08: Warn on skill-preload drift within same category (error with --strict)
-  LR-09: Reject isolation: worktree on read-only agents (permissionMode: plan) (SPEC-V3R2-ORC-004)
-  LR-10: Reject static team-* agent files (dynamic generation only, SPEC-V3R2-ORC-005)
+	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
+	  LR-02: Reject Agent token in tools: CSV list
+	  LR-03: Error on missing effort: field (promoted from warning per SPEC-V3R2-ORC-003)
+	  LR-12: Reject effort drift from SPEC-V3R2-ORC-003 canonical matrix
+	  LR-13: Reject invalid effort enum value (must be one of low/medium/high/xhigh/max)
+	  LR-14: Reject fixed budget_tokens (Opus 4.7 Adaptive Thinking rejects HTTP 400)
+	  LR-04: Reject dead hook entries (matcher tool absent from tools:)
+	  LR-05: Error on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004)
+	  LR-06: Warn on --deepthink boilerplate in description (error with --strict)
+	  LR-07: Reject duplicate Skeptical-Evaluator Mandate blocks
+	  LR-08: Warn on skill-preload drift within same category (error with --strict)
+	  LR-09: Reject isolation: worktree on read-only agents (permissionMode: plan) (SPEC-V3R2-ORC-004)
+	  LR-10: Reject static team-* agent files (dynamic generation only, SPEC-V3R2-ORC-005)
+
 
 Exit Codes:
   0: No violations found
@@ -271,6 +274,12 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 	// LR-03: Missing effort: field
 	violations = append(violations, checkMissingEffort(path, frontmatter)...)
 
+	// LR-12: Effort drift from canonical matrix (SPEC-V3R2-ORC-003)
+	violations = append(violations, checkEffortMatrixDrift(path, frontmatter)...)
+
+	// LR-13: Invalid effort enum value (SPEC-V3R2-ORC-003)
+	violations = append(violations, checkInvalidEffortEnum(path, frontmatter)...)
+
 	// LR-04: Dead hook entries
 	violations = append(violations, checkDeadHooks(path, frontmatter)...)
 
@@ -285,6 +294,10 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 
 	// LR-10: Static team-* agent file detection
 	violations = append(violations, checkStaticTeamAgent(path)...)
+
+	// LR-14: Fixed budget_tokens prohibition (SPEC-V3R2-ORC-003)
+	// Need full file content for body scan
+	violations = append(violations, checkFixedBudgetTokens(path, content)...)
 
 	return violations, nil
 }
@@ -436,6 +449,130 @@ func checkDeadHooks(file string, fm AgentFrontmatter) []LintViolation {
 				}
 			}
 		}
+	}
+
+	return violations
+}
+
+// ============================================================================
+// SPEC-V3R2-ORC-003: Effort-Level Calibration Matrix
+// Canonical effort assignment for the 17 v3r2 agents
+// ============================================================================
+
+// canonicalEffortMatrix is the SPEC-V3R2-ORC-003 canonical effort assignment
+// for the 17 v3r2 agents. The matrix is consumed by checkEffortMatrixDrift (LR-12).
+// @MX:ANCHOR @MX:REASON: Single source of truth for agent-effort calibration; downstream
+// consumers (HRN-001 effort_mapping, doctor agent show-effort) reference this constant.
+var canonicalEffortMatrix = map[string]string{
+	"manager-spec":       "xhigh",
+	"manager-strategy":   "xhigh",
+	"manager-cycle":      "high",
+	"manager-quality":    "high",
+	"manager-docs":       "medium",
+	"manager-git":        "medium",
+	"manager-project":    "medium",
+	"expert-backend":     "high",
+	"expert-frontend":    "high",
+	"expert-security":    "xhigh",
+	"expert-devops":      "medium",
+	"expert-performance": "high",
+	"expert-refactoring": "xhigh",
+	"builder-platform":   "medium",
+	"evaluator-active":   "xhigh",
+	"plan-auditor":       "xhigh",
+	"researcher":         "xhigh",
+}
+
+// validEffortValues defines the 5-value enum for effort levels
+var validEffortValues = map[string]struct{}{
+	"low":    {},
+	"medium": {},
+	"high":   {},
+	"xhigh":  {},
+	"max":    {},
+}
+
+// checkEffortMatrixDrift checks for LR-12: effort drift from canonical matrix
+// @MX:NOTE: LR-12 — 17-에이전트 매트릭스 drift 감지; spec.md §1.1 의 R5 audit 32% drift 비율을 0% 로 차단; out-of-roster 에이전트 (e.g., manager-brain) 는 LR-12 적용 제외
+func checkEffortMatrixDrift(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	// Extract agent name from file path (e.g., "expert-security.md" -> "expert-security")
+	baseName := filepath.Base(file)
+	agentName := strings.TrimSuffix(baseName, ".md")
+
+	// Check if agent is in the canonical matrix
+	expectedEffort, inMatrix := canonicalEffortMatrix[agentName]
+	if !inMatrix {
+		// Out-of-roster agent (e.g., manager-brain, claude-code-guide) - LR-12 does not apply
+		return violations
+	}
+
+	// If effort field is empty, LR-03 already covers it - LR-12 does not double-fire
+	if fm.Effort == "" {
+		return violations
+	}
+
+	// Check for drift
+	if fm.Effort != expectedEffort {
+		lineNum := findFrontmatterLine(file, "effort:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-12",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  fmt.Sprintf("ORC_EFFORT_MATRIX_DRIFT: effort: %s drifts from canonical matrix value %s for agent %s (SPEC-V3R2-ORC-003 canonical matrix)", fm.Effort, expectedEffort, agentName),
+		})
+	}
+
+	return violations
+}
+
+// checkInvalidEffortEnum checks for LR-13: invalid effort enum value
+func checkInvalidEffortEnum(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	// If effort field is empty, LR-03 already covers it
+	if fm.Effort == "" {
+		return violations
+	}
+
+	// Check if effort value is in the valid enum
+	if _, isValid := validEffortValues[fm.Effort]; !isValid {
+		lineNum := findFrontmatterLine(file, "effort:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-13",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  fmt.Sprintf("AGT_INVALID_FRONTMATTER (effort): value %q is not in {low, medium, high, xhigh, max}", fm.Effort),
+		})
+	}
+
+	return violations
+}
+
+// fixedBudgetTokensRegex matches budget_tokens: <integer> patterns
+// @MX:WARN @MX:REASON: budget_tokens 정규식 v1은 code block 내 false positive 가능; Opus 4.7 Adaptive Thinking 가 HTTP 400 으로 fixed budget 거부하므로 false positive 비용보다 회귀 비용이 높음 — v1 기준 채택, v3.1에서 code-block-aware 확장 검토
+var fixedBudgetTokensRegex = regexp.MustCompile(`\bbudget_tokens\s*:\s*\d+\b`)
+
+// checkFixedBudgetTokens checks for LR-14: fixed budget_tokens prohibition
+func checkFixedBudgetTokens(file string, content []byte) []LintViolation {
+	var violations []LintViolation
+
+	// Search for budget_tokens patterns in the full content
+	matches := fixedBudgetTokensRegex.FindAllIndex(content, -1)
+
+	for _, match := range matches {
+		// Compute line number from byte offset
+		lineNum := bytes.Count(content[:match[0]], []byte("\n")) + 1
+		violations = append(violations, LintViolation{
+			Rule:     "LR-14",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  "ORC_FIXED_BUDGET_PROHIBITED: Opus 4.7 Adaptive Thinking rejects fixed budget_tokens (HTTP 400). Use effort: <level> instead.",
+		})
 	}
 
 	return violations
