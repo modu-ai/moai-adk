@@ -356,11 +356,21 @@ type HarnessConfig struct {
 
 // EvaluatorConfig는 evaluator 하위 설정 구조체입니다.
 // @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1 (SPEC-V3R2-HRN-002)
+// @MX:NOTE: [AUTO] HRN-003 M4: Profiles + Aggregation + MustPassDimensions 필드 추가 (SPEC-V3R2-HRN-003)
 type EvaluatorConfig struct {
 	// MemoryScope는 evaluator 메모리 범위 설정입니다.
 	// design-constitution §11.4.1에 의해 per_iteration 값으로 FROZEN됩니다.
 	// 다른 값(e.g., cumulative)은 HRN_EVAL_MEMORY_FROZEN 오류를 반환합니다.
 	MemoryScope string `yaml:"memory_scope"`
+	// Profiles는 evaluator 프로필 이름 → .md 파일 경로 맵입니다.
+	// REQ-HRN-003-005, AC-HRN-003-07.c.
+	Profiles map[string]string `yaml:"profiles,omitempty"`
+	// Aggregation은 기본 집계 방식입니다 ("min" 또는 "mean").
+	// REQ-HRN-003-007: 기본값은 "min"입니다.
+	Aggregation string `yaml:"aggregation,omitempty"`
+	// MustPassDimensions는 must-pass 차원 이름 목록입니다.
+	// REQ-HRN-003-018: 기본값은 [Functionality, Security]입니다.
+	MustPassDimensions []string `yaml:"must_pass_dimensions,omitempty"`
 }
 
 // harnessFileWrapper는 harness.yaml 파일 언마샬링용 래퍼입니다.
