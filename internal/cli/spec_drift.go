@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newSpecDriftCmd creates the 'moai spec drift' subcommand
 func newSpecDriftCmd() *cobra.Command {
 	var jsonOutput bool
 	var exitCodeOnDrift bool
@@ -33,7 +32,6 @@ Examples:
 				return fmt.Errorf("failed to find project root: %w", err)
 			}
 
-			// Count-only mode
 			if countOnly {
 				count, err := spec.DriftCount(projectRoot)
 				if err != nil {
@@ -43,13 +41,11 @@ Examples:
 				return nil
 			}
 
-			// Full drift detection
 			report, err := spec.DetectDrift(projectRoot)
 			if err != nil {
 				return fmt.Errorf("failed to detect drift: %w", err)
 			}
 
-			// JSON output mode
 			if jsonOutput {
 				data, err := json.MarshalIndent(report, "", "  ")
 				if err != nil {
@@ -59,11 +55,9 @@ Examples:
 				return nil
 			}
 
-			// Tabular report mode
 			return printDriftReport(cmd, report)
 		},
 		PostRunE: func(cmd *cobra.Command, args []string) error {
-			// Handle exit code logic after output
 			if exitCodeOnDrift {
 				projectRoot, err := findProjectRootFn()
 				if err != nil {
@@ -90,19 +84,16 @@ Examples:
 	return cmd
 }
 
-// printDriftReport prints a tabular drift report to stdout
 func printDriftReport(cmd *cobra.Command, report *spec.DriftReport) error {
 	out := cmd.OutOrStdout()
 
-	// Print header
 	fmt.Fprintf(out, "%-30s %-20s %-20s %-10s\n", "SPEC-ID", "Frontmatter", "Git-Implied", "Drift?")
 	fmt.Fprintln(out, strings.Repeat("-", 85))
 
-	// Print each record
 	for _, record := range report.Records {
-		driftMark := "✓"
+		driftMark := "aligned"
 		if record.Drifted {
-			driftMark = "✗ DRIFT"
+			driftMark = "DRIFT"
 		}
 
 		fmt.Fprintf(out, "%-30s %-20s %-20s %-10s\n",
@@ -113,7 +104,6 @@ func printDriftReport(cmd *cobra.Command, report *spec.DriftReport) error {
 		)
 	}
 
-	// Print summary
 	fmt.Fprintln(out, strings.Repeat("-", 85))
 	fmt.Fprintf(out, "Summary: %d/%d SPECs have status drift\n", report.Count, len(report.Records))
 
