@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-HOOK-HARDEN-001
 version: "0.1.0"
-status: implemented
+status: completed
 created_at: 2026-05-13
 updated_at: 2026-05-13
 author: GOOS행님
