@@ -53,7 +53,7 @@ catalog:
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: ed9f678066d7b0ea524715d84c28961991ac317eb674116cd6a6f1f6df9f1f4f
+              hash: 4144eaef4048ef50b92525028203eb12d0e4120c5a5b096daa75bbb5e10c78ac
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -144,7 +144,7 @@ catalog:
             - name: evaluator-active
               tier: core
               path: templates/.claude/agents/moai/evaluator-active.md
-              hash: a8f640396534b126cbbdc392282c7665efadc10818cf4f2994d5ef73f3b3c0fc
+              hash: c5de2befd95a4a220fe2db26c08d98a5275cf628f8dee6c39db55fa03b81fc94
               version: 1.0.0
             - name: expert-debug
               tier: core
