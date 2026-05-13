@@ -49,7 +49,8 @@ type SystemConfig struct {
 	LogFormat      string        `yaml:"log_format"`
 	NoColor        bool          `yaml:"no_color"`
 	NonInteractive bool          `yaml:"non_interactive"`
-	Migrations     MigrationsConfig `yaml:"migrations"`
+	Migrations     MigrationsConfig    `yaml:"migrations"`
+	Hook           SystemHookConfig   `yaml:"hook"` // SPEC-V3R2-RT-006: observability opt-in
 }
 
 // MigrationsConfig represents the migrations configuration section.
