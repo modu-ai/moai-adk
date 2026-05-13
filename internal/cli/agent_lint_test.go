@@ -803,3 +803,80 @@ Custom team agent body`
 		t.Error("expected LR-10 violation for team-custom.md, not found")
 	}
 }
+
+// TestLintLR05_OrcWorktreeMissingSentinel verifies LR-05 fires with ORC_WORKTREE_MISSING sentinel
+// when isolation: worktree is missing from write-heavy agent (AC-06)
+func TestLintLR05_OrcWorktreeMissingSentinel(t *testing.T) {
+	content := `---
+name: expert-backend
+tools: Read, Write, Edit
+permissionMode: bypassPermissions
+---
+
+Body.
+`
+
+	agentFile := createTempAgentFile(t, content)
+	violations, err := lintAgentFile(agentFile, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(violations) == 0 {
+		t.Fatal("expected at least one LR-05 violation, got none")
+	}
+
+	found := false
+	for _, v := range violations {
+		if v.Rule == "LR-05" && strings.Contains(v.Message, "ORC_WORKTREE_MISSING") {
+			found = true
+			if v.Severity != SeverityError {
+				t.Errorf("expected SeverityError, got %s", v.Severity)
+			}
+			break
+		}
+	}
+
+	if !found {
+		t.Error("expected LR-05 violation with ORC_WORKTREE_MISSING sentinel, not found")
+	}
+}
+
+// TestLintLR09_OrcWorktreeOnReadonlySentinel verifies LR-09 fires with ORC_WORKTREE_ON_READONLY sentinel
+// when isolation: worktree is added to read-only agent (AC-07)
+func TestLintLR09_OrcWorktreeOnReadonlySentinel(t *testing.T) {
+	content := `---
+name: evaluator-active
+tools: Read, Grep, Glob
+permissionMode: plan
+isolation: worktree
+---
+
+Body.
+`
+
+	agentFile := createTempAgentFile(t, content)
+	violations, err := lintAgentFile(agentFile, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(violations) == 0 {
+		t.Fatal("expected at least one LR-09 violation, got none")
+	}
+
+	found := false
+	for _, v := range violations {
+		if v.Rule == "LR-09" && strings.Contains(v.Message, "ORC_WORKTREE_ON_READONLY") {
+			found = true
+			if v.Severity != SeverityError {
+				t.Errorf("expected SeverityError, got %s", v.Severity)
+			}
+			break
+		}
+	}
+
+	if !found {
+		t.Error("expected LR-09 violation with ORC_WORKTREE_ON_READONLY sentinel, not found")
+	}
+}

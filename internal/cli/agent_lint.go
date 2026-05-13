@@ -27,6 +27,10 @@ const (
 	SeverityError LintSeverity = "error"
 	// SeverityWarning is a non-critical issue that should be fixed.
 	SeverityWarning LintSeverity = "warning"
+
+	// Sentinel keys per SPEC-V3R2-ORC-004 REQ-013/014.
+	SentinelWorktreeMissing    = "ORC_WORKTREE_MISSING"
+	SentinelWorktreeOnReadonly = "ORC_WORKTREE_ON_READONLY"
 )
 
 // LintViolation represents a single lint rule violation.
@@ -482,7 +486,7 @@ func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
 					Severity: SeverityError,
 					File:     file,
 					Line:     lineNum,
-					Message:  fmt.Sprintf("Write-heavy agent '%s' must have 'isolation: worktree' (SPEC-V3R2-ORC-004)", fm.Name),
+					Message:  fmt.Sprintf("Write-heavy agent '%s' must have 'isolation: worktree' (SPEC-V3R2-ORC-004 %s)", fm.Name, SentinelWorktreeMissing),
 				})
 			}
 			return violations
@@ -529,7 +533,7 @@ func checkReadOnlyIsolation(file string, fm AgentFrontmatter) []LintViolation {
 			Severity: SeverityError,
 			File:     file,
 			Line:     lineNum,
-			Message:  "Read-only agent (permissionMode: plan) MUST NOT have 'isolation: worktree' — plan mode already prevents writes (SPEC-V3R2-ORC-004)",
+			Message:  fmt.Sprintf("Read-only agent (permissionMode: plan) MUST NOT have 'isolation: worktree' — plan mode already prevents writes (SPEC-V3R2-ORC-004 %s)", SentinelWorktreeOnReadonly),
 		})
 	}
 
