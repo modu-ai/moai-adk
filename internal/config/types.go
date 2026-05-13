@@ -429,3 +429,17 @@ type ralphFileWrapper struct {
 		StaleSeconds int `yaml:"stale_seconds"` // → Config.Session.StaleSeconds
 	} `yaml:"ralph"`
 }
+
+// SystemHookConfig represents hook system configuration per SPEC-V3R2-RT-006.
+// It manages observability opt-in for RETIRE-OBS-ONLY events and strict mode.
+// REQ-V3R2-RT-006-004: 4 retired events removed from settings.json; observability tap via opt-in.
+type SystemHookConfig struct {
+	// ObservabilityEvents lists RETIRE-OBS-ONLY events that should emit structured logs.
+	// Valid values: notification, elicitation, elicitationResult, taskCreated.
+	// Empty slice means all retired events are silent (default).
+	// Validator/v10 enforces the whitelist.
+	ObservabilityEvents []string `yaml:"observability_events" validate:"required,dive,oneof=notification elicitation elicitationResult taskCreated"`
+	// StrictMode enables SPEC-V3R2-RT-001 hook strict mode (all failures block execution).
+	// Default is false for backward compatibility.
+	StrictMode bool `yaml:"strict_mode"`
+}
