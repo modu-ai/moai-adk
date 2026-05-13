@@ -13,6 +13,13 @@ updated_at: 2026-04-30
 author: manager-spec
 wave: 3
 tier: 2
+title: "Parallel Sub-agent Cookbook"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "team"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-PARALLEL-COOK-001: Parallel Sub-agent Cookbook
@@ -140,6 +147,11 @@ Team mode 외 솔로 sub-agent fan-out 패턴의 표준화된 cookbook 문서를
 See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Constraints
 

@@ -7,6 +7,11 @@ updated: "2026-04-27"
 author: GOOS
 priority: P1
 labels: [spec-status, automation, hooks, cli, sync-workflow]
+title: "SPEC Status Auto-Update System"
+phase: "v2.x - Legacy"
+module: "status"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-STATUS-AUTO-001: SPEC Status Auto-Update System

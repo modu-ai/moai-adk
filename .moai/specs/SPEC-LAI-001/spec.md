@@ -5,6 +5,13 @@ status: draft
 priority: P0
 created: "2026-04-07"
 harness_pillar: "P3: Verification Loop"
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-LAI-001: Lint-as-Instruction Pattern
@@ -69,6 +76,11 @@ PostToolUse(Write/Edit)
 - `internal/hook/post_tool.go` — Add systemMessage injection after collectDiagnostics
 - `internal/hook/post_tool_test.go` — Add LAI integration tests
 - `internal/template/templates/.moai/config/sections/ralph.yaml` — Add lint_as_instruction: true
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 - Blocking Write/Edit operations (observation-only, instruction injection only)

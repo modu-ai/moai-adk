@@ -13,6 +13,7 @@ estimated_loc: 1800
 dependencies: []
 lifecycle: spec-anchored
 tags: ast-grep, quality, security, 16-languages, owasp, sarif
+title: "ast-grep Quality & Security Modernization"
 ---
 
 # SPEC-ASTG-UPGRADE-001: ast-grep Quality & Security Modernization
@@ -164,6 +165,11 @@ internal/cli/
 - **Python/TypeScript/Rust rule library**: the directory structure is created but initial shipment includes only Go and security rules.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

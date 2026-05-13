@@ -19,6 +19,9 @@ bc_id: []
 lifecycle: spec-anchored
 labels: [memory, taxonomy, user, feedback, project, reference, staleness, v3]
 issue_number: null
+created: 2026-04-24
+updated: 2026-05-13
+tags: "legacy"
 ---
 
 # SPEC-V3R2-EXT-001: Typed Memory Taxonomy
@@ -216,6 +219,11 @@ The rule file `.claude/rules/moai/workflow/moai-memory.md` **shall** enumerate p
 - SPEC-SLQG-001 lessons protocol (auto-capture 메커니즘 재사용).
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. Traceability (추적성)
 

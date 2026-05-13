@@ -1,6 +1,16 @@
 ---
 id: SPEC-CC2122-HOOK-002
 status: draft
+title: "HOOK-001 Follow-up (REQ-007 + REQ-008)"
+version: "1.0.0"
+created: 2026-05-01
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.12 - CC Adoption"
+module: "hooks"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CC2122-HOOK-002: HOOK-001 Follow-up (REQ-007 + REQ-008)
@@ -49,7 +59,7 @@ SPEC-CC2122-HOOK-001 의 follow-up. 다음 두 요구사항을 완성한다:
 [WHEN] CI 또는 로컬에서 `go test ./internal/...` 가 실행될 때
 [THEN] 위 정적 검증은 단위 테스트로 자동 실행되어야 한다 (수동 step 불요)
 
-## Out of Scope
+### Out of Scope
 
 - **실제 `claude --print` 동시 실행 회귀 테스트**: dev 프로젝트의 GLM 통합 테스트 금지 정책(§13). 별도 manual smoke test 스크립트(`scripts/manual-cg-disallowed-test.sh`)로 분리하거나 CI 별도 job 으로 향후 처리.
 - **observability.yaml 의 다른 필드(retention_days, max_file_size_mb 등) yaml read**: 현재 hook 메트릭 코드 외 사용처가 없으므로 불필요. SPEC-OBS 별 SPEC 으로 분리 가능.

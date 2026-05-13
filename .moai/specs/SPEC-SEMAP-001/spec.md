@@ -1,4 +1,5 @@
 ---
+id: SPEC-SEMAP-001
 spec_id: SPEC-SEMAP-001
 title: "SEMAP Behavioral Contracts"
 created: "2026-04-01"
@@ -7,7 +8,12 @@ priority: high
 module: template
 version: "1.0.0"
 lifecycle: spec-anchored
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+tags: "legacy"
 ---
+id: SPEC-SEMAP-001
 
 # SEMAP Behavioral Contracts
 
@@ -134,6 +140,11 @@ Each phase transition requires human approval based on violation data analysis.
 3. Implement contract verification step in spec-workflow.md at phase completion points
 4. Generate violation reports as structured Markdown appended to progress.md
 5. Configure Phase 1 enforcement level (warning-only) in harness.yaml or quality.yaml
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

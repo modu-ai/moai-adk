@@ -11,6 +11,13 @@ issue_number: null
 depends_on: [SPEC-DB-SYNC-001]
 related_specs: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
 partially_superseded_by: [SPEC-DB-SYNC-RELOC-001]
+title: "dbsync 훅 견고화 (5 warning 통합)"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "database"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DB-SYNC-HARDEN-001: dbsync 훅 견고화 (5 warning 통합)
@@ -225,6 +232,11 @@ SPEC-DB-SYNC-001은 PostToolUse 훅, `moai-domain-db-docs` 스킬, `/moai db ref
 - `CLAUDE.local.md` §6 — `t.TempDir()` 테스트 격리 원칙(H4)
 - `.moai/config/sections/quality.yaml` — harness level 결정; 본 SPEC은 `standard` 사용(plan-auditor 리뷰 활성)
 - `.moai/config/sections/language.yaml` — `code_comments: ko` (REQ-H5-002 자연어 선택 기준)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

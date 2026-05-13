@@ -1,4 +1,5 @@
 ---
+id: SPEC-EVAL-001
 spec_id: SPEC-EVAL-001
 title: "evaluator-active Agent & Sprint Contract"
 created: "2026-04-01"
@@ -7,7 +8,12 @@ priority: high
 module: template
 version: "1.0.0"
 lifecycle: spec-anchored
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+tags: "legacy"
 ---
+id: SPEC-EVAL-001
 
 # evaluator-active Agent & Sprint Contract
 
@@ -127,6 +133,11 @@ evaluator-active는 MoAI-ADK의 독립적 품질 평가 에이전트로, 기존 
 3. Split existing Phase 2.8 into 2.8a (evaluator-active) and 2.8b (manager-quality)
 4. Implement mode-specific deployment logic in run.md routing
 5. Define intervention mode selection based on harness.yaml configuration
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

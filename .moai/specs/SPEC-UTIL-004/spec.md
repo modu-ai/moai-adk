@@ -121,6 +121,11 @@ SPEC-UTIL-002의 `AC-UTIL-002-07` (TestScanMultiple_SemaphoreBound)는 **활성 
 
 - **R1 (저위험)**: 세마포어 획득 위치 변경으로 `ScanMultiple` 진입 지연 가능 (생산자가 세마포어 대기). Mitigation: 기존 MX validator에서 이미 검증된 패턴이며 동일 코드에서 사용 중. 성능 회귀 없음을 `BenchmarkScanMultiple_1kFiles`로 확인.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 8. Dependencies (의존성)
 
 - **Blocked by**: 없음 (SPEC-UTIL-002는 `release/v2.14.0`에서 머지 대기, v2.15 착수 시점에는 main 반영됨)

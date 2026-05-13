@@ -341,6 +341,11 @@ func (m *GitManager) ExecuteParallel(cmds []GitCommand) []GitResult {
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## Implementation Notes
 
 **Status**: Draft

@@ -237,6 +237,11 @@ The subcommand **shall** exit with code 0 on full success, non-zero on any step 
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 11. Handoff Notes (인계 사항)
 
 ### 11.1 SPC-001 Hierarchical AC Runtime Compatibility

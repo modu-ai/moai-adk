@@ -14,6 +14,11 @@ related_specs:
   - SPEC-CICD-001
   - SPEC-GLM-001
 source_report: .moai/reports/devops/multi-llm-self-hosted-actions-2026-04-27.md
+title: "Multi-LLM GitHub Actions Self-Hosted Runner Integration"
+phase: "v2.x - Legacy"
+module: "ci"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CI-MULTI-LLM-001: Multi-LLM GitHub Actions Self-Hosted Runner Integration
@@ -788,6 +793,11 @@ internal/github/             # 신규 패키지 (CLI와 분리된 도메인 로�
 - **Template-First**: REQ-CI-019 `internal/template/commands_audit_test.go` 패턴 동일 적용
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. References
 

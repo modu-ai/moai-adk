@@ -7,6 +7,11 @@ updated: "2026-04-07"
 author: GOOS
 priority: P1
 issue_number: 0
+title: "Session Memo (컨텍스트 압축 보존)"
+phase: "v2.x - Legacy"
+module: "memory"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -115,6 +120,11 @@ memo:
 ## Dependencies
 
 - None (foundational SPEC)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

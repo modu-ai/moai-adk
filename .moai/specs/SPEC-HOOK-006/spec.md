@@ -279,6 +279,11 @@ Half-Open <--(timeout expired)---- Open
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## Implementation Notes
 
 **Status**: Draft

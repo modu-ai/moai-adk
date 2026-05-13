@@ -15,6 +15,7 @@ dependencies:
   - SPEC-LSP-AGG-003
 lifecycle: spec-anchored
 tags: lsp, multi-language, 16-languages, neutrality, discovery
+title: "16-Language LSP Server Matrix"
 ---
 
 # SPEC-LSP-MULTI-006: 16-Language LSP Server Matrix
@@ -82,6 +83,11 @@ The `lsp.yaml.tmpl` (PR #625, PR #627) declares 16 language server entries for d
 - Custom rules per language in LSP settings (future enhancement)
 - Bidirectional file watchers (LSP 3.17 provides this; wait for concrete use case)
 - Auto-install of language servers (install hint printed only; user runs installer)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

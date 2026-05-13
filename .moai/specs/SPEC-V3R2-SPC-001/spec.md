@@ -197,6 +197,11 @@ Reference: R1 §9 Agent-as-a-Judge (Zhuge et al. 2024) demonstrates 55 → 365 r
   - `docs/design/major-v3-master.md:L992` (§9 Phase 5 Harness + Evaluator)
   - `.claude/rules/moai/workflow/spec-workflow.md` (EARS modality + acceptance format target)
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 11. FROZEN-zone Amendment — Before/After Schema
 
 This SPEC amends a FROZEN invariant (SPEC system EARS acceptance format, per master-v3 §1.3). Per SPEC-V3R2-CON-002, the explicit before/after schema text and the Human Oversight approval record MUST accompany the landing commit.

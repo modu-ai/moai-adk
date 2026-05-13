@@ -1,6 +1,16 @@
 ---
 id: SPEC-SKILL-ENHANCE-001
 status: draft
+title: "Skill Anti-Rationalization, Red Flags, and Verification"
+version: "1.0.0"
+created: 2026-04-15
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "skills"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SKILL-ENHANCE-001: Skill Anti-Rationalization, Red Flags, and Verification
@@ -165,6 +175,11 @@ Each batch: edit template → `make build` → verify local copy → run tests.
 ## Dependencies
 
 - SPEC-EVO-001: Evolvable zone markers and merge support must exist before adding markers to skills
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

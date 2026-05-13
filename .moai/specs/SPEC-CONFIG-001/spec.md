@@ -6,6 +6,11 @@ created: "2026-02-03"
 updated: "2026-02-03"
 author: GOOS
 priority: P0-Critical
+title: "Configuration Management System"
+phase: "v2.x - Legacy"
+module: "config"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CONFIG-001: Configuration Management System
@@ -583,6 +588,11 @@ internal/core/* ──→ internal/config/ (설정 참조)
 - 설정 파일 인코딩은 UTF-8만 지원
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

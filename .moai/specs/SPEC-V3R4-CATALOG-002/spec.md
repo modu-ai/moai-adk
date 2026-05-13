@@ -10,6 +10,13 @@ labels: [catalog, distribution, slim-init, deployer, tier-filter]
 issue_number: null
 depends_on: [SPEC-V3R4-CATALOG-001]
 related_specs: [SPEC-V3R4-CATALOG-003, SPEC-V3R4-CATALOG-004, SPEC-V3R4-CATALOG-005]
+title: "Slim Init via Catalog Tier Filter"
+created: 2026-05-12
+updated: 2026-05-13
+phase: "v3.0.0 - Lifecycle"
+module: "catalog"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-V3R4-CATALOG-002: Slim Init via Catalog Tier Filter
@@ -220,6 +227,11 @@ OQ5: SlimFS 가 `fs.ReadDirFS` 인터페이스를 구현할지?
 → **권장**: 구현. `fs.WalkDir` 가 효율적으로 동작하려면 `ReadDir` 구현이 필요. 추가 비용 작음 (~30 LOC).
 
 위 Open Questions 는 plan-auditor 검토 시 lock-in 한다. M1 구현 시작 전에 사용자 confirm 권장.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

@@ -10,6 +10,13 @@ labels: [db, hook, sync, performance, architecture, relocation]
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001, SPEC-DB-SYNC-HARDEN-001, SPEC-DB-CMD-001, SPEC-SKILL-GATE-001]
 related_specs: []
+title: "PostToolUse DB 훅 → `/moai sync` Phase 이관"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "database"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DB-SYNC-RELOC-001: PostToolUse DB 훅 → `/moai sync` Phase 이관
@@ -112,6 +119,11 @@ DB 문서(`.moai/project/db/schema.md`, `erd.mmd`, `migrations.md`)는 **milesto
 - **R-1 (기존 프로젝트 회귀)**: 이미 `moai init`으로 설치되어 PostToolUse 훅이 `.claude/settings.json`에 등록된 프로젝트는 `moai update`를 통해서만 훅이 제거됨. **완화**: `moai update --force` 권장 안내 + CHANGELOG 명시.
 - **R-2 (sync phase 시점 오차)**: 사용자가 `/moai sync` 전에 수동으로 마이그레이션 파일을 DB에 반영하면 실제 DB와 문서가 일시적으로 불일치. **완화**: `/moai db refresh`를 수동으로 언제든 호출 가능 — 긴급 시 escape hatch 존재.
 - **R-3 (CLI 고아 함수)**: `moai hook db-schema-sync`가 이제 훅에서 호출되지 않으므로 내부 테스트 외 실사용 감소. **완화**: `/moai db refresh` 구현에서 재사용 가능 — 죽은 코드 아님.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

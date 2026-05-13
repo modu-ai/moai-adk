@@ -9,6 +9,11 @@ priority: critical
 issue_number: 671
 merged_pr: [672, 673]
 merged_commits: [07525c7ae, 4a00aa304]
+title: "Claude Code v2.1.110/111 + Opus 4.7 프롬프트 철학 적용"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-OPUS47-COMPAT-001: Claude Code v2.1.110/111 + Opus 4.7 프롬프트 철학 적용
@@ -175,6 +180,11 @@ The system **shall** support `claude-opus-4-7` as a first-class model in profile
   - `internal/hook/session_start.go:157` (`ensureGLMCredentials` 정의부)
   - `internal/hook/session_start.go:274` (`ensureTeammateMode` 정의부)
   - `internal/cli/doctor.go:118` (`runDiagnosticChecks` 정의부, MCP scope 중복 감지 추가 위치)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

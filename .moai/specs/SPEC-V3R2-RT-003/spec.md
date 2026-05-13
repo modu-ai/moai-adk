@@ -227,6 +227,11 @@ Affected modules:
 - SPEC-V3R2-CON-001 (P7 sandbox default lives in the FROZEN zone declared here).
 - SPEC-V3R2-MIG-003 (security.yaml loader picks up new `sandbox.*` keys).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - Theme: master §4.3 Layer 3 Runtime; §5 Principle P7; §8 BC-V3R2-003; §10 R3 per-OS risk.

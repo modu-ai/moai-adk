@@ -3,9 +3,15 @@ index:
   display: "hidden"
 "moai-project":
   title: "/moai project"
+"moai-brain":
+  title: "/moai brain"
+"moai-design":
+  title: "/moai design"
 "moai-plan":
   title: "/moai plan"
 "moai-run":
   title: "/moai run"
 "moai-sync":
   title: "/moai sync"
+"moai-db":
+  title: "/moai db"

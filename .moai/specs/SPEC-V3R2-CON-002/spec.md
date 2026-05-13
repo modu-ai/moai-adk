@@ -175,6 +175,11 @@ References: master-v3 §4 Layer 1 Go type sketch; design-principles.md §P12 Con
 - SPEC-SLQG-001 (lessons.md auto-capture) — distinct simpler workflow; CON-002 is the heavier constitutional path.
 - design-principles.md §P12, pattern-library.md §S-5.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - Theme: Layer 1 Constitution (master-v3 §4).

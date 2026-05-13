@@ -11,6 +11,13 @@ issue_number: null
 merged_pr: 682
 merged_commit: 4271fd8a8
 deprecation_policy_amended: true
+title: "Agency → MoAI-ADK 흡수 및 Claude Design 통합"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "agency"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-AGENCY-ABSORB-001: Agency → MoAI-ADK 흡수 및 Claude Design 통합
@@ -439,6 +446,11 @@ The 흡수 릴리스 **shall** `.claude/skills/agency-frontend-patterns/`를 `.c
 - `manager-spec`, `expert-frontend`, `evaluator-active` 에이전트 (기존)
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. Traceability (추적성)
 

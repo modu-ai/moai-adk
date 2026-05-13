@@ -1,6 +1,16 @@
 ---
 id: SPEC-CORE-BEHAV-001
 status: draft
+title: "Agent Core Behaviors and SPEC Workflow Gates"
+version: "1.0.0"
+created: 2026-04-15
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "core"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CORE-BEHAV-001: Agent Core Behaviors and SPEC Workflow Gates
@@ -137,6 +147,11 @@ CLAUDE.md Section 7 SHALL reference the new Agent Core Behaviors section in moai
 ## Dependencies
 
 - SPEC-EVO-001: Evolvable zone markers for HUMAN GATE sections
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

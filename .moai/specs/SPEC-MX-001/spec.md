@@ -1,6 +1,16 @@
 ---
 id: SPEC-MX-001
 status: completed
+title: "@MX TAG System -- MoAI eXtension Code Annotation System"
+version: "1.0.0"
+created: 2026-02-20
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "mx"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-MX-001: @MX TAG System -- MoAI eXtension Code Annotation System
@@ -551,6 +561,11 @@ The @MX system does not replace or modify any existing workflow. It augments the
 - **OQ-004**: How should @MX tags interact with code review tools (GitHub PR review)? Should tags be highlighted in PR descriptions? **Deferred**: This is a downstream concern for manager-git and manager-docs agents, not the core @MX system.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Traceability
 

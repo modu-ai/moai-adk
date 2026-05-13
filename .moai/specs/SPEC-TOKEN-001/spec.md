@@ -7,6 +7,10 @@ created: "2026-03-30"
 updated: "2026-03-30"
 author: GOOS
 priority: P0
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-TOKEN-001: Agent Skill Binding Reduction

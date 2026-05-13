@@ -1,6 +1,16 @@
 ---
 id: SPEC-LSP-FLAKY-002
 status: draft
+title: "LSP Launcher ETXTBSY Eager Initialization Hotfix"
+version: "1.0.0"
+created: 2026-05-01
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "lsp"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-LSP-FLAKY-002: LSP Launcher ETXTBSY Eager Initialization Hotfix
@@ -80,7 +90,7 @@ SPEC-001 의 진단이 부분적으로 틀렸다. 실제 race 는 다음과 같�
 - AC-003: 로컬 `go test -race -count=20 ./internal/lsp/subprocess/...` 20회 연속 PASS
 - AC-004: PR CI Ubuntu race detector 5회 연속 PASS
 
-## Out of Scope
+### Out of Scope
 
 - supervisor_test.go 의 `writeFakeBinaryContent` 자체적으로는 race 를 유발하지 않음 (각자 고유 file 작성). 단, 그들이 launcher binary 의 writer fd 를 inherit 할 수 있는 race window 만 차단하면 충분.
 - `internal/lsp/subprocess/launcher.go` production 코드는 무수정.

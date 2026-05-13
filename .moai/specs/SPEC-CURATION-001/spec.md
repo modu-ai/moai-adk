@@ -5,6 +5,13 @@ status: draft
 priority: P1
 created: "2026-04-07"
 harness_pillar: "P1: Guardrails (SOLID I-Principle)"
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CURATION-001: Tool Curation & MCP Segregation
@@ -29,6 +36,11 @@ expert-refactoring의 tools SHALL NOT include `Agent` (leaf-node specialist).
 
 ### REQ-CUR-005 (Ubiquitous)
 expert-debug의 tools SHALL NOT include `Agent` (leaf-node specialist).
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Scope
 

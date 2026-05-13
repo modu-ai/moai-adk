@@ -13,6 +13,13 @@ updated_at: 2026-04-30
 author: manager-spec
 wave: 4
 tier: 3
+title: "Cache-Friendly Prompt Order"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "config"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CACHE-ORDER-001: Cache-Friendly Prompt Order
@@ -144,6 +151,11 @@ Anthropic의 prompt cache는 **prefix 단위로 동작**하므로 static prefix�
 See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Constraints
 

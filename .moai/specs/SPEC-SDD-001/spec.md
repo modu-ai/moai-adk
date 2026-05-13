@@ -1,4 +1,5 @@
 ---
+id: SPEC-SDD-001
 spec_id: SPEC-SDD-001
 title: "SDD Integration (Harness + Delta + Compact)"
 created: "2026-04-01"
@@ -7,7 +8,12 @@ priority: high
 module: template
 version: "1.0.0"
 lifecycle: spec-anchored
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+tags: "legacy"
 ---
+id: SPEC-SDD-001
 
 # SDD Integration (Harness + Delta + Compact)
 
@@ -134,6 +140,11 @@ All research notes, plan details, discussion history, and overview text **shall*
 4. Implement DDD ANALYZE phase delta-aware routing in run.md
 5. Add spec-compact.md generation step at Plan phase completion in plan.md
 6. Modify Run phase entry point in run.md to prefer spec-compact.md over spec.md
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

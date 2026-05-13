@@ -235,6 +235,11 @@ Both extracted skills **shall** declare `user-invocable: false` in frontmatter (
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 11. Implementation Notes (Sync Phase — 2026-05-01)
 
 ### 11.1 Divergence Analysis Summary

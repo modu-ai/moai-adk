@@ -210,6 +210,11 @@ Coverage: 12 REQs (REQ-HL-001~011 + REQ-HL-008a/b split) ↔ 8 ACs, 100% (every 
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Glossary
 
 - **USER area**: `.claude/agents/my-harness/`, `.claude/skills/my-harness-*/`, `.moai/harness/` — user-customized harness assets, mutable by this subsystem.

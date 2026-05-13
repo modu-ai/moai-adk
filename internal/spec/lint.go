@@ -506,7 +506,7 @@ type FrontmatterSchemaRule struct{}
 func (r *FrontmatterSchemaRule) Code() string { return "FrontmatterInvalid" }
 
 // specIDPattern is a regular expression to validate SPEC ID format
-var specIDPattern = regexp.MustCompile(`^SPEC-[A-Z][A-Z0-9]+-[A-Z]{2,5}-\d{3}$`)
+var specIDPattern = regexp.MustCompile(`^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`)
 
 var semverPattern = regexp.MustCompile(`^\d+\.\d+\.\d+`)
 

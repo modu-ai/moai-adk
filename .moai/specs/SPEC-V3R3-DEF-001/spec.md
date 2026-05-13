@@ -166,6 +166,11 @@ The cycle resolution **shall not** introduce new dependencies beyond the documen
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 | REQ ID | Acceptance Criteria | Source |

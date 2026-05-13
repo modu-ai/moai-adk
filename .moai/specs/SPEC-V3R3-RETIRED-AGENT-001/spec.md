@@ -19,6 +19,8 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "agent-runtime, retired-stub, manager-cycle, template-parity, hook-guard, worktree-empty-object, defect-chain, v3r3"
+created: 2026-05-04
+updated: 2026-05-13
 ---
 
 # SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub Compatibility + manager-cycle Template Alignment
@@ -391,6 +393,11 @@ CHANGELOG 항목 (proposed):
 ```
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 11. Traceability (추적성)
 

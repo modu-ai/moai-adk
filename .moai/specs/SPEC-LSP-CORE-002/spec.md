@@ -15,6 +15,7 @@ dependencies:
 lifecycle: spec-anchored
 tags: lsp, powernap, json-rpc, multi-language, client
 supersedes: SPEC-LSP-001
+title: "Multi-Language LSP Client Core (powernap-based)"
 ---
 
 # SPEC-LSP-CORE-002: Multi-Language LSP Client Core (powernap-based)
@@ -138,6 +139,11 @@ Deliver a production-grade LSP client core that:
 - Phase-aware quality gates (that's SPEC-LSP-QGATE-004)
 - Loop/Ralph integration (that's SPEC-LSP-LOOP-005)
 - 16-language config matrix (that's SPEC-LSP-MULTI-006; this SPEC ships with Go, Python, TypeScript as validation targets)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

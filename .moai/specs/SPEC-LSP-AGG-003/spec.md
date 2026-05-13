@@ -14,6 +14,7 @@ dependencies:
   - SPEC-LSP-CORE-002
 lifecycle: spec-anchored
 tags: lsp, aggregator, cache, ttl, parallel, diagnostics
+title: "Multi-Server Diagnostic Aggregator with TTL Cache"
 ---
 
 # SPEC-LSP-AGG-003: Multi-Server Diagnostic Aggregator with TTL Cache
@@ -103,6 +104,11 @@ CacheEntry {
     ExpiresAt   time.Time
 }
 ```
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

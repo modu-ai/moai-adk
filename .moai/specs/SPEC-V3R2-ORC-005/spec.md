@@ -298,6 +298,11 @@ Core criteria:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ-to-AC mapping: REQ-001 → AC-01; REQ-002 → AC-01; REQ-003 → AC-03, AC-11; REQ-004 → AC-04, AC-08; REQ-005 → memory-test regression; REQ-006 → AC-03; REQ-007 → AC-06; REQ-008 → AC-04 parsing test; REQ-009 → AC-05; REQ-010 → AC-10; REQ-011 → AC-09; REQ-012 → AC-07; REQ-013 → AC-11; REQ-014 → AC-04; REQ-015 → handoff regression; REQ-016 → AC-12; REQ-017 → AC-07; REQ-018 → AC-08.

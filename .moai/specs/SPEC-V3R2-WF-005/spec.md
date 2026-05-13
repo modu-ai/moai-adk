@@ -21,6 +21,8 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
+created: 2026-04-24
+updated: 2026-05-13
 ---
 
 # SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification
@@ -217,6 +219,11 @@ References to non-existent skills (`moai-lang-*`, `moai-infra-docker`, `moai-ess
 - R6 §4 rules audit; CLAUDE.local.md §15 language neutrality.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. Traceability (추적성)
 

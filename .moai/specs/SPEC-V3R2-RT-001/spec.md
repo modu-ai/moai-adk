@@ -204,6 +204,11 @@ Affected modules:
 - SPEC-V3R2-MIG-001 (v2→v3 migrator adds validator/v10 import to hook types during migration).
 - SPEC-V3R2-CON-003 (constitution consolidation moves hook-protocol text from CLAUDE.md Section 10 into hooks-system.md).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - Theme: master §4.3 Layer 3 Runtime; §5.4 Cross-Layer Hook JSON-OR-ExitCode; §8 BC-V3R2-001.

@@ -1,3 +1,17 @@
+---
+id: SPEC-UPDATE-001
+title: "Global/Local Installation Mode Redesign"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "template"
+lifecycle: completed
+tags: "legacy"
+---
 # SPEC-UPDATE-001: Global/Local Installation Mode Redesign
 
 ```yaml
@@ -213,3 +227,7 @@ moai:
 
 Version: 1.0.0
 Last Updated: 2026-02-21
+
+### Out of Scope
+
+- N/A (legacy SPEC)

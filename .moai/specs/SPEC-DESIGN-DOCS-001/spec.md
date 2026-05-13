@@ -10,6 +10,13 @@ labels: [design, templates, moai-design, folder-structure, template-first]
 issue_number: null
 depends_on: [SPEC-DESIGN-CONST-AMEND-001]
 related_specs: [SPEC-DESIGN-ATTACH-001, SPEC-DESIGN-PENCIL-001, SPEC-DB-CMD-001]
+title: ".moai/design/ 폴더 구조와 템플릿 세트 정의"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "design"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DESIGN-DOCS-001: .moai/design/ 폴더 구조와 템플릿 세트 정의
@@ -224,6 +231,11 @@ CLAUDE.local.md §2에 따라 `.claude/`, `.moai/`, `.agency/` 하위에 새 파
   - Mitigation: REQ-006에 예약 파일명을 **verbatim**으로 명문화. REQ-008로 `moai update` 시점에 충돌 감지 및 거부 (exact match + filepath.Match). AC-9로 검증.
 - **R-4**: SPEC-DESIGN-CONST-AMEND-001 미머지 상태에서 `/moai run` 실행 시 FROZEN constitution 위반
   - Mitigation: 프론트매터 `depends_on: [SPEC-DESIGN-CONST-AMEND-001]` 선언. `/moai run`은 선행 SPEC 머지 확인 후에만 실행.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Traceability
 

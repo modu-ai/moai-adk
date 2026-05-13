@@ -13,6 +13,13 @@ updated_at: 2026-04-30
 author: manager-spec
 wave: 3
 tier: 2
+title: "Memory Persistence 단순화 / Context Injection"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CONTEXT-INJ-001: Memory Persistence 단순화 / Context Injection
@@ -144,6 +151,11 @@ Claude Code sub-agent가 매번 fresh context로 spawn되는 본 프로젝트 �
 See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Constraints
 

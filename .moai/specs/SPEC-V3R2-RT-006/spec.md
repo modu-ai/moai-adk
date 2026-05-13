@@ -271,6 +271,11 @@ Go handler count after this SPEC: 27 current − 1 removed (setupHandler) = 26 G
 - SPEC-V3R2-ORC-002 (common protocol CI lint extends `audit_test.go` pattern established here).
 - SPEC-V3R2-CON-003 (consolidation pass moves hook-system.md rule updates).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - Theme: master §4.3 Layer 3 Runtime; §7.3 Hook audit table (authoritative input); §8 BC-V3R2-018.

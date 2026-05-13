@@ -181,6 +181,11 @@ References: skill moai-workflow-spec (EARS modality table + required sections); 
 - SPEC-V3R2-SPC-002 (@MX TAG linting happens via `/moai mx --verify`, not this linter).
 - skill moai-workflow-spec — authoritative source for required body sections.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - Theme: Layer 2 SPEC & TAG (master-v3 §4).

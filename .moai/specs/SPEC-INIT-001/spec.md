@@ -1,3 +1,17 @@
+---
+id: SPEC-INIT-001
+title: "프로젝트 초기화 및 감지"
+version: "1.0.0"
+status: completed
+created: 2026-02-03
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "template"
+lifecycle: completed
+tags: "legacy"
+---
 # SPEC-INIT-001: 프로젝트 초기화 및 감지
 
 ---
@@ -521,3 +535,7 @@ Project initialization system implemented with language and framework auto-detec
 - `internal/core/project/phase_test.go`
 - `internal/core/project/validator.go`
 - `internal/core/project/validator_test.go`
+
+### Out of Scope
+
+- N/A (legacy SPEC)

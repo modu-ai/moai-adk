@@ -17,6 +17,9 @@ bc_id: []
 lifecycle: spec-anchored
 tags: "brain, ideation, workflow, handoff, claude-design, v3r3"
 harness: standard
+title: "`/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package"
+created: 2026-05-04
+updated: 2026-05-13
 ---
 
 # SPEC-V3R3-BRAIN-001: `/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package
@@ -299,6 +302,11 @@ See `acceptance.md` for full Given-When-Then scenarios. Minimum 5 scenarios requ
 **Parallel SPECs**: None — this is a single-domain SPEC with no shared file ownership conflicts.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 11. References
 

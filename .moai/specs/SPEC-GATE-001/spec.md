@@ -5,6 +5,13 @@ status: draft
 priority: P0
 created: "2026-04-07"
 harness_pillar: "P3: Verification Loop"
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "quality"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-GATE-001: Deterministic Quality Gate
@@ -73,6 +80,11 @@ Bash(git commit) detected in PreToolUse
 ### Modified Files
 - `internal/hook/pre_tool.go` — Add git commit detection in checkBashCommand()
 - `internal/hook/pre_tool_test.go` — Add gate integration tests
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 - Dynamic per-language gate detection (Go only for now)

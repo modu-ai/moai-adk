@@ -1,6 +1,16 @@
 ---
 id: SPEC-I18N-001-ARCHIVED
 status: archived
+title: "Complete Multilingual Translation of MoAI-ADK Documentation Site"
+version: "1.0.0"
+created: 2026-04-20
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "i18n"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ARCHIVED — SPEC-I18N-001
@@ -211,6 +221,11 @@ Translate all `content/ja/` files from the completed English versions (`content/
 - **Link integrity**: All internal cross-references must point to valid locale-prefixed paths
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Traceability
 

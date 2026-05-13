@@ -1,6 +1,16 @@
 ---
 id: SPEC-DESIGN-001
 status: completed
+title: "interface-design Plugin Integration"
+version: "1.0.0"
+created: 2026-03-23
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "design"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DESIGN-001: interface-design Plugin Integration
@@ -201,6 +211,11 @@ MoAI 네임스페이스 일관성 유지 (.moai/project/, .moai/specs/, .moai/de
 | Prototype friction | --prototype flag bypasses enforcement |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## File Change Map
 

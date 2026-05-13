@@ -17,6 +17,9 @@ phase: "v3.0.0 R3 — Phase B — Bug Fix"
 module: "internal/cli/design_folder.go, .claude/rules/moai/design/constitution.md"
 tags: "design-folder, moai-update, reserved-name, bug-fix, v3r3, phase-b"
 related_theme: "Phase B — Update Path Hardening"
+title: "moai update Reserved Filename Collision — Warning 격하 (Update Path)"
+created: 2026-04-26
+updated: 2026-05-13
 ---
 
 # SPEC-V3R3-DESIGN-FOLDER-FIX-001: moai update Reserved Filename Collision — Warning 격하 (Update Path)
@@ -255,6 +258,11 @@ related_theme: "Phase B — Update Path Hardening"
 상세 acceptance.md 참조.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. References
 

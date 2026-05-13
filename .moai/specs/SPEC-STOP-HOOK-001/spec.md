@@ -13,6 +13,13 @@ updated_at: 2026-04-30
 author: manager-spec
 wave: 3
 tier: 2
+title: "Stop Hook 테스트 강제"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "session"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-STOP-HOOK-001: Stop Hook 테스트 강제
@@ -141,6 +148,11 @@ Claude Code의 Stop hook event를 통해 orchestrator turn 종료 시점에 프�
 See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Constraints
 

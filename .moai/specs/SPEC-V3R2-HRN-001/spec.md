@@ -295,6 +295,11 @@ Core criteria:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ-to-AC mapping: REQ-001 → AC-01 (struct compiles); REQ-002 → AC-01, AC-04; REQ-003 → AC-02, AC-03; REQ-004 → AC-08; REQ-005 → AC-10; REQ-006 → AC-02, AC-04, AC-06; REQ-007 → AC-02, AC-03; REQ-008 → AC-03; REQ-009 → AC-08; REQ-010 → AC-05; REQ-011 → AC-06; REQ-012 → AC-05; REQ-013 → AC-08; REQ-014 → cg-mode regression; REQ-015 → AC-09; REQ-016 → model-upgrade regression; REQ-017 → unknown-level regression; REQ-018 → AC-08; REQ-019 → AC-07.

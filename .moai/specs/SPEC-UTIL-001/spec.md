@@ -223,6 +223,11 @@ Affected files (implementation scope):
 - **SPEC-UTIL-003 — LSP Subprocess Hygiene + Diagnostic Type Alias.** Related via release plan §2.1 shared cross-cutting themes (unbounded goroutine fan-out appears in MX validator, ast-grep ScanMultiple, and LSP getOrSpawn). UTIL-001 addresses the MX instance; UTIL-003 addresses the LSP instance via `singleflight`. File scope is disjoint (`internal/lsp/core/` vs `internal/hook/mx/`); SPECs may land in parallel.
 - **Release plan `docs/design/v2.14.0-release-plan.md`** — binding parent document; §2.2 defines UTIL-001 scope; §0.5 D4/D5/D6 bind the three decision gates.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - **Method receiver blindspot (IMP-V3U-001, REQ-UTIL-001-001, REQ-UTIL-001-020, AC-UTIL-001-01, AC-UTIL-001-14)**

@@ -10,6 +10,13 @@ labels: [design, context, auto-load, skill, workflow-extension, token-budget]
 issue_number: null
 depends_on: [SPEC-DESIGN-CONST-AMEND-001, SPEC-DESIGN-DOCS-001]
 related_specs: [SPEC-DESIGN-PENCIL-001]
+title: "moai-workflow-design-context Skill + /moai design Phase B2.5 Auto-Loading"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "design"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DESIGN-ATTACH-001: moai-workflow-design-context Skill + /moai design Phase B2.5 Auto-Loading
@@ -285,6 +292,11 @@ design:
 - **R-5**: `design_docs.priority` 키를 사용자가 임의로 재정렬할 경우 constitution Section 3.2 FROZEN 우선순위와 불일치 발생 가능 → 구현 시 기본값과 일치하지 않으면 warning 로깅 권장. 강제화는 E-9에 따라 본 SPEC 범위 외.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Verification Checklist
 

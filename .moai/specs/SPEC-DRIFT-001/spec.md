@@ -1,4 +1,5 @@
 ---
+id: SPEC-DRIFT-001
 spec_id: SPEC-DRIFT-001
 title: "Spec Drift Guard & Persistent TASKS.md"
 created: "2026-04-01"
@@ -7,7 +8,12 @@ priority: high
 module: template
 version: "1.0.0"
 lifecycle: spec-anchored
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+tags: "legacy"
 ---
+id: SPEC-DRIFT-001
 
 # Spec Drift Guard & Persistent TASKS.md
 
@@ -104,6 +110,11 @@ The drift check step **shall** be added to run.md Phase 2A (DDD) and Phase 2B (T
 3. Integrate drift warnings with existing progress.md tracking
 4. Connect >30% cumulative drift to Phase 2.7 re-planning trigger
 5. Add drift check step references in workflow-modes.md
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

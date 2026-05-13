@@ -8,6 +8,11 @@ author: GOOS
 priority: high
 issue_number: 0
 depends_on: []
+title: "AskUserQuestion 의무화 + Socratic Interview 표준화 + ToolSearch 사전 로드 절차 정식화"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-ASKUSER-ENFORCE-001: AskUserQuestion 의무화 + Socratic Interview 표준화 + ToolSearch 사전 로드 절차 정식화
@@ -165,6 +170,11 @@ The system **shall** document the deferred-tool ToolSearch procedure and AskUser
 | R-AUE-4 | Template 미러 동기화 누락 | acceptance.md AC-AUE-009-x의 빌드 검증으로 강제 — `make build` 후 `embedded.go` diff 확인 |
 | R-AUE-5 | Memory dead lesson SUPERSEDED 처리 누락 | tasks.md Phase G의 명시적 task로 분리, DoD에 grep evidence 포함 |
 | R-AUE-6 | conversation_language 변경 시 Socratic interview 라운드의 라벨 동기화 누락 | REQ-AUE-003의 `conversation_language` 동적 참조 명시 — 하드코딩 금지 |
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 6. HISTORY
 

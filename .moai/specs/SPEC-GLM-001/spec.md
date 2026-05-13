@@ -1,6 +1,16 @@
 ---
 id: SPEC-GLM-001
 status: completed
+title: "GLM Compatibility Automation"
+version: "1.0.0"
+created: 2026-03-31
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "glm"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-GLM-001: GLM Compatibility Automation
@@ -58,6 +68,11 @@ Currently users must manually add this to settings.local.json. `moai cg/glm/cc` 
 - [x] AC-4.2: `go test ./internal/cli/...` passes
 - [x] AC-4.3: `go vet ./...` passes
 - [x] AC-4.4: `make build` succeeds
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

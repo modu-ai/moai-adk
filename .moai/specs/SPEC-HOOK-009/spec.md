@@ -7,6 +7,11 @@ updated: "2026-03-20"
 author: GOOS
 priority: high
 issue_number: 0
+title: "신규 훅 이벤트 추가 (PostCompact, InstructionsLoaded, StopFailure)"
+phase: "v2.x - Legacy"
+module: "hooks"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -51,6 +56,11 @@ Claude Code 턴이 API 오류(rate limit, auth 실패 등)로 종료되면, MoAI
 ### 제외
 - settings.json 템플릿 자체 수정 (hook.sh 래퍼가 이미 모든 이벤트를 라우팅)
 - 기존 핸들러 수정
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 4. 기술 제약사항
 

@@ -229,6 +229,11 @@ Each new loader **shall** have unit tests under `internal/config/loader_test.go`
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ 총 18개: Ubiquitous 7, Event-Driven 4, State-Driven 2, Optional 2, Complex 3.

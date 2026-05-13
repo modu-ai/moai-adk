@@ -21,6 +21,8 @@ breaking: true
 bc_id: [BC-V3R2-007]
 lifecycle: spec-anchored
 tags: "agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3"
+created: 2026-04-24
+updated: 2026-05-13
 ---
 
 # SPEC-V3R2-WF-004: Agentless Fixed-Pipeline Classification
@@ -216,6 +218,11 @@ The classification **shall** be published as a matrix in `.claude/rules/moai/wor
 - R6 §2 hooks audit (MX / LSP / metrics가 이미 고정 순서).
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. Traceability (추적성)
 

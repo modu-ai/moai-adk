@@ -8,6 +8,10 @@ author: GOOS
 priority: medium
 lifecycle: spec-anchored
 depends_on: SPEC-MX-001
+title: "MX Tag Auto-Validation System"
+phase: "v2.x - Legacy"
+module: "mx"
+tags: "legacy"
 ---
 
 # SPEC-MX-002: MX Tag Auto-Validation System
@@ -346,6 +350,11 @@ fan_in 분석은 기존 `internal/astgrep/analyzer.go`의 `FindPattern` 메서�
 - **OQ-002**: Sync Phase 0.6에서 P1/P2 위반 시 자동 태그 삽입을 제안할지? **현재 결정**: 검증만 수행하고 삽입은 제안하지 않음 (SPEC-MX-001의 agent 자율 태깅과 분리).
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Traceability
 

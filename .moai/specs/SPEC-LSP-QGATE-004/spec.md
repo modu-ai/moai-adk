@@ -14,6 +14,7 @@ dependencies:
   - SPEC-LSP-AGG-003
 lifecycle: spec-anchored
 tags: lsp, quality-gate, phase-aware, trust5
+title: "Phase-Aware LSP Quality Gates"
 ---
 
 # SPEC-LSP-QGATE-004: Phase-Aware LSP Quality Gates
@@ -88,6 +89,11 @@ Additionally, `internal/lsp/hook/gate.go` bypasses the centralized `ConfigManage
 
 - New LSP client (uses SPEC-LSP-AGG-003)
 - UI for viewing diagnostics (already in PostToolUse hook)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

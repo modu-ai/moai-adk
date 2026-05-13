@@ -22,6 +22,8 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, v3"
+created: 2026-04-24
+updated: 2026-05-13
 ---
 
 # SPEC-V3R2-WF-003: Multi-Mode Router
@@ -233,6 +235,11 @@ The skill documentation **shall** publish a subcommand × mode matrix showing wh
 - pattern-library §O-4, §O-6 (Agentless).
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. Traceability (추적성)
 

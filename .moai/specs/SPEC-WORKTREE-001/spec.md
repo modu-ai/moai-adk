@@ -1,3 +1,17 @@
+---
+id: SPEC-WORKTREE-001
+title: "Worktree 경로 마이그레이션 -- 프로젝트 내부에서 글로벌 ~/.moai/worktrees/로"
+version: "1.0.0"
+status: completed
+created: 2026-03-10
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "worktree"
+lifecycle: completed
+tags: "legacy"
+---
 # SPEC-WORKTREE-001: Worktree 경로 마이그레이션 -- 프로젝트 내부에서 글로벌 ~/.moai/worktrees/로
 
 ---
@@ -251,3 +265,7 @@ lifecycle: spec-anchored
 ### 연기 항목
 
 - Optional Goal: `moai worktree migrate` 서브커맨드 (별도 SPEC으로 분리 권장)
+
+### Out of Scope
+
+- N/A (legacy SPEC)

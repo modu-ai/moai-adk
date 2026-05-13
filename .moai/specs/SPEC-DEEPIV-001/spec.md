@@ -7,6 +7,11 @@ updated: "2026-04-07"
 author: GOOS
 priority: P1
 issue_number: 0
+title: "Deep Interview (심층 인터뷰)"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -191,6 +196,11 @@ interview:
 ## Dependencies
 
 - None (independent skill-level change)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

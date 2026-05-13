@@ -1,6 +1,16 @@
 ---
 id: SPEC-CC2122-HOOK-001
 status: completed
+title: "Claude Code v2.1.119-121 Hook Feature Integration"
+version: "1.0.0"
+created: 2026-05-01
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.12 - CC Adoption"
+module: "hooks"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CC2122-HOOK-001: Claude Code v2.1.119-121 Hook Feature Integration
@@ -50,6 +60,11 @@ Claude Code v2.1.119-121에서 추가된 3가지 기능을 moai-adk-go 템플릿
 ### REQ-CC2122-HOOK-001-008
 [WHEN] `claude --print` 모드로 에이전트를 실행할 때
 [THEN] 에이전트의 `disallowedTools:` frontmatter에 지정된 도구는 실행이 거부되어야 한다
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files Affected
 

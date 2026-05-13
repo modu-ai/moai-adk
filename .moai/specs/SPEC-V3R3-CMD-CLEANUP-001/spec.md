@@ -13,6 +13,12 @@ bc_id: []
 lifecycle: spec-anchored
 related_specs: [SPEC-THIN-CMDS-001, SPEC-V3R3-DEF-001, SPEC-V3R3-DEF-007]
 released_in: v2.15.0
+title: "SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거"
+created: 2026-04-26
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "cli"
+tags: "legacy"
 ---
 
 # SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거
@@ -137,6 +143,11 @@ THE security workflow SHALL remain accessible only as a skill (loaded by `review
 
 - **OQ-1 (resolved)**: Should `/moai security` exist as a separate top-level command? **Resolved**: NO. Security depth is inlined into `review` Phase 4 and `sync` Phase 0.55. Skill remains for direct keyword routing per SKILL.md §Priority 3. (See REQ-CMD-006.)
 - **OQ-2 (resolved)**: Should `context` removal include a deprecation notice? **Resolved**: NO. No slash command file existed; only skill + routing entry. Silent removal is appropriate. (See Non-Goals.)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 9. Traceability
 

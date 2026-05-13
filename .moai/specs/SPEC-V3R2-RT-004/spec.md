@@ -244,6 +244,11 @@ Affected modules:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 11. Implementation Notes (구현 결과)
 
 ### M1-M5 완료 요약

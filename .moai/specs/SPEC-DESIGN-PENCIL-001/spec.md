@@ -10,6 +10,13 @@ labels: [design, pencil, mcp, batch-design, wireframe, skill, workflow-extension
 issue_number: null
 depends_on: [SPEC-DESIGN-DOCS-001, SPEC-DESIGN-ATTACH-001]
 related_specs: []
+title: "moai-workflow-pencil-integration Skill + /moai design Phase B2.6 Pencil Path"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "design"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DESIGN-PENCIL-001: moai-workflow-pencil-integration Skill + /moai design Phase B2.6 Pencil Path
@@ -303,6 +310,11 @@ triggers:
 - `.pen` 파일 편집기 UI 제공
 - Pencil 외 다른 디자인 tool (Figma, Sketch 등) 통합
 - GAN Loop과 Pencil Path의 병합 (별도 SPEC에서 다룸)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Risks
 

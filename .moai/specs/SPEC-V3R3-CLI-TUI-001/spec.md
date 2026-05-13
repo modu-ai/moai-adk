@@ -13,6 +13,12 @@ related_specs: []
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+title: "moai CLI 터미널 TUI 디자인 시스템 v2 마이그레이션"
+created: 2026-05-09
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "cli"
+tags: "legacy"
 ---
 
 # SPEC-V3R3-CLI-TUI-001: moai CLI 터미널 TUI 디자인 시스템 v2 마이그레이션
@@ -265,6 +271,11 @@ go.mod 직접 검증 결과 추가 의존성 0건이다.
 10. **`prefers-reduced-motion` 자동 시스템 감지**: 환경변수 `MOAI_REDUCED_MOTION=1` 명시 override만, 자동 감지는 향후 SPEC.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Self-Audit (작성자 검증)
 

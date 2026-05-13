@@ -10,6 +10,13 @@ labels: [db, parser, migration, prisma, alembic, rails, raw-sql, follow-up]
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001]
 related_specs: [SPEC-DB-SYNC-RELOC-001, SPEC-DB-SYNC-HARDEN-001, SPEC-DB-CMD-001]
+title: "Migration File Parser Backends for DB Schema Sync"
+created: 2026-04-28
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "database"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DB-SYNC-002: Migration File Parser Backends for DB Schema Sync
@@ -298,6 +305,11 @@ SPEC-DB-SYNC-002 (this SPEC — parser backends) ◄──────┘
         ▼
 (Future) SPEC-DB-SYNC-00X (AST-based backends, diff rules, etc.)
 ```
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Open Questions
 

@@ -117,6 +117,11 @@ post-tool-use 훅 payload 스키마(`internal/hook/payload.go`)에는 이미 `ch
 - **R2 (저위험)**: Symlink / submodule edge case에서 changedFiles 경로가 symlink 타깃을 가리킬 수 있음. **Mitigation**: SPEC-UTIL-002의 exclusion 규칙을 incremental path 내부에서도 동일 적용.
 - **R3 (저위험)**: changedFiles 경로가 projectDir 밖을 가리키는 경우 보안 이슈. **Mitigation**: `filepath.Rel(projectDir, changedFile)` + `strings.HasPrefix(rel, "..")` 검사로 escape 방지.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 8. Dependencies (의존성)
 
 - **Blocked by**: SPEC-UTIL-002 Phase 3.2 구현 완료 (현재 `release/v2.14.0`에서 머지 대기). v2.15 착수 시점에는 main 반영됨

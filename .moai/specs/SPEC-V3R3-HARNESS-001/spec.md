@@ -17,7 +17,7 @@ related_specs:
   - SPEC-V3R3-PROJECT-HARNESS-001
   - SPEC-AGENCY-ABSORB-001
 breaking: true
-bc_id:
+bc_id: []
   - BC-V3R3-007
 lifecycle: spec-anchored
 labels: [harness, meta-skill, breaking-change, namespace-separation, v3r3, phase-c, extreme-aggressive, apache-2-0-attribution]
@@ -25,6 +25,9 @@ related_theme: "Phase C — Extreme Aggressive Core (meta-harness + namespace se
 target_release: v2.17.0
 issue_number: null
 depends_on:
+created: 2026-04-27
+updated: 2026-05-13
+tags: "legacy"
   - SPEC-V3R3-HARNESS-LEARNING-001
 ---
 
@@ -250,6 +253,11 @@ Coverage: 10 REQs ↔ 7 ACs, 100% (every REQ appears in at least one AC). REQ-HA
 | SPEC-AGENCY-ABSORB-001 | Reference | Establishes the agency-domain skill absorption pattern this SPEC reuses (FROZEN zones for `moai-domain-{copywriting,brand-design}`). |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 11. Glossary
 

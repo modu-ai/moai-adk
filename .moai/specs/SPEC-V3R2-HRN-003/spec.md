@@ -313,6 +313,11 @@ Core criteria:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 ### 10.1 Drift Reconciliation Notes (post-HRN-002 merge, 2026-05-13)

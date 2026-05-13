@@ -187,6 +187,11 @@ References: master-v3 §4 Layer 2 @MX Go type sketch; design-principles.md §P8 
 - `/moai mx` subcommand (O-6 Agentless pipeline per master-v3 §7.4).
 - design-principles.md §P8 (Hook JSON Protocol); pattern-library.md §T-5.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - Theme: Layer 2 SPEC & TAG (master-v3 §4).

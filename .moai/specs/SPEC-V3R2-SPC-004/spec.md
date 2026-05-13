@@ -169,6 +169,11 @@ References: pattern-library.md §T-1 priority 1 ("strongest single leverage patt
 - SPEC-LSP-CORE-002 (LSP client for fan-in via `find-references`).
 - pattern-library.md §T-1 priority 1.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - Theme: Layer 2 SPEC & TAG (master-v3 §4).

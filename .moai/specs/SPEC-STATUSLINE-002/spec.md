@@ -7,6 +7,11 @@ updated: "2026-03-20"
 author: GOOS
 priority: high
 issue_number: 0
+title: "rate_limits statusline 지원"
+phase: "v2.x - Legacy"
+module: "statusline"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-STATUSLINE-002: rate_limits statusline 지원
@@ -24,6 +29,11 @@ StdinData에 `rate_limits` 필드를 추가하고, `RateLimitInfo` / `RateLimitW
 ### REQ-SL-011: 렌더러에서 rate_limits 우선 사용
 
 기존 MoAI API 호출(`Usage`)보다 Claude Code에서 직접 제공하는 `RateLimits`를 우선 사용한다.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 3. 구현 요약
 

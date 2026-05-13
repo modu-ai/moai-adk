@@ -10,6 +10,13 @@ labels: [db, command, cli, thin-wrapper, subcommand-routing]
 issue_number: null
 depends_on: []
 related_specs: [SPEC-DB-TEMPLATES-001, SPEC-DB-SYNC-001, SPEC-PROJECT-DB-HINT-001]
+title: "/moai db Thin Wrapper with Subcommand Router Skill"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "database"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DB-CMD-001: /moai db Thin Wrapper with Subcommand Router Skill
@@ -238,6 +245,11 @@ WHEN SPEC 본문 또는 관련 문서에서 본 커맨드를 지칭할 때, 용�
 - 마이그레이션 파일 자동 생성 로직
 - DB 연결 및 실제 스키마 introspection
 - 사용자 커스텀 마이그레이션 경로 override 구현 디테일(본 SPEC은 선언만, 구현은 SPEC-DB-TEMPLATES-001)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Risks
 

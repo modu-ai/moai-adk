@@ -369,6 +369,11 @@ Template tree (`internal/template/templates/.claude/skills/`) and local tree (`.
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## Implementation Notes (완료 기록)
 
 ### Completion Summary

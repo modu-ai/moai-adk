@@ -9,6 +9,13 @@ priority: Medium
 labels: [statusline, claude-code-integration, ui, backward-compat]
 issue_number: null
 related_specs: [SPEC-CC2122-HOOK-001]
+title: "Claude Code v2.1.122 Statusline Effort + Thinking 통합"
+created: 2026-05-01
+updated: 2026-05-13
+phase: "v2.12 - CC Adoption"
+module: "statusline"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CC2122-STATUSLINE-001: Claude Code v2.1.122 Statusline Effort + Thinking 통합
@@ -104,6 +111,11 @@ Claude Code v2.1.122 릴리스 노트에 따라 statusline stdin JSON에 두 가
 ## Acceptance Reference
 
 상세한 Given-When-Then 시나리오와 검증 항목은 `acceptance.md` 를 참조한다.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Reference
 

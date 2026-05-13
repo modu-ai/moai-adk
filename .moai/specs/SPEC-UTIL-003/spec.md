@@ -267,6 +267,11 @@ No file-level overlap with UTIL-001 or UTIL-002 — parallel execution per relea
 - **v2.16** — IMP-V3U-008 hook.Diagnostic field-level consolidation with JSON wire format compatibility projection.
 - **v3.0** — BC-V3R2-UTIL-001 `config.ResolveClientImpl()` default flip to `"powernap_core"`.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 ### Requirement → Acceptance → Source

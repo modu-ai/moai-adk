@@ -17,6 +17,11 @@ complexity: 6
 harness_level: standard
 development_mode: ddd
 domains: [rules, skills, templates]
+created: 2026-04-28
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "development"
+tags: "legacy"
 ---
 
 # SPEC-KARPATHY-001: Karpathy Coding Principles Integration into MoAI-ADK Orchestration
@@ -211,6 +216,11 @@ This is achieved through constitution amendments (always loaded) + skill trigger
 - Implementation order: see `plan.md`
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 7. References
 

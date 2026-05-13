@@ -5,6 +5,13 @@ status: draft
 priority: P2
 created: "2026-04-07"
 harness_pillar: "All - Evolutionary"
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "sunset"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SUNSET-001: Build to Delete Framework
@@ -59,6 +66,11 @@ sunset:
       action: "advisor"
       description: "go test passes 20 consecutive times -> switch to advisor mode (never remove)"
 ```
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 - Automatic gate removal (advisory only for v1)

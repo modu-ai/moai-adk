@@ -267,6 +267,11 @@ Core criteria:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ-to-AC mapping: REQ-001 → AC-01; REQ-002 → AC-02, AC-03; REQ-003 → AC-02..AC-10; REQ-004 → AC-08, AC-09, AC-11; REQ-005 → AC-12; REQ-006 → AC-02, AC-05, AC-10; REQ-007 → LR-02 regression test in acceptance.md; REQ-008 → AC-06; REQ-009 → AC-07, AC-12; REQ-010 → AC-04; REQ-011 → AC-05; REQ-012 → AC-08, AC-09; REQ-013 → pre-commit fixture in acceptance.md; REQ-014 → version-field regression; REQ-015 → AC-10; REQ-016 → AC-11; REQ-017 → two-tree drift fixture.

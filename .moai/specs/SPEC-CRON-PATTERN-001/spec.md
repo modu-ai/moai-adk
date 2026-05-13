@@ -13,6 +13,13 @@ updated_at: 2026-04-30
 author: manager-spec
 wave: 4
 tier: 3
+title: "Routines/Cron Pattern Catalog"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "loop"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CRON-PATTERN-001: Routines/Cron Pattern Catalog
@@ -142,6 +149,11 @@ tier: 3
 See `acceptance.md` for Given-When-Then scenarios and Definition of Done.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. Constraints
 

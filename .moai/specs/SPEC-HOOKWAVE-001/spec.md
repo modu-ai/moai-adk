@@ -7,6 +7,11 @@ updated: "2026-04-07"
 author: GOOS
 priority: P2
 issue_number: 0
+title: "Hook Stub Improvement Wave 2"
+phase: "v2.x - Legacy"
+module: "hooks"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -98,6 +103,11 @@ The system shall add missing EventType constants to types.go: TaskCreated, Permi
 ## Dependencies
 
 - SPEC-MEMO-001 (optional): Module A updates session-memo on agent completion
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

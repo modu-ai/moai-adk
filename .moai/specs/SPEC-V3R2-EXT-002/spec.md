@@ -214,6 +214,11 @@ The loader **shall** reject files with invalid frontmatter and return an aggrega
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ 총 16개: Ubiquitous 6, Event-Driven 3, State-Driven 2, Optional 2, Complex 3.

@@ -9,6 +9,13 @@ priority: High
 labels: [cli, update, deployment, cleanup, agency, idempotency]
 issue_number: null
 related_specs: [SPEC-AGENCY-ABSORB-001]
+title: "`moai update` — 멱등 배포 + 폐기 경로 정리"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "template"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-V3R3-UPDATE-CLEANUP-001: `moai update` — 멱등 배포 + 폐기 경로 정리
@@ -211,6 +218,11 @@ v0.2.0에서 OQ1과 OQ2는 코드 인스펙션을 통해 해소되었다 (`inter
 - REQ-UPC-022~026 → acceptance.md §7 Observability and Environment Safety scenarios (AC-UPC-022b telemetry permission 포함)
 - 통합 시나리오 A–F → acceptance.md §8 End-to-End Regression Scenarios
 - NFR-UPC-P1 벤치마크 → acceptance.md §9 NFR Benchmark Verification (benchstat 통계 검증)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 9. Summary
 

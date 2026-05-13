@@ -240,6 +240,11 @@ Affected modules:
 - SPEC-V3R2-CON-003 (consolidation pass may emit migration to move misfiled rules — see P-H10 lsp-client.md move).
 - SPEC-V3R2-WF-001 (skill consolidation 48→24 ships migrations in SPEC-V3R2-MIG-001).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - Theme: master §4.3 Layer 3 Runtime; §8 BC-V3R2-008; §7.3 hook audit (subagent-stop pairing); CLAUDE.local.md §14 hardcoding rules.

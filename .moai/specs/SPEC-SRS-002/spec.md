@@ -7,6 +7,11 @@ updated: "2026-04-09"
 author: GOOS
 priority: high
 issue_number: 0
+title: "Experiment Loop + Passive Observation"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SRS-002: Experiment Loop + Passive Observation
@@ -280,6 +285,11 @@ Acceptance:
 - 테이블 드리븐 테스트
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Technical Approach
 

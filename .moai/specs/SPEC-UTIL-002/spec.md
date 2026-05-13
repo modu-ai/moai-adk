@@ -340,6 +340,11 @@ Given/When/Then scenarios map 1:1 to REQs 001-020; REQ-021 is a cross-cutting in
 
 This SPEC does not depend on any other v2.14.0 SPEC. Implementation can begin immediately after SPEC-UTIL-001 merge (per release plan §5 Phase 2 entry criterion).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 ### 10.1 Audit source traceability

@@ -7,6 +7,11 @@ updated: "2026-04-07"
 author: GOOS
 priority: P1
 issue_number: 0
+title: "Stop Persistent Mode (종료 방지 모드)"
+phase: "v2.x - Legacy"
+module: "memory"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -137,6 +142,11 @@ Deactivation happens automatically via:
 ## Dependencies
 
 - SPEC-MEMO-001 (optional): Session-memo includes persistent-mode status for context preservation
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

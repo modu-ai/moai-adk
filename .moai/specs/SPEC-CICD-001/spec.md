@@ -1,6 +1,16 @@
 ---
 id: SPEC-CICD-001
 status: completed
+title: "CI/CD AI 자동화 재설계"
+version: "1.0.0"
+created: 2026-04-01
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "ci"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-CICD-001: CI/CD AI 자동화 재설계
@@ -129,6 +139,11 @@ status: completed
 - REQ-8.2: CodeRabbit은 별도 관점(보안, 스타일)을 제공하므로 유지
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 4. Specifications (명세)
 

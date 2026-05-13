@@ -22,6 +22,9 @@ labels: [design, dtcg, figma, pencil, claude-design, hybrid-pipeline, v3r3, phas
 related_theme: "Phase C — Design Pipeline Hybridization"
 target_release: v2.19.0
 issue_number: null
+created: 2026-04-27
+updated: 2026-05-13
+tags: "legacy"
 ---
 
 # SPEC-V3R3-DESIGN-PIPELINE-001: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing
@@ -215,6 +218,11 @@ Coverage: 12 REQs ↔ 7 ACs, 100% (every REQ appears in at least one AC).
 | SPEC-V3R3-PROJECT-HARNESS-001 | Soft co-dependency | The Socratic interview in PROJECT-HARNESS-001 may pre-select a default design path; this SPEC honors that selection but does not require it. |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. Glossary
 

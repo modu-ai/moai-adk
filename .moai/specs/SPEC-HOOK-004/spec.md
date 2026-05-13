@@ -339,6 +339,11 @@ type FileBaseline struct {
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## Implementation Notes
 
 **Status**: Draft

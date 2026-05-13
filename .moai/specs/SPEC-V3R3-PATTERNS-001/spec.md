@@ -13,6 +13,11 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 related_specs: [SPEC-V3R3-DEF-007, SPEC-V3R3-ARCH-003]
+created: 2026-04-27
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "patterns"
+tags: "legacy"
 ---
 
 # SPEC-V3R3-PATTERNS-001: Pattern Cookbook — revfactory/harness 흡수
@@ -165,6 +170,11 @@ THE corresponding files SHALL also exist (byte-identical) in `internal/template/
 - Task breakdown: see `tasks.md`
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 7. References
 

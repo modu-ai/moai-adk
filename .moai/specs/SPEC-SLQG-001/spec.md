@@ -1,6 +1,16 @@
 ---
 id: SPEC-SLQG-001
 status: draft
+title: "Self-Learning Quality Guard"
+version: "1.0.0"
+created: 2026-04-11
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SLQG-001: Self-Learning Quality Guard
@@ -256,7 +266,7 @@ constraints:
 
 ---
 
-## Out of Scope
+### Out of Scope
 
 - Custom rules for languages other than Go (future SPEC)
 - Auto-promotion of warning→error severity (manual only)

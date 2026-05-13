@@ -192,6 +192,11 @@ The new mobile coverage **shall not** introduce mobile-specific MCP tools into e
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 | REQ ID | Acceptance Criteria | Source |

@@ -7,6 +7,10 @@ created: "2026-03-30"
 updated: "2026-03-30"
 author: GOOS
 priority: P1
+phase: "v2.x - Legacy"
+module: "agents"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-AGENT-001: Agent Architecture Modernization (Phase 1)

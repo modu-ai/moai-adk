@@ -13,6 +13,12 @@ related_specs: [SPEC-V3R2-ORC-001, SPEC-V3R3-RETIRED-AGENT-001]
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
+title: "Manager-DDD Retired Stub Standardization (Follow-up to RETIRED-AGENT-001)"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "retired"
+tags: "legacy"
 ---
 
 # SPEC-V3R3-RETIRED-DDD-001: Manager-DDD Retired Stub Standardization (Follow-up to RETIRED-AGENT-001)
@@ -388,6 +394,11 @@ The MoAI agent runtime SubagentStart guard (`agentStartHandler` in `internal/hoo
   - **Total files modified**: 33 (= 1 retired stub + 1 audit test + 1 factory.go + 30 Cat A + 2 Cat C - manager-ddd.md double-counted = 33; CHANGELOG.md is +1 making it 34)
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 12. Self-Audit (Pre-Write Validation Checklist)
 

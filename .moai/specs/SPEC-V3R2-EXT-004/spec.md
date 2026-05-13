@@ -231,6 +231,11 @@ Step ordering **shall** be determined by: primary by `Version()` (semver), secon
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ 총 19개: Ubiquitous 7, Event-Driven 4, State-Driven 3, Optional 2, Complex 3.

@@ -229,6 +229,11 @@ The `postToolUseFailureHandler` **shall** classify errors into at least 3 catego
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ 총 19개: Ubiquitous 8, Event-Driven 4, State-Driven 2, Optional 2, Complex 3.

@@ -190,6 +190,11 @@ Template-First discipline: every rule edit must be mirrored in `internal/templat
 - Problem catalog P-R02 Constitutional sprawl, P-R03 CLAUDE.md/common-protocol duplication.
 - SPEC-V3R2-CON-002 amendment protocol — NOT invoked by this pass (mechanical only).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - Theme: Layer 1 Constitution (master-v3 §4).

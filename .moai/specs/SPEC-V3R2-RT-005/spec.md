@@ -228,6 +228,11 @@ Affected modules:
 - SPEC-V3R2-WF-006 (output styles inherit provenance from the same resolver).
 - SPEC-V3R2-CON-003 (consolidation pass moves settings-management rule text into `.claude/rules/moai/core/settings-management.md`).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - Theme: master §4.3 Layer 3 Runtime; §5.5 Multi-Layer Settings with Provenance.

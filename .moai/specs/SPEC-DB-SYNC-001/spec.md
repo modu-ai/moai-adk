@@ -10,6 +10,13 @@ labels: [db, hook, post-tool-use, schema-sync, drift, moai-domain-db-docs, debou
 issue_number: null
 depends_on: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
 related_specs: [SPEC-PROJECT-DB-HINT-001]
+title: "PostToolUse Hook + moai-domain-db-docs Skill + DB Drift Verification"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "database"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DB-SYNC-001: PostToolUse Hook + moai-domain-db-docs Skill + DB Drift Verification
@@ -205,6 +212,11 @@ exit 0
 - 정적 템플릿 파일 콘텐츠 정의 — SPEC-DB-TEMPLATES-001 책임
 - DB 마이그레이션 실행 자체 (순수 문서 동기화만, 런타임 DB 변경 없음)
 - ERD 시각화 렌더링(훅은 `.mmd` 텍스트만 생성하며 이미지 렌더링은 하지 않음)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Traceability
 

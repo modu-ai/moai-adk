@@ -302,6 +302,11 @@ Core criteria:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - REQ-to-AC mapping: REQ-001 → AC-01; REQ-002 → AC-02; REQ-003 → AC-03; REQ-004 → AC-03; REQ-005 → AC-04; REQ-006 → AC-05; REQ-007 → AC-06; REQ-008 → AC-09; REQ-009 → AC-07; REQ-010 → AC-09; REQ-011 → AC-04; REQ-012 → AC-08; REQ-013 → AC-07; REQ-014 → AC-04; REQ-015 → AC-09 (canary evidence optional); REQ-016 → solo-mode regression; REQ-017 → AC-07 (leak test); REQ-018 → AC-04; REQ-019 → AC-10.

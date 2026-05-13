@@ -121,6 +121,11 @@ func analyzeFile(path string, ...) ([]Violation, error) {
 - **R2 (저위험)**: 1 MiB cap 검증이 `ParseFile`과 `MeasureWithTree` 양쪽에서 중복 수행될 경우 성능 회귀. **Mitigation**: `ParseFile`에서 1회 검증 후 Tree에 flag 저장, `MeasureWithTree`는 Tree 전제로 재검증 skip.
 - **R3 (저위험)**: `MeasureWithTree`에 잘못된 `lang` 인자 전달 시 쿼리 패턴 mismatch 가능. **Mitigation**: Tree 생성 시 lang을 Tree 구조체에 저장, `MeasureWithTree`에서 `tree.lang != lang` 검증 후 error 반환.
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 8. Dependencies (의존성)
 
 - **Blocked by**: SPEC-UTIL-001 Phase 3.1 구현 완료 (`release/v2.14.0` 머지 대기). v2.15 착수 시점에는 main 반영됨

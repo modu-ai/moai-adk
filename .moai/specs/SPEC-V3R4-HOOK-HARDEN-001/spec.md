@@ -10,6 +10,13 @@ labels: [hooks, observability, reliability, claude-code, template]
 issue_number: null
 depends_on: []
 related_specs: [SPEC-CC2122-HOOK-001, SPEC-CC2122-HOOK-002]
+title: "Hook Wrapper Hardening"
+created: 2026-05-13
+updated: 2026-05-13
+phase: "v3.0.0 - Lifecycle"
+module: "hooks"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-V3R4-HOOK-HARDEN-001: Hook Wrapper Hardening
@@ -146,7 +153,9 @@ REQ-HOOK-HARDEN-001-014 → AC-HOOK-HARDEN-001-02.c.i (Wave 2, rotation idempote
 REQ-HOOK-HARDEN-001-015 → AC-HOOK-HARDEN-001-03.b (Wave 3, opt-out)
 REQ-HOOK-HARDEN-001-016 → AC-HOOK-HARDEN-001-03.b.i (Wave 3, $HOME absence)
 
-## Out of Scope (What NOT to Build)
+### Out of Scope (What NOT to Build)
+
+- See enumerated exclusions below.
 
 1. **Go hook handler logic changes**: `internal/hook/*.go` 와 `internal/cli/hook*.go`의 비즈니스 로직, JSON 파싱, decision 생성 코드는 변경하지 않는다. D1의 root cause는 wrapper layer로 격리되었으므로 Go 코드 수정 없이 해결 가능.
 2. **Hook configuration UI / TUI**: settings.json 편집을 위한 대화형 도구나 `moai hook config` 류 CLI 추가는 본 SPEC 범위 밖. 수동 편집 + `moai update` warning(REQ-007)만 제공.

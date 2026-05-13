@@ -202,6 +202,11 @@ Affected modules:
 - SPEC-V3R2-SPC-004 (ACI `moai_lsp_*` commands must coexist with sandbox/permission layers — this SPEC gates their exposure via allowlist).
 - SPEC-V3R2-CON-003 (constitution consolidation moves permission rule text into `.claude/rules/moai/core/settings-management.md`).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability (추적성)
 
 - Theme: master §4.3 Layer 3 Runtime; §5.2 Multi-Source Permission Resolution; §8 BC-V3R2-015.

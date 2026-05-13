@@ -5,6 +5,13 @@ status: draft
 priority: P2
 created: "2026-04-07"
 harness_pillar: "P1: Guardrails"
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "security"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SECURITY-001: Security Hardening
@@ -30,6 +37,11 @@ The default hardcoded patterns SHALL NOT be removed (defense in depth — config
 
 ### REQ-SEC-005 (Ubiquitous)
 The extra_dangerous_bash_patterns SHALL include: `curl.*\|.*sh`, `wget.*\|.*sh`, `chmod\s+777`, `rm\s+-rf\s+/[^.]` (targeting root paths).
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Scope
 

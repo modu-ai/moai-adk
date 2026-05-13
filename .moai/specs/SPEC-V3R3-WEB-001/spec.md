@@ -8,6 +8,13 @@ author: Goos
 priority: High
 labels: [web, cockpit, foundation, capability-c1, idea-001, archived]
 issue_number: null
+title: "Cockpit Foundation + Workflow Tracker capability"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "web"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -99,6 +106,11 @@ The following items are **explicitly out of scope** for SPEC-V3R3-WEB-001. Each 
 - **Real-time streaming via SSE/WebSocket** — polling is sufficient per `research.md` §2.2; SSE/WebSocket explicitly rejected during Phase 4 Converge
 - **Multiple-page navigation** — single-page invariant; no `/specs`, `/dashboard`, `/settings` sibling routes
 - **Brand visual integration beyond reading** — deferred to WEB-008; this SPEC may reference brand assets only as candidates, not bind them
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Source References
 

@@ -1,4 +1,5 @@
 ---
+id: SPEC-PLAYWRIGHT-001
 spec_id: SPEC-PLAYWRIGHT-001
 title: "Playwright Active Testing"
 created: "2026-04-01"
@@ -7,7 +8,12 @@ priority: high
 module: template
 version: "1.0.0"
 lifecycle: spec-anchored
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+tags: "legacy"
 ---
+id: SPEC-PLAYWRIGHT-001
 
 # Playwright Active Testing
 
@@ -121,6 +127,11 @@ Playwright test failures **shall** contribute to the Functionality dimension sco
 3. Add Playwright testing section to Phase 2.8a in run.md, gated by harness level + web detection
 4. Define Playwright test flow: navigate, interact, capture, evaluate
 5. Integrate Playwright results into Functionality dimension scoring
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

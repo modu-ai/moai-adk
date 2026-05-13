@@ -10,6 +10,13 @@ labels: [docs-site, i18n, simplify, batch, cleanup, consistency, 4-locale]
 issue_number: null
 depends_on: [SPEC-SKILL-GATE-001]
 related_specs: []
+title: "docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "docs"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DOCS-SB-REMOVE-001: docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거
@@ -109,6 +116,11 @@ related_specs: []
 - **R-1 (Hextra 빌드 깨짐)**: auto-quality.md 삭제 후 _meta.yaml에서 참조가 남으면 빌드 실패. **완화**: _meta.yaml에서 엔트리 제거 + hugo build 검증.
 - **R-2 (번역 품질 불일치)**: en/ja/zh에서 같은 문장을 제거할 때 근접 단락이 어색해질 수 있음. **완화**: 제거 후 각 locale의 REFACTOR/IMPROVE 단락이 독립적으로 읽히는지 수동 검토.
 - **R-3 (harness-engineering.md 처리)**: ko-only 파일이므로 본 SPEC은 **내부 링크만 정리**(파일 자체는 보존). en/ja/zh에 번역 배포는 별도 SPEC 대상.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

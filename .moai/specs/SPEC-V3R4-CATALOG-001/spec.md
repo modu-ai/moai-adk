@@ -6,9 +6,15 @@ created_at: 2026-05-12
 updated_at: 2026-05-12
 author: GOOS행님
 priority: High
-labels: [catalog, manifest, tier, audit, infrastructure]
+labels: ""
 issue_number: 859
-implementation:
+title: "3-Tier Catalog Manifest"
+created: 2026-05-12
+updated: 2026-05-13
+phase: "v3.0.0 - Lifecycle"
+module: "catalog"
+lifecycle: completed
+tags: "legacy"
   run_pr: 862
   eval_fix_pr: 863
   evaluation_pass_at: 2026-05-12T03:30:00Z
@@ -211,6 +217,11 @@ The following are explicitly **OUT OF SCOPE** for SPEC-V3R4-CATALOG-001 and defe
 - `.claude/rules/moai/development/skill-authoring.md` — Skill YAML frontmatter 스키마 (manifest 설계의 cross-reference; tier 필드는 frontmatter 가 아닌 manifest 에만).
 - `.claude/rules/moai/development/coding-standards.md` — Template-First, 16-language neutrality, single source of truth 원칙.
 - `.claude/rules/moai/core/zone-registry.md` CONST-V3R2-005 — Template-First discipline (catalog.yaml 도 templates/ 외부지만 templates → user project 흐름 일관 유지).
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

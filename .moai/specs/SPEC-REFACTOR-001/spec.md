@@ -7,6 +7,11 @@ updated: "2026-03-20"
 author: GOOS
 priority: high
 issue_number: 0
+title: "moai rank 기능 완전 제거"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -90,6 +95,11 @@ MoAI-ADK-Go에서 `moai rank` 리더보드 기능을 완전히 제거한다. 이
 - `go test ./...` 전체 통과
 - `go test -race ./...` 레이스 조건 없음
 - 영향받는 패키지 커버리지 85%+ 유지
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 5. 의존성
 

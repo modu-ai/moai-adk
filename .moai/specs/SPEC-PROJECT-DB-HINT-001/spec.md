@@ -10,6 +10,13 @@ labels: [project, db-detection, workflow-extension, next-steps, hint, multi-lang
 issue_number: null
 depends_on: [SPEC-DB-CMD-001]
 related_specs: [SPEC-DB-TEMPLATES-001, SPEC-DB-SYNC-001]
+title: "`/moai project` Phase 4 DB 감지 → `/moai db init` Next Step 힌트"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "project"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-PROJECT-DB-HINT-001: `/moai project` Phase 4 DB 감지 → `/moai db init` Next Step 힌트
@@ -398,6 +405,11 @@ Swift:
 - **Given**: `package-lock.json`이 1 MB 초과(generated)
 - **When**: Phase 4.1a 스캔
 - **Then**: lockfile은 스캔하지 않고 skip 로그 기록, `package.json`만 스캔 대상으로 포함
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Definition of Done
 

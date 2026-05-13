@@ -10,6 +10,13 @@ labels: [workflow, skill, cleanup, claude-code-integration, batch, simplify]
 issue_number: null
 depends_on: []
 related_specs: [SPEC-DB-SYNC-HARDEN-001]
+title: "도달 불가 / 비신뢰 스킬 참조 일괄 제거"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "skills"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SKILL-GATE-001: 도달 불가 / 비신뢰 스킬 참조 일괄 제거
@@ -173,6 +180,11 @@ Claude Code v2.1.116 바이너리에 번들된 두 built-in 스킬에 대한 MoA
 - 사용자 감사 보고: 91 세션 JSONL 집계 (2026-04-21)
 - SPEC-DB-SYNC-HARDEN-001: 직전 SPEC의 sync 단계에서 본 결함이 노출됨
 - `.moai/config/sections/language.yaml`: `code_comments: ko` — Background/Rationale 자연어 선택 기준
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

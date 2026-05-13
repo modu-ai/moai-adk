@@ -10,6 +10,13 @@ labels: [workflow, plan-audit, gate, governance, dogfood]
 issue_number: null
 depends_on: []
 related_specs: []
+title: "Plan→Run 전이 의무 감사 게이트"
+created: 2026-04-26
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "workflow"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-WF-AUDIT-GATE-001: Plan→Run 전이 의무 감사 게이트
@@ -140,6 +147,11 @@ The system shall persist every plan-audit result (PASS, FAIL, or `INCONCLUSIVE`)
 | R-WAG-7 | INCONCLUSIVE 처리 시 사용자가 일관되게 proceed-with-acknowledgement만 선택 | Low | Medium | proceed 선택 시 progress.md에 `inconclusive_acknowledged_by` 사용자 식별자 강제 기록. |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 6. HISTORY
 

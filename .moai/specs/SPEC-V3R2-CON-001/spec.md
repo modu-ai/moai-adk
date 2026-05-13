@@ -197,6 +197,11 @@ Notes:
 - SPEC §5.1 canonical 7 FROZEN invariants (inlined) — authoritative source for REQ-CON-001-005; supersedes the broken `master-v3 §1.3` anchor that was invalid (§1.3 of `.moai/design/v3-legacy/docs/major-v3-master-v1.md` contains Success Metrics, not invariants).
 - master-v3 §4 Layer 1 — Go primitive sketch (referenced for `Zone uint8` type decision only).
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 - Theme: Layer 1 Constitution (master-v3 §4 "Constitution").

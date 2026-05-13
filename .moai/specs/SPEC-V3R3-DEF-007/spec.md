@@ -170,6 +170,11 @@ The convention sweep **shall not** alter the existing description, allowed-tools
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 | REQ ID | Acceptance Criteria | Source |

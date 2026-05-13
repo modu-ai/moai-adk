@@ -7,6 +7,11 @@ updated: "2026-04-07"
 author: GOOS
 priority: P2
 issue_number: 0
+title: "LSP MCP Bridge (Go 바이너리 내장)"
+phase: "v2.x - Legacy"
+module: "lsp"
+lifecycle: completed
+tags: "legacy"
 ---
 
 ## HISTORY
@@ -105,6 +110,11 @@ diagnosticsCollector := lsphook.NewDiagnosticsCollector(lspProvider, fallbackDia
 ## Dependencies
 
 - SPEC-LSP-001 (Completed): Uses existing `internal/lsp/` types and interfaces
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

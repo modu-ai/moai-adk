@@ -7,6 +7,11 @@ updated: "2026-04-09"
 author: GOOS
 priority: high
 issue_number: 0
+title: "데드코드 정리 + Self-Research 기반 패키지"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SRS-001: 데드코드 정리 + Self-Research 기반 패키지
@@ -220,6 +225,11 @@ Acceptance:
 - 설정 로드 테스트 통과
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Technical Approach
 

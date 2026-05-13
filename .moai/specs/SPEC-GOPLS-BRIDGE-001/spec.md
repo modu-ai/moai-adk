@@ -13,6 +13,7 @@ estimated_loc: 2400
 dependencies: []
 lifecycle: spec-anchored
 tags: gopls, lsp, json-rpc, go-toolchain, quality-gate
+title: "Go-only gopls Subprocess Bridge"
 ---
 
 # SPEC-GOPLS-BRIDGE-001: Go-only gopls Subprocess Bridge
@@ -185,6 +186,11 @@ Concrete Go type definitions (struct fields, method signatures, dependency types
 - **Aggregation across servers**: that is SPEC-LSP-AGG-003's responsibility.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

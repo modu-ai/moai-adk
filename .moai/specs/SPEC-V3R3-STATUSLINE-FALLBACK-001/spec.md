@@ -8,6 +8,13 @@ author: GOOS행님
 priority: High
 labels: [statusline, fallback, cli]
 issue_number: null
+title: "moai statusline Go 바이너리 stdin fallback 강화"
+created: 2026-05-10
+updated: 2026-05-13
+phase: "v3.0.0 - Consolidation"
+module: "statusline"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-V3R3-STATUSLINE-FALLBACK-001: moai statusline Go 바이너리 stdin fallback 강화
@@ -108,6 +115,11 @@ issue_number: null
 - **No new goroutines**: Fallback 로직은 동기식 (env read, getcwd, file read 모두 마이크로초 단위)
 - **No new dependencies**: 표준 라이브러리만 사용
 - **Race-safe**: Cache file write는 sequential (Build 파이프라인 내)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 4. 관련 문서
 

@@ -10,6 +10,13 @@ labels: [db, templates, schema-docs, erd, migrations, rls, template-first]
 issue_number: null
 depends_on: []
 related_specs: [SPEC-DB-CMD-001, SPEC-DB-SYNC-001]
+title: ".moai/project/db/ 7-File Template Set and db.yaml Config Section"
+created: 2026-04-21
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "database"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DB-TEMPLATES-001: .moai/project/db/ 7-File Template Set and db.yaml Config Section
@@ -288,6 +295,11 @@ db:
 - **빌드 검증**: AC-8은 `make build` 후 `go test ./internal/template/...`로 embedded.go 회귀 방지
 - **통합 검증**: AC-15는 `moai init`을 fresh temp directory에서 실행하여 배포 대상 경로를 확인; 통합 테스트(`internal/cli/init_test.go` 또는 전용 테스트)로 자동화 권장
 - **동작 검증**: AC-9는 `/moai db init` 수동 실행 2회로 idempotency 확인; 구현 완료 시 통합 테스트로 자동화 권장 (SPEC-DB-CMD-001에서 처리)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Notes on AC Format Convention
 

@@ -231,6 +231,11 @@ The system **shall** document loading precedence: project `settings.json` `outpu
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## Implementation Notes (완료 기록)
 
 ### Completion Summary

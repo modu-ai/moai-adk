@@ -396,6 +396,11 @@ Claude Code `settings.json`에서의 훅 등록 형태:
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## Implementation Notes
 
 **Status**: Completed

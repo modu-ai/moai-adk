@@ -10,6 +10,13 @@ labels: [spec-status, lifecycle, lint, hook, github-actions, automation, drift-p
 issue_number: null
 depends_on: [SPEC-STATUS-AUTO-001]
 related_specs: [SPEC-V3R4-CATALOG-001, SPEC-V3R4-CATALOG-002, SPEC-V3R2-WF-003, SPEC-V3R2-WF-004]
+title: "SPEC Status Lifecycle Automation — 7-Layer Defense in Depth"
+created: 2026-05-13
+updated: 2026-05-13
+phase: "v3.0.0 - Lifecycle"
+module: "status"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-V3R4-STATUS-LIFECYCLE-001: SPEC Status Lifecycle Automation — 7-Layer Defense in Depth
@@ -320,6 +327,11 @@ If M-1 fails, this SPEC's status MUST be re-evaluated and a follow-up SPEC opene
 - **Soft**: `SPEC-V3R2-WF-003`/`WF-004` (mode dispatch, classification) — provides the conventional-commits PR-title contract this SPEC parses.
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## §11. References
 

@@ -12,6 +12,7 @@ module: "internal/ui/, internal/cli/wizard/"
 dependencies:
   - SPEC-UI-001
 tags: huh, glamour, lipgloss, tui-modernization, charmbracelet, theme, accessibility
+lifecycle: completed
 ---
 
 # SPEC-UI-003: TUI Modernization
@@ -226,6 +227,11 @@ Per quality.yaml hybrid mode:
 - Then the project compiles without errors
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 5. Implementation Notes
 

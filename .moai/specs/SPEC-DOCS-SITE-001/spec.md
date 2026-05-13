@@ -7,6 +7,11 @@ updated: 2026-04-20
 author: manager-spec
 priority: High
 issue_number: null
+title: "SPEC-DOCS-SITE-001 — moai-docs 흡수 및 Hextra 전면 전환"
+phase: "v2.x - Legacy"
+module: "docs"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-DOCS-SITE-001 — moai-docs 흡수 및 Hextra 전면 전환
@@ -247,6 +252,11 @@ moai-adk-go 프로젝트가 Go 단일 바이너리 기반으로 정리되면서,
 3. Hugo v0.140+ 및 Hextra 최신 안정 버전이 마이그레이션 시점에 배포판으로 가용하다.
 4. GitHub `moai-adk-docs` 레포의 `main` 브랜치가 현재 Vercel 프로덕션 배포와 동일한 커밋을 가리킨다.
 5. DNS `adk.mo.ai.kr` 의 NS/CNAME 레코드 소유권이 GOOS에 있다 (AC-PRE-01 조사 후 필요 시 조정 가능).
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 10. 성공 기준 (Success Criteria — 요약)
 

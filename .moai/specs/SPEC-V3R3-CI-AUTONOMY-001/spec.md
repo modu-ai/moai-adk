@@ -17,6 +17,9 @@ phase: "v3.0.0 R3 — CI/CD Autonomy"
 module: "internal/bodp/, internal/cli/worktree/new.go, internal/cli/status.go, internal/template/templates/.git_hooks/, internal/template/templates/.github/workflows/, internal/template/templates/.claude/skills/moai-workflow-ci-watch/, .claude/skills/moai/workflows/plan.md, scripts/ci-mirror/, .claude/rules/moai/development/branch-origin-protocol.md"
 tags: "ci-mirror, auto-fix-loop, worktree-state-guard, auxiliary-workflow-hygiene, branch-protection, branch-origin-decision-protocol, i18n-validator, v3r3"
 related_theme: "Quality Pipeline Autonomy + GitHub Flow Hardening"
+title: "Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol"
+created: 2026-05-06
+updated: 2026-05-13
 ---
 
 # SPEC-V3R3-CI-AUTONOMY-001: Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol

@@ -1,6 +1,16 @@
 ---
 id: SPEC-PSR-001
 status: completed
+title: "Profile Setup Redesign -- StatuslineMode Exposure"
+version: "1.0.0"
+created: 2026-03-06
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-PSR-001: Profile Setup Redesign -- StatuslineMode Exposure
@@ -306,6 +316,11 @@ Phase 5 (Tests) -- runs after all phases
 ```
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 9. Traceability
 

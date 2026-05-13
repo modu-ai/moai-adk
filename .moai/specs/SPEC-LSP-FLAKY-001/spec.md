@@ -1,6 +1,16 @@
 ---
 id: SPEC-LSP-FLAKY-001
 status: draft
+title: "Ubuntu LSP Launcher ETXTBSY Flake Stabilization"
+version: "1.0.0"
+created: 2026-05-01
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "lsp"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-LSP-FLAKY-001: Ubuntu LSP Launcher ETXTBSY Flake Stabilization
@@ -74,7 +84,7 @@ Linux fork-exec ETXTBSY race. `t.Parallel()` 환경에서 한 테스트가 fake 
 - `internal/lsp/subprocess/supervisor.go`
 - `internal/lsp/subprocess/supervisor_test.go`
 
-## Out of Scope
+### Out of Scope
 
 - `TestGetOrSpawn_SingleflightBarrier_*` 의 hardening — 최근 20+회 CI 에서 실패 증거 없음. 향후 별도 관찰 후 필요 시 별 SPEC.
 - `internal/lsp/subprocess/launcher.go` 의 production retry 로직 — test issue를 production code 로 leak 하지 않음.

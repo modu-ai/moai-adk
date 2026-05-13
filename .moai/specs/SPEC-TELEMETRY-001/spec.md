@@ -1,6 +1,16 @@
 ---
 id: SPEC-TELEMETRY-001
 status: implemented
+title: "Skill Usage Telemetry"
+version: "1.0.0"
+created: 2026-04-15
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "telemetry"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-TELEMETRY-001: Skill Usage Telemetry
@@ -154,6 +164,11 @@ The system SHALL NOT store personally identifiable information and SHALL enforce
 ## Dependencies
 
 - SPEC-EVO-001: `.moai/evolution/telemetry/` directory and .gitignore entry
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 

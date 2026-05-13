@@ -7,6 +7,11 @@ updated: "2026-04-09"
 author: GOOS
 priority: high
 issue_number: 0
+title: "Dashboard + CLI + Agency 통합"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SRS-003: Dashboard + CLI + Agency 통합
@@ -190,6 +195,11 @@ Acceptance:
 - must_pass와 nice_to_have 모두 포함
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Technical Approach
 

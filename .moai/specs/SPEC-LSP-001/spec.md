@@ -17,6 +17,9 @@ dependencies:
   - SPEC-CONFIG-001
 lifecycle: spec-anchored
 tags: lsp, json-rpc, diagnostics, multi-language, concurrency
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
 ---
 
 # SPEC-LSP-001: Language Server Protocol Client System
@@ -393,6 +396,11 @@ internal/lsp/ -----> go.lsp.dev/protocol (LSP type 정의)
 | REQ-LSP-G02 | server.go | server_test.go: TestPartialFailure |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

@@ -204,6 +204,11 @@ The Token Circuit Breaker **shall not** intercept or modify Claude API requests/
 
 ---
 
+
+### Out of Scope
+
+- N/A (legacy SPEC)
+
 ## 10. Traceability
 
 | REQ ID | Acceptance Criteria | Source |

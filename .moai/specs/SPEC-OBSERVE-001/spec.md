@@ -5,6 +5,13 @@ status: draft
 priority: P0
 created: "2026-04-07"
 harness_pillar: "P5: Observability"
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "reflection"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-OBSERVE-001: Structured Observability
@@ -88,6 +95,11 @@ SessionEnd handler
 - `internal/hook/registry.go` — Inject TraceWriter, write trace after each dispatch
 - `internal/hook/session_end.go` — Generate session summary on SessionEnd
 - `internal/cli/deps.go` — Wire TraceWriter into Registry
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Non-Goals
 - Real-time dashboard UI (CLI query only for now)

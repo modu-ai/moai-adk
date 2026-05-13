@@ -9,6 +9,13 @@ priority: Medium
 labels: [glm, mcp, vision, websearch, integration, enhancement]
 issue_number: 756
 related_specs: [SPEC-GLM-001, SPEC-CC2122-MCP-001, SPEC-LSPMCP-001]
+title: "Z.AI 공식 MCP 서버 통합 (Vision + Web Search + Web Reader)"
+created: 2026-05-04
+updated: 2026-05-13
+phase: "v2.x - Legacy"
+module: "glm"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-GLM-MCP-001: Z.AI 공식 MCP 서버 통합 (Vision + Web Search + Web Reader)
@@ -190,6 +197,11 @@ Z.AI 의 공식 MCP 서버 패키지(`@z_ai/mcp-server`) 는 GLM-4.6V Vision (�
 ## Implementation Reference
 
 마일스톤, 우선순위, 기술적 접근 방식, 위험 완화는 `plan.md` 를 참조한다.
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

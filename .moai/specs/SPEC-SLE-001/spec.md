@@ -1,6 +1,16 @@
 ---
 id: SPEC-SLE-001
 status: completed
+title: "Statusline Enhancement"
+version: "1.0.0"
+created: 2026-03-06
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "legacy"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-SLE-001: Statusline Enhancement
@@ -388,6 +398,11 @@ Phase 4 (Multi-line Verbose)   Phase 5 (Wizard Enhancement)
 | R7      | File-based cache race conditions (concurrent statusline calls) | Medium | Low | Use atomic write (write to temp file, then rename) for cache file operations |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 9. Traceability
 

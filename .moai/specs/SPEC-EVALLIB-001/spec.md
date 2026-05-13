@@ -1,4 +1,5 @@
 ---
+id: SPEC-EVALLIB-001
 spec_id: SPEC-EVALLIB-001
 title: "Evaluator Prompt Library"
 created: "2026-04-01"
@@ -7,7 +8,12 @@ priority: high
 module: template
 version: "1.0.0"
 lifecycle: spec-anchored
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+tags: "legacy"
 ---
+id: SPEC-EVALLIB-001
 
 # Evaluator Prompt Library
 
@@ -128,6 +134,11 @@ The profile **shall** explicitly penalize the following AI-slop patterns:
 3. Add profile loading logic to evaluator-active.md agent definition
 4. Implement JSONL logging for evaluation results in run.md Phase 2.8a
 5. Design periodic analysis trigger (every 50 entries) as advisory output
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Files to Modify
 

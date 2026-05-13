@@ -5,6 +5,14 @@ status: draft
 created_at: 2026-02-16T16:05:00+09:00
 priority: high
 domains: [cli, git, workflow, integration]
+version: "1.0.0"
+created: 2026-02-17
+updated: 2026-05-13
+author: GOOS
+phase: "v2.x - Legacy"
+module: "github"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-GITHUB-WORKFLOW: Enhanced GitHub Issues Workflow
@@ -436,6 +444,11 @@ This SPEC relates to:
   - moai-foundation-core skill: TRUST 5 quality framework
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Version History
 

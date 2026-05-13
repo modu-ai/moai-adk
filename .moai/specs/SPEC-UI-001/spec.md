@@ -18,6 +18,7 @@ resolves:
   - "#249"
   - "#286"
 tags: bubbletea, lipgloss, tui, elm-architecture, charmbracelet
+lifecycle: completed
 ---
 
 # SPEC-UI-001: Terminal UI Framework
@@ -362,6 +363,11 @@ Model (상태) --> Update (메시지 처리) --> View (렌더링)
 | SPEC-CONFIG-001 | theme.go | 테마 설정 의존 | -- |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

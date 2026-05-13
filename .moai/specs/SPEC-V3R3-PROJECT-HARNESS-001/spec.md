@@ -20,6 +20,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 target_release: v2.19.0
+created: 2026-04-27
+updated: 2026-05-13
+tags: "legacy"
 ---
 
 # SPEC-V3R3-PROJECT-HARNESS-001: Project Harness Activation
@@ -165,6 +168,11 @@ AC ↔ REQ traceability 100% 매트릭스는 `acceptance.md` §5.
 - **EX-PH-007**: `moai cg` / GLM 모드 통합 (orthogonal, 별도 SPEC).
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 8. References
 

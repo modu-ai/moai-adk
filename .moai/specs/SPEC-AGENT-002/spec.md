@@ -7,6 +7,11 @@ updated: 2026-04-09
 author: GOOS
 priority: high
 issue_number: 0
+title: "Agent Definition Optimization - Token Efficiency with Workflow Preservation"
+phase: "v2.x - Legacy"
+module: "agents"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-AGENT-002: Agent Definition Optimization - Token Efficiency with Workflow Preservation
@@ -121,6 +126,11 @@ WHEN Write, Edit, 또는 MultiEdit 도구가 사용될 때 THEN 해당 에이전
 - 존재하지 않는 에이전트: support-claude, workflow-docs, expert-database, design-uiux, core-planner, mcp-context7, mcp-sequential-thinking
 - 존재하지 않는 스킬: moai-core-trust-validation, moai-essentials-review, moai-essentials-perf, moai-core-tag-scanning, moai-manager-spec, moai-language-support, moai-ai-nano-banana
 - 존재하지 않는 hook 이벤트: Stop (SubagentStop으로 변경 필요 여부 확인)
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Exclusions (What NOT to Build)
 

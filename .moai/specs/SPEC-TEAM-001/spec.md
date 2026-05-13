@@ -1,6 +1,16 @@
 ---
 id: SPEC-TEAM-001
 status: completed
+title: "Agent Teams Dynamic Generation Architecture"
+version: "1.0.0"
+created: 2026-03-31
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "team"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-TEAM-001: Agent Teams Dynamic Generation Architecture
@@ -176,7 +186,7 @@ team:
 | Loss of tool restrictions | Low | mode: "plan" enforces read-only; write agents need all tools |
 | general-purpose has excessive tools | Low | Acceptable trade-off for flexibility |
 
-## Out of Scope
+### Out of Scope
 
 - Go CLI code changes (no Go code references team-* agent files directly)
 - Hook handler code changes (agent hooks in internal/hook/agents/ remain for non-team agents)

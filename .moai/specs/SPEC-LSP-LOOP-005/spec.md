@@ -14,6 +14,7 @@ dependencies:
   - SPEC-LSP-AGG-003
 lifecycle: spec-anchored
 tags: lsp, loop, ralph, feedback, classification
+title: "Loop/Ralph LSP Integration"
 ---
 
 # SPEC-LSP-LOOP-005: Loop/Ralph LSP Integration
@@ -102,6 +103,11 @@ Loop controller
 - **Generic Aggregator consumption for non-Go languages**: Although `Aggregator` (SPEC-LSP-AGG-003) is multi-language capable, this SPEC only wires Go diagnostics into Ralph's classification logic.
 - Web UI for diagnostic visualization
 - Historical diagnostic trends across sessions
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## References
 

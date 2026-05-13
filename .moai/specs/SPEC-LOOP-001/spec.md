@@ -1,5 +1,5 @@
 ---
-spec_id: SPEC-LOOP-001
+id: SPEC-LOOP-001
 title: Ralph Feedback Loop Engine
 status: completed
 priority: Medium-High
@@ -20,6 +20,10 @@ tags:
   - convergence
   - automation
 lifecycle: spec-anchored
+version: "1.0.0"
+updated: 2026-05-13
+author: GOOS
+module: "loop"
 ---
 
 # SPEC-LOOP-001: Ralph Feedback Loop Engine
@@ -379,6 +383,11 @@ internal/ralph/ ---> internal/config/
 | REQ-UW-003 | storage.go | AC-UW-* |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## Implementation Notes
 

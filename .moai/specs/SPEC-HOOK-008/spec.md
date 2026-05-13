@@ -1,6 +1,16 @@
 ---
 id: SPEC-HOOK-008
 status: completed
+title: "Complete Hook Event System"
+version: "1.0.0"
+created: 2026-02-14
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "hooks"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-HOOK-008: Complete Hook Event System
@@ -294,6 +304,11 @@ All 7 new subcommands are added to the `hookSubcommands` table in `internal/cli/
 ```
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 6. Traceability
 

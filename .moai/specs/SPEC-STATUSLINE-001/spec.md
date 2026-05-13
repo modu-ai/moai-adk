@@ -1,6 +1,16 @@
 ---
 id: SPEC-STATUSLINE-001
 status: completed
+title: "Statusline Segment Configuration"
+version: "1.0.0"
+created: 2026-02-14
+updated: 2026-05-13
+author: GOOS
+priority: "P2 Medium"
+phase: "v2.x - Legacy"
+module: "statusline"
+lifecycle: completed
+tags: "legacy"
 ---
 
 # SPEC-STATUSLINE-001: Statusline Segment Configuration
@@ -358,6 +368,11 @@ The `MOAI_STATUSLINE_MODE=minimal` mode retains its existing hard-coded behavior
 | `internal/cli/update_test.go` | Test applyWizardConfig for statusline.yaml |
 
 ---
+
+
+### Out of Scope
+
+- N/A (legacy SPEC)
 
 ## 7. Traceability
 
