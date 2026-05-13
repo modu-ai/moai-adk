@@ -142,7 +142,7 @@ catalog:
             - name: manager-brain
               tier: core
               path: templates/.claude/agents/moai/manager-brain.md
-              hash: b1892428ae5512c223e94ace0619ae35484b38cd689d96030207e30fdad58bf3
+              hash: 3324fabbd87095064452289d8cf11d2e9f714833cc4620543f43c9912ab357f5
               version: 1.0.0
             - name: manager-cycle
               tier: core
