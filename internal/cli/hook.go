@@ -808,10 +808,12 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// SHA-256 해시 + 길이 + 언어 (Strategy A 기본, B/C 포함)
+	// SHA-256 해시 [:16] + byte 길이 + 언어 (Strategy A 기본, B/C 포함)
+	// REQ-HRN-OBS-006 / AC-HRN-OBS-004: prompt_hash = SHA-256(prompt) 앞 16 hex 문자,
+	// prompt_len = UTF-8 byte 수 (rune 수 아님 — multi-byte 언어 byte 크기 보존)
 	h := sha256.Sum256([]byte(prompt))
-	promptHash := fmt.Sprintf("%x", h)
-	promptLen := len([]rune(prompt))
+	promptHash := fmt.Sprintf("%x", h)[:16]
+	promptLen := len([]byte(prompt))
 	promptLang := detectPromptLang(prompt)
 
 	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
@@ -840,7 +842,7 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 
 	// opt-in: full (Strategy C)
 	if strategy == UserPromptStrategyFull {
-		evt.PromptFull = prompt
+		evt.PromptContent = prompt
 	}
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {

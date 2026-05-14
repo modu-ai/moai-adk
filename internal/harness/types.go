@@ -112,9 +112,10 @@ type Event struct {
 	// (UserPromptSubmit 전용, opt-in Strategy B, omitempty).
 	PromptPreview string `json:"prompt_preview,omitempty"`
 
-	// PromptFull is the full user prompt text
-	// (UserPromptSubmit 전용, opt-in Strategy C, omitempty).
-	PromptFull string `json:"prompt_full,omitempty"`
+	// PromptContent is the full user prompt text
+	// (UserPromptSubmit 전용, opt-in Strategy C/Full, omitempty).
+	// AC-HRN-OBS-008.b: JSON field name MUST be `prompt_content` (not `prompt_full`).
+	PromptContent string `json:"prompt_content,omitempty"`
 }
 
 // ─────────────────────────────────────────────

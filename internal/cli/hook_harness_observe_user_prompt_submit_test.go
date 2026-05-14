@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 )
@@ -72,15 +71,15 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_HashLenLang(t *testing.T) {
 		t.Errorf("event_type: got=%v, want=%q", entry["event_type"], "user_prompt")
 	}
 
-	// SHA-256 해시 값 검증
+	// SHA-256 해시 값 검증 (앞 16 hex chars만, REQ-HRN-OBS-006 / AC-HRN-OBS-004)
 	h := sha256.Sum256([]byte(prompt))
-	wantHash := fmt.Sprintf("%x", h)
+	wantHash := fmt.Sprintf("%x", h)[:16]
 	if entry["prompt_hash"] != wantHash {
 		t.Errorf("prompt_hash: got=%v, want=%q", entry["prompt_hash"], wantHash)
 	}
 
-	// 길이 = rune count 검증
-	wantLen := float64(utf8.RuneCountInString(prompt))
+	// 길이 = byte count 검증 (multi-byte UTF-8 보존, AC-HRN-OBS-004)
+	wantLen := float64(len([]byte(prompt)))
 	if entry["prompt_len"] != wantLen {
 		t.Errorf("prompt_len: got=%v, want=%v", entry["prompt_len"], wantLen)
 	}
@@ -90,8 +89,8 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_HashLenLang(t *testing.T) {
 		t.Errorf("prompt_lang: got=%v, want=%q", entry["prompt_lang"], "ko")
 	}
 
-	// prompt_full, prompt_preview 미존재 (PII 보호)
-	for _, field := range []string{"prompt_full", "prompt_preview"} {
+	// prompt_content, prompt_preview 미존재 (PII 보호)
+	for _, field := range []string{"prompt_content", "prompt_preview"} {
 		if _, ok := entry[field]; ok {
 			t.Errorf("Strategy A 시 %q가 엔트리에 존재해서는 안 됨 (PII 보호)", field)
 		}
@@ -141,9 +140,9 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
 		t.Errorf("prompt_preview 내용이 앞 200자와 다름")
 	}
 
-	// prompt_full 미존재 (Strategy B는 full text 미포함)
-	if _, ok := entry["prompt_full"]; ok {
-		t.Errorf("Strategy B 시 prompt_full이 존재해서는 안 됨")
+	// prompt_content 미존재 (Strategy B는 full text 미포함)
+	if _, ok := entry["prompt_content"]; ok {
+		t.Errorf("Strategy B 시 prompt_content이 존재해서는 안 됨")
 	}
 
 	// prompt_hash, prompt_len, prompt_lang 존재 검증
@@ -155,7 +154,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
 }
 
 // TestRunHarnessObserveUserPromptSubmit_StrategyC_Full은 Strategy C로
-// prompt_full에 원문 전체가 기록됨을 검증한다.
+// prompt_content에 원문 전체가 기록됨을 검증한다.
 // REQ-HRN-OBS-014: Strategy C = Strategy A + 전문 기록 (명시적 opt-in).
 func TestRunHarnessObserveUserPromptSubmit_StrategyC_Full(t *testing.T) {
 	dir := t.TempDir()
@@ -182,9 +181,9 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyC_Full(t *testing.T) {
 		t.Fatalf("JSONL 파싱 실패: %v", err)
 	}
 
-	// prompt_full에 원문 전체 검증 (JSON키: "prompt_full")
-	if entry["prompt_full"] != prompt {
-		t.Errorf("prompt_full: got=%v, want=%q", entry["prompt_full"], prompt)
+	// prompt_content에 원문 전체 검증 (JSON키: "prompt_content")
+	if entry["prompt_content"] != prompt {
+		t.Errorf("prompt_content: got=%v, want=%q", entry["prompt_content"], prompt)
 	}
 
 	// prompt_hash, prompt_len, prompt_lang 동시 존재
@@ -258,12 +257,12 @@ func TestRunHarnessObserveUserPromptSubmit_FailOpenOnInvalidStrategy(t *testing.
 		t.Fatalf("JSONL 파싱 실패: %v", err)
 	}
 
-	// Strategy A로 폴백 = prompt_hash 존재, prompt_full 없음
+	// Strategy A로 폴백 = prompt_hash 존재, prompt_content 없음
 	if _, ok := entry["prompt_hash"]; !ok {
 		t.Errorf("잘못된 전략 폴백 시 prompt_hash 누락 (Strategy A 폴백 미작동)")
 	}
-	if _, ok := entry["prompt_full"]; ok {
-		t.Errorf("잘못된 전략 폴백 시 prompt_full이 존재해서는 안 됨 (Strategy A 폴백)")
+	if _, ok := entry["prompt_content"]; ok {
+		t.Errorf("잘못된 전략 폴백 시 prompt_content이 존재해서는 안 됨 (Strategy A 폴백)")
 	}
 }
 
