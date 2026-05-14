@@ -1140,3 +1140,69 @@ func TestGLMTools_OrthogonalToGLMMode(t *testing.T) {
 		t.Errorf("enable 이 settings.local.json 을 변경함 (REQ-GMC-002 위반)")
 	}
 }
+
+// ─── autoEnableMCPServer 테스트 ──────────────────────────────────────────────
+
+func TestAutoEnableMCPServer_Success(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "test-glm-key-abc123")
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	autoEnableMCPServer()
+
+	entry := readMCPEntry(t, claudeJSONPath)
+	if entry == nil {
+		t.Fatal("MCP server entry should exist after auto-enable")
+	}
+	if entry["command"] != "npx" {
+		t.Errorf("command = %v, want npx", entry["command"])
+	}
+}
+
+func TestAutoEnableMCPServer_Idempotent(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "test-glm-key-abc123"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
+		"zai-mcp-server": buildZAIMCPEntry(token),
+	})
+
+	info1, _ := os.Stat(claudeJSONPath)
+	mtime1 := info1.ModTime()
+
+	autoEnableMCPServer()
+
+	info2, _ := os.Stat(claudeJSONPath)
+	mtime2 := info2.ModTime()
+
+	if !mtime1.Equal(mtime2) {
+		t.Error("auto-enable should skip writing when already enabled with same token")
+	}
+}
+
+func TestAutoEnableMCPServer_OptOut(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "test-glm-key-abc123")
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	t.Setenv("MOAI_GLM_NO_AUTO_TOOLS", "1")
+
+	autoEnableMCPServer()
+
+	entry := readMCPEntry(t, claudeJSONPath)
+	if entry != nil {
+		t.Error("MCP server should not be enabled when MOAI_GLM_NO_AUTO_TOOLS=1")
+	}
+}
+
+func TestAutoEnableMCPServer_NoToken(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	autoEnableMCPServer()
+
+	entry := readMCPEntry(t, claudeJSONPath)
+	if entry != nil {
+		t.Error("MCP server should not be enabled when no GLM token")
+	}
+}

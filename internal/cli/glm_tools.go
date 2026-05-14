@@ -464,6 +464,39 @@ func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 	return false, writeClaudeJSONAtomic(configPath, root)
 }
 
+// autoEnableMCPServer attempts to enable Z.AI MCP server during GLM launch.
+// Non-blocking: warns on stderr but never returns error.
+// Skips if MOAI_GLM_NO_AUTO_TOOLS=1, no token, or already enabled with same token.
+func autoEnableMCPServer() {
+	if os.Getenv("MOAI_GLM_NO_AUTO_TOOLS") == "1" {
+		return
+	}
+
+	token := loadGLMKey()
+	if token == "" {
+		return
+	}
+
+	configPath, err := resolveConfigPath("user")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: MCP auto-enable config path resolution failed: %v\n", err)
+		return
+	}
+
+	skipped, err := enableMCPServerIdempotent(configPath, token)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: Z.AI MCP auto-enable failed: %v\n", err)
+		_, _ = fmt.Fprintln(os.Stderr, "  MCP tools (Vision, Web Search, Web Reader) may not be available.")
+		_, _ = fmt.Fprintln(os.Stderr, "  Manual enable: moai glm tools enable all")
+		return
+	}
+
+	if !skipped {
+		_, _ = fmt.Fprintln(os.Stderr, "Z.AI MCP tools auto-enabled (Vision, Web Search, Web Reader)")
+		_, _ = fmt.Fprintln(os.Stderr, "  Disable: moai glm tools disable all")
+	}
+}
+
 // runEnableMCPServerScoped 는 project scope (.mcp.json) 에 enable 을 수행한다 (REQ-GMC-008)
 func runEnableMCPServerScoped(mcpJSONPath string, token string) error {
 	return runEnableMCPServer(mcpJSONPath, token)
