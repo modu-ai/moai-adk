@@ -90,4 +90,11 @@ func init() {
 
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
+
+	// NOTE: newHarnessCmd is intentionally NOT registered per SPEC-V3R4-HARNESS-001
+	// (BC-V3R4-HARNESS-001-CLI-RETIREMENT). The harness CLI verb path is retired;
+	// all lifecycle verbs (status / apply / rollback / disable) are owned by the
+	// /moai:harness slash command + skill workflow surface (no Go binary invocation).
+	// See internal/cli/harness_retirement_test.go for the CI guard test that
+	// asserts the absence of a "harness" subcommand registration.
 }

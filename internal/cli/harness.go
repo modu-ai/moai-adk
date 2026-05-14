@@ -1,5 +1,19 @@
-// Package cli — /moai harness subcommand.
-// REQ-HL-009: provide 4 verbs: status / apply / rollback <date> / disable
+// DEPRECATED: per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT).
+// The harness CLI subcommand is retired. Use /moai:harness slash command instead.
+// This file remains as a deprecation marker; physical removal is deferred to a
+// follow-up SPEC after downstream SPECs SPEC-V3R4-HARNESS-002 through
+// SPEC-V3R4-HARNESS-008 merge.
+//
+// The newHarnessCmd factory is intentionally NOT registered into the cobra
+// command tree in internal/cli/root.go. A CI guard in
+// internal/cli/harness_retirement_test.go (TestHarnessRetirement) enforces
+// the non-registration contract per REQ-HRN-FND-001 and REQ-HRN-FND-002.
+//
+// Package cli — /moai harness subcommand (retired; preserved as deprecation marker).
+// Historical: REQ-HL-009 provided 4 verbs (status / apply / rollback <date> / disable)
+// via the moai harness CLI verb path. As of V3R4, all four verbs are owned by the
+// /moai:harness slash command surface and the moai skill workflow body at
+// .claude/skills/moai/workflows/harness.md (no Go binary invocation).
 package cli
 
 import (

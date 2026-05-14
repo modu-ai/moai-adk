@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -418,6 +419,43 @@ func trimSpace(s string) string {
 	return s[left:right]
 }
 
+// isHarnessLearningEnabled reports whether the harness learning subsystem is
+// enabled for the project rooted at projectRoot, per REQ-HRN-FND-009 of
+// SPEC-V3R4-HARNESS-001.
+//
+// The gate reads `.moai/config/sections/harness.yaml` and inspects the
+// top-level `learning.enabled` key. Truth table:
+//
+//   - file missing / unreadable          → true  (treat as enabled by default)
+//   - YAML parse error                   → true  (fail-open; preserve baseline)
+//   - `learning` block absent            → true  (default enabled)
+//   - `learning.enabled` absent          → true  (default enabled)
+//   - `learning.enabled: true`           → true
+//   - `learning.enabled: false`          → false (observer must be a no-op)
+//
+// The gate is intentionally fail-open so that a corrupted or missing config
+// does not silently disable the observer. Explicit `false` is required to
+// suppress observation, matching the EARS state-driven semantics of REQ-HRN-FND-009.
+func isHarnessLearningEnabled(projectRoot string) bool {
+	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "harness.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return true
+	}
+	var doc struct {
+		Learning struct {
+			Enabled *bool `yaml:"enabled,omitempty"`
+		} `yaml:"learning,omitempty"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return true
+	}
+	if doc.Learning.Enabled == nil {
+		return true
+	}
+	return *doc.Learning.Enabled
+}
+
 // runHarnessObserve reads PostToolUse hook stdin JSON and records event to usage-log.jsonl.
 // T-P1-03: handle-harness-observe.sh → moai hook harness-observe routing implementation.
 //
@@ -428,8 +466,25 @@ func trimSpace(s string) string {
 // "toolInput": { ... }
 // }
 //
-// @MX:NOTE: [AUTO] learning.enabled Configuration/Settings gate Phase 4from/in/at addition planned/scheduled (T-P4-XX).
+// @MX:NOTE: [AUTO] REQ-HRN-FND-009 (SPEC-V3R4-HARNESS-001): When learning.enabled
+// in harness.yaml resolves to false, this handler is a complete no-op — no read,
+// no write, no append to usage-log.jsonl. Existing log entries are not deleted.
+// Gate is implemented by isHarnessLearningEnabled (fail-open semantics: missing
+// config or parse error preserves baseline observation).
 func runHarnessObserve(cmd *cobra.Command, _ []string) error {
+	// detect project route: based on cwd
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	// REQ-HRN-FND-009 gate: if learning.enabled is explicitly false, exit no-op.
+	// stdin is NOT consumed in the no-op path; the hook exits 0 immediately so
+	// the PostToolUse pipeline is non-blocking and leaves usage-log.jsonl untouched.
+	if !isHarnessLearningEnabled(cwd) {
+		return nil
+	}
+
 	// read stdin JSON
 	var hookInput struct {
 		ToolName string `json:"toolName"`
@@ -438,12 +493,6 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 	decoder := json.NewDecoder(os.Stdin)
 	// on parsing failure also exit 0 (non-blocking: does not block parent tool call)
 	_ = decoder.Decode(&hookInput)
-
-	// detect project route: based on cwd
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
 
 	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
 	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
