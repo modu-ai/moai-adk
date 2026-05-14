@@ -39,11 +39,11 @@ func findProjectRoot(t *testing.T) string {
 // canonical Safety Architecture 레이어 이름을 포함하는지 검증한다.
 //
 // 검증 대상 레이어 (Layer N: Name 패턴):
-//  - Layer 1: Frozen Guard
-//  - Layer 2: Canary Check
-//  - Layer 3: Contradiction Detector
-//  - Layer 4: Rate Limiter
-//  - Layer 5: Human Oversight
+//   - Layer 1: Frozen Guard
+//   - Layer 2: Canary Check
+//   - Layer 3: Contradiction Detector
+//   - Layer 4: Rate Limiter
+//   - Layer 5: Human Oversight
 //
 // 이 테스트는 문자열 검색으로 constitution.md가 수정되지 않았음을 검증한다.
 func TestSafetyArchitecture_LayerCount(t *testing.T) {

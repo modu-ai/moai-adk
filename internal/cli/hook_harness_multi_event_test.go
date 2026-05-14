@@ -238,9 +238,9 @@ func TestResolveUserPromptStrategy_FailOpen(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name      string
-		input     string
-		wantEnum  UserPromptStrategy
+		name     string
+		input    string
+		wantEnum UserPromptStrategy
 	}{
 		{"empty", "", UserPromptStrategyHash},
 		{"hash_explicit", "hash", UserPromptStrategyHash},
@@ -270,13 +270,13 @@ func TestDetectPromptLang(t *testing.T) {
 		prompt string
 		want   string
 	}{
-		{"안녕하세요", "ko"},                // Hangul
-		{"こんにちは", "ja"},               // Hiragana
-		{"カタカナ", "ja"},                 // Katakana
-		{"你好世界", "zh"},                 // CJK
-		{"hello world", "en"},           // ASCII
-		{"", ""},                        // empty
-		{"12345!@#$%", ""},              // no letters
+		{"안녕하세요", "ko"},       // Hangul
+		{"こんにちは", "ja"},       // Hiragana
+		{"カタカナ", "ja"},        // Katakana
+		{"你好世界", "zh"},        // CJK
+		{"hello world", "en"}, // ASCII
+		{"", ""},              // empty
+		{"12345!@#$%", ""},    // no letters
 	}
 
 	for _, tc := range cases {

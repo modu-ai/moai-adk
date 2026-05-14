@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 // TestRunHarnessObserveStop_NoOpWhenLearningDisabled는 learning.enabled=false일 때
 // Stop 핸들러가 usage-log.jsonl을 전혀 생성하지 않음을 검증한다.
 // REQ-HRN-FND-009: isHarnessLearningEnabled 게이트 재사용.

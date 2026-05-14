@@ -106,9 +106,9 @@ func TestEvent_OptionalFieldsSerializedWhenSet(t *testing.T) {
 		TierIncrement: 0,
 		SchemaVersion: LogSchemaVersion,
 		// Stop 이벤트 옵션 필드
-		SessionID:                   "sess-abc123",
-		LastAssistantMessageHash:    "sha256-xyz",
-		LastAssistantMessageLen:     4200,
+		SessionID:                "sess-abc123",
+		LastAssistantMessageHash: "sha256-xyz",
+		LastAssistantMessageLen:  4200,
 	}
 
 	data, err := json.Marshal(evt)
