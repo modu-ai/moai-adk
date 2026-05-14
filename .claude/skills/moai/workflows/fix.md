@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["fix", "auto-fix", "error", "lint", "diagnostic", "lsp", "type error"]
-  agents: ["expert-debug", "expert-backend", "expert-frontend", "expert-refactoring"]
+  agents: ["manager-quality", "expert-backend", "expert-frontend", "expert-refactoring"]
   phases: ["fix"]
 ---
 
@@ -177,7 +177,7 @@ See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 Agent selection by fix level:
 - Level 1 (import, formatting): expert-backend or expert-frontend subagent
 - Level 2 (rename, type): expert-refactoring subagent
-- Level 3 (logic, API): expert-debug or expert-backend subagent (after user approval)
+- Level 3 (logic, API): manager-quality or expert-backend subagent (after user approval)
 
 Execution order:
 - Level 1 fixes applied automatically via agent delegation

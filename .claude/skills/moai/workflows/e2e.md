@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["e2e", "end-to-end", "e2e test", "browser test", "playwright", "agent-browser", "user journey"]
-  agents: ["expert-testing", "expert-frontend"]
+  agents: ["manager-develop", "expert-frontend"]
   phases: ["e2e"]
 ---
 
@@ -96,7 +96,7 @@ Detection results are used to mark availability status in AskUserQuestion option
 
 ### Step 0.1: Tool Detection
 
-[HARD] Delegate tool detection to the expert-testing subagent.
+[HARD] Delegate tool detection to the manager-develop subagent.
 
 Detection commands (run in parallel):
 - Agent Browser: `npx agent-browser --version 2>/dev/null || echo "not-installed"`
@@ -176,7 +176,7 @@ For Playwright best practices and patterns, reference: Skill("moai-workflow-test
 
 ## Phase 1: Journey Mapping
 
-[HARD] Delegate journey mapping to the expert-testing subagent.
+[HARD] Delegate journey mapping to the manager-develop subagent.
 
 If --journey flag: Load the specified journey definition and skip to Phase 2.
 
@@ -208,7 +208,7 @@ Steps:
 
 ## Phase 2: Test Script Creation
 
-[HARD] Delegate test script creation to the expert-testing subagent.
+[HARD] Delegate test script creation to the manager-develop subagent.
 
 ### Playwright CLI Mode
 
@@ -245,7 +245,7 @@ No test script files generated. Instead, create journey step definitions as stru
 
 ## Phase 3: Test Execution
 
-[HARD] Delegate test execution to the expert-testing subagent (or expert-frontend for Chrome MCP).
+[HARD] Delegate test execution to the manager-develop subagent (or expert-frontend for Chrome MCP).
 
 ### Playwright CLI Execution
 
@@ -428,11 +428,11 @@ Next Steps (AskUserQuestion):
 
 ## Agent Chain Summary
 
-- Phase 0: expert-testing subagent (tool detection and installation)
-- Phase 1: expert-testing subagent (journey mapping)
-- Phase 2: expert-testing subagent (test script creation)
-- Phase 3: expert-testing or expert-frontend subagent (test execution). For Chrome DevTools MCP performance baselines and Lighthouse audits, delegate to expert-performance subagent.
-- Phase 4: expert-frontend subagent (GIF recording via Chrome MCP / Chrome DevTools MCP screenshot sequences) or expert-testing (Playwright/Agent Browser traces)
+- Phase 0: manager-develop subagent (tool detection and installation)
+- Phase 1: manager-develop subagent (journey mapping)
+- Phase 2: manager-develop subagent (test script creation)
+- Phase 3: manager-develop or expert-frontend subagent (test execution). For Chrome DevTools MCP performance baselines and Lighthouse audits, delegate to expert-performance subagent.
+- Phase 4: expert-frontend subagent (GIF recording via Chrome MCP / Chrome DevTools MCP screenshot sequences) or manager-develop (Playwright/Agent Browser traces)
 - Phase 5: MoAI orchestrator (report and user interaction)
 
 ## Execution Summary
@@ -440,10 +440,10 @@ Next Steps (AskUserQuestion):
 1. Parse arguments (extract flags: --tool, --record, --url, --journey, --headless, --browser, --timeout, --retry)
 2. Phase 0: Detect available tools, always prompt user with recommendation, install if needed
 3. If --journey: Load specific journey, skip to Phase 2
-4. Phase 1: Delegate journey mapping to expert-testing subagent
+4. Phase 1: Delegate journey mapping to manager-develop subagent
 5. Present journey options to user via AskUserQuestion
-6. Phase 2: Delegate test script creation to expert-testing subagent
-7. Phase 3: Delegate test execution to expert-testing/expert-frontend subagent
+6. Phase 2: Delegate test script creation to manager-develop subagent
+7. Phase 3: Delegate test execution to manager-develop/expert-frontend subagent
 8. Phase 4: If --record, capture recordings via selected tool's mechanism
 9. TaskCreate/TaskUpdate for all journeys
 10. Phase 5: Report results with next step options

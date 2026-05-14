@@ -1,6 +1,6 @@
 ---
 name: moai-workflow-ci-watch
-description: CI watch loop skill — monitors gh pr checks after /moai sync PR creation, classifies required vs auxiliary failures, emits ready-to-merge handoff or T3 expert-debug trigger. HARD invocation contract in .claude/rules/moai/workflow/ci-watch-protocol.md.
+description: CI watch loop skill — monitors gh pr checks after /moai sync PR creation, classifies required vs auxiliary failures, emits ready-to-merge handoff or T3 manager-quality trigger. HARD invocation contract in .claude/rules/moai/workflow/ci-watch-protocol.md.
 version: "1.0.0"
 tools: Bash,Read
 level1_tokens: 120
@@ -74,10 +74,10 @@ When `/moai sync` Phase 4 returns a PR number, the orchestrator MUST:
    moai pr watch --report <PR_NUMBER> --branch <BRANCH>
    ```
 
-4. On exit 2, pipe JSON handoff to Wave 3 expert-debug:
+4. On exit 2, pipe JSON handoff to Wave 3 manager-quality:
    ```bash
    # stdout contains: {"prNumber":N,"branch":"...","failedChecks":[...],"auxiliaryFailCount":N}
-   # Orchestrator injects this JSON into expert-debug spawn prompt.
+   # Orchestrator injects this JSON into manager-quality spawn prompt.
    ```
 
 ### State File Management
@@ -162,7 +162,7 @@ Every 30-second tick emits to stderr:
 
 ### Wave 3 Handoff Schema
 
-On exit 2, stdout contains stable JSON for `expert-debug` consumption:
+On exit 2, stdout contains stable JSON for `manager-quality` consumption:
 
 ```json
 {
@@ -187,7 +187,7 @@ Field stability: `name`, `runId`, `logUrl` are stable for Wave 3. Do not rename.
 
 ## Works Well With
 
-- `moai-workflow-ci-watch` → `expert-debug` (Wave 3 auto-fix loop)
+- `moai-workflow-ci-watch` → `manager-quality` (Wave 3 auto-fix loop)
 - `.github/required-checks.yml` (Wave 1 SSoT)
 - `scripts/ci-mirror/run.sh` (Wave 1 local CI mirror)
 - `.claude/rules/moai/workflow/ci-watch-protocol.md` (HARD invocation contract)

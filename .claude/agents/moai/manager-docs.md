@@ -105,3 +105,13 @@ OUT OF SCOPE: Code implementation (expert-backend/frontend), deployment (expert-
 - Lint error rate < 1%
 - Accessibility score > 95% (WCAG 2.1)
 - Page load speed < 2 seconds
+
+## Status Responsibility Matrix
+
+This agent is responsible for the following SPEC status transitions:
+
+| Transition | Trigger | Agent Role |
+|---|---|---|
+| `implemented → completed` | Sync PR merged | Final status transition after documentation sync |
+
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected.

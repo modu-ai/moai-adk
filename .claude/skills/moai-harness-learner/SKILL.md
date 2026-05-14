@@ -10,6 +10,13 @@ triggers:
   - keyword: "learning proposal"
   - keyword: "tier 4"
   - keyword: "auto update proposal"
+  - keyword: "harness 학습"
+  - keyword: "harness 상태"
+  - keyword: "harness 제안"
+  - keyword: "harness 롤백"
+  - keyword: "harness 비활성화"
+  - keyword: "학습 제안"
+  - keyword: "자동 업데이트"
 allowed-tools: Bash,Read,Write,Edit,AskUserQuestion
 user-invocable: false
 ---

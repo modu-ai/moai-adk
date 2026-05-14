@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["clean", "dead code", "unused code", "dead-code", "remove unused"]
-  agents: ["expert-refactoring", "expert-testing"]
+  agents: ["expert-refactoring", "manager-develop"]
   phases: ["clean"]
 ---
 
@@ -168,7 +168,7 @@ Safety Measures:
 
 ## Phase 5: Test Verification
 
-[HARD] Delegate test verification to the expert-testing subagent.
+[HARD] Delegate test verification to the manager-develop subagent.
 
 After removals:
 - Run full test suite: `go test -race ./...` (Go) or equivalent
@@ -233,7 +233,7 @@ Next Steps (AskUserQuestion):
 - Phase 2: expert-refactoring subagent (usage graph analysis)
 - Phase 3: MoAI orchestrator (user approval via AskUserQuestion)
 - Phase 4: expert-refactoring subagent (safe removal)
-- Phase 5: expert-testing subagent (test verification)
+- Phase 5: manager-develop subagent (test verification)
 - Phase 5.5: MoAI orchestrator or expert-refactoring (MX tag cleanup)
 
 ## Execution Summary
@@ -246,7 +246,7 @@ Next Steps (AskUserQuestion):
 6. If --dry: Display analysis results and exit
 7. Present removal plan to user via AskUserQuestion
 8. Delegate safe removal to expert-refactoring subagent
-9. Delegate test verification to expert-testing subagent
+9. Delegate test verification to manager-develop subagent
 10. Clean up @MX tags for removed code (Phase 5.5)
 11. TaskCreate/TaskUpdate for all candidates
 12. Report results with next step options

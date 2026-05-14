@@ -185,6 +185,8 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")   //nolint:errcheck
 	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                     //nolint:errcheck
 	_ = os.Setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1") //nolint:errcheck
+	// Z.AI MCP server (zai-mcp-server) reads this env for authentication.
+	_ = os.Setenv("Z_AI_API_KEY", apiKey) //nolint:errcheck
 }
 
 // runGLMSetup saves a GLM API key.
@@ -414,8 +416,8 @@ func clearTmuxSessionEnv() error {
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 		"API_TIMEOUT_MS",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
-		// Legacy: DISABLE_PROMPT_CACHING was previously used for Z.AI compat
-		// but Z.AI now supports prompt caching. Cleanup residual values.
+		// Legacy cleanup: DISABLE_PROMPT_CACHING was removed from GLM env injection.
+		// Kept here only to clean up residual values from older sessions.
 		"DISABLE_PROMPT_CACHING",
 		// Issue #742: clear GLM context-size hint when leaving GLM mode
 		config.EnvStatuslineContextSize,

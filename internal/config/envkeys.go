@@ -40,6 +40,9 @@ const (
 	// EnvSkipBinaryUpdate skips binary self-update when set to "1".
 	EnvSkipBinaryUpdate = "MOAI_SKIP_BINARY_UPDATE"
 
+	// EnvGLMNoAutoTools skips automatic Z.AI MCP server enable on moai glm launch.
+	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
+
 	// EnvGitConvention overrides the git commit convention.
 	EnvGitConvention = "MOAI_GIT_CONVENTION"
 

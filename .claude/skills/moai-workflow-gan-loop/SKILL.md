@@ -130,20 +130,6 @@ else:
     ITERATE → pass feedback to Builder, increment N
 ```
 
-<!-- @MX:NOTE: Per design-constitution §11.4.1; enforces REQ-HRN-002-009 fresh respawn -->
-**Phase 4b: Iteration Handoff (REQ-HRN-002-009)**
-
-Before passing control back to the Builder for the next iteration, the GAN loop runner MUST execute an iteration-boundary handoff:
-
-1. **Respawn evaluator-active**: The orchestrator MUST spawn a fresh `Agent(subagent_type="evaluator-active")` call for the next iteration. Do NOT reuse the prior evaluator instance or pass its transcript.
-2. **Narrow context injection**: The new evaluator spawn prompt MUST contain only three inputs:
-   - (a) SPEC + BRIEF reference (document path or content)
-   - (b) Current Sprint Contract criterion states from the durable artifact (passed/failed/refined/new)
-   - (c) Artifact path under review for this iteration
-3. **Forbidden context**: Prior iteration's scoring internals, judgment rationales, or reflection traces MUST NOT appear in the new spawn prompt. Violation is detectable via `internal/harness.DetectPriorJudgmentLeak()`.
-
-This fresh-respawn protocol implements design-constitution §11.4.1 Principle 4.
-
 **Phase 5: Iteration Feedback**
 
 If looping back:
@@ -157,8 +143,6 @@ If looping back:
 ### Stagnation Detection
 
 Stagnation is detected when the score improvement between consecutive iterations is below `improvement_threshold` for 2 or more iterations.
-
-> **Note (design-constitution §11.4.1)**: Stagnation comparison reads score deltas from the **durable Sprint Contract artifact**, NOT from prior iteration's evaluator memory. The evaluator is fresh-spawned each iteration; score history is carried by the Sprint Contract file at `.moai/sprints/{team-id}/contract.yaml` (or `.moai/sprints/{spec-id}/contract.yaml` for solo mode).
 
 Tracking:
 - After each iteration, record `{iteration: N, score: X}` in the sprint artifact.
@@ -286,21 +270,6 @@ When testing tools are unavailable, fall back to static code analysis only, and 
 
 ---
 
-## Solo Mode (REQ-HRN-002-016)
-
-When running the GAN loop in solo mode (no team-id, single operator session), the Sprint Contract artifact uses a spec-id alias instead of a team-id:
-
-- **Team mode path**: `.moai/sprints/{team-id}/contract.yaml`
-- **Solo mode alias**: `.moai/sprints/{spec-id}/contract.yaml`
-
-The GAN loop runner resolves the path as follows:
-1. If `team_id` is available in the session context: use `.moai/sprints/{team-id}/contract.yaml`
-2. Otherwise: fall back to `.moai/sprints/{spec-id}/contract.yaml`
-
-This alias ensures the Sprint Contract's cross-iteration durable state (passed/failed/refined criteria) is always persisted regardless of execution mode, satisfying design-constitution §11.4.1's "sole cross-iteration carrier" requirement.
-
----
-
 ## Works Well With
 
 - `moai-domain-brand-design`: Provides design tokens that Evaluator validates in Design Quality dimension
@@ -311,5 +280,5 @@ This alias ensures the Sprint Contract's cross-iteration durable state (passed/f
 ---
 
 Source: Absorbed from agency constitution (Section 11 GAN Loop Contract, Section 12 Evaluator Leniency Prevention) on 2026-04-20.
-REQ coverage: REQ-SKILL-011, REQ-SKILL-012, REQ-SKILL-012a, REQ-SKILL-013, REQ-SKILL-014, REQ-CONST-004, REQ-HRN-002-009, REQ-HRN-002-016
-Version: 1.1.0
+REQ coverage: REQ-SKILL-011, REQ-SKILL-012, REQ-SKILL-012a, REQ-SKILL-013, REQ-SKILL-014, REQ-CONST-004
+Version: 1.0.0

@@ -237,4 +237,16 @@ Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
 - Extract Method, Extract Class, Move Method, Rename (safe multi-file rename via AST-grep)
 
 **TDD Patterns**:
+
+## Status Responsibility Matrix
+
+This agent is responsible for the following SPEC status transitions:
+
+| Transition | Trigger | Agent Role |
+|---|---|---|
+| `planned → in-progress` | Partial AC met during run | Updates status when some (not all) acceptance criteria pass |
+| `planned → implemented` | All AC GREEN | Updates status when all acceptance criteria pass |
+| `in-progress → implemented` | Remaining AC met | Updates status from partial to full completion |
+
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected.
 - Specification by Example, Outside-In TDD, Inside-Out TDD, Test Doubles (Mocks, Stubs, Fakes, Spies)

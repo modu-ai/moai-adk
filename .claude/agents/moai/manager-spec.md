@@ -179,6 +179,17 @@ Detect domain keywords and recommend expert consultation:
 - DevOps keywords (deployment, Docker, CI/CD): Recommend expert-devops
 - Use AskUserQuestion for user confirmation before consultation
 
+## Status Responsibility Matrix
+
+This agent is responsible for the following SPEC status transitions:
+
+| Transition | Trigger | Agent Role |
+|---|---|---|
+| `draft` (initial) | SPEC file created | Sets initial `status: draft` in frontmatter |
+| `draft → planned` | Plan PR merged | Not directly triggered by this agent; enforced by CI/hook |
+
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected.
+
 ## Adaptive Behavior
 
 - Beginner: Detailed EARS explanations, confirm before writing

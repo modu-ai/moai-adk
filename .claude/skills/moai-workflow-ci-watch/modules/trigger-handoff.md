@@ -1,6 +1,6 @@
 # T3 Trigger Handoff Schema
 
-Metadata schema for Wave 3 (expert-debug auto-fix loop) consumption.
+Metadata schema for Wave 3 (manager-quality auto-fix loop) consumption.
 Produced on exit code 2 from `scripts/ci-watch/run.sh`.
 
 ## JSON Schema (Wave 2 stable)
@@ -51,9 +51,9 @@ handoff_json="$(MOAI_CIWATCH_GH=gh sh scripts/ci-watch/run.sh $PR_NUMBER $BRANCH
 exit_code=$?
 
 if [ "$exit_code" = "2" ]; then
-    # Inject into Wave 3 expert-debug spawn prompt:
+    # Inject into Wave 3 manager-quality spawn prompt:
     # "Fix the failing CI checks for PR #N. Handoff metadata: $handoff_json"
-    # expert-debug reads logUrl to fetch logs and diagnoses root cause.
+    # manager-quality reads logUrl to fetch logs and diagnoses root cause.
 fi
 ```
 

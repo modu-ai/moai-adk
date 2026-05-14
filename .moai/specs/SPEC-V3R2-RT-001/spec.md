@@ -1,25 +1,13 @@
 ---
 id: SPEC-V3R2-RT-001
-title: "Hook JSON-OR-ExitCode Dual Protocol"
-version: "0.1.0"
+version: "0.1.1"
 status: planned
-created: 2026-04-23
-updated: 2026-05-13
+created_at: 2026-04-23
+updated_at: 2026-05-14
 author: GOOS
 priority: P0 Critical
-phase: "v3.0.0 — Phase 2 — Runtime Hardening"
-module: "internal/hook/"
-dependencies:
-  - SPEC-V3R2-CON-001
-  - SPEC-V3R2-RT-005
-bc_id: [BC-V3R2-001]
-related_principle: [P8 Hook Output = JSON Protocol, P2 ACI, P6 Permission Bubble]
-related_pattern: [T-5, T-1, S-1]
-related_problem: [P-H05, P-H19, P-C01]
-related_theme: "Layer 3: Runtime"
-breaking: true
-lifecycle: spec-anchored
-tags: "hook, protocol, json, v3r2, breaking, runtime"
+labels: [hook, protocol, json, v3r2, breaking, runtime]
+issue_number: null
 ---
 
 # SPEC-V3R2-RT-001: Hook JSON-OR-ExitCode Dual Protocol
@@ -28,6 +16,7 @@ tags: "hook, protocol, json, v3r2, breaking, runtime"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1 | 2026-05-14 | plan-auditor defect fix | MP-1: REQ sequential renumbering (001-025). MP-2: AC EARS compliance. MP-3: frontmatter `created_at`/`updated_at`/`labels` fix. |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft from Wave 3 synthesis. Supersedes SPEC-V3-HOOKS-001 with scope narrowed to protocol semantics (separates handler coverage into SPEC-V3R2-RT-006 and settings provenance into SPEC-V3R2-RT-005). |
 
 ---
@@ -113,54 +102,54 @@ Affected modules:
 
 ### 5.2 Event-Driven Requirements
 
-- REQ-V3R2-RT-001-010: WHEN a hook wrapper writes a JSON object to stdout and the JSON parses successfully, the protocol reader SHALL populate `HookResponse` directly and bypass exit-code inspection.
-- REQ-V3R2-RT-001-011: WHEN JSON parse fails or stdout contains only whitespace, the protocol reader SHALL fall back to exit-code synthesis (0 → allow, 2 → deny with stderr as reason, other non-zero → user-visible systemMessage).
-- REQ-V3R2-RT-001-012: WHEN a hook returns `AdditionalContext` on SessionStart, UserPromptSubmit, PreToolUse, or PostToolUse, the system SHALL append the text to the next model turn's system-context block in the order the hooks fired.
-- REQ-V3R2-RT-001-013: WHEN a PreToolUse hook returns `UpdatedInput` with a non-nil map, the system SHALL replace the pending tool-call input with the rewritten map before dispatching the tool.
-- REQ-V3R2-RT-001-014: WHEN any hook returns `Continue: false`, the system SHALL halt the current turn and, for SubagentStop, block the teammate from idling until the orchestrator resolves the blocker.
-- REQ-V3R2-RT-001-015: WHEN a hook returns `SystemMessage`, the system SHALL emit it to the user-visible status stream exactly once per hook invocation.
-- REQ-V3R2-RT-001-016: WHEN a PostToolUse hook returns `AdditionalContext` containing `@MX:NOTE`, `@MX:WARN`, `@MX:ANCHOR`, `@MX:TODO`, or `@MX:LEGACY` markers, the system SHALL route the text into the @MX tag ingestion path defined in SPEC-V3R2-SPC-002 (integration point only; semantics in that SPEC).
+- REQ-V3R2-RT-001-008: WHEN a hook wrapper writes a JSON object to stdout and the JSON parses successfully, the protocol reader SHALL populate `HookResponse` directly and bypass exit-code inspection.
+- REQ-V3R2-RT-001-009: WHEN JSON parse fails or stdout contains only whitespace, the protocol reader SHALL fall back to exit-code synthesis (0 → allow, 2 → deny with stderr as reason, other non-zero → user-visible systemMessage).
+- REQ-V3R2-RT-001-010: WHEN a hook returns `AdditionalContext` on SessionStart, UserPromptSubmit, PreToolUse, or PostToolUse, the system SHALL append the text to the next model turn's system-context block in the order the hooks fired.
+- REQ-V3R2-RT-001-011: WHEN a PreToolUse hook returns `UpdatedInput` with a non-nil map, the system SHALL replace the pending tool-call input with the rewritten map before dispatching the tool.
+- REQ-V3R2-RT-001-012: WHEN any hook returns `Continue: false`, the system SHALL halt the current turn and, for SubagentStop, block the teammate from idling until the orchestrator resolves the blocker.
+- REQ-V3R2-RT-001-013: WHEN a hook returns `SystemMessage`, the system SHALL emit it to the user-visible status stream exactly once per hook invocation.
+- REQ-V3R2-RT-001-014: WHEN a PostToolUse hook returns `AdditionalContext` containing `@MX:NOTE`, `@MX:WARN`, `@MX:ANCHOR`, `@MX:TODO`, or `@MX:LEGACY` markers, the system SHALL route the text into the @MX tag ingestion path defined in SPEC-V3R2-SPC-002 (integration point only; semantics in that SPEC).
 
 ### 5.3 State-Driven Requirements
 
-- REQ-V3R2-RT-001-020: WHILE the environment variable `MOAI_HOOK_LEGACY=1` is set, the deprecation-warning banner SHALL be suppressed but dual-parse SHALL continue to accept both output forms.
-- REQ-V3R2-RT-001-021: WHILE `.moai/config/sections/system.yaml` key `hook.strict_mode` is `true`, the system SHALL reject any hook whose stdout fails JSON parse with error `HookProtocolLegacyRejected` (halts the turn with user-visible message).
-- REQ-V3R2-RT-001-022: WHILE the hook payload size exceeds 64 KiB, the system SHALL truncate `AdditionalContext` to 64 KiB and emit `SystemMessage: "AdditionalContext truncated to 64 KiB budget"`.
+- REQ-V3R2-RT-001-015: WHILE the environment variable `MOAI_HOOK_LEGACY=1` is set, the deprecation-warning banner SHALL be suppressed but dual-parse SHALL continue to accept both output forms.
+- REQ-V3R2-RT-001-016: WHILE `.moai/config/sections/system.yaml` key `hook.strict_mode` is `true`, the system SHALL reject any hook whose stdout fails JSON parse with error `HookProtocolLegacyRejected` (halts the turn with user-visible message).
+- REQ-V3R2-RT-001-017: WHILE the hook payload size exceeds 64 KiB, the system SHALL truncate `AdditionalContext` to 64 KiB and emit `SystemMessage: "AdditionalContext truncated to 64 KiB budget"`.
 
 ### 5.4 Optional Features
 
-- REQ-V3R2-RT-001-030: WHERE a hook wrapper declares `api_version: 2` in its frontmatter (shell comment `# moai-hook-api-version: 2`), the system SHALL skip exit-code fallback for that wrapper even in non-strict mode.
-- REQ-V3R2-RT-001-031: WHERE a hook returns the `Retry` field with a non-nil `RetryHint{Attempts int, Backoff string}`, the orchestrator MAY re-dispatch the hook up to the declared attempt count with exponential backoff bounded by `Backoff`.
-- REQ-V3R2-RT-001-032: WHERE `WatchPaths` is returned by SessionStart, the system SHALL register file-system watches on the paths and fire `FileChanged` hook events when they change.
+- REQ-V3R2-RT-001-018: WHERE a hook wrapper declares `api_version: 2` in its frontmatter (shell comment `# moai-hook-api-version: 2`), the system SHALL skip exit-code fallback for that wrapper even in non-strict mode.
+- REQ-V3R2-RT-001-019: WHERE a hook returns the `Retry` field with a non-nil `RetryHint{Attempts int, Backoff string}`, the orchestrator MAY re-dispatch the hook up to the declared attempt count with exponential backoff bounded by `Backoff`.
+- REQ-V3R2-RT-001-020: WHERE `WatchPaths` is returned by SessionStart, the system SHALL register file-system watches on the paths and fire `FileChanged` hook events when they change.
 
 ### 5.5 Unwanted Behavior
 
-- REQ-V3R2-RT-001-040: IF a hook returns `HookSpecificOutput.HookEventName` that does not match the dispatched event, THEN the system SHALL reject the response with error `HookSpecificOutputMismatch`, log the mismatch to `.moai/logs/hook.log`, and treat the hook as failed.
-- REQ-V3R2-RT-001-041: IF a hook returns both a `PermissionDecision` and a non-empty `UpdatedInput` for a PreToolUse event, THEN the system SHALL apply `UpdatedInput` first, then apply `PermissionDecision` against the updated input.
-- REQ-V3R2-RT-001-042: IF a hook writes malformed JSON (parse error) AND stderr is also empty AND exit code is 0, THEN the system SHALL treat the hook as allow-continue with no side effects and log a warning to `.moai/logs/hook.log`.
+- REQ-V3R2-RT-001-021: IF a hook returns `HookSpecificOutput.HookEventName` that does not match the dispatched event, THEN the system SHALL reject the response with error `HookSpecificOutputMismatch`, log the mismatch to `.moai/logs/hook.log`, and treat the hook as failed.
+- REQ-V3R2-RT-001-022: IF a hook returns both a `PermissionDecision` and a non-empty `UpdatedInput` for a PreToolUse event, THEN the system SHALL apply `UpdatedInput` first, then apply `PermissionDecision` against the updated input.
+- REQ-V3R2-RT-001-023: IF a hook writes malformed JSON (parse error) AND stderr is also empty AND exit code is 0, THEN the system SHALL treat the hook as allow-continue with no side effects and log a warning to `.moai/logs/hook.log`.
 
 ### 5.6 Complex Requirements
 
-- REQ-V3R2-RT-001-050: WHILE `hook.strict_mode: false` AND the hook emits legacy exit-code output, WHEN the session has already emitted the deprecation banner, THEN the system SHALL suppress further banner emissions until the next session but SHALL continue to honor the exit code (allow/deny/user-stderr).
-- REQ-V3R2-RT-001-051: WHILE `BC-V3R2-001` is in its deprecation window (v3.0.0 through v3.x), WHEN a plugin-contributed hook emits legacy exit-code output, THEN the system SHALL apply the dual-parse fallback without raising an error regardless of strict-mode.
+- REQ-V3R2-RT-001-024: WHILE `hook.strict_mode: false` AND the hook emits legacy exit-code output, WHEN the session has already emitted the deprecation banner, THEN the system SHALL suppress further banner emissions until the next session but SHALL continue to honor the exit code (allow/deny/user-stderr).
+- REQ-V3R2-RT-001-025: WHILE `BC-V3R2-001` is in its deprecation window (v3.0.0 through v3.x), WHEN a plugin-contributed hook emits legacy exit-code output, THEN the system SHALL apply the dual-parse fallback without raising an error regardless of strict-mode.
 
 ## 6. Acceptance Criteria (수용 기준)
 
-- AC-V3R2-RT-001-01: Given a PreToolUse hook wrapper writes `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"file_path":"/tmp/x"}}}` to stdout, When the hook fires, Then the tool input is replaced with `{"file_path":"/tmp/x"}` before execution and the resolver receives `permissionDecision: allow`. (maps REQ-V3R2-RT-001-010, -013)
-- AC-V3R2-RT-001-02: Given a SessionStart hook returns `{"additionalContext":"ctx","watchPaths":["/abs/.env"]}`, When parsed, Then `HookResponse.AdditionalContext == "ctx"` and `HookResponse.WatchPaths == ["/abs/.env"]` with validator passing. (maps REQ-V3R2-RT-001-001, -012, -032)
-- AC-V3R2-RT-001-03: Given a legacy hook wrapper exits with code 2 and stderr `"blocked"`, When dual-parse falls back, Then `HookResponse.PermissionDecision == "deny"` and the reason field contains `"blocked"`. (maps REQ-V3R2-RT-001-011)
-- AC-V3R2-RT-001-04: Given `MOAI_HOOK_LEGACY=1` is set, When a legacy wrapper fires, Then no deprecation banner is emitted during that session. (maps REQ-V3R2-RT-001-020)
-- AC-V3R2-RT-001-05: Given a PreToolUse hook returns `hookSpecificOutput.hookEventName == "PostToolUse"` (mismatch), When parsed, Then the protocol layer returns `HookSpecificOutputMismatch` error and the hook is treated as failed. (maps REQ-V3R2-RT-001-040)
-- AC-V3R2-RT-001-06: Given `.moai/config/sections/system.yaml` has `hook.strict_mode: true`, When a legacy wrapper emits only an exit code (no stdout JSON), Then the system returns `HookProtocolLegacyRejected` and the turn halts. (maps REQ-V3R2-RT-001-021)
-- AC-V3R2-RT-001-07: Given a PostToolUse hook returns `AdditionalContext: "@MX:WARN at line 42 — unbounded goroutine"`, When the turn concludes, Then the @MX ingestion path from SPEC-V3R2-SPC-002 receives the marker text. (maps REQ-V3R2-RT-001-016)
-- AC-V3R2-RT-001-08: Given a SubagentStop hook returns `Continue: false` with `SystemMessage: "coverage below 85%"`, When evaluated, Then the teammate is prevented from idling and the orchestrator surfaces the blocker via AskUserQuestion. (maps REQ-V3R2-RT-001-014)
-- AC-V3R2-RT-001-09: Given a hook returns `AdditionalContext` of 128 KiB, When the response is consumed, Then `AdditionalContext` is truncated to 64 KiB and `SystemMessage` contains the truncation notice. (maps REQ-V3R2-RT-001-022)
-- AC-V3R2-RT-001-10: Given a PreToolUse hook returns both `PermissionDecision: "deny"` and `UpdatedInput: {...}`, When applied, Then `UpdatedInput` is merged into the pending input first and the `deny` decision blocks the tool call with the post-update input shown in the denial message. (maps REQ-V3R2-RT-001-041)
-- AC-V3R2-RT-001-11: Given a hook wrapper declares `# moai-hook-api-version: 2` in its shell header, When it exits 0 with no JSON on stdout, Then the protocol reader does NOT fall back to exit-code synthesis and instead treats the empty response as the explicit no-op `HookResponse{}`. (maps REQ-V3R2-RT-001-030)
-- AC-V3R2-RT-001-12: Given validator/v10 schema tags are applied to `HookResponse`, When `PermissionDecision` receives value `"yes"` (invalid), Then `Validate()` returns a non-nil error naming the offending field. (maps REQ-V3R2-RT-001-006)
-- AC-V3R2-RT-001-13: Given `make build` regenerates embedded templates, When `go test ./internal/hook/... -run TestDualParse` runs, Then all 27 event variant round-trip serialization tests pass (marshal → unmarshal identity). (maps REQ-V3R2-RT-001-003, -004)
-- AC-V3R2-RT-001-14: Given a plugin-contributed hook emits legacy exit-code output during a session where `hook.strict_mode: true`, When processed, Then dual-parse fallback is applied with no `HookProtocolLegacyRejected` error and the plugin origin is logged via `source: plugin` provenance from SPEC-V3R2-RT-005. (maps REQ-V3R2-RT-001-051)
-- AC-V3R2-RT-001-15: Given the deprecation banner has already fired once in a session, When a second legacy-only hook emits exit-code output, Then no banner is printed but the exit code still produces the correct `PermissionDecision` synthesis. (maps REQ-V3R2-RT-001-050)
+- AC-V3R2-RT-001-01: WHEN a PreToolUse hook wrapper writes `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"file_path":"/tmp/x"}}}` to stdout, THE system SHALL replace the pending tool input with `{"file_path":"/tmp/x"}` before execution and the resolver SHALL receive `permissionDecision: allow`. (maps REQ-V3R2-RT-001-008, -011)
+- AC-V3R2-RT-001-02: WHEN a SessionStart hook returns `{"additionalContext":"ctx","watchPaths":["/abs/.env"]}`, THE system SHALL populate `HookResponse.AdditionalContext == "ctx"` and `HookResponse.WatchPaths == ["/abs/.env"]` with validator passing. (maps REQ-V3R2-RT-001-001, -010, -020)
+- AC-V3R2-RT-001-03: WHEN a legacy hook wrapper exits with code 2 and stderr `"blocked"`, THE system SHALL synthesize `HookResponse.PermissionDecision == "deny"` via dual-parse fallback and the reason field SHALL contain `"blocked"`. (maps REQ-V3R2-RT-001-009)
+- AC-V3R2-RT-001-04: WHILE `MOAI_HOOK_LEGACY=1` is set, THE system SHALL suppress the deprecation banner during that session when a legacy wrapper fires. (maps REQ-V3R2-RT-001-015)
+- AC-V3R2-RT-001-05: IF a PreToolUse hook returns `hookSpecificOutput.hookEventName == "PostToolUse"` (mismatch), THEN THE system SHALL return `HookSpecificOutputMismatch` error and treat the hook as failed. (maps REQ-V3R2-RT-001-021)
+- AC-V3R2-RT-001-06: WHILE `.moai/config/sections/system.yaml` has `hook.strict_mode: true`, THE system SHALL return `HookProtocolLegacyRejected` and halt the turn when a legacy wrapper emits only an exit code (no stdout JSON). (maps REQ-V3R2-RT-001-016)
+- AC-V3R2-RT-001-07: WHEN a PostToolUse hook returns `AdditionalContext: "@MX:WARN at line 42 — unbounded goroutine"`, THE system SHALL route the marker text to the @MX ingestion path from SPEC-V3R2-SPC-002. (maps REQ-V3R2-RT-001-014)
+- AC-V3R2-RT-001-08: WHEN a SubagentStop hook returns `Continue: false` with `SystemMessage: "coverage below 85%"`, THE system SHALL prevent the teammate from idling and the orchestrator SHALL surface the blocker via AskUserQuestion. (maps REQ-V3R2-RT-001-012)
+- AC-V3R2-RT-001-09: WHILE a hook returns `AdditionalContext` of 128 KiB, THE system SHALL truncate `AdditionalContext` to 64 KiB and `SystemMessage` SHALL contain the truncation notice. (maps REQ-V3R2-RT-001-017)
+- AC-V3R2-RT-001-10: IF a PreToolUse hook returns both `PermissionDecision: "deny"` and `UpdatedInput: {...}`, THEN THE system SHALL merge `UpdatedInput` into the pending input first and apply the `deny` decision with the post-update input shown in the denial message. (maps REQ-V3R2-RT-001-022)
+- AC-V3R2-RT-001-11: WHERE a hook wrapper declares `# moai-hook-api-version: 2` in its shell header, THE system SHALL skip exit-code fallback when it exits 0 with no JSON on stdout and treat the empty response as the explicit no-op `HookResponse{}`. (maps REQ-V3R2-RT-001-018)
+- AC-V3R2-RT-001-12: WHEN `validator/v10` schema tags are applied to `HookResponse` and `PermissionDecision` receives value `"yes"` (invalid), THEN THE system SHALL return a non-nil error naming the offending field. (maps REQ-V3R2-RT-001-006)
+- AC-V3R2-RT-001-13: WHEN `make build` regenerates embedded templates and `go test ./internal/hook/... -run TestDualParse` runs, THE system SHALL pass all 27 event variant round-trip serialization tests (marshal → unmarshal identity). (maps REQ-V3R2-RT-001-003, -004)
+- AC-V3R2-RT-001-14: WHILE `hook.strict_mode: true` is set and a plugin-contributed hook emits legacy exit-code output, THE system SHALL apply dual-parse fallback without `HookProtocolLegacyRejected` error and log the plugin origin via `source: plugin` provenance from SPEC-V3R2-RT-005. (maps REQ-V3R2-RT-001-025)
+- AC-V3R2-RT-001-15: WHILE the deprecation banner has already fired once in a session, THE system SHALL suppress further banner emissions but continue producing the correct `PermissionDecision` synthesis when a second legacy-only hook emits exit-code output. (maps REQ-V3R2-RT-001-024)
 
 ## 7. Constraints (제약)
 
@@ -177,9 +166,9 @@ Affected modules:
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | External plugin-hook authors emit invalid JSON and rely on exit-code fallback indefinitely | M | M | Dual-parse spans the full v3.x minor cycle; `MOAI_HOOK_LEGACY=1` opt-out for CI/air-gapped; `hook.strict_mode: true` opt-in for teams wanting early rejection. |
-| Discriminated-union mismatches produce cryptic errors | M | M | REQ-V3R2-RT-001-040 mandates specific `HookSpecificOutputMismatch` error with log trace; `moai doctor hook --validate` surfaces these pre-runtime. |
-| Large `AdditionalContext` payloads balloon model token usage | L | M | REQ-V3R2-RT-001-022 caps at 64 KiB with user-visible truncation notice; migration doc publishes best-practice limits. |
-| PreToolUse `UpdatedInput` mutation races with permission decision | L | M | REQ-V3R2-RT-001-041 defines deterministic order (input first, then decision). |
+| Discriminated-union mismatches produce cryptic errors | M | M | REQ-V3R2-RT-001-021 mandates specific `HookSpecificOutputMismatch` error with log trace; `moai doctor hook --validate` surfaces these pre-runtime. |
+| Large `AdditionalContext` payloads balloon model token usage | L | M | REQ-V3R2-RT-001-017 caps at 64 KiB with user-visible truncation notice; migration doc publishes best-practice limits. |
+| PreToolUse `UpdatedInput` mutation races with permission decision | L | M | REQ-V3R2-RT-001-022 defines deterministic order (input first, then decision). |
 | 10 logging-only handlers continue returning no response after protocol upgrade | M | L | SPEC-V3R2-RT-006 explicitly enumerates 27-event business-logic coverage with per-event decisions; this SPEC only owns the wire format. |
 | Shell-wrapper JSON forwarding breaks on non-UTF-8 bytes from language-specific test output | L | L | Wrappers already use `cat` semantics; validator/v10 rejects non-UTF-8 strings with clear error naming. |
 
@@ -189,7 +178,7 @@ Affected modules:
 
 - SPEC-V3R2-SCH-001 (provides validator/v10 integration).
 - SPEC-V3R2-CON-001 (FROZEN-zone codification enables the protocol-is-structural declaration).
-- SPEC-V3R2-RT-005 (provides Source tag for plugin-contributed hook provenance referenced in REQ-V3R2-RT-001-051).
+- SPEC-V3R2-RT-005 (provides Source tag for plugin-contributed hook provenance referenced in REQ-V3R2-RT-001-025).
 
 ### 9.2 Blocks
 
@@ -221,3 +210,9 @@ Affected modules:
 - Wave 2 sources: design-principles.md P8 (Hook JSON Protocol); pattern-library.md T-5 (priority 2); problem-catalog.md P-H05.
 - BC-ID: BC-V3R2-001 (hook handlers migrate to JSON-OR-ExitCode, AUTO migration).
 - Priority: P0 Critical — blocks every higher-value Runtime SPEC in v3.0 Phase 2.
+
+### Exclusions (What NOT to Build)
+
+- Handler completeness per-event business logic (owned by SPEC-V3R2-RT-006).
+- Permission stack 8-source resolution (owned by SPEC-V3R2-RT-002).
+- Sandbox execution environment (owned by SPEC-V3R2-RT-003).

@@ -51,7 +51,7 @@ moai constitution list --format json
   zone: Frozen
   file: .claude/rules/moai/workflow/spec-workflow.md
   anchor: "#phase-overview"
-  clause: "SPEC+EARS format (amended by SPEC-V3R2-SPC-001 to add hierarchical AC schema)"
+  clause: "SPEC+EARS format"
   canary_gate: true
 
 - id: CONST-V3R2-002
@@ -563,31 +563,4 @@ moai constitution list --format json
   anchor: "#auto-memory-integration-mandatory"
   clause: "[HARD] When generating a resume message, the orchestrator MUST also persist it to a memory project entry (project_<wave>_<spec>_<status>.md), include verbatim under '## 다음 세션 시작점 (paste-ready resume message)' heading, update MEMORY.md index, and mark superseded entries with [SUPERSEDED by <new-file>] prefix"
   canary_gate: false
-
-# ============================================================
-# 153: design/constitution.md §11.4.1 FROZEN 조항 (SPEC-V3R2-HRN-002, 2026-05-13)
-# ============================================================
-- id: CONST-V3R2-153
-  zone: Frozen
-  file: .claude/rules/moai/design/constitution.md
-  anchor: "#1141-evaluator-memory-scope-principle-4"
-  clause: "§11.4.1 Evaluator Memory Scope (Principle 4) — evaluator.memory_scope FROZEN at per_iteration; GAN loop runner MUST respawn evaluator-active fresh each iteration; prior iteration judgment MUST NOT appear in new spawn prompt"
-  canary_gate: true
-
-# ============================================================
-# 154-155: internal/harness FROZEN 조항 (SPEC-V3R2-HRN-003, 2026-05-13)
-# ============================================================
-- id: CONST-V3R2-154
-  zone: Frozen
-  file: internal/harness/scorer.go
-  anchor: "#dimension-enum"
-  clause: "Dimension enum FROZEN at 4 values (Functionality | Security | Craft | Consistency); modifications require Canary + HumanOversight cycle per CON-002"
-  canary_gate: true
-
-- id: CONST-V3R2-155
-  zone: Frozen
-  file: internal/harness/rubric.go
-  anchor: "#anchor-validator"
-  clause: "Rubric anchor levels FROZEN at 4 levels (0.25 / 0.50 / 0.75 / 1.0); modifications require Canary + HumanOversight cycle per CON-002"
-  canary_gate: true
 ```

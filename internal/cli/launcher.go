@@ -112,6 +112,10 @@ func applyGLMMode(root, profileName string) error {
 
 	setGLMEnv(glmConfig, apiKey)
 
+	// Auto-enable Z.AI MCP server (Vision, Web Search, Web Reader).
+	// Non-blocking: warns on failure, never blocks launch.
+	autoEnableMCPServer()
+
 	// settings.local.json injection is intentionally omitted here: setGLMEnv()
 	// already sets env for the current process which syscall.Exec inherits into
 	// `claude`. Writing to settings.local.json (as previous behavior) would leak
