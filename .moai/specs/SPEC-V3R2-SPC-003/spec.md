@@ -2,7 +2,7 @@
 id: SPEC-V3R2-SPC-003
 title: "SPEC linter (moai spec lint)"
 version: "0.1.1"
-status: completed
+status: planned
 created: 2026-04-23
 updated: 2026-05-10
 author: Wave 4 SPEC Writer
@@ -118,7 +118,7 @@ References: skill moai-workflow-spec (EARS modality table + required sections); 
 ### 5.4 Optional
 
 - REQ-SPC-003-040: WHERE a SPEC's frontmatter contains `lint.skip: [CODE1, CODE2]`, the linter SHALL suppress findings matching those codes for that SPEC only.
-- REQ-SPC-003-041: WHERE `moai spec lint --format table` is specified, the default human-readable output is explicitly selected (redundant with default, useful for script clarity).
+- REQ-SPC-003-041: WHERE `moai spec lint --format table` is specified, the system SHALL explicitly select the default human-readable output (redundant with default, useful for script clarity).
 
 ### 5.5 Complex
 
@@ -128,15 +128,15 @@ References: skill moai-workflow-spec (EARS modality table + required sections); 
 
 ## 6. Acceptance Criteria
 
-- AC-SPC-003-01: Given a valid SPEC with 12 REQs and 12 ACs each mapping uniquely, When `moai spec lint` runs, Then exit status is 0 and no findings are reported. (maps REQ-SPC-003-001, REQ-SPC-003-002, REQ-SPC-003-005)
-- AC-SPC-003-02: Given a SPEC with REQ-X-001-007 declared but no AC tail references it, When lint runs, Then `CoverageIncomplete` error is reported naming REQ-X-001-007. (maps REQ-SPC-003-005)
-- AC-SPC-003-03: Given a requirement text "WHEN the user logs in, the system creates a session" (missing SHALL), When lint runs, Then `ModalityMalformed` error is reported. (maps REQ-SPC-003-003, REQ-SPC-003-050)
+- AC-SPC-003-01: Given a valid SPEC with 12 REQs and 12 ACs each mapping uniquely, When `moai spec lint` runs, Then exit status is 0 and no findings are reported. (maps REQ-SPC-003-001, REQ-SPC-003-002, REQ-SPC-003-005) (maps REQ-SPC-003-002) (maps REQ-SPC-003-006)
+- AC-SPC-003-02: Given a SPEC with REQ-X-001-007 declared but no AC tail references it, When lint runs, Then `CoverageIncomplete` error is reported naming REQ-X-001-007. (maps REQ-SPC-003-005) (maps REQ-SPC-003-051)
+- AC-SPC-003-03: Given a requirement text "WHEN the user logs in, the system creates a session" (missing SHALL), When lint runs, Then `ModalityMalformed` error is reported. (maps REQ-SPC-003-003, REQ-SPC-003-050) (maps REQ-SPC-003-050)
 - AC-SPC-003-04: Given two SPECs A and B where A depends on B and B depends on A, When lint runs across both, Then `DependencyCycle` error is reported naming A and B. (maps REQ-SPC-003-008)
 - AC-SPC-003-05: Given a SPEC with duplicate REQ ID `REQ-X-001-005` appearing twice, When lint runs, Then error `DuplicateREQID` is reported naming both locations. (maps REQ-SPC-003-004)
 - AC-SPC-003-06: Given a SPEC missing the `Out of Scope` subsection, When lint runs, Then `MissingExclusions` error is reported. (maps REQ-SPC-003-009)
 - AC-SPC-003-07: Given a SPEC with `dependencies: [SPEC-NONEXISTENT]`, When lint runs, Then `MissingDependency` error is reported naming the missing SPEC. (maps REQ-SPC-003-007)
 - AC-SPC-003-08: Given a SPEC with `related_rule: [CONST-V3R2-999]` where 999 is not in the zone registry, When lint runs, Then `DanglingRuleReference` warning is reported. (maps REQ-SPC-003-010)
-- AC-SPC-003-09: Given `moai spec lint --json`, When lint runs, Then stdout contains a valid JSON array of finding objects. (maps REQ-SPC-003-020)
+- AC-SPC-003-09: Given `moai spec lint --json`, When lint runs, Then stdout contains a valid JSON array of finding objects. (maps REQ-SPC-003-020) (maps REQ-SPC-003-041)
 - AC-SPC-003-10: Given `moai spec lint --sarif`, When lint runs, Then stdout is SARIF 2.1.0-conformant JSON. (maps REQ-SPC-003-021)
 - AC-SPC-003-11: Given `moai spec lint --strict` and a SPEC with 0 errors and 2 warnings, When lint runs, Then exit status is non-zero. (maps REQ-SPC-003-030)
 - AC-SPC-003-12: Given two SPECs declaring `id: SPEC-V3R2-X-001`, When lint runs across both, Then `DuplicateSPECID` error is reported. (maps REQ-SPC-003-031)
