@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 725b1751ff9523ab1c88e158bc06e32a5604a4ba8fefcab62ed0e700f4e01892
+              hash: f811ce853b1b54f3852396a071c711cd885af2ab2695815813659e60f2b147b1
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -31,12 +31,12 @@ catalog:
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
-              hash: 8d156ef9c4beba71fc9885af142068418794a09381525587c2624de6953a1e17
+              hash: 9338a747262520ccda5e43202f74fcba008652c01031dc613a1535dcdc3e2023
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 4144eaef4048ef50b92525028203eb12d0e4120c5a5b096daa75bbb5e10c78ac
+              hash: 0ebea9c5841768e6d128d9ed25a475a84a3cb02096761be5074fdc7f6f0a134d
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
