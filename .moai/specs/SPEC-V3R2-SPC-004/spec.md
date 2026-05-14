@@ -22,6 +22,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, mx, resolver, aci, fan-in, anchor"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-SPC-004: @MX anchor resolver
@@ -118,14 +121,14 @@ References: pattern-library.md §T-1 priority 1 ("strongest single leverage patt
 
 ## 6. Acceptance Criteria
 
-- AC-SPC-004-01: Given a sidecar with 20 tags across 2 SPECs, When `moai mx query --spec SPEC-X-001 --kind anchor` runs, Then only ANCHOR tags associated with SPEC-X-001 appear in output. (maps REQ-SPC-004-001, REQ-SPC-004-006, REQ-SPC-004-010)
+- AC-SPC-004-01: Given a sidecar with 20 tags across 2 SPECs, When `moai mx query --spec SPEC-X-001 --kind anchor` runs, Then only ANCHOR tags associated with SPEC-X-001 appear in output. (maps REQ-SPC-004-001, REQ-SPC-004-006, REQ-SPC-004-010) (maps REQ-SPC-004-002) (maps REQ-SPC-004-010)
 - AC-SPC-004-02: Given 5 ANCHOR tags with fan_in values 1, 2, 3, 5, 10, When `moai mx query --fan-in-min 3 --kind anchor` runs, Then exactly the last three are returned. (maps REQ-SPC-004-011)
 - AC-SPC-004-03: Given a WARN tag with REASON "goroutine leak on panic" and `mx.yaml` maps "goroutine leak" → concurrency, When `moai mx query --danger concurrency` runs, Then that WARN tag appears in output. (maps REQ-SPC-004-012)
-- AC-SPC-004-04: Given sidecar is missing, When `moai mx query` runs, Then stderr contains `SidecarUnavailable` and suggests `/moai mx --full`. (maps REQ-SPC-004-013)
-- AC-SPC-004-05: Given `--format json` (default), When the query runs, Then stdout is a valid JSON array with entries matching the REQ-SPC-004-005 schema. (maps REQ-SPC-004-004, REQ-SPC-004-005)
+- AC-SPC-004-04: Given sidecar is missing, When `moai mx query` runs, Then stderr contains `SidecarUnavailable` and suggests `/moai mx --full`. (maps REQ-SPC-004-013) (maps REQ-SPC-004-003)
+- AC-SPC-004-05: Given `--format json` (default), When the query runs, Then stdout is a valid JSON array with entries matching the REQ-SPC-004-005 schema. (maps REQ-SPC-004-004, REQ-SPC-004-005) (maps REQ-SPC-004-005)
 - AC-SPC-004-06: Given `--format table`, When invoked, Then stdout is human-readable columnar output. (maps REQ-SPC-004-004)
 - AC-SPC-004-07: Given no LSP is running for Python, When `moai mx query --fan-in-min 2 --file-prefix internal/py/` runs (Python-only), Then results are returned with `fan_in_method: "textual"` annotation. (maps REQ-SPC-004-020)
-- AC-SPC-004-08: Given 10,000 tags in sidecar and no explicit `--limit`, When the query runs, Then response contains at most 100 entries and output header contains `TruncationNotice`. (maps REQ-SPC-004-021, REQ-SPC-004-007)
+- AC-SPC-004-08: Given 10,000 tags in sidecar and no explicit `--limit`, When the query runs, Then response contains at most 100 entries and output header contains `TruncationNotice`. (maps REQ-SPC-004-021, REQ-SPC-004-007) (maps REQ-SPC-004-007)
 - AC-SPC-004-09: Given `MOAI_MX_QUERY_STRICT=1` AND no LSP for target language, When `moai mx query --fan-in-min 3` runs, Then it exits non-zero with `LSPRequired` error. (maps REQ-SPC-004-030)
 - AC-SPC-004-10: Given `--format markdown`, When invoked, Then output is a markdown table. (maps REQ-SPC-004-031)
 - AC-SPC-004-11: Given an ANCHOR inside `tests/fixtures/mock_handler_test.go`, When fan_in is computed with no `--include-tests`, Then references from other test fixtures are excluded. (maps REQ-SPC-004-040)

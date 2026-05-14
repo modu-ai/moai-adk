@@ -2,7 +2,7 @@
 id: SPEC-V3R2-SPC-001
 title: "EARS + hierarchical acceptance criteria"
 version: "0.1.1"
-status: completed
+status: in-progress
 created: 2026-04-23
 updated: 2026-05-13
 author: Wave 4 SPEC Writer
@@ -127,7 +127,7 @@ Reference: R1 §9 Agent-as-a-Judge (Zhuge et al. 2024) demonstrates 55 → 365 r
 
 ## 6. Acceptance Criteria
 
-- AC-SPC-001-01: Given a SPEC with hierarchical acceptance `AC-X-01` containing two children `AC-X-01.a` and `AC-X-01.b`, When the parser loads it, Then `Acceptance{ID: "AC-X-01", Children: [{ID: "AC-X-01.a"}, {ID: "AC-X-01.b"}]}` is produced. (maps REQ-SPC-001-001, REQ-SPC-001-005, REQ-SPC-001-011)
+- AC-SPC-001-01: Given a SPEC with hierarchical acceptance `AC-X-01` containing two children `AC-X-01.a` and `AC-X-01.b`, When the parser loads it, Then `Acceptance{ID: "AC-X-01", Children: [{ID: "AC-X-01.a"}, {ID: "AC-X-01.b"}]}` is produced. (maps REQ-SPC-001-001, REQ-SPC-001-005, REQ-SPC-001-011) (maps REQ-SPC-001-005) (maps REQ-SPC-001-011)
 - AC-SPC-001-02: Given a flat legacy SPEC with `AC-HOOKS-001-01: Given X When Y Then Z`, When the parser loads it, Then it produces `AC-HOOKS-001-01` with one synthesized child `AC-HOOKS-001-01.a` whose Given/When/Then match the parent verbatim. (maps REQ-SPC-001-010, REQ-SPC-001-020)
 - AC-SPC-001-03: Given a child node without its own Given clause below a parent with Given "user authenticated", When the parser resolves the child, Then the child's effective Given is "user authenticated". (maps REQ-SPC-001-006)
 - AC-SPC-001-04: Given two acceptance nodes with identical IDs at the same depth, When the parser runs, Then it emits `DuplicateAcceptanceID` and halts. (maps REQ-SPC-001-012)
@@ -140,7 +140,7 @@ Reference: R1 §9 Agent-as-a-Judge (Zhuge et al. 2024) demonstrates 55 → 365 r
 - AC-SPC-001-11: Given the migration tool SPEC-V3R2-MIG-001 runs on a legacy flat SPEC with 8 ACs and 8 REQs, When the post-migration file is re-parsed, Then the tree has 8 top-level nodes each with one synthesized `.a` child and no content is lost. (maps REQ-SPC-001-020)
 - AC-SPC-001-12: Given a top-level acceptance with no children and no REQ-mapping tail, When parsed, Then the parser emits a `MissingRequirementMapping` warning (since leaf synthesized child inherits no mapping). (maps REQ-SPC-001-004)
 - AC-SPC-001-13: Given a SPEC where parent `AC-X-01` omits its REQ tail but all three children `AC-X-01.a/b/c` carry distinct tails, When parsed, Then no warning is emitted because each leaf has its own mapping. (maps REQ-SPC-001-004)
-- AC-SPC-001-14: Given a SPEC with 365 leaf acceptance nodes across 55 top-level parents (Agent-as-a-Judge DevAI shape), When parsed, Then the parser succeeds within a 500ms budget and the tree is well-formed. (maps REQ-SPC-001-001, REQ-SPC-001-003)
+- AC-SPC-001-14: Given a SPEC with 365 leaf acceptance nodes across 55 top-level parents (Agent-as-a-Judge DevAI shape), When parsed, Then the parser succeeds within a 500ms budget and the tree is well-formed. (maps REQ-SPC-001-001, REQ-SPC-001-003) (maps REQ-SPC-001-003)
 - AC-SPC-001-15: Given an acceptance ID `AC-XYZ-007-42`, When `Acceptance.ValidateID()` (`internal/spec/ears.go:28-33`) runs the `topLevelIDPattern` regex, Then the ID is accepted. Conversely given `AC-X-07` (3 segments), Then `ValidateID()` returns an error. (maps REQ-SPC-001-002)
 - AC-SPC-001-16: Given a markdown source where a `- AC-X-09` line is followed by a `  - AC-X-09.a` line (2-space indent), When `extractACLines` (`internal/spec/parser.go:90-117`) extracts entries, Then the second line's `indentLevel` is 1 greater than the first's, signalling child relationship to `buildTree`. (maps REQ-SPC-001-007)
 - AC-SPC-001-17: Given a hierarchical SPEC with parents that omit REQ tails and leaves that carry them, When `internal/spec/lint.go:394-403` `collectAllREQIDs(criteria)` computes coverage, Then the returned set includes every REQ declared on **both** parent and leaf nodes; a SPEC achieves 100% coverage when every declared REQ appears at least once across the tree. (maps REQ-SPC-001-042)

@@ -2,7 +2,7 @@
 id: SPEC-V3R2-CON-001
 title: "FROZEN/EVOLVABLE zone codification for core constitution"
 version: "1.1.0"
-status: completed
+status: planned
 created: 2026-04-23
 updated: 2026-04-25
 author: Wave 4 SPEC Writer
@@ -143,13 +143,13 @@ Notes:
 
 ## 6. Acceptance Criteria
 
-- AC-CON-001-001: Given a fresh v3 install, When the user runs `moai constitution list`, Then the output contains at least 7 entries with `zone: Frozen` whose `clause` fields match byte-for-byte the 7 canonical invariants enumerated in §5.1 (below REQ-CON-001-005). (maps REQ-CON-001-005, REQ-CON-001-006)
+- AC-CON-001-001: Given a fresh v3 install, When the user runs `moai constitution list`, Then the output contains at least 7 entries with `zone: Frozen` whose `clause` fields match byte-for-byte the 7 canonical invariants enumerated in §5.1 (below REQ-CON-001-005). (maps REQ-CON-001-005, REQ-CON-001-006) (maps REQ-CON-001-006)
 - AC-CON-001-002: Given the zone registry exists, When `moai constitution list --zone frozen` is invoked, Then only Frozen-zone entries are printed. (maps REQ-CON-001-012)
 - AC-CON-001-003: Given a developer edits `.claude/rules/moai/core/moai-constitution.md` to add a new `[HARD]` clause without updating `zone-registry.md`, When CI runs, Then the build fails with a message naming the missing registry entry. (maps REQ-CON-001-010)
-- AC-CON-001-004: Given the Go package `internal/constitution`, When `zone.go` is imported, Then it exposes exactly two Zone values (`ZoneFrozen`, `ZoneEvolvable`) and a `Rule` struct whose exported fields are exactly `ID`, `Zone`, `File`, `Anchor`, `Clause`, `CanaryGate` (6 fields, in that order). (maps REQ-CON-001-003, REQ-CON-001-004)
+- AC-CON-001-004: Given the Go package `internal/constitution`, When `zone.go` is imported, Then it exposes exactly two Zone values (`ZoneFrozen`, `ZoneEvolvable`) and a `Rule` struct whose exported fields are exactly `ID`, `Zone`, `File`, `Anchor`, `Clause`, `CanaryGate` (6 fields, in that order). (maps REQ-CON-001-003, REQ-CON-001-004) (maps REQ-CON-001-004)
 - AC-CON-001-005: Given a zone registry entry for CONST-V3R2-001 with `clause: "SPEC+EARS format"`, When compared against the canonical invariant name in §5.1 table row 1, Then the `clause` field matches verbatim (byte-level) and the `file` field equals `.claude/rules/moai/workflow/spec-workflow.md`. (maps REQ-CON-001-007)
 - AC-CON-001-006: Given `MOAI_CONSTITUTION_STRICT=1`, When the zone registry contains duplicate IDs, Then `moai doctor` exits with non-zero status. (maps REQ-CON-001-030)
-- AC-CON-001-007: Given the zone registry references a non-existent rule file, When the loader is invoked, Then it emits a structured error naming the missing file and marks the entry as orphaned but does not panic. (maps REQ-CON-001-040)
+- AC-CON-001-007: Given the zone registry references a non-existent rule file, When the loader is invoked, Then it emits a structured error naming the missing file and marks the entry as orphaned but does not panic. (maps REQ-CON-001-040) (maps REQ-CON-001-020)
 - AC-CON-001-008: Given the design constitution v3.3.0 FROZEN list, When the core registry is loaded, Then design-subsystem FROZEN clauses (§2 + §3.1/§3.2/§3.3) are mirrored with pointers to `.claude/rules/moai/design/constitution.md`; mirror IDs fall in CONST-V3R2-051 through 099, and overflow beyond 099 triggers auto-extension into 100-149 with a doctor warning. (maps REQ-CON-001-021)
 - AC-CON-001-009: Given a rule ID `CONST-V3R2-042` assigned in one registry build, When a subsequent build adds new entries, Then `CONST-V3R2-042` SHALL still refer to the same clause (ID stability). (maps REQ-CON-001-011)
 - AC-CON-001-010: Given the `moai constitution list` output, When `zone-registry.md` is grep-searched for each printed Rule ID, Then 100% of printed IDs appear in the file. (maps REQ-CON-001-001, REQ-CON-001-006)

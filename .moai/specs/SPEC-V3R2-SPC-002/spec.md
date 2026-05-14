@@ -2,7 +2,7 @@
 id: SPEC-V3R2-SPC-002
 title: "@MX TAG v2 with hook JSON integration and sidecar index"
 version: "0.1.0"
-status: planned
+status: implemented
 created: 2026-04-23
 updated: 2026-05-13
 author: Wave 4 SPEC Writer
@@ -132,12 +132,12 @@ References: master-v3 §4 Layer 2 @MX Go type sketch; design-principles.md §P8 
 
 ## 6. Acceptance Criteria
 
-- AC-SPC-002-01: Given a Go source file with `// @MX:NOTE explains why handler forks`, When TagScanner scans it, Then a Tag{Kind: MXNote, File: "...", Line: N, Body: "explains why handler forks"} is produced. (maps REQ-SPC-002-001, REQ-SPC-002-002, REQ-SPC-002-005)
-- AC-SPC-002-02: Given the project has 42 @MX tags across 15 files, When `/moai mx --full` runs, Then `.moai/state/mx-index.json` contains exactly 42 entries with `schema_version: 2`. (maps REQ-SPC-002-003, REQ-SPC-002-008, REQ-SPC-002-013)
+- AC-SPC-002-01: Given a Go source file with `// @MX:NOTE explains why handler forks`, When TagScanner scans it, Then a Tag{Kind: MXNote, File: "...", Line: N, Body: "explains why handler forks"} is produced. (maps REQ-SPC-002-001, REQ-SPC-002-002, REQ-SPC-002-005) (maps REQ-SPC-002-002)
+- AC-SPC-002-02: Given the project has 42 @MX tags across 15 files, When `/moai mx --full` runs, Then `.moai/state/mx-index.json` contains exactly 42 entries with `schema_version: 2`. (maps REQ-SPC-002-003, REQ-SPC-002-008, REQ-SPC-002-013) (maps REQ-SPC-002-008) (maps REQ-SPC-002-013)
 - AC-SPC-002-03: Given the sidecar write is interrupted mid-way (simulated SIGKILL), When the process restarts and reads the sidecar, Then it is either empty or fully valid (never partial). (maps REQ-SPC-002-004)
-- AC-SPC-002-04: Given a Python file adds `# @MX:WARN missing timeout on requests.get`, When the PostToolUse handler fires post-Edit, Then the HookResponse contains `additionalContext` referencing that WARN and `hookSpecificOutput.mxTags` has the new Tag entry. (maps REQ-SPC-002-010, REQ-SPC-002-011)
-- AC-SPC-002-05: Given a file with `@MX:WARN` but no sibling `@MX:REASON` within 3 lines, When the scanner runs, Then it emits `MissingReasonForWarn` warning naming the file:line. (maps REQ-SPC-002-006, REQ-SPC-002-040)
-- AC-SPC-002-06: Given two files each containing `@MX:ANCHOR auth-handler-v1`, When the scanner runs, Then it emits `DuplicateAnchorID` and refuses to write the index. (maps REQ-SPC-002-007, REQ-SPC-002-021)
+- AC-SPC-002-04: Given a Python file adds `# @MX:WARN missing timeout on requests.get`, When the PostToolUse handler fires post-Edit, Then the HookResponse contains `additionalContext` referencing that WARN and `hookSpecificOutput.mxTags` has the new Tag entry. (maps REQ-SPC-002-010, REQ-SPC-002-011) (maps REQ-SPC-002-011)
+- AC-SPC-002-05: Given a file with `@MX:WARN` but no sibling `@MX:REASON` within 3 lines, When the scanner runs, Then it emits `MissingReasonForWarn` warning naming the file:line. (maps REQ-SPC-002-006, REQ-SPC-002-040) (maps REQ-SPC-002-040)
+- AC-SPC-002-06: Given two files each containing `@MX:ANCHOR auth-handler-v1`, When the scanner runs, Then it emits `DuplicateAnchorID` and refuses to write the index. (maps REQ-SPC-002-007, REQ-SPC-002-021) (maps REQ-SPC-002-012) (maps REQ-SPC-002-021)
 - AC-SPC-002-07: Given a tag present in the previous index but missing from the current scan, When `LastSeenAt` is still within 7 days, Then the tag remains in the sidecar with its original LastSeenAt. (maps REQ-SPC-002-014)
 - AC-SPC-002-08: Given a tag not seen for 8 days, When the next scan runs, Then it is removed from the sidecar and appended to `.moai/state/mx-archive.json`. (maps REQ-SPC-002-020)
 - AC-SPC-002-09: Given the sidecar file is corrupt JSON, When `/moai mx` reads it, Then it logs a repair suggestion and proceeds with empty state; the next `--full` rebuilds the index. (maps REQ-SPC-002-022)

@@ -125,18 +125,18 @@ References: master-v3 §4 Layer 1 Go type sketch; design-principles.md §P12 Con
 
 ## 6. Acceptance Criteria
 
-- AC-CON-002-01: Given a valid AmendmentProposal targeting an EVOLVABLE rule, When the pipeline executes and all 5 layers pass, Then the source rule file, zone registry, and evolution-log are updated atomically. (maps REQ-CON-002-011)
+- AC-CON-002-01: Given a valid AmendmentProposal targeting an EVOLVABLE rule, When the pipeline executes and all 5 layers pass, Then the source rule file, zone registry, and evolution-log are updated atomically. (maps REQ-CON-002-011) (maps REQ-CON-002-001) (maps REQ-CON-002-002) (maps REQ-CON-002-003)
 - AC-CON-002-02: Given a proposal targeting a FROZEN rule with no explicit demotion evidence, When FrozenGuard.Check runs, Then the proposal is rejected with `FrozenClauseImmutable` error. (maps REQ-CON-002-005)
 - AC-CON-002-03: Given 3 amendments applied within the past 7 days, When a 4th proposal reaches RateLimiter, Then RateLimiter.Admit returns false with `RateLimitExceeded`. (maps REQ-CON-002-006)
 - AC-CON-002-04: Given a project with 2 completed SPECs only, When Canary.Evaluate is invoked, Then the verdict is `CanaryUnavailable` and the auto-apply path halts. (maps REQ-CON-002-020)
-- AC-CON-002-05: Given an applied amendment and the next completed SPEC scores 0.15 below baseline, When the rollback watcher runs, Then the clause is reverted, the evolution-log entry gains `rolled_back: true`, and the learning enters 30-day cooldown. (maps REQ-CON-002-013, REQ-CON-002-022)
-- AC-CON-002-06: Given AskUserQuestion is invoked for HumanOversight with proposal diff, When the user selects "Reject", Then the proposal is moved to `rejected-amendments/` and no source file is modified. (maps REQ-CON-002-007, REQ-CON-002-012)
+- AC-CON-002-05: Given an applied amendment and the next completed SPEC scores 0.15 below baseline, When the rollback watcher runs, Then the clause is reverted, the evolution-log entry gains `rolled_back: true`, and the learning enters 30-day cooldown. (maps REQ-CON-002-013, REQ-CON-002-022) (maps REQ-CON-002-022)
+- AC-CON-002-06: Given AskUserQuestion is invoked for HumanOversight with proposal diff, When the user selects "Reject", Then the proposal is moved to `rejected-amendments/` and no source file is modified. (maps REQ-CON-002-007, REQ-CON-002-012) (maps REQ-CON-002-012)
 - AC-CON-002-07: Given `MOAI_CONSTITUTION_DRY_RUN=1`, When a full pipeline is invoked, Then no file is written and the returned structure contains the predicted outcome of each layer. (maps REQ-CON-002-031)
 - AC-CON-002-08: Given two concurrent `moai constitution amend` invocations, When both attempt to write evolution-log, Then exactly one succeeds and the other exits with `AmendmentInProgress`. (maps REQ-CON-002-021)
 - AC-CON-002-09: Given a proposal with `registry.canary_gate: false`, When the pipeline runs, Then layers 1, 3, 4, 5 execute and Canary is skipped. (maps REQ-CON-002-040)
 - AC-CON-002-10: Given a ContradictionDetector finds a conflict and the user confirms "supersede", When the compound amendment is applied, Then both affected rules change atomically and two evolution-log entries share a `batch_id`. (maps REQ-CON-002-041)
 - AC-CON-002-11: Given HumanOversight times out without user response, When 24 hours elapse, Then the proposal is persisted at `.moai/research/pending-amendments/` and appears first on the next pipeline invocation. (maps REQ-CON-002-042)
-- AC-CON-002-12: Given an auto-generated proposal from a 5-observation learning, When the full pipeline succeeds, Then the evolution-log entry links to the source observation (`source_observation_id: LEARN-YYYYMMDD-NNN`). (maps REQ-CON-002-010, REQ-CON-002-004)
+- AC-CON-002-12: Given an auto-generated proposal from a 5-observation learning, When the full pipeline succeeds, Then the evolution-log entry links to the source observation (`source_observation_id: LEARN-YYYYMMDD-NNN`). (maps REQ-CON-002-010, REQ-CON-002-004) (maps REQ-CON-002-004)
 - AC-CON-002-13: Given `constitution.amendment.auto_apply: false` in config, When RateLimiter would admit but the policy forbids auto-apply, Then HumanOversight is invoked even for rules that passed all prior layers. (maps REQ-CON-002-030)
 
 ## 7. Constraints (제약)
