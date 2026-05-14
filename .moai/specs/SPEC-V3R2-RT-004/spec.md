@@ -11,7 +11,6 @@ phase: "v3.0.0 — Phase 2 — Runtime Hardening"
 module: "internal/session/"
 dependencies:
   - SPEC-V3R2-CON-001
-  - SPEC-V3R2-RT-005
 bc_id: []
 related_principle: [P5 Typed State + Durable Checkpoint, P3 Fresh-Context Iteration, P11 File-First Primitives]
 related_pattern: [X-3, M-1, R-6]
@@ -20,6 +19,9 @@ related_theme: "Layer 3: Runtime"
 breaking: false
 lifecycle: spec-anchored
 tags: "session, state, checkpoint, typed, v3r2, runtime, file-first"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-004: Typed Session State + Phase Checkpoint

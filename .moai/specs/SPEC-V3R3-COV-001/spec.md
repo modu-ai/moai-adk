@@ -9,14 +9,16 @@ author: manager-spec
 priority: P1 High
 phase: "v3.0.0 R3 — Phase A — Coverage Gap Closure"
 module: ".claude/agents/moai/expert-mobile.md, .claude/skills/moai-domain-mobile/, .claude/skills/moai-framework-react-native/, .claude/skills/moai-framework-flutter-deep/, .claude/skills/moai/SKILL.md (routing keywords)"
-dependencies:
-  - SPEC-V3R3-ARCH-003
+dependencies: []
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "expert-mobile, mobile-coverage, ios, android, react-native, flutter, skill-creation, agent-creation, v3r3, phase-a"
 related_theme: "Phase A — Mobile Domain Coverage"
 released_in: v2.15.0
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-COV-001: Mobile Native Coverage

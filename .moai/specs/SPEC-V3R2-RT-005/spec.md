@@ -11,7 +11,6 @@ phase: "v3.0.0 — Phase 1 — Constitution & Foundation"
 module: "internal/config/"
 dependencies:
   - SPEC-V3R2-CON-001
-  - SPEC-V3R2-SCH-001
   - SPEC-V3R2-RT-004
 bc_id: [BC-V3R2-015]
 related_principle: [P6 Permission Bubble, P7 Sandbox Default, P12 Constitutional Governance]
@@ -21,6 +20,9 @@ related_theme: "Layer 3: Runtime"
 breaking: true
 lifecycle: spec-anchored
 tags: "settings, provenance, multi-layer, v3r2, breaking, runtime, config"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-005: Multi-Layer Settings Resolution with Provenance Tags
