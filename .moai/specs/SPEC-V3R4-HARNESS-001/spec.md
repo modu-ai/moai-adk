@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-HARNESS-001
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-14
 updated: 2026-05-14
 author: manager-spec
@@ -33,6 +33,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.2.0   | 2026-05-14 | manager-develop | Run-phase implementation completed. 5 Waves / 17 tasks all delivered (T-A1~A4, T-B1~B3, T-C1~C3, T-D1~D4, T-E1~E3). PR #910 squash-merged into main at commit `bb80ea0f4`. New runtime artifacts: `.claude/skills/moai/workflows/harness.md` (V3R4 workflow body, zero CLI invocations), `.claude/commands/moai/harness.md` (slash command thin wrapper, imported from feat/cmd-harness-slash-wrapper commit 452aa638f), `internal/cli/hook.go::isHarnessLearningEnabled` (REQ-HRN-FND-009 gate, fail-open), `internal/cli/harness_retirement_test.go` (CI guard for REQ-HRN-FND-002), `internal/cli/hook_harness_observe_test.go` (10 table-driven cases covering REQ-HRN-FND-009/010). Internal/cli/harness.go preserved as deprecation marker. CHANGELOG.md + `.moai/release/RELEASE-NOTES-v2.20.0.md` + `.moai/specs/SPEC-V3R4-HARNESS-001/follow-up.md` (V3R3 status-transition manager-git instructions) committed. All 12 ACs satisfied; AC-HRN-FND-002 grep returns 0 invocation matches; AC-HRN-FND-010 verified zero V3R3 SPEC file modifications. Status transition: draft → implemented per spec-workflow.md Status Lifecycle. |
 | 0.1.0   | 2026-05-14 | manager-spec | Initial draft. Foundation SPEC for the self-evolving harness v2 system. Supersedes the three V3R3 harness SPECs (HARNESS-001 meta-skill, HARNESS-LEARNING-001 learning subsystem, PROJECT-HARNESS-001 socratic-interview activation) into a single V3R4 architecture. Retires the `moai harness <verb>` Go CLI subcommand path (BC-V3R4-HARNESS-001-CLI-RETIREMENT). Establishes the slash-command-only lifecycle contract (`/moai:harness`) backed by skill workflow + dedicated subagents + Claude Code hooks. Preserves the 5-Layer Safety architecture and FROZEN zones as immutable. Derives from `/moai brain` IDEA-004 (24 cited sources: revfactory/harness Apache-2.0, Reflexion arXiv:2303.11366, Voyager arXiv:2305.16291, Constitutional AI arXiv:2212.08073, LangGraph reflection production patterns 2026, Anthropic Claude Code Skills/Agents official docs 2026). Foundation for downstream SPEC-V3R4-HARNESS-002 through SPEC-V3R4-HARNESS-008. |
 
 ---
