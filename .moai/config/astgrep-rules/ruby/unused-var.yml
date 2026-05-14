@@ -1,9 +1,0 @@
-id: ruby-unused-var
-language: ruby
-severity: warning
-message: "Assigning nil to a variable may lead to NoMethodError downstream. Prefer meaningful defaults or guard clauses."
-note: "Variables initialized to nil are a common source of NoMethodError. Consider using a safe default value or the null-object pattern. If nil is intentional, document the reason and use &. (safe navigation) on all subsequent accesses."
-metadata:
-  owasp: "A05:2021 - Security Misconfiguration"
-  cwe: "CWE-476"
-pattern: $_ = nil

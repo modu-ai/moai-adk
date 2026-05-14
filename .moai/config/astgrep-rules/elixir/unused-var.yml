@@ -1,9 +1,0 @@
-id: elixir-unused-var
-language: elixir
-severity: warning
-message: "Assignment to '_unused' discards the expression result. If the result is intentionally unused, consider using '_' instead."
-note: "In Elixir, variables prefixed with _ signal intentionally discarded values. Using a named '_unused' variable instead of plain '_' may indicate that the result should actually be used. Review whether the discarded value contains an error that needs handling."
-metadata:
-  owasp: "A05:2021 - Security Misconfiguration"
-  cwe: "CWE-252"
-pattern: _unused = $_

@@ -1,9 +1,0 @@
-id: elixir-unsafe-map-access
-language: elixir
-severity: error
-message: "Map.fetch!/2 raises KeyError when the key is absent. Use Map.fetch/2 or Map.get/3 with a default value for safer access."
-note: "Map.fetch!/2 is the Elixir equivalent of unsafe map key access — it raises a KeyError if the key does not exist, similar to a null-dereference in other languages. Prefer Map.fetch/2 with pattern matching on {:ok, value} / :error, or Map.get/3 with an explicit default to handle absent keys safely."
-metadata:
-  owasp: "A04:2021 - Insecure Design"
-  cwe: "CWE-476"
-pattern: Map.fetch!($MAP, $KEY)
