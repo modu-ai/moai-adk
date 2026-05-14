@@ -1,12 +1,16 @@
 ---
 id: SPEC-V3R2-RT-001
+title: Hook JSON-OR-ExitCode Dual Protocol
 version: "0.1.1"
-status: planned
-created_at: 2026-04-23
-updated_at: 2026-05-14
+status: in-progress
+created: 2026-04-23
+updated: 2026-05-14
 author: GOOS
 priority: P0 Critical
-labels: [hook, protocol, json, v3r2, breaking, runtime]
+phase: "v3.0.0 R2 — Runtime Protocol Migration"
+module: ".claude/hooks/moai/, internal/hook/, internal/runtime/"
+lifecycle: spec-anchored
+tags: "hook, protocol, json, v3r2, breaking, runtime"
 issue_number: null
 ---
 

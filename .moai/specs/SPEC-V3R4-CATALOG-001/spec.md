@@ -2,24 +2,21 @@
 id: SPEC-V3R4-CATALOG-001
 version: "0.3.0"
 status: completed
-created_at: 2026-05-12
-updated_at: 2026-05-12
-author: GOOS행님
-priority: High
-labels: ""
-issue_number: 859
-title: "3-Tier Catalog Manifest"
 created: 2026-05-12
 updated: 2026-05-13
+author: GOOS행님
+priority: High
+issue_number: 859
+title: "3-Tier Catalog Manifest"
 phase: "v3.0.0 - Lifecycle"
 module: "catalog"
-lifecycle: completed
-tags: "legacy"
-  run_pr: 862
-  eval_fix_pr: 863
-  evaluation_pass_at: 2026-05-12T03:30:00Z
-  evaluation_overall_score: 0.82
-  coverage: "84.0% (LoadCatalog: 100%)"
+lifecycle: spec-anchored
+tags: "catalog, manifest, 3-tier, v3r4, foundation"
+run_pr: 862
+eval_fix_pr: 863
+evaluation_pass_at: "2026-05-12T03:30:00Z"
+evaluation_overall_score: "0.82"
+coverage: "84.0% (LoadCatalog: 100%)"
 ---
 
 # SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest

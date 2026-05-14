@@ -1,14 +1,14 @@
 ---
 id: SPEC-V3R4-HARNESS-002
-version: "0.3.0"
-status: implemented
+title: Multi-Event Observer Expansion
+version: "0.2.1"
+status: completed
 created: 2026-05-14
-updated: 2026-05-15
+updated: 2026-05-14
 author: manager-spec
 priority: P1
 tags: "harness, self-evolution, multi-event-observer, v3r4, downstream, observer-expansion"
 issue_number: null
-title: Multi-Event Observer Expansion
 phase: "v3.0.0 R4 — Phase B — Observer Expansion"
 module: ".claude/hooks/moai/, internal/cli/hook.go, internal/harness/observer.go, internal/harness/types.go, .moai/harness/usage-log.jsonl (schema extension), .claude/settings.json (hook registration template)"
 dependencies:
@@ -29,9 +29,7 @@ target_release: v2.21.0
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
-| 0.3.0   | 2026-05-15 | manager-docs | sync-phase complete — status `draft` → `implemented` (version 0.3.0, updated 2026-05-15). Run-phase PR #914 squash merged `32aba1537` on 2026-05-14T17:18:57Z; 13/13 AC PASS per evaluator iter 3; harness coverage 87.9%, safety 94.3%; MX P1/P2 violations 0. Wave matrix: A/A.5/B/C + Phase 2.75/2.8a iter1/iter2/iter3 complete. CHANGELOG updated (ko/en sections), docs sync complete. docs-site: internal feature (no user-facing change). |
-| 0.2.2   | 2026-05-14 | MoAI orchestrator | spec-lint frontmatter schema compliance — restored canonical `created` / `updated` / `tags` (string) / `title` field names per `internal/spec/lint.go` requirements (plan-auditor iter 1 had erroneously classified `title` as deprecated; lint requires it). Promoted §1.3 "Out of Scope" bold text into `### 1.3.1` formal heading so OutOfScopeRule (lint.go:640) detects the dash items. No content semantic changes. |
-| 0.2.1   | 2026-05-14 | manager-spec | plan-auditor iteration 1 mechanical fixes — removed deprecated `title:` frontmatter field (D1), normalized standalone AC leaves to canonical `(maps REQ-...)` tail format (D2). No content semantic changes. (Note: title removal reversed in v0.2.2 — spec-lint requires it.) |
+| 0.2.1   | 2026-05-14 | manager-spec | plan-auditor iteration 1 mechanical fixes — removed deprecated `title:` frontmatter field (D1), normalized standalone AC leaves to canonical `(maps REQ-...)` tail format (D2). No content semantic changes. |
 | 0.2.0   | 2026-05-14 | manager-spec | Plan-phase expansion. Replaces §3 Requirements placeholder with full EARS-format enumeration (REQ-HRN-OBS-001 ~ REQ-HRN-OBS-018). Replaces §4 Acceptance Criteria placeholder with hierarchical AC enumeration (AC-HRN-OBS-001 ~ AC-HRN-OBS-013) mapped 1:N to REQs. Adds §1.1 Constitutional Contract Preservation referencing the four V3R4-001 contracts (REQ-HRN-FND-005/009/010/011/015). Renames frontmatter fields to canonical 9-field schema (`created_at` / `updated_at` / `labels`). Bumps version 0.1.0 → 0.2.0. Adds research.md, plan.md, acceptance.md, tasks.md sibling files. |
 | 0.1.0   | 2026-05-14 | manager-spec | Initial plan-phase entry seed. Created as the first downstream SPEC after SPEC-V3R4-HARNESS-001 (foundation) merged. Scope: extend the PostToolUse-only observer baseline established by V3R4-HARNESS-001 to cover Stop, SubagentStop, and UserPromptSubmit Claude Code hook events with a unified observation schema. Detailed EARS-format requirements and acceptance criteria are reserved for the next plan-phase session. |
 
@@ -71,7 +69,7 @@ This SPEC is bound by, and MUST preserve, the following load-bearing contracts s
 - Update `internal/template/templates/.claude/settings.json.tmpl` to register the new hook entries under their respective event slots (additive, Strategy WIRE-A per research.md §2.5).
 - Adopt **Strategy A (SHA-256 hash + length + language)** as the default PII handling policy for UserPromptSubmit; provide opt-in keys `learning.user_prompt_content: hash|preview|full|none` for richer or weaker telemetry; reject unknown values with fail-open to Strategy A.
 
-### 1.3.1 Out of Scope (deferred to downstream V3R4 SPECs)
+**Deferred to downstream V3R4 SPECs** (see §3 below for full enumeration):
 
 - Embedding-cluster classifier replacing frequency-count tier ladder — `SPEC-V3R4-HARNESS-003`.
 - Reflexion self-critique loop — `SPEC-V3R4-HARNESS-004`.
@@ -80,7 +78,7 @@ This SPEC is bound by, and MUST preserve, the following load-bearing contracts s
 - Voyager skill library — `SPEC-V3R4-HARNESS-007`.
 - Cross-project federation — `SPEC-V3R4-HARNESS-008`.
 
-### 1.4 Non-Goals
+### 1.4 Out of Scope (Non-Goals)
 
 This SPEC is the OBSERVER EXPANSION. The following capabilities are explicitly OUT OF SCOPE and are deferred to the named downstream SPECs:
 

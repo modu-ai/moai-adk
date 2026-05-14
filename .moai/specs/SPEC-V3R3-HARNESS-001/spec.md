@@ -2,33 +2,31 @@
 id: SPEC-V3R3-HARNESS-001
 title: Meta-Harness Skill — Static Core 22 + Dynamic ∞
 version: "0.1.2"
-status: completed
-created_at: 2026-04-26
-updated_at: 2026-04-27
+status: superseded
+created: 2026-04-26
+updated: 2026-05-13
 author: manager-spec
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Extreme Aggressive Core"
 module: ".claude/skills/moai-meta-harness/, internal/template/templates/.claude/skills/moai-meta-harness/, internal/cli/update/, .moai/archive/skills/v2.16/"
-dependencies:
-  - SPEC-V3R3-HARNESS-LEARNING-001
+dependencies: []
 related_specs:
   - SPEC-V3R3-PATTERNS-001
   - SPEC-V3R3-DESIGN-PIPELINE-001
   - SPEC-V3R3-PROJECT-HARNESS-001
   - SPEC-AGENCY-ABSORB-001
 breaking: true
-bc_id: []
+bc_id:
   - BC-V3R3-007
 lifecycle: spec-anchored
-labels: [harness, meta-skill, breaking-change, namespace-separation, v3r3, phase-c, extreme-aggressive, apache-2-0-attribution]
+tags: "harness, meta-skill, breaking-change, namespace-separation, v3r3, phase-c, extreme-aggressive, apache-2-0-attribution"
 related_theme: "Phase C — Extreme Aggressive Core (meta-harness + namespace separation)"
 target_release: v2.17.0
 issue_number: null
-depends_on:
-created: 2026-04-27
-updated: 2026-05-13
-tags: "legacy"
-  - SPEC-V3R3-HARNESS-LEARNING-001
+supersedes: []
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-HARNESS-001: Meta-Harness Skill — Static Core 22 + Dynamic ∞

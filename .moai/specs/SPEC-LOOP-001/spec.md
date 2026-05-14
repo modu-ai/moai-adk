@@ -5,25 +5,16 @@ status: completed
 priority: Medium-High
 phase: "Phase 3 - Automation"
 created: 2026-02-03
+updated: 2026-05-13
 dependencies:
   - SPEC-QUALITY-001
   - SPEC-CONFIG-001
-modules:
-  - internal/loop/
-  - internal/ralph/
+module: "internal/loop/, internal/ralph/"
 estimated_loc: 1200
-tags:
-  - loop
-  - ralph
-  - feedback
-  - state-machine
-  - convergence
-  - automation
+tags: "loop, ralph, feedback, state-machine, convergence, automation"
 lifecycle: spec-anchored
 version: "1.0.0"
-updated: 2026-05-13
 author: GOOS
-module: "loop"
 ---
 
 # SPEC-LOOP-001: Ralph Feedback Loop Engine

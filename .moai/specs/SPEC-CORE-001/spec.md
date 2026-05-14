@@ -2,17 +2,17 @@
 id: SPEC-CORE-001
 title: Foundation Methodologies
 created: 2026-02-03
+updated: 2026-05-13
 status: completed
 priority: Medium
 phase: "Phase 5 - Knowledge (Phase 1 과 병렬 구현 가능)"
-module: internal/foundation/
-estimated_loc: ~1,000
-dependencies: "없음 (순수 데이터/로직 모듈, 외부 의존성 없음)"
+module: "internal/foundation/"
+estimated_loc: "~1000"
+dependencies: []
 assigned: expert-backend
 lifecycle: spec-anchored
-tags: [foundation, ears, languages, trust5, domain-patterns]
+tags: "foundation, ears, languages, trust5, domain-patterns"
 version: "1.0.0"
-updated: 2026-05-13
 author: GOOS
 ---
 

@@ -1,18 +1,16 @@
 ---
-id: SPEC-GITHUB-WORKFLOW
+id: SPEC-GH-WORKFLOW-001
 title: Enhanced GitHub Issues Workflow with SPEC Integration
 status: draft
-created_at: 2026-02-16T16:05:00+09:00
 priority: high
-domains: [cli, git, workflow, integration]
 version: "1.0.0"
 created: 2026-02-17
 updated: 2026-05-13
 author: GOOS
 phase: "v2.x - Legacy"
-module: "github"
-lifecycle: completed
-tags: "legacy"
+module: ".claude/skills/98-github/, internal/cli/issue/, internal/cli/pr/"
+lifecycle: spec-anchored
+tags: "github, issue, pr, workflow, integration, legacy"
 ---
 
 # SPEC-GITHUB-WORKFLOW: Enhanced GitHub Issues Workflow
