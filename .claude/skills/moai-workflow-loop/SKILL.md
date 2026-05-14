@@ -150,9 +150,9 @@ Skills:
 
 Agents:
 
-- manager-ddd: DDD implementation
+- manager-develop: DDD implementation
 - manager-quality: Quality validation
-- expert-debug: Complex debugging
+- manager-quality: Complex debugging
 
 Commands:
 

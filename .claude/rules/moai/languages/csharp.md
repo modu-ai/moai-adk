@@ -107,4 +107,4 @@ For async enumerable streaming, create async methods returning IAsyncEnumerable 
 - `moai-platform-deploy` - Azure, Docker, Kubernetes deployment
 - `moai-workflow-testing` - Testing strategies and patterns
 - `moai-foundation-quality` - Code quality standards
-- delegate to `expert-debug` agent for AI-powered debugging
+- delegate to `manager-quality` agent for AI-powered debugging

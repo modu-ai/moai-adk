@@ -130,7 +130,7 @@ See:
 - `.claude/rules/moai/languages/python.md` for Python and R interoperability with reticulate
 - moai-domain-database for SQL patterns and database optimization
 - moai-workflow-testing for DDD and testing strategies
-- delegate to `expert-debug` agent for AI-powered debugging
+- delegate to `manager-quality` agent for AI-powered debugging
 - moai-foundation-quality for TRUST 5 quality principles
 
 ---

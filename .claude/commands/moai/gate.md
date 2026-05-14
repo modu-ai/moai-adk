@@ -1,5 +1,5 @@
 ---
-description: lint+format+type-check+test 병렬 실행 (pre-commit 품질 게이트)
+description: Run lint+format+type-check+test in parallel (pre-commit quality gate)
 argument-hint: "[--fix]"
 allowed-tools: Skill
 ---

@@ -28,7 +28,7 @@ progressive_disclosure:
 triggers:
   keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization", "template", "boilerplate", "scaffolding", "code template", "feedback template", "docs", "documentation", "API reference", "docs generation", "Sphinx", "MkDocs", "TypeDoc", "OpenAPI", "jit docs", "just in time docs", "project template", "GitHub issue", "template optimization", "how to", "implement", "best practices", "technology guide", "framework documentation"]
   phases: ["plan", "run", "sync"]
-  agents: ["manager-project", "manager-docs", "builder-skill", "manager-spec", "expert-backend", "expert-frontend"]
+  agents: ["manager-project", "manager-docs", "builder-harness", "manager-spec", "expert-backend", "expert-frontend"]
 ---
 
 # MoAI Workflow Project - Integrated Project Management System

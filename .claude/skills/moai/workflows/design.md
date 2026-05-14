@@ -9,8 +9,6 @@ SPEC-V3R3-DESIGN-PIPELINE-001: REQ-DPL-005, REQ-DPL-008 (Phase 2 — Workflow Ro
 
 ## Mode Dispatch (Multi-Mode Router)
 
-<!-- @MX:NOTE - Multi-Mode Router per SPEC-V3R2-WF-003 REQ-WF003-009, 013; --mode {autopilot,import,team} dispatch with Path B1/B2 preserved under default invocation. See spec-workflow.md#mode-dispatch-cross-reference. -->
-
 Per SPEC-V3R2-WF-003, `/moai design` participates in the `--mode` axis with 4 valid values: `autopilot`, `import`, `team`, `pipeline`. Each value selects a distinct execution path. Note that the design value set differs from `/moai run` (uses `import` instead of `loop`), but the precedence rules and sentinel keys are identical.
 
 ### Mode Values

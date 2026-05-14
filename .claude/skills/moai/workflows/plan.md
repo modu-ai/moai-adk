@@ -48,8 +48,7 @@ For phase overview and token budgets, see: .claude/rules/moai/workflow/spec-work
 
 ## Supported Flags
 
-- --worktree: Create isolated Git worktree environment (highest priority). SPEC files are generated INSIDE the worktree for full isolation.
-- --tmux: (requires --worktree) Automatically create a tmux session in the worktree after plan phase. Enables hands-off transition to `/moai run`.
+- --worktree: Create isolated Git worktree environment (highest priority)
 - --branch: Create traditional feature branch (second priority)
 - No flag: SPEC only by default; user may be prompted based on config
 - --team: Enable team-based exploration (see ${CLAUDE_SKILL_DIR}/team/plan.md for parallel research team)
@@ -452,7 +451,7 @@ File generation (all three files created simultaneously):
 Required 9 fields (canonical order):
 - [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
 - [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
-- [ ] `status: draft` — enum: draft | approved | completed | superseded | archived
+- [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
 - [ ] `created_at: YYYY-MM-DD` — ISO date (NEVER `created`, NEVER `date`)
 - [ ] `updated_at: YYYY-MM-DD` — ISO date (NEVER `updated`)
 - [ ] `author: <name>` — string, not empty

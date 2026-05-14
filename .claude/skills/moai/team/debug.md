@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["debug team", "hypothesis", "investigation", "parallel debug"]
-  agents: ["expert-debug"]
+  agents: ["manager-quality"]
   phases: ["fix"]
 ---
 # Workflow: Team Debug - Investigation Team
@@ -83,7 +83,7 @@ MoAI monitors:
 After all investigations complete:
 1. Compare evidence across hypotheses
 2. Identify the most likely root cause
-3. Delegate fix to expert-debug subagent (NOT a teammate) with:
+3. Delegate fix to manager-quality subagent (NOT a teammate) with:
    - All investigation findings
    - Identified root cause
    - Reproduction steps from evidence
