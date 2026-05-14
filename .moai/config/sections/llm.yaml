@@ -16,6 +16,6 @@ llm:
             opus: glm-5.1
             sonnet: glm-4.7
             haiku: glm-4.5-air
-    default_model: sonnet
-    quality_model: opus
-    speed_model: haiku
+    default_model: ""
+    quality_model: ""
+    speed_model: ""
