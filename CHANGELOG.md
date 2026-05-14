@@ -43,13 +43,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 이 foundation SPEC은 자체적으로 self-evolution 메커니즘을 도입하지 않습니다. 다음 7개 downstream SPEC은 이 foundation을 점진적으로 확장합니다 (모두 `.moai/specs/SPEC-V3R4-HARNESS-001/spec.md` §1.3 Non-Goals 에 명시):
 
-- `SPEC-V3R4-HARNESS-002` — Multi-event observer (Stop / SubagentStop / UserPromptSubmit 통합)
+- `SPEC-V3R4-HARNESS-002` — Multi-event observer (Stop / SubagentStop / UserPromptSubmit 통합) **[IMPLEMENTED]**
 - `SPEC-V3R4-HARNESS-003` — Embedding-cluster pattern detection (frequency-count classifier 대체)
 - `SPEC-V3R4-HARNESS-004` — Reflexion 자체-비판 loop (3-iteration cap)
 - `SPEC-V3R4-HARNESS-005` — Constitution principle-based scoring
 - `SPEC-V3R4-HARNESS-006` — Multi-objective effectiveness measurement + auto-rollback-on-regression
 - `SPEC-V3R4-HARNESS-007` — Voyager 스킬 라이브러리 자동 organization (embedding-indexed retrieval)
 - `SPEC-V3R4-HARNESS-008` — Cross-project lesson federation (privacy-sensitive, opt-in only)
+
+## [Unreleased] — SPEC-V3R4-HARNESS-002: Multi-Event Observer Expansion
+
+### Added
+
+- **SPEC-V3R4-HARNESS-002 — Multi-Event Observer Expansion (Stop / SubagentStop / UserPromptSubmit)**: V3R4 self-evolving harness의 관찰 표면을 PostToolUse-only baseline에서 4-event 매트릭스(PostToolUse + Stop + SubagentStop + UserPromptSubmit)로 확장합니다. 3개 신규 cobra subcommand (`moai hook harness-observe-{stop, subagent-stop, user-prompt-submit}`) + `EventType` enum 확장 (`session_stop` / `subagent_stop` / `user_prompt`) + `.moai/harness/usage-log.jsonl` schema 확장(additive optional fields, `omitempty`). PII 보안 기본값: Strategy A (SHA-256 hash + length + language heuristic for UserPromptSubmit). `learning.enabled` gate 통합(모든 4개 event hook 공유) → 일괄 no-op 가능. 5-Layer Safety (`.claude/rules/moai/design/constitution.md` §5)와 4-tier ladder (REQ-HRN-FND-011) 보존. 3 wrapper script templates (shell .sh.tmpl) + settings.json.tmpl additive wiring (Strategy WIRE-A). Evaluator iter 1/2 defect fix 포함 (PromptPreview byte boundary + prompt_hash [:16] truncation + prompt_full→prompt_content 필드명 정정). 13/13 AC PASS, coverage 87.9%, MX P1/P2 violations 0. 5-wave delivery (A/A.5/B/C) + Phase 2.75 lint + Phase 2.8a evaluator 3 iterations. PR #914 (#909 plan +  #910/#911 run baseline으로부터). downstream SPEC-V3R4-HARNESS-003 (embedding-cluster classifier) 진입 자격 충족.
+
+### Added (English)
+
+- **SPEC-V3R4-HARNESS-002 — Multi-Event Observer Expansion**: Extends the V3R4 self-evolving harness observation surface from a PostToolUse-only baseline to a 4-event matrix (PostToolUse + Stop + SubagentStop + UserPromptSubmit). Introduces 3 new cobra subcommands (`moai hook harness-observe-{stop, subagent-stop, user-prompt-submit}`) + `EventType` enum extension (`session_stop` / `subagent_stop` / `user_prompt`) + `.moai/harness/usage-log.jsonl` schema expansion (additive optional fields tagged with `omitempty`). PII security default: Strategy A (SHA-256 hash + length + language heuristic for UserPromptSubmit). Unified `learning.enabled` gate across all 4 event hooks enables bulk no-op capability. Preserves 5-Layer Safety (`.claude/rules/moai/design/constitution.md` §5) and 4-tier ladder (REQ-HRN-FND-011). 3 wrapper script templates (shell .sh.tmpl) + settings.json.tmpl additive registration (Strategy WIRE-A). Includes evaluator iter 1/2 defect fixes (PromptPreview byte boundary + prompt_hash [:16] truncation + prompt_full→prompt_content field naming). 13/13 AC PASS, coverage 87.9%, MX P1/P2 violations 0. 5-wave delivery (A/A.5/B/C) + Phase 2.75 lint + Phase 2.8a evaluator 3 iterations. PR #914 (plan #909 + run #910/#911 baseline). Unblocks downstream SPEC-V3R4-HARNESS-003 (embedding-cluster classifier).
 
 ## [Unreleased] — SPEC-V3R2-HRN-003: Hierarchical Acceptance Scoring
 

@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R4-HARNESS-002
-version: "0.2.2"
-status: draft
+version: "0.3.0"
+status: implemented
 created: 2026-05-14
-updated: 2026-05-14
+updated: 2026-05-15
 author: manager-spec
 priority: P1
 tags: "harness, self-evolution, multi-event-observer, v3r4, downstream, observer-expansion"
@@ -29,6 +29,7 @@ target_release: v2.21.0
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.3.0   | 2026-05-15 | manager-docs | sync-phase complete — status `draft` → `implemented` (version 0.3.0, updated 2026-05-15). Run-phase PR #914 squash merged `32aba1537` on 2026-05-14T17:18:57Z; 13/13 AC PASS per evaluator iter 3; harness coverage 87.9%, safety 94.3%; MX P1/P2 violations 0. Wave matrix: A/A.5/B/C + Phase 2.75/2.8a iter1/iter2/iter3 complete. CHANGELOG updated (ko/en sections), docs sync complete. docs-site: internal feature (no user-facing change). |
 | 0.2.2   | 2026-05-14 | MoAI orchestrator | spec-lint frontmatter schema compliance — restored canonical `created` / `updated` / `tags` (string) / `title` field names per `internal/spec/lint.go` requirements (plan-auditor iter 1 had erroneously classified `title` as deprecated; lint requires it). Promoted §1.3 "Out of Scope" bold text into `### 1.3.1` formal heading so OutOfScopeRule (lint.go:640) detects the dash items. No content semantic changes. |
 | 0.2.1   | 2026-05-14 | manager-spec | plan-auditor iteration 1 mechanical fixes — removed deprecated `title:` frontmatter field (D1), normalized standalone AC leaves to canonical `(maps REQ-...)` tail format (D2). No content semantic changes. (Note: title removal reversed in v0.2.2 — spec-lint requires it.) |
 | 0.2.0   | 2026-05-14 | manager-spec | Plan-phase expansion. Replaces §3 Requirements placeholder with full EARS-format enumeration (REQ-HRN-OBS-001 ~ REQ-HRN-OBS-018). Replaces §4 Acceptance Criteria placeholder with hierarchical AC enumeration (AC-HRN-OBS-001 ~ AC-HRN-OBS-013) mapped 1:N to REQs. Adds §1.1 Constitutional Contract Preservation referencing the four V3R4-001 contracts (REQ-HRN-FND-005/009/010/011/015). Renames frontmatter fields to canonical 9-field schema (`created_at` / `updated_at` / `labels`). Bumps version 0.1.0 → 0.2.0. Adds research.md, plan.md, acceptance.md, tasks.md sibling files. |

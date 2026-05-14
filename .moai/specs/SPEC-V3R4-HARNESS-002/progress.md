@@ -54,10 +54,14 @@ Lifecycle telemetry for SPEC-V3R4-HARNESS-002 (Multi-Event Observer Expansion).
 
 ## Sync Phase
 
-- sync_started_at: _pending_
-- sync_status: _pending_
-- docs_updated: _pending_
-- pr_url: _pending_
+- sync_started_at: 2026-05-15T14:15Z
+- sync_status: in-progress (manager-docs)
+- docs_updated:
+  - spec.md: frontmatter status draft → implemented, version 0.2.2 → 0.3.0, updated 2026-05-14 → 2026-05-15
+  - spec.md: HISTORY entry v0.3.0 added (run-phase complete marker)
+  - progress.md: sync section populated (this entry)
+  - CHANGELOG.md: v2.21.0 Multi-Event Observer Expansion (ko + en sections, PR #914 reference)
+- pr_url: _pending_ (manager-git delegation after push)
 
 ---
 
