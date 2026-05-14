@@ -1,0 +1,26 @@
+# Go 리소스 안전성 규칙
+# 파일, HTTP 클라이언트, Body 닫기 누락 탐지
+---
+id: go-http-response-body-not-closed
+language: go
+severity: error
+message: "HTTP Response.Body가 defer로 닫히지 않았습니다. 연결 누수가 발생합니다."
+note: "resp.Body는 항상 defer resp.Body.Close()로 닫아야 합니다. 에러 체크 전에도 닫기가 필요할 수 있습니다."
+pattern: |
+  $RESP, $ERR := $CLIENT.Do($REQ)
+  if $ERR != nil {
+    $$$
+  }
+fix: |
+  $RESP, $ERR := $CLIENT.Do($REQ)
+  if $ERR != nil {
+    $$$
+  }
+  defer $RESP.Body.Close()
+---
+id: go-map-no-ok-check
+language: go
+severity: warning
+message: "map에서 값을 조회할 때 ok 체크가 없습니다. 키가 없으면 zero value가 반환되어 버그가 발생할 수 있습니다."
+note: "v, ok := m[key] 패턴을 사용하여 키 존재 여부를 항상 확인하세요. ok가 false일 때의 처리 로직을 명시적으로 작성하세요."
+pattern: "$VALUE = $MAP[$KEY]"

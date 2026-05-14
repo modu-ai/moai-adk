@@ -1,0 +1,9 @@
+id: elixir-todo-marker
+language: elixir
+severity: info
+message: "Stub implementation with raise 'TODO' detected. Implement before shipping to production."
+note: "raise 'TODO' in Elixir causes a RuntimeError at runtime if the code path is reached. Replace with a proper implementation. Use :not_implemented as a temporary return value during development, or raise a more specific exception with a descriptive message. Ensure all stubs are resolved before merging."
+metadata:
+  owasp: "A05:2021 - Security Misconfiguration"
+  cwe: "CWE-710"
+pattern: raise "TODO"

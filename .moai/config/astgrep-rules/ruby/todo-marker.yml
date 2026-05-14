@@ -1,0 +1,9 @@
+id: ruby-todo-marker
+language: ruby
+severity: info
+message: "Stub implementation detected. Replace with a proper implementation before shipping to production."
+note: "raise 'TODO' is a placeholder that will crash at runtime. Implement the method body or use NotImplementedError with a descriptive message. Ensure all stubs are resolved before merging to the main branch."
+metadata:
+  owasp: "A05:2021 - Security Misconfiguration"
+  cwe: "CWE-710"
+pattern: raise "TODO"

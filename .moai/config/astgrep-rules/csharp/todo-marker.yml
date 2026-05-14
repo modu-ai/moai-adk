@@ -1,0 +1,9 @@
+id: csharp-todo-marker
+language: csharp
+severity: info
+message: "NotImplementedException stub detected. Implement the method body before deploying to production."
+note: "throw new NotImplementedException() causes an unhandled exception if the code path is reached at runtime. Replace with a proper implementation. If the method is intentionally not yet implemented during early development, add a GitHub issue reference and ensure it is tracked. Never merge stubs to main."
+metadata:
+  owasp: "A05:2021 - Security Misconfiguration"
+  cwe: "CWE-710"
+pattern: throw new NotImplementedException()

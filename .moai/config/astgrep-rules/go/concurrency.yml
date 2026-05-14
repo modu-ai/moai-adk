@@ -1,0 +1,41 @@
+# Go 동시성 안전성 규칙
+# goroutine, channel, mutex 관련 위험 패턴 탐지
+---
+id: go-goroutine-without-context
+language: go
+severity: warning
+message: "goroutine 시작 시 context를 전달하지 않습니다. context.Context를 매개변수로 전달하여 취소 전파를 지원하세요."
+note: "context 없는 goroutine은 부모 함수 종료 후에도 계속 실행될 수 있습니다. 서비스 종료 시 goroutine 누수가 발생합니다."
+pattern: |
+  go func() {
+    $$$BODY
+  }()
+---
+id: go-mutex-not-deferred
+language: go
+severity: warning
+message: "sync.Mutex.Unlock()이 defer로 호출되지 않았습니다. 패닉이나 early return 시 데드락이 발생할 수 있습니다."
+note: "mutex.Lock() 직후 defer mutex.Unlock() 패턴을 사용하면 모든 종료 경로에서 unlock이 보장됩니다."
+pattern: |
+  $MUTEX.Lock()
+  $$$BODY
+  $MUTEX.Unlock()
+---
+id: go-defer-in-loop
+language: go
+severity: error
+message: "루프 내부에서 defer를 사용하면 파일/리소스가 루프 종료까지 닫히지 않습니다."
+note: "루프 내 defer는 함수가 반환될 때까지 실행되지 않습니다. 루프 본문을 별도 함수로 추출하거나 명시적 close를 사용하세요."
+pattern: |
+  for $$$INIT {
+    $$$PRE
+    defer $RESOURCE.$METHOD()
+    $$$POST
+  }
+---
+id: go-channel-send-no-select
+language: go
+severity: warning
+message: "채널 전송이 select-default 없이 수행됩니다. 수신자가 없으면 goroutine이 영구 블록될 수 있습니다."
+note: "select { case ch <- v: default: } 패턴을 사용하거나 context.Done()과 함께 select를 사용하세요."
+pattern: $CHAN <- $VALUE
