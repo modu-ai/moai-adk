@@ -2,8 +2,9 @@
 
 ## HISTORY
 
-| Version | Date       | Author       | Description |
-|---------|------------|--------------|-------------|
+| Version | Date       | Author              | Description |
+|---------|------------|---------------------|-------------|
+| 0.1.1   | 2026-05-15 | manager-develop run | plan-auditor D1 finding 반영: Effort 분류 (§2 §3 §4) 의 time prediction ("< 30분", "1-3시간", "4시간+") 제거 → scope descriptor 로 변경 (Time Estimation HARD rule 준수). 의미 변경 없이 표현만 정규화. |
 | 0.1.0   | 2026-05-15 | manager-spec | 초기 draft. plan.md 의 3 Wave / 11 task (T-SLD-001 ~ T-SLD-011) 일람표. 각 task 의 wave 배치, dependency, priority, 추정 effort 분류 (S/M/L), reference REQ/AC, MX 태그 표기. |
 
 ---
@@ -24,10 +25,10 @@
 | T-SLD-010  | 3    | plan-auditor review   | P0       | S      | T-SLD-009           | REQ-SLD-010   | Gate G6       | -                  |
 | T-SLD-011  | 3    | PR 생성 + CI GREEN     | P0       | M      | T-SLD-010           | REQ-SLD-009   | AC-SLD-009 / Gate G4 | -          |
 
-**Effort 분류**:
-- **S** (Small): 단일 SPEC 1-2 라인 편집, < 30분.
-- **M** (Medium): 2-10 SPEC 편집 또는 자동화 스크립트 작성, 1-3시간.
-- **L** (Large): 다수 SPEC 일괄 처리 또는 case-by-case 분석, 4시간+.
+**Effort 분류** (scope descriptor only, no time prediction per Time Estimation HARD rule):
+- **S** (Small): 단일 SPEC 1-2 라인 편집 — frontmatter field 1개 변경 정도.
+- **M** (Medium): 2-10 SPEC 편집 또는 자동화 스크립트 작성 — batch frontmatter 정규화 또는 Go script 작성.
+- **L** (Large): 다수 SPEC 일괄 처리 또는 case-by-case 분석 — 20+ SPEC 영향 또는 per-REQ 검토 필요.
 
 ---
 

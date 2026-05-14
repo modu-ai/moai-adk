@@ -4,6 +4,7 @@
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.1.1   | 2026-05-15 | manager-develop run | OQ4 lock-in (user AskUserQuestion 1 응답): 5 categorical commits 채택 (Option B). plan-auditor D1 (tasks.md L28-30 time predictions) follow-up: §5.1 Option B 의 effort 분류 시간 추정 제거는 본 sync 단계에서 처리. ParseFailure 4건 + ID format 2건 등 expanded scope 결정 정리. |
 | 0.1.0   | 2026-05-15 | manager-spec | 초기 draft. 3 Wave / 11 task 분할. Wave 1 (P0 ERROR 해소, 6 task) → Wave 2 (P1 WARNING 해소, 2 task) → Wave 3 (검증 + 머지, 3 task). 각 task는 T-SLD-NNN 패턴으로 식별. @MX:NOTE 태그를 SPEC 분석 pivot 지점에 적용. |
 
 ---
