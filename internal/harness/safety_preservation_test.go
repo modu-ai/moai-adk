@@ -74,24 +74,7 @@ func TestSafetyArchitecture_LayerCount(t *testing.T) {
 	}
 
 	// 총 레이어 수: "### Layer N:" 패턴 카운트
-	layerCount := 0
-	for i := 1; i <= 10; i++ {
-		// "Layer 1:", "Layer 2:", ... 패턴 탐색
-		marker := "### Layer "
-		idx := 0
-		for {
-			pos := strings.Index(body[idx:], marker)
-			if pos == -1 {
-				break
-			}
-			layerCount++
-			idx += pos + len(marker)
-		}
-		break // 위 루프가 전체를 카운트
-	}
-
-	// strings.Count로 직접 카운트 (위의 루프 로직 대체)
-	layerCount = strings.Count(body, "### Layer ")
+	layerCount := strings.Count(body, "### Layer ")
 	if layerCount != 5 {
 		t.Errorf("constitution.md §5 '### Layer ' 수: got=%d, want=5", layerCount)
 	}

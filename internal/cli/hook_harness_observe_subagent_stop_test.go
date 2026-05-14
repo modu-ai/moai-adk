@@ -22,8 +22,9 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled(t *testing.T) {
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
 
+	// T-A4 spec: camelCase agentName/agentType + nested session.id
 	cmd := &cobra.Command{}
-	withStdin(t, `{"agent_name":"expert-frontend","agent_type":"subagent","agent_id":"ag-001","session_id":"sess-abc"}`, func() {
+	withStdin(t, `{"agentName":"expert-frontend","agentType":"subagent","agent_id":"ag-001","session":{"id":"sess-abc"}}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop 에러 반환: %v", err)
 		}
@@ -54,8 +55,9 @@ func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testi
 		t.Fatalf("기존 로그 파일 생성 실패: %v", err)
 	}
 
+	// T-A4 spec: camelCase + nested session.id
 	cmd := &cobra.Command{}
-	withStdin(t, `{"agent_name":"expert-security","session_id":"sess-preserve"}`, func() {
+	withStdin(t, `{"agentName":"expert-security","session":{"id":"sess-preserve"}}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop 에러 반환: %v", err)
 		}
@@ -82,8 +84,9 @@ func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
+	// T-A4 spec: camelCase agentName/agentType + nested session.id
 	cmd := &cobra.Command{}
-	payload := `{"agent_name":"manager-develop","agent_type":"subagent","agent_id":"ag-xyz-789","session_id":"sess-parent-456"}`
+	payload := `{"agentName":"manager-develop","agentType":"subagent","agent_id":"ag-xyz-789","session":{"id":"sess-parent-456"}}`
 	withStdin(t, payload, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop 에러 반환: %v", err)
@@ -162,7 +165,7 @@ func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetErr(&stderrBuf)
 
-	withStdin(t, `{"agent_name":"expert-backend","session_id":"sess-error"}`, func() {
+	withStdin(t, `{"agentName":"expert-backend","session":{"id":"sess-error"}}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Errorf("SubagentStop 핸들러는 기록 실패 시에도 에러를 반환하지 않아야 함: %v", err)
 		}
@@ -177,9 +180,9 @@ func TestRunHarnessObserveSubagentStop_UnknownSubjectFallback(t *testing.T) {
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
+	// T-A4 spec: agentName 생략 → "unknown" 폴백
 	cmd := &cobra.Command{}
-	// agent_name 생략
-	withStdin(t, `{"session_id":"sess-noname"}`, func() {
+	withStdin(t, `{"session":{"id":"sess-noname"}}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop 에러 반환: %v", err)
 		}

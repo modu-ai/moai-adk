@@ -27,7 +27,8 @@ func TestRunHarnessObserveStop_NoOpWhenDisabled(t *testing.T) {
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
-	withStdin(t, `{"session_id":"sess-abc","hook_event_name":"Stop"}`, func() {
+	// T-A3 spec: nested stdin JSON — last_assistant_message + session.id
+	withStdin(t, `{"last_assistant_message":"","session":{"id":"sess-abc"},"hook_event_name":"Stop"}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop returned error: %v", err)
 		}
@@ -48,7 +49,8 @@ func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
-	withStdin(t, `{"session_id":"sess-xyz","hook_event_name":"Stop"}`, func() {
+	// T-A3 spec: nested stdin JSON — last_assistant_message + session.id
+	withStdin(t, `{"last_assistant_message":"test msg","session":{"id":"sess-xyz"},"hook_event_name":"Stop"}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop error: %v", err)
 		}
@@ -94,8 +96,9 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenDisabled(t *testing.T) {
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
 
+	// T-A4 spec: camelCase agentName + nested session.id
 	cmd := &cobra.Command{}
-	withStdin(t, `{"agent_name":"expert-backend","hook_event_name":"SubagentStop"}`, func() {
+	withStdin(t, `{"agentName":"expert-backend","hook_event_name":"SubagentStop"}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop returned error: %v", err)
 		}
@@ -115,8 +118,9 @@ func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
+	// T-A4 spec: camelCase agentName + nested session.id
 	cmd := &cobra.Command{}
-	withStdin(t, `{"agent_name":"expert-backend","hook_event_name":"SubagentStop"}`, func() {
+	withStdin(t, `{"agentName":"expert-backend","hook_event_name":"SubagentStop"}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop error: %v", err)
 		}

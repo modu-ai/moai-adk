@@ -31,12 +31,14 @@ func TestGateUniformity_AllHandlersNoOpWhenDisabled(t *testing.T) {
 		{
 			name:    "Stop",
 			handler: runHarnessObserveStop,
-			stdin:   `{"session_id":"sess-gate-test","hook_event_name":"Stop"}`,
+			// T-A3 spec: nested session.id
+			stdin: `{"last_assistant_message":"","session":{"id":"sess-gate-test"},"hook_event_name":"Stop"}`,
 		},
 		{
 			name:    "SubagentStop",
 			handler: runHarnessObserveSubagentStop,
-			stdin:   `{"agent_name":"expert-backend","agent_type":"subagent","session_id":"sess-gate-test"}`,
+			// T-A4 spec: camelCase agentName/agentType + nested session.id
+			stdin: `{"agentName":"expert-backend","agentType":"subagent","session":{"id":"sess-gate-test"}}`,
 		},
 		{
 			name:    "UserPromptSubmit",

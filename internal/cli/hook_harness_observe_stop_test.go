@@ -23,8 +23,9 @@ func TestRunHarnessObserveStop_NoOpWhenLearningDisabled(t *testing.T) {
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
 
+	// T-A3 spec: nested stdin JSON shape
 	cmd := &cobra.Command{}
-	withStdin(t, `{"session_id":"sess-disabled","hook_event_name":"Stop"}`, func() {
+	withStdin(t, `{"last_assistant_message":"hello","session":{"id":"sess-disabled"},"hook_event_name":"Stop"}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop 에러 반환: %v", err)
 		}
@@ -56,7 +57,7 @@ func TestRunHarnessObserveStop_PreservesExistingLogWhenDisabled(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
-	withStdin(t, `{"session_id":"sess-preserve","hook_event_name":"Stop"}`, func() {
+	withStdin(t, `{"last_assistant_message":"hi","session":{"id":"sess-preserve"},"hook_event_name":"Stop"}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop 에러 반환: %v", err)
 		}
@@ -75,16 +76,21 @@ func TestRunHarnessObserveStop_PreservesExistingLogWhenDisabled(t *testing.T) {
 // TestRunHarnessObserveStop_RecordsWhenEnabled는 learning.enabled=true일 때
 // Stop 핸들러가 session_stop 이벤트를 올바르게 기록하는지 검증한다.
 // - 4개 기본 필드: timestamp, event_type, subject, schema_version
-// - Stop 전용 필드: session_id
-// REQ-HRN-OBS-003, REQ-HRN-FND-010.
+// - Stop 전용 필드: session_id, last_assistant_message_hash, last_assistant_message_len
+// - 원문(last_assistant_message)은 로그에 기록되지 않아야 함 (PII 최소화)
+// REQ-HRN-OBS-002, REQ-HRN-OBS-003, REQ-HRN-FND-010.
 func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
-	const sessionID = "sess-test-c1"
+	const (
+		sessionID = "sess-test-c1"
+		// T-A3 spec: nested stdin JSON — last_assistant_message + session.id
+		assistantMsg = "Hello from assistant"
+	)
 	cmd := &cobra.Command{}
-	withStdin(t, `{"session_id":"`+sessionID+`","hook_event_name":"Stop"}`, func() {
+	withStdin(t, `{"last_assistant_message":"`+assistantMsg+`","session":{"id":"`+sessionID+`"},"hook_event_name":"Stop"}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop 에러 반환: %v", err)
 		}
@@ -118,18 +124,71 @@ func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
 		}
 	}
 
-	// session_id 필드 존재 및 값 검증 (REQ-HRN-OBS-003)
+	// session_id 필드 존재 및 값 검증 (REQ-HRN-OBS-003): session.id에서 추출
 	if entry["session_id"] != sessionID {
 		t.Errorf("session_id: got=%v, want=%q", entry["session_id"], sessionID)
 	}
 
-	// last_assistant_message_hash / last_assistant_message_len 은 구현상 stdin에서 읽지 않으므로
-	// 생략(omitempty)되는 것이 정상 동작 — 필드가 없어야 함 (PII 최소화 원칙 일치)
+	// AC-HRN-OBS-002: last_assistant_message_hash 존재 및 길이 16 hex chars 검증
+	hashVal, ok := entry["last_assistant_message_hash"]
+	if !ok {
+		t.Errorf("last_assistant_message_hash 필드 누락 — AC-HRN-OBS-002 미충족")
+	} else {
+		hashStr, _ := hashVal.(string)
+		if len(hashStr) != 16 {
+			t.Errorf("last_assistant_message_hash 길이: got=%d, want=16 (first 16 hex chars of SHA-256)", len(hashStr))
+		}
+	}
+
+	// AC-HRN-OBS-002: last_assistant_message_len 존재 및 바이트 길이 검증
+	lenVal, ok := entry["last_assistant_message_len"]
+	if !ok {
+		t.Errorf("last_assistant_message_len 필드 누락 — AC-HRN-OBS-002 미충족")
+	} else {
+		// JSON 숫자는 float64로 언마샬됨
+		gotLen := int(lenVal.(float64))
+		wantLen := len([]byte(assistantMsg))
+		if gotLen != wantLen {
+			t.Errorf("last_assistant_message_len: got=%d, want=%d", gotLen, wantLen)
+		}
+	}
+
+	// PII 최소화: 원문(last_assistant_message)은 로그에 등장해서는 안 됨
+	if strings.Contains(string(data), assistantMsg) {
+		t.Errorf("last_assistant_message 원문이 로그에 기록됨 — PII 최소화 원칙 위반")
+	}
+}
+
+// TestRunHarnessObserveStop_EmptyMessageNoHashFields는 last_assistant_message가 빈 문자열일 때
+// hash/len 필드가 omitempty에 의해 생략됨을 검증한다.
+// REQ-HRN-OBS-002: 빈 메시지 시 필드 생략 (omitempty 정상 동작).
+func TestRunHarnessObserveStop_EmptyMessageNoHashFields(t *testing.T) {
+	dir := t.TempDir()
+	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	t.Chdir(dir)
+
+	cmd := &cobra.Command{}
+	withStdin(t, `{"last_assistant_message":"","session":{"id":"sess-empty"}}`, func() {
+		if err := runHarnessObserveStop(cmd, nil); err != nil {
+			t.Fatalf("runHarnessObserveStop 에러 반환: %v", err)
+		}
+	})
+
+	logPath := filepath.Join(dir, ".moai", "harness", "usage-log.jsonl")
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("usage-log.jsonl 미생성: %v", err)
+	}
+
+	var entry map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimRight(string(data), "\n")), &entry); err != nil {
+		t.Fatalf("JSONL 파싱 실패: %v", err)
+	}
+
+	// 빈 메시지 시 hash/len 필드는 omitempty로 생략되어야 함
 	for _, field := range []string{"last_assistant_message_hash", "last_assistant_message_len"} {
 		if _, ok := entry[field]; ok {
-			// 값이 빈 문자열이거나 0인 경우 omitempty에 의해 생략되어야 함
-			// 만약 등장하면 구현 변경을 의미하므로 정보성 경고만 출력
-			t.Logf("INFO: 필드 %q가 엔트리에 등장함 — 구현이 stdin에서 해당 값을 읽기 시작한 경우 정상", field)
+			t.Errorf("빈 last_assistant_message 시 필드 %q가 로그에 등장해서는 안 됨 (omitempty 위반)", field)
 		}
 	}
 }
@@ -152,7 +211,7 @@ func TestRunHarnessObserveStop_LogErrorPathDoesNotReturn(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetErr(&stderrBuf)
 
-	withStdin(t, `{"session_id":"sess-error-path"}`, func() {
+	withStdin(t, `{"last_assistant_message":"msg","session":{"id":"sess-error-path"}}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Errorf("Stop 핸들러는 기록 실패 시에도 에러를 반환하지 않아야 함: %v", err)
 		}

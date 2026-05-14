@@ -544,8 +544,13 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 // runHarnessObserveStop는 Claude Code Stop 훅 stdin JSON을 읽고
 // session_stop 이벤트를 usage-log.jsonl에 기록한다.
 //
-// @MX:NOTE: [AUTO] REQ-HRN-OBS-004 + REQ-HRN-OBS-008: Stop 훅 핸들러.
+// stdin JSON 스키마 (T-A3 spec):
+//
+//	{"last_assistant_message": "...", "session": {"id": "..."}}
+//
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004 + REQ-HRN-OBS-008: Stop 훅 핸들러.
 // isHarnessLearningEnabled 게이트 재사용 (REQ-HRN-FND-009).
+// last_assistant_message_hash = SHA-256[:16] hex, last_assistant_message_len = byte length.
 // 에러는 stderr에 기록하고 exit 0 반환 (비블로킹).
 func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
@@ -557,24 +562,33 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// T-A3 spec: nested stdin JSON — last_assistant_message + session.id
 	var hookInput struct {
-		SessionID string `json:"session_id"`
+		LastAssistantMessage string `json:"last_assistant_message"`
+		Session              struct {
+			ID string `json:"id"`
+		} `json:"session"`
 	}
 	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
 
 	// subject: cwd 기반 SPEC-ID 탐지 (없으면 빈 문자열)
 	subject := detectSpecIDFromCwd(cwd)
 
+	// last_assistant_message_hash + len 계산 (비어있지 않을 때만)
+	msgHash, msgLen := assistantMessageFields(hookInput.LastAssistantMessage)
+
 	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
 	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
 	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
 
 	evt := harness.Event{
-		EventType:     harness.EventTypeSessionStop,
-		Subject:       subject,
-		ContextHash:   "",
-		TierIncrement: 0,
-		SessionID:     hookInput.SessionID,
+		EventType:                harness.EventTypeSessionStop,
+		Subject:                  subject,
+		ContextHash:              "",
+		TierIncrement:            0,
+		SessionID:                hookInput.Session.ID,
+		LastAssistantMessageHash: msgHash,
+		LastAssistantMessageLen:  msgLen,
 	}
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
@@ -584,6 +598,21 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// assistantMessageFields는 last_assistant_message로부터
+// last_assistant_message_hash (SHA-256 첫 16 hex 문자)와
+// last_assistant_message_len (UTF-8 바이트 길이)을 계산한다.
+// msg가 빈 문자열이면 ("", 0)을 반환한다.
+//
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004: Stop/SubagentStop 핸들러에서 공유.
+// SHA-256[:16]는 16 hex chars = 8 bytes 강도 (충돌 방지보다 빠른 중복 탐지 목적).
+func assistantMessageFields(msg string) (hash string, length int) {
+	if msg == "" {
+		return "", 0
+	}
+	h := sha256.Sum256([]byte(msg))
+	return fmt.Sprintf("%x", h)[:16], len([]byte(msg))
+}
+
 // ─────────────────────────────────────────────────────────────
 // T-A4: SubagentStop 훅 핸들러
 // ─────────────────────────────────────────────────────────────
@@ -591,8 +620,14 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 // runHarnessObserveSubagentStop는 Claude Code SubagentStop 훅 stdin JSON을 읽고
 // subagent_stop 이벤트를 usage-log.jsonl에 기록한다.
 //
-// @MX:NOTE: [AUTO] REQ-HRN-OBS-005 + REQ-HRN-OBS-008: SubagentStop 훅 핸들러.
+// stdin JSON 스키마 (T-A4 spec):
+//
+//	{"agentType": "...", "agentName": "...", "last_assistant_message": "...",
+//	 "agent_id": "...", "agent_transcript_path": "...", "session": {"id": "..."}}
+//
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-003 + REQ-HRN-OBS-005 + REQ-HRN-OBS-008: SubagentStop 훅 핸들러.
 // isHarnessLearningEnabled 게이트 재사용 (REQ-HRN-FND-009).
+// parent_session_id는 session.id (nested) 에서 추출한다.
 func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -603,11 +638,16 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// T-A4 spec: camelCase agentType/agentName, nested session.id
 	var hookInput struct {
-		AgentName string `json:"agent_name"`
-		AgentType string `json:"agent_type"`
-		AgentID   string `json:"agent_id"`
-		SessionID string `json:"session_id"`
+		AgentType            string `json:"agentType"`
+		AgentName            string `json:"agentName"`
+		LastAssistantMessage string `json:"last_assistant_message"`
+		AgentID              string `json:"agent_id"`
+		AgentTranscriptPath  string `json:"agent_transcript_path"`
+		Session              struct {
+			ID string `json:"id"`
+		} `json:"session"`
 	}
 	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
 
@@ -629,7 +669,7 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 		AgentName:       hookInput.AgentName,
 		AgentType:       hookInput.AgentType,
 		AgentID:         hookInput.AgentID,
-		ParentSessionID: hookInput.SessionID,
+		ParentSessionID: hookInput.Session.ID,
 	}
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
