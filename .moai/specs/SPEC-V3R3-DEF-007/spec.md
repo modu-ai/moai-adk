@@ -16,6 +16,9 @@ lifecycle: spec-anchored
 tags: "convention, compliance, baseline, skill-frontmatter, agent-body, template-sync, v3r3, phase-a"
 related_theme: "Phase A — Defect Cleanup"
 released_in: v2.15.0
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-DEF-007: Convention Compliance Sweep

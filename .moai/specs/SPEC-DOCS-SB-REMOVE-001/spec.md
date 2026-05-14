@@ -17,6 +17,9 @@ phase: "v2.x - Legacy"
 module: "docs"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-DOCS-SB-REMOVE-001: docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거

@@ -1,6 +1,6 @@
 ---
 id: SPEC-TELEMETRY-001
-status: implemented
+status: in-progress
 title: "Skill Usage Telemetry"
 version: "1.0.0"
 created: 2026-04-15

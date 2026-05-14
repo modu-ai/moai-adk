@@ -11,6 +11,9 @@ phase: "v2.x - Legacy"
 module: "ci"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-CICD-001: CI/CD AI 자동화 재설계

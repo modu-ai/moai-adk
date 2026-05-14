@@ -1,7 +1,7 @@
 ---
 id: SPEC-PERSIST-001
 version: "1.0.0"
-status: draft
+status: implemented
 created: "2026-04-07"
 updated: "2026-04-07"
 author: GOOS

@@ -1,7 +1,7 @@
 ---
 id: SPEC-ASTG-UPGRADE-001
 version: "1.0.0"
-status: draft
+status: in-progress
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS

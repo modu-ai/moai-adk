@@ -1,6 +1,6 @@
 ---
 id: SPEC-CC2122-HOOK-002
-status: draft
+status: implemented
 title: "HOOK-001 Follow-up (REQ-007 + REQ-008)"
 version: "1.0.0"
 created: 2026-05-01

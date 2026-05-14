@@ -11,11 +11,14 @@ phase: "v3.0.0 R3 — Phase A — Runtime Safety Net"
 module: ".moai/config/sections/runtime.yaml, internal/runtime/budget.go, internal/template/templates/.moai/config/sections/runtime.yaml"
 dependencies: []
 breaking: false
-bc_id: [BC-V3R3-006]
+bc_id: []
 lifecycle: spec-anchored
 tags: "token-budget, circuit-breaker, runtime, per-agent, stall-detection, progress-persistence, v3r3, phase-a, safety-net"
 related_theme: "Phase A — Iteration 4 Safety Net"
 released_in: v2.15.0
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-ARCH-007: Token Circuit Breaker

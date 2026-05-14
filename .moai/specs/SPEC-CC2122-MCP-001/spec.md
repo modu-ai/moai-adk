@@ -1,7 +1,7 @@
 ---
 id: SPEC-CC2122-MCP-001
 version: "0.1.0"
-status: draft
+status: implemented
 created_at: 2026-04-30
 updated_at: 2026-04-30
 author: manager-spec

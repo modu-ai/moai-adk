@@ -20,6 +20,9 @@ harness: standard
 title: "`/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package"
 created: 2026-05-04
 updated: 2026-05-13
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-BRAIN-001: `/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package

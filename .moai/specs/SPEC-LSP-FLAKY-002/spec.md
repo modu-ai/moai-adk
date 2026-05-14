@@ -1,6 +1,6 @@
 ---
 id: SPEC-LSP-FLAKY-002
-status: draft
+status: implemented
 title: "LSP Launcher ETXTBSY Eager Initialization Hotfix"
 version: "1.0.0"
 created: 2026-05-01

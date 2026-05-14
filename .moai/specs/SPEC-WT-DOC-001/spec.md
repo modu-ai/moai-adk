@@ -1,6 +1,6 @@
 ---
 id: SPEC-WT-DOC-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Low
 labels: [worktree, shared-state, documentation, anti-pattern, termination, wave-3, tier-2]

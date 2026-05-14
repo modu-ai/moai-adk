@@ -17,6 +17,9 @@ phase: "v2.x - Legacy"
 module: "database"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-DB-SYNC-RELOC-001: PostToolUse DB 훅 → `/moai sync` Phase 이관

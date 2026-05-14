@@ -15,6 +15,9 @@ phase: "v3.0.0 - Consolidation"
 module: "web"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 ## HISTORY

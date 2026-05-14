@@ -1,6 +1,6 @@
 ---
 id: SPEC-SKILL-ENHANCE-001
-status: draft
+status: implemented
 title: "Skill Anti-Rationalization, Red Flags, and Verification"
 version: "1.0.0"
 created: 2026-04-15

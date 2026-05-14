@@ -2,7 +2,7 @@
 id: SPEC-V3R2-MIG-001
 title: v2 to v3 Migrator (moai migrate v2-to-v3)
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-04-23
 updated: 2026-04-23
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)

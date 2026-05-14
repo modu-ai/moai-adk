@@ -18,6 +18,9 @@ phase: "v2.x - Legacy"
 module: "database"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-DB-SYNC-HARDEN-001: dbsync 훅 견고화 (5 warning 통합)

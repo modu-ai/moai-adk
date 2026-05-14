@@ -1,6 +1,6 @@
 ---
 id: SPEC-RESUME-MSG-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [resume-message, context-window, session, autocompact, workflow, wave-4, tier-3]

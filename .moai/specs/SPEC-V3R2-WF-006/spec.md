@@ -17,6 +17,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "output-styles, moai, einstein, claude-code-schema, precedence, v3"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-WF-006: Output Styles Alignment

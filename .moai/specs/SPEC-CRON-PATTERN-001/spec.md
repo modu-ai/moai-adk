@@ -1,6 +1,6 @@
 ---
 id: SPEC-CRON-PATTERN-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [routine, cron, automation, pattern, catalog, wave-4, tier-3]

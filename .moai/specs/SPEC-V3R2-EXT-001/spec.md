@@ -2,7 +2,7 @@
 id: SPEC-V3R2-EXT-001
 title: Typed Memory Taxonomy (4-type enforcement)
 version: "1.1.0"
-status: draft
+status: implemented
 created_at: 2026-04-23
 updated_at: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)

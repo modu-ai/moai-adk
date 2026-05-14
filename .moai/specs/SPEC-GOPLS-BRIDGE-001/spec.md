@@ -1,7 +1,7 @@
 ---
 id: SPEC-GOPLS-BRIDGE-001
 version: "1.0.0"
-status: draft
+status: completed
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS

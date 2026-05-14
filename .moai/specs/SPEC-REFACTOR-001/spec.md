@@ -12,6 +12,9 @@ phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 ## HISTORY

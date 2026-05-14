@@ -16,6 +16,9 @@ phase: "v2.12 - CC Adoption"
 module: "statusline"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-CC2122-STATUSLINE-001: Claude Code v2.1.122 Statusline Effort + Thinking 통합

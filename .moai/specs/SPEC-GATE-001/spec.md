@@ -1,7 +1,7 @@
 ---
 id: SPEC-GATE-001
 title: "Deterministic Quality Gate"
-status: draft
+status: in-progress
 priority: P0
 created: "2026-04-07"
 harness_pillar: "P3: Verification Loop"

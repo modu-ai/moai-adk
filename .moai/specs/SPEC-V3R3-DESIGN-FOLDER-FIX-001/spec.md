@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R3-DESIGN-FOLDER-FIX-001
 version: "0.1.0"
-status: draft
+status: in-progress
 created_at: 2026-04-26
 updated_at: 2026-04-26
 author: manager-spec

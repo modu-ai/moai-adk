@@ -2,7 +2,7 @@
 id: SPEC-V3R2-ORC-003
 title: "Effort-Level Calibration Matrix for 17 agents"
 version: "0.1.0"
-status: planned
+status: implemented
 created: 2026-04-23
 updated: 2026-05-13
 author: GOOS

@@ -3,7 +3,7 @@ id: SPEC-EVAL-001
 spec_id: SPEC-EVAL-001
 title: "evaluator-active Agent & Sprint Contract"
 created: "2026-04-01"
-status: planned
+status: implemented
 priority: high
 module: template
 version: "1.0.0"

@@ -1,6 +1,6 @@
 ---
 id: SPEC-CACHE-ORDER-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [prompt-cache, optimization, cost, system-reminder, advisor, wave-4, tier-3]

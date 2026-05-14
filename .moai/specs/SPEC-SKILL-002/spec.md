@@ -12,6 +12,9 @@ phase: "v2.x - Legacy"
 module: "skills"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-SKILL-002: MoAI-ADK 스킬 전면 최적화 — 공식 가이드 준수

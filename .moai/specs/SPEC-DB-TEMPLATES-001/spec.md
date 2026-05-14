@@ -1,7 +1,7 @@
 ---
 id: SPEC-DB-TEMPLATES-001
 version: 0.2.0
-status: draft
+status: implemented
 created_at: 2026-04-20
 updated_at: 2026-04-21
 author: moai-adk-go

@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R3-CI-AUTONOMY-001
 version: "0.1.0"
-status: completed
+status: in-progress
 created_at: 2026-05-05
 updated_at: 2026-05-05
 author: manager-spec

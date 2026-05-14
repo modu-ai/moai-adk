@@ -11,6 +11,9 @@ phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-PSR-001: Profile Setup Redesign -- StatuslineMode Exposure

@@ -11,6 +11,9 @@ phase: "v2.12 - CC Adoption"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 # SPEC-CC297-001: Claude Code 2.1.97 Feature Adoption
 

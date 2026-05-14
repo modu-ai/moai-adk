@@ -3,7 +3,7 @@ id: SPEC-DRIFT-001
 spec_id: SPEC-DRIFT-001
 title: "Spec Drift Guard & Persistent TASKS.md"
 created: "2026-04-01"
-status: planned
+status: implemented
 priority: high
 module: template
 version: "1.0.0"

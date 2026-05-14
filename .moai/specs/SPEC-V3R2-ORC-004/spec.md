@@ -2,7 +2,7 @@
 id: SPEC-V3R2-ORC-004
 title: "Worktree MUST Rule for write-heavy role profiles"
 version: "0.1.0"
-status: planned
+status: in-progress
 created: 2026-04-23
 updated: 2026-05-13
 author: GOOS

@@ -1,6 +1,6 @@
 ---
 id: SPEC-REFLECT-001
-status: draft
+status: implemented
 title: "Reflective Write Hook"
 version: "1.0.0"
 created: 2026-04-15

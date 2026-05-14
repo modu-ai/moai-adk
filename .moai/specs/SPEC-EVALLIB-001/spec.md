@@ -3,7 +3,7 @@ id: SPEC-EVALLIB-001
 spec_id: SPEC-EVALLIB-001
 title: "Evaluator Prompt Library"
 created: "2026-04-01"
-status: planned
+status: implemented
 priority: high
 module: template
 version: "1.0.0"

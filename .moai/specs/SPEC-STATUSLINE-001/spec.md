@@ -1,6 +1,6 @@
 ---
 id: SPEC-STATUSLINE-001
-status: completed
+status: in-progress
 title: "Statusline Segment Configuration"
 version: "1.0.0"
 created: 2026-02-14

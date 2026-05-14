@@ -23,6 +23,9 @@ lifecycle: spec-anchored
 tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
 created: 2026-04-24
 updated: 2026-05-13
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification

@@ -1,6 +1,6 @@
 ---
 id: SPEC-PARALLEL-COOK-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [parallel, sub-agent, cookbook, fan-out, fan-in, orchestration, wave-3, tier-2]

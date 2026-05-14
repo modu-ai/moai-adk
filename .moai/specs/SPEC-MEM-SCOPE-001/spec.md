@@ -1,6 +1,6 @@
 ---
 id: SPEC-MEM-SCOPE-001
-status: draft
+status: in-progress
 version: "0.1.1"
 priority: Medium
 labels: [memory-scope, audit-log, rollback, concurrency, file-lock, wave-3, tier-2]

@@ -1,6 +1,6 @@
 ---
 id: SPEC-TOOL-AUDIT-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [tool-audit, observability, minimalism, agent-quality, post-tool-hook, wave-3, tier-2]

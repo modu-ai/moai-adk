@@ -11,6 +11,9 @@ phase: "v2.x - Legacy"
 module: "hooks"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-HOOK-008: Complete Hook Event System

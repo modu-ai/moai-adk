@@ -1,7 +1,7 @@
 ---
 id: SPEC-OBSERVE-001
 title: "Structured Observability"
-status: draft
+status: implemented
 priority: P0
 created: "2026-04-07"
 harness_pillar: "P5: Observability"

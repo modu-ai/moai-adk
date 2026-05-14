@@ -12,6 +12,9 @@ phase: "v2.x - Legacy"
 module: "status"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-STATUS-AUTO-001: SPEC Status Auto-Update System

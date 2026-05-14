@@ -1,6 +1,6 @@
 ---
 id: SPEC-STOP-HOOK-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: High
 labels: [stop-hook, quality-gate, hook-system, test-automation, wave-3, tier-2]

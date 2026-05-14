@@ -2,7 +2,7 @@
 id: SPEC-UTIL-005
 title: "walkSourceFiles Incremental Scan"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-04-24
 updated: 2026-04-24
 author: MoAI v2.15 Backlog Writer

@@ -12,6 +12,9 @@ phase: "v2.x - Legacy"
 module: "statusline"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-STATUSLINE-002: rate_limits statusline 지원

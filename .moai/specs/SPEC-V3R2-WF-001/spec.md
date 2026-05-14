@@ -2,7 +2,7 @@
 id: SPEC-V3R2-WF-001
 title: Skill Consolidation — Stage 1 (48 to 38)
 version: "1.1.0"
-status: completed
+status: in-progress
 created: 2026-04-23
 updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)

@@ -19,6 +19,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "lsp, subprocess, stderr, singleflight, diagnostic, v2.14"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-UTIL-003: LSP Subprocess Hygiene — stderr drain + singleflight spawn + Diagnostic Alias

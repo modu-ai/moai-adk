@@ -1,6 +1,6 @@
 ---
 id: SPEC-LSP-FLAKY-001
-status: draft
+status: implemented
 title: "Ubuntu LSP Launcher ETXTBSY Flake Stabilization"
 version: "1.0.0"
 created: 2026-05-01

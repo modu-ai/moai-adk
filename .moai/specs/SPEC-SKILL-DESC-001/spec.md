@@ -1,6 +1,6 @@
 ---
 id: SPEC-SKILL-DESC-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [skill-description, optimization, builder-skill, regression-test, false-positive, false-negative, wave-3, tier-2]

@@ -1,6 +1,6 @@
 ---
 id: SPEC-CONTEXT-INJ-001
-status: draft
+status: in-progress
 version: "0.1.1"
 priority: Medium
 labels: [context-injection, memory, sub-agent, orchestrator, progress, wave-3, tier-2]

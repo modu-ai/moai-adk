@@ -2,7 +2,7 @@
 id: SPEC-V3R2-WF-002
 title: Commands Thin-Wrapper Enforcement and Fat-Command Extraction
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-04-23
 updated: 2026-05-01
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)

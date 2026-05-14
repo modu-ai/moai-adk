@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
 version: "0.2.3"
-status: draft
+status: in-progress
 created_at: 2026-05-01
 updated_at: 2026-05-04
 author: manager-spec

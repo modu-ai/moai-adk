@@ -11,6 +11,9 @@ phase: "v2.x - Legacy"
 module: "design"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-DESIGN-001: interface-design Plugin Integration

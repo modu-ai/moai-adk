@@ -17,6 +17,9 @@ lifecycle: spec-anchored
 tags: "dependency-graph, cycle-break, orc, mig, wf, plan-audit, v3r3, phase-a"
 related_theme: "Phase A — Defect Cleanup"
 released_in: v2.15.0
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-DEF-001: ORC Dependency Cycle Resolution

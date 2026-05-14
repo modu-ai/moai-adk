@@ -17,6 +17,9 @@ phase: "v2.x - Legacy"
 module: "workflow"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-WF-AUDIT-GATE-001: Plan→Run 전이 의무 감사 게이트

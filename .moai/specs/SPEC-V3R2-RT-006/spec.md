@@ -2,7 +2,7 @@
 id: SPEC-V3R2-RT-006
 title: "Hook Handler Completeness and 27-Event Coverage"
 version: "0.1.0"
-status: planned
+status: in-progress
 created: 2026-04-23
 updated: 2026-05-13
 author: GOOS

@@ -1,6 +1,6 @@
 ---
 id: SPEC-NO-HYBRID-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [srp, anti-hybrid, audit, policy, anti-pattern, wave-4, tier-3]

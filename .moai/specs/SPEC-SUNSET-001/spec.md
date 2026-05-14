@@ -1,7 +1,7 @@
 ---
 id: SPEC-SUNSET-001
 title: "Build to Delete Framework"
-status: draft
+status: implemented
 priority: P2
 created: "2026-04-07"
 harness_pillar: "All - Evolutionary"

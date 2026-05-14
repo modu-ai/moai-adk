@@ -1,7 +1,7 @@
 ---
 id: SPEC-SECURITY-001
 title: "Security Hardening"
-status: draft
+status: implemented
 priority: P2
 created: "2026-04-07"
 harness_pillar: "P1: Guardrails"

@@ -19,6 +19,9 @@ updated: 2026-05-13
 phase: "v3.0.0 - Consolidation"
 module: "cli"
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거

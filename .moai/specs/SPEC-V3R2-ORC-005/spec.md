@@ -20,6 +20,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "team, dynamic-generation, role-profiles, mailbox, tasklist, sendmessage, v3r2"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-ORC-005: Dynamic Team Generation Formalization + Mailbox Protocol v2

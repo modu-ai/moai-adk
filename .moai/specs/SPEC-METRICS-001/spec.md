@@ -1,6 +1,6 @@
 ---
 id: SPEC-METRICS-001
-status: draft
+status: in-progress
 version: "0.1.0"
 priority: Medium
 labels: [metrics, contribution, sync, github-analytics, observability, wave-4, tier-3]

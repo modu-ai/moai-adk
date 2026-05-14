@@ -1,6 +1,6 @@
 ---
 id: SPEC-CORE-BEHAV-001
-status: draft
+status: implemented
 title: "Agent Core Behaviors and SPEC Workflow Gates"
 version: "1.0.0"
 created: 2026-04-15

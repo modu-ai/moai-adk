@@ -1,6 +1,6 @@
 ---
 id: SPEC-SLQG-001
-status: draft
+status: in-progress
 title: "Self-Learning Quality Guard"
 version: "1.0.0"
 created: 2026-04-11

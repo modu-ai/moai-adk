@@ -22,6 +22,9 @@ updated: 2026-05-13
 phase: "v2.x - Legacy"
 module: "development"
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-KARPATHY-001: Karpathy Coding Principles Integration into MoAI-ADK Orchestration

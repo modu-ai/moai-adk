@@ -1,7 +1,7 @@
 ---
 id: SPEC-LSP-CORE-002
 version: "1.0.0"
-status: completed
+status: in-progress
 created: "2026-04-11"
 updated: "2026-04-11"
 author: GOOS

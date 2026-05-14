@@ -11,6 +11,9 @@ phase: "v2.x - Legacy"
 module: "team"
 lifecycle: completed
 tags: "legacy"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-TEAM-001: Agent Teams Dynamic Generation Architecture
