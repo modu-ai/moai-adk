@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 )
@@ -98,58 +99,103 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_HashLenLang(t *testing.T) {
 }
 
 // TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview는 Strategy B로
-// prompt_hash + prompt_len + prompt_lang + prompt_preview(앞 200자)가 기록됨을 검증한다.
-// REQ-HRN-OBS-014: Strategy B = Strategy A 내용 + 앞 200자 미리보기.
+// prompt_hash + prompt_len + prompt_lang + prompt_preview(앞 64바이트)가 기록됨을 검증한다.
+// REQ-HRN-OBS-013: prompt_preview = 프롬프트의 첫 64바이트.
+// AC-HRN-OBS-008.a: prompt_preview는 첫 64바이트 (프롬프트가 더 짧으면 전체).
 func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
-	dir := t.TempDir()
-	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: preview\n")
-	t.Chdir(dir)
-
-	// 정확히 250자 프롬프트 생성 (미리보기는 앞 200자만)
-	prompt := strings.Repeat("가", 250) // 한글 250자
-	payloadBytes, _ := json.Marshal(map[string]string{"prompt": prompt})
-	cmd := &cobra.Command{}
-	withStdin(t, string(payloadBytes), func() {
-		if err := runHarnessObserveUserPromptSubmit(cmd, nil); err != nil {
-			t.Fatalf("runHarnessObserveUserPromptSubmit 에러 반환: %v", err)
-		}
-	})
-
-	logPath := filepath.Join(dir, ".moai", "harness", "usage-log.jsonl")
-	data, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("usage-log.jsonl 미생성: %v", err)
+	cases := []struct {
+		name        string
+		prompt      string
+		wantPreview string
+		desc        string
+	}{
+		{
+			name:        "short_ascii_under_64",
+			prompt:      "hello",
+			wantPreview: "hello",
+			desc:        "64바이트 미만 짧은 프롬프트: preview == 전체",
+		},
+		{
+			name:        "long_ascii_over_64",
+			prompt:      strings.Repeat("a", 100),
+			wantPreview: strings.Repeat("a", 64),
+			desc:        "64바이트 초과 ASCII 프롬프트: preview = 첫 64바이트",
+		},
+		{
+			name: "multibyte_korean_over_64",
+			// 한글 '가' = 3바이트 UTF-8. 22자 = 66바이트 > 64.
+			// 64바이트 경계: 21자 = 63바이트 (완전한 룬 경계).
+			prompt:      strings.Repeat("가", 22),
+			wantPreview: strings.Repeat("가", 21),
+			desc:        "멀티바이트(한글): 64바이트 경계가 룬 중간 → 룬 경계로 후퇴",
+		},
 	}
 
-	var entry map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimRight(string(data), "\n")), &entry); err != nil {
-		t.Fatalf("JSONL 파싱 실패: %v", err)
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: preview\n")
+			t.Chdir(dir)
 
-	// prompt_preview 존재 및 200자 제한 검증
-	preview, ok := entry["prompt_preview"]
-	if !ok {
-		t.Fatalf("Strategy B 시 prompt_preview 누락")
-	}
-	previewStr, _ := preview.(string)
-	previewRunes := []rune(previewStr)
-	if len(previewRunes) != 200 {
-		t.Errorf("prompt_preview 길이: got=%d, want=200 runes", len(previewRunes))
-	}
-	if previewStr != strings.Repeat("가", 200) {
-		t.Errorf("prompt_preview 내용이 앞 200자와 다름")
-	}
+			payloadBytes, _ := json.Marshal(map[string]string{"prompt": tc.prompt})
+			cmd := &cobra.Command{}
+			withStdin(t, string(payloadBytes), func() {
+				if err := runHarnessObserveUserPromptSubmit(cmd, nil); err != nil {
+					t.Fatalf("runHarnessObserveUserPromptSubmit 에러 반환: %v", err)
+				}
+			})
 
-	// prompt_content 미존재 (Strategy B는 full text 미포함)
-	if _, ok := entry["prompt_content"]; ok {
-		t.Errorf("Strategy B 시 prompt_content이 존재해서는 안 됨")
-	}
+			logPath := filepath.Join(dir, ".moai", "harness", "usage-log.jsonl")
+			data, err := os.ReadFile(logPath)
+			if err != nil {
+				t.Fatalf("usage-log.jsonl 미생성: %v", err)
+			}
 
-	// prompt_hash, prompt_len, prompt_lang 존재 검증
-	for _, field := range []string{"prompt_hash", "prompt_len", "prompt_lang"} {
-		if _, ok := entry[field]; !ok {
-			t.Errorf("Strategy B 시 %q 누락", field)
-		}
+			var entry map[string]any
+			if err := json.Unmarshal([]byte(strings.TrimRight(string(data), "\n")), &entry); err != nil {
+				t.Fatalf("JSONL 파싱 실패: %v", err)
+			}
+
+			// prompt_preview 존재 검증
+			preview, ok := entry["prompt_preview"]
+			if !ok {
+				t.Fatalf("[%s] Strategy B 시 prompt_preview 누락", tc.desc)
+			}
+			previewStr, _ := preview.(string)
+
+			// 바이트 상한 64 검증 (AC-HRN-OBS-008.a)
+			if len([]byte(previewStr)) > 64 {
+				t.Errorf("[%s] prompt_preview 바이트 길이 초과: got=%d, want<=64",
+					tc.desc, len([]byte(previewStr)))
+			}
+
+			// UTF-8 유효성 검증
+			if !utf8.ValidString(previewStr) {
+				t.Errorf("[%s] prompt_preview가 유효한 UTF-8이 아님", tc.desc)
+			}
+
+			// 기댓값 일치 검증
+			if previewStr != tc.wantPreview {
+				t.Errorf("[%s] prompt_preview: got=%q, want=%q", tc.desc, previewStr, tc.wantPreview)
+			}
+
+			// 짧은 프롬프트: preview == 원문 전체
+			if len([]byte(tc.prompt)) <= 64 && previewStr != tc.prompt {
+				t.Errorf("[%s] 64바이트 이하 프롬프트: preview가 원문과 달라야 하지 않음; got=%q", tc.desc, previewStr)
+			}
+
+			// prompt_content 미존재 (Strategy B는 full text 미포함)
+			if _, ok := entry["prompt_content"]; ok {
+				t.Errorf("[%s] Strategy B 시 prompt_content이 존재해서는 안 됨", tc.desc)
+			}
+
+			// prompt_hash, prompt_len, prompt_lang 존재 검증
+			for _, field := range []string{"prompt_hash", "prompt_len", "prompt_lang"} {
+				if _, ok := entry[field]; !ok {
+					t.Errorf("[%s] Strategy B 시 %q 누락", tc.desc, field)
+				}
+			}
+		})
 	}
 }
 
@@ -280,7 +326,6 @@ func TestRunHarnessObserveUserPromptSubmit_LangHeuristic(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")

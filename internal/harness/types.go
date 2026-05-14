@@ -108,8 +108,9 @@ type Event struct {
 	// (UserPromptSubmit 전용, omitempty). 예: "ko", "en", "ja", "zh", "".
 	PromptLang string `json:"prompt_lang,omitempty"`
 
-	// PromptPreview is the first 200 chars of the user prompt
+	// PromptPreview is the first 64 bytes of the user prompt (UTF-8 경계 안전 절단).
 	// (UserPromptSubmit 전용, opt-in Strategy B, omitempty).
+	// REQ-HRN-OBS-013 / AC-HRN-OBS-008.a.
 	PromptPreview string `json:"prompt_preview,omitempty"`
 
 	// PromptContent is the full user prompt text

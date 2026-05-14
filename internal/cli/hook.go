@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -830,14 +831,15 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		PromptLang:    promptLang,
 	}
 
-	// opt-in: preview (Strategy B)
+	// opt-in: preview (Strategy B) — REQ-HRN-OBS-013: 첫 64바이트 (UTF-8 경계 안전).
 	if strategy == UserPromptStrategyPreview && len(prompt) > 0 {
-		runes := []rune(prompt)
-		end := 200
-		if len(runes) < end {
-			end = len(runes)
+		b := []byte(prompt)
+		end := min(len(b), 64)
+		// UTF-8 경계 안전: 64바이트 지점이 멀티바이트 룬 중간이면 유효한 경계까지 후퇴.
+		for end > 0 && !utf8.Valid(b[:end]) {
+			end--
 		}
-		evt.PromptPreview = string(runes[:end])
+		evt.PromptPreview = string(b[:end])
 	}
 
 	// opt-in: full (Strategy C)
