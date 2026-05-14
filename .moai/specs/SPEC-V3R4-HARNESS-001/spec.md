@@ -6,7 +6,7 @@ created: 2026-05-14
 updated: 2026-05-14
 author: manager-spec
 priority: P0
-tags: [harness, self-evolution, cli-retirement, v3r4, foundation, lifecycle-consolidation, breaking]
+tags: "harness, self-evolution, cli-retirement, v3r4, foundation, lifecycle-consolidation, breaking"
 issue_number: null
 title: Unified Self-Evolving Harness Foundation (CLI Retirement + Lifecycle Consolidation)
 phase: "v3.0.0 R4 — Phase A — Foundation"
