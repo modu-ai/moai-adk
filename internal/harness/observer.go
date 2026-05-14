@@ -94,6 +94,54 @@ func (o *Observer) RecordEvent(eventType EventType, subject, contextHash string)
 	return nil
 }
 
+// RecordExtendedEvent records a fully-populated Event to usage-log.jsonl.
+// 기존 RecordEvent와 달리 옵션 필드(omitempty)를 포함한 Event 구조체 전체를 수용한다.
+// T-A3/A4/A5 핸들러에서 사용하며 기존 RecordEvent는 변경하지 않는다.
+//
+// @MX:ANCHOR: [AUTO] RecordExtendedEvent는 Stop/SubagentStop/UserPromptSubmit 3개 핸들러의 공통 진입점.
+// @MX:REASON: [AUTO] fan_in >= 3: runHarnessObserveStop, runHarnessObserveSubagentStop, runHarnessObserveUserPromptSubmit
+func (o *Observer) RecordExtendedEvent(evt Event) error {
+	// 기본 메타데이터 보완: nowFn과 SchemaVersion이 미설정 시 채움
+	if evt.Timestamp.IsZero() {
+		evt.Timestamp = o.nowFn().UTC()
+	}
+	if evt.SchemaVersion == "" {
+		evt.SchemaVersion = LogSchemaVersion
+	}
+
+	// Auto-create parent directory
+	if dir := filepath.Dir(o.logPath); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("observer: 디렉토리 생성 실패 %s: %w", dir, err)
+		}
+	}
+
+	// JSONL serialization
+	data, err := json.Marshal(evt)
+	if err != nil {
+		return fmt.Errorf("observer: 이벤트 직렬화 실패: %w", err)
+	}
+	data = append(data, '\n')
+
+	// atomic append: O_APPEND|O_CREATE|O_WRONLY
+	f, err := os.OpenFile(o.logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("observer: 파일 열기 실패 %s: %w", o.logPath, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("observer: 파일 쓰기 실패 %s: %w", o.logPath, err)
+	}
+
+	// lazy pruning: attempt pruning if retention is set (non-blocking)
+	if o.retention != nil {
+		_ = o.retention.PruneStaleEntries(defaultRetentionDays)
+	}
+
+	return nil
+}
+
 // defaultRetentionDays is the default log retention period in days.
 // This value will be replaced when config file integration occurs in Phase 4.
 const defaultRetentionDays = 30

@@ -339,12 +339,15 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 
 	// Collect event subcommand names (exclude utility subcommands like "list", "agent", "pre-push").
 	utilitySubcmds := map[string]bool{
-		"list":            true,
-		"agent":           true,
-		"pre-push":        true,
-		"db-schema-sync":  true, // SPEC-DB-SYNC-001: domain hook, not a Claude Code event
-		"harness-observe": true, // SPEC-V3R3-HARNESS-LEARNING-001: domain hook, not a Claude Code event
-		"spec-status":     true, // SPEC-STATUS-AUTO-001: domain hook, not a Claude Code event
+		"list":                               true,
+		"agent":                              true,
+		"pre-push":                           true,
+		"db-schema-sync":                     true, // SPEC-DB-SYNC-001: domain hook, not a Claude Code event
+		"harness-observe":                    true, // SPEC-V3R3-HARNESS-LEARNING-001: domain hook, not a Claude Code event
+		"harness-observe-stop":               true, // SPEC-V3R4-HARNESS-002: domain hook, not a Claude Code event
+		"harness-observe-subagent-stop":      true, // SPEC-V3R4-HARNESS-002: domain hook, not a Claude Code event
+		"harness-observe-user-prompt-submit": true, // SPEC-V3R4-HARNESS-002: domain hook, not a Claude Code event
+		"spec-status":                        true, // SPEC-STATUS-AUTO-001: domain hook, not a Claude Code event
 	}
 
 	for _, cmd := range hookCmd.Commands() {

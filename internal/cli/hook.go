@@ -2,11 +2,14 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
+	"unicode"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -96,6 +99,26 @@ func init() {
 		Short: "Record PostToolUse event to harness usage log",
 		Long:  "Reads hook stdin JSON and appends an event to .moai/harness/usage-log.jsonl. Called from handle-harness-observe.sh.",
 		RunE:  runHarnessObserve,
+	})
+
+	// Multi-event observer subcommands (SPEC-V3R4-HARNESS-002 Wave A)
+	hookCmd.AddCommand(&cobra.Command{
+		Use:   "harness-observe-stop",
+		Short: "Record Stop event to harness usage log",
+		Long:  "Reads Stop hook stdin JSON and appends a session_stop event to .moai/harness/usage-log.jsonl.",
+		RunE:  runHarnessObserveStop,
+	})
+	hookCmd.AddCommand(&cobra.Command{
+		Use:   "harness-observe-subagent-stop",
+		Short: "Record SubagentStop event to harness usage log",
+		Long:  "Reads SubagentStop hook stdin JSON and appends a subagent_stop event to .moai/harness/usage-log.jsonl.",
+		RunE:  runHarnessObserveSubagentStop,
+	})
+	hookCmd.AddCommand(&cobra.Command{
+		Use:   "harness-observe-user-prompt-submit",
+		Short: "Record UserPromptSubmit event to harness usage log",
+		Long:  "Reads UserPromptSubmit hook stdin JSON and appends a user_prompt event. Default strategy: SHA-256 hash + length.",
+		RunE:  runHarnessObserveUserPromptSubmit,
 	})
 
 	// Add "db-schema-sync" subcommand (SPEC-DB-SYNC-001)
@@ -513,3 +536,277 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 
 	return nil
 }
+
+// ─────────────────────────────────────────────────────────────
+// T-A3: Stop 훅 핸들러
+// ─────────────────────────────────────────────────────────────
+
+// runHarnessObserveStop는 Claude Code Stop 훅 stdin JSON을 읽고
+// session_stop 이벤트를 usage-log.jsonl에 기록한다.
+//
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-004 + REQ-HRN-OBS-008: Stop 훅 핸들러.
+// isHarnessLearningEnabled 게이트 재사용 (REQ-HRN-FND-009).
+// 에러는 stderr에 기록하고 exit 0 반환 (비블로킹).
+func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	if !isHarnessLearningEnabled(cwd) {
+		return nil
+	}
+
+	var hookInput struct {
+		SessionID string `json:"session_id"`
+	}
+	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
+
+	// subject: cwd 기반 SPEC-ID 탐지 (없으면 빈 문자열)
+	subject := detectSpecIDFromCwd(cwd)
+
+	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
+
+	evt := harness.Event{
+		EventType:     harness.EventTypeSessionStop,
+		Subject:       subject,
+		ContextHash:   "",
+		TierIncrement: 0,
+		SessionID:     hookInput.SessionID,
+	}
+
+	if err := obs.RecordExtendedEvent(evt); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: event recording failed: %v\n", err)
+	}
+
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────
+// T-A4: SubagentStop 훅 핸들러
+// ─────────────────────────────────────────────────────────────
+
+// runHarnessObserveSubagentStop는 Claude Code SubagentStop 훅 stdin JSON을 읽고
+// subagent_stop 이벤트를 usage-log.jsonl에 기록한다.
+//
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-005 + REQ-HRN-OBS-008: SubagentStop 훅 핸들러.
+// isHarnessLearningEnabled 게이트 재사용 (REQ-HRN-FND-009).
+func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	if !isHarnessLearningEnabled(cwd) {
+		return nil
+	}
+
+	var hookInput struct {
+		AgentName string `json:"agent_name"`
+		AgentType string `json:"agent_type"`
+		AgentID   string `json:"agent_id"`
+		SessionID string `json:"session_id"`
+	}
+	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
+
+	// subject: 에이전트 이름 (없으면 "unknown")
+	subject := hookInput.AgentName
+	if subject == "" {
+		subject = "unknown"
+	}
+
+	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
+
+	evt := harness.Event{
+		EventType:       harness.EventTypeSubagentStop,
+		Subject:         subject,
+		ContextHash:     "",
+		TierIncrement:   0,
+		AgentName:       hookInput.AgentName,
+		AgentType:       hookInput.AgentType,
+		AgentID:         hookInput.AgentID,
+		ParentSessionID: hookInput.SessionID,
+	}
+
+	if err := obs.RecordExtendedEvent(evt); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-subagent-stop: event recording failed: %v\n", err)
+	}
+
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────
+// T-A5: UserPromptSubmit 훅 핸들러 + PII 전략
+// ─────────────────────────────────────────────────────────────
+
+// UserPromptStrategy는 UserPromptSubmit 이벤트의 PII 처리 전략 열거형.
+// REQ-HRN-OBS-014: 기본값 = StrategyHash (SHA-256 + 길이 + 언어).
+type UserPromptStrategy string
+
+const (
+	// UserPromptStrategyHash는 기본 전략: SHA-256 해시 + 길이 + 언어 감지.
+	// 프롬프트 원문은 기록하지 않음 (PII 최소화).
+	UserPromptStrategyHash UserPromptStrategy = "hash"
+
+	// UserPromptStrategyPreview는 opt-in: 프롬프트 앞 200자 미리보기 포함.
+	UserPromptStrategyPreview UserPromptStrategy = "preview"
+
+	// UserPromptStrategyFull는 opt-in: 프롬프트 전문 포함 (명시적 동의 필요).
+	UserPromptStrategyFull UserPromptStrategy = "full"
+
+	// UserPromptStrategyNone은 UserPromptSubmit 이벤트를 기록하지 않음.
+	UserPromptStrategyNone UserPromptStrategy = "none"
+)
+
+// specIDRegexp는 SPEC-ID 패턴을 탐지하는 정규식.
+var specIDRegexp = regexp.MustCompile(`SPEC-[A-Z][A-Z0-9]+-[0-9]+`)
+
+// resolveUserPromptStrategy는 harness.yaml의 learning.user_prompt_content 값을
+// UserPromptStrategy 열거형으로 변환한다.
+// REQ-HRN-OBS-014: 알 수 없는 값은 UserPromptStrategyHash로 폴백 (fail-open).
+//
+// @MX:ANCHOR: [AUTO] resolveUserPromptStrategy는 PII 처리 전략의 단일 결정 지점.
+// @MX:REASON: [AUTO] fan_in >= 3: runHarnessObserveUserPromptSubmit, test helpers, future config reload
+func resolveUserPromptStrategy(raw string) UserPromptStrategy {
+	switch raw {
+	case "hash", "":
+		return UserPromptStrategyHash
+	case "preview":
+		return UserPromptStrategyPreview
+	case "full":
+		return UserPromptStrategyFull
+	case "none":
+		return UserPromptStrategyNone
+	default:
+		// fail-open: 알 수 없는 값은 Strategy A로 폴백
+		return UserPromptStrategyHash
+	}
+}
+
+// detectPromptLang은 Unicode 블록 분석으로 프롬프트 언어를 추정한다.
+// 반환값: "ko", "ja", "zh", "en", "" (감지 불가).
+func detectPromptLang(prompt string) string {
+	for _, r := range prompt {
+		switch {
+		case r >= 0xAC00 && r <= 0xD7A3: // Hangul syllables
+			return "ko"
+		case (r >= 0x3040 && r <= 0x309F) || (r >= 0x30A0 && r <= 0x30FF): // Hiragana/Katakana
+			return "ja"
+		case r >= 0x4E00 && r <= 0x9FFF: // CJK Unified Ideographs
+			return "zh"
+		case r <= 0x007F && unicode.IsLetter(r): // ASCII letters
+			return "en"
+		}
+	}
+	return ""
+}
+
+// detectSpecIDFromCwd는 cwd 경로에서 SPEC-ID를 탐지한다.
+// worktree 경로 패턴에서 SPEC-ID를 추출하는 데 사용된다.
+func detectSpecIDFromCwd(cwd string) string {
+	match := specIDRegexp.FindString(cwd)
+	return match
+}
+
+// readUserPromptContentStrategy는 harness.yaml에서 learning.user_prompt_content 값을 읽는다.
+func readUserPromptContentStrategy(projectRoot string) string {
+	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "harness.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return ""
+	}
+	var doc struct {
+		Learning struct {
+			UserPromptContent string `yaml:"user_prompt_content,omitempty"`
+		} `yaml:"learning,omitempty"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return ""
+	}
+	return doc.Learning.UserPromptContent
+}
+
+// runHarnessObserveUserPromptSubmit는 Claude Code UserPromptSubmit 훅 stdin JSON을 읽고
+// user_prompt 이벤트를 usage-log.jsonl에 기록한다.
+// 기본 전략(Strategy A): SHA-256 해시 + 길이 + 언어 (PII 최소화).
+//
+// @MX:WARN: [AUTO] PII 민감 핸들러 — 사용자 프롬프트 원문이 Strategy C 활성화 시 로그에 기록됨.
+// @MX:REASON: [AUTO] REQ-HRN-OBS-014: 기본값은 Strategy A로 원문 미기록. opt-in만 원문 기록.
+func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	if !isHarnessLearningEnabled(cwd) {
+		return nil
+	}
+
+	var hookInput struct {
+		Prompt string `json:"prompt"`
+	}
+	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
+
+	prompt := hookInput.Prompt
+
+	// SPEC-ID 탐지: 프롬프트에서 SPEC-ID 추출 (없으면 cwd 기반 탐지)
+	subject := specIDRegexp.FindString(prompt)
+	if subject == "" {
+		subject = detectSpecIDFromCwd(cwd)
+	}
+
+	// PII 전략 결정 (REQ-HRN-OBS-014)
+	strategyRaw := readUserPromptContentStrategy(cwd)
+	strategy := resolveUserPromptStrategy(strategyRaw)
+
+	// Strategy None: 이벤트 기록 없음
+	if strategy == UserPromptStrategyNone {
+		return nil
+	}
+
+	// SHA-256 해시 + 길이 + 언어 (Strategy A 기본, B/C 포함)
+	h := sha256.Sum256([]byte(prompt))
+	promptHash := fmt.Sprintf("%x", h)
+	promptLen := len([]rune(prompt))
+	promptLang := detectPromptLang(prompt)
+
+	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
+
+	evt := harness.Event{
+		EventType:     harness.EventTypeUserPrompt,
+		Subject:       subject,
+		ContextHash:   "",
+		TierIncrement: 0,
+		PromptHash:    promptHash,
+		PromptLen:     promptLen,
+		PromptLang:    promptLang,
+	}
+
+	// opt-in: preview (Strategy B)
+	if strategy == UserPromptStrategyPreview && len(prompt) > 0 {
+		runes := []rune(prompt)
+		end := 200
+		if len(runes) < end {
+			end = len(runes)
+		}
+		evt.PromptPreview = string(runes[:end])
+	}
+
+	// opt-in: full (Strategy C)
+	if strategy == UserPromptStrategyFull {
+		evt.PromptFull = prompt
+	}
+
+	if err := obs.RecordExtendedEvent(evt); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-user-prompt-submit: event recording failed: %v\n", err)
+	}
+
+	return nil
+}
+
