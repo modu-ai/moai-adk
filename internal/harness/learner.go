@@ -56,6 +56,10 @@ func AggregatePatterns(logPath string) (map[string]*Pattern, error) {
 	}
 	defer func() { _ = f.Close() }()
 
+	// Stage-2 clusterSingletons에 전달하기 위해 이벤트 슬라이스 수집.
+	// Wave C: scanner loop에서 ONE LINE 추가 (Sprint Contract Criterion 9).
+	var collectedEvents []Event
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -68,6 +72,9 @@ func AggregatePatterns(logPath string) (map[string]*Pattern, error) {
 			// Skip parsing failure lines (prevent data loss)
 			continue
 		}
+
+		// Wave C: 이벤트 수집 (Stage-2 클러스터링에 사용)
+		collectedEvents = append(collectedEvents, evt)
 
 		key := buildPatternKey(evt.EventType, evt.Subject, evt.ContextHash)
 		if p, ok := patterns[key]; ok {
@@ -91,12 +98,12 @@ func AggregatePatterns(logPath string) (map[string]*Pattern, error) {
 	// Stage-2 classifier seam (REQ-HRN-CLS-001 / REQ-HRN-CLS-004).
 	// @MX:NOTE: [AUTO] Stage-2 seam — REQ-HRN-CLS-001 backward compat gate.
 	// @MX:SPEC: REQ-HRN-CLS-001, REQ-HRN-CLS-004
-	// cfg.Stage2Enabled은 기본값 false: clusterSingletons stub이 입력 map을 그대로 반환.
+	// cfg.Stage2Enabled은 기본값 false: clusterSingletons가 입력 map을 그대로 반환.
 	// Config loader (harness.yaml learning.classifier 블록)는 Wave D (T-D1)에서 추가 예정.
 	cfg := ClassifierConfig{} // 제로값 = Stage-2 비활성
 	auditLogPath := filepath.Join(filepath.Dir(logPath), "cluster-merges.jsonl")
 	var clusterErr error
-	patterns, clusterErr = clusterSingletons(patterns, cfg, auditLogPath)
+	patterns, clusterErr = clusterSingletons(patterns, collectedEvents, cfg, auditLogPath)
 	if clusterErr != nil {
 		return nil, fmt.Errorf("learner: stage-2 clustering failed: %w", clusterErr)
 	}
