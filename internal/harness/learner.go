@@ -91,16 +91,14 @@ func AggregatePatterns(logPath string) (map[string]*Pattern, error) {
 	// Stage-2 classifier seam (REQ-HRN-CLS-001 / REQ-HRN-CLS-004).
 	// @MX:NOTE: [AUTO] Stage-2 seam — REQ-HRN-CLS-001 backward compat gate.
 	// @MX:SPEC: REQ-HRN-CLS-001, REQ-HRN-CLS-004
-	// cfg.Stage2Enabled은 기본값 false: Stage-1 byte-identical 경로 유지.
+	// cfg.Stage2Enabled은 기본값 false: clusterSingletons stub이 입력 map을 그대로 반환.
 	// Config loader (harness.yaml learning.classifier 블록)는 Wave D (T-D1)에서 추가 예정.
 	cfg := ClassifierConfig{} // 제로값 = Stage-2 비활성
-	if cfg.Stage2Enabled {
-		var clusterErr error
-		auditLogPath := filepath.Join(filepath.Dir(logPath), "cluster-merges.jsonl")
-		patterns, clusterErr = clusterSingletons(patterns, cfg, auditLogPath)
-		if clusterErr != nil {
-			return nil, fmt.Errorf("learner: stage-2 clustering failed: %w", clusterErr)
-		}
+	auditLogPath := filepath.Join(filepath.Dir(logPath), "cluster-merges.jsonl")
+	var clusterErr error
+	patterns, clusterErr = clusterSingletons(patterns, cfg, auditLogPath)
+	if clusterErr != nil {
+		return nil, fmt.Errorf("learner: stage-2 clustering failed: %w", clusterErr)
 	}
 
 	return patterns, nil

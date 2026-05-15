@@ -29,10 +29,14 @@ func clusterSingletons(
 	cfg ClassifierConfig,
 	auditLogPath string,
 ) (map[string]*Pattern, error) {
+	// auditLogPath는 Wave C의 cluster-merges.jsonl 감사 로그 기록 경로 (REQ-HRN-CLS-013).
+	// Wave A stub에서는 호출 시점에 미사용 — Wave C에서 활성화 예정.
+	_ = auditLogPath
+
 	if !cfg.Stage2Enabled {
-		// Stage-2 비활성: 입력 map 그대로 반환, 감사 로그 미기록
+		// Stage-2 비활성: 입력 map 그대로 반환, 감사 로그 미기록 (REQ-HRN-CLS-001).
 		return patterns, nil
 	}
-	// Wave A: 구현 미완 (Wave C에서 확장 예정)
+	// Wave A: Stage-2 활성 분기는 Wave C에서 SimHash + Union-Find 클러스터링으로 확장됨.
 	return patterns, nil
 }

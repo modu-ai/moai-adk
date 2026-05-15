@@ -430,7 +430,7 @@ func writeSyntheticEvents(t *testing.T, total int) string {
 	perPattern := total / len(combos)
 	var events []Event
 	for _, c := range combos {
-		for i := 0; i < perPattern; i++ {
+		for range perPattern {
 			events = append(events, makeEvent(c.et, c.subject, c.hash))
 		}
 	}
