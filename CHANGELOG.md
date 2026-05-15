@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001: spec-lint bootstrapping bug 해소
+
+### Fixed
+
+- **spec-lint: chore(spec) sweep commit이 StatusGitConsistency WARNING을 유발하던 bootstrapping bug 해소** (SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001): `internal/spec/drift.go::getGitImpliedStatus` 에 walker filter 도입. `git log -1` (단일 commit) → `git log -50` (N=50 walker) 변경, `shouldSkipCommitTitle` helper가 `chore(spec):` / `chore(specs):` sweep commit을 건너뛰어 이전 의미 있는 impl/feat/sync commit의 status를 채택. `moai spec lint --strict` 의 7건 StatusGitConsistency WARNING (SPEC-UTIL-001, SPEC-V3R2-CON-001/002/003, SPEC-V3R2-RT-001, SPEC-V3R2-SPC-003, SPEC-V3R4-HARNESS-003) 이 0건으로 해소됨.
+
+### Fixed (English)
+
+- **spec-lint: resolved bootstrapping bug where chore(spec) sweep commits caused StatusGitConsistency WARNINGs** (SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001): Introduced walker filter in `internal/spec/drift.go::getGitImpliedStatus`. Changed `git log -1` (single commit) to `git log -50` (N=50 walker) with new `shouldSkipCommitTitle` helper that skips `chore(spec):`/`chore(specs):` sweep commits and walks back to find the real `impl`/`feat`/`sync` commit. Resolves 7 StatusGitConsistency WARNINGs: SPEC-UTIL-001, SPEC-V3R2-CON-001/002/003, SPEC-V3R2-RT-001, SPEC-V3R2-SPC-003, SPEC-V3R4-HARNESS-003.
+
 ## [Unreleased] — Sync: WF-001 + PATTERNS-001 status drift resolution (2026-05-15)
 
 ### Changed

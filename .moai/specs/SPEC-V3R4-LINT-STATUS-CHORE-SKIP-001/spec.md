@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-15
 updated: 2026-05-15
 author: manager-spec
@@ -27,6 +27,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author        | Description |
 |---------|------------|---------------|-------------|
+| 0.2.0   | 2026-05-15 | manager-develop (run-phase) | run-phase 완료. `internal/spec/drift.go::getGitImpliedStatus` walker filter 구현 (gitLogWindowSize=50, shouldSkipCommitTitle helper). 4 test case (AC-LSCSK-005 a/b/c/d) + regression guard (AC-LSCSK-003) + walker depth boundary (AC-LSCSK-004) 모두 PASS. status: draft → implemented. |
 | 0.1.1   | 2026-05-15 | plan-audit remediation | plan-auditor 0.924 P1+P2 cosmetic 결함 4건 반영. P1: design.md §3.2의 검증 안 된 `^build:` 인용을 `^refactor:` (transitions.go:32) 로 교체하고 §6.5에 미등록 prefix fall-through ack 추가. P2-1: spec.md §3.1 Ubiquitous Requirements에 있던 REQ-LSCSK-002 ("shall not modify") 를 modality 정합성에 따라 §3.4 Unwanted Behavior Requirements로 재배치 (ID 보존). P2-2: REQ-LSCSK-010 의 "may be externalized" 표현을 EARS Optional 표준형 (`Where ..., the system shall ...`) 으로 재작성. P2-3: research.md §7.1/§2.3의 transitions.go 인용 라인을 실측값으로 보정 (60-92 → 70-92, 75-92 → 84-88). |
 | 0.1.0   | 2026-05-15 | manager-spec  | 초기 draft. PR #930 (`bdcb57f8d`) 머지 직후 main에서 `moai spec lint --strict`가 `StatusGitConsistency` WARNING을 7건 반복 보고한다. 원인은 `internal/spec/drift.go::getGitImpliedStatus`가 `git log --grep=<specID> -1`로 **가장 최근** commit을 가져온 뒤 `chore(spec):` sweep commit의 title을 `ClassifyPRTitle`에 넘기는 구조에 있다. `ClassifyPRTitle("chore(spec): ...")`은 의도적으로 `(category="skip-meta", status="")`을 반환하지만, drift.go line 134-136이 빈 status를 `"in-progress"`로 강제 fallback하여 frontmatter status (`implemented`/`completed`)와 불일치를 일으킨다. 본 SPEC은 walker filter를 drift.go에 도입해 chore(spec) commit을 skip하고 의미 있는 분류가 나올 때까지 더 오래된 commit을 탐색하도록 만든다. `ClassifyPRTitle`의 표준 의미는 보존한다 (AC-LSCSK-003 regression guard). BODP 평가: signals A=¬ B=¬ C=¬ → main @ origin/main (plan-in-main 원칙 PR #822 준수). |
 
