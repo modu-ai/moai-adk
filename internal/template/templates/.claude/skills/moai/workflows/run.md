@@ -815,6 +815,8 @@ Steps:
 
 Output: gate_report with pass/fail per check category. If all pass, continue to Phase 2.8a.
 
+
+
 ### Phase 2.8a: Active Quality Evaluation (evaluator-active)
 
 **Condition**: Execute when harness level = standard or thorough (evaluator enabled).
@@ -830,7 +832,18 @@ Steps:
    - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)
    - Craft (20%): Coverage >= 85%, error handling review
    - Consistency (15%): Pattern adherence check
-3. Verdict handling:
+3. **Playwright Active Testing** (thorough harness + web frontend only):
+   - Check if harness level = thorough AND project has web frontend
+   - Web frontend detection: package.json with react/vue/next/etc. OR index.html in root
+   - If BOTH conditions met: evaluator-active uses claude-in-chrome MCP tools for interactive UI testing:
+     * Navigate to running web application URL
+     * Interact with UI elements (click, type, scroll)
+     * Capture and evaluate visual states
+     * Verify interactive behavior matches acceptance criteria
+     * Detect accessibility issues (missing alt text, broken tab order, insufficient contrast)
+   - Playwright results contribute to Functionality dimension score
+   - If EITHER condition not met: skip Playwright testing with informational log
+4. Verdict handling:
    - PASS: Proceed to Phase 2.8b
    - FAIL: Return specific findings to implementation agent for targeted fix
    - Maximum 3 fix-evaluate cycles
@@ -842,6 +855,7 @@ Mode-specific deployment:
 - CG mode: Leader performs evaluation inline
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
+
 
 <!-- moai:evolvable-start id="gate-run-2" -->
 ### HUMAN GATE: Implementation Complete

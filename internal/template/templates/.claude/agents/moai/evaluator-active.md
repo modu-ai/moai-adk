@@ -9,7 +9,7 @@ description: |
   JA: 評価, 品質評価, 独立レビュー, コード監査, 欠陥分析, 受入基準テスト
   ZH: 评估, 质量评估, 独立审查, 代码审计, 缺陷分析, 验收标准测试
   NOT for: code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
+tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking, mcp__4_5v_mcp__analyze_image
 model: sonnet
 effort: high
 permissionMode: plan
@@ -149,6 +149,23 @@ NEVER include scoring rationale, prior iteration verdicts, or reasoning traces i
 
 Every sub-criterion score MUST cite the canonical anchor description from the active profile's
 Scoring Rubric section. Uncited scores are rejected (ErrRubricCitationMissing).
+
+## Playwright Active Testing (Thorough Harness + Web Frontend Only)
+
+**Activation Conditions** (ALL must be true):
+- Harness level = thorough
+- Project has web frontend (detected via package.json with react/vue/next/etc. or index.html in root)
+
+**When Active**: Use claude-in-chrome MCP tools to perform interactive UI testing:
+- Navigate to running web application URL
+- Interact with UI elements (click, type, scroll)
+- Capture and evaluate visual states
+- Verify interactive behavior matches acceptance criteria
+- Detect accessibility issues (missing alt text, broken tab order, insufficient contrast)
+
+**Integration**: Playwright test results contribute to Functionality dimension score but do NOT independently override overall verdict (unlike Security FAIL).
+
+**When Inactive**: Log informational message and proceed with static evaluation only.
 
 ## Language
 
