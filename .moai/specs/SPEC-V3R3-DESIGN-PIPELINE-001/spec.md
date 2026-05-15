@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R3-DESIGN-PIPELINE-001
 title: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created_at: 2026-04-26
 updated_at: 2026-04-27
@@ -10,11 +10,11 @@ priority: P0
 phase: "v3.0.0 R3 — Phase C — Design Pipeline Hybridization"
 module: ".claude/skills/moai-workflow-design-import/, .claude/skills/moai-design-system/, internal/design/dtcg/, .claude/skills/moai/workflows/design.md, .claude/rules/moai/design/constitution.md"
 depends_on:
-  - SPEC-V3R3-HARNESS-001
+    - SPEC-V3R3-HARNESS-001
 related_specs:
-  - SPEC-DESIGN-CONST-AMEND-001
-  - SPEC-AGENCY-ABSORB-001
-  - SPEC-V3R3-PROJECT-HARNESS-001
+    - SPEC-DESIGN-CONST-AMEND-001
+    - SPEC-AGENCY-ABSORB-001
+    - SPEC-V3R3-PROJECT-HARNESS-001
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
@@ -23,11 +23,8 @@ related_theme: "Phase C — Design Pipeline Hybridization"
 target_release: v2.19.0
 issue_number: null
 created: 2026-04-27
-updated: 2026-05-13
+updated: 2026-05-16
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-DESIGN-PIPELINE-001: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing
@@ -38,6 +35,7 @@ lint:
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. Phase C P0 — Hybrid design pipeline (Path A Claude Design / B1 Figma / B2 Pencil) with W3C DTCG 2025.10 token spec validator, depending on SPEC-V3R3-HARNESS-001 meta-harness skill. |
 | 1.0.0   | 2026-04-27 | manager-tdd  | Implementation completed across 6 waves (Phase 1-5 + Phase 6 partial). Open items: T6-02 docs-site 4-locale deferred to follow-up PR; T6-03 plan-auditor sign-off pending; target_release v2.17.0 → v2.19.0 reconciliation in /moai sync. |
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ---
 

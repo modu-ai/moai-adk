@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-DEF-007
 title: Convention Compliance Sweep — manager-git body + 11 skills progressive_disclosure
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: 2026-04-25
-updated: 2026-04-26
+updated: 2026-05-16
 author: manager-spec
 priority: P0 Critical
 phase: "v3.0.0 R3 — Phase A — Convention Compliance Baseline"
@@ -16,9 +16,6 @@ lifecycle: spec-anchored
 tags: "convention, compliance, baseline, skill-frontmatter, agent-body, template-sync, v3r3, phase-a"
 related_theme: "Phase A — Defect Cleanup"
 released_in: v2.15.0
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-DEF-007: Convention Compliance Sweep
@@ -27,6 +24,7 @@ lint:
 
 | Version | Date       | Author       | Description                                                                                                  |
 |---------|------------|--------------|--------------------------------------------------------------------------------------------------------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 1.0.0   | 2026-04-25 | manager-spec | Initial draft. Phase A baseline P0 — establishes convention compliance for 11 skills + manager-git agent body. |
 
 ---

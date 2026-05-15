@@ -1,6 +1,6 @@
 ---
 id: SPEC-CC2122-STATUSLINE-001
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created_at: 2026-04-30
 updated_at: 2026-04-30
@@ -11,14 +11,11 @@ issue_number: null
 related_specs: [SPEC-CC2122-HOOK-001]
 title: "Claude Code v2.1.122 Statusline Effort + Thinking 통합"
 created: 2026-05-01
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.12 - CC Adoption"
 module: "statusline"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-CC2122-STATUSLINE-001: Claude Code v2.1.122 Statusline Effort + Thinking 통합
@@ -27,6 +24,7 @@ lint:
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0 | 2026-04-30 | manager-spec | 초기 작성 — Claude Code v2.1.122 stdin JSON의 `effort` 및 `thinking` 필드를 statusline 세그먼트로 노출 |
 
 ## Status: Draft

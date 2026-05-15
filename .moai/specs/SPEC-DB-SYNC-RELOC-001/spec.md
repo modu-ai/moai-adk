@@ -1,6 +1,6 @@
 ---
 id: SPEC-DB-SYNC-RELOC-001
-version: 1.0.0
+version: 1.0.1
 status: completed
 created_at: 2026-04-21
 updated_at: 2026-04-21
@@ -12,14 +12,11 @@ depends_on: [SPEC-DB-SYNC-001, SPEC-DB-SYNC-HARDEN-001, SPEC-DB-CMD-001, SPEC-SK
 related_specs: []
 title: "PostToolUse DB 훅 → `/moai sync` Phase 이관"
 created: 2026-04-21
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.x - Legacy"
 module: "database"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-DB-SYNC-RELOC-001: PostToolUse DB 훅 → `/moai sync` Phase 이관
@@ -27,6 +24,7 @@ lint:
 ## HISTORY
 
 - 2026-04-21 v1.0.0: 설계 확정 및 구현. 사용자 지시("db sync는 매번 hooks으로 db와 무관한 내용도 매번 처리를 하려고 체크를 하지 않는가? sync때 db 스키마 문서 업데이트가 필요한지 체크해서 업데이트 하도록 하자") 반영. PostToolUse 훅 등록을 제거하고 `/moai sync`의 Phase 0.08로 DB 문서 갱신 로직을 이관. 기존 Go 구현(`internal/hook/dbsync/`), `moai hook db-schema-sync` CLI 서브커맨드, `/moai db refresh` 워크플로우, `moai-domain-db-docs` 스킬은 전부 유지 — 트리거만 이동.
+- 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
 
 ## Background
 

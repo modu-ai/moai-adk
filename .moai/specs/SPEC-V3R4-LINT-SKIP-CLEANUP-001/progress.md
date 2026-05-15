@@ -1,0 +1,31 @@
+## SPEC-V3R4-LINT-SKIP-CLEANUP-001 Progress
+
+- Started: 2026-05-16T(run-phase entry)
+- Phase 0.5: PASS — plan-auditor score 0.89 (threshold 0.85)
+  - report: .moai/reports/plan-audit/SPEC-V3R4-LINT-SKIP-CLEANUP-001-review-1.md
+  - plan_artifact_hash: 3b03aa16c5865e98be9b0dfe7ff79e3e3483d16951a3c26e93073f99b50ff4df
+  - audit_at: 2026-05-16 (auditor mislabeled as 2026-05-15)
+  - defects: D1 (P1) stale date → resolved by Q2=2026-05-16; D5 (P2) mid-run resume → add design §5.4
+  - audit_verdict: PASS
+  - auditor_version: plan-auditor
+- Phase 1-2 (manager-develop): COMPLETE — M1 baseline + M2 Go script + M2 bulk edit + DATE/D5 amend + M3 verification
+  - script: .moai/scripts/lint-skip-cleanup.go (~220 LOC, //go:build ignore)
+  - 55 spec.md modified: lint:block removed + version patch bump + updated=2026-05-16 + HISTORY row added
+  - go test ./... PASS, go vet PASS, idempotency PASS (2nd run no-op)
+- AC verdicts (run-phase + amend post-condition):
+  - AC-LSKC-001 PASS (lint.skip 엔트리 부재, grep result 0)
+  - AC-LSKC-002 PASS (재정의 후 — lint.skip suppression 해제 확인; real drift 64 WARN은 follow-up SPEC scope)
+  - AC-LSKC-003 PASS (body integrity, sha256 baseline 일치)
+  - AC-LSKC-004 PASS (out-of-55 files 0건 unrelated; 본 SPEC artifacts 4 + progress.md + affected-list.txt만 추가)
+  - AC-LSKC-005 PASS (sample 5 SPECs version/updated/HISTORY 정확)
+- KEY DISCOVERY: lint.skip suppression이 walker filter 범위를 벗어나는 real drift 54건 (cleanup population 내) + 10건 (외부)도 mask 하고 있었음
+  - 사용자 결정: Proceed + AC 재정의 (Option A)
+  - spec.md/plan.md/design.md v0.1.2 amend 완료 (§1 Goal + AC-LSKC-002 wording + Non-Goals + Future Work)
+  - follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) 긴급 후보로 등록
+- Harness level: standard (default)
+- Mode: autopilot (sub-agent mode, worktree-未사용 per feedback_worktree_never_use)
+- BODP signals: A=¬ B=¬ C=¬ → base origin/main
+- Decisions:
+  - bulk_edit_tool: Go script (.moai/scripts/lint-skip-cleanup.go)
+  - updated_date: 2026-05-16 (with spec.md AC-LSKC-005 wording amend)
+  - branch_name: feat/SPEC-V3R4-LINT-SKIP-CLEANUP-001

@@ -4,6 +4,7 @@
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase amend) | run-phase 실측 발견 반영: §9 Non-Goals에 'real status drift 해소'가 본 SPEC scope 외임을 명시 + §10 Future Work에 `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) 긴급 후보 추가. plan-audit D5 §5.4 Mid-Run Crash Recovery 항목 포함 (manager-develop에 의해 본문에 이미 작성). |
 | 0.1.1   | 2026-05-16 | plan-audit remediation | plan-audit 0.904 PASS 후 P2 4건 remediation: (1) AC-LSKC-002 placeholder → plan.md §5.2 cross-ref, (2) HISTORY date harmonize 2026-05-16, (3) REQ-005↔AC-002 매핑 rationale 명시, (4) design.md §2.4 redundancy 정리. |
 | 0.1.0   | 2026-05-16 | manager-spec | 초기 design. 현재 상태(55 SPEC frontmatter)와 목표 상태 sample + bulk edit 알고리즘 pseudocode + 6가지 Edge Case + Rollback plan + Idempotency 검증 절차. Go yaml.v3 Node API 기반 권장. |
 
@@ -149,7 +150,7 @@ tags: "legacy"
 **변경 사항:**
 - `lint:` 블록 (3줄) 제거
 - `version`: `0.3.0` → `0.3.1` (patch +1)
-- `updated`: `2026-05-13` → `2026-05-15`
+- `updated`: `2026-05-13` → `2026-05-16`
 - `updated_at`: 유지 (별도 필드, 다른 의미) — 본 SPEC scope 외
 - HISTORY 표에 row 1줄 추가 (body 영역)
 
@@ -158,7 +159,7 @@ tags: "legacy"
 본문 `## HISTORY` 표 끝에 다음 row 1줄 추가:
 
 ```markdown
-| 0.3.1   | 2026-05-15 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
+| 0.3.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 ```
 
 (version 컬럼은 각 SPEC의 새 버전, 다른 컬럼은 모두 동일)
@@ -203,13 +204,13 @@ ALGORITHM: cleanup_lint_skip(spec_path)
 26. // Update `updated` field (NOT `updated_at`)
 27. updated_idx := find_key(mapping, "updated")
 28. if updated_idx != -1:
-29.   mapping.Content[updated_idx + 1].Value = "2026-05-15"
+29.   mapping.Content[updated_idx + 1].Value = "2026-05-16"
 30. 
 31. // Serialize back preserving key order
 32. new_fm := yaml.Marshal(&node)
 33. 
 34. // Add HISTORY row to body
-35. new_body := insert_history_row(body_text, new_version, "2026-05-15")
+35. new_body := insert_history_row(body_text, new_version, "2026-05-16")
 36. 
 37. // Write
 38. result := "---\n" + new_fm + "---\n" + new_body
@@ -283,11 +284,11 @@ for spec in 55_affected_specs:
     current_updated = extract_updated(content)
     Edit(spec,
          old_string=f"updated: {current_updated}",
-         new_string="updated: 2026-05-15")
+         new_string="updated: 2026-05-16")
     
     # 4. Insert HISTORY row (manual placement)
     history_marker = "## HISTORY"
-    new_row = f"| {new_version} | 2026-05-15 | manager-develop (run-phase) | ... |"
+    new_row = f"| {new_version} | 2026-05-16 | manager-develop (run-phase) | ... |"
     # Edit to insert after table header or at appropriate row position
 ```
 
@@ -318,6 +319,16 @@ cleanup commit 후 PR 만들기 전 발견 시:
 | HISTORY 표 형식 깨짐 (예: 컬럼 수 mismatch) | Medium (옵션 A) | YES |
 | 의도하지 않은 SPEC 수정 (55개 외) | Low (M3 verification 통과해야 PR) | YES |
 | lint --strict 회귀 (walker filter 동작 안 함) | Very Low (PR #933 머지 확인됨) | NO — predecessor revert 필요 |
+
+### 5.4 Mid-Run Crash Recovery
+
+스크립트가 55개 SPEC 처리 도중 crash(예: OOM, 프로세스 종료) 된 경우:
+
+1. **idempotency 활용**: 스크립트를 재실행하면 이미 처리된 SPEC(lint 블록 부재)은 "already cleaned: skipped" 로그 후 skip됨. 미처리 SPEC은 정상 처리.
+2. **검증**: M3 verification은 전체 55 SPEC 기준으로 수행 — partial state에서 재실행 후 전체 AC 통과 확인.
+3. **git 상태**: partial commit 없음 (commit은 M4에서 수동 수행). `git stash` 또는 `git diff` 로 처리 진척 파악 가능.
+
+따라서 별도 resume-from-checkpoint 로직 없이 **재실행만으로 recovery 완료**.
 
 ---
 
@@ -474,11 +485,13 @@ if "lint:\n  skip:\n    - StatusGitConsistency" not in content:
 - frontmatter key ordering 표준화 — 별도 SPEC
 - `updated_at` ↔ `updated` 필드 통합 — 별도 SPEC
 - `version` 필드 quoted vs unquoted 스타일 통일 — 별도 SPEC
+- **Real status drift 해소 (54 SPECs)**: run-phase 실측에서 lint.skip suppression 해제 후 노출된 `StatusGitConsistency` WARN — `feat:`/`feat(specs):` commit 기반 status mismatch — 는 본 SPEC scope 외. follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) 에서 해결 권장.
 
 ---
 
 ## 10. Future Work
 
+- **SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001** (긴급 후보): run-phase 실측 발견 — 본 cleanup 후 64 `StatusGitConsistency` WARN 노출 (cleanup population 55 중 54 + 다른 SPECs 10건 unrelated). 옵션: (a) 영향 SPECs frontmatter `status` 필드를 git-implied status와 동기화, (b) walker filter scope를 `feat(specs):` 등으로 확대, (c) status drift detection rule 자체를 deprecate.
 - **SPEC-V3R4-LINT-SKIP-CLEANUP-002** (가설): 다른 lint rule 의 lint.skip 엔트리 정리 (필요 시)
 - **SPEC-V3R4-FRONTMATTER-STANDARDIZATION-001** (가설): `updated_at` / `updated` 통합 + key ordering 표준화 + version quoted 통일
 - **SPEC-V3R4-LINT-SKIP-DEPRECATION-001** (가설): `lint.skip` 메커니즘 자체를 deprecate (walker filter 등 근본 해결 후 영구 metadata noise 제거 정책)

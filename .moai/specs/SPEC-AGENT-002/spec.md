@@ -1,9 +1,9 @@
 ---
 id: SPEC-AGENT-002
-version: 1.0.0
+version: 1.0.1
 status: completed
 created: 2026-04-09
-updated: 2026-04-09
+updated: 2026-05-16
 author: GOOS
 priority: high
 issue_number: 0
@@ -12,9 +12,6 @@ phase: "v2.x - Legacy"
 module: "agents"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-AGENT-002: Agent Definition Optimization - Token Efficiency with Workflow Preservation
@@ -22,6 +19,7 @@ lint:
 ## HISTORY
 
 - 2026-04-09: Initial draft based on Claude Code Subagents blog analysis + 26 agent audit
+- 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
 
 ## Overview
 

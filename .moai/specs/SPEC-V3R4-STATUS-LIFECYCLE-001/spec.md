@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R4-STATUS-LIFECYCLE-001
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created_at: 2026-05-13
 updated_at: 2026-05-13
@@ -12,14 +12,11 @@ depends_on: [SPEC-STATUS-AUTO-001]
 related_specs: [SPEC-V3R4-CATALOG-001, SPEC-V3R4-CATALOG-002, SPEC-V3R2-WF-003, SPEC-V3R2-WF-004]
 title: "SPEC Status Lifecycle Automation — 7-Layer Defense in Depth"
 created: 2026-05-13
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v3.0.0 - Lifecycle"
 module: "status"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R4-STATUS-LIFECYCLE-001: SPEC Status Lifecycle Automation — 7-Layer Defense in Depth
@@ -28,6 +25,7 @@ lint:
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0 | 2026-05-13 | manager-spec | Initial plan-in-main draft (Step 1a per spec-workflow.md § SPEC Phase Discipline). Catalyst: PR #871 retrofit (10 Sprint 12 SPECs). 7-Layer Defense in Depth proposed. |
 
 ---

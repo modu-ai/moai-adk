@@ -1,6 +1,6 @@
 ---
 id: SPEC-DOCS-SB-REMOVE-001
-version: 1.0.0
+version: 1.0.1
 status: completed
 created_at: 2026-04-21
 updated_at: 2026-04-21
@@ -12,14 +12,11 @@ depends_on: [SPEC-SKILL-GATE-001]
 related_specs: []
 title: "docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거"
 created: 2026-04-21
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.x - Legacy"
 module: "docs"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-DOCS-SB-REMOVE-001: docs-site 4개국어에서 `/simplify`·`/batch` 홍보 제거
@@ -27,6 +24,7 @@ lint:
 ## HISTORY
 
 - 2026-04-21 v1.0.0: SPEC-SKILL-GATE-001로 두 스킬을 MoAI 워크플로우에서 완전 제거한 뒤에도 공식 문서 사이트(`adk.mo.ai.kr`, 4개 locale)가 여전히 두 스킬을 "핵심 자동 품질 기능"으로 홍보하고 있음을 감사 발견. CLAUDE.local.md §17.3 "4-locale 동시 업데이트" 의무 위반 상태. 본 SPEC은 공식 문서의 허위 홍보를 제거하고 ko 정본 → en/ja/zh 동기화를 달성.
+- 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
 
 ## Background
 

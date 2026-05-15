@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R2-WF-005
 title: Language Rules vs Skills Boundary Codification
-version: "0.2.2"
+version: "0.2.3"
 status: completed
 created_at: 2026-04-23
 updated_at: 2026-05-09
@@ -12,20 +12,17 @@ issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/rules/moai/languages/, .claude/skills/, .claude/rules/moai/development/skill-authoring.md"
 dependencies:
-  - SPEC-V3R2-WF-001
+    - SPEC-V3R2-WF-001
 related_gap:
-  - r4-skill-audit-lang-skills-absent
-  - r6-frontmatter-consistency
+    - r4-skill-audit-lang-skills-absent
+    - r6-frontmatter-consistency
 related_theme: "Theme 6 — Workflow Consolidation"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "languages, rules, skills, boundary, paths-frontmatter, v3"
 created: 2026-04-24
-updated: 2026-05-13
-lint:
-  skip:
-    - StatusGitConsistency
+updated: 2026-05-16
 ---
 
 # SPEC-V3R2-WF-005: Language Rules vs Skills Boundary Codification
@@ -38,6 +35,7 @@ lint:
 | 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P2 Medium"` → `P2`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. |
 | 0.2.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → 6 mechanical fixes (D1 AC citations, D2 task count, D3 path placeholder, D4 flutter.md sequencing, D5 test scope caveat, D7 typo). EARS REQ body unchanged. Targets PASS at iteration 2. |
 | 0.2.2   | 2026-05-09 | /moai sync (status transition) | Run+sync 완료 후 status: draft → completed. M1-M5 implementation 완료, 4 audit tests GREEN, evaluator-active iter 2 PASS, plan-audit iter 2 PASS 0.93. EARS REQ/AC 본문 변경 없음. |
+| 0.2.3   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ---
 

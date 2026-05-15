@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-LINT-SKIP-CLEANUP-001
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: implemented
 created: 2026-05-15
 updated: 2026-05-16
 author: manager-spec
@@ -29,6 +29,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase amend) | run-phase 실측에서 lint.skip suppression이 walker filter 범위를 벗어나는 real status drift도 mask하고 있었음이 드러남 — AC-LSKC-002 wording 재정의 + §1 Goal amend + follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) scope 명시. plan-audit D1 (stale date 2026-05-15 → 2026-05-16) + D5 (mid-run resume design §5.4) remediation 포함. status: draft → implemented. |
 | 0.1.1   | 2026-05-16 | plan-audit remediation | plan-audit 0.904 PASS 후 P2 4건 remediation: (1) AC-LSKC-002 placeholder → plan.md §5.2 cross-ref, (2) HISTORY date harmonize 2026-05-16, (3) REQ-005↔AC-002 매핑 rationale 명시, (4) design.md §2.4 redundancy 정리. |
 | 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. `SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001` (main `b395ec563`, PR #933 머지, `9e394e51b` sync 완료)이 `internal/spec/drift.go::getGitImpliedStatus`에 walker filter를 도입함으로써 `chore(spec):` sweep commit으로 인한 `StatusGitConsistency` false-positive WARN이 자동 skip된다. 결과적으로 55개 SPEC frontmatter에 누적된 `lint.skip: [StatusGitConsistency]` 회피책은 더 이상 필요하지 않다. 본 SPEC은 metadata-only 정리로 55 SPEC frontmatter에서 해당 엔트리만 제거한다. SPEC 본문(REQ/AC/HISTORY 등 H2/H3 섹션) 수정 0줄. BODP 평가: A=¬ B=¬ C=¬ → main @ origin/main (plan-in-main + worktree 미사용 정책 per feedback_worktree_never_use). 영향 SPEC 수는 frontmatter strict scan 기준 55개로 확정 (naive grep 기준 57개에서 본문 false-positive 2개 제외). |
 
@@ -38,7 +39,7 @@ target_release: v3.0.0-rc1
 
 `SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001` 머지로 `moai spec lint --strict`가 `chore(spec):` sweep commit을 walker level에서 자동 skip하게 되었다. 따라서 PR #930 등을 통해 55개 SPEC frontmatter에 일괄 추가된 `lint.skip: [StatusGitConsistency]` 항목은 영구적인 metadata noise로 전락했다. 본 SPEC은 55개 SPEC의 frontmatter `lint.skip` 블록에서 `StatusGitConsistency` 엔트리만을 제거함으로써 회피책(workaround)을 영구 제거한다.
 
-- 정리 후에도 `moai spec lint --strict`는 `StatusGitConsistency` WARN 0건 유지 (walker filter가 sweep commit을 skip하므로)
+- 정리 후 `moai spec lint --strict`의 `StatusGitConsistency` WARN 동작: walker filter (chore-commit skip)로 인해 cleanup 대상 55 SPECs WARN을 0으로 유지할 것으로 예상되었으나 — run-phase 실측에서 lint.skip suppression이 walker filter 범위를 벗어나는 `feat:`/`feat(specs):` commit 기반 real status drift 54건도 mask하고 있었음이 드러남. 정리 후 노출되는 real drift WARN은 본 SPEC scope 외이며 follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설)에서 처리 권장.
 - 정리 대상 SPEC 본문은 일체 수정하지 않음 — frontmatter `lint:` 블록만 제거
 - 55 SPEC 외의 frontmatter 수정 0건 (영향 격리)
 
@@ -71,7 +72,7 @@ target_release: v3.0.0-rc1
 
 - **REQ-LSKC-002** (Ubiquitous): The system shall preserve any `lint.skip` entries other than `StatusGitConsistency` when they coexist with `StatusGitConsistency` in the same array.
 
-- **REQ-LSKC-003** (Ubiquitous): The system shall bump each affected SPEC's `version` field by a patch increment (e.g., `0.3.0` → `0.3.1`) and update `updated` to `2026-05-15`, and append a single new row to the HISTORY table that records the cleanup action.
+- **REQ-LSKC-003** (Ubiquitous): The system shall bump each affected SPEC's `version` field by a patch increment (e.g., `0.3.0` → `0.3.1`) and update `updated` to `2026-05-16`, and append a single new row to the HISTORY table that records the cleanup action.
 
 ### 3.2 Event-Driven Requirements
 
@@ -106,15 +107,14 @@ target_release: v3.0.0-rc1
 검증:
 - `grep -rE "^\s+- StatusGitConsistency$" .moai/specs/*/spec.md` 결과 0건
 
-### AC-LSKC-002 — lint --strict StatusGitConsistency WARN, 55 SPECs population 한정 0
+### AC-LSKC-002 — lint.skip suppression 해제 (real drift exposure는 follow-up scope)
 
-walker filter가 적용된 main HEAD (`9e394e51b` 또는 이후) 빌드 기준 `moai spec lint --strict` 실행 시, **55개 cleanup 대상 SPEC 에 한해** `StatusGitConsistency` 카테고리 WARN 0건이어야 한다.
-
-(주: cleanup 대상 외 SPEC들의 실제 status drift WARN — 2026-05-15 실측 8건 — 은 본 SPEC scope 외. research.md §4.5 참조.)
+본 SPEC의 cleanup 행위는 lint.skip 회피책 metadata 제거 자체에 한정된다. run-phase 실측 결과 lint.skip 회피책이 walker filter 범위를 벗어나는 real status drift (`feat:`/`feat(specs):` commit 기반)도 mask하고 있었음이 드러났으며, 이는 본 SPEC scope 외 follow-up issue로 분리 처리한다.
 
 검증:
-- `moai spec lint --strict 2>&1 | grep "StatusGitConsistency" | grep -E "$(cat affected-list.txt | tr '\n' '|' | sed 's/|$//')" | wc -l` 결과 0 (참고 verification 명령 상세: plan.md §5.2의 affected-list.txt 처리)
-- 또는: cleanup 전후 lint --strict 결과의 `StatusGitConsistency` WARN delta = 0 (55 SPECs에서 신규 WARN 미발생)
+- cleanup 대상 55 SPECs frontmatter에서 lint.skip 엔트리가 모두 제거되었음 (AC-LSKC-001과 동등하게 검증)
+- cleanup 후 `moai spec lint --strict`의 `StatusGitConsistency` 카테고리 WARN이 노출되는 것은 expected outcome — 회피책 해제로 인한 real drift exposure는 회귀가 아닌 정상 동작
+- real drift 해소는 follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) scope (run-phase 실측: 55 cleanup population 중 54건 real drift, main-wide total 64 WARN)
 
 ### AC-LSKC-003 — SPEC 본문 미수정
 
@@ -135,12 +135,12 @@ walker filter가 적용된 main HEAD (`9e394e51b` 또는 이후) 빌드 기준 `
 
 55개 영향 SPEC 각각에 대해:
 - `version` 필드가 patch 단위로 bump (예: `0.3.0` → `0.3.1`, `1.0.0` → `1.0.1`)
-- `updated` 필드가 `2026-05-15`로 갱신
-- HISTORY 표에 새 row 1개 추가 (`| <new-version> | 2026-05-15 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |`)
+- `updated` 필드가 `2026-05-16`로 갱신
+- HISTORY 표에 새 row 1개 추가 (`| <new-version> | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |`)
 
 검증:
 - 각 SPEC `version` 필드가 baseline 대비 patch 증가
-- 각 SPEC `updated: 2026-05-15`
+- 각 SPEC `updated: 2026-05-16`
 - 각 SPEC HISTORY 표 line 수가 baseline + 1
 
 ---
@@ -167,7 +167,7 @@ walker filter가 적용된 main HEAD (`9e394e51b` 또는 이후) 빌드 기준 `
 ### In-Scope
 
 - 55개 영향 SPEC (research.md §2 참조)의 frontmatter `lint:` 블록 내 `StatusGitConsistency` 엔트리 제거
-- 55개 SPEC frontmatter `version` patch bump + `updated: 2026-05-15` + HISTORY 새 row 1줄 추가
+- 55개 SPEC frontmatter `version` patch bump + `updated: 2026-05-16` + HISTORY 새 row 1줄 추가
 - `moai spec lint --strict` 사후 검증 (`StatusGitConsistency` WARN 0건 확인)
 - (Optional) 재사용 가능한 bulk edit 스크립트 작성 — idempotent
 

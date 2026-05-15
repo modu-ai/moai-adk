@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R3-WEB-001
-version: "0.2.0"
+version: "0.2.1"
 status: archived
 created_at: 2026-05-04
 updated_at: 2026-05-04
@@ -10,14 +10,11 @@ labels: [web, cockpit, foundation, capability-c1, idea-001, archived]
 issue_number: null
 title: "Cockpit Foundation + Workflow Tracker capability"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v3.0.0 - Consolidation"
 module: "web"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 ## HISTORY
@@ -27,6 +24,7 @@ lint:
 | 0.1.0 | 2026-05-04 | Goos | Created from IDEA-001 brain proposal — Cockpit Foundation + Workflow Tracker (Capability C1, First Principles 1순위) |
 | 0.1.1 | 2026-05-04 | Goos | Patch — D1 (REQ-WEB-003 + Scenario 3 decoupled from HTMX-specific attributes) + D2 (Goals section added) per plan-auditor iteration 1 review (partial — interrupted) |
 | 0.2.0 | 2026-05-04 | Goos | **ARCHIVED** — Pivoted to Console paradigm (CRUD-capable) per IDEA-002 brain workflow. Original Cockpit (read-only ambient awareness) capability superseded by SPEC-V3R3-CONSOLE-NNN (TBD via brain workflow). Trigger: Claude Design handoff bundle "MoAI-ADK Console" introduced 4 settings CRUD requirement (user/project/design/harness) + Bun+Hono+React+TS Claude Agent SDK stack pivot, breaking the read-only invariant of original capability. Document preserved as historical context only; do NOT implement. |
+| 0.2.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 > ⚠️ **ARCHIVED 2026-05-04** — This SPEC has been superseded. The Cockpit (read-only ambient awareness) paradigm was replaced by Console (CRUD-capable configuration management) following Claude Design handoff bundle review and user re-scope decision. See IDEA-002 brain workflow output and successor SPEC-V3R3-CONSOLE-NNN (assigned post-brain). This document is preserved as historical context for traceability — do NOT implement against these requirements. The plan-auditor PASS verdict (iteration 1) and 4 medium/low defects (D1-D4) remain valid against the original Cockpit capability but do not transfer to the Console successor.
 

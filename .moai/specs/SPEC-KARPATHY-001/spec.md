@@ -1,6 +1,6 @@
 ---
 id: SPEC-KARPATHY-001
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created_at: 2026-04-28
 updated_at: 2026-04-28
@@ -18,13 +18,10 @@ harness_level: standard
 development_mode: ddd
 domains: [rules, skills, templates]
 created: 2026-04-28
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.x - Legacy"
 module: "development"
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-KARPATHY-001: Karpathy Coding Principles Integration into MoAI-ADK Orchestration
@@ -35,6 +32,7 @@ lint:
 |---------|------------|--------------|------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-04-28 | manager-spec | Initial draft. Integrate Andrej Karpathy's 4 coding principles + anti-pattern catalog into MoAI-ADK. |
 | 1.0.0   | 2026-04-28 | moai         | Implementation complete. §1.2 Non-Goals updated (NOTICE.md attribution added per user request). |
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ---
 

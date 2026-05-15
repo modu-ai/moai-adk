@@ -5,19 +5,16 @@ status: completed
 priority: Medium-High
 phase: "Phase 3 - Automation"
 created: 2026-02-03
-updated: 2026-05-13
+updated: 2026-05-16
 dependencies:
-  - SPEC-QUALITY-001
-  - SPEC-CONFIG-001
+    - SPEC-QUALITY-001
+    - SPEC-CONFIG-001
 module: "internal/loop/, internal/ralph/"
 estimated_loc: 1200
 tags: "loop, ralph, feedback, state-machine, convergence, automation"
 lifecycle: spec-anchored
-version: "1.0.0"
+version: "1.0.1"
 author: GOOS
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-LOOP-001: Ralph Feedback Loop Engine
@@ -26,6 +23,7 @@ lint:
 
 | 날짜 | 버전 | 변경 내용 |
 |------|------|----------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 2026-02-03 | 1.0.0 | 초기 SPEC 작성 |
 
 ---

@@ -1,32 +1,29 @@
 ---
 id: SPEC-V3R3-HARNESS-001
 title: Meta-Harness Skill — Static Core 22 + Dynamic ∞
-version: "0.1.2"
+version: "0.1.3"
 status: superseded
 created: 2026-04-26
-updated: 2026-05-13
+updated: 2026-05-16
 author: manager-spec
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Extreme Aggressive Core"
 module: ".claude/skills/moai-meta-harness/, internal/template/templates/.claude/skills/moai-meta-harness/, internal/cli/update/, .moai/archive/skills/v2.16/"
 dependencies: []
 related_specs:
-  - SPEC-V3R3-PATTERNS-001
-  - SPEC-V3R3-DESIGN-PIPELINE-001
-  - SPEC-V3R3-PROJECT-HARNESS-001
-  - SPEC-AGENCY-ABSORB-001
+    - SPEC-V3R3-PATTERNS-001
+    - SPEC-V3R3-DESIGN-PIPELINE-001
+    - SPEC-V3R3-PROJECT-HARNESS-001
+    - SPEC-AGENCY-ABSORB-001
 breaking: true
 bc_id:
-  - BC-V3R3-007
+    - BC-V3R3-007
 lifecycle: spec-anchored
 tags: "harness, meta-skill, breaking-change, namespace-separation, v3r3, phase-c, extreme-aggressive, apache-2-0-attribution"
 related_theme: "Phase C — Extreme Aggressive Core (meta-harness + namespace separation)"
 target_release: v2.17.0
 issue_number: null
 supersedes: []
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-HARNESS-001: Meta-Harness Skill — Static Core 22 + Dynamic ∞
@@ -38,6 +35,7 @@ lint:
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. v3R3 Phase C P0 — meta-harness skill 신설 + 16 정적 skills 제거 (BC-V3R3-007) + namespace 분리 (moai-*/my-harness-*) + revfactory/harness 7-Phase workflow 흡수 (Apache 2.0 attribution). |
 | 0.1.1   | 2026-04-27 | orchestrator | D-1/D-2 plan-audit fix. §3 카테고리 라벨 라이브 트리 기준 정확화 (workflow=10, design=1, foundation=4 명시). plan.md §3.5 staticCoreAllowlist 11개 가공 skill명을 검증된 22개 실명으로 대체. plan.md §6 "11 REQs" → 10. |
 | 0.1.2   | 2026-04-27 | orchestrator | T-M5-05 post-merge: status draft → completed. PR #724 머지 완료 (merge commit `ba4545981`). Wave A (M1) + Wave B (M2+M3) + Wave C (M4+M5) 전체 7/7 ACs 충족. main 브랜치에 통합됨. |
+| 0.1.3   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ---
 

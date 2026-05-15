@@ -1,10 +1,10 @@
 ---
 id: SPEC-UTIL-003
 title: "LSP Subprocess Hygiene (stderr drain + singleflight spawn + Diagnostic Alias)"
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created: 2026-04-24
-updated: 2026-04-24
+updated: 2026-05-16
 author: Wave v2.14 SPEC Writer
 priority: P0 Critical
 phase: "v2.14.0 — Phase 3 — Utility Hardening"
@@ -19,9 +19,6 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "lsp, subprocess, stderr, singleflight, diagnostic, v2.14"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-UTIL-003: LSP Subprocess Hygiene — stderr drain + singleflight spawn + Diagnostic Alias
@@ -30,6 +27,7 @@ lint:
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.1 | 2026-04-24 | MoAI (release/v2.14.0) | Implementation complete, merged as commit `9dd6a5120`. AC coverage 12/12. `hook.Diagnostic` wire format frozen (IMP-V3U-008 deferred to v2.16). Coverage: lsp/core 92.9%, lsp/gopls 80.1%, hook 85.0%. TRUST 5: 5/5. |
 | 0.1.0 | 2026-04-24 | Wave v2.14 SPEC Writer | Initial draft from v2.14.0 release plan §2.2 UTIL-003. Owns IMP-V3U-002 (stderr leak) + IMP-V3U-003 (getOrSpawn race) + D2 scope (internal Diagnostic type alias). |
 

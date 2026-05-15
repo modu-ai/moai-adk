@@ -8,21 +8,18 @@ priority: High
 created: 2026-02-03
 module: "internal/lsp/"
 files:
-  - client.go
-  - server.go
-  - protocol.go
-  - models.go
+    - client.go
+    - server.go
+    - protocol.go
+    - models.go
 estimated_loc: 1500
 dependencies:
-  - SPEC-CONFIG-001
+    - SPEC-CONFIG-001
 lifecycle: spec-anchored
 tags: lsp, json-rpc, diagnostics, multi-language, concurrency
-version: "1.0.0"
-updated: 2026-05-13
+version: "1.0.1"
+updated: 2026-05-16
 author: GOOS
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-LSP-001: Language Server Protocol Client System
@@ -33,6 +30,7 @@ lint:
 |------|------|-----------|
 | 2026-02-03 | 1.0.0 | 초기 SPEC 작성 |
 | 2026-04-11 | 1.1.0 | Status corrected. Original 'Completed' claim was inaccurate — only interface stubs existed in `internal/lsp/`, real LSP client implementation was nil. Superseded by SPEC-LSP-CORE-002 which implements real multi-language LSP client via powernap. See SPEC-LSP-CORE-002 Problem Statement for details. |
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ---
 

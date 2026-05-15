@@ -1,9 +1,9 @@
 ---
 id: SPEC-SRS-001
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: "2026-04-09"
-updated: "2026-04-09"
+updated: "2026-05-16"
 author: GOOS
 priority: high
 issue_number: 0
@@ -12,9 +12,6 @@ phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-SRS-001: 데드코드 정리 + Self-Research 기반 패키지
@@ -23,6 +20,7 @@ lint:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 2026-04-09 | 1.0.0 | Initial SPEC from DESIGN-SRS-002 Phase 0 + Phase 1 |
 
 ## Overview
