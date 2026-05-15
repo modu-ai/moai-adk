@@ -348,6 +348,36 @@ func TestExtractRequirementMappings(t *testing.T) {
 			text:     "Just regular text",
 			expected: nil,
 		},
+		{
+			// Regression: SPC-001 spec.md AC-SPC-001-01 / AC-SPC-001-14
+			// previously lost REQ-005/011 and REQ-003 due to single-pass regex
+			// stopping at the first REQ after `maps`.
+			name:     "comma multi-REQ — 2 ids",
+			text:     "Given hierarchical AC ... (maps REQ-SPC-001-001, REQ-SPC-001-005)",
+			expected: []string{"SPC-001-001", "SPC-001-005"},
+		},
+		{
+			name:     "comma multi-REQ — 3 ids",
+			text:     "AC body ... (maps REQ-SPC-001-001, REQ-SPC-001-005, REQ-SPC-001-011)",
+			expected: []string{"SPC-001-001", "SPC-001-005", "SPC-001-011"},
+		},
+		{
+			name:     "comma multi-REQ — extra spaces around commas",
+			text:     "Body (maps REQ-X-001 ,  REQ-X-002 ,REQ-X-003)",
+			expected: []string{"X-001", "X-002", "X-003"},
+		},
+		{
+			// Mixed form: one comma-separated section + one separate parenthesised section.
+			// Both halves must contribute their REQs (no dedup needed here).
+			name:     "comma multi-REQ — mixed with separate section",
+			text:     "Body (maps REQ-A-001, REQ-A-002) trailing (maps REQ-B-003)",
+			expected: []string{"A-001", "A-002", "B-003"},
+		},
+		{
+			name:     "uppercase MAPS keyword",
+			text:     "Body (MAPS REQ-UP-001, REQ-UP-002)",
+			expected: []string{"UP-001", "UP-002"},
+		},
 	}
 
 	for _, tt := range tests {

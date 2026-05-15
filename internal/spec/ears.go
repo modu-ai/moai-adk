@@ -112,16 +112,36 @@ func (a *Acceptance) ValidateDepth() error {
 	return nil
 }
 
-// ExtractRequirementMappings extracts (maps REQ-...) pattern from text
+// ExtractRequirementMappings extracts (maps REQ-...) pattern from text.
+// Supports both single-REQ form `(maps REQ-X-001)` and comma-separated
+// multi-REQ form `(maps REQ-X-001, REQ-X-002, REQ-X-003)`. Both forms are
+// canonical per SPEC-V3R2-SPC-001 §6 (hierarchical acceptance examples).
+// @MX:NOTE: "2-pass extraction: section locator + REQ enumerator. The single-pass
+// regex previously here only matched the first REQ after the `maps` keyword and
+// silently dropped subsequent comma-listed REQs, causing false-positive
+// CoverageIncomplete findings on every multi-REQ mapping."
 func ExtractRequirementMappings(text string) []string {
-	pattern := regexp.MustCompile(`\(?\s*(?:maps|MAPS)\s+REQ-([A-Z0-9-]+)\s*\)?`)
-	matches := pattern.FindAllStringSubmatch(text, -1)
+	// Pass 1: locate each `maps REQ-..., REQ-..., ...` section. The captured
+	// group covers a contiguous REQ list (optionally separated by commas and
+	// surrounding whitespace). Sections do not require enclosing parentheses
+	// because the legacy single-pass regex treated them as optional.
+	sectionPattern := regexp.MustCompile(`(?i)maps\s+(REQ-[A-Z0-9-]+(?:\s*,\s*REQ-[A-Z0-9-]+)*)`)
+	// Pass 2: enumerate every REQ-XXX identifier inside a located section.
+	reqPattern := regexp.MustCompile(`REQ-([A-Z0-9-]+)`)
 
 	var reqIDs []string
 	seen := make(map[string]bool)
 
-	for _, match := range matches {
-		if len(match) > 1 {
+	sections := sectionPattern.FindAllStringSubmatch(text, -1)
+	for _, section := range sections {
+		if len(section) < 2 {
+			continue
+		}
+		reqMatches := reqPattern.FindAllStringSubmatch(section[1], -1)
+		for _, match := range reqMatches {
+			if len(match) <= 1 {
+				continue
+			}
 			reqID := match[1]
 			if !seen[reqID] {
 				seen[reqID] = true
