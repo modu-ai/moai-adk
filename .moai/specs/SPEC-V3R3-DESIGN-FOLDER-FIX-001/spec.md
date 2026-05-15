@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-DESIGN-FOLDER-FIX-001
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: completed
 created_at: 2026-04-26
-updated_at: 2026-04-26
+updated_at: 2026-05-15
 author: manager-spec
 priority: P0
 labels: [design-folder, update-path, bug-fix, reserved-collision, v3r3]
@@ -19,7 +19,7 @@ tags: "design-folder, moai-update, reserved-name, bug-fix, v3r3, phase-b"
 related_theme: "Phase B — Update Path Hardening"
 title: "moai update Reserved Filename Collision — Warning 격하 (Update Path)"
 created: 2026-04-26
-updated: 2026-05-13
+updated: 2026-05-15
 ---
 
 # SPEC-V3R3-DESIGN-FOLDER-FIX-001: moai update Reserved Filename Collision — Warning 격하 (Update Path)
@@ -28,6 +28,7 @@ updated: 2026-05-13
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.2.0   | 2026-05-15 | manager-spec | Status drift 해소: in-progress → completed (PR #718 2026-04-26 머지 완료 반영). Plan-Audit P3 defects D2/D3/D4 cosmetic 보강 — §2.2 scaffold-path API contract 명시 + acceptance.md AC-DFF-06 "BRIEF-X.md" 명시화 + TestDesignFolderUpdate_NilErrOut 추가. |
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. v2.15.0 user-reported bug: moai update의 hard error로 인한 `.moai/design/tokens.json` 충돌 시 전체 sync 실패. update path만 warning + skip으로 격하. scaffold path는 기존 hard error 유지 (REQ-008). |
 
 ---
@@ -105,6 +106,10 @@ updated: 2026-05-13
 - Reserved file path canonical list 추가/제거
 - 자동 마이그레이션 도구 (사용자 수동 rename 안내만)
 - design folder 외 reserved name 정책 (이번 fix는 `.moai/design/`만 대상)
+
+#### 2.2.1 REQ-DFF-003 enforcement note (D2 cosmetic clarification)
+
+REQ-DFF-003 (Scaffold path strict mode)의 강제는 **API contract 수준**에서 보장된다. 현재 `scaffoldDesignDir`는 `checkReservedCollision(projectRoot, errOut, true)`를 호출하므로 strict 모드가 활성화되며, 향후 다른 caller가 scaffold path 류 동작을 추가하더라도 `strict=true`를 명시함으로써 동일 보호를 받는다. 단위 테스트는 직접 API (`checkReservedCollision(..., true)`)를 호출하여 strict 분기를 검증한다 — call-site별 통합 테스트가 아닌, **API 계약 검증**임을 명시한다.
 
 ---
 
@@ -274,7 +279,7 @@ updated: 2026-05-13
 
 ---
 
-Version: 0.1.0
+Version: 0.2.0
 Classification: BUG_FIX
-Last Updated: 2026-04-26
+Last Updated: 2026-05-15
 REQ coverage: REQ-DFF-001 ~ REQ-DFF-008

@@ -279,7 +279,7 @@ REQ-DFF-001, REQ-DFF-002
 
 **Then**:
 - 반환값 `nil`
-- `errBuf`에 세 파일 이름 모두 포함 ("tokens.json", "BRIEF-X", "components.json")
+- `errBuf`에 세 파일 이름 모두 포함 ("tokens.json", "BRIEF-X.md", "components.json")
 - 세 파일 모두 내용 보존
 - 다른 templates (README 등) sync 정상
 
