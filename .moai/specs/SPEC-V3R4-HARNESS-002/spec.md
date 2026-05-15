@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-HARNESS-002
-version: "0.3.0"
-status: implemented
+version: "0.4.0"
+status: completed
 created: 2026-05-14
 updated: 2026-05-15
 author: manager-spec

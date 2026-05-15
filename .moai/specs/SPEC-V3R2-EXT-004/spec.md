@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-EXT-004
 title: Versioned Migration Framework (idempotent, ordered, rollback, preAction)
-version: "0.1.0"
-status: implemented
+version: "0.2.0"
+status: completed
 created: 2026-04-23
 updated: 2026-04-23
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
