@@ -349,9 +349,54 @@ func ValidSectionNames() []string {
 // HarnessConfig는 harness.yaml 최상위 설정 구조체입니다.
 // HRN-002 run-phase minimal substrate: memory_scope 필드 검증만 포함합니다.
 // HRN-001 run-phase에서 routing/profile 확장 예정입니다.
+//
+// @MX:NOTE: [AUTO] Wave D T-D1: Learning 필드 추가 — learning.classifier 블록 로딩 (REQ-HRN-CLS-016).
 type HarnessConfig struct {
-	DefaultProfile string         `yaml:"default_profile"`
+	DefaultProfile string          `yaml:"default_profile"`
 	Evaluator      EvaluatorConfig `yaml:"evaluator"`
+	// Learning은 harness.yaml 내 learning 블록 설정이다.
+	// REQ-HRN-CLS-016: learning.classifier 서브 블록을 통해 Stage-2 분류기를 구성한다.
+	Learning LearningConfig `yaml:"learning"`
+}
+
+// LearningConfig는 harness.yaml learning 블록 설정을 담는다.
+// REQ-HRN-CLS-016: Stage-2 classifier 설정을 YAML로 공급하는 seam.
+type LearningConfig struct {
+	// Classifier는 Stage-2 embedding-cluster 분류기 설정이다.
+	// yaml.TypeError 시 WithDefaults() 값으로 fallback된다 (REQ-HRN-CLS-018).
+	Classifier ClassifierConfig `yaml:"classifier"`
+}
+
+// ClassifierConfig는 Stage-2 embedding-cluster 분류기 설정을 담는다.
+// internal/harness.ClassifierConfig와 동일 스키마 — config 패키지에 독립 정의하여 import cycle 방지.
+// Stage2Enabled 기본값은 false(Go 제로값): backward compatibility 보존 (REQ-HRN-CLS-001).
+//
+// @MX:NOTE: [AUTO] harness.ClassifierConfig와 동일 YAML 태그 — 두 타입 간 필드 동기 필수.
+// @MX:SPEC: REQ-HRN-CLS-016, REQ-HRN-CLS-018
+type ClassifierConfig struct {
+	// Stage2Enabled은 Stage-2 SimHash 클러스터 분류기를 활성화한다.
+	Stage2Enabled bool `yaml:"stage_2_enabled"`
+	// SimilarityAlgorithm은 유사도 알고리즘 선택이다. "simhash" 또는 "none"만 허용.
+	SimilarityAlgorithm string `yaml:"similarity_algorithm"`
+	// HammingThreshold는 클러스터 병합 기준 Hamming 거리다. 기본값 3, 범위 [0, 64].
+	HammingThreshold int `yaml:"hamming_threshold"`
+	// ClusterMinSize는 병합 대상 최소 클러스터 크기다. 기본값 3, >= 2.
+	ClusterMinSize int `yaml:"cluster_min_size"`
+}
+
+// WithDefaults는 제로값 필드에 기본값을 적용한 새 ClassifierConfig를 반환한다.
+// yaml.TypeError fallback (REQ-HRN-CLS-018)에서 사용된다.
+func (c ClassifierConfig) WithDefaults() ClassifierConfig {
+	if c.SimilarityAlgorithm == "" {
+		c.SimilarityAlgorithm = "simhash"
+	}
+	if c.HammingThreshold == 0 {
+		c.HammingThreshold = 3
+	}
+	if c.ClusterMinSize == 0 {
+		c.ClusterMinSize = 3
+	}
+	return c
 }
 
 // EvaluatorConfig는 evaluator 하위 설정 구조체입니다.

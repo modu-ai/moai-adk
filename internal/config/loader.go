@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -224,6 +225,12 @@ func (l *Loader) loadResearchSection(dir string, cfg *Config) {
 // evaluator.memory_scope가 per_iteration이 아니거나 비어 있는 경우
 // ErrEvalMemoryFrozen 또는 ErrInvalidConfig 오류를 반환합니다.
 // HRN-002 run-phase minimal substrate — HRN-001 run-phase에서 routing/profile 확장 예정.
+//
+// learning.classifier 블록: yaml.TypeError 포함 파싱 오류 시 ClassifierConfig.WithDefaults()로
+// Stage-1 fallback 처리합니다 (REQ-HRN-CLS-018).
+//
+// @MX:NOTE: [AUTO] Wave D T-D1: yaml.TypeError fallback — 타입 불일치 시 classifier WithDefaults() 복원.
+// @MX:SPEC: REQ-HRN-CLS-016, REQ-HRN-CLS-018
 func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -234,8 +241,18 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 	}
 
 	var wrapper harnessFileWrapper
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
-		return nil, fmt.Errorf("LoadHarnessConfig parse %s: %w", path, ErrInvalidYAML)
+	if unmarshalErr := yaml.Unmarshal(data, &wrapper); unmarshalErr != nil {
+		// yaml.TypeError: 타입 불일치 오류 시 classifier 필드만 WithDefaults()로 복원하고 계속 진행.
+		// 다른 오류 (구조 오류 등)는 ErrInvalidYAML로 반환.
+		var typeErr *yaml.TypeError
+		if !isYAMLTypeError(unmarshalErr, &typeErr) {
+			return nil, fmt.Errorf("LoadHarnessConfig parse %s: %w", path, ErrInvalidYAML)
+		}
+		// TypeError: classifier 필드만 영향받을 수 있음 — WithDefaults()로 안전한 기본값 적용.
+		// evaluator.memory_scope는 별도 검증에서 처리.
+		slog.Warn("harness.yaml learning.classifier 타입 오류, 기본값으로 fallback",
+			"path", path, "error", unmarshalErr)
+		wrapper.Harness.Learning.Classifier = ClassifierConfig{}.WithDefaults()
 	}
 
 	cfg := &wrapper.Harness
@@ -259,6 +276,12 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+// isYAMLTypeError는 err가 *yaml.TypeError인지 검사하고, 맞으면 target에 할당 후 true를 반환합니다.
+// errors.As를 사용하여 래핑된 TypeError도 탐지합니다.
+func isYAMLTypeError(err error, target **yaml.TypeError) bool {
+	return errors.As(err, target)
 }
 
 // loadYAMLFile reads a YAML file from the given directory and unmarshals it

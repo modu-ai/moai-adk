@@ -1,0 +1,5 @@
+{"ts": "2026-01-01T10:00:00Z", "pattern_key": "user_prompt:legacy-subject-000", "from_tier": "observation", "to_tier": "heuristic", "observation_count": 3, "confidence": 0.85}
+{"ts": "2026-01-02T10:00:00Z", "pattern_key": "user_prompt:legacy-subject-001", "from_tier": "observation", "to_tier": "heuristic", "observation_count": 3, "confidence": 0.85}
+{"ts": "2026-01-03T10:00:00Z", "pattern_key": "user_prompt:legacy-subject-002", "from_tier": "observation", "to_tier": "heuristic", "observation_count": 3, "confidence": 0.85}
+{"ts": "2026-01-04T10:00:00Z", "pattern_key": "user_prompt:legacy-subject-003", "from_tier": "observation", "to_tier": "heuristic", "observation_count": 3, "confidence": 0.85}
+{"ts": "2026-01-05T10:00:00Z", "pattern_key": "user_prompt:legacy-subject-004", "from_tier": "observation", "to_tier": "heuristic", "observation_count": 3, "confidence": 0.85}

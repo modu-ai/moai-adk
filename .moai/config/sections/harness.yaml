@@ -124,3 +124,11 @@ learning:
         - 3
         - 5
         - 10
+    # Stage-2 embedding-cluster 분류기 설정 (REQ-HRN-CLS-016).
+    # stage_2_enabled: false (기본값) — Stage-1 byte-identical 경로 유지.
+    # Config loader (Wave D T-D1)에서 파싱. yaml.TypeError 시 WithDefaults()로 fallback.
+    classifier:
+        stage_2_enabled: false
+        similarity_algorithm: simhash
+        hamming_threshold: 3
+        cluster_min_size: 3
