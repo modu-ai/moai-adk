@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-HARNESS-001
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-05-14
 updated: 2026-05-14
 author: manager-spec
