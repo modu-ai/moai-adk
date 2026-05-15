@@ -11,9 +11,6 @@ phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-SLE-001: Statusline Enhancement

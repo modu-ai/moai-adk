@@ -12,9 +12,6 @@ phase: "v2.x - Legacy"
 module: "agents"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-AGENT-002: Agent Definition Optimization - Token Efficiency with Workflow Preservation

@@ -11,9 +11,6 @@ phase: "v2.x - Legacy"
 module: "glm"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-GLM-001: GLM Compatibility Automation

@@ -19,9 +19,6 @@ related_theme: "Layer 3: Runtime"
 breaking: false
 lifecycle: spec-anchored
 tags: "session, state, checkpoint, typed, v3r2, runtime, file-first"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-004: Typed Session State + Phase Checkpoint

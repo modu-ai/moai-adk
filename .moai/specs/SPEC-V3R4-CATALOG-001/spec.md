@@ -17,9 +17,6 @@ eval_fix_pr: 863
 evaluation_pass_at: "2026-05-12T03:30:00Z"
 evaluation_overall_score: "0.82"
 coverage: "84.0% (LoadCatalog: 100%)"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R4-CATALOG-001: 3-Tier Catalog Manifest

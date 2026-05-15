@@ -11,9 +11,6 @@ phase: "v2.x - Legacy"
 module: "quality"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 # SPEC-QUALITY-001: TRUST 5 Quality Gates
 

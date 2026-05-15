@@ -13,9 +13,6 @@ dependencies:
   - SPEC-UI-001
 tags: huh, glamour, lipgloss, tui-modernization, charmbracelet, theme, accessibility
 lifecycle: completed
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-UI-003: TUI Modernization

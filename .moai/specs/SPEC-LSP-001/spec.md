@@ -20,9 +20,6 @@ tags: lsp, json-rpc, diagnostics, multi-language, concurrency
 version: "1.0.0"
 updated: 2026-05-13
 author: GOOS
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-LSP-001: Language Server Protocol Client System

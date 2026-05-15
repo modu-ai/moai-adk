@@ -16,9 +16,6 @@ lifecycle: spec-anchored
 tags: "expert-mobile, mobile-coverage, ios, android, react-native, flutter, skill-creation, agent-creation, v3r3, phase-a"
 related_theme: "Phase A — Mobile Domain Coverage"
 released_in: v2.15.0
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-COV-001: Mobile Native Coverage

@@ -21,9 +21,6 @@ bc_id: []
 lifecycle: spec-anchored
 related_theme: "Self-Evolving Harness v2 — Observer Expansion Wave"
 target_release: v2.21.0
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R4-HARNESS-002 — Multi-Event Observer Expansion

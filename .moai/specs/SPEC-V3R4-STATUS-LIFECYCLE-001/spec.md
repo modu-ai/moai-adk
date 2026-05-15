@@ -17,9 +17,6 @@ phase: "v3.0.0 - Lifecycle"
 module: "status"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R4-STATUS-LIFECYCLE-001: SPEC Status Lifecycle Automation — 7-Layer Defense in Depth

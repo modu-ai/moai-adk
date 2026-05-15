@@ -24,9 +24,6 @@ related_theme: "Phase C — Extreme Aggressive Core (meta-harness + namespace se
 target_release: v2.17.0
 issue_number: null
 supersedes: []
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-HARNESS-001: Meta-Harness Skill — Static Core 22 + Dynamic ∞

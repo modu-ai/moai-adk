@@ -20,9 +20,6 @@ related_theme: "Layer 3: Runtime"
 breaking: true
 lifecycle: spec-anchored
 tags: "settings, provenance, multi-layer, v3r2, breaking, runtime, config"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-005: Multi-Layer Settings Resolution with Provenance Tags

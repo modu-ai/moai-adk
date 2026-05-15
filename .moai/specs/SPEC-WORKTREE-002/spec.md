@@ -11,9 +11,6 @@ phase: "v2.x - Legacy"
 module: "worktree"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 # SPEC-WORKTREE-002: Worktree End-to-End Automation
 

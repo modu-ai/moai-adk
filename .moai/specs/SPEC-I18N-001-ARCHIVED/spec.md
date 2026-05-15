@@ -11,9 +11,6 @@ phase: "v2.x - Legacy"
 module: "i18n"
 lifecycle: completed
 tags: "i18n, translation, docs-site, archived, legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 ARCHIVED — SPEC-I18N-001

@@ -17,9 +17,6 @@ phase: "v2.x - Legacy"
 module: "skills"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-SKILL-GATE-001: 도달 불가 / 비신뢰 스킬 참조 일괄 제거

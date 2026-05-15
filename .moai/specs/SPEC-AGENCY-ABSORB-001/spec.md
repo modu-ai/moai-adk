@@ -18,9 +18,6 @@ phase: "v2.x - Legacy"
 module: "agency"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-AGENCY-ABSORB-001: Agency → MoAI-ADK 흡수 및 Claude Design 통합

@@ -12,9 +12,6 @@ phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-SRS-001: 데드코드 정리 + Self-Research 기반 패키지

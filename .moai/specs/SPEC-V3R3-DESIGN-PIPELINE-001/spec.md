@@ -25,9 +25,6 @@ issue_number: null
 created: 2026-04-27
 updated: 2026-05-13
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-DESIGN-PIPELINE-001: Hybrid Design Pipeline — DTCG 2025.10 + 3-Path Routing

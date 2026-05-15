@@ -22,9 +22,6 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, mx, resolver, aci, fan-in, anchor"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-SPC-004: @MX anchor resolver

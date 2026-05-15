@@ -11,9 +11,6 @@ phase: "v2.12 - CC Adoption"
 module: "hooks"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-CC2122-HOOK-001: Claude Code v2.1.119-121 Hook Feature Integration
