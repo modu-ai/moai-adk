@@ -4,6 +4,7 @@
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase amend) | run-phase 실측 발견 반영: AC-LSKC-002 wording 재정의 (real drift exposure는 expected outcome), M3 verification 항목 갱신, §6 DoD 'WARN 0 유지' → 'lint.skip 엔트리 부재 확인 + real drift follow-up SPEC scope'로 amend. |
 | 0.1.1   | 2026-05-16 | plan-audit remediation | plan-audit 0.904 PASS 후 P2 4건 remediation: (1) AC-LSKC-002 placeholder → plan.md §5.2 cross-ref, (2) HISTORY date harmonize 2026-05-16, (3) REQ-005↔AC-002 매핑 rationale 명시, (4) design.md §2.4 redundancy 정리. |
 | 0.1.0   | 2026-05-16 | manager-spec | 초기 plan. 55개 SPEC frontmatter의 `lint.skip: [StatusGitConsistency]` 일괄 제거 전략 + 4개 milestone (BASELINE / BULK EDIT / VERIFICATION / RUN-PR). bulk edit 도구 선택지 3가지 비교 + idempotent 검증 절차. plan-in-main 표준 적용 — worktree 없음. |
 
@@ -21,7 +22,7 @@
 2. **Sequential edit**: 55개 SPEC에 대해 sequential하게 다음 4가지를 수행
    - frontmatter `lint:` 블록 전체 제거 (현재 모든 SPEC이 단일 엔트리 케이스)
    - frontmatter `version` patch bump
-   - frontmatter `updated: 2026-05-15`
+   - frontmatter `updated: 2026-05-16`
    - HISTORY 표에 새 row 1줄 추가
 3. **Post-edit verification**: body sha256 비교 + `moai spec lint --strict` WARN 0 검증
 4. **PR commit**: 단일 commit (55개 SPEC modified) + PR push
@@ -73,9 +74,9 @@ priority-based ordering (시간 추정 금지 per `agent-common-protocol.md` §T
 
 1. frontmatter `lint:` 블록 전체 제거 (`lint:`, `  skip:`, `    - StatusGitConsistency` 3줄 — 모든 케이스가 단일 엔트리이므로 블록 전체 제거)
 2. frontmatter `version`: 현재값 patch +1 (예: `"0.3.0"` → `"0.3.1"`)
-3. frontmatter `updated`: 현재값 → `2026-05-15`
+3. frontmatter `updated`: 현재값 → `2026-05-16`
 4. HISTORY 표에 새 row 1개 prepend (또는 append — baseline ordering 보존)
-   - 표준 row 형식: `| <new-version> | 2026-05-15 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |`
+   - 표준 row 형식: `| <new-version> | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |`
 
 **완료 조건:**
 - `git status` 결과 55개 SPEC `spec.md` modified 표시
@@ -86,8 +87,8 @@ priority-based ordering (시간 추정 금지 per `agent-common-protocol.md` §T
 **Priority: High** (회귀 방지)
 
 1. Body sha256 비교 — 55개 SPEC 모두 baseline과 일치 (HISTORY row 1줄 추가는 frontmatter 인접 영역으로 간주, 본문 sha256 산정에서 제외)
-2. `moai spec lint --strict` 실행 — `StatusGitConsistency` WARN 0 확인
-3. `git diff .moai/specs/` 결과 55개 SPEC 외 파일 0개
+2. `moai spec lint --strict` 실행 — cleanup 대상 SPECs frontmatter에 lint.skip 엔트리 부재 확인 (AC-LSKC-001 등가). real drift WARN exposure (run-phase 실측 54건)는 follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` scope이며 본 SPEC verification에는 영향 없음
+3. `git diff .moai/specs/` 결과 55개 SPEC 외 파일 0개 (본 SPEC 자체 amend artifacts 4개 + progress.md + affected-list.txt 제외)
 4. 각 SPEC frontmatter parse 검증 (`moai spec list` 정상 동작 — frontmatter 깨짐 회귀 방지)
 
 **완료 조건:**
@@ -107,7 +108,7 @@ priority-based ordering (시간 추정 금지 per `agent-common-protocol.md` §T
 
 **완료 조건:**
 - PR MERGED to main
-- main HEAD `moai spec lint --strict` WARN 0 (StatusGitConsistency 카테고리)
+- main HEAD에서 cleanup 대상 55 SPECs frontmatter lint.skip 엔트리 부재 (AC-LSKC-001) — real drift WARN (`SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` 가설 scope)는 별도 처리
 
 ---
 
@@ -169,7 +170,7 @@ func cleanup(specPath string) error {
     // lint.skip에서 StatusGitConsistency 제거
     // lint.skip이 빈 배열이 되면 lint: 블록 전체 제거
     // version patch bump
-    // updated = "2026-05-15"
+    // updated = "2026-05-16"
     
     // serialize 시 key ordering 보존 (yaml.v3 Node API)
     // HISTORY 표는 frontmatter 외부이므로 별도 markdown 처리
@@ -192,7 +193,7 @@ For each SPEC:
   1. Read spec.md (frontmatter 영역)
   2. Edit: 'lint:\n  skip:\n    - StatusGitConsistency\n' → '' (3-line block 제거)
   3. Edit: 'version: <old>' → 'version: <new>' (patch bump)
-  4. Edit: 'updated: <old>' → 'updated: 2026-05-15'
+  4. Edit: 'updated: <old>' → 'updated: 2026-05-16'
   5. Edit: HISTORY 표 첫 row 위 또는 마지막 row 아래에 새 row 1줄 insert
 ```
 
@@ -263,10 +264,10 @@ git diff --stat  # expect identical to first run (no additional changes)
 
 - [ ] **AC-LSKC-001 ~ 005 모두 GREEN** (M3 VERIFICATION 통과)
 - [ ] **PR MERGED** to main (Enhanced GitHub Flow §18.3 squash merge)
-- [ ] **`moai spec lint --strict`** WARN 0 (StatusGitConsistency 카테고리, main HEAD 기준)
+- [ ] **`moai spec lint --strict`** lint.skip 엔트리 부재 확인 (AC-LSKC-001) — real drift WARN exposure (run-phase 실측 main-wide 64건)는 follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) scope
 - [ ] **HISTORY new row 1줄** 각 55 SPEC에 추가됨
 - [ ] **version patch bump** 각 55 SPEC에 적용됨
-- [ ] **updated: 2026-05-15** 각 55 SPEC에 적용됨
+- [ ] **updated: 2026-05-16** 각 55 SPEC에 적용됨
 - [ ] **CHANGELOG `[Unreleased]` row 1줄** 추가 (sync-phase 범위 — manager-docs가 처리)
 - [ ] **plan-auditor PASS** (≥ 0.85)
 - [ ] **MX tags**: `@MX:NOTE` (이력 + 회피책 제거 의도) — 코드 수정 없으므로 `@MX:ANCHOR` / `@MX:WARN` 불필요

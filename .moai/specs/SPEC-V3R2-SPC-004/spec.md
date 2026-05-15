@@ -1,30 +1,27 @@
 ---
 id: SPEC-V3R2-SPC-004
 title: "@MX anchor resolver (query by SPEC ID, fan_in, danger category)"
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: Wave 4 SPEC Writer
 priority: P2 Medium
 phase: "v3.0.0 — Phase 7 — Extension"
 module: "internal/mx/resolver.go, cmd/moai/mx.go"
 dependencies:
-  - SPEC-V3R2-SPC-002
+    - SPEC-V3R2-SPC-002
 related_gap: []
 related_problem: []
 related_pattern:
-  - T-1
+    - T-1
 related_principle:
-  - P2
+    - P2
 related_theme: "Layer 2: SPEC & TAG"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, mx, resolver, aci, fan-in, anchor"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-SPC-004: @MX anchor resolver
@@ -33,6 +30,7 @@ lint:
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft as T-1 ACI command |
 
 ---

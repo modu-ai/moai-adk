@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-COV-001
 title: Mobile Native Coverage — expert-mobile + iOS/Android/RN/Flutter strategy
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: 2026-04-25
-updated: 2026-04-26
+updated: 2026-05-16
 author: manager-spec
 priority: P1 High
 phase: "v3.0.0 R3 — Phase A — Coverage Gap Closure"
@@ -16,9 +16,6 @@ lifecycle: spec-anchored
 tags: "expert-mobile, mobile-coverage, ios, android, react-native, flutter, skill-creation, agent-creation, v3r3, phase-a"
 related_theme: "Phase A — Mobile Domain Coverage"
 released_in: v2.15.0
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-COV-001: Mobile Native Coverage
@@ -27,6 +24,7 @@ lint:
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 1.0.0   | 2026-04-25 | manager-spec | Initial draft. Phase A P1 — expert-mobile agent + 3 mobile skills + 4-mobile-strategy guide. Zero coverage 해소. |
 
 ---

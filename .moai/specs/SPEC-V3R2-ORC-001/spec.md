@@ -1,39 +1,36 @@
 ---
 id: SPEC-V3R2-ORC-001
 title: "Agent roster consolidation (22 → 17)"
-version: "0.1.1"
+version: "0.1.2"
 status: completed
 created: 2026-04-23
-updated: 2026-05-10
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 3 — Agent Cleanup"
 module: ".claude/agents/moai/, internal/template/templates/.claude/agents/moai/"
 dependencies:
-  - SPEC-V3R2-CON-001
+    - SPEC-V3R2-CON-001
 related_problem:
-  - P-A05
-  - P-A06
-  - P-A07
-  - P-A08
-  - P-A09
-  - P-A10
-  - P-A12
-  - P-A14
-  - P-A15
-  - P-A16
-  - P-A17
-  - P-A20
-  - P-A21
-  - P-A23
+    - P-A05
+    - P-A06
+    - P-A07
+    - P-A08
+    - P-A09
+    - P-A10
+    - P-A12
+    - P-A14
+    - P-A15
+    - P-A16
+    - P-A17
+    - P-A20
+    - P-A21
+    - P-A23
 related_theme: "Layer 4 — Orchestration, Master §4.4, §7.2, §8 BC-V3R2-005, BC-V3R2-009, BC-V3R2-016"
 breaking: true
 bc_id: [BC-V3R2-005, BC-V3R2-009, BC-V3R2-016]
 lifecycle: spec-anchored
 tags: "agent, roster, consolidation, manager-cycle, builder-platform, manager-quality, v3r2"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-ORC-001: Agent roster consolidation (22 → 17)
@@ -44,6 +41,7 @@ lint:
 |---------|------------|--------|--------------------------------------|
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 | 0.1.1   | 2026-05-10 | ORC-001 run | M2-M5 implementation complete; manager-develop retired (post-R5 name collision resolved); §10.1 post-R5 additions table added; 8 retired stubs (vs 7 planned — manager-develop is additional) |
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ---
 

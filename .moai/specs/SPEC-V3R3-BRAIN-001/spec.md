@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R3-BRAIN-001
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created_at: 2026-05-04
 updated_at: 2026-05-10
@@ -19,10 +19,7 @@ tags: "brain, ideation, workflow, handoff, claude-design, v3r3"
 harness: standard
 title: "`/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package"
 created: 2026-05-04
-updated: 2026-05-13
-lint:
-  skip:
-    - StatusGitConsistency
+updated: 2026-05-16
 ---
 
 # SPEC-V3R3-BRAIN-001: `/moai brain` — Idea-to-Item Workflow with Claude Design Handoff Package
@@ -31,6 +28,7 @@ lint:
 
 | Version | Date       | Author | Description |
 |---------|------------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0   | 2026-05-04 | MoAI Plan Workflow | Initial SPEC — `/moai brain` pre-spec ideation workflow with 7 phases producing proposal.md + Claude Design handoff package. Self-bootstrap pattern: SPEC-V3R3-WEB-001 will be ideated USING this workflow once shipped. |
 
 ---

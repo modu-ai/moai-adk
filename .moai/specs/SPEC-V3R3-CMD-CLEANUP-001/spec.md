@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R3-CMD-CLEANUP-001
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created_at: 2026-04-26
 updated_at: 2026-04-26
@@ -15,13 +15,10 @@ related_specs: [SPEC-THIN-CMDS-001, SPEC-V3R3-DEF-001, SPEC-V3R3-DEF-007]
 released_in: v2.15.0
 title: "SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거"
 created: 2026-04-26
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v3.0.0 - Consolidation"
 module: "cli"
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-CMD-CLEANUP-001 — Commands Cleanup: gate 추가, security 흡수, context 제거
@@ -29,6 +26,7 @@ lint:
 ## HISTORY
 
 - 2026-04-26: Initial draft. v3r3 extreme aggressive handoff §3.1 추출. Three-axis cleanup of `/moai` command surface — add missing `/moai gate` command file, strengthen security workflows in review/sync skills, remove unused `context` skill.
+- 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
 
 ---
 

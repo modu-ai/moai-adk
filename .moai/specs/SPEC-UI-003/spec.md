@@ -1,21 +1,18 @@
 ---
 id: SPEC-UI-003
 title: TUI Modernization - huh, glamour, Advanced Layout
-version: 1.0.0
+version: 1.0.1
 status: completed
 created: 2026-02-15
-updated: 2026-02-15
+updated: 2026-05-16
 author: MoAI
 priority: high
 phase: "Phase 4 - UI and Integration"
 module: "internal/ui/, internal/cli/wizard/"
 dependencies:
-  - SPEC-UI-001
+    - SPEC-UI-001
 tags: huh, glamour, lipgloss, tui-modernization, charmbracelet, theme, accessibility
 lifecycle: completed
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-UI-003: TUI Modernization
@@ -24,6 +21,7 @@ lint:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 1.0.0 | 2026-02-15 | MoAI | Initial spec |
 
 ---

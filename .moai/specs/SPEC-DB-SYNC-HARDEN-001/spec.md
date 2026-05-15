@@ -1,6 +1,6 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
-version: 0.3.0
+version: 0.3.1
 status: completed
 created_at: 2026-04-21
 updated_at: 2026-04-24
@@ -13,14 +13,11 @@ related_specs: [SPEC-DB-CMD-001, SPEC-DB-TEMPLATES-001]
 partially_superseded_by: [SPEC-DB-SYNC-RELOC-001]
 title: "dbsync 훅 견고화 (5 warning 통합)"
 created: 2026-04-21
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.x - Legacy"
 module: "database"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-DB-SYNC-HARDEN-001: dbsync 훅 견고화 (5 warning 통합)
@@ -31,6 +28,7 @@ lint:
 - 2026-04-21 v0.2.1: `/moai run` 실행 중 발견된 REQ-H3-002/AC-6 Windows 리터럴 오작성 정정. `settings.json.tmpl` 내 다른 16개 Windows 엔트리는 전부 `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-*.sh"` (bash 스타일 변수 + 슬래시) 패턴이며, `%CLAUDE_PROJECT_DIR%` 백슬래시 경로는 bash 내부에서 확장되지 않아 실제로 작동하지 않는다. REQ-H3-001("기존 엔트리와 동일 패턴")이 정확한 의도이며, REQ-H3-002/AC-6의 리터럴을 기존 컨벤션에 맞춰 정정. REQ/AC 개수 불변.
 - 2026-04-21 v0.2.0: plan-auditor iteration 1 FAIL 후속 수정. F-1~F-5 blocking defects 해결(AC-9 multiline grep, REQ-H5-003 제거, HandleDBSchemaSync 5번째 대상 추가, CheckDebounce 실제 signature 반영, spec-compact에 Exclusions 추가). W-1~W-6 warnings 전부 반영. REQ 총 15 → 14 (REQ-H5-003 제거), AC 10 유지.
 - 2026-04-21 v0.1.0: SPEC 최초 작성. SPEC-DB-SYNC-001 (commit `e22eb718d`) 병합 이후 발견된 5개 Warning-level 코드 리뷰 지적사항을 단일 SPEC으로 통합. Critical 수정(c6985e2fe / aa29a9316 / 8a4022c69)은 이미 적용 완료된 상태에서 잔여 견고화 항목을 다룸.
+- 2026-05-16 v0.3.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
 
 ## Background
 

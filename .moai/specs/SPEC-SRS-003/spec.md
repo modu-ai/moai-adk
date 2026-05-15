@@ -1,9 +1,9 @@
 ---
 id: SPEC-SRS-003
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: "2026-04-09"
-updated: "2026-04-09"
+updated: "2026-05-16"
 author: GOOS
 priority: high
 issue_number: 0
@@ -12,12 +12,16 @@ phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-SRS-003: Dashboard + CLI + Agency 통합
+
+
+## HISTORY
+
+| Version | Date       | Author                     | Description |
+|---------|------------|----------------------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ## Overview
 

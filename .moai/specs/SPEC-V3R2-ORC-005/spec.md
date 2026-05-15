@@ -1,28 +1,25 @@
 ---
 id: SPEC-V3R2-ORC-005
 title: "Dynamic Team Generation Formalization + Mailbox Protocol v2"
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created: 2026-04-23
-updated: 2026-05-10
+updated: 2026-05-16
 author: GOOS
 priority: P1 High
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".moai/config/sections/workflow.yaml, internal/cli/team_spawn.go, .claude/rules/moai/workflow/worktree-integration.md, .claude/rules/moai/workflow/team-protocol.md"
 dependencies:
-  - SPEC-V3R2-CON-001
-  - SPEC-V3R2-ORC-001
-  - SPEC-V3R2-ORC-004
-  - SPEC-V3R2-RT-004
+    - SPEC-V3R2-CON-001
+    - SPEC-V3R2-ORC-001
+    - SPEC-V3R2-ORC-004
+    - SPEC-V3R2-RT-004
 related_problem: []
 related_theme: "Layer 4 — Orchestration + Layer 6 — Workflow (cross-layer), Master §4.4, §15 Agent Teams, SPEC-TEAM-001 formalization"
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "team, dynamic-generation, role-profiles, mailbox, tasklist, sendmessage, v3r2"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-ORC-005: Dynamic Team Generation Formalization + Mailbox Protocol v2
@@ -31,6 +28,7 @@ lint:
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 
 ---

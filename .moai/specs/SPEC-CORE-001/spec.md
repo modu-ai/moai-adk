@@ -2,7 +2,7 @@
 id: SPEC-CORE-001
 title: Foundation Methodologies
 created: 2026-02-03
-updated: 2026-05-13
+updated: 2026-05-16
 status: completed
 priority: Medium
 phase: "Phase 5 - Knowledge (Phase 1 과 병렬 구현 가능)"
@@ -12,11 +12,8 @@ dependencies: []
 assigned: expert-backend
 lifecycle: spec-anchored
 tags: "foundation, ears, languages, trust5, domain-patterns"
-version: "1.0.0"
+version: "1.0.1"
 author: GOOS
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-CORE-001: Foundation Methodologies
@@ -25,6 +22,7 @@ lint:
 
 | 날짜 | 버전 | 변경 내용 |
 |------|------|----------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 2026-02-03 | 1.0.0 | 초기 SPEC 작성 |
 
 ---

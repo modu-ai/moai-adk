@@ -1,25 +1,22 @@
 ---
 id: SPEC-V3R3-DEF-001
 title: ORC Dependency Cycle Resolution — D-CRIT-001 해소 + WF/MIG 단방향 정리
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: 2026-04-25
-updated: 2026-04-26
+updated: 2026-05-16
 author: manager-spec
 priority: P0 Critical
 phase: "v3.0.0 R3 — Phase A — Dependency Graph Sanitization"
 module: ".moai/specs/SPEC-V3R2-ORC-*/, .moai/specs/SPEC-V3R2-WF-001/, .moai/specs/SPEC-V3R2-MIG-001/"
 dependencies:
-  - SPEC-V3R3-DEF-007
+    - SPEC-V3R3-DEF-007
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "dependency-graph, cycle-break, orc, mig, wf, plan-audit, v3r3, phase-a"
 related_theme: "Phase A — Defect Cleanup"
 released_in: v2.15.0
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-DEF-001: ORC Dependency Cycle Resolution
@@ -28,6 +25,7 @@ lint:
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 1.0.0   | 2026-04-25 | manager-spec | Initial draft. Phase A P0 — D-CRIT-001 (ORC graph cycle risk) 해소 + WF-001/MIG-001 단방향 reaffirm. |
 
 ---

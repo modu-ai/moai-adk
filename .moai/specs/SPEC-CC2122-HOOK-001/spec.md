@@ -2,21 +2,25 @@
 id: SPEC-CC2122-HOOK-001
 status: completed
 title: "Claude Code v2.1.119-121 Hook Feature Integration"
-version: "1.0.0"
+version: "1.0.1"
 created: 2026-05-01
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.12 - CC Adoption"
 module: "hooks"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-CC2122-HOOK-001: Claude Code v2.1.119-121 Hook Feature Integration
+
+
+## HISTORY
+
+| Version | Date       | Author                     | Description |
+|---------|------------|----------------------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ## Status: COMPLETED
 

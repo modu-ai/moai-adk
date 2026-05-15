@@ -2,18 +2,15 @@
 id: SPEC-I18N-001
 status: archived
 title: "Complete Multilingual Translation of MoAI-ADK Documentation Site"
-version: "1.0.0"
+version: "1.0.1"
 created: 2026-04-20
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"
 module: "i18n"
 lifecycle: completed
 tags: "i18n, translation, docs-site, archived, legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 ARCHIVED — SPEC-I18N-001
@@ -28,6 +25,13 @@ ARCHIVED — SPEC-I18N-001
 ---
 
 # SPEC-I18N-001: Complete Multilingual Translation of MoAI-ADK Documentation Site
+
+
+## HISTORY
+
+| Version | Date       | Author                     | Description |
+|---------|------------|----------------------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ## Metadata
 

@@ -1,6 +1,6 @@
 ---
 id: SPEC-SKILL-GATE-001
-version: 1.0.0
+version: 1.0.1
 status: completed
 created_at: 2026-04-21
 updated_at: 2026-04-21
@@ -12,14 +12,11 @@ depends_on: []
 related_specs: [SPEC-DB-SYNC-HARDEN-001]
 title: "도달 불가 / 비신뢰 스킬 참조 일괄 제거"
 created: 2026-04-21
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.x - Legacy"
 module: "skills"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-SKILL-GATE-001: 도달 불가 / 비신뢰 스킬 참조 일괄 제거
@@ -28,6 +25,7 @@ lint:
 
 - 2026-04-21 v1.0.0: 사용자 결정에 따라 **removal-only** 시나리오로 확정. 초안의 "Stop hook 강제 게이트 구축" 접근은 폐기. `Skill("batch")`는 Claude Code 바이너리 `disableModelInvocation: true` 제약으로 모델 호출 자체가 불가능하고, `Skill("simplify")`는 기술적으로 호출 가능하나 91개 세션 전수 조사에서 0회 호출 — 강제 인프라를 새로 만들지 않는 한 신뢰 불가. 두 스킬의 워크플로우 MANDATORY 지시 전부를 제거.
 - 2026-04-21 v0.1.0: 초안 — 두 접근(제거 vs 강제) 비교. manager-spec이 Stop hook 기반 강제 게이트를 권장했으나 사용자가 범위를 단순화하여 removal-only로 선택.
+- 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
 
 ## Background
 

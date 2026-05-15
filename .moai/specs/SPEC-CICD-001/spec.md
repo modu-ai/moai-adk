@@ -2,21 +2,25 @@
 id: SPEC-CICD-001
 status: completed
 title: "CI/CD AI 자동화 재설계"
-version: "1.0.0"
+version: "1.0.1"
 created: 2026-04-01
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"
 module: "ci"
 lifecycle: completed
 tags: "legacy"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-CICD-001: CI/CD AI 자동화 재설계
+
+
+## HISTORY
+
+| Version | Date       | Author                     | Description |
+|---------|------------|----------------------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 
 ## 메타데이터
 
