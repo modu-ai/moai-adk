@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R4-SPECLINT-DEBT-001: SPEC Lint Debt 일괄 해소
+
+### Fixed
+
+- **SPEC-V3R4-SPECLINT-DEBT-001 — SPEC Lint Debt 일괄 해소 (P0 ERROR 66건 + P1 WARNING 141건 → 0/0)**: V3R4 foundation cleanup. `moai spec lint --strict`가 main `2e27c14f8` 기준으로 보고하던 6개 ERROR 카테고리(FrontmatterInvalid 13, CoverageIncomplete 44, ParseFailure 4, MissingDependency 2, ModalityMalformed 1, MissingExclusions 1, DependencyCycle 1)와 2개 WARNING 카테고리(StatusGitConsistency 141, OrphanBCID 1)를 단일 PR(#917)로 일괄 해소. spec-lint CI workflow가 GREEN으로 전환되어 다른 SPEC들의 정상 머지를 차단하던 risk 제거. SPEC 본문은 비-수정 보장(REQ-SLD-010 self-coverage 적용); 메타데이터/frontmatter/AC reference만 수정. 5 categorical commits 채택 (frontmatter+ID+ParseFailure / deps+cycle / modality+excl / coverage / status sync+bc_id). 90 SPEC frontmatter `status:` 정정 + 51 SPEC `lint.skip`(author-intent preservation, terminal state preservation) + 1 ARCH-007 `bc_id: []`. Wave 1 (T-SLD-001~006) + Wave 2 (T-SLD-007/008) + Wave 3 (T-SLD-009~011) 5-wave 산출. lint-final.md ERROR 66→0 / WARNING 141→0 PASS. plan-auditor 2회 PASS (iter 1 0.92, iter 2 0.88). PR #917 admin squash merged → main `0497f62104`. 다음 V3R4 SPEC들이 lint-baseline-zero 상태에서 진입 가능.
+
+### Fixed (English)
+
+- **SPEC-V3R4-SPECLINT-DEBT-001 — SPEC Lint Debt Batch Cleanup (P0 66 ERRORs + P1 141 WARNINGs → 0/0)**: V3R4 foundation cleanup. Resolves the 6 ERROR categories (FrontmatterInvalid 13, CoverageIncomplete 44, ParseFailure 4, MissingDependency 2, ModalityMalformed 1, MissingExclusions 1, DependencyCycle 1) and 2 WARNING categories (StatusGitConsistency 141, OrphanBCID 1) that `moai spec lint --strict` reported against main `2e27c14f8`. Single PR (#917) batch fix flips spec-lint CI to GREEN, unblocking downstream V3R4 SPEC merges. SPEC body is preservation-guaranteed (REQ-SLD-010 self-coverage); only metadata / frontmatter / AC references modified. Adopted 5 categorical commits (frontmatter+ID+ParseFailure / deps+cycle / modality+excl / coverage / status sync+bc_id). 90 SPEC `status:` corrections + 51 SPEC `lint.skip` directives (author-intent + terminal state preservation) + 1 ARCH-007 `bc_id: []`. Wave 1 (T-SLD-001~006) + Wave 2 (T-SLD-007/008) + Wave 3 (T-SLD-009~011) delivered in 5 waves. lint-final.md ERROR 66→0 / WARNING 141→0 PASS. plan-auditor PASS twice (iter 1 0.92, iter 2 0.88). PR #917 admin squash merged → main `0497f62104`. Future V3R4 SPECs enter on a lint-baseline-zero state.
+
+### Changed
+
+- **SPEC `status` field convention 정착**: `implemented` (code merged, sync incomplete) vs `completed` (full plan/run/sync lifecycle closed) 의미가 lint rule 수준에서 명확화. 본 정착은 자동화 도구(`scripts/spec-status-sync.go` 신규)로 백필되었으며, 향후 SPEC 라이프사이클 종료 시 sync-phase가 일관되게 `completed`로 전환하도록 유도.
+- **`lint.skip` mechanism**: SPEC frontmatter `lint:\n  skip:\n    - <category>` 구문이 정당화된 잔존 violation을 카테고리별로 suppress하는 escape-hatch로 공식 도입. `--strict` 모드에서도 lint.skip 처리된 항목은 exit 0을 막지 않음. `internal/spec/lint.go::applylintSkip` 으로 구현.
+
+### Changed (English)
+
+- **SPEC `status` field convention codified**: distinction between `implemented` (code merged but sync incomplete) and `completed` (full plan/run/sync lifecycle closed) is now lint-enforced. Backfilled via a new `scripts/spec-status-sync.go` automation tool. Going forward, sync-phase consistently transitions SPECs to `completed`.
+- **`lint.skip` escape-hatch mechanism**: SPEC frontmatter `lint:\n  skip:\n    - <category>` is now an official escape-hatch for justified residual violations on a per-category basis. `--strict` mode honors `lint.skip` and does not block exit 0 for skipped categories. Implemented in `internal/spec/lint.go::applylintSkip`.
+
 ## [Unreleased] — SPEC-V3R4-HARNESS-001: Self-Evolving Harness v2 Foundation
 
 ### Breaking Changes

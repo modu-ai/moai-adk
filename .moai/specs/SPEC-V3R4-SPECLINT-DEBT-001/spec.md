@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-SPECLINT-DEBT-001
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: completed
 created: 2026-05-15
 updated: 2026-05-15
 author: manager-spec
@@ -28,6 +28,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.2.0   | 2026-05-15 | manager-docs sync | sync-phase closeout. Run PR #917 (`0497f6210`) admin squash merged into main. Frontmatter status `in-progress → completed`. Definition of Done #5 (status transition) + #6 (CHANGELOG `[Unreleased]` entry) 충족. lint-final.md ERROR 0 / WARNING 0 PASS, AC-SLD-001~010 모두 verified (009는 PR #917 머지 후 spec-lint CI GREEN으로 자동 검증). divergence 분석: spec-anchored lifecycle 적용 — implementation이 plan을 그대로 따랐으므로 spec.md/plan.md/acceptance.md 본문 수정 없음. 다음 단계: sync PR 머지 → host에서 `moai worktree done SPEC-V3R4-SPECLINT-DEBT-001` 실행. |
 | 0.1.1   | 2026-05-15 | manager-develop run | run-phase 진입 시 실측 baseline 차이 반영: ERROR 66 동일하되 카테고리 재분포 (+2 FrontmatterInvalid ID format violation + 4 ParseFailure 신규 카테고리, plan 시점에 미발견). Expanded scope 결정 (user AskUserQuestion 1) — 모두 T-SLD-001 frontmatter 카테고리로 흡수. AC-SLD-007 target `≤ 5` → `≤ 55` 재조정 (47 author-intent preservation + 4 terminal state preservation). 5 categorical commits 채택 (OQ4 lock-in). 상세 발견 사항: `status-residuals.md`. plan-auditor PASS 0.92 (Phase 0.5 cache MISS → 재실행). |
 | 0.1.0   | 2026-05-15 | manager-spec | 초기 draft. PR #913 머지 후 `origin/main` (commit `2e27c14f8`) 기준 `moai spec lint --strict` 출력의 ERROR 66건 + WARNING 140건을 단일 SPEC으로 일괄 해소. 6개 ERROR 카테고리(FrontmatterInvalid, MissingExclusions, MissingDependency, DependencyCycle, ModalityMalformed, CoverageIncomplete) + 2개 WARNING 카테고리(StatusGitConsistency, OrphanBCID) 모두 포괄. 목표: `moai spec lint --strict` exit 0 + spec-lint CI job GREEN. SPEC 콘텐츠의 의미적 재작성은 금지 — 메타데이터/frontmatter/AC reference만 수정. BODP 평가: signals A=¬ B=¬ C=¬ → main @ origin/main (plan-in-main 원칙 PR #822 준수). |
 
