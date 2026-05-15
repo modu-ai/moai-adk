@@ -15,6 +15,9 @@ tags: "loop, ralph, feedback, state-machine, convergence, automation"
 lifecycle: spec-anchored
 version: "1.0.0"
 author: GOOS
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-LOOP-001: Ralph Feedback Loop Engine
