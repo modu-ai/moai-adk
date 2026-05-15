@@ -2,7 +2,7 @@
 spec_id: SPEC-V3R2-SPC-001
 plan_status: complete
 plan_complete_at: 2026-05-09
-phase: run
+phase: completed
 branch: feature/SPEC-V3R2-SPC-001-ears-hierarchical
 base_branch: main
 base_commit: 464366583

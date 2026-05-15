@@ -97,7 +97,7 @@ Coverage check: 18 REQs declared in spec.md §5 (REQ-SPC-001-001 through 042, sp
 
 ### 3.10 Dangling REQ-mapping warning
 
-- AC-SPC-001-10: Given an acceptance `AC-X-06.a: ... (maps REQ-X-042)` where `REQ-X-042` is not declared in the Requirements section, When the parser cross-references via `internal/spec/lint.go:294-403`, Then a `*spec.DanglingRequirementReference` warning (`internal/spec/errors.go:27-36`) is emitted but parsing continues and the tree is built. (maps REQ-SPC-001-041)
+- AC-SPC-001-10: Given an acceptance `AC-X-06.a: ... (maps REQ-X-042)` where `REQ-X-042` is not declared in the Requirements section, When the parser cross-references via `internal/spec/lint.go:394-403`, Then a `*spec.DanglingRequirementReference` warning (`internal/spec/errors.go:27-36`) is emitted but parsing continues and the tree is built. (maps REQ-SPC-001-041)
 
 ### 3.11 Migration tool 1-child wrap
 
