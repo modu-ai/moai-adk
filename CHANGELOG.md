@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — SPEC-V3R4-HARNESS-001: Self-Evolving Harness v2 Foundation
 
+### docs (문서)
+
+- Claude Code v2.1.140-142 변경사항 분석 보고서 추가 (`.moai/research/cc-update-20260515.md`) — 41건 분석 중 Tier 1 5건, Tier 2 6건 actionable. 후속 SPEC 후보 2건 식별 (SPEC-V3R4-CC2X-ADOPT-002 `claude agents` flag pass-through, SPEC-V3R4-CC2X-ADOPT-003 hook `terminalSequence` 채택).
+- Added Claude Code v2.1.140-142 upstream change report (`.moai/research/cc-update-20260515.md`) — 41 items analyzed, 5 Tier-1 + 6 Tier-2 actionable. Identified 2 follow-up SPEC candidates: SPEC-V3R4-CC2X-ADOPT-002 (`claude agents` flag pass-through) and SPEC-V3R4-CC2X-ADOPT-003 (hook `terminalSequence` adoption).
+
 ### Breaking Changes
 
 - **BC-V3R4-HARNESS-001-CLI-RETIREMENT** — `moai harness <verb>` CLI subcommand 경로가 폐기되었습니다. 셸에서 `moai harness status` (또는 `apply`, `rollback`, `disable`)를 호출하면 cobra의 `unknown command "harness" for "moai"` 진단과 함께 non-zero exit code가 반환됩니다. 동일한 기능은 Claude Code 세션 내의 `/moai:harness` 슬래시 커맨드로만 사용할 수 있습니다. 슬래시 커맨드 표면은 V3R3 시절과 동일하게 유지되므로 사용자 머슬 메모리에는 영향이 없습니다.
