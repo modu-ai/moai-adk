@@ -2,7 +2,7 @@
 id: SPEC-V3R2-CON-003
 title: "Rule tree consolidation pass (merge duplicates, relocate, frontmatter migration)"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-04-23
 updated: 2026-04-23
 author: Wave 4 SPEC Writer

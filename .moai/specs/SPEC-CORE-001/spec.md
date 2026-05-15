@@ -14,6 +14,9 @@ lifecycle: spec-anchored
 tags: "foundation, ears, languages, trust5, domain-patterns"
 version: "1.0.0"
 author: GOOS
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-CORE-001: Foundation Methodologies

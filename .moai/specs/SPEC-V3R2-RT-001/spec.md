@@ -2,7 +2,7 @@
 id: SPEC-V3R2-RT-001
 title: Hook JSON-OR-ExitCode Dual Protocol
 version: "0.1.1"
-status: in-progress
+status: implemented
 created: 2026-04-23
 updated: 2026-05-14
 author: GOOS

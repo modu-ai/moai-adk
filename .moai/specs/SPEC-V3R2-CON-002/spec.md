@@ -2,7 +2,7 @@
 id: SPEC-V3R2-CON-002
 title: "Constitutional amendment protocol with 5-layer safety gate"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-04-23
 updated: 2026-04-23
 author: Wave 4 SPEC Writer
