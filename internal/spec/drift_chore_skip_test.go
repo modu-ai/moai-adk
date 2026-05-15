@@ -1,8 +1,5 @@
 package spec
 
-// @MX:TODO: RED phase — walker filter 미구현으로 4개 테스트 모두 FAIL 예상
-// @MX:REASON: SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 M1 RED phase; GREEN 단계에서 제거됨
-
 import (
 	"fmt"
 	"os"
@@ -62,8 +59,6 @@ func setupGitFixture(t *testing.T, commits []fixtureCommit) string {
 
 // TestGetGitImpliedStatus_ChoreSkip는 AC-LSCSK-005 (a)(b)(c)(d) 4개 케이스를 검증한다.
 // 각 케이스는 독립적인 임시 git 저장소를 사용하여 격리된다.
-//
-// M1 RED phase: walker filter 미구현으로 4개 모두 FAIL 예상.
 func TestGetGitImpliedStatus_ChoreSkip(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -213,8 +208,6 @@ func TestGetGitImpliedStatus_ChoreSkip(t *testing.T) {
 
 // TestShouldSkipCommitTitle_ChorePattern은 shouldSkipCommitTitle 헬퍼 함수의
 // skip pattern 매칭 동작을 검증한다 (AC-LSCSK-005 관련).
-//
-// M1 RED phase: shouldSkipCommitTitle 함수가 아직 존재하지 않으므로 컴파일 실패.
 func TestShouldSkipCommitTitle_ChorePattern(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -266,8 +259,6 @@ func TestShouldSkipCommitTitle_ChorePattern(t *testing.T) {
 // TestGetGitImpliedStatus_WalkerDepthBoundary는 AC-LSCSK-004 를 검증한다:
 // N=50 walker depth 내 모두 skip-pattern commit인 경우 error 반환.
 // StatusGitConsistencyRule 은 이 error를 받으면 finding을 emit하지 않아야 한다.
-//
-// M1 RED phase: walker 미구현으로 FAIL 예상.
 func TestGetGitImpliedStatus_WalkerDepthBoundary(t *testing.T) {
 	// N=50 budget을 확인하기 위해 3개의 chore commit만으로도 충분 (case c와 동일 패턴)
 	// 전체 50개를 만들면 테스트가 느려지므로 여러 개로 검증
