@@ -446,8 +446,8 @@ func TestDesignFolderUpdate_MultipleReservedConflicts(t *testing.T) {
 	}
 
 	msg := errBuf.String()
-	// AC-DFF-06: all three filenames must appear in warnings
-	for _, kw := range []string{"tokens.json", "BRIEF-X", "components.json"} {
+	// AC-DFF-06 (D4 tightened): assert explicit "BRIEF-X.md" extension to avoid loose substring match
+	for _, kw := range []string{"tokens.json", "BRIEF-X.md", "components.json"} {
 		if !strings.Contains(msg, kw) {
 			t.Errorf("warning must mention %q, got: %s", kw, msg)
 		}
@@ -462,6 +462,39 @@ func TestDesignFolderUpdate_MultipleReservedConflicts(t *testing.T) {
 		if !bytes.Equal(got, want) {
 			t.Errorf("%s was modified — must remain byte-identical", path)
 		}
+	}
+}
+
+// TestDesignFolderUpdate_NilErrOut verifies that updateDesignDir handles nil errOut
+// gracefully without panic when reserved files are present (D3 P3 edge case from plan-audit).
+func TestDesignFolderUpdate_NilErrOut(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	designDir := filepath.Join(root, ".moai", "design")
+	if err := os.MkdirAll(designDir, 0o755); err != nil {
+		t.Fatalf("mkdir design: %v", err)
+	}
+
+	// Create a reserved file to trigger the warning path
+	reservedPath := filepath.Join(designDir, "tokens.json")
+	original := []byte(`{"primary":"#000"}`)
+	if err := os.WriteFile(reservedPath, original, 0o644); err != nil {
+		t.Fatalf("write tokens.json: %v", err)
+	}
+
+	// nil errOut must not panic; function must still return nil for update path
+	if err := updateDesignDir(root, nil); err != nil {
+		t.Fatalf("expected nil error with nil errOut, got %v", err)
+	}
+
+	// Reserved file must be preserved byte-identical (REQ-DFF-004/006 still enforced)
+	got, err := os.ReadFile(reservedPath)
+	if err != nil {
+		t.Fatalf("read tokens.json: %v", err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Errorf("tokens.json was modified despite nil errOut — must remain byte-identical")
 	}
 }
 
