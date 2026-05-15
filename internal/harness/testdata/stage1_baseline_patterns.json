@@ -1,0 +1,92 @@
+{
+  "agent_invocation:expert-backend:h4": {
+    "Key": "agent_invocation:expert-backend:h4",
+    "EventType": "agent_invocation",
+    "Subject": "expert-backend",
+    "ContextHash": "h4",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "agent_invocation:expert-frontend:h5": {
+    "Key": "agent_invocation:expert-frontend:h5",
+    "EventType": "agent_invocation",
+    "Subject": "expert-frontend",
+    "ContextHash": "h5",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "agent_invocation:manager-spec:h6": {
+    "Key": "agent_invocation:manager-spec:h6",
+    "EventType": "agent_invocation",
+    "Subject": "manager-spec",
+    "ContextHash": "h6",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "feedback:/moai feedback:h9": {
+    "Key": "feedback:/moai feedback:h9",
+    "EventType": "feedback",
+    "Subject": "/moai feedback",
+    "ContextHash": "h9",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "moai_subcommand:/moai loop:h10": {
+    "Key": "moai_subcommand:/moai loop:h10",
+    "EventType": "moai_subcommand",
+    "Subject": "/moai loop",
+    "ContextHash": "h10",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "moai_subcommand:/moai plan:h1": {
+    "Key": "moai_subcommand:/moai plan:h1",
+    "EventType": "moai_subcommand",
+    "Subject": "/moai plan",
+    "ContextHash": "h1",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "moai_subcommand:/moai run:h2": {
+    "Key": "moai_subcommand:/moai run:h2",
+    "EventType": "moai_subcommand",
+    "Subject": "/moai run",
+    "ContextHash": "h2",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "moai_subcommand:/moai sync:h3": {
+    "Key": "moai_subcommand:/moai sync:h3",
+    "EventType": "moai_subcommand",
+    "Subject": "/moai sync",
+    "ContextHash": "h3",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "spec_reference:SPEC-001:h7": {
+    "Key": "spec_reference:SPEC-001:h7",
+    "EventType": "spec_reference",
+    "Subject": "SPEC-001",
+    "ContextHash": "h7",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  },
+  "spec_reference:SPEC-002:h8": {
+    "Key": "spec_reference:SPEC-002:h8",
+    "EventType": "spec_reference",
+    "Subject": "SPEC-002",
+    "ContextHash": "h8",
+    "Count": 100,
+    "Confidence": 1,
+    "Tier": 0
+  }
+}

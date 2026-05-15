@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -441,4 +442,147 @@ func writeSyntheticEvents(t *testing.T, total int) string {
 // patternKey는 AggregatePatterns가 반환하는 map의 키를 생성한다.
 func patternKey(et EventType, subject, contextHash string) string {
 	return fmt.Sprintf("%s:%s:%s", et, subject, contextHash)
+}
+
+// TestStage1BackwardCompat_StageDisabled는 Stage-2 비활성(기본값) 시
+// AggregatePatterns 결과가 골든 픽스처와 byte-identical한지 검증한다.
+// AC-HRN-CLS-001 / REQ-HRN-CLS-001 / REQ-HRN-CLS-004.
+func TestStage1BackwardCompat_StageDisabled(t *testing.T) {
+	if os.Getenv("MOAI_REGEN_GOLDEN") == "1" {
+		regenGoldenFixtures(t)
+		t.Skip("골든 픽스처 재생성 완료")
+	}
+
+	fixturePath := filepath.Join("testdata", "stage1_baseline.jsonl")
+	goldenPath := filepath.Join("testdata", "stage1_baseline_patterns.json")
+
+	goldenData, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatalf("골든 파일 읽기 실패 %s: %v", goldenPath, err)
+	}
+	var goldenRaw map[string]json.RawMessage
+	if err := json.Unmarshal(goldenData, &goldenRaw); err != nil {
+		t.Fatalf("골든 JSON 파싱 실패: %v", err)
+	}
+	golden := make(map[string]*Pattern, len(goldenRaw))
+	for k, v := range goldenRaw {
+		var p Pattern
+		if err := json.Unmarshal(v, &p); err != nil {
+			t.Fatalf("골든 패턴[%s] 파싱 실패: %v", k, err)
+		}
+		golden[k] = &p
+	}
+
+	actual, err := AggregatePatterns(fixturePath)
+	if err != nil {
+		t.Fatalf("AggregatePatterns 오류: %v", err)
+	}
+
+	if len(actual) != len(golden) {
+		t.Errorf("패턴 개수: got %d, want %d", len(actual), len(golden))
+	}
+	for key, wantP := range golden {
+		gotP, ok := actual[key]
+		if !ok {
+			t.Errorf("키 누락: %q", key)
+			continue
+		}
+		if gotP.Count != wantP.Count {
+			t.Errorf("[%s] Count: got %d, want %d", key, gotP.Count, wantP.Count)
+		}
+		if gotP.Confidence != wantP.Confidence {
+			t.Errorf("[%s] Confidence: got %f, want %f", key, gotP.Confidence, wantP.Confidence)
+		}
+		if gotP.EventType != wantP.EventType {
+			t.Errorf("[%s] EventType: got %q, want %q", key, gotP.EventType, wantP.EventType)
+		}
+		if gotP.Subject != wantP.Subject {
+			t.Errorf("[%s] Subject: got %q, want %q", key, gotP.Subject, wantP.Subject)
+		}
+		if gotP.ContextHash != wantP.ContextHash {
+			t.Errorf("[%s] ContextHash: got %q, want %q", key, gotP.ContextHash, wantP.ContextHash)
+		}
+		if gotP.Tier != wantP.Tier {
+			t.Errorf("[%s] Tier: got %d, want %d", key, gotP.Tier, wantP.Tier)
+		}
+	}
+
+	// Stage-2 감사 로그 미생성 확인 (EC-A4): t.TempDir() 격리로 프로젝트 루트 오염 방지.
+	auditLogPath := filepath.Join(t.TempDir(), ".moai", "harness", "cluster-merges.jsonl")
+	if _, statErr := os.Stat(auditLogPath); !os.IsNotExist(statErr) {
+		t.Errorf("감사 로그가 존재하면 안 됨: %s", auditLogPath)
+	}
+}
+
+// regenGoldenFixtures는 MOAI_REGEN_GOLDEN=1 시 T-A1+T-A2 픽스처를 재생성한다.
+func regenGoldenFixtures(t *testing.T) {
+	t.Helper()
+	fixturePath := filepath.Join("testdata", "stage1_baseline.jsonl")
+	generateBaselineJSONL(t, fixturePath)
+	patterns, err := AggregatePatterns(fixturePath)
+	if err != nil {
+		t.Fatalf("AggregatePatterns 실패: %v", err)
+	}
+	writeGoldenPatterns(t, filepath.Join("testdata", "stage1_baseline_patterns.json"), patterns)
+}
+
+// generateBaselineJSONL은 10가지 조합 × 100 = 1000개 이벤트를 JSONL로 기록한다.
+// Timestamp는 결정성을 위해 time.Time{} 제로값 사용.
+func generateBaselineJSONL(t *testing.T, path string) {
+	t.Helper()
+	combos := []struct {
+		et      EventType
+		subject string
+		hash    string
+	}{
+		{EventTypeMoaiSubcommand, "/moai plan", "h1"},
+		{EventTypeMoaiSubcommand, "/moai run", "h2"},
+		{EventTypeMoaiSubcommand, "/moai sync", "h3"},
+		{EventTypeAgentInvocation, "expert-backend", "h4"},
+		{EventTypeAgentInvocation, "expert-frontend", "h5"},
+		{EventTypeAgentInvocation, "manager-spec", "h6"},
+		{EventTypeSpecReference, "SPEC-001", "h7"},
+		{EventTypeSpecReference, "SPEC-002", "h8"},
+		{EventTypeFeedback, "/moai feedback", "h9"},
+		{EventTypeMoaiSubcommand, "/moai loop", "h10"},
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("픽스처 파일 생성 실패: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+	enc := json.NewEncoder(f)
+	for _, c := range combos {
+		for range 100 {
+			if err := enc.Encode(Event{
+				EventType: c.et, Subject: c.subject, ContextHash: c.hash,
+				SchemaVersion: LogSchemaVersion,
+			}); err != nil {
+				t.Fatalf("이벤트 인코딩 실패: %v", err)
+			}
+		}
+	}
+}
+
+// writeGoldenPatterns는 pattern map을 정렬된 키로 JSON 파일에 기록한다.
+// EC-A3 완화: 키 정렬로 Go map iteration 비결정성 방지.
+func writeGoldenPatterns(t *testing.T, path string, patterns map[string]*Pattern) {
+	t.Helper()
+	keys := make([]string, 0, len(patterns))
+	for k := range patterns {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	ordered := make(map[string]*Pattern, len(patterns))
+	for _, k := range keys {
+		ordered[k] = patterns[k]
+	}
+	data, err := json.MarshalIndent(ordered, "", "  ")
+	if err != nil {
+		t.Fatalf("골든 직렬화 실패: %v", err)
+	}
+	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+		t.Fatalf("골든 파일 쓰기 실패: %v", err)
+	}
+	t.Logf("골든 패턴 재생성: %s (%d 키)", path, len(patterns))
 }
