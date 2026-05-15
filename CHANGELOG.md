@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Sync: WF-001 + PATTERNS-001 status drift resolution (2026-05-15)
+
+### Changed
+
+- **SPEC-V3R2-WF-001 status: `in-progress` → `completed`**: Implementation Notes(2026-04-25)에 Stage 1 consolidation 48 → 38 skill directories 달성이 명시되어 있으나 frontmatter `status:` 가 동기화되지 않은 drift를 해소. plan-audit (iter 1, 2026-05-15) PASS @ 0.92. spec.md frontmatter HISTORY v1.2.0 entry 추가, 본문/코드 비변경.
+- **SPEC-V3R3-PATTERNS-001 status: `in-progress` → `completed`**: revfactory/harness (Apache 2.0) 6 reference docs가 이미 `.claude/rules/moai/{development,quality,workflow}/` 6 rule 파일 + `.claude/rules/moai/NOTICE.md` 로 흡수되었고, `internal/template/templates/` mirror 6/6 byte-identical 확인. plan-audit verdict: closure via metadata sync only. spec.md frontmatter HISTORY v0.2.0 entry 추가, 본문/코드 비변경.
+
+### Changed (English)
+
+- **SPEC-V3R2-WF-001 status: `in-progress` → `completed`**: Implementation Notes (2026-04-25) record full completion of Stage 1 consolidation (48 → 38 skill directories), but frontmatter `status:` was not synced — drift resolved. plan-audit (iter 1, 2026-05-15) PASS @ 0.92. spec.md frontmatter + HISTORY v1.2.0 entry only; body/code unchanged.
+- **SPEC-V3R3-PATTERNS-001 status: `in-progress` → `completed`**: 6 reference docs from revfactory/harness (Apache 2.0) already absorbed into `.claude/rules/moai/{development,quality,workflow}/` (6 rule files + `.claude/rules/moai/NOTICE.md`), and `internal/template/templates/` mirror is 6/6 byte-identical. plan-audit verdict: closure via metadata sync only. spec.md frontmatter + HISTORY v0.2.0 entry only; body/code unchanged.
+
 ## [Unreleased] — SPEC-V3R4-SPECLINT-DEBT-001: SPEC Lint Debt 일괄 해소
 
 ### Fixed

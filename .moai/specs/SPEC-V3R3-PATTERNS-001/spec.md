@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R3-PATTERNS-001
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: completed
 created_at: 2026-04-26
 updated_at: 2026-04-26
 author: manager-spec
@@ -27,6 +27,7 @@ tags: "legacy"
 | Version | Date       | Author       | Description                                                                                       |
 |---------|------------|--------------|---------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. revfactory/harness (Apache 2.0) 6 reference docs를 6 rule 파일로 흡수. handoff §4.1. |
+| 0.2.0   | 2026-05-15 | manager-docs | Sync-phase status drift resolution. 6 rule files all present (agent-patterns.md / boundary-verification.md / skill-ab-testing.md / team-pattern-cookbook.md / orchestrator-templates.md / skill-writing-craft.md) and template mirrors at `internal/template/templates/.claude/rules/moai/{development,quality,workflow}/` are byte-identical. `.claude/rules/moai/NOTICE.md` Apache 2.0 attribution + 2026-04-26 import date confirmed. plan-audit verdict: implementation already in main (closure via metadata sync only). Status transition: in-progress → completed per V3R4-SPECLINT-DEBT-001 lifecycle convention. No code/document changes — frontmatter sync only. |
 
 ---
 

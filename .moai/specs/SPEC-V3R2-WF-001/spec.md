@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-WF-001
 title: Skill Consolidation — Stage 1 (48 to 38)
-version: "1.1.0"
-status: in-progress
+version: "1.2.0"
+status: completed
 created: 2026-04-23
 updated: 2026-04-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
@@ -29,6 +29,7 @@ follow_up_spec: SPEC-V3R3-WF-001  # Stage 2 (38 → 24), reserved; not yet draft
 |---------|------------|--------|-----------------------------------------------------------------------|
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC draft for 48 → 24 skill reduction per R4 skill audit     |
 | 1.1.0   | 2026-04-25 | manager-spec | Audit response (plan-audit 2026-04-25 FAIL → revised). Scope honesty: target revised 48 → 38 (Stage 1 of 48 → 24 trajectory; Stage 2 reserved for SPEC-V3R3-WF-001). §6.1 demoted to logical grouping (§6.2 becomes single SoT). Dual-verdict rows (foundation-context, jit-docs) resolved to RETIRE. moai-design-tools split committed to Pencil → pencil-integration, Figma → archive. REQ-WF001-009/012/016 ACs added (AC-16/17/18). REQ-WF001-002 verdict-uniqueness task added. MIG-001 dependency edge upgraded to contract. AC-WF001-08 extended with broken-fixture rejection check. Typo "단일 단일" fixed. MERGED-INTO roll-up count corrected 3 → 4. M1 unblock criteria made objective per OQ. |
+| 1.2.0   | 2026-05-15 | manager-docs | Sync-phase status drift resolution. Implementation Notes (2026-04-25, line ~381) record full completion of Stage 1 consolidation: 48 → 38 skill directories achieved. plan-audit (iter 1, 2026-05-15) verdict PASS @ 0.92. Status transition: in-progress → completed per V3R4-SPECLINT-DEBT-001 lifecycle convention. No code/document changes — frontmatter sync only. |
 
 ---
 
