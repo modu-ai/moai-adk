@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R4-SPECLINT-DEBT-001
-version: "0.2.0"
+version: "0.2.1"
 status: completed
 created: 2026-05-15
-updated: 2026-05-15
+updated: 2026-05-16
 author: manager-spec
 priority: P0
 tags: "spec-lint, debt, ci-green, frontmatter, dependency-cycle, coverage, status-sync, v3r4, foundation"

@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-LINT-SKIP-CLEANUP-001
-version: "0.1.2"
-status: implemented
+version: "0.1.3"
+status: completed
 created: 2026-05-15
 updated: 2026-05-16
 author: manager-spec

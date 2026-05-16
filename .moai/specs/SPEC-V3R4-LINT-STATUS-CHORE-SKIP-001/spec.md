@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001
-version: "0.3.0"
+version: "0.3.1"
 status: completed
 created: 2026-05-15
-updated: 2026-05-15
+updated: 2026-05-16
 author: manager-spec
 priority: P1
 tags: "spec-lint, drift, chore-skip, status-git-consistency, bootstrapping-bug, v3r4, foundation"

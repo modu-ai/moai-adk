@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001: 64건 StatusGitConsistency drift 일괄 동기화 + Pattern H 잔여 closeout
+
+### Fixed
+
+- **SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 — 64건 StatusGitConsistency drift 일괄 해소** (PR #939 통합, plan-in-main + worktree 미사용 정책 적용): `SPEC-V3R4-LINT-SKIP-CLEANUP-001` (PR #937, main `758341089`) 머지로 `lint.skip` 회피책이 일제히 제거된 직후, 그 mask 아래 잠재해 있던 real status drift 64건이 `moai spec lint --strict --strict-warnings` 에 노출됨. 6-wave 처리(Wave 2 Pattern A 47건 `implemented → planned` downgrade + Wave 3 Pattern B 4건 + Pattern C 6건 + Wave 4 추가 20건 → 총 57건 + 자동 검출 7건 = 64건). Wave 4에서 `internal/spec/lint.go` 에 `terminalStatusEnum` 도입 (TDD M1-M5, `internal/spec/status_terminal_exemption_test.go` +149 LOC) — terminal status (`completed`/`cancelled`/`deprecated`)는 git-implied 추론을 우회하도록 lint rule 보강. Wave 7 sync-phase: Pattern H 잔여 4건 (LSC/LSCSK/SPECLINT-DEBT/SDF-001 자신) frontmatter `status: completed` + `updated: 2026-05-16` 통일하여 `sync(spec):` prefix commit으로 walker filter 우회 → git-implied 'planned' → 'completed' 끌어올림. **AC-SDF-001 binary 0 달성** (`moai spec lint --strict --strict-warnings` 0 ERROR + 0 WARNING). SDF-001 자체 frontmatter status `in-progress → completed`, version `0.1.1 → 0.1.2`.
+- **SPEC `status` 컨벤션 추가 정착 (`implemented` → `completed`)**: SPECLINT-DEBT-001 (PR #917)에서 도입한 `implemented` (code merged, sync incomplete) vs `completed` (full plan/run/sync lifecycle closed) 의미 차이를 SDF-001 Pattern H에서 일관 적용. `SPEC-V3R4-LINT-SKIP-CLEANUP-001` (`implemented` → `completed`, version `0.1.2 → 0.1.3`), `SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001` (terminal 유지, version `0.3.0 → 0.3.1` metadata sync), `SPEC-V3R4-SPECLINT-DEBT-001` (terminal 유지, version `0.2.0 → 0.2.1` metadata sync).
+
+### Fixed (English)
+
+- **SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 — Batch resolution of 64 StatusGitConsistency drift warnings** (PR #939 integrated, plan-in-main + worktree-ban policy applied): Immediately after `SPEC-V3R4-LINT-SKIP-CLEANUP-001` (PR #937, main `758341089`) merged and removed all `lint.skip` escape hatches, 64 latent real status drifts were exposed by `moai spec lint --strict --strict-warnings`. Processed in 6 waves (Wave 2 Pattern A 47 `implemented → planned` downgrades + Wave 3 Pattern B 4 + Pattern C 6 + Wave 4 additional 20 = 57 batched + 7 auto-detected = 64 total). Wave 4 introduces `terminalStatusEnum` in `internal/spec/lint.go` (TDD M1-M5, `internal/spec/status_terminal_exemption_test.go` +149 LOC) — terminal statuses (`completed`/`cancelled`/`deprecated`) now bypass git-implied inference. Wave 7 sync-phase: Pattern H residual 4 SPECs (LSC/LSCSK/SPECLINT-DEBT/SDF-001 self) frontmatter unified to `status: completed` + `updated: 2026-05-16`, committed under `sync(spec):` prefix (bypassing walker filter that skips `chore(spec):`) to lift git-implied from 'planned' to 'completed'. **AC-SDF-001 binary 0 achieved** (`moai spec lint --strict --strict-warnings` 0 ERROR + 0 WARNING). SDF-001 self frontmatter status `in-progress → completed`, version `0.1.1 → 0.1.2`.
+- **Additional convention reinforcement (`implemented` → `completed`)**: The `implemented` (code merged, sync incomplete) vs `completed` (full plan/run/sync lifecycle closed) distinction codified in SPECLINT-DEBT-001 (PR #917) is now consistently applied via SDF-001 Pattern H. Bumps: `SPEC-V3R4-LINT-SKIP-CLEANUP-001` (`implemented` → `completed`, version `0.1.2 → 0.1.3`), `SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001` (terminal preserved, version `0.3.0 → 0.3.1` metadata sync), `SPEC-V3R4-SPECLINT-DEBT-001` (terminal preserved, version `0.2.0 → 0.2.1` metadata sync).
+
+### Discovered (Follow-up SPEC Candidates)
+
+- **SPECLINT-DEBT-002 후보 (dual-schema drift)**: SDF-001 plan workflow가 사용하는 SPEC frontmatter 7-field canonical (id, version, status, created, updated, author, priority + lifecycle + breaking + bc_id) vs `internal/spec/lint.go` `FrontmatterInvalidRule`의 12-field canonical 사이 schema 불일치 발견. PR #939 CI에서 plan-phase frontmatter가 lint 통과하지 못해 `b2b7f32c7 fix(spec): SDF-001 spec.md frontmatter canonical 7-field 보강` 별도 hotfix 발생. plan workflow / docs / lint rule 3계층의 SSOT 정리가 필요.
+
 ## [Unreleased] — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001: spec-lint bootstrapping bug 해소
 
 ### Fixed
