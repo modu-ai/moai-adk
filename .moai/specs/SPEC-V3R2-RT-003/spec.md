@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-RT-003
 title: "Sandbox Execution Layer (Bubblewrap / Seatbelt / Docker)"
-version: "0.1.0"
-status: in-progress
+version: 0.1.1
+status: planned
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
@@ -29,6 +29,7 @@ tags: "sandbox, safety, security, v3r2, breaking, runtime, owasp"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade in-progress → planned — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C03 (no sandbox default, CRITICAL) per OWASP Top 10 for Agentic Apps 2025. |
 
 ---

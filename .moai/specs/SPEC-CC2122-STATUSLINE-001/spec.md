@@ -1,9 +1,9 @@
 ---
 id: SPEC-CC2122-STATUSLINE-001
-version: "0.1.1"
-status: completed
+version: "0.1.2"
+status: implemented
 created_at: 2026-04-30
-updated_at: 2026-04-30
+updated_at: 2026-05-16
 author: manager-spec
 priority: Medium
 labels: [statusline, claude-code-integration, ui, backward-compat]
@@ -24,6 +24,7 @@ tags: "legacy"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0 | 2026-04-30 | manager-spec | 초기 작성 — Claude Code v2.1.122 stdin JSON의 `effort` 및 `thinking` 필드를 statusline 세그먼트로 노출 |
 

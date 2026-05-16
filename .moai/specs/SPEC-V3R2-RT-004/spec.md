@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-RT-004
 title: "Typed Session State + Phase Checkpoint"
-version: "0.2.1"
-status: completed
+version: "0.2.2"
+status: implemented
 created: 2026-04-23
 updated: 2026-05-16
 author: GOOS
@@ -27,6 +27,7 @@ tags: "session, state, checkpoint, typed, v3r2, runtime, file-first"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 0.2.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.2.0 | 2026-05-12 | manager-docs (Sync workflow) | Implementation completed. M1-M5 GREEN with 15/15 AC PASS, 18 new tests, 7 MX tags, 21 files +1807/-42 LOC. Typed session state subsystem fully functional: PhaseState + Checkpoint interface, validator/v10 schema validation, cross-platform advisory locks, provenance tagging, blocker-outstanding gate, staleness check (configurable via ralph.yaml), in-flight transition detection, team-mode checkpoint merge with bubble-mode, `moai state {dump,show-blocker}` CLI subcommands, cache-prefix invariant (HydrateForPrompt), retention_days-based artifact cleanup, AskUserQuestion audit lint. Blocks downstream SPEC-V3R2-HRN-002 (Sprint Contract durability) and SPEC-V3R2-WF-003 (Ralph loop mode). Status promoted from draft to completed. |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C02 (no sub-agent context isolation) and P-C05 (no cache-prefix discipline). Non-breaking: adds typed schema on top of existing `.moai/state/` files. |

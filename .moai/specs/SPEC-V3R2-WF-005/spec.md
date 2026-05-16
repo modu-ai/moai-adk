@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-WF-005
 title: Language Rules vs Skills Boundary Codification
-version: "0.2.3"
-status: completed
+version: "0.2.4"
+status: implemented
 created_at: 2026-04-23
-updated_at: 2026-05-09
+updated_at: 2026-05-16
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P2
 labels: [languages, rules, skills, boundary, paths-frontmatter, v3]
@@ -36,6 +36,7 @@ updated: 2026-05-16
 | 0.2.1   | 2026-05-09 | manager-spec (audit fix) | Plan-auditor iteration 1 FAIL → 6 mechanical fixes (D1 AC citations, D2 task count, D3 path placeholder, D4 flutter.md sequencing, D5 test scope caveat, D7 typo). EARS REQ body unchanged. Targets PASS at iteration 2. |
 | 0.2.2   | 2026-05-09 | /moai sync (status transition) | Run+sync 완료 후 status: draft → completed. M1-M5 implementation 완료, 4 audit tests GREEN, evaluator-active iter 2 PASS, plan-audit iter 2 PASS 0.93. EARS REQ/AC 본문 변경 없음. |
 | 0.2.3   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
+| 0.2.4   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 
 ---
 

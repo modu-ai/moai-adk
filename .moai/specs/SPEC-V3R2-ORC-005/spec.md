@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-ORC-005
 title: "Dynamic Team Generation Formalization + Mailbox Protocol v2"
-version: "0.1.1"
-status: completed
+version: "0.1.2"
+status: implemented
 created: 2026-04-23
 updated: 2026-05-16
 author: GOOS
@@ -28,6 +28,7 @@ tags: "team, dynamic-generation, role-profiles, mailbox, tasklist, sendmessage, 
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 

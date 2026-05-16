@@ -1,9 +1,9 @@
 ---
 id: SPEC-DB-SYNC-HARDEN-001
-version: 0.3.1
-status: completed
+version: 0.3.2
+status: implemented
 created_at: 2026-04-21
-updated_at: 2026-04-24
+updated_at: 2026-05-16
 author: moai-adk-go
 priority: medium
 labels: [db, hook, hardening, follow-up, debounce, atomicity, windows-compat, coverage, mx-tag]
@@ -29,6 +29,7 @@ tags: "legacy"
 - 2026-04-21 v0.2.0: plan-auditor iteration 1 FAIL 후속 수정. F-1~F-5 blocking defects 해결(AC-9 multiline grep, REQ-H5-003 제거, HandleDBSchemaSync 5번째 대상 추가, CheckDebounce 실제 signature 반영, spec-compact에 Exclusions 추가). W-1~W-6 warnings 전부 반영. REQ 총 15 → 14 (REQ-H5-003 제거), AC 10 유지.
 - 2026-04-21 v0.1.0: SPEC 최초 작성. SPEC-DB-SYNC-001 (commit `e22eb718d`) 병합 이후 발견된 5개 Warning-level 코드 리뷰 지적사항을 단일 SPEC으로 통합. Critical 수정(c6985e2fe / aa29a9316 / 8a4022c69)은 이미 적용 완료된 상태에서 잔여 견고화 항목을 다룸.
 - 2026-05-16 v0.3.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
+- 2026-05-16 v0.3.2: status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2).
 
 ## Background
 

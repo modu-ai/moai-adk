@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-CMD-CLEANUP-001
-version: "1.0.1"
-status: completed
+version: "1.0.2"
+status: implemented
 created_at: 2026-04-26
-updated_at: 2026-04-26
+updated_at: 2026-05-16
 author: manager-spec
 priority: P0
 labels: [commands, skills, cleanup, security, template-first]
@@ -27,6 +27,7 @@ tags: "legacy"
 
 - 2026-04-26: Initial draft. v3r3 extreme aggressive handoff §3.1 추출. Three-axis cleanup of `/moai` command surface — add missing `/moai gate` command file, strengthen security workflows in review/sync skills, remove unused `context` skill.
 - 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
+- 2026-05-16 v1.0.2: status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2).
 
 ---
 

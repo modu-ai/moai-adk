@@ -1,9 +1,9 @@
 ---
 id: SPEC-AGENCY-ABSORB-001
-version: 0.3.1
-status: completed
+version: 0.3.2
+status: implemented
 created_at: 2026-04-20
-updated_at: 2026-04-24
+updated_at: 2026-05-16
 author: GOOS
 priority: High
 labels: [agency, migration, design, hybrid, absorption]
@@ -28,6 +28,7 @@ tags: "legacy"
 - 2026-04-20 v0.2.0: plan-auditor iteration 1 FAIL (0.62) 후속 수정. 시간 예측 제거(D1), YAML frontmatter 필수 필드 추가(D2), REQ-FALLBACK-003 EARS 재작성(D3), REQ-REMOVE-002 EARS 재작성(D4), REQ-ROUTE-003 vs 006 모순 해소(D5), REQ-SKILL-015 bundle 버전 불일치 신규(D6), REQ-MIGRATE-013 SIGINT/SIGTERM 신규(D7), REQ-FALLBACK-003 DoD 일관성(D8), REQ-MIGRATE-012 플랫폼 분리 → REQ-MIGRATE-012a/b(D9), REQ-SKILL-008/012 분할(D10, D11), Constitution 섹션 정렬(D12), REQ-MIGRATE-004 Step 6 스코프 명확화(D13), 5개 "(암시)" AC를 명시적 시나리오로 전환(D14).
 - 2026-04-24 v0.3.0: 후행 감사(plan-auditor 2026-04-24)에서 식별된 D-AGENCY-2 (`/agency` deprecation wrapper 조기 삭제) 정책 결정 §5.6에 기록. status: draft → completed (PR #682, commit 4271fd8a8 merge 반영). REQ-DEPRECATE-001~004의 wrapper-retention 요구사항은 amended (자세한 내용 §5.6 참조).
 - 2026-05-16 v0.3.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
+- 2026-05-16 v0.3.2: status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2).
 
 ---
 

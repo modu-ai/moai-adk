@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-RT-006
 title: "Hook Handler Completeness and 27-Event Coverage"
-version: "0.1.0"
-status: in-progress
+version: 0.1.1
+status: planned
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
@@ -31,6 +31,7 @@ tags: "hook, handlers, coverage, v3r2, breaking, runtime, tmux, p-h02"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade in-progress → planned — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. Supersedes SPEC-V3-HOOKS-005 (missing events) and SPEC-V3-HOOKS-002 partial (handler upgrades). Addresses 10 logging-only handlers from P-H01, the CRITICAL subagent-stop tmux-pane-leak bug P-H02, orphan setupHandler P-H03, and 59% partial coverage P-H19. |
 
 ---

@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R4-HARNESS-003
-version: "0.1.1"
+version: 0.1.3
 status: completed
 created: 2026-05-15
-updated: 2026-05-15
+updated: 2026-05-16
 author: manager-spec
 priority: P1
 tags: "harness, self-evolution, classifier, embedding, simhash, clustering, v3r4, phase-c, tier-2-aggregation"
@@ -12,12 +12,12 @@ title: Embedding-Cluster Classifier (Tier-2 Pattern Aggregation Upgrade)
 phase: "v3.0.0 R4 — Phase C — Classifier Upgrade"
 module: "internal/harness/learner.go, internal/harness/types.go, internal/harness/classifier_simhash.go (NEW), internal/harness/classifier_cluster.go (NEW), .moai/config/sections/harness.yaml (extension)"
 dependencies:
-  - SPEC-V3R4-HARNESS-001
-  - SPEC-V3R4-HARNESS-002
+    - SPEC-V3R4-HARNESS-001
+    - SPEC-V3R4-HARNESS-002
 supersedes: []
 related_specs:
-  - SPEC-V3R4-HARNESS-001
-  - SPEC-V3R4-HARNESS-002
+    - SPEC-V3R4-HARNESS-001
+    - SPEC-V3R4-HARNESS-002
 breaking: false
 bc_id: []
 lifecycle: spec-anchored
@@ -31,8 +31,10 @@ target_release: v2.22.0
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.1.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → completed — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0   | 2026-05-15 | manager-spec | Initial plan-phase draft. Phase C of the v3.0.0 R4 Self-Evolving Harness program. Introduces a hybrid two-stage classifier (Stage 1 exact-match preserved verbatim; Stage 2 SimHash + Hamming-distance singleton clustering, opt-in via `learning.classifier.stage_2_enabled`) that aggregates semantically similar Tier-1 singletons into Tier-2+ candidates without breaking the SPEC-V3R4-HARNESS-001 frequency-count ladder (REQ-HRN-FND-011). Consumes the Multi-Event observation surface delivered by SPEC-V3R4-HARNESS-002 (PromptPreview, PromptLang, AgentName, AgentType). Preserves the 5-Layer Safety pipeline (REQ-HRN-FND-005), FROZEN zone immutability (REQ-HRN-FND-006), the 7-day Tier-4 rate-limit floor (REQ-HRN-FND-012), and the orchestrator-only AskUserQuestion contract (REQ-HRN-FND-015). Adds an audit log of cluster-merge decisions at `.moai/harness/cluster-merges.jsonl`. Adopts research.md Option D+A recommendation. Non-breaking, schema-additive, fail-open to Stage-1-only behavior on any configuration parse error or library failure. |
 | 0.1.1   | 2026-05-15 | manager-spec | plan-audit iter 1 PASS revise pass — D1.1, D2.1-D2.5, D3.1-D3.2 defects addressed. D1.1: corrected Pattern field count six→seven in §8 Risk row 4. D2.1: aligned default `hamming_threshold` from 12 to 3 (research.md §8.3 recommended range 2-5 in 64-bit space) across §1.2(1), §5 REQ-HRN-CLS-003, §6, §8 Risk row 1 (rationale rewritten), and all acceptance.md references. D2.2: AC-HRN-CLS-002 fixture redesigned to share `prompt_preview` across all 10 events for realistic Tier-2 clustering. D2.3: clarified AC-HRN-CLS-002 outcome wording from "Either/AND" to "exactly 11 entries". D2.4: locked REQ-HRN-CLS-013 `hamming_distances` schema to flat upper-triangle row-major array (dropped triangular-matrix alternative). D2.5: added 6th AC-HRN-CLS-014 sub-case for YAML type-mismatch errors. D3.1: aligned plan.md §3.2 SimHash decision to Wave B-finalized "embed locally". D3.2: capped `hamming_distances` at 20 pair distances with `truncated`/`hamming_pair_count` flags to protect downstream JSONL parsers. |
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-LOOP-001
 title: Ralph Feedback Loop Engine
-status: completed
+status: implemented
 priority: Medium-High
 phase: "Phase 3 - Automation"
 created: 2026-02-03
@@ -13,7 +13,7 @@ module: "internal/loop/, internal/ralph/"
 estimated_loc: 1200
 tags: "loop, ralph, feedback, state-machine, convergence, automation"
 lifecycle: spec-anchored
-version: "1.0.1"
+version: 1.0.3
 author: GOOS
 ---
 
@@ -23,6 +23,8 @@ author: GOOS
 
 | 날짜 | 버전 | 변경 내용 |
 |------|------|----------|
+| 1.0.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
+| 1.0.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |
 | 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 2026-02-03 | 1.0.0 | 초기 SPEC 작성 |
 

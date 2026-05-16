@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R4-STATUS-LIFECYCLE-001
-version: "0.1.1"
-status: completed
+version: "0.1.2"
+status: implemented
 created_at: 2026-05-13
-updated_at: 2026-05-13
+updated_at: 2026-05-16
 author: manager-spec
 priority: High
 labels: [spec-status, lifecycle, lint, hook, github-actions, automation, drift-prevention]
@@ -25,6 +25,7 @@ tags: "legacy"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0 | 2026-05-13 | manager-spec | Initial plan-in-main draft (Step 1a per spec-workflow.md § SPEC Phase Discipline). Catalyst: PR #871 retrofit (10 Sprint 12 SPECs). 7-Layer Defense in Depth proposed. |
 

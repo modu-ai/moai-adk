@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-RT-001
 title: Hook JSON-OR-ExitCode Dual Protocol
-version: "0.1.1"
+version: 0.1.3
 status: implemented
 created: 2026-04-23
-updated: 2026-05-14
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 R2 — Runtime Protocol Migration"
@@ -20,6 +20,8 @@ issue_number: null
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade implemented → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |
 | 0.1.1 | 2026-05-14 | plan-auditor defect fix | MP-1: REQ sequential renumbering (001-025). MP-2: AC EARS compliance. MP-3: frontmatter `created_at`/`updated_at`/`labels` fix. |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft from Wave 3 synthesis. Supersedes SPEC-V3-HOOKS-001 with scope narrowed to protocol semantics (separates handler coverage into SPEC-V3R2-RT-006 and settings provenance into SPEC-V3R2-RT-005). |
 

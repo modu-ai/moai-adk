@@ -1,9 +1,9 @@
 ---
 id: SPEC-DOCS-SB-REMOVE-001
-version: 1.0.1
-status: completed
+version: 1.0.2
+status: implemented
 created_at: 2026-04-21
-updated_at: 2026-04-21
+updated_at: 2026-05-16
 author: moai-adk-go
 priority: high
 labels: [docs-site, i18n, simplify, batch, cleanup, consistency, 4-locale]
@@ -25,6 +25,7 @@ tags: "legacy"
 
 - 2026-04-21 v1.0.0: SPEC-SKILL-GATE-001로 두 스킬을 MoAI 워크플로우에서 완전 제거한 뒤에도 공식 문서 사이트(`adk.mo.ai.kr`, 4개 locale)가 여전히 두 스킬을 "핵심 자동 품질 기능"으로 홍보하고 있음을 감사 발견. CLAUDE.local.md §17.3 "4-locale 동시 업데이트" 의무 위반 상태. 본 SPEC은 공식 문서의 허위 홍보를 제거하고 ko 정본 → en/ja/zh 동기화를 달성.
 - 2026-05-16 v1.0.1: lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐.
+- 2026-05-16 v1.0.2: status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2).
 
 ## Background
 

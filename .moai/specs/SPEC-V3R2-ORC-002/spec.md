@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-ORC-002
 title: "Agent Common Protocol CI Lint (moai agent lint)"
-version: "0.1.0"
-status: in-progress
+version: 0.1.1
+status: planned
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 3 — Agent Cleanup"
@@ -32,6 +32,7 @@ tags: "agent, lint, ci, common-protocol, askuserquestion, moai-constitution, v3r
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade in-progress → planned — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 
 ---
