@@ -110,8 +110,8 @@ Never add files directly to the local project directories without also adding th
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
 .claude/commands/97-release-update.md            # Dev-only: CC upstream tracker (§21)
-.claude/commands/98-*.md       # Dev-project-specific commands
-.claude/commands/99-*.md       # Dev-project-specific commands
+.claude/commands/98-*.md       # Dev-only: maintainer commands — 98-github.md 등 (§21)
+.claude/commands/99-*.md       # Dev-only: future maintainer commands (§21 reserved)
 .claude/skills/moai/workflows/release-update.md  # Dev-only: release-update workflow body (§21)
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
@@ -1193,8 +1193,8 @@ Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD
 ---
 
 **Status**: Active (Local Development)
-**Version**: 3.6.0 (§21 Release-Update Workflow Dev-Only Isolation 추가)
-**Last Updated**: 2026-05-15
+**Version**: 3.7.0 (§21 Dev-Only Commands Isolation 일반화 — 97/98/99 prefix series 통합)
+**Last Updated**: 2026-05-16
 
 ---
 
@@ -1209,42 +1209,56 @@ Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD
 
 ---
 
-## 21. Release-Update Workflow Dev-Only Isolation
+## 21. Dev-Only Commands Isolation (97/98/99 Series)
 
-### [HARD] Release-Update 관련 모든 파일은 로컬 moai-adk 개발 전용
+### [HARD] 97/98/99 prefix 슬래시 커맨드 + 관련 산출물은 로컬 moai-adk 개발 전용
 
-릴리즈 추적 워크플로우 (Claude Code upstream change tracker, `/97-release-update`)는 moai-adk-go 메인테이너 전용 도구다. 패키지 사용자 프로젝트에는 **절대 배포되어서는 안 된다**. `internal/template/templates/` 어디에도 흔적이 남으면 안 된다.
+`97-*`, `98-*`, `99-*` prefix 슬래시 커맨드는 모두 moai-adk-go 메인테이너 전용 도구다. 패키지 사용자 프로젝트에는 **절대 배포되어서는 안 된다**. `internal/template/templates/` 어디에도 흔적이 남으면 안 된다.
+
+번호 prefix 의미 (예약):
+- `97-*` — 외부 시스템 추적/동기화 (예: CC upstream tracker)
+- `98-*` — GitHub 등 외부 플랫폼 워크플로우
+- `99-*` — 내부 감사/cleanup/실험 (예약)
 
 ### 배포 금지 파일 목록
 
 | 파일 경로 | 목적 | 격리 이유 |
 |---------|------|----------|
-| `.claude/commands/97-release-update.md` | Entry slash command | 사용자 프로젝트에는 CC 추적 권한 부재 |
-| `.claude/skills/moai/workflows/release-update.md` | 7-phase 워크플로우 본문 | 사용자에게 의미 없는 dev 인프라 |
+| `.claude/commands/97-release-update.md` | Entry slash command — CC upstream tracker | 사용자 프로젝트에는 CC 추적 권한 부재 |
+| `.claude/commands/98-github.md` | Entry slash command — GitHub workflow with Agent Teams | 사용자 프로젝트에 `gh` 권한/repo 컨텍스트 미보장 |
+| `.claude/skills/moai/workflows/release-update.md` | 7-phase 워크플로우 본문 (97 entry) | 사용자에게 의미 없는 dev 인프라 |
+| `.claude/skills/moai/workflows/github.md` | GitHub 워크플로우 본문 (98 entry) | 동일 — dev maintainer 전용 |
 | `.moai/state/last-cc-version.json` | 마지막 분석 버전 + history | 사용자 프로젝트별 상태 추적 불요 |
 | `.moai/research/cc-update-*.md` | 분석 보고서 + update plan | dev 산출물, 사용자 사용 안 함 |
 
-### [HARD] 검증 체크리스트 (release-update 변경 시 매번)
+### [HARD] 검증 체크리스트 (dev-only 커맨드 변경 시 매번)
 
-- [ ] `find internal/template/templates -name "97-release-update*"` 결과 비어있음
+- [ ] `find internal/template/templates -name "97-*"` 결과 비어있음
+- [ ] `find internal/template/templates -name "98-*"` 결과 비어있음
+- [ ] `find internal/template/templates -name "99-*"` 결과 비어있음
 - [ ] `find internal/template/templates -name "release-update.md"` 결과 비어있음
+- [ ] `find internal/template/templates -name "github.md" -path "*/workflows/*"` 결과 비어있음
 - [ ] `find internal/template/templates -name "last-cc-version.json"` 결과 비어있음
 - [ ] `find internal/template/templates -name "cc-update-*.md"` 결과 비어있음
-- [ ] `moai init test-project` 후 위 4가지 모두 사용자 프로젝트에 복사되지 않음 확인
+- [ ] `moai init test-project` 후 위 모두 사용자 프로젝트에 복사되지 않음 확인
 
 만약 위 파일 중 하나가 `internal/template/templates/`에 발견되면 즉시 `git rm` + `make build` 재실행 + commit.
 
 ### 워크플로우 본문 자체에도 dev-only 배너 필수
 
 - `.claude/skills/moai/workflows/release-update.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
-- `.claude/commands/97-release-update.md` frontmatter description에 "NOT distributed to user projects" 문구 유지
+- `.claude/skills/moai/workflows/github.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지 (없으면 추가)
+- `.claude/commands/97-release-update.md` frontmatter `description`에 `"NOT distributed to user projects"` 문구 유지
+- `.claude/commands/98-github.md` frontmatter `description`에 `"(dev-only). NOT distributed to user projects."` 문구 유지
 
 ### 위반 시 영향
 
 사용자가 `moai init my-project` 실행 시:
 
 - `97-release-update.md` 배포 → `/97-release-update` 슬래시 커맨드가 사용자 UI에 노출. 사용자에게 권한 부재 → 실행 시 오류 + 혼란
+- `98-github.md` 배포 → `/98-github` 슬래시 커맨드가 사용자 UI에 노출. 사용자 repo에 무관한 dev-only PR/issue 관리 워크플로우 호출 가능 → 혼란
 - `workflows/release-update.md` 배포 → MoAI 스킬 intent router에 등록되어 "release-update" 키워드 자동 매칭 → 의도치 않은 routing
+- `workflows/github.md` 배포 → MoAI 스킬 intent router에 "github" 키워드 자동 매칭 → 사용자가 의도하지 않은 PR 관리 시도
 - `last-cc-version.json` 배포 → 사용자 프로젝트가 moai-adk 자체의 CC 추적 상태를 들고다님 (의미 없음)
 - `cc-update-*.md` 배포 → 사용자 `.moai/research/`에 메인테이너 보고서 섞임
 
@@ -1256,9 +1270,11 @@ Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD
 
 ### 신규 dev-only 워크플로우 추가 시
 
-향후 비슷한 메인테이너 전용 워크플로우 (예: `/98-cleanup-script`, `/99-internal-audit`)를 추가할 때는:
+향후 비슷한 메인테이너 전용 워크플로우 (예: `/99-internal-audit`, `/99-cleanup-script`)를 추가할 때는:
 
-1. 본 §21 표에 행 추가
-2. §2 Local-Only Files 목록에 등록
-3. 본문 최상단 `[DEV-ONLY]` banner + entry command description "NOT distributed" 문구 추가
+1. 본 §21 "배포 금지 파일 목록" 표에 행 추가 (entry command + workflow body 양쪽)
+2. §2 Local-Only Files 목록에 등록 (이미 `97-*.md`/`98-*.md`/`99-*.md` 패턴은 등록되어 있음 — 패턴 외 추가 파일만 명시 추가)
+3. workflow body 최상단 `[DEV-ONLY]` banner 추가
+4. entry command frontmatter `description`에 `"(dev-only). NOT distributed to user projects."` 문구 추가
+5. 본 §21 검증 체크리스트에 신규 파일명 grep 항목 추가
 4. 검증 체크리스트 항목 추가
