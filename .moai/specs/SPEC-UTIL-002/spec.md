@@ -1,10 +1,10 @@
 ---
 id: SPEC-UTIL-002
 title: "ast-grep Integration Hardening + Suppression Policy + 5-Language Rule Seeding"
-version: "0.1.0"
-status: in-progress
+version: 0.1.1
+status: implemented
 created: 2026-04-24
-updated: 2026-04-24
+updated: 2026-05-16
 author: Wave v2.14 SPEC Writer
 priority: P0 Critical
 phase: "v2.14.0 — Phase 2 — Utility Hardening"
@@ -27,6 +27,7 @@ tags: "ast-grep, suppression, rule-seeding, multi-language, v2.14"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.1 | 2026-04-24 | MoAI (release/v2.14.0) | Implementation complete, merged as commit `1341fa544`. AC coverage 21/21. PHP `$_ = null` pattern replaced with `return null` / `json_decode(null)` due to tree-sitter grammar limitation (semantic equivalent). TRUST 5: 5/5. |
 | 0.1.0 | 2026-04-24 | Wave v2.14 SPEC Writer | Initial v2.14.0 draft. Owns IMP-V3U-004 (Rule Metadata propagation) + IMP-V3U-006 (ScanMultiple semaphore). Absorbs D6 (suppression policy lint) and D7 (5-language rule seeding: Ruby/PHP/Elixir/C#/Kotlin). Parallel with SPEC-UTIL-001 (MX) and SPEC-UTIL-003 (LSP). All changes non-breaking. |
 

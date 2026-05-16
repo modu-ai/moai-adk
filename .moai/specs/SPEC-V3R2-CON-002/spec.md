@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-CON-002
 title: "Constitutional amendment protocol with 5-layer safety gate"
-version: "0.1.1"
-status: in-progress
+version: 0.1.2
+status: implemented
 created: 2026-04-23
 updated: 2026-05-16
 author: Wave 4 SPEC Writer
@@ -34,6 +34,7 @@ tags: "v3r2, constitution, amendment, safety-gate, graduation-protocol"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade implemented → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft from master v3 §4 Layer 1, design-constitution §5 generalization |
 

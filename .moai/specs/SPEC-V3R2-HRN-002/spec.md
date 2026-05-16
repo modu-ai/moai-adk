@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-HRN-002
 title: "Evaluator Memory Scope Amendment (per-iteration fresh judgment)"
-version: "0.1.0"
-status: in-progress
+version: 0.1.1
+status: implemented
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"
@@ -28,6 +28,7 @@ tags: "evaluator, agent-as-judge, sprint-contract, memory-scope, fresh-judgment,
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 
 ---

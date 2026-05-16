@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-SPC-003
 title: "SPEC linter (moai spec lint)"
-version: "0.1.2"
-status: in-progress
+version: 0.1.3
+status: implemented
 created: 2026-04-23
 updated: 2026-05-16
 author: Wave 4 SPEC Writer
@@ -32,6 +32,7 @@ tags: "v3r2, spec, linter, ears-compliance, dag-validation, coverage"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft |
 | 0.1.1 | 2026-05-10 | manager-spec (Batch 3 backfill) | Status: implemented (PR #745 merged Wave 5). plan-phase artifacts back-filled. |
 | 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade implemented → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |

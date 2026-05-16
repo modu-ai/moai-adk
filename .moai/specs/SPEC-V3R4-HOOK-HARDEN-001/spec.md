@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R4-HOOK-HARDEN-001
-version: "0.1.0"
-status: in-progress
+version: 0.1.1
+status: implemented
 created_at: 2026-05-13
-updated_at: 2026-05-13
+updated_at: 2026-05-16
 author: GOOS행님
 priority: High
 labels: [hooks, observability, reliability, claude-code, template]
@@ -25,6 +25,7 @@ tags: "legacy"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-05-13 | GOOS행님 | Initial draft. Plan-phase artifact. Triggered by diagnostic session (2026-05-13) that surfaced 22 `PreToolUse:Bash` hook cancellations within a 7-day Claude Code session window where direct `moai hook pre-tool` execution measured ~8ms but the wrapper-mediated call hit the 5-second timeout (D1). Five fixes packaged across three waves: visibility (stderr preservation, hardcoded-path removal), mechanism (timeout uplift, stdin pipe shortening), and verification (load-simulated reproduction test). |
 
 ## Overview

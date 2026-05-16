@@ -876,6 +876,18 @@ func (r *DuplicateSPECIDRule) CheckAll(docs []*SPECDoc) []Finding {
 	return findings
 }
 
+// terminalStatusEnum은 git-implied status와 mismatch가 정상으로 간주되는 lifecycle terminal state 집합이다.
+// terminal state의 SPEC은 git history에 더 이상 active한 work commit이 없을 수 있으며,
+// 이를 drift false-positive로 취급하면 안 된다.
+//
+// @MX:NOTE: [AUTO] terminal lifecycle state — git history와 mismatch가 정상으로 간주되는 status
+// @MX:REASON: SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Pattern D/E/F/G false-positive 해소; 향후 상태 추가 시 이 map만 확장
+var terminalStatusEnum = map[string]bool{
+	"superseded": true,
+	"archived":   true,
+	"rejected":   true, // future-proof: 현재 사용 안 함, 향후 확장 대비
+}
+
 // StatusGitConsistencyRule checks if SPEC frontmatter status agrees with git log
 // Implements Wave 3: W3-T4
 // Default severity: warning (promoted to error under --strict)
@@ -889,6 +901,13 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 
 	if fm.ID == "" || fm.Status == "" {
 		// Skip if ID or status is missing (handled by other rules)
+		return nil
+	}
+
+	// ★ terminal lifecycle state는 git-implied 와 mismatch가 정상 — false-positive 방지
+	// Pattern D(superseded/completed), E(superseded/implemented),
+	// F(archived/implemented), G(archived/in-progress) 모두 해당
+	if terminalStatusEnum[fm.Status] {
 		return nil
 	}
 

@@ -1,18 +1,25 @@
 ---
 id: SPEC-GATE-001
 title: "Deterministic Quality Gate"
-status: in-progress
+status: implemented
 priority: P0
 created: "2026-04-07"
 harness_pillar: "P3: Verification Loop"
-version: "1.0.0"
-updated: 2026-05-13
+version: 1.0.1
+updated: 2026-05-16
 author: GOOS
 phase: "v2.x - Legacy"
 module: "quality"
 lifecycle: completed
 tags: "legacy"
 ---
+
+## HISTORY
+
+| Version | Date       | Author                     | Description |
+|---------|------------|----------------------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
+
 
 # SPEC-GATE-001: Deterministic Quality Gate
 

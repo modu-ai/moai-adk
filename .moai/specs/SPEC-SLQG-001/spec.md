@@ -1,10 +1,10 @@
 ---
 id: SPEC-SLQG-001
-status: in-progress
+status: implemented
 title: "Self-Learning Quality Guard"
-version: "1.0.0"
+version: 1.0.1
 created: 2026-04-11
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"
@@ -12,6 +12,13 @@ module: "legacy"
 lifecycle: completed
 tags: "legacy"
 ---
+
+## HISTORY
+
+| Version | Date       | Author                     | Description |
+|---------|------------|----------------------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
+
 
 # SPEC-SLQG-001: Self-Learning Quality Guard
 
