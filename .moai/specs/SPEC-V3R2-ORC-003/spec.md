@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-ORC-003
 title: "Effort-Level Calibration Matrix for 17 agents"
-version: "0.2.0"
+version: "0.2.1"
 status: completed
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: P1 High
 phase: "v3.0.0 — Phase 3 — Agent Cleanup"
@@ -21,6 +21,9 @@ breaking: true
 bc_id: [BC-V3R2-002]
 lifecycle: spec-anchored
 tags: "agent, effort, calibration, opus-4-7, adaptive-thinking, v3r2"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-ORC-003: Effort-Level Calibration Matrix for 17 agents
@@ -29,6 +32,7 @@ tags: "agent, effort, calibration, opus-4-7, adaptive-thinking, v3r2"
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.2.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B1 lint.skip 추가 — bulk-closure PR #926 body에 ID 포함되어 sync-merge 이력 존재하나, FOLLOWUP-002 plan commit이 최신 hit로 override. StatusGitConsistency 규칙 skip으로 drift 해소. |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 
 ---

@@ -1,7 +1,7 @@
 ---
 id: SPEC-GLM-MCP-001
 version: "0.1.0"
-status: in-progress
+status: completed
 created_at: 2026-05-01
 updated_at: 2026-05-01
 author: manager-spec
@@ -11,7 +11,7 @@ issue_number: 756
 related_specs: [SPEC-GLM-001, SPEC-CC2122-MCP-001, SPEC-LSPMCP-001]
 title: "Z.AI 공식 MCP 서버 통합 (Vision + Web Search + Web Reader)"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v2.x - Legacy"
 module: "glm"
 lifecycle: completed
@@ -24,6 +24,7 @@ tags: "legacy"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1 | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-A) | A1 sync-up: status in-progress → completed, walker LSGF-001 post-fix evidence aligned (git-implied completed). |
 | 0.1.0 | 2026-05-01 | manager-spec | 초기 작성 — Z.AI `@z_ai/mcp-server` 통합. Opt-in subcommand (`moai glm tools enable/disable`) 권장. Mainland China (Z_AI_MODE=ZHIPU) 는 v0.2 로 연기. |
 
 ## Status: Completed

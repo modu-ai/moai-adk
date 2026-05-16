@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-CI-AUTONOMY-001
-version: "0.2.0"
+version: "0.2.1"
 status: completed
 created_at: 2026-05-05
-updated_at: 2026-05-05
+updated_at: 2026-05-16
 author: manager-spec
 priority: P0
 labels: [ci-cd, automation, worktree, branch-protection, quality-gate, ci-mirror, auxiliary-workflow, branch-origin, v3r3]
@@ -19,7 +19,10 @@ tags: "ci-mirror, auto-fix-loop, worktree-state-guard, auxiliary-workflow-hygien
 related_theme: "Quality Pipeline Autonomy + GitHub Flow Hardening"
 title: "Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol"
 created: 2026-05-06
-updated: 2026-05-13
+updated: 2026-05-16
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-CI-AUTONOMY-001: Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol
@@ -28,6 +31,7 @@ updated: 2026-05-13
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.2.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B7 lint.skip 추가 — bulk-closure PR #927 body에 ID 포함되어 sync-merge 이력 존재하나, FOLLOWUP-002 plan commit이 최신 hit로 override. StatusGitConsistency skip으로 drift 해소. |
 | 0.1.0   | 2026-05-05 | manager-spec | Initial draft. Root-cause analysis after 5-PR sweep on 2026-05-05 (PR #783/#744/#739/#747/#743) where each PR had distinct CI failures requiring manual debug+fix+push cycles. Pattern inventory P1-P10, root causes R1-R7, scope T1-T8 (user approved). 7-Wave implementation plan to avoid Anthropic SSE stream stalls (~1.5KB prompt per wave). |
 
 ---

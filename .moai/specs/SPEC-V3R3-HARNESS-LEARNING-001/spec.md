@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-HARNESS-LEARNING-001
 title: Self-Learning Dynamic Harness — User-area Auto-Evolution from Activity Signals
-version: "1.0.0"
+version: "1.0.1"
 status: completed
 created: 2026-04-26
-updated: 2026-05-10
+updated: 2026-05-16
 author: manager-spec
 priority: P1 High
 phase: "v3.0.0 R3 — Phase D — Adaptive Harness"
@@ -23,6 +23,9 @@ related_theme: "Phase D — Adaptive Harness"
 target_release: v2.19.0
 issue_number: null
 implemented_pr: 728
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-HARNESS-LEARNING-001: Self-Learning Dynamic Harness
@@ -31,6 +34,7 @@ implemented_pr: 728
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 1.0.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B8 lint.skip 추가 — HARNESS-001 closeout commit `e8e38b17b sync(SPEC-V3R4-HARNESS-001)` body에 포함, 이후 `bb80ea0f4 feat(SPEC-V3R4-HARNESS-001)` 및 FOLLOWUP-002 plan commit이 최신 hit. StatusGitConsistency skip으로 drift 해소. |
 | 1.0.0   | 2026-05-10 | manager-docs | Status implemented (PR #728 merged); sync cleanup applied. All 5 phases (Observer + Tier Classifier + 5-Layer Safety + CLI + Integration Tests) complete and merged. target_release updated v2.17.0 → v2.19.0 per plan-auditor finding. |
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. Phase D P1 — User-area dynamic harness self-learning from activity signals (PostToolUse-driven). |
 

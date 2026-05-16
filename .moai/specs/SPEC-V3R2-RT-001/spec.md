@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R2-RT-001
 title: Hook JSON-OR-ExitCode Dual Protocol
-version: 0.1.3
+version: "0.1.4"
 status: implemented
 created: 2026-04-23
 updated: 2026-05-16
@@ -12,6 +12,9 @@ module: ".claude/hooks/moai/, internal/hook/, internal/runtime/"
 lifecycle: spec-anchored
 tags: "hook, protocol, json, v3r2, breaking, runtime"
 issue_number: null
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-001: Hook JSON-OR-ExitCode Dual Protocol
@@ -20,6 +23,7 @@ issue_number: null
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.4   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B2 lint.skip 추가 — chore sweep #930으로 implemented 설정(chore-skip), plan backfill commit이 최신 non-skip hit로 override. 실제 구현 완료 evidence (HISTORY v0.1.3) 기준 StatusGitConsistency skip. |
 | 0.1.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade implemented → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |
 | 0.1.1 | 2026-05-14 | plan-auditor defect fix | MP-1: REQ sequential renumbering (001-025). MP-2: AC EARS compliance. MP-3: frontmatter `created_at`/`updated_at`/`labels` fix. |

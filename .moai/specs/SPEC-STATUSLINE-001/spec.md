@@ -1,10 +1,10 @@
 ---
 id: SPEC-STATUSLINE-001
-status: in-progress
+status: implemented
 title: "Statusline Segment Configuration"
-version: "1.0.0"
+version: "1.0.1"
 created: 2026-02-14
-updated: 2026-05-13
+updated: 2026-05-16
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"
@@ -14,6 +14,12 @@ tags: "legacy"
 ---
 
 # SPEC-STATUSLINE-001: Statusline Segment Configuration
+
+## HISTORY
+
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 1.0.1 | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-A) | A2 sync-up: status in-progress → implemented, walker LSGF-001 post-fix evidence aligned (git-implied implemented). |
 
 ## Metadata
 

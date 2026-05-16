@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-SPC-002
 title: "@MX TAG v2 with hook JSON integration and sidecar index"
-version: "0.2.0"
+version: "0.2.1"
 status: completed
 created: 2026-04-23
-updated: 2026-05-13
+updated: 2026-05-16
 author: Wave 4 SPEC Writer
 priority: P1 High
 phase: "v3.0.0 — Phase 7 — Extension"
@@ -26,6 +26,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, mx-tag, hook, json-sidecar, anchor, post-tool-use"
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-SPC-002: @MX TAG v2 with hook JSON integration and sidecar index
@@ -34,6 +37,7 @@ tags: "v3r2, mx-tag, hook, json-sidecar, anchor, post-tool-use"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.1 | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B4 lint.skip 추가 — bulk-closure PR #926 body에 ID 포함, T-SPC002-* 서브태스크 prefix가 word-boundary 미충족, FOLLOWUP-002 plan commit이 최신 hit. StatusGitConsistency skip으로 drift 해소. |
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft from master-v3 Layer 2, pattern-library T-1/T-5 |
 
 ---

@@ -23,7 +23,10 @@ bc_id: []
 lifecycle: spec-anchored
 tags: "multi-mode, router, loop, ralph, design, unified, pattern-O-4, workflow, v3"
 created: 2026-04-24
-updated: 2026-05-13
+updated: 2026-05-16
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-WF-003: Multi-Mode Router
@@ -35,6 +38,8 @@ updated: 2026-05-13
 | 0.1.0   | 2026-04-23 | Wave 2              | Initial SPEC — unify /moai loop (Ralph) + /moai run + /moai design                                                                                           |
 | 0.2.0   | 2026-05-04 | MoAI Plan Workflow  | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P1 High"` → `P1`, `labels` 추가, `issue_number` 추가. EARS REQ/AC 본문 변경 없음. Stacked PR base: feature/SPEC-V3R2-WF-004 (PR #765). |
 | 0.3.0   | 2026-05-04 | MoAI Plan Workflow  | AC-WF003-16/17 추가 (REQ-WF003-007/015 매핑) — plan-auditor iteration 1 D1/D2 fix. §10 traceability claim 갱신 (15→17 ACs). EARS REQ 본문 변경 없음. |
+| 0.3.3   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B6 lint.skip 추가 — walker main 브랜치 전용 스캔으로 feature 브랜치 sync(spec) 커밋 미인식. StatusGitConsistency 임시 skip. PR 머지 후 lint.skip 제거 가능. |
+| 0.3.2   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-sync) | B6 sync-up: 전용 sync(spec) 커밋 추가 — FOLLOWUP-002 plan commit override 해소 (walker git-implied completed 재확인). |
 | 0.3.1   | 2026-05-09 | MoAI Sync Workflow  | Status `draft` → `completed` (Level 2 spec-anchored). Phase 1.5 divergence analysis = 0; all 18 REQs / 17 ACs satisfied; mx_plan 8/8 tags applied. EARS REQ/AC 본문 변경 없음 (implementation matched plan exactly). |
 
 ---

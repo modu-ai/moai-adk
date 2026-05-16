@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-RETIRED-DDD-001
-version: "0.3.0"
+version: "0.3.1"
 status: completed
 created_at: 2026-05-04
-updated_at: 2026-05-04
+updated_at: 2026-05-16
 author: Goos Kim
 priority: Medium
 labels: [retire, agent-runtime, ddd, standardization, follow-up]
@@ -15,8 +15,11 @@ bc_id: []
 lifecycle: spec-anchored
 title: "Manager-DDD Retired Stub Standardization (Follow-up to RETIRED-AGENT-001)"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-16
 phase: "v3.0.0 - Consolidation"
+lint:
+  skip:
+    - StatusGitConsistency
 module: "retired"
 tags: "legacy"
 ---
@@ -29,6 +32,7 @@ tags: "legacy"
 |---------|------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-04 | Goos Kim   | 최초 작성. Predecessor SPEC-V3R3-RETIRED-AGENT-001 §2.2 Out-of-Scope에서 명시된 follow-up. manager-tdd retirement 패턴을 manager-ddd에 동일 적용.                                                                                                                  |
 | 0.2.0   | 2026-05-04 | Goos Kim   | Audit iter 1 defects D1-D8 fixed: REQ 순서 sequential REQ-RD-001..012 (gaps 005/006/010/015 제거); file count taxonomy 단일 진실 (research.md §6: Cat A 30 / Cat B 3 / Cat C 2); output-styles/moai/moai.md 추가 발견; AC sentinel REQ-RD-NNN 정정; Self-Audit 3 항목 추가.        |
+| 0.3.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B11 lint.skip 추가 — HARNESS-001 closeout 체인 하에서 sync됨, FOLLOWUP-002 plan commit이 최신 hit로 override. StatusGitConsistency skip으로 drift 해소. |
 | 0.3.0   | 2026-05-04 | manager-spec, iter 3 atomic sync | Audit iter 2 defects D-NEW-1 ~ D-NEW-5 fixed via textual substitution. Orphan out-of-range REQ-RD reference in research.md test skeleton replaced with sequential REQ-RD-012. spec.md §3/§4/§7/§8/§10 stale legacy file-count text replaced with canonical Cat A 30 files. plan.md §3 numeric ambiguity resolved (canonical 33 taxonomy + 3 ancillary). spec.md §12.1 self-audit version literal updated to current. Risk row checkFiles count aligned to canonical 30 Cat A files. All 5 artifacts pass grep verification. |
 
 ---
