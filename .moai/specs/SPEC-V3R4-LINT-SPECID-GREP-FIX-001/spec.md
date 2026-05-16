@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R4-LINT-SPECID-GREP-FIX-001
 title: "walker SPEC-ID grep precision fix — substring collision 영구 차단"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: in-progress
 created: 2026-05-16
 updated: 2026-05-16
 author: manager-spec
