@@ -33,6 +33,7 @@ tags: "legacy"
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-04-26 | manager-spec | Initial draft. Phase C P0 — `/moai project` Phase 5+ 소크라테스 인터뷰 (16 질문 / 4 라운드) + 5-Layer 통합 장치 (사용자 통찰 반영). |
 | 0.2.0   | 2026-04-27 | manager-tdd  | Run phase 진입. status: draft → in-progress. target_release v2.17.0 → **v2.19.0** (v3R3 cluster bundling 정책, project_v3r3_cluster_release_bundling lesson 적용). Wave-split 5-Wave 위임 시작. |
+| 0.3.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-sync) | B9 sync-up: 전용 sync(spec) 커밋 추가 — FOLLOWUP-002 plan commit override 해소 (walker git-implied completed 재확인). |
 | 0.3.0   | 2026-04-27 | manager-tdd  | Wave 1~5 완료. 17 Go 파일 (interview/layer1-5/chaining/frozen/cleanup/prefix/doctor/session_replay/update_safety/e2e_ios) + 4 workflow template/local sync. Plan-auditor D1 fix: REQ-PH-011 [Unwanted] IF/THEN. status: in-progress → completed. |
 
 ---
