@@ -1,7 +1,6 @@
 package spec
 
 import (
-	"os"
 	"os/exec"
 	"testing"
 )
@@ -14,19 +13,16 @@ import (
 // Post-fix (word-boundary matching): "completed" 반환 (sync commit의 올바른 신호).
 //
 // 본 테스트는 live git history에 의존하므로 다음 환경에서는 skip된다:
-//   - GitHub Actions CI (actions/checkout@v4 default fetch-depth: 1, shallow clone)
-//   - SPEC-V3R4-HARNESS-001 commits이 부재한 fork/clone
+//   - SPEC-V3R4-HARNESS-001 commits이 부재한 fork/shallow clone
+//
 // Word-boundary 헬퍼 로직은 TestGetGitImpliedStatus_SPECIDWordBoundary 5 sub-cases가 완전 검증한다.
-// CI fetch-depth: 0 영구 fix는 후속 SPEC-V3R4-CI-INFRA-FIX-001에서 다룬다.
 func TestGetGitImpliedStatus_HARNESS001Resolution(t *testing.T) {
-	// CI 환경 자동 skip — shallow clone으로 SPEC commits 부재
-	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		t.Skip("requires full git history; CI uses actions/checkout@v4 default fetch-depth: 1 (shallow). " +
-			"Word-boundary logic is fully covered by TestGetGitImpliedStatus_SPECIDWordBoundary 5 sub-cases. " +
-			"Follow-up: SPEC-V3R4-CI-INFRA-FIX-001 to set fetch-depth: 0 for full-history tests.")
-	}
+	// @MX:NOTE: [AUTO] CI shallow-clone skip guard 영구 제거
+	// @MX:REASON: SPEC-V3R4-CI-INFRA-FIX-001 W3 적용 후 ci.yml 5 checkout step
+	// 모두 fetch-depth: 0. CI 환경에서도 SPEC commits 정상 존재.
+	// LSGF-001 PR #948 의 GITHUB_ACTIONS env workaround 영구 해소.
 
-	// Probe: target SPEC commits이 local git에 존재하는지 확인 (non-CI 환경에서도 fork/shallow 대응)
+	// Probe: target SPEC commits이 local git에 존재하는지 확인 (fork/shallow clone 사용자 환경 대응)
 	probe := exec.Command("git", "log", "main", "--oneline", "--grep=SPEC-V3R4-HARNESS-001", "-1")
 	if out, err := probe.Output(); err != nil || len(out) == 0 {
 		t.Skip("SPEC-V3R4-HARNESS-001 commits not available in local git history (fork/shallow clone). " +
