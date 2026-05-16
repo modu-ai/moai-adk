@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R4-LINT-SPECID-GREP-FIX-001
 title: "walker SPEC-ID grep precision fix — substring collision 영구 차단"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-05-16
 updated: 2026-05-16
 author: manager-spec
@@ -30,6 +30,8 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.3.0   | 2026-05-16 | manager-docs | Sync-phase 완료. status `in-progress → completed`. PR #948 (run-phase) `be5e58179` 머지 후 walker word-boundary 필터 main에 영구 적용. V3R4-HARNESS-001/002/003 3건 false-positive WARNING 영구 해소 (AC-LSGF-001 본질 달성). |
+| 0.2.0   | 2026-05-16 | manager-develop | Run-phase 완료. walker SPEC-ID word-boundary 매칭 구현 (Approach B: 2-pass post-filter), unit test 4건 신설 (`TestGetGitImpliedStatus_SPECIDWordBoundary` 등), regression test 1건. TDD 5-Wave cycle (RED → GREEN → REFACTOR → 통합 → CI validation) 완료. PR #948 OPEN. |
 | 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. `internal/spec/drift.go` `getGitImpliedStatus` walker가 `git log --grep=<SPEC-ID>` substring 매칭을 사용해 SPEC-ID prefix 충돌 commit(특히 NAMESPACE supersede commit)을 walker first match로 채택하던 결함을 영구 차단. AC binary 0 (`moai spec lint --strict` 0 ERROR / 0 WARNING) 목표. PR #944 (SPEC-V3R4-HARNESS-NAMESPACE-001 plan-PR) sync drift 사건의 follow-up. |
 
 ---
