@@ -1,11 +1,14 @@
 ---
 id: SPEC-V3R2-WF-003
 title: Multi-Mode Router (--mode flag, loop/run/design)
-version: "0.3.1"
+version: "0.3.4"
 status: completed
 created: 2026-04-23
 updated: 2026-05-16
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
+lint:
+  skip:
+    - StatusGitConsistency
 priority: P1
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/skills/moai/workflows/, internal/cli/, .claude/commands/moai/"

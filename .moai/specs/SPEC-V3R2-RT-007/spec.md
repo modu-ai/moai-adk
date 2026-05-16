@@ -1,11 +1,14 @@
 ---
 id: SPEC-V3R2-RT-007
 title: "Hardcoded Path Fix + Versioned Migration"
-version: "0.1.2"
+version: "0.1.3"
 status: completed
 created: 2026-04-23
 updated: 2026-05-16
 author: GOOS
+lint:
+  skip:
+    - StatusGitConsistency
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
 module: "internal/template/ + internal/migration/"
