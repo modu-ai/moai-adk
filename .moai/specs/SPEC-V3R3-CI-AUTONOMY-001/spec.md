@@ -20,7 +20,9 @@ related_theme: "Quality Pipeline Autonomy + GitHub Flow Hardening"
 title: "Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol"
 created: 2026-05-06
 updated: 2026-05-16
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-CI-AUTONOMY-001: Autonomous CI/CD Quality Pipeline + Worktree State Guard + Auxiliary Workflow Hygiene + Branch Origin Decision Protocol

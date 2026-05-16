@@ -21,7 +21,9 @@ breaking: true
 bc_id: [BC-V3R2-002]
 lifecycle: spec-anchored
 tags: "agent, effort, calibration, opus-4-7, adaptive-thinking, v3r2"
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-ORC-003: Effort-Level Calibration Matrix for 17 agents

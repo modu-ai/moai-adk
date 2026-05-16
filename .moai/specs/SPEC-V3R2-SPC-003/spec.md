@@ -24,7 +24,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, spec, linter, ears-compliance, dag-validation, coverage"
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-SPC-003: SPEC linter (moai spec lint)

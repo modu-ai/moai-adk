@@ -26,7 +26,9 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, mx-tag, hook, json-sidecar, anchor, post-tool-use"
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-SPC-002: @MX TAG v2 with hook JSON integration and sidecar index

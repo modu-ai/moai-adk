@@ -21,7 +21,9 @@ lifecycle: spec-anchored
 tags: "agent-runtime, retired-stub, manager-cycle, template-parity, hook-guard, worktree-empty-object, defect-chain, v3r3"
 created: 2026-05-04
 updated: 2026-05-16
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub Compatibility + manager-cycle Template Alignment

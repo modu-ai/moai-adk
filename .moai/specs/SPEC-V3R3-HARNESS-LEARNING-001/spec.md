@@ -23,7 +23,9 @@ related_theme: "Phase D — Adaptive Harness"
 target_release: v2.19.0
 issue_number: null
 implemented_pr: 728
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R3-HARNESS-LEARNING-001: Self-Learning Dynamic Harness

@@ -17,7 +17,9 @@ title: "Manager-DDD Retired Stub Standardization (Follow-up to RETIRED-AGENT-001
 created: 2026-05-04
 updated: 2026-05-16
 phase: "v3.0.0 - Consolidation"
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 module: "retired"
 tags: "legacy"
 ---

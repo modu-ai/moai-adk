@@ -21,7 +21,9 @@ bc_id: []
 lifecycle: spec-anchored
 related_theme: "spec-lint Foundation Cleanup — workaround 영구 제거"
 target_release: v3.0.0-rc1
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R4-LINT-SKIP-CLEANUP-001 — 55개 SPEC frontmatter의 lint.skip StatusGitConsistency 일괄 제거

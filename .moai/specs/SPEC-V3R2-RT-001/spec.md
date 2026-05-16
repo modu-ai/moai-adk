@@ -12,7 +12,9 @@ module: ".claude/hooks/moai/, internal/hook/, internal/runtime/"
 lifecycle: spec-anchored
 tags: "hook, protocol, json, v3r2, breaking, runtime"
 issue_number: null
-lint.skip: [StatusGitConsistency]
+lint:
+  skip:
+    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-001: Hook JSON-OR-ExitCode Dual Protocol
