@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-SPECLINT-DEBT-002
-version: "0.2.0"
-status: planned
+version: "0.3.0"
+status: completed
 created: 2026-05-16
 updated: 2026-05-16
 author: GOOS행님
@@ -28,6 +28,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.3.0   | 2026-05-16 | sync-phase   | Lifecycle COMPLETE. 3-PR series MERGED: plan PR #941 (`cead23ffc`) + run PR #942 (`a5b3869f5`) + sync PR #N (TBD). status `planned → completed`. AC-SDBT-002-001~005 모두 verified (`moai spec lint --strict` 0 findings, `TestFrontmatterSchemaRule_SnakeCaseRejected` PASS exactly 3 FrontmatterInvalid, SSOT doc 3-layer cross-reference, team/plan.md Case-C 신설, hotfix scenario regression 차단). Files modified summary: 11 files / +523/-26 LOC (Wave 1 plan.md alignment + Wave 2 SSOT doc 신설 + Wave 3 team/plan.md Case-C + regression fixture + Go test 2건). |
 | 0.2.0   | 2026-05-16 | manager-spec | Iteration 2 revision (plan-auditor review-1 0.62 FAIL → revise). D1: 75 SPECs 가정을 197 SPECs 실측 (51 snake_case `created_at:` dual-field, 53 `labels:` dual-field)으로 정정. Direction A 선택 근거 재구성 — snake_case는 redundant duplication (lint regression 0건)이며 cleanup은 opportunistic. D2: REQ-004를 Case C (team/plan.md에 Pre-Write Frontmatter Checklist 신설)로 재구성 — team/plan.md 존재 확인 (8065 bytes, 2026-05-14)되나 frontmatter checklist 섹션 부재. D3: 인용 commit SHA들 (`b2b7f32c7`/`ac6123be2`)이 squash-merge로 `--grep` 검색에는 잡히지 않으나 `git rev-parse`로 검증됨을 footnote에 명시. D4: SDF-001 dependency 상태를 "completed"로 갱신. D5: T-Wave3-002 finding count 6→3 정정 (AC-002와 정합). D6: AC-003 binary 검증 command 추가. D7: line 인용 정확도 향상 (lint.go:518-533, plan.md:449-458/461-465). D8: REQ-003을 schema property에서 분리. |
 | 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. SDF-001 run-phase (PR #939) hotfix commit `b2b7f32c7 fix(spec): SDF-001 spec.md frontmatter canonical 7-field 보강` 발생 → 근본 원인 분석 결과 plan workflow body (9-field, snake_case `created_at`/`updated_at`/`labels`/`issue_number`)와 internal/spec/lint.go FrontmatterSchemaRule (12-field, `created`/`updated`/`tags`/`title`/`phase`/`module`/`lifecycle`) 사이 dual-schema drift 확인. |
 
