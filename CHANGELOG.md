@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **status drift sweep: 17건 status drift 일괄 해소** (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002): SPEC-V3R4-LINT-SPECID-GREP-FIX-001 walker word-boundary fix 후 노출된 substring noise drift 17건 정밀 분석 + Category A (5건 frontmatter sync-up) + Category B (12건 per-SPEC mechanism: 3건 sync-commit 적용 + 9건 lint.skip 영구 적용). LSGF-001 → FOLLOWUP-002 lineage로 walker 정밀화 직후 hidden drift 영구 해소. SDF-001 Pattern H precedent 적용 (Wave 1 analysis → Wave 2 apply → Wave 3 verify). `moai spec lint --strict` 0 error / 0 warning binary 달성 (v3.0.0-rc1 release-readiness precondition 충족). (PR #950 plan + #951 run + 이번 sync)
+
+### Fixed
+
+- **AC-SDF002-X-001**: `moai spec lint --strict` 0 error / 0 warning binary 달성 (v3.0.0-rc1 release-readiness precondition 충족).
+- **AC-SDF002-X-002**: V3R4-HARNESS-001/002/003 (LSGF-001 targets) 무영향 — 회귀 0.
+- **AC-SDF002-X-003**: 소스 코드 미변경 (metadata-only sweep).
+
+### Known Follow-up
+
+- 9 Category B lint.skip 잔존 (B1/B2/B4/B5/B7/B8/B10/B11/B12) — sync-commit 전략을 적용하면 chain self-drift 유발 가능성으로 lint.skip 영구 적용 결정. 향후 walker 개선 (예: chore-skip semantics 확장) SPEC이 진입하면 일괄 cleanup 가능.
+- CI shallow clone (HARNESS001Resolution test skip): SPEC-V3R4-CI-INFRA-FIX-001 (다음 SPEC) `fetch-depth: 0` 영구 fix 예정.
+- v3.0.0-rc1 release tagging: CI-INFRA-FIX-001 lifecycle COMPLETE 후 진입 가능.
+
+## [Unreleased] — v3.0.0-rc1 Governance: SPEC-V3R4-HARNESS-NAMESPACE-001 Harness Namespace + Lifecycle Governance closeout
+
+### Changed
+
 - **lint walker (drift.go): SPEC-ID word-boundary 매칭 정밀화 — substring collision 영구 차단** (SPEC-V3R4-LINT-SPECID-GREP-FIX-001): `internal/spec/drift.go` `getGitImpliedStatus` walker가 SPEC-ID를 git log에서 검색할 때 사용하는 `--grep=<SPEC-ID>` substring 매칭을 **단어 경계 (word-boundary) 정밀 매칭**으로 격상. 근본 원인: walker가 `SPEC-V3R4-HARNESS-001` 검색 시 `SPEC-V3R4-HARNESS-NAMESPACE-001` 같이 prefix가 겹치는 다른 SPEC commit (특히 NAMESPACE-001 supersede commit `ea1c10647`)을 walker first match로 채택하여 `V3R4-HARNESS-001/002/003` 3건의 false-positive `StatusGitConsistency` WARNING 유발. 방향 A (git POSIX BRE word-boundary) 대신 Approach B (2-pass post-filter) 채택 — 기존 `ExtractSPECIDs` 정규식 재사용, 외부 의존성 0. TDD 3-Wave (RED test `TestGetGitImpliedStatus_SPECIDWordBoundary` → GREEN implementation → REFACTOR + regression test). (PR #947 plan + #948 run + #이번 sync, plan-in-main + branch-only 정책 적용)
 
 ### Fixed

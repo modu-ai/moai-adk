@@ -21,9 +21,6 @@ related_theme: "Layer 3: Runtime"
 breaking: true
 lifecycle: spec-anchored
 tags: "path, hardcoded, migration, v3r2, breaking, runtime, shell-wrappers"
-lint:
-  skip:
-    - StatusGitConsistency
 ---
 
 # SPEC-V3R2-RT-007: Hardcoded Path Fix + Versioned Migration
