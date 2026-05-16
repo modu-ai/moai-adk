@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-CATALOG-001
-version: 0.3.3
-status: implemented
+version: 0.3.4
+status: completed
 created: 2026-05-12
 updated: 2026-05-16
 author: GOOS행님
@@ -25,6 +25,7 @@ coverage: "84.0% (LoadCatalog: 100%)"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.3.4   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-A) | A4 sync-up: status implemented → completed, walker LSGF-001 post-fix evidence aligned (git-implied completed). |
 | 0.3.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-05-12 | GOOS행님 | Initial draft from /moai brain IDEA-003 (Wave 1 첫 SPEC, manifest schema + tier lock-in) |
 | 0.2.0 | 2026-05-12 | manager-spec | plan-auditor iter 1 FAIL (0.72) 11 defects 반영: D1 (REQ-013 자체 모순 제거), D2 (REQ-027 duplicate sentinel 추가), D3 (37 skills + 28 agents = 65 entries 카운트 통일 + "catalog entry" 정의 명시), D4 (REQ-021 vacuously-true 재작성, workflows flat-md layout 반영), D5 (gen-catalog-hashes.go [NEW] 등록), D6 (15 untracked REQ → AC mapping 보강), D7 (deployer.go no-modify 명확화), D9 (REQ-024 약화). |

@@ -1,8 +1,8 @@
 ---
 id: SPEC-WORKTREE-002
 title: "Worktree End-to-End Automation"
-version: "1.0.2"
-status: implemented
+version: "1.0.3"
+status: completed
 created: 2026-03-11
 updated: 2026-05-16
 author: GOOS
@@ -29,6 +29,7 @@ lifecycle_level: spec-anchored
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
+| 1.0.3   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-A) | A5 sync-up: status implemented → completed, walker LSGF-001 post-fix evidence aligned (git-implied completed). |
 | 1.0.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 2026-03-11 | 1.0.0 | MoAI | Initial SPEC creation |

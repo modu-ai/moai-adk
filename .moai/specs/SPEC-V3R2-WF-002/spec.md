@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-WF-002
 title: Commands Thin-Wrapper Enforcement and Fat-Command Extraction
-version: "0.1.0"
-status: in-progress
+version: "0.1.1"
+status: implemented
 created: 2026-04-23
-updated: 2026-05-01
+updated: 2026-05-16
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1 High
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
@@ -34,6 +34,7 @@ commits:
 
 | Version | Date       | Author | Description                                                            |
 |---------|------------|--------|------------------------------------------------------------------------|
+| 0.1.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-A) | A3 sync-up: status in-progress → implemented, walker LSGF-001 post-fix evidence aligned (git-implied implemented). |
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — extract 98-github.md and 99-release.md logic to skills  |
 
 ---
