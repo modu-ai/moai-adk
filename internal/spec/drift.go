@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -147,6 +148,14 @@ func getGitImpliedStatus(specID string) (string, error) {
 			continue
 		}
 
+		// word-boundary SPEC-ID 필터 (LSGF-001) — substring collision 차단
+		// 예: specID="SPEC-V3R4-HARNESS-001"이 "SPEC-V3R4-HARNESS-NAMESPACE-001"에 매칭되지 않도록
+		// @MX:NOTE: [AUTO] LSGF-001 word-boundary filter
+		// @MX:REASON: NAMESPACE supersede commit이 walker first match로 채택되던 false-positive 차단
+		if !commitMatchesSPECID(commitTitle, specID) {
+			continue
+		}
+
 		// commit title 분류
 		_, status, err := ClassifyPRTitle(commitTitle)
 		if err != nil {
@@ -168,6 +177,25 @@ func getGitImpliedStatus(specID string) (string, error) {
 	// @MX:NOTE: [AUTO] walker N=50 소진 시 unknown signal — lint rule이 skip 처리하여 false-positive 방지
 	// @MX:REASON: 모든 commit이 skip pattern인 SPEC은 git-consistency 검사 대상에서 제외 (fail-safe)
 	return "", fmt.Errorf("no classifiable commit within window of %d for %s", gitLogWindowSize, specID)
+}
+
+// commitMatchesSPECID는 commit title에 정확한 SPEC-ID 토큰이 포함되는지 확인한다.
+//
+// git log --grep=<specID>는 substring 매칭을 수행하므로,
+// 예를 들어 specID="SPEC-V3R4-HARNESS-001" 검색이
+// "plan(spec): SPEC-V3R4-HARNESS-NAMESPACE-001 ..." commit에도 매칭되는 결함이 있다.
+//
+// 본 함수는 ExtractSPECIDs (transitions.go)를 사용해 정확한 SPEC-ID 토큰만 추출한 후,
+// target specID가 그 set에 포함되어 있는지 확인한다.
+//
+// @MX:NOTE: [AUTO] commitMatchesSPECID — word-boundary SPEC-ID 필터 (LSGF-001)
+// @MX:REASON: SPEC-V3R4-LINT-SPECID-GREP-FIX-001 — git log --grep substring 매칭이
+//
+//	NAMESPACE supersede commit을 walker first match로 채택하던 결함을 차단.
+//	ExtractSPECIDs 재사용으로 외부 의존성 0.
+func commitMatchesSPECID(commitTitle, specID string) bool {
+	extracted := ExtractSPECIDs(commitTitle)
+	return slices.Contains(extracted, specID)
 }
 
 // shouldSkipCommitTitle은 commit title이 알려진 skip pattern에 매칭되는지 확인한다.
