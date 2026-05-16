@@ -11,13 +11,18 @@ runs:
     - id: detect
       shell: bash
       run: |
-        # @MX:NOTE: [AUTO] SIGPIPE-safe pipeline — head -1 → awk NR==1{print;exit}
-        # @MX:REASON: SPEC-V3R4-CI-INFRA-FIX-001 D-1 (A2). head 의 implicit
-        # stdin close 가 upstream find 와 broken-pipe race 유발 → exit 141 incident 4건.
-        LANG_COUNT=$(find . -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" | \
-          grep -v node_modules | grep -v vendor | grep -v ".git" | \
-          awk 'NR==1{print;exit}' | sed 's/.*\.//' | sort | uniq -c | sort -rn | \
-          awk 'NR==1{print $2;exit}')
+        # @MX:NOTE: [AUTO] SIGPIPE-safe single-step solution — find -print -quit
+        # @MX:REASON: SPEC-V3R4-CI-INFRA-FIX-001 hotfix. awk 'NR==1{print;exit}'
+        # (initial D-1 A2 choice) also closes stdin early like head -1, producing
+        # identical broken-pipe failure under set -o pipefail. find -print -quit
+        # eliminates the pipe entirely — single command, no early-terminating
+        # downstream consumer.
+        LANG_FILE=$(find . \( -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \) \
+          -not -path './node_modules/*' \
+          -not -path './vendor/*' \
+          -not -path './.git/*' \
+          -print -quit 2>/dev/null)
+        LANG_COUNT="${LANG_FILE##*.}"
 
         case "$LANG_COUNT" in
           go) echo "language=go" >> $GITHUB_OUTPUT ;;
