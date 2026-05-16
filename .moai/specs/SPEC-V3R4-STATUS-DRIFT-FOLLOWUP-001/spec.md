@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001
-version: "0.1.1"
-status: in-progress
+version: "0.1.2"
+status: completed
 created: 2026-05-16
 updated: 2026-05-16
 author: GOOS행님
@@ -27,6 +27,8 @@ related_specs:
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
 | 0.1.0   | 2026-05-16 | GOOS행님 / manager-spec | 초기 draft. SPEC-V3R4-LINT-SKIP-CLEANUP-001 (PR #937, main `758341089`) 머지 직후 lint.skip 회피책이 mask하던 real status drift 64건이 노출됨. walker filter (PR #933)는 sweep commit (`chore(spec):`) 만 skip하므로 frontmatter status가 git-implied status보다 ahead/behind인 real mismatch 64건 잔존. 사용자 명시 옵션 (a) status field bulk synchronization 단일 scope. 옵션 (b) walker filter 확장 / (c) rule deprecation 모두 OUT OF SCOPE. 8 패턴 (A: 50건, B: 4건, C: 6건, D: 1건, E: 1건, F: 1건, G: 1건, H: 3건) 으로 분류 + 5 wave 처리 전략. plan-in-main + worktree 미사용 정책 (per `feedback_worktree_never_use`) 적용. BODP 평가: A=¬ B=¬ C=¬ → main @ origin/main. |
+| 0.1.1   | 2026-05-16 | GOOS행님 / manager-develop | run-phase 완료 표기 + Wave 5 sync-phase 위임 결정. Wave 2 (Pattern A 47건 status downgrade) + Wave 3 (Pattern B 4건 + Pattern C 6건) + Wave 4 (terminalStatusEnum TDD M1-M5 + 추가 20건 drift fix) 누적. lint suite 결과: 64 → 4 (Pattern H 잔여). Pattern H closeout은 sync commit 자체가 git-implied 끌어올림 commit이 되도록 sync-phase에 위임. |
+| 0.1.2   | 2026-05-16 | GOOS행님 / manager-docs (sync-phase) | sync-phase closeout. **AC-SDF-001 binary 0 달성**. Pattern H 잔여 4건 (LSC/LSCSK/SPECLINT-DEBT/SDF-001 자신) frontmatter `status: completed` + `updated: 2026-05-16` 통일 + `sync(spec):` prefix commit으로 `shouldSkipCommitTitle()` walker filter 우회 → git-implied 'planned' → 'completed' 끌어올림. SDF-001 자체 status `in-progress → completed`. CHANGELOG.md Unreleased 섹션에 SDF-001 entry 추가 (ko + en). 통합 PR #939 (run + sync commit 통합) 전략 채택 — admin squash merge 시 main 단일 commit 진입. Lessons #SDF-001-sync-prefix 후보: `chore(spec):`는 walker filter SKIP 대상이므로 sync commit은 `sync(spec):` / `feat(spec):` prefix 사용 필수. Lesson 후보 #SPECLINT-DEBT-002: plan workflow 9-field frontmatter vs lint.go 12-field canonical dual-schema 발견 (PR #939 CI에서 `b2b7f32c7` hotfix 별도 commit 발생). divergence 분석: spec-anchored lifecycle, plan을 그대로 따랐으므로 spec.md/plan.md/design.md/research.md 본문 비-수정 (frontmatter + HISTORY entry만). MX tag: tagging 대상 신규 코드 없음 (frontmatter + CHANGELOG 메타데이터 변경 only). Worktree HARD rule 적용 안 함 (feedback_worktree_never_use 정책 일관). |
 
 ---
 
