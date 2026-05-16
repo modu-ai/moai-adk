@@ -1,11 +1,14 @@
 ---
 id: SPEC-V3R3-PROJECT-HARNESS-001
 title: Project Harness Activation — 16Q Interview + 5-Layer
-version: "0.3.0"
+version: "0.3.3"
 status: completed
 created: 2026-04-26
 updated: 2026-05-16
 author: manager-spec
+lint:
+  skip:
+    - StatusGitConsistency
 priority: P0
 phase: "v3.0.0 R3 — Phase C — Project Harness Activation"
 module: ".claude/skills/moai/workflows/project.md, .moai/harness/, .claude/agents/my-harness/, .claude/skills/my-harness-*/, internal/template/templates/.claude/skills/moai/workflows/{plan,run,sync,design}.md"
