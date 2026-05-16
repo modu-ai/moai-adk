@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-RT-007
 title: "Hardcoded Path Fix + Versioned Migration"
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created: 2026-04-23
-updated: 2026-05-12
+updated: 2026-05-16
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
@@ -29,6 +29,7 @@ tags: "path, hardcoded, migration, v3r2, breaking, runtime, shell-wrappers"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1 | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-sync) | B3 sync-up: 전용 sync(spec) 커밋 추가 — FOLLOWUP-002 plan commit override 해소 (walker git-implied completed 재확인). |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses CRITICAL path hardcoding P-H04 across all 26 shell wrappers, plus silent migration framework P-C06. |
 
 ---
