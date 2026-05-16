@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -94,21 +95,28 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 }
 
 // gitLogWindowSize는 getGitImpliedStatus 가 git log에서 최대 몇 개의 commit을 조회할지 결정한다.
+//
 // @MX:NOTE: [AUTO] N=50 결정 근거: SPEC당 평균 git log 매칭 commit이 5-10건이므로 5-10x 안전 여유.
-// @MX:REASON: SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 OQ1 — N 값 변경 시 plan.md §7 OQ1 참조.
+// @MX:REASON: SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 OQ1 (원본 결정) +
+//
+//	SPEC-V3R4-LINT-SPECID-GREP-FIX-001 (word-boundary 필터 영향 평가 — 변동 없음).
+//	N 값 변경 시 plan.md §7 OQ1 참조.
 const gitLogWindowSize = 50
 
 // getGitImpliedStatus는 SPEC-ID에 대한 git log를 분석하여 lifecycle status를 추론한다.
 //
-// 본 함수는 SPEC-ID를 언급하는 git commit을 newest-to-oldest 순회하면서
-// chore(spec): sweep commit 등 lifecycle 추론에서 의도적으로 제외되는 commit을 건너뛰고,
-// 의미 있는 분류(ClassifyPRTitle이 비어있지 않은 status를 반환)를 가진 첫 commit의 status를 채택한다.
+// walker는 두 필터를 순차 적용한다:
+//  1. chore-skip 필터 (LSCSK-001): chore(spec): sweep commit 제외
+//  2. word-boundary 필터 (LSGF-001): substring collision (예: HARNESS-001 vs HARNESS-NAMESPACE-001) 차단
 //
+// 의미 있는 분류(ClassifyPRTitle이 비어있지 않은 status를 반환)를 가진 첫 commit의 status를 채택한다.
 // 모든 N개 commit이 skip 대상이면 error를 반환하고,
 // 상위 lint rule(StatusGitConsistencyRule)은 이를 skip 조건으로 처리한다.
 //
 // @MX:ANCHOR: [AUTO] getGitImpliedStatus — git-implied status 추론 진입점
-// @MX:REASON: StatusGitConsistencyRule.Check + DetectDrift 두 곳에서 호출 (fan_in=2); walker filter 도입으로 SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 핵심 함수
+// @MX:REASON: StatusGitConsistencyRule.Check + DetectDrift 두 곳에서 호출 (fan_in=2);
+//
+//	LSCSK-001 (chore-skip) + LSGF-001 (word-boundary) 두 결함 fix가 적용된 core walker.
 func getGitImpliedStatus(specID string) (string, error) {
 	// 기본 브랜치 결정 — main 우선, 없으면 master (현행 동작 유지)
 	branch := "main"
@@ -147,6 +155,14 @@ func getGitImpliedStatus(specID string) (string, error) {
 			continue
 		}
 
+		// word-boundary SPEC-ID 필터 (LSGF-001) — substring collision 차단
+		// 예: specID="SPEC-V3R4-HARNESS-001"이 "SPEC-V3R4-HARNESS-NAMESPACE-001"에 매칭되지 않도록
+		// @MX:NOTE: [AUTO] LSGF-001 word-boundary filter
+		// @MX:REASON: NAMESPACE supersede commit이 walker first match로 채택되던 false-positive 차단
+		if !commitMatchesSPECID(commitTitle, specID) {
+			continue
+		}
+
 		// commit title 분류
 		_, status, err := ClassifyPRTitle(commitTitle)
 		if err != nil {
@@ -168,6 +184,25 @@ func getGitImpliedStatus(specID string) (string, error) {
 	// @MX:NOTE: [AUTO] walker N=50 소진 시 unknown signal — lint rule이 skip 처리하여 false-positive 방지
 	// @MX:REASON: 모든 commit이 skip pattern인 SPEC은 git-consistency 검사 대상에서 제외 (fail-safe)
 	return "", fmt.Errorf("no classifiable commit within window of %d for %s", gitLogWindowSize, specID)
+}
+
+// commitMatchesSPECID는 commit title에 정확한 SPEC-ID 토큰이 포함되는지 확인한다.
+//
+// git log --grep=<specID>는 substring 매칭을 수행하므로,
+// 예를 들어 specID="SPEC-V3R4-HARNESS-001" 검색이
+// "plan(spec): SPEC-V3R4-HARNESS-NAMESPACE-001 ..." commit에도 매칭되는 결함이 있다.
+//
+// 본 함수는 ExtractSPECIDs (transitions.go)를 사용해 정확한 SPEC-ID 토큰만 추출한 후,
+// target specID가 그 set에 포함되어 있는지 확인한다.
+//
+// @MX:NOTE: [AUTO] commitMatchesSPECID — word-boundary SPEC-ID 필터 (LSGF-001)
+// @MX:REASON: SPEC-V3R4-LINT-SPECID-GREP-FIX-001 — git log --grep substring 매칭이
+//
+//	NAMESPACE supersede commit을 walker first match로 채택하던 결함을 차단.
+//	ExtractSPECIDs 재사용으로 외부 의존성 0.
+func commitMatchesSPECID(commitTitle, specID string) bool {
+	extracted := ExtractSPECIDs(commitTitle)
+	return slices.Contains(extracted, specID)
 }
 
 // shouldSkipCommitTitle은 commit title이 알려진 skip pattern에 매칭되는지 확인한다.
