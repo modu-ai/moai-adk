@@ -90,7 +90,7 @@ See `.claude/skills/moai/workflows/run.md` § Mode Dispatch and `.claude/skills/
 
 Pipeline-classified subcommands MUST satisfy:
 - Three deterministic phases (localize → repair → validate); no LLM dispatcher selects the next phase.
-- `Agent()` invocations are permitted only as **executor delegation within a phase** (e.g., `expert-testing` runs the coverage tool); never to decide phase order.
+- `Agent()` invocations are permitted only as **executor delegation within a phase** (e.g., `manager-develop` runs the coverage tool); never to decide phase order.
 - When localize finds zero targets, exit with status `no-op` and exit code 0.
 - When repair encounters an unresolvable error, fail-fast (no multi-agent fallback).
 - The CI guard `internal/template/agentless_audit_test.go` enforces the no-LLM-dispatch rule via static text scan.

@@ -17,7 +17,6 @@ permissionMode: acceptEdits
 memory: project
 skills:
   - moai-foundation-core
-  - moai-workflow-research
 ---
 
 # Researcher - Self-Research Agent

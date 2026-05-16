@@ -16,7 +16,6 @@ memory: project
 skills:
   - moai-foundation-core
   - moai-foundation-quality
-  - moai-tool-ast-grep
 hooks:
   SubagentStop:
     - hooks:

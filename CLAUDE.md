@@ -103,9 +103,9 @@ For detailed design rules, see .claude/rules/moai/design/constitution.md
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
 
-### Manager Agents (7)
+### Manager Agents (8)
 
-spec, cycle, docs, quality, project, strategy, git
+spec, develop, docs, quality, project, strategy, brain, git
 
 ### Expert Agents (6)
 

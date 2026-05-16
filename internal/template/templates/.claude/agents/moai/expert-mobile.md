@@ -15,7 +15,6 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-domain-mobile
   - moai-workflow-testing
 hooks:
   PreToolUse:
