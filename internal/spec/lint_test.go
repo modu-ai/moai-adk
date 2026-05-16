@@ -664,6 +664,73 @@ func TestStatusCaseNormalizationRule_Uppercase(t *testing.T) {
 	}
 }
 
+// TestFrontmatterSchemaRule_Valid12Field는 12-field canonical fixture에서
+// FrontmatterInvalid finding이 0건임을 검증한다.
+// AC-SDBT-002-002 (valid case): canonical 12 fields → 0 FrontmatterInvalid findings.
+func TestFrontmatterSchemaRule_Valid12Field(t *testing.T) {
+	linter := spec.NewLinter(spec.LinterOptions{
+		RegistryPath: testRegistryPath(),
+		BaseDir:      testdataDir,
+	})
+
+	path := filepath.Join(testdataDir, "frontmatter-schema", "valid-12-field", "spec.md")
+	report, err := linter.Lint([]string{path})
+	if err != nil {
+		t.Fatalf("Lint returned unexpected error: %v", err)
+	}
+
+	// FrontmatterInvalid findings만 추출
+	schemaFindings := findingsForCode(report.Findings, "FrontmatterInvalid")
+	if len(schemaFindings) != 0 {
+		t.Errorf("valid 12-field fixture에서 FrontmatterInvalid finding 0건 기대, 실제 %d건: %v",
+			len(schemaFindings), schemaFindings)
+	}
+}
+
+// TestFrontmatterSchemaRule_SnakeCaseRejected는 snake_case alias만 있는 fixture에서
+// FrontmatterInvalid finding이 정확히 3건 (created, updated, tags 누락)임을 검증한다.
+// AC-SDBT-002-002: snake_case aliases only (created_at/updated_at/labels) → exactly 3 FrontmatterInvalid findings.
+func TestFrontmatterSchemaRule_SnakeCaseRejected(t *testing.T) {
+	linter := spec.NewLinter(spec.LinterOptions{
+		RegistryPath: testRegistryPath(),
+		BaseDir:      testdataDir,
+	})
+
+	path := filepath.Join(testdataDir, "frontmatter-schema", "invalid-snake-case-only", "spec.md")
+	report, err := linter.Lint([]string{path})
+	if err != nil {
+		t.Fatalf("Lint returned unexpected error: %v", err)
+	}
+
+	// FrontmatterInvalid findings만 추출
+	schemaFindings := findingsForCode(report.Findings, "FrontmatterInvalid")
+
+	// 정확히 3건 (created, updated, tags 누락)
+	if len(schemaFindings) != 3 {
+		t.Fatalf("snake_case-only fixture에서 FrontmatterInvalid finding 정확히 3건 기대, 실제 %d건: %v",
+			len(schemaFindings), schemaFindings)
+	}
+
+	// 각 finding이 예상 field를 언급하는지 확인
+	expectedFields := map[string]bool{
+		"created": false,
+		"updated": false,
+		"tags":    false,
+	}
+	for _, f := range schemaFindings {
+		for field := range expectedFields {
+			if strings.Contains(f.Message, "Frontmatter required field missing: "+field) {
+				expectedFields[field] = true
+			}
+		}
+	}
+	for field, found := range expectedFields {
+		if !found {
+			t.Errorf("FrontmatterInvalid finding에서 field %q 언급 없음. findings: %v", field, schemaFindings)
+		}
+	}
+}
+
 // TestStatusCaseNormalizationRule_MixedCase는 혼합 케이스 status에서 오류를 보고함을 검증한다.
 func TestStatusCaseNormalizationRule_MixedCase(t *testing.T) {
 	doc := &spec.SPECDoc{
