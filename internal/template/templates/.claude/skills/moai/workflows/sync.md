@@ -191,19 +191,26 @@ If the filtered list is empty, skip to Phase 0.1 with log line: "Phase 0.08: no 
 
 #### Step 0.08.3: Refresh Invocation
 
-Invoke the existing `moai-domain-db-docs` skill with `refresh` mode:
+Invoke the internal db-schema-sync hook subcommand directly via Bash:
 
-- Input: filtered migration file list, project language, `db.yaml` config
+```
+moai hook db-schema-sync
+```
+
+- Input (stdin JSON): filtered migration file list, project language, `db.yaml` config — read from current working directory by the Go handler
+- Implementation: `internal/hook/dbsync/db_schema_sync.go` (SPEC-DB-SYNC-001, registered as `moai hook db-schema-sync` subcommand in `internal/cli/hook.go`)
 - Output: updated `.moai/project/db/schema.md`, `erd.mmd`, `migrations.md`; refresh report
 - Changes are staged for the sync commit — no separate commit is created
 
 On refresh failure (parser error, template conflict): log the error, include in sync report under "DB doc refresh warnings", and continue to Phase 0.1. Non-blocking by contract.
 
+The `/moai db` slash command was retired (Bundle A, 2026-05-16) — sync workflow is now the sole entry point for db doc refresh. Internal `moai hook db-schema-sync` Go subcommand remains for hook event handlers and direct invocation by sync workflow.
+
 #### Step 0.08.4: Advisory Path
 
 When migration files changed but `db.auto_sync: false`:
 
-- Emit one-line advisory to the sync report: "N migration files changed but db.auto_sync is disabled — run `/moai db refresh` manually to update derived docs"
+- Emit one-line advisory to the sync report: "N migration files changed but db.auto_sync is disabled — set `db.auto_sync: true` in `.moai/config/sections/db.yaml` to enable automatic db doc refresh on sync"
 - Do not invoke refresh automatically — respect user opt-out
 
 Output: phase_result with one of `skipped | refreshed | advised | failed` and the migration file count.
