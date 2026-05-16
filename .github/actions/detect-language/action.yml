@@ -11,10 +11,13 @@ runs:
     - id: detect
       shell: bash
       run: |
+        # @MX:NOTE: [AUTO] SIGPIPE-safe pipeline — head -1 → awk NR==1{print;exit}
+        # @MX:REASON: SPEC-V3R4-CI-INFRA-FIX-001 D-1 (A2). head 의 implicit
+        # stdin close 가 upstream find 와 broken-pipe race 유발 → exit 141 incident 4건.
         LANG_COUNT=$(find . -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" | \
           grep -v node_modules | grep -v vendor | grep -v ".git" | \
-          head -1 | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -1 | \
-          awk '{print $2}')
+          awk 'NR==1{print;exit}' | sed 's/.*\.//' | sort | uniq -c | sort -rn | \
+          awk 'NR==1{print $2;exit}')
 
         case "$LANG_COUNT" in
           go) echo "language=go" >> $GITHUB_OUTPUT ;;
