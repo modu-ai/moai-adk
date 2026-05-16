@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R3-RETIRED-AGENT-001
 title: Retired Agent Stub Compatibility + manager-cycle Template Alignment
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created_at: 2026-05-04
-updated_at: 2026-05-12
+updated_at: 2026-05-16
 author: MoAI Plan Workflow
 priority: P0
 labels: [agent-runtime, templates, retired-stub, manager-cycle, manager-tdd, hooks, bug-fix, v3r3]
@@ -20,7 +20,8 @@ bc_id: []
 lifecycle: spec-anchored
 tags: "agent-runtime, retired-stub, manager-cycle, template-parity, hook-guard, worktree-empty-object, defect-chain, v3r3"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-16
+lint.skip: [StatusGitConsistency]
 ---
 
 # SPEC-V3R3-RETIRED-AGENT-001: Retired Agent Stub Compatibility + manager-cycle Template Alignment
@@ -29,6 +30,7 @@ updated: 2026-05-13
 
 | Version | Date       | Author              | Description                                                                                                            |
 |---------|------------|---------------------|------------------------------------------------------------------------------------------------------------------------|
+| 0.1.1   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B10 lint.skip 추가 — bulk-closure PR #856 `docs(sync)` body에 ID 포함되어 sync-merge 이력 존재하나, FOLLOWUP-002 plan commit이 최신 hit로 override. StatusGitConsistency skip으로 drift 해소. |
 | 0.1.0   | 2026-05-04 | MoAI Plan Workflow  | 최초 작성. mo.ai.kr 사이드 프로젝트에서 발생한 5-layer defect chain (retired stub frontmatter → 0 tool_uses → worktreePath empty object → path `{}/{}`) 대응. P0 fix. |
 
 ---

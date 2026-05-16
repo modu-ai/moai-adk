@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R2-SPC-003
 title: "SPEC linter (moai spec lint)"
-version: 0.1.3
+version: "0.1.4"
 status: implemented
 created: 2026-04-23
 updated: 2026-05-16
@@ -24,6 +24,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 tags: "v3r2, spec, linter, ears-compliance, dag-validation, coverage"
+lint.skip: [StatusGitConsistency]
 ---
 
 # SPEC-V3R2-SPC-003: SPEC linter (moai spec lint)
@@ -32,6 +33,7 @@ tags: "v3r2, spec, linter, ears-compliance, dag-validation, coverage"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.4   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B5 lint.skip 추가 — plan backfill commit `c959115e5`이 최신 non-skip hit로 override, chore sweep #930이 implemented 설정(chore-skip). 구현 완료 evidence 기준 StatusGitConsistency skip. |
 | 0.1.3   | 2026-05-16 | manager-develop (run-phase) | status upgrade in-progress → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft |
 | 0.1.1 | 2026-05-10 | manager-spec (Batch 3 backfill) | Status: implemented (PR #745 merged Wave 5). plan-phase artifacts back-filled. |

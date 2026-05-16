@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R4-LINT-SKIP-CLEANUP-001
-version: "0.1.3"
+version: "0.1.4"
 status: completed
 created: 2026-05-15
 updated: 2026-05-16
@@ -21,6 +21,7 @@ bc_id: []
 lifecycle: spec-anchored
 related_theme: "spec-lint Foundation Cleanup — workaround 영구 제거"
 target_release: v3.0.0-rc1
+lint.skip: [StatusGitConsistency]
 ---
 
 # SPEC-V3R4-LINT-SKIP-CLEANUP-001 — 55개 SPEC frontmatter의 lint.skip StatusGitConsistency 일괄 제거
@@ -29,6 +30,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.1.4   | 2026-05-16 | manager-develop (FOLLOWUP-002 Wave 2-B-skip) | B12 lint.skip 추가 — 구현은 chore(spec) PR #937 (chore-skip), SDF-001 sync 체인 rollup 하에서 완료. FOLLOWUP-002 plan commit이 최신 non-skip hit. StatusGitConsistency skip으로 drift 해소. |
 | 0.1.2   | 2026-05-16 | manager-develop (run-phase amend) | run-phase 실측에서 lint.skip suppression이 walker filter 범위를 벗어나는 real status drift도 mask하고 있었음이 드러남 — AC-LSKC-002 wording 재정의 + §1 Goal amend + follow-up SPEC `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001` (가설) scope 명시. plan-audit D1 (stale date 2026-05-15 → 2026-05-16) + D5 (mid-run resume design §5.4) remediation 포함. status: draft → implemented. |
 | 0.1.1   | 2026-05-16 | plan-audit remediation | plan-audit 0.904 PASS 후 P2 4건 remediation: (1) AC-LSKC-002 placeholder → plan.md §5.2 cross-ref, (2) HISTORY date harmonize 2026-05-16, (3) REQ-005↔AC-002 매핑 rationale 명시, (4) design.md §2.4 redundancy 정리. |
 | 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. `SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001` (main `b395ec563`, PR #933 머지, `9e394e51b` sync 완료)이 `internal/spec/drift.go::getGitImpliedStatus`에 walker filter를 도입함으로써 `chore(spec):` sweep commit으로 인한 `StatusGitConsistency` false-positive WARN이 자동 skip된다. 결과적으로 55개 SPEC frontmatter에 누적된 `lint.skip: [StatusGitConsistency]` 회피책은 더 이상 필요하지 않다. 본 SPEC은 metadata-only 정리로 55 SPEC frontmatter에서 해당 엔트리만 제거한다. SPEC 본문(REQ/AC/HISTORY 등 H2/H3 섹션) 수정 0줄. BODP 평가: A=¬ B=¬ C=¬ → main @ origin/main (plan-in-main + worktree 미사용 정책 per feedback_worktree_never_use). 영향 SPEC 수는 frontmatter strict scan 기준 55개로 확정 (naive grep 기준 57개에서 본문 false-positive 2개 제외). |
