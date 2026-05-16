@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R3-BRAIN-001
-version: "0.1.1"
-status: completed
+version: "0.1.2"
+status: implemented
 created_at: 2026-05-04
-updated_at: 2026-05-10
+updated_at: 2026-05-16
 author: MoAI Plan Workflow
 priority: P1
 labels: [brain, ideation, workflow, handoff, claude-design, v3r3]
@@ -28,6 +28,7 @@ updated: 2026-05-16
 
 | Version | Date       | Author | Description |
 |---------|------------|--------|-------------|
+| 0.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 0.1.0   | 2026-05-04 | MoAI Plan Workflow | Initial SPEC — `/moai brain` pre-spec ideation workflow with 7 phases producing proposal.md + Claude Design handoff package. Self-bootstrap pattern: SPEC-V3R3-WEB-001 will be ideated USING this workflow once shipped. |
 

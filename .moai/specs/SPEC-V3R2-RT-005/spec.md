@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-RT-005
 title: "Multi-Layer Settings Resolution with Provenance Tags"
-version: "0.1.2"
-status: completed
+version: "0.1.3"
+status: implemented
 created: 2026-04-23
 updated: 2026-05-16
 author: GOOS
@@ -31,6 +31,7 @@ tags: "settings, provenance, multi-layer, v3r2, breaking, runtime, config"
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C04 (no config provenance, HIGH) and prerequisites P-H06 (5 yaml sections without Go loaders, CRITICAL). |
 | 0.1.1 | 2026-05-10 | manager-spec | Frontmatter `dependencies:` synced with §9.1 — added `SPEC-V3R2-SCH-001` and `SPEC-V3R2-RT-004` (D9 fix per plan-auditor v1 audit report 2026-05-10). Body §1-§10 unchanged; only frontmatter and HISTORY edited. |
 | 0.1.2   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
+| 0.1.3   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 
 ---
 

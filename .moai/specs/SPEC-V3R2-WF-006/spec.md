@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-WF-006
 title: Output Styles Alignment (MoAI, Einstein)
-version: "1.1.1"
-status: completed
+version: "1.1.2"
+status: implemented
 created: 2026-04-23
 updated: 2026-05-16
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
@@ -28,6 +28,7 @@ tags: "output-styles, moai, einstein, claude-code-schema, precedence, v3"
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — align MoAI + Einstein styles, schema, loading                                      |
 | 1.1.0   | 2026-04-25 | Wave 2 | Addressed plan-audit warnings (OPEN-A resolved, REQ-008 sink concretized, HUMAN GATE → markers)  |
 | 1.1.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
+| 1.1.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 
 ### 2026-04-25 (v1.1.0) — Plan-audit follow-up
 

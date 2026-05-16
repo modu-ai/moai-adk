@@ -1,9 +1,9 @@
 ---
 id: SPEC-WF-AUDIT-GATE-001
-version: "1.0.1"
-status: completed
+version: "1.0.2"
+status: implemented
 created_at: 2026-04-25
-updated_at: 2026-04-25
+updated_at: 2026-05-16
 author: GOOS
 priority: High
 labels: [workflow, plan-audit, gate, governance, dogfood]
@@ -25,6 +25,7 @@ tags: "legacy"
 
 | Version | Date       | Author | Description |
 |---------|------------|--------|-------------|
+| 1.0.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → implemented — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 2). |
 | 1.0.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
 | 1.0.0   | 2026-04-25 | GOOS   | Initial draft. v3R2 35-SPEC 일괄 점검에서 SPEC-SKILL-001(892B, commit-note 수준)이 plan을 통과해 archive까지 도달한 사고를 반영해 Plan→Run 전이 사이에 plan-auditor 의무 게이트를 신설. |
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-CATALOG-001
-version: "0.3.1"
-status: completed
+version: "0.3.2"
+status: in-progress
 created: 2026-05-12
 updated: 2026-05-16
 author: GOOS행님
@@ -29,6 +29,7 @@ coverage: "84.0% (LoadCatalog: 100%)"
 | 0.2.0 | 2026-05-12 | manager-spec | plan-auditor iter 1 FAIL (0.72) 11 defects 반영: D1 (REQ-013 자체 모순 제거), D2 (REQ-027 duplicate sentinel 추가), D3 (37 skills + 28 agents = 65 entries 카운트 통일 + "catalog entry" 정의 명시), D4 (REQ-021 vacuously-true 재작성, workflows flat-md layout 반영), D5 (gen-catalog-hashes.go [NEW] 등록), D6 (15 untracked REQ → AC mapping 보강), D7 (deployer.go no-modify 명확화), D9 (REQ-024 약화). |
 | 0.3.0 | 2026-05-12 | sync | status: draft → completed. PR #862 (M1-M5 implementation, main `ec80c8845`) + PR #863 (eval-1 follow-up: EC3 hash sentinel `t.Logf` → `t.Errorf`, LoadCatalog coverage 71.4% → 100%, main `0d4bf14ef`) 모두 머지. evaluator-active 독립 eval PASS 0.82 (2 required fixes 모두 PR #863에서 해결). Implementation Notes 섹션 추가. |
 | 0.3.1   | 2026-05-16 | manager-develop (run-phase) | lint.skip StatusGitConsistency 회피책 제거 — SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 walker filter 머지로 불필요해짐. |
+| 0.3.2   | 2026-05-16 | manager-develop (run-phase) | status downgrade completed → in-progress — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3). |
 
 ## Overview
 
