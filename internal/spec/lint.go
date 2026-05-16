@@ -499,7 +499,16 @@ func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	return findings
 }
 
-// FrontmatterSchemaRule checks SPEC frontmatter schema
+// FrontmatterSchemaRule는 SPEC frontmatter 스키마를 검증한다.
+// canonical 12개 필드 (id, title, version, status, created, updated, author,
+// priority, phase, module, lifecycle, tags) 중 하나라도 누락되면 FrontmatterInvalid
+// finding을 생성한다.
+//
+// snake_case alias (created_at, updated_at, labels)는 SPECFrontmatter 구조체의
+// yaml 태그와 일치하지 않아 YAML 디코더가 무시하므로 empty string으로 처리되어
+// 동일한 finding이 발생한다.
+//
+// SSOT: .claude/rules/moai/development/spec-frontmatter-schema.md
 // Implements REQ-SPC-003-006
 type FrontmatterSchemaRule struct{}
 

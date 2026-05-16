@@ -439,35 +439,41 @@ Input: Approved plan from Phase 1B, validated SPEC ID from Phase 1.5.
 File generation (all three files created simultaneously):
 
 - .moai/specs/SPEC-{ID}/spec.md
-  - YAML frontmatter with **9 required fields** (canonical schema — see checklist below)
+  - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md`)
   - HISTORY section immediately after frontmatter
   - Complete EARS structure with all 5 requirement types
   - Content written in conversation_language
 
 #### [HARD] Pre-Write Frontmatter Checklist
 
-[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 9 required fields AND rejects 4 legacy aliases. This checklist blocks the 2026-04-21 mass-SPEC-drift pattern where 30 SPECs shipped with `created`/`updated` (wrong) and no `labels`.
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and `internal/spec/lint.go` `FrontmatterSchemaRule`. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
-Required 9 fields (canonical order):
+Required 12 fields (canonical order):
 - [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `title: "Human-readable title"` — quoted string
 - [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
 - [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
-- [ ] `created_at: YYYY-MM-DD` — ISO date (NEVER `created`, NEVER `date`)
-- [ ] `updated_at: YYYY-MM-DD` — ISO date (NEVER `updated`)
+- [ ] `created: YYYY-MM-DD` — ISO date (NEVER `created_at`, NEVER `date`)
+- [ ] `updated: YYYY-MM-DD` — ISO date (NEVER `updated_at`)
 - [ ] `author: <name>` — string, not empty
-- [ ] `priority: High|Medium|Low|Critical` — Title-case (alt: P0|P1|P2|P3 uppercase)
-- [ ] `labels: [tag1, tag2, ...]` — YAML array, lowercase tags
-- [ ] `issue_number: null` — integer or null (0 if --no-issue)
+- [ ] `priority: P1` — uppercase Pn style (P0|P1|P2|P3) or High|Medium|Low|Critical
+- [ ] `phase: "vX.Y.Z target"` — release phase string
+- [ ] `module: "path/to/module"` — affected module path
+- [ ] `lifecycle: spec-anchored` — enum: spec-anchored | spec-lite | exploratory
+- [ ] `tags: "tag1, tag2, ..."` — comma-separated string (NOT `labels:`, NOT YAML array)
+
+Optional fields (do NOT include unless needed):
+- `issue_number: null` — integer or null (omit entirely when not tracking GitHub issue)
 
 Rejected legacy aliases (fail closed — do NOT accept):
-- `created:` (use `created_at:`)
-- `updated:` (use `updated_at:`)
+- `created_at:` (use `created:`)
+- `updated_at:` (use `updated:`)
+- `labels:` (use `tags:`)
 - `spec_id:` (use `id:`)
-- `title:` in frontmatter (put in H1 heading, not frontmatter)
 
 Pre-write gate behavior:
 1. manager-spec generates frontmatter draft in memory.
-2. manager-spec self-audits against the 9-field checklist above.
+2. manager-spec self-audits against the 12-field checklist above.
 3. If any required field is missing OR any rejected alias appears: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
 4. Phase 2.3 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
 

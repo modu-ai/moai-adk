@@ -157,6 +157,39 @@ After all research tasks complete and annotation cycle is approved:
 3. Delegate SPEC creation to manager-spec subagent (NOT a teammate) with all findings
 4. Include: codebase analysis (research.md), requirements, technical design, edge cases, reference implementations
 
+#### [HARD] Pre-Write Frontmatter Checklist
+
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and `internal/spec/lint.go` `FrontmatterSchemaRule`. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
+
+Required 12 fields (canonical order):
+- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `title: "Human-readable title"` — quoted string
+- [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
+- [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
+- [ ] `created: YYYY-MM-DD` — ISO date (NEVER `created_at`, NEVER `date`)
+- [ ] `updated: YYYY-MM-DD` — ISO date (NEVER `updated_at`)
+- [ ] `author: <name>` — string, not empty
+- [ ] `priority: P1` — uppercase Pn style (P0|P1|P2|P3) or High|Medium|Low|Critical
+- [ ] `phase: "vX.Y.Z target"` — release phase string
+- [ ] `module: "path/to/module"` — affected module path
+- [ ] `lifecycle: spec-anchored` — enum: spec-anchored | spec-lite | exploratory
+- [ ] `tags: "tag1, tag2, ..."` — comma-separated string (NOT `labels:`, NOT YAML array)
+
+Optional fields (do NOT include unless needed):
+- `issue_number: null` — integer or null (omit entirely when not tracking GitHub issue)
+
+Rejected legacy aliases (fail closed — do NOT accept):
+- `created_at:` (use `created:`)
+- `updated_at:` (use `updated:`)
+- `labels:` (use `tags:`)
+- `spec_id:` (use `id:`)
+
+Pre-write gate behavior:
+1. manager-spec generates frontmatter draft in memory.
+2. manager-spec self-audits against the 12-field checklist above.
+3. If any required field is missing OR any rejected alias appears: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
+4. Phase 2.3 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
+
 SPEC output at: .moai/specs/SPEC-XXX/spec.md
 
 ## Phase 4: User Approval

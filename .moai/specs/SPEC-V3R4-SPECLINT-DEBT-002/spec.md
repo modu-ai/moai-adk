@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R4-SPECLINT-DEBT-002
 version: "0.2.0"
-status: draft
+status: planned
 created: 2026-05-16
 updated: 2026-05-16
 author: GOOS행님
