@@ -1,0 +1,8 @@
+# Pattern C: implemented → in-progress (총 6건)
+# frontmatter status 'implemented' / git-implied status 'in-progress'
+SPEC-UTIL-001
+SPEC-V3R2-CON-001
+SPEC-V3R2-CON-002
+SPEC-V3R2-CON-003
+SPEC-V3R2-RT-001
+SPEC-V3R2-SPC-003

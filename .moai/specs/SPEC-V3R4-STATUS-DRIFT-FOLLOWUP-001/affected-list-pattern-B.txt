@@ -1,0 +1,6 @@
+# Pattern B: completed → in-progress (총 4건)
+# frontmatter status 'completed' / git-implied status 'in-progress'
+SPEC-CORE-001
+SPEC-LOOP-001
+SPEC-V3R4-CATALOG-001
+SPEC-V3R4-HARNESS-003

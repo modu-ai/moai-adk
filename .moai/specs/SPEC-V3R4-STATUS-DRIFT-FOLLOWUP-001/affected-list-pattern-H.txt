@@ -1,0 +1,6 @@
+# Pattern H: self-drift cleanup chain (총 3건)
+# 이 SPEC 자신의 cleanup chain — sync-phase에서 처리 (OQ4 결정: sync-phase 위임)
+# 상태: git-implied 'planned' (plan commit만 존재, run/sync 아직 없음)
+SPEC-V3R4-LINT-SKIP-CLEANUP-001
+SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001
+SPEC-V3R4-SPECLINT-DEBT-001
