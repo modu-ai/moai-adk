@@ -1,13 +1,23 @@
 ---
 id: SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001
-version: "0.1.0"
+version: "0.1.1"
 status: in-progress
-created_at: 2026-05-16
-updated_at: 2026-05-16
+created: 2026-05-16
+updated: 2026-05-16
 author: GOOS행님
 priority: P1
-labels: [v3r4, lint, spec-frontmatter, status-drift, plan-in-main]
+tags: "v3r4, lint, spec-frontmatter, status-drift, plan-in-main, status-git-consistency, terminal-state, foundation"
 issue_number: null
+title: 64건 StatusGitConsistency drift 일괄 동기화 (LSKC-001 cleanup 후속)
+phase: "v3.0.0 R4 — Foundation Cleanup"
+module: ".moai/specs/*/spec.md (75 files) + internal/spec/lint.go (terminalStatusEnum)"
+lifecycle: spec-anchored
+breaking: false
+bc_id: []
+related_specs:
+  - SPEC-V3R4-LINT-SKIP-CLEANUP-001
+  - SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001
+  - SPEC-V3R4-SPECLINT-DEBT-001
 ---
 
 # SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 — 64 SPEC frontmatter status 일괄 동기화 (LSKC-001 cleanup으로 노출된 real drift 해소)
