@@ -4,6 +4,14 @@ on:
   pull_request:
     types: [closed]
 
+# @MX:NOTE: [AUTO] minimum permissions scope for git push + gh issue create
+# @MX:REASON: SPEC-V3R4-CI-INFRA-FIX-001 D-2 (B1). default workflow scope
+# (contents: read) 가 line 107 git push origin main 을 403 으로 실패시키던
+# 결함 영구 해소. NAMESPACE-001 force-push 후 incident 1건 root cause fix.
+permissions:
+  contents: write    # git push origin main (line 107)
+  issues: write      # gh issue create fallback (line 95-99)
+
 jobs:
   spec-status-sync:
     runs-on: ubuntu-latest

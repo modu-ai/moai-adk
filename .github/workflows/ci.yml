@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -94,6 +96,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -118,6 +122,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -155,6 +161,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -194,6 +202,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
         uses: actions/setup-go@v6

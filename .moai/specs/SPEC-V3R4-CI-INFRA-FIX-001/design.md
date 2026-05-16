@@ -4,9 +4,10 @@
 
 ## HISTORY
 
-| Version | Date       | Author       | Description |
-|---------|------------|--------------|-------------|
-| 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. D-1 (SIGPIPE remediation) + D-2 (permissions scope) + D-3 (fetch-depth: 0 scope) + D-4 (backward compatibility) 4개 architectural decision. run-phase 적용 전 plan-auditor 검토 대상. |
+| Version | Date       | Author          | Description |
+|---------|------------|-----------------|-------------|
+| 0.1.1   | 2026-05-16 | manager-develop | Run-phase hotfix. D-1 A2 (awk 'NR==1{print;exit}') 가 SIGPIPE 미해결로 확인됨 — PR #955 4 review workflow에서 broken-pipe exit 2 재현. A3 (find -print -quit 단일-step) 로 hotfix 적용. design.md §2.3 업데이트, §2.5 신규 post-implementation note 추가. |
+| 0.1.0   | 2026-05-16 | manager-spec    | 초기 draft. D-1 (SIGPIPE remediation) + D-2 (permissions scope) + D-3 (fetch-depth: 0 scope) + D-4 (backward compatibility) 4개 architectural decision. run-phase 적용 전 plan-auditor 검토 대상. |
 
 ---
 
@@ -113,6 +114,29 @@ LANG_COUNT=$(find ... | awk 'NR==1{print;exit}' | sed 's/.*\.//' | sort | uniq -
 - explicit error-handling 손실. CI 신뢰성 측면에서 회귀.
 - best practice 위배.
 
+#### A3 — find -print -quit 단일 step (ADOPTED in hotfix)
+
+```yaml
+LANG_FILE=$(find . \( -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \) \
+  -not -path './node_modules/*' \
+  -not -path './vendor/*' \
+  -not -path './.git/*' \
+  -print -quit 2>/dev/null)
+LANG_COUNT="${LANG_FILE##*.}"
+```
+
+**Pros**:
+- **pipeline 자체 제거**: pipe operator 없음 → SIGPIPE 발생 여지 0.
+- `find -print -quit`: 첫 매칭 시 즉시 종료. stdin close 개념 자체 없음 (단일 프로세스).
+- `-not -path` 내장 필터: grep 단계 제거. node_modules/vendor/.git 필터를 find 자체에서 처리.
+- `${LANG_FILE##*.}` 파라미터 확장: sed `s/.*\.//` 와 동일 효과, 외부 프로세스 불요.
+- POSIX-portable: `find -print -quit` 는 GNU findutils 및 macOS BSD find 모두 지원.
+- 원본 detection semantics 보존: 첫 매칭 파일 1건의 확장자 추출.
+
+**Cons**:
+- `\( ... \)` grouping 문법 (특히 `-o` 결합 시) 에 익숙하지 않은 독자에게 약간 낯설 수 있음.
+- sed + sort + uniq 기반 "다수결" 언어 detection 이 아니라 "첫 매칭 1건" 방식 — 원 코드도 head -1 로 동일한 의미였으므로 semantics 변경 없음.
+
 ### 2.3 Plan-phase Decision: A2 (awk)
 
 **선택 이유**:
@@ -125,7 +149,37 @@ LANG_COUNT=$(find ... | awk 'NR==1{print;exit}' | sed 's/.*\.//' | sort | uniq -
 
 **Rejected**: A3. pipefail-off 는 안티패턴.
 
-### 2.4 Verification Strategy (D-1)
+### 2.4 Post-implementation Discovery (Hotfix — 0.1.1)
+
+**A2 (awk 'NR==1{print;exit}') REJECTED post-implementation.**
+
+PR #955 run-phase 적용 후 4 review workflow (Gemini / GLM / Claude / Codex Code Review) 가 5-12초 내 동일 broken-pipe 패턴으로 실패 확인:
+
+```
+grep: write error: Broken pipe
+find: 'standard output': Broken pipe
+##[error]Process completed with exit code 2
+```
+
+**Root cause 분석**:
+- `awk 'NR==1{print;exit}'` 는 plan-phase 에서 예측한 것처럼 첫 줄 처리 후 **즉시 종료**.
+- 즉시 종료 시 awk의 stdin pipe 가 close → upstream `find | grep | grep` 이 broken pipe 받음.
+- 동작 패턴이 `head -1` 과 동일. exit code 141 (SIGTERM) 대신 exit code 2 로 나타나지만 원인은 같음.
+- §2.2 A2 Cons 에서 "race 차이는 본 case 에서 충분히 작음" 으로 평가했으나 실제로는 동일 패턴 재현.
+
+**Pattern comparison table (updated):**
+
+| Alternative | stdin close timing | SIGPIPE 발생 | 결론 |
+|-------------|---------------------|-------------|------|
+| A1 (sed -n '1p') | stdin 전체 read 후 | SIGPIPE 없음 | 미채택 (latency, pipe 잔존) |
+| A2 (awk 'NR==1{exit}') | 첫 줄 후 즉시 | **동일 패턴** (exit 2) | **REJECTED post-impl** |
+| **A3 (find -print -quit)** | **pipe 없음** | **SIGPIPE 불가** | **ADOPTED (hotfix)** |
+| A3' (set +o pipefail) | N/A | mask (best practice 위배) | REJECTED |
+
+**Hotfix decision: A3 채택.**
+`find -print -quit` 단일 step 으로 원본 파이프라인 (find → grep filter → take first → extract ext) 을 collapse. pipeline 제거로 SIGPIPE 발생 가능성 자체를 차단.
+
+### 2.5 Verification Strategy (D-1)
 
 - run-phase W1-T2: 16 supported languages 각각 fixture 디렉토리 생성 (e.g., `tmp/fixture-go/main.go`, `tmp/fixture-python/main.py` 등). action 실행 후 `LANG_COUNT` 출력값이 기대 언어 코드와 일치 확인.
 - run-phase W1-T3: ci.yml CI 3 consecutive runs 모두 detect-language step 성공 확인 (AC-CIIF-001).
