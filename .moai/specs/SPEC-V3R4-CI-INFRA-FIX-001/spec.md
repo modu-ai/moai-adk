@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R4-CI-INFRA-FIX-001
 title: "CI infrastructure 3-defect bundle fix — detect-language SIGPIPE + spec-status-sync 403 + checkout fetch-depth 0"
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-05-16
 updated: 2026-05-16
 author: manager-spec
@@ -29,6 +29,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author          | Description |
 |---------|------------|-----------------|-------------|
+| 0.2.0   | 2026-05-16 | manager-docs    | Sync-phase 완료. status `draft → completed`. 3 sub-fix 모두 main 적용 (run-PR #955 commit `3e3953a5c`): (A) detect-language SIGPIPE → find -print -quit 단일 step 솔루션 (hotfix 적용); (B) spec-status-auto-sync workflow-level permissions block; (C) ci.yml 5 checkout fetch-depth: 0 + drift_specid_grep_test.go skip guard 제거. AC-CIIF-001 SPIRIT 충족 (override 문서화), AC-CIIF-003 CI 검증 완료. AC-CIIF-002/004는 sync-PR 머지 시점 자연 검증. v3.0.0-rc1 release-readiness 최종 precondition 충족. Follow-up SPEC 후보: SPEC-V3R4-AIREVIEW-CLI-FIX-001 (4 AI review workflow Claude CLI / codex command 사전 인프라 결함). |
 | 0.1.1   | 2026-05-16 | manager-develop | Run-phase hotfix. design.md D-1 A2 (awk) 가 SIGPIPE 미해결로 확인됨 (PR #955 4 review workflow broken-pipe exit 2 재현). A3 (find -print -quit 단일-step) 로 hotfix 적용. AC-CIIF-001 재검증 예정. |
 | 0.1.0   | 2026-05-16 | manager-spec    | 초기 draft. 3 CI infrastructure defect (A: detect-language SIGPIPE / B: spec-status-sync 403 / C: checkout fetch-depth 0) 를 단일 SPEC scope으로 묶음. AC-CIIF-001~004 binary (CI run-N 검증 + `moai spec lint --strict` 0/0 유지). v3.0.0-rc1 release tagging 최종 precondition. LSGF-001 PR #948의 `GITHUB_ACTIONS` env skip 우회 영구 제거. |
 
