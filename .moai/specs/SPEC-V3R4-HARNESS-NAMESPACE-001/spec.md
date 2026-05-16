@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R4-HARNESS-NAMESPACE-001
 title: "Harness Namespace + Lifecycle Governance"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: implemented
 created: 2026-05-16
 updated: 2026-05-16
 author: manager-spec
@@ -33,6 +33,7 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
+| 0.3.0   | 2026-05-16 | MoAI orchestrator | Run-phase status transition `draft → implemented`. Wave 1 (7 governance verification tasks T-Wave1-001~007) all PASS — SPEC ID regex 0 violations across 7 SPECs, dependency graph acyclic (4 V3R4-HARNESS-* SPECs lifecycle-independent), `.moai/harness/` hierarchy canonical subset (main.md + README.md + usage-log.jsonl), `moai spec lint --strict` 0 errors (4 → 3 warnings after this transition; 3 remaining are pre-existing V3R4-HARNESS-001/002/003 drift unrelated to this SPEC), CLI deprecation grace re-asserted (MARKER_PRESENT + NO_REGISTRATION confirmed in `internal/cli/harness.go` 433 lines + `internal/cli/root.go` clean), CHANGELOG v3.0.0-rc1 Governance entry appended, Wave 1 audit report persisted at `.moai/reports/governance/`. Wave 2 (5 PR #908 closeout tasks) — EC-001 escalation path EXPECTED at HEAD `a41d6d139c8c` (2-commit divergence from absorbed tip `452aa638f`), user-selected Option 1 (rollback-tip-then-close): branch reset to `452aa638f` + force-with-lease push + attribution comment + close-with-delete-branch; harness.md verb-surface re-verified at exactly 4 verbs (status/apply/rollback/disable, no drift); auto-memory entry persisted; Wave 2 audit report appended. All 8 ACs satisfied (AC-HRN-NS-001~008 PASS binary). Zero LOC code change. Governance authority for downstream SPEC-V3R4-HARNESS-{004..008} namespace compliance now in force. |
 | 0.2.0   | 2026-05-16 | manager-spec | plan-auditor REVISE 0.69 round-1 fix. 4 Critical + 4 High defects + Q3 EC reorder resolved: (D-001) verb-surface regex corrected to match numbered headers `### 2.1 status` pattern (4 verified matches); (D-002) SPEC ID regex broadened to `^SPEC-V3R[0-9]+(-[A-Z][A-Z0-9]*)*-HARNESS(-[A-Z][A-Z0-9]*)?-[0-9]{3}$` to cover `SPEC-V3R3-PROJECT-HARNESS-001` (SCOPE-before-HARNESS); (D-003) lint invocation switched to no-args full-repo scan (CLI rejects directory args with ParseFailure); (D-004) PR #908 HEAD divergence (`a41d6d139` ≠ `452aa638f`) reframed as EXPECTED scenario with 2-commit truth + prefix matching; (D-005) REQ-HRN-NS-002 reframed to permit sibling deps as registered blockers (HARNESS-003 → -002 case from main HEAD); (D-006) `main.md` + `README.md` added to canonical reserved names matching observed `.moai/harness/` state; (D-007) CHANGELOG sketch enriched with retention keywords for AC-HRN-NS-008 grep PASS; (D-008) Glossary "PR #908 closeout" updated with 2-commit state + 4-option escalation. |
 | 0.1.0   | 2026-05-16 | manager-spec | Initial draft. Pure governance SPEC formalizing the V3R4 harness namespace (SPEC ID convention, `.moai/harness/*` directory hierarchy, retention policy) and lifecycle independence guarantees for SPEC-V3R4-HARNESS-{001..008}. Complements (does NOT amend) SPEC-V3R4-HARNESS-001 foundation. Closes out PR #908 (`feat/cmd-harness-slash-wrapper`, OPEN since 2026-05-13) as fully absorbed by PR #910 commit `bb80ea0f4`. Re-asserts `/moai harness` 4-verb contract and AskUserQuestion gating from REQ-HRN-FND-003/004. Plan-in-main mode (no worktree). Zero LOC code change in run-phase — docs + governance verification only. |
 
