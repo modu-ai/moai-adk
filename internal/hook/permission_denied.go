@@ -1,3 +1,4 @@
+// Resolution: KEEP — read-only retry suggestion via SystemMessage.
 package hook
 
 import (

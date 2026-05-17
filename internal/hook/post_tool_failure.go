@@ -1,3 +1,4 @@
+// Resolution: UPGRADE — error classification (ExitError/TimeoutError/ContextCancelled/PermissionDenied/SandboxViolation/OOMKilled/UnknownFailure).
 package hook
 
 import (

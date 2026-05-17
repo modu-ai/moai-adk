@@ -4,8 +4,96 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// TestConfigChange_RT005ReloadIntegration verifies AC-04: when ConfigChange fires
+// and the file is valid YAML, the handler emits AdditionalContext (or SystemMessage)
+// with "<path> reloaded successfully" (SPEC-V3R2-RT-006 REQ-011).
+func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	yamlPath := filepath.Join(tempDir, "quality.yaml")
+	content := []byte("development_mode: tdd\ncoverage_target: 85\n")
+	if err := os.WriteFile(yamlPath, content, 0644); err != nil {
+		t.Fatalf("write yaml: %v", err)
+	}
+
+	h := NewConfigChangeHandler()
+	input := &HookInput{
+		SessionID:      "sess-rt005",
+		ConfigFilePath: yamlPath,
+		HookEventName:  "ConfigChange",
+	}
+
+	out, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if out == nil {
+		t.Fatal("Handle() returned nil")
+	}
+	// REQ-011: emit "reloaded successfully" message.
+	if out.SystemMessage == "" {
+		t.Error("expected SystemMessage with reload confirmation")
+	}
+	if !out.Continue {
+		t.Errorf("expected Continue=true for valid config, got false (message: %s)", out.SystemMessage)
+	}
+}
+
+// TestConfigChange_InvalidYAMLKeepsOldSettings verifies AC-05: when ConfigChange
+// reload fails validation, Continue:false is set AND old settings are described
+// in the error message (SPEC-V3R2-RT-006 REQ-062).
+func TestConfigChange_InvalidYAMLKeepsOldSettings(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	yamlPath := filepath.Join(tempDir, "quality.yaml")
+	// Deliberately invalid YAML.
+	content := []byte(": bad yaml: :\n  key:\n")
+	if err := os.WriteFile(yamlPath, content, 0644); err != nil {
+		t.Fatalf("write yaml: %v", err)
+	}
+
+	h := NewConfigChangeHandler()
+	input := &HookInput{
+		SessionID:      "sess-invalid",
+		ConfigFilePath: yamlPath,
+		HookEventName:  "ConfigChange",
+	}
+
+	out, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if out == nil {
+		t.Fatal("Handle() returned nil")
+	}
+	// REQ-062: Continue:false + message indicates old settings retained.
+	if out.Continue {
+		t.Error("expected Continue=false for invalid YAML, got true")
+	}
+	if out.SystemMessage == "" {
+		t.Error("expected SystemMessage for invalid YAML rejection")
+	}
+	// Message must mention "retained" or "rejected" to indicate old settings kept.
+	if !containsAny(out.SystemMessage, "retained", "rejected", "reload rejected") {
+		t.Errorf("SystemMessage should mention old settings retained, got: %s", out.SystemMessage)
+	}
+}
+
+// containsAny returns true if s contains any of the needles.
+func containsAny(s string, needles ...string) bool {
+	for _, n := range needles {
+		if strings.Contains(strings.ToLower(s), strings.ToLower(n)) {
+			return true
+		}
+	}
+	return false
+}
 
 func TestConfigChangeHandler_EventType(t *testing.T) {
 	h := NewConfigChangeHandler()

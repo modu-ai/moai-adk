@@ -1,3 +1,4 @@
+// Resolution: KEEP — error-class systemMessage for rate_limit/billing/auth failures.
 package hook
 
 import (

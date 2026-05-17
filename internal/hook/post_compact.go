@@ -1,3 +1,4 @@
+// Resolution: KEEP — PostCompact memo restore; injects memo into AdditionalContext.
 package hook
 
 import (

@@ -1,3 +1,4 @@
+// Resolution: KEEP — project context injection into spawned subagent via AdditionalContext.
 package hook
 
 import (

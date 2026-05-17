@@ -1,3 +1,4 @@
+// Resolution: UPGRADE — CLAUDE.md 40,000-char budget check per coding-standards.md.
 package hook
 
 import (

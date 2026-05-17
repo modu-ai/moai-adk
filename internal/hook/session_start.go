@@ -1,3 +1,4 @@
+// Resolution: KEEP — full business logic; GLM setup, skill discovery, memory evaluation.
 package hook
 
 import (

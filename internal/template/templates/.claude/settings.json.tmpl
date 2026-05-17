@@ -144,21 +144,6 @@
         ]
       }
     ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
-{{- end}}
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SubagentStart": [
       {
         "hooks": [
@@ -258,21 +243,6 @@
         ]
       }
     ],
-    "TaskCreated": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
-{{- end}}
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "ConfigChange": [
       {
         "matcher": "project_settings|local_settings|skills",
@@ -365,36 +335,6 @@
           }
         ],
         "matcher": ".env|.envrc|.gitignore"
-      }
-    ],
-    "Elicitation": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-elicitation.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-elicitation.sh\"",
-{{- end}}
-            "timeout": 10,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "ElicitationResult": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-elicitation-result.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-elicitation-result.sh\"",
-{{- end}}
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
       }
     ],
     "PermissionDenied": [

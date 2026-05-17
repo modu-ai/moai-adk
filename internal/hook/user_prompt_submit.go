@@ -1,3 +1,4 @@
+// Resolution: KEEP — SPEC detect, session title, workflow keyword routing.
 package hook
 
 import (

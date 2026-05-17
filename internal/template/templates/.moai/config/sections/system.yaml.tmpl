@@ -30,6 +30,15 @@ github:
   # SPEC git workflow strategy (main_direct, feature_branch, release_branch)
   spec_git_workflow: main_direct
 
+# Hook observability configuration (SPEC-V3R2-RT-006 REQ-004)
+hook:
+  # List of retired events to re-enable as observability taps.
+  # Empty list (default) means all retired events are silently no-op.
+  # Example: [notification, elicitation, elicitationResult, taskCreated]
+  observability_events: []
+  # When true, retired events in strict mode still succeed silently.
+  strict_mode: false
+
 # Document Management Configuration
 document_management:
   # Enable document management features
