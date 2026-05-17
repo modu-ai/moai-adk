@@ -18,27 +18,29 @@ MoAI's three-phase development workflow with token budget management.
 
 ## SPEC Phase Discipline
 
-[HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location (main checkout vs SPEC worktree), branch convention, and PR merge strategy.
+> [2026-05-17 user policy] L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `feedback_worktree_autonomous` memory and `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
 
-| Step | Location        | Command                                                                 | Branch                                       | PR strategy | Lifecycle event              |
-|------|-----------------|-------------------------------------------------------------------------|----------------------------------------------|-------------|------------------------------|
-| 1    | main checkout   | `/moai plan SPEC-XXX`                                                   | `plan/SPEC-XXX`                              | squash      | plan PR merged into main     |
-| 2    | SPEC worktree   | `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX` | `feat/SPEC-XXX`                              | squash      | run PR merged into main      |
-| 3    | SPEC worktree   | `/moai sync SPEC-XXX` (same worktree as Step 2)                         | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`)   | squash      | sync PR merged into main     |
-| 4    | host checkout   | `moai worktree done SPEC-XXX`                                           | n/a                                          | n/a         | worktree disposed            |
+[HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location, branch convention, and PR merge strategy.
+
+| Step | Location                                              | Command                                                                                                  | Branch                                     | PR strategy | Lifecycle event               |
+|------|-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------|-------------|-------------------------------|
+| 1    | main checkout                                         | `/moai plan SPEC-XXX`                                                                                    | `plan/SPEC-XXX`                            | squash      | plan PR merged into main      |
+| 2    | main checkout (default) OR L2 SPEC worktree (opt-in) | (opt-in) `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX`; OR `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout | `feat/SPEC-XXX`  | squash      | run PR merged into main       |
+| 3    | same as Step 2                                        | `/moai sync SPEC-XXX` (same L2 worktree as Step 2 if L2 was used; otherwise same feature branch)        | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`) | squash      | sync PR merged into main      |
+| 4    | host checkout (only if L2 was created)                | `moai worktree done SPEC-XXX`                                                                            | n/a                                        | n/a         | L2 worktree disposed          |
 
 [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout. NO worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
-- Step 2 (run) MUST create a fresh worktree from the plan-merged main HEAD (`--base origin/main`). The worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
-- Step 3 (sync) MUST reuse the SAME worktree as Step 2. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh worktree at sync would lose run-state context.
-- Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3.
+- Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
+- Step 2 (run) SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
+- Step 3 (sync) SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
+- Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3.
 
-[HARD] Anti-patterns:
-- Creating a worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
-- Stacking plan + run in the same worktree. Once the plan PR merges, the worktree base becomes stale; subsequent run work either rebases (extra cost) or proceeds against a stale tree (correctness risk).
-- Disposing the worktree after run merge but before sync merge. Sync re-enters the tree with codemap / MX / docs writes; the host checkout cannot stand in for a disposed worktree.
+[SHOULD] Anti-patterns (advisory):
+- Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
+- Stacking plan + run in the same L2 worktree. Once the plan PR merges, the worktree base becomes stale; subsequent run work either rebases (extra cost) or proceeds against a stale tree (correctness risk).
+- Disposing the L2 worktree after run merge but before sync merge. Sync re-enters the tree with codemap / MX / docs writes; the host checkout cannot stand in for a disposed worktree.
 
-Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SPEC-to-Worktree Mapping for per-step worktree applicability and decision tree.
+Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SPEC-to-Worktree Mapping for per-step L2 worktree applicability and decision tree.
 
 ## Subcommand Classification (Pipeline vs Multi-Agent)
 
@@ -133,7 +135,7 @@ Output:
 
 ## Run Phase
 
-[HARD] Execute in a fresh SPEC worktree created at run start: `moai worktree new SPEC-XXX --base origin/main`. See § SPEC Phase Discipline (Step 2).
+[SHOULD] When user has opted into L2/L3 worktree, execute in a fresh L2 SPEC worktree: `moai worktree new SPEC-XXX --base origin/main`; otherwise execute on the `feat/SPEC-XXX` branch in main checkout. See § SPEC Phase Discipline (Step 2). Per user policy 2026-05-17, L2/L3 worktree is opt-in; default is main checkout + feature branch.
 
 Implement specification using configured development methodology.
 
@@ -227,7 +229,7 @@ Integration: Referenced by run.md Phase 2.7 and loop.md iteration checks
 
 ## Sync Phase
 
-[HARD] Continue in the SAME SPEC worktree as run. Do NOT create a new worktree. See § SPEC Phase Discipline (Step 3).
+[SHOULD] When an L2 SPEC worktree was used in run, continue in the SAME L2 worktree as run; do NOT create a new L2 worktree. Otherwise, continue on the same feature branch in main checkout. See § SPEC Phase Discipline (Step 3). Per user policy 2026-05-17, L2 worktree usage is opt-in.
 
 Generate documentation and prepare for deployment.
 
@@ -265,7 +267,7 @@ Progressive Disclosure:
 Plan to Run:
 - Trigger: Plan PR merged into main (squash) AND SPEC document approved (annotation cycle completed, user confirmed "Proceed")
 - Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; plan PR is in MERGED state
-- Action: Execute /clear, then `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the worktree
+- Action: Execute /clear, then `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout (default); OR if user opted into L2: `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the L2 worktree.
 - Gate: `/moai run` Phase 0.5 (Plan Audit Gate) executes automatically before any implementation.
   See "Phase 0.5: Plan Audit Gate" section below for details.
 
@@ -304,12 +306,12 @@ Grace window start: `.moai/state/audit-gate-merge-at.txt` (ISO-8601 timestamp).
 
 Run to Sync:
 - Trigger: Run PR merged into main, tests passing
-- Action: Execute `/moai sync SPEC-XXX` in the SAME worktree as run (do NOT create a new worktree)
+- Action: Execute `/moai sync SPEC-XXX` on the same branch/location as run — in the SAME L2 worktree if L2 was used (do NOT create a new L2 worktree); otherwise on the same feature branch in main checkout.
 
 Sync to Cleanup:
 - Trigger: Sync PR merged into main
 - Pre-condition: BOTH run PR AND sync PR are in MERGED state (verify via `gh pr view <PR>`)
-- Action: `moai worktree done SPEC-XXX` (executed from host checkout, not from inside the worktree)
+- Action (only if L2 worktree was created): `moai worktree done SPEC-XXX` (executed from host checkout, not from inside the worktree)
 - See § SPEC Phase Discipline (Step 4)
 
 ## Agent Teams Variant
@@ -339,11 +341,11 @@ All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose
 ### Team Mode Run Phase
 - TeamCreate for implementation team
 - Task decomposition with file ownership boundaries
-- [HARD] Implementation teammates (role_profiles: implementer, tester) MUST use `isolation: "worktree"` for parallel file safety
-- [HARD] Read-only teammates (role_profiles: reviewer) MUST NOT use isolation — mode: "plan" is sufficient
+- [SHOULD] Implementation teammates (role_profiles: implementer, tester) may use L1 `isolation: "worktree"` for parallel file safety; Claude Code runtime decides per-call. Per user policy 2026-05-17, MoAI orchestrator does not mandate L1 isolation.
+- [SHOULD] Read-only teammates (role_profiles: reviewer) typically do not need L1 `isolation: "worktree"` — `mode: "plan"` is sufficient.
 - Teammates self-claim tasks from shared list
 - Quality validation after all implementation completes
-- Worktree cleanup via `git worktree prune` after team shutdown
+- L1 worktree cleanup via `git worktree prune` after team shutdown (if L1 worktrees were materialized by runtime)
 - Shutdown team
 
 ### Token Cost Awareness
