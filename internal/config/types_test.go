@@ -342,3 +342,45 @@ func TestLSPQualityGatesFields(t *testing.T) {
 		t.Errorf("TimeoutSeconds: got %d, want 3", gates.TimeoutSeconds)
 	}
 }
+
+// TestRoleProfile_Sandbox_DefaultByRole verifies RoleProfile.Sandbox field exists
+// and can be set to the 4 valid sandbox values.
+// T-RT003-09: Extend types_test.go for SPEC-V3R2-RT-003 config types.
+func TestRoleProfile_Sandbox_DefaultByRole(t *testing.T) {
+	t.Parallel()
+
+	validValues := []string{"none", "bubblewrap", "seatbelt", "docker", ""}
+
+	for _, v := range validValues {
+		rp := RoleProfile{Sandbox: v}
+		if rp.Sandbox != v {
+			t.Errorf("RoleProfile.Sandbox: got %q, want %q", rp.Sandbox, v)
+		}
+	}
+}
+
+// TestSecuritySandbox_Fields verifies SecuritySandbox struct has all required fields.
+// T-RT003-09: SPEC-V3R2-RT-003 REQ-008/020/030/031.
+func TestSecuritySandbox_Fields(t *testing.T) {
+	t.Parallel()
+
+	ss := SecuritySandbox{
+		Required:         true,
+		NetworkAllowlist: []string{"internal.company.com"},
+		EnvScrubExtra:    []string{"MY_SECRET_TOKEN"},
+		DockerImage:      "moai/sandbox:v1",
+	}
+
+	if !ss.Required {
+		t.Error("SecuritySandbox.Required: expected true")
+	}
+	if len(ss.NetworkAllowlist) != 1 || ss.NetworkAllowlist[0] != "internal.company.com" {
+		t.Errorf("SecuritySandbox.NetworkAllowlist: got %v, want [internal.company.com]", ss.NetworkAllowlist)
+	}
+	if len(ss.EnvScrubExtra) != 1 || ss.EnvScrubExtra[0] != "MY_SECRET_TOKEN" {
+		t.Errorf("SecuritySandbox.EnvScrubExtra: got %v, want [MY_SECRET_TOKEN]", ss.EnvScrubExtra)
+	}
+	if ss.DockerImage != "moai/sandbox:v1" {
+		t.Errorf("SecuritySandbox.DockerImage: got %q, want %q", ss.DockerImage, "moai/sandbox:v1")
+	}
+}

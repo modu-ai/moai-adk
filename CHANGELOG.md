@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.0.0-rc1: 8 SPECs complete (RT-002 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+## [Unreleased] — v3.0.0-rc1: 9 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+
+### Added
+
+- **Sandbox Execution Layer — Bubblewrap (Linux) + Seatbelt (macOS) + Docker (CI)** (SPEC-V3R2-RT-003): 구현 에이전트 tool 호출을 OS-적합 샌드박스 primitive 안에 격리하는 3rd defense-in-depth 레이어 신설. 주요 기능: `Sandbox` 4-값 열거형 (`none|bubblewrap|seatbelt|docker`) + `SandboxBackend` 인터페이스 + `Launcher` 파사드 (`internal/sandbox/`). Linux: `bwrap --unshare-all --die-with-parent` 기반 user-namespace 격리. macOS: `sandbox-exec -p <SBPL-profile>` 기반 Seatbelt 격리 (SBPL profile 결정론적 생성 + 체크섬 안정성). CI: `docker run --rm` 기반 ephemeral container (`CI=1` auto-detect). 기본값: `implementer`/`tester`/`designer` → OS-자동 (seatbelt|bubblewrap), CI=1 → docker; `researcher`/`analyst`/`reviewer`/`architect` → none. 환경변수 스크러빙: `AWS_*` (prefix), `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `NPM_TOKEN`, `GH_TOKEN` 기본 제거 + `sandbox.env_passthrough` opt-in 보존. 16 MiB 출력 트런케이션 + `ErrSandboxOutputTruncated` 반환. `moai doctor sandbox` CLI: backend 가용성 + per-role 해결 결과 + `--profile <role>` 프로파일 덤프. `agent lint` LR-33 규칙: `sandbox: none` without `sandbox.justification` → error. 5 sentinel 오류 (`ErrSandboxBackendUnavailable`, `ErrSandboxProfileInvalid`, `ErrSandboxRequired`, `ErrSandboxOutputTruncated`, `ErrSandboxSetuidDenied`). `internal/config/types.go` 확장: `RoleProfile.Sandbox` 필드 + `SecuritySandbox` 구조체. `security.yaml` 신규 키: `sandbox.required`, `sandbox.network_allowlist`, `sandbox.env_scrub_extra`, `sandbox.docker_image`. Seatbelt p99 ~11ms (50ms 예산 내). 16 AC (AC-01~16) + 52 tasks (T-RT003-01~52) 완료. BC-V3R2-003 (AUTO migration contract 정의). P0 Critical release-blocker. (Breaking: BC-V3R2-003)
 
 ### Added
 

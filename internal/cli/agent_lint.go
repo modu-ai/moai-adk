@@ -61,6 +61,16 @@ type AgentFrontmatter struct {
 	Effort         string            `yaml:"effort"`
 	Isolation      string            `yaml:"isolation"`
 	PermissionMode string            `yaml:"permissionMode"`
+	// Sandbox fields (SPEC-V3R2-RT-003 REQ-033/043)
+	Sandbox struct {
+		// Backend is the sandbox value — parsed from the top-level `sandbox:` key in frontmatter.
+		Backend string `yaml:"backend"`
+		// Justification is the opt-out reason when sandbox = "none".
+		Justification string `yaml:"justification"`
+	} `yaml:"sandbox"`
+	// SandboxValue is the top-level `sandbox:` string field (e.g., `sandbox: none`).
+	// Distinct from Sandbox.Backend which would require `sandbox:\n  backend: none` nesting.
+	SandboxValue string `yaml:"sandbox_value"`
 }
 
 // Hook represents a single hook configuration.
@@ -302,6 +312,12 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 	// LR-14: Fixed budget_tokens prohibition (SPEC-V3R2-ORC-003)
 	// Need full file content for body scan
 	violations = append(violations, checkFixedBudgetTokens(path, content)...)
+
+	// LR-33: sandbox: none without sandbox.justification (SPEC-V3R2-RT-003 REQ-033/043)
+	// @MX:WARN: [AUTO] AGENT_LINT_NO_SANDBOX_NO_JUSTIFICATION is a security-critical lint rule
+	// @MX:REASON: sandbox: none without justification bypasses defense-in-depth (P7 principle);
+	//             CI lint must catch this before agent is spawned in production.
+	violations = append(violations, checkSandboxJustification(path, frontmatterText)...)
 
 	return violations, nil
 }
@@ -770,6 +786,60 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 				Message:  fmt.Sprintf("Duplicate Skeptical-Evaluator Mandate block (first occurrence at %s:%d)", mandateBlocks[0].file, mandateBlocks[0].line),
 			})
 		}
+	}
+
+	return violations
+}
+
+// checkSandboxJustification implements LR-33: agents declaring `sandbox: none` without
+// a `sandbox.justification` field fail lint. This enforces SPEC-V3R2-RT-003 REQ-033/043
+// and AC-V3R2-RT-003-08/15.
+//
+// Detection: scan raw frontmatter text for `sandbox: none` (value-level check).
+// If found, also scan for `justification:` in the sandbox sub-map.
+// A missing justification emits SeverityError.
+// A present justification emits SeverityWarning (informational, still visible in doctor output).
+func checkSandboxJustification(file string, frontmatterText []byte) []LintViolation {
+	var violations []LintViolation
+
+	// 빠른 검색: frontmatter에 "sandbox: none" 또는 "sandbox: \"none\"" 패턴이 있는지 확인
+	sandboxNonePattern := regexp.MustCompile(`(?m)^\s*sandbox:\s*["']?none["']?\s*$`)
+	if !sandboxNonePattern.Match(frontmatterText) {
+		return violations // sandbox: none 없음 — 검사 불필요
+	}
+
+	// sandbox: none 발견 — justification 확인
+	// frontmatter에서 "justification:" 또는 "sandbox.justification:"을 탐색
+	justificationPattern := regexp.MustCompile(`(?m)^\s*(sandbox\.)?justification:\s*\S`)
+	hasJustification := justificationPattern.Match(frontmatterText)
+
+	// sandbox: none 라인 번호 탐색
+	lines := bytes.Split(frontmatterText, []byte("\n"))
+	lineNum := 1
+	for i, line := range lines {
+		if sandboxNonePattern.Match(line) {
+			lineNum = i + 1
+			break
+		}
+	}
+
+	if !hasJustification {
+		violations = append(violations, LintViolation{
+			Rule:     "LR-33",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  "sandbox: none requires sandbox.justification field (SPEC-V3R2-RT-003 REQ-033/043) — AGENT_LINT_NO_SANDBOX_NO_JUSTIFICATION",
+		})
+	} else {
+		// justification 있음 — 경고로 내용 표시 (moai doctor sandbox에서도 노출)
+		violations = append(violations, LintViolation{
+			Rule:     "LR-33",
+			Severity: SeverityWarning,
+			File:     file,
+			Line:     lineNum,
+			Message:  "sandbox: none with justification — opt-out is recorded (visible in moai doctor sandbox output)",
+		})
 	}
 
 	return violations
