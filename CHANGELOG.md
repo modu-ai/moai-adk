@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v3.0.0-rc1 Doctrine: SPEC-WORKTREE-DOCS-001 Worktree Workflow Harmonization (L1/L2/L3 opt-in)
+
+### Changed
+
+- **doctrine harmonization: worktree workflow rules SHOULD-tier로 격하 + L1/L2/L3 terminology 표준화** (SPEC-WORKTREE-DOCS-001): 2026-05-17 사용자 자율적 정책 (`feedback_worktree_autonomous` 메모리)을 5 rule 파일에 영구 흡수. (a) `spec-workflow.md` Step 2/3 `[HARD] MUST create/reuse worktree` → `[SHOULD] L2 opt-in` (8 HARD → 3, -5건); (b) `CLAUDE.md` §14 4 worktree `[HARD]` bullets → `[SHOULD]` advisory (Claude Code runtime이 L1 isolation 자율 결정 명시); (c) `worktree-integration.md`에 4-row Terminology Glossary 신설 (L1 Claude Code Native / L2 SPEC worktree / L3 Plan worktree / git worktree 구분); (d) `worktree-state-guard.md` Wave 5 primitive dormancy 노트 추가 (orchestrator wiring deferred, manual invocation 보존); (e) `session-handoff.md` Block 0 conditional wording (`--worktree` L3 opt-in 시에만 required 명시). 모든 5 파일에 user policy 2026-05-17 cross-reference 추가. 추가: `scripts/audit-workflow-terminology.sh` (~41 LOC) terminology drift 자동 detect. 메모리 hierarchy: `feedback_worktree_never_use` (2026-05-15 영구 미사용 정책) heading + MEMORY.md 인덱스 supersede marker 부착, `feedback_worktree_autonomous` (pre-existing) compliance verified. 본 SPEC은 documentation-only — Go code 0 LOC 변경, `go test ./...` exit 0. AC-WTD-001~009 all PASS (007 non-blocking, 2 stale `[HARD]` references in `.claude/skills/moai/{workflows,team}/run.md` → follow-up SPEC 후보로 surface). (PR #964 plan + #965 run + 이번 sync, plan-in-main + main-checkout flow 적용, L2/L3 worktree 미사용)
+
+### Fixed
+
+- **AC-WTD-001 ~ 009**: Run-PR #965 머지로 9 acceptance criteria 모두 binary PASS. AC-001 force-worktree [HARD] removal (grep 0건), AC-002 glossary 4-row present, AC-003 audit script exit 0, AC-004 user policy reference ≥4, AC-005 Wave 5 primitive (`internal/cli/worktree/guard.go` 6 functions) intact + dormancy banner, AC-006 memory hierarchy integrity (F1 frontmatter 4/4 + body 4/4, F2 SUPERSEDED ≥1, F3 references ≥1), AC-008 `moai spec lint --strict` 0 errors, AC-009 `go test ./...` exit 0.
+- **doctrine consistency v3.0.0-rc1 release-readiness**: 2026-05-15 `feedback_worktree_never_use` (worktree 영구 미사용) 정책이 글로벌 룰의 `[HARD] MUST` mandate와 contradict하던 dormant conflict가 영구 해소. v3.0.0-rc1 release timing에 적합.
+
+### Known Follow-up
+
+- **AC-WTD-007 비차단 findings** (2건): `.claude/skills/moai/workflows/run.md:1001` + `.claude/skills/moai/team/run.md:349`에 `[HARD] All implementation teammates MUST use isolation: "worktree"` 잔존. plan.md R1 mitigation에 따라 본 SPEC scope 외 → 후속 SPEC `SPEC-WORKTREE-SKILLS-CLEANUP-001` (가칭) 후보. v3.0.0-rc1 release timing에 차단 영향 없음.
+- **review bot env failures** (3건 review + 1 private-guard `codex: command not found`): branch protection required check 외 → SPEC-V3R4-LLM-REVIEW-CI-001 (가칭) 후속. 본 PR 머지 차단 없음.
+
+### Changed (English)
+
+- **doctrine harmonization: worktree workflow rules downgraded to SHOULD tier + L1/L2/L3 terminology standardized** (SPEC-WORKTREE-DOCS-001): The 2026-05-17 user autonomous policy (`feedback_worktree_autonomous` memory) is permanently absorbed into 5 rule files. (a) `spec-workflow.md` Step 2/3 `[HARD] MUST create/reuse worktree` → `[SHOULD] L2 opt-in` (8 HARD → 3, -5 total); (b) `CLAUDE.md` §14 4 worktree `[HARD]` bullets → `[SHOULD]` advisory (Claude Code runtime decides L1 isolation per-call); (c) `worktree-integration.md` gains a 4-row Terminology Glossary distinguishing L1 (Claude Code Native), L2 (SPEC worktree), L3 (Plan worktree), and git worktree (low-level mechanism); (d) `worktree-state-guard.md` gains a Wave 5 primitive dormancy banner (orchestrator wiring deferred, manual invocation preserved); (e) `session-handoff.md` Block 0 conditional wording (only required when `--worktree` L3 opt-in). All 5 files cross-reference user policy 2026-05-17. New `scripts/audit-workflow-terminology.sh` (~41 LOC) auto-detects future terminology drift. Memory hierarchy: `feedback_worktree_never_use` (2026-05-15 perpetual-no-worktree policy) heading + MEMORY.md index marked `[SUPERSEDED]`, `feedback_worktree_autonomous` (pre-existing) compliance verified. This SPEC is documentation-only — 0 LOC Go code change, `go test ./...` exit 0. AC-WTD-001~009 all binary PASS (007 non-blocking, 2 stale `[HARD]` references in `.claude/skills/moai/{workflows,team}/run.md` surfaced as follow-up SPEC candidates). (PR #964 plan + #965 run + this sync, plan-in-main + main-checkout flow applied, L2/L3 worktree not used)
+
 ## [Unreleased] — v3.0.0-rc1 Governance: SPEC-V3R4-HARNESS-NAMESPACE-001 Harness Namespace + Lifecycle Governance closeout
 
 ### Changed
