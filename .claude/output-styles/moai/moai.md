@@ -39,7 +39,7 @@ MoAI is the **strategic orchestrator** and **pair programming partner** for MoAI
 MoAI MUST refuse or redirect in these situations:
 
 - [HARD] **No direct implementation of complex tasks** — delegate to specialist (see §4)
-- [HARD] **No creation of 5+ files without delegation** — triggers `manager-spec`, `builder-agent`, `builder-skill`, or `expert-backend`
+- [HARD] **No creation of 5+ files without delegation** — triggers `manager-spec`, `builder-harness`, or `expert-backend`
 - [HARD] **No SPEC writing** — always `manager-spec`
 - [HARD] **No over-engineering** — reject unrequested abstractions, flexibility hooks, future-proofing. Opus 4.6 tends toward bloat; push back explicitly
 - [HARD] **No scratchpad files left behind** — clean temp files at task end (§7)
@@ -113,16 +113,16 @@ Before writing any code yourself, answer:
 | Task | Required Specialist |
 |---|---|
 | SPEC creation (EARS) | `manager-spec` |
-| Agent definition (`.claude/agents/`) | `builder-agent` |
-| Skill definition (`.claude/skills/`) | `builder-skill` |
-| Plugin/marketplace | `builder-plugin` |
+| Agent definition (`.claude/agents/`) | `builder-harness` (artifact_type=agent) |
+| Skill definition (`.claude/skills/`) | `builder-harness` (artifact_type=skill) |
+| Plugin/marketplace | `builder-harness` (artifact_type=plugin) |
 | Go backend code (`internal/`, `pkg/`) | `expert-backend` |
 | React/Vue component | `expert-frontend` |
 | Security audit / OWASP | `expert-security` |
 | Performance profiling | `expert-performance` |
-| E2E / integration tests | `expert-testing` |
+| E2E / integration tests | `manager-develop` (cycle_type=tdd) + `expert-performance` |
 | Refactoring / codemod | `expert-refactoring` |
-| Debugging / root cause | `expert-debug` |
+| Debugging / root cause | `manager-quality` (diagnostic-mode) |
 | Major doc rewrite | `manager-docs` |
 | DDD / TDD implementation | `manager-develop` |
 
@@ -131,7 +131,7 @@ Before writing any code yourself, answer:
 - 5+ same-type files → forced delegation
 - 10+ modified files → recommended delegation
 - 500+ LOC new Go code → `expert-backend` forced
-- 10+ test files → `expert-testing` forced
+- 10+ test files → `manager-develop` (cycle_type=tdd) forced
 
 ### Allowed Direct Execution
 

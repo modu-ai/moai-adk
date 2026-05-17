@@ -133,57 +133,9 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 		})
 	}
 
-	// RED 트리거: manager-tdd.md가 retired:true를 가져야 한다는 명시적 단언
-	// M2에서 manager-tdd.md가 표준화되면 GREEN이 됨
-	t.Run("manager-tdd must be retired", func(t *testing.T) {
-		t.Parallel()
-
-		const tddPath = ".claude/agents/moai/manager-tdd.md"
-		data, readErr := fs.ReadFile(fsys, tddPath)
-		if readErr != nil {
-			t.Fatalf("manager-tdd.md 읽기 실패 (파일 존재해야 함): %v", readErr)
-		}
-
-		fm, _, parseErr := parseFrontmatterAndBody(string(data))
-		if parseErr != "" {
-			t.Fatalf("manager-tdd.md frontmatter 파싱 실패: %s", parseErr)
-		}
-
-		rf := parseRetiredFields(fm)
-
-		// SPEC-V3R3-RETIRED-AGENT-001 REQ-RA-002: manager-tdd는 retired:true여야 함
-		// 현재는 full definition이므로 이 테스트가 FAIL (예상 RED)
-		if !rf.retired {
-			t.Errorf("RETIREMENT_INCOMPLETE_manager-tdd: manager-tdd.md에 'retired: true' 없음. " +
-				"SPEC-V3R3-RETIRED-AGENT-001 M2에서 retired stub으로 교체 필요 (REQ-RA-002)")
-		}
-	})
-
-	// RED 트리거: manager-ddd.md가 retired:true를 가져야 한다는 명시적 단언
-	// M2에서 manager-ddd.md가 표준화되면 GREEN이 됨
-	t.Run("manager-ddd must be retired", func(t *testing.T) {
-		t.Parallel()
-
-		const dddPath = ".claude/agents/moai/manager-ddd.md"
-		data, readErr := fs.ReadFile(fsys, dddPath)
-		if readErr != nil {
-			t.Fatalf("manager-ddd.md 읽기 실패 (파일 존재해야 함): %v", readErr)
-		}
-
-		fm, _, parseErr := parseFrontmatterAndBody(string(data))
-		if parseErr != "" {
-			t.Fatalf("manager-ddd.md frontmatter 파싱 실패: %s", parseErr)
-		}
-
-		rf := parseRetiredFields(fm)
-
-		// SPEC-V3R3-RETIRED-DDD-001 REQ-RD-002: manager-ddd는 retired:true여야 함
-		// 현재는 full definition이므로 이 테스트가 FAIL (예상 RED)
-		if !rf.retired {
-			t.Errorf("RETIREMENT_INCOMPLETE_manager-ddd: manager-ddd.md에 'retired: true' 없음. " +
-				"SPEC-V3R3-RETIRED-DDD-001 M2에서 retired stub으로 교체 필요 (REQ-RD-002)")
-		}
-	})
+	// Workflow audit 2026-05-16 Bundle C / F-003: 두 서브 테스트 (manager-tdd must be retired,
+	// manager-ddd must be retired) 제거. 해당 zombie agents가 stub 보존 → 전체 purge로
+	// 정책 변경됨. 새 contract는 TestPurgedZombieAgentsAbsent에서 검증.
 }
 
 // TestRetirementCompletenessAssertion은 retired:true 에이전트 각각에 대해

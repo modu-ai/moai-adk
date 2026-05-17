@@ -70,7 +70,7 @@ N) <verifiable precondition N>
 **Block 5 (separator)**: blank line, then `실행: <command-or-action>`.
 - Single primary action the next session begins with.
 - Typically a `/moai <subcommand> <args>` invocation.
-- Or a structured directive (`manager-tdd 위임으로 M1→M5 순차 진행`).
+- Or a structured directive (`manager-develop cycle_type=tdd 위임으로 M1→M5 순차 진행`).
 
 **Block 6 (separator)**: blank line, then `머지 후: <next-action-or-spec>`.
 - Optional but RECOMMENDED for multi-SPEC waves.

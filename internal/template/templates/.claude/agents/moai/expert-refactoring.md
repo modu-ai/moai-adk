@@ -16,7 +16,6 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-tool-ast-grep
   - moai-workflow-testing
 ---
 

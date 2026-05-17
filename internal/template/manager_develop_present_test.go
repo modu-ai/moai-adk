@@ -82,12 +82,16 @@ func TestManagerDevelopIsActiveAgent(t *testing.T) {
 	}
 }
 
-// TestManagerCycleIsRetiredStub verifies that manager-cycle.md's frontmatter
-// correctly identifies it as a retired stub pointing to manager-develop.
+// TestPurgedZombieAgentsAbsent verifies that the 8 retired/placeholder zombie
+// agents have been fully purged from the embedded FS (no longer retained as
+// stubs).
 //
-// ORC-001 follow-up rename: manager-cycle must have retired: true and
-// retired_replacement: manager-develop.
-func TestManagerCycleIsRetiredStub(t *testing.T) {
+// Workflow audit 2026-05-16 Bundle C + audit recommendation finding F-003:
+// the zombie agents below were absorbed into active replacements
+// (manager-develop / manager-quality / expert-performance / builder-harness)
+// and the placeholder stubs were removed. This test locks in the post-purge
+// contract: if any zombie reappears in templates, regression is caught.
+func TestPurgedZombieAgentsAbsent(t *testing.T) {
 	t.Parallel()
 
 	fsys, err := EmbeddedTemplates()
@@ -95,42 +99,21 @@ func TestManagerCycleIsRetiredStub(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	const managerCyclePath = ".claude/agents/moai/manager-cycle.md"
-
-	data, readErr := fs.ReadFile(fsys, managerCyclePath)
-	if readErr != nil {
-		t.Fatalf("failed to read manager-cycle.md: %v", readErr)
+	purged := []string{
+		"builder-agent",
+		"builder-plugin",
+		"builder-skill",
+		"expert-debug",
+		"expert-testing",
+		"manager-cycle",
+		"manager-ddd",
+		"manager-tdd",
 	}
 
-	fm, _, parseErr := parseFrontmatterAndBody(string(data))
-	if parseErr != "" {
-		t.Fatalf("manager-cycle.md frontmatter parse error: %s", parseErr)
-	}
-
-	// retired: field must be present with value "true"
-	retiredVal, hasRetired := fm["retired"]
-	if !hasRetired {
-		t.Error("manager-cycle.md must have 'retired: true' frontmatter field (ORC-001 follow-up rename)")
-	} else if retiredVal != "true" {
-		t.Errorf("manager-cycle.md retired field must be 'true', got: %q", retiredVal)
-	}
-
-	// retired_replacement must point to manager-develop
-	replacement, hasReplacement := fm["retired_replacement"]
-	if !hasReplacement {
-		t.Error("manager-cycle.md must have 'retired_replacement' frontmatter field")
-	} else if replacement != "manager-develop" {
-		t.Errorf("manager-cycle.md retired_replacement must be 'manager-develop', got: %q", replacement)
-	}
-
-	// tools must be empty
-	tools, hasTools := fm["tools"]
-	if hasTools && tools != "" && tools != "[]" {
-		t.Errorf("manager-cycle.md retired stub must have empty tools list, got: %q", tools)
-	}
-
-	// name field must match
-	if name, ok := fm["name"]; ok && name != "manager-cycle" {
-		t.Errorf("manager-cycle.md name field must be 'manager-cycle', got: %q", name)
+	for _, name := range purged {
+		path := ".claude/agents/moai/" + name + ".md"
+		if _, statErr := fs.Stat(fsys, path); statErr == nil {
+			t.Errorf("ZOMBIE_AGENT_REGRESSION: %s reappeared in embedded FS — must remain purged (Bundle C / F-003)", path)
+		}
 	}
 }
