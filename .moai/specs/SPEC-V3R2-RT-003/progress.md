@@ -15,9 +15,9 @@
 
 | Field | Value |
 |-------|-------|
-| Phase | `plan` |
-| Status | `plan-complete-pending-audit` |
-| Branch | `plan/SPEC-V3R2-RT-003` |
+| Phase | `run` — COMPLETE |
+| Status | `implemented` |
+| Branch | `feat/SPEC-V3R2-RT-003` |
 | Worktree | `(none — plan executed in main checkout per doctrine #822 plan-in-main)` |
 | Base | `origin/main` (`c810b11b7`) |
 | Plan-auditor | iteration 1 pending (target: PASS 0.85+) |

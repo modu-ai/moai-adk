@@ -18,5 +18,12 @@ security:
         # session_rules: SrcSession tier 로 적재되는 세션 범위 규칙.
         session_rules: []
 
+    # SPEC-V3R2-RT-003: Sandbox Execution Layer configuration.
+    sandbox:
+        required: false
+        network_allowlist: []
+        env_scrub_extra: []
+        docker_image: "alpine:latest"
+
     extra_deny_patterns: []
     extra_sensitive_content_patterns: []

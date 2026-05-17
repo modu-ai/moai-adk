@@ -153,6 +153,42 @@ type WorkflowConfig struct {
 	AutoSelection TeamAutoSelectionConfig `yaml:"auto_selection"`
 }
 
+// RoleProfile represents an agent role profile configuration.
+// It extends the base role profile from workflow.yaml with sandbox settings.
+// @MX:SPEC: SPEC-V3R2-RT-003 REQ-003
+type RoleProfile struct {
+	// Sandbox is the default sandbox backend for this role.
+	// Values: "none", "bubblewrap", "seatbelt", "docker".
+	// Defaults: implementer/tester/designer → OS-resolved (seatbelt|bubblewrap);
+	//           researcher/analyst/reviewer/architect → "none".
+	Sandbox string `yaml:"sandbox"`
+}
+
+// SecuritySandbox holds sandbox-specific security configuration.
+// Extended from security.yaml sandbox.* keys per REQ-V3R2-RT-003-008/030.
+//
+// @MX:ANCHOR: [AUTO] SecuritySandbox is the config schema for all sandbox knobs
+// @MX:REASON: Fan_in >= 3: loaded by config/loader.go, consumed by sandbox/launcher.go,
+//             displayed by doctor_sandbox.go, tested by config/types_test.go
+// @MX:SPEC: SPEC-V3R2-RT-003 REQ-008/020/030/031
+type SecuritySandbox struct {
+	// Required: when true, agents with sandbox: none fail to spawn unless they provide
+	// sandbox.justification frontmatter. Default: false.
+	Required bool `yaml:"required"`
+
+	// NetworkAllowlist lists additional allowed outbound hosts, appended to the built-in
+	// default 8-host list in sandbox.DefaultNetworkAllowlist.
+	NetworkAllowlist []string `yaml:"network_allowlist"`
+
+	// EnvScrubExtra lists additional environment variable names to scrub beyond the
+	// built-in denylist. These are additive (never replace the built-in list).
+	EnvScrubExtra []string `yaml:"env_scrub_extra"`
+
+	// DockerImage is the default Docker image for the docker backend.
+	// Default: "alpine:latest" (production image pending SPEC-V3R2-EXT-004).
+	DockerImage string `yaml:"docker_image"`
+}
+
 // TeamAutoSelectionConfig holds thresholds for automatic team vs solo mode selection.
 // These values are evaluated by the orchestrator to determine execution mode
 // when no explicit --team or --solo flag is provided.

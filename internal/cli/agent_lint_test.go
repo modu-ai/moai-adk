@@ -1634,6 +1634,79 @@ Body.
 	}
 }
 
+// TestAgentLint_NoSandboxNoJustification_Fails verifies LR-33: sandbox: none without
+// sandbox.justification causes a lint error.
+// T-RT003-11 / T-RT003-36: SPEC-V3R2-RT-003 REQ-033/043 AC-08/15.
+func TestAgentLint_NoSandboxNoJustification_Fails(t *testing.T) {
+	t.Parallel()
+
+	content := `---
+name: test-agent-no-sandbox-justification
+tools: Read, Grep
+effort: medium
+sandbox: none
+---
+
+This agent uses sandbox: none without justification.
+It should fail lint LR-33.
+`
+	path := createTempAgentFile(t, content)
+
+	violations, err := lintAgentFile(path, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// LR-33 エラーが1件あること
+	var lr33Violations []LintViolation
+	for _, v := range violations {
+		if v.Rule == "LR-33" {
+			lr33Violations = append(lr33Violations, v)
+		}
+	}
+
+	if len(lr33Violations) == 0 {
+		t.Error("expected LR-33 violation for sandbox: none without justification, got none")
+		return
+	}
+
+	if lr33Violations[0].Severity != SeverityError {
+		t.Errorf("LR-33: expected severity Error, got %q", lr33Violations[0].Severity)
+	}
+}
+
+// TestAgentLint_NoSandboxWithJustification_Passes verifies LR-33: sandbox: none
+// WITH sandbox.justification passes (emits warning only, not error).
+// T-RT003-11 / T-RT003-36: SPEC-V3R2-RT-003 AC-15.
+func TestAgentLint_NoSandboxWithJustification_Passes(t *testing.T) {
+	t.Parallel()
+
+	content := `---
+name: test-agent-sandbox-with-justification
+tools: Read, Grep
+effort: medium
+sandbox: none
+sandbox.justification: "dogfooding legacy workflow X — tracked in SPEC-V3R2-MIG-001"
+---
+
+This agent has sandbox: none with justification.
+LR-33 should emit warning (not error).
+`
+	path := createTempAgentFile(t, content)
+
+	violations, err := lintAgentFile(path, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// LR-33 warning (not error)
+	for _, v := range violations {
+		if v.Rule == "LR-33" && v.Severity == SeverityError {
+			t.Errorf("LR-33: expected warning (not error) for sandbox: none with justification, got error: %s", v.Message)
+		}
+	}
+}
+
 // TestCheckDeadHooks_ViaLintAgentFile tests LR-04 detection through lintAgentFile
 // The hooks field parsing in the simple YAML parser doesn't handle complex maps,
 // so this tests what actually happens when a fixture file is processed.

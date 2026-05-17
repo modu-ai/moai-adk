@@ -31,3 +31,21 @@ security:
     pre_allowlist: []
     # session_rules: SrcSession tier 로 적재되는 세션 범위 규칙.
     session_rules: []
+
+  # SPEC-V3R2-RT-003: Sandbox Execution Layer configuration.
+  # REQ-V3R2-RT-003-008/020/030/031.
+  sandbox:
+    # required=true 시 sandbox: none인 에이전트는 sandbox.justification 없이 spawn 거부.
+    # Default: false (v3.0 — v3.1+에서 true 검토 예정).
+    required: false
+    # network_allowlist: 기본 8개 호스트에 추가되는 허용 네트워크 목록 (additive).
+    # 기본값: github.com, registry.npmjs.org, pypi.org, proxy.golang.org,
+    #          crates.io, repo.maven.apache.org, rubygems.org, pub.dev
+    network_allowlist: []
+    # env_scrub_extra: 기본 scrub 목록에 추가되는 환경변수명 (additive, 대체 아님).
+    # 기본값: AWS_* (prefix), GITHUB_TOKEN, ANTHROPIC_API_KEY, OPENAI_API_KEY,
+    #          NPM_TOKEN, GH_TOKEN
+    env_scrub_extra: []
+    # docker_image: docker 백엔드에서 사용할 기본 이미지.
+    # EXT-004 migration framework 완료 전 임시값: alpine:latest.
+    docker_image: "alpine:latest"
