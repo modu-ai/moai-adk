@@ -2,7 +2,7 @@
 id: SPEC-V3R4-WORKFLOW-SPLIT-001
 title: "Workflow Skills Phase-Scoped Sub-Skill Split (Bundle F)"
 version: "0.1.1"
-status: planned
+status: in-progress
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec
