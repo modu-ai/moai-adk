@@ -373,6 +373,8 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 
 ## 11. Error Handling
 
+> Canonical rule: this section is a high-level overview; detailed recovery flows live in `.claude/rules/moai/core/agent-common-protocol.md` § Error Recovery Pattern and individual agent definitions.
+
 ### Error Recovery
 
 - Agent execution errors: Use manager-quality subagent
@@ -405,6 +407,8 @@ For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-m
 ---
 
 ## 13. Progressive Disclosure System
+
+> Canonical rule: see `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure for the 3-level token budget specification and trigger configuration schema.
 
 MoAI-ADK implements a 3-level Progressive Disclosure system:
 
@@ -512,6 +516,8 @@ MoAI-ADK supports CG Mode for 60-70% cost reduction on implementation-heavy task
 
 ## 16. Context Search Protocol
 
+> Canonical rule: see `.claude/rules/moai/workflow/context-window-management.md` for context window thresholds (1M = 75%, 200K = 90%) and `.claude/rules/moai/workflow/session-handoff.md` for paste-ready resume message format.
+
 MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions.
 
 ### When to Search
@@ -598,9 +604,15 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 14.0.0 (Agency v3.2 + Harness Design Integration)
-Last Updated: 2026-04-03
+Version: 14.1.0 (Workflow Audit 2026-05-16 — Bundle B/G/H/I integration)
+Last Updated: 2026-05-17
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
+
+Changes in v14.1.0 (from v14.0.0):
+- §11 Error Handling: canonical rule citation 추가 (manager-quality / expert-devops)
+- §13 Progressive Disclosure System: canonical rule citation 추가 (`.claude/rules/moai/workflow/progressive-disclosure.md`)
+- §16 Context Search Protocol: canonical rule citation 추가 (`.claude/rules/moai/workflow/context-window-management.md`)
+- Note: §4 Agent Catalog의 `cycle` 제거는 별도 PR (Bundle C / PR #958)에서 처리됨
 
 For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").

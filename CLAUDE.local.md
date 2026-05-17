@@ -1275,6 +1275,42 @@ Preload 완료 후에만 해당 tool 호출 가능. Preload 이전 호출 = HARD
 1. 본 §21 "배포 금지 파일 목록" 표에 행 추가 (entry command + workflow body 양쪽)
 2. §2 Local-Only Files 목록에 등록 (이미 `97-*.md`/`98-*.md`/`99-*.md` 패턴은 등록되어 있음 — 패턴 외 추가 파일만 명시 추가)
 3. workflow body 최상단 `[DEV-ONLY]` banner 추가
-4. entry command frontmatter `description`에 `"(dev-only). NOT distributed to user projects."` 문구 추가
+4. entry command frontmatter `description`에 `"(dev-only). NOT distributed to user projects."` 문구 유지
 5. 본 §21 검증 체크리스트에 신규 파일명 grep 항목 추가
-4. 검증 체크리스트 항목 추가
+
+---
+
+## 22. Dev Settings Intent — local settings.json 의도 명문화
+
+Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 몇 가지 키는 template baseline과 의도적으로 다르게 운용되며, 본 섹션은 그 의도를 명문화한다.
+
+### §22.1 defaultMode
+
+- **로컬값**: `"bypassPermissions"` 또는 `"acceptEdits"` (개발자 선호)
+- **Template 기본값**: 미지정 (Claude Code 기본 `"default"` 사용)
+- **의도**: 메인테이너는 빠른 실험 + bypass 모드 빈번 사용. 사용자 프로젝트는 안전한 prompt-each-time 기본값을 따른다.
+
+### §22.2 enableAllProjectMcpServers
+
+- **로컬값**: `true`
+- **Template 기본값**: 미지정 (false 효과)
+- **의도**: 메인테이너 머신에는 dev tool 다수 (pencil, chrome-devtools, claude-in-chrome 등)가 등록되어 있어 모두 자동 활성화하는 것이 효율적. 사용자 프로젝트는 `mcp__context7` / `mcp__sequential-thinking`만 `alwaysLoad`되고 나머지는 ToolSearch preload 경로를 따른다.
+
+### §22.3 teammateMode
+
+- **로컬값**: `"glm"` 또는 `"claude"` (runtime-managed by `moai cg` / `moai glm` 명령)
+- **Template 기본값**: 미지정
+- **의도**: 메인테이너는 CG mode (Claude leader + GLM teammates)로 cost-optimization 검증을 빈번하게 수행. 사용자 프로젝트는 leader 단독으로 시작 후 필요시 `moai cg` 진입.
+- **주의**: §2 [HARD] settings.local.json Separation 참조 — teammateMode는 `settings.local.json`에 위치하며 template에 절대 포함 금지.
+
+### §22.4 env.PATH
+
+- **로컬값**: `$HOME/...` 패턴 (사용자 절대경로 `/Users/goos/...` 금지, 2026-05-17 정정 — workflow audit finding F-009/M5)
+- **Template 기본값**: `settings.json.tmpl`이 `{{.GoBinPath}}` 등 Go template 변수로 렌더링
+- **의도**: 로컬 settings는 fork/clone 시에도 깨지지 않도록 `$HOME` 환경변수로 추상화. Claude Code가 PATH 키 값을 expand하므로 `$HOME` 직접 사용 가능.
+
+### §22.5 운영 원칙
+
+- [HARD] 메인테이너 머신에서 위 키들을 변경할 때 template 자동 동기화 금지 (§2 settings.local.json Separation 적용)
+- [HARD] 위 4개 키의 의도가 변경되면 본 §22를 즉시 갱신
+- [HARD] 사용자 프로젝트에 위 키들이 누락된 것이 정상 — 누락은 결함이 아니라 의도된 격리
