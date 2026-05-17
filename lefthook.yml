@@ -1,0 +1,12 @@
+pre-push:
+  parallel: false
+  commands:
+    preflight:
+      run: make preflight
+
+pre-commit:
+  parallel: true
+  commands:
+    lint-staged:
+      glob: "*.go"
+      run: golangci-lint run --fast {staged_files}
