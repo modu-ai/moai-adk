@@ -2,7 +2,7 @@
 id: SPEC-V3R4-CI-FASTTRACK-001
 title: "CI/CD Fast Track for Single-Developer Workflow (Path-Filter + Review Bot Consolidation)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec
@@ -258,37 +258,45 @@ rm internal/broken_test_file.go
 
 **Cross-reference**: AC-CIFT-005.
 
-## 5. Nightly Workflow First Run
+## 5. Release PR Multi-OS Workflow First Run
 
-**Scenario**: Manually trigger nightly workflow via `workflow_dispatch` and verify
-3-OS matrix execution.
+**Scenario**: Trigger release PR multi-OS workflow via `workflow_dispatch` and verify
+3-OS matrix execution, OR create a release/* branch PR to test automatic trigger.
 
 **Given**:
 
 - Run-PR merged.
 - `gh` CLI authenticated.
 
-**When**:
+**When** (manual trigger):
 
 ```bash
-gh workflow run nightly-full-matrix.yml
+gh workflow run release-pr-multi-os.yml
 sleep 5
-RUN_ID=$(gh run list --workflow=nightly-full-matrix.yml --limit=1 --json databaseId -q '.[0].databaseId')
+RUN_ID=$(gh run list --workflow=release-pr-multi-os.yml --limit=1 --json databaseId -q '.[0].databaseId')
 gh run watch "$RUN_ID"
+```
+
+Or **When** (release branch PR trigger):
+
+```bash
+git checkout -b release/v3.0.0-rc1 origin/main
+echo "# Release v3.0.0-rc1" >> CHANGELOG.md
+git add CHANGELOG.md && git commit -m "release: v3.0.0-rc1 bump"
+git push -u origin release/v3.0.0-rc1
+gh pr create --base main
 ```
 
 **Then**:
 
-- `gh workflow list` includes "Nightly Full Matrix".
-- Manual trigger creates a new workflow run.
+- `gh workflow list` includes "Release PR Multi-OS".
+- Manual trigger or PR open creates a new workflow run.
 - All 3 matrix jobs (ubuntu-latest, macos-latest, windows-latest) execute.
-- If all matrix jobs succeed, `notify-on-failure` job does not run (`failure() &&
-  github.event_name == 'schedule'` evaluates false because event is `workflow_dispatch`).
-- If any matrix job fails AND event is `schedule`, an issue is created with prefix
-  "Nightly matrix failure".
+- If all matrix jobs succeed, `notify-on-failure` job does not run.
+- If any matrix job fails, an issue is created with prefix "Release PR Multi-OS failure".
 
 **Failure mode**: If workflow_dispatch is not visible in `gh workflow list`, check
-`on.workflow_dispatch:` block in nightly-full-matrix.yml. Wait ~30 sec for GitHub
+`on.workflow_dispatch:` block in release-pr-multi-os.yml. Wait ~30 sec for GitHub
 to sync after run-PR merge.
 
 **Cross-reference**: AC-CIFT-006 (EC-2).
@@ -328,9 +336,9 @@ does not match, T7 was incomplete — re-apply.
 
 **Cross-reference**: AC-CIFT-007.
 
-## 7. Lessons #18 Capture Verified
+## 7. Lessons #19 Capture Verified
 
-**Scenario**: lessons.md contains entry #18 with all 5 protocol sections (Category,
+**Scenario**: lessons.md contains entry #19 with all 5 protocol sections (Category,
 Incorrect, Correct, Why, How to apply).
 
 **Given**:
@@ -343,17 +351,17 @@ Incorrect, Correct, Why, How to apply).
 ```bash
 LESSONS=~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/lessons.md
 test -f "$LESSONS"
-grep -n "^## #18" "$LESSONS"
-awk '/^## #18/,/^## #19|EOF/' "$LESSONS" \
+grep -n "^## #19" "$LESSONS"
+awk '/^## #19/,/^## #20|EOF/' "$LESSONS" \
   | grep -cE "Category|Incorrect|Correct|Why|How to apply"
-awk '/^## #18/,/^## #19|EOF/' "$LESSONS" \
-  | grep -cE "1인 개발|3-tier|paths-filter|nightly"
+awk '/^## #19/,/^## #20|EOF/' "$LESSONS" \
+  | grep -cE "1인 개발|3-tier|paths-filter|release-PR"
 ```
 
 **Then**:
 
 - `lessons.md` file exists.
-- `## #18` heading exists exactly once.
+- `## #19` heading exists exactly once.
 - 5 protocol sections present (count ≥ 5).
 - Key concept keywords present (count ≥ 4).
 

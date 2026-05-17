@@ -2,7 +2,7 @@
 id: SPEC-V3R4-CI-FASTTRACK-001
 title: "CI/CD Fast Track for Single-Developer Workflow (Path-Filter + Review Bot Consolidation)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec
@@ -427,22 +427,23 @@ design.md AD-004 의 decision template 에 위 3개 결과를 명시. 추가 wor
 
 **Implements**: REQ-CIFT-005.
 
-### T6 — nightly-full-matrix.yml Workflow
+### T6 — release-pr-multi-os.yml Workflow (REVISED per user directive 2026-05-17)
 
-**Deliverable**: `.github/workflows/nightly-full-matrix.yml` (NEW):
+**Deliverable**: `.github/workflows/release-pr-multi-os.yml` (NEW):
 
 ```yaml
-name: Nightly Full Matrix
+name: Release PR Multi-OS
 
 on:
-  schedule:
-    - cron: "0 3 * * *"
+  pull_request:
+    branches:
+      - 'release/*'
   workflow_dispatch:
   push:
     tags: ['v*']
 
 concurrency:
-  group: nightly-${{ github.ref }}
+  group: release-pr-multi-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -501,9 +502,9 @@ jobs:
 
 **Verification**:
 
-- `yamllint .github/workflows/nightly-full-matrix.yml` 통과.
-- `gh workflow list` 출력에 `Nightly Full Matrix` 포함.
-- `gh workflow run nightly-full-matrix.yml` 으로 수동 트리거 → 3-OS matrix 정상 실행.
+- `yamllint .github/workflows/release-pr-multi-os.yml` 통과.
+- `gh workflow list` 출력에 `Release PR Multi-OS` 포함.
+- `gh workflow run release-pr-multi-os.yml` 으로 수동 트리거 → 3-OS matrix 정상 실행.
 - 인위적 실패 주입 후 (별도 PR 에서 검증) issue 생성 + dedup 동작 확인 (run-PR scope 외,
   AC-CIFT-006 에 deferred).
 
@@ -537,19 +538,19 @@ jobs:
 
 **Implements**: REQ-CIFT-007.
 
-### T8 — lessons.md #18 Capture
+### T8 — lessons.md #19 Capture
 
 **Deliverable**: `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/lessons.md` 에
-새 entry `#18 — 1인 개발 CI 3-tier pattern (2026-05-17)` 추가. 본문은 REQ-CIFT-008 본문
-verbatim.
+새 entry `#19 — 1인 개발 CI 3-tier pattern (2026-05-17)` 추가. 본문은 REQ-CIFT-008 본문
+verbatim (revised with release-pr-multi-os trigger instead of nightly cron).
 
 또한 `MEMORY.md` 에 (필요 시) entry 추가 — 단, lessons.md 본문이 분리 파일이 아닌 단일
-`lessons.md` 의 #18 항목이라면 별도 MEMORY.md 인덱싱은 lessons.md 자체로 충분 (auto-memory
+`lessons.md` 의 #19 항목이라면 별도 MEMORY.md 인덱싱은 lessons.md 자체로 충분 (auto-memory
 규약상 lessons.md 는 단일 파일 chronicle 패턴).
 
 **Verification**:
 
-- `grep -n "^## #18" lessons.md` 1 매치.
+- `grep -n "^## #19" lessons.md` 1 매치.
 - entry 본문이 Category / Incorrect / Correct / Why / How-to-apply 5개 구조를 포함.
 - `head -3 lessons.md | grep -c "^---"` ≥ 2 (frontmatter 보존).
 
@@ -660,7 +661,7 @@ Wave 1 — Run-PR (main implementation):
     - DELETE: .github/workflows/{codex-review,gemini-review,glm-review,llm-panel,claude-code-review.optional}.yml (T3)
     - AUDIT: .github/workflows/{claude,review-quality-gate}.yml (T4, no-edit)
     - NEW: lefthook.yml + MODIFY: Makefile (T5)
-    - NEW: .github/workflows/nightly-full-matrix.yml (T6)
+    - NEW: .github/workflows/release-pr-multi-os.yml (T6, REVISED)
     - MODIFY: CLAUDE.local.md §18.7 (T7)
     - MODIFY: ~/.claude/projects/.../memory/lessons.md (T8)
   task order: T4 (audit) → T1 → T2 → T3 → T5 → T6 → T7 → T8
