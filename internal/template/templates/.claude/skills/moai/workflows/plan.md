@@ -26,6 +26,10 @@ triggers:
   phases: ["plan"]
 ---
 
+<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai plan Phase <N> <enter|exit> -->
+
 # Plan Workflow Orchestration
 
 ## Purpose

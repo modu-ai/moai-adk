@@ -1,0 +1,63 @@
+# Baseline phase trace for /moai sync @ main HEAD 639c91381
+# Captured by SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5
+# Source: .claude/skills/moai/workflows/sync.md
+# Method: static extraction of H2/H3 headers from source file
+# Note: --dry-run flag NOT supported; trace is static documentation of expected phases
+# Wave 2+ will diff post-split trace against this baseline (REQ-WFSP-003c)
+
+[trace] /moai sync Purpose enter
+[trace] /moai sync Purpose exit
+[trace] /moai sync Scope enter
+[trace] /moai sync Scope exit
+[trace] /moai sync Input enter
+[trace] /moai sync Input exit
+[trace] /moai sync Mode Flag Compatibility enter
+[trace] /moai sync Mode Flag Compatibility exit
+[trace] /moai sync Supported Modes enter
+[trace] /moai sync Supported Modes exit
+[trace] /moai sync Supported Flags enter
+[trace] /moai sync Supported Flags exit
+[trace] /moai sync Context Loading enter
+[trace] /moai sync Context Loading exit
+[trace] /moai sync Phase Sequence enter
+[trace] /moai sync Phase 0: Pre-Sync Quality Gate enter
+[trace] /moai sync Phase 0: Pre-Sync Quality Gate exit
+[trace] /moai sync Phase 0.08: DB Schema Doc Check (Conditional) enter
+[trace] /moai sync Phase 0.08: DB Schema Doc Check (Conditional) exit
+[trace] /moai sync Phase 0.1: Deployment Readiness Check enter
+[trace] /moai sync Phase 0.1: Deployment Readiness Check exit
+[trace] /moai sync Phase 0.5: Quality Verification enter
+[trace] /moai sync Phase 0.5: Quality Verification exit
+[trace] /moai sync Phase 0.55: Security Scan (Conditional) enter
+[trace] /moai sync Phase 0.55: Security Scan (Conditional) exit
+[trace] /moai sync Phase 0.6: MX Tag Validation (Multi-Language) enter
+[trace] /moai sync Phase 0.6: MX Tag Validation (Multi-Language) exit
+[trace] /moai sync Phase 0.7: Coverage Analysis and Test Generation enter
+[trace] /moai sync Phase 0.7: Coverage Analysis and Test Generation exit
+[trace] /moai sync Phase 1: Analysis and Planning enter
+[trace] /moai sync Phase 1: Analysis and Planning exit
+[trace] /moai sync Phase 2: Execute Document Synchronization enter
+[trace] /moai sync Phase 2: Execute Document Synchronization exit
+[trace] /moai sync Phase 3: Git Operations and Delivery enter
+[trace] /moai sync Phase 3: Git Operations and Delivery exit
+[trace] /moai sync Phase Sequence exit
+[trace] /moai sync SPEC Reference enter
+[trace] /moai sync SPEC Reference exit
+[trace] /moai sync Context (AI-Developer Memory) enter
+[trace] /moai sync Context (AI-Developer Memory) exit
+[trace] /moai sync Affected Areas enter
+[trace] /moai sync Affected Areas exit
+[trace] /moai sync Local CI Mirror Results enter
+[trace] /moai sync Local CI Mirror Results exit
+[trace] /moai sync Team Mode enter
+[trace] /moai sync Team Mode exit
+[trace] /moai sync Graceful Exit enter
+[trace] /moai sync Graceful Exit exit
+[trace] /moai sync Completion Criteria enter
+[trace] /moai sync Completion Criteria exit
+[trace] /moai sync Test Scenarios enter
+[trace] /moai sync Test Scenarios exit
+[trace] /moai sync Related Skills enter
+[trace] /moai sync Related Skills exit
+[trace] /moai sync Custom Harness Extension (Optional) enter
+[trace] /moai sync Custom Harness Extension (Optional) exit

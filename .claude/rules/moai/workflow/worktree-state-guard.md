@@ -14,25 +14,27 @@ This rule defines **when** and **how** the orchestrator must invoke the
 primitive. The primitive itself lives in `internal/worktree/` and is exposed as
 CLI subcommands by `internal/cli/worktree/guard.go`.
 
-> Cross-references: `worktree-integration.md` (broader worktree patterns),
+**Operational status (2026-05-17)**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. Wave 5 orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred per SPEC-WORKTREE-DOCS-001 § Non-Goals. See `feedback_worktree_autonomous` memory for the 2026-05-17 user policy context.
+
+> Cross-references: `worktree-integration.md` § Terminology Glossary (L1/L2/L3 layer definitions),
 > `agent-common-protocol.md` § User Interaction Boundary (AskUserQuestion HARD),
 > SPEC `.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md` § 3.6 (REQ-CIAUT-031~036).
 
 ## When to Snapshot
 
-The orchestrator SHOULD invoke `moai worktree snapshot` immediately before any
-`Agent(isolation: "worktree")` call that:
+When L1 isolation is in use (Claude Code runtime materialized an L1 worktree), the orchestrator SHOULD invoke `moai worktree snapshot` immediately before any L1 `Agent(isolation: "worktree")` call that:
 
 - Modifies tracked files (any agent with `permissionMode: acceptEdits`)
-- Operates in team mode where parallel teammates are spawned with isolation
+- Operates in team mode where parallel teammates are spawned with L1 isolation
 - Performs cross-file refactors (e.g., expert-refactoring, manager-develop)
-- Has historically triggered worktree regressions on this project
+- Has historically triggered L1 worktree regressions on this project
 
 Snapshots SHOULD be skipped for:
 
 - Read-only agents (`permissionMode: plan`) — no state can drift
 - One-shot file reads (Read tool only)
 - Trivial edits to a single config file (low blast radius, snapshot overhead exceeds benefit)
+- Sessions where L1 isolation was not materialized (runtime did not create an L1 worktree)
 
 ## Divergence Threshold
 
