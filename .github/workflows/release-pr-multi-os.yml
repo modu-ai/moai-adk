@@ -1,0 +1,87 @@
+name: Release PR Multi-OS Verification
+
+# SPEC-V3R4-CI-FASTTRACK-001 T6 (REVISED per user directive 2026-05-17)
+# Rationale: macOS/Windows verification runs at release PR time (just-in-time),
+# not as a nightly cron or post-merge tag trigger.
+# - nightly cron: issues filed async, not visible at merge moment
+# - release tag: post-merge, requires hotfix on regression
+# - release PR: regression visible just before release, fix lands in same PR
+# Original plan.md T6 described nightly-full-matrix.yml; user revised to this
+# trigger pattern. Sync-phase will reconcile spec artifacts.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: release-pr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Detect: only proceed if this is a release/* branch PR or workflow_dispatch
+  # ---------------------------------------------------------------------------
+  detect-release:
+    name: Detect Release PR
+    runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - id: gate
+        run: echo "proceed=true" >> $GITHUB_OUTPUT
+
+  # ---------------------------------------------------------------------------
+  # Full 3-OS matrix test: macOS + Windows (ubuntu already covered by main CI)
+  # Only runs for release/* branch PRs or manual workflow_dispatch
+  # ---------------------------------------------------------------------------
+  full-matrix-test:
+    name: Release Verify (${{ matrix.os }})
+    needs: detect-release
+    if: needs.detect-release.outputs.proceed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests with race detector
+        shell: bash
+        run: go test -race ./...
+
+  # ---------------------------------------------------------------------------
+  # Summary gate: ensures all OS jobs passed (or were skipped for non-release PRs)
+  # ---------------------------------------------------------------------------
+  release-pr-gate:
+    name: Release PR Multi-OS Gate
+    needs: full-matrix-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all OS passed
+        run: |
+          if [ "${{ needs.full-matrix-test.result }}" = "failure" ]; then
+            echo "::error::Release PR multi-OS verification FAILED on at least one OS"
+            exit 1
+          fi
+          echo "✓ Release PR multi-OS verification PASSED (or skipped for non-release PR)"

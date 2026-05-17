@@ -13,7 +13,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify
+.PHONY: all build test lint fix clean install generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short
 
 all: lint test build ## Run lint, test, and build
 
@@ -102,5 +102,14 @@ tui-snapshot: ## Regenerate all internal/tui golden snapshots (UPDATE_GOLDEN=1)
 tui-snapshot-verify: ## Verify all internal/tui golden snapshots match on-disk state (no update)
 	go test ./internal/tui/... ./internal/tui/golden/... -v -count=1
 	@echo "All golden snapshots verified."
+
+preflight: lint-fast test-race-short build ## Run pre-push preflight: lint-fast + test-race-short + build
+	@echo "✓ ready to push"
+
+lint-fast: ## Run golangci-lint --fast (preflight gate)
+	@golangci-lint run --fast || (echo "preflight: lint-fast FAIL"; exit 1)
+
+test-race-short: ## Run go test -race -short (preflight gate)
+	@go test -race -short ./... || (echo "preflight: test-race-short FAIL"; exit 1)
 
 .DEFAULT_GOAL := help
