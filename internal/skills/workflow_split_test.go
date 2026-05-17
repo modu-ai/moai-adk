@@ -120,22 +120,12 @@ func TestSubSkillLOCCeiling(t *testing.T) {
 // TestEntryRouterLOCCeiling asserts that each of the 4 workflow entry router
 // .md files is ≤200 LOC.
 //
-// At Wave 0 baseline (before any Wave split), all 4 entry routers still contain
-// the full workflow content (1073/1203/1076/932 LOC) and are well above the
-// ceiling. This test is SKIPPED at baseline to allow CI to pass during Wave 0.
-// The skip MUST be removed after Wave 4 is merged (when all 4 entry routers
-// have been refactored to ≤200 LOC thin routers).
-//
-// SkipReason: AC-WFSP-002 — fixture for split-detect; skip removed after Wave 4 merge.
+// Wave 4 complete: all 4 entry routers (run/sync/project/plan) have been
+// refactored to ≤200 LOC thin routers. This test enforces the 200 LOC ceiling
+// permanently, preventing future regressions.
 //
 // REQ: REQ-WFSP-002a, AC-WFSP-002
 func TestEntryRouterLOCCeiling(t *testing.T) {
-	// @MX:TODO: Remove t.Skip() after Wave 4 (plan.md split) is merged to main.
-	// All 4 entry routers must be ≤200 LOC at that point.
-	// AC-WFSP-002 — fixture for split-detect; skip removed after Wave 4 merge.
-	t.Skip("baseline RED: entry routers not yet split (Wave 1-4 pending). " +
-		"Remove this skip after Wave 4 merged. AC-WFSP-002.")
-
 	t.Parallel()
 
 	root := findProjectRoot(t)
