@@ -996,6 +996,17 @@ EOF
 
 **Cross-references**: `feedback_worktree_autonomous`, lessons #18/#19.
 
+#### Local pre-push verification (lefthook)
+
+[HARD] Tier 1 fast-track 패턴을 보완하기 위해 push 전 로컬 검증을 강제. `lefthook.yml` 이 repo root 에 존재하며 `pre-push` hook 에서 `make preflight` 를 실행 (golangci-lint --fast + go test -race -short + go build). 신규 메인테이너 1회 설치:
+
+```bash
+brew install lefthook
+lefthook install      # .git/hooks/pre-push 자동 등록
+```
+
+검증: `make preflight` 직접 실행 시 1-2분 내 통과 → push 후 CI 실패율 95%+ 감소. 임시 우회 (긴급 hotfix 등): `LEFTHOOK=0 git push ...`. SPEC-V3R4-CI-FASTTRACK-001 REQ-CIFT-005 + lessons #19 (1인 개발 CI 3-tier 패턴).
+
 ### §18.8 Release 프로세스
 
 [HARD] 릴리스는 `scripts/release.sh` 스크립트 경유. 수동 tag push 금지 (GoReleaser 자동 릴리스와 충돌 가능).

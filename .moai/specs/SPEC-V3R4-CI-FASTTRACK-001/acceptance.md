@@ -267,7 +267,12 @@ awk '/^### §18\.7/,/^### §18\.8/' CLAUDE.local.md | grep -cE "1인 개발|2026
 
 **Implements**: REQ-CIFT-007.
 
-## AC-CIFT-008 — Lessons #18 Capture
+## AC-CIFT-008 — Lessons #19 Capture
+
+**Note**: This AC originally specified lessons #18, but during this SPEC's session,
+lesson #18 was assigned to "plan-PR auto-merge SQUASH 등록은 plan-auditor PASS 확인
+후에만" (race prevention captured mid-session). The CI 3-tier lesson was then assigned
+the next available number #19. Spec/plan references to #18 are reconciled in sync-phase.
 
 **Given** run-PR is merged AND T8 has appended the entry.
 
@@ -275,17 +280,17 @@ awk '/^### §18\.7/,/^### §18\.8/' CLAUDE.local.md | grep -cE "1인 개발|2026
 
 ```bash
 LESSONS=~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/lessons.md
-grep -n "^## #18" "$LESSONS"
-awk '/^## #18/,/^## #19|^---|EOF/' "$LESSONS" | grep -cE "Category|Incorrect|Correct|Why|How to apply"
-awk '/^## #18/,/^## #19|EOF/' "$LESSONS" | grep -cE "1인 개발|3-tier|paths-filter|nightly"
+grep -n "^## #19" "$LESSONS"
+awk '/^## #19/,/^## #20|^---|EOF/' "$LESSONS" | grep -cE "Category|Incorrect|Correct|Why|How to apply"
+awk '/^## #19/,/^## #20|EOF/' "$LESSONS" | grep -cE "1인 개발|3-tier|paths-filter|release-PR"
 ```
 
 **Then**:
 
-- The `## #18` heading exists exactly once.
+- The `## #19` heading exists exactly once.
 - The 5 protocol sections (Category, Incorrect, Correct, Why, How to apply) all appear
   (count ≥ 5).
-- Key concepts (1인 개발, 3-tier, paths-filter, nightly) appear in the body (count ≥ 4).
+- Key concepts (1인 개발, 3-tier, paths-filter, release-PR) appear in the body (count ≥ 4).
 
 **Binary**: PASS if all 3 grep checks satisfied; FAIL otherwise.
 

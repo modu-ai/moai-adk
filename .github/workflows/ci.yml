@@ -129,7 +129,9 @@ jobs:
     name: Test (${{ matrix.os }})
     runs-on: ubuntu-latest
     needs: detect
-    if: needs.detect.outputs.docs_only == 'true'
+    # EC-1 mutual exclusivity guard: mixed PR (docs + Go code) runs real test only, NOT skip-marker.
+    # Without this guard, both jobs would emit Test (X) check-runs on mixed PRs, wasting compute.
+    if: needs.detect.outputs.docs_only == 'true' && needs.detect.outputs.go_code != 'true'
     strategy:
       fail-fast: false
       matrix:
