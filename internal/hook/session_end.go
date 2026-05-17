@@ -1,3 +1,4 @@
+// Resolution: KEEP — memo save, MX scan within 1500ms timeout per r3 §3.
 package hook
 
 import (

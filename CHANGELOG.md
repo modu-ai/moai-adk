@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.0.0-rc1: 6 SPECs complete (CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+## [Unreleased] — v3.0.0-rc1: 7 SPECs complete (RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+
+### Fixed
+
+- **tmux pane leak on SubagentStop (P-H02)** (SPEC-V3R2-RT-006): Critical bug fix for team-mode tmux pane leak on SubagentStop. `subagent_stop.go` now reads `tmuxPaneId` from `~/.claude/teams/{name}/config.json`, invokes `tmux kill-pane` with 500ms per-pane timeout (goroutine + context.WithTimeout), and removes the teammate entry from the registry. Windows path is explicit no-op. (BC-V3R2-018: retire 4 events from settings.json with observability opt-in)
+
+### Added
+
+- **Retire 4 hook events from settings.json with observability opt-in** (SPEC-V3R2-RT-006): `Notification`, `Elicitation`, `ElicitationResult`, `TaskCreated` removed from `settings.json` and `settings.json.tmpl`. Go handlers retained as observability taps: enable via `system.yaml` `hook.observability_events: [notification, ...]`. Pattern A silent return when not opted in. `SystemHookConfig` struct in `internal/config/types.go` with `ObservabilityEvents []string` + `StrictMode bool`.
+
+- **`moai doctor hook` 27-event diagnostic CLI** (SPEC-V3R2-RT-006): New `moai doctor hook` subcommand prints the 27-event coverage table with per-event resolution state (KEEP/UPGRADE/FIX/RETIRE-OBS-ONLY/REMOVE/COMPOSITE). Flags: `--json` (machine-readable), `--trace <event>` (recent log lines from hook.log), `--observability` (filter RETIRE-OBS-ONLY events). `internal/hook/coverage_table.go` is the authoritative 28-entry data structure.
 
 ### Changed
 

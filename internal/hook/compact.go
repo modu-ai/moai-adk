@@ -1,3 +1,4 @@
+// Resolution: KEEP — PreCompact memo save; PostCompact memo restore.
 package hook
 
 import (

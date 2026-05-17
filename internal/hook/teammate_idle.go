@@ -1,3 +1,4 @@
+// Resolution: KEEP — LSP error threshold quality gate enforcement; emit Continue:false on fail.
 package hook
 
 import (

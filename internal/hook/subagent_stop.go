@@ -1,3 +1,4 @@
+// Resolution: FIX — P-H02 bug fix: read tmuxPaneId, kill-pane with 500ms timeout, update team registry.
 package hook
 
 import (
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // subagentStopHandler processes SubagentStop events.
@@ -59,15 +61,28 @@ func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		return &HookOutput{}, nil
 	}
 
-	// Kill the tmux pane
-	if err := h.killTmuxPane(tmuxPaneID); err != nil {
-		// If pane not found, treat as success and proceed with config cleanup
-		if strings.Contains(err.Error(), "pane not found") || strings.Contains(err.Error(), "can't find pane") {
-			slog.Debug("tmux pane not found (may already be removed)", "pane_id", tmuxPaneID)
-		} else {
-			slog.Warn("failed to kill tmux pane", "pane_id", tmuxPaneID, "error", err)
-			// Continue with config cleanup despite kill failure
+	// Kill the tmux pane with 500ms timeout per-pane (SPEC-V3R2-RT-006 AC-15, AC-02).
+	// The goroutine + context prevents pane cleanup from exceeding SessionEnd 1500ms ceiling.
+	killDone := make(chan error, 1)
+	go func() {
+		killDone <- h.killTmuxPane(tmuxPaneID)
+	}()
+
+	const killTimeout = 500 * time.Millisecond
+	select {
+	case err := <-killDone:
+		if err != nil {
+			// If pane already gone, treat as successful cleanup (AC-02, REQ-061).
+			if strings.Contains(err.Error(), "pane not found") || strings.Contains(err.Error(), "can't find pane") {
+				slog.Debug("tmux pane not found (already removed)", "pane_id", tmuxPaneID)
+			} else {
+				slog.Warn("failed to kill tmux pane", "pane_id", tmuxPaneID, "error", err)
+				// Continue with config cleanup despite kill failure.
+			}
 		}
+	case <-time.After(killTimeout):
+		slog.Warn("tmux kill-pane timed out", "pane_id", tmuxPaneID, "timeout", killTimeout)
+		// Best-effort: proceed with config cleanup even when kill-pane times out.
 	}
 
 	// Update team config to remove teammate entry

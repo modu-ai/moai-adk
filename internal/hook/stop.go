@@ -1,3 +1,4 @@
+// Resolution: KEEP — completion markers, Ralph state update.
 package hook
 
 import (

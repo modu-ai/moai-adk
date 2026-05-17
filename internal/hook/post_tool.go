@@ -1,3 +1,4 @@
+// Resolution: KEEP — MX validate, LSP convert, metrics, MX tag injection.
 package hook
 
 import (

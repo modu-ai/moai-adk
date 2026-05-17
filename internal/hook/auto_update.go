@@ -1,3 +1,4 @@
+// Resolution: COMPOSITE — autoUpdate handler fires on SessionStart to check for moai-adk updates.
 package hook
 
 import (

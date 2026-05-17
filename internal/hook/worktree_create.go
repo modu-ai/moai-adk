@@ -1,3 +1,4 @@
+// Resolution: KEEP — worktree registry update at .moai/state/worktrees.json.
 package hook
 
 import (

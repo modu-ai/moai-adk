@@ -304,9 +304,11 @@ func TestSettingsTemplateAllHookEvents(t *testing.T) {
 	allEvents := []string{
 		"SessionStart", "PreCompact", "SessionEnd",
 		"PreToolUse", "PostToolUse", "Stop",
-		"SubagentStop", "PostToolUseFailure", "Notification",
+		"SubagentStop", "PostToolUseFailure",
 		"SubagentStart", "UserPromptSubmit",
 		"TeammateIdle", "TaskCompleted",
+		// Note: Notification, Elicitation, ElicitationResult, TaskCreated are RETIRE-OBS-ONLY
+		// and have been removed from settings.json.tmpl per SPEC-V3R2-RT-006 REQ-004.
 	}
 	for _, event := range allEvents {
 		if _, ok := hooks[event]; !ok {
@@ -337,7 +339,7 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 	}{
 		{"SubagentStop", "handle-subagent-stop.sh"},
 		{"PostToolUseFailure", "handle-post-tool-failure.sh"},
-		{"Notification", "handle-notification.sh"},
+		// Notification removed: RETIRE-OBS-ONLY per SPEC-V3R2-RT-006 REQ-004.
 		{"SubagentStart", "handle-subagent-start.sh"},
 		{"UserPromptSubmit", "handle-user-prompt-submit.sh"},
 
@@ -422,7 +424,7 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 	}{
 		{"SubagentStop", "handle-subagent-stop.sh"},
 		{"PostToolUseFailure", "handle-post-tool-failure.sh"},
-		{"Notification", "handle-notification.sh"},
+		// Notification removed: RETIRE-OBS-ONLY per SPEC-V3R2-RT-006 REQ-004.
 		{"SubagentStart", "handle-subagent-start.sh"},
 		{"UserPromptSubmit", "handle-user-prompt-submit.sh"},
 
@@ -502,7 +504,9 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 		t.Fatal("missing hooks section")
 	}
 
-	const expectedCount = 26 // All supported Claude Code hook events
+	// 26 total events - 4 RETIRE-OBS-ONLY (Notification, Elicitation, ElicitationResult, TaskCreated)
+	// = 22 active hook registrations per SPEC-V3R2-RT-006 REQ-004.
+	const expectedCount = 22
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}

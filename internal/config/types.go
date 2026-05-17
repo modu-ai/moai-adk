@@ -42,14 +42,27 @@ type GitStrategyConfig struct {
 	GitLabInstanceURL string `yaml:"gitlab_instance_url"` // GitLab instance URL
 }
 
+// SystemHookConfig holds hook observability settings (SPEC-V3R2-RT-006 REQ-004).
+// It controls which retired events are re-enabled as observability taps and
+// whether strict mode behavior applies to retired events.
+type SystemHookConfig struct {
+	// ObservabilityEvents is the list of retired event names that are re-enabled
+	// as observability taps. Empty list (default) means silent no-op for all.
+	// Valid names: notification, elicitation, elicitationResult, taskCreated.
+	ObservabilityEvents []string `yaml:"observability_events" validate:"omitempty"`
+	// StrictMode: when true, retired events in strict mode still succeed silently.
+	StrictMode bool `yaml:"strict_mode"`
+}
+
 // SystemConfig represents the system configuration section.
 type SystemConfig struct {
-	Version        string        `yaml:"version"`
-	LogLevel       string        `yaml:"log_level"`
-	LogFormat      string        `yaml:"log_format"`
-	NoColor        bool          `yaml:"no_color"`
-	NonInteractive bool          `yaml:"non_interactive"`
+	Version        string           `yaml:"version"`
+	LogLevel       string           `yaml:"log_level"`
+	LogFormat      string           `yaml:"log_format"`
+	NoColor        bool             `yaml:"no_color"`
+	NonInteractive bool             `yaml:"non_interactive"`
 	Migrations     MigrationsConfig `yaml:"migrations"`
+	Hook           SystemHookConfig `yaml:"hook"`
 }
 
 // MigrationsConfig represents the migrations configuration section.

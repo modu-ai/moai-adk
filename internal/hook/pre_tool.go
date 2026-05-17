@@ -1,3 +1,4 @@
+// Resolution: KEEP — security scan, secrets, reflective write; emit PermissionDecision.
 package hook
 
 import (

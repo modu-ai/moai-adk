@@ -1,3 +1,4 @@
+// Resolution: KEEP — UpdatedInput re-verify per SPEC-V3R2-RT-002 resolver contract.
 package hook
 
 import (

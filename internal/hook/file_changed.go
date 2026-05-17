@@ -1,3 +1,4 @@
+// Resolution: UPGRADE — MX re-scan for 16 supported language extensions on FileChanged.
 package hook
 
 import (

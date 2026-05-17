@@ -1,3 +1,4 @@
+// Resolution: KEEP — SPEC acceptance criteria validation; Continue:false on fail.
 package hook
 
 import (

@@ -1,3 +1,4 @@
+// Resolution: KEEP — CLAUDE_ENV_FILE write on working directory change.
 package hook
 
 import (
