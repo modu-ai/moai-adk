@@ -149,17 +149,19 @@ applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 
 
 ## Worktree-Anchored Resume Pattern
 
-[HARD] When the SPEC was initialized via `/moai plan --worktree` (creating a SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking SPEC worktree isolation expectations.
+[HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
 
-### Why Block 0 is required
+> Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
 
-The standard 6-block format implicitly assumes the next session inherits the previous session's cwd (main project). With `--worktree`, SPEC artifacts and `Agent(isolation: "worktree")` base expectations live in a **different cwd** (the worktree path). If the user pastes a resume into a Claude Code session that starts in main project cwd:
+### Why Block 0 is required (for L3 `--worktree` opt-in sessions only)
 
-- `Agent(isolation: "worktree")` base = main project HEAD ≠ worktree HEAD → lessons #13 (--team + SPEC worktree base mismatch)
+The standard 6-block format implicitly assumes the next session inherits the previous session's cwd (main project). With L3 `--worktree`, SPEC artifacts and L1 `Agent(isolation: "worktree")` base expectations live in a **different cwd** (the L2 worktree path). If the user pastes a resume into a Claude Code session that starts in main project cwd:
+
+- L1 `Agent(isolation: "worktree")` base = main project HEAD ≠ L2 worktree HEAD → lessons #13 (--team + SPEC worktree base mismatch)
 - Bash commands and file operations target main project → lessons #12 (수동 worktree isolation 위배) anti-pattern
 - Build/test results come from the wrong tree
 
-Block 0 forces the user to start a NEW terminal session **inside** the worktree, anchoring main session cwd before any orchestrator action.
+Block 0 forces the user to start a NEW terminal session **inside** the L2 worktree, anchoring main session cwd before any orchestrator action.
 
 ### Block 0 Format
 
@@ -196,9 +198,11 @@ If verification 0) fails (output ≠ worktree path), the next session MUST stop 
 
 ### Single-Session vs Multi-Session Decision
 
-Block 0 is REQUIRED only when SPEC was initialized with `--worktree`. For SPECs initialized with `--branch` (or no flag), the standard 6-block structure suffices because main session cwd already follows the branch — `Agent(isolation: "worktree")` base aligns naturally.
+Block 0 is REQUIRED only when SPEC was initialized with L3 `--worktree`. For SPECs initialized with `--branch` (or no flag — the default per 2026-05-17 user policy), the standard 6-block structure suffices because main session cwd already follows the branch — L1 `Agent(isolation: "worktree")` base aligns naturally.
 
-[HARD] If `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory), the default for new SPECs is `--branch` (or no flag) — L3 `--worktree` is opt-in only. Agents should not prompt users to use L3 unless explicitly requested.
+
+[HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
 
 ### Verified Example (with Block 0)
 
