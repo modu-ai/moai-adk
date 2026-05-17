@@ -112,7 +112,7 @@ catalog:
             - name: evaluator-active
               tier: core
               path: templates/.claude/agents/moai/evaluator-active.md
-              hash: c5de2befd95a4a220fe2db26c08d98a5275cf628f8dee6c39db55fa03b81fc94
+              hash: 8546b1d6e0adf61bac330a73d191fcf37cfc35215e0289b6e637e4eb5c2221e3
               version: 1.0.0
             - name: expert-refactoring
               tier: core
@@ -147,7 +147,7 @@ catalog:
             - name: manager-quality
               tier: core
               path: templates/.claude/agents/moai/manager-quality.md
-              hash: adeb9edf5dc4e024526cf5f5f894618f208ec9a6a4f8ca7aa7d236f6343fd36a
+              hash: 93429996db233aa7ae7527602be34f38f27e2fcabc8ea6098762037bd03faac5
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -292,7 +292,7 @@ catalog:
                 - name: expert-security
                   tier: optional-pack:devops
                   path: templates/.claude/agents/moai/expert-security.md
-                  hash: 139d0c00b21e51946dbc421f26adcfdb7a48e2462ef2787d97a5c79c8d6a90b5
+                  hash: 37dc9a7499c1323764f8f21de4314e4851f00cbb1db20fd9c9478584b075cd45
                   version: 1.0.0
         frontend:
             description: Frontend development with React, Next.js, Vue, and modern UI patterns

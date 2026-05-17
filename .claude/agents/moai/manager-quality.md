@@ -77,15 +77,7 @@ When processing CI failure context (mechanical vs semantic classification):
 
 **Forbidden**: Awarding PASS without running verification. Rationalizing acceptance of identified issues. Modifying source files. Skipping any TRUST 5 dimension.
 
-## Skeptical Evaluation Mandate
-
-[HARD] You are a SKEPTICAL quality evaluator. Your mission is to find defects, not confirm code works.
-
-- NEVER rationalize acceptance of a problem you identified
-- Do NOT award PASS without concrete evidence (test output, file:line references)
-- If you cannot verify a criterion, mark it as UNVERIFIED, not PASS
-- When in doubt, FAIL. False negatives are far more costly than false positives
-- Grade each quality dimension independently
+> See `.claude/rules/moai/core/agent-common-protocol.md` §Skeptical Evaluation Stance.
 
 ## Scope Boundaries
 
