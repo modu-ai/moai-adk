@@ -1,0 +1,71 @@
+# Baseline phase trace for /moai plan @ main HEAD 639c91381
+# Captured by SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5
+# Source: .claude/skills/moai/workflows/plan.md
+# Method: static extraction of H2/H3 headers from source file
+# Note: --dry-run flag NOT supported; trace is static documentation of expected phases
+# Wave 4+ will diff post-split trace against this baseline (REQ-WFSP-003c)
+
+[trace] /moai plan Purpose enter
+[trace] /moai plan Purpose exit
+[trace] /moai plan Scope enter
+[trace] /moai plan Scope exit
+[trace] /moai plan Input enter
+[trace] /moai plan Input exit
+[trace] /moai plan Supported Flags enter
+[trace] /moai plan Supported Flags exit
+[trace] /moai plan Mode Flag Compatibility enter
+[trace] /moai plan Mode Flag Compatibility exit
+[trace] /moai plan Context Loading enter
+[trace] /moai plan Context Loading exit
+[trace] /moai plan Brain Context Auto-Detection enter
+[trace] /moai plan Brain Context Auto-Detection exit
+[trace] /moai plan Phase Sequence enter
+[trace] /moai plan Phase 1A: Project Exploration (Optional) enter
+[trace] /moai plan Phase 1A: Project Exploration (Optional) exit
+[trace] /moai plan Phase 0.3: Clarity Evaluation (Conditional) enter
+[trace] /moai plan Phase 0.3: Clarity Evaluation (Conditional) exit
+[trace] /moai plan Phase 0.3.1: Deep Interview Loop (Conditional) enter
+[trace] /moai plan Round 1: Scope enter
+[trace] /moai plan Round 1: Scope exit
+[trace] /moai plan Round 2: Constraints enter
+[trace] /moai plan Round 2: Constraints exit
+[trace] /moai plan Clarity Score enter
+[trace] /moai plan Clarity Score exit
+[trace] /moai plan Phase 0.3.1: Deep Interview Loop (Conditional) exit
+[trace] /moai plan Phase 0.4: UltraThink Auto-Activation (Conditional) enter
+[trace] /moai plan Phase 0.4: UltraThink Auto-Activation (Conditional) exit
+[trace] /moai plan Phase 0.5: Deep Research (Recommended) enter
+[trace] /moai plan Phase 0.5: Deep Research (Recommended) exit
+[trace] /moai plan Phase 1.25: Design Direction (Conditional) enter
+[trace] /moai plan Phase 1.25: Design Direction (Conditional) exit
+[trace] /moai plan Phase 1B: SPEC Planning (Required) enter
+[trace] /moai plan Phase 1B: SPEC Planning (Required) exit
+[trace] /moai plan Phase 1.5: Pre-Creation Validation Gate enter
+[trace] /moai plan Phase 1.5: Pre-Creation Validation Gate exit
+[trace] /moai plan Phase 2: SPEC Document Creation enter
+[trace] /moai plan Phase 2: SPEC Document Creation exit
+[trace] /moai plan Phase 2.3: Independent SPEC Review (Conditional) enter
+[trace] /moai plan Phase 2.3: Independent SPEC Review (Conditional) exit
+[trace] /moai plan Phase 2.5: GitHub Issue Creation (Conditional) enter
+[trace] /moai plan Phase 2.5: GitHub Issue Creation (Conditional) exit
+[trace] /moai plan Phase 3: Git Environment Setup (Conditional) enter
+[trace] /moai plan Phase 3: Git Environment Setup (Conditional) exit
+[trace] /moai plan Phase 3.5: MX Tag Planning [MANDATORY] enter
+[trace] /moai plan Phase 3.5: MX Tag Planning [MANDATORY] exit
+[trace] /moai plan Phase 3.6: SPEC Quality Gate enter
+[trace] /moai plan Phase 3.6: SPEC Quality Gate exit
+[trace] /moai plan Phase Sequence exit
+[trace] /moai plan SPEC Reference enter
+[trace] /moai plan SPEC Reference exit
+[trace] /moai plan Requirements Summary enter
+[trace] /moai plan Requirements Summary exit
+[trace] /moai plan Acceptance Criteria enter
+[trace] /moai plan Acceptance Criteria exit
+[trace] /moai plan Team Mode Routing enter
+[trace] /moai plan Team Mode Routing exit
+[trace] /moai plan Completion Criteria enter
+[trace] /moai plan Completion Criteria exit
+[trace] /moai plan Test Scenarios enter
+[trace] /moai plan Test Scenarios exit
+[trace] /moai plan Custom Harness Extension (Optional) enter
+[trace] /moai plan Custom Harness Extension (Optional) exit

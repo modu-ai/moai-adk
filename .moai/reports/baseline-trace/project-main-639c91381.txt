@@ -1,0 +1,57 @@
+# Baseline phase trace for /moai project @ main HEAD 639c91381
+# Captured by SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5
+# Source: .claude/skills/moai/workflows/project.md
+# Method: static extraction of H2 headers from source file
+# Note: --dry-run flag NOT supported; trace is static documentation of expected phases
+# Wave 3+ will diff post-split trace against this baseline (REQ-WFSP-003c)
+
+[trace] /moai project Mode Flag Compatibility enter
+[trace] /moai project Mode Flag Compatibility exit
+[trace] /moai project [HARD] Scope Boundary — NO SPEC Generation enter
+[trace] /moai project [HARD] Scope Boundary — NO SPEC Generation exit
+[trace] /moai project Flag: --from-brain IDEA-NNN enter
+[trace] /moai project Flag: --from-brain IDEA-NNN exit
+[trace] /moai project Phase 0: Project Type Detection enter
+[trace] /moai project Phase 0: Project Type Detection exit
+[trace] /moai project Phase 0.3: Deep Interview (New Projects Only) enter
+[trace] /moai project Round 1: Vision enter
+[trace] /moai project Round 1: Vision exit
+[trace] /moai project Round 2: Technology enter
+[trace] /moai project Round 2: Technology exit
+[trace] /moai project Round 3: Scope enter
+[trace] /moai project Round 3: Scope exit
+[trace] /moai project Phase 0.3: Deep Interview (New Projects Only) exit
+[trace] /moai project Phase 1: Codebase Analysis (Existing Projects Only) enter
+[trace] /moai project Phase 1: Codebase Analysis (Existing Projects Only) exit
+[trace] /moai project Phase 1.5: Deep Interview (Existing Projects Only) enter
+[trace] /moai project Round 1: Ownership and Purpose enter
+[trace] /moai project Round 1: Ownership and Purpose exit
+[trace] /moai project Round 2: Constraints and Non-Goals enter
+[trace] /moai project Round 2: Constraints and Non-Goals exit
+[trace] /moai project Round 3: Documentation Priority enter
+[trace] /moai project Round 3: Documentation Priority exit
+[trace] /moai project Phase 1.5: Deep Interview (Existing Projects Only) exit
+[trace] /moai project Phase 2: User Confirmation enter
+[trace] /moai project Phase 2: User Confirmation exit
+[trace] /moai project Phase 3: Documentation Generation enter
+[trace] /moai project Phase 3: Documentation Generation exit
+[trace] /moai project Phase 3.1: Independent Document Audit (Conditional) enter
+[trace] /moai project Phase 3.1: Independent Document Audit (Conditional) exit
+[trace] /moai project Phase 3.3: Codemaps Generation enter
+[trace] /moai project Phase 3.3: Codemaps Generation exit
+[trace] /moai project Phase 3.5: Development Environment Check enter
+[trace] /moai project Phase 3.5: Development Environment Check exit
+[trace] /moai project Phase 3.7: Development Methodology Auto-Configuration enter
+[trace] /moai project Phase 3.7: Development Methodology Auto-Configuration exit
+[trace] /moai project Phase 4.1a: DB Detection enter
+[trace] /moai project Phase 4.1a: DB Detection exit
+[trace] /moai project Phase 4: Completion enter
+[trace] /moai project Phase 4: Completion exit
+[trace] /moai project Agent Chain Summary enter
+[trace] /moai project Agent Chain Summary exit
+[trace] /moai project Detection Keywords Reference enter
+[trace] /moai project Detection Keywords Reference exit
+[trace] /moai project Phase 5: Socratic Interview (Harness Activation) enter
+[trace] /moai project Phase 5: Socratic Interview (Harness Activation) exit
+[trace] /moai project Phase 6: meta-harness Invocation enter
+[trace] /moai project Phase 6: meta-harness Invocation exit
