@@ -1,13 +1,10 @@
 ---
 id: SPEC-V3R2-WF-004
 title: Agentless Fixed-Pipeline Classification for Utility Subcommands
-version: "0.3.0"
-status: in-progress
-created_at: 2026-04-23
-updated_at: 2026-05-10
+version: "0.3.1"
+status: completed
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1
-labels: [agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3]
 issue_number: null
 phase: "v3.0.0 — Phase 6 — Multi-Mode Workflow"
 module: ".claude/skills/moai/workflows/, .claude/rules/moai/workflow/"
@@ -21,8 +18,8 @@ breaking: true
 bc_id: [BC-V3R2-007]
 lifecycle: spec-anchored
 tags: "agentless, pipeline, utility, fix, coverage, mx, codemaps, clean, v3"
-created: 2026-04-24
-updated: 2026-05-13
+created: 2026-04-23
+updated: 2026-05-18
 ---
 
 # SPEC-V3R2-WF-004: Agentless Fixed-Pipeline Classification
@@ -34,6 +31,7 @@ updated: 2026-05-13
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — classify utility subcommands as fixed pipeline                                                                                                |
 | 0.2.0   | 2026-05-02 | MoAI Plan Workflow | Frontmatter v0.2.0 schema 정합화: `created`/`updated` → `created_at`/`updated_at`, `priority "P1 High"` → `P1`, `labels` 추가, `issue_number` 추가. §1.2 Non-Goals에 v2 `--mode agent` escape hatch 1줄 추가 (plan-auditor D3 advisory 처리). EARS REQ/AC 본문 변경 없음. |
 | 0.3.0   | 2026-05-10 | MoAI Sync Workflow | Retrofit sync — PR #798 (commit `3ef362193`) merged 2026-05-09 prior to `/moai sync`. Frontmatter status `draft` → `implemented` drift fix, CHANGELOG 한국어 `### 추가됨` entry append, docs-site 4-locale 영향 평가 (no change — rationale recorded in progress.md Phase 3). Body unchanged. |
+| 0.3.1   | 2026-05-18 | orchestrator | Lifecycle COMPLETE sync — frontmatter status `in-progress → completed` + canonical 12-field schema 정리 (`created_at`/`updated_at`/`labels` legacy 제거, `created`/`updated`/`tags` canonical 유지 per SPECLINT-DEBT-002). CHANGELOG entry 추가. v3.0.0-rc1 P1 release-blocker 5건 중 1번째 완료. |
 
 ---
 
