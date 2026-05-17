@@ -120,6 +120,8 @@ func NewPermissionResolver() *PermissionResolver {
 	}
 }
 
+// @MX:ANCHOR: [AUTO] Resolve 는 8-tier permission stack 의 단일 진입점
+// @MX:REASON: [AUTO] fan_in=4: doctor_permission.go, bubble_test.go, resolver_test.go, integration callers
 // Resolve determines the permission decision for a tool invocation.
 // It walks the 8-tier stack in priority order and returns the first non-empty decision.
 //
@@ -142,6 +144,8 @@ func (r *PermissionResolver) Resolve(tool string, input json.RawMessage, ctx Res
 		Input: inputStr,
 	}
 
+	// @MX:WARN: [AUTO] hook UpdatedInput re-match — 무한루프 방지 가드 (newCtx.HookResponse=nil clear)
+	// @MX:REASON: [AUTO] 중첩 mutation 시 재귀 무한루프 위험: HookResponse=nil 로 강제 clear
 	// Handle UpdatedInput from hook - re-run resolution with mutated input
 	// Only re-run if hook has UpdatedInput but NO PermissionDecision
 	if ctx.HookResponse != nil && len(ctx.HookResponse.UpdatedInput) > 0 && ctx.HookResponse.PermissionDecision == "" {
@@ -238,6 +242,8 @@ func (r *PermissionResolver) Resolve(tool string, input json.RawMessage, ctx Res
 		// Continue to next tier if no match
 	}
 
+	// @MX:WARN: [AUTO] 비대화형 모드 fail-closed — ask → deny 변환 + permission.log 기록
+	// @MX:REASON: [AUTO] 비대화형 CI 환경에서 ask 방치 시 무기한 블로킹 위험 (REQ-V3R2-RT-002-041)
 	// Step 5: No rule matched - return default ask (or deny in non-interactive)
 	defaultDecision := DecisionAsk
 	if !ctx.IsInteractive {
@@ -255,6 +261,9 @@ func (r *PermissionResolver) Resolve(tool string, input json.RawMessage, ctx Res
 
 // checkTier checks a single tier for a matching rule.
 // Returns a ResolveResult if a decision is reached, otherwise continues to next tier.
+// 동일 tier 에서 2개 이상 매칭 시 resolveConflict 로 우선 규칙을 결정한다.
+//
+// Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-042 (AC-12)
 func (r *PermissionResolver) checkTier(tool, input string, tier config.Source, ctx ResolveContext, trace *ResolutionTrace) *ResolveResult {
 	rules := ctx.RulesByTier[tier]
 
@@ -263,39 +272,51 @@ func (r *PermissionResolver) checkTier(tool, input string, tier config.Source, c
 		rules = append(rules, r.preAllowlist...)
 	}
 
-	// Check each rule in the tier
+	// 매칭 규칙을 모두 수집한다 (conflict tiebreak 위해).
+	var matched []*PermissionRule
 	for i := range rules {
 		rule := &rules[i]
 		if rule.Matches(tool, input) {
-			trace.Tries = append(trace.Tries, TierTry{
-				Tier:    tier,
-				Matched: true,
-				Rule:    rule,
-				Reason:  fmt.Sprintf("rule matched: %s", rule.Pattern),
-			})
-
-			// Handle bubble mode for forks
-			if ctx.Mode == ModeBubble && ctx.IsFork && rule.Action == DecisionAsk {
-				return r.handleBubbleAsk(tool, input, tier, rule, ctx, trace)
-			}
-
-			return &ResolveResult{
-				Decision:   rule.Action,
-				ResolvedBy: tier,
-				Origin:     rule.Origin,
-				Trace:      *trace,
-			}
+			matched = append(matched, rule)
 		}
 	}
 
-	// No rule matched in this tier
+	if len(matched) == 0 {
+		// No rule matched in this tier
+		trace.Tries = append(trace.Tries, TierTry{
+			Tier:    tier,
+			Matched: false,
+			Reason:  "no matching rule",
+		})
+		return nil
+	}
+
+	// 단일 매칭 또는 conflict tiebreak 로 최우선 규칙 결정.
+	var rule *PermissionRule
+	if len(matched) == 1 {
+		rule = matched[0]
+	} else {
+		rule = resolveConflict(matched, tool, input)
+	}
+
 	trace.Tries = append(trace.Tries, TierTry{
 		Tier:    tier,
-		Matched: false,
-		Reason:  "no matching rule",
+		Matched: true,
+		Rule:    rule,
+		Reason:  fmt.Sprintf("rule matched: %s", rule.Pattern),
 	})
 
-	return nil
+	// Handle bubble mode for forks
+	if ctx.Mode == ModeBubble && ctx.IsFork && rule.Action == DecisionAsk {
+		return r.handleBubbleAsk(tool, input, tier, rule, ctx, trace)
+	}
+
+	return &ResolveResult{
+		Decision:   rule.Action,
+		ResolvedBy: tier,
+		Origin:     rule.Origin,
+		Trace:      *trace,
+	}
 }
 
 // handleBubbleAsk handles "ask" decisions in bubble mode for fork agents.
@@ -326,13 +347,16 @@ func (r *PermissionResolver) handleBubbleAsk(_ string, _ string, tier config.Sou
 // handleBypassInFork handles bypassPermissions mode for fork agents.
 // Fork agents with bypassPermissions are degraded to bubble mode.
 //
+// T-RT002-25: sentinel message 를 "Fork depth N exceeds limit - mode degraded to bubble" 로 통일.
+//
 // Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-023
 func (r *PermissionResolver) handleBypassInFork(_ string, _ string, ctx ResolveContext, trace *ResolutionTrace) *ResolveResult {
 	var systemMsg string
 	if ctx.ForkDepth > 3 {
-		systemMsg = fmt.Sprintf("Fork depth %d exceeds limit - bypassPermissions degraded to bubble", ctx.ForkDepth)
+		// AC-14 sentinel 정합성: "Fork depth N exceeds limit - mode degraded to bubble"
+		systemMsg = fmt.Sprintf("Fork depth %d exceeds limit - mode degraded to bubble", ctx.ForkDepth)
 	} else {
-		systemMsg = "Fork agent with bypassPermissions - degraded to bubble mode"
+		systemMsg = "Fork agent with bypassPermissions - mode degraded to bubble"
 	}
 
 	return &ResolveResult{
@@ -347,17 +371,20 @@ func (r *PermissionResolver) handleBypassInFork(_ string, _ string, ctx ResolveC
 // logUnreachablePrompt logs a permission prompt that couldn't be delivered
 // because the session is non-interactive.
 //
-// Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-041
+// T-RT002-26: log entry format 정렬 — "[<ISO 8601>] Unreachable prompt: tool=<tool> input=<truncated>"
+//
+// Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-041, AC-15
 func (r *PermissionResolver) logUnreachablePrompt(tool, input string) {
 	logPath := filepath.Join(".moai", "logs", "permission.log")
 	_ = os.MkdirAll(filepath.Dir(logPath), 0755)
 
+	// AC-15 log entry format: "[<ISO 8601>] Unreachable prompt: tool=<tool> input=<truncated>"
 	entry := fmt.Sprintf("[%s] Unreachable prompt: tool=%s input=%s\n",
 		formatNow(), tool, truncate(input, 200))
 
 	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return // Silently fail if we can't write the log
+		return // 로그 기록 실패 시 silent fail (비대화형 환경).
 	}
 	defer func() { _ = f.Close() }()
 	_, _ = f.WriteString(entry)

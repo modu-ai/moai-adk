@@ -457,6 +457,72 @@ func TestNoOrphanedManagerDDDReference(t *testing.T) {
 	}
 }
 
+// TestAgentFrontmatter_PermissionModeStrictEnum 는 .claude/agents/**/*.md 의
+// permissionMode 키가 5개 허용 값 중 하나인지 검증한다.
+//
+// AC-09: permissionMode: ultra-bypass 같은 값은 빌드 실패 유발.
+// Sentinel: PERMISSION_MODE_UNKNOWN_VALUE: <file> declares permissionMode: <value>;
+//           allowed: default|acceptEdits|bypassPermissions|plan|bubble.
+// T-RT002-12.
+func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
+	}
+
+	// 허용 permissionMode 값 5개.
+	allowedModes := map[string]bool{
+		"default":            true,
+		"acceptEdits":        true,
+		"bypassPermissions":  true,
+		"plan":               true,
+		"bubble":             true,
+	}
+
+	var agentFiles []string
+	_ = fs.WalkDir(fsys, ".claude/agents", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil || d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".md") {
+			agentFiles = append(agentFiles, path)
+		}
+		return nil
+	})
+
+	for _, path := range agentFiles {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+
+			data, readErr := fs.ReadFile(fsys, path)
+			if readErr != nil {
+				t.Fatalf("ReadFile(%q) 오류: %v", path, readErr)
+			}
+
+			fm, _, parseErr := parseFrontmatterAndBody(string(data))
+			if parseErr != "" {
+				// frontmatter 없는 파일은 스킵.
+				return
+			}
+
+			val, ok := fm["permissionMode"]
+			if !ok {
+				// permissionMode 키가 없으면 스킵 (선택적 필드).
+				return
+			}
+
+			val = strings.TrimSpace(val)
+			if !allowedModes[val] {
+				t.Errorf("PERMISSION_MODE_UNKNOWN_VALUE: %s declares permissionMode: %s; "+
+					"allowed: default|acceptEdits|bypassPermissions|plan|bubble",
+					path, val)
+			}
+		})
+	}
+}
+
 // agentNameFromPath는 파일 경로에서 에이전트 이름을 추출한다.
 // ".claude/agents/moai/manager-tdd.md" → "manager-tdd"
 func agentNameFromPath(path string) string {
