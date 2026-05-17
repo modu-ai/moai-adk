@@ -2,7 +2,7 @@
 id: SPEC-V3R4-CI-FASTTRACK-001
 title: "CI/CD Fast Track for Single-Developer Workflow (Path-Filter + Review Bot Consolidation)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec
@@ -203,20 +203,20 @@ install reference exists; FAIL otherwise.
 **When** the verification commands run:
 
 ```bash
-test -f .github/workflows/nightly-full-matrix.yml
-grep -E '^\s+- cron: "0 3 \* \* \*"' .github/workflows/nightly-full-matrix.yml
-grep -E 'workflow_dispatch:' .github/workflows/nightly-full-matrix.yml
-grep -E "tags: \['v\*'\]|tags:\s*\['v\\*'\]" .github/workflows/nightly-full-matrix.yml
-grep -E 'os: \[ubuntu-latest, macos-latest, windows-latest\]' .github/workflows/nightly-full-matrix.yml
-grep -E 'actions/github-script@v7' .github/workflows/nightly-full-matrix.yml
-grep -E 'createComment\b|createIssue\b' .github/workflows/nightly-full-matrix.yml
-gh workflow list | grep -E "Nightly Full Matrix"
+test -f .github/workflows/release-pr-multi-os.yml
+grep -E 'branches:' .github/workflows/release-pr-multi-os.yml | grep -E "'release/\*'" 
+grep -E 'workflow_dispatch:' .github/workflows/release-pr-multi-os.yml
+grep -E "tags: \['v\*'\]|tags:\s*\['v\\*'\]" .github/workflows/release-pr-multi-os.yml
+grep -E 'os: \[ubuntu-latest, macos-latest, windows-latest\]' .github/workflows/release-pr-multi-os.yml
+grep -E 'actions/github-script@v7' .github/workflows/release-pr-multi-os.yml
+grep -E 'createComment\b|createIssue\b' .github/workflows/release-pr-multi-os.yml
+gh workflow list | grep -E "Release PR Multi-OS"
 ```
 
 **Then**:
 
 - File exists.
-- cron `0 3 * * *` configured.
+- release/* branch trigger configured.
 - `workflow_dispatch` trigger present.
 - tag-push trigger present.
 - 3-OS matrix configured.
@@ -224,8 +224,8 @@ gh workflow list | grep -E "Nightly Full Matrix"
 - Issue creation step present (createIssue or createComment for dedup).
 - GitHub registers the workflow.
 
-Optional (informational, NOT blocking AC): trigger one manual run via
-`gh workflow run nightly-full-matrix.yml` and observe the matrix succeeds.
+Optional (informational, NOT blocking AC): create a release/* branch PR or trigger one manual run via
+`gh workflow run release-pr-multi-os.yml` and observe the matrix succeeds.
 
 **Binary**: PASS if all 8 grep / test checks pass; FAIL otherwise.
 

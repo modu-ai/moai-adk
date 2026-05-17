@@ -2,7 +2,7 @@
 id: SPEC-V3R4-CI-FASTTRACK-001
 title: "CI/CD Fast Track for Single-Developer Workflow (Path-Filter + Review Bot Consolidation)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec
@@ -33,7 +33,7 @@ tags: "ci, cd, github-actions, paths-filter, review-bot, single-developer, produ
   - `codeql.yml` skip-marker pattern 적용 (T1 mirror — bare `paths-ignore` 아님)
   - 5개 review bot workflow 제거 (codex / gemini / glm / llm-panel / claude-code-review.optional)
   - `lefthook.yml` + Makefile `preflight` 타깃으로 로컬 pre-push 게이트
-  - `nightly-full-matrix.yml` 일일 03:00 UTC + tag-push full 3-OS matrix
+  - `release-pr-multi-os.yml` release/* branch PR + workflow_dispatch full 3-OS matrix (REVISED per user directive 2026-05-17)
 - **축 B — Branch protection rule** (오케스트레이터가 PRE-PLAN 시점에 이미 적용 완료, 본 SPEC의 baseline):
   - Required status checks: `Lint` / `Test (ubuntu-latest)` / `Build (linux/amd64)` / `CodeQL` (4 items)
   - 제거됨: `Test (macos-latest)` / `Test (windows-latest)` (2 items)
@@ -83,7 +83,7 @@ WHY 본 SPEC 이 지금 필요한가:
 ### 1.3 Impact
 
 - **영향받는 파일**: 7개 워크플로우 (1 modify ci.yml / 1 modify codeql.yml / 1 preserve claude-code-review.yml /
-  5 delete review workflows / 1 new nightly-full-matrix.yml) + 2개 root-level
+  5 delete review workflows / 1 new release-pr-multi-os.yml) + 2개 root-level
   (`lefthook.yml` NEW / `Makefile` MODIFY) + 1개 doctrine (`CLAUDE.local.md` §18.7) +
   auto-memory `lessons.md` (1 entry append).
 - **추정 LOC delta**:
@@ -96,11 +96,11 @@ WHY 본 SPEC 이 지금 필요한가:
   - review-quality-gate.yml: 변경 없음 (PRESERVE — Claude Code Review check_run 의존, codex 비의존)
   - 5 deleted workflows: 총 -약 300 LOC (codex-review / gemini-review / glm-review / llm-panel /
     claude-code-review.optional)
-  - nightly-full-matrix.yml: +120 LOC (NEW)
+  - release-pr-multi-os.yml: +87 LOC (NEW)
   - lefthook.yml: +30 LOC (NEW)
   - Makefile: +20 LOC (preflight 타깃 + dependency stub)
   - CLAUDE.local.md §18.7: ~15 LOC (required check 4개로 갱신 + 3-tier philosophy 명문화)
-  - lessons.md: +40 LOC (entry #18)
+  - lessons.md: +65 LOC (entry #19)
 - **Workflow count**: 20 → 16 (delete 5 + add 1 nightly = net -4). 검증 명령:
   `find .github/workflows -name '*.yml' | wc -l` (pre=20, post=16).
 - **Branch protection required checks**: 6 → 4 (이미 적용된 축 B baseline). Live state:
@@ -126,12 +126,12 @@ WHY 본 SPEC 이 지금 필요한가:
 4. **Local pre-flight gate**: `lefthook.yml` + Makefile `preflight` 타깃으로 개발자 머신에서
    pre-push 시점에 `lint --fast` + `test -race -short` + `build` 를 실행해 PR 제출 전
    회귀를 차단한다.
-5. **Nightly full matrix**: 1인 개발 trade-off 의 안전망으로 일일 03:00 UTC + workflow_dispatch +
-   release tag push 시점에 3-OS full 매트릭스를 실행. 실패 시 자동 GitHub issue 생성.
+5. **Release PR multi-OS**: 1인 개발 trade-off 의 안전망으로 release/* branch PR + workflow_dispatch +
+   tag push 시점에 3-OS full 매트릭스를 실행. 실패 시 자동 GitHub issue 생성.
 6. **Doctrine sync**: `CLAUDE.local.md` §18.7 의 required status checks 목록을 6 항목에서
    4 항목으로 정정하고 (B) 결정의 rationale + 3-tier CI philosophy (Tier 1 fast / Tier 2
-   opt-in / Tier 3 nightly) 를 명문화한다.
-7. **Lessons capture**: `lessons.md` #18 항목에 1인 개발 CI 3-tier pattern 의 선택 근거와
+   opt-in / Tier 2 release-PR multi-OS) 를 명문화한다.
+7. **Lessons capture**: `lessons.md` #19 항목에 1인 개발 CI 3-tier pattern 의 선택 근거와
    미래 SPEC 에서 동일 패턴을 적용할 때의 의사결정 휴리스틱을 기록한다.
 
 ## 3. Non-Goals
@@ -306,20 +306,20 @@ be bypassed (developer-controlled escape hatch for emergencies or known-flaky ca
 The developer onboarding flow SHALL include a 1-command install: `brew install lefthook
 && lefthook install`.
 
-### REQ-CIFT-006 — Nightly Full-Matrix Workflow (Ubiquitous + Event-Driven)
+### REQ-CIFT-006 — Release PR Multi-OS Workflow (Ubiquitous + Event-Driven)
 
-A new `.github/workflows/nightly-full-matrix.yml` SHALL run the full 3-OS Go test
+A new `.github/workflows/release-pr-multi-os.yml` SHALL run the full 3-OS Go test
 matrix `{ubuntu-latest, macos-latest, windows-latest}` × Go version `1.26` on the
 following triggers:
 
-- Schedule: `cron: '0 3 * * *'` (daily 03:00 UTC)
+- Release branch PR: `pull_request` with `head_ref` matching `release/*`
 - Manual: `workflow_dispatch`
 - Tag push: `push: tags: ['v*']`
 
 The workflow SHALL run `go test -race ./...` on all three matrix slots.
 
 **WHEN** any matrix job fails, **THEN** the workflow SHALL open a GitHub issue using
-`actions/github-script` (or equivalent) with title pattern `nightly-full-matrix failure:
+`actions/github-script` (or equivalent) with title pattern `release-pr-multi-os failure:
 <YYYY-MM-DD>` and body containing the failing OS + failing test name + workflow-run URL.
 
 **WHEN** an open issue with matching title-prefix exists from the prior 24-hour window,
@@ -350,19 +350,17 @@ The section SHALL also document:
 - The (B) decision rationale (2026-05-17 user policy: 1인 개발, macOS, 5-6분+ wait 단축)
 - The 3-tier CI philosophy:
   - **Tier 1 (per-PR fast)**: ubuntu-latest Go test + Lint + Build + CodeQL — required
-  - **Tier 2 (per-PR opt-in)**: macos-latest / windows-latest — informational only,
-    NOT required
-  - **Tier 3 (nightly + tag)**: full 3-OS matrix via nightly-full-matrix.yml — safety net
+  - **Tier 2 (release PR multi-OS)**: full 3-OS matrix via release-pr-multi-os.yml on release/* branch PR + workflow_dispatch + tag push — safety net
 - Cross-reference to this SPEC ID (`SPEC-V3R4-CI-FASTTRACK-001`) for traceability.
 
 ### REQ-CIFT-008 — Lessons Capture (Ubiquitous)
 
 The `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/lessons.md` file SHALL
-gain a new entry `#18 — 1인 개발 CI 3-tier pattern (2026-05-17)` following the
+gain a new entry `#19 — 1인 개발 CI 3-tier pattern (2026-05-17)` following the
 MoAI Lessons Protocol format:
 
 ```
-## #18 — 1인 개발 CI 3-tier pattern (2026-05-17)
+## #19 — 1인 개발 CI 3-tier pattern (2026-05-17)
 
 **Category**: workflow
 
@@ -371,18 +369,16 @@ MoAI Lessons Protocol format:
 review bot 4개 (codex/gemini/glm/private-guard) 가 매 PR 마다 RED 로 떨어지면서 신호 대 잡음 비율이
 저하된다.
 
-**Correct approach**: 1인 개발자는 CI 비용을 3-tier 로 분할한다.
+**Correct approach**: 1인 개발자는 CI 비용을 2-tier 로 분할한다.
 - Tier 1 (per-PR fast): ubuntu-latest 만 required. paths-filter 로 docs-only PR 은 skip.
-- Tier 2 (per-PR opt-in): macOS/Windows 는 nightly 로 이전 (per-PR 비강제).
-- Tier 3 (nightly + tag): full 3-OS matrix 는 일일 03:00 UTC + tag push 시점에만.
+- Tier 2 (release PR + tag): full 3-OS matrix 는 release/* branch PR + workflow_dispatch + tag push 시점에만 (per-PR 비강제).
 Review bot 은 단 1개 (claude-code-review) 만 신뢰. 다른 LLM panel 은 본질적 redundancy.
 
-**Why**: PR-level wait 1분 절감 × 일일 10 PR × 250 영업일 = 41시간/년. 회귀 탐지 latency 24h
-지연은 1인 개발자에게 acceptable (즉시 production 배포 cadence 가 아님).
+**Why**: PR-level wait 1분 절감 × 일일 10 PR × 250 영업일 = 41시간/년. 회귀 탐지 latency (release PR 또는 tag push 시점)은 1인 개발자에게 acceptable (즉시 production 배포 cadence 가 아님).
 
 **How to apply**: 미래 SPEC 에서 CI workflow 추가/수정 시 (a) required check 인가 (b)
-informational 인가를 명시적으로 분리할 것. paths-filter + skip-marker 패턴은 branch
-protection compatibility 의 표준 패턴. nightly safety-net 없이 required check 만 줄이면
+informational/release-tier 인가를 명시적으로 분리할 것. paths-filter + skip-marker 패턴은 branch
+protection compatibility 의 표준 패턴. release-PR safety-net 없이 required check 만 줄이면
 회귀 탐지가 영구 손실됨.
 ```
 
@@ -396,8 +392,8 @@ protection compatibility 의 표준 패턴. nightly safety-net 없이 required c
 | `.github/workflows/codeql.yml` | +35 / -5 LOC | Restructure to detect job + analyze conditional gate + analyze-skip-marker job (mirrors T1 pattern — NOT bare `paths-ignore`). Other triggers (push:main, schedule) unchanged. |
 | `Makefile` | +20 / -0 LOC | Add `preflight` target chaining `lint-fast` + `test-race-short` + `build`. |
 | `CLAUDE.local.md` (§18.7) | ~15 LOC | Update required checks list 6→4 + 3-tier philosophy + (B) rationale. |
-| `~/.claude/projects/.../memory/lessons.md` | +40 LOC | New entry #18 per REQ-CIFT-008. |
-| `~/.claude/projects/.../memory/MEMORY.md` | +1 LOC | New index entry pointing to lessons #18 (or project memory if entry created). |
+| `~/.claude/projects/.../memory/lessons.md` | +65 LOC | New entry #19 per REQ-CIFT-008. |
+| `~/.claude/projects/.../memory/MEMORY.md` | +1 LOC | New index entry pointing to lessons #19 (or project memory if entry created). |
 
 ### DELETE (5 review workflows)
 
@@ -413,7 +409,7 @@ protection compatibility 의 표준 패턴. nightly safety-net 없이 required c
 
 | File | Estimated Δ | Purpose |
 |------|-------------|---------|
-| `.github/workflows/nightly-full-matrix.yml` | +120 LOC | Daily + tag-push full 3-OS matrix safety net (REQ-CIFT-006). |
+| `.github/workflows/release-pr-multi-os.yml` | +87 LOC | Release PR + tag-push full 3-OS matrix safety net (REQ-CIFT-006). |
 | `lefthook.yml` | +30 LOC | Repository-root pre-push hook (REQ-CIFT-005). |
 
 ### PRESERVE (unchanged, audit-only)

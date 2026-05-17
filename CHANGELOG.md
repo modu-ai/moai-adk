@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v3.0.0-rc1 CI/CD: SPEC-V3R4-CI-FASTTRACK-001 1-Developer Fast Track (Paths-Filter + Review Consolidation + Release PR Multi-OS)
+
+### Changed
+
+- **1-developer CI 3-tier philosophy + paths-filter docs-only fast-path** (SPEC-V3R4-CI-FASTTRACK-001): 사용자 실측 CI wait 5-6분+ → 80% 단축 목표. (축 A) workflow-level optimization 6 task: (T1-T2) ci.yml + codeql.yml paths-filter + skip-marker job 도입 (docs/spec/rule/docs-site markdown PR 즉시 pass); (T3) 5개 영구 RED review workflow 제거 (codex/gemini/glm/llm-panel/claude-code-review.optional) — claude-code-review.yml + review-quality-gate.yml + claude.yml PRESERVE; (T4) 사전 정찰 audit (`private-guard` 비의존성 확인); (T5) lefthook.yml + Makefile `preflight` 로컬 pre-push gate (lint --fast + test -race -short + build); (T6-REVISED) nightly-full-matrix.yml → release-pr-multi-os.yml (일일 cron 대신 release/* branch PR + workflow_dispatch + tag push 트리거, 사용자 2026-05-17 directive 반영); (T7) CLAUDE.local.md §18.7 branch protection doctrine 6→4 항목 정정 + 3-tier philosophy 명문화. (축 B baseline) 사용자가 PRE-PLAN 단계에서 이미 적용한 branch protection rule (ubuntu-latest + lint + build + codeql 4개 required check, macos/windows 제거). 후속: v3.0.0-rc1 release readiness 선결조건 충족. (PR #967 race-merged + #968 plan-revision + #970 run + 이번 sync)
+
+### Fixed
+
+- **AC-CIFT-001 ~ 009**: Run-PR #970 머지로 9 acceptance criteria 모두 binary PASS. AC-CIFT-001 docs-only fast-path via paths-filter (skip-marker job match github branch protection canonical names), AC-CIFT-002a/b CodeQL skip-marker pattern + empirical canonical name resolution, AC-CIFT-003 review consolidation 5 delete + 1 preserve (codex-review/gemini-review/glm-review/llm-panel/claude-code-review.optional 삭제), AC-CIFT-004 private-guard audit (grep 0건 cli 호출), AC-CIFT-005 lefthook.yml + Makefile preflight gate, AC-CIFT-006 release-pr-multi-os.yml (3-OS full matrix, release/* branch PR + workflow_dispatch + tag push 트리거), AC-CIFT-007 CLAUDE.local.md §18.7 doctrine sync (4 required checks + 3-tier philosophy), AC-CIFT-008 lessons.md #19 entry 5-section protocol structure (Category/Incorrect/Correct/Why/How-to-apply), AC-CIFT-009 `go test ./...` 0 failures. Workflow count 20 → 16 (delta -4). v3.0.0-rc1 release-readiness 최종 precondition.
+
+### Known Follow-up
+
+- D5/D7/D8/D9 P1 deferred (SHA pinning already applied in run-phase, AC-CIFT-009 orphan reclass, OOS additional items, R6-R9 risks) → optional hot-fix PR or rolled into sync. 
+- D10-D15 P2/P3 optional (review-bot env failures, deprecated CI platform, deprecated node version, etc.).
+- SPEC-WORKTREE-SKILLS-CLEANUP-001 (가칭): `.claude/skills/moai/{workflows,team}/run.md` stale `[HARD] worktree` references AC-WTD-007 related.
+
+### Changed (English)
+
+- **1-developer 3-tier CI philosophy + paths-filter docs-only fast-path** (SPEC-V3R4-CI-FASTTRACK-001): Measured user CI wait 5-6min+; goal 80% reduction. (Axis A) workflow-level optimizations (6 tasks): (T1-T2) ci.yml + codeql.yml paths-filter + skip-marker job for docs/spec/rule/docs-site markdown PR instant pass; (T3) 5 permanently RED review workflows deleted (codex/gemini/glm/llm-panel/claude-code-review.optional) — claude-code-review.yml + review-quality-gate.yml + claude.yml PRESERVED; (T4) pre-flight audit (private-guard codex-independence verified); (T5) lefthook.yml + Makefile `preflight` local pre-push gate (lint --fast + test -race -short + build); (T6-REVISED) nightly-full-matrix.yml → release-pr-multi-os.yml (cron schedule replaced with release/* branch PR + workflow_dispatch + tag push per user 2026-05-17 directive); (T7) CLAUDE.local.md §18.7 branch protection doctrine 6→4 items + 3-tier philosophy formalized. (Axis B baseline) user pre-plan branch-protection-rule application (ubuntu-latest + lint + build + codeql 4 required, macos/windows removed). Follow-up: v3.0.0-rc1 release-readiness precondition satisfied. (PR #967 race-merged + #968 plan-revision + #970 run + this sync)
+
+### Fixed (English)
+
+- **AC-CIFT-001 ~ 009 all binary PASS**: Run-PR #970 merge. AC-CIFT-001 docs-only fast-path via paths-filter (skip-marker job matches github branch-protection canonical names), AC-CIFT-002a/b CodeQL skip-marker pattern + empirical canonical-name resolution, AC-CIFT-003 review consolidation (5 deleted + 1 preserved), AC-CIFT-004 private-guard audit (grep 0 CLI references), AC-CIFT-005 lefthook.yml + Makefile preflight, AC-CIFT-006 release-pr-multi-os.yml (3-OS full matrix, release/* PR + workflow_dispatch + tag push), AC-CIFT-007 CLAUDE.local.md §18.7 doctrine (4 required checks + 3-tier philosophy), AC-CIFT-008 lessons.md #19 entry 5-section protocol, AC-CIFT-009 `go test ./...` pass 0 failures. Workflow count 20 → 16 (delta -4). v3.0.0-rc1 release-readiness final precondition.
+
+### Known Follow-up (English)
+
+- D5/D7/D8/D9 P1 deferred (SHA pinning already applied in run-phase, AC-CIFT-009 orphan reclass, OOS items, R6-R9 risks).
+- D10-D15 P2/P3 optional (review-bot env, deprecated CI, node version, etc.).
+- SPEC-WORKTREE-SKILLS-CLEANUP-001 (tentative): stale `[HARD] worktree` refs in `.claude/skills/moai/{workflows,team}/run.md` (AC-WTD-007 related).
+
 ## [Unreleased] — v3.0.0-rc1 Doctrine: SPEC-WORKTREE-DOCS-001 Worktree Workflow Harmonization (L1/L2/L3 opt-in)
 
 ### Changed

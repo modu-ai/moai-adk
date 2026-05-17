@@ -2,7 +2,7 @@
 id: SPEC-V3R4-CI-FASTTRACK-001
 title: "CI/CD Fast Track for Single-Developer Workflow (Path-Filter + Review Bot Consolidation)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec
@@ -344,12 +344,12 @@ flake 가 nightly 마다 발생. dedup 로직이 24h window 만 보호하므로 
 
 본 SPEC 의 run-PR 산출물 중 LLM context 에 영향:
 
-- ci.yml + codeql.yml + lefthook.yml + Makefile + nightly-full-matrix.yml: GitHub
+- ci.yml + codeql.yml + lefthook.yml + Makefile + release-pr-multi-os.yml: GitHub
   Actions / Makefile 형식 파일들로 progressive disclosure system 의 paths trigger 와
   무관. PR review 시에만 reviewer 의 context 에 로드됨 — 일회성.
 - CLAUDE.local.md §18.7 갱신: ~15 LOC 변경. CLAUDE.local.md 는 매 세션 자동 로드되므로
   session-level token cost ~30-50 tokens 증가.
-- lessons.md #18: ~40 LOC. lessons.md 는 stale 검사 후 선택적 로드 (24h mtime rule per
+- lessons.md #19: ~65 LOC. lessons.md 는 stale 검사 후 선택적 로드 (24h mtime rule per
   moai-memory.md). 신규 session 에는 token cost 영향 미미.
 
 **Net 토큰 영향**: 세션 당 ~50-100 tokens 증가 (CLAUDE.local.md). PR-level wait 절감
@@ -361,7 +361,7 @@ paths-filter detection 자체는 LLM context 가 아닌 GitHub Actions runtime �
 
 ### CC-2 — Lessons-Protocol Compliance
 
-T8 의 lessons.md #18 entry 는 MoAI Lessons Protocol (`.claude/rules/moai/core/moai-constitution.md`
+T8 의 lessons.md #19 entry 는 MoAI Lessons Protocol (`.claude/rules/moai/core/moai-constitution.md`
 § Lessons Protocol) 의 5-section structure (Category / Incorrect / Correct / Why / How
 to apply) 를 엄격 준수. REQ-CIFT-008 본문이 verbatim template.
 
@@ -384,8 +384,8 @@ to apply) 를 엄격 준수. REQ-CIFT-008 본문이 verbatim template.
   conflict probability 0 으로 평가.
 - **SPEC-WORKTREE-DOCS-001** (sibling): documentation-only SPEC, 본 SPEC 과 file
   scope overlap 없음.
-- **미래 release SPEC (v3.0.0-rc1)**: 본 SPEC 의 nightly-full-matrix.yml 이 tag-push
-  트리거를 포함하므로, release tag 발행 시점에 nightly run 이 sequence 안에 자연 통합됨.
+- **미래 release SPEC (v3.0.0-rc1)**: 본 SPEC 의 release-pr-multi-os.yml 이 tag-push
+  트리거를 포함하므로, release tag 발행 시점에 release-PR run 이 sequence 안에 자연 통합됨.
   본 SPEC 이 release readiness 의 precondition.
 
 ### CC-5 — Meta-Level Benefit (Future SPEC Latency)
