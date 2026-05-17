@@ -53,37 +53,45 @@ Expected output: 3 entries with state `SUCCESS` (the skip-marker pass through).
 
 **Implements**: REQ-CIFT-001.
 
-## AC-CIFT-002 — CodeQL Paths-Ignore
+## AC-CIFT-002 — CodeQL Skip-Marker Pattern
 
-**Given** the same docs-only test PR from AC-CIFT-001.
+**Given** the same docs-only test PR from AC-CIFT-001 AND Wave 0 PoC has confirmed the
+CodeQL satisfying check-run name in design.md AD-002.
 
-**When** the CodeQL workflow trigger is examined:
+**When** the CodeQL workflow runs and the PR's checks are examined:
 
 ```bash
-gh run list --workflow=codeql.yml --branch="$(gh pr view "$TEST_PR" --json headRefName -q .headRefName)"
+# Verify the CodeQL workflow is actually triggered (NOT bare paths-ignore that would
+# skip workflow entirely)
+gh run list --workflow=codeql.yml \
+  --branch="$(gh pr view "$TEST_PR" --json headRefName -q .headRefName)" \
+  --json status,conclusion,headSha -q '.[] | {status, conclusion, headSha}'
+
+# Verify branch-protection-satisfying check-run is SUCCESS
+gh pr checks "$TEST_PR" --json name,state -q \
+  '.[] | select(.name | test("CodeQL|Analyze")) | {name, state}'
+
+# Cross-check via check-runs API (authoritative — what GitHub actually records)
+gh api repos/modu-ai/moai-adk/commits/"$(gh pr view "$TEST_PR" --json headRefOid -q .headRefOid)"/check-runs \
+  --jq '.check_runs[] | select(.name | test("CodeQL|Analyze")) | {name, status, conclusion}'
 ```
 
 **Then**:
 
-- Either NO CodeQL workflow run is created for this PR (paths-ignore consumed the
-  trigger), OR
-- If `paths-ignore` does not satisfy branch protection alone, the CodeQL check status
-  on the PR is `SUCCESS` (per GitHub's documented "skipped → success" behavior for
-  paths-ignore in some cases).
+- CodeQL workflow IS triggered (`gh run list` returns ≥ 1 row — confirms the skip-marker
+  pattern is in effect, NOT bare `paths-ignore` which would emit 0 rows).
+- The required-check-satisfying entry (per Wave 0 AD-002 recorded name) reports
+  `state: SUCCESS` (via `analyze-skip-marker` job).
+- The actual `analyze` job in the workflow run is in `skipped` state (verifiable via
+  workflow run history; `gh run view <runId>`).
+- branch protection `CodeQL` required check is satisfied — `gh pr view "$TEST_PR" --json
+  mergeable -q .mergeable` reports `MERGEABLE`.
 
-**Verification**:
+**Binary**: PASS if (a) workflow triggered, (b) skip-marker check-run reports SUCCESS,
+(c) actual analyze job skipped, (d) PR mergeable. FAIL if any of (a)..(d) violated, or
+if the check status is `RUNNING` indefinitely.
 
-```bash
-gh pr checks "$TEST_PR" --json name,state -q \
-  '.[] | select(.name == "CodeQL") | .state'
-```
-
-Expected: `SUCCESS` or absent (no row).
-
-**Binary**: PASS if CodeQL check is SUCCESS or absent; FAIL if CodeQL check is RUNNING
-indefinitely or FAILURE.
-
-**Implements**: REQ-CIFT-002.
+**Implements**: REQ-CIFT-002a, REQ-CIFT-002b.
 
 ## AC-CIFT-003 — 5 Review Workflows Removed
 
@@ -337,14 +345,20 @@ add 1 = -4).
 **Verification**:
 
 ```bash
-PRE=$(git show "$(gh pr view --json baseRefName -q .baseRefName)":.github/workflows/ | wc -l)
-POST=$(ls .github/workflows/*.yml | wc -l)
+# Live current state on main HEAD (run from main checkout)
+PRE=$(git show main:.github/workflows/ 2>/dev/null | grep -c '\.yml$' || \
+      find .github/workflows -name '*.yml' 2>/dev/null | wc -l)
+# After run-PR merge into main:
+POST=$(find .github/workflows -name '*.yml' | wc -l)
 echo "delta=$((POST - PRE))"
 ```
 
-Expected: `delta=-4` (or equivalent measurement: pre=18, post=14).
+Expected: `delta=-4`. Baseline measurement: **pre=20, post=16**. The pre-baseline 20
+counts ALL `.github/workflows/*.yml` files (PR-triggered + schedule + tag-only), per
+the ground-truth `find .github/workflows -name '*.yml' | wc -l` query on main HEAD
+`41b6f37dc` (2026-05-17).
 
-**Binary**: PASS if `delta == -4`; FAIL otherwise.
+**Binary**: PASS if `delta == -4` AND `POST == 16`; FAIL otherwise.
 
 ## Edge Cases
 

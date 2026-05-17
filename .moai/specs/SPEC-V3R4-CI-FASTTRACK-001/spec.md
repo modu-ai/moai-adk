@@ -30,7 +30,7 @@ tags: "ci, cd, github-actions, paths-filter, review-bot, single-developer, produ
 
 - **축 A — Workflow-level optimization** (이 SPEC의 RUN-PHASE 산출물):
   - `dorny/paths-filter@v3` 기반 docs-only PR fast-path
-  - `codeql.yml` paths-ignore 적용
+  - `codeql.yml` skip-marker pattern 적용 (T1 mirror — bare `paths-ignore` 아님)
   - 5개 review bot workflow 제거 (codex / gemini / glm / llm-panel / claude-code-review.optional)
   - `lefthook.yml` + Makefile `preflight` 타깃으로 로컬 pre-push 게이트
   - `nightly-full-matrix.yml` 일일 03:00 UTC + tag-push full 3-OS matrix
@@ -49,13 +49,27 @@ triggering problem (사용자 보고, 2026-05-17):
 
 - 매 PR마다 5-6분+ CI 대기. windows-latest cold-start (~3-4분) + race-instrumented test
   (`go test -race`) 가 본질적 hot-loop.
-- 19개 workflow 가 모든 PR에 매번 트리거. docs-only PR (예: README, CHANGELOG, `.moai/specs/`
-  markdown만 수정) 도 3-OS Go test 매트릭스를 wait.
+- 저장소에 총 20개 workflow 파일 (`find .github/workflows -name '*.yml' | wc -l` = 20)
+  존재. 이 중 ~15개가 PR 트리거 (`on: pull_request`) — 나머지는 schedule (label-sync,
+  release-drafter-cleanup), tag push (release), push:main only (release-drafter,
+  test-install), issue/comment (community, claude). docs-only PR (예: README,
+  CHANGELOG, `.moai/specs/` markdown만 수정) 도 PR-triggered subset 의 ci.yml +
+  codeql.yml + 5개 review bot 매트릭스를 wait.
 - Review bot 4건 (`codex` / `gemini` / `glm` / `private-guard`) 이 매 PR 마다
   `command not found` FAIL — 이중 `private-guard` 는 codex-review.yml + llm-panel.yml의
   job 이름. 실제 CLI 가 어느 머신에도 설치돼 있지 않아 영구 RED.
 - 1인 개발 ROI 대비 over-engineered. macOS / Windows 매트릭스의 의미 있는 회귀 탐지율
   대비 PR-level wait time 비용이 비대칭.
+
+PR-trigger inventory (20개 workflow 의 trigger 분류, 2026-05-17 main HEAD 기준):
+
+| 분류 | 개수 | 파일 |
+|------|------|------|
+| PR-trigger (`on: pull_request`) | 15 | ci, codeql, claude-code-review, claude-code-review.optional, codex-review, gemini-review, glm-review, llm-panel, community, docs-i18n-check, spec-lint, spec-status-auto-sync, review-quality-gate (`check_run`), auto-merge (`workflow_run`), claude (`issue_comment` / `issues` — semi-PR) |
+| schedule / tag-only | 5 | label-sync (`workflow_dispatch`), release-drafter (`push: main`), release-drafter-cleanup (`schedule`), release (`push: tags`), test-install (`push: main` paths) |
+
+본 SPEC 의 paths-filter / review consolidation 변경은 PR-trigger 15개 subset 중 ci.yml +
+codeql.yml + 5개 review bot (총 7개) 에 영향. 나머지 8개 PR-trigger workflow 는 PRESERVE.
 
 WHY 본 SPEC 이 지금 필요한가:
 
@@ -73,8 +87,10 @@ WHY 본 SPEC 이 지금 필요한가:
   (`lefthook.yml` NEW / `Makefile` MODIFY) + 1개 doctrine (`CLAUDE.local.md` §18.7) +
   auto-memory `lessons.md` (1 entry append).
 - **추정 LOC delta**:
-  - ci.yml: +60 / -10 (detect job + skip-marker job 추가, 매트릭스 conditional 적용)
-  - codeql.yml: +6 / -0 (paths-ignore stanza 추가)
+  - ci.yml: +100 / -15 (detect job + skip-marker job 추가, 5개 job 별 conditional 적용 —
+    상세 분석은 plan.md T1 § "ci.yml 5-job behavior table" 참조)
+  - codeql.yml: +35 / -5 (detect job + analyze conditional gate + analyze-skip-marker
+    job 추가 — bare `paths-ignore` 가 아닌 skip-marker mirror per REQ-CIFT-002a/b)
   - claude-code-review.yml: 변경 없음 (PRESERVE — 사용자 신뢰 + Anthropic API 인증 기존 적용)
   - claude.yml: 변경 없음 (PRESERVE — `@claude` mention trigger, issue/comment, codex 비의존)
   - review-quality-gate.yml: 변경 없음 (PRESERVE — Claude Code Review check_run 의존, codex 비의존)
@@ -85,8 +101,11 @@ WHY 본 SPEC 이 지금 필요한가:
   - Makefile: +20 LOC (preflight 타깃 + dependency stub)
   - CLAUDE.local.md §18.7: ~15 LOC (required check 4개로 갱신 + 3-tier philosophy 명문화)
   - lessons.md: +40 LOC (entry #18)
-- **Workflow count**: 18 → 14 (delete 5 + add 1 nightly = net -4)
-- **Branch protection required checks**: 6 → 4 (이미 적용된 축 B baseline)
+- **Workflow count**: 20 → 16 (delete 5 + add 1 nightly = net -4). 검증 명령:
+  `find .github/workflows -name '*.yml' | wc -l` (pre=20, post=16).
+- **Branch protection required checks**: 6 → 4 (이미 적용된 축 B baseline). Live state:
+  `gh api repos/modu-ai/moai-adk/branches/main/protection/required_status_checks --jq .contexts`
+  = `["Test (ubuntu-latest)","Lint","Build (linux/amd64)","CodeQL"]` (2026-05-17 확인).
 - **Backward compatibility**: 기존 GoReleaser / Dependabot / Release Drafter / docs-i18n /
   community / label-sync / auto-merge workflow 모두 변경 없음. `make build` /
   `go test ./...` API 그대로 유지.
@@ -97,8 +116,9 @@ WHY 본 SPEC 이 지금 필요한가:
    spec / docs-site / .moai/ 전용 PR 에서 Go test 매트릭스를 SKIP 한다. branch protection
    compatibility 를 위해 skip-marker job 으로 동일한 check name (`Test (ubuntu-latest)`)을
    pass 신호로 제공한다.
-2. **CodeQL paths-ignore**: `codeql.yml` 에서 markdown / spec / rule / docs-site 경로 변경
-   PR 의 CodeQL run 을 자동 skip 한다.
+2. **CodeQL skip-marker pattern**: `codeql.yml` 에서 markdown / spec / rule / docs-site
+   경로 변경 PR 의 CodeQL required-check 를 skip-marker job 으로 즉시 SUCCESS 신호 발행한다.
+   (bare `paths-ignore` 가 아닌 T1 mirror — 이유는 design.md AD-002 참조.)
 3. **Review bot consolidation**: 5개 review workflow (codex / gemini / glm / llm-panel /
    claude-code-review.optional) 를 제거하고 단 1개 `claude-code-review.yml` 만 유지한다.
    `claude.yml` (issue/comment `@claude` trigger) 와 `review-quality-gate.yml` (Claude Code
@@ -148,10 +168,12 @@ to prevent scope creep:
 
 ## 4. EARS Requirements
 
-### REQ-CIFT-001 — Docs-Only PR Fast Path (Ubiquitous)
+### REQ-CIFT-001 — Docs-Only PR Fast Path (Ubiquitous + State-Driven)
 
-The system SHALL route docs-only PRs to skip the Go test matrix. A docs-only PR is
-defined as any PR whose changed file set falls ENTIRELY under one or more of:
+The CI system SHALL provide a fast-track path for pull requests whose changes do not
+include Go source files or build inputs.
+
+The canonical documentation-class path inventory is:
 
 - `**.md` (any markdown)
 - `.moai/specs/**`
@@ -161,37 +183,71 @@ defined as any PR whose changed file set falls ENTIRELY under one or more of:
 - `.claude/rules/**`
 - `.claude/skills/**` (markdown bodies of skills)
 - `docs-site/**`
-- `CHANGELOG.md` / `LICENSE` / `NOTICE`
+- `CHANGELOG.md` / `LICENSE` / `NOTICE` / `*.txt`
 
-For docs-only PRs, the `Test (ubuntu-latest)` / `Test (macos-latest)` /
-`Test (windows-latest)` jobs SHALL emit an immediate-success skip-marker job whose
-check-run name matches the matrix job name EXACTLY. This satisfies branch protection
-required-check expectations without executing the actual test suite.
+The canonical Go-class path inventory is:
 
-For non-docs-only PRs, the full matrix SHALL execute as before.
+- `**/*.go`
+- `go.mod` / `go.sum`
+- `Makefile`
+- `.github/workflows/ci.yml` / `.github/workflows/codeql.yml`
+
+**While** the changed file set is wholly contained within documentation-class paths,
+each `Test (${{ matrix.os }})` check-run for `os ∈ {ubuntu-latest, macos-latest,
+windows-latest}` SHALL emit a SUCCESS status via a skip-marker job sharing the canonical
+name. This satisfies branch protection required-check expectations without executing the
+actual test suite.
+
+**While** the changed file set contains at least one path from the Go-class inventory,
+the full `test` matrix SHALL execute as before.
 
 Implementation: `dorny/paths-filter@v3` detect job + conditional matrix gate + skip-marker
-job pattern (per design.md AD-001/AD-002).
+job pattern (per design.md AD-001/AD-002). The canonical name match is between the
+skip-marker job's emitted check-run name and the branch-protection `contexts` entry —
+verified by `gh api repos/modu-ai/moai-adk/branches/main/protection/required_status_checks
+--jq .contexts`.
 
-### REQ-CIFT-002 — CodeQL Paths-Ignore (Ubiquitous)
+### REQ-CIFT-002a — CodeQL Skip-Marker Pattern (Ubiquitous)
 
-The `.github/workflows/codeql.yml` workflow SHALL apply `paths-ignore` filter to skip
-CodeQL analysis on PRs whose changes match ONLY documentation-class paths:
+The `.github/workflows/codeql.yml` workflow SHALL apply the canonical paths-classification
+scheme (mirroring REQ-CIFT-001's documentation-class path inventory) via a detect-job +
+skip-marker pattern, **NOT bare `paths-ignore`**.
 
-```yaml
-on:
-  pull_request:
-    paths-ignore:
-      - '**.md'
-      - '.moai/specs/**'
-      - '.moai/docs/**'
-      - '.moai/reports/**'
-      - '.moai/research/**'
-      - '.claude/rules/**'
-      - 'docs-site/**'
-```
+Rationale: bare `on.pull_request.paths-ignore` makes the entire workflow non-trigger on
+docs-only PRs, which causes the branch-protection `CodeQL` required-check entry to enter
+"expected, never reported" state and block PR merge indefinitely. The skip-marker
+pattern (mirroring REQ-CIFT-001) bypasses this by always running a sentinel job that
+emits SUCCESS under the canonical name.
+
+The `codeql.yml` workflow SHALL be restructured to contain:
+
+1. A `detect` job using `dorny/paths-filter@v3` with the same path inventories as
+   REQ-CIFT-001 (`docs_only` and `go_code`).
+2. The existing `analyze` job gated by `if: needs.detect.outputs.go_code == 'true'`.
+3. A new `analyze-skip-marker` job gated by `if: needs.detect.outputs.docs_only == 'true'`
+   whose emitted check-run name matches the branch-protection `contexts` entry confirmed
+   by `gh api repos/modu-ai/moai-adk/commits/main/check-runs --jq '.check_runs[].name'`.
 
 Other CodeQL triggers (push to main, schedule) SHALL remain unchanged.
+
+### REQ-CIFT-002b — CodeQL Required-Check Name Match (Event-Driven)
+
+**WHEN** a pull request's diff is wholly within documentation-class paths,
+**THEN** the check-run that satisfies the branch-protection `CodeQL` required-check
+entry SHALL emit a SUCCESS status via the skip-marker job sharing the canonical name.
+
+The canonical name SHALL be confirmed empirically (not by inference) via:
+
+```bash
+gh api repos/modu-ai/moai-adk/commits/main/check-runs --jq '.check_runs[].name' | grep -i codeql
+```
+
+Pre-run-phase Wave 0 (plan.md T0) SHALL execute this query and record the result in
+design.md AD-002. The run-phase skip-marker job's `name:` field SHALL match the recorded
+name byte-for-byte. (Empirical observation as of 2026-05-17: the live emitted name is
+`Analyze (Go) (go)`, but the branch protection `contexts` array uses bare `CodeQL` via
+GitHub's legacy workflow-name match. Wave 0 SHALL resolve which name actually satisfies
+the required check.)
 
 ### REQ-CIFT-003 — Review Workflow Consolidation (Event-driven)
 
@@ -229,41 +285,52 @@ Pre-plan recon (Overview §1.3) indicates `private-guard` is a job name inside
 `review-quality-gate.yml` + `claude.yml` are codex-independent (PRESERVE candidate).
 T4 SHALL confirm via grep.
 
-### REQ-CIFT-005 — Local Pre-Flight Gate (Ubiquitous)
+### REQ-CIFT-005 — Local Pre-Flight Gate (Ubiquitous + Event-Driven)
 
-A `lefthook.yml` file at the repository root SHALL enforce a `pre-push` hook that
-invokes `make preflight`. The `Makefile` SHALL expose a `preflight` target that runs
-THREE checks in order:
+The repository SHALL provide a `lefthook.yml` at root that registers a `pre-push` hook
+invoking `make preflight`.
 
-1. `golangci-lint run --fast` (or `make lint-fast`)
-2. `go test -race -short ./...`
-3. `go build ./...`
+The `Makefile` SHALL expose a `preflight` target executing the following THREE checks
+in order:
 
-Any non-zero exit from these three checks SHALL block the push. The developer onboarding
-flow SHALL include a 1-command install: `brew install lefthook && lefthook install`.
+(a) `golangci-lint run --fast` (or `make lint-fast`)
+(b) `go test -race -short ./...`
+(c) `go build ./...`
 
-The `lefthook.yml` SHALL allow bypass via environment variable `LEFTHOOK=0` for
-emergency or known-flaky cases.
+**WHEN** any of the three preflight checks returns a non-zero exit code, **THEN** the
+push SHALL be blocked.
 
-### REQ-CIFT-006 — Nightly Full-Matrix Workflow (Ubiquitous)
+**WHEN** the `LEFTHOOK=0` environment variable is set, **THEN** the pre-push hook SHALL
+be bypassed (developer-controlled escape hatch for emergencies or known-flaky cases).
 
-A new `.github/workflows/nightly-full-matrix.yml` SHALL execute the full 3-OS test
-matrix on the following triggers:
+The developer onboarding flow SHALL include a 1-command install: `brew install lefthook
+&& lefthook install`.
 
-- `schedule: cron "0 3 * * *"` (daily 03:00 UTC)
-- `workflow_dispatch` (manual)
-- `push: tags: ['v*']` (release tags)
+### REQ-CIFT-006 — Nightly Full-Matrix Workflow (Ubiquitous + Event-Driven)
 
-The workflow SHALL run `go test -race ./...` on `ubuntu-latest`, `macos-latest`, and
-`windows-latest`. On any matrix-job failure, the workflow SHALL open a GitHub issue
-using `actions/github-script` with:
+A new `.github/workflows/nightly-full-matrix.yml` SHALL run the full 3-OS Go test
+matrix `{ubuntu-latest, macos-latest, windows-latest}` × Go version `1.26` on the
+following triggers:
 
-- Title: `Nightly matrix failure: <os> @ <commit-short>`
-- Body: link to the failing run + matrix job logs URL
-- Labels: `type:ci` / `priority:P1` / `area:ci`
-- Deduplication: SHALL search for an OPEN issue with identical title prefix
-  (`Nightly matrix failure: <os>`) created within the prior 24h and append a comment
-  instead of opening a duplicate.
+- Schedule: `cron: '0 3 * * *'` (daily 03:00 UTC)
+- Manual: `workflow_dispatch`
+- Tag push: `push: tags: ['v*']`
+
+The workflow SHALL run `go test -race ./...` on all three matrix slots.
+
+**WHEN** any matrix job fails, **THEN** the workflow SHALL open a GitHub issue using
+`actions/github-script` (or equivalent) with title pattern `nightly-full-matrix failure:
+<YYYY-MM-DD>` and body containing the failing OS + failing test name + workflow-run URL.
+
+**WHEN** an open issue with matching title-prefix exists from the prior 24-hour window,
+**THEN** the new failure SHALL be appended as a comment to the existing issue
+(deduplication).
+
+**WHEN** an open issue with matching title-prefix is older than 7 days, **THEN** a NEW
+issue SHALL be opened regardless (multi-day flake escalation — surfaces persistent
+flakes that the dedup mechanism would otherwise hide forever).
+
+Labels applied to created issues: `type:ci` / `priority:P1` / `area:ci`.
 
 ### REQ-CIFT-007 — CLAUDE.local.md §18.7 Doctrine Sync (Ubiquitous)
 
@@ -325,8 +392,8 @@ protection compatibility 의 표준 패턴. nightly safety-net 없이 required c
 
 | File | Estimated Δ | Change Summary |
 |------|-------------|----------------|
-| `.github/workflows/ci.yml` | +60 / -10 LOC | Add `detect` job (paths-filter) + conditional matrix + skip-marker job. Keep race detector + fetch-depth: 0 + zero-exec-Command assertion. |
-| `.github/workflows/codeql.yml` | +6 / -0 LOC | Add `paths-ignore` stanza in `on.pull_request`. Other triggers unchanged. |
+| `.github/workflows/ci.yml` | +100 / -15 LOC | Add `detect` job (paths-filter) + 5-job conditional behavior (test/test-integration/lint/build/constitution-check — see plan.md T1 table) + skip-marker job. Keep race detector + fetch-depth: 0 + zero-exec-Command assertion. |
+| `.github/workflows/codeql.yml` | +35 / -5 LOC | Restructure to detect job + analyze conditional gate + analyze-skip-marker job (mirrors T1 pattern — NOT bare `paths-ignore`). Other triggers (push:main, schedule) unchanged. |
 | `Makefile` | +20 / -0 LOC | Add `preflight` target chaining `lint-fast` + `test-race-short` + `build`. |
 | `CLAUDE.local.md` (§18.7) | ~15 LOC | Update required checks list 6→4 + 3-tier philosophy + (B) rationale. |
 | `~/.claude/projects/.../memory/lessons.md` | +40 LOC | New entry #18 per REQ-CIFT-008. |
