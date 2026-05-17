@@ -435,14 +435,16 @@ For core parallel execution principles, see .claude/rules/moai/core/moai-constit
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
 - **Background Agent Write Restriction**: [HARD] Background subagents (`run_in_background: true`) auto-deny Write/Edit operations. Use `run_in_background: false` for agents that modify files. Read-only agents (research, analysis) can safely run in background.
 
-### Worktree Isolation Rules [HARD]
+### Worktree Isolation Rules (Advisory — 2026-05-17 Policy)
 
-- [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
-- [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"`
-- [HARD] One-shot sub-agents making cross-file changes SHOULD use `isolation: "worktree"`
-- [HARD] GitHub workflow fixer agents MUST use `isolation: "worktree"` for branch isolation
+Per user policy 2026-05-17, L2/L3 worktree usage is user opt-in. L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous — MoAI orchestrator does not mandate isolation. See `feedback_worktree_autonomous` memory.
 
-For the complete worktree selection decision tree, see .claude/rules/moai/workflow/worktree-integration.md
+- [SHOULD] When spawning implementation teammates (role_profiles: implementer, tester, designer) via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation.
+- [SHOULD] Read-only teammates (role_profiles: researcher, analyst, reviewer) typically do not benefit from `isolation: "worktree"`; omit the flag unless a specific reason applies.
+- [SHOULD] One-shot sub-agents making cross-file changes may benefit from `Agent(isolation: "worktree")`; Claude Code runtime decides.
+- [SHOULD] GitHub workflow fixer agents may use `Agent(isolation: "worktree")` for branch isolation; Claude Code runtime decides.
+
+For the complete worktree selection decision tree, see .claude/rules/moai/workflow/worktree-integration.md § Terminology Glossary.
 
 ---
 
