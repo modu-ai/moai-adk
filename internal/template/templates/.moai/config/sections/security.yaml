@@ -21,3 +21,13 @@ security:
 
   # Additional sensitive content patterns (regex, case-insensitive).
   extra_sensitive_content_patterns: []
+
+  # T-RT002-18: SPEC-V3R2-RT-002 permission subsystem 신규 키.
+  # REQ-V3R2-RT-002-022, REQ-V3R2-RT-002-006, REQ-V3R2-RT-002-030.
+  permission:
+    # strict_mode=true 시 bypassPermissions 모드 agent spawn 거부.
+    strict_mode: false
+    # SrcBuiltin pre-allowlist 패턴 (기본값 — 실제 패턴은 stack.go PreAllowlist() 에 정의).
+    pre_allowlist: []
+    # session_rules: SrcSession tier 로 적재되는 세션 범위 규칙.
+    session_rules: []

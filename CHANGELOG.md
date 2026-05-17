@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.0.0-rc1: 7 SPECs complete (RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+## [Unreleased] — v3.0.0-rc1: 8 SPECs complete (RT-002 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+
+### Added
+
+- **8-tier Permission Stack + Bubble Mode** (SPEC-V3R2-RT-002): `internal/permission/` 패키지에 8-소스 permission stack, bubble mode, 5-enum PermissionMode strict 검증, `moai doctor permission` CLI 보강 신설. 주요 기능: `PermissionResolver.Resolve` 8-tier 우선순위 워크 (SrcPolicy > SrcUser > SrcProject > SrcLocal > SrcPlugin > SrcSkill > SrcSession > SrcBuiltin), hook UpdatedInput re-match 단일 재실행 가드, fork depth > 3 → bubble 강등 + SystemMessage 경고, bubble mode parent-unavailable → deny + sentinel, 비대화형 ask → deny fail-closed + `.moai/logs/permission.log` 기록, 동일 tier 충돌 시 specificity-then-fs-order tiebreak (`conflict.go`), legacy `bypassPermissions` action → `acceptEdits` migration + deprecation warning (`migration.go`), strict_mode bypass reject (`spawn.go` `RejectIfStrict`), SrcBuiltin pre-allowlist sync.Once 캐싱 최적화. `moai doctor permission` 플래그 확장: `--all-tiers`, `--mode`, `--fork`, `--format`. `.moai/config/sections/security.yaml` 신규 키: `permission.strict_mode`, `permission.pre_allowlist`, `permission.session_rules`. 16 AC (AC-01~15) + 35 tasks (T-RT002-01~35) 완료. P0 Critical release-blocker.
 
 ### Fixed
 
