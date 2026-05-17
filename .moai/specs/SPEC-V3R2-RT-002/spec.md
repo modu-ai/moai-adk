@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-RT-002
 title: "Permission Stack + Bubble Mode"
-version: 0.1.1
-status: planned
+version: "0.2.0"
+status: completed
 created: 2026-04-23
-updated: 2026-05-16
+updated: 2026-05-18
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 2 — Runtime Hardening"
@@ -29,6 +29,7 @@ tags: "permission, bubble, provenance, v3r2, breaking, runtime, safety"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.0 | 2026-05-18 | orchestrator | Run-phase COMPLETE — PR #986 admin merged. 28+ tasks (T-RT002-01~35) DONE. 16 ACs all PASS. 8-tier permission resolver (SrcBuiltin/SrcPolicy/SrcSession/SrcUser/SrcLocal/SrcProject/SrcEnv/Hook). PreAllowlist sync.Once caching, RejectIfStrict spawn-time guard, 5-enum permissionMode strict-validation, fork depth-4 degrade-to-bubble sentinel, parent-unavailable deny, non-interactive deny-with-log, conflict specificity + fs-order tiebreak, policy>project precedence, hook UpdatedInput re-match. MigrateLegacyBypassRules (v2 `bypassPermissions` action → acceptEdits + deprecation warning). `moai doctor permission` CLI (~200 LOC) with --all-tiers/--mode/--fork/--format/--trace flags. P-C01 CRITICAL no-permission-bubble incident 해소. Status `implemented → completed`. v3.0.0-rc1 P0 release-blocker 6건 중 4번째 완료. |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade in-progress → planned — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C01 (no permission bubble, CRITICAL) head-on. |
 
