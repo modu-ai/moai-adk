@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-ORC-004
 title: "Worktree MUST Rule for write-heavy role profiles"
-version: 0.1.1
-status: planned
+version: "0.2.0"
+status: completed
 created: 2026-04-23
-updated: 2026-05-16
+updated: 2026-05-18
 author: GOOS
 priority: P1 High
 phase: "v3.0.0 — Phase 3 — Agent Cleanup"
@@ -29,6 +29,7 @@ tags: "agent, worktree, isolation, implementer, tester, designer, v3r2"
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.2.0   | 2026-05-18 | orchestrator | Run-phase COMPLETE — PR #982 admin merged. 4 write-heavy agent frontmatter `isolation: worktree` 추가 (expert-backend/frontend/refactoring/researcher), worktree-integration.md SHOULD → MUST 격상 + Sentinel Glossary 신설, agent_lint.go LR-05 + 신규 LR-09 (read-only with isolation 금지) sentinel messages, `moai workflow lint` CLI 신설 (`internal/cli/workflow_lint.go` ~145 LOC + 4 tests), `internal/cli/sentinels.go` shared const block. T-ORC004-09 manager-cycle 조건부 skip (ORC-001이 manager-cycle 제거됨 — ORC_DEPENDENCY_MISSING documented path). 10 ACs all PASS. Status `in-progress → completed`. v3.0.0-rc1 P1 release-blocker 5건 중 2번째 완료. |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade in-progress → planned — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 
