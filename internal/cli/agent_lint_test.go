@@ -1544,6 +1544,96 @@ func TestAgentLintCmd_RunE_NoFiles(t *testing.T) {
 	}
 }
 
+// ============================================================================
+// SPEC-V3R2-ORC-004: Sentinel Key Tests
+// RED tests for LR-05 ORC_WORKTREE_MISSING and LR-09 ORC_WORKTREE_ON_READONLY
+// ============================================================================
+
+// TestLintLR05_OrcWorktreeMissingSentinel tests that LR-05 violation message
+// contains the ORC_WORKTREE_MISSING sentinel key (AC-06).
+func TestLintLR05_OrcWorktreeMissingSentinel(t *testing.T) {
+	tmpDir := t.TempDir()
+	agentFile := filepath.Join(tmpDir, "expert-backend.md")
+	err := os.WriteFile(agentFile, []byte(`---
+name: expert-backend
+tools: Read, Write, Edit
+permissionMode: bypassPermissions
+effort: high
+---
+
+Body.
+`), 0o644)
+	if err != nil {
+		t.Fatalf("write agent file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentFile, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var found *LintViolation
+	for i := range violations {
+		if violations[i].Rule == "LR-05" {
+			found = &violations[i]
+			break
+		}
+	}
+
+	if found == nil {
+		t.Fatal("expected LR-05 violation for expert-backend without isolation:worktree, got none")
+	}
+	if found.Severity != SeverityError {
+		t.Errorf("LR-05 severity = %s, want error", found.Severity)
+	}
+	if !strings.Contains(found.Message, "ORC_WORKTREE_MISSING") {
+		t.Errorf("LR-05 message should contain ORC_WORKTREE_MISSING, got: %s", found.Message)
+	}
+}
+
+// TestLintLR09_OrcWorktreeOnReadonlySentinel tests that LR-09 violation message
+// contains the ORC_WORKTREE_ON_READONLY sentinel key (AC-07).
+func TestLintLR09_OrcWorktreeOnReadonlySentinel(t *testing.T) {
+	tmpDir := t.TempDir()
+	agentFile := filepath.Join(tmpDir, "evaluator-active.md")
+	err := os.WriteFile(agentFile, []byte(`---
+name: evaluator-active
+tools: Read, Grep, Glob
+permissionMode: plan
+isolation: worktree
+effort: xhigh
+---
+
+Body.
+`), 0o644)
+	if err != nil {
+		t.Fatalf("write agent file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentFile, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var found *LintViolation
+	for i := range violations {
+		if violations[i].Rule == "LR-09" {
+			found = &violations[i]
+			break
+		}
+	}
+
+	if found == nil {
+		t.Fatal("expected LR-09 violation for evaluator-active with isolation:worktree on plan mode, got none")
+	}
+	if found.Severity != SeverityError {
+		t.Errorf("LR-09 severity = %s, want error", found.Severity)
+	}
+	if !strings.Contains(found.Message, "ORC_WORKTREE_ON_READONLY") {
+		t.Errorf("LR-09 message should contain ORC_WORKTREE_ON_READONLY, got: %s", found.Message)
+	}
+}
+
 // TestCheckDeadHooks_ViaLintAgentFile tests LR-04 detection through lintAgentFile
 // The hooks field parsing in the simple YAML parser doesn't handle complex maps,
 // so this tests what actually happens when a fixture file is processed.

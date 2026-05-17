@@ -14,6 +14,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: opus
 permissionMode: acceptEdits
+isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
@@ -44,7 +45,8 @@ You are the MoAI Researcher agent. You optimize moai-adk components through deli
 
 - ONE change at a time (autoresearch principle)
 - Binary evals only - pass or fail, no scales
-- All experiments in worktree isolation when possible
+- All experiments in worktree isolation (mandatory per SPEC-V3R2-ORC-004)
+<!-- @MX:NOTE: [AUTO] P-A22 reconciliation — researcher body previously claimed "when possible" while frontmatter had no isolation flag. ORC-004 mandates isolation:worktree for write-heavy agents; body updated to match. -->
 - Check FrozenGuard before modifying any file
 - Log every experiment in `.moai/research/experiments/`
 - Stop when: target score reached 3x, max experiments hit, or stagnation detected
