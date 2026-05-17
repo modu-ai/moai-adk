@@ -189,7 +189,9 @@ func TestAllAgentsInCatalog(t *testing.T) {
 		t.Fatalf("WalkDir(.claude/agents/moai) error: %v", walkErr)
 	}
 
-	const expectedAgentCount = 28
+	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged.
+	// Expected: 28 − 8 = 20 (14 active system + 4 my-harness + 2 evaluator-family).
+	const expectedAgentCount = 20
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}

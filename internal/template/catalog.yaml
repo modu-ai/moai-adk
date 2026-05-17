@@ -36,7 +36,7 @@ catalog:
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 0ebea9c5841768e6d128d9ed25a475a84a3cb02096761be5074fdc7f6f0a134d
+              hash: 00ea090d6bcaabe3a85d50e055865ec34d02d53e9563ed55a3fd11ba757813cf
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -104,21 +104,6 @@ catalog:
               hash: 60fac9275edd13da7ac957aba236e497aaf4ebc3d939c3167d42df11adc5cead
               version: 1.0.0
         agents:
-            - name: builder-agent
-              tier: core
-              path: templates/.claude/agents/moai/builder-agent.md
-              hash: 52fe58dffa749569868001ffc2ba8dffe8d5adae7f45e89dd3303fe43166b422
-              version: 1.0.0
-            - name: builder-plugin
-              tier: core
-              path: templates/.claude/agents/moai/builder-plugin.md
-              hash: 9db114d87a9b169c054647b6fe5f3a19a76fd7760f9a46e218c05e7ec6c607f3
-              version: 1.0.0
-            - name: builder-skill
-              tier: core
-              path: templates/.claude/agents/moai/builder-skill.md
-              hash: 88b3dd4b803eb00233c5cddd2ff2eb4c3e74b8665582a1346813b4cd4d7804ac
-              version: 1.0.0
             - name: claude-code-guide
               tier: core
               path: templates/.claude/agents/moai/claude-code-guide.md
@@ -129,30 +114,15 @@ catalog:
               path: templates/.claude/agents/moai/evaluator-active.md
               hash: c5de2befd95a4a220fe2db26c08d98a5275cf628f8dee6c39db55fa03b81fc94
               version: 1.0.0
-            - name: expert-debug
-              tier: core
-              path: templates/.claude/agents/moai/expert-debug.md
-              hash: 2e476803ab7e85eb58f9ada92d275b9e534e40aec96b568000e2357b2b49b4aa
-              version: 1.0.0
             - name: expert-refactoring
               tier: core
               path: templates/.claude/agents/moai/expert-refactoring.md
-              hash: 046bfd857aeb7fb60d8e2731665f3e50c7c10d96aea4a4e01fa181faf66fdf3e
+              hash: 4ecc924489e619625ee7e5a7e80c2de7fc56372805747a4f06ea2524cb605ffd
               version: 1.0.0
             - name: manager-brain
               tier: core
               path: templates/.claude/agents/moai/manager-brain.md
               hash: b1892428ae5512c223e94ace0619ae35484b38cd689d96030207e30fdad58bf3
-              version: 1.0.0
-            - name: manager-cycle
-              tier: core
-              path: templates/.claude/agents/moai/manager-cycle.md
-              hash: a767efab6fa4492e87aa5006243672c86c7c4389da6bfc913001d63048cb70fb
-              version: 1.0.0
-            - name: manager-ddd
-              tier: core
-              path: templates/.claude/agents/moai/manager-ddd.md
-              hash: 494caa7efd60a539236742b11ef07c34c690781ff1dcaa7cd07f7da6b1a4bbd2
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -177,7 +147,7 @@ catalog:
             - name: manager-quality
               tier: core
               path: templates/.claude/agents/moai/manager-quality.md
-              hash: e7d53d9412d0b02d2e6607cf18a28dabdf3ea3119685cb5d5bacf1249422ef73
+              hash: adeb9edf5dc4e024526cf5f5f894618f208ec9a6a4f8ca7aa7d236f6343fd36a
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -189,11 +159,6 @@ catalog:
               path: templates/.claude/agents/moai/manager-strategy.md
               hash: 373b105c869fc8ac17bad944c33650c3985415d34db6596ae7935050a22129c8
               version: 1.0.0
-            - name: manager-tdd
-              tier: core
-              path: templates/.claude/agents/moai/manager-tdd.md
-              hash: 6e68c9cae846b93498e624f83f34693e1fb1d122aa14b18a9ba1d08f40f8d471
-              version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
@@ -202,7 +167,7 @@ catalog:
             - name: researcher
               tier: core
               path: templates/.claude/agents/moai/researcher.md
-              hash: e57d63f8d4ab693e99eb04da56fef2265853db2250ca5deff8643fb8f2fd4063
+              hash: 60799488244eada2ab67518cd3c71515ef40150e6b7d0fbd1d65b17d16208e86
               version: 1.0.0
     optional_packs:
         auth:
@@ -362,18 +327,13 @@ catalog:
                 - name: expert-mobile
                   tier: optional-pack:mobile
                   path: templates/.claude/agents/moai/expert-mobile.md
-                  hash: 88043e26c550701786060b8ee0901a05906d2cfe984116dae74d78f62b64f4c4
+                  hash: e36353b3b9f8c8ebb98fb1b798823ee255db7c81901ac869eff241bd33194425
                   version: 1.0.0
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows
             depends_on: []
             skills: []
-            agents:
-                - name: expert-testing
-                  tier: optional-pack:testing
-                  path: templates/.claude/agents/moai/expert-testing.md
-                  hash: 7332539ae5b8539c36bdfb89ff68f6ee9cc804d977121f3ec5962a0cc46e21f7
-                  version: 1.0.0
+            agents: []
     harness_generated:
         skills: []
         agents:

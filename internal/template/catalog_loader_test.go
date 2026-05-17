@@ -26,9 +26,11 @@ func TestLoadCatalog(t *testing.T) {
 		t.Error("LoadCatalog: OptionalPacks is nil")
 	}
 
-	// AllEntries should return all 65 entries
+	// AllEntries should return all 57 entries.
+	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged
+	// (was 65 = 57 + 8 retired stubs).
 	all := cat.AllEntries()
-	const expectedTotal = 65
+	const expectedTotal = 57
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
