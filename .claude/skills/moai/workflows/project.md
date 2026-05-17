@@ -27,6 +27,10 @@ triggers:
   phases: ["project"]
 ---
 
+<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai project Phase <N> <enter|exit> -->
+
 # Workflow: project - Project Documentation Generation
 
 Purpose: Generate project documentation through smart questions and codebase analysis. Creates product.md, structure.md, and tech.md in .moai/project/ directory, plus architecture documentation in .moai/project/codemaps/ directory.
