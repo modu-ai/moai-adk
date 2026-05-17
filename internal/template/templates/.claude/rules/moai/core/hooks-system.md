@@ -17,6 +17,8 @@ Claude Code hooks for extending functionality with custom scripts.
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |
+| PostToolBatch | No | No | Runs after a batch of parallel tool calls resolves (v2.1.89+) |
+| UserPromptExpansion | Slash command name | Yes | Runs when slash command expands into prompt (v2.1.90+) |
 | PreCompact | Trigger | No | Runs before context compaction. Matchers: manual, auto |
 | PostCompact | Trigger | No | Runs after context compaction completes (v2.1.76+). Matchers: manual, auto |
 | Stop | No | Yes | Runs when Claude finishes responding |
@@ -51,9 +53,9 @@ Claude Code hooks for extending functionality with custom scripts.
 
 **Context Events**: PreCompact, PostCompact, FileChanged, CwdChanged, WorktreeCreate, WorktreeRemove
 
-**Prompt and Notification Events**: UserPromptSubmit, PermissionRequest, PermissionDenied, Notification, Elicitation, ElicitationResult
+**Prompt and Notification Events**: UserPromptSubmit, UserPromptExpansion, PermissionRequest, PermissionDenied, Notification, Elicitation, ElicitationResult
 
-**Tool Events**: PreToolUse, PostToolUse, PostToolUseFailure
+**Tool Events**: PreToolUse, PostToolUse, PostToolUseFailure, PostToolBatch
 
 **Agent and Task Events**: SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, TaskCreated
 
@@ -82,12 +84,16 @@ Claude Code hooks for extending functionality with custom scripts.
 | FileChanged | `file_path`, `change_type` | - | change_type: modified, created, deleted. Receives CLAUDE_ENV_FILE |
 | Elicitation | `mcp_server_name`, `mcp_tool_name`, `elicitation_request` | `action`, `content` | action: accept, decline, cancel |
 | ElicitationResult | `mcp_server_name`, `mcp_tool_name` | `action`, `content` | Overrides user response |
+| PostToolBatch | `batch_id`, `tool_results` array | `decision`, `reason` | Exit 2 blocks batch execution. `decision: "block"` prevents execution |
+| UserPromptExpansion | `expansion_type`, `command_name`, `command_args` | `decision`, `additionalContext` | Exit 2 blocks expansion. `decision: "block"` prevents command expansion |
 
 All hook events include `agent_id` and `agent_type` fields when triggered from a subagent context (v2.1.69+).
 
 Standard events (SessionStart, PreCompact, PreToolUse, PostToolUse) use common stdin/stdout patterns: stdin receives event-specific fields, stdout accepts optional `systemMessage`.
 
 ## Hook Execution Types
+
+Five hook types are available:
 
 ### Command Hooks (type: "command")
 
@@ -128,6 +134,18 @@ Send hook input as JSON POST to a URL and receive JSON response. Useful for remo
 - Response: JSON with optional `systemMessage`, `additionalContext`, `reason`
 - Same blocking behavior as command hooks (HTTP status codes map to exit codes)
 - Available since v2.1.63
+
+### MCP Tool Hooks (type: "mcp_tool")
+
+Call a tool on a connected MCP server to make validation decisions.
+
+- Configuration: `type`, `server`, `tool`, `timeout`
+- The `server` field specifies the MCP server name (e.g., "security_server")
+- The `tool` field specifies the tool name on that server
+- Request: Hook event data passed as MCP tool arguments
+- Response: JSON with optional `decision`, `reason`, `additionalContext`
+- Same blocking behavior as command hooks
+- Available since v2.1.85+
 
 ### Async Command Hooks (async: true)
 
@@ -265,6 +283,22 @@ MoAI-ADK implements intelligent handler logic beyond simple logging:
 - **SubagentStart context injection**: Injects project metadata (name, type, language, active SPEC) via `additionalContext` into spawned subagents
 - **CwdChanged environment persistence**: Writes project-specific env vars to `CLAUDE_ENV_FILE` when directory changes to a MoAI project
 - **UserPromptSubmit session title**: Sets Claude Code session title via `sessionTitle` field with SPEC ID or project/branch info
+
+## Timeout Configuration
+
+All hook types support a `timeout` field (in seconds). The maximum timeout is **600 seconds (10 minutes)** across all hook types.
+
+MoAI-ADK uses shorter independent timeout policies for operational efficiency:
+
+| Hook Type | MoAI Default | Max Value | Notes |
+|-----------|-------------|-----------|-------|
+| SessionStart, PreCompact, PreToolUse, PostToolUse | 5s | 600s | Fast lifecycle hooks |
+| PostCompact, PostToolUseFailure, Stop | 10s | 600s | Context/recovery hooks |
+| TeammateIdle, TaskCompleted | 10s | 600s | Agent lifecycle hooks |
+| UserPromptSubmit | 5s | 30s | Blocks user interaction; reduced max |
+| prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
+
+These MoAI defaults (5s, 10s, 30s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
 
 ## Rules
 
