@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-RT-003
 title: "Sandbox Execution Layer (Bubblewrap / Seatbelt / Docker)"
-version: 0.1.1
-status: implemented
+version: "0.2.0"
+status: completed
 created: 2026-04-23
 updated: 2026-05-18
 author: GOOS
@@ -29,6 +29,7 @@ tags: "sandbox, safety, security, v3r2, breaking, runtime, owasp"
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.0 | 2026-05-18 | orchestrator | Run-phase COMPLETE — PR #988 admin merged. 52 tasks (T-RT003-01~52) DONE. 16 ACs all PASS. Multi-platform sandbox execution layer 영구 도입: Bubblewrap (Linux) + Seatbelt (macOS SBPL) + Docker (CI fallback). `internal/sandbox/` 신규 모듈 (context.go + launcher.go + bubblewrap.go + seatbelt.go + docker.go + profile.go + env.go + errors.go). Deterministic profile generation (100-run checksum stable). Env scrubbing (denylist + AWS prefix + passthrough). 16MiB output truncation. CI=1 → Docker auto-dispatch. `moai doctor sandbox` CLI + agent_lint REQ-033 (sandbox missing without justification → error). Known limitation: macOS SBPL host-specific TCP allowlist 미지원 (full TCP allow fallback, host-level block은 v3.1+ pf/nftables 구현 예정). P-C03 CRITICAL no-sandbox-default OWASP Top 10 Agentic Apps 2025 해소. Status `implemented → completed`. v3.0.0-rc1 P0 release-blocker 6건 중 5번째 완료. |
 | 0.1.1   | 2026-05-16 | manager-develop (run-phase) | status downgrade in-progress → planned — git-implied status 정합성 복원 (SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Wave 3 추가). |
 | 0.1.0 | 2026-04-23 | GOOS | Initial v3 Round-2 draft. New SPEC — no v3-legacy predecessor. Addresses P-C03 (no sandbox default, CRITICAL) per OWASP Top 10 for Agentic Apps 2025. |
 
