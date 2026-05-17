@@ -1,0 +1,34 @@
+name: PoC Skip-Marker
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.f.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: f
+        with:
+          filters: |
+            docs_only:
+              - '**.md'
+
+  test:
+    needs: detect
+    if: needs.detect.outputs.docs_only != 'true'
+    runs-on: ubuntu-latest
+    name: PoC Test
+    steps:
+      - run: echo "real test"
+
+  test-skip-marker:
+    needs: detect
+    if: needs.detect.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    name: PoC Test
+    steps:
+      - run: echo "skipped (paths-filter)"

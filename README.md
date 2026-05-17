@@ -1369,3 +1369,4 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 - [Official Documentation](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+<!-- PoC test edit for SPEC-V3R4-CI-FASTTRACK-001 Wave 0 -->
