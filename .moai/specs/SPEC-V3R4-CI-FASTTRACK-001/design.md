@@ -58,8 +58,25 @@ self-hosted 의존성 없음.
 ### AD-002 — Skip-Marker Pattern over Paths Trigger Keys
 
 **Decision**: Docs-only PR 에서도 branch protection 의 required check (`Test
-(ubuntu-latest)`) 를 만족시키기 위해, 동일 이름을 가진 별도 "skip-marker" job 을 실행하여
-즉시 success 를 발행한다.
+(ubuntu-latest)`, `CodeQL`) 를 만족시키기 위해, 동일 이름을 가진 별도 "skip-marker"
+job 을 실행하여 즉시 success 를 발행한다. 이 패턴은 ci.yml (T1) 과 codeql.yml (T2) 양쪽에
+일관 적용한다 — codeql.yml 에 bare `paths-ignore` 를 사용하는 것은 explicit reject.
+
+**Empirical evidence (community)**: GitHub Actions 의 "two jobs with identical `name`,
+mutually exclusive `if:` guards" 패턴은 GitHub 의 공식 문서에는 명시되지 않았으나
+empirically 작동함이 다수의 community 사례로 확인됨. 본 SPEC 은 단순 추론이 아닌 plan.md
+Wave 0 (T0) 의 sandbox PoC 로 동작을 binary 검증한 후 Wave 1 진입.
+
+- Canonical community reference: https://github.com/orgs/community/discussions/13690
+  ("Required checks not respecting paths filter" — skip-marker pattern 이 권고되는
+  canonical thread).
+- 추가 known precondition (community 사례에서 도출):
+  1. Workflow 가 `on.paths` / `on.paths-ignore` 으로 전체 gating 되면 안 됨 (그러면
+     workflow 자체가 트리거되지 않아 required check 가 영구 pending).
+  2. 두 mutually exclusive job 중 정확히 한 개만 한 PR 의 한 run 에서 report 되어야 함.
+  3. Required check matching 은 check-run **name** 으로 수행됨. workflow name 매칭은
+     legacy fallback 으로만 동작 — Wave 0 (T0) 에서 어느 매칭 모드가 실제로 satisfy
+     하는지 binary 확인.
 
 **Alternatives considered**:
 
@@ -72,13 +89,31 @@ self-hosted 의존성 없음.
 - (b) **별도 skip-marker job + 동일 이름 매칭** (chosen): branch protection 의 required
   check 는 `Test (ubuntu-latest)` 라는 정확한 이름과 매칭. skip-marker job 이 동일 matrix
   name 으로 즉시 success 신호 발행 → 보호 규칙 자동 satisfaction. GitHub Actions
-  ecosystem 의 well-known workaround.
+  ecosystem 의 well-known workaround (community discussion #13690 evidence).
 
 - (c) **required check 자체를 모두 제거**: 의도와 어긋남. 보호 규칙은 회귀 안전망이며
   사용자 (B) 결정에서도 4개 항목은 의도적으로 유지.
 
+- (d) **codeql.yml 에 bare `paths-ignore` 적용** (rejected): 위 known precondition #1
+  위반. codeql.yml 의 workflow 자체가 트리거되지 않아 `CodeQL` required check 가 영구
+  pending 으로 PR block. 본 SPEC 의 plan-audit iteration 1 에서 P0 defect D1 으로 명시
+  지적됨.
+
 **Rationale**: (b) 만이 결정성 (deterministic check satisfaction) + branch protection
-보존 + 의도 명확성을 모두 충족.
+보존 + 의도 명확성을 모두 충족. (d) 의 explicit rejection 으로 ci.yml + codeql.yml 양쪽이
+**동일 skip-marker pattern** 으로 일관성 유지.
+
+**Wave 0 PoC verification gate**:
+
+Wave 1 (T1, T2) implementation 진입 전, plan.md T0 가 sandbox PR 로 다음을 binary 검증:
+
+1. CodeQL 의 실제 satisfying check-run name (`gh api ... --jq '.check_runs[].name' |
+   grep -i codeql`).
+2. Skip-marker job 이 docs-only PR 의 `gh pr checks` 에서 SUCCESS 로 보고되는지.
+3. branch protection 의 required check 가 skip-marker pass 로 satisfy 되는지.
+
+Wave 0 PASS 결과 (observed satisfying name + SUCCESS verification) 를 본 AD-002 의 별도
+section "Wave 0 PoC Result" 에 run-phase 가 기록.
 
 **Consequence**:
 
@@ -87,6 +122,9 @@ self-hosted 의존성 없음.
   run 을 확인해야 함 (minor UX overhead).
 - matrix name template (`Test (${{ matrix.os }})`) 의 *정확한* 일치 필수. 오타 1자만
   있어도 보호 규칙 미충족 → PR block. T1 verification 에서 binary 확인.
+- codeql.yml 의 `analyze-skip-marker` job 의 `name:` 은 Wave 0 결과에 따라 `Analyze (Go)`
+  (matrix language: [go] 와 함께 → `Analyze (Go) (go)` emit) 로 설정. legacy workflow-name
+  matching 의존시 단일 job `name: CodeQL`.
 
 ### AD-003 — Review Bot Consolidation: Keep Claude-Code-Review, Remove 5
 
@@ -195,7 +233,7 @@ UTC + release tag push 시점의 nightly workflow 로 이전한다.
 **Karpathy / forrestchang anti-pattern catalog 검토**:
 
 - "Premature optimization" anti-pattern 의 명시적 *negation*. 본 SPEC 의 trigger 는
-  empirical (사용자 직접 5-6분 wait 보고) + measured (19개 workflow + branch protection
+  empirical (사용자 직접 5-6분 wait 보고) + measured (20개 workflow + branch protection
   6 check 의 실측). 이론적 가설이 아닌 측정값 기반 right-sizing.
 - "Over-engineering" anti-pattern 의 명시적 해소. review bot 4개 RED 가 실제로 신호 잡음.
   removal 자체가 anti-pattern 제거.

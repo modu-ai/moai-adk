@@ -55,20 +55,141 @@ tags: "ci, cd, github-actions, paths-filter, review-bot, single-developer, produ
 
 ## 2. Wave Decomposition
 
-**Single-Wave SPEC**. Wave decomposition 불필요. 근거는 §1.1 참조.
+**Two-Wave SPEC** (revised post-plan-audit iteration 1):
+
+- **Wave 0 — Skip-Marker Proof-of-Concept** (sandbox isolation, throw-away PR).
+  Validates that GitHub Actions의 "two jobs with identical `name`, mutually exclusive
+  `if:` guards" 패턴이 docs-only PR 에서 branch-protection 의 required check 를 satisfy
+  하는지 empirically 확인. plan-auditor 의 P0 defect D4 (skip-marker correctness
+  unverified) 직접 대응. Wave 0 PASS 이후에만 Wave 1 진입.
+- **Wave 1 — Main Implementation** (T1..T8). 단일 run-PR atomic 적용.
+
+Wave 0 의 sandbox PR 은 main 으로 머지되지 않음 (close + delete-branch). 산출물은
+Wave 0 의 verification report (design.md AD-002 에 PASS/FAIL 기록) 만 main 으로
+귀결됨. Wave 1 run-PR 본문에 Wave 0 PR link 를 참조.
 
 ## 3. Tasks
 
-8 sequential tasks (T1..T8). T1..T3 가 ci.yml + codeql.yml + review workflow consolidation
-의 핵심 atomic 단위. T4 는 audit-only (코드 변경 결정 boundary). T5..T6 는 새 파일 추가.
-T7..T8 은 doctrine + memory layer 동기화.
+9 sequential tasks (T0..T8). T0 는 Wave 0 의 PoC sandbox. T1..T3 가 ci.yml + codeql.yml +
+review workflow consolidation 의 핵심 atomic 단위. T4 는 audit-only (코드 변경 결정 boundary).
+T5..T6 는 새 파일 추가. T7..T8 은 doctrine + memory layer 동기화.
 
-### T1 — ci.yml `dorny/paths-filter@v3` Conditional Matrix + Skip-Marker
+### T0 — Wave 0 Skip-Marker Proof-of-Concept (Wave 0)
 
-**Deliverable**: `.github/workflows/ci.yml` 의 `jobs` 섹션을 다음과 같이 재구성:
+**Deliverable**: 별도 throw-away PR (`test/skip-marker-poc` branch) 에서 skip-marker
+pattern 의 GitHub Actions 동작을 isolated 환경에서 검증.
+
+**Procedure**:
+
+1. **CodeQL check-run name 사전 확인**:
+
+   ```bash
+   gh api repos/modu-ai/moai-adk/commits/main/check-runs --jq '.check_runs[].name' \
+     | grep -i codeql
+   ```
+
+   2026-05-17 main HEAD 기준 expected output: `Analyze (Go) (go)` (workflow `CodeQL`
+   + job name `Analyze (Go)` + matrix `language: go`). Branch protection 의 bare
+   `CodeQL` 은 legacy workflow-name match — Wave 0 가 어느 name 이 실제 required check
+   를 satisfy 하는지 binary 확인.
+
+2. **Sandbox workflow 작성**: `.github/workflows/skip-marker-poc.yml` (throw-away,
+   T0 branch 한정):
+
+   ```yaml
+   name: PoC Skip-Marker
+   on:
+     pull_request:
+       branches: [main]
+   jobs:
+     detect:
+       runs-on: ubuntu-latest
+       outputs:
+         docs_only: ${{ steps.f.outputs.docs_only }}
+       steps:
+         - uses: actions/checkout@v5
+         - uses: dorny/paths-filter@v3
+           id: f
+           with:
+             filters: |
+               docs_only:
+                 - '**.md'
+     test:
+       needs: detect
+       if: needs.detect.outputs.docs_only != 'true'
+       runs-on: ubuntu-latest
+       name: PoC Test
+       steps:
+         - run: echo "real test"
+     test-skip-marker:
+       needs: detect
+       if: needs.detect.outputs.docs_only == 'true'
+       runs-on: ubuntu-latest
+       name: PoC Test
+       steps:
+         - run: echo "skipped (paths-filter)"
+   ```
+
+3. **Open PR with markdown-only diff** (e.g., README.md 1-line edit). Wait for CI.
+
+4. **Verify**:
+   - `gh pr checks <T0-PR> --json name,state -q '.[] | select(.name=="PoC Test") | .state'`
+     → expected: `SUCCESS` (skip-marker job).
+   - Workflow run history: `test` job in `skipped` state, `test-skip-marker` in `success`.
+   - Branch protection 의 sandbox PR 에 대한 영향 0 (PoC 는 required check 가 아님).
+
+5. **Record result in design.md AD-002**: PASS / FAIL + observed check-run name(s).
+   Reference: https://github.com/orgs/community/discussions/13690 (canonical community
+   discussion on the skip-marker pattern).
+
+6. **Cleanup**: `gh pr close <T0-PR> --delete-branch` + `git push origin --delete
+   test/skip-marker-poc`.
+
+**Decision matrix**:
+
+| Wave 0 result | Wave 1 action |
+|---------------|---------------|
+| PoC Test = SUCCESS | Proceed to Wave 1 (T1..T8) with skip-marker pattern confirmed |
+| PoC Test = PENDING-forever | Abort Wave 1, escalate (skip-marker pattern unsupported on this runner config — fall back to alternative design, e.g., GitHub Actions `workflow_call` or `composite-action`-based gate) |
+| PoC Test = FAILURE | Inspect logs, fix PoC, re-run T0 |
+
+**Implements**: design.md AD-002 PoC verification gate.
+
+**Out of Wave 1 scope**: T0 's sandbox workflow file is NOT merged into main. Only its
+recorded result in AD-002 + reference link in run-PR description matters.
+
+### T1 — ci.yml `dorny/paths-filter@v3` Conditional Matrix + Skip-Marker (Wave 1)
+
+**Pre-condition**: Wave 0 (T0) PASS 가 design.md AD-002 에 기록됨.
+
+**Deliverable**: `.github/workflows/ci.yml` 의 `jobs` 섹션을 다음과 같이 재구성. ci.yml
+은 실제로 **5개 job** 으로 구성되어 있으며, 각 job 의 conditional 적용 정책을 명시한다.
+
+**Pre-existing ci.yml 5-job inventory** (2026-05-17 main HEAD `41b6f37dc`):
+
+| Job ID | Name field | Required check? | LOC scope |
+|--------|-----------|-----------------|-----------|
+| `test` | `Test (${{ matrix.os }})` | Yes (only `Test (ubuntu-latest)`) | L18-86 |
+| `test-integration` | `Integration Tests (${{ matrix.os }})` | No | L87-114 |
+| `lint` | `Lint` | Yes | L118-139 |
+| `build` | `Build (${{ matrix.goos }}/${{ matrix.goarch }})` | Yes (only `Build (linux/amd64)`) | L143-196 |
+| `constitution-check` | (workflow default) | No (`continue-on-error: true`) | L197+ |
+
+**ci.yml 5-job behavior table** (post-T1, docs-only PR 시 동작):
+
+| Job | docs-only PR 동작 | go-code PR 동작 | Rationale |
+|-----|-------------------|------------------|-----------|
+| `test` | SKIP (via `if: needs.detect.outputs.go_code == 'true'`) — skip-marker job 이 `Test (ubuntu-latest)` SUCCESS 발행 | Full 3-OS matrix 실행 (변경 없음) | branch-protection required check name match via skip-marker |
+| `test-integration` | SKIP (자동, `needs: test` 의 GitHub Actions semantics — `test` job 이 if-skip 되면 dependent 도 skip) | 실행 (변경 없음) | NOT in branch protection (advisory). 별도 skip-marker 불필요 — `gh pr checks` 에 `Integration Tests (...)` 가 skipped 로 표시되어도 mergeable. |
+| `lint` | ALWAYS RUN (변경 없음) | ALWAYS RUN | Required check `Lint`. lint 자체가 fast (~1분) — 가드할 가치 없음. |
+| `build` | ALWAYS RUN — `Build (linux/amd64)` required check 보장. macOS/Windows 등 다른 build matrix slot 은 advisory 이므로 conditional gate 추가 안 함 (over-engineering 회피). | ALWAYS RUN | Required check `Build (linux/amd64)` satisfy 필수. 추가 4 platform 은 GoReleaser cross-compile sanity, paths-filter 적용 시 cost-benefit marginal. |
+| `constitution-check` | ALWAYS RUN (`continue-on-error: true` 유지) | ALWAYS RUN | NOT required check. fast (~30초). best-effort. |
+
+**Job-level changes**:
 
 1. 신규 `detect` job: `dorny/paths-filter@v3` 으로 docs-only 여부 판정. outputs:
-   `go_code` (bool), `docs_only` (bool).
+   `go_code` (bool), `docs_only` (bool). All other jobs `needs: detect` 또는 자연 dependency
+   chain 으로 의존.
 2. 기존 `test` job 에 `needs: detect` + `if: needs.detect.outputs.go_code == 'true'` 가드.
    matrix / strategy / steps 본문은 변경 없음 (race detector + fetch-depth: 0 + 기존
    AC-UTIL-001-04 zero-exec-Command assertion 모두 유지).
@@ -77,8 +198,9 @@ T7..T8 은 doctrine + memory layer 동기화.
    `echo "Docs-only PR — Go test matrix skipped per paths-filter"`. **Critical**:
    `name:` 필드를 `Test (${{ matrix.os }})` 로 EXACT 매칭 (branch protection 의 required
    check name 충족 위해).
-4. Build / Lint / CodeQL job 은 paths-filter 영향 받지 않음 (Lint / Build 는 branch
-   protection required 이므로 paths-filter 적용 불가; 별도 fast 동작).
+4. `test-integration`, `lint`, `build`, `constitution-check` 의 `needs:` 와 step 본문은
+   변경 없음. `test-integration` 의 `needs: test` 는 그대로 유지 (test skip 시 dependent
+   도 skip 되는 GitHub Actions native behavior 의존).
 
 paths-filter 패턴 (REQ-CIFT-001 와 동기화):
 
@@ -121,40 +243,100 @@ go_code:
 
 **Implements**: REQ-CIFT-001.
 
-### T2 — codeql.yml paths-ignore Stanza
+### T2 — codeql.yml Skip-Marker Pattern (mirrors T1)
 
-**Deliverable**: `.github/workflows/codeql.yml` 의 `on.pull_request` 섹션에 `paths-ignore`
-stanza 추가 (REQ-CIFT-002 의 정확한 패턴 적용). `on.push` / `on.schedule` 는 변경 없음.
+**Pre-condition**: Wave 0 (T0) 결과로 design.md AD-002 에 CodeQL required-check 의 실제
+satisfying name 이 binary 기록됨.
+
+**Pre-T2 subtask — T2.0 Verify CodeQL check-run name** (REQ-CIFT-002b):
+
+```bash
+gh api repos/modu-ai/moai-adk/commits/main/check-runs --jq '.check_runs[].name' \
+  | grep -i codeql
+```
+
+2026-05-17 main HEAD 기준 expected output: `Analyze (Go) (go)`. Branch protection
+`contexts` 에는 bare `CodeQL` 이 있음 — GitHub 의 legacy workflow-name 매칭에 의존.
+T2.0 가 어느 name 이 required check 를 satisfy 하는지 (workflow name `CodeQL` 또는
+check-run name `Analyze (Go) (go)`) binary 확인 후 T2 deliverable 의 skip-marker
+`name:` 필드를 그에 맞춰 설정.
+
+**Deliverable**: `.github/workflows/codeql.yml` 을 다음과 같이 재구성 (T1 와 동일한
+detect-job + skip-marker 패턴 적용. bare `paths-ignore` 는 사용 금지 — branch protection
+의 `expected, never reported` block 위험 회피):
+
+1. 신규 `detect` job: `dorny/paths-filter@v3` (T1 와 동일한 path inventory — `docs_only`
+   + `go_code`). outputs propagation.
+2. 기존 `analyze` job 에 `needs: detect` + `if: needs.detect.outputs.go_code == 'true'`
+   가드. matrix `language: [go]` + steps 본문은 변경 없음.
+3. 신규 `analyze-skip-marker` job: docs-only PR 시 (`if: needs.detect.outputs.docs_only
+   == 'true'`) 트리거. 단일 step `echo "Docs-only PR — CodeQL skipped via skip-marker"`.
+   **Critical**: `name:` 필드를 T2.0 에서 확인된 satisfying name 으로 EXACT 설정 (예:
+   `Analyze (Go)` + matrix `language: go` → emitted name `Analyze (Go) (go)`, 또는
+   workflow name `CodeQL` 매칭이라면 별도 단일 job).
+4. `on.push: branches: [main]` / `on.schedule` 는 변경 없음.
+
+Pseudocode (정확한 indentation 은 run-phase 가 확정):
 
 ```yaml
+name: CodeQL
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.moai/specs/**'
-      - '.moai/docs/**'
-      - '.moai/reports/**'
-      - '.moai/research/**'
-      - '.claude/rules/**'
-      - 'docs-site/**'
   push:
     branches: [main]
   schedule:
     - cron: '<existing>'
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      go_code: ${{ steps.f.outputs.go_code }}
+      docs_only: ${{ steps.f.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            docs_only:
+              - '**.md'
+              - '.moai/specs/**'
+              # (T1 과 동일한 docs_only 인벤토리)
+            go_code:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/codeql.yml'
+  analyze:
+    needs: detect
+    if: needs.detect.outputs.go_code == 'true'
+    # (기존 analyze 본문 그대로)
+  analyze-skip-marker:
+    needs: detect
+    if: needs.detect.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    name: Analyze (Go)  # T2.0 에서 확정된 name 으로 교체
+    strategy:
+      matrix:
+        language: [go]  # T2.0 결과에 따라 추가/제거
+    steps:
+      - run: echo "Docs-only PR — CodeQL skipped"
 ```
 
 **Verification**:
 
 - `yamllint .github/workflows/codeql.yml` 통과.
-- 빈 docs-only PR 에서 CodeQL workflow run 이 skip / not-applicable 상태 (CodeQL 의
-  required check 는 branch protection 에 포함이므로, skip 시 어떻게 동작하는지 사전 확인
-  필요 — 보통 paths-ignore 시 workflow 자체가 트리거되지 않고 required check 는 success
-  로 간주되는 GitHub 동작에 의존; T1 의 skip-marker 패턴과 동일한 보호가 필요할 수 있음.
-  설계는 design.md AD-002 에서 확정).
-- 빈 Go PR 에서 CodeQL 정상 실행.
+- 빈 docs-only PR 시뮬레이션 (Wave 0 의 PoC 와 유사):
+  - `gh pr checks <PR>` 에서 CodeQL required check 가 SUCCESS (skip-marker 경유).
+  - 실제 `analyze` job 은 skipped 상태.
+- 빈 Go PR 에서 CodeQL `analyze` 정상 실행.
+- Branch protection 의 `CodeQL` required check 가 skip-marker pass 로 satisfy 되는지
+  `gh pr view <PR> --json statusCheckRollup` 으로 확인.
 
-**Implements**: REQ-CIFT-002.
+**Implements**: REQ-CIFT-002a, REQ-CIFT-002b.
 
 ### T3 — Delete 5 Review Workflows
 
@@ -170,7 +352,8 @@ git rm .github/workflows/claude-code-review.optional.yml
 
 **Verification**:
 
-- `ls .github/workflows/ | wc -l` 이전 18 → 13 (T6 nightly 추가 전 시점).
+- `find .github/workflows -name '*.yml' | wc -l` 이전 20 → 15 (T6 nightly 추가 전 시점).
+  T6 nightly 추가 후 최종 16. Net delta = -4 (delete 5 + add 1).
 - `gh api repos/modu-ai/moai-adk/actions/workflows --jq '.workflows[].path'` 출력에서
   위 5개 path 부재 확인.
 - 신규 PR 생성 시 5개 review workflow run 트리거 없음 (review 영역은 `claude-code-review.yml`
@@ -457,11 +640,23 @@ Plan-PR (이 산출물):
   merge: squash → main
   status: draft → planned (post-merge via spec-status-sync)
 
-Run-PR:
+Wave 0 — Skip-Marker PoC (sandbox, NOT merged):
+  branch: test/skip-marker-poc (throw-away)
+  files:
+    - NEW (sandbox): .github/workflows/skip-marker-poc.yml
+    - 1-line markdown edit (e.g., README.md)
+  task order: T0
+  gates: T0 verification PASS (skip-marker job emits SUCCESS for docs-only PR)
+  outcome: PR opened → checks observed → PR closed + branch deleted
+  side-effect: design.md AD-002 가 PoC 결과 (PASS / observed name) 로 update.
+               Wave 1 run-PR 본문에 sandbox PR link 인용.
+
+Wave 1 — Run-PR (main implementation):
+  pre-condition: Wave 0 PASS recorded in AD-002
   branch: feat/SPEC-V3R4-CI-FASTTRACK-001-fasttrack-impl
   files:
-    - MODIFY: .github/workflows/ci.yml (T1)
-    - MODIFY: .github/workflows/codeql.yml (T2)
+    - MODIFY: .github/workflows/ci.yml (T1, 5-job behavior table per plan.md)
+    - MODIFY: .github/workflows/codeql.yml (T2, skip-marker pattern mirror)
     - DELETE: .github/workflows/{codex-review,gemini-review,glm-review,llm-panel,claude-code-review.optional}.yml (T3)
     - AUDIT: .github/workflows/{claude,review-quality-gate}.yml (T4, no-edit)
     - NEW: lefthook.yml + MODIFY: Makefile (T5)
@@ -469,7 +664,7 @@ Run-PR:
     - MODIFY: CLAUDE.local.md §18.7 (T7)
     - MODIFY: ~/.claude/projects/.../memory/lessons.md (T8)
   task order: T4 (audit) → T1 → T2 → T3 → T5 → T6 → T7 → T8
-  gates: AC-CIFT-001..008 + PG-1..2 + EC-1..4 ALL PASS
+  gates: AC-CIFT-001..009 + PG-1..2 + EC-1..4 ALL PASS
   merge: squash → main
 
 Sync-PR:
