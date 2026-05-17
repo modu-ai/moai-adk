@@ -929,6 +929,30 @@ gh pr merge <PR> --merge --delete-branch
 
 ### §18.7 Branch Protection Rule (GitHub)
 
+> **[Updated 2026-05-17 — SPEC-V3R4-CI-FASTTRACK-001]** Required status checks reduced from 6 to 4 items.
+> (B) 결정 rationale: 1인 개발, macOS 환경, 5-6분+ PR wait 비현실적.
+> `Test (macos-latest)` / `Test (windows-latest)` 제거. Tier 2 릴리즈 PR 풀 매트릭스로 이전.
+
+#### 3-Tier CI Philosophy (SPEC-V3R4-CI-FASTTRACK-001)
+
+| Tier | 언제 | 대상 | 상태 |
+|------|------|------|------|
+| **Tier 1 (per-PR fast)** | 모든 PR | `ubuntu-latest` Go test + Lint + `linux/amd64` Build + CodeQL | **Required** (branch protection) |
+| **Tier 2 (release PR 풀 매트릭스)** | `release/*` branch PR + workflow_dispatch | macOS + Windows + ubuntu 풀 매트릭스 (`.github/workflows/release-pr-multi-os.yml`) | Informational (NOT required) |
+| **Tier 3 (수동 override)** | `workflow_dispatch` | release-pr-multi-os.yml 수동 트리거 | Informational |
+
+**Tier 2 trigger 근거 (user directive 2026-05-17)**: "macOS/Windows 검증은 릴리즈 PR 때 처리르 하는게 맞지 않을까?" — release branch PR 시 회귀가 just-in-time 으로 가시화되어 동일 PR에서 수정 가능. nightly cron (async) / release tag (post-merge) 보다 우수.
+
+**Required status checks (4 items, post-(B) baseline)**:
+- `Lint`
+- `Test (ubuntu-latest)`
+- `Build (linux/amd64)`
+- `CodeQL`
+
+**Removed from required checks (2026-05-17 (B) 결정)**:
+- `Test (macos-latest)` — Tier 2 (release PR) 로 이전
+- `Test (windows-latest)` — Tier 2 (release PR) 로 이전
+
 [HARD] `main` 브랜치 보호 설정 (admin 실행 필요):
 
 ```bash
@@ -937,7 +961,7 @@ gh api -X PUT /repos/modu-ai/moai-adk/branches/main/protection \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Lint", "Test (ubuntu-latest)", "Test (macos-latest)", "Test (windows-latest)", "Build (linux/amd64)", "CodeQL"]
+    "contexts": ["Lint", "Test (ubuntu-latest)", "Build (linux/amd64)", "CodeQL"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
@@ -962,13 +986,15 @@ gh api -X PUT /repos/modu-ai/moai-adk/branches/release%2F*/protection \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Lint", "Test (ubuntu-latest)", "Test (macos-latest)"]
+    "contexts": ["Lint", "Test (ubuntu-latest)", "Build (linux/amd64)"]
   },
   "allow_force_pushes": false,
   "allow_deletions": false
 }
 EOF
 ```
+
+**Cross-references**: `feedback_worktree_autonomous`, lessons #18/#19.
 
 ### §18.8 Release 프로세스
 
