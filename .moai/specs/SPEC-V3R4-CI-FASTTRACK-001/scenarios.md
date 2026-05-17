@@ -18,14 +18,75 @@ tags: "ci, cd, github-actions, paths-filter, review-bot, single-developer, produ
 Wave-by-Wave test plans. This is a single-Wave SPEC; all scenarios apply to the
 run-PR validation gate.
 
-## 1. Docs-Only PR Fast Track
+## 0. Wave 0 — Skip-Marker Proof-of-Concept (sandbox, NOT merged)
 
-**Scenario**: After run-PR merge into main, a docs-only PR triggers paths-filter,
-skip-marker job emits success for all 3 OS matrix slots, the actual Go test job is
-skipped, and the PR is mergeable.
+**Scenario**: Before Wave 1 implementation, validate the skip-marker pattern in
+isolated sandbox PR. Confirms (a) GitHub Actions' "two jobs with identical `name`,
+mutually exclusive `if:` guards" pattern works on this runner config, (b) the actual
+check-run name that satisfies branch protection's `CodeQL` and `Test (ubuntu-latest)`.
 
 **Given**:
 
+- Plan-PR merged into main.
+- Empty `test/skip-marker-poc` branch from main HEAD.
+
+**When**:
+
+```bash
+# 0. Pre-verify the actual check-run names emitted by current main
+gh api repos/modu-ai/moai-adk/commits/main/check-runs --jq '.check_runs[].name' | sort -u
+# Expected: includes "Analyze (Go) (go)" and "Test (ubuntu-latest)"
+
+# 1. Create sandbox PoC workflow + markdown-only diff (see plan.md T0 deliverable)
+git checkout -b test/skip-marker-poc
+cat > .github/workflows/skip-marker-poc.yml <<'EOF'
+# (T0 deliverable verbatim — see plan.md T0)
+EOF
+echo "<!-- PoC test -->" >> README.md
+git add .github/workflows/skip-marker-poc.yml README.md
+git commit -m "T0: skip-marker pattern PoC"
+git push -u origin test/skip-marker-poc
+
+# 2. Open sandbox PR
+gh pr create --base main --title "T0: skip-marker PoC (do not merge)" --body "Wave 0 sandbox" --draft
+POC_PR=$(gh pr view --json number -q .number)
+gh pr checks "$POC_PR" --watch
+```
+
+**Then**:
+
+- `PoC Test` check on the PoC PR reports `SUCCESS` (via the skip-marker job).
+- Workflow run history shows `test-skip-marker` job ran, `test` job is in `skipped`.
+- design.md AD-002 § "Wave 0 PoC Result" is updated with:
+  - PASS / FAIL verdict (binary)
+  - Observed satisfying check-run name (one of `Analyze (Go) (go)` / `CodeQL` etc.)
+  - Reference link to sandbox PR (preserve forever as evidence)
+
+**Failure mode**: If `PoC Test` reports `PENDING-forever` or `FAILURE`, the skip-marker
+pattern is unsupported on this runner / branch protection config. Abort Wave 1, escalate
+to alternative design (e.g., GitHub Actions `workflow_call` gating). community
+discussion #13690 may have updated guidance.
+
+**Cleanup**:
+
+```bash
+gh pr close "$POC_PR" --delete-branch
+git push origin --delete test/skip-marker-poc
+git checkout main && git branch -D test/skip-marker-poc
+```
+
+**Cross-reference**: design.md AD-002 § Wave 0 PoC Result, plan.md T0, plan.md §6
+Implementation Sequence "Wave 0".
+
+## 1. Docs-Only PR Fast Track (Wave 1 — post run-PR merge)
+
+**Scenario**: After Wave 1 run-PR merge into main, a docs-only PR triggers paths-filter,
+skip-marker job emits success for all 3 OS matrix slots AND for the CodeQL check, the
+actual Go test job + analyze job are skipped, and the PR is mergeable.
+
+**Given**:
+
+- Wave 0 PASS recorded in design.md AD-002.
 - Run-PR `feat/SPEC-V3R4-CI-FASTTRACK-001-fasttrack-impl` is merged into main.
 - Working tree on `main` checkout at the post-merge HEAD.
 
@@ -48,14 +109,18 @@ gh pr checks "$TEST_PR" --watch
 
 **Then**:
 
-- All 3 `Test (<os>)` checks report SUCCESS.
-- Detail page shows the skip-marker job ran (workflow run history).
-- The actual `test` job is in `skipped` state.
+- All 3 `Test (<os>)` checks report SUCCESS (via T1 skip-marker).
+- The CodeQL required check (whichever name Wave 0 recorded as satisfying — typically
+  `CodeQL` workflow-name match) reports SUCCESS (via T2 `analyze-skip-marker`).
+- Detail page shows the skip-marker job ran (workflow run history); the actual `test`
+  job and `analyze` job are in `skipped` state.
 - PR is mergeable (`gh pr view --json mergeable -q .mergeable` == `MERGEABLE`).
 
-**Failure mode**: If any `Test (<os>)` check is FAILURE or PENDING-forever, the paths-filter
-pattern or skip-marker name template is wrong. Inspect `ci.yml` `detect` job outputs
-and the `test-skip-marker` job's `name:` field. Re-apply T1.
+**Failure mode**: If any `Test (<os>)` check is FAILURE or PENDING-forever, the
+paths-filter pattern or skip-marker name template is wrong. Inspect `ci.yml` `detect`
+job outputs and the `test-skip-marker` job's `name:` field. Re-apply T1. If CodeQL
+check is PENDING-forever, the codeql.yml `analyze-skip-marker` `name:` does not match
+the branch-protection contexts entry — re-apply T2.0 verification.
 
 **Cleanup**: `gh pr close "$TEST_PR" --delete-branch`
 
