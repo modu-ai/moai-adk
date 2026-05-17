@@ -61,7 +61,7 @@ how the `--mode` flag is interpreted, and which CI guards apply.
 
 ### Mode Dispatch Cross-Reference
 
-Source: SPEC-V3R2-WF-003. The `--mode` axis values are valid only on multi-agent subcommands that explicitly support mode dispatch: `/moai run` and `/moai design`. Other multi-agent subcommands (`/moai plan`, `/moai sync`, `/moai project`, `/moai db`) ignore `--mode` per REQ-WF003-005, except they REJECT `--mode pipeline` with `MODE_PIPELINE_ONLY_UTILITY` per REQ-WF003-016 (shared with WF-004 REQ-WF004-014).
+Source: SPEC-V3R2-WF-003. The `--mode` axis values are valid only on multi-agent subcommands that explicitly support mode dispatch: `/moai run` and `/moai design`. Other multi-agent subcommands (`/moai plan`, `/moai sync`, `/moai project`) ignore `--mode` per REQ-WF003-005, except they REJECT `--mode pipeline` with `MODE_PIPELINE_ONLY_UTILITY` per REQ-WF003-016 (shared with WF-004 REQ-WF004-014).
 
 `/moai loop` is an alias for `/moai run --mode loop` per REQ-WF003-004. Both routes invoke the Ralph Engine identically; the alias preserves the historical entry point.
 

@@ -482,7 +482,9 @@ Methodology-to-Mode Mapping Reference:
 ## Phase 4.1a: DB Detection
 
 Purpose: Detect database technology from generated documentation and dependency
-files to conditionally propose `/moai db init` in Next Steps.
+files. Detected metadata is consumed by sync workflow Phase 0.08 (DB Schema Doc
+Check) to drive automatic refresh via `moai hook db-schema-sync` when
+`db.auto_sync: true` is set in `.moai/config/sections/db.yaml`.
 
 [HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed.
 
@@ -496,12 +498,14 @@ Steps:
 6. Write state artifact at `.moai/state/db-detection.json`.
 7. Proceed to Phase 4.2 with `detected_db` flag.
 
-Guidance message on user selection (REQ-009):
-When the user selects the `/moai db init` option from Next Steps, display this message before terminating `/moai project`:
+When `detected_db=true`, Phase 4.2 (Next Steps) emits a guidance note to enable
+`db.auto_sync: true` in `.moai/config/sections/db.yaml`. The user opts in once,
+and subsequent `/moai sync` runs automatically refresh `.moai/project/db/` derived
+docs (schema.md, erd.mmd, migrations.md) via Phase 0.08 → `moai hook db-schema-sync`.
 
-> `/moai db init` will run 4 interview rounds (engine selection, connection config, schema survey, migration strategy) and create `.moai/project/db/` templates. Run it in your next turn.
-
-Then terminate `/moai project` — do NOT auto-execute `/moai db init` (REQ-010). The user invokes it themselves in a subsequent turn.
+The `/moai db` slash command was retired (Bundle A, 2026-05-16). Initial DB
+documentation scaffolding is now handled by `.moai/project/db/` templates created
+on first sync when `db.enabled: true`.
 
 File size limit: 1 MB. Skip any manifest file larger than 1 MB to avoid scanning generated lockfiles (e.g., `package-lock.json`, `poetry.lock`, `Cargo.lock`).
 
@@ -568,12 +572,12 @@ Development Mode: [tdd/ddd] (auto-configured in Phase 3.7)
 
 When `detected_db` is true AND `.moai/project/db/` is absent, present these options:
 
-- Initialize DB documentation (`/moai db init`) (Recommended): DB technology was detected in your project. Run `/moai db init` to create database schema documentation, connection config, and migration strategy through a 4-round interview. Recommended before creating SPECs that depend on your data model.
+- Enable automatic DB doc sync (Recommended): DB technology was detected in your project. Set `db.enabled: true` and `db.auto_sync: true` in `.moai/config/sections/db.yaml` (create the file if absent). Subsequent `/moai sync` runs will automatically generate and refresh `.moai/project/db/` via Phase 0.08 (`moai hook db-schema-sync`). Recommended before creating SPECs that depend on your data model.
 - Create SPEC: Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
 - Done: Complete the project setup workflow.
 
-When the user selects "Initialize DB documentation (`/moai db init`)": Display the guidance message from Phase 4.1a and terminate `/moai project`. Do NOT auto-execute `/moai db init`.
+When the user selects "Enable automatic DB doc sync": Display guidance to edit `.moai/config/sections/db.yaml` and then run `/moai sync` on the next milestone. Do NOT auto-modify the config file (REQ-010).
 
 **Branch B — DB detected, `.moai/project/db/` already exists (REQ-007, AC-7):**
 
@@ -582,7 +586,7 @@ When `detected_db` is true AND `.moai/project/db/` already exists, present these
 - Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
 - Done: Complete the project setup workflow.
-- Refresh DB documentation (`/moai db refresh`): DB documentation already exists. Run `/moai db refresh` to incorporate changes from an updated `tech.md` or schema evolution. This will update `.moai/project/db/` without re-running the full interview.
+- Verify auto-sync enabled: DB documentation already exists. Confirm `db.auto_sync: true` in `.moai/config/sections/db.yaml`. When set, subsequent `/moai sync` runs automatically refresh `.moai/project/db/` via Phase 0.08 (`moai hook db-schema-sync`) on detected migration changes.
 
 **Branch C — DB not detected (REQ-008, AC-8):**
 
