@@ -346,7 +346,7 @@ Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "f
 Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
-[HARD] All implementation teammates MUST use `isolation: "worktree"` for parallel file safety.
+[SHOULD] When spawning implementation teammates via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation. Per user policy 2026-05-17 (`feedback_worktree_autonomous`), L2/L3 worktree usage is user opt-in. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
 
 ### Phase 3: Handle Idle Notifications
 
