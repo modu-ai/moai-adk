@@ -117,7 +117,7 @@ catalog:
             - name: expert-refactoring
               tier: core
               path: templates/.claude/agents/moai/expert-refactoring.md
-              hash: 4ecc924489e619625ee7e5a7e80c2de7fc56372805747a4f06ea2524cb605ffd
+              hash: 88ff8b5bad35b1a30e95ae219786d6a84b5e8f8f83fee6b40b60e602b8847012
               version: 1.0.0
             - name: manager-brain
               tier: core
@@ -167,7 +167,7 @@ catalog:
             - name: researcher
               tier: core
               path: templates/.claude/agents/moai/researcher.md
-              hash: 60799488244eada2ab67518cd3c71515ef40150e6b7d0fbd1d65b17d16208e86
+              hash: b2e2dbbf4e59d480e361095e3fafd4c1da1709fa76d5c197b04790930392dc4f
               version: 1.0.0
     optional_packs:
         auth:
@@ -204,7 +204,7 @@ catalog:
                 - name: expert-backend
                   tier: optional-pack:backend
                   path: templates/.claude/agents/moai/expert-backend.md
-                  hash: def19424ce8900f73f8f40256ca777f3bcf2a52b1acd9a05259bfbad31c5e897
+                  hash: 50d1021eb1832692825527ff54c202d970cd74b19b99c668dad85ac26bcd167e
                   version: 1.0.0
         chrome-extension:
             description: Chrome Extension Manifest V3 development with service workers and chrome.* APIs
@@ -312,7 +312,7 @@ catalog:
                 - name: expert-frontend
                   tier: optional-pack:frontend
                   path: templates/.claude/agents/moai/expert-frontend.md
-                  hash: 5f2f884c01c65581b758a98e974e4d9cd2c536d13b4c3f6b3474a0d5e2507e64
+                  hash: ca407bb859f476573d4bb5b242ab502328394c06401ce04a84549a4335b16e19
                   version: 1.0.0
         mobile:
             description: Mobile and desktop application development including Electron and cross-platform frameworks

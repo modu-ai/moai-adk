@@ -132,8 +132,20 @@ Is this a one-shot sub-agent task?
 
 - [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
 - [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
-- [HARD] One-shot sub-agents that write files (expert-backend, expert-frontend, manager-develop) SHOULD use `isolation: "worktree"` when making cross-file changes
+- [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes v3r2 agents: manager-cycle, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer. (SPEC-V3R2-ORC-004)
+<!-- @MX:ANCHOR: [AUTO] WorktreeMUSTRule — invariant contract; all write-heavy v3r2 agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
+<!-- @MX:REASON: Upgraded from SHOULD to MUST per SPEC-V3R2-ORC-004 to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
 - [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
+
+## Sentinel Key Glossary
+
+Structured error codes emitted by `moai agent lint` and `moai workflow lint` for programmatic detection (SPEC-V3R2-ORC-004 REQ-013, REQ-014, REQ-008):
+
+| Sentinel Key | Source | Meaning |
+|---|---|---|
+| `ORC_WORKTREE_MISSING` | LR-05 (agent lint) | Write-heavy agent lacks `isolation: worktree` in frontmatter |
+| `ORC_WORKTREE_ON_READONLY` | LR-09 (agent lint) | Read-only agent (`permissionMode: plan`) has `isolation: worktree` — prohibited overhead |
+| `ORC_WORKTREE_REQUIRED` | `moai workflow lint` | `workflow.yaml` role_profiles entry for implementer/tester/designer has incorrect isolation value |
 
 ### When to Use Which
 

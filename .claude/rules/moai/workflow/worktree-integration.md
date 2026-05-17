@@ -10,29 +10,16 @@ Integration guide for MoAI Worktree and Claude Code Native Worktree systems.
 
 MoAI-ADK supports two complementary worktree systems for isolated development:
 
-**L1 — Claude Code Native Worktree** (`.claude/worktrees/`):
+**Claude Code Native Worktree** (`.claude/worktrees/`):
 - Ephemeral, session-scoped isolation
 - Automatic cleanup when session ends
-- Used for subagent isolation via `isolation: "worktree"` in agent definitions (v2.1.49+)
+- Used for subagent isolation via `isolation: worktree` in agent definitions (v2.1.49+)
 - CLI access: `claude --worktree` or `claude -w` (user-level flag)
-- **Decision authority**: Claude Code runtime — MoAI orchestrator does not mandate L1 isolation
 
-**L2 — MoAI SPEC Worktree** (`~/.moai/worktrees/{ProjectName}/`):
+**MoAI Worktree** (`~/.moai/worktrees/{ProjectName}/`):
 - Persistent, SPEC-scoped workspaces in global home directory
-- Managed via `moai worktree` CLI commands (`moai worktree new <SPEC-ID>`)
+- Managed via `moai worktree` CLI commands
 - Used for multi-session SPEC development and team collaboration
-- **Activation**: User opt-in only (via `moai worktree new` or L3 `--worktree` flag)
-
-## Terminology Glossary
-
-| Layer | What | Owner | When Used |
-|-------|------|-------|-----------|
-| **L1** | Claude Code Native Worktree (ephemeral, triggered by `Agent(isolation: "worktree")` frontmatter) | Claude Code runtime | Per-call decision by Claude Code runtime; MoAI orchestrator does not mandate. Path: `.claude/worktrees/<auto-name>/`. |
-| **L2** | SPEC Worktree (`moai worktree new <SPEC-ID>`) | moai CLI (`internal/cli/worktree/`) | User opt-in for SPEC isolation. Path: `~/.moai/worktrees/{project}/{SPEC-ID}/`. |
-| **L3** | Plan Worktree (`--worktree` flag at plan/run time) | moai workflow skill (delegates to L2 creation mechanism) | User opt-in at plan/run time. Wraps L2 lifecycle. |
-| **git worktree** | Underlying git mechanism (`git worktree add/list/remove`) | git itself | Low-level descriptions only — DO NOT use this term ambiguously when L1/L2/L3 is appropriate. |
-
-> Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L2/L3 are **user opt-in**. L1 is **Claude Code runtime autonomous** — MoAI orchestrator does not mandate `isolation: "worktree"`. Default SPEC development uses main checkout + feature branch.
 
 ## Comparison Table
 
@@ -75,24 +62,24 @@ tmux flag notes:
 - NOT supported in VS Code integrated terminal, Windows Terminal, or Ghostty
 - Useful for parallel team mode where viewing multiple teammates' output is beneficial
 
-### L1 `isolation: worktree` in Agent Frontmatter
+### `isolation: worktree` in Agent Frontmatter
 
-For agents that need isolated execution (v2.1.49+). L1 isolation decision is made by Claude Code runtime — MoAI orchestrator does not mandate it:
+For agents that need isolated execution (v2.1.49+):
 
 ```yaml
 ---
 name: my-implementer
-isolation: worktree   # L1: Agent runs in its own isolated worktree (runtime decision)
+isolation: worktree   # Agent runs in its own isolated worktree
 background: true      # Agent runs without blocking main conversation
 ---
 ```
 
-When L1 `isolation: worktree` may be beneficial:
+When to use `isolation: worktree`:
 - Implementation teammates that write files (role_profiles: implementer, tester, designer)
 - Prevents file conflicts between parallel teammates
-- Each agent gets its own clean L1 worktree at `.claude/worktrees/<auto-name>/`
+- Each agent gets its own clean worktree at `.claude/worktrees/<auto-name>/`
 
-When L1 `isolation: worktree` is typically NOT needed:
+When NOT to use `isolation: worktree`:
 - Read-only teammates (role_profiles: researcher, analyst, reviewer)
 - `permissionMode: plan` already prevents writes; adding isolation adds overhead without benefit
 
@@ -123,83 +110,90 @@ Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+)
 
 ```
 Is this a team mode implementation with parallel agents?
-  YES → L1: Agent(isolation: "worktree") MAY be used; Claude Code runtime decides
-        Do NOT mandate isolation for read-only agents
+  YES → Use Agent(isolation: "worktree") for write agents
+        Do NOT use isolation for read-only agents
   NO ↓
 
-Is this a multi-session SPEC development AND user opted in?
-  YES → L2: moai worktree new SPEC-XXX (user opt-in)
+Is this a multi-session SPEC development?
+  YES → Use MoAI Worktree (moai worktree new SPEC-XXX)
   NO ↓
 
 Is this a user-initiated parallel session?
-  YES → L1: claude --worktree (-w) for user-initiated isolation
+  YES → Use claude --worktree (-w)
   NO ↓
 
 Is this a one-shot sub-agent task?
-  YES → L1: Agent(isolation: "worktree") if agent writes files (Claude Code runtime decides)
-        Agent() without isolation if agent is read-only
-  NO → No L1/L2/L3 worktree needed (use main checkout + feature branch)
+  YES → Use Agent(isolation: "worktree") if agent writes files
+        Use Agent() without isolation if agent is read-only
+  NO → No worktree needed
 ```
 
-### Advisory Rules (2026-05-17 Policy)
+### HARD Rules
 
-Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory), L1 isolation is Claude Code runtime autonomous — MoAI orchestrator does not mandate it:
+- [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
+- [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
+- [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes v3r2 agents: manager-cycle, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer. (SPEC-V3R2-ORC-004)
+<!-- @MX:ANCHOR: [AUTO] WorktreeMUSTRule — invariant contract; all write-heavy v3r2 agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
+<!-- @MX:REASON: Upgraded from SHOULD to MUST per SPEC-V3R2-ORC-004 to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
+- [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
 
-- [SHOULD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) may benefit from L1 `isolation: "worktree"` when spawned via `Agent()`; Claude Code runtime decides per-call.
-- [SHOULD] Read-only teammates (role_profiles: researcher, analyst, reviewer) typically do not benefit from L1 `isolation: "worktree"` — their `mode: "plan"` already prevents writes.
-- [SHOULD] One-shot sub-agents that write files (expert-backend, expert-frontend, manager-develop) may benefit from L1 `Agent(isolation: "worktree")` for cross-file changes; Claude Code runtime decides.
-- [SHOULD] GitHub workflow agents (fixer agents in `/moai github issues`) may use L1 `Agent(isolation: "worktree")` for branch isolation; Claude Code runtime decides.
+## Sentinel Key Glossary
+
+Structured error codes emitted by `moai agent lint` and `moai workflow lint` for programmatic detection (SPEC-V3R2-ORC-004 REQ-013, REQ-014, REQ-008):
+
+| Sentinel Key | Source | Meaning |
+|---|---|---|
+| `ORC_WORKTREE_MISSING` | LR-05 (agent lint) | Write-heavy agent lacks `isolation: worktree` in frontmatter |
+| `ORC_WORKTREE_ON_READONLY` | LR-09 (agent lint) | Read-only agent (`permissionMode: plan`) has `isolation: worktree` — prohibited overhead |
+| `ORC_WORKTREE_REQUIRED` | `moai workflow lint` | `workflow.yaml` role_profiles entry for implementer/tester/designer has incorrect isolation value |
 
 ### When to Use Which
 
-### Use L1 `claude --worktree` (`-w`) for:
+### Use `claude --worktree` (`-w`) for:
 
 - **User-initiated isolation**: Starting a fresh session for exploratory work
 - **Parallel sessions**: Running multiple independent Claude sessions on same repo
 - **Quick experiments**: Testing code changes without affecting main workspace
 
-### Use L1 `Agent(isolation: "worktree")` for (when runtime decides to isolate):
+### Use `Agent(isolation: "worktree")` for:
 
 - **Parallel team agents**: Multiple implementation teammates working simultaneously
 - **File conflict prevention**: Agents that write to different file patterns
 - **One-shot sub-agents**: Sub-agents making cross-file modifications
-- **GitHub issue fixing**: Each issue gets isolated L1 worktree for branch safety
+- **GitHub issue fixing**: Each issue gets isolated worktree for branch safety
 
-> Note: MoAI orchestrator does not mandate L1 isolation — Claude Code runtime decides per-call.
+### Use MoAI Worktree (`moai worktree`) for:
 
-### Use L2 MoAI SPEC Worktree (`moai worktree new`) for (user opt-in):
-
-- **SPEC implementation**: Multi-session development of a feature (user opt-in only)
+- **SPEC implementation**: Multi-session development of a feature
 - **PR development**: Complete feature branches with commits
 - **Persistent workspaces**: Work that spans multiple Claude sessions
 
 ## Integration Pattern (Hybrid Approach)
 
-The recommended workflow (default is main checkout + feature branch per 2026-05-17 policy):
+The recommended workflow combines both worktree systems:
 
 ```
-PLAN PHASE (default: main checkout + plan/SPEC-XXX branch)
-  L1 Claude Native (-w): Optional quick exploration, ephemeral, no persistence
-  Team researchers: No L1 worktree (read-only, permissionMode: plan)
+PLAN PHASE
+  Claude Native (-w): Quick exploration, ephemeral, no persistence
+  Team researchers: No worktree (read-only, permissionMode: plan)
 
-RUN PHASE (default: main checkout + feat/SPEC-XXX branch)
-  L2 MoAI SPEC Worktree: User opt-in via moai worktree new — persistent state
-  Team write agents: L1 Agent(isolation: "worktree") per Claude Code runtime decision
-  Team read agents: No L1 worktree (quality validation, analysis)
+RUN PHASE
+  MoAI Worktree: SPEC implementation, persistent state
+  Team write agents: Agent(isolation: "worktree") for parallel execution
+  Team read agents: No worktree (quality validation, analysis)
 
-SYNC PHASE (default: same branch as run phase)
-  L2 MoAI SPEC Worktree: PR creation from persistent workspace (if L2 was used)
+SYNC PHASE
+  MoAI Worktree: PR creation from persistent workspace
 ```
 
 ## Agent Configuration by Role
 
-### Implementation Agents (L1 isolation: worktree + background: true)
+### Implementation Agents (isolation: worktree + background: true)
 
 ```yaml
 # Implementation teammates (role_profiles: implementer, tester, designer)
 # Spawned via: Agent(subagent_type: "general-purpose", mode: "acceptEdits", isolation: "worktree")
-# Note: Claude Code runtime decides whether to materialize an L1 worktree per-call.
-isolation: worktree   # L1 isolated worktree per agent (runtime decision)
+isolation: worktree   # Isolated worktree per agent
 background: true      # Non-blocking parallel execution
 permissionMode: acceptEdits
 ```
@@ -228,11 +222,11 @@ Hook scripts are located at:
 
 Currently the handlers log worktree creation and removal for session tracking.
 
-## Prompt Path Rules for L1 Worktree-Isolated Agents
+## Prompt Path Rules for Worktree-Isolated Agents
 
-When the orchestrator generates prompts for agents spawned with L1 `isolation: "worktree"`, paths in the prompt determine where the agent operates. Incorrect paths bypass L1 worktree isolation entirely.
+When the orchestrator generates prompts for agents spawned with `isolation: "worktree"`, paths in the prompt determine where the agent operates. Incorrect paths bypass worktree isolation entirely.
 
-### HARD Rules (Path Handling)
+### HARD Rules
 
 - [HARD] Do NOT include absolute paths to the main project directory in agent prompts for write-target files
 - [HARD] Do NOT include `cd /absolute/project/path &&` in Bash commands within agent prompts
@@ -308,18 +302,16 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ## SPEC-to-Worktree Mapping
 
-Per-step worktree applicability is governed by `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (canonical source). This table summarizes the mapping for quick reference; on conflict, spec-workflow.md wins.
+[HARD] Per-step worktree applicability is governed by `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (canonical source). This table summarizes the mapping for quick reference; on conflict, spec-workflow.md wins.
 
-> Per user policy 2026-05-17, L2 worktree (Steps 2-4) is **user opt-in** — default flow uses main checkout + feature branch. See `feedback_worktree_autonomous` memory.
+| Step | Phase   | Worktree?                | Location                              | Lifecycle event              |
+|------|---------|--------------------------|---------------------------------------|------------------------------|
+| 1    | Plan    | **NO** (main checkout)   | n/a — `plan/SPEC-XXX` branch on main  | plan PR merged               |
+| 2    | Run     | **YES** (MoAI worktree)  | `~/.moai/worktrees/{project}/{SPEC}/` | run PR merged                |
+| 3    | Sync    | **YES** — same as Step 2 | same path as Step 2 (do NOT recreate) | sync PR merged               |
+| 4    | Cleanup | n/a                      | host checkout                         | `moai worktree done SPEC-XXX` |
 
-| Step | Phase   | L2 Worktree?                              | Location                              | Lifecycle event              |
-|------|---------|-------------------------------------------|---------------------------------------|------------------------------|
-| 1    | Plan    | **NO** (main checkout)                    | n/a — `plan/SPEC-XXX` branch on main  | plan PR merged               |
-| 2    | Run     | **User opt-in** (L2 SPEC worktree)        | `~/.moai/worktrees/{project}/{SPEC}/` | run PR merged                |
-| 3    | Sync    | **User opt-in** — same as Step 2 if used | same L2 path as Step 2 (do NOT recreate) | sync PR merged            |
-| 4    | Cleanup | n/a (only if L2 was created)              | host checkout                         | `moai worktree done SPEC-XXX` |
-
-Disposal contract: When L2 worktree was created, `moai worktree done SPEC-XXX` SHOULD run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
+[HARD] Disposal contract: `moai worktree done SPEC-XXX` MUST run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
 
 ## Team Protocol
 

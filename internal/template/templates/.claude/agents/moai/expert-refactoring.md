@@ -13,6 +13,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-th
 model: sonnet
 effort: high
 permissionMode: bypassPermissions
+isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
