@@ -196,7 +196,7 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	if format == "json" {
 		output := LintOutput{
-			Version: "1.0.0",
+			Version: "1.0",
 			Summary: LintSummary{
 				Total:    len(allViolations),
 				Errors:   errors,
@@ -266,7 +266,11 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 	var violations []LintViolation
 
 	// LR-01: Literal AskUserQuestion in body (excluding code blocks)
-	violations = append(violations, checkLiteralAskUserQuestion(path, bodyText)...)
+	// @MX:NOTE: [AUTO] isOrchestrator 검사 — tools:에 AskUserQuestion이 선언된 에이전트는 LR-01 면제.
+	// OQ-1 해결 방식 A (data-driven): 오케스트레이터 자체 선언, 중앙 허용 목록 불필요. (SPEC-V3R2-ORC-002)
+	if !isOrchestrator(frontmatter) {
+		violations = append(violations, checkLiteralAskUserQuestion(path, bodyText)...)
+	}
 
 	// LR-02: Agent token in tools: CSV
 	violations = append(violations, checkAgentInTools(path, frontmatter)...)
@@ -300,6 +304,21 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 	violations = append(violations, checkFixedBudgetTokens(path, content)...)
 
 	return violations, nil
+}
+
+// isOrchestrator returns true when the agent declares AskUserQuestion in its tools: field.
+// Orchestrator-class agents are exempt from LR-01 (literal AskUserQuestion in body) per OQ-1 resolution.
+func isOrchestrator(fm AgentFrontmatter) bool {
+	if fm.Tools == "" {
+		return false
+	}
+	tools := strings.Split(fm.Tools, ",")
+	for _, t := range tools {
+		if strings.TrimSpace(t) == "AskUserQuestion" {
+			return true
+		}
+	}
+	return false
 }
 
 // checkLiteralAskUserQuestion checks for LR-01.

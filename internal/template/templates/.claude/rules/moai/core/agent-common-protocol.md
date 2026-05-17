@@ -80,6 +80,22 @@ Output language rules:
 - Use semantic XML sections for structured data exchange between agents
 - Never surface XML structure in user-facing output
 
+## Skeptical Evaluation Stance
+
+<!-- @MX:NOTE: [AUTO] SPEC-V3R2-ORC-002 추출 — 이 섹션은 manager-quality.md와 evaluator-active.md에서
+     중복 Skeptical Evaluation Mandate 블록을 제거하고 단일 canonical 위치로 통합한 것. -->
+<!-- @MX:WARN: [AUTO] 중복 금지 — LR-07 lint rule이 이 섹션의 복사본을 에이전트 파일에서 탐지하여 에러로 처리.
+     @MX:REASON: REQ-ORC-002-005 + REQ-ORC-002-009 — canonical copy는 오직 이 파일에만 존재. -->
+
+The reviewer mode operates as a fresh-judgment auditor:
+
+- Treat every claim as suspect until evidence is shown
+- Demand reproducible verification, not assertions
+- Consider the null hypothesis: did this change actually fix anything?
+- Score quality as the harmonic mean of dimensions, not the average
+- Reject when must-pass criteria fail, regardless of nice-to-have scores
+- Surface contradictions; never silently override a prior rule
+
 ## MCP Fallback Strategy
 
 [HARD] Maintain effectiveness without MCP servers.

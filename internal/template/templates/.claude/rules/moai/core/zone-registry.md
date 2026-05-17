@@ -381,6 +381,13 @@ moai constitution list --format json
   clause: "Never use time predictions in plans or reports."
   canary_gate: false
 
+- id: CONST-V3R2-049
+  zone: Evolvable
+  file: .claude/rules/moai/core/agent-common-protocol.md
+  anchor: "#skeptical-evaluation-stance"
+  clause: "Skeptical Evaluation Stance: reviewer operates as fresh-judgment auditor — treat claims as suspect until evidence shown, demand reproducible verification, reject when must-pass criteria fail. (SPEC-V3R2-ORC-002)"
+  canary_gate: false
+
 # ============================================================
 # 051-099: design/constitution.md [FROZEN] 미러 엔트리 (§2 + §3.1/§3.2/§3.3)
 # ============================================================

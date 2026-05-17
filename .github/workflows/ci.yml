@@ -198,6 +198,12 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
+      - name: Build moai binary for agent lint
+        run: go build -o ./bin/moai ./cmd/moai/
+
+      - name: Run moai agent lint
+        run: ./bin/moai agent lint
+
   # ---------------------------------------------------------------------------
   # Build: Cross-compile for all target platforms (always runs — required check)
   # ---------------------------------------------------------------------------
