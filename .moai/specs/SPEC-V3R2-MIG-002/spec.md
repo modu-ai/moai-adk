@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R2-MIG-002
 title: "Hook Registration Cleanup (orphan EventSetup, 3-way sync invariant, migration step)"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: completed
 created: 2026-04-23
 updated: 2026-05-18
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
@@ -21,6 +21,7 @@ depends_on:
 
 | Version | Date       | Author | Description                                                          |
 |---------|------------|--------|----------------------------------------------------------------------|
+| 0.2.0 | 2026-05-18 | orchestrator | Plan + Run + Sync lifecycle COMPLETE — PR #995 plan (4 artifacts: 78 anchors + 14 ACs + 20 tasks) + PR #996 run (20 tasks DONE, A1-A14 PASS, characterization tests reconcile RT-006 work product) + this sync. 3-way sync invariant (settings.json ↔ deps.go ↔ Go code, 22 native + 4 RETIRE-OBS-ONLY = 26 events). EventSetup constant 영구 retirement (orphan: Go 핸들러만 존재, shell wrapper 없음, settings.json 미등록 → 27→26 events). `moai hook setup` cobra binding 제거. `internal/migrate/hook_cleanup.go` (CleanupUserSettings idempotent + archival) + `internal/hook/retired_events.go` (exported RetiredEventNames). 4 .sh.tmpl 파일에 RETIRE-OBS-ONLY 마커. doctor coverage table 28→27 (Setup row 제거). 85.4% coverage on `internal/migrate/`. RT-006 reconciliation: REQ-MIG002-004~008 (subagent_stop/configChange/instructionsLoaded/fileChanged/postToolFailure)는 RT-006에서 이미 shipped — 본 SPEC은 characterization test로 lock. T-MIG002-16 (EXT-004 dispatcher wire-up) deferred (EXT-004 not yet shipped). Status `in-progress → completed`. v3.0.0-rc1 P1 release-blocker 5건 중 4번째 완료. |
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — orphan handler cleanup + stub removal + settings sync  |
 
 ---
