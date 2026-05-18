@@ -65,6 +65,28 @@ var (
 	// 로더 검증에서 반환됩니다.
 	// REQ-HRN-003-018, AC-HRN-003-11.
 	ErrMustPassBypassProhibited = errors.New("HRN_MUSTPASS_BYPASS_PROHIBITED: profile attempts to narrow must-pass set below floor [Security] (per design-constitution §12 Mechanism 3)")
+
+	// HRN-001 run-phase: harness routing + loader sentinels.
+
+	// ErrUnknownLevel은 harness.yaml의 levels 맵에 FROZEN enum
+	// {minimal, standard, thorough} 외의 레벨 이름이 포함될 때 반환됩니다.
+	// REQ-HRN-001-017, AC-HRN-001-07.
+	ErrUnknownLevel = errors.New("HRN_UNKNOWN_LEVEL: harness.yaml contains unknown level outside {minimal, standard, thorough} (FROZEN per SPEC-V3R2-HRN-001 REQ-017)")
+
+	// ErrPassThresholdFloor은 evaluator 프로필의 pass_threshold가 FROZEN floor 0.60 미만일 때
+	// LoadHarnessConfig() 검증에서 반환됩니다.
+	// REQ-HRN-001-012, AC-HRN-001-05.
+	ErrPassThresholdFloor = errors.New("HRN_PASS_THRESHOLD_FLOOR: evaluator profile pass_threshold is below FROZEN floor 0.60 (design-constitution §5, SPEC-V3R2-CON-001)")
+
+	// ErrSchemaDrift은 harness.yaml에 HarnessConfig 구조체에 없는 알 수 없는 키가 있을 때
+	// MOAI_CONFIG_STRICT=1 환경에서 반환됩니다.
+	// REQ-HRN-001-019, AC-HRN-001-07.
+	ErrSchemaDrift = errors.New("HRN_SCHEMA_DRIFT: harness.yaml contains unknown keys not present in HarnessConfig struct (set MOAI_CONFIG_STRICT=1 to make this an error)")
+
+	// ErrEscalationCapExceeded는 EscalationManager가 MaxEscalations 한도에 도달한 후
+	// 추가 에스컬레이션 시도 시 반환됩니다.
+	// REQ-HRN-001-013, REQ-HRN-001-018, AC-HRN-001-08.
+	ErrEscalationCapExceeded = errors.New("HRN_ESCALATION_CAP_REACHED: maximum escalation count exceeded (per SPEC-V3R2-HRN-001 REQ-013/018)")
 )
 
 // ValidationError represents a single validation error with field context.

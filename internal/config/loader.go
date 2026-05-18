@@ -220,10 +220,39 @@ func (l *Loader) loadResearchSection(dir string, cfg *Config) {
 	}
 }
 
+// validHarnessLevels는 FROZEN level enum입니다.
+// REQ-HRN-001-017: {minimal, standard, thorough} 외의 레벨은 ErrUnknownLevel을 반환합니다.
+var validHarnessLevels = map[string]bool{
+	"minimal":  true,
+	"standard": true,
+	"thorough": true,
+}
+
+// knownHarnessTopLevelKeys는 harnessFileWrapper.Harness 하위의 알려진 최상위 키 집합입니다.
+// REQ-HRN-001-019: 알 수 없는 키 감지를 위한 기준 집합.
+var knownHarnessTopLevelKeys = map[string]bool{
+	"default_profile":      true,
+	"mode_defaults":        true,
+	"auto_detection":       true,
+	"escalation":           true,
+	"effort_mapping":       true,
+	"levels":               true,
+	"model_upgrade_review": true,
+	"plan_audit_global":    true,
+	"evaluator":            true,
+	"learning":             true, // 레거시 하위 시스템 (out-of-scope, 경고 억제)
+}
+
 // LoadHarnessConfig는 주어진 경로의 harness.yaml 파일을 읽어 HarnessConfig를 반환합니다.
-// evaluator.memory_scope가 per_iteration이 아니거나 비어 있는 경우
-// ErrEvalMemoryFrozen 또는 ErrInvalidConfig 오류를 반환합니다.
-// HRN-002 run-phase minimal substrate — HRN-001 run-phase에서 routing/profile 확장 예정.
+//
+// HRN-001 run-phase: evaluator.memory_scope FROZEN 검증 + 전체 스키마 파싱.
+// HRN-001 확장 검증:
+//   - level enum {minimal, standard, thorough} FROZEN (REQ-HRN-001-017)
+//   - MOAI_CONFIG_STRICT=1 시 알 수 없는 키 → ErrSchemaDrift 오류 (REQ-HRN-001-019)
+//   - MOAI_CONFIG_STRICT 미설정 시 알 수 없는 키 → slog.Warn (REQ-HRN-001-019)
+//
+// @MX:ANCHOR: [AUTO] harness.yaml 로더 함수 — 다수의 호출자 (router, CLI, ConfigManager.Reload)
+// @MX:REASON: fan_in >= 3: HarnessRouter.Route, CLI validate, ConfigManager.Reload에서 호출
 func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -233,6 +262,7 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 		return nil, fmt.Errorf("LoadHarnessConfig read %s: %w", path, err)
 	}
 
+	// 1단계: 구조체로 언마샬링
 	var wrapper harnessFileWrapper
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		return nil, fmt.Errorf("LoadHarnessConfig parse %s: %w", path, ErrInvalidYAML)
@@ -240,7 +270,13 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 
 	cfg := &wrapper.Harness
 
-	// evaluator.memory_scope는 per_iteration으로 FROZEN됩니다
+	// 2단계: schema drift 감지 (알 수 없는 최상위 키 탐지)
+	// REQ-HRN-001-019: MOAI_CONFIG_STRICT=1 시 오류, 미설정 시 경고.
+	if driftErr := detectSchemaDrift(data, path); driftErr != nil {
+		return nil, driftErr
+	}
+
+	// 3단계: evaluator.memory_scope FROZEN 검증 (HRN-002 substrate 유지)
 	// design-constitution §11.4.1 (SPEC-V3R2-HRN-002) 참조
 	if cfg.Evaluator.MemoryScope == "" {
 		return nil, &ValidationError{
@@ -258,7 +294,67 @@ func LoadHarnessConfig(path string) (*HarnessConfig, error) {
 		}
 	}
 
+	// 4단계: level enum 검증 (FROZEN: {minimal, standard, thorough})
+	// REQ-HRN-001-017.
+	for levelName := range cfg.Levels {
+		if !validHarnessLevels[levelName] {
+			return nil, &ValidationError{
+				Field:   fmt.Sprintf("levels.%s", levelName),
+				Message: fmt.Sprintf("unknown level %q; valid values are {minimal, standard, thorough} (FROZEN per SPEC-V3R2-HRN-001 REQ-017)", levelName),
+				Value:   levelName,
+				Wrapped: ErrUnknownLevel,
+			}
+		}
+	}
+
 	return cfg, nil
+}
+
+// detectSchemaDrift는 harness.yaml의 harness 블록에서 알 수 없는 최상위 키를 탐지합니다.
+// REQ-HRN-001-019: MOAI_CONFIG_STRICT=1 시 ErrSchemaDrift 반환, 미설정 시 slog.Warn.
+//
+// @MX:WARN: [AUTO] FROZEN-zone 검증 — MOAI_CONFIG_STRICT=1 시 알 수 없는 키는 오류로 처리
+// @MX:REASON: REQ-HRN-001-019, design-constitution §5 스키마 드리프트 감지
+func detectSchemaDrift(data []byte, path string) error {
+	// 알 수 없는 키 수집을 위해 map으로 파싱
+	var rawWrapper map[string]map[string]any
+	if err := yaml.Unmarshal(data, &rawWrapper); err != nil {
+		// 파싱 오류 시 drift 감지 생략 (기존 오류로 처리)
+		return nil
+	}
+
+	harnessBlock, ok := rawWrapper["harness"]
+	if !ok {
+		return nil
+	}
+
+	var unknownKeys []string
+	for key := range harnessBlock {
+		if !knownHarnessTopLevelKeys[key] {
+			unknownKeys = append(unknownKeys, key)
+		}
+	}
+
+	if len(unknownKeys) == 0 {
+		return nil
+	}
+
+	// MOAI_CONFIG_STRICT=1 시 오류 반환
+	strict := os.Getenv("MOAI_CONFIG_STRICT")
+	msg := fmt.Sprintf("HRN_SCHEMA_DRIFT: unknown keys in harness.yaml: %v (path: %s)", unknownKeys, path)
+
+	if strict == "1" {
+		return &ValidationError{
+			Field:   "harness",
+			Message: msg,
+			Value:   unknownKeys,
+			Wrapped: ErrSchemaDrift,
+		}
+	}
+
+	// 비-strict 모드: 경고만 출력
+	slog.Warn(msg, "unknown_keys", unknownKeys, "path", path)
+	return nil
 }
 
 // loadYAMLFile reads a YAML file from the given directory and unmarshals it

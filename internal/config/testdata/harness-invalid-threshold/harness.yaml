@@ -1,0 +1,61 @@
+harness:
+    auto_detection:
+        enabled: true
+        rules:
+            minimal:
+                conditions:
+                    - file_count <= 3 AND single_domain
+            standard:
+                conditions:
+                    - file_count > 3 OR multi_domain
+            thorough:
+                conditions:
+                    - security_keywords OR payment_keywords present
+    default_profile: default
+    effort_mapping:
+        minimal: medium
+        standard: high
+        thorough: xhigh
+    escalation:
+        enabled: true
+        max_escalations: 2
+        triggers:
+            - quality_gate_fail
+    evaluator:
+        memory_scope: per_iteration
+    levels:
+        minimal:
+            description: Fast iteration for simple changes
+            evaluator: false
+            plan_audit:
+                enabled: true
+                max_iterations: 1
+                require_must_pass: false
+            skip_phases: []
+            sprint_contract: false
+        standard:
+            description: Balanced quality for most development
+            evaluator: true
+            evaluator_mode: final-pass
+            evaluator_profile: lenient
+            plan_audit:
+                enabled: true
+                max_iterations: 3
+                require_must_pass: true
+            skip_phases: []
+            sprint_contract: false
+        thorough:
+            description: Maximum quality for critical features
+            evaluator: true
+            evaluator_mode: per-sprint
+            evaluator_profile: strict
+            plan_audit:
+                enabled: true
+                max_iterations: 3
+                require_must_pass: true
+            skip_phases: []
+            sprint_contract: true
+    mode_defaults:
+        cg: thorough
+        solo: auto
+        team: auto
