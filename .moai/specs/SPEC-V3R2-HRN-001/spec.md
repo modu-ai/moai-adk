@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-HRN-001
 title: "Harness Routing + harness.yaml Go Loader"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-18
 author: GOOS
 priority: P0 Critical
 phase: "v3.0.0 — Phase 5 — Harness + Evaluator"
@@ -27,6 +27,7 @@ tags: "harness, routing, complexity-estimator, evaluator-profiles, harness-yaml,
 
 | Version | Date       | Author | Description                          |
 |---------|------------|--------|--------------------------------------|
+| 0.2.0 | 2026-05-18 | orchestrator | Plan + Run + Sync lifecycle COMPLETE — PR #992 plan (4 artifacts: research.md 90 anchors + plan.md M1-M5 + acceptance.md 10 ACs + tasks.md 25 tasks) + PR #993 run (25 tasks DONE, 88.8% coverage, 10 ACs PASS) + this sync. HarnessConfig 7 fields + 8 sub-structs 확장 (ModeDefaults/AutoDetection/Escalation/EffortMapping/Levels/ModelUpgradeReview/PlanAuditGlobal). `internal/harness/router/` 신규 (router.go + complexity.go + effort.go + escalation.go + keywords.go + 4 testdata fixtures). `moai harness route --json` + `moai harness validate --path` CLI 신설 (newHarnessRouterCmd factory — SPEC-V3R4-HARNESS-001 CI guard 회피). FROZEN level enum {minimal/standard/thorough} + pass_threshold 0.60 floor + max-3-escalations 보존. SPEC frontmatter `HarnessLevel` 옵셔널 필드 추가 (REQ-015 spec_override). MOAI_CONFIG_STRICT=1 → HRN_SCHEMA_DRIFT 검출. Status `draft → completed`. v3.0.0-rc1 P0 release-blocker 6건 모두 완료. |
 | 0.1.0   | 2026-04-23 | GOOS   | Initial draft (Wave 4 SPEC writer, round 2) |
 
 ---
