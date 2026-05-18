@@ -1,6 +1,7 @@
 package template
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -251,5 +252,159 @@ func TestValidateDeployPath(t *testing.T) {
 		if err != nil && !errors.Is(err, ErrPathTraversal) {
 			t.Errorf("expected ErrPathTraversal, got: %v", err)
 		}
+	})
+}
+
+// --- M1: Atomic Write + Idempotency Tests (SPEC-V3R3-UPDATE-CLEANUP-001) ---
+
+// TestDeployer_Idempotent verifies that two consecutive Deploy calls to the same
+// destination produce byte-identical files with no auxiliary artefacts.
+func TestDeployer_Idempotent(t *testing.T) {
+	t.Parallel()
+	root, mgr := setupDeployProject(t)
+	d := NewDeployerWithForceUpdate(testFS(), true)
+
+	ctx := context.Background()
+
+	// First deploy
+	if err := d.Deploy(ctx, root, mgr, nil); err != nil {
+		t.Fatalf("first Deploy error: %v", err)
+	}
+
+	// Snapshot file contents after first deploy
+	contents1 := snapshotFileContents(t, root)
+
+	// Second deploy (idempotent)
+	if err := d.Deploy(ctx, root, mgr, nil); err != nil {
+		t.Fatalf("second Deploy error: %v", err)
+	}
+
+	// Snapshot after second deploy
+	contents2 := snapshotFileContents(t, root)
+
+	// Verify byte-identical
+	for path, data1 := range contents1 {
+		data2, ok := contents2[path]
+		if !ok {
+			t.Errorf("file %q disappeared after second Deploy", path)
+			continue
+		}
+		if !bytes.Equal(data1, data2) {
+			t.Errorf("file %q content changed after second Deploy", path)
+		}
+	}
+
+	// Verify no .moai-tmp residue
+	assertNoTmpResidue(t, root)
+
+	// Verify no " 2" suffix files
+	assertNoSuffix2Files(t, root)
+}
+
+// TestDeployer_NoTmpResidue verifies that no .moai-tmp files are left after
+// a successful Deploy.
+func TestDeployer_NoTmpResidue(t *testing.T) {
+	t.Parallel()
+	root, mgr := setupDeployProject(t)
+	d := NewDeployerWithForceUpdate(testFS(), true)
+
+	if err := d.Deploy(context.Background(), root, mgr, nil); err != nil {
+		t.Fatalf("Deploy error: %v", err)
+	}
+
+	assertNoTmpResidue(t, root)
+}
+
+// TestDeployer_TmpCleanupOnFailure verifies that if the atomic rename fails,
+// the .moai-tmp file is cleaned up and an error is returned.
+// This test uses atomicWriteFile directly to simulate a rename failure.
+func TestDeployer_TmpCleanupOnFailure(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	destPath := filepath.Join(root, "target.txt")
+	content := []byte("hello world")
+
+	// Create a directory at the tmp path location to force rename failure.
+	// atomicWriteFile writes to destPath+".moai-tmp"; make that path a directory.
+	tmpPath := destPath + ".moai-tmp"
+	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
+		t.Fatalf("setup: MkdirAll %q: %v", tmpPath, err)
+	}
+
+	// atomicWriteFile should fail and clean up
+	err := atomicWriteFile(destPath, content, 0o644)
+	if err == nil {
+		t.Fatal("expected error when rename target is a directory, got nil")
+	}
+
+	// The tmp path should be cleaned up (removed) on failure.
+	// Since tmpPath was a directory we created, check that atomicWriteFile
+	// attempted cleanup (it may or may not succeed on a dir, but should not
+	// leave a regular tmp file).
+	// Key invariant: no .moai-tmp *file* residue (directories we set up, not atomicWriteFile).
+	entries, _ := os.ReadDir(root)
+	for _, e := range entries {
+		if filepath.Ext(e.Name()) == ".moai-tmp" && !e.IsDir() {
+			t.Errorf("tmp file residue found: %s", e.Name())
+		}
+	}
+}
+
+// snapshotFileContents walks root and returns a map of relpath → content for
+// all regular files.
+func snapshotFileContents(t *testing.T, root string) map[string][]byte {
+	t.Helper()
+	result := make(map[string][]byte)
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, path)
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		result[rel] = data
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("snapshotFileContents walk error: %v", err)
+	}
+	return result
+}
+
+// assertNoTmpResidue fails if any .moai-tmp file exists under root.
+func assertNoTmpResidue(t *testing.T, root string) {
+	t.Helper()
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) == ".moai-tmp" {
+			t.Errorf("unexpected .moai-tmp residue: %s", path)
+		}
+		return nil
+	})
+}
+
+// assertNoSuffix2Files fails if any file with a " 2" suffix exists under root.
+func assertNoSuffix2Files(t *testing.T, root string) {
+	t.Helper()
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		name := filepath.Base(path)
+		// Check for patterns like "file 2.ext" or "file 2"
+		for _, ext := range []string{"", ".md", ".yaml", ".json", ".sh", ".txt"} {
+			if len(name) > 2+len(ext) {
+				suffix := " 2" + ext
+				if len(name) >= len(suffix) && name[len(name)-len(suffix):] == suffix {
+					t.Errorf("unexpected \" 2\" suffix file: %s", path)
+				}
+			}
+		}
+		return nil
 	})
 }

@@ -11,6 +11,26 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
+// atomicWriteFile writes content to destPath using a write-to-tmp-then-rename
+// atomic pattern (REQ-UPC-001). The tmp file is written to <destPath>.moai-tmp
+// in the same directory as destPath so that os.Rename is always same-device
+// (NFR-UPC-S3). If the rename fails the tmp file is removed and the error is
+// returned (REQ-UPC-004).
+func atomicWriteFile(destPath string, content []byte, perm os.FileMode) error {
+	tmpPath := destPath + ".moai-tmp"
+	// Defer removal of tmp file on any failure path.
+	// On success the rename makes the tmp path disappear, so os.Remove is a no-op.
+	defer func() { _ = os.Remove(tmpPath) }()
+
+	if err := os.WriteFile(tmpPath, content, perm); err != nil {
+		return fmt.Errorf("atomic write tmp %q: %w", tmpPath, err)
+	}
+	if err := os.Rename(tmpPath, destPath); err != nil {
+		return fmt.Errorf("atomic rename %q → %q: %w", tmpPath, destPath, err)
+	}
+	return nil
+}
+
 // @MX:ANCHOR: [AUTO] Deployer is the core interface that extracts templates from embedded filesystem and deploys to project root. Each file is tracked in manifest.
 // @MX:REASON: [AUTO] fan_in=8+, entry point for all project initialization, core contract for template deployment
 // Deployer extracts and deploys templates from an embedded filesystem
@@ -164,8 +184,8 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 			perm = 0o755 // Executable: read/write/execute for owner, read/execute for others
 		}
 
-		// Write file
-		if err := os.WriteFile(destPath, content, perm); err != nil {
+		// Write file atomically (REQ-UPC-001): write to .moai-tmp then rename.
+		if err := atomicWriteFile(destPath, content, perm); err != nil {
 			return fmt.Errorf("template deploy write %q: %w", destPath, err)
 		}
 

@@ -124,8 +124,8 @@ func (d *modeAwareDeployer) Deploy(ctx context.Context, projectRoot string, m ma
 			perm = 0o755
 		}
 
-		// Write file
-		if err := os.WriteFile(destPath, content, perm); err != nil {
+		// Write file atomically (REQ-UPC-001): write to .moai-tmp then rename.
+		if err := atomicWriteFile(destPath, content, perm); err != nil {
 			return fmt.Errorf("template deploy write %q: %w", destPath, err)
 		}
 
