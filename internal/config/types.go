@@ -396,11 +396,140 @@ func ValidSectionNames() []string {
 }
 
 // HarnessConfig는 harness.yaml 최상위 설정 구조체입니다.
-// HRN-002 run-phase minimal substrate: memory_scope 필드 검증만 포함합니다.
-// HRN-001 run-phase에서 routing/profile 확장 예정입니다.
+// @MX:ANCHOR: [AUTO] harness.yaml 전체 스키마의 Go 표현 — LoadHarnessConfig()의 반환 타입
+// @MX:REASON: fan_in >= 3 (LoadHarnessConfig, router.Route, CLI validate 등 다수에서 소비)
+// REQ-HRN-001-001: 전체 harness.yaml 스키마를 포괄하는 구조체 (HRN-001 run-phase 확장).
 type HarnessConfig struct {
-	DefaultProfile string         `yaml:"default_profile"`
-	Evaluator      EvaluatorConfig `yaml:"evaluator"`
+	// DefaultProfile은 기본 evaluator 프로필 이름입니다.
+	DefaultProfile string `yaml:"default_profile"`
+	// ModeDefaults는 실행 모드(solo/team/cg)별 기본 harness 레벨 맵입니다.
+	// REQ-HRN-001-014: mode_defaults.cg = "thorough" (FROZEN).
+	ModeDefaults map[string]string `yaml:"mode_defaults,omitempty"`
+	// AutoDetection은 자동 감지 규칙 설정입니다.
+	// REQ-HRN-001-007: minimal → standard → thorough 우선순위 순서.
+	AutoDetection AutoDetectionConfig `yaml:"auto_detection,omitempty"`
+	// Escalation은 에스컬레이션 트리거 설정입니다.
+	// REQ-HRN-001-004/009/013: max_escalations + triggers.
+	Escalation EscalationConfig `yaml:"escalation,omitempty"`
+	// EffortMapping은 레벨 → 노력 수준 맵입니다.
+	// REQ-HRN-001-005: minimal→medium, standard→high, thorough→xhigh.
+	EffortMapping map[string]string `yaml:"effort_mapping,omitempty"`
+	// Levels는 레벨별 설정 맵입니다.
+	// REQ-HRN-001-001: {minimal, standard, thorough} FROZEN enum.
+	Levels map[string]LevelConfig `yaml:"levels,omitempty"`
+	// ModelUpgradeReview는 모델 업그레이드 검토 설정입니다.
+	// REQ-HRN-001-016.
+	ModelUpgradeReview ModelUpgradeReviewConfig `yaml:"model_upgrade_review,omitempty"`
+	// PlanAuditGlobal은 전역 plan audit 설정입니다.
+	PlanAuditGlobal PlanAuditGlobalConfig `yaml:"plan_audit_global,omitempty"`
+	// Evaluator는 HRN-002 substrate — memory_scope FROZEN 검증용.
+	Evaluator EvaluatorConfig `yaml:"evaluator"`
+}
+
+// AutoDetectionConfig는 auto_detection 블록의 설정 구조체입니다.
+// REQ-HRN-001-007: rules 맵의 우선순위는 minimal → standard → thorough입니다.
+type AutoDetectionConfig struct {
+	// Enabled는 자동 감지 활성화 여부입니다.
+	Enabled bool `yaml:"enabled"`
+	// Rules는 레벨별 감지 조건 맵입니다.
+	Rules map[string]AutoDetectionRule `yaml:"rules,omitempty"`
+}
+
+// AutoDetectionRule은 단일 레벨의 자동 감지 조건 목록입니다.
+type AutoDetectionRule struct {
+	// Conditions는 이 레벨로 라우팅되기 위한 조건 문자열 목록입니다.
+	Conditions []string `yaml:"conditions,omitempty"`
+}
+
+// EscalationConfig는 escalation 블록의 설정 구조체입니다.
+// REQ-HRN-001-004/009/013: max_escalations 상한 + 트리거 목록.
+type EscalationConfig struct {
+	// Enabled는 에스컬레이션 활성화 여부입니다.
+	Enabled bool `yaml:"enabled"`
+	// MaxEscalations는 단계당 최대 에스컬레이션 횟수입니다 (기본값 2, 상한 3).
+	// REQ-HRN-001-013: hard ceiling = 3.
+	MaxEscalations int `yaml:"max_escalations"`
+	// Triggers는 에스컬레이션을 발동하는 이벤트 목록입니다.
+	// (예: quality_gate_fail, review_critical, test_coverage_low)
+	Triggers []string `yaml:"triggers,omitempty"`
+}
+
+// LevelConfig는 단일 harness 레벨의 설정 구조체입니다.
+// REQ-HRN-001-001: levels.{minimal,standard,thorough} 각각의 설정.
+type LevelConfig struct {
+	// Description은 이 레벨에 대한 설명입니다.
+	Description string `yaml:"description,omitempty"`
+	// Evaluator는 evaluator 활성화 여부입니다.
+	Evaluator bool `yaml:"evaluator"`
+	// EvaluatorMode는 evaluator 모드입니다 (final-pass 또는 per-sprint).
+	EvaluatorMode string `yaml:"evaluator_mode,omitempty"`
+	// EvaluatorProfile은 사용할 evaluator 프로필 이름입니다.
+	// 값이 있으면 .moai/config/evaluator-profiles/{name}.md 파일로 해석합니다.
+	EvaluatorProfile string `yaml:"evaluator_profile,omitempty"`
+	// SprintContract는 sprint contract 활성화 여부입니다.
+	SprintContract bool `yaml:"sprint_contract"`
+	// PlaywrightTesting은 playwright 테스트 활성화 여부입니다.
+	PlaywrightTesting bool `yaml:"playwright_testing"`
+	// SkipPhases는 건너뛸 워크플로우 단계 목록입니다.
+	SkipPhases []any `yaml:"skip_phases,omitempty"`
+	// PlanAudit은 plan audit 설정입니다.
+	PlanAudit PlanAuditConfig `yaml:"plan_audit,omitempty"`
+}
+
+// PlanAuditConfig는 plan audit 설정 구조체입니다.
+type PlanAuditConfig struct {
+	// Enabled는 plan audit 활성화 여부입니다.
+	Enabled bool `yaml:"enabled"`
+	// MaxIterations는 최대 반복 횟수입니다.
+	MaxIterations int `yaml:"max_iterations"`
+	// RequireMustPass는 must-pass 요구 여부입니다.
+	RequireMustPass bool `yaml:"require_must_pass"`
+	// CrossValidateWithEvaluatorActive는 evaluator-active 교차 검증 여부입니다.
+	CrossValidateWithEvaluatorActive bool `yaml:"cross_validate_with_evaluator_active"`
+}
+
+// ModelUpgradeReviewConfig는 model_upgrade_review 블록의 설정 구조체입니다.
+// REQ-HRN-001-016: 모델 업그레이드 시 체크리스트 알림.
+type ModelUpgradeReviewConfig struct {
+	// Enabled는 모델 업그레이드 검토 활성화 여부입니다.
+	Enabled bool `yaml:"enabled"`
+	// Checklist는 검토 항목 목록입니다.
+	Checklist []ReviewChecklistItem `yaml:"checklist,omitempty"`
+	// Trigger는 검토 트리거 설정입니다.
+	Trigger ModelUpgradeTrigger `yaml:"trigger,omitempty"`
+	// Output은 검토 출력 설정입니다.
+	Output ModelUpgradeOutput `yaml:"output,omitempty"`
+}
+
+// ReviewChecklistItem은 모델 업그레이드 검토 항목입니다.
+type ReviewChecklistItem struct {
+	ID       string `yaml:"id"`
+	Question string `yaml:"question"`
+	Action   string `yaml:"action"`
+	Affects  string `yaml:"affects"`
+}
+
+// ModelUpgradeTrigger는 모델 업그레이드 검토 트리거 설정입니다.
+type ModelUpgradeTrigger struct {
+	OnModelChange     bool   `yaml:"on_model_change"`
+	ManualCommand     string `yaml:"manual_command,omitempty"`
+	ReviewIntervalDays int   `yaml:"review_interval_days"`
+}
+
+// ModelUpgradeOutput은 모델 업그레이드 검토 출력 설정입니다.
+type ModelUpgradeOutput struct {
+	ReportPath      string `yaml:"report_path,omitempty"`
+	RequireApproval bool   `yaml:"require_approval"`
+}
+
+// PlanAuditGlobalConfig는 plan_audit_global 블록의 설정 구조체입니다.
+type PlanAuditGlobalConfig struct {
+	// AlwaysEnabled는 항상 plan audit 활성화 여부입니다.
+	AlwaysEnabled bool `yaml:"always_enabled"`
+	// EnforceGateOnSpecCreation는 SPEC 생성 시 gate 강제 여부입니다.
+	EnforceGateOnSpecCreation bool `yaml:"enforce_gate_on_spec_creation"`
+	// Rationale은 설정 이유 설명입니다.
+	Rationale string `yaml:"rationale,omitempty"`
 }
 
 // EvaluatorConfig는 evaluator 하위 설정 구조체입니다.

@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.0.0-rc1: 9 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004)
+## [Unreleased] — v3.0.0-rc1: 10 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001)
+
+### Added
+
+- **Harness Routing + harness.yaml Go Loader** (SPEC-V3R2-HRN-001): `HarnessConfig` 구조체를 harness.yaml 전체 스키마로 확장. `LoadHarnessConfig()` 검증 강화: FROZEN level enum `{minimal, standard, thorough}`, FROZEN pass_threshold ≥ 0.60 floor, `MOAI_CONFIG_STRICT=1` 스키마 드리프트 감지. 신규 패키지 `internal/harness/router/`: `HarnessRouter.Route(spec, cfg)` Complexity Estimator 기반 레벨 결정 (file_count, domain_count, spec_type, keywords), `EscalationManager.CheckTriggers()` max_escalations 상한 적용, `EffortForLevel()` minimal→medium/standard→high/thorough→xhigh 매핑. CLI: `moai harness route --spec SPEC-XXX [--json]`, `moai harness validate [--path PATH]`. `SPECFrontmatter.HarnessLevel` optional 필드 추가 (REQ-HRN-001-015 spec_override). 4개 sentinel 오류 (`ErrUnknownLevel`, `ErrPassThresholdFloor`, `ErrSchemaDrift`, `ErrEscalationCapExceeded`). `internal/cli/harness_retirement_test.go` CI 가드 업데이트: retired lifecycle 동사 (status/apply/rollback/disable) 차단 + HRN-001 routing 동사 (route/validate) 허용. 88.8% 커버리지 (`internal/harness/router/`). 10 AC (AC-01~10) + 25 tasks 완료. P0 Critical release-blocker.
 
 ### Added
 

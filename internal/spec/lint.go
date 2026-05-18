@@ -274,6 +274,11 @@ type SPECFrontmatter struct {
 	LintConfig struct {
 		Skip []string `yaml:"skip"`
 	} `yaml:"lint"`
+	// HarnessLevel은 SPEC별 harness 레벨 오버라이드 (optional)입니다.
+	// REQ-HRN-001-015: harness_level: minimal|standard|thorough 값이 있으면
+	// auto-detection보다 우선 적용됩니다. 12개 필수 필드에 포함되지 않으므로
+	// FrontmatterSchemaRule은 이 필드의 부재를 findings로 보고하지 않습니다.
+	HarnessLevel string `yaml:"harness_level,omitempty"`
 }
 
 type REQEntry struct {
@@ -329,6 +334,12 @@ func parseSPECDoc(path string) *SPECDoc {
 	doc.Criteria = criteria
 
 	return doc
+}
+
+// ExtractFrontmatter는 SPEC 문서 내용에서 YAML frontmatter와 본문을 분리하여 반환합니다.
+// REQ-HRN-001-003: HarnessRouter가 SPECFrontmatter.Priority, Tags, HarnessLevel을 소비합니다.
+func ExtractFrontmatter(content string) (SPECFrontmatter, string, error) {
+	return extractFrontmatter(content)
 }
 
 func extractFrontmatter(content string) (SPECFrontmatter, string, error) {

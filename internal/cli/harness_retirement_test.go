@@ -20,38 +20,76 @@ import (
 	"testing"
 )
 
-// TestHarnessRetirement asserts that rootCmd does not contain any command with
-// Use: "harness" (or any alias resolving to "harness"). Per SPEC-V3R4-HARNESS-001
-// REQ-HRN-FND-002, the harness CLI verb path is retired; invoking
-// `moai harness <verb>` MUST produce cobra's standard `unknown command` error.
+// retiredHarnessVerbs는 retired 상태의 harness lifecycle 동사 집합입니다.
+// SPEC-V3R4-HARNESS-001 BC-V3R4-HARNESS-001-CLI-RETIREMENT.
+// 이 동사들은 rootCmd.harness 하위에 절대 등록되면 안 됩니다.
+var retiredHarnessVerbs = map[string]bool{
+	"status":   true,
+	"apply":    true,
+	"rollback": true,
+	"disable":  true,
+}
+
+// allowedHarnessVerbs는 SPEC-V3R2-HRN-001에서 새로 도입된 허용 동사 집합입니다.
+// retirement guard는 이 동사들의 등록을 허용합니다.
+var allowedHarnessVerbs = map[string]bool{
+	"route":    true,
+	"validate": true,
+}
+
+// TestHarnessRetirement asserts that the retired harness lifecycle verbs
+// (status/apply/rollback/disable) are NOT registered under the harness command.
+//
+// SPEC-V3R4-HARNESS-001 REQ-HRN-FND-002: The harness lifecycle CLI verb path is
+// retired. SPEC-V3R2-HRN-001 re-introduces a DISTINCT harness command with
+// routing verbs (route/validate) only. This test enforces:
+//
+//  1. The "harness" command MAY exist if it only contains allowed routing verbs.
+//  2. The retired lifecycle verbs (status/apply/rollback/disable) MUST NOT appear
+//     under any "harness" command in rootCmd.
+//  3. The retired newHarnessCmd() factory MUST NOT be the registered command
+//     (distinguished by presence of retired verbs).
 func TestHarnessRetirement(t *testing.T) {
 	t.Parallel()
 
 	for _, cmd := range rootCmd.Commands() {
-		// Direct match on the Use field — cobra's primary registration key.
-		// Strip any argument suffix (e.g., "harness <verb>") to compare the verb noun.
 		useFirst := strings.SplitN(cmd.Use, " ", 2)[0]
-		if useFirst == "harness" {
-			t.Fatalf(
-				"SPEC-V3R4-HARNESS-001 / REQ-HRN-FND-002 violation: command with Use=%q "+
-					"is registered as a subcommand of rootCmd. The harness CLI verb path is "+
-					"retired per BC-V3R4-HARNESS-001-CLI-RETIREMENT. Remove the "+
-					"rootCmd.AddCommand(newHarnessCmd()) call (or equivalent) from "+
-					"internal/cli/root.go. The harness lifecycle is owned by the /moai:harness "+
-					"slash command surface and the moai skill workflow body. See "+
-					".claude/skills/moai/workflows/harness.md for the slash-command-only "+
-					"implementation contract.",
-				cmd.Use,
-			)
+		if useFirst != "harness" {
+			// 다른 커맨드는 확인 불필요
+			continue
 		}
 
-		// Defensive: any alias also forbidden.
+		// "harness" 커맨드가 있다면 — retired 동사가 없는지 확인합니다.
+		// SPEC-V3R2-HRN-001의 새 routing 커맨드 (route/validate)는 허용됩니다.
+		for _, subCmd := range cmd.Commands() {
+			subVerb := strings.SplitN(subCmd.Use, " ", 2)[0]
+			if retiredHarnessVerbs[subVerb] {
+				t.Fatalf(
+					"SPEC-V3R4-HARNESS-001 / REQ-HRN-FND-002 violation: retired harness verb %q "+
+						"is registered under 'harness' command. The lifecycle verbs "+
+						"(status/apply/rollback/disable) are retired per BC-V3R4-HARNESS-001-CLI-RETIREMENT. "+
+						"Only SPEC-V3R2-HRN-001 routing verbs (route/validate) are permitted. "+
+						"Remove the rootCmd.AddCommand(newHarnessCmd()) call from internal/cli/root.go.",
+					subVerb,
+				)
+			}
+			if !allowedHarnessVerbs[subVerb] {
+				t.Logf(
+					"WARNING: unexpected harness sub-verb %q — not in retired set, not in allowed set. "+
+						"If this is intentional, add to allowedHarnessVerbs in harness_retirement_test.go.",
+					subVerb,
+				)
+			}
+		}
+
+		// Aliases도 확인
 		for _, alias := range cmd.Aliases {
-			if alias == "harness" {
+			if alias == "harness" && useFirst != "harness" {
 				t.Fatalf(
 					"SPEC-V3R4-HARNESS-001 / REQ-HRN-FND-002 violation: command %q registers "+
-						"%q as an alias. The harness verb name is retired as a public CLI surface.",
-					cmd.Use, alias,
+						"'harness' as an alias pointing to a retired command tree. "+
+						"Only newHarnessRouterCmd() (route/validate verbs) is permitted to use 'harness'.",
+					cmd.Use,
 				)
 			}
 		}
