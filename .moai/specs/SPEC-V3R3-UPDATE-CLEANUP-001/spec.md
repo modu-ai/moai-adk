@@ -1,27 +1,25 @@
 ---
 id: SPEC-V3R3-UPDATE-CLEANUP-001
-version: "0.2.3"
-status: implemented
-created_at: 2026-05-01
-updated_at: 2026-05-04
+version: "0.3.0"
+status: completed
 author: manager-spec
 priority: High
-labels: [cli, update, deployment, cleanup, agency, idempotency]
 issue_number: null
 related_specs: [SPEC-AGENCY-ABSORB-001]
 title: "`moai update` — 멱등 배포 + 폐기 경로 정리"
-created: 2026-05-04
-updated: 2026-05-13
+created: 2026-05-01
+updated: 2026-05-18
 phase: "v3.0.0 - Consolidation"
 module: "template"
-lifecycle: completed
-tags: "legacy"
+lifecycle: spec-anchored
+tags: "cli, update, deployment, cleanup, agency, idempotency"
 ---
 
 # SPEC-V3R3-UPDATE-CLEANUP-001: `moai update` — 멱등 배포 + 폐기 경로 정리
 
 ## HISTORY
 
+- 2026-05-18 v0.3.0: Run-phase + sync COMPLETE — PR #990 admin merged. 4 milestones (M1 atomic write + lock file / M2 deprecated scan + backup + `.moai-skip-cleanup` opt-out / M3 provenance classification + telemetry + symlink + self-reference / M4 E2E A-F + case-insensitive probe + NFR benchstat). 9 deprecated agency entries registered in `internal/defs/dirs.go`. ~370 LOC actual vs ~380 estimate (3% deviation). 31 test cases all PASS. Coverage: acquireUpdateLock 92.9% / classifyDeprecatedFile 90.9% / scanDeprecatedPaths 83.3% / inspectDeprecatedPath 83.3% / filterSkipMarkerPaths 100% / emitCleanupTelemetry 84.2%. Status `implemented → completed`. Frontmatter canonical 12-field 정리 (snake_case `created_at`/`updated_at`/`labels` legacy 제거 per SPECLINT-DEBT-002). v3.0.0-rc1 P1 release-blocker 5건 중 3번째 완료.
 - 2026-05-04 v0.2.3: CodeRabbit PR review remediation (8 actionable comments) — MD038 markdownlint 위반 일괄 정정 (`` `" 2"` `` → `" 2"` plain quotes로 변경, 의미 보존), OQ4 해결 (lock file 형식을 JSON `{pid, started_at, hostname}`으로 spec에 확정 — plan.md T1.3과 정합), updated_at 날짜 정정 (2026-05-02 → 2026-05-04 review 시점), §4.7 Probe frequency 문장 시작 단어 다양화 (LanguageTool 권고). 카운트 변동 없음.
 - 2026-05-02 v0.2.2: audit v2 minor patch — D-02-09 (cross-reference 표기 일관성: acceptance.md §5 헤더에 /018 추가), D-02-10 (OQ2 line 인용 정확화: Manifest struct = `types.go:42-46`, FileEntry struct = `types.go:49-54`로 분리 표기), D-02-11 (HISTORY LOC 변천을 "estimation refinement, not scope change"로 명시), D-02-12 (acceptance.md §7 cross-OS verification matrix 신설), D-02-13 (외부 네트워크 호출 검증 메커니즘을 `httptest.NewServer 401` → custom `http.RoundTripper` interception으로 교체). 카운트 변동 없음 (REQ 27, AC 28, OQ 1, Risk 8, E2E 6, NFR 1).
 - 2026-05-01 v0.2.1: audit v2 remediation — D-02-01 critical (REQ-UPC-018을 `.moai-skip-cleanup` 사용자 opt-out 메커니즘으로 복원) + D-02-02~D-02-08 major (`.moai/logs/` self-reference 보호, telemetry permission 처리, LOC 공식 명시화, benchstat 기반 NFR-P1 통계 검증, OQ3 해결, case probe 엣지 케이스, symlink 엣지 케이스). REQ 26→27, AC 27→28 + AC-UPC-022b 추가, OQ 2→1.
