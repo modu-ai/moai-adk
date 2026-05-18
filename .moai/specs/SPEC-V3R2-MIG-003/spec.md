@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R2-MIG-003
 title: Config Loader Completeness (5 unloaded YAML sections)
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-18
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P1 High
 phase: "v3.0.0 — Phase 8 — Migration Tool + Docs"
@@ -27,6 +27,7 @@ tags: "config, yaml, loader, harness, constitution, context, interview, design, 
 
 | Version | Date       | Author | Description                                                            |
 |---------|------------|--------|------------------------------------------------------------------------|
+| 0.2.0 | 2026-05-18 | orchestrator | Plan + Run + Sync lifecycle COMPLETE — PR #998 plan (4 artifacts: 47 anchors + 15 ACs + 22 tasks) + PR #999 run (22 tasks DONE, 15 ACs PASS) + this sync. **v3.0.0-rc1 FINAL release-blocker 완료 (10/10 Goal Stop hook condition 충족).** 4 new section loaders (constitution/context/interview/design) + ConstitutionConfig/ContextConfig/InterviewConfig/DesignConfig 신규 struct + 4 default helpers. SunsetConfig DORMANT formalization (@MX:NOTE rationale). 2 CI guards 신설: `audit_loader_completeness_test.go` (YAML_SECTION_NO_LOADER) + `audit_struct_yaml_symmetry_test.go` (CONFIG_STRUCT_YAML_MISMATCH). ErrPassThresholdFloor sentinel reuse (HRN-001 OQ2 — design.yaml gan_loop.pass_threshold ≥0.60 floor validation). sunset_notice.go sync.Once once-per-session DORMANT notice. HRN-001 reconciliation: harness.yaml gap는 HRN-001에서 이미 해소 (effective scope 5→4). settings-management.md docs 업데이트 (section loader table + 5-step procedure). Status `implemented → completed`. v3.0.0-rc1 P1 release-blocker 5건 모두 완료 (WF-004 + UPDATE-CLEANUP-001 + ORC-004 + MIG-002 + MIG-003). |
 | 0.1.0   | 2026-04-23 | Wave 2 | Initial SPEC — add loaders for 5 unloaded YAML sections or mark dormant |
 
 ---
