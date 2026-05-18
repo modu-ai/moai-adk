@@ -19,3 +19,10 @@ harness_level: thorough
 ## 5. Requirements
 
 - REQ-TEST-OVR-001-001 (Ubiquitous) — 단순 기능. The system shall implement a basic feature.
+
+## Scope
+
+### Out of Scope
+
+- Production usage (this is a HRN-001 AC fixture only)
+
