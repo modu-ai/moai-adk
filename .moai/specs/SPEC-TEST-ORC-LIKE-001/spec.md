@@ -24,3 +24,10 @@ No security/payment keywords in requirements.
 - REQ-TEST-ORC-001-002 (Ubiquitous) — 중복 제거. The system shall remove duplicate agent entries.
 - REQ-TEST-ORC-001-003 (Ubiquitous) — 라우팅 규칙. The system shall apply consistent routing rules.
 - REQ-TEST-ORC-001-004 (Ubiquitous) — CLI 통합. The system shall integrate with CLI commands.
+
+## Scope
+
+### Out of Scope
+
+- Production usage (this is a HRN-001 AC fixture only)
+
