@@ -95,6 +95,11 @@ func NewDefaultConfig() *Config {
 		Sunset:        NewDefaultSunsetConfig(),
 		Research:      NewDefaultResearchConfig(),
 		Session:       NewDefaultSessionConfig(),
+		// MIG-003: 4 new section defaults (REQ-MIG003-004)
+		Constitution:  defaultConstitutionConfig(),
+		ContextSearch: defaultContextConfig(),
+		Interview:     defaultInterviewConfig(),
+		Design:        defaultDesignConfig(),
 	}
 }
 
@@ -356,5 +361,162 @@ func NewDefaultLSPQualityGates() LSPQualityGates {
 		},
 		CacheTTLSeconds: DefaultCacheTTLSeconds,
 		TimeoutSeconds:  DefaultTimeoutSeconds,
+	}
+}
+
+// defaultConstitutionConfig returns a ConstitutionConfig with defaults matching
+// internal/template/templates/.moai/config/sections/constitution.yaml.
+// REQ-MIG003-004: sensible defaults on absent file.
+func defaultConstitutionConfig() ConstitutionConfig {
+	return ConstitutionConfig{
+		ApprovedFrameworks: []string{"cobra", "viper"},
+		ApprovedLanguages:  []string{"go"},
+		Architecture: ConstitutionArchitecture{
+			ForbiddenDependencies: []string{
+				"circular imports",
+				"direct template access from CLI handlers",
+			},
+			Patterns: []string{"clean-architecture", "repository-pattern"},
+		},
+		ForbiddenPatterns: []string{
+			"global mutable state",
+			"init() with side effects",
+			"panic() in library code",
+			"raw SQL without parameterized queries",
+		},
+		NamingConventions: ConstitutionNaming{
+			Exported: "PascalCase",
+			Files:    "snake_case.go",
+			Packages: "lowercase, single word",
+		},
+		Performance: ConstitutionPerformance{},
+		Security: ConstitutionSecurity{
+			ForbiddenPractices: []string{
+				"hardcoded credentials",
+				"os.Exit in library code",
+			},
+			RequiredChecks: []string{"input-validation"},
+		},
+	}
+}
+
+// defaultContextConfig returns a ContextConfig with defaults matching
+// internal/template/templates/.moai/config/sections/context.yaml.
+// REQ-MIG003-004: sensible defaults on absent file.
+func defaultContextConfig() ContextConfig {
+	return ContextConfig{
+		AutoDetect: ContextAutoDetect{Enabled: true},
+		Enabled:    true,
+		MemoryIntegration: ContextMemoryIntegration{
+			Enabled:            true,
+			IncludeInContext:   true,
+			PriorityOverSearch: true,
+		},
+		Performance: ContextPerformance{
+			CacheTTLSeconds: 300,
+			TimeoutSeconds:  10,
+		},
+		Search: ContextSearch{
+			DateRangeDays:      30,
+			MaxResults:         5,
+			MaxTokensPerResult: 1000,
+			ProjectScopeOnly:   true,
+		},
+		TokenBudget: ContextTokenBudget{
+			MaxInjectionTokens: 5000,
+			SkipIfUsageAbove:   150000,
+		},
+	}
+}
+
+// defaultInterviewConfig returns an InterviewConfig with defaults matching
+// internal/template/templates/.moai/config/sections/interview.yaml.
+// REQ-MIG003-004: sensible defaults on absent file.
+func defaultInterviewConfig() InterviewConfig {
+	return InterviewConfig{
+		ClarityThreshold: 4,
+		Enabled:          true,
+		Plan: InterviewMode{
+			MaxRounds:         5,
+			QuestionsPerRound: 3,
+		},
+		Project: InterviewMode{
+			MaxRounds:         3,
+			QuestionsPerRound: 3,
+		},
+		SkipConditions: []string{
+			"resume_spec_id_present",
+			"skip_interview_flag",
+			"technical_keywords_gte_5",
+		},
+	}
+}
+
+// defaultDesignConfig returns a DesignConfig with defaults matching
+// internal/template/templates/.moai/config/sections/design.yaml.
+// REQ-MIG003-004: sensible defaults on absent file.
+// Note: PassThreshold default 0.75 is above the FROZEN floor 0.60.
+func defaultDesignConfig() DesignConfig {
+	return DesignConfig{
+		Adaptation: DesignAdaptation{
+			ConfidenceThreshold: 0.7,
+			Enabled:             true,
+			IterationLimits: DesignIterationLimits{
+				Builder:    3,
+				Copywriter: 3,
+				Designer:   2,
+			},
+			MinProjectsForAdaptation: 5,
+		},
+		BrandContext: DesignBrandContext{
+			Dir:                 ".moai/project/brand",
+			InterviewOnFirstRun: true,
+		},
+		ClaudeDesign: DesignClaudeDesign{
+			Enabled:                 true,
+			FallbackPath:            "code_based",
+			SupportedBundleVersions: []string{"1.0"},
+		},
+		DefaultFramework: "next.js",
+		DesignDocs: DesignDocs{
+			AutoLoadOnDesignCommand: true,
+			Dir:                     ".moai/design",
+			Priority:                []string{"spec", "system", "research", "pencil-plan"},
+			TokenBudget:             20000,
+		},
+		Enabled: true,
+		Evaluator: DesignEvaluator{
+			MemoryScope: "per_iteration",
+		},
+		Evolution: DesignEvolution{
+			ArchiveAfterEvolve:  true,
+			AutoEvolveThreshold: 3,
+			CooldownHours:       24,
+			GraduationCriteria: DesignGraduationCriteria{
+				ConsistencyRatio:    0.8,
+				MinimumConfidence:   0.8,
+				MinimumObservations: 5,
+				StalenessWindowDays: 30,
+			},
+			MaxActiveLearnings:      50,
+			MaxEvolutionRatePerWeek: 3,
+			RequireApproval:         true,
+		},
+		Figma: DesignFigma{Enabled: false},
+		GanLoop: DesignGanLoop{
+			EscalationAfter:      3,
+			ImprovementThreshold: 0.05,
+			MaxIterations:        5,
+			PassThreshold:        0.75,
+			SprintContract: DesignSprintContract{
+				ArtifactDir:           ".moai/sprints",
+				Enabled:               true,
+				MaxNegotiationRounds:  2,
+				OptionalHarnessLevels: []string{"standard"},
+				RequiredHarnessLevels: []string{"thorough"},
+			},
+			StrictMode: false,
+		},
+		Version: "1.0.0",
 	}
 }

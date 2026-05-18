@@ -118,6 +118,57 @@ Activate with `--deepthink` flag for enhanced analysis.
 - sections/language.yaml: Language preferences
 - sections/user.yaml: User information
 
+#### MoAI Configuration — Section Loaders (SPEC-V3R2-MIG-003)
+
+Configuration sections are loaded via two mechanisms:
+
+**1. `Loader.Load()` chain** (`internal/config/loader.go:31-74`):
+Loads the following 10 sections in fixed order. All return defaults on absent file.
+
+| YAML file | loadedSections key | Go field |
+|---|---|---|
+| user.yaml | `user` | `cfg.User` |
+| language.yaml | `language` | `cfg.Language` |
+| quality.yaml | `quality` | `cfg.Quality` |
+| git-convention.yaml | `git_convention` | `cfg.GitConvention` |
+| llm.yaml | `llm` | `cfg.LLM` |
+| ralph.yaml | `ralph` | `cfg.Ralph` |
+| state.yaml | `state` | `cfg.State` |
+| statusline.yaml | `statusline` | `cfg.Statusline` |
+| research.yaml | `research` | `cfg.Research` |
+| constitution.yaml | `constitution` | `cfg.Constitution` |
+| context.yaml | `context_search` | `cfg.ContextSearch` |
+| interview.yaml | `interview` | `cfg.Interview` |
+| design.yaml | `design` | `cfg.Design` |
+
+**2. Dedicated entry-points** (outside `Loader.Load()` by design):
+
+| Section | Loader | Package | Rationale |
+|---|---|---|---|
+| harness.yaml | `LoadHarnessConfig(path)` | `internal/config` | FROZEN validation (HRN-001); returns error on absent file (not defaults) |
+| runtime.yaml | `LoadRuntime(path)` | `internal/runtime` | Separate package, separate lifecycle |
+
+**MIG-003 new loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
+
+- `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) for SPEC-V3R2-EXT-004 policy enforcement.
+- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
+- `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions` for SPEC-V3R2-WF-003 discovery mode.
+- `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
+
+**SunsetConfig** (`internal/config/types.go`): DORMANT — struct defined but no runtime hot path enforces sunset conditions. `LoadSunsetConfig` must NOT be added until an activation SPEC is filed (REQ-MIG003-006).
+
+**CI Guards** (run on every `go test ./internal/config/...`):
+
+- `YAML_SECTION_NO_LOADER` (`audit_loader_completeness_test.go:TestAuditLoaderCompleteness`): fails if a new `.moai/config/sections/*.yaml` file has no loader and is not in the acknowledged allowlist.
+- `CONFIG_STRUCT_YAML_MISMATCH` (`audit_struct_yaml_symmetry_test.go:TestStructYAMLSymmetry_*`): fails if a Go struct field lacks a matching YAML key or vice versa.
+
+**Adding a new YAML section** (5-step procedure):
+1. Add `<name>.yaml` to `internal/template/templates/.moai/config/sections/`
+2. Add `XxxConfig` struct + sub-types + `xxxFileWrapper` to `internal/config/types.go`
+3. Add `defaultXxxConfig()` helper to `internal/config/defaults.go` and wire into `NewDefaultConfig()`
+4. Create `internal/config/loader_<name>.go` with `LoadXxxConfig(path)` + `loadXxxSection(dir, cfg *Config)`
+5. Wire `l.loadXxxSection(sectionsDir, cfg)` into `Loader.Load()` AND add the struct to `audit_struct_yaml_symmetry_test.go` symmetryCases
+
 ## Hooks Configuration
 
 Hooks support environment variables and must be quoted to handle spaces:

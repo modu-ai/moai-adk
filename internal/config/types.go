@@ -30,6 +30,11 @@ type Config struct {
 	Sunset        SunsetConfig               `yaml:"sunset"`
 	Research      ResearchConfig             `yaml:"research"`
 	Session       SessionConfig              `yaml:"session"` // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
+	// MIG-003: 4 new sections loaded by Loader.Load() (REQ-MIG003-001)
+	Constitution  ConstitutionConfig `yaml:"constitution"`
+	ContextSearch ContextConfig      `yaml:"context_search"`
+	Interview     InterviewConfig    `yaml:"interview"`
+	Design        DesignConfig       `yaml:"design"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -308,6 +313,11 @@ func (g *GateConfig) TestTimeoutDuration() time.Duration {
 
 // SunsetConfig defines the Build-to-Delete framework configuration.
 // Quality gates that consistently pass can be relaxed over time.
+//
+// @MX:NOTE: [AUTO] DORMANT — struct schema defined but no runtime hot path
+// enforces sunset conditions. Activation deferred to a future SPEC.
+// Do NOT add LoadSunsetConfig until activation SPEC is filed.
+// REQ-MIG003-006 ↔ REQ-MIG003-015 reference.
 type SunsetConfig struct {
 	// Enabled controls whether sunset tracking is active.
 	Enabled    bool              `yaml:"enabled"`
@@ -551,9 +561,253 @@ type EvaluatorConfig struct {
 	MustPassDimensions []string `yaml:"must_pass_dimensions,omitempty"`
 }
 
+// ConstitutionConfig는 constitution.yaml 최상위 설정 구조체입니다.
+// @MX:ANCHOR: [AUTO] constitution.yaml 전체 스키마의 Go 표현
+// @MX:REASON: fan_in >= 3 (LoadConstitutionConfig, Loader.Load, SPEC-V3R2-EXT-004 hook consumer)
+//
+// Hot path: SPEC-V3R2-EXT-004 framework optional hook for forbidden-library policy enforcement.
+// ForbiddenPatterns is exposed as the "ForbiddenLibraries" list per REQ-MIG003-009.
+type ConstitutionConfig struct {
+	ApprovedFrameworks []string                   `yaml:"approved_frameworks"`
+	ApprovedLanguages  []string                   `yaml:"approved_languages"`
+	Architecture       ConstitutionArchitecture   `yaml:"architecture"`
+	ForbiddenPatterns  []string                   `yaml:"forbidden_patterns"`
+	NamingConventions  ConstitutionNaming         `yaml:"naming_conventions"`
+	Performance        ConstitutionPerformance    `yaml:"performance"`
+	Security           ConstitutionSecurity       `yaml:"security"`
+}
+
+// ConstitutionArchitecture holds architecture constraint fields.
+type ConstitutionArchitecture struct {
+	ForbiddenDependencies []string `yaml:"forbidden_dependencies"`
+	Patterns              []string `yaml:"patterns"`
+}
+
+// ConstitutionNaming holds naming convention fields.
+type ConstitutionNaming struct {
+	Exported string `yaml:"exported"`
+	Files    string `yaml:"files"`
+	Packages string `yaml:"packages"`
+}
+
+// ConstitutionPerformance holds performance threshold fields.
+type ConstitutionPerformance struct {
+	MaxMemoryMB        *int `yaml:"max_memory_mb"`
+	MaxResponseTimeMS  *int `yaml:"max_response_time_ms"`
+}
+
+// ConstitutionSecurity holds security policy fields.
+type ConstitutionSecurity struct {
+	ForbiddenPractices []string `yaml:"forbidden_practices"`
+	RequiredChecks     []string `yaml:"required_checks"`
+}
+
+// ContextConfig는 context.yaml (context_search:) 최상위 설정 구조체입니다.
+// @MX:ANCHOR: [AUTO] context_search section Go 표현
+// @MX:REASON: fan_in >= 3 (LoadContextConfig, Loader.Load, CLAUDE.md §16 Context Search consumer)
+//
+// Hot path: CLAUDE.md §16 Context Search Protocol — token_budget.max_injection_tokens
+// and token_budget.skip_if_usage_above gate context injection.
+// search.date_range_days is the "staleness_window_days" alias per REQ-MIG003-010.
+type ContextConfig struct {
+	AutoDetect        ContextAutoDetect        `yaml:"auto_detect"`
+	Enabled           bool                     `yaml:"enabled"`
+	MemoryIntegration ContextMemoryIntegration `yaml:"memory_integration"`
+	Performance       ContextPerformance       `yaml:"performance"`
+	Search            ContextSearch            `yaml:"search"`
+	TokenBudget       ContextTokenBudget       `yaml:"token_budget"`
+}
+
+// ContextAutoDetect holds auto-detection settings.
+type ContextAutoDetect struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// ContextMemoryIntegration holds memory integration settings.
+type ContextMemoryIntegration struct {
+	Enabled          bool `yaml:"enabled"`
+	IncludeInContext bool `yaml:"include_in_context"`
+	PriorityOverSearch bool `yaml:"priority_over_search"`
+}
+
+// ContextPerformance holds performance settings.
+type ContextPerformance struct {
+	CacheTTLSeconds int `yaml:"cache_ttl_seconds"`
+	TimeoutSeconds  int `yaml:"timeout_seconds"`
+}
+
+// ContextSearch holds search configuration fields.
+// DateRangeDays is aliased as "staleness_window_days" in spec.md (REQ-MIG003-010).
+type ContextSearch struct {
+	DateRangeDays      int  `yaml:"date_range_days"`
+	MaxResults         int  `yaml:"max_results"`
+	MaxTokensPerResult int  `yaml:"max_tokens_per_result"`
+	ProjectScopeOnly   bool `yaml:"project_scope_only"`
+}
+
+// ContextTokenBudget holds token budget fields consumed by CLAUDE.md §16.
+type ContextTokenBudget struct {
+	MaxInjectionTokens int `yaml:"max_injection_tokens"`
+	SkipIfUsageAbove   int `yaml:"skip_if_usage_above"`
+}
+
+// InterviewConfig는 interview.yaml 최상위 설정 구조체입니다.
+// @MX:ANCHOR: [AUTO] interview section Go 표현
+// @MX:REASON: fan_in >= 3 (LoadInterviewConfig, Loader.Load, SPEC-V3R2-WF-003 discovery mode)
+//
+// Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
+// plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
+type InterviewConfig struct {
+	ClarityThreshold int            `yaml:"clarity_threshold"`
+	Enabled          bool           `yaml:"enabled"`
+	Plan             InterviewMode  `yaml:"plan"`
+	Project          InterviewMode  `yaml:"project"`
+	SkipConditions   []string       `yaml:"skip_conditions"`
+}
+
+// InterviewMode holds per-mode interview settings.
+type InterviewMode struct {
+	MaxRounds        int `yaml:"max_rounds"`
+	QuestionsPerRound int `yaml:"questions_per_round"`
+}
+
+// DesignConfig는 design.yaml 최상위 설정 구조체입니다.
+// @MX:ANCHOR: [AUTO] design section Go 표현
+// @MX:REASON: fan_in >= 3 (LoadDesignConfig, Loader.Load, GAN loop runtime sprint contract consumer)
+//
+// Hot path: GAN loop runtime consumes gan_loop.pass_threshold (FROZEN floor 0.60),
+// gan_loop.sprint_contract.enabled, and adaptation.iteration_limits.
+// Note: adaptation.iteration_limits is the Go field for spec.md's conceptual "phase_weights" (REQ-MIG003-014 OQ4).
+type DesignConfig struct {
+	Adaptation      DesignAdaptation   `yaml:"adaptation"`
+	BrandContext    DesignBrandContext  `yaml:"brand_context"`
+	ClaudeDesign    DesignClaudeDesign  `yaml:"claude_design"`
+	DefaultFramework string             `yaml:"default_framework"`
+	DesignDocs      DesignDocs         `yaml:"design_docs"`
+	Enabled         bool               `yaml:"enabled"`
+	Evaluator       DesignEvaluator    `yaml:"evaluator"`
+	Evolution       DesignEvolution    `yaml:"evolution"`
+	Figma           DesignFigma        `yaml:"figma"`
+	GanLoop         DesignGanLoop      `yaml:"gan_loop"`
+	Version         string             `yaml:"version"`
+}
+
+// DesignAdaptation holds pipeline adaptation settings.
+type DesignAdaptation struct {
+	ConfidenceThreshold       float64                   `yaml:"confidence_threshold"`
+	Enabled                   bool                      `yaml:"enabled"`
+	IterationLimits            DesignIterationLimits    `yaml:"iteration_limits"`
+	MinProjectsForAdaptation  int                       `yaml:"min_projects_for_adaptation"`
+}
+
+// DesignIterationLimits holds per-role iteration limit settings.
+type DesignIterationLimits struct {
+	Builder    int `yaml:"builder"`
+	Copywriter int `yaml:"copywriter"`
+	Designer   int `yaml:"designer"`
+}
+
+// DesignBrandContext holds brand context directory settings.
+type DesignBrandContext struct {
+	Dir                string `yaml:"dir"`
+	InterviewOnFirstRun bool   `yaml:"interview_on_first_run"`
+}
+
+// DesignClaudeDesign holds Claude Design import settings.
+type DesignClaudeDesign struct {
+	Enabled                 bool     `yaml:"enabled"`
+	FallbackPath            string   `yaml:"fallback_path"`
+	SupportedBundleVersions []string `yaml:"supported_bundle_versions"`
+}
+
+// DesignDocs holds design document auto-loading settings.
+type DesignDocs struct {
+	AutoLoadOnDesignCommand bool     `yaml:"auto_load_on_design_command"`
+	Dir                     string   `yaml:"dir"`
+	Priority                []string `yaml:"priority"`
+	TokenBudget             int      `yaml:"token_budget"`
+}
+
+// DesignEvaluator holds evaluator configuration for design pipeline.
+// memory_scope is treated as a free string here (not FROZEN-enforced;
+// that enforcement stays in LoadHarnessConfig per plan.md §11.4).
+type DesignEvaluator struct {
+	MemoryScope string `yaml:"memory_scope"`
+}
+
+// DesignEvolution holds evolution and self-learning settings.
+type DesignEvolution struct {
+	ArchiveAfterEvolve      bool                       `yaml:"archive_after_evolve"`
+	AutoEvolveThreshold     int                        `yaml:"auto_evolve_threshold"`
+	CooldownHours           int                        `yaml:"cooldown_hours"`
+	GraduationCriteria      DesignGraduationCriteria   `yaml:"graduation_criteria"`
+	MaxActiveLearnings      int                        `yaml:"max_active_learnings"`
+	MaxEvolutionRatePerWeek int                        `yaml:"max_evolution_rate_per_week"`
+	RequireApproval         bool                       `yaml:"require_approval"`
+}
+
+// DesignGraduationCriteria holds graduation thresholds for learnings.
+type DesignGraduationCriteria struct {
+	ConsistencyRatio    float64 `yaml:"consistency_ratio"`
+	MinimumConfidence   float64 `yaml:"minimum_confidence"`
+	MinimumObservations int     `yaml:"minimum_observations"`
+	StalenessWindowDays int     `yaml:"staleness_window_days"`
+}
+
+// DesignFigma holds Figma integration settings.
+type DesignFigma struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// DesignGanLoop holds GAN loop configuration.
+// PassThreshold is validated against the FROZEN floor 0.60 by LoadDesignConfig.
+// REQ-MIG003-014, OQ2 decision: enforce floor in loader.
+type DesignGanLoop struct {
+	EscalationAfter     int                  `yaml:"escalation_after"`
+	ImprovementThreshold float64             `yaml:"improvement_threshold"`
+	MaxIterations       int                  `yaml:"max_iterations"`
+	PassThreshold       float64              `yaml:"pass_threshold"`
+	SprintContract      DesignSprintContract `yaml:"sprint_contract"`
+	StrictMode          bool                 `yaml:"strict_mode"`
+}
+
+// DesignSprintContract holds sprint contract configuration.
+type DesignSprintContract struct {
+	ArtifactDir             string   `yaml:"artifact_dir"`
+	Enabled                 bool     `yaml:"enabled"`
+	MaxNegotiationRounds    int      `yaml:"max_negotiation_rounds"`
+	OptionalHarnessLevels   []string `yaml:"optional_harness_levels"`
+	RequiredHarnessLevels   []string `yaml:"required_harness_levels"`
+}
+
 // harnessFileWrapper는 harness.yaml 파일 언마샬링용 래퍼입니다.
 type harnessFileWrapper struct {
 	Harness HarnessConfig `yaml:"harness"`
+}
+
+// MIG-003 wrapper types for the 4 new section files.
+
+// constitutionFileWrapper는 constitution.yaml 파일 언마샬링용 래퍼입니다.
+// Note: Both constitution.yaml and quality.yaml use top-level key "constitution:".
+// They are disambiguated by filename in loadYAMLFile (REQ-MIG003 risk §11.1).
+type constitutionFileWrapper struct {
+	Constitution ConstitutionConfig `yaml:"constitution"`
+}
+
+// contextFileWrapper는 context.yaml 파일 언마샬링용 래퍼입니다.
+// context.yaml uses top-level key "context_search:" (NOT "context:").
+type contextFileWrapper struct {
+	ContextSearch ContextConfig `yaml:"context_search"`
+}
+
+// interviewFileWrapper는 interview.yaml 파일 언마샬링용 래퍼입니다.
+type interviewFileWrapper struct {
+	Interview InterviewConfig `yaml:"interview"`
+}
+
+// designFileWrapper는 design.yaml 파일 언마샬링용 래퍼입니다.
+type designFileWrapper struct {
+	Design DesignConfig `yaml:"design"`
 }
 
 // YAML file wrapper types for proper unmarshaling with top-level keys.

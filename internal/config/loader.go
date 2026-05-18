@@ -70,6 +70,21 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load research section
 	l.loadResearchSection(sectionsDir, cfg)
 
+	// Load constitution section (REQ-MIG003-001/002)
+	l.loadConstitutionSection(sectionsDir, cfg)
+
+	// Load context_search section (REQ-MIG003-010)
+	l.loadContextSection(sectionsDir, cfg)
+
+	// Load interview section (REQ-MIG003-011)
+	l.loadInterviewSection(sectionsDir, cfg)
+
+	// Load design section (REQ-MIG003-014)
+	l.loadDesignSection(sectionsDir, cfg)
+
+	// Emit once-per-session DORMANT notice for sunset.yaml (REQ-MIG003-018)
+	emitSunsetDormantNotice(sectionsDir)
+
 	return cfg, nil
 }
 

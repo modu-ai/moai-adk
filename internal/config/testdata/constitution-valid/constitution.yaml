@@ -1,0 +1,31 @@
+constitution:
+    approved_frameworks:
+        - cobra
+        - viper
+    approved_languages:
+        - go
+    architecture:
+        forbidden_dependencies:
+            - circular imports
+            - direct template access from CLI handlers
+        patterns:
+            - clean-architecture
+            - repository-pattern
+    forbidden_patterns:
+        - global mutable state
+        - init() with side effects
+        - panic() in library code
+        - raw SQL without parameterized queries
+    naming_conventions:
+        exported: PascalCase
+        files: snake_case.go
+        packages: lowercase, single word
+    performance:
+        max_memory_mb: null
+        max_response_time_ms: null
+    security:
+        forbidden_practices:
+            - hardcoded credentials
+            - os.Exit in library code
+        required_checks:
+            - input-validation
