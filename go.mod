@@ -7,13 +7,14 @@ require (
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/charmbracelet/x/powernap v0.1.4
+	github.com/charmbracelet/x/powernap v0.1.5
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sync v0.20.0
+	golang.org/x/sys v0.44.0
 	golang.org/x/text v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -47,5 +48,4 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
 )
