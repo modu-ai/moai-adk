@@ -1,6 +1,8 @@
 // Package hook — audit_test.go
 // SPEC-V3R2-RT-006 REQ-003, REQ-042, REQ-063
-// Registration parity, per-file category headers, retire-event absence, observability opt-in.
+// SPEC-V3R2-MIG-002 REQ-009, REQ-010 (3-way sync invariant)
+// Registration parity, per-file category headers, retire-event absence, observability opt-in,
+// 3-way sync invariant (Go handlers ≡ settings.json keys ∪ retiredEventNames).
 package hook
 
 import (
@@ -41,14 +43,10 @@ func testCtx() context.Context {
 	return context.Background()
 }
 
-// retiredEventNames is the canonical list of events retired from settings.json.
-// Used by multiple audit tests to ensure consistency.
-var retiredEventNames = []string{
-	"Notification",
-	"Elicitation",
-	"ElicitationResult",
-	"TaskCreated",
-}
+// retiredEventNames is an alias for the exported RetiredEventNames symbol in retired_events.go.
+// Using the exported symbol ensures audit tests and migration logic share a single source of truth.
+// SPEC-V3R2-MIG-002 T-MIG002-13: promoted to exported package-level var.
+var retiredEventNames = RetiredEventNames
 
 // TestAuditRegistrationParity verifies that the handler count matches the
 // expected formula:
@@ -252,6 +250,167 @@ func TestAuditObservabilityWhitelist(t *testing.T) {
 			t.Error("strict mode alone should not enable notification opt-in")
 		}
 	})
+}
+
+// TestAuditThreeWaySync verifies the 3-way sync invariant:
+// Go-registered event set ≡ settings.json.tmpl hook-key set ∪ retiredEventNames.
+//
+// SPEC-V3R2-MIG-002 REQ-MIG002-009, REQ-MIG002-010 → AC-MIG002-A1.
+// Reports HOOK_SYNC_DRIFT for Go-only entries; HOOK_WRAPPER_ORPHAN for settings-only entries.
+func TestAuditThreeWaySync(t *testing.T) {
+	// --- Step 1: Collect Go-registered event set ---
+	// We use the coverage table as the authoritative source of Go-registered events.
+	// An event is "Go-registered" if its Resolution is not REMOVE or COMPOSITE.
+	// COMPOSITE shares a settings.json key (autoUpdate shares SessionStart), so
+	// it does not represent an independent hook key.
+	// REMOVE means the event constant was retired with no live handler — excluded.
+	goEvents := make(map[string]bool)
+	for _, entry := range CoverageTable {
+		if entry.Resolution == ResolutionComposite || entry.Resolution == ResolutionRemove {
+			continue
+		}
+		goEvents[entry.EventName] = true
+	}
+
+	// --- Step 2: Collect settings.json.tmpl hook-key set ---
+	// Render the settings.json.tmpl with a representative TemplateContext and parse the JSON.
+	// Use the local project settings.json as a proxy for the template output; this avoids
+	// the need to import internal/template from the hook package (import cycle risk).
+	// The local settings.json is generated from the template and stays in sync via CI.
+	settingsPath := "../../.claude/settings.json"
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Skipf("settings.json not found at %s (skip in isolated CI): %v", settingsPath, err)
+	}
+
+	var settingsJSON struct {
+		Hooks map[string]json.RawMessage `json:"hooks"`
+	}
+	if err := json.Unmarshal(data, &settingsJSON); err != nil {
+		t.Fatalf("parse settings.json: %v", err)
+	}
+
+	settingsKeys := make(map[string]bool)
+	for key := range settingsJSON.Hooks {
+		settingsKeys[key] = true
+	}
+
+	// --- Step 3: Build retired-event set ---
+	retiredSet := make(map[string]bool, len(retiredEventNames))
+	for _, name := range retiredEventNames {
+		retiredSet[name] = true
+	}
+
+	// --- Step 4: Assert 3-way invariant ---
+	// Expected: goEvents ∖ (settingsKeys ∪ retiredSet) == ∅
+	// and settingsKeys ∖ goEvents == ∅
+
+	driftFound := false
+
+	// Check for HOOK_SYNC_DRIFT: Go-only entries not in settings AND not retired.
+	for event := range goEvents {
+		if !settingsKeys[event] && !retiredSet[event] {
+			t.Errorf("HOOK_SYNC_DRIFT: Go handler registered for %q but absent from settings.json and not in retiredEventNames", event)
+			driftFound = true
+		}
+	}
+
+	// Check for HOOK_WRAPPER_ORPHAN: settings-only entries not backed by a Go handler.
+	for key := range settingsKeys {
+		if !goEvents[key] {
+			t.Errorf("HOOK_WRAPPER_ORPHAN: settings.json key %q has no matching Go handler registration", key)
+			driftFound = true
+		}
+	}
+
+	if !driftFound {
+		t.Logf("3-way sync OK: goEvents=%d, settingsKeys=%d, retiredEvents=%d",
+			len(goEvents), len(settingsKeys), len(retiredSet))
+	}
+}
+
+// TestAuditNoEventSetupOrphan verifies that the EventSetup constant and the
+// "setup" cobra subcommand binding have been removed from the codebase.
+//
+// SPEC-V3R2-MIG-002 REQ-MIG002-003 → AC-MIG002-A2, AC-MIG002-A3.
+func TestAuditNoEventSetupOrphan(t *testing.T) {
+	// Check that types.go does NOT define EventSetup.
+	typesData, err := os.ReadFile("types.go")
+	if err != nil {
+		t.Fatalf("read types.go: %v", err)
+	}
+
+	if strings.Contains(string(typesData), "EventSetup") {
+		t.Errorf("AC-MIG002-A2 FAIL: EventSetup constant still present in types.go (SPEC-V3R2-MIG-002 REQ-MIG002-003)")
+	}
+
+	// Check that internal/cli/hook.go does NOT have the "setup" cobra binding.
+	hookCLIData, err := os.ReadFile("../../internal/cli/hook.go")
+	if err != nil {
+		t.Fatalf("read internal/cli/hook.go: %v", err)
+	}
+
+	if strings.Contains(string(hookCLIData), `"setup"`) {
+		t.Errorf("AC-MIG002-A3 FAIL: \"setup\" cobra binding still present in internal/cli/hook.go (SPEC-V3R2-MIG-002 REQ-MIG002-003)")
+	}
+}
+
+// TestAuditNoStubHandlers verifies that each of the 5 RT-006-resolved handlers
+// carries a // Resolution: UPGRADE or // Resolution: FIX header (NOT a stub marker).
+//
+// SPEC-V3R2-MIG-002 REQ-MIG002-004..008 → AC-MIG002-A8.
+// This is a characterization test: it locks the RT-006 work product against regression.
+func TestAuditNoStubHandlers(t *testing.T) {
+	// These handlers were UPGRADE or FIX resolved by SPEC-V3R2-RT-006.
+	rt006Files := []struct {
+		file     string
+		category string // expected Resolution category
+	}{
+		{"subagent_stop.go", "FIX"},
+		{"config_change.go", "UPGRADE"},
+		{"instructions_loaded.go", "UPGRADE"},
+		{"file_changed.go", "UPGRADE"},
+		{"post_tool_failure.go", "UPGRADE"},
+	}
+
+	validResolutions := map[string]bool{
+		"UPGRADE": true,
+		"FIX":     true,
+	}
+
+	resolutionPattern := regexp.MustCompile(`^// Resolution: ([A-Z\-]+)`)
+
+	for _, tc := range rt006Files {
+		t.Run(tc.file, func(t *testing.T) {
+			data, err := os.ReadFile(tc.file)
+			if err != nil {
+				t.Fatalf("read %s: %v", tc.file, err)
+			}
+
+			lines := strings.SplitN(string(data), "\n", 10)
+			found := false
+			var category string
+			for _, line := range lines {
+				if m := resolutionPattern.FindStringSubmatch(line); m != nil {
+					category = m[1]
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				t.Errorf("%s: missing // Resolution: header — RT-006 work product may be lost", tc.file)
+				return
+			}
+
+			if !validResolutions[category] {
+				t.Errorf("%s: Resolution: %q is not a valid RT-006 resolution (want UPGRADE or FIX)", tc.file, category)
+				return
+			}
+
+			t.Logf("%s: Resolution: %s (locked by SPEC-V3R2-MIG-002 characterization)", tc.file, category)
+		})
+	}
 }
 
 // TestAuditRetiredHandlersNotActive is a legacy guard that verifies retired

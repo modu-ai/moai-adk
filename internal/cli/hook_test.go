@@ -60,10 +60,9 @@ func TestHookCmd_HasSubcommands(t *testing.T) {
 
 func TestHookCmd_SubcommandCount(t *testing.T) {
 	count := len(hookCmd.Commands())
-	// 33 previous + 3 new: harness-observe-stop, harness-observe-subagent-stop,
-	// harness-observe-user-prompt-submit (SPEC-V3R4-HARNESS-002)
-	if count != 36 {
-		t.Errorf("hook should have 36 subcommands, got %d", count)
+	// 36 previous - 1 "setup" (removed by SPEC-V3R2-MIG-002 M2.1) = 35.
+	if count != 35 {
+		t.Errorf("hook should have 35 subcommands, got %d", count)
 	}
 }
 

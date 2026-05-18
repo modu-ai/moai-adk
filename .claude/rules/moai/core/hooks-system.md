@@ -8,7 +8,11 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-27 hook event types (+ 1 special event, 28 total):
+26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (post-SPEC-V3R2-MIG-002).
+**Note**: EventSetup retired by SPEC-V3R2-MIG-002 M2.1 (orphan constant, no handler implementation).
+Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4. Total: 26 events.
+
+**Active events (22 in settings.json + 4 RETIRE-OBS-ONLY in Go = 26 events):**
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
@@ -39,11 +43,20 @@ Claude Code hooks for extending functionality with custom scripts.
 | Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+) |
 | ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+) |
 
-**Special Event:**
+**RETIRE-OBS-ONLY events (Go-only, not in settings.json — enable via system.yaml hook.observability_events):**
 
-| Event | Matcher | Can Block | Description |
-|-------|---------|-----------|-------------|
-| Setup | No | No | Runs via --init, --init-only, or --maintenance flags (v2.1.10+) |
+| Event | Notes |
+|-------|-------|
+| Notification | Observability tap; silent unless opted in |
+| Elicitation | Observability tap; silent unless opted in |
+| ElicitationResult | Observability tap; silent unless opted in |
+| TaskCreated | Observability tap; silent unless opted in |
+
+**Retired event (SPEC-V3R2-MIG-002 M2.1 — EventSetup constant and cobra binding removed):**
+
+| Event | Status |
+|-------|--------|
+| Setup | REMOVED — EventSetup constant retired; `moai hook setup` subcommand removed. Was triggered via --init, --init-only, or --maintenance flags (v2.1.10+) but had no handler implementation. |
 
 ### Event Categories
 
