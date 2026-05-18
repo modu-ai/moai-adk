@@ -1,0 +1,59 @@
+design:
+    adaptation:
+        confidence_threshold: 0.7
+        enabled: true
+        iteration_limits:
+            builder: 3
+            copywriter: 3
+            designer: 2
+        min_projects_for_adaptation: 5
+    brand_context:
+        dir: .moai/project/brand
+        interview_on_first_run: true
+    claude_design:
+        enabled: true
+        fallback_path: code_based
+        supported_bundle_versions:
+            - "1.0"
+    default_framework: next.js
+    design_docs:
+        auto_load_on_design_command: true
+        dir: .moai/design
+        priority:
+            - spec
+            - system
+            - research
+            - pencil-plan
+        token_budget: 20000
+    enabled: true
+    evaluator:
+        memory_scope: per_iteration
+    evolution:
+        archive_after_evolve: true
+        auto_evolve_threshold: 3
+        cooldown_hours: 24
+        graduation_criteria:
+            consistency_ratio: 0.8
+            minimum_confidence: 0.8
+            minimum_observations: 5
+            staleness_window_days: 30
+        max_active_learnings: 50
+        max_evolution_rate_per_week: 3
+        require_approval: true
+    figma:
+        enabled: false
+    gan_loop:
+        escalation_after: 3
+        improvement_threshold: 0.05
+        max_iterations: 5
+        pass_threshold: 0.75
+        sprint_contract:
+            artifact_dir: .moai/sprints
+            enabled: true
+            max_negotiation_rounds: 2
+            optional_harness_levels:
+                - standard
+            required_harness_levels:
+                - thorough
+        strict_mode: false
+    version: 1.0.0

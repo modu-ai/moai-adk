@@ -488,6 +488,115 @@ func TestLoaderGitConventionDefaults(t *testing.T) {
 	}
 }
 
+// TestLoaderMIG003SectionsLoadedViaLoaderLoad verifies that the 4 new MIG-003
+// sections are correctly loaded when valid YAML files are present.
+// Covers the happy path of loadConstitutionSection / loadContextSection /
+// loadInterviewSection / loadDesignSection (T-MIG003-18).
+func TestLoaderMIG003SectionsLoadedViaLoaderLoad(t *testing.T) {
+	t.Parallel()
+	resetSunsetNoticeOnce() // avoid notice side-effects
+
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	// Copy valid fixture files into the sections dir.
+	fixtures := map[string]string{
+		"constitution.yaml": filepath.Join("testdata", "constitution-valid", "constitution.yaml"),
+		"context.yaml":      filepath.Join("testdata", "context-valid", "context.yaml"),
+		"interview.yaml":    filepath.Join("testdata", "interview-valid", "interview.yaml"),
+		"design.yaml":       filepath.Join("testdata", "design-valid", "design.yaml"),
+	}
+	for dst, src := range fixtures {
+		data, err := os.ReadFile(src)
+		if err != nil {
+			t.Fatalf("read fixture %s: %v", src, err)
+		}
+		if err := os.WriteFile(filepath.Join(sectionsDir, dst), data, 0o644); err != nil {
+			t.Fatalf("write %s: %v", dst, err)
+		}
+	}
+
+	loader := NewLoader()
+	cfg, err := loader.Load(filepath.Join(tmpDir, ".moai"))
+	if err != nil {
+		t.Fatalf("Loader.Load(): %v", err)
+	}
+
+	// Verify all 4 sections loaded.
+	sections := loader.LoadedSections()
+	for _, key := range []string{"constitution", "context_search", "interview", "design"} {
+		if !sections[key] {
+			t.Errorf("section %q not marked as loaded", key)
+		}
+	}
+
+	// Spot-check values.
+	if len(cfg.Constitution.ForbiddenPatterns) == 0 {
+		t.Error("Constitution.ForbiddenPatterns: expected non-empty")
+	}
+	if cfg.ContextSearch.TokenBudget.MaxInjectionTokens != 5000 {
+		t.Errorf("ContextSearch.TokenBudget.MaxInjectionTokens: want 5000, got %d",
+			cfg.ContextSearch.TokenBudget.MaxInjectionTokens)
+	}
+	if cfg.Interview.ClarityThreshold != 4 {
+		t.Errorf("Interview.ClarityThreshold: want 4, got %d", cfg.Interview.ClarityThreshold)
+	}
+	if cfg.Design.GanLoop.PassThreshold != 0.75 {
+		t.Errorf("Design.GanLoop.PassThreshold: want 0.75, got %f", cfg.Design.GanLoop.PassThreshold)
+	}
+}
+
+// TestLoaderMIG003MalformedSectionsUseDefaults verifies that when a MIG-003 section
+// YAML is malformed, the loader skips it (with slog.Warn) and uses defaults.
+// Covers the slog.Warn branch in loadConstitutionSection / loadContextSection /
+// loadInterviewSection / loadDesignSection.
+func TestLoaderMIG003MalformedSectionsUseDefaults(t *testing.T) {
+	t.Parallel()
+	resetSunsetNoticeOnce()
+
+	for _, tc := range []struct {
+		file    string
+		section string
+	}{
+		{"constitution.yaml", "constitution"},
+		{"context.yaml", "context_search"},
+		{"interview.yaml", "interview"},
+		{"design.yaml", "design"},
+	} {
+		tc := tc
+		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
+			resetSunsetNoticeOnce()
+
+			tmpDir := t.TempDir()
+			sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+			if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			// Write malformed YAML for this section.
+			malformed := []byte(tc.file[:len(tc.file)-5] + ":\n  broken: [\n")
+			if err := os.WriteFile(filepath.Join(sectionsDir, tc.file), malformed, 0o644); err != nil {
+				t.Fatalf("write %s: %v", tc.file, err)
+			}
+
+			loader := NewLoader()
+			_, err := loader.Load(filepath.Join(tmpDir, ".moai"))
+			if err != nil {
+				t.Fatalf("Loader.Load() should not error on malformed section: %v", err)
+			}
+
+			// Section should NOT be marked loaded (slog.Warn path taken).
+			sections := loader.LoadedSections()
+			if sections[tc.section] {
+				t.Errorf("section %q should NOT be loaded for malformed YAML", tc.section)
+			}
+		})
+	}
+}
+
 // TestLoadHarnessConfigValid는 per_iteration 값을 가진 유효한 harness 설정이
 // 오류 없이 로드되는지 검증합니다 (AC-HRN-002-04).
 func TestLoadHarnessConfigValid(t *testing.T) {

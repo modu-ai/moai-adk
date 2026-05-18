@@ -1,0 +1,4 @@
+constitution:
+    approved_frameworks:
+        - cobra
+    forbidden_patterns: [

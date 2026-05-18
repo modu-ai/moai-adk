@@ -1,0 +1,15 @@
+design:
+    enabled: true
+    evaluator:
+        memory_scope: per_iteration
+    gan_loop:
+        escalation_after: 3
+        improvement_threshold: 0.05
+        max_iterations: 5
+        pass_threshold: 0.45
+        sprint_contract:
+            artifact_dir: .moai/sprints
+            enabled: true
+            max_negotiation_rounds: 2
+        strict_mode: false
+    version: 1.0.0

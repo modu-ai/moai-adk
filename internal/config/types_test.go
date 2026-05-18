@@ -1,6 +1,9 @@
 package config
 
 import (
+	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
@@ -382,5 +385,58 @@ func TestSecuritySandbox_Fields(t *testing.T) {
 	}
 	if ss.DockerImage != "moai/sandbox:v1" {
 		t.Errorf("SecuritySandbox.DockerImage: got %q, want %q", ss.DockerImage, "moai/sandbox:v1")
+	}
+}
+
+// T-MIG003-05: TestSunsetConfig_DORMANT_GodocMarker verifies that the godoc block
+// before type SunsetConfig struct contains the DORMANT literal and the
+// "Activation deferred to a future SPEC" phrase.
+// Maps to: REQ-MIG003-006/015, AC-MIG003-06
+func TestSunsetConfig_DORMANT_GodocMarker(t *testing.T) {
+	t.Parallel()
+
+	data, err := os.ReadFile("types.go")
+	if err != nil {
+		t.Fatalf("os.ReadFile(types.go): %v", err)
+	}
+
+	content := string(data)
+
+	// Find the position of the struct declaration
+	structDecl := "type SunsetConfig struct"
+	idx := strings.Index(content, structDecl)
+	if idx < 0 {
+		t.Fatalf("types.go does not contain %q", structDecl)
+	}
+
+	// Extract the 500 chars before the struct declaration (should contain the godoc)
+	start := idx - 500
+	if start < 0 {
+		start = 0
+	}
+	preceding := content[start:idx]
+
+	if !strings.Contains(preceding, "DORMANT") {
+		t.Errorf("godoc before SunsetConfig does not contain 'DORMANT'\npreceding text:\n%s", preceding)
+	}
+	if !strings.Contains(preceding, "Activation deferred to a future SPEC") {
+		t.Errorf("godoc before SunsetConfig does not contain 'Activation deferred to a future SPEC'\npreceding text:\n%s", preceding)
+	}
+}
+
+// T-MIG003-05: TestRootConfig_HasFourNewSectionFields verifies via reflection that
+// the root Config struct exposes the 4 new section fields.
+// Maps to: REQ-MIG003-001, AC-MIG003-01
+func TestRootConfig_HasFourNewSectionFields(t *testing.T) {
+	t.Parallel()
+
+	required := []string{"Constitution", "ContextSearch", "Interview", "Design"}
+	cfgType := reflect.TypeOf(Config{})
+
+	for _, fieldName := range required {
+		_, ok := cfgType.FieldByName(fieldName)
+		if !ok {
+			t.Errorf("Config struct missing field %q (REQ-MIG003-001)", fieldName)
+		}
 	}
 }
