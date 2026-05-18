@@ -55,7 +55,6 @@ func init() {
 		{"post-compact", "Handle post-compact event", hook.EventPostCompact},
 		{"instructions-loaded", "Handle instructions loaded event", hook.EventInstructionsLoaded},
 		{"stop-failure", "Handle stop failure event", hook.EventStopFailure},
-		{"setup", "Handle setup event", hook.EventSetup},
 		{"config-change", "Handle config change event", hook.EventConfigChange},
 		{"task-created", "Handle task created event", hook.EventTaskCreated},
 		{"cwd-changed", "Handle cwd changed event", hook.EventCwdChanged},

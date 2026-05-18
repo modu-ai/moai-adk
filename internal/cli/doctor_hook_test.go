@@ -12,26 +12,28 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
-// TestDoctorHook_27EventTableCount verifies that the coverage table has exactly
-// 27 entries (28 including the composite autoUpdate row, per CoverageTable definition).
-// AC-12: "the 27-event table is printed with per-event resolution state".
+// TestDoctorHook_27EventTableCount verifies that the coverage table has the expected
+// number of entries after SPEC-V3R2-MIG-002 EventSetup retirement.
+// Post-MIG-002: 26 events + 1 composite (autoUpdate) = 27 entries total.
+// AC-MIG002-A9: counts consistent with post-cleanup state.
 func TestDoctorHook_27EventTableCount(t *testing.T) {
-	// CoverageTable has 28 entries: 27 events + 1 composite (autoUpdate).
-	// The doctor output should include all of them.
+	// CoverageTable has 27 entries: 26 events + 1 composite (autoUpdate).
+	// EventSetup row removed by SPEC-V3R2-MIG-002 M2.1.
 	entries := buildDoctorHookEntries(false)
 	if len(entries) != len(hook.CoverageTable) {
 		t.Errorf("buildDoctorHookEntries() count = %d, want %d", len(entries), len(hook.CoverageTable))
 	}
 
-	// Verify exactly 27 canonical hook events (excluding composite).
+	// Verify exactly 26 canonical hook events (excluding composite).
+	// EventSetup retired: SPEC-V3R2-MIG-002 M2.1 removed the REMOVE-resolution row.
 	eventCount := 0
 	for _, e := range hook.CoverageTable {
 		if e.Resolution != hook.ResolutionComposite {
 			eventCount++
 		}
 	}
-	if eventCount != 27 {
-		t.Errorf("non-composite event count = %d, want 27", eventCount)
+	if eventCount != 26 {
+		t.Errorf("non-composite event count = %d, want 26 (EventSetup row removed by SPEC-V3R2-MIG-002)", eventCount)
 	}
 }
 
@@ -126,8 +128,8 @@ func TestDoctorHook_SummaryCountsConsistent(t *testing.T) {
 	if summary.Fix != 1 {
 		t.Errorf("Fix count = %d, want 1 (subagentStop P-H02)", summary.Fix)
 	}
-	if summary.Remove != 1 {
-		t.Errorf("Remove count = %d, want 1 (setupHandler)", summary.Remove)
+	if summary.Remove != 0 {
+		t.Errorf("Remove count = %d, want 0 (Setup row removed from CoverageTable by SPEC-V3R2-MIG-002 M2.1)", summary.Remove)
 	}
 	if summary.Composite != 1 {
 		t.Errorf("Composite count = %d, want 1 (autoUpdate)", summary.Composite)

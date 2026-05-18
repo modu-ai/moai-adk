@@ -1,24 +1,18 @@
 ---
 id: SPEC-V3R2-MIG-002
-title: Hook Registration Cleanup (orphan events, stub handlers, divergence)
+title: "Hook Registration Cleanup (orphan EventSetup, 3-way sync invariant, migration step)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-18
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
-priority: P1 High
-phase: "v3.0.0 — Phase 8 — Migration Tool + Docs"
-module: "internal/hook/, internal/cli/deps.go, .claude/hooks/moai/, internal/template/templates/.claude/settings.json.tmpl"
-dependencies:
-  - SPEC-V3R2-EXT-004
-related_gap:
-  - r6-hooks-audit
-  - r6-orphan-handlers
-related_theme: "Theme 2 — Runtime Hardening"
-breaking: false
-bc_id: []
+priority: P1
+phase: "v3.0.0"
+module: "internal/hook/, internal/cli/deps.go, .claude/hooks/moai/, internal/template/templates/.claude/hooks/moai/, internal/migrate/"
 lifecycle: spec-anchored
-tags: "hooks, cleanup, orphan, stub, divergence, handler, v3"
+tags: "hooks, cleanup, orphan, drift, mig, v3"
+depends_on:
+  - SPEC-V3R2-EXT-004
 ---
 
 # SPEC-V3R2-MIG-002: Hook Registration Cleanup

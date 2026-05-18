@@ -9,8 +9,8 @@ func TestValidEventTypes(t *testing.T) {
 	t.Parallel()
 
 	events := ValidEventTypes()
-	if len(events) != 27 {
-		t.Errorf("ValidEventTypes() returned %d events, want 27", len(events))
+	if len(events) != 26 {
+		t.Errorf("ValidEventTypes() returned %d events, want 26 (EventSetup retired by SPEC-V3R2-MIG-002)", len(events))
 	}
 
 	expected := map[EventType]bool{
@@ -33,7 +33,6 @@ func TestValidEventTypes(t *testing.T) {
 		EventPostCompact:        true,
 		EventInstructionsLoaded: true,
 		EventStopFailure:        true,
-		EventSetup:              true,
 		EventConfigChange:       true,
 		EventTaskCreated:        true,
 		EventCwdChanged:         true,

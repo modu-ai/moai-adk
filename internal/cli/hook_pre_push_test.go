@@ -71,15 +71,14 @@ func TestReadStdinLines_Empty(t *testing.T) {
 }
 
 func TestHookCmd_PrePushSubcommandCount(t *testing.T) {
-	// 33 previous + 3 new: harness-observe-stop, harness-observe-subagent-stop,
-	// harness-observe-user-prompt-submit (SPEC-V3R4-HARNESS-002).
+	// 36 previous - 1 "setup" (removed by SPEC-V3R2-MIG-002 M2.1) = 35.
 	count := len(hookCmd.Commands())
-	if count != 36 {
+	if count != 35 {
 		names := make([]string, 0, count)
 		for _, cmd := range hookCmd.Commands() {
 			names = append(names, cmd.Name())
 		}
-		t.Errorf("hook should have 36 subcommands, got %d: %v", count, names)
+		t.Errorf("hook should have 35 subcommands, got %d: %v", count, names)
 	}
 }
 

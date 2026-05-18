@@ -80,10 +80,6 @@ const (
 	// Available since Claude Code v2.1.78+.
 	EventStopFailure EventType = "StopFailure"
 
-	// EventSetup is triggered via --init, --init-only, or --maintenance CLI flags.
-	// Available since Claude Code v2.1.10+.
-	EventSetup EventType = "Setup"
-
 	// EventConfigChange is triggered when configuration files change during a session.
 	// Available since Claude Code v2.1.49+.
 	EventConfigChange EventType = "ConfigChange"
@@ -136,7 +132,6 @@ func ValidEventTypes() []EventType {
 		EventPostCompact,
 		EventInstructionsLoaded,
 		EventStopFailure,
-		EventSetup,
 		EventConfigChange,
 		EventTaskCreated,
 		EventCwdChanged,

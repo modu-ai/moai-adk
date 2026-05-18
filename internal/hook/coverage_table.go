@@ -34,8 +34,9 @@ type EventCoverageEntry struct {
 	HandlerFile string
 }
 
-// CoverageTable is the authoritative 27-event table per SPEC-V3R2-RT-006 §5.7.
-// @MX:ANCHOR: [AUTO] CoverageTable is the authoritative 27-event inventory per SPEC §5.7
+// CoverageTable is the authoritative 26-event table after EventSetup retirement
+// (SPEC-V3R2-MIG-002 M2.1). Originally 27 events per SPEC-V3R2-RT-006 §5.7.
+// @MX:ANCHOR: [AUTO] CoverageTable is the authoritative 26-event inventory post-MIG-002
 // @MX:REASON: fan_in=3, consumed by audit_test/doctor_hook CLI/doctor hook subcommand
 var CoverageTable = []EventCoverageEntry{
 	{EventName: "SessionStart", Resolution: ResolutionKeep, IsActive: true, HandlerFile: "session_start.go"},
@@ -64,7 +65,8 @@ var CoverageTable = []EventCoverageEntry{
 	{EventName: "InstructionsLoaded", Resolution: ResolutionUpgrade, IsActive: true, HandlerFile: "instructions_loaded.go"},
 	{EventName: "Elicitation", Resolution: ResolutionRetireObsOnly, IsActive: false, HandlerFile: "elicitation.go"},
 	{EventName: "ElicitationResult", Resolution: ResolutionRetireObsOnly, IsActive: false, HandlerFile: "elicitation.go"},
-	{EventName: "Setup", Resolution: ResolutionRemove, IsActive: false, HandlerFile: "(removed)"},
+	// Setup event retired: EventSetup constant + CLI binding removed by SPEC-V3R2-MIG-002 M2.1.
+	// The event had no handler implementation; only an orphan constant + cobra subcommand.
 	// Composite: autoUpdate is bundled under SessionStart in settings.json.
 	{EventName: "AutoUpdate (SessionStart composite)", Resolution: ResolutionComposite, IsActive: true, HandlerFile: "auto_update.go"},
 }
