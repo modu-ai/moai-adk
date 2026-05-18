@@ -1,10 +1,10 @@
 ---
 id: SPEC-HOOK-007
 title: Session Lifecycle Enhancements
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: archived
 created: 2026-02-04
-updated: 2026-02-04
+updated: 2026-05-18
 author: GOOS
 priority: P2 Medium
 phase: "Phase 3 - Advanced Features"
@@ -28,6 +28,7 @@ tags: "hook, session-lifecycle, session-start, session-end, auto-cleanup, P2"
 | Version | Date       | Author | Description                            |
 |---------|------------|--------|----------------------------------------|
 | 0.1.0   | 2026-02-04 | GOOS   | Initial SPEC creation                  |
+| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by SPEC-V3R2-RT-006 (Hook Handler 27-Event Coverage 완전 구현) + SPEC-V3R2-MIG-002 (Hook Registration Cleanup + EventSetup retirement + 3-way sync invariant) — ~95% scope overlap (가장 큰 overlap).** v3.0.0-rc1 release-readiness 정합성 정리. RT-006는 모든 27 Claude Code hook events (SessionStart/SessionEnd 포함)을 KEEP/UPGRADE/FIX/RETIRE-OBS-ONLY/COMPOSITE 5-category로 영구 분류 + `moai doctor hook` CLI로 가시화. session-start/session-end/auto-cleanup scope 100% absorbed. Residual 0%. |
 
 ---
 

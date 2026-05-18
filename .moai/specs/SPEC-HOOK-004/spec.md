@@ -1,10 +1,10 @@
 ---
 id: SPEC-HOOK-004
 title: LSP Diagnostics Integration
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: archived
 created: 2026-02-04
-updated: 2026-02-04
+updated: 2026-05-18
 author: GOOS
 priority: P2 Medium
 phase: "Phase 3 - Advanced Features"
@@ -28,6 +28,7 @@ tags: "hook, lsp, diagnostics, quality-gate, regression-detection, P2"
 | Version | Date       | Author | Description                            |
 |---------|------------|--------|----------------------------------------|
 | 0.1.0   | 2026-02-04 | GOOS   | Initial SPEC creation                  |
+| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by `internal/lsp/` baseline 인프라 + SPEC-LSPMCP-001 (LSP MCP Bridge, separate v2.x Legacy track) + SPEC-LSP-CORE-002 (Multi-Language LSP Client Core) — ~70% scope overlap.** v3.0.0-rc1 release-readiness 정합성 정리. LSP Diagnostics quality-gate scope는 LSPMCP-001/LSP-CORE-002로 이동. 본 SPEC residual (hook 측면 LSP integration)은 LSPMCP-001 lifecycle 완료 후 재평가 필요. |
 
 ---
 
