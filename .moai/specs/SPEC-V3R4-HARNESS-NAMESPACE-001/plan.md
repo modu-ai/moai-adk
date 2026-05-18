@@ -6,7 +6,7 @@
 |---------|------------|--------------|-------------|
 | 0.3.0   | 2026-05-16 | MoAI orchestrator | **Lifecycle COMPLETE annotation.** Plan PR #944 (`ea1c10647`) → Run PR #945 (`571258a1e`, merged 2026-05-16T05:19:54Z) → Sync PR #N (this commit). Wave 1 (7 governance verification tasks) + Wave 2 (5 PR #908 closeout tasks) all PASS. PR #908 closed via user-selected EC-001 Option 1 (rollback-tip-then-close): branch reset `a41d6d139c8c → 452aa638f60c` + force-with-lease + attribution comment + close-with-delete-branch. AC-HRN-NS-001~008 binary PASS. Plan steps §2 Wave 1 + §3 Wave 2 + §5 Step 2 Wave 1 shell snippet + §5 Step 3 Wave 2 shell snippet all executed verbatim. EC-001 4-option matrix from §6 Risks resolved via Option 1. Zero deferrals; all 12 tasks (T-Wave1-001~007 + T-Wave2-001~005) marked complete in respective audit reports. |
 | 0.2.0   | 2026-05-16 | manager-spec | plan-auditor REVISE 0.69 round-1 fix. T-Wave1-001 SPEC ID regex broadened (D-002); T-Wave1-004 lint switched to no-args full-repo scan (D-003); T-Wave1-006 CHANGELOG content sketch enriched with retention keywords (D-007); T-Wave2-001 PR #908 HEAD divergence reframed as EXPECTED with prefix matching (D-004); T-Wave2-003 verb-surface regex corrected for numbered headers (D-001). |
-| 0.1.0   | 2026-05-16 | manager-spec | Initial draft. Pure governance plan: zero LOC code change. Run-phase deliverables = CHANGELOG entry + PR #908 closeout (manager-git) + governance verification (lint + cross-reference). plan-in-main mode (BODP signals all-negative → base `origin/main`). 2-Wave structure (Wave 1 governance verification + Wave 2 PR #908 closeout). target_release v3.0.0-rc1. |
+| 0.1.0   | 2026-05-16 | manager-spec | Initial draft. Pure governance plan: zero LOC code change. Run-phase deliverables = CHANGELOG entry + PR #908 closeout (manager-git) + governance verification (lint + cross-reference). plan-in-main mode (BODP signals all-negative → base `origin/main`). 2-Wave structure (Wave 1 governance verification + Wave 2 PR #908 closeout). target_release v2.20.0-rc1. |
 
 ---
 
@@ -27,7 +27,7 @@ This plan decomposes SPEC-V3R4-HARNESS-NAMESPACE-001's 10 EARS requirements into
 
 | Wave | Goal | Files Modified | EARS coverage | Priority | Owning Agent |
 |------|------|----------------|---------------|----------|--------------|
-| Wave 1 | Governance verification (lint + cross-reference) | `CHANGELOG.md` (append v3.0.0-rc1 entry), audit report | REQ-HRN-NS-001, REQ-HRN-NS-002, REQ-HRN-NS-004, REQ-HRN-NS-005, REQ-HRN-NS-006, REQ-HRN-NS-010 | P1 | `manager-spec` (run-phase delegation) |
+| Wave 1 | Governance verification (lint + cross-reference) | `CHANGELOG.md` (append v2.20.0-rc1 entry), audit report | REQ-HRN-NS-001, REQ-HRN-NS-002, REQ-HRN-NS-004, REQ-HRN-NS-005, REQ-HRN-NS-006, REQ-HRN-NS-010 | P1 | `manager-spec` (run-phase delegation) |
 | Wave 2 | PR #908 closeout + verb-surface re-assertion documentation | PR #908 close comment + branch delete + memory entry | REQ-HRN-NS-003, REQ-HRN-NS-007, REQ-HRN-NS-008, REQ-HRN-NS-009 | P0 | `manager-git` |
 
 **Plan-phase corpus context**: `.moai/specs/` contains 198 SPEC directories as of main HEAD `82880cd49`. `.moai/specs/SPEC-V3R4-HARNESS-*` = 3 entries (-001, -002, -003). `.moai/specs/SPEC-V3R3-HARNESS-*` = 3 entries (HARNESS-001, HARNESS-LEARNING-001, PROJECT-HARNESS-001). `moai spec lint --strict` PASS state as of plan-phase = ✓ No findings (post-SPECLINT-DEBT-002 + SDF-001 cleanup).
@@ -44,7 +44,7 @@ This plan decomposes SPEC-V3R4-HARNESS-NAMESPACE-001's 10 EARS requirements into
 - Verify supersede consistency under `moai spec lint --strict` (REQ-HRN-NS-005).
 - Re-assert CLI deprecation grace from V3R4-HARNESS-001 (REQ-HRN-NS-006).
 - Document usage-log retention floor (REQ-HRN-NS-010).
-- Append CHANGELOG v3.0.0-rc1 entry documenting the governance closeout.
+- Append CHANGELOG v2.20.0-rc1 entry documenting the governance closeout.
 
 ### 2.2 Tasks
 
@@ -113,10 +113,10 @@ This plan decomposes SPEC-V3R4-HARNESS-NAMESPACE-001's 10 EARS requirements into
   ```
   Expected: deprecation marker present, no registration.
 
-#### T-Wave1-006: CHANGELOG v3.0.0-rc1 entry append
+#### T-Wave1-006: CHANGELOG v2.20.0-rc1 entry append
 
-- **What**: Append a new entry under the v3.0.0-rc1 section of `CHANGELOG.md` documenting (a) the namespace governance closeout, (b) the PR #908 abandonment decision, (c) reference to SPEC-V3R4-HARNESS-001 + this SPEC.
-- **Where**: `CHANGELOG.md` (top-of-file, under "## [Unreleased]" or "## [v3.0.0-rc1]" header per existing convention).
+- **What**: Append a new entry under the v2.20.0-rc1 section of `CHANGELOG.md` documenting (a) the namespace governance closeout, (b) the PR #908 abandonment decision, (c) reference to SPEC-V3R4-HARNESS-001 + this SPEC.
+- **Where**: `CHANGELOG.md` (top-of-file, under "## [Unreleased]" or "## [v2.20.0-rc1]" header per existing convention).
 - **Verification**: `grep -A 3 'SPEC-V3R4-HARNESS-NAMESPACE-001' CHANGELOG.md` returns non-empty output.
 - **Content sketch**:
   ```markdown
@@ -342,7 +342,7 @@ REQ-HRN-NS-009 — no fifth verb, no path drift, no cross-SPEC lifecycle blocker
 | PR #908 HEAD diverged from `452aa638f` (CONFIRMED — HEAD = `a41d6d139...`) | **High (EXPECTED)** | Wave 2 | T-Wave2-001 detects divergence via prefix matching; orchestrator invokes `AskUserQuestion` with 4 EC-001 options. EXPECTED path, not edge case. |
 | `moai spec lint --strict` regression on harness-family directories due to V3R4-HARNESS-002 or -003 status drift | Medium | Wave 1 | T-Wave1-004 surfaces any drift; if found, defer to a follow-up status-sync SPEC rather than expanding this SPEC's scope. |
 | `.moai/harness/` hierarchy on dev machine differs from canonical layout (e.g., user has experimental sub-dirs) | Low | Wave 1 | T-Wave1-003 reports NOT_PRESENT as acceptable; non-canonical paths are flagged in the audit but NOT auto-removed (no destructive operation). |
-| CHANGELOG merge conflict with concurrent v3.0.0-rc1 entries | Low | Wave 1 | T-Wave1-006 appends under existing v3.0.0-rc1 section; conflict resolution defers to `manager-git` rebase. |
+| CHANGELOG merge conflict with concurrent v2.20.0-rc1 entries | Low | Wave 1 | T-Wave1-006 appends under existing v2.20.0-rc1 section; conflict resolution defers to `manager-git` rebase. |
 | Memory entry exceeds MEMORY.md 200-line limit | Low | Wave 2 | T-Wave2-004 keeps the index entry to a single line under 150 chars per moai-memory.md §MEMORY.md Line Cap. |
 | plan-auditor rejects this SPEC due to docs-only run-phase being misread as "no implementation" | Low | n/a (audit) | SPECLINT-DEBT-002 and SDF-001 precedents established that pure-governance SPECs are valid; plan-auditor scoring rubric accepts governance verification + cross-PR coordination as legitimate run-phase deliverables. |
 

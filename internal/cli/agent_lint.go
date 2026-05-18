@@ -729,12 +729,29 @@ func checkStaticTeamAgent(file string) []LintViolation {
 }
 
 // checkDuplicateMandateBlocks checks for LR-07 across all agent files.
+//
+// @MX:ANCHOR: LR-07 v2 fingerprint (SPEC-V2.20.0-RC1 hotfix)
+// @MX:REASON: pre-v2 fingerprint produced 141 false-positive violations across
+// 11 agent files by matching ANY 3 consecutive bullets with evaluation keywords
+// (e.g., Delegation Protocol bullets "Security concerns: Delegate to expert-security"
+// + "Performance issues: Delegate to expert-performance" + "Quality validation:
+// Delegate to manager-quality" tripped LR-07 even though they are routing rules,
+// not Skeptical-Evaluator Mandate blocks). v2 fingerprint requires:
+//   1. Preceding markdown header (#, ##, ### etc.) containing "Skeptical",
+//      "Evaluator Mandate", or "Evaluation Mandate" (case-insensitive).
+//   2. Within 30 lines after such header (or until next header), 3+ consecutive
+//      bullets matching the evaluation keyword regex.
+// This eliminates false positives from Delegation Protocol, Complexity Analysis,
+// SPEC Review Report, and other legitimate sections that happen to use eval keywords.
 func checkDuplicateMandateBlocks(files []string) []LintViolation {
 	var violations []LintViolation
 
-	// Skeptical-Evaluator Mandate block fingerprint
-	// Look for 3+ consecutive lines starting with "- " containing evaluation-related keywords
+	// v2 fingerprint: require Skeptical-context header preceding bullet block.
+	headerPattern := regexp.MustCompile(`(?i)^#+\s+.*(skeptical|evaluator mandate|evaluation mandate)`)
 	mandatePattern := regexp.MustCompile(`(?i)^-\s+.*(evaluate|score|rubric|evidence|assess|criteria|performance|quality|security|robustness|scalability)`)
+	nextHeaderPattern := regexp.MustCompile(`^#+\s+`)
+
+	const maxLinesAfterHeader = 30
 
 	type mandateLocation struct {
 		file string
@@ -751,20 +768,48 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		lineNum := 0
-		consecutiveCount := 0
+
+		var inSkepticalSection bool
+		var sectionHeaderLine int
+		var linesSinceHeader int
+		var consecutiveCount int
+		var blockRecordedForSection bool
 
 		for scanner.Scan() {
 			lineNum++
 			line := scanner.Text()
 
+			if headerPattern.MatchString(line) {
+				// Enter a Skeptical section.
+				inSkepticalSection = true
+				sectionHeaderLine = lineNum
+				linesSinceHeader = 0
+				consecutiveCount = 0
+				blockRecordedForSection = false
+				continue
+			}
+
+			if !inSkepticalSection {
+				continue
+			}
+
+			linesSinceHeader++
+
+			// Exit Skeptical section on any subsequent header or window cap.
+			if nextHeaderPattern.MatchString(line) || linesSinceHeader > maxLinesAfterHeader {
+				inSkepticalSection = false
+				consecutiveCount = 0
+				continue
+			}
+
 			if mandatePattern.MatchString(line) {
 				consecutiveCount++
-				if consecutiveCount == 1 {
-					// Mark the start of a potential mandate block
+				if consecutiveCount == 3 && !blockRecordedForSection {
 					mandateBlocks = append(mandateBlocks, mandateLocation{
 						file: file,
-						line: lineNum,
+						line: sectionHeaderLine,
 					})
+					blockRecordedForSection = true
 				}
 			} else {
 				consecutiveCount = 0
@@ -772,11 +817,10 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 		}
 	}
 
-	// If we found more than 1 mandate block, report duplicates
 	if len(mandateBlocks) > 1 {
 		for i, loc := range mandateBlocks {
 			if i == 0 {
-				continue // Skip first occurrence
+				continue
 			}
 			violations = append(violations, LintViolation{
 				Rule:     "LR-07",

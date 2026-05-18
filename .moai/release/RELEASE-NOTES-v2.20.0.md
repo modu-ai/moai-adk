@@ -1,6 +1,6 @@
 # MoAI-ADK v2.20.0 Release Notes — Self-Evolving Harness v2 Foundation
 
-> Target release: v2.20.0 (v3.0.0-rc1 candidate)
+> Target release: v2.20.0 (v2.20.0-rc1 candidate)
 > Authoritative SPEC: `SPEC-V3R4-HARNESS-001`
 > Breaking change ID: `BC-V3R4-HARNESS-001-CLI-RETIREMENT`
 

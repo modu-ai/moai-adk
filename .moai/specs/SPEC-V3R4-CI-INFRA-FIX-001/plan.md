@@ -9,7 +9,7 @@
 
 | Version | Date       | Author       | Description |
 |---------|------------|--------------|-------------|
-| 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. 3-Wave evidence-driven plan (W1: SIGPIPE / W2: 403 / W3: fetch-depth + skip-guard 제거). 단일 SPEC scope으로 3 sub-fix bundle. v3.0.0-rc1 release-readiness 최종 precondition. PR lifecycle: plan + run + sync = 3 PRs. |
+| 0.1.0   | 2026-05-16 | manager-spec | 초기 draft. 3-Wave evidence-driven plan (W1: SIGPIPE / W2: 403 / W3: fetch-depth + skip-guard 제거). 단일 SPEC scope으로 3 sub-fix bundle. v2.20.0-rc1 release-readiness 최종 precondition. PR lifecycle: plan + run + sync = 3 PRs. |
 
 ---
 
@@ -504,7 +504,7 @@ run-phase에서 `.moai/specs/SPEC-V3R4-CI-INFRA-FIX-001/progress.md` 생성:
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` — 12-field canonical schema SSOT
 - `CLAUDE.local.md §18.3` — merge strategy: feature/* → squash, release/* → merge commit
 - `CLAUDE.local.md §18.7` — branch protection rule (read-only reference, 본 SPEC 미변경)
-- `CLAUDE.local.md §18.8` — release process (post-merge `./scripts/release.sh v3.0.0-rc1`)
+- `CLAUDE.local.md §18.8` — release process (post-merge `./scripts/release.sh v2.20.0-rc1`)
 - `internal/spec/drift.go:120-180` — walker (참조 only, 무수정)
 - `internal/spec/drift_specid_grep_test.go:21-34` — skip guard (Wave 3-B 제거 대상)
 

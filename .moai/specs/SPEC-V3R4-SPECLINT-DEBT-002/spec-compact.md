@@ -19,7 +19,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 related_theme: "Foundation Cleanup — Schema SSOT 정립"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-SPECLINT-DEBT-002 — Compact Extract

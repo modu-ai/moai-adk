@@ -221,7 +221,7 @@ echo "metadata=$metadata_changes body=$body_changes"
 3. Run PR + Sync PR 이 main 으로 squash 머지됨.
 4. Worktree 가 disposal 됨 (`moai worktree done SPEC-V3R4-SPECLINT-DEBT-001`).
 5. 본 SPEC 의 frontmatter `status` 가 `completed` 로 업데이트됨.
-6. CHANGELOG.md 에 v3.0.0-rc1 (또는 해당 release) 엔트리에 본 SPEC 이 등록됨.
+6. CHANGELOG.md 에 v2.20.0-rc1 (또는 해당 release) 엔트리에 본 SPEC 이 등록됨.
 
 ---
 

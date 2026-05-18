@@ -120,5 +120,5 @@ All 5 Wave 2 tasks complete with PASS. PR #908 closeout final. AC-HRN-NS-001 thr
 - SPEC: `.moai/specs/SPEC-V3R4-HARNESS-NAMESPACE-001/spec.md` (status: implemented after this PR merges)
 - Plan PR: #944 (merged into main `ea1c10647`)
 - Closeout target: PR #908 (CLOSED via Option 1; branch deleted)
-- CHANGELOG entry: `CHANGELOG.md` [Unreleased] v3.0.0-rc1 Governance section
+- CHANGELOG entry: `CHANGELOG.md` [Unreleased] v2.20.0-rc1 Governance section
 - Memory: `project_v3r4_harness_namespace_001_complete.md` (auto-memory project type)

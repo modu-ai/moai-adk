@@ -1058,7 +1058,7 @@ Phases are dependency-ordered, not time-boxed. Each phase closes with a release 
 
 - **Phase 6b — Tier 2 Polish**
   T2-CLI-01 (startup profiler), T2-OUT-01 (output contract). Note: T2-SKL-02 (context:fork) is now delivered as part of SPEC-V3-SKL-001 (Phase 3 skill frontmatter bundle), and T2-SKL-03 (skill drift detection) ships via SPEC-V3-SKL-002 in Phase 5.
-  Artifact: `v3.0.0-rc.1`.
+  Artifact: `v2.20.0-rc.1`.
 
 - **Phase 7 — Migration Tool + User Docs**
   `moai migrate v2-to-v3` tool wiring, 4-locale migration guide (docs-site), release notes, CHANGELOG.

@@ -22,7 +22,7 @@ depends_on:
 breaking: false
 bc_id: []
 related_theme: "Foundation Cleanup — Status drift permanent closure"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002 — LSGF-001 side-effect status drift sweep (17건 per-SPEC remediation)
@@ -31,9 +31,9 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author        | Description |
 |---------|------------|---------------|-------------|
-| 0.3.0   | 2026-05-16 | manager-docs (sync-phase) | sync-phase 완료. status `in-progress → completed`. PR #951 (run-phase) `fba540fda` 머지로 main lint clean (0/0). lint.skip 제거 — FOLLOWUP-002 + B3 (RT-007) + B6 (WF-003) + B9 (PROJECT-HARNESS-001) sync commit 정상 적용으로 walker 정상 분류. AC-SDF002-X-001~003 all PASS. 9 Category B lint.skip 잔존 (B1/B2/B4/B5/B7/B8/B10/B11/B12) — sync-commit 전략 적용 시 chain self-drift 유발 가능성으로 영구 적용 결정. Follow-up: CI-INFRA-FIX-001 (CI fetch-depth) + v3.0.0-rc1 tagging. |
+| 0.3.0   | 2026-05-16 | manager-docs (sync-phase) | sync-phase 완료. status `in-progress → completed`. PR #951 (run-phase) `fba540fda` 머지로 main lint clean (0/0). lint.skip 제거 — FOLLOWUP-002 + B3 (RT-007) + B6 (WF-003) + B9 (PROJECT-HARNESS-001) sync commit 정상 적용으로 walker 정상 분류. AC-SDF002-X-001~003 all PASS. 9 Category B lint.skip 잔존 (B1/B2/B4/B5/B7/B8/B10/B11/B12) — sync-commit 전략 적용 시 chain self-drift 유발 가능성으로 영구 적용 결정. Follow-up: CI-INFRA-FIX-001 (CI fetch-depth) + v2.20.0-rc1 tagging. |
 | 0.2.0   | 2026-05-16 | manager-develop (run-phase) | run-phase 진행 중: status draft → in-progress. Wave 2-A (5건 Category A sync-up) + Wave 2-B-sync (3건 sync 커밋) + Wave 2-B-skip (12건 lint.skip) 완료. lint.skip 자체도 본 SPEC에 추가 (walker main-only 스캔으로 in-progress가 planned로 보임). 동일 원인. |
-| 0.1.0   | 2026-05-16 | manager-spec  | 초기 draft. SPEC-V3R4-LINT-SPECID-GREP-FIX-001 (PR #947+#948+#949, main `139c4d9d0`) 머지 후 walker word-boundary 매칭 격상이 substring noise를 제거하면서 그 동안 가려져 있던 17건의 실제 status drift가 노출됨. SDF-001 (Pattern H closeout)의 직계 후속. Category A 5건(forward sync-up) + Category B 12건(per-SPEC analysis: sync-commit / lint.skip / frontmatter downgrade) 두 단계로 처리. BODP 평가: ¬a ¬b ¬c → base `origin/main` fresh branch (plan-in-main, worktree 미사용 per `feedback_worktree_never_use`). 본 SPEC + CI-INFRA-FIX-001은 v3.0.0-rc1 release readiness gate. |
+| 0.1.0   | 2026-05-16 | manager-spec  | 초기 draft. SPEC-V3R4-LINT-SPECID-GREP-FIX-001 (PR #947+#948+#949, main `139c4d9d0`) 머지 후 walker word-boundary 매칭 격상이 substring noise를 제거하면서 그 동안 가려져 있던 17건의 실제 status drift가 노출됨. SDF-001 (Pattern H closeout)의 직계 후속. Category A 5건(forward sync-up) + Category B 12건(per-SPEC analysis: sync-commit / lint.skip / frontmatter downgrade) 두 단계로 처리. BODP 평가: ¬a ¬b ¬c → base `origin/main` fresh branch (plan-in-main, worktree 미사용 per `feedback_worktree_never_use`). 본 SPEC + CI-INFRA-FIX-001은 v2.20.0-rc1 release readiness gate. |
 
 ---
 
@@ -214,7 +214,7 @@ The fix SHALL respect the SPEC discipline — **no other SPEC's content or imple
 - **Author**: manager-spec (이 SPEC의 plan-phase 작성자, 본 세션 orchestrator 위임)
 - **Implementer (run-phase)**: manager-develop (per-SPEC analysis + frontmatter apply)
 - **Validator**: plan-auditor (plan-phase audit, target PASS ≥0.85), `moai spec lint --strict` (final binary AC)
-- **End user**: v3.0.0-rc1 release gatekeeper — 본 SPEC + CI-INFRA-FIX-001 모두 closure 후 tag 가능.
+- **End user**: v2.20.0-rc1 release gatekeeper — 본 SPEC + CI-INFRA-FIX-001 모두 closure 후 tag 가능.
 
 ---
 

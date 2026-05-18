@@ -27,7 +27,7 @@ tags: "hook, resilience, circuit-breaker, retry, health-check, P2"
 | Version | Date       | Author | Description                            |
 |---------|------------|--------|----------------------------------------|
 | 0.1.0   | 2026-02-04 | GOOS   | Initial SPEC creation                  |
-| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by SPEC-V3R2-RT-002 (Permission Stack 8-tier resolver + non-interactive deny-with-log + fork depth-4 degrade-to-bubble) + SPEC-V3R2-RT-003 (Sandbox isolation + BackendUnavailable no-silent-fallback) + SPEC-V3R2-RT-006 (subagent_stop 500ms tmux pane kill timeout — P-H02 CRITICAL fix) — ~75% scope overlap.** v3.0.0-rc1 release-readiness 정합성 정리. circuit-breaker/retry/health-check residual은 별도 SPEC 필요 시 신규 작성 (현재는 Pattern A observability gate + 5-layer permission tier로 충분). |
+| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by SPEC-V3R2-RT-002 (Permission Stack 8-tier resolver + non-interactive deny-with-log + fork depth-4 degrade-to-bubble) + SPEC-V3R2-RT-003 (Sandbox isolation + BackendUnavailable no-silent-fallback) + SPEC-V3R2-RT-006 (subagent_stop 500ms tmux pane kill timeout — P-H02 CRITICAL fix) — ~75% scope overlap.** v2.20.0-rc1 release-readiness 정합성 정리. circuit-breaker/retry/health-check residual은 별도 SPEC 필요 시 신규 작성 (현재는 Pattern A observability gate + 5-layer permission tier로 충분). |
 
 ---
 

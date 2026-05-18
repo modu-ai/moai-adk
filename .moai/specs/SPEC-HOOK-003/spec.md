@@ -28,7 +28,7 @@ tags: "hook, security, ast-grep, scanning, vulnerability-detection, P1"
 | Version | Date       | Author | Description                            |
 |---------|------------|--------|----------------------------------------|
 | 0.1.0   | 2026-02-04 | GOOS   | Initial SPEC creation                  |
-| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by SPEC-V3R2-RT-003 (Sandbox Execution Layer Bubblewrap/Seatbelt/Docker — OWASP P-C03 fix) + SPEC-V3R2-ORC-002 `agent_lint` REQ-033 (sandbox missing without justification → error) + SPEC-V3R2-RT-002 Permission Stack — ~80% scope overlap.** v3.0.0-rc1 release-readiness 정합성 정리. 본 SPEC의 원래 security/scanning hook scope는 RT-003 multi-platform sandbox + RT-002 8-tier permission + ORC-002 lint enforcement로 absorbed. ast-grep vulnerability scanning residual은 SPEC-ASTG-UPGRADE-001 (v2.x Legacy, separate track)에서 처리. |
+| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by SPEC-V3R2-RT-003 (Sandbox Execution Layer Bubblewrap/Seatbelt/Docker — OWASP P-C03 fix) + SPEC-V3R2-ORC-002 `agent_lint` REQ-033 (sandbox missing without justification → error) + SPEC-V3R2-RT-002 Permission Stack — ~80% scope overlap.** v2.20.0-rc1 release-readiness 정합성 정리. 본 SPEC의 원래 security/scanning hook scope는 RT-003 multi-platform sandbox + RT-002 8-tier permission + ORC-002 lint enforcement로 absorbed. ast-grep vulnerability scanning residual은 SPEC-ASTG-UPGRADE-001 (v2.x Legacy, separate track)에서 처리. |
 
 ---
 

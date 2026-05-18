@@ -18,7 +18,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 related_theme: "spec-lint Foundation Cleanup — bootstrapping bug 해소"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 — spec-lint git-implied status가 chore(spec) sweep commit을 건너뛰도록 수정
@@ -135,7 +135,7 @@ PR #930 (`bdcb57f8d`) 머지 직후 `moai spec lint --strict` 출력에 나타�
 
 ### 3.5 Optional Feature
 
-**REQ-LSCSK-010**: Where the operations team requires externalized configuration of skip patterns, the system shall expose the skip pattern list via `.moai/config/sections/spec-lint.yaml` `git_status_skip_patterns:` array. For v3.0.0-rc1 the pattern set is hard-coded in Go source; externalization is deferred (see plan.md §7 OQ2).
+**REQ-LSCSK-010**: Where the operations team requires externalized configuration of skip patterns, the system shall expose the skip pattern list via `.moai/config/sections/spec-lint.yaml` `git_status_skip_patterns:` array. For v2.20.0-rc1 the pattern set is hard-coded in Go source; externalization is deferred (see plan.md §7 OQ2).
 
 ---
 
@@ -172,7 +172,7 @@ PR #930 (`bdcb57f8d`) 머지 직후 `moai spec lint --strict` 출력에 나타�
 | REQ-LSCSK-009 | AC-LSCSK-001 (no frontmatter edits required) |
 | REQ-LSCSK-010 | (deferred — verified by plan.md §7 OQ2 documentation, not by automated AC) |
 
-각 REQ는 최소 1개 AC와 매핑되고, 각 AC는 최소 1개 REQ와 매핑된다 (REQ-LSCSK-010 제외 — optional feature는 v3.0.0-rc1 범위 밖).
+각 REQ는 최소 1개 AC와 매핑되고, 각 AC는 최소 1개 REQ와 매핑된다 (REQ-LSCSK-010 제외 — optional feature는 v2.20.0-rc1 범위 밖).
 
 ---
 

@@ -421,10 +421,11 @@ description: |
 // Test LR-07: Duplicate mandate blocks
 func TestCheckDuplicateMandateBlocks(t *testing.T) {
 	t.Run("single mandate block should pass", func(t *testing.T) {
+		// LR-07 v2 fingerprint: requires Skeptical-context header preceding eval bullets.
 		content := `---
 name: test
 ---
-## Evaluation
+## Skeptical Evaluation Mandate
 - Evaluate code quality
 - Score readability
 - Assess performance`
@@ -443,10 +444,11 @@ name: test
 	})
 
 	t.Run("duplicate mandate blocks should fail", func(t *testing.T) {
+		// Both files must include Skeptical-context header for LR-07 v2 to fire.
 		content1 := `---
 name: test1
 ---
-## Evaluation
+## Skeptical Evaluation Mandate
 - Evaluate code quality
 - Score readability
 - Assess performance`
@@ -454,7 +456,7 @@ name: test1
 		content2 := `---
 name: test2
 ---
-## Evaluation
+## Skeptical Evaluation Mandate
 - Evaluate security
 - Score robustness
 - Assess scalability`
@@ -477,6 +479,59 @@ name: test2
 
 		if violations[0].Rule != "LR-07" {
 			t.Errorf("rule = %s, want LR-07", violations[0].Rule)
+		}
+	})
+
+	// Regression guard (SPEC-V2.20.0-RC1 hotfix): Delegation Protocol bullets
+	// share eval keywords with mandate blocks (security/performance/quality) but
+	// MUST NOT trip LR-07 v2 fingerprint because the preceding header is
+	// "## Delegation Protocol", not a Skeptical-context header.
+	t.Run("delegation protocol bullets should not trip LR-07", func(t *testing.T) {
+		content := `---
+name: test-delegate
+---
+## Delegation Protocol
+- SPEC unclear: Delegate to manager-spec
+- Security concerns: Delegate to expert-security
+- Performance issues: Delegate to expert-performance
+- Quality validation: Delegate to manager-quality
+- Git operations: Delegate to manager-git`
+
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "agent.md")
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("write agent file: %v", err)
+		}
+
+		violations := checkDuplicateMandateBlocks([]string{path})
+
+		if len(violations) != 0 {
+			t.Errorf("delegation protocol tripped LR-07: got %d violations, want 0", len(violations))
+		}
+	})
+
+	// Regression guard: Complexity Analysis bullets reuse "score" keyword
+	// three times in different complexity bands — pre-v2 fingerprint mis-flagged
+	// these as mandate blocks. v2 requires Skeptical-context header.
+	t.Run("complexity analysis bullets should not trip LR-07", func(t *testing.T) {
+		content := `---
+name: test-complexity
+---
+### Complexity Analysis
+- SIMPLE (score < 3): Direct interview
+- MEDIUM (score 3-6): Lightweight planning
+- COMPLEX (score > 6): Full decomposition`
+
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "agent.md")
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("write agent file: %v", err)
+		}
+
+		violations := checkDuplicateMandateBlocks([]string{path})
+
+		if len(violations) != 0 {
+			t.Errorf("complexity analysis tripped LR-07: got %d violations, want 0", len(violations))
 		}
 	})
 }

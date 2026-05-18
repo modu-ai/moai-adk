@@ -224,7 +224,7 @@ SPECLINT-DEBT-001 (sweep + skip 등록)
             └─ STATUS-DRIFT-FOLLOWUP-001 (본 SPEC; status 필드 동기화로 chain 완결)
 ```
 
-본 SPEC은 4단계 cleanup chain의 마지막 wave다. 본 SPEC 머지 후 lint --strict는 0 ERROR + 0 WARNING 상태가 되어 v3.0.0-rc1 기준선이 된다.
+본 SPEC은 4단계 cleanup chain의 마지막 wave다. 본 SPEC 머지 후 lint --strict는 0 ERROR + 0 WARNING 상태가 되어 v2.20.0-rc1 기준선이 된다.
 
 ---
 

@@ -36,7 +36,7 @@ tags: "v3r2, spec, ears, hierarchical-acceptance, agent-as-judge"
 | 0.1.0 | 2026-04-23 | Wave 4 SPEC Writer | Initial draft from Agent-as-a-Judge R1 §9 hierarchical shape |
 | 0.1.1 | 2026-05-10 | manager-spec (Batch 3 fix) | Sync spec.md §6 AC count 14→17 to match acceptance.md §3 hierarchical authoring (added AC-SPC-001-15/16/17 as flat entries). |
 | 0.1.2 | 2026-05-13 | manager-spec (Run-phase D) | Run phase Wave A-D 모두 완료 (PR #849 M2 + PR #870 M5 + PR #925 plan-audit minor defects D1/D2/D3 fix). 4/5 CON-002 safety layer PASS (Frozen Guard + Canary 10-SPEC re-parse + Contradiction Detector + Rate Limiter 1/3 used). Layer 5 Human Oversight = plan-audit BYPASSED + run-phase admin merge (PR #870 author Goos Kim). FROZEN-zone CONST-V3R2-001 amendment 완료, hierarchical AC schema 영구 도입. |
-| 0.2.0 | 2026-05-18 | orchestrator | Lifecycle COMPLETE sync — frontmatter status `in-progress → completed`. PR #810 plan + #849 run M2 + #870 run M5 + #925 plan-audit chore 4건 모두 MERGED. CHANGELOG entry 추가. spec-assembly 등 다운스트림 SPEC의 EARS 검증 framework 안정화. v3.0.0-rc1 release-blocker 6 P0 중 1번째 완료. |
+| 0.2.0 | 2026-05-18 | orchestrator | Lifecycle COMPLETE sync — frontmatter status `in-progress → completed`. PR #810 plan + #849 run M2 + #870 run M5 + #925 plan-audit chore 4건 모두 MERGED. CHANGELOG entry 추가. spec-assembly 등 다운스트림 SPEC의 EARS 검증 framework 안정화. v2.20.0-rc1 release-blocker 6 P0 중 1번째 완료. |
 
 ---
 

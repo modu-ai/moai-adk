@@ -37,7 +37,7 @@
 - **항상 skip**: `^chore(spec):` (대소문자 무관, 옵션으로 `chore(specs):` 도 포함)
 - **추가 skip 후보 (plan.md §7 OQ3에서 결정)**: `^sync(spec`, `^docs(sync)` — 후자는 이미 `ClassifyPRTitle`이 `(sync-merge, "completed")`를 반환하므로 skip 불요. `sync(spec)` 는 transitions.go에 없는 prefix이므로 unknown 분류되며 fallback의 영향을 받지 않는다 → skip 불요로 판정 (research.md §3 분석 기반).
 
-따라서 v3.0.0-rc1 에서는 skip pattern을 **`chore(spec):` 단일 패턴** (case-insensitive, `chore(specs):` 변형 포함)으로 한정한다. externalization은 deferred (§7 OQ2).
+따라서 v2.20.0-rc1 에서는 skip pattern을 **`chore(spec):` 단일 패턴** (case-insensitive, `chore(specs):` 변형 포함)으로 한정한다. externalization은 deferred (§7 OQ2).
 
 ### 1.3 Walk Depth (N)
 
@@ -258,7 +258,7 @@ func TestClassifyPRTitle_ChoreSpecUnchanged(t *testing.T) {
 
 ### OQ2: Skip Pattern 외부 설정화
 
-**Decision**: Hard-coded in Go source for v3.0.0-rc1. Externalization to `.moai/config/sections/spec-lint.yaml` `git_status_skip_patterns:` is **deferred** to future SPEC.
+**Decision**: Hard-coded in Go source for v2.20.0-rc1. Externalization to `.moai/config/sections/spec-lint.yaml` `git_status_skip_patterns:` is **deferred** to future SPEC.
 
 **Rationale**:
 
@@ -270,7 +270,7 @@ func TestClassifyPRTitle_ChoreSpecUnchanged(t *testing.T) {
 
 ### OQ3: `sync(spec...)` 도 skip 대상인가?
 
-**Decision**: 아니오. v3.0.0-rc1 에서는 `chore(spec):` 단일 패턴만 skip한다.
+**Decision**: 아니오. v2.20.0-rc1 에서는 `chore(spec):` 단일 패턴만 skip한다.
 
 **Rationale** (research.md §3 분석 기반):
 

@@ -13,7 +13,7 @@
 
 ## 1. Why This SPEC Exists
 
-### 1.1 v3.0.0-rc1 Release Gate 의 Final Precondition
+### 1.1 v2.20.0-rc1 Release Gate 의 Final Precondition
 
 `SPEC-V3R4-LINT-SPECID-GREP-FIX-001` (LSGF-001) + `SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002` (FOLLOWUP-002) 두 SPEC closure 후 main HEAD `9be0ef03b` 에서 `moai spec lint --strict` 가 `✓ No findings (0/0)` 를 달성했다. 이는 lint correctness 의 release readiness 확보.
 
@@ -22,7 +22,7 @@
 - spec-status-auto-sync workflow 의 403 push failure (NAMESPACE-001 force-push 후)
 - LSGF-001 PR #948 의 `GITHUB_ACTIONS` env workaround (drift_specid_grep_test.go skip guard)
 
-본 SPEC 은 이 3 결함을 **단일 SPEC scope** 으로 묶어 영구 해소. v3.0.0-rc1 태그 발행의 마지막 precondition 충족.
+본 SPEC 은 이 3 결함을 **단일 SPEC scope** 으로 묶어 영구 해소. v2.20.0-rc1 태그 발행의 마지막 precondition 충족.
 
 ### 1.2 왜 1개 SPEC 으로 묶는가 (vs 3 SPEC 분리)
 
@@ -33,11 +33,11 @@
 
 **Pros of 분리**: per-defect 독립 verification, plan-auditor 부하 분산.
 
-**Cons of 분리**: 3 plan-PR + 3 run-PR + 3 sync-PR = 9 PRs. 각각 lint baseline 회귀 위험 + branch base 관리 부담. 3 SPEC 모두 v3.0.0-rc1 precondition 이므로 release tag 까지 9 PR 머지 대기.
+**Cons of 분리**: 3 plan-PR + 3 run-PR + 3 sync-PR = 9 PRs. 각각 lint baseline 회귀 위험 + branch base 관리 부담. 3 SPEC 모두 v2.20.0-rc1 precondition 이므로 release tag 까지 9 PR 머지 대기.
 
 **1 SPEC 통합**: 3 plan + 3 run-Wave + 3 sync = 3 PRs. 단일 lint baseline 회귀 검증. plan-auditor 단일 review.
 
-**Decision**: 1 SPEC 통합. cohesion 높음 (모두 CI infrastructure layer), 의존성 적음 (sub-fix 간 mutually independent), v3.0.0-rc1 gate 동일 목적.
+**Decision**: 1 SPEC 통합. cohesion 높음 (모두 CI infrastructure layer), 의존성 적음 (sub-fix 간 mutually independent), v2.20.0-rc1 gate 동일 목적.
 
 ### 1.3 LSGF-001 / FOLLOWUP-002 와의 lineage
 
@@ -48,7 +48,7 @@ LSGF-001 (walker fix)          →  17 drift exposed  →  FOLLOWUP-002 (17→0 
                                ↓
                                CI-INFRA-FIX-001 (본 SPEC) — workaround 영구 제거
                                ↓
-                               v3.0.0-rc1 release gate 충족
+                               v2.20.0-rc1 release gate 충족
 ```
 
 본 SPEC 은 LSGF-001 의 직접 후속 (workaround 제거) + FOLLOWUP-002 와 병렬 release-gate sibling.
@@ -441,7 +441,7 @@ local probe 를 추가 검증 (e.g., commit count 비교) 으로 강화.
 
 ### 5.4 SemVer Bump
 
-본 SPEC 자체는 SemVer 영향 없음 (CI infra only, no API/CLI change). 단, 본 SPEC closure 가 v3.0.0-rc1 release tag 의 precondition.
+본 SPEC 자체는 SemVer 영향 없음 (CI infra only, no API/CLI change). 단, 본 SPEC closure 가 v2.20.0-rc1 release tag 의 precondition.
 
 ---
 

@@ -280,10 +280,10 @@ gh run watch "$RUN_ID"
 Or **When** (release branch PR trigger):
 
 ```bash
-git checkout -b release/v3.0.0-rc1 origin/main
-echo "# Release v3.0.0-rc1" >> CHANGELOG.md
-git add CHANGELOG.md && git commit -m "release: v3.0.0-rc1 bump"
-git push -u origin release/v3.0.0-rc1
+git checkout -b release/v2.20.0-rc1 origin/main
+echo "# Release v2.20.0-rc1" >> CHANGELOG.md
+git add CHANGELOG.md && git commit -m "release: v2.20.0-rc1 bump"
+git push -u origin release/v2.20.0-rc1
 gh pr create --base main
 ```
 
@@ -410,7 +410,7 @@ Items explicitly NOT tested by these scenarios (deferred):
 - review bot reactivation (codex / gemini / glm)
 - macOS-latest required check restoration
 - GitHub Actions → external CI provider migration
-- v3.0.0-rc1 release tag publication
+- v2.20.0-rc1 release tag publication
 - claude.yml or review-quality-gate.yml auto-removal
 - CI cache tuning (Go module cache TTL)
 

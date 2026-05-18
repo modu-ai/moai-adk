@@ -12,9 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -101,25 +99,14 @@ func cleanStaleLock(lockPath string) {
 	}
 }
 
-// isProcessAlive reports whether a process with the given PID is alive.
-// Uses syscall.Kill(pid, 0) on Unix (signal 0 checks existence without killing).
-// EPERM means the process exists but is owned by another user — still alive.
-// ESRCH means the process does not exist.
-// On Windows, always returns true (conservative; avoids platform-specific APIs).
-func isProcessAlive(pid int) bool {
-	if runtime.GOOS == "windows" {
-		return true // conservative: assume alive to avoid stale-lock false-positive
-	}
-	err := syscall.Kill(pid, 0)
-	if err == nil {
-		return true // process exists and we can signal it
-	}
-	if errors.Is(err, syscall.EPERM) {
-		return true // process exists but owned by different user
-	}
-	// syscall.ESRCH: no such process → stale
-	return false
-}
+// isProcessAlive is defined in platform-specific files:
+//   - update_cleanup_unix.go    (build tag: !windows) — uses syscall.Kill(pid, 0)
+//   - update_cleanup_windows.go (build tag: windows)  — conservative no-op
+//
+// SPEC-V2.20.0-RC1 hotfix: extracted to resolve `syscall.Kill undefined` on
+// Windows compilation. The previous `if runtime.GOOS == "windows" { return }`
+// guard was insufficient because the Go compiler still resolves syscall.Kill
+// at compile time for the Windows target before runtime branch elimination.
 
 // ---------------------------------------------------------------------------
 // M2 — Deprecated path detection (REQ-UPC-007, REQ-UPC-024, REQ-UPC-025)

@@ -20,7 +20,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 related_theme: "spec-lint Foundation Cleanup — workaround 영구 제거"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 lint:
   skip:
     - StatusGitConsistency

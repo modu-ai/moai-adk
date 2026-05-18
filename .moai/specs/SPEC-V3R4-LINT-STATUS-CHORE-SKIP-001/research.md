@@ -166,7 +166,7 @@ grep -lR "lint.skip" .moai/specs/ | xargs grep -l "StatusGitConsistency" | wc -l
 51건 lint.skip 제거는 본 SPEC scope 밖인 이유:
 
 1. **검증 부담**: 각 lint.skip 제거 시 해당 SPEC이 실제로 0 WARNING 인지 확인 필요 → 51건 × 검증 = 큰 작업량
-2. **회귀 위험**: 본 SPEC fix가 모든 케이스를 커버한다는 보장은 v3.0.0-rc1 출시 후 1주일 anchor 확보 후 결론 가능
+2. **회귀 위험**: 본 SPEC fix가 모든 케이스를 커버한다는 보장은 v2.20.0-rc1 출시 후 1주일 anchor 확보 후 결론 가능
 3. **분할 정복**: lint engine fix (본 SPEC) → 1주일 anchor → cleanup SPEC (별도) 순서가 안전
 
 별도 cleanup SPEC 후보: `SPEC-V3R4-LINT-SKIP-CLEANUP-001` (제안, 본 SPEC 머지 + 1주 anchor 후 plan-phase 진입).
@@ -246,7 +246,7 @@ PR #930 은 PR #917 + #921 (선행 SPEC sync) 머지 이후 잔존 status drift 
 
 **Rejected — Rationale (Deferred)**:
 
-- v3.0.0-rc1 scope에서 외부 설정화는 추가 회귀 위험 — config 파일 자체가 새 lint 대상이 됨
+- v2.20.0-rc1 scope에서 외부 설정화는 추가 회귀 위험 — config 파일 자체가 새 lint 대상이 됨
 - 현재 skip pattern은 `chore(spec):` 단일 → externalization 의 이득 < 비용
 - KISS principle — 미래 패턴 확장 시점에 externalization 결정 (plan.md §7 OQ2)
 - 본 SPEC은 walker filter (Alternative C) 만 적용. Externalization은 별도 follow-up SPEC.

@@ -24,7 +24,7 @@ bc_id:
   - BC-V3R4-HARNESS-001-CLI-RETIREMENT
 lifecycle: spec-anchored
 related_theme: "Self-Evolving Harness v2 — Foundation Wave"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-HARNESS-001 — Unified Self-Evolving Harness Foundation

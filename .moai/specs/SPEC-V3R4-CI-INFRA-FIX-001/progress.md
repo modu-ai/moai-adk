@@ -1,6 +1,6 @@
 # SPEC-V3R4-CI-INFRA-FIX-001 — Sync-Phase Progress
 
-> **Status**: sync-phase COMPLETE. Lifecycle COMPLETE. v3.0.0-rc1 release-readiness final precondition satisfied.
+> **Status**: sync-phase COMPLETE. Lifecycle COMPLETE. v2.20.0-rc1 release-readiness final precondition satisfied.
 > **Run-PR**: #955 — `feat/SPEC-V3R4-CI-INFRA-FIX-001` (MERGED at `3e3953a5c` 2026-05-16T11:13:28Z)
 > **Base main**: `3e3953a5c` (run-PR #955 squash-merged)
 > **Sync-PR**: #956 (PENDING OPEN)
@@ -85,10 +85,10 @@ main 머지 후 재실행.
 | sync-PR open + auto-merge SQUASH | ⏳ NEXT | Branch: `sync/SPEC-V3R4-CI-INFRA-FIX-001`, base: `main` |
 | AC-CIIF-002 verification (spec-status-auto-sync) | ⏳ PENDING | Post-merge workflow trigger → natural verification |
 | AC-CIIF-004 verification (moai spec lint --strict 0/0) | ⏳ PENDING | Post-merge main HEAD execution |
-| v3.0.0-rc1 release tag | ⏳ DEFERRED | Per CLAUDE.local.md §18.8, separate step after sync-PR merge |
+| v2.20.0-rc1 release tag | ⏳ DEFERRED | Per CLAUDE.local.md §18.8, separate step after sync-PR merge |
 
 ## Follow-up Items
 
 1. **SPEC-V3R4-AIREVIEW-CLI-FIX-001 candidate** — 4 AI review workflow CLI infrastructure (Claude CLI / codex command) scooped by SIGPIPE fix. Pre-plan phase ready.
-2. **v3.0.0-rc1 release** — Execute `./scripts/release.sh v3.0.0-rc1` after sync-PR merge (CLAUDE.local.md §18.8).
+2. **v2.20.0-rc1 release** — Execute `./scripts/release.sh v2.20.0-rc1` after sync-PR merge (CLAUDE.local.md §18.8).
 3. **Post-release docs-site 4-locale sync** — PR separate from release (§17 docs-site rules).

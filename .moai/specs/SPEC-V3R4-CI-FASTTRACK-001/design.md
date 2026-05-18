@@ -384,7 +384,7 @@ to apply) 를 엄격 준수. REQ-CIFT-008 본문이 verbatim template.
   conflict probability 0 으로 평가.
 - **SPEC-WORKTREE-DOCS-001** (sibling): documentation-only SPEC, 본 SPEC 과 file
   scope overlap 없음.
-- **미래 release SPEC (v3.0.0-rc1)**: 본 SPEC 의 release-pr-multi-os.yml 이 tag-push
+- **미래 release SPEC (v2.20.0-rc1)**: 본 SPEC 의 release-pr-multi-os.yml 이 tag-push
   트리거를 포함하므로, release tag 발행 시점에 release-PR run 이 sequence 안에 자연 통합됨.
   본 SPEC 이 release readiness 의 precondition.
 
