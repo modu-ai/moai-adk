@@ -204,7 +204,7 @@ Both checks MUST pass for options 1-3.
 
 ### AC-HRN-NS-008 (usage-log retention reference in CHANGELOG)
 
-**Given** the run-phase T-Wave1-006 appends a v3.0.0-rc1 CHANGELOG entry for this SPEC,
+**Given** the run-phase T-Wave1-006 appends a v2.20.0-rc1 CHANGELOG entry for this SPEC,
 **When** the orchestrator probes:
 ```bash
 grep -A 5 'SPEC-V3R4-HARNESS-NAMESPACE-001' CHANGELOG.md | grep -iE '(retention|7.day|rolling.window|REQ-HRN-NS-010)' \
@@ -271,7 +271,7 @@ A developer experimenting with the harness may have created `.moai/harness/exper
 
 **Resolution**: T-Wave1-003 is a non-destructive probe — flag the non-canonical path in the audit report, do NOT auto-remove. Document in `.moai/reports/governance/SPEC-V3R4-HARNESS-NAMESPACE-001-wave1-<DATE>.md` as `EXPERIMENTAL_PATH_DETECTED`. AC-HRN-NS-004 still PASSES because the probe surface ALSO documents the canonical set; non-canonical paths trigger a soft warning only.
 
-**Note**: If the project is intended for `v3.0.0-rc1` release, the experimental paths SHOULD be cleaned up before release — but that cleanup is owned by the release process, not this SPEC.
+**Note**: If the project is intended for `v2.20.0-rc1` release, the experimental paths SHOULD be cleaned up before release — but that cleanup is owned by the release process, not this SPEC.
 
 ---
 
@@ -293,7 +293,7 @@ Between plan-phase verification (Step 3 of this SPEC) and run-phase verification
 
 ### EC-004: CHANGELOG merge conflict during T-Wave1-006
 
-Concurrent v3.0.0-rc1 entries from other governance SPECs may produce merge conflicts in `CHANGELOG.md`.
+Concurrent v2.20.0-rc1 entries from other governance SPECs may produce merge conflicts in `CHANGELOG.md`.
 
 **Detection**: `git merge` or rebase fails during run-phase PR creation.
 
@@ -322,7 +322,7 @@ This SPEC's lifecycle is COMPLETE when ALL of the following hold:
 1. Plan PR merged into main (squash, per spec-workflow.md § Step 1).
 2. Run PR merged into main with all 8 ACs satisfied (binary PASS), per spec-workflow.md § Step 2.
 3. PR #908 state = `CLOSED`, branch `feat/cmd-harness-slash-wrapper` deleted from origin.
-4. CHANGELOG v3.0.0-rc1 entry present, references this SPEC + retention policy.
+4. CHANGELOG v2.20.0-rc1 entry present, references this SPEC + retention policy.
 5. `moai spec lint --strict` on the entire repo passes (final regression check at sync-phase).
 6. Sync PR merged into main (squash) with status transition `in-progress` → `implemented` (run-phase) → `completed` (sync-phase).
 7. Memory entry `project_v3r4_harness_namespace_001_complete.md` persisted with auto-memory taxonomy compliance.

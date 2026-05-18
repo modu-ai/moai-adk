@@ -21,7 +21,7 @@ depends_on: []
 breaking: false
 bc_id: []
 related_theme: "Foundation Cleanup — Lint walker precision"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-LINT-SPECID-GREP-FIX-001 — walker SPEC-ID grep precision fix

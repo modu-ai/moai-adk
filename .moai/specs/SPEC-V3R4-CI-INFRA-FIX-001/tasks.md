@@ -461,7 +461,7 @@ echo "Skip guard removed: $SKIP_GUARD (expected: 0)"
 - HISTORY 0.2.0 entry 추가:
 
 ```
-| 0.2.0 | 2026-05-16 | manager-docs | Sync-phase 완료. status `draft → completed`. 3 sub-fix 모두 main 적용: (A) detect-language awk replacement / (B) spec-status-auto-sync permissions / (C) ci.yml fetch-depth: 0 + drift test skip guard 제거. AC-CIIF-001~004 모두 PASS. v3.0.0-rc1 release-readiness 최종 precondition 충족. |
+| 0.2.0 | 2026-05-16 | manager-docs | Sync-phase 완료. status `draft → completed`. 3 sub-fix 모두 main 적용: (A) detect-language awk replacement / (B) spec-status-auto-sync permissions / (C) ci.yml fetch-depth: 0 + drift test skip guard 제거. AC-CIIF-001~004 모두 PASS. v2.20.0-rc1 release-readiness 최종 precondition 충족. |
 ```
 
 **Commit message**:
@@ -475,7 +475,7 @@ sync(spec): SPEC-V3R4-CI-INFRA-FIX-001 lifecycle COMPLETE — 3-defect bundle fi
 
 AC-CIIF-001..004 모두 PASS.
 `moai spec lint --strict` → 0 error(s), 0 warning(s) (regression baseline 유지).
-v3.0.0-rc1 release tagging 최종 precondition 충족.
+v2.20.0-rc1 release tagging 최종 precondition 충족.
 
 🗿 MoAI <email@mo.ai.kr>
 ```
@@ -486,10 +486,10 @@ v3.0.0-rc1 release tagging 최종 precondition 충족.
 
 ```markdown
 ### Fixed
-- **CI**: SPEC-V3R4-CI-INFRA-FIX-001 — GitHub Actions CI infrastructure 3 결함 영구 해소: (A) `.github/actions/detect-language/action.yml` SIGPIPE remediation (head -1 → awk NR==1{print;exit}); (B) `.github/workflows/spec-status-auto-sync.yml` workflow-level permissions block 추가 (contents+issues: write); (C) `.github/workflows/ci.yml` 5 actions/checkout step 모두 `fetch-depth: 0` 명시 + `internal/spec/drift_specid_grep_test.go` 의 `GITHUB_ACTIONS` env skip guard 제거. v3.0.0-rc1 release-readiness 최종 precondition.
+- **CI**: SPEC-V3R4-CI-INFRA-FIX-001 — GitHub Actions CI infrastructure 3 결함 영구 해소: (A) `.github/actions/detect-language/action.yml` SIGPIPE remediation (head -1 → awk NR==1{print;exit}); (B) `.github/workflows/spec-status-auto-sync.yml` workflow-level permissions block 추가 (contents+issues: write); (C) `.github/workflows/ci.yml` 5 actions/checkout step 모두 `fetch-depth: 0` 명시 + `internal/spec/drift_specid_grep_test.go` 의 `GITHUB_ACTIONS` env skip guard 제거. v2.20.0-rc1 release-readiness 최종 precondition.
 
 ### Fixed (English)
-- **CI**: SPEC-V3R4-CI-INFRA-FIX-001 — Permanently resolved 3 GitHub Actions CI infrastructure defects: (A) `.github/actions/detect-language/action.yml` SIGPIPE remediation (head -1 → awk NR==1{print;exit}); (B) `.github/workflows/spec-status-auto-sync.yml` workflow-level permissions block (contents+issues: write); (C) `.github/workflows/ci.yml` 5 actions/checkout steps explicit `fetch-depth: 0` + removed `GITHUB_ACTIONS` env skip guard from `internal/spec/drift_specid_grep_test.go`. Final precondition for v3.0.0-rc1 release-readiness.
+- **CI**: SPEC-V3R4-CI-INFRA-FIX-001 — Permanently resolved 3 GitHub Actions CI infrastructure defects: (A) `.github/actions/detect-language/action.yml` SIGPIPE remediation (head -1 → awk NR==1{print;exit}); (B) `.github/workflows/spec-status-auto-sync.yml` workflow-level permissions block (contents+issues: write); (C) `.github/workflows/ci.yml` 5 actions/checkout steps explicit `fetch-depth: 0` + removed `GITHUB_ACTIONS` env skip guard from `internal/spec/drift_specid_grep_test.go`. Final precondition for v2.20.0-rc1 release-readiness.
 ```
 
 ### W-Sync-T3: sync-PR open with auto-merge
@@ -500,7 +500,7 @@ v3.0.0-rc1 release tagging 최종 precondition 충족.
 - **Base**: `main`
 - **Head**: `sync/SPEC-V3R4-CI-INFRA-FIX-001`
 - **Title**: `sync(spec): SPEC-V3R4-CI-INFRA-FIX-001 lifecycle COMPLETE — 3-defect bundle fix main 적용`
-- **Body**: AC verification matrix + lint regression baseline check + v3.0.0-rc1 release readiness 보고
+- **Body**: AC verification matrix + lint regression baseline check + v2.20.0-rc1 release readiness 보고
 - **Auto-merge**: `gh pr merge <PR> --auto --squash --delete-branch`
 
 ### W-Sync-T4: sync-PR CI green + AC-CIIF-002 자연 검증
@@ -567,7 +567,7 @@ W3-T1 (read ci.yml) → W3-T2 (add fetch-depth: 0) → W3-T2 commit
 - spec-status-auto-sync.yml 의 fork PR security model 변경 — `pull_request_target` 도입 검토 별도.
 - detect-language action 의 16-language detection 정확도 audit — 별도 SPEC.
 - `internal/spec/drift.go` walker 의 shallow-clone fallback 도입 — non-goal (LSGF-001 territory).
-- v3.0.0-rc1 tagging — 별도 release 작업 (CLAUDE.local.md §18.8 `./scripts/release.sh v3.0.0-rc1`).
+- v2.20.0-rc1 tagging — 별도 release 작업 (CLAUDE.local.md §18.8 `./scripts/release.sh v2.20.0-rc1`).
 - branch protection rule (CLAUDE.local.md §18.7) 변경.
 - CHANGELOG.md 4-locale i18n sync (CLAUDE.local.md §17.3 별도 정책 — 별도 SPEC).
 - `internal/template/templates/` user project 영향 검토 (CI workflows 는 dev project only, user project 미배포).

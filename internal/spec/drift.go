@@ -210,7 +210,7 @@ func commitMatchesSPECID(commitTitle, specID string) bool {
 // Skip-pattern commit은 lifecycle status 추론에서 제외해야 하는 메타데이터 유지보수 작업
 // (frontmatter sweep, lint.skip 등록 등)을 나타낸다.
 //
-// v3.0.0-rc1 skip pattern: chore(spec): 와 chore(specs): 만 대상.
+// v2.20.0-rc1 skip pattern: chore(spec): 와 chore(specs): 만 대상.
 // 향후 패턴 추가는 별도 SPEC + plan.md §7 OQ2 externalization 결정 시 확장.
 //
 // @MX:NOTE: [AUTO] shouldSkipCommitTitle — chore(spec) sweep commit 필터

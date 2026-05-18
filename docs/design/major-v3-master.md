@@ -69,7 +69,7 @@ Nine phases, tagged alpha.1 through GA. Phase labels are ordering, not durations
 | 4 | v3.0.0-alpha.4 | Skill Consolidation (48 → 24, merge clusters 1-5, retirements) |
 | 5 | v3.0.0-beta.1 | Harness + Evaluator (Sprint Contract fresh judgment, 3-level routing) |
 | 6 | v3.0.0-beta.2 | Multi-Mode Workflow (/moai loop Ralph, /moai design, team mode) |
-| 7 | v3.0.0-rc.1 | Extension (output styles, ACI tools, memdir) |
+| 7 | v2.20.0-rc.1 | Extension (output styles, ACI tools, memdir) |
 | 8 | v3.0.0-rc.2 | Migration Tool + Docs (v2 → v3 migrator, release docs) |
 | 9 | v3.0.0 | GA |
 
@@ -991,7 +991,7 @@ Top 5 for reviewer summary: BC-V3R2-001 (hook JSON), BC-V3R2-003 (sandbox defaul
 | 4 Skill Consolidation | v3.0.0-alpha.4 | 48→24 skills; merge clusters 1-5; retirements | SPEC-V3R2-WF-001 |
 | 5 Harness + Evaluator | v3.0.0-beta.1 | Sprint Contract fresh-judgment fix, harness routing, hierarchical acceptance | SPEC-V3R2-HRN-001, -HRN-002, -HRN-003, SPEC-V3R2-SPC-001 |
 | 6 Multi-Mode Workflow | v3.0.0-beta.2 | `/moai loop` Ralph, `/moai design` path B, `--mode team`, Agentless classification, dynamic team generation, language rules/skills boundary | SPEC-V3R2-WF-002, -WF-003, -WF-004, -WF-005, -WF-006, SPEC-V3R2-ORC-005 |
-| 7 Extension | v3.0.0-rc.1 | ACI commands, output styles CC-alignment, memdir typed taxonomy | SPEC-V3R2-SPC-002, -SPC-003, -SPC-004, SPEC-V3R2-EXT-001, -EXT-002 |
+| 7 Extension | v2.20.0-rc.1 | ACI commands, output styles CC-alignment, memdir typed taxonomy | SPEC-V3R2-SPC-002, -SPC-003, -SPC-004, SPEC-V3R2-EXT-001, -EXT-002 |
 | 8 Migration Tool + Docs | v3.0.0-rc.2 | v2→v3 migrator, release docs, doctor diagnostics, MIG-002/003 closeout | SPEC-V3R2-MIG-001, -MIG-002, -MIG-003 |
 | 9 Stable | v3.0.0 | GA — no new SPECs; bug fixes + docs | — |
 

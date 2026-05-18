@@ -27,7 +27,7 @@ tags: "hook, formatter, linter, tool-registry, code-quality, P1"
 | Version | Date       | Author | Description                            |
 |---------|------------|--------|----------------------------------------|
 | 0.1.0   | 2026-02-04 | GOOS   | Initial SPEC creation                  |
-| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by `moai gate` skill (lint+format+type-check+test parallel) + SPEC-V3R2-ORC-002 (`moai agent lint` 8-rule engine) + SPEC-V3R2-ORC-004 (`moai workflow lint` CLI) — ~90% scope overlap.** v3.0.0-rc1 release-readiness 정합성 정리. 본 SPEC의 원래 scope (formatter/linter/tool-registry hook)는 위 3개 v3.0.0 SPEC으로 absorbed. residual scope (tool registry 동적 등록 등) 추후 별도 SPEC 필요 시 신규 작성. |
+| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by `moai gate` skill (lint+format+type-check+test parallel) + SPEC-V3R2-ORC-002 (`moai agent lint` 8-rule engine) + SPEC-V3R2-ORC-004 (`moai workflow lint` CLI) — ~90% scope overlap.** v2.20.0-rc1 release-readiness 정합성 정리. 본 SPEC의 원래 scope (formatter/linter/tool-registry hook)는 위 3개 v3.0.0 SPEC으로 absorbed. residual scope (tool registry 동적 등록 등) 추후 별도 SPEC 필요 시 신규 작성. |
 
 ---
 

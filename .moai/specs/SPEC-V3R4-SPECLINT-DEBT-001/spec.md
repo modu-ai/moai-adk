@@ -19,7 +19,7 @@ breaking: false
 bc_id: []
 lifecycle: spec-anchored
 related_theme: "spec-lint CI Green + 메타데이터 위생"
-target_release: v3.0.0-rc1
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-SPECLINT-DEBT-001 — SPEC Lint Debt 일괄 해소

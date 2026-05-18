@@ -214,7 +214,7 @@ LSGF-001 walker word-boundary fix 후 노출된 17건 status drift 모두 해소
 
 AC-SDF002-X-001..X-003 모두 PASS.
 `moai spec lint --strict` → 0 error(s), 0 warning(s).
-v3.0.0-rc1 release gate (FOLLOWUP-002 + CI-INFRA-FIX-001) 중 본 SPEC closure 완료.
+v2.20.0-rc1 release gate (FOLLOWUP-002 + CI-INFRA-FIX-001) 중 본 SPEC closure 완료.
 
 🗿 MoAI <email@mo.ai.kr>
 EOF

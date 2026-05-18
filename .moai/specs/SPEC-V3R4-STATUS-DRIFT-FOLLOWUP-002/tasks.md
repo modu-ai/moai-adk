@@ -233,5 +233,5 @@ T2-B-downgrade ────────────┘    T3-4 (per-SPEC AC)    
 - walker code 변경
 - `internal/spec/transitions.go` prefix expansion (docs(sync), fix(hook))
 - 17건 외 SPEC frontmatter 일괄 audit
-- v3.0.0-rc1 tagging (별도 release SPEC 또는 chore)
+- v2.20.0-rc1 tagging (별도 release SPEC 또는 chore)
 - CHANGELOG 4-locale 동기화 (CLAUDE.local.md §17 정책 — 별도 SPEC)

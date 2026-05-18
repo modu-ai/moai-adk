@@ -155,7 +155,7 @@ func getGitImpliedStatus(specID string) (string, error) {
 // operations (frontmatter sweeps, lint.skip registrations) and must not influence
 // the git-implied status.
 //
-// v3.0.0-rc1 의 skip pattern: `chore(spec):` 만 대상.
+// v2.20.0-rc1 의 skip pattern: `chore(spec):` 만 대상.
 // 향후 추가 패턴은 별도 SPEC + plan.md §7 OQ2 externalization 결정 시 확장.
 func shouldSkipCommitTitle(title string) bool {
     // 대소문자 무관 prefix 매칭
@@ -181,7 +181,7 @@ func shouldSkipCommitTitle(title string) bool {
 
 ## 3. Skip Pattern Definition
 
-### 3.1 v3.0.0-rc1 적용 패턴
+### 3.1 v2.20.0-rc1 적용 패턴
 
 | Pattern (case-insensitive prefix) | Rationale | Source |
 |----------------------------------|-----------|--------|
@@ -234,7 +234,7 @@ N = 100 으로 늘려도 비용은 동일 수준 (60ms × 188 = 11.3초 — 여�
 
 ### 4.3 Configurability
 
-N 값은 `const gitLogWindowSize = 50` 로 Go 소스에 hard-code한다. plan.md §7 OQ2 externalization 결정과 일관 — v3.0.0-rc1 에서 외부 설정 부재.
+N 값은 `const gitLogWindowSize = 50` 로 Go 소스에 hard-code한다. plan.md §7 OQ2 externalization 결정과 일관 — v2.20.0-rc1 에서 외부 설정 부재.
 
 향후 일부 super-deep-history SPEC이 false-positive를 일으키면 const 값 상향 + 별도 SPEC으로 처리.
 

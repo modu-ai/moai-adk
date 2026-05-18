@@ -28,9 +28,9 @@ LSGF-001 walker fix → 17 drift 노출 → FOLLOWUP-002 (Wave 1-3) → 17 → 0
 
 SDF-001 의 패턴 분류 모델은 본 SPEC 에서도 유효하나, FOLLOWUP-002 의 17건은 SDF-001 Pattern A (전체 50건 대부분) 가 아닌 **Walker visibility 한계** 패턴이 dominant. 따라서 본 SPEC 은 Category A (forward sync-up) + Category B (per-SPEC investigation) 의 2-카테고리 분류만 사용.
 
-### 1.3 v3.0.0-rc1 release readiness gate
+### 1.3 v2.20.0-rc1 release readiness gate
 
-본 SPEC closure + 별도 `SPEC-V3R4-CI-INFRA-FIX-001` (CI workflow 결함 해소) closure 모두 완료되어야 `v3.0.0-rc1` 태그 발행 가능. lint 0 ERROR / 0 WARNING 은 release gate 의 핵심 indicator.
+본 SPEC closure + 별도 `SPEC-V3R4-CI-INFRA-FIX-001` (CI workflow 결함 해소) closure 모두 완료되어야 `v2.20.0-rc1` 태그 발행 가능. lint 0 ERROR / 0 WARNING 은 release gate 의 핵심 indicator.
 
 ---
 

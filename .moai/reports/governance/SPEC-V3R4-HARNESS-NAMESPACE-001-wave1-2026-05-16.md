@@ -91,9 +91,9 @@ internal/cli/harness.go:      433 lines
 
 ---
 
-## T-Wave1-006 — CHANGELOG v3.0.0-rc1 Governance entry append (AC-HRN-NS-008)
+## T-Wave1-006 — CHANGELOG v2.20.0-rc1 Governance entry append (AC-HRN-NS-008)
 
-Appended new [Unreleased] section to CHANGELOG.md with v3.0.0-rc1 Governance closeout.
+Appended new [Unreleased] section to CHANGELOG.md with v2.20.0-rc1 Governance closeout.
 AC-HRN-NS-008 verification (retention-policy keywords present):
 
 ```
@@ -119,7 +119,7 @@ This document itself is the Wave 1 audit artifact for AC-HRN-NS-001 through AC-H
 | T-Wave1-003 | AC-HRN-NS-004 | PASS ✓ | hierarchy PRESENT (main.md + README.md + usage-log.jsonl canonical subset) |
 | T-Wave1-004 | AC-HRN-NS-005 | PASS ✓ | 0 errors. 4 warnings (StatusGitConsistency) pre-existing drift; NAMESPACE-001 self-warning auto-resolved post-commit via feat(spec) walker re-evaluation |
 | T-Wave1-005 | AC-HRN-NS-006 | PASS ✓ | MARKER_PRESENT (internal/cli/harness.go 433 lines) + NO_REGISTRATION (root.go clean) |
-| T-Wave1-006 | AC-HRN-NS-008 | PASS ✓ | CHANGELOG v3.0.0-rc1 entry with retention/7-day rolling window/REQ-HRN-NS-010 |
+| T-Wave1-006 | AC-HRN-NS-008 | PASS ✓ | CHANGELOG v2.20.0-rc1 entry with retention/7-day rolling window/REQ-HRN-NS-010 |
 | T-Wave1-007 | (artifact) | PASS ✓ | This audit report file persisted |
 
 ### Wave 1 Acceptance Gate: PASS ✓ → Wave 2 may begin

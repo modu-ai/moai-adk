@@ -688,6 +688,6 @@ spec.md §3 (Non-Goals) 의 mirror. 명시적 DROP 목록:
 - 임의 review bot 재활성화 (codex / gemini / glm 부활)
 - macOS-latest 의 required check 재추가
 - GitHub Actions → 외부 CI provider 이전
-- v3.0.0-rc1 release tag 발행 actions
+- v2.20.0-rc1 release tag 발행 actions
 - `claude.yml` / `review-quality-gate.yml` 자동 제거 (T4 audit 결과로 PRESERVE)
 - CI cache 전략 변경

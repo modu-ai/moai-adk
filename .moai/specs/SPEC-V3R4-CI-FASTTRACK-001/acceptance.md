@@ -382,7 +382,7 @@ matrix.
 
 ### EC-2 — Release Tag Pushed
 
-**Behavior**: User pushes `v3.0.0-rc1` tag. Two workflows trigger:
+**Behavior**: User pushes `v2.20.0-rc1` tag. Two workflows trigger:
 
 1. `release.yml` (existing GoReleaser): builds + publishes binaries
 2. `nightly-full-matrix.yml` (new T6): runs full 3-OS test matrix against the tag

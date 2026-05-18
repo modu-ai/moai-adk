@@ -25,7 +25,7 @@ tags: "legacy"
 | 0.1.0   | 2026-04-17 | GOOS행님 | 초기 SPEC 작성 — Opus 4.7 호환성 및 프롬프트 철학 5원칙 시스템 적용                                                                                      |
 | 0.1.1   | 2026-04-17 | GOOS행님 | plan-auditor iteration 1 반영: Reference 경로 정정(injectGLMEnvForTeam, ensureTmuxGLMEnv), REQ-OC-003(c) 문서화로 약화, DELTA 마커 통일, EARS 라벨 정정 |
 | 0.2.0   | 2026-04-24 | plan-auditor | 후행 감사 반영: status draft → completed (PR #672, #673 merge 반영, commits 07525c7ae & 4a00aa304). D-OPUS47-2 (builder-agent.md `effort` 필드 scope 미정합) 인지됨 — REQ-OC-002 enumeration에 builder-agent 포함 의도 확인 필요. |
-| 0.3.0   | 2026-05-18 | orchestrator | Post-merge frontmatter status drift 정정 — v0.2.0 HISTORY entry에서 plan-auditor가 "status draft → completed (PR #672/#673 merged)" 명시했으나 frontmatter `status: in-progress` 잔존. 본 entry로 frontmatter status 동기화 (in-progress → completed). v3.0.0-rc1 release notes 정합성 향상 — Claude Code v2.1.110/111 + Opus 4.7 호환성은 v3.0.0-rc1 기반 인프라로 본 SPEC reference 가능 상태. 코드 변경 0 (PR #672/#673 이미 머지된 작업의 메타데이터만 정정). |
+| 0.3.0   | 2026-05-18 | orchestrator | Post-merge frontmatter status drift 정정 — v0.2.0 HISTORY entry에서 plan-auditor가 "status draft → completed (PR #672/#673 merged)" 명시했으나 frontmatter `status: in-progress` 잔존. 본 entry로 frontmatter status 동기화 (in-progress → completed). v2.20.0-rc1 release notes 정합성 향상 — Claude Code v2.1.110/111 + Opus 4.7 호환성은 v2.20.0-rc1 기반 인프라로 본 SPEC reference 가능 상태. 코드 변경 0 (PR #672/#673 이미 머지된 작업의 메타데이터만 정정). |
 
 ## Context (Background)
 

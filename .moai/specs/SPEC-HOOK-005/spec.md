@@ -27,7 +27,7 @@ tags: "hook, git, parallel-execution, caching, connection-pooling, P2"
 | Version | Date       | Author | Description                            |
 |---------|------------|--------|----------------------------------------|
 | 0.1.0   | 2026-02-04 | GOOS   | Initial SPEC creation                  |
-| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by `manager-git` agent (commit/push/branch/PR/merge/release workflow) + `internal/cli/git_*.go` baseline + `.claude/skills/moai-ref-git-workflow` reference — ~85% scope overlap.** v3.0.0-rc1 release-readiness 정합성 정리. Git operations hook scope는 manager-git agent 위임 패턴 + CLAUDE.local.md §18 Enhanced GitHub Flow로 absorbed. parallel-execution/caching residual은 별도 SPEC 필요 시 신규 작성. |
+| 0.2.0   | 2026-05-18 | orchestrator | **ARCHIVED — Superseded by `manager-git` agent (commit/push/branch/PR/merge/release workflow) + `internal/cli/git_*.go` baseline + `.claude/skills/moai-ref-git-workflow` reference — ~85% scope overlap.** v2.20.0-rc1 release-readiness 정합성 정리. Git operations hook scope는 manager-git agent 위임 패턴 + CLAUDE.local.md §18 Enhanced GitHub Flow로 absorbed. parallel-execution/caching residual은 별도 SPEC 필요 시 신규 작성. |
 
 ---
 

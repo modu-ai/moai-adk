@@ -157,7 +157,7 @@ to prevent scope creep:
   nightly matrix 로 회귀 탐지를 보장하므로 required check 재추가는 의도적으로 거부.
 - **GitHub Actions → Jenkins / CircleCI / 외부 CI provider 이전**: orthogonal scope.
   별도 사용자 의사결정 필요.
-- **v3.0.0-rc1 release tag 발행 actions**: 본 SPEC 의 nightly matrix 가 tag push 트리거를
+- **v2.20.0-rc1 release tag 발행 actions**: 본 SPEC 의 nightly matrix 가 tag push 트리거를
   포함하지만, release tag 발행 자체는 별도 SPEC (release readiness) 의 scope.
 - **`claude.yml` / `review-quality-gate.yml` 자동 제거**: 본 SPEC 의 RUN-PHASE 에서
   graceful-guard 또는 PRESERVE 결정 중 선택. 사전 audit (T4) 에서 codex 비의존성 확인 후

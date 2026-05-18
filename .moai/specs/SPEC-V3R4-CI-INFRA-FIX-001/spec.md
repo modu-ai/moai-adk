@@ -19,8 +19,8 @@ related_specs:
 depends_on: []
 breaking: false
 bc_id: []
-related_theme: "Foundation Cleanup — CI Infrastructure for v3.0.0-rc1 release-readiness"
-target_release: v3.0.0-rc1
+related_theme: "Foundation Cleanup — CI Infrastructure for v2.20.0-rc1 release-readiness"
+target_release: v2.20.0-rc1
 ---
 
 # SPEC-V3R4-CI-INFRA-FIX-001 — CI infrastructure 3-defect bundle fix
@@ -29,15 +29,15 @@ target_release: v3.0.0-rc1
 
 | Version | Date       | Author          | Description |
 |---------|------------|-----------------|-------------|
-| 0.2.0   | 2026-05-16 | manager-docs    | Sync-phase 완료. status `draft → completed`. 3 sub-fix 모두 main 적용 (run-PR #955 commit `3e3953a5c`): (A) detect-language SIGPIPE → find -print -quit 단일 step 솔루션 (hotfix 적용); (B) spec-status-auto-sync workflow-level permissions block; (C) ci.yml 5 checkout fetch-depth: 0 + drift_specid_grep_test.go skip guard 제거. AC-CIIF-001 SPIRIT 충족 (override 문서화), AC-CIIF-003 CI 검증 완료. AC-CIIF-002/004는 sync-PR 머지 시점 자연 검증. v3.0.0-rc1 release-readiness 최종 precondition 충족. Follow-up SPEC 후보: SPEC-V3R4-AIREVIEW-CLI-FIX-001 (4 AI review workflow Claude CLI / codex command 사전 인프라 결함). |
+| 0.2.0   | 2026-05-16 | manager-docs    | Sync-phase 완료. status `draft → completed`. 3 sub-fix 모두 main 적용 (run-PR #955 commit `3e3953a5c`): (A) detect-language SIGPIPE → find -print -quit 단일 step 솔루션 (hotfix 적용); (B) spec-status-auto-sync workflow-level permissions block; (C) ci.yml 5 checkout fetch-depth: 0 + drift_specid_grep_test.go skip guard 제거. AC-CIIF-001 SPIRIT 충족 (override 문서화), AC-CIIF-003 CI 검증 완료. AC-CIIF-002/004는 sync-PR 머지 시점 자연 검증. v2.20.0-rc1 release-readiness 최종 precondition 충족. Follow-up SPEC 후보: SPEC-V3R4-AIREVIEW-CLI-FIX-001 (4 AI review workflow Claude CLI / codex command 사전 인프라 결함). |
 | 0.1.1   | 2026-05-16 | manager-develop | Run-phase hotfix. design.md D-1 A2 (awk) 가 SIGPIPE 미해결로 확인됨 (PR #955 4 review workflow broken-pipe exit 2 재현). A3 (find -print -quit 단일-step) 로 hotfix 적용. AC-CIIF-001 재검증 예정. |
-| 0.1.0   | 2026-05-16 | manager-spec    | 초기 draft. 3 CI infrastructure defect (A: detect-language SIGPIPE / B: spec-status-sync 403 / C: checkout fetch-depth 0) 를 단일 SPEC scope으로 묶음. AC-CIIF-001~004 binary (CI run-N 검증 + `moai spec lint --strict` 0/0 유지). v3.0.0-rc1 release tagging 최종 precondition. LSGF-001 PR #948의 `GITHUB_ACTIONS` env skip 우회 영구 제거. |
+| 0.1.0   | 2026-05-16 | manager-spec    | 초기 draft. 3 CI infrastructure defect (A: detect-language SIGPIPE / B: spec-status-sync 403 / C: checkout fetch-depth 0) 를 단일 SPEC scope으로 묶음. AC-CIIF-001~004 binary (CI run-N 검증 + `moai spec lint --strict` 0/0 유지). v2.20.0-rc1 release tagging 최종 precondition. LSGF-001 PR #948의 `GITHUB_ACTIONS` env skip 우회 영구 제거. |
 
 ---
 
 ## 1. Goal
 
-GitHub Actions CI infrastructure의 3개 결함을 **단일 SPEC scope** 으로 묶어 영구 해소하여 v3.0.0-rc1 release tagging 의 최종 precondition을 충족한다. 본 SPEC은 LSGF-001 + FOLLOWUP-002 lifecycle COMPLETE 후 main HEAD `9be0ef03b` 상태에서 `moai spec lint --strict` `✓ No findings (0/0)` 기준점을 회귀시키지 않으면서 CI workflow YAML + composite action shell script + GitHub Actions permissions 세 layer를 동시 개선한다.
+GitHub Actions CI infrastructure의 3개 결함을 **단일 SPEC scope** 으로 묶어 영구 해소하여 v2.20.0-rc1 release tagging 의 최종 precondition을 충족한다. 본 SPEC은 LSGF-001 + FOLLOWUP-002 lifecycle COMPLETE 후 main HEAD `9be0ef03b` 상태에서 `moai spec lint --strict` `✓ No findings (0/0)` 기준점을 회귀시키지 않으면서 CI workflow YAML + composite action shell script + GitHub Actions permissions 세 layer를 동시 개선한다.
 
 ### 1.1 배경 — 3 Sub-fix Root Causes
 
@@ -88,9 +88,9 @@ LANG_COUNT=$(find . -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js"
 - ci.yml: 5개 `actions/checkout@v5` step 모두 `with: fetch-depth: 0` 미지정 (test job × 1, test-integration × 1, lint × 1, build × 1, constitution-check × 1).
 - 참조: 다른 workflow 는 이미 `fetch-depth: 0` 설정됨 (claude-code-review.yml, release.yml, spec-status-auto-sync.yml).
 
-### 1.2 v3.0.0-rc1 Release Gate
+### 1.2 v2.20.0-rc1 Release Gate
 
-본 SPEC은 v3.0.0-rc1 태그 발행의 **최종 precondition**. LSGF-001 + FOLLOWUP-002 가 lint correctness 를 확립했고, 본 SPEC은 CI infrastructure 신뢰성 (SIGPIPE 0 / 403 0 / shallow-clone skip 제거) 을 확립한다. 본 SPEC closure 후 `./scripts/release.sh v3.0.0-rc1` (CLAUDE.local.md §18.8) 호출 가능.
+본 SPEC은 v2.20.0-rc1 태그 발행의 **최종 precondition**. LSGF-001 + FOLLOWUP-002 가 lint correctness 를 확립했고, 본 SPEC은 CI infrastructure 신뢰성 (SIGPIPE 0 / 403 0 / shallow-clone skip 제거) 을 확립한다. 본 SPEC closure 후 `./scripts/release.sh v2.20.0-rc1` (CLAUDE.local.md §18.8) 호출 가능.
 
 ---
 
@@ -112,7 +112,7 @@ LANG_COUNT=$(find . -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js"
 - GoReleaser, label-sync, release-drafter, docs-i18n-check workflows 검토.
 - `actions/checkout@v4` → `v5` 일괄 upgrade.
 - Branch protection rule (CLAUDE.local.md §18.7) 변경.
-- v3.0.0-rc1 release tag push (별도 release 작업).
+- v2.20.0-rc1 release tag push (별도 release 작업).
 
 ---
 
@@ -170,7 +170,7 @@ After all three sub-fixes are merged, `moai spec lint --strict` SHALL continue t
 4. **광범위 permissions 부여 금지** — REQ-CIIF-006 에 따라 minimum scope (`contents: write`) 만. 다른 scope 는 documented necessity 없이 추가 금지.
 5. **drift walker 의 shallow-clone fallback 도입 금지** — `if !fullClone { return early }` 같은 conditional 추가는 본 SPEC 범위 외. CI 환경을 fix 하여 walker contract 를 만족시키는 방향만.
 6. **다른 SPEC frontmatter 수정 금지** — 본 SPEC 자체 spec.md 외 SPEC frontmatter 변경 0건.
-7. **release tag push 금지** — `v3.0.0-rc1` 태그는 본 SPEC closure 후 별도 작업.
+7. **release tag push 금지** — `v2.20.0-rc1` 태그는 본 SPEC closure 후 별도 작업.
 8. **Branch protection rule 변경 금지** — CLAUDE.local.md §18.7 에 정의된 main + release/* 보호 규칙은 불변.
 9. **detect-language action 의 언어 detection 로직 자체 변경 금지** — SIGPIPE remediation 만. find/grep/awk pipeline 의 detection 의도 (16 supported languages 첫 1건 추출) 는 보존.
 

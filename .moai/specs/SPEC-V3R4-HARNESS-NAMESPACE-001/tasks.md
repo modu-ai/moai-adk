@@ -109,12 +109,12 @@ All tasks within a Wave are sequential. Inter-Wave: Wave 1 MUST complete before 
 - **Acceptance**: AC-HRN-NS-006 PASS (MARKER_PRESENT + NO_REGISTRATION).
 - **Owning agent**: manager-spec.
 
-### T-Wave1-006 — CHANGELOG v3.0.0-rc1 entry append
+### T-Wave1-006 — CHANGELOG v2.20.0-rc1 entry append
 
 - **Type**: Markdown edit
 - **Priority**: P1
 - **Inputs**: `CHANGELOG.md` (current main HEAD).
-- **Action**: Append a `### Governance` block under the v3.0.0-rc1 section per plan.md §2.2 T-Wave1-006 content sketch. Include references to SPEC-V3R4-HARNESS-NAMESPACE-001, PR #908 closeout decision, and REQ-HRN-NS-010 retention-policy reference.
+- **Action**: Append a `### Governance` block under the v2.20.0-rc1 section per plan.md §2.2 T-Wave1-006 content sketch. Include references to SPEC-V3R4-HARNESS-NAMESPACE-001, PR #908 closeout decision, and REQ-HRN-NS-010 retention-policy reference.
 - **Outputs**: Modified `CHANGELOG.md`.
 - **Acceptance**: AC-HRN-NS-008 PASS (retention reference present via `grep`).
 - **Owning agent**: manager-spec or manager-docs.
@@ -224,7 +224,7 @@ All 5 tasks above MUST complete with PASS. If T-Wave2-001 surfaces EC-001 BLOCKE
 
 **Files modified**:
 
-- `CHANGELOG.md` (T-Wave1-006 — append v3.0.0-rc1 entry)
+- `CHANGELOG.md` (T-Wave1-006 — append v2.20.0-rc1 entry)
 - `.moai/reports/governance/SPEC-V3R4-HARNESS-NAMESPACE-001-wave1-<DATE>.md` (T-Wave1-007 — new)
 - `.moai/reports/governance/SPEC-V3R4-HARNESS-NAMESPACE-001-wave2-<DATE>.md` (T-Wave2-005 — new)
 

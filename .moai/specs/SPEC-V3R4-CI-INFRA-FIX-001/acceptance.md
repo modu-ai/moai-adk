@@ -293,7 +293,7 @@ echo $?
 - [ ] CHANGELOG.md Unreleased 섹션에 CI-INFRA-FIX-001 entry 추가 (ko + en, `### Fixed` 분류).
 - [ ] drift_specid_grep_test.go 의 `@MX:NOTE` / `@MX:REASON` 갱신 (skip guard 제거 reason 명시).
 - [ ] LSGF-001 + FOLLOWUP-002 lint baseline 회귀 0건 검증.
-- [ ] v3.0.0-rc1 release tag 발행 준비 완료 (별도 작업, 본 SPEC scope 외).
+- [ ] v2.20.0-rc1 release tag 발행 준비 완료 (별도 작업, 본 SPEC scope 외).
 
 ---
 
@@ -326,7 +326,7 @@ echo $?
 - 본 SPEC 자체의 frontmatter status `completed` 로 sync 됨 (sync-PR 머지 후).
 - spec-status-auto-sync workflow 가 본 SPEC sync-PR 머지 시 success (AC-CIIF-002 자연 검증).
 - LSGF-001 회귀 부재 (HARNESS-001/002/003 lint clean 유지).
-- v3.0.0-rc1 release tag 발행 가능 상태 (precondition 충족).
+- v2.20.0-rc1 release tag 발행 가능 상태 (precondition 충족).
 
 ---
 
@@ -335,7 +335,7 @@ echo $?
 - detect-language action 의 16 supported languages 각각 detection 정확도 (별도 fixture test).
 - spec-status-auto-sync workflow 의 fork PR 처리 (OQ-2 deferred).
 - ci.yml 외 다른 workflow (codeql.yml 등) 의 fetch-depth 적정성 (D-3 결정 — 별도 follow-up SPEC).
-- v3.0.0-rc1 release process 자체 (CLAUDE.local.md §18.8 별도 작업).
+- v2.20.0-rc1 release process 자체 (CLAUDE.local.md §18.8 별도 작업).
 - detect-language action 의 windows runner 직접 호환성 검증 (호출 workflow 모두 ubuntu — EC-006 무영향).
 - branch protection rule (CLAUDE.local.md §18.7) 변경 검증.
 - moai-adk-go 사용자 프로젝트의 CI workflow 영향 (CI infra change 는 dev project only — `internal/template/templates/` 미변경).
