@@ -59,6 +59,7 @@ func (r *Registry) FilterByZone(z Zone) []Rule {
 type rawEntry struct {
 	ID         string `yaml:"id"`
 	Zone       string `yaml:"zone"`
+	ZoneClass  string `yaml:"zone_class"`
 	File       string `yaml:"file"`
 	Anchor     string `yaml:"anchor"`
 	Clause     string `yaml:"clause"`
@@ -118,6 +119,7 @@ func LoadRegistry(path, projectDir string) (*Registry, error) {
 		rule := Rule{
 			ID:         re.ID,
 			Zone:       z,
+			ZoneClass:  re.ZoneClass,
 			File:       re.File,
 			Anchor:     re.Anchor,
 			Clause:     re.Clause,
@@ -194,14 +196,20 @@ func extractYAMLFence(content string) (string, error) {
 	return content[afterOpen : afterOpen+end], nil
 }
 
-// extractIDNumber extracts the numeric part from CONST-V3R2-NNN format.
-// Returns -1 on parsing failure.
+// extractIDNumber extracts the numeric part from CONST-V3R2-NNN or CONST-V3R5-NNN format.
+// Returns -1 on parsing failure. Only used for design mirror overflow range detection on V3R2 IDs.
 func extractIDNumber(id string) int {
-	const prefix = "CONST-V3R2-"
-	if !strings.HasPrefix(id, prefix) {
+	// Support both V3R2 and V3R5 namespaces.
+	var numStr string
+	switch {
+	case strings.HasPrefix(id, "CONST-V3R2-"):
+		numStr = id[len("CONST-V3R2-"):]
+	case strings.HasPrefix(id, "CONST-V3R5-"):
+		// V3R5 IDs are not subject to design mirror overflow range detection.
+		return -1
+	default:
 		return -1
 	}
-	numStr := id[len(prefix):]
 	n, err := strconv.Atoi(numStr)
 	if err != nil {
 		return -1

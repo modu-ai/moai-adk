@@ -199,6 +199,7 @@ type constitutionJSONOutput struct {
 type constitutionJSONEntry struct {
 	ID         string `json:"id"`
 	Zone       string `json:"zone"`
+	ZoneClass  string `json:"zone_class,omitempty"`
 	File       string `json:"file"`
 	Anchor     string `json:"anchor"`
 	Clause     string `json:"clause"`
@@ -212,6 +213,7 @@ func renderConstitutionJSON(w io.Writer, entries []constitution.Rule) error {
 		jsonEntries = append(jsonEntries, constitutionJSONEntry{
 			ID:         e.ID,
 			Zone:       e.Zone.String(),
+			ZoneClass:  e.ZoneClass,
 			File:       e.File,
 			Anchor:     e.Anchor,
 			Clause:     e.Clause,

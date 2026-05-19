@@ -5,9 +5,9 @@ import (
 	"regexp"
 )
 
-// ruleIDPattern is a regex constant for validating IDs in CONST-V3R2-NNN format.
-// NNN is 3 or more digits.
-const ruleIDPattern = `^CONST-V3R2-\d{3,}$`
+// ruleIDPattern is a regex constant for validating IDs in CONST-V3R2-NNN or CONST-V3R5-NNN format.
+// NNN is 3 or more digits. V3R2 = initial namespace; V3R5 = parallel namespace (SPEC-V3R5-CONSTITUTION-DUAL-001).
+const ruleIDPattern = `^CONST-V3R[25]-\d{3,}$`
 
 // ruleIDRegexp is the compiled ruleIDPattern.
 var ruleIDRegexp = regexp.MustCompile(ruleIDPattern)
@@ -32,6 +32,10 @@ type Rule struct {
 	// CanaryGate indicates whether shadow evaluation is required during amendment.
 	// Frozen → true, Evolvable → false (default).
 	CanaryGate bool `yaml:"canary_gate"`
+	// ZoneClass is the sub-classification within Zone (4-enum, introduced by SPEC-V3R5-CONSTITUTION-DUAL-001).
+	// Valid values: frozen-canonical, frozen-safety, evolvable-tuning, evolvable-experimental.
+	// Optional: empty string is valid for legacy entries that predate V3R5.
+	ZoneClass string `yaml:"zone_class,omitempty"`
 
 	// orphan is set to true by the loader when the referenced file does not exist on disk.
 	// Unexported, so it is not serialized to YAML and not visible as exported via Go reflect.
