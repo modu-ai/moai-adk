@@ -15,8 +15,7 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-platform-deployment
-  - moai-workflow-project
+  - moai-workflow-testing
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

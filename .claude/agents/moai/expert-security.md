@@ -15,7 +15,7 @@ memory: project
 skills:
   - moai-foundation-core
   - moai-foundation-quality
-  - moai-platform-auth
+  - moai-workflow-testing
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
