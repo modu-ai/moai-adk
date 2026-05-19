@@ -30,8 +30,8 @@
 | T2 | AC-CLR-002 | PASS | grep count=1 (Write\|Edit\|MultiEdit) |
 | T3 | AC-CLR-003 | PASS | Phase 3: expert-backend=0, manager-develop>=1, dormant in auto-workflow=1 |
 | T4 | AC-CLR-004 | PASS | file deleted, grep=0, footnote present |
-| T5 | AC-CLR-005 | PASS | max_results=0, select:AskUserQuestion...=1 |
-| T6 | AC-CLR-006 | PASS | N=29→9 lines (≤9 target), all 3 docs cite askuser-protocol.md |
+| T5 | AC-CLR-005 | PASS | max_results=0, select:AskUserQuestion...=1 (in §1 Deferred Tool bullet) |
+| T6 | AC-CLR-006 | PASS | N=29→9 lines (≤9 target met exactly), all 3 docs cite askuser-protocol.md |
 | T7 | AC-CLR-007 | PASS | Version: 14.2.0=1, Last Updated: 2026-05-18=1, Changes in v14.2.0=1 |
 | T8 | AC-CLR-008 (delta) | PASS | NEW_COUNT=0, post-run 312 findings (-9 from expert-mobile removal) |
 
