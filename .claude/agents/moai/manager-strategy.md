@@ -55,7 +55,7 @@ OUT OF SCOPE: Code implementation (manager-develop), quality verification (manag
 
 - Surface all assumptions (hard constraints vs preferences)
 - Document each with confidence level and risk if wrong
-- Use AskUserQuestion to verify critical assumptions
+- Return a blocker report to the orchestrator to verify critical assumptions — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) handles user confirmation
 
 ### Phase 0.5: First Principles Decomposition
 
@@ -68,7 +68,7 @@ OUT OF SCOPE: Code implementation (manager-develop), quality verification (manag
 - Conservative (low risk, incremental)
 - Balanced (moderate risk, significant improvement)
 - Aggressive (higher risk, transformative)
-- Present via AskUserQuestion with clear trade-offs
+- Present alternatives with clear trade-offs in the blocker report for the orchestrator to relay to the user
 
 ### Trade-off Matrix
 

@@ -63,7 +63,7 @@ When processing CI failure context (mechanical vs semantic classification):
 - **Mechanical (non-trivial)**: errcheck/lint — provide unified diff of minimal fix
 - **Semantic**: data race / deadlock / panic — diagnosis only; no auto-patch
 
-**[HARD] AskUserQuestion 호출 금지** — manager-quality는 subagent이므로 절대 AskUserQuestion을 호출하지 않는다. 진단 결과를 Markdown으로 반환하는 것으로 역할이 종료된다.
+**[HARD] 사용자 직접 질의 금지** — manager-quality는 subagent이므로 절대 orchestrator의 사용자 상호작용 채널(see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md))을 호출하지 않는다. 진단 결과를 Markdown으로 반환하는 것으로 역할이 종료된다.
 
 **[HARD] Secrets 미수정** — 진단 patch는 `.env`, credentials, API key 파일을 절대 포함하지 않는다.
 
@@ -127,7 +127,7 @@ Classification: PASS (all items) / WARNING (non-compliance with recommendations)
 ### Step 5: Communicate Results
 
 - PASS: Approve commit to manager-git
-- WARNING: Warn user, present options via AskUserQuestion
+- WARNING: Return a WARNING report to the orchestrator — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) presents options to the user
 - CRITICAL: Block commit, request modification
 
 ## Context Propagation

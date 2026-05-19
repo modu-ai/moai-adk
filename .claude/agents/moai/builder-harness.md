@@ -8,7 +8,7 @@ description: |
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント, スキル作成, 新スキル, スキル最適化, YAMLフロントマター, プラグイン作成, プラグイン, プラグイン検証, マーケットプレイス, MCPサーバー, LSPサーバー
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 创建技能, 新技能, 技能优化, YAML前置信息, 创建插件, 插件, 插件验证, 市场, MCP服务器, LSP服务器
   NOT for: code implementation, testing, documentation writing, git operations, production deployment
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 effort: high
 permissionMode: bypassPermissions
@@ -84,7 +84,7 @@ OUT OF SCOPE:
 - Analyze domain requirements, use cases, and artifact_type
 - Identify output location and naming conventions based on artifact_type
 - Determine required tools, permissions, and framework constraints
-- [HARD] Use AskUserQuestion (via orchestrator) to clarify artifact name before creation
+- [HARD] Return a blocker report to the orchestrator if artifact name is missing — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) handles all user prompts
 - Map artifact relationships, dependencies, and skills to preload
 
 ### Phase 2: Research

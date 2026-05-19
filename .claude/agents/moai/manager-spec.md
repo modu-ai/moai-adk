@@ -176,7 +176,7 @@ Detect domain keywords and recommend expert consultation:
 - Backend keywords (API, auth, database): Recommend expert-backend
 - Frontend keywords (component, UI, state): Recommend expert-frontend
 - DevOps keywords (deployment, Docker, CI/CD): Recommend expert-devops
-- Use AskUserQuestion for user confirmation before consultation
+- Return a blocker report to the orchestrator for user confirmation before consultation — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) handles this
 
 ## Status Responsibility Matrix
 

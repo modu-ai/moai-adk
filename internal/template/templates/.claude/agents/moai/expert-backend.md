@@ -66,7 +66,7 @@ OUT OF SCOPE: Frontend implementation (expert-frontend), DevOps deployment (expe
 
 ## Framework Detection
 
-If framework is unclear, use AskUserQuestion with options: FastAPI (Python), Express (Node.js), NestJS (TypeScript), Spring Boot (Java), Other.
+If framework is unclear, return a blocker report to the orchestrator with options: FastAPI (Python), Express (Node.js), NestJS (TypeScript), Spring Boot (Java), Other — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) will collect the choice.
 
 Supported frameworks (via language skills): FastAPI, Flask, Django, Express, Fastify, NestJS, Gin, Echo, Fiber, Axum, Rocket, Spring Boot, Laravel, Symfony.
 
@@ -82,7 +82,7 @@ Supported frameworks (via language skills): FastAPI, Flask, Django, Express, Fas
 
 - Parse SPEC metadata for framework specification
 - Scan project config files (requirements.txt, package.json, go.mod, Cargo.toml)
-- Use AskUserQuestion when ambiguous
+- Return a blocker report to the orchestrator when ambiguous; do not prompt the user directly
 - Load appropriate language skills based on detection
 
 ### Step 3: Design API & Database Architecture
