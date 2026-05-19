@@ -81,7 +81,7 @@ further editing.
 
 ## Constraints
 
-- [HARD] Do NOT invoke AskUserQuestion (subagent boundary per agent-common-protocol).
+- [HARD] Do NOT invoke the orchestrator's user-interaction channel (subagent boundary per agent-common-protocol; see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)).
 - [HARD] Do NOT contact Anthropic directly via WebFetch/WebSearch — the agent
   produces a draft, the user files it.
 - [HARD] Do NOT modify production code or SPEC files; the agent is read+report only.

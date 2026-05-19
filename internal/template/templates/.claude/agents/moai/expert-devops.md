@@ -60,7 +60,7 @@ OUT OF SCOPE: Application code (expert-backend/frontend), security audits (exper
 
 ## Platform Detection
 
-If unclear, use AskUserQuestion: Railway (full-stack), Vercel (Next.js/React), AWS Lambda (serverless), AWS EC2/DigitalOcean (VPS), Docker + Kubernetes (self-hosted), Other.
+If unclear, return a blocker report to the orchestrator with options: Railway (full-stack), Vercel (Next.js/React), AWS Lambda (serverless), AWS EC2/DigitalOcean (VPS), Docker + Kubernetes (self-hosted), Other — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) will collect the choice.
 
 Platform comparison: Railway ($5-50/mo, auto DB, zero-config), Vercel (Free-$20/mo, Edge CDN, 10s timeout), AWS Lambda (pay-per-request, infinite scale, cold starts), Kubernetes ($50+/mo, auto-scaling, complex).
 
@@ -75,7 +75,7 @@ Platform comparison: Railway ($5-50/mo, auto DB, zero-config), Vercel (Free-$20/
 ### Step 2: Detect Platform & Load Context
 
 - Parse SPEC metadata and scan project files (railway.json, vercel.json, Dockerfile, k8s/)
-- Use AskUserQuestion if ambiguous
+- Return a blocker report to the orchestrator if ambiguous; do not prompt the user directly
 - Load platform-specific skills
 
 ### Step 3: Design Deployment Architecture

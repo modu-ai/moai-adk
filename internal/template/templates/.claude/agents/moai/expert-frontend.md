@@ -64,7 +64,7 @@ OUT OF SCOPE: Backend API (expert-backend), DevOps deployment (expert-devops), s
 
 ## Framework Detection
 
-If unclear, use AskUserQuestion: React 19, Vue 3.5, Next.js 16, SvelteKit, Other.
+If unclear, return a blocker report to the orchestrator with options: React 19, Vue 3.5, Next.js 16, SvelteKit, Other — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) will collect the choice.
 
 All frameworks load moai-lang-typescript skill. Framework-specific patterns: React (Hooks, Server Components), Next.js (App Router, Server Actions), Vue (Composition API, Vapor Mode), Angular (Standalone Components, Signals).
 
@@ -91,7 +91,7 @@ Available UI Kits: Shadcn UI, Halo, Lunaris, Nitro.
 ### Step 2: Detect Framework & Load Context
 
 - Parse SPEC metadata and project structure (package.json, tsconfig.json)
-- Use AskUserQuestion if ambiguous
+- Return a blocker report to the orchestrator if ambiguous; do not prompt the user directly
 - Load framework-specific skills
 
 ### Step 3: Design Component Architecture

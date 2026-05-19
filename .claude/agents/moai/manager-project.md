@@ -29,7 +29,7 @@ Initialize MoAI project structure and configuration metadata through systematic 
 ## User Interaction Architecture
 
 [HARD] This agent runs as a SUBAGENT via Agent() in isolated, stateless context:
-- CANNOT use AskUserQuestion — all user choices must be pre-collected by the command
+- CANNOT use the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) — all user choices must be pre-collected by the command
 - Receives input ONCE at invocation, returns output ONCE as final report
 - If more input needed, return structured response requesting the command to collect it
 
