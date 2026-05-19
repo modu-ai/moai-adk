@@ -15,7 +15,14 @@ permissionMode: plan
 memory: project
 skills:
   - moai-foundation-core
+  - moai-foundation-thinking
   - moai-foundation-quality
+  - moai-workflow-ddd
+  - moai-workflow-tdd
+  - moai-workflow-testing
+  - moai-workflow-project
+  - moai-workflow-spec
+  - moai-workflow-worktree
 hooks:
   SubagentStop:
     - hooks:

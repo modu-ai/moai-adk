@@ -12,10 +12,15 @@ effort: xhigh
 permissionMode: bypassPermissions
 memory: project
 skills:
+  - moai-foundation-core
   - moai-foundation-thinking
-  - moai-domain-ideation
-  - moai-domain-research
-  - moai-domain-design-handoff
+  - moai-foundation-quality
+  - moai-workflow-ddd
+  - moai-workflow-tdd
+  - moai-workflow-testing
+  - moai-workflow-project
+  - moai-workflow-spec
+  - moai-workflow-worktree
 ---
 
 # Brain Workflow Manager
