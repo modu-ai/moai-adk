@@ -8,7 +8,7 @@ Shared protocol for all MoAI agent definitions. This rule is automatically loade
 
 ### Subagent Prohibitions
 
-[HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
+[ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
 
 Rules for subagents:
 - If required context is missing, return a blocker report to the orchestrator — do not output free-form questions
@@ -25,8 +25,8 @@ Rationale:
 
 The MoAI orchestrator MUST follow these obligations when using AskUserQuestion:
 
-- [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
-- [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
+- [ZONE:Frozen] [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
+- [ZONE:Frozen] [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
 - Collect all user preferences before delegating to subagents via Agent()
 - On receiving a blocker report from a subagent: run an AskUserQuestion round, inject the user's responses into a fresh subagent prompt, and re-delegate
 
@@ -58,7 +58,7 @@ On receiving a blocker report, the orchestrator:
 
 ## Language Handling
 
-[HARD] All agents receive and respond in user's configured conversation_language.
+[ZONE:Evolvable] [HARD] All agents receive and respond in user's configured conversation_language.
 
 Output language rules:
 - Analysis, documentation, reports: User's conversation_language
@@ -70,22 +70,19 @@ Output language rules:
 
 ## Output Format
 
-[HARD] User-Facing: Always use Markdown formatting. Never display XML tags to users.
+[ZONE:Evolvable] [HARD] User-Facing: Always use Markdown formatting. Never display XML tags to users.
 
 - Reports, architecture docs, analysis results: Markdown with code blocks
 - Progress updates and status: Markdown
 
-[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+[ZONE:Evolvable] [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
 
 - Use semantic XML sections for structured data exchange between agents
 - Never surface XML structure in user-facing output
 
 ## Skeptical Evaluation Stance
 
-<!-- @MX:NOTE: [AUTO] SPEC-V3R2-ORC-002 추출 — 이 섹션은 manager-quality.md와 evaluator-active.md에서
-     중복 Skeptical Evaluation Mandate 블록을 제거하고 단일 canonical 위치로 통합한 것. -->
-<!-- @MX:WARN: [AUTO] 중복 금지 — LR-07 lint rule이 이 섹션의 복사본을 에이전트 파일에서 탐지하여 에러로 처리.
-     @MX:REASON: REQ-ORC-002-005 + REQ-ORC-002-009 — canonical copy는 오직 이 파일에만 존재. -->
+<!-- @MX:WARN: Duplication prohibited — LR-07 lint rule detects copies of this section in agent files and flags as error. Canonical copy lives only in this file. -->
 
 The reviewer mode operates as a fresh-judgment auditor:
 
@@ -98,7 +95,7 @@ The reviewer mode operates as a fresh-judgment auditor:
 
 ## MCP Fallback Strategy
 
-[HARD] Maintain effectiveness without MCP servers.
+[ZONE:Evolvable] [HARD] Maintain effectiveness without MCP servers.
 
 When Context7 MCP is unavailable:
 1. Detect unavailability immediately when MCP tools fail or return errors
@@ -118,7 +115,7 @@ Agents follow MoAI's core execution directives defined in CLAUDE.md. Since CLAUD
 
 ## Agent Invocation Pattern
 
-[HARD] Agents are invoked through MoAI's natural language delegation pattern:
+[ZONE:Evolvable] [HARD] Agents are invoked through MoAI's natural language delegation pattern:
 - "Use the {agent-name} subagent to {task description}"
 - Natural language conveys full context including constraints, dependencies, and rationale
 
@@ -129,7 +126,7 @@ Architecture:
 
 ## Background Agent Execution
 
-[HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
+[ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
 
 Background agents auto-deny all non-pre-approved permission prompts because they cannot interact with the user. Even with `mode: "bypassPermissions"`, the background execution context does not fully inherit the parent session's permission allowlist.
 
@@ -146,7 +143,7 @@ Decision matrix:
 
 ## Tool Usage Guidelines
 
-[HARD] Agents must follow tool usage patterns optimized for accuracy and efficiency.
+[ZONE:Evolvable] [HARD] Agents must follow tool usage patterns optimized for accuracy and efficiency.
 
 ### File Operations Pattern
 
@@ -206,7 +203,7 @@ When a tool call fails:
 
 ## Time Estimation
 
-[HARD] Never use time predictions in plans or reports.
+[ZONE:Evolvable] [HARD] Never use time predictions in plans or reports.
 - Use priority labels: Priority High / Medium / Low
 - Use phase ordering: "Complete A, then start B"
 - Prohibited: "2-3 days", "1 week", "as soon as possible"

@@ -9,7 +9,7 @@ description: |
   ZH: 性能, 性能分析, 优化, 基准测试, 内存, 包体, 延迟
   NOT for: new feature development, architecture design, security audits, DevOps, frontend UI design
 tools: Read, Write, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 effort: high
 permissionMode: bypassPermissions
 memory: project

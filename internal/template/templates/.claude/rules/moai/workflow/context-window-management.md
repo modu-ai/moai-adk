@@ -6,11 +6,11 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 
 Anthropic SSE streams have been observed to stall (`stream_idle_partial`) when very large prompts are produced near the upper end of the context window. Symptoms: model emits a few hundred bytes then the stream goes idle; orchestrator's outbound message hangs without a tool call. This is intermittent but predictable above the model-specific usage threshold.
 
-Reference incident: 2026-04-25, SPEC-V3R2-WF-001 monolithic delegation. See feedback memory `feedback_large_spec_wave_split.md`.
+Reference incident: 2026-04-25 monolithic delegation. See feedback memory `feedback_large_spec_wave_split.md`.
 
 ## Context Window Targets
 
-[HARD] Operational threshold is **model-specific** (revised 2026-05-09). Larger windows tolerate higher percentage utilization before stall risk dominates; smaller windows hit the operational ceiling later in percentage terms but with less absolute headroom:
+[ZONE:Evolvable] [HARD] Operational threshold is **model-specific** (revised 2026-05-09). Larger windows tolerate higher percentage utilization before stall risk dominates; smaller windows hit the operational ceiling later in percentage terms but with less absolute headroom:
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
@@ -24,12 +24,12 @@ The model-specific threshold is the operational ceiling — beyond it, plan for 
 
 The user monitors context usage via the Claude Code statusline or `/cost` command and intervenes when usage crosses the model-specific threshold (75% on 1M models, 90% on 200K models).
 
-[HARD] When usage crosses the model-specific threshold:
+[ZONE:Evolvable] [HARD] When usage crosses the model-specific threshold:
 1. Save in-flight state to `.moai/specs/<SPEC-ID>/progress.md` if not already saved (orchestrator does this automatically)
 2. Run `/clear` to flush the conversation context
 3. Paste the **resume message** (provided by the orchestrator before the clear) to continue
 
-[HARD] When usage crosses 95% on any model:
+[ZONE:Evolvable] [HARD] When usage crosses 95% on any model:
 - The next action MUST be `/clear` — no further large work in the current session
 - Stall risk is severe; agent invocations may fail mid-stream
 - This is the absolute hard stop regardless of model class
@@ -38,13 +38,13 @@ The user monitors context usage via the Claude Code statusline or `/cost` comman
 
 The MoAI orchestrator MUST proactively recognize the model-specific boundary and prepare the user for a clean handoff.
 
-[HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (75% on 1M, 90% on 200K), it MUST:
+[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (75% on 1M, 90% on 200K), it MUST:
 1. Stop initiating new large tool calls or `Agent()` delegations
 2. Persist all in-flight progress to `.moai/specs/<SPEC-ID>/progress.md`
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
 4. Recommend `/clear` via natural-language guidance (this is a status announcement, not a question — `AskUserQuestion` not required)
 
-[HARD] Resume message format: include all of the following so the next session is self-sufficient:
+[ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient:
 ```
 ultrathink. Sprint <N> 이어서 진행. SPEC-<ID>부터 <approach 요약>.
 applied lessons: <memory file names>.
@@ -83,5 +83,4 @@ This rule applies to all MoAI workflows:
 
 ---
 
-Source: 2026-04-25 stall incident analysis (debug log `[WARN] [Stall] stream_idle_partial`) + 2026-05-09 model-specific threshold revision (1M = 75%, 200K = 90%)
 Status: HARD operational rule, applies to all sessions

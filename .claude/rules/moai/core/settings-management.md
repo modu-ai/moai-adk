@@ -30,7 +30,7 @@ Standard MCP servers in MoAI-ADK:
 - sequential-thinking: Complex problem analysis
 - pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
 - claude-in-chrome: Browser automation
-- zai-mcp-server (optional): Z.AI hosted MCP for Vision OCR / WebSearch / WebReader. Registered via `moai glm tools enable [vision|websearch|webreader|all]` (SPEC-GLM-MCP-001).
+- zai-mcp-server (optional): Z.AI hosted MCP for Vision OCR / WebSearch / WebReader. Registered via `moai glm tools enable [vision|websearch|webreader|all]`.
 
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
@@ -55,7 +55,6 @@ MoAI-ADK 기본 설정:
 }
 ```
 
-Source: SPEC-CC2122-MCP-001 (2026-04-30)
 
 MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
 
@@ -118,7 +117,7 @@ Activate with `--deepthink` flag for enhanced analysis.
 - sections/language.yaml: Language preferences
 - sections/user.yaml: User information
 
-#### MoAI Configuration — Section Loaders (SPEC-V3R2-MIG-003)
+#### MoAI Configuration — Section Loaders
 
 Configuration sections are loaded via two mechanisms:
 
@@ -150,9 +149,9 @@ Loads the following 10 sections in fixed order. All return defaults on absent fi
 
 **MIG-003 new loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
 
-- `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) for SPEC-V3R2-EXT-004 policy enforcement.
+- `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) policy enforcement.
 - `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
-- `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions` for SPEC-V3R2-WF-003 discovery mode.
+- `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions`.
 - `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
 
 **SunsetConfig** (`internal/config/types.go`): DORMANT — struct defined but no runtime hot path enforces sunset conditions. `LoadSunsetConfig` must NOT be added until an activation SPEC is filed (REQ-MIG003-006).

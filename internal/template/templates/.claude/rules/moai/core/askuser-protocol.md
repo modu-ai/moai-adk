@@ -5,7 +5,6 @@ globs:
 
 # AskUserQuestion Protocol — Canonical Reference
 
-> Source: SPEC-ASKUSER-ENFORCE-001 v1.0.0 (2026-04-25)
 > This file is the **single source of truth** for AskUserQuestion interaction rules.
 > Cross-referenced by: CLAUDE.md §8, moai-constitution.md §MoAI Orchestrator, agent-common-protocol.md §User Interaction Boundary, output-styles/moai/moai.md §3/§10.
 
@@ -139,9 +138,9 @@ See `.claude/rules/moai/core/askuser-protocol.md` (this file) for the complete p
 ### Subagent Prohibitions
 
 Subagents invoked via `Agent()` operate in isolated, stateless contexts and CANNOT interact with users directly:
-- [HARD] Subagents MUST NOT invoke `AskUserQuestion`
-- [HARD] Subagents MUST NOT output free-form prose questions directed at the user
-- [HARD] Subagents MUST NOT embed AskUserQuestion call syntax in their response body
+- [ZONE:Frozen] [HARD] Subagents MUST NOT invoke `AskUserQuestion`
+- [ZONE:Frozen] [HARD] Subagents MUST NOT output free-form prose questions directed at the user
+- [ZONE:Frozen] [HARD] Subagents MUST NOT embed AskUserQuestion call syntax in their response body
 
 ### Blocker Report Format
 
@@ -258,5 +257,4 @@ AskUserQuestion({
 ---
 
 Version: 1.0.0
-Source: SPEC-ASKUSER-ENFORCE-001 (2026-04-25)
 Classification: Canonical Reference — do not duplicate content; cross-reference this file instead.

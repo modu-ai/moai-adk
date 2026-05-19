@@ -7,7 +7,6 @@ paths:
 
 # CI Watch Protocol Rule
 
-> Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (T2)
 > This file is the single source of truth for CI watch loop invocation rules.
 > Cross-referenced by: SKILL.md, moai-workflow-ci-watch modules.
 
@@ -15,7 +14,7 @@ paths:
 
 ## Auto-Invocation Contract
 
-[HARD] The orchestrator MUST invoke the CI watch loop after `/moai sync` Phase 4
+[ZONE:Frozen] [HARD] The orchestrator MUST invoke the CI watch loop after `/moai sync` Phase 4
 (PR creation) completes successfully and returns a PR number.
 
 ```
@@ -37,7 +36,7 @@ MOAI_CIWATCH_GH=gh sh scripts/ci-watch/run.sh <PR_NUMBER> <BRANCH>
 
 ## Polling Cadence
 
-[HARD] Poll interval MUST be 30 seconds minimum. GitHub Actions API rate limits
+[ZONE:Frozen] [HARD] Poll interval MUST be 30 seconds minimum. GitHub Actions API rate limits
 apply; polling faster than 30s risks 429 responses.
 
 [WARN] `CIWATCH_POLL_INTERVAL` env var overrides the interval. Do not set below
@@ -47,7 +46,7 @@ apply; polling faster than 30s risks 429 responses.
 
 ## 30-Minute Hard Timeout
 
-[HARD] The watch loop MUST exit with code 3 after 30 minutes wall-clock time
+[ZONE:Frozen] [HARD] The watch loop MUST exit with code 3 after 30 minutes wall-clock time
 regardless of check states. Token budget guard: a watch loop running indefinitely
 would exhaust the orchestrator context window.
 
@@ -60,10 +59,10 @@ return control. Do NOT auto-restart the watch loop after timeout.
 
 ## Required vs Auxiliary Discrimination
 
-[HARD] Required checks are defined ONLY in `.github/required-checks.yml`
+[ZONE:Frozen] [HARD] Required checks are defined ONLY in `.github/required-checks.yml`
 `branches.<pattern>.contexts`. Hardcoding check names in scripts is prohibited.
 
-[HARD] Auxiliary checks listed under `auxiliary:` in `.github/required-checks.yml`
+[ZONE:Frozen] [HARD] Auxiliary checks listed under `auxiliary:` in `.github/required-checks.yml`
 MUST NOT block the ready-to-merge decision. They are advisory only.
 
 [WARN] If `.github/required-checks.yml` is missing, the watch loop exits 1 with
@@ -84,7 +83,7 @@ a remediation message. Run `moai github init` to restore the SSoT.
 
 ## AskUserQuestion Boundary
 
-[HARD] The CLI (`moai pr watch`, `EmitReadyToMergeReport`) MUST NOT call
+[ZONE:Frozen] [HARD] The CLI (`moai pr watch`, `EmitReadyToMergeReport`) MUST NOT call
 AskUserQuestion. Interaction is strictly orchestrator territory.
 
 The orchestrator presents the emitted markdown report via AskUserQuestion:
@@ -110,7 +109,7 @@ On exit 2, stdout contains JSON (see `modules/trigger-handoff.md` in the skill):
 }
 ```
 
-[HARD] Only required failures appear in `failedChecks`. Auxiliary failures are
+[ZONE:Frozen] [HARD] Only required failures appear in `failedChecks`. Auxiliary failures are
 counted in `auxiliaryFailCount` but MUST NOT be passed to manager-quality as
 blocking failures.
 
@@ -129,11 +128,10 @@ a new invocation may take over without explicit abort.
 
 ## Wave 1 SSoT Contract Preservation
 
-[HARD] Wave 2 watch loop MUST NOT modify `.github/required-checks.yml` (Wave 1 SSoT).
+[ZONE:Frozen] [HARD] Wave 2 watch loop MUST NOT modify `.github/required-checks.yml` (Wave 1 SSoT).
 The SSoT is read-only for Wave 2. Modifications require `moai github init` re-run.
 
 ---
 
 Version: 1.0.0
-Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (2026-05-06)
 Classification: HARD operational rule, applies to all /moai sync workflows

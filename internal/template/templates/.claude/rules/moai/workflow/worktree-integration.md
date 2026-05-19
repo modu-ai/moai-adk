@@ -26,7 +26,7 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 | Feature | Claude Native | MoAI |
 |---------|--------------|------|
 | **Path** | `.claude/worktrees/<name>/` | `~/.moai/worktrees/{Project}/{SPEC}/` |
-| **Lifetime** | Ephemeral (session-scoped) | Persistent (SPEC-scoped) |
+| **Lifetime** | Ephemeral (session-scoped) | Persistent |
 | **Purpose** | Session isolation for subagents | SPEC development, PR creation |
 | **CLI** | `claude -w` (user) or `isolation: worktree` (agent) | `moai worktree new/list/remove` |
 | **Cleanup** | Automatic on session end | Manual via `moai worktree remove` |
@@ -96,7 +96,7 @@ background: true   # Returns immediately; results delivered on next turn
 
 Use with `isolation: worktree` for optimal parallel execution in team mode.
 
-[HARD] Background agents auto-deny Write/Edit operations. Only use `background: true` for:
+[ZONE:Frozen] [HARD] Background agents auto-deny Write/Edit operations. Only use `background: true` for:
 - Read-only research and analysis agents
 - Agents whose write paths are pre-approved in settings.json `permissions.allow`
 
@@ -104,7 +104,7 @@ For write-heavy agents without pre-approval, use `background: false` (foreground
 
 Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 
-## Worktree Selection Rules [HARD]
+## Worktree Selection Rules [ZONE:Evolvable] [HARD]
 
 ### Decision Tree
 
@@ -130,16 +130,16 @@ Is this a one-shot sub-agent task?
 
 ### HARD Rules
 
-- [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
-- [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
-- [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes v3r2 agents: manager-cycle, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer. (SPEC-V3R2-ORC-004)
-<!-- @MX:ANCHOR: [AUTO] WorktreeMUSTRule — invariant contract; all write-heavy v3r2 agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
-<!-- @MX:REASON: Upgraded from SHOULD to MUST per SPEC-V3R2-ORC-004 to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
-- [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
+- [ZONE:Evolvable] [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
+- [ZONE:Evolvable] [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
+- [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy agents such as manager-develop, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer.
+<!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
+<!-- @MX:REASON: MUST level required to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
+- [ZONE:Evolvable] [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
 
 ## Sentinel Key Glossary
 
-Structured error codes emitted by `moai agent lint` and `moai workflow lint` for programmatic detection (SPEC-V3R2-ORC-004 REQ-013, REQ-014, REQ-008):
+Structured error codes emitted by `moai agent lint` and `moai workflow lint` for programmatic detection:
 
 | Sentinel Key | Source | Meaning |
 |---|---|---|
@@ -228,10 +228,10 @@ When the orchestrator generates prompts for agents spawned with `isolation: "wor
 
 ### HARD Rules
 
-- [HARD] Do NOT include absolute paths to the main project directory in agent prompts for write-target files
-- [HARD] Do NOT include `cd /absolute/project/path &&` in Bash commands within agent prompts
-- [HARD] Reference write-target files by project-root-relative paths (e.g., `src/domains/auth/handler.go`) and let the agent resolve from its own CWD
-- [HARD] `$CLAUDE_PROJECT_DIR` in hook commands is acceptable — Claude Code resolves this to the correct directory for the agent's context
+- [ZONE:Frozen] [HARD] Do NOT include absolute paths to the main project directory in agent prompts for write-target files
+- [ZONE:Frozen] [HARD] Do NOT include `cd /absolute/project/path &&` in Bash commands within agent prompts
+- [ZONE:Frozen] [HARD] Reference write-target files by project-root-relative paths (e.g., `src/domains/auth/handler.go`) and let the agent resolve from its own CWD
+- [ZONE:Frozen] [HARD] `$CLAUDE_PROJECT_DIR` in hook commands is acceptable — Claude Code resolves this to the correct directory for the agent's context
 
 ### Path Categories
 
@@ -302,7 +302,7 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ## SPEC-to-Worktree Mapping
 
-[HARD] Per-step worktree applicability is governed by `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (canonical source). This table summarizes the mapping for quick reference; on conflict, spec-workflow.md wins.
+[ZONE:Frozen] [HARD] Per-step worktree applicability is governed by `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (canonical source). This table summarizes the mapping for quick reference; on conflict, spec-workflow.md wins.
 
 | Step | Phase   | Worktree?                | Location                              | Lifecycle event              |
 |------|---------|--------------------------|---------------------------------------|------------------------------|
@@ -311,7 +311,7 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 | 3    | Sync    | **YES** — same as Step 2 | same path as Step 2 (do NOT recreate) | sync PR merged               |
 | 4    | Cleanup | n/a                      | host checkout                         | `moai worktree done SPEC-XXX` |
 
-[HARD] Disposal contract: `moai worktree done SPEC-XXX` MUST run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
+[ZONE:Frozen] [HARD] Disposal contract: `moai worktree done SPEC-XXX` MUST run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
 
 ## Team Protocol
 
@@ -358,5 +358,4 @@ When you receive a shutdown_request JSON message:
 
 ---
 
-Version: 4.0.0 (Team Protocol merged from team-protocol.md via SPEC-V3R2-CON-003 OP-3)
-Source: SPEC-WORKTREE-001, SPEC-TEAM-PROTOCOL-001
+Version: 4.0.0 (Team Protocol merged from team-protocol.md)

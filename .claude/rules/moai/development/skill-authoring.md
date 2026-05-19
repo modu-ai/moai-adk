@@ -103,7 +103,7 @@ triggers:
 
 ### Key Format Rules
 
-allowed-tools format: [HARD] Comma-separated string ONLY. Space-separated values are PROHIBITED.
+allowed-tools format: [ZONE:Evolvable] [HARD] Comma-separated string ONLY. Space-separated values are PROHIBITED.
 - Correct: `allowed-tools: Read, Grep, Glob, Bash`
 - WRONG: `allowed-tools: Read Grep Glob Bash` (YAML parses as single string scalar, silently breaks tool permissions)
 - YAML arrays also supported since v2.1.0 but CSV is the MoAI convention
@@ -249,11 +249,10 @@ Skills can exist at multiple levels. When the same name exists across levels, hi
 
 ## Language Guidance Lives in Rules, Not Skills
 
-<!-- @MX:NOTE: [AUTO] Language-as-rules per SPEC-V3R2-WF-005; do not propose moai-lang-* skills. See REQ-WF005-012 for atomic reversal gate. -->
-<!-- @MX:ANCHOR: [AUTO] Language-as-rules canonical decision; cross-referenced by all skill authors. Changes here affect every future language-related SPEC. -->
-<!-- @MX:REASON: fan_in=N — this section is the single source of truth for language vs skill classification; consulted by every skill author and plan-auditor on every language-related SPEC. -->
+<!-- @MX:ANCHOR: Language-as-rules canonical decision; cross-referenced by all skill authors. Changes here affect every future language-related decision. -->
+<!-- @MX:REASON: This section is the single source of truth for language vs skill classification; consulted by every skill author and plan-auditor on every language-related decision. -->
 
-Per SPEC-V3R2-WF-005, the 16 supported languages live as **rules** under
+The 16 supported languages live as **rules** under
 `.claude/rules/moai/languages/*.md`, never as skills.
 
 - **No `moai-lang-<name>` skill** may be created. Any PR adding such a

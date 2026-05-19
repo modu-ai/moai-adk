@@ -9,7 +9,7 @@ description: |
   ZH: 策略, 实施计划, 架构决策, 技术评估
   NOT for: code implementation, testing, deployment, documentation, git operations
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: opus
+model: inherit
 effort: xhigh
 permissionMode: plan
 memory: project

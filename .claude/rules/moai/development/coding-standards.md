@@ -68,7 +68,6 @@ Use Skill("moai") with arguments: [subcommand] $ARGUMENTS
 
 Enforcement: `internal/template/commands_audit_test.go` verifies this pattern on every `go test`.
 
-Source: SPEC-THIN-CMDS-001
 
 ## Claude Code Version Compatibility
 

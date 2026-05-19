@@ -9,7 +9,7 @@ description: |
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
   NOT for: code implementation, architecture design, deployment, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking
-model: sonnet
+model: inherit
 effort: high
 permissionMode: plan
 memory: project

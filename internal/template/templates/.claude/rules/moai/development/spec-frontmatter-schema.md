@@ -139,4 +139,4 @@ labels: [auth, oauth2]   # WRONG — use tags: "auth, oauth2"
 
 | Date | Author | Change |
 |------|--------|--------|
-| 2026-05-16 | SPEC-V3R4-SPECLINT-DEBT-002 | Initial creation — resolves dual-schema drift between plan.md (9-field) and lint.go (12-field) |
+| (initial) | maintainer | Initial creation — resolves dual-schema drift between plan.md (9-field) and lint.go (12-field) |

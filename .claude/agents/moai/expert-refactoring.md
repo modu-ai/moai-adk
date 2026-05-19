@@ -9,7 +9,7 @@ description: |
   ZH: 重构, 重组, 代码模式, 转换, API迁移, 批量重命名, 大规模变更, AST搜索, 结构搜索
   NOT for: new feature development, bug fixes, security audits, DevOps, testing strategy
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
 isolation: worktree

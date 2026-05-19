@@ -20,7 +20,7 @@ MoAI's three-phase development workflow with token budget management.
 
 > [2026-05-17 user policy] L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `feedback_worktree_autonomous` memory and `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
 
-[HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location, branch convention, and PR merge strategy.
+[ZONE:Frozen] [HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location, branch convention, and PR merge strategy.
 
 | Step | Location                                              | Command                                                                                                  | Branch                                     | PR strategy | Lifecycle event               |
 |------|-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------|-------------|-------------------------------|
@@ -29,7 +29,7 @@ MoAI's three-phase development workflow with token budget management.
 | 3    | same as Step 2                                        | `/moai sync SPEC-XXX` (same L2 worktree as Step 2 if L2 was used; otherwise same feature branch)        | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`) | squash      | sync PR merged into main      |
 | 4    | host checkout (only if L2 was created)                | `moai worktree done SPEC-XXX`                                                                            | n/a                                        | n/a         | L2 worktree disposed          |
 
-[HARD] Step ordering rules:
+[ZONE:Frozen] [HARD] Step ordering rules:
 - Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
 - Step 2 (run) SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
 - Step 3 (sync) SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
@@ -44,7 +44,6 @@ Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SP
 
 ## Subcommand Classification (Pipeline vs Multi-Agent)
 
-Source: SPEC-V3R2-WF-004. Each MoAI subcommand is classified along the
 *control-flow style* axis. The classification governs which agents are spawned,
 how the `--mode` flag is interpreted, and which CI guards apply.
 
@@ -63,7 +62,6 @@ how the `--mode` flag is interpreted, and which CI guards apply.
 
 ### Mode Dispatch Cross-Reference
 
-Source: SPEC-V3R2-WF-003. The `--mode` axis values are valid only on multi-agent subcommands that explicitly support mode dispatch: `/moai run` and `/moai design`. Other multi-agent subcommands (`/moai plan`, `/moai sync`, `/moai project`) ignore `--mode` per REQ-WF003-005, except they REJECT `--mode pipeline` with `MODE_PIPELINE_ONLY_UTILITY` per REQ-WF003-016 (shared with WF-004 REQ-WF004-014).
 
 `/moai loop` is an alias for `/moai run --mode loop` per REQ-WF003-004. Both routes invoke the Ralph Engine identically; the alias preserves the historical entry point.
 
@@ -104,14 +102,14 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 ### Cross-references
 
-- `--mode` flag matrix: SPEC-V3R2-WF-003 (sibling SPEC, defines `autopilot|loop|team|pipeline`).
+- `--mode` flag matrix (defines `autopilot|loop|team|pipeline`).
 - Pipeline regression guard: `internal/template/agentless_audit_test.go` (REQ-WF004-013).
 - Pattern source: `.moai/design/v3-redesign/synthesis/pattern-library.md` §O-6 (Agentless).
 - Research source: `.moai/design/v3-redesign/research/r1-ai-harness-papers.md` §25 (Xia et al. 2024).
 
 ## Plan Phase
 
-[HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
+[ZONE:Frozen] [HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
 
 Create comprehensive specification using EARS format.
 
@@ -276,7 +274,7 @@ Plan to Run:
 The Plan Audit Gate is a mandatory protocol executed at the start of every `/moai run` invocation,
 before any implementation phase begins. The gate invokes the plan-auditor subagent to independently
 review all SPEC plan artifacts. It prevents unreviewed or incomplete SPEC artifacts from entering
-the implementation phase. Source: SPEC-WF-AUDIT-GATE-001.
+the implementation phase.
 
 ### Gate Entry Condition
 
@@ -300,7 +298,7 @@ Multiple calls on the same day append to the same file. Reports are local artifa
 
 ### Grace Window
 
-7-day grace window after SPEC-WF-AUDIT-GATE-001 merge: FAIL verdicts emit warnings only (FAIL_WARNED),
+7-day grace window after the previous merge: FAIL verdicts emit warnings only (FAIL_WARNED),
 not blocking. After grace window expires, FAIL verdicts block Phase 1 unconditionally.
 Grace window start: `.moai/state/audit-gate-merge-at.txt` (ISO-8601 timestamp).
 

@@ -8,7 +8,7 @@ description: |
   JA: セキュリティ, 脆弱性, OWASP, インジェクション, XSS, CSRF, ペネトレーション, 監査
   ZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计
   NOT for: general backend development, frontend UI, performance optimization, database design, DevOps deployment
-model: opus
+model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
 memory: project

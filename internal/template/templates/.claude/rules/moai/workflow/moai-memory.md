@@ -42,7 +42,7 @@ When resuming work across sessions:
 
 ---
 
-## Agent Memory Taxonomy (SPEC-V3R2-EXT-001)
+## Agent Memory Taxonomy
 
 All memory files written to `.claude/agent-memory/<agent-name>/` MUST conform to the 4-type taxonomy.
 

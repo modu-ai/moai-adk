@@ -11,7 +11,7 @@ description: |
   ZH: 后端, API, 服务器, 认证, 数据库, 微服务, SQL, PostgreSQL, MongoDB, Oracle, PL/SQL, 架构
   NOT for: frontend UI, CSS styling, React components, mobile apps, CLI tools, DevOps/deployment, security audits
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 effort: high
 permissionMode: bypassPermissions
 isolation: worktree

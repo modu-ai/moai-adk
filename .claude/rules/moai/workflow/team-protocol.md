@@ -25,7 +25,7 @@ The canonical role to (mode, model, isolation, write-heavy) mapping. Source: `.m
 | reviewer | plan | sonnet | none | no |
 
 **Constraints:**
-- Write-heavy roles (implementer, tester, designer) MUST use `isolation: "worktree"` — enforced by spawn wrapper and LR-05 lint rule (SPEC-V3R2-ORC-004).
+- Write-heavy roles (implementer, tester, designer) MUST use `isolation: "worktree"` — enforced by spawn wrapper and LR-05 lint rule.
 - Read-only roles (researcher, analyst, architect, reviewer) MUST NOT use `isolation: "worktree"` — enforced by LR-09 lint rule.
 - Role profiles are schema-locked to these 7 names during v3.0.x. Adding a new role requires SPEC amendment through CON-002 protocol.
 - No teammate can override the isolation flag downward (implementer in plan mode is rejected).
@@ -49,7 +49,7 @@ Team-scoped state lives under `.moai/state/team/{team-id}/`:
 
 ### Team-Scoped Memory
 
-Team-scoped memory lives at `.moai/agents/{team-id}/memory/` only when a teammate's spawn override includes `memory: project`. By default, teammates operate without team-scoped memory. Memory files follow the 4-type taxonomy (user, feedback, project, reference) per SPEC-V3R2-EXT-001.
+Team-scoped memory lives at `.moai/agents/{team-id}/memory/` only when a teammate's spawn override includes `memory: project`. By default, teammates operate without team-scoped memory. Memory files follow the 4-type taxonomy (user, feedback, project, reference).
 
 ## Mailbox Protocol v2
 
@@ -124,4 +124,3 @@ The team spawn wrapper enforces these checks before creating a teammate:
 ---
 
 Version: 1.0.0
-Source: SPEC-V3R2-ORC-005

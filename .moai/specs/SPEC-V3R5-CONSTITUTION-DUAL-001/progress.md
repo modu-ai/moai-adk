@@ -42,3 +42,85 @@
 - Phase 3.5: MX tag planning (lightweight — .md + Go cli)
 - Phase 3.6: SPEC quality gate ✓ PASS (lint clean)
 - DP3: Next action selection
+
+## Run Phase (D1 + D2 + D3)
+
+- run_started_at: 2026-05-20T01:30:00+09:00
+- run_status: in-flight
+- baseline_main_HEAD: 110f0eba2 (post W1 plan-PR #1015 squash merge)
+- branch: feat/SPEC-V3R5-CONSTITUTION-DUAL-001
+- branch_HEAD: e24b0d3a7 (pre-D3 commit)
+
+### D1 — ZONE marker annotation (Phase A)
+
+- commit: b8e563020 (parallel session 2026-05-20)
+- coverage: 15 source files × 111 [HARD] rules = 100% annotation
+- outcome: every [HARD] rule line now carries `[ZONE:Frozen]` or `[ZONE:Evolvable]` marker
+
+### D2 — zone-registry extension (Phase B)
+
+- commit: 4fb9c9ce8 (parallel session 2026-05-20)
+- coverage: 72 → 111 entries (39 V3R5-namespace entries added)
+- zone_class enum (4-value): frozen-canonical, frozen-safety, evolvable-tuning, evolvable-experimental
+- internal-gaps 047/048/050: historical, NOT filled (V3R2 namespace) — V3R5 parallel namespace adopted
+
+### D3 — validate CLI verb (this session 2026-05-20)
+
+- target files (uncommitted):
+  - internal/constitution/validator.go (371 LOC, 9 sentinel keys)
+  - internal/constitution/validator_test.go (563 LOC, 13 test functions)
+  - internal/cli/constitution.go (+156 LOC, validate subcommand + JSON/text renderers + exitCodeError)
+- 9 sentinel keys: DRIFT, SOURCE_FILE_MISSING, ZONE_UNREGISTERED, FROZEN_WITHOUT_CANARY, ANCHOR_NOT_FOUND, DUPLICATE_ID, STALE_ENTRY, DUPLICATE_ZONE_MARKER, INVALID_ZONE_CLASS
+- AC coverage (binary PASS):
+  - AC-CDL-003 happy path (TestValidateHappyPath)
+  - AC-CDL-004 drift detection (TestValidateDrift, TestValidateSourceFileMissing, TestValidateFrozenWithoutCanary)
+  - AC-CDL-006 zone_class enum (TestValidateInvalidZoneClass)
+  - AC-CDL-008 reflects updates without restart (TestValidateReflectsUpdatesWithoutRestart)
+  - AC-CDL-009 skip override (TestValidateSkipOverride, REQ-CDL-011)
+  - AC-CDL-010 read-only validator (TestValidateReadOnly)
+  - EC-CDL-002 whitespace normalization (TestValidateWhitespaceNormalization)
+  - EC-CDL-005 code-fence exclusion (TestValidateCodeFenceExclusion)
+  - EC-CDL-007 duplicate ZONE marker warning (TestValidateDuplicateZoneMarkerWarning)
+- AC-CDL-005a (CI step blocking on drift): DEFERRED — see § Baseline Drift Note
+- AC-CDL-005b (branch protection 4→5): DEFERRED — see § Baseline Drift Note
+
+### Build + Test Verification
+
+- go build ./... — PASS (no errors)
+- go test -race -count=1 ./internal/constitution/... ./internal/cli/... — PASS (constitution 1.7s, cli 29.9s)
+- make build — PASS (bin/moai regenerated with v2.14.0 / e24b0d3a7)
+
+### Smoke Test (real registry vs source files)
+
+- ./bin/moai constitution validate --strict → exit code 1 (drift detected, as designed)
+- ./bin/moai constitution validate --strict --format json → `status: drift, drift_count: 69`
+- behavior: validator works correctly; reports drift accurately
+
+### Baseline Drift Note (R-CDL-03 + R-CDL-04 risk mitigation)
+
+The current registry contains 69 entries whose `clause:` text does not appear verbatim
+in the recorded source `file:`. This is the BASELINE state at `e24b0d3a7` and falls
+under the explicit risk mitigation strategy documented in plan.md §540-545:
+
+- R-CDL-04 mitigation: "CI step 도입 (Phase D) 은 Phase B 머지 후 follow-up commit 으로 분리 가능"
+- R-CDL-03 mitigation: "anchor-aware matching 으로 false positive 감소" — deferred enhancement
+
+Drift breakdown:
+- CONST-V3R2-001..007 (7 entries): pre-existing thematic-label clauses (e.g., "SPEC+EARS format", "TRUST 5") — registry uses short labels, source uses verbatim rules. Future cleanup: re-author registry clauses to verbatim, or accept short-label semantics as documentation pointers.
+- CONST-V3R2-018..039, V3R2-150..152 (~30 entries): wording drift between registry clause (frozen at registry-creation time) and source (subsequently edited). Resolution: align registry clause to current source text, or align source to registry clause (whichever reflects intent).
+- CONST-V3R5-001..039 (~32 entries): V3R5 namespace entries created from current source — drift is most likely text-fragment match failure (clause is a paraphrased summary rather than verbatim source chunk). Resolution: align clause to verbatim source chunk.
+
+Resolution scope: deferred to **follow-up SPEC** (e.g., SPEC-V3R5-CONSTITUTION-DRIFT-CLEAN-001, post-W1) per plan R-CDL-04 mitigation. The validator itself works correctly — drift report is its designed output.
+
+### Lint regression baseline
+
+- moai agent lint --strict: 12 W2-deferred baseline (chicken-and-egg admin override, dissolves under W2 CORE-SLIM-001)
+- moai spec lint --strict: 0/0 (clean for this SPEC)
+- NEW=0 delta verified against `.moai/state/lint-w2-deferred.json` (LCLN-001 sync manifest)
+
+### Outstanding
+
+- commit M3+M4 (D3 + tests + CLI wiring)
+- push branch
+- gh pr create → admin --squash --delete-branch
+- frontmatter status `draft → implemented` → /moai sync → `implemented → completed`

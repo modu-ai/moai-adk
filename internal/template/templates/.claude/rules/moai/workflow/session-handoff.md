@@ -15,7 +15,7 @@ This rule establishes:
 
 ## When To Generate (5 Triggers)
 
-[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of these conditions activate:
+[ZONE:Evolvable] [HARD] The orchestrator MUST emit a paste-ready resume message when ANY of these conditions activate:
 
 | # | Trigger | Detection |
 |---|---------|-----------|
@@ -31,7 +31,7 @@ The model-specific threshold in Trigger #1 reflects asymmetric stall risk: 1M co
 
 ## Canonical Format (Verbatim Spec)
 
-[HARD] Resume message MUST follow this exact 6-block structure:
+[ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure:
 
 ```
 ultrathink. <SPEC-ID> <phase> 진입.
@@ -51,7 +51,7 @@ N) <verifiable precondition N>
 
 **Block 1 (Line 1)**: `ultrathink. <SPEC-ID> <phase> 진입.`
 - `ultrathink.` — keyword that triggers Adaptive Thinking max effort on Opus 4.7+ (CLAUDE.md §12). Required: max effort is the safe default for handoff continuation since the next session lacks accumulated reasoning context.
-- `<SPEC-ID>` — target SPEC identifier (e.g., `SPEC-V3R2-WF-004`) or workflow target (`다음 SPEC plan 작성`).
+- `<SPEC-ID>` — target SPEC identifier (e.g., `SPEC-MYPROJ-001`) or workflow target (`다음 SPEC plan 작성`).
 - `<phase>` — `plan` | `run` | `sync` | `loop`. Korean OK (`plan phase`, `run 진입`).
 
 **Block 2 (Line 2)**: `applied lessons: <comma-separated memory file references>`
@@ -76,29 +76,29 @@ N) <verifiable precondition N>
 - Optional but RECOMMENDED for multi-SPEC waves.
 - Specifies the next SPEC or workflow after the current target completes.
 
-### Verified Example (SPEC-V3R2-WF-002 session, 2026-05-01)
+### Example (Illustrative)
 
-> **Disclaimer**: The values below (commit `01801c922`, SPEC ID `SPEC-V3R2-WF-002`, file count `5`, etc.) are from the moai-adk-go dev project's verification session. They are preserved verbatim as historical evidence that the format was tested in production, not as a template you must match. Substitute your project's actual values when adapting.
+> **Disclaimer**: The values below are illustrative placeholders. Substitute your project's actual SPEC ID, commit SHA, file count, and lessons when adapting.
 
 ```
-ultrathink. SPEC-V3R2-WF-002 implementation 진입.
-applied lessons: project_wave6_wf002_plan_ready, lessons #9 wave-split.
+ultrathink. SPEC-MYPROJ-001 implementation 진입.
+applied lessons: project_wave6_myproj001_plan_ready, lessons #9 wave-split.
 
 전제 검증:
-1) git log --oneline -1 → 01801c922 확인
-2) ls .moai/specs/SPEC-V3R2-WF-002/ in worktree → 5 files
+1) git log --oneline -1 → <commit-sha> 확인
+2) ls .moai/specs/SPEC-MYPROJ-001/ in worktree → 5 files
 3) git -C worktree status → clean, base origin/main
 
-실행: /moai run SPEC-V3R2-WF-002
+실행: /moai run SPEC-MYPROJ-001
 
-머지 후: WF-004 → WF-003 → WF-005
+머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003 → SPEC-MYPROJ-004
 ```
 
-This format is paste-ready: the next session reads each line and executes verification + main action without further interpretation. The format was used verbatim in the WF-002 session and proved to recover full context within the first 3 turns of the receiving session.
+This format is paste-ready: the next session reads each line and executes verification + main action without further interpretation.
 
 ## Auto-Memory Integration (Mandatory)
 
-[HARD] When generating a resume message, the orchestrator MUST also:
+[ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
 1. Save the message to a memory project entry. Filename pattern: `project_<wave>_<spec>_<status>.md` (e.g., `project_wave6_wf002_complete.md`).
 2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading.
@@ -149,17 +149,19 @@ applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 
 
 ## Worktree-Anchored Resume Pattern
 
-[HARD] When the SPEC was initialized via `/moai plan --worktree` (creating a SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking SPEC worktree isolation expectations.
+[ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
 
-### Why Block 0 is required
+> Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
 
-The standard 6-block format implicitly assumes the next session inherits the previous session's cwd (main project). With `--worktree`, SPEC artifacts and `Agent(isolation: "worktree")` base expectations live in a **different cwd** (the worktree path). If the user pastes a resume into a Claude Code session that starts in main project cwd:
+### Why Block 0 is required (for L3 `--worktree` opt-in sessions only)
 
-- `Agent(isolation: "worktree")` base = main project HEAD ≠ worktree HEAD → lessons #13 (--team + SPEC worktree base mismatch)
+The standard 6-block format implicitly assumes the next session inherits the previous session's cwd (main project). With L3 `--worktree`, SPEC artifacts and L1 `Agent(isolation: "worktree")` base expectations live in a **different cwd** (the L2 worktree path). If the user pastes a resume into a Claude Code session that starts in main project cwd:
+
+- L1 `Agent(isolation: "worktree")` base = main project HEAD ≠ L2 worktree HEAD → lessons #13 (--team + SPEC worktree base mismatch)
 - Bash commands and file operations target main project → lessons #12 (수동 worktree isolation 위배) anti-pattern
 - Build/test results come from the wrong tree
 
-Block 0 forces the user to start a NEW terminal session **inside** the worktree, anchoring main session cwd before any orchestrator action.
+Block 0 forces the user to start a NEW terminal session **inside** the L2 worktree, anchoring main session cwd before any orchestrator action.
 
 ### Block 0 Format
 
@@ -196,31 +198,33 @@ If verification 0) fails (output ≠ worktree path), the next session MUST stop 
 
 ### Single-Session vs Multi-Session Decision
 
-Block 0 is REQUIRED only when SPEC was initialized with `--worktree`. For SPECs initialized with `--branch` (or no flag), the standard 6-block structure suffices because main session cwd already follows the branch — `Agent(isolation: "worktree")` base aligns naturally.
+Block 0 is REQUIRED only when SPEC was initialized with L3 `--worktree`. For SPECs initialized with `--branch` (or no flag — the default per 2026-05-17 user policy), the standard 6-block structure suffices because main session cwd already follows the branch — L1 `Agent(isolation: "worktree")` base aligns naturally.
 
-[HARD] If `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory), the default for new SPECs is `--branch` (or no flag) — L3 `--worktree` is opt-in only. Agents should not prompt users to use L3 unless explicitly requested.
 
-### Verified Example (with Block 0)
+[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+
+### Example with Block 0 (Illustrative)
 
 ```
 [New Terminal — START IN WORKTREE]
-$ cd /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R3-CI-AUTONOMY-001
-$ tmux new-session -s moai-ci-autonomy
+$ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
+$ tmux new-session -s myproj-session
 $ moai cg
    └─ Claude Code session starts here (cwd = worktree)
 
-ultrathink. SPEC-V3R3-CI-AUTONOMY-001 Wave 3 (T3 auto-fix loop) 진입.
-applied lessons: project_ciaut_wave2_complete, lessons #12 #13 #14, lessons #9 wave-split.
+ultrathink. SPEC-MYPROJ-001 Wave N (task-description) 진입.
+applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14, lessons #9 wave-split.
 
 전제 검증:
-0) git rev-parse --show-toplevel → /Users/goos/.moai/worktrees/moai-adk/SPEC-V3R3-CI-AUTONOMY-001 (★ critical)
-1) git branch --show-current → feat/SPEC-V3R3-CI-AUTONOMY-001-wave-3
-2) gh pr view 788 → MERGED
-3) ls .moai/specs/SPEC-V3R3-CI-AUTONOMY-001/ → 8 files
+0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
+1) git branch --show-current → feat/SPEC-MYPROJ-001-wave-N
+2) gh pr view <PR-number> → MERGED
+3) ls .moai/specs/SPEC-MYPROJ-001/ → N files
 
-실행: /moai run SPEC-V3R3-CI-AUTONOMY-001 --team
+실행: /moai run SPEC-MYPROJ-001 --team
 
-머지 후: Wave 4 → Wave 5 → Wave 6 → Wave 7
+머지 후: Wave N+1 → Wave N+2 → Wave N+3
 ```
 
 ## Cross-references
@@ -235,5 +239,4 @@ applied lessons: project_ciaut_wave2_complete, lessons #12 #13 #14, lessons #9 w
 
 ---
 
-Source: 2026-05-01 SPEC-V3R2-WF-002 session evidence (verified 6-block format) + 2026-05-06 SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (Block 0 addition) + 2026-05-09 model-specific threshold revision (Trigger #1: 1M context = 75%, 200K context = 90%; 5 triggers retained)
 Status: HARD operational rule, applies to all multi-phase MoAI workflows

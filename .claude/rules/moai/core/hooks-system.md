@@ -8,8 +8,8 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (post-SPEC-V3R2-MIG-002).
-**Note**: EventSetup retired by SPEC-V3R2-MIG-002 M2.1 (orphan constant, no handler implementation).
+26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (retired).
+**Note**: EventSetup retired (orphan constant, no handler implementation).
 Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4. Total: 26 events.
 
 **Active events (22 in settings.json + 4 RETIRE-OBS-ONLY in Go = 26 events):**
@@ -52,7 +52,7 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 | ElicitationResult | Observability tap; silent unless opted in |
 | TaskCreated | Observability tap; silent unless opted in |
 
-**Retired event (SPEC-V3R2-MIG-002 M2.1 — EventSetup constant and cobra binding removed):**
+**Retired event:**
 
 | Event | Status |
 |-------|--------|

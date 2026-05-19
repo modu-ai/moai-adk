@@ -9,7 +9,7 @@ description: |
   ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
   NOT for: code implementation, testing, deployment, git operations, security audits
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 effort: medium
 permissionMode: bypassPermissions
 memory: project
