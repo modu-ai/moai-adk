@@ -118,9 +118,44 @@ Resolution scope: deferred to **follow-up SPEC** (e.g., SPEC-V3R5-CONSTITUTION-D
 - moai spec lint --strict: 0/0 (clean for this SPEC)
 - NEW=0 delta verified against `.moai/state/lint-w2-deferred.json` (LCLN-001 sync manifest)
 
-### Outstanding
+### Outstanding (run-phase, RESOLVED)
 
-- commit M3+M4 (D3 + tests + CLI wiring)
-- push branch
-- gh pr create → admin --squash --delete-branch
-- frontmatter status `draft → implemented` → /moai sync → `implemented → completed`
+- ✅ commit M3+M4 (D3 + tests + CLI wiring) — commit `7b5f643fe`
+- ✅ push branch — `feat/SPEC-V3R5-CONSTITUTION-DUAL-001`
+- ✅ gh pr create → admin --squash --delete-branch — PR #1016 merged 2026-05-19T18:32:33Z
+- ✅ run-phase main HEAD → `81d42a1ae`
+
+## Sync Phase
+
+- sync_started_at: 2026-05-20T03:00:00+09:00
+- sync_status: in-flight
+- baseline_main_HEAD: 81d42a1ae (post W1 run-PR #1016 squash merge)
+- branch: sync/SPEC-V3R5-CONSTITUTION-DUAL-001
+
+### Sync Actions
+
+- spec.md frontmatter: status `draft → implemented` (v0.1.0 → v0.2.0, run-phase retrospective entry) → status `implemented → completed` (v0.2.0 → v0.3.0, sync-phase entry)
+- HISTORY: 2 entries added (v0.2.0 + v0.3.0) capturing full lifecycle
+- progress.md: this Sync Phase section added
+- No code changes (D1+D2+D3 already merged in PR #1015/#1016)
+
+### Sync Verification
+
+- moai spec lint --strict → expected 0/0 (StatusGitConsistency 해소 since git-implied status now matches frontmatter `completed`)
+- moai agent lint --strict → 12 W2-deferred baseline 그대로 (NEW=0 delta)
+- No new files needed; codemap/MX scans not required (zero source-code delta in sync phase)
+
+### W1 Lifecycle Closure
+
+| Phase | PR | main HEAD | Status |
+|-------|----|-----------| ----------|
+| Plan | #1015 | 110f0eba2 | MERGED |
+| Run (D1+D2+D3) | #1016 | 81d42a1ae | MERGED |
+| Sync (this) | TBD | TBD | IN-FLIGHT |
+
+### Unblocks (post-merge)
+
+- W2 CORE-SLIM-001 (12 W2-deferred lint baseline dissolves to 0)
+- W3 HARNESS-AUTONOMY-001 (FROZEN/EVOLVABLE 헌법적 토대 확보)
+- W4 PROJECT-MEGA-001 (Two-Zone Architecture 의 헌법 prerequisite 충족)
+- SPEC-V3R5-CONSTITUTION-DRIFT-CLEAN-001 (가칭, baseline 69 drift 해소)
