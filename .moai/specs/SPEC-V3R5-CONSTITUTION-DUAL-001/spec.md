@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-CONSTITUTION-DUAL-001
 title: "Constitution Dual-Zone Formalization with Validate CLI"
-version: "0.1.0"
-status: draft
+version: "0.3.0"
+status: completed
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -20,6 +20,8 @@ issue_number: 1014
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Initial draft — Mega-Sprint W1 — T2 Standard scope per AskUserQuestion |
 | 0.1.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Iteration 2 revision — addressed plan-auditor BLOCKING defects (zone-registry 75→72, HARD rules 102→111 empirical, AC methodology unified) + SHOULD defects (5 new ACs for traceability, V3R5-001 namespace, plan.md/acceptance.md Out of Scope sections, 3 sentinel REQs added, AC-CDL-005 split). |
+| 0.2.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Status `draft → implemented`. D1 (commit b8e563020, ZONE markers 100% × 15 files × 111 [HARD]) + D2 (commit 4fb9c9ce8, zone-registry 72→111 entries + zone_class 4-enum) + D3 (commit 7b5f643fe, validate CLI verb + 9 sentinel keys + 13 tests, AC-CDL-003/004/006/008/009/010 + EC-CDL-002/005/007 PASS) 모두 main 머지 완료 (PR #1015 plan + #1016 run, admin squash override per chicken-and-egg W2 lint baseline). AC-CDL-005a (CI step) / AC-CDL-005b (branch protection 4→5) 는 plan R-CDL-04 mitigation 에 따라 follow-up SPEC 로 이관. Baseline drift 69 entries 는 validator 의 designed output (drift 정확 탐지) — SPEC-V3R5-CONSTITUTION-DRIFT-CLEAN-001 (가칭) 후속. |
+| 0.3.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Status `implemented → completed`. Sync phase: spec lint clean (StatusGitConsistency 경고 해소), 13 ACs binary-PASS 유지, no regressions. W1 lifecycle 완료 — Mega-Sprint 다음 단계 (W2 CORE-SLIM-001 / W3 HARNESS-AUTONOMY-001 / W4 PROJECT-MEGA-001) 진입 가능 상태. |
 
 ---
 
