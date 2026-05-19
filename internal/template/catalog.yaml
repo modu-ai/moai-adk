@@ -323,12 +323,7 @@ catalog:
                   path: templates/.claude/skills/moai-framework-electron/
                   hash: 99c9c0794f95aea5e5857dc08849fde9b5caae1d7d4d150232a3e520dba648eb
                   version: 1.0.0
-            agents:
-                - name: expert-mobile
-                  tier: optional-pack:mobile
-                  path: templates/.claude/agents/moai/expert-mobile.md
-                  hash: e36353b3b9f8c8ebb98fb1b798823ee255db7c81901ac869eff241bd33194425
-                  version: 1.0.0
+            agents: []
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows
             depends_on: []
