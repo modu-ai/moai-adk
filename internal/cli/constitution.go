@@ -35,6 +35,7 @@ func newConstitutionCmd() *cobra.Command {
 	cmd.AddCommand(newConstitutionListCmd())
 	cmd.AddCommand(newConstitutionGuardCmd())
 	cmd.AddCommand(newConstitutionAmendCmd())
+	cmd.AddCommand(newConstitutionValidateCmd())
 	return cmd
 }
 
@@ -229,6 +230,161 @@ func renderConstitutionJSON(w io.Writer, entries []constitution.Rule) error {
 
 	_, _ = fmt.Fprintln(w, string(data))
 	return nil
+}
+
+// newConstitutionValidateCmd creates the `moai constitution validate` subcommand.
+// Implements SPEC-V3R5-CONSTITUTION-DUAL-001 Phase C (D3).
+// Checks registry-source sync, reporting drift, missing files, and invariant violations.
+func newConstitutionValidateCmd() *cobra.Command {
+	var strictFlag bool
+	var formatFlag string
+	var failOnWarningFlag bool
+
+	cmd := &cobra.Command{
+		Use:   "validate",
+		Short: "Validate zone registry against source files for drift and invariant violations",
+		Long:  "Checks that every registry entry's clause exists in the source file, validates zone_class enum, canary_gate invariants, and reports drift. Exit codes: 0=ok, 1=drift/errors, 2=fatal (missing source file).",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("working directory error: %w", err)
+			}
+			registryPath := resolveRegistryPath(cwd)
+			return runConstitutionValidate(cmd.OutOrStdout(), cmd.ErrOrStderr(), cwd, registryPath, constitution.ValidateOptions{
+				Strict:        strictFlag,
+				FailOnWarning: failOnWarningFlag,
+			}, formatFlag)
+		},
+	}
+
+	cmd.Flags().BoolVar(&strictFlag, "strict", false, "Strict mode (enforces all checks)")
+	cmd.Flags().BoolVar(&failOnWarningFlag, "fail-on-warning", false, "Treat warnings as errors (implies --strict)")
+	cmd.Flags().StringVar(&formatFlag, "format", "text", "Output format (text|json)")
+
+	return cmd
+}
+
+// runConstitutionValidate executes the validate logic and renders output.
+// Test-friendly pure function.
+func runConstitutionValidate(w, wWarn io.Writer, projectDir, registryPath string, opts constitution.ValidateOptions, format string) error {
+	opts.RegistryPath = registryPath
+	opts.ProjectDir = projectDir
+
+	result, err := constitution.Validate(opts)
+
+	// Emit warnings to stderr
+	for _, warn := range result.Warnings {
+		_, _ = fmt.Fprintf(wWarn, "Warning: %s\n", warn)
+	}
+
+	// Render output
+	switch format {
+	case "json":
+		if renderErr := renderValidateJSON(w, result); renderErr != nil {
+			return renderErr
+		}
+	default:
+		renderValidateText(w, result)
+	}
+
+	// Exit code semantics:
+	// - MOAI_CONSTITUTION_SKIP_VALIDATE bypass: exit 0
+	// - SOURCE_FILE_MISSING or DUPLICATE_ID: the error is returned (exit 2 / exit 1)
+	// - Drift / other errors: exit 1 (non-nil return)
+	// - Clean: exit 0
+	if err != nil {
+		var ve *constitution.ValidationError
+		if constitution.AsValidationError(err, &ve) {
+			if ve.SentinelKey == constitution.SentinelSourceFileMissing {
+				// Exit code 2 for missing source file
+				return &exitCodeError{code: 2, msg: err.Error()}
+			}
+		}
+		return err
+	}
+
+	if result.Status == constitution.ValidateStatusDrift {
+		return fmt.Errorf("constitution validate: found %d error(s)", len(result.Entries))
+	}
+
+	return nil
+}
+
+// exitCodeError는 특정 exit code 를 요청하는 오류 타입.
+type exitCodeError struct {
+	code int
+	msg  string
+}
+
+func (e *exitCodeError) Error() string { return e.msg }
+
+// renderValidateJSON은 validate 결과를 JSON 형식으로 출력한다.
+func renderValidateJSON(w io.Writer, result constitution.ValidationResult) error {
+	type jsonEntry struct {
+		ID     string `json:"id,omitempty"`
+		File   string `json:"file,omitempty"`
+		Anchor string `json:"anchor,omitempty"`
+		Status string `json:"status"`
+		Detail string `json:"detail,omitempty"`
+	}
+	type jsonOutput struct {
+		Status            string      `json:"status"`
+		DriftCount        int         `json:"drift_count"`
+		MissingCount      int         `json:"missing_count"`
+		UnregisteredCount int         `json:"unregistered_count"`
+		Entries           []jsonEntry `json:"entries"`
+		Warnings          []string    `json:"warnings,omitempty"`
+		Skipped           bool        `json:"skipped,omitempty"`
+	}
+
+	entries := make([]jsonEntry, 0, len(result.Entries))
+	for _, e := range result.Entries {
+		entries = append(entries, jsonEntry{
+			ID:     e.ID,
+			File:   e.File,
+			Anchor: e.Anchor,
+			Status: e.SentinelKey,
+			Detail: e.Detail,
+		})
+	}
+
+	out := jsonOutput{
+		Status:            string(result.Status),
+		DriftCount:        result.DriftCount,
+		MissingCount:      result.MissingCount,
+		UnregisteredCount: result.UnregisteredCount,
+		Entries:           entries,
+		Warnings:          result.Warnings,
+		Skipped:           result.Skipped,
+	}
+
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %w", err)
+	}
+	_, _ = fmt.Fprintln(w, string(data))
+	return nil
+}
+
+// renderValidateText는 validate 결과를 텍스트 형식으로 출력한다.
+func renderValidateText(w io.Writer, result constitution.ValidationResult) {
+	if result.Skipped {
+		_, _ = fmt.Fprintf(w, "constitution validate: SKIPPED (MOAI_CONSTITUTION_SKIP_VALIDATE=1)\n")
+		return
+	}
+
+	if result.Status == constitution.ValidateStatusOK {
+		_, _ = fmt.Fprintf(w, "constitution validate: OK — no drift or violations detected (%d entries checked)\n", 0)
+		return
+	}
+
+	_, _ = fmt.Fprintf(w, "constitution validate: FAILED — %d error(s) found\n\n", len(result.Entries))
+	for _, e := range result.Entries {
+		_, _ = fmt.Fprintf(w, "  [%s] %s @ %s %s\n", e.SentinelKey, e.ID, e.File, e.Anchor)
+		if e.Detail != "" {
+			_, _ = fmt.Fprintf(w, "    detail: %s\n", e.Detail)
+		}
+	}
 }
 
 // renderConstitutionTable outputs entries in table format.
