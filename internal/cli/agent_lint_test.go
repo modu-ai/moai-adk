@@ -1789,3 +1789,246 @@ func TestCheckDeadHooks_ViaLintAgentFile(t *testing.T) {
 		t.Logf("  [%s] %s:%d: %s", v.Rule, filepath.Base(v.File), v.Line, v.Message)
 	}
 }
+
+// Test LR-08 domain-prefix exemption (SPEC-V3R5-CORE-SLIM-001 Track A)
+func TestSkillPreloadDriftExemption_DomainSkills(t *testing.T) {
+	// Domain-scoped skills must NOT trigger LR-08 violations even when asymmetric.
+	// agent-backend has moai-domain-backend; agent-frontend has moai-domain-frontend.
+	// These are agent-specific by design — symmetry must NOT be enforced.
+	contentBackend := `---
+name: expert-backend
+skills:
+  - moai-foundation-core
+  - moai-domain-backend
+  - moai-workflow-testing
+---
+`
+	contentFrontend := `---
+name: expert-frontend
+skills:
+  - moai-foundation-core
+  - moai-domain-frontend
+  - moai-workflow-testing
+---
+`
+	tmpDir := t.TempDir()
+	path1 := filepath.Join(tmpDir, "expert-backend.md")
+	path2 := filepath.Join(tmpDir, "expert-frontend.md")
+	if err := os.WriteFile(path1, []byte(contentBackend), 0644); err != nil {
+		t.Fatalf("write expert-backend: %v", err)
+	}
+	if err := os.WriteFile(path2, []byte(contentFrontend), 0644); err != nil {
+		t.Fatalf("write expert-frontend: %v", err)
+	}
+
+	violations := checkSkillPreloadDrift([]string{path1, path2})
+
+	for _, v := range violations {
+		if v.Rule == "LR-08" && strings.Contains(v.Message, "moai-domain-") {
+			t.Errorf("domain skill triggered LR-08 (must be exempt): %s", v.Message)
+		}
+	}
+}
+
+func TestSkillPreloadDriftExemption_FoundationSkills(t *testing.T) {
+	// Foundation skills (moai-foundation-*) are NOT exempt from LR-08.
+	// If expert-backend has moai-foundation-quality but expert-frontend does not,
+	// LR-08 MUST fire.
+	contentBackend := `---
+name: expert-backend
+skills:
+  - moai-foundation-core
+  - moai-foundation-quality
+  - moai-workflow-testing
+---
+`
+	contentFrontend := `---
+name: expert-frontend
+skills:
+  - moai-foundation-core
+  - moai-workflow-testing
+---
+`
+	tmpDir := t.TempDir()
+	path1 := filepath.Join(tmpDir, "expert-backend.md")
+	path2 := filepath.Join(tmpDir, "expert-frontend.md")
+	if err := os.WriteFile(path1, []byte(contentBackend), 0644); err != nil {
+		t.Fatalf("write expert-backend: %v", err)
+	}
+	if err := os.WriteFile(path2, []byte(contentFrontend), 0644); err != nil {
+		t.Fatalf("write expert-frontend: %v", err)
+	}
+
+	violations := checkSkillPreloadDrift([]string{path1, path2})
+
+	foundLR08 := false
+	for _, v := range violations {
+		if v.Rule == "LR-08" && strings.Contains(v.Message, "moai-foundation-quality") {
+			foundLR08 = true
+		}
+	}
+	if !foundLR08 {
+		t.Errorf("expected LR-08 violation for moai-foundation-quality drift, got none")
+	}
+}
+
+func TestSkillPreloadDriftExemption_WorkflowSkills(t *testing.T) {
+	// Workflow skills (moai-workflow-*) are NOT exempt from LR-08.
+	// If expert-backend has moai-workflow-testing but expert-frontend does not,
+	// LR-08 MUST fire.
+	contentBackend := `---
+name: expert-backend
+skills:
+  - moai-foundation-core
+  - moai-workflow-testing
+---
+`
+	contentFrontend := `---
+name: expert-frontend
+skills:
+  - moai-foundation-core
+---
+`
+	tmpDir := t.TempDir()
+	path1 := filepath.Join(tmpDir, "expert-backend.md")
+	path2 := filepath.Join(tmpDir, "expert-frontend.md")
+	if err := os.WriteFile(path1, []byte(contentBackend), 0644); err != nil {
+		t.Fatalf("write expert-backend: %v", err)
+	}
+	if err := os.WriteFile(path2, []byte(contentFrontend), 0644); err != nil {
+		t.Fatalf("write expert-frontend: %v", err)
+	}
+
+	violations := checkSkillPreloadDrift([]string{path1, path2})
+
+	foundLR08 := false
+	for _, v := range violations {
+		if v.Rule == "LR-08" && strings.Contains(v.Message, "moai-workflow-testing") {
+			foundLR08 = true
+		}
+	}
+	if !foundLR08 {
+		t.Errorf("expected LR-08 violation for moai-workflow-testing drift, got none")
+	}
+}
+
+func TestSkillPreloadDriftExemption_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name          string
+		agents        []string // agent file contents
+		wantLR08Count int      // expected number of LR-08 violations from domain skills
+		description   string
+	}{
+		{
+			name: "empty skills list",
+			agents: []string{
+				`---
+name: expert-backend
+skills: []
+---
+`,
+				`---
+name: expert-frontend
+skills: []
+---
+`,
+			},
+			wantLR08Count: 0,
+			description:   "agents with empty skill lists produce no LR-08 violations",
+		},
+		{
+			name: "single agent in category",
+			agents: []string{
+				`---
+name: expert-backend
+skills:
+  - moai-domain-backend
+---
+`,
+			},
+			wantLR08Count: 0,
+			description:   "single agent in category — no peer comparison possible, no LR-08",
+		},
+		{
+			name: "lookalike prefix does not exempt",
+			agents: []string{
+				`---
+name: expert-backend
+skills:
+  - moai-foundation-core
+  - moai-domainextended-backend
+  - moai-workflow-testing
+---
+`,
+				`---
+name: expert-frontend
+skills:
+  - moai-foundation-core
+  - moai-workflow-testing
+---
+`,
+			},
+			wantLR08Count: 1,
+			description:   "moai-domainextended- is NOT in the exempt prefix list; LR-08 must fire",
+		},
+		{
+			name: "all six exempt prefixes are skipped",
+			agents: []string{
+				`---
+name: expert-backend
+skills:
+  - moai-foundation-core
+  - moai-domain-backend
+  - moai-design-backend
+  - moai-library-sql
+  - moai-framework-gin
+  - moai-platform-aws
+  - moai-ref-openapi
+  - moai-workflow-testing
+---
+`,
+				`---
+name: expert-frontend
+skills:
+  - moai-foundation-core
+  - moai-workflow-testing
+---
+`,
+			},
+			wantLR08Count: 0,
+			description:   "all 6 exempt prefixes on one agent; peer has none — no LR-08 violations",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			var paths []string
+			for i, content := range tt.agents {
+				p := filepath.Join(tmpDir, filepath.Join(tmpDir, strings.ReplaceAll(tt.name, " ", "-")+"-agent"+string(rune('0'+i))+".md"))
+				p = filepath.Join(tmpDir, strings.ReplaceAll(tt.name, " ", "-")+"-agent"+string(rune('0'+i))+".md")
+				if err := os.WriteFile(p, []byte(content), 0644); err != nil {
+					t.Fatalf("write agent file: %v", err)
+				}
+				paths = append(paths, p)
+			}
+
+			violations := checkSkillPreloadDrift(paths)
+
+			lr08Count := 0
+			for _, v := range violations {
+				if v.Rule == "LR-08" {
+					lr08Count++
+				}
+			}
+			if lr08Count != tt.wantLR08Count {
+				t.Errorf("%s: got %d LR-08 violations, want %d", tt.description, lr08Count, tt.wantLR08Count)
+				for _, v := range violations {
+					if v.Rule == "LR-08" {
+						t.Logf("  LR-08: %s", v.Message)
+					}
+				}
+			}
+		})
+	}
+}
