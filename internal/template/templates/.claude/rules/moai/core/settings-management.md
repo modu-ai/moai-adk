@@ -39,7 +39,6 @@ Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": tr
 
 MoAI-ADK 기본 설정:
 - `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
-- `sequential-thinking`: `"alwaysLoad": true` — DeepThink 워크플로우에서 첫 호출 지연 제거
 - `moai-lsp`: `alwaysLoad` 미설정 — 프로젝트에 따라 LSP가 필요 없는 경우도 있으므로 지연 로드 유지
 
 ```json
@@ -64,7 +63,7 @@ MCP tools are deferred by default and must be loaded before use. Exception: serv
 Example flow:
 - ToolSearch("context7 docs") loads mcp__context7__* tools
 - mcp__context7__resolve-library-id is then available
-- With `alwaysLoad: true`, this step is unnecessary for context7 and sequential-thinking
+- With `alwaysLoad: true`, this step is unnecessary for context7
 
 MCP rules:
 - Always use ToolSearch before calling MCP tools (unless server has alwaysLoad: true)
@@ -85,7 +84,7 @@ Example `.mcp.json` configuration:
 }
 ```
 
-**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` and `sequential-thinking` to ensure `--deepthink` (Sequential Thinking MCP) and Context7 documentation lookup are available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
+**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 
@@ -106,7 +105,7 @@ Example `.mcp.json` configuration:
 - Architecture decisions
 - Technology trade-off analysis
 
-Activate with `--deepthink` flag for enhanced analysis.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+) for enhanced analysis. Sequential Thinking MCP remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
 
 ### MoAI Configuration
 
@@ -116,6 +115,57 @@ Activate with `--deepthink` flag for enhanced analysis.
 - sections/quality.yaml: Quality gates, coverage targets
 - sections/language.yaml: Language preferences
 - sections/user.yaml: User information
+
+#### MoAI Configuration — Section Loaders
+
+Configuration sections are loaded via two mechanisms:
+
+**1. `Loader.Load()` chain** (`internal/config/loader.go:31-74`):
+Loads the following 10 sections in fixed order. All return defaults on absent file.
+
+| YAML file | loadedSections key | Go field |
+|---|---|---|
+| user.yaml | `user` | `cfg.User` |
+| language.yaml | `language` | `cfg.Language` |
+| quality.yaml | `quality` | `cfg.Quality` |
+| git-convention.yaml | `git_convention` | `cfg.GitConvention` |
+| llm.yaml | `llm` | `cfg.LLM` |
+| ralph.yaml | `ralph` | `cfg.Ralph` |
+| state.yaml | `state` | `cfg.State` |
+| statusline.yaml | `statusline` | `cfg.Statusline` |
+| research.yaml | `research` | `cfg.Research` |
+| constitution.yaml | `constitution` | `cfg.Constitution` |
+| context.yaml | `context_search` | `cfg.ContextSearch` |
+| interview.yaml | `interview` | `cfg.Interview` |
+| design.yaml | `design` | `cfg.Design` |
+
+**2. Dedicated entry-points** (outside `Loader.Load()` by design):
+
+| Section | Loader | Package | Rationale |
+|---|---|---|---|
+| harness.yaml | `LoadHarnessConfig(path)` | `internal/config` | FROZEN validation (HRN-001); returns error on absent file (not defaults) |
+| runtime.yaml | `LoadRuntime(path)` | `internal/runtime` | Separate package, separate lifecycle |
+
+**MIG-003 new loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
+
+- `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) policy enforcement.
+- `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
+- `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions`.
+- `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
+
+**SunsetConfig** (`internal/config/types.go`): DORMANT — struct defined but no runtime hot path enforces sunset conditions. `LoadSunsetConfig` must NOT be added until an activation SPEC is filed (REQ-MIG003-006).
+
+**CI Guards** (run on every `go test ./internal/config/...`):
+
+- `YAML_SECTION_NO_LOADER` (`audit_loader_completeness_test.go:TestAuditLoaderCompleteness`): fails if a new `.moai/config/sections/*.yaml` file has no loader and is not in the acknowledged allowlist.
+- `CONFIG_STRUCT_YAML_MISMATCH` (`audit_struct_yaml_symmetry_test.go:TestStructYAMLSymmetry_*`): fails if a Go struct field lacks a matching YAML key or vice versa.
+
+**Adding a new YAML section** (5-step procedure):
+1. Add `<name>.yaml` to `internal/template/templates/.moai/config/sections/`
+2. Add `XxxConfig` struct + sub-types + `xxxFileWrapper` to `internal/config/types.go`
+3. Add `defaultXxxConfig()` helper to `internal/config/defaults.go` and wire into `NewDefaultConfig()`
+4. Create `internal/config/loader_<name>.go` with `LoadXxxConfig(path)` + `loadXxxSection(dir, cfg *Config)`
+5. Wire `l.loadXxxSection(sectionsDir, cfg)` into `Loader.Load()` AND add the struct to `audit_struct_yaml_symmetry_test.go` symmetryCases
 
 ## Hooks Configuration
 

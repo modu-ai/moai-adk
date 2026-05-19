@@ -1,0 +1,49 @@
+# Claude Code ignore patterns for MoAI-ADK projects
+# This file tells Claude Code which paths to exclude from context when loading the project
+
+# Build artifacts and dependencies
+node_modules/
+vendor/
+.venv/
+__pycache__/
+*.pyc
+target/
+dist/
+build/
+out/
+.next/
+
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor config
+.vscode/
+.idea/
+.env.local
+.env.*.local
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary and cache files
+.cache/
+tmp/
+temp/
+*.tmp
+.moai/cache/
+
+# Logs
+*.log
+logs/
+
+# Sensitive files
+.env
+.env.production
+.env.test
+
+# Third-party and external
+docs-site/public/
+.moai/archive/

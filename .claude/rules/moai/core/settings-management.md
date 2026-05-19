@@ -39,7 +39,6 @@ Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": tr
 
 MoAI-ADK 기본 설정:
 - `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
-- `sequential-thinking`: `"alwaysLoad": true` — DeepThink 워크플로우에서 첫 호출 지연 제거
 - `moai-lsp`: `alwaysLoad` 미설정 — 프로젝트에 따라 LSP가 필요 없는 경우도 있으므로 지연 로드 유지
 
 ```json
@@ -64,7 +63,7 @@ MCP tools are deferred by default and must be loaded before use. Exception: serv
 Example flow:
 - ToolSearch("context7 docs") loads mcp__context7__* tools
 - mcp__context7__resolve-library-id is then available
-- With `alwaysLoad: true`, this step is unnecessary for context7 and sequential-thinking
+- With `alwaysLoad: true`, this step is unnecessary for context7
 
 MCP rules:
 - Always use ToolSearch before calling MCP tools (unless server has alwaysLoad: true)
@@ -85,7 +84,7 @@ Example `.mcp.json` configuration:
 }
 ```
 
-**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` and `sequential-thinking` to ensure `--deepthink` (Sequential Thinking MCP) and Context7 documentation lookup are available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
+**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 
@@ -106,7 +105,7 @@ Example `.mcp.json` configuration:
 - Architecture decisions
 - Technology trade-off analysis
 
-Activate with `--deepthink` flag for enhanced analysis.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+) for enhanced analysis. Sequential Thinking MCP remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
 
 ### MoAI Configuration
 

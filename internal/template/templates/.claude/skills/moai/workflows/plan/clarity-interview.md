@@ -74,19 +74,16 @@ Purpose: Automatically activate deep analysis mode for complex SPECs that benefi
 - Request touches security-critical areas (auth, payment, data isolation)
 - User explicitly includes `ultrathink` keyword in request
 
-**UltraThink vs --deepthink distinction**:
-- `ultrathink`: Claude Code native deep analysis mode — activates extended reasoning within the current agent context. Triggered by keyword detection in user input.
-- `--deepthink`: Sequential Thinking MCP tool invocation — programmatic step-by-step analysis via `mcp__sequential-thinking__sequentialthinking`. Triggered by explicit flag.
+**UltraThink (primary deep reasoning trigger)**:
+- `ultrathink`: Claude Code native deep analysis mode — activates Adaptive Thinking (Opus 4.7+) within the current agent context. Triggered by keyword detection in user input.
+- Note: Sequential Thinking MCP (`mcp__sequential-thinking__sequentialthinking`) remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
 
 When UltraThink auto-activates:
 - Log: "UltraThink mode activated: [reason]"
 - Apply extended reasoning to Phase 0.5 research and Phase 1B SPEC creation
 - Produce deeper analysis in research.md with trade-off comparisons and risk assessments
 - Consider alternative approaches and document rejection rationale
-
-When --deepthink flag is present (can combine with UltraThink):
-- Invoke Sequential Thinking MCP for structured step-by-step analysis
-- Each thinking step documented in research.md
+- Optionally invoke Sequential Thinking MCP for structured step-by-step decomposition; document each step in research.md when used
 
 **Skip condition**: Simple, well-scoped features (complexity < 5, single domain, clear requirements). Log: "UltraThink skipped: low complexity task."
 

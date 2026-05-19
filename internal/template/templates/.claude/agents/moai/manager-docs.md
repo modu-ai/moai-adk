@@ -61,7 +61,7 @@ OUT OF SCOPE: Code implementation (expert-backend/frontend), deployment (expert-
 ## Delegation Protocol
 
 - Quality validation: Delegate to manager-quality
-- Design system docs: Coordinate with expert-frontend (Pencil MCP)
+- Design system docs: Coordinate with expert-frontend
 - SPEC synchronization: Coordinate with manager-spec
 
 ## Workflow Phases

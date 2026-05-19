@@ -98,9 +98,9 @@ When the run phase begins, evaluate whether to activate deep analysis mode for t
 - SPEC involves architectural patterns (new module, service, middleware layer)
 - User explicitly includes `ultrathink` keyword
 
-**UltraThink vs --deepthink**:
-- `ultrathink`: Extended reasoning within the current agent — deeper strategy analysis, more thorough trade-off evaluation
-- `--deepthink`: Sequential Thinking MCP invocation — structured step-by-step analysis via `mcp__sequential-thinking__sequentialthinking`
+**UltraThink (primary deep reasoning trigger)**:
+- `ultrathink`: Extended reasoning within the current agent (Adaptive Thinking on Opus 4.7+) — deeper strategy analysis, more thorough trade-off evaluation
+- Note: Sequential Thinking MCP (`mcp__sequential-thinking__sequentialthinking`) remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
 
 When activated: Apply to Phase 1 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
 

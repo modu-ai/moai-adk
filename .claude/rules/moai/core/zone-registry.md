@@ -609,7 +609,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] Priority order when truncation is needed: spec.md > system.md > research.md > pencil-plan.md"
+  clause: "[HARD] Priority order when truncation is needed: spec.md > system.md > research.md"
   canary_gate: true
 
 - id: CONST-V3R2-072
