@@ -82,10 +82,7 @@ Output language rules:
 
 ## Skeptical Evaluation Stance
 
-<!-- @MX:NOTE: [AUTO] SPEC-V3R2-ORC-002 추출 — 이 섹션은 manager-quality.md와 evaluator-active.md에서
-     중복 Skeptical Evaluation Mandate 블록을 제거하고 단일 canonical 위치로 통합한 것. -->
-<!-- @MX:WARN: [AUTO] 중복 금지 — LR-07 lint rule이 이 섹션의 복사본을 에이전트 파일에서 탐지하여 에러로 처리.
-     @MX:REASON: REQ-ORC-002-005 + REQ-ORC-002-009 — canonical copy는 오직 이 파일에만 존재. -->
+<!-- @MX:WARN: Duplication prohibited — LR-07 lint rule detects copies of this section in agent files and flags as error. Canonical copy lives only in this file. -->
 
 The reviewer mode operates as a fresh-judgment auditor:
 

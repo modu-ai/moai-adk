@@ -26,7 +26,7 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 | Feature | Claude Native | MoAI |
 |---------|--------------|------|
 | **Path** | `.claude/worktrees/<name>/` | `~/.moai/worktrees/{Project}/{SPEC}/` |
-| **Lifetime** | Ephemeral (session-scoped) | Persistent (SPEC-scoped) |
+| **Lifetime** | Ephemeral (session-scoped) | Persistent |
 | **Purpose** | Session isolation for subagents | SPEC development, PR creation |
 | **CLI** | `claude -w` (user) or `isolation: worktree` (agent) | `moai worktree new/list/remove` |
 | **Cleanup** | Automatic on session end | Manual via `moai worktree remove` |
@@ -132,14 +132,14 @@ Is this a one-shot sub-agent task?
 
 - [ZONE:Evolvable] [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
 - [ZONE:Evolvable] [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
-- [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes v3r2 agents: manager-cycle, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer. (SPEC-V3R2-ORC-004)
-<!-- @MX:ANCHOR: [AUTO] WorktreeMUSTRule — invariant contract; all write-heavy v3r2 agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
-<!-- @MX:REASON: Upgraded from SHOULD to MUST per SPEC-V3R2-ORC-004 to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
+- [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy agents such as manager-develop, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer.
+<!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
+<!-- @MX:REASON: MUST level required to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
 - [ZONE:Evolvable] [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
 
 ## Sentinel Key Glossary
 
-Structured error codes emitted by `moai agent lint` and `moai workflow lint` for programmatic detection (SPEC-V3R2-ORC-004 REQ-013, REQ-014, REQ-008):
+Structured error codes emitted by `moai agent lint` and `moai workflow lint` for programmatic detection:
 
 | Sentinel Key | Source | Meaning |
 |---|---|---|
@@ -358,5 +358,4 @@ When you receive a shutdown_request JSON message:
 
 ---
 
-Version: 4.0.0 (Team Protocol merged from team-protocol.md via SPEC-V3R2-CON-003 OP-3)
-Source: SPEC-WORKTREE-001, SPEC-TEAM-PROTOCOL-001
+Version: 4.0.0 (Team Protocol merged from team-protocol.md)

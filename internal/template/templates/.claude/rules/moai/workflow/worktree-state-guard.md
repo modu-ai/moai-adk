@@ -5,7 +5,7 @@ paths: "**/.moai/specs/**,**/internal/worktree/**,**/internal/cli/worktree/**"
 # Worktree State Guard
 
 Operational rule for the orchestrator's defense layer against
-`Agent(isolation: "worktree")` regressions. Wave 5 of SPEC-V3R3-CI-AUTONOMY-001
+`Agent(isolation: "worktree")` regressions. Wave 5
 introduces a Bash-invocable Go primitive (`moai worktree snapshot|verify|restore`)
 that captures pre-call state, detects post-call divergence, and surfaces empty
 `worktreePath` responses as suspect flags.
@@ -14,11 +14,10 @@ This rule defines **when** and **how** the orchestrator must invoke the
 primitive. The primitive itself lives in `internal/worktree/` and is exposed as
 CLI subcommands by `internal/cli/worktree/guard.go`.
 
-**Operational status (2026-05-17)**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. Wave 5 orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred per SPEC-WORKTREE-DOCS-001 § Non-Goals. See `feedback_worktree_autonomous` memory for the 2026-05-17 user policy context.
+**Operational status (2026-05-17)**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. Wave 5 orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred § Non-Goals. See `feedback_worktree_autonomous` memory for the 2026-05-17 user policy context.
 
 > Cross-references: `worktree-integration.md` § Terminology Glossary (L1/L2/L3 layer definitions),
-> `agent-common-protocol.md` § User Interaction Boundary (AskUserQuestion HARD),
-> SPEC `.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md` § 3.6 (REQ-CIAUT-031~036).
+> `agent-common-protocol.md` § User Interaction Boundary (AskUserQuestion HARD).
 
 ## When to Snapshot
 
@@ -139,4 +138,3 @@ The following items are deliberately deferred (see strategy-wave5.md § 14):
 ---
 
 Version: 1.0.0
-Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 5 (W5-T08)

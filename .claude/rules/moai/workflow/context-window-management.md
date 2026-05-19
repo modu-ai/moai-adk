@@ -6,7 +6,7 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 
 Anthropic SSE streams have been observed to stall (`stream_idle_partial`) when very large prompts are produced near the upper end of the context window. Symptoms: model emits a few hundred bytes then the stream goes idle; orchestrator's outbound message hangs without a tool call. This is intermittent but predictable above the model-specific usage threshold.
 
-Reference incident: 2026-04-25, SPEC-V3R2-WF-001 monolithic delegation. See feedback memory `feedback_large_spec_wave_split.md`.
+Reference incident: 2026-04-25 monolithic delegation. See feedback memory `feedback_large_spec_wave_split.md`.
 
 ## Context Window Targets
 
@@ -83,5 +83,4 @@ This rule applies to all MoAI workflows:
 
 ---
 
-Source: 2026-04-25 stall incident analysis (debug log `[WARN] [Stall] stream_idle_partial`) + 2026-05-09 model-specific threshold revision (1M = 75%, 200K = 90%)
 Status: HARD operational rule, applies to all sessions

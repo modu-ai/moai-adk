@@ -177,4 +177,3 @@ After any phase with tag changes, generate report:
 ---
 
 Version: 1.0.0
-Source: SPEC-MX-001

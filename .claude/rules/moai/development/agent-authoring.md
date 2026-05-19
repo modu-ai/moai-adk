@@ -119,17 +119,11 @@ Domain-specific implementation:
 - expert-performance: Performance optimization and testing
 - expert-refactoring: Code refactoring
 
-<!-- @MX:NOTE: expert-debug absorbed by manager-quality (diagnostic-mode, SPEC-V3R2-ORC-001).
-              expert-testing absorbed by manager-develop (cycle_type=tdd) + expert-performance. -->
-
 ### Builder Agents (1)
 
 Create new MoAI components:
 
-- builder-harness: New agents, skills, plugins, commands, hooks, MCP/LSP servers (use artifact_type param)
-
-<!-- @MX:NOTE: builder-agent/builder-skill/builder-plugin consolidated into builder-harness (SPEC-V3R2-ORC-001).
-              Use builder-harness with artifact_type=agent|skill|plugin|command|hook|mcp-server|lsp-server. -->
+- builder-harness: New agents, skills, plugins, commands, hooks, MCP/LSP servers. Use `artifact_type=agent|skill|plugin|command|hook|mcp-server|lsp-server` to select the artifact category.
 
 ### Dynamic Team Generation (Experimental)
 

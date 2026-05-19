@@ -8,7 +8,6 @@ paths:
 
 # Branch Origin Decision Protocol (BODP)
 
-> Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 7 (T8). REQ-CIAUT-042 ~ 051.
 > Status: HARD operational rule for the 3 BODP entry points.
 
 ## Identity
@@ -71,7 +70,6 @@ The notice mentions the branch name and the opt-out env var. Exit code is unaffe
 
 ## Cross-References
 
-- SPEC artifacts: `.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/` strategy-wave7.md + tasks-wave7.md.
 - CLAUDE.local.md §18.12 — dev-project specific notes (stacked PR Case Study reference is §18.11).
 - `agent-common-protocol.md` § User Interaction Boundary — orchestrator-only AskUserQuestion HARD.
 - `askuser-protocol.md` § Socratic Interview Structure — option label/order rules.
@@ -79,4 +77,3 @@ The notice mentions the branch name and the opt-out env var. Exit code is unaffe
 ---
 
 Version: 1.0.0
-Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 7 (W7-T06)

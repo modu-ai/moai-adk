@@ -2,10 +2,10 @@
 
 ## HISTORY
 
-- 2026-04-26 (SPEC-V3R3-DESIGN-PIPELINE-001): §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
-- 2026-04-26 (SPEC-V3R3-DESIGN-FOLDER-FIX-001): §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
-- 2026-04-20 (SPEC-DESIGN-CONST-AMEND-001): Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
-- 2026-04-20: Relocated from `.claude/rules/agency/constitution.md` (v3.2.0) to `.claude/rules/moai/design/constitution.md` as part of SPEC-AGENCY-ABSORB-001 M1. Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
+- 2026-04-26: §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
+- 2026-04-26: §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
+- 2026-04-20: Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
+- 2026-04-20: Relocated from `.claude/rules/agency/constitution.md` (v3.2.0) to `.claude/rules/moai/design/constitution.md` Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
 
 ---
 
@@ -79,7 +79,7 @@ Iteration-specific design briefs are stored in `.moai/design/`:
 - [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
 - [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md > pencil-plan.md
 
-> **Note (SPEC-V3R3-DESIGN-FOLDER-FIX-001):** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case.
+> **Note:** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case.
 
 ### 3.3 Relationship
 
@@ -406,5 +406,5 @@ Version: 3.4.0
 Classification: FROZEN_AMENDMENT
 Original Source: agency/constitution.md v3.2.0
 Last Updated: 2026-04-26
-Relocated: 2026-04-20 (SPEC-AGENCY-ABSORB-001 M1)
+Relocated: 2026-04-20
 REQ coverage: REQ-CONST-001, REQ-CONST-002, REQ-CONST-003, REQ-CONST-004

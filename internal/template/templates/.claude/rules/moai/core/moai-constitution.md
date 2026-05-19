@@ -155,7 +155,7 @@ Rules:
 - To supersede a lesson, add `[SUPERSEDED by #{new_lesson_number}]` prefix to the old entry
 - Session start: scan lessons for patterns matching current task domain
 
-Auto-Capture Triggers (SPEC-SLQG-001):
+Auto-Capture Triggers:
 - When a fix/refactor commit completes, check if the change matches a known anti-pattern category
 - If match found, propose a lesson entry to the user via AskUserQuestion
 - Auto-generated lesson entries include: category, incorrect pattern, correct approach, date, tags

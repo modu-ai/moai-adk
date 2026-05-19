@@ -7,7 +7,6 @@ paths:
 
 # CI Watch Protocol Rule
 
-> Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (T2)
 > This file is the single source of truth for CI watch loop invocation rules.
 > Cross-referenced by: SKILL.md, moai-workflow-ci-watch modules.
 
@@ -135,5 +134,4 @@ The SSoT is read-only for Wave 2. Modifications require `moai github init` re-ru
 ---
 
 Version: 1.0.0
-Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 2 (2026-05-06)
 Classification: HARD operational rule, applies to all /moai sync workflows

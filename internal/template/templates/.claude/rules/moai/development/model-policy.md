@@ -42,8 +42,8 @@ Upstream tracking (Anthropic claude-code repository):
 
 Workaround pattern (`model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
-- Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit` since SPEC-V3R2-CON-002.
-- Migration baseline: SPEC-V3R5-CONSTITUTION-DUAL-001 W1 session (2026-05-20) migrated all package agents under `.claude/agents/moai/` (16 files) from `sonnet`/`opus` to `inherit`, except `manager-docs` and `manager-git` which remain on `haiku`.
+- Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
+- All package agents under `.claude/agents/moai/` (16 files) declare `model: inherit`, except `manager-docs` and `manager-git` which use `model: haiku`.
 
 Exceptions (do NOT migrate to inherit):
 - `model: haiku` agents (`manager-docs`, `manager-git`) — Haiku has no `[1m]` variant, so the bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.

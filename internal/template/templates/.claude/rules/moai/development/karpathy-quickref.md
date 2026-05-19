@@ -49,5 +49,4 @@ For concrete wrong/right code examples, see skill: `moai-reference-anti-patterns
 ---
 
 **Version**: 1.0.0  
-**Source**: SPEC-KARPATHY-001 M2  
 **Last Updated**: 2026-04-28

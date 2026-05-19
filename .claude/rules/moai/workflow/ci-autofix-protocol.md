@@ -6,7 +6,6 @@ paths:
 
 # CI Auto-Fix Protocol Rule
 
-> Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 3 (T3)
 > This file is the single source of truth for the CI auto-fix loop invocation rules.
 > Cross-referenced by: SKILL.md, moai-workflow-ci-autofix.
 
@@ -171,5 +170,4 @@ Cross-reference: `internal/template/templates/.claude/rules/moai/workflow/ci-wat
 ---
 
 Version: 1.0.0
-Source: SPEC-V3R3-CI-AUTONOMY-001 Wave 3 (2026-05-07)
 Classification: HARD operational rule, applies to all T3 auto-fix invocations
