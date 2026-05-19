@@ -3,7 +3,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
 {{- if eq .Platform "windows"}}
@@ -78,7 +78,7 @@
             "async": true
           }
         ],
-        "matcher": "Write|Edit"
+        "matcher": "Write|Edit|MultiEdit"
       }
     ],
     "Stop": [
