@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R5-LINT-CLEAN-001
 title: "Agent Lint Baseline Cleanup (v3.5.0 Quality Debt Reduction)"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: completed
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-20
 author: GOOS Kim
 priority: P1
 phase: "v3.5.0"
@@ -21,6 +21,7 @@ tags: "lint, quality-debt, v3.5.0, baseline-reduction, agent-lint, moai-agent-li
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-19 | GOOS Kim | Initial draft — v3.5.0 Mega-Sprint quality-debt cleanup SPEC. Targets `moai agent lint --strict` baseline reduction from 176 (post-W0) → 0 across 4 phases, while preserving W0 delta-only D6 NEW=0 semantics. Out-of-band from Mega-Sprint W1/W2/W3/W4 critical-path; mergeable in parallel where file-scope-safe. |
 | 0.2.0 | 2026-05-19 | GOOS Kim | plan-auditor iter 1 REVISE (harmonic mean 0.7229, D5 Cross-SPEC Traceability=0.45). Findings 1-14 resolved: (1) W2-deferred count fixed to canonical **13** (set size) / **12** (post-Phase-2 residual); (2-3) arithmetic recomputed with sum-check (60+4+30+70=164, residual=12); (4) intra-SPEC waves renamed to LCLN Phase 1-4 to disambiguate from Mega-Sprint Waves W0-W4; (5) design.md §1.1 FROZEN provenance reframed as superset with per-path rationale; (6) AC-LCLN-007.1 added for template-first invariant; (7) AC-005.2 bound tightened to [11, 16]; (8-14) minor strengthenings (exact equality checks, git worktree coverage, admin override scoping, golangci-lint conditional baseline, per-rule contradiction check, moai update --dry-run post-condition, REQ-LCLN-013 EARS clarification). |
+| 0.3.0 | 2026-05-20 | GOOS Kim | Lifecycle COMPLETE — all 4 LCLN-Phase PRs admin-merged. M1 PR #1009 (lint 176→116, -60 frontmatter+description hygiene), M2 PR #1010 (lint 116→112, -4 expert-mobile.md live delete + catalog orphan), M3 PR #1011 (lint 112→82, -30 tool-boundary cleanup + errors 30→0), M4 PR #1012 (lint 82→12, -70 W4-resolvable preload drift). Sum-check 60+4+30+70=164 verified, residual 12 = W2-deferred (8 pure W2 on expert-{backend,frontend} + 4 moai-foundation-quality on expert-{performance,security} post-W2 cleanup deferred — Pattern (a) experiment confirmed under-includer expansion worsens lint, Pattern (b) functionally regressive). AC-LCLN-005.2 [11, 16] PASS. W2-deferred manifest persisted at `.moai/state/lint-w2-deferred.json`. Final 0/0 baseline achieved when Mega-Sprint W2 (SPEC-V3R5-CORE-SLIM-001) lifecycle completes via expert-backend/frontend retirement and expert-* category symmetry recovery. status `draft → completed`. |
 
 ## 1. Goal
 
