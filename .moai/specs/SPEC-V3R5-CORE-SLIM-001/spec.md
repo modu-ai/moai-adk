@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-CORE-SLIM-001
 title: "V3R5 W2 — LR-08 Rule Refinement + Expert Agent Foundation Skill Symmetry"
-version: "0.2.1"
-status: draft
+version: "0.4.0"
+status: completed
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -19,6 +19,8 @@ tags: "v3r5, w2, core-slim, lr-08, lint-refinement, skill-preload, symmetry"
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.4.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Status `implemented → completed`. Sync phase: spec lint clean (StatusGitConsistency drift 해소), 8 ACs binary-PASS 유지, no regressions. W2 lifecycle 완료 — Mega-Sprint W2 (CORE-SLIM-001) chicken-and-egg admin-override 종결. LR-08 12 → 0 영구 dissolution. 다음 단계 W3 HARNESS-AUTONOMY-001 / W4 PROJECT-MEGA-001 진입 가능 상태. |
+| 0.3.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Status `draft → implemented`. Run phase: PR #1020 (commit `d7d614631`) admin squash-merged. Track A LR-08 rule refinement (`internal/cli/agent_lint.go` +26 LOC `domainExemptPrefixes` const + `isDomainExemptSkill` helper + `checkSkillPreloadDrift` skip clause) + 4 new tests `TestSkillPreloadDriftExemption_*` (RED-GREEN-REFACTOR, AC-CSLM-005.a~d PASS) — commit `729795d2b`. Track B `moai-foundation-quality` preload addition to 4 expert agents (backend/frontend/refactoring/devops) + 4 template mirrors + `internal/template/catalog.yaml` refresh (AC-CSLM-002/003/004 PASS) — commit `27726ab72`. M3 gate: LR-08 count 12 → 0 (AC-CSLM-006 primary), non-LR-08 baseline = 0 unchanged (AC-CSLM-007). 11 files, +281/-4. chicken-and-egg admin override per W1 pattern (pre-existing Lint baseline + internal/template/config test fail은 W2 scope 외, 별도 SPEC follow-up). |
 | 0.2.1 | 2026-05-20 | GOOS Kim | plan-auditor iter1 REVISE (0.84) findings resolved — C-D1 expert-frontend insertion position pinned to preserve-existing-order; D-S1 W2-deferred manifest discrepancy documented with deletion DoD; D-S2 AC-CSLM-007 probe switched to complement-style regex; D-S3 AC-CSLM-008 added for EC-6 sentinel; M-D1 REQ-CSLM-004 re-classified Ubiquitous; M-D3 design↔research cross-link added. |
 | 0.2.0 | 2026-05-20 | GOOS Kim | **Scope pivot** from mechanical agent preload addition to (a) LR-08 rule refinement exempting domain-scoped skill prefixes + (b) foundation-quality uniformity addition to 4 expert agents. Original v0.1.0 scope was determined empirically incorrect via EC-4 verification at plan-phase: all matrix domain skills were ALREADY present on the named source agents (research.md §3.2), so the 4-file additive scope was a no-op for AC-CSLM-001. Re-reading `internal/cli/agent_lint.go:892-977` `checkSkillPreloadDrift` revealed the rule enforces strict uniform symmetry with no domain-specificity exemption (research.md §3 Discovery Log). Adding domain skills like `moai-domain-backend` to every expert agent is semantically wrong (bloats frontend/devops contexts). Correct resolution: refine LR-08 to exempt domain-prefix skill names + add `moai-foundation-quality` to the 4 expert agents missing it (expert-backend/frontend/refactoring/devops). v0.2.0 supersedes v0.1.0. |
 | 0.1.0 | 2026-05-20 | GOOS Kim | Initial draft — v3.5.0 Mega-Sprint Wave 2 (CORE-SLIM) follow-up to SPEC-V3R5-CONSTITUTION-DUAL-001 W1. Targeted 12 LR-08 warnings via mechanical preload addition (8 doc files). **Superseded by v0.2.0** — plan-phase verification revealed the 8-file mechanical addition would not resolve LR-08 (domain skills already present; LR-08 strict uniform symmetry conflicts with domain specificity). |
