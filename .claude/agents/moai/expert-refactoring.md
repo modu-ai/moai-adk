@@ -3,7 +3,6 @@ name: expert-refactoring
 description: |
   Refactoring specialist. Use PROACTIVELY for codemod, AST-based transformations, API migrations, and large-scale code changes.
   MUST INVOKE when ANY of these keywords appear:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategies, transformation patterns, and code structure improvements.
   EN: refactor, restructure, codemod, transform, migrate API, rename across, bulk rename, large-scale change, ast search, structural search
   KO: 리팩토링, 재구조화, 코드모드, 변환, API 마이그레이션, 일괄 변경, 대규모 변경, AST검색, 구조적검색
   JA: リファクタリング, 再構造化, コードモード, 変換, API移行, 一括変更, 大規模変更, AST検索, 構造検索
@@ -11,7 +10,7 @@ description: |
   NOT for: new feature development, bug fixes, security audits, DevOps, testing strategy
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-effort: high
+effort: xhigh
 permissionMode: bypassPermissions
 isolation: worktree
 memory: project

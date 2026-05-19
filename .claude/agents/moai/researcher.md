@@ -13,6 +13,7 @@ description: |
   NOT for: production code implementation, feature development, documentation writing, git operations, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: opus
+effort: xhigh
 permissionMode: acceptEdits
 isolation: worktree
 memory: project

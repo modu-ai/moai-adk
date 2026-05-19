@@ -3,7 +3,6 @@ name: expert-frontend
 description: |
   Frontend development and UI/UX design specialist. Use PROACTIVELY for React, Vue, Next.js, component design, state management, accessibility, WCAG compliance, and design systems.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of component architecture, state management patterns, and UI/UX design decisions.
   EN: frontend, UI, component, React, Vue, Next.js, CSS, responsive, state management, UI/UX, design, accessibility, WCAG, user experience, design system, wireframe
   KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, 넥스트, CSS, 반응형, 상태관리, UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임
   JA: フロントエンド, UI, コンポーネント, リアクト, ビュー, CSS, レスポンシブ, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
@@ -11,6 +10,7 @@ description: |
   NOT for: backend API design, database modeling, DevOps, mobile apps (React Native/Flutter), desktop apps (Electron), CLI tools, data pipelines
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
 model: sonnet
+effort: high
 permissionMode: bypassPermissions
 isolation: worktree
 memory: project

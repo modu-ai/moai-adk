@@ -4,7 +4,6 @@ description: |
   Unified implementation specialist supporting both DDD (ANALYZE-PRESERVE-IMPROVE) and TDD (RED-GREEN-REFACTOR) cycles.
   Use PROACTIVELY for code implementation, refactoring, test-driven development, and behavior preservation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of implementation strategy, testing approach, and code transformation.
   EN (DDD): DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
   EN (TDD): TDD, test-driven development, red-green-refactor, test-first, new feature, specification test, greenfield
   KO (DDD): DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링
@@ -16,7 +15,9 @@ description: |
   NOT for: SPEC creation (manager-spec), security audits (expert-security), performance optimization (expert-performance), deployment (expert-devops)
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: xhigh
 permissionMode: bypassPermissions
+isolation: worktree
 memory: project
 skills:
   - moai-foundation-core

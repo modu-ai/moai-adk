@@ -15,6 +15,7 @@ description: |
   NOT for: production code implementation, SPEC creation, testing, security review
 tools: Read, Grep, Glob, WebFetch, WebSearch
 model: sonnet
+effort: medium
 permissionMode: plan
 memory: project
 skills:

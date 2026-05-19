@@ -11,7 +11,7 @@ description: |
   NOT for: code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
 model: sonnet
-effort: high
+effort: xhigh
 permissionMode: plan
 memory: project
 skills:

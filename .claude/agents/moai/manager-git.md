@@ -3,7 +3,6 @@ name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of git strategies, branch management, and version control workflows.
   EN: git, commit, push, branch, PR, merge, release, rebase
   KO: git, 커밋, 푸시, 브랜치, PR, 머지, 릴리즈, 리베이스
   JA: git, コミット, プッシュ, ブランチ, PR, マージ, リリース
@@ -11,6 +10,7 @@ description: |
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
 model: haiku
+effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:

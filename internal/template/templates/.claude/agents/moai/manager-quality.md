@@ -3,7 +3,6 @@ name: manager-quality
 description: |
   Code quality specialist. Use PROACTIVELY for TRUST 5 validation, code review, quality gates, and lint compliance.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of quality standards, code review strategies, and compliance patterns.
   EN: quality, TRUST 5, code review, compliance, quality gate, lint, code quality
   KO: 품질, TRUST 5, 코드리뷰, 준수, 품질게이트, 린트, 코드품질
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
@@ -11,6 +10,7 @@ description: |
   NOT for: code implementation, architecture design, deployment, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking
 model: sonnet
+effort: high
 permissionMode: plan
 memory: project
 skills:

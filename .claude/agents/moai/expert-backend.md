@@ -3,7 +3,6 @@ name: expert-backend
 description: |
   Backend architecture and database specialist. Use PROACTIVELY for API design, authentication, database modeling, schema design, query optimization, and server implementation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of backend architecture decisions, database schema design, and API patterns.
   <!-- @MX:WARN: [AUTO] trigger-cap — P-A17 cap 12-15 EN tokens enforced by CI in SPEC-V3R2-ORC-002; do not add tokens to this row without updating the lint rule -->
   <!-- @MX:REASON: expert-backend had 22 EN tokens causing false-positive routing; reduced to 13 high-precision tokens -->
   EN: backend, API, server, authentication, database, REST, GraphQL, microservices, JWT, OAuth, SQL, schema, query
@@ -13,6 +12,7 @@ description: |
   NOT for: frontend UI, CSS styling, React components, mobile apps, CLI tools, DevOps/deployment, security audits
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: high
 permissionMode: bypassPermissions
 isolation: worktree
 memory: project
