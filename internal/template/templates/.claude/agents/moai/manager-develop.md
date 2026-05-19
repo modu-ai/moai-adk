@@ -14,7 +14,7 @@ description: |
   ZH (TDD): TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
   NOT for: SPEC creation (manager-spec), security audits (expert-security), performance optimization (expert-performance), deployment (expert-devops)
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
 isolation: worktree

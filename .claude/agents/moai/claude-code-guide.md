@@ -14,7 +14,7 @@ description: |
   ZH: Claude Code 回归, agent 隔离 bug, worktreePath 空, 上游调查
   NOT for: production code implementation, SPEC creation, testing, security review
 tools: Read, Grep, Glob, WebFetch, WebSearch
-model: sonnet
+model: inherit
 effort: medium
 permissionMode: plan
 memory: project

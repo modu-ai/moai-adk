@@ -10,7 +10,7 @@ description: |
   ZH: 评估, 质量评估, 独立审查, 代码审计, 缺陷分析, 验收标准测试
   NOT for: code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
-model: sonnet
+model: inherit
 effort: xhigh
 permissionMode: plan
 memory: project

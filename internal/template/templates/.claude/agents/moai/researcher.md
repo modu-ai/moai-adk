@@ -12,7 +12,7 @@ description: |
   ZH: 研究, 自研究, 组件优化, 实验, 二元评估, 自动研究
   NOT for: production code implementation, feature development, documentation writing, git operations, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: opus
+model: inherit
 effort: xhigh
 permissionMode: acceptEdits
 isolation: worktree
