@@ -10,7 +10,7 @@ description: |
   NOT for: code implementation, code review, documentation writing, git operations, running tests
 tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking, Write, Edit
 model: inherit
-effort: high
+effort: xhigh
 permissionMode: default
 memory: project
 ---

@@ -3,7 +3,6 @@ name: expert-devops
 description: |
   DevOps specialist. Use PROACTIVELY for CI/CD, Docker, Kubernetes, deployment, and infrastructure automation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of deployment strategies, CI/CD pipelines, and infrastructure architecture.
   EN: DevOps, CI/CD, Docker, Kubernetes, deployment, pipeline, infrastructure, container
   KO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너
   JA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ
@@ -11,6 +10,7 @@ description: |
   NOT for: application code, frontend UI, database schema design, security audits, performance profiling, testing strategy
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:

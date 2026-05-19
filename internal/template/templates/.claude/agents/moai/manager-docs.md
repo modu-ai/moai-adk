@@ -3,7 +3,6 @@ name: manager-docs
 description: |
   Documentation specialist. Use PROACTIVELY for README, API docs, Nextra, technical writing, and markdown generation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  --deepthink flag: Activate Sequential Thinking MCP for deep analysis of documentation structure, content organization, and technical writing strategies.
   EN: documentation, README, API docs, Nextra, markdown, technical writing, docs
   KO: 문서, README, API문서, Nextra, 마크다운, 기술문서, 문서화
   JA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書
@@ -11,6 +10,7 @@ description: |
   NOT for: code implementation, testing, architecture design, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
+effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:
