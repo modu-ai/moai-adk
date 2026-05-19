@@ -15,6 +15,7 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
+  - moai-foundation-quality
   - moai-workflow-testing
 hooks:
   PostToolUse:

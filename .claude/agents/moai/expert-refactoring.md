@@ -16,6 +16,7 @@ isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
+  - moai-foundation-quality
   - moai-workflow-testing
 ---
 

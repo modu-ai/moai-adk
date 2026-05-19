@@ -20,6 +20,7 @@ skills:
   - moai-foundation-core
   - moai-domain-backend
   - moai-domain-database
+  - moai-foundation-quality
   - moai-workflow-testing
 hooks:
   PreToolUse:
