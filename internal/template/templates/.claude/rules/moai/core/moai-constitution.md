@@ -12,14 +12,8 @@ MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoA
 
 Rules:
 - Delegate implementation tasks to specialized agents
-- [HARD] All user-facing questions MUST go through AskUserQuestion — no free-form prose questions in response text
-- [HARD] AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users
-- [HARD] AskUserQuestion is a deferred tool — invoke `ToolSearch(query: "select:AskUserQuestion")` immediately before each AskUserQuestion call
+- **AskUserQuestion** is the orchestrator's exclusive user-question channel. Subagents MUST NOT invoke it. Full canonical procedure (preload sequence, Socratic interview structure, anti-patterns): see `.claude/rules/moai/core/askuser-protocol.md` (SSOT).
 - Collect all user preferences before delegating to subagents
-- When context is insufficient, conduct a Socratic interview via AskUserQuestion rounds (see CLAUDE.md Section 7 Rule 5 + Section 8)
-- First option in every AskUserQuestion MUST be the recommended choice, marked "(권장)" or "(Recommended)"
-- Every option MUST include a detailed description explaining implications
-- Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
 
 ## Response Language
 
@@ -157,7 +151,7 @@ Rules:
 
 Auto-Capture Triggers (SPEC-SLQG-001):
 - When a fix/refactor commit completes, check if the change matches a known anti-pattern category
-- If match found, propose a lesson entry to the user via AskUserQuestion
+- If match found, propose a lesson entry to the user via the standard user interaction channel
 - Auto-generated lesson entries include: category, incorrect pattern, correct approach, date, tags
 - Duplicate detection: check existing lessons before proposing new entry
 

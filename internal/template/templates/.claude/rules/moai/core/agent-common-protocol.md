@@ -4,8 +4,6 @@ Shared protocol for all MoAI agent definitions. This rule is automatically loade
 
 ## User Interaction Boundary
 
-`AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
-
 ### Subagent Prohibitions
 
 [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
@@ -23,38 +21,9 @@ Rationale:
 
 ### Orchestrator Obligations
 
-The MoAI orchestrator MUST follow these obligations when using AskUserQuestion:
+The MoAI orchestrator uses `AskUserQuestion` as the exclusive channel for all user-facing questions. Collect all user preferences before delegating to subagents. On receiving a blocker report, ask the user for the missing inputs and re-delegate with answers injected.
 
-- [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
-- [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
-- Collect all user preferences before delegating to subagents via Agent()
-- On receiving a blocker report from a subagent: run an AskUserQuestion round, inject the user's responses into a fresh subagent prompt, and re-delegate
-
-Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full preload sequence, Socratic interview structure, and anti-pattern catalog.
-
-### Blocker Report Format
-
-When a subagent requires user input not provided in the spawn prompt, it MUST return a structured blocker report:
-
-```markdown
-## Missing Inputs
-
-The following parameters are required but were not provided:
-
-| Parameter | Type | Expected Values | Rationale |
-|-----------|------|-----------------|-----------|
-| [name]    | [type] | [values]      | [why needed] |
-
-**Blocker**: Cannot proceed without the above inputs. Please re-delegate with these values injected into the prompt.
-```
-
-### Re-delegation Procedure
-
-On receiving a blocker report, the orchestrator:
-1. Invokes `ToolSearch(query: "select:AskUserQuestion")`
-2. Runs an AskUserQuestion round to collect the missing inputs from the user
-3. Constructs a fresh subagent prompt with the user's answers injected
-4. Re-delegates to the subagent
+Canonical procedure (preload sequence, Socratic interview, anti-patterns): see `.claude/rules/moai/core/askuser-protocol.md` (SSOT).
 
 ## Language Handling
 
