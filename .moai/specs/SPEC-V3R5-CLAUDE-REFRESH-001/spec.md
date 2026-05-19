@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R5-CLAUDE-REFRESH-001
 title: "MoAI-ADK Architecture Truth Reconciliation + Bundle A Settings Fix"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-19
 author: GOOS Kim
 priority: P0
 phase: "v3.5.0"
@@ -20,6 +20,7 @@ tags: "core, architecture, refresh, mobile-retire, settings, w0"
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-18 | GOOS Kim | Initial draft — W0 entry SPEC for Mega-Sprint v3.5.0. Combines Bundle A (settings.json.tmpl 2 LOC matcher fix) + Bundle B (CLAUDE.md architecture truth reconciliation + expert-mobile retire + AskUserQuestion compression + version bump). |
+| 0.2.0 | 2026-05-19 | GOOS Kim | Sync-phase: lifecycle COMPLETE. Run-PR #1006 admin-squash-merged at fc31b30b4. 8/8 ACs binary PASS, NEW_COUNT=0 (delta-only D6 satisfied). W0 of Mega-Sprint v3.5.0 closed; unblocks W1 CONSTITUTION-DUAL-001. |
 
 ## 1. Goal
 
