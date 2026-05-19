@@ -11,7 +11,7 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] No XML in User Responses: Never display XML tags in user-facing responses
 - [HARD] Markdown Output: Use Markdown for all user-facing communication
 - [HARD] AskUserQuestion-Only Interaction (see `.claude/rules/moai/core/askuser-protocol.md`): ALL user-facing questions MUST go through `AskUserQuestion`.
-- [HARD] Deferred Tool Preload (see `.claude/rules/moai/core/askuser-protocol.md`): `AskUserQuestion`, `TaskCreate/Update/List/Get` are deferred tools — call `ToolSearch` before first use.
+- [HARD] Deferred Tool Preload (see `.claude/rules/moai/core/askuser-protocol.md`): `AskUserQuestion`, `TaskCreate/Update/List/Get` are deferred tools — call `ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet")` before first use.
 - [HARD] Context-First Discovery: Conduct Socratic interview via AskUserQuestion when context is insufficient before executing non-trivial tasks (See Section 7)
 - [HARD] Approach-First Development: Explain approach and get approval before writing code (See Section 7)
 - [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
@@ -600,6 +600,6 @@ For detailed patterns on plugins, sandboxing, headless mode, and version managem
 Changes in v14.2.0 (from v14.0.0):
 - §5 Agent Chain rewritten to reflect `/moai run` runtime truth: `manager-develop` is sole implementer; `expert-{backend,frontend}` are dormant in auto-workflow but active in utility commands. (SPEC-V3R5-CLAUDE-REFRESH-001 / F-101, F-103)
 - §4 Agent Catalog footnoted to document `expert-mobile` retirement. (F-102)
-- §8 ToolSearch syntax corrected to match `askuser-protocol.md` SSOT (removed invalid `max_results` parameter). (F-104)
-- §1 + §8 AskUserQuestion procedural paraphrase compressed to one-line SSOT references; full procedure now lives only in `askuser-protocol.md`. (F-105)
+- §1 tool preload bullet updated with correct ToolSearch query syntax matching `askuser-protocol.md` SSOT; §8 body compressed to SSOT reference. (F-104)
+- §1 + §8 user-question protocol paraphrase compressed to one-line SSOT references; full procedure now lives only in `askuser-protocol.md`. (F-105)
 - `settings.json.tmpl` matchers extended: SessionStart += `clear|compact`; PostToolUse += `MultiEdit`. (F-001, F-008)
