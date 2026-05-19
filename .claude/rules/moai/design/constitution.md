@@ -2,6 +2,7 @@
 
 ## HISTORY
 
+- 2026-05-20: §3.2 + §4 Pencil MCP (Path B2) row removed — Pencil MCP server no longer registered in `.mcp.json.tmpl`, dead reference cleanup as part of v2.20.0-rc1 release-readiness consolidation. Path B1 (figma-extractor) preserved. Version 3.4.0 → 3.5.0.
 - 2026-04-26: §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
 - 2026-04-26: §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
 - 2026-04-20: Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
@@ -72,12 +73,12 @@ Brand context is stored in `.moai/project/brand/` and initialized through the br
 
 Iteration-specific design briefs are stored in `.moai/design/`:
 
-- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md, pencil-plan.md) when present and not _TBD_
+- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_
 - [ZONE:Frozen] [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
 - [ZONE:Frozen] [HARD] `moai-workflow-design-import` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
 - [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
 - [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
-- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md > pencil-plan.md
+- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md
 
 > **Note:** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case.
 
@@ -116,7 +117,6 @@ Each phase produces typed artifacts consumed by downstream phases:
 | expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
 | evaluator-active | Built code + BRIEF | Score card + feedback | Always |
 | figma-extractor (Path B1) | BRIEF + Figma file ID + page selectors | tokens.json + components.json | Path B1 |
-| pencil-mcp (Path B2) | BRIEF + .pen files | tokens.json + components.json | Path B2 |
 
 ---
 
@@ -402,7 +402,7 @@ If a graduated learning causes regression:
 
 ---
 
-Version: 3.4.0
+Version: 3.5.0
 Classification: FROZEN_AMENDMENT
 Original Source: agency/constitution.md v3.2.0
 Last Updated: 2026-04-26

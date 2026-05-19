@@ -26,7 +26,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize", "architecture decision", "technology selection", "trade-off", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "sequential thinking", "deepthink", "breaking change", "strategic", "decision", "architecture", "analysis", "design thinking", "complex problem", "performance vs maintainability"]
+  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize", "architecture decision", "technology selection", "trade-off", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "sequential thinking", "ultrathink", "breaking change", "strategic", "decision", "architecture", "analysis", "design thinking", "complex problem", "performance vs maintainability"]
   agents:
     - "manager-strategy"
     - "manager-spec"
@@ -284,34 +284,22 @@ Examples and reference: [examples.md](references/philosopher-examples.md), [refe
 
 ---
 
-## Sequential Thinking MCP (absorbed from moai-workflow-thinking)
+## Adaptive Thinking (Opus 4.7 built-in)
 
-Structured step-by-step reasoning via `mcp__sequential-thinking__sequentialthinking` MCP tool. Activated by `--deepthink` flag.
+Opus 4.7's built-in reasoning mode that dynamically allocates reasoning tokens based on task complexity.
 
-### Three Distinct Reasoning Modes
+### Reasoning Modes
 
 | Mode | Trigger | Mechanism | GLM Compatible? |
 |------|---------|-----------|-----------------|
-| `--deepthink` | Explicit flag | Sequential Thinking MCP | NO — generates server_tool_use |
 | `ultrathink` | Keyword | Claude native extended reasoning | YES |
 | Adaptive Thinking | Automatic | Opus 4.7 built-in | YES |
 
-Rules: `--deepthink` → ALWAYS invoke Sequential Thinking MCP. `ultrathink` → ALWAYS use Claude native. They can coexist: `ultrathink --deepthink` activates both independently.
+Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with high effort.
 
-### When to Activate (--deepthink only)
+### When to Activate
 
 Architecture decisions affecting 3+ files, technology selection between options, breaking changes under consideration, performance vs maintainability trade-offs, complex problems with multiple viable approaches.
-
-### Tool Parameters
-
-Required: `thought` (string), `nextThoughtNeeded` (boolean), `thoughtNumber` (integer), `totalThoughts` (integer)
-
-Optional: `isRevision` (boolean), `revisesThought` (integer), `branchFromThought` (integer), `branchId` (string), `needsMoreThoughts` (boolean)
-
-### Key Guidelines
-
-1. Start with a reasonable `totalThoughts` estimate (adjust up as needed)
-2. Use `isRevision: true` when correcting earlier thoughts
 3. Use branching (`branchFromThought`) when two viable alternatives exist
 4. Set `nextThoughtNeeded: false` only when a concrete conclusion is reached
 5. On Opus 4.7: Adaptive Thinking handles reasoning automatically — no fixed budget needed

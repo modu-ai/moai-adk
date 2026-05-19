@@ -15,7 +15,7 @@ Agent definition `model` field accepts only these values:
 - haiku: Claude Haiku (fastest, lowest cost)
 
 Current model generation mapping (as of v2.1.69):
-- opus = Opus 4.6 (default effort: medium for Max/Team, use "deepthink" keyword for high effort)
+- opus = Opus 4.6 (default effort: medium for Max/Team, use "ultrathink" keyword for high effort)
 - sonnet = Sonnet 4.6
 - haiku = Haiku 4.5
 
@@ -66,14 +66,12 @@ CG Mode (Claude + GLM) uses environment variable overrides, not model field chan
 - Teammate sessions: Inherit GLM env from tmux session
 - Activation: `moai cg` (requires tmux)
 
-## Effort Levels (Opus 4.6)
+## Effort Levels
 
-Opus 4.6 supports effort levels that control reasoning depth:
+Claude models support effort levels that control reasoning depth:
 - low: Fastest responses, less thorough
 - medium: Default for Max/Team subscribers (v2.1.68+)
-- high: Deep reasoning, activated by "deepthink" keyword for one turn
-
-MoAI's --deepthink flag triggers high effort for the current turn. This aligns with the "deepthink" keyword behavior in Claude Code.
+- high: Deep reasoning, activated by "ultrathink" keyword
 
 ## Rules
 

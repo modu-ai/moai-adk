@@ -14,7 +14,7 @@ metadata:
 
 [HARD] Delegate codebase analysis to the Explore subagent.
 
-[SOFT] Apply --deepthink for comprehensive analysis.
+[SOFT] Use the `ultrathink` keyword for comprehensive analysis (activates Adaptive Thinking on Opus 4.7+).
 
 Analysis Objectives passed to Explore agent:
 

@@ -18,9 +18,9 @@ Per SPEC-V3R2-WF-003, `/moai design` participates in the `--mode` axis with 4 va
 - **`team`**: Path B-Common with **parallel** execution. Spawns `moai-domain-copywriting` and `moai-domain-brand-design` as concurrent teammates (role_profile `designer` per `workflow.yaml`); both feed `moai-workflow-gan-loop` for evaluation per the GAN Loop contract (REQ-WF003-009). Requires the same team prerequisites as `/moai run --mode team`: `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
 - **`pipeline`**: REJECTED on `/moai design`. Pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (preserved from the WF-004 baseline; REQ-WF003-016 ↔ REQ-WF004-014 byte-identical).
 
-### Path B1 (Figma) / B2 (Pencil) — Not in `--mode` Axis
+### Path B1 (Figma) — Not in `--mode` Axis
 
-Per `research.md` §2.2.3, Path B1 (figma-extractor) and Path B2 (pencil-mcp) are deliberately NOT exposed as `--mode` values. Users wanting these paths invoke `/moai design` with NO `--mode` flag and receive the existing AskUserQuestion path selection (Phase 1) presenting all 4 options (A / B1 / B2 / B-Common). This keeps the `--mode` axis stable across `/moai run` and `/moai design`.
+Per `research.md` §2.2.3, Path B1 (figma-extractor) is deliberately NOT exposed as a `--mode` value. Users wanting this path invoke `/moai design` with NO `--mode` flag and receive the existing AskUserQuestion path selection (Phase 1) presenting options (A / B1 / B-Common). This keeps the `--mode` axis stable across `/moai run` and `/moai design`.
 
 ### Sentinel Error Keys
 
@@ -103,11 +103,6 @@ Option 2: Path B1 (Figma)
 - "Figma file via dynamic figma-extractor (requires Figma credentials)"
 - Requirements: Figma API token in environment or `.moai/config/sections/design.yaml`
 - Output: Extracted design tokens and component specs from Figma file
-
-Option 3: Path B2 (Pencil)
-- "Pencil .pen files via dynamic pencil-mcp (requires .pen files in project)"
-- Requirements: `.pen` files present in `.moai/design/` or project root
-- Output: Design artifacts rendered from Pencil files via pencil-mcp
 
 **Subscription override** (REQ-ROUTE-006): When `subscription.tier: "pro-or-below"` in user.yaml or user states no Claude Design access:
 - Swap Option 1 ↔ Option 2 (B1 becomes recommended).
@@ -212,26 +207,6 @@ Step B1-2: Generate figma-extractor meta-harness:
 Step B1-3: Brand context enforcement:
 - After extraction, compare extracted color/typography tokens against `visual_identity`.
 - If conflict: apply brand values and log overrides ("Overriding Figma token `<key>` with brand value `<val>`").
-- Proceed to Phase B-Common.
-
----
-
-## Phase B2: Pencil MCP Path (REQ-DPL-005)
-
-When Path B2 (Pencil) is selected:
-
-Step B2-1: Verify .pen files:
-- Glob `.moai/design/*.pen` and `*.pen`.
-- If none found: output "No .pen files found. Place Pencil files in `.moai/design/` or project root." and stop.
-
-Step B2-2: Generate pencil-mcp meta-harness:
-- Invoke `moai-meta-harness` with target="pencil-mcp".
-- Meta-harness generates a dynamic agent skill for Pencil file rendering.
-- Pass: `.pen` file paths, brand context (`visual_identity`).
-
-Step B2-3: Brand context enforcement:
-- After rendering, compare rendered tokens against `visual_identity`.
-- If conflict: apply brand values and log overrides.
 - Proceed to Phase B-Common.
 
 ---
