@@ -90,3 +90,8 @@
 {"timestamp":"2026-05-19T19:09:04.41391Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"a6336ae853fbc9ab4"}
 {"timestamp":"2026-05-19T19:14:01.222786Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"a31ddad8b55b9964a"}
 {"timestamp":"2026-05-19T19:14:10.135575Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"abe73a38eaa34c072"}
+{"timestamp":"2026-05-19T19:54:08.417346Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"aba8b34ea3650499d"}
+{"timestamp":"2026-05-19T20:09:15.194866Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"a2403b371e3d6bf54"}
+{"timestamp":"2026-05-19T20:15:30.622574Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"a1bbabdd0abc17e2e"}
+{"timestamp":"2026-05-19T20:21:26.539615Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"a56ea175aa8653428"}
+{"timestamp":"2026-05-19T20:25:05.875243Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v1","agent_id":"ac49e689f761a3c2d"}
