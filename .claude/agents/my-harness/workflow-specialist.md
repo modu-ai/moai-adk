@@ -6,7 +6,7 @@ description: |
   Delegates to manager-spec for planning, manager-develop for implementation.
   NOT for: CLI changes (cli-template-specialist), testing (quality-specialist), CI (hook-ci-specialist).
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: inherit
 permissionMode: plan
 skills:
   - my-harness-workflow

@@ -6,7 +6,7 @@ description: |
   Delegates to expert-devops for CI/CD changes.
   NOT for: CLI changes (cli-template-specialist), testing (quality-specialist), SPEC (workflow-specialist).
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: inherit
 permissionMode: plan
 skills:
   - my-harness-hook-ci

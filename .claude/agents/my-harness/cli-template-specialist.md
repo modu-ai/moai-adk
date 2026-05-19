@@ -6,7 +6,7 @@ description: |
   Delegates implementation to expert-backend for Go code changes.
   NOT for: testing (quality-specialist), SPEC workflow (workflow-specialist), CI (hook-ci-specialist).
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: sonnet
+model: inherit
 permissionMode: plan
 skills:
   - my-harness-cli-template

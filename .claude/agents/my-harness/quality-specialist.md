@@ -6,7 +6,7 @@ description: |
   Delegates to manager-quality for TRUST 5 validation and quality gate execution.
   NOT for: CLI changes (cli-template-specialist), SPEC workflow (workflow-specialist), CI (hook-ci-specialist).
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: inherit
 permissionMode: plan
 skills:
   - my-harness-quality
