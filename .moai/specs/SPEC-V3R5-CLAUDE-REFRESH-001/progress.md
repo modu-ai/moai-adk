@@ -43,3 +43,29 @@
 - T8 post-run total: 312 findings (229 ERROR + 83 WARN)
 - T8 NEW_COUNT: **0** (PASS — no new findings introduced by SPEC)
 - Note: -9 findings = expert-mobile.md LR-08 drift findings dissolved by T4 deletion
+
+---
+
+## Sync-Phase Complete (2026-05-19)
+
+### Lifecycle Status: COMPLETE
+
+- Spec frontmatter: `status: draft → completed`, `version: 0.1.0 → 0.2.0`, `updated: 2026-05-18 → 2026-05-19`
+- HISTORY entry: v0.2.0 row added with sync-phase closure notes
+- Run-PR merge commit: `fc31b30b4` (admin squash, all 8 ACs PASS)
+- Sync-PR: TBD (to be filled after PR #1007 creation)
+
+### 8 ACs Summary (All PASS)
+
+- AC-CLR-001: SessionStart matcher += clear|compact ✓
+- AC-CLR-002: PostToolUse matcher += MultiEdit ✓
+- AC-CLR-003: CLAUDE.md §5 Agent Chain rewritten (no Phase 3, manager-develop SSOT, dormancy note) ✓
+- AC-CLR-004: expert-mobile.md hard-deleted, moai-domain-mobile grep=0, CLAUDE.md retirement note ✓
+- AC-CLR-005: CLAUDE.md §8 ToolSearch syntax corrected (no max_results parameter) ✓
+- AC-CLR-006: AskUserQuestion paraphrase compression (N=29→9 lines, 70% reduction, SSOT citations in all 3 non-canonical docs) ✓
+- AC-CLR-007: CLAUDE.md footer bumped to v14.2.0, Last Updated: 2026-05-19, changelog entry present ✓
+- AC-CLR-008 (delta): NEW_COUNT = 0 (pre-existing 321 baseline preserved, no new findings) ✓
+
+### W0 Completion
+
+W0 of Mega-Sprint v3.5.0 lifecycle closed. Architecture truth baseline established. Unblocks W1 (SPEC-V3R5-CONSTITUTION-DUAL-001).
