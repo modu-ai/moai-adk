@@ -14,7 +14,7 @@ paths:
 
 ## Entry Condition
 
-[HARD] The CI auto-fix loop MUST be entered ONLY when `scripts/ci-watch/run.sh`
+[ZONE:Frozen] [HARD] The CI auto-fix loop MUST be entered ONLY when `scripts/ci-watch/run.sh`
 exits with code 2 and emits a valid JSON handoff to stdout.
 
 ```
@@ -32,7 +32,7 @@ ci-watch exit 2 → JSON handoff → ci-autofix loop entry
 
 ## Iteration Cap
 
-[HARD] The auto-fix loop MUST attempt at most **3 iterations**. The iteration
+[ZONE:Frozen] [HARD] The auto-fix loop MUST attempt at most **3 iterations**. The iteration
 counter is persisted in `.moai/state/ci-autofix-<PR>.json`.
 
 ```
@@ -46,7 +46,7 @@ AskUserQuestion with three options:
 2. SPEC 수정 — Revise the SPEC and restart the implementation
 3. PR 포기 — Close the PR and abandon this approach
 
-[HARD] The AskUserQuestion at iteration > 3 MUST be a blocking call with no
+[ZONE:Frozen] [HARD] The AskUserQuestion at iteration > 3 MUST be a blocking call with no
 silent timeout. The orchestrator waits indefinitely for user response before
 taking any further action.
 
@@ -54,7 +54,7 @@ taking any further action.
 
 ## Patch Commit Rule — No Force-Push
 
-[HARD] Every auto-fix patch MUST be applied as a **new commit** on the PR branch.
+[ZONE:Frozen] [HARD] Every auto-fix patch MUST be applied as a **new commit** on the PR branch.
 Force-push is absolutely prohibited.
 
 Prohibited commands:
@@ -79,11 +79,11 @@ the watch loop for the same PR.
 
 ## AskUserQuestion Boundary
 
-[HARD] AskUserQuestion is the **exclusive user interaction channel** for the
+[ZONE:Frozen] [HARD] AskUserQuestion is the **exclusive user interaction channel** for the
 auto-fix loop. All user confirmations and escalations go through AskUserQuestion.
 The CLI, shell scripts, and `manager-quality` subagent MUST NOT call AskUserQuestion.
 
-[HARD] The orchestrator MUST preload AskUserQuestion via
+[ZONE:Frozen] [HARD] The orchestrator MUST preload AskUserQuestion via
 `ToolSearch(query: "select:AskUserQuestion")` before every AskUserQuestion call.
 
 Interaction surfaces:
@@ -97,7 +97,7 @@ Interaction surfaces:
 
 ## Semantic Failure — No Auto-Patch
 
-[HARD] Semantic failures (data race, deadlock, panic, test assertion failure) MUST
+[ZONE:Frozen] [HARD] Semantic failures (data race, deadlock, panic, test assertion failure) MUST
 NOT be automatically patched. The orchestrator MUST immediately escalate via
 AskUserQuestion with the `manager-quality` diagnosis report.
 
@@ -112,7 +112,7 @@ The orchestrator presents the diagnosis to the user and waits for user decision.
 
 ## Secrets and Credentials Protection
 
-[HARD] The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files,
+[ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files,
 API key files, or any file matching common secrets patterns.
 
 File patterns that MUST NOT be touched by auto-fix:
@@ -127,7 +127,7 @@ reject the patch and escalate to the user.
 
 ## Audit Log Requirement
 
-[HARD] Every auto-fix iteration MUST be logged to:
+[ZONE:Frozen] [HARD] Every auto-fix iteration MUST be logged to:
 ```
 .moai/reports/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md
 ```
@@ -158,7 +158,7 @@ The state file `.moai/state/ci-autofix-<PR>.json` tracks loop state:
 
 ## Wave 2 Contract Preservation
 
-[HARD] The auto-fix loop MUST NOT modify `scripts/ci-watch/run.sh` or any Wave 2
+[ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify `scripts/ci-watch/run.sh` or any Wave 2
 artifacts. Wave 3 is a read-only consumer of Wave 2 outputs.
 
 The handoff schema fields `name`, `runId`, `logUrl` in `failedChecks[]` are

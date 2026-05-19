@@ -60,11 +60,11 @@ The following elements can be modified through the graduation protocol:
 
 Brand context is not optional decoration. It is a constitutional constraint that flows through every phase:
 
-- [HARD] manager-spec MUST load brand context before generating BRIEF documents
-- [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md
-- [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md
-- [HARD] expert-frontend MUST implement design tokens derived from brand context
-- [HARD] evaluator-active MUST score brand consistency as a must-pass criterion
+- [ZONE:Frozen] [HARD] manager-spec MUST load brand context before generating BRIEF documents
+- [ZONE:Frozen] [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md
+- [ZONE:Frozen] [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md
+- [ZONE:Frozen] [HARD] expert-frontend MUST implement design tokens derived from brand context
+- [ZONE:Frozen] [HARD] evaluator-active MUST score brand consistency as a must-pass criterion
 
 Brand context is stored in `.moai/project/brand/` and initialized through the brand interview process on first run. Context updates require explicit user approval.
 
@@ -72,12 +72,12 @@ Brand context is stored in `.moai/project/brand/` and initialized through the br
 
 Iteration-specific design briefs are stored in `.moai/design/`:
 
-- [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md, pencil-plan.md) when present and not _TBD_
-- [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
-- [HARD] `moai-workflow-design-import` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
-- [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
-- [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
-- [HARD] Priority order when truncation is needed: spec.md > system.md > research.md > pencil-plan.md
+- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md, pencil-plan.md) when present and not _TBD_
+- [ZONE:Frozen] [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
+- [ZONE:Frozen] [HARD] `moai-workflow-design-import` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
+- [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
+- [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
+- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md > pencil-plan.md
 
 > **Note (SPEC-V3R3-DESIGN-FOLDER-FIX-001):** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case.
 
@@ -243,10 +243,10 @@ When a learning reaches Rule tier (5+ observations, confidence >= 0.80):
 
 Design system skills may be forked or customized. Fork management follows these rules:
 
-- [HARD] Prefer direct skill reference over custom fork when no customization is needed
-- [HARD] Never modify moai upstream skill files directly (they are managed by moai update)
-- [HARD] Custom skill variants MUST have clear naming distinguishing them from upstream
-- [HARD] Document the reason for customization in the skill frontmatter metadata
+- [ZONE:Frozen] [HARD] Prefer direct skill reference over custom fork when no customization is needed
+- [ZONE:Frozen] [HARD] Never modify moai upstream skill files directly (they are managed by moai update)
+- [ZONE:Frozen] [HARD] Custom skill variants MUST have clear naming distinguishing them from upstream
+- [ZONE:Frozen] [HARD] Document the reason for customization in the skill frontmatter metadata
 
 ---
 
@@ -328,10 +328,10 @@ Before each GAN Loop iteration, expert-frontend and evaluator-active negotiate a
    - New criteria may be added if previous sprint revealed gaps
 
 Rules:
-- [HARD] Sprint Contracts are required when harness level is `thorough`
-- [HARD] Sprint Contracts are optional but recommended for `standard` harness level
-- [HARD] evaluator-active MUST NOT score on criteria not in the Sprint Contract
-- [HARD] expert-frontend MUST NOT claim criteria as met without evidence
+- [ZONE:Frozen] [HARD] Sprint Contracts are required when harness level is `thorough`
+- [ZONE:Frozen] [HARD] Sprint Contracts are optional but recommended for `standard` harness level
+- [ZONE:Frozen] [HARD] evaluator-active MUST NOT score on criteria not in the Sprint Contract
+- [ZONE:Frozen] [HARD] expert-frontend MUST NOT claim criteria as met without evidence
 - Sprint Contract artifacts are stored in `.moai/sprints/` (from design.yaml `sprint_contract.artifact_dir`)
 
 ---

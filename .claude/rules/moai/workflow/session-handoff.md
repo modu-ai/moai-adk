@@ -15,7 +15,7 @@ This rule establishes:
 
 ## When To Generate (5 Triggers)
 
-[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of these conditions activate:
+[ZONE:Evolvable] [HARD] The orchestrator MUST emit a paste-ready resume message when ANY of these conditions activate:
 
 | # | Trigger | Detection |
 |---|---------|-----------|
@@ -31,7 +31,7 @@ The model-specific threshold in Trigger #1 reflects asymmetric stall risk: 1M co
 
 ## Canonical Format (Verbatim Spec)
 
-[HARD] Resume message MUST follow this exact 6-block structure:
+[ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure:
 
 ```
 ultrathink. <SPEC-ID> <phase> 진입.
@@ -98,7 +98,7 @@ This format is paste-ready: the next session reads each line and executes verifi
 
 ## Auto-Memory Integration (Mandatory)
 
-[HARD] When generating a resume message, the orchestrator MUST also:
+[ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
 1. Save the message to a memory project entry. Filename pattern: `project_<wave>_<spec>_<status>.md` (e.g., `project_wave6_wf002_complete.md`).
 2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading.
@@ -149,7 +149,7 @@ applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 
 
 ## Worktree-Anchored Resume Pattern
 
-[HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
+[ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
 
 > Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
 
@@ -202,7 +202,7 @@ Block 0 is REQUIRED only when SPEC was initialized with L3 `--worktree`. For SPE
 
 Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory), the default for new SPECs is `--branch` (or no flag) — L3 `--worktree` is opt-in only. Agents should not prompt users to use L3 unless explicitly requested.
 
-[HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
 
 ### Verified Example (with Block 0)
 

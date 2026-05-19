@@ -103,7 +103,7 @@ triggers:
 
 ### Key Format Rules
 
-allowed-tools format: [HARD] Comma-separated string ONLY. Space-separated values are PROHIBITED.
+allowed-tools format: [ZONE:Evolvable] [HARD] Comma-separated string ONLY. Space-separated values are PROHIBITED.
 - Correct: `allowed-tools: Read, Grep, Glob, Bash`
 - WRONG: `allowed-tools: Read Grep Glob Bash` (YAML parses as single string scalar, silently breaks tool permissions)
 - YAML arrays also supported since v2.1.0 but CSV is the MoAI convention

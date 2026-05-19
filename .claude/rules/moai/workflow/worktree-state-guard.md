@@ -63,7 +63,7 @@ When `moai worktree verify` exits non-zero:
 | 2 | Suspect (empty worktreePath in agent response) | Warn the user, set push-block flag, optionally trigger claude-code-guide investigation |
 | 3 | Both divergence + suspect | Combine 1 + 2 escalation steps |
 
-[HARD] AskUserQuestion is invoked by the **orchestrator only**. The Go CLI
+[ZONE:Frozen] [HARD] AskUserQuestion is invoked by the **orchestrator only**. The Go CLI
 returns exit codes and JSON; the orchestrator translates these into user-facing
 prompts. See `agent-common-protocol.md` § User Interaction Boundary.
 

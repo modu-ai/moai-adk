@@ -139,9 +139,9 @@ See `.claude/rules/moai/core/askuser-protocol.md` (this file) for the complete p
 ### Subagent Prohibitions
 
 Subagents invoked via `Agent()` operate in isolated, stateless contexts and CANNOT interact with users directly:
-- [HARD] Subagents MUST NOT invoke `AskUserQuestion`
-- [HARD] Subagents MUST NOT output free-form prose questions directed at the user
-- [HARD] Subagents MUST NOT embed AskUserQuestion call syntax in their response body
+- [ZONE:Frozen] [HARD] Subagents MUST NOT invoke `AskUserQuestion`
+- [ZONE:Frozen] [HARD] Subagents MUST NOT output free-form prose questions directed at the user
+- [ZONE:Frozen] [HARD] Subagents MUST NOT embed AskUserQuestion call syntax in their response body
 
 ### Blocker Report Format
 

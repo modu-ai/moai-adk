@@ -6,17 +6,17 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 
 ### HARD Rules (Mandatory)
 
-- [HARD] Language-Aware Responses: All user-facing responses MUST be in user's conversation_language
-- [HARD] Parallel Execution: Execute all independent tool calls in parallel when no dependencies exist
-- [HARD] No XML in User Responses: Never display XML tags in user-facing responses
-- [HARD] Markdown Output: Use Markdown for all user-facing communication
-- [HARD] AskUserQuestion-Only Interaction: ALL questions directed at the user MUST go through AskUserQuestion (See Section 8)
-- [HARD] Deferred Tool Preload: AskUserQuestion, TaskCreate/Update/List/Get are deferred tools — schema is NOT loaded at session start. Call ToolSearch BEFORE first use to load schemas. Calling without schema produces InputValidationError. (See Section 8 Deferred Tool Preload Protocol)
-- [HARD] Context-First Discovery: Conduct Socratic interview via AskUserQuestion when context is insufficient before executing non-trivial tasks (See Section 7)
-- [HARD] Approach-First Development: Explain approach and get approval before writing code (See Section 7)
-- [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
-- [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
-- [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
+- [ZONE:Evolvable] [HARD] Language-Aware Responses: All user-facing responses MUST be in user's conversation_language
+- [ZONE:Evolvable] [HARD] Parallel Execution: Execute all independent tool calls in parallel when no dependencies exist
+- [ZONE:Evolvable] [HARD] No XML in User Responses: Never display XML tags in user-facing responses
+- [ZONE:Evolvable] [HARD] Markdown Output: Use Markdown for all user-facing communication
+- [ZONE:Frozen] [HARD] AskUserQuestion-Only Interaction: ALL questions directed at the user MUST go through AskUserQuestion (See Section 8)
+- [ZONE:Frozen] [HARD] Deferred Tool Preload: AskUserQuestion, TaskCreate/Update/List/Get are deferred tools — schema is NOT loaded at session start. Call ToolSearch BEFORE first use to load schemas. Calling without schema produces InputValidationError. (See Section 8 Deferred Tool Preload Protocol)
+- [ZONE:Evolvable] [HARD] Context-First Discovery: Conduct Socratic interview via AskUserQuestion when context is insufficient before executing non-trivial tasks (See Section 7)
+- [ZONE:Evolvable] [HARD] Approach-First Development: Explain approach and get approval before writing code (See Section 7)
+- [ZONE:Evolvable] [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
+- [ZONE:Evolvable] [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
+- [ZONE:Evolvable] [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
 
 Core principles (1-4) and six Agent Core Behaviors (consolidated cross-cutting rules) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-9) are detailed in Section 7.
 
@@ -298,9 +298,9 @@ Tools that are not installed are skipped gracefully. Projects with no recognized
 
 ## 8. User Interaction Architecture
 
-[HARD] Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in response text are prohibited.
+[ZONE:Frozen] [HARD] Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in response text are prohibited.
 
-[HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start. Call `ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` before first use.
+[ZONE:Frozen] [HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start. Call `ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` before first use.
 
 Key rules (full detail in `.claude/rules/moai/core/askuser-protocol.md`):
 - Subagents MUST NOT prompt users — return blocker reports to orchestrator instead
@@ -433,7 +433,7 @@ For core parallel execution principles, see .claude/rules/moai/core/moai-constit
 - **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
 - **Platform Compatibility**: Always prefer Edit tool over sed/awk
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
-- **Background Agent Write Restriction**: [HARD] Background subagents (`run_in_background: true`) auto-deny Write/Edit operations. Use `run_in_background: false` for agents that modify files. Read-only agents (research, analysis) can safely run in background.
+- **Background Agent Write Restriction**: [ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) auto-deny Write/Edit operations. Use `run_in_background: false` for agents that modify files. Read-only agents (research, analysis) can safely run in background.
 
 ### Worktree Isolation Rules (Advisory — 2026-05-17 Policy)
 
