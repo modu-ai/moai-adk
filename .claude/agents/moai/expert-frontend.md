@@ -18,6 +18,7 @@ skills:
   - moai-foundation-core
   - moai-domain-frontend
   - moai-design-system
+  - moai-foundation-quality
   - moai-workflow-testing
 hooks:
   PreToolUse:

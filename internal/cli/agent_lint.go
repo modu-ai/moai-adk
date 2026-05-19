@@ -889,6 +889,29 @@ func checkSandboxJustification(file string, frontmatterText []byte) []LintViolat
 	return violations
 }
 
+// domainExemptPrefixes lists skill prefixes that are agent-specific by design.
+// Skills with these prefixes are exempt from LR-08 intra-category symmetry checking.
+// Foundation (moai-foundation-*) and workflow (moai-workflow-*) skills remain enforced.
+// See SPEC-V3R5-CORE-SLIM-001 Track A for rationale.
+var domainExemptPrefixes = []string{
+	"moai-domain-",
+	"moai-design-",
+	"moai-library-",
+	"moai-framework-",
+	"moai-platform-",
+	"moai-ref-",
+}
+
+// isDomainExemptSkill reports whether the given skill name is exempt from LR-08.
+func isDomainExemptSkill(skill string) bool {
+	for _, prefix := range domainExemptPrefixes {
+		if strings.HasPrefix(skill, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // checkSkillPreloadDrift checks for LR-08 across all agent files.
 func checkSkillPreloadDrift(files []string) []LintViolation {
 	var violations []LintViolation
@@ -958,6 +981,9 @@ func checkSkillPreloadDrift(files []string) []LintViolation {
 		// Check for drift
 		for _, agent := range agents {
 			for _, skill := range agent.skills {
+				if isDomainExemptSkill(skill) {
+					continue // Domain-scoped skills are agent-specific — exempt from LR-08 symmetry
+				}
 				if skillCounts[skill] < len(agents) {
 					// This skill is not shared by all agents in category
 					lineNum := findFrontmatterLine(agent.file, "skills:")

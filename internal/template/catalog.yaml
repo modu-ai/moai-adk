@@ -117,7 +117,7 @@ catalog:
             - name: expert-refactoring
               tier: core
               path: templates/.claude/agents/moai/expert-refactoring.md
-              hash: f5e020f5b4f9922ecb41d4275b94ca07724084d6344c073743025b3b8c774784
+              hash: bfe797366b09474e029c048819bf2f294ec189c0f75f3939e856d9fbcbf6dab7
               version: 1.0.0
             - name: manager-brain
               tier: core
@@ -204,7 +204,7 @@ catalog:
                 - name: expert-backend
                   tier: optional-pack:backend
                   path: templates/.claude/agents/moai/expert-backend.md
-                  hash: 4315b10262dbd8f7b4f07e41a001e64455d840f78b9400f821000c1f4966c80d
+                  hash: 94e35fac45183844ec0aa233f34c1d98cdce53e3431663da01ff0eec810f9d62
                   version: 1.0.0
         chrome-extension:
             description: Chrome Extension Manifest V3 development with service workers and chrome.* APIs
@@ -230,7 +230,7 @@ catalog:
                 - name: expert-devops
                   tier: optional-pack:deployment
                   path: templates/.claude/agents/moai/expert-devops.md
-                  hash: 37e4e407266252b68c187056a4a8dde3c640e2582787a68ad60da5d0e3ebe622
+                  hash: 6b5d3d8e388dda52692e4caba38b84f90c2a8f7d027ce88483790568682e239b
                   version: 1.0.0
         design:
             description: Brand-aligned design system, copywriting, GAN loop, and Claude Design handoff workflow
@@ -312,7 +312,7 @@ catalog:
                 - name: expert-frontend
                   tier: optional-pack:frontend
                   path: templates/.claude/agents/moai/expert-frontend.md
-                  hash: 5d9c525eaf314e8339ac23d946477ae4927ce5ed1f3a258c599dfbd0125581b9
+                  hash: 6e997ddecc53b532f1950484b4e667c59e554462afe25fc7e3dc8704878662c0
                   version: 1.0.0
         mobile:
             description: Mobile and desktop application development including Electron and cross-platform frameworks
