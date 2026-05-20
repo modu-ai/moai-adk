@@ -1,18 +1,22 @@
-// Package cli — harness CLI retirement CI guard (SPEC-V3R4-HARNESS-001).
+// Package cli — harness CLI surface CI guard.
 //
-// @MX:NOTE: [AUTO] CI regression guard for SPEC-V3R4-HARNESS-001 (REQ-HRN-FND-002).
-// This test fails the build if newHarnessCmd (or any equivalent harness subcommand
-// factory) is registered into the cobra command tree, enforcing the retirement
-// contract declared by BC-V3R4-HARNESS-001-CLI-RETIREMENT.
+// HISTORY:
+//   - V3R4 (SPEC-V3R4-HARNESS-001 REQ-HRN-FND-002): retired the lifecycle verbs
+//     (status/apply/rollback/disable) from the `moai harness` CLI tree. This test
+//     historically asserted that none of those verbs appeared under any harness
+//     command, allowing only the SPEC-V3R2-HRN-001 routing verbs (route/validate).
+//   - V3R5 (SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009): supersedes the V3R4
+//     retirement. The lifecycle verbs are un-retired and MUST be registered under
+//     `moai harness`, alongside the new proposal-management verbs (mute/mute-list/
+//     unmute/verify). The unified Cobra tree must satisfy:
 //
-// Why this guard exists:
+//         ./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'
 //
-//	SPEC-V3R4-HARNESS-001 retires the `moai harness <verb>` CLI verb path. The
-//	implementation file internal/cli/harness.go remains in the tree as a
-//	deprecation marker (factory function preserved for compatibility with any
-//	internal introspection callers), but the cobra registration is removed.
-//	This test verifies the registration absence so a future refactor cannot
-//	silently re-introduce the public CLI surface.
+//     yielding at least 6 matches.
+//
+// @MX:NOTE: [AUTO] V3R5 supersedence — this guard now asserts that all 10 V3R5 verbs
+// are registered (route + validate + 4 lifecycle + 4 proposal-management) under the
+// single `moai harness` parent command.
 package cli
 
 import (
@@ -20,91 +24,94 @@ import (
 	"testing"
 )
 
-// retiredHarnessVerbs는 retired 상태의 harness lifecycle 동사 집합입니다.
-// SPEC-V3R4-HARNESS-001 BC-V3R4-HARNESS-001-CLI-RETIREMENT.
-// 이 동사들은 rootCmd.harness 하위에 절대 등록되면 안 됩니다.
-var retiredHarnessVerbs = map[string]bool{
+// v3r5RequiredHarnessVerbs는 SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009에서
+// `moai harness` 트리에 등록되어야 하는 10개 동사 집합입니다.
+var v3r5RequiredHarnessVerbs = map[string]bool{
+	// SPEC-V3R2-HRN-001 routing verbs.
+	"route":    true,
+	"validate": true,
+	// SPEC-V3R5-HARNESS-AUTONOMY-001 §6 lifecycle verbs (un-retired).
 	"status":   true,
 	"apply":    true,
 	"rollback": true,
 	"disable":  true,
+	// SPEC-V3R5-HARNESS-AUTONOMY-001 §6 M4 proposal-management verbs (new).
+	"mute":      true,
+	"mute-list": true,
+	"unmute":    true,
+	"verify":    true,
 }
 
-// allowedHarnessVerbs는 SPEC-V3R2-HRN-001에서 새로 도입된 허용 동사 집합입니다.
-// retirement guard는 이 동사들의 등록을 허용합니다.
-var allowedHarnessVerbs = map[string]bool{
-	"route":    true,
-	"validate": true,
-}
-
-// TestHarnessRetirement asserts that the retired harness lifecycle verbs
-// (status/apply/rollback/disable) are NOT registered under the harness command.
+// TestHarnessV3R5VerbSurface asserts that the `moai harness` command tree exposes
+// every required V3R5 verb. AC-HRA-009 (acceptance.md L286-L320) mandates that:
 //
-// SPEC-V3R4-HARNESS-001 REQ-HRN-FND-002: The harness lifecycle CLI verb path is
-// retired. SPEC-V3R2-HRN-001 re-introduces a DISTINCT harness command with
-// routing verbs (route/validate) only. This test enforces:
+//	./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'
 //
-//  1. The "harness" command MAY exist if it only contains allowed routing verbs.
-//  2. The retired lifecycle verbs (status/apply/rollback/disable) MUST NOT appear
-//     under any "harness" command in rootCmd.
-//  3. The retired newHarnessCmd() factory MUST NOT be the registered command
-//     (distinguished by presence of retired verbs).
-func TestHarnessRetirement(t *testing.T) {
+// must produce at least 6 matches. This test enforces the upstream Cobra registration
+// that makes the grep contract reachable.
+//
+// SPEC-V3R5-HARNESS-AUTONOMY-001 plan.md §6.4 explicitly mandates all 8 lifecycle/
+// proposal verbs alongside the V3R2-HRN-001 routing verbs (route/validate).
+func TestHarnessV3R5VerbSurface(t *testing.T) {
 	t.Parallel()
 
+	// Locate the harness command in rootCmd.
+	var found bool
 	for _, cmd := range rootCmd.Commands() {
 		useFirst := strings.SplitN(cmd.Use, " ", 2)[0]
 		if useFirst != "harness" {
-			// 다른 커맨드는 확인 불필요
 			continue
 		}
+		found = true
 
-		// "harness" 커맨드가 있다면 — retired 동사가 없는지 확인합니다.
-		// SPEC-V3R2-HRN-001의 새 routing 커맨드 (route/validate)는 허용됩니다.
-		for _, subCmd := range cmd.Commands() {
-			subVerb := strings.SplitN(subCmd.Use, " ", 2)[0]
-			if retiredHarnessVerbs[subVerb] {
-				t.Fatalf(
-					"SPEC-V3R4-HARNESS-001 / REQ-HRN-FND-002 violation: retired harness verb %q "+
-						"is registered under 'harness' command. The lifecycle verbs "+
-						"(status/apply/rollback/disable) are retired per BC-V3R4-HARNESS-001-CLI-RETIREMENT. "+
-						"Only SPEC-V3R2-HRN-001 routing verbs (route/validate) are permitted. "+
-						"Remove the rootCmd.AddCommand(newHarnessCmd()) call from internal/cli/root.go.",
-					subVerb,
-				)
-			}
-			if !allowedHarnessVerbs[subVerb] {
-				t.Logf(
-					"WARNING: unexpected harness sub-verb %q — not in retired set, not in allowed set. "+
-						"If this is intentional, add to allowedHarnessVerbs in harness_retirement_test.go.",
-					subVerb,
+		// Collect all registered subcommand verbs (first token of Use).
+		registered := make(map[string]bool)
+		for _, sub := range cmd.Commands() {
+			subVerb := strings.SplitN(sub.Use, " ", 2)[0]
+			registered[subVerb] = true
+		}
+
+		// Assert every required V3R5 verb is registered.
+		for verb := range v3r5RequiredHarnessVerbs {
+			if !registered[verb] {
+				t.Errorf(
+					"SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 / AC-HRA-009 violation: required harness verb %q "+
+						"is NOT registered under the `harness` command. The V3R5 unified Cobra tree must expose "+
+						"route + validate + 4 lifecycle verbs (status/apply/rollback/disable) + 4 proposal-management "+
+						"verbs (mute/mute-list/unmute/verify). Verify newHarnessRouterCmd() in harness_route.go.",
+					verb,
 				)
 			}
 		}
 
-		// Aliases도 확인
-		for _, alias := range cmd.Aliases {
-			if alias == "harness" && useFirst != "harness" {
-				t.Fatalf(
-					"SPEC-V3R4-HARNESS-001 / REQ-HRN-FND-002 violation: command %q registers "+
-						"'harness' as an alias pointing to a retired command tree. "+
-						"Only newHarnessRouterCmd() (route/validate verbs) is permitted to use 'harness'.",
-					cmd.Use,
+		// Warn (non-fatal) for any unexpected registered verb — encourages explicit
+		// acceptance via the v3r5RequiredHarnessVerbs set.
+		for verb := range registered {
+			if !v3r5RequiredHarnessVerbs[verb] {
+				t.Logf(
+					"NOTE: unexpected harness sub-verb %q registered — not in V3R5 required set. "+
+						"If this is intentional, add it to v3r5RequiredHarnessVerbs in harness_retirement_test.go.",
+					verb,
 				)
 			}
 		}
 	}
+
+	if !found {
+		t.Fatal(
+			"`harness` command not registered in rootCmd. V3R5 mandates newHarnessRouterCmd() " +
+				"to be added via rootCmd.AddCommand() in internal/cli/root.go.",
+		)
+	}
 }
 
-// TestHarnessFactoryStillCompiles asserts that the newHarnessCmd factory function
-// remains present in the package, even though it is not registered. The file is
-// preserved as a deprecation marker per SPEC-V3R4-HARNESS-001 §2.1; physical
-// removal is deferred to a follow-up SPEC. If a future refactor deletes the
-// factory, this test fails to flag the change as out of scope for the foundation
-// SPEC's deprecation-marker contract.
+// TestHarnessFactoryStillCompiles asserts that the legacy newHarnessCmd factory remains
+// present and constructible. Preserved per SPEC-V3R4-HARNESS-001 §2.1's deprecation-marker
+// contract — the factory MUST continue to compile even though it is no longer the
+// surface registered into rootCmd (V3R5 uses newHarnessRouterCmd() instead).
 //
-// The factory is invoked only for its return-value type assertion; it is not
-// added to the command tree.
+// The factory is invoked only for its return-value type assertion; it is not added to
+// the command tree.
 func TestHarnessFactoryStillCompiles(t *testing.T) {
 	t.Parallel()
 
