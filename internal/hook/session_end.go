@@ -664,7 +664,9 @@ func cleanupGLMSettingsLocal(projectDir string) {
 		return
 	}
 
-	if err := os.WriteFile(settingsPath, out, 0o644); err != nil {
+	// @MX:NOTE: [AUTO] cleanup write-back must preserve 0o600 even when env is wiped
+	// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 AC-SEC-002 — leftover settings still must not leak.
+	if err := writeSettingsSecure(settingsPath, out); err != nil {
 		slog.Warn("session_end: could not write settings.local.json",
 			"path", settingsPath,
 			"error", err,
