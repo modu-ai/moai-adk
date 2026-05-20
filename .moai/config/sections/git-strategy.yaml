@@ -48,14 +48,17 @@ git_strategy:
         workflow: github-flow
     provider: github
     team:
+        # Late-branch default per SPEC-V3R5-LATE-BRANCH-001 (D1 Option a):
+        # auto_branch/auto_pr/auto_enabled flipped to false; prompt_always flipped to true.
+        # Users opting back to auto-branch can set auto_enabled: true.
         automation:
-            auto_branch: true
+            auto_branch: false
             auto_commit: true
-            auto_pr: true
+            auto_pr: false
             auto_push: true
         branch_creation:
-            auto_enabled: true
-            prompt_always: false
+            auto_enabled: false
+            prompt_always: true
         branch_prefix: feature/SPEC-
         branch_protection: true
         commit_style:
