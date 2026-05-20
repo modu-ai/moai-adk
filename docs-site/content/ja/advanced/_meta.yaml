@@ -11,6 +11,8 @@ index:
   title: "フックガイド"
 "settings-json":
   title: "settings.json ガイド"
+"statusline":
+  title: "ステータスラインシステムとPRセグメント"
 "claude-md-guide":
   title: "CLAUDE.md ガイド"
 "mcp-servers":

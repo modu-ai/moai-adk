@@ -11,6 +11,8 @@ index:
   title: "Hooks Guide"
 "settings-json":
   title: "settings.json Guide"
+"statusline":
+  title: "Statusline System and PR Segment"
 "claude-md-guide":
   title: "CLAUDE.md Guide"
 "mcp-servers":

@@ -23,3 +23,7 @@ statusline:
     moai_version: true
     git_branch: true
     worktree: true
+    # PR segment (Claude Code v2.1.145+, REQ-SLV-012).
+    # Default false — opt-in to surface the active PR number + review_state
+    # on L3 of the statusline. Requires Claude Code v2.1.145+ stdin schema.
+    pr: false

@@ -68,6 +68,19 @@ type StdinData struct {
 	Effort         *EffortInfo        `json:"effort"`   // Claude Code v2.1.122+ effort level (nil if absent)
 	Thinking       *ThinkingInfo      `json:"thinking"` // Claude Code v2.1.122+ thinking flag (nil if absent)
 	Version        string             `json:"version"`  // Claude Code version (e.g., "1.0.80")
+	PR             *PRInfo            `json:"pr,omitempty"` // Claude Code v2.1.145+ active PR info (nil if no PR detected)
+}
+
+// PRInfo represents GitHub Pull Request metadata from Claude Code v2.1.145+
+// stdin JSON. The struct is raw-passthrough — unknown review_state values
+// are not rejected (REQ-SLV-014 unknown-state default-color fallback).
+//
+// @MX:NOTE: [AUTO] PR 정보 구조체 — Claude Code v2.1.145+ stdin pr.{number,url,review_state} 필드 매핑.
+// review_state 알려진 값: approved/pending/changes_requested/draft. 외 값은 raw passthrough (REQ-SLV-014).
+type PRInfo struct {
+	Number      int    `json:"number"`
+	URL         string `json:"url"`
+	ReviewState string `json:"review_state"`
 }
 
 // RateLimitInfo represents Claude.ai rate limit usage from Claude Code (v2.1.80+).
@@ -139,10 +152,22 @@ func (m *ModelInfo) UnmarshalJSON(data []byte) error {
 
 // WorkspaceInfo represents the workspace directory information from Claude Code.
 // Claude Code 2.1.97+ adds git_worktree field for active worktree path.
+// Claude Code 2.1.145+ adds repo field for GitHub repository identity.
 type WorkspaceInfo struct {
-	CurrentDir  string `json:"current_dir"`  // Current working directory
-	ProjectDir  string `json:"project_dir"`  // Original project directory (used for display)
-	GitWorktree string `json:"git_worktree"` // Active git worktree path (2.1.97+, empty string if none)
+	CurrentDir  string    `json:"current_dir"`            // Current working directory
+	ProjectDir  string    `json:"project_dir"`            // Original project directory (used for display)
+	GitWorktree string    `json:"git_worktree"`           // Active git worktree path (2.1.97+, empty string if none)
+	Repo        *RepoInfo `json:"repo,omitempty"`         // GitHub repository identity (2.1.145+, nil if not detected)
+}
+
+// RepoInfo represents the GitHub repository identity discovered by Claude Code v2.1.145+.
+// Used to disambiguate PR segment context when multiple repos are open.
+//
+// @MX:NOTE: [AUTO] 리포지토리 식별 구조체 — Claude Code v2.1.145+ workspace.repo.{host,owner,name} 필드 매핑.
+type RepoInfo struct {
+	Host  string `json:"host"`  // e.g., "github.com"
+	Owner string `json:"owner"` // e.g., "modu-ai"
+	Name  string `json:"name"`  // e.g., "moai-adk"
 }
 
 // OutputStyleInfo represents the output style from Claude Code.
@@ -204,6 +229,7 @@ type StatusData struct {
 	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
 	Effort            *EffortInfo    // Effort level from Claude Code v2.1.122+ (nil when unavailable, REQ-CC2122-001)
 	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.122+ (nil when unavailable, REQ-CC2122-002)
+	PR                *PRInfo        // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
 }
 
 // GitStatusData holds git repository status information.
@@ -262,6 +288,9 @@ const (
 
 	// REQ-CC2122-001: effort/thinking segment (Claude Code 2.1.122+)
 	SegmentEffortThinking = "effort_thinking" // Effort level + thinking flag indicator
+
+	// REQ-SLV-016: PR segment (Claude Code 2.1.145+)
+	SegmentPR = "pr" // Active GitHub PR indicator (number + review_state)
 )
 
 // UsageData represents API usage information.

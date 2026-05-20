@@ -1606,3 +1606,204 @@ func TestExtractProjectDirectory_GetwdFallback(t *testing.T) {
 		t.Errorf("extractProjectDirectory(nil) = %q, want %q (basename of cwd)", got, wantBase)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPEC-V3R5-STATUSLINE-V2145-001 — M2 PR segment builder tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestCollectAll_PR_DataFlow verifies that StdinData.PR is propagated to
+// StatusData.PR via collectAll for downstream renderer consumption.
+// REQ-SLV-016: PR data flows from stdin → builder → renderer
+func TestCollectAll_PR_DataFlow(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  *StdinData
+		wantPR *PRInfo
+	}{
+		{
+			name: "PR present: stored in StatusData.PR",
+			input: &StdinData{
+				PR: &PRInfo{Number: 1023, URL: "https://github.com/o/r/pull/1023", ReviewState: "approved"},
+			},
+			wantPR: &PRInfo{Number: 1023, URL: "https://github.com/o/r/pull/1023", ReviewState: "approved"},
+		},
+		{
+			name: "PR absent: nil pointer preserved",
+			input: &StdinData{
+				Workspace: &WorkspaceInfo{ProjectDir: "/repo"},
+			},
+			wantPR: nil,
+		},
+		{
+			name:   "nil input: PR remains nil",
+			input:  nil,
+			wantPR: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &defaultBuilder{
+				renderer: NewRenderer("default", true, nil),
+				mode:     ModeDefault,
+			}
+			data := b.collectAll(context.Background(), tt.input)
+			if tt.wantPR == nil {
+				if data.PR != nil {
+					t.Errorf("data.PR = %+v, want nil", data.PR)
+				}
+				return
+			}
+			if data.PR == nil {
+				t.Fatalf("data.PR is nil, want %+v", tt.wantPR)
+			}
+			if data.PR.Number != tt.wantPR.Number {
+				t.Errorf("data.PR.Number = %d, want %d", data.PR.Number, tt.wantPR.Number)
+			}
+			if data.PR.ReviewState != tt.wantPR.ReviewState {
+				t.Errorf("data.PR.ReviewState = %q, want %q", data.PR.ReviewState, tt.wantPR.ReviewState)
+			}
+		})
+	}
+}
+
+// TestBuild_PRSegment_DefaultOff verifies that with no segment config (legacy users)
+// or with segments.pr explicitly false, the PR segment does NOT appear in output
+// even when stdin contains valid PR data.
+// REQ-SLV-012: PR segment opt-in default off (zero-regression for existing users)
+// AC-SLV-012 verification target.
+func TestBuild_PRSegment_DefaultOff(t *testing.T) {
+	clearGLMEnv(t)
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
+	jsonInput := `{
+		"pr": {"number": 1023, "url": "https://github.com/o/r/pull/1023", "review_state": "pending"},
+		"context_window": {"used_percentage": 25, "context_window_size": 200000}
+	}`
+
+	tests := []struct {
+		name          string
+		segmentConfig map[string]bool
+	}{
+		{
+			name:          "segment config nil: pr omitted (existing-user backward compat)",
+			segmentConfig: nil,
+		},
+		{
+			name: "segment config without pr key: pr omitted (explicit opt-in)",
+			segmentConfig: map[string]bool{
+				SegmentModel:   true,
+				SegmentContext: true,
+			},
+		},
+		{
+			name: "segment config pr: false: pr omitted",
+			segmentConfig: map[string]bool{
+				SegmentPR: false,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := New(Options{
+				Mode:          ModeDefault,
+				NoColor:       true,
+				SegmentConfig: tt.segmentConfig,
+			})
+			got, err := builder.Build(context.Background(), strings.NewReader(jsonInput))
+			if err != nil {
+				t.Fatalf("Build() error: %v", err)
+			}
+			// PR segment shape: "#1023" should NOT appear when disabled
+			if strings.Contains(got, "#1023") {
+				t.Errorf("PR segment should NOT appear when disabled\ngot: %s", got)
+			}
+		})
+	}
+}
+
+// TestBuild_PRSegment_EnabledRender verifies that with segments.pr: true AND
+// valid PR data in stdin, the PR segment appears in the L3 output.
+// REQ-SLV-013: PR segment render format "#<number> ⌥<state>"
+// AC-SLV-013 verification target.
+func TestBuild_PRSegment_EnabledRender(t *testing.T) {
+	clearGLMEnv(t)
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
+	jsonInput := `{
+		"pr": {"number": 1023, "url": "https://github.com/o/r/pull/1023", "review_state": "pending"},
+		"context_window": {"used_percentage": 25, "context_window_size": 200000}
+	}`
+
+	builder := New(Options{
+		Mode:    ModeDefault,
+		NoColor: true,
+		SegmentConfig: map[string]bool{
+			SegmentPR: true,
+		},
+	})
+	got, err := builder.Build(context.Background(), strings.NewReader(jsonInput))
+	if err != nil {
+		t.Fatalf("Build() error: %v", err)
+	}
+	// PR segment shape contains #<number> (REQ-SLV-013)
+	if !strings.Contains(got, "#1023") {
+		t.Errorf("PR segment should appear with #1023\ngot: %s", got)
+	}
+	// PR segment shape contains ⌥<state> (REQ-SLV-013)
+	if !strings.Contains(got, "⌥pending") {
+		t.Errorf("PR segment should appear with ⌥pending state\ngot: %s", got)
+	}
+}
+
+// TestBuild_PRSegment_AbsenceHandling verifies that when stdin lacks PR data,
+// no PR segment is rendered regardless of segments.pr value.
+// REQ-SLV-015: no segment when pr is null/absent/Number==0; no placeholder text.
+// AC-SLV-015 verification target.
+func TestBuild_PRSegment_AbsenceHandling(t *testing.T) {
+	clearGLMEnv(t)
+	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+
+	tests := []struct {
+		name      string
+		jsonInput string
+	}{
+		{
+			name:      "pr field absent",
+			jsonInput: `{"context_window": {"used_percentage": 25, "context_window_size": 200000}}`,
+		},
+		{
+			name:      "pr null",
+			jsonInput: `{"pr": null, "context_window": {"used_percentage": 25, "context_window_size": 200000}}`,
+		},
+		{
+			name:      "pr.number zero",
+			jsonInput: `{"pr": {"number": 0, "url": "", "review_state": ""}, "context_window": {"used_percentage": 25, "context_window_size": 200000}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := New(Options{
+				Mode:    ModeDefault,
+				NoColor: true,
+				SegmentConfig: map[string]bool{
+					SegmentPR: true, // even when enabled, absence MUST be respected
+				},
+			})
+			got, err := builder.Build(context.Background(), strings.NewReader(tt.jsonInput))
+			if err != nil {
+				t.Fatalf("Build() error: %v", err)
+			}
+			// No PR placeholder should appear
+			if strings.Contains(got, "#N/A") || strings.Contains(got, "#0") {
+				t.Errorf("PR placeholder must not appear\ngot: %s", got)
+			}
+			// ⌥ marker should not appear when absent
+			if strings.Contains(got, "⌥") {
+				t.Errorf("PR review-state marker must not appear when PR absent\ngot: %s", got)
+			}
+		})
+	}
+}

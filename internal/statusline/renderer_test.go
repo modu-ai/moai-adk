@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 // newTestRenderer creates a Renderer with NoColor=true for predictable test output.
@@ -1518,6 +1521,277 @@ func TestRenderer_EffortThinking_InfoLine(t *testing.T) {
 			for _, absent := range tt.wantAbsent {
 				if strings.Contains(got, absent) {
 					t.Errorf("want %q absent from renderInfoLine output, got %q", absent, got)
+				}
+			}
+		})
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPEC-V3R5-STATUSLINE-V2145-001 — M2 PR segment renderer tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestRenderPRSegment_Format verifies the rendered shape is "#<number> ⌥<state>"
+// per REQ-SLV-013. The exact unicode glyph U+2325 (⌥) is the review-state marker.
+// AC-SLV-013 verification target.
+func TestRenderPRSegment_Format(t *testing.T) {
+	tests := []struct {
+		name string
+		pr   *PRInfo
+		want string
+	}{
+		{
+			name: "approved pr 1023",
+			pr:   &PRInfo{Number: 1023, URL: "https://x/pull/1023", ReviewState: "approved"},
+			want: "#1023 ⌥approved",
+		},
+		{
+			name: "pending pr 42",
+			pr:   &PRInfo{Number: 42, URL: "https://x/pull/42", ReviewState: "pending"},
+			want: "#42 ⌥pending",
+		},
+		{
+			name: "changes_requested pr 7",
+			pr:   &PRInfo{Number: 7, URL: "https://x/pull/7", ReviewState: "changes_requested"},
+			want: "#7 ⌥changes_requested",
+		},
+		{
+			name: "draft pr 99",
+			pr:   &PRInfo{Number: 99, URL: "https://x/pull/99", ReviewState: "draft"},
+			want: "#99 ⌥draft",
+		},
+		{
+			name: "empty url tolerated",
+			pr:   &PRInfo{Number: 50, URL: "", ReviewState: "approved"},
+			want: "#50 ⌥approved",
+		},
+		{
+			name: "empty review_state: no marker",
+			pr:   &PRInfo{Number: 100, URL: "https://x/pull/100", ReviewState: ""},
+			want: "#100",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// noColor renderer for predictable byte-level comparison
+			r := NewRenderer("default", true, map[string]bool{SegmentPR: true})
+			data := &StatusData{PR: tt.pr}
+			got := r.renderPRSegment(data)
+			if got != tt.want {
+				t.Errorf("renderPRSegment() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestRenderPRSegment_Absence verifies that no segment is emitted when PR is
+// nil or Number == 0, OR when SegmentPR is disabled.
+// REQ-SLV-015 + REQ-SLV-012.
+// AC-SLV-015 verification target.
+func TestRenderPRSegment_Absence(t *testing.T) {
+	tests := []struct {
+		name          string
+		pr            *PRInfo
+		segmentConfig map[string]bool
+	}{
+		{
+			name:          "pr nil + enabled",
+			pr:            nil,
+			segmentConfig: map[string]bool{SegmentPR: true},
+		},
+		{
+			name:          "pr Number zero + enabled",
+			pr:            &PRInfo{Number: 0, URL: "https://x", ReviewState: "approved"},
+			segmentConfig: map[string]bool{SegmentPR: true},
+		},
+		{
+			name:          "pr present + disabled",
+			pr:            &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"},
+			segmentConfig: map[string]bool{SegmentPR: false},
+		},
+		{
+			name:          "pr present + unset (legacy backward compat)",
+			pr:            &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"},
+			segmentConfig: map[string]bool{SegmentModel: true}, // pr key missing
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewRenderer("default", true, tt.segmentConfig)
+			data := &StatusData{PR: tt.pr}
+			got := r.renderPRSegment(data)
+			if got != "" {
+				t.Errorf("renderPRSegment() = %q, want empty string", got)
+			}
+		})
+	}
+}
+
+// TestRenderPRSegment_ZeroNumber verifies that pr.Number == 0 is treated as
+// "PR absent" per REQ-SLV-015 ("no placeholder text such as #N/A or #0").
+// AC-SLV-015 specifically requires (a) pr == nil AND (b) pr.Number == 0 cases.
+func TestRenderPRSegment_ZeroNumber(t *testing.T) {
+	r := NewRenderer("default", true, map[string]bool{SegmentPR: true})
+	data := &StatusData{PR: &PRInfo{Number: 0, URL: "https://x", ReviewState: "approved"}}
+	got := r.renderPRSegment(data)
+	if got != "" {
+		t.Errorf("renderPRSegment() with Number=0 = %q, want empty", got)
+	}
+}
+
+// TestRenderPRSegment_Nil verifies that a nil PR pointer is safely handled.
+// AC-SLV-015 specifically requires this case.
+func TestRenderPRSegment_Nil(t *testing.T) {
+	r := NewRenderer("default", true, map[string]bool{SegmentPR: true})
+	data := &StatusData{PR: nil}
+	got := r.renderPRSegment(data)
+	if got != "" {
+		t.Errorf("renderPRSegment() with nil PR = %q, want empty", got)
+	}
+}
+
+// TestPRReviewStateColor verifies the review_state → ANSI color mapping
+// per plan.md D3 / REQ-SLV-014 table.
+// AC-SLV-014 verification target.
+//
+// Forces lipgloss to TrueColor profile so the test runs deterministically
+// regardless of TTY detection in the test environment.
+func TestPRReviewStateColor(t *testing.T) {
+	// Force ANSI emission in non-TTY test environment
+	prevProfile := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	t.Cleanup(func() { lipgloss.SetColorProfile(prevProfile) })
+
+	tests := []struct {
+		name        string
+		reviewState string
+		wantStyled  bool // expect ANSI escape codes in output
+	}{
+		// All known review_state values should produce styled (ANSI) output
+		{name: "approved → green styled", reviewState: "approved", wantStyled: true},
+		{name: "pending → yellow styled", reviewState: "pending", wantStyled: true},
+		{name: "changes_requested → red styled", reviewState: "changes_requested", wantStyled: true},
+		{name: "draft → gray/muted styled", reviewState: "draft", wantStyled: true},
+		// Unknown / empty: raw passthrough — segment renders but no color escape
+		{name: "unknown state: raw passthrough no color", reviewState: "merged", wantStyled: false},
+		{name: "empty state: no marker no color", reviewState: "", wantStyled: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Color-enabled renderer
+			r := NewRenderer("default", false, map[string]bool{SegmentPR: true})
+			data := &StatusData{
+				PR: &PRInfo{Number: 1, URL: "https://x", ReviewState: tt.reviewState},
+			}
+			got := r.renderPRSegment(data)
+
+			// Always contains "#1"
+			if !strings.Contains(got, "#1") {
+				t.Fatalf("output should contain #1, got %q", got)
+			}
+
+			// ANSI escape code presence check (lipgloss emits \x1b[ escape sequences)
+			hasANSI := strings.Contains(got, "\x1b[")
+			if tt.wantStyled && !hasANSI {
+				t.Errorf("expected ANSI styling for %q, got plain output: %q", tt.reviewState, got)
+			}
+			if !tt.wantStyled && hasANSI {
+				t.Errorf("expected no ANSI styling for %q, got styled output: %q", tt.reviewState, got)
+			}
+		})
+	}
+}
+
+// TestPRReviewStateColor_NoColor verifies that NoColor=true suppresses all
+// ANSI codes even when the global lipgloss profile is set to TrueColor.
+// REQ-SLV-014 + Options.NoColor invariant.
+func TestPRReviewStateColor_NoColor(t *testing.T) {
+	// Force TrueColor profile globally to prove that renderer-level NoColor=true
+	// suppresses ANSI emission independently from lipgloss profile detection.
+	prevProfile := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	t.Cleanup(func() { lipgloss.SetColorProfile(prevProfile) })
+
+	states := []string{"approved", "pending", "changes_requested", "draft", "merged", ""}
+	for _, state := range states {
+		t.Run(state, func(t *testing.T) {
+			r := NewRenderer("default", true, map[string]bool{SegmentPR: true})
+			data := &StatusData{PR: &PRInfo{Number: 1, URL: "https://x", ReviewState: state}}
+			got := r.renderPRSegment(data)
+			if strings.Contains(got, "\x1b[") {
+				t.Errorf("NoColor=true must not emit ANSI escapes, got %q", got)
+			}
+		})
+	}
+}
+
+// TestRenderDirGitLine_PRSegment verifies that the PR segment integrates with
+// the L3 directory/git/PR line composition when SegmentPR is enabled.
+// REQ-SLV-016: PR segment is composed alongside directory/branch/git_status.
+// AC-SLV-013 + REQ-SLV-013: "#<number> ⌥<state>" appears in renderDirGitLine output.
+func TestRenderDirGitLine_PRSegment(t *testing.T) {
+	tests := []struct {
+		name          string
+		pr            *PRInfo
+		segmentConfig map[string]bool
+		wantContains  []string
+		wantAbsent    []string
+	}{
+		{
+			name: "pr enabled + approved: segment appears on L3",
+			pr:   &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"},
+			segmentConfig: map[string]bool{
+				SegmentDirectory: true,
+				SegmentGitBranch: true,
+				SegmentGitStatus: true,
+				SegmentPR:        true,
+			},
+			wantContains: []string{"#1023", "⌥approved"},
+		},
+		{
+			name: "pr disabled: segment absent from L3",
+			pr:   &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"},
+			segmentConfig: map[string]bool{
+				SegmentDirectory: true,
+				SegmentGitBranch: true,
+				SegmentPR:        false,
+			},
+			wantContains: []string{"📁"},
+			wantAbsent:   []string{"#1023", "⌥"},
+		},
+		{
+			name: "pr nil: segment absent from L3",
+			pr:   nil,
+			segmentConfig: map[string]bool{
+				SegmentDirectory: true,
+				SegmentGitBranch: true,
+				SegmentPR:        true,
+			},
+			wantContains: []string{"📁"},
+			wantAbsent:   []string{"#", "⌥"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewRenderer("default", true, tt.segmentConfig)
+			data := &StatusData{
+				Git:       GitStatusData{Branch: "feat/x", Available: true},
+				Directory: "myproject",
+				PR:        tt.pr,
+			}
+			got := r.renderDirGitLine(data)
+			for _, want := range tt.wantContains {
+				if !strings.Contains(got, want) {
+					t.Errorf("expected %q in renderDirGitLine output, got %q", want, got)
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if strings.Contains(got, absent) {
+					t.Errorf("expected %q absent from renderDirGitLine output, got %q", absent, got)
 				}
 			}
 		})
