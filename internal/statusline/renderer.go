@@ -43,31 +43,21 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 	return r
 }
 
-// Render formats the StatusData into a statusline string based on the mode.
+// Render formats the StatusData into the canonical 3-line statusline layout.
 //
-// v3 mode mapping:
-//   - ModeDefault, ModeCompact, ModeMinimal → 3-line default layout
-//   - ModeFull, ModeVerbose                 → 5-line full layout
-//   - unknown                               → 3-line default layout (fallback)
+// The mode argument is accepted for backward compatibility but always
+// collapses to ModeDefault via NormalizeMode — the 5-line "Full" layout was
+// retired.
 //
 // @MX:ANCHOR: [AUTO] Single entry point for all mode rendering - called from Build() in builder.go
-// @MX:REASON: [AUTO] Public API boundary; contains mode routing logic
+// @MX:REASON: [AUTO] Public API boundary; keeps the mode parameter so external
+// callers compile unchanged while the layout is fixed to default.
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	if data == nil {
 		return "MoAI"
 	}
-
-	// Normalize deprecated mode names to v3 names
-	normalizedMode := NormalizeMode(mode)
-
-	var result string
-	switch normalizedMode {
-	case ModeFull:
-		result = r.renderFullV3(data)
-	default: // ModeDefault or unknown mode
-		result = r.renderDefaultV3(data)
-	}
-
+	_ = NormalizeMode(mode) // legacy-name collapse, kept for symmetry
+	result := r.renderDefaultV3(data)
 	if result == "" {
 		return "MoAI"
 	}
@@ -356,12 +346,52 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		}
 	}
 
+	// Task segment (REQ-V3 Cycle 5 Phase 4, opt-in)
+	// 활성 SPEC 워크플로 정보 — 위치: PR 직전 (workflow context → review context 순서)
+	if task := r.renderTaskSegment(data); task != "" {
+		segs = append(segs, task)
+	}
+
 	// PR segment (Claude Code v2.1.145+, REQ-SLV-013)
 	if pr := r.renderPRSegment(data); pr != "" {
 		segs = append(segs, pr)
 	}
 
 	return r.joinSegments(segs)
+}
+
+// renderTaskSegment renders the active SPEC workflow task segment.
+// Format: "📋 [command SPEC-XXX-stage]" — wraps TaskData.Format() with a clipboard icon.
+//
+// Returns empty string when:
+//   - SegmentTask is not explicitly enabled in segmentConfig (opt-in default off)
+//   - data.Task is inactive (Active==false) OR Command is empty (TaskData.Format() returns "")
+func (r *Renderer) renderTaskSegment(data *StatusData) string {
+	if !r.isTaskEnabled() {
+		return ""
+	}
+	if data == nil {
+		return ""
+	}
+	formatted := data.Task.Format()
+	if formatted == "" {
+		return ""
+	}
+	return fmt.Sprintf("📋 %s", formatted)
+}
+
+// isTaskEnabled returns true only when SegmentTask is explicitly set to true
+// in segmentConfig. Opt-in default off — mirrors isPREnabled() semantics for
+// consistent gating across REQ-V3 Cycle 5 Phase 4 + REQ-SLV-012.
+func (r *Renderer) isTaskEnabled() bool {
+	if len(r.segmentConfig) == 0 {
+		return false
+	}
+	enabled, exists := r.segmentConfig[SegmentTask]
+	if !exists {
+		return false
+	}
+	return enabled
 }
 
 // renderPRSegment renders the PR segment in the form "#<number> ⌥<state>".

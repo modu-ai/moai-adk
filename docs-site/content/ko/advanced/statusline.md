@@ -134,9 +134,11 @@ statusline:
 - 지난 7일의 비용 추적
 - 활성화: `segments.usage_7d: true`
 
-**task** — Task 정보 (선택적)
-- 현재 실행 중인 task 개수
-- 활성화: `segments.task: true`
+**task** — 활성 SPEC 워크플로 정보 (선택적)
+- 출력 형식: `📋 [<command> <SPEC-ID>-<stage>]` (예: `📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`)
+- 데이터 소스: `~/.moai/state/last-session-state.json` `active_task` 필드 (SessionStart hook이 자동 set)
+- 비활성 task인 경우 graceful no-output (segment 자체가 표시되지 않음)
+- 활성화: `segments.task: true` (기본값 false — opt-in)
 
 ## NEW v2.1.145: PR 세그먼트
 
