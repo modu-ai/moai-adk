@@ -23,7 +23,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// Total entry count must match catalog.yaml ground truth.
 	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged
 	// (was 65 = 57 + 8 retired stubs).
-	const wantTotal = 57
+	// SPEC-V3R5-CORE-SLIM-B-001 (2026-05-20): 5 entries removed
+	// (4 Category B skills + auth/chrome-extension/mobile empty pack descriptors).
+	const wantTotal = 52
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

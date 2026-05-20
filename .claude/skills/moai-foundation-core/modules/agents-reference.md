@@ -266,7 +266,7 @@ The following skills are organized for token efficiency and domain specializatio
 | Category | Skills | Purpose |
 |----------|--------|---------|
 | Language (Rules) | `.claude/rules/moai/languages/*.md` (16 files) | Language-specific guidance via paths frontmatter auto-load — not skills |
-| Platform (Separated) | moai-platform-auth, moai-platform-database, moai-platform-deploy | Domain-specific platform skills for 30-50% token savings |
+| Platform (Separated) | moai-platform-database | Domain-specific platform skills for 30-50% token savings |
 | Foundation | moai-foundation-core, moai-foundation-cc, moai-foundation-context, moai-foundation-quality | Core principles and quality gates |
 | Workflow | moai-workflow-spec, moai-workflow-project, moai-workflow-testing, moai-workflow-jit-docs | Workflow automation and testing |
 | Domain | moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-uiux | Domain expertise patterns |
@@ -285,9 +285,7 @@ Platform Skills Selection Guide:
 
 | Platform Skill | Providers | Use When |
 |----------------|-----------|----------|
-| moai-platform-auth | Auth0, Clerk, Firebase Auth | Authentication implementation |
 | moai-platform-database | Supabase, Neon, Convex, Firestore | Database platform integration |
-| moai-platform-deploy | Vercel, Railway | Deployment and CI/CD |
 
 Note: Language guidance lives in rules (`.claude/rules/moai/languages/*.md`), not skills. These rules auto-load via paths frontmatter when project files match. See SPEC-V3R2-WF-005 for the canonical decision.
 
