@@ -386,8 +386,25 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		vars[config.EnvStatuslineContextSize] = strconv.Itoa(size)
 	}
 
+	// SPEC-V3R5-SECURITY-CRIT-001 P0-2 (CWE-214): route ANTHROPIC_AUTH_TOKEN
+	// through the argv-safe sensitive injection channel. The remaining
+	// non-sensitive vars stay on the fast bulk path. On sensitive-injection
+	// failure we MUST NOT fall back to argv (would re-leak the token).
 	mgr := tmux.NewSessionManager()
-	return mgr.InjectEnv(context.Background(), vars)
+	ctx := context.Background()
+
+	const sensitiveKey = "ANTHROPIC_AUTH_TOKEN"
+	if token := vars[sensitiveKey]; token != "" {
+		if err := mgr.InjectSensitiveEnv(ctx, sensitiveKey, token); err != nil {
+			return fmt.Errorf("inject sensitive tmux env: %w", err)
+		}
+		delete(vars, sensitiveKey)
+	}
+
+	if len(vars) == 0 {
+		return nil
+	}
+	return mgr.InjectEnv(ctx, vars)
 }
 
 // clearTmuxSessionEnv removes GLM environment variables from the tmux session.

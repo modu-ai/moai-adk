@@ -19,4 +19,13 @@ var (
 
 	// ErrNoPanes indicates the session configuration has no panes.
 	ErrNoPanes = errors.New("tmux: no panes configured")
+
+	// ErrTmuxSensitiveInjectFailed indicates that injection of a sensitive
+	// environment variable failed BEFORE the value reached tmux. Callers MUST
+	// NOT fall back to the argv-exposing `set-environment <k> <v>` path after
+	// receiving this error — doing so would re-introduce the CWE-214 leak that
+	// InjectSensitiveEnv was added to close.
+	//
+	// SPEC-V3R5-SECURITY-CRIT-001 P0-2 (REQ-SEC-002-007, AC-SEC-007).
+	ErrTmuxSensitiveInjectFailed = errors.New("tmux: sensitive env inject failed")
 )
