@@ -268,6 +268,21 @@ Plan to Run:
 - Action: Execute /clear, then `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout (default); OR if user opted into L2: `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the L2 worktree.
 - Gate: `/moai run` Phase 0.5 (Plan Audit Gate) executes automatically before any implementation.
   See "Phase 0.5: Plan Audit Gate" section below for details.
+- [ZONE:Evolvable] Plan Audit Gate skip policy: when the most recent plan-auditor
+  verdict on the SPEC was `PASS` with overall score ≥ 0.90 AND no plan-PR commit
+  has landed since that verdict, the orchestrator MAY skip Phase 0.5 re-execution
+  and proceed directly to Phase 1. The skip decision MUST be recorded in the
+  run-phase delegation prompt (Section A: Context) so that downstream actors
+  (manager-develop, auditors) can verify the skip rationale. This policy was
+  added by SPEC-V3R5-WORKFLOW-OPT-001 Layer E to remove redundant audit
+  re-execution when the plan-PR audit verdict is already strong (PASS ≥ 0.90).
+  Below the 0.90 threshold, Phase 0.5 always runs.
+- Concurrent plan-run pipeline: the orchestrator MAY begin run-phase pre-flight
+  (Section C of the manager-develop prompt) on a feature branch while the plan
+  PR is still in CI/review, PROVIDED the SPEC plan-auditor verdict is already
+  PASS and no manager-develop commit lands on the feature branch until the
+  plan PR is in MERGED state. This overlap reduces the W3 idle-wait penalty
+  documented in `feedback_w3_metaanalysis_lessons.md` (15 min serial CI wait).
 
 ## Phase 0.5: Plan Audit Gate
 

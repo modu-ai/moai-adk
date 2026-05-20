@@ -201,6 +201,121 @@ When a tool call fails:
 3. Try an alternative approach — do not retry the identical call
 4. After 3 failures on the same operation, report the blocker
 
+## Parallel Execution
+
+[ZONE:Evolvable] [HARD] The orchestrator MUST execute every read-only verification
+batch as a single-turn multi-Bash call. Serial verification across turns wastes
+wall-time and is the single largest source of run-phase latency (W3 meta-analysis:
+10 min serial verification ≈ 11% of total run-phase wall-time). This rule was
+added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D in response to that finding.
+
+### Read-only verification batching
+
+When the orchestrator needs to verify implementation completion, it SHOULD issue
+multiple Bash tool calls within a single response turn. Independent verifications
+that do not share state are safe to parallelize.
+
+### Canonical 7-item example (AC-WO-007)
+
+The following 7 verification commands cover the standard read-only verification
+batch for a typical run-phase completion. The orchestrator SHOULD invoke all 7
+in parallel within a single response turn:
+
+```bash
+# 1. Full test suite (Go)
+go test ./...
+
+# 2. Coverage report (per-package)
+go test -coverprofile=cover.out ./internal/<pkg>/...
+
+# 3. Subagent-boundary grep (sentinel C-HRA-008)
+grep -rn 'AskUserQuestion\|mcp__askuser' internal/harness/ internal/hook/ | grep -v "_test.go" | grep -v "^[^:]*:[0-9]*:[ \t]*//"
+
+# 4. Sentinel-key audit (build-tag, retired SPEC, etc.)
+grep -rn 'FROZEN_SENTINEL\|HARNESS_FROZEN' internal/ | head -20
+
+# 5. CLI smoke check (cmd/moai)
+go run ./cmd/moai --version
+
+# 6. Benchmark micro-suite (optional)
+go test -bench=. -benchmem -run=^$ ./internal/<pkg>/...
+
+# 7. Lint baseline (golangci-lint)
+golangci-lint run --timeout=2m
+```
+
+In Claude's response, all 7 commands are invoked as separate Bash tool calls
+within the same assistant turn. The orchestrator does NOT issue them serially
+across multiple turns.
+
+### Anti-pattern: serial verification across turns
+
+```
+Turn 1: go test ./...     → wait for completion → Turn 1 ends
+Turn 2: golangci-lint ... → wait for completion → Turn 2 ends
+Turn 3: grep -rn ...      → wait for completion → Turn 3 ends
+```
+
+This pattern locks the orchestrator into N sequential turns where 1 turn would
+suffice. Each turn adds round-trip latency. For 7 verifications averaging 2 s
+each, serial execution adds ~14 s of dead-time per run-phase completion.
+
+### When to use serial execution
+
+- Commands that depend on each other (e.g., `make build` before `go test ./...`)
+- Commands that write to the same file or directory
+- Commands that mutate shared state (filesystem, env vars)
+
+### Cross-reference
+
+- AC-WO-007 (SPEC-V3R5-WORKFLOW-OPT-001) verifies this section contains the
+  7 verification keywords (`go test`, `coverprofile`, `grep `, `sentinel`,
+  `cmd/moai`, `bench`, `lint`).
+- `.claude/rules/moai/workflow/verification-batch-pattern.md` documents the
+  formal verification grouping pattern.
+
+## Tool Optimization Patterns
+
+[ZONE:Evolvable] [HARD] Agents MUST use single-command idioms over multi-step
+shell pipelines when a CLI tool provides structured output (JSON). The
+canonical patterns below replace the prose alternatives that previously
+expanded into multiple sequential commands.
+
+### CI Status Query
+
+```bash
+# Canonical pattern (AC-WO-013) — single command, structured JSON output.
+gh pr checks <PR> --json name,state,conclusion | jq '.[] | select(.conclusion != "SUCCESS")'
+
+# Why: single round-trip, parseable, easier to integrate with subsequent steps.
+# Avoid: gh pr checks <PR> | grep -E 'FAIL|PENDING'  (string parsing, brittle)
+```
+
+### Recent Commit Inspection
+
+```bash
+# Canonical pattern — single command, structured.
+git log --format='%h %s %ci' -10 | head -10
+
+# Why: built-in format string avoids multi-step git log | awk pipelines.
+# Avoid: git log --pretty=oneline | awk '{print $1}' | xargs git show
+```
+
+### ToolSearch Per-Turn Preload
+
+```
+ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)
+```
+
+This canonical preload SHOULD be invoked at the start of every orchestrator
+turn where deferred tools may be needed. See
+`.claude/rules/moai/core/askuser-protocol.md` for the full preload contract.
+
+### Cross-reference
+
+- AC-WO-013 (SPEC-V3R5-WORKFLOW-OPT-001) verifies this section contains
+  `gh pr checks --json` and `jq` literals in proximity.
+
 ## Time Estimation
 
 [ZONE:Evolvable] [HARD] Never use time predictions in plans or reports.

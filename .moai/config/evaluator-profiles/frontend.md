@@ -71,3 +71,22 @@ When 1-2 AI-slop patterns are detected: Originality score capped at 0.50.
 | 0.75 | WCAG AA passes; minor responsive issues; most interactive states defined |
 | 0.50 | Some accessibility violations; responsive issues at one breakpoint; some states missing |
 | 0.25 | Multiple WCAG AA failures or broken responsive behavior (triggers Craft & Functionality FAIL) |
+
+## D7/D8 Plan-Phase Dimensions (SPEC-V3R5-WORKFLOW-OPT-001 Layer G)
+
+The following two dimensions are evaluated by plan-auditor during plan-phase
+audit, not by evaluator-active during run-phase. Frontend SPECs (this profile)
+inherit the same binary BLOCKING semantics:
+
+| Plan-Auditor Dimension | Weight in Plan Verdict | Pass Threshold |
+|------------------------|-----------------------:|----------------|
+| D7 Cross-SPEC Reconciliation | 50% | No BLOCKING finding |
+| D8 Cross-Platform Discipline | 50% | No BLOCKING finding |
+
+For frontend SPECs, D7 is particularly important when referencing UI-component
+SPECs that may have been superseded by a redesign. D8 generally does not apply
+(frontend SPECs rarely introduce Go `syscall` imports) — auto-PASS when
+syscall is absent from the SPEC body.
+
+See `.claude/agents/moai/plan-auditor.md` Group 7 + Group 8 for the full
+verification verbs and rubric.
