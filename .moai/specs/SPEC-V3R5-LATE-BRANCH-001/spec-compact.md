@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-LATE-BRANCH-001
 title: "Late-Branch Workflow — Compact Extract"
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -19,6 +19,8 @@ tags: "workflow, late-branch, git-strategy, dogfooding, compact, mega-sprint, v3
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.2.0 | 2026-05-20 | GOOS Kim (via manager-develop ddd) | Run-phase complete — status `draft → implemented`. 7/7 ACs PASS, 6 milestone commits + 1 chore catalog hash sync. See spec.md HISTORY v0.2.0 for full ledger. |
+| 0.1.2 | 2026-05-20 | GOOS Kim (via MoAI) | REQ-LB-008 promoted from Optional → Mandatory per plan-auditor iter1 Q2 CRITICAL recommendation. M6 delivers `lateBranchMirroredPaths` + `TestLateBranchTemplateMirror` parallel test. |
 | 0.1.1 | 2026-05-20 | GOOS Kim (via MoAI) | Mid-draft policy extension — REQ-LB-009 + AC-LB-007 + EXCL-LB-008 + R-LB-005 + D2 (no-auto-issue policy). 1 new affected file (`.claude/skills/moai/SKILL.md` + mirror). `issue_number` frontmatter field removed (D2). |
 | 0.1.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Initial compact extract |
 
@@ -73,7 +75,7 @@ Formalize the **Late-branch workflow pattern**: SPEC commits accumulate directly
 - REQ-LB-005 State-Driven: `manager-git` Personal Mode supports `main_late_branch` option
 - REQ-LB-006 State-Driven: `spec-workflow.md` Step 4 documents `git reset --hard origin/main`
 - REQ-LB-007 Unwanted: System NEVER `git push origin main` during Phase A/B
-- REQ-LB-008 Optional: `rule_template_mirror_test.go` extended for new D1 fields (if existing coverage insufficient)
+- REQ-LB-008 Mandatory (promoted v0.1.2): `rule_template_mirror_test.go` extended with `lateBranchMirroredPaths` + `TestLateBranchTemplateMirror` parallel test (M6 delivered)
 - **REQ-LB-009 Mandatory (v0.1.1)**: `/moai plan` MUST NOT auto-create GitHub Issue without explicit `--issue` flag
 
 ---
@@ -120,9 +122,18 @@ Formalize the **Late-branch workflow pattern**: SPEC commits accumulate directly
 
 ---
 
-## Out of Scope (8 Exclusions)
+## Exclusions
 
-EXCL-LB-001 Migration tool (auto-rewrite existing `git-strategy.yaml`) / -002 pre-push hook impl (follow-on SPEC) / -003 `main_direct`/`develop_direct` PR-less mode / -004 Worktree pattern extension (already in SPEC-V3R4-WORKTREE) / -005 Parallel multi-SPEC on single checkout (worktree required) / -006 `mode: manual`/`personal` Late-branch activation (only `mode: team` in scope) / -007 GUI/IDE plugin integration / **-008 (v0.1.1)** Migration tool retroactively removing `issue_number` from existing SPEC frontmatter (historical SPECs retain `issue_number` as immutable history)
+### Out of Scope (8 Exclusions)
+
+- EXCL-LB-001: Migration tool (auto-rewrite existing `git-strategy.yaml`)
+- EXCL-LB-002: pre-push hook impl (follow-on SPEC)
+- EXCL-LB-003: `main_direct`/`develop_direct` PR-less mode
+- EXCL-LB-004: Worktree pattern extension (already in SPEC-V3R4-WORKTREE)
+- EXCL-LB-005: Parallel multi-SPEC on single checkout (worktree required)
+- EXCL-LB-006: `mode: manual`/`personal` Late-branch activation (only `mode: team` in scope)
+- EXCL-LB-007: GUI/IDE plugin integration
+- EXCL-LB-008 (v0.1.1): Migration tool retroactively removing `issue_number` from existing SPEC frontmatter (historical SPECs retain `issue_number` as immutable history)
 
 ---
 

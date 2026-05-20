@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-LATE-BRANCH-001
 title: "Late-Branch Workflow — main 작업 + late branch + PR squash + local main reset"
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -17,6 +17,8 @@ tags: "workflow, late-branch, git-strategy, dogfooding, mega-sprint, v3r5"
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.2.0 | 2026-05-20 | GOOS Kim (via manager-develop ddd) | Run-phase complete — status `draft → in-progress → implemented`. 7 ACs binary PASS (AC-LB-001 yq config switch / AC-LB-002 spec-assembly Phase 3 conditional / AC-LB-003 manager-git Personal Mode + Invocation Pattern / AC-LB-004 spec-workflow Step 1 precondition + Step 4 closure / AC-LB-005 template mirror parity via TestRuleTemplateMirrorDrift + TestLateBranchTemplateMirror / AC-LB-006 scripted E2E in /tmp / AC-LB-007 gh issue create gating). 11 files changed across 6 milestones + 1 catalog hash sync commit (M1 81188cad1, M2 aff3a0829, M3 826533f8b, M4 e2c8e2582, M5 8dca0384c, M6 44b8194ae, chore c9b857b7b). Self-application dogfooding succeeded — plan/run commits landed directly on main with branch deferred to Phase C. |
+| 0.1.2 | 2026-05-20 | GOOS Kim (via MoAI) | REQ-LB-008 promoted from Optional → Mandatory per plan-auditor iter1 Q2 CRITICAL recommendation. Existing `internal/template/rule_template_mirror_test.go` `workflowOptMirroredPaths` covers only 9 paths, NONE matching the 4 LATE-BRANCH markdown files; without allowlist extension AC-LB-005 was vacuous. M6 delivers `lateBranchMirroredPaths` + `TestLateBranchTemplateMirror` parallel test with shared `RULE_TEMPLATE_MIRROR_DRIFT` sentinel. |
 | 0.1.1 | 2026-05-20 | GOOS Kim (via MoAI) | Mid-draft policy extension — REQ-LB-009 + AC-LB-007 + EXCL-LB-008 + R-LB-005 added for "no auto GitHub Issue" policy. `issue_number` frontmatter field removed (D2 decision). 1 new affected file (`.claude/skills/moai/SKILL.md` + template mirror). Source: `feedback_no_github_issue_for_specs.md` user directive 2026-05-20. |
 | 0.1.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Initial draft — T2 Standard scope (4 source files + 4 template mirrors). Formalizes Late-branch workflow pattern decided 2026-05-20 (`feedback_late_branch_workflow.md`, `project_v3r5_late_branch_decision.md`). Self-applying: this SPEC's plan-phase commits land directly on `main` as dogfooding demonstration. 7 EARS REQs + 6 binary ACs + 4 Edge Cases + 4 Risks + 3 Exclusions. Backward-compatibility D-decision deferred to plan.md §D-Decisions (Option a/b/c assessment). |
 
@@ -168,9 +170,11 @@ git pull origin main           # 안전 확인
 
 **REQ-LB-007**: The system shall NOT `git push origin main` from any automated path during Phase A/B/C (Late-branch flow), even if `auto_push: true` is set in `team.automation`. Push is permitted ONLY after the user manually executes `git switch -c feat/SPEC-*` in Phase C.
 
-### 3.5 Optional
+### 3.5 Mandatory — Template Mirror Parity (promoted from Optional at v0.1.2)
 
-**REQ-LB-008**: Where local mirror parity enforcement is feasible, the `internal/template/rule_template_mirror_test.go` test suite shall extend to verify byte-equivalent (modulo `.tmpl` template variables) parity for the 4 new D1-D4 field changes between `.moai/`/`.claude/` and `internal/template/templates/`.
+**REQ-LB-008 (Mandatory)**: The `internal/template/rule_template_mirror_test.go` test suite MUST extend to verify byte-equivalent (modulo `.tmpl` template variables) parity for the new D1-D5 field changes between `.moai/`/`.claude/` and `internal/template/templates/`. M6 delivers `lateBranchMirroredPaths` array + `TestLateBranchTemplateMirror` parallel test covering the 3 markdown mirror pairs (spec-assembly, manager-git, SKILL.md); spec-workflow.md mirror is covered by the pre-existing `workflowOptMirroredPaths` entry; the `.yaml.tmpl` mirror is verified by AC-LB-005 yq+grep check rather than byte equality due to Go template variable expansion.
+
+**Source**: plan-auditor iter1 Q2 CRITICAL recommendation. Without promotion, AC-LB-005 verification was vacuous because the existing allowlist covered only SPEC-V3R5-WORKFLOW-OPT-001 files.
 
 ### 3.6 Mandatory — No-Auto-Issue Policy (added v0.1.1)
 

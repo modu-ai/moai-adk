@@ -2,7 +2,45 @@
 
 Plan-phase progress log for Late-Branch Workflow formalization.
 
-## Plan-phase signals
+## Run-phase signals
+
+- run_start_at: 2026-05-20T16:40:00Z
+- run_complete_at: 2026-05-20T18:30:00Z
+- run_status: implemented
+- spec_version_at_run_start: 0.1.1 (plan-PASS 0.8600 iter 1)
+- spec_version_at_run_complete: 0.2.0 (v0.1.2 REQ-LB-008 promotion + v0.2.0 run-complete)
+- baseline_head: 446050377 (pre-session HEAD; LATE-BRANCH plan v0.1.1 commit)
+- pre_session_head: 2898f5530 (STATUSLINE progress.md update that landed between plan and run)
+- run_complete_head: c9b857b7b (chore catalog hash sync; last LATE-BRANCH commit)
+- cycle_type: ddd (per quality.yaml development_mode)
+- commit_strategy: Option β — 6 milestone commits + 1 catalog hash sync (W3 precedent)
+- self_application: TRUE — run-phase commits landed directly on `main` (Late-branch Phase B dogfooding); plan/SPEC-V3R5-LATE-BRANCH-001 branch deferred to Phase C handled by orchestrator
+
+### Commit ledger
+
+| Milestone | SHA       | Title |
+|-----------|-----------|-------|
+| M1        | 81188cad1 | feat: config switch (4 keys + inline comment) |
+| M2        | aff3a0829 | feat: spec-assembly Phase 3 conditional + Phase 2.5 opt-in |
+| M3        | 826533f8b | feat: manager-git Late-Branch Invocation Pattern + Personal Mode option |
+| M4        | e2c8e2582 | feat: spec-workflow Step 1 precondition + Step 4 Late-branch closure |
+| M5        | 8dca0384c | feat: SKILL.md --issue flag opt-in semantics |
+| M6        | 44b8194ae | test: template mirror allowlist extension (REQ-LB-008 promoted) |
+| chore     | c9b857b7b | catalog hash sync (moai SKILL.md + manager-git.md) |
+
+### AC verification results (binary)
+
+| AC          | Status | Verification command | Notes |
+|-------------|--------|----------------------|-------|
+| AC-LB-001   | PASS   | `yq '.git_strategy.team.{automation,branch_creation}.*'` returns 4 expected values | 4/4 yq probes match expected |
+| AC-LB-002   | PASS   | `grep -c 'auto_enabled' = 3`, `grep -c 'Late-branch' = 2` | Phase 3 conditional + Phase 2.5 gating |
+| AC-LB-003   | PASS   | `main_late_branch`=2, `Late-Branch Invocation Pattern`=2, Phase A/B/C/D=4+ | Personal Mode row + 4-phase subsection |
+| AC-LB-004   | PASS   | `main checkout`=1+, `git reset --hard origin/main`=2 | Step 1 precondition + Step 4 closure |
+| AC-LB-005   | PASS   | `go test ./internal/template/ -run TestLateBranchTemplateMirror` PASS + 3 .md diff returns 0 + 4 yaml keys exist in both | Negative drift test verified |
+| AC-LB-006   | PASS   | Scripted /tmp Phase A→D test | Working tree clean post-Phase D, local == origin |
+| AC-LB-007   | PASS   | `grep -B 5 'gh issue create' \| grep -c -- --issue = 4` ≥ unguarded=4 | All 4 occurrences gated by --issue flag |
+
+## Plan-phase signals (preserved)
 
 - plan_complete_at: 2026-05-20T16:30:00Z
 - plan_status: audit-ready
