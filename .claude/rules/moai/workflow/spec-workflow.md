@@ -118,7 +118,9 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 ## SPEC Complexity Tier (S/M/L)
 
-[ZONE:Evolvable] [HARD] Every SPEC plan-phase classifies the SPEC into one of three tiers (S, M, L) before artifact creation begins. The tier determines the artifact set, the delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization observed in LANG-COMPLIANCE-001 plan-phase abandonment, 2026-05-20).
+The SPEC complexity classification taxonomy is referred to interchangeably as "Tier S/M/L" or "SPEC tiers" throughout this rule set.
+
+[ZONE:Evolvable] [HARD] Every SPEC plan-phase classifies the SPEC into one of three Tier S/M/L levels before artifact creation begins. The tier determines the artifact set, the delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization observed in LANG-COMPLIANCE-001 plan-phase abandonment, 2026-05-20).
 
 | Tier | Scope guidance (LOC) | Files affected | Artifact set | plan-auditor PASS threshold |
 |------|----------------------|----------------|--------------|------------------------------|
