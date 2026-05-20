@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-WORKFLOW-OPT-001
 title: "Workflow Optimization — 8-Layer Improvement Plan"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -20,6 +20,7 @@ tags: "workflow, optimization, 8-layer, manager-develop-prompt, agent-teams, ci-
 | Version | Date       | Author    | Change                                                                                                                                  |
 |---------|------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-05-20 | GOOS Kim  | Initial draft — 8-layer workflow optimization plan derived from W3 HARNESS-AUTONOMY-001 meta-analysis. Source: `.moai/research/workflow-opt-vision-2026-05-20.md`. |
+| 0.2.0   | 2026-05-20 | GOOS Kim  | run-phase complete — M1+M2+M4+M5+M6 done; M3 (Layer F capture) DEFERRED pending W3 PR #1024 merge. Status `draft → implemented`. Dogfooding wall-time: 25.0 min (target ≤ 30 min, 73% reduction vs W3 91 min). 12/14 ACs PASS, 2/14 DEFERRED (AC-WO-005, AC-WO-010 M3-scope). |
 
 ---
 
