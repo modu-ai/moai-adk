@@ -117,14 +117,35 @@ func ensureTmuxGLMEnv(projectDir string) string {
 		return ""
 	}
 
-	// 6. Run tmux set-environment
+	// 6. Run tmux set-environment, routing ANTHROPIC_AUTH_TOKEN through the
+	// argv-safe sensitive channel (SPEC-V3R5-SECURITY-CRIT-001 P0-2,
+	// CWE-214). Non-sensitive vars (URL, model names, flags) keep using the
+	// fast argv path.
 	mgr := tmux.NewSessionManager()
-	if err := mgr.InjectEnv(context.Background(), vars); err != nil {
-		slog.Warn("ensureTmuxGLMEnv: tmux env var injection failed",
-			"error", err.Error(),
-			"hint", "tmux binary may be missing or running outside a session",
-		)
-		return ""
+	ctx := context.Background()
+
+	// Pull out the credential, inject via source-file, and feed the
+	// remainder through the bulk argv path.
+	sensitiveKey := "ANTHROPIC_AUTH_TOKEN"
+	if token, ok := vars[sensitiveKey]; ok && token != "" {
+		if err := mgr.InjectSensitiveEnv(ctx, sensitiveKey, token); err != nil {
+			slog.Warn("ensureTmuxGLMEnv: sensitive token injection failed; aborting (no argv fallback)",
+				"error", err.Error(),
+				"hint", "tmux source-file path; check ~/.moai/run/ permissions",
+			)
+			return ""
+		}
+		delete(vars, sensitiveKey)
+	}
+
+	if len(vars) > 0 {
+		if err := mgr.InjectEnv(ctx, vars); err != nil {
+			slog.Warn("ensureTmuxGLMEnv: bulk tmux env var injection failed",
+				"error", err.Error(),
+				"hint", "tmux binary may be missing or running outside a session",
+			)
+			return ""
+		}
 	}
 
 	summary := formatTmuxGLMEnvSummary(len(vars))

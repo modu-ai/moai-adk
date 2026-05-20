@@ -100,7 +100,7 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 
 		// Get the first (latest) filtered release
 		release := filteredReleases[0]
-		return c.buildVersionInfo(release), nil
+		return c.buildVersionInfo(release)
 	}
 
 	// Single release response
@@ -109,11 +109,20 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 		return nil, fmt.Errorf("checker: decode response: %w", err)
 	}
 
-	return c.buildVersionInfo(release), nil
+	return c.buildVersionInfo(release)
 }
 
 // buildVersionInfo constructs a VersionInfo from a releaseResponse.
-func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
+//
+// SPEC-V3R5-SECURITY-CRIT-001 P0-3 (CWE-345): the prior implementation
+// silently produced an empty Checksum when checksums.txt was missing or its
+// download failed, which let updater.Download proceed unverified. This
+// version returns (nil, ErrChecksumUnavailable) instead and lets the caller
+// surface a clear error to the user.
+//
+// @MX:ANCHOR: [AUTO] buildVersionInfo is the single point that gates whether updates may proceed without verification — it must NEVER yield an empty Checksum
+// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 P0-3 (CWE-345). Regression locked by TestCheckLatestChecksumDownloadFailureAborts.
+func (c *checker) buildVersionInfo(release releaseResponse) (*VersionInfo, error) {
 	info := &VersionInfo{
 		Version: release.TagName,
 		Date:    release.PublishedAt,
@@ -143,17 +152,62 @@ func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
 		}
 	}
 
-	// Download and parse checksums.txt to extract the checksum for this platform
-	if checksumsURL != "" {
-		checksum, err := c.downloadChecksum(checksumsURL, archiveName)
-		if err == nil && checksum != "" {
-			info.Checksum = checksum
-		}
-		// If checksum download fails, continue without checksum verification
-		// (better to allow update with warning than to block entirely)
+	// REQ-SEC-003-002: a release with no checksums.txt asset must be
+	// refused. There is no path that produces an empty info.Checksum.
+	if checksumsURL == "" {
+		return nil, fmt.Errorf("%w: release %s has no checksums.txt asset", ErrChecksumUnavailable, release.TagName)
 	}
 
-	return info
+	// REQ-SEC-003-003/004: download checksums.txt with retry + exponential
+	// backoff, propagating ErrChecksumUnavailable on persistent failure.
+	checksum, err := c.downloadChecksumWithRetry(checksumsURL, archiveName, defaultChecksumMaxAttempts, defaultChecksumBaseDelay)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrChecksumUnavailable, err)
+	}
+	if checksum == "" {
+		// Defense-in-depth: a successful download that returned an empty
+		// checksum is equivalent to unavailability.
+		return nil, fmt.Errorf("%w: empty checksum for %s", ErrChecksumUnavailable, archiveName)
+	}
+	info.Checksum = checksum
+
+	return info, nil
+}
+
+// Default retry parameters for downloadChecksumWithRetry. Production
+// values are conservative; tests inject lower values for fast iteration.
+const (
+	defaultChecksumMaxAttempts = 3
+	defaultChecksumBaseDelay   = 2 * time.Second
+)
+
+// downloadChecksumWithRetry wraps downloadChecksum with bounded retry and
+// exponential backoff. Returns the checksum string on success, or the
+// underlying download error after maxAttempts exhausted.
+//
+// Backoff schedule: baseDelay, 2*baseDelay, 4*baseDelay, … (capped at the
+// maxAttempts-th wait so the worst-case latency is bounded).
+//
+// REQ-SEC-003-003 (retry policy), REQ-SEC-003-004 (exponential backoff).
+func (c *checker) downloadChecksumWithRetry(checksumsURL, archiveName string, maxAttempts int, baseDelay time.Duration) (string, error) {
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
+	var lastErr error
+	delay := baseDelay
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		checksum, err := c.downloadChecksum(checksumsURL, archiveName)
+		if err == nil {
+			return checksum, nil
+		}
+		lastErr = err
+		if attempt == maxAttempts {
+			break
+		}
+		time.Sleep(delay)
+		delay *= 2
+	}
+	return "", fmt.Errorf("after %d attempts: %w", maxAttempts, lastErr)
 }
 
 // downloadChecksum downloads and parses the checksums.txt file to extract

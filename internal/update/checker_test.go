@@ -3,6 +3,7 @@ package update
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,31 @@ import (
 	"testing"
 	"time"
 )
+
+// newChecksumsServer creates a stub checksums.txt server that returns a
+// fixed checksum mapped to the given archive name. Used by tests that
+// previously relied on the silent-checksum-failure path before
+// SPEC-V3R5-SECURITY-CRIT-001 P0-3 made checksums mandatory.
+func newChecksumsServer(t *testing.T, archiveName string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		// Deterministic dummy checksum sufficient for non-Download tests.
+		_, _ = fmt.Fprintf(w, "0000000000000000000000000000000000000000000000000000000000000000  %s\n", archiveName)
+	}))
+}
+
+// platformArchiveName returns the goreleaser-style archive filename used by
+// the current GOOS/GOARCH so tests can attach a matching checksums.txt
+// asset.
+func platformArchiveName(version string) string {
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	return fmt.Sprintf("moai-adk_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
+}
 
 // githubRelease mimics the GitHub Releases API response structure.
 type githubRelease struct {
@@ -39,13 +65,18 @@ func newTestServer(t *testing.T, release githubRelease) *httptest.Server {
 func TestChecker_CheckLatest_Success(t *testing.T) {
 	t.Parallel()
 
+	// Provide a real checksums.txt server so the post-P0-3 mandatory-checksum
+	// gate is satisfied. The platform archive name must match for the parser.
+	archive := platformArchiveName("1.2.0")
+	checksumsTS := newChecksumsServer(t, archive)
+	defer checksumsTS.Close()
+
 	release := githubRelease{
 		TagName:     "go-v1.2.0",
 		PublishedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		Assets: []githubAsset{
-			{Name: "moai-adk_go-v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/moai-adk_go-v1.2.0_darwin_arm64.tar.gz"},
-			{Name: "moai-adk_go-v1.2.0_windows_amd64.zip", BrowserDownloadURL: "https://example.com/moai-adk_go-v1.2.0_windows_amd64.zip"},
-			{Name: "checksums.txt", BrowserDownloadURL: "https://example.com/checksums.txt"},
+			{Name: archive, BrowserDownloadURL: "https://example.com/" + archive},
+			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
 		},
 	}
 
@@ -137,12 +168,16 @@ func TestChecker_CheckLatest_ServerError(t *testing.T) {
 func TestChecker_IsUpdateAvailable_NewerVersion(t *testing.T) {
 	t.Parallel()
 
+	archive := platformArchiveName("1.2.0")
+	checksumsTS := newChecksumsServer(t, archive)
+	defer checksumsTS.Close()
+
 	release := githubRelease{
 		TagName:     "go-v1.2.0",
 		PublishedAt: time.Now(),
 		Assets: []githubAsset{
-			{Name: "moai-adk_go-v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/binary.tar.gz"},
-			{Name: "checksums.txt", BrowserDownloadURL: "https://example.com/checksums.txt"},
+			{Name: archive, BrowserDownloadURL: "https://example.com/binary.tar.gz"},
+			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
 		},
 	}
 
@@ -165,10 +200,17 @@ func TestChecker_IsUpdateAvailable_NewerVersion(t *testing.T) {
 func TestChecker_IsUpdateAvailable_AlreadyCurrent(t *testing.T) {
 	t.Parallel()
 
+	archive := platformArchiveName("1.2.0")
+	checksumsTS := newChecksumsServer(t, archive)
+	defer checksumsTS.Close()
+
 	release := githubRelease{
 		TagName:     "go-v1.2.0",
 		PublishedAt: time.Now(),
-		Assets:      []githubAsset{},
+		Assets: []githubAsset{
+			{Name: archive, BrowserDownloadURL: "https://example.com/" + archive},
+			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
+		},
 	}
 
 	ts := newTestServer(t, release)
@@ -190,10 +232,17 @@ func TestChecker_IsUpdateAvailable_AlreadyCurrent(t *testing.T) {
 func TestChecker_IsUpdateAvailable_NewerCurrentVersion(t *testing.T) {
 	t.Parallel()
 
+	archive := platformArchiveName("1.2.0")
+	checksumsTS := newChecksumsServer(t, archive)
+	defer checksumsTS.Close()
+
 	release := githubRelease{
 		TagName:     "go-v1.2.0",
 		PublishedAt: time.Now(),
-		Assets:      []githubAsset{},
+		Assets: []githubAsset{
+			{Name: archive, BrowserDownloadURL: "https://example.com/" + archive},
+			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
+		},
 	}
 
 	ts := newTestServer(t, release)
@@ -309,16 +358,24 @@ c3645d112038a45dac052c44dd21f7554466f34e8dfb3e170911d8311b1fa7f4  moai-adk_1.2.0
 	}
 }
 
-func TestChecker_CheckLatest_ChecksumDownloadFailed(t *testing.T) {
+// TestChecker_CheckLatest_ChecksumDownloadFailed_Rejected verifies the new
+// secure contract from SPEC-V3R5-SECURITY-CRIT-001 P0-3 (CWE-345):
+// CheckLatest MUST refuse to produce a VersionInfo when checksums.txt is
+// unreachable. This supersedes the legacy "graceful degradation" assertion
+// which let attackers serve unverified binaries by tampering with the
+// checksum endpoint.
+//
+// Secure-equivalent coverage now lives in
+// checksum_mandatory_test.go::TestCheckLatestChecksumDownloadFailureAborts;
+// this entry stays as a documentation breadcrumb for git blame readers.
+func TestChecker_CheckLatest_ChecksumDownloadFailed_Rejected(t *testing.T) {
 	t.Parallel()
 
-	// Create a checksums.txt server that returns 404
 	checksumsTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer checksumsTS.Close()
 
-	// Build platform-specific archive name so the asset is always found
 	ext := "tar.gz"
 	if runtime.GOOS == "windows" {
 		ext = "zip"
@@ -338,19 +395,12 @@ func TestChecker_CheckLatest_ChecksumDownloadFailed(t *testing.T) {
 	defer ts.Close()
 
 	checker := NewChecker(ts.URL, http.DefaultClient)
-	info, err := checker.CheckLatest(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Fatal("expected error from checksum 404; legacy 'graceful degradation' is no longer allowed")
 	}
-
-	// When checksum download fails, it should be empty string (graceful degradation)
-	if info.Checksum != "" {
-		t.Errorf("Checksum should be empty when download fails, got %q", info.Checksum)
-	}
-
-	// But URL should still be set
-	if info.URL == "" {
-		t.Error("URL should still be set even when checksum download fails")
+	if !errors.Is(err, ErrChecksumUnavailable) {
+		t.Errorf("error should wrap ErrChecksumUnavailable; got %v", err)
 	}
 }
 
@@ -403,11 +453,9 @@ func TestChecker_DownloadChecksum_FileNotFound(t *testing.T) {
 func TestChecker_CheckLatest_ReleasesArray(t *testing.T) {
 	t.Parallel()
 
-	ext := "tar.gz"
-	if runtime.GOOS == "windows" {
-		ext = "zip"
-	}
-	archiveName := fmt.Sprintf("moai-adk_2.0.0_%s_%s.%s", runtime.GOOS, runtime.GOARCH, ext)
+	archiveName := platformArchiveName("2.0.0")
+	checksumsTS := newChecksumsServer(t, archiveName)
+	defer checksumsTS.Close()
 
 	releases := []githubRelease{
 		{
@@ -415,6 +463,7 @@ func TestChecker_CheckLatest_ReleasesArray(t *testing.T) {
 			PublishedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
 			Assets: []githubAsset{
 				{Name: archiveName, BrowserDownloadURL: "https://example.com/v2.tar.gz"},
+				{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
 			},
 		},
 		{

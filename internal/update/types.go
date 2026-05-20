@@ -78,6 +78,16 @@ var (
 	// ErrChecksumMismatch indicates checksum verification failed.
 	ErrChecksumMismatch = errors.New("update: checksum verification failed")
 
+	// ErrChecksumUnavailable indicates that the release checksum could not
+	// be obtained (no checksums.txt asset in the release, OR the download
+	// failed after all retries). The update is REFUSED in this case rather
+	// than allowed to proceed unverified.
+	//
+	// SPEC-V3R5-SECURITY-CRIT-001 P0-3 (CWE-345). Prior versions silently
+	// degraded to "update without checksum" — this sentinel and the code
+	// path that returns it lock that behaviour out.
+	ErrChecksumUnavailable = errors.New("update: checksum verification unavailable")
+
 	// ErrReplaceFailed indicates binary replacement failed.
 	ErrReplaceFailed = errors.New("update: binary replacement failed")
 

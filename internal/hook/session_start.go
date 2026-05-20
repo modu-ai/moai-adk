@@ -306,7 +306,10 @@ func ensureGLMCredentials(projectDir string) string {
 		return ""
 	}
 
-	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+	// @MX:ANCHOR: [AUTO] settings.local.json holds GLM ANTHROPIC_AUTH_TOKEN — write with 0o600 only
+	// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 AC-SEC-001 (CWE-732/552). Prior baseline 0o644
+	// allowed any local user to read the credential. Regression locked by TestEnsureGLMCredentialsFilePerm.
+	if err := writeSettingsSecure(settingsPath, newData); err != nil {
 		slog.Error("failed to write GLM credentials to settings.local.json",
 			"error", err.Error(),
 		)
@@ -400,7 +403,9 @@ func ensureTeammateMode(projectDir string) string {
 		return ""
 	}
 
-	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+	// @MX:NOTE: [AUTO] settings.local.json may contain GLM credentials elsewhere; use 0o600
+	// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 AC-SEC-001 — uniform 0o600 prevents partial regression.
+	if err := writeSettingsSecure(settingsPath, newData); err != nil {
 		slog.Error("failed to update teammateMode in settings.local.json",
 			"error", err.Error(),
 		)
@@ -639,7 +644,9 @@ func injectCLAUDEEnvFile(projectRoot string) string {
 		return ""
 	}
 
-	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+	// @MX:NOTE: [AUTO] same settings.local.json may carry sensitive env; 0o600 mandatory
+	// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 AC-SEC-001 uniform hardening.
+	if err := writeSettingsSecure(settingsPath, newData); err != nil {
 		slog.Error("injectCLAUDEEnvFile: failed to write settings.local.json",
 			"error", err.Error(),
 		)
