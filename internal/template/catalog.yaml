@@ -170,17 +170,6 @@ catalog:
               hash: 2af29e4cab4410ab4c613c1eb28c1317756775841f47d0af821e8d3b033be89e
               version: 1.0.0
     optional_packs:
-        auth:
-            description: Authentication and authorization with Auth0, Clerk, Firebase Auth, and WebAuthn
-            depends_on:
-                - backend
-            skills:
-                - name: moai-platform-auth
-                  tier: optional-pack:auth
-                  path: templates/.claude/skills/moai-platform-auth/
-                  hash: 2e59b513ddb9ec67ea152c9ae160b2c17e7beaf09d125738781ea92c9fe97a73
-                  version: 1.0.0
-            agents: []
         backend:
             description: Backend API development, database integration, and server-side patterns
             depends_on: []
@@ -206,26 +195,11 @@ catalog:
                   path: templates/.claude/agents/moai/expert-backend.md
                   hash: 94e35fac45183844ec0aa233f34c1d98cdce53e3431663da01ff0eec810f9d62
                   version: 1.0.0
-        chrome-extension:
-            description: Chrome Extension Manifest V3 development with service workers and chrome.* APIs
-            depends_on: []
-            skills:
-                - name: moai-platform-chrome-extension
-                  tier: optional-pack:chrome-extension
-                  path: templates/.claude/skills/moai-platform-chrome-extension/
-                  hash: 9f01002e5a1058a363d0889cc5380c19ed34c7e9ecc6704f4ca45c9e7de5c38a
-                  version: 1.0.0
-            agents: []
         deployment:
             description: Deployment and hosting with Vercel, Railway, Convex, and serverless infrastructure
             depends_on:
                 - backend
-            skills:
-                - name: moai-platform-deployment
-                  tier: optional-pack:deployment
-                  path: templates/.claude/skills/moai-platform-deployment/
-                  hash: a723eca9a9212c18821cbbae34813dfbd9f418e9ed4cef2121bc1d5b068a83c4
-                  version: 1.0.0
+            skills: []
             agents:
                 - name: expert-devops
                   tier: optional-pack:deployment
@@ -314,16 +288,6 @@ catalog:
                   path: templates/.claude/agents/moai/expert-frontend.md
                   hash: 6e997ddecc53b532f1950484b4e667c59e554462afe25fc7e3dc8704878662c0
                   version: 1.0.0
-        mobile:
-            description: Mobile and desktop application development including Electron and cross-platform frameworks
-            depends_on: []
-            skills:
-                - name: moai-framework-electron
-                  tier: optional-pack:mobile
-                  path: templates/.claude/skills/moai-framework-electron/
-                  hash: 99c9c0794f95aea5e5857dc08849fde9b5caae1d7d4d150232a3e520dba648eb
-                  version: 1.0.0
-            agents: []
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows
             depends_on: []

@@ -125,7 +125,10 @@ func TestAllSkillsInCatalog(t *testing.T) {
 		t.Fatalf("WalkDir(.claude/skills) error: %v", walkErr)
 	}
 
-	const expectedSkillCount = 37
+	// SPEC-V3R5-CORE-SLIM-B-001 (2026-05-20): 4 Category B skills retired
+	// (moai-framework-electron, moai-platform-auth, moai-platform-chrome-extension,
+	// moai-platform-deployment), reducing skill count from 37 to 33.
+	const expectedSkillCount = 33
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}
