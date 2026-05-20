@@ -1,6 +1,22 @@
 # SPEC-V3R5-LATE-BRANCH-001 Progress
 
-Plan-phase progress log for Late-Branch Workflow formalization.
+Plan-phase + Run-phase + Sync-phase progress log for Late-Branch Workflow formalization.
+
+## Sync-phase signals
+
+- sync_start_at: 2026-05-20T18:55:00Z (approximate)
+- sync_complete_at: 2026-05-20T18:56:00Z (approximate)
+- sync_status: completed
+- spec_status_final: completed
+- version_final: 0.3.0
+- pr_pattern: single-integrated (plan + run + sync 통합 PR per user decision C)
+- docs_site_impact: none (workflow/config 변경만 — 4-locale docs 영향 없음)
+- product_md_impact: none
+- structure_md_impact: none
+- tech_md_impact: none
+- cherry_pick_pattern: 본 SPEC 9 + sync 1 = 10 commits → 새 feat/SPEC-V3R5-LATE-BRANCH-001 branch (origin/main 기준 cherry-pick), STATUSLINE-V2145-001 4 commits은 main에 보존 (별도 처리)
+- parallel_work_handling: 본 세션과 평행으로 사용자가 sync/SPEC-V3R5-STATUSLINE-V2145-001 branch에서 STATUSLINE sync 작업 진행 — main으로 복귀하여 본 SPEC 우선 완료 (user decision)
+- post_pr_action: PR squash merge → git reset --hard origin/main + git pull (Phase D)
 
 ## Run-phase signals
 

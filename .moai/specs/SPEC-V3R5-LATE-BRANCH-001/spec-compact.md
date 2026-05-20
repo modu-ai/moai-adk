@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-LATE-BRANCH-001
 title: "Late-Branch Workflow — Compact Extract"
-version: "0.2.0"
-status: implemented
+version: "0.3.0"
+status: completed
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -19,6 +19,7 @@ tags: "workflow, late-branch, git-strategy, dogfooding, compact, mega-sprint, v3
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-05-20 | GOOS Kim (via MoAI) | Sync-phase complete — status `implemented → completed`. Single-integrated PR pattern (user decision C). docs-site impact: none. Cherry-pick으로 본 SPEC 10 commits만 새 feat branch로 분리, STATUSLINE 4 commits은 main에 보존. See spec.md HISTORY v0.3.0 for full ledger. |
 | 0.2.0 | 2026-05-20 | GOOS Kim (via manager-develop ddd) | Run-phase complete — status `draft → implemented`. 7/7 ACs PASS, 6 milestone commits + 1 chore catalog hash sync. See spec.md HISTORY v0.2.0 for full ledger. |
 | 0.1.2 | 2026-05-20 | GOOS Kim (via MoAI) | REQ-LB-008 promoted from Optional → Mandatory per plan-auditor iter1 Q2 CRITICAL recommendation. M6 delivers `lateBranchMirroredPaths` + `TestLateBranchTemplateMirror` parallel test. |
 | 0.1.1 | 2026-05-20 | GOOS Kim (via MoAI) | Mid-draft policy extension — REQ-LB-009 + AC-LB-007 + EXCL-LB-008 + R-LB-005 + D2 (no-auto-issue policy). 1 new affected file (`.claude/skills/moai/SKILL.md` + mirror). `issue_number` frontmatter field removed (D2). |

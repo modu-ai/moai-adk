@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-LATE-BRANCH-001
 title: "Late-Branch Workflow — main 작업 + late branch + PR squash + local main reset"
-version: "0.2.0"
-status: implemented
+version: "0.3.0"
+status: completed
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -17,6 +17,7 @@ tags: "workflow, late-branch, git-strategy, dogfooding, mega-sprint, v3r5"
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-05-20 | GOOS Kim (via MoAI) | Sync-phase complete — lifecycle close. status `implemented → completed`. Single-integrated PR pattern (user decision C): plan + run + sync 3-phase 모두 main에 누적 후 1 PR로 통합 머지. docs-site 영향 없음 (workflow/config 변경만 — product/structure/tech.md 모두 영향 없음). plan-PR + run-PR + sync-PR 3-way split 대신 1 통합 PR로 simplification. Cherry-pick 패턴: 본 SPEC 9 (plan/run/chore/status) + sync 1 = 10 commits만 origin/main 기준 새 feat/SPEC-V3R5-LATE-BRANCH-001 branch로 분리. STATUSLINE-V2145-001 SPEC 4 commits은 main에 그대로 보존 (별도 PR 처리). 본 세션과 평행으로 사용자가 sync/SPEC-V3R5-STATUSLINE-V2145-001 branch에서 STATUSLINE sync 작업 진행 — main 복귀 후 본 SPEC 우선 완료 결정. Late-branch Phase A(plan)+B(run)+sync 모두 main commit, Phase C(branch+push+PR) 진입 직전. |
 | 0.2.0 | 2026-05-20 | GOOS Kim (via manager-develop ddd) | Run-phase complete — status `draft → in-progress → implemented`. 7 ACs binary PASS (AC-LB-001 yq config switch / AC-LB-002 spec-assembly Phase 3 conditional / AC-LB-003 manager-git Personal Mode + Invocation Pattern / AC-LB-004 spec-workflow Step 1 precondition + Step 4 closure / AC-LB-005 template mirror parity via TestRuleTemplateMirrorDrift + TestLateBranchTemplateMirror / AC-LB-006 scripted E2E in /tmp / AC-LB-007 gh issue create gating). 11 files changed across 6 milestones + 1 catalog hash sync commit (M1 81188cad1, M2 aff3a0829, M3 826533f8b, M4 e2c8e2582, M5 8dca0384c, M6 44b8194ae, chore c9b857b7b). Self-application dogfooding succeeded — plan/run commits landed directly on main with branch deferred to Phase C. |
 | 0.1.2 | 2026-05-20 | GOOS Kim (via MoAI) | REQ-LB-008 promoted from Optional → Mandatory per plan-auditor iter1 Q2 CRITICAL recommendation. Existing `internal/template/rule_template_mirror_test.go` `workflowOptMirroredPaths` covers only 9 paths, NONE matching the 4 LATE-BRANCH markdown files; without allowlist extension AC-LB-005 was vacuous. M6 delivers `lateBranchMirroredPaths` + `TestLateBranchTemplateMirror` parallel test with shared `RULE_TEMPLATE_MIRROR_DRIFT` sentinel. |
 | 0.1.1 | 2026-05-20 | GOOS Kim (via MoAI) | Mid-draft policy extension — REQ-LB-009 + AC-LB-007 + EXCL-LB-008 + R-LB-005 added for "no auto GitHub Issue" policy. `issue_number` frontmatter field removed (D2 decision). 1 new affected file (`.claude/skills/moai/SKILL.md` + template mirror). Source: `feedback_no_github_issue_for_specs.md` user directive 2026-05-20. |
