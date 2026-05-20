@@ -313,6 +313,8 @@ W1 ships DATA SSOT only (per W1 EXCL-001). W3 implements the runtime mechanism t
 
 W3 explicitly excludes the following items. Each EXCL-* maps to a deferred SPEC or W phase.
 
+### 4.1 Out of Scope — Exclusion List
+
 - **EXCL-HRA-001 (Determinism guarantee)**: Deterministic harness generation per Vision §3.5 is W4 PROJECT-MEGA-001 scope. W3 implements only the CLI verb skeleton (REQ-HRA-036 placeholder) with deferred message.
 
 - **EXCL-HRA-002 (Seed library content)**: The actual 8 baseline seed files (Go/Node/Python/Rust/React/Vue/Flutter/iOS per Vision §5 W4) are W4 scope. W3 defines schema (REQ-HRA-022) + load hook (REQ-HRA-023) + library path config field (REQ-HRA-024) only.
