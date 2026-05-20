@@ -66,6 +66,11 @@ disable: Set learning.enabled: false in configuration (observer + learner disabl
 	cmd.AddCommand(newHarnessApplyCmd())
 	cmd.AddCommand(newHarnessRollbackCmd())
 	cmd.AddCommand(newHarnessDisableCmd())
+	// M4 verbs: mute/mute-list/unmute/verify (REQ-HRA-033, REQ-HRA-036)
+	cmd.AddCommand(newHarnessMuteCmd())
+	cmd.AddCommand(newHarnessMuteListCmd())
+	cmd.AddCommand(newHarnessUnmuteCmd())
+	cmd.AddCommand(newHarnessVerifyCmd())
 
 	return cmd
 }
