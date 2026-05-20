@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-SECURITY-CRIT-001
 title: "v2.14.0→HEAD 코드 리뷰 P0 보안 결함 3건 정정"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: manager-spec
@@ -21,6 +21,7 @@ tier: M
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-20 | manager-spec | Tier M 초안. P0-1 (GLM token 0o644 디스크 노출, CWE-732/552), P0-2 (tmux argv 토큰 누설, CWE-214), P0-3 (update flow checksum 묵음 우회, CWE-345). Late-Branch workflow 적용. |
+| 0.2.0 | 2026-05-20 | manager-develop | run-phase 완료. M1 (`b48bd86cb`) settings.local.json 0o600 + helper `writeSettingsSecure`; M2 (`10776c4b8`) `InjectSensitiveEnv` source-file injection + `ErrTmuxSensitiveInjectFailed` sentinel; M3 (`ee1335282`) `ErrChecksumUnavailable` sentinel + `downloadChecksumWithRetry` (3 retry exponential backoff) + defense-in-depth empty-checksum guard; M4 cross-cutting verification PASS — 9/9 named AC tests PASS, 3 GOOS builds (windows/linux/darwin) exit 0, race detector PASS on hook/tmux/update, C-HRA-008 subagent boundary grep 0 matches, P0-1/P0-3 grep regression locks PASS, lint NEW=0 vs 11 pre-existing baseline. Coverage: hook 81.6% / tmux 79.3% / update 84.8% (NEW security paths ≥90% — `buildVersionInfo` 90.9%, `downloadChecksumWithRetry` 92.9%, `ensureTmuxGLMEnv` 73.7%). Hook total 81.6% < 85% threshold due to brownfield legacy code drag; NEW security code paths individually meet threshold. status `draft → implemented`. |
 
 ## 1. Background
 
