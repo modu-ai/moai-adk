@@ -121,12 +121,46 @@ func appendOrWriteJSON(path string, data []byte) error {
 	return atomicWrite(path, data, 0o644)
 }
 
-// atomicWrite writes data to path via a WriteFile-then-sync approach.
-// For settings.json, atomic rename is ideal; using os.WriteFile with the
-// permission flag is sufficient for migration-step use (single-writer scenario).
+// atomicWrite writes data to path atomically using a temp file + rename sequence.
+//
+// @MX:WARN: writes to user .claude/settings.json — partial writes corrupt configuration.
+// @MX:REASON: P0-4 (review-v214-to-HEAD.md L53-58) — prior os.WriteFile body broke the
+//             atomicity contract implied by the function name. The two callers (line 109
+//             settings.json, line 121 archive) depend on all-or-nothing semantics.
+//             Pattern matches internal/runtime/persist.go:62-85 (canonical reference)
+//             and the five other writers in this codebase (config/manager.go,
+//             manifest/manifest.go, template/deployer.go, harness/applier.go,
+//             harness/tier/tier.go, harness/safety/canary_veto.go).
+//
+// SPEC-V3R5-ATOMIC-WRITE-001 REQ-AWR-001..006 → AC-AWR-001..008.
 func atomicWrite(path string, data []byte, perm os.FileMode) error {
-	if err := os.WriteFile(path, data, perm); err != nil {
-		return fmt.Errorf("write file: %w", err)
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".hook_cleanup_tmp_*")
+	if err != nil {
+		return fmt.Errorf("atomicWrite: create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return fmt.Errorf("atomicWrite: write temp: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return fmt.Errorf("atomicWrite: sync temp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return fmt.Errorf("atomicWrite: close temp: %w", err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		_ = os.Remove(tmpName)
+		return fmt.Errorf("atomicWrite: rename: %w", err)
+	}
+	if err := os.Chmod(path, perm); err != nil {
+		return fmt.Errorf("atomicWrite: chmod: %w", err)
 	}
 	return nil
 }
