@@ -59,6 +59,26 @@ var workflowOptMirroredPaths = []string{
 	".moai/config/evaluator-profiles/frontend.md",
 }
 
+// SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical
+// mirror at internal/template/templates/<path>. Promoted from Optional (REQ-LB-008)
+// to Mandatory per plan-auditor iter 1 Q2 CRITICAL recommendation (project_v3r5_late_branch_*).
+//
+// The 4 markdown mirrors (.md) must match byte-for-byte; the .yaml.tmpl mirror
+// contains Go template variables ({{.GitMode}}, etc.) and is intentionally not
+// in this list — its 4 modified keys are verified by AC-LB-005 grep instead.
+//
+// Sentinel on failure: RULE_TEMPLATE_MIRROR_DRIFT (shared with workflowOptMirroredPaths).
+var lateBranchMirroredPaths = []string{
+	// D2 — spec-assembly Phase 3 Late-branch pre-check + Phase 2.5 opt-in
+	".claude/skills/moai/workflows/plan/spec-assembly.md",
+	// D3 — manager-git Late-Branch Invocation Pattern + Personal Mode main_late_branch
+	".claude/agents/moai/manager-git.md",
+	// D5 — SKILL.md --issue flag opt-in semantics
+	".claude/skills/moai/SKILL.md",
+	// (spec-workflow.md is already in workflowOptMirroredPaths above — Late-branch
+	// closure additions are part of the same file, mirror parity verified there.)
+}
+
 // TestRuleTemplateMirrorDrift verifies that every SPEC-V3R5-WORKFLOW-OPT-001 modified
 // rule file has a byte-identical mirror under internal/template/templates/.
 //
@@ -73,6 +93,66 @@ func TestRuleTemplateMirrorDrift(t *testing.T) {
 	projectRoot := findProjectRootForMirrorTest(t)
 
 	for _, rel := range workflowOptMirroredPaths {
+		rel := rel // capture
+		t.Run(filepath.Base(rel), func(t *testing.T) {
+			t.Parallel()
+
+			srcPath := filepath.Join(projectRoot, rel)
+			mirrorPath := filepath.Join(projectRoot, "internal", "template", "templates", rel)
+
+			srcContent, err := os.ReadFile(srcPath)
+			if err != nil {
+				t.Fatalf("source file unreadable %s: %v", srcPath, err)
+			}
+
+			mirrorContent, mirrorErr := os.ReadFile(mirrorPath)
+			if mirrorErr != nil {
+				if os.IsNotExist(mirrorErr) {
+					t.Errorf(
+						"RULE_TEMPLATE_MIRROR_DRIFT: source file %s has no mirror at %s; "+
+							"run 'cp %s %s' and stage both files before commit",
+						rel, mirrorPath, srcPath, mirrorPath,
+					)
+					return
+				}
+				t.Fatalf("mirror file unreadable %s: %v", mirrorPath, mirrorErr)
+			}
+
+			if !bytes.Equal(srcContent, mirrorContent) {
+				t.Errorf(
+					"RULE_TEMPLATE_MIRROR_DRIFT: source file %s differs from its mirror at %s "+
+						"(source %d bytes, mirror %d bytes); run 'cp %s %s' and stage both files",
+					rel, mirrorPath, len(srcContent), len(mirrorContent), srcPath, mirrorPath,
+				)
+			}
+		})
+	}
+}
+
+// TestLateBranchTemplateMirror verifies that every SPEC-V3R5-LATE-BRANCH-001 modified
+// markdown file has a byte-identical mirror under internal/template/templates/.
+//
+// Promoted from Optional (REQ-LB-008) to Mandatory at run-phase per plan-auditor iter 1
+// Q2 CRITICAL recommendation: existing workflowOptMirroredPaths allowlist did NOT cover
+// the 5 LATE-BRANCH files (4 markdown + 1 yaml.tmpl), so AC-LB-005 was vacuous without
+// this parallel test.
+//
+// Reports the literal sentinel RULE_TEMPLATE_MIRROR_DRIFT (shared with the workflow-opt
+// test above) so CI log parsers match the same failure pattern.
+//
+// Note: the .yaml.tmpl mirror (`.moai/config/sections/git-strategy.yaml.tmpl`) contains
+// Go template variables and is verified by AC-LB-005 yq+grep verification rather than
+// byte equality. This test covers ONLY the 4 .md mirror pairs (M2/M3/M5 deliverables).
+// spec-workflow.md is already in workflowOptMirroredPaths so it is NOT duplicated here.
+//
+// @MX:NOTE: [AUTO] AC-LB-005 (template mirror parity for LATE-BRANCH-001) is verified
+// by this test for the 3 .md markdown files touched by D2/D3/D5.
+func TestLateBranchTemplateMirror(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := findProjectRootForMirrorTest(t)
+
+	for _, rel := range lateBranchMirroredPaths {
 		rel := rel // capture
 		t.Run(filepath.Base(rel), func(t *testing.T) {
 			t.Parallel()

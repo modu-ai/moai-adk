@@ -30,10 +30,19 @@ MoAI's three-phase development workflow with token budget management.
 | 4    | host checkout (only if L2 was created)                | `moai worktree done SPEC-XXX`                                                                            | n/a                                        | n/a         | L2 worktree disposed          |
 
 [ZONE:Frozen] [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping.
+- Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. **Late-branch precondition (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-005):** when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at this step; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
 - Step 2 (run) SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
 - Step 3 (sync) SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
-- Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3.
+- Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-006):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
+
+  ```bash
+  git checkout main
+  git fetch origin
+  git reset --hard origin/main
+  git pull origin main   # verify
+  ```
+
+  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
 
 [SHOULD] Anti-patterns (advisory):
 - Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.

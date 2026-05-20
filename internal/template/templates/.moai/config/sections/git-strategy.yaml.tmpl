@@ -72,6 +72,9 @@ git_strategy:
       scope_required: false
 
   # Team Mode Settings (GitHub Team)
+  # Late-branch default per SPEC-V3R5-LATE-BRANCH-001 (D1 Option a):
+  # auto_branch/auto_pr/auto_enabled default to false; prompt_always defaults to true.
+  # Users opting back to auto-branch can set auto_enabled: true.
   team:
     workflow: github-flow
     environment: github
@@ -85,14 +88,14 @@ git_strategy:
 
     # Branch creation policy
     branch_creation:
-      prompt_always: false
-      auto_enabled: true
+      prompt_always: true
+      auto_enabled: false
 
     # Automation settings
     automation:
-      auto_branch: true
+      auto_branch: false
       auto_commit: true
-      auto_pr: true
+      auto_pr: false
       auto_push: true
 
     # Git hooks policy

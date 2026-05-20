@@ -186,17 +186,19 @@ Harness configuration reference (harness.yaml):
 
 For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke evaluator-active in SPEC-review mode to cross-validate must-pass criteria. If evaluator-active disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
 
-### Phase 2.5: GitHub Issue Creation (Conditional)
+### Phase 2.5: GitHub Issue Creation (Conditional, opt-in)
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
 
-Execution conditions:
-- `--no-issue` flag is NOT set
+[HARD] Per REQ-LB-009 (SPEC-V3R5-LATE-BRANCH-001), this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs (D2 — `issue_number` field-removal prospective only; existing SPECs retain the field per EXCL-LB-008).
+
+Execution conditions (ALL must hold):
+- `--issue` flag IS set (explicit opt-in)
 - GitHub CLI (`gh`) is available
 - Repository has a remote origin
 
-Skip conditions:
-- `--no-issue` flag is set
+Skip conditions (any triggers a silent skip with no warning):
+- `--issue` flag is NOT set (default — silent skip)
 - `gh` CLI not available (log warning and continue)
 - No remote origin configured
 
@@ -204,9 +206,13 @@ Skip conditions:
 
 Agent: manager-git subagent
 
-Create a GitHub Issue from SPEC metadata:
+[HARD] Gate: only proceed when the `--issue` flag is set (REQ-LB-009). The `gh issue create` invocation below is the ONLY occurrence in this workflow and MUST be guarded by the explicit `--issue` opt-in. Default invocation of `/moai plan` (no `--issue`) silently skips Step 2.5.1/2.5.2/2.5.3.
+
+Create a GitHub Issue from SPEC metadata (only executed when `--issue` flag is set):
 
 ```bash
+# Pre-check: this block runs only when --issue flag is present.
+# If --issue is absent, Phase 2.5 is silently skipped — no gh issue create occurs.
 gh issue create \
   --title "[SPEC-{ID}] {SPEC title}" \
   --body "$(cat <<'EOF'
@@ -258,6 +264,16 @@ Execution conditions: Phase 2 completed successfully AND one of the following:
 - Configuration permits branch creation (git_strategy settings)
 
 Skipped when: develop_direct workflow, no flags and user chooses "Use current branch".
+
+#### Late-branch Pre-check [HARD] (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-001/REQ-LB-004)
+
+Before evaluating any of the paths below (Worktree / Branch / Current Branch), the orchestrator MUST read `team.branch_creation.auto_enabled` from `.moai/config/sections/git-strategy.yaml`.
+
+- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Phase 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 3.0 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per REQ-LB-007, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
+
+- When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
+
+Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
 
 #### Phase 3.0: BODP Gate (공통)
 
