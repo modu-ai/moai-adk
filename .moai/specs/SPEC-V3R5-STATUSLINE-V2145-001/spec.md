@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-STATUSLINE-V2145-001
 title: "Statusline v2.1.145 alignment — disappearing fix + PR segment"
-version: "0.1.0"
-status: draft
+version: "0.3.0"
+status: completed
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim

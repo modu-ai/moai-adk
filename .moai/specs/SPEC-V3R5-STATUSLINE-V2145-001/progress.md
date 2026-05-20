@@ -7,8 +7,8 @@
 | Plan | completed | manager-spec | 4 artifact files, 1040 LOC, 16 REQs + 20 ACs (1:1 traceability) — committed `d61a37a45` on main (admin override: no plan-PR per user directive 2026-05-20) |
 | Run (M1 Hotfix) | completed | orchestrator (direct) | DEBUG default OFF + dead echo cleanup — committed `1d21d78c2` on main |
 | Run (M2 Feature) | completed | manager-develop (cycle_type=tdd) | PR segment + RepoInfo + 52 sub-tests, 87.8% coverage — committed `52a0fe302` on main |
-| Run (M3 Docs) | **deferred** | (TBD — batched docs work) | Excluded from this SPEC iteration per user directive 2026-05-20 (docs-site 4-locale sync postponed to consolidated docs batch — likely v2.20.0-rc1 Consolidation Handoff or separate docs SPEC) |
-| Sync | n/a | — | No sync-PR; main-direct workflow per user directive |
+| Run (M3 Docs) | completed | manager-docs (zh) + orchestrator (ko/en/ja interrupted-batch + _meta.yaml updates) | 4-locale parity achieved (334 lines each, 10-12 KB) + _meta.yaml × 4 + orphan dirs (`{}/`, `internal/hook/.moai/`) cleanup |
+| Sync | completed | manager-docs (via /moai sync --merge --pr) | sync branch + squash PR; STATUSLINE-only scope (LATE-BRANCH-001 work shipped via separate sync PR) |
 
 ## Milestone Progress
 
