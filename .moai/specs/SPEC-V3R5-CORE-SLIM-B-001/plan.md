@@ -17,8 +17,8 @@
 **Estimated commits on main during implementation** (per LATE-BRANCH C-CSB-002):
 - 1 plan commit (this commit, SPEC artifacts only)
 - 1 M1 commit (4 skill directory deletes, template + local mirror, 8 directory removals)
-- 1 M2 commit (5 language rule edits)
-- 1 M3 commit (1 meta-harness edit + `make build` regeneration of `embedded.go`)
+- 1 M2 commit (4 language rule edits: elixir + csharp, local + template mirror)
+- 1 M3 commit (3 `agents-reference.md` line cleanups in local + template mirror + `make build` regeneration of `embedded.go`)
 - 1 status commit (`draft → implemented`, version `0.1.0 → 0.2.0`) at sync-phase
 
 PR (Phase C of LATE-BRANCH) created via `git switch -c feat/SPEC-V3R5-CORE-SLIM-B-001` + `git push -u origin` + `gh pr create`. Squash merge target.
@@ -50,43 +50,54 @@ Three milestones, executed sequentially. Each milestone is verified by its mappe
 
 **Commit message**: `feat(SPEC-V3R5-CORE-SLIM-B-001): M1 — retire 4 Category B dead-weight skills (1,432 LOC)`
 
-### M2 — Update 5 Language Rules (Remove `moai-platform-deploy` References)
+### M2 — Update 2 Language Rules + Their Template Mirrors (Remove `moai-platform-deployment` References)
 
-**Scope**: 5 file edits. Each file has its `moai-platform-deploy` reference removed entirely (not renamed) because the underlying skill is being retired in M1.
+**Scope**: 4 file edits (2 local + 2 template mirror). Each file has its `moai-platform-deployment` reference line removed entirely (not renamed) because the underlying skill is being retired in M1.
+
+**Plan-time verification**: The template tree at `internal/template/templates/.claude/rules/moai/languages/` DOES mirror all 16 language rules. Both `elixir.md` (line 96) and `csharp.md` (line 107) have matching reference removals required in BOTH local and template paths. Other language rules (`kotlin.md`, `swift.md`, `flutter.md`, etc.) carry zero matches — they are NOT included in M2 scope. M2 enumerates all 4 file edits as mandatory tasks below.
 
 **Tasks**:
 
 | # | Action | File | REQ | AC |
 |---|--------|------|-----|----|
-| 2.1 | Edit (remove ref) | `.claude/rules/moai/languages/elixir.md` | REQ-CSB-005 | AC-CSB-005 |
-| 2.2 | Edit (remove ref) | `.claude/rules/moai/languages/csharp.md` | REQ-CSB-005 | AC-CSB-005 |
-| 2.3 | Edit (remove ref) | `.claude/rules/moai/languages/kotlin.md` | REQ-CSB-005 | AC-CSB-005 |
-| 2.4 | Edit (remove ref) | `.claude/rules/moai/languages/swift.md` | REQ-CSB-005 | AC-CSB-005 |
-| 2.5 | Edit (remove ref) | `.claude/rules/moai/languages/flutter.md` | REQ-CSB-005 | AC-CSB-005 |
+| 2.1 | Edit (remove line 96) | `.claude/rules/moai/languages/elixir.md` | REQ-CSB-005 | AC-CSB-005 |
+| 2.2 | Edit (remove line 107) | `.claude/rules/moai/languages/csharp.md` | REQ-CSB-005 | AC-CSB-005 |
+| 2.3 | Edit (remove line 96, mirror) | `internal/template/templates/.claude/rules/moai/languages/elixir.md` | REQ-CSB-005 | AC-CSB-005 |
+| 2.4 | Edit (remove line 107, mirror) | `internal/template/templates/.claude/rules/moai/languages/csharp.md` | REQ-CSB-005 | AC-CSB-005 |
 
-Note: M2 only modifies the local `.claude/rules/...` files. Whether the same edits also apply to `internal/template/templates/.claude/rules/...` depends on whether the template tree mirrors language rules. Implementation MUST verify via `ls internal/template/templates/.claude/rules/moai/languages/` and, if mirrored, edit the template copies too (per C-CSB-001 Template-First). If not mirrored (language rules are local-only), M2 is local-only.
+**Verification**: AC-CSB-005 — combined grep across local + template tree returns 0:
 
-**Verification**: AC-CSB-005 (`grep -rn "moai-platform-deploy" .claude/rules/moai/languages/ | wc -l` returns 0).
+```bash
+[ $(grep -rcE "moai-platform-deploy" .claude/rules/moai/languages/ internal/template/templates/.claude/rules/moai/languages/ | awk -F: '{sum+=$2} END {print sum+0}') -eq 0 ] && echo PASS
+```
 
-**Commit message**: `chore(SPEC-V3R5-CORE-SLIM-B-001): M2 — remove moai-platform-deploy cross-refs in 5 language rules`
+**Commit message**: `chore(SPEC-V3R5-CORE-SLIM-B-001): M2 — remove moai-platform-deployment cross-refs in elixir + csharp (local + template mirror)`
 
-### M3 — Remove Meta-Harness Dead Ref + Regenerate `embedded.go`
+### M3 — Cleanup `agents-reference.md` Dead Refs + Regenerate `embedded.go` + Cross-Platform Verification
 
-**Scope**: 1 file edit + `make build` + final cross-platform verification.
+**Scope**: 2 file edits (3 line-level changes each = 6 line-level changes total) + `make build` + full test suite + cross-platform build verification.
+
+**Plan-time verification (grep ground truth)**: `agents-reference.md` lines 269, 288, 290 reference retired skills in both local and template mirror copies. Line 269 also references `moai-platform-database` which is OUT of this SPEC's scope and MUST be preserved.
 
 **Tasks**:
 
 | # | Action | Detail | REQ | AC |
 |---|--------|--------|-----|----|
-| 3.1 | Edit | `.claude/skills/moai-meta-harness/SKILL.md` — delete line 203 (`- \`expert-mobile\` — Mobile domain harness templates`) | REQ-CSB-006 | AC-CSB-006 |
-| 3.2 | Edit (mirror) | `internal/template/templates/.claude/skills/moai-meta-harness/SKILL.md` — same edit (Template-First per C-CSB-001) | REQ-CSB-006 | AC-CSB-006 |
-| 3.3 | Run | `make build` (regenerates `internal/template/embedded.go` via `go:embed`) | REQ-CSB-007 | AC-CSB-007 |
-| 3.4 | Run | `go test ./...` (full suite, verify no regression) | — | AC-CSB-007 |
-| 3.5 | Run | `GOOS=windows GOARCH=amd64 go build ./...` (cross-platform, known issue B1) | — | AC-CSB-008 |
+| 3.1 | Edit (line 269) | `.claude/skills/moai-foundation-core/modules/agents-reference.md` — remove `moai-platform-auth` and `moai-platform-deploy` from the row; preserve `moai-platform-database` | REQ-CSB-006 | AC-CSB-007 |
+| 3.2 | Edit (line 288) | `.claude/skills/moai-foundation-core/modules/agents-reference.md` — delete the entire `moai-platform-auth` row | REQ-CSB-006 | AC-CSB-007 |
+| 3.3 | Edit (line 290) | `.claude/skills/moai-foundation-core/modules/agents-reference.md` — delete the entire `moai-platform-deploy` row | REQ-CSB-006 | AC-CSB-007 |
+| 3.4 | Edit (mirror, line 269) | `internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md` — same row edit as 3.1 (Template-First per C-CSB-001) | REQ-CSB-006 | AC-CSB-007 |
+| 3.5 | Edit (mirror, line 288) | `internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md` — delete `moai-platform-auth` row (mirrors 3.2) | REQ-CSB-006 | AC-CSB-007 |
+| 3.6 | Edit (mirror, line 290) | `internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md` — delete `moai-platform-deploy` row (mirrors 3.3) | REQ-CSB-006 | AC-CSB-007 |
+| 3.7 | Run | `make build` (regenerates `internal/template/embedded.go` via `go:embed`) | REQ-CSB-007 | AC-CSB-006 |
+| 3.8 | Run | `go test ./...` (full suite, verify no regression) | — | AC-CSB-006 |
+| 3.9 | Run | `GOOS=windows GOARCH=amd64 go build ./...` (cross-platform, known issue B1) | — | AC-CSB-008 |
 
-**Verification**: AC-CSB-006, AC-CSB-007, AC-CSB-008.
+**Important: Line-number drift after edits**: Lines 288 and 290 are 1-based positions in the pre-edit file. After deleting line 288 (task 3.2), the original line 290 will shift up by one. Implementation MUST identify the rows by **content match** (e.g., `| moai-platform-auth |`, `| moai-platform-deploy |`) rather than re-applying numeric line offsets. Same caveat applies to the template mirror file in tasks 3.5/3.6.
 
-**Commit message**: `feat(SPEC-V3R5-CORE-SLIM-B-001): M3 — remove expert-mobile dead ref + regenerate embedded.go`
+**Verification**: AC-CSB-005 (M2), AC-CSB-006 (`make build && go test ./...`), AC-CSB-007 (agents-reference dead-ref grep across local + template = 0), AC-CSB-008 (cross-platform build).
+
+**Commit message**: `feat(SPEC-V3R5-CORE-SLIM-B-001): M3 — cleanup agents-reference.md dead-refs (local + template mirror) + regenerate embedded.go`
 
 ---
 
@@ -100,12 +111,12 @@ All 8 ACs from spec.md §3 are binary PASS/FAIL via single shell commands. The o
 | AC-CSB-002 | `test ! -e internal/template/templates/.claude/skills/moai-platform-auth && test ! -e .claude/skills/moai-platform-auth && echo PASS` | M1 |
 | AC-CSB-003 | `test ! -e internal/template/templates/.claude/skills/moai-platform-chrome-extension && test ! -e .claude/skills/moai-platform-chrome-extension && echo PASS` | M1 |
 | AC-CSB-004 | `test ! -e internal/template/templates/.claude/skills/moai-platform-deployment && test ! -e .claude/skills/moai-platform-deployment && echo PASS` | M1 |
-| AC-CSB-005 | `[ $(grep -rn "moai-platform-deploy" .claude/rules/moai/languages/ \| wc -l \| tr -d ' ') -eq 0 ] && echo PASS` | M2 |
-| AC-CSB-006 | `[ $(grep -c "expert-mobile" .claude/skills/moai-meta-harness/SKILL.md) -eq 0 ] && echo PASS` | M3 |
-| AC-CSB-007 | `make build && go test ./... && echo PASS` | M3 |
+| AC-CSB-005 | `[ $(grep -rcE "moai-platform-deploy" .claude/rules/moai/languages/ internal/template/templates/.claude/rules/moai/languages/ \| awk -F: '{sum+=$2} END {print sum+0}') -eq 0 ] && echo PASS` | M2 |
+| AC-CSB-006 | `make build && go test ./... && echo PASS` | M3 |
+| AC-CSB-007 | `[ $(grep -cE "moai-platform-auth\|moai-framework-electron\|moai-platform-chrome-extension\|moai-platform-deploy" .claude/skills/moai-foundation-core/modules/agents-reference.md internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md \| awk -F: '{sum+=$2} END {print sum+0}') -eq 0 ] && echo PASS` | M3 |
 | AC-CSB-008 | `GOOS=windows GOARCH=amd64 go build ./... && echo PASS` | M3 |
 
-**Verification batch** (per `.claude/rules/moai/workflow/verification-batch-pattern.md`): AC-CSB-001..006 are read-only and can run in a single parallel multi-Bash turn. AC-CSB-007 and AC-CSB-008 share `make build` artifacts — they MUST run sequentially after M3 file edits but can themselves parallelize once `embedded.go` is regenerated.
+**Verification batch** (per `.claude/rules/moai/workflow/verification-batch-pattern.md`): AC-CSB-001..005 and AC-CSB-007 are read-only filesystem/grep checks and can run in a single parallel multi-Bash turn. AC-CSB-006 (`make build && go test ./...`) and AC-CSB-008 (`GOOS=windows GOARCH=amd64 go build`) both depend on M3 file edits and on `embedded.go` regeneration — they MUST run after M3 file edits and after `make build`, but the two builds can themselves parallelize once `embedded.go` is regenerated.
 
 ---
 
@@ -116,10 +127,12 @@ All 8 ACs from spec.md §3 are binary PASS/FAIL via single shell commands. The o
 Rationale per audit §3.2: the 4 Category B skills have **0 workflow invocations + 0 agent frontmatter invocations** measured. They are not load-bearing for any current MoAI-ADK functionality. Pure delete + textual cleanup is the minimal change.
 
 **What is preserved** (untouched):
-- All other skills under `internal/template/templates/.claude/skills/` (moai-foundation-*, moai-workflow-*, moai-domain-*, moai-meta-harness/, etc.)
+- All other skills under `internal/template/templates/.claude/skills/` (moai-foundation-*, moai-workflow-*, moai-domain-*, moai-meta-harness/, etc.) except the targeted 3-line cleanup in `moai-foundation-core/modules/agents-reference.md` (M3)
 - All agents under `internal/template/templates/.claude/agents/` and `.claude/agents/`
 - All workflow files under `.claude/skills/moai/workflows/`
-- All rules under `.claude/rules/` (except the 5 language rules in M2 and 1 meta-harness line in M3)
+- All rules under `.claude/rules/` (except the elixir.md + csharp.md edits in M2)
+- `moai-platform-database` references — explicitly preserved in `agents-reference.md` line 269 (out of this SPEC's scope)
+- `moai-meta-harness/SKILL.md` — completely untouched in iter 2 revision (the previous draft's expert-mobile cleanup was a phantom target; grep verified 0 matches at iter 2)
 - `internal/template/embedded.go` is regenerated, not edited — its content is mechanically derived from the template tree
 
 **What is NOT extended**: No replacement skill is created. No baseline content is migrated. No agent learns a new responsibility. The change shrinks the system; it does not redistribute behavior. Category A and C migrations (which DO involve extension) are explicitly out of scope (§6.1).
@@ -144,7 +157,7 @@ Other categories (B2 Cross-SPEC policy conflicts, B3 C-HRA-008 subagent boundary
 
 ## 6. Rollback Plan
 
-If AC-CSB-007 or AC-CSB-008 fails (`make build`, `go test ./...`, or cross-platform build breaks):
+If AC-CSB-006 or AC-CSB-008 fails (`make build`, `go test ./...`, or cross-platform build breaks):
 
 1. `git status` — confirm uncommitted-vs-committed state of each milestone
 2. If M3 (the regeneration step) is the failure point: `git restore .` for any uncommitted files; `git reset --hard HEAD~N` only after confirming N committed milestones to drop

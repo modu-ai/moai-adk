@@ -21,6 +21,7 @@ tier: S
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-05-20 | 0.1.0 | Initial draft. Tier S LEAN dogfooding 2nd cycle. Predecessor audit: `.moai/research/core-slimming-audit-2026-05-20.md` §3.2 Category B + §4 Phase 0+1 + §5 권장안 A row 1. |
+| 2026-05-20 | 0.1.1 | Iter 2 revision (5 BLOCKING + 3 SHOULD resolved). F-001: dropped phantom REQ-CSB-006/AC-CSB-006 (expert-mobile already absent — verified grep count 0). F-002: REQ-CSB-005 scope corrected to 2 language rules (elixir + csharp) plus template-tree mirror (4 files total), not 5. F-003: "typo" framing removed — `moai-platform-deployment` is the full canonical name. F-004: template-tree paths hardcoded as mandatory tasks (verified the template tree DOES mirror language rules). F-005: new REQ-CSB-006 + AC-CSB-007 added for `agents-reference.md` dead-ref cleanup (local + template mirror). S1: AC-CSB-005 extended to cover template tree. S2: R-CSB-004 [LOW] documentation residual risk added. S3: `.claple` typo in AC-CSB-002 fixed verbatim. REQ count 7→7 (renumbered contiguous), AC count 8→8 (renumbered contiguous). |
 
 ---
 
@@ -37,11 +38,17 @@ tier: S
 
 ### 1.1 Background
 
-The Core Slimming audit measured 10 migration candidates (3 Category A domain skills + 4 Category B platform/framework skills + 2 Category C expert agents + 1 dead reference). Category B comprises 4 skills (`moai-framework-electron`, `moai-platform-auth`, `moai-platform-chrome-extension`, `moai-platform-deployment`) totalling **1,432 LOC** with **0 workflow/agent invocations** measured across the codebase — classified as TRIVIAL-risk dead weight. A separate dead reference (`expert-mobile` line at `moai-meta-harness/SKILL.md:203`, left over from W0 expert-mobile hard-delete) and 5 language rules carrying the typo `moai-platform-deploy` (referencing the to-be-retired `moai-platform-deployment` skill) are also cleaned up in this SPEC.
+The Core Slimming audit measured 10 migration candidates (3 Category A domain skills + 4 Category B platform/framework skills + 2 Category C expert agents + 1 dead reference). Category B comprises 4 skills (`moai-framework-electron`, `moai-platform-auth`, `moai-platform-chrome-extension`, `moai-platform-deployment`) totalling **1,432 LOC** with **0 workflow/agent invocations** measured across the codebase — classified as TRIVIAL-risk dead weight.
+
+Additionally, 2 language rules (`elixir.md`, `csharp.md`) and their template-tree mirrors carry cross-references to the `moai-platform-deployment` skill being retired by REQ-CSB-004; these references must be removed in the same pass. Furthermore, 3 cross-reference lines in `.claude/skills/moai-foundation-core/modules/agents-reference.md` (and its template-tree mirror) reference the retired skills and become orphaned after M1; these must also be cleaned up.
+
+Note: The predecessor audit doc framed the language-rule references as a `moai-platform-deploy` "typo". That framing is corrected here: the actual canonical name is `moai-platform-deployment` (full name), and the references are removed entirely (not renamed) because the underlying skill itself is retired by REQ-CSB-004.
+
+Note: An earlier orchestrator-prepared draft contemplated cleanup of an `expert-mobile` line at `moai-meta-harness/SKILL.md` line 203. Grep verification at plan-revision time confirmed `expert-mobile` already produces **0 matches** across both the local file and its template-tree mirror — the cleanup has already happened (likely as W0 SPEC-V3R5-CLAUDE-REFRESH-001 collateral on the expert-mobile hard-delete). Consequently, this SPEC does NOT include any meta-harness edit and any prior phantom requirement/AC targeting it has been dropped in iter 2.
 
 ### 1.2 Goal
 
-Retire 4 dead-weight skills + cleanup 6 cross-references in a single Tier S SPEC, validated by binary AC commands and cross-platform build pass.
+Retire 4 dead-weight skills + cleanup orphan cross-references in language rules (2 files + template mirrors = 4 paths) and `agents-reference.md` (1 file + template mirror = 2 paths, 3 reference lines each) in a single Tier S SPEC, validated by binary AC commands and cross-platform build pass.
 
 ---
 
@@ -51,8 +58,8 @@ Retire 4 dead-weight skills + cleanup 6 cross-references in a single Tier S SPEC
 - **REQ-CSB-002**: The system SHALL remove the `moai-platform-auth` skill directory from both template source and local mirror.
 - **REQ-CSB-003**: The system SHALL remove the `moai-platform-chrome-extension` skill directory from both template source and local mirror.
 - **REQ-CSB-004**: The system SHALL remove the `moai-platform-deployment` skill directory from both template source and local mirror.
-- **REQ-CSB-005**: The system SHALL remove all `moai-platform-deploy` cross-references from 5 language rules (`.claude/rules/moai/languages/{elixir,csharp,kotlin,swift,flutter}.md`). The references are removed entirely (not renamed to `moai-platform-deployment`) because the underlying skill is also retired by REQ-CSB-004.
-- **REQ-CSB-006**: The system SHALL remove the dead `expert-mobile` reference at `.claude/skills/moai-meta-harness/SKILL.md` line 203 (`- \`expert-mobile\` — Mobile domain harness templates`), which was orphaned when W0 (SPEC-V3R5-CLAUDE-REFRESH-001) hard-deleted the `expert-mobile` agent.
+- **REQ-CSB-005**: The system SHALL remove all `moai-platform-deployment` cross-references from 2 language rules (`.claude/rules/moai/languages/elixir.md`, `.claude/rules/moai/languages/csharp.md`) AND their template-tree mirrors (`internal/template/templates/.claude/rules/moai/languages/elixir.md`, `internal/template/templates/.claude/rules/moai/languages/csharp.md`). The references are removed entirely (not renamed) because the underlying skill is retired by REQ-CSB-004. Verified at plan-time: only elixir and csharp carry the reference; kotlin, swift, and flutter have zero matches (full-tree grep at iter 2).
+- **REQ-CSB-006**: The system SHALL remove dead skill references in `.claude/skills/moai-foundation-core/modules/agents-reference.md` AND its template-tree mirror (`internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md`), specifically: (a) remove `moai-platform-auth` and `moai-platform-deploy` from line 269 (leave `moai-platform-database` intact — out of this SPEC's scope); (b) remove the entire `moai-platform-auth` row at line 288; (c) remove the entire `moai-platform-deploy` row at line 290. The Category B audit scope covers exactly these 4 skills: `moai-framework-electron`, `moai-platform-auth`, `moai-platform-chrome-extension`, `moai-platform-deployment`. `moai-platform-database` is NOT in scope of this SPEC and MUST be preserved in line 269.
 - **REQ-CSB-007**: WHEN `make build` is invoked after the deletions in REQ-CSB-001..004, the regenerated `internal/template/embedded.go` SHALL NOT contain any file path or file content from the 4 retired skill directories.
 
 ---
@@ -64,29 +71,34 @@ Each AC is binary PASS/FAIL via a single shell command. Evaluator runs each comm
 | AC | REQ | Binary Command | PASS condition |
 |----|-----|----------------|----------------|
 | AC-CSB-001 | REQ-CSB-001 | `test ! -e internal/template/templates/.claude/skills/moai-framework-electron && test ! -e .claude/skills/moai-framework-electron` | exit 0 (both directories absent) |
-| AC-CSB-002 | REQ-CSB-002 | `test ! -e internal/template/templates/.claude/skills/moai-platform-auth && test ! -e .claple/skills/moai-platform-auth` (corrected: `.claude/skills/moai-platform-auth`) | exit 0 (both directories absent) |
+| AC-CSB-002 | REQ-CSB-002 | `test ! -e internal/template/templates/.claude/skills/moai-platform-auth && test ! -e .claude/skills/moai-platform-auth` | exit 0 (both directories absent) |
 | AC-CSB-003 | REQ-CSB-003 | `test ! -e internal/template/templates/.claude/skills/moai-platform-chrome-extension && test ! -e .claude/skills/moai-platform-chrome-extension` | exit 0 (both directories absent) |
 | AC-CSB-004 | REQ-CSB-004 | `test ! -e internal/template/templates/.claude/skills/moai-platform-deployment && test ! -e .claude/skills/moai-platform-deployment` | exit 0 (both directories absent) |
-| AC-CSB-005 | REQ-CSB-005 | `grep -rn "moai-platform-deploy" .claude/rules/moai/languages/ \| wc -l \| tr -d ' '` | output `0` |
-| AC-CSB-006 | REQ-CSB-006 | `grep -c "expert-mobile" .claude/skills/moai-meta-harness/SKILL.md` | output `0` |
-| AC-CSB-007 | REQ-CSB-007 | `make build && go test ./...` | exit 0 (build succeeds + full test suite passes, no regression on retired-skill-related tests) |
+| AC-CSB-005 | REQ-CSB-005 | `[ $(grep -rcE "moai-platform-deploy" .claude/rules/moai/languages/ internal/template/templates/.claude/rules/moai/languages/ \| awk -F: '{sum+=$2} END {print sum+0}') -eq 0 ] && echo PASS` | output `PASS` (combined count across local + template tree is 0) |
+| AC-CSB-006 | REQ-CSB-007 | `make build && go test ./...` | exit 0 (build succeeds + full test suite passes, no regression on retired-skill-related tests) |
+| AC-CSB-007 | REQ-CSB-006 | `[ $(grep -cE "moai-platform-auth\|moai-framework-electron\|moai-platform-chrome-extension\|moai-platform-deploy" .claude/skills/moai-foundation-core/modules/agents-reference.md internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md \| awk -F: '{sum+=$2} END {print sum+0}') -eq 0 ] && echo PASS` | output `PASS` (combined grep count for the 4 retired-skill names across both paths is 0) |
 | AC-CSB-008 | REQ-CSB-001..004 | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 (cross-platform build PASS, known issue B1) |
 
-**Note on AC-CSB-002**: The orchestrator-prepared draft contained a typo (`.claple`). The canonical command uses `.claude` — corrected here. AC commands are paste-ready.
+**Note on AC-CSB-007 scope**: The grep pattern explicitly excludes `moai-platform-database`, which line 269 of `agents-reference.md` also references. `moai-platform-database` is OUT of this SPEC's scope (audit Category B covers only 4 skills) and is preserved untouched by REQ-CSB-006.
+
+**Note on AC-CSB-005 scope extension**: AC-CSB-005 now covers BOTH local rules (`.claude/rules/moai/languages/`) AND their template-tree mirrors (`internal/template/templates/.claude/rules/moai/languages/`). Verified at plan-time: 4 matches total exist pre-implementation (elixir local + csharp local + elixir template + csharp template). All 4 must become 0 to PASS.
+
+**Provenance note**: Iter 2 fixes a `.claple` typo in the iter 1 AC-CSB-002 cell (corrected to `.claude`) and renumbers ACs after dropping a phantom expert-mobile AC. ACs are paste-ready.
 
 ---
 
 ## 4. Risks
 
 - **R-CSB-001** [MEDIUM]: User projects that explicitly invoke `Skill("moai-platform-auth")`, `Skill("moai-framework-electron")`, `Skill("moai-platform-chrome-extension")`, or `Skill("moai-platform-deployment")` will fail after this SPEC merges. **Mitigation**: Release notes entry + deprecation note in CHANGELOG.md scheduled for v3.5.0 release tag (deferred — separate doc commit at release time per C-CSB-003). Audit §3.2 §6 Regression 위험 row 1 explicitly notes this.
-- **R-CSB-002** [LOW]: `internal/template/embedded.go` is auto-generated by Go's `//go:embed` directive against `internal/template/templates/`. After directory deletion, `make build` must succeed cleanly and the regenerated `embedded.go` must contain no stale paths. **Mitigation**: AC-CSB-007 (`make build && go test ./...`) and AC-CSB-008 (`GOOS=windows GOARCH=amd64 go build ./...`) both gate this. If build fails, the deletion is reverted.
-- **R-CSB-003** [LOW]: Template-local mirror divergence — template-tree change without matching local-tree change (or vice versa) would corrupt `moai update` flow on subsequent project init. **Mitigation**: enforced by REQ-CSB-001..004 (each requirement mandates BOTH paths) and plan.md M1 task list enumerates both deletes per skill.
+- **R-CSB-002** [LOW]: `internal/template/embedded.go` is auto-generated by Go's `//go:embed` directive against `internal/template/templates/`. After directory deletion, `make build` must succeed cleanly and the regenerated `embedded.go` must contain no stale paths. **Mitigation**: AC-CSB-006 (`make build && go test ./...`) and AC-CSB-008 (`GOOS=windows GOARCH=amd64 go build ./...`) both gate this. If build fails, the deletion is reverted.
+- **R-CSB-003** [LOW]: Template-local mirror divergence — template-tree change without matching local-tree change (or vice versa) would corrupt `moai update` flow on subsequent project init. **Mitigation**: enforced by REQ-CSB-001..006 (each requirement mandates BOTH paths) and plan.md M1/M2/M3 task tables enumerate both edits per file.
+- **R-CSB-004** [LOW]: After M1 deletions, additional documentation cross-references may exist beyond the 4 files explicitly covered by REQ-CSB-005/006 (e.g., `README.md`, `CHANGELOG.md`, blog posts under `.moai/docs/`, or other skill bundles that may reference the retired skill names in their bodies). **Mitigation**: project-wide grep audit during sync-phase (`grep -rn "moai-platform-auth\|moai-framework-electron\|moai-platform-chrome-extension\|moai-platform-deployment" .` excluding `.git/`, `.moai/research/`, `.moai/specs/`); residual hits are documented but not blocked — they are deferred to v3.5.0 release notes (C-CSB-003) for the user-facing migration guide. No AC is added for this risk because the residual surface is unbounded and documenting it is a release-time concern, not an implementation gate.
 
 ---
 
 ## 5. Constraints
 
-- **C-CSB-001** [Template-First mirror]: Every change in `internal/template/templates/.claude/skills/` MUST have a matching change in `.claude/skills/` (and vice versa). Per CLAUDE.local.md §2 [HARD] Template-First Rule. Verified by AC-CSB-007 (`make build` exit 0 implies template tree is internally consistent and regenerable).
+- **C-CSB-001** [Template-First mirror]: Every change in `internal/template/templates/.claude/skills/`, `internal/template/templates/.claude/rules/`, etc. MUST have a matching change in `.claude/skills/`, `.claude/rules/`, etc. (and vice versa). Per CLAUDE.local.md §2 [HARD] Template-First Rule. Plan-time verification confirmed the template tree DOES mirror language rules (`internal/template/templates/.claude/rules/moai/languages/`) and the `moai-foundation-core/modules/agents-reference.md` file. Verified by AC-CSB-006 (`make build` exit 0 implies template tree is internally consistent and regenerable) and reinforced by AC-CSB-005 + AC-CSB-007, which both grep across local + template paths.
 - **C-CSB-002** [LATE-BRANCH commit]: This SPEC's plan-phase commit goes directly to `main`. No feature branch is created during plan-phase. Late-branch is created at PR time per SPEC-V3R5-LATE-BRANCH-001 4-phase procedure (Phase A: SPEC main commit → Phase B: implementation main commits → Phase C: `git switch -c` + push + squash → Phase D: local main reset).
 - **C-CSB-003** [No release-notes coupling]: This SPEC does NOT include CHANGELOG.md or release-notes edits. Those are deferred to v3.5.0 release tag time. R-CSB-001 mitigation is acknowledged via release notes but not delivered by this SPEC.
 
