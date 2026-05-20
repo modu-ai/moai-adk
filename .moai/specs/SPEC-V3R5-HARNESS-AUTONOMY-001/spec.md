@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-HARNESS-AUTONOMY-001
 title: "Harness Autonomy — 4-Tier Self-Evolution + 5-Layer Safety + Cold-Start Seeds"
-version: "0.2.0"
-status: implemented
+version: "0.3.0"
+status: completed
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -18,6 +18,7 @@ issue_number: 1022
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-05-20 | GOOS Kim (via MoAI) | sync-phase complete — lifecycle close. PR #1023 plan + PR #1024 run merged to main HEAD `24f96e266` (post PR #1025/#1026 WORKFLOW-OPT merge). W3 산출물 main verified: 7 packages (harness/capture/router/safety/seeds/throttle/tier) ≥ 85% coverage (harness 87.9% / capture 94.9% / router 89.2% / safety 86.5% / seeds 100% / throttle 88.2% / tier 90.0%), 18 sentinels catalog (8 HARNESS_FROZEN_* + 10 HARNESS_LEARNING_*), 10 CLI verbs (route/validate + status/apply/rollback/disable/mute/mute-list/unmute/verify per AC-HRA-009 V3R4 reversal), C-HRA-008 binary 0 matches, Cross-platform builds PASS (Windows flock split applied). 메타-분석 결과는 SPEC-V3R5-WORKFLOW-OPT-001 (PR #1025/#1026)로 formalization 완료 — 본 W3 결과가 그 SPEC dogfooding의 기준 (-73% wall-time 검증). Status: implemented → completed. |
 | 0.2.0 | 2026-05-20 | GOOS Kim (via MoAI) | run-phase complete — M1 (capture) + M2 (tier engine) + M3 (Canary Veto + HARNESS_FROZEN_* sentinels) + M4 (throttle + mute/unmute/mute-list/verify CLI) + M5 (seed stub) + M6 (integration + sentinel catalog + C-HRA-008 boundary tests). 6 commits on feat/SPEC-V3R5-HARNESS-AUTONOMY-001. Coverage: harness 87.9% / safety 86.5% / seeds 100% / throttle 88.2% / tier 89.2%. Benchmarks: L1 46ns << 10ms p99, L4 1.54µs << 100ms p99. C-HRA-008 PASS (zero non-comment AskUserQuestion references). Status: planned → implemented. |
 | 0.1.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Initial draft — Mega-Sprint W3 — T2 Standard scope per user AskUserQuestion. Vision source: `.moai/research/harness-autonomy-vision-2026-05-18.md` (iter3, pending audit). W0/W1/W2 lifecycles complete (main HEAD `7bd23bb69`). Scope: 4-Tier evolution pipeline, 5-layer safety with Canary veto, cold-start seed schema, proposal throttling, 6 CLI verbs. |
 | 0.1.0 | 2026-05-20 | GOOS Kim (via MoAI orchestrator) | Plan-PR opening commit (post-audit cleanup) — plan-auditor iter 2 verdict **PASS aggregate 0.902** (D1=0.86 / D2=0.92 / D3=0.92 / D4=0.96 / D5=0.90 / D6=0.82, all must-pass ≥0.86; W1 precedent recovery delta +0.061). 10 residual B1 narrative carryovers (R1-R10, R12 from iter 2 audit findings) mechanically cleaned across all 4 files in single plan-PR opening commit per plan-auditor recommendation (vs separate iter 3 PR). All catalog references now correctly attribute Vision §3.4 as 8 HARNESS_FROZEN_* sentinel source per W1 EXCL-001. R7 critical (acceptance.md §5.4 broken verification step `parsing W1 spec.md §3.4`) replaced with executable `grep -c HARNESS_FROZEN .moai/research/harness-autonomy-vision-2026-05-18.md ≥ 8` (verified returns 11). Zero design impact. issue_number 1022 added (#1022). |
