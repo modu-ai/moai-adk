@@ -1,12 +1,15 @@
 // Package migrate — hook_cleanup_test.go
 // SPEC-V3R2-MIG-002 T-MIG002-15 → AC-MIG002-A7
-// Table-driven tests for CleanupUserSettings.
+// SPEC-V3R5-ATOMIC-WRITE-001 → AC-AWR-001..008
+// Table-driven tests for CleanupUserSettings and TestAtomicWrite_* regression coverage
+// for the atomic temp+rename pattern in atomicWrite (P0-4 fix).
 package migrate
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -334,5 +337,277 @@ func TestCleanupUserSettings_Idempotent(t *testing.T) {
 	entries, _ := os.ReadDir(archiveDir)
 	if len(entries) > 1 {
 		t.Errorf("expected 1 archive file after idempotent run, got %d", len(entries))
+	}
+}
+
+// ============================================================================
+// SPEC-V3R5-ATOMIC-WRITE-001 — TestAtomicWrite_* regression tests
+//
+// Verifies the atomic temp+write+sync+close+rename+chmod pattern in atomicWrite.
+// Maps Given-When-Then scenarios from acceptance.md to Go tests:
+//   - Scenario 1 → TestAtomicWrite_HappyPath          (AC-AWR-001, AC-AWR-005)
+//   - Scenario 2 → TestAtomicWrite_ReplaceExisting    (AC-AWR-001)
+//   - Scenario 5 → TestAtomicWrite_PreservesPerm      (AC-AWR-005)
+//   - Scenarios 3+4 → TestAtomicWrite_CleanupOnError  (AC-AWR-003)
+//   - Scenario 6 → TestCleanupUserSettings_AtomicWriteRegression (AC-AWR-004)
+// ============================================================================
+
+// TestAtomicWrite_HappyPath — Scenario 1: write to fresh path, verify content,
+// mode 0o644, no temp residue.
+func TestAtomicWrite_HappyPath(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "settings.json")
+	payload := []byte(`{"hooks":{}}`)
+
+	if err := atomicWrite(dest, payload, 0o644); err != nil {
+		t.Fatalf("atomicWrite returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("read destination: %v", err)
+	}
+	if string(got) != string(payload) {
+		t.Errorf("content mismatch: got %q, want %q", got, payload)
+	}
+
+	info, err := os.Stat(dest)
+	if err != nil {
+		t.Fatalf("stat destination: %v", err)
+	}
+	// Skip permission assertion on Windows (Go's os.Chmod has limited mode semantics there).
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o644 {
+			t.Errorf("mode mismatch: got %#o, want %#o", got, 0o644)
+		}
+	}
+
+	// Verify no temp residue.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read dir: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".hook_cleanup_tmp_") {
+			t.Errorf("temp file %q remains in directory", e.Name())
+		}
+	}
+}
+
+// TestAtomicWrite_ReplaceExisting — Scenario 2: destination already exists with
+// OLD content; atomicWrite replaces it with NEW content atomically. Verifies
+// no residue, no partial concatenation.
+func TestAtomicWrite_ReplaceExisting(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "settings.json")
+
+	oldContent := []byte("OLD")
+	if err := os.WriteFile(dest, oldContent, 0o644); err != nil {
+		t.Fatalf("seed OLD content: %v", err)
+	}
+
+	newContent := []byte("NEW")
+	if err := atomicWrite(dest, newContent, 0o644); err != nil {
+		t.Fatalf("atomicWrite returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("read destination after replace: %v", err)
+	}
+	if string(got) != "NEW" {
+		t.Errorf("content mismatch after replace: got %q, want %q", got, "NEW")
+	}
+
+	// Mode must remain 0o644 after replace (REQ-AWR-004).
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(dest)
+		if err != nil {
+			t.Fatalf("stat destination: %v", err)
+		}
+		if got := info.Mode().Perm(); got != 0o644 {
+			t.Errorf("mode mismatch after replace: got %#o, want %#o", got, 0o644)
+		}
+	}
+}
+
+// TestAtomicWrite_PreservesPerm — Scenario 5: verifies os.CreateTemp's default
+// 0o600 mode is overridden by the explicit os.Chmod call to the requested perm.
+func TestAtomicWrite_PreservesPerm(t *testing.T) {
+	t.Parallel()
+
+	// Skip on Windows where Unix mode bits have limited applicability.
+	if runtime.GOOS == "windows" {
+		t.Skip("permission bits have limited semantics on Windows")
+	}
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "settings.json")
+
+	if err := atomicWrite(dest, []byte("X"), 0o644); err != nil {
+		t.Fatalf("atomicWrite returned error: %v", err)
+	}
+
+	info, err := os.Stat(dest)
+	if err != nil {
+		t.Fatalf("stat destination: %v", err)
+	}
+	got := info.Mode().Perm()
+	if got != 0o644 {
+		t.Errorf("mode = %#o; want %#o (CreateTemp default 0o600 must be overridden)", got, 0o644)
+	}
+}
+
+// TestAtomicWrite_CleanupOnError — Scenarios 3 + 4: forced error on rename via
+// a directory-as-destination (rename cannot overwrite a non-empty directory).
+// Verifies:
+//   - error is returned wrapping the failing step ("rename")
+//   - destination is unchanged (still a directory, not corrupted)
+//   - no .hook_cleanup_tmp_* file remains
+func TestAtomicWrite_CleanupOnError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// Create the destination as a non-empty directory — os.Rename(tmp → dir)
+	// fails because the target is a directory containing a file.
+	dest := filepath.Join(dir, "settings.json")
+	if err := os.Mkdir(dest, 0o755); err != nil {
+		t.Fatalf("create dest dir: %v", err)
+	}
+	// Add a file inside the directory to ensure os.Rename always fails
+	// (renaming a file onto a non-empty directory fails on both POSIX and Windows).
+	if err := os.WriteFile(filepath.Join(dest, "stub"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("seed stub in dest dir: %v", err)
+	}
+
+	err := atomicWrite(dest, []byte("NEW"), 0o644)
+	if err == nil {
+		t.Fatal("expected error from atomicWrite when destination is a non-empty directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "atomicWrite:") {
+		t.Errorf("error %q should be wrapped with 'atomicWrite:' prefix", err.Error())
+	}
+
+	// Destination must still be a directory (unchanged).
+	info, err := os.Stat(dest)
+	if err != nil {
+		t.Fatalf("stat destination after failed write: %v", err)
+	}
+	if !info.IsDir() {
+		t.Errorf("destination is no longer a directory after failed atomicWrite (corruption)")
+	}
+
+	// No temp residue.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read parent dir: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".hook_cleanup_tmp_") {
+			t.Errorf("temp file %q remains in directory after failed write", e.Name())
+		}
+	}
+}
+
+// TestAtomicWrite_CreateTempError — Forces os.CreateTemp to fail by passing
+// a destination whose parent directory does not exist. Verifies the function
+// returns a wrapped error containing "create temp file" and no destination is
+// created. Increases coverage of the CreateTemp error branch in atomicWrite.
+func TestAtomicWrite_CreateTempError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// Destination under a non-existent parent directory — CreateTemp must fail.
+	dest := filepath.Join(dir, "nonexistent_parent", "settings.json")
+
+	err := atomicWrite(dest, []byte("X"), 0o644)
+	if err == nil {
+		t.Fatal("expected error from atomicWrite when parent directory is missing, got nil")
+	}
+	if !strings.Contains(err.Error(), "create temp file") {
+		t.Errorf("error %q should mention 'create temp file' step", err.Error())
+	}
+
+	// Destination must not exist.
+	if _, statErr := os.Stat(dest); !os.IsNotExist(statErr) {
+		t.Errorf("destination should not exist after CreateTemp failure (stat err: %v)", statErr)
+	}
+}
+
+// TestCleanupUserSettings_AtomicWriteRegression — Scenario 6: caller-level
+// regression test. Verifies that CleanupUserSettings (which calls atomicWrite
+// at line 109) still produces a valid settings.json with the Notification
+// hook removed and a same-day archive file written. This protects R-AWR-001
+// (caller regression risk).
+func TestCleanupUserSettings_AtomicWriteRegression(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatalf("create .claude dir: %v", err)
+	}
+
+	// Seed settings.json with one retired Notification hook entry.
+	settings := settingsWithHooks(
+		map[string]string{"SessionStart": "handle-session-start.sh"},
+		map[string]string{"Notification": "handle-notification.sh"},
+	)
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+	if err := os.WriteFile(settingsPath, settings, 0o644); err != nil {
+		t.Fatalf("seed settings.json: %v", err)
+	}
+
+	// Invoke CleanupUserSettings (which calls atomicWrite at line 109).
+	if err := CleanupUserSettings(projectRoot); err != nil {
+		t.Fatalf("CleanupUserSettings returned error: %v", err)
+	}
+
+	// Verify settings.json is valid JSON.
+	cleaned, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read cleaned settings.json: %v", err)
+	}
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal(cleaned, &parsed); err != nil {
+		t.Fatalf("cleaned settings.json is not valid JSON: %v", err)
+	}
+
+	// Verify Notification hook is absent.
+	hooksRaw, ok := parsed["hooks"]
+	if !ok {
+		t.Fatal("hooks key missing from cleaned settings.json")
+	}
+	var hooks map[string]json.RawMessage
+	if err := json.Unmarshal(hooksRaw, &hooks); err != nil {
+		t.Fatalf("parse hooks section: %v", err)
+	}
+	if _, present := hooks["Notification"]; present {
+		t.Error("Notification hook still present in cleaned settings.json")
+	}
+
+	// Verify archive file exists.
+	archiveDir := filepath.Join(projectRoot, ".moai", "archive", "hooks", "v3.0")
+	archiveEntries, err := os.ReadDir(archiveDir)
+	if err != nil {
+		t.Fatalf("read archive dir: %v", err)
+	}
+	if len(archiveEntries) == 0 {
+		t.Fatal("no archive file written under .moai/archive/hooks/v3.0/")
+	}
+
+	// Verify mode of cleaned settings.json is 0o644 (REQ-AWR-004 / R-AWR-003 regression).
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(settingsPath)
+		if err != nil {
+			t.Fatalf("stat settings.json: %v", err)
+		}
+		if got := info.Mode().Perm(); got != 0o644 {
+			t.Errorf("settings.json mode = %#o; want %#o", got, 0o644)
+		}
 	}
 }
