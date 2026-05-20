@@ -1,6 +1,21 @@
 # manager-develop 위임 Prompt Template
 
-> [ZONE:Evolvable] [HARD] 모든 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. 누락 시 재위임 반복 위험 증가.
+## Applicability
+
+[ZONE:Evolvable] [HARD] The Section A-E 5-section delegation template defined in this rule is **REQUIRED for Tier M and Tier L SPEC delegations** and **OPTIONAL for Tier S** delegations. Tier S SPECs (≤300 LOC, <5 files affected, 2 artifacts per the LEAN workflow) MAY use minimal delegation prompts (~500-800 tokens) covering only:
+
+- Goal (single-paragraph task description)
+- Deliverables (concrete file/commit list)
+- Constraints (PRESERVE list, forbidden commands)
+- Self-verification (AC PASS/FAIL matrix)
+
+When applying the minimal form for Tier S, Section B (Known Issues B1-B8) MAY be filtered to relevant categories only or omitted entirely if no listed risk applies. Section C (Pre-flight) MAY be reduced to the single most-relevant baseline command.
+
+When the SPEC tier is M or L, the full Section A-E template SHOULD be applied; Section B (known issues) MAY filter B1-B8 categories by domain relevance (e.g., a documentation-only SPEC may omit B1 cross-platform build tags).
+
+Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L). Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization).
+
+> [ZONE:Evolvable] [HARD] 모든 Tier M/L의 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. Tier S는 위 Applicability 절의 minimal form을 사용해도 무방. 누락 시 (Tier M/L에서) 재위임 반복 위험 증가.
 
 본 rule은 W3 HARNESS-AUTONOMY-001 메타-분석 결과 (2026-05-20)에서 도출된 위임 품질 개선 사항을 표준화한다. 1-pass 위임으로 결함 사전 차단 목표.
 
