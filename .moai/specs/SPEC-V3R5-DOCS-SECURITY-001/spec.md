@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-DOCS-SECURITY-001
 title: "docs-site Wave A — Security Foundation (CWE-732/214/345 사용자 가시 변화 반영)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: manager-spec
@@ -21,6 +21,7 @@ tier: M
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-20 | manager-spec | Tier M 초안 작성. SPEC-V3R5-SECURITY-CRIT-001 (P0 보안 결함 3건 정정) 의 사용자 가시 변화를 docs-site 4-locale (ko/en/ja/zh)에 반영. 신규 `advanced/security-notes.md` + 기존 `advanced/settings-json.md` / `getting-started/update.md` / `multi-llm/cg-mode.md` 갱신. Tier 판단: 4 페이지 × 4 locale = **16 markdown files** 영향 → research doc §8.2 원안 Tier S 권고를 Tier M으로 상향 (Tier S 임계 <5 files 초과). |
+| 0.2.0 | 2026-05-20 | manager-develop | run-phase implementation complete — 16 markdown files (4 신규 security-notes.md + 12 패치) + CHANGELOG.md `### Security` 섹션 + 4 `_meta.yaml` security-notes 등록 + cg-mode.md ko 본문 보강 + en/ja/zh stub one-line security cross-ref. AC matrix all PASS: AC-DSEC-001 (16 files + 12 xref matches) / AC-DSEC-002 (NEW i18n violations 0, pre-existing baseline 52 excluded per Section B5) / AC-DSEC-003 (forbidden URL grep 0) / AC-DSEC-004 (Mermaid TD-only) / AC-DSEC-005 (CHANGELOG SECURITY + 3 CWE + 4 commit hashes) / AC-DSEC-006 (body emoji 0) / AC-DSEC-007 (spec-lint 0 NEW). status `draft → implemented`. |
 
 ## 1. Background
 

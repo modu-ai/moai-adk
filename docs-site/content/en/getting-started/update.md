@@ -70,6 +70,47 @@ Release notes:
 Update available! Run 'moai update' to upgrade.
 ```
 
+### Mandatory Checksum Verification {#checksum-verification}
+
+Starting with v2.20.0-rc1, the `moai update` binary download **cannot bypass checksum verification**. If the release's `checksums.txt` download fails or parsing fails, the system returns the sentinel error `ErrChecksumUnavailable` and **aborts** the update — no binary download is attempted.
+
+#### Retry policy
+
+`checksums.txt` downloads are retried **3 times** with exponential backoff:
+
+| Attempt | Wait time |
+|---------|-----------|
+| 1st (immediate) | 0s |
+| 2nd retry | 2s |
+| 3rd retry | 4s |
+| no further retry | total wait ~6s before failure |
+
+(Internal implementation: base delay 2s × 2^(attempt-1) exponential backoff, with defense-in-depth empty-checksum guards at both the checker stage and the updater stage)
+
+When all retries fail, the following message is emitted:
+
+```
+error: checksum unavailable: persistent retry failure after 3 attempts
+```
+
+**No `--skip-checksum` opt-out exists** (CWE-345 intentional policy).
+
+#### Recovery procedure on failure
+
+1. **Check network connectivity**:
+   ```bash
+   curl -I https://github.com/modu-ai/moai-adk/releases/latest
+   ```
+2. **Verify proxy / firewall** — confirm that the GitHub release-asset domains (`github.com`, `objects.githubusercontent.com`) are allowed
+3. **Consider transient GitHub CDN issues** — retry after a short wait
+4. **Manual binary installation** (when blocking is persistent):
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+   ```
+   For manual installation, you verify integrity yourself; we recommend also fetching `checksums.txt` from the GitHub Release page to match the protection auto-update provides.
+
+For the full threat model, implementation location, and audit procedures, see [Security Notes — CWE-345](/en/advanced/security-notes/#cwe-345).
+
 ### Stage 2: Compare Config Versions
 
 Check configuration file format and compatibility.

@@ -837,6 +837,26 @@ Claude Code 下部に表示されるステータスバーを設定します。
 `settings.local.json` の設定は `settings.json` の設定に**マージ**されます。同一キーがある場合、`settings.local.json` が優先されます。
 {{< /callout >}}
 
+### settings.local.json 権限強化 (0o600) {#settings-local-json-permission}
+
+v2.20.0-rc1 から `settings.local.json` の作成・更新時に **`0o600`** (所有者のみ read/write) 権限が強制されます。以前の `0o644` では、複数ユーザー環境のワークステーションで `ANTHROPIC_AUTH_TOKEN` などの機密資格情報が他のローカルユーザーに露出するリスクがありました (CWE-732 / CWE-552)。
+
+**セルフ監査**:
+
+```bash
+# Linux
+stat -c '%a' .claude/settings.local.json
+# 期待値: 600
+
+# macOS
+stat -f '%A' .claude/settings.local.json
+# 期待値: 600
+```
+
+権限が `600` でない場合、MoAI-ADK は次回セッション開始時に自動修正します。即時修正するには `chmod 0600 .claude/settings.local.json` を実行してください。
+
+詳細なセキュリティモデル、脅威分析、追加の監査手順は [セキュリティノート — CWE-732](/ja/advanced/security-notes/#cwe-732) を参照してください。
+
 ## MoAI 専用設定
 
 {{< callout type="info" >}}

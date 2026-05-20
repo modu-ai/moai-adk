@@ -11,6 +11,8 @@ index:
   title: "Hooks 指南"
 "settings-json":
   title: "settings.json 指南"
+"security-notes":
+  title: "安全说明"
 "statusline":
   title: "状态栏系统与 PR 段"
 "claude-md-guide":

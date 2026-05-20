@@ -13,6 +13,8 @@ index:
   title: "Hooks 이벤트 레퍼런스"
 "settings-json":
   title: "settings.json 가이드"
+"security-notes":
+  title: "보안 노트"
 "statusline":
   title: "Statusline 시스템 및 PR 세그먼트"
 "claude-md-guide":

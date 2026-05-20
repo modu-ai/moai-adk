@@ -837,6 +837,26 @@ Set environment variables that control Claude Code's behavior in the `env` secti
 Settings in `settings.local.json` are **merged** with `settings.json`. When the same key exists, `settings.local.json` takes precedence.
 {{< /callout >}}
 
+### settings.local.json Permission Hardening (0o600) {#settings-local-json-permission}
+
+Starting with v2.20.0-rc1, `settings.local.json` is created and updated with **`0o600`** (owner-only read/write) permission. The previous `0o644` exposed sensitive credentials such as `ANTHROPIC_AUTH_TOKEN` to other local users on multi-user workstations (CWE-732 / CWE-552).
+
+**Self-audit**:
+
+```bash
+# Linux
+stat -c '%a' .claude/settings.local.json
+# expect: 600
+
+# macOS
+stat -f '%A' .claude/settings.local.json
+# expect: 600
+```
+
+If the permission is not `600`, MoAI-ADK will auto-correct it on the next session start. To fix immediately, run `chmod 0600 .claude/settings.local.json`.
+
+For the full security model, threat analysis, and additional audit procedures, see [Security Notes — CWE-732](/en/advanced/security-notes/#cwe-732).
+
 ## MoAI-Specific Settings
 
 {{< callout type="info" >}}

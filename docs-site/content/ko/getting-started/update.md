@@ -70,6 +70,47 @@ Release notes:
 Update available! Run 'moai update' to upgrade.
 ```
 
+### 체크섬 의무 검증 (Mandatory Checksum Verification) {#checksum-verification}
+
+v2.20.0-rc1 부터 `moai update` 의 binary 다운로드는 **checksum 검증을 우회할 수 없습니다**. release 의 `checksums.txt` 다운로드가 실패하거나 파싱이 실패하면 sentinel error `ErrChecksumUnavailable` 를 반환하고 update 흐름을 **abort** 합니다 — binary 다운로드를 시도하지 않습니다.
+
+#### Retry 정책
+
+`checksums.txt` 다운로드는 **3회 retry** 를 지수 백오프로 시도합니다:
+
+| 시도 | 대기 시간 |
+|------|-----------|
+| 1차 (즉시) | 0s |
+| 2차 retry | 2s 대기 |
+| 3차 retry | 4s 대기 |
+| 추가 retry 없음 | 합계 ~6s 대기 후 실패 |
+
+(내부 구현: base delay 2s × 2^(attempt-1) 지수 백오프, defense-in-depth 로 checker 및 updater 양 단계에서 empty checksum 차단)
+
+모든 retry 가 실패하면 다음과 같은 메시지가 출력됩니다:
+
+```
+error: checksum unavailable: persistent retry failure after 3 attempts
+```
+
+**`--skip-checksum` 같은 우회 옵션은 존재하지 않습니다** (CWE-345 의도된 정책).
+
+#### 실패 시 복구 절차
+
+1. **네트워크 연결 확인**:
+   ```bash
+   curl -I https://github.com/modu-ai/moai-adk/releases/latest
+   ```
+2. **Proxy / firewall 확인** — GitHub release asset 도메인 (`github.com`, `objects.githubusercontent.com`) 허용 여부
+3. **일시적 GitHub CDN 장애 가능성** — 잠시 후 재시도
+4. **수동 binary 설치** (영구 차단 시):
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+   ```
+   수동 설치 시 사용자가 직접 무결성을 검증하므로 자동 update 와 동등한 보호를 위해 GitHub Release 의 `checksums.txt` 를 별도로 확인하는 것을 권장합니다.
+
+자세한 위협 모델, 구현 위치, 점검 절차는 [보안 노트 — CWE-345](/ko/advanced/security-notes/#cwe-345) 를 참조하세요.
+
 ### Stage 2: 설정 버전 비교
 
 설정 파일의 형식과 호환성을 검사합니다.

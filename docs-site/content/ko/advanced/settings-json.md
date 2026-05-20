@@ -837,6 +837,26 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 `settings.local.json`의 설정은 `settings.json`의 설정에 **병합**됩니다. 동일한 키가 있으면 `settings.local.json`이 우선합니다.
 {{< /callout >}}
 
+### settings.local.json 권한 강화 (0o600) {#settings-local-json-permission}
+
+v2.20.0-rc1 부터 `settings.local.json` 은 생성·갱신 시 **`0o600`** (소유자 전용 read/write) 권한이 강제됩니다. 이전 `0o644` 는 다중 사용자 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명이 다른 로컬 사용자에게 노출되는 위험이 있었습니다 (CWE-732 / CWE-552).
+
+**자체 점검**:
+
+```bash
+# Linux
+stat -c '%a' .claude/settings.local.json
+# 기대값: 600
+
+# macOS
+stat -f '%A' .claude/settings.local.json
+# 기대값: 600
+```
+
+권한이 `600` 이 아니면 MoAI-ADK 가 다음 세션 시작 시 자동으로 정정합니다. 즉시 정정하려면 `chmod 0600 .claude/settings.local.json` 을 실행하세요.
+
+자세한 보안 모델, 위협 분석, 추가 점검 절차는 [보안 노트 — CWE-732](/ko/advanced/security-notes/#cwe-732) 를 참조하세요.
+
 ## MoAI 전용 설정
 
 {{< callout type="info" >}}
