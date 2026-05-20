@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -119,13 +118,11 @@ func appendObservation(path string, entry observationEntry) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	// flock(2) advisory lock — exclusive for write.
-	// On platforms where syscall.Flock is unavailable, this is a no-op fallback.
-	if flockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); flockErr != nil {
-		// Non-fatal: continue without lock (best-effort for non-Unix platforms).
-		_ = flockErr
-	}
-	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
+	// Platform-specific advisory lock for exclusive write.
+	// Unix: flock(2). Windows: no-op (single-process write semantics; concurrent
+	// SubagentStop multi-process scenario is not supported on Windows in W3).
+	acquireExclusiveLock(f)
+	defer releaseLock(f)
 
 	line := marshalEntry(entry)
 	if _, err := f.WriteString(line); err != nil {

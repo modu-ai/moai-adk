@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -212,11 +211,9 @@ func (e *Engine) withLock(fn func() error) error {
 		return fmt.Errorf("tier: open lock file %s: %w", path, err)
 	}
 	defer func() { _ = f.Close() }()
-	// flock(2) advisory exclusive lock.
-	if flockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); flockErr != nil {
-		_ = flockErr // best-effort on non-Unix
-	}
-	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
+	// Platform-specific advisory exclusive lock (Unix flock; Windows no-op).
+	acquireExclusiveLock(f)
+	defer releaseLock(f)
 	return fn()
 }
 
