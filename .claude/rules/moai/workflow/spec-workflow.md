@@ -116,6 +116,28 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 - Pattern source: `.moai/design/v3-redesign/synthesis/pattern-library.md` §O-6 (Agentless).
 - Research source: `.moai/design/v3-redesign/research/r1-ai-harness-papers.md` §25 (Xia et al. 2024).
 
+## SPEC Complexity Tier (S/M/L)
+
+The SPEC complexity classification taxonomy is referred to interchangeably as "Tier S/M/L" or "SPEC tiers" throughout this rule set.
+
+[ZONE:Evolvable] [HARD] Every SPEC plan-phase classifies the SPEC into one of three Tier S/M/L levels before artifact creation begins. The tier determines the artifact set, the delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization observed in LANG-COMPLIANCE-001 plan-phase abandonment, 2026-05-20).
+
+| Tier | Scope guidance (LOC) | Files affected | Artifact set | plan-auditor PASS threshold |
+|------|----------------------|----------------|--------------|------------------------------|
+| S (Simple) | < 300 LOC | < 5 files | **2 files**: spec.md + plan.md (AC inline in spec.md §3) | 0.75 |
+| M (Medium) | 300 - 1000 LOC | 5 - 15 files | **3 files**: spec.md + plan.md + acceptance.md | 0.80 |
+| L (Large) | > 1000 LOC or constitutional | > 15 files | **5 files**: spec.md + plan.md + acceptance.md + design.md + research.md | 0.85 |
+
+Tier judgment: performed as a Socratic AskUserQuestion in `spec-assembly.md` (Tier judgment Socratic question). The LOC thresholds are guidance, not enforcement — the implementer's judgment supplements the question.
+
+Tier field in frontmatter: optional. The `tier:` YAML field carries the classification (enum: S | M | L). Documented in `.claude/rules/moai/development/spec-frontmatter-schema.md` as an optional field. Backward compatibility rule: when `tier:` is absent, the SPEC is treated as **Tier L** to preserve existing 5-artifact default behavior for pre-LEAN SPECs.
+
+Section A-E delegation template (`manager-develop-prompt-template.md`): REQUIRED for Tier M/L delegations, OPTIONAL for Tier S. Tier S delegations MAY use minimal prompts (~500-800 tokens) covering only goal + deliverables + constraints + self-verification. See `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability.
+
+plan-auditor escalation: iter(N+1) aggregate score lower than iter(N) triggers a STOP signal and scope-reduction proposal — no unconditional further iteration. Maximum 3 plan-auditor iterations per SPEC plan-phase; after iter3, escalate via PASS-with-debt OR scope-reduction OR explicit user override. See `.claude/agents/moai/plan-auditor.md` § Retry Loop Contract.
+
+Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers a tier-up suggestion to the user; the Tier field is recorded in the SPEC for retrospective audit.
+
 ## Plan Phase
 
 [ZONE:Frozen] [HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
