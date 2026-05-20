@@ -391,3 +391,254 @@ func TestStatuslineEffortThinking_MXTags(t *testing.T) {
 		t.Error("types.go should define ThinkingInfo type")
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPEC-V3R5-STATUSLINE-V2145-001 — M2 PR segment tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestSegmentPR_Constant verifies that SegmentPR constant is defined.
+// REQ-SLV-016: introduce SegmentPR constant in types.go
+func TestSegmentPR_Constant(t *testing.T) {
+	if SegmentPR != "pr" {
+		t.Errorf("SegmentPR = %q, want %q", SegmentPR, "pr")
+	}
+}
+
+// TestStdinData_UnmarshalJSON_PRInfo verifies that Claude Code v2.1.145
+// pr.{number,url,review_state} fields are parsed correctly from stdin JSON.
+// REQ-SLV-010: adopt v2.1.145 PR stdin fields
+func TestStdinData_UnmarshalJSON_PRInfo(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		wantPR *PRInfo
+	}{
+		{
+			name:  "full pr object: number+url+review_state",
+			input: `{"pr":{"number":1023,"url":"https://github.com/modu-ai/moai-adk/pull/1023","review_state":"approved"}}`,
+			wantPR: &PRInfo{
+				Number:      1023,
+				URL:         "https://github.com/modu-ai/moai-adk/pull/1023",
+				ReviewState: "approved",
+			},
+		},
+		{
+			name:  "pending review",
+			input: `{"pr":{"number":42,"url":"https://github.com/o/r/pull/42","review_state":"pending"}}`,
+			wantPR: &PRInfo{
+				Number:      42,
+				URL:         "https://github.com/o/r/pull/42",
+				ReviewState: "pending",
+			},
+		},
+		{
+			name:  "changes_requested review",
+			input: `{"pr":{"number":7,"url":"https://github.com/o/r/pull/7","review_state":"changes_requested"}}`,
+			wantPR: &PRInfo{
+				Number:      7,
+				URL:         "https://github.com/o/r/pull/7",
+				ReviewState: "changes_requested",
+			},
+		},
+		{
+			name:  "draft pr without review_state",
+			input: `{"pr":{"number":99,"url":"https://github.com/o/r/pull/99"}}`,
+			wantPR: &PRInfo{
+				Number:      99,
+				URL:         "https://github.com/o/r/pull/99",
+				ReviewState: "",
+			},
+		},
+		{
+			name:  "explicit draft review_state",
+			input: `{"pr":{"number":100,"url":"https://github.com/o/r/pull/100","review_state":"draft"}}`,
+			wantPR: &PRInfo{
+				Number:      100,
+				URL:         "https://github.com/o/r/pull/100",
+				ReviewState: "draft",
+			},
+		},
+		{
+			name:   "pr absent: nil",
+			input:  `{"version":"2.1.145"}`,
+			wantPR: nil,
+		},
+		{
+			name:   "pr null: nil",
+			input:  `{"pr":null}`,
+			wantPR: nil,
+		},
+		{
+			name:  "pr number only: empty url tolerated",
+			input: `{"pr":{"number":50}}`,
+			wantPR: &PRInfo{
+				Number:      50,
+				URL:         "",
+				ReviewState: "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data StdinData
+			if err := json.Unmarshal([]byte(tt.input), &data); err != nil {
+				t.Fatalf("json.Unmarshal failed: %v", err)
+			}
+
+			if tt.wantPR == nil {
+				if data.PR != nil {
+					t.Errorf("PR = %+v, want nil", data.PR)
+				}
+				return
+			}
+
+			if data.PR == nil {
+				t.Fatalf("PR is nil, want %+v", tt.wantPR)
+			}
+			if data.PR.Number != tt.wantPR.Number {
+				t.Errorf("PR.Number = %d, want %d", data.PR.Number, tt.wantPR.Number)
+			}
+			if data.PR.URL != tt.wantPR.URL {
+				t.Errorf("PR.URL = %q, want %q", data.PR.URL, tt.wantPR.URL)
+			}
+			if data.PR.ReviewState != tt.wantPR.ReviewState {
+				t.Errorf("PR.ReviewState = %q, want %q", data.PR.ReviewState, tt.wantPR.ReviewState)
+			}
+		})
+	}
+}
+
+// TestWorkspaceInfo_UnmarshalJSON_Repo verifies that Claude Code v2.1.145
+// workspace.repo.{host,owner,name} fields are parsed correctly.
+// REQ-SLV-011: adopt workspace.repo stdin fields
+func TestWorkspaceInfo_UnmarshalJSON_Repo(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantRepo *RepoInfo
+		wantWT   string // verify GitWorktree preservation
+	}{
+		{
+			name:  "full repo object",
+			input: `{"workspace":{"current_dir":"/repo","project_dir":"/repo","git_worktree":"","repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}}}`,
+			wantRepo: &RepoInfo{
+				Host:  "github.com",
+				Owner: "modu-ai",
+				Name:  "moai-adk",
+			},
+			wantWT: "",
+		},
+		{
+			name:  "repo with worktree active",
+			input: `{"workspace":{"current_dir":"/repo/.claude/worktrees/x","project_dir":"/repo","git_worktree":"/repo/.claude/worktrees/x","repo":{"host":"github.com","owner":"acme","name":"proj"}}}`,
+			wantRepo: &RepoInfo{
+				Host:  "github.com",
+				Owner: "acme",
+				Name:  "proj",
+			},
+			wantWT: "/repo/.claude/worktrees/x",
+		},
+		{
+			name:     "repo absent: nil",
+			input:    `{"workspace":{"current_dir":"/repo","project_dir":"/repo"}}`,
+			wantRepo: nil,
+			wantWT:   "",
+		},
+		{
+			name:     "repo null: nil",
+			input:    `{"workspace":{"current_dir":"/repo","project_dir":"/repo","repo":null}}`,
+			wantRepo: nil,
+			wantWT:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data StdinData
+			if err := json.Unmarshal([]byte(tt.input), &data); err != nil {
+				t.Fatalf("json.Unmarshal failed: %v", err)
+			}
+			if data.Workspace == nil {
+				t.Fatal("Workspace is nil")
+			}
+
+			// Preserve GitWorktree
+			if data.Workspace.GitWorktree != tt.wantWT {
+				t.Errorf("GitWorktree = %q, want %q", data.Workspace.GitWorktree, tt.wantWT)
+			}
+
+			if tt.wantRepo == nil {
+				if data.Workspace.Repo != nil {
+					t.Errorf("Repo = %+v, want nil", data.Workspace.Repo)
+				}
+				return
+			}
+
+			if data.Workspace.Repo == nil {
+				t.Fatalf("Repo is nil, want %+v", tt.wantRepo)
+			}
+			if data.Workspace.Repo.Host != tt.wantRepo.Host {
+				t.Errorf("Repo.Host = %q, want %q", data.Workspace.Repo.Host, tt.wantRepo.Host)
+			}
+			if data.Workspace.Repo.Owner != tt.wantRepo.Owner {
+				t.Errorf("Repo.Owner = %q, want %q", data.Workspace.Repo.Owner, tt.wantRepo.Owner)
+			}
+			if data.Workspace.Repo.Name != tt.wantRepo.Name {
+				t.Errorf("Repo.Name = %q, want %q", data.Workspace.Repo.Name, tt.wantRepo.Name)
+			}
+		})
+	}
+}
+
+// TestStdinData_UnmarshalJSON_V2145Schema verifies a representative v2.1.145
+// stdin JSON containing PR + workspace.repo + version fields parses cleanly.
+// REQ-SLV-010 + REQ-SLV-011: end-to-end v2.1.145 schema unmarshal.
+func TestStdinData_UnmarshalJSON_V2145Schema(t *testing.T) {
+	input := `{
+		"model": {"id": "claude-opus-4-7", "display_name": "Opus"},
+		"workspace": {
+			"current_dir": "/home/user/project",
+			"project_dir": "/home/user/project",
+			"git_worktree": "",
+			"repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
+		},
+		"pr": {"number": 1023, "url": "https://github.com/modu-ai/moai-adk/pull/1023", "review_state": "pending"},
+		"version": "2.1.145"
+	}`
+
+	var data StdinData
+	if err := json.Unmarshal([]byte(input), &data); err != nil {
+		t.Fatalf("v2.1.145 schema parse failed: %v", err)
+	}
+
+	if data.Version != "2.1.145" {
+		t.Errorf("Version = %q, want %q", data.Version, "2.1.145")
+	}
+	if data.PR == nil {
+		t.Fatal("PR is nil")
+	}
+	if data.PR.Number != 1023 {
+		t.Errorf("PR.Number = %d, want 1023", data.PR.Number)
+	}
+	if data.PR.ReviewState != "pending" {
+		t.Errorf("PR.ReviewState = %q, want %q", data.PR.ReviewState, "pending")
+	}
+	if data.Workspace == nil || data.Workspace.Repo == nil {
+		t.Fatal("Workspace.Repo is nil")
+	}
+	if data.Workspace.Repo.Owner != "modu-ai" || data.Workspace.Repo.Name != "moai-adk" {
+		t.Errorf("Repo = %+v, want owner=modu-ai name=moai-adk", data.Workspace.Repo)
+	}
+}
+
+// TestStatusData_PR_Field verifies that StatusData has a PR field for
+// downstream renderer consumption.
+// REQ-SLV-016: PR data flows from StdinData to StatusData
+func TestStatusData_PR_Field(t *testing.T) {
+	pr := &PRInfo{Number: 1023, URL: "https://x/pull/1023", ReviewState: "approved"}
+	data := &StatusData{PR: pr}
+	if data.PR == nil || data.PR.Number != 1023 {
+		t.Errorf("StatusData.PR = %+v, want Number=1023", data.PR)
+	}
+}

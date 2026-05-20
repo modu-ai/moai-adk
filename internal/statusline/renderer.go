@@ -324,9 +324,11 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderDirGitLine renders the directory + branch + git status line (default L3, full L5).
-// Format: 📁 moai-adk-go │ 🅱️ main ↑2↓1 +6 │ 📬 +0 M6 ?0
+// renderDirGitLine renders the directory + branch + git status + PR line (default L3, full L5).
+// Format: 📁 moai-adk-go │ 🅱️ main ↑2↓1 +6 │ 📬 +0 M6 ?0 │ #1023 ⌥pending
 // When worktree is active: "[WT] " prefix is prepended to the branch segment.
+// When PR segment is enabled AND stdin contains a valid pr.* object: a PR
+// segment is appended (REQ-SLV-013).
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
@@ -354,7 +356,92 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		}
 	}
 
+	// PR segment (Claude Code v2.1.145+, REQ-SLV-013)
+	if pr := r.renderPRSegment(data); pr != "" {
+		segs = append(segs, pr)
+	}
+
 	return r.joinSegments(segs)
+}
+
+// renderPRSegment renders the PR segment in the form "#<number> ⌥<state>".
+// REQ-SLV-013 (render format) + REQ-SLV-014 (review-state color coding) +
+// REQ-SLV-015 (absence handling).
+//
+// Returns empty string when:
+//   - SegmentPR is not explicitly enabled (opt-in default off per REQ-SLV-012)
+//   - data.PR is nil (REQ-SLV-015)
+//   - data.PR.Number == 0 (REQ-SLV-015 — no #0 placeholder)
+//
+// When data.PR.ReviewState is empty, the segment renders "#<number>" without
+// the ⌥<state> marker. Unknown review_state values render with the marker but
+// no ANSI color (raw passthrough, REQ-SLV-014).
+func (r *Renderer) renderPRSegment(data *StatusData) string {
+	if !r.isPREnabled() {
+		return ""
+	}
+	if data == nil || data.PR == nil || data.PR.Number == 0 {
+		return ""
+	}
+
+	// Base segment text: "#<number>"
+	numberText := fmt.Sprintf("#%d", data.PR.Number)
+
+	// Review-state suffix: "⌥<state>" (omitted when ReviewState is empty)
+	state := data.PR.ReviewState
+	if state == "" {
+		return numberText
+	}
+	stateText := fmt.Sprintf("⌥%s", state)
+
+	// Apply color to the review-state suffix only (number stays uncolored)
+	if !r.noColor {
+		if color, ok := r.prReviewStateColor(state); ok {
+			stateText = lipgloss.NewStyle().Foreground(color).Render(stateText)
+		}
+	}
+
+	return fmt.Sprintf("%s %s", numberText, stateText)
+}
+
+// isPREnabled returns true only when SegmentPR is explicitly set to true in
+// segmentConfig. The PR segment is opt-in (REQ-SLV-012) — unset key resolves
+// to disabled for zero-regression on legacy users whose config files predate
+// v2.1.145 awareness.
+func (r *Renderer) isPREnabled() bool {
+	if len(r.segmentConfig) == 0 {
+		return false
+	}
+	enabled, exists := r.segmentConfig[SegmentPR]
+	if !exists {
+		return false
+	}
+	return enabled
+}
+
+// prReviewStateColor maps a Claude Code v2.1.145 review_state value to a
+// theme-aware color. Returns (color, true) for known states; (zero, false)
+// for unknown / empty values to signal raw-passthrough rendering per
+// REQ-SLV-014 + REQ-CC2122-004 precedent.
+//
+// Mapping (per plan.md D3):
+//   - approved          → Success (green)
+//   - pending           → Warning (yellow)
+//   - changes_requested → Danger (red)
+//   - draft             → Muted (gray)
+func (r *Renderer) prReviewStateColor(state string) (lipgloss.Color, bool) {
+	switch state {
+	case "approved":
+		return r.theme.Success(), true
+	case "pending":
+		return r.theme.Warning(), true
+	case "changes_requested":
+		return r.theme.Danger(), true
+	case "draft":
+		return r.theme.Muted(), true
+	default:
+		return lipgloss.Color(""), false
+	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

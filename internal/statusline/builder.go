@@ -231,6 +231,15 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Thinking = input.Thinking
 	}
 
+	// Extract PR info from Claude Code (v2.1.145+, segment key SegmentPR).
+	// REQ-SLV-010: PR data piped through to StatusData.PR.
+	// REQ-SLV-016: see SegmentPR constant in types.go.
+	// Nil pointer pattern: absent / null pr field remains nil (backward compat).
+	// Segment opt-in gating (SegmentPR enable check) happens in renderer.go.
+	if input != nil && input.PR != nil {
+		data.PR = input.PR
+	}
+
 	// Parallel collectors (may involve I/O)
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData
