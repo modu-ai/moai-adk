@@ -93,7 +93,7 @@ See:
 - `moai-domain-database` - SQL patterns and query optimization
 - `moai-workflow-testing` - DDD and testing strategies
 - delegate to `manager-quality` agent for AI-powered debugging
-- `moai-platform-deploy` - Deployment and infrastructure
+- `moai-platform-deployment` - Deployment and infrastructure
 
 ---
 

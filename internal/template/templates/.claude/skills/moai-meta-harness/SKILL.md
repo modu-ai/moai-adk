@@ -159,7 +159,7 @@ This skill fills the skeleton with domain-specific content:
    `manager-docs`, `manager-git`, `manager-brain`,
    `expert-backend`, `expert-frontend`,
    `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`,
-   `expert-mobile`, `builder-harness` (use `artifact_type=agent|skill|plugin`),
+   `builder-harness` (use `artifact_type=agent|skill|plugin`),
    `evaluator-active`, `plan-auditor`.
 2. Generate domain skills (`.claude/skills/my-harness-*/SKILL.md`) following
    the skill-authoring.md schema with `my-harness-*` prefix.
@@ -200,7 +200,6 @@ referenced below are static MoAI agents — no new agents are introduced.
 
 - `expert-backend` — Backend domain harness templates
 - `expert-frontend` — Frontend domain harness templates
-- `expert-mobile` — Mobile domain harness templates
 - `expert-devops` — DevOps/platform domain harness templates
 - `expert-security` — Security review of generated permissions
 - `manager-develop` (cycle_type=tdd) — Test harness pattern generation (former expert-testing capability)
