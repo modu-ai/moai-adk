@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-WORKFLOW-LEAN-001
 title: "Workflow LEAN — Tier-based SPEC + Section A-E Optional + plan-auditor Escalation"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-20 | GOOS Kim | Initial draft. Targets root cause of SPEC-V3R5-WORKFLOW-OPT-001 over-formalization observed in LANG-COMPLIANCE-001 plan-phase abandonment (2026-05-20). Introduces SPEC complexity Tier S/M/L, Section A-E optional clause, plan-auditor STOP escalation + tier threshold + max 3 iterations. **LEAN dogfooding**: this SPEC itself is Tier S (2 artifacts, ≤800 LOC, AC inline). |
+| 0.2.0 | 2026-05-20 | manager-develop (run-phase) | Run-phase complete. 4 milestones merged into main (M1 spec-workflow.md + spec-frontmatter-schema.md, M2 manager-develop-prompt-template.md, M3 plan-auditor.md, M4 spec-assembly.md) + 1 alignment fix. 5 files modified, +101/-1 LOC. All 9 ACs (AC-WL-001 through AC-WL-011 except AC-WL-005 run-phase deferred + AC-WL-006/010/011 dogfooding) PASS. Status: draft → implemented. |
 
 ## 1. Goal
 
