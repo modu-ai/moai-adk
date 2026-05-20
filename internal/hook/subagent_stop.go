@@ -1,4 +1,5 @@
 // Resolution: FIX — P-H02 bug fix: read tmuxPaneId, kill-pane with 500ms timeout, update team registry.
+// W3 EXTEND: harness-learner capture pipeline dispatch on SubagentStop (REQ-HRA-001).
 package hook
 
 import (
@@ -8,9 +9,12 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/harness/capture"
 )
 
 // subagentStopHandler processes SubagentStop events.
@@ -29,6 +33,7 @@ func (h *subagentStopHandler) EventType() EventType {
 
 // Handle processes a SubagentStop event. It reads team config to find
 // the teammate's tmux pane ID, kills the pane, and updates the config.
+// W3 (REQ-HRA-001): also dispatches to harness-learner capture pipeline.
 func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("subagent stopped",
 		"session_id", input.SessionID,
@@ -37,6 +42,11 @@ func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		"team_name", input.TeamName,
 		"teammate_name", input.TeammateName,
 	)
+
+	// W3 — Harness-learner capture pipeline dispatch (REQ-HRA-001).
+	// Non-blocking: capture errors are logged but do not affect hook outcome.
+	// [HARD] This package does not call AskUserQuestion. Errors emit to slog only.
+	h.dispatchCapture(input)
 
 	// On Windows, tmux is not available - no-op
 	if runtime.GOOS == "windows" {
@@ -186,4 +196,35 @@ func (h *subagentStopHandler) removeTeammateFromConfig(configPath, teammateName 
 	}
 
 	return nil
+}
+
+// dispatchCapture emits an observation to the harness-learner capture pipeline (REQ-HRA-001).
+// Non-blocking: errors are logged to slog and ignored (capture is best-effort).
+// [HARD] No AskUserQuestion call — this package is a subagent-level hook handler.
+func (h *subagentStopHandler) dispatchCapture(input *HookInput) {
+	// Determine observations path relative to project CWD.
+	projectDir := input.CWD
+	if projectDir == "" {
+		projectDir, _ = os.Getwd()
+	}
+	obsPath := filepath.Join(projectDir, ".moai", "harness", "observations.yaml")
+
+	capturer := capture.New(capture.Config{ObservationsPath: obsPath})
+	event := capture.SubagentStopEvent{
+		AgentName:   input.AgentName,
+		AgentType:   input.AgentType,
+		SessionID:   input.SessionID,
+		Timestamp:   time.Now().UTC(),
+		ContextHash: input.AgentID, // AgentID as session context identifier
+	}
+	if event.AgentName == "" {
+		// Fallback: use TeammateName when AgentName is absent (Agent Teams context).
+		event.AgentName = input.TeammateName
+	}
+	if err := capturer.OnSubagentStop(event); err != nil {
+		slog.Debug("harness capture dispatch failed (non-fatal)",
+			"error", err,
+			"agent_name", event.AgentName,
+		)
+	}
 }

@@ -1,19 +1,21 @@
-// DEPRECATED: per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT).
-// The harness CLI subcommand is retired. Use /moai:harness slash command instead.
-// This file remains as a deprecation marker; physical removal is deferred to a
-// follow-up SPEC after downstream SPECs SPEC-V3R4-HARNESS-002 through
-// SPEC-V3R4-HARNESS-008 merge.
+// HISTORY:
+//   - V3R4 (SPEC-V3R4-HARNESS-001): newHarnessCmd retired; lifecycle verbs moved to
+//     /moai:harness slash command. Factory preserved as deprecation marker.
+//   - V3R5 (SPEC-V3R5-HARNESS-AUTONOMY-001): retirement superseded. All 8 verb
+//     factories (status/apply/rollback/disable/mute/mute-list/unmute/verify) are
+//     now registered directly under newHarnessRouterCmd() in harness_route.go.
+//     newHarnessCmd remains as an isolated deprecation marker — it still constructs
+//     a cobra.Command with the same lifecycle subcommands so TestHarnessFactoryStillCompiles
+//     (V3R4 §2.1 contract) continues to pass, BUT this factory is NOT added to rootCmd.
 //
-// The newHarnessCmd factory is intentionally NOT registered into the cobra
-// command tree in internal/cli/root.go. A CI guard in
-// internal/cli/harness_retirement_test.go (TestHarnessRetirement) enforces
-// the non-registration contract per REQ-HRN-FND-001 and REQ-HRN-FND-002.
+// Per V3R5 plan.md §6.4 + AC-HRA-009, the unified Cobra tree exposed via
+// newHarnessRouterCmd() satisfies the 6+ verb surface acceptance test:
 //
-// Package cli — /moai harness subcommand (retired; preserved as deprecation marker).
-// Historical: REQ-HL-009 provided 4 verbs (status / apply / rollback <date> / disable)
-// via the moai harness CLI verb path. As of V3R4, all four verbs are owned by the
-// /moai:harness slash command surface and the moai skill workflow body at
-// .claude/skills/moai/workflows/harness.md (no Go binary invocation).
+//	./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'
+//
+// must yield at least 6 matches.
+//
+// Package cli — /moai harness subcommand factories.
 package cli
 
 import (
@@ -40,10 +42,23 @@ const harnessDefaultProposalDir = ".moai/harness/proposals"
 // harnessConfigPath is the path to harness.yaml (relative to projectRoot).
 const harnessConfigPath = ".moai/config/sections/harness.yaml"
 
-// newHarnessCmd creates /moai harness route command.
+// newHarnessCmd constructs an isolated harness cobra.Command tree.
 //
-// @MX:ANCHOR: [AUTO] newHarnessCmd is the harness CLI entry point.
-// @MX:REASON: [AUTO] fan_in >= 3: harness_test.go, root.go init(), Phase 5 IT
+// IMPORTANT (V3R5):
+// This factory is preserved as a deprecation marker per SPEC-V3R4-HARNESS-001 §2.1's
+// TestHarnessFactoryStillCompiles contract. It is NOT registered into rootCmd.
+// The active V3R5 surface lives in newHarnessRouterCmd() (harness_route.go), which
+// registers identical subcommand factories under a unified Cobra tree per
+// SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009.
+//
+// All test callers (harness_test.go, harness_mute_test.go) continue to invoke this
+// factory directly because each subcommand factory is shared — both newHarnessCmd()
+// and newHarnessRouterCmd() call the same newHarnessStatusCmd / newHarnessApplyCmd /
+// etc. constructors. There is no behavioral divergence between the two trees; the
+// V3R5 tree simply ALSO exposes route + validate verbs alongside the lifecycle set.
+//
+// @MX:ANCHOR: [AUTO] newHarnessCmd is the deprecation-marker harness CLI factory.
+// @MX:REASON: [AUTO] fan_in >= 3: harness_test.go, harness_mute_test.go, TestHarnessFactoryStillCompiles
 func newHarnessCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "harness",
@@ -66,6 +81,11 @@ disable: Set learning.enabled: false in configuration (observer + learner disabl
 	cmd.AddCommand(newHarnessApplyCmd())
 	cmd.AddCommand(newHarnessRollbackCmd())
 	cmd.AddCommand(newHarnessDisableCmd())
+	// M4 verbs: mute/mute-list/unmute/verify (REQ-HRA-033, REQ-HRA-036)
+	cmd.AddCommand(newHarnessMuteCmd())
+	cmd.AddCommand(newHarnessMuteListCmd())
+	cmd.AddCommand(newHarnessUnmuteCmd())
+	cmd.AddCommand(newHarnessVerifyCmd())
 
 	return cmd
 }

@@ -17,6 +17,57 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+// HARNESS_FROZEN_* sentinels are emitted when a harness-learner subagent attempts to
+// modify a FROZEN zone file via Write/Edit. These sentinel strings appear in the deny
+// reason returned to Claude Code (PermissionDecision deny), enabling orchestrator-side
+// pattern matching without AskUserQuestion interaction.
+//
+// Vision §3.4: 8 frozen sentinel types cover the full FROZEN zone taxonomy.
+// W3 is the first runtime implementer of these sentinels (zone-registry SSOT from W1).
+//
+// [HARD] No AskUserQuestion calls. Deny reason is emitted as sentinel string.
+// Orchestrator handles user notification via blocker report pattern (CLAUDE.md §8).
+//
+// @MX:ANCHOR: [AUTO] HARNESS_FROZEN_* sentinel catalog — PreToolUse W3 first implementer.
+// @MX:REASON: [AUTO] fan_in >= 3: pre_tool.go (emit), integration_test.go (verify), sentinel_catalog_test.go (CI guard)
+const (
+	// SentinelHarnessFrozenAgent is emitted when a harness-learner attempts to modify
+	// a .claude/agents/moai/ path (frozen agent definition files).
+	SentinelHarnessFrozenAgent = "HARNESS_FROZEN_AGENT_VIOLATION"
+
+	// SentinelHarnessFrozenSkill is emitted when a harness-learner attempts to modify
+	// a .claude/skills/moai-* path (frozen skill definition files).
+	SentinelHarnessFrozenSkill = "HARNESS_FROZEN_SKILL_VIOLATION"
+
+	// SentinelHarnessFrozenRule is emitted when a harness-learner attempts to modify
+	// a .claude/rules/moai/ path (frozen rule files).
+	SentinelHarnessFrozenRule = "HARNESS_FROZEN_RULE_VIOLATION"
+
+	// SentinelHarnessFrozenCommand is emitted when a harness-learner attempts to modify
+	// a .claude/commands/ path (frozen command files).
+	SentinelHarnessFrozenCommand = "HARNESS_FROZEN_COMMAND_VIOLATION"
+
+	// SentinelHarnessFrozenHook is emitted when a harness-learner attempts to modify
+	// a .claude/hooks/ path (frozen hook handler files).
+	SentinelHarnessFrozenHook = "HARNESS_FROZEN_HOOK_VIOLATION"
+
+	// SentinelHarnessFrozenOutputStyle is emitted when a harness-learner attempts to modify
+	// a .claude/output-styles/ path (frozen output style files).
+	SentinelHarnessFrozenOutputStyle = "HARNESS_FROZEN_OUTPUTSTYLE_VIOLATION"
+
+	// SentinelHarnessFrozenInstruction is emitted when a harness-learner attempts to modify
+	// the main CLAUDE.md or CLAUDE.local.md instruction files.
+	SentinelHarnessFrozenInstruction = "HARNESS_FROZEN_INSTRUCTION_VIOLATION"
+
+	// SentinelHarnessFrozenConfig is emitted when a harness-learner attempts to modify
+	// a .moai/project/brand/ path or other frozen config area.
+	SentinelHarnessFrozenConfig = "HARNESS_FROZEN_CONFIG_VIOLATION"
+
+	// harnessLearnerIdentity is the agent name used by the harness-learner subagent.
+	// Write/Edit from this agent to FROZEN paths is checked via frozenZonePrefixes.
+	harnessLearnerIdentity = "harness-learner"
+)
+
 // SecurityPolicy defines tool access control rules for PreToolUse events.
 type SecurityPolicy struct {
 	// BlockedTools is a list of tool names that are always blocked.
@@ -364,6 +415,18 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
+		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
+		// Must run before general file-access check to emit typed sentinel strings.
+		// Uses AgentType (custom agent name from --agent flag) to identify harness-learner.
+		if sentinel, reason := h.checkHarnessFrozenZoneFromInput(input.AgentType, input.ToolInput); sentinel != "" {
+			slog.Warn("harness frozen zone violation",
+				"sentinel", sentinel,
+				"agent_id", input.AgentID,
+				"tool_name", input.ToolName,
+			)
+			return NewDenyOutput(reason), nil
+		}
+
 		decision, reason := h.checkFileAccess(input.ToolInput, input.ToolName)
 		if decision != "" {
 			slog.Warn("file access security check",
@@ -626,6 +689,70 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 		}
 	}
 
+	return "", ""
+}
+
+// checkHarnessFrozenZoneFromInput extracts file_path from JSON tool input and delegates to checkHarnessFrozenZone.
+func (h *preToolHandler) checkHarnessFrozenZoneFromInput(agentID string, toolInput json.RawMessage) (string, string) {
+	if agentID == "" {
+		return "", ""
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal(toolInput, &parsed); err != nil {
+		return "", ""
+	}
+	filePath, _ := parsed["file_path"].(string)
+	if filePath == "" {
+		return "", ""
+	}
+	// Normalize to forward slashes for prefix matching.
+	normalized := strings.ReplaceAll(filepath.ToSlash(filePath), "\\", "/")
+	return h.checkHarnessFrozenZone(agentID, normalized)
+}
+
+// frozenZonePrefixes maps file path prefixes (relative, forward-slash) to their sentinel constant.
+// Checked by checkHarnessFrozenZone for Write/Edit operations from the harness-learner agent.
+// Vision §3.4: 8 frozen zone categories derived from zone-registry (W1 SSOT).
+var frozenZonePrefixes = []struct {
+	prefix   string
+	sentinel string
+}{
+	{".claude/agents/moai/", SentinelHarnessFrozenAgent},
+	{".claude/skills/moai-", SentinelHarnessFrozenSkill},
+	{".claude/rules/moai/", SentinelHarnessFrozenRule},
+	{".claude/commands/", SentinelHarnessFrozenCommand},
+	{".claude/hooks/", SentinelHarnessFrozenHook},
+	{".claude/output-styles/", SentinelHarnessFrozenOutputStyle},
+	{".moai/project/brand/", SentinelHarnessFrozenConfig},
+}
+
+// frozenInstructionFiles lists CLAUDE.md variants guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
+var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}
+
+// checkHarnessFrozenZone returns (sentinel, deny-reason) when the file path falls inside
+// a FROZEN zone. Returns ("", "") when the path is not frozen.
+// Only applies when the caller identity is harnessLearnerIdentity (harness-learner).
+func (h *preToolHandler) checkHarnessFrozenZone(agentID, normalizedPath string) (string, string) {
+	if agentID != harnessLearnerIdentity {
+		return "", ""
+	}
+	// Check instruction files (basename match).
+	base := filepath.Base(normalizedPath)
+	for _, inst := range frozenInstructionFiles {
+		if base == inst {
+			reason := fmt.Sprintf("%s: harness-learner cannot modify frozen instruction file %s",
+				SentinelHarnessFrozenInstruction, base)
+			return SentinelHarnessFrozenInstruction, reason
+		}
+	}
+	// Check prefix-based frozen zones.
+	for _, fz := range frozenZonePrefixes {
+		if strings.HasPrefix(normalizedPath, fz.prefix) {
+			reason := fmt.Sprintf("%s: harness-learner cannot modify frozen path %s",
+				fz.sentinel, normalizedPath)
+			return fz.sentinel, reason
+		}
+	}
 	return "", ""
 }
 
