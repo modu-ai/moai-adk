@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-CORE-SLIM-B-001
 title: "Category B Dead-Weight Skill Retire (Phase 0+1)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
@@ -22,6 +22,7 @@ tier: S
 |------|---------|--------|
 | 2026-05-20 | 0.1.0 | Initial draft. Tier S LEAN dogfooding 2nd cycle. Predecessor audit: `.moai/research/core-slimming-audit-2026-05-20.md` §3.2 Category B + §4 Phase 0+1 + §5 권장안 A row 1. |
 | 2026-05-20 | 0.1.1 | Iter 2 revision (5 BLOCKING + 3 SHOULD resolved). F-001: dropped phantom REQ-CSB-006/AC-CSB-006 (expert-mobile already absent — verified grep count 0). F-002: REQ-CSB-005 scope corrected to 2 language rules (elixir + csharp) plus template-tree mirror (4 files total), not 5. F-003: "typo" framing removed — `moai-platform-deployment` is the full canonical name. F-004: template-tree paths hardcoded as mandatory tasks (verified the template tree DOES mirror language rules). F-005: new REQ-CSB-006 + AC-CSB-007 added for `agents-reference.md` dead-ref cleanup (local + template mirror). S1: AC-CSB-005 extended to cover template tree. S2: R-CSB-004 [LOW] documentation residual risk added. S3: `.claple` typo in AC-CSB-002 fixed verbatim. REQ count 7→7 (renumbered contiguous), AC count 8→8 (renumbered contiguous). |
+| 2026-05-20 | 0.2.0 | Sync-phase: status `draft → implemented`. Run-phase commits on main: `12a66b514` (M1 — 4 Category B skills retire, 1,432 LOC delete) + `07b709a3e` (M2 — moai-platform-deployment cross-refs removed in 2 language rules + template mirror) + `9d4ab401a` (M3 — embedded.go regeneration + catalog.yaml cleanup) + `e044dbcc3` (iter2 revise — SPEC artifact + agents-reference.md cleanup). 8/8 ACs binary PASS. Cross-platform Windows build PASS. No NEW lint regressions. LEAN dogfooding 2nd cycle: ~6min run-phase wall-time, Tier S minimal delegation prompt successful (Section A-E template OPTIONAL applied). Phase 0+5 dead-reference cleanup pre-processed by `f499746d3` (Vision §3.5 Determinism removed + meta-harness expert-mobile + 2 language rule platform-deploy typo fix). Total: 6 commits on main since `c0eb30da6` (WORKFLOW-LEAN-001 머지). |
 
 ---
 
@@ -29,8 +30,8 @@ tier: S
 
 - **SPEC ID**: SPEC-V3R5-CORE-SLIM-B-001
 - **Title**: Category B Dead-Weight Skill Retire (Phase 0 + Phase 1)
-- **Status**: draft
-- **Version**: 0.1.0
+- **Status**: implemented
+- **Version**: 0.2.0
 - **Author**: GOOS Kim
 - **Tier**: S (LEAN — 2 artifacts: spec.md + plan.md)
 - **Predecessor**: `.moai/research/core-slimming-audit-2026-05-20.md` (Core Slimming Audit, 2026-05-20)
