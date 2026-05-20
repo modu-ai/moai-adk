@@ -16,28 +16,21 @@ if [ -f "$HOME/.moai/.env.glm" ]; then
 	source "$HOME/.moai/.env.glm"
 fi
 
-# Try moai command in PATH first
+# Try moai command in PATH first.
+# Note: `exec` replaces the shell process, so any code after exec is unreachable.
+# Vertical padding is controlled via settings.json `statusLine.padding: N` (M1: REQ-SLV-002).
 if command -v moai &> /dev/null; then
-	# Add vertical padding
-	echo ""
 	exec moai statusline < "$temp_file"
-	echo ""
 fi
 
 # Try detected Go bin path from initialization
 if [ -f "{{posixPath .GoBinPath}}/moai" ]; then
-	# Add vertical padding
-	echo ""
 	exec "{{posixPath .GoBinPath}}/moai" statusline < "$temp_file"
-	echo ""
 fi
 
 # Try user local bin directory
 if [ -f "$HOME/.local/bin/moai" ]; then
-	# Add vertical padding
-	echo ""
 	exec "$HOME/.local/bin/moai" statusline < "$temp_file"
-	echo ""
 fi
 
 # Not found - exit silently (Claude Code handles missing statusline gracefully)

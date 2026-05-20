@@ -13,8 +13,9 @@ trap 'rm -f "$temp_file"' EXIT
 # Read stdin into temp file
 cat > "$temp_file"
 
-# Debug logging (DEBUG_STATUSLINE=1 설정 시 활성화)
-if [ "${DEBUG_STATUSLINE:-1}" = "1" ]; then
+# Debug logging — OFF by default (M1 hotfix: SPEC-V3R5-STATUSLINE-V2145-001 REQ-SLV-001).
+# Enable explicitly with: export DEBUG_STATUSLINE=1
+if [ "${DEBUG_STATUSLINE:-0}" = "1" ]; then
 	mkdir -p "$(dirname "$DEBUG_LOG")"
 	{
 		echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
