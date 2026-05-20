@@ -29,6 +29,17 @@ workflow:
         delegate_mode: true
         enabled: true
         max_teammates: 10
+        # role_profile_keys: enumeration of allowed role types for the 5+1+1
+        # Agent Teams composition documented in
+        # .claude/rules/moai/workflow/agent-teams-pattern.md (SPEC-V3R5-WORKFLOW-OPT-001
+        # Layer B). The full role_profiles map below contains all 7 profile
+        # definitions; this list restricts which keys participate in the
+        # 5+1+1 spawn pattern (implementer × 5 + tester × 1 + reviewer × 1).
+        # Requires: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in settings.json env.
+        role_profile_keys:
+            - implementer
+            - tester
+            - reviewer
         patterns:
             design_implementation:
                 description: Cross-layer feature implementation with UI/UX design
