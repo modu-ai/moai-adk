@@ -134,9 +134,11 @@ statusline:
 - 过去 7 天的成本跟踪
 - 启用：`segments.usage_7d: true`
 
-**task** — 任务信息（可选）
-- 当前运行中的任务数
-- 启用：`segments.task: true`
+**task** — 活动 SPEC 工作流信息（可选）
+- 输出格式：`📋 [<command> <SPEC-ID>-<stage>]`（例如：`📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`）
+- 数据源：`~/.moai/state/last-session-state.json` 的 `active_task` 字段（由 SessionStart 钩子自动设置）
+- 非活动状态下 segment 不显示（graceful no-output）
+- 启用：`segments.task: true`（默认 false — opt-in）
 
 ## 新增 v2.1.145：PR 段
 

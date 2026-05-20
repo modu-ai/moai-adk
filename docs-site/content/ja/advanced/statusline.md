@@ -134,9 +134,11 @@ statusline:
 - 過去 7 日のコスト追跡
 - 有効化：`segments.usage_7d: true`
 
-**task** — タスク情報（オプション）
-- 現在実行中のタスク数
-- 有効化：`segments.task: true`
+**task** — アクティブな SPEC ワークフロー情報（オプション）
+- 出力形式：`📋 [<command> <SPEC-ID>-<stage>]`（例：`📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`）
+- データソース：`~/.moai/state/last-session-state.json` の `active_task` フィールド（SessionStart フックが自動設定）
+- 非アクティブの場合はセグメント自体が非表示（graceful no-output）
+- 有効化：`segments.task: true`（既定値は false — opt-in）
 
 ## NEW v2.1.145: PR セグメント
 
