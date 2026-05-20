@@ -184,7 +184,9 @@ Light architectural notes; the binding implementation details live in plan.md §
 - **M2**: 5-7 file deltas in `internal/statusline/`. Mechanism mirrors the v2.1.122 effort/thinking precedent (`SPEC-CC2122-STATUSLINE-001`) and the v2.1.97 worktree precedent (`SPEC-CC297-001`): extend `StdinData` struct + add a new segment constant + add a render branch in `renderer.go` + table-driven tests.
 - **M3**: 4 docs-site files (1 canonical Korean + 3 translations). Mechanism: standard docs-site i18n workflow with `scripts/docs-i18n-check.sh` verification.
 
-## 6. Exclusions (What NOT to Build)
+## 6. Out of Scope (Exclusions)
+
+### 6.1 Out of Scope
 
 - **EXCL-1**: `statusLine` config mid-session disappearance investigation. This SPEC addresses default-on DEBUG fork as the established root cause of the disappearing-statusline symptom; if symptoms persist post-M1, a separate investigation SPEC will be opened.
 - **EXCL-2**: Statusline layout / UI redesign. M2 ADDS a single new segment using existing layout primitives; it does NOT reflow the 3-line layout, change theme, or alter the existing segment order.
