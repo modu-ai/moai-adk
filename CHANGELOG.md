@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v3.5.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
+
+### Added
+
+- **Harness Autonomy — 4-Tier Self-Evolution + 5-Layer Safety + Cold-Start Seeds** (SPEC-V3R5-HARNESS-AUTONOMY-001, W3): 하네스 자율 진화 메커니즘 완성. 7개 신규 패키지: `internal/harness/{capture,router,safety,seeds,throttle,tier}` + root. 18 sentinels (8 HARNESS_FROZEN_* + 10 HARNESS_LEARNING_*) 카탈로그 정의. 10 CLI verbs (route/validate + status/apply/rollback/disable/mute/mute-list/unmute/verify per AC-HRA-009). ≥85% 커버리지 (harness 87.9%, capture 94.9%, router 89.2%, safety 86.5%, seeds 100%, throttle 88.2%, tier 90.0%). 벤치마크: L1 46ns (p99 10ms 대비 우수), L4 1.54µs (p99 100ms 대비 우수). 교차 플랫폼 빌드 PASS (Windows flock split). 메타-분석 결과 SPEC-V3R5-WORKFLOW-OPT-001에서 형식화 (-73% wall-time 검증). 본 SPEC은 그 SPEC의 dogfooding 기준이 됨. PR #1023 plan + PR #1024 run 머지 + sync 완료.
+
 ## [Unreleased] — v2.20.0-rc1: 10 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001)
 
 ### Added
