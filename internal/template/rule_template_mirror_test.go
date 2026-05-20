@@ -52,6 +52,11 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/workflow/agent-teams-pattern.md",
 	// Layer D — verification batch pattern (NEW file)
 	".claude/rules/moai/workflow/verification-batch-pattern.md",
+	// Layer G — plan-auditor D7/D8 dimensions
+	".claude/agents/moai/plan-auditor.md",
+	// Layer G — evaluator profile D7/D8 weight registration
+	".moai/config/evaluator-profiles/default.md",
+	".moai/config/evaluator-profiles/frontend.md",
 }
 
 // TestRuleTemplateMirrorDrift verifies that every SPEC-V3R5-WORKFLOW-OPT-001 modified

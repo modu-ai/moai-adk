@@ -192,6 +192,81 @@ Execute each check in order. Mark each item PASS, FAIL, or N/A with evidence.
 - CN-2: Exclusions do not conflict with included requirements
 - CN-3: Priority and labels are consistent with the stated scope
 
+### Group 7: Cross-SPEC Reconciliation (D7)
+
+* **D7**: Cross-SPEC Reconciliation — verifies referenced SPEC IDs against `.moai/specs/` status
+
+D7 is a new dimension introduced by SPEC-V3R5-WORKFLOW-OPT-001 Layer G. It
+verifies that every SPEC ID referenced in the body has its current status
+documented in `.moai/specs/<ID>/spec.md` frontmatter. If a referenced SPEC has
+status `retired`, `superseded`, or `archived` without an explicit reconciliation
+clause in the new SPEC body, D7 flags BLOCKING.
+
+- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-V3R5-WO-001)
+- D7-2: For each referenced SPEC, verify `.moai/specs/<SPEC-ID>/spec.md` exists
+- D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
+- D7-4: If status ∈ {retired, superseded, archived}, require explicit reconciliation
+  in the new SPEC body (search for the referenced SPEC-ID near keywords like
+  "reversal", "supersede", "absorb", "carve-out") — otherwise BLOCKING
+- D7-5: If a referenced SPEC does NOT exist in `.moai/specs/`, emit SHOULD severity
+  (typo or future SPEC) with message indicating "referenced SPEC not found"
+
+Verification verb (executed inside this agent during audit):
+
+```bash
+# Extract SPEC-ID references and check their cross-SPEC status
+grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SID; do
+  if [ -f ".moai/specs/$SID/spec.md" ]; then
+    STATUS=$(grep '^status:' ".moai/specs/$SID/spec.md" | head -1 | cut -d: -f2 | tr -d ' ')
+    case "$STATUS" in
+      retired|superseded|archived)
+        echo "BLOCKING: $SID has status=$STATUS but is referenced without reconciliation"
+        ;;
+    esac
+  else
+    echo "SHOULD: referenced SPEC $SID not found in .moai/specs/"
+  fi
+done
+```
+
+Severity rubric: BLOCKING for unresolved retirement/supersession conflict;
+SHOULD for missing-but-recoverable references.
+
+### Group 8: Cross-Platform Discipline (D8)
+
+* **D8**: Cross-Platform Discipline — verifies `syscall` introductions declare `//go:build` constraint
+
+D8 is a new dimension introduced by SPEC-V3R5-WORKFLOW-OPT-001 Layer G. It
+verifies that SPECs introducing `syscall` package imports declare a
+`//go:build` build-tag constraint in the SPEC body OR explicitly justify a
+cross-platform exemption. This dimension prevents the W3 lesson #21 incident
+(Windows syscall.Flock build-tag omission) from recurring.
+
+- D8-1: Scan SPEC body for the literal substring `syscall` (case-sensitive)
+- D8-2: If `syscall` is mentioned in any context (Go code reference, plan task,
+  AC verification), verify nearby (within the same section or paragraph) the
+  presence of either:
+  - A literal `//go:build` constraint declaration, OR
+  - An explicit cross-platform exemption clause (e.g., `EXCL-...syscall...`)
+- D8-3: If `syscall` appears without either, emit BLOCKING with reference to
+  lessons #21 (Windows syscall.Flock build-tag omission)
+- D8-4: If `syscall` does not appear in the SPEC body, D8 is auto-PASS (no
+  cross-platform discipline concern)
+
+Verification verb (executed inside this agent during audit):
+
+```bash
+# Detect syscall introduction without build-tag constraint
+if grep -q 'syscall' <new-spec.md>; then
+  if ! grep -qE '//go:build|cross-platform exemption|EXCL.*syscall' <new-spec.md>; then
+    echo "BLOCKING: SPEC references syscall but no //go:build constraint or EXCL justification"
+  fi
+fi
+```
+
+Severity rubric: BLOCKING if syscall is introduced without either a build-tag
+constraint or an EXCL clause; otherwise PASS.
+
 ## Output Format
 
 Write the audit report to `.moai/reports/plan-audit/{SPEC-ID}-review-{iteration}.md`.
