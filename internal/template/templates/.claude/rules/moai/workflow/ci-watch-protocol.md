@@ -133,5 +133,61 @@ The SSoT is read-only for Wave 2. Modifications require `moai github init` re-ru
 
 ---
 
-Version: 1.0.0
+## Background watch standardization
+
+[ZONE:Evolvable] [HARD] When the orchestrator monitors CI checks on a long-running PR
+(typically 5+ minutes), it MUST use `gh pr checks --watch` invoked via
+`run_in_background: true`. Idle polling loops (e.g., `sleep N && gh pr checks`)
+are prohibited because they block the orchestrator's main session and waste
+both wall-time and tokens. This rule was added by SPEC-V3R5-WORKFLOW-OPT-001
+Layer C in response to the W3 HARNESS-AUTONOMY-001 meta-analysis which found
+15 min of serial CI wait during a single run-phase.
+
+### Canonical Pattern
+
+```bash
+# Background watch — returns immediately, the orchestrator continues other work.
+gh pr checks <PR> --watch
+```
+
+Invoked via the Bash tool with `run_in_background: true`. The background task
+emits a notification when checks resolve, at which point the orchestrator
+foreground-polls `BashOutput` to retrieve the final state.
+
+### Anti-pattern: Sleep + Poll
+
+```bash
+# PROHIBITED — blocks the orchestrator's main turn for N seconds.
+sleep 60 && gh pr checks <PR>
+```
+
+The `sleep N && check` idiom locks the orchestrator into an idle wait. Use
+`gh pr checks --watch` with `run_in_background: true` instead, then poll
+`BashOutput` only when other productive work runs out.
+
+### Notification Pattern (foreground recovery)
+
+If `gh pr checks --watch` hangs beyond a reasonable threshold (typically 20+ min),
+the orchestrator MAY foreground-poll:
+
+```bash
+gh pr checks <PR> --json name,state,conclusion | jq '.[] | select(.state != "COMPLETED")'
+```
+
+This is a fallback. The default path is background watch + concurrent productive
+work in the orchestrator's main turn.
+
+### When NOT to Background-Watch
+
+- Pre-merge final check (synchronous gate at the end of /moai sync): use the
+  blocking ci-watch loop CLI (`scripts/ci-watch/run.sh`) instead of `--watch`.
+- Test/CI fixtures that must observe state immediately: use synchronous
+  `gh pr checks` without `--watch`.
+
+Cross-reference: AC-WO-006 (SPEC-V3R5-WORKFLOW-OPT-001) verifies this section
+contains both `gh pr checks --watch` and `run_in_background: true` literals.
+
+---
+
+Version: 1.1.0
 Classification: HARD operational rule, applies to all /moai sync workflows
