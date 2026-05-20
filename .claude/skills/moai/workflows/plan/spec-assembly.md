@@ -27,6 +27,38 @@ Step 2 - SPEC ID Validation (all checks must pass):
 
 Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
+### Phase 1.6: Tier Judgment Socratic Question (LEAN Workflow)
+
+[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: SPEC-V3R5-WORKFLOW-LEAN-001.
+
+Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
+
+Tier judgment AskUserQuestion (Socratic, in conversation_language):
+
+```
+Question: "Estimated SPEC complexity tier?"
+Header: "Complexity tier"
+Options (4 max, recommended first):
+  Option 1: "Tier S (Simple, <300 LOC, <5 files) — 2 artifacts: spec.md + plan.md (AC inline) (권장 for text-only/refactor)"
+  Option 2: "Tier M (Medium, 300-1000 LOC, 5-15 files) — 3 artifacts: spec.md + plan.md + acceptance.md"
+  Option 3: "Tier L (Large, >1000 LOC or constitutional, >15 files) — 5 artifacts (default, current behavior)"
+  Option 4 (auto-appended by Claude Code): "Other"
+```
+
+LOC thresholds are guidance, not enforcement. The implementer's domain knowledge supplements the question (e.g., a 200-LOC SPEC touching a frozen constitutional zone may warrant Tier L).
+
+Persistence: the chosen tier is written to `spec.md` frontmatter as `tier: S | M | L` (optional field per `.claude/rules/moai/development/spec-frontmatter-schema.md`). When the user provides "Other" or skips, the orchestrator defaults to Tier L (backward compat).
+
+Tier-conditional artifact set (driven by user response):
+
+- **Tier S** → Phase 2 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 2.3 plan-auditor uses 0.75 PASS threshold.
+- **Tier M** → Phase 2 creates `spec.md` + `plan.md` + `acceptance.md`. Phase 2.3 plan-auditor uses 0.80 PASS threshold.
+- **Tier L** → Phase 2 creates full 5-artifact set (spec.md + plan.md + acceptance.md + design.md + research.md). Phase 2.3 plan-auditor uses 0.85 PASS threshold (preserves pre-LEAN strict behavior).
+
+Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers tier-up suggestion to the user.
+
+Reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L).
+
 ### Phase 2: SPEC Document Creation
 
 Agent: manager-spec subagent
