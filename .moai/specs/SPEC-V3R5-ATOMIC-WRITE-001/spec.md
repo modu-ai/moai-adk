@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R5-ATOMIC-WRITE-001
 title: "P0-4 atomicWrite Safety Violation Fix — internal/migrate/hook_cleanup.go"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-20
-updated: 2026-05-20
+updated: 2026-05-21
 author: GOOS Kim
 priority: P0
 phase: "v2.20.0-rc1"
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-20 | GOOS Kim | Initial draft — Tier S release-blocker SPEC for P0-4 (review-v214-to-HEAD.md L53-58) |
+| 0.2.0 | 2026-05-21 | GOOS Kim | Run-phase complete on feat branch (cherry-picked from main 5fccdb7a6 + c25a718f5). 7/8 ACs binary PASS + 1 CONDITIONAL on AC-AWR-007 coverage (documented EXCL-AWR-003). 6 tests written, all PASS. Cross-platform + race + lint NEW=0 verified. Status `draft → implemented`. |
 
 ## 1. Background
 
