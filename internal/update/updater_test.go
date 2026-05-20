@@ -532,7 +532,14 @@ func TestUpdater_Download_FromZipArchive(t *testing.T) {
 	}
 }
 
-func TestUpdater_Download_NoChecksum(t *testing.T) {
+// TestUpdater_Download_NoChecksum_Rejected verifies the new secure contract
+// from SPEC-V3R5-SECURITY-CRIT-001 P0-3 (CWE-345): Download REFUSES to
+// proceed when VersionInfo.Checksum is empty. This supersedes the legacy
+// "graceful degradation" behaviour where a binary could be installed
+// without verification.
+//
+// Renamed from TestUpdater_Download_NoChecksum to reflect inverted intent.
+func TestUpdater_Download_NoChecksum_Rejected(t *testing.T) {
 	t.Parallel()
 
 	binaryName := "moai"
@@ -555,21 +562,18 @@ func TestUpdater_Download_NoChecksum(t *testing.T) {
 	info := &VersionInfo{
 		Version: "v1.4.0",
 		URL:     ts.URL + "/moai.tar.gz",
-		// No Checksum - should still succeed
+		// No Checksum - per SPEC-V3R5-SECURITY-CRIT-001 P0-3 this MUST be rejected.
 	}
 
-	path, err := u.Download(context.Background(), info)
-	if err != nil {
-		t.Fatalf("Download without checksum: %v", err)
+	_, err := u.Download(context.Background(), info)
+	if err == nil {
+		t.Fatal("AC-SEC-011 regression: Download succeeded with empty Checksum")
 	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read: %v", err)
+	if !errors.Is(err, ErrChecksumUnavailable) {
+		t.Errorf("error should wrap ErrChecksumUnavailable; got %v", err)
 	}
-	if string(data) != string(binaryContent) {
-		t.Error("content mismatch")
-	}
+	// Reference binaryContent so the existing setup remains used.
+	_ = binaryContent
 }
 
 func TestExtractBinary_UnsupportedFormat(t *testing.T) {

@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -39,7 +40,20 @@ func NewUpdater(binaryPath string, client *http.Client) Updater {
 
 // Download fetches the platform binary to a temp file and verifies its checksum.
 // On checksum mismatch or any error, the temp file is cleaned up.
+//
+// SPEC-V3R5-SECURITY-CRIT-001 P0-3 (CWE-345): defense-in-depth — refuse to
+// fetch any binary when version.Checksum is empty. checker.buildVersionInfo
+// is the primary gate, but if a future regression slipped through (or a
+// caller constructed VersionInfo manually), this guard still stops the
+// unverified download.
 func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (string, error) {
+	if version == nil {
+		return "", fmt.Errorf("%w: version is nil", ErrDownloadFailed)
+	}
+	if strings.TrimSpace(version.Checksum) == "" {
+		return "", fmt.Errorf("%w: refusing to download without expected checksum (version=%s)", ErrChecksumUnavailable, version.Version)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, version.URL, nil)
 	if err != nil {
 		return "", fmt.Errorf("%w: create request: %v", ErrDownloadFailed, err)
