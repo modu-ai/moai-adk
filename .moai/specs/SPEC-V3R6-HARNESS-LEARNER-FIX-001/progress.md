@@ -8,8 +8,8 @@
 
 | Phase | Status | Commit | Date |
 |-------|--------|--------|------|
-| plan  | PASS | _(pending commit)_ | 2026-05-22 |
-| run   | not-started | — | — |
+| plan  | PASS | `34a054cba` | 2026-05-22 |
+| run   | PASS | `c8f42153f` | 2026-05-22 |
 | sync  | not-started | — | — |
 
 ## Plan-Auditor Verdict
@@ -38,7 +38,15 @@ Per-dimension scores (0.000-1.000):
 
 ## Commits Log
 
-_(populated by orchestrator after each phase commit)_
+### plan-phase
+- `34a054cba` plan(SPEC-V3R6-HARNESS-LEARNER-FIX-001): v3.0.0 Wave 1 — subagent boundary fix plan + v3 redesign blueprint (Tier S, plan-auditor PASS 0.913, 2 artifacts spec+plan)
+
+### run-phase
+- `c8f42153f` fix(SPEC-V3R6-HARNESS-LEARNER-FIX-001): moai-harness-learner subagent boundary compliance (8 Edits, 7/7 ACs PASS, 5 baseline failures pre-existing in unrelated files)
+  - Section preservation: 4-Tier ladder + L1-L5 safety architecture intact
+  - Discovery: plan-auditor S-3 (line 154) extended to lines 3/29/46 (AC-HLF-004 regex match on capital-S "Surface" substring inside "Surfaces") — resolved by lowercase "surfaces" / "Produces" verb restructuring while preserving REQ-HLF-005 spirit
+  - PRESERVE compliance: 5 modified + 7 untracked files untouched
+  - manager-develop delegation skipped: orchestrator-direct execution justified by Tier S documentation-only edit + CLAUDE.local.md §16 "허용되는 직접 수행" (single config edit, scope well-defined) + LEAN principle (avoid over-formalization)
 
 ## Notes
 
