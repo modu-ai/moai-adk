@@ -320,7 +320,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 }
 
 // renderDirGitLine renders the L3 line for layout v3.
-// Format: 🔀 owner/name (branch ↑N +N) │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
+// Format: 🔀 owner/name | 🅱️ branch ↑N +N │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
 //
 // Layout v3 changes (CH3 + CH5):
 //   - directory moved to L1 end (CH5)
@@ -459,11 +459,11 @@ func (r *Renderer) isPREnabled() bool {
 }
 
 // renderRepoBranchSegment renders the combined repo + branch segment in the
-// form "🔀 owner/name (branch ↑N +N)" — layout v3 CH3.
+// form "🔀 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "🔀 owner/name (branch ↑N +N)"
-//   - Workspace.Repo nil + Branch present:     "🔀 (branch ↑N +N)" (repo prefix omitted)
+//   - Workspace.Repo present + Branch present: "🔀 owner/name | 🅱️ branch ↑N +N"
+//   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
 //   - Branch empty:                            "" (empty — no git context)
 //   - Ahead == 0:                              "↑N" portion omitted
 //   - Behind > 0:                              " ↓N" appended after ahead
@@ -471,8 +471,18 @@ func (r *Renderer) isPREnabled() bool {
 //   - Worktree active:                          "[WT] " prefix prepended to branch
 //
 // @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
+// @MX:NOTE: [AUTO] git 미초기화 또는 remote repo 정보 부재 시 segment 전체를 숨긴다 (사용자 요청 2026-05-22).
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
+		return ""
+	}
+
+	// Repo info 누락 시 segment 숨김 (git 미초기화 또는 remote 미설정 케이스).
+	if data.Workspace.Repo == nil {
+		return ""
+	}
+	repo := data.Workspace.Repo
+	if repo.Owner == "" || repo.Name == "" {
 		return ""
 	}
 
@@ -498,17 +508,7 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	}
 
 	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
-
-	// Repo prefix when Workspace.Repo available
-	if data.Workspace.Repo != nil {
-		repo := data.Workspace.Repo
-		if repo.Owner != "" && repo.Name != "" {
-			return fmt.Sprintf("🔀 %s/%s (%s)", repo.Owner, repo.Name, inner)
-		}
-	}
-
-	// Fallback: no repo info, just branch in parens with marker
-	return fmt.Sprintf("🔀 (%s)", inner)
+	return fmt.Sprintf("🔀 %s/%s | %s", repo.Owner, repo.Name, inner)
 }
 
 // shouldShowHandoffGuide returns true when accumulated context usage crosses

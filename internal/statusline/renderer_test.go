@@ -44,6 +44,9 @@ func TestRender_DefaultMode(t *testing.T) {
 		Directory:   "moai-adk-go",
 		OutputStyle: "Mr.Alfred",
 		Version:     VersionData{Current: "1.14.5", Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -226,6 +229,9 @@ func TestRender_EmptyMemory(t *testing.T) {
 		Git:     GitStatusData{Branch: "main", Modified: 2, Available: true},
 		Memory:  MemoryData{Available: false},
 		Metrics: MetricsData{Model: "Sonnet 3.5", Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -269,14 +275,34 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 	data := &StatusData{
 		Git:    GitStatusData{Branch: "main", Staged: 0, Modified: 0, Untracked: 0, Available: true},
 		Memory: MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	got := r.Render(data, ModeDefault)
 
-	// Layout v3 CH3: branch shown via combined repo_branch segment "🔀 (🅱️ main)"
-	// (no Workspace.Repo → owner/name portion omitted; clean → no dirty suffix).
-	if !strings.Contains(got, "🔀 (🅱️ main)") && !strings.Contains(got, "📭 main +0") {
-		t.Errorf("should show clean branch as '🔀 (🅱️ main)' or '📭 main +0', got %q", got)
+	// Layout v3 CH3 (2026-05-22 정정): repo info 존재 → "🔀 owner/name | 🅱️ branch" 형식.
+	// clean → no dirty suffix.
+	if !strings.Contains(got, "🔀 modu-ai/moai-adk | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
+		t.Errorf("should show clean branch as '🔀 modu-ai/moai-adk | 🅱️ main' or '📭 main +0', got %q", got)
+	}
+}
+
+// TestRender_GitOnlyBranch_NoRepo verifies the 🔀 segment is hidden entirely
+// when Workspace.Repo is nil (git not initialized or no remote configured).
+// User policy 2026-05-22: hide segment to avoid "🔀 (🅱️ main)" partial display.
+func TestRender_GitOnlyBranch_NoRepo(t *testing.T) {
+	r := newTestRenderer()
+	data := &StatusData{
+		Git:    GitStatusData{Branch: "main", Staged: 0, Modified: 0, Untracked: 0, Available: true},
+		Memory: MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+	}
+
+	got := r.Render(data, ModeDefault)
+
+	if strings.Contains(got, "🔀") {
+		t.Errorf("repo info absent → 🔀 segment must be hidden, got %q", got)
 	}
 }
 
@@ -514,6 +540,9 @@ func TestRender_SegmentFiltering(t *testing.T) {
 		OutputStyle:       "MoAI",
 		ClaudeCodeVersion: "1.0.80",
 		Version:           VersionData{Current: "2.3.1", Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	tests := []struct {
@@ -870,6 +899,9 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 			Untracked: 1,
 			Available: true,
 		},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -880,11 +912,11 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	if !strings.Contains(l3, "📁 moai-adk-go") {
 		t.Errorf("default L3 must contain directory at head, got: %q", l3)
 	}
-	// Layout v3 CH3: combined repo+branch segment "🔀 (branch ↑N ↓N +N)"
-	// (no Workspace.Repo in fixture → owner/name portion omitted).
+	// Layout v3 CH3 (2026-05-22 정정): combined repo+branch segment
+	// "🔀 owner/name | 🅱️ branch ↑N ↓N +N" (pipe separator, repo prefix required).
 	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
-	if !strings.Contains(l3, "🔀 (🅱️ feat/auth ↑2 ↓1 +6)") {
-		t.Errorf("default L3 must contain combined repo_branch segment with 🅱️ prefix, got: %q", l3)
+	if !strings.Contains(l3, "🔀 modu-ai/moai-adk | 🅱️ feat/auth ↑2 ↓1 +6") {
+		t.Errorf("default L3 must contain combined repo_branch segment with pipe separator, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
 		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)
@@ -1221,6 +1253,9 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 				Git:       GitStatusData{Branch: "feat/test", Available: true},
 				Directory: "myproject",
 				Worktree:  tt.worktree,
+				Workspace: WorkspaceData{
+					Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+				},
 			}
 			got := r.renderDirGitLine(data)
 			// Legacy emoji must never appear regardless of state.
@@ -1584,6 +1619,9 @@ func TestRenderDirGitLine_PRSegment(t *testing.T) {
 				Git:       GitStatusData{Branch: "feat/x", Available: true},
 				Directory: "myproject",
 				PR:        tt.pr,
+				Workspace: WorkspaceData{
+					Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+				},
 			}
 			got := r.renderDirGitLine(data)
 			for _, want := range tt.wantContains {

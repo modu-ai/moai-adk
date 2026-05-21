@@ -81,6 +81,11 @@ func TestBuilder_Build_FullData(t *testing.T) {
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 		CWD:           "/Users/test/my-project",
 		OutputStyle:   &OutputStyleInfo{Name: "Mr.Alfred"},
+		Workspace: &WorkspaceInfo{
+			CurrentDir: "/Users/test/my-project",
+			ProjectDir: "/Users/test/my-project",
+			Repo:       &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	got, err := builder.Build(context.Background(), makeStdinJSON(input))
