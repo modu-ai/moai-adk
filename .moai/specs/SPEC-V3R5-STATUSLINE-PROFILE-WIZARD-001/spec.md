@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001
 title: "profile setup wizard에 statusline preset/segments 입력 UI 추가"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-22 | manager-spec | 초안 작성. `ProfilePreferences.StatuslinePreset` + `StatuslineSegments` 필드(`internal/profile/preferences.go:46-47`)는 이미 존재하며 `syncStatusline`(`internal/profile/sync.go:95-145`)이 `.moai/config/sections/statusline.yaml`로 sync 하는 로직도 구현되어 있으나, `profile_setup.go:282-300` 의 huh.NewForm 4번째 Display group은 Mode + Theme만 입력받아 사용자가 preset/segments를 wizard에서 입력할 수 없음. Quick Win: backend 인프라 완비, frontend wizard input UI만 누락. Tier S 분류 근거: 3 source 파일 (`profile_setup.go` + `profile_setup_translations.go` + 신규/기존 test 파일) + LOC delta 추정 ~200-280 < 300 (plan.md §3.1 정밀 산정 반영, plan-auditor S2 fix). |
+| 0.2.0 | 2026-05-22 | orchestrator-direct | run-phase 완료 (manager-develop 위임 시 `WorktreeCreate hook returned a path that is not a directory: {}` 반복 실패 — Claude Code runtime autonomous L1 isolation regression, cleanupBogusRootDir lesson 일치, CLAUDE.md §16 "위임 대상 부재" 조항으로 orchestrator-direct 전환). M1 translations 23 키 × 4 locale + helper 추가 / M2 Display group에 Preset Select + 별도 Segments MultiSelect group with WithHideFunc("custom") / M3 2 신규 테스트 추가 (TestNormalizeStatuslinePreset 7 cases + TestStatuslineAllSegments_CardinalityAndOrder + TestProfileSetupTranslations_PresetSegments 4 locale × 23 cells = 92 cells) / M4 7/7 ACs PASS (AC-SPW-001 line 352 / AC-SPW-002 line 376 NewMultiSelect + 50 NewOption / AC-SPW-003 PASS / AC-SPW-004 PASS / AC-SPW-005 internal/cli/... PASS / AC-SPW-006 darwin+windows+linux exit 0 / AC-SPW-007 git diff 02a0a8304 0 lines preserved). plan-auditor S4 absorbed (nil-map default = 15-segment all-true). status `draft → implemented`. Late-Branch policy main 직진 (push deferred to sync-phase per REQ-LB-005). |
 
 ## 1. Background
 
