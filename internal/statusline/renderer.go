@@ -275,13 +275,13 @@ func renderEffortThinking(data *StatusData) string {
 func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	var segs []string
 
-	// CW bar with handoff_guide (/clear) suffix integration (layout v3 CH2).
+	// CW bar with handoff_guide ⚠️ /clear suffix integration (layout v3 CH2).
 	// shouldShowHandoffGuide gates the suffix per 1M ≥50% / 200K ≥90% threshold.
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 		bar := renderUsageBar("CW:", pct, width, r.noColor)
 		if shouldShowHandoffGuide(data) {
-			bar += " (/clear)"
+			bar += " ⚠️ /clear"
 		}
 		segs = append(segs, bar)
 	}
