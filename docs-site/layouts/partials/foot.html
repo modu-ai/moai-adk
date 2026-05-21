@@ -1,0 +1,95 @@
+{{ if default false .Site.Params.geekdocMermaid }}
+<script>
+(function(){
+  // 페이지에 mermaid 다이어그램이 없으면 종료 (불필요한 ~640KB 로드 방지)
+  function findBlocks() {
+    return document.querySelectorAll('pre.gdoc-mermaid, pre.mermaid, .mermaid');
+  }
+
+  // 라이트 테마 단일화 — 다크 분기 제거 (2026-05-13)
+  var lightTheme = {
+    primaryColor: '#144a46',
+    primaryTextColor: '#ffffff',
+    primaryBorderColor: '#0e3835',
+    lineColor: '#144a46',
+    secondaryColor: '#e6f0ef',
+    tertiaryColor: '#f3f3f3',
+    noteBkgColor: '#e6f0ef',
+    noteTextColor: '#09110f',
+    noteBorderColor: '#144a46',
+    edgeLabelBackground: '#ffffff',
+    clusterBkg: '#f3f3f3',
+    clusterBorder: '#144a46',
+    titleColor: '#09110f',
+    actorTextColor: '#09110f',
+    actorBorder: '#144a46',
+    actorBkg: '#e6f0ef',
+    signalColor: '#09110f',
+    signalTextColor: '#09110f',
+    labelBoxBkgColor: '#ffffff',
+    labelBoxBorderColor: '#144a46',
+    labelTextColor: '#09110f',
+    loopTextColor: '#09110f',
+    activationBorderColor: '#144a46',
+    activationBkgColor: '#e6f0ef',
+    sequenceNumberColor: '#ffffff'
+  };
+  var flowchartConfig = {
+    htmlLabels: true,
+    nodeSpacing: 50,
+    rankSpacing: 60,
+    padding: 14,
+    wrappingWidth: 260,
+    useMaxWidth: true,
+    curve: 'basis'
+  };
+
+  function runMermaid() {
+    if (typeof window.mermaid === 'undefined') {
+      console.warn('[mermaid] bundle loaded but window.mermaid undefined');
+      return;
+    }
+    try {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'base',
+        themeVariables: lightTheme,
+        flowchart: flowchartConfig
+      });
+      // .mermaid 클래스를 가진 모든 <pre>를 SVG로 렌더링
+      window.mermaid.run({ querySelector: 'pre.gdoc-mermaid, pre.mermaid, .mermaid' });
+    } catch (e) {
+      console.error('[mermaid] render error:', e);
+    }
+  }
+
+  function loadMermaidBundle() {
+    var blocks = findBlocks();
+    if (!blocks.length) return; // 페이지에 다이어그램 없음
+
+    if (typeof window.mermaid !== 'undefined') {
+      runMermaid();
+      return;
+    }
+    // bundle 동적 로드 (head에 한 번만)
+    if (document.querySelector('script[data-mermaid-bundle]')) {
+      // 이미 로드 중 — onload 콜백 대기 (다른 script 태그가 이미 추가됨)
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = '{{ index (index hugo.Data.assets "mermaid.js") "src" | relURL }}';
+    s.setAttribute('data-mermaid-bundle', '1');
+    s.onload = runMermaid;
+    s.onerror = function() { console.error('[mermaid] bundle load failed'); };
+    document.head.appendChild(s);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMermaidBundle);
+  } else {
+    loadMermaidBundle();
+  }
+})();
+</script>
+{{ end }}

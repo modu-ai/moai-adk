@@ -1,33 +1,248 @@
-{{/*
-  _default/baseof.html — Hextra baseof override
-  SPEC-DOCS-SITE-001 Phase 5, REQ-DS-19
-
-  Hextra의 layouts/baseof.html을 오버라이드하여 version-banner partial을
-  navbar 상단에 조건부 삽입한다.
-
-  원본 Hextra baseof.html (v0.12.2) 구조:
-    <html> -> head.html -> body(skip link, banner, navbar, main, footer, scripts)
-
-  이 파일은 해당 구조를 그대로 유지하면서 version-banner만 추가한다.
-*/}}
 <!DOCTYPE html>
-<html lang="{{ .Site.Language.Lang }}" dir="{{ .Site.Language.LanguageDirection | default `ltr` }}">
-  {{- partial "head.html" . -}}
-  <body>
-    <a href="#content" class="hx:sr-only hx:focus-visible:not-sr-only hx:focus-visible:fixed hx:focus-visible:z-50 hx:focus-visible:top-2 hx:focus-visible:left-2 hx:focus-visible:bg-primary-500 hx:focus-visible:text-white hx:focus-visible:px-4 hx:focus-visible:py-2 hx:focus-visible:rounded-md hx:focus-visible:text-sm hx:focus-visible:font-medium">
-      {{- (T "skipToContent") | default "Skip to content" -}}
-    </a>
-    {{/*
-      version-banner: 구버전 경로(/v<X>.<Y>/)에서만 표시
-      REQ-DS-19, D-023 — baseof.html 조건부 호출 포인트
-    */}}
-    {{ partial "version-banner.html" . }}
-    {{- partial "banner.html" . -}}
-    {{- partial "navbar.html" . -}}
-    {{- block "main" . }}{{ end -}}
-    {{- if or (eq .Site.Params.footer.enable nil) (.Site.Params.footer.enable) }}
-      {{ partial "footer.html" . }}
-    {{ end }}
-    {{ partial "scripts.html" . }}
+<html
+  lang="{{ .Site.Language.Lang }}"
+  class="color-toggle-light"
+  color-theme="light"
+  {{ if default false .Site.Params.geekdocDarkModeCode }}code-theme="dark"{{ end }}
+>
+  <head>
+    {{ partial "head/meta" . }}
+    <title>
+      {{- if eq .Kind "home" -}}
+        {{ .Site.Title }}
+      {{- else -}}
+        {{ printf "%s | %s" (partial "utils/title" .) .Site.Title }}
+      {{- end -}}
+    </title>
+
+    {{ partial "head/favicons" . }}
+    {{ partial "head/rel-me" . }}
+    {{ partial "head/microformats" . }}
+    {{ partial "head/others" . }}
+    {{ partial "head/custom" . }}
+  </head>
+
+  <body itemscope itemtype="https://schema.org/WebPage">
+    <div class="w-full flex justify-center">
+      <a href="#main-content" id="gdoc-to-main" class="gdoc-markdown__link">Skip to main content</a>
+    </div>
+
+    {{ partial "svg-icon-symbols" . }}
+
+
+    <div
+      class="wrapper {{ if default false .Site.Params.geekdocDarkModeDim }}dark-mode-dim{{ end }}"
+    >
+      {{ $navEnabled := default true .Page.Params.geekdocNav }}
+      {{ partial "site-header" (dict "Root" . "MenuEnabled" $navEnabled) }}
+
+
+      <main class="container flex flex-even">
+        {{ if $navEnabled }}
+          <aside class="gdoc-nav">
+            {{ partial "menu" . }}
+          </aside>
+        {{ end }}
+
+
+        <div class="gdoc-page">
+          {{ template "main" . }}
+
+          {{- /* prev/next 2-card 푸터 — main.yaml 메뉴 순서 기반 글로벌 순회
+                 (섹션 인덱스 페이지·섹션 간 이동도 자동 처리. 메뉴에 없는 페이지는 .PrevInSection fallback) */ -}}
+          {{- $prev := false -}}{{- $next := false -}}
+          {{- $current := .RelPermalink -}}
+          {{- $curKey := printf "%s/" (trim $current "/") -}}
+          {{- /* 메뉴 전체 평탄화 */ -}}
+          {{- $flat := slice -}}
+          {{- range hugo.Data.menu.main.main -}}
+            {{- range .sub -}}
+              {{- if .ref -}}
+                {{- $refKey := printf "%s/" (trim .ref "/") -}}
+                {{- $flat = $flat | append (dict "name" .name "ref" .ref "key" $refKey) -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+          {{- /* 현재 페이지 위치 찾기 */ -}}
+          {{- $idx := -1 -}}
+          {{- range $i, $item := $flat -}}
+            {{- if eq $item.key $curKey -}}{{- $idx = $i -}}{{- end -}}
+          {{- end -}}
+          {{- if ge $idx 0 -}}
+            {{- /* 메뉴에서 발견 → 글로벌 평탄 순회 적용 */ -}}
+            {{- if gt $idx 0 -}}
+              {{- $p := index $flat (sub $idx 1) -}}
+              {{- $prev = dict "title" $p.name "lbl" "← 이전" "url" $p.ref -}}
+            {{- end -}}
+            {{- if lt $idx (sub (len $flat) 1) -}}
+              {{- $n := index $flat (add $idx 1) -}}
+              {{- $next = dict "title" $n.name "lbl" "다음 →" "url" $n.ref -}}
+            {{- end -}}
+          {{- else if eq .Kind "home" -}}
+            {{- /* 홈: 메뉴 첫 항목으로 */ -}}
+            {{- if gt (len $flat) 0 -}}
+              {{- $n := index $flat 0 -}}
+              {{- $next = dict "title" $n.name "lbl" "다음 →" "url" $n.ref -}}
+            {{- end -}}
+          {{- else -}}
+            {{- /* 메뉴에 없는 페이지: 같은 섹션 형제 페이지로 fallback (weight 역순 swap) */ -}}
+            {{- if .NextInSection -}}{{- $prev = dict "title" .NextInSection.Title "lbl" "← 이전" "url" .NextInSection.RelPermalink -}}{{- end -}}
+            {{- if .PrevInSection -}}{{- $next = dict "title" .PrevInSection.Title "lbl" "다음 →" "url" .PrevInSection.RelPermalink -}}{{- end -}}
+          {{- end -}}
+          {{- if or $prev $next -}}
+          <nav class="cw-pg-nav" aria-label="페이지 이동">
+            {{- if $prev -}}
+            <a class="cw-pg-card cw-pg-prev" href="{{ $prev.url }}">
+              <div class="lbl">{{ $prev.lbl }}</div>
+              <div class="ttl">{{ $prev.title }}</div>
+            </a>
+            {{- else -}}
+            <span class="cw-pg-card cw-pg-empty"></span>
+            {{- end -}}
+            {{- if $next -}}
+            <a class="cw-pg-card cw-pg-next" href="{{ $next.url }}">
+              <div class="lbl">{{ $next.lbl }}</div>
+              <div class="ttl">{{ $next.title }}</div>
+            </a>
+            {{- else -}}
+            <span class="cw-pg-card cw-pg-empty"></span>
+            {{- end -}}
+          </nav>
+          {{- end -}}
+        </div>
+
+        {{- /* 우측 TOC rail (디자인 240px) */ -}}
+        {{- if eq .Kind "home" -}}
+        <aside class="cw-toc" aria-label="이 페이지에서">
+          <h6>이 페이지에서</h6>
+          <ul>
+            <li><a href="#quickstart" class="active" data-toc>5분 빠른 시작</a></li>
+            <li><a href="#plugins-grid" data-toc>분야별 플러그인</a></li>
+            <li><a href="#cookbook-tracks" data-toc>실전 트랙</a></li>
+            <li><a href="#release-summary" data-toc>최근 릴리스</a></li>
+          </ul>
+        </aside>
+        <script>
+        // 간단한 scroll spy — 가장 가까운 헤딩에 active 부여
+        (function(){
+          const links = document.querySelectorAll('.cw-toc a[data-toc]');
+          if (!links.length) return;
+          const sections = Array.from(links).map(a => document.getElementById(a.hash.slice(1))).filter(Boolean);
+          if (!sections.length) return;
+          const setActive = () => {
+            const y = window.scrollY + 120;
+            let i = 0;
+            for (let k = 0; k < sections.length; k++) if (sections[k].offsetTop <= y) i = k;
+            links.forEach((a, k) => a.classList.toggle('active', k === i));
+          };
+          window.addEventListener('scroll', setActive, { passive: true });
+          setActive();
+        })();
+        </script>
+        {{- else if .TableOfContents -}}
+        {{- $hasHeadings := gt (len (findRE "<h[23]" .Content)) 0 -}}
+        {{- if $hasHeadings -}}
+        <aside class="cw-toc" aria-label="이 페이지에서">
+          <h6>이 페이지에서</h6>
+          {{ .TableOfContents }}
+        </aside>
+        {{- end -}}
+        {{- end -}}
+      </main>
+
+      {{ partial "site-footer" . }}
+    </div>
+
+    {{ partial "foot" . }}
+
+    <script>
+    // Cowork 지시 코드블록 자동 분류 — 첫 줄이 '>'로 시작하면 macOS chrome 적용
+    (function(){
+      document.querySelectorAll('.gdoc-markdown .highlight').forEach(function(el){
+        var pre = el.querySelector('pre');
+        if (!pre) return;
+        var firstLine = pre.textContent.replace(/^\s+/, '').split('\n')[0];
+        if (firstLine.startsWith('>')) el.classList.add('cw-instruction');
+      });
+    })();
+
+    // 라이트 테마 단일화 — 다크 모드 완전 제거 (2026-05-13)
+    // 어떤 상태든 항상 color-theme=light로 강제. 토글 버튼 비활성화.
+    (function(){
+      var html = document.documentElement;
+      var STORE_KEY = 'hugo-geekdoc.color-theme';
+
+      // 라이트 강제 + localStorage 정리
+      html.setAttribute('color-theme', 'light');
+      html.removeAttribute('data-theme');
+      html.setAttribute('class', 'color-toggle-light');
+      try { localStorage.setItem(STORE_KEY, JSON.stringify('light')); } catch(e){}
+
+      // color-theme이 외부에서 변경돼도 즉시 light로 복원
+      new MutationObserver(function(){
+        if (html.getAttribute('color-theme') !== 'light') {
+          html.setAttribute('color-theme', 'light');
+        }
+        if (html.getAttribute('data-theme')) {
+          html.removeAttribute('data-theme');
+        }
+      }).observe(html, { attributes: true, attributeFilter: ['color-theme', 'data-theme'] });
+
+      // Geekdoc 토글 버튼 클릭 핸들러 제거 (CSS에서 display:none으로 숨기지만 안전망)
+      document.addEventListener('DOMContentLoaded', function(){
+        var btn = document.getElementById('gdoc-color-theme');
+        if (btn) {
+          btn.onclick = null;
+          var clone = btn.cloneNode(true);
+          btn.parentNode.replaceChild(clone, btn);
+        }
+      });
+    })();
+
+    // 사이드바 섹션 펼침/접힘 상태 보존 (localStorage) — 페이지 이동 후에도 유지
+    (function(){
+      var STORAGE_KEY = 'cw-side-state';
+      function getSaved(){
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; }
+        catch(e){ return {}; }
+      }
+      function save(state){
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){}
+      }
+      function keyOf(section){
+        var span = section.querySelector('.cw-side-title > span:last-child');
+        return span ? span.textContent.trim() : null;
+      }
+      function init(){
+        var sections = document.querySelectorAll('.cw-side .cw-side-section');
+        if (!sections.length) return;
+        var saved = getSaved();
+        sections.forEach(function(section){
+          var key = keyOf(section);
+          if (!key) return;
+          // 현재 활성 페이지가 속한 섹션은 강제 open (서버 결정 우선)
+          var hasActive = !!section.querySelector('.cw-side-link.active');
+          if (hasActive) {
+            section.setAttribute('open', '');
+          } else if (saved.hasOwnProperty(key)) {
+            // 다른 섹션은 localStorage 상태 적용
+            if (saved[key]) section.setAttribute('open', '');
+            else section.removeAttribute('open');
+          }
+          // 토글 시 상태 저장
+          section.addEventListener('toggle', function(){
+            var s = getSaved();
+            s[key] = section.hasAttribute('open');
+            save(s);
+          });
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+    </script>
   </body>
 </html>

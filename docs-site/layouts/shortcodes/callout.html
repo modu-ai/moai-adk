@@ -1,0 +1,16 @@
+{{- /* Hextra callout 호환 어댑터 — Geekdoc hint 스타일로 자동 매핑
+       Hextra: {{< callout type="info|warning|error|tip" >}}
+       Geekdoc: {{< hint type="note|info|tip|important|warning|danger" >}}
+       type 매핑: info→info, warning→warning, error→danger, tip→tip, 그 외→note */ -}}
+{{- $rawType := default "info" (.Get "type") -}}
+{{- $type := $rawType -}}
+{{- if eq $rawType "error" -}}{{- $type = "danger" -}}{{- end -}}
+{{- $title := default ($type | title) (.Get "title") -}}
+
+<blockquote class="gdoc-hint {{ $type | lower }}">
+  <div class="gdoc-hint__title flex gap-8 align-center">
+    <i class="fa {{ $type | lower }}"></i>
+    <span>{{ $title }}</span>
+  </div>
+  <div class="gdoc-hint__text">{{ .Inner | $.Page.RenderString }}</div>
+</blockquote>

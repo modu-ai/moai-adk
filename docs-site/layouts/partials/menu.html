@@ -1,0 +1,51 @@
+{{- /* Cowork docs custom sidebar — design standalone parity
+       Reads data/menu/main.yaml directly (icon · count · isNew · badge fields). */ -}}
+<nav class="cw-side">
+  {{- /* 검색은 헤더에 있으므로 사이드바 안 별도 검색박스 출력 안 함 */ -}}
+  {{- $current := .RelPermalink -}}
+  {{- range hugo.Data.menu.main.main }}
+    {{- $hasCurrent := false -}}
+    {{- range .sub -}}
+      {{- if and .ref (eq (printf "%s/" (trim .ref "/")) (trim $current "/" | printf "%s/")) -}}
+        {{- $hasCurrent = true -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $open := or .defaultOpen $hasCurrent -}}
+    <details class="cw-side-section" {{ if $open }}open{{ end }}>
+      <summary class="cw-side-head">
+        <span class="cw-side-title">
+          {{- if .icon -}}
+            {{- $i := .icon -}}
+            <svg class="cw-side-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              {{- if eq $i "home" -}}<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/>
+              {{- else if eq $i "star" -}}<path d="m12 3 2.6 5.4 5.9.7-4.4 4 1.2 5.9L12 16l-5.3 3 1.2-5.9-4.4-4 5.9-.7Z"/>
+              {{- else if eq $i "plug" -}}<path d="M9 2v6"/><path d="M15 2v6"/><path d="M5 8h14v3a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5V8Z"/><path d="M12 16v6"/>
+              {{- else if eq $i "book" -}}<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5"/><path d="M4 4.5v15A2.5 2.5 0 0 0 6.5 22H20"/>
+              {{- else if eq $i "chef" -}}<path d="M6 11a4 4 0 1 1 1-7.9A4 4 0 0 1 14 3a4 4 0 0 1 7 8H6Z"/><path d="M6 11v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8"/>
+              {{- else if eq $i "palette" -}}<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 10 10 4 4 0 0 1-4 4h-3a2 2 0 0 0-2 2c0 1.1.5 1.6.5 2 0 1.1-.5 2-2 2z"/>
+              {{- else if eq $i "tag" -}}<path d="M20 12 12 4H4v8l8 8Z"/><circle cx="8" cy="8" r="1.5"/>
+              {{- end -}}
+            </svg>
+          {{- end -}}
+          <span>{{ .name }}</span>
+        </span>
+        <svg class="cw-side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      </summary>
+      <ul class="cw-side-list">
+        {{- range .sub }}
+          {{- $href := .ref -}}
+          {{- $isActive := and $href (eq (printf "%s/" (trim $href "/")) (trim $current "/" | printf "%s/")) -}}
+          <li>
+            <a class="cw-side-link{{ if $isActive }} active{{ end }}" href="{{ $href }}">
+              <span class="cw-side-link-name">
+                <span class="cw-side-link-text">{{ .name }}{{- if .count }} <span class="cw-side-count">({{ .count }})</span>{{ end }}</span>
+                {{- if .badge }}<span class="cw-side-badge">{{ .badge }}</span>{{ end }}
+                {{- if .isNew }}<span class="cw-side-new">NEW</span>{{ end }}
+              </span>
+            </a>
+          </li>
+        {{- end }}
+      </ul>
+    </details>
+  {{- end }}
+</nav>

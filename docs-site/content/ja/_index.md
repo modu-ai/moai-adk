@@ -1,9 +1,5 @@
 ---
 title: MoAI-ADK ドキュメント
-type: docs
-toc: true
-sidebar:
-  open: true
 weight: 99
 draft: false
 ---
