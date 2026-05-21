@@ -13,74 +13,12 @@ import (
 	"testing"
 )
 
-// ---------- REQ-SSE-001/002: renderRepoSegment ----------
-
-func TestRenderRepoSegment_PopulatedShowsOwnerName(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{
-			Repo: &RepoInfo{
-				Host:  "github.com",
-				Owner: "modu-ai",
-				Name:  "moai-adk",
-			},
-		},
-	}
-
-	out := renderRepoSegment(data)
-	if !strings.Contains(out, "modu-ai/moai-adk") {
-		t.Fatalf("expected output to contain owner/name marker %q, got %q", "modu-ai/moai-adk", out)
-	}
-}
-
-func TestRenderRepoSegment_NilRepoReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{Repo: nil},
-	}
-
-	out := renderRepoSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when Workspace.Repo is nil, got %q", out)
-	}
-}
-
-func TestRenderRepoSegment_EmptyOwnerReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "", Name: "moai-adk"}},
-	}
-
-	out := renderRepoSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when Owner is empty, got %q", out)
-	}
-}
-
-func TestRenderRepoSegment_EmptyNameReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: ""}},
-	}
-
-	out := renderRepoSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when Name is empty, got %q", out)
-	}
-}
-
-func TestRenderRepoSegment_NilDataReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	out := renderRepoSegment(nil)
-	if out != "" {
-		t.Fatalf("expected empty output when data is nil, got %q", out)
-	}
-}
+// NOTE: TestRenderRepoSegment_* removed (layout v3 CH3). The standalone
+// renderRepoSegment function was replaced by renderRepoBranchSegment which
+// combines repo identity with branch info into a single L3 segment. The new
+// segment is covered by end-to-end fixture verification via
+// /Users/goos/go/bin/moai statusline; unit-level coverage may be added later
+// when the function signature stabilizes.
 
 // NOTE: renderLongContextSegment + renderHandoffGuideSegment tests removed
 // (layout v3 CH1 + CH2). The ⚠️ long marker segment was removed per user
@@ -180,30 +118,9 @@ func TestShouldShowHandoffGuide_NilDataFalse(t *testing.T) {
 
 // ---------- isXxxEnabled predicate edge cases (default-on contract) ----------
 
-// TestIsRepoEnabled_DefaultOnContract verifies REQ-SSE-002 default-on
-// activation across the three documented config states.
-func TestIsRepoEnabled_DefaultOnContract(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name string
-		cfg  map[string]bool
-		want bool
-	}{
-		{"nil config → enabled", nil, true},
-		{"unset key → enabled (default-on)", map[string]bool{SegmentPR: true}, true},
-		{"explicit false → disabled", map[string]bool{SegmentRepo: false}, false},
-		{"explicit true → enabled", map[string]bool{SegmentRepo: true}, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			r := NewRenderer("default", true, tc.cfg)
-			if got := r.isRepoEnabled(); got != tc.want {
-				t.Errorf("isRepoEnabled() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
+// NOTE: TestIsRepoEnabled_DefaultOnContract removed (layout v3 CH3).
+// The isRepoEnabled predicate was retired with renderRepoSegment.
+// renderRepoBranchSegment is gated by SegmentGitBranch (combined segment).
 
 // NOTE: TestIsLongContextEnabled_DefaultOnContract +
 // TestIsHandoffGuideEnabled_DefaultOnContract removed (layout v3 CH1 + CH2).

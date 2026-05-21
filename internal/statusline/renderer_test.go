@@ -273,8 +273,10 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🅱️ main +0") && !strings.Contains(got, "📭 main +0") {
-		t.Errorf("should show clean branch as '🅱️ main +0' or '📭 main +0', got %q", got)
+	// Layout v3 CH3: branch shown via combined repo_branch segment "🔀 (main)"
+	// (no Workspace.Repo → owner/name portion omitted; clean → no dirty suffix).
+	if !strings.Contains(got, "🔀 (main)") && !strings.Contains(got, "📭 main +0") {
+		t.Errorf("should show clean branch as '🔀 (main)' or '📭 main +0', got %q", got)
 	}
 }
 
@@ -523,12 +525,12 @@ func TestRender_SegmentFiltering(t *testing.T) {
 		{
 			name:          "nil config shows all segments",
 			segmentConfig: nil,
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🅱️", "v1.0.80", "🗿 v2.3.1", "main"},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "🗿 v2.3.1", "main"},
 		},
 		{
 			name:          "empty config shows all segments",
 			segmentConfig: map[string]bool{},
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🅱️", "v1.0.80", "🗿 v2.3.1", "main"},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "🗿 v2.3.1", "main"},
 		},
 		{
 			name: "model disabled hides model",
@@ -547,7 +549,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 				SegmentDirectory: false, SegmentGitStatus: true, SegmentClaudeVersion: false,
 				SegmentMoaiVersion: false, SegmentGitBranch: true,
 			},
-			wantContain:    []string{"🤖 Opus 4.5", "🔋", "🅱️", "main"},
+			wantContain:    []string{"🤖 Opus 4.5", "🔋", "🔀", "main"},
 			wantNotContain: []string{"💬", "📁", "🔅", "🗿"},
 		},
 		{
@@ -873,14 +875,20 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	got := r.Render(data, ModeDefault)
 	lines := strings.Split(got, "\n")
 	l3 := lines[2]
+	l1 := lines[0]
 
-	if !strings.Contains(l3, "📁 moai-adk-go") {
-		t.Errorf("default L3 must contain directory, got: %q", l3)
+	// Layout v3 CH5: directory moved to L1 end (not L3).
+	if !strings.Contains(l1, "📁 moai-adk-go") {
+		t.Errorf("default L1 must contain directory (layout v3 CH5), got: %q", l1)
 	}
-	// Branch segment: 🅱️ <name> ↑<ahead> ↓<behind> +<dirty>
+	if strings.Contains(l3, "📁") {
+		t.Errorf("default L3 must NOT contain directory (moved to L1 by CH5), got: %q", l3)
+	}
+	// Layout v3 CH3: combined repo+branch segment "🔀 (branch ↑N ↓N +N)"
+	// (no Workspace.Repo in fixture → owner/name portion omitted).
 	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
-	if !strings.Contains(l3, "🅱️ feat/auth ↑2 ↓1 +6") {
-		t.Errorf("default L3 must contain branch with ahead/behind and dirty count, got: %q", l3)
+	if !strings.Contains(l3, "🔀 (feat/auth ↑2 ↓1 +6)") {
+		t.Errorf("default L3 must contain combined repo_branch segment (layout v3 CH3), got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
 		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)
@@ -1050,7 +1058,7 @@ func TestRenderUsageBar(t *testing.T) {
 			pct:     88,
 			width:   10,
 			noColor: true,
-			wantPfx: "CW: 🪫",
+			wantPfx: "🪫 CW:",
 		},
 		{
 			name:    "5H 45% noColor",
@@ -1058,7 +1066,7 @@ func TestRenderUsageBar(t *testing.T) {
 			pct:     45,
 			width:   10,
 			noColor: true,
-			wantPfx: "5H: 🔋",
+			wantPfx: "🔋 5H:",
 		},
 	}
 
@@ -1557,7 +1565,7 @@ func TestRenderDirGitLine_PRSegment(t *testing.T) {
 				SegmentGitBranch: true,
 				SegmentPR:        false,
 			},
-			wantContains: []string{"📁"},
+			wantContains: []string{"🔀"},
 			wantAbsent:   []string{"#1023", "⌥"},
 		},
 		{
@@ -1568,7 +1576,7 @@ func TestRenderDirGitLine_PRSegment(t *testing.T) {
 				SegmentGitBranch: true,
 				SegmentPR:        true,
 			},
-			wantContains: []string{"📁"},
+			wantContains: []string{"🔀"},
 			wantAbsent:   []string{"#", "⌥"},
 		},
 	}

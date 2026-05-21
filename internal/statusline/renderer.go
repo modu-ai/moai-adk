@@ -242,9 +242,14 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
-	// Output style (moved to end of L1 per user request)
+	// Output style
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
 		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
+	}
+
+	// Directory (layout v3 CH5: moved from L3 to L1 end)
+	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
+		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
 	return r.joinSegments(segs)
@@ -319,26 +324,23 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderDirGitLine renders the directory + branch + git status + PR line (default L3, full L5).
-// Format: 📁 moai-adk-go │ 🅱️ main ↑2↓1 +6 │ 📬 +0 M6 ?0 │ #1023 ⌥pending
-// When worktree is active: "[WT] " prefix is prepended to the branch segment.
-// When PR segment is enabled AND stdin contains a valid pr.* object: a PR
-// segment is appended (REQ-SLV-013).
+// renderDirGitLine renders the L3 line for layout v3.
+// Format: 🔀 owner/name (branch ↑N +N) │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
+//
+// Layout v3 changes (CH3 + CH5):
+//   - directory moved to L1 end (CH5)
+//   - branch + repo merged into single repo_branch segment (CH3)
+//   - long_context + handoff_guide separate segments removed (CH1, CH2)
+//   - handoff_guide integrated as CW bar (/clear) suffix in renderBarsInline (CH2)
+//   - PR segment last position with new format "💌 PR #N (⌥state)" (CH7, CH8)
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
-	// Directory
-	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
-		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
-	}
-
-	// Branch + ahead/behind (+ worktree indicator)
+	// Combined repo+branch segment (layout v3 CH3): replaces former
+	// SegmentDirectory (L1 now) + SegmentGitBranch + SegmentRepo trio.
 	if r.isSegmentEnabled(SegmentGitBranch) {
-		if branch := renderGitBranch(data); branch != "" {
-			if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-				branch = "[WT] " + branch
-			}
-			segs = append(segs, branch)
+		if rb := r.renderRepoBranchSegment(data); rb != "" {
+			segs = append(segs, rb)
 		}
 	}
 
@@ -357,17 +359,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		segs = append(segs, task)
 	}
 
-	// Repo segment (Claude Code v2.1.145+, REQ-SSE-001/002).
-	// Order: repo → pr → long_context → handoff_guide per plan.md M2.
-	if r.isRepoEnabled() {
-		if repo := renderRepoSegment(data); repo != "" {
-			segs = append(segs, repo)
-		}
-	}
-
-	// PR segment (Claude Code v2.1.145+, REQ-SLV-013) — last position on line 3
-	// per layout v3 (CH7). Long-context + handoff_guide separate segments removed
-	// (CH1, CH2) — handoff_guide is now a CW bar (/clear) suffix in renderBarsInline.
+	// PR segment last position (layout v3 CH7 + CH8 format)
 	if pr := r.renderPRSegment(data); pr != "" {
 		segs = append(segs, pr)
 	}
@@ -466,48 +458,57 @@ func (r *Renderer) isPREnabled() bool {
 	return enabled
 }
 
-// renderRepoSegment renders the GitHub repository identity segment in the
-// form "owner/name" (e.g., "modu-ai/moai-adk") when stdin provides
-// workspace.repo (Claude Code v2.1.145+, REQ-SSE-001).
+// renderRepoBranchSegment renders the combined repo + branch segment in the
+// form "🔀 owner/name (branch ↑N +N)" — layout v3 CH3.
 //
-// Returns empty string when:
-//   - data is nil
-//   - data.Workspace.Repo is nil
-//   - Owner or Name is empty (REQ-SSE-001 strict non-empty check)
+// Behavior:
+//   - Workspace.Repo present + Branch present: "🔀 owner/name (branch ↑N +N)"
+//   - Workspace.Repo nil + Branch present:     "🔀 (branch ↑N +N)" (repo prefix omitted)
+//   - Branch empty:                            "" (empty — no git context)
+//   - Ahead == 0:                              "↑N" portion omitted
+//   - Behind > 0:                              " ↓N" appended after ahead
+//   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
+//   - Worktree active:                          "[WT] " prefix prepended to branch
 //
-// Format literal: "%s/%s" for Owner/Name interpolation. The Host field is
-// captured by StdinData but not currently surfaced — owner/name alone is the
-// disambiguation key for cross-repo PR segment context.
-//
-// @MX:NOTE: [AUTO] workspace.repo 렌더링 진입점 — v2.1.145+ stdin field, default-on per REQ-SSE-002.
-func renderRepoSegment(data *StatusData) string {
-	if data == nil {
+// @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
+func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
+	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
 	}
-	repo := data.Workspace.Repo
-	if repo == nil {
-		return ""
-	}
-	if repo.Owner == "" || repo.Name == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
-}
 
-// isRepoEnabled returns true when SegmentRepo is enabled in segmentConfig.
-// Default-on for v2.20.0-rc1 per REQ-SSE-002 (follows isPREnabled pattern):
-// unset key resolves to enabled, matching isSegmentEnabled semantics.
-// Graceful no-output handles the no-repo case (Workspace.Repo == nil →
-// renderRepoSegment returns empty).
-func (r *Renderer) isRepoEnabled() bool {
-	if len(r.segmentConfig) == 0 {
-		return true
+	branch := data.Git.Branch
+	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
+		branch = "[WT] " + branch
 	}
-	enabled, exists := r.segmentConfig[SegmentRepo]
-	if !exists {
-		return true
+
+	// Ahead/Behind suffix (0 values omitted)
+	var aheadBehind string
+	if data.Git.Ahead > 0 {
+		aheadBehind += fmt.Sprintf(" ↑%d", data.Git.Ahead)
 	}
-	return enabled
+	if data.Git.Behind > 0 {
+		aheadBehind += fmt.Sprintf(" ↓%d", data.Git.Behind)
+	}
+
+	// Dirty count (omitted when 0)
+	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
+	var dirtySuffix string
+	if dirty > 0 {
+		dirtySuffix = fmt.Sprintf(" +%d", dirty)
+	}
+
+	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
+
+	// Repo prefix when Workspace.Repo available
+	if data.Workspace.Repo != nil {
+		repo := data.Workspace.Repo
+		if repo.Owner != "" && repo.Name != "" {
+			return fmt.Sprintf("🔀 %s/%s (%s)", repo.Owner, repo.Name, inner)
+		}
+	}
+
+	// Fallback: no repo info, just branch in parens with marker
+	return fmt.Sprintf("🔀 (%s)", inner)
 }
 
 // shouldShowHandoffGuide returns true when accumulated context usage crosses
@@ -575,13 +576,14 @@ func (r *Renderer) prReviewStateColor(state string) (lipgloss.Color, bool) {
 // Helper functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderUsageBar renders label + battery icon + gradient bar + percentage.
-// Format: {label} {BatteryIcon(pct)} {BuildGradientBar(pct, width, noColor)} {pct}%
-// Example: CW: 🪫 ████████████████████████████████████░░░░ 88%
+// renderUsageBar renders battery icon + label + gradient bar + percentage.
+// Format: {BatteryIcon(pct)} {label} {BuildGradientBar(pct, width, noColor)} {pct}%
+// Example: 🪫 CW: ████████████████████████████████████░░░░ 88%
+// Layout v3 CH6: icon position moved before label for visual prominence.
 func renderUsageBar(label string, pct int, width int, noColor bool) string {
 	icon := BatteryIcon(pct)
 	bar := BuildGradientBar(pct, width, noColor)
-	return fmt.Sprintf("%s %s %s %d%%", label, icon, bar, pct)
+	return fmt.Sprintf("%s %s %s %d%%", icon, label, bar, pct)
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
