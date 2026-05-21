@@ -140,6 +140,23 @@ statusline:
 - 非アクティブの場合はセグメント自体が非表示（graceful no-output）
 - 有効化：`segments.task: true`（v2.20.0-rc1 以降は既定値 true — default-on、`false` で opt-out）
 
+**repo** — リポジトリ情報（オプション、v2.1.145+）
+- 現在の GitHub リポジトリのオーナー / 名前を表示
+- 例：`modu-ai/moai-adk`
+- 有効化：`segments.repo: true`
+
+**long_context** — 長いコンテキスト警告（オプション、v2.1.139+）
+- 200K トークン超過時に警告マークを表示
+- 例：`⚠️ 200K+ exceeded`
+- 有効化：`segments.long_context: true`
+
+**handoff_guide** — ハンドオフ閾値ガイド（オプション、v2.1.146+）
+- 現在のモデルのコンテキストウィンドウサイズと推奨ハンドオフ閾値を表示
+- 1M モデル：50% 閾値（≈500K トークン）
+- 200K モデル：90% 閾値（≈180K トークン）
+- 例：`[1M: 50% | 200K: 90%]`
+- 有効化：`segments.handoff_guide: true`
+
 ## NEW v2.1.145: PR セグメント
 
 ### 概要

@@ -140,6 +140,23 @@ statusline:
 - 非活动状态下 segment 不显示（graceful no-output）
 - 启用：`segments.task: true`（自 v2.20.0-rc1 起默认 true — default-on，可通过 `false` 显式禁用）
 
+**repo** — 存储库信息（可选，v2.1.145+）
+- 显示当前 GitHub 存储库所有者/名称
+- 示例：`modu-ai/moai-adk`
+- 启用：`segments.repo: true`
+
+**long_context** — 长上下文警告（可选，v2.1.139+）
+- 当 200K 令牌超过时显示警告标记
+- 示例：`⚠️ 200K+ exceeded`
+- 启用：`segments.long_context: true`
+
+**handoff_guide** — 切换指南阈值（可选，v2.1.146+）
+- 显示当前模型的上下文窗口大小和推荐的切换阈值
+- 1M 模型：50% 阈值（≈500K 令牌）
+- 200K 模型：90% 阈值（≈180K 令牌）
+- 示例：`[1M: 50% | 200K: 90%]`
+- 启用：`segments.handoff_guide: true`
+
 ## 新增 v2.1.145：PR 段
 
 ### 概述

@@ -15,7 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Harness Autonomy — 4-Tier Self-Evolution + 5-Layer Safety + Cold-Start Seeds** (SPEC-V3R5-HARNESS-AUTONOMY-001, W3): 하네스 자율 진화 메커니즘 완성. 7개 신규 패키지: `internal/harness/{capture,router,safety,seeds,throttle,tier}` + root. 18 sentinels (8 HARNESS_FROZEN_* + 10 HARNESS_LEARNING_*) 카탈로그 정의. 10 CLI verbs (route/validate + status/apply/rollback/disable/mute/mute-list/unmute/verify per AC-HRA-009). ≥85% 커버리지 (harness 87.9%, capture 94.9%, router 89.2%, safety 86.5%, seeds 100%, throttle 88.2%, tier 90.0%). 벤치마크: L1 46ns (p99 10ms 대비 우수), L4 1.54µs (p99 100ms 대비 우수). 교차 플랫폼 빌드 PASS (Windows flock split). 메타-분석 결과 SPEC-V3R5-WORKFLOW-OPT-001에서 형식화 (-73% wall-time 검증). 본 SPEC은 그 SPEC의 dogfooding 기준이 됨. PR #1023 plan + PR #1024 run 머지 + sync 완료.
 
-## [Unreleased] — v2.20.0-rc1: 10 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001)
+## [Unreleased] — v2.20.0-rc1: 11 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001 + STATUSLINE-STDINFIELDS-001)
+
+### Added
+
+- **Statusline stdin schema enrichment + 1M handoff threshold tightening** (SPEC-V3R5-STATUSLINE-STDINFIELDS-001): 3 new segment renderers for statusline stdin enrichment. `renderRepoSegment()` exposes GitHub owner/name from `workspace.repo` (v2.1.145+); `renderLongContextSegment()` renders context-warning marker for `exceeds_200k_tokens` (v2.1.139+); `renderHandoffGuideSegment()` displays active handoff thresholds per model class. Internal: `StdinData.ExceedsLongTokens` field mapping, 3 segment predicates (`isRepoEnabled`, `isLongContextEnabled`, `isHandoffGuideEnabled`), task segment renderer integration from SPEC-V3R5-STATUSLINE-V2145-001. Rules updates: CONST-V3R5-022 (1M context threshold tightening from 75% → 50% to align with SSE stall risk envelope), mirror threshold updates in `context-window-management.md` + `session-handoff.md` Trigger #1. Code comments fix: v2.1.122 → v2.1.139 for Effort/Thinking field origin (8 references corrected). 4-locale docs sync: advanced/statusline.md (ko/en/ja/zh) with new segment descriptions maintaining parity within 15%. Coverage: stdinfields_test.go 100% new segments. Tier S, late-branch pattern `feat/SPEC-V3R5-STATUSLINE-STDINFIELDS-001`, squash merge to main.
 
 ### Security
 
