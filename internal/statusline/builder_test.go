@@ -107,8 +107,8 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	if !strings.Contains(got, "📁 my-project") {
 		t.Errorf("should contain directory, got %q", got)
 	}
-	if !strings.Contains(got, "📬 +3 M2") {
-		t.Errorf("should contain git status, got %q", got)
+	if !strings.Contains(got, "💾 +3 M2") {
+		t.Errorf("should contain git status (unified 💾 emoji), got %q", got)
 	}
 	if !strings.Contains(got, "🗿 v1.2.0") {
 		t.Errorf("should contain MoAI version with moai emoji, got %q", got)

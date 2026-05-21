@@ -748,22 +748,16 @@ func renderSessionTime(ms int) string {
 	return fmt.Sprintf("⏳ %dm", totalMinutes)
 }
 
-// mailboxEmoji returns a single mailbox emoji based on git status priority:
-// 📬(staged) > 📫(modified) > 📪(untracked) > 📭(clean)
+// mailboxEmoji returns a single disk emoji for the git status segment.
+// Layout v3 amend: unified 💾 marker replaces the prior mailbox quartet
+// (📬 staged / 📫 modified / 📪 untracked / 📭 clean) per user request —
+// granular state is conveyed by the trailing "+S MM ?U" counter, so the
+// leading emoji no longer needs to encode state independently.
 func mailboxEmoji(data *StatusData) string {
 	if !data.Git.Available {
 		return ""
 	}
-	if data.Git.Staged > 0 {
-		return "📬"
-	}
-	if data.Git.Modified > 0 {
-		return "📫"
-	}
-	if data.Git.Untracked > 0 {
-		return "📪"
-	}
-	return "📭"
+	return "💾"
 }
 
 // renderGitStatusDetail renders detailed git status string (+N M?N).
