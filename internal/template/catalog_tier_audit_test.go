@@ -193,8 +193,10 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	}
 
 	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged.
-	// Expected: 28 − 8 = 20 (14 active system + 4 my-harness + 2 evaluator-family).
-	const expectedAgentCount = 20
+	// Wave 1 ABSORB-CLEANUP-001 reconciliation 2026-05-22: my-harness category
+	// removed from disk; actual breakdown is 8 manager + 6 expert + 1 builder +
+	// 1 evaluator-active + 1 plan-auditor + 1 researcher + 1 claude-code-guide = 19.
+	const expectedAgentCount = 19
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}
