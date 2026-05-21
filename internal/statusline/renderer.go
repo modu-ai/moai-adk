@@ -281,7 +281,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 		bar := renderUsageBar("CW:", pct, width, r.noColor)
 		if shouldShowHandoffGuide(data) {
-			bar += " ⚠️ /clear"
+			bar += " (⚠️/clear)"
 		}
 		segs = append(segs, bar)
 	}
