@@ -123,7 +123,7 @@ func TestRenderHandoffGuideSegment_OneMillionFiftyPercentShows(t *testing.T) {
 	// 1M budget, 50% usage = 500,000 tokens → should show
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 1_000_000,
+			ContextWindowSize: 1_000_000,
 			TokensUsed:  500_000,
 			Available:   true,
 		},
@@ -141,7 +141,7 @@ func TestRenderHandoffGuideSegment_OneMillionFortyNinePercentHidden(t *testing.T
 	// 1M budget, 49% usage = 490,000 tokens → should hide
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 1_000_000,
+			ContextWindowSize: 1_000_000,
 			TokensUsed:  490_000,
 			Available:   true,
 		},
@@ -159,7 +159,7 @@ func TestRenderHandoffGuideSegment_TwoHundredKNinetyPercentShows(t *testing.T) {
 	// 200K budget, 90% usage = 180,000 tokens → should show
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 200_000,
+			ContextWindowSize: 200_000,
 			TokensUsed:  180_000,
 			Available:   true,
 		},
@@ -177,7 +177,7 @@ func TestRenderHandoffGuideSegment_TwoHundredKEightyNinePercentHidden(t *testing
 	// 200K budget, 89% usage = 178,000 tokens → should hide
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 200_000,
+			ContextWindowSize: 200_000,
 			TokensUsed:  178_000,
 			Available:   true,
 		},
@@ -195,7 +195,7 @@ func TestRenderHandoffGuideSegment_UnknownBudgetHidden(t *testing.T) {
 	// Budget not in {200000, 1000000} (e.g., zero / unknown) → should hide
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 0,
+			ContextWindowSize: 0,
 			TokensUsed:  100_000,
 			Available:   false,
 		},

@@ -550,33 +550,33 @@ func (r *Renderer) isLongContextEnabled() bool {
 // the model-class threshold and the orchestrator should hint the user toward
 // a /clear handoff (REQ-SSE-005). Threshold table:
 //
-//   - 1M context (TokenBudget == 1,000,000): >=50% usage
-//   - 200K context (TokenBudget == 200,000):  >=90% usage
-//   - other / 0 budget: hidden (safety default — no marker without budget signal)
+//   - 1M context (ContextWindowSize == 1,000,000): >=50% raw usage
+//   - 200K context (ContextWindowSize == 200,000):  >=90% raw usage
+//   - other / 0 window size: hidden (safety default — no marker without raw signal)
 //
-// Note: REQ-SSE-005 originally specified the safety default as "treat unknown
-// budget as 200K (>=90%)", but with TokenBudget == 0 the percentage division
-// is undefined; emitting a marker under that condition is misleading. The
-// implementation chooses "hidden when budget unknown" — strictly safer (no
-// false-positive marker) and the tested behavior in
-// TestRenderHandoffGuideSegment_UnknownBudgetHidden.
+// Uses raw Memory.ContextWindowSize (Claude Code stdin context_window_size)
+// instead of Memory.TokenBudget — TokenBudget is auto-compact-threshold-scaled
+// (e.g., 1M × 85% = 850K) which would never match the raw 1M/200K switch cases.
+// Boundary defect fix: handoff_guide was permanently hidden because production
+// TokenBudget never equals raw class boundaries (only unit tests bypassed this
+// by injecting raw values directly into MemoryData).
 //
 // @MX:NOTE: [AUTO] 1M=50%/200K=90% 임계값 — context-window-management.md HARD rule와 일치.
 func shouldShowHandoffGuide(data *StatusData) bool {
 	if data == nil {
 		return false
 	}
-	budget := data.Memory.TokenBudget
-	if budget <= 0 {
+	cwSize := data.Memory.ContextWindowSize
+	if cwSize <= 0 {
 		return false
 	}
 	used := data.Memory.TokensUsed
-	pct := float64(used) * 100.0 / float64(budget)
-	switch budget {
+	rawPct := float64(used) * 100.0 / float64(cwSize)
+	switch cwSize {
 	case 1_000_000:
-		return pct >= 50.0
+		return rawPct >= 50.0
 	case 200_000:
-		return pct >= 90.0
+		return rawPct >= 90.0
 	default:
 		return false
 	}

@@ -269,9 +269,10 @@ type GitStatusData struct {
 
 // MemoryData holds context window token usage information.
 type MemoryData struct {
-	TokensUsed  int
-	TokenBudget int
-	Available   bool
+	TokensUsed        int
+	TokenBudget       int // Scaled to auto-compact threshold for CW bar (e.g., 1M × 85% = 850K)
+	ContextWindowSize int // Raw context_window_size from Claude Code stdin (1M / 200K) — used by handoff_guide threshold matching
+	Available         bool
 }
 
 // MetricsData holds session cost and model information.
