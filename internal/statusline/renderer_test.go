@@ -875,14 +875,10 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	got := r.Render(data, ModeDefault)
 	lines := strings.Split(got, "\n")
 	l3 := lines[2]
-	l1 := lines[0]
 
-	// Layout v3 CH5: directory moved to L1 end (not L3).
-	if !strings.Contains(l1, "📁 moai-adk-go") {
-		t.Errorf("default L1 must contain directory (layout v3 CH5), got: %q", l1)
-	}
-	if strings.Contains(l3, "📁") {
-		t.Errorf("default L3 must NOT contain directory (moved to L1 by CH5), got: %q", l3)
+	// Layout v3 amend: directory back on L3 head (before repo_branch).
+	if !strings.Contains(l3, "📁 moai-adk-go") {
+		t.Errorf("default L3 must contain directory at head, got: %q", l3)
 	}
 	// Layout v3 CH3: combined repo+branch segment "🔀 (branch ↑N ↓N +N)"
 	// (no Workspace.Repo in fixture → owner/name portion omitted).

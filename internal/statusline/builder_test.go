@@ -298,11 +298,11 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Layout v3: without git data, default renders L1 (info incl. directory) + L2 (bars)
-	// = 2 lines (L3 is empty when no git + no repo + no PR).
+	// Layout v3: without git data, default renders L1 (info) + L2 (bars) + L3 (directory)
+	// = 3 lines (directory on L3 head per amend).
 	lines := strings.Split(got, "\n")
-	if len(lines) != 2 {
-		t.Errorf("default without git should be 2 lines (layout v3 — directory moved to L1, L3 empty without git), got %d lines: %q", len(lines), got)
+	if len(lines) != 3 {
+		t.Errorf("default without git should be 3 lines (directory on L3), got %d lines: %q", len(lines), got)
 	}
 }
 

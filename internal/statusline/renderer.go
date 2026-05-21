@@ -242,14 +242,9 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
-	// Output style
+	// Output style (last L1 segment per layout v3 amend: directory moved back to L3 head)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
 		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
-	}
-
-	// Directory (layout v3 CH5: moved from L3 to L1 end)
-	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
-		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
 	return r.joinSegments(segs)
@@ -336,8 +331,13 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
+	// Directory (layout v3 amend: L3 head — placed before repo_branch)
+	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
+		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
+	}
+
 	// Combined repo+branch segment (layout v3 CH3): replaces former
-	// SegmentDirectory (L1 now) + SegmentGitBranch + SegmentRepo trio.
+	// SegmentGitBranch + SegmentRepo pair.
 	if r.isSegmentEnabled(SegmentGitBranch) {
 		if rb := r.renderRepoBranchSegment(data); rb != "" {
 			segs = append(segs, rb)
