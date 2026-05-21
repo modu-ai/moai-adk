@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-ABSORB-CLEANUP-001
 title: "Wave 1 Foundation Cleanup — baseline sentinel insertion + catalog reconciliation"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: GOOS Kim
