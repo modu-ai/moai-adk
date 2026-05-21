@@ -2,6 +2,13 @@
 
 > Tier S LEAN minimal form (per WORKFLOW-LEAN-001). Single milestone with self-contained steps. Section A-E delegation template OPTIONAL — minimal prompt acceptable.
 
+## HISTORY
+
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 0.1.0 | 2026-05-22 | manager-spec | Initial plan — Tier S, 5 milestones (M1 types, M2 renderer, M3 HARD rule sync, M4 tests, M5 self-verification batch). |
+| 0.2.0 | 2026-05-22 | manager-spec | Iter 2 revision per plan-auditor (B1 + S3 + S5): M3 Step 3 scoped to CONST-V3R5-022 only; new Working-Tree PRESERVE section (11 paths) added before Brownfield Strategy; M1 Step 4 committed to `StatusData.ExceedsLongTokens` canonical pass-through (no implementer-choice deferral). |
+
 ## Scope Summary
 
 - 11 REQs (REQ-SSE-001..011), 11 inline binary ACs in spec.md §3
@@ -10,6 +17,27 @@
 - 3 HARD rule files updated: `context-window-management.md`, `session-handoff.md`, `zone-registry.md`
 - Estimated LOC: ~150 new + ~10 modified = ~160 LOC (well within Tier S < 300 LOC budget)
 - Estimated files affected: 4 source + 3 rules + 1 test = 8 files (above Tier S < 5 guidance but justified by HARD rule mirroring — 3 of 8 are HARD rule sync, which is mechanical text replacement). Tier S judgment retained.
+
+## Working-Tree PRESERVE (11 paths — DO NOT MODIFY)
+
+These paths are dirty in the working tree at plan-phase iter 2 commit (`git status --short` snapshot 2026-05-22). They are UNRELATED to this SPEC and MUST remain untouched during run-phase implementation. Run-phase manager-develop receives this list verbatim in the Section A-E delegation prompt (Section D — Constraints):
+
+**5 modified** (tracked):
+- `.claude/settings.json`
+- `.moai/harness/usage-log.jsonl`
+- `internal/merge/confirm.go`
+- `internal/merge/confirm_coverage_test.go`
+- `internal/merge/confirm_test.go`
+
+**6 untracked**:
+- `.claude/commands/99-release.md`
+- `.claude/skills/moai/workflows/release.md`
+- `internal/cli/init_layout.go`
+- `internal/cli/wizard/fullscreen.go`
+- `internal/cli/wizard/review.go`
+- `internal/hook/.moai/` (directory)
+
+Rationale: per Late-Branch + parallel-session policy, unrelated dirty files are preserved across SPEC commits. Implementation MUST stage ONLY the explicitly-named target files in milestones M1–M4 (types.go, renderer.go, builder.go, statusline.yaml templates if needed, 3 HARD rule files, new test files). `git add` MUST use specific paths — `git add -A` and `git add .` are prohibited.
 
 ## Brownfield Strategy
 
@@ -29,7 +57,7 @@
 1. Add `ExceedsLongTokens bool \`json:"exceeds_200k_tokens"\`` to `StdinData` struct (line ~70, between `Version` and `PR`).
 2. Add `SegmentRepo = "repo"`, `SegmentLongContext = "long_context"`, `SegmentHandoffGuide = "handoff_guide"` to segment key constants (line ~270).
 3. Bulk-replace `v2.1.122` → `v2.1.139` in lines 68, 69, 100, 103, 109, 111, 230, 231 (Effort/Thinking comments + StatusData docstrings).
-4. Add `ExceedsLongTokens bool` pass-through to `StatusData` if renderer needs it (decide during impl; may instead read from collected stdin directly — implementer's choice).
+4. Add `ExceedsLongTokens bool` field to `StatusData` struct in `internal/statusline/types.go`. Populate in `builder.go` `collectAll` (or equivalent stdin-merge function) from `input.ExceedsLong` if `input != nil`. Renderer reads from `data.ExceedsLongTokens` (single canonical path — no raw stdin access from renderer). This commitment is finalized at plan-phase; no run-phase implementer-choice deferral.
 
 **Acceptance**: AC-SSE-003, AC-SSE-011 PASS via grep verification.
 
@@ -67,9 +95,9 @@
    - Line 22 Trigger #1 table cell: `**1M context model (Opus 4.7): 75%** (~750,000 tokens)` → `**1M context model (Opus 4.7): 50%** (~500,000 tokens)`
    - Line 232 cross-ref: `(1M = 75%, 200K = 90%)` → `(1M = 50%, 200K = 90%)`
 3. `.claude/rules/moai/core/zone-registry.md`:
-   - CONST-V3R5-022 clause: replace verbatim `1M context (Opus 4.7) = 75%` substring → `1M context (Opus 4.7) = 50%`
-   - CONST-V3R5-025 clause: same replacement on its quoted threshold reference
-   - Leave 200K (Sonnet) = 90% unchanged in both entries
+   - CONST-V3R5-022 clause: replace verbatim `1M context (Opus 4.7) = 75%` substring → `1M context (Opus 4.7) = 50%`. This is the ONLY entry quoting the threshold verbatim — verified via `grep -B 1 -A 6 "id: CONST-V3R5-022" zone-registry.md` on 2026-05-22.
+   - Leave 200K (Sonnet/Opus/Haiku) = 90% language in CONST-V3R5-022 unchanged.
+   - CONST-V3R5-023 (`when usage crosses the model-specific threshold`), CONST-V3R5-024 (95% absolute ceiling), CONST-V3R5-025 (`pre-clear announcement`), CONST-V3R5-026 (resume message format): NO edits required — these entries are abstract and do not quote the 75% literal.
 
 **Acceptance**: AC-SSE-008, AC-SSE-009, AC-SSE-010 PASS via grep verification.
 

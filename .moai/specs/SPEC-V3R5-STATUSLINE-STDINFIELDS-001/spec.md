@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R5-STATUSLINE-STDINFIELDS-001
 title: "Statusline stdin schema enrichment (workspace.repo render + exceeds_200k_tokens marker + handoff_guide) + 1M handoff threshold tightening"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-05-22
 updated: 2026-05-22
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — plan-phase. Tier S, LEAN minimal form (spec.md + plan.md). |
+| 0.2.0 | 2026-05-22 | manager-spec | Iter 2 revision per plan-auditor (B1 + S1 + S4): scope REQ-SSE-010/AC-SSE-010 to CONST-V3R5-022 only (CONST-V3R5-025 factually unrelated); tighten AC-SSE-007 regression grep to function-body pattern; tighten AC-SSE-011 threshold from `≥ 6` to `= 8` + add `code_comments: ko` clarification on REQ-SSE-011. Plan-side S3/S5 fixes mirrored in plan.md v0.2.0. |
 
 ## 1. Background
 
@@ -119,7 +120,7 @@ When `shouldShowHandoffGuide` returns `true`, the renderer SHALL emit a paste-re
 
 The existing `renderPRSegment` (introduced in SPEC-V3R5-STATUSLINE-V2145-001, commit `fb3d1e22b`) SHALL continue to render unchanged. No code path added by this SPEC SHALL modify `renderPRSegment`, `isPREnabled`, `prReviewStateColor`, or the `PRInfo` struct.
 
-**AC-SSE-007** (binary): `git diff main -- internal/statusline/renderer.go | grep -E "^[+-].*(renderPRSegment|isPREnabled|prReviewStateColor)" | grep -v "^[+-]---" | grep -v "^[+-]+++"` returns 0 lines (no insertions or deletions on those functions). Existing test `TestRenderPRSegment` (if present) continues to PASS.
+**AC-SSE-007** (binary): Function-body regression check (NOT a name-reference match). `git diff main -- internal/statusline/renderer.go | grep -E "^[+-][[:space:]]*(func[[:space:]]+.*renderPRSegment|return.*isPREnabled\(|prReviewStateColor[[:space:]]*\()"` returns 0 lines (no insertions or deletions on those function signatures, body returns, or function calls). Mere comment references to these names (e.g., a docstring in a new function saying "see renderPRSegment for pattern") are NOT regressions. Existing test `TestRenderPRSegment` (if present) continues to PASS via `go test -run TestRenderPRSegment ./internal/statusline/...`.
 
 ### REQ-SSE-008 — 1M context handoff threshold tightening
 
@@ -135,15 +136,15 @@ The Trigger #1 table in `.claude/rules/moai/workflow/session-handoff.md` SHALL b
 
 ### REQ-SSE-010 — Mirror threshold change to zone-registry.md
 
-Entries CONST-V3R5-022 and CONST-V3R5-025 in `.claude/rules/moai/core/zone-registry.md` (which quote the 75% threshold verbatim) SHALL be updated to quote 50% verbatim for the 1M model class. The 200K (90%) language in the same entries SHALL remain unchanged.
+Entry **CONST-V3R5-022** in `.claude/rules/moai/core/zone-registry.md` (which quotes the 75% threshold verbatim in its `clause:` line) SHALL be updated to quote 50% verbatim for the 1M model class. The 200K (90%) language in the same entry SHALL remain unchanged. Per zone-registry verification on 2026-05-22, CONST-V3R5-022 is the ONLY entry quoting `1M context (Opus 4.7) = 75%` verbatim; sibling entries CONST-V3R5-023 (`when usage crosses the model-specific threshold`), CONST-V3R5-024 (95% absolute ceiling), CONST-V3R5-025 (`pre-clear announcement`), CONST-V3R5-026 (resume message format) are abstract or unrelated and require no edit.
 
-**AC-SSE-010** (binary): `grep -A 2 "id: CONST-V3R5-022" .claude/rules/moai/core/zone-registry.md | grep -E "75%|750" ` returns 0 matches. Same grep on `id: CONST-V3R5-025` returns 0 matches. `grep -A 2 "id: CONST-V3R5-022" .claude/rules/moai/core/zone-registry.md | grep -E "50%"` returns ≥ 1 match.
+**AC-SSE-010** (binary): `grep -A 6 "id: CONST-V3R5-022" .claude/rules/moai/core/zone-registry.md | grep -E "75%|750"` returns 0 matches. `grep -A 6 "id: CONST-V3R5-022" .claude/rules/moai/core/zone-registry.md | grep -E "50%"` returns ≥ 1 match.
 
 ### REQ-SSE-011 — Code comment version correction (side-fix)
 
-The code comments at `internal/statusline/types.go:68-69` (StdinData fields `Effort` and `Thinking`) SHALL cite "Claude Code v2.1.139+" instead of "v2.1.122+". The comments at lines 100, 103, 109, 111, 230, 231 (EffortInfo struct, ThinkingInfo struct, StatusData struct fields) SHALL be updated to match.
+The code comments at `internal/statusline/types.go:68-69` (StdinData fields `Effort` and `Thinking`) SHALL cite "Claude Code v2.1.139+" instead of "v2.1.122+". The comments at lines 100, 103, 109, 111, 230, 231 (EffortInfo struct, ThinkingInfo struct, StatusData struct fields) SHALL be updated to match. This REQ updates ONLY the version number (`v2.1.122` → `v2.1.139`); the comment language (English) is preserved verbatim. The `code_comments: ko` setting from `.moai/config/sections/language.yaml` does NOT apply to existing English struct field comments — it governs new comments, not version-string corrections within existing comments.
 
-**AC-SSE-011** (binary): `grep -n "v2.1.122" internal/statusline/types.go` returns 0 matches. `grep -n "v2.1.139" internal/statusline/types.go` returns ≥ 6 matches.
+**AC-SSE-011** (binary): `grep -c "v2.1.122" internal/statusline/types.go` returns exactly `0`. `grep -c "v2.1.139" internal/statusline/types.go` returns exactly `8` (matching the 8 pre-existing `v2.1.122` occurrences at lines 68, 69, 100, 103, 109, 111, 230, 231).
 
 ## 4. Risks
 
