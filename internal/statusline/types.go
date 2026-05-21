@@ -65,10 +65,11 @@ type StdinData struct {
 	ContextWindow  *ContextWindowInfo `json:"context_window"`
 	OutputStyle    *OutputStyleInfo   `json:"output_style"`
 	RateLimits     *RateLimitInfo     `json:"rate_limits"`
-	Effort         *EffortInfo        `json:"effort"`   // Claude Code v2.1.122+ effort level (nil if absent)
-	Thinking       *ThinkingInfo      `json:"thinking"` // Claude Code v2.1.122+ thinking flag (nil if absent)
+	Effort         *EffortInfo        `json:"effort"`   // Claude Code v2.1.139+ effort level (nil if absent)
+	Thinking       *ThinkingInfo      `json:"thinking"` // Claude Code v2.1.139+ thinking flag (nil if absent)
 	Version        string             `json:"version"`  // Claude Code version (e.g., "1.0.80")
-	PR             *PRInfo            `json:"pr,omitempty"` // Claude Code v2.1.145+ active PR info (nil if no PR detected)
+	PR             *PRInfo            `json:"pr,omitempty"`            // Claude Code v2.1.145+ active PR info (nil if no PR detected)
+	ExceedsLong    bool               `json:"exceeds_200k_tokens"`     // long-context overflow boolean (false if absent)
 }
 
 // PRInfo represents GitHub Pull Request metadata from Claude Code v2.1.145+
@@ -97,18 +98,18 @@ type RateLimitWindow struct {
 	ResetsAt       int64   `json:"resets_at"`       // Unix epoch seconds (official schema)
 }
 
-// EffortInfo holds the effort level from Claude Code v2.1.122+.
+// EffortInfo holds the effort level from Claude Code v2.1.139+.
 // The Level field is raw-passthrough — unknown values are not rejected (REQ-CC2122-004).
 //
-// @MX:NOTE: [AUTO] Effort level information struct added in Claude Code v2.1.122+.
+// @MX:NOTE: [AUTO] Effort level information struct added in Claude Code v2.1.139+.
 // Receives low/medium/high/xhigh/max values; unknown values are also passed through (REQ-CC2122-004).
 type EffortInfo struct {
 	Level string `json:"level"` // e.g., "low", "medium", "high", "xhigh", "max"
 }
 
-// ThinkingInfo holds the extended reasoning (thinking) activation flag from Claude Code v2.1.122+.
+// ThinkingInfo holds the extended reasoning (thinking) activation flag from Claude Code v2.1.139+.
 //
-// @MX:NOTE: [AUTO] Extended reasoning (thinking) activation flag struct added in Claude Code v2.1.122+.
+// @MX:NOTE: [AUTO] Extended reasoning (thinking) activation flag struct added in Claude Code v2.1.139+.
 // Display with ·t suffix in statusline when Enabled=true (REQ-CC2122-002).
 type ThinkingInfo struct {
 	Enabled bool `json:"enabled"` // true when extended reasoning is active
@@ -227,9 +228,32 @@ type StatusData struct {
 	Usage             *UsageResult   // API usage (nil when unavailable)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
 	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
-	Effort            *EffortInfo    // Effort level from Claude Code v2.1.122+ (nil when unavailable, REQ-CC2122-001)
-	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.122+ (nil when unavailable, REQ-CC2122-002)
+	Effort            *EffortInfo    // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
+	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
 	PR                *PRInfo        // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
+
+	// Workspace mirrors the v2.1.145+ workspace.* stdin sub-object so the
+	// renderer can access workspace metadata (e.g., Repo) without reaching
+	// back into raw stdin (REQ-SSE-001). Value type — zero-value safe.
+	Workspace WorkspaceData
+
+	// ExceedsLongTokens mirrors StdinData.ExceedsLong (stdin field
+	// exceeds_200k_tokens). true → render Layer 1 ⚠️ long marker; pure
+	// visual signal, no handoff semantics (REQ-SSE-003 / REQ-SSE-004).
+	ExceedsLongTokens bool
+}
+
+// WorkspaceData mirrors the subset of stdin workspace.* fields that the
+// renderer needs at rendering time. Currently carries only Repo (REQ-SSE-001).
+// New v2.1.146+ workspace sub-fields are added here as additional segments
+// are wired into the renderer.
+//
+// @MX:NOTE: [AUTO] StatusData-side workspace projection — populated by
+// builder.collectAll from input.Workspace.* before the renderer runs.
+type WorkspaceData struct {
+	// Repo carries the GitHub repository identity (v2.1.145+). Nil when
+	// stdin lacks workspace.repo or detection failed.
+	Repo *RepoInfo
 }
 
 // GitStatusData holds git repository status information.
@@ -291,6 +315,15 @@ const (
 
 	// REQ-SLV-016: PR segment (Claude Code 2.1.145+)
 	SegmentPR = "pr" // Active GitHub PR indicator (number + review_state)
+
+	// REQ-SSE-001/002: workspace.repo segment (Claude Code 2.1.145+)
+	SegmentRepo = "repo" // GitHub repo identity owner/name indicator
+
+	// REQ-SSE-003/004: exceeds_200k_tokens visual marker (Claude Code 2.1.139+)
+	SegmentLongContext = "long_context" // Long-context overflow ⚠️ marker
+
+	// REQ-SSE-005/006: handoff guide segment (orchestrator handoff hint)
+	SegmentHandoffGuide = "handoff_guide" // Paste-ready /clear hint at threshold
 )
 
 // UsageData represents API usage information.
