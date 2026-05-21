@@ -18,6 +18,7 @@ RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 all: lint test build ## Run lint, test, and build
 
 build: ## Build the binary
+	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
 release-local: build ## Create a local release for development updates
