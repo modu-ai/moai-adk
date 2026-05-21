@@ -273,10 +273,10 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Layout v3 CH3: branch shown via combined repo_branch segment "🔀 (main)"
+	// Layout v3 CH3: branch shown via combined repo_branch segment "🔀 (🅱️ main)"
 	// (no Workspace.Repo → owner/name portion omitted; clean → no dirty suffix).
-	if !strings.Contains(got, "🔀 (main)") && !strings.Contains(got, "📭 main +0") {
-		t.Errorf("should show clean branch as '🔀 (main)' or '📭 main +0', got %q", got)
+	if !strings.Contains(got, "🔀 (🅱️ main)") && !strings.Contains(got, "📭 main +0") {
+		t.Errorf("should show clean branch as '🔀 (🅱️ main)' or '📭 main +0', got %q", got)
 	}
 }
 
@@ -883,8 +883,8 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	// Layout v3 CH3: combined repo+branch segment "🔀 (branch ↑N ↓N +N)"
 	// (no Workspace.Repo in fixture → owner/name portion omitted).
 	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
-	if !strings.Contains(l3, "🔀 (feat/auth ↑2 ↓1 +6)") {
-		t.Errorf("default L3 must contain combined repo_branch segment (layout v3 CH3), got: %q", l3)
+	if !strings.Contains(l3, "🔀 (🅱️ feat/auth ↑2 ↓1 +6)") {
+		t.Errorf("default L3 must contain combined repo_branch segment with 🅱️ prefix, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
 		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)

@@ -476,7 +476,7 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		return ""
 	}
 
-	branch := data.Git.Branch
+	branch := "🅱️ " + data.Git.Branch
 	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
 		branch = "[WT] " + branch
 	}
