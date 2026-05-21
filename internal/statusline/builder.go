@@ -240,6 +240,19 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.PR = input.PR
 	}
 
+	// Extract workspace.repo (v2.1.145+, REQ-SSE-001) — feeds renderRepoSegment.
+	// data.Workspace is a value type (zero-safe). Repo is nil when stdin lacks
+	// it or detection failed; renderer handles nil gracefully.
+	if input != nil && input.Workspace != nil && input.Workspace.Repo != nil {
+		data.Workspace.Repo = input.Workspace.Repo
+	}
+
+	// Extract exceeds_200k_tokens (v2.1.139+, REQ-SSE-003) — feeds renderLongContextSegment.
+	// Go default (false) applies when stdin lacks the field (backward compat).
+	if input != nil {
+		data.ExceedsLongTokens = input.ExceedsLong
+	}
+
 	// Parallel collectors (may involve I/O)
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData

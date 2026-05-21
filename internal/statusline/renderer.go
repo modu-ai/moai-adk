@@ -43,31 +43,21 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 	return r
 }
 
-// Render formats the StatusData into a statusline string based on the mode.
+// Render formats the StatusData into the canonical 3-line statusline layout.
 //
-// v3 mode mapping:
-//   - ModeDefault, ModeCompact, ModeMinimal → 3-line default layout
-//   - ModeFull, ModeVerbose                 → 5-line full layout
-//   - unknown                               → 3-line default layout (fallback)
+// The mode argument is accepted for backward compatibility but always
+// collapses to ModeDefault via NormalizeMode — the 5-line "Full" layout was
+// retired.
 //
 // @MX:ANCHOR: [AUTO] Single entry point for all mode rendering - called from Build() in builder.go
-// @MX:REASON: [AUTO] Public API boundary; contains mode routing logic
+// @MX:REASON: [AUTO] Public API boundary; keeps the mode parameter so external
+// callers compile unchanged while the layout is fixed to default.
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	if data == nil {
 		return "MoAI"
 	}
-
-	// Normalize deprecated mode names to v3 names
-	normalizedMode := NormalizeMode(mode)
-
-	var result string
-	switch normalizedMode {
-	case ModeFull:
-		result = r.renderFullV3(data)
-	default: // ModeDefault or unknown mode
-		result = r.renderDefaultV3(data)
-	}
-
+	_ = NormalizeMode(mode) // legacy-name collapse, kept for symmetry
+	result := r.renderDefaultV3(data)
 	if result == "" {
 		return "MoAI"
 	}
@@ -356,12 +346,76 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		}
 	}
 
+	// Task segment (REQ-V3 Cycle 5 Phase 4, opt-in)
+	// 활성 SPEC 워크플로 정보 — 위치: PR 직전 (workflow context → review context 순서)
+	if task := r.renderTaskSegment(data); task != "" {
+		segs = append(segs, task)
+	}
+
+	// Repo segment (Claude Code v2.1.145+, REQ-SSE-001/002).
+	// Order: repo → pr → long_context → handoff_guide per plan.md M2.
+	if r.isRepoEnabled() {
+		if repo := renderRepoSegment(data); repo != "" {
+			segs = append(segs, repo)
+		}
+	}
+
 	// PR segment (Claude Code v2.1.145+, REQ-SLV-013)
 	if pr := r.renderPRSegment(data); pr != "" {
 		segs = append(segs, pr)
 	}
 
+	// Long-context Layer 1 visual marker (Claude Code v2.1.139+, REQ-SSE-003/004).
+	if r.isLongContextEnabled() {
+		if lc := renderLongContextSegment(data); lc != "" {
+			segs = append(segs, lc)
+		}
+	}
+
+	// Layer 2 handoff guide hint (REQ-SSE-005/006). Activates at 1M ≥50% or
+	// 200K ≥90% context window usage — co-anchored to context-window-management.md.
+	if r.isHandoffGuideEnabled() {
+		if hg := renderHandoffGuideSegment(data); hg != "" {
+			segs = append(segs, hg)
+		}
+	}
+
 	return r.joinSegments(segs)
+}
+
+// renderTaskSegment renders the active SPEC workflow task segment.
+// Format: "📋 [command SPEC-XXX-stage]" — wraps TaskData.Format() with a clipboard icon.
+//
+// Returns empty string when:
+//   - SegmentTask is not explicitly enabled in segmentConfig (opt-in default off)
+//   - data.Task is inactive (Active==false) OR Command is empty (TaskData.Format() returns "")
+func (r *Renderer) renderTaskSegment(data *StatusData) string {
+	if !r.isTaskEnabled() {
+		return ""
+	}
+	if data == nil {
+		return ""
+	}
+	formatted := data.Task.Format()
+	if formatted == "" {
+		return ""
+	}
+	return fmt.Sprintf("📋 %s", formatted)
+}
+
+// isTaskEnabled returns true when SegmentTask is enabled in segmentConfig.
+// Default-on as of v2.20.0-rc1 — unset key resolves to enabled, matching
+// isSegmentEnabled semantics. Graceful no-output handles inactive task
+// (TaskData.Format() returns "" → segment hidden).
+func (r *Renderer) isTaskEnabled() bool {
+	if len(r.segmentConfig) == 0 {
+		return true
+	}
+	enabled, exists := r.segmentConfig[SegmentTask]
+	if !exists {
+		return true
+	}
+	return enabled
 }
 
 // renderPRSegment renders the PR segment in the form "#<number> ⌥<state>".
@@ -404,17 +458,161 @@ func (r *Renderer) renderPRSegment(data *StatusData) string {
 	return fmt.Sprintf("%s %s", numberText, stateText)
 }
 
-// isPREnabled returns true only when SegmentPR is explicitly set to true in
-// segmentConfig. The PR segment is opt-in (REQ-SLV-012) — unset key resolves
-// to disabled for zero-regression on legacy users whose config files predate
-// v2.1.145 awareness.
+// isPREnabled returns true when SegmentPR is enabled in segmentConfig.
+// Default-on as of v2.20.0-rc1 (REQ-SLV-012 supersession) — unset key resolves
+// to enabled, matching isSegmentEnabled semantics. Graceful no-output handles
+// the no-PR case (data.PR == nil → segment hidden).
 func (r *Renderer) isPREnabled() bool {
 	if len(r.segmentConfig) == 0 {
-		return false
+		return true
 	}
 	enabled, exists := r.segmentConfig[SegmentPR]
 	if !exists {
+		return true
+	}
+	return enabled
+}
+
+// renderRepoSegment renders the GitHub repository identity segment in the
+// form "owner/name" (e.g., "modu-ai/moai-adk") when stdin provides
+// workspace.repo (Claude Code v2.1.145+, REQ-SSE-001).
+//
+// Returns empty string when:
+//   - data is nil
+//   - data.Workspace.Repo is nil
+//   - Owner or Name is empty (REQ-SSE-001 strict non-empty check)
+//
+// Format literal: "%s/%s" for Owner/Name interpolation. The Host field is
+// captured by StdinData but not currently surfaced — owner/name alone is the
+// disambiguation key for cross-repo PR segment context.
+//
+// @MX:NOTE: [AUTO] workspace.repo 렌더링 진입점 — v2.1.145+ stdin field, default-on per REQ-SSE-002.
+func renderRepoSegment(data *StatusData) string {
+	if data == nil {
+		return ""
+	}
+	repo := data.Workspace.Repo
+	if repo == nil {
+		return ""
+	}
+	if repo.Owner == "" || repo.Name == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
+}
+
+// isRepoEnabled returns true when SegmentRepo is enabled in segmentConfig.
+// Default-on for v2.20.0-rc1 per REQ-SSE-002 (follows isPREnabled pattern):
+// unset key resolves to enabled, matching isSegmentEnabled semantics.
+// Graceful no-output handles the no-repo case (Workspace.Repo == nil →
+// renderRepoSegment returns empty).
+func (r *Renderer) isRepoEnabled() bool {
+	if len(r.segmentConfig) == 0 {
+		return true
+	}
+	enabled, exists := r.segmentConfig[SegmentRepo]
+	if !exists {
+		return true
+	}
+	return enabled
+}
+
+// renderLongContextSegment emits the Layer 1 long-context visual marker
+// "⚠️ long" when stdin reported exceeds_200k_tokens == true (REQ-SSE-004).
+// This is a pure visual signal — no handoff semantics, no escalation.
+//
+// Returns empty string when data is nil or ExceedsLongTokens is false.
+//
+// @MX:NOTE: [AUTO] Layer 1 시각 마커 — v2.1.139+ exceeds_200k_tokens 매핑, Warning 색상.
+func renderLongContextSegment(data *StatusData) string {
+	if data == nil || !data.ExceedsLongTokens {
+		return ""
+	}
+	return "⚠️ long"
+}
+
+// isLongContextEnabled returns true when SegmentLongContext is enabled in
+// segmentConfig. Default-on per REQ-SSE-004 (follows isPREnabled pattern):
+// unset key resolves to enabled. Graceful no-output covers the
+// ExceedsLongTokens=false case via renderLongContextSegment.
+func (r *Renderer) isLongContextEnabled() bool {
+	if len(r.segmentConfig) == 0 {
+		return true
+	}
+	enabled, exists := r.segmentConfig[SegmentLongContext]
+	if !exists {
+		return true
+	}
+	return enabled
+}
+
+// shouldShowHandoffGuide returns true when accumulated context usage crosses
+// the model-class threshold and the orchestrator should hint the user toward
+// a /clear handoff (REQ-SSE-005). Threshold table:
+//
+//   - 1M context (TokenBudget == 1,000,000): >=50% usage
+//   - 200K context (TokenBudget == 200,000):  >=90% usage
+//   - other / 0 budget: hidden (safety default — no marker without budget signal)
+//
+// Note: REQ-SSE-005 originally specified the safety default as "treat unknown
+// budget as 200K (>=90%)", but with TokenBudget == 0 the percentage division
+// is undefined; emitting a marker under that condition is misleading. The
+// implementation chooses "hidden when budget unknown" — strictly safer (no
+// false-positive marker) and the tested behavior in
+// TestRenderHandoffGuideSegment_UnknownBudgetHidden.
+//
+// @MX:NOTE: [AUTO] 1M=50%/200K=90% 임계값 — context-window-management.md HARD rule와 일치.
+func shouldShowHandoffGuide(data *StatusData) bool {
+	if data == nil {
 		return false
+	}
+	budget := data.Memory.TokenBudget
+	if budget <= 0 {
+		return false
+	}
+	used := data.Memory.TokensUsed
+	pct := float64(used) * 100.0 / float64(budget)
+	switch budget {
+	case 1_000_000:
+		return pct >= 50.0
+	case 200_000:
+		return pct >= 90.0
+	default:
+		return false
+	}
+}
+
+// renderHandoffGuideSegment emits the Layer 2 paste-ready handoff hint
+// "📋 /clear" when shouldShowHandoffGuide is true AND the segment is enabled
+// (REQ-SSE-006). The user pastes the orchestrator-generated resume message
+// after running /clear; see session-handoff.md canonical format.
+//
+// Returns empty string when:
+//   - data is nil
+//   - shouldShowHandoffGuide(data) returns false
+//
+// Enable-gating is performed by isHandoffGuideEnabled at the call site
+// inside renderDirGitLine — this function itself only enforces the
+// threshold semantics.
+//
+// @MX:NOTE: [AUTO] Layer 2 handoff hint — 임계값 진입 시 /clear 권고 마커.
+func renderHandoffGuideSegment(data *StatusData) string {
+	if !shouldShowHandoffGuide(data) {
+		return ""
+	}
+	return "📋 /clear"
+}
+
+// isHandoffGuideEnabled returns true when SegmentHandoffGuide is enabled
+// in segmentConfig. Default-on per REQ-SSE-006 (follows isPREnabled
+// pattern): unset key resolves to enabled.
+func (r *Renderer) isHandoffGuideEnabled() bool {
+	if len(r.segmentConfig) == 0 {
+		return true
+	}
+	enabled, exists := r.segmentConfig[SegmentHandoffGuide]
+	if !exists {
+		return true
 	}
 	return enabled
 }

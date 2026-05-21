@@ -19,7 +19,7 @@ This rule establishes:
 
 | # | Trigger | Detection |
 |---|---------|-----------|
-| 1 | Context usage crosses model-specific threshold (cumulative input+output) | **1M context model (Opus 4.7): 75%** (~750,000 tokens). **200K context model (Sonnet/Opus standard, Haiku): 90%** (~180,000 tokens). Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics. |
+| 1 | Context usage crosses model-specific threshold (cumulative input+output) | **1M context model (Opus 4.7): 50%** (~500,000 tokens). **200K context model (Sonnet/Opus standard, Haiku): 90%** (~180,000 tokens). Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics. |
 | 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Phase boundary in `.claude/rules/moai/workflow/spec-workflow.md` §Completion Markers (after plan/run/sync phase finishes within a multi-SPEC SPEC ID series) |
 | 3 | User explicitly requests session end ("세션 종료", "이번 세션 마무리", "next session") | Intent detection in user message |
 | 4 | PR creation success when more SPECs remain in the current wave | After `gh pr create` success + memory indicates >0 pending SPECs |
@@ -229,7 +229,7 @@ applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14, lessons
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/context-window-management.md` — model-specific context-window threshold (1M = 75%, 200K = 90%) for `/clear` recommendations and Trigger #1 of this rule. The two policies share the same threshold table.
+- `.claude/rules/moai/workflow/context-window-management.md` — model-specific context-window threshold (1M = 50%, 200K = 90%) for `/clear` recommendations and Trigger #1 of this rule. The two policies share the same threshold table.
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory write rules and `[SUPERSEDED by ...]` convention
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow

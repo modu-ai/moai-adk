@@ -138,6 +138,23 @@ statusline:
 - Number of currently executing tasks
 - Enable: `segments.task: true`
 
+**repo** — Repository information (optional, v2.1.145+)
+- Display current GitHub repository owner/name
+- Example: `modu-ai/moai-adk`
+- Enable: `segments.repo: true`
+
+**long_context** — Long context warning (optional, v2.1.139+)
+- Display warning marker when 200K tokens exceeded
+- Example: `⚠️ 200K+ exceeded`
+- Enable: `segments.long_context: true`
+
+**handoff_guide** — Handoff threshold guide (optional, v2.1.146+)
+- Display current model's context window size and recommended handoff threshold
+- 1M model: 50% threshold (≈500K tokens)
+- 200K model: 90% threshold (≈180K tokens)
+- Example: `[1M: 50% | 200K: 90%]`
+- Enable: `segments.handoff_guide: true`
+
 ## NEW v2.1.145: PR Segment
 
 ### Overview
