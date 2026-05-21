@@ -394,11 +394,12 @@ func TestAnalysisFormatter_FormatPrompt_SelectionMode(t *testing.T) {
 
 	result := formatter.FormatPrompt()
 
-	if !strings.Contains(result, "[S]election Mode") {
-		t.Errorf("expected selection mode prompt, got: %s", result)
+	// layout v3: selection-mode prompt uses lowercase compact key hints.
+	if !strings.Contains(result, "↑↓ navigate") {
+		t.Errorf("expected '↑↓ navigate' in selection prompt, got: %s", result)
 	}
-	if !strings.Contains(result, "[Space] Toggle") {
-		t.Errorf("expected space toggle instruction, got: %s", result)
+	if !strings.Contains(result, "space toggle") {
+		t.Errorf("expected 'space toggle' in selection prompt, got: %s", result)
 	}
 }
 

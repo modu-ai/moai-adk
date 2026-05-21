@@ -3,10 +3,13 @@ package merge
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 const (
@@ -35,12 +38,13 @@ type FileAnalysis struct {
 
 // confirmModel is the Bubble Tea model for merge confirmation UI.
 type confirmModel struct {
-	analysis      MergeAnalysis
-	decision      bool   // true = proceed, false = cancel
-	done          bool   // true = user made a decision
-	cursor        int    // current cursor position
-	selectedFiles []bool // selection state for each file
-	showSelection bool   // true = show file selection UI
+	analysis        MergeAnalysis
+	decision        bool   // true = proceed, false = cancel
+	done            bool   // true = user made a decision
+	cursor          int    // current cursor position
+	selectedFiles   []bool // selection state for each file
+	showSelection   bool   // true = legacy single-table selection UI
+	showLowExpanded bool   // true = expand the Low-risk group in Cargo view
 }
 
 func (m confirmModel) Init() tea.Cmd {
@@ -123,6 +127,11 @@ func (m confirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showSelection && m.cursor < len(m.analysis.Files)-1 {
 				m.cursor++
 			}
+		case "v", "V":
+			// Expand / collapse the Low-risk group in Cargo view.
+			if !m.showSelection {
+				m.showLowExpanded = !m.showLowExpanded
+			}
 		}
 	}
 	return m, nil
@@ -176,16 +185,18 @@ func (m confirmModel) View() string {
 	}
 
 	formatter := NewAnalysisFormatterWithSelection(m.analysis, m.cursor, m.selectedFiles, m.showSelection)
+	formatter.showLowExpanded = m.showLowExpanded
 	return formatter.Render()
 }
 
 // AnalysisFormatter handles formatting of merge analysis for display.
 type AnalysisFormatter struct {
-	analysis      MergeAnalysis
-	styles        formatterStyles
-	cursor        int
-	selectedFiles []bool
-	showSelection bool
+	analysis        MergeAnalysis
+	styles          formatterStyles
+	cursor          int
+	selectedFiles   []bool
+	showSelection   bool
+	showLowExpanded bool
 }
 
 type formatterStyles struct {
@@ -229,22 +240,31 @@ func NewAnalysisFormatterWithSelection(analysis MergeAnalysis, cursor int, selec
 }
 
 func initFormatterStyles() formatterStyles {
+	lt := tui.LightTheme()
+	dt := tui.DarkTheme()
+	accent := lipgloss.AdaptiveColor{Light: lt.Accent, Dark: dt.Accent}
+	success := lipgloss.AdaptiveColor{Light: lt.Success, Dark: dt.Success}
+	warning := lipgloss.AdaptiveColor{Light: lt.Warning, Dark: dt.Warning}
+	danger := lipgloss.AdaptiveColor{Light: lt.Danger, Dark: dt.Danger}
+	body := lipgloss.AdaptiveColor{Light: lt.Body, Dark: dt.Body}
+	dim := lipgloss.AdaptiveColor{Light: lt.Dim, Dark: dt.Dim}
+	rule := lipgloss.AdaptiveColor{Light: lt.Rule, Dark: dt.Rule}
+
 	return formatterStyles{
-		title:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"}).MarginBottom(1),
-		lowRisk:     lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"}),
-		mediumRisk:  lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"}),
-		highRisk:    lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"}),
-		prompt:      lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "#5B21B6", Dark: "#7C3AED"}).MarginTop(1),
-		warning:     lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"}).Bold(true),
-		headerStyle: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"}),
+		title:       lipgloss.NewStyle().Bold(true).Foreground(accent),
+		lowRisk:     lipgloss.NewStyle().Foreground(success),
+		mediumRisk:  lipgloss.NewStyle().Foreground(warning),
+		highRisk:    lipgloss.NewStyle().Foreground(danger),
+		prompt:      lipgloss.NewStyle().Foreground(dim),
+		warning:     lipgloss.NewStyle().Foreground(warning).Bold(true),
+		headerStyle: lipgloss.NewStyle().Bold(true).Foreground(accent),
 		tableHeaderRow: lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.AdaptiveColor{Light: "#111827", Dark: "#E5E7EB"}).
-			Background(lipgloss.AdaptiveColor{Light: "#E5E7EB", Dark: "#374151"}).
+			Foreground(dim).
 			Padding(0, 1),
-		tableBorder:    lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#6B7280"}),
-		tableRowEven:   lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#111827", Dark: "#E5E7EB"}),
-		tableRowOdd:    lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#374151", Dark: "#D1D5DB"}),
+		tableBorder:    lipgloss.NewStyle().Foreground(rule),
+		tableRowEven:   lipgloss.NewStyle().Foreground(body),
+		tableRowOdd:    lipgloss.NewStyle().Foreground(dim),
 		columnFile:     lipgloss.NewStyle().Width(39).MaxWidth(39),
 		columnChanges:  lipgloss.NewStyle().Width(16).MaxWidth(16),
 		columnStrategy: lipgloss.NewStyle().Width(14).MaxWidth(14),
@@ -254,7 +274,7 @@ func initFormatterStyles() formatterStyles {
 
 // FormatTitle returns the formatted title section.
 func (f *AnalysisFormatter) FormatTitle() string {
-	return f.styles.title.Render("📊 Merge Analysis Results")
+	return f.styles.title.Render("Merge Analysis")
 }
 
 // FormatSummary returns the formatted summary section.
@@ -262,7 +282,7 @@ func (f *AnalysisFormatter) FormatSummary() string {
 	if f.analysis.Summary == "" {
 		return ""
 	}
-	return fmt.Sprintf("📝 %s", f.analysis.Summary)
+	return f.analysis.Summary
 }
 
 // FormatRiskLevel returns the formatted risk level with color.
@@ -280,7 +300,7 @@ func (f *AnalysisFormatter) FormatOverallRisk() string {
 		return ""
 	}
 	style := f.getRiskStyle(f.analysis.RiskLevel)
-	return style.Render(fmt.Sprintf("⚠️  Risk Level: %s", f.analysis.RiskLevel))
+	return style.Render(fmt.Sprintf("Risk: %s", f.analysis.RiskLevel))
 }
 
 func (f *AnalysisFormatter) getRiskStyle(level string) lipgloss.Style {
@@ -485,7 +505,7 @@ func (f *AnalysisFormatter) FormatConflictWarning() string {
 	}
 
 	return f.styles.warning.Render(
-		fmt.Sprintf("⚠️  Warning: %d file(s) with high risk conflicts detected", conflictCount),
+		fmt.Sprintf("! Warning: %d file(s) with high risk conflicts detected", conflictCount),
 	)
 }
 
@@ -493,63 +513,258 @@ func (f *AnalysisFormatter) FormatConflictWarning() string {
 func (f *AnalysisFormatter) FormatPrompt() string {
 	if f.showSelection {
 		return f.styles.prompt.Render(
-			"[S]election Mode | [↑/↓] Navigate | [Space] Toggle | [A]ll | [D]eselect | [S] Toggle Mode | [Y]es | [N]o ",
+			"↑↓ navigate  ·  space toggle  ·  a select-all  ·  d deselect-all  ·  s exit-selection  ·  y proceed  ·  n cancel",
 		)
 	}
-	return f.styles.prompt.Render("[S] Toggle Selection Mode | [Y]es to merge all | [N]o to cancel ")
+	expandHint := "v expand"
+	if f.showLowExpanded {
+		expandHint = "v collapse"
+	}
+	return f.styles.prompt.Render(fmt.Sprintf("[Y/n]  ·  s select  ·  %s", expandHint))
 }
 
-// Render returns the complete formatted view.
+// Render returns the complete formatted view. Selection mode (cursor-driven
+// per-file picker) keeps the legacy single-table layout; normal mode uses the
+// Cargo / uv style aligned text layout (no boxes, no emoji, sparse color).
 func (f *AnalysisFormatter) Render() string {
+	if f.showSelection {
+		return f.renderSelectionView()
+	}
+	return f.renderCargoView()
+}
+
+// renderSelectionView preserves the legacy single-table layout used when the
+// user enters per-file selection mode (cursor + space toggle).
+func (f *AnalysisFormatter) renderSelectionView() string {
 	var b strings.Builder
 
-	// Title
 	b.WriteString(f.FormatTitle())
 	b.WriteString("\n\n")
-
-	// Summary
 	if summary := f.FormatSummary(); summary != "" {
 		b.WriteString(summary)
 		b.WriteString("\n")
 	}
-
-	// Overall risk level
 	if riskLevel := f.FormatOverallRisk(); riskLevel != "" {
 		b.WriteString(riskLevel)
 		b.WriteString("\n\n")
 	}
 
-	// Selection summary
-	if f.showSelection && len(f.selectedFiles) > 0 {
-		selectedCount := 0
-		for _, s := range f.selectedFiles {
-			if s {
-				selectedCount++
-			}
+	selectedCount := 0
+	for _, s := range f.selectedFiles {
+		if s {
+			selectedCount++
 		}
-		selectionInfo := fmt.Sprintf("📋 Selected: %d / %d files", selectedCount, len(f.selectedFiles))
-		b.WriteString(selectionInfo)
-		b.WriteString("\n\n")
+	}
+	if len(f.selectedFiles) > 0 {
+		b.WriteString(fmt.Sprintf("Selected: %d / %d files\n\n", selectedCount, len(f.selectedFiles)))
 	}
 
-	// File table
 	if table := f.FormatFileTable(); table != "" {
 		b.WriteString(table)
 		b.WriteString("\n")
 	}
-
-	// Conflict warning
 	if warning := f.FormatConflictWarning(); warning != "" {
 		b.WriteString("\n")
 		b.WriteString(warning)
 		b.WriteString("\n")
 	}
-
-	// Prompt
 	b.WriteString("\n")
 	b.WriteString(f.FormatPrompt())
-
 	return b.String()
+}
+
+// renderCargoView is the default normal-mode view. It follows the Cargo / uv
+// CLI aesthetic: verb-prefixed key/value header, one aligned line per file
+// (color from risk level), low-risk collapsed to path-prefix groups, and a
+// single `Continue? [Y/n]` prompt at the bottom.
+func (f *AnalysisFormatter) renderCargoView() string {
+	var b strings.Builder
+
+	// Header: verb-prefixed key/value lines (Cargo-style).
+	f.writeVerbLine(&b, "Analyzing", fmt.Sprintf("%d files", len(f.analysis.Files)))
+	if f.analysis.Summary != "" && !strings.HasPrefix(f.analysis.Summary, "Found ") {
+		// Don't repeat the generic "Found N files to sync" — only show the
+		// custom Summary (typically version delta) when present.
+		f.writeVerbLine(&b, "Summary", f.analysis.Summary)
+	}
+	if f.analysis.RiskLevel != "" {
+		f.writeVerbLine(&b, "Risk", f.styledRisk(f.analysis.RiskLevel, true))
+	}
+	b.WriteString("\n")
+
+	// File list — high, medium, then low (collapsed or expanded).
+	high, med, low := groupFilesByRisk(f.analysis.Files)
+	for _, file := range high {
+		b.WriteString(f.formatCargoRow(file, "high"))
+		b.WriteString("\n")
+	}
+	for _, file := range med {
+		b.WriteString(f.formatCargoRow(file, "medium"))
+		b.WriteString("\n")
+	}
+	if len(low) > 0 {
+		if f.showLowExpanded {
+			for _, file := range low {
+				b.WriteString(f.formatCargoRow(file, "low"))
+				b.WriteString("\n")
+			}
+		} else {
+			for _, group := range groupByPathPrefix(low, 4) {
+				b.WriteString(f.formatCargoGroupRow(group, "low"))
+				b.WriteString("\n")
+			}
+			b.WriteString(f.styles.tableRowOdd.Render(
+				fmt.Sprintf("    … %d low-risk files (press v to expand)", len(low))))
+			b.WriteString("\n")
+		}
+	}
+
+	// Trailing warning + prompt.
+	if warning := f.FormatConflictWarning(); warning != "" {
+		b.WriteString("\n  ")
+		b.WriteString(warning)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n  Continue? ")
+	b.WriteString(f.FormatPrompt())
+	return b.String()
+}
+
+// writeVerbLine appends a Cargo-style header line: `   <verb>  <value>`,
+// where the verb column is right-aligned within 10 cells (Cargo convention).
+func (f *AnalysisFormatter) writeVerbLine(b *strings.Builder, verb, value string) {
+	verbStyle := f.styles.headerStyle
+	b.WriteString(fmt.Sprintf("%s  %s\n", verbStyle.Render(fmt.Sprintf("%10s", verb)), value))
+}
+
+// styledRisk renders a risk-level string with the matching color. When bold
+// is true the text is also rendered bold.
+func (f *AnalysisFormatter) styledRisk(level string, bold bool) string {
+	style := f.getRiskStyle(level)
+	if bold {
+		style = style.Bold(true)
+	}
+	return style.Render(level)
+}
+
+// formatCargoRow renders a single file row in Cargo style:
+//
+//	"  <icon> <path:34>  <strategy:14>  <risk:6>"
+//
+// The icon and risk word inherit the risk color; the path/strategy stay plain
+// to keep the column dense and easy to scan.
+func (f *AnalysisFormatter) formatCargoRow(file FileAnalysis, riskLevel string) string {
+	icon := riskIcon(riskLevel)
+	iconStyle := f.getRiskStyle(riskLevel)
+	path := truncateRowField(file.Path, 34)
+	strategy := truncateRowField(string(file.Strategy), 14)
+	risk := truncateRowField(strings.ToLower(riskLevel), 6)
+	return fmt.Sprintf("  %s  %-34s  %-14s  %s",
+		iconStyle.Render(icon),
+		path,
+		strategy,
+		f.styledRisk(risk, false),
+	)
+}
+
+// formatCargoGroupRow renders a collapsed Low-risk group line:
+//
+//	"  ✓ scripts/ci-mirror/* (18)                       low"
+func (f *AnalysisFormatter) formatCargoGroupRow(group pathGroup, riskLevel string) string {
+	icon := riskIcon(riskLevel)
+	iconStyle := f.getRiskStyle(riskLevel)
+	label := fmt.Sprintf("%s* (%d)", group.prefix, group.count)
+	label = truncateRowField(label, 34)
+	return fmt.Sprintf("  %s  %-34s  %-14s  %s",
+		iconStyle.Render(icon),
+		label,
+		"",
+		f.styledRisk(strings.ToLower(riskLevel), false),
+	)
+}
+
+// truncateRowField truncates s to at most max cells, replacing the last cell
+// with a 1-cell ellipsis when needed.
+func truncateRowField(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	if max <= 1 {
+		return "…"
+	}
+	return s[:max-1] + "…"
+}
+
+// groupFilesByRisk splits files into high / medium / low buckets while
+// preserving the original order within each bucket.
+func groupFilesByRisk(files []FileAnalysis) (high, med, low []FileAnalysis) {
+	for _, f := range files {
+		switch strings.ToLower(f.RiskLevel) {
+		case "high":
+			high = append(high, f)
+		case "medium":
+			med = append(med, f)
+		default:
+			low = append(low, f)
+		}
+	}
+	return high, med, low
+}
+
+// pathGroup is one collapsed Low-risk group entry: a directory prefix and the
+// number of files that share it.
+type pathGroup struct {
+	prefix string
+	count  int
+}
+
+// groupByPathPrefix collapses a flat file list into the top N directory
+// prefixes (first two path segments) sorted by file count descending.
+func groupByPathPrefix(files []FileAnalysis, topN int) []pathGroup {
+	counts := make(map[string]int, len(files))
+	order := make([]string, 0, len(files))
+	for _, file := range files {
+		prefix := topTwoSegments(file.Path)
+		if _, seen := counts[prefix]; !seen {
+			order = append(order, prefix)
+		}
+		counts[prefix]++
+	}
+	groups := make([]pathGroup, 0, len(order))
+	for _, p := range order {
+		groups = append(groups, pathGroup{prefix: p, count: counts[p]})
+	}
+	sort.SliceStable(groups, func(i, j int) bool { return groups[i].count > groups[j].count })
+	if topN > 0 && len(groups) > topN {
+		groups = groups[:topN]
+	}
+	return groups
+}
+
+// topTwoSegments returns the first two path segments joined by "/", e.g.
+// "scripts/ci-mirror/" for a 3-segment path. Single-segment paths return
+// the path verbatim.
+func topTwoSegments(path string) string {
+	parts := strings.Split(path, "/")
+	if len(parts) <= 1 {
+		return path
+	}
+	if len(parts) == 2 {
+		return parts[0] + "/" + parts[1]
+	}
+	return parts[0] + "/" + parts[1] + "/"
+}
+
+// riskIcon returns the ASCII icon used in the file row prefix.
+func riskIcon(riskLevel string) string {
+	switch strings.ToLower(riskLevel) {
+	case "high":
+		return "✗"
+	case "medium":
+		return "!"
+	default:
+		return "✓"
+	}
 }
 
 // validateAnalysis checks if a MergeAnalysis struct contains valid data.
