@@ -7,7 +7,7 @@ created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
 priority: P1
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: ".moai/config/sections/git-strategy + .claude/skills/moai/workflows/plan/spec-assembly + .claude/skills/moai/SKILL.md + .claude/agents/moai/manager-git + .claude/rules/moai/workflow/spec-workflow + internal/template/templates (5 mirrors)"
 lifecycle: spec-anchored
 tags: "workflow, late-branch, git-strategy, dogfooding, mega-sprint, v3r5"

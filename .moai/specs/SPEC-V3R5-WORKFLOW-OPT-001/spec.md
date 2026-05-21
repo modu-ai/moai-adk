@@ -7,7 +7,7 @@ created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
 priority: P1
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: ".claude/rules/moai + .moai/config/sections/workflow.yaml + internal/harness/capture + .claude/agents/moai/plan-auditor.md"
 lifecycle: spec-anchored
 tags: "workflow, optimization, 8-layer, manager-develop-prompt, agent-teams, ci-watch, lessons-autocapture, plan-auditor-d7-d8, mega-sprint, w-meta"

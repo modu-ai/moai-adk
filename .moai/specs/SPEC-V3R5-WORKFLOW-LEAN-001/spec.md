@@ -7,7 +7,7 @@ created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
 priority: P0
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: workflow-rules
 lifecycle: spec-anchored
 tags: "workflow, lean, optimization, v3r5"

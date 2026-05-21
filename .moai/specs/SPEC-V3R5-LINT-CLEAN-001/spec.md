@@ -1,16 +1,16 @@
 ---
 id: SPEC-V3R5-LINT-CLEAN-001
-title: "Agent Lint Baseline Cleanup (v3.5.0 Quality Debt Reduction)"
+title: "Agent Lint Baseline Cleanup (v3.0 Round 5 Quality Debt Reduction)"
 version: "0.3.0"
 status: completed
 created: 2026-05-19
 updated: 2026-05-20
 author: GOOS Kim
 priority: P1
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: "internal/template/templates/.claude/agents/moai, .claude/agents/moai"
 lifecycle: spec-anchored
-tags: "lint, quality-debt, v3.5.0, baseline-reduction, agent-lint, moai-agent-lint"
+tags: "lint, quality-debt, v3r5, baseline-reduction, agent-lint, moai-agent-lint"
 ---
 
 # SPEC-V3R5-LINT-CLEAN-001 — Agent Lint Baseline Cleanup

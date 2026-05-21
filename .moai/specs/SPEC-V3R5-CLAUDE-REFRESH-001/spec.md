@@ -7,7 +7,7 @@ created: 2026-05-18
 updated: 2026-05-19
 author: GOOS Kim
 priority: P0
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: "internal/template/templates"
 lifecycle: spec-anchored
 tags: "core, architecture, refresh, mobile-retire, settings, w0"
