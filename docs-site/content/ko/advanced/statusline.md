@@ -138,6 +138,23 @@ statusline:
 - 현재 실행 중인 task 개수
 - 활성화: `segments.task: true`
 
+**repo** — 저장소 정보 (선택적, v2.1.145+)
+- 현재 작업 중인 GitHub 저장소 소유자/이름 표시
+- 예: `modu-ai/moai-adk`
+- 활성화: `segments.repo: true`
+
+**long_context** — 긴 컨텍스트 경고 (선택적, v2.1.139+)
+- 200K 토큰 초과 시 경고 마크 표시
+- 예: `⚠️ 200K+ exceeded`
+- 활성화: `segments.long_context: true`
+
+**handoff_guide** — 핸드오프 임계값 안내 (선택적, v2.1.146+)
+- 현재 모델의 컨텍스트 창 크기와 권장 핸드오프 임계값 표시
+- 1M 모델: 50% 임계값 (≈500K 토큰)
+- 200K 모델: 90% 임계값 (≈180K 토큰)
+- 예: `[1M: 50% | 200K: 90%]`
+- 활성화: `segments.handoff_guide: true`
+
 ## NEW v2.1.145: PR 세그먼트
 
 ### 개요

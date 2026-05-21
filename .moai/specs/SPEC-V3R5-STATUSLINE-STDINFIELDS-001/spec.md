@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-STATUSLINE-STDINFIELDS-001
 title: "Statusline stdin schema enrichment (workspace.repo render + exceeds_200k_tokens marker + handoff_guide) + 1M handoff threshold tightening"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec
@@ -22,6 +22,7 @@ tier: S
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — plan-phase. Tier S, LEAN minimal form (spec.md + plan.md). |
 | 0.2.0 | 2026-05-22 | manager-spec | Iter 2 revision per plan-auditor (B1 + S1 + S4): scope REQ-SSE-010/AC-SSE-010 to CONST-V3R5-022 only (CONST-V3R5-025 factually unrelated); tighten AC-SSE-007 regression grep to function-body pattern; tighten AC-SSE-011 threshold from `≥ 6` to `= 8` + add `code_comments: ko` clarification on REQ-SSE-011. Plan-side S3/S5 fixes mirrored in plan.md v0.2.0. |
+| 0.3.0 | 2026-05-22 | manager-develop | Implementation complete (run-phase). 3 new segment renderers + task segment integration + 1M/200K threshold updates + 4-locale docs sync. All 7 ACs PASS. Tier S, late-branch feature branch `feat/SPEC-V3R5-STATUSLINE-STDINFIELDS-001`. Status: `draft → implemented`. |
 
 ## 1. Background
 
