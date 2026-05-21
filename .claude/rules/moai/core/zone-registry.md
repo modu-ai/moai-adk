@@ -829,7 +829,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is model-specific: 1M context (Opus 4.7) = 75%, 200K context (Sonnet/Opus/Haiku) = 90%"
+  clause: "Operational threshold is model-specific: 1M context (Opus 4.7) = 50%, 200K context (Sonnet/Opus/Haiku) = 90%"
   canary_gate: false
 
 - id: CONST-V3R5-023

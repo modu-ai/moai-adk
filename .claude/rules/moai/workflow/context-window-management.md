@@ -14,7 +14,7 @@ Reference incident: 2026-04-25 monolithic delegation. See feedback memory `feedb
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 4.7 (1M) | 1,000,000 tokens | **75%** | ~750,000 tokens |
+| Opus 4.7 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
@@ -22,7 +22,7 @@ The model-specific threshold is the operational ceiling — beyond it, plan for 
 
 ## User Responsibilities
 
-The user monitors context usage via the Claude Code statusline or `/cost` command and intervenes when usage crosses the model-specific threshold (75% on 1M models, 90% on 200K models).
+The user monitors context usage via the Claude Code statusline or `/cost` command and intervenes when usage crosses the model-specific threshold (50% on 1M models, 90% on 200K models).
 
 [ZONE:Evolvable] [HARD] When usage crosses the model-specific threshold:
 1. Save in-flight state to `.moai/specs/<SPEC-ID>/progress.md` if not already saved (orchestrator does this automatically)
@@ -38,7 +38,7 @@ The user monitors context usage via the Claude Code statusline or `/cost` comman
 
 The MoAI orchestrator MUST proactively recognize the model-specific boundary and prepare the user for a clean handoff.
 
-[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (75% on 1M, 90% on 200K), it MUST:
+[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (50% on 1M, 90% on 200K), it MUST:
 1. Stop initiating new large tool calls or `Agent()` delegations
 2. Persist all in-flight progress to `.moai/specs/<SPEC-ID>/progress.md`
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
@@ -75,7 +75,7 @@ This rule applies to all MoAI workflows:
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume message canonical format and auto-memory integration. Trigger #1 of session-handoff.md consumes the model-specific threshold table from this file (1M = 75%, 200K = 90%). The two rules share the same threshold table; `/clear` recommendation and paste-ready emission both fire at the same boundary.
+- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume message canonical format and auto-memory integration. Trigger #1 of session-handoff.md consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%). The two rules share the same threshold table; `/clear` recommendation and paste-ready emission both fire at the same boundary.
 - `feedback_large_spec_wave_split.md` (auto-memory) — wave-split mitigation for SPECs with 30+ tasks
 - `.claude/skills/moai/references/file-reading-optimization.md` — token budget per file read
 - `output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
