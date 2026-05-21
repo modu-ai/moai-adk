@@ -1667,12 +1667,12 @@ func TestCollectAll_PR_DataFlow(t *testing.T) {
 	}
 }
 
-// TestBuild_PRSegment_DefaultOff verifies that with no segment config (legacy users)
-// or with segments.pr explicitly false, the PR segment does NOT appear in output
-// even when stdin contains valid PR data.
-// REQ-SLV-012: PR segment opt-in default off (zero-regression for existing users)
-// AC-SLV-012 verification target.
-func TestBuild_PRSegment_DefaultOff(t *testing.T) {
+// TestBuild_PRSegment_DefaultOn verifies that with no segment config OR
+// with segments.pr key absent, the PR segment appears in output when stdin
+// contains valid PR data (default-on baseline as of v2.20.0-rc1).
+// segments.pr explicitly false still suppresses the segment.
+// Supersedes REQ-SLV-012 opt-in policy — graceful no-output handles no-PR case.
+func TestBuild_PRSegment_DefaultOn(t *testing.T) {
 	clearGLMEnv(t)
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
 
@@ -1684,23 +1684,27 @@ func TestBuild_PRSegment_DefaultOff(t *testing.T) {
 	tests := []struct {
 		name          string
 		segmentConfig map[string]bool
+		wantPR        bool
 	}{
 		{
-			name:          "segment config nil: pr omitted (existing-user backward compat)",
+			name:          "segment config nil: pr shown (default-on)",
 			segmentConfig: nil,
+			wantPR:        true,
 		},
 		{
-			name: "segment config without pr key: pr omitted (explicit opt-in)",
+			name: "segment config without pr key: pr shown (default-on)",
 			segmentConfig: map[string]bool{
 				SegmentModel:   true,
 				SegmentContext: true,
 			},
+			wantPR: true,
 		},
 		{
-			name: "segment config pr: false: pr omitted",
+			name: "segment config pr: false: pr omitted (explicit opt-out)",
 			segmentConfig: map[string]bool{
 				SegmentPR: false,
 			},
+			wantPR: false,
 		},
 	}
 
@@ -1715,9 +1719,9 @@ func TestBuild_PRSegment_DefaultOff(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Build() error: %v", err)
 			}
-			// PR segment shape: "#1023" should NOT appear when disabled
-			if strings.Contains(got, "#1023") {
-				t.Errorf("PR segment should NOT appear when disabled\ngot: %s", got)
+			hasPR := strings.Contains(got, "#1023")
+			if hasPR != tt.wantPR {
+				t.Errorf("PR segment presence mismatch: want=%v got=%v\noutput: %s", tt.wantPR, hasPR, got)
 			}
 		})
 	}

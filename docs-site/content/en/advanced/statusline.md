@@ -138,7 +138,7 @@ statusline:
 - Output format: `📋 [<command> <SPEC-ID>-<stage>]` (e.g. `📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`)
 - Data source: `~/.moai/state/last-session-state.json` `active_task` field (auto-set by the SessionStart hook)
 - Inactive task renders nothing (segment hidden — graceful no-output)
-- Enable: `segments.task: true` (default `false`, opt-in)
+- Enable: `segments.task: true` (default `true` as of v2.20.0-rc1, opt-out via `false`)
 
 ## NEW v2.1.145: PR Segment
 
@@ -146,7 +146,7 @@ statusline:
 
 Starting from Claude Code v2.1.145, the statusline stdin JSON includes GitHub PR information. MoAI-ADK leverages this to display the current PR's review status in the statusline.
 
-**Enable**: Set `segments.pr: true`. Default is `false`.
+**Enable**: Default `true` as of v2.20.0-rc1 (default-on). Set `segments.pr: false` to opt out. Graceful no-output: when no PR info is present, the segment is hidden automatically.
 
 ### PR Segment Display Format
 
