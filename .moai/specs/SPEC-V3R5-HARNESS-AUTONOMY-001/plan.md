@@ -7,7 +7,7 @@ created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
 priority: P0
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: "internal/harness + .moai/harness + .claude/skills/moai-harness-learner + internal/hook"
 lifecycle: spec-anchored
 tags: "harness, autonomy, self-evolution, 4-tier, 5-layer-safety, plan, mega-sprint, w3"

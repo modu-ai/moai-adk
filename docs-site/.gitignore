@@ -3,6 +3,9 @@ public/
 resources/_gen/
 .hugo_build.lock
 
+# Runtime-managed (harness logs, session state) — not part of docs-site sources
+.moai/
+
 # og image original (7.5MB — og.jpg 압축본 사용)
 static/og-original.png
 

@@ -87,6 +87,44 @@ moai cg
 | **팀 통신** | SendMessage 도구로 리더↔워커 간 통신 |
 | **모드 전환** | `moai glm`에서 전환 시 `moai cg`가 GLM 설정을 자동 초기화 — 중간에 `moai cc` 불필요 |
 
+## tmux 환경 변수 주입 보안 모델 {#tmux-env-security}
+
+v2.20.0-rc1 부터 `moai cg` 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다 (CWE-214).
+
+### 주입 흐름
+
+1. `~/.moai/run/` 아래 임시 파일을 `mkstemp` 로 생성 (mode `0o600` 강제)
+2. `set-environment -t <session> <KEY> <VALUE>` 한 줄을 기록
+3. `tmux source-file <tmp>` 로 tmux 가 그 파일을 읽어 환경에 주입
+4. 주입 직후 `os.Remove` 로 unlink
+
+argv 에는 임시 파일 경로만 노출되며 token 자체는 노출되지 않습니다.
+
+### Non-sensitive 값은 argv 유지
+
+`CLAUDE_CONFIG_DIR`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_DEFAULT_*_MODEL` 등 token 이 아닌 값은 기존 argv 경로를 유지합니다 (보안 위협 없음).
+
+### 사용자 책임
+
+`~/.moai/.env.glm` source 파일은 사용자 환경에서 `0o600` 권한을 유지해야 합니다. 이는 `moai glm` 명령이 자동으로 설정합니다:
+
+```bash
+stat -c '%a' ~/.moai/.env.glm    # Linux: 600
+stat -f '%A' ~/.moai/.env.glm    # macOS: 600
+```
+
+### 자체 점검
+
+CG 모드 실행 중 token 이 argv 에 노출되는지 확인:
+
+```bash
+# moai cg 실행 후 새 tmux 세션 내에서
+ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
+# 기대값: 0 matches (token 이 argv 에 없음)
+```
+
+자세한 위협 모델, 실패 시 동작 (`ErrTmuxSensitiveInjectFailed` sentinel), 추가 점검 절차는 [보안 노트 — CWE-214](/ko/advanced/security-notes/#cwe-214) 를 참조하세요.
+
 ## 디스플레이 모드
 
 Agent Teams는 두 가지 디스플레이 모드를 지원합니다:

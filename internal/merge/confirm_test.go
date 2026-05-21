@@ -116,8 +116,9 @@ func TestConfirmModel_View_IncludesTitle(t *testing.T) {
 		t.Error("View should not be empty")
 	}
 
-	if !strings.Contains(view, "Merge Analysis Results") {
-		t.Error("View should contain title")
+	// layout v3 (Cargo): header verb "Analyzing" replaces the box title.
+	if !strings.Contains(view, "Analyzing") {
+		t.Error("View should contain the 'Analyzing' header verb")
 	}
 }
 
@@ -519,8 +520,8 @@ func TestAnalysisFormatter_FormatTitle(t *testing.T) {
 	}
 
 	// Note: We can't check for exact styling (ANSI codes), but we can check for content
-	if !strings.Contains(title, "Merge Analysis Results") {
-		t.Errorf("Expected title to contain 'Merge Analysis Results', got: %s", title)
+	if !strings.Contains(title, "Merge Analysis") {
+		t.Errorf("Expected title to contain 'Merge Analysis', got: %s", title)
 	}
 }
 
@@ -619,7 +620,7 @@ func TestAnalysisFormatter_FormatOverallRisk(t *testing.T) {
 			name:        "With risk level",
 			riskLevel:   "high",
 			wantEmpty:   false,
-			wantContain: "Risk Level: high",
+			wantContain: "Risk: high",
 		},
 		{
 			name:      "Empty risk level",
@@ -814,16 +815,15 @@ func TestAnalysisFormatter_FormatPrompt(t *testing.T) {
 		t.Error("FormatPrompt returned empty string")
 	}
 
-	if !strings.Contains(result, "[S] Toggle Selection Mode") {
-		t.Errorf("Expected prompt to contain '[S] Toggle Selection Mode', got: %s", result)
+	// layout v3: Cargo-style compact prompt — [Y/n] · s select · v expand.
+	if !strings.Contains(result, "[Y/n]") {
+		t.Errorf("Expected prompt to contain '[Y/n]', got: %s", result)
 	}
-
-	if !strings.Contains(result, "[Y]es to merge") {
-		t.Errorf("Expected prompt to contain '[Y]es to merge', got: %s", result)
+	if !strings.Contains(result, "s select") {
+		t.Errorf("Expected prompt to contain 's select', got: %s", result)
 	}
-
-	if !strings.Contains(result, "[N]o to cancel") {
-		t.Errorf("Expected prompt to contain '[N]o to cancel', got: %s", result)
+	if !strings.Contains(result, "v expand") {
+		t.Errorf("Expected prompt to contain 'v expand', got: %s", result)
 	}
 }
 
@@ -848,15 +848,16 @@ func TestAnalysisFormatter_Render(t *testing.T) {
 					},
 				},
 			},
+			// layout v3 (Cargo): header verbs ("Analyzing"/"Risk"), file row
+			// shows path + strategy (no changes column), compact [Y/n] prompt.
 			wantContain: []string{
-				"Merge Analysis Results",
+				"Analyzing",
 				"Test merge operation",
-				"Risk Level: medium",
+				"medium",
 				"test.go",
-				"modified",
 				"overwrite",
 				"Warning",
-				"[Y]es to merge",
+				"[Y/n]",
 			},
 		},
 		{
@@ -866,9 +867,10 @@ func TestAnalysisFormatter_Render(t *testing.T) {
 				RiskLevel: "",
 				Files:     []FileAnalysis{},
 			},
+			// layout v3: header always shows the "Analyzing" verb.
 			wantContain: []string{
-				"Merge Analysis Results",
-				"[Y]es to merge",
+				"Analyzing",
+				"[Y/n]",
 			},
 		},
 	}

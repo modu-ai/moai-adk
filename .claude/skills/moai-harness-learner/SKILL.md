@@ -1,6 +1,6 @@
 ---
 name: moai-harness-learner
-description: Harness learning subsystem coordinator. Surfaces Tier 4 auto-update proposals via AskUserQuestion and orchestrates Apply/Rollback flows. Triggers when harness learning proposals are pending or learning lifecycle management is needed.
+description: Harness learning subsystem coordinator. Produces Tier 4 auto-update proposal payloads consumed by the orchestrator (which surfaces them via AskUserQuestion) and orchestrates Apply/Rollback flows. Triggers when harness learning proposals are pending or learning lifecycle management is needed.
 triggers:
   - keyword: "harness apply"
   - keyword: "harness proposal"
@@ -17,7 +17,7 @@ triggers:
   - keyword: "harness 비활성화"
   - keyword: "학습 제안"
   - keyword: "자동 업데이트"
-allowed-tools: Bash,Read,Write,Edit,AskUserQuestion
+allowed-tools: Bash,Read,Write,Edit
 user-invocable: false
 ---
 
@@ -26,13 +26,13 @@ user-invocable: false
 <!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). The 4-tier observation/heuristic/rule/auto_update ladder defined here is preserved verbatim under REQ-HRN-FND-011. The orchestrator-only AskUserQuestion contract is asserted by REQ-HRN-FND-015 (cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary). The downstream replacement of the frequency-count classifier with an embedding-cluster algorithm is deferred to SPEC-V3R4-HARNESS-003. -->
 
 Coordinator skill for the Harness Learning Subsystem (SPEC-V3R3-HARNESS-LEARNING-001, superseded by SPEC-V3R4-HARNESS-001 as the active V3R4 foundation; this V3R3 SPEC's 4-tier ladder is preserved unchanged).
-Surfaces Tier 4 auto-update proposals to the user via AskUserQuestion and orchestrates Apply/Rollback flows.
+Produces Tier 4 auto-update proposal payloads consumed by the MoAI orchestrator; the orchestrator surfaces them to the user via AskUserQuestion and orchestrates Apply/Rollback flows. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary` (CONST-V3R5-001/002/003).
 
 ## Quick Reference
 
 **Role**: Orchestrator-side bridge between CLI (`moai harness`) and AskUserQuestion.
 
-**Key constraint** [HARD]: `moai harness apply` returns a JSON payload. This skill MUST receive that payload and surface it via `AskUserQuestion`. The CLI itself does NOT prompt the user.
+**Key constraint** [HARD]: `moai harness apply` returns a JSON payload representing a Tier 4 auto-update proposal. This skill produces the payload; the orchestrator surfaces it via `AskUserQuestion`. The CLI itself does NOT prompt the user. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary`.
 
 **Common triggers**:
 - `moai harness status` — check tier distribution and pending proposals
@@ -43,7 +43,7 @@ Surfaces Tier 4 auto-update proposals to the user via AskUserQuestion and orches
 **Workflow**:
 1. Run `moai harness status` to inspect state.
 2. Run `moai harness apply` to get the proposal payload.
-3. Surface payload via `AskUserQuestion` (approve / reject).
+3. Hand payload to the orchestrator for `AskUserQuestion` surfacing (approve / reject).
 4. On approve: write approval to proposals dir and signal CLI to proceed.
 5. On reject: remove proposal file (no changes applied).
 
@@ -77,28 +77,22 @@ The command outputs a JSON block with:
 - `pattern_key` — what triggered this proposal
 - `observation_count` — how many times this pattern was observed
 
-### Step 3: Surface via AskUserQuestion
+### Step 3: Produce structured payload for orchestrator consumption
 
-[HARD] This skill (not the CLI) calls AskUserQuestion. The CLI only provides the payload.
+[HARD] This skill produces a structured payload representing the Tier 4 auto-update proposal; the MoAI orchestrator surfaces it via `AskUserQuestion`. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary`.
 
-```
-AskUserQuestion:
-  question: "Harness 학습 자동 업데이트 제안 (proposal_id: <id>)\n\n대상: <target_path>\n필드: <field_key>\n새 값: <new_value>\n관찰 횟수: <observation_count>\n\n이 변경을 적용하시겠습니까?"
-  options:
-    - label: "승인 (권장)"
-      description: "제안된 변경을 skill 파일에 적용합니다. 스냅샷이 먼저 생성됩니다."
-      value: "approve"
-      recommended: true
-    - label: "거부"
-      description: "이 제안을 건너뜁니다. proposal 파일이 삭제됩니다."
-      value: "reject"
-    - label: "자세히 보기"
-      description: "대상 파일의 현재 내용을 확인한 후 결정합니다."
-      value: "inspect"
-    - label: "일시 정지"
-      description: "지금은 결정하지 않습니다. proposal 파일은 유지됩니다."
-      value: "defer"
-```
+**Payload schema** (REQ-HLF-002):
+
+- `proposal_id` — proposal identifier
+- `target_path` — file to be modified
+- `field_key` — `description` or `triggers`
+- `current_value` — existing content (for diff context)
+- `new_value` — proposed new content
+- `observation_count` — pattern observation count
+- `confidence` — auto-update confidence score (0.0–1.0)
+- `recommended_action` — `approve` (default) | `reject` | `inspect` | `defer`
+
+The skill emits this payload as its tool output. The orchestrator reads the payload, preloads `AskUserQuestion` via `ToolSearch(query: "select:AskUserQuestion")`, and surfaces the four-option decision (approve / reject / inspect / defer) to the user. On user approval, the orchestrator re-delegates to this skill with `action=apply`; on rejection, `action=skip`. The "(권장)" recommendation suffix and per-option descriptions are constructed by the orchestrator from the payload's `recommended_action` field per `askuser-protocol.md § Socratic Interview Structure`.
 
 ### Step 4: On Approve
 
@@ -143,7 +137,7 @@ Comments and key ordering are preserved (YAML round-trip).
 
 ## Safety Architecture Reference
 
-The 5-Layer Safety Pipeline protects every auto-update:
+The 5-Layer Safety Pipeline (L1 Frozen Guard → L2 Canary Check → L3 Contradiction Detector → L4 Rate Limiter → L5 Human Oversight) protects every Tier 4 auto-update:
 
 | Layer | Guard | Action on violation |
 |-------|-------|---------------------|
@@ -151,7 +145,7 @@ The 5-Layer Safety Pipeline protects every auto-update:
 | L2 | Canary Check | Block — if effectiveness drops >0.10 |
 | L3 | Contradiction Detector | Block — if trigger conflicts arise |
 | L4 | Rate Limiter | Block — max 3 per week, 24h cooldown |
-| L5 | Human Oversight | Surface via AskUserQuestion (this skill) |
+| L5 | Human Oversight | Orchestrator surfaces user-approval via AskUserQuestion (this skill emits payload) |
 
 [HARD] L1 Frozen paths (never auto-modified at runtime):
 - `.claude/agents/moai/**`

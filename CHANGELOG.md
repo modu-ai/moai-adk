@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.5.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
+## [Unreleased] — v3.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
+
+### Changed
+
+- **docs-site Hugo theme migration — Hextra → hugo-geekdoc** (4-locale ko/en/ja/zh 유지): Cowork docs-site (`cowork.mo.ai.kr`)와 동일한 hugo-geekdoc v3.0.0 vendored 테마로 전환. Hextra Go modules (`go.mod`/`go.sum`) 제거, `hugo.yaml` → `hugo.toml` 재작성 (4 languages 블록 + `defaultContentLanguageInSubdir = true`). Cowork layouts 14 파일 이식 (`baseof.html`/`site-header.html`/`site-footer.html`/`menu.html`/`foot.html`/`version-badge.html` + 4 shortcodes + custom head/`_markup`). Cowork `moai-brand.css` (62KB) + `moai-design.css` (32KB) + 2 로고 이식 (`moai-cowork-og.png` 제외 — 기존 `og.jpg` 유지). `geekdocMenuBundle: false` (자동 사이드바). 신규 `layouts/shortcodes/callout.html` — Hextra `{{< callout >}}` API → Geekdoc `hint` 자동 매핑으로 기존 콘텐츠 100% 보존. 4 `_index.md` frontmatter migration (`type`/`sidebar`/`toc` 제거) + `guides/_index.md` 4-locale 신규. ADK 브랜딩 정정 (header brand-name `site.Title` 동적 / footer ADK GitHub 링크). Hextra i18n 잔재 (`docs-site/i18n/`) 4 파일 제거. 빌드 결과: 4 locales × 97-105 페이지 × 209 static files, 1.0초. 검증: 4-locale 홈 + sample 페이지 + `moai-brand.css` 모두 HTTP 200, 각 locale title 동적 적용 확인 (`MoAI-ADK 문서`/`Documentation`/`ドキュメント`/`文档`). Migration script: `docs-site/scripts/migrate-frontmatter.sh` (dry-run 지원).
 
 ### Added
 
@@ -16,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Statusline stdin schema enrichment + 1M handoff threshold tightening** (SPEC-V3R5-STATUSLINE-STDINFIELDS-001): 3 new segment renderers for statusline stdin enrichment. `renderRepoSegment()` exposes GitHub owner/name from `workspace.repo` (v2.1.145+); `renderLongContextSegment()` renders context-warning marker for `exceeds_200k_tokens` (v2.1.139+); `renderHandoffGuideSegment()` displays active handoff thresholds per model class. Internal: `StdinData.ExceedsLongTokens` field mapping, 3 segment predicates (`isRepoEnabled`, `isLongContextEnabled`, `isHandoffGuideEnabled`), task segment renderer integration from SPEC-V3R5-STATUSLINE-V2145-001. Rules updates: CONST-V3R5-022 (1M context threshold tightening from 75% → 50% to align with SSE stall risk envelope), mirror threshold updates in `context-window-management.md` + `session-handoff.md` Trigger #1. Code comments fix: v2.1.122 → v2.1.139 for Effort/Thinking field origin (8 references corrected). 4-locale docs sync: advanced/statusline.md (ko/en/ja/zh) with new segment descriptions maintaining parity within 15%. Coverage: stdinfields_test.go 100% new segments. Tier S, late-branch pattern `feat/SPEC-V3R5-STATUSLINE-STDINFIELDS-001`, squash merge to main.
+
+### Security
+
+- **CWE-732 / CWE-552**: `.claude/settings.local.json` permission hardened to `0o600` (owner-only read/write). Previously `0o644` exposed GLM API tokens (`ANTHROPIC_AUTH_TOKEN`) and other `settings.Env` credentials to other local users on multi-user workstations. Centralized via `secureSettingsMode os.FileMode = 0o600` constant and `writeSettingsSecure` helper in `internal/hook/settings_io.go`; all `session_start.go` / `session_end.go` writers routed through the helper. [b48bd86cb]
+- **CWE-214**: `moai cg` tmux env injection now uses the source-file pattern. GLM token (`ANTHROPIC_AUTH_TOKEN`) is written to `~/.moai/run/` temp file (mode `0o600` via `mkstemp` + explicit `chmod 0o600`), injected via `tmux source-file <tmp>`, then unlinked. Token no longer appears in `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon traces, or crash dumps. Failure returns `ErrTmuxSensitiveInjectFailed` sentinel with **no argv fallback**. `InjectSensitiveEnv` method on `internal/tmux/session.go`; `ensureTmuxGLMEnv` branch in `internal/hook/glm_tmux.go`. [10776c4b8]
+- **CWE-345**: `moai update` mandatory checksum verification. `checksums.txt` download is retried 3 times with exponential backoff (2s/4s base delay) via `downloadChecksumWithRetry(checksumsURL, archiveName, maxAttempts, baseDelay)` in `internal/update/checker.go`. On persistent failure, `ErrChecksumUnavailable` sentinel is returned and the update **aborts** — no binary download attempted. Defense-in-depth empty-checksum guard in `downloadAndVerify` (`internal/update/updater.go`). **No `--skip-checksum` opt-out exists**. [ee1335282]
+- Cross-cutting verification: 3 GOOS (windows/linux/darwin) builds PASS, race detector PASS on hook/tmux/update, C-HRA-008 subagent boundary grep 0 matches, NEW lint=0 vs 11 pre-existing baseline. Critical NEW function coverage 90.9~96.8%. [b4e7115cb]
+- Source SPEC: SPEC-V3R5-SECURITY-CRIT-001 (Tier M, status `implemented` v0.2.0). 11/11 ACs PASS. PR #1032, merge commit `03a2552a2`.
+- See [advanced/security-notes](https://adk.mo.ai.kr/ko/advanced/security-notes/) (4 locales: ko/en/ja/zh) for self-audit checklists, threat models, and recovery procedures.
 
 ### Added
 

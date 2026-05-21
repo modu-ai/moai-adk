@@ -134,9 +134,11 @@ statusline:
 - 过去 7 天的成本跟踪
 - 启用：`segments.usage_7d: true`
 
-**task** — 任务信息（可选）
-- 当前运行中的任务数
-- 启用：`segments.task: true`
+**task** — 活动 SPEC 工作流信息（可选）
+- 输出格式：`📋 [<command> <SPEC-ID>-<stage>]`（例如：`📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`）
+- 数据源：`~/.moai/state/last-session-state.json` 的 `active_task` 字段（由 SessionStart 钩子自动设置）
+- 非活动状态下 segment 不显示（graceful no-output）
+- 启用：`segments.task: true`（自 v2.20.0-rc1 起默认 true — default-on，可通过 `false` 显式禁用）
 
 **repo** — 存储库信息（可选，v2.1.145+）
 - 显示当前 GitHub 存储库所有者/名称
@@ -161,7 +163,7 @@ statusline:
 
 从 Claude Code v2.1.145 开始，状态栏 stdin JSON 包含 GitHub PR 信息。MoAI-ADK 利用这些信息在状态栏中显示当前 PR 的审核状态。
 
-**启用**：设置 `segments.pr: true` 以启用。默认为 `false`。
+**启用**：自 v2.20.0-rc1 起默认 `true`（default-on）。设置 `segments.pr: false` 可显式禁用。graceful no-output 模式：当无 PR 信息时 segment 自动隐藏。
 
 ### PR 段显示格式
 

@@ -134,9 +134,11 @@ statusline:
 - 過去 7 日のコスト追跡
 - 有効化：`segments.usage_7d: true`
 
-**task** — タスク情報（オプション）
-- 現在実行中のタスク数
-- 有効化：`segments.task: true`
+**task** — アクティブな SPEC ワークフロー情報（オプション）
+- 出力形式：`📋 [<command> <SPEC-ID>-<stage>]`（例：`📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`）
+- データソース：`~/.moai/state/last-session-state.json` の `active_task` フィールド（SessionStart フックが自動設定）
+- 非アクティブの場合はセグメント自体が非表示（graceful no-output）
+- 有効化：`segments.task: true`（v2.20.0-rc1 以降は既定値 true — default-on、`false` で opt-out）
 
 **repo** — リポジトリ情報（オプション、v2.1.145+）
 - 現在の GitHub リポジトリのオーナー / 名前を表示
@@ -161,7 +163,7 @@ statusline:
 
 Claude Code v2.1.145 以降、ステータスラインの stdin JSON に GitHub PR 情報が含まれます。MoAI-ADK はこれを活用して、ステータスラインに現在の PR のレビュー状態を表示します。
 
-**有効化**：`segments.pr: true` に設定すると有効になります。デフォルトは `false` です。
+**有効化**：v2.20.0-rc1 以降は既定値 `true`（default-on）。`segments.pr: false` で明示的に無効化可能。graceful no-output パターン：PR 情報が無い場合は segment 自体が非表示。
 
 ### PR セグメント表示形式
 

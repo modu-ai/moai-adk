@@ -227,52 +227,53 @@ func TestBuilder_Build_AllProvidersFail(t *testing.T) {
 	}
 }
 
+// TestBuilder_SetMode verifies the cross-mode collapse contract enforced by
+// NormalizeMode (builder.go:77, renderer.go:46-65): all StatuslineMode variants
+// MUST produce the SAME 3-line default layout output, since the 5-line full
+// layout was retired per SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001 while the
+// `mode` parameter is preserved for backward compatibility.
 func TestBuilder_SetMode(t *testing.T) {
 	clearGLMEnv(t)
-
-	builder := New(Options{
-		GitProvider: &mockGitProvider{
-			data: &GitStatusData{Branch: "main", Modified: 2, Available: true},
-		},
-		Mode:    ModeDefault,
-		NoColor: true,
-	})
 
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
-	// Build in default mode
-	gotDefault, err := builder.Build(context.Background(), makeStdinJSON(input))
-	if err != nil {
-		t.Fatalf("default mode build error: %v", err)
+	// 모든 StatuslineMode 변형은 NormalizeMode를 통해 default 3-line layout으로 collapse 한다.
+	// renderer.go:46-65 anchor — full layout retirement으로 인한 backward-compat contract.
+	modes := []StatuslineMode{
+		ModeDefault, ModeFull, ModeCompact, ModeMinimal, ModeVerbose,
 	}
 
-	// Switch to full(verbose) mode - should differ from default
-	builder.SetMode(ModeFull)
-	gotFull, err := builder.Build(context.Background(), makeStdinJSON(input))
-	if err != nil {
-		t.Fatalf("full mode build error: %v", err)
-	}
-
-	// Full mode should differ from default output (multiline)
-	if gotDefault == gotFull {
-		t.Errorf("default and full output should differ:\ndefault: %q\nfull: %q",
-			gotDefault, gotFull)
-	}
-
-	// Full mode should contain model name
-	if !strings.Contains(gotFull, "Sonnet 4") {
-		t.Errorf("full mode should contain model name, got %q", gotFull)
-	}
-
-	// Full mode should contain context bar graph
-	if !strings.Contains(gotFull, "🔋 ") {
-		t.Errorf("full mode should contain context bar graph, got %q", gotFull)
-	}
-	if !strings.Contains(gotFull, "█") {
-		t.Errorf("full mode should contain bar graph characters, got %q", gotFull)
+	var baseline string
+	for i, mode := range modes {
+		t.Run(string(mode), func(t *testing.T) {
+			builder := New(Options{
+				GitProvider: &mockGitProvider{
+					data: &GitStatusData{Branch: "main", Modified: 2, Available: true},
+				},
+				Mode:    mode,
+				NoColor: true,
+			})
+			got, err := builder.Build(context.Background(), makeStdinJSON(input))
+			if err != nil {
+				t.Fatalf("Build error for mode=%s: %v", mode, err)
+			}
+			if i == 0 {
+				baseline = got
+				// baseline은 default 3-line layout
+				if lines := strings.Count(got, "\n") + 1; lines != 3 {
+					t.Errorf("baseline mode=%s should produce 3 lines, got %d\noutput:\n%s",
+						mode, lines, got)
+				}
+				return
+			}
+			if got != baseline {
+				t.Errorf("mode=%s output should collapse to default baseline\nbaseline:\n%s\ngot:\n%s",
+					mode, baseline, got)
+			}
+		})
 	}
 }
 
@@ -585,14 +586,17 @@ func hasANSI(s string) bool {
 	return strings.Contains(s, "\x1b[") || strings.Contains(s, "\033[")
 }
 
-// TestIntegration_ModeLineCount verifies output line count for each mode (AC-V3-01 ~ AC-V3-06).
+// TestIntegration_ModeLineCount verifies that all StatuslineMode variants
+// (minimal/verbose/compact/default/full) collapse to the default 3-line
+// layout via NormalizeMode (renderer.go:46-65 anchor — 5-line full layout
+// retired per SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001).
+// Retired AC-V3-02/05 entries (verbose/full = 5 lines) dropped; all 5 modes
+// now share the 3-line expectation.
 func TestIntegration_ModeLineCount(t *testing.T) {
 	tests := []struct {
 		name        string
 		mode        StatuslineMode
 		withUsage   bool
-		minLines    int
-		maxLines    int
 		description string
 	}{
 		// AC-V3-01: mode="minimal" → default 3-line output (backward compat)
@@ -600,45 +604,35 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 			name:        "AC-V3-01: minimal→default 3 lines",
 			mode:        "minimal",
 			withUsage:   true,
-			minLines:    3,
-			maxLines:    3,
-			description: "minimal mode should produce 3 lines like default",
+			description: "minimal mode collapses to default 3-line",
 		},
-		// AC-V3-02: mode="verbose" → full 5-line output (backward compat)
+		// AC-V3-02 (retired→unified): mode="verbose" → default 3-line output
 		{
-			name:        "AC-V3-02: verbose→full 5 lines",
+			name:        "AC-V3-02: verbose→default 3 lines",
 			mode:        "verbose",
 			withUsage:   true,
-			minLines:    5,
-			maxLines:    5,
-			description: "verbose mode should produce 5 lines like full",
+			description: "verbose mode collapses to default 3-line (full retired)",
 		},
 		// AC-V3-03: mode="compact" → default 3-line output (backward compat)
 		{
 			name:        "AC-V3-03: compact→default 3 lines",
 			mode:        ModeCompact,
 			withUsage:   true,
-			minLines:    3,
-			maxLines:    3,
-			description: "compact mode should produce 3 lines like default",
+			description: "compact mode collapses to default 3-line",
 		},
-		// AC-V3-04: mode="default" → exactly 3 lines (style integrated into L1)
+		// AC-V3-04: mode="default" → exactly 3 lines
 		{
 			name:        "AC-V3-04: default exactly 3 lines",
 			mode:        ModeDefault,
 			withUsage:   true,
-			minLines:    3,
-			maxLines:    3,
-			description: "default mode should produce exactly 3 lines",
+			description: "default mode produces 3-line layout",
 		},
-		// AC-V3-05: mode="full" → exactly 5 lines (style integrated into L1)
+		// AC-V3-05 (retired→unified): mode="full" → default 3-line output
 		{
-			name:        "AC-V3-05: full exactly 5 lines",
+			name:        "AC-V3-05: full→default 3 lines",
 			mode:        ModeFull,
 			withUsage:   true,
-			minLines:    5,
-			maxLines:    5,
-			description: "full mode should produce exactly 5 lines",
+			description: "full mode collapses to default 3-line (NormalizeMode)",
 		},
 	}
 
@@ -663,45 +657,22 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 			}
 
 			lines := countLines(got)
-			if lines < tt.minLines || lines > tt.maxLines {
-				t.Errorf("%s\nline count: got=%d, want=%d~%d\noutput:\n%s",
-					tt.description, lines, tt.minLines, tt.maxLines, got)
+			if lines != 3 {
+				t.Errorf("%s\nline count: got=%d, want=3\noutput:\n%s",
+					tt.description, lines, got)
 			}
 		})
 	}
 }
 
-// TestIntegration_NoUsageLineCount verifies 5H/7D always shown at 0% when usage=nil.
+// TestIntegration_NoUsageLineCount verifies that even when usage data is nil,
+// the default layout's L2 still shows CW + 5H(0%) + 7D(0%) bars.
+// Retired AC-V3-06 (full + no usage → 5 lines) deleted per
+// SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001 — full mode 5-line layout
+// no longer exists (NormalizeMode collapse). AC-V3-06b preserved as it
+// verifies the layout-independent contract: 5H/7D always shown at 0% when
+// usage data is absent.
 func TestIntegration_NoUsageLineCount(t *testing.T) {
-	// AC-V3-06: mode="full" + no usage → 5H/7D always shown at 0% → 5 lines
-	t.Run("AC-V3-06: full + no usage → 5 lines (5H/7D 0%)", func(t *testing.T) {
-		builder := New(Options{
-			GitProvider:    realisticGit(),
-			UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "2.8.0", Available: true}},
-			UsageProvider:  &mockUsageProvider{data: nil}, // no usage
-			Mode:           ModeFull,
-			NoColor:        true,
-		})
-
-		got, err := builder.Build(context.Background(), makeStdinJSON(realisticInput()))
-		if err != nil {
-			t.Fatalf("Build error: %v", err)
-		}
-
-		lines := countLines(got)
-		// 5H/7D always shown at 0%, so full mode keeps 5 lines
-		if lines != 5 {
-			t.Errorf("AC-V3-06: full + no usage should be 5 lines, got=%d\noutput:\n%s", lines, got)
-		}
-		// 5H/7D 0% bars must be shown
-		if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
-			t.Errorf("AC-V3-06: 5H/7D bars must always be shown\noutput:\n%s", got)
-		}
-		if !strings.Contains(got, "0%") {
-			t.Errorf("AC-V3-06: should show 0%% when no usage\noutput:\n%s", got)
-		}
-	})
-
 	// AC-V3-06b: mode="default" + no usage → CW + 5H(0%) + 7D(0%) all shown in L2
 	t.Run("AC-V3-06b: default + no usage → L2 CW+5H+7D", func(t *testing.T) {
 		builder := New(Options{
@@ -728,12 +699,16 @@ func TestIntegration_NoUsageLineCount(t *testing.T) {
 	})
 }
 
-// TestIntegration_GradientBar verifies gradient bar block counts (AC-V3-07).
-// 60% usage → 24 of 40 blocks filled.
+// TestIntegration_GradientBar verifies gradient bar block ratios (AC-V3-07).
+// 60% usage → 6 of 10 blocks filled per bar in default L2 (CW + 5H + 7D bars
+// share one line, each rendered with 10 blocks; full mode's separate 40-block
+// bars retired per SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001).
+// The gradient ratio contract (60% → 60% filled) is preserved at the smaller
+// default-mode resolution.
 func TestIntegration_GradientBar(t *testing.T) {
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100") // Disable CW scaling for exact block count tests
-	// AC-V3-07: 60% usage → 24 filled in 40-block bar (full mode CW bar)
-	t.Run("AC-V3-07: 60% → 24 of 40 CW blocks filled", func(t *testing.T) {
+	// AC-V3-07: 60% usage → 6 filled of 10-block default L2 CW bar
+	t.Run("AC-V3-07: 60% → 6 of 10 CW blocks filled", func(t *testing.T) {
 		// Set context window to 60% usage
 		input := &StdinData{
 			Model:         &ModelInfo{Name: "claude-opus-4-6-20250514"},
@@ -743,7 +718,7 @@ func TestIntegration_GradientBar(t *testing.T) {
 
 		builder := New(Options{
 			UsageProvider: &mockUsageProvider{data: nil},
-			Mode:          ModeFull,
+			Mode:          ModeDefault,
 			NoColor:       true,
 		})
 
@@ -752,8 +727,8 @@ func TestIntegration_GradientBar(t *testing.T) {
 			t.Fatalf("Build error: %v", err)
 		}
 
-		// full mode: CW(40) + 5H(40, 0%) + 7D(40, 0%) = 120 blocks
-		// CW bar 60% = 24 filled, 16 empty → extract CW line only for verification
+		// default L2: "CW: 🔋 ██████░░░░ 60% │ 5H: 🔋 ░░░░░░░░░░ 0% │ 7D: 🔋 ░░░░░░░░░░ 0%"
+		// Extract the CW segment only (substring between "CW:" and "│") for verification.
 		lines := strings.Split(got, "\n")
 		var cwLine string
 		for _, l := range lines {
@@ -766,15 +741,21 @@ func TestIntegration_GradientBar(t *testing.T) {
 			t.Fatalf("AC-V3-07: CW bar must be in output\noutput:\n%s", got)
 		}
 
-		cwFilled := strings.Count(cwLine, "█")
-		cwEmpty := strings.Count(cwLine, "░")
+		// Isolate CW segment (before first "│" separator)
+		cwSeg := cwLine
+		if idx := strings.Index(cwLine, "│"); idx >= 0 {
+			cwSeg = cwLine[:idx]
+		}
+
+		cwFilled := strings.Count(cwSeg, "█")
+		cwEmpty := strings.Count(cwSeg, "░")
 		cwTotal := cwFilled + cwEmpty
 
-		if cwTotal != 40 {
-			t.Errorf("AC-V3-07: CW bar total blocks = %d, want=40\nCW line: %q", cwTotal, cwLine)
+		if cwTotal != 10 {
+			t.Errorf("AC-V3-07: CW segment total blocks = %d, want=10\nCW segment: %q", cwTotal, cwSeg)
 		}
-		if cwFilled != 24 {
-			t.Errorf("AC-V3-07: CW bar filled blocks = %d, want=24\nCW line: %q", cwFilled, cwLine)
+		if cwFilled != 6 {
+			t.Errorf("AC-V3-07: CW segment filled blocks = %d, want=6 (60%% of 10)\nCW segment: %q", cwFilled, cwSeg)
 		}
 	})
 }
@@ -1667,12 +1648,12 @@ func TestCollectAll_PR_DataFlow(t *testing.T) {
 	}
 }
 
-// TestBuild_PRSegment_DefaultOff verifies that with no segment config (legacy users)
-// or with segments.pr explicitly false, the PR segment does NOT appear in output
-// even when stdin contains valid PR data.
-// REQ-SLV-012: PR segment opt-in default off (zero-regression for existing users)
-// AC-SLV-012 verification target.
-func TestBuild_PRSegment_DefaultOff(t *testing.T) {
+// TestBuild_PRSegment_DefaultOn verifies that with no segment config OR
+// with segments.pr key absent, the PR segment appears in output when stdin
+// contains valid PR data (default-on baseline as of v2.20.0-rc1).
+// segments.pr explicitly false still suppresses the segment.
+// Supersedes REQ-SLV-012 opt-in policy — graceful no-output handles no-PR case.
+func TestBuild_PRSegment_DefaultOn(t *testing.T) {
 	clearGLMEnv(t)
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
 
@@ -1684,23 +1665,27 @@ func TestBuild_PRSegment_DefaultOff(t *testing.T) {
 	tests := []struct {
 		name          string
 		segmentConfig map[string]bool
+		wantPR        bool
 	}{
 		{
-			name:          "segment config nil: pr omitted (existing-user backward compat)",
+			name:          "segment config nil: pr shown (default-on)",
 			segmentConfig: nil,
+			wantPR:        true,
 		},
 		{
-			name: "segment config without pr key: pr omitted (explicit opt-in)",
+			name: "segment config without pr key: pr shown (default-on)",
 			segmentConfig: map[string]bool{
 				SegmentModel:   true,
 				SegmentContext: true,
 			},
+			wantPR: true,
 		},
 		{
-			name: "segment config pr: false: pr omitted",
+			name: "segment config pr: false: pr omitted (explicit opt-out)",
 			segmentConfig: map[string]bool{
 				SegmentPR: false,
 			},
+			wantPR: false,
 		},
 	}
 
@@ -1715,9 +1700,9 @@ func TestBuild_PRSegment_DefaultOff(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Build() error: %v", err)
 			}
-			// PR segment shape: "#1023" should NOT appear when disabled
-			if strings.Contains(got, "#1023") {
-				t.Errorf("PR segment should NOT appear when disabled\ngot: %s", got)
+			hasPR := strings.Contains(got, "#1023")
+			if hasPR != tt.wantPR {
+				t.Errorf("PR segment presence mismatch: want=%v got=%v\noutput: %s", tt.wantPR, hasPR, got)
 			}
 		})
 	}

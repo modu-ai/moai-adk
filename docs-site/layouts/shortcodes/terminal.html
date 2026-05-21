@@ -1,0 +1,63 @@
+{{- /*
+  macOS 터미널 chrome 스타일 코드 블록.
+
+  Usage:
+    {{< terminal title="claude — cowork" >}}
+    /project init
+    "SaaS Series A IR 덱 초안 만들어줘"
+    {{< /terminal >}}
+
+  렌더 결과(자동 처리):
+    > /project init
+      "SaaS Series A IR 덱 초안 만들어줘"
+
+  Options:
+    title    창 타이틀 (기본: "claude — cowork")
+    lang     언어 라벨 (선택, 우상단 표기)
+    raw      "true"이면 자동 `> ` prefix 비활성 (기본 "false")
+
+  자동 처리 규칙 (v2.10.1, GOOS 정정):
+    - 양쪽 공백·줄바꿈 제거 (들여쓰기로 인한 박스 비대 방지)
+    - 첫 번째 non-empty 라인이 `>`로 시작하지 않으면 `> ` 자동 prepend
+    - 두 번째 이후 라인은 **원본 그대로 보존** (사용자가 명시한 `> ` / 들여쓰기 모두 유지)
+    - 빈 라인은 prefix 없이 보존
+  표기 가이드:
+    - 단일 prompt 다중 라인: 첫 행만 `> `, 이어지는 줄은 공백 들여쓰기 2칸
+    - 여러 prompt를 한 블록에 배치: 각 prompt 첫 행마다 `> ` 명시 (예: `> ❌` + `> ✅`)
+*/ -}}
+{{- $title := .Get "title" | default "claude — cowork" -}}
+{{- $lang  := .Get "lang"  | default "" -}}
+{{- $raw   := eq (.Get "raw" | default "false") "true" -}}
+{{- $body  := trim .Inner " \n\t\r" -}}
+{{- $out   := "" -}}
+{{- if $raw -}}
+  {{- $out = $body -}}
+{{- else -}}
+  {{- $first_done := false -}}
+  {{- range $idx, $line := split $body "\n" -}}
+    {{- $stripped := trim $line " \t" -}}
+    {{- if eq $stripped "" -}}
+      {{- $out = printf "%s\n" $out -}}
+    {{- else if not $first_done -}}
+      {{- /* 첫 번째 non-empty 라인: `>` 자동 prepend (없을 때만) */ -}}
+      {{- if hasPrefix $stripped ">" -}}
+        {{- $out = printf "%s%s\n" $out $stripped -}}
+      {{- else -}}
+        {{- $out = printf "%s> %s\n" $out $stripped -}}
+      {{- end -}}
+      {{- $first_done = true -}}
+    {{- else -}}
+      {{- /* 두 번째 이후 라인: 원본 그대로 보존 — 사용자 명시 `>`와 들여쓰기 모두 유지 */ -}}
+      {{- $out = printf "%s%s\n" $out $line -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $out = trim $out "\n" -}}
+{{- end -}}
+<div class="code-card term-card">
+  <div class="code-chrome">
+    <div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
+    <div class="code-title">{{ $title }}{{ with $lang }} <span class="lang">{{ . }}</span>{{ end }}</div>
+    <div class="code-spacer"></div>
+  </div>
+  <pre class="code-pre term-pre">{{ $out }}</pre>
+</div>

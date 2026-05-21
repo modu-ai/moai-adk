@@ -7,7 +7,7 @@ created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim
 priority: P1
-phase: "v3.5.0"
+phase: "v3.0.0 — Round 5"
 module: ".claude/rules/moai + internal/constitution + internal/cli"
 lifecycle: spec-anchored
 tags: "constitution, dual-zone, frozen, evolvable, zone-registry, mega-sprint, w1, acceptance"

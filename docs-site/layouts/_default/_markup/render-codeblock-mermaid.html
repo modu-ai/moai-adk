@@ -1,0 +1,7 @@
+<!-- prettier-ignore-start -->
+{{- /* mermaid bundle 로드는 foot.html에서 페이지에 .mermaid 존재 시 동적 처리.
+       여기서는 마크업만 출력 (defer script가 본문에 들어가면 동작 보장 안 됨). */ -}}
+<!-- prettier-ignore-end -->
+<pre class="gdoc-mermaid mermaid text-center">
+{{- .Inner | safeHTML -}}
+</pre>

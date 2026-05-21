@@ -915,47 +915,16 @@ func TestRenderDefaultV3_StyleInL1(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle 3: renderFullV3 tests
-// REQ-V3-LAYOUT-003: full mode uses 6-line layout
+// Cycle 3: renderFullV3 — single layout-independent test (L1 prefix verification)
+// Note: REQ-V3-LAYOUT-003 (full mode = 6-line layout) was retired per
+//       renderer.go:50 — `mode` parameter accepted but collapses to default via
+//       NormalizeMode. SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001 deleted 5
+//       retired-layout assertions (FiveLines, Lines2To4_SeparateBars,
+//       Line5_DirBranchGit, StyleInL1, WithResetTimes). The remaining test
+//       below (Line1_WithPrefixes) verifies L1 prefix content which is
+//       layout-independent (same in both default 3-line and the retired
+//       5-line layout).
 // ─────────────────────────────────────────────────────────────────────────────
-
-func TestRenderFullV3_FiveLines(t *testing.T) {
-	// full mode must produce exactly 5 lines (L6 removed, style merged into L1)
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:           MetricsData{Model: "Opus 4.6", Available: true, SessionDurationMS: 9240000},
-		Memory:            MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
-		ClaudeCodeVersion: "2.1.50",
-		Version:           VersionData{Current: "2.8.0", Available: true},
-		Directory:         "moai-adk-go",
-		Git: GitStatusData{
-			Branch:    "feat/auth",
-			Ahead:     2,
-			Behind:    1,
-			Staged:    3,
-			Modified:  2,
-			Untracked: 1,
-			Available: true,
-		},
-		OutputStyle: "MoAI",
-		Task:        TaskData{Active: true, Command: "run", SpecID: "SPEC-SLV3-001", Stage: "improve"},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	if len(lines) != 5 {
-		t.Errorf("full mode must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
-	}
-	// Output style must be merged into L1
-	if !strings.Contains(lines[0], "💬 MoAI") {
-		t.Errorf("full L1 must contain output style, got: %q", lines[0])
-	}
-}
 
 func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 	// full L1: model, Claude version with "Claude" prefix, MoAI version with "MoAI" prefix, session time
@@ -992,125 +961,6 @@ func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 	}
 }
 
-func TestRenderFullV3_Lines2To4_SeparateBars(t *testing.T) {
-	// full L2-L4: each bar on separate line (40 blocks, REQ-V3-API-011)
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:    MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
-		Directory: "moai-adk-go",
-		Git:       GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	// L2: CW bar only
-	l2 := lines[1]
-	if !strings.Contains(l2, "CW:") {
-		t.Errorf("full L2 must contain 'CW:' label, got: %q", l2)
-	}
-	if strings.Contains(l2, "5H:") || strings.Contains(l2, "7D:") {
-		t.Errorf("full L2 must not contain 5H/7D (CW only), got: %q", l2)
-	}
-
-	// L3: 5H bar only
-	l3 := lines[2]
-	if !strings.Contains(l3, "5H:") {
-		t.Errorf("full L3 must contain '5H:' label, got: %q", l3)
-	}
-	if strings.Contains(l3, "CW:") || strings.Contains(l3, "7D:") {
-		t.Errorf("full L3 must not contain CW/7D (5H only), got: %q", l3)
-	}
-
-	// L4: 7D bar only
-	l4 := lines[3]
-	if !strings.Contains(l4, "7D:") {
-		t.Errorf("full L4 must contain '7D:' label, got: %q", l4)
-	}
-	if strings.Contains(l4, "CW:") || strings.Contains(l4, "5H:") {
-		t.Errorf("full L4 must not contain CW/5H (7D only), got: %q", l4)
-	}
-}
-
-func TestRenderFullV3_Line5_DirBranchGit(t *testing.T) {
-	// full L5: directory, branch + ahead/behind, git status
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:    MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
-		Directory: "moai-adk-go",
-		Git: GitStatusData{
-			Branch:    "feat/auth",
-			Ahead:     2,
-			Behind:    1,
-			Staged:    3,
-			Modified:  2,
-			Untracked: 1,
-			Available: true,
-		},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	// Verify L5
-	if len(lines) < 5 {
-		t.Fatalf("full mode must have L5, got: %d lines\noutput:\n%s", len(lines), got)
-	}
-	l5 := lines[4]
-
-	if !strings.Contains(l5, "📁 moai-adk-go") {
-		t.Errorf("full L5 must contain directory, got: %q", l5)
-	}
-	// Branch segment: 🅱️ <name> ↑<ahead> ↓<behind> +<dirty>
-	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
-	if !strings.Contains(l5, "🅱️ feat/auth ↑2 ↓1 +6") {
-		t.Errorf("full L5 must contain branch with ahead/behind and dirty count, got: %q", l5)
-	}
-	if strings.Contains(l5, "📦") || strings.Contains(l5, "🔨") {
-		t.Errorf("full L5 must not contain legacy 📦/🔨 prefix, got: %q", l5)
-	}
-}
-
-func TestRenderFullV3_StyleInL1(t *testing.T) {
-	// full: output style merged into L1 (L6 removed)
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:     MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:      MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
-		OutputStyle: "MoAI",
-		Task:        TaskData{Active: true, Command: "run", SpecID: "SPEC-SLV3-001", Stage: "improve"},
-		Directory:   "moai-adk-go",
-		Git:         GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	// full must be 5 lines (L6 removed)
-	if len(lines) != 5 {
-		t.Fatalf("full mode must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
-	}
-
-	// Output style must be merged into L1
-	if !strings.Contains(lines[0], "💬 MoAI") {
-		t.Errorf("full L1 must contain output style, got: %q", lines[0])
-	}
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Cycle 4: empty line omission tests
 // REQ-V3-LAYOUT-004: omit lines where all segments are empty
@@ -1138,28 +988,11 @@ func TestRenderV3_OmitsEmptyLines_Default(t *testing.T) {
 	}
 }
 
-func TestRenderV3_OmitsEmptyLines_Full(t *testing.T) {
-	// full: omit L6 when no task/output style → 5 lines
-	r := newTestRenderer()
-	data := &StatusData{
-		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:    MemoryData{TokensUsed: 88000, TokenBudget: 200000, Available: true},
-		Directory: "moai-adk-go",
-		Git:       GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
-		// No task or output style
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	if len(lines) != 5 {
-		t.Errorf("full mode without task/style must be 5 lines, got: %d lines\noutput:\n%s", len(lines), got)
-	}
-}
+// TestRenderV3_OmitsEmptyLines_Full deleted per SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001
+// — asserted retired 5-line full layout (`len(lines) != 5` for ModeFull). Discovered
+// in run-phase (iter 2 plan-auditor missed: grep pattern `TestRenderFullV3` did not
+// match `TestRenderV3_*`). TestRenderV3_OmitsEmptyLines_Default preserved above as it
+// verifies the current default 3-line behavior.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cycle 5: Render() routing and backward compatibility tests
@@ -1315,41 +1148,6 @@ func TestFormatResetTimeAbsolute(t *testing.T) {
 				t.Errorf("expected substring %q in %q", tt.wantSub, got)
 			}
 		})
-	}
-}
-
-func TestRenderFullV3_WithResetTimes(t *testing.T) {
-	t.Parallel()
-
-	r := newTestRenderer()
-	resetTime := time.Now().Add(2*time.Hour + 15*time.Minute).UTC().Format(time.RFC3339)
-
-	data := &StatusData{
-		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
-		Memory:    MemoryData{TokensUsed: 100000, TokenBudget: 200000, Available: true},
-		Directory: "test-project",
-		Git:       GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{Percentage: 25.0, ResetsAt: resetTime},
-			Usage7D: &UsageData{Percentage: 60.0, ResetsAt: "2026-01-21T14:00:00Z"},
-		},
-	}
-
-	got := r.Render(data, ModeFull)
-	lines := strings.Split(got, "\n")
-
-	if len(lines) < 5 {
-		t.Fatalf("full mode should have 5 lines, got %d: %q", len(lines), got)
-	}
-
-	// L3 (5H) should contain time in parentheses
-	if !strings.Contains(lines[2], "(") {
-		t.Errorf("5H line should contain reset time in parentheses, got: %q", lines[2])
-	}
-
-	// L4 (7D) should contain reset time in parentheses
-	if !strings.Contains(lines[3], "(") {
-		t.Errorf("7D line should contain reset time in parentheses, got: %q", lines[3])
 	}
 }
 

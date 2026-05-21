@@ -11,6 +11,8 @@ index:
   title: "フックガイド"
 "settings-json":
   title: "settings.json ガイド"
+"security-notes":
+  title: "セキュリティノート"
 "statusline":
   title: "ステータスラインシステムとPRセグメント"
 "claude-md-guide":

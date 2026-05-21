@@ -1,15 +1,20 @@
 statusline:
     mode: default
-    preset: full
+    preset: custom
     segments:
         claude_version: true
         context: true
         directory: true
+        effort_thinking: true
         git_branch: true
         git_status: true
         moai_version: true
         model: true
         output_style: true
-        pr: false
+        pr: true
+        session_time: true
+        task: true
+        usage_5h: true
+        usage_7d: true
         worktree: true
     theme: catppuccin-mocha

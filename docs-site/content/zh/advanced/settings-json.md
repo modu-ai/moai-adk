@@ -837,6 +837,26 @@ MCP (Model Context Protocol) 服务器相关设置。
 `settings.local.json` 的设置与 `settings.json` 的设置 **合并**。相同键存在时 `settings.local.json` 优先。
 {{< /callout >}}
 
+### settings.local.json 权限加固 (0o600) {#settings-local-json-permission}
+
+自 v2.20.0-rc1 起,`settings.local.json` 在创建和更新时强制使用 **`0o600`** (仅所有者 read/write) 权限。之前的 `0o644` 在多用户工作站上会将 `ANTHROPIC_AUTH_TOKEN` 等敏感凭证暴露给其他本地用户 (CWE-732 / CWE-552)。
+
+**自检**:
+
+```bash
+# Linux
+stat -c '%a' .claude/settings.local.json
+# 期望值: 600
+
+# macOS
+stat -f '%A' .claude/settings.local.json
+# 期望值: 600
+```
+
+若权限不为 `600`,MoAI-ADK 将在下次会话开始时自动修正。如需立即修正,执行 `chmod 0600 .claude/settings.local.json`。
+
+完整的安全模型、威胁分析与额外自检流程请参见 [安全说明 — CWE-732](/zh/advanced/security-notes/#cwe-732)。
+
 ## MoAI 专用设置
 
 {{< callout type="info" >}}

@@ -1,0 +1,9 @@
+{{ define "main" }}
+  {{- /* 홈은 hero가 첫 요소이므로 page-header(breadcrumb·edit) + 자동 h1 모두 출력 안 함 */ -}}
+  <article
+    class="gdoc-markdown gdoc-markdown__align--{{ default "left" (.Page.Params.geekdocAlign | lower) }}"
+    id="main-content" tabindex="-1"
+  >
+    {{ partial "utils/content" . }}
+  </article>
+{{ end }}
