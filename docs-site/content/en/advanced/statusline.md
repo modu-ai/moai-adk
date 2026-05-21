@@ -1,353 +1,368 @@
 ---
-title: Statusline System and PR Segment
+title: Statusline System — Complete 3-line Layout Guide
 weight: 78
 draft: false
 ---
 
-A **custom statusline system** for integrating Claude Code with moai-adk-go. Starting from v2.1.145, you can display GitHub PR information in the statusline.
+A **custom statusline system** for Claude Code ↔ moai-adk-go integration. Since Claude Code v2.1.139 (effort/thinking) and v2.1.145 (workspace.repo + pr), stdin JSON exposes rich session context that this statusline visualizes.
 
-> The MoAI workflow is PR-centric. Every SPEC generates plan-PR → run-PR → sync-PR, so displaying the current PR status in the statusline improves development efficiency.
+> MoAI workflows are PR-centric. Every SPEC produces a plan-PR → run-PR → sync-PR cycle, so surfacing the current PR number, review state, context usage, and handoff hint directly in the statusline dramatically improves development efficiency.
 
 ## Overview
 
-### Why a Custom Statusline?
+### Final Layout (3-line v3)
 
-Claude Code's default statusline is optimized for general usage patterns. However, MoAI-ADK users need specialized information:
+```
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+```
 
-- **PR-Centric Workflow**: Display the current PR number and review status (approved/pending/changes_requested)
-- **Multi-Pane Development**: Show current SPEC status when using worktree-based parallel development
-- **Cost Tracking**: Real-time cost monitoring when using GLM environments
-- **Context Management**: Current session token usage and cumulative costs
+- **Line 1 (Info)**: model · effort/thinking · Claude Code version · MoAI version · session time · output style
+- **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — each bar shows emoji + label + bar + % + reset info
+- **Line 3 (Git/PR)**: directory · combined repo+branch · git status · active SPEC task · PR info
 
-The custom statusline displays this information through the `.moai/status_line.sh` renderer.
-
-### Statusline Architecture
+### Data Flow
 
 ```
 Claude Code stdin (JSON)
     ↓
 internal/statusline/types.go (StdinData parsing)
     ↓
-internal/statusline/builder.go (segment composition)
+internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
     ↓
-internal/statusline/renderer.go (color coding and rendering)
+internal/statusline/renderer.go (3-line v3 layout)
     ↓
-.moai/status_line.sh (template-based final rendering)
+.moai/status_line.sh → terminal display
 ```
+
+## Line 1 — Info (7 segments)
+
+### 🤖 Model
+
+- **Format**: `🤖 <model display name>`
+- **Data source**: stdin `model.display_name` (or string shorthand)
+- **Examples**: `🤖 Opus 4.7`, `🤖 Sonnet 4.6`, `🤖 Haiku 4.5`
+- **Hidden when**: `model` field absent or `data.Metrics.Model == ""`
+- **Segment key**: `model`
+
+### 🧠 Effort / Thinking
+
+- **Format**: `🧠 <level>[·t]`
+- **Data source**: stdin `effort.level` + `thinking.enabled` (Claude Code v2.1.139+)
+- **Level values**: `low` / `medium` / `high` / `xhigh` / `max`
+- **`·t` suffix**: appended when `thinking.enabled == true` (extended reasoning active)
+- **Examples**:
+  - `🧠 xhigh·t` (xhigh effort + thinking active)
+  - `🧠 high` (high effort, no thinking)
+  - `·t` (effort absent + only thinking active)
+- **Hidden when**: both `effort` + `thinking` absent (including empty effort.level)
+- **Segment key**: `effort_thinking`
+
+### 🔅 Claude Code Version
+
+- **Format**: `🔅 v<version>` (default mode) or `🔅 cc v<version>` (full mode)
+- **Data source**: stdin `version` string
+- **Example**: `🔅 v2.1.146`
+- **Hidden when**: `version` empty string
+- **Segment key**: `claude_version`
+
+### 🗿 MoAI Version
+
+- **Format**: `🗿 v<current>` or `🗿 v<current> -> 🗿 v<latest>` when update available
+- **Data source**: `.moai/config/sections/system.yaml` `moai.version` + background update checker
+- **Examples**:
+  - `🗿 v2.20.0-rc1` (latest)
+  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (update recommended)
+- **Segment key**: `moai_version`
+
+### ⏳ Session Time
+
+- **Format**: `⏳ <X>h <Y>m` (≥1h) / `⏳ <X>m` (<1h) / `⏳ <X>d <Y>h` (≥24h)
+- **Data source**: stdin `cost.total_duration_ms`
+- **Examples**: `⏳ 4h 52m`, `⏳ 35m`, `⏳ 1d 3h`
+- **Segment key**: `session_time`
+
+### 💬 Output Style
+
+- **Format**: `💬 <style name>`
+- **Data source**: stdin `output_style.name`
+- **Examples**: `💬 MoAI`, `💬 R2-D2`, `💬 default`
+- **Hidden when**: `output_style.name` empty string
+- **Segment key**: `output_style`
+
+## Line 2 — Usage Bars (3 segments)
+
+### 🪫/🔋 CW (Context Window)
+
+- **Format**: `<icon> CW: <bar> <pct>% [(⚠️/clear)]`
+- **Data source**:
+  - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
+  - percentage: `context_window.used_percentage` (pre-calculated) or sum of `current_usage` tokens
+  - (⚠️/clear) gated by: `shouldShowHandoffGuide(data) == true`
+- **Icons**:
+  - 🔋 (normal, <50% scaled)
+  - 🪫 (warning, 50-79% scaled)
+  - 🪫 (critical, ≥80% scaled, color added)
+- **(⚠️/clear) handoff suffix**:
+  - 1M context model (Opus 4.7): used_percentage ≥50% (against raw context_window_size)
+  - 200K context model (Sonnet/Haiku): used_percentage ≥90%
+  - Meaning: recommend running `/clear` before next turn + use paste-ready resume message
+- **Example**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
+- **Segment key**: `context`
+
+### 🔋 5H (5-hour rolling rate limit)
+
+- **Format**: `🔋 5H: <bar> <pct>% [(<reset>)]`
+- **Data source**: stdin `rate_limits.five_hour.{used_percentage, resets_at}`
+- **Reset format**:
+  - <60 min: `(Nm)` (e.g., `(47m)`)
+  - <24 hours: `(Nh Nm)` (e.g., `(2h 15m)`)
+  - ≥24 hours: `(Mon DD)` (e.g., `(May 28)`)
+- **Example**: `🔋 5H: █████░░░░░ 56% (47m)`
+- **No data**: `rate_limits.five_hour == null` → bar 0%, reset `(rolling)`
+- **Segment key**: `usage_5h`
+
+### 🔋 7D (7-day rolling rate limit)
+
+- **Format**: `🔋 7D: <bar> <pct>% [(<reset>)]`
+- **Data source**: stdin `rate_limits.seven_day.{used_percentage, resets_at}`
+- **Reset format**: `(Mon DD)` (absolute date)
+- **Example**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
+- **Segment key**: `usage_7d`
+
+## Line 3 — Git / PR (5 segments)
+
+### 📁 Directory
+
+- **Format**: `📁 <directory name>`
+- **Data source**: stdin `workspace.project_dir` (basename) or `cwd`
+- **Examples**: `📁 moai-adk-go`, `📁 my-project`
+- **Hidden when**: `data.Directory` empty string
+- **Segment key**: `directory`
+
+### 🔀 Repo + Branch (combined segment)
+
+- **Format**: `🔀 <owner>/<name> (🅱️ <branch>[ ↑N][ ↓N][ +N])`
+- **Data source**:
+  - `🔀 owner/name`: stdin `workspace.repo.{host, owner, name}` (Claude Code v2.1.145+)
+  - `🅱️ branch`: local git `branch --show-current`
+  - `↑N`: ahead count (vs origin/<branch>)
+  - `↓N`: behind count
+  - `+N`: dirty count = Modified + Staged + Untracked
+- **Examples**:
+  - `🔀 modu-ai/moai-adk (🅱️ main ↑3 +2)` (repo + branch + ahead + dirty)
+  - `🔀 modu-ai/moai-adk (🅱️ main)` (clean branch, no ahead)
+  - `🔀 (🅱️ feat/auth ↑2 ↓1 +6)` (fallback: no repo info)
+- **Hidden when**:
+  - branch empty string → whole segment hidden
+  - repo nil → fallback (only branch shown in parens)
+- **Worktree mode**: if `worktree` segment enabled, `[WT] ` prefix prepended to branch
+- **Segment key**: `git_branch` (combined)
+
+### 💾 Git Status
+
+- **Format**: `💾 +<staged> M<modified> ?<untracked>`
+- **Data source**: local git `git status --porcelain` parsing
+- **Example**: `💾 +0 M1 ?1` (staged 0, modified 1, untracked 1)
+- **Hidden when**: git unavailable
+- **Note**: previous mailbox quartet emoji (📬/📫/📪/📭) retired in favor of unified 💾
+- **Segment key**: `git_status`
+
+### 📋 Task (Active SPEC workflow)
+
+- **Format**: `📋 [<command> <SPEC-ID>-<stage>]`
+- **Data source**: `~/.moai/state/last-session-state.json` `active_task` field (populated only when that file exists)
+- **Example**: `📋 [/moai run SPEC-V3R5-STATUSLINE-001-implement]`
+- **Hidden when**: file absent or `active_task` nil → segment hidden
+- **Segment key**: `task` (opt-in default off)
+
+### 💌 PR (Active GitHub Pull Request)
+
+- **Format**: `💌 PR #<number> (⌥<review_state>)` (when state present) / `💌 PR #<number>` (when state empty)
+- **Data source**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.146+)
+- **Review state values**: `approved` / `pending` / `changes_requested` / `draft` / others (raw passthrough)
+- **Color coding** (review_state portion):
+  - `approved`: green (Success)
+  - `pending`: yellow (Warning)
+  - `changes_requested`: red (Error)
+  - `draft`: gray (Muted)
+  - other: no color (raw passthrough)
+- **Examples**:
+  - `💌 PR #1234 (⌥approved)` (green)
+  - `💌 PR #1023 (⌥pending)` (yellow)
+  - `💌 PR #7 (⌥changes_requested)` (red)
+  - `💌 PR #99 (⌥draft)` (gray)
+  - `💌 PR #100` (no state)
+- **Hidden when**:
+  - `pr` field absent (no PR or Claude Code below v2.1.145)
+  - `pr.number == 0`
+  - `SegmentPR` config explicitly false
+- **Segment key**: `pr` (default on per v2.20.0-rc1)
 
 ## Configuration
 
 ### Basic Structure
 
-Configure the statusline in `.moai/config/sections/statusline.yaml`:
+Segment activation is managed in `.moai/config/sections/statusline.yaml`:
 
 ```yaml
 statusline:
-  mode: default              # default | compact | verbose
-  theme: catppuccin-mocha    # Color theme selection
-  preset: full               # full | minimal | custom
+  mode: default              # default | full
+  theme: catppuccin-mocha    # color theme
+  preset: custom             # full | minimal | custom
   segments:
-    model: true              # Display Claude model
-    context: true            # Display context usage
-    directory: true          # Display working directory
-    git_status: true         # Display Git status
-    git_branch: true         # Display Git branch
-    worktree: false          # Display worktree info (optional)
-    effort_thinking: false   # Display effort/thinking state (optional)
-    pr: false                # Display PR info (optional, v2.1.145+)
+    # Line 1
+    model: true
+    effort_thinking: true
+    claude_version: true
+    moai_version: true
+    session_time: true
+    output_style: true
+
+    # Line 2
+    context: true
+    usage_5h: true
+    usage_7d: true
+
+    # Line 3
+    directory: true
+    git_branch: true       # combined repo+branch
+    git_status: true
+    task: true             # opt-in default off in older versions
+    pr: true               # default on per v2.20.0-rc1
+    worktree: false
 ```
 
-### Segment Options
+### Segment Activation Matrix
 
-| Segment | Default | Purpose | Description |
-|---------|---------|---------|-------------|
-| `model` | true | Current model | Display Claude model version |
-| `context` | true | Context usage | Current session token usage |
-| `directory` | true | Working path | Current working directory |
-| `git_status` | true | Git status | Modified files count, stash status |
-| `git_branch` | true | Current branch | Branch name and divergence from remote |
-| `worktree` | false | Worktree info | Display current worktree (parallel dev) |
-| `effort_thinking` | false | Thinking mode | effort and thinking state |
-| `pr` | false | PR info | GitHub PR number and review status (NEW v2.1.145+) |
+| Segment | Line | Default Active | stdin field |
+|---------|------|---------------|-------------|
+| `model` | L1 | ✅ | `model.display_name` |
+| `effort_thinking` | L1 | ✅ | `effort.level` + `thinking.enabled` |
+| `claude_version` | L1 | ✅ | `version` |
+| `moai_version` | L1 | ✅ | (local config) |
+| `session_time` | L1 | ✅ | `cost.total_duration_ms` |
+| `output_style` | L1 | ✅ | `output_style.name` |
+| `context` | L2 | ✅ | `context_window.*` |
+| `usage_5h` | L2 | ✅ | `rate_limits.five_hour.*` |
+| `usage_7d` | L2 | ✅ | `rate_limits.seven_day.*` |
+| `directory` | L3 | ✅ | `workspace.project_dir` |
+| `git_branch` (combined) | L3 | ✅ | `workspace.repo.*` + local git |
+| `git_status` | L3 | ✅ | local git |
+| `task` | L3 | ⚠️ opt-in | `~/.moai/state/last-session-state.json` |
+| `pr` | L3 | ✅ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
+| `worktree` | L3 | ❌ opt-in | `workspace.git_worktree` |
 
-## Available Segments
+## Handoff Guide — (⚠️/clear) Threshold
 
-### Always-Active Segments (4)
+The CW bar's `(⚠️/clear)` suffix activates when context usage crosses model-specific thresholds. It is a visual marker that helps prevent SSE stall risk and prompts the user to leverage a paste-ready resume message.
 
-**model** — Claude model
-- Display current model (Claude 3.5 Sonnet, Claude 3.7 Opus, etc.)
-- Example: `Claude 3.5 Sonnet`
+| Model Class | Context Window | Threshold | When Recommended |
+|-------------|----------------|-----------|------------------|
+| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
+| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens used |
+| Other / unknown | — | not shown | (safety default) |
 
-**context** — Context usage
-- Display current session token usage
-- Format: `150K/200K` (used / total)
-- Warning color when usage exceeds 75%
+> Thresholds are enforced by `internal/statusline/renderer.go shouldShowHandoffGuide()`. These match the HARD rule in `.claude/rules/moai/workflow/context-window-management.md`.
 
-**directory** — Working directory
-- Display relative path of current working directory
-- Shows location relative to project root
+User flow when activated:
+1. `(⚠️/clear)` marker appears
+2. Save in-flight work to `progress.md` or equivalent
+3. Orchestrator generates paste-ready resume message (session-handoff.md 6-block format)
+4. Run `/clear`, then paste the resume message
+5. Continue work in the fresh session
 
-**git_status** — Git status
-- Modified files count: `M5` (5 files modified)
-- Stash status: `S2` (2 stashes)
-- Example: `M5 S2`
+## stdin JSON Schema Reference
 
-**git_branch** — Current branch
-- Branch name
-- Commit difference from remote
-- Example: `feat/SPEC-001 +3 -1`
-
-### Optional Segments (7)
-
-**worktree** — Worktree information (optional)
-- Display when using L2 worktree
-- Show current SPEC name
-- Enable: `segments.worktree: true`
-
-**effort_thinking** — Effort/thinking state (optional)
-- Claude 4.7 thinking mode status
-- effort level (high/xhigh/max)
-- Enable: `segments.effort_thinking: true`
-
-**output_style** — Output style (optional)
-- Current output style setting
-- Enable: `segments.output_style: true`
-
-**claude_version** — Claude version (optional)
-- Claude Code version
-- Enable: `segments.claude_version: true`
-
-**moai_version** — moai version (optional)
-- MoAI-ADK version
-- Enable: `segments.moai_version: true`
-
-**session_time** — Session elapsed time (optional)
-- Time elapsed since current session start
-- Enable: `segments.session_time: true`
-
-**usage_5h** — 5-hour cumulative cost (optional)
-- Cost tracking for the past 5 hours
-- Useful in GLM environments
-- Enable: `segments.usage_5h: true`
-
-**usage_7d** — 7-day cumulative cost (optional)
-- Cost tracking for the past 7 days
-- Enable: `segments.usage_7d: true`
-
-**task** — Active SPEC workflow info (optional)
-- Output format: `📋 [<command> <SPEC-ID>-<stage>]` (e.g. `📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`)
-- Data source: `~/.moai/state/last-session-state.json` `active_task` field (auto-set by the SessionStart hook)
-- Inactive task renders nothing (segment hidden — graceful no-output)
-- Enable: `segments.task: true` (default `true` as of v2.20.0-rc1, opt-out via `false`)
-
-**repo** — Repository information (optional, v2.1.145+)
-- Display current GitHub repository owner/name
-- Example: `modu-ai/moai-adk`
-- Enable: `segments.repo: true`
-
-**long_context** — Long context warning (optional, v2.1.139+)
-- Display warning marker when 200K tokens exceeded
-- Example: `⚠️ 200K+ exceeded`
-- Enable: `segments.long_context: true`
-
-**handoff_guide** — Handoff threshold guide (optional, v2.1.146+)
-- Display current model's context window size and recommended handoff threshold
-- 1M model: 50% threshold (≈500K tokens)
-- 200K model: 90% threshold (≈180K tokens)
-- Example: `[1M: 50% | 200K: 90%]`
-- Enable: `segments.handoff_guide: true`
-
-## NEW v2.1.145: PR Segment
-
-### Overview
-
-Starting from Claude Code v2.1.145, the statusline stdin JSON includes GitHub PR information. MoAI-ADK leverages this to display the current PR's review status in the statusline.
-
-**Enable**: Default `true` as of v2.20.0-rc1 (default-on). Set `segments.pr: false` to opt out. Graceful no-output: when no PR info is present, the segment is hidden automatically.
-
-### PR Segment Display Format
-
-The PR segment is displayed in the following format:
-
-```
-#1023 ⌥approved
-```
-
-- `#1023`: PR number
-- `⌥`: PR status indicator symbol
-- `approved`: Review status (color coded)
-
-### Review State Colors
-
-The PR's review status is displayed in different colors:
-
-| State | Color | Meaning |
-|-------|-------|---------|
-| `approved` | Green | PR is approved |
-| `pending` | Yellow | Waiting for review |
-| `changes_requested` | Red | Changes requested |
-| `draft` | Gray | Draft state |
-| (other / empty) | Default | No style applied |
-
-### How to Enable
-
-1. Edit `.moai/config/sections/statusline.yaml`
-
-```yaml
-statusline:
-  segments:
-    pr: true   # Enable PR segment
-```
-
-2. Restart Claude Code session
-
-Now the statusline will display the current PR number and review status.
-
-### JSON Input Schema (v2.1.145+)
-
-Claude Code v2.1.145+ passes the following JSON format to the statusline stdin:
+For the complete list of stdin JSON fields Claude Code passes to the statusline script, see the [official docs Available data](https://code.claude.com/docs/en/statusline#available-data). moai-adk-go consumes the following fields:
 
 ```json
 {
-  "pr": {
-    "number": 1023,
-    "url": "https://github.com/modu-ai/moai-adk/pull/1023",
-    "review_state": "pending"
-  },
+  "session_id": "abc...",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/path/to/cwd",
+  "model": {"id": "claude-opus-4-7", "display_name": "Opus 4.7"},
   "workspace": {
-    "repo": {
-      "host": "github.com",
-      "owner": "modu-ai",
-      "name": "moai-adk"
+    "current_dir": "...",
+    "project_dir": "...",
+    "git_worktree": "feature-xyz",
+    "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
+  },
+  "version": "2.1.146",
+  "output_style": {"name": "MoAI"},
+  "cost": {
+    "total_cost_usd": 1.234,
+    "total_duration_ms": 17520000,
+    "total_lines_added": 156,
+    "total_lines_removed": 23
+  },
+  "context_window": {
+    "used_percentage": 62,
+    "context_window_size": 1000000,
+    "total_input_tokens": 620000,
+    "total_output_tokens": 0,
+    "current_usage": {
+      "input_tokens": 8500,
+      "output_tokens": 1200,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 605300
     }
+  },
+  "exceeds_200k_tokens": true,
+  "effort": {"level": "xhigh"},
+  "thinking": {"enabled": true},
+  "rate_limits": {
+    "five_hour": {"used_percentage": 56, "resets_at": 1779286800},
+    "seven_day": {"used_percentage": 13, "resets_at": 1779832400}
+  },
+  "pr": {
+    "number": 1234,
+    "url": "https://github.com/modu-ai/moai-adk/pull/1234",
+    "review_state": "approved"
   }
 }
 ```
 
-- **pr.number**: PR number (required)
-- **pr.url**: PR URL (optional)
-- **pr.review_state**: Review state (optional, default: empty)
-- **workspace.repo.host**: Git host (github.com)
-- **workspace.repo.owner**: Repository owner
-- **workspace.repo.name**: Repository name
+## Version History
 
-### Related Information
+- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line layout redesign — combined repo+branch segment, directory on L3 head, `🪫 CW:` emoji moved to front, `(⚠️/clear)` handoff suffix, unified `💾` git status, `💌 PR #N (⌥state)` format
+- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): added `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin field mappings, tightened 1M context handoff threshold 75% → 50%
+- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): PR segment added (v2.1.145+ stdin), 4-locale docs sync
+- **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` added to stdin JSON
+- **v2.1.146** (Claude Code): `workspace.repo` + `pr` added to stdin JSON
 
-- **SPEC Reference**: [SPEC-V3R5-STATUSLINE-V2145-001](/en/advanced/statusline#reference)
-- **Minimum Version**: Claude Code v2.1.145 or later required
-- **Optional Feature**: Default is `false`, must be explicitly enabled
-- **Backward Compatibility**: Earlier versions of Claude Code do not provide PR information (segment will not display)
+## Troubleshooting
 
-## Troubleshooting: Statusline Disappearing
+### PR not showing in statusline
 
-### Symptoms
+- Verify Claude Code version: needs `🔅 v2.1.146` or higher (v2.1.145 does not include `pr` in stdin)
+- Verify current branch has an open PR: `gh pr view`
+- Check `statusline.yaml` for explicit `pr: false`
 
-- Statusline intermittently does not display
-- Statusline area is blank in Claude Code UI
-- `.moai/cache/statusline_debug.log` file keeps growing
+### (⚠️/clear) not appearing
 
-### Root Cause Analysis (Before v2.1.145 M1 fix)
+- 1M context model: used_percentage below 50% → expected (threshold not yet reached)
+- 200K context model: used_percentage below 90% → expected
+- Above threshold but no marker: verify `MemoryData.ContextWindowSize` mapping in `shouldShowHandoffGuide` (possible boundary defect)
 
-The statusline renderer must comply with Claude Code's **300ms debounce contract**. Violations cause in-flight executions to be cancelled.
+### No colors displayed
 
-Issues in previous code:
+- Verify terminal supports ANSI 256-color
+- Confirm `theme: catppuccin-mocha` is appropriate for your environment
+- Check whether `NO_COLOR=1` env var is set
 
-```bash
-# Problem: DEBUG_STATUSLINE defaults to 1 (always enabled)
-DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-1}
-
-# This caused every render to:
-# 1. Fork python3 -m json.tool process (50-250ms)
-# 2. Write to ~/.moai/cache/statusline_debug.log (~10ms)
-# Total: 60-260ms → exceeds 300ms debounce boundary
-# → Claude Code cancels in-flight statusline rendering
-# → Result: statusline does not display
-```
-
-### Solution (Fixed in v2.1.145 M1)
-
-From v3.5.0 onwards, `DEBUG_STATUSLINE` defaults to **0**:
+### Verification Command
 
 ```bash
-# Fixed: default 0 (disabled)
-DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-0}
-
-# Only enable explicitly when debugging:
-export DEBUG_STATUSLINE=1
+# Verify actual statusline output with stdin fixture
+NOW=$(date +%s)
+echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
-### Padding Adjustment
+## Related Documentation
 
-Previously, `echo ""` was used to adjust spacing around the statusline. This is no longer recommended.
-
-**Instead**, configure it in `.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "padding": 1
-  }
-}
-```
-
-- `padding: 0`: No padding
-- `padding: 1`: 1 line padding above and below (default)
-- `padding: 2`: 2 lines padding above and below
-
-### Troubleshooting Checklist
-
-Steps to resolve statusline display issues:
-
-1. ✓ Check `DEBUG_STATUSLINE` environment variable
-   ```bash
-   echo $DEBUG_STATUSLINE  # Should be unset or 0 by default
-   ```
-
-2. ✓ Verify `.moai/status_line.sh` file
-   ```bash
-   grep "DEBUG_STATUSLINE=" ~/.moai/status_line.sh
-   # Should show: DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-0}
-   ```
-
-3. ✓ Enable debugging explicitly (only if needed)
-   ```bash
-   export DEBUG_STATUSLINE=1
-   # Debug information will now be recorded
-   ```
-
-4. ✓ Configure padding
-   ```json
-   {
-     "statusLine": {
-       "padding": 1
-     }
-   }
-   ```
-
-5. ✓ Restart Claude Code session
-
-## Reference
-
-### Official Documentation
-
-- [Claude Code Statusline Official Documentation](https://code.claude.com/docs/en/statusline) — Claude Code's statusline contract and JSON schema
-
-### moai-adk-go Internals
-
-- **Package**: `internal/statusline/`
-  - `types.go`: StdinData, PRInfo, RepoInfo struct definitions
-  - `builder.go`: Segment creation logic
-  - `renderer.go`: Color coding and final rendering
-
-- **Template**: `.moai/status_line.sh.tmpl`
-  - Renderer invocation and execution logic
-
-- **Configuration**: `.moai/config/sections/statusline.yaml`
-  - Segment enable/disable settings
-
-### Related SPEC
-
-- **[SPEC-V3R5-STATUSLINE-V2145-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-V3R5-STATUSLINE-V2145-001/spec.md)**
-  - M1: Fix statusline disappearing issue
-  - M2: Add v2.1.145 PR segment
-  - M3: Documentation (this page)
+- [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` field configuration
+- [Context Window Management](/advanced/context-window-management) — handoff threshold policy (1M = 50%, 200K = 90%)
+- [Session Handoff](/advanced/session-handoff) — paste-ready resume message 6-block format
+- [PR Workflow](/git/pr-workflow) — MoAI PR-centric workflow
