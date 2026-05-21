@@ -2227,9 +2227,15 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 }
 
 // allStatuslineSegments lists all supported statusline segment names in display order.
+// Includes segments added across Claude Code v2.1.97/122/145 + REQ-V3 Cycle 5 (task).
+// PR/Task were previously opt-in (REQ-SLV-012); promoted to default-on as part of the
+// statusline preset baseline alignment — graceful no-output handles inactive states.
 var allStatuslineSegments = []string{
 	statusline.SegmentModel, statusline.SegmentContext, statusline.SegmentOutputStyle, statusline.SegmentDirectory,
 	statusline.SegmentGitStatus, statusline.SegmentClaudeVersion, statusline.SegmentMoaiVersion, statusline.SegmentGitBranch,
+	statusline.SegmentSessionTime, statusline.SegmentUsage5H, statusline.SegmentUsage7D,
+	statusline.SegmentTask, statusline.SegmentWorktree, statusline.SegmentEffortThinking,
+	statusline.SegmentPR,
 }
 
 // presetToSegments converts a statusline preset name and optional custom segment map
@@ -2239,13 +2245,17 @@ func presetToSegments(preset string, custom map[string]bool) map[string]bool {
 
 	switch preset {
 	case "compact":
+		// Compact: essentials + workflow context (task + PR for SPEC visibility)
 		compactEnabled := map[string]bool{
-			statusline.SegmentModel: true, statusline.SegmentContext: true, statusline.SegmentGitStatus: true, statusline.SegmentGitBranch: true,
+			statusline.SegmentModel: true, statusline.SegmentContext: true,
+			statusline.SegmentGitStatus: true, statusline.SegmentGitBranch: true,
+			statusline.SegmentTask: true, statusline.SegmentPR: true,
 		}
 		for _, seg := range allStatuslineSegments {
 			segments[seg] = compactEnabled[seg]
 		}
 	case "minimal":
+		// Minimal: model + context only (no workflow context)
 		minimalEnabled := map[string]bool{
 			statusline.SegmentModel: true, statusline.SegmentContext: true,
 		}

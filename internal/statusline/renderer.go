@@ -380,16 +380,17 @@ func (r *Renderer) renderTaskSegment(data *StatusData) string {
 	return fmt.Sprintf("📋 %s", formatted)
 }
 
-// isTaskEnabled returns true only when SegmentTask is explicitly set to true
-// in segmentConfig. Opt-in default off — mirrors isPREnabled() semantics for
-// consistent gating across REQ-V3 Cycle 5 Phase 4 + REQ-SLV-012.
+// isTaskEnabled returns true when SegmentTask is enabled in segmentConfig.
+// Default-on as of v2.20.0-rc1 — unset key resolves to enabled, matching
+// isSegmentEnabled semantics. Graceful no-output handles inactive task
+// (TaskData.Format() returns "" → segment hidden).
 func (r *Renderer) isTaskEnabled() bool {
 	if len(r.segmentConfig) == 0 {
-		return false
+		return true
 	}
 	enabled, exists := r.segmentConfig[SegmentTask]
 	if !exists {
-		return false
+		return true
 	}
 	return enabled
 }
@@ -434,17 +435,17 @@ func (r *Renderer) renderPRSegment(data *StatusData) string {
 	return fmt.Sprintf("%s %s", numberText, stateText)
 }
 
-// isPREnabled returns true only when SegmentPR is explicitly set to true in
-// segmentConfig. The PR segment is opt-in (REQ-SLV-012) — unset key resolves
-// to disabled for zero-regression on legacy users whose config files predate
-// v2.1.145 awareness.
+// isPREnabled returns true when SegmentPR is enabled in segmentConfig.
+// Default-on as of v2.20.0-rc1 (REQ-SLV-012 supersession) — unset key resolves
+// to enabled, matching isSegmentEnabled semantics. Graceful no-output handles
+// the no-PR case (data.PR == nil → segment hidden).
 func (r *Renderer) isPREnabled() bool {
 	if len(r.segmentConfig) == 0 {
-		return false
+		return true
 	}
 	enabled, exists := r.segmentConfig[SegmentPR]
 	if !exists {
-		return false
+		return true
 	}
 	return enabled
 }
