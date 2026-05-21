@@ -275,10 +275,15 @@ func renderEffortThinking(data *StatusData) string {
 func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	var segs []string
 
-	// CW bar
+	// CW bar with handoff_guide (/clear) suffix integration (layout v3 CH2).
+	// shouldShowHandoffGuide gates the suffix per 1M ≥50% / 200K ≥90% threshold.
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-		segs = append(segs, renderUsageBar("CW:", pct, width, r.noColor))
+		bar := renderUsageBar("CW:", pct, width, r.noColor)
+		if shouldShowHandoffGuide(data) {
+			bar += " (/clear)"
+		}
+		segs = append(segs, bar)
 	}
 
 	// 5H bar - always shown, defaults to 0% when no data.
@@ -360,24 +365,11 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		}
 	}
 
-	// PR segment (Claude Code v2.1.145+, REQ-SLV-013)
+	// PR segment (Claude Code v2.1.145+, REQ-SLV-013) — last position on line 3
+	// per layout v3 (CH7). Long-context + handoff_guide separate segments removed
+	// (CH1, CH2) — handoff_guide is now a CW bar (/clear) suffix in renderBarsInline.
 	if pr := r.renderPRSegment(data); pr != "" {
 		segs = append(segs, pr)
-	}
-
-	// Long-context Layer 1 visual marker (Claude Code v2.1.139+, REQ-SSE-003/004).
-	if r.isLongContextEnabled() {
-		if lc := renderLongContextSegment(data); lc != "" {
-			segs = append(segs, lc)
-		}
-	}
-
-	// Layer 2 handoff guide hint (REQ-SSE-005/006). Activates at 1M ≥50% or
-	// 200K ≥90% context window usage — co-anchored to context-window-management.md.
-	if r.isHandoffGuideEnabled() {
-		if hg := renderHandoffGuideSegment(data); hg != "" {
-			segs = append(segs, hg)
-		}
 	}
 
 	return r.joinSegments(segs)
@@ -438,15 +430,16 @@ func (r *Renderer) renderPRSegment(data *StatusData) string {
 		return ""
 	}
 
-	// Base segment text: "#<number>"
-	numberText := fmt.Sprintf("#%d", data.PR.Number)
+	// Base segment text: "💌 PR #<number>" (layout v3 CH8)
+	numberText := fmt.Sprintf("💌 PR #%d", data.PR.Number)
 
-	// Review-state suffix: "⌥<state>" (omitted when ReviewState is empty)
+	// Review-state suffix: "(⌥<state>)" — parenthesised per layout v3 CH8
+	// (omitted when ReviewState is empty)
 	state := data.PR.ReviewState
 	if state == "" {
 		return numberText
 	}
-	stateText := fmt.Sprintf("⌥%s", state)
+	stateText := fmt.Sprintf("(⌥%s)", state)
 
 	// Apply color to the review-state suffix only (number stays uncolored)
 	if !r.noColor {
@@ -517,35 +510,6 @@ func (r *Renderer) isRepoEnabled() bool {
 	return enabled
 }
 
-// renderLongContextSegment emits the Layer 1 long-context visual marker
-// "⚠️ long" when stdin reported exceeds_200k_tokens == true (REQ-SSE-004).
-// This is a pure visual signal — no handoff semantics, no escalation.
-//
-// Returns empty string when data is nil or ExceedsLongTokens is false.
-//
-// @MX:NOTE: [AUTO] Layer 1 시각 마커 — v2.1.139+ exceeds_200k_tokens 매핑, Warning 색상.
-func renderLongContextSegment(data *StatusData) string {
-	if data == nil || !data.ExceedsLongTokens {
-		return ""
-	}
-	return "⚠️ long"
-}
-
-// isLongContextEnabled returns true when SegmentLongContext is enabled in
-// segmentConfig. Default-on per REQ-SSE-004 (follows isPREnabled pattern):
-// unset key resolves to enabled. Graceful no-output covers the
-// ExceedsLongTokens=false case via renderLongContextSegment.
-func (r *Renderer) isLongContextEnabled() bool {
-	if len(r.segmentConfig) == 0 {
-		return true
-	}
-	enabled, exists := r.segmentConfig[SegmentLongContext]
-	if !exists {
-		return true
-	}
-	return enabled
-}
-
 // shouldShowHandoffGuide returns true when accumulated context usage crosses
 // the model-class threshold and the orchestrator should hint the user toward
 // a /clear handoff (REQ-SSE-005). Threshold table:
@@ -580,41 +544,6 @@ func shouldShowHandoffGuide(data *StatusData) bool {
 	default:
 		return false
 	}
-}
-
-// renderHandoffGuideSegment emits the Layer 2 paste-ready handoff hint
-// "📋 /clear" when shouldShowHandoffGuide is true AND the segment is enabled
-// (REQ-SSE-006). The user pastes the orchestrator-generated resume message
-// after running /clear; see session-handoff.md canonical format.
-//
-// Returns empty string when:
-//   - data is nil
-//   - shouldShowHandoffGuide(data) returns false
-//
-// Enable-gating is performed by isHandoffGuideEnabled at the call site
-// inside renderDirGitLine — this function itself only enforces the
-// threshold semantics.
-//
-// @MX:NOTE: [AUTO] Layer 2 handoff hint — 임계값 진입 시 /clear 권고 마커.
-func renderHandoffGuideSegment(data *StatusData) string {
-	if !shouldShowHandoffGuide(data) {
-		return ""
-	}
-	return "📋 /clear"
-}
-
-// isHandoffGuideEnabled returns true when SegmentHandoffGuide is enabled
-// in segmentConfig. Default-on per REQ-SSE-006 (follows isPREnabled
-// pattern): unset key resolves to enabled.
-func (r *Renderer) isHandoffGuideEnabled() bool {
-	if len(r.segmentConfig) == 0 {
-		return true
-	}
-	enabled, exists := r.segmentConfig[SegmentHandoffGuide]
-	if !exists {
-		return true
-	}
-	return enabled
 }
 
 // prReviewStateColor maps a Claude Code v2.1.145 review_state value to a

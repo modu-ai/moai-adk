@@ -1341,32 +1341,32 @@ func TestRenderPRSegment_Format(t *testing.T) {
 		{
 			name: "approved pr 1023",
 			pr:   &PRInfo{Number: 1023, URL: "https://x/pull/1023", ReviewState: "approved"},
-			want: "#1023 ⌥approved",
+			want: "💌 PR #1023 (⌥approved)",
 		},
 		{
 			name: "pending pr 42",
 			pr:   &PRInfo{Number: 42, URL: "https://x/pull/42", ReviewState: "pending"},
-			want: "#42 ⌥pending",
+			want: "💌 PR #42 (⌥pending)",
 		},
 		{
 			name: "changes_requested pr 7",
 			pr:   &PRInfo{Number: 7, URL: "https://x/pull/7", ReviewState: "changes_requested"},
-			want: "#7 ⌥changes_requested",
+			want: "💌 PR #7 (⌥changes_requested)",
 		},
 		{
 			name: "draft pr 99",
 			pr:   &PRInfo{Number: 99, URL: "https://x/pull/99", ReviewState: "draft"},
-			want: "#99 ⌥draft",
+			want: "💌 PR #99 (⌥draft)",
 		},
 		{
 			name: "empty url tolerated",
 			pr:   &PRInfo{Number: 50, URL: "", ReviewState: "approved"},
-			want: "#50 ⌥approved",
+			want: "💌 PR #50 (⌥approved)",
 		},
 		{
 			name: "empty review_state: no marker",
 			pr:   &PRInfo{Number: 100, URL: "https://x/pull/100", ReviewState: ""},
-			want: "#100",
+			want: "💌 PR #100",
 		},
 	}
 
