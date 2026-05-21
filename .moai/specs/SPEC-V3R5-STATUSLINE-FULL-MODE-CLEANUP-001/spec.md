@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001
 title: "statusline 테스트 정리 — retired full-mode 5-line layout 가정 제거"
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-21
 updated: 2026-05-21
 author: manager-spec
@@ -22,6 +22,7 @@ tier: S
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-21 | manager-spec | 초안 작성. `e71f1aa54` (default layout baseline 정렬) 머지 후 잔존한 6 pre-existing failing tests (`internal/statusline/{builder,renderer}_test.go`)을 정리. 5-line "full" layout retirement (renderer.go:48-50 anchor)이 supersession 했으나 해당 contract을 assert 하던 테스트들이 잔존하여 `go test ./internal/statusline/...` 실패. 본 SPEC은 (a) 진정 retired 가정에 종속된 테스트 DELETE, (b) backward-compat contract (NormalizeMode 모든 mode → default 3-line collapse)을 assert 하도록 REWRITE. 소스 코드(`renderer.go`/`builder.go`/`types.go`) 변경 없음 — 테스트만 정리. Tier S 분류: 영향 파일 2개 (`builder_test.go` + `renderer_test.go`), LOC delta 추정 < 250. |
 | 0.1.1 | 2026-05-21 | manager-spec | iter 2 revision (plan-auditor verdict 0.712 → target ≥ 0.85). **D1 fix**: `TestRenderFullV3_Line1_WithPrefixes` removed from cleanup scope — independently verified PASS (L1 prefix assertions layout-independent, identical in default 3-line and retired full 5-line). **D2 fix**: `TestRenderFullV3_WithResetTimes` (renderer_test.go:1321) added to DELETE list — independently verified FAIL (`full mode should have 5 lines, got 3` at line 1342); parentheses reset-time contract already covered by `TestRenderUsageBarWithReset` at renderer_test.go:1356. **D3 fix**: spec.md §1.2 failure-count claim corrected — default `go test` run shows 6 visible failures (short-circuit hides 2 additional); isolated runs expose 8 retired-layout failures + 1 passing layout-independent test = 9 retired-mode-related tests total. **D4 fold**: Tier S 3-artifact deviation rationale added to plan.md §1. **D6 fold**: M1 atomic-MultiEdit requirement added. **D8 fold**: AC-SFC-007 verification command tightened (`HEAD~1` → `main`). Test treatment matrix: 5 DELETE + 4 REWRITE + 1 UNTOUCHED = 9 test functions referenced, 8 failing + 1 passing(retained). |
+| 0.2.0 | 2026-05-21 | claude (orchestrator direct) | run-phase implemented (Tier S, single commit). 6 DELETE + 4 REWRITE applied (matrix +1 expansion: `TestRenderV3_OmitsEmptyLines_Full` at renderer_test.go:991 discovered during run-phase E1 verification — grep pattern `TestRenderFullV3` missed `TestRenderV3_*` namespace; same retired 5-line layout assertion as the other 5 DELETEs). M2.4 `TestIntegration_GradientBar` REWRITE corrected: 40-block contract was full-mode-specific (separate bar lines), default L2 uses 10-block bars per segment — test now isolates CW segment via `│` separator and asserts 6 of 10 (60%) which preserves the gradient ratio contract. In-scope ACs (SFC-001..007) all PASS within scope filter. Out-of-scope baseline residual: `TestRenderPRSegment_Absence/pr_present_+_unset_(legacy_backward_compat)` FAIL persists (pre-existing, masked by short-circuit before cleanup) — deferred to `SPEC-V3R5-STATUSLINE-PRESET-FIX-001` (가칭) per §3.2. Source files (`renderer.go`, `builder.go`, `types.go`) byte-identical. Cross-platform build PASS (darwin + windows). Coverage 84.2% (slight regression from 6 deletions). Direct orchestrator execution (manager-develop Agent worktree hook regression — `{}` empty-object return — forced fallback per CLAUDE.md §16 "위임 대상 부재"). |
 
 ## 1. Background
 
@@ -90,6 +91,23 @@ done
 #   TestRenderFullV3_StyleInL1: no tests to run (DELETED)
 #   TestRenderFullV3_WithResetTimes: no tests to run (DELETED)
 ```
+
+### 1.2.6 Out-of-scope baseline residual (run-phase 발견, 2026-05-21)
+
+run-phase E1 검증 결과 9개 in-scope 테스트는 모두 PASS이나, `TestRenderFullV3_*` 단락 회로 (short-circuit) 가 해제되면서 가려져 있던 별도 baseline regression 1건이 가시화되었다:
+
+```
+--- FAIL: TestRenderPRSegment_Absence/pr_present_+_unset_(legacy_backward_compat)
+    renderer_test.go:1441: renderPRSegment() = "#1023 ⌥approved", want empty string
+```
+
+진단:
+- baseline (HEAD `a39ec68f2`, 본 SPEC 적용 전) `git stash` 후 동일 테스트 실행 → 동일 FAIL 재현
+- 본 SPEC의 5 DELETE / 4 REWRITE / 1 UNTOUCHED 변경과 무관
+- e71f1aa54 (commit `feat(statusline): default layout baseline 정렬 — PR/Task default-on`) 의 REQ-SLV-012 supersession (PR opt-in default-off → default-on) 후속 결함
+- 본 SPEC §3.2 (PR/Task PRESET-FIX 별도 SPEC 분리) 범위에서 **명시적으로 out-of-scope**
+
+대응: `SPEC-V3R5-STATUSLINE-PRESET-FIX-001` (가칭) 에서 정정 예정. AC-SFC-001 verification command 은 in-scope 9개 함수만 grep 하도록 `acceptance.md` 에서 정의.
 
 ### 1.3 Root Cause
 
