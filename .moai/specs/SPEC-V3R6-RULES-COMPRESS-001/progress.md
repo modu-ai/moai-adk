@@ -11,12 +11,14 @@
 
 | File | Baseline | Current | Δ words | Threshold | Status |
 |------|---------:|--------:|--------:|----------:|--------|
-| `.claude/rules/moai/workflow/session-handoff.md` | 1,927w | 1,193w | -734w (-38%) | ≤ 1,200w | PASS |
+| `.claude/rules/moai/workflow/session-handoff.md` | 1,927w | 1,200w | -727w (-38%) | ≤ 1,200w | PASS (= threshold) |
 | `.claude/rules/moai/workflow/context-window-management.md` | 712w | 577w | -135w (-19%) | ≤ 600w | PASS |
 | `.claude/rules/moai/workflow/verification-batch-pattern.md` | 764w | 488w | -276w (-36%) | ≤ 500w | PASS |
-| **Total** | **3,403w** | **2,258w** | **-1,145w (-34%)** | ≤ 2,300w | **PASS** |
+| **Total** | **3,403w** | **2,265w** | **-1,138w (-33%)** | ≤ 2,300w | **PASS** |
 
-Token reduction estimate: ~3,435 tokens (1,145 words × 3.0/word). Original goal -4.5K tokens (1,503 words); achieved -3.4K (1,145 words). Threshold (≤2,300w) is met with 42-word margin. Goal target (1,900w) not reached due to 5 HARD-clause verbatim preservation density.
+Token reduction estimate: ~3,414 tokens (1,138 words × 3.0/word). Original goal -4.5K tokens (1,503 words); achieved -3.4K (1,138 words). Threshold (≤2,300w) is met with 35-word margin. Goal target (1,900w) not reached due to 5 HARD-clause verbatim preservation density.
+
+Note: Initial compression commit (399db729e) achieved 2,258w but introduced a minor paraphrase in the tail of one HARD clause body in session-handoff.md. Fixup commit (afbd48d06) restored the verbatim form, raising the total by 7 words to 2,265w — still well within the AC-RC-001 threshold.
 
 Mirror files: `internal/template/templates/.claude/rules/moai/workflow/{session-handoff,context-window-management,verification-batch-pattern}.md` — all 3 byte-identical to local (diff verified).
 
