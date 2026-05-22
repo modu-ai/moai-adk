@@ -1,6 +1,8 @@
 index:
   title: "品質コマンド"
   display: "hidden"
+"moai-gate":
+  title: "/moai gate"
 "moai-review":
   title: "/moai review"
 "moai-coverage":
