@@ -108,7 +108,7 @@ type SectionOpts struct {
 // below it. Used as a visual divider between groups of related rows.
 //
 // @MX:ANCHOR: [AUTO] Section is a core primitive; expected fan_in >= 4 across M4-M6
-// @MX:REASON: doctor "시스템" / "MoAI-ADK" section headers and help group headers
+// @MX:REASON: doctor "System" / "MoAI-ADK" section headers and help group headers
 func Section(title string, opts SectionOpts) string {
 	t := LightTheme()
 	if opts.Theme != nil {

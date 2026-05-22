@@ -11,7 +11,7 @@ import (
 type KeyHint struct {
 	// Key is the keyboard shortcut label (e.g. "enter", "↑↓", "ctrl+c").
 	Key string
-	// Label is the human-readable description (e.g. "선택", "이동", "quit").
+	// Label is the human-readable description (e.g. "select", "move", "quit").
 	Label string
 }
 
@@ -21,7 +21,7 @@ type KeyHint struct {
 // Returns an empty string when items is nil or empty.
 // th may be nil; LightTheme is used in that case.
 //
-// Korean and mixed ko-en label text is handled correctly because lipgloss
+// Korean and mixed ko/en label text is handled correctly because lipgloss
 // inherits terminal column width for ANSI-escaped strings.
 //
 // @MX:ANCHOR: [AUTO] HelpBar is a core primitive; expected fan_in >= 4 in M5-M6

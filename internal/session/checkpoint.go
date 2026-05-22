@@ -22,8 +22,8 @@ func (c *PlanCheckpoint) PhaseName() Phase {
 
 // Validate checks PlanCheckpoint fields against validator/v10 rules.
 func (c *PlanCheckpoint) Validate() error {
-	// TODO: SPEC-V3R2-SCH-001 validator/v10 통합 후 구현
-	// 현재는 manual validation
+	// TODO: implement once SPEC-V3R2-SCH-001 validator/v10 is integrated
+	// For now, manual validation
 	if c.SPECID == "" {
 		return fmt.Errorf("SPECID: required field is empty")
 	}
@@ -55,7 +55,7 @@ func (c *RunCheckpoint) PhaseName() Phase {
 
 // Validate checks RunCheckpoint fields against validator/v10 rules.
 func (c *RunCheckpoint) Validate() error {
-	// TODO: SPEC-V3R2-SCH-001 validator/v10 통합 후 구현
+	// TODO: implement once SPEC-V3R2-SCH-001 validator/v10 is integrated
 	if c.SPECID == "" {
 		return fmt.Errorf("SPECID: required field is empty")
 	}

@@ -7,9 +7,10 @@ import (
 	"os"
 	"os/exec"
 
-	// @MX:WARN: [AUTO] bwrap --unshare-all용 user namespace 가용성은 OS 커널 설정에 의존
-	// @MX:REASON: 일부 Linux 환경(컨테이너 내부, 오래된 커널)에서 사용자 네임스페이스가
-	//             비활성화되어 있으면 bwrap이 실패할 수 있다. Available() 검사가 필수.
+	// @MX:WARN: [AUTO] user namespace availability for bwrap --unshare-all depends on the OS kernel configuration
+	// @MX:REASON: bwrap can fail on some Linux environments (inside containers,
+	//             older kernels) when user namespaces are disabled. The Available()
+	//             check is mandatory.
 )
 
 // BubblewrapBackend implements SandboxBackend for Linux using bwrap.
@@ -28,24 +29,24 @@ func (b *BubblewrapBackend) Available() bool {
 		return false
 	}
 
-	// 최소 probe: bwrap --version 실행 (user-namespace 가용성 간접 검증)
+	// Minimal probe: run bwrap --version (indirectly verifies user-namespace availability)
 	ctx, cancel := context.WithTimeout(context.Background(), bwrapProbeTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "bwrap", "--version")
-	cmd.Env = []string{} // 최소 환경
+	cmd.Env = []string{} // minimal environment
 	out, err := cmd.Output()
 	if err != nil {
 		return false
 	}
 
-	// "bwrap N.M.P" 형식 확인 — 단순 존재 확인
+	// Check the "bwrap N.M.P" format — simple existence check
 	return len(out) > 0
 }
 
 // Exec runs cmd inside a bubblewrap sandbox with the given options.
 //
-// @MX:WARN: [AUTO] buildArgs는 보안 크리티컬 함수 — arg 순서/값 변경 시 sandbox 격리 파괴
+// @MX:WARN: [AUTO] buildArgs is a security-critical function — changing argument order or values breaks sandbox isolation
 // @MX:REASON: bwrap argument ordering matters: --unshare-all must precede all other flags;
 //             --bind before --ro-bind; -- separator required before user command.
 func (b *BubblewrapBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error) {
@@ -61,16 +62,16 @@ func (b *BubblewrapBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, err
 		maxBytes = DefaultMaxOutputBytes
 	}
 
-	// 프로파일 검증 (argument generation)
+	// Profile validation (argument generation)
 	baseArgs, err := GenerateBwrapArgs(opts)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox: generate bwrap args: %w", err)
 	}
 
-	// 환경 변수 스크러빙
+	// Environment variable scrubbing
 	env := ScrubEnv(os.Environ(), opts.EnvPassthrough)
 
-	// 최종 args: baseArgs + -- + cmd
+	// Final args: baseArgs + -- + cmd
 	allArgs := append(baseArgs, "--")
 	allArgs = append(allArgs, cmd...)
 
@@ -87,7 +88,7 @@ func (b *BubblewrapBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, err
 
 	output := buf.Bytes()
 	if int64(len(output)) >= maxBytes {
-		// 출력이 잘림 — ErrSandboxOutputTruncated와 함께 반환
+		// Output truncated — return together with ErrSandboxOutputTruncated
 		return output[:maxBytes], fmt.Errorf("%w: output exceeded %d bytes",
 			ErrSandboxOutputTruncated, maxBytes)
 	}

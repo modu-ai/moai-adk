@@ -27,11 +27,11 @@ var (
 )
 
 // HydrateOpts controls optional behavior of HydrateWithOpts.
-// SPEC-V3R2-RT-004 REQ-033: --resume 플래그 연동 옵션.
+// SPEC-V3R2-RT-004 REQ-033: options tied to the --resume flag.
 type HydrateOpts struct {
-	// SkipStaleCheck를 true로 설정하면 staleness 검사를 건너뜁니다.
-	// WARN: stale한 checkpoint를 로드하면 데이터 불일치가 발생할 수 있습니다.
-	// --resume 플래그에만 사용하세요.
+	// Setting SkipStaleCheck to true skips the staleness check.
+	// WARN: loading a stale checkpoint can cause data inconsistency.
+	// Use this only with the --resume flag.
 	SkipStaleCheck bool
 }
 
@@ -42,7 +42,7 @@ type SessionStore interface {
 	// Hydrate loads the phase state from disk.
 	Hydrate(phase Phase, specID string) (*PhaseState, error)
 	// HydrateWithOpts loads phase state from disk with optional behavior control.
-	// SPEC-V3R2-RT-004 REQ-033: SkipStaleCheck 옵션으로 --resume 플래그 연동.
+	// SPEC-V3R2-RT-004 REQ-033: integrates with the --resume flag via SkipStaleCheck.
 	HydrateWithOpts(phase Phase, specID string, opts HydrateOpts) (*PhaseState, error)
 	// AppendTaskLedger adds an entry to the task ledger.
 	AppendTaskLedger(entry TaskLedgerEntry) error
@@ -76,7 +76,7 @@ func NewFileSessionStore(stateDir string, staleTTL time.Duration) *FileSessionSt
 }
 
 // Checkpoint persists the phase state to disk with atomic write.
-// SPEC-V3R2-RT-004 REQ-040: advisory lock으로 concurrent write 방지 (3-retry / 10ms-backoff).
+// SPEC-V3R2-RT-004 REQ-040: prevents concurrent writes via advisory lock (3-retry / 10ms-backoff).
 // @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-004 REQ-002/004/010/020/040 enforcer — every phase boundary writes through here
 // @MX:REASON: Validator + lock + blocker-file scan order is contract; touching this affects all 9 phases
 func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
@@ -84,12 +84,12 @@ func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 		return fmt.Errorf("create state dir: %w", err)
 	}
 
-	// inline BlockerRpt 검사
+	// Inline BlockerRpt check
 	if state.BlockerRpt != nil && !state.BlockerRpt.Resolved {
 		return ErrBlockerOutstanding
 	}
 
-	// SPEC-V3R2-RT-004 AC-04: 디스크의 blocker 파일 스캔 (phase+specID 기준)
+	// SPEC-V3R2-RT-004 AC-04: scan blocker files on disk (keyed by phase+specID)
 	if err := fs.checkBlockerFiles(state.Phase, state.SPECID); err != nil {
 		return err
 	}
@@ -109,13 +109,13 @@ func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 	filename := fs.checkpointPath(state.Phase, state.SPECID)
 	tmpFile := filename + ".tmp"
 
-	// SPEC-V3R2-RT-004 REQ-040: Advisory lock 획득 (3-retry / 10ms-backoff)
+	// SPEC-V3R2-RT-004 REQ-040: Acquire advisory lock (3-retry / 10ms-backoff)
 	lock := newFileLock()
 	if err := acquireWithRetry(lock, filename, 3, 10*time.Millisecond); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}
 	defer func() {
-		_ = lock.release() // Lock 해제 실패는 무시 (이미 checkpoint 기록됨)
+		_ = lock.release() // Ignore lock release failures (checkpoint already written)
 	}()
 
 	// Write to temporary file
@@ -140,14 +140,14 @@ func (fs *FileSessionStore) Hydrate(phase Phase, specID string) (*PhaseState, er
 }
 
 // HydrateWithOpts loads the phase state from disk with optional behavior control.
-// SPEC-V3R2-RT-004 REQ-033: SkipStaleCheck 옵션으로 --resume 플래그 연동.
+// SPEC-V3R2-RT-004 REQ-033: integrates with the --resume flag via SkipStaleCheck.
 func (fs *FileSessionStore) HydrateWithOpts(phase Phase, specID string, opts HydrateOpts) (*PhaseState, error) {
 	filename := fs.checkpointPath(phase, specID)
 
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil // checkpoint 없음
+			return nil, nil // no checkpoint
 		}
 		return nil, fmt.Errorf("read checkpoint: %w", err)
 	}
@@ -157,20 +157,20 @@ func (fs *FileSessionStore) HydrateWithOpts(phase Phase, specID string, opts Hyd
 		return nil, fmt.Errorf("unmarshal state: %w", err)
 	}
 
-	// SPEC-V3R2-RT-004 REQ-004: 읽기 후 validate (AC-09 corrupted checkpoint)
+	// SPEC-V3R2-RT-004 REQ-004: validate after read (AC-09 corrupted checkpoint)
 	if state.Checkpoint != nil {
 		if err := state.Checkpoint.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrCheckpointInvalid, err)
 		}
 	}
 
-	// staleness 검사 (SkipStaleCheck=true이면 우회, stderr WARN 출력)
+	// Staleness check (bypassed when SkipStaleCheck=true; emits a WARN on stderr)
 	if !opts.SkipStaleCheck {
 		if time.Since(state.UpdatedAt) > fs.staleTTL {
 			return nil, ErrCheckpointStale
 		}
 	} else if time.Since(state.UpdatedAt) > fs.staleTTL {
-		// --resume 사용 시 stale 경고 출력
+		// Emit a stale warning when --resume is used
 		fmt.Fprintf(os.Stderr, "WARN: checkpoint for %s/%s is stale (age=%v); loading anyway (--resume)\n",
 			phase, specID, time.Since(state.UpdatedAt).Round(time.Second))
 	}
@@ -182,10 +182,10 @@ func (fs *FileSessionStore) HydrateWithOpts(phase Phase, specID string, opts Hyd
 // exists but the next phase checkpoint does not — indicating a suspended transition.
 // SPEC-V3R2-RT-004 REQ-050: in-flight transition detection.
 func (fs *FileSessionStore) DetectInFlightTransition(specID string) (Phase, Phase, bool, error) {
-	// Phase 순서: plan → run → sync
+	// Phase order: plan → run → sync
 	phaseOrder := []Phase{PhasePlan, PhaseRun, PhaseSync}
 
-	// 각 phase의 checkpoint 존재 여부 확인
+	// Check whether each phase has a checkpoint
 	present := make(map[Phase]bool)
 	for _, ph := range phaseOrder {
 		path := fs.checkpointPath(ph, specID)
@@ -198,7 +198,7 @@ func (fs *FileSessionStore) DetectInFlightTransition(specID string) (Phase, Phas
 		return "", "", false, nil
 	}
 
-	// 마지막으로 완료된 phase를 찾고, 다음 phase가 없으면 in-flight
+	// Find the last completed phase; if the next phase is missing, the transition is in-flight
 	for i, ph := range phaseOrder {
 		if present[ph] && i+1 < len(phaseOrder) {
 			nextPh := phaseOrder[i+1]
@@ -212,14 +212,14 @@ func (fs *FileSessionStore) DetectInFlightTransition(specID string) (Phase, Phas
 }
 
 // MergeTeamCheckpoints reads per-agent checkpoint files and merges them into one PhaseState.
-// 파일 경로: checkpoint-{phase}-{specID}-{agentName}.json
+// File path: checkpoint-{phase}-{specID}-{agentName}.json
 // SPEC-V3R2-RT-004 REQ-021, REQ-051: team-mode merge + blocker bubble-mode.
 func (fs *FileSessionStore) MergeTeamCheckpoints(specID string, phase Phase, agentNames []string) (*PhaseState, error) {
 	if len(agentNames) == 0 {
 		return nil, fmt.Errorf("agentNames must not be empty")
 	}
 
-	// 에이전트 이름을 알파벳순 정렬 (결정론적 병합)
+	// Sort agent names alphabetically (deterministic merge)
 	sorted := make([]string, len(agentNames))
 	copy(sorted, agentNames)
 	sort.Strings(sorted)
@@ -241,7 +241,7 @@ func (fs *FileSessionStore) MergeTeamCheckpoints(specID string, phase Phase, age
 			return nil, fmt.Errorf("unmarshal agent checkpoint %s: %w", agentPath, err)
 		}
 
-		// REQ-051: blocker bubble-mode — 미해결 blocker가 있으면 즉시 에러
+		// REQ-051: blocker bubble-mode — return an error immediately if there is an unresolved blocker
 		if state.BlockerRpt != nil && !state.BlockerRpt.Resolved {
 			return nil, ErrBlockerOutstanding
 		}
@@ -255,7 +255,7 @@ func (fs *FileSessionStore) MergeTeamCheckpoints(specID string, phase Phase, age
 		return nil, fmt.Errorf("merge phase states: %w", err)
 	}
 
-	// Provenance 설정
+	// Set provenance
 	merged.Provenance = ProvenanceTag{
 		Source: "session",
 		Origin: strings.Join(auditPaths, ","),
@@ -265,7 +265,7 @@ func (fs *FileSessionStore) MergeTeamCheckpoints(specID string, phase Phase, age
 	return merged, nil
 }
 
-// mergePhaseStates는 phase별 union merge 규칙을 적용합니다.
+// mergePhaseStates applies the per-phase union-merge rules.
 func mergePhaseStates(phase Phase, specID string, states []PhaseState) (*PhaseState, error) {
 	if len(states) == 0 {
 		return nil, fmt.Errorf("no states to merge")
@@ -279,7 +279,7 @@ func mergePhaseStates(phase Phase, specID string, states []PhaseState) (*PhaseSt
 
 	switch phase {
 	case PhaseRun:
-		// RunCheckpoint: TestsTotal/TestsPassed/FilesModified 합산
+		// RunCheckpoint: sum TestsTotal/TestsPassed/FilesModified
 		var total, passed, modified int
 		var status, harness string
 		for _, s := range states {
@@ -304,17 +304,17 @@ func mergePhaseStates(phase Phase, specID string, states []PhaseState) (*PhaseSt
 			FilesModified: modified,
 		}
 	case PhasePlan:
-		// PlanCheckpoint: 마지막 상태 사용 (단일 plan agent 가정)
+		// PlanCheckpoint: use the last state (assumes a single plan agent)
 		if len(states) > 0 {
 			merged.Checkpoint = states[len(states)-1].Checkpoint
 		}
 	case PhaseSync:
-		// SyncCheckpoint: 마지막 상태 사용
+		// SyncCheckpoint: use the last state
 		if len(states) > 0 {
 			merged.Checkpoint = states[len(states)-1].Checkpoint
 		}
 	default:
-		// 알 수 없는 phase: 마지막 상태 사용
+		// Unknown phase: use the last state
 		if len(states) > 0 {
 			merged.Checkpoint = states[len(states)-1].Checkpoint
 		}
@@ -323,10 +323,10 @@ func mergePhaseStates(phase Phase, specID string, states []PhaseState) (*PhaseSt
 	return merged, nil
 }
 
-// checkBlockerFiles는 phase+specID에 해당하는 미해결 blocker 파일을 스캔합니다.
-// SPEC-V3R2-RT-004 AC-04: inline ref가 아닌 디스크 파일 기반 blocker 확인.
+// checkBlockerFiles scans for unresolved blocker files matching the given phase+specID.
+// SPEC-V3R2-RT-004 AC-04: disk-file-based blocker check (not inline ref).
 func (fs *FileSessionStore) checkBlockerFiles(phase Phase, specID string) error {
-	// blocker-{phase}-{specID}-*.json 패턴으로 스캔
+	// Scan the blocker-{phase}-{specID}-*.json pattern
 	pattern := filepath.Join(fs.stateDir, fmt.Sprintf("blocker-%s-%s-*.json", phase, specID))
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
@@ -336,12 +336,12 @@ func (fs *FileSessionStore) checkBlockerFiles(phase Phase, specID string) error 
 	for _, match := range matches {
 		data, err := os.ReadFile(match)
 		if err != nil {
-			continue // 읽기 실패는 무시
+			continue // ignore read failure
 		}
 
 		var blocker BlockerReport
 		if err := json.Unmarshal(data, &blocker); err != nil {
-			continue // 파싱 실패는 무시
+			continue // ignore parse failure
 		}
 
 		if !blocker.Resolved {
@@ -374,7 +374,7 @@ func (fs *FileSessionStore) AppendTaskLedger(entry TaskLedgerEntry) error {
 	return nil
 }
 
-// textExtensions는 UTF-8 검증이 필요한 텍스트 파일 확장자 목록입니다.
+// textExtensions is the list of text file extensions that require UTF-8 validation.
 // SPEC-V3R2-RT-004 REQ-043: text-declared artifacts must be UTF-8.
 // @MX:WARN: [AUTO] SPEC-V3R2-RT-004 REQ-043 ArtifactEncodingMismatch
 // @MX:REASON: Text-declared artifacts (.md|.txt|.json|.yaml) MUST be UTF-8.
@@ -388,14 +388,14 @@ var textExtensions = map[string]bool{
 }
 
 // WriteRunArtifact writes an artifact file for a run iteration.
-// SPEC-V3R2-RT-004 REQ-043: 텍스트 확장자 파일은 UTF-8 검증 후 기록.
+// SPEC-V3R2-RT-004 REQ-043: text-extension files are written only after UTF-8 validation.
 func (fs *FileSessionStore) WriteRunArtifact(iterID, name string, body []byte) error {
 	artifactDir := filepath.Join(fs.stateDir, "runs", iterID)
 	if err := os.MkdirAll(artifactDir, 0755); err != nil {
 		return fmt.Errorf("create artifact dir: %w", err)
 	}
 
-	// SPEC-V3R2-RT-004 REQ-043: 텍스트 파일 확장자이면 UTF-8 검증
+	// SPEC-V3R2-RT-004 REQ-043: validate UTF-8 for text file extensions
 	ext := strings.ToLower(filepath.Ext(name))
 	if textExtensions[ext] {
 		if !utf8.Valid(body) {
@@ -419,14 +419,14 @@ func (fs *FileSessionStore) WriteRunArtifact(iterID, name string, body []byte) e
 }
 
 // RecordBlocker persists a blocker report to disk.
-// SPEC-V3R2-RT-004 REQ-012: 파일 이름 형식 blocker-{phase}-{specID}-{timestamp}.json.
+// SPEC-V3R2-RT-004 REQ-012: filename format blocker-{phase}-{specID}-{timestamp}.json.
 func (fs *FileSessionStore) RecordBlocker(report BlockerReport) error {
 	if err := fs.ensureStateDir(); err != nil {
 		return fmt.Errorf("create state dir: %w", err)
 	}
 
 	timestamp := report.Timestamp.Format("20060102-150405")
-	// REQ-012: blocker-{phase}-{specID}-{timestamp}.json 형식
+	// REQ-012: blocker-{phase}-{specID}-{timestamp}.json format
 	phaseStr := string(report.Phase)
 	if phaseStr == "" {
 		phaseStr = "unknown"

@@ -51,7 +51,7 @@ func LoadDangerConfig(projectRoot string) (DangerCategoryConfig, error) {
 	mxPath := filepath.Join(projectRoot, "mx.yaml")
 	data, err := os.ReadFile(mxPath)
 	if os.IsNotExist(err) {
-		// 파일 없음 — 정상; 호출자가 DefaultDangerCategories를 사용하도록 빈 config 반환
+		// File absent — normal; return an empty config so callers fall back to DefaultDangerCategories
 		return DangerCategoryConfig{}, nil
 	}
 	if err != nil {

@@ -354,7 +354,7 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	}
 
 	// Task segment (REQ-V3 Cycle 5 Phase 4, opt-in)
-	// 활성 SPEC 워크플로 정보 — 위치: PR 직전 (workflow context → review context 순서)
+	// Active SPEC workflow info — position: immediately before PR (workflow context → review context order)
 	if task := r.renderTaskSegment(data); task != "" {
 		segs = append(segs, task)
 	}
@@ -471,13 +471,13 @@ func (r *Renderer) isPREnabled() bool {
 //   - Worktree active:                          "[WT] " prefix prepended to branch
 //
 // @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
-// @MX:NOTE: [AUTO] git 미초기화 또는 remote repo 정보 부재 시 segment 전체를 숨긴다 (사용자 요청 2026-05-22).
+// @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
 	}
 
-	// Repo info 누락 시 segment 숨김 (git 미초기화 또는 remote 미설정 케이스).
+	// Hide segment when repo info is missing (git uninitialized or remote not configured).
 	if data.Workspace.Repo == nil {
 		return ""
 	}
@@ -526,7 +526,7 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 // TokenBudget never equals raw class boundaries (only unit tests bypassed this
 // by injecting raw values directly into MemoryData).
 //
-// @MX:NOTE: [AUTO] 1M=50%/200K=90% 임계값 — context-window-management.md HARD rule와 일치.
+// @MX:NOTE: [AUTO] 1M=50%/200K=90% thresholds — aligned with context-window-management.md HARD rule.
 func shouldShowHandoffGuide(data *StatusData) bool {
 	if data == nil {
 		return false

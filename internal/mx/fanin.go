@@ -25,9 +25,9 @@ type FanInCounter interface {
 type TextualFanInCounter struct {
 	// ProjectRoot is the project root directory path.
 	ProjectRoot string
-	// TestPaths는 테스트 파일로 간주할 사용자 정의 glob 패턴 목록입니다 (REQ-SPC-004-040).
-	// nil 또는 빈 슬라이스이면 하드코딩된 패턴(_test.go, tests/, fixtures/, testdata/)만 사용합니다.
-	// 패턴은 filepath.Match 의미론 + 경로 구성요소 매칭을 사용합니다 (**는 경로 세그먼트 매칭으로 처리).
+	// TestPaths is the list of user-defined glob patterns treated as test files (REQ-SPC-004-040).
+	// When nil or empty, only the hard-coded patterns (_test.go, tests/, fixtures/, testdata/) are used.
+	// Patterns use filepath.Match semantics + path-component matching (`**` is treated as path-segment matching).
 	TestPaths []string
 }
 
@@ -47,14 +47,14 @@ func isTestFile(filePath string) bool {
 func isTestFileWithPatterns(filePath string, userPatterns []string) bool {
 	slashPath := filepath.ToSlash(filePath)
 
-	// 1. 사용자 glob 패턴 우선 확인
+	// 1. Check user glob patterns first
 	for _, pattern := range userPatterns {
 		if matchesGlobPattern(slashPath, pattern) {
 			return true
 		}
 	}
 
-	// 2. 하드코딩 폴백
+	// 2. Hard-coded fallback
 	base := filepath.Base(filePath)
 	if strings.HasSuffix(base, "_test.go") {
 		return true
@@ -69,16 +69,17 @@ func isTestFileWithPatterns(filePath string, userPatterns []string) bool {
 	return false
 }
 
-// matchesGlobPattern은 slashPath가 glob 패턴과 일치하는지 확인합니다.
-// **는 경로 구분자를 포함한 임의의 경로 세그먼트를 의미합니다 (더블스타 의미론 근사).
+// matchesGlobPattern checks whether slashPath matches the glob pattern.
+// `**` denotes an arbitrary path segment including path separators (doublestar
+// semantics approximation).
 func matchesGlobPattern(slashPath, pattern string) bool {
-	// 표준 filepath.Match를 먼저 시도
+	// Try standard filepath.Match first
 	if matched, _ := filepath.Match(pattern, slashPath); matched {
 		return true
 	}
 
-	// ** 포함 패턴: **를 기준으로 분할하여 각 세그먼트 존재 여부 확인
-	// 예: "**/integration/**" → slashPath에 "/integration/" 포함 여부
+	// Patterns with `**`: split on `**` and verify each segment exists
+	// e.g.: "**/integration/**" → slashPath contains "/integration/"
 	if strings.Contains(pattern, "**") {
 		segments := strings.Split(pattern, "**")
 		for _, seg := range segments {
@@ -86,7 +87,7 @@ func matchesGlobPattern(slashPath, pattern string) bool {
 			if seg == "" {
 				continue
 			}
-			// 패턴 세그먼트가 경로 구성요소로 포함되어야 함
+			// The pattern segment must appear as a path component
 			if !strings.Contains(slashPath, "/"+seg+"/") &&
 				!strings.HasPrefix(slashPath, seg+"/") &&
 				!strings.HasSuffix(slashPath, "/"+seg) &&
@@ -104,8 +105,8 @@ func matchesGlobPattern(slashPath, pattern string) bool {
 // user-supplied test path glob patterns from mx.yaml (REQ-SPC-004-040).
 // Callers that prefer a zero-value struct may still use &TextualFanInCounter{} directly.
 //
-// @MX:NOTE: [AUTO] NewTextualFanInCounterWithTestPaths — mx.yaml test_paths를 주입하는 공개 생성자.
-// CLI wire-up(M6)에서 dangerCfg.TestPaths를 전달할 때 사용.
+// @MX:NOTE: [AUTO] NewTextualFanInCounterWithTestPaths — public constructor that injects mx.yaml test_paths.
+// Used by the CLI wire-up (M6) when passing dangerCfg.TestPaths.
 func NewTextualFanInCounterWithTestPaths(testPaths []string) *TextualFanInCounter {
 	return &TextualFanInCounter{TestPaths: testPaths}
 }
@@ -147,7 +148,7 @@ func (c *TextualFanInCounter) Count(_ context.Context, tag Tag, projectRoot stri
 		}
 
 		// exclude test files (when excludeTests=true)
-		// TestPaths 필드가 있으면 사용자 glob 패턴과 함께 검사 (REQ-SPC-004-040)
+		// If TestPaths is set, also evaluate the user glob patterns (REQ-SPC-004-040)
 		if excludeTests && isTestFileWithPatterns(path, c.TestPaths) {
 			return nil
 		}

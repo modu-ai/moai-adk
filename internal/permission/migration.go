@@ -2,12 +2,12 @@ package permission
 
 import "fmt"
 
-// MigrateLegacyBypassRules legacy v2 bypassPermissions action 을 갖는 규칙을
-// acceptEdits (DecisionAllow) 으로 마이그레이션한다.
+// MigrateLegacyBypassRules migrates rules with the legacy v2 bypassPermissions
+// action to acceptEdits (DecisionAllow).
 //
-// bypassPermissions action 이 발견되면:
-//   - Action 을 DecisionAllow 로 reroute 한다.
-//   - origin 파일 경로를 포함한 deprecation warning 을 반환한다.
+// When a bypassPermissions action is detected:
+//   - The Action is rerouted to DecisionAllow.
+//   - A deprecation warning containing the origin file path is returned.
 //
 // Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-040, AC-11.
 func MigrateLegacyBypassRules(rules []PermissionRule) ([]PermissionRule, []string) {
@@ -16,7 +16,7 @@ func MigrateLegacyBypassRules(rules []PermissionRule) ([]PermissionRule, []strin
 
 	for i, r := range rules {
 		if r.Action == Decision("bypassPermissions") {
-			// legacy action → acceptEdits 로 reroute.
+			// Legacy action → reroute to acceptEdits.
 			migrated[i] = r
 			migrated[i].Action = DecisionAllow
 			warnings = append(warnings, fmt.Sprintf(

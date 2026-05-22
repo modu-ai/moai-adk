@@ -4,7 +4,7 @@ package mx
 // Method indicates whether the location was resolved via LSP ("lsp") or
 // text-based search ("textual").
 //
-// @MX:NOTE: [AUTO] Callsite — G-04 위치 정보 타입; ResolveAnchorCallsites의 반환 요소
+// @MX:NOTE: [AUTO] Callsite — G-04 location-info type; element of ResolveAnchorCallsites' return value
 type Callsite struct {
 	// File is the absolute path to the file containing the reference.
 	File string `json:"file"`

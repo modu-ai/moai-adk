@@ -1,7 +1,8 @@
 // Package bodp implements the Branch Origin Decision Protocol (BODP).
 //
-// @MX:NOTE BODP는 새 슬래시 명령어/CLI 서브명령어 ZERO 원칙. 3개 entry point
-// 공유 라이브러리 (`/moai plan --branch`, `/moai plan --worktree`, `moai worktree new`).
+// @MX:NOTE BODP follows the "ZERO new slash command / CLI subcommand" principle.
+// It is a shared library across 3 entry points (`/moai plan --branch`,
+// `/moai plan --worktree`, `moai worktree new`).
 // SPEC: SPEC-V3R3-CI-AUTONOMY-001 W7-T01 (BODP relatedness check).
 package bodp
 

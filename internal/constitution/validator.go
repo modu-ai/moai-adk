@@ -11,39 +11,39 @@ import (
 // Each constant matches the string key used in ValidationEntry.SentinelKey
 // and in CLI output / JSON results.
 const (
-	// SentinelDrift는 registry clause 가 source file 의 실제 텍스트와 불일치할 때 사용된다.
+	// SentinelDrift is used when a registry clause does not match the actual text of the source file.
 	SentinelDrift = "DRIFT"
 
-	// SentinelSourceFileMissing은 registry entry 가 참조하는 source file 이 존재하지 않을 때 사용된다.
+	// SentinelSourceFileMissing is used when the source file referenced by a registry entry does not exist.
 	// Exit code 2.
 	SentinelSourceFileMissing = "SOURCE_FILE_MISSING"
 
-	// SentinelZoneUnregistered는 source file 에서 [HARD] rule 이 발견되었으나 registry 에 없을 때 사용된다.
+	// SentinelZoneUnregistered is used when a [HARD] rule is found in a source file but is not present in the registry.
 	SentinelZoneUnregistered = "ZONE_UNREGISTERED"
 
-	// SentinelFrozenWithoutCanary는 Frozen zone entry 가 canary_gate:false 일 때 사용된다.
+	// SentinelFrozenWithoutCanary is used when a Frozen zone entry has canary_gate:false.
 	SentinelFrozenWithoutCanary = "FROZEN_WITHOUT_CANARY"
 
-	// SentinelAnchorNotFound는 registry entry 의 anchor 가 source file 내 존재하지 않을 때 사용된다.
+	// SentinelAnchorNotFound is used when the anchor in a registry entry does not exist in the source file.
 	SentinelAnchorNotFound = "ANCHOR_NOT_FOUND"
 
-	// SentinelDuplicateID는 registry 에 동일 ID 가 두 번 이상 사용될 때 사용된다. 항상 exit 1.
+	// SentinelDuplicateID is used when the same ID is used more than once in the registry. Always exit 1.
 	SentinelDuplicateID = "DUPLICATE_ID"
 
-	// SentinelStaleEntry는 entry 타임스탬프가 90일 이상 경과할 때 사용된다 (warning only).
+	// SentinelStaleEntry is used when an entry timestamp is older than 90 days (warning only).
 	SentinelStaleEntry = "STALE_ENTRY"
 
-	// SentinelDuplicateZoneMarker는 동일 [HARD] rule 라인에 ZONE 마커가 2개 이상일 때 사용된다 (warning only).
+	// SentinelDuplicateZoneMarker is used when a single [HARD] rule line contains 2 or more ZONE markers (warning only).
 	SentinelDuplicateZoneMarker = "DUPLICATE_ZONE_MARKER"
 
-	// SentinelInvalidZoneClass는 zone_class 가 4-enum 외 값일 때 사용된다.
+	// SentinelInvalidZoneClass is used when zone_class is outside the 4-enum allowed values.
 	SentinelInvalidZoneClass = "INVALID_ZONE_CLASS"
 
-	// skipValidateEnvKey는 로컬 bypass 환경변수 이름.
+	// skipValidateEnvKey is the name of the local bypass environment variable.
 	skipValidateEnvKey = "MOAI_CONSTITUTION_SKIP_VALIDATE"
 )
 
-// validZoneClasses는 zone_class 4-enum 허용 값 집합.
+// validZoneClasses is the set of allowed values for the zone_class 4-enum.
 var validZoneClasses = map[string]bool{
 	"frozen-canonical":      true,
 	"frozen-safety":         true,
@@ -51,79 +51,80 @@ var validZoneClasses = map[string]bool{
 	"evolvable-experimental": true,
 }
 
-// ValidateStatus는 validate 명령 결과의 전체 상태를 나타낸다.
+// ValidateStatus represents the overall status of the validate command result.
 type ValidateStatus string
 
 const (
-	// ValidateStatusOK는 모든 검증이 통과된 상태.
+	// ValidateStatusOK indicates all validations passed.
 	ValidateStatusOK ValidateStatus = "ok"
 
-	// ValidateStatusDrift는 하나 이상의 drift 또는 오류가 발견된 상태.
+	// ValidateStatusDrift indicates one or more drifts or errors were found.
 	ValidateStatusDrift ValidateStatus = "drift"
 
-	// ValidateStatusSkipped는 MOAI_CONSTITUTION_SKIP_VALIDATE=1 로 우회된 상태.
+	// ValidateStatusSkipped indicates the validation was bypassed via MOAI_CONSTITUTION_SKIP_VALIDATE=1.
 	ValidateStatusSkipped ValidateStatus = "skipped"
 )
 
-// ValidateOptions는 Validate 함수의 옵션을 담는 구조체.
+// ValidateOptions holds the options for the Validate function.
 type ValidateOptions struct {
-	// RegistryPath는 zone-registry.md 파일 경로.
+	// RegistryPath is the path to the zone-registry.md file.
 	RegistryPath string
 
-	// ProjectDir는 source file 경로를 resolve 하는 기준 디렉토리.
+	// ProjectDir is the base directory used to resolve source file paths.
 	ProjectDir string
 
-	// Strict는 --strict 플래그 (경고를 오류로 승격하지 않음; 기존 의미는 future --fail-on-warning).
+	// Strict is the --strict flag (does not promote warnings to errors; the legacy
+	// meaning is reserved for the future --fail-on-warning behavior).
 	Strict bool
 
-	// FailOnWarning은 경고를 오류로 승격한다 (--strict --fail-on-warning 조합).
+	// FailOnWarning promotes warnings to errors (combined with --strict --fail-on-warning).
 	FailOnWarning bool
 }
 
-// ValidationEntry는 단일 검증 오류/경고 항목을 나타낸다.
+// ValidationEntry represents a single validation error or warning item.
 type ValidationEntry struct {
-	// ID는 관련 registry entry ID (없으면 빈 문자열).
+	// ID is the related registry entry ID (empty string when absent).
 	ID string `json:"id,omitempty"`
 
-	// File은 관련 source file 경로.
+	// File is the related source file path.
 	File string `json:"file,omitempty"`
 
-	// Anchor는 관련 anchor.
+	// Anchor is the related anchor.
 	Anchor string `json:"anchor,omitempty"`
 
-	// SentinelKey는 오류 종류 코드 (e.g. "DRIFT", "SOURCE_FILE_MISSING").
+	// SentinelKey is the error category code (e.g. "DRIFT", "SOURCE_FILE_MISSING").
 	SentinelKey string `json:"status"`
 
-	// Detail은 사람이 읽을 수 있는 상세 설명.
+	// Detail is the human-readable detailed description.
 	Detail string `json:"detail,omitempty"`
 }
 
-// ValidationResult는 Validate 함수의 전체 결과를 담는다.
+// ValidationResult holds the overall result of the Validate function.
 type ValidationResult struct {
-	// Status는 전체 상태 ("ok" | "drift" | "skipped").
+	// Status is the overall status ("ok" | "drift" | "skipped").
 	Status ValidateStatus `json:"status"`
 
-	// DriftCount는 DRIFT 항목 수.
+	// DriftCount is the number of DRIFT entries.
 	DriftCount int `json:"drift_count"`
 
-	// MissingCount는 SOURCE_FILE_MISSING 항목 수.
+	// MissingCount is the number of SOURCE_FILE_MISSING entries.
 	MissingCount int `json:"missing_count"`
 
-	// UnregisteredCount는 ZONE_UNREGISTERED 항목 수.
+	// UnregisteredCount is the number of ZONE_UNREGISTERED entries.
 	UnregisteredCount int `json:"unregistered_count"`
 
-	// Entries는 오류/경고 항목 목록.
+	// Entries is the list of error/warning items.
 	Entries []ValidationEntry `json:"entries"`
 
-	// Warnings는 warning 전용 메시지 (STALE_ENTRY, DUPLICATE_ZONE_MARKER 등).
+	// Warnings holds warning-only messages (STALE_ENTRY, DUPLICATE_ZONE_MARKER, etc.).
 	Warnings []string `json:"warnings,omitempty"`
 
-	// Skipped는 MOAI_CONSTITUTION_SKIP_VALIDATE 우회 여부.
+	// Skipped indicates whether MOAI_CONSTITUTION_SKIP_VALIDATE bypassed the validation.
 	Skipped bool `json:"skipped,omitempty"`
 }
 
-// ValidationError는 검증 실패를 나타내는 오류 타입.
-// SOURCE_FILE_MISSING (exit 2) 또는 DUPLICATE_ID (exit 1) 같은 치명적 오류에 사용.
+// ValidationError is the error type representing a validation failure.
+// Used for fatal errors such as SOURCE_FILE_MISSING (exit 2) or DUPLICATE_ID (exit 1).
 type ValidationError struct {
 	SentinelKey string
 	Message     string
@@ -134,7 +135,7 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("constitution validate: %s: %s", e.SentinelKey, e.Message)
 }
 
-// AsValidationError는 err 가 *ValidationError 인지 확인하고 target 에 대입한다.
+// AsValidationError checks whether err is a *ValidationError and, if so, assigns it to target.
 func AsValidationError(err error, target **ValidationError) bool {
 	if err == nil {
 		return false
@@ -146,26 +147,27 @@ func AsValidationError(err error, target **ValidationError) bool {
 	return false
 }
 
-// hardRuleRegexp는 코드 펜스 외부의 [HARD] 규칙을 매칭한다.
+// hardRuleRegexp matches [HARD] rules located outside code fences.
 var hardRuleRegexp = regexp.MustCompile(`\[HARD\]`)
 
-// zoneMarkerRegexp는 [ZONE:Frozen] 또는 [ZONE:Evolvable] 마커를 매칭한다.
+// zoneMarkerRegexp matches [ZONE:Frozen] or [ZONE:Evolvable] markers.
 var zoneMarkerRegexp = regexp.MustCompile(`\[ZONE:(Frozen|Evolvable)\]`)
 
-// multiSpaceRegexp는 복수의 공백을 단일 공백으로 정규화하기 위한 패턴.
+// multiSpaceRegexp is the pattern used to normalize multiple whitespace
+// characters into a single space.
 var multiSpaceRegexp = regexp.MustCompile(`\s+`)
 
-// normalizeWhitespace는 텍스트의 다중 공백을 단일 공백으로 정규화한다.
+// normalizeWhitespace normalizes multiple whitespace in the text into single spaces.
 func normalizeWhitespace(s string) string {
 	return strings.TrimSpace(multiSpaceRegexp.ReplaceAllString(s, " "))
 }
 
-// Validate는 zone-registry 와 constitution source file 의 정합성을 검증한다.
+// Validate verifies the consistency between zone-registry and constitution source files.
 //
-// 반환값:
-//   - (result, nil): DRIFT, FROZEN_WITHOUT_CANARY, INVALID_ZONE_CLASS 등 비치명적 오류
-//   - (result, *ValidationError): SOURCE_FILE_MISSING 또는 DUPLICATE_ID 같은 치명적 오류
-//   - (result{Skipped:true}, nil): MOAI_CONSTITUTION_SKIP_VALIDATE=1 환경변수 우회
+// Return values:
+//   - (result, nil): non-fatal errors such as DRIFT, FROZEN_WITHOUT_CANARY, INVALID_ZONE_CLASS
+//   - (result, *ValidationError): fatal errors such as SOURCE_FILE_MISSING or DUPLICATE_ID
+//   - (result{Skipped:true}, nil): bypassed via MOAI_CONSTITUTION_SKIP_VALIDATE=1 environment variable
 func Validate(opts ValidateOptions) (ValidationResult, error) {
 	// MOAI_CONSTITUTION_SKIP_VALIDATE=1 bypass check
 	if os.Getenv(skipValidateEnvKey) == "1" {
@@ -299,7 +301,7 @@ func Validate(opts ValidateOptions) (ValidationResult, error) {
 	return result, nil
 }
 
-// checkDuplicateZoneMarkers는 source content 에서 동일 라인에 ZONE 마커가 2개 이상인 경우 warning 을 추가한다.
+// checkDuplicateZoneMarkers adds a warning when a single line in the source content contains two or more ZONE markers.
 func checkDuplicateZoneMarkers(content, filePath string, result *ValidationResult) {
 	seen := make(map[string]bool) // avoid duplicate warnings for same file
 	for _, line := range strings.Split(content, "\n") {
@@ -315,8 +317,8 @@ func checkDuplicateZoneMarkers(content, filePath string, result *ValidationResul
 	}
 }
 
-// stripCodeFences는 마크다운 코드 펜스(```...```) 내부 콘텐츠를 제거한다.
-// [HARD] 가 코드 예시로 사용되는 경우 false-positive 를 방지한다 (EC-CDL-005).
+// stripCodeFences removes the content inside markdown code fences (```...```).
+// This prevents false positives when [HARD] is used as a code example (EC-CDL-005).
 func stripCodeFences(content string) string {
 	var result strings.Builder
 	inFence := false
@@ -337,12 +339,12 @@ func stripCodeFences(content string) string {
 	return result.String()
 }
 
-// isAbsPath는 경로가 절대 경로인지 확인한다.
+// isAbsPath reports whether the path is an absolute path.
 func isAbsPath(p string) bool {
 	return len(p) > 0 && p[0] == '/'
 }
 
-// joinPath는 두 경로를 결합한다 (filepath.Join 과 동일하지만 import 없이).
+// joinPath joins two paths (equivalent to filepath.Join but without the import).
 func joinPath(base, rel string) string {
 	if base == "" {
 		return rel
@@ -353,7 +355,7 @@ func joinPath(base, rel string) string {
 	return base + "/" + rel
 }
 
-// truncate는 문자열을 maxLen 길이로 자른다.
+// truncate trims a string to at most maxLen characters.
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
@@ -361,7 +363,7 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
-// min은 두 int 중 작은 값을 반환한다 (Go 1.21 min builtin 과 충돌 방지를 위해 로컬 정의).
+// min returns the smaller of two ints (defined locally to avoid conflict with the Go 1.21 min builtin).
 func min(a, b int) int {
 	if a < b {
 		return a

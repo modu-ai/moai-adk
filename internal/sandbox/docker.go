@@ -29,7 +29,7 @@ func (d *DockerBackend) Available() bool {
 		return false
 	}
 
-	// daemon ping: docker info (빠른 확인)
+	// daemon ping: docker info (quick check)
 	ctx, cancel := context.WithTimeout(context.Background(), dockerProbeTimeout)
 	defer cancel()
 
@@ -61,10 +61,10 @@ func (d *DockerBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error) 
 		image = d.defaultImage
 	}
 
-	// docker run args 조립
+	// Assemble docker run args
 	dockerArgs := []string{"run", "--rm"}
 
-	// 네트워크 정책
+	// Network policy
 	allHosts := append(DefaultNetworkAllowlist, opts.NetworkAllowlist...)
 	if len(allHosts) == 0 {
 		dockerArgs = append(dockerArgs, "--network=none")
@@ -72,17 +72,17 @@ func (d *DockerBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error) 
 		dockerArgs = append(dockerArgs, "--network=bridge")
 	}
 
-	// writable scope — -v 마운트
+	// writable scope — -v mounts
 	for _, p := range opts.WritableScope {
 		dockerArgs = append(dockerArgs, "-v", p+":"+p)
 	}
 
-	// 작업 디렉토리 (첫 번째 writable scope)
+	// Working directory (the first writable scope)
 	if len(opts.WritableScope) > 0 {
 		dockerArgs = append(dockerArgs, "-w", opts.WritableScope[0])
 	}
 
-	// 환경변수 스크러빙
+	// Environment variable scrubbing
 	env := ScrubEnv(os.Environ(), opts.EnvPassthrough)
 	for _, e := range env {
 		dockerArgs = append(dockerArgs, "-e", e)

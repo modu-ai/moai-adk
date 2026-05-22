@@ -15,9 +15,9 @@ type BlockerReport struct {
 	Resolved        bool           `json:"resolved"`
 	Resolution      string         `json:"resolution,omitempty"`
 	Timestamp       time.Time      `json:"timestamp"`
-	// SPEC-V3R2-RT-004 REQ-012: blocker file naming 기준 필드
-	Phase  Phase  `json:"phase,omitempty"`   // blocker가 발생한 phase
-	SPECID string `json:"spec_id,omitempty"` // 대상 SPEC ID
+	// SPEC-V3R2-RT-004 REQ-012: fields used for blocker file naming
+	Phase  Phase  `json:"phase,omitempty"`   // phase in which the blocker occurred
+	SPECID string `json:"spec_id,omitempty"` // target SPEC ID
 }
 
 // NewBlockerReport creates a new BlockerReport with the current timestamp.

@@ -7,9 +7,10 @@ import (
 	"os"
 	"os/exec"
 
-	// @MX:WARN: [AUTO] sandbox-exec은 Apple에 의해 deprecated됨 (macOS 10.5 이후 작동)
-	// @MX:REASON: Apple이 더 이상 sandbox-exec을 공식 지원하지 않으며, 향후 macOS 버전에서
-	//             제거될 수 있다. v3.1+에서 App Sandbox entitlement 기반 대안 검토 예정.
+	// @MX:WARN: [AUTO] sandbox-exec has been deprecated by Apple (operational since macOS 10.5)
+	// @MX:REASON: Apple no longer officially supports sandbox-exec and it may be
+	//             removed in a future macOS version. An App Sandbox entitlement-based
+	//             alternative is planned for v3.1+.
 )
 
 // SeatbeltBackend implements SandboxBackend for macOS using sandbox-exec.
@@ -29,10 +30,11 @@ func (s *SeatbeltBackend) Available() bool {
 
 // Exec runs cmd inside a macOS seatbelt sandbox with the given options.
 //
-// @MX:WARN: [AUTO] execSandboxExec — SBPL profile는 exec 직전에 생성되며 파일로 저장되지 않음
-// @MX:REASON: sandbox-exec의 -p flag는 인라인 프로파일을 받아들이므로 tmpfile 불필요.
-//             그러나 프로파일이 매우 길면 arg list limit에 걸릴 수 있음.
-//             현재 구현은 -p 사용; 필요시 -f (파일) 모드로 전환 가능.
+// @MX:WARN: [AUTO] execSandboxExec — the SBPL profile is generated just before exec and never written to a file
+// @MX:REASON: The -p flag of sandbox-exec accepts an inline profile, so no
+//             tmpfile is required. However, very long profiles may exceed the
+//             arg list limit. The current implementation uses -p; we can switch
+//             to -f (file) mode if needed.
 func (s *SeatbeltBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error) {
 	if !s.Available() {
 		return nil, ErrSandboxBackendUnavailable
@@ -46,13 +48,13 @@ func (s *SeatbeltBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error
 		maxBytes = DefaultMaxOutputBytes
 	}
 
-	// SBPL 프로파일 생성
+	// Generate SBPL profile
 	profile, err := GenerateSBPL(opts)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox: generate SBPL: %w", err)
 	}
 
-	// 환경 변수 스크러빙
+	// Environment variable scrubbing
 	env := ScrubEnv(os.Environ(), opts.EnvPassthrough)
 
 	// sandbox-exec -p <profile> <cmd...>

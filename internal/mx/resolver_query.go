@@ -77,8 +77,8 @@ type QueryParams struct {
 // NewQuery constructs a Query from QueryParams, injecting wired components.
 // CLI callers should prefer NewQuery over constructing Query literals directly.
 //
-// @MX:ANCHOR: [AUTO] NewQuery — CLI 및 외부 호출자용 Query 생성자; 내부 unexported 필드를 안전하게 주입
-// @MX:REASON: fan_in >= 3 — CLI mx_query.go, 통합 테스트, 향후 codemaps 생성기 모두 이 경로로 Query를 생성
+// @MX:ANCHOR: [AUTO] NewQuery — Query constructor for CLI and external callers; safely injects internal unexported fields
+// @MX:REASON: fan_in >= 3 — CLI mx_query.go, integration tests, and the future codemaps generator all create Query via this path
 func NewQuery(p QueryParams) Query {
 	return Query{
 		SpecID:         p.SpecID,
@@ -316,11 +316,11 @@ func validateQuery(query Query) error {
 		}
 	}
 
-	// danger カテゴリ검증 (REQ-SPC-004-012, AC-SPC-004-13)
+	// Danger category validation (REQ-SPC-004-012, AC-SPC-004-13)
 	if query.Danger != "" {
 		matcher := query.dangerMatcher
 		if matcher == nil {
-			// dangerMatcher가 없으면 기본 카테고리로 검증
+			// When no dangerMatcher is set, validate against the default categories
 			matcher = NewDangerCategoryMatcher(DangerCategoryConfig{})
 		}
 		if !matcher.ValidateCategory(query.Danger) {
@@ -430,7 +430,7 @@ func FormatMarkdown(result QueryResult) string {
 }
 
 // FormatTable converts QueryResult to human-readable text table (REQ-SPC-004-004).
-// Includes KIND, FILE, LINE, BODY columns and outputs "(결과 없음)" when empty.
+// Includes KIND, FILE, LINE, BODY columns and emits a Korean "no results" line when empty.
 func FormatTable(result QueryResult) string {
 	if len(result.Tags) == 0 {
 		return "(결과 없음)\n"

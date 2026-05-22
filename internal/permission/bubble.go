@@ -98,10 +98,10 @@ func (b *BubbleDispatcher) CreateBubbleRequest(tool string, input json.RawMessag
 //
 // Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-012, agent-common-protocol.md §User Interaction Boundary
 //
-// @MX:ANCHOR: [AUTO] DispatchToParent 는 bubble mode IPC contract 동결 지점
+// @MX:ANCHOR: [AUTO] DispatchToParent is the freeze point of the bubble-mode IPC contract
 // @MX:REASON: [AUTO] fan_in=3: resolver.go::handleBubbleAsk, bubble_test.go, RT-001 hook integration point
 func (b *BubbleDispatcher) DispatchToParent(req *BubbleRequest) (*BubbleResponse, error) {
-	// Placeholder: 실제 IPC wire 는 RT-001 hook channel 통합 시 구현.
+	// Placeholder: the real IPC wire will be implemented when integrating with the RT-001 hook channel.
 	// Input format: JSON BubbleRequest on stdin
 	// Output format: JSON BubbleResponse on stdout
 	return nil, fmt.Errorf("bubble dispatch not implemented - requires orchestrator integration")
@@ -152,8 +152,8 @@ func (b *BubbleDispatcher) ValidateForkDepth(depth int, mode PermissionMode) (st
 // IsParentAvailable checks if the parent session is reachable.
 //
 // Registry Lookup Contract (T-RT002-27: contract frozen):
-//   - This SPEC 의 구현은 ParentSessionID 비어있지 않음으로 단순화.
-//   - registry 통합은 RT-004 SessionStore 와 합류 시 wire 예정.
+//   - The implementation in this SPEC is simplified to "ParentSessionID is non-empty".
+//   - Registry integration will be wired when joining with RT-004 SessionStore.
 //
 // Reference: SPEC-V3R2-RT-002 REQ-V3R2-RT-002-050
 func (b *BubbleDispatcher) IsParentAvailable(parentSessionID string) bool {

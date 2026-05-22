@@ -10,24 +10,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// specFrontmatter는 spec.md YAML frontmatter의 파싱 대상 필드들입니다.
+// specFrontmatter holds the fields parsed from a spec.md YAML frontmatter.
 type specFrontmatter struct {
 	ID     string      `yaml:"id"`
 	Module interface{} `yaml:"module"`
 }
 
-// LoadSpecModules는 projectRoot/.moai/specs/*/spec.md 를 순회하여
-// SPEC ID → []modulePath 맵을 반환합니다 (REQ-SPC-004-005).
+// LoadSpecModules walks projectRoot/.moai/specs/*/spec.md and returns a
+// SPEC ID → []modulePath map (REQ-SPC-004-005).
 //
-// @MX:ANCHOR: [AUTO] LoadSpecModules — SPEC 모듈 경로 로더; CLI, Resolver, SpecAssociator 모두 이 함수를 통해 경로 기반 연결을 설정
-// @MX:REASON: fan_in >= 3 — CLI mx_query.go, Resolver 초기화 경로, 향후 codemaps 생성기 모두 호출
+// @MX:ANCHOR: [AUTO] LoadSpecModules — SPEC module path loader; CLI, Resolver, and SpecAssociator all configure path-based association via this function
+// @MX:REASON: fan_in >= 3 — invoked from CLI mx_query.go, the Resolver init path, and the future codemaps generator
 //
-// module 필드 지원 형식:
-//   - 문자열: "internal/mx/, cmd/moai/" → 쉼표 분리 + TrimSpace
-//   - YAML 시퀀스: [internal/foo/, internal/bar/] → as-is
-//   - 빈 문자열: "" → 빈 슬라이스
+// Supported `module` field formats:
+//   - String: "internal/mx/, cmd/moai/" → split on commas + TrimSpace
+//   - YAML sequence: [internal/foo/, internal/bar/] → as-is
+//   - Empty string: "" → empty slice
 //
-// .moai/specs/ 디렉터리가 없으면 에러 없이 빈 맵을 반환합니다.
+// Returns an empty map without error when .moai/specs/ does not exist.
 func LoadSpecModules(projectRoot string) (map[string][]string, error) {
 	specsDir := filepath.Join(projectRoot, ".moai", "specs")
 
@@ -41,7 +41,7 @@ func LoadSpecModules(projectRoot string) (map[string][]string, error) {
 		return nil, err
 	}
 
-	// 결정적 순서를 위해 정렬
+	// Sort for deterministic ordering
 	sort.Strings(matches)
 
 	result := make(map[string][]string)
@@ -63,20 +63,21 @@ func LoadSpecModules(projectRoot string) (map[string][]string, error) {
 	return result, nil
 }
 
-// parseFrontmatter는 spec.md 파일의 YAML frontmatter(--- ... --- 사이)를 파싱합니다.
+// parseFrontmatter parses the YAML frontmatter (between the `---` delimiters)
+// of a spec.md file.
 func parseFrontmatter(data []byte) (specFrontmatter, error) {
 	content := string(data)
 
-	// --- 로 시작하는 frontmatter 추출
+	// Extract the frontmatter starting with `---`
 	if !strings.HasPrefix(content, "---") {
 		return specFrontmatter{}, nil
 	}
 
-	// 첫 번째 --- 이후의 내용에서 두 번째 --- 를 찾음
+	// Find the second `---` after the first one
 	rest := content[3:]
 	end := strings.Index(rest, "\n---")
 	if end == -1 {
-		// 닫는 --- 없음: 파일 끝까지 frontmatter로 처리
+		// No closing `---`: treat the remainder of the file as frontmatter
 		end = len(rest)
 	}
 
@@ -90,10 +91,10 @@ func parseFrontmatter(data []byte) (specFrontmatter, error) {
 	return fm, nil
 }
 
-// parseModuleField는 module 필드 값을 []string 으로 변환합니다.
-// 지원 타입:
-//   - string: 쉼표 구분 → split + TrimSpace, 빈 문자열 항목 제거
-//   - []interface{}: 각 요소를 string으로 캐스팅
+// parseModuleField converts the `module` field value into a []string.
+// Supported types:
+//   - string: comma-separated → split + TrimSpace, drop empty entries
+//   - []interface{}: cast each element to string
 func parseModuleField(v interface{}) []string {
 	if v == nil {
 		return []string{}

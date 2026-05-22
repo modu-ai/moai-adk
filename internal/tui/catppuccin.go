@@ -6,8 +6,8 @@
 // (no hex outside tui/) while giving internal/statusline/theme.go a thin
 // re-export path (R-07 mitigation, M6-S4).
 //
-// @MX:ANCHOR: [AUTO] Catppuccin 팔레트 단일 진실 공급원; statusline 패키지가 import
-// @MX:REASON: [AUTO] fan_in >= 2 (statusline.catppuccinMocha, statusline.catppuccinLatte); R-07 thin wrapper 진입점
+// @MX:ANCHOR: [AUTO] Single source of truth for the Catppuccin palette; imported by the statusline package
+// @MX:REASON: [AUTO] fan_in >= 2 (statusline.catppuccinMocha, statusline.catppuccinLatte); R-07 thin wrapper entry point
 package tui
 
 // Catppuccin Mocha — dark terminal palette.

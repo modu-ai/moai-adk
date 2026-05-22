@@ -76,8 +76,8 @@ type StdinData struct {
 // stdin JSON. The struct is raw-passthrough — unknown review_state values
 // are not rejected (REQ-SLV-014 unknown-state default-color fallback).
 //
-// @MX:NOTE: [AUTO] PR 정보 구조체 — Claude Code v2.1.145+ stdin pr.{number,url,review_state} 필드 매핑.
-// review_state 알려진 값: approved/pending/changes_requested/draft. 외 값은 raw passthrough (REQ-SLV-014).
+// @MX:NOTE: [AUTO] PR info struct — maps Claude Code v2.1.145+ stdin pr.{number,url,review_state} fields.
+// Known review_state values: approved/pending/changes_requested/draft. Other values are passed through raw (REQ-SLV-014).
 type PRInfo struct {
 	Number      int    `json:"number"`
 	URL         string `json:"url"`
@@ -164,7 +164,7 @@ type WorkspaceInfo struct {
 // RepoInfo represents the GitHub repository identity discovered by Claude Code v2.1.145+.
 // Used to disambiguate PR segment context when multiple repos are open.
 //
-// @MX:NOTE: [AUTO] 리포지토리 식별 구조체 — Claude Code v2.1.145+ workspace.repo.{host,owner,name} 필드 매핑.
+// @MX:NOTE: [AUTO] Repository identity struct — maps Claude Code v2.1.145+ workspace.repo.{host,owner,name} fields.
 type RepoInfo struct {
 	Host  string `json:"host"`  // e.g., "github.com"
 	Owner string `json:"owner"` // e.g., "modu-ai"

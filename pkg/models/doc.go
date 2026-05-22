@@ -37,5 +37,5 @@
 // Supported conversation languages can be queried:
 //
 //	langs := models.SupportedLanguages() // ["ko", "en", "ja", "zh"]
-//	name := models.GetLanguageName("ko") // "Korean (한국어)"
+//	name := models.GetLanguageName("en") // "English"
 package models

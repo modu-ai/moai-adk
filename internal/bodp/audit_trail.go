@@ -26,8 +26,8 @@ type AuditEntry struct {
 // WriteDecision persists an AuditEntry as a markdown file under
 // repoRoot/.moai/branches/decisions/<normalized-branch-name>.md.
 //
-// @MX:NOTE Audit trail은 BODP 결정의 영구 기록. branch name 정규화
-// (slash → dash) 로 filesystem-safe.
+// @MX:NOTE Audit trail is the permanent record of BODP decisions. Branch name
+// is normalized (slash → dash) to be filesystem-safe.
 func WriteDecision(repoRoot string, entry AuditEntry) error {
 	if entry.Timestamp.IsZero() {
 		entry.Timestamp = time.Now().UTC()
@@ -47,8 +47,9 @@ func WriteDecision(repoRoot string, entry AuditEntry) error {
 // HasAuditTrail returns true when an audit trail file exists under
 // repoRoot/.moai/branches/decisions/ for the given branch name.
 //
-// @MX:NOTE W7-T05 reminder false-positive 방지: 디렉토리 자체 부재 시 false
-// 반환 (no error 구분). 신규 프로젝트에서는 reminder 가 발화되지 않는다.
+// @MX:NOTE W7-T05 reminder false-positive prevention: returns false when the
+// directory itself is absent (no error distinction). Reminders do not fire on
+// new projects.
 func HasAuditTrail(repoRoot, branchName string) bool {
 	if repoRoot == "" || branchName == "" {
 		return false
