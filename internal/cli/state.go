@@ -29,7 +29,7 @@ func newStateCmd() *cobra.Command {
 }
 
 // newStateDumpCmd creates the state dump subcommand.
-// SPEC-V3R2-RT-004 AC-07, REQ-007, REQ-030, REQ-032: phase state 덤프 + format 선택 + resume 지원.
+// SPEC-V3R2-RT-004 AC-07, REQ-007, REQ-030, REQ-032: phase state dump + format selection + resume support.
 func newStateDumpCmd() *cobra.Command {
 	var format string
 	var resume bool
@@ -66,25 +66,25 @@ func newStateShowBlockerCmd() *cobra.Command {
 }
 
 // runStateDump implements the state dump command.
-// SPEC-V3R2-RT-004 AC-07, REQ-030, REQ-032: phase+specID 기반 dump + format 선택.
+// SPEC-V3R2-RT-004 AC-07, REQ-030, REQ-032: phase+specID based dump + format selection.
 func runStateDump(phaseArg, specID, format string, resume bool) error {
-	// 상태 디렉토리 탐색
+	// Locate state directory
 	stateDir, err := findStateDir()
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
 
-	// 스토어 생성
+	// Create store
 	store := session.NewFileSessionStore(stateDir, 3600*time.Second)
 
-	// phase 파싱
+	// Parse phase
 	phase := session.Phase(phaseArg)
 	if !phase.Valid() {
 		return fmt.Errorf("invalid phase: %s", phaseArg)
 	}
 
-	// --resume 플래그에 따른 HydrateWithOpts 사용
-	// SPEC-V3R2-RT-004 AC-06: --resume 플래그가 HydrateWithOpts(SkipStaleCheck=true)로 연동됨.
+	// Use HydrateWithOpts based on --resume flag
+	// SPEC-V3R2-RT-004 AC-06: --resume flag is wired into HydrateWithOpts(SkipStaleCheck=true).
 	opts := session.HydrateOpts{SkipStaleCheck: resume}
 	state, err := store.HydrateWithOpts(phase, specID, opts)
 	if err != nil {
@@ -100,7 +100,7 @@ func runStateDump(phaseArg, specID, format string, resume bool) error {
 		return nil
 	}
 
-	// 출력 형식 선택
+	// Select output format
 	switch format {
 	case "json":
 		data, err := json.MarshalIndent(state, "", "  ")
@@ -115,7 +115,7 @@ func runStateDump(phaseArg, specID, format string, resume bool) error {
 	return nil
 }
 
-// printPhaseStateHuman은 PhaseState를 사람이 읽기 쉬운 형식으로 출력합니다.
+// printPhaseStateHuman prints a PhaseState in a human-readable format.
 func printPhaseStateHuman(state *session.PhaseState) {
 	fmt.Printf("Phase:     %s\n", state.Phase)
 	fmt.Printf("SPEC ID:   %s\n", state.SPECID)

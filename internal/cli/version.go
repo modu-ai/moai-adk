@@ -13,9 +13,9 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
-// @MX:NOTE: [AUTO] version 명령어 출력 — tui.Box + tui.Pill 3개로 구성된 version card.
-// renderVersion은 version command의 출력을 tui primitives로 구성합니다.
-// 디자인 소스: screens.jsx ScreenVersion 섹션 (banner.go IMPROVE 패턴 mirror).
+// @MX:NOTE: [AUTO] version command output — version card composed of tui.Box + 3 tui.Pills.
+// renderVersion composes the version command output using tui primitives.
+// Design source: screens.jsx ScreenVersion section (mirrors banner.go IMPROVE pattern).
 var versionCmd = &cobra.Command{
 	Use:     "version",
 	Short:   "Show version information",

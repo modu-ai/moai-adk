@@ -564,20 +564,20 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 }
 
 // ─────────────────────────────────────────────────────────────
-// T-A3: Stop 훅 핸들러
+// T-A3: Stop hook handler
 // ─────────────────────────────────────────────────────────────
 
-// runHarnessObserveStop는 Claude Code Stop 훅 stdin JSON을 읽고
-// session_stop 이벤트를 usage-log.jsonl에 기록한다.
+// runHarnessObserveStop reads Claude Code Stop hook stdin JSON and
+// records a session_stop event to usage-log.jsonl.
 //
-// stdin JSON 스키마 (T-A3 spec):
+// stdin JSON schema (T-A3 spec):
 //
 //	{"last_assistant_message": "...", "session": {"id": "..."}}
 //
-// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004 + REQ-HRN-OBS-008: Stop 훅 핸들러.
-// isHarnessLearningEnabled 게이트 재사용 (REQ-HRN-FND-009).
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004 + REQ-HRN-OBS-008: Stop hook handler.
+// Reuses the isHarnessLearningEnabled gate (REQ-HRN-FND-009).
 // last_assistant_message_hash = SHA-256[:16] hex, last_assistant_message_len = byte length.
-// 에러는 stderr에 기록하고 exit 0 반환 (비블로킹).
+// Errors are logged to stderr and the hook returns exit 0 (non-blocking).
 func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -597,10 +597,10 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	}
 	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
 
-	// subject: cwd 기반 SPEC-ID 탐지 (없으면 빈 문자열)
+	// subject: detect SPEC-ID from cwd (empty string when not found)
 	subject := detectSpecIDFromCwd(cwd)
 
-	// last_assistant_message_hash + len 계산 (비어있지 않을 때만)
+	// Compute last_assistant_message_hash + len (only when non-empty)
 	msgHash, msgLen := assistantMessageFields(hookInput.LastAssistantMessage)
 
 	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
@@ -624,13 +624,13 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// assistantMessageFields는 last_assistant_message로부터
-// last_assistant_message_hash (SHA-256 첫 16 hex 문자)와
-// last_assistant_message_len (UTF-8 바이트 길이)을 계산한다.
-// msg가 빈 문자열이면 ("", 0)을 반환한다.
+// assistantMessageFields computes
+// last_assistant_message_hash (first 16 hex chars of SHA-256) and
+// last_assistant_message_len (UTF-8 byte length) from last_assistant_message.
+// Returns ("", 0) when msg is the empty string.
 //
-// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004: Stop/SubagentStop 핸들러에서 공유.
-// SHA-256[:16]는 16 hex chars = 8 bytes 강도 (충돌 방지보다 빠른 중복 탐지 목적).
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004: shared by Stop/SubagentStop handlers.
+// SHA-256[:16] = 16 hex chars = 8 bytes of strength (intended for fast duplicate detection, not collision resistance).
 func assistantMessageFields(msg string) (hash string, length int) {
 	if msg == "" {
 		return "", 0
@@ -640,20 +640,20 @@ func assistantMessageFields(msg string) (hash string, length int) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// T-A4: SubagentStop 훅 핸들러
+// T-A4: SubagentStop hook handler
 // ─────────────────────────────────────────────────────────────
 
-// runHarnessObserveSubagentStop는 Claude Code SubagentStop 훅 stdin JSON을 읽고
-// subagent_stop 이벤트를 usage-log.jsonl에 기록한다.
+// runHarnessObserveSubagentStop reads Claude Code SubagentStop hook stdin JSON and
+// records a subagent_stop event to usage-log.jsonl.
 //
-// stdin JSON 스키마 (T-A4 spec):
+// stdin JSON schema (T-A4 spec):
 //
 //	{"agentType": "...", "agentName": "...", "last_assistant_message": "...",
 //	 "agent_id": "...", "agent_transcript_path": "...", "session": {"id": "..."}}
 //
-// @MX:NOTE: [AUTO] REQ-HRN-OBS-003 + REQ-HRN-OBS-005 + REQ-HRN-OBS-008: SubagentStop 훅 핸들러.
-// isHarnessLearningEnabled 게이트 재사용 (REQ-HRN-FND-009).
-// parent_session_id는 session.id (nested) 에서 추출한다.
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-003 + REQ-HRN-OBS-005 + REQ-HRN-OBS-008: SubagentStop hook handler.
+// Reuses the isHarnessLearningEnabled gate (REQ-HRN-FND-009).
+// parent_session_id is extracted from session.id (nested).
 func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -677,7 +677,7 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 	}
 	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
 
-	// subject: 에이전트 이름 (없으면 "unknown")
+	// subject: agent name (falls back to "unknown")
 	subject := hookInput.AgentName
 	if subject == "" {
 		subject = "unknown"
@@ -706,36 +706,36 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 }
 
 // ─────────────────────────────────────────────────────────────
-// T-A5: UserPromptSubmit 훅 핸들러 + PII 전략
+// T-A5: UserPromptSubmit hook handler + PII strategy
 // ─────────────────────────────────────────────────────────────
 
-// UserPromptStrategy는 UserPromptSubmit 이벤트의 PII 처리 전략 열거형.
-// REQ-HRN-OBS-014: 기본값 = StrategyHash (SHA-256 + 길이 + 언어).
+// UserPromptStrategy is the PII handling strategy enumeration for UserPromptSubmit events.
+// REQ-HRN-OBS-014: default = StrategyHash (SHA-256 + length + language).
 type UserPromptStrategy string
 
 const (
-	// UserPromptStrategyHash는 기본 전략: SHA-256 해시 + 길이 + 언어 감지.
-	// 프롬프트 원문은 기록하지 않음 (PII 최소화).
+	// UserPromptStrategyHash is the default strategy: SHA-256 hash + length + language detection.
+	// The prompt body is not recorded (PII minimization).
 	UserPromptStrategyHash UserPromptStrategy = "hash"
 
-	// UserPromptStrategyPreview는 opt-in: 프롬프트 앞 200자 미리보기 포함.
+	// UserPromptStrategyPreview is opt-in: includes the first 200 chars of the prompt as preview.
 	UserPromptStrategyPreview UserPromptStrategy = "preview"
 
-	// UserPromptStrategyFull는 opt-in: 프롬프트 전문 포함 (명시적 동의 필요).
+	// UserPromptStrategyFull is opt-in: includes the full prompt body (requires explicit consent).
 	UserPromptStrategyFull UserPromptStrategy = "full"
 
-	// UserPromptStrategyNone은 UserPromptSubmit 이벤트를 기록하지 않음.
+	// UserPromptStrategyNone disables UserPromptSubmit event recording.
 	UserPromptStrategyNone UserPromptStrategy = "none"
 )
 
-// specIDRegexp는 SPEC-ID 패턴을 탐지하는 정규식.
+// specIDRegexp is the regular expression that detects SPEC-ID patterns.
 var specIDRegexp = regexp.MustCompile(`SPEC-[A-Z][A-Z0-9]+-[0-9]+`)
 
-// resolveUserPromptStrategy는 harness.yaml의 learning.user_prompt_content 값을
-// UserPromptStrategy 열거형으로 변환한다.
-// REQ-HRN-OBS-014: 알 수 없는 값은 UserPromptStrategyHash로 폴백 (fail-open).
+// resolveUserPromptStrategy converts the learning.user_prompt_content value from
+// harness.yaml into the UserPromptStrategy enumeration.
+// REQ-HRN-OBS-014: unknown values fall back to UserPromptStrategyHash (fail-open).
 //
-// @MX:ANCHOR: [AUTO] resolveUserPromptStrategy는 PII 처리 전략의 단일 결정 지점.
+// @MX:ANCHOR: [AUTO] resolveUserPromptStrategy is the single decision point for the PII handling strategy.
 // @MX:REASON: [AUTO] fan_in >= 3: runHarnessObserveUserPromptSubmit, test helpers, future config reload
 func resolveUserPromptStrategy(raw string) UserPromptStrategy {
 	switch raw {
@@ -748,13 +748,13 @@ func resolveUserPromptStrategy(raw string) UserPromptStrategy {
 	case "none":
 		return UserPromptStrategyNone
 	default:
-		// fail-open: 알 수 없는 값은 Strategy A로 폴백
+		// fail-open: unknown values fall back to Strategy A
 		return UserPromptStrategyHash
 	}
 }
 
-// detectPromptLang은 Unicode 블록 분석으로 프롬프트 언어를 추정한다.
-// 반환값: "ko", "ja", "zh", "en", "" (감지 불가).
+// detectPromptLang estimates the prompt language via Unicode block analysis.
+// Return values: "ko", "ja", "zh", "en", "" (cannot detect).
 func detectPromptLang(prompt string) string {
 	for _, r := range prompt {
 		switch {
@@ -771,14 +771,14 @@ func detectPromptLang(prompt string) string {
 	return ""
 }
 
-// detectSpecIDFromCwd는 cwd 경로에서 SPEC-ID를 탐지한다.
-// worktree 경로 패턴에서 SPEC-ID를 추출하는 데 사용된다.
+// detectSpecIDFromCwd detects a SPEC-ID inside the cwd path.
+// Used to extract a SPEC-ID from worktree path patterns.
 func detectSpecIDFromCwd(cwd string) string {
 	match := specIDRegexp.FindString(cwd)
 	return match
 }
 
-// readUserPromptContentStrategy는 harness.yaml에서 learning.user_prompt_content 값을 읽는다.
+// readUserPromptContentStrategy reads the learning.user_prompt_content value from harness.yaml.
 func readUserPromptContentStrategy(projectRoot string) string {
 	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "harness.yaml")
 	data, err := os.ReadFile(configPath)
@@ -796,12 +796,12 @@ func readUserPromptContentStrategy(projectRoot string) string {
 	return doc.Learning.UserPromptContent
 }
 
-// runHarnessObserveUserPromptSubmit는 Claude Code UserPromptSubmit 훅 stdin JSON을 읽고
-// user_prompt 이벤트를 usage-log.jsonl에 기록한다.
-// 기본 전략(Strategy A): SHA-256 해시 + 길이 + 언어 (PII 최소화).
+// runHarnessObserveUserPromptSubmit reads Claude Code UserPromptSubmit hook stdin JSON
+// and records a user_prompt event to usage-log.jsonl.
+// Default strategy (Strategy A): SHA-256 hash + length + language (PII minimization).
 //
-// @MX:WARN: [AUTO] PII 민감 핸들러 — 사용자 프롬프트 원문이 Strategy C 활성화 시 로그에 기록됨.
-// @MX:REASON: [AUTO] REQ-HRN-OBS-014: 기본값은 Strategy A로 원문 미기록. opt-in만 원문 기록.
+// @MX:WARN: [AUTO] PII-sensitive handler — user prompt body is logged when Strategy C is active.
+// @MX:REASON: [AUTO] REQ-HRN-OBS-014: default is Strategy A (no body recorded); opt-in is required for body recording.
 func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -819,24 +819,24 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 
 	prompt := hookInput.Prompt
 
-	// SPEC-ID 탐지: 프롬프트에서 SPEC-ID 추출 (없으면 cwd 기반 탐지)
+	// Detect SPEC-ID: extract from the prompt first; fall back to cwd-based detection
 	subject := specIDRegexp.FindString(prompt)
 	if subject == "" {
 		subject = detectSpecIDFromCwd(cwd)
 	}
 
-	// PII 전략 결정 (REQ-HRN-OBS-014)
+	// Decide PII strategy (REQ-HRN-OBS-014)
 	strategyRaw := readUserPromptContentStrategy(cwd)
 	strategy := resolveUserPromptStrategy(strategyRaw)
 
-	// Strategy None: 이벤트 기록 없음
+	// Strategy None: do not record the event
 	if strategy == UserPromptStrategyNone {
 		return nil
 	}
 
-	// SHA-256 해시 [:16] + byte 길이 + 언어 (Strategy A 기본, B/C 포함)
-	// REQ-HRN-OBS-006 / AC-HRN-OBS-004: prompt_hash = SHA-256(prompt) 앞 16 hex 문자,
-	// prompt_len = UTF-8 byte 수 (rune 수 아님 — multi-byte 언어 byte 크기 보존)
+	// SHA-256 hash [:16] + byte length + language (Strategy A default, included in B/C)
+	// REQ-HRN-OBS-006 / AC-HRN-OBS-004: prompt_hash = first 16 hex chars of SHA-256(prompt),
+	// prompt_len = UTF-8 byte count (not rune count — preserves multi-byte language byte size)
 	h := sha256.Sum256([]byte(prompt))
 	promptHash := fmt.Sprintf("%x", h)[:16]
 	promptLen := len([]byte(prompt))
@@ -856,11 +856,11 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		PromptLang:    promptLang,
 	}
 
-	// opt-in: preview (Strategy B) — REQ-HRN-OBS-013: 첫 64바이트 (UTF-8 경계 안전).
+	// opt-in: preview (Strategy B) — REQ-HRN-OBS-013: first 64 bytes (UTF-8 boundary safe).
 	if strategy == UserPromptStrategyPreview && len(prompt) > 0 {
 		b := []byte(prompt)
 		end := min(len(b), 64)
-		// UTF-8 경계 안전: 64바이트 지점이 멀티바이트 룬 중간이면 유효한 경계까지 후퇴.
+		// UTF-8 boundary safe: if the 64-byte point lands inside a multi-byte rune, retreat to a valid boundary.
 		for end > 0 && !utf8.Valid(b[:end]) {
 			end--
 		}

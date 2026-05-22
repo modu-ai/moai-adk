@@ -1,7 +1,7 @@
 package cli
 
-// SPEC-V3R2-RT-004 REQ-031, AC-13: runs/ 디렉토리 보존 일수(retention_days) 기반 정리.
-// 기본 동작: dry-run (실제 삭제 없음). --force 플래그로 실제 삭제 실행.
+// SPEC-V3R2-RT-004 REQ-031, AC-13: cleanup of runs/ directory based on retention_days.
+// Default behavior: dry-run (no actual deletion). Use --force flag to perform real deletion.
 
 import (
 	"fmt"
@@ -35,22 +35,22 @@ retention_days is read from .moai/config/sections/state.yaml.`,
 	return cmd
 }
 
-// stateYAMLWrapper는 state.yaml의 최상위 키 구조입니다.
+// stateYAMLWrapper is the top-level key structure of state.yaml.
 type stateYAMLWrapper struct {
 	State struct {
 		RetentionDays int `yaml:"retention_days"`
 	} `yaml:"state"`
 }
 
-// runClean은 retention_days를 기준으로 오래된 runs/ 디렉토리를 정리합니다.
+// runClean cleans up old runs/ directories based on retention_days.
 func runClean(force bool) error {
-	// 상태 디렉토리 탐색
+	// Locate state directory
 	stateDir, err := findStateDir()
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
 
-	// retention_days 로드 (state.yaml에서)
+	// Load retention_days (from state.yaml)
 	retentionDays, err := loadRetentionDays(stateDir)
 	if err != nil {
 		return fmt.Errorf("load retention_days: %w", err)
@@ -61,7 +61,7 @@ func runClean(force bool) error {
 		return nil
 	}
 
-	// runs/ 디렉토리 스캔
+	// Scan runs/ directory
 	runsDir := filepath.Join(stateDir, "runs")
 	entries, err := os.ReadDir(runsDir)
 	if err != nil {
@@ -93,7 +93,7 @@ func runClean(force bool) error {
 		return nil
 	}
 
-	// dry-run 또는 실제 삭제
+	// Dry-run or actual deletion
 	for _, path := range toDelete {
 		if force {
 			if err := os.RemoveAll(path); err != nil {
@@ -113,16 +113,16 @@ func runClean(force bool) error {
 	return nil
 }
 
-// loadRetentionDays는 .moai/config/sections/state.yaml에서 retention_days를 읽습니다.
+// loadRetentionDays reads retention_days from .moai/config/sections/state.yaml.
 func loadRetentionDays(stateDir string) (int, error) {
-	// stateDir은 .moai/state/ 이므로 .moai/config/sections/으로 이동
+	// stateDir is .moai/state/, so navigate to .moai/config/sections/
 	moaiDir := filepath.Dir(stateDir) // .moai/
 	configPath := filepath.Join(moaiDir, "config", "sections", "state.yaml")
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, nil // state.yaml 없으면 retention_days = 0 (비활성)
+			return 0, nil // No state.yaml: retention_days = 0 (disabled)
 		}
 		return 0, fmt.Errorf("read state.yaml: %w", err)
 	}

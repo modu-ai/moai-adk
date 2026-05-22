@@ -63,7 +63,7 @@ func runSandboxAvailabilityReport(w io.Writer) error {
 	_, _ = fmt.Fprintln(w, "============================")
 	_, _ = fmt.Fprintf(w, "OS: %s\n\n", runtime.GOOS)
 
-	// 백엔드별 가용성 확인
+	// Check availability per backend
 	backends := []struct {
 		s     sandbox.Sandbox
 		check func() bool

@@ -1,9 +1,9 @@
 package cli
 
-// @MX:NOTE: [AUTO] V3R5 harness CLI 통합 팩토리 — SPEC-V3R5-HARNESS-AUTONOMY-001 §6 + AC-HRA-009
-// @MX:NOTE: [AUTO] newHarnessRouterCmd()는 V3R5에서 8개 lifecycle/proposal 동사를 추가로 통합합니다
-// @MX:WARN: [AUTO] V3R5는 SPEC-V3R4-HARNESS-001의 CLI retirement를 supersede합니다
-// @MX:REASON: plan.md §6.4 + AC-HRA-009 (`./moai harness --help | grep ... ≥6 matches`) 강제
+// @MX:NOTE: [AUTO] V3R5 harness CLI unified factory — SPEC-V3R5-HARNESS-AUTONOMY-001 §6 + AC-HRA-009
+// @MX:NOTE: [AUTO] newHarnessRouterCmd() integrates 8 additional lifecycle/proposal verbs in V3R5
+// @MX:WARN: [AUTO] V3R5 supersedes the CLI retirement declared by SPEC-V3R4-HARNESS-001
+// @MX:REASON: plan.md §6.4 + AC-HRA-009 (`./moai harness --help | grep ... ≥6 matches`) enforcement
 
 import (
 	"encoding/json"
@@ -17,11 +17,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness/router"
 )
 
-// defaultHarnessConfigPath는 기본 harness.yaml 경로입니다.
-// internal/cli/harness.go:41의 harnessConfigPath 상수와 동일한 경로를 참조합니다.
+// defaultHarnessConfigPath is the default harness.yaml path.
+// References the same path as the harnessConfigPath constant at internal/cli/harness.go:41.
 const defaultHarnessConfigPath = ".moai/config/sections/harness.yaml"
 
-// harnessRouteJSONOutput은 --json 출력 스키마입니다.
+// harnessRouteJSONOutput is the --json output schema.
 // REQ-HRN-001-011, AC-HRN-001-06.
 type harnessRouteJSONOutput struct {
 	Level           string           `json:"level"`
@@ -32,26 +32,29 @@ type harnessRouteJSONOutput struct {
 	PlanAudit       bool             `json:"plan_audit"`
 }
 
-// newHarnessRouterCmd는 `moai harness` 부모 커맨드 팩토리입니다 (V3R5 unified).
+// newHarnessRouterCmd is the `moai harness` parent command factory (V3R5 unified).
 //
 // ARCHITECTURE DECISION (Option A — merge into router):
-// V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009는 `moai harness` 트리에서 다음 10개 동사가
-// 모두 노출되어야 한다고 명시합니다:
-//   - HRN-001 routing 동사: route, validate
-//   - V3R5 lifecycle 동사 (un-retired): status, apply, rollback, disable
-//   - V3R5 proposal-management 동사 (M4 신규): mute, mute-list, unmute, verify
+// V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009 mandates that the `moai harness` tree
+// expose all 10 of the following verbs:
+//   - HRN-001 routing verbs: route, validate
+//   - V3R5 lifecycle verbs (un-retired): status, apply, rollback, disable
+//   - V3R5 proposal-management verbs (new in M4): mute, mute-list, unmute, verify
 //
-// 이전 V3R4-HARNESS-001은 lifecycle 동사를 retirement했지만, V3R5는 명시적으로 이를
-// supersede합니다. 본 팩토리는 단일 부모 커맨드 아래 10개 서브커맨드를 모두 등록하여
-// AC-HRA-009 (`./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'`
-// 최소 6개 매칭)를 충족합니다.
+// V3R4-HARNESS-001 previously retired the lifecycle verbs, but V3R5 explicitly
+// supersedes that retirement. This factory registers all 10 subcommands under a
+// single parent command to satisfy AC-HRA-009
+// (`./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'`
+// must match at least 6 entries).
 //
-// 별도의 newHarnessCmd() (internal/cli/harness.go)는 SPEC-V3R4-HARNESS-001 §2.1의 deprecation
-// marker 계약에 따라 보존되지만 root 트리에 등록되지 않습니다 (TestHarnessFactoryStillCompiles 참조).
-// V3R5-supersedence 이후 TestHarnessRetirement는 lifecycle 동사 등록을 허용하도록 갱신되었습니다.
+// A separate newHarnessCmd() (internal/cli/harness.go) is preserved per the
+// deprecation marker contract in SPEC-V3R4-HARNESS-001 §2.1 but is no longer
+// registered in the root tree (see TestHarnessFactoryStillCompiles).
+// After the V3R5 supersedence, TestHarnessRetirement was updated to permit
+// lifecycle verb registration.
 //
-// @MX:ANCHOR: [AUTO] V3R5 harness 커맨드 팩토리 (route/validate + 8 lifecycle/proposal 동사)
-// @MX:REASON: fan_in >= 4: root.go 등록, harness_route_test.go, harness_test.go, harness_mute_test.go, AC-HRA-009 verification
+// @MX:ANCHOR: [AUTO] V3R5 harness command factory (route/validate + 8 lifecycle/proposal verbs)
+// @MX:REASON: fan_in >= 4: root.go registration, harness_route_test.go, harness_test.go, harness_mute_test.go, AC-HRA-009 verification
 func newHarnessRouterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "harness",
@@ -101,7 +104,7 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	return cmd
 }
 
-// newHarnessRouteCmd는 `moai harness route` 서브커맨드 팩토리입니다.
+// newHarnessRouteCmd is the `moai harness route` subcommand factory.
 // REQ-HRN-001-006/011, AC-HRN-001-02/03/06/09.
 func newHarnessRouteCmd() *cobra.Command {
 	var (
@@ -138,34 +141,34 @@ Examples:
 	return cmd
 }
 
-// runHarnessRoute는 `moai harness route` 커맨드를 실행합니다.
+// runHarnessRoute executes the `moai harness route` command.
 func runHarnessRoute(cmd *cobra.Command, specID string, jsonOutput bool, cfgPath string, baseDir string) error {
-	// harness.yaml 경로 결정
+	// Determine harness.yaml path
 	harnessPath := cfgPath
 	if harnessPath == "" {
 		harnessPath = defaultHarnessConfigPath
 	}
 
-	// harness.yaml 로드
+	// Load harness.yaml
 	cfg, err := config.LoadHarnessConfig(harnessPath)
 	if err != nil {
 		return fmt.Errorf("harness route: load config: %w", err)
 	}
 
-	// SPEC 파일 경로 해석: SPEC-ID → .moai/specs/{SPEC-ID}/spec.md
+	// Resolve SPEC file path: SPEC-ID → .moai/specs/{SPEC-ID}/spec.md
 	specPath, err := resolveSpecPath(specID, baseDir)
 	if err != nil {
 		return fmt.Errorf("harness route: resolve spec path: %w", err)
 	}
 
-	// 라우팅 수행
+	// Perform routing
 	r := router.New(cfg)
 	level, rationale, err := r.RouteFromFile(specPath, cfg)
 	if err != nil {
 		return fmt.Errorf("harness route: routing failed: %w", err)
 	}
 
-	// 노력 수준 및 evaluator 프로필 결정
+	// Determine effort level and evaluator profile
 	effort := router.EffortForLevel(level, cfg)
 	evaluatorProfile := cfg.DefaultProfile
 	sprintContract := false
@@ -179,7 +182,7 @@ func runHarnessRoute(cmd *cobra.Command, specID string, jsonOutput bool, cfgPath
 		planAudit = levelCfg.PlanAudit.Enabled
 	}
 
-	// 출력 포맷
+	// Output format
 	if jsonOutput {
 		output := harnessRouteJSONOutput{
 			Level:            string(level),
@@ -195,7 +198,7 @@ func runHarnessRoute(cmd *cobra.Command, specID string, jsonOutput bool, cfgPath
 		}
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 	} else {
-		// plaintext 출력
+		// plaintext output
 		w := cmd.OutOrStdout()
 		_, _ = fmt.Fprintf(w, "SPEC: %s\n", specID)
 		_, _ = fmt.Fprintf(w, "Level: %s\n", level)
@@ -212,10 +215,10 @@ func runHarnessRoute(cmd *cobra.Command, specID string, jsonOutput bool, cfgPath
 	return nil
 }
 
-// resolveSpecPath는 SPEC-ID 문자열로부터 spec.md 파일 경로를 결정합니다.
-// baseDir가 주어지면 그것을 기준으로 하고, 없으면 현재 작업 디렉토리를 기준으로 합니다.
+// resolveSpecPath determines the spec.md file path from a SPEC-ID string.
+// Uses baseDir as the root if provided; otherwise uses the current working directory.
 func resolveSpecPath(specID string, baseDir string) (string, error) {
-	// 기준 디렉토리 결정
+	// Determine base directory
 	base := baseDir
 	if base == "" {
 		var err error

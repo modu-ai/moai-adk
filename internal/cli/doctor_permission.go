@@ -24,7 +24,7 @@ func init() {
 	permissionCmd.Flags().Bool("trace", false, "Show full resolution trace as JSON")
 	permissionCmd.Flags().Bool("dry-run", false, "Show resolution without executing")
 
-	// T-RT002-28: 추가 플래그 — --all-tiers, --mode, --fork, --format.
+	// T-RT002-28: additional flags — --all-tiers, --mode, --fork, --format.
 	permissionCmd.Flags().Bool("all-tiers", false, "Show all 8 tiers in the resolution output")
 	permissionCmd.Flags().String("mode", "default", "Permission mode to simulate (default|acceptEdits|bypassPermissions|plan|bubble)")
 	permissionCmd.Flags().Bool("fork", false, "Simulate fork agent context (IsFork=true)")
@@ -56,7 +56,7 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 
 	out := cmd.OutOrStdout()
 
-	// 모드 파싱.
+	// Parse mode.
 	mode, err := permission.ParsePermissionMode(modeStr)
 	if err != nil {
 		mode = permission.ModeDefault
@@ -67,7 +67,7 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 	ctx := permission.ResolveContext{
 		Mode:            mode,
 		IsFork:          isFork,
-		ParentAvailable: !isFork, // fork 시 parent available 기본 true.
+		ParentAvailable: !isFork, // parent available defaults to true when fork is set.
 		ForkDepth:       0,
 		IsInteractive:   true,
 		StrictMode:      false,
@@ -80,16 +80,16 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("resolve error: %w", err)
 	}
 
-	// --format json 출력.
+	// --format json output.
 	if format == "json" {
 		return printJSONResult(out, result, tool, input)
 	}
 
-	// Human-readable 출력.
+	// Human-readable output.
 	_, _ = fmt.Fprintf(out, "Permission Resolution Result:\n\n")
 	_, _ = fmt.Fprintf(out, "%s\n", result.String())
 
-	// --all-tiers: 모든 tier 출력.
+	// --all-tiers: emit all tiers.
 	if allTiers {
 		_, _ = fmt.Fprintln(out, "\n--- All Tiers Inspected ---")
 		for i, try := range result.Trace.Tries {
@@ -102,7 +102,7 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// --trace: JSON trace 출력.
+	// --trace: emit JSON trace.
 	if showTrace {
 		traceJSON, err := result.ExportTrace()
 		if err != nil {
@@ -118,8 +118,8 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 			_, _ = fmt.Fprintf(out, "  %s\n", traceJSON)
 		}
 
-		// hook tier sentinel 을 "tier": "hook" 으로 stringify.
-		// T-RT002-28: result.ExportTrace() 의 hook tier sentinel (config.Source(999)) 처리.
+		// Stringify the hook tier sentinel as "tier": "hook".
+		// T-RT002-28: handle the hook tier sentinel (config.Source(999)) emitted by result.ExportTrace().
 		_, _ = fmt.Fprintln(out, "  (hook tier displayed as \"hook\" in trace output)")
 	}
 
@@ -131,8 +131,8 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// printJSONResult JSON 형식으로 resolution 결과를 출력한다.
-// T-RT002-28: --format json 지원.
+// printJSONResult emits the resolution result in JSON format.
+// T-RT002-28: --format json support.
 func printJSONResult(out interface{ Write(p []byte) (n int, err error) }, result *permission.ResolveResult, tool, input string) error {
 	type jsonOutput struct {
 		Tool       string `json:"tool"`

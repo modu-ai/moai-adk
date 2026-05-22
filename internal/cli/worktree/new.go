@@ -47,9 +47,10 @@ var tmuxSessionFactory = func() tmux.SessionManager {
 // BODP audit trail must always anchor on git root, never os.Getwd(), because
 // test processes run with cwd=package-dir which differs from the repo root.
 //
-// @MX:NOTE BODP audit trail 경로 버그 수정 (SPEC-V3R3-CI-AUTONOMY-001 Wave 7):
-// os.Getwd()는 테스트 실행 시 패키지 디렉터리를 반환하여 audit trail이
-// internal/cli/worktree/.moai/... 에 누수됨. 이 var로 테스트가 tempDir 주입 가능.
+// @MX:NOTE BODP audit trail path bug fix (SPEC-V3R3-CI-AUTONOMY-001 Wave 7):
+// os.Getwd() returns the package directory during test execution, causing the
+// audit trail to leak into internal/cli/worktree/.moai/... — this var allows
+// tests to inject a tempDir.
 var gitRepoRootFunc = func() (string, error) {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	return strings.TrimSpace(string(out)), err
@@ -112,7 +113,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get from-current flag: %w", err)
 	}
 	// @MX:WARN --base and --from-current must be mutually exclusive.
-	// @MX:REASON 사용자 의도 모호성 방지 (BODP rationale clarity).
+	// @MX:REASON Prevent user-intent ambiguity (BODP rationale clarity).
 	if baseFlag != bodp.DefaultBase && fromCurrent {
 		return fmt.Errorf("--base and --from-current are mutually exclusive")
 	}
@@ -205,7 +206,7 @@ func dirHasEntries(dir string) bool {
 // determineBase resolves the effective base branch from CLI flags. The caller
 // is responsible for verifying mutual exclusion of --base and --from-current.
 //
-// @MX:NOTE 결정 우선순위: --from-current > --base > default (origin/main).
+// @MX:NOTE Decision precedence: --from-current > --base > default (origin/main).
 func determineBase(baseFlag string, fromCurrent bool) string {
 	if fromCurrent {
 		return "HEAD"
@@ -225,9 +226,9 @@ func determineBase(baseFlag string, fromCurrent bool) string {
 // cwd=package-dir, which would leak audit trail files into
 // internal/cli/worktree/.moai/branches/decisions/ instead of the repo root.
 //
-// @MX:NOTE CLI path은 사용자 프롬프트 호출 절대 금지 — agent-common-protocol
+// @MX:NOTE CLI path MUST NOT invoke user prompts — agent-common-protocol
 // §User Interaction Boundary HARD (orchestrator-only). BODP signal collection
-// 은 audit trail 목적 (decision input은 사용자가 plan/worktree 직접 선택).
+// is for audit-trail purposes only (decision input comes from the user choosing plan/worktree directly).
 func writeWorktreeAuditTrail(repoRoot, specID, branchName, base string) error {
 	currentBranch, _ := gitWorktreeCmd("rev-parse", "--abbrev-ref", "HEAD")
 	currentBranch = strings.TrimSpace(currentBranch)

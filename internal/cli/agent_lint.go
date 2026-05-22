@@ -276,8 +276,8 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 	var violations []LintViolation
 
 	// LR-01: Literal AskUserQuestion in body (excluding code blocks)
-	// @MX:NOTE: [AUTO] isOrchestrator 검사 — tools:에 AskUserQuestion이 선언된 에이전트는 LR-01 면제.
-	// OQ-1 해결 방식 A (data-driven): 오케스트레이터 자체 선언, 중앙 허용 목록 불필요. (SPEC-V3R2-ORC-002)
+	// @MX:NOTE: [AUTO] isOrchestrator check — agents declaring AskUserQuestion in tools: are exempt from LR-01.
+	// OQ-1 resolution A (data-driven): orchestrator self-declares, no central allowlist needed. (SPEC-V3R2-ORC-002)
 	if !isOrchestrator(frontmatter) {
 		violations = append(violations, checkLiteralAskUserQuestion(path, bodyText)...)
 	}
@@ -528,7 +528,7 @@ var validEffortValues = map[string]struct{}{
 }
 
 // checkEffortMatrixDrift checks for LR-12: effort drift from canonical matrix
-// @MX:NOTE: LR-12 — 17-에이전트 매트릭스 drift 감지; spec.md §1.1 의 R5 audit 32% drift 비율을 0% 로 차단; out-of-roster 에이전트 (e.g., manager-brain) 는 LR-12 적용 제외
+// @MX:NOTE: LR-12 — 17-agent matrix drift detection; blocks the 32% drift ratio in spec.md §1.1 R5 audit to 0%; out-of-roster agents (e.g., manager-brain) are exempt from LR-12
 func checkEffortMatrixDrift(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
 
@@ -588,7 +588,7 @@ func checkInvalidEffortEnum(file string, fm AgentFrontmatter) []LintViolation {
 }
 
 // fixedBudgetTokensRegex matches budget_tokens: <integer> patterns
-// @MX:WARN @MX:REASON: budget_tokens 정규식 v1은 code block 내 false positive 가능; Opus 4.7 Adaptive Thinking 가 HTTP 400 으로 fixed budget 거부하므로 false positive 비용보다 회귀 비용이 높음 — v1 기준 채택, v3.1에서 code-block-aware 확장 검토
+// @MX:WARN @MX:REASON: budget_tokens regex v1 may produce false positives inside code blocks; since Opus 4.7 Adaptive Thinking rejects fixed budget with HTTP 400, the cost of regression outweighs false positive cost — adopt v1 baseline, consider code-block-aware extension in v3.1
 var fixedBudgetTokensRegex = regexp.MustCompile(`\bbudget_tokens\s*:\s*\d+\b`)
 
 // checkFixedBudgetTokens checks for LR-14: fixed budget_tokens prohibition
@@ -846,18 +846,18 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 func checkSandboxJustification(file string, frontmatterText []byte) []LintViolation {
 	var violations []LintViolation
 
-	// 빠른 검색: frontmatter에 "sandbox: none" 또는 "sandbox: \"none\"" 패턴이 있는지 확인
+	// Quick search: check if frontmatter contains "sandbox: none" or "sandbox: \"none\"" pattern
 	sandboxNonePattern := regexp.MustCompile(`(?m)^\s*sandbox:\s*["']?none["']?\s*$`)
 	if !sandboxNonePattern.Match(frontmatterText) {
-		return violations // sandbox: none 없음 — 검사 불필요
+		return violations // No sandbox: none — no check needed
 	}
 
-	// sandbox: none 발견 — justification 확인
-	// frontmatter에서 "justification:" 또는 "sandbox.justification:"을 탐색
+	// sandbox: none found — verify justification
+	// Search for "justification:" or "sandbox.justification:" in frontmatter
 	justificationPattern := regexp.MustCompile(`(?m)^\s*(sandbox\.)?justification:\s*\S`)
 	hasJustification := justificationPattern.Match(frontmatterText)
 
-	// sandbox: none 라인 번호 탐색
+	// Locate the line number of sandbox: none
 	lines := bytes.Split(frontmatterText, []byte("\n"))
 	lineNum := 1
 	for i, line := range lines {
@@ -876,7 +876,7 @@ func checkSandboxJustification(file string, frontmatterText []byte) []LintViolat
 			Message:  "sandbox: none requires sandbox.justification field (SPEC-V3R2-RT-003 REQ-033/043) — AGENT_LINT_NO_SANDBOX_NO_JUSTIFICATION",
 		})
 	} else {
-		// justification 있음 — 경고로 내용 표시 (moai doctor sandbox에서도 노출)
+		// Justification present — emit as warning to surface content (also exposed by moai doctor sandbox)
 		violations = append(violations, LintViolation{
 			Rule:     "LR-33",
 			Severity: SeverityWarning,

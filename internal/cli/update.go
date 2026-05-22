@@ -92,10 +92,10 @@ func init() {
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
 // @MX:REASON: [AUTO] fan_in=3, called from update.go init(), coverage_test.go, remaining_coverage_test.go
-// @MX:NOTE: [AUTO] M4-S4d-1 DDD 마이그레이션 — 18개 print site를 tui primitives로 변환.
-// 패턴: tui.KV (Current/Latest/New version), tui.CheckLine (warn/run/err 상태), tui.Pill
-// (Binary updated · Already up to date · Skipped 등 final outcome). 본문 보존, 외부 caller
-// 무영향. 디자인 소스: screens.jsx ScreenUpdate (M4-S4a~c IMPROVE 패턴 mirror).
+// @MX:NOTE: [AUTO] M4-S4d-1 DDD migration — converts 18 print sites to tui primitives.
+// Pattern: tui.KV (Current/Latest/New version), tui.CheckLine (warn/run/err states), tui.Pill
+// (final outcomes such as Binary updated · Already up to date · Skipped). Body preserved,
+// no impact on external callers. Design source: screens.jsx ScreenUpdate (mirrors the M4-S4a~c IMPROVE pattern).
 //
 // runUpdate checks for binary updates first, then synchronizes embedded
 // templates with the project directory. If a newer binary is installed,
@@ -294,8 +294,8 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 	return false
 }
 
-// @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD 마이그레이션. New version 알림은
-// tui.KV 두 줄(New / Current), 진행 상태는 tui.CheckLine "run", 결과는 tui.Pill PillOk.
+// @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses
+// two tui.KV lines (New / Current), progress is tui.CheckLine "run", and the result is a tui.Pill PillOk.
 //
 // runBinaryUpdateStep checks whether a newer moai binary is available and,
 // if so, downloads and installs it. The caller should re-exec the process
@@ -394,9 +394,10 @@ func runTemplateSync(cmd *cobra.Command) error {
 	return runTemplateSyncWithReporter(cmd, nil, false)
 }
 
-// @MX:NOTE: [AUTO] runTemplateSyncWithReporter — M4-S4d-2 DDD 마이그레이션. Top-level header/section/
-// final outcome을 tui.KV / tui.Section / tui.CheckLine / tui.Pill로 변환. Sub-step micro 메시지
-// (\r-prefixed sym* helpers)는 progress 표시 특성상 보존. 디자인 소스: screens.jsx ScreenUpdate.
+// @MX:NOTE: [AUTO] runTemplateSyncWithReporter — M4-S4d-2 DDD migration. Top-level header/section/
+// final-outcome lines are converted to tui.KV / tui.Section / tui.CheckLine / tui.Pill. Sub-step
+// micro messages (\r-prefixed sym* helpers) are preserved because they drive the progress display.
+// Design source: screens.jsx ScreenUpdate.
 //
 // runTemplateSyncWithReporter synchronizes templates with progress reporting.
 func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool) error {
@@ -747,8 +748,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	return nil
 }
 
-// @MX:NOTE: [AUTO] runTemplateSyncWithProgress — M4-S4d-2 DDD 마이그레이션. Console reporter
-// wrapper. tui.Pill (skip), tui.Section (analyzing), tui.Pill (cancel) 핵심 출력만 변환.
+// @MX:NOTE: [AUTO] runTemplateSyncWithProgress — M4-S4d-2 DDD migration. Console reporter
+// wrapper. Only the key outputs are converted: tui.Pill (skip), tui.Section (analyzing), tui.Pill (cancel).
 //
 // runTemplateSyncWithProgress runs template sync with simple console output.
 func runTemplateSyncWithProgress(cmd *cobra.Command) error {
@@ -1177,7 +1178,7 @@ func analyzeMergeChanges(deployer template.Deployer, projectRoot string) merge.M
 	return buildMergeAnalysis(files)
 }
 
-// @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD 마이그레이션. tui.Section header,
+// @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD migration. tui.Section header,
 // tui.KV (Shell/Config/Explanation), tui.CheckLine (Changes list), tui.Pill (final outcome).
 //
 // runShellEnvConfig configures shell environment variables for Claude Code.
@@ -1970,8 +1971,8 @@ func deepMergeMaps(newMap, oldMap map[string]any) map[string]any {
 
 // runInitWizard runs the configuration wizard for reconfiguring an existing project.
 // Used by 'moai update -c/--config' to edit project settings.
-// @MX:NOTE: [AUTO] runInitWizard — M4-S4d-3 DDD 마이그레이션. tui.Pill (uninitialized warning,
-// cancelled, success) + tui.Section (Reconfiguration header, AC-017 emoji 제거).
+// @MX:NOTE: [AUTO] runInitWizard — M4-S4d-3 DDD migration. tui.Pill (uninitialized warning,
+// cancelled, success) + tui.Section (Reconfiguration header; AC-017 emoji removed).
 func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
@@ -2576,7 +2577,7 @@ func execCommand(name string, args ...string) (string, error) {
 
 // detectGoBinPathForUpdate detects the Go binary installation path for template rendering.
 // Returns the path where Go binaries are installed (e.g., "/home/user/go/bin").
-// REQ-V3R2-RT-007-001: gobin.Detect helper를 사용하여 중복 제거.
+// REQ-V3R2-RT-007-001: deduplicated via the gobin.Detect helper.
 func detectGoBinPathForUpdate(homeDir string) string {
 	return gobin.Detect(homeDir)
 }

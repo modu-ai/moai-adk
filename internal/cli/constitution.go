@@ -310,7 +310,7 @@ func runConstitutionValidate(w, wWarn io.Writer, projectDir, registryPath string
 	return nil
 }
 
-// exitCodeError는 특정 exit code 를 요청하는 오류 타입.
+// exitCodeError is an error type that requests a specific exit code.
 type exitCodeError struct {
 	code int
 	msg  string
@@ -318,7 +318,7 @@ type exitCodeError struct {
 
 func (e *exitCodeError) Error() string { return e.msg }
 
-// renderValidateJSON은 validate 결과를 JSON 형식으로 출력한다.
+// renderValidateJSON emits the validate result in JSON format.
 func renderValidateJSON(w io.Writer, result constitution.ValidationResult) error {
 	type jsonEntry struct {
 		ID     string `json:"id,omitempty"`
@@ -366,7 +366,7 @@ func renderValidateJSON(w io.Writer, result constitution.ValidationResult) error
 	return nil
 }
 
-// renderValidateText는 validate 결과를 텍스트 형식으로 출력한다.
+// renderValidateText emits the validate result in text format.
 func renderValidateText(w io.Writer, result constitution.ValidationResult) {
 	if result.Skipped {
 		_, _ = fmt.Fprintf(w, "constitution validate: SKIPPED (MOAI_CONSTITUTION_SKIP_VALIDATE=1)\n")

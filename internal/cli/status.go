@@ -43,7 +43,7 @@ Skip with %s=1 if intentional.
 //   - bodp.HasAuditTrail returns true for currentBranch
 //   - audit trail directory does not exist (fresh project — false-positive guard)
 //
-// @MX:NOTE Reminder는 status command 끝에 호출. Block 안 함 (REQ-CIAUT-050).
+// @MX:NOTE Reminder is invoked at the end of the status command. Does not block (REQ-CIAUT-050).
 func emitOffProtocolReminder(repoRoot, currentBranch string, w io.Writer) {
 	if os.Getenv(envNoBODPReminder) == "1" {
 		return
@@ -74,7 +74,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-// @MX:NOTE: [AUTO] status 명령어 출력 — tui.Box + tui.Section + tui.KV + tui.Pill로 구성.
+// @MX:NOTE: [AUTO] status command output — composed of tui.Box + tui.Section + tui.KV + tui.Pill.
 // runStatus displays the current project status using the internal/tui design system.
 // All colours are sourced from resolveTheme(); no hex literals appear in this function.
 func runStatus(cmd *cobra.Command, _ []string) error {
@@ -91,7 +91,7 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 	// Build body lines using tui primitives.
 	var bodyLines []string
 
-	// Section: 프로젝트 (Project information)
+	// Section: Project (project information)
 	bodyLines = append(bodyLines, tui.Section("Project", tui.SectionOpts{Theme: &th}))
 	bodyLines = append(bodyLines, tui.KV("Project", projectName, tui.KVOpts{Theme: &th, KeyWidth: 8}))
 	bodyLines = append(bodyLines, tui.KV("ADK", "moai-adk "+version.GetVersion(), tui.KVOpts{Theme: &th, KeyWidth: 8}))

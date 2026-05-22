@@ -1,16 +1,16 @@
 package cli
 
-// glm_tools.go — SPEC-GLM-MCP-001: `moai glm tools enable|disable` 서브커맨드
+// glm_tools.go — SPEC-GLM-MCP-001: `moai glm tools enable|disable` subcommands
 //
-// @MX:NOTE: [AUTO] Z.AI 공식 @z_ai/mcp-server 를 ~/.claude.json mcpServers 에 등록/해제하는 CLI
-// @MX:NOTE: [AUTO] 토큰은 기존 loadGLMKey() 헬퍼 재사용 (GLM_API_KEY from ~/.moai/.env.glm)
-// @MX:NOTE: [AUTO] glm.go 의 SPEC-GLM-001 env 정책 (DISABLE_BETAS) 과 완전 독립
+// @MX:NOTE: [AUTO] CLI that registers/deregisters the official Z.AI @z_ai/mcp-server in ~/.claude.json mcpServers
+// @MX:NOTE: [AUTO] Reuses the existing loadGLMKey() helper for the token (GLM_API_KEY from ~/.moai/.env.glm)
+// @MX:NOTE: [AUTO] Fully independent from glm.go's SPEC-GLM-001 env policy (DISABLE_BETAS)
 //
-// @MX:WARN: [AUTO] ~/.claude.json 에 atomic write (temp file + rename) 사용
-// @MX:REASON: 비원자적 쓰기는 Claude Code 세션 중 파일 손상 가능, POSIX rename atomicity 로 방어
+// @MX:WARN: [AUTO] Uses atomic write (temp file + rename) when modifying ~/.claude.json
+// @MX:REASON: Non-atomic writes can corrupt the file mid-Claude Code session; defended via POSIX rename atomicity
 //
-// @MX:ANCHOR: [AUTO] runEnableMCPServer, disableMCPServerSafe — 외부 테스트와 서브커맨드에서 직접 호출
-// @MX:REASON: GWT 시나리오 22개 모두 이 두 함수를 통해 테스트됨, 시그니처 변경 시 전체 테스트 영향
+// @MX:ANCHOR: [AUTO] runEnableMCPServer, disableMCPServerSafe — called directly by external tests and subcommands
+// @MX:REASON: All 22 GWT scenarios exercise these two functions; signature changes affect the entire test surface
 
 import (
 	"encoding/json"
@@ -26,20 +26,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ─── 상수 ──────────────────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────
 
 const (
-	// zaiMCPServerKey 는 mcpServers 에서 사용하는 Z.AI MCP 서버의 키 이름
+	// zaiMCPServerKey is the key name of the Z.AI MCP server used in mcpServers
 	zaiMCPServerKey = "zai-mcp-server"
 
-	// zaiNPXPackage 는 npx 로 실행할 패키지 이름
+	// zaiNPXPackage is the package name executed via npx
 	zaiNPXPackage = "@z_ai/mcp-server@latest"
 
-	// nodeMinMajorVersion 은 npx 실행에 필요한 최소 Node.js major 버전
+	// nodeMinMajorVersion is the minimum Node.js major version required to run npx
 	nodeMinMajorVersion = 22
 )
 
-// 지원 도구명 목록
+// Supported tool name list
 var validToolNames = map[string]bool{
 	"vision":    true,
 	"websearch": true,
@@ -47,86 +47,86 @@ var validToolNames = map[string]bool{
 	"all":       true,
 }
 
-// errNodeNotFound 는 PATH 에서 node 를 찾지 못했을 때 반환하는 센티넬 에러
+// errNodeNotFound is the sentinel error returned when node is not found on PATH
 var errNodeNotFound = errors.New("no Node.js executable found on PATH")
 
-// ─── 테스트 주입 지점 (함수 변수) ─────────────────────────────────────────
+// ─── Test injection points (function variables) ───────────────────────────
 
-// userHomeDirFn 은 홈 디렉토리 조회 함수 변수 (테스트 오버라이드용)
+// userHomeDirFn is the home-directory lookup function variable (for test override)
 var userHomeDirFn = userHomeDir
 
-// detectNodeFn 은 node 버전 감지 함수 변수 (테스트 오버라이드용)
-// 반환값: (major 버전 정수, 버전 문자열 e.g. "v22.5.0", 에러)
+// detectNodeFn is the node-version detection function variable (for test override)
+// Return values: (major version int, version string e.g. "v22.5.0", error)
 var detectNodeFn = detectNodeVersion
 
-// ─── Cobra 커맨드 정의 ─────────────────────────────────────────────────────
+// ─── Cobra command definitions ─────────────────────────────────────────────
 
-// glmToolsCmd — `moai glm tools` 루트 커맨드
+// glmToolsCmd — `moai glm tools` root command
 var glmToolsCmd = &cobra.Command{
 	Use:   "tools",
-	Short: "Z.AI MCP 서버 도구 관리 (enable/disable)",
-	Long: `Z.AI MCP 서버를 Claude Code 에 등록하거나 해제합니다.
+	Short: "Manage Z.AI MCP server tools (enable/disable)",
+	Long: `Register or unregister the Z.AI MCP server with Claude Code.
 
-사전 조건:
-  - Node.js >= v22.0.0 (npx 실행용)
-  - GLM API 키 설정: moai glm setup <api-key>
+Prerequisites:
+  - Node.js >= v22.0.0 (required to run npx)
+  - GLM API key configured: moai glm setup <api-key>
 
-서브커맨드:
-  enable  [vision|websearch|webreader|all]   Z.AI MCP 서버 등록
-  disable [vision|websearch|webreader|all]   Z.AI MCP 서버 해제
+Subcommands:
+  enable  [vision|websearch|webreader|all]   Register the Z.AI MCP server
+  disable [vision|websearch|webreader|all]   Unregister the Z.AI MCP server
 
-예시:
+Examples:
   moai glm tools enable all
   moai glm tools disable all
   moai glm tools enable vision --scope project`,
 }
 
-// glmToolsEnableCmd — `moai glm tools enable` 커맨드
+// glmToolsEnableCmd — `moai glm tools enable` command
 var glmToolsEnableCmd = &cobra.Command{
 	Use:   "enable [vision|websearch|webreader|all]",
-	Short: "Z.AI MCP 서버를 ~/.claude.json 에 등록",
+	Short: "Register the Z.AI MCP server in ~/.claude.json",
 	Args:  cobra.MaximumNArgs(1),
 	RunE:  runGLMToolsEnable,
 }
 
-// glmToolsDisableCmd — `moai glm tools disable` 커맨드
+// glmToolsDisableCmd — `moai glm tools disable` command
 var glmToolsDisableCmd = &cobra.Command{
 	Use:   "disable [vision|websearch|webreader|all]",
-	Short: "Z.AI MCP 서버를 ~/.claude.json 에서 해제",
+	Short: "Unregister the Z.AI MCP server from ~/.claude.json",
 	Args:  cobra.MaximumNArgs(1),
 	RunE:  runGLMToolsDisable,
 }
 
 func init() {
-	// --scope 플래그: project 시 .mcp.json 에 기록 (REQ-GMC-008)
+	// --scope flag: write to .mcp.json when scope is project (REQ-GMC-008)
 	glmToolsEnableCmd.Flags().String("scope", "user", "등록 범위: user (기본, ~/.claude.json) 또는 project (.mcp.json)")
 	glmToolsDisableCmd.Flags().String("scope", "user", "해제 범위: user (기본) 또는 project (.mcp.json)")
 
-	// --force 플래그: 토큰 불일치 시 강제 덮어쓰기 (REQ-GMC-006)
+	// --force flag: force overwrite on token mismatch (REQ-GMC-006)
 	glmToolsEnableCmd.Flags().Bool("force", false, "기존 토큰이 달라도 강제 덮어쓰기")
 
 	glmToolsCmd.AddCommand(glmToolsEnableCmd, glmToolsDisableCmd)
 
-	// glmCmd 의 DisableFlagParsing=true 이므로 수동 라우팅에 "tools" 케이스 추가 필요.
-	// glm.go 의 runGLM 에서 args[0]=="tools" 를 처리하도록 init() 에서 subcommand 등록만 함.
+	// Because glmCmd has DisableFlagParsing=true, the manual routing requires an explicit "tools" case.
+	// init() here only registers the subcommand; runGLM in glm.go dispatches args[0]=="tools".
 	glmCmd.AddCommand(glmToolsCmd)
 }
 
-// ─── 커맨드 핸들러 ─────────────────────────────────────────────────────────
+// ─── Command handlers ──────────────────────────────────────────────────────
 
-// runGLMToolsEnable — `moai glm tools enable [도구명]` 실행
+// runGLMToolsEnable — runs `moai glm tools enable [tool-name]`
 func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 	toolName := "all"
 	if len(args) > 0 {
 		toolName = args[0]
 	}
 
-	// (a) 도구명 검증 (REQ-GMC-001, GWT-22)
+	// (a) Validate tool name (REQ-GMC-001, GWT-22)
 	if err := validateToolName(toolName); err != nil {
 		return err
 	}
 
-	// (b) GLM 토큰 로드 (REQ-GMC-007, GWT-12)
+	// (b) Load GLM token (REQ-GMC-007, GWT-12)
 	token := loadGLMKey()
 	if token == "" {
 		return fmt.Errorf(
@@ -137,7 +137,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	// (c) Node.js 버전 검증 (REQ-GMC-009, GWT-14, GWT-15)
+	// (c) Validate Node.js version (REQ-GMC-009, GWT-14, GWT-15)
 	major, versionStr, err := detectNodeFn()
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
@@ -162,7 +162,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	// (d) scope 결정 (REQ-GMC-008, GWT-13)
+	// (d) Determine scope (REQ-GMC-008, GWT-13)
 	scope, _ := cmd.Flags().GetString("scope")
 	force, _ := cmd.Flags().GetBool("force")
 
@@ -171,7 +171,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("설정 파일 경로 결정 실패: %w", err)
 	}
 
-	// (e) 기존 엔트리 + force 처리 후 enable (REQ-GMC-003, REQ-GMC-006)
+	// (e) Enable after handling existing entry + force flag (REQ-GMC-003, REQ-GMC-006)
 	if force {
 		if err := runEnableMCPServer(configPath, token); err != nil {
 			return err
@@ -188,7 +188,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// (f) 성공 메시지 출력 (REQ-GMC-003, GWT-5)
+	// (f) Emit success message (REQ-GMC-003, GWT-5)
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Z.AI MCP 서버 활성화 완료")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "활성화된 도구:")
@@ -204,26 +204,26 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// runGLMToolsDisable — `moai glm tools disable [도구명]` 실행
+// runGLMToolsDisable — runs `moai glm tools disable [tool-name]`
 func runGLMToolsDisable(cmd *cobra.Command, args []string) error {
 	toolName := "all"
 	if len(args) > 0 {
 		toolName = args[0]
 	}
 
-	// 도구명 검증 (REQ-GMC-001, GWT-22)
+	// Validate tool name (REQ-GMC-001, GWT-22)
 	if err := validateToolName(toolName); err != nil {
 		return err
 	}
 
-	// scope 결정 (REQ-GMC-008)
+	// Determine scope (REQ-GMC-008)
 	scope, _ := cmd.Flags().GetString("scope")
 	configPath, err := resolveConfigPath(scope)
 	if err != nil {
 		return fmt.Errorf("설정 파일 경로 결정 실패: %w", err)
 	}
 
-	// 엔트리 제거 (REQ-GMC-004, GWT-6, GWT-7)
+	// Remove entry (REQ-GMC-004, GWT-6, GWT-7)
 	removed, err := disableMCPServerSafe(configPath)
 	if err != nil {
 		return err
@@ -243,10 +243,10 @@ func runGLMToolsDisable(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// ─── 핵심 로직 함수 ────────────────────────────────────────────────────────
+// ─── Core logic functions ──────────────────────────────────────────────────
 
-// resolveConfigPath 는 scope 에 따라 설정 파일 경로를 반환한다.
-// scope "project" → .mcp.json (cwd 기준), 그 외 → ~/.claude.json (REQ-GMC-008)
+// resolveConfigPath returns the config file path based on scope.
+// scope "project" → .mcp.json (relative to cwd); otherwise → ~/.claude.json (REQ-GMC-008)
 func resolveConfigPath(scope string) (string, error) {
 	if scope == "project" {
 		cwd, err := os.Getwd()
@@ -255,7 +255,7 @@ func resolveConfigPath(scope string) (string, error) {
 		}
 		return filepath.Join(cwd, ".mcp.json"), nil
 	}
-	// 기본: user scope → ~/.claude.json
+	// Default: user scope → ~/.claude.json
 	home, err := userHomeDirFn()
 	if err != nil {
 		return "", fmt.Errorf("홈 디렉토리 조회 실패: %w", err)
@@ -263,7 +263,7 @@ func resolveConfigPath(scope string) (string, error) {
 	return filepath.Join(home, ".claude.json"), nil
 }
 
-// validateToolName 은 도구명이 유효한지 검증한다 (REQ-GMC-001, GWT-22)
+// validateToolName verifies that the tool name is valid (REQ-GMC-001, GWT-22)
 func validateToolName(name string) error {
 	if validToolNames[name] {
 		return nil
@@ -274,7 +274,7 @@ func validateToolName(name string) error {
 	)
 }
 
-// buildZAIMCPEntry 는 Z.AI MCP 서버 엔트리를 구성한다 (REQ-GMC-003)
+// buildZAIMCPEntry constructs a Z.AI MCP server entry (REQ-GMC-003)
 func buildZAIMCPEntry(token string) map[string]any {
 	return map[string]any{
 		"command": "npx",
@@ -286,15 +286,15 @@ func buildZAIMCPEntry(token string) map[string]any {
 	}
 }
 
-// buildBackupFilename 은 백업 파일명을 생성한다 (REQ-GMC-005)
-// 형식: .claude.json.bak-<ISO ts> (콜론을 하이픈으로 대체하여 파일명 안전)
+// buildBackupFilename generates a backup file name (REQ-GMC-005)
+// Format: .claude.json.bak-<ISO ts> (colons replaced with hyphens for filename safety)
 func buildBackupFilename(t time.Time) string {
 	ts := t.UTC().Format("2006-01-02T15-04-05Z")
 	return ".claude.json.bak-" + ts
 }
 
-// readClaudeJSON 은 configPath 에서 JSON 을 읽고 파싱한다.
-// 파일이 없으면 빈 구조({})를 반환한다.
+// readClaudeJSON reads and parses JSON from configPath.
+// Returns an empty struct ({}) when the file does not exist.
 func readClaudeJSON(configPath string) (map[string]any, error) {
 	data, err := os.ReadFile(configPath)
 	if os.IsNotExist(err) {
@@ -313,8 +313,8 @@ func readClaudeJSON(configPath string) (map[string]any, error) {
 	return root, nil
 }
 
-// writeClaudeJSONAtomic 은 configPath 에 JSON 을 atomic write 한다 (REQ-GMC-005, R7)
-// atomic write: 임시 파일 → os.Rename (POSIX 원자성 보장)
+// writeClaudeJSONAtomic performs an atomic JSON write to configPath (REQ-GMC-005, R7)
+// Atomic write: temp file → os.Rename (POSIX atomicity guarantee)
 func writeClaudeJSONAtomic(configPath string, root map[string]any) error {
 	jsonBytes, err := json.MarshalIndent(root, "", "  ")
 	if err != nil {
@@ -331,7 +331,7 @@ func writeClaudeJSONAtomic(configPath string, root map[string]any) error {
 		return fmt.Errorf("임시 파일 생성 실패: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // 실패 시 임시 파일 정리
+	defer func() { _ = os.Remove(tmpName) }() // Clean up the temp file on failure
 
 	if _, err := tmp.Write(jsonBytes); err != nil {
 		_ = tmp.Close()
@@ -341,19 +341,19 @@ func writeClaudeJSONAtomic(configPath string, root map[string]any) error {
 		return fmt.Errorf("임시 파일 닫기 실패: %w", err)
 	}
 
-	// 원자적 rename
+	// Atomic rename
 	if err := os.Rename(tmpName, configPath); err != nil {
 		return fmt.Errorf("파일 교체 실패: %w", err)
 	}
 	return nil
 }
 
-// backupClaudeJSON 은 configPath 의 현재 내용을 백업한다 (REQ-GMC-005)
-// 파일이 없으면 백업하지 않는다.
+// backupClaudeJSON backs up the current contents of configPath (REQ-GMC-005)
+// Does not back up when the file does not exist.
 func backupClaudeJSON(configPath string) error {
 	data, err := os.ReadFile(configPath)
 	if os.IsNotExist(err) {
-		return nil // 파일 없으면 백업 불필요
+		return nil // No backup needed when the file does not exist
 	}
 	if err != nil {
 		return fmt.Errorf("백업 대상 파일 읽기 실패: %w", err)
@@ -368,12 +368,12 @@ func backupClaudeJSON(configPath string) error {
 	return nil
 }
 
-// runEnableMCPServer 는 configPath 에 zai-mcp-server 엔트리를 추가한다.
-// 토큰 불일치 시 에러 반환 (REQ-GMC-006 (b)).
-// 파일 변경 전 백업 생성 (REQ-GMC-005).
-// 다른 mcpServers 엔트리는 절대 변경하지 않음 (REQ-GMC-010).
+// runEnableMCPServer adds the zai-mcp-server entry to configPath.
+// Returns an error on token mismatch (REQ-GMC-006 (b)).
+// Creates a backup before modifying the file (REQ-GMC-005).
+// Never modifies any other mcpServers entry (REQ-GMC-010).
 //
-// @MX:ANCHOR: [AUTO] 22개 GWT 시나리오의 핵심 진입점 — 시그니처 변경 시 모든 테스트 영향
+// @MX:ANCHOR: [AUTO] Core entry point for all 22 GWT scenarios — signature changes affect every test
 // @MX:REASON: fan_in = 6 (glmToolsEnableCmd, enableMCPServerIdempotent, runEnableMCPServerScoped, test helpers)
 func runEnableMCPServer(configPath string, token string) error {
 	if token == "" {
@@ -388,14 +388,14 @@ func runEnableMCPServer(configPath string, token string) error {
 		return err
 	}
 
-	// mcpServers 맵 확보
+	// Acquire the mcpServers map
 	mcpServers := getMCPServers(root)
 
-	// 기존 엔트리 토큰 검사 (REQ-GMC-006)
+	// Inspect token of the existing entry (REQ-GMC-006)
 	if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
 		existingToken := extractTokenFromEntry(existing)
 		if existingToken != token {
-			// 토큰 불일치 → 거부 + --force 안내
+			// Token mismatch → reject + --force guidance
 			return fmt.Errorf(
 				"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
 					"  현재 토큰: %s...%s\n"+
@@ -405,25 +405,25 @@ func runEnableMCPServer(configPath string, token string) error {
 				maskPartial(token), maskPartial(token)[len(maskPartial(token))-4:],
 			)
 		}
-		// 토큰 일치 → 이미 처리됨 (idempotent: enableMCPServerIdempotent 에서 처리)
+		// Token match → already handled (idempotent: handled by enableMCPServerIdempotent)
 	}
 
-	// 백업 생성 (REQ-GMC-005)
+	// Create backup (REQ-GMC-005)
 	if err := backupClaudeJSON(configPath); err != nil {
 		return fmt.Errorf("백업 생성 실패: %w", err)
 	}
 
-	// 엔트리 추가 (REQ-GMC-003, REQ-GMC-010)
+	// Add the entry (REQ-GMC-003, REQ-GMC-010)
 	mcpServers[zaiMCPServerKey] = buildZAIMCPEntry(token)
 	root["mcpServers"] = mcpServers
 
 	return writeClaudeJSONAtomic(configPath, root)
 }
 
-// enableMCPServerIdempotent 는 idempotent enable 을 수행한다.
-// 반환값: (skipped bool, err error)
-//   - skipped=true: 동일 토큰으로 이미 등록됨 → 변경 없음, 백업 없음 (REQ-GMC-006 (a))
-//   - skipped=false: 신규 등록 수행
+// enableMCPServerIdempotent performs an idempotent enable.
+// Return values: (skipped bool, err error)
+//   - skipped=true: already registered with the same token → no change, no backup (REQ-GMC-006 (a))
+//   - skipped=false: performs a new registration
 func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 	if token == "" {
 		return false, fmt.Errorf(
@@ -439,21 +439,21 @@ func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 
 	mcpServers := getMCPServers(root)
 
-	// 기존 엔트리 확인
+	// Check existing entry
 	if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
 		existingToken := extractTokenFromEntry(existing)
 		if existingToken == token {
-			// 토큰 일치 → idempotent skip (REQ-GMC-006 (a), GWT-9: 백업 없음)
+			// Token match → idempotent skip (REQ-GMC-006 (a), GWT-9: no backup)
 			return true, nil
 		}
-		// 토큰 불일치 → 에러 반환 (REQ-GMC-006 (b))
+		// Token mismatch → return error (REQ-GMC-006 (b))
 		return false, fmt.Errorf(
 			"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
 				"강제 덮어쓰기: moai glm tools enable --force",
 		)
 	}
 
-	// 신규 등록 → 백업 후 쓰기
+	// New registration → back up then write
 	if err := backupClaudeJSON(configPath); err != nil {
 		return false, fmt.Errorf("백업 생성 실패: %w", err)
 	}
@@ -497,17 +497,17 @@ func autoEnableMCPServer() {
 	}
 }
 
-// runEnableMCPServerScoped 는 project scope (.mcp.json) 에 enable 을 수행한다 (REQ-GMC-008)
+// runEnableMCPServerScoped performs enable against project scope (.mcp.json) (REQ-GMC-008)
 func runEnableMCPServerScoped(mcpJSONPath string, token string) error {
 	return runEnableMCPServer(mcpJSONPath, token)
 }
 
-// disableMCPServerSafe 는 configPath 에서 zai-mcp-server 엔트리만 제거한다 (REQ-GMC-004, REQ-GMC-010).
-// 다른 mcpServers 엔트리는 변경하지 않음.
-// 반환값: (removed bool, err error) — 엔트리가 없으면 removed=false (idempotent)
+// disableMCPServerSafe removes only the zai-mcp-server entry from configPath (REQ-GMC-004, REQ-GMC-010).
+// Does not modify other mcpServers entries.
+// Return values: (removed bool, err error) — removed=false when the entry is absent (idempotent)
 //
-// @MX:ANCHOR: [AUTO] REQ-GMC-004/010 의 핵심 구현 — 부분 삭제 안전성
-// @MX:REASON: fan_in = 4 (runGLMToolsDisable, 다수의 GWT 테스트)
+// @MX:ANCHOR: [AUTO] Core implementation of REQ-GMC-004/010 — partial-delete safety
+// @MX:REASON: fan_in = 4 (runGLMToolsDisable, many GWT tests)
 func disableMCPServerSafe(configPath string) (bool, error) {
 	root, err := readClaudeJSON(configPath)
 	if err != nil {
@@ -517,11 +517,11 @@ func disableMCPServerSafe(configPath string) (bool, error) {
 	mcpServers := getMCPServers(root)
 
 	if _, ok := mcpServers[zaiMCPServerKey]; !ok {
-		// 엔트리 없음 → idempotent skip
+		// No entry → idempotent skip
 		return false, nil
 	}
 
-	// 백업 후 제거 (REQ-GMC-005)
+	// Back up then remove (REQ-GMC-005)
 	if err := backupClaudeJSON(configPath); err != nil {
 		return false, fmt.Errorf("백업 생성 실패: %w", err)
 	}
@@ -532,10 +532,10 @@ func disableMCPServerSafe(configPath string) (bool, error) {
 	return true, writeClaudeJSONAtomic(configPath, root)
 }
 
-// ─── 내부 헬퍼 함수 ────────────────────────────────────────────────────────
+// ─── Internal helper functions ─────────────────────────────────────────────
 
-// getMCPServers 는 root JSON 에서 mcpServers 맵을 추출한다.
-// 없으면 빈 맵을 반환하고 root 에 설정한다.
+// getMCPServers extracts the mcpServers map from the root JSON.
+// Returns an empty map and sets it on root when absent.
 func getMCPServers(root map[string]any) map[string]any {
 	if existing, ok := root["mcpServers"].(map[string]any); ok {
 		return existing
@@ -545,7 +545,7 @@ func getMCPServers(root map[string]any) map[string]any {
 	return m
 }
 
-// extractTokenFromEntry 는 MCP 엔트리의 env.Z_AI_API_KEY 값을 추출한다.
+// extractTokenFromEntry extracts the env.Z_AI_API_KEY value from an MCP entry.
 func extractTokenFromEntry(entry map[string]any) string {
 	envAny, ok := entry["env"]
 	if !ok {
@@ -562,7 +562,7 @@ func extractTokenFromEntry(entry map[string]any) string {
 	return ""
 }
 
-// maskPartial 은 토큰의 일부를 마스킹한다 (로그 표시용)
+// maskPartial masks part of a token (for log display)
 func maskPartial(token string) string {
 	if len(token) <= 8 {
 		return "****"
@@ -570,10 +570,10 @@ func maskPartial(token string) string {
 	return token[:4] + "****"
 }
 
-// ─── Node.js 버전 감지 ────────────────────────────────────────────────────
+// ─── Node.js version detection ─────────────────────────────────────────────
 
-// checkNodeVersion 은 Node.js 가 설치되어 있고 최소 버전 이상인지 검증한다 (REQ-GMC-009).
-// GWT-14 (부재), GWT-15 (구버전) 시나리오의 공통 검증 함수.
+// checkNodeVersion verifies that Node.js is installed and meets the minimum version (REQ-GMC-009).
+// Shared verification function for GWT-14 (missing) and GWT-15 (older version) scenarios.
 func checkNodeVersion() error {
 	major, versionStr, err := detectNodeFn()
 	if err != nil {
@@ -597,8 +597,8 @@ func checkNodeVersion() error {
 	return nil
 }
 
-// detectNodeVersion 은 PATH 에서 node 의 major 버전을 감지한다 (REQ-GMC-009).
-// 반환값: (major int, versionString string, error)
+// detectNodeVersion detects the node major version via PATH (REQ-GMC-009).
+// Return values: (major int, versionString string, error)
 func detectNodeVersion() (int, string, error) {
 	path, err := exec.LookPath("node")
 	if err != nil {
@@ -620,7 +620,7 @@ func detectNodeVersion() (int, string, error) {
 	return major, versionStr, nil
 }
 
-// parseNodeMajorVersion 은 "v22.5.0" 형식의 버전 문자열에서 major 정수를 추출한다.
+// parseNodeMajorVersion extracts the major integer from a version string in the "v22.5.0" format.
 func parseNodeMajorVersion(version string) (int, error) {
 	v := strings.TrimPrefix(version, "v")
 	parts := strings.SplitN(v, ".", 2)

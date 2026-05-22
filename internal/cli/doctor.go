@@ -65,7 +65,7 @@ func init() {
 	doctorCmd.Flags().String("check", "", "Run a specific check only (e.g., git, go, config)")
 }
 
-// @MX:NOTE: [AUTO] doctor 명령어 출력 — tui.Section + 19+ CheckLine + 요약 Box/Pill로 구성.
+// @MX:NOTE: [AUTO] doctor command output — composed of tui.Section + 19+ CheckLine + summary Box/Pill.
 // runDoctor executes the system diagnostics workflow.
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	verbose := getBoolFlag(cmd, "verbose")
@@ -802,7 +802,7 @@ func checkGlamourCache(_ bool) DiagnosticCheck {
 }
 
 // checkMigration verifies migration framework status.
-// REQ-V3R2-RT-007-015: doctor 명령에 마이그레이션 체크 추가.
+// REQ-V3R2-RT-007-015: add migration check to doctor command.
 func checkMigration(projectDir string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Migration"}
 

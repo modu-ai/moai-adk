@@ -10,33 +10,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// migrationCmd는 'moai migration' cobra command 그룹입니다.
+// migrationCmd is the 'moai migration' cobra command group.
 // REQ-V3R2-RT-007-015, REQ-V3R2-RT-007-040, REQ-V3R2-RT-007-041, REQ-V3R2-RT-007-024.
 var migrationCmd = &cobra.Command{
 	Use:   "migration",
-	Short: "마이그레이션을 관리합니다 (run, status, rollback)",
-	Long: `마이그레이션 관리 도구입니다.
+	Short: "Manage migrations (run, status, rollback)",
+	Long: `Migration management tool.
 
-'run': pending migrations를 실행합니다.
-'status': 현재 마이그레이션 상태를 표시합니다.
-'rollback': 특정 버전으로 롤백합니다 (일부 마이그레이션은 롤백 불가능).
+'run': execute pending migrations.
+'status': display the current migration status.
+'rollback': roll back to a specific version (some migrations are not rollback-capable).
 
-참고: 'moai migrate agency'와 혼동하지 마세요. 'migrate agency'는
-일회성 agency 마이그레이션 명령이며, 이 명령은 버전 관리 마이그레이션
-프레임워크입니다.`,
+Note: do not confuse this with 'moai migrate agency'. 'migrate agency' is a
+one-off agency migration command; this command is the version-controlled
+migration framework.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	},
 }
 
-// migrationRunCmd는 pending migrations를 실행합니다.
+// migrationRunCmd executes pending migrations.
 // REQ-V3R2-RT-007-040: 'moai migration run' subcommand.
 var migrationRunCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Pending migrations를 실행합니다",
-	Long: `현재 프로젝트에서 아직 실행되지 않은 마이그레이션을 순서대로 실행합니다.
+	Short: "Execute pending migrations",
+	Long: `Run, in order, every migration that has not yet been applied in the current project.
 
-Session-start 훅에서도 자동으로 실행되지만, 이 명령으로 수동으로 실행할 수도 있습니다.`,
+Migrations also run automatically via the session-start hook; this command lets you trigger them manually.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -60,17 +60,17 @@ Session-start 훅에서도 자동으로 실행되지만, 이 명령으로 수동
 	},
 }
 
-// migrationStatusCmd는 현재 마이그레이션 상태를 표시합니다.
+// migrationStatusCmd displays the current migration status.
 // REQ-V3R2-RT-007-015: 'moai migration status [--json]' subcommand.
 var migrationStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "마이그레이션 상태를 표시합니다",
-	Long: `현재 프로젝트의 마이그레이션 상태를 표시합니다.
+	Short: "Display the migration status",
+	Long: `Display the current migration status for the project.
 
-출력 정보:
-- 현재 버전 (가장 최근 적용된 마이그레이션)
-- Pending 마이그레이션 목록
-- 가장 최근 적용된 마이그레이션 상세 정보`,
+Output fields:
+- Current version (most recently applied migration)
+- List of pending migrations
+- Details of the most recently applied migration`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jsonFlag, _ := cmd.Flags().GetBool("json")
 
@@ -86,7 +86,7 @@ var migrationStatusCmd = &cobra.Command{
 		}
 
 		if jsonFlag {
-			// JSON 출력 (REQ-V3R2-RT-007-041)
+			// JSON output (REQ-V3R2-RT-007-041)
 			output := map[string]any{
 				"current_version": current,
 				"pending":         pending,
@@ -100,7 +100,7 @@ var migrationStatusCmd = &cobra.Command{
 			return nil
 		}
 
-		// Human-readable 출력
+		// Human-readable output
 		fmt.Printf("현재 버전: %d\n", current)
 		if len(pending) > 0 {
 			fmt.Printf("Pending 마이그레이션 (%d개): %v\n", len(pending), pending)
@@ -115,19 +115,19 @@ var migrationStatusCmd = &cobra.Command{
 	},
 }
 
-// migrationRollbackCmd는 특정 버전으로 롤백합니다.
+// migrationRollbackCmd rolls back to a specific version.
 // REQ-V3R2-RT-007-024: 'moai migration rollback <version>' subcommand.
 var migrationRollbackCmd = &cobra.Command{
 	Use:   "rollback <version>",
-	Short: "특정 버전으로 롤백합니다",
-	Long: `지정된 버전으로 롤백합니다.
+	Short: "Roll back to a specific version",
+	Long: `Roll back to the specified version.
 
-주의: 일부 마이그레이션(특히 중요 버그 수정)은 롤백 불가능으로
-표시될 수 있습니다. 롤백은 version-file을 이전 버전으로 되돌리고
-해당 마이그레이션의 Rollback 함수를 실행합니다.
+Caution: some migrations (especially critical bug fixes) may be marked as
+non-rollback-capable. Rollback reverts the version-file to the previous
+version and executes the Rollback function of the affected migration.
 
-예시:
-  moai migration rollback 0  # 모든 마이그레이션 롤백 (초기 상태)`,
+Example:
+  moai migration rollback 0  # Roll back every migration (initial state)`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var targetVersion int
@@ -152,13 +152,13 @@ var migrationRollbackCmd = &cobra.Command{
 }
 
 func init() {
-	// migration 하위 명령 등록
+	// Register migration subcommands
 	migrationCmd.AddCommand(migrationRunCmd)
 	migrationCmd.AddCommand(migrationStatusCmd)
 	migrationCmd.AddCommand(migrationRollbackCmd)
 
-	// status 명령에 --json 플래그 추가
+	// Add the --json flag to the status command
 	migrationStatusCmd.Flags().Bool("json", false, "JSON 형식으로 출력")
 
-	// rootCmd에 migration 그룹 등록은 root.go에서 수행
+	// Registration of the migration group on rootCmd is performed by root.go
 }

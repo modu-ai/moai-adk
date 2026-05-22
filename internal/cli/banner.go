@@ -94,7 +94,7 @@ func goosArch() string {
 	return goos + "/" + goarch
 }
 
-// @MX:NOTE: [AUTO] CLI 배너 출력 — root/init/update/version 4+ entry point에서 호출됨
+// @MX:NOTE: [AUTO] CLI banner output — called from root/init/update/version 4+ entry points
 // PrintBanner displays the MoAI ASCII art banner with version information.
 // The banner uses MoAI's deep teal accent colour from internal/tui Theme.Accent
 // and includes the provided version string. If version is empty, it displays "".

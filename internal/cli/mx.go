@@ -9,8 +9,8 @@ import (
 func newMxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "mx",
-		Short:   "@MX TAG 관리 도구",
-		Long:    `@MX TAG 사이드카 인덱스를 관리하고 조회하는 도구입니다.`,
+		Short:   "@MX TAG management tool",
+		Long:    `Tool for managing and querying the @MX TAG sidecar index.`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()

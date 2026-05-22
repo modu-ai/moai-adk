@@ -128,8 +128,8 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		case "status":
 			return glmStatusCmd.RunE(cmd, nil)
 		case "tools":
-			// SPEC-GLM-MCP-001: Z.AI MCP 서버 enable/disable 라우팅.
-			// glmToolsCmd 는 cobra 표준 파싱(--scope, --force) 을 사용하므로 Execute() 위임.
+			// SPEC-GLM-MCP-001: Z.AI MCP server enable/disable routing.
+			// glmToolsCmd uses standard cobra parsing (--scope, --force), so delegate to Execute().
 			glmToolsCmd.SetArgs(args[1:])
 			return glmToolsCmd.Execute()
 		}
