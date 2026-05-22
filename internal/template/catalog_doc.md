@@ -185,3 +185,68 @@ SPECs in the CATALOG series extend the foundation:
 | SPEC-V3R4-CATALOG-005 | `/moai project` interview + harness bootstrap (builder-harness auto-deploy) |
 | SPEC-V3R4-CATALOG-006 | `moai doctor catalog` diagnostic + repair |
 | SPEC-V3R4-CATALOG-007 | Migration docs (4-locale docs-site sync, BREAKING CHANGE rollout) |
+
+---
+
+## CI Guard: TestManifestHashFormat (Catalog SSoT)
+
+**SPEC**: SPEC-V3R6-CATALOG-SSOT-001 (Wave 1)
+
+`TestManifestHashFormat` in `internal/template/catalog_tier_audit_test.go` is the
+**single binding CI gate** for the catalog SSoT invariant defined in REQ-CSS-001:
+every entry in `catalog.yaml` must carry a `hash:` field equal to the normalized
+sha256 of the entry's source file.
+
+### Diagnostic
+
+When a stored hash diverges from the recomputed hash, the test emits one
+`CATALOG_HASH_UNSTABLE` diagnostic per drifted entry, naming the entry, both
+hashes (stored vs computed), and the source file path. Example:
+
+```
+CATALOG_HASH_UNSTABLE: moai-harness-learner stored hash=14a2df…, computed
+hash=53fa7251… (source=.claude/skills/moai-harness-learner/SKILL.md)
+```
+
+### Severity
+
+**BLOCKING**. The test uses `t.Errorf`, which produces a non-zero process exit.
+Any CI workflow that runs `go test ./internal/template/...` will fail on drift,
+including the canonical `Test (per OS)` matrix and the `preflight` Make target.
+
+### Self-healing build (Makefile integration)
+
+The `build:` recipe now prepends `go run ./internal/template/scripts/gen-catalog-hashes.go --all`
+so that every `make build` refreshes the manifest from the current template tree
+before compiling. This eliminates the manual-step drift mode where a developer
+edits `SKILL.md` and forgets to regenerate hashes.
+
+Side effect: `make build` may modify `internal/template/catalog.yaml` in-place
+when the working tree is out-of-sync, causing `git status` to show diffs after
+a "clean" build. This is intentional — drift detection at build time is the
+point.
+
+### Dry-run validation (no writes)
+
+To validate hashes without modifying `catalog.yaml`, invoke the script with
+`--dry-run` directly:
+
+```bash
+go run ./internal/template/scripts/gen-catalog-hashes.go --all --dry-run
+```
+
+The script then prints the computed hashes to stdout and exits non-zero on
+drift, without touching the file.
+
+### Out of scope of this guard
+
+`TestManifestHashFormat` checks file-content sha256 only. It does NOT enforce:
+
+- Cross-package parity between `catalog.yaml` and `internal/manifest/types.go`
+  (separate concern; see EXCL-CSS-008).
+- Template-mirror parity between `internal/template/templates/` and `.claude/`
+  (different mechanism; see `TestLateBranchTemplateMirror`).
+- PostToolUse hook auto-update after `SKILL.md` writes (future
+  `CATALOG-CI-HOOK-001`; see EXCL-CSS-001).
+
+These follow-up surfaces have their own dedicated SPECs.
