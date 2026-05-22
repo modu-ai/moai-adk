@@ -368,6 +368,68 @@ status: ACTIVE
 
 **--worktree** 创建独立的工作目录，用于完全隔离的环境。**--branch** 在当前仓库中创建新分支。如果同时开发多个功能，推荐使用 --worktree。
 
+## GEARS 表示法 (v3.0.0+) {#gears-notation}
+
+从 MoAI-ADK v3.0.0 开始，**GEARS**(Generalized Expression for AI-Ready Specs)被引入为推荐的 SPEC 编写表示法。原有的 EARS 表示法在 **6 个月** 期间内保持向后兼容，期间可逐步迁移到 GEARS。新建 SPEC 建议从一开始就遵循 GEARS 模式。
+
+GEARS 保留 EARS 的 5 个核心模式，同时收紧其语义边界，使 AI 编码代理能够更明确地解释。两项实质性变更是：**废弃 IF/THEN 模式**(归一化为 WHEN)以及**重新定义 WHERE 的语义**(静态前置条件、配置、功能开关)。
+
+参考资料：Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
+
+### 5 种模式对照表
+
+| 表示法 | EARS (legacy) | GEARS (canonical) | Lint 行为 |
+|---|---|---|---|
+| Ubiquitous (普遍) | `The system shall <action>` | Same | 不变 |
+| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | 不变 |
+| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | 不变 |
+| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (重新定义：静态前置条件、配置、功能开关) | lint 层不变 |
+| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — 改用 `WHEN <event-detected>, the system shall <action>` | **新增：`LegacyEARSKeyword` warning** |
+
+### 向后兼容窗口 (6 个月)
+
+迁移窗口自 v3.0.0 发布起持续 **6 个月**，或在批量修正 SPEC `SPEC-V3R6-GEARS-SWEEP-001`(provisional)完成时结束，以两者中先到者为准。窗口期间的行为如下：
+
+- **非 strict 模式(默认)**：仅发出 `LegacyEARSKeyword` 警告，lint 不会失败。
+- **`--strict` 模式(opt-in)**：警告升级为错误并阻断 CI。
+- **现有 88 个 SPEC**：本 SPEC 范围内不直接修改(REQ-GM-007)；批量迁移由后续 SWEEP SPEC 负责。
+
+### LegacyEARSKeyword 诊断
+
+`internal/spec/lint.go` 中的 `isLegacyEARSPattern()` 辅助函数在检测到 EARS legacy IF/THEN 模式时发出以下消息：
+
+```
+REQ <REQ-ID>: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation
+```
+
+- **代码**：`LegacyEARSKeyword`
+- **严重等级**：warning(非 strict)/ error(`--strict`)
+- **来源**：`internal/spec/lint.go`
+
+### 工具作者指南
+
+在下游工具(校验器、代码生成器、IDE 插件等)中匹配 SPEC 文本时，请按如下方式迁移：
+
+- 将 `IF .* THEN` 匹配器切换为 `WHEN .* shall` 匹配器。
+- 注意 6 个月的废弃窗口；在窗口关闭前同时识别两种模式。
+- 将 `LegacyEARSKeyword` finding 代码作为升级信号使用。
+
+### 迁移示例
+
+**Before (EARS legacy)：**
+
+```
+IF input is null, THEN the system shall return an error.
+```
+
+**After (GEARS canonical)：**
+
+```
+WHEN input is null is detected, the system shall return an error.
+```
+
+这种归一化将触发条件表达为 "事件" 而非 "条件"，从而减少 AI 代理的意图解释模糊性，并在编写测试用例时更清晰地界定输入和验证时机。
+
 ## 相关文档
 
 - [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详细说明

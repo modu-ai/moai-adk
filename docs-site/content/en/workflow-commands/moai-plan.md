@@ -368,6 +368,68 @@ The domain is automatically determined by manager-spec based on the feature area
 
 **--worktree** creates an independent working directory for a completely isolated environment. **--branch** creates a new branch in the current repository. If developing multiple features simultaneously, --worktree is recommended.
 
+## GEARS notation (v3.0.0+) {#gears-notation}
+
+Starting with MoAI-ADK v3.0.0, **GEARS** (Generalized Expression for AI-Ready Specs) is introduced as the recommended SPEC authoring notation. The legacy EARS notation remains backward-compatible for **6 months**, during which authors can migrate progressively. New SPECs are encouraged to follow GEARS patterns from the outset.
+
+GEARS preserves the five core patterns of EARS while sharpening their semantic boundaries so AI coding agents can interpret them less ambiguously. The two material changes are the **deprecation of the IF/THEN pattern** (normalized to WHEN) and the **redefinition of WHERE** (now denoting a static precondition, configuration, or feature flag).
+
+Reference: Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
+
+### Five-pattern comparison table
+
+| Notation | EARS (legacy) | GEARS (canonical) | Lint behavior |
+|---|---|---|---|
+| Ubiquitous | `The system shall <action>` | Same | UNCHANGED |
+| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | UNCHANGED |
+| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | UNCHANGED |
+| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (reframed: static precondition, configuration, feature flags) | UNCHANGED at lint layer |
+| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — use `WHEN <event-detected>, the system shall <action>` | **NEW: `LegacyEARSKeyword` warning** |
+
+### Backward-compatibility window (6 months)
+
+The migration window runs for **6 months** from the v3.0.0 release, or until the sweep SPEC `SPEC-V3R6-GEARS-SWEEP-001` (provisional) completes — whichever comes first. Behavior during the window:
+
+- **Non-strict mode (default)**: only `LegacyEARSKeyword` warnings are emitted; lint does not fail.
+- **`--strict` mode (opt-in)**: warnings are escalated to errors and block CI.
+- **88 existing SPECs**: untouched by this SPEC (REQ-GM-007); bulk migration is the responsibility of the follow-up sweep SPEC.
+
+### LegacyEARSKeyword finding
+
+The helper `isLegacyEARSPattern()` in `internal/spec/lint.go` detects the EARS legacy IF/THEN pattern and emits the following message:
+
+```
+REQ <REQ-ID>: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation
+```
+
+- **Code**: `LegacyEARSKeyword`
+- **Severity**: warning (non-strict) / error (`--strict`)
+- **Source**: `internal/spec/lint.go`
+
+### For tool authors
+
+When matching SPEC text in downstream tooling (validators, code generators, IDE plugins), migrate as follows:
+
+- Switch `IF .* THEN` matchers to `WHEN .* shall` matchers going forward.
+- Honor the 6-month deprecation window; recognize both patterns until the window closes.
+- Consume the `LegacyEARSKeyword` finding code as an upgrade signal.
+
+### Migration example
+
+**Before (EARS legacy):**
+
+```
+IF input is null, THEN the system shall return an error.
+```
+
+**After (GEARS canonical):**
+
+```
+WHEN input is null is detected, the system shall return an error.
+```
+
+The normalization expresses the trigger as an *event*, not a *condition*, which reduces intent-interpretation ambiguity for AI agents and clarifies the input/validation moment when test cases are written.
+
 ## Related Documents
 
 - [SPEC-Based Development](/core-concepts/spec-based-dev) - Detailed explanation of EARS format
