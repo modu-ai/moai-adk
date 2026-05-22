@@ -21,7 +21,7 @@ Core principles governing the MoAI design production system. These rules define 
 
 ## 1. Identity and Purpose
 
-The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design-import`, `moai-workflow-gan-loop`, `expert-frontend`, `evaluator-active`) to produce high-quality web experiences from natural language briefs.
+The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`, `expert-frontend`, `evaluator-active`) to produce high-quality web experiences from natural language briefs.
 
 The design system is NOT a replacement for MoAI. It is a vertical specialization domain that:
 - Inherits MoAI's orchestration infrastructure, quality gates, and agent runtime
@@ -80,7 +80,7 @@ Iteration-specific design briefs are stored in `.moai/design/`:
 
 - [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_
 - [ZONE:Frozen] [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
-- [ZONE:Frozen] [HARD] `moai-workflow-design-import` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
+- [ZONE:Frozen] [HARD] `moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
 - [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
 - [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
 - [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md
@@ -107,7 +107,7 @@ manager-spec -> [moai-domain-copywriting, moai-domain-brand-design] (parallel) -
                                                                                      (via moai-workflow-gan-loop)
 ```
 
-Path A (Claude Design import): moai-workflow-design-import replaces moai-domain-brand-design for the design artifact phase.
+Path A (Claude Design import): moai-workflow-design replaces moai-domain-brand-design for the design artifact phase.
 
 ### Phase Contracts
 
@@ -118,7 +118,7 @@ Each phase produces typed artifacts consumed by downstream phases:
 | manager-spec | User request + brand context | BRIEF document (Goal/Audience/Brand sections) | Always |
 | moai-domain-copywriting | BRIEF + brand voice | Copy JSON (hero/features/cta/etc.) | Path B |
 | moai-domain-brand-design | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
-| moai-workflow-design-import | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
+| moai-workflow-design | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
 | expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
 | evaluator-active | Built code + BRIEF | Score card + feedback | Always |
 | figma-extractor (Path B1) | BRIEF + Figma file ID + page selectors | tokens.json + components.json | Path B1 |

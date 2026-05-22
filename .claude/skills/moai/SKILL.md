@@ -201,7 +201,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
 Purpose: Produce web/brand design artifacts via Claude Design import (path A) or code-based skill pipeline (path B). Integrates brand context from `.moai/project/brand/` and design briefs from `.moai/design/`.
 Agents: manager-spec (BRIEF), expert-frontend (implementation), evaluator-active (GAN loop scoring)
-Skills: moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop, moai-workflow-design-context
+Skills: moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design, moai-workflow-gan-loop
 Flags: --path A|B, --harness thorough|standard, --brief BRIEF-XXX
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
 

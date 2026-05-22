@@ -300,7 +300,7 @@ After successful completion, confirm all deliverables:
 - `moai-domain-design-handoff`: 5-file handoff package (Phase 7)
 - `moai-workflow-project`: Downstream consumer via `--from-brain IDEA-NNN` flag
 - `moai-workflow-plan`: Downstream consumer parsing SPEC Decomposition Candidates
-- `moai-workflow-design-import`: Downstream consumer of `claude-design-handoff/` directory (path A)
+- `moai-workflow-design`: Downstream consumer of `claude-design-handoff/` directory (path A)
 
 ---
 

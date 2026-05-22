@@ -590,7 +590,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] moai-workflow-design-import continues to write machine-generated artifacts to .moai/design/"
+  clause: "[HARD] moai-workflow-design continues to write machine-generated artifacts to .moai/design/"
   canary_gate: true
 
 - id: CONST-V3R2-069
@@ -834,7 +834,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is model-specific: 1M context (Opus 4.7) = 75%, 200K context (Sonnet/Opus/Haiku) = 90%"
+  clause: "Operational threshold is model-specific: 1M context (Opus 4.7) = 50%, 200K context (Sonnet/Opus/Haiku) = 90%"
   canary_gate: false
 
 - id: CONST-V3R5-023

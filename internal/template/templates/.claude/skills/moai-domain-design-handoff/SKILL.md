@@ -15,7 +15,7 @@ metadata:
   updated: "2026-05-04"
   modularized: "false"
   tags: "design-handoff, claude-design, prompt-template, brand, acceptance, brain"
-  related-skills: "moai-domain-ideation, moai-workflow-brain, moai-workflow-design-import"
+  related-skills: "moai-domain-ideation, moai-workflow-brain, moai-workflow-design"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -363,7 +363,7 @@ For non-Korean conversation_language, translate option labels and descriptions a
 
 - `moai-domain-ideation`: Consumes ideation.md and proposal.md as primary inputs
 - `moai-domain-research`: Pulls reference URLs from research.md Sources section
-- `moai-workflow-design-import`: Downstream consumer of `claude-design-handoff/` directory after user completes external Claude Design session
+- `moai-workflow-design`: Downstream consumer of `claude-design-handoff/` directory after user completes external Claude Design session (Path A handler)
 - `moai-workflow-brain`: Orchestrates Phase 7 execution with IDEA-NNN directory management
 
 ---

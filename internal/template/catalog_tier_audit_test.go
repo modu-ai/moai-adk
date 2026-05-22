@@ -131,7 +131,10 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// SPEC-V3R6-HARNESS-RENAME-001 (2026-05-22): 4 harness skills added as
 	// Template-First mirror per REQ-HRN-003 (moai-harness-{cli-template,hook-ci,
 	// quality,workflow}), raising count back from 33 to 37.
-	const expectedSkillCount = 37
+	// SPEC-V3R6-SKILL-CONSOLIDATE-001 (2026-05-22): 7→3 unified skills
+	// (ci-watch + ci-autofix → ci-loop; design-import + design-context → design;
+	// harness-{hook-ci,workflow,quality} → harness-patterns), net -4 = 33.
+	const expectedSkillCount = 33
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

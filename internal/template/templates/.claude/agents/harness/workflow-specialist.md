@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 skills:
-  - moai-harness-workflow
+  - moai-harness-patterns
 ---
 
 # Workflow Specialist

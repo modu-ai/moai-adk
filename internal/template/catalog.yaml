@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 6f9cbbff7f8880f631835368b5d5a046008cbfc5c724c2e7d0f8a392064cc9df
+              hash: 0ae2859fd990e57f68613634b74e52eb0b2062e8371e93a5de581461c8a66f9a
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -33,26 +33,16 @@ catalog:
               path: templates/.claude/skills/moai-harness-cli-template/
               hash: 7a68b1c54cbd9ba7458fac0090acd29a4736df006e6a37145ee994e2494bb6da
               version: 1.0.0
-            - name: moai-harness-hook-ci
-              tier: core
-              path: templates/.claude/skills/moai-harness-hook-ci/
-              hash: f49844830892ea41ffdc83d99c6e280ec42b78cf9747792a2a9789e7080e6005
-              version: 1.0.0
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
               hash: 9684c94ba6886f7e79ca5fdb307560a6099c58f1672fbb7d6f8602528e6b367f
               version: 1.0.0
-            - name: moai-harness-quality
+            - name: moai-harness-patterns
               tier: core
-              path: templates/.claude/skills/moai-harness-quality/
-              hash: d62b421e04b0e4a04043b4cb01b72b915916fef733f0d6377d4c12b6faa630a8
-              version: 1.0.0
-            - name: moai-harness-workflow
-              tier: core
-              path: templates/.claude/skills/moai-harness-workflow/
-              hash: 14a78f19d27befba3be177f7324eab9da7b46ae8931b20f812077c69a66ebc67
-              version: 1.0.0
+              path: templates/.claude/skills/moai-harness-patterns/
+              hash: 85092c8583bb2ac6bfe023cb7589127ebbb453b1a3724e834fb233b2395463f9
+              version: 0.1.0
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
@@ -68,16 +58,11 @@ catalog:
               path: templates/.claude/skills/moai-ref-testing-pyramid/
               hash: b29c0b4d3d855ee6baaacf9b30ab3ef706d8eedb71392f1d9143440e18a9636e
               version: 1.0.0
-            - name: moai-workflow-ci-autofix
+            - name: moai-workflow-ci-loop
               tier: core
-              path: templates/.claude/skills/moai-workflow-ci-autofix/
-              hash: fe2421566872ca8d697b1af152759336fd291be472dfe4a794a8db3b0bcba2d3
-              version: 1.0.0
-            - name: moai-workflow-ci-watch
-              tier: core
-              path: templates/.claude/skills/moai-workflow-ci-watch/
-              hash: eb2f9b7d4910ea7d36d10ab278e0d055e6044e8e8c8a76f119d18984d21d8097
-              version: 1.0.0
+              path: templates/.claude/skills/moai-workflow-ci-loop/
+              hash: ee784c449cf9756a22b1a6fffcf79b86d2d7c5c3bb9a7c45b747d7c3441495c9
+              version: 0.1.0
             - name: moai-workflow-ddd
               tier: core
               path: templates/.claude/skills/moai-workflow-ddd/
@@ -137,17 +122,17 @@ catalog:
             - name: moai-harness-hook-ci-specialist
               tier: core
               path: templates/.claude/agents/harness/hook-ci-specialist.md
-              hash: 9c737ae1f37f155ac00036b9e354e8496703ab2fc01beb889b9241eecec4be08
+              hash: f704f336ee523bca82532aad5ce859f68c05b2e9e5012fefe52c3c511bfb431b
               version: 1.0.0
             - name: moai-harness-quality-specialist
               tier: core
               path: templates/.claude/agents/harness/quality-specialist.md
-              hash: 540131d9fc89c4d2b820f69372884e40d3b8806db16ea47bbb630b3ad1388dda
+              hash: 6f148dbfa3c223046edf9f750aad298b8f0c9e329e9a251361dab479d1eae78b
               version: 1.0.0
             - name: moai-harness-workflow-specialist
               tier: core
               path: templates/.claude/agents/harness/workflow-specialist.md
-              hash: 589677d05e4e3dea5f293c74d34ceaffffd47940cea999e12ebb6aca004f17f7
+              hash: 885aecf07b2463b58738eb5f51549bf598cafdbf7969e5f1723dcd87781449a6
               version: 1.0.0
             - name: evaluator-active
               tier: core
@@ -259,7 +244,7 @@ catalog:
                 - name: moai-domain-brand-design
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-brand-design/
-                  hash: 5b696ea86554afdfd0b5ec45855ee0feabb8816c67d40769b51af58db5699efb
+                  hash: 02fd775882a1c7975435a3f7345207a9905e6bc4077dcf09c4c7e0c8c3f47c2b
                   version: 1.0.0
                 - name: moai-domain-copywriting
                   tier: optional-pack:design
@@ -269,22 +254,17 @@ catalog:
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-design-handoff/
-                  hash: 55697c3cae597d142b5567a8606c3738f9b15bf30edfcce7ff435db605cebf48
+                  hash: e2e153f51469e5fc6740686703a63121db7081925e48b011b330df9f0a2ebd36
                   version: 1.0.0
-                - name: moai-workflow-design-context
+                - name: moai-workflow-design
                   tier: optional-pack:design
-                  path: templates/.claude/skills/moai-workflow-design-context/
-                  hash: e996960b2c8aca06be563e7e23725adb50f922f48af81515762cfc5738464c47
-                  version: 1.0.0
-                - name: moai-workflow-design-import
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-workflow-design-import/
-                  hash: ae2d8c77359a40ac0b84027066d93c8a71511538b5647c96443bc463abdcfd64
-                  version: 1.0.0
+                  path: templates/.claude/skills/moai-workflow-design/
+                  hash: 63c2a2689e966cfb6aba8b74ce36d6fff6683b4eaea3a08608d4a63c7f9b4caf
+                  version: 0.1.0
                 - name: moai-workflow-gan-loop
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-gan-loop/
-                  hash: d4cbd9ca08c189a3a7a2b9d0b1740f7126b8e1d31d85840e36e5af8df780195e
+                  hash: c10f0565a46e770633a2adcf7de61f12a2cb97d8cf59d354bcb19558571da288
                   version: 1.0.0
             agents: []
         devops:

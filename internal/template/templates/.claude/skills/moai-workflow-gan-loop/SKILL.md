@@ -102,7 +102,7 @@ Builder implements based on:
 - Accepted Sprint Contract (if present)
 - BRIEF document
 - Copy JSON from `moai-domain-copywriting`
-- Design tokens from `moai-domain-brand-design` or `moai-workflow-design-import`
+- Design tokens from `moai-domain-brand-design` or `moai-workflow-design` (Path A handler)
 
 Builder outputs: code files, rendered previews (if Playwright available), implementation notes.
 
@@ -275,7 +275,7 @@ When testing tools are unavailable, fall back to static code analysis only, and 
 - `moai-domain-brand-design`: Provides design tokens that Evaluator validates in Design Quality dimension
 - `moai-domain-copywriting`: Copy JSON is the reference for Completeness dimension
 - `evaluator-active`: The GAN loop orchestrates evaluator-active for each scoring pass
-- `moai-workflow-design-import`: Extracted tokens serve as the design reference baseline
+- `moai-workflow-design`: Extracted tokens (Path A) serve as the design reference baseline
 
 ---
 

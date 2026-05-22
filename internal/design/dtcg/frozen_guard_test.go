@@ -46,7 +46,7 @@ func TestIsFrozen_Allowed(t *testing.T) {
 		// 구현 파일들 (FROZEN 아님)
 		"internal/design/dtcg/validator.go",
 		"internal/design/dtcg/categories/color.go",
-		".claude/skills/moai-workflow-design-import/SKILL.md",
+		".claude/skills/moai-workflow-design/SKILL.md",
 		".claude/skills/moai-design-system/SKILL.md",
 		".moai/design/tokens.json",
 		".moai/design/components.json",

@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-SKILL-CONSOLIDATE-001
 title: "Skill 통폐합 5→2 — ci-loop / design / harness-patterns (-9.3K tokens)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-05-23
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-SKILL-COMPRESS-001, SPEC-V3R6-RULES-PATH-SCOPE-001, SP
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — Wave 1 SPEC #3 (Layer 2 token-baseline 감축). Consolidate 7 source SKILL.md files into 3 unified skills: `moai-workflow-ci-loop` (ci-watch + ci-autofix), `moai-workflow-design` (design-import + design-context), `moai-harness-patterns` (harness-hook-ci + harness-workflow + harness-quality). Target: -9.3K tokens (~45% reduction from 6,914 → 3,800 words). Tier M (3 artifacts), ~20-25 cross-reference file impacts, mandatory Template-First Rule (local + internal/template/templates/ mirror), catalog.yaml 7-entry removal + 3-entry addition + 32-entry hash regen. |
+| 0.2.0 | 2026-05-23 | manager-develop (cycle_type=ddd) | Run-phase COMPLETE. All 8 BLOCKING ACs PASS (AC-SC-001..008) + 1 advisory PASS (AC-SC-009). Aggregate word count 3,793 ≤ 3,800 budget (margin 7w). Cross-platform build OK. Template-First parity verified (3 byte-identical pairs). Catalog hashes regenerated. TestAllSkillsInCatalog expectedCount adjusted 37→33 with provenance comment. Pre-existing baseline preserved (TestRuleTemplateMirrorDrift 3 sub-fails on manager-develop-prompt-template / spec-workflow / plan-auditor, TestAllAgentsInCatalog path-resolution baseline). NEW regression: 0. See progress.md for full deliverable matrix E1-E9. |
 
 ## 1. Goal
 

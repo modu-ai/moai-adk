@@ -246,7 +246,7 @@ Generated design must meet:
 ## Works Well With
 
 - `moai-domain-copywriting`: Copy length constraints inform layout choices
-- `moai-workflow-design-import`: Replaces code-based design when Claude Design bundle is available
+- `moai-workflow-design`: Replaces code-based design when Claude Design bundle is available (Path A handler)
 - `moai-workflow-gan-loop`: Design Quality dimension evaluates token compliance and WCAG
 - `moai-domain-uiux`: Extends with accessibility audit patterns
 

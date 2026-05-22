@@ -1,14 +1,14 @@
 ---
-description: CI watch loop protocol — HARD invocation contract for moai-workflow-ci-watch skill. Auto-loaded on /moai sync and moai pr watch invocations.
+description: CI watch loop protocol — HARD invocation contract for moai-workflow-ci-loop skill (watch phase). Auto-loaded on /moai sync and moai pr watch invocations.
 paths:
-  - ".claude/skills/moai-workflow-ci-watch/SKILL.md"
+  - ".claude/skills/moai-workflow-ci-loop/SKILL.md"
   - "scripts/ci-watch/run.sh"
 ---
 
 # CI Watch Protocol Rule
 
 > This file is the single source of truth for CI watch loop invocation rules.
-> Cross-referenced by: SKILL.md, moai-workflow-ci-watch modules.
+> Cross-referenced by: SKILL.md, moai-workflow-ci-loop (unified watch + autofix skill).
 
 ---
 

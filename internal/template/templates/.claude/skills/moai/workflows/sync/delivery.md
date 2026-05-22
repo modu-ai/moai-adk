@@ -455,7 +455,7 @@ All of the following must be verified:
 
 Workflow audit 2026-05-16 (F-005) 정적 routing 명시:
 
-- **moai-workflow-ci-watch** — Phase 4 (`gh pr create`) 성공 후 CI watch loop을 자동 호출하는 skill. HARD invocation contract: `.claude/rules/moai/workflow/ci-watch-protocol.md`. 30s polling, 30분 hard timeout, required vs auxiliary check 분류 후 ready-to-merge handoff 또는 T3 manager-quality 트리거.
+- **moai-workflow-ci-loop** — Phase 4 (`gh pr create`) 성공 후 CI watch + auto-fix loop을 자동 호출하는 skill. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 30s polling, 30분 hard timeout, required vs auxiliary check 분류 후 ready-to-merge handoff 또는 max 3-iteration auto-fix 시도, semantic 실패는 즉시 escalation.
 
 이 skill은 `auto` 모드 sync에서 PR 생성 직후 무조건 호출되며, invocation contract에 따라 orchestrator가 다음을 보장한다: gh 인증 확인 → `.github/required-checks.yml` 존재 확인 → 양의 정수 PR 번호 → 90s 이내 활성 watch 부재.
 
@@ -463,7 +463,7 @@ Workflow audit 2026-05-16 (F-005) 정적 routing 명시:
 
 Version: 3.8.0
 Updated: 2026-05-17
-Changes: Added test scenarios (3.7.0) + Related Skills section with explicit moai-workflow-ci-watch reference (3.8.0).
+Changes: Added test scenarios (3.7.0) + Related Skills section (3.8.0) + consolidated moai-workflow-ci-watch reference to moai-workflow-ci-loop per SPEC-V3R6-SKILL-CONSOLIDATE-001 (3.9.0).
 
 ---
 

@@ -14,7 +14,7 @@ Per SPEC-V3R2-WF-003, `/moai design` participates in the `--mode` axis with 4 va
 ### Mode Values
 
 - **`autopilot` (default)**: Path B — code-based brand design. Sequential pipeline of `moai-domain-copywriting` + `moai-domain-brand-design` + `moai-workflow-gan-loop`. When `--mode autopilot` is supplied explicitly, Phase 1 path-selection AskUserQuestion is skipped and Phase B-Common begins immediately. (Default invocations without `--mode` retain the AskUserQuestion path selection so users can still choose Path A / B1 / B2.)
-- **`import`**: Path A — Claude Design handoff bundle parsing. Invokes `moai-workflow-design-import` per Phase A Steps A1-A5 only; skips Phase 1 path selection AND Phase B-Common copy + brand authoring (REQ-WF003-013).
+- **`import`**: Path A — Claude Design handoff bundle parsing. Invokes `moai-workflow-design` (Part 1 — Path A) per Phase A Steps A1-A5 only; skips Phase 1 path selection AND Phase B-Common copy + brand authoring (REQ-WF003-013).
 - **`team`**: Path B-Common with **parallel** execution. Spawns `moai-domain-copywriting` and `moai-domain-brand-design` as concurrent teammates (role_profile `designer` per `workflow.yaml`); both feed `moai-workflow-gan-loop` for evaluation per the GAN Loop contract (REQ-WF003-009). Requires the same team prerequisites as `/moai run --mode team`: `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
 - **`pipeline`**: REJECTED on `/moai design`. Pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (preserved from the WF-004 baseline; REQ-WF003-016 ↔ REQ-WF004-014 byte-identical).
 
@@ -175,7 +175,7 @@ Step A2: Collect bundle path:
 - AskUserQuestion: "What is the local file path to the downloaded handoff bundle?"
 - Validate that the path ends in `.zip` or `.html`.
 
-Step A3: Invoke `moai-workflow-design-import` skill:
+Step A3: Invoke `moai-workflow-design` skill (Part 1 — Path A handler):
 - Pass: bundle file path, project brief, `.moai/config/sections/design.yaml`
 - Expected output: `.moai/design/tokens.json`, `.moai/design/components.json`, `.moai/design/assets/`
 
@@ -184,7 +184,7 @@ Step A4: On import success:
 - Load `moai-workflow-gan-loop` and pass the imported design artifacts.
 
 Step A5: On import failure:
-- Present the error code and message from `moai-workflow-design-import`.
+- Present the error code and message from `moai-workflow-design` (Part 1 Path A handler).
 - AskUserQuestion: "Would you like to switch to Path B1 (Figma) or Path B2 (Pencil)?"
 - If yes: return to Phase 1.
 - If no: stop and wait for user to provide a corrected bundle path.
@@ -217,7 +217,7 @@ After Phase B1 or B2 completes token extraction:
 
 Step BC-1: Load design context:
 - Check `.moai/design/` exists. If absent: skip, log "design docs not initialized".
-- Invoke `moai-workflow-design-context` skill with `dir=".moai/design"`.
+- Invoke `moai-workflow-design` skill (Part 3 — design-brief context loader) with `dir=".moai/design"`.
 - Receive consolidated context block (token-capped per REQ-5 algorithm).
 - Prepend context block to downstream subagent prompts.
 

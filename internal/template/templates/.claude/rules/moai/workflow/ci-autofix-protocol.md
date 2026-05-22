@@ -1,13 +1,13 @@
 ---
-description: CI auto-fix loop protocol — HARD invocation contract for moai-workflow-ci-autofix skill. Auto-loaded when the ci-autofix skill is active.
+description: CI auto-fix loop protocol — HARD invocation contract for moai-workflow-ci-loop skill (auto-fix phase). Auto-loaded when the ci-loop skill is active.
 paths:
-  - ".claude/skills/moai-workflow-ci-autofix/SKILL.md"
+  - ".claude/skills/moai-workflow-ci-loop/SKILL.md"
 ---
 
 # CI Auto-Fix Protocol Rule
 
 > This file is the single source of truth for the CI auto-fix loop invocation rules.
-> Cross-referenced by: SKILL.md, moai-workflow-ci-autofix.
+> Cross-referenced by: SKILL.md, moai-workflow-ci-loop (unified watch + autofix skill).
 
 ---
 

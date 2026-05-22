@@ -306,5 +306,16 @@ Team Prerequisites:
 
 ---
 
-Version: 2.2.0
-Updated: 2026-03-02. Added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.
+## Related Skills
+
+Workflow audit 2026-05-16 (F-005) 정적 routing 명시:
+
+- **moai-workflow-ci-loop** — Unified CI watch + auto-fix loop skill. After `/moai sync` PR creation, polls required checks; on failure handoff classifies mechanical vs semantic and attempts up to 3 auto-fix iterations. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 패치 실패 시 AskUserQuestion 경유 escalation.
+
+이 skill은 `/moai fix --ci` 또는 ci-watch failure 알림 수신 시 호출되며, invocation contract에 따라 orchestrator가 다음을 보장한다: failure handoff 데이터 유효성 검증 → mechanical 분류 시 자동 patch → semantic 분류 또는 patch 실패 시 user escalation.
+
+---
+
+Version: 2.3.0
+Updated: 2026-05-22 (consolidated CI watch + autofix references to moai-workflow-ci-loop per SPEC-V3R6-SKILL-CONSOLIDATE-001).
+Previous: 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.

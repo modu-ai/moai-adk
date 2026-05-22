@@ -590,7 +590,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] moai-workflow-design-import continues to write machine-generated artifacts to .moai/design/"
+  clause: "[HARD] moai-workflow-design continues to write machine-generated artifacts to .moai/design/"
   canary_gate: true
 
 - id: CONST-V3R2-069
