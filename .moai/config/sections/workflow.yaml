@@ -128,8 +128,11 @@ workflow:
         run: 180000
         sync: 40000
     worktree:
+        # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
+        # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
+        # auto_merge/auto_cleanup 유지 (사용자 수동 worktree 생성 시에만 자동 머지/정리).
         auto_cleanup: true
-        auto_create: true
+        auto_create: false
         auto_merge: true
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
         tmux_preferred: true

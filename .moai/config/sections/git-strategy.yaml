@@ -25,15 +25,18 @@ git_strategy:
         workflow: github-flow
     mode: team
     personal:
+        # 1-person OSS Hybrid Trunk (2026-05-22): Tier S 미만은 main 직접 commit,
+        # Tier M/L 또는 SPEC sync 시만 feat 브랜치 + PR. auto_branch/auto_pr 활성으로
+        # SPEC 워크플로우 시 자동 브랜치 + PR. branch_prefix는 feat/SPEC- (실제 사용 형식 일치).
         automation:
-            auto_branch: false
+            auto_branch: true
             auto_commit: true
-            auto_pr: false
-            auto_push: false
+            auto_pr: true
+            auto_push: true
         branch_creation:
-            auto_enabled: false
+            auto_enabled: true
             prompt_always: true
-        branch_prefix: feature/SPEC-
+        branch_prefix: feat/SPEC-
         commit_style:
             format: conventional
             scope_required: false
@@ -42,36 +45,40 @@ git_strategy:
         hooks:
             commit_msg: warn
             pre_commit: enforce
-            pre_push: warn
+            pre_push: enforce
         main_branch: main
         push_to_remote: true
         workflow: github-flow
     provider: github
     team:
-        # Late-branch default per SPEC-V3R5-LATE-BRANCH-001 (D1 Option a):
-        # auto_branch/auto_pr/auto_enabled flipped to false; prompt_always flipped to true.
-        # Users opting back to auto-branch can set auto_enabled: true.
+        # 1-person OSS Hybrid Trunk (2026-05-22):
+        # auto_branch/auto_pr/auto_enabled 재활성 — SPEC 워크플로우 시 자동 브랜치 + PR 생성.
+        # branch_prefix: feature/SPEC- → feat/SPEC- (PR #1043/#1044 실제 사용 형식 일치).
+        # draft_pr: true → false (1인 OSS이므로 즉시 ready, draft 단계 불필요).
+        # required_reviews: 1 → 0 (외부 contributor 없음 — self admin merge).
+        # hooks.pre_push: warn → enforce (main push 보호, local lint/test 검증 강제).
+        # Tier S 미만은 main 직접 commit (Hybrid 첫번째 옵션), Tier M/L만 PR.
         automation:
-            auto_branch: false
+            auto_branch: true
             auto_commit: true
-            auto_pr: false
+            auto_pr: true
             auto_push: true
         branch_creation:
-            auto_enabled: false
+            auto_enabled: true
             prompt_always: true
-        branch_prefix: feature/SPEC-
+        branch_prefix: feat/SPEC-
         branch_protection: true
         commit_style:
             format: conventional
             scope_required: true
-        draft_pr: true
+        draft_pr: false
         environment: github
         github_integration: true
         hooks:
             commit_msg: warn
             pre_commit: enforce
-            pre_push: warn
+            pre_push: enforce
         main_branch: main
         push_to_remote: true
-        required_reviews: 1
+        required_reviews: 0
         workflow: github-flow

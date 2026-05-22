@@ -4,17 +4,22 @@ github_actions:
         trigger: pr_open
     enabled: true
     review:
+        # 1-person OSS Hybrid Trunk (2026-05-22):
+        # GLM 5.1만 활성 — claude (OAuth-only로 GHA에서 복잡, 비용 절감), codex
+        # (OAuth 표준 미지원 + ChatGPT Pro Enterprise 권한 필요), gemini (정리) 모두 비활성.
+        # GLM은 secret GLM_API_KEY로 GHA에서 직접 호출 (Z.AI API 기반).
+        # 향후 Codex OAuth GHA 공식 지원 시 codex 재활성 검토.
         enabled: true
         llms:
             claude:
-                enabled: true
+                enabled: false
                 secret: CLAUDE_CODE_OAUTH_TOKEN
             codex:
-                enabled: true
+                enabled: false
                 private_only: true
                 secret: CODEX_AUTH_JSON
             gemini:
-                enabled: true
+                enabled: false
                 secret: GEMINI_API_KEY
             glm:
                 enabled: true

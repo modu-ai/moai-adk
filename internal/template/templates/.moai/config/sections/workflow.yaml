@@ -123,8 +123,11 @@ workflow:
                     - ux-reviewer
         require_plan_approval: true
     # SPEC-WORKTREE-002: Worktree automation settings
+    # 2026-05-22: auto_create: false (user policy feedback_worktree_autonomous 정렬).
+    # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성하지 않음.
+    # 사용자가 수동으로 worktree 생성 시에만 auto_merge/auto_cleanup가 동작.
     worktree:
-        auto_create: true
+        auto_create: false
         auto_merge: true
         auto_cleanup: true
         tmux_preferred: true
