@@ -12,7 +12,6 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skil
 model: inherit
 effort: high
 permissionMode: bypassPermissions
-isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
