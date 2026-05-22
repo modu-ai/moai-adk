@@ -1,5 +1,5 @@
 ---
-name: my-harness-hook-ci
+name: moai-harness-hook-ci
 description: >
   Hook/CI domain knowledge for moai-adk-go covering shell hook patterns, PostToolUse/SessionStart
   events, GitHub Actions workflows, CI pipeline structure, and release automation.
@@ -25,7 +25,7 @@ progressive_disclosure:
 triggers:
   keywords: ["hook", "PostToolUse", "SessionStart", "CI", "GitHub Actions", "workflow", "release", "GoReleaser", "handle-", "settings.json"]
   agents:
-    - "my-harness-hook-ci-specialist"
+    - "moai-harness-hook-ci-specialist"
     - "expert-devops"
   phases:
     - "run"

@@ -1,5 +1,5 @@
 ---
-name: my-harness-quality-specialist
+name: moai-harness-quality-specialist
 description: |
   Quality/Testing domain specialist for moai-adk-go. Handles Go testing patterns, linting,
   coverage targets, race detection, and LSP quality gates.
@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 skills:
-  - my-harness-quality
+  - moai-harness-quality
 ---
 
 # Quality Specialist

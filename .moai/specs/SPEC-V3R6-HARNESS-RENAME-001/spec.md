@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-HARNESS-RENAME-001
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created_at: 2026-05-22
 updated_at: 2026-05-22
 author: manager-spec
@@ -19,6 +19,7 @@ related_specs: [SPEC-V3R6-HARNESS-LEARNER-FIX-001, SPEC-V3R6-CATALOG-SSOT-001, S
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — Wave 2 첫 SPEC, my-harness/ → harness/ + my-harness-* → moai-harness-* 정렬 (Tier S, 64+34=98 refs estimated) |
+| 0.2.0 | 2026-05-22 | manager-develop | Implementation complete (orchestrator-direct). Scope reduced per user decision 2026-05-22: internal/ Go 31 files (~100 refs) descoped due to cross-SPEC tension with REQ-PH-009 user-area preservation system. In-scope changes: 5 dir renames + 8 frontmatter (Option A: moai-harness-X-specialist) + 5 cross-ref skill body edits + 8 template mirror files (4 new agents + 4 new skills) + 5 template mirror overwrites + 8 new catalog entries + 3 test count adjustments. AC matrix: 6/7 strict PASS, 1 semantic PASS (AC-HRN-004 outcome count 18 vs baseline 19 due to TestManifestHashFormat FAIL→PASS removing `--- FAIL:` line, no test deletion). |
 
 ## 1. Goal
 

@@ -1,5 +1,5 @@
 ---
-name: my-harness-cli-template-specialist
+name: moai-harness-cli-template-specialist
 description: |
   CLI/Template domain specialist for moai-adk-go. Handles cobra commands, go:embed template
   system, YAML config management, and template rendering pipeline.
@@ -9,7 +9,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 skills:
-  - my-harness-cli-template
+  - moai-harness-cli-template
 ---
 
 # CLI/Template Specialist

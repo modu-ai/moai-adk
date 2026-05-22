@@ -28,15 +28,35 @@ catalog:
               path: templates/.claude/skills/moai-foundation-thinking/
               hash: cc81cd01b7b47fe6d814014717269fa4ba9f9220ca8edb421fd8d8922554b45c
               version: 1.0.0
+            - name: moai-harness-cli-template
+              tier: core
+              path: templates/.claude/skills/moai-harness-cli-template/
+              hash: 7a68b1c54cbd9ba7458fac0090acd29a4736df006e6a37145ee994e2494bb6da
+              version: 1.0.0
+            - name: moai-harness-hook-ci
+              tier: core
+              path: templates/.claude/skills/moai-harness-hook-ci/
+              hash: f49844830892ea41ffdc83d99c6e280ec42b78cf9747792a2a9789e7080e6005
+              version: 1.0.0
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
-              hash: 53fa7251d9068594801e4dced3b8de3e12ea569aeb764c48d82d63b4fefe0b3c
+              hash: 33ed2f162945a54bea800a7a06a930a79e9545d173e1cc752887146c5c1ca53f
+              version: 1.0.0
+            - name: moai-harness-quality
+              tier: core
+              path: templates/.claude/skills/moai-harness-quality/
+              hash: d62b421e04b0e4a04043b4cb01b72b915916fef733f0d6377d4c12b6faa630a8
+              version: 1.0.0
+            - name: moai-harness-workflow
+              tier: core
+              path: templates/.claude/skills/moai-harness-workflow/
+              hash: 14a78f19d27befba3be177f7324eab9da7b46ae8931b20f812077c69a66ebc67
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: e3bf9e8ecb93781c5a0a3b244f0c584f9f8810eeaf9c47c2a42b2a39f1a33a7f
+              hash: a37b58b6645bb979ba726b799e9cd75ee248266a1e57d1a9d7af82ad0ef81ea4
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -109,6 +129,26 @@ catalog:
               path: templates/.claude/agents/moai/claude-code-guide.md
               hash: 7fafd091001b3321c13df66d48be080312aa99e7a1d7eed427f6de73f120dfd0
               version: 1.0.0
+            - name: moai-harness-cli-template-specialist
+              tier: core
+              path: templates/.claude/agents/harness/cli-template-specialist.md
+              hash: 635957017127f9fe82d7d054a9af361e142542259b834a7139f7613b60339f4e
+              version: 1.0.0
+            - name: moai-harness-hook-ci-specialist
+              tier: core
+              path: templates/.claude/agents/harness/hook-ci-specialist.md
+              hash: 9c737ae1f37f155ac00036b9e354e8496703ab2fc01beb889b9241eecec4be08
+              version: 1.0.0
+            - name: moai-harness-quality-specialist
+              tier: core
+              path: templates/.claude/agents/harness/quality-specialist.md
+              hash: 540131d9fc89c4d2b820f69372884e40d3b8806db16ea47bbb630b3ad1388dda
+              version: 1.0.0
+            - name: moai-harness-workflow-specialist
+              tier: core
+              path: templates/.claude/agents/harness/workflow-specialist.md
+              hash: 589677d05e4e3dea5f293c74d34ceaffffd47940cea999e12ebb6aca004f17f7
+              version: 1.0.0
             - name: evaluator-active
               tier: core
               path: templates/.claude/agents/moai/evaluator-active.md
@@ -117,7 +157,7 @@ catalog:
             - name: expert-refactoring
               tier: core
               path: templates/.claude/agents/moai/expert-refactoring.md
-              hash: bfe797366b09474e029c048819bf2f294ec189c0f75f3939e856d9fbcbf6dab7
+              hash: c03476f94b032506daf1c5e046d5fec4f8d6a7e249a42daf90bbf9249fc9ad6b
               version: 1.0.0
             - name: manager-brain
               tier: core
@@ -127,7 +167,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 5b92f1a97f94704b5e384df24f1f670befd3ff59ebfeb3ea98754f88e971ea91
+              hash: 5c13877835b9ecc4db99611f886bdeff5b861a25dd99f6d10855468dd466e933
               version: 1.0.0
             - name: manager-docs
               tier: core
@@ -167,7 +207,7 @@ catalog:
             - name: researcher
               tier: core
               path: templates/.claude/agents/moai/researcher.md
-              hash: 2af29e4cab4410ab4c613c1eb28c1317756775841f47d0af821e8d3b033be89e
+              hash: 1f8b2b4ff87ce45807fb304eda7ab9c4e835f9748ed246fe4ce6ed659bc7ae65
               version: 1.0.0
     optional_packs:
         backend:
@@ -193,7 +233,7 @@ catalog:
                 - name: expert-backend
                   tier: optional-pack:backend
                   path: templates/.claude/agents/moai/expert-backend.md
-                  hash: 94e35fac45183844ec0aa233f34c1d98cdce53e3431663da01ff0eec810f9d62
+                  hash: 4799df71cfd0096fa56d80daccebed8c3e17b1478e15aa85c495bbf6955afd2c
                   version: 1.0.0
         deployment:
             description: Deployment and hosting with Vercel, Railway, Convex, and serverless infrastructure
@@ -239,7 +279,7 @@ catalog:
                 - name: moai-workflow-design-import
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-design-import/
-                  hash: b11cd97596318ce4016112099850b75cff40ae5a01d8f5c5b015689781ce8b36
+                  hash: ae2d8c77359a40ac0b84027066d93c8a71511538b5647c96443bc463abdcfd64
                   version: 1.0.0
                 - name: moai-workflow-gan-loop
                   tier: optional-pack:design
@@ -286,7 +326,7 @@ catalog:
                 - name: expert-frontend
                   tier: optional-pack:frontend
                   path: templates/.claude/agents/moai/expert-frontend.md
-                  hash: 6e997ddecc53b532f1950484b4e667c59e554462afe25fc7e3dc8704878662c0
+                  hash: 3ac58c8151ddf6262c270ed1f6405bbcc90f4542c68bffb56ae3d01462132d40
                   version: 1.0.0
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows

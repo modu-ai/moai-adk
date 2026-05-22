@@ -1,5 +1,5 @@
 ---
-name: my-harness-workflow
+name: moai-harness-workflow
 description: >
   SPEC Workflow domain knowledge for moai-adk-go covering SPEC document structure, EARS format
   requirements, plan-run-sync pipeline, MX tag protocol, and acceptance criteria.
@@ -25,7 +25,7 @@ progressive_disclosure:
 triggers:
   keywords: ["SPEC", "plan", "run", "sync", "EARS", "MX tag", "acceptance criteria", "milestone", "wave", "AC-", "REQ-"]
   agents:
-    - "my-harness-workflow-specialist"
+    - "moai-harness-workflow-specialist"
     - "manager-spec"
     - "manager-develop"
     - "manager-docs"

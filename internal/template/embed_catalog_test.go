@@ -25,7 +25,11 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// (was 65 = 57 + 8 retired stubs).
 	// SPEC-V3R5-CORE-SLIM-B-001 (2026-05-20): 5 entries removed
 	// (4 Category B skills + auth/chrome-extension/mobile empty pack descriptors).
-	const wantTotal = 52
+	// SPEC-V3R6-HARNESS-RENAME-001 (2026-05-22): 8 entries added
+	// (4 moai-harness-{cli-template,hook-ci,quality,workflow} skills +
+	// 4 moai-harness-{cli-template,hook-ci,quality,workflow}-specialist agents
+	// as Template-First mirror per REQ-HRN-003), raising count from 52 to 60.
+	const wantTotal = 60
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)
