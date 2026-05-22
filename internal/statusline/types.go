@@ -269,9 +269,10 @@ type GitStatusData struct {
 
 // MemoryData holds context window token usage information.
 type MemoryData struct {
-	TokensUsed  int
-	TokenBudget int
-	Available   bool
+	TokensUsed        int
+	TokenBudget       int // Scaled to auto-compact threshold for CW bar (e.g., 1M × 85% = 850K)
+	ContextWindowSize int // Raw context_window_size from Claude Code stdin (1M / 200K) — used by handoff_guide threshold matching
+	Available         bool
 }
 
 // MetricsData holds session cost and model information.
@@ -319,11 +320,13 @@ const (
 	// REQ-SSE-001/002: workspace.repo segment (Claude Code 2.1.145+)
 	SegmentRepo = "repo" // GitHub repo identity owner/name indicator
 
-	// REQ-SSE-003/004: exceeds_200k_tokens visual marker (Claude Code 2.1.139+)
-	SegmentLongContext = "long_context" // Long-context overflow ⚠️ marker
+	// NOTE: SegmentLongContext removed per user explicit request (layout v3 CH1).
+	// StdinData.ExceedsLong + StatusData.ExceedsLongTokens fields preserved
+	// for future use, but no visual segment renders the ⚠️ long marker.
 
-	// REQ-SSE-005/006: handoff guide segment (orchestrator handoff hint)
-	SegmentHandoffGuide = "handoff_guide" // Paste-ready /clear hint at threshold
+	// NOTE: SegmentHandoffGuide removed per user explicit request (layout v3 CH2).
+	// shouldShowHandoffGuide() preserved as helper — its output is now integrated
+	// into the CW bar as a " (/clear)" suffix at the model-class threshold.
 )
 
 // UsageData represents API usage information.

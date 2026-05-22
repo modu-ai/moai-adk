@@ -217,9 +217,10 @@ func CollectMemory(input *StdinData) *MemoryData {
 		// Calculate tokens from percentage (of full context window)
 		tokensUsed = int(float64(contextSize) * (*ctx.UsedPercentage) / 100.0)
 		return &MemoryData{
-			TokensUsed:  tokensUsed,
-			TokenBudget: effectiveBudget,
-			Available:   true,
+			TokensUsed:        tokensUsed,
+			TokenBudget:       effectiveBudget,
+			ContextWindowSize: contextSize,
+			Available:         true,
 		}
 	}
 
@@ -228,26 +229,29 @@ func CollectMemory(input *StdinData) *MemoryData {
 		cu := ctx.CurrentUsage
 		tokensUsed = cu.InputTokens + cu.CacheCreationTokens + cu.CacheReadTokens
 		return &MemoryData{
-			TokensUsed:  tokensUsed,
-			TokenBudget: effectiveBudget,
-			Available:   true,
+			TokensUsed:        tokensUsed,
+			TokenBudget:       effectiveBudget,
+			ContextWindowSize: contextSize,
+			Available:         true,
 		}
 	}
 
 	// Priority 3: Fall back to legacy used/total fields
 	if ctx.Used > 0 || ctx.Total > 0 {
 		return &MemoryData{
-			TokensUsed:  ctx.Used,
-			TokenBudget: ctx.Total * threshold / 100,
-			Available:   true,
+			TokensUsed:        ctx.Used,
+			TokenBudget:       ctx.Total * threshold / 100,
+			ContextWindowSize: contextSize,
+			Available:         true,
 		}
 	}
 
 	// No data available - return 0% (session start state)
 	return &MemoryData{
-		TokensUsed:  0,
-		TokenBudget: effectiveBudget,
-		Available:   true,
+		TokensUsed:        0,
+		TokenBudget:       effectiveBudget,
+		ContextWindowSize: contextSize,
+		Available:         true,
 	}
 }
 

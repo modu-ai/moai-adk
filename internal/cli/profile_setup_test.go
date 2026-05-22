@@ -61,3 +61,51 @@ func TestGetProfileText_ModeFields(t *testing.T) {
 		})
 	}
 }
+
+// TestNormalizeStatuslinePreset verifies the canonical-list normalizer
+// behavior covering EC-SPW-001 (preserve valid), EC-SPW-002 (reset invalid),
+// EC-SPW-003 (preserve empty).
+// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-004.
+func TestNormalizeStatuslinePreset(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "EC-SPW-003 empty preserved", input: "", want: ""},
+		{name: "EC-SPW-001 valid full", input: "full", want: "full"},
+		{name: "EC-SPW-001 valid compact", input: "compact", want: "compact"},
+		{name: "EC-SPW-001 valid minimal", input: "minimal", want: "minimal"},
+		{name: "EC-SPW-001 valid custom", input: "custom", want: "custom"},
+		{name: "EC-SPW-002 invalid legacy fullbar", input: "fullbar", want: ""},
+		{name: "EC-SPW-002 invalid typo cusotm", input: "cusotm", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeStatuslinePreset(tt.input)
+			if got != tt.want {
+				t.Errorf("normalizeStatuslinePreset(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestStatuslineAllSegments_CardinalityAndOrder verifies the 15-segment
+// canonical list matches .moai/config/sections/statusline.yaml keys.
+// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-002 / REQ-SPW-003.
+func TestStatuslineAllSegments_CardinalityAndOrder(t *testing.T) {
+	if got, want := len(statuslineAllSegments), 15; got != want {
+		t.Fatalf("statuslineAllSegments length = %d, want %d", got, want)
+	}
+	expected := []string{
+		"claude_version", "context", "directory", "effort_thinking",
+		"git_branch", "git_status", "moai_version", "model",
+		"output_style", "pr", "session_time", "task",
+		"usage_5h", "usage_7d", "worktree",
+	}
+	for i, key := range expected {
+		if statuslineAllSegments[i] != key {
+			t.Errorf("statuslineAllSegments[%d] = %q, want %q", i, statuslineAllSegments[i], key)
+		}
+	}
+}

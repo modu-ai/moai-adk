@@ -1,353 +1,368 @@
 ---
-title: 状态栏系统与PR段
+title: Statusline 系统 — 3-line 布局完整指南
 weight: 78
 draft: false
 ---
 
-这是用于集成 Claude Code 和 moai-adk-go 的**自定义状态栏系统**。从 v2.1.145 开始，您可以在状态栏中显示 GitHub PR 信息。
+Claude Code 与 moai-adk-go 集成的 **自定义 statusline 系统**。从 Claude Code v2.1.139 开始 effort/thinking,v2.1.145 开始 workspace.repo + pr 字段已添加到 stdin JSON,可以显示丰富的会话上下文。
 
-> MoAI 工作流是以 PR 为中心的。所有 SPEC 都会生成 plan-PR → run-PR → sync-PR，因此在状态栏中显示当前 PR 状态可以提高开发效率。
+> MoAI 工作流是 PR 中心的。每个 SPEC 都会生成 plan-PR → run-PR → sync-PR 周期,因此在 statusline 中即时显示当前 PR 号码、审查状态、上下文使用率和 handoff 建议可显著提高开发效率。
 
 ## 概述
 
-### 为什么需要自定义状态栏
+### 最终布局 (3-line v3)
 
-Claude Code 的默认状态栏针对通用使用模式进行了优化。但是 MoAI-ADK 用户需要以下特殊信息：
+```
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+```
 
-- **PR 中心工作流**：当前 PR 编号和审核状态（approved/pending/changes_requested）
-- **多窗格开发**：使用工作树进行并行开发时显示当前 SPEC 状态
-- **成本跟踪**：使用 GLM 环境时的实时成本监控
-- **上下文管理**：当前会话的令牌使用率和累计成本
+- **Line 1 (Info)**: 模型 · effort/thinking · Claude Code 版本 · MoAI 版本 · 会话时间 · output style
+- **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — 每个 bar 显示 emoji + label + bar + % + reset 信息
+- **Line 3 (Git/PR)**: 目录 · 仓库+分支组合 · git status · 活动 SPEC task · PR 信息
 
-自定义状态栏通过 `.moai/status_line.sh` 渲染器显示这些信息。
-
-### 状态栏架构
+### 数据流
 
 ```
 Claude Code stdin (JSON)
     ↓
 internal/statusline/types.go (StdinData 解析)
     ↓
-internal/statusline/builder.go (段构建)
+internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
     ↓
-internal/statusline/renderer.go (颜色编码和渲染)
+internal/statusline/renderer.go (3-line v3 布局)
     ↓
-.moai/status_line.sh (基于模板的最终渲染)
+.moai/status_line.sh → 终端显示
 ```
+
+## Line 1 — Info (7 个段)
+
+### 🤖 Model
+
+- **格式**: `🤖 <model display name>`
+- **数据源**: stdin `model.display_name` (或 string shorthand)
+- **示例**: `🤖 Opus 4.7`, `🤖 Sonnet 4.6`, `🤖 Haiku 4.5`
+- **隐藏条件**: `model` 字段缺失或 `data.Metrics.Model == ""`
+- **段键**: `model`
+
+### 🧠 Effort / Thinking
+
+- **格式**: `🧠 <level>[·t]`
+- **数据源**: stdin `effort.level` + `thinking.enabled` (Claude Code v2.1.139+)
+- **Level 值**: `low` / `medium` / `high` / `xhigh` / `max`
+- **`·t` 后缀**: `thinking.enabled == true` 时添加 (extended reasoning 启用)
+- **示例**:
+  - `🧠 xhigh·t` (xhigh effort + thinking 启用)
+  - `🧠 high` (high effort,无 thinking)
+  - `·t` (effort 缺失 + 仅 thinking 启用)
+- **隐藏条件**: `effort` + `thinking` 都缺失 (包括 effort.level 空字符串)
+- **段键**: `effort_thinking`
+
+### 🔅 Claude Code 版本
+
+- **格式**: `🔅 v<version>` (default) 或 `🔅 cc v<version>` (full mode)
+- **数据源**: stdin `version` 字符串
+- **示例**: `🔅 v2.1.146`
+- **隐藏条件**: `version` 空字符串
+- **段键**: `claude_version`
+
+### 🗿 MoAI 版本
+
+- **格式**: `🗿 v<current>` 或更新可用时 `🗿 v<current> -> 🗿 v<latest>`
+- **数据源**: `.moai/config/sections/system.yaml` `moai.version` + 后台更新检查器
+- **示例**:
+  - `🗿 v2.20.0-rc1` (最新)
+  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (建议更新)
+- **段键**: `moai_version`
+
+### ⏳ 会话时间
+
+- **格式**: `⏳ <X>h <Y>m` (≥1h) / `⏳ <X>m` (<1h) / `⏳ <X>d <Y>h` (≥24h)
+- **数据源**: stdin `cost.total_duration_ms`
+- **示例**: `⏳ 4h 52m`, `⏳ 35m`, `⏳ 1d 3h`
+- **段键**: `session_time`
+
+### 💬 Output Style
+
+- **格式**: `💬 <style name>`
+- **数据源**: stdin `output_style.name`
+- **示例**: `💬 MoAI`, `💬 R2-D2`, `💬 default`
+- **隐藏条件**: `output_style.name` 空字符串
+- **段键**: `output_style`
+
+## Line 2 — Usage Bars (3 个段)
+
+### 🪫/🔋 CW (Context Window)
+
+- **格式**: `<icon> CW: <bar> <pct>% [(⚠️/clear)]`
+- **数据源**:
+  - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
+  - 百分比: `context_window.used_percentage` (预计算) 或 `current_usage` tokens 总和
+  - (⚠️/clear) 启用条件: `shouldShowHandoffGuide(data) == true`
+- **emoji**:
+  - 🔋 (正常, <50% scaled)
+  - 🪫 (警告, 50-79% scaled)
+  - 🪫 (危险, ≥80% scaled, 颜色添加)
+- **(⚠️/clear) handoff 后缀**:
+  - 1M context 模型 (Opus 4.7): used_percentage ≥50% (基于 raw context_window_size)
+  - 200K context 模型 (Sonnet/Haiku): used_percentage ≥90%
+  - 含义: 下一 turn 开始前建议 `/clear` + 利用 paste-ready resume message
+- **示例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
+- **段键**: `context`
+
+### 🔋 5H (5小时 rolling rate limit)
+
+- **格式**: `🔋 5H: <bar> <pct>% [(<reset>)]`
+- **数据源**: stdin `rate_limits.five_hour.{used_percentage, resets_at}`
+- **Reset 格式**:
+  - <60 分: `(Nm)` (例: `(47m)`)
+  - <24 小时: `(Nh Nm)` (例: `(2h 15m)`)
+  - ≥24 小时: `(Mon DD)` (例: `(May 28)`)
+- **示例**: `🔋 5H: █████░░░░░ 56% (47m)`
+- **数据缺失**: `rate_limits.five_hour == null` → bar 0%, reset `(rolling)`
+- **段键**: `usage_5h`
+
+### 🔋 7D (7天 rolling rate limit)
+
+- **格式**: `🔋 7D: <bar> <pct>% [(<reset>)]`
+- **数据源**: stdin `rate_limits.seven_day.{used_percentage, resets_at}`
+- **Reset 格式**: `(Mon DD)` (绝对日期)
+- **示例**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
+- **段键**: `usage_7d`
+
+## Line 3 — Git / PR (5 个段)
+
+### 📁 Directory
+
+- **格式**: `📁 <directory name>`
+- **数据源**: stdin `workspace.project_dir` (basename) 或 `cwd`
+- **示例**: `📁 moai-adk-go`, `📁 my-project`
+- **隐藏条件**: `data.Directory` 空字符串
+- **段键**: `directory`
+
+### 🔀 Repo + Branch (组合段)
+
+- **格式**: `🔀 <owner>/<name> (🅱️ <branch>[ ↑N][ ↓N][ +N])`
+- **数据源**:
+  - `🔀 owner/name`: stdin `workspace.repo.{host, owner, name}` (Claude Code v2.1.145+)
+  - `🅱️ branch`: 本地 git `branch --show-current`
+  - `↑N`: ahead 计数 (对比 origin/<branch>)
+  - `↓N`: behind 计数
+  - `+N`: dirty 计数 = Modified + Staged + Untracked
+- **示例**:
+  - `🔀 modu-ai/moai-adk (🅱️ main ↑3 +2)` (repo + branch + ahead + dirty)
+  - `🔀 modu-ai/moai-adk (🅱️ main)` (clean branch, no ahead)
+  - `🔀 (🅱️ feat/auth ↑2 ↓1 +6)` (repo 信息缺失 fallback)
+- **隐藏条件**:
+  - branch 空字符串 → 整段隐藏
+  - repo nil 时 fallback (仅在括号内显示 branch)
+- **Worktree 模式**: `worktree` 段启用时 branch 加 `[WT] ` prefix
+- **段键**: `git_branch` (combined)
+
+### 💾 Git Status
+
+- **格式**: `💾 +<staged> M<modified> ?<untracked>`
+- **数据源**: 本地 git `git status --porcelain` 解析
+- **示例**: `💾 +0 M1 ?1` (staged 0, modified 1, untracked 1)
+- **隐藏条件**: git 不可用
+- **注意**: 之前的 mailbox 四种 emoji (📬/📫/📪/📭) 已弃用,统一使用 💾
+- **段键**: `git_status`
+
+### 📋 Task (活动 SPEC workflow)
+
+- **格式**: `📋 [<command> <SPEC-ID>-<stage>]`
+- **数据源**: `~/.moai/state/last-session-state.json` `active_task` 字段 (仅在该文件创建时显示)
+- **示例**: `📋 [/moai run SPEC-V3R5-STATUSLINE-001-implement]`
+- **隐藏条件**: 文件缺失或 `active_task` nil → 段隐藏
+- **段键**: `task` (opt-in default off)
+
+### 💌 PR (活动 GitHub Pull Request)
+
+- **格式**: `💌 PR #<number> (⌥<review_state>)` (state 存在时) / `💌 PR #<number>` (state 空字符串)
+- **数据源**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.146+)
+- **Review state 值**: `approved` / `pending` / `changes_requested` / `draft` / 其他 (raw passthrough)
+- **颜色编码** (review_state 部分):
+  - `approved`: 绿色 (Success)
+  - `pending`: 黄色 (Warning)
+  - `changes_requested`: 红色 (Error)
+  - `draft`: 灰色 (Muted)
+  - 其他: 无颜色 (raw passthrough)
+- **示例**:
+  - `💌 PR #1234 (⌥approved)` (绿色)
+  - `💌 PR #1023 (⌥pending)` (黄色)
+  - `💌 PR #7 (⌥changes_requested)` (红色)
+  - `💌 PR #99 (⌥draft)` (灰色)
+  - `💌 PR #100` (无 state)
+- **隐藏条件**:
+  - `pr` 字段缺失 (无 PR 或 v2.1.145 以下)
+  - `pr.number == 0`
+  - `SegmentPR` config 明确 false
+- **段键**: `pr` (default on per v2.20.0-rc1)
 
 ## 配置
 
 ### 基本结构
 
-在 `.moai/config/sections/statusline.yaml` 中配置状态栏：
+`.moai/config/sections/statusline.yaml` 中管理段启用:
 
 ```yaml
 statusline:
-  mode: default              # default | compact | verbose
-  theme: catppuccin-mocha    # 选择颜色主题
-  preset: full               # full | minimal | custom
+  mode: default              # default | full
+  theme: catppuccin-mocha    # 颜色主题
+  preset: custom             # full | minimal | custom
   segments:
-    model: true              # 显示 Claude 模型
-    context: true            # 显示上下文使用率
-    directory: true          # 显示工作目录
-    git_status: true         # 显示 Git 状态
-    git_branch: true         # 显示 Git 分支
-    worktree: false          # 显示工作树信息（可选）
-    effort_thinking: false   # 显示 Effort/thinking 状态（可选）
-    pr: false                # 显示 PR 信息（可选，v2.1.145+）
+    # Line 1
+    model: true
+    effort_thinking: true
+    claude_version: true
+    moai_version: true
+    session_time: true
+    output_style: true
+
+    # Line 2
+    context: true
+    usage_5h: true
+    usage_7d: true
+
+    # Line 3
+    directory: true
+    git_branch: true       # combined repo+branch
+    git_status: true
+    task: true             # opt-in default off in older versions
+    pr: true               # default on per v2.20.0-rc1
+    worktree: false
 ```
 
-### 段选项
+### 段启用矩阵
 
-| 段 | 默认值 | 用途 | 说明 |
-|------|--------|------|------|
-| `model` | true | 当前模型 | 显示 Claude 模型版本 |
-| `context` | true | 上下文使用率 | 显示当前会话的令牌使用率 |
-| `directory` | true | 工作路径 | 显示当前工作目录 |
-| `git_status` | true | Git 状态 | 修改的文件数、贮藏状态 |
-| `git_branch` | true | 当前分支 | 分支名称和远程差异 |
-| `worktree` | false | 工作树信息 | 显示当前工作树（并行开发） |
-| `effort_thinking` | false | 思考模式 | effort 和 thinking 状态 |
-| `pr` | false | PR 信息 | GitHub PR 编号和审核状态（新 v2.1.145+） |
+| 段 | 行 | 默认启用 | stdin field |
+|---------|------|----------|-------------|
+| `model` | L1 | ✅ | `model.display_name` |
+| `effort_thinking` | L1 | ✅ | `effort.level` + `thinking.enabled` |
+| `claude_version` | L1 | ✅ | `version` |
+| `moai_version` | L1 | ✅ | (本地 config) |
+| `session_time` | L1 | ✅ | `cost.total_duration_ms` |
+| `output_style` | L1 | ✅ | `output_style.name` |
+| `context` | L2 | ✅ | `context_window.*` |
+| `usage_5h` | L2 | ✅ | `rate_limits.five_hour.*` |
+| `usage_7d` | L2 | ✅ | `rate_limits.seven_day.*` |
+| `directory` | L3 | ✅ | `workspace.project_dir` |
+| `git_branch` (combined) | L3 | ✅ | `workspace.repo.*` + 本地 git |
+| `git_status` | L3 | ✅ | 本地 git |
+| `task` | L3 | ⚠️ opt-in | `~/.moai/state/last-session-state.json` |
+| `pr` | L3 | ✅ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
+| `worktree` | L3 | ❌ opt-in | `workspace.git_worktree` |
 
-## 可用的段
+## Handoff Guide — (⚠️/clear) 建议标准
 
-### 始终启用的段（4个）
+CW bar 的 `(⚠️/clear)` 后缀在上下文使用量超过模型特定阈值时启用。这是预防 SSE stall 风险并建议使用 paste-ready resume message 的视觉标记。
 
-**model** — Claude 模型
-- 显示当前模型（Claude 3.5 Sonnet、Claude 3.7 Opus 等）
-- 示例：`Claude 3.5 Sonnet`
+| 模型类别 | Context Window | 阈值 | 建议时机 |
+|------------|----------------|------|----------|
+| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K tokens 使用 |
+| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens 使用 |
+| 其他 / 未知 | — | 不显示 | (安全 default) |
 
-**context** — 上下文使用率
-- 显示当前会话的令牌使用率
-- 格式：`150K/200K`（使用中 / 总计）
-- 75% 以上时以警告颜色显示
+> 阈值由 `internal/statusline/renderer.go shouldShowHandoffGuide()` 函数强制执行。这些阈值与 `.claude/rules/moai/workflow/context-window-management.md` HARD rule 一致。
 
-**directory** — 工作目录
-- 当前工作目录的相对路径
-- 显示相对于项目根目录的位置
+启用时用户流程:
+1. `(⚠️/clear)` marker 显示
+2. 保存进行中的工作到 `progress.md` 等
+3. orchestrator 生成 paste-ready resume message (session-handoff.md 6-block 格式)
+4. 执行 `/clear` 后粘贴 resume message
+5. 在新会话中继续工作
 
-**git_status** — Git 状态
-- 修改的文件数：`M5`（5个文件修改）
-- 贮藏状态：`S2`（2个贮藏）
-- 示例：`M5 S2`
+## stdin JSON 模式参考
 
-**git_branch** — 当前分支
-- 分支名称
-- 与远程的提交差异显示
-- 示例：`feat/SPEC-001 +3 -1`
-
-### 可选段（7个）
-
-**worktree** — 工作树信息（可选）
-- 使用 L2 工作树时显示
-- 显示当前 SPEC 名称
-- 启用：`segments.worktree: true`
-
-**effort_thinking** — Effort/thinking 状态（可选）
-- Claude 4.7 思考模式启用状态
-- effort 级别（high/xhigh/max）
-- 启用：`segments.effort_thinking: true`
-
-**output_style** — 输出样式（可选）
-- 当前输出样式设置
-- 启用：`segments.output_style: true`
-
-**claude_version** — Claude 版本（可选）
-- Claude Code 版本
-- 启用：`segments.claude_version: true`
-
-**moai_version** — moai 版本（可选）
-- MoAI-ADK 版本
-- 启用：`segments.moai_version: true`
-
-**session_time** — 会话经过时间（可选）
-- 当前会话开始以来的经过时间
-- 启用：`segments.session_time: true`
-
-**usage_5h** — 5小时累计成本（可选）
-- 过去 5 小时的成本跟踪
-- 在 GLM 环境中有用
-- 启用：`segments.usage_5h: true`
-
-**usage_7d** — 7天累计成本（可选）
-- 过去 7 天的成本跟踪
-- 启用：`segments.usage_7d: true`
-
-**task** — 活动 SPEC 工作流信息（可选）
-- 输出格式：`📋 [<command> <SPEC-ID>-<stage>]`（例如：`📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`）
-- 数据源：`~/.moai/state/last-session-state.json` 的 `active_task` 字段（由 SessionStart 钩子自动设置）
-- 非活动状态下 segment 不显示（graceful no-output）
-- 启用：`segments.task: true`（自 v2.20.0-rc1 起默认 true — default-on，可通过 `false` 显式禁用）
-
-**repo** — 存储库信息（可选，v2.1.145+）
-- 显示当前 GitHub 存储库所有者/名称
-- 示例：`modu-ai/moai-adk`
-- 启用：`segments.repo: true`
-
-**long_context** — 长上下文警告（可选，v2.1.139+）
-- 当 200K 令牌超过时显示警告标记
-- 示例：`⚠️ 200K+ exceeded`
-- 启用：`segments.long_context: true`
-
-**handoff_guide** — 切换指南阈值（可选，v2.1.146+）
-- 显示当前模型的上下文窗口大小和推荐的切换阈值
-- 1M 模型：50% 阈值（≈500K 令牌）
-- 200K 模型：90% 阈值（≈180K 令牌）
-- 示例：`[1M: 50% | 200K: 90%]`
-- 启用：`segments.handoff_guide: true`
-
-## 新增 v2.1.145：PR 段
-
-### 概述
-
-从 Claude Code v2.1.145 开始，状态栏 stdin JSON 包含 GitHub PR 信息。MoAI-ADK 利用这些信息在状态栏中显示当前 PR 的审核状态。
-
-**启用**：自 v2.20.0-rc1 起默认 `true`（default-on）。设置 `segments.pr: false` 可显式禁用。graceful no-output 模式：当无 PR 信息时 segment 自动隐藏。
-
-### PR 段显示格式
-
-PR 段以以下格式显示：
-
-```
-#1023 ⌥approved
-```
-
-- `#1023`：PR 编号
-- `⌥`：PR 状态显示符号
-- `approved`：审核状态（颜色编码）
-
-### 按审核状态的颜色
-
-根据 PR 的审核状态以不同颜色显示：
-
-| 状态 | 颜色 | 含义 |
-|------|------|------|
-| `approved` | 绿色 | PR 已批准 |
-| `pending` | 黄色 | 等待审核中 |
-| `changes_requested` | 红色 | 已请求更改 |
-| `draft` | 灰色 | 草稿状态 |
-| （其他/空） | 默认 | 未应用样式 |
-
-### 启用方法
-
-1. 编辑 `.moai/config/sections/statusline.yaml` 文件
-
-```yaml
-statusline:
-  segments:
-    pr: true   # 启用 PR 段
-```
-
-2. 重启 Claude Code 会话
-
-现在状态栏将显示当前 PR 的编号和审核状态。
-
-### JSON 输入架构（v2.1.145+）
-
-Claude Code v2.1.145+ 将以下格式的 JSON 传递给状态栏 stdin：
+Claude Code 传递给 statusline 脚本的 stdin JSON 完整字段列表请参考 [官方 docs Available data](https://code.claude.com/docs/en/statusline#available-data)。moai-adk-go 使用以下字段:
 
 ```json
 {
-  "pr": {
-    "number": 1023,
-    "url": "https://github.com/modu-ai/moai-adk/pull/1023",
-    "review_state": "pending"
-  },
+  "session_id": "abc...",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/path/to/cwd",
+  "model": {"id": "claude-opus-4-7", "display_name": "Opus 4.7"},
   "workspace": {
-    "repo": {
-      "host": "github.com",
-      "owner": "modu-ai",
-      "name": "moai-adk"
+    "current_dir": "...",
+    "project_dir": "...",
+    "git_worktree": "feature-xyz",
+    "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
+  },
+  "version": "2.1.146",
+  "output_style": {"name": "MoAI"},
+  "cost": {
+    "total_cost_usd": 1.234,
+    "total_duration_ms": 17520000,
+    "total_lines_added": 156,
+    "total_lines_removed": 23
+  },
+  "context_window": {
+    "used_percentage": 62,
+    "context_window_size": 1000000,
+    "total_input_tokens": 620000,
+    "total_output_tokens": 0,
+    "current_usage": {
+      "input_tokens": 8500,
+      "output_tokens": 1200,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 605300
     }
+  },
+  "exceeds_200k_tokens": true,
+  "effort": {"level": "xhigh"},
+  "thinking": {"enabled": true},
+  "rate_limits": {
+    "five_hour": {"used_percentage": 56, "resets_at": 1779286800},
+    "seven_day": {"used_percentage": 13, "resets_at": 1779832400}
+  },
+  "pr": {
+    "number": 1234,
+    "url": "https://github.com/modu-ai/moai-adk/pull/1234",
+    "review_state": "approved"
   }
 }
 ```
 
-- **pr.number**：PR 编号（必需）
-- **pr.url**：PR 网址（可选）
-- **pr.review_state**：审核状态（可选，默认：空）
-- **workspace.repo.host**：Git 主机（github.com）
-- **workspace.repo.owner**：存储库所有者
-- **workspace.repo.name**：存储库名称
+## 版本历史
 
-### 相关信息
+- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line 布局重新设计 — repo+branch 组合段、directory L3 head、`🪫 CW:` emoji 前移、`(⚠️/clear)` handoff 后缀、`💾` git status 统一、`💌 PR #N (⌥state)` 格式
+- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): 添加 `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 字段映射、1M context handoff threshold 75% → 50%
+- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): 添加 PR segment (v2.1.145+ stdin)、4-locale docs 同步
+- **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` 添加到 stdin JSON
+- **v2.1.146** (Claude Code): `workspace.repo` + `pr` 添加到 stdin JSON
 
-- **SPEC 参考**：[SPEC-V3R5-STATUSLINE-V2145-001](/zh/advanced/statusline#参考)
-- **最低版本**：需要 Claude Code v2.1.145 或更高版本
-- **可选功能**：默认为 `false`，需要明确启用
-- **向后兼容性**：早期版本的 Claude Code 不提供 PR 信息（段不显示）
+## 故障排除
 
-## 故障排除：状态栏消失问题
+### Statusline 中 PR 未显示
 
-### 症状
+- 验证 Claude Code 版本: 需要 `🔅 v2.1.146` 以上 (v2.1.145 stdin 不包含 `pr` 字段)
+- 验证当前 branch 有 OPEN PR: `gh pr view`
+- 检查 `statusline.yaml` 中是否明确 `pr: false`
 
-- 状态栏间歇性不显示
-- Claude Code UI 中的状态栏区域为空
-- `.moai/cache/statusline_debug.log` 文件持续增长
+### (⚠️/clear) 未出现
 
-### 原因分析（v2.1.145 M1 修复前）
+- 1M context 模型: used_percentage 低于 50% → 正常 (尚未达到阈值)
+- 200K context 模型: used_percentage 低于 90% → 正常
+- 高于阈值但未显示: 验证 `shouldShowHandoffGuide` 函数的 `MemoryData.ContextWindowSize` 映射 (可能的 boundary defect)
 
-状态栏渲染器必须遵守 Claude Code 的**300ms 防抖契约**。违反此合同将取消正在进行的执行。
+### 颜色未显示
 
-以前代码的问题：
+- 验证终端是否支持 ANSI 256-color
+- 确认 `theme: catppuccin-mocha` 是否适合环境
+- 检查是否设置了 `NO_COLOR=1` 环境变量
 
-```bash
-# 问题：DEBUG_STATUSLINE 的默认值为 1（始终启用）
-DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-1}
-
-# 这导致每次渲染时：
-# 1. python3 -m json.tool 进程分叉（50-250ms）
-# 2. 写入 ~/.moai/cache/statusline_debug.log（~10ms）
-# 合计：60-260ms → 超过 300ms 防抖边界
-# → Claude Code 取消正在进行的状态栏渲染
-# → 结果：状态栏不显示
-```
-
-### 解决方案（v2.1.145 M1 中已修复）
-
-从 v3.5.0 开始，`DEBUG_STATUSLINE` 的默认值为 **0**：
+### 验证命令
 
 ```bash
-# 已修复：默认值 0（禁用）
-DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-0}
-
-# 仅在需要调试时明确启用：
-export DEBUG_STATUSLINE=1
+# 使用 stdin fixture 验证 statusline 实际输出
+NOW=$(date +%s)
+echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
-### 填充调整
+## 相关文档
 
-以前使用 `echo ""` 来调整状态栏周围的空白。这现在不再推荐。
-
-**改为**在 `.claude/settings.json` 中设置：
-
-```json
-{
-  "statusLine": {
-    "padding": 1
-  }
-}
-```
-
-- `padding: 0`：无填充
-- `padding: 1`：上下 1 行填充（默认）
-- `padding: 2`：上下 2 行填充
-
-### 检查清单
-
-解决状态栏显示问题的步骤：
-
-1. ✓ 检查 `DEBUG_STATUSLINE` 环境变量
-   ```bash
-   echo $DEBUG_STATUSLINE  # 默认应为 unset 或 0
-   ```
-
-2. ✓ 检查 `.moai/status_line.sh` 文件
-   ```bash
-   grep "DEBUG_STATUSLINE=" ~/.moai/status_line.sh
-   # 结果应为：DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-0}
-   ```
-
-3. ✓ 明确启用调试（仅在需要时）
-   ```bash
-   export DEBUG_STATUSLINE=1
-   # 现在将记录调试信息
-   ```
-
-4. ✓ 设置填充
-   ```json
-   {
-     "statusLine": {
-       "padding": 1
-     }
-   }
-   ```
-
-5. ✓ 重启 Claude Code 会话
-
-## 参考
-
-### 官方文档
-
-- [Claude Code 状态栏官方文档](https://code.claude.com/docs/en/statusline) — Claude Code 的状态栏契约和 JSON 架构
-
-### moai-adk-go 内部
-
-- **包**：`internal/statusline/`
-  - `types.go`：StdinData、PRInfo、RepoInfo 结构体定义
-  - `builder.go`：段构建逻辑
-  - `renderer.go`：颜色编码和最终渲染
-
-- **模板**：`.moai/status_line.sh.tmpl`
-  - 渲染器调用和执行逻辑
-
-- **配置**：`.moai/config/sections/statusline.yaml`
-  - 段启用/禁用设置
-
-### 相关 SPEC
-
-- **[SPEC-V3R5-STATUSLINE-V2145-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-V3R5-STATUSLINE-V2145-001/spec.md)**
-  - M1：修复状态栏消失问题
-  - M2：添加 v2.1.145 PR 段
-  - M3：文档化（当前页面）
+- [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` 字段配置
+- [Context Window Management](/advanced/context-window-management) — handoff threshold 策略 (1M = 50%, 200K = 90%)
+- [Session Handoff](/advanced/session-handoff) — paste-ready resume message 6-block 格式
+- [PR Workflow](/git/pr-workflow) — MoAI PR 中心工作流

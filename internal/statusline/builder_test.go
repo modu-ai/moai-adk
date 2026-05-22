@@ -81,6 +81,11 @@ func TestBuilder_Build_FullData(t *testing.T) {
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 		CWD:           "/Users/test/my-project",
 		OutputStyle:   &OutputStyleInfo{Name: "Mr.Alfred"},
+		Workspace: &WorkspaceInfo{
+			CurrentDir: "/Users/test/my-project",
+			ProjectDir: "/Users/test/my-project",
+			Repo:       &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
 
 	got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -107,8 +112,8 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	if !strings.Contains(got, "📁 my-project") {
 		t.Errorf("should contain directory, got %q", got)
 	}
-	if !strings.Contains(got, "📬 +3 M2") {
-		t.Errorf("should contain git status, got %q", got)
+	if !strings.Contains(got, "💾 +3 M2") {
+		t.Errorf("should contain git status (unified 💾 emoji), got %q", got)
 	}
 	if !strings.Contains(got, "🗿 v1.2.0") {
 		t.Errorf("should contain MoAI version with moai emoji, got %q", got)
@@ -298,10 +303,11 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Without git data, default renders L1 (info) + L2 (bars) + L3 (directory) = 3 lines
+	// Layout v3: without git data, default renders L1 (info) + L2 (bars) + L3 (directory)
+	// = 3 lines (directory on L3 head per amend).
 	lines := strings.Split(got, "\n")
 	if len(lines) != 3 {
-		t.Errorf("default without git should be 3 lines, got %d lines: %q", len(lines), got)
+		t.Errorf("default without git should be 3 lines (directory on L3), got %d lines: %q", len(lines), got)
 	}
 }
 

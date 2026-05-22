@@ -1,353 +1,368 @@
 ---
-title: ステータスラインシステムとPRセグメント
+title: Statusline システム — 3-line レイアウト完全ガイド
 weight: 78
 draft: false
 ---
 
-Claude Code と moai-adk-go を統合するための**カスタムステータスラインシステム**です。v2.1.145 以降では、GitHub PR 情報をステータスラインに表示できます。
+Claude Code と moai-adk-go の統合のための **カスタム statusline システム** です。Claude Code v2.1.139 から effort/thinking、v2.1.145 から workspace.repo + pr フィールドが stdin JSON に追加され、豊富なセッションコンテキストを表示できるようになりました。
 
-> MoAI ワークフローは PR 中心です。すべての SPEC は plan-PR → run-PR → sync-PR を生成するため、ステータスラインに現在の PR 状態を表示することで、開発効率が向上します。
+> MoAI ワークフローは PR 中心です。すべての SPEC は plan-PR → run-PR → sync-PR サイクルを生成するため、現在の PR 番号、レビュー状態、コンテキスト使用率、ハンドオフ推奨を statusline に即座に表示すると開発効率が大幅に向上します。
 
 ## 概要
 
-### カスタムステータスラインが必要な理由
+### 最終レイアウト (3-line v3)
 
-Claude Code のデフォルトステータスラインは、一般的な使用パターンに最適化されています。しかし MoAI-ADK ユーザーは以下のような特殊な情報が必要です：
+```
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+```
 
-- **PR 中心ワークフロー**：現在の PR 番号とレビュー状態（approved/pending/changes_requested）
-- **マルチペイン開発**：ワークツリーベースの並列開発時に現在の SPEC ステータスを表示
-- **コスト追跡**：GLM 環境使用時のリアルタイムコスト監視
-- **コンテキスト管理**：現在のセッションのトークン使用率と累積コスト
+- **Line 1 (Info)**: モデル · effort/thinking · Claude Code バージョン · MoAI バージョン · セッション時間 · output style
+- **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — 各 bar に絵文字 + label + bar + % + reset 情報
+- **Line 3 (Git/PR)**: ディレクトリ · リポジトリ+ブランチ統合 · git status · アクティブ SPEC task · PR 情報
 
-カスタムステータスラインは `.moai/status_line.sh` レンダラーを通じてこれらの情報を表示します。
-
-### ステータスラインアーキテクチャ
+### データフロー
 
 ```
 Claude Code stdin (JSON)
     ↓
 internal/statusline/types.go (StdinData パース)
     ↓
-internal/statusline/builder.go (セグメント構成)
+internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
     ↓
-internal/statusline/renderer.go (色分けとレンダリング)
+internal/statusline/renderer.go (3-line v3 レイアウト)
     ↓
-.moai/status_line.sh (テンプレートベースの最終レンダリング)
+.moai/status_line.sh → ターミナル表示
 ```
+
+## Line 1 — Info (7 セグメント)
+
+### 🤖 Model
+
+- **フォーマット**: `🤖 <model display name>`
+- **データソース**: stdin `model.display_name` (または string shorthand)
+- **例**: `🤖 Opus 4.7`, `🤖 Sonnet 4.6`, `🤖 Haiku 4.5`
+- **非表示条件**: `model` フィールド不在または `data.Metrics.Model == ""`
+- **セグメントキー**: `model`
+
+### 🧠 Effort / Thinking
+
+- **フォーマット**: `🧠 <level>[·t]`
+- **データソース**: stdin `effort.level` + `thinking.enabled` (Claude Code v2.1.139+)
+- **Level 値**: `low` / `medium` / `high` / `xhigh` / `max`
+- **`·t` サフィックス**: `thinking.enabled == true` 時に追加 (extended reasoning 有効)
+- **例**:
+  - `🧠 xhigh·t` (xhigh effort + thinking 有効)
+  - `🧠 high` (high effort, thinking なし)
+  - `·t` (effort 不在 + thinking のみ有効)
+- **非表示条件**: `effort` + `thinking` の両方が不在 (effort.level 空文字列含む)
+- **セグメントキー**: `effort_thinking`
+
+### 🔅 Claude Code バージョン
+
+- **フォーマット**: `🔅 v<version>` (default) または `🔅 cc v<version>` (full mode)
+- **データソース**: stdin `version` 文字列
+- **例**: `🔅 v2.1.146`
+- **非表示条件**: `version` 空文字列
+- **セグメントキー**: `claude_version`
+
+### 🗿 MoAI バージョン
+
+- **フォーマット**: `🗿 v<current>` または更新可能時 `🗿 v<current> -> 🗿 v<latest>`
+- **データソース**: `.moai/config/sections/system.yaml` `moai.version` + バックグラウンド更新チェッカー
+- **例**:
+  - `🗿 v2.20.0-rc1` (最新)
+  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (更新推奨)
+- **セグメントキー**: `moai_version`
+
+### ⏳ セッション時間
+
+- **フォーマット**: `⏳ <X>h <Y>m` (≥1h) / `⏳ <X>m` (<1h) / `⏳ <X>d <Y>h` (≥24h)
+- **データソース**: stdin `cost.total_duration_ms`
+- **例**: `⏳ 4h 52m`, `⏳ 35m`, `⏳ 1d 3h`
+- **セグメントキー**: `session_time`
+
+### 💬 Output Style
+
+- **フォーマット**: `💬 <style name>`
+- **データソース**: stdin `output_style.name`
+- **例**: `💬 MoAI`, `💬 R2-D2`, `💬 default`
+- **非表示条件**: `output_style.name` 空文字列
+- **セグメントキー**: `output_style`
+
+## Line 2 — Usage Bars (3 セグメント)
+
+### 🪫/🔋 CW (Context Window)
+
+- **フォーマット**: `<icon> CW: <bar> <pct>% [(⚠️/clear)]`
+- **データソース**:
+  - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
+  - パーセント: `context_window.used_percentage` (事前計算済み) または `current_usage` tokens 合算
+  - (⚠️/clear) 有効化条件: `shouldShowHandoffGuide(data) == true`
+- **絵文字**:
+  - 🔋 (正常, <50% scaled)
+  - 🪫 (警告, 50-79% scaled)
+  - 🪫 (危険, ≥80% scaled, 色追加)
+- **(⚠️/clear) handoff サフィックス**:
+  - 1M context モデル (Opus 4.7): used_percentage ≥50% (raw context_window_size 基準)
+  - 200K context モデル (Sonnet/Haiku): used_percentage ≥90%
+  - 意味: 次の turn 開始前に `/clear` 推奨 + paste-ready resume message 活用
+- **例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
+- **セグメントキー**: `context`
+
+### 🔋 5H (5時間 rolling rate limit)
+
+- **フォーマット**: `🔋 5H: <bar> <pct>% [(<reset>)]`
+- **データソース**: stdin `rate_limits.five_hour.{used_percentage, resets_at}`
+- **Reset フォーマット**:
+  - <60 分: `(Nm)` (例: `(47m)`)
+  - <24 時間: `(Nh Nm)` (例: `(2h 15m)`)
+  - ≥24 時間: `(Mon DD)` (例: `(May 28)`)
+- **例**: `🔋 5H: █████░░░░░ 56% (47m)`
+- **データ不在**: `rate_limits.five_hour == null` → bar 0%, reset `(rolling)`
+- **セグメントキー**: `usage_5h`
+
+### 🔋 7D (7日 rolling rate limit)
+
+- **フォーマット**: `🔋 7D: <bar> <pct>% [(<reset>)]`
+- **データソース**: stdin `rate_limits.seven_day.{used_percentage, resets_at}`
+- **Reset フォーマット**: `(Mon DD)` (絶対日付)
+- **例**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
+- **セグメントキー**: `usage_7d`
+
+## Line 3 — Git / PR (5 セグメント)
+
+### 📁 Directory
+
+- **フォーマット**: `📁 <directory name>`
+- **データソース**: stdin `workspace.project_dir` (basename) または `cwd`
+- **例**: `📁 moai-adk-go`, `📁 my-project`
+- **非表示条件**: `data.Directory` 空文字列
+- **セグメントキー**: `directory`
+
+### 🔀 Repo + Branch (統合セグメント)
+
+- **フォーマット**: `🔀 <owner>/<name> (🅱️ <branch>[ ↑N][ ↓N][ +N])`
+- **データソース**:
+  - `🔀 owner/name`: stdin `workspace.repo.{host, owner, name}` (Claude Code v2.1.145+)
+  - `🅱️ branch`: ローカル git `branch --show-current`
+  - `↑N`: ahead カウント (origin/<branch> 対比)
+  - `↓N`: behind カウント
+  - `+N`: dirty カウント = Modified + Staged + Untracked
+- **例**:
+  - `🔀 modu-ai/moai-adk (🅱️ main ↑3 +2)` (repo + branch + ahead + dirty)
+  - `🔀 modu-ai/moai-adk (🅱️ main)` (clean branch, no ahead)
+  - `🔀 (🅱️ feat/auth ↑2 ↓1 +6)` (repo 情報不在 fallback)
+- **非表示条件**:
+  - branch 空文字列 → セグメント全体非表示
+  - repo nil 時 fallback (括弧内 branch のみ表示)
+- **Worktree モード**: `worktree` セグメント有効時 branch に `[WT] ` prefix
+- **セグメントキー**: `git_branch` (combined)
+
+### 💾 Git Status
+
+- **フォーマット**: `💾 +<staged> M<modified> ?<untracked>`
+- **データソース**: ローカル git `git status --porcelain` パース
+- **例**: `💾 +0 M1 ?1` (staged 0, modified 1, untracked 1)
+- **非表示条件**: git 不可
+- **注記**: 旧 mailbox 4種 emoji (📬/📫/📪/📭) 廃止、統一された 💾 を使用
+- **セグメントキー**: `git_status`
+
+### 📋 Task (アクティブ SPEC workflow)
+
+- **フォーマット**: `📋 [<command> <SPEC-ID>-<stage>]`
+- **データソース**: `~/.moai/state/last-session-state.json` `active_task` フィールド (そのファイル生成時のみ表示)
+- **例**: `📋 [/moai run SPEC-V3R5-STATUSLINE-001-implement]`
+- **非表示条件**: ファイル不在または `active_task` nil → セグメント非表示
+- **セグメントキー**: `task` (opt-in default off)
+
+### 💌 PR (アクティブ GitHub Pull Request)
+
+- **フォーマット**: `💌 PR #<number> (⌥<review_state>)` (state あり) / `💌 PR #<number>` (state 空文字列)
+- **データソース**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.146+)
+- **Review state 値**: `approved` / `pending` / `changes_requested` / `draft` / その他 (raw passthrough)
+- **カラーコーディング** (review_state 部分):
+  - `approved`: 緑 (Success)
+  - `pending`: 黄 (Warning)
+  - `changes_requested`: 赤 (Error)
+  - `draft`: 灰 (Muted)
+  - その他: 色なし (raw passthrough)
+- **例**:
+  - `💌 PR #1234 (⌥approved)` (緑)
+  - `💌 PR #1023 (⌥pending)` (黄)
+  - `💌 PR #7 (⌥changes_requested)` (赤)
+  - `💌 PR #99 (⌥draft)` (灰)
+  - `💌 PR #100` (state なし)
+- **非表示条件**:
+  - `pr` フィールド不在 (PR なしまたは v2.1.145 以下)
+  - `pr.number == 0`
+  - `SegmentPR` config 明示的 false
+- **セグメントキー**: `pr` (default on per v2.20.0-rc1)
 
 ## 設定
 
 ### 基本構造
 
-`.moai/config/sections/statusline.yaml` でステータスラインを設定します：
+`.moai/config/sections/statusline.yaml` でセグメント有効化を管理:
 
 ```yaml
 statusline:
-  mode: default              # default | compact | verbose
-  theme: catppuccin-mocha    # 色のテーマを選択
-  preset: full               # full | minimal | custom
+  mode: default              # default | full
+  theme: catppuccin-mocha    # 色テーマ
+  preset: custom             # full | minimal | custom
   segments:
-    model: true              # Claude モデルを表示
-    context: true            # コンテキスト使用率を表示
-    directory: true          # 作業ディレクトリを表示
-    git_status: true         # Git ステータスを表示
-    git_branch: true         # Git ブランチを表示
-    worktree: false          # ワークツリー情報を表示（オプション）
-    effort_thinking: false   # Effort/thinking ステータス（オプション）
-    pr: false                # PR 情報を表示（オプション、v2.1.145+）
+    # Line 1
+    model: true
+    effort_thinking: true
+    claude_version: true
+    moai_version: true
+    session_time: true
+    output_style: true
+
+    # Line 2
+    context: true
+    usage_5h: true
+    usage_7d: true
+
+    # Line 3
+    directory: true
+    git_branch: true       # combined repo+branch
+    git_status: true
+    task: true             # opt-in default off in older versions
+    pr: true               # default on per v2.20.0-rc1
+    worktree: false
 ```
 
-### セグメントオプション
+### セグメント有効化マトリックス
 
-| セグメント | デフォルト | 用途 | 説明 |
-|-----------|-----------|------|------|
-| `model` | true | 現在のモデル | Claude モデルバージョンを表示 |
-| `context` | true | コンテキスト使用率 | 現在のセッションのトークン使用率 |
-| `directory` | true | 作業パス | 現在の作業ディレクトリ |
-| `git_status` | true | Git ステータス | 変更されたファイル数、stash ステータス |
-| `git_branch` | true | 現在のブランチ | ブランチ名とリモートとの差分 |
-| `worktree` | false | ワークツリー情報 | 現在のワークツリーを表示（並列開発） |
-| `effort_thinking` | false | 思考モード | effort および thinking ステータス |
-| `pr` | false | PR 情報 | GitHub PR 番号とレビュー状態（NEW v2.1.145+） |
+| セグメント | ライン | 既定有効 | stdin field |
+|---------|------|----------|-------------|
+| `model` | L1 | ✅ | `model.display_name` |
+| `effort_thinking` | L1 | ✅ | `effort.level` + `thinking.enabled` |
+| `claude_version` | L1 | ✅ | `version` |
+| `moai_version` | L1 | ✅ | (ローカル config) |
+| `session_time` | L1 | ✅ | `cost.total_duration_ms` |
+| `output_style` | L1 | ✅ | `output_style.name` |
+| `context` | L2 | ✅ | `context_window.*` |
+| `usage_5h` | L2 | ✅ | `rate_limits.five_hour.*` |
+| `usage_7d` | L2 | ✅ | `rate_limits.seven_day.*` |
+| `directory` | L3 | ✅ | `workspace.project_dir` |
+| `git_branch` (combined) | L3 | ✅ | `workspace.repo.*` + ローカル git |
+| `git_status` | L3 | ✅ | ローカル git |
+| `task` | L3 | ⚠️ opt-in | `~/.moai/state/last-session-state.json` |
+| `pr` | L3 | ✅ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
+| `worktree` | L3 | ❌ opt-in | `workspace.git_worktree` |
 
-## 利用可能なセグメント
+## Handoff Guide — (⚠️/clear) 推奨基準
 
-### 常に有効なセグメント（4個）
+CW bar の `(⚠️/clear)` サフィックスはコンテキスト使用量がモデル別閾値を超えると有効化されます。これは SSE stall 危険を事前防止し paste-ready resume message 活用を推奨する視覚マーカーです。
 
-**model** — Claude モデル
-- 現在のモデル（Claude 3.5 Sonnet、Claude 3.7 Opus など）を表示
-- 例：`Claude 3.5 Sonnet`
+| モデルクラス | Context Window | 閾値 | 推奨時点 |
+|------------|----------------|------|----------|
+| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K トークン使用 |
+| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K トークン使用 |
+| その他 / 不明 | — | 表示なし | (安全 default) |
 
-**context** — コンテキスト使用率
-- 現在のセッションのトークン使用率を表示
-- 形式：`150K/200K`（使用中 / 全体）
-- 75% 以上の場合、警告色で表示
+> 閾値は `internal/statusline/renderer.go shouldShowHandoffGuide()` 関数で強制されます。この閾値は `.claude/rules/moai/workflow/context-window-management.md` HARD rule と一致します。
 
-**directory** — 作業ディレクトリ
-- 現在の作業ディレクトリの相対パス
-- プロジェクトルートからの位置を表示
+有効化時のユーザーフロー:
+1. `(⚠️/clear)` marker 表示
+2. 進行中の作業を `progress.md` 等に保存
+3. orchestrator が paste-ready resume message を生成 (session-handoff.md 6-block フォーマット)
+4. `/clear` 実行後 resume message ペースト
+5. 新しいセッションで作業継続
 
-**git_status** — Git ステータス
-- 変更されたファイル数：`M5`（5ファイル変更）
-- Stash ステータス：`S2`（2個の stash）
-- 例：`M5 S2`
+## stdin JSON スキーマリファレンス
 
-**git_branch** — 現在のブランチ
-- ブランチ名
-- リモートとのコミット差分表示
-- 例：`feat/SPEC-001 +3 -1`
-
-### オプションセグメント（7個）
-
-**worktree** — ワークツリー情報（オプション）
-- L2 ワークツリー使用時に表示
-- 現在の SPEC 名を表示
-- 有効化：`segments.worktree: true`
-
-**effort_thinking** — Effort/thinking ステータス（オプション）
-- Claude 4.7 の thinking モード有効化状態
-- effort レベル（high/xhigh/max）
-- 有効化：`segments.effort_thinking: true`
-
-**output_style** — 出力スタイル（オプション）
-- 現在の出力スタイル設定
-- 有効化：`segments.output_style: true`
-
-**claude_version** — Claude バージョン（オプション）
-- Claude Code バージョン
-- 有効化：`segments.claude_version: true`
-
-**moai_version** — moai バージョン（オプション）
-- MoAI-ADK バージョン
-- 有効化：`segments.moai_version: true`
-
-**session_time** — セッション経過時間（オプション）
-- 現在のセッション開始からの経過時間
-- 有効化：`segments.session_time: true`
-
-**usage_5h** — 5時間累積コスト（オプション）
-- 過去 5 時間のコスト追跡
-- GLM 環境で有用
-- 有効化：`segments.usage_5h: true`
-
-**usage_7d** — 7日累積コスト（オプション）
-- 過去 7 日のコスト追跡
-- 有効化：`segments.usage_7d: true`
-
-**task** — アクティブな SPEC ワークフロー情報（オプション）
-- 出力形式：`📋 [<command> <SPEC-ID>-<stage>]`（例：`📋 [/moai run SPEC-V3R5-DOCS-SECURITY-001-M3]`）
-- データソース：`~/.moai/state/last-session-state.json` の `active_task` フィールド（SessionStart フックが自動設定）
-- 非アクティブの場合はセグメント自体が非表示（graceful no-output）
-- 有効化：`segments.task: true`（v2.20.0-rc1 以降は既定値 true — default-on、`false` で opt-out）
-
-**repo** — リポジトリ情報（オプション、v2.1.145+）
-- 現在の GitHub リポジトリのオーナー / 名前を表示
-- 例：`modu-ai/moai-adk`
-- 有効化：`segments.repo: true`
-
-**long_context** — 長いコンテキスト警告（オプション、v2.1.139+）
-- 200K トークン超過時に警告マークを表示
-- 例：`⚠️ 200K+ exceeded`
-- 有効化：`segments.long_context: true`
-
-**handoff_guide** — ハンドオフ閾値ガイド（オプション、v2.1.146+）
-- 現在のモデルのコンテキストウィンドウサイズと推奨ハンドオフ閾値を表示
-- 1M モデル：50% 閾値（≈500K トークン）
-- 200K モデル：90% 閾値（≈180K トークン）
-- 例：`[1M: 50% | 200K: 90%]`
-- 有効化：`segments.handoff_guide: true`
-
-## NEW v2.1.145: PR セグメント
-
-### 概要
-
-Claude Code v2.1.145 以降、ステータスラインの stdin JSON に GitHub PR 情報が含まれます。MoAI-ADK はこれを活用して、ステータスラインに現在の PR のレビュー状態を表示します。
-
-**有効化**：v2.20.0-rc1 以降は既定値 `true`（default-on）。`segments.pr: false` で明示的に無効化可能。graceful no-output パターン：PR 情報が無い場合は segment 自体が非表示。
-
-### PR セグメント表示形式
-
-PR セグメントは以下の形式で表示されます：
-
-```
-#1023 ⌥approved
-```
-
-- `#1023`：PR 番号
-- `⌥`：PR ステータス表示シンボル
-- `approved`：レビュー状態（色分け）
-
-### レビュー状態別の色
-
-PR のレビュー状態に応じて異なる色で表示されます：
-
-| 状態 | 色 | 意味 |
-|------|-----|------|
-| `approved` | 緑 | PR が承認されている |
-| `pending` | 黄 | レビュー待ち中 |
-| `changes_requested` | 赤 | 変更リクエストされた |
-| `draft` | グレー | ドラフト状態 |
-| （その他 / 空） | デフォルト | スタイル未適用 |
-
-### 有効化方法
-
-1. `.moai/config/sections/statusline.yaml` ファイルを編集
-
-```yaml
-statusline:
-  segments:
-    pr: true   # PR セグメントを有効化
-```
-
-2. Claude Code セッションを再起動
-
-これでステータスラインに現在の PR 番号とレビュー状態が表示されます。
-
-### JSON 入力スキーマ（v2.1.145+）
-
-Claude Code v2.1.145+ は以下の形式の JSON をステータスラインの stdin に渡します：
+Claude Code が statusline スクリプトに渡す stdin JSON 全フィールド一覧は [公式 docs Available data](https://code.claude.com/docs/en/statusline#available-data) を参照。moai-adk-go は次のフィールドを使用:
 
 ```json
 {
-  "pr": {
-    "number": 1023,
-    "url": "https://github.com/modu-ai/moai-adk/pull/1023",
-    "review_state": "pending"
-  },
+  "session_id": "abc...",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/path/to/cwd",
+  "model": {"id": "claude-opus-4-7", "display_name": "Opus 4.7"},
   "workspace": {
-    "repo": {
-      "host": "github.com",
-      "owner": "modu-ai",
-      "name": "moai-adk"
+    "current_dir": "...",
+    "project_dir": "...",
+    "git_worktree": "feature-xyz",
+    "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
+  },
+  "version": "2.1.146",
+  "output_style": {"name": "MoAI"},
+  "cost": {
+    "total_cost_usd": 1.234,
+    "total_duration_ms": 17520000,
+    "total_lines_added": 156,
+    "total_lines_removed": 23
+  },
+  "context_window": {
+    "used_percentage": 62,
+    "context_window_size": 1000000,
+    "total_input_tokens": 620000,
+    "total_output_tokens": 0,
+    "current_usage": {
+      "input_tokens": 8500,
+      "output_tokens": 1200,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 605300
     }
+  },
+  "exceeds_200k_tokens": true,
+  "effort": {"level": "xhigh"},
+  "thinking": {"enabled": true},
+  "rate_limits": {
+    "five_hour": {"used_percentage": 56, "resets_at": 1779286800},
+    "seven_day": {"used_percentage": 13, "resets_at": 1779832400}
+  },
+  "pr": {
+    "number": 1234,
+    "url": "https://github.com/modu-ai/moai-adk/pull/1234",
+    "review_state": "approved"
   }
 }
 ```
 
-- **pr.number**：PR 番号（必須）
-- **pr.url**：PR URL（オプション）
-- **pr.review_state**：レビュー状態（オプション、デフォルト：空）
-- **workspace.repo.host**：Git ホスト（github.com）
-- **workspace.repo.owner**：リポジトリオーナー
-- **workspace.repo.name**：リポジトリ名
+## バージョン履歴
 
-### 関連情報
+- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line layout 再設計 — repo+branch 統合セグメント、directory L3 head、`🪫 CW:` emoji 前方、`(⚠️/clear)` handoff サフィックス、`💾` git status 統一、`💌 PR #N (⌥state)` フォーマット
+- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin フィールド マッピング追加、1M context handoff threshold 75% → 50%
+- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): PR segment 追加 (v2.1.145+ stdin)、4-locale docs 同期
+- **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` stdin JSON 追加
+- **v2.1.146** (Claude Code): `workspace.repo` + `pr` stdin JSON 追加
 
-- **SPEC リファレンス**：[SPEC-V3R5-STATUSLINE-V2145-001](/ja/advanced/statusline#リファレンス)
-- **最小バージョン**：Claude Code v2.1.145 以上が必要
-- **オプション機能**：デフォルトは `false` なので、明示的に有効化が必要
-- **後方互換性**：以前のバージョンの Claude Code は PR 情報を提供しません（セグメントは表示されません）
+## トラブルシューティング
 
-## トラブルシューティング：ステータスラインが消える問題
+### Statusline に PR が出ない
 
-### 症状
+- Claude Code バージョン確認: `🔅 v2.1.146` 以上が必要 (v2.1.145 は stdin に `pr` フィールド非含有)
+- 現在の branch に OPEN PR があるか確認: `gh pr view`
+- `statusline.yaml` に `pr: false` 明示があるか確認
 
-- ステータスラインが間欠的に表示されない
-- Claude Code UI でステータスラインエリアが空白
-- `.moai/cache/statusline_debug.log` ファイルが増え続ける
+### (⚠️/clear) 表示されない
 
-### 原因分析（v2.1.145 M1 修正前）
+- 1M context モデル: used_percentage 50% 未満 → 正常 (まだ閾値未満)
+- 200K context モデル: used_percentage 90% 未満 → 正常
+- 閾値超過なのに表示なし: `shouldShowHandoffGuide` 関数の `MemoryData.ContextWindowSize` マッピング確認 (boundary defect 可能性)
 
-ステータスラインレンダラーは Claude Code の**300ms デバウンス契約**を遵守する必要があります。これに違反すると、進行中の実行がキャンセルされます。
+### 色が表示されない
 
-以前のコードの問題点：
+- ターミナルが ANSI 256-color 対応か確認
+- `theme: catppuccin-mocha` が環境に適しているか確認
+- `NO_COLOR=1` 環境変数設定有無確認
 
-```bash
-# 問題：DEBUG_STATUSLINE のデフォルトが 1（常に有効）
-DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-1}
-
-# このため、毎回のレンダリングで：
-# 1. python3 -m json.tool プロセスのフォーク（50-250ms）
-# 2. ~/.moai/cache/statusline_debug.log への書き込み（~10ms）
-# 合計：60-260ms → 300ms デバウンス境界線を超える
-# → Claude Code が進行中のステータスラインレンダリングをキャンセル
-# → 結果：ステータスラインが表示されない
-```
-
-### 解決策（v2.1.145 M1 で修正）
-
-v3.5.0 以降では、`DEBUG_STATUSLINE` のデフォルト値が**0**になっています：
+### 検証コマンド
 
 ```bash
-# 修正：デフォルト 0（無効）
-DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-0}
-
-# デバッグが必要な場合は明示的に有効化：
-export DEBUG_STATUSLINE=1
+# stdin fixture で statusline 実出力を確認
+NOW=$(date +%s)
+echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
-### パディング調整
+## 関連ドキュメント
 
-以前は `echo ""` を使用してステータスラインの周囲の余白を調整していました。これはもはや推奨されていません。
-
-**代わりに** `.claude/settings.json` で設定してください：
-
-```json
-{
-  "statusLine": {
-    "padding": 1
-  }
-}
-```
-
-- `padding: 0`：余白なし
-- `padding: 1`：上下 1 行の余白（デフォルト）
-- `padding: 2`：上下 2 行の余白
-
-### チェックリスト
-
-ステータスラインの表示問題を解決する手順：
-
-1. ✓ `DEBUG_STATUSLINE` 環境変数を確認
-   ```bash
-   echo $DEBUG_STATUSLINE  # デフォルトは unset または 0 であるべき
-   ```
-
-2. ✓ `.moai/status_line.sh` ファイルを確認
-   ```bash
-   grep "DEBUG_STATUSLINE=" ~/.moai/status_line.sh
-   # 結果：DEBUG_STATUSLINE=${DEBUG_STATUSLINE:-0} であるべき
-   ```
-
-3. ✓ デバッグを明示的に有効化（必要な場合のみ）
-   ```bash
-   export DEBUG_STATUSLINE=1
-   # デバッグ情報が記録されるようになります
-   ```
-
-4. ✓ パディングを設定
-   ```json
-   {
-     "statusLine": {
-       "padding": 1
-     }
-   }
-   ```
-
-5. ✓ Claude Code セッションを再起動
-
-## リファレンス
-
-### 公式ドキュメント
-
-- [Claude Code ステータスライン公式ドキュメント](https://code.claude.com/docs/en/statusline) — Claude Code のステータスライン契約と JSON スキーマ
-
-### moai-adk-go 内部
-
-- **パッケージ**：`internal/statusline/`
-  - `types.go`：StdinData、PRInfo、RepoInfo 構造体定義
-  - `builder.go`：セグメント作成ロジック
-  - `renderer.go`：色分けと最終レンダリング
-
-- **テンプレート**：`.moai/status_line.sh.tmpl`
-  - レンダラー呼び出しと実行ロジック
-
-- **設定**：`.moai/config/sections/statusline.yaml`
-  - セグメントの有効化 / 無効化設定
-
-### 関連 SPEC
-
-- **[SPEC-V3R5-STATUSLINE-V2145-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-V3R5-STATUSLINE-V2145-001/spec.md)**
-  - M1：ステータスラインが消える問題を修正
-  - M2：v2.1.145 PR セグメントを追加
-  - M3：ドキュメント化（このページ）
+- [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` フィールド設定
+- [Context Window Management](/advanced/context-window-management) — handoff threshold ポリシー (1M = 50%, 200K = 90%)
+- [Session Handoff](/advanced/session-handoff) — paste-ready resume message 6-block フォーマット
+- [PR Workflow](/git/pr-workflow) — MoAI PR 中心ワークフロー

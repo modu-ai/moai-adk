@@ -13,283 +13,120 @@ import (
 	"testing"
 )
 
-// ---------- REQ-SSE-001/002: renderRepoSegment ----------
+// NOTE: TestRenderRepoSegment_* removed (layout v3 CH3). The standalone
+// renderRepoSegment function was replaced by renderRepoBranchSegment which
+// combines repo identity with branch info into a single L3 segment. The new
+// segment is covered by end-to-end fixture verification via
+// /Users/goos/go/bin/moai statusline; unit-level coverage may be added later
+// when the function signature stabilizes.
 
-func TestRenderRepoSegment_PopulatedShowsOwnerName(t *testing.T) {
+// NOTE: renderLongContextSegment + renderHandoffGuideSegment tests removed
+// (layout v3 CH1 + CH2). The ⚠️ long marker segment was removed per user
+// explicit request; handoff_guide is now integrated as a CW bar (/clear)
+// suffix in renderBarsInline. shouldShowHandoffGuide threshold helper is
+// preserved and tested via TestShouldShowHandoffGuide below.
+
+// ---------- shouldShowHandoffGuide threshold helper (preserved per CH2) ----------
+
+func TestShouldShowHandoffGuide_OneMillionFiftyPercentTrue(t *testing.T) {
 	t.Parallel()
 
-	data := &StatusData{
-		Workspace: WorkspaceData{
-			Repo: &RepoInfo{
-				Host:  "github.com",
-				Owner: "modu-ai",
-				Name:  "moai-adk",
-			},
-		},
-	}
-
-	out := renderRepoSegment(data)
-	if !strings.Contains(out, "modu-ai/moai-adk") {
-		t.Fatalf("expected output to contain owner/name marker %q, got %q", "modu-ai/moai-adk", out)
-	}
-}
-
-func TestRenderRepoSegment_NilRepoReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{Repo: nil},
-	}
-
-	out := renderRepoSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when Workspace.Repo is nil, got %q", out)
-	}
-}
-
-func TestRenderRepoSegment_EmptyOwnerReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "", Name: "moai-adk"}},
-	}
-
-	out := renderRepoSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when Owner is empty, got %q", out)
-	}
-}
-
-func TestRenderRepoSegment_EmptyNameReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{
-		Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: ""}},
-	}
-
-	out := renderRepoSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when Name is empty, got %q", out)
-	}
-}
-
-func TestRenderRepoSegment_NilDataReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	out := renderRepoSegment(nil)
-	if out != "" {
-		t.Fatalf("expected empty output when data is nil, got %q", out)
-	}
-}
-
-// ---------- REQ-SSE-003/004: renderLongContextSegment + ExceedsLongTokens ----------
-
-func TestRenderLongContextSegment_TrueShowsMarker(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{ExceedsLongTokens: true}
-
-	out := renderLongContextSegment(data)
-	if !strings.Contains(out, "⚠️") || !strings.Contains(out, "long") {
-		t.Fatalf("expected output to contain ⚠️ and 'long' markers, got %q", out)
-	}
-}
-
-func TestRenderLongContextSegment_FalseReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	data := &StatusData{ExceedsLongTokens: false}
-
-	out := renderLongContextSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty output when ExceedsLongTokens is false, got %q", out)
-	}
-}
-
-func TestRenderLongContextSegment_NilDataReturnsEmpty(t *testing.T) {
-	t.Parallel()
-
-	out := renderLongContextSegment(nil)
-	if out != "" {
-		t.Fatalf("expected empty output when data is nil, got %q", out)
-	}
-}
-
-// ---------- REQ-SSE-005/006: renderHandoffGuideSegment ----------
-
-func TestRenderHandoffGuideSegment_OneMillionFiftyPercentShows(t *testing.T) {
-	t.Parallel()
-
-	// 1M budget, 50% usage = 500,000 tokens → should show
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 1_000_000,
-			TokensUsed:  500_000,
-			Available:   true,
+			ContextWindowSize: 1_000_000,
+			TokensUsed:        500_000,
+			Available:         true,
 		},
 	}
 
-	out := renderHandoffGuideSegment(data)
-	if out == "" {
-		t.Fatalf("expected non-empty handoff guide for 1M @ 50%%, got empty")
+	if !shouldShowHandoffGuide(data) {
+		t.Fatalf("expected true for 1M @ 50%%, got false")
 	}
 }
 
-func TestRenderHandoffGuideSegment_OneMillionFortyNinePercentHidden(t *testing.T) {
+func TestShouldShowHandoffGuide_OneMillionFortyNinePercentFalse(t *testing.T) {
 	t.Parallel()
 
-	// 1M budget, 49% usage = 490,000 tokens → should hide
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 1_000_000,
-			TokensUsed:  490_000,
-			Available:   true,
+			ContextWindowSize: 1_000_000,
+			TokensUsed:        490_000,
+			Available:         true,
 		},
 	}
 
-	out := renderHandoffGuideSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty handoff guide for 1M @ 49%%, got %q", out)
+	if shouldShowHandoffGuide(data) {
+		t.Fatalf("expected false for 1M @ 49%%, got true")
 	}
 }
 
-func TestRenderHandoffGuideSegment_TwoHundredKNinetyPercentShows(t *testing.T) {
+func TestShouldShowHandoffGuide_TwoHundredKNinetyPercentTrue(t *testing.T) {
 	t.Parallel()
 
-	// 200K budget, 90% usage = 180,000 tokens → should show
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 200_000,
-			TokensUsed:  180_000,
-			Available:   true,
+			ContextWindowSize: 200_000,
+			TokensUsed:        180_000,
+			Available:         true,
 		},
 	}
 
-	out := renderHandoffGuideSegment(data)
-	if out == "" {
-		t.Fatalf("expected non-empty handoff guide for 200K @ 90%%, got empty")
+	if !shouldShowHandoffGuide(data) {
+		t.Fatalf("expected true for 200K @ 90%%, got false")
 	}
 }
 
-func TestRenderHandoffGuideSegment_TwoHundredKEightyNinePercentHidden(t *testing.T) {
+func TestShouldShowHandoffGuide_TwoHundredKEightyNinePercentFalse(t *testing.T) {
 	t.Parallel()
 
-	// 200K budget, 89% usage = 178,000 tokens → should hide
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 200_000,
-			TokensUsed:  178_000,
-			Available:   true,
+			ContextWindowSize: 200_000,
+			TokensUsed:        178_000,
+			Available:         true,
 		},
 	}
 
-	out := renderHandoffGuideSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty handoff guide for 200K @ 89%%, got %q", out)
+	if shouldShowHandoffGuide(data) {
+		t.Fatalf("expected false for 200K @ 89%%, got true")
 	}
 }
 
-func TestRenderHandoffGuideSegment_UnknownBudgetHidden(t *testing.T) {
+func TestShouldShowHandoffGuide_UnknownCwSizeFalse(t *testing.T) {
 	t.Parallel()
 
-	// Budget not in {200000, 1000000} (e.g., zero / unknown) → should hide
 	data := &StatusData{
 		Memory: MemoryData{
-			TokenBudget: 0,
-			TokensUsed:  100_000,
-			Available:   false,
+			ContextWindowSize: 0,
+			TokensUsed:        100_000,
+			Available:         false,
 		},
 	}
 
-	out := renderHandoffGuideSegment(data)
-	if out != "" {
-		t.Fatalf("expected empty handoff guide for unknown budget, got %q", out)
+	if shouldShowHandoffGuide(data) {
+		t.Fatalf("expected false for unknown context window size, got true")
 	}
 }
 
-func TestRenderHandoffGuideSegment_NilDataReturnsEmpty(t *testing.T) {
+func TestShouldShowHandoffGuide_NilDataFalse(t *testing.T) {
 	t.Parallel()
 
-	out := renderHandoffGuideSegment(nil)
-	if out != "" {
-		t.Fatalf("expected empty handoff guide for nil data, got %q", out)
+	if shouldShowHandoffGuide(nil) {
+		t.Fatalf("expected false for nil data, got true")
 	}
 }
 
 // ---------- isXxxEnabled predicate edge cases (default-on contract) ----------
 
-// TestIsRepoEnabled_DefaultOnContract verifies REQ-SSE-002 default-on
-// activation across the three documented config states.
-func TestIsRepoEnabled_DefaultOnContract(t *testing.T) {
-	t.Parallel()
+// NOTE: TestIsRepoEnabled_DefaultOnContract removed (layout v3 CH3).
+// The isRepoEnabled predicate was retired with renderRepoSegment.
+// renderRepoBranchSegment is gated by SegmentGitBranch (combined segment).
 
-	cases := []struct {
-		name string
-		cfg  map[string]bool
-		want bool
-	}{
-		{"nil config → enabled", nil, true},
-		{"unset key → enabled (default-on)", map[string]bool{SegmentPR: true}, true},
-		{"explicit false → disabled", map[string]bool{SegmentRepo: false}, false},
-		{"explicit true → enabled", map[string]bool{SegmentRepo: true}, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			r := NewRenderer("default", true, tc.cfg)
-			if got := r.isRepoEnabled(); got != tc.want {
-				t.Errorf("isRepoEnabled() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
-
-// TestIsLongContextEnabled_DefaultOnContract verifies REQ-SSE-004 default-on.
-func TestIsLongContextEnabled_DefaultOnContract(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name string
-		cfg  map[string]bool
-		want bool
-	}{
-		{"nil config → enabled", nil, true},
-		{"unset key → enabled", map[string]bool{SegmentPR: true}, true},
-		{"explicit false → disabled", map[string]bool{SegmentLongContext: false}, false},
-		{"explicit true → enabled", map[string]bool{SegmentLongContext: true}, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			r := NewRenderer("default", true, tc.cfg)
-			if got := r.isLongContextEnabled(); got != tc.want {
-				t.Errorf("isLongContextEnabled() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
-
-// TestIsHandoffGuideEnabled_DefaultOnContract verifies REQ-SSE-006 default-on.
-func TestIsHandoffGuideEnabled_DefaultOnContract(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name string
-		cfg  map[string]bool
-		want bool
-	}{
-		{"nil config → enabled", nil, true},
-		{"unset key → enabled", map[string]bool{SegmentPR: true}, true},
-		{"explicit false → disabled", map[string]bool{SegmentHandoffGuide: false}, false},
-		{"explicit true → enabled", map[string]bool{SegmentHandoffGuide: true}, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			r := NewRenderer("default", true, tc.cfg)
-			if got := r.isHandoffGuideEnabled(); got != tc.want {
-				t.Errorf("isHandoffGuideEnabled() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
+// NOTE: TestIsLongContextEnabled_DefaultOnContract +
+// TestIsHandoffGuideEnabled_DefaultOnContract removed (layout v3 CH1 + CH2).
+// The corresponding isLongContextEnabled + isHandoffGuideEnabled predicate
+// functions were removed; segment config keys SegmentLongContext +
+// SegmentHandoffGuide no longer exist.
 
 // TestCollectAll_RepoAndExceedsLongPropagation verifies REQ-SSE-001/003 wiring
 // from StdinData → StatusData via builder.collectAll.

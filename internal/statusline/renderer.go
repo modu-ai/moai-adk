@@ -242,7 +242,7 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
-	// Output style (moved to end of L1 per user request)
+	// Output style (last L1 segment per layout v3 amend: directory moved back to L3 head)
 	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
 		segs = append(segs, fmt.Sprintf("💬 %s", data.OutputStyle))
 	}
@@ -275,10 +275,15 @@ func renderEffortThinking(data *StatusData) string {
 func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	var segs []string
 
-	// CW bar
+	// CW bar with handoff_guide ⚠️ /clear suffix integration (layout v3 CH2).
+	// shouldShowHandoffGuide gates the suffix per 1M ≥50% / 200K ≥90% threshold.
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-		segs = append(segs, renderUsageBar("CW:", pct, width, r.noColor))
+		bar := renderUsageBar("CW:", pct, width, r.noColor)
+		if shouldShowHandoffGuide(data) {
+			bar += " (⚠️/clear)"
+		}
+		segs = append(segs, bar)
 	}
 
 	// 5H bar - always shown, defaults to 0% when no data.
@@ -314,26 +319,28 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	return r.joinSegments(segs)
 }
 
-// renderDirGitLine renders the directory + branch + git status + PR line (default L3, full L5).
-// Format: 📁 moai-adk-go │ 🅱️ main ↑2↓1 +6 │ 📬 +0 M6 ?0 │ #1023 ⌥pending
-// When worktree is active: "[WT] " prefix is prepended to the branch segment.
-// When PR segment is enabled AND stdin contains a valid pr.* object: a PR
-// segment is appended (REQ-SLV-013).
+// renderDirGitLine renders the L3 line for layout v3.
+// Format: 🔀 owner/name | 🅱️ branch ↑N +N │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
+//
+// Layout v3 changes (CH3 + CH5):
+//   - directory moved to L1 end (CH5)
+//   - branch + repo merged into single repo_branch segment (CH3)
+//   - long_context + handoff_guide separate segments removed (CH1, CH2)
+//   - handoff_guide integrated as CW bar (/clear) suffix in renderBarsInline (CH2)
+//   - PR segment last position with new format "💌 PR #N (⌥state)" (CH7, CH8)
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
-	// Directory
+	// Directory (layout v3 amend: L3 head — placed before repo_branch)
 	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
 		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
-	// Branch + ahead/behind (+ worktree indicator)
+	// Combined repo+branch segment (layout v3 CH3): replaces former
+	// SegmentGitBranch + SegmentRepo pair.
 	if r.isSegmentEnabled(SegmentGitBranch) {
-		if branch := renderGitBranch(data); branch != "" {
-			if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-				branch = "[WT] " + branch
-			}
-			segs = append(segs, branch)
+		if rb := r.renderRepoBranchSegment(data); rb != "" {
+			segs = append(segs, rb)
 		}
 	}
 
@@ -352,32 +359,9 @@ func (r *Renderer) renderDirGitLine(data *StatusData) string {
 		segs = append(segs, task)
 	}
 
-	// Repo segment (Claude Code v2.1.145+, REQ-SSE-001/002).
-	// Order: repo → pr → long_context → handoff_guide per plan.md M2.
-	if r.isRepoEnabled() {
-		if repo := renderRepoSegment(data); repo != "" {
-			segs = append(segs, repo)
-		}
-	}
-
-	// PR segment (Claude Code v2.1.145+, REQ-SLV-013)
+	// PR segment last position (layout v3 CH7 + CH8 format)
 	if pr := r.renderPRSegment(data); pr != "" {
 		segs = append(segs, pr)
-	}
-
-	// Long-context Layer 1 visual marker (Claude Code v2.1.139+, REQ-SSE-003/004).
-	if r.isLongContextEnabled() {
-		if lc := renderLongContextSegment(data); lc != "" {
-			segs = append(segs, lc)
-		}
-	}
-
-	// Layer 2 handoff guide hint (REQ-SSE-005/006). Activates at 1M ≥50% or
-	// 200K ≥90% context window usage — co-anchored to context-window-management.md.
-	if r.isHandoffGuideEnabled() {
-		if hg := renderHandoffGuideSegment(data); hg != "" {
-			segs = append(segs, hg)
-		}
 	}
 
 	return r.joinSegments(segs)
@@ -438,15 +422,16 @@ func (r *Renderer) renderPRSegment(data *StatusData) string {
 		return ""
 	}
 
-	// Base segment text: "#<number>"
-	numberText := fmt.Sprintf("#%d", data.PR.Number)
+	// Base segment text: "💌 PR #<number>" (layout v3 CH8)
+	numberText := fmt.Sprintf("💌 PR #%d", data.PR.Number)
 
-	// Review-state suffix: "⌥<state>" (omitted when ReviewState is empty)
+	// Review-state suffix: "(⌥<state>)" — parenthesised per layout v3 CH8
+	// (omitted when ReviewState is empty)
 	state := data.PR.ReviewState
 	if state == "" {
 		return numberText
 	}
-	stateText := fmt.Sprintf("⌥%s", state)
+	stateText := fmt.Sprintf("(⌥%s)", state)
 
 	// Apply color to the review-state suffix only (number stays uncolored)
 	if !r.noColor {
@@ -473,148 +458,93 @@ func (r *Renderer) isPREnabled() bool {
 	return enabled
 }
 
-// renderRepoSegment renders the GitHub repository identity segment in the
-// form "owner/name" (e.g., "modu-ai/moai-adk") when stdin provides
-// workspace.repo (Claude Code v2.1.145+, REQ-SSE-001).
+// renderRepoBranchSegment renders the combined repo + branch segment in the
+// form "🔀 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3.
 //
-// Returns empty string when:
-//   - data is nil
-//   - data.Workspace.Repo is nil
-//   - Owner or Name is empty (REQ-SSE-001 strict non-empty check)
+// Behavior:
+//   - Workspace.Repo present + Branch present: "🔀 owner/name | 🅱️ branch ↑N +N"
+//   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
+//   - Branch empty:                            "" (empty — no git context)
+//   - Ahead == 0:                              "↑N" portion omitted
+//   - Behind > 0:                              " ↓N" appended after ahead
+//   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
+//   - Worktree active:                          "[WT] " prefix prepended to branch
 //
-// Format literal: "%s/%s" for Owner/Name interpolation. The Host field is
-// captured by StdinData but not currently surfaced — owner/name alone is the
-// disambiguation key for cross-repo PR segment context.
-//
-// @MX:NOTE: [AUTO] workspace.repo 렌더링 진입점 — v2.1.145+ stdin field, default-on per REQ-SSE-002.
-func renderRepoSegment(data *StatusData) string {
-	if data == nil {
+// @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
+// @MX:NOTE: [AUTO] git 미초기화 또는 remote repo 정보 부재 시 segment 전체를 숨긴다 (사용자 요청 2026-05-22).
+func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
+	if data == nil || !data.Git.Available || data.Git.Branch == "" {
+		return ""
+	}
+
+	// Repo info 누락 시 segment 숨김 (git 미초기화 또는 remote 미설정 케이스).
+	if data.Workspace.Repo == nil {
 		return ""
 	}
 	repo := data.Workspace.Repo
-	if repo == nil {
-		return ""
-	}
 	if repo.Owner == "" || repo.Name == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
-}
 
-// isRepoEnabled returns true when SegmentRepo is enabled in segmentConfig.
-// Default-on for v2.20.0-rc1 per REQ-SSE-002 (follows isPREnabled pattern):
-// unset key resolves to enabled, matching isSegmentEnabled semantics.
-// Graceful no-output handles the no-repo case (Workspace.Repo == nil →
-// renderRepoSegment returns empty).
-func (r *Renderer) isRepoEnabled() bool {
-	if len(r.segmentConfig) == 0 {
-		return true
+	branch := "🅱️ " + data.Git.Branch
+	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
+		branch = "[WT] " + branch
 	}
-	enabled, exists := r.segmentConfig[SegmentRepo]
-	if !exists {
-		return true
-	}
-	return enabled
-}
 
-// renderLongContextSegment emits the Layer 1 long-context visual marker
-// "⚠️ long" when stdin reported exceeds_200k_tokens == true (REQ-SSE-004).
-// This is a pure visual signal — no handoff semantics, no escalation.
-//
-// Returns empty string when data is nil or ExceedsLongTokens is false.
-//
-// @MX:NOTE: [AUTO] Layer 1 시각 마커 — v2.1.139+ exceeds_200k_tokens 매핑, Warning 색상.
-func renderLongContextSegment(data *StatusData) string {
-	if data == nil || !data.ExceedsLongTokens {
-		return ""
+	// Ahead/Behind suffix (0 values omitted)
+	var aheadBehind string
+	if data.Git.Ahead > 0 {
+		aheadBehind += fmt.Sprintf(" ↑%d", data.Git.Ahead)
 	}
-	return "⚠️ long"
-}
+	if data.Git.Behind > 0 {
+		aheadBehind += fmt.Sprintf(" ↓%d", data.Git.Behind)
+	}
 
-// isLongContextEnabled returns true when SegmentLongContext is enabled in
-// segmentConfig. Default-on per REQ-SSE-004 (follows isPREnabled pattern):
-// unset key resolves to enabled. Graceful no-output covers the
-// ExceedsLongTokens=false case via renderLongContextSegment.
-func (r *Renderer) isLongContextEnabled() bool {
-	if len(r.segmentConfig) == 0 {
-		return true
+	// Dirty count (omitted when 0)
+	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
+	var dirtySuffix string
+	if dirty > 0 {
+		dirtySuffix = fmt.Sprintf(" +%d", dirty)
 	}
-	enabled, exists := r.segmentConfig[SegmentLongContext]
-	if !exists {
-		return true
-	}
-	return enabled
+
+	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
+	return fmt.Sprintf("🔀 %s/%s | %s", repo.Owner, repo.Name, inner)
 }
 
 // shouldShowHandoffGuide returns true when accumulated context usage crosses
 // the model-class threshold and the orchestrator should hint the user toward
 // a /clear handoff (REQ-SSE-005). Threshold table:
 //
-//   - 1M context (TokenBudget == 1,000,000): >=50% usage
-//   - 200K context (TokenBudget == 200,000):  >=90% usage
-//   - other / 0 budget: hidden (safety default — no marker without budget signal)
+//   - 1M context (ContextWindowSize == 1,000,000): >=50% raw usage
+//   - 200K context (ContextWindowSize == 200,000):  >=90% raw usage
+//   - other / 0 window size: hidden (safety default — no marker without raw signal)
 //
-// Note: REQ-SSE-005 originally specified the safety default as "treat unknown
-// budget as 200K (>=90%)", but with TokenBudget == 0 the percentage division
-// is undefined; emitting a marker under that condition is misleading. The
-// implementation chooses "hidden when budget unknown" — strictly safer (no
-// false-positive marker) and the tested behavior in
-// TestRenderHandoffGuideSegment_UnknownBudgetHidden.
+// Uses raw Memory.ContextWindowSize (Claude Code stdin context_window_size)
+// instead of Memory.TokenBudget — TokenBudget is auto-compact-threshold-scaled
+// (e.g., 1M × 85% = 850K) which would never match the raw 1M/200K switch cases.
+// Boundary defect fix: handoff_guide was permanently hidden because production
+// TokenBudget never equals raw class boundaries (only unit tests bypassed this
+// by injecting raw values directly into MemoryData).
 //
 // @MX:NOTE: [AUTO] 1M=50%/200K=90% 임계값 — context-window-management.md HARD rule와 일치.
 func shouldShowHandoffGuide(data *StatusData) bool {
 	if data == nil {
 		return false
 	}
-	budget := data.Memory.TokenBudget
-	if budget <= 0 {
+	cwSize := data.Memory.ContextWindowSize
+	if cwSize <= 0 {
 		return false
 	}
 	used := data.Memory.TokensUsed
-	pct := float64(used) * 100.0 / float64(budget)
-	switch budget {
+	rawPct := float64(used) * 100.0 / float64(cwSize)
+	switch cwSize {
 	case 1_000_000:
-		return pct >= 50.0
+		return rawPct >= 50.0
 	case 200_000:
-		return pct >= 90.0
+		return rawPct >= 90.0
 	default:
 		return false
 	}
-}
-
-// renderHandoffGuideSegment emits the Layer 2 paste-ready handoff hint
-// "📋 /clear" when shouldShowHandoffGuide is true AND the segment is enabled
-// (REQ-SSE-006). The user pastes the orchestrator-generated resume message
-// after running /clear; see session-handoff.md canonical format.
-//
-// Returns empty string when:
-//   - data is nil
-//   - shouldShowHandoffGuide(data) returns false
-//
-// Enable-gating is performed by isHandoffGuideEnabled at the call site
-// inside renderDirGitLine — this function itself only enforces the
-// threshold semantics.
-//
-// @MX:NOTE: [AUTO] Layer 2 handoff hint — 임계값 진입 시 /clear 권고 마커.
-func renderHandoffGuideSegment(data *StatusData) string {
-	if !shouldShowHandoffGuide(data) {
-		return ""
-	}
-	return "📋 /clear"
-}
-
-// isHandoffGuideEnabled returns true when SegmentHandoffGuide is enabled
-// in segmentConfig. Default-on per REQ-SSE-006 (follows isPREnabled
-// pattern): unset key resolves to enabled.
-func (r *Renderer) isHandoffGuideEnabled() bool {
-	if len(r.segmentConfig) == 0 {
-		return true
-	}
-	enabled, exists := r.segmentConfig[SegmentHandoffGuide]
-	if !exists {
-		return true
-	}
-	return enabled
 }
 
 // prReviewStateColor maps a Claude Code v2.1.145 review_state value to a
@@ -646,13 +576,14 @@ func (r *Renderer) prReviewStateColor(state string) (lipgloss.Color, bool) {
 // Helper functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderUsageBar renders label + battery icon + gradient bar + percentage.
-// Format: {label} {BatteryIcon(pct)} {BuildGradientBar(pct, width, noColor)} {pct}%
-// Example: CW: 🪫 ████████████████████████████████████░░░░ 88%
+// renderUsageBar renders battery icon + label + gradient bar + percentage.
+// Format: {BatteryIcon(pct)} {label} {BuildGradientBar(pct, width, noColor)} {pct}%
+// Example: 🪫 CW: ████████████████████████████████████░░░░ 88%
+// Layout v3 CH6: icon position moved before label for visual prominence.
 func renderUsageBar(label string, pct int, width int, noColor bool) string {
 	icon := BatteryIcon(pct)
 	bar := BuildGradientBar(pct, width, noColor)
-	return fmt.Sprintf("%s %s %s %d%%", label, icon, bar, pct)
+	return fmt.Sprintf("%s %s %s %d%%", icon, label, bar, pct)
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
@@ -817,22 +748,16 @@ func renderSessionTime(ms int) string {
 	return fmt.Sprintf("⏳ %dm", totalMinutes)
 }
 
-// mailboxEmoji returns a single mailbox emoji based on git status priority:
-// 📬(staged) > 📫(modified) > 📪(untracked) > 📭(clean)
+// mailboxEmoji returns a single disk emoji for the git status segment.
+// Layout v3 amend: unified 💾 marker replaces the prior mailbox quartet
+// (📬 staged / 📫 modified / 📪 untracked / 📭 clean) per user request —
+// granular state is conveyed by the trailing "+S MM ?U" counter, so the
+// leading emoji no longer needs to encode state independently.
 func mailboxEmoji(data *StatusData) string {
 	if !data.Git.Available {
 		return ""
 	}
-	if data.Git.Staged > 0 {
-		return "📬"
-	}
-	if data.Git.Modified > 0 {
-		return "📫"
-	}
-	if data.Git.Untracked > 0 {
-		return "📪"
-	}
-	return "📭"
+	return "💾"
 }
 
 // renderGitStatusDetail renders detailed git status string (+N M?N).

@@ -196,3 +196,53 @@ func TestGetProfileText_EmptyString(t *testing.T) {
 		t.Errorf("empty string fallback = %q, want %q", empty.LangSelectTitle, en.LangSelectTitle)
 	}
 }
+
+// TestProfileSetupTranslations_PresetSegments verifies that all 4 locales
+// (en/ko/ja/zh) provide non-empty translations for the statusline preset
+// selector + 15 segment toggle labels added by
+// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-003.
+//
+// 4 locales × 23 keys (2 preset titles + 4 preset options + 2 segments
+// section titles + 15 segment labels) = 92 cells verified.
+func TestProfileSetupTranslations_PresetSegments(t *testing.T) {
+	langs := []string{"en", "ko", "ja", "zh"}
+	type cell struct {
+		key   string
+		value func(profileSetupText) string
+	}
+	cells := []cell{
+		{"StatuslinePresetTitle", func(p profileSetupText) string { return p.StatuslinePresetTitle }},
+		{"StatuslinePresetDesc", func(p profileSetupText) string { return p.StatuslinePresetDesc }},
+		{"PresetFull", func(p profileSetupText) string { return p.PresetFull }},
+		{"PresetCompact", func(p profileSetupText) string { return p.PresetCompact }},
+		{"PresetMinimal", func(p profileSetupText) string { return p.PresetMinimal }},
+		{"PresetCustom", func(p profileSetupText) string { return p.PresetCustom }},
+		{"StatuslineSegmentsTitle", func(p profileSetupText) string { return p.StatuslineSegmentsTitle }},
+		{"StatuslineSegmentsDesc", func(p profileSetupText) string { return p.StatuslineSegmentsDesc }},
+		{"SegmentClaudeVersion", func(p profileSetupText) string { return p.SegmentClaudeVersion }},
+		{"SegmentContext", func(p profileSetupText) string { return p.SegmentContext }},
+		{"SegmentDirectory", func(p profileSetupText) string { return p.SegmentDirectory }},
+		{"SegmentEffortThinking", func(p profileSetupText) string { return p.SegmentEffortThinking }},
+		{"SegmentGitBranch", func(p profileSetupText) string { return p.SegmentGitBranch }},
+		{"SegmentGitStatus", func(p profileSetupText) string { return p.SegmentGitStatus }},
+		{"SegmentMoaiVersion", func(p profileSetupText) string { return p.SegmentMoaiVersion }},
+		{"SegmentModel", func(p profileSetupText) string { return p.SegmentModel }},
+		{"SegmentOutputStyle", func(p profileSetupText) string { return p.SegmentOutputStyle }},
+		{"SegmentPR", func(p profileSetupText) string { return p.SegmentPR }},
+		{"SegmentSessionTime", func(p profileSetupText) string { return p.SegmentSessionTime }},
+		{"SegmentTask", func(p profileSetupText) string { return p.SegmentTask }},
+		{"SegmentUsage5h", func(p profileSetupText) string { return p.SegmentUsage5h }},
+		{"SegmentUsage7d", func(p profileSetupText) string { return p.SegmentUsage7d }},
+		{"SegmentWorktree", func(p profileSetupText) string { return p.SegmentWorktree }},
+	}
+	for _, lang := range langs {
+		t.Run(lang, func(t *testing.T) {
+			text := getProfileText(lang)
+			for _, c := range cells {
+				if c.value(text) == "" {
+					t.Errorf("lang %q: %s is empty", lang, c.key)
+				}
+			}
+		})
+	}
+}

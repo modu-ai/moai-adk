@@ -72,6 +72,35 @@ type profileSetupText struct {
 	ModeVerbose string // label for mode = "verbose" (deprecated)
 	ModeMinimal string // label for mode = "minimal" (deprecated)
 
+	// Statusline preset selector (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001)
+	StatuslinePresetTitle string
+	StatuslinePresetDesc  string
+	PresetFull            string
+	PresetCompact         string
+	PresetMinimal         string
+	PresetCustom          string
+
+	// Statusline segments multi-select (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001)
+	// Only shown when preset = "custom".
+	// Order matches statuslineAllSegments slice in profile_setup.go (15 segments).
+	StatuslineSegmentsTitle string
+	StatuslineSegmentsDesc  string
+	SegmentClaudeVersion    string
+	SegmentContext          string
+	SegmentDirectory        string
+	SegmentEffortThinking   string
+	SegmentGitBranch        string
+	SegmentGitStatus        string
+	SegmentMoaiVersion      string
+	SegmentModel            string
+	SegmentOutputStyle      string
+	SegmentPR               string
+	SegmentSessionTime      string
+	SegmentTask             string
+	SegmentUsage5h          string
+	SegmentUsage7d          string
+	SegmentWorktree         string
+
 	// Statusline theme selector
 	StatuslineThemeTitle string
 	StatuslineThemeDesc  string
@@ -155,11 +184,34 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeCompact:          "Compact - 2-line: model+CW bar, git status",
 		ModeFull:             "Full - 5-line: info, CW/5H/7D bars (40-block), dir+git",
 		ModeVerbose:          "Verbose - 3-line detailed view with cost tracking",
-		ModeMinimal:          "Minimal - Model and context only",
-		StatuslineThemeTitle: "Statusline Theme",
-		StatuslineThemeDesc:  "Select a color theme for the statusline.",
-		ThemeMoaiDark:        "MoAI Dark",
-		ThemeMoaiLight:       "MoAI Light",
+		ModeMinimal:             "Minimal - Model and context only",
+		StatuslinePresetTitle:   "Statusline preset",
+		StatuslinePresetDesc:    "Choose a preset segment bundle. Select 'custom' to toggle individual segments below.",
+		PresetFull:              "full - Show all segments (full visibility)",
+		PresetCompact:           "compact - Essential segments only (minimal noise)",
+		PresetMinimal:           "minimal - Just model and context",
+		PresetCustom:            "custom - Pick individual segments below",
+		StatuslineSegmentsTitle: "Statusline segments (custom preset only)",
+		StatuslineSegmentsDesc:  "Toggle which segments appear. Applied only when preset = 'custom'.",
+		SegmentClaudeVersion:    "Claude version",
+		SegmentContext:          "Context usage",
+		SegmentDirectory:        "Current directory",
+		SegmentEffortThinking:   "Effort + thinking mode",
+		SegmentGitBranch:        "Git branch",
+		SegmentGitStatus:        "Git status (porcelain)",
+		SegmentMoaiVersion:      "MoAI version",
+		SegmentModel:            "Model name",
+		SegmentOutputStyle:      "Output style",
+		SegmentPR:               "Open PR number",
+		SegmentSessionTime:      "Session elapsed time",
+		SegmentTask:             "Current task (/moai run XXX)",
+		SegmentUsage5h:          "Usage 5h window bar",
+		SegmentUsage7d:          "Usage 7d window bar",
+		SegmentWorktree:         "Worktree path / identifier",
+		StatuslineThemeTitle:    "Statusline Theme",
+		StatuslineThemeDesc:     "Select a color theme for the statusline.",
+		ThemeMoaiDark:           "MoAI Dark",
+		ThemeMoaiLight:          "MoAI Light",
 		SetupCancelled:       "Setup cancelled.",
 		SavedProfile:         "\nSaved profile '%s':\n  Preferences → %s\n",
 
@@ -231,11 +283,34 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeCompact:          "Compact - 2줄: 모델+CW 바, git 상태",
 		ModeFull:             "Full - 5줄: 정보, CW/5H/7D 바(40블록), 디렉토리+git",
 		ModeVerbose:          "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
-		ModeMinimal:          "Minimal - 모델과 컨텍스트만 표시",
-		StatuslineThemeTitle: "Statusline 테마",
-		StatuslineThemeDesc:  "상태줄 색상 테마를 선택하세요.",
-		ThemeMoaiDark:        "MoAI Dark",
-		ThemeMoaiLight:       "MoAI Light",
+		ModeMinimal:             "Minimal - 모델과 컨텍스트만 표시",
+		StatuslinePresetTitle:   "상태줄 프리셋",
+		StatuslinePresetDesc:    "세그먼트 묶음 프리셋을 선택하세요. 'custom'을 선택하면 아래에서 개별 세그먼트를 토글할 수 있습니다.",
+		PresetFull:              "full - 모든 세그먼트 표시 (전체 가시성)",
+		PresetCompact:           "compact - 필수 세그먼트만 (최소 노이즈)",
+		PresetMinimal:           "minimal - 모델과 컨텍스트만",
+		PresetCustom:            "custom - 아래에서 개별 세그먼트를 선택",
+		StatuslineSegmentsTitle: "상태줄 세그먼트 (custom 프리셋 전용)",
+		StatuslineSegmentsDesc:  "표시할 세그먼트를 토글합니다. preset이 'custom'일 때만 적용됩니다.",
+		SegmentClaudeVersion:    "Claude 버전",
+		SegmentContext:          "컨텍스트 사용량",
+		SegmentDirectory:        "현재 디렉토리",
+		SegmentEffortThinking:   "추론 강도 + 사고 모드",
+		SegmentGitBranch:        "Git 브랜치",
+		SegmentGitStatus:        "Git 상태 (porcelain)",
+		SegmentMoaiVersion:      "MoAI 버전",
+		SegmentModel:            "모델 이름",
+		SegmentOutputStyle:      "출력 스타일",
+		SegmentPR:               "열린 PR 번호",
+		SegmentSessionTime:      "세션 경과 시간",
+		SegmentTask:             "현재 작업 (/moai run XXX)",
+		SegmentUsage5h:          "사용량 5시간 바",
+		SegmentUsage7d:          "사용량 7일 바",
+		SegmentWorktree:         "워크트리 경로 / 식별자",
+		StatuslineThemeTitle:    "Statusline 테마",
+		StatuslineThemeDesc:     "상태줄 색상 테마를 선택하세요.",
+		ThemeMoaiDark:           "MoAI Dark",
+		ThemeMoaiLight:          "MoAI Light",
 		SetupCancelled:       "설정이 취소되었습니다.",
 		SavedProfile:         "\n프로필 '%s' 저장 완료:\n  환경설정 → %s\n",
 
@@ -307,11 +382,34 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeCompact:          "Compact - 2行: モデル+CWバー、gitステータス",
 		ModeFull:             "Full - 5行: 情報、CW/5H/7Dバー(40ブロック)、ディレクトリ+git",
 		ModeVerbose:          "Verbose - コスト追跡付きの3行詳細表示",
-		ModeMinimal:          "Minimal - モデルとコンテキストのみ",
-		StatuslineThemeTitle: "ステータスラインテーマ",
-		StatuslineThemeDesc:  "ステータスラインのカラーテーマを選択してください。",
-		ThemeMoaiDark:        "MoAI Dark",
-		ThemeMoaiLight:       "MoAI Light",
+		ModeMinimal:             "Minimal - モデルとコンテキストのみ",
+		StatuslinePresetTitle:   "ステータスラインプリセット",
+		StatuslinePresetDesc:    "セグメントバンドルプリセットを選択。'custom'を選ぶと下のセグメントを個別に切り替えられます。",
+		PresetFull:              "full - 全セグメント表示 (全可視性)",
+		PresetCompact:           "compact - 必須セグメントのみ (最小ノイズ)",
+		PresetMinimal:           "minimal - モデルとコンテキストのみ",
+		PresetCustom:            "custom - 下で個別セグメントを選択",
+		StatuslineSegmentsTitle: "ステータスラインセグメント (custom プリセット専用)",
+		StatuslineSegmentsDesc:  "表示するセグメントを切り替えます。preset = 'custom' の時のみ適用されます。",
+		SegmentClaudeVersion:    "Claude バージョン",
+		SegmentContext:          "コンテキスト使用量",
+		SegmentDirectory:        "現在のディレクトリ",
+		SegmentEffortThinking:   "推論強度 + 思考モード",
+		SegmentGitBranch:        "Git ブランチ",
+		SegmentGitStatus:        "Git ステータス (porcelain)",
+		SegmentMoaiVersion:      "MoAI バージョン",
+		SegmentModel:            "モデル名",
+		SegmentOutputStyle:      "出力スタイル",
+		SegmentPR:               "オープン PR 番号",
+		SegmentSessionTime:      "セッション経過時間",
+		SegmentTask:             "現在のタスク (/moai run XXX)",
+		SegmentUsage5h:          "使用量 5h ウィンドウバー",
+		SegmentUsage7d:          "使用量 7d ウィンドウバー",
+		SegmentWorktree:         "ワークツリーパス / 識別子",
+		StatuslineThemeTitle:    "ステータスラインテーマ",
+		StatuslineThemeDesc:     "ステータスラインのカラーテーマを選択してください。",
+		ThemeMoaiDark:           "MoAI Dark",
+		ThemeMoaiLight:          "MoAI Light",
 		SetupCancelled:       "セットアップがキャンセルされました。",
 		SavedProfile:         "\nプロファイル '%s' を保存しました:\n  環境設定 → %s\n",
 
@@ -383,11 +481,34 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModeCompact:          "Compact - 2行: 模型+CW栏、git状态",
 		ModeFull:             "Full - 5行: 信息、CW/5H/7D栏(40块)、目录+git",
 		ModeVerbose:          "Verbose - 含费用追踪的3行详细视图",
-		ModeMinimal:          "Minimal - 仅显示模型和上下文",
-		StatuslineThemeTitle: "状态栏主题",
-		StatuslineThemeDesc:  "选择状态栏的颜色主题。",
-		ThemeMoaiDark:        "MoAI Dark",
-		ThemeMoaiLight:       "MoAI Light",
+		ModeMinimal:             "Minimal - 仅显示模型和上下文",
+		StatuslinePresetTitle:   "状态栏预设",
+		StatuslinePresetDesc:    "选择段位束预设。选择 'custom' 可在下方逐个切换段位。",
+		PresetFull:              "full - 显示所有段位 (完全可见)",
+		PresetCompact:           "compact - 仅必需段位 (最小噪声)",
+		PresetMinimal:           "minimal - 仅模型和上下文",
+		PresetCustom:            "custom - 在下方选择单独段位",
+		StatuslineSegmentsTitle: "状态栏段位 (仅 custom 预设)",
+		StatuslineSegmentsDesc:  "切换显示哪些段位。仅当 preset = 'custom' 时应用。",
+		SegmentClaudeVersion:    "Claude 版本",
+		SegmentContext:          "上下文使用量",
+		SegmentDirectory:        "当前目录",
+		SegmentEffortThinking:   "推理强度 + 思考模式",
+		SegmentGitBranch:        "Git 分支",
+		SegmentGitStatus:        "Git 状态 (porcelain)",
+		SegmentMoaiVersion:      "MoAI 版本",
+		SegmentModel:            "模型名称",
+		SegmentOutputStyle:      "输出样式",
+		SegmentPR:               "开放 PR 编号",
+		SegmentSessionTime:      "会话经过时间",
+		SegmentTask:             "当前任务 (/moai run XXX)",
+		SegmentUsage5h:          "使用量 5 小时窗口条",
+		SegmentUsage7d:          "使用量 7 天窗口条",
+		SegmentWorktree:         "工作树路径 / 标识符",
+		StatuslineThemeTitle:    "状态栏主题",
+		StatuslineThemeDesc:     "选择状态栏的颜色主题。",
+		ThemeMoaiDark:           "MoAI Dark",
+		ThemeMoaiLight:          "MoAI Light",
 		SetupCancelled:       "设置已取消。",
 		SavedProfile:         "\n配置文件 '%s' 已保存:\n  偏好设置 → %s\n",
 
