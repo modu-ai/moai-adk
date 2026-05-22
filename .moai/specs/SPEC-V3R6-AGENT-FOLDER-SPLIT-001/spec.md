@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-AGENT-FOLDER-SPLIT-001
 title: "Agent Folder Split (.claude/agents/moai/ → core/ + expert/ + meta/)"
-version: "0.1.1"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec
@@ -25,6 +25,7 @@ related_specs: [SPEC-V3R6-META-HARNESS-PATH-001, SPEC-V3R6-AGENT-SLIM-001]
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — Wave 2 결정에 따라 `.claude/agents/moai/` 19 agents를 `core/` + `expert/` + `meta/` 3개 폴더로 분리. Template-First Rule 동시 적용. `harness/` 4 agents는 PRESERVE (HARNESS-RENAME-001 결과). Tier M. |
 | 0.1.1 | 2026-05-22 | manager-spec | iter 2 scope reduction + D1-D8 fix per plan-auditor (iter 1 REVISE 0.69 → iter 2 self-estimate target ≥0.82). **Scope reduction**: 9 Go files OUT OF SCOPE (frozen_guard.go family + pre_tool.go SentinelHarnessFrozenAgent + walker tests TestAllAgentsInCatalog/TestAgentFrontmatterAudit + safety preservation/pipeline tests + meta_invocation_test). 별도 SPEC 후보 `SPEC-V3R6-FROZEN-PREFIX-REALIGN-001` (가칭) 식별. D1: 22 occurrences in 19 files enumerated. D2: in-scope Go = 41 occurrences in 21 files (out-of-scope = 42 occurrences in 9 files). D6: 3-commit strategy explicit. D7: §10 pre-flight baseline 구체적 숫자. D8: AC-AFS-006 hedge word removed. New AC-AFS-012: out-of-scope file PRESERVE verification. catalog.yaml 19 entries (not 18 — builder-harness.md line 341 nested) confirmed. |
+| 0.2.0 | 2026-05-22 | manager-develop | run-phase COMPLETE. 3 commits on main (1bd083725 M1+M2 / fdf325eb6 M3 catalog hash / a912e7d5a extended walker coverage). 38 git mv + 82 Edits in 21 in-scope Go files + 6 additional walker callers (initializer/validator/model_policy + 3 test files) discovered during M4 verification. 9 out-of-scope files byte-identical PRESERVE (AC-AFS-012 PASS, 42 occurrences). 12/12 ACs PASS (AC-AFS-008 partial — only meta/plan-auditor.md inherits pre-existing template-mirror drift, 3 other folders zero-drift). Test classification: 3 baseline + 1 inherited statusline baseline + 3 out-of-scope deferred residual (TestAllAgentsInCatalog / TestAgentFrontmatterAudit / TestRetirementCompletenessAssertion) + 0 NEW regression. Cross-platform build PASS. Follow-up SPEC: SPEC-V3R6-FROZEN-PREFIX-REALIGN-001 (가칭) for walker logic + retirement-replacement-path supersession. |
 
 ## 1. Goal
 
