@@ -140,28 +140,46 @@ For Phase 3b — HRN-003 Hierarchical Scoring (when `harness.yaml` sets `evaluat
 
 ## Namespace Separation
 
-`moai-*` namespace is reserved for MoAI-maintained skills managed by `moai update`. The only `moai-*` skill in this system is `moai-meta-harness` (this file).
+[HARD] Skills + Agents namespace는 **"범용 배포"** vs **"사용자 생성"** 으로 명확히 분리된다.
 
-`moai-harness-*` namespace is user-owned. All artifacts generated at runtime by this meta-harness use the `moai-harness-*` prefix:
+### Distributed (template-managed)
 
-- `.claude/skills/moai-harness-<domain>/SKILL.md` — domain-specific skill
-- `.claude/agents/harness/<role>.md` — agent definition
-- `.moai/harness/main.md` — harness entry point
+`moai-*` namespace (모든 prefix 포함: `moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`, `moai-meta-*`, `moai-harness-*`) is moai-adk distributed. `moai update` 가 sync (삭제 후 신규 설치). 사용자 직접 수정은 다음 update로 overwrite.
 
-**Contract**:
+본 namespace의 하네스 자산:
+- `moai-meta-harness` (this skill — 7-Phase generator)
+- `moai-harness-learner` (lifecycle 관리 빌더, project-agnostic)
 
-- `moai update` MUST NOT overwrite `moai-harness-*` artifacts
-- This meta-harness MUST NOT emit any artifact with a `moai-` prefix at runtime
-- Emitting a `moai-` prefixed file during Phase 4 or 5 is a contract violation
+### User-Generated (this meta-harness emits)
 
-**Storage Roots**:
+**`my-harness-*` namespace and `.claude/agents/harness/` directory** are user-owned. Created by this meta-harness during `/moai project` Phase 5+ interview, tailored to the user's project domain.
 
-| Namespace | Location | Managed by |
-|-----------|----------|------------|
-| `moai-*` skills | `.claude/skills/moai-*/` | `moai update` |
-| `moai-harness-*` skills | `.claude/skills/moai-harness-*/` | User (this meta-harness) |
-| `moai-harness-*` agents | `.claude/agents/harness/` | User (this meta-harness) |
-| Harness config | `.moai/harness/` | User (this meta-harness) |
+User-generated artifacts:
+- `.claude/skills/my-harness-<domain>/SKILL.md` — domain-specific skill (e.g., `my-harness-trading`, `my-harness-llm-cascade`)
+- `.claude/agents/harness/<role>.md` — agent definition (e.g., `.claude/agents/harness/trading-specialist.md`)
+- `.moai/harness/main.md` — harness entry point + extensions
+
+### Contract
+
+- [HARD] This meta-harness MUST emit user-generated skills with `my-harness-*` prefix ONLY. Emitting a `moai-*` (including `moai-harness-*`) prefixed file during Phase 4 or 5 is a **contract violation**.
+- [HARD] `moai update` MUST NOT delete, modify, or sync `my-harness-*` skills or `.claude/agents/harness/*` files. Backup before update is mandatory.
+- [HARD] Template (`internal/template/templates/`) MUST NOT contain `my-harness-*` skills or `.claude/agents/harness/*-specialist.md` files. Leak detection triggers cleanup chore.
+
+### Storage Roots
+
+| Namespace / Path | Location | Source | `moai update` 동작 |
+|------------------|----------|--------|---------------------|
+| `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | 삭제 후 신규 설치 (overwrite) |
+| **`my-harness-*` skills** | `.claude/skills/my-harness-*/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
+| MoAI agents (core/expert/meta) | `.claude/agents/{core,expert,meta}/` | template | 삭제 후 신규 설치 (overwrite) |
+| **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
+| Harness config | `.moai/harness/` | user project | 절대 삭제 금지 + 백업 보존 |
+
+### Cross-References
+
+- `CLAUDE.local.md` §24 Harness Namespace 분리 정책 (운영 doctrine + moai update contract)
+- `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy
+- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention
 
 ---
 

@@ -876,3 +876,60 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
 - [HARD] 1-person OSS Hybrid Trunk: Tier S 미만은 main 직접 push, Tier M/L SPEC만 feat 브랜치 + 자동 PR
+
+---
+
+## 24. Harness Namespace 분리 정책
+
+[HARD] Skills + Agents의 namespace는 **"범용 배포"** vs **"사용자 생성"** 으로 명확히 분리한다.
+
+### §24.1 Skills Namespace
+
+| Prefix | 범위 | Source of Truth | `moai update` 영향 |
+|--------|------|-----------------|---------------------|
+| `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 범용 배포 — moai-adk 패키지에 포함, 모든 사용자 프로젝트에 deploy | template | sync (overwrite local) |
+| `moai-harness-*` | **하네스 빌더 (builder/lifecycle)** — moai-adk 패키지가 제공하는 generator/learner. 현재 `moai-meta-harness` + `moai-harness-learner`만 해당 | template | sync |
+| **`my-harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 사용자 프로젝트 도메인에 맞춰 generate | user project | **NOT synced (보호)** |
+
+[HARD] 사용자 프로젝트별 도메인 specialist skill은 **`my-harness-*` prefix만** 사용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
+
+### §24.2 Agents Directory
+
+| Path | 범위 | Source of Truth | `moai update` 영향 |
+|------|------|-----------------|---------------------|
+| `.claude/agents/core/` | manager-* (범용) | template | sync |
+| `.claude/agents/expert/` | expert-* (범용) | template | sync |
+| `.claude/agents/meta/` | plan-auditor, evaluator-active, claude-code-guide 등 (범용) | template | sync |
+| **`.claude/agents/harness/`** | **사용자 생성 domain specialist agents** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **NOT synced (보호)** |
+
+[HARD] `internal/template/templates/.claude/agents/harness/` 디렉토리는 **존재 자체가 금지**. template에는 `{core,expert,meta}/` 만 mirror. `harness/` directory 등장 시 cleanup chore + 본 §24 cross-reference.
+
+### §24.3 운영 원칙
+
+- [HARD] `moai-harness-*` prefix로 사용자 프로젝트별 skill generate 금지 — `moai-meta-harness`는 `my-harness-*` prefix만 emit
+- [HARD] template (`internal/template/templates/`)에 `my-harness-*` skill 또는 `.claude/agents/harness/*-specialist.md` 누출 금지
+- [HARD] `moai update`의 namespace 보호 contract: `my-harness-*` skill + `.claude/agents/harness/` 디렉토리는 sync 대상 제외 (user-owned)
+- [HARD] `moai-meta-harness` skill 본체는 `moai-*` namespace (generator/builder이므로 범용 배포 대상)
+- 선례: chore commit `4f1135684` (2026-05-23) — moai-adk-go 도메인 specialist 4 agent + `moai-harness-cli-template` / `moai-harness-patterns` 2 skill 잘못된 누출을 제거하면서 본 정책 명문화. 정정 전 SPEC-V3R6-HARNESS-RENAME-001 (PR #1043, 2026-05-22)의 my-harness → moai-harness 통합은 본 namespace 분리 정책 도입으로 부분 supersede됨
+
+### §24.4 `moai update` 동작 Contract
+
+[HARD] `moai update`는 `.claude/skills/` + `.claude/agents/` 에 대해 다음 동작을 수행한다:
+
+| Namespace / Path | 동작 | 백업 정책 |
+|------------------|------|-----------|
+| `.claude/skills/moai-*` (incl. `moai-harness-*`, `moai-meta-*`, `moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`) | **삭제 후 신규 설치** (overwrite) | 백업 불필요 — template-managed, 사용자 수정 시 손실됨 |
+| **`.claude/skills/my-harness-*`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
+| `.claude/agents/{core,expert,meta}/` | 삭제 후 신규 설치 (overwrite) | 백업 불필요 — template-managed |
+| **`.claude/agents/harness/`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
+| 기타 사용자 직접 추가 자산 (`.claude/agents/<custom>.md`, `.claude/skills/<custom>/` 단 prefix가 `moai-` 시작 아닌 것) | 보존 | 백업 + 보존 |
+| `.moai/harness/` (main.md, interview-results.md, extensions) | 절대 삭제 금지 | 백업 + 보존 (user-owned) |
+
+[HARD] `moai update` 실행 전 user-owned 자산은 **반드시 백업** — 갑작스러운 process kill 등 비정상 종료 시에도 손실 위험 0이어야 한다. 백업 위치: `.moai/backups/update-{ISO-DATE}/` 권장.
+
+[HARD] 이 contract는 다음 SSOT와 일관성을 유지:
+- `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation 의 Storage Roots 표
+- `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy
+- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention
+
+[HARD] Go 구현 (`internal/cli/update.go`, `internal/cli/update_archive.go`)이 본 contract를 정확히 준수하는지는 SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 (별도 작성 예정)에서 검증한다. 현재 본 contract는 정책 명문화이며, 코드 구현 검증은 후속 작업.

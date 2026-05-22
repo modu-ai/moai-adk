@@ -281,3 +281,27 @@ The 16 supported languages live as **rules** under
 See `.claude/rules/moai/languages/*.md` (16 files) for the canonical
 per-language guidance, and `CLAUDE.local.md` §15 for the 16-language
 neutrality contract.
+
+## Skills Namespace Policy
+
+[ZONE:Evolvable] [HARD] Skill namespace는 "범용 배포" vs "사용자 생성" 으로 분리되며, prefix가 namespace를 결정한다.
+
+| Prefix | 범위 | Source of Truth | `moai update` 동작 |
+|--------|------|-----------------|---------------------|
+| `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 핵심 framework + workflow + 도메인 + reference | template | **삭제 후 신규 설치** (overwrite) |
+| `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
+| **`my-harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** |
+
+### Rules
+
+- [HARD] `moai-*` namespace (모든 prefix 포함)는 template-distributed. 사용자가 직접 수정 시 다음 `moai update`로 overwrite — 사용자 customization은 손실됨.
+- [HARD] `my-harness-*` namespace는 user-owned. `moai update`가 본 namespace의 skill을 **삭제, modify, sync 금지**. 백업 의무.
+- [HARD] `moai-meta-harness`가 emit하는 사용자 프로젝트별 domain skill은 **`my-harness-*` prefix만** 허용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
+- [HARD] `moai-harness-*` namespace를 사용자 프로젝트별 artifact로 오인 금지 — 본 namespace는 framework builder 전용이며 현재 `moai-harness-learner`, `moai-meta-harness`만 해당한다.
+- [HARD] CI guard: `internal/template/templates/.claude/skills/my-harness-*` 누출 시 lint 실패해야 한다.
+
+### Cross-References
+
+- `CLAUDE.local.md` §24 Harness Namespace 분리 정책 (운영 doctrine + moai update contract)
+- `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
+- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart)
