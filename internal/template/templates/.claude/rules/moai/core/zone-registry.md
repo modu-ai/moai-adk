@@ -1,3 +1,8 @@
+---
+description: "Zone Registry — MoAI-ADK HARD 조항 SSOT. rules/agents/skills/specs 디렉토리 수정 시에만 로드."
+paths: ".claude/**,.moai/specs/**,.claude/rules/**"
+---
+
 # Zone Registry
 
 MoAI-ADK 규칙 트리의 모든 HARD 조항을 열거하는 단일 진실 공급원(single source of truth).
