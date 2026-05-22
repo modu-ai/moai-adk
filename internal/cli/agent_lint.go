@@ -87,7 +87,7 @@ type SubHook struct {
 var agentLintCmd = &cobra.Command{
 	Use:   "lint",
 	Short: "Lint agent definition files",
-	Long: `Validate agent definition files (.claude/agents/moai/*.md) against common issues.
+	Long: `Validate agent definition files (.claude/agents/{core,expert,meta,harness}/*.md) against common issues.
 
 	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
 	  LR-02: Reject Agent token in tools: CSV list
@@ -127,7 +127,7 @@ func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.AddCommand(agentLintCmd)
 
-	agentLintCmd.Flags().String("path", "", "Path to agent directory (default: .claude/agents/moai/ and internal/template/templates/.claude/agents/moai/)")
+	agentLintCmd.Flags().String("path", "", "Path to agent directory (default: .claude/agents/{core,expert,meta,harness}/ and internal/template/templates/.claude/agents/{core,expert,meta,harness}/)")
 	agentLintCmd.Flags().String("format", "text", "Output format: text or json")
 	agentLintCmd.Flags().Bool("strict", false, "Promote warnings to errors")
 }

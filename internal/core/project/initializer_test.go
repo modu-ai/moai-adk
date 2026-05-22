@@ -590,7 +590,7 @@ func TestInit_ManifestPreservesDeployedEntries(t *testing.T) {
 	// simulating the real embedded template deployer.
 	dep := &trackingMockDeployer{
 		files: map[string][]byte{
-			".claude/agents/moai/expert-backend.md":   []byte("# Expert Backend Agent"),
+			".claude/agents/expert/expert-backend.md": []byte("# Expert Backend Agent"),
 			".claude/rules/moai/core/constitution.md": []byte("# MoAI Constitution"),
 			"CLAUDE.md": []byte("# MoAI Execution Directive"),
 		},

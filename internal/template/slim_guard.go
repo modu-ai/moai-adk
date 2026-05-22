@@ -25,7 +25,7 @@ func AssertBuilderHarnessAvailable(projectFS fs.FS) error {
 	if projectFS == nil {
 		return nil
 	}
-	_, err := fs.Stat(projectFS, ".claude/agents/moai/builder-harness.md")
+	_, err := fs.Stat(projectFS, ".claude/agents/meta/builder-harness.md")
 	if err == nil {
 		return nil
 	}

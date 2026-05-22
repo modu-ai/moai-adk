@@ -79,7 +79,7 @@ func TestModeAwareDeployer_Deploy(t *testing.T) {
 	t.Run("successful_deployment", func(t *testing.T) {
 		root, mgr := setupDeployProject(t)
 		fs := fstest.MapFS{
-			".claude/agents/moai/backend.md": &fstest.MapFile{
+			".claude/agents/expert/backend.md": &fstest.MapFile{
 				Data: []byte("# Backend Agent"),
 			},
 			"CLAUDE.md": &fstest.MapFile{
@@ -95,7 +95,7 @@ func TestModeAwareDeployer_Deploy(t *testing.T) {
 
 		// Verify files exist on disk
 		expectedFiles := []string{
-			".claude/agents/moai/backend.md",
+			".claude/agents/expert/backend.md",
 			"CLAUDE.md",
 		}
 		for _, f := range expectedFiles {
@@ -457,7 +457,7 @@ func TestModeAwareDeployer_Deploy(t *testing.T) {
 	t.Run("deploys_to_project_root", func(t *testing.T) {
 		root, mgr := setupDeployProject(t)
 		fs := fstest.MapFS{
-			".claude/agents/moai/expert-backend.md": &fstest.MapFile{
+			".claude/agents/expert/expert-backend.md": &fstest.MapFile{
 				Data: []byte("# Expert Backend Agent"),
 			},
 			".claude/skills/moai/SKILL.md": &fstest.MapFile{
@@ -476,7 +476,7 @@ func TestModeAwareDeployer_Deploy(t *testing.T) {
 
 		// Verify files are in project root subdirectories
 		expectedFiles := []string{
-			".claude/agents/moai/expert-backend.md",
+			".claude/agents/expert/expert-backend.md",
 			".claude/skills/moai/SKILL.md",
 		}
 		for _, f := range expectedFiles {
@@ -550,13 +550,13 @@ func TestModeAwareDeployer_ExtractTemplate(t *testing.T) {
 
 	t.Run("nested_template", func(t *testing.T) {
 		fs := fstest.MapFS{
-			".claude/agents/moai/backend.md": &fstest.MapFile{
+			".claude/agents/expert/backend.md": &fstest.MapFile{
 				Data: []byte("# Backend"),
 			},
 		}
 		d := NewDeployerWithMode(fs, "", "")
 
-		data, err := d.ExtractTemplate(".claude/agents/moai/backend.md")
+		data, err := d.ExtractTemplate(".claude/agents/expert/backend.md")
 		if err != nil {
 			t.Fatalf("ExtractTemplate error: %v", err)
 		}
@@ -589,7 +589,7 @@ func TestModeAwareDeployer_ListTemplates(t *testing.T) {
 			".claude/settings.json": &fstest.MapFile{
 				Data: []byte(`{"hooks":{}}`),
 			},
-			".claude/agents/moai/backend.md": &fstest.MapFile{
+			".claude/agents/expert/backend.md": &fstest.MapFile{
 				Data: []byte("# Backend"),
 			},
 			"CLAUDE.md": &fstest.MapFile{
@@ -604,9 +604,9 @@ func TestModeAwareDeployer_ListTemplates(t *testing.T) {
 		}
 
 		expected := map[string]bool{
-			".claude/settings.json":          true,
-			".claude/agents/moai/backend.md": true,
-			"CLAUDE.md":                      true,
+			".claude/settings.json":            true,
+			".claude/agents/expert/backend.md": true,
+			"CLAUDE.md":                        true,
 		}
 		for _, item := range list {
 			if !expected[item] {

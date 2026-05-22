@@ -91,7 +91,7 @@ func TestManifestJSONRoundtrip(t *testing.T) {
 		Version:    "1.14.0",
 		DeployedAt: "2026-02-03T10:30:00Z",
 		Files: map[string]FileEntry{
-			".claude/agents/moai/expert-backend.md": {
+			".claude/agents/expert/expert-backend.md": {
 				Provenance:   TemplateManaged,
 				TemplateHash: "sha256:a1b2c3d4",
 				DeployedHash: "sha256:a1b2c3d4",

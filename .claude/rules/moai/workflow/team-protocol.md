@@ -111,7 +111,7 @@ The team spawn wrapper enforces these checks before creating a teammate:
 1. **Role validation**: Reject unknown role profiles with `ORC_UNKNOWN_ROLE_PROFILE`.
 2. **Worktree enforcement**: Reject write-heavy roles without `isolation: "worktree"` with `ORC_WORKTREE_REQUIRED`.
 3. **Roster limit**: Reject teams exceeding `workflow.yaml team.max_teammates` (default 10) with `ORC_TEAM_ROSTER_LIMIT`.
-4. **Static agent check**: CI fails with `ORC_STATIC_TEAM_AGENT_PROHIBITED` if any `team-*.md` file exists in `.claude/agents/moai/`.
+4. **Static agent check**: CI fails with `ORC_STATIC_TEAM_AGENT_PROHIBITED` if any `team-*.md` file exists in `.claude/agents/{core,expert,meta,harness}/`.
 
 ## Cross-References
 

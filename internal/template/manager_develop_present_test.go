@@ -28,7 +28,7 @@ func TestManagerDevelopActiveAgentPresent(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	const managerDevelopPath = ".claude/agents/moai/manager-develop.md"
+	const managerDevelopPath = ".claude/agents/core/manager-develop.md"
 
 	// Verify file presence
 	_, statErr := fs.Stat(fsys, managerDevelopPath)
@@ -51,7 +51,7 @@ func TestManagerDevelopIsActiveAgent(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	const managerDevelopPath = ".claude/agents/moai/manager-develop.md"
+	const managerDevelopPath = ".claude/agents/core/manager-develop.md"
 
 	data, readErr := fs.ReadFile(fsys, managerDevelopPath)
 	if readErr != nil {
@@ -110,10 +110,14 @@ func TestPurgedZombieAgentsAbsent(t *testing.T) {
 		"manager-tdd",
 	}
 
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: scan all 4 domain subfolders for zombie regression.
+	domains := []string{"core", "expert", "meta", "harness"}
 	for _, name := range purged {
-		path := ".claude/agents/moai/" + name + ".md"
-		if _, statErr := fs.Stat(fsys, path); statErr == nil {
-			t.Errorf("ZOMBIE_AGENT_REGRESSION: %s reappeared in embedded FS — must remain purged (Bundle C / F-003)", path)
+		for _, domain := range domains {
+			path := ".claude/agents/" + domain + "/" + name + ".md"
+			if _, statErr := fs.Stat(fsys, path); statErr == nil {
+				t.Errorf("ZOMBIE_AGENT_REGRESSION: %s reappeared in embedded FS — must remain purged (Bundle C / F-003)", path)
+			}
 		}
 	}
 }

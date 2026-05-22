@@ -12,7 +12,7 @@ Custom agents are defined in `.claude/agents/*.md` or `.claude/agents/**/*.md` (
 
 Directory convention:
 - User custom agents: `.claude/agents/<agent-name>.md` (root level)
-- MoAI-ADK system agents: `.claude/agents/moai/<agent-name>.md` (moai subdirectory)
+- MoAI-ADK system agents: `.claude/agents/{core,expert,meta,harness}/<agent-name>.md` (domain subdirectories)
 
 Platform Support: Windows ARM64 (`win32-arm64`) is natively supported as of Claude Code v2.1.41. No WSL required for ARM-based Windows devices.
 

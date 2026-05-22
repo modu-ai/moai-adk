@@ -1070,7 +1070,7 @@ func isUserAreaPath(rel string) bool {
 // MoAI-managed paths include:
 //   - .claude/skills/moai-* and .claude/skills/moai/
 //   - .claude/rules/moai/
-//   - .claude/agents/moai/
+//   - .claude/agents/{core,expert,meta,harness}/ (moai system agents, post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
 //   - .claude/commands/moai/
 //   - .claude/output-styles/moai/
 //   - .moai/config/ (entire directory)
@@ -1100,10 +1100,23 @@ func isMoaiManaged(path string) bool {
 	})
 	for i, part := range parts {
 		switch part {
-		case "skills", "rules", "agents", "commands", "output-styles", "hooks":
+		case "skills", "rules", "commands", "output-styles", "hooks":
 			// Check if the next directory starts with "moai-"
 			if i+1 < len(parts) {
 				itemName := parts[i+1]
+				return strings.HasPrefix(itemName, "moai-") || strings.HasPrefix(itemName, "moai")
+			}
+		case "agents":
+			// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: MoAI system agents live in
+			// .claude/agents/{core,expert,meta,harness}/ (4 domain subfolders).
+			// Legacy `agents/moai` directory was removed in this SPEC; only
+			// new domain subfolders + `moai-` prefix names are MoAI-managed.
+			if i+1 < len(parts) {
+				itemName := parts[i+1]
+				switch itemName {
+				case "core", "expert", "meta", "harness":
+					return true
+				}
 				return strings.HasPrefix(itemName, "moai-") || strings.HasPrefix(itemName, "moai")
 			}
 		}

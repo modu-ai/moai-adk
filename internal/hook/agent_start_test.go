@@ -23,12 +23,13 @@ type agentStartInterface interface {
 }
 
 // buildRetiredAgentDir는 테스트용 임시 디렉터리를 생성하고
-// .claude/agents/moai/<agentName>.md 파일을 retired frontmatter와 함께 작성한다.
+// .claude/agents/core/<agentName>.md 파일을 retired frontmatter와 함께 작성한다.
+// (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into core/expert/meta/harness)
 func buildRetiredAgentDir(t *testing.T, agentName, replacement, paramHint string) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	agentDir := filepath.Join(dir, ".claude", "agents", "moai")
+	agentDir := filepath.Join(dir, ".claude", "agents", "core")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatalf("임시 에이전트 디렉터리 생성 실패: %v", err)
 	}
@@ -61,12 +62,13 @@ func buildRetiredAgentDir(t *testing.T, agentName, replacement, paramHint string
 }
 
 // buildActiveAgentDir는 테스트용 임시 디렉터리를 생성하고
-// .claude/agents/moai/<agentName>.md 파일을 활성 frontmatter와 함께 작성한다.
+// .claude/agents/core/<agentName>.md 파일을 활성 frontmatter와 함께 작성한다.
+// (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into core/expert/meta/harness)
 func buildActiveAgentDir(t *testing.T, agentName string) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	agentDir := filepath.Join(dir, ".claude", "agents", "moai")
+	agentDir := filepath.Join(dir, ".claude", "agents", "core")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatalf("임시 에이전트 디렉터리 생성 실패: %v", err)
 	}

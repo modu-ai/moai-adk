@@ -1,5 +1,5 @@
 // plan_audit_d7_d8_test.go: Fixture-based validation of the D7 and D8 audit
-// verbs documented in `.claude/agents/moai/plan-auditor.md` (added by
+// verbs documented in `.claude/agents/meta/plan-auditor.md` (added by
 // SPEC-V3R5-WORKFLOW-OPT-001 Layer G).
 //
 // These tests do NOT invoke the plan-auditor agent itself. They run the bash

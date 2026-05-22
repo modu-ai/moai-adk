@@ -875,7 +875,7 @@ git push origin vX.Y.Z --tags
 **Symptoms:**
 ```bash
 $ git status
-modified:   internal/cli/.claude/agents/moai/manager-spec.md
+modified:   internal/cli/.claude/agents/core/manager-spec.md
 modified:   internal/cli/.claude/commands/moai/01-plan.md
 # ... many more files in internal/cli/.claude/
 ```

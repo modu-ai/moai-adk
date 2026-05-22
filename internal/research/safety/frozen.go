@@ -52,7 +52,7 @@ func defaultFrozenPaths() []string {
 	return []string{
 		".claude/rules/moai/core/moai-constitution.md",
 		".claude/rules/agency/constitution.md",
-		".claude/agents/moai/researcher.md",
+		".claude/agents/meta/researcher.md",
 		".moai/research/config.yaml",
 	}
 }

@@ -44,7 +44,7 @@ func TestIsUserAreaPath(t *testing.T) {
 		// MoAI-managed — must NOT be skipped by user-area guard
 		{".claude/skills/moai-foundation-cc/SKILL.md", ".claude/skills/moai-foundation-cc/SKILL.md", false},
 		{".claude/skills/moai-meta-harness/SKILL.md", ".claude/skills/moai-meta-harness/SKILL.md", false},
-		{".claude/agents/moai/spec.md", ".claude/agents/moai/spec.md", false},
+		{".claude/agents/core/manager-spec.md", ".claude/agents/core/manager-spec.md", false},
 		// Other project files — must NOT be skipped
 		{"CLAUDE.md", "CLAUDE.md", false},
 		{".moai/config/sections/quality.yaml", ".moai/config/sections/quality.yaml", false},

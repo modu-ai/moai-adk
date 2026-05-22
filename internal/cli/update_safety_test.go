@@ -43,7 +43,7 @@ func snapshotDir(t *testing.T, root string) map[string]string {
 
 // simulateMoaiUpdate represents the conservative path-prefix exclusion that
 // moai update is expected to honor: it only touches files under
-// .claude/skills/moai/, .claude/agents/moai/, .claude/rules/moai/. It MUST NOT
+// .claude/skills/moai/, .claude/agents/{core,expert,meta,harness}/, .claude/rules/moai/. It MUST NOT
 // touch .moai/harness/, .claude/agents/my-harness/, .claude/skills/my-harness-*/
 // (REQ-PH-009 enforcement under test).
 func simulateMoaiUpdate(t *testing.T, projectRoot string) {

@@ -42,7 +42,7 @@ MoAI's three-phase development workflow with token budget management.
   git pull origin main   # verify
   ```
 
-  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
+  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern.
 
 [SHOULD] Anti-patterns (advisory):
 - Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.

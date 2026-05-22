@@ -349,7 +349,7 @@ The following capabilities are explicitly NOT implemented by this skill:
 - **Auto-evolution loop** — owned by SPEC-V3R3-HARNESS-LEARNING-001.
   The learning feedback mechanism (Phase 7) and delta capture are
   separate work items outside Wave A.
-- **Modification of `.claude/agents/moai/` or static `moai-*` skills** —
+- **Modification of `.claude/agents/{core,expert,meta,harness}/` or static `moai-*` skills** —
   this meta-harness generates only `moai-harness-*` prefixed artifacts
   and has no write access to MoAI's own agent/skill directories.
 

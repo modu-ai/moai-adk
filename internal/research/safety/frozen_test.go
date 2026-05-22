@@ -23,7 +23,7 @@ func TestFrozenGuard_IsFrozen(t *testing.T) {
 		},
 		{
 			name: "default frozen path: researcher.md",
-			path: ".claude/agents/moai/researcher.md",
+			path: ".claude/agents/meta/researcher.md",
 			want: true,
 		},
 		{
@@ -33,7 +33,7 @@ func TestFrozenGuard_IsFrozen(t *testing.T) {
 		},
 		{
 			name: "non-frozen path",
-			path: ".claude/agents/moai/expert-backend.md",
+			path: ".claude/agents/expert/expert-backend.md",
 			want: false,
 		},
 		{
@@ -74,7 +74,7 @@ func TestFrozenGuard_ValidateWrite(t *testing.T) {
 		},
 		{
 			name:    "write to allowed path → nil",
-			path:    ".claude/agents/moai/expert-backend.md",
+			path:    ".claude/agents/expert/expert-backend.md",
 			wantErr: false,
 		},
 		{

@@ -10,7 +10,7 @@
 //
 // Scope (intentional narrow allowlist):
 //   - .claude/rules/moai/** files modified or created by SPEC-V3R5-WORKFLOW-OPT-001
-//   - .claude/agents/moai/plan-auditor.md (Layer G target)
+//   - .claude/agents/meta/plan-auditor.md (Layer G target, post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
 //   - .moai/config/sections/workflow.yaml (Layer B target)
 //   - .moai/config/evaluator-profiles/default.md and frontend.md (Layer G target)
 //
@@ -52,8 +52,8 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/workflow/agent-teams-pattern.md",
 	// Layer D — verification batch pattern (NEW file)
 	".claude/rules/moai/workflow/verification-batch-pattern.md",
-	// Layer G — plan-auditor D7/D8 dimensions
-	".claude/agents/moai/plan-auditor.md",
+	// Layer G — plan-auditor D7/D8 dimensions (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
+	".claude/agents/meta/plan-auditor.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
@@ -71,8 +71,8 @@ var workflowOptMirroredPaths = []string{
 var lateBranchMirroredPaths = []string{
 	// D2 — spec-assembly Phase 3 Late-branch pre-check + Phase 2.5 opt-in
 	".claude/skills/moai/workflows/plan/spec-assembly.md",
-	// D3 — manager-git Late-Branch Invocation Pattern + Personal Mode main_late_branch
-	".claude/agents/moai/manager-git.md",
+	// D3 — manager-git Late-Branch Invocation Pattern + Personal Mode main_late_branch (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
+	".claude/agents/core/manager-git.md",
 	// D5 — SKILL.md --issue flag opt-in semantics
 	".claude/skills/moai/SKILL.md",
 	// (spec-workflow.md is already in workflowOptMirroredPaths above — Late-branch

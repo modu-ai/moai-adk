@@ -24,7 +24,7 @@ func setupSyntheticProject(b *testing.B, numFiles, numDeprecated, _ int) (root s
 	syntheticFS = make(fstest.MapFS)
 
 	for i := 0; i < numFiles; i++ {
-		name := fmt.Sprintf(".claude/agents/moai/agent-%03d.md", i)
+		name := fmt.Sprintf(".claude/agents/core/agent-%03d.md", i)
 		data := []byte(fmt.Sprintf("# Agent %d\ncontent line 1\ncontent line 2\n", i))
 		syntheticFS[name] = &fstest.MapFile{Data: data}
 	}

@@ -17,7 +17,7 @@ func testFS() fstest.MapFS {
 		".claude/settings.json": &fstest.MapFile{
 			Data: []byte(`{"hooks":{}}`),
 		},
-		".claude/agents/moai/expert-backend.md": &fstest.MapFile{
+		".claude/agents/expert/expert-backend.md": &fstest.MapFile{
 			Data: []byte("# Expert Backend Agent"),
 		},
 		"CLAUDE.md": &fstest.MapFile{
@@ -55,7 +55,7 @@ func TestDeployerDeploy(t *testing.T) {
 		// Verify all files exist on disk
 		expectedFiles := []string{
 			".claude/settings.json",
-			".claude/agents/moai/expert-backend.md",
+			".claude/agents/expert/expert-backend.md",
 			"CLAUDE.md",
 			".gitignore",
 		}
@@ -189,10 +189,10 @@ func TestDeployerListTemplates(t *testing.T) {
 		}
 
 		expected := map[string]bool{
-			".claude/settings.json":                 true,
-			".claude/agents/moai/expert-backend.md": true,
-			"CLAUDE.md":                             true,
-			".gitignore":                            true,
+			".claude/settings.json":                   true,
+			".claude/agents/expert/expert-backend.md": true,
+			"CLAUDE.md":                               true,
+			".gitignore":                              true,
 		}
 		for _, item := range list {
 			if !expected[item] {
@@ -220,7 +220,7 @@ func TestValidateDeployPath(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid_relative", ".claude/settings.json", false},
-		{"valid_nested", ".claude/agents/moai/file.md", false},
+		{"valid_nested", ".claude/agents/core/file.md", false},
 		{"valid_simple", "CLAUDE.md", false},
 		{"traversal_dotdot", "../etc/passwd", true},
 		{"traversal_nested", "foo/../../etc/passwd", true},

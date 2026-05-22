@@ -14,7 +14,7 @@ func TestAssertBuilderHarnessAvailable_Present(t *testing.T) {
 	t.Parallel()
 
 	projectFS := fstest.MapFS{
-		".claude/agents/moai/builder-harness.md": &fstest.MapFile{
+		".claude/agents/meta/builder-harness.md": &fstest.MapFile{
 			Data: []byte("# builder-harness\n"),
 		},
 	}
@@ -35,7 +35,7 @@ func TestAssertBuilderHarnessAvailable_Missing(t *testing.T) {
 
 	projectFS := fstest.MapFS{
 		// Some other file exists but NOT builder-harness.md
-		".claude/agents/moai/expert-backend.md": &fstest.MapFile{
+		".claude/agents/expert/expert-backend.md": &fstest.MapFile{
 			Data: []byte("# expert-backend\n"),
 		},
 	}

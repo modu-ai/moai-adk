@@ -354,8 +354,8 @@ func TestTruncatePath_SkillsPath(t *testing.T) {
 		},
 		{
 			name:     "agents with remaining path",
-			path:     ".claude/agents/moai/expert-backend.md",
-			contains: "agents/moai/expert-backend.md",
+			path:     ".claude/agents/expert/expert-backend.md",
+			contains: "agents/expert/expert-backend.md",
 		},
 		{
 			name:     "agents without remaining",
