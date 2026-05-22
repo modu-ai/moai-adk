@@ -33,8 +33,9 @@ func TestArchiveLegacySkills_Integration(t *testing.T) {
 	// moai-meta-harness (코어 스킬, 건드리지 않아야 함)
 	makeSkillDir(t, root, "moai-meta-harness", "# meta harness")
 
+	// force=false: SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 default contract.
 	var out bytes.Buffer
-	archived, err := archiveLegacySkills(root, &out)
+	archived, err := archiveLegacySkills(root, &out, false)
 	if err != nil {
 		t.Fatalf("archiveLegacySkills: %v", err)
 	}
@@ -91,8 +92,9 @@ func TestArchiveLegacySkills_PartialPresent(t *testing.T) {
 		makeSkillDir(t, root, id, "# "+id)
 	}
 
+	// force=false: default contract for partial-present scenarios.
 	var out bytes.Buffer
-	archived, err := archiveLegacySkills(root, &out)
+	archived, err := archiveLegacySkills(root, &out, false)
 	if err != nil {
 		t.Fatalf("archiveLegacySkills partial: %v", err)
 	}

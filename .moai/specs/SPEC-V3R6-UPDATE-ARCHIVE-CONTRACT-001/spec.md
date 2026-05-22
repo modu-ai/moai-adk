@@ -1,11 +1,11 @@
 ---
 id: SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001
 title: "moai update --force 플래그 archive 전파 + skip-sync 분기 archive 단락"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
-author: manager-spec
+author: manager-develop
 priority: P1
 phase: "v3.6.0"
 module: "internal/cli"

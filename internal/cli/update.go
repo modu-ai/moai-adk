@@ -82,7 +82,7 @@ func init() {
 	updateCmd.Flags().Bool("check", false, "Check if a newer binary version is available (informational)")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
 	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
-	updateCmd.Flags().Bool("force", false, "Force update even if version matches (still performs backup and merge)")
+	updateCmd.Flags().Bool("force", false, "Force update: bypass version-match skip, force backup+merge, and overwrite archive drift (backed up to .moai/archive/skills/v2.16-drift-<UTC-timestamp>/)")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
@@ -105,7 +105,14 @@ func init() {
 //
 //	-c, --config: Edit project configuration (same as init wizard)
 //	--check: Check if a newer binary version is available (informational)
-//	--force: Skip backup and force the update
+//	--force: Force update with these effects (SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001):
+//	  * bypass version-match skip-sync branch (template sync always runs)
+//	  * force backup and merge confirmation through
+//	  * overwrite legacy-skill archive drift; the existing archive directory is
+//	    moved to .moai/archive/skills/v2.16-drift-<YYYYMMDDTHHMMSSZ>/<id>/
+//	    before being re-archived from the live source (lossless backup)
+//	  When --force is absent, BC-V3R3-007 idempotency is preserved: archive
+//	  drift surfaces as an ARCHIVE_DRIFT error rather than silent overwrite.
 //	--shell-env: Configure shell environment variables
 //	--yes: Auto-confirm all prompts (CI/CD mode)
 //	--templates-only: Skip binary update, sync templates only
@@ -224,18 +231,31 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return dryRunArchiveLegacySkills(cwd, out)
 	}
 
-	if err := runTemplateSyncWithProgress(cmd); err != nil {
+	syncSkipped, err := runTemplateSyncWithProgress(cmd)
+	if err != nil {
 		return err
+	}
+
+	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
+	// branch short-circuits (version match + !forceUpdate, or user cancelled
+	// merge), the legacy-skill archive check MUST also be short-circuited.
+	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
+	// "Legacy skill archive failed" because the archive ran unconditionally.
+	if syncSkipped {
+		return nil
 	}
 
 	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
 	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
+	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
+	// so that drift-detection routes through the overwrite + backup path
+	// instead of returning ARCHIVE_DRIFT.
 	{
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("get working directory for archive: %w", err)
 		}
-		if _, archiveErr := archiveLegacySkills(cwd, out); archiveErr != nil {
+		if _, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force")); archiveErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
 		}
 	}
@@ -751,8 +771,22 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 // @MX:NOTE: [AUTO] runTemplateSyncWithProgress — M4-S4d-2 DDD migration. Console reporter
 // wrapper. Only the key outputs are converted: tui.Pill (skip), tui.Section (analyzing), tui.Pill (cancel).
 //
+// @MX:NOTE: [AUTO] SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 — return shape extended
+// to (skipped bool, err error) so that runUpdate can short-circuit the
+// downstream legacy-skill archive block when sync is skipped (version-match
+// without --force). skipped == true means "no template files were written";
+// callers MUST NOT trigger archive checks in that case.
+//
 // runTemplateSyncWithProgress runs template sync with simple console output.
-func runTemplateSyncWithProgress(cmd *cobra.Command) error {
+// Return values:
+//   - skipped: true when version matches and --force is absent (sync was a no-op).
+//     When skipped == true, callers should not trigger downstream archive checks.
+//   - err: any non-skip error encountered.
+//
+// A skipped sync is not an error; callers receive (true, nil).
+// A user-cancelled merge is also (true, nil) — it is a no-op for downstream
+// purposes (no files written), so archive does not need to run.
+func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
 	projectRoot := "."
@@ -764,18 +798,18 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
-	projectVersion, err := getProjectConfigVersion(projectRoot)
-	if err == nil && packageVersion == projectVersion && !forceUpdate {
+	projectVersion, verr := getProjectConfigVersion(projectRoot)
+	if verr == nil && packageVersion == projectVersion && !forceUpdate {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
-		return nil
+		return true, nil
 	}
 
 	// Confirm merge before proceeding (unless auto-confirm is set)
 	if !autoConfirm {
-		embedded, err := template.EmbeddedTemplates()
-		if err != nil {
-			return fmt.Errorf("load embedded templates: %w", err)
+		embedded, eerr := template.EmbeddedTemplates()
+		if eerr != nil {
+			return false, fmt.Errorf("load embedded templates: %w", eerr)
 		}
 
 		deployer := template.NewDeployerWithForceUpdate(embedded, true)
@@ -783,19 +817,19 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
-		proceed, err := merge.ConfirmMerge(analysis)
-		if err != nil {
-			return fmt.Errorf("confirm merge for %d files (risk: %s): %w",
-				len(analysis.Files), analysis.RiskLevel, err)
+		proceed, cerr := merge.ConfirmMerge(analysis)
+		if cerr != nil {
+			return false, fmt.Errorf("confirm merge for %d files (risk: %s): %w",
+				len(analysis.Files), analysis.RiskLevel, cerr)
 		}
 		if !proceed {
 			_, _ = fmt.Fprintln(out)
 			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillNeutral, Solid: false, Label: "Merge cancelled by user", Theme: &th}))
-			return nil
+			return true, nil
 		}
 	}
 
-	return runTemplateSyncWithReporter(cmd, consoleReporter, true)
+	return false, runTemplateSyncWithReporter(cmd, consoleReporter, true)
 }
 
 // classifyFileRisk determines the risk level for a file modification.

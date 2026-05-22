@@ -242,9 +242,13 @@ func TestRunTemplateSyncWithProgress_VersionMatchSkips(t *testing.T) {
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("force", false, "")
 
-	err = runTemplateSyncWithProgress(cmd)
+	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001: signature is (skipped, err).
+	skipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		t.Fatalf("runTemplateSyncWithProgress should not error when version matches, got: %v", err)
+	}
+	if !skipped {
+		t.Errorf("expected skipped=true when version matches and --force is absent")
 	}
 
 	output := buf.String()
@@ -294,8 +298,9 @@ func TestRunTemplateSyncWithProgress_ForceFlagBypassesVersionCheck(t *testing.T)
 		t.Fatal(err)
 	}
 
-	// With --force, function should NOT return early with "up-to-date"
-	err = runTemplateSyncWithProgress(cmd)
+	// With --force, function should NOT return early with "up-to-date".
+	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001: signature is (skipped, err).
+	_, err = runTemplateSyncWithProgress(cmd)
 	output := buf.String()
 	if strings.Contains(output, "up-to-date") {
 		t.Error("with --force, should not return early with 'up-to-date'")

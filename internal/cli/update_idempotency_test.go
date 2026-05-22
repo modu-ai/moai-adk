@@ -22,9 +22,9 @@ func TestArchiveIdempotency(t *testing.T) {
 		makeSkillDir(t, root, id, "# "+id+" idempotency test content")
 	}
 
-	// 1회차 실행
+	// 1회차 실행 (force=false: SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-006 — default idempotency contract)
 	var out1 bytes.Buffer
-	archived1, err := archiveLegacySkills(root, &out1)
+	archived1, err := archiveLegacySkills(root, &out1, false)
 	if err != nil {
 		t.Fatalf("first archiveLegacySkills: %v", err)
 	}
@@ -33,9 +33,9 @@ func TestArchiveIdempotency(t *testing.T) {
 	archiveRoot := filepath.Join(root, ".moai", "archive", "skills", archiveVersion)
 	snap1 := takeArchiveSnapshot(t, archiveRoot)
 
-	// 2회차 실행 (멱등)
+	// 2회차 실행 (멱등, force=false)
 	var out2 bytes.Buffer
-	archived2, err := archiveLegacySkills(root, &out2)
+	archived2, err := archiveLegacySkills(root, &out2, false)
 	if err != nil {
 		t.Fatalf("second archiveLegacySkills: %v", err)
 	}
@@ -86,14 +86,14 @@ func TestArchiveIdempotency_NoNewFiles(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if _, err := archiveLegacySkills(root, &out); err != nil {
+	if _, err := archiveLegacySkills(root, &out, false); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
 
 	archiveRoot := filepath.Join(root, ".moai", "archive", "skills", archiveVersion)
 	before := countDirFiles(t, archiveRoot)
 
-	if _, err := archiveLegacySkills(root, &out); err != nil {
+	if _, err := archiveLegacySkills(root, &out, false); err != nil {
 		t.Fatalf("second run: %v", err)
 	}
 

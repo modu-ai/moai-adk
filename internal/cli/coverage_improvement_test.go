@@ -2786,9 +2786,14 @@ func TestRunTemplateSyncWithProgress_VersionMatch(t *testing.T) {
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 
-	err := runTemplateSyncWithProgress(cmd)
+	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001: return shape is now (skipped, err).
+	// Version-match + !force path emits skipped=true.
+	skipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		t.Fatalf("error: %v", err)
+	}
+	if !skipped {
+		t.Errorf("expected skipped=true for version-match path, got false")
 	}
 
 	output := buf.String()
@@ -4305,7 +4310,9 @@ func TestRunTemplateSyncWithProgress_VersionMismatch(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetContext(context.Background())
 
-	err := runTemplateSyncWithProgress(cmd)
+	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001: signature is now (skipped, err).
+	// Version-mismatch path emits skipped=false (sync actually runs).
+	_, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -220,6 +221,14 @@ func copyDirAll(srcDir, dstDir string) error {
 // Idempotency: if the archive already exists and content matches, the skill
 // is not counted.
 //
+// Force semantics (SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001):
+//   - force == false → preserve BC-V3R3-007 idempotency contract
+//     (source absent → nil, archive matches → nil, archive differs → ARCHIVE_DRIFT).
+//   - force == true  → when drift is detected, move the existing archive to
+//     .moai/archive/skills/v2.16-drift-<UTC-ISO8601>/<id>/ and re-archive
+//     from the live source. The drift backup is lossless; users can recover
+//     overwritten customizations from the timestamped directory.
+//
 // Output format:
 //
 //	archive: <id> → .moai/archive/skills/v2.16/<id>
@@ -230,9 +239,17 @@ func copyDirAll(srcDir, dstDir string) error {
 // @MX:NOTE: [AUTO] M4-S4d-3 DDD migration — archive progress uses tui.CheckLine "ok";
 // summary uses tui.Pill PillOk; dry-run uses PillInfo + CheckLine "info"; the
 // "archive:" / "total:" keywords are preserved (test contains assertion).
-func archiveLegacySkills(projectRoot string, out io.Writer) (int, error) {
+// @MX:NOTE: [AUTO] SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 — force parameter added
+// to propagate --force intent from runUpdate; drift backup directory uses
+// archiveVersion + "-drift-" + UTC ISO8601 timestamp (no colons → Windows-safe).
+func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, error) {
 	th := resolveTheme()
 	archived := 0
+	// Generate a single drift backup timestamp per call so that, when multiple
+	// legacy skills drift in one invocation, they all land under the same
+	// backup directory tree for atomic post-hoc recovery.
+	driftStamp := time.Now().UTC().Format("20060102T150405Z")
+
 	for _, id := range legacySkillIDs {
 		srcDir := filepath.Join(projectRoot, ".claude", "skills", id)
 		if _, err := os.Stat(srcDir); err != nil {
@@ -245,6 +262,32 @@ func archiveLegacySkills(projectRoot string, out io.Writer) (int, error) {
 		alreadyArchived := false
 		if _, err := os.Stat(dstDir); err == nil {
 			alreadyArchived = true
+		}
+
+		// Force overwrite path: when force == true and the archive exists,
+		// detect drift via checkArchiveDrift, back up the existing archive to
+		// .moai/archive/skills/v2.16-drift-<stamp>/<id>/, then re-archive.
+		if force && alreadyArchived {
+			if driftErr := checkArchiveDrift(srcDir, dstDir); driftErr != nil {
+				backupDir := filepath.Join(projectRoot, ".moai", "archive", "skills",
+					archiveVersion+"-drift-"+driftStamp, id)
+				// Ensure the backup parent directory exists before os.Rename.
+				if err := os.MkdirAll(filepath.Dir(backupDir), 0o755); err != nil {
+					return archived, fmt.Errorf("create drift backup parent for %s: %w", id, err)
+				}
+				if err := os.Rename(dstDir, backupDir); err != nil {
+					return archived, fmt.Errorf("backup drift archive for %s: %w", id, err)
+				}
+				// Original archive moved to backupDir; archiveSkill below will
+				// re-create dstDir from the live source.
+				alreadyArchived = false
+
+				archiveBackupRel := filepath.Join(".moai", "archive", "skills",
+					archiveVersion+"-drift-"+driftStamp, id)
+				_, _ = fmt.Fprintln(out, tui.CheckLine("warn",
+					"archive drift backup: "+id, "→ "+archiveBackupRel,
+					"force overwrite (--force)", &th))
+			}
 		}
 
 		if err := archiveSkill(projectRoot, id); err != nil {
