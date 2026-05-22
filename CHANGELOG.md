@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.0.0-rc1] — 2026-05-22: Hooks Contract Cleanup + 9-PR Batch Sync + Hybrid Trunk Config
+
+### Fixed
+
+- **WorktreeCreate / WorktreeRemove hook 등록 해제** (commit `a3239d3de`): Claude Code v2.1.49+ 공식 컨트랙트 (https://code.claude.com/docs/en/hooks)를 직접 확인 후 hook이 **active creator** (Claude Code default git worktree behavior를 **replace**)임을 발견. 우리 observer 의도 등록이 빈 `HookOutput{}` JSON `{}` 출력 → Claude Code가 `{}`를 path로 해석 → `"WorktreeCreate hook returned a path that is not a directory: {}"` 회귀 유발하여 5 agent (manager-develop/expert-frontend/expert-backend/expert-refactoring/researcher) isolation 호출 전부 실패. 정정 11 files +51/-86: `.claude/settings.json` + `.tmpl` WorktreeCreate/WorktreeRemove key entry 제거 (Claude Code default 사용) / `hooks-system.md` (local + template) WorktreeCreate row에 active creator 컨트랙트 + MoAI default 비등록 주석 / `worktree-integration.md` (local + template) §WorktreeCreate and WorktreeRemove Hooks 전면 재작성 (stdin 필드 / stdout plain text path only / exit semantics / 향후 active creator opt-in 가이드) / `docs-site/content/{ko,en,ja,zh}/advanced/hooks-reference.md` 4-locale handler table 정정 (한국어 baseline drift 동시 해결) / `internal/template/settings_test.go` TestSettingsTemplateHookEventCount 22 → 20. Handler 코드 (`internal/hook/worktree_{create,remove}.go`) + CLI subcommand + shell wrapper는 향후 active creator opt-in 인프라로 보존.
+
+### Added
+
+- **Claude Code 신규 hook event 카탈로그 sync** (commit `32fac92e7`, cherry-picked from closed PR #962): UserPromptExpansion (v2.1.90+) + PostToolBatch (v2.1.89+) + mcp_tool hook type 카탈로그 추가. hooks-system.md (local + template) + 4-locale hooks-reference.md (ko/en/ja/zh) 통합. PR #962는 본 commit 직전에 cherry-pick 후 close (5826331f merge commit 우회 + 00f2850c 실제 변경 cherry-pick + en hooks-reference.md baseline drift conflict 합집합 resolve).
+
+### Changed
+
+- **9 OPEN PR 일괄 정리** (admin merge batch): #1042 (v3 blueprint Wave 6) + #1041 (3 Tier M plans: GIT-STRATEGY-SCHEMA + WORKFLOW-SCHEMA-EXTEND + INIT-WIZARD-EXPANSION) + #1040 (config + LSP yaml audit v2 corrections) + #1039 (statusline layout v3 + STATUSLINE-PROFILE-WIZARD + 4-locale docs) + #1003 (§19 AskUserQuestion enforcement canonical cross-ref) + #1002 (dependabot powernap 0.1.4→0.1.5) + #905 (SEMAP M1 Contract schema) + #903 (CI-MULTI-LLM M1 Claude.yml workflow template). 모두 BEHIND state + MERGEABLE 확인 후 `gh pr merge --admin --squash --delete-branch` sequential. #962 conflict는 cherry-pick fallback으로 처리.
+- **Hybrid Trunk 1-person OSS config** (commit `cd9eead14`, parallel session): auto-branch/PR + GLM-only LLM review 설정 도입.
+- **§23 Local Git Workflows + Hook Setup** (commit `a809e0b98`, parallel session): CLAUDE.local.md에 1-person OSS 워크플로우 doctrine 추가.
+
+### Version
+
+- `v3.0.0-rc1` (major bump from v2.20.0-rc1 doctrine — v3.0 Mega-Sprint W0-W3 누적 흡수). `pkg/version/version.go` default + `.moai/config/sections/system.yaml` `moai.version` / `template_version` 동기화. local git tag `v3.0.0-rc1` (push 안 함, 로컬 release-local + install 검증 목적).
+
+---
+
 ## [Unreleased] — v3.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
 
 ### Changed

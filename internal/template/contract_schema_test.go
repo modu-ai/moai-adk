@@ -11,8 +11,7 @@ import (
 func TestContractSchemaVerification(t *testing.T) {
 	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "moai")
 
-	agents, err := os.ReadDir(templatesDir)
-	if err != nil {
+	if _, err := os.ReadDir(templatesDir); err != nil {
 		t.Fatalf("Failed to read agents directory: %v", err)
 	}
 
