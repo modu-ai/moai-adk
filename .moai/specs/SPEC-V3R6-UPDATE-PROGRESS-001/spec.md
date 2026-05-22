@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-UPDATE-PROGRESS-001
 title: "moai update 진행 라인 출력 깨짐 정정 — tui.ProgressLine 추상화"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

@@ -57,10 +57,15 @@ var (
 	cliBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Rule, Dark: tui.DarkTheme().Rule})
 )
 
-func symSuccess() string  { return cliSuccess.Render("\u2713") }
-func symError() string    { return cliError.Render("\u2717") }
-func symWarning() string  { return cliWarn.Render("!") }
-func symProgress() string { return cliMuted.Render("\u25CB") }
+func symSuccess() string { return cliSuccess.Render("\u2713") }
+func symError() string   { return cliError.Render("\u2717") }
+func symWarning() string { return cliWarn.Render("!") }
+
+// symProgress was retired by SPEC-V3R6-UPDATE-PROGRESS-001 M1. All former
+// callers now use tui.ProgressLine which renders its own progress glyph
+// from the theme. Kept as a comment for historical reference; the migration
+// eliminated 22 "\r"-pair sites that previously caused trailing-character
+// corruption when short messages overwrote longer progress messages.
 
 // fileBackup holds a file path and its backed-up content for merging.
 type fileBackup struct {
@@ -564,16 +569,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			execute: func() error {
 				// Always backup before update (even with --force)
 				// --force only skips version check, not backup/merge
-				_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
+				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
+				// the legacy CR-plus-format pair (REQ-UPR-004).
+				pl := tui.ProgressLine(out, "Backing up .moai/config...", nil)
 				configBackupPath, backupErr := backupMoaiConfig(projectRoot)
 				if backupErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  %s Backup failed: %v\n", symError(), backupErr)
+					pl.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
 					return backupErr
 				}
 				if configBackupPath != "" {
-					_, _ = fmt.Fprintf(out, "\r  %s .moai/config backed up\n", symSuccess())
+					pl.Done(".moai/config backed up")
 				} else {
-					_, _ = fmt.Fprintln(out, "\r  - No config to backup")
+					pl.Done("No config to backup")
 				}
 				return nil
 			},
@@ -592,11 +599,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 				)
 
+				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
+				// the legacy CR-plus-format pair (REQ-UPR-004).
+				pl := tui.ProgressLine(out, "Validating templates...", nil)
 				if validateErr := deployer.ValidateAll(ctx, tmplCtx); validateErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  %s Template validation failed: %v\n", symError(), validateErr)
+					pl.Fail(fmt.Sprintf("Template validation failed: %v", validateErr))
 					return fmt.Errorf("template validation: %w", validateErr)
 				}
-				_, _ = fmt.Fprintf(out, "\r  %s All templates validated\n", symSuccess())
+				pl.Done("All templates validated")
 				return nil
 			},
 		},
@@ -611,7 +621,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Deploy Templates",
 			message: "Deploying template files",
 			execute: func() error {
-				_, _ = fmt.Fprintf(out, "  %s Deploying templates...", symProgress())
+				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
+				// the legacy CR-plus-format pair (REQ-UPR-004).
+				pl := tui.ProgressLine(out, "Deploying templates...", nil)
 
 				// Build TemplateContext with detected paths for template rendering
 				homeDir, _ := userHomeDir()
@@ -625,10 +637,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				)
 
 				if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  %s Deployment failed: %v\n", symError(), deployErr)
+					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
 					return fmt.Errorf("deploy templates: %w", deployErr)
 				}
-				_, _ = fmt.Fprintf(out, "\r  %s Templates deployed\n", symSuccess())
+				pl.Done("Templates deployed")
 				return nil
 			},
 		},
@@ -672,20 +684,22 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		// Special handling for backup/restore steps; default executes normally
 		switch step.name {
 		case "Backup":
-			_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
+			// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
+			// the legacy CR-plus-format pair (REQ-UPR-004).
+			plBackup := tui.ProgressLine(out, "Backing up .moai/config...", nil)
 			var backupErr error
 			configBackupPath, backupErr = backupMoaiConfig(projectRoot)
 			if backupErr != nil {
-				_, _ = fmt.Fprintf(out, "\r  %s Backup failed: %v\n", symError(), backupErr)
+				plBackup.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
 				if reporter != nil {
 					reporter.StepError(backupErr)
 				}
 				return backupErr
 			}
 			if configBackupPath != "" {
-				_, _ = fmt.Fprintf(out, "\r  %s .moai/config backed up\n", symSuccess())
+				plBackup.Done(".moai/config backed up")
 			} else {
-				_, _ = fmt.Fprintln(out, "\r  - No config to backup")
+				plBackup.Done("No config to backup")
 			}
 			// Also backup .gitignore for EntryMerge after deploy
 			gitignorePath := filepath.Join(projectRoot, ".gitignore")
@@ -709,15 +723,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if reporter != nil {
 					reporter.StepStart("Restore Settings", "Restoring user settings")
 				}
-				_, _ = fmt.Fprintf(out, "  %s Restoring user settings...", symProgress())
+				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
+				// the legacy CR-plus-format pair (REQ-UPR-004).
+				plRestore := tui.ProgressLine(out, "Restoring user settings...", nil)
 				if restoreErr := restoreMoaiConfig(projectRoot, configBackupPath); restoreErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  %s Restore failed: %v\n", symError(), restoreErr)
+					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {
 						reporter.StepError(restoreErr)
 					}
 					return restoreErr
 				}
-				_, _ = fmt.Fprintf(out, "\r  %s User settings restored\n", symSuccess())
+				plRestore.Done("User settings restored")
 				deletedCount := cleanup_old_backups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", symSuccess(), deletedCount)
@@ -1542,39 +1558,45 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 	}
 
 	// Process standard targets (files and directories)
+	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
+	// CR-plus-format pair in this hot path (REQ-UPR-004).
 	for _, t := range targets {
-		_, _ = fmt.Fprintf(out, "  %s Removing %s...", symProgress(), t.displayPath)
+		pl := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", t.displayPath), nil)
 
 		if t.isGlob {
 			matches, err := filepath.Glob(t.fullPath)
 			if err != nil {
-				_, _ = fmt.Fprintf(out, "\r  %s Failed to glob %s: %v\n", symError(), t.displayPath, err)
+				pl.Fail(fmt.Sprintf("Failed to glob %s: %v", t.displayPath, err))
 				return fmt.Errorf("glob %s: %w", t.displayPath, err)
 			}
 			for _, match := range matches {
 				if err := os.RemoveAll(match); err != nil {
-					_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
+					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.displayPath, err))
 					return fmt.Errorf("remove %s: %w", match, err)
 				}
 			}
-			_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
+			pl.Done(fmt.Sprintf("Removed %s", t.displayPath))
 			continue
 		}
 
 		if _, err := os.Stat(t.fullPath); err != nil {
 			if os.IsNotExist(err) {
-				_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", t.displayPath)
+				// Use Done with a "skipped" marker — semantically a successful
+				// no-op (target already absent). The leading symbol shifts from
+				// "-" to "✓" but the message text is preserved; this aligns
+				// the visual category with the success branch.
+				pl.Done(fmt.Sprintf("Skipped %s (not found)", t.displayPath))
 				continue
 			}
-			_, _ = fmt.Fprintf(out, "\r  %s Failed to stat %s: %v\n", symError(), t.displayPath, err)
+			pl.Fail(fmt.Sprintf("Failed to stat %s: %v", t.displayPath, err))
 			return fmt.Errorf("stat %s: %w", t.displayPath, err)
 		}
 
 		if err := os.RemoveAll(t.fullPath); err != nil {
-			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
+			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.displayPath, err))
 			return fmt.Errorf("remove %s: %w", t.displayPath, err)
 		}
-		_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
+		pl.Done(fmt.Sprintf("Removed %s", t.displayPath))
 	}
 
 	// Clean .moai/config/ entirely - backup was already done by the Backup step.
@@ -1582,15 +1604,17 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 	// For v2.x -> v2.x: backup includes sections/, restore will merge values back.
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 	configDisplayPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir)
-	_, _ = fmt.Fprintf(out, "  %s Removing %s...", symProgress(), configDisplayPath)
+	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
+	// CR-plus-format pair (REQ-UPR-004).
+	plConfig := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", configDisplayPath), nil)
 
 	if err := os.RemoveAll(configDir); err != nil {
 		if !os.IsNotExist(err) {
-			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), configDisplayPath, err)
+			plConfig.Fail(fmt.Sprintf("Failed to remove %s: %v", configDisplayPath, err))
 			return fmt.Errorf("remove %s: %w", configDisplayPath, err)
 		}
 	}
-	_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), configDisplayPath)
+	plConfig.Done(fmt.Sprintf("Removed %s", configDisplayPath))
 
 	// Migrate legacy .moai/memory/ to .moai/state/.
 	// Prior to v2.x, state files (checkpoints, coverage, diagnostics) lived under
@@ -1621,7 +1645,9 @@ func migrateLegacyMemoryDir(projectRoot string, out io.Writer) error {
 		return nil
 	}
 
-	_, _ = fmt.Fprintf(out, "  %s Migrating %s...", symProgress(), legacyDisplayPath)
+	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
+	// CR-plus-format pair (REQ-UPR-004).
+	plLegacy := tui.ProgressLine(out, fmt.Sprintf("Migrating %s...", legacyDisplayPath), nil)
 
 	stateExists := false
 	if _, err := os.Stat(stateDir); err == nil {
@@ -1631,17 +1657,17 @@ func migrateLegacyMemoryDir(projectRoot string, out io.Writer) error {
 	if !stateExists {
 		// Rename .moai/memory/ → .moai/state/ (fast atomic move).
 		if err := os.Rename(legacyDir, stateDir); err != nil {
-			_, _ = fmt.Fprintf(out, "\r  %s Failed to migrate %s: %v\n", symError(), legacyDisplayPath, err)
+			plLegacy.Fail(fmt.Sprintf("Failed to migrate %s: %v", legacyDisplayPath, err))
 			return fmt.Errorf("migrate %s to %s: %w", legacyDisplayPath, defs.StateSubdir, err)
 		}
-		_, _ = fmt.Fprintf(out, "\r  %s Migrated %s → %s\n", symSuccess(), legacyDisplayPath, filepath.Join(defs.MoAIDir, defs.StateSubdir))
+		plLegacy.Done(fmt.Sprintf("Migrated %s → %s", legacyDisplayPath, filepath.Join(defs.MoAIDir, defs.StateSubdir)))
 	} else {
 		// Both exist — state directory takes precedence; remove legacy.
 		if err := os.RemoveAll(legacyDir); err != nil {
-			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), legacyDisplayPath, err)
+			plLegacy.Fail(fmt.Sprintf("Failed to remove %s: %v", legacyDisplayPath, err))
 			return fmt.Errorf("remove legacy %s: %w", legacyDisplayPath, err)
 		}
-		_, _ = fmt.Fprintf(out, "\r  %s Removed legacy %s\n", symSuccess(), legacyDisplayPath)
+		plLegacy.Done(fmt.Sprintf("Removed legacy %s", legacyDisplayPath))
 	}
 
 	return nil
