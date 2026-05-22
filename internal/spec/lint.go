@@ -402,7 +402,19 @@ func collectAllREQIDs(criteria []Acceptance) map[string]bool {
 // --- Rule implementations ---
 
 // EARSModalityRule checks REQ text for EARS modality compliance
-// Implements REQ-SPC-003-003, REQ-SPC-003-050
+// AND emits GEARS migration warnings for legacy IF/THEN patterns.
+//
+// GEARS migration policy (SPEC-V3R6-GEARS-MIGRATION-001):
+//   - WHEN/WHILE/WHERE/Ubiquitous "The system shall" remain canonical.
+//   - IF ... THEN is deprecated; flagged with LegacyEARSKeyword (warning).
+//   - Backward-compat window: 6 months from v3.0.0 OR until
+//     SPEC-V3R6-GEARS-SWEEP-001 bulk-rewrites all 88 existing SPECs,
+//     whichever comes first. After window: SPEC-V3R6-V3-CUTOVER-001
+//     promotes the warning to error.
+//   - --strict mode escalates warnings to errors immediately (existing
+//     Report.HasErrors() behavior; opt-in for CI authors).
+//
+// Implements REQ-SPC-003-003, REQ-SPC-003-050, REQ-GM-002, REQ-GM-006, REQ-GM-009
 type EARSModalityRule struct{}
 
 func (r *EARSModalityRule) Code() string { return "ModalityMalformed" }
@@ -410,6 +422,7 @@ func (r *EARSModalityRule) Code() string { return "ModalityMalformed" }
 func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	var findings []Finding
 	for _, req := range doc.REQs {
+		// Existing legacy check (unchanged) — emits error when SHALL is missing.
 		if isModalityMalformed(req.Text) {
 			findings = append(findings, Finding{
 				File:     doc.Path,
@@ -417,6 +430,17 @@ func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Severity: SeverityError,
 				Code:     "ModalityMalformed",
 				Message:  fmt.Sprintf("REQ %s: EARS modality violation — SHALL missing or format mismatch: %q", req.ID, req.Text),
+			})
+		}
+		// NEW: GEARS migration warning for legacy IF/THEN patterns.
+		// SPEC-V3R6-GEARS-MIGRATION-001 REQ-GM-002 + REQ-GM-006.
+		if isLegacyEARSPattern(req.Text) {
+			findings = append(findings, Finding{
+				File:     doc.Path,
+				Line:     req.Line,
+				Severity: SeverityWarning,
+				Code:     "LegacyEARSKeyword",
+				Message:  fmt.Sprintf("REQ %s: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation", req.ID),
 			})
 		}
 	}
@@ -444,6 +468,26 @@ func isModalityMalformed(text string) bool {
 		return true
 	}
 	return false
+}
+
+// isLegacyEARSPattern returns true ONLY for IF ... THEN REQs.
+// Other EARS keywords (WHEN/WHILE/WHERE/Ubiquitous) are GEARS-compatible.
+// SPEC-V3R6-GEARS-MIGRATION-001 REQ-GM-002.
+//
+// GEARS migration policy:
+//   - WHEN/WHILE/WHERE/Ubiquitous "The system shall" remain canonical.
+//   - IF ... THEN is deprecated; flagged with LegacyEARSKeyword (warning).
+//   - Backward-compat window: 6 months from v3.0.0 OR until
+//     SPEC-V3R6-GEARS-SWEEP-001 bulk-rewrites all 88 existing SPECs,
+//     whichever comes first. After window: SPEC-V3R6-V3-CUTOVER-001
+//     promotes the warning to error.
+//   - --strict mode escalates warnings to errors immediately (existing
+//     Report.HasErrors() behavior; opt-in for CI authors).
+//
+// Reference: SPEC-V3R6-GEARS-MIGRATION-001/spec.md §1 + §3 REQ-GM-002/006/009.
+func isLegacyEARSPattern(text string) bool {
+	upper := strings.ToUpper(text)
+	return strings.HasPrefix(upper, "IF ") && strings.Contains(upper, " THEN ")
 }
 
 // REQIDUniquenessRule checks REQ ID uniqueness within SPEC

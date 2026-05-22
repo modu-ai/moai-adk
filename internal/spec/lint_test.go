@@ -755,3 +755,135 @@ func TestStatusCaseNormalizationRule_MixedCase(t *testing.T) {
 		t.Errorf("expected message %q, got %q", expectedMsg, findings[0].Message)
 	}
 }
+
+// =============================================================================
+// SPEC-V3R6-GEARS-MIGRATION-001 — M2 LegacyEARSKeyword 테스트 (4건)
+// =============================================================================
+//
+// 본 SPEC은 IF/THEN 패턴을 deprecated로 표시하고 LegacyEARSKeyword warning을 발행한다.
+// WHEN/WHILE/WHERE/Ubiquitous는 GEARS-compatible로 유지된다.
+//
+// SSOT: .moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md REQ-GM-002, REQ-GM-006, REQ-GM-008, REQ-GM-009
+
+// TestEARSModalityRule_LegacyEARSKeyword_IFThen는 IF/THEN REQ에서
+// 정확히 1건의 LegacyEARSKeyword warning이 발행됨을 검증한다.
+// AC-GM-002 binary criteria.
+func TestEARSModalityRule_LegacyEARSKeyword_IFThen(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Path: "test.md",
+		REQs: []spec.REQEntry{
+			{ID: "REQ-LEG-001-005", Text: "IF a deprecated keyword is detected THEN the system SHALL emit a migration warning.", Line: 42},
+		},
+	}
+
+	rule := &spec.EARSModalityRule{}
+	findings := rule.Check(doc, nil)
+
+	legacy := findingsForCode(findings, "LegacyEARSKeyword")
+	if len(legacy) != 1 {
+		t.Fatalf("expected exactly 1 LegacyEARSKeyword finding, got %d: %v", len(legacy), legacy)
+	}
+
+	if legacy[0].Severity != spec.SeverityWarning {
+		t.Errorf("expected severity warning, got %s", legacy[0].Severity)
+	}
+
+	if legacy[0].Line != 42 {
+		t.Errorf("expected line 42, got %d", legacy[0].Line)
+	}
+
+	// AC-GM-002: ModalityMalformed MUST NOT additionally fire when SHALL is present.
+	malformed := findingsForCode(findings, "ModalityMalformed")
+	if len(malformed) != 0 {
+		t.Errorf("expected 0 ModalityMalformed (SHALL is present), got %d: %v", len(malformed), malformed)
+	}
+}
+
+// TestEARSModalityRule_GEARSWellFormed는 canonical GEARS REQs (WHEN/WHILE/WHERE/Ubiquitous)에서
+// 0건의 findings가 발행됨을 검증한다.
+// AC-GM-003 binary criteria.
+func TestEARSModalityRule_GEARSWellFormed(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Path: "test.md",
+		REQs: []spec.REQEntry{
+			{ID: "REQ-GRS-001-001", Text: "The system SHALL always preserve EARS modality compliance.", Line: 10},
+			{ID: "REQ-GRS-001-002", Text: "WHEN a new SPEC is added, the system SHALL detect it during discovery.", Line: 20},
+			{ID: "REQ-GRS-001-003", Text: "WHILE the linter holds the rule registry, the system SHALL apply rules in declaration order.", Line: 30},
+			{ID: "REQ-GRS-001-004", Text: "WHERE strict mode is enabled, the system SHALL escalate warnings to errors via Report.HasErrors().", Line: 40},
+		},
+	}
+
+	rule := &spec.EARSModalityRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 0 {
+		t.Errorf("expected 0 findings on GEARS-well-formed REQs, got %d: %v", len(findings), findings)
+	}
+}
+
+// TestEARSModalityRule_LegacyEARSKeyword_StrictExitCode는 --strict 모드에서
+// LegacyEARSKeyword warning이 Report.HasErrors()를 통해 exit-1로 escalate됨을 검증한다.
+// AC-GM-008 binary criteria.
+func TestEARSModalityRule_LegacyEARSKeyword_StrictExitCode(t *testing.T) {
+	// Synthesize a report with one LegacyEARSKeyword warning + strict=true.
+	report := &spec.Report{
+		Findings: []spec.Finding{
+			{
+				File:     "test.md",
+				Line:     42,
+				Severity: spec.SeverityWarning,
+				Code:     "LegacyEARSKeyword",
+				Message:  "REQ REQ-LEG-001-005: GEARS migration: ...",
+			},
+		},
+		Strict: true,
+	}
+
+	if !report.HasErrors() {
+		t.Error("expected HasErrors()=true in strict mode with LegacyEARSKeyword warning, got false")
+	}
+
+	// Severity field is unchanged — only HasErrors() escalates.
+	if report.Findings[0].Severity != spec.SeverityWarning {
+		t.Errorf("expected severity field unchanged (warning), got %s", report.Findings[0].Severity)
+	}
+
+	// Non-strict mode: same finding must NOT trigger HasErrors().
+	reportNonStrict := &spec.Report{
+		Findings: report.Findings,
+		Strict:   false,
+	}
+	if reportNonStrict.HasErrors() {
+		t.Error("expected HasErrors()=false in non-strict mode with only warnings, got true")
+	}
+}
+
+// TestEARSModalityRule_MessageContainsDocsURL는 LegacyEARSKeyword finding의 Message가
+// "GEARS migration" 및 "adk.mo.ai.kr" 부분문자열을 포함함을 검증한다.
+// AC-GM-002 binary criteria (docs URL linkage) + REQ-GM-006.
+func TestEARSModalityRule_MessageContainsDocsURL(t *testing.T) {
+	doc := &spec.SPECDoc{
+		Path: "test.md",
+		REQs: []spec.REQEntry{
+			{ID: "REQ-LEG-001-005", Text: "IF a deprecated keyword is detected THEN the system SHALL emit a migration warning.", Line: 42},
+		},
+	}
+
+	rule := &spec.EARSModalityRule{}
+	findings := rule.Check(doc, nil)
+
+	legacy := findingsForCode(findings, "LegacyEARSKeyword")
+	if len(legacy) != 1 {
+		t.Fatalf("expected 1 LegacyEARSKeyword finding, got %d", len(legacy))
+	}
+
+	msg := legacy[0].Message
+
+	if !strings.Contains(msg, "GEARS migration") {
+		t.Errorf("expected Message to contain %q, got %q", "GEARS migration", msg)
+	}
+
+	if !strings.Contains(msg, "adk.mo.ai.kr") {
+		t.Errorf("expected Message to contain docs URL substring %q, got %q", "adk.mo.ai.kr", msg)
+	}
+}
