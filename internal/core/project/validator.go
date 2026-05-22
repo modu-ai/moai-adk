@@ -54,8 +54,12 @@ var requiredMoAIDirs = []string{
 }
 
 // requiredClaudeDirs lists the directories that must exist under .claude/.
+// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
 var requiredClaudeDirs = []string{
-	"agents/moai",
+	"agents/core",
+	"agents/expert",
+	"agents/meta",
+	"agents/harness",
 	"skills",
 	"commands/moai",
 	"rules/moai",

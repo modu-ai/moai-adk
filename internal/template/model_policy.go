@@ -132,51 +132,56 @@ func insertEffortInFrontmatter(content []byte, effortLevel string) []byte {
 // @MX:ANCHOR: [AUTO] ApplyEffortPolicy — called from initializer and update paths; mirrors ApplyModelPolicy contract
 // @MX:REASON: [AUTO] fan_in >= 2 (initializer.go + update.go); public API boundary for effort wiring
 func ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error {
-	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "moai")
-	entries, err := os.ReadDir(agentsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // No agents directory yet
-		}
-		return fmt.Errorf("read agents directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-
-		agentName := strings.TrimSuffix(entry.Name(), ".md")
-		targetEffort := GetAgentEffort(agentName)
-		if targetEffort == "" {
-			continue // Not in effort map — use runtime default, no injection
-		}
-
-		filePath := filepath.Join(agentsDir, entry.Name())
-		content, err := os.ReadFile(filePath)
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
+	// Iterate over each domain subfolder; absent folders are silently skipped (REQ-AFS-001).
+	domains := []string{"core", "expert", "meta", "harness"}
+	for _, domain := range domains {
+		agentsDir := filepath.Join(projectRoot, ".claude", "agents", domain)
+		entries, err := os.ReadDir(agentsDir)
 		if err != nil {
-			return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
+			if os.IsNotExist(err) {
+				continue // domain subfolder absent — skip silently
+			}
+			return fmt.Errorf("read agents directory %q: %w", domain, err)
 		}
 
-		// Preserve existing effort: value (user customisation wins)
-		if effortLineRegex.Match(content) {
-			continue
-		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
 
-		newContent := insertEffortInFrontmatter(content, targetEffort)
-		if string(newContent) == string(content) {
-			continue // No frontmatter or no change — skip
-		}
+			agentName := strings.TrimSuffix(entry.Name(), ".md")
+			targetEffort := GetAgentEffort(agentName)
+			if targetEffort == "" {
+				continue // Not in effort map — use runtime default, no injection
+			}
 
-		if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
-			return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
-		}
+			filePath := filepath.Join(agentsDir, entry.Name())
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
+			}
 
-		// Update manifest hash for the patched file
-		relPath := filepath.Join(".claude", "agents", "moai", entry.Name())
-		hash := manifest.HashBytes(newContent)
-		if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
-			return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
+			// Preserve existing effort: value (user customisation wins)
+			if effortLineRegex.Match(content) {
+				continue
+			}
+
+			newContent := insertEffortInFrontmatter(content, targetEffort)
+			if string(newContent) == string(content) {
+				continue // No frontmatter or no change — skip
+			}
+
+			if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
+				return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
+			}
+
+			// Update manifest hash for the patched file
+			relPath := filepath.Join(".claude", "agents", domain, entry.Name())
+			hash := manifest.HashBytes(newContent)
+			if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
+				return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
+			}
 		}
 	}
 
@@ -236,48 +241,53 @@ var modelLineRegex = regexp.MustCompile(`(?m)^model:\s*\S+`)
 // under the given project root based on the specified model policy.
 // It also updates the manifest hashes for patched files.
 func ApplyModelPolicy(projectRoot string, policy ModelPolicy, mgr manifest.Manager) error {
-	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "moai")
-	entries, err := os.ReadDir(agentsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // No agents directory yet
-		}
-		return fmt.Errorf("read agents directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-
-		agentName := strings.TrimSuffix(entry.Name(), ".md")
-		targetModel := GetAgentModel(policy, agentName)
-		if targetModel == "" {
-			continue // Unknown agent: preserve current model
-		}
-
-		filePath := filepath.Join(agentsDir, entry.Name())
-		content, err := os.ReadFile(filePath)
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
+	// Iterate over each domain subfolder; absent folders are silently skipped (REQ-AFS-001).
+	domains := []string{"core", "expert", "meta", "harness"}
+	for _, domain := range domains {
+		agentsDir := filepath.Join(projectRoot, ".claude", "agents", domain)
+		entries, err := os.ReadDir(agentsDir)
 		if err != nil {
-			return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
+			if os.IsNotExist(err) {
+				continue // domain subfolder absent — skip silently
+			}
+			return fmt.Errorf("read agents directory %q: %w", domain, err)
 		}
 
-		// Replace the model: line in YAML frontmatter
-		newContent := modelLineRegex.ReplaceAll(content, []byte("model: "+targetModel))
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
 
-		if string(newContent) == string(content) {
-			continue // No change
-		}
+			agentName := strings.TrimSuffix(entry.Name(), ".md")
+			targetModel := GetAgentModel(policy, agentName)
+			if targetModel == "" {
+				continue // Unknown agent: preserve current model
+			}
 
-		if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
-			return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
-		}
+			filePath := filepath.Join(agentsDir, entry.Name())
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
+			}
 
-		// Update manifest hash for the patched file
-		relPath := filepath.Join(".claude", "agents", "moai", entry.Name())
-		hash := manifest.HashBytes(newContent)
-		if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
-			return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
+			// Replace the model: line in YAML frontmatter
+			newContent := modelLineRegex.ReplaceAll(content, []byte("model: "+targetModel))
+
+			if string(newContent) == string(content) {
+				continue // No change
+			}
+
+			if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
+				return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
+			}
+
+			// Update manifest hash for the patched file
+			relPath := filepath.Join(".claude", "agents", domain, entry.Name())
+			hash := manifest.HashBytes(newContent)
+			if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
+				return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
+			}
 		}
 	}
 

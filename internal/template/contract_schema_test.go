@@ -9,7 +9,8 @@ import (
 
 // TestContractSchemaVerification verifies that agent contract sections follow SEMAP schema
 func TestContractSchemaVerification(t *testing.T) {
-	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "moai")
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-quality lives under core/.
+	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "core")
 
 	if _, err := os.ReadDir(templatesDir); err != nil {
 		t.Fatalf("Failed to read agents directory: %v", err)
@@ -88,47 +89,53 @@ func TestContractSchemaVerification(t *testing.T) {
 	}
 }
 
-// TestBackwardCompatibility verifies agents without contracts remain functional
+// TestBackwardCompatibility verifies agents without contracts remain functional.
+// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
+// This test iterates over all 4 subfolders to maintain coverage parity.
 func TestBackwardCompatibility(t *testing.T) {
-	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "moai")
+	templatesRoot := filepath.Join(".", "templates", ".claude", "agents")
+	domains := []string{"core", "expert", "meta", "harness"}
 
-	// Read all agent files
-	agents, err := os.ReadDir(templatesDir)
-	if err != nil {
-		t.Fatalf("Failed to read agents directory: %v", err)
-	}
-
-	for _, agent := range agents {
-		if !strings.HasSuffix(agent.Name(), ".md") {
-			continue
+	for _, domain := range domains {
+		templatesDir := filepath.Join(templatesRoot, domain)
+		agents, err := os.ReadDir(templatesDir)
+		if err != nil {
+			t.Fatalf("Failed to read agents directory %q: %v", domain, err)
 		}
 
-		t.Run(agent.Name(), func(t *testing.T) {
-			agentPath := filepath.Join(templatesDir, agent.Name())
-			content, err := os.ReadFile(agentPath)
-			if err != nil {
-				t.Fatalf("Failed to read agent file: %v", err)
+		for _, agent := range agents {
+			if !strings.HasSuffix(agent.Name(), ".md") {
+				continue
 			}
 
-			agentContent := string(content)
-
-			// Check if agent has a contract
-			hasContract := strings.Contains(agentContent, "## Behavioral Contract (SEMAP)") ||
-			              strings.Contains(agentContent, "## Contract")
-
-			// Agents without contracts should still have frontmatter
-			if !hasContract {
-				if !strings.Contains(agentContent, "---") {
-					t.Error("Agent without contract must still have valid frontmatter")
+			t.Run(domain+"/"+agent.Name(), func(t *testing.T) {
+				agentPath := filepath.Join(templatesDir, agent.Name())
+				content, err := os.ReadFile(agentPath)
+				if err != nil {
+					t.Fatalf("Failed to read agent file: %v", err)
 				}
-			}
-		})
+
+				agentContent := string(content)
+
+				// Check if agent has a contract
+				hasContract := strings.Contains(agentContent, "## Behavioral Contract (SEMAP)") ||
+					strings.Contains(agentContent, "## Contract")
+
+				// Agents without contracts should still have frontmatter
+				if !hasContract {
+					if !strings.Contains(agentContent, "---") {
+						t.Error("Agent without contract must still have valid frontmatter")
+					}
+				}
+			})
+		}
 	}
 }
 
 // TestContractAssertionsNaturalLanguage verifies contract assertions are natural language
 func TestContractAssertionsNaturalLanguage(t *testing.T) {
-	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "moai")
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-quality lives under core/.
+	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "core")
 	agentPath := filepath.Join(templatesDir, "manager-quality.md")
 
 	content, err := os.ReadFile(agentPath)

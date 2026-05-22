@@ -42,25 +42,28 @@ func TestEmbeddedTemplates_AgentDefinitions(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	agentDir := ".claude/agents/moai"
-	entries, err := fs.ReadDir(fsys, agentDir)
-	if err != nil {
-		t.Fatalf("ReadDir(%q) error: %v", agentDir, err)
-	}
-
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
+	domains := []string{"core", "expert", "meta", "harness"}
 	var mdCount int
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
-			mdCount++
+	for _, domain := range domains {
+		agentDir := ".claude/agents/" + domain
+		entries, err := fs.ReadDir(fsys, agentDir)
+		if err != nil {
+			t.Fatalf("ReadDir(%q) error: %v", agentDir, err)
+		}
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				mdCount++
+			}
 		}
 	}
 
 	if mdCount < 15 {
-		t.Errorf("expected at least 15 agent .md files, got %d", mdCount)
+		t.Errorf("expected at least 15 agent .md files across all domain subfolders, got %d", mdCount)
 	}
 
 	// Verify a specific agent file is readable and non-empty
-	data, err := fs.ReadFile(fsys, agentDir+"/expert-backend.md")
+	data, err := fs.ReadFile(fsys, ".claude/agents/expert/expert-backend.md")
 	if err != nil {
 		t.Fatalf("read expert-backend.md: %v", err)
 	}
