@@ -286,7 +286,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 
 // detectGoBinPath detects the Go binary installation path.
 // Returns the path where Go binaries are installed (e.g., "/home/user/go/bin").
-// REQ-V3R2-RT-007-001: gobin.Detect helper를 사용하여 중복 제거.
+// REQ-V3R2-RT-007-001: deduplicated via the gobin.Detect helper.
 func detectGoBinPath(homeDir string) string {
 	return gobin.Detect(homeDir)
 }

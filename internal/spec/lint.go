@@ -274,10 +274,10 @@ type SPECFrontmatter struct {
 	LintConfig struct {
 		Skip []string `yaml:"skip"`
 	} `yaml:"lint"`
-	// HarnessLevel은 SPEC별 harness 레벨 오버라이드 (optional)입니다.
-	// REQ-HRN-001-015: harness_level: minimal|standard|thorough 값이 있으면
-	// auto-detection보다 우선 적용됩니다. 12개 필수 필드에 포함되지 않으므로
-	// FrontmatterSchemaRule은 이 필드의 부재를 findings로 보고하지 않습니다.
+	// HarnessLevel is the optional per-SPEC harness level override.
+	// REQ-HRN-001-015: when present, harness_level: minimal|standard|thorough takes
+	// precedence over auto-detection. It is not one of the 12 required fields, so
+	// FrontmatterSchemaRule does not report its absence as a finding.
 	HarnessLevel string `yaml:"harness_level,omitempty"`
 }
 
@@ -336,8 +336,8 @@ func parseSPECDoc(path string) *SPECDoc {
 	return doc
 }
 
-// ExtractFrontmatter는 SPEC 문서 내용에서 YAML frontmatter와 본문을 분리하여 반환합니다.
-// REQ-HRN-001-003: HarnessRouter가 SPECFrontmatter.Priority, Tags, HarnessLevel을 소비합니다.
+// ExtractFrontmatter splits a SPEC document's content into its YAML frontmatter and body and returns both.
+// REQ-HRN-001-003: HarnessRouter consumes SPECFrontmatter.Priority, Tags, and HarnessLevel.
 func ExtractFrontmatter(content string) (SPECFrontmatter, string, error) {
 	return extractFrontmatter(content)
 }
@@ -554,14 +554,14 @@ func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	return findings
 }
 
-// FrontmatterSchemaRule는 SPEC frontmatter 스키마를 검증한다.
-// canonical 12개 필드 (id, title, version, status, created, updated, author,
-// priority, phase, module, lifecycle, tags) 중 하나라도 누락되면 FrontmatterInvalid
-// finding을 생성한다.
+// FrontmatterSchemaRule validates the SPEC frontmatter schema.
+// It emits a FrontmatterInvalid finding when any of the canonical 12 fields
+// (id, title, version, status, created, updated, author, priority, phase,
+// module, lifecycle, tags) is missing.
 //
-// snake_case alias (created_at, updated_at, labels)는 SPECFrontmatter 구조체의
-// yaml 태그와 일치하지 않아 YAML 디코더가 무시하므로 empty string으로 처리되어
-// 동일한 finding이 발생한다.
+// snake_case aliases (created_at, updated_at, labels) do not match the yaml tags
+// on the SPECFrontmatter struct, so the YAML decoder ignores them; they end up
+// as empty strings and produce the same finding.
 //
 // SSOT: .claude/rules/moai/development/spec-frontmatter-schema.md
 // Implements REQ-SPC-003-006
@@ -940,16 +940,16 @@ func (r *DuplicateSPECIDRule) CheckAll(docs []*SPECDoc) []Finding {
 	return findings
 }
 
-// terminalStatusEnum은 git-implied status와 mismatch가 정상으로 간주되는 lifecycle terminal state 집합이다.
-// terminal state의 SPEC은 git history에 더 이상 active한 work commit이 없을 수 있으며,
-// 이를 drift false-positive로 취급하면 안 된다.
+// terminalStatusEnum is the set of lifecycle terminal states for which a mismatch with the git-implied status is normal.
+// SPECs in a terminal state may no longer have active work commits in git history, and
+// such cases must not be treated as a drift false positive.
 //
-// @MX:NOTE: [AUTO] terminal lifecycle state — git history와 mismatch가 정상으로 간주되는 status
-// @MX:REASON: SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001 Pattern D/E/F/G false-positive 해소; 향후 상태 추가 시 이 map만 확장
+// @MX:NOTE: [AUTO] terminal lifecycle state — status values where a mismatch with git history is considered normal
+// @MX:REASON: resolves Pattern D/E/F/G false positives from SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001; extend this map only when adding future states
 var terminalStatusEnum = map[string]bool{
 	"superseded": true,
 	"archived":   true,
-	"rejected":   true, // future-proof: 현재 사용 안 함, 향후 확장 대비
+	"rejected":   true, // future-proof: not currently used, kept for future extension
 }
 
 // StatusGitConsistencyRule checks if SPEC frontmatter status agrees with git log
@@ -968,9 +968,9 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		return nil
 	}
 
-	// ★ terminal lifecycle state는 git-implied 와 mismatch가 정상 — false-positive 방지
-	// Pattern D(superseded/completed), E(superseded/implemented),
-	// F(archived/implemented), G(archived/in-progress) 모두 해당
+	// ★ terminal lifecycle states are expected to mismatch the git-implied status — prevents false positives
+	// Covers Pattern D (superseded/completed), E (superseded/implemented),
+	// F (archived/implemented), and G (archived/in-progress).
 	if terminalStatusEnum[fm.Status] {
 		return nil
 	}

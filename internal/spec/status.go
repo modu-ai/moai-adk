@@ -168,11 +168,11 @@ func updateStatusInTable(lines []string, newStatus string) (string, error) {
 	originalContent := strings.Join(lines, "\n")
 
 	for i, line := range lines {
-		// Match Korean table: | 상태 | value |
+		// Match Korean table row using the literal status label
 		if strings.Contains(line, "| 상태 |") {
 			parts := strings.Split(line, "|")
 			if len(parts) >= 3 {
-				// Replace the value after "상태"
+				// Replace the value after the Korean status label
 				for j, part := range parts {
 					if strings.TrimSpace(part) == "상태" && j+1 < len(parts) {
 						parts[j+1] = " " + newStatus + " "

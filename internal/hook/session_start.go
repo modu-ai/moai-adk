@@ -164,9 +164,9 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Errors must NOT block session (REQ-021). Surface via SystemMessage but allow handler
 	// to return success. Bypassing this preserves migration-version-file unchanged → next
 	// session retries. NEVER let migration error abort session-start handler.
-	// 자동 마이그레이션 적용 (REQ-020, REQ-021).
-	// session-start 시점에서 pending migrations를 자동으로 실행합니다.
-	// 실패해도 세션은 차단하지 않고 SystemMessage로 사용자에게 알립니다 (REQ-021).
+	// Automatic migration application (REQ-020, REQ-021).
+	// Runs pending migrations automatically at session-start time.
+	// On failure the session is not blocked; users are notified via SystemMessage (REQ-021).
 	if input.ProjectDir != "" {
 		cfg := h.getConfig()
 		if cfg == nil || !cfg.System.Migrations.Disabled {

@@ -71,7 +71,7 @@ type SystemConfig struct {
 }
 
 // MigrationsConfig represents the migrations configuration section.
-// REQ-V3R2-RT-007-032: migrations.disabled로 session-start migration을 비활성화할 수 있습니다.
+// REQ-V3R2-RT-007-032: session-start migration can be disabled via migrations.disabled.
 type MigrationsConfig struct {
 	Disabled bool `yaml:"disabled"`
 }
@@ -211,14 +211,14 @@ type TeamAutoSelectionConfig struct {
 // coverage, diagnostics) is stored.
 type StateConfig struct {
 	StateDir      string `yaml:"state_dir"`
-	RetentionDays int    `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: runs/ 디렉토리 보존 일수
+	RetentionDays int    `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 }
 
 // SessionConfig holds session state management configuration.
-// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS 설정.
+// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS setting.
 type SessionConfig struct {
-	// StaleSeconds는 checkpoint가 stale로 판정되는 기준 시간 (초).
-	// 기본값: 3600 (1시간). ralph.yaml의 stale_seconds 키로 설정.
+	// StaleSeconds is the threshold (in seconds) at which a checkpoint is considered stale.
+	// Default: 3600 (1 hour). Configured via the stale_seconds key in ralph.yaml.
 	StaleSeconds int `yaml:"stale_seconds"`
 }
 
@@ -405,113 +405,113 @@ func ValidSectionNames() []string {
 	return result
 }
 
-// HarnessConfig는 harness.yaml 최상위 설정 구조체입니다.
-// @MX:ANCHOR: [AUTO] harness.yaml 전체 스키마의 Go 표현 — LoadHarnessConfig()의 반환 타입
-// @MX:REASON: fan_in >= 3 (LoadHarnessConfig, router.Route, CLI validate 등 다수에서 소비)
-// REQ-HRN-001-001: 전체 harness.yaml 스키마를 포괄하는 구조체 (HRN-001 run-phase 확장).
+// HarnessConfig is the top-level configuration struct for harness.yaml.
+// @MX:ANCHOR: [AUTO] Go representation of the full harness.yaml schema — return type of LoadHarnessConfig()
+// @MX:REASON: fan_in >= 3 (consumed by LoadHarnessConfig, router.Route, CLI validate, and others)
+// REQ-HRN-001-001: struct covering the full harness.yaml schema (HRN-001 run-phase extension).
 type HarnessConfig struct {
-	// DefaultProfile은 기본 evaluator 프로필 이름입니다.
+	// DefaultProfile is the default evaluator profile name.
 	DefaultProfile string `yaml:"default_profile"`
-	// ModeDefaults는 실행 모드(solo/team/cg)별 기본 harness 레벨 맵입니다.
+	// ModeDefaults is the default harness level map per execution mode (solo/team/cg).
 	// REQ-HRN-001-014: mode_defaults.cg = "thorough" (FROZEN).
 	ModeDefaults map[string]string `yaml:"mode_defaults,omitempty"`
-	// AutoDetection은 자동 감지 규칙 설정입니다.
-	// REQ-HRN-001-007: minimal → standard → thorough 우선순위 순서.
+	// AutoDetection holds auto-detection rule settings.
+	// REQ-HRN-001-007: priority order is minimal → standard → thorough.
 	AutoDetection AutoDetectionConfig `yaml:"auto_detection,omitempty"`
-	// Escalation은 에스컬레이션 트리거 설정입니다.
+	// Escalation holds escalation trigger settings.
 	// REQ-HRN-001-004/009/013: max_escalations + triggers.
 	Escalation EscalationConfig `yaml:"escalation,omitempty"`
-	// EffortMapping은 레벨 → 노력 수준 맵입니다.
+	// EffortMapping is the level → effort tier map.
 	// REQ-HRN-001-005: minimal→medium, standard→high, thorough→xhigh.
 	EffortMapping map[string]string `yaml:"effort_mapping,omitempty"`
-	// Levels는 레벨별 설정 맵입니다.
+	// Levels is the per-level configuration map.
 	// REQ-HRN-001-001: {minimal, standard, thorough} FROZEN enum.
 	Levels map[string]LevelConfig `yaml:"levels,omitempty"`
-	// ModelUpgradeReview는 모델 업그레이드 검토 설정입니다.
+	// ModelUpgradeReview holds model upgrade review settings.
 	// REQ-HRN-001-016.
 	ModelUpgradeReview ModelUpgradeReviewConfig `yaml:"model_upgrade_review,omitempty"`
-	// PlanAuditGlobal은 전역 plan audit 설정입니다.
+	// PlanAuditGlobal holds the global plan audit settings.
 	PlanAuditGlobal PlanAuditGlobalConfig `yaml:"plan_audit_global,omitempty"`
-	// Evaluator는 HRN-002 substrate — memory_scope FROZEN 검증용.
+	// Evaluator is the HRN-002 substrate — used for memory_scope FROZEN validation.
 	Evaluator EvaluatorConfig `yaml:"evaluator"`
 }
 
-// AutoDetectionConfig는 auto_detection 블록의 설정 구조체입니다.
-// REQ-HRN-001-007: rules 맵의 우선순위는 minimal → standard → thorough입니다.
+// AutoDetectionConfig is the configuration struct for the auto_detection block.
+// REQ-HRN-001-007: the rules map priority is minimal → standard → thorough.
 type AutoDetectionConfig struct {
-	// Enabled는 자동 감지 활성화 여부입니다.
+	// Enabled toggles auto-detection.
 	Enabled bool `yaml:"enabled"`
-	// Rules는 레벨별 감지 조건 맵입니다.
+	// Rules is the per-level detection condition map.
 	Rules map[string]AutoDetectionRule `yaml:"rules,omitempty"`
 }
 
-// AutoDetectionRule은 단일 레벨의 자동 감지 조건 목록입니다.
+// AutoDetectionRule lists auto-detection conditions for a single level.
 type AutoDetectionRule struct {
-	// Conditions는 이 레벨로 라우팅되기 위한 조건 문자열 목록입니다.
+	// Conditions is the list of condition strings required to route to this level.
 	Conditions []string `yaml:"conditions,omitempty"`
 }
 
-// EscalationConfig는 escalation 블록의 설정 구조체입니다.
-// REQ-HRN-001-004/009/013: max_escalations 상한 + 트리거 목록.
+// EscalationConfig is the configuration struct for the escalation block.
+// REQ-HRN-001-004/009/013: max_escalations ceiling + trigger list.
 type EscalationConfig struct {
-	// Enabled는 에스컬레이션 활성화 여부입니다.
+	// Enabled toggles escalation.
 	Enabled bool `yaml:"enabled"`
-	// MaxEscalations는 단계당 최대 에스컬레이션 횟수입니다 (기본값 2, 상한 3).
+	// MaxEscalations is the maximum escalation count per stage (default 2, ceiling 3).
 	// REQ-HRN-001-013: hard ceiling = 3.
 	MaxEscalations int `yaml:"max_escalations"`
-	// Triggers는 에스컬레이션을 발동하는 이벤트 목록입니다.
-	// (예: quality_gate_fail, review_critical, test_coverage_low)
+	// Triggers lists events that trigger escalation.
+	// (e.g., quality_gate_fail, review_critical, test_coverage_low)
 	Triggers []string `yaml:"triggers,omitempty"`
 }
 
-// LevelConfig는 단일 harness 레벨의 설정 구조체입니다.
-// REQ-HRN-001-001: levels.{minimal,standard,thorough} 각각의 설정.
+// LevelConfig is the configuration struct for a single harness level.
+// REQ-HRN-001-001: settings for each of levels.{minimal,standard,thorough}.
 type LevelConfig struct {
-	// Description은 이 레벨에 대한 설명입니다.
+	// Description describes this level.
 	Description string `yaml:"description,omitempty"`
-	// Evaluator는 evaluator 활성화 여부입니다.
+	// Evaluator toggles the evaluator.
 	Evaluator bool `yaml:"evaluator"`
-	// EvaluatorMode는 evaluator 모드입니다 (final-pass 또는 per-sprint).
+	// EvaluatorMode is the evaluator mode (final-pass or per-sprint).
 	EvaluatorMode string `yaml:"evaluator_mode,omitempty"`
-	// EvaluatorProfile은 사용할 evaluator 프로필 이름입니다.
-	// 값이 있으면 .moai/config/evaluator-profiles/{name}.md 파일로 해석합니다.
+	// EvaluatorProfile is the name of the evaluator profile to use.
+	// When set, it resolves to the .moai/config/evaluator-profiles/{name}.md file.
 	EvaluatorProfile string `yaml:"evaluator_profile,omitempty"`
-	// SprintContract는 sprint contract 활성화 여부입니다.
+	// SprintContract toggles sprint contract behavior.
 	SprintContract bool `yaml:"sprint_contract"`
-	// PlaywrightTesting은 playwright 테스트 활성화 여부입니다.
+	// PlaywrightTesting toggles Playwright testing.
 	PlaywrightTesting bool `yaml:"playwright_testing"`
-	// SkipPhases는 건너뛸 워크플로우 단계 목록입니다.
+	// SkipPhases lists workflow phases to skip.
 	SkipPhases []any `yaml:"skip_phases,omitempty"`
-	// PlanAudit은 plan audit 설정입니다.
+	// PlanAudit holds the plan audit settings.
 	PlanAudit PlanAuditConfig `yaml:"plan_audit,omitempty"`
 }
 
-// PlanAuditConfig는 plan audit 설정 구조체입니다.
+// PlanAuditConfig is the configuration struct for plan audit settings.
 type PlanAuditConfig struct {
-	// Enabled는 plan audit 활성화 여부입니다.
+	// Enabled toggles plan audit.
 	Enabled bool `yaml:"enabled"`
-	// MaxIterations는 최대 반복 횟수입니다.
+	// MaxIterations is the maximum iteration count.
 	MaxIterations int `yaml:"max_iterations"`
-	// RequireMustPass는 must-pass 요구 여부입니다.
+	// RequireMustPass toggles must-pass enforcement.
 	RequireMustPass bool `yaml:"require_must_pass"`
-	// CrossValidateWithEvaluatorActive는 evaluator-active 교차 검증 여부입니다.
+	// CrossValidateWithEvaluatorActive toggles cross-validation with evaluator-active.
 	CrossValidateWithEvaluatorActive bool `yaml:"cross_validate_with_evaluator_active"`
 }
 
-// ModelUpgradeReviewConfig는 model_upgrade_review 블록의 설정 구조체입니다.
-// REQ-HRN-001-016: 모델 업그레이드 시 체크리스트 알림.
+// ModelUpgradeReviewConfig is the configuration struct for the model_upgrade_review block.
+// REQ-HRN-001-016: checklist notification on model upgrade.
 type ModelUpgradeReviewConfig struct {
-	// Enabled는 모델 업그레이드 검토 활성화 여부입니다.
+	// Enabled toggles model upgrade review.
 	Enabled bool `yaml:"enabled"`
-	// Checklist는 검토 항목 목록입니다.
+	// Checklist is the list of review items.
 	Checklist []ReviewChecklistItem `yaml:"checklist,omitempty"`
-	// Trigger는 검토 트리거 설정입니다.
+	// Trigger holds the review trigger settings.
 	Trigger ModelUpgradeTrigger `yaml:"trigger,omitempty"`
-	// Output은 검토 출력 설정입니다.
+	// Output holds the review output settings.
 	Output ModelUpgradeOutput `yaml:"output,omitempty"`
 }
 
-// ReviewChecklistItem은 모델 업그레이드 검토 항목입니다.
+// ReviewChecklistItem is a single item in the model upgrade review.
 type ReviewChecklistItem struct {
 	ID       string `yaml:"id"`
 	Question string `yaml:"question"`
@@ -519,50 +519,50 @@ type ReviewChecklistItem struct {
 	Affects  string `yaml:"affects"`
 }
 
-// ModelUpgradeTrigger는 모델 업그레이드 검토 트리거 설정입니다.
+// ModelUpgradeTrigger holds the model upgrade review trigger settings.
 type ModelUpgradeTrigger struct {
 	OnModelChange     bool   `yaml:"on_model_change"`
 	ManualCommand     string `yaml:"manual_command,omitempty"`
 	ReviewIntervalDays int   `yaml:"review_interval_days"`
 }
 
-// ModelUpgradeOutput은 모델 업그레이드 검토 출력 설정입니다.
+// ModelUpgradeOutput holds the model upgrade review output settings.
 type ModelUpgradeOutput struct {
 	ReportPath      string `yaml:"report_path,omitempty"`
 	RequireApproval bool   `yaml:"require_approval"`
 }
 
-// PlanAuditGlobalConfig는 plan_audit_global 블록의 설정 구조체입니다.
+// PlanAuditGlobalConfig is the configuration struct for the plan_audit_global block.
 type PlanAuditGlobalConfig struct {
-	// AlwaysEnabled는 항상 plan audit 활성화 여부입니다.
+	// AlwaysEnabled toggles permanent plan audit activation.
 	AlwaysEnabled bool `yaml:"always_enabled"`
-	// EnforceGateOnSpecCreation는 SPEC 생성 시 gate 강제 여부입니다.
+	// EnforceGateOnSpecCreation toggles gate enforcement at SPEC creation time.
 	EnforceGateOnSpecCreation bool `yaml:"enforce_gate_on_spec_creation"`
-	// Rationale은 설정 이유 설명입니다.
+	// Rationale describes the reason for these settings.
 	Rationale string `yaml:"rationale,omitempty"`
 }
 
-// EvaluatorConfig는 evaluator 하위 설정 구조체입니다.
+// EvaluatorConfig is the sub-configuration struct for the evaluator.
 // @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1 (SPEC-V3R2-HRN-002)
-// @MX:NOTE: [AUTO] HRN-003 M4: Profiles + Aggregation + MustPassDimensions 필드 추가 (SPEC-V3R2-HRN-003)
+// @MX:NOTE: [AUTO] HRN-003 M4: added Profiles + Aggregation + MustPassDimensions fields (SPEC-V3R2-HRN-003)
 type EvaluatorConfig struct {
-	// MemoryScope는 evaluator 메모리 범위 설정입니다.
-	// design-constitution §11.4.1에 의해 per_iteration 값으로 FROZEN됩니다.
-	// 다른 값(e.g., cumulative)은 HRN_EVAL_MEMORY_FROZEN 오류를 반환합니다.
+	// MemoryScope is the evaluator memory scope setting.
+	// FROZEN to the value per_iteration by design-constitution §11.4.1.
+	// Other values (e.g., cumulative) return an HRN_EVAL_MEMORY_FROZEN error.
 	MemoryScope string `yaml:"memory_scope"`
-	// Profiles는 evaluator 프로필 이름 → .md 파일 경로 맵입니다.
+	// Profiles is the map from evaluator profile name to .md file path.
 	// REQ-HRN-003-005, AC-HRN-003-07.c.
 	Profiles map[string]string `yaml:"profiles,omitempty"`
-	// Aggregation은 기본 집계 방식입니다 ("min" 또는 "mean").
-	// REQ-HRN-003-007: 기본값은 "min"입니다.
+	// Aggregation is the default aggregation method ("min" or "mean").
+	// REQ-HRN-003-007: default is "min".
 	Aggregation string `yaml:"aggregation,omitempty"`
-	// MustPassDimensions는 must-pass 차원 이름 목록입니다.
-	// REQ-HRN-003-018: 기본값은 [Functionality, Security]입니다.
+	// MustPassDimensions lists dimension names treated as must-pass.
+	// REQ-HRN-003-018: default is [Functionality, Security].
 	MustPassDimensions []string `yaml:"must_pass_dimensions,omitempty"`
 }
 
-// ConstitutionConfig는 constitution.yaml 최상위 설정 구조체입니다.
-// @MX:ANCHOR: [AUTO] constitution.yaml 전체 스키마의 Go 표현
+// ConstitutionConfig is the top-level configuration struct for constitution.yaml.
+// @MX:ANCHOR: [AUTO] Go representation of the full constitution.yaml schema
 // @MX:REASON: fan_in >= 3 (LoadConstitutionConfig, Loader.Load, SPEC-V3R2-EXT-004 hook consumer)
 //
 // Hot path: SPEC-V3R2-EXT-004 framework optional hook for forbidden-library policy enforcement.
@@ -602,8 +602,8 @@ type ConstitutionSecurity struct {
 	RequiredChecks     []string `yaml:"required_checks"`
 }
 
-// ContextConfig는 context.yaml (context_search:) 최상위 설정 구조체입니다.
-// @MX:ANCHOR: [AUTO] context_search section Go 표현
+// ContextConfig is the top-level configuration struct for context.yaml (context_search:).
+// @MX:ANCHOR: [AUTO] Go representation of the context_search section
 // @MX:REASON: fan_in >= 3 (LoadContextConfig, Loader.Load, CLAUDE.md §16 Context Search consumer)
 //
 // Hot path: CLAUDE.md §16 Context Search Protocol — token_budget.max_injection_tokens
@@ -651,8 +651,8 @@ type ContextTokenBudget struct {
 	SkipIfUsageAbove   int `yaml:"skip_if_usage_above"`
 }
 
-// InterviewConfig는 interview.yaml 최상위 설정 구조체입니다.
-// @MX:ANCHOR: [AUTO] interview section Go 표현
+// InterviewConfig is the top-level configuration struct for interview.yaml.
+// @MX:ANCHOR: [AUTO] Go representation of the interview section
 // @MX:REASON: fan_in >= 3 (LoadInterviewConfig, Loader.Load, SPEC-V3R2-WF-003 discovery mode)
 //
 // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
@@ -671,8 +671,8 @@ type InterviewMode struct {
 	QuestionsPerRound int `yaml:"questions_per_round"`
 }
 
-// DesignConfig는 design.yaml 최상위 설정 구조체입니다.
-// @MX:ANCHOR: [AUTO] design section Go 표현
+// DesignConfig is the top-level configuration struct for design.yaml.
+// @MX:ANCHOR: [AUTO] Go representation of the design section
 // @MX:REASON: fan_in >= 3 (LoadDesignConfig, Loader.Load, GAN loop runtime sprint contract consumer)
 //
 // Hot path: GAN loop runtime consumes gan_loop.pass_threshold (FROZEN floor 0.60),
@@ -780,32 +780,32 @@ type DesignSprintContract struct {
 	RequiredHarnessLevels   []string `yaml:"required_harness_levels"`
 }
 
-// harnessFileWrapper는 harness.yaml 파일 언마샬링용 래퍼입니다.
+// harnessFileWrapper is the wrapper used for unmarshaling the harness.yaml file.
 type harnessFileWrapper struct {
 	Harness HarnessConfig `yaml:"harness"`
 }
 
 // MIG-003 wrapper types for the 4 new section files.
 
-// constitutionFileWrapper는 constitution.yaml 파일 언마샬링용 래퍼입니다.
+// constitutionFileWrapper is the wrapper used for unmarshaling the constitution.yaml file.
 // Note: Both constitution.yaml and quality.yaml use top-level key "constitution:".
 // They are disambiguated by filename in loadYAMLFile (REQ-MIG003 risk §11.1).
 type constitutionFileWrapper struct {
 	Constitution ConstitutionConfig `yaml:"constitution"`
 }
 
-// contextFileWrapper는 context.yaml 파일 언마샬링용 래퍼입니다.
+// contextFileWrapper is the wrapper used for unmarshaling the context.yaml file.
 // context.yaml uses top-level key "context_search:" (NOT "context:").
 type contextFileWrapper struct {
 	ContextSearch ContextConfig `yaml:"context_search"`
 }
 
-// interviewFileWrapper는 interview.yaml 파일 언마샬링용 래퍼입니다.
+// interviewFileWrapper is the wrapper used for unmarshaling the interview.yaml file.
 type interviewFileWrapper struct {
 	Interview InterviewConfig `yaml:"interview"`
 }
 
-// designFileWrapper는 design.yaml 파일 언마샬링용 래퍼입니다.
+// designFileWrapper is the wrapper used for unmarshaling the design.yaml file.
 type designFileWrapper struct {
 	Design DesignConfig `yaml:"design"`
 }
@@ -853,8 +853,8 @@ type researchFileWrapper struct {
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.
-// stale_seconds는 ralph.yaml의 ralph: 키 하위에 위치하며 Config.Session.StaleSeconds에 주입됩니다.
-// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS 설정 소스.
+// stale_seconds lives under the ralph: key in ralph.yaml and is injected into Config.Session.StaleSeconds.
+// SPEC-V3R2-RT-004 REQ-022: source of the STALE_SECONDS setting.
 type ralphFileWrapper struct {
 	Ralph struct {
 		RalphConfig  `yaml:",inline"`

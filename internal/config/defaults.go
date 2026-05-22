@@ -66,8 +66,8 @@ const (
 
 	DefaultStateDir = ".moai/state"
 
-	// DefaultStaleSeconds는 세션 checkpoint가 stale로 판정되는 기준 시간 (초).
-	// SPEC-V3R2-RT-004 REQ-022: ralph.yaml의 stale_seconds 키로 오버라이드 가능.
+	// DefaultStaleSeconds is the threshold (in seconds) at which a session checkpoint is considered stale.
+	// SPEC-V3R2-RT-004 REQ-022: overridable via the stale_seconds key in ralph.yaml.
 	DefaultStaleSeconds = 3600
 
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
@@ -302,7 +302,7 @@ func NewDefaultStateConfig() StateConfig {
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
-// SPEC-V3R2-RT-004 REQ-022: 기본 stale_seconds = 3600 (1시간).
+// SPEC-V3R2-RT-004 REQ-022: default stale_seconds = 3600 (1 hour).
 func NewDefaultSessionConfig() SessionConfig {
 	return SessionConfig{
 		StaleSeconds: DefaultStaleSeconds,
