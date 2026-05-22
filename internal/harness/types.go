@@ -27,10 +27,10 @@ const (
 	// EventTypeFeedback represents /moai feedback event.
 	EventTypeFeedback EventType = "feedback"
 
-	// @MX:NOTE: [AUTO] 세션 종료(Stop 훅), 서브에이전트 종료(SubagentStop 훅),
-	// 사용자 프롬프트 제출(UserPromptSubmit 훅) 3종 신규 이벤트 유형.
-	// REQ-HRN-OBS-015: SEMANTIC 값 사용 (런타임 훅 이름 아님).
-	// 향후 Wave C 확장 시 추가 예정: REQ-HRN-OBS-016 (SPEC-V3R4-HARNESS-003).
+	// @MX:NOTE: [AUTO] Three new event kinds for session termination (Stop hook),
+	// subagent termination (SubagentStop hook), and user prompt submission (UserPromptSubmit hook).
+	// REQ-HRN-OBS-015: uses SEMANTIC values (not the runtime hook names).
+	// Wave C will add more in the future: REQ-HRN-OBS-016 (SPEC-V3R4-HARNESS-003).
 
 	// EventTypeSessionStop represents Claude Code Stop hook (session termination).
 	EventTypeSessionStop EventType = "session_stop"
@@ -44,10 +44,10 @@ const (
 
 // Event is the single JSONL line schema for usage-log.jsonl file.
 // REQ-HL-001: Includes timestamp, event_type, subject, context_hash, tier_increment fields.
-// REQ-HRN-FND-010: 기존 4-필드 스키마 보존. 신규 필드는 additive omitempty 전용.
+// REQ-HRN-FND-010: preserves the existing 4-field schema. New fields are additive omitempty only.
 //
-// @MX:NOTE: [AUTO] 12개 신규 필드가 omitempty로 추가됨. 기존 엔트리 호환성 유지.
-// REQ-HRN-OBS-009: 기존 4-필드 JSONL 스키마 보존 — 새 필드는 additive omitempty 전용.
+// @MX:NOTE: [AUTO] 12 new fields added as omitempty. Existing entries remain compatible.
+// REQ-HRN-OBS-009: preserves the existing 4-field JSONL schema — new fields are additive omitempty only.
 // @MX:TODO: [AUTO] Plan to add gate with learning.enabled setting key in Phase 4.
 // @MX:SPEC: SPEC-V3R3-HARNESS-LEARNING-001 REQ-HL-001
 type Event struct {
@@ -69,52 +69,52 @@ type Event struct {
 	// SchemaVersion is the log schema version (LogSchemaVersion).
 	SchemaVersion string `json:"schema_version"`
 
-	// ── Stop 이벤트 옵션 필드 (REQ-HRN-OBS-003) ──────────────────────────
+	// ── Stop event optional fields (REQ-HRN-OBS-003) ─────────────────────
 
-	// SessionID is the Claude Code session identifier (Stop 이벤트 전용, omitempty).
+	// SessionID is the Claude Code session identifier (Stop event only, omitempty).
 	SessionID string `json:"session_id,omitempty"`
 
 	// LastAssistantMessageHash is the SHA-256 hash of the last assistant message
-	// (Stop 이벤트 전용, omitempty).
+	// (Stop event only, omitempty).
 	LastAssistantMessageHash string `json:"last_assistant_message_hash,omitempty"`
 
 	// LastAssistantMessageLen is the character count of the last assistant message
-	// (Stop 이벤트 전용, omitempty).
+	// (Stop event only, omitempty).
 	LastAssistantMessageLen int `json:"last_assistant_message_len,omitempty"`
 
-	// ── SubagentStop 이벤트 옵션 필드 (REQ-HRN-OBS-005) ─────────────────
+	// ── SubagentStop event optional fields (REQ-HRN-OBS-005) ─────────────
 
-	// AgentName is the subagent name (SubagentStop 이벤트 전용, omitempty).
+	// AgentName is the subagent name (SubagentStop event only, omitempty).
 	AgentName string `json:"agent_name,omitempty"`
 
-	// AgentType is the subagent type (SubagentStop 이벤트 전용, omitempty).
+	// AgentType is the subagent type (SubagentStop event only, omitempty).
 	AgentType string `json:"agent_type,omitempty"`
 
-	// AgentID is the subagent instance identifier (SubagentStop 이벤트 전용, omitempty).
+	// AgentID is the subagent instance identifier (SubagentStop event only, omitempty).
 	AgentID string `json:"agent_id,omitempty"`
 
-	// ParentSessionID is the parent session identifier (SubagentStop 이벤트 전용, omitempty).
+	// ParentSessionID is the parent session identifier (SubagentStop event only, omitempty).
 	ParentSessionID string `json:"parent_session_id,omitempty"`
 
-	// ── UserPromptSubmit 이벤트 옵션 필드 (REQ-HRN-OBS-007) ─────────────
+	// ── UserPromptSubmit event optional fields (REQ-HRN-OBS-007) ─────────
 
-	// PromptHash is the SHA-256 hash of the user prompt (UserPromptSubmit 전용, omitempty).
+	// PromptHash is the SHA-256 hash of the user prompt (UserPromptSubmit only, omitempty).
 	PromptHash string `json:"prompt_hash,omitempty"`
 
-	// PromptLen is the character count of the user prompt (UserPromptSubmit 전용, omitempty).
+	// PromptLen is the character count of the user prompt (UserPromptSubmit only, omitempty).
 	PromptLen int `json:"prompt_len,omitempty"`
 
 	// PromptLang is the detected language code of the user prompt
-	// (UserPromptSubmit 전용, omitempty). 예: "ko", "en", "ja", "zh", "".
+	// (UserPromptSubmit only, omitempty). Examples: "ko", "en", "ja", "zh", "".
 	PromptLang string `json:"prompt_lang,omitempty"`
 
-	// PromptPreview is the first 64 bytes of the user prompt (UTF-8 경계 안전 절단).
-	// (UserPromptSubmit 전용, opt-in Strategy B, omitempty).
+	// PromptPreview is the first 64 bytes of the user prompt (UTF-8 boundary-safe truncation).
+	// (UserPromptSubmit only, opt-in Strategy B, omitempty).
 	// REQ-HRN-OBS-013 / AC-HRN-OBS-008.a.
 	PromptPreview string `json:"prompt_preview,omitempty"`
 
 	// PromptContent is the full user prompt text
-	// (UserPromptSubmit 전용, opt-in Strategy C/Full, omitempty).
+	// (UserPromptSubmit only, opt-in Strategy C/Full, omitempty).
 	// AC-HRN-OBS-008.b: JSON field name MUST be `prompt_content` (not `prompt_full`).
 	PromptContent string `json:"prompt_content,omitempty"`
 }

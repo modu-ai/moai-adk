@@ -7,22 +7,22 @@ import (
 	"strconv"
 )
 
-// @MX:NOTE - SPEC-V3R2-RT-007 .moai/state/migration-version은 "적용된 마이그레이션"의 단일 진실 소스입니다.
-// Atomic rename + advisory lock로 보호됩니다. Version 부재 = 0 (신규 설치 또는 v2.x 첫 만남).
-// 이 패키지 외부에서 version-file을 쓰지 않도록 해야 합니다.
+// @MX:NOTE - SPEC-V3R2-RT-007 .moai/state/migration-version is the single source of truth for "applied migrations".
+// Protected by atomic rename + advisory lock. Version absent = 0 (fresh install or first encounter from v2.x).
+// External callers outside this package must not write to the version-file.
 
 const versionFileName = "migration-version"
 const versionTmpFileName = "migration-version.tmp"
 
-// readVersion은 현재 마이그레이션 버전을 읽습니다.
-// REQ-V3R2-RT-007-030: version-file이 부재하면 0을 반환합니다.
+// readVersion reads the current migration version.
+// REQ-V3R2-RT-007-030: returns 0 if the version-file is absent.
 func readVersion(projectRoot string) (int, error) {
 	versionFile := filepath.Join(projectRoot, ".moai", "state", versionFileName)
 
 	data, err := os.ReadFile(versionFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// 파일 부재 = 0 (신규 설치 또는 v2.x 첫 만남)
+			// File absent = 0 (fresh install or first v2.x encounter).
 			return 0, nil
 		}
 		return 0, fmt.Errorf("version-file 읽기 실패: %w", err)
@@ -36,14 +36,14 @@ func readVersion(projectRoot string) (int, error) {
 	return version, nil
 }
 
-// writeVersion은 마이그레이션 버전을 기록합니다.
-// REQ-V3R2-RT-007-013: atomic write (*.tmp + os.Rename)를 사용합니다.
-// REQ-V3R2-RT-007-031: advisory lock으로 동시 쓰기를 보호합니다.
+// writeVersion records the migration version.
+// REQ-V3R2-RT-007-013: uses atomic write (*.tmp + os.Rename).
+// REQ-V3R2-RT-007-031: protects concurrent writes via an advisory lock.
 //
 // Lock semantics:
-//   - Unix: unix.Flock(LOCK_EX) — blocking until acquired (커널이 경쟁을 직렬화함).
-//   - Windows: O_CREATE|O_EXCL 기반 file mutex — bounded retry 최대 ~1s.
-//     단일 사용자 가정 하에 lock acquire timeout은 비정상 상태를 의미합니다.
+//   - Unix: unix.Flock(LOCK_EX) — blocking until acquired (kernel serializes contention).
+//   - Windows: file mutex based on O_CREATE|O_EXCL — bounded retry up to ~1s.
+//     Under the single-user assumption, a lock acquire timeout indicates an abnormal state.
 func writeVersion(projectRoot string, version int) error {
 	stateDir := filepath.Join(projectRoot, ".moai", "state")
 	if err := os.MkdirAll(stateDir, 0755); err != nil {
@@ -53,7 +53,7 @@ func writeVersion(projectRoot string, version int) error {
 	versionTmpFile := filepath.Join(stateDir, versionTmpFileName)
 	versionFile := filepath.Join(stateDir, versionFileName)
 
-	// Advisory lock 획득 (플랫폼별 구현: version_unix.go / version_windows.go)
+	// Acquire advisory lock (platform-specific impl: version_unix.go / version_windows.go).
 	lockPath := filepath.Join(stateDir, versionFileName+".lock")
 	handle, err := acquireLock(lockPath)
 	if err != nil {
@@ -61,12 +61,12 @@ func writeVersion(projectRoot string, version int) error {
 	}
 	defer func() { _ = releaseLock(handle) }()
 
-	// 임시 파일에 버전 기록
+	// Write the version to the temporary file.
 	if err := os.WriteFile(versionTmpFile, []byte(strconv.Itoa(version)), 0644); err != nil {
 		return fmt.Errorf("version-tmp 파일 쓰기 실패: %w", err)
 	}
 
-	// Atomic rename (REQ-V3R2-RT-007-013)
+	// Atomic rename (REQ-V3R2-RT-007-013).
 	if err := os.Rename(versionTmpFile, versionFile); err != nil {
 		return fmt.Errorf("version-file atomic rename 실패: %w", err)
 	}
@@ -74,8 +74,8 @@ func writeVersion(projectRoot string, version int) error {
 	return nil
 }
 
-// detectInFlightState는 in-flight 상태 (*.tmp 파일 존재)를 감지합니다.
-// REQ-V3R2-RT-007-031: crash 후 재시작 시 partial write를 복구합니다.
+// detectInFlightState detects an in-flight state (presence of a *.tmp file).
+// REQ-V3R2-RT-007-031: recovers a partial write on restart after a crash.
 func detectInFlightState(projectRoot string) bool {
 	stateDir := filepath.Join(projectRoot, ".moai", "state")
 	versionTmpFile := filepath.Join(stateDir, versionTmpFileName)
@@ -84,8 +84,8 @@ func detectInFlightState(projectRoot string) bool {
 	return err == nil
 }
 
-// cleanupInFlightState는 in-flight 상태를 정리합니다.
-// REQ-V3R2-RT-007-031: 재적용 전에 임시 파일을 제거합니다.
+// cleanupInFlightState clears the in-flight state.
+// REQ-V3R2-RT-007-031: removes the temporary file before reapplying.
 func cleanupInFlightState(projectRoot string) error {
 	stateDir := filepath.Join(projectRoot, ".moai", "state")
 	versionTmpFile := filepath.Join(stateDir, versionTmpFileName)

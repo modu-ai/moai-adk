@@ -1,20 +1,20 @@
 package migration
 
 // @MX:ANCHOR fan_in=4 - SPEC-V3R2-RT-007 REQ-016 compile-time static registry.
-// Pending(), Highest(), init()-time DuplicateMigrationVersion check에서 읽습니다.
-// 향후 마이그레이션 추가 (m002+)는 여기에 등록해야 합니다. 런타임 수정 금지.
+// Read by Pending(), Highest(), and the init()-time DuplicateMigrationVersion check.
+// Future migrations (m002+) must be registered here. Runtime modification is forbidden.
 
 import (
 	"fmt"
 	"sort"
 )
 
-// registry는 등록된 모든 마이그레이션입니다.
-// REQ-V3R2-RT-007-016: compile-time static이며 런타임 수정이 금지됩니다.
+// registry holds every registered migration.
+// REQ-V3R2-RT-007-016: compile-time static and forbidden from runtime modification.
 var registry []Migration
 
-// init()에서 중복 버전 검사를 수행합니다.
-// REQ-V3R2-RT-007-053: 동일 Version을 가진 두 마이그레이션이 등록되면 panic이 발생합니다.
+// init performs the duplicate-version check.
+// REQ-V3R2-RT-007-053: panics when two migrations declare the same Version.
 func init() {
 	versions := make(map[int]string)
 	for _, m := range registry {
@@ -26,18 +26,18 @@ func init() {
 	}
 }
 
-// Register는 마이그레이션을 등록합니다.
-// 일반적으로 각 마이그레이션 패키지의 init()에서 호출됩니다.
+// Register registers a migration.
+// Typically called from the init() of each migration package.
 func Register(m Migration) {
 	registry = append(registry, m)
 }
 
-// All은 등록된 모든 마이그레이션을 반환합니다 (정렬됨).
+// AllRegistry returns every registered migration (sorted).
 func AllRegistry() []Migration {
 	result := make([]Migration, len(registry))
 	copy(result, registry)
 
-	// 오름차순 정렬
+	// Sort ascending.
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Version < result[j].Version
 	})
@@ -45,7 +45,7 @@ func AllRegistry() []Migration {
 	return result
 }
 
-// HighestVersion은 등록된 마이그레이션의 최대 버전을 반환합니다.
+// HighestVersion returns the maximum version among registered migrations.
 func HighestVersion() int {
 	max := 0
 	for _, m := range registry {
@@ -56,7 +56,7 @@ func HighestVersion() int {
 	return max
 }
 
-// PendingMigrations는 현재 버전 기준으로 적용이 필요한 마이그레이션 목록을 반환합니다.
+// PendingMigrations returns the list of migrations that need to be applied given the current version.
 func PendingMigrations(current int) []Migration {
 	var pending []Migration
 	for _, m := range registry {
@@ -65,7 +65,7 @@ func PendingMigrations(current int) []Migration {
 		}
 	}
 
-	// 오름차순 정렬
+	// Sort ascending.
 	sort.Slice(pending, func(i, j int) bool {
 		return pending[i].Version < pending[j].Version
 	})
@@ -73,7 +73,7 @@ func PendingMigrations(current int) []Migration {
 	return pending
 }
 
-// FindByVersion는 버전으로 마이그레이션을 찾습니다.
+// FindByVersion looks up a migration by version.
 func FindByVersion(version int) *Migration {
 	for _, m := range registry {
 		if m.Version == version {

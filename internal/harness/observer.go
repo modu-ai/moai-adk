@@ -95,13 +95,13 @@ func (o *Observer) RecordEvent(eventType EventType, subject, contextHash string)
 }
 
 // RecordExtendedEvent records a fully-populated Event to usage-log.jsonl.
-// 기존 RecordEvent와 달리 옵션 필드(omitempty)를 포함한 Event 구조체 전체를 수용한다.
-// T-A3/A4/A5 핸들러에서 사용하며 기존 RecordEvent는 변경하지 않는다.
+// Unlike the existing RecordEvent, accepts the full Event struct including optional fields (omitempty).
+// Used by the T-A3/A4/A5 handlers without modifying the existing RecordEvent.
 //
-// @MX:ANCHOR: [AUTO] RecordExtendedEvent는 Stop/SubagentStop/UserPromptSubmit 3개 핸들러의 공통 진입점.
+// @MX:ANCHOR: [AUTO] RecordExtendedEvent is the common entry point for the Stop/SubagentStop/UserPromptSubmit handlers.
 // @MX:REASON: [AUTO] fan_in >= 3: runHarnessObserveStop, runHarnessObserveSubagentStop, runHarnessObserveUserPromptSubmit
 func (o *Observer) RecordExtendedEvent(evt Event) error {
-	// 기본 메타데이터 보완: nowFn과 SchemaVersion이 미설정 시 채움
+	// Fill in default metadata: nowFn and SchemaVersion when unset.
 	if evt.Timestamp.IsZero() {
 		evt.Timestamp = o.nowFn().UTC()
 	}

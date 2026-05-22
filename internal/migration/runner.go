@@ -7,61 +7,61 @@ import (
 	"sort"
 )
 
-// slogAttr는 slog.Attr 헬퍼입니다.
+// slogAttr is a slog.Attr helper.
 func slogAttr(key string, value any) slog.Attr {
 	return slog.Any(key, value)
 }
 
-// @MX:ANCHOR fan_in=2 - SPEC-V3R2-RT-007 REQ-012, REQ-020 진입점.
-// session-start hook (silent 경로)과 'moai migration run' CLI (manual 경로)에서 호출됩니다.
-// idempotency 계약 + version-file atomic update + log entry가 양쪽 호출 사이트에서 유지되어야 합니다.
+// @MX:ANCHOR fan_in=2 - SPEC-V3R2-RT-007 REQ-012, REQ-020 entry point.
+// Called by the session-start hook (silent path) and the 'moai migration run' CLI (manual path).
+// The idempotency contract, version-file atomic update, and log entry must hold at both call sites.
 
-// Migration는 단일 마이그레이션을 나타냅니다.
-// REQ-V3R2-RT-007-010: Version, Name, Apply 함수, 선택적 Rollback 함수를 포함합니다.
+// Migration represents a single migration.
+// REQ-V3R2-RT-007-010: holds Version, Name, Apply function, and an optional Rollback function.
 type Migration struct {
 	Version  int
 	Name     string
 	Apply    func(projectRoot string) error
-	Rollback func(projectRoot string) error // 선택적, nil 가능
+	Rollback func(projectRoot string) error // optional, may be nil
 }
 
-// MigrationRunner는 마이그레이션 실행 인터페이스입니다.
-// REQ-V3R2-RT-007-012: 등록된 마이그레이션을 순서대로 적용합니다.
+// MigrationRunner is the migration execution interface.
+// REQ-V3R2-RT-007-012: applies registered migrations in order.
 type MigrationRunner interface {
-	// Apply는 pending 마이그레이션을 적용합니다.
-	// 반환: applied (적용된 버전 목록), err (실패 시 에러)
+	// Apply applies pending migrations.
+	// Returns: applied (list of applied versions), err (error on failure).
 	Apply(ctx context.Context) (applied []int, err error)
 
-	// Status는 현재 마이그레이션 상태를 반환합니다.
-	// 반환: current (현재 버전), pending (pending 버전 목록), lastApplied (마지막 적용된 로그), err
+	// Status returns the current migration state.
+	// Returns: current (current version), pending (pending version list), lastApplied (last applied log), err.
 	Status() (current int, pending []int, lastApplied *LogEntry, err error)
 
-	// Rollback는 특정 버전으로 롤백합니다.
-	// REQ-V3R2-RT-007-024: Rollback이 nil이면 ErrMigrationNotRollbackable를 반환합니다.
+	// Rollback rolls back to the specified version.
+	// REQ-V3R2-RT-007-024: returns ErrMigrationNotRollbackable when Rollback is nil.
 	Rollback(version int) error
 }
 
-// runner는 MigrationRunner의 concrete 구현입니다.
+// runner is the concrete implementation of MigrationRunner.
 type runner struct {
 	projectRoot string
 }
 
-// NewRunner는 새 MigrationRunner를 생성합니다.
-// REQ-V3R2-RT-007-012: projectRoot를 기반으로 runner를 초기화합니다.
+// NewRunner constructs a new MigrationRunner.
+// REQ-V3R2-RT-007-012: initializes a runner based on projectRoot.
 func NewRunner(projectRoot string) MigrationRunner {
 	return &runner{
 		projectRoot: projectRoot,
 	}
 }
 
-// Apply는 pending 마이그레이션을 순서대로 적용합니다.
-// REQ-V3R2-RT-007-012: Version > current인 마이그레이션을 오름차순으로 적용합니다.
-// REQ-V3R2-RT-007-013: 각 성공 후 version-file을 atomic update합니다.
-// REQ-V3R2-RT-007-021: 실패 시 version-file을 업데이트하지 않습니다.
+// Apply applies pending migrations in order.
+// REQ-V3R2-RT-007-012: applies migrations with Version > current in ascending order.
+// REQ-V3R2-RT-007-013: atomically updates the version-file after each success.
+// REQ-V3R2-RT-007-021: does not update the version-file on failure.
 func (r *runner) Apply(ctx context.Context) ([]int, error) {
-	// REQ-V3R2-RT-007-031: crash 후 in-flight .tmp 파일이 남아있으면 정리합니다.
-	// detectInFlightState가 true를 반환하면 cleanupInFlightState로 제거 후 진행합니다.
-	// 이미 적용된 version-file은 변경되지 않았으므로 안전합니다.
+	// REQ-V3R2-RT-007-031: clean up any leftover in-flight .tmp file after a crash.
+	// If detectInFlightState returns true, remove it via cleanupInFlightState before proceeding.
+	// The already-applied version-file is untouched, so this is safe.
 	if detectInFlightState(r.projectRoot) {
 		slog.LogAttrs(ctx, slog.LevelWarn, "in-flight migration state detected, cleaning up before apply")
 		if err := cleanupInFlightState(r.projectRoot); err != nil {
@@ -76,7 +76,7 @@ func (r *runner) Apply(ctx context.Context) ([]int, error) {
 		return nil, fmt.Errorf("version 읽기 실패: %w", err)
 	}
 
-	// Version ahead인 경우 no-op (REQ-V3R2-RT-007-054)
+	// No-op when the version is ahead (REQ-V3R2-RT-007-054).
 	highest := Highest()
 	if current > highest {
 		slog.LogAttrs(ctx, slog.LevelWarn, "version file ahead of known migrations",
@@ -96,11 +96,11 @@ func (r *runner) Apply(ctx context.Context) ([]int, error) {
 			slogAttr("version", m.Version), slogAttr("name", m.Name))
 
 		if err := m.Apply(r.projectRoot); err != nil {
-			// 실패 시 log 기록하지만 version 진행하지 않음 (REQ-V3R2-RT-007-021)
+			// On failure, record the log but do not advance the version (REQ-V3R2-RT-007-021).
 			_ = Append(r.projectRoot, LogEntry{
 				Version:     m.Version,
 				Name:        m.Name,
-				StartedAt:   nil, // TODO: 추적 추가
+				StartedAt:   nil, // TODO: add tracking
 				CompletedAt: nil,
 				Result:      "failed",
 				Details:     err.Error(),
@@ -109,16 +109,16 @@ func (r *runner) Apply(ctx context.Context) ([]int, error) {
 			return applied, fmt.Errorf("마이그레이션 %d 적용 실패: %w", m.Version, err)
 		}
 
-		// 성공 시 version 업데이트 (REQ-V3R2-RT-007-013)
+		// On success, update the version (REQ-V3R2-RT-007-013).
 		if err := writeVersion(r.projectRoot, m.Version); err != nil {
 			return applied, fmt.Errorf("version %d 업데이트 실패: %w", m.Version, err)
 		}
 
-		// 성공 로그 기록 (REQ-V3R2-RT-007-014)
+		// Record the success log (REQ-V3R2-RT-007-014).
 		_ = Append(r.projectRoot, LogEntry{
 			Version:     m.Version,
 			Name:        m.Name,
-			StartedAt:   nil, // TODO: 추적 추가
+			StartedAt:   nil, // TODO: add tracking
 			CompletedAt: nil,
 			Result:      "success",
 			Details:     "적용 완료",
@@ -132,8 +132,8 @@ func (r *runner) Apply(ctx context.Context) ([]int, error) {
 	return applied, nil
 }
 
-// Status는 현재 마이그레이션 상태를 반환합니다.
-// REQ-V3R2-RT-007-015: current version, pending 목록, last applied 로그를 반환합니다.
+// Status returns the current migration state.
+// REQ-V3R2-RT-007-015: returns the current version, pending list, and last applied log.
 func (r *runner) Status() (int, []int, *LogEntry, error) {
 	current, err := readVersion(r.projectRoot)
 	if err != nil {
@@ -154,10 +154,10 @@ func (r *runner) Status() (int, []int, *LogEntry, error) {
 	return current, pendingVersions, lastApplied, nil
 }
 
-// Rollback는 특정 버전으로 롤백합니다.
-// REQ-V3R2-RT-007-024: Rollback이 nil이면 ErrMigrationNotRollbackable를 반환합니다.
+// Rollback rolls back to the specified version.
+// REQ-V3R2-RT-007-024: returns ErrMigrationNotRollbackable when Rollback is nil.
 func (r *runner) Rollback(version int) error {
-	// registry에서 해당 버전의 마이그레이션 찾기
+	// Find the migration with the matching version in the registry.
 	var target *Migration
 	for _, m := range All() {
 		if m.Version == version {
@@ -174,21 +174,21 @@ func (r *runner) Rollback(version int) error {
 		return ErrMigrationNotRollbackable
 	}
 
-	// Rollback 실행
+	// Execute the Rollback.
 	if err := target.Rollback(r.projectRoot); err != nil {
 		return fmt.Errorf("마이그레이션 %d rollback 실패: %w", version, err)
 	}
 
-	// version-file 업데이트 (version-1)
+	// Update the version-file (version-1).
 	if err := writeVersion(r.projectRoot, version-1); err != nil {
 		return fmt.Errorf("version 업데이트 실패: %w", err)
 	}
 
-	// rollback 로그 기록
+	// Record the rollback log.
 	_ = Append(r.projectRoot, LogEntry{
 		Version:     version,
 		Name:        target.Name,
-		StartedAt:   nil, // TODO: 추적 추가
+		StartedAt:   nil, // TODO: add tracking
 		CompletedAt: nil,
 		Result:      "rolled-back",
 		Details:     fmt.Sprintf("버전 %d에서 %d로 rollback", version, version-1),
@@ -197,17 +197,17 @@ func (r *runner) Rollback(version int) error {
 	return nil
 }
 
-// ErrMigrationNotRollbackable는 rollback 불가능한 마이그레이션에 대한 에러입니다.
-// REQ-V3R2-RT-007-024: CRITICAL bug-fix 마이그레이션은 rollback을 지원하지 않습니다.
+// ErrMigrationNotRollbackable is the error returned for non-rollback-able migrations.
+// REQ-V3R2-RT-007-024: CRITICAL bug-fix migrations do not support rollback.
 var ErrMigrationNotRollbackable = fmt.Errorf("마이그레이션이 non-rollback-able로 선언됨")
 
-// All는 등록된 모든 마이그레이션을 반환합니다 (정렬됨).
+// All returns every registered migration (sorted).
 func All() []Migration {
 	return registry
 }
 
-// Highest는 등록된 마이그레이션의 최대 버전을 반환합니다.
-// REQ-V3R2-RT-007-016: registry는 compile-time static입니다.
+// Highest returns the maximum version among registered migrations.
+// REQ-V3R2-RT-007-016: the registry is compile-time static.
 func Highest() int {
 	max := 0
 	for _, m := range registry {
@@ -218,8 +218,8 @@ func Highest() int {
 	return max
 }
 
-// Pending는 현재 버전 기준으로 적용이 필요한 마이그레이션 목록을 반환합니다.
-// REQ-V3R2-RT-007-012: Version > current인 마이그레이션 목록을 오름차순으로 반환합니다.
+// Pending returns the list of migrations that need to be applied given the current version.
+// REQ-V3R2-RT-007-012: returns migrations with Version > current in ascending order.
 func Pending(current int) []Migration {
 	var pending []Migration
 	for _, m := range registry {
@@ -228,7 +228,7 @@ func Pending(current int) []Migration {
 		}
 	}
 
-	// 오름차순 정렬
+	// Sort ascending.
 	sort.Slice(pending, func(i, j int) bool {
 		return pending[i].Version < pending[j].Version
 	})

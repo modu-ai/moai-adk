@@ -6,30 +6,30 @@ import (
 	"sync"
 )
 
-// securityKeywords는 force-thorough를 발동하는 보안 관련 키워드 목록입니다.
+// securityKeywords is the list of security-related keywords that trigger force-thorough.
 // REQ-HRN-001-008, spec.md §4 Assumptions.
 //
-// @MX:WARN: [AUTO] FROZEN 키워드 집합 — 변경 시 CON-002 amendment 필요
-// @MX:REASON: design-constitution §5 FROZEN floor; 보안 키워드 집합 변경은 스키마 변경에 준함
+// @MX:WARN: [AUTO] FROZEN keyword set — modifications require a CON-002 amendment
+// @MX:REASON: design-constitution §5 FROZEN floor; changes to the security keyword set are treated as schema changes
 var securityKeywords = []string{
 	"auth", "crypto", "encrypt", "oauth", "jwt", "session", "password", "rbac", "acl",
 }
 
-// paymentKeywords는 force-thorough를 발동하는 결제 관련 키워드 목록입니다.
+// paymentKeywords is the list of payment-related keywords that trigger force-thorough.
 // REQ-HRN-001-008, spec.md §4 Assumptions.
 var paymentKeywords = []string{
 	"payment", "billing", "subscription", "invoice", "charge", "stripe", "paypal",
 }
 
-// matchForceThoroughKeywords는 SPEC의 title과 Requirements 섹션 본문에서
-// 보안/결제 키워드를 매칭합니다.
-// REQ-HRN-001-008: title OR any requirement body에 키워드가 있으면 force-thorough.
-// 주의: tags 필드는 키워드 매칭 대상에서 제외합니다 (false-positive 방지).
-// 단어 경계 매칭으로 "author" → "auth" 오탐 방지.
-// 매칭된 키워드 목록을 반환합니다 (없으면 빈 슬라이스).
+// matchForceThoroughKeywords matches security/payment keywords against
+// the SPEC title and Requirements section body.
+// REQ-HRN-001-008: force-thorough if a keyword appears in title OR any requirement body.
+// Note: the tags field is excluded from keyword matching (false-positive prevention).
+// Word-boundary matching prevents false positives such as "author" -> "auth".
+// Returns the list of matched keywords (empty slice when none match).
 func matchForceThoroughKeywords(doc *SPECInput) []string {
-	// 매칭 대상: title + Requirements 섹션 본문 (대소문자 무관)
-	// tags는 제외 (false-positive 방지)
+	// Match target: title + Requirements section body (case-insensitive).
+	// tags are excluded (false-positive prevention).
 	searchText := strings.ToLower(doc.Title + " " + extractRequirementsSection(doc.Body))
 
 	var matched []string
@@ -51,40 +51,40 @@ func matchForceThoroughKeywords(doc *SPECInput) []string {
 	return matched
 }
 
-// keywordPatternCache는 컴파일된 regex 패턴 캐시입니다.
-// sync.Map으로 goroutine-safe 캐시를 구현합니다.
+// keywordPatternCache is the cache of compiled regex patterns.
+// sync.Map provides a goroutine-safe cache.
 var keywordPatternCache sync.Map
 
-// matchKeywordBoundary는 텍스트에 단어 경계를 고려하여 키워드가 있는지 확인합니다.
-// "auth" → "authentication" 허용, "author" 오탐 방지.
+// matchKeywordBoundary checks whether the text contains the keyword, honoring word boundaries.
+// Allows "auth" -> "authentication" while preventing a false positive on "author".
 func matchKeywordBoundary(lowerText, keyword string) bool {
-	// 캐시된 패턴 조회
+	// Look up the cached pattern.
 	if v, ok := keywordPatternCache.Load(keyword); ok {
 		return v.(*regexp.Regexp).MatchString(lowerText)
 	}
 
-	// 패턴 컴파일
+	// Compile the pattern.
 	patStr := `\b` + regexp.QuoteMeta(keyword) + `\b`
 	compiled, err := regexp.Compile(patStr)
 	if err != nil {
-		// 컴파일 실패 시 단순 포함 검색으로 폴백
+		// Fall back to a simple contains search on compile failure.
 		return strings.Contains(lowerText, keyword)
 	}
 
-	// 캐시에 저장 (동시 write도 안전)
+	// Store in the cache (concurrent writes are safe).
 	keywordPatternCache.Store(keyword, compiled)
 	return compiled.MatchString(lowerText)
 }
 
-// extractRequirementsSection은 SPEC 본문에서 Requirements 섹션 텍스트를 추출합니다.
-// "## 5. Requirements" 섹션부터 다음 H2 섹션까지의 내용을 반환합니다.
-// 섹션이 없으면 전체 본문을 반환합니다.
+// extractRequirementsSection extracts the Requirements section text from the SPEC body.
+// Returns content from "## 5. Requirements" up to the next H2 section.
+// Returns the entire body when no such section exists.
 func extractRequirementsSection(body string) string {
 	if body == "" {
 		return ""
 	}
 
-	// Requirements 섹션 찾기
+	// Find the Requirements section.
 	lines := strings.Split(body, "\n")
 	inReqs := false
 	var reqLines []string
@@ -95,7 +95,7 @@ func extractRequirementsSection(body string) string {
 			continue
 		}
 		if inReqs {
-			// 다음 H2 섹션 시작 시 중단
+			// Stop at the start of the next H2 section.
 			if strings.HasPrefix(line, "## ") {
 				break
 			}

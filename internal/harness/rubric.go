@@ -1,7 +1,7 @@
-// Package harness — HRN-003 Rubric struct, Markdown 파서, 인용 검증.
-// REQ-HRN-003-003: 4 anchor level (0.25, 0.50, 0.75, 1.00) FROZEN.
-// REQ-HRN-003-005: .md 프로필 파일 파서.
-// REQ-HRN-003-009: rubric-anchor 인용 강제.
+// Package harness — HRN-003 Rubric struct, Markdown parser, and citation validation.
+// REQ-HRN-003-003: 4 anchor levels (0.25, 0.50, 0.75, 1.00) FROZEN.
+// REQ-HRN-003-005: .md profile-file parser.
+// REQ-HRN-003-009: enforces rubric-anchor citation.
 package harness
 
 import (
@@ -18,7 +18,7 @@ import (
 // @MX:WARN: [AUTO] FROZEN-zone constraint per CONST-V3R2-155; anchor set must remain {0.25, 0.50, 0.75, 1.00}
 // @MX:REASON: design-constitution §12 Mechanism 1 — "Every evaluation criterion has a concrete rubric with examples of scores at 0.25, 0.50, 0.75, and 1.0" (FROZEN)
 
-// canonicalAnchors는 rubric anchor의 canonical 집합입니다 (FROZEN).
+// canonicalAnchors is the canonical set of rubric anchors (FROZEN).
 // REQ-HRN-003-003, REQ-HRN-003-013.
 var canonicalAnchors = map[float64]bool{
 	0.25: true,
@@ -27,8 +27,8 @@ var canonicalAnchors = map[float64]bool{
 	1.00: true,
 }
 
-// canonicalAnchorStrings는 rubric anchor의 canonical 문자열 집합입니다 (FROZEN).
-// REQ-HRN-003-009: ValidateCitation에서 사용합니다.
+// canonicalAnchorStrings is the canonical string set of rubric anchors (FROZEN).
+// REQ-HRN-003-009: used by ValidateCitation.
 var canonicalAnchorStrings = map[string]bool{
 	"0.25": true,
 	"0.50": true,
@@ -36,49 +36,49 @@ var canonicalAnchorStrings = map[string]bool{
 	"1.00": true,
 }
 
-// DimensionRubric는 단일 Dimension에 대한 rubric 설정입니다.
+// DimensionRubric is the rubric configuration for a single Dimension.
 type DimensionRubric struct {
-	// Weight는 이 차원의 가중치 (0.0~1.0)입니다.
+	// Weight is the weight of this dimension (0.0~1.0).
 	Weight float64
-	// PassThreshold는 이 차원의 최소 통과 임계값 (≥ 0.60 FROZEN floor)입니다.
+	// PassThreshold is the minimum pass threshold for this dimension (>= 0.60 FROZEN floor).
 	PassThreshold float64
-	// Anchors는 anchor score → 설명 맵입니다.
-	// canonical: {0.25, 0.50, 0.75, 1.00}
+	// Anchors is the map of anchor score -> description.
+	// Canonical set: {0.25, 0.50, 0.75, 1.00}.
 	Anchors map[float64]string
-	// Aggregation은 이 차원의 집계 방식입니다 ("min" 또는 "mean").
-	// 빈 값이면 프로필 수준의 Rubric.Aggregation을 상속합니다.
+	// Aggregation is the aggregation mode for this dimension ("min" or "mean").
+	// An empty value inherits the profile-level Rubric.Aggregation.
 	Aggregation string
 }
 
-// Rubric는 evaluator profile의 채점 기준 구조체입니다.
-// REQ-HRN-003-003: 4 anchor level 포함.
-// REQ-HRN-003-005: .md 파일에서 파싱.
+// Rubric is the scoring-criteria struct of an evaluator profile.
+// REQ-HRN-003-003: includes 4 anchor levels.
+// REQ-HRN-003-005: parsed from a .md file.
 type Rubric struct {
-	// ProfileName은 프로필 이름입니다 (예: "default", "strict").
+	// ProfileName is the profile name (for example "default", "strict").
 	ProfileName string
-	// Dimensions는 Dimension → DimensionRubric 맵입니다.
-	// 정확히 4개의 차원 (Functionality, Security, Craft, Consistency) 포함.
+	// Dimensions is the Dimension -> DimensionRubric map.
+	// Contains exactly four dimensions (Functionality, Security, Craft, Consistency).
 	Dimensions map[Dimension]DimensionRubric
-	// PassThreshold는 전체 통과 임계값 (≥ 0.60 FROZEN floor)입니다.
+	// PassThreshold is the overall pass threshold (>= 0.60 FROZEN floor).
 	PassThreshold float64
-	// MustPass는 must-pass 차원 목록입니다.
-	// [Security] floor — 이보다 좁은 집합은 허용되지 않습니다 (REQ-HRN-003-018).
+	// MustPass is the must-pass dimension list.
+	// [Security] floor — narrower sets are not permitted (REQ-HRN-003-018).
 	MustPass []Dimension
-	// Aggregation은 기본 집계 방식입니다 ("min" 또는 "mean").
+	// Aggregation is the default aggregation mode ("min" or "mean").
 	Aggregation string
 }
 
-// Validate는 Rubric의 유효성을 검증합니다.
-// 다음 조건을 모두 만족해야 합니다:
-//   - 정확히 4개의 canonical 차원 (REQ-HRN-003-012)
-//   - 각 차원에 정확히 4개의 canonical anchor (REQ-HRN-003-013)
-//   - pass_threshold ≥ 0.60 (REQ-HRN-003-014)
-//   - aggregation이 {"min", "mean"} 중 하나 (REQ-HRN-003-007)
-//   - MustPass가 [Security] floor를 포함 (REQ-HRN-003-018)
+// Validate verifies the Rubric.
+// All of the following conditions must hold:
+//   - exactly 4 canonical dimensions (REQ-HRN-003-012)
+//   - exactly 4 canonical anchors per dimension (REQ-HRN-003-013)
+//   - pass_threshold >= 0.60 (REQ-HRN-003-014)
+//   - aggregation is one of {"min", "mean"} (REQ-HRN-003-007)
+//   - MustPass includes the [Security] floor (REQ-HRN-003-018)
 func (r *Rubric) Validate() error {
 	var errs []config.ValidationError
 
-	// 정확히 4개의 canonical 차원을 가져야 합니다.
+	// Must have exactly 4 canonical dimensions.
 	if len(r.Dimensions) != 4 {
 		errs = append(errs, config.ValidationError{
 			Field:   "Dimensions",
@@ -88,7 +88,7 @@ func (r *Rubric) Validate() error {
 		})
 	}
 
-	// 각 차원이 canonical인지 검증합니다.
+	// Verify that each dimension is canonical.
 	for dim, dr := range r.Dimensions {
 		if !dim.IsValid() {
 			errs = append(errs, config.ValidationError{
@@ -100,7 +100,7 @@ func (r *Rubric) Validate() error {
 			continue
 		}
 
-		// 각 차원에 정확히 4개의 canonical anchor가 있어야 합니다.
+		// Each dimension must have exactly 4 canonical anchors.
 		if err := validateAnchors(dim, dr.Anchors); err != nil {
 			errs = append(errs, config.ValidationError{
 				Field:   fmt.Sprintf("Dimensions[%v].Anchors", dim),
@@ -109,7 +109,7 @@ func (r *Rubric) Validate() error {
 			})
 		}
 
-		// 차원별 pass_threshold ≥ 0.60 검증.
+		// Validate per-dimension pass_threshold >= 0.60.
 		if dr.PassThreshold < 0.60 {
 			errs = append(errs, config.ValidationError{
 				Field:   fmt.Sprintf("Dimensions[%v].PassThreshold", dim),
@@ -119,7 +119,7 @@ func (r *Rubric) Validate() error {
 			})
 		}
 
-		// 차원별 aggregation 검증.
+		// Validate per-dimension aggregation.
 		if dr.Aggregation != "" && dr.Aggregation != "min" && dr.Aggregation != "mean" {
 			errs = append(errs, config.ValidationError{
 				Field:   fmt.Sprintf("Dimensions[%v].Aggregation", dim),
@@ -130,7 +130,7 @@ func (r *Rubric) Validate() error {
 		}
 	}
 
-	// 전체 pass_threshold ≥ 0.60 검증.
+	// Validate overall pass_threshold >= 0.60.
 	if r.PassThreshold < 0.60 {
 		errs = append(errs, config.ValidationError{
 			Field:   "PassThreshold",
@@ -140,7 +140,7 @@ func (r *Rubric) Validate() error {
 		})
 	}
 
-	// aggregation 검증.
+	// Validate aggregation.
 	if r.Aggregation != "min" && r.Aggregation != "mean" {
 		errs = append(errs, config.ValidationError{
 			Field:   "Aggregation",
@@ -150,8 +150,8 @@ func (r *Rubric) Validate() error {
 		})
 	}
 
-	// MustPass가 [Security] floor를 포함하는지 검증합니다.
-	// REQ-HRN-003-018: [Security]가 floor이며 이보다 좁은 집합은 허용되지 않습니다.
+	// Verify that MustPass includes the [Security] floor.
+	// REQ-HRN-003-018: [Security] is the floor; narrower sets are not permitted.
 	if err := validateMustPassFloor(r.MustPass); err != nil {
 		errs = append(errs, config.ValidationError{
 			Field:   "MustPass",
@@ -166,7 +166,7 @@ func (r *Rubric) Validate() error {
 	return nil
 }
 
-// validateAnchors는 anchor 집합이 정확히 canonical {0.25, 0.50, 0.75, 1.00}인지 검증합니다.
+// validateAnchors verifies that the anchor set is exactly the canonical {0.25, 0.50, 0.75, 1.00}.
 func validateAnchors(dim Dimension, anchors map[float64]string) error {
 	if len(anchors) != 4 {
 		return fmt.Errorf("dimension %v must have exactly 4 anchor levels, got %d (FROZEN per REQ-HRN-003-013)", dim, len(anchors))
@@ -179,7 +179,7 @@ func validateAnchors(dim Dimension, anchors map[float64]string) error {
 	return nil
 }
 
-// validateMustPassFloor는 MustPass 집합이 [Security] floor를 포함하는지 검증합니다.
+// validateMustPassFloor verifies that the MustPass set includes the [Security] floor.
 // REQ-HRN-003-018: profiles MAY widen but MAY NOT narrow below [Security].
 func validateMustPassFloor(mustPass []Dimension) error {
 	hasSecurityFloor := false
@@ -195,11 +195,11 @@ func validateMustPassFloor(mustPass []Dimension) error {
 	return nil
 }
 
-// ValidateCitation는 SubCriterionScore의 RubricAnchor 필드가 canonical anchor 값 중 하나인지 검증합니다.
-// REQ-HRN-003-009: empty 또는 non-canonical anchor는 ErrRubricCitationMissing을 반환합니다.
-// AC-HRN-003-05.a: 빈 필드 → ErrRubricCitationMissing.
-// AC-HRN-003-05.b: non-canonical 값 (예: "0.65") → ErrRubricCitationMissing.
-// AC-HRN-003-05.c: canonical 값 → nil.
+// ValidateCitation verifies that the SubCriterionScore.RubricAnchor field is one of the canonical anchor values.
+// REQ-HRN-003-009: empty or non-canonical anchor returns ErrRubricCitationMissing.
+// AC-HRN-003-05.a: empty field -> ErrRubricCitationMissing.
+// AC-HRN-003-05.b: non-canonical value (e.g. "0.65") -> ErrRubricCitationMissing.
+// AC-HRN-003-05.c: canonical value -> nil.
 func (r *Rubric) ValidateCitation(score SubCriterionScore) error {
 	if score.RubricAnchor == "" {
 		return fmt.Errorf("%w: sub-criterion score missing rubric_anchor field (per design-constitution §12 Mechanism 1)", config.ErrRubricCitationMissing)
@@ -211,10 +211,10 @@ func (r *Rubric) ValidateCitation(score SubCriterionScore) error {
 }
 
 // ─────────────────────────────────────────────
-// Markdown 프로필 파서
+// Markdown profile parser
 // ─────────────────────────────────────────────
 
-// dimensionNameMap은 프로필 파일의 차원 이름을 Dimension enum으로 매핑합니다.
+// dimensionNameMap maps the dimension names from the profile file to the Dimension enum.
 var dimensionNameMap = map[string]Dimension{
 	"Functionality": Functionality,
 	"Security":      Security,
@@ -222,14 +222,14 @@ var dimensionNameMap = map[string]Dimension{
 	"Consistency":   Consistency,
 }
 
-// ParseRubricMarkdown은 .md 형식의 evaluator profile 파일을 파싱하여 Rubric을 반환합니다.
-// REQ-HRN-003-005: .moai/config/evaluator-profiles/{name}.md 파일 소비.
-// 파서 구조:
-//   - H2 "## Evaluation Dimensions" 테이블 → Weight + PassThreshold per dim
-//   - H2 "## Must-Pass Criteria" → MustPass slice
-//   - H2 "## Scoring Rubric" → H3 per dimension → 2-column score 테이블 → anchor map
+// ParseRubricMarkdown parses an evaluator profile file in .md format and returns a Rubric.
+// REQ-HRN-003-005: consumes the .moai/config/evaluator-profiles/{name}.md file.
+// Parser structure:
+//   - H2 "## Evaluation Dimensions" table -> Weight + PassThreshold per dim
+//   - H2 "## Must-Pass Criteria" -> MustPass slice
+//   - H2 "## Scoring Rubric" -> H3 per dimension -> 2-column score table -> anchor map
 //
-// 톨러런트: 추가 공백 허용; anchor score 정규화 ("1.0" → "1.00" 변환 후 float64 파싱).
+// Tolerant: allows extra whitespace; normalizes anchor scores ("1.0" -> "1.00") before float64 parsing.
 func ParseRubricMarkdown(path string) (*Rubric, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -237,18 +237,18 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 	}
 	defer func() { _ = f.Close() }()
 
-	// 프로필 이름은 파일명(확장자 제외)에서 추출합니다.
+	// Profile name is extracted from the filename (without extension).
 	profileName := extractProfileName(path)
 
 	rubric := &Rubric{
 		ProfileName:   profileName,
-		PassThreshold: 0.60, // 기본값 (FROZEN floor)
+		PassThreshold: 0.60, // Default (FROZEN floor).
 		Aggregation:   "min",
-		MustPass:      []Dimension{Functionality, Security}, // 기본값
+		MustPass:      []Dimension{Functionality, Security}, // Default.
 		Dimensions:    make(map[Dimension]DimensionRubric),
 	}
 
-	// 파서 상태 머신.
+	// Parser state machine.
 	type parseSection int
 	const (
 		sectionNone parseSection = iota
@@ -264,7 +264,7 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 	for scanner.Scan() {
 		line := strings.TrimRight(scanner.Text(), " \t")
 
-		// H2 섹션 감지.
+		// Detect H2 section.
 		if strings.HasPrefix(line, "## ") {
 			heading := strings.TrimPrefix(line, "## ")
 			switch {
@@ -284,32 +284,32 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 			continue
 		}
 
-		// H3 섹션 감지 (Scoring Rubric 내 차원별 섹션).
+		// Detect H3 section (per-dimension sections inside Scoring Rubric).
 		if strings.HasPrefix(line, "### ") && section == sectionScoringRubric {
 			heading := strings.TrimPrefix(line, "### ")
-			// 차원 이름 추출 (예: "Functionality (40%)" → "Functionality")
+			// Extract the dimension name (for example "Functionality (40%)" -> "Functionality").
 			dimName := strings.Fields(heading)[0]
 			if dim, ok := dimensionNameMap[dimName]; ok {
 				currentRubricDim = dim
-				// 차원이 없으면 초기화합니다.
+				// Initialize the dimension when it does not yet exist.
 				if _, exists := rubric.Dimensions[dim]; !exists {
 					rubric.Dimensions[dim] = DimensionRubric{
-						Weight:        0.25, // 기본값
-						PassThreshold: 0.60, // FROZEN floor
+						Weight:        0.25, // Default.
+						PassThreshold: 0.60, // FROZEN floor.
 						Anchors:       make(map[float64]string),
 					}
 				}
 			} else {
-				// Scoring Rubric에서 알 수 없는 차원 이름은 건너뜁니다.
-				// Evaluation Dimensions 테이블에서의 알 수 없는 차원은 Validate()에서 검증합니다.
-				// frontend.md는 "Craft & Functionality", "Design Quality", "Originality" 등의
-				// 섹션을 가지는데, 파서는 이를 무시하고 Craft에 UI 관련 내용을 매핑합니다.
+				// Skip unknown dimension names inside Scoring Rubric.
+				// Unknown dimensions in the Evaluation Dimensions table are validated by Validate().
+				// frontend.md has sections such as "Craft & Functionality", "Design Quality", and "Originality";
+				// the parser ignores them and maps UI-related content to Craft.
 				currentRubricDim = 0
 			}
 			continue
 		}
 
-		// 테이블 행 파싱.
+		// Parse table rows.
 		if !strings.HasPrefix(line, "|") {
 			continue
 		}
@@ -321,20 +321,20 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 
 		switch section {
 		case sectionEvalDimensions:
-			// "| Dimension | Weight | Pass Threshold |" 형식.
+			// "| Dimension | Weight | Pass Threshold |" format.
 			if len(cells) < 3 {
 				continue
 			}
 			dimName := cells[0]
 			dim, ok := dimensionNameMap[dimName]
 			if !ok {
-				// 헤더 행 또는 구분선이면 건너뜁니다.
+				// Skip header rows and separator lines.
 				continue
 			}
-			// Weight 파싱 (예: "40%" → 0.40).
+			// Parse Weight (for example "40%" -> 0.40).
 			weight := parsePercentOrFloat(cells[1])
-			// PassThreshold는 텍스트로 저장 — 숫자가 포함된 경우만 파싱.
-			passThreshold := 0.60 // 기본값
+			// PassThreshold is stored as text — parsed only when a number is present.
+			passThreshold := 0.60 // Default.
 			if pct := parsePercentOrFloat(cells[2]); pct > 0 {
 				passThreshold = pct
 			}
@@ -348,23 +348,23 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 			rubric.Dimensions[dim] = dr
 
 		case sectionMustPass:
-			// "- Functionality: ..." 형식 (리스트 항목).
-			// 테이블 행이 아니므로 이 case는 아래의 listItem 파싱에서 처리.
+			// "- Functionality: ..." format (list item).
+			// Not a table row, so handled by the listItem parsing below.
 
 		case sectionScoringRubric:
-			// "| Score | Description |" 형식.
+			// "| Score | Description |" format.
 			if currentRubricDim == 0 {
 				continue
 			}
 			scoreStr := cells[0]
 			description := cells[1]
 			if scoreStr == "Score" || strings.Contains(scoreStr, "---") {
-				continue // 헤더 또는 구분선
+				continue // Header or separator.
 			}
-			// anchor score 파싱 ("1.0" → 1.00, "0.25" → 0.25).
+			// Parse anchor score ("1.0" -> 1.00, "0.25" -> 0.25).
 			anchor, err := parseAnchorScore(scoreStr)
 			if err != nil {
-				// 파싱 불가한 행은 건너뜁니다.
+				// Skip rows that cannot be parsed.
 				continue
 			}
 			dr := rubric.Dimensions[currentRubricDim]
@@ -380,8 +380,8 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 		return nil, fmt.Errorf("ParseRubricMarkdown: scan %q: %w", path, err)
 	}
 
-	// Must-Pass Criteria 재파싱 (리스트 형식).
-	// 파일을 다시 열어 Must-Pass 섹션을 파싱합니다.
+	// Re-parse Must-Pass Criteria (list format).
+	// Reopen the file to parse the Must-Pass section.
 	mustPass, err := parseMustPassSection(path)
 	if err != nil {
 		return nil, err
@@ -390,8 +390,8 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 		rubric.MustPass = mustPass
 	}
 
-	// 빈 Anchors를 가진 차원에 대해 기본값 초기화.
-	// (EvalDimensions 파싱에서 생성된 차원이지만 Rubric 테이블이 없는 경우)
+	// Initialize default Anchors for dimensions with empty Anchors.
+	// (Dimensions created during EvalDimensions parsing but lacking a Rubric table.)
 	for dim, dr := range rubric.Dimensions {
 		if dr.Anchors == nil {
 			dr.Anchors = make(map[float64]string)
@@ -399,8 +399,8 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 		}
 	}
 
-	// strict.md 프로필의 경우 PassThreshold를 높게 설정합니다.
-	// Rubric.Validate()에서 min 0.60 floor를 보장하므로 여기서는 0 방지만 합니다.
+	// For the strict.md profile, PassThreshold is set higher.
+	// Rubric.Validate() guarantees the 0.60 floor, so we only guard against 0 here.
 	if rubric.PassThreshold <= 0 {
 		rubric.PassThreshold = 0.60
 	}
@@ -408,7 +408,7 @@ func ParseRubricMarkdown(path string) (*Rubric, error) {
 	return rubric, nil
 }
 
-// parseMustPassSection은 파일에서 "## Must-Pass Criteria" 섹션의 차원 목록을 파싱합니다.
+// parseMustPassSection parses the dimension list from the "## Must-Pass Criteria" section of the file.
 func parseMustPassSection(path string) ([]Dimension, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -436,14 +436,14 @@ func parseMustPassSection(path string) ([]Dimension, error) {
 			continue
 		}
 
-		// "- Functionality: ..." 또는 "- Security: ..." 형식의 리스트 항목.
+		// List items in the "- Functionality: ..." or "- Security: ..." format.
 		if strings.HasPrefix(line, "-") || strings.HasPrefix(line, "*") {
 			content := strings.TrimLeft(line, "-* \t")
-			// 첫 번째 단어가 dimension 이름인지 확인합니다.
+			// Check whether the first word is a dimension name.
 			parts := strings.SplitN(content, ":", 2)
 			dimName := strings.TrimSpace(parts[0])
 			if dim, ok := dimensionNameMap[dimName]; ok {
-				// 중복 추가 방지.
+				// Prevent duplicate additions.
 				found := false
 				for _, d := range result {
 					if d == dim {
@@ -461,10 +461,10 @@ func parseMustPassSection(path string) ([]Dimension, error) {
 	return result, scanner.Err()
 }
 
-// parseTableRow는 Markdown 테이블 행을 파싱하여 셀 내용 슬라이스를 반환합니다.
-// 선행/후행 파이프(|)를 제거하고 각 셀을 trim합니다.
+// parseTableRow parses a Markdown table row and returns a slice of cell contents.
+// Strips the leading/trailing pipes (|) and trims each cell.
 func parseTableRow(line string) []string {
-	// 선행/후행 파이프 제거.
+	// Remove leading/trailing pipes.
 	line = strings.Trim(line, "|")
 	parts := strings.Split(line, "|")
 	result := make([]string, 0, len(parts))
@@ -474,7 +474,7 @@ func parseTableRow(line string) []string {
 	return result
 }
 
-// parsePercentOrFloat은 "40%" 또는 "0.40" 형식의 문자열을 float64로 변환합니다.
+// parsePercentOrFloat converts a string in "40%" or "0.40" format to float64.
 func parsePercentOrFloat(s string) float64 {
 	s = strings.TrimSpace(s)
 	if strings.HasSuffix(s, "%") {
@@ -492,25 +492,25 @@ func parsePercentOrFloat(s string) float64 {
 	return v
 }
 
-// parseAnchorScore는 anchor score 문자열을 float64로 변환합니다.
-// "1.0" → 1.00, "0.25" → 0.25 정규화를 포함합니다.
+// parseAnchorScore converts an anchor-score string to float64.
+// Includes normalization such as "1.0" -> 1.00 and "0.25" -> 0.25.
 func parseAnchorScore(s string) (float64, error) {
 	s = strings.TrimSpace(s)
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0, err
 	}
-	// 정규화: float64로 변환 후 canonical 값 검증은 Validate()에서 수행합니다.
+	// Normalization: convert to float64; canonical-value validation is performed by Validate().
 	return v, nil
 }
 
-// extractProfileName은 파일 경로에서 프로필 이름을 추출합니다.
-// 예: ".moai/config/evaluator-profiles/default.md" → "default"
+// extractProfileName extracts the profile name from the file path.
+// Example: ".moai/config/evaluator-profiles/default.md" -> "default".
 func extractProfileName(path string) string {
-	// 마지막 슬래시 이후의 파일명 추출.
+	// Extract the filename after the final slash.
 	parts := strings.Split(path, "/")
 	filename := parts[len(parts)-1]
-	// 확장자 제거.
+	// Strip the extension.
 	if idx := strings.LastIndex(filename, "."); idx >= 0 {
 		return filename[:idx]
 	}

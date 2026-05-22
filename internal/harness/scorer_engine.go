@@ -1,9 +1,9 @@
-// Package harness — HRN-003 채점 엔진 구현.
-// EvaluatorRunner: 계층 집계 + must-pass firewall + Sprint Contract 영속화.
+// Package harness — HRN-003 scoring-engine implementation.
+// EvaluatorRunner: hierarchical aggregation + must-pass firewall + Sprint Contract persistence.
 // REQ-HRN-003-004: EvaluatorRunner.AggregateScoreCard().
-// REQ-HRN-003-007: aggregation rules (min 기본, mean opt-in).
+// REQ-HRN-003-007: aggregation rules (min default, mean opt-in).
 // REQ-HRN-003-008: must-pass firewall.
-// REQ-HRN-003-011: WriteContract() Sprint Contract sub-criterion status 영속화.
+// REQ-HRN-003-011: WriteContract() persists Sprint Contract sub-criterion status.
 package harness
 
 // @MX:NOTE: [AUTO] aggregation default = min per REQ-HRN-003-007; mean opt-in per REQ-HRN-003-015; per-dimension override supported
@@ -20,25 +20,25 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// EvaluatorRunner는 ScoreCard 계층 집계 + must-pass firewall 적용을 담당합니다.
-// REQ-HRN-003-004: Score() 또는 AggregateScoreCard()로 채점합니다.
+// EvaluatorRunner performs ScoreCard hierarchical aggregation + must-pass firewall enforcement.
+// REQ-HRN-003-004: scored via Score() or AggregateScoreCard().
 //
 // @MX:ANCHOR: [AUTO] EvaluatorRunner.AggregateScoreCard — fan_in=3 (scorer_engine_test + SKILL.md Phase 3b + future HRN-001 router)
-// @MX:REASON: SPEC-V3R2-HRN-003 REQ-004 — 채점 엔진의 단일 진입점; scorer_test.go + SKILL.md + future 라우터가 참조
+// @MX:REASON: SPEC-V3R2-HRN-003 REQ-004 — single entry point of the scoring engine; referenced by scorer_test.go, SKILL.md, and future routers
 type EvaluatorRunner struct {
 	rubric *Rubric
 }
 
-// NewEvaluatorRunner는 주어진 Rubric으로 새 EvaluatorRunner를 생성합니다.
+// NewEvaluatorRunner creates a new EvaluatorRunner with the given Rubric.
 func NewEvaluatorRunner(rubric *Rubric) *EvaluatorRunner {
 	return &EvaluatorRunner{rubric: rubric}
 }
 
-// AggregateScoreCard는 SubCriterionScore → CriterionScore → DimensionScore → ScoreCard
-// 계층 집계를 수행하고 Verdict를 결정합니다.
+// AggregateScoreCard performs hierarchical aggregation
+// (SubCriterionScore -> CriterionScore -> DimensionScore -> ScoreCard) and decides the Verdict.
 // REQ-HRN-003-004, REQ-HRN-003-007, REQ-HRN-003-008.
 //
-// 집계 규칙:
+// Aggregation rules:
 //   - CriterionScore.Aggregate = aggregateMin/Mean(SubCriterionScore.Score) per dim.Aggregation or rubric.Aggregation
 //   - DimensionScore.Aggregate = aggregateMin/Mean(CriterionScore.Aggregate) — dimension-level aggregation
 //   - Verdict = applyMustPassFirewall(card, rubric)
@@ -47,9 +47,9 @@ func (r *EvaluatorRunner) AggregateScoreCard(card *ScoreCard) (*ScoreCard, error
 		return nil, fmt.Errorf("AggregateScoreCard: card is nil")
 	}
 
-	// REQ-HRN-003-017: flat ScoreCard 거부.
-	// flat = Dimensions 맵은 있지만 어떤 Dimension도 Criteria를 가지지 않거나,
-	// Criteria가 있지만 어떤 Criterion도 SubCriteria를 가지지 않는 경우.
+	// REQ-HRN-003-017: reject flat ScoreCard.
+	// flat = the Dimensions map exists but no Dimension has Criteria,
+	// or Criteria exist but no Criterion has SubCriteria.
 	if isFlat(card) {
 		return nil, config.ErrFlatScoreCardProhibited
 	}
@@ -61,14 +61,14 @@ func (r *EvaluatorRunner) AggregateScoreCard(card *ScoreCard) (*ScoreCard, error
 	}
 
 	for dim, ds := range card.Dimensions {
-		// 차원별 aggregation 결정.
+		// Determine per-dimension aggregation.
 		agg := r.effectiveAggregation(dim)
 
 		newDS := DimensionScore{
 			Criteria: make(map[string]CriterionScore, len(ds.Criteria)),
 		}
 
-		// CriterionScore 집계.
+		// Aggregate CriterionScore.
 		critAggregates := make([]float64, 0, len(ds.Criteria))
 		for critID, cs := range ds.Criteria {
 			subScores := make([]float64, 0, len(cs.SubCriteria))
@@ -87,14 +87,14 @@ func (r *EvaluatorRunner) AggregateScoreCard(card *ScoreCard) (*ScoreCard, error
 			critAggregates = append(critAggregates, critAggregate)
 		}
 
-		// DimensionScore 집계.
+		// Aggregate DimensionScore.
 		aggregator := selectAggregator(agg)
 		dimAggregate := aggregator.Aggregate(critAggregates)
 		newDS.Aggregate = dimAggregate
 		result.Dimensions[dim] = newDS
 	}
 
-	// Must-pass firewall 적용.
+	// Apply the must-pass firewall.
 	verdict, rationale := applyMustPassFirewall(result, r.rubric)
 	result.Verdict = verdict
 	result.Rationale = rationale
@@ -102,8 +102,8 @@ func (r *EvaluatorRunner) AggregateScoreCard(card *ScoreCard) (*ScoreCard, error
 	return result, nil
 }
 
-// effectiveAggregation은 차원별 override를 고려하여 실효 aggregation 방식을 반환합니다.
-// AC-HRN-003-03.c: 차원별 override가 있으면 그것을, 없으면 프로필 기본값을 사용합니다.
+// effectiveAggregation returns the effective aggregation mode, honoring per-dimension overrides.
+// AC-HRN-003-03.c: uses the per-dimension override when present, otherwise the profile default.
 func (r *EvaluatorRunner) effectiveAggregation(dim Dimension) string {
 	if r.rubric == nil {
 		return "min"
@@ -114,39 +114,39 @@ func (r *EvaluatorRunner) effectiveAggregation(dim Dimension) string {
 	if r.rubric.Aggregation != "" {
 		return r.rubric.Aggregation
 	}
-	return "min" // REQ-HRN-003-007 기본값
+	return "min" // REQ-HRN-003-007 default.
 }
 
-// Aggregator는 점수 슬라이스를 단일 집계값으로 줄이는 전략 인터페이스입니다.
-// T3.13 REFACTOR: aggregation 전략을 명시적 인터페이스로 추출하여 확장성을 확보합니다.
+// Aggregator is the strategy interface that reduces a score slice to a single aggregate value.
+// T3.13 REFACTOR: extracts the aggregation strategy into an explicit interface to allow extension.
 type Aggregator interface {
 	Aggregate(scores []float64) float64
 }
 
-// MinAggregator는 최솟값 집계 전략입니다.
-// REQ-HRN-003-007 기본 집계.
+// MinAggregator is the minimum aggregation strategy.
+// REQ-HRN-003-007 default aggregation.
 type MinAggregator struct{}
 
-// Aggregate는 슬라이스의 최솟값을 반환합니다.
+// Aggregate returns the minimum value of the slice.
 func (MinAggregator) Aggregate(scores []float64) float64 { return aggregateMin(scores) }
 
-// MeanAggregator는 평균값 집계 전략입니다.
-// REQ-HRN-003-015 opt-in 집계.
+// MeanAggregator is the mean aggregation strategy.
+// REQ-HRN-003-015 opt-in aggregation.
 type MeanAggregator struct{}
 
-// Aggregate는 슬라이스의 평균을 반환합니다.
+// Aggregate returns the mean of the slice.
 func (MeanAggregator) Aggregate(scores []float64) float64 { return aggregateMean(scores) }
 
-// selectAggregator는 aggregation 방식 문자열에 따라 Aggregator를 반환합니다.
+// selectAggregator returns an Aggregator based on the aggregation mode string.
 func selectAggregator(agg string) Aggregator {
 	if agg == "mean" {
 		return MeanAggregator{}
 	}
-	return MinAggregator{} // 기본값 "min"
+	return MinAggregator{} // Default "min".
 }
 
-// aggregateMin은 슬라이스의 최솟값을 반환합니다.
-// 빈 슬라이스에 대해 0.0을 반환합니다 (Edge Case E6).
+// aggregateMin returns the minimum value of the slice.
+// Returns 0.0 for an empty slice (Edge Case E6).
 // REQ-HRN-003-007, AC-HRN-003-03.a.
 func aggregateMin(scores []float64) float64 {
 	if len(scores) == 0 {
@@ -161,8 +161,8 @@ func aggregateMin(scores []float64) float64 {
 	return min
 }
 
-// aggregateMean은 슬라이스의 평균을 반환합니다.
-// 빈 슬라이스에 대해 0.0을 반환합니다.
+// aggregateMean returns the mean of the slice.
+// Returns 0.0 for an empty slice.
 // REQ-HRN-003-015, AC-HRN-003-03.b.
 func aggregateMean(scores []float64) float64 {
 	if len(scores) == 0 {
@@ -175,14 +175,14 @@ func aggregateMean(scores []float64) float64 {
 	return sum / float64(len(scores))
 }
 
-// applyMustPassFirewall은 must-pass 차원들의 Aggregate가
-// 차원별 PassThreshold 이상인지 검증하고 Verdict를 반환합니다.
+// applyMustPassFirewall verifies that each must-pass dimension's Aggregate
+// is at or above the per-dimension PassThreshold and returns the Verdict.
 // REQ-HRN-003-008, AC-HRN-003-04.
 //
-// 규칙:
-//   - 각 must-pass 차원에서 Aggregate < DimensionRubric.PassThreshold → VerdictFail
-//   - 모든 must-pass 차원 통과 → VerdictPass
-//   - Rationale에 실패 차원 및 점수 명시 (R6 user-friendliness 완화).
+// Rules:
+//   - Aggregate < DimensionRubric.PassThreshold for any must-pass dimension -> VerdictFail.
+//   - All must-pass dimensions pass -> VerdictPass.
+//   - Rationale specifies the failed dimension and score (R6 user-friendliness easing).
 func applyMustPassFirewall(card *ScoreCard, rubric *Rubric) (Verdict, string) {
 	if rubric == nil || len(rubric.MustPass) == 0 {
 		return VerdictPass, ""
@@ -193,13 +193,13 @@ func applyMustPassFirewall(card *ScoreCard, rubric *Rubric) (Verdict, string) {
 	for _, dim := range rubric.MustPass {
 		ds, exists := card.Dimensions[dim]
 		if !exists {
-			// 차원이 ScoreCard에 없으면 0으로 간주 → 실패.
+			// Treat missing dimension as 0 -> failure.
 			failedDims = append(failedDims, fmt.Sprintf("%s (missing, 0.00 < threshold)", dim))
 			continue
 		}
 
-		// 차원별 PassThreshold 확인.
-		threshold := rubric.PassThreshold // 기본값: 프로필 전체 threshold
+		// Check the per-dimension PassThreshold.
+		threshold := rubric.PassThreshold // Default: profile-wide threshold.
 		if dr, ok := rubric.Dimensions[dim]; ok && dr.PassThreshold > 0 {
 			threshold = dr.PassThreshold
 		}
@@ -221,25 +221,25 @@ func applyMustPassFirewall(card *ScoreCard, rubric *Rubric) (Verdict, string) {
 }
 
 // ─────────────────────────────────────────────
-// Sprint Contract 영속화
+// Sprint Contract persistence
 // ─────────────────────────────────────────────
 
-// ContractItem는 Sprint Contract YAML의 acceptance_checklist 항목입니다.
-// REQ-HRN-003-011: status 필드 포함.
+// ContractItem is an acceptance_checklist entry in the Sprint Contract YAML.
+// REQ-HRN-003-011: includes the status field.
 type ContractItem struct {
-	ID       string `yaml:"id"`
-	Criterion string `yaml:"criterion"`
-	Evidence string `yaml:"evidence,omitempty"`
-	Score    float64 `yaml:"score"`
-	Anchor   string  `yaml:"rubric_anchor"`
-	// Status는 sub-criterion 상태입니다: "passed | failed | refined | new".
-	// HRN-002 §11.4.1 Sprint Contract durability — passed 항목은 다음 iteration으로 계승됩니다.
+	ID        string  `yaml:"id"`
+	Criterion string  `yaml:"criterion"`
+	Evidence  string  `yaml:"evidence,omitempty"`
+	Score     float64 `yaml:"score"`
+	Anchor    string  `yaml:"rubric_anchor"`
+	// Status is the sub-criterion status: "passed | failed | refined | new".
+	// HRN-002 §11.4.1 Sprint Contract durability — passed items carry forward to the next iteration.
 	Status string `yaml:"status"`
 }
 
-// SprintContractYAML은 WriteContract가 생성하는 YAML 문서의 구조입니다.
-// HRN-002 Sprint Contract shape에 sub-criterion status 필드를 추가합니다.
-// 기존 SKILL.md acceptance_checklist 형식과 호환됩니다.
+// SprintContractYAML is the structure of the YAML document produced by WriteContract.
+// Adds a sub-criterion status field on top of the HRN-002 Sprint Contract shape.
+// Remains compatible with the existing SKILL.md acceptance_checklist format.
 type SprintContractYAML struct {
 	SpecID             string         `yaml:"spec_id"`
 	SchemaVersion      string         `yaml:"schema_version"`
@@ -248,27 +248,27 @@ type SprintContractYAML struct {
 	AcceptanceChecklist []ContractItem `yaml:"acceptance_checklist"`
 }
 
-// WriteContract는 ScoreCard의 sub-criterion 점수와 상태를 Sprint Contract YAML로 영속화합니다.
+// WriteContract persists the ScoreCard's sub-criterion scores and statuses as a Sprint Contract YAML.
 // REQ-HRN-003-011, AC-HRN-003-10.
 //
-// 파일 경로의 디렉토리가 없으면 자동 생성합니다.
-// AC-HRN-003-10: 생성된 YAML은 HRN-002 DetectPriorJudgmentLeak 패턴을 트리거하지 않습니다.
-// (criterion state만 포함; evaluator 판단 rationale 없음).
+// Auto-creates the directory of the file path when it does not exist.
+// AC-HRN-003-10: the generated YAML does not trigger the HRN-002 DetectPriorJudgmentLeak pattern.
+// (Only includes criterion state; no evaluator judgment rationale.)
 func WriteContract(card *ScoreCard, path string) error {
 	if card == nil {
 		return fmt.Errorf("WriteContract: card is nil")
 	}
 
-	// 디렉토리 자동 생성.
+	// Auto-create the directory.
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("WriteContract: mkdir %q: %w", dir, err)
 	}
 
-	// acceptance_checklist 생성: 차원별 > criterion별 > sub-criterion별 순서로 순회.
+	// Build acceptance_checklist: iterate by dimension > criterion > sub-criterion.
 	var items []ContractItem
 
-	// 결정론적 출력을 위해 차원 순서를 정렬합니다.
+	// Sort dimensions for deterministic output.
 	dims := sortedDimensions(card.Dimensions)
 	for _, dim := range dims {
 		ds := card.Dimensions[dim]
@@ -280,19 +280,19 @@ func WriteContract(card *ScoreCard, path string) error {
 				sub := cs.SubCriteria[subID]
 				status := subCriterionStatus(sub.Score, sub.RubricAnchor)
 				items = append(items, ContractItem{
-					ID:       subID,
+					ID:        subID,
 					Criterion: critID,
-					Evidence: sub.Evidence,
-					Score:    sub.Score,
-					Anchor:   sub.RubricAnchor,
-					Status:   status,
+					Evidence:  sub.Evidence,
+					Score:     sub.Score,
+					Anchor:    sub.RubricAnchor,
+					Status:    status,
 				})
 			}
 		}
 	}
 
-	// YAML 직렬화 (표준 라이브러리 없이 간단한 직접 포맷팅).
-	// 외부 의존성 없이 yaml 직렬화를 구현합니다.
+	// YAML serialization (simple direct formatting without the standard library).
+	// Implements YAML serialization without external dependencies.
 	content := buildContractYAML(card, items)
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -302,8 +302,8 @@ func WriteContract(card *ScoreCard, path string) error {
 	return nil
 }
 
-// subCriterionStatus는 sub-criterion 점수와 anchor에 따라 status를 결정합니다.
-// status: "passed" (≥ 0.75), "failed" (< 0.50), "refined" (0.50 ≤ score < 0.75).
+// subCriterionStatus determines the status from a sub-criterion's score and anchor.
+// status: "passed" (>= 0.75), "failed" (< 0.50), "refined" (0.50 <= score < 0.75).
 func subCriterionStatus(score float64, _ string) string {
 	switch {
 	case score >= 0.75:
@@ -315,9 +315,9 @@ func subCriterionStatus(score float64, _ string) string {
 	}
 }
 
-// buildContractYAML은 SprintContract YAML 내용을 문자열로 생성합니다.
-// 외부 yaml 라이브러리 없이 직접 포맷팅합니다.
-// HARD(CLAUDE.local.md §14): 하드코딩 금지 — 모든 값은 파라미터에서 주입.
+// buildContractYAML produces the SprintContract YAML content as a string.
+// Performs direct formatting without an external YAML library.
+// HARD (CLAUDE.local.md §14): hardcoding forbidden — all values are injected via parameters.
 func buildContractYAML(card *ScoreCard, items []ContractItem) string {
 	var sb strings.Builder
 	sb.WriteString("# Sprint Contract — HRN-003 sub-criterion status\n")
@@ -343,8 +343,8 @@ func buildContractYAML(card *ScoreCard, items []ContractItem) string {
 	return sb.String()
 }
 
-// sortedDimensions는 ScoreCard의 Dimension 키를 정렬된 순서로 반환합니다.
-// 결정론적 YAML 출력을 위해 사용합니다.
+// sortedDimensions returns the ScoreCard's Dimension keys in sorted order.
+// Used to produce deterministic YAML output.
 func sortedDimensions(dims map[Dimension]DimensionScore) []Dimension {
 	result := make([]Dimension, 0, len(dims))
 	for d := range dims {
@@ -356,7 +356,7 @@ func sortedDimensions(dims map[Dimension]DimensionScore) []Dimension {
 	return result
 }
 
-// sortedStringKeys는 map[string]T의 키를 정렬된 순서로 반환합니다.
+// sortedStringKeys returns the keys of map[string]T in sorted order.
 func sortedStringKeys[T any](m map[string]T) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -366,12 +366,12 @@ func sortedStringKeys[T any](m map[string]T) []string {
 	return keys
 }
 
-// isFlat은 ScoreCard가 flat (비계층) 형태인지 검사합니다.
-// REQ-HRN-003-017: flat ScoreCard는 금지됩니다.
-// flat 조건: ScoreCard 전체에 SubCriterion이 하나도 존재하지 않는 경우.
-// - Dimensions 맵이 비어 있거나
-// - 모든 Dimension의 모든 Criterion에 SubCriteria가 없는 경우.
-// 일부 차원에만 SubCriteria가 있는 "partially populated" 카드는 허용됩니다.
+// isFlat checks whether the ScoreCard is in flat (non-hierarchical) form.
+// REQ-HRN-003-017: flat ScoreCard is forbidden.
+// Flat condition: no SubCriterion exists anywhere in the ScoreCard.
+//   - Dimensions map is empty, or
+//   - no Criterion in any Dimension contains SubCriteria.
+// "Partially populated" cards with SubCriteria in only some dimensions are permitted.
 func isFlat(card *ScoreCard) bool {
 	if len(card.Dimensions) == 0 {
 		return true
@@ -379,11 +379,11 @@ func isFlat(card *ScoreCard) bool {
 	for _, ds := range card.Dimensions {
 		for _, cs := range ds.Criteria {
 			if len(cs.SubCriteria) > 0 {
-				// 최소 1개의 SubCriterion이 존재하면 계층 구조로 간주합니다.
+				// Treated as hierarchical as soon as at least one SubCriterion exists.
 				return false
 			}
 		}
 	}
-	// 모든 Criterion에 SubCriteria가 없으면 flat.
+	// Flat when no Criterion contains SubCriteria.
 	return true
 }
