@@ -368,6 +368,68 @@ Claude Code で直接コードを書くこともできますが、SPEC なしで
 
 **--worktree** は独立した作業ディレクトリを作成して完全に分離された環境を提供します。**--branch** は現在のリポジトリに新しいブランチを作成します。複数の機能を同時に開発する場合は --worktree を推奨します。
 
+## GEARS 表記法 (v3.0.0+) {#gears-notation}
+
+MoAI-ADK v3.0.0 から **GEARS**(Generalized Expression for AI-Ready Specs)を SPEC 記述の推奨表記法として導入します。既存の EARS 表記は **6 ヶ月** の期間にわたって後方互換が維持され、その間に段階的に GEARS へ移行できます。新しい SPEC は最初から GEARS パターンに従うことを推奨します。
+
+GEARS は EARS の 5 つの中核パターンを維持しつつ、AI コーディングエージェントがより明確に解釈できるように意味境界を整えた表記法です。主な変更点は、**IF/THEN パターンの廃止**(WHEN への正規化)と、**WHERE の意味再定義**(静的な前提条件・構成・機能フラグ)です。
+
+参考資料: Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
+
+### 5 パターン比較表
+
+| 表記 | EARS (legacy) | GEARS (canonical) | Lint の挙動 |
+|---|---|---|---|
+| Ubiquitous (普遍) | `The system shall <action>` | Same | 変更なし |
+| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | 変更なし |
+| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | 変更なし |
+| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (再定義: 静的前提条件・構成・機能フラグ) | lint 層では変更なし |
+| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — 代わりに `WHEN <event-detected>, the system shall <action>` を使用 | **新規: `LegacyEARSKeyword` warning** |
+
+### 後方互換ウィンドウ (6 ヶ月)
+
+マイグレーションウィンドウは v3.0.0 リリース時点から **6 ヶ月**、または一括修正 SPEC である `SPEC-V3R6-GEARS-SWEEP-001`(provisional)の完了時点のうち、いずれか早い方まで有効です。ウィンドウ中の挙動は次の通りです。
+
+- **非 strict モード(既定)**: `LegacyEARSKeyword` の warning のみ発行、lint は失敗しません。
+- **`--strict` モード(opt-in)**: warning が error に昇格し、CI を遮断します。
+- **既存 88 件の SPEC**: 本 SPEC のスコープでは修正しません(REQ-GM-007)。一括修正は後続の SWEEP SPEC の責任範囲です。
+
+### LegacyEARSKeyword 診断
+
+`internal/spec/lint.go` の `isLegacyEARSPattern()` ヘルパーが EARS legacy の IF/THEN パターンを検出すると、次のメッセージを発行します。
+
+```
+REQ <REQ-ID>: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation
+```
+
+- **コード**: `LegacyEARSKeyword`
+- **重大度**: warning (非 strict) / error (`--strict`)
+- **出典**: `internal/spec/lint.go`
+
+### ツール作成者へのガイド
+
+downstream ツール(バリデータ、コード生成器、IDE プラグインなど)で SPEC テキストをマッチングする際は、次のように移行してください。
+
+- `IF .* THEN` のマッチャを今後 `WHEN .* shall` に切り替える。
+- 6 ヶ月の deprecation ウィンドウを考慮し、ウィンドウ終了まで両パターンを認識する。
+- `LegacyEARSKeyword` finding コードを upgrade シグナルとして利用する。
+
+### マイグレーション例
+
+**Before (EARS legacy):**
+
+```
+IF input is null, THEN the system shall return an error.
+```
+
+**After (GEARS canonical):**
+
+```
+WHEN input is null is detected, the system shall return an error.
+```
+
+この正規化はトリガーを "条件" ではなく "事象" として明示することで、AI エージェントの意図解釈の曖昧さを減らし、テストケース作成時の入力・検証タイミングをより明確にします。
+
 ## 関連ドキュメント
 
 - [SPEC ベース開発](/core-concepts/spec-based-dev) - EARS 形式詳細説明
