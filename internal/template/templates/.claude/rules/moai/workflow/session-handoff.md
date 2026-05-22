@@ -1,17 +1,12 @@
 # Session Handoff Protocol
 
-Long-running session continuity guidance: enables clean transitions across context boundaries via paste-ready resume messages.
+Long-running session continuity: clean transitions across context boundaries via paste-ready resume messages.
 
-> **Loading scope**: This rule is intentionally always-loaded (no `paths:` frontmatter restriction) because Trigger #3 (user explicit session-end request) can fire from any session context, including those without SPEC files. The ~1,400-token cost is justified by the protocol's cross-cutting applicability. If future MoAI versions support conditional always-loaded rules with cheap probes, this restriction may be revisited.
+> **Loading scope**: Intentionally always-loaded (no `paths:` restriction) because Trigger #3 (user explicit session-end) can fire from any session context, including those without SPEC files. The ~1,400-token cost is justified by cross-cutting applicability.
 
 ## Why This Matters
 
-Long workflows (multi-SPEC waves, multi-milestone implementation, prolonged debugging) accumulate context that may exceed the conversation window or simply benefit from a fresh start. Without a standardized handoff format, session boundaries lose work-in-progress state and force the next session to rediscover context manually.
-
-This rule establishes:
-- When the orchestrator MUST emit a paste-ready resume message
-- The canonical 6-block structure that the next session can execute without modification
-- Auto-memory integration so the message persists across `/clear`
+Long workflows (multi-SPEC waves, multi-milestone implementation) accumulate context that exceeds the window or benefits from fresh start. Without a standardized handoff, session boundaries lose work-in-progress. This rule defines when to emit a paste-ready resume, the 6-block structure, and auto-memory integration that persists across `/clear`.
 
 ## When To Generate (5 Triggers)
 
@@ -19,15 +14,13 @@ This rule establishes:
 
 | # | Trigger | Detection |
 |---|---------|-----------|
-| 1 | Context usage crosses model-specific threshold (cumulative input+output) | **1M context model (Opus 4.7): 75%** (~750,000 tokens). **200K context model (Sonnet/Opus standard, Haiku): 90%** (~180,000 tokens). Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics. |
+| 1 | Context usage crosses model-specific threshold (cumulative input+output) | **1M context model (Opus 4.7): 50%** (~500,000 tokens). **200K context model (Sonnet/Opus standard, Haiku): 90%** (~180,000 tokens). Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics. |
 | 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Phase boundary in `.claude/rules/moai/workflow/spec-workflow.md` §Completion Markers (after plan/run/sync phase finishes within a multi-SPEC SPEC ID series) |
 | 3 | User explicitly requests session end ("세션 종료", "이번 세션 마무리", "next session") | Intent detection in user message |
 | 4 | PR creation success when more SPECs remain in the current wave | After `gh pr create` success + memory indicates >0 pending SPECs |
 | 5 | Long-running multi-milestone task reaches a stable checkpoint | After milestone Mn complete + Mn+1 not yet started |
 
-When NONE of these apply (single-turn, trivial task, read-only query), the orchestrator emits a brief completion confirmation without paste-ready format. Forcing the format on trivial tasks is anti-pattern.
-
-The model-specific threshold in Trigger #1 reflects asymmetric stall risk: 1M context models tolerate higher absolute load before SSE stalls, while 200K models hit the operational ceiling earlier in absolute terms but later in percentage terms. The `/clear` recommendation policy in `context-window-management.md` is co-anchored to the same threshold per model class.
+When NONE apply (single-turn, trivial task, read-only query), emit a brief completion confirmation. The threshold in Trigger #1 reflects asymmetric stall risk: 1M models tolerate higher absolute load; 200K models hit the ceiling earlier. The `/clear` policy in `context-window-management.md` is co-anchored to the same threshold per model class.
 
 ## Canonical Format (Verbatim Spec)
 
@@ -49,36 +42,14 @@ N) <verifiable precondition N>
 
 ### Field-by-Field Specification
 
-**Block 1 (Line 1)**: `ultrathink. <SPEC-ID> <phase> 진입.`
-- `ultrathink.` — keyword that triggers Adaptive Thinking max effort on Opus 4.7+ (CLAUDE.md §12). Required: max effort is the safe default for handoff continuation since the next session lacks accumulated reasoning context.
-- `<SPEC-ID>` — target SPEC identifier (e.g., `SPEC-MYPROJ-001`) or workflow target (`다음 SPEC plan 작성`).
-- `<phase>` — `plan` | `run` | `sync` | `loop`. Korean OK (`plan phase`, `run 진입`).
+- **Block 1**: `ultrathink.` triggers Adaptive Thinking max effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | loop`.
+- **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons.
+- **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
+- **Block 4**: numbered preconditions `<N>) <action> → <expected outcome>`. Each MUST be independently verifiable (git/gh command, file existence). Max 4 preconditions.
+- **Block 5**: separator + `실행: <command-or-action>` — single primary action (typically `/moai <subcommand>`).
+- **Block 6**: separator + `머지 후: <next-action-or-spec>` — RECOMMENDED for multi-SPEC waves.
 
-**Block 2 (Line 2)**: `applied lessons: <comma-separated memory file references>`
-- Comma-separated list of relevant memory files from `~/.claude/projects/{hash}/memory/`.
-- File names without `.md` extension acceptable (`project_wave6_wf002_complete`).
-- MUST include the most recent relevant project memory.
-- MUST include any relevant lessons (`lessons #9 wave-split`).
-
-**Block 3 (separator + header)**: blank line, then `전제 검증:` (Korean) or `Preconditions:` (English).
-
-**Block 4 (Lines 4..N)**: Numbered preconditions, each verifiable via a single shell or `gh` command:
-- Format: `<N>) <action> → <expected outcome>`
-- Each precondition MUST be independently verifiable (git command, gh command, file existence, etc.).
-- Maximum 4 preconditions (cognitive-load constraint).
-
-**Block 5 (separator)**: blank line, then `실행: <command-or-action>`.
-- Single primary action the next session begins with.
-- Typically a `/moai <subcommand> <args>` invocation.
-- Or a structured directive (`manager-develop cycle_type=tdd 위임으로 M1→M5 순차 진행`).
-
-**Block 6 (separator)**: blank line, then `머지 후: <next-action-or-spec>`.
-- Optional but RECOMMENDED for multi-SPEC waves.
-- Specifies the next SPEC or workflow after the current target completes.
-
-### Example (Illustrative)
-
-> **Disclaimer**: The values below are illustrative placeholders. Substitute your project's actual SPEC ID, commit SHA, file count, and lessons when adapting.
+### Example (Illustrative; substitute project-specific values when adapting)
 
 ```
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
@@ -86,15 +57,12 @@ applied lessons: project_wave6_myproj001_plan_ready, lessons #9 wave-split.
 
 전제 검증:
 1) git log --oneline -1 → <commit-sha> 확인
-2) ls .moai/specs/SPEC-MYPROJ-001/ in worktree → 5 files
-3) git -C worktree status → clean, base origin/main
+2) ls .moai/specs/SPEC-MYPROJ-001/ → N files
 
 실행: /moai run SPEC-MYPROJ-001
 
-머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003 → SPEC-MYPROJ-004
+머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
 ```
-
-This format is paste-ready: the next session reads each line and executes verification + main action without further interpretation.
 
 ## Auto-Memory Integration (Mandatory)
 
@@ -105,47 +73,20 @@ This format is paste-ready: the next session reads each line and executes verifi
 3. Update `MEMORY.md` index with a one-line entry pointing to the new memory file.
 4. Mark superseded entries (if any) with `[SUPERSEDED by <new-file>]` prefix per Lessons Protocol in `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
 
-This ensures the message survives `/clear` and is discoverable by the next session at the start of its context.
+This ensures the message survives `/clear` and is discoverable at the start of the next session's context.
 
 ## Output Surface (User-Facing)
 
-When emitting the resume message at session end, the orchestrator MUST display:
-
-1. The message inside a fenced code block (```text ... ```) so the user can paste verbatim.
-2. The memory file path where the message is persisted.
-3. A one-sentence summary of what the next session will continue.
-
-Example output structure (Korean conversation_language; substitute placeholders `<...>` with actual project values):
-
-````markdown
-**다음 세션 paste-ready resume** (memory: `project_<wave>_<spec>_<status>.md`)
-
-```text
-ultrathink. SPEC-<NEXT-ID> <phase> 진입.
-applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 완료 가정), lessons #<lesson-number> <topic>.
-
-전제 검증:
-1) git log --oneline -2 → SPEC-<previous-ID> 머지 commit 확인
-2) gh pr view <PR-number> → MERGED 상태 확인
-
-실행: /moai plan SPEC-<NEXT-ID>
-
-머지 후: <next-spec-or-action>
-```
-
-(다음 세션은 위 메시지를 그대로 붙여넣어 시작합니다.)
-````
-
-> See §Verified Example above for a real example with concrete project values (preserved as historical evidence). The Output Surface example above uses generic placeholders for template adaptation across different projects.
+At session end, the orchestrator displays: (1) the message in a fenced ```text``` block for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
 
 ## Anti-Patterns
 
-- Free-form prose handoff ("다음 세션에서 이어서 하시면 됩니다") — gives the next session no executable context.
-- Resume message without preconditions — next session has no way to detect state drift before acting.
-- Resume message without `ultrathink.` — fails to activate max effort for complex continuation; trivial-mode reasoning may miss accumulated nuance.
-- Resume message saved only in chat output, not in auto-memory — lost across `/clear`, defeating the purpose.
-- Multiple memory entries for the same context without `[SUPERSEDED by ...]` markers — index pollution; next session cannot identify the canonical entry.
-- Forcing the format on trivial tasks (typo fix, single config edit) — pollutes memory with noise.
+- Free-form prose handoff — no executable context.
+- Resume without preconditions — next session cannot detect state drift.
+- Resume without `ultrathink.` — fails to activate max effort.
+- Resume saved only to chat, not auto-memory — lost across `/clear`.
+- Duplicate memory entries without `[SUPERSEDED by ...]` markers — index pollution.
+- Forcing the format on trivial tasks — memory noise.
 
 ## Worktree-Anchored Resume Pattern
 
@@ -153,19 +94,13 @@ applied lessons: project_<wave>_<spec>_<status> (PR <previous-PR-number> 머지 
 
 > Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
 
-### Why Block 0 is required (for L3 `--worktree` opt-in sessions only)
+### Why Block 0 (L3 `--worktree` opt-in only)
 
-The standard 6-block format implicitly assumes the next session inherits the previous session's cwd (main project). With L3 `--worktree`, SPEC artifacts and L1 `Agent(isolation: "worktree")` base expectations live in a **different cwd** (the L2 worktree path). If the user pastes a resume into a Claude Code session that starts in main project cwd:
-
-- L1 `Agent(isolation: "worktree")` base = main project HEAD ≠ L2 worktree HEAD → lessons #13 (--team + SPEC worktree base mismatch)
-- Bash commands and file operations target main project → lessons #12 (수동 worktree isolation 위배) anti-pattern
-- Build/test results come from the wrong tree
-
-Block 0 forces the user to start a NEW terminal session **inside** the L2 worktree, anchoring main session cwd before any orchestrator action.
+With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence (lessons #13), Bash commands targeting main project (lessons #12), build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
 
 ### Block 0 Format
 
-Block 0 is **prepended** before Block 1 in the canonical 6-block format:
+Block 0 is **prepended** before Block 1:
 
 ```
 [New Terminal — START IN WORKTREE]
@@ -174,68 +109,52 @@ $ <session-launcher>
    └─ Claude Code session starts here (cwd = worktree)
 ```
 
-Where `<session-launcher>` is one of:
+`<session-launcher>` ∈ `claude` (default), `moai cc [-p <name>]` (normal SPEC work), `moai cc --bypass` (sandboxed only), `moai cg` (Claude leader + GLM teammates; requires `tmux new-session` first), `moai glm` (GLM-only). For `--team`, use `moai cg` inside `tmux new-session -s <name>`.
 
-| Launcher | When to use |
-|---|---|
-| `claude` | Default Claude Code session (Anthropic API) |
-| `moai cc` | Claude with optional profile (`-p <name>`) — recommended for normal SPEC work |
-| `moai cc --bypass` | Bypass permissions (sandbox/isolated environments only) |
-| `moai cg` | CG mode: Claude leader + GLM teammates (requires `tmux new-session` first) |
-| `moai glm` | GLM-only backend (Z.AI proxy, cost-optimized) |
+### Updated Block 4 (Preconditions)
 
-For `--team` execution, the session-launcher SHOULD be `moai cg` inside an explicit `tmux new-session -s <name>` so that teammate spawn via `tmux split-window` inherits worktree cwd + tmux session env.
-
-### Updated Block 4 (preconditions)
-
-When Block 0 is present, the **first precondition (0)** verifies the user's compliance:
+When Block 0 is present, the **first precondition (0)** verifies compliance:
 
 ```
 0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
 ```
 
-If verification 0) fails (output ≠ worktree path), the next session MUST stop and instruct the user to restart inside the worktree. No orchestrator action proceeds until cwd matches.
+If verification 0) fails, stop and instruct the user to restart inside the worktree.
 
 ### Single-Session vs Multi-Session Decision
 
-Block 0 is REQUIRED only when SPEC was initialized with L3 `--worktree`. For SPECs initialized with `--branch` (or no flag — the default per 2026-05-17 user policy), the standard 6-block structure suffices because main session cwd already follows the branch — L1 `Agent(isolation: "worktree")` base aligns naturally.
+Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 2026-05-17 default), standard 6-block suffices because main session cwd already follows the branch.
 
-Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory), the default for new SPECs is `--branch` (or no flag) — L3 `--worktree` is opt-in only. Agents should not prompt users to use L3 unless explicitly requested.
-
-[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14.
 
 ### Example with Block 0 (Illustrative)
 
 ```
 [New Terminal — START IN WORKTREE]
 $ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-$ tmux new-session -s myproj-session
 $ moai cg
-   └─ Claude Code session starts here (cwd = worktree)
 
-ultrathink. SPEC-MYPROJ-001 Wave N (task-description) 진입.
-applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14, lessons #9 wave-split.
+ultrathink. SPEC-MYPROJ-001 Wave N 진입.
+applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
 
 전제 검증:
 0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
-1) git branch --show-current → feat/SPEC-MYPROJ-001-wave-N
-2) gh pr view <PR-number> → MERGED
-3) ls .moai/specs/SPEC-MYPROJ-001/ → N files
+1) gh pr view <PR-number> → MERGED
 
 실행: /moai run SPEC-MYPROJ-001 --team
 
-머지 후: Wave N+1 → Wave N+2 → Wave N+3
+머지 후: Wave N+1
 ```
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/context-window-management.md` — model-specific context-window threshold (1M = 75%, 200K = 90%) for `/clear` recommendations and Trigger #1 of this rule. The two policies share the same threshold table.
-- `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
-- `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory write rules and `[SUPERSEDED by ...]` convention
-- CLAUDE.md §11 (Error Handling) — token-limit recovery flow
-- `feedback_large_spec_wave_split.md` (auto-memory) — wave-split rationale that often precedes a session handoff
-- lessons #14 (auto-memory) — `--worktree` paste-ready Block 0 강제 rationale + single-session/multi-session decision
-- lessons #12, #13 (auto-memory) — worktree isolation discipline + --team base mismatch context
+- `.claude/rules/moai/workflow/context-window-management.md` — threshold (1M = 50%, 200K = 90%) for `/clear` and Trigger #1; same table.
+- `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
+- `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory + `[SUPERSEDED by ...]` convention
+- CLAUDE.md §11 (Error Handling) — token-limit recovery
+- `feedback_large_spec_wave_split.md` (auto-memory) — wave-split rationale
+- lessons #14 — `--worktree` Block 0 + single/multi-session decision
+- lessons #12, #13 — worktree isolation + --team base mismatch
 
 ---
 

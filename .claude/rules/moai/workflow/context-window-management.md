@@ -4,9 +4,7 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 
 ## Why This Matters
 
-Anthropic SSE streams have been observed to stall (`stream_idle_partial`) when very large prompts are produced near the upper end of the context window. Symptoms: model emits a few hundred bytes then the stream goes idle; orchestrator's outbound message hangs without a tool call. This is intermittent but predictable above the model-specific usage threshold.
-
-Reference incident: 2026-04-25 monolithic delegation. See feedback memory `feedback_large_spec_wave_split.md`.
+Anthropic SSE streams stall (`stream_idle_partial`) near the context window ceiling — intermittent but predictable above the model-specific threshold. Reference: 2026-04-25 incident (`feedback_large_spec_wave_split.md`).
 
 ## Context Window Targets
 
@@ -22,7 +20,7 @@ The model-specific threshold is the operational ceiling — beyond it, plan for 
 
 ## User Responsibilities
 
-The user monitors context usage via the Claude Code statusline or `/cost` command and intervenes when usage crosses the model-specific threshold (50% on 1M models, 90% on 200K models).
+User monitors via Claude Code statusline / `/cost` and intervenes at threshold (50% on 1M, 90% on 200K).
 
 [ZONE:Evolvable] [HARD] When usage crosses the model-specific threshold:
 1. Save in-flight state to `.moai/specs/<SPEC-ID>/progress.md` if not already saved (orchestrator does this automatically)
@@ -36,13 +34,13 @@ The user monitors context usage via the Claude Code statusline or `/cost` comman
 
 ## Orchestrator Responsibilities
 
-The MoAI orchestrator MUST proactively recognize the model-specific boundary and prepare the user for a clean handoff.
+The orchestrator MUST proactively recognize the model-specific boundary and prepare the user for a clean handoff.
 
 [ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (50% on 1M, 90% on 200K), it MUST:
 1. Stop initiating new large tool calls or `Agent()` delegations
 2. Persist all in-flight progress to `.moai/specs/<SPEC-ID>/progress.md`
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
-4. Recommend `/clear` via natural-language guidance (this is a status announcement, not a question — `AskUserQuestion` not required)
+4. Recommend `/clear` via natural-language guidance (status announcement, not a question — `AskUserQuestion` not required)
 
 [ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient:
 ```
@@ -53,32 +51,29 @@ progress.md 경로: .moai/specs/SPEC-<ID>/progress.md
 완료 후: <next SPEC or /moai sync>.
 ```
 
-The resume message is a verbatim hand-off — paste-ready, no editing required.
+Paste-ready, no editing required.
 
 ## Detection Heuristics
 
-The orchestrator estimates context usage from these observable signals:
+Orchestrator estimates context usage from four signals:
 
 - Cumulative output bytes since session start (rough proxy)
-- System reminder volume per turn (large rule-file injections inflate input rapidly)
-- Number of large tool results received (each Read/Bash output >5 KB adds linear pressure)
-- Number of Agent() invocations completed (each Agent context contributes to parent context on return)
+- System reminder volume per turn (rule-file injections inflate input)
+- Number of large tool results (each Read/Bash output >5 KB adds linear pressure)
+- Number of Agent() invocations completed (each contributes to parent context on return)
 
-When uncertain, prefer to under-estimate remaining capacity. A premature `/clear` recommendation costs one paste; a missed one costs a stalled stream and possibly lost work.
+Under-estimate when uncertain — premature `/clear` costs one paste; missed one costs a stalled stream.
 
 ## Applies To
 
-This rule applies to all MoAI workflows:
-- `/moai plan`, `/moai run`, `/moai sync` — long phases that accumulate context
-- Multi-SPEC sprints (Sprint 1 / Sprint 2 multi-SPEC delegation) — most likely to hit the model-specific threshold
-- Iterative loops (`/moai loop`, GAN loop) — context accumulates linearly per iteration
+All MoAI workflows: `/moai plan|run|sync`, multi-SPEC sprints, iterative loops (`/moai loop`, GAN loop).
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume message canonical format and auto-memory integration. Trigger #1 of session-handoff.md consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%). The two rules share the same threshold table; `/clear` recommendation and paste-ready emission both fire at the same boundary.
-- `feedback_large_spec_wave_split.md` (auto-memory) — wave-split mitigation for SPECs with 30+ tasks
+- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.
+- `feedback_large_spec_wave_split.md` (auto-memory) — wave-split mitigation for 30+ task SPECs
 - `.claude/skills/moai/references/file-reading-optimization.md` — token budget per file read
-- `output-styles/moai/moai.md` §6 (Persistence & Context Awareness) — orchestrator persistence pattern
+- `output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow
 
 ---

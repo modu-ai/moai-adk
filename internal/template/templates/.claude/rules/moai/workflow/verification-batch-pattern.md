@@ -1,35 +1,12 @@
 # Verification Batch Pattern
 
-Canonical pattern for orchestrator-side read-only verification batching during
-the run-phase completion handshake.
+Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D (W3 meta-analysis: ≈10 min, ~11% of run-phase wall-time lost to serial verification).
 
-> This rule was added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D in response to the
-> W3 HARNESS-AUTONOMY-001 meta-analysis. W3 lost approximately 10 minutes
-> (≈11% of total run-phase wall-time) to serial verification across multiple
-> orchestrator turns. This rule formalizes the parallel batching pattern that
-> consolidates verification into a single turn.
-
-> Cross-reference: `.claude/rules/moai/core/agent-common-protocol.md` §Parallel
-> Execution defines the HARD batching obligation; this file documents the
-> grouping rationale and verification-class taxonomy.
+Cross-reference: `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution defines the HARD batching obligation; this file owns the grouping rationale and class taxonomy.
 
 ## Why Batch
 
-When `manager-develop` (or any implementation subagent) reports completion, the
-orchestrator must verify the report independently before accepting it. Typical
-verification covers seven dimensions:
-
-1. Test suite (functional correctness)
-2. Coverage threshold (TRUST 5 craft gate)
-3. Subagent-boundary discipline (C-HRA-008 class)
-4. Sentinel-key correctness (retired SPEC, frozen zone)
-5. CLI smoke check (binary still compiles, version still resolves)
-6. Benchmark or performance baseline (where applicable)
-7. Lint status (NEW vs pre-existing baseline)
-
-Each verification is read-only and independent of the others. Issuing them
-serially across N turns multiplies round-trip latency. Issuing them in a single
-turn (multi-Bash) collapses the latency to the slowest single command.
+When `manager-develop` reports completion, the orchestrator independently verifies seven dimensions: test suite, coverage, subagent-boundary (C-HRA-008), sentinel-key, CLI smoke, benchmark, lint. Each is read-only and independent. Serial issuance multiplies round-trip latency; multi-Bash batching collapses it to the slowest single command.
 
 ## When to Batch (Verification Class Taxonomy)
 
@@ -44,24 +21,17 @@ turn (multi-Bash) collapses the latency to the slowest single command.
 | Build (`go build`, `npm run build`) | depends | writes artifacts | NO if downstream depends |
 | Test fixture setup | yes | writes test files | NO if shared state |
 
-The seven canonical batch items in agent-common-protocol §Parallel Execution
-are all classified as read-only batch-safe.
+All seven canonical batch items in agent-common-protocol §Parallel Execution are read-only batch-safe.
 
 ## When NOT to Batch
 
-- Commands with explicit dependency: `make build` must complete before
-  `go test ./...` if the build produces a binary the tests invoke.
-- Commands writing to the same file: two `go test -coverprofile=cover.out`
-  invocations would race on `cover.out`.
-- Commands mutating shared state: `git checkout` and `git status` cannot be
-  parallelized within the same working tree.
+- Explicit dependency (`make build` before tests that invoke its binary).
+- Same-file writes (two `coverprofile=cover.out` runs race).
+- Shared-state mutation (`git checkout` + `git status` in one tree).
 
-For dependent operations, use serial execution explicitly. For independent
-read-only verifications, batching is the default.
+Serialize dependent ops; batch independent read-only verifications by default.
 
 ## Grouping Heuristic
-
-Default groupings for run-phase verification:
 
 | Group | Members | Typical Total Time |
 |-------|---------|-------------------:|
@@ -71,60 +41,23 @@ Default groupings for run-phase verification:
 | D. Smoke | CLI --version, --help | 1-3 s |
 | E. Benchmark (optional) | go test -bench | 30-300 s |
 
-Groups A, B, C, D issue together as one parallel batch. Group E joins the same
-batch when benchmark is relevant to the SPEC's acceptance criteria.
+Groups A-D issue as one parallel batch. Group E joins when benchmark is in AC.
 
 ## Anti-Pattern Catalogue
 
-### AP-VBP-001: Serial verification across turns
-
-```
-Turn 1: orchestrator: "Let me verify"; Bash(go test ./...)        → wait
-Turn 2: orchestrator: "Now lint"; Bash(golangci-lint run ./...)    → wait
-Turn 3: orchestrator: "Now grep"; Bash(grep -rn 'AskUserQuestion') → wait
-```
-
-Three sequential turns where one would suffice. Adds 3 × round-trip latency
-plus context-switch overhead.
-
-### AP-VBP-002: Pseudo-batching via shell `&&`
-
-```bash
-go test ./... && golangci-lint run ./... && grep -rn 'AskUserQuestion' internal/
-```
-
-This chains commands sequentially in a single shell — not parallel. Worse,
-the first failure short-circuits subsequent commands, hiding aggregate state.
-
-### AP-VBP-003: Pseudo-batching via shell `&` background
-
-```bash
-go test ./... &
-golangci-lint run ./... &
-wait
-```
-
-This spawns background processes within a single Bash call. Output is
-interleaved and harder to parse. The orchestrator-level multi-Bash batch is
-cleaner because each call produces a separate, structured output block.
+- **AP-VBP-001 — Serial across turns**: N turns where one suffices. Adds N × round-trip latency plus context-switch overhead.
+- **AP-VBP-002 — Pseudo-batch via `&&`**: Chains sequentially in one shell, not parallel. First failure short-circuits.
+- **AP-VBP-003 — Pseudo-batch via `&`**: Interleaved output is hard to parse. Orchestrator-level multi-Bash is cleaner — each call produces a separate, structured output block.
 
 ## Correct Pattern (Reference)
 
-The orchestrator's response contains multiple Bash tool calls within a single
-assistant turn. Each call has its own `description` and timeout. Outputs
-return in parallel and can be aggregated for the verification report.
-
-This is the structural pattern; the canonical 7-item example lives in
-`.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution to
-satisfy AC-WO-007.
+The orchestrator's response contains multiple Bash tool calls within a single assistant turn. The canonical 7-item example lives in `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (satisfies AC-WO-007).
 
 ## Cross-references
 
-- `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution
-  (HARD batching obligation + 7-item canonical example).
-- SPEC-V3R5-WORKFLOW-OPT-001 acceptance.md AC-WO-007 (verification command).
-- W3 HARNESS-AUTONOMY-001 meta-analysis (`feedback_w3_metaanalysis_lessons.md`,
-  source of the 10-min serial verification finding).
+- `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (HARD batching obligation + 7-item canonical example).
+- SPEC-V3R5-WORKFLOW-OPT-001 AC-WO-007.
+- W3 HARNESS-AUTONOMY-001 meta-analysis (`feedback_w3_metaanalysis_lessons.md`).
 
 ---
 
