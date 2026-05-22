@@ -27,11 +27,11 @@ related_specs: [SPEC-V3R6-RULES-COMPLIANCE-001, SPEC-V3R6-V3-CUTOVER-001]  # for
 
 ## 1. Goal
 
-Migrate MoAI-ADK's requirement notation from **EARS (Easy Approach to Requirements Syntax, Alistair Mavin)** to **GEARS (Generative-AI-friendly Easy Approach to Requirements Syntax, DEV 2026 proposal)** as the canonical keyword set for new SPEC documents (`.moai/specs/SPEC-*/spec.md` REQ entries).
+Migrate MoAI-ADK's requirement notation from **EARS (Easy Approach to Requirements Syntax, Alistair Mavin 2009)** to **GEARS (Generalized Expression for AI-Ready Specs, DEV Community 2026-01-23)** as the canonical keyword set for new SPEC documents (`.moai/specs/SPEC-*/spec.md` REQ entries).
 
 The migration **adds GEARS keyword support** to `internal/spec/lint.go` `EARSModalityRule` and **adds user-facing migration documentation** in `docs-site/content/{ko,en,ja,zh}/` so users can author SPECs in either notation. The migration **does NOT mass-rewrite the 88 existing SPECs** in this SPEC — backward compatibility is preserved via legacy-keyword acceptance (warning-only), and a separate sweep SPEC (`SPEC-V3R6-GEARS-SWEEP-001`, provisional) is queued for the actual bulk rewrite once v3.0.0 cutover is stable.
 
-**Canonical GEARS keyword set** (from GEARS DEV 2026 proposal — to be re-verified by orchestrator web research at run-phase entry; see §5 Open Questions Q3):
+**Canonical GEARS keyword set** (from *GEARS: The Spec Syntax That Makes AI Coding Actually Work*, Σ\*/SubLang, DEV Community 2026-01-23 — verified by orchestrator web research 2026-05-22, see `.moai/research/gears-paper-validation.md`. Q3 RESOLVED.):
 
 | Notation pattern | EARS (legacy) | GEARS (new) | Semantic |
 |------------------|--------------|--------------|----------|
@@ -46,6 +46,29 @@ The GEARS rationale (per the DEV 2026 paper):
 1. **IF/THEN is ambiguous for LLM parsing** — IF can be read as either trigger (event) or guard (state), causing parser-to-parser disagreement. WHEN (trigger) + WHILE (state) are syntactically separable.
 2. **WHERE was under-used** (0 of 88 MoAI SPECs use WHERE today) because the original "feature exists" framing was too narrow. Reframing WHERE as "precondition / capability gate" gives it real surface area.
 3. **Ubiquitous + WHEN + WHILE + WHERE = 4-keyword closed set** is easier for LLM SPEC writers and SPEC parsers to internalize than EARS's 5-keyword open set with IF/THEN ambiguity.
+
+### 1.1 GEARS Unified Pattern (paper feature — informational)
+
+The GEARS paper introduces a **single unified syntax pattern** with optional clauses, replacing EARS's five separate patterns:
+
+```
+[Where <static precondition(s)>]
+[While <stateful precondition(s)>]
+[When <trigger>]
+The <subject> shall <behavior>
+```
+
+Square brackets denote optional clauses. Multiple clauses may be composed in a single requirement.
+
+**Example (verbatim from paper)**:
+
+> "Where the deployment is production, when a request fails, the service shall retry with exponential backoff."
+
+**Generalized subject**: GEARS replaces "the system" with `<subject>` — any noun (system, component, service, agent, function, artifact). MoAI-ADK's 88 existing SPECs retain "The system" for backward compatibility; new SPECs MAY use generalized subjects when more precise.
+
+**Given-When-Then mapping** (paper feature): GEARS clauses map directly to Given-When-Then test syntax — `Given` → `Where`+`While`, `When` → `When`, `Then` → `shall`. This is informational; MoAI-ADK does not enforce this mapping at the lint layer.
+
+This subsection is **documentation-only**; the lint engine (M2) accepts EARS-style separate keywords as well as GEARS compound clauses transparently. M3 4-locale docs should mention this unified pattern as part of the migration guide.
 
 ## 2. Why
 
@@ -100,7 +123,7 @@ Dependency: this SPEC **MUST land before SPEC-V3R6-V3-CUTOVER-001** so that v3.0
 | Reference | Citation | Purpose |
 |-----------|----------|---------|
 | EARS official | Mavin, A. (2009-ongoing). *Easy Approach to Requirements Syntax*. https://alistairmavin.com/ears/ | Baseline notation being migrated FROM |
-| GEARS proposal | DEV 2026 proposal (cited in blueprint line 205; full URL to be verified at run-phase web research per Q3) | Target notation being migrated TO |
+| GEARS proposal (verified 2026-05-22) | Σ\*/SubLang, *GEARS: The Spec Syntax That Makes AI Coding Actually Work*, DEV Community 2026-01-23, https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f | Target notation being migrated TO |
 | Voyager (auto-evolution context) | arXiv:2305.16291 | Self-evolution baseline (peripheral) |
 | Reflexion (self-evolution context) | arXiv:2303.11366 | Reflection-based agent self-improvement (peripheral) |
 | AgentDevel (LLM SPEC-handling context) | arXiv:2601.04620 | LLM-authored SPEC parsing study (peripheral) |
@@ -178,7 +201,7 @@ The system **shall** preserve the existing 88 SPEC documents' REQ entries unchan
 |----|----------|-------------------------------|-------|
 | Q1 | **88 SPECs bulk-rewrite policy** — perform during this SPEC (extends to Tier L) or defer to `SPEC-V3R6-GEARS-SWEEP-001`? | **Defer** (Tier M scope guard, REQ-GM-007). Sweep SPEC queued for post-cutover stability window. | user |
 | Q2 | **`--strict` enforcement timing** — should `moai spec lint --strict` block on `LegacyEARSKeyword` immediately on v3.0.0 release, or wait for the 6-month window? | **Immediate** (REQ-GM-008). CI authors can opt-in by adding `--strict` to their pipelines. Non-strict default unchanged. | user |
-| Q3 | **GEARS paper URL** — blueprint line 205 cites "GEARS proposal (DEV 2026)" without a verified URL. Run-phase first step is `WebSearch + WebFetch` to verify the canonical paper and confirm the §1 GEARS keyword table matches the source. If mismatch: re-open this SPEC for amendment before lint.go edit. | **Mandatory run-phase first step** — record in `.moai/research/gears-paper-validation.md` per REQ-GM-005. | manager-develop |
+| Q3 | **GEARS paper URL** — RESOLVED 2026-05-22 — canonical reference is *GEARS: The Spec Syntax That Makes AI Coding Actually Work*, Σ\*/SubLang, DEV Community 2026-01-23, https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f. Validation report at `.moai/research/gears-paper-validation.md` showed MISMATCH on acronym text — corrected in §1 (this amendment). Functional migration path (IF/THEN → WHEN warning) is paper-aligned. | n/a — resolved by M1 orchestrator-direct | orchestrator |
 | Q4 | **4-locale docs-site target file** — add a new `concepts/spec-authoring.md` page (×4 locales) or amend the existing `workflow-commands/moai-plan.md` page (×4 locales)? | **Amend existing** (`workflow-commands/moai-plan.md` × 4) to minimize i18n surface; lower risk per `.moai/docs/docs-site-i18n-rules.md`. | user |
 
 These Open Questions do NOT block plan-phase artifact creation; they block run-phase entry via acceptance.md AC-GM-005 + AC-GM-007.
