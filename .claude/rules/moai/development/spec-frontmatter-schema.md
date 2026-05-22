@@ -69,7 +69,6 @@ These fields may be included when needed but are NOT required by `FrontmatterSch
 | `depends_on` | list | SPEC IDs this SPEC depends on. Used by BODP signal A. |
 | `lint.skip` | list | Lint rule codes to skip. Use only for documented debt. |
 | `bc_id` | string | Backward-compatibility tracking ID. |
-| `tier` | enum (`S` \| `M` \| `L`) | SPEC complexity tier (LEAN workflow, SPEC-V3R5-WORKFLOW-LEAN-001). Determines artifact set (S=2 files, M=3, L=5), Section A-E delegation template applicability (S=optional), and plan-auditor PASS threshold (S=0.75 / M=0.80 / L=0.85). See `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier. Backward compat rule: absence = **Tier L** (5-artifact default behavior for pre-LEAN SPECs). |
 
 ## Rejected Snake_Case Aliases
 
@@ -108,7 +107,7 @@ version: "0.1.0"
 status: draft
 created: 2026-05-16
 updated: 2026-05-16
-author: GOOS Kim
+author: Author Name
 priority: P1
 phase: "v3.0.0"
 module: "internal/auth"
@@ -127,7 +126,7 @@ version: "0.1.0"
 status: draft
 created_at: 2026-05-16   # WRONG — use created:
 updated_at: 2026-05-16   # WRONG — use updated:
-author: GOOS Kim
+author: Author Name
 priority: P1
 phase: "v3.0.0"
 module: "internal/auth"

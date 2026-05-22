@@ -107,7 +107,7 @@ version: "0.1.0"
 status: draft
 created: 2026-05-16
 updated: 2026-05-16
-author: GOOS Kim
+author: Author Name
 priority: P1
 phase: "v3.0.0"
 module: "internal/auth"
@@ -126,7 +126,7 @@ version: "0.1.0"
 status: draft
 created_at: 2026-05-16   # WRONG — use created:
 updated_at: 2026-05-16   # WRONG — use updated:
-author: GOOS Kim
+author: Author Name
 priority: P1
 phase: "v3.0.0"
 module: "internal/auth"

@@ -139,7 +139,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 Purpose: Dedicated security audit with OWASP Top 10 analysis, dependency scanning, secrets detection, and data isolation checks.
 Agents: expert-security (primary)
 Flags: --full, --deps, --secrets, --file PATH, --branch BRANCH
-For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/security.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/security.md
 
 ### fix - Auto-Fix Errors
 
@@ -241,7 +241,7 @@ Purpose: Track Claude Code release notes since last analyzed version, classify b
 Agents: manager-docs (Phase 6 docs sync), manager-git (Phase 7 PR)
 Flags: --since vX.Y.Z, --dry, --report-only, --docs-only, --master-spec
 State: .moai/state/last-cc-version.json
-For detailed orchestration: Read /Users/goos/MoAI/moai-adk-go/.claude/skills/moai/workflows/release-update.md
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/release-update.md
 NOT distributed to user projects (dev-only; entry: .claude/commands/97-release-update.md)
 
 ---
