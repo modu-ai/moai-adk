@@ -125,7 +125,7 @@ If verification 0) fails, stop and instruct the user to restart inside the workt
 
 Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 2026-05-17 default), standard 6-block suffices because main session cwd already follows the branch.
 
-[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14.
+[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
 
 ### Example with Block 0 (Illustrative)
 
