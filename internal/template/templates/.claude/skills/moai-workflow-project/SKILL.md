@@ -33,9 +33,9 @@ triggers:
 
 # MoAI Workflow Project - Integrated Project Management System
 
-Purpose: Comprehensive project management system that integrates documentation generation, multilingual support, and template optimization into unified architecture with intelligent automation and Claude Code integration.
+Comprehensive project management system integrating documentation generation, multilingual support, and template optimization into a unified architecture with intelligent automation and Claude Code integration.
 
-Scope: Consolidates documentation management, language initialization, and template optimization into single cohesive system supporting complete project lifecycle from initialization to maintenance.
+Scope: Consolidates documentation management, language initialization, and template optimization into a single cohesive system supporting complete project lifecycle from initialization to maintenance.
 
 Target: Claude Code agents for project setup, documentation generation, multilingual support, and performance optimization.
 
@@ -45,26 +45,20 @@ Target: Claude Code agents for project setup, documentation generation, multilin
 
 Core Capabilities:
 
-- Documentation Management: Template-based documentation generation with multilingual support
-- Language Initialization: Language detection, configuration, and localization management
-- Template Optimization: Advanced template analysis and performance optimization
-- Unified Interface: Single entry point integrating all capabilities
+- Documentation Management: Template-based generation with multilingual support
+- Language Initialization: Detection, configuration, localization
+- Template Optimization: Analysis with performance optimization
+- Unified Interface: Single entry point for all capabilities
 
 Key Features:
 
 - Automatic project type detection and template selection
-- Multilingual documentation generation supporting English, Korean, Japanese, and Chinese
-- Intelligent template optimization with performance benchmarking
+- Multilingual documentation (English, Korean, Japanese, Chinese)
+- Intelligent template optimization with benchmarking
 - SPEC-driven documentation updates
-- Multi-format export including Markdown, HTML, and PDF
+- Multi-format export (Markdown, HTML, PDF)
 
-Supported Project Types:
-
-- Web applications
-- Mobile applications
-- Command-line interface tools
-- Libraries and packages
-- Machine learning projects
+Supported Project Types: web applications, mobile applications, CLI tools, libraries, ML projects.
 
 ---
 
@@ -72,230 +66,76 @@ Supported Project Types:
 
 ### Module Architecture
 
-Documentation Management Capabilities:
+Three capability areas:
 
-- Template-based documentation generation
-- Project type detection for web, mobile, CLI, library, and ML projects
-- Multilingual support with localized content
-- SPEC data integration for automatic updates
-- Multi-format export capabilities
-
-Language Initialization Capabilities:
-
-- Automatic language detection from project content
-- Comprehensive language configuration management
-- Agent prompt localization with cost optimization
-- Domain-specific language support
-- Locale management and cultural adaptation
-
-Template Optimization Capabilities:
-
-- Advanced template analysis with complexity metrics
-- Performance optimization with size reduction
-- Intelligent backup and recovery system
-- Benchmarking and performance tracking
-- Automated optimization recommendations
+- Documentation Management: template-based generation, project type detection, multilingual support, SPEC integration, multi-format export
+- Language Initialization: automatic detection, configuration management, agent prompt localization, locale management
+- Template Optimization: complexity analysis, performance optimization, backup/recovery, benchmarking
 
 ### Core Workflows
 
-Complete Project Initialization Workflow:
+Three workflows: project initialization, documentation generation from SPEC, template performance optimization. Each follows a 3-step pattern (configure → execute → review results).
 
-Step 1: Initialize the project management system by specifying the project directory path
-
-Step 2: Execute complete setup with the following configuration parameters:
-
-- Language setting: Specify the primary language code such as "en" for English or "ko" for Korean
-- User name: Provide the developer or team name for personalization
-- Domains: List the project domains such as backend, frontend, and mobile
-- Project type: Specify the project type such as web_application
-- Optimization enabled: Set to true to enable template optimization during initialization
-
-Step 3: Review initialization results which include:
-
-- Language configuration with token cost analysis
-- Documentation structure creation status
-- Template analysis and optimization report
-- Multilingual documentation setup confirmation
-
-Documentation Generation from SPEC Workflow:
-
-Step 1: Prepare SPEC data with the following structure:
-
-- Identifier: Unique SPEC ID such as SPEC-001
-- Title: Feature or component title
-- Description: Brief description of the implementation
-- Requirements: List of specific requirements
-- Status: Current status such as Planned, In Progress, or Complete
-- Priority: Priority level such as High, Medium, or Low
-- API Endpoints: List of endpoint definitions including path, method, and description
-
-Step 2: Generate comprehensive documentation from the SPEC data
-
-Step 3: Review generated documentation which includes:
-
-- Feature documentation with requirements
-- API documentation with endpoint details
-- Updated project documentation files
-- Multilingual versions if configured
-
-Template Performance Optimization Workflow:
-
-Step 1: Analyze current templates to gather metrics
-
-Step 2: Configure optimization options:
-
-- Backup first: Set to true to create backup before optimization
-- Apply size optimizations: Enable to reduce file sizes
-- Apply performance optimizations: Enable to improve loading times
-- Apply complexity optimizations: Enable to simplify template structures
-- Preserve functionality: Ensure all features remain intact
-
-Step 3: Execute optimization and review results:
-
-- Size reduction percentage achieved
-- Performance improvement metrics
-- Backup creation confirmation
-- Detailed optimization report
+See [core workflow walkthroughs](references/workflows.md) for detailed step-by-step procedures.
 
 ### Language and Localization
 
-Automatic Language Detection Process:
+Automatic Language Detection: analyzes file content, configuration files, system locale, and directory structure.
 
-The system analyzes the project for language indicators using the following methods:
+Multilingual Documentation: language-specific directories (e.g., `docs/ko`, `docs/en`), language negotiation, automatic redirection.
 
-- File content analysis examining comments and strings
-- Configuration file examination for locale settings
-- System locale detection
-- Directory structure patterns
+Agent Prompt Localization: language-specific instructions, cultural context, token cost optimization.
 
-Multilingual Documentation Structure:
-
-When creating documentation for multiple languages, the system generates:
-
-- Language-specific documentation directories such as docs/ko for Korean and docs/en for English
-- Language negotiation configuration
-- Automatic redirection setup between language versions
-
-Agent Prompt Localization:
-
-The localization system provides:
-
-- Language-specific instructions for agents
-- Cultural context adaptations
-- Token cost optimization recommendations for multilingual prompts
+See [language and localization detail](references/language-localization.md) for token cost analysis and locale configuration.
 
 ### Template Optimization
 
-Performance Analysis Process:
+Performance Analysis: file size, complexity, performance bottlenecks, optimization opportunities, resource usage, backup recommendations.
 
-Template analysis provides the following metrics:
-
-- File size and complexity measurements
-- Performance bottleneck identification
-- Optimization opportunity scoring
-- Resource usage patterns
-- Backup recommendations
-
-Intelligent Optimization Process:
-
-The optimization system applies the following techniques:
-
-- Whitespace and redundancy reduction
-- Template structure optimization
-- Complexity reduction techniques
-- Performance caching improvements
+Optimization Techniques: whitespace reduction, structure optimization, complexity reduction, performance caching.
 
 ### Configuration Management
 
-Integrated Configuration Status:
+Integrated configuration covers project metadata, language settings + costs, documentation status, template optimization results, module initialization states.
 
-The project status includes:
+Language Settings: conversation_language (user-facing), agent_prompt_language (internal, often English for cost), documentation language (per language).
 
-- Project metadata and type classification
-- Language configuration and associated costs
-- Documentation completion status
-- Template optimization results
-- Module initialization states
+Updates trigger configuration file modifications, documentation structure updates, template localization.
 
-Language Settings Update Process:
-
-When updating language settings, configure the following parameters:
-
-- Conversation language: The language for user-facing responses
-- Agent prompt language: The language for internal agent instructions, often kept as English for cost optimization
-- Documentation language: The language for generated documentation
-
-Updates trigger the following automatic changes:
-
-- Configuration file modifications
-- Documentation structure updates
-- Template localization adjustments
+See [configuration schema and language fields](references/configuration.md) for full field reference and supported language metadata.
 
 ---
 
 ## Advanced Implementation
 
-For advanced patterns including custom template development, performance optimization strategies, and integration workflows, see reference.md which covers:
-
-- Custom Templates: Creating project-type-specific documentation templates
-- Performance Caching: Implementing template caching for improved performance
-- Batch Processing: Efficiently processing multiple templates simultaneously
-- Integration Workflows: Complete project lifecycle and multilingual management
+For advanced patterns (custom templates, performance caching, batch processing, integration workflows), see [references/reference.md](references/reference.md) and [references/examples.md](references/examples.md).
 
 ---
 
 ## Resources
 
-### Configuration Structure
-
-Project Configuration Fields:
-
-- Project name: The display name for the project
-- Project type: Classification such as web_application, mobile_application, or cli_tool
-- Initialization timestamp: When the project was initialized
-- Language configuration: Conversation, agent prompt, and documentation language settings
-- System version: The project management system version
-- Initialization status: Whether all modules are fully initialized
-
-Language Configuration Fields for Each Supported Language:
-
-- Name: Display name in English
-- Native name: Display name in the native language
-- Code: Language code such as en, ko, ja, or zh
-- Locale: System locale string
-- Agent prompt language: Whether to use English or localized prompts
-- Token cost impact: Percentage increase in token usage for non-English prompts
-
 ### Performance Metrics
 
-Documentation Generation Performance:
+| Operation | Typical Duration |
+|-----------|------------------|
+| Complete documentation generation | 2-5 seconds |
+| Language detection analysis | ~500 ms |
+| Template optimization | 10-30 seconds |
+| Configuration updates | ~100 ms |
 
-- Complete documentation generation typically completes within 2 to 5 seconds
-- Language detection analysis completes within approximately 500 milliseconds
-- Template optimization duration varies from 10 to 30 seconds depending on project size
-- Configuration updates complete within approximately 100 milliseconds
+Memory: base ~50MB, large projects +10-50MB, optimization cache 5-20MB.
 
-Memory Usage Characteristics:
-
-- Base system requires approximately 50MB RAM
-- Large projects may require an additional 10 to 50MB depending on template count
-- Optimization cache uses approximately 5 to 20MB for performance improvements
-
-File Size Impact:
-
-- Documentation files range from 50 to 200KB per project
-- Optimization backups match the size of original templates
-- Configuration files range from 5 to 10KB for complete project setup
+File sizes: documentation 50-200KB per project, optimization backups match originals, configuration 5-10KB.
 
 ---
 
 ## Works Well With
 
-- moai-foundation-core: Core execution patterns and SPEC-driven development workflows
+- moai-foundation-core: Core execution patterns and SPEC-driven workflows
 - moai-foundation-cc: Claude Code integration and configuration
 - moai-workflow-docs: Unified documentation management
 - moai-workflow-templates: Template optimization strategies
-- moai-library-nextra: Advanced documentation architecture
+- moai-library-nextra: Documentation architecture
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
@@ -360,13 +200,11 @@ Analysis metrics: file size, complexity score, redundancy ratio, load performanc
 Optimization techniques: whitespace reduction, deduplication, structure simplification.
 Always create backup before applying optimization (`backup: true`).
 
-Full template library and optimization patterns: [modules/templates.md](modules/templates.md)
-
 ---
 
 ## Documentation Generation (absorbed from moai-docs-generation)
 
-Technical documentation generation using Sphinx, MkDocs, TypeDoc, OpenAPI, and Nextra.
+Technical docs generation using Sphinx, MkDocs, TypeDoc, OpenAPI, and Nextra. Covers project configuration discovery, how to integrate with existing docs sites, and best practices for keeping framework documentation and technology guide content current.
 
 ### Supported Generators
 
@@ -386,13 +224,11 @@ Technical documentation generation using Sphinx, MkDocs, TypeDoc, OpenAPI, and N
 4. Generate output in configured format (Markdown, HTML, PDF)
 5. Update `/moai sync` artifacts: README, CHANGELOG, API reference
 
-Full generator configurations: [modules/docs-generation.md](modules/docs-generation.md)
-
 ---
 
 ## JIT Document Loading (absorbed from moai-workflow-jit-docs)
 
-On-demand documentation discovery and loading based on user intent and conversation context.
+JIT docs (just in time docs) — on-demand documentation discovery and loading based on user intent and conversation context.
 
 ### Primary Tools
 

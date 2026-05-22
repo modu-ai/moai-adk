@@ -54,6 +54,7 @@ The handoff package lives at `.moai/brain/IDEA-NNN/claude-design-handoff/`:
 | `checklist.md` | Pre-paste self-check before using in claude.com Design | Human review tool |
 
 Key guarantees:
+
 - [HARD] `prompt.md` contains NO MoAI-specific tokens (no `SPEC-`, `.moai/`, `manager-`, `IDEA-`)
 - [HARD] Brand voice integrated when `.moai/project/brand/brand-voice.md` exists
 - [HARD] Brand-absent fallback: `Brand Voice (default — please customize)` placeholder section
@@ -90,105 +91,25 @@ ELSE:
 <!-- @MX:WARN: [AUTO] prompt.md template — output pasted into external claude.com Design session -->
 <!-- @MX:REASON: Changes to this template affect what users paste into claude.com. Structural changes can break user's design sessions. Validate against current claude.com Design prompt guidelines before modifying. -->
 
-#### 5-Section Template
-
 `prompt.md` MUST follow this exact 5-section structure:
 
-```markdown
-# Design Brief: {product name from proposal.md}
+1. **Goal** — 2-3 sentences describing what needs to be designed, target users, top 3 value propositions from Lean Canvas UVP
+2. **References** — 3-5 URLs to existing products with style notes, plus key aesthetic direction
+3. **Brand Voice** — Two branches (brand_present vs brand_absent), see decision below
+4. **Acceptance Criteria** — Concise non-negotiable requirements list (5-8 items)
+5. **Out of Scope** — Explicit exclusions (3-5 items)
 
-## 1. Goal
+#### Section 3 — Brand Voice Decision Tree
 
-{2-3 sentences describing what needs to be designed.}
+- Branch A (`brand_present = true`): Extract personality + voice guidelines + color palette + typography from brand-voice.md and visual-identity.md
+- Branch B (`brand_present = false`): Emit `## 3. Brand Voice (default — please customize)` header with explicit placeholder + instructions to either edit or run brand interview
 
-I need a complete visual design for a {product description} — specifically the {scope: landing page / dashboard / mobile app / web app / etc.}.
-
-The design should communicate: {top 3 value propositions from Lean Canvas UVP block}
-
-Target users: {Customer Segments from Lean Canvas, 1-2 sentences}
-
----
-
-## 2. References
-
-For visual inspiration and style direction, please study these references:
-
-{List of URLs from references.md — 3-5 URLs to existing products with brief style notes}
-
-Key aesthetic direction:
-- {style adjective 1}: {brief explanation}
-- {style adjective 2}: {brief explanation}
-- {style adjective 3}: {brief explanation}
-
----
-
-## 3. Brand Voice
-
-{EITHER brand_present branch OR brand_absent branch — see below}
-
----
-
-## 4. Acceptance Criteria
-
-The design MUST satisfy these non-negotiable requirements:
-
-{Concise list from acceptance.md — typically 5-8 items}
-
----
-
-## 5. Out of Scope
-
-Do NOT design:
-
-{Explicit exclusions — typically 3-5 items}
-
-```
-
-#### Section 3 — Brand Voice: Two Branches
-
-**Branch A: Brand present** (`brand_present = true`):
-
-```markdown
-## 3. Brand Voice
-
-The brand personality is: {from brand-voice.md tone/personality fields}
-
-Voice guidelines:
-{Extract 3-5 most actionable brand voice rules from brand-voice.md}
-
-Color palette (from brand identity):
-{If visual-identity.md present: list primary colors with hex codes}
-{If visual-identity.md absent: "Brand colors TBD — please use {tone}-appropriate palette"}
-
-Typography:
-{If visual-identity.md present: font families}
-{If visual-identity.md absent: "Typography TBD — sans-serif for readability"}
-```
-
-**Branch B: Brand absent** (`brand_present = false`):
-
-```markdown
-## 3. Brand Voice (default — please customize)
-
-> NOTE: This project does not yet have a defined brand voice. The placeholders below
-> are generic suggestions. Before using this prompt in Claude Design, either:
-> (a) Edit this section with your actual brand voice, OR
-> (b) Run /moai brain brand-interview (when available) to define brand context
-
-Brand personality: professional, approachable, modern
-
-Voice guidelines:
-- Clear and concise language; no jargon
-- Action-oriented CTAs
-- Friendly but credible tone
-
-Color palette: neutral, modern (grays, whites, one accent color — TBD)
-Typography: clean sans-serif (Inter, Geist, or similar)
-```
+See [5-section prompt template + brand branches detail](references/prompt-template.md) for verbatim section templates.
 
 #### Prohibited Content in prompt.md
 
 [HARD] The following MUST NOT appear anywhere in prompt.md:
+
 - References to `SPEC-` identifiers (e.g., `SPEC-AUTH-001`)
 - References to `.moai/` paths (e.g., `.moai/brain/`, `.moai/project/`)
 - References to agent names (e.g., `manager-brain`, `manager-spec`)
@@ -198,132 +119,16 @@ Typography: clean sans-serif (Inter, Geist, or similar)
 
 The prompt must read as if written by a human product designer with no knowledge of MoAI's internal structure.
 
-### Step 2: Assemble references.md
+### Steps 2-5: Supporting Files
 
-Populate from research.md's Sources section. Select 3-5 URLs that represent:
-1. Existing competitors (to show what the user wants to improve on)
-2. Design inspiration from adjacent products (visual quality reference)
-3. User experience patterns relevant to the target use case
+| Step | File | Purpose |
+|------|------|---------|
+| 2 | references.md | Competitor analysis + visual inspiration + UX pattern references (3-5 URLs from research.md Sources). Falls back to instructional note when URLs are scarce. |
+| 3 | acceptance.md | Accessibility (WCAG 2.1 AA), Responsiveness (375/768/1280px), Brand Alignment, Content Completeness, Technical Constraints |
+| 4 | context.md | Extended context — NOT for pasting into Claude Design. Full Lean Canvas summary, SPEC roadmap, research findings, brand context |
+| 5 | checklist.md | Human self-check before pasting prompt.md: content review, MoAI-internal cleanup (auto-verified), scope verification, session readiness |
 
-Format:
-```markdown
-# Design References
-
-## Competitor Analysis
-
-{URL}: {product name} — {what the design should improve on or learn from}
-
-## Visual Inspiration
-
-{URL}: {product name} — {specific visual quality to emulate: e.g., "clean typography", "card layout", "mobile-first nav"}
-
-## UX Pattern References
-
-{URL}: {product name or pattern} — {specific interaction pattern relevant to the design}
-```
-
-If research.md has fewer than 3 URLs (e.g., WebSearch failed), include a note:
-```markdown
-*Note: Limited references available due to research tool availability. Add 2-3 URLs of products you admire.*
-```
-
-### Step 3: Assemble acceptance.md
-
-Design acceptance criteria derived from Lean Canvas + product type:
-
-```markdown
-# Design Acceptance Criteria
-
-These criteria must be met for the design to be considered complete.
-
-## Accessibility
-- [ ] WCAG 2.1 AA compliance (minimum contrast ratio 4.5:1 for normal text)
-- [ ] Interactive elements have visible focus states
-- [ ] Alt text descriptions provided for all images and icons
-
-## Responsiveness
-- [ ] Mobile-first design (base breakpoint: 375px)
-- [ ] Tablet layout defined (768px breakpoint)
-- [ ] Desktop layout defined (1280px breakpoint)
-
-## Brand Alignment
-- [ ] Color palette consistent with brand voice section of prompt.md
-- [ ] Typography consistent and readable
-- [ ] Visual hierarchy reflects product priority (UVP communicated first)
-
-## Content Completeness
-- [ ] Hero section includes: headline, subheadline, primary CTA
-- [ ] Core features visually communicated (minimum 3 features)
-- [ ] Social proof element present (testimonial, stat, or logo row)
-
-## Technical Constraints
-- [ ] No animations or complex interactions in v1 (static design only)
-- [ ] Design system uses reusable components (cards, buttons, inputs)
-```
-
-Customize the checklist based on the specific product type identified in proposal.md.
-
-### Step 4: Assemble context.md
-
-Extended context for the design session — NOT pasted into the prompt, kept as reference:
-
-```markdown
-# Extended Context: {product name}
-
-> This file supplements prompt.md with additional context for your design session.
-> It is NOT meant to be pasted into Claude Design — use prompt.md for that.
-
-## Product Background
-
-{Full Lean Canvas summary from ideation.md — all 9 blocks}
-
-## SPEC Roadmap Context
-
-{List of SPEC decomposition candidates from proposal.md — helps designer understand scope and what is out of scope for v1}
-
-## Research Findings Summary
-
-{Executive summary from research.md — key market insights and competitive dynamics}
-
-## Brand Context
-
-{If brand present: full brand-voice.md content}
-{If brand absent: placeholder and instructions to populate .moai/project/brand/}
-```
-
-### Step 5: Assemble checklist.md
-
-Human self-check before pasting prompt.md into claude.com Design:
-
-```markdown
-# Pre-Paste Checklist
-
-Before pasting prompt.md into Claude Design, verify:
-
-## Content Review
-- [ ] Goal section accurately describes what you want designed
-- [ ] References section has 3-5 URLs you have checked and are relevant
-- [ ] Brand Voice section reflects your actual brand (not placeholder)
-- [ ] Acceptance Criteria section reflects your real quality bar
-
-## MoAI-Internal Cleanup (auto-verified)
-- [ ] No SPEC- identifiers in prompt.md
-- [ ] No .moai/ path references in prompt.md
-- [ ] No /moai commands in prompt.md
-
-## Scope Verification
-- [ ] Out of Scope section lists things you explicitly do NOT want
-- [ ] The "Goal" section is scoped to one page/view (not the entire product)
-
-## Session Readiness
-- [ ] You have a claude.com account with Design access
-- [ ] You have reviewed IDEA-NNN/proposal.md and know what this design supports
-- [ ] You are prepared to provide feedback on the generated design
-
-After design is complete:
-- Copy the Claude Design output to a local bundle directory
-- Run: /moai design --path A --bundle <path-to-bundle>
-```
+See [supporting files templates](references/supporting-files.md) for verbatim references.md, acceptance.md, context.md, and checklist.md templates.
 
 ---
 

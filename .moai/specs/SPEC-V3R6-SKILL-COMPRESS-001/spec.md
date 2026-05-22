@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-SKILL-COMPRESS-001
 title: "상위 5개 무거운 Workflow Skill Body 압축 (-17K tokens)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-05-23
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-RULES-PATH-SCOPE-001, SPEC-V3R6-RULES-COMPRESS-001, SP
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — Wave 1 SPEC #4 of 4. v3.0 환골탈체 §Layer 2 Top-5 Skill body compression (-17K tokens 절감). 5 skills (`moai-workflow-testing`, `moai-workflow-spec`, `moai-workflow-project`, `moai-domain-design-handoff`, `moai-meta-harness`) Level 2 body를 11,664w → 7,300w로 축소. Progressive Disclosure 3-Level 보존: Level 1 metadata (frontmatter) 불변 / Level 2 body 압축 / Level 3 references/ 디렉토리로 분리. Template-First Rule (CLAUDE.local.md §2) 동시 적용. Tier M (3 artifacts). |
+| 0.2.0 | 2026-05-23 | manager-develop | Run-phase COMPLETE — DDD cycle (ANALYZE-PRESERVE-IMPROVE) executed. Aggregate compression 11,667w → 7,004w (-4,663w = -39.96%). Per-skill: testing 3153→1230w / spec 2394→1637w / project 2068→1389w / design-handoff 2042→1274w / meta-harness 2010→1474w. 16 new references/ files created (testing 5 + spec 3 + project 3 + design-handoff 2 + meta-harness 3). All 12 ACs PASS. Frontmatter byte-identity verified for all 5 skills (AC-SCM-011). Template mirror identical for all 5 SKILL.md + 16 references/ files (AC-SCM-008). Catalog hashes regenerated via `gen-catalog-hashes.go --all` (AC-SCM-010 TestAllSkillsInCatalog + TestManifestHashFormat PASS). Cross-platform builds PASS (linux + windows, AC-SCM-012). NEW lint regressions: 0. Naming convention Option A: new `references/` (plural), existing `reference/` (singular) preserved. Hybrid Trunk Tier M direct policy per CLAUDE.local.md §23. |
 
 ## 1. Goal
 

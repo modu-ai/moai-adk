@@ -46,7 +46,7 @@ catalog:
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 4bb63ae3c3daeefe44aad5d66efeb60c1ea64fda1ef8a198b114d31a46da143b
+              hash: 2eb6d71cf677b4478be84c878f98cffdb555a388df0c932ee88fe4aac9279303
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -76,12 +76,12 @@ catalog:
             - name: moai-workflow-project
               tier: core
               path: templates/.claude/skills/moai-workflow-project/
-              hash: 620983316da7230c7ac037f8e556fb3653804ae82e336176cda10b0fbfc149c8
+              hash: e1b654bc1093c4ea7bc44b9a85423a4ba7f95ab68511285a53ef55527edbda46
               version: 1.0.0
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: 187a61c86858a9c24e2946fff7c10e54a56efea3c836fca69895fef9ad533897
+              hash: 3a37ae167fd1e0afb94fb935eb4e935fc73f5707799c0fd44813edba5672cdbe
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
@@ -91,7 +91,7 @@ catalog:
             - name: moai-workflow-testing
               tier: core
               path: templates/.claude/skills/moai-workflow-testing/
-              hash: 3bf7279ad450873d00c11607b7bbf11bf5a8453375450e8bc17cff182fe5cf70
+              hash: f9b257f0e67eccc7586f5f6650e4d3c960e628fda84033e71f414dabb06d1be2
               version: 1.0.0
             - name: moai-workflow-worktree
               tier: core
@@ -254,7 +254,7 @@ catalog:
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-design-handoff/
-                  hash: e2e153f51469e5fc6740686703a63121db7081925e48b011b330df9f0a2ebd36
+                  hash: af4dedcb2c843729f3cba0ed25e7462b1144a6f0fe238639c94bdaa0701d967d
                   version: 1.0.0
                 - name: moai-workflow-design
                   tier: optional-pack:design
