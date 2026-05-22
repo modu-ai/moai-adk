@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-GEARS-MIGRATION-001
 title: "EARS → GEARS Keyword Migration + Lint Rule Update + 4-locale Docs Sync"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-RULES-COMPLIANCE-001, SPEC-V3R6-V3-CUTOVER-001]  # for
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — Wave 6 SPEC #2 per `.moai/research/v3-redesign-blueprint-2026-05-22.md` line 16 + 24 + 174 (user 2026-05-22 confirm). EARS → GEARS keyword migration: update `internal/spec/lint.go` `EARSModalityRule` (replace IF/THEN drop + WHERE clarification) + write user-facing migration guide in 4-locale docs-site + provide policy for the 88 existing SPECs (default: keep legacy keyword OK as backward-compat warning, NEW SPECs use GEARS). Tier M (3 artifacts) — touches lint engine + cross-cutting docs but no behavioral change to runtime workflow. Defers actual 88-SPEC bulk rewrite to follow-up sweep SPEC per AskUserQuestion default. |
+| 0.2.0 | 2026-05-22 | orchestrator + manager-develop | run-phase complete (M1-M4). M1 paper validation (orchestrator-direct, Verdict MISMATCH → spec §1 amended per AC-GM-005). M2 lint.go LegacyEARSKeyword + 4 tests + 2 fixtures (manager-develop cycle_type=ddd). M3 4-locale docs-site GEARS migration guide (manager-develop cycle_type=ddd, Hugo Goldmark attribute extension activated, parity ratio 502/437 = 1.149). M4 chore (orchestrator-direct, acceptance.md grep pattern fixes B7-1/B7-2, status implemented v0.2.0, progress.md). 8/8 active ACs PASS. Commits: 431a999be / 0bdbae7c2 / b3d2a52da + this chore. |
 
 ## 1. Goal
 

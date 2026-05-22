@@ -207,9 +207,11 @@ for L in ko en ja zh; do wc -l "docs-site/content/$L/$PATH_REL" ; done | \
 test -f .moai/research/gears-paper-validation.md && echo "PASS: file exists"
 grep -q "Verdict:" .moai/research/gears-paper-validation.md && echo "PASS: verdict present"
 
-VERDICT=$(grep "^Verdict:" .moai/research/gears-paper-validation.md | head -1)
+VERDICT=$(grep "Verdict:" .moai/research/gears-paper-validation.md | head -1)
 echo "$VERDICT"
-# Expected: "Verdict: MATCH" OR (if MISMATCH) subsequent SPEC amendment commit exists
+# Expected: "Verdict: MATCH" OR (if MISMATCH) subsequent SPEC amendment commit exists.
+# Note: pattern does NOT anchor to line start to tolerate Markdown bold (`**Verdict:**`)
+# rendering in the validation report file. Pattern fix landed in M4 chore (B7-2).
 ```
 
 ---
@@ -319,8 +321,12 @@ go run ./cmd/moai spec lint --strict -f json \
 ### Verification command
 
 ```bash
-grep -A 15 'GEARS.*window\|6-month\|backward.compat.*window' internal/spec/lint.go
-# Expected: non-empty match block
+grep -A 15 '6 months\|6-month\|GEARS.*window\|Backward-compat.*window' internal/spec/lint.go
+# Expected: non-empty match block.
+# Note: pattern accepts both "6 months" (space) and "6-month" (hyphen) spellings
+# to tolerate either documentation style. Lint.go uses "6 months" (space) as of
+# M2 0bdbae7c2; this AC accepts both forms going forward. Pattern fix landed in
+# M4 chore (B7-1).
 
 for L in ko en ja zh; do
   grep -c '6.*month\|6.*개월\|6.*ヶ月\|6.*个月' \
