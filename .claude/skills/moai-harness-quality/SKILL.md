@@ -1,5 +1,5 @@
 ---
-name: my-harness-quality
+name: moai-harness-quality
 description: >
   Quality/Testing domain knowledge for moai-adk-go covering Go testing patterns, linting,
   coverage targets, race detection, and LSP quality gates.
@@ -25,7 +25,7 @@ progressive_disclosure:
 triggers:
   keywords: ["go test", "lint", "vet", "coverage", "golangci-lint", "quality gate", "LSP", "race", "t.TempDir", "flaky", "test isolation"]
   agents:
-    - "my-harness-quality-specialist"
+    - "moai-harness-quality-specialist"
     - "manager-quality"
   phases:
     - "run"

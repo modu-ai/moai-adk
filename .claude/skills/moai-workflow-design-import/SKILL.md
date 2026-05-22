@@ -46,7 +46,7 @@ Reserved output paths (design constitution §3.2): `tokens.json`, `components.js
 
 When `/moai design` requires path selection, present via AskUserQuestion:
 1. **Path A — Claude Design** (권장): Handoff bundle (ZIP or HTML) from Claude Design.
-2. **Path B1 — Figma**: Figma file access; meta-harness generates `my-harness-figma-extractor`.
+2. **Path B1 — Figma**: Figma file access; meta-harness generates `moai-harness-figma-extractor`.
 
 Selection is persisted to `.moai/design/path-selection.json` for audit.
 
@@ -264,15 +264,15 @@ available. Path B1 does NOT ship a static Figma skill — it is generated dynami
 When the user selects Path B1, invoke `moai-meta-harness` to generate:
 
 ```
-.claude/skills/my-harness-figma-extractor/SKILL.md
+.claude/skills/moai-harness-figma-extractor/SKILL.md
 ```
 
-The generated skill is project-scoped and user-owned (`my-harness-*` prefix). It will never
+The generated skill is project-scoped and user-owned (`moai-harness-*` prefix). It will never
 be overwritten by `moai update`.
 
 ### Generation Contract
 
-`moai-meta-harness` Phase 5 (Customization) produces `my-harness-figma-extractor` with:
+`moai-meta-harness` Phase 5 (Customization) produces `moai-harness-figma-extractor` with:
 
 - **Figma file ID**: project-specific file identifier (collected during Socratic interview)
 - **Page selectors**: which Figma pages map to which token categories
@@ -284,7 +284,7 @@ matching the reserved file paths in design constitution §3.2.
 
 ### Output
 
-After `my-harness-figma-extractor` runs, this skill receives the produced artifacts at
+After `moai-harness-figma-extractor` runs, this skill receives the produced artifacts at
 `.moai/design/` and proceeds to DTCG validation before `expert-frontend` consumption.
 
 ---
@@ -294,7 +294,7 @@ After `my-harness-figma-extractor` runs, this skill receives the produced artifa
 - `moai-domain-brand-design`: Fallback path when bundle import fails
 - `moai-workflow-gan-loop`: Receives extracted tokens for quality evaluation
 - `expert-frontend`: Primary consumer of extracted design artifacts
-- `moai-meta-harness`: Generates `my-harness-figma-extractor` for Path B1 (SPEC-V3R3-HARNESS-001)
+- `moai-meta-harness`: Generates `moai-harness-figma-extractor` for Path B1 (SPEC-V3R3-HARNESS-001)
 - `moai-design-system`: DTCG token validation guidance and design system context
 
 ---

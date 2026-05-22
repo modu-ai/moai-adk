@@ -1,5 +1,5 @@
 ---
-name: my-harness-hook-ci-specialist
+name: moai-harness-hook-ci-specialist
 description: |
   Hook/CI domain specialist for moai-adk-go. Handles shell hook patterns, PostToolUse/SessionStart
   events, GitHub Actions workflows, CI pipeline structure, and release automation.
@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 skills:
-  - my-harness-hook-ci
+  - moai-harness-hook-ci
 ---
 
 # Hook/CI Specialist

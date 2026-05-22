@@ -287,10 +287,10 @@ in the **user area** (FROZEN guard pre-verified):
 
 | Artifact | Path | Required |
 |----------|------|----------|
-| Architect agent | `.claude/agents/my-harness/<domain>-architect.md` | Always |
-| Engineer agent | `.claude/agents/my-harness/<domain>-engineer.md` | Always |
-| Patterns skill | `.claude/skills/my-harness-<domain>-patterns/SKILL.md` | Always |
-| Best-practices skill | `.claude/skills/my-harness-<domain>-best-practices/SKILL.md` | Always |
+| Architect agent | `.claude/agents/harness/<domain>-architect.md` | Always |
+| Engineer agent | `.claude/agents/harness/<domain>-engineer.md` | Always |
+| Patterns skill | `.claude/skills/moai-harness-<domain>-patterns/SKILL.md` | Always |
+| Best-practices skill | `.claude/skills/moai-harness-<domain>-best-practices/SKILL.md` | Always |
 | Harness directory | `.moai/harness/` | Always |
 | Design extension | `.moai/harness/design-extension.md` | Q13 == Advanced only |
 

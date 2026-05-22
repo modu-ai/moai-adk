@@ -1,5 +1,5 @@
 ---
-name: my-harness-cli-template
+name: moai-harness-cli-template
 description: >
   CLI/Template domain knowledge for moai-adk-go covering cobra commands, go:embed template
   system, YAML config, and template rendering pipeline.
@@ -25,7 +25,7 @@ progressive_disclosure:
 triggers:
   keywords: ["cobra", "command", "template", "embed", "config", "yaml", "moai init", "moai update", "moai build", "rendering", "internal/cli", "internal/template"]
   agents:
-    - "my-harness-cli-template-specialist"
+    - "moai-harness-cli-template-specialist"
     - "expert-backend"
   phases:
     - "run"

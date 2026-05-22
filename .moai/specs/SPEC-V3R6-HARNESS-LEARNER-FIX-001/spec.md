@@ -62,6 +62,8 @@ The original V3R4 design (per `SPEC-V3R4-HARNESS-001 §10 exclusion #10`) preser
 
 ## 5. Out of Scope
 
+### 5.1 Out of Scope Items
+
 - **OOS-1**: Renaming `moai-harness-learner` to `my-harness-learner` (deferred to Wave 2 SPEC-V3R6-HARNESS-RENAME-001).
 - **OOS-2**: agentskills.io schema overhaul, JSON Schema migration, or skill registry redesign (deferred to Wave 3 SPEC-V3R6-SKILL-SLIM-001, Tier L).
 - **OOS-3**: Modifications to the 4-Tier observation ladder, safety layers L1-L5, GAN loop integration, or any non-AskUserQuestion section of the skill body. REQ-HLF-005 explicitly fences the change surface to the AskUserQuestion handling section.

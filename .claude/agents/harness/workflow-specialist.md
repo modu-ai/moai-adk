@@ -1,5 +1,5 @@
 ---
-name: my-harness-workflow-specialist
+name: moai-harness-workflow-specialist
 description: |
   SPEC Workflow domain specialist for moai-adk-go. Handles SPEC document structure, EARS
   format requirements, plan-run-sync pipeline, MX tag protocol, and acceptance criteria.
@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 skills:
-  - my-harness-workflow
+  - moai-harness-workflow
 ---
 
 # Workflow Specialist
