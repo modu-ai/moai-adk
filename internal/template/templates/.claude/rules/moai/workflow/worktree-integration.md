@@ -207,20 +207,27 @@ permissionMode: acceptEdits
 permissionMode: plan  # Read-only mode already provides safety
 ```
 
-## WorktreeCreate and WorktreeRemove Hooks
+## WorktreeCreate and WorktreeRemove Hooks (Not Registered by Default)
 
-MoAI-ADK implements hook handlers for worktree lifecycle events:
+Claude Code v2.1.49+ defines `WorktreeCreate` / `WorktreeRemove` hooks that **replace** Claude Code's default git worktree behavior — not extend it. Per the official contract (https://code.claude.com/docs/en/hooks):
 
-| Hook Event | Triggered When | MoAI Handler |
-|-----------|---------------|--------------|
-| WorktreeCreate | Agent with isolation: worktree spawns | `moai hook worktree-create` |
-| WorktreeRemove | Agent with isolation: worktree terminates | `moai hook worktree-remove` |
+| Hook | Role | stdout contract | Failure mode |
+|---|---|---|---|
+| WorktreeCreate | Active creator — MUST actually create the worktree directory and echo its absolute path to stdout (plain text only, no JSON; HTTP hooks use `{"hookSpecificOutput": {"worktreePath": "..."}}`). | Single line: `/absolute/path/to/worktree` | Empty stdout OR any non-zero exit aborts creation |
+| WorktreeRemove | Observer — runs during/after removal for cleanup. | No output required | Failures logged in debug mode only |
 
-Hook scripts are located at:
-- `.claude/hooks/moai/handle-worktree-create.sh`
-- `.claude/hooks/moai/handle-worktree-remove.sh`
+The stdin JSON for both events includes `worktree_path` (Claude Code's proposed path), `name`, `cwd`, `session_id`, `transcript_path`, `hook_event_name`.
 
-Currently the handlers log worktree creation and removal for session tracking.
+**MoAI-ADK does NOT register these hooks by default.** Claude Code's default git worktree handling is sufficient for our agent isolation use case (5 agents declare `isolation: worktree`: manager-develop, expert-frontend, expert-backend, expert-refactoring, researcher). Registering observer-only hooks here would replace the default behavior with non-functional stubs and produce `"WorktreeCreate hook returned a path that is not a directory: {}"` because an empty JSON object cannot be parsed as a path.
+
+If a future use case requires custom worktree creation (e.g., non-git VCS, shared-file symlinks, per-worktree database setup), implement an active creator hook that:
+
+1. Reads stdin JSON (fields: `worktree_path`, `name`, `cwd`, `session_id`).
+2. Performs `git worktree add` (or equivalent for the VCS), redirecting its stdout to `/dev/null` so it does not pollute the hook stdout.
+3. Prints **only** the absolute worktree path to stdout. All progress/diagnostic output goes to stderr.
+4. Exits 0 on success; any non-zero exit aborts creation.
+
+Handler files at `internal/hook/worktree_{create,remove}.go` and `internal/cli/hook.go` `worktree-create` / `worktree-remove` subcommands are preserved as opt-in infrastructure for future active-creator implementations. They are not registered in `.claude/settings.json` until such an implementation lands. Likewise, `.claude/hooks/moai/handle-worktree-{create,remove}.sh` wrapper scripts exist but are not invoked by any settings.json entry.
 
 ## Prompt Path Rules for Worktree-Isolated Agents
 

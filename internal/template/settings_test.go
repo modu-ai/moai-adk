@@ -505,8 +505,11 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 	}
 
 	// 26 total events - 4 RETIRE-OBS-ONLY (Notification, Elicitation, ElicitationResult, TaskCreated)
-	// = 22 active hook registrations per SPEC-V3R2-RT-006 REQ-004.
-	const expectedCount = 22
+	// - 2 WorktreeCreate/WorktreeRemove (unregistered by default per
+	// .claude/rules/moai/workflow/worktree-integration.md §WorktreeCreate and
+	// WorktreeRemove Hooks; Claude Code default git worktree behavior is used)
+	// = 20 active hook registrations.
+	const expectedCount = 20
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}

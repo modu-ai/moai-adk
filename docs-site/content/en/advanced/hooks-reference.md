@@ -158,8 +158,8 @@ echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 | `PostToolUse` | `handle-post-tool.sh` | Task 메트릭 로깅 |
 | `TeammateIdle` | `handle-teammate-idle.sh` | LSP 품질 게이트 검증 |
 | `TaskCompleted` | `handle-task-completed.sh` | SPEC 문서 존재 확인 |
-| `WorktreeCreate` | `handle-worktree-create.sh` | 워크트리 생성 로깅 |
-| `WorktreeRemove` | `handle-worktree-remove.sh` | 워크트리 삭제 로깅 |
+| `WorktreeCreate` | (none — MoAI default unregistered) | Uses Claude Code default worktree behavior (for `isolation: worktree` agents). Registration requires active creator contract (create directory + echo absolute path to stdout). |
+| `WorktreeRemove` | (none — MoAI default unregistered) | Uses Claude Code default worktree cleanup. Registration is observer-only (no stdout required). |
 | `UserPromptSubmit` | `handle-user-prompt.sh` | 품질 게이트 자동 실행 |
 
 ## 다음 단계

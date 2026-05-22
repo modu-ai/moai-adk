@@ -30,8 +30,8 @@ Claude Code hooks for extending functionality with custom scripts.
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete |
 | TaskCreated | No | Yes | Runs when a task is created via TaskCreate (v2.1.84+) |
-| WorktreeCreate | No | Yes | Runs when a worktree is created for agent isolation (v2.1.49+) |
-| WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+) |
+| WorktreeCreate | No | Yes | Runs when a worktree is created for agent isolation (v2.1.49+). **Active creator contract**: hook MUST create the directory and echo its absolute path to stdout (plain text); empty stdout or non-zero exit aborts creation. **Not registered by MoAI default** — see `.claude/rules/moai/workflow/worktree-integration.md` §WorktreeCreate and WorktreeRemove Hooks. |
+| WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+). Observer role; no output required. **Not registered by MoAI default** — see worktree-integration.md. |
 | ConfigChange | Config source | Yes | Runs when config files change (v2.1.49+). Matchers: user_settings, project_settings, local_settings, policy_settings, skills |
 | CwdChanged | No | No | Runs when working directory changes (v2.1.83+). Receives CLAUDE_ENV_FILE |
 | FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). Receives CLAUDE_ENV_FILE |
