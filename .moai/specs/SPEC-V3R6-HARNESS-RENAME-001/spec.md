@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-HARNESS-RENAME-001
-version: "0.2.0"
+title: "Harness Folder + Skill Prefix Rename (my-harness → harness/moai-harness-*)"
+version: "0.2.1"
 status: implemented
-created_at: 2026-05-22
-updated_at: 2026-05-22
+created: 2026-05-22
+updated: 2026-05-22
 author: manager-spec
 priority: Medium
-labels: [harness, rename, foundation, wave-2, v3.0.0]
+phase: "v3.0.0"
+module: ".claude/agents/harness, .claude/skills/moai-harness-*, internal/template/templates"
+lifecycle: spec-anchored
+tags: "harness, rename, foundation, wave-2, v3.0.0"
+tier: S
 issue_number: null
 depends_on: []
 related_specs: [SPEC-V3R6-HARNESS-LEARNER-FIX-001, SPEC-V3R6-CATALOG-SSOT-001, SPEC-V3R6-AGENT-FOLDER-SPLIT-001, SPEC-V3R6-META-HARNESS-PATH-001]
@@ -71,13 +76,14 @@ related_specs: [SPEC-V3R6-HARNESS-LEARNER-FIX-001, SPEC-V3R6-CATALOG-SSOT-001, S
 
 ### Out of Scope
 
-1. `.moai/harness/` runtime config directory (REQ-HRN-008 prohibits).
-2. Active SPEC frontmatter rewrites — historical artifact integrity (e.g., SPEC-V3R6-HARNESS-LEARNER-FIX-001 `id:` field stays as-is even if body content is updated).
-3. Backward-compat aliasing or symlink creation (REQ-HRN-009 prohibits).
-4. `internal/template/templates/.claude/agents/moai/*` mass rename (out of scope — that belongs to Wave 2 SPEC-V3R6-AGENT-FOLDER-SPLIT-001).
-5. Skill content body restructure (out of scope — that belongs to Wave 3 SPEC-V3R6-SKILL-SLIM-001).
-6. docs-site/ updates (verified 0 refs — no impact).
-7. Symbol-level Go API renames (Public functions `harness.CreateLearning(...)` etc. — string literals only).
+- `.moai/harness/` runtime config directory (REQ-HRN-008 prohibits).
+- Active SPEC frontmatter rewrites — historical artifact integrity (e.g., SPEC-V3R6-HARNESS-LEARNER-FIX-001 `id:` field stays as-is even if body content is updated).
+- Backward-compat aliasing or symlink creation (REQ-HRN-009 prohibits).
+- `internal/template/templates/.claude/agents/moai/*` mass rename (out of scope — that belongs to Wave 2 SPEC-V3R6-AGENT-FOLDER-SPLIT-001).
+- Skill content body restructure (out of scope — that belongs to Wave 3 SPEC-V3R6-SKILL-SLIM-001).
+- docs-site/ updates (verified 0 refs — no impact).
+- Symbol-level Go API renames (Public functions `harness.CreateLearning(...)` etc. — string literals only).
+- `internal/` Go sources (~31 files, ~100 refs) descoped per user decision 2026-05-22 due to cross-SPEC tension with REQ-PH-009 user-area preservation; follow-up SPEC-V3R6-HARNESS-USER-AREA-RESOLUTION-001 (provisional).
 
 ## 5. Exclusions
 
