@@ -13,6 +13,7 @@
 | Agent slim | 23 → **11** (8 removed) |
 | Skill slim | 37 → **9** + official standard re-verification + modules restructure + error audit |
 | Folder layout | `agents/{core,expert,meta,harness}/` + `skills/moai-harness-*` series |
+| GEARS migration | **추가 (2026-05-22 confirm)** — Wave 6 SPEC-V3R6-GEARS-MIGRATION-001 신설 |
 
 ## 1. Industry Findings (Top 10 — 2026-05 state)
 
@@ -20,7 +21,7 @@
 2. Hooks (26 events, exit 2 = block) = deterministic control layer; production deployments use 95+ hooks.
 3. Hierarchical Supervisor = +12% accuracy at 5×–15× cost; cost-aware routing required.
 4. 88% agent projects fail to reach production; 65% of failures are context drift (NOT architecture).
-5. EARS → GEARS evolution (drops If/Then; clarifies where vs while for AI parsing).
+5. EARS → GEARS evolution (drops If/Then; clarifies where vs while for AI parsing). **v3 결정 (2026-05-22)**: 명시적 마이그레이션 SPEC 추가 — `SPEC-V3R6-GEARS-MIGRATION-001` (Wave 6).
 6. Effective context cap = 8K–50K tokens regardless of 1M marketing.
 7. Anthropic Claude Code Review (Mar 2026): 16→54% coverage using Agent Teams of specialists.
 8. Model routing = biggest ROI lever (Opus orchestrator + Sonnet workers ≈ -40% cost).
@@ -170,6 +171,7 @@ Phase 9 [new]: Learning activation (harness.yaml: learning.enabled: true)
 
 ### Wave 6: Final Compliance + Release (Tier M)
 - SPEC-V3R6-RULES-COMPLIANCE-001 (M — paths CSV, Korean→EN, zone-registry CI guard)
+- SPEC-V3R6-GEARS-MIGRATION-001 (M — EARS → GEARS 키워드 마이그레이션, lint.go rule 갱신, 88개 SPEC 후보 변환 가이드, 4-locale docs-site 반영) **[추가 2026-05-22 — 사용자 결정 반영]**
 - SPEC-V3R6-V3-CUTOVER-001 (M — v2.20.0-rc1 → v3.0.0 release manifest)
 
 ## 7. Dependency Graph
