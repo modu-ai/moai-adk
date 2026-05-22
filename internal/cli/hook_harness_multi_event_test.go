@@ -1,7 +1,7 @@
 // Package cli — multi-event harness observer tests.
-// T-A3: Stop 훅 핸들러 (REQ-HRN-OBS-003, REQ-HRN-OBS-008)
-// T-A4: SubagentStop 훅 핸들러 (REQ-HRN-OBS-005, REQ-HRN-OBS-008)
-// T-A5: UserPromptSubmit 훅 핸들러 (REQ-HRN-OBS-007, REQ-HRN-OBS-014)
+// T-A3: Stop hook handler (REQ-HRN-OBS-003, REQ-HRN-OBS-008)
+// T-A4: SubagentStop hook handler (REQ-HRN-OBS-005, REQ-HRN-OBS-008)
+// T-A5: UserPromptSubmit hook handler (REQ-HRN-OBS-007, REQ-HRN-OBS-014)
 package cli
 
 import (
@@ -15,12 +15,12 @@ import (
 )
 
 // ─────────────────────────────────────────────
-// T-A3: runHarnessObserveStop 테스트
+// T-A3: runHarnessObserveStop tests
 // ─────────────────────────────────────────────
 
-// TestRunHarnessObserveStop_NoOpWhenDisabled는 learning.enabled=false일 때
-// Stop 핸들러가 usage-log.jsonl을 생성/수정하지 않음을 검증한다.
-// REQ-HRN-FND-009: isHarnessLearningEnabled 게이트 재사용.
+// TestRunHarnessObserveStop_NoOpWhenDisabled verifies that the Stop handler
+// neither creates nor modifies usage-log.jsonl when learning.enabled=false.
+// REQ-HRN-FND-009: reuses the isHarnessLearningEnabled gate.
 func TestRunHarnessObserveStop_NoOpWhenDisabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
@@ -40,8 +40,8 @@ func TestRunHarnessObserveStop_NoOpWhenDisabled(t *testing.T) {
 	}
 }
 
-// TestRunHarnessObserveStop_RecordsBaseline는 learning.enabled=true일 때
-// Stop 핸들러가 session_stop 이벤트를 기록하는지 검증한다.
+// TestRunHarnessObserveStop_RecordsBaseline verifies that the Stop handler
+// records a session_stop event when learning.enabled=true.
 // REQ-HRN-OBS-003, REQ-HRN-FND-010.
 func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 	dir := t.TempDir()
@@ -77,7 +77,7 @@ func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 		t.Errorf("event_type = %v, want \"session_stop\"", entry["event_type"])
 	}
 
-	// 기존 4-필드 스키마 보존 (REQ-HRN-FND-010)
+	// Preserve the existing 4-field schema (REQ-HRN-FND-010)
 	for _, field := range []string{"timestamp", "event_type", "subject", "schema_version"} {
 		if _, ok := entry[field]; !ok {
 			t.Errorf("required field %q missing from Stop event entry", field)
@@ -86,11 +86,11 @@ func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// T-A4: runHarnessObserveSubagentStop 테스트
+// T-A4: runHarnessObserveSubagentStop tests
 // ─────────────────────────────────────────────
 
-// TestRunHarnessObserveSubagentStop_NoOpWhenDisabled는 learning.enabled=false일 때
-// SubagentStop 핸들러가 usage-log.jsonl을 생성하지 않음을 검증한다.
+// TestRunHarnessObserveSubagentStop_NoOpWhenDisabled verifies that the SubagentStop
+// handler does not create usage-log.jsonl when learning.enabled=false.
 func TestRunHarnessObserveSubagentStop_NoOpWhenDisabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
@@ -110,8 +110,8 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenDisabled(t *testing.T) {
 	}
 }
 
-// TestRunHarnessObserveSubagentStop_RecordsSubagentStop는 SubagentStop 핸들러가
-// subagent_stop 이벤트를 올바르게 기록하는지 검증한다.
+// TestRunHarnessObserveSubagentStop_RecordsSubagentStop verifies that the SubagentStop
+// handler records a subagent_stop event correctly.
 // REQ-HRN-OBS-005, REQ-HRN-FND-010.
 func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
 	dir := t.TempDir()
@@ -154,11 +154,11 @@ func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// T-A5: runHarnessObserveUserPromptSubmit 테스트
+// T-A5: runHarnessObserveUserPromptSubmit tests
 // ─────────────────────────────────────────────
 
-// TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled는 learning.enabled=false일 때
-// UserPromptSubmit 핸들러가 usage-log.jsonl을 생성하지 않음을 검증한다.
+// TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled verifies that the
+// UserPromptSubmit handler does not create usage-log.jsonl when learning.enabled=false.
 func TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
@@ -177,12 +177,12 @@ func TestRunHarnessObserveUserPromptSubmit_NoOpWhenDisabled(t *testing.T) {
 	}
 }
 
-// TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash는 Strategy A(기본값)로
-// 프롬프트가 SHA-256 해시 + 길이만 기록되는지 검증한다.
-// REQ-HRN-OBS-007, REQ-HRN-OBS-014: 기본값은 Strategy A (PII 최소화).
+// TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash verifies that
+// Strategy A (default) records only the prompt's SHA-256 hash and length.
+// REQ-HRN-OBS-007, REQ-HRN-OBS-014: the default is Strategy A (minimal PII).
 func TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash(t *testing.T) {
 	dir := t.TempDir()
-	// Strategy A는 user_prompt_content 설정이 없거나 "hash"일 때
+	// Strategy A applies when user_prompt_content is unset or set to "hash"
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
@@ -214,7 +214,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash(t *testing.T) {
 		t.Errorf("event_type = %v, want \"user_prompt\"", entry["event_type"])
 	}
 
-	// Strategy A: prompt_hash 존재, prompt_full 없음
+	// Strategy A: prompt_hash present, prompt_full absent
 	if _, ok := entry["prompt_hash"]; !ok {
 		t.Errorf("prompt_hash missing from Strategy A entry")
 	}
@@ -231,8 +231,8 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash(t *testing.T) {
 	}
 }
 
-// TestResolveUserPromptStrategy_FailOpen은 잘못된 strategy 설정 시
-// Strategy A로 폴백(fail-open)되는지 검증한다.
+// TestResolveUserPromptStrategy_FailOpen verifies fall-back to Strategy A
+// (fail-open) when the strategy setting is invalid.
 // REQ-HRN-OBS-014: fail-open to Strategy A.
 func TestResolveUserPromptStrategy_FailOpen(t *testing.T) {
 	t.Parallel()
@@ -262,7 +262,7 @@ func TestResolveUserPromptStrategy_FailOpen(t *testing.T) {
 	}
 }
 
-// TestDetectPromptLang는 Unicode 블록 기반 언어 감지 헬퍼를 검증한다.
+// TestDetectPromptLang verifies the Unicode-block-based language-detection helper.
 func TestDetectPromptLang(t *testing.T) {
 	t.Parallel()
 

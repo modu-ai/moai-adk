@@ -130,7 +130,7 @@ func checkStatusGoldenAbs(t *testing.T, pkgDir, name, got string) {
 //	UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestStatus_Current" -count=1
 
 // TestStatus_Current_Light captures statusCmd output with light-theme env.
-// 특징: tui.Section + tui.KV + tui.Box + tui.Pill 요약.
+// Characteristics: tui.Section + tui.KV + tui.Box + tui.Pill summary.
 func TestStatus_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
@@ -143,7 +143,7 @@ func TestStatus_Current_Light(t *testing.T) {
 }
 
 // TestStatus_Current_Dark captures statusCmd output with dark-theme env.
-// 특징: tui.DarkTheme() 적용, Section + KV + Box + Pill 요약.
+// Characteristics: applies tui.DarkTheme(); Section + KV + Box + Pill summary.
 func TestStatus_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
@@ -156,7 +156,7 @@ func TestStatus_Current_Dark(t *testing.T) {
 }
 
 // TestStatus_NoColor captures statusCmd output with NO_COLOR=1 (plain text mode).
-// tui.MonochromeTheme() 적용: 모든 ANSI 색상 제거, Pill은 [label] 형식으로 degraded.
+// Applies tui.MonochromeTheme(): all ANSI colors stripped; Pill degrades to the [label] form.
 func TestStatus_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 

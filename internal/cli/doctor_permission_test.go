@@ -1,6 +1,6 @@
-// doctor_permission_test.go: doctor permission 서브커맨드 테스트.
-// T-RT002-11: --all-tiers, --mode, --fork, --format 플래그 검증.
-// AC-05: moai doctor permission --trace Bash "go build" 실행 시 JSON trace 출력.
+// doctor_permission_test.go: tests for the doctor permission subcommand.
+// T-RT002-11: validates the --all-tiers, --mode, --fork, --format flags.
+// AC-05: invoking `moai doctor permission --trace Bash "go build"` emits a JSON trace.
 package cli
 
 import (
@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// TestDoctorPermission_SubcmdExists 는 permissionCmd 가 nil 이 아닌지 검증한다.
+// TestDoctorPermission_SubcmdExists verifies that permissionCmd is non-nil.
 func TestDoctorPermission_SubcmdExists(t *testing.T) {
 	t.Parallel()
 	if permissionCmd == nil {
@@ -17,19 +17,19 @@ func TestDoctorPermission_SubcmdExists(t *testing.T) {
 	}
 }
 
-// TestDoctorPermission_AllTiersFlag 는 --all-tiers 플래그 존재 여부 및 기본 출력을 검증한다.
-// AC-05 관련.
+// TestDoctorPermission_AllTiersFlag verifies the presence of the --all-tiers flag and its default output.
+// Relates to AC-05.
 func TestDoctorPermission_AllTiersFlag(t *testing.T) {
 	t.Parallel()
 
-	// --all-tiers 플래그가 정의되어 있어야 함.
+	// The --all-tiers flag must be defined.
 	if permissionCmd.Flags().Lookup("all-tiers") == nil {
 		t.Error("permissionCmd should have --all-tiers flag")
 	}
 }
 
-// TestDoctorPermission_TraceJSONFormat 은 --trace 플래그가 JSON 형식 출력을 생성하는지 검증한다.
-// AC-05 관련.
+// TestDoctorPermission_TraceJSONFormat verifies that the --trace flag produces JSON-format output.
+// Relates to AC-05.
 func TestDoctorPermission_TraceJSONFormat(t *testing.T) {
 	t.Parallel()
 
@@ -45,24 +45,24 @@ func TestDoctorPermission_TraceJSONFormat(t *testing.T) {
 		_ = traceFlag.Value.Set("true")
 	}
 
-	// --trace 플래그가 정의되어 있어야 함.
+	// The --trace flag must be defined.
 	if permissionCmd.Flags().Lookup("trace") == nil {
 		t.Error("permissionCmd should have --trace flag")
 	}
 
 	if err := permissionCmd.RunE(permissionCmd, []string{}); err != nil {
-		// 오류가 발생해도 플래그 정의만 검증.
+		// Errors are tolerated; only the flag definition is being validated.
 		t.Logf("permissionCmd.RunE error (expected in test env): %v", err)
 	}
 
-	// trace 관련 출력 검증 (오류가 있어도 일부 출력은 있을 수 있음).
+	// Verify trace-related output (some output may exist even on error).
 	output := buf.String()
-	// trace 또는 JSON 구조 포함 여부 검증 (실패해도 non-fatal — 플래그 정의 자체를 검증함).
-	_ = strings.Contains(output, "Trace") || strings.Contains(output, "{") // non-fatal 출력 검증.
+	// Verify whether the output contains a trace fragment or JSON structure (non-fatal — the flag definition itself is what is verified).
+	_ = strings.Contains(output, "Trace") || strings.Contains(output, "{") // non-fatal output check.
 }
 
-// TestDoctorPermission_DryRun 은 --dry-run 플래그가 존재하는지 검증한다.
-// AC-05 관련.
+// TestDoctorPermission_DryRun verifies that the --dry-run flag exists.
+// Relates to AC-05.
 func TestDoctorPermission_DryRun(t *testing.T) {
 	t.Parallel()
 
@@ -71,7 +71,7 @@ func TestDoctorPermission_DryRun(t *testing.T) {
 	}
 }
 
-// TestDoctorPermission_NoMatchTrace 는 매칭 없는 도구에 대해 출력이 생성되는지 검증한다.
+// TestDoctorPermission_NoMatchTrace verifies that output is produced for a non-matching tool.
 // AC-05: 8 tiers inspected with matched: true|false per tier.
 func TestDoctorPermission_NoMatchTrace(t *testing.T) {
 	t.Parallel()
@@ -86,45 +86,45 @@ func TestDoctorPermission_NoMatchTrace(t *testing.T) {
 
 	err := permissionCmd.RunE(permissionCmd, []string{})
 	if err != nil {
-		// 오류가 있을 수 있지만 출력이 있어야 함.
+		// Errors are tolerated but output must still be produced.
 		t.Logf("RunE error: %v", err)
 	}
 
-	// 출력 생성 확인.
+	// Verify output is produced.
 	output := buf.String()
 	if err == nil && output == "" {
 		t.Error("permissionCmd should produce output for unknown tool")
 	}
 }
 
-// TestDoctorPermission_ModeFlag 는 --mode 플래그가 정의되어 있는지 검증한다.
-// AC-05 관련 — plan.md T-RT002-28에서 --mode 플래그 추가 지정.
+// TestDoctorPermission_ModeFlag verifies that the --mode flag is defined.
+// Relates to AC-05 — plan.md T-RT002-28 adds the --mode flag.
 func TestDoctorPermission_ModeFlag(t *testing.T) {
 	t.Parallel()
 
-	// --mode 플래그가 permissionCmd 에 정의되어 있어야 함.
+	// The --mode flag must be defined on permissionCmd.
 	if permissionCmd.Flags().Lookup("mode") == nil {
 		t.Error("permissionCmd should have --mode flag (T-RT002-28)")
 	}
 }
 
-// TestDoctorPermission_ForkFlag 는 --fork 플래그가 정의되어 있는지 검증한다.
-// AC-05 관련 — plan.md T-RT002-28에서 --fork 플래그 추가 지정.
+// TestDoctorPermission_ForkFlag verifies that the --fork flag is defined.
+// Relates to AC-05 — plan.md T-RT002-28 adds the --fork flag.
 func TestDoctorPermission_ForkFlag(t *testing.T) {
 	t.Parallel()
 
-	// --fork 플래그가 permissionCmd 에 정의되어 있어야 함.
+	// The --fork flag must be defined on permissionCmd.
 	if permissionCmd.Flags().Lookup("fork") == nil {
 		t.Error("permissionCmd should have --fork flag (T-RT002-28)")
 	}
 }
 
-// TestDoctorPermission_FormatFlag 는 --format 플래그가 정의되어 있는지 검증한다.
-// AC-05 관련 — plan.md T-RT002-28에서 --format 플래그 추가 지정.
+// TestDoctorPermission_FormatFlag verifies that the --format flag is defined.
+// Relates to AC-05 — plan.md T-RT002-28 adds the --format flag.
 func TestDoctorPermission_FormatFlag(t *testing.T) {
 	t.Parallel()
 
-	// --format 플래그가 permissionCmd 에 정의되어 있어야 함.
+	// The --format flag must be defined on permissionCmd.
 	if permissionCmd.Flags().Lookup("format") == nil {
 		t.Error("permissionCmd should have --format flag (T-RT002-28)")
 	}

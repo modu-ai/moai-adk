@@ -14,19 +14,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// TestConstitutionList_RealRegistry는 실제 zone-registry.md를 사용한 통합 테스트다.
-// 실제 registry 파일이 존재하는 환경에서만 실행된다.
-// AC-CON-001-001, AC-CON-001-002 관련.
+// TestConstitutionList_RealRegistry is an integration test that uses the real zone-registry.md.
+// Only runs in environments where the real registry file exists.
+// Relates to AC-CON-001-001, AC-CON-001-002.
 func TestConstitutionList_RealRegistry(t *testing.T) {
-	// 실제 zone-registry.md 경로 탐색
+	// Locate the real zone-registry.md path
 	registryPath := os.Getenv("MOAI_CONSTITUTION_REGISTRY")
 	if registryPath == "" {
-		// 프로젝트 루트 기준으로 탐색
+		// Search relative to the project root
 		cwd, err := os.Getwd()
 		if err != nil {
 			t.Skipf("cwd 확인 불가: %v", err)
 		}
-		// internal/cli에서 프로젝트 루트까지 상위 이동
+		// Ascend from internal/cli up to the project root
 		projectRoot := filepath.Join(cwd, "..", "..")
 		registryPath = filepath.Join(projectRoot, ".claude", "rules", "moai", "core", "zone-registry.md")
 	}
@@ -93,7 +93,7 @@ func TestConstitutionList_RealRegistry(t *testing.T) {
 		if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
 			t.Fatalf("JSON 파싱 오류: %v", err)
 		}
-		// AC-CON-001-006: 최소 7개의 Frozen 불변 조항이 있어야 한다
+		// AC-CON-001-006: at least 7 Frozen invariants are required
 		const minFrozen = 7
 		if len(result.Entries) < minFrozen {
 			t.Errorf("Frozen entries = %d, want >= %d (7 canonical invariants)", len(result.Entries), minFrozen)
@@ -101,7 +101,7 @@ func TestConstitutionList_RealRegistry(t *testing.T) {
 	})
 }
 
-// TestConstitutionGuard_RealRegistry는 실제 registry를 사용한 guard 통합 테스트다.
+// TestConstitutionGuard_RealRegistry is an integration test for the guard using the real registry.
 func TestConstitutionGuard_RealRegistry(t *testing.T) {
 	registryPath := os.Getenv("MOAI_CONSTITUTION_REGISTRY")
 	if registryPath == "" {

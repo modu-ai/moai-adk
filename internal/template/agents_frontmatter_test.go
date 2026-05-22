@@ -7,24 +7,24 @@ import (
 	"testing"
 )
 
-// @MX:NOTE: [AUTO] agents_frontmatter_test.go — REQ-CC2122-HOOK-002 정적 linter
+// @MX:NOTE: [AUTO] agents_frontmatter_test.go — REQ-CC2122-HOOK-002 static linter
 // @MX:SPEC: SPEC-CC2122-HOOK-002 REQ-004/005/006
 //
-// 이 테스트는 .claude/agents/**/*.md 의 frontmatter 가 다음 규칙을 준수하는지
-// 정적으로 검증한다:
-//   1. tools 와 disallowedTools 는 mutually exclusive (claude-code v2.1.119+ 사양)
-//   2. disallowedTools 가 정의된 경우 CSV 문자열 형식이어야 함 (공백 구분 금지)
-//   3. tools 가 정의된 경우 CSV 문자열 형식이어야 함 (CLAUDE.local.md §12)
+// This test statically verifies that the frontmatter of .claude/agents/**/*.md
+// complies with the following rules:
+//  1. tools and disallowedTools are mutually exclusive (claude-code v2.1.119+ spec)
+//  2. When disallowedTools is defined, it MUST follow the CSV string format (no whitespace-only separators)
+//  3. When tools is defined, it MUST follow the CSV string format (CLAUDE.local.md §12)
 //
-// 실제 `claude --print` 회귀 테스트는 GLM 통합 테스트 정책(CLAUDE.local.md §13)
-// 으로 별도 manual 검증 분리.
+// Real `claude --print` regression coverage is split out into manual verification
+// per the GLM integration test policy (CLAUDE.local.md §13).
 
-// validateToolsCSVFormat는 tools 또는 disallowedTools 필드 값이 CSV 형식인지 검증한다.
-// 빈 값은 허용 (필드 부재로 간주).
-// YAML 배열 syntax([...]) 는 금지.
-// 공백만으로 분리된 다중 토큰은 금지 (콤마 분리 필수).
+// validateToolsCSVFormat verifies that the tools or disallowedTools field value follows the CSV format.
+// An empty value is allowed (treated as field absence).
+// YAML array syntax ([...]) is forbidden.
+// Multi-token whitespace-only separation is forbidden (comma separator required).
 //
-// 반환: 위반 시 에러 메시지, 정상 시 빈 문자열.
+// Returns: an error message on violation, an empty string when valid.
 func validateToolsCSVFormat(field, value string) string {
 	if value == "" {
 		return ""
@@ -32,13 +32,13 @@ func validateToolsCSVFormat(field, value string) string {
 
 	trimmed := strings.TrimSpace(value)
 
-	// YAML 배열 syntax 금지: "[A, B, C]" 형태는 frontmatter parser 가 그대로 문자열로 캡처함.
+	// Forbid YAML array syntax: a "[A, B, C]" form is captured verbatim as a string by the frontmatter parser.
 	if strings.HasPrefix(trimmed, "[") {
 		return fmt.Sprintf("%s 값이 YAML 배열 syntax 로 시작함 (CSV 문자열 필수): %q", field, value)
 	}
 
-	// 콤마 없이 공백 구분된 다중 토큰은 위반 (예: "Read Write Edit").
-	// 단일 토큰(예: "Read")은 허용.
+	// Multiple tokens separated by whitespace without commas are a violation (e.g. "Read Write Edit").
+	// A single token (e.g. "Read") is allowed.
 	hasComma := strings.Contains(trimmed, ",")
 	hasMultipleTokens := len(strings.Fields(trimmed)) > 1
 	if hasMultipleTokens && !hasComma {
@@ -48,7 +48,7 @@ func validateToolsCSVFormat(field, value string) string {
 	return ""
 }
 
-// collectAgentFiles는 embedded templates 에서 .claude/agents/ 하위 모든 .md 파일을 수집한다.
+// collectAgentFiles collects every .md file under .claude/agents/ from the embedded templates.
 func collectAgentFiles(t *testing.T) []string {
 	t.Helper()
 
@@ -136,8 +136,8 @@ func TestAgentsFrontmatter_ToolsCSVFormat(t *testing.T) {
 				t.Fatalf("frontmatter 파싱 실패: %s", parseErr)
 			}
 
-			// retired:true 에이전트는 tools: [] / skills: [] 빈 배열이 허용된다.
-			// TestAgentFrontmatterAudit에서 별도로 검증하므로 여기서는 skip.
+			// retired:true agents are allowed to have empty arrays tools: [] / skills: [].
+			// Skip here because TestAgentFrontmatterAudit verifies it separately.
 			rf := parseRetiredFields(fm)
 			if rf.retired {
 				t.Skip("retired 에이전트: tools:[] 빈 배열은 TestAgentFrontmatterAudit에서 검증")
@@ -153,8 +153,8 @@ func TestAgentsFrontmatter_ToolsCSVFormat(t *testing.T) {
 	}
 }
 
-// TestValidateToolsCSVFormat_Cases는 validateToolsCSVFormat 헬퍼 자체가 정확히
-// 동작하는지 단위 검증한다. 향후 frontmatter validator 가 강화될 때 회귀 방지 목적.
+// TestValidateToolsCSVFormat_Cases unit-tests the validateToolsCSVFormat helper
+// itself. Protects against regressions as the frontmatter validator is hardened in the future.
 // REQ-CC2122-HOOK-002-006
 func TestValidateToolsCSVFormat_Cases(t *testing.T) {
 	t.Parallel()

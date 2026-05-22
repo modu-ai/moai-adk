@@ -1,6 +1,6 @@
-// Package cli — isHarnessLearningEnabled 게이트 균일성 테스트 (T-C4).
-// REQ-HRN-FND-009: 모든 4개 핸들러(PostToolUse/Stop/SubagentStop/UserPromptSubmit)가
-// learning.enabled=false 시 동일하게 완전 no-op 동작을 보임을 검증한다.
+// Package cli — isHarnessLearningEnabled gate uniformity tests (T-C4).
+// REQ-HRN-FND-009: verifies that all four handlers (PostToolUse / Stop / SubagentStop / UserPromptSubmit)
+// behave identically as complete no-ops when learning.enabled=false.
 package cli
 
 import (
@@ -11,12 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// handlerFunc는 훅 핸들러의 시그니처를 추상화한 타입이다.
+// handlerFunc abstracts the signature of a hook handler.
 type handlerFunc func(cmd *cobra.Command, args []string) error
 
-// TestGateUniformity_AllHandlersNoOpWhenDisabled는 learning.enabled=false 설정 시
-// 4개 핸들러 모두가 usage-log.jsonl을 생성하지 않음을 검증하는 테이블-드리븐 테스트.
-// REQ-HRN-FND-009: isHarnessLearningEnabled 게이트가 모든 핸들러에 동일하게 적용됨.
+// TestGateUniformity_AllHandlersNoOpWhenDisabled is a table-driven test verifying that,
+// when learning.enabled=false, none of the four handlers create usage-log.jsonl.
+// REQ-HRN-FND-009: the isHarnessLearningEnabled gate applies uniformly to every handler.
 func TestGateUniformity_AllHandlersNoOpWhenDisabled(t *testing.T) {
 	cases := []struct {
 		name    string

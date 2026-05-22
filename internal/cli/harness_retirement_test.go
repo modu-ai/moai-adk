@@ -24,8 +24,8 @@ import (
 	"testing"
 )
 
-// v3r5RequiredHarnessVerbs는 SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009에서
-// `moai harness` 트리에 등록되어야 하는 10개 동사 집합입니다.
+// v3r5RequiredHarnessVerbs is the set of 10 verbs that must be registered under
+// the `moai harness` tree, per SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 and AC-HRA-009.
 var v3r5RequiredHarnessVerbs = map[string]bool{
 	// SPEC-V3R2-HRN-001 routing verbs.
 	"route":    true,

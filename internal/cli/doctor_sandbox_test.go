@@ -25,7 +25,7 @@ func TestDoctorSandbox_AvailabilityReport(t *testing.T) {
 
 	output := buf.String()
 
-	// 기본 섹션 헤더 확인
+	// Verify basic section headers are present
 	if !strings.Contains(output, "Sandbox Backend Availability") {
 		t.Error("output missing 'Sandbox Backend Availability' header")
 	}
@@ -33,14 +33,14 @@ func TestDoctorSandbox_AvailabilityReport(t *testing.T) {
 		t.Error("output missing 'Per-Role Resolved Backend' section")
 	}
 
-	// 각 backend 이름 존재 확인
+	// Verify each backend name is present
 	for _, backend := range []string{"bubblewrap", "seatbelt", "docker"} {
 		if !strings.Contains(output, backend) {
 			t.Errorf("output missing backend %q", backend)
 		}
 	}
 
-	// per-role 행 존재 확인
+	// Verify per-role rows are present
 	for _, role := range []string{"implementer", "tester", "researcher"} {
 		if !strings.Contains(output, role) {
 			t.Errorf("output missing role %q", role)
@@ -52,8 +52,8 @@ func TestDoctorSandbox_AvailabilityReport(t *testing.T) {
 // for all 7 roles.
 // T-RT003-10: SPEC-V3R2-RT-003 REQ-005.
 func TestDoctorSandbox_PerAgentResolved(t *testing.T) {
-	// t.Setenv 사용 시 t.Parallel() 불가
-	t.Setenv("CI", "") // CI=1 없는 상태로 테스트
+	// t.Parallel() cannot be used together with t.Setenv
+	t.Setenv("CI", "") // test with CI=1 absent
 
 	var buf bytes.Buffer
 	err := runSandboxAvailabilityReport(&buf)
@@ -63,7 +63,7 @@ func TestDoctorSandbox_PerAgentResolved(t *testing.T) {
 
 	output := buf.String()
 
-	// 7개 역할 모두 포함 확인
+	// Verify all 7 roles are included
 	roles := []string{"implementer", "tester", "designer", "researcher", "analyst", "reviewer", "architect"}
 	for _, role := range roles {
 		if !strings.Contains(output, role) {
@@ -79,7 +79,7 @@ func TestDoctorSandbox_ProfileFlag(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	// macOS에서 implementer → seatbelt, Linux에서 → bubblewrap
+	// On macOS: implementer → seatbelt; on Linux: implementer → bubblewrap
 	err := runSandboxProfileDump(&buf, "implementer")
 	if err != nil {
 		t.Fatalf("runSandboxProfileDump: %v", err)
@@ -109,10 +109,10 @@ func TestDoctorSandbox_BackendUnavailableMessage(t *testing.T) {
 
 	output := buf.String()
 
-	// 가용하지 않은 백엔드에 대한 "unavailable" 메시지 확인
-	// (모든 3개가 가용한 시스템은 없으므로 항상 최소 1개의 unavailable이 있음)
-	// macOS: bwrap은 unavailable / Linux: seatbelt는 unavailable
-	// 이를 보장하기 위해 둘 중 하나를 확인
+	// Verify the "unavailable" message for unavailable backends.
+	// (No system has all three available, so at least one unavailable backend is always present.)
+	// macOS: bwrap is unavailable / Linux: seatbelt is unavailable.
+	// Check that one of the availability indicators is present.
 	if !strings.Contains(output, "✓") && !strings.Contains(output, "✗") {
 		t.Error("output missing availability indicators (✓ or ✗)")
 	}

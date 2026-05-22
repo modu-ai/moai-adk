@@ -1,6 +1,6 @@
 // SPEC-V3R3-HARNESS-001 / T-M4-05
-// archiveLegacySkills 멱등성 테스트:
-// 두 번 실행해도 아카이브 상태가 변하지 않음을 검증한다.
+// Idempotency tests for archiveLegacySkills:
+// verifies that the archive state does not change when invoked twice.
 
 package cli
 
@@ -11,45 +11,45 @@ import (
 	"testing"
 )
 
-// TestArchiveIdempotency는 archiveLegacySkills를 두 번 호출했을 때
-// 아카이브 상태(파일 목록 + 해시)가 변하지 않음을 검증한다.
+// TestArchiveIdempotency verifies that the archive state (file list + hashes)
+// does not change after calling archiveLegacySkills twice.
 func TestArchiveIdempotency(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// 16개 레거시 스킬 생성
+	// Create all 16 legacy skills
 	for _, id := range legacySkillIDs {
 		makeSkillDir(t, root, id, "# "+id+" idempotency test content")
 	}
 
-	// 1회차 실행 (force=false: SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-006 — default idempotency contract)
+	// First run (force=false: SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-006 — default idempotency contract)
 	var out1 bytes.Buffer
 	archived1, err := archiveLegacySkills(root, &out1, false)
 	if err != nil {
 		t.Fatalf("first archiveLegacySkills: %v", err)
 	}
 
-	// 아카이브 상태 스냅샷
+	// Snapshot the archive state
 	archiveRoot := filepath.Join(root, ".moai", "archive", "skills", archiveVersion)
 	snap1 := takeArchiveSnapshot(t, archiveRoot)
 
-	// 2회차 실행 (멱등, force=false)
+	// Second run (idempotent, force=false)
 	var out2 bytes.Buffer
 	archived2, err := archiveLegacySkills(root, &out2, false)
 	if err != nil {
 		t.Fatalf("second archiveLegacySkills: %v", err)
 	}
 
-	// 아카이브 상태 스냅샷 재수집
+	// Take another archive-state snapshot
 	snap2 := takeArchiveSnapshot(t, archiveRoot)
 
-	// 파일 수 동일
+	// File count must be identical
 	if len(snap1) != len(snap2) {
 		t.Errorf("archive file count changed: first=%d second=%d",
 			len(snap1), len(snap2))
 	}
 
-	// 해시 동일 (중복/변조 없음)
+	// Hashes must be identical (no duplication / no tampering)
 	for path, hash1 := range snap1 {
 		hash2, ok := snap2[path]
 		if !ok {
@@ -62,25 +62,26 @@ func TestArchiveIdempotency(t *testing.T) {
 		}
 	}
 
-	// archived count 검증: 두 번째 실행에서 새로 아카이브된 파일은 없어야 함
-	// (소스가 그대로이면 drift 에러 없이 0 또는 동일 수 반환)
-	// archived1 == len(legacySkillIDs), archived2 == 0 (이미 아카이브됨) 또는 동일
+	// Verify archived counts: no new files should be archived on the second run
+	// (with the source unchanged, no drift error is raised and the return is 0
+	// or matches the first run.)
+	// archived1 == len(legacySkillIDs), archived2 == 0 (already archived) or the same.
 	if archived1 != len(legacySkillIDs) {
 		t.Errorf("first run archived=%d, want %d", archived1, len(legacySkillIDs))
 	}
-	// 두 번째 실행: 소스가 그대로이므로 drift 없이 모두 스킵 → 0 또는 동일
+	// Second run: the source is unchanged, so everything is skipped without drift → 0 or identical
 	if archived2 != 0 {
 		t.Errorf("second run should archive 0 (already done), got %d", archived2)
 	}
 }
 
-// TestArchiveIdempotency_NoNewFiles는 두 번째 실행 후 아카이브에
-// 새 파일이 추가되지 않았는지 검증한다.
+// TestArchiveIdempotency_NoNewFiles verifies that no new files are added to the
+// archive after a second run.
 func TestArchiveIdempotency_NoNewFiles(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// 일부 스킬만 생성
+	// Create only a subset of the skills
 	for _, id := range legacySkillIDs[:8] {
 		makeSkillDir(t, root, id, "content for "+id)
 	}
@@ -104,7 +105,7 @@ func TestArchiveIdempotency_NoNewFiles(t *testing.T) {
 	}
 }
 
-// takeArchiveSnapshot은 archiveRoot 하위 모든 파일의 경로→해시 맵을 반환한다.
+// takeArchiveSnapshot returns a path → hash map for every file under archiveRoot.
 func takeArchiveSnapshot(t *testing.T, archiveRoot string) map[string]string {
 	t.Helper()
 	result := make(map[string]string)
@@ -126,7 +127,7 @@ func takeArchiveSnapshot(t *testing.T, archiveRoot string) map[string]string {
 	return result
 }
 
-// countDirFiles는 dir 하위의 파일 수를 반환한다.
+// countDirFiles returns the number of files under dir.
 func countDirFiles(t *testing.T, dir string) int {
 	t.Helper()
 	var count int

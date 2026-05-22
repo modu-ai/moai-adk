@@ -1,6 +1,6 @@
 // SPEC-V3R3-HARNESS-001 / T-M4-03
-// moai migrate restore-skill 서브커맨드 테스트.
-// 라운드트립: archiveSkill → restoreSkill 후 바이트 동일 검증.
+// Tests for the moai migrate restore-skill subcommand.
+// Round-trip: verify byte-identical results after archiveSkill → restoreSkill.
 
 package cli
 
@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-// TestRestoreSkill_RoundTrip은 archive → restore 라운드트립 후
-// 원본 파일과 복원된 파일이 바이트 단위로 동일한지 검증한다.
+// TestRestoreSkill_RoundTrip verifies that the original file and the restored
+// file are byte-identical after an archive → restore round-trip.
 func TestRestoreSkill_RoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -20,26 +20,26 @@ func TestRestoreSkill_RoundTrip(t *testing.T) {
 	content := "# moai-domain-backend\noriginal content line 1\nline 2"
 	makeSkillDir(t, root, skillID, content)
 
-	// 원본 해시 기록
+	// Record the original hashes
 	srcDir := filepath.Join(root, ".claude", "skills", skillID)
 	origHashes := hashDir(t, srcDir)
 
-	// 1단계: 아카이브
+	// Step 1: archive
 	if err := archiveSkill(root, skillID); err != nil {
 		t.Fatalf("archiveSkill: %v", err)
 	}
 
-	// 소스 디렉토리 제거 (restore 전 clean state 시뮬레이션)
+	// Remove the source directory (simulate the clean state before restore)
 	if err := os.RemoveAll(srcDir); err != nil {
 		t.Fatalf("RemoveAll source: %v", err)
 	}
 
-	// 2단계: 복원
+	// Step 2: restore
 	if err := restoreSkill(root, skillID, false); err != nil {
 		t.Fatalf("restoreSkill: %v", err)
 	}
 
-	// 복원된 해시와 원본 해시 비교
+	// Compare the restored hashes against the original hashes
 	restoredHashes := hashDir(t, srcDir)
 	if len(origHashes) != len(restoredHashes) {
 		t.Errorf("file count: original=%d restored=%d", len(origHashes), len(restoredHashes))
@@ -57,7 +57,7 @@ func TestRestoreSkill_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestRestoreSkill_ArchiveMissing는 아카이브가 없을 때 에러를 반환하는지 검증한다.
+// TestRestoreSkill_ArchiveMissing verifies that an error is returned when the archive is missing.
 func TestRestoreSkill_ArchiveMissing(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -68,8 +68,8 @@ func TestRestoreSkill_ArchiveMissing(t *testing.T) {
 	}
 }
 
-// TestRestoreSkill_TargetExists는 복원 대상이 이미 존재할 때
-// --force 없이 에러를 반환하는지 검증한다.
+// TestRestoreSkill_TargetExists verifies that an error is returned without
+// --force when the restore target already exists.
 func TestRestoreSkill_TargetExists(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -79,17 +79,17 @@ func TestRestoreSkill_TargetExists(t *testing.T) {
 	if err := archiveSkill(root, skillID); err != nil {
 		t.Fatalf("archiveSkill: %v", err)
 	}
-	// 소스는 그대로 존재
+	// The source still exists
 
-	// --force 없이 복원 시도 → 에러 기대
+	// Attempt restore without --force → expect an error
 	err := restoreSkill(root, skillID, false)
 	if err == nil {
 		t.Fatal("expected error when target exists without --force, got nil")
 	}
 }
 
-// TestRestoreSkill_TargetExistsWithForce는 --force가 있을 때
-// 기존 대상을 덮어쓰는지 검증한다.
+// TestRestoreSkill_TargetExistsWithForce verifies that an existing target is
+// overwritten when --force is supplied.
 func TestRestoreSkill_TargetExistsWithForce(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -100,18 +100,18 @@ func TestRestoreSkill_TargetExistsWithForce(t *testing.T) {
 		t.Fatalf("archiveSkill: %v", err)
 	}
 
-	// 소스 내용 변경 (아카이브와 다른 상태)
+	// Modify the source content (now diverges from the archive)
 	skillFile := filepath.Join(root, ".claude", "skills", skillID, "SKILL.md")
 	if err := os.WriteFile(skillFile, []byte("modified content"), 0o644); err != nil {
 		t.Fatalf("write modified: %v", err)
 	}
 
-	// --force=true로 복원 → 성공 기대
+	// Restore with --force=true → expect success
 	if err := restoreSkill(root, skillID, true); err != nil {
 		t.Fatalf("restoreSkill with force: %v", err)
 	}
 
-	// 복원 후 내용이 아카이브(원본)와 동일해야 함
+	// After restore, the content must match the archived (original) content
 	restored, err := os.ReadFile(skillFile)
 	if err != nil {
 		t.Fatalf("read restored file: %v", err)
@@ -121,8 +121,8 @@ func TestRestoreSkill_TargetExistsWithForce(t *testing.T) {
 	}
 }
 
-// TestRestoreSkill_EmptySkillID는 빈 skillID로 restoreSkill을 호출했을 때
-// RESTORE_INVALID_SKILL_ID 에러를 반환하는지 검증한다.
+// TestRestoreSkill_EmptySkillID verifies that calling restoreSkill with an
+// empty skillID returns the RESTORE_INVALID_SKILL_ID error.
 func TestRestoreSkill_EmptySkillID(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -139,8 +139,8 @@ func TestRestoreSkill_EmptySkillID(t *testing.T) {
 	}
 }
 
-// TestRestoreSkill_InvalidPathTraversal는 skillID에 ".."이 포함된 경우
-// RESTORE_INVALID_SKILL_ID 에러를 반환하는지 검증한다.
+// TestRestoreSkill_InvalidPathTraversal verifies that the
+// RESTORE_INVALID_SKILL_ID error is returned when skillID contains "..".
 func TestRestoreSkill_InvalidPathTraversal(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -150,8 +150,8 @@ func TestRestoreSkill_InvalidPathTraversal(t *testing.T) {
 	}
 }
 
-// TestRestoreSkill_All16RoundTrip는 16개 스킬 모두에 대해
-// archive → restore 라운드트립을 검증한다.
+// TestRestoreSkill_All16RoundTrip verifies the archive → restore round-trip for
+// all 16 skills.
 func TestRestoreSkill_All16RoundTrip(t *testing.T) {
 	t.Parallel()
 	for _, skillID := range legacySkillIDs {

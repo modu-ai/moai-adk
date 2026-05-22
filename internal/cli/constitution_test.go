@@ -13,7 +13,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// sampleRegistryContent는 테스트용 minimal registry 마크다운이다.
+// sampleRegistryContent is the minimal registry markdown used for tests.
 const sampleRegistryContent = `# Test Registry
 
 ## Entries
@@ -42,8 +42,8 @@ const sampleRegistryContent = `# Test Registry
 ` + "```" + `
 `
 
-// TestConstitutionListAllEntries는 registry 전체 엔트리 렌더링을 검증한다.
-// AC-CON-001-001 관련.
+// TestConstitutionListAllEntries verifies rendering of all registry entries.
+// Relates to AC-CON-001-001.
 func TestConstitutionListAllEntries(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
@@ -58,7 +58,7 @@ func TestConstitutionListAllEntries(t *testing.T) {
 	}
 
 	output := buf.String()
-	// 모든 3개 엔트리가 출력에 포함되어야 한다
+	// All three entries must appear in the output
 	for _, id := range []string{"CONST-V3R2-001", "CONST-V3R2-002", "CONST-V3R2-003"} {
 		if !strings.Contains(output, id) {
 			t.Errorf("출력에 %q가 포함되지 않았다\n출력: %s", id, output)
@@ -66,8 +66,8 @@ func TestConstitutionListAllEntries(t *testing.T) {
 	}
 }
 
-// TestConstitutionListFilterFrozen은 --zone frozen 필터를 검증한다.
-// AC-CON-001-002 직접 매핑.
+// TestConstitutionListFilterFrozen verifies the --zone frozen filter.
+// Maps directly to AC-CON-001-002.
 func TestConstitutionListFilterFrozen(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
@@ -84,7 +84,7 @@ func TestConstitutionListFilterFrozen(t *testing.T) {
 
 	output := buf.String()
 
-	// Frozen 엔트리만 포함되어야 한다
+	// Only Frozen entries must appear
 	if !strings.Contains(output, "CONST-V3R2-001") {
 		t.Errorf("출력에 CONST-V3R2-001이 포함되지 않았다")
 	}
@@ -92,13 +92,13 @@ func TestConstitutionListFilterFrozen(t *testing.T) {
 		t.Errorf("출력에 CONST-V3R2-002가 포함되지 않았다")
 	}
 
-	// Evolvable 엔트리는 제외되어야 한다
+	// Evolvable entries must be excluded
 	if strings.Contains(output, "CONST-V3R2-003") {
 		t.Errorf("출력에 Evolvable 엔트리 CONST-V3R2-003이 포함되어서는 안 된다")
 	}
 }
 
-// TestConstitutionListFilterByFile은 --file 필터를 검증한다.
+// TestConstitutionListFilterByFile verifies the --file filter.
 func TestConstitutionListFilterByFile(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
@@ -143,7 +143,7 @@ func TestConstitutionListFilterByFile(t *testing.T) {
 	}
 }
 
-// TestConstitutionListJSON은 JSON 형식 출력을 검증한다.
+// TestConstitutionListJSON verifies JSON-format output.
 func TestConstitutionListJSON(t *testing.T) {
 	dir := t.TempDir()
 	registryPath := filepath.Join(dir, "zone-registry.md")
@@ -159,7 +159,7 @@ func TestConstitutionListJSON(t *testing.T) {
 
 	output := buf.String()
 
-	// 유효한 JSON이어야 한다
+	// Output must be valid JSON
 	var result struct {
 		Entries []map[string]any `json:"entries"`
 	}
@@ -172,8 +172,8 @@ func TestConstitutionListJSON(t *testing.T) {
 	}
 }
 
-// TestConstitutionListRegistryMissing_FileNotFound는 registry 파일 없음 시 에러를 검증한다.
-// AC-CON-001-013 직접 매핑 (file-missing subtest).
+// TestConstitutionListRegistryMissing_FileNotFound verifies that a missing registry file returns an error.
+// Maps directly to AC-CON-001-013 (file-missing subtest).
 func TestConstitutionListRegistryMissing_FileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentPath := filepath.Join(dir, "nonexistent-registry.md")
@@ -190,8 +190,8 @@ func TestConstitutionListRegistryMissing_FileNotFound(t *testing.T) {
 	}
 }
 
-// TestConstitutionListRegistryMissing_PermissionDenied는 권한 없는 registry 파일 시 에러를 검증한다.
-// AC-CON-001-013 직접 매핑 (permission-denied subtest).
+// TestConstitutionListRegistryMissing_PermissionDenied verifies that a registry file without permissions returns an error.
+// Maps directly to AC-CON-001-013 (permission-denied subtest).
 func TestConstitutionListRegistryMissing_PermissionDenied(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows에서는 os.Chmod가 Unix 권한을 시뮬레이션하지 않아 건너뜁니다")
@@ -206,7 +206,7 @@ func TestConstitutionListRegistryMissing_PermissionDenied(t *testing.T) {
 		t.Fatalf("registry 파일 생성 오류: %v", err)
 	}
 
-	// 권한 제거
+	// Strip permissions
 	if err := os.Chmod(registryPath, 0o000); err != nil {
 		t.Fatalf("chmod 오류: %v", err)
 	}

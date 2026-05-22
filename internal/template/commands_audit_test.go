@@ -122,18 +122,18 @@ func TestBrainCommandThinPattern(t *testing.T) {
 		t.Fatalf("parse error for %q: %s", brainCmdPath, parseErr)
 	}
 
-	// R1: description フィールド必須
+	// R1: description field required
 	desc, ok := fm["description"]
 	if !ok || strings.TrimSpace(desc) == "" {
 		t.Error("brain.md: missing or empty 'description' frontmatter field")
 	}
 
-	// R2: argument-hint フィールド存在確認
+	// R2: argument-hint field presence check
 	if _, ok := fm["argument-hint"]; !ok {
 		t.Error("brain.md: missing 'argument-hint' frontmatter field")
 	}
 
-	// R3: allowed-tools フィールド必須 (CSV string)
+	// R3: allowed-tools field required (CSV string)
 	allowedTools, ok := fm["allowed-tools"]
 	if !ok {
 		t.Error("brain.md: missing 'allowed-tools' frontmatter field")
@@ -147,12 +147,12 @@ func TestBrainCommandThinPattern(t *testing.T) {
 		t.Errorf("brain.md: body has %d non-empty lines (max 19 for thin commands)", bodyLines)
 	}
 
-	// R5: Skill() 호출 패턴 존재 확인
+	// R5: verify Skill() invocation pattern exists
 	if !strings.Contains(body, "Skill(") {
 		t.Error("brain.md: body does not contain Skill() invocation")
 	}
 
-	// R6: brain 워크플로우로 라우팅하는지 확인
+	// R6: verify routing to brain workflow
 	if !strings.Contains(body, "brain") {
 		t.Error("brain.md: body should reference 'brain' workflow routing")
 	}

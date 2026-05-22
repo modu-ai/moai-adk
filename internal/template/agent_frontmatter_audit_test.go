@@ -1,13 +1,13 @@
-// agent_frontmatter_audit_test.go: 은퇴 에이전트 frontmatter 표준화 검증.
-// REQ-RA-002, REQ-RA-013, REQ-RA-016 매핑.
+// agent_frontmatter_audit_test.go: standardization audit for retired agent frontmatter.
+// Maps to REQ-RA-002, REQ-RA-013, REQ-RA-016.
 //
-// M1 RED phase: 이 파일의 테스트들은 아직 구현되지 않은 상태를 가정하여
-// 의도적으로 실패하도록 설계되었다.
+// M1 RED phase: the tests in this file are intentionally designed to fail
+// against the not-yet-implemented state.
 //
-// 예상 RED 상태:
-//   - TestAgentFrontmatterAudit: manager-tdd.md에 retired:true가 없으므로 FAIL (M2에서 GREEN)
-//   - TestRetirementCompletenessAssertion: manager-develop.md가 embedded FS에 없으므로 FAIL (M2에서 GREEN)
-//   - TestNoOrphanedManagerTDDReference: 여러 파일에 manager-tdd 참조가 남아 있으므로 FAIL (M5에서 GREEN)
+// Expected RED state:
+//   - TestAgentFrontmatterAudit: FAIL because manager-tdd.md lacks retired:true (GREEN in M2)
+//   - TestRetirementCompletenessAssertion: FAIL because manager-develop.md is missing from the embedded FS (GREEN in M2)
+//   - TestNoOrphanedManagerTDDReference: FAIL because several files still reference manager-tdd (GREEN in M5)
 package template
 
 import (
@@ -17,22 +17,22 @@ import (
 	"testing"
 )
 
-// retiredFrontmatter는 파싱된 에이전트 파일의 retired 관련 필드를 담는다.
+// retiredFrontmatter holds the retired-related fields parsed from an agent file.
 type retiredFrontmatter struct {
 	retired            bool
 	retiredReplacement string
 	retiredParamHint   string
-	tools              string // 원시 값 (빈 배열은 "[]" 로 파싱됨)
-	skills             string // 원시 값 (빈 배열은 "[]" 로 파싱됨)
-	hasStatusRetired   bool   // legacy status: retired 필드 존재 여부
+	tools              string // raw value (empty array parses as "[]")
+	skills             string // raw value (empty array parses as "[]")
+	hasStatusRetired   bool   // whether the legacy status: retired field is present
 }
 
-// parseRetiredFields는 frontmatter map에서 retired 관련 필드를 추출한다.
+// parseRetiredFields extracts retired-related fields from a frontmatter map.
 func parseRetiredFields(fm map[string]string) retiredFrontmatter {
 	result := retiredFrontmatter{}
 
 	if val, ok := fm["retired"]; ok {
-		// YAML boolean: "true" 문자열로 파싱됨 (parseFrontmatterAndBody는 따옴표 제거 후 raw 반환)
+		// YAML boolean: parsed as the string "true" (parseFrontmatterAndBody strips quotes and returns the raw value)
 		result.retired = strings.TrimSpace(val) == "true"
 	}
 	if val, ok := fm["retired_replacement"]; ok {
@@ -47,7 +47,7 @@ func parseRetiredFields(fm map[string]string) retiredFrontmatter {
 	if val, ok := fm["skills"]; ok {
 		result.skills = strings.TrimSpace(val)
 	}
-	// legacy status:retired 필드 감지
+	// Detect the legacy status: retired field
 	if val, ok := fm["status"]; ok && strings.TrimSpace(val) == "retired" {
 		result.hasStatusRetired = true
 	}
@@ -55,11 +55,11 @@ func parseRetiredFields(fm map[string]string) retiredFrontmatter {
 	return result
 }
 
-// TestAgentFrontmatterAudit는 .claude/agents/moai/*.md 파일을 순회하며
-// retired:true frontmatter의 5개 표준 필드 존재를 검증한다.
+// TestAgentFrontmatterAudit walks .claude/agents/moai/*.md files and verifies
+// that the five standard retired:true frontmatter fields are present.
 //
-// REQ-RA-002: 표준 retired frontmatter 필드 검증
-// 예상 RED: manager-tdd.md에 아직 retired:true가 없으므로 FAIL
+// REQ-RA-002: standard retired frontmatter field validation
+// Expected RED: FAIL because manager-tdd.md still lacks retired:true
 func TestAgentFrontmatterAudit(t *testing.T) {
 	t.Parallel()
 
@@ -88,10 +88,10 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 		t.Fatal(".claude/agents/moai/ 하위 에이전트 파일이 없음")
 	}
 
-	// 검증 규칙:
-	// 1. retired:true 에이전트: 5개 표준 필드 모두 필수
-	// 2. 비-retired 에이전트: retired: 키 자체 없어야 함
-	// 3. legacy status:retired 필드 금지
+	// Validation rules:
+	// 1. retired:true agents: all five standard fields are required
+	// 2. non-retired agents: the retired: key itself MUST be absent
+	// 3. legacy status:retired field is forbidden
 	for _, path := range agentFiles {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
@@ -108,24 +108,24 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 
 			rf := parseRetiredFields(fm)
 
-			// legacy status:retired 필드 금지 (REQ-RA-002: 'retired: true' boolean 사용)
+			// Reject the legacy status:retired field (REQ-RA-002 requires the 'retired: true' boolean)
 			if rf.hasStatusRetired {
 				t.Errorf("RETIREMENT_INCOMPLETE: legacy 'status: retired' 필드 감지. 'retired: true' boolean 필드로 교체 필요 (REQ-RA-002)")
 			}
 
 			if rf.retired {
-				// retired:true 에이전트: 5개 표준 필드 검증
+				// retired:true agents: validate the five standard fields
 				if rf.retiredReplacement == "" {
 					t.Errorf("RETIREMENT_INCOMPLETE_%s: retired:true 에이전트에 'retired_replacement' 필드 없음 (REQ-RA-002)", agentNameFromPath(path))
 				}
 				if rf.retiredParamHint == "" {
 					t.Errorf("RETIREMENT_INCOMPLETE_%s: retired:true 에이전트에 'retired_param_hint' 필드 없음 (REQ-RA-002)", agentNameFromPath(path))
 				}
-				// tools: [] 빈 배열 명시적 필요
+				// tools: [] empty array MUST be explicit
 				if rf.tools == "" {
 					t.Errorf("RETIREMENT_INCOMPLETE_%s: retired:true 에이전트에 'tools: []' 명시적 빈 배열 없음 (REQ-RA-002)", agentNameFromPath(path))
 				}
-				// skills: [] 빈 배열 명시적 필요
+				// skills: [] empty array MUST be explicit
 				if rf.skills == "" {
 					t.Errorf("RETIREMENT_INCOMPLETE_%s: retired:true 에이전트에 'skills: []' 명시적 빈 배열 없음 (REQ-RA-002)", agentNameFromPath(path))
 				}
@@ -133,16 +133,16 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 		})
 	}
 
-	// Workflow audit 2026-05-16 Bundle C / F-003: 두 서브 테스트 (manager-tdd must be retired,
-	// manager-ddd must be retired) 제거. 해당 zombie agents가 stub 보존 → 전체 purge로
-	// 정책 변경됨. 새 contract는 TestPurgedZombieAgentsAbsent에서 검증.
+	// Workflow audit 2026-05-16 Bundle C / F-003: the two subtests (manager-tdd must be retired,
+	// manager-ddd must be retired) were removed. The policy shifted from stub-preservation to
+	// full purge for those zombie agents. The new contract is verified by TestPurgedZombieAgentsAbsent.
 }
 
-// TestRetirementCompletenessAssertion은 retired:true 에이전트 각각에 대해
-// 교체 에이전트 파일이 embedded FS에 존재하는지 검증한다.
+// TestRetirementCompletenessAssertion verifies that, for every retired:true agent,
+// the replacement agent file exists in the embedded FS.
 //
-// REQ-RA-016: CI에서 RETIREMENT_INCOMPLETE_<agent> 검사
-// 예상 RED: manager-develop.md가 embedded FS에 없으므로 FAIL
+// REQ-RA-016: CI must perform the RETIREMENT_INCOMPLETE_<agent> check
+// Expected RED: FAIL because manager-develop.md is missing from the embedded FS
 func TestRetirementCompletenessAssertion(t *testing.T) {
 	t.Parallel()
 
@@ -151,8 +151,8 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
 	}
 
-	// manager-tdd → manager-develop 대체 관계 명시적 단언 (M2 이전 RED 트리거)
-	// manager-tdd.md가 retired:true를 가질 때, manager-develop.md가 embedded FS에 있어야 함
+	// Explicit assertion of the manager-tdd → manager-develop replacement (RED trigger pre-M2)
+	// When manager-tdd.md has retired:true, manager-develop.md must exist in the embedded FS
 	t.Run("manager-tdd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
@@ -164,8 +164,8 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		}
 	})
 
-	// manager-ddd → manager-develop 대체 관계 명시적 단언 (M2 이전 RED 트리거)
-	// manager-ddd.md가 retired:true를 가질 때, manager-develop.md가 embedded FS에 있어야 함
+	// Explicit assertion of the manager-ddd → manager-develop replacement (RED trigger pre-M2)
+	// When manager-ddd.md has retired:true, manager-develop.md must exist in the embedded FS
 	t.Run("manager-ddd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
@@ -177,7 +177,7 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		}
 	})
 
-	// 범용 검증: embedded FS의 모든 retired:true 에이전트에 대해 교체 파일 존재 확인
+	// Generic check: for every retired:true agent in the embedded FS, verify the replacement file exists
 	t.Run("all retired agents have replacement in embedded FS", func(t *testing.T) {
 		t.Parallel()
 
@@ -206,7 +206,7 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 				continue
 			}
 
-			// 교체 파일 경로 탐색: .claude/agents/moai/<replacement>.md
+			// Resolve the replacement file path: .claude/agents/moai/<replacement>.md
 			replacementPath := fmt.Sprintf(".claude/agents/moai/%s.md", rf.retiredReplacement)
 			_, statErr := fs.Stat(fsys, replacementPath)
 			if statErr != nil {
@@ -217,11 +217,11 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 	})
 }
 
-// TestNoOrphanedManagerTDDReference는 특정 핵심 파일들에서 manager-tdd 참조가
-// 남아 있지 않은지 검증한다.
+// TestNoOrphanedManagerTDDReference verifies that the specified core files no
+// longer reference manager-tdd.
 //
-// REQ-RA-013: manager-develop이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
-// 예상 RED: 여러 파일에 manager-tdd 참조가 아직 남아 있으므로 FAIL
+// REQ-RA-013: when manager-develop is the active unified agent, every documentation reference must be updated
+// Expected RED: FAIL because several files still reference manager-tdd
 func TestNoOrphanedManagerTDDReference(t *testing.T) {
 	t.Parallel()
 
@@ -230,9 +230,9 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
 	}
 
-	// manager-tdd 참조가 없어야 하는 파일들 (REQ-RA-013 §M5 substitution scope)
-	// 각 파일에서 "manager-tdd" 문자열이 발견되면 FAIL
-	// 예외: manager-tdd.md 파일 자체 (frontmatter name: 라인, 마이그레이션 노트)
+	// Files that MUST NOT reference manager-tdd (REQ-RA-013 §M5 substitution scope)
+	// Each file fails if the string "manager-tdd" is found
+	// Exceptions: the manager-tdd.md file itself (frontmatter name: line, migration notes)
 	checkFiles := []struct {
 		path        string
 		description string
@@ -269,14 +269,14 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 
 			data, readErr := fs.ReadFile(fsys, cf.path)
 			if readErr != nil {
-				// 파일이 없으면 테스트 스킵 (M5에서 파일 존재 확인)
+				// Skip the test when the file is missing (file presence is verified in M5)
 				t.Skipf("파일 %q 읽기 실패 (make build 필요): %v", cf.path, readErr)
 				return
 			}
 
 			content := string(data)
-			// manager-tdd 참조 검색 (대소문자 구분)
-			// 단순 포함 검사: 정확한 단어 경계를 위해 공통 패턴 검색
+			// Search for manager-tdd references (case-sensitive)
+			// Plain substring scan, augmented by a common-pattern search to handle word boundaries
 			orphanedRefs := findManagerTDDReferences(content)
 			if len(orphanedRefs) > 0 {
 				t.Errorf("ORPHANED_MANAGER_TDD_REFERENCE in %s (%s): %d개 참조 발견. "+
@@ -287,11 +287,11 @@ func TestNoOrphanedManagerTDDReference(t *testing.T) {
 	}
 }
 
-// TestNoOrphanedManagerDDDReference는 특정 핵심 파일들에서 manager-ddd 참조가
-// 남아 있지 않은지 검증한다.
+// TestNoOrphanedManagerDDDReference verifies that the specified core files no
+// longer reference manager-ddd.
 //
-// REQ-RD-010: manager-develop이 활성 통합 에이전트일 때 모든 문서 참조가 갱신되어야 함
-// 예상 RED: 30 Cat A 파일에 manager-ddd 참조가 아직 남아 있으므로 FAIL
+// REQ-RD-010: when manager-develop is the active unified agent, every documentation reference must be updated
+// Expected RED: FAIL because 30 Cat A files still reference manager-ddd
 func TestNoOrphanedManagerDDDReference(t *testing.T) {
 	t.Parallel()
 
@@ -300,9 +300,9 @@ func TestNoOrphanedManagerDDDReference(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
 	}
 
-	// manager-ddd 참조가 없어야 하는 파일들 (REQ-RD-010 §M3 Cat A substitution scope)
-	// 각 파일에서 "manager-ddd" 문자열이 발견되면 FAIL
-	// 예외: manager-ddd.md 파일 자체 (frontmatter name: 라인, 마이그레이션 노트)
+	// Files that MUST NOT reference manager-ddd (REQ-RD-010 §M3 Cat A substitution scope)
+	// Each file fails if the string "manager-ddd" is found
+	// Exceptions: the manager-ddd.md file itself (frontmatter name: line, migration notes)
 	checkFiles := []struct {
 		path        string
 		description string
@@ -439,14 +439,14 @@ func TestNoOrphanedManagerDDDReference(t *testing.T) {
 
 			data, readErr := fs.ReadFile(fsys, cf.path)
 			if readErr != nil {
-				// 파일이 없으면 테스트 스킵 (M3에서 파일 존재 확인)
+				// Skip the test when the file is missing (file presence is verified in M3)
 				t.Skipf("파일 %q 읽기 실패 (make build 필요): %v", cf.path, readErr)
 				return
 			}
 
 			content := string(data)
-			// manager-ddd 참조 검색 (대소문자 구분)
-			// 단순 포함 검사: 정확한 단어 경계를 위해 공통 패턴 검색
+			// Search for manager-ddd references (case-sensitive)
+			// Plain substring scan, augmented by a common-pattern search to handle word boundaries
 			orphanedRefs := findManagerDDDReferences(content)
 			if len(orphanedRefs) > 0 {
 				t.Errorf("ORPHANED_MANAGER_DDD_REFERENCE in %s (%s): %d개 참조 발견. "+
@@ -457,12 +457,14 @@ func TestNoOrphanedManagerDDDReference(t *testing.T) {
 	}
 }
 
-// TestAgentFrontmatter_PermissionModeStrictEnum 는 .claude/agents/**/*.md 의
-// permissionMode 키가 5개 허용 값 중 하나인지 검증한다.
+// TestAgentFrontmatter_PermissionModeStrictEnum verifies that the permissionMode
+// key in .claude/agents/**/*.md is one of the five allowed values.
 //
-// AC-09: permissionMode: ultra-bypass 같은 값은 빌드 실패 유발.
+// AC-09: a value such as permissionMode: ultra-bypass MUST fail the build.
 // Sentinel: PERMISSION_MODE_UNKNOWN_VALUE: <file> declares permissionMode: <value>;
-//           allowed: default|acceptEdits|bypassPermissions|plan|bubble.
+//
+//	allowed: default|acceptEdits|bypassPermissions|plan|bubble.
+//
 // T-RT002-12.
 func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
 	t.Parallel()
@@ -472,7 +474,7 @@ func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
 	}
 
-	// 허용 permissionMode 값 5개.
+	// The five allowed permissionMode values.
 	allowedModes := map[string]bool{
 		"default":            true,
 		"acceptEdits":        true,
@@ -503,13 +505,13 @@ func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
 
 			fm, _, parseErr := parseFrontmatterAndBody(string(data))
 			if parseErr != "" {
-				// frontmatter 없는 파일은 스킵.
+				// Skip files without frontmatter.
 				return
 			}
 
 			val, ok := fm["permissionMode"]
 			if !ok {
-				// permissionMode 키가 없으면 스킵 (선택적 필드).
+				// Skip when the permissionMode key is absent (optional field).
 				return
 			}
 
@@ -523,30 +525,30 @@ func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
 	}
 }
 
-// agentNameFromPath는 파일 경로에서 에이전트 이름을 추출한다.
+// agentNameFromPath extracts the agent name from a file path.
 // ".claude/agents/moai/manager-tdd.md" → "manager-tdd"
 func agentNameFromPath(path string) string {
 	base := path
-	// 마지막 / 이후 부분
+	// Segment after the last /
 	if idx := strings.LastIndex(path, "/"); idx >= 0 {
 		base = path[idx+1:]
 	}
-	// .md 제거
+	// Strip .md
 	return strings.TrimSuffix(base, ".md")
 }
 
-// findManagerTDDReferences는 콘텐츠에서 manager-tdd 관련 참조를 찾아 반환한다.
-// frontmatter의 name: 라인 및 마이그레이션 노트는 허용한다.
+// findManagerTDDReferences searches the content for manager-tdd references and returns them.
+// The frontmatter name: line and migration notes are allowed exceptions.
 func findManagerTDDReferences(content string) []string {
 	var refs []string
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
-		// manager-tdd 참조 검색
+		// Search for manager-tdd references
 		if !strings.Contains(line, "manager-tdd") {
 			continue
 		}
-		// 허용 예외: frontmatter name 필드 (manager-tdd.md 자체의 name: manager-tdd)
-		// 허용 예외: 마이그레이션 노트 (# deprecated, # 이전 이름, <!-- , [DEPRECATED 등)
+		// Allowed exception: the frontmatter name field (manager-tdd.md's own name: manager-tdd)
+		// Allowed exception: migration notes (# deprecated, # previous name, <!-- , [DEPRECATED, …)
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "name: manager-tdd") {
 			continue
@@ -562,18 +564,18 @@ func findManagerTDDReferences(content string) []string {
 	return refs
 }
 
-// findManagerDDDReferences는 콘텐츠에서 manager-ddd 관련 참조를 찾아 반환한다.
-// frontmatter의 name: 라인 및 마이그레이션 노트는 허용한다.
+// findManagerDDDReferences searches the content for manager-ddd references and returns them.
+// The frontmatter name: line and migration notes are allowed exceptions.
 func findManagerDDDReferences(content string) []string {
 	var refs []string
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
-		// manager-ddd 참조 검색
+		// Search for manager-ddd references
 		if !strings.Contains(line, "manager-ddd") {
 			continue
 		}
-		// 허용 예외: frontmatter name 필드 (manager-ddd.md 자체의 name: manager-ddd)
-		// 허용 예외: 마이그레이션 노트 (# deprecated, # 이전 이름, <!-- , [DEPRECATED 등)
+		// Allowed exception: the frontmatter name field (manager-ddd.md's own name: manager-ddd)
+		// Allowed exception: migration notes (# deprecated, # previous name, <!-- , [DEPRECATED, …)
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "name: manager-ddd") {
 			continue

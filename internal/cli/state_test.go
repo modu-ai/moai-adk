@@ -1,6 +1,6 @@
 package cli_test
 
-// SPEC-V3R2-RT-004 AC-07, AC-06, AC-12, REQ-030, REQ-032: CLI state 서브커맨드 테스트.
+// SPEC-V3R2-RT-004 AC-07, AC-06, AC-12, REQ-030, REQ-032: tests for the CLI state subcommand.
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
-// makeTestStateDir는 테스트용 .moai/state/ 디렉토리 구조를 생성합니다.
+// makeTestStateDir creates a .moai/state/ directory structure for tests.
 func makeTestStateDir(t *testing.T) (moaiDir string, stateDir string) {
 	t.Helper()
 	base := t.TempDir()
@@ -24,7 +24,7 @@ func makeTestStateDir(t *testing.T) (moaiDir string, stateDir string) {
 	return moaiDir, stateDir
 }
 
-// writeCheckpoint는 테스트용 checkpoint 파일을 state dir에 직접 씁니다.
+// writeCheckpoint writes a checkpoint file directly to the state dir for tests.
 func writeCheckpoint(t *testing.T, stateDir string, state session.PhaseState) {
 	t.Helper()
 	store := session.NewFileSessionStore(stateDir, 3600*time.Second)
@@ -33,7 +33,7 @@ func writeCheckpoint(t *testing.T, stateDir string, state session.PhaseState) {
 	}
 }
 
-// TestStateDump_HappyPath는 유효한 checkpoint가 있을 때 state dump가 성공하는지 검증합니다.
+// TestStateDump_HappyPath verifies that state dump succeeds when a valid checkpoint exists.
 func TestStateDump_HappyPath(t *testing.T) {
 	t.Parallel()
 	_, stateDir := makeTestStateDir(t)
@@ -53,14 +53,14 @@ func TestStateDump_HappyPath(t *testing.T) {
 	}
 	writeCheckpoint(t, stateDir, state)
 
-	// 파일이 실제로 생성되었는지 확인
+	// Verify the file is actually created
 	pattern := filepath.Join(stateDir, "checkpoint-run-SPEC-CLI-TEST-001.json")
 	if _, err := os.Stat(pattern); err != nil {
 		t.Fatalf("checkpoint file not found: %v", err)
 	}
 }
 
-// TestStateDump_FormatJSON은 JSON 형식으로 파싱 가능한 출력이 생성되는지 검증합니다.
+// TestStateDump_FormatJSON verifies that JSON-parseable output is produced.
 func TestStateDump_FormatJSON(t *testing.T) {
 	t.Parallel()
 	_, stateDir := makeTestStateDir(t)
@@ -78,7 +78,7 @@ func TestStateDump_FormatJSON(t *testing.T) {
 	}
 	writeCheckpoint(t, stateDir, state)
 
-	// 직접 파일 읽어서 JSON 파싱 가능 여부 확인
+	// Read the file directly and verify it is parseable as JSON
 	checkpointPath := filepath.Join(stateDir, "checkpoint-plan-SPEC-JSON-001.json")
 	data, err := os.ReadFile(checkpointPath)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestStateDump_FormatJSON(t *testing.T) {
 	}
 }
 
-// TestStateDump_NoMatch는 존재하지 않는 phase/specID에 대해 nil을 반환하는지 검증합니다.
+// TestStateDump_NoMatch verifies that nil is returned for a nonexistent phase/specID.
 func TestStateDump_NoMatch(t *testing.T) {
 	t.Parallel()
 	_, stateDir := makeTestStateDir(t)
@@ -109,7 +109,7 @@ func TestStateDump_NoMatch(t *testing.T) {
 	}
 }
 
-// TestStateShowBlocker_Outstanding는 미해결 blocker가 있을 때 감지되는지 검증합니다.
+// TestStateShowBlocker_Outstanding verifies that an unresolved blocker is detected.
 func TestStateShowBlocker_Outstanding(t *testing.T) {
 	t.Parallel()
 	_, stateDir := makeTestStateDir(t)
@@ -131,7 +131,7 @@ func TestStateShowBlocker_Outstanding(t *testing.T) {
 		t.Fatalf("RecordBlocker() failed: %v", err)
 	}
 
-	// blocker 파일이 생성되었는지 확인
+	// Verify the blocker file is created
 	pattern := filepath.Join(stateDir, "blocker-run-SPEC-BLOCKER-TEST-*.json")
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
@@ -142,16 +142,16 @@ func TestStateShowBlocker_Outstanding(t *testing.T) {
 	}
 }
 
-// TestRun_ResumeFlag는 --resume 플래그가 HydrateWithOpts(SkipStaleCheck=true)로 연동되는지 검증합니다.
-// SPEC-V3R2-RT-004 AC-06: --resume 플래그 연동.
+// TestRun_ResumeFlag verifies that the --resume flag wires HydrateWithOpts(SkipStaleCheck=true).
+// SPEC-V3R2-RT-004 AC-06: --resume flag wiring.
 func TestRun_ResumeFlag(t *testing.T) {
 	t.Parallel()
 	_, stateDir := makeTestStateDir(t)
 
-	// 매우 짧은 TTL로 즉시 stale 처리
+	// Use a very short TTL so the checkpoint goes stale immediately
 	staleStore := session.NewFileSessionStore(stateDir, 1*time.Millisecond)
 
-	// 1시간 전 timestamp로 stale checkpoint 작성
+	// Write a stale checkpoint with a timestamp one hour in the past
 	freshStore := session.NewFileSessionStore(stateDir, 3600*time.Second)
 	state := session.PhaseState{
 		Phase:  session.PhaseRun,
@@ -168,13 +168,13 @@ func TestRun_ResumeFlag(t *testing.T) {
 		t.Fatalf("Checkpoint() failed: %v", err)
 	}
 
-	// SkipStaleCheck=false → ErrCheckpointStale 기대
+	// SkipStaleCheck=false → expect ErrCheckpointStale
 	_, err := staleStore.HydrateWithOpts(session.PhaseRun, "SPEC-RESUME-CLI-001", session.HydrateOpts{SkipStaleCheck: false})
 	if err != session.ErrCheckpointStale {
 		t.Errorf("SkipStaleCheck=false: expected ErrCheckpointStale, got %v", err)
 	}
 
-	// SkipStaleCheck=true (--resume 모드) → 성공 기대
+	// SkipStaleCheck=true (--resume mode) → expect success
 	loaded, err := staleStore.HydrateWithOpts(session.PhaseRun, "SPEC-RESUME-CLI-001", session.HydrateOpts{SkipStaleCheck: true})
 	if err != nil {
 		t.Errorf("SkipStaleCheck=true: unexpected error: %v", err)

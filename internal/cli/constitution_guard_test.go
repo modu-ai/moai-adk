@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// setupGuardRegistry는 guard 테스트용 임시 registry를 생성한다.
-// projectDir 아래에 CLAUDE.md와 zone-registry.md를 생성한다.
+// setupGuardRegistry creates a temporary registry for guard tests.
+// Generates CLAUDE.md and zone-registry.md under projectDir.
 func setupGuardRegistry(t *testing.T, content string) (projectDir, registryPath string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -24,8 +24,8 @@ func setupGuardRegistry(t *testing.T, content string) (projectDir, registryPath 
 	return dir, regPath
 }
 
-// TestConstitutionGuard_NoViolations는 Frozen zone 변경이 없는 경우 OK를 반환함을 검증한다.
-// AC-CON-001-003 관련.
+// TestConstitutionGuard_NoViolations verifies that the guard returns OK when no Frozen zone changes occur.
+// Relates to AC-CON-001-003.
 func TestConstitutionGuard_NoViolations(t *testing.T) {
 	dir, regPath := setupGuardRegistry(t, validConstitutionRegistryForDoctor)
 
@@ -41,7 +41,7 @@ func TestConstitutionGuard_NoViolations(t *testing.T) {
 	}
 }
 
-// TestConstitutionGuard_RegistryMissing은 registry 없음 시 에러를 반환함을 검증한다.
+// TestConstitutionGuard_RegistryMissing verifies that a missing registry returns an error.
 func TestConstitutionGuard_RegistryMissing(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentPath := filepath.Join(dir, "nonexistent.md")
@@ -53,12 +53,12 @@ func TestConstitutionGuard_RegistryMissing(t *testing.T) {
 	}
 }
 
-// TestConstitutionGuard_DetectsFrozenViolation은 Frozen zone 변경 탐지를 검증한다.
-// AC-CON-001-003 직접 매핑.
+// TestConstitutionGuard_DetectsFrozenViolation verifies detection of Frozen zone changes.
+// Maps directly to AC-CON-001-003.
 func TestConstitutionGuard_DetectsFrozenViolation(t *testing.T) {
 	dir, regPath := setupGuardRegistry(t, validConstitutionRegistryForDoctor)
 
-	// 위반 목록: Frozen 엔트리 ID를 포함
+	// Violation list: includes a Frozen entry ID
 	violations := []string{"CONST-V3R2-001"}
 	var buf bytes.Buffer
 	result := runConstitutionGuard(&buf, io.Discard, dir, regPath, violations)
@@ -71,7 +71,7 @@ func TestConstitutionGuard_DetectsFrozenViolation(t *testing.T) {
 	}
 }
 
-// TestConstitutionGuard_EvolvableViolationNotFatal은 Evolvable zone 변경이 에러가 아님을 검증한다.
+// TestConstitutionGuard_EvolvableViolationNotFatal verifies that Evolvable zone changes are not errors.
 func TestConstitutionGuard_EvolvableViolationNotFatal(t *testing.T) {
 	dir, regPath := setupGuardRegistry(t, validConstitutionRegistryForDoctor)
 
@@ -85,7 +85,7 @@ func TestConstitutionGuard_EvolvableViolationNotFatal(t *testing.T) {
 	}
 }
 
-// TestConstitutionGuard_SubcommandExists는 guard 서브커맨드가 등록되어 있음을 검증한다.
+// TestConstitutionGuard_SubcommandExists verifies that the guard subcommand is registered.
 func TestConstitutionGuard_SubcommandExists(t *testing.T) {
 	constitutionCmd := newConstitutionCmd()
 	var found bool

@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// validConstitutionRegistryForDoctor는 doctor 테스트용 유효한 registry 내용이다.
-// CLAUDE.md를 참조하므로 테스트 tempDir에 CLAUDE.md를 생성해야 orphan이 발생하지 않는다.
+// validConstitutionRegistryForDoctor is a registry content valid for doctor tests.
+// It references CLAUDE.md, so the test tempDir must contain CLAUDE.md to avoid an orphan.
 const validConstitutionRegistryForDoctor = `# Test Registry
 
 ## Entries
@@ -30,7 +30,7 @@ const validConstitutionRegistryForDoctor = `# Test Registry
 ` + "```" + `
 `
 
-// duplicateIDRegistry는 중복 ID가 있는 registry를 반환한다.
+// duplicateIDRegistry returns a registry containing duplicate IDs.
 const duplicateIDRegistryForDoctor = `# Test Registry
 
 ## Entries
@@ -52,7 +52,7 @@ const duplicateIDRegistryForDoctor = `# Test Registry
 ` + "```" + `
 `
 
-// emptyFrozenRegistryForDoctor는 Frozen 엔트리가 없는 registry를 반환한다.
+// emptyFrozenRegistryForDoctor returns a registry without any Frozen entries.
 const emptyFrozenRegistryForDoctor = `# Test Registry
 
 ## Entries
@@ -67,12 +67,12 @@ const emptyFrozenRegistryForDoctor = `# Test Registry
 ` + "```" + `
 `
 
-// TestCheckConstitution_ValidRegistry는 유효한 registry에서 OK를 반환함을 검증한다.
-// AC-CON-001-001 관련.
+// TestCheckConstitution_ValidRegistry verifies that a valid registry returns OK.
+// Relates to AC-CON-001-001.
 func TestCheckConstitution_ValidRegistry(t *testing.T) {
 	dir := t.TempDir()
 
-	// CLAUDE.md 생성 (파일 존재 확인용)
+	// Create CLAUDE.md (used for file-presence verification)
 	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Test"), 0o600); err != nil {
 		t.Fatalf("CLAUDE.md 생성 오류: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestCheckConstitution_ValidRegistry(t *testing.T) {
 	}
 }
 
-// TestCheckConstitution_RegistryMissing는 registry 파일 없음 시 Warn을 반환함을 검증한다.
+// TestCheckConstitution_RegistryMissing verifies that a missing registry file returns Warn.
 func TestCheckConstitution_RegistryMissing(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentPath := filepath.Join(dir, "nonexistent-registry.md")
@@ -101,11 +101,11 @@ func TestCheckConstitution_RegistryMissing(t *testing.T) {
 	}
 }
 
-// TestCheckConstitution_DuplicateIDs는 중복 ID registry 시 Fail을 반환함을 검증한다.
+// TestCheckConstitution_DuplicateIDs verifies that a registry with duplicate IDs returns Fail.
 func TestCheckConstitution_DuplicateIDs(t *testing.T) {
 	dir := t.TempDir()
 
-	// CLAUDE.md 생성
+	// Create CLAUDE.md
 	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Test"), 0o600); err != nil {
 		t.Fatalf("CLAUDE.md 생성 오류: %v", err)
 	}
@@ -122,12 +122,12 @@ func TestCheckConstitution_DuplicateIDs(t *testing.T) {
 	}
 }
 
-// TestCheckConstitution_EmptyFrozen는 Frozen 엔트리 없음 시 Warn을 반환함을 검증한다.
-// AC-CON-001-006 관련.
+// TestCheckConstitution_EmptyFrozen verifies that the absence of Frozen entries returns Warn.
+// Relates to AC-CON-001-006.
 func TestCheckConstitution_EmptyFrozen(t *testing.T) {
 	dir := t.TempDir()
 
-	// CLAUDE.md 생성
+	// Create CLAUDE.md
 	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Test"), 0o600); err != nil {
 		t.Fatalf("CLAUDE.md 생성 오류: %v", err)
 	}
@@ -148,11 +148,11 @@ func TestCheckConstitution_EmptyFrozen(t *testing.T) {
 	}
 }
 
-// TestCheckConstitution_StrictMode는 MOAI_CONSTITUTION_STRICT=1 시 orphan이 Fail로 처리됨을 검증한다.
-// AC-CON-001-006 관련.
+// TestCheckConstitution_StrictMode verifies that orphans are treated as Fail when MOAI_CONSTITUTION_STRICT=1.
+// Relates to AC-CON-001-006.
 func TestCheckConstitution_StrictMode(t *testing.T) {
 	dir := t.TempDir()
-	// CLAUDE.md를 생성하지 않아 orphan 발생 (파일 미존재)
+	// CLAUDE.md is intentionally not created so an orphan is produced (file missing)
 
 	registryPath := filepath.Join(dir, "zone-registry.md")
 	// sampleRegistryContent uses CLAUDE.md which won't exist in dir
@@ -160,7 +160,7 @@ func TestCheckConstitution_StrictMode(t *testing.T) {
 		t.Fatalf("registry 파일 생성 오류: %v", err)
 	}
 
-	// strictMode=true, orphan 발생 → Fail
+	// strictMode=true, orphan present → Fail
 	check := checkConstitution(dir, registryPath, false, true)
 
 	if check.Status != CheckFail {

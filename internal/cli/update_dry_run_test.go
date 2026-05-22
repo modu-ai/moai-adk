@@ -1,5 +1,5 @@
 // SPEC-V3R3-HARNESS-001 / T-M4-04
-// --dry-run 플래그 테스트: 파일시스템 변경 없이 계획된 작업을 출력해야 한다.
+// --dry-run flag tests: the planned operations must be printed without mutating the filesystem.
 
 package cli
 
@@ -12,13 +12,13 @@ import (
 	"time"
 )
 
-// TestDryRunArchive는 dryRunArchiveLegacySkills가 파일시스템을 변경하지 않고
-// [dry-run] 접두사가 붙은 출력을 생성하는지 검증한다.
+// TestDryRunArchive verifies that dryRunArchiveLegacySkills emits output prefixed
+// with [dry-run] and does not modify the filesystem.
 func TestDryRunArchive(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// 16개 중 3개 스킬만 생성
+	// Create only 3 of the 16 skills
 	presentSkills := []string{
 		"moai-domain-backend",
 		"moai-domain-frontend",
@@ -28,18 +28,18 @@ func TestDryRunArchive(t *testing.T) {
 		makeSkillDir(t, root, id, "# "+id)
 	}
 
-	// mtime 스냅샷 캡처
+	// Capture an mtime snapshot
 	skillsDir := filepath.Join(root, ".claude", "skills")
 	preMtimes := snapshotMtimes(t, skillsDir)
 
-	// dry-run 실행
+	// Run dry-run
 	var out bytes.Buffer
 	err := dryRunArchiveLegacySkills(root, &out)
 	if err != nil {
 		t.Fatalf("dryRunArchiveLegacySkills returned error: %v", err)
 	}
 
-	// 파일시스템 변경 없음 검증 (mtime 비교)
+	// Verify the filesystem is unchanged (mtime comparison)
 	postMtimes := snapshotMtimes(t, skillsDir)
 	for path, preMtime := range preMtimes {
 		postMtime, ok := postMtimes[path]
@@ -53,13 +53,13 @@ func TestDryRunArchive(t *testing.T) {
 		}
 	}
 
-	// 아카이브 디렉토리가 생성되지 않았는지 확인
+	// Verify the archive directory was not created
 	archiveBase := filepath.Join(root, ".moai", "archive")
 	if _, err := os.Stat(archiveBase); err == nil {
 		t.Error("archive directory was created during dry-run (should not mutate filesystem)")
 	}
 
-	// 출력 검증: [dry-run] 접두사 + 3개 스킬 + summary 라인
+	// Output verification: [dry-run] prefix + 3 skill IDs + summary line
 	output := out.String()
 	if !strings.Contains(output, "[dry-run]") {
 		t.Errorf("output missing [dry-run] prefix, got:\n%s", output)
@@ -70,14 +70,14 @@ func TestDryRunArchive(t *testing.T) {
 		}
 	}
 
-	// summary 라인 검증
+	// Verify the summary line
 	if !strings.Contains(output, "total:") {
 		t.Errorf("output missing summary line containing 'total:', got:\n%s", output)
 	}
 }
 
-// TestDryRunArchive_NoSkills는 레거시 스킬이 없을 때 dry-run이
-// 빈 계획을 출력하고 에러 없이 종료하는지 검증한다.
+// TestDryRunArchive_NoSkills verifies that, when no legacy skills are present,
+// dry-run emits an empty plan and exits without error.
 func TestDryRunArchive_NoSkills(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -92,13 +92,13 @@ func TestDryRunArchive_NoSkills(t *testing.T) {
 	if !strings.Contains(output, "total:") {
 		t.Errorf("output missing summary line, got:\n%s", output)
 	}
-	// 0 skills 아카이브
+	// 0 skills archived
 	if !strings.Contains(output, "0 skills archived") {
 		t.Errorf("expected '0 skills archived' in output, got:\n%s", output)
 	}
 }
 
-// snapshotMtimes는 dir 하위 모든 파일의 경로→mtime 맵을 반환한다.
+// snapshotMtimes returns a path→mtime map for every file under dir.
 func snapshotMtimes(t *testing.T, dir string) map[string]time.Time {
 	t.Helper()
 	result := make(map[string]time.Time)

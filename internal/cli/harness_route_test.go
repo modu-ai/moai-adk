@@ -11,7 +11,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness/router"
 )
 
-// TestHarnessRouterCmd — newHarnessRouterCmd() 팩토리 기본 확인.
+// TestHarnessRouterCmd — basic check of the newHarnessRouterCmd() factory.
 func TestHarnessRouterCmd(t *testing.T) {
 	t.Parallel()
 
@@ -24,7 +24,7 @@ func TestHarnessRouterCmd(t *testing.T) {
 		t.Errorf("Use first token: got %q, want %q", useFirst, "harness")
 	}
 
-	// route + validate 서브커맨드가 있어야 합니다
+	// route + validate subcommands must be present
 	subCmds := make(map[string]bool)
 	for _, sub := range cmd.Commands() {
 		subCmds[strings.SplitN(sub.Use, " ", 2)[0]] = true
@@ -37,13 +37,13 @@ func TestHarnessRouterCmd(t *testing.T) {
 	}
 }
 
-// TestHarnessRouteJSONSchema — AC-HRN-001-06: JSON 출력 스키마 준수.
+// TestHarnessRouteJSONSchema — AC-HRN-001-06: JSON output schema compliance.
 func TestHarnessRouteJSONSchema(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 
-	// 테스트용 harness.yaml 생성
+	// Create harness.yaml for the test
 	harnessYAML := `harness:
     default_profile: default
     effort_mapping:
@@ -98,7 +98,7 @@ func TestHarnessRouteJSONSchema(t *testing.T) {
 		t.Fatalf("write harness.yaml: %v", err)
 	}
 
-	// 테스트용 SPEC 파일 생성
+	// Create a SPEC file for the test
 	specYAML := `---
 id: SPEC-TST-CLI-001
 title: "CLI Route Test SPEC"
@@ -128,7 +128,7 @@ tags: "feature, cli"
 		t.Fatalf("write spec.md: %v", err)
 	}
 
-	// CLI 실행 (--json 모드)
+	// Run the CLI (--json mode)
 	var buf bytes.Buffer
 	cmd := newHarnessRouterCmd()
 	cmd.SetOut(&buf)
@@ -138,7 +138,7 @@ tags: "feature, cli"
 		t.Fatalf("route command error: %v", err)
 	}
 
-	// JSON 파싱
+	// Parse JSON
 	output := buf.String()
 	if output == "" {
 		t.Fatal("empty JSON output")
@@ -149,7 +149,7 @@ tags: "feature, cli"
 		t.Fatalf("JSON parse error: %v (output: %q)", err, output)
 	}
 
-	// 필수 필드 확인 (AC-HRN-001-06)
+	// Verify required fields (AC-HRN-001-06)
 	requiredFields := []string{"level", "rationale", "effort", "evaluator_profile", "sprint_contract", "plan_audit"}
 	for _, field := range requiredFields {
 		if _, ok := result[field]; !ok {
@@ -157,7 +157,7 @@ tags: "feature, cli"
 		}
 	}
 
-	// rationale 서브필드 확인
+	// Verify rationale subfields
 	rationale, ok := result["rationale"].(map[string]any)
 	if !ok {
 		t.Fatal("rationale field is not an object")
@@ -170,17 +170,17 @@ tags: "feature, cli"
 		}
 	}
 
-	// level 값이 유효한지 확인
+	// Verify the level value is valid
 	level, _ := result["level"].(string)
 	switch router.Level(level) {
 	case router.LevelMinimal, router.LevelStandard, router.LevelThorough:
-		// 유효
+		// valid
 	default:
 		t.Errorf("invalid level: %q", level)
 	}
 }
 
-// TestHarnessValidateCmd — AC-HRN-001-04: 정상 harness.yaml 검증.
+// TestHarnessValidateCmd — AC-HRN-001-04: validation of a well-formed harness.yaml.
 func TestHarnessValidateCmd(t *testing.T) {
 	t.Parallel()
 
@@ -254,7 +254,7 @@ func TestHarnessValidateCmd(t *testing.T) {
 	}
 }
 
-// TestHarnessValidate_UnknownLevel — AC-HRN-001 level enum 검증.
+// TestHarnessValidate_UnknownLevel — AC-HRN-001 level enum validation.
 func TestHarnessValidate_UnknownLevel(t *testing.T) {
 	t.Parallel()
 

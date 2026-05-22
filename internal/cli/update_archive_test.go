@@ -1,6 +1,6 @@
 // SPEC-V3R3-HARNESS-001 / T-M4-01
-// archiveSkill 함수에 대한 테이블 기반 테스트.
-// RED 단계: archiveSkill 미구현 → 컴파일 실패로 RED 확인.
+// Table-driven tests for the archiveSkill function.
+// RED phase: archiveSkill is not yet implemented → RED is confirmed via compile failure.
 
 package cli
 
@@ -14,8 +14,8 @@ import (
 	"testing"
 )
 
-// hashDir은 디렉토리 내 모든 파일의 SHA-256 해시를 계산하여
-// 경로→해시 맵을 반환한다. 바이트 단위 동등성 검증에 사용.
+// hashDir computes the SHA-256 hash of every file under dir and returns a
+// path → hash map. Used to verify byte-level equality.
 func hashDir(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	hashes := make(map[string]string)
@@ -48,7 +48,7 @@ func hashDir(t *testing.T, dir string) map[string]string {
 	return hashes
 }
 
-// makeSkillDir는 테스트용 스킬 디렉토리를 projectRoot/.claude/skills/<id> 에 생성한다.
+// makeSkillDir creates a test skill directory at projectRoot/.claude/skills/<id>.
 func makeSkillDir(t *testing.T, projectRoot, skillID, content string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, ".claude", "skills", skillID)
@@ -61,8 +61,8 @@ func makeSkillDir(t *testing.T, projectRoot, skillID, content string) {
 	}
 }
 
-// TestArchiveSkill_Present는 스킬 디렉토리가 존재할 때
-// 아카이브가 올바르게 생성되는지 검증한다.
+// TestArchiveSkill_Present verifies that, when the skill directory exists, the
+// archive is created correctly.
 func TestArchiveSkill_Present(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -75,13 +75,13 @@ func TestArchiveSkill_Present(t *testing.T) {
 		t.Fatalf("archiveSkill returned error: %v", err)
 	}
 
-	// 아카이브 경로 검증
+	// Verify the archive path
 	archiveDir := filepath.Join(root, ".moai", "archive", "skills", "v2.16", skillID)
 	if _, statErr := os.Stat(archiveDir); statErr != nil {
 		t.Fatalf("archive directory not created: %v", statErr)
 	}
 
-	// 원본과 아카이브 내용이 바이트 단위로 동일한지 SHA-256으로 확인
+	// Confirm via SHA-256 that the original and the archived content are byte-identical
 	srcDir := filepath.Join(root, ".claude", "skills", skillID)
 	srcHashes := hashDir(t, srcDir)
 	dstHashes := hashDir(t, archiveDir)
@@ -101,12 +101,12 @@ func TestArchiveSkill_Present(t *testing.T) {
 	}
 }
 
-// TestArchiveSkill_Absent는 소스 스킬 디렉토리가 없을 때
-// archiveSkill이 nil을 반환(멱등성)하는지 검증한다.
+// TestArchiveSkill_Absent verifies that archiveSkill returns nil when the source
+// skill directory does not exist (idempotency).
 func TestArchiveSkill_Absent(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	// 스킬 디렉토리를 생성하지 않음
+	// Do not create the skill directory
 
 	err := archiveSkill(root, "moai-domain-frontend")
 	if err != nil {
@@ -114,8 +114,8 @@ func TestArchiveSkill_Absent(t *testing.T) {
 	}
 }
 
-// TestArchiveSkill_Idempotent는 동일한 내용으로 두 번 호출해도
-// 에러 없이 멱등하게 동작하는지 검증한다.
+// TestArchiveSkill_Idempotent verifies that calling archiveSkill twice with the
+// same content succeeds idempotently without error.
 func TestArchiveSkill_Idempotent(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -123,37 +123,37 @@ func TestArchiveSkill_Idempotent(t *testing.T) {
 	content := "# moai-domain-database"
 	makeSkillDir(t, root, skillID, content)
 
-	// 첫 번째 아카이브
+	// First archive
 	if err := archiveSkill(root, skillID); err != nil {
 		t.Fatalf("first archiveSkill: %v", err)
 	}
 
-	// 두 번째 아카이브 (동일 내용) → 에러 없어야 함
+	// Second archive (same content) → must succeed without error
 	if err := archiveSkill(root, skillID); err != nil {
 		t.Fatalf("second archiveSkill (idempotent): %v", err)
 	}
 }
 
-// TestArchiveSkill_DriftDetected는 아카이브가 이미 존재하는데
-// 소스 내용이 변경된 경우 에러를 반환하는지 검증한다.
+// TestArchiveSkill_DriftDetected verifies that an error is returned when the
+// archive already exists but the source content has changed.
 func TestArchiveSkill_DriftDetected(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	skillID := "moai-domain-db-docs"
 	makeSkillDir(t, root, skillID, "original content")
 
-	// 첫 번째 아카이브
+	// First archive
 	if err := archiveSkill(root, skillID); err != nil {
 		t.Fatalf("first archiveSkill: %v", err)
 	}
 
-	// 소스 내용 변경 (drift 시뮬레이션)
+	// Modify the source content (simulates drift)
 	skillFile := filepath.Join(root, ".claude", "skills", skillID, "SKILL.md")
 	if err := os.WriteFile(skillFile, []byte("modified content"), 0o644); err != nil {
 		t.Fatalf("write modified content: %v", err)
 	}
 
-	// 두 번째 아카이브 → 내용 불일치로 에러 반환 기대
+	// Second archive → expect an error due to content mismatch
 	err := archiveSkill(root, skillID)
 	if err == nil {
 		t.Fatal("expected error for content drift, got nil")
@@ -164,8 +164,8 @@ func TestArchiveSkill_DriftDetected(t *testing.T) {
 	}
 }
 
-// TestArchiveSkill_PathTraversal는 skillID에 ".." 또는 "/"가 포함된
-// 경우 에러를 반환하는지 검증한다 (경로 순회 방지).
+// TestArchiveSkill_PathTraversal verifies that an error is returned when
+// skillID contains ".." or "/" (path-traversal prevention).
 func TestArchiveSkill_PathTraversal(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -192,13 +192,13 @@ func TestArchiveSkill_PathTraversal(t *testing.T) {
 	}
 }
 
-// TestArchiveSkill_All16Skills는 16개 레거시 스킬을 모두 순회하며
-// present / absent 두 가지 케이스를 검증한다.
+// TestArchiveSkill_All16Skills iterates over all 16 legacy skills and verifies
+// the present / absent cases.
 func TestArchiveSkill_All16Skills(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// 짝수 인덱스는 present, 홀수 인덱스는 absent
+	// Even-indexed skills are present; odd-indexed skills are absent
 	for i, skillID := range legacySkillIDs {
 		skillID := skillID
 		present := i%2 == 0
@@ -223,12 +223,12 @@ func TestArchiveSkill_All16Skills(t *testing.T) {
 		})
 	}
 
-	// root는 사용하지 않으므로 정리 불필요 (t.TempDir이 자동 정리)
+	// root is not used, so no cleanup is required (t.TempDir handles it automatically)
 	_ = root
 }
 
-// TestCopyFile_SourceNotExist는 소스 파일이 없을 때 copyFile이
-// 에러를 반환하는지 검증한다.
+// TestCopyFile_SourceNotExist verifies that copyFile returns an error when the
+// source file does not exist.
 func TestCopyFile_SourceNotExist(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -240,17 +240,17 @@ func TestCopyFile_SourceNotExist(t *testing.T) {
 	}
 }
 
-// TestCopyFile_DstDirNotExist는 대상 디렉토리가 없을 때 copyFile이
-// 에러를 반환하는지 검증한다.
+// TestCopyFile_DstDirNotExist verifies that copyFile returns an error when the
+// destination directory does not exist.
 func TestCopyFile_DstDirNotExist(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	// 소스 파일 생성
+	// Create the source file
 	src := filepath.Join(root, "src.txt")
 	if err := os.WriteFile(src, []byte("data"), 0o644); err != nil {
 		t.Fatalf("write src: %v", err)
 	}
-	// 대상 디렉토리는 생성하지 않음
+	// Do not create the destination directory
 	dst := filepath.Join(root, "subdir", "nonexistent", "dst.txt")
 	err := copyFile(src, dst)
 	if err == nil {
@@ -258,7 +258,7 @@ func TestCopyFile_DstDirNotExist(t *testing.T) {
 	}
 }
 
-// TestCopyFile_Success는 copyFile이 정상적으로 파일을 복사하는지 검증한다.
+// TestCopyFile_Success verifies that copyFile copies the file correctly.
 func TestCopyFile_Success(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

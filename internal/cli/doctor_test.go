@@ -78,7 +78,7 @@ func TestDoctorCmd_Execution(t *testing.T) {
 	if !strings.Contains(output, "System Diagnostics") {
 		t.Errorf("doctor output should contain 'System Diagnostics', got %q", output)
 	}
-	// tui 마이그레이션 후 요약은 Pill 포맷 "통과 N" 으로 변경됨.
+	// After the tui migration, the summary uses the Pill format with the Korean "passed" label.
 	if !strings.Contains(output, "통과") {
 		t.Errorf("doctor output should contain '통과' in summary, got %q", output)
 	}

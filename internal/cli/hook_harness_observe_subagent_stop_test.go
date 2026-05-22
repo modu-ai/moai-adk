@@ -1,7 +1,7 @@
-// Package cli — SubagentStop 훅 핸들러 전체 테스트 매트릭스 (T-C2).
-// REQ-HRN-OBS-005: subagent_stop 이벤트 기록 검증.
-// REQ-HRN-FND-009: isHarnessLearningEnabled 게이트 — 비활성화 시 완전 no-op.
-// REQ-HRN-FND-010: 4-필드 기존 스키마 + SubagentStop 전용 필드 보존.
+// Package cli — full SubagentStop hook handler test matrix (T-C2).
+// REQ-HRN-OBS-005: verifies subagent_stop events are recorded.
+// REQ-HRN-FND-009: isHarnessLearningEnabled gate — full no-op when disabled.
+// REQ-HRN-FND-010: preserves the 4-field existing schema plus SubagentStop-specific fields.
 package cli
 
 import (
@@ -14,9 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled는 learning.enabled=false일 때
-// SubagentStop 핸들러가 usage-log.jsonl을 생성하지 않음을 검증한다.
-// REQ-HRN-FND-009: isHarnessLearningEnabled 게이트 재사용.
+// TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled verifies that the
+// SubagentStop handler does not create usage-log.jsonl when learning.enabled=false.
+// REQ-HRN-FND-009: reuses the isHarnessLearningEnabled gate.
 func TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
@@ -36,15 +36,15 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenLearningDisabled(t *testing.T) {
 	}
 }
 
-// TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled는 비활성화 상태에서
-// 기존 로그 파일이 수정되지 않음을 검증한다.
-// REQ-HRN-FND-009: 게이트 비활성화 시 기존 데이터 불변 보장.
+// TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled verifies that,
+// in the disabled state, an existing log file is not modified.
+// REQ-HRN-FND-009: when the gate is disabled, existing data must remain unchanged.
 func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: false\n")
 	t.Chdir(dir)
 
-	// 기존 로그 파일 사전 생성
+	// Pre-create an existing log file
 	logDir := filepath.Join(dir, ".moai", "harness")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		t.Fatalf("로그 디렉터리 생성 실패: %v", err)
@@ -63,7 +63,7 @@ func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testi
 		}
 	})
 
-	// 파일 내용이 동일해야 함
+	// File content must remain identical
 	after, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("로그 파일 읽기 실패: %v", err)
@@ -73,11 +73,11 @@ func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testi
 	}
 }
 
-// TestRunHarnessObserveSubagentStop_RecordsAllFields는 learning.enabled=true일 때
-// SubagentStop 핸들러가 subagent_stop 이벤트를 올바르게 기록하는지 검증한다.
+// TestRunHarnessObserveSubagentStop_RecordsAllFields verifies that the SubagentStop
+// handler records the subagent_stop event correctly when learning.enabled=true.
 // - event_type = "subagent_stop"
-// - subject = agent_name (stdin에서)
-// - agent_name, agent_type, agent_id, parent_session_id 필드
+// - subject = agent_name (from stdin)
+// - agent_name, agent_type, agent_id, parent_session_id fields
 // REQ-HRN-OBS-005, REQ-HRN-FND-010.
 func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 	dir := t.TempDir()
@@ -109,24 +109,24 @@ func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 		t.Fatalf("JSONL 파싱 실패: %v", err)
 	}
 
-	// event_type 검증
+	// Verify event_type
 	if entry["event_type"] != "subagent_stop" {
 		t.Errorf("event_type: got=%v, want=%q", entry["event_type"], "subagent_stop")
 	}
 
-	// subject는 agent_name이어야 함 (REQ-HRN-OBS-005)
+	// subject must be agent_name (REQ-HRN-OBS-005)
 	if entry["subject"] != "manager-develop" {
 		t.Errorf("subject: got=%v, want=%q", entry["subject"], "manager-develop")
 	}
 
-	// 4개 기본 필드 존재 검증
+	// Verify presence of the 4 base fields
 	for _, field := range []string{"timestamp", "event_type", "subject", "schema_version"} {
 		if _, ok := entry[field]; !ok {
 			t.Errorf("기본 필드 %q 누락 — schema additivity 위반", field)
 		}
 	}
 
-	// SubagentStop 전용 필드 검증 (REQ-HRN-OBS-005)
+	// Verify SubagentStop-specific fields (REQ-HRN-OBS-005)
 	wantFields := map[string]any{
 		"agent_name":        "manager-develop",
 		"agent_type":        "subagent",
@@ -144,18 +144,19 @@ func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 		}
 	}
 
-	// unknown subject 폴백: agent_name이 빈 경우 "unknown"이 되는지 별도 테스트
-	// (이 테스트는 agent_name이 있는 경우만 커버)
+	// unknown subject fallback: covered by a separate test when agent_name is empty,
+	// resulting in subject "unknown". This test covers only the agent_name-present case.
 }
 
-// TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn는 로그 기록 실패 시
-// 핸들러가 에러를 반환하지 않고(비블로킹) stderr에 기록함을 검증한다.
+// TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn verifies that the
+// handler does not return an error on log-write failure (non-blocking) and instead
+// writes to stderr.
 func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
-	// usage-log.jsonl 위치에 디렉터리를 미리 생성하여 파일 쓰기 실패 유발
+	// Pre-create a directory at the usage-log.jsonl path to induce a file-write failure
 	blockPath := filepath.Join(dir, ".moai", "harness", "usage-log.jsonl")
 	if err := os.MkdirAll(blockPath, 0o755); err != nil {
 		t.Fatalf("블로킹 디렉터리 생성 실패: %v", err)
@@ -170,17 +171,17 @@ func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
 			t.Errorf("SubagentStop 핸들러는 기록 실패 시에도 에러를 반환하지 않아야 함: %v", err)
 		}
 	})
-	// 핸들러는 nil 반환 — 에러는 stderr에 기록됨 (비블로킹)
+	// The handler returns nil; errors are written to stderr (non-blocking)
 }
 
-// TestRunHarnessObserveSubagentStop_UnknownSubjectFallback는 agent_name이 없을 때
-// subject가 "unknown"으로 폴백되는지 검증한다.
+// TestRunHarnessObserveSubagentStop_UnknownSubjectFallback verifies that, when
+// agent_name is absent, subject falls back to "unknown".
 func TestRunHarnessObserveSubagentStop_UnknownSubjectFallback(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
 	t.Chdir(dir)
 
-	// T-A4 spec: agentName 생략 → "unknown" 폴백
+	// T-A4 spec: omitting agentName → "unknown" fallback
 	cmd := &cobra.Command{}
 	withStdin(t, `{"session":{"id":"sess-noname"}}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {

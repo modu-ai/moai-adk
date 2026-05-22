@@ -55,7 +55,7 @@ func TestRootCmd_HelpOutput(t *testing.T) {
 	output := buf.String()
 
 	// M6-S5: tui-based help uses 4 Korean section groups (ScreenHelp design).
-	// "런처" replaces the old cobra "Launch Commands:" group header.
+	// The launcher group header (Korean label) replaces the old cobra "Launch Commands:" header.
 	if !strings.Contains(output, "런처") {
 		t.Error("root --help should show 런처 section (M6-S5 tui help)")
 	}

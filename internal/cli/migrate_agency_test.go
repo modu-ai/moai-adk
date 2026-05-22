@@ -497,8 +497,8 @@ func TestMigrateAgency_EmptyAgencyDir(t *testing.T) {
 	}
 }
 
-// TestMigrateAgency_DiskFull은 AC-MIGRATE-011을 검증한다:
-// 가용 디스크 공간이 .agency/ 크기의 2배 미만일 때 MIGRATE_DISK_FULL 오류를 반환해야 한다.
+// TestMigrateAgency_DiskFull verifies AC-MIGRATE-011:
+// it MUST return a MIGRATE_DISK_FULL error when available disk space is less than twice the size of .agency/.
 //
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-011
 func TestMigrateAgency_DiskFull(t *testing.T) {
@@ -509,8 +509,8 @@ func TestMigrateAgency_DiskFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// checkDiskSpaceFn을 디스크 가득 참 상태로 모킹한다.
-	// 실제 디스크를 채우지 않고 함수 변수 주입 패턴을 사용한다.
+	// Mock checkDiskSpaceFn to simulate a disk-full state.
+	// We use the function-variable injection pattern instead of actually filling the disk.
 	original := checkDiskSpaceFn
 	t.Cleanup(func() { checkDiskSpaceFn = original })
 	checkDiskSpaceFn = func(_ string) error {
@@ -538,7 +538,7 @@ func TestMigrateAgency_DiskFull(t *testing.T) {
 		t.Errorf("오류 코드 %s를 기대했으나 %s", ErrMigrateDiskFull, me.Code)
 	}
 
-	// 디스크 가득 참 오류 시 파일시스템에 변경이 없어야 한다.
+	// No filesystem mutation should occur on a disk-full error.
 	if _, statErr := os.Stat(filepath.Join(dir, ".agency.archived")); !os.IsNotExist(statErr) {
 		t.Error("디스크 가득 참 오류 시 .agency.archived/가 생성되면 안 됨")
 	}
@@ -547,15 +547,15 @@ func TestMigrateAgency_DiskFull(t *testing.T) {
 	}
 }
 
-// TestMigrateAgency_DiskFull_AlsoBlocksDryRun은 --dry-run 모드에서도 디스크 검사가 실행됨을 검증한다.
-// REQ-MIGRATE-011은 dry-run 예외를 명시하지 않으므로 사전 검사는 모든 경로에서 수행된다.
+// TestMigrateAgency_DiskFull_AlsoBlocksDryRun verifies that the disk check also runs in --dry-run mode.
+// REQ-MIGRATE-011 does not specify a dry-run exception, so the precheck runs on every path.
 //
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-011
 func TestMigrateAgency_DiskFull_AlsoBlocksDryRun(t *testing.T) {
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 
-	// checkDiskSpaceFn을 항상 실패로 모킹한다.
+	// Mock checkDiskSpaceFn to always fail.
 	original := checkDiskSpaceFn
 	t.Cleanup(func() { checkDiskSpaceFn = original })
 	checkDiskSpaceFn = func(_ string) error {
@@ -571,7 +571,7 @@ func TestMigrateAgency_DiskFull_AlsoBlocksDryRun(t *testing.T) {
 		dryRun:      true,
 	}
 
-	// REQ-MIGRATE-011은 dry-run 예외를 명시하지 않으므로 MIGRATE_DISK_FULL 오류가 반환되어야 한다.
+	// REQ-MIGRATE-011 does not specify a dry-run exception, so MIGRATE_DISK_FULL must be returned.
 	_, err := m.Run()
 	if err == nil {
 		t.Fatal("디스크 가득 참 상태에서 dry-run도 오류를 반환해야 함")

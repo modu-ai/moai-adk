@@ -13,7 +13,7 @@ import (
 // TestEmitReadyToMergeReport_AllPass verifies the ready-to-merge report format.
 // The report must:
 //   - Contain PR number
-//   - Include "(권장)" in the first option (per AskUserQuestion protocol)
+//   - Include the recommended-option label (per AskUserQuestion protocol)
 //   - Be markdown formatted
 //   - NOT include AskUserQuestion call (orchestrator handles that)
 func TestEmitReadyToMergeReport_AllPass(t *testing.T) {
@@ -38,7 +38,7 @@ func TestEmitReadyToMergeReport_AllPass(t *testing.T) {
 		t.Errorf("report missing PR number 785: %q", out)
 	}
 
-	// Must have "(권장)" in the first option label (AskUserQuestion protocol).
+	// Must include the recommended-option label in the first option (AskUserQuestion protocol).
 	if !strings.Contains(out, "(권장)") {
 		t.Errorf("report missing (권장) label for recommended action: %q", out)
 	}
@@ -79,7 +79,7 @@ func TestEmitReadyToMergeReport_WithAdvisoryFail(t *testing.T) {
 	}
 
 	out := buf.String()
-	// "(권장)" must still be present.
+	// The recommended-option label must still be present.
 	if !strings.Contains(out, "(권장)") {
 		t.Errorf("report missing (권장): %q", out)
 	}

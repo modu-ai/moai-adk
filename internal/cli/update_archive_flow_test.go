@@ -1,10 +1,10 @@
 // SPEC-V3R3-HARNESS-001 / T-M4-02
-// archiveLegacySkills 함수 통합 테스트.
-// 16개 레거시 스킬 + 사용자 my-harness 스킬 + moai-meta-harness가 있는
-// 프로젝트에서 archiveLegacySkills를 호출했을 때:
-//   - 16개 레거시 스킬이 아카이브됨
-//   - my-harness-* 스킬은 건드리지 않음
-//   - 출력 형식 검증
+// Integration tests for the archiveLegacySkills function.
+// When archiveLegacySkills is invoked on a project containing the 16 legacy
+// skills plus a user my-harness skill plus moai-meta-harness:
+//   - the 16 legacy skills must be archived
+//   - my-harness-* skills must not be touched
+//   - the output format must be verified
 
 package cli
 
@@ -16,21 +16,21 @@ import (
 	"testing"
 )
 
-// TestArchiveLegacySkills_Integration은 레거시 스킬 아카이브 흐름을
-// 통합적으로 검증한다.
+// TestArchiveLegacySkills_Integration verifies the legacy-skill archive flow
+// as an integration test.
 func TestArchiveLegacySkills_Integration(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// 16개 레거시 스킬 생성
+	// Create all 16 legacy skills
 	for _, id := range legacySkillIDs {
 		makeSkillDir(t, root, id, "# "+id+" content")
 	}
 
-	// 사용자 커스터마이징 스킬 생성 (보존되어야 함)
+	// Create a user-customized skill (must be preserved)
 	makeSkillDir(t, root, "my-harness-test", "# user custom skill")
 
-	// moai-meta-harness (코어 스킬, 건드리지 않아야 함)
+	// moai-meta-harness (core skill, must not be touched)
 	makeSkillDir(t, root, "moai-meta-harness", "# meta harness")
 
 	// force=false: SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 default contract.
@@ -40,12 +40,12 @@ func TestArchiveLegacySkills_Integration(t *testing.T) {
 		t.Fatalf("archiveLegacySkills: %v", err)
 	}
 
-	// 16개 모두 아카이브되었는지 검증
+	// Verify all 16 skills were archived
 	if archived != len(legacySkillIDs) {
 		t.Errorf("archived count = %d, want %d", archived, len(legacySkillIDs))
 	}
 
-	// 각 레거시 스킬에 대해 아카이브 디렉토리 존재 확인
+	// Verify the archive directory exists for each legacy skill
 	for _, id := range legacySkillIDs {
 		archiveDir := filepath.Join(root, ".moai", "archive", "skills", archiveVersion, id)
 		if _, statErr := os.Stat(archiveDir); statErr != nil {
@@ -53,19 +53,19 @@ func TestArchiveLegacySkills_Integration(t *testing.T) {
 		}
 	}
 
-	// my-harness-test 스킬은 아카이브되지 않았는지 확인
+	// Verify the my-harness-test skill is NOT archived
 	userArchive := filepath.Join(root, ".moai", "archive", "skills", archiveVersion, "my-harness-test")
 	if _, statErr := os.Stat(userArchive); statErr == nil {
 		t.Error("my-harness-test should NOT be archived (user customization)")
 	}
 
-	// moai-meta-harness도 아카이브되지 않음
+	// moai-meta-harness must not be archived either
 	metaArchive := filepath.Join(root, ".moai", "archive", "skills", archiveVersion, "moai-meta-harness")
 	if _, statErr := os.Stat(metaArchive); statErr == nil {
 		t.Error("moai-meta-harness should NOT be archived (not a legacy skill)")
 	}
 
-	// 출력 형식 검증: archive: <id> → ... 라인들
+	// Verify the output format: "archive: <id> → ..." lines
 	output := out.String()
 	for _, id := range legacySkillIDs {
 		expected := "archive: " + id
@@ -74,19 +74,19 @@ func TestArchiveLegacySkills_Integration(t *testing.T) {
 		}
 	}
 
-	// summary 라인: "total: N skills archived"
+	// Summary line: "total: N skills archived"
 	if !strings.Contains(output, "total:") {
 		t.Errorf("output missing summary line, got:\n%s", output)
 	}
 }
 
-// TestArchiveLegacySkills_PartialPresent는 일부 레거시 스킬만 있는 경우에도
-// 정상 동작하는지 검증한다.
+// TestArchiveLegacySkills_PartialPresent verifies correct behavior when only a
+// subset of the legacy skills is present.
 func TestArchiveLegacySkills_PartialPresent(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// 처음 5개만 생성
+	// Create only the first 5 skills
 	presentSkills := legacySkillIDs[:5]
 	for _, id := range presentSkills {
 		makeSkillDir(t, root, id, "# "+id)

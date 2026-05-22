@@ -165,7 +165,7 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 // --- DDD PRESERVE Phase: Golden-snapshot characterization tests ---
 //
 // These tests capture the BEFORE state of PrintBanner / PrintWelcomeMessage output
-// (terra cotta / 보라 lipgloss styles) and serve as the regression baseline for
+// (terra cotta / purple lipgloss styles) and serve as the regression baseline for
 // Step 2 DDD IMPROVE, which replaces the body with tui-derived rendering.
 //
 // lipgloss AdaptiveColor behaviour under os.Pipe() stdout capture:
@@ -178,7 +178,7 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 // To regenerate snapshots: UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestBanner_Current|TestWelcome_Current" -count=1
 
 // TestBanner_Current_Light captures PrintBanner output with light-theme env.
-// 특징: deep teal Accent 색상 (tui.Theme().Accent), MoAI ASCII art banner + 3 tui.Pill.
+// Characteristics: deep teal Accent color (tui.Theme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
@@ -199,7 +199,7 @@ func TestBanner_Current_Light(t *testing.T) {
 }
 
 // TestBanner_Current_Dark captures PrintBanner output with dark-theme env.
-// 특징: deep teal Accent 색상 (tui.DarkTheme().Accent), MoAI ASCII art banner + 3 tui.Pill.
+// Characteristics: deep teal Accent color (tui.DarkTheme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
@@ -239,7 +239,7 @@ func TestBanner_NoColor(t *testing.T) {
 }
 
 // TestWelcome_Current_Light captures PrintWelcomeMessage output with light-theme env.
-// 특징: deep teal Accent 색상 (tui.LightTheme().Accent), bold title.
+// Characteristics: deep teal Accent color (tui.LightTheme().Accent), bold title.
 func TestWelcome_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
@@ -257,7 +257,7 @@ func TestWelcome_Current_Light(t *testing.T) {
 }
 
 // TestWelcome_Current_Dark captures PrintWelcomeMessage output with dark-theme env.
-// 특징: deep teal Accent 색상 (tui.DarkTheme().Accent), bold title.
+// Characteristics: deep teal Accent color (tui.DarkTheme().Accent), bold title.
 func TestWelcome_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")

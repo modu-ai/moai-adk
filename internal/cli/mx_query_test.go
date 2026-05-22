@@ -12,7 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
-// buildTestSidecarForCLI는 CLI 테스트용 사이드카 파일을 생성합니다.
+// buildTestSidecarForCLI creates a sidecar file for CLI tests.
 func buildTestSidecarForCLI(t *testing.T, stateDir string, tags []mx.Tag) {
 	t.Helper()
 	mgr := mx.NewManager(stateDir)
@@ -26,7 +26,7 @@ func buildTestSidecarForCLI(t *testing.T, stateDir string, tags []mx.Tag) {
 	}
 }
 
-// executeQueryCmd는 CLI 명령을 실행하고 stdout/stderr을 캡처합니다.
+// executeQueryCmd runs the CLI command and captures stdout/stderr.
 func executeQueryCmd(t *testing.T, args []string) (stdout, stderr string, err error) {
 	t.Helper()
 
@@ -41,7 +41,7 @@ func executeQueryCmd(t *testing.T, args []string) (stdout, stderr string, err er
 	return outBuf.String(), errBuf.String(), err
 }
 
-// TestMxQueryCmd_Structure는 mx query 명령 구조를 테스트합니다.
+// TestMxQueryCmd_Structure tests the structure of the mx query command.
 func TestMxQueryCmd_Structure(t *testing.T) {
 	cmd := newMxQueryCmd()
 
@@ -49,7 +49,7 @@ func TestMxQueryCmd_Structure(t *testing.T) {
 		t.Errorf("Use: 기대 'query', 실제 %q", cmd.Use)
 	}
 
-	// 필수 플래그 존재 확인
+	// Verify required flags are present
 	requiredFlags := []string{
 		"spec", "kind", "fan-in-min", "danger", "file-prefix",
 		"since", "limit", "offset", "format", "include-tests",
@@ -62,10 +62,10 @@ func TestMxQueryCmd_Structure(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_InvalidKind는 잘못된 kind 값에 대한 오류를 테스트합니다.
+// TestMxQueryCmd_InvalidKind tests the error for an invalid kind value.
 // AC-SPC-004-13: --kind nonexistent → exit 2 + InvalidQuery
 func TestMxQueryCmd_InvalidKind(t *testing.T) {
-	// AC-SPC-004-13: 잘못된 필터 값
+	// AC-SPC-004-13: invalid filter value
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
 	buildTestSidecarForCLI(t, stateDir, []mx.Tag{})
@@ -81,16 +81,16 @@ func TestMxQueryCmd_InvalidKind(t *testing.T) {
 
 	if !strings.Contains(stderr, "InvalidQuery") && !strings.Contains(err.Error(), "InvalidQuery") {
 		t.Logf("stderr: %s, err: %v", stderr, err)
-		// RED 단계에서는 "not implemented" 오류가 반환되므로 실패 예상
+		// In the RED phase, "not implemented" errors are returned so failure is expected
 	}
 }
 
-// TestMxQueryCmd_SidecarUnavailable은 사이드카 파일 없을 때 오류를 테스트합니다.
-// AC-SPC-004-04: 사이드카 없을 때 SidecarUnavailable 오류
+// TestMxQueryCmd_SidecarUnavailable tests the error when the sidecar file is absent.
+// AC-SPC-004-04: SidecarUnavailable error when the sidecar is missing.
 func TestMxQueryCmd_SidecarUnavailable(t *testing.T) {
-	// AC-SPC-004-04: 사이드카 파일 없을 때
+	// AC-SPC-004-04: sidecar file absent
 	tmpDir := t.TempDir()
-	// 사이드카 파일 생성하지 않음
+	// Do not create the sidecar file
 
 	oldFindProjectRootFn := findProjectRootFn
 	defer func() { findProjectRootFn = oldFindProjectRootFn }()
@@ -101,13 +101,13 @@ func TestMxQueryCmd_SidecarUnavailable(t *testing.T) {
 		t.Error("사이드카 없을 때 오류 기대, 실제 nil")
 	}
 
-	_ = stderr // GREEN 단계에서 "SidecarUnavailable" 포함 검증
+	_ = stderr // In the GREEN phase, verify the message contains "SidecarUnavailable"
 }
 
-// TestMxQueryCmd_JSONOutput은 JSON 출력 형식을 테스트합니다.
-// AC-SPC-004-05: JSON 출력이 REQ-SPC-004-005 스키마 준수
+// TestMxQueryCmd_JSONOutput tests the JSON output format.
+// AC-SPC-004-05: JSON output must comply with the REQ-SPC-004-005 schema.
 func TestMxQueryCmd_JSONOutput(t *testing.T) {
-	// AC-SPC-004-05: JSON 출력 스키마
+	// AC-SPC-004-05: JSON output schema
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
 
@@ -133,14 +133,14 @@ func TestMxQueryCmd_JSONOutput(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// JSON 파싱 가능한지 확인
+	// Verify JSON-parseability
 	var result []map[string]interface{}
 	if err := json.Unmarshal([]byte(strings.TrimSpace(stdout)), &result); err != nil {
 		t.Errorf("JSON 파싱 실패: %v\n출력: %s", err, stdout)
 		return
 	}
 
-	// REQ-SPC-004-005 필수 필드 확인
+	// Verify REQ-SPC-004-005 required fields
 	if len(result) > 0 {
 		requiredFields := []string{"kind", "file", "line", "body", "created_by", "last_seen_at", "spec_associations"}
 		for _, field := range requiredFields {
@@ -151,10 +151,10 @@ func TestMxQueryCmd_JSONOutput(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_TableOutput은 테이블 출력 형식을 테스트합니다.
-// AC-SPC-004-06: --format table 컬럼 형식 출력
+// TestMxQueryCmd_TableOutput tests the table output format.
+// AC-SPC-004-06: --format table produces column-formatted output.
 func TestMxQueryCmd_TableOutput(t *testing.T) {
-	// AC-SPC-004-06: 테이블 출력 형식
+	// AC-SPC-004-06: table output format
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
 
@@ -179,16 +179,16 @@ func TestMxQueryCmd_TableOutput(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// 테이블 출력에 KIND 헤더가 있어야 함
+	// The table output must contain the KIND header
 	if !strings.Contains(stdout, "KIND") {
 		t.Errorf("테이블 출력에 'KIND' 헤더 없음:\n%s", stdout)
 	}
 }
 
-// TestMxQueryCmd_MarkdownOutput은 마크다운 출력 형식을 테스트합니다.
-// AC-SPC-004-10: --format markdown 마크다운 테이블 출력
+// TestMxQueryCmd_MarkdownOutput tests the markdown output format.
+// AC-SPC-004-10: --format markdown produces a markdown table.
 func TestMxQueryCmd_MarkdownOutput(t *testing.T) {
-	// AC-SPC-004-10: 마크다운 출력 형식
+	// AC-SPC-004-10: markdown output format
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
 
@@ -218,14 +218,14 @@ func TestMxQueryCmd_MarkdownOutput(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_EmptyResult는 매칭 없을 때 빈 배열과 exit 0을 테스트합니다.
-// AC-SPC-004-12: 빈 결과 시 [] + exit 0
+// TestMxQueryCmd_EmptyResult tests that empty results return [] and exit 0.
+// AC-SPC-004-12: empty results → [] + exit 0
 func TestMxQueryCmd_EmptyResult(t *testing.T) {
-	// AC-SPC-004-12: 빈 결과 처리
+	// AC-SPC-004-12: empty-result handling
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
 
-	// NOTE 태그만 있는데 ANCHOR 필터 적용 → 빈 결과
+	// Only NOTE tags exist while applying an ANCHOR filter → empty result
 	tags := []mx.Tag{
 		{
 			Kind:       mx.MXNote,
@@ -247,17 +247,17 @@ func TestMxQueryCmd_EmptyResult(t *testing.T) {
 		t.Fatalf("빈 결과 시 오류 없어야 함: %v", err)
 	}
 
-	// 빈 JSON 배열이어야 함
+	// Must be an empty JSON array
 	trimmed := strings.TrimSpace(stdout)
 	if trimmed != "[]" {
 		t.Errorf("빈 결과 시 [] 기대, 실제: %q", trimmed)
 	}
 }
 
-// TestMxQueryCmd_StrictMode는 MOAI_MX_QUERY_STRICT=1 모드를 테스트합니다.
-// AC-SPC-004-09: strict 모드에서 LSP 없으면 LSPRequired 오류
+// TestMxQueryCmd_StrictMode tests the MOAI_MX_QUERY_STRICT=1 mode.
+// AC-SPC-004-09: LSPRequired error in strict mode when LSP is absent.
 func TestMxQueryCmd_StrictMode(t *testing.T) {
-	// AC-SPC-004-09: strict 모드
+	// AC-SPC-004-09: strict mode
 	t.Setenv("MOAI_MX_QUERY_STRICT", "1")
 
 	tmpDir := t.TempDir()
@@ -284,10 +284,10 @@ func TestMxQueryCmd_StrictMode(t *testing.T) {
 	if err == nil {
 		t.Error("strict 모드에서 LSP 없을 때 오류 기대")
 	}
-	_ = stderr // GREEN 단계에서 "LSPRequired" 포함 검증
+	_ = stderr // In the GREEN phase, verify the message contains "LSPRequired"
 }
 
-// TestMxQueryCmd_MxParentCommand는 mx 부모 명령 구조를 테스트합니다.
+// TestMxQueryCmd_MxParentCommand tests the structure of the parent mx command.
 func TestMxQueryCmd_MxParentCommand(t *testing.T) {
 	cmd := newMxCmd()
 
@@ -295,7 +295,7 @@ func TestMxQueryCmd_MxParentCommand(t *testing.T) {
 		t.Errorf("Use: 기대 'mx', 실제 %q", cmd.Use)
 	}
 
-	// query 서브커맨드가 있어야 함
+	// The query subcommand must exist
 	found := false
 	for _, sub := range cmd.Commands() {
 		if sub.Use == "query" {
@@ -309,12 +309,12 @@ func TestMxQueryCmd_MxParentCommand(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_Pagination은 limit/offset 플래그를 테스트합니다.
+// TestMxQueryCmd_Pagination tests the limit/offset flags.
 func TestMxQueryCmd_Pagination(t *testing.T) {
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
 
-	// 10개 태그 생성
+	// Generate 10 tags
 	tags := make([]mx.Tag, 10)
 	for i := range tags {
 		tags[i] = mx.Tag{
@@ -350,7 +350,7 @@ func TestMxQueryCmd_Pagination(t *testing.T) {
 	}
 }
 
-// TestMxCmd_IsRegisteredInRoot는 mx 명령이 rootCmd에 등록되었는지 확인합니다.
+// TestMxCmd_IsRegisteredInRoot verifies that the mx command is registered under rootCmd.
 func TestMxCmd_IsRegisteredInRoot(t *testing.T) {
 	found := false
 	for _, cmd := range rootCmd.Commands() {
@@ -365,7 +365,7 @@ func TestMxCmd_IsRegisteredInRoot(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_FilePrefix는 파일 경로 접두사 필터를 테스트합니다.
+// TestMxQueryCmd_FilePrefix tests the file-path prefix filter.
 func TestMxQueryCmd_FilePrefix(t *testing.T) {
 	tmpDir := t.TempDir()
 	stateDir := filepath.Join(tmpDir, ".moai", "state")
@@ -417,7 +417,7 @@ func TestMxQueryCmd_FilePrefix(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_LimitDefault는 기본 limit이 100임을 테스트합니다.
+// TestMxQueryCmd_LimitDefault verifies that the default limit is 100.
 func TestMxQueryCmd_LimitDefault(t *testing.T) {
 	cmd := newMxQueryCmd()
 
@@ -426,14 +426,14 @@ func TestMxQueryCmd_LimitDefault(t *testing.T) {
 		t.Fatal("--limit 플래그 없음")
 	}
 
-	// 기본값 확인
+	// Verify the default value
 	if limitFlag.DefValue != "0" {
-		// 기본값이 0이면 런타임에 DefaultLimit(100)로 처리
+		// A default of 0 is replaced with DefaultLimit(100) at runtime
 		t.Logf("--limit 기본값: %s", limitFlag.DefValue)
 	}
 }
 
-// TestMxQueryCmd_FormatDefault는 기본 format이 json임을 테스트합니다.
+// TestMxQueryCmd_FormatDefault verifies that the default format is json.
 func TestMxQueryCmd_FormatDefault(t *testing.T) {
 	cmd := newMxQueryCmd()
 
@@ -447,11 +447,11 @@ func TestMxQueryCmd_FormatDefault(t *testing.T) {
 	}
 }
 
-// TestSidecarUnavailable_StderrFormat은 사이드카 없을 때 stderr 형식을 정확히 검증합니다.
-// AC-SPC-004-04: SidecarUnavailable → stderr에 "SidecarUnavailable" + "/moai mx --full" 포함 (G-06)
+// TestSidecarUnavailable_StderrFormat verifies the exact stderr format when the sidecar is absent.
+// AC-SPC-004-04: SidecarUnavailable → stderr must include "SidecarUnavailable" + "/moai mx --full" (G-06)
 func TestSidecarUnavailable_StderrFormat(t *testing.T) {
 	tmpDir := t.TempDir()
-	// 사이드카 파일 생성하지 않음 (부재 시뮬레이션)
+	// Do not create the sidecar file (simulates absence)
 
 	oldFindProjectRootFn := findProjectRootFn
 	defer func() { findProjectRootFn = oldFindProjectRootFn }()
@@ -569,5 +569,5 @@ func TestMxQueryCmd_NewQuery_InvalidDanger(t *testing.T) {
 	}
 }
 
-// 더미 참조: os 패키지 사용 확인
+// Dummy reference: ensures the os package is in use
 var _ = os.DevNull

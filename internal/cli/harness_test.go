@@ -1,6 +1,6 @@
-// Package cli — /moai harness 서브커맨드 통합 테스트.
-// REQ-HL-009: status / apply / rollback <date> / disable 4개 verb 검증.
-// T-P4-09: macOS/Linux/Windows 경로 구분자 대응 subtest 포함.
+// Package cli — integration tests for the /moai harness subcommand.
+// REQ-HL-009: validates the four verbs status / apply / rollback <date> / disable.
+// T-P4-09: includes subtests covering macOS / Linux / Windows path separators.
 package cli
 
 import (
@@ -15,21 +15,21 @@ import (
 )
 
 // ─────────────────────────────────────────────
-// 헬퍼: 격리된 프로젝트 디렉토리 생성
+// Helper: create an isolated project directory
 // ─────────────────────────────────────────────
 
-// harnessTestProject는 테스트용 임시 프로젝트 구조를 생성한다.
+// harnessTestProject creates a temporary project structure for tests.
 func harnessTestProject(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 
-	// .moai/config/sections/ 생성
+	// Create .moai/config/sections/
 	configDir := filepath.Join(dir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatalf("config 디렉토리 생성 실패: %v", err)
 	}
 
-	// harness.yaml (최소 학습 섹션 포함)
+	// harness.yaml (with the minimal learning section)
 	harnessYAML := `harness:
   default_profile: "default"
 
@@ -47,7 +47,7 @@ learning:
 		t.Fatalf("harness.yaml 생성 실패: %v", err)
 	}
 
-	// .moai/harness/learning-history/ 디렉토리
+	// .moai/harness/learning-history/ directory
 	historyDir := filepath.Join(dir, ".moai", "harness", "learning-history")
 	if err := os.MkdirAll(historyDir, 0o755); err != nil {
 		t.Fatalf("learning-history 디렉토리 생성 실패: %v", err)
@@ -57,10 +57,10 @@ learning:
 }
 
 // ─────────────────────────────────────────────
-// cmdStatus 테스트 (T-P4-02)
+// cmdStatus tests (T-P4-02)
 // ─────────────────────────────────────────────
 
-// TestCmdStatus_FreshProject는 사용 이력이 없는 새 프로젝트에서 status가 동작하는지 검증한다.
+// TestCmdStatus_FreshProject verifies that status works on a new project with no usage history.
 func TestCmdStatus_FreshProject(t *testing.T) {
 	t.Parallel()
 
@@ -76,23 +76,23 @@ func TestCmdStatus_FreshProject(t *testing.T) {
 	}
 
 	output := buf.String()
-	// tier 분포 섹션이 포함되어야 함
+	// The tier-distribution section must be present
 	if !strings.Contains(output, "tier") && !strings.Contains(output, "Tier") {
 		t.Errorf("status 출력에 tier 정보 없음:\n%s", output)
 	}
-	// enabled 상태 표시
+	// The enabled-state indicator must be present
 	if !strings.Contains(output, "enabled") && !strings.Contains(output, "활성") {
 		t.Errorf("status 출력에 enabled 상태 없음:\n%s", output)
 	}
 }
 
-// TestCmdStatus_WithLogData는 사용 이력이 있을 때 tier 분포가 반영되는지 검증한다.
+// TestCmdStatus_WithLogData verifies that tier distribution reflects existing usage history.
 func TestCmdStatus_WithLogData(t *testing.T) {
 	t.Parallel()
 
 	dir := harnessTestProject(t)
 
-	// usage-log.jsonl 생성 (10개 이벤트 → tier 분포 포함)
+	// Create usage-log.jsonl (10 events → includes tier distribution)
 	logDir := filepath.Join(dir, ".moai", "harness")
 	logPath := filepath.Join(logDir, "usage-log.jsonl")
 	var logLines []string
@@ -114,25 +114,25 @@ func TestCmdStatus_WithLogData(t *testing.T) {
 	}
 
 	output := buf.String()
-	// 패턴이 1개 이상 감지되어야 함
+	// At least one pattern must be detected
 	if !strings.Contains(output, "/moai plan") && !strings.Contains(output, "auto_update") && !strings.Contains(output, "패턴") {
 		t.Logf("status 출력:\n%s", output)
-		// 이 경우는 단지 로그 존재 확인만 함
+		// In this case we only verify that the log exists
 	}
 }
 
 // ─────────────────────────────────────────────
-// cmdApply 테스트 (T-P4-03)
+// cmdApply tests (T-P4-03)
 // ─────────────────────────────────────────────
 
-// TestCmdApply_ReturnsPayloadJSON은 apply가 proposal payload를 JSON으로 반환하는지 검증한다.
-// [HARD] cmdApply는 사용자에게 직접 묻지 않고 payload만 반환한다.
+// TestCmdApply_ReturnsPayloadJSON verifies that apply returns the proposal payload as JSON.
+// [HARD] cmdApply does not ask the user directly; it only returns the payload.
 func TestCmdApply_ReturnsPayloadJSON(t *testing.T) {
 	t.Parallel()
 
 	dir := harnessTestProject(t)
 
-	// 대기 중인 proposal 파일 생성
+	// Create a pending proposal file
 	proposalDir := filepath.Join(dir, ".moai", "harness", "proposals")
 	if err := os.MkdirAll(proposalDir, 0o755); err != nil {
 		t.Fatalf("proposals 디렉토리 생성 실패: %v", err)
@@ -159,18 +159,18 @@ func TestCmdApply_ReturnsPayloadJSON(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetArgs([]string{"apply", "--project-root", dir})
 
-	// apply는 pending proposal을 반환하므로 payload를 stdout에 출력해야 함
-	// 오류 없이 실행 (pending은 정상 흐름)
+	// apply returns the pending proposal, so it MUST print the payload to stdout
+	// Runs without error (pending is a normal flow)
 	_ = cmd.Execute()
 	output := buf.String()
 
-	// JSON payload가 출력되어야 함 (proposal_id 포함)
+	// The JSON payload must appear in output (with proposal_id)
 	if !strings.Contains(output, "prop-001") && !strings.Contains(output, "proposal") {
 		t.Logf("apply 출력:\n%s", output)
 	}
 }
 
-// TestCmdApply_NoProposals는 대기 중인 proposal이 없을 때 적절한 메시지를 반환하는지 검증한다.
+// TestCmdApply_NoProposals verifies that an appropriate message is returned when no pending proposal exists.
 func TestCmdApply_NoProposals(t *testing.T) {
 	t.Parallel()
 
@@ -181,11 +181,11 @@ func TestCmdApply_NoProposals(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetArgs([]string{"apply", "--project-root", dir})
 
-	// 대기 중인 proposal 없음 — 오류 없이 메시지 출력
+	// No pending proposal — print a message without error
 	_ = cmd.Execute()
 	output := buf.String()
 
-	// "없음" 또는 "no proposals" 등의 메시지가 있어야 함
+	// Output must include a "none" or "no proposals" message
 	hasNoneMsg := strings.Contains(output, "없") ||
 		strings.Contains(output, "no proposal") ||
 		strings.Contains(output, "No proposal") ||
@@ -196,30 +196,30 @@ func TestCmdApply_NoProposals(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// cmdRollback 테스트 (T-P4-04)
+// cmdRollback tests (T-P4-04)
 // ─────────────────────────────────────────────
 
-// TestCmdRollback_RestoresFile은 rollback이 스냅샷에서 파일을 복원하는지 검증한다.
+// TestCmdRollback_RestoresFile verifies that rollback restores files from a snapshot.
 func TestCmdRollback_RestoresFile(t *testing.T) {
 	t.Parallel()
 
 	dir := harnessTestProject(t)
 
-	// 복원 대상 파일 생성
+	// Create the file to be restored
 	targetPath := filepath.Join(dir, "SKILL.md")
 	originalContent := "# Original Content\n"
 	if err := os.WriteFile(targetPath, []byte(originalContent), 0o644); err != nil {
 		t.Fatalf("SKILL.md 생성 실패: %v", err)
 	}
 
-	// 스냅샷 생성
+	// Create the snapshot
 	snapshotDate := "2026-04-27T00-00-00.000000000Z"
 	snapshotDir := filepath.Join(dir, ".moai", "harness", "learning-history", "snapshots", snapshotDate)
 	if err := os.MkdirAll(snapshotDir, 0o755); err != nil {
 		t.Fatalf("스냅샷 디렉토리 생성 실패: %v", err)
 	}
 
-	// 백업 파일
+	// Backup file
 	backupPath := filepath.Join(snapshotDir, "SKILL.md")
 	if err := os.WriteFile(backupPath, []byte(originalContent), 0o644); err != nil {
 		t.Fatalf("백업 파일 생성 실패: %v", err)
@@ -242,7 +242,7 @@ func TestCmdRollback_RestoresFile(t *testing.T) {
 		t.Fatalf("manifest.json 생성 실패: %v", err)
 	}
 
-	// 파일 내용 변경
+	// Modify file content
 	if err := os.WriteFile(targetPath, []byte("# Modified Content\n"), 0o644); err != nil {
 		t.Fatalf("SKILL.md 수정 실패: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestCmdRollback_RestoresFile(t *testing.T) {
 		t.Fatalf("harness rollback 실패: %v", err)
 	}
 
-	// 파일이 원본으로 복원되었는지 확인
+	// Verify the file has been restored to its original content
 	restored, err := os.ReadFile(targetPath)
 	if err != nil {
 		t.Fatalf("복원 파일 읽기 실패: %v", err)
@@ -266,7 +266,7 @@ func TestCmdRollback_RestoresFile(t *testing.T) {
 	}
 }
 
-// TestCmdRollback_NonexistentDate는 존재하지 않는 날짜로 rollback 시 exit 1을 반환하는지 검증한다.
+// TestCmdRollback_NonexistentDate verifies that rolling back with a nonexistent date returns exit 1.
 func TestCmdRollback_NonexistentDate(t *testing.T) {
 	t.Parallel()
 
@@ -282,10 +282,10 @@ func TestCmdRollback_NonexistentDate(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// cmdDisable 테스트 (T-P4-05)
+// cmdDisable tests (T-P4-05)
 // ─────────────────────────────────────────────
 
-// TestCmdDisable_SetsEnabledFalse는 disable이 harness.yaml의 learning.enabled를 false로 설정하는지 검증한다.
+// TestCmdDisable_SetsEnabledFalse verifies that disable sets learning.enabled to false in harness.yaml.
 func TestCmdDisable_SetsEnabledFalse(t *testing.T) {
 	t.Parallel()
 
@@ -300,19 +300,19 @@ func TestCmdDisable_SetsEnabledFalse(t *testing.T) {
 		t.Fatalf("harness disable 실패: %v", err)
 	}
 
-	// harness.yaml 읽기
+	// Read harness.yaml
 	harnessPath := filepath.Join(dir, ".moai", "config", "sections", "harness.yaml")
 	content, err := os.ReadFile(harnessPath)
 	if err != nil {
 		t.Fatalf("harness.yaml 읽기 실패: %v", err)
 	}
 
-	// learning.enabled: false가 설정되었는지 확인
+	// Verify learning.enabled: false has been set
 	if !strings.Contains(string(content), "enabled: false") {
 		t.Errorf("disable 후 harness.yaml에 enabled: false가 없음:\n%s", string(content))
 	}
 
-	// 다른 키들이 보존되었는지 확인
+	// Verify other keys are preserved
 	if !strings.Contains(string(content), "auto_apply") {
 		t.Error("auto_apply 키가 사라짐 — YAML round-trip 보존 실패")
 	}
@@ -321,14 +321,14 @@ func TestCmdDisable_SetsEnabledFalse(t *testing.T) {
 	}
 }
 
-// TestCmdDisable_PreservesComments는 disable 후 YAML 주석이 보존되는지 검증한다.
+// TestCmdDisable_PreservesComments verifies that YAML comments are preserved after disable.
 // [HARD] YAML round-trip preserves comments and key ordering.
 func TestCmdDisable_PreservesComments(t *testing.T) {
 	t.Parallel()
 
 	dir := harnessTestProject(t)
 
-	// 주석이 포함된 harness.yaml 작성
+	// Write a harness.yaml that contains comments
 	harnessWithComments := `# Harness configuration
 learning:
   enabled: true    # 이 값을 false로 바꿔야 함
@@ -356,22 +356,22 @@ learning:
 	content, _ := os.ReadFile(harnessPath)
 	text := string(content)
 
-	// enabled: false 설정 확인
+	// Verify enabled: false has been set
 	if !strings.Contains(text, "enabled: false") {
 		t.Errorf("enabled: false가 설정되지 않음:\n%s", text)
 	}
 
-	// 최상위 주석 보존 확인
+	// Verify the top-level comment is preserved
 	if !strings.Contains(text, "# Harness configuration") {
 		t.Error("최상위 주석이 제거됨 — YAML 주석 보존 실패")
 	}
 }
 
 // ─────────────────────────────────────────────
-// 경로 구분자 OS 독립성 테스트 (T-P4-09)
+// OS-independent path-separator tests (T-P4-09)
 // ─────────────────────────────────────────────
 
-// TestHarnessCmd_PathSeparators는 OS별 경로 구분자에서 CLI가 동작하는지 검증한다.
+// TestHarnessCmd_PathSeparators verifies that the CLI works under each OS's path separator.
 func TestHarnessCmd_PathSeparators(t *testing.T) {
 	t.Run("current_os", func(t *testing.T) {
 		t.Parallel()
@@ -391,7 +391,7 @@ func TestHarnessCmd_PathSeparators(t *testing.T) {
 		t.Parallel()
 
 		dir := harnessTestProject(t)
-		// 슬래시로 강제 변환
+		// Force conversion to forward slashes
 		forwardSlashDir := filepath.ToSlash(dir)
 
 		var buf bytes.Buffer

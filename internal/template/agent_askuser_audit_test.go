@@ -1,15 +1,15 @@
 package template_test
 
-// TestNoAskUserQuestionInSubagents는 .claude/agents/**/*.md 파일에서
-// 본문에 AskUserQuestion( 리터럴이 포함되지 않음을 검증합니다.
+// TestNoAskUserQuestionInSubagents verifies that .claude/agents/**/*.md files
+// do not contain the literal AskUserQuestion( in their body.
 //
-// SPEC-V3R2-RT-004 AC-11: 서브에이전트에서 AskUserQuestion 직접 호출 금지.
-// 서브에이전트는 BlockerReport를 통해 오케스트레이터에 보고해야 합니다.
-// 위반 시 sentinel: ASKUSERQUESTION_IN_SUBAGENT
+// SPEC-V3R2-RT-004 AC-11: subagents MUST NOT call AskUserQuestion directly.
+// Subagents must report to the orchestrator via BlockerReport.
+// On violation, sentinel: ASKUSERQUESTION_IN_SUBAGENT
 //
-// 근거: .claude/rules/moai/core/agent-common-protocol.md §User Interaction Boundary.
-// 서브에이전트는 고립된 상태 비저장 컨텍스트에서 실행되므로 AskUserQuestion이
-// 작동하지 않습니다. 오케스트레이터만 AskUserQuestion을 사용해야 합니다.
+// Rationale: .claude/rules/moai/core/agent-common-protocol.md §User Interaction Boundary.
+// Subagents run in isolated stateless contexts where AskUserQuestion does not
+// function. Only the orchestrator may use AskUserQuestion.
 
 import (
 	"bufio"
@@ -25,7 +25,7 @@ import (
 func TestNoAskUserQuestionInSubagents(t *testing.T) {
 	t.Parallel()
 
-	// 프로젝트 루트 탐색 (go.mod 기준)
+	// Locate the project root (based on go.mod)
 	projectRoot := findProjectRoot(t)
 	agentsDir := filepath.Join(projectRoot, ".claude", "agents")
 
@@ -33,7 +33,7 @@ func TestNoAskUserQuestionInSubagents(t *testing.T) {
 		t.Skipf(".claude/agents/ not found at %s; skipping audit", agentsDir)
 	}
 
-	// .claude/agents/**/*.md 순회
+	// Walk .claude/agents/**/*.md
 	err := filepath.WalkDir(agentsDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -45,7 +45,7 @@ func TestNoAskUserQuestionInSubagents(t *testing.T) {
 			return nil
 		}
 
-		// 파일 읽기 + body 검사 (frontmatter 이후 시작)
+		// Read file + inspect body (starts after frontmatter)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
@@ -58,7 +58,7 @@ func TestNoAskUserQuestionInSubagents(t *testing.T) {
 			lineNum++
 			line := scanner.Text()
 			if strings.Contains(line, "AskUserQuestion(") {
-				// sentinel 출력 + 테스트 실패
+				// Emit sentinel + fail the test
 				rel, _ := filepath.Rel(projectRoot, path)
 				t.Errorf(
 					"ASKUSERQUESTION_IN_SUBAGENT: %s body line %d contains AskUserQuestion(; "+
@@ -76,30 +76,30 @@ func TestNoAskUserQuestionInSubagents(t *testing.T) {
 	}
 }
 
-// extractBody는 YAML frontmatter(---...--- 블록) 이후의 본문을 반환합니다.
-// frontmatter가 없으면 전체 내용을 반환합니다.
+// extractBody returns the body following a YAML frontmatter (---...--- block).
+// If no frontmatter is present, returns the entire content.
 func extractBody(data []byte) []byte {
 	content := string(data)
 	if !strings.HasPrefix(content, "---") {
 		return data
 	}
 
-	// 두 번째 --- 찾기
-	rest := content[3:] // 첫 번째 --- 이후
+	// Find the second ---
+	rest := content[3:] // after the first ---
 	idx := strings.Index(rest, "---")
 	if idx < 0 {
 		return data
 	}
 
-	// 두 번째 --- 이후 콘텐츠
+	// Content after the second ---
 	body := rest[idx+3:]
 	return []byte(body)
 }
 
-// findProjectRoot는 go.mod가 있는 디렉토리를 탐색합니다.
+// findProjectRoot walks up to find the directory containing go.mod.
 func findProjectRoot(t *testing.T) string {
 	t.Helper()
-	// 현재 워킹 디렉토리부터 상위로 탐색
+	// Walk upward starting from the current working directory
 	dir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)

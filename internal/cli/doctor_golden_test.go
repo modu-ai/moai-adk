@@ -71,7 +71,7 @@ func captureDoctorCmd(t *testing.T) string {
 //   UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestDoctor_Current" -count=1
 
 // TestDoctor_Current_Light captures doctorCmd output with light-theme env.
-// 특징: tui.Section + 19+ tui.CheckLine + tui.Box + tui.Pill 요약.
+// Characteristics: tui.Section + 19+ tui.CheckLine + tui.Box + tui.Pill summary.
 func TestDoctor_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
@@ -90,7 +90,7 @@ func TestDoctor_Current_Light(t *testing.T) {
 }
 
 // TestDoctor_Current_Dark captures doctorCmd output with dark-theme env.
-// 특징: tui.DarkTheme() 적용, Section 헤더 + CheckLine + Pill 요약.
+// Characteristics: applies tui.DarkTheme(); Section headers + CheckLine + Pill summary.
 func TestDoctor_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
@@ -109,7 +109,7 @@ func TestDoctor_Current_Dark(t *testing.T) {
 }
 
 // TestDoctor_NoColor captures doctorCmd output with NO_COLOR=1 (plain text mode).
-// tui.MonochromeTheme() 적용: 모든 ANSI 색상 제거, Pill은 [label] 형식으로 degraded.
+// Applies tui.MonochromeTheme(): all ANSI colors stripped; Pill degrades to the [label] form.
 func TestDoctor_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
@@ -184,7 +184,7 @@ func TestDoctor_SummaryPillsPresent(t *testing.T) {
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
 	got := captureDoctorCmd(t)
-	// 통과/주의/실패 Pill 중 최소 하나는 출력에 있어야 함.
+	// At least one of the passed / warning / failed Pills must be present in the output.
 	if !strings.Contains(got, "통과") {
 		t.Errorf("doctor output should contain '통과' pill in summary")
 	}

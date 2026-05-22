@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestBrainCmd_Exists verifies brainCmd is not nil (등록 전 nil 예상 — RED 상태).
+// TestBrainCmd_Exists verifies brainCmd is not nil (expected nil pre-registration — RED state).
 func TestBrainCmd_Exists(t *testing.T) {
 	if brainCmd == nil {
 		t.Fatal("brainCmd should not be nil")
@@ -66,7 +66,7 @@ func TestBrainCmd_RunE_WithIdea(t *testing.T) {
 	brainCmd.SetOut(buf)
 	brainCmd.SetErr(buf)
 
-	// 아이디어 인자 전달 시 Claude Code 지시 메시지 출력 확인
+	// Verify that passing an idea argument prints the Claude Code instruction message
 	err := brainCmd.RunE(brainCmd, []string{"I want to build a habit tracker app"})
 	if err != nil {
 		t.Fatalf("brainCmd.RunE with idea error: %v", err)
@@ -74,7 +74,7 @@ func TestBrainCmd_RunE_WithIdea(t *testing.T) {
 
 	output := buf.String()
 
-	// 사용자에게 Claude Code 채팅에서 /moai brain을 실행하라는 안내가 있어야 함
+	// The output must guide the user to run /moai brain in the Claude Code chat
 	if !strings.Contains(output, "/moai brain") {
 		t.Errorf("output should contain '/moai brain', got %q", output)
 	}
@@ -90,14 +90,14 @@ func TestBrainCmd_RunE_NoArgs(t *testing.T) {
 	brainCmd.SetOut(buf)
 	brainCmd.SetErr(buf)
 
-	// 인자 없이 실행 시 도움말 메시지 출력
+	// Invocation without arguments still prints a help message
 	err := brainCmd.RunE(brainCmd, []string{})
 	if err != nil {
 		t.Fatalf("brainCmd.RunE without args error: %v", err)
 	}
 
 	output := buf.String()
-	// 인자 없이도 Claude Code 안내가 출력되어야 함
+	// The Claude Code guidance must be printed even without arguments
 	if !strings.Contains(output, "Claude Code") {
 		t.Errorf("output should mention 'Claude Code' even with no args, got %q", output)
 	}
@@ -115,12 +115,12 @@ func TestBrainCmd_InstructionsOnlyFlag(t *testing.T) {
 // TestBrainCmd_InstructionsOnly_Output verifies that --instructions-only
 // prints the 7-phase summary without requiring an idea argument.
 func TestBrainCmd_InstructionsOnly_Output(t *testing.T) {
-	// --instructions-only 플래그를 true로 설정 후 실행
+	// Set the --instructions-only flag to true before invocation
 	if err := brainCmd.Flags().Set("instructions-only", "true"); err != nil {
 		t.Fatalf("failed to set --instructions-only flag: %v", err)
 	}
 	defer func() {
-		// 테스트 격리: 플래그를 원래 값으로 복원
+		// Test isolation: restore the flag to its original value
 		_ = brainCmd.Flags().Set("instructions-only", "false")
 	}()
 
@@ -135,7 +135,7 @@ func TestBrainCmd_InstructionsOnly_Output(t *testing.T) {
 
 	output := buf.String()
 
-	// 7-phase 요약이 출력되어야 함
+	// The 7-phase summary must be printed
 	phases := []string{"Discovery", "Diverge", "Research", "Converge", "Critical", "Proposal", "Handoff"}
 	for _, phase := range phases {
 		if !strings.Contains(output, phase) {
@@ -150,7 +150,7 @@ func TestBrainCmd_Help(t *testing.T) {
 	brainCmd.SetOut(buf)
 	brainCmd.SetErr(buf)
 
-	// --help 출력에 brain 워크플로우 설명이 포함되어야 함
+	// The --help output must describe the brain workflow
 	err := brainCmd.Help()
 	if err != nil {
 		t.Fatalf("brainCmd.Help() error: %v", err)
@@ -160,7 +160,7 @@ func TestBrainCmd_Help(t *testing.T) {
 	if !strings.Contains(output, "brain") {
 		t.Errorf("help output should contain 'brain', got %q", output)
 	}
-	// --instructions-only 플래그가 help에 표시되어야 함
+	// The --instructions-only flag must appear in help
 	if !strings.Contains(output, "instructions-only") {
 		t.Errorf("help output should mention 'instructions-only' flag, got %q", output)
 	}
@@ -169,7 +169,7 @@ func TestBrainCmd_Help(t *testing.T) {
 // TestBrainCmd_GroupID verifies brain is in the "project" command group
 // (same as other workflow commands).
 func TestBrainCmd_GroupID(t *testing.T) {
-	// brain은 project 그룹에 속해야 함 (version, loop, spec 등의 tools 그룹 아님)
+	// brain must belong to the project group (not the tools group used by version, loop, spec, etc.)
 	if brainCmd.GroupID == "" {
 		t.Error("brainCmd.GroupID should not be empty")
 	}
@@ -215,7 +215,7 @@ func TestBrainCmd_VariousIdeaInputs(t *testing.T) {
 			brainCmd.SetOut(buf)
 			brainCmd.SetErr(buf)
 
-			// --instructions-only가 false인지 확인 (이전 테스트 격리)
+			// Verify --instructions-only is false (isolation from previous tests)
 			_ = brainCmd.Flags().Set("instructions-only", "false")
 
 			err := brainCmd.RunE(brainCmd, tt.args)

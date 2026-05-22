@@ -1,8 +1,8 @@
-// launcher_worktree_validation_test.go: Agent() 반환값의 worktreePath 유효성 검증 테스트.
-// REQ-RA-005, REQ-RA-010 매핑.
+// launcher_worktree_validation_test.go: validation tests for worktreePath returned by Agent().
+// Maps to REQ-RA-005 and REQ-RA-010.
 //
-// M4 GREEN-3 phase: validateWorktreeReturn 구현 완료 → t.Skip 제거 + assertion 활성화.
-// 변경: worktreeReturn 로컬 정의 제거 (worktree_validation.go로 이동).
+// M4 GREEN-3 phase: validateWorktreeReturn implementation complete → t.Skip removed + assertions enabled.
+// Change: removed local worktreeReturn definition (moved to worktree_validation.go).
 package cli
 
 import (
@@ -12,11 +12,11 @@ import (
 	"text/template"
 )
 
-// TestValidateWorktreeReturn_RejectsEmptyObject는 worktreePath가 빈 문자열일 때
-// WORKTREE_PATH_INVALID sentinel 에러가 반환되는지 검증한다.
+// TestValidateWorktreeReturn_RejectsEmptyObject verifies that the
+// WORKTREE_PATH_INVALID sentinel error is returned when worktreePath is empty.
 //
-// REQ-RA-005: isolation:worktree + 빈 worktreePath → WORKTREE_PATH_INVALID
-// REQ-RA-010: broken worktreePath 검증 없이 propagate 금지
+// REQ-RA-005: isolation:worktree + empty worktreePath → WORKTREE_PATH_INVALID
+// REQ-RA-010: do not propagate a broken worktreePath without validation
 func TestValidateWorktreeReturn_RejectsEmptyObject(t *testing.T) {
 	result := &worktreeReturn{
 		WorktreePath:  "",
@@ -34,12 +34,12 @@ func TestValidateWorktreeReturn_RejectsEmptyObject(t *testing.T) {
 	}
 }
 
-// TestValidateWorktreeReturn_RejectsNullPath는 nil worktreeReturn 전달 시
-// WORKTREE_PATH_INVALID sentinel 에러가 반환되는지 검증한다.
+// TestValidateWorktreeReturn_RejectsNullPath verifies that the
+// WORKTREE_PATH_INVALID sentinel error is returned when a nil worktreeReturn is passed.
 //
 // REQ-RA-005: nil/undefined worktreePath → WORKTREE_PATH_INVALID
 func TestValidateWorktreeReturn_RejectsNullPath(t *testing.T) {
-	// nil 포인터 케이스
+	// nil pointer case
 	err := validateWorktreeReturn(nil, "worktree", "manager-tdd")
 	if err == nil {
 		t.Fatal("nil worktreeReturn에 대해 오류가 반환되어야 함")
@@ -52,10 +52,10 @@ func TestValidateWorktreeReturn_RejectsNullPath(t *testing.T) {
 	}
 }
 
-// TestValidateWorktreeReturn_AcceptsValidPath는 유효한 절대 경로가 있을 때
-// 에러 없이 통과하는지 검증한다.
+// TestValidateWorktreeReturn_AcceptsValidPath verifies that a valid absolute
+// path passes without error.
 //
-// REQ-RA-005: 유효한 worktreePath는 통과
+// REQ-RA-005: a valid worktreePath passes
 func TestValidateWorktreeReturn_AcceptsValidPath(t *testing.T) {
 	result := &worktreeReturn{
 		WorktreePath:   "/tmp/abc123-worktree",
@@ -68,15 +68,15 @@ func TestValidateWorktreeReturn_AcceptsValidPath(t *testing.T) {
 	}
 }
 
-// TestValidateWorktreeReturn_SkipsWhenIsolationNotWorktree는 isolation이
-// "worktree"가 아닐 때 빈 WorktreePath도 오류 없이 통과하는지 검증한다.
+// TestValidateWorktreeReturn_SkipsWhenIsolationNotWorktree verifies that an
+// empty WorktreePath passes without error when isolation is not "worktree".
 //
-// REQ-RA-005: isolation:worktree 요청 시에만 검증 적용
+// REQ-RA-005: validation applies only when isolation:worktree is requested
 func TestValidateWorktreeReturn_SkipsWhenIsolationNotWorktree(t *testing.T) {
 	isolationModes := []string{"", "none", "sandbox"}
 	for _, mode := range isolationModes {
 		result := &worktreeReturn{
-			WorktreePath:  "", // 빈 경로
+			WorktreePath:  "", // empty path
 			IsolationMode: mode,
 		}
 		err := validateWorktreeReturn(result, mode, "manager-develop")
@@ -86,15 +86,16 @@ func TestValidateWorktreeReturn_SkipsWhenIsolationNotWorktree(t *testing.T) {
 	}
 }
 
-// TestPathTemplateRejectsNonStringValue는 text/template을 사용한 경로 보간에서
-// 빈 struct/map 값이 literal "{}" 문자열을 생성하지 않고 에러를 발생시키는지 검증한다.
+// TestPathTemplateRejectsNonStringValue verifies that text/template-based path
+// interpolation raises an error rather than producing a literal "{}" string for
+// empty struct/map values.
 //
-// REQ-RA-006: text/template 기반 경로 보간으로 {} literal 방지
-// REQ-RA-015: "/{}/{}" 경로 생성 방지
+// REQ-RA-006: text/template-based path interpolation prevents the {} literal
+// REQ-RA-015: prevent generation of "/{}/{}" paths
 func TestPathTemplateRejectsNonStringValue(t *testing.T) {
 	t.Parallel()
 
-	// 케이스 1: 빈 struct를 fmt.Sprintf로 보간하면 "{}" 생성 (위험 패턴 증명)
+	// Case 1: interpolating an empty struct via fmt.Sprintf produces "{}" (demonstrates the dangerous pattern)
 	type emptyStruct struct{}
 	dangerousPath := constructPathUnsafe("root", emptyStruct{}, emptyStruct{})
 	if !strings.Contains(dangerousPath, "{}") {
@@ -103,7 +104,7 @@ func TestPathTemplateRejectsNonStringValue(t *testing.T) {
 		t.Logf("위험 패턴 확인: fmt.Sprintf + empty struct → %q (REQ-RA-006 fix 대상)", dangerousPath)
 	}
 
-	// 케이스 2: text/template은 typed struct를 안전하게 보간함 (안전 패턴 증명)
+	// Case 2: text/template interpolates typed structs safely (demonstrates the safe pattern)
 	type worktreePathData struct {
 		Root   string
 		Branch string
@@ -126,15 +127,15 @@ func TestPathTemplateRejectsNonStringValue(t *testing.T) {
 	}
 
 	result := buf.String()
-	// 안전한 text/template 보간: {} literal이 없어야 함
+	// Safe text/template interpolation: must not contain the {} literal
 	if strings.Contains(result, "{}") {
 		t.Errorf("text/template 보간 결과에 '{}'가 포함됨 (타입 안전성 위반): %q", result)
 	}
 	t.Logf("안전한 text/template 보간 결과: %q", result)
 
-	// 케이스 3: validateWorktreeReturn이 "{}" worktreePath를 WORKTREE_PATH_INVALID로 거부
-	// SPEC-V3R3-RETIRED-AGENT-001 D-EVAL-02 fix: AC-RA-18 critical assertion 충족.
-	// 5-layer defect chain Layer 4 산물 (literal "{}" / "[object Object]") 거부.
+	// Case 3: validateWorktreeReturn rejects a "{}" worktreePath as WORKTREE_PATH_INVALID
+	// SPEC-V3R3-RETIRED-AGENT-001 D-EVAL-02 fix: satisfies the AC-RA-18 critical assertion.
+	// Rejects the layer-4 artifact of the 5-layer defect chain (literal "{}" / "[object Object]").
 	t.Run("validateWorktreeReturn rejects {} literal", func(t *testing.T) {
 		t.Parallel()
 		patterns := []string{"{}", "[object Object]", "null", "undefined"}
@@ -152,15 +153,15 @@ func TestPathTemplateRejectsNonStringValue(t *testing.T) {
 	})
 }
 
-// constructPathUnsafe는 빈 interface{} 값을 경로 보간에 사용하는 위험한 패턴을 시뮬레이션한다.
-// 이 함수는 REQ-RA-006이 fix하려는 문제를 증명하기 위해 존재한다.
-// 실제 코드에서는 이 패턴을 사용하면 안 됨.
+// constructPathUnsafe simulates the dangerous pattern of using empty interface{}
+// values for path interpolation. This function exists to demonstrate the issue
+// that REQ-RA-006 fixes. Real code must not use this pattern.
 func constructPathUnsafe(root string, branch, path interface{}) string {
 	return root + "/" + anyToString(branch) + "/" + anyToString(path)
 }
 
-// anyToString은 임의의 값을 문자열로 변환한다.
-// 빈 struct는 "{}"로 변환됨 (5-layer defect chain layer 4의 원인).
+// anyToString converts an arbitrary value to a string.
+// An empty struct converts to "{}" (the root cause of layer 4 in the 5-layer defect chain).
 func anyToString(v interface{}) string {
 	if v == nil {
 		return "nil"
@@ -169,8 +170,8 @@ func anyToString(v interface{}) string {
 	case string:
 		return s
 	default:
-		// map, struct 등: fmt.Sprintf 없이 직접 변환하면 "{}"
-		// 이것이 mo.ai.kr 사건의 원인
+		// For maps, structs, etc.: direct conversion without fmt.Sprintf yields "{}"
+		// This was the cause of the mo.ai.kr incident
 		_ = s
 		return strings.TrimSpace(strings.ReplaceAll(
 			strings.ReplaceAll(
