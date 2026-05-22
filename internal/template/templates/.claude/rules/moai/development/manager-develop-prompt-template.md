@@ -1,3 +1,8 @@
+---
+description: "manager-develop 위임 Prompt Template — Tier M/L SPEC run-phase 5-section 표준. SPEC 위임 작성 시에만 로드."
+paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moai/workflows/run.md"
+---
+
 # manager-develop 위임 Prompt Template
 
 > [ZONE:Evolvable] [HARD] 모든 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. 누락 시 재위임 반복 위험 증가.

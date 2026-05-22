@@ -1,3 +1,8 @@
+---
+description: "manager-develop 위임 Prompt Template — Tier M/L SPEC run-phase 5-section 표준. SPEC 위임 작성 시에만 로드."
+paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moai/workflows/run.md"
+---
+
 # manager-develop 위임 Prompt Template
 
 ## Applicability

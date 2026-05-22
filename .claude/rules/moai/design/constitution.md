@@ -1,3 +1,8 @@
+---
+description: "Design System Constitution — MoAI design pipeline FROZEN/EVOLVABLE zone, GAN Loop contract, brand integration. design/brand 작업 시에만 로드."
+paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.claude/skills/moai/**/design*.md,.claude/skills/moai/**/brand*.md"
+---
+
 # Design System Constitution v3.2
 
 ## HISTORY
