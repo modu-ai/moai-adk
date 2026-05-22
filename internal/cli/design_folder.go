@@ -62,20 +62,37 @@ func designDirHasRegularFile(dir string) (bool, error) {
 }
 
 // @MX:ANCHOR: [AUTO] checkReservedCollision enforces the SPEC-V3R3-DESIGN-FOLDER-FIX-001 dual-mode invariant
-// @MX:REASON: invariant contract — scaffold path (strict=true) keeps hard error, update path (strict=false) warns and continues; user data is never mutated
+// @MX:REASON: invariant contract — scaffold path (strict=true) keeps hard error, update path (strict=false) warns and continues; user data is never mutated; ack-ledger consultation suppresses repeat noise (SPEC-V3R6-UPDATE-NOISE-001)
 // @MX:SPEC: SPEC-V3R3-DESIGN-FOLDER-FIX-001
 //
 // checkReservedCollision checks whether any user file under projectRoot/.moai/design/
 // collides with a reserved filename (exact match or glob match).
 //
 // strict=true (scaffold path): returns an error on the first collision found (preserves
-// the original behavior).
-// strict=false (update path): emits a warning for each collision and returns nil.
+// the original behavior). The ack-ledger is NOT consulted in strict mode.
+// strict=false (update path): emits a warning for each unacknowledged collision and
+// returns nil.
 //   - User data is never modified or deleted in any case (REQ-DFF-004).
 //   - The conflicting file is skipped while other templates continue to sync
 //     (REQ-DFF-001/002).
+//   - REQ-UN-002~005 + REQ-UN-011: warnings emit only when (a) the package-level
+//     updateVerboseMode flag is true, (b) the path is absent from the reserved-ack
+//     ledger, or (c) the current SHA-256 hash differs from the recorded ack hash
+//     (drift re-emit). Otherwise the warning is silently suppressed. The ledger
+//     is automatically updated with the current hash + timestamp on every
+//     emitted warning.
 func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) error {
 	base := filepath.Join(projectRoot, designDir)
+
+	// REQ-UN-001/002: load ack ledger once per call. In strict mode the ledger
+	// is loaded but never consulted (strict errors are user-actionable and must
+	// not be suppressed by ack records). The loaded copy is mutated and saved
+	// at the end of the function only in update mode.
+	var ackLedger map[string]reservedAckEntry
+	ledgerDirty := false
+	if !strict {
+		ackLedger = loadReservedAckLedger(projectRoot)
+	}
 
 	for _, name := range reservedExact {
 		target := filepath.Join(base, name)
@@ -86,9 +103,22 @@ func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) e
 				}
 				return fmt.Errorf("reserved filename: %q collides with reserved name", name)
 			}
-			// update path: emit warning and continue (REQ-DFF-001)
-			if errOut != nil {
-				_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", name)
+			// update path: consult ack ledger before emitting warning (REQ-UN-002).
+			currentHash, hashErr := sha256FileHex(target)
+			if hashErr != nil {
+				// I/O error reading hash — fall back to legacy unconditional emit to
+				// preserve user-visible signal on this rare path. Do not update ledger.
+				if errOut != nil {
+					_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", name)
+				}
+				continue
+			}
+			if shouldEmitReservedWarning(ackLedger, name, currentHash, updateVerboseMode) {
+				if errOut != nil {
+					_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", name)
+				}
+				recordReservedAck(ackLedger, name, currentHash)
+				ledgerDirty = true
 			}
 		}
 	}
@@ -110,9 +140,21 @@ func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) e
 					}
 					return fmt.Errorf("reserved filename: %q matches reserved pattern %q", path, pattern)
 				}
-				// update path: emit warning and continue (REQ-DFF-001)
-				if errOut != nil {
-					_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", path)
+				// update path: consult ack ledger before emitting warning (REQ-UN-002).
+				absPath := filepath.Join(base, path)
+				currentHash, hashErr := sha256FileHex(absPath)
+				if hashErr != nil {
+					if errOut != nil {
+						_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", path)
+					}
+					return nil
+				}
+				if shouldEmitReservedWarning(ackLedger, path, currentHash, updateVerboseMode) {
+					if errOut != nil {
+						_, _ = fmt.Fprintf(errOut, "warning: reserved filename: %s (preserved; rename to use canonical templates)\n", path)
+					}
+					recordReservedAck(ackLedger, path, currentHash)
+					ledgerDirty = true
 				}
 			}
 			return nil
@@ -120,6 +162,12 @@ func checkReservedCollision(projectRoot string, errOut io.Writer, strict bool) e
 		if walkErr != nil {
 			return walkErr
 		}
+	}
+
+	// REQ-UN-003: persist ledger updates after the scan finishes. Save errors are
+	// non-fatal — the next update will simply re-emit warnings and try again.
+	if !strict && ledgerDirty {
+		_ = saveReservedAckLedger(projectRoot, ackLedger)
 	}
 
 	return nil

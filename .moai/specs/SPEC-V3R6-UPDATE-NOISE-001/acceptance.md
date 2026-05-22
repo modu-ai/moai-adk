@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-UPDATE-NOISE-001
 title: "SPEC-V3R6-UPDATE-NOISE-001 — Acceptance Criteria"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-22
 author: manager-spec
 priority: P2
 phase: "v3.6.0"
@@ -178,6 +178,18 @@ jq -e '. | type == "object" and (to_entries | all(.value | has("fallback_count")
 ### AC-UN-005 — 1·2회차 fallback silent
 
 **REQ mapping**: REQ-UN-007 (silent until threshold)
+
+**Setup recipe** (재현 환경 준비 — `/tmp/test-project-noise` 가 존재하지 않으면 다음과 같이 부트스트랩):
+
+```bash
+rm -rf /tmp/test-project-noise
+moai init /tmp/test-project-noise --yes
+# Deep-edit quality.yaml so every `moai update` triggers a 3-way merge failure:
+printf '\n# Deep user modifications to force 3-way merge fallback:\n' >> /tmp/test-project-noise/.moai/config/sections/quality.yaml
+printf 'custom_keys:\n  unmergeable_field: "user-only-value"\n' >> /tmp/test-project-noise/.moai/config/sections/quality.yaml
+```
+
+대안: 본 AC 는 단위 검증으로도 충분히 커버된다 — `go test -run TestMergeHistory_FirstTwoFallbacksSilent ./internal/cli/` (AC-UN-012 와 중첩 검증).
 
 **Verification command** (테스트 환경에서 quality.yaml 을 의도적으로 깊이 수정 → 매 update 마다 3-way fallback 발동 보장):
 

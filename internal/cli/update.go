@@ -88,6 +88,7 @@ func init() {
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
+	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -125,6 +126,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	templatesOnly := getBoolFlag(cmd, "templates-only")
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
+
+	// SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010: propagate --verbose through the
+	// package-level updateVerboseMode flag so checkReservedCollision and
+	// recordMergeFallback can bypass ack-ledger / 3-strike suppression. `moai
+	// update` is single-process sequential — no synchronization needed. The
+	// flag is reset on function exit so subsequent in-process invocations
+	// (CLI tests, helpers) start with the default suppression-on behavior.
+	updateVerboseMode = getBoolFlag(cmd, "verbose")
+	defer func() { updateVerboseMode = false }()
 
 	// Validate mutually exclusive flags
 	if binaryOnly && templatesOnly {
@@ -1772,10 +1782,14 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 			if err == nil {
 				merged, mergeErr := mergeYAML3Way(newData, oldData, baseData)
 				if mergeErr == nil {
+					// REQ-UN-009: reset the merge-history counter on success so the
+					// next failure starts a fresh 3-strike count.
+					recordMergeFallback(projectRoot, relPath, true, updateVerboseMode, os.Stderr)
 					return os.WriteFile(targetPath, merged, defs.FilePerm)
 				}
-				// 3-way merge failed, fall through to 2-way
-				_, _ = fmt.Fprintf(os.Stderr, "Warning: 3-way merge failed for %s, falling back to 2-way\n", relPath)
+				// 3-way merge failed, fall through to 2-way.
+				// REQ-UN-007/008/010: emit advisory or legacy warning per noise-suppression policy.
+				recordMergeFallback(projectRoot, relPath, false, updateVerboseMode, os.Stderr)
 			}
 		}
 

@@ -184,6 +184,13 @@ secret-*.*
 .moai/branches/
 
 # ===========================================
+# Update Noise-Suppression Ledgers (per-machine, never tracked)
+# See SPEC-V3R6-UPDATE-NOISE-001
+# ===========================================
+.moai/state/
+.moai/cache/
+
+# ===========================================
 # Plan Audit Reports (local artifacts)
 # See SPEC-WF-AUDIT-GATE-001
 # ===========================================
