@@ -167,8 +167,8 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return fmt.Errorf("dispatch hook: %w", err)
 	}
 
-	if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, output); writeErr != nil {
-		return fmt.Errorf("write hook output: %w", writeErr)
+	if err := writeHookOutput(event, input, output); err != nil {
+		return err
 	}
 
 	// Exit code 2 for explicit exit code (TeammateIdle, TaskCompleted)
@@ -181,6 +181,32 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		os.Exit(2)
 	}
 
+	return nil
+}
+
+// writeHookOutput dispatches stdout writing per event-specific contract.
+//
+// WorktreeCreate / WorktreeRemove (Claude Code v2.1.49+): the runtime parses
+// stdout as the worktree directory path (not JSON). The hook MUST echo the
+// directory path as plain text — emitting an empty JSON object yields
+// "WorktreeCreate hook returned a path that is not a directory: {}". We echo
+// input.WorktreePath unchanged, treating the hook as a passthrough observer.
+// When input.WorktreePath is absent the stdout is left empty (fail-safe).
+//
+// All other events use the JSON HookOutput protocol via HookProtocol.WriteOutput.
+func writeHookOutput(event hook.EventType, input *hook.HookInput, output *hook.HookOutput) error {
+	if event == hook.EventWorktreeCreate || event == hook.EventWorktreeRemove {
+		if input != nil && input.WorktreePath != "" {
+			if _, writeErr := fmt.Fprintln(os.Stdout, input.WorktreePath); writeErr != nil {
+				return fmt.Errorf("write worktree path: %w", writeErr)
+			}
+		}
+		return nil
+	}
+
+	if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, output); writeErr != nil {
+		return fmt.Errorf("write hook output: %w", writeErr)
+	}
 	return nil
 }
 

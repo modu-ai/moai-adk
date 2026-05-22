@@ -15,7 +15,6 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: xhigh
 permissionMode: acceptEdits
-isolation: worktree
 memory: project
 skills:
   - moai-foundation-core

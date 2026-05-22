@@ -27,6 +27,10 @@ func (h *worktreeRemoveHandler) EventType() EventType {
 // @MX:REASON: fan_in=51, the dispatcher invokes Handle on all registered handlers; signature changes affect every lifecycle handler
 // Handle processes a WorktreeRemove event. It logs the worktree removal details
 // and removes the entry from the worktree registry.
+//
+// Stdout contract: parallel to WorktreeCreate (see worktree_create.go), the
+// CLI dispatcher echoes input.WorktreePath as plain text rather than the
+// JSON HookOutput. This handler returns an empty HookOutput by design.
 func (h *worktreeRemoveHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("worktree removed after isolated agent termination",
 		"session_id", input.SessionID,

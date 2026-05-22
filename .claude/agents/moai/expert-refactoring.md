@@ -12,7 +12,6 @@ tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-th
 model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
-isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
