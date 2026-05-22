@@ -93,36 +93,18 @@ var githubCmd = &cobra.Command{
 	Long:    "Commands for GitHub issue parsing, SPEC linking, and workflow automation.",
 }
 
-// T-01: --dry-run persistent flag addition
+// dryRun is the --dry-run persistent flag (T-01).
 var dryRun bool
 
 func init() {
 	rootCmd.AddCommand(githubCmd)
 
-	// T-01: --dry-run flag Register
+	// --dry-run flag (preview only, no side effects).
 	githubCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 
-	// Preserve existing commands
+	// Active subcommands.
 	githubCmd.AddCommand(newParseIssueCmd())
 	githubCmd.AddCommand(newLinkSpecCmd())
-
-	// T-01: Add new subcommand group
-	githubCmd.AddGroup(&cobra.Group{
-		ID:    "runner",
-		Title: "Runner Commands:",
-	})
-
-	githubCmd.AddGroup(&cobra.Group{
-		ID:    "auth",
-		Title: "Auth Commands:",
-	})
-
-	// Wave 4: Register new subcommands (implementation filefrom/in/at definition)
-	githubCmd.AddCommand(newInitCmd())
-	githubCmd.AddCommand(newRunnerCmd())
-	githubCmd.AddCommand(newAuthCmd())
-	githubCmd.AddCommand(newWorkflowCmd())
-	githubCmd.AddCommand(newStatusCmd())
 }
 
 func newParseIssueCmd() *cobra.Command {

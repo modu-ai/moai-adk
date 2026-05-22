@@ -306,11 +306,6 @@ func TestGithubCmd_HasSubcommands(t *testing.T) {
 	expected := map[string]bool{
 		"parse-issue": false,
 		"link-spec":   false,
-		"init":        false, // T-01: 새로운 서브커맨드
-		"runner":      false, // T-01: 새로운 서브커맨드
-		"auth":        false, // T-01: 새로운 서브커맨드
-		"workflow":    false, // T-01: 새로운 서브커맨드
-		"status":      false, // T-01: 새로운 서브커맨드
 	}
 
 	for _, cmd := range githubCmd.Commands() {
@@ -371,52 +366,6 @@ func TestGithubCmd_HasDryRunFlag(t *testing.T) {
 	}
 	if flag.Value.Type() != "bool" {
 		t.Errorf("--dry-run flag should be bool, got %s", flag.Value.Type())
-	}
-}
-
-func TestGithubCmd_HasRunnerGroup(t *testing.T) {
-	// "runner" 그룹이 존재해야 함
-	found := false
-	for _, group := range githubCmd.Groups() {
-		if group.ID == "runner" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("github command should have 'runner' group")
-	}
-}
-
-func TestGithubCmd_HasAuthGroup(t *testing.T) {
-	// "auth" 그룹이 존재해야 함
-	found := false
-	for _, group := range githubCmd.Groups() {
-		if group.ID == "auth" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("github command should have 'auth' group")
-	}
-}
-
-func TestGithubCmd_NewSubcommandsRegistered(t *testing.T) {
-	// 새로운 서브커맨드들이 등록되어야 함
-	subcommands := []string{"init", "runner", "auth", "workflow", "status"}
-
-	for _, name := range subcommands {
-		found := false
-		for _, cmd := range githubCmd.Commands() {
-			if cmd.Name() == name {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("github subcommand %q not found", name)
-		}
 	}
 }
 
