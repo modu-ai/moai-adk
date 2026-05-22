@@ -7,13 +7,26 @@
 
 ## Core Rule
 
-[ZONE:Frozen] [HARD] **Sprint** and **Wave** carry distinct meanings and MUST NOT be used interchangeably.
+[ZONE:Frozen] [HARD] **Sprint**, **Wave**, and **Milestone** carry distinct meanings and MUST NOT be used interchangeably.
 
-| Term | Meaning | Scope |
-|------|---------|-------|
-| **Sprint** | Time-unit grouping of multiple SPECs bundled by schedule, release, or thematic focus | Multi-SPEC, project-wide |
-| **Wave** | Single-SPEC internal phase grouping; sub-division of a large SPEC to mitigate Anthropic SSE stream stall on large prompts | Within one SPEC |
-| **Milestone** | Single-SPEC ordered work steps within a Tier S/M/L lifecycle (M1, M2, ... M6) | Within one SPEC, finer than Wave |
+| Term | Meaning | Scope | Korean Equivalent |
+|------|---------|-------|-------------------|
+| **Sprint** | Time-unit grouping of multiple SPECs bundled by schedule, release, or thematic focus | Multi-SPEC, project-wide | 스프린트 |
+| **Wave** | Single-SPEC internal phase grouping; sub-division of a large SPEC to mitigate Anthropic SSE stream stall on large prompts | Within one SPEC | 라운드 |
+| **Milestone** | Single-SPEC ordered work steps within a Tier S/M/L lifecycle (M1, M2, ... M6) | Within one SPEC, finer than Wave | 마일스톤 |
+
+## Localization
+
+[ZONE:Evolvable] [HARD] **Technical identifiers (SPEC ID, file name, code, frontmatter field) MUST use English** (`Sprint`, `Wave`, `Milestone`). **User-facing output in Korean conversations MAY use the Korean equivalent** (`스프린트`, `라운드`, `마일스톤`) for readability.
+
+| Context | English form | Korean form |
+|---------|-------------|-------------|
+| SPEC ID, memory file name, rule cross-reference | Sprint 1, Wave 3, M2 | (English required) |
+| Korean documentation, paste-ready resume, progress board | Sprint 1 / 스프린트 1 | 스프린트 1, 라운드 3, M2 |
+| Commit message body (per `git_commit_messages: ko`) | mixed allowed | "스프린트 1 4/4 SPEC 완료" |
+| Code comments (per `code_comments` setting) | English when `en` | "// 스프린트 1 단계" when `ko` |
+
+When mixing English and Korean in user-facing output, prefer parenthetical pairing on first mention (`Sprint(스프린트) 1 Lane A`) then either form on subsequent mentions.
 
 ---
 
