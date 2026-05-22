@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 0ae2859fd990e57f68613634b74e52eb0b2062e8371e93a5de581461c8a66f9a
+              hash: bfa6efa5185c5cf623dac9a4394280cadc2bff2ec983aa3f876d1289bbaa9bec
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -28,21 +28,11 @@ catalog:
               path: templates/.claude/skills/moai-foundation-thinking/
               hash: cc81cd01b7b47fe6d814014717269fa4ba9f9220ca8edb421fd8d8922554b45c
               version: 1.0.0
-            - name: moai-harness-cli-template
-              tier: core
-              path: templates/.claude/skills/moai-harness-cli-template/
-              hash: 7a68b1c54cbd9ba7458fac0090acd29a4736df006e6a37145ee994e2494bb6da
-              version: 1.0.0
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
               hash: 9684c94ba6886f7e79ca5fdb307560a6099c58f1672fbb7d6f8602528e6b367f
               version: 1.0.0
-            - name: moai-harness-patterns
-              tier: core
-              path: templates/.claude/skills/moai-harness-patterns/
-              hash: 85092c8583bb2ac6bfe023cb7589127ebbb453b1a3724e834fb233b2395463f9
-              version: 0.1.0
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
@@ -113,26 +103,6 @@ catalog:
               tier: core
               path: templates/.claude/agents/meta/claude-code-guide.md
               hash: 7fafd091001b3321c13df66d48be080312aa99e7a1d7eed427f6de73f120dfd0
-              version: 1.0.0
-            - name: moai-harness-cli-template-specialist
-              tier: core
-              path: templates/.claude/agents/harness/cli-template-specialist.md
-              hash: 635957017127f9fe82d7d054a9af361e142542259b834a7139f7613b60339f4e
-              version: 1.0.0
-            - name: moai-harness-hook-ci-specialist
-              tier: core
-              path: templates/.claude/agents/harness/hook-ci-specialist.md
-              hash: f704f336ee523bca82532aad5ce859f68c05b2e9e5012fefe52c3c511bfb431b
-              version: 1.0.0
-            - name: moai-harness-quality-specialist
-              tier: core
-              path: templates/.claude/agents/harness/quality-specialist.md
-              hash: 6f148dbfa3c223046edf9f750aad298b8f0c9e329e9a251361dab479d1eae78b
-              version: 1.0.0
-            - name: moai-harness-workflow-specialist
-              tier: core
-              path: templates/.claude/agents/harness/workflow-specialist.md
-              hash: 885aecf07b2463b58738eb5f51549bf598cafdbf7969e5f1723dcd87781449a6
               version: 1.0.0
             - name: evaluator-active
               tier: core

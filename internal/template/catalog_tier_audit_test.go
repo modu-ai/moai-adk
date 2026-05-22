@@ -134,7 +134,11 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// SPEC-V3R6-SKILL-CONSOLIDATE-001 (2026-05-22): 7→3 unified skills
 	// (ci-watch + ci-autofix → ci-loop; design-import + design-context → design;
 	// harness-{hook-ci,workflow,quality} → harness-patterns), net -4 = 33.
-	const expectedSkillCount = 33
+	// SPEC-V3R6-HARNESS-TEMPLATE-CLEANUP (2026-05-23): 2 user-area harness skills
+	// retired from template (moai-harness-cli-template, moai-harness-patterns are
+	// project-specific artifacts, not framework builders), net -2 = 31. Only the
+	// builders moai-meta-harness + moai-harness-learner remain in template.
+	const expectedSkillCount = 31
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}
