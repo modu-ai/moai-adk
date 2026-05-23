@@ -10,13 +10,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
-// testdataDir는 픽스처 SPEC 파일들이 위치한 디렉토리이다.
+// testdataDir is the directory containing fixture SPEC files.
 const testdataDir = "testdata"
 
-// registryPath는 테스트에서 사용하는 zone registry 경로이다.
-// 테스트에서는 실제 zone registry를 찾을 수 없는 경우 nil registry를 사용한다.
+// registryPath is the zone registry path used by tests.
+// Tests use a nil registry when the actual zone registry cannot be found.
 func testRegistryPath() string {
-	// worktree 루트에서 zone registry 찾기
+	// Find the zone registry from the worktree root
 	dir := "../../.claude/rules/moai/core/zone-registry.md"
 	if _, err := os.Stat(dir); err == nil {
 		return dir
@@ -24,12 +24,12 @@ func testRegistryPath() string {
 	return ""
 }
 
-// specPath는 testdata 하위의 특정 픽스처 경로를 반환한다.
+// specPath returns the path to a specific fixture under testdata.
 func specPath(fixture string) string {
 	return filepath.Join(testdataDir, fixture, "spec.md")
 }
 
-// containsCode는 findings 슬라이스에 주어진 코드가 있는지 확인한다.
+// containsCode checks whether the findings slice contains the given code.
 func containsCode(findings []spec.Finding, code string) bool {
 	for _, f := range findings {
 		if f.Code == code {
@@ -39,7 +39,7 @@ func containsCode(findings []spec.Finding, code string) bool {
 	return false
 }
 
-// findingsForCode는 주어진 코드의 findings를 반환한다.
+// findingsForCode returns the findings for the given code.
 func findingsForCode(findings []spec.Finding, code string) []spec.Finding {
 	var result []spec.Finding
 	for _, f := range findings {
@@ -50,7 +50,7 @@ func findingsForCode(findings []spec.Finding, code string) []spec.Finding {
 	return result
 }
 
-// TestLinter_AC01_HappyPath는 완전히 유효한 SPEC에서 findings가 없음을 검증한다.
+// TestLinter_AC01_HappyPath verifies that a fully valid SPEC produces no findings.
 // AC-SPC-003-01: Given a valid SPEC with all REQs covered, When lint runs, Then exit 0 no findings.
 func TestLinter_AC01_HappyPath(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -69,8 +69,8 @@ func TestLinter_AC01_HappyPath(t *testing.T) {
 	}
 }
 
-// TestLinter_AC02_CoverageIncomplete는 AC에서 참조되지 않는 REQ가 있을 때
-// CoverageIncomplete 오류가 보고됨을 검증한다.
+// TestLinter_AC02_CoverageIncomplete verifies that CoverageIncomplete is reported
+// when a REQ is not referenced from any AC.
 // AC-SPC-003-02: Given SPEC with uncovered REQ-X-001-007, When lint, Then CoverageIncomplete.
 func TestLinter_AC02_CoverageIncomplete(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -87,7 +87,7 @@ func TestLinter_AC02_CoverageIncomplete(t *testing.T) {
 		t.Error("expected CoverageIncomplete finding, got none")
 	}
 
-	// REQ-TST-002-007이 명시되어야 함
+	// REQ-TST-002-007 must be named
 	found := findingsForCode(report.Findings, "CoverageIncomplete")
 	var hasUncovered bool
 	for _, f := range found {
@@ -101,8 +101,8 @@ func TestLinter_AC02_CoverageIncomplete(t *testing.T) {
 	}
 }
 
-// TestLinter_AC03_ModalityMalformed는 EARS 모달리티가 잘못된 REQ에 대해
-// ModalityMalformed 오류가 보고됨을 검증한다.
+// TestLinter_AC03_ModalityMalformed verifies that ModalityMalformed is reported
+// for REQs with a malformed EARS modality.
 // AC-SPC-003-03: WHEN...without SHALL → ModalityMalformed.
 func TestLinter_AC03_ModalityMalformed(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -120,8 +120,8 @@ func TestLinter_AC03_ModalityMalformed(t *testing.T) {
 	}
 }
 
-// TestLinter_AC04_DependencyCycle는 A→B→A 사이클이 있을 때
-// DependencyCycle 오류가 보고됨을 검증한다.
+// TestLinter_AC04_DependencyCycle verifies that DependencyCycle is reported
+// when an A->B->A cycle exists.
 // AC-SPC-003-04: A depends B, B depends A → DependencyCycle.
 func TestLinter_AC04_DependencyCycle(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -129,7 +129,7 @@ func TestLinter_AC04_DependencyCycle(t *testing.T) {
 		BaseDir:      testdataDir,
 	})
 
-	// cycle-a/spec.md와 cycle-b/spec.md를 함께 lint
+	// Lint cycle-a/spec.md and cycle-b/spec.md together
 	report, err := linter.Lint([]string{
 		specPath("cycle-a"),
 		specPath("cycle-b"),
@@ -143,8 +143,8 @@ func TestLinter_AC04_DependencyCycle(t *testing.T) {
 	}
 }
 
-// TestLinter_AC05_DuplicateREQID는 동일 SPEC 내 중복 REQ ID가 있을 때
-// DuplicateREQID 오류가 보고됨을 검증한다.
+// TestLinter_AC05_DuplicateREQID verifies that DuplicateREQID is reported
+// when a SPEC contains duplicate REQ IDs.
 // AC-SPC-003-05: duplicate REQ-X-001-005 twice → DuplicateREQID.
 func TestLinter_AC05_DuplicateREQID(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -162,8 +162,8 @@ func TestLinter_AC05_DuplicateREQID(t *testing.T) {
 	}
 }
 
-// TestLinter_AC06_MissingExclusions는 Out of Scope 섹션이 없을 때
-// MissingExclusions 오류가 보고됨을 검증한다.
+// TestLinter_AC06_MissingExclusions verifies that MissingExclusions is reported
+// when the Out of Scope section is missing.
 // AC-SPC-003-06: missing Out of Scope → MissingExclusions.
 func TestLinter_AC06_MissingExclusions(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -181,8 +181,8 @@ func TestLinter_AC06_MissingExclusions(t *testing.T) {
 	}
 }
 
-// TestLinter_AC07_MissingDependency는 존재하지 않는 SPEC 의존성이 있을 때
-// MissingDependency 오류가 보고됨을 검증한다.
+// TestLinter_AC07_MissingDependency verifies that MissingDependency is reported
+// when a SPEC depends on a non-existent SPEC.
 // AC-SPC-003-07: dependencies: [SPEC-NONEXISTENT] → MissingDependency.
 func TestLinter_AC07_MissingDependency(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -212,8 +212,8 @@ func TestLinter_AC07_MissingDependency(t *testing.T) {
 	}
 }
 
-// TestLinter_AC08_DanglingRuleReference는 존재하지 않는 CONST-V3R2-NNN 참조가 있을 때
-// DanglingRuleReference 경고가 보고됨을 검증한다.
+// TestLinter_AC08_DanglingRuleReference verifies that a DanglingRuleReference warning
+// is reported when a non-existent CONST-V3R2-NNN reference exists.
 // AC-SPC-003-08: related_rule: [CONST-V3R2-999] not in registry → DanglingRuleReference warning.
 func TestLinter_AC08_DanglingRuleReference(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -232,7 +232,7 @@ func TestLinter_AC08_DanglingRuleReference(t *testing.T) {
 		return
 	}
 
-	// severity는 warning이어야 함
+	// severity must be warning
 	for _, f := range found {
 		if f.Severity != spec.SeverityWarning {
 			t.Errorf("expected DanglingRuleReference to be warning severity, got %s", f.Severity)
@@ -240,7 +240,7 @@ func TestLinter_AC08_DanglingRuleReference(t *testing.T) {
 	}
 }
 
-// TestLinter_AC09_JSONOutput는 --json 플래그로 실행 시 JSON 배열이 출력됨을 검증한다.
+// TestLinter_AC09_JSONOutput verifies that a JSON array is emitted when run with --json.
 // AC-SPC-003-09: --json → valid JSON array of finding objects.
 func TestLinter_AC09_JSONOutput(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -258,13 +258,13 @@ func TestLinter_AC09_JSONOutput(t *testing.T) {
 		t.Fatalf("ToJSON failed: %v", err)
 	}
 
-	// 유효한 JSON이어야 함
+	// Must be valid JSON
 	var findings []spec.Finding
 	if err := json.Unmarshal(jsonBytes, &findings); err != nil {
 		t.Errorf("invalid JSON output: %v\nraw: %s", err, jsonBytes)
 	}
 
-	// 각 finding에 필수 필드가 있어야 함
+	// Each finding must have the required fields
 	for i, f := range findings {
 		if f.Code == "" {
 			t.Errorf("finding[%d] missing Code field", i)
@@ -278,7 +278,7 @@ func TestLinter_AC09_JSONOutput(t *testing.T) {
 	}
 }
 
-// TestLinter_AC10_SARIFOutput는 --sarif 플래그로 실행 시 SARIF 2.1.0 형식이 출력됨을 검증한다.
+// TestLinter_AC10_SARIFOutput verifies that SARIF 2.1.0 format is emitted when run with --sarif.
 // AC-SPC-003-10: --sarif → SARIF 2.1.0-conformant JSON.
 func TestLinter_AC10_SARIFOutput(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -296,13 +296,13 @@ func TestLinter_AC10_SARIFOutput(t *testing.T) {
 		t.Fatalf("ToSARIF failed: %v", err)
 	}
 
-	// 유효한 JSON이어야 함
+	// Must be valid JSON
 	var sarif map[string]interface{}
 	if err := json.Unmarshal(sarifBytes, &sarif); err != nil {
 		t.Errorf("invalid SARIF JSON: %v", err)
 	}
 
-	// SARIF 2.1.0 필수 필드 확인
+	// Verify SARIF 2.1.0 required fields
 	if v, ok := sarif["version"]; !ok || v != "2.1.0" {
 		t.Errorf("expected SARIF version 2.1.0, got %v", v)
 	}
@@ -319,10 +319,10 @@ func TestLinter_AC10_SARIFOutput(t *testing.T) {
 	}
 }
 
-// TestLinter_AC11_StrictMode는 --strict 플래그로 실행 시 경고도 오류로 처리됨을 검증한다.
+// TestLinter_AC11_StrictMode verifies that warnings are treated as errors when run with --strict.
 // AC-SPC-003-11: --strict + warnings only → non-zero exit.
 func TestLinter_AC11_StrictMode(t *testing.T) {
-	// dangling-rule SPEC은 DanglingRuleReference warning만 발생시킴
+	// The dangling-rule SPEC only produces a DanglingRuleReference warning
 	linter := spec.NewLinter(spec.LinterOptions{
 		RegistryPath: testRegistryPath(),
 		BaseDir:      testdataDir,
@@ -334,14 +334,14 @@ func TestLinter_AC11_StrictMode(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// strict 모드에서는 경고가 오류로 승격되어야 함
+	// In strict mode, warnings must be promoted to errors
 	if !report.HasErrors() {
 		t.Error("expected HasErrors()=true in strict mode with warnings, got false")
 	}
 }
 
-// TestLinter_AC12_DuplicateSPECID는 두 SPEC이 같은 id를 선언할 때
-// DuplicateSPECID 오류가 보고됨을 검증한다.
+// TestLinter_AC12_DuplicateSPECID verifies that DuplicateSPECID is reported
+// when two SPECs declare the same id.
 // AC-SPC-003-12: two SPECs with same id → DuplicateSPECID.
 func TestLinter_AC12_DuplicateSPECID(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -362,7 +362,7 @@ func TestLinter_AC12_DuplicateSPECID(t *testing.T) {
 	}
 }
 
-// TestLinter_AC13_LintSkip는 lint.skip으로 지정된 코드가 억제됨을 검증한다.
+// TestLinter_AC13_LintSkip verifies that codes listed in lint.skip are suppressed.
 // AC-SPC-003-13: lint.skip: [DanglingRuleReference] → no DanglingRuleReference finding.
 func TestLinter_AC13_LintSkip(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -370,8 +370,8 @@ func TestLinter_AC13_LintSkip(t *testing.T) {
 		BaseDir:      testdataDir,
 	})
 
-	// lint-skip/spec.md는 CONST-V3R2-999 dangling 참조가 있지만
-	// lint.skip: [DanglingRuleReference]로 억제됨
+	// lint-skip/spec.md has a CONST-V3R2-999 dangling reference but
+	// it is suppressed by lint.skip: [DanglingRuleReference]
 	report, err := linter.Lint([]string{specPath("lint-skip")})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -383,8 +383,8 @@ func TestLinter_AC13_LintSkip(t *testing.T) {
 	}
 }
 
-// TestLinter_AC14_BreakingChangeMissingID는 breaking:true + bc_id:[] 일 때
-// BreakingChangeMissingID 오류가 보고됨을 검증한다.
+// TestLinter_AC14_BreakingChangeMissingID verifies that BreakingChangeMissingID is reported
+// when breaking:true and bc_id:[].
 // AC-SPC-003-14: breaking:true + bc_id:[] → BreakingChangeMissingID.
 func TestLinter_AC14_BreakingChangeMissingID(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -402,8 +402,8 @@ func TestLinter_AC14_BreakingChangeMissingID(t *testing.T) {
 	}
 }
 
-// TestLinter_AC15_ParseFailure는 파싱 실패한 SPEC 파일에서 ParseFailure 오류가 보고되고
-// linter가 다른 파일은 계속 처리함을 검증한다.
+// TestLinter_AC15_ParseFailure verifies that ParseFailure is reported for a SPEC file
+// that fails to parse, and that the linter continues processing other files.
 // AC-SPC-003-15: malformed YAML → ParseFailure + continue with other files.
 func TestLinter_AC15_ParseFailure(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -411,7 +411,7 @@ func TestLinter_AC15_ParseFailure(t *testing.T) {
 		BaseDir:      testdataDir,
 	})
 
-	// malformed-yaml과 valid를 함께 처리
+	// Process malformed-yaml and valid together
 	report, err := linter.Lint([]string{
 		specPath("malformed-yaml"),
 		specPath("valid"),
@@ -424,8 +424,8 @@ func TestLinter_AC15_ParseFailure(t *testing.T) {
 		t.Errorf("expected ParseFailure finding for malformed YAML, got: %v", report.Findings)
 	}
 
-	// linter가 valid SPEC도 처리했는지 확인
-	// valid SPEC에 대한 findings는 없어야 함 (ParseFailure 외)
+	// Verify that the linter also processed the valid SPEC
+	// The valid SPEC must have no findings (other than ParseFailure)
 	nonParseFail := func() []spec.Finding {
 		var result []spec.Finding
 		for _, f := range report.Findings {
@@ -442,8 +442,8 @@ func TestLinter_AC15_ParseFailure(t *testing.T) {
 	}
 }
 
-// TestLinter_AC16_HierarchicalACCoverage는 계층 AC에서 부모 레벨의
-// REQ 참조도 커버리지로 인정됨을 검증한다.
+// TestLinter_AC16_HierarchicalACCoverage verifies that parent-level REQ references
+// in hierarchical ACs are also counted as coverage.
 // AC-SPC-003-16: hierarchical AC — leaf children cover parent REQ refs.
 func TestLinter_AC16_HierarchicalACCoverage(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -456,7 +456,7 @@ func TestLinter_AC16_HierarchicalACCoverage(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// 계층 AC에서 모든 REQ가 커버되어야 함 → CoverageIncomplete 없어야 함
+	// All REQs in a hierarchical AC must be covered -> no CoverageIncomplete
 	found := findingsForCode(report.Findings, "CoverageIncomplete")
 	if len(found) > 0 {
 		t.Errorf("expected no CoverageIncomplete for hierarchical AC, got: %v", found)
@@ -465,7 +465,7 @@ func TestLinter_AC16_HierarchicalACCoverage(t *testing.T) {
 
 // --- helper functions ---
 
-// filterBySeverity는 주어진 severity의 findings만 반환한다.
+// filterBySeverity returns only the findings of the given severity.
 func filterBySeverity(findings []spec.Finding, sev spec.Severity) []spec.Finding {
 	var result []spec.Finding
 	for _, f := range findings {
@@ -476,7 +476,7 @@ func filterBySeverity(findings []spec.Finding, sev spec.Severity) []spec.Finding
 	return result
 }
 
-// TestReport_HasErrors는 Report.HasErrors가 올바르게 동작함을 검증한다.
+// TestReport_HasErrors verifies that Report.HasErrors behaves correctly.
 func TestReport_HasErrors(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -535,17 +535,17 @@ func TestReport_HasErrors(t *testing.T) {
 	}
 }
 
-// TestLinter_NoArgs_DiscoversSPECs는 경로 인수 없이 실행 시
-// BaseDir 아래 spec.md 파일들을 자동 탐색함을 검증한다.
+// TestLinter_NoArgs_DiscoversSPECs verifies that running without path arguments
+// auto-discovers spec.md files under BaseDir.
 func TestLinter_NoArgs_DiscoversSPECs(t *testing.T) {
-	// 단일 valid SPEC만 있는 임시 디렉토리 생성
+	// Create a temp directory containing only a single valid SPEC
 	tmpDir := t.TempDir()
 	specDir := filepath.Join(tmpDir, "SPEC-TST-999")
 	if err := os.MkdirAll(specDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
-	// valid spec.md를 임시 디렉토리에 복사
+	// Copy the valid spec.md into the temp directory
 	content, err := os.ReadFile(specPath("valid"))
 	if err != nil {
 		t.Fatalf("failed to read valid spec: %v", err)
@@ -559,7 +559,7 @@ func TestLinter_NoArgs_DiscoversSPECs(t *testing.T) {
 		BaseDir:      tmpDir,
 	})
 
-	// 인수 없이 호출 → BaseDir에서 자동 탐색
+	// Call without arguments -> auto-discover from BaseDir
 	report, err := linter.Lint(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -571,7 +571,7 @@ func TestLinter_NoArgs_DiscoversSPECs(t *testing.T) {
 	}
 }
 
-// TestStatusValueEnumRule_Valid는 유효한 status 값에서 findings가 없음을 검증한다.
+// TestStatusValueEnumRule_Valid verifies that a valid status value produces no findings.
 func TestStatusValueEnumRule_Valid(t *testing.T) {
 	doc := &spec.SPECDoc{
 		Frontmatter: spec.SPECFrontmatter{
@@ -587,7 +587,7 @@ func TestStatusValueEnumRule_Valid(t *testing.T) {
 	}
 }
 
-// TestStatusValueEnumRule_Invalid는 유효하지 않은 status 값에서 오류를 보고함을 검증한다.
+// TestStatusValueEnumRule_Invalid verifies that an invalid status value reports an error.
 func TestStatusValueEnumRule_Invalid(t *testing.T) {
 	doc := &spec.SPECDoc{
 		Frontmatter: spec.SPECFrontmatter{
@@ -607,7 +607,7 @@ func TestStatusValueEnumRule_Invalid(t *testing.T) {
 	}
 }
 
-// TestStatusValueEnumRule_Empty는 빈 status 값에서 findings가 없음을 검증한다.
+// TestStatusValueEnumRule_Empty verifies that an empty status value produces no findings.
 func TestStatusValueEnumRule_Empty(t *testing.T) {
 	doc := &spec.SPECDoc{
 		Frontmatter: spec.SPECFrontmatter{
@@ -623,7 +623,7 @@ func TestStatusValueEnumRule_Empty(t *testing.T) {
 	}
 }
 
-// TestStatusCaseNormalizationRule_Lowercase는 소문자 status에서 findings가 없음을 검증한다.
+// TestStatusCaseNormalizationRule_Lowercase verifies that lowercase status produces no findings.
 func TestStatusCaseNormalizationRule_Lowercase(t *testing.T) {
 	doc := &spec.SPECDoc{
 		Frontmatter: spec.SPECFrontmatter{
@@ -639,7 +639,7 @@ func TestStatusCaseNormalizationRule_Lowercase(t *testing.T) {
 	}
 }
 
-// TestStatusCaseNormalizationRule_Uppercase는 대문자 status에서 오류를 보고함을 검증한다.
+// TestStatusCaseNormalizationRule_Uppercase verifies that uppercase status reports an error.
 func TestStatusCaseNormalizationRule_Uppercase(t *testing.T) {
 	doc := &spec.SPECDoc{
 		Frontmatter: spec.SPECFrontmatter{
@@ -664,8 +664,8 @@ func TestStatusCaseNormalizationRule_Uppercase(t *testing.T) {
 	}
 }
 
-// TestFrontmatterSchemaRule_Valid12Field는 12-field canonical fixture에서
-// FrontmatterInvalid finding이 0건임을 검증한다.
+// TestFrontmatterSchemaRule_Valid12Field verifies that the 12-field canonical fixture
+// produces 0 FrontmatterInvalid findings.
 // AC-SDBT-002-002 (valid case): canonical 12 fields → 0 FrontmatterInvalid findings.
 func TestFrontmatterSchemaRule_Valid12Field(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -679,7 +679,7 @@ func TestFrontmatterSchemaRule_Valid12Field(t *testing.T) {
 		t.Fatalf("Lint returned unexpected error: %v", err)
 	}
 
-	// FrontmatterInvalid findings만 추출
+	// Extract only the FrontmatterInvalid findings
 	schemaFindings := findingsForCode(report.Findings, "FrontmatterInvalid")
 	if len(schemaFindings) != 0 {
 		t.Errorf("valid 12-field fixture에서 FrontmatterInvalid finding 0건 기대, 실제 %d건: %v",
@@ -687,8 +687,8 @@ func TestFrontmatterSchemaRule_Valid12Field(t *testing.T) {
 	}
 }
 
-// TestFrontmatterSchemaRule_SnakeCaseRejected는 snake_case alias만 있는 fixture에서
-// FrontmatterInvalid finding이 정확히 3건 (created, updated, tags 누락)임을 검증한다.
+// TestFrontmatterSchemaRule_SnakeCaseRejected verifies that a snake_case-only alias fixture
+// produces exactly 3 FrontmatterInvalid findings (missing created, updated, tags).
 // AC-SDBT-002-002: snake_case aliases only (created_at/updated_at/labels) → exactly 3 FrontmatterInvalid findings.
 func TestFrontmatterSchemaRule_SnakeCaseRejected(t *testing.T) {
 	linter := spec.NewLinter(spec.LinterOptions{
@@ -702,16 +702,16 @@ func TestFrontmatterSchemaRule_SnakeCaseRejected(t *testing.T) {
 		t.Fatalf("Lint returned unexpected error: %v", err)
 	}
 
-	// FrontmatterInvalid findings만 추출
+	// Extract only the FrontmatterInvalid findings
 	schemaFindings := findingsForCode(report.Findings, "FrontmatterInvalid")
 
-	// 정확히 3건 (created, updated, tags 누락)
+	// Exactly 3 (missing created, updated, tags)
 	if len(schemaFindings) != 3 {
 		t.Fatalf("snake_case-only fixture에서 FrontmatterInvalid finding 정확히 3건 기대, 실제 %d건: %v",
 			len(schemaFindings), schemaFindings)
 	}
 
-	// 각 finding이 예상 field를 언급하는지 확인
+	// Verify that each finding mentions the expected field
 	expectedFields := map[string]bool{
 		"created": false,
 		"updated": false,
@@ -731,7 +731,7 @@ func TestFrontmatterSchemaRule_SnakeCaseRejected(t *testing.T) {
 	}
 }
 
-// TestStatusCaseNormalizationRule_MixedCase는 혼합 케이스 status에서 오류를 보고함을 검증한다.
+// TestStatusCaseNormalizationRule_MixedCase verifies that a mixed-case status reports an error.
 func TestStatusCaseNormalizationRule_MixedCase(t *testing.T) {
 	doc := &spec.SPECDoc{
 		Frontmatter: spec.SPECFrontmatter{
@@ -757,16 +757,16 @@ func TestStatusCaseNormalizationRule_MixedCase(t *testing.T) {
 }
 
 // =============================================================================
-// SPEC-V3R6-GEARS-MIGRATION-001 — M2 LegacyEARSKeyword 테스트 (4건)
+// SPEC-V3R6-GEARS-MIGRATION-001 — M2 LegacyEARSKeyword tests (4 cases)
 // =============================================================================
 //
-// 본 SPEC은 IF/THEN 패턴을 deprecated로 표시하고 LegacyEARSKeyword warning을 발행한다.
-// WHEN/WHILE/WHERE/Ubiquitous는 GEARS-compatible로 유지된다.
+// This SPEC marks IF/THEN patterns as deprecated and emits a LegacyEARSKeyword warning.
+// WHEN/WHILE/WHERE/Ubiquitous remain GEARS-compatible.
 //
 // SSOT: .moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md REQ-GM-002, REQ-GM-006, REQ-GM-008, REQ-GM-009
 
-// TestEARSModalityRule_LegacyEARSKeyword_IFThen는 IF/THEN REQ에서
-// 정확히 1건의 LegacyEARSKeyword warning이 발행됨을 검증한다.
+// TestEARSModalityRule_LegacyEARSKeyword_IFThen verifies that an IF/THEN REQ
+// emits exactly one LegacyEARSKeyword warning.
 // AC-GM-002 binary criteria.
 func TestEARSModalityRule_LegacyEARSKeyword_IFThen(t *testing.T) {
 	doc := &spec.SPECDoc{
@@ -799,8 +799,8 @@ func TestEARSModalityRule_LegacyEARSKeyword_IFThen(t *testing.T) {
 	}
 }
 
-// TestEARSModalityRule_GEARSWellFormed는 canonical GEARS REQs (WHEN/WHILE/WHERE/Ubiquitous)에서
-// 0건의 findings가 발행됨을 검증한다.
+// TestEARSModalityRule_GEARSWellFormed verifies that canonical GEARS REQs
+// (WHEN/WHILE/WHERE/Ubiquitous) produce 0 findings.
 // AC-GM-003 binary criteria.
 func TestEARSModalityRule_GEARSWellFormed(t *testing.T) {
 	doc := &spec.SPECDoc{
@@ -821,8 +821,8 @@ func TestEARSModalityRule_GEARSWellFormed(t *testing.T) {
 	}
 }
 
-// TestEARSModalityRule_LegacyEARSKeyword_StrictExitCode는 --strict 모드에서
-// LegacyEARSKeyword warning이 Report.HasErrors()를 통해 exit-1로 escalate됨을 검증한다.
+// TestEARSModalityRule_LegacyEARSKeyword_StrictExitCode verifies that in --strict mode
+// a LegacyEARSKeyword warning escalates to exit-1 via Report.HasErrors().
 // AC-GM-008 binary criteria.
 func TestEARSModalityRule_LegacyEARSKeyword_StrictExitCode(t *testing.T) {
 	// Synthesize a report with one LegacyEARSKeyword warning + strict=true.
@@ -858,8 +858,8 @@ func TestEARSModalityRule_LegacyEARSKeyword_StrictExitCode(t *testing.T) {
 	}
 }
 
-// TestEARSModalityRule_MessageContainsDocsURL는 LegacyEARSKeyword finding의 Message가
-// "GEARS migration" 및 "adk.mo.ai.kr" 부분문자열을 포함함을 검증한다.
+// TestEARSModalityRule_MessageContainsDocsURL verifies that the LegacyEARSKeyword
+// finding's Message contains the substrings "GEARS migration" and "adk.mo.ai.kr".
 // AC-GM-002 binary criteria (docs URL linkage) + REQ-GM-006.
 func TestEARSModalityRule_MessageContainsDocsURL(t *testing.T) {
 	doc := &spec.SPECDoc{

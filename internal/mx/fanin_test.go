@@ -8,17 +8,17 @@ import (
 	"time"
 )
 
-// mockFanInCounter는 테스트용 FanInCounter mock 구현체입니다.
+// mockFanInCounter is a test mock implementation of FanInCounter.
 type mockFanInCounter struct {
-	// counts는 AnchorID → fan-in 수 매핑입니다.
+	// counts maps AnchorID -> fan-in count.
 	counts map[string]int
-	// method는 반환할 fan-in 계산 방식입니다.
+	// method is the fan-in calculation method to return.
 	method string
-	// err는 반환할 오류입니다.
+	// err is the error to return.
 	err error
 }
 
-// Count는 미리 설정된 fan-in 값을 반환합니다.
+// Count returns the preconfigured fan-in value.
 func (m *mockFanInCounter) Count(_ context.Context, tag Tag, _ string, _ bool) (int, string, error) {
 	if m.err != nil {
 		return 0, "", m.err
@@ -31,7 +31,7 @@ func (m *mockFanInCounter) Count(_ context.Context, tag Tag, _ string, _ bool) (
 	return count, method, nil
 }
 
-// TestTextualFanInCounter_Count는 텍스트 기반 fan-in 계산을 테스트합니다.
+// TestTextualFanInCounter_Count tests text-based fan-in counting.
 func TestTextualFanInCounter_Count(t *testing.T) {
 	counter := &TextualFanInCounter{}
 
@@ -50,28 +50,28 @@ func TestTextualFanInCounter_Count(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// 텍스트 방식이어야 함
+	// Method must be textual
 	if method != "textual" {
 		t.Errorf("fan_in_method: 기대 'textual', 실제 '%s'", method)
 	}
 
-	// RED 단계: count는 0 반환 (stub)
+	// RED phase: count returns 0 (stub)
 	if count < 0 {
 		t.Errorf("fan-in 수는 음수일 수 없음: %d", count)
 	}
 }
 
-// TestMockFanInCounter는 mock 구현이 인터페이스를 올바르게 구현하는지 확인합니다.
+// TestMockFanInCounter verifies that the mock implementation conforms to the interface.
 func TestMockFanInCounter(t *testing.T) {
 	var _ FanInCounter = &mockFanInCounter{}
 }
 
-// TestFanInCounter_InterfaceCompliance는 FanInCounter 인터페이스 준수를 확인합니다.
+// TestFanInCounter_InterfaceCompliance verifies FanInCounter interface compliance.
 func TestFanInCounter_InterfaceCompliance(t *testing.T) {
 	var _ FanInCounter = &TextualFanInCounter{}
 }
 
-// TestIsTestFile는 테스트 파일 판별 함수를 테스트합니다.
+// TestIsTestFile tests the test-file discriminator function.
 func TestIsTestFile(t *testing.T) {
 	tests := []struct {
 		path     string
@@ -96,11 +96,11 @@ func TestIsTestFile(t *testing.T) {
 	}
 }
 
-// TestTextualFanInCounter_CountWithRealFiles는 실제 파일에서 참조를 검색하는 테스트입니다.
+// TestTextualFanInCounter_CountWithRealFiles tests reference search across real files.
 func TestTextualFanInCounter_CountWithRealFiles(t *testing.T) {
 	projectRoot := t.TempDir()
 
-	// anchor-auth 심볼이 있는 파일 생성
+	// Create a file containing the anchor-auth symbol
 	callerFile := filepath.Join(projectRoot, "internal", "caller.go")
 	if err := os.MkdirAll(filepath.Dir(callerFile), 0755); err != nil {
 		t.Fatalf("디렉토리 생성 실패: %v", err)
@@ -115,7 +115,7 @@ func useAnchor() {
 		t.Fatalf("파일 쓰기 실패: %v", err)
 	}
 
-	// 태그 자체 파일 (참조 카운트에서 제외되어야 함)
+	// The tag's own file (must be excluded from the reference count)
 	tagFile := filepath.Join(projectRoot, "internal", "auth", "handler.go")
 	if err := os.MkdirAll(filepath.Dir(tagFile), 0755); err != nil {
 		t.Fatalf("디렉토리 생성 실패: %v", err)
@@ -145,19 +145,19 @@ func useAnchor() {
 		t.Errorf("method: 기대 textual, 실제 %s", method)
 	}
 
-	// callerFile에서 2회 참조 (주석 포함)
+	// 2 references in callerFile (including comments)
 	if count < 1 {
 		t.Errorf("count: 최소 1 기대, 실제 %d", count)
 	}
 }
 
-// TestTextualFanInCounter_CountEmptyAnchorID는 빈 AnchorID에서 0 반환을 확인합니다.
+// TestTextualFanInCounter_CountEmptyAnchorID verifies that an empty AnchorID returns 0.
 func TestTextualFanInCounter_CountEmptyAnchorID(t *testing.T) {
 	counter := &TextualFanInCounter{}
 	tag := Tag{
 		Kind:      MXAnchor,
 		File:      "internal/auth.go",
-		AnchorID:  "", // 빈 AnchorID
+		AnchorID:  "", // empty AnchorID
 		CreatedBy: "test",
 	}
 
@@ -175,7 +175,7 @@ func TestTextualFanInCounter_CountEmptyAnchorID(t *testing.T) {
 	}
 }
 
-// TestTextualFanInCounter_CountEmptyProjectRoot는 빈 projectRoot에서 0 반환을 확인합니다.
+// TestTextualFanInCounter_CountEmptyProjectRoot verifies that an empty projectRoot returns 0.
 func TestTextualFanInCounter_CountEmptyProjectRoot(t *testing.T) {
 	counter := &TextualFanInCounter{}
 	tag := Tag{
@@ -195,32 +195,32 @@ func TestTextualFanInCounter_CountEmptyProjectRoot(t *testing.T) {
 	_ = method
 }
 
-// TestIsTestFile_UserPattern_IntegrationDir는 사용자 glob 패턴으로 integration 디렉토리를 테스트 파일로 판별합니다.
-// AC-SPC-004-11: 사용자 정의 TestPaths glob 지원 (G-05)
+// TestIsTestFile_UserPattern_IntegrationDir uses a user glob pattern to classify an integration directory as a test file.
+// AC-SPC-004-11: user-defined TestPaths glob support (G-05).
 func TestIsTestFile_UserPattern_IntegrationDir(t *testing.T) {
-	// isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"}) → true
+	// isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"}) -> true
 	got := isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"})
 	if !got {
 		t.Errorf("isTestFileWithPatterns: **/integration/** 패턴으로 integration 디렉토리 파일을 테스트 파일로 판별해야 함")
 	}
 }
 
-// TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded는 사용자 패턴 불일치 시 하드코딩 폴백을 테스트합니다.
-// AC-SPC-004-11: 사용자 패턴 불일치 시 _test.go 하드코딩 폴백 (G-05)
+// TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded tests the hardcoded fallback when a user pattern does not match.
+// AC-SPC-004-11: hardcoded _test.go fallback when the user pattern does not match (G-05).
 func TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded(t *testing.T) {
-	// isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"}) → true (하드코딩 _test.go 폴백)
+	// isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"}) -> true (hardcoded _test.go fallback)
 	got := isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"})
 	if !got {
 		t.Errorf("isTestFileWithPatterns: 사용자 패턴 불일치 시 _test.go 하드코딩 폴백으로 true 반환해야 함")
 	}
 }
 
-// TestTextualFanInCounter_RespectsUserTestPaths는 TextualFanInCounter.TestPaths 필드를 테스트합니다.
-// AC-SPC-004-11: TestPaths 필드로 사용자 glob 패턴 주입 (G-06)
+// TestTextualFanInCounter_RespectsUserTestPaths tests the TextualFanInCounter.TestPaths field.
+// AC-SPC-004-11: inject user glob patterns via the TestPaths field (G-06).
 func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
 	projectRoot := t.TempDir()
 
-	// integration 디렉토리에 anchor 참조 파일 생성 (테스트 파일로 처리되어야 함)
+	// Create an anchor-referencing file in the integration directory (must be treated as a test file)
 	integrationFile := filepath.Join(projectRoot, "internal", "myfeature", "integration", "anchor_caller.go")
 	if err := os.MkdirAll(filepath.Dir(integrationFile), 0755); err != nil {
 		t.Fatalf("디렉토리 생성 실패: %v", err)
@@ -230,7 +230,7 @@ func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
 		t.Fatalf("파일 쓰기 실패: %v", err)
 	}
 
-	// 일반 파일 생성 (테스트 파일이 아님)
+	// Create a regular file (not a test file)
 	regularFile := filepath.Join(projectRoot, "internal", "myfeature", "foo.go")
 	if err := os.MkdirAll(filepath.Dir(regularFile), 0755); err != nil {
 		t.Fatalf("디렉토리 생성 실패: %v", err)
@@ -240,7 +240,7 @@ func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
 		t.Fatalf("파일 쓰기 실패: %v", err)
 	}
 
-	// 앵커 태그 파일 (참조 카운트에서 제외)
+	// Anchor tag file (excluded from the reference count)
 	tagFile := filepath.Join(projectRoot, "internal", "myfeature", "anchor.go")
 	if err := os.WriteFile(tagFile, []byte("package myfeature\n"), 0644); err != nil {
 		t.Fatalf("파일 쓰기 실패: %v", err)
@@ -254,7 +254,7 @@ func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
 		LastSeenAt: time.Now(),
 	}
 
-	// TestPaths 있을 때: integration 파일 제외 → count=1 (foo.go만)
+	// With TestPaths: integration file excluded -> count=1 (only foo.go)
 	counterWithPaths := &TextualFanInCounter{
 		TestPaths: []string{"**/integration/**"},
 	}
@@ -263,7 +263,7 @@ func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
 		t.Fatalf("TestPaths 있을 때 오류: %v", err)
 	}
 
-	// TestPaths 없을 때: integration 파일 포함 → count=2 (foo.go + integration/anchor_caller.go)
+	// Without TestPaths: integration file included -> count=2 (foo.go + integration/anchor_caller.go)
 	counterNoPaths := &TextualFanInCounter{}
 	countNoPaths, _, err := counterNoPaths.Count(context.Background(), tag, projectRoot, false)
 	if err != nil {
@@ -284,7 +284,7 @@ func TestTextualFanInCounter_RespectsUserTestPaths(t *testing.T) {
 	}
 }
 
-// TestTextualFanInCounter_ExcludeTests는 테스트 파일 제외를 확인합니다.
+// TestTextualFanInCounter_ExcludeTests verifies exclusion of test files.
 func TestTextualFanInCounter_ExcludeTests(t *testing.T) {
 	counter := &TextualFanInCounter{}
 
@@ -306,7 +306,7 @@ func TestTextualFanInCounter_ExcludeTests(t *testing.T) {
 		t.Fatalf("include-tests=false 오류: %v", err)
 	}
 
-	// 두 경우 모두 textual 방식이어야 함
+	// Both cases must use the textual method
 	if methodWithTests != "textual" {
 		t.Errorf("include-tests=true: fan_in_method 기대 textual, 실제 %s", methodWithTests)
 	}
@@ -314,7 +314,7 @@ func TestTextualFanInCounter_ExcludeTests(t *testing.T) {
 		t.Errorf("include-tests=false: fan_in_method 기대 textual, 실제 %s", methodWithoutTests)
 	}
 
-	// 테스트 포함 시 count가 제외 시보다 크거나 같아야 함 (GREEN 단계에서 검증)
+	// When tests are included, the count must be greater than or equal to when excluded (verified in GREEN phase)
 	if countWithTests < countWithoutTests {
 		t.Errorf("include-tests=true 시 count(%d)이 false 시(%d)보다 작을 수 없음",
 			countWithTests, countWithoutTests)

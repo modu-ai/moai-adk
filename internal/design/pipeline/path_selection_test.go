@@ -1,5 +1,5 @@
-// Package pipeline: /moai design 워크플로우 경로 선택 지속성 레이어.
-// path_selection_test.go — PathSelection JSON writer/reader 단위 테스트.
+// Package pipeline: /moai design workflow path-selection persistence layer.
+// path_selection_test.go — unit tests for the PathSelection JSON writer/reader.
 package pipeline
 
 import (
@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-// TestWriteReadRoundTrip: write → read 라운드트립 후 모든 필드가 일치해야 한다.
+// TestWriteReadRoundTrip: after a write -> read round trip, all fields must match.
 func TestWriteReadRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 
-	// Arrange: 기준 PathSelection 생성
+	// Arrange: build the baseline PathSelection
 	original := PathSelection{
 		Path:               "A",
 		BrandContextLoaded: true,
@@ -25,7 +25,7 @@ func TestWriteReadRoundTrip(t *testing.T) {
 		SessionID:          "sess-abc123",
 	}
 
-	// Act: 파일에 쓰기 후 읽기
+	// Act: write to file, then read
 	if err := WritePathSelection(dir, original); err != nil {
 		t.Fatalf("WritePathSelection 실패: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestWriteReadRoundTrip(t *testing.T) {
 		t.Fatalf("ReadPathSelection 실패: %v", err)
 	}
 
-	// Assert: 모든 필드 일치
+	// Assert: all fields match
 	if got.Path != original.Path {
 		t.Errorf("Path: got %q, want %q", got.Path, original.Path)
 	}
@@ -53,7 +53,7 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	}
 }
 
-// TestWriteReadRoundTripAllPaths: A/B1/B2 세 경로 모두 라운드트립 검증.
+// TestWriteReadRoundTripAllPaths: verifies round trip for all three paths A/B1/B2.
 func TestWriteReadRoundTripAllPaths(t *testing.T) {
 	t.Parallel()
 
@@ -89,7 +89,7 @@ func TestWriteReadRoundTripAllPaths(t *testing.T) {
 	}
 }
 
-// TestWriteDeterministic: 동일 입력 → 동일 bytes (JSON 안정적 필드 순서).
+// TestWriteDeterministic: same input -> same bytes (stable JSON field order).
 func TestWriteDeterministic(t *testing.T) {
 	t.Parallel()
 
@@ -125,14 +125,14 @@ func TestWriteDeterministic(t *testing.T) {
 	}
 }
 
-// TestReadMalformedJSON: 손상된 JSON → graceful error 반환.
+// TestReadMalformedJSON: corrupted JSON -> graceful error returned.
 func TestReadMalformedJSON(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 
-	// Arrange: 손상된 JSON 파일 작성
-	malformed := []byte(`{"path": "A", "brand_context_loaded": true,`) // 닫히지 않은 JSON
+	// Arrange: write a corrupted JSON file
+	malformed := []byte(`{"path": "A", "brand_context_loaded": true,`) // unclosed JSON
 	if err := os.WriteFile(filepath.Join(dir, PathSelectionFile), malformed, 0o644); err != nil {
 		t.Fatalf("손상된 JSON 파일 작성 실패: %v", err)
 	}
@@ -140,44 +140,44 @@ func TestReadMalformedJSON(t *testing.T) {
 	// Act
 	_, err := ReadPathSelection(dir)
 
-	// Assert: 에러가 반환되어야 함
+	// Assert: an error must be returned
 	if err == nil {
 		t.Fatal("malformed JSON에서 에러가 반환되어야 하는데 nil이 반환됨")
 	}
 
-	// json.SyntaxError 또는 래핑된 에러인지 확인
+	// Check whether it is json.SyntaxError or a wrapped error
 	var syntaxErr *json.SyntaxError
 	if !isJSONError(err) && syntaxErr == nil {
-		// 에러가 있으면 충분 (타입은 구현에 따라 다를 수 있음)
+		// Having any error is sufficient (the type may vary by implementation)
 		_ = syntaxErr
 	}
 }
 
-// isJSONError: JSON 파싱 에러 여부 확인 헬퍼.
+// isJSONError: helper that checks whether the error is a JSON parsing error.
 func isJSONError(err error) bool {
 	if err == nil {
 		return false
 	}
-	// json.SyntaxError 또는 *json.UnmarshalTypeError 포함 여부 검사
+	// Check for json.SyntaxError or *json.UnmarshalTypeError inclusion
 	var syntaxErr *json.SyntaxError
 	var typeErr *json.UnmarshalTypeError
 	return isErrorType(err, &syntaxErr) || isErrorType(err, &typeErr) || err != nil
 }
 
-// isErrorType: errors.As 래퍼 (컴파일 오류 방지용 인라인).
+// isErrorType: errors.As wrapper (inlined to avoid compile errors).
 func isErrorType(err error, target interface{}) bool {
-	// 단순히 에러가 nil이 아닌지 확인 (target은 힌트용)
+	// Simply checks that the error is not nil (target is a hint)
 	_ = target
 	return err != nil
 }
 
-// TestReadMissingField: "path" 필드 누락 → MissingFieldError 반환.
+// TestReadMissingField: missing "path" field -> MissingFieldError returned.
 func TestReadMissingField(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 
-	// Arrange: path 필드가 없는 JSON
+	// Arrange: JSON without the path field
 	noPath := []byte(`{"brand_context_loaded": true, "spec_id": "S", "ts": "2026-01-01T00:00:00Z", "session_id": "s"}`)
 	if err := os.WriteFile(filepath.Join(dir, PathSelectionFile), noPath, 0o644); err != nil {
 		t.Fatalf("JSON 파일 작성 실패: %v", err)
@@ -186,7 +186,7 @@ func TestReadMissingField(t *testing.T) {
 	// Act
 	_, err := ReadPathSelection(dir)
 
-	// Assert: MissingFieldError 타입이어야 함
+	// Assert: must be a MissingFieldError type
 	if err == nil {
 		t.Fatal("path 누락 시 에러가 반환되어야 함")
 	}
@@ -201,7 +201,7 @@ func TestReadMissingField(t *testing.T) {
 	}
 }
 
-// isMissingFieldError: errors.As 없이 타입 단언으로 MissingFieldError 확인.
+// isMissingFieldError: checks for MissingFieldError via a type assertion (without errors.As).
 func isMissingFieldError(err error, target **MissingFieldError) bool {
 	if mfe, ok := err.(*MissingFieldError); ok {
 		if target != nil {
@@ -212,12 +212,12 @@ func isMissingFieldError(err error, target **MissingFieldError) bool {
 	return false
 }
 
-// TestReadFileNotFound: 파일이 없을 때 에러 반환.
+// TestReadFileNotFound: returns an error when the file does not exist.
 func TestReadFileNotFound(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	// path-selection.json 없이 읽기 시도
+	// Attempt to read without path-selection.json
 
 	_, err := ReadPathSelection(dir)
 	if err == nil {
@@ -225,7 +225,7 @@ func TestReadFileNotFound(t *testing.T) {
 	}
 }
 
-// TestMissingFieldError_Error: MissingFieldError.Error() 문자열 형식 검증.
+// TestMissingFieldError_Error: verifies the string format of MissingFieldError.Error().
 func TestMissingFieldError_Error(t *testing.T) {
 	t.Parallel()
 
@@ -236,12 +236,12 @@ func TestMissingFieldError_Error(t *testing.T) {
 	}
 }
 
-// TestWritePathSelection_MkdirAllError: 쓰기 불가능한 경로에서 에러 반환.
+// TestWritePathSelection_MkdirAllError: returns an error for a non-writable path.
 func TestWritePathSelection_MkdirAllError(t *testing.T) {
 	t.Parallel()
 
-	// /dev/null은 디렉토리가 아니므로 MkdirAll이 실패해야 함
-	// 단, 루트가 아닌 환경에서만 유효
+	// /dev/null is not a directory, so MkdirAll must fail
+	// Only valid in non-root environments
 	ps := PathSelection{
 		Path:               "A",
 		BrandContextLoaded: false,
@@ -250,15 +250,15 @@ func TestWritePathSelection_MkdirAllError(t *testing.T) {
 		SessionID:          "s",
 	}
 
-	// 존재하는 파일을 디렉토리로 사용하면 MkdirAll 실패
+	// Using an existing file as a directory makes MkdirAll fail
 	dir := t.TempDir()
-	// dir 자체를 파일로 만들기 위해 서브경로에 파일 생성 후 그 파일을 dir로 사용
+	// To use dir as a file, create a file in a subpath and use that file as dir
 	filePath := filepath.Join(dir, "blocked")
 	if err := os.WriteFile(filePath, []byte("x"), 0o444); err != nil {
 		t.Skip("파일 생성 불가 — 테스트 스킵")
 	}
 
-	// filePath (파일)를 dir로 전달하면 MkdirAll이 실패
+	// Passing filePath (a file) as dir causes MkdirAll to fail
 	err := WritePathSelection(filePath, ps)
 	if err == nil {
 		t.Error("파일 경로를 dir로 전달 시 에러가 반환되어야 함")

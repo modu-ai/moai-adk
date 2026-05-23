@@ -11,13 +11,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// testdataPath는 testdata 디렉토리의 절대 경로를 반환한다.
+// testdataPath returns the absolute path of the testdata directory.
 func testdataPath(filename string) string {
-	// 이 파일의 디렉토리 기준으로 testdata 경로 구성
+	// Build the testdata path relative to this file's directory
 	return filepath.Join("testdata", filename)
 }
 
-// TestLoadRegistryValidFile은 유효한 registry 파일을 성공적으로 로드함을 검증한다.
+// TestLoadRegistryValidFile verifies that a valid registry file is loaded successfully.
 func TestLoadRegistryValidFile(t *testing.T) {
 	t.Parallel()
 
@@ -31,7 +31,7 @@ func TestLoadRegistryValidFile(t *testing.T) {
 	}
 }
 
-// TestLoadRegistryDuplicateIDsFails는 중복 ID registry 로드 시 오류를 반환함을 검증한다.
+// TestLoadRegistryDuplicateIDsFails verifies that loading a registry with duplicate IDs returns an error.
 func TestLoadRegistryDuplicateIDsFails(t *testing.T) {
 	t.Parallel()
 
@@ -41,21 +41,22 @@ func TestLoadRegistryDuplicateIDsFails(t *testing.T) {
 	}
 }
 
-// TestLoadRegistryMarksOrphanWithoutPanic은 존재하지 않는 파일 참조 시 panic 없이 Orphan 마킹함을 검증한다.
-// AC-CON-001-007 직접 매핑.
+// TestLoadRegistryMarksOrphanWithoutPanic verifies that referencing a non-existent file
+// marks it as Orphan without panicking.
+// Direct mapping to AC-CON-001-007.
 func TestLoadRegistryMarksOrphanWithoutPanic(t *testing.T) {
 	t.Parallel()
 
 	reg, err := constitution.LoadRegistry(testdataPath("orphan_reference.md"), ".")
-	// 오류가 있어도 panic 없이 orphan을 마킹해야 한다
-	// LoadRegistry는 orphan 발생 시 non-nil error를 반환할 수 있다 (warning level)
+	// Even with an error, orphan must be marked without panicking
+	// LoadRegistry may return a non-nil error (warning level) when orphan occurs
 	_ = err
 
 	if reg == nil {
 		t.Fatal("Registry가 nil이어서는 안 된다")
 	}
 
-	// orphan 엔트리가 마킹되어야 한다
+	// The orphan entry must be marked
 	var foundOrphan bool
 	for _, entry := range reg.Entries {
 		if entry.File == "this-file-does-not-exist.md" {
@@ -70,7 +71,7 @@ func TestLoadRegistryMarksOrphanWithoutPanic(t *testing.T) {
 		t.Error("orphan 엔트리를 찾을 수 없다")
 	}
 
-	// 정상 엔트리도 로드되어야 한다
+	// Normal entries must also be loaded
 	rule, ok := reg.Get("CONST-V3R2-001")
 	if !ok {
 		t.Error("정상 엔트리 CONST-V3R2-001을 찾을 수 없다")
@@ -80,7 +81,7 @@ func TestLoadRegistryMarksOrphanWithoutPanic(t *testing.T) {
 	}
 }
 
-// TestLoadRegistryMalformedYAML은 잘못된 YAML의 경우 오류를 반환함을 검증한다.
+// TestLoadRegistryMalformedYAML verifies that an error is returned for malformed YAML.
 func TestLoadRegistryMalformedYAML(t *testing.T) {
 	t.Parallel()
 
@@ -90,8 +91,8 @@ func TestLoadRegistryMalformedYAML(t *testing.T) {
 	}
 }
 
-// TestLoadRegistryEmptyFrozen은 Frozen 엔트리가 없는 registry를 로드함을 검증한다.
-// FilterByZone(ZoneFrozen)이 빈 slice를 반환해야 한다.
+// TestLoadRegistryEmptyFrozen verifies loading a registry with no Frozen entries.
+// FilterByZone(ZoneFrozen) must return an empty slice.
 func TestLoadRegistryEmptyFrozen(t *testing.T) {
 	t.Parallel()
 
@@ -106,13 +107,13 @@ func TestLoadRegistryEmptyFrozen(t *testing.T) {
 	}
 }
 
-// TestLoadRegistryOverflowMirror는 51개 design mirror 엔트리가 있는 경우 overflow 감지를 검증한다.
-// AC-CON-001-008 관련.
+// TestLoadRegistryOverflowMirror verifies overflow detection when there are 51 design mirror entries.
+// Related to AC-CON-001-008.
 func TestLoadRegistryOverflowMirror(t *testing.T) {
 	t.Parallel()
 
 	reg, err := constitution.LoadRegistry(testdataPath("overflow_mirror.md"), ".")
-	// overflow mirror가 있어도 panic 없이 로드되어야 한다
+	// Even with overflow mirror, loading must succeed without panicking
 	_ = err
 
 	if reg == nil {
@@ -120,7 +121,7 @@ func TestLoadRegistryOverflowMirror(t *testing.T) {
 	}
 }
 
-// TestRegistryGet은 O(1) 조회가 정확히 작동함을 검증한다.
+// TestRegistryGet verifies that O(1) lookup works correctly.
 func TestRegistryGet(t *testing.T) {
 	t.Parallel()
 
@@ -129,7 +130,7 @@ func TestRegistryGet(t *testing.T) {
 		t.Fatalf("LoadRegistry 오류: %v", err)
 	}
 
-	// 존재하는 ID
+	// Existing ID
 	rule, ok := reg.Get("CONST-V3R2-001")
 	if !ok {
 		t.Error("CONST-V3R2-001을 찾을 수 없다")
@@ -138,15 +139,15 @@ func TestRegistryGet(t *testing.T) {
 		t.Errorf("CONST-V3R2-001 clause = %q, want %q", rule.Clause, "SPEC+EARS format")
 	}
 
-	// 존재하지 않는 ID
+	// Non-existent ID
 	_, ok = reg.Get("CONST-V3R2-999")
 	if ok {
 		t.Error("CONST-V3R2-999가 존재해서는 안 된다")
 	}
 }
 
-// TestRegistryFilterByZone은 Zone 필터링이 정확히 작동함을 검증한다.
-// AC-CON-001-002 관련.
+// TestRegistryFilterByZone verifies that Zone filtering works correctly.
+// Related to AC-CON-001-002.
 func TestRegistryFilterByZone(t *testing.T) {
 	t.Parallel()
 
@@ -166,12 +167,13 @@ func TestRegistryFilterByZone(t *testing.T) {
 	}
 }
 
-// TestIDStabilityAppendOnly는 기존 ID가 신규 엔트리 추가 후에도 동일한 clause를 가리킴을 검증한다.
-// AC-CON-001-009 직접 매핑.
+// TestIDStabilityAppendOnly verifies that an existing ID points to the same clause
+// after new entries are appended.
+// Direct mapping to AC-CON-001-009.
 func TestIDStabilityAppendOnly(t *testing.T) {
 	t.Parallel()
 
-	// 초기 registry 로드
+	// Load the initial registry
 	reg1, err := constitution.LoadRegistry(testdataPath("valid_registry.md"), ".")
 	if err != nil {
 		t.Fatalf("첫 번째 LoadRegistry 오류: %v", err)
@@ -182,7 +184,7 @@ func TestIDStabilityAppendOnly(t *testing.T) {
 		t.Fatal("CONST-V3R2-001을 찾을 수 없다")
 	}
 
-	// 동일한 파일을 다시 로드해도 같은 clause를 가리켜야 한다
+	// Reloading the same file must point to the same clause
 	reg2, err := constitution.LoadRegistry(testdataPath("valid_registry.md"), ".")
 	if err != nil {
 		t.Fatalf("두 번째 LoadRegistry 오류: %v", err)
@@ -198,18 +200,18 @@ func TestIDStabilityAppendOnly(t *testing.T) {
 	}
 }
 
-// TestRegistryEntryHasExactSixFieldsWithCanonicalNames는 로드된 엔트리의 6-field schema를 검증한다.
-// AC-CON-001-017 직접 매핑.
+// TestRegistryEntryHasExactSixFieldsWithCanonicalNames verifies the 6-field schema of loaded entries.
+// Direct mapping to AC-CON-001-017.
 func TestRegistryEntryHasExactSixFieldsWithCanonicalNames(t *testing.T) {
 	t.Parallel()
 
-	// valid_registry.md를 raw YAML로 파싱하여 key set 검증
+	// Parse valid_registry.md as raw YAML and verify the key set
 	content, err := os.ReadFile(testdataPath("valid_registry.md"))
 	if err != nil {
 		t.Fatalf("파일 읽기 오류: %v", err)
 	}
 
-	// YAML code fence 추출
+	// Extract the YAML code fence
 	src := string(content)
 	start := strings.Index(src, "```yaml")
 	end := strings.LastIndex(src, "```")
@@ -218,8 +220,8 @@ func TestRegistryEntryHasExactSixFieldsWithCanonicalNames(t *testing.T) {
 	}
 	yamlBlock := src[start+7 : end]
 
-	// 첫 번째 엔트리의 key를 raw map으로 파싱하여 확인
-	// 이를 위해 간단한 YAML key 추출 방법 사용
+	// Parse the first entry's keys as a raw map and check
+	// Use a simple YAML key extraction approach for this
 	requiredKeys := []string{"id", "zone", "file", "anchor", "clause", "canary_gate"}
 	for _, key := range requiredKeys {
 		if !strings.Contains(yamlBlock, key+":") {
@@ -228,7 +230,7 @@ func TestRegistryEntryHasExactSixFieldsWithCanonicalNames(t *testing.T) {
 	}
 }
 
-// TestLoadRegistryFileNotFound는 존재하지 않는 파일 경로의 LoadRegistry 오류를 검증한다.
+// TestLoadRegistryFileNotFound verifies the LoadRegistry error for a non-existent file path.
 func TestLoadRegistryFileNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -238,10 +240,10 @@ func TestLoadRegistryFileNotFound(t *testing.T) {
 	}
 }
 
-// BenchmarkLoadRegistry200Entries는 200 엔트리 registry의 cold load 성능을 측정한다.
-// AC-CON-001-015 매핑. 목표: <10ms per operation.
+// BenchmarkLoadRegistry200Entries measures the cold load performance of a 200-entry registry.
+// Maps to AC-CON-001-015. Target: <10ms per operation.
 func BenchmarkLoadRegistry200Entries(b *testing.B) {
-	// 200 엔트리 임시 파일 생성
+	// Create a temporary 200-entry file
 	tmpDir := b.TempDir()
 	path := filepath.Join(tmpDir, "bench_registry.md")
 
@@ -272,10 +274,10 @@ func BenchmarkLoadRegistry200Entries(b *testing.B) {
 		}
 	}
 
-	// 10ms 목표 검증 (벤치마크에서 직접 검증)
+	// Verify the 10ms target (directly in the benchmark)
 	b.StopTimer()
 	const maxDuration = 10 * time.Millisecond
-	// 단순 확인을 위한 단일 실행
+	// Single execution for a simple check
 	start := time.Now()
 	_, _ = constitution.LoadRegistry(path, tmpDir)
 	elapsed := time.Since(start)

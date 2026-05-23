@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// TestValidator_ValidateTemplate_SHA요구사항 검증
+// TestValidator_ValidateTemplate_SHA요구사항 verifies the SHA requirement.
 func TestValidator_ValidateTemplate_SHA요구사항(t *testing.T) {
-	// RED phase: 실패하는 테스트 작성
+	// RED phase: write a failing test
 	v := NewValidator()
 
-	// SHA가 없는 템플릿 (실패 예상)
+	// Template without SHA (expected to fail)
 	noSHA := `
 name: Test Workflow
 on: push
@@ -42,7 +42,7 @@ jobs:
 		t.Error("Expected errors for missing SHA pin, got none")
 	}
 
-	// SHA가 있는 템플릿 (성공 예상)
+	// Template with SHA (expected to pass)
 	withSHA := `
 name: Test Workflow
 on: push
@@ -68,11 +68,11 @@ jobs:
 	}
 }
 
-// TestValidator_ValidateTemplate_CodexPrivateRepoGuard REQ-SEC-001 검증
+// TestValidator_ValidateTemplate_CodexPrivateRepoGuard verifies REQ-SEC-001.
 func TestValidator_ValidateTemplate_CodexPrivateRepoGuard(t *testing.T) {
 	v := NewValidator()
 
-	// Codex private guard가 없는 템플릿 (실패 예상)
+	// Template missing the Codex private guard (expected to fail)
 	noGuard := `
 name: Codex Review
 on: pull_request
@@ -98,7 +98,7 @@ jobs:
 		t.Error("Expected validation to fail for missing Codex private repo guard, but passed")
 	}
 
-	// Guard 검사: 에러 메시지 확인
+	// Guard check: verify error message
 	foundGuardError := false
 	for _, e := range result.Errors {
 		if strings.Contains(e, "REQ-SEC-001") || strings.Contains(e, "private repo") || strings.Contains(e, "repository_visibility") {
@@ -111,11 +111,11 @@ jobs:
 	}
 }
 
-// TestValidator_ValidateTemplate_NoHardcodedCredentials SEC-003 검증
+// TestValidator_ValidateTemplate_NoHardcodedCredentials verifies SEC-003.
 func TestValidator_ValidateTemplate_NoHardcodedCredentials(t *testing.T) {
 	v := NewValidator()
 
-	// 하드코딩된 credential이 있는 템플릿 (실패 예상)
+	// Template with hardcoded credentials (expected to fail)
 	hardcodedCred := `
 name: Test Workflow
 on: push
@@ -140,7 +140,7 @@ jobs:
 		t.Error("Expected validation to fail for hardcoded credentials, but passed")
 	}
 
-	// Credential 검사: 에러 메시지 확인
+	// Credential check: verify error message
 	foundCredError := false
 	for _, e := range result.Errors {
 		if strings.Contains(e, "SEC-003") || strings.Contains(e, "hardcoded") || strings.Contains(e, "credential") {
@@ -153,15 +153,15 @@ jobs:
 	}
 }
 
-// TestValidator_ValidateTemplate_ProperPermissions SEC-005 검증
+// TestValidator_ValidateTemplate_ProperPermissions verifies SEC-005.
 func TestValidator_ValidateTemplate_ProperPermissions(t *testing.T) {
 	v := NewValidator()
 
-	// 과도한 권한이 있는 템플릿 (실패 예상)
+	// Template with excessive permissions (expected to fail)
 	excessivePerms := `
 name: Test Workflow
 on: push
-permissions: write-all  # 너무 과도한 권한
+permissions: write-all  # excessive permissions
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -183,7 +183,7 @@ jobs:
 		t.Error("Expected validation to fail for excessive permissions, but passed")
 	}
 
-	// 권한 검사: 에러 또는 경고 확인
+	// Permission check: verify error or warning
 	foundPermWarning := false
 	for _, w := range result.Warnings {
 		if strings.Contains(w, "SEC-005") || strings.Contains(w, "permission") {
@@ -196,18 +196,18 @@ jobs:
 	}
 }
 
-// TestValidator_ValidateAllTemplates 템플릿 디렉토리 전체 검증
+// TestValidator_ValidateAllTemplates verifies the entire template directory.
 func TestValidator_ValidateAllTemplates(t *testing.T) {
 	v := NewValidator()
 
-	// 테스트용 템플릿 디렉토리 생성
+	// Create a test templates directory
 	tmpDir := t.TempDir()
 	templatesDir := filepath.Join(tmpDir, ".github", "workflows")
 	if err := os.MkdirAll(templatesDir, 0755); err != nil {
 		t.Fatalf("Failed to create templates dir: %v", err)
 	}
 
-	// 유효한 템플릿 생성
+	// Create a valid template
 	validTemplate := `
 name: Valid Workflow
 on: pull_request
@@ -235,7 +235,7 @@ jobs:
 		t.Error("Expected validation results, got none")
 	}
 
-	// 최소한 하나의 결과는 유효해야 함
+	// At least one result must be valid
 	foundValid := false
 	for _, r := range results {
 		if r.IsValid {
@@ -248,11 +248,11 @@ jobs:
 	}
 }
 
-// TestValidator_ValidateTemplate_YAMLSyntax YAML 문법 검증
+// TestValidator_ValidateTemplate_YAMLSyntax verifies YAML syntax.
 func TestValidator_ValidateTemplate_YAMLSyntax(t *testing.T) {
 	v := NewValidator()
 
-	// 잘못된 YAML 문법 (tab 문자로 인한 indentation error)
+	// Invalid YAML syntax (indentation error due to tab character)
 	invalidYAML := "name: Test Workflow\non: push\njobs:\n\ttest:\n  runs-on: ubuntu-latest" // mixed tabs/spaces
 	tmpDir := t.TempDir()
 	invalidPath := filepath.Join(tmpDir, "invalid-yaml.yml.tmpl")
@@ -266,8 +266,8 @@ func TestValidator_ValidateTemplate_YAMLSyntax(t *testing.T) {
 	}
 	_ = result
 
-	// YAML 파서는 tab을 허용하므로 실제로는 에러가 아닐 수 있음
-	// 대신 진짜 invalid YAML: unmatched brackets
+	// YAML parsers allow tabs, so this may not actually be an error
+	// Instead use real invalid YAML: unmatched brackets
 	reallyInvalidYAML := `
 name: Test
 on: [push
@@ -287,7 +287,7 @@ jobs:  # Unmatched bracket
 		t.Error("Expected validation to fail for invalid YAML syntax, but passed")
 	}
 
-	// YAML 에러 확인
+	// Verify YAML error
 	foundYAMLError := false
 	for _, e := range result.Errors {
 		if strings.Contains(e, "YAML") || strings.Contains(e, "syntax") {
@@ -300,7 +300,7 @@ jobs:  # Unmatched bracket
 	}
 }
 
-// TestNewValidator Validator 생성자 검증
+// TestNewValidator verifies the Validator constructor.
 func TestNewValidator(t *testing.T) {
 	v := NewValidator()
 
@@ -308,11 +308,11 @@ func TestNewValidator(t *testing.T) {
 		t.Fatal("NewValidator returned nil")
 	}
 
-	// embed.FS는 항상 zero value로 초기화 가능하므로 nil 체크 불필요
-	// 실제 사용 시 os.ReadFile로 직접 파일을 읽으므로 문제 없음
+	// embed.FS can always be initialized with zero value, so a nil check is unnecessary
+	// In actual use it reads files directly via os.ReadFile, so there is no issue
 }
 
-// TestValidationResult_ResultStructure 검증 결과 구조 검증
+// TestValidationResult_ResultStructure verifies the validation-result structure.
 func TestValidationResult_ResultStructure(t *testing.T) {
 	result := &ValidationResult{
 		TemplatePath: "/test/path.yml.tmpl",
@@ -338,7 +338,7 @@ func TestValidationResult_ResultStructure(t *testing.T) {
 	}
 }
 
-// TestValidator_ValidateTemplate_EmptyTemplate 빈 템플릿 검증
+// TestValidator_ValidateTemplate_EmptyTemplate verifies an empty template.
 func TestValidator_ValidateTemplate_EmptyTemplate(t *testing.T) {
 	v := NewValidator()
 

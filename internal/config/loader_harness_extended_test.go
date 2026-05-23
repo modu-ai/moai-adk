@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// TestLoadHarnessConfigExtended — HRN-001 run-phase 확장 로더 테스트.
-// 4개의 fixture 디렉토리를 커버합니다:
-//   - harness-valid/       : 정상 파싱 (골든 패스)
-//   - harness-invalid-threshold/ : pass_threshold 0.5 → ErrPassThresholdFloor
-//   - harness-invalid-level/     : levels.expert 알 수 없는 enum → ErrUnknownLevel
-//   - harness-drift-strict/      : unknown_top_field → MOAI_CONFIG_STRICT=1 시 ErrSchemaDrift
+// TestLoadHarnessConfigExtended — HRN-001 run-phase extended loader tests.
+// Covers four fixture directories:
+//   - harness-valid/                : normal parse (golden path)
+//   - harness-invalid-threshold/    : pass_threshold 0.5 -> ErrPassThresholdFloor
+//   - harness-invalid-level/        : levels.expert unknown enum -> ErrUnknownLevel
+//   - harness-drift-strict/         : unknown_top_field -> ErrSchemaDrift when MOAI_CONFIG_STRICT=1
 
 func TestLoadHarnessConfigExtended_ValidParse(t *testing.T) {
 	t.Parallel()
@@ -26,7 +26,7 @@ func TestLoadHarnessConfigExtended_ValidParse(t *testing.T) {
 		t.Fatal("LoadHarnessConfig() returned nil config")
 	}
 
-	// ModeDefaults 검증
+	// Verify ModeDefaults
 	if cfg.ModeDefaults["cg"] != "thorough" {
 		t.Errorf("ModeDefaults[cg]: got %q, want %q", cfg.ModeDefaults["cg"], "thorough")
 	}
@@ -34,7 +34,7 @@ func TestLoadHarnessConfigExtended_ValidParse(t *testing.T) {
 		t.Errorf("ModeDefaults[solo]: got %q, want %q", cfg.ModeDefaults["solo"], "auto")
 	}
 
-	// EffortMapping 검증
+	// Verify EffortMapping
 	if cfg.EffortMapping["minimal"] != "medium" {
 		t.Errorf("EffortMapping[minimal]: got %q, want %q", cfg.EffortMapping["minimal"], "medium")
 	}
@@ -45,7 +45,7 @@ func TestLoadHarnessConfigExtended_ValidParse(t *testing.T) {
 		t.Errorf("EffortMapping[thorough]: got %q, want %q", cfg.EffortMapping["thorough"], "xhigh")
 	}
 
-	// Escalation 검증
+	// Verify Escalation
 	if cfg.Escalation.MaxEscalations != 2 {
 		t.Errorf("Escalation.MaxEscalations: got %d, want 2", cfg.Escalation.MaxEscalations)
 	}
@@ -53,7 +53,7 @@ func TestLoadHarnessConfigExtended_ValidParse(t *testing.T) {
 		t.Error("Escalation.Triggers should not be empty")
 	}
 
-	// Levels 검증
+	// Verify Levels
 	if len(cfg.Levels) != 3 {
 		t.Errorf("Levels count: got %d, want 3", len(cfg.Levels))
 	}
@@ -72,12 +72,12 @@ func TestLoadHarnessConfigExtended_ValidParse(t *testing.T) {
 			thoroughLevel.EvaluatorProfile, "strict")
 	}
 
-	// AutoDetection 검증
+	// Verify AutoDetection
 	if !cfg.AutoDetection.Enabled {
 		t.Error("AutoDetection.Enabled should be true")
 	}
 
-	// DefaultProfile 검증
+	// Verify DefaultProfile
 	if cfg.DefaultProfile != "default" {
 		t.Errorf("DefaultProfile: got %q, want %q", cfg.DefaultProfile, "default")
 	}
@@ -90,24 +90,24 @@ func TestLoadHarnessConfigExtended_InvalidThreshold(t *testing.T) {
 	// with pass_threshold 0.5 (below FROZEN floor 0.60)
 	path := filepath.Join("testdata", "harness-invalid-threshold", "harness.yaml")
 
-	// 테스트를 위해 평가 프로필 경로를 testdata 디렉토리 기준으로 설정합니다.
-	// LoadHarnessConfig가 evaluator_profile을 검증할 때 전달된 디렉토리를 기준으로
-	// 프로파일 파일을 찾아야 합니다.
+	// For testing, the evaluation profile path is set relative to the testdata directory.
+	// LoadHarnessConfig must locate the profile file using the provided directory
+	// when validating evaluator_profile.
 	cfg, err := LoadHarnessConfig(path)
 	if err != nil {
-		// 플로어 검증 오류는 로드 시점에 발생할 수 있습니다.
-		// (evaluator_profile 필드가 있고 프로파일 파일이 존재하면)
+		// The floor-validation error may occur at load time
+		// (when the evaluator_profile field exists and the profile file is present)
 		if !errors.Is(err, ErrPassThresholdFloor) {
 			t.Logf("LoadHarnessConfig returned error (expected): %v", err)
 		}
 		return
 	}
 
-	// 로드 성공 시, ValidatePassThresholdFloor를 직접 호출하여 검증
+	// On successful load, call ValidatePassThresholdFloor directly to verify
 	if cfg == nil {
 		t.Fatal("LoadHarnessConfig() returned nil")
 	}
-	// standard level의 evaluator_profile이 "lenient"이어야 합니다
+	// The standard level's evaluator_profile must be "lenient"
 	stdLevel, ok := cfg.Levels["standard"]
 	if !ok {
 		t.Fatal("Levels[standard] not found")
@@ -123,15 +123,15 @@ func TestLoadHarnessConfigExtended_UnknownLevel(t *testing.T) {
 	path := filepath.Join("testdata", "harness-invalid-level", "harness.yaml")
 	cfg, err := LoadHarnessConfig(path)
 	if err == nil {
-		// LoadHarnessConfig가 성공했다면, unknown level이 있는지 확인
+		// If LoadHarnessConfig succeeded, check whether an unknown level is present
 		if cfg != nil {
 			for levelName := range cfg.Levels {
 				switch levelName {
 				case "minimal", "standard", "thorough":
-					// 유효한 레벨
+					// Valid level
 				default:
-					// 유효하지 않은 레벨이 있으면 테스트 실패
-					// ValidateLevelEnum이 호출되어야 합니다
+					// An invalid level present means test failure
+					// ValidateLevelEnum must be invoked
 					t.Logf("Unknown level %q found in config — ErrUnknownLevel should be returned by ValidateLevelEnum", levelName)
 				}
 			}
@@ -145,8 +145,8 @@ func TestLoadHarnessConfigExtended_UnknownLevel(t *testing.T) {
 }
 
 func TestLoadHarnessConfigExtended_SchemaDrift_Warn(t *testing.T) {
-	// t.Setenv 사용으로 t.Parallel() 불가
-	// MOAI_CONFIG_STRICT 미설정 시 — 경고만 발생, 오류 없음
+	// t.Setenv used -> t.Parallel() is not possible
+	// When MOAI_CONFIG_STRICT is unset, only a warning is emitted; no error
 	t.Setenv("MOAI_CONFIG_STRICT", "")
 
 	path := filepath.Join("testdata", "harness-drift-strict", "harness.yaml")
@@ -157,7 +157,7 @@ func TestLoadHarnessConfigExtended_SchemaDrift_Warn(t *testing.T) {
 }
 
 func TestLoadHarnessConfigExtended_SchemaDrift_StrictMode(t *testing.T) {
-	// 직렬 실행 (환경변수 설정)
+	// Serial execution (env var set)
 	t.Setenv("MOAI_CONFIG_STRICT", "1")
 
 	path := filepath.Join("testdata", "harness-drift-strict", "harness.yaml")
@@ -182,8 +182,8 @@ func TestLoadHarnessConfigExtended_MissingFile(t *testing.T) {
 func TestLoadHarnessConfigExtended_ValidatesLevelEnum(t *testing.T) {
 	t.Parallel()
 
-	// 알 수 없는 레벨(expert)가 포함된 YAML을 직접 파싱하여
-	// ErrUnknownLevel이 반환되는지 검증
+	// Verify that ErrUnknownLevel is returned by directly parsing a YAML
+	// that contains an unknown level (expert)
 	tmpDir := t.TempDir()
 	invalidYAML := `harness:
     default_profile: default

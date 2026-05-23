@@ -1,14 +1,14 @@
 //go:build integration
 
-// Package pipeline: GAN 루프 분산 벤치마크 테스트.
+// Package pipeline: GAN loop variance benchmark tests.
 // SPEC-V3R3-DESIGN-PIPELINE-001 Phase 4 (T4-06).
 //
 // design constitution §11: improvement_threshold = 0.05.
-// 검증: DTCG 검증기 활성화 전후 GAN 점수 분산 |delta| ≤ 0.05.
+// Verify: with the DTCG validator enabled vs disabled, GAN score variance |delta| <= 0.05.
 //
-// 실제 GAN 루프 세션 재생 인프라 미구축 상태 → 합성 fixture 기반 검증.
-// 실제 재생 인프라 구축 시 이 테스트의 fixture를 실제 baseline으로 교체한다.
-// Open Item: 실제 GAN 루프 baseline replay 인프라 필요 (Phase 5/6에서 구축 예정).
+// Real GAN loop session replay infrastructure does not yet exist -> verification based on synthetic fixtures.
+// When the real replay infrastructure is built, the fixtures in this test will be replaced with the actual baseline.
+// Open Item: real GAN loop baseline replay infrastructure required (planned for Phase 5/6).
 package pipeline
 
 import (
@@ -19,27 +19,27 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// GANScore: GAN 루프 평가자(evaluator-active)가 반환하는 4차원 점수 구조체.
-// design constitution §11의 4-dimension scoring (Design Quality, Originality,
-// Completeness, Functionality) 반영.
+// GANScore: the 4-dimension score struct returned by the GAN loop evaluator (evaluator-active).
+// Reflects the design constitution §11 4-dimension scoring (Design Quality, Originality,
+// Completeness, Functionality).
 type GANScore struct {
-	// DesignQuality: 디자인 품질 점수 (0.0 ~ 1.0)
+	// DesignQuality: design quality score (0.0 ~ 1.0)
 	DesignQuality float64
-	// Originality: 독창성 점수 (0.0 ~ 1.0)
+	// Originality: originality score (0.0 ~ 1.0)
 	Originality float64
-	// Completeness: 완성도 점수 (0.0 ~ 1.0)
+	// Completeness: completeness score (0.0 ~ 1.0)
 	Completeness float64
-	// Functionality: 기능성 점수 (0.0 ~ 1.0)
+	// Functionality: functionality score (0.0 ~ 1.0)
 	Functionality float64
 }
 
-// Average: 4차원 점수의 평균을 반환한다.
+// Average: returns the mean of the 4-dimension scores.
 func (s GANScore) Average() float64 {
 	return (s.DesignQuality + s.Originality + s.Completeness + s.Functionality) / 4.0
 }
 
-// ganBaselineScore: SPEC 적용 전 GAN 루프 baseline 점수 (합성 fixture).
-// 실제 인프라 구축 후 실측값으로 교체.
+// ganBaselineScore: GAN loop baseline score before SPEC application (synthetic fixture).
+// To be replaced with measured values after real infrastructure is built.
 var ganBaselineScore = GANScore{
 	DesignQuality: 0.72,
 	Originality:   0.68,
@@ -47,8 +47,8 @@ var ganBaselineScore = GANScore{
 	Functionality: 0.80,
 }
 
-// ganPostSpecScore: SPEC-V3R3-DESIGN-PIPELINE-001 적용 후 GAN 루프 점수 (합성 fixture).
-// DTCG 검증기 활성화 후 예상 점수. 실제 인프라 구축 후 실측값으로 교체.
+// ganPostSpecScore: GAN loop score after applying SPEC-V3R3-DESIGN-PIPELINE-001 (synthetic fixture).
+// Projected score after enabling the DTCG validator. To be replaced with measured values later.
 var ganPostSpecScore = GANScore{
 	DesignQuality: 0.74,
 	Originality:   0.69,
@@ -56,7 +56,7 @@ var ganPostSpecScore = GANScore{
 	Functionality: 0.81,
 }
 
-// TestGANVariance_WithinThreshold: baseline vs post-SPEC 점수 분산 ≤ 0.05 검증.
+// TestGANVariance_WithinThreshold: baseline vs post-SPEC score variance must be <= 0.05.
 // design constitution §11 improvement_threshold = 0.05.
 func TestGANVariance_WithinThreshold(t *testing.T) {
 	// design constitution §11: improvement_threshold = 0.05
@@ -78,7 +78,7 @@ func TestGANVariance_WithinThreshold(t *testing.T) {
 	}
 }
 
-// TestGANVariance_PerDimension: 4개 차원별 분산 검증.
+// TestGANVariance_PerDimension: verifies variance per dimension across the 4 dimensions.
 func TestGANVariance_PerDimension(t *testing.T) {
 	const threshold = 0.05
 
@@ -107,10 +107,10 @@ func TestGANVariance_PerDimension(t *testing.T) {
 	}
 }
 
-// TestGANVariance_ValidatorDoesNotDegradeScore: DTCG 검증기가 GAN 점수를 저하시키지 않음.
-// 유효한 토큰이 검증기를 통과하면 평가 점수가 baseline 이상이어야 한다.
+// TestGANVariance_ValidatorDoesNotDegradeScore: the DTCG validator must not degrade GAN scores.
+// When valid tokens pass the validator, the evaluation score must be at least the baseline.
 func TestGANVariance_ValidatorDoesNotDegradeScore(t *testing.T) {
-	// 유효한 DTCG 토큰 세트 (검증기 통과 예상)
+	// Valid DTCG token set (expected to pass the validator)
 	validTokens := map[string]any{
 		"color-primary": map[string]any{
 			"$type":  "color",
@@ -127,12 +127,12 @@ func TestGANVariance_ValidatorDoesNotDegradeScore(t *testing.T) {
 		t.Fatalf("Validate() 실패: %v", err)
 	}
 
-	// 검증기 통과 → 코드 생성 허용 → post-SPEC 점수 ≥ baseline
+	// Validator pass -> code generation allowed -> post-SPEC score >= baseline
 	if !report.Valid {
 		t.Fatalf("유효 토큰이 검증 실패 — GAN 루프 degradation 위험")
 	}
 
-	// post-SPEC 평균 ≥ baseline 평균 검증
+	// Verify post-SPEC average >= baseline average
 	if ganPostSpecScore.Average() < ganBaselineScore.Average() {
 		t.Errorf(
 			"Post-SPEC 점수(%.4f)가 baseline(%.4f)보다 낮음 — DTCG 검증기 도입이 품질 저하 유발",
@@ -144,9 +144,9 @@ func TestGANVariance_ValidatorDoesNotDegradeScore(t *testing.T) {
 		ganPostSpecScore.Average(), ganBaselineScore.Average())
 }
 
-// BenchmarkGANValidationPerformance: DTCG 검증기 성능 벤치마크 (< 100ms 목표).
+// BenchmarkGANValidationPerformance: DTCG validator performance benchmark (< 100ms target).
 func BenchmarkGANValidationPerformance(b *testing.B) {
-	// 500개 토큰 생성 (REQ-DPL-010의 최대 규모 가정)
+	// Generate 500 tokens (assuming the maximum scale in REQ-DPL-010)
 	tokens := make(map[string]any, 500)
 	for i := 0; i < 250; i++ {
 		tokens[b.Name()+"/color-"+string(rune('a'+i%26))+string(rune('0'+i/26))] = map[string]any{
@@ -173,8 +173,8 @@ func BenchmarkGANValidationPerformance(b *testing.B) {
 	}
 }
 
-// TestGANValidation_Under100ms: 500개 토큰 검증이 100ms 미만에 완료.
-// REQ-DPL-010 성능 요구사항.
+// TestGANValidation_Under100ms: validation of 500 tokens completes in under 100ms.
+// REQ-DPL-010 performance requirement.
 func TestGANValidation_Under100ms(t *testing.T) {
 	const maxDuration = 100 * time.Millisecond
 	const tokenCount = 500

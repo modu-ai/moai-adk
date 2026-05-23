@@ -515,10 +515,10 @@ func containsMiddle(s, substr string) bool {
 	return false
 }
 
-// T-RT002-01: ParsePermissionMode 잘못된 값 수신 시 default + error 반환 검증.
-// AC-09 관련 — resolver-side 동작 단위 검증.
+// T-RT002-01: verifies that ParsePermissionMode returns default + error when given an invalid value.
+// Related to AC-09 — resolver-side behavior unit test.
 func TestResolve_FrontmatterUnknownPermissionMode(t *testing.T) {
-	// ParsePermissionMode가 invalid 값 수신 시 ModeDefault 와 non-nil error 반환 검증.
+	// Verify that ParsePermissionMode returns ModeDefault and a non-nil error when given an invalid value.
 	mode, err := ParsePermissionMode("ultra-bypass")
 	if err == nil {
 		t.Fatal("ParsePermissionMode() should return error for invalid mode 'ultra-bypass'")
@@ -528,14 +528,15 @@ func TestResolve_FrontmatterUnknownPermissionMode(t *testing.T) {
 	}
 }
 
-// T-RT002-02: hook UpdatedInput re-match 가드 검증 — 무한루프 방지.
-// AC-10 관련.
+// T-RT002-02: verifies the hook UpdatedInput re-match guard — prevents infinite loops.
+// Related to AC-10.
 func TestResolve_HookUpdatedInputReMatch(t *testing.T) {
-	// hook 가 /dangerous/path → /safe/path 로 mutate 시 pre-allowlist 가 mutated path 에 매칭되는지.
-	// 단: HookResponse.UpdatedInput 만 있고 PermissionDecision 없으면 re-match 단 1회만 실행.
+	// Check that when the hook mutates /dangerous/path -> /safe/path, the pre-allowlist
+	// matches against the mutated path. Note: when HookResponse.UpdatedInput is present but
+	// PermissionDecision is absent, re-match runs exactly once.
 	resolver := NewPermissionResolver()
 
-	// /safe/path 를 allow 하는 규칙 준비.
+	// Prepare a rule that allows /safe/path.
 	updatedInput := json.RawMessage(`/safe/path`)
 	ctx := ResolveContext{
 		Mode:          ModeDefault,
@@ -543,7 +544,7 @@ func TestResolve_HookUpdatedInputReMatch(t *testing.T) {
 		IsInteractive: true,
 		HookResponse: &hook.HookResponse{
 			UpdatedInput: updatedInput,
-			// PermissionDecision 없음 → re-match 트리거.
+			// No PermissionDecision -> triggers re-match.
 		},
 		RulesByTier: map[config.Source][]PermissionRule{
 			config.SrcProject: {
@@ -562,7 +563,7 @@ func TestResolve_HookUpdatedInputReMatch(t *testing.T) {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 
-	// mutated input(/safe/path) 기준으로 re-match → allow 기대.
+	// Re-match using the mutated input (/safe/path) -> expect allow.
 	if result.Decision != DecisionAllow {
 		t.Errorf("Resolve() Decision = %v, want Allow (re-match on mutated input)", result.Decision)
 	}
@@ -570,12 +571,12 @@ func TestResolve_HookUpdatedInputReMatch(t *testing.T) {
 		t.Error("Resolve() UpdatedInput should be set from hook response")
 	}
 
-	// 중첩 mutation 방지: HookResponse 가 nil 로 clear 되므로 무한루프 없어야 함.
-	// (resolver 내부적으로 newCtx.HookResponse = nil 로 처리됨을 간접 검증)
+	// Nested-mutation prevention: HookResponse is cleared to nil, so no infinite loop must occur.
+	// (Indirectly verifies that the resolver sets newCtx.HookResponse = nil internally.)
 }
 
-// T-RT002-03: fork depth=4 에서 non-plan mode agent → bubble 강등 + SystemMessage 검증.
-// AC-14 관련.
+// T-RT002-03: at fork depth=4, a non-plan mode agent is degraded to bubble + SystemMessage is set.
+// Related to AC-14.
 func TestResolve_ForkDepth4DegradeToBubble(t *testing.T) {
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
@@ -591,27 +592,27 @@ func TestResolve_ForkDepth4DegradeToBubble(t *testing.T) {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 
-	// fork depth > 3 → bubble 강등 → DecisionAsk + systemMessage.
+	// fork depth > 3 -> degrade to bubble -> DecisionAsk + systemMessage.
 	if result.Decision != DecisionAsk {
 		t.Errorf("Resolve() Decision = %v, want Ask (fork depth degraded to bubble)", result.Decision)
 	}
 	if result.SystemMessage == "" {
 		t.Error("Resolve() SystemMessage should warn about fork depth limit")
 	}
-	// AC-14: systemMessage 에 "mode degraded" 또는 "exceeds limit" 포함 확인.
+	// AC-14: verify that systemMessage contains "mode degraded" or "exceeds limit".
 	if !containsMiddle(result.SystemMessage, "exceeds limit") && !containsMiddle(result.SystemMessage, "degraded") {
 		t.Errorf("Resolve() SystemMessage = %q; want to contain 'exceeds limit' or 'degraded'", result.SystemMessage)
 	}
 }
 
-// T-RT002-04: bubble mode + parent 닫힘 → deny + sentinel message.
-// AC-08 관련.
+// T-RT002-04: bubble mode + parent closed -> deny + sentinel message.
+// Related to AC-08.
 func TestResolve_BubbleParentClosed(t *testing.T) {
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
 		Mode:            ModeBubble,
 		IsFork:          true,
-		ParentAvailable: false, // 부모 세션 닫힘.
+		ParentAvailable: false, // Parent session closed.
 		ForkDepth:       1,
 		IsInteractive:   true,
 		RulesByTier: map[config.Source][]PermissionRule{
@@ -640,13 +641,13 @@ func TestResolve_BubbleParentClosed(t *testing.T) {
 	}
 }
 
-// T-RT002-05: 비대화형 모드 → ask → deny + log 파일 경로 검증.
-// AC-15 관련.
+// T-RT002-05: non-interactive mode -> ask -> deny + log file path verification.
+// Related to AC-15.
 func TestResolve_NonInteractiveAskBecomesDeny(t *testing.T) {
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
 		Mode:          ModeDefault,
-		IsInteractive: false, // 비대화형.
+		IsInteractive: false, // non-interactive.
 		RulesByTier:   make(map[config.Source][]PermissionRule),
 	}
 
@@ -660,15 +661,15 @@ func TestResolve_NonInteractiveAskBecomesDeny(t *testing.T) {
 	}
 }
 
-// T-RT002-05b: logUnreachablePrompt 가 .moai/logs/permission.log 에 기록하는지 간접 검증.
+// T-RT002-05b: indirectly verifies that logUnreachablePrompt writes to .moai/logs/permission.log.
 func TestLogUnreachablePrompt_FilePath(t *testing.T) {
-	// t.TempDir() 로 격리된 환경에서 로그 파일 생성 확인.
+	// Verify log file creation in an isolated environment via t.TempDir().
 	tmpDir := t.TempDir()
 
-	// logPath 계산: resolver 가 현재 디렉터리 기준 .moai/logs/permission.log 에 기록.
-	// cwd 를 직접 변경할 수 없으므로, logUnreachablePrompt 는 내부적으로 os.OpenFile 사용.
-	// 이 테스트는 비대화형 Resolve 호출이 오류 없이 완료됨을 검증.
-	_ = tmpDir // 격리 디렉터리 준비 (추후 통합 테스트 확장용).
+	// logPath calculation: the resolver writes to .moai/logs/permission.log relative to the current directory.
+	// Since cwd cannot be changed directly, logUnreachablePrompt internally uses os.OpenFile.
+	// This test verifies that a non-interactive Resolve call completes without error.
+	_ = tmpDir // Reserved for an isolated directory (for future integration test extension).
 
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
@@ -676,7 +677,7 @@ func TestLogUnreachablePrompt_FilePath(t *testing.T) {
 		IsInteractive: false,
 		RulesByTier:   make(map[config.Source][]PermissionRule),
 	}
-	// 로그 파일 생성 시 오류 없이 완료되어야 함.
+	// Log file creation must complete without error.
 	result, err := resolver.Resolve("Write", json.RawMessage("/tmp/x"), ctx)
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
@@ -686,13 +687,13 @@ func TestLogUnreachablePrompt_FilePath(t *testing.T) {
 	}
 }
 
-// T-RT002-06: 동일 tier 두 규칙 충돌 시 specificity 우선, 동률 시 fs-order.
-// AC-12 관련 — conflict.go 의 resolveConflict 함수가 없을 때 RED (현재 첫 매치 반환).
+// T-RT002-06: when two rules in the same tier conflict, specificity wins; on a tie, fs-order.
+// Related to AC-12 — RED while conflict.go's resolveConflict is absent (currently returns the first match).
 func TestResolve_ConflictSpecificityThenFsOrder(t *testing.T) {
 	resolver := NewPermissionResolver()
 
-	// 두 SrcLocal 규칙: "Bash(git push:*)" (덜 구체적) vs "Bash(git push origin main)" (더 구체적).
-	// 더 구체적인 패턴의 규칙이 우선해야 함.
+	// Two SrcLocal rules: "Bash(git push:*)" (less specific) vs "Bash(git push origin main)" (more specific).
+	// The more specific rule must win.
 	ctx := ResolveContext{
 		Mode:          ModeDefault,
 		IsInteractive: true,
@@ -700,13 +701,13 @@ func TestResolve_ConflictSpecificityThenFsOrder(t *testing.T) {
 			config.SrcLocal: {
 				{
 					Pattern: "Bash(git push:*)",
-					Action:  DecisionDeny,   // 덜 구체적 → deny.
+					Action:  DecisionDeny,   // less specific -> deny.
 					Source:  config.SrcLocal,
 					Origin:  "a-settings.json", // fs-order: a < b.
 				},
 				{
 					Pattern: "Bash(git push origin main)",
-					Action:  DecisionAllow, // 더 구체적 → allow.
+					Action:  DecisionAllow, // more specific -> allow.
 					Source:  config.SrcLocal,
 					Origin:  "b-settings.json",
 				},
@@ -719,14 +720,14 @@ func TestResolve_ConflictSpecificityThenFsOrder(t *testing.T) {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 
-	// specificity 높은 "git push origin main" 규칙이 우선 → allow.
+	// The more-specific "git push origin main" rule wins -> allow.
 	if result.Decision != DecisionAllow {
 		t.Errorf("Resolve() Decision = %v, want Allow (more specific rule should win)", result.Decision)
 	}
 }
 
-// T-RT002-07: SrcPolicy deny > SrcProject allow 검증.
-// AC-13 관련.
+// T-RT002-07: verifies SrcPolicy deny > SrcProject allow.
+// Related to AC-13.
 func TestResolve_PolicyDenyOverridesProjectAllow(t *testing.T) {
 	resolver := NewPermissionResolver()
 	ctx := ResolveContext{
@@ -765,12 +766,12 @@ func TestResolve_PolicyDenyOverridesProjectAllow(t *testing.T) {
 	}
 }
 
-// T-RT002-08: strict_mode=true + bypassPermissions → PermissionModeRejected.
-// AC-07 관련.
+// T-RT002-08: strict_mode=true + bypassPermissions -> PermissionModeRejected.
+// Related to AC-07.
 func TestResolve_BypassPermissionsRejectedInStrictMode(t *testing.T) {
 	resolver := NewPermissionResolver()
 
-	// ValidateMode 가 strict_mode=true 에서 bypassPermissions 를 reject 해야 함.
+	// ValidateMode must reject bypassPermissions when strict_mode=true.
 	err := resolver.ValidateMode(ModeBypassPermissions, false, true, 0)
 	if err == nil {
 		t.Fatal("ValidateMode() should return error for bypassPermissions in strict mode")
@@ -780,11 +781,11 @@ func TestResolve_BypassPermissionsRejectedInStrictMode(t *testing.T) {
 	}
 }
 
-// T-RT002-09: legacy bypassPermissions action → acceptEdits reroute + deprecation warning.
-// AC-11 관련 — MigrateLegacyBypassRules 함수 부재 시 RED.
+// T-RT002-09: legacy bypassPermissions action -> acceptEdits reroute + deprecation warning.
+// Related to AC-11 — RED while MigrateLegacyBypassRules is absent.
 func TestResolve_LegacyBypassActionMigrated(t *testing.T) {
-	// MigrateLegacyBypassRules 가 구현되면 GREEN 으로 전환.
-	// 현재는 함수 존재 여부만 컴파일 시간에 확인.
+	// When MigrateLegacyBypassRules is implemented, this transitions to GREEN.
+	// Currently this only checks the existence of the function at compile time.
 	rules := []PermissionRule{
 		{
 			Pattern: "Bash(curl:*)",
@@ -801,18 +802,18 @@ func TestResolve_LegacyBypassActionMigrated(t *testing.T) {
 	if len(migrated) == 0 {
 		t.Fatal("MigrateLegacyBypassRules() should return migrated rules")
 	}
-	// 마이그레이션 후 Action 은 acceptEdits (DecisionAllow 로 reroute).
+	// After migration, Action is acceptEdits (rerouted to DecisionAllow).
 	if migrated[0].Action != DecisionAllow {
 		t.Errorf("MigrateLegacyBypassRules() migrated action = %v, want DecisionAllow", migrated[0].Action)
 	}
 }
 
-// T-RT002-10: session_rules 키 → SrcSession tier 로 적재 검증.
-// REQ-030 관련.
+// T-RT002-10: verifies that the session_rules key is loaded into the SrcSession tier.
+// Related to REQ-030.
 func TestResolve_SessionRulesLoadedAsSrcSession(t *testing.T) {
 	resolver := NewPermissionResolver()
 
-	// SrcSession tier 에 규칙이 있으면 해당 규칙 기준으로 결정해야 함.
+	// When rules exist in the SrcSession tier, decisions must be based on those rules.
 	ctx := ResolveContext{
 		Mode:          ModeDefault,
 		IsInteractive: true,
@@ -833,7 +834,7 @@ func TestResolve_SessionRulesLoadedAsSrcSession(t *testing.T) {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 
-	// SrcSession 에서 허용 → allow.
+	// Allowed in SrcSession -> allow.
 	if result.Decision != DecisionAllow {
 		t.Errorf("Resolve() Decision = %v, want Allow (session rule matched)", result.Decision)
 	}

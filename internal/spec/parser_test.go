@@ -68,7 +68,7 @@ AC-SPC-001-02: Given valid input, when processing, then result returned
 		t.Errorf("root ID = %s, want AC-SPC-001-02", root.ID)
 	}
 
-	// 자동 래핑: 부모는 자식 1개를 가짐
+	// Auto-wrap: the parent has 1 child
 	if len(root.Children) != 1 {
 		t.Fatalf("root has %d children after auto-wrap, want 1", len(root.Children))
 	}
@@ -78,7 +78,7 @@ AC-SPC-001-02: Given valid input, when processing, then result returned
 		t.Errorf("auto-wrapped child ID = %s, want AC-SPC-001-02.a", child.ID)
 	}
 
-	// 부모는 비어있고 자식이 모든 내용을 가짐
+	// Parent is empty and the child carries all the content
 	if root.Given != "" || root.When != "" || root.Then != "" {
 		t.Errorf("parent should be empty after auto-wrap, got Given=%q When=%q Then=%q", root.Given, root.When, root.Then)
 	}
@@ -110,12 +110,12 @@ AC-SPC-001-03: Given user is admin, when accessing settings, then settings displ
 
 	root := criteria[0]
 
-	// 03.a는 부모의 Given을 상속받아야 함
+	// 03.a must inherit the parent's Given
 	if root.Children[0].Given != "Given user is admin" {
 		t.Errorf("child 03.a should inherit parent's Given, got %q", root.Children[0].Given)
 	}
 
-	// 03.b는 자신의 Given이 있으므로 상속받지 않음
+	// 03.b has its own Given, so it does not inherit
 	if root.Children[1].Given != "Given user is guest" {
 		t.Errorf("child 03.b should use its own Given, got %q", root.Children[1].Given)
 	}
@@ -147,14 +147,14 @@ AC-SPC-001-04: Duplicate criterion
 }
 
 // TestParser_AC_05_MaxDepthExceeded tests AC-SPC-001-05: 4-level depth → MaxDepthExceeded
-// 파서는 유효한 ID 형식(.a, .a.i)만 매칭하므로 마크다운에서 자연스럽게 3레벨 초과 불가.
-// 대신 ValidateDepth를 직접 테스트하여 깊이 제한을 검증.
+// The parser only matches valid ID forms (.a, .a.i), so depth >3 is impossible from markdown alone.
+// Instead, test ValidateDepth directly to verify the depth limit.
 func TestParser_AC_05_MaxDepthExceeded(t *testing.T) {
-	// 깊이 3의 노드를 직접 생성 (AC-X-01.a.i 는 depth 2, 그 자식이 depth 3)
+	// Construct a depth-3 node directly (AC-X-01.a.i is depth 2; its child is depth 3)
 	deepNode := Acceptance{
 		ID: "AC-SPC-001-05.a.i.x", // depth 3
 	}
-	// depth 3 >= MaxDepth(3) → 오류
+	// depth 3 >= MaxDepth(3) -> error
 	err := deepNode.ValidateDepth()
 	if err == nil {
 		t.Fatal("ValidateDepth() expected error for depth 3, got nil")
@@ -169,7 +169,7 @@ func TestParser_AC_05_MaxDepthExceeded(t *testing.T) {
 		t.Errorf("depth = %d, want 3", depthErr.Depth)
 	}
 
-	// 정상 깊이는 통과해야 함
+	// Normal depths must pass
 	validNodes := []Acceptance{
 		{ID: "AC-SPC-001-05"},     // depth 0
 		{ID: "AC-SPC-001-05.a"},   // depth 1
@@ -199,7 +199,7 @@ AC-SPC-001-06: Parent criterion (maps REQ-RENDER-001)
 		t.Errorf("ParseAcceptanceCriteria() unexpected errors: %v", errors)
 	}
 
-	// 렌더링 테스트는 CLI에서 수행되므로 여기서는 구조만 확인
+	// Rendering tests are performed in the CLI, so here we only check the structure
 	if len(criteria) != 1 {
 		t.Fatalf("expected 1 root criterion, got %d", len(criteria))
 	}
@@ -224,8 +224,8 @@ AC-SPC-001-07: Parent criterion
 		t.Errorf("ParseAcceptanceCriteria() unexpected errors in flat mode: %v", errors)
 	}
 
-	// Flat 모드에서는 들여쓰기 무시하고 각 라인을 독립적으로 처리
-	// 들여쓴 자식도 형제로 처리됨
+	// In flat mode, indentation is ignored and each line is processed independently
+	// Indented children are also treated as siblings
 	if len(criteria) != 2 {
 		t.Fatalf("expected 2 criteria in flat mode (siblings), got %d", len(criteria))
 	}
@@ -246,7 +246,7 @@ AC-SPC-001-08: Root criterion
 		t.Errorf("ParseAcceptanceCriteria() unexpected errors: %v", errors)
 	}
 
-	// 깊이 정보 확인
+	// Verify depth information
 	if criteria[0].Depth() != 0 {
 		t.Errorf("root depth = %d, want 0", criteria[0].Depth())
 	}
@@ -278,12 +278,12 @@ AC-SPC-001-11: Another flat criterion
 		t.Fatalf("expected 3 top-level criteria, got %d", len(criteria))
 	}
 
-	// 첫 번째는 자식이 있으므로 래핑되지 않음
+	// The first has children, so it is not wrapped
 	if len(criteria[0].Children) != 2 {
 		t.Errorf("first criterion has %d children, want 2 (not wrapped)", len(criteria[0].Children))
 	}
 
-	// 두 번째와 세 번째는 자식이 없으므로 래핑됨
+	// The second and third have no children, so they are wrapped
 	if len(criteria[1].Children) != 1 {
 		t.Errorf("second criterion should be auto-wrapped with 1 child, got %d", len(criteria[1].Children))
 	}
@@ -307,7 +307,7 @@ AC-SPC-001-10: Test criterion (maps REQ-NONEXISTENT-001)
 		t.Errorf("ParseAcceptanceCriteria() unexpected errors: %v", parseErrors)
 	}
 
-	// 존재하는 REQ 목록 (비어있음)
+	// Existing REQ list (empty)
 	existingREQs := map[string]bool{}
 
 	danglingErrors := CheckDanglingReferences(criteria, existingREQs)
@@ -348,7 +348,7 @@ func TestParser_AC_11_MigrationWrapsFlatACs(t *testing.T) {
 		t.Fatalf("expected 8 criteria after migration wrap, got %d", len(criteria))
 	}
 
-	// 모두 자동 래핑되어 1자식을 가짐
+	// All are auto-wrapped to have 1 child
 	for i, ac := range criteria {
 		if len(ac.Children) != 1 {
 			t.Errorf("criterion %d has %d children after wrap, want 1", i, len(ac.Children))
@@ -370,15 +370,15 @@ AC-SPC-001-12: Parent without children or REQ mapping
 		t.Errorf("ParseAcceptanceCriteria() unexpected errors: %v", parseErrors)
 	}
 
-	// 자동 래핑 후 부모는 REQ가 없고 자식이 가짐
+	// After auto-wrap, the parent has no REQ and the child has it
 	reqErrors := criteria[0].ValidateRequirementMappings()
 
 	if len(reqErrors) == 0 {
 		t.Fatal("expected warning for parent without REQ mapping, got none")
 	}
 
-	// 래핑된 구조에서는 리프 노드에만 REQ가 있으므로 경고 없음
-	// 원래 flat AC를 그대로 두면 경고 발생
+	// In the wrapped structure, only leaf nodes have REQ, so no warning
+	// If the original flat AC is left as-is, a warning is emitted
 }
 
 // TestParser_AC_13_ParentOmitsREQChildrenCarryDistinct tests AC-SPC-001-13: Parent omits REQ but children carry distinct tails
@@ -399,12 +399,12 @@ AC-SPC-001-13: Parent criterion
 
 	reqErrors := criteria[0].ValidateRequirementMappings()
 
-	// 부모는 REQ가 없어도 되고 자식들이 가지고 있으므로 경고 없음
+	// The parent may have no REQ, and children carry them, so no warning
 	if len(reqErrors) > 0 {
 		t.Errorf("unexpected REQ mapping errors: %v", reqErrors)
 	}
 
-	// 자식들이 각각 다른 REQ를 가짐
+	// Children each have a distinct REQ
 	if criteria[0].Children[0].RequirementIDs[0] != "SPC-001" {
 		t.Errorf("first child REQ = %s, want SPC-001", criteria[0].Children[0].RequirementIDs[0])
 	}
@@ -416,7 +416,7 @@ AC-SPC-001-13: Parent criterion
 
 // TestParser_AC_14_LargeTreePerformance tests AC-SPC-001-14: 365-leaf tree parses in <500ms
 func TestParser_AC_14_LargeTreePerformance(t *testing.T) {
-	// 365개의 flat AC 생성
+	// Generate 365 flat ACs
 	var acLines []string
 	for i := 1; i <= 365; i++ {
 		acLines = append(acLines, fmt.Sprintf("AC-SPC-001-%03d: Criterion %d (maps REQ-SPC-%03d)", i, i, i))
@@ -427,7 +427,7 @@ func TestParser_AC_14_LargeTreePerformance(t *testing.T) {
 
 ` + strings.Join(acLines, "\n")
 
-	// 성능 테스트는 실제로 실행 시간을 측정해야 하지만 여기서는 구조만 확인
+	// A performance test should actually measure run time, but here we only check the structure
 	criteria, errors := ParseAcceptanceCriteria(markdown, false)
 
 	if len(errors) > 0 {
@@ -438,7 +438,7 @@ func TestParser_AC_14_LargeTreePerformance(t *testing.T) {
 		t.Fatalf("expected 365 criteria, got %d", len(criteria))
 	}
 
-	// 모두 자동 래핑되어야 함
+	// All must be auto-wrapped
 	for i, ac := range criteria {
 		if len(ac.Children) != 1 {
 			t.Errorf("criterion %d has %d children, want 1 (auto-wrapped)", i, len(ac.Children))

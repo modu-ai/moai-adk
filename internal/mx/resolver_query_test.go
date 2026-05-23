@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// buildTestSidecar는 테스트용 사이드카 파일을 지정된 디렉토리에 생성합니다.
+// buildTestSidecar creates a test sidecar file in the specified directory.
 func buildTestSidecar(t *testing.T, stateDir string, tags []Tag) *Manager {
 	t.Helper()
 	mgr := NewManager(stateDir)
@@ -25,7 +25,7 @@ func buildTestSidecar(t *testing.T, stateDir string, tags []Tag) *Manager {
 	return mgr
 }
 
-// makeTag는 테스트용 태그를 생성하는 헬퍼입니다.
+// makeTag is a helper that creates a test tag.
 func makeTag(kind TagKind, file, body string, line int) Tag {
 	return Tag{
 		Kind:       kind,
@@ -37,35 +37,35 @@ func makeTag(kind TagKind, file, body string, line int) Tag {
 	}
 }
 
-// makeAnchorTag는 AnchorID가 있는 테스트용 ANCHOR 태그를 생성합니다.
+// makeAnchorTag creates a test ANCHOR tag with an AnchorID.
 func makeAnchorTag(file, anchorID, body string, line int) Tag {
 	t := makeTag(MXAnchor, file, body, line)
 	t.AnchorID = anchorID
 	return t
 }
 
-// makeWarnTag는 Reason이 있는 테스트용 WARN 태그를 생성합니다.
+// makeWarnTag creates a test WARN tag with a Reason.
 func makeWarnTag(file, body, reason string, line int) Tag {
 	t := makeTag(MXWarn, file, body, line)
 	t.Reason = reason
 	return t
 }
 
-// TestResolve_SpecAndKindFilter는 SPEC+KIND 복합 필터링을 테스트합니다.
-// AC-SPC-004-01: 20개 태그, 2개 SPEC 중 SPEC-X-001의 ANCHOR만 반환
+// TestResolve_SpecAndKindFilter tests the SPEC+KIND combined filter.
+// AC-SPC-004-01: out of 20 tags spanning 2 SPECs, only ANCHORs for SPEC-X-001 are returned.
 func TestResolve_SpecAndKindFilter(t *testing.T) {
-	// AC-SPC-004-01: SPEC 필터 + KIND 필터 조합
+	// AC-SPC-004-01: SPEC filter + KIND filter combination
 	stateDir := t.TempDir()
 
-	// SPEC-X-001에 속하는 ANCHOR 태그
+	// ANCHOR tags belonging to SPEC-X-001
 	anchor1 := makeAnchorTag("internal/auth/handler.go", "anchor-auth-handler", "ANCHOR for SPEC-X-001", 10)
 	anchor2 := makeAnchorTag("internal/auth/middleware.go", "anchor-auth-mw", "ANCHOR for SPEC-X-001", 20)
 
-	// SPEC-Y-002에 속하는 태그들 (필터에서 제외되어야 함)
+	// Tags belonging to SPEC-Y-002 (should be excluded by the filter)
 	note1 := makeTag(MXNote, "internal/cache/store.go", "캐시 정책 설명 — SPEC-Y-002", 5)
 	anchor3 := makeAnchorTag("internal/cache/store.go", "anchor-cache", "ANCHOR for SPEC-Y-002", 15)
 
-	// SPEC-X-001의 NOTE 태그 (KIND 필터로 제외되어야 함)
+	// NOTE tag for SPEC-X-001 (should be excluded by the KIND filter)
 	note2 := makeTag(MXNote, "internal/auth/handler.go", "인증 흐름 설명 — SPEC-X-001", 8)
 
 	mgr := buildTestSidecar(t, stateDir, []Tag{anchor1, anchor2, note1, anchor3, note2})
@@ -103,10 +103,10 @@ func TestResolve_SpecAndKindFilter(t *testing.T) {
 	}
 }
 
-// TestResolve_FanInFilter는 fan-in 최소값 필터를 테스트합니다.
-// AC-SPC-004-02: fan_in 1,2,3,5,10 중 fan-in-min=3 이상인 3개만 반환
+// TestResolve_FanInFilter tests the fan-in minimum filter.
+// AC-SPC-004-02: out of fan_in 1,2,3,5,10, only the 3 entries with fan-in-min>=3 are returned.
 func TestResolve_FanInFilter(t *testing.T) {
-	// AC-SPC-004-02: fan-in 필터
+	// AC-SPC-004-02: fan-in filter
 	stateDir := t.TempDir()
 
 	anchors := []Tag{
@@ -120,8 +120,8 @@ func TestResolve_FanInFilter(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, anchors)
 	resolver := NewResolver(mgr)
 
-	// fan-in 계산을 위한 mock counter 주입
-	// 실제 구현에서는 WithFanInCounter 옵션으로 주입
+	// Inject a mock counter for fan-in calculation
+	// In the real implementation this is injected via the WithFanInCounter option
 	query := Query{
 		Kind:     MXAnchor,
 		FanInMin: 3,
@@ -133,8 +133,8 @@ func TestResolve_FanInFilter(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// 최소 구현에서는 mock fan-in 값 사용 (GREEN 단계에서 실제 로직 구현)
-	// RED 단계에서는 이 테스트가 실패해야 합니다
+	// Minimal implementation uses mock fan-in values (real logic implemented in the GREEN phase)
+	// In the RED phase this test is expected to fail
 	for _, tag := range result.Tags {
 		if tag.FanIn < 3 {
 			t.Errorf("fan-in 필터 실패: %s의 fan-in=%d (최소 3 기대)", tag.AnchorID, tag.FanIn)
@@ -142,10 +142,10 @@ func TestResolve_FanInFilter(t *testing.T) {
 	}
 }
 
-// TestResolve_DangerFilter는 위험 카테고리 필터를 테스트합니다.
-// AC-SPC-004-03: "goroutine leak" REASON을 가진 WARN이 concurrency로 반환
+// TestResolve_DangerFilter tests the danger category filter.
+// AC-SPC-004-03: a WARN with REASON "goroutine leak" is returned as concurrency.
 func TestResolve_DangerFilter(t *testing.T) {
-	// AC-SPC-004-03: 위험 카테고리 필터
+	// AC-SPC-004-03: danger category filter
 	stateDir := t.TempDir()
 
 	warnConcurrency := makeWarnTag("internal/worker.go", "무제한 고루틴 생성", "goroutine leak on panic", 15)
@@ -176,21 +176,21 @@ func TestResolve_DangerFilter(t *testing.T) {
 	}
 }
 
-// TestResolve_SidecarUnavailable은 사이드카 파일 없을 때 오류를 테스트합니다.
-// AC-SPC-004-04: 사이드카 파일 없을 때 SidecarUnavailable 오류 반환
+// TestResolve_SidecarUnavailable tests the error returned when the sidecar file is missing.
+// AC-SPC-004-04: when the sidecar file is absent, SidecarUnavailable error is returned.
 func TestResolve_SidecarUnavailable(t *testing.T) {
-	// AC-SPC-004-04: 사이드카 파일 없을 때
+	// AC-SPC-004-04: sidecar file is absent
 	stateDir := t.TempDir()
-	// 사이드카 파일 생성하지 않음 (디렉토리만 존재)
-	// 그러나 매니저는 Load()에서 빈 사이드카를 반환함
-	// 실제 오류는 파일이 없고 명시적 확인이 있을 때
+	// Sidecar file is not created (only the directory exists)
+	// However, the manager returns an empty sidecar from Load()
+	// The actual error occurs when the file is missing and explicit verification is performed
 
-	// 존재하지 않는 디렉토리 사용하여 읽기 불가 상황 시뮬레이션
+	// Simulate an unreadable situation by using a non-existent directory
 	nonExistentDir := filepath.Join(stateDir, "nonexistent_mx_state")
 	mgr := NewManager(nonExistentDir)
 
-	// 사이드카 파일이 없을 때 Resolve가 SidecarUnavailableError를 반환해야 함
-	// Resolve 구현이 사이드카 존재 여부를 명시적으로 확인해야 함
+	// When the sidecar file is absent, Resolve must return SidecarUnavailableError
+	// The Resolve implementation must explicitly check for sidecar presence
 	resolver := NewResolver(mgr)
 	query := Query{Limit: DefaultLimit}
 
@@ -203,16 +203,16 @@ func TestResolve_SidecarUnavailable(t *testing.T) {
 	var sidecarErr *SidecarUnavailableError
 	errStr := err.Error()
 	if !strings.Contains(errStr, "SidecarUnavailable") {
-		// SidecarUnavailableError가 아닌 경우도 확인
+		// Also verify the case where it is not SidecarUnavailableError
 		_ = sidecarErr
 		t.Errorf("오류 메시지에 'SidecarUnavailable' 없음: %v", err)
 	}
 }
 
-// TestResolve_JSONSchema는 JSON 스키마 필드를 테스트합니다.
-// AC-SPC-004-05: JSON 출력이 REQ-SPC-004-005 스키마를 준수해야 함
+// TestResolve_JSONSchema tests the JSON schema fields.
+// AC-SPC-004-05: the JSON output must conform to the REQ-SPC-004-005 schema.
 func TestResolve_JSONSchema(t *testing.T) {
-	// AC-SPC-004-05: JSON 스키마 검증
+	// AC-SPC-004-05: JSON schema verification
 	stateDir := t.TempDir()
 
 	anchor := makeAnchorTag("internal/auth.go", "anchor-test", "테스트 앵커", 10)
@@ -231,7 +231,7 @@ func TestResolve_JSONSchema(t *testing.T) {
 		t.Fatal("결과 태그 없음")
 	}
 
-	// JSON 직렬화 및 역직렬화 검증
+	// JSON marshalling and unmarshalling verification
 	data, err := json.Marshal(result.Tags[0])
 	if err != nil {
 		t.Fatalf("JSON 직렬화 실패: %v", err)
@@ -242,7 +242,7 @@ func TestResolve_JSONSchema(t *testing.T) {
 		t.Fatalf("JSON 역직렬화 실패: %v", err)
 	}
 
-	// REQ-SPC-004-005 필수 필드 확인
+	// REQ-SPC-004-005 required fields check
 	requiredFields := []string{"kind", "file", "line", "body", "created_by", "last_seen_at", "spec_associations"}
 	for _, field := range requiredFields {
 		if _, ok := decoded[field]; !ok {
@@ -251,13 +251,13 @@ func TestResolve_JSONSchema(t *testing.T) {
 	}
 }
 
-// TestResolve_Pagination은 페이지네이션을 테스트합니다.
-// AC-SPC-004-08: 10000개 태그에서 limit 100 적용 및 TruncationNotice
+// TestResolve_Pagination tests pagination.
+// AC-SPC-004-08: with 10000 tags, apply limit 100 and emit TruncationNotice.
 func TestResolve_Pagination(t *testing.T) {
-	// AC-SPC-004-08: 페이지네이션 및 TruncationNotice
+	// AC-SPC-004-08: pagination and TruncationNotice
 	stateDir := t.TempDir()
 
-	// 200개 태그 생성 (DefaultLimit보다 많음)
+	// Generate 200 tags (more than DefaultLimit)
 	tags := make([]Tag, 200)
 	for i := range tags {
 		tags[i] = makeTag(MXNote, "internal/file.go", "노트 태그", i+1)
@@ -266,8 +266,8 @@ func TestResolve_Pagination(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, tags)
 	resolver := NewResolver(mgr)
 
-	// limit 명시하지 않음 → DefaultLimit(100) 적용 기대
-	query := Query{Limit: 0} // 0이면 기본값 적용
+	// limit not specified -> DefaultLimit(100) is expected to apply
+	query := Query{Limit: 0} // 0 means default applies
 	result, err := resolver.Resolve(query)
 	if err != nil {
 		t.Fatalf("예기치 않은 오류: %v", err)
@@ -282,10 +282,10 @@ func TestResolve_Pagination(t *testing.T) {
 	}
 }
 
-// TestResolve_TextualFallbackAnnotation은 LSP 없을 때 textual 폴백 어노테이션을 테스트합니다.
-// AC-SPC-004-07: LSP 없는 Python 파일에서 fan_in_method: "textual" 어노테이션
+// TestResolve_TextualFallbackAnnotation tests the textual fallback annotation when LSP is unavailable.
+// AC-SPC-004-07: fan_in_method "textual" annotation on Python files without LSP.
 func TestResolve_TextualFallbackAnnotation(t *testing.T) {
-	// AC-SPC-004-07: textual 폴백 시 fan_in_method 어노테이션
+	// AC-SPC-004-07: fan_in_method annotation on textual fallback
 	stateDir := t.TempDir()
 
 	anchor := makeAnchorTag("internal/py/worker.py", "anchor-py-worker", "파이썬 워커", 5)
@@ -311,10 +311,10 @@ func TestResolve_TextualFallbackAnnotation(t *testing.T) {
 	}
 }
 
-// TestResolve_StrictMode는 MOAI_MX_QUERY_STRICT=1일 때 LSP 요구를 테스트합니다.
-// AC-SPC-004-09: strict 모드에서 LSP 없으면 LSPRequired 오류
+// TestResolve_StrictMode tests the LSP requirement when MOAI_MX_QUERY_STRICT=1.
+// AC-SPC-004-09: in strict mode, LSPRequired error is returned when LSP is unavailable.
 func TestResolve_StrictMode(t *testing.T) {
-	// AC-SPC-004-09: strict 모드 테스트
+	// AC-SPC-004-09: strict mode test
 	t.Setenv("MOAI_MX_QUERY_STRICT", "1")
 
 	stateDir := t.TempDir()
@@ -339,17 +339,17 @@ func TestResolve_StrictMode(t *testing.T) {
 	}
 }
 
-// TestResolve_TestFixtureExclusion은 테스트 픽스처 참조 제외를 테스트합니다.
-// AC-SPC-004-11: include-tests 없을 때 테스트 파일 참조 제외
+// TestResolve_TestFixtureExclusion tests exclusion of test fixture references.
+// AC-SPC-004-11: when include-tests is unset, test file references are excluded.
 func TestResolve_TestFixtureExclusion(t *testing.T) {
-	// AC-SPC-004-11: 테스트 파일 참조 제외
+	// AC-SPC-004-11: test file reference exclusion
 	stateDir := t.TempDir()
 
 	anchor := makeAnchorTag("tests/fixtures/mock_handler_test.go", "anchor-mock-handler", "핸들러 목", 1)
 	mgr := buildTestSidecar(t, stateDir, []Tag{anchor})
 	resolver := NewResolver(mgr)
 
-	// include-tests=false (기본값)
+	// include-tests=false (default)
 	query := Query{
 		Kind:         MXAnchor,
 		FanInMin:     1,
@@ -362,22 +362,22 @@ func TestResolve_TestFixtureExclusion(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// 테스트 픽스처 파일의 fan-in에서 테스트 참조가 제외되어야 함
-	// (실제 fan-in 값이 테스트 참조를 포함하지 않음)
-	_ = result // GREEN 단계에서 구체적인 검증 추가
+	// Test references in test fixture files must be excluded from fan-in
+	// (the actual fan-in value must not include test references)
+	_ = result // Add concrete verification in the GREEN phase
 }
 
-// TestResolve_EmptyResult는 매칭 없을 때 빈 배열과 exit 0을 테스트합니다.
-// AC-SPC-004-12: 매칭 없을 때 [] 반환 및 exit 0
+// TestResolve_EmptyResult tests that an empty array and exit 0 are returned when no matches exist.
+// AC-SPC-004-12: returns [] and exit 0 when there are no matches.
 func TestResolve_EmptyResult(t *testing.T) {
-	// AC-SPC-004-12: 빈 결과 처리
+	// AC-SPC-004-12: empty result handling
 	stateDir := t.TempDir()
 
 	note := makeTag(MXNote, "internal/misc.go", "노트 태그", 1)
 	mgr := buildTestSidecar(t, stateDir, []Tag{note})
 	resolver := NewResolver(mgr)
 
-	// ANCHOR 필터 → NOTE만 있으므로 0개 결과
+	// ANCHOR filter -> only NOTE exists, so 0 results
 	query := Query{
 		Kind:  MXAnchor,
 		Limit: DefaultLimit,
@@ -397,17 +397,17 @@ func TestResolve_EmptyResult(t *testing.T) {
 	}
 }
 
-// TestResolve_CombinedFilters는 여러 필터의 AND 조합을 테스트합니다.
-// AC-SPC-004-14: --spec X --kind anchor --fan-in-min 3 조합 필터
+// TestResolve_CombinedFilters tests the AND combination of multiple filters.
+// AC-SPC-004-14: combined filter --spec X --kind anchor --fan-in-min 3.
 func TestResolve_CombinedFilters(t *testing.T) {
-	// AC-SPC-004-14: 복합 AND 필터
+	// AC-SPC-004-14: composite AND filter
 	stateDir := t.TempDir()
 
-	// SPEC-X-001에 속하는 높은 fan-in ANCHOR
+	// High fan-in ANCHOR belonging to SPEC-X-001
 	highFanInAnchor := makeAnchorTag("internal/auth/handler.go", "anchor-high", "고fan-in ANCHOR for SPEC-X-001", 10)
-	// SPEC-X-001에 속하는 낮은 fan-in ANCHOR
+	// Low fan-in ANCHOR belonging to SPEC-X-001
 	lowFanInAnchor := makeAnchorTag("internal/auth/util.go", "anchor-low", "저fan-in ANCHOR for SPEC-X-001", 20)
-	// SPEC-Y-002에 속하는 높은 fan-in ANCHOR
+	// High fan-in ANCHOR belonging to SPEC-Y-002
 	otherSpecAnchor := makeAnchorTag("internal/cache/store.go", "anchor-other", "고fan-in ANCHOR for SPEC-Y-002", 5)
 
 	mgr := buildTestSidecar(t, stateDir, []Tag{highFanInAnchor, lowFanInAnchor, otherSpecAnchor})
@@ -425,7 +425,7 @@ func TestResolve_CombinedFilters(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// 세 조건을 모두 만족하는 태그만 반환되어야 함
+	// Only tags satisfying all three conditions must be returned
 	for _, tag := range result.Tags {
 		if tag.Kind != MXAnchor {
 			t.Errorf("KIND 조건 미충족: %s", tag.Kind)
@@ -446,10 +446,10 @@ func TestResolve_CombinedFilters(t *testing.T) {
 	}
 }
 
-// TestResolve_SpecAssociationFromBody는 태그 본문에서 SPEC ID 추출을 테스트합니다.
-// AC-SPC-004-15: @MX body "ANCHOR for SPEC-AUTH-001 handler" → spec_associations에 SPEC-AUTH-001
+// TestResolve_SpecAssociationFromBody tests SPEC ID extraction from the tag body.
+// AC-SPC-004-15: @MX body "ANCHOR for SPEC-AUTH-001 handler" -> spec_associations contains SPEC-AUTH-001.
 func TestResolve_SpecAssociationFromBody(t *testing.T) {
-	// AC-SPC-004-15: 태그 본문 SPEC ID 추출
+	// AC-SPC-004-15: SPEC ID extraction from tag body
 	stateDir := t.TempDir()
 
 	anchor := makeAnchorTag("internal/auth/handler.go", "anchor-auth-handler", "ANCHOR for SPEC-AUTH-001 handler", 10)
@@ -482,10 +482,10 @@ func TestResolve_SpecAssociationFromBody(t *testing.T) {
 	}
 }
 
-// TestResolve_MarkdownFormat는 마크다운 출력 형식을 테스트합니다.
-// AC-SPC-004-10: --format markdown 마크다운 테이블 출력
+// TestResolve_MarkdownFormat tests the markdown output format.
+// AC-SPC-004-10: --format markdown emits a markdown table.
 func TestResolve_MarkdownFormat(t *testing.T) {
-	// AC-SPC-004-10: 마크다운 출력 형식 확인
+	// AC-SPC-004-10: markdown output format verification
 	stateDir := t.TempDir()
 	note := makeTag(MXNote, "internal/misc.go", "노트 태그", 1)
 	mgr := buildTestSidecar(t, stateDir, []Tag{note})
@@ -497,17 +497,17 @@ func TestResolve_MarkdownFormat(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// FormatMarkdown 함수가 있어야 함
+	// The FormatMarkdown function must exist
 	md := FormatMarkdown(result)
 	if !strings.Contains(md, "|") {
 		t.Error("마크다운 테이블 형식 (|) 없음")
 	}
 }
 
-// TestResolve_TableFormat는 테이블 출력 형식을 테스트합니다.
-// AC-SPC-004-06: --format table 사람이 읽을 수 있는 컬럼 형식 출력
+// TestResolve_TableFormat tests the table output format.
+// AC-SPC-004-06: --format table emits human-readable column format.
 func TestResolve_TableFormat(t *testing.T) {
-	// AC-SPC-004-06: 테이블 출력 형식 확인
+	// AC-SPC-004-06: table output format verification
 	stateDir := t.TempDir()
 	note := makeTag(MXNote, "internal/misc.go", "노트 태그", 1)
 	mgr := buildTestSidecar(t, stateDir, []Tag{note})
@@ -519,14 +519,14 @@ func TestResolve_TableFormat(t *testing.T) {
 		t.Fatalf("예기치 않은 오류: %v", err)
 	}
 
-	// FormatTable 함수가 있어야 함
+	// The FormatTable function must exist
 	table := FormatTable(result)
 	if table == "" {
 		t.Error("테이블 출력이 비어있음")
 	}
 }
 
-// TestExtractSpecIDs는 태그 본문에서 SPEC ID 추출을 단위 테스트합니다.
+// TestExtractSpecIDs unit-tests SPEC ID extraction from the tag body.
 func TestExtractSpecIDs(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -575,7 +575,7 @@ func TestExtractSpecIDs(t *testing.T) {
 	}
 }
 
-// TestFormatMarkdown_TableStructure는 마크다운 출력이 테이블 구조를 갖는지 확인합니다.
+// TestFormatMarkdown_TableStructure verifies that the markdown output has a table structure.
 func TestFormatMarkdown_TableStructure(t *testing.T) {
 	result := QueryResult{
 		Tags: []TagResult{
@@ -598,7 +598,7 @@ func TestFormatMarkdown_TableStructure(t *testing.T) {
 
 	md := FormatMarkdown(result)
 
-	// 마크다운 테이블 헤더 확인
+	// Verify markdown table header
 	if !strings.Contains(md, "Kind") {
 		t.Error("마크다운 헤더에 'Kind' 없음")
 	}
@@ -607,7 +607,7 @@ func TestFormatMarkdown_TableStructure(t *testing.T) {
 	}
 }
 
-// TestFormatJSON은 JSON 출력이 올바른 형식인지 확인합니다.
+// TestFormatJSON verifies that the JSON output is in the correct format.
 func TestFormatJSON(t *testing.T) {
 	result := QueryResult{
 		Tags: []TagResult{
@@ -638,15 +638,15 @@ func TestFormatJSON(t *testing.T) {
 	}
 }
 
-// FormatMarkdown 및 FormatTable은 resolver_query.go에 구현되어 있습니다.
+// FormatMarkdown and FormatTable are implemented in resolver_query.go.
 
-// TestResolve_LargeSidecarTruncation은 대규모 사이드카에서 자동 limit 적용을 테스트합니다.
-// AC-SPC-004-08의 추가 검증
+// TestResolve_LargeSidecarTruncation tests automatic limit enforcement on a large sidecar.
+// Additional verification for AC-SPC-004-08.
 func TestResolve_LargeSidecarTruncation(t *testing.T) {
 	stateDir := t.TempDir()
 
-	// 10000개 이상 태그 (성능 테스트는 아님, 동작 테스트)
-	// 실제 10000개는 시간이 걸리므로 200개로 테스트
+	// More than 10000 tags (not a performance test, just a behavior test)
+	// Actually creating 10000 takes time, so we test with 200
 	tags := make([]Tag, 200)
 	for i := range tags {
 		tags[i] = makeTag(MXNote, "internal/file.go", "노트", i+1)
@@ -655,7 +655,7 @@ func TestResolve_LargeSidecarTruncation(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, tags)
 	resolver := NewResolver(mgr)
 
-	// Limit=0이면 DefaultLimit 적용
+	// When Limit=0, DefaultLimit applies
 	query := Query{Limit: 0}
 	result, err := resolver.Resolve(query)
 	if err != nil {
@@ -671,8 +671,8 @@ func TestResolve_LargeSidecarTruncation(t *testing.T) {
 	}
 }
 
-// TestValidateQuery_UnknownDanger_InvalidQueryError는 알 수 없는 danger 카테고리에 대해
-// validateQuery가 InvalidQueryError를 반환하는지 테스트합니다.
+// TestValidateQuery_UnknownDanger_InvalidQueryError verifies that validateQuery returns
+// InvalidQueryError for an unknown danger category.
 // SPEC-V3R2-SPC-004 M2 RED — T-SPC004-06 / AC-SPC-004-13
 func TestValidateQuery_UnknownDanger_InvalidQueryError(t *testing.T) {
 	query := Query{Danger: "frobnicate"}
@@ -683,7 +683,7 @@ func TestValidateQuery_UnknownDanger_InvalidQueryError(t *testing.T) {
 	}
 
 	var iqErr *InvalidQueryError
-	// errors.As로 타입 검증
+	// Type check via errors.As
 	if !errors.As(err, &iqErr) {
 		t.Fatalf("*InvalidQueryError 기대, 실제: %T (%v)", err, err)
 	}
@@ -697,15 +697,15 @@ func TestValidateQuery_UnknownDanger_InvalidQueryError(t *testing.T) {
 	}
 }
 
-// TestResolve_InvalidKind는 잘못된 kind 값에 대한 오류를 테스트합니다.
-// AC-SPC-004-13: --kind nonexistent → exit 2 + InvalidQuery 오류
+// TestResolve_InvalidKind tests the error for an invalid kind value.
+// AC-SPC-004-13: --kind nonexistent -> exit 2 + InvalidQuery error.
 func TestResolve_InvalidKind(t *testing.T) {
-	// AC-SPC-004-13: 잘못된 필터 값 처리
+	// AC-SPC-004-13: invalid filter value handling
 	stateDir := t.TempDir()
 	mgr := buildTestSidecar(t, stateDir, []Tag{})
 	resolver := NewResolver(mgr)
 
-	// 잘못된 kind 값
+	// Invalid kind value
 	query := Query{
 		Kind:  TagKind("nonexistent"),
 		Limit: DefaultLimit,
@@ -722,11 +722,11 @@ func TestResolve_InvalidKind(t *testing.T) {
 	}
 }
 
-// TestResolve_FilePrefix는 파일 경로 접두사 필터를 테스트합니다.
+// TestResolve_FilePrefix tests the file path prefix filter.
 func TestResolve_FilePrefix(t *testing.T) {
 	stateDir := t.TempDir()
 
-	// 다양한 경로의 태그들
+	// Tags with various paths
 	tags := []Tag{
 		makeTag(MXNote, "internal/auth/handler.go", "인증 핸들러", 1),
 		makeTag(MXNote, "internal/cache/store.go", "캐시 저장소", 1),
@@ -753,11 +753,11 @@ func TestResolve_FilePrefix(t *testing.T) {
 	}
 }
 
-// TestResolve_OffsetPagination은 offset 기반 페이지네이션을 테스트합니다.
+// TestResolve_OffsetPagination tests offset-based pagination.
 func TestResolve_OffsetPagination(t *testing.T) {
 	stateDir := t.TempDir()
 
-	// 10개 태그 생성
+	// Generate 10 tags
 	tags := make([]Tag, 10)
 	for i := range tags {
 		tags[i] = makeTag(MXNote, "internal/file.go", "노트", i+1)
@@ -766,28 +766,28 @@ func TestResolve_OffsetPagination(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, tags)
 	resolver := NewResolver(mgr)
 
-	// 첫 페이지
+	// First page
 	q1 := Query{Limit: 5, Offset: 0}
 	r1, err := resolver.Resolve(q1)
 	if err != nil {
 		t.Fatalf("첫 페이지 오류: %v", err)
 	}
 
-	// 두 번째 페이지
+	// Second page
 	q2 := Query{Limit: 5, Offset: 5}
 	r2, err := resolver.Resolve(q2)
 	if err != nil {
 		t.Fatalf("두 번째 페이지 오류: %v", err)
 	}
 
-	// 두 페이지 합산이 전체 태그 수와 같아야 함
+	// The sum of the two pages must equal the total tag count
 	if len(r1.Tags)+len(r2.Tags) != 10 {
 		t.Errorf("페이지네이션 합산: 기대 10, 실제 %d+%d=%d",
 			len(r1.Tags), len(r2.Tags), len(r1.Tags)+len(r2.Tags))
 	}
 }
 
-// TestResolveAnchor는 기존 ResolveAnchor(anchorID) API가 동작하는지 확인합니다.
+// TestResolveAnchor verifies that the existing ResolveAnchor(anchorID) API works.
 func TestResolveAnchor(t *testing.T) {
 	stateDir := t.TempDir()
 
@@ -805,12 +805,12 @@ func TestResolveAnchor(t *testing.T) {
 	}
 }
 
-// TestResolve_SinceFilter는 since 시간 필터를 테스트합니다.
+// TestResolve_SinceFilter tests the since-time filter.
 func TestResolve_SinceFilter(t *testing.T) {
 	stateDir := t.TempDir()
 
 	now := time.Now()
-	old := now.Add(-48 * time.Hour) // 2일 전
+	old := now.Add(-48 * time.Hour) // 2 days ago
 
 	oldTag := makeTag(MXNote, "internal/old.go", "오래된 태그", 1)
 	oldTag.LastSeenAt = old
@@ -821,7 +821,7 @@ func TestResolve_SinceFilter(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, []Tag{oldTag, newTag})
 	resolver := NewResolver(mgr)
 
-	// 1일 전 이후의 태그만
+	// Only tags from 1 day ago onwards
 	query := Query{
 		Since: now.Add(-24 * time.Hour),
 		Limit: DefaultLimit,
@@ -837,7 +837,7 @@ func TestResolve_SinceFilter(t *testing.T) {
 	}
 }
 
-// TestResolveLimit_MaxEnforcement는 limit 최대값 강제를 테스트합니다.
+// TestResolveLimit_MaxEnforcement tests enforcement of the limit maximum.
 func TestResolveLimit_MaxEnforcement(t *testing.T) {
 	stateDir := t.TempDir()
 	tags := make([]Tag, 5)
@@ -847,19 +847,19 @@ func TestResolveLimit_MaxEnforcement(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, tags)
 	resolver := NewResolver(mgr)
 
-	// MaxLimit 초과 시 MaxLimit으로 클리핑
+	// Clip to MaxLimit when MaxLimit is exceeded
 	q := Query{Limit: MaxLimit + 1}
 	result, err := resolver.Resolve(q)
 	if err != nil {
 		t.Fatalf("오류: %v", err)
 	}
-	// 태그가 5개뿐이므로 5개 반환
+	// Only 5 tags exist, so 5 are returned
 	if len(result.Tags) > 5 {
 		t.Errorf("태그 수 초과: %d", len(result.Tags))
 	}
 }
 
-// TestResolveLimit_Normalization은 resolveLimit 함수를 테스트합니다.
+// TestResolveLimit_Normalization tests the resolveLimit function.
 func TestResolveLimit_Normalization(t *testing.T) {
 	if resolveLimit(0) != DefaultLimit {
 		t.Errorf("0 → DefaultLimit 기대")
@@ -875,7 +875,7 @@ func TestResolveLimit_Normalization(t *testing.T) {
 	}
 }
 
-// TestSidecarUnavailableError는 오류 메시지를 테스트합니다.
+// TestSidecarUnavailableError tests the error message.
 func TestSidecarUnavailableError(t *testing.T) {
 	e := &SidecarUnavailableError{}
 	if e.Error() == "" {
@@ -892,7 +892,7 @@ func TestSidecarUnavailableError(t *testing.T) {
 	}
 }
 
-// TestInvalidQueryError는 InvalidQueryError 메시지를 테스트합니다.
+// TestInvalidQueryError tests the InvalidQueryError message.
 func TestInvalidQueryError(t *testing.T) {
 	e := &InvalidQueryError{Field: "kind", Value: "bad", Message: "test message"}
 	if !strings.Contains(e.Error(), "InvalidQuery") {
@@ -900,7 +900,7 @@ func TestInvalidQueryError(t *testing.T) {
 	}
 }
 
-// TestLSPRequiredError는 LSPRequiredError 메시지를 테스트합니다.
+// TestLSPRequiredError tests the LSPRequiredError message.
 func TestLSPRequiredError(t *testing.T) {
 	e := &LSPRequiredError{Language: "go"}
 	if !strings.Contains(e.Error(), "LSPRequired") {
@@ -908,7 +908,7 @@ func TestLSPRequiredError(t *testing.T) {
 	}
 }
 
-// TestFormatTable_Empty는 빈 결과 테이블 출력을 테스트합니다.
+// TestFormatTable_Empty tests the empty-result table output.
 func TestFormatTable_Empty(t *testing.T) {
 	result := QueryResult{Tags: []TagResult{}, TotalCount: 0}
 	table := FormatTable(result)
@@ -917,7 +917,7 @@ func TestFormatTable_Empty(t *testing.T) {
 	}
 }
 
-// TestFormatMarkdown_WithTruncation은 TruncationNotice가 있는 마크다운 출력을 테스트합니다.
+// TestFormatMarkdown_WithTruncation tests the markdown output with TruncationNotice.
 func TestFormatMarkdown_WithTruncation(t *testing.T) {
 	result := QueryResult{
 		Tags:             []TagResult{},
@@ -930,15 +930,15 @@ func TestFormatMarkdown_WithTruncation(t *testing.T) {
 	}
 }
 
-// TestTruncateStr는 문자열 잘라내기를 테스트합니다.
+// TestTruncateStr tests string truncation.
 func TestTruncateStr(t *testing.T) {
-	// 짧은 문자열: 변경 없음
+	// Short string: unchanged
 	got := truncateStr("short", 20)
 	if got != "short" {
 		t.Errorf("기대 'short', 실제 %q", got)
 	}
 
-	// 긴 문자열: 잘라내기
+	// Long string: truncate
 	long := "abcdefghijklmnopqrstuvwxyz"
 	got = truncateStr(long, 10)
 	if len(got) > 10 {
@@ -949,7 +949,7 @@ func TestTruncateStr(t *testing.T) {
 	}
 }
 
-// TestResolve_ResolveAll은 기존 ResolveAll API를 테스트합니다.
+// TestResolve_ResolveAll tests the existing ResolveAll API.
 func TestResolve_ResolveAll(t *testing.T) {
 	stateDir := t.TempDir()
 	anchor1 := makeAnchorTag("pkg/a.go", "anchor-1", "앵커 1", 1)
@@ -957,7 +957,7 @@ func TestResolve_ResolveAll(t *testing.T) {
 	mgr := buildTestSidecar(t, stateDir, []Tag{anchor1, anchor2})
 	resolver := NewResolver(mgr)
 
-	// 두 anchorID 모두 존재
+	// Both anchorIDs exist
 	tags, err := resolver.ResolveAll([]string{"anchor-1", "anchor-2"})
 	if err != nil {
 		t.Fatalf("ResolveAll 오류: %v", err)
@@ -966,14 +966,14 @@ func TestResolve_ResolveAll(t *testing.T) {
 		t.Errorf("ResolveAll 결과: 기대 2, 실제 %d", len(tags))
 	}
 
-	// 존재하지 않는 anchorID 포함
+	// Include a non-existent anchorID
 	_, err = resolver.ResolveAll([]string{"anchor-1", "nonexistent"})
 	if err == nil {
 		t.Error("존재하지 않는 anchorID 포함 시 오류 기대")
 	}
 }
 
-// TestResolve_ListAnchors는 모든 ANCHOR 태그 나열을 테스트합니다.
+// TestResolve_ListAnchors tests listing all ANCHOR tags.
 func TestResolve_ListAnchors(t *testing.T) {
 	stateDir := t.TempDir()
 	tags := []Tag{
@@ -989,13 +989,13 @@ func TestResolve_ListAnchors(t *testing.T) {
 		t.Errorf("ListAnchors: 기대 2, 실제 %d", len(anchors))
 	}
 
-	// 파일 경로 순 정렬 확인
+	// Verify ascending sort by file path
 	if len(anchors) == 2 && anchors[0].File > anchors[1].File {
 		t.Error("파일 경로 오름차순 정렬 기대")
 	}
 }
 
-// TestResolve_AuditLowFanIn는 낮은 fan-in ANCHOR 목록을 테스트합니다.
+// TestResolve_AuditLowFanIn tests the list of low fan-in ANCHORs.
 func TestResolve_AuditLowFanIn(t *testing.T) {
 	stateDir := t.TempDir()
 	tags := []Tag{
@@ -1010,12 +1010,12 @@ func TestResolve_AuditLowFanIn(t *testing.T) {
 	}
 }
 
-// BenchmarkResolve는 Resolve 성능을 측정합니다 (SPEC §7: 1000개 태그 < 100ms).
+// BenchmarkResolve measures Resolve performance (SPEC §7: 1000 tags in <100ms).
 func BenchmarkResolve(b *testing.B) {
 	stateDir, _ := os.MkdirTemp("", "mx-bench-*")
 	defer func() { _ = os.RemoveAll(stateDir) }()
 
-	// 1000개 태그 준비
+	// Prepare 1000 tags
 	tags := make([]Tag, 1000)
 	for i := range tags {
 		tags[i] = makeTag(MXNote, "internal/file.go", "노트", i+1)
