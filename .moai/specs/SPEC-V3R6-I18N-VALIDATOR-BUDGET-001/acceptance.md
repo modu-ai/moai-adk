@@ -2,7 +2,7 @@
 id: SPEC-V3R6-I18N-VALIDATOR-BUDGET-001
 title: "i18n-validator TestBudget Threshold 30s → 35s — acceptance"
 version: "1.0.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec

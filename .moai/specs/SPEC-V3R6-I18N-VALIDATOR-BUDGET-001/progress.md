@@ -2,7 +2,7 @@
 id: SPEC-V3R6-I18N-VALIDATOR-BUDGET-001
 title: "i18n-validator TestBudget Threshold 30s → 35s — progress"
 version: "1.0.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
@@ -47,9 +47,9 @@ tier: S
 
 | Item | Status | Note |
 |------|--------|------|
-| CHANGELOG `[Unreleased]` `### Changed` entry | TBD | single-line SPEC ID + brief per Tier S minimal |
-| B12 standing-rule guard self-test | TBD | 7th consecutive PASS expected |
-| Frontmatter status draft → completed | TBD | all 4 artifacts (spec/plan/acceptance/progress) |
+| CHANGELOG `[Unreleased]` `### Changed` entry | DONE | Added single-entry under LCL-003: SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 + 4 line edits at 359/360/376/377 + elapsed 3.01s, 5/5 ACs PASS, B12 7th self-test PASS summary |
+| B12 standing-rule guard self-test | PASS | (a) Read impl file verified 4 edits exact: L359 JP comment "35秒以内", L360 func name, L376 condition `35*time.Second`, L377 error text "35s" / (b) acceptance.md SSOT AC count = 5 (AC-IVB-001..005) / (c) pre-emission CHANGELOG grep = 1 (LCL-001 forward-ref baseline), post-emission = 2 (new entry added) |
+| Frontmatter status draft → implemented | DONE | All 4 artifacts updated (spec.md L5, plan.md L5, acceptance.md L5, progress.md L5) |
 
 ## Mx-phase Evidence
 
