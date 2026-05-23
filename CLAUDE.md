@@ -333,7 +333,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 - **Language rules**: Path-specific rules for 16 programming languages
 - **Design rules**: Design system constitution (.claude/rules/moai/design/constitution.md)
 
-### Design System Configuration (absorbed from agency, SPEC-AGENCY-ABSORB-001)
+### Design System Configuration (absorbed from the retired v2.x design domain — see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md))
 
 - `.moai/config/sections/design.yaml`: Design pipeline settings, GAN loop parameters, sprint contract, evolution thresholds
 - `.moai/project/brand/`: Brand voice (brand-voice.md), visual identity (visual-identity.md), target audience (target-audience.md)
@@ -342,7 +342,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 - `.moai/config/sections/harness.yaml`: Quality depth routing (minimal/standard/thorough)
 - `.moai/config/evaluator-profiles/`: Evaluator scoring profiles (default, strict, lenient, frontend)
 
-Legacy .agency/ directories are archived via `moai migrate agency` command.
+Legacy v2.x data directories are archived via the `moai migrate agency` command (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)).
 
 ### Language Rules
 

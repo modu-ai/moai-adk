@@ -61,14 +61,14 @@ MoAI-ADK v2.17.0 (V3R3 Phase C)은 프로젝트별 맞춤 AI 에이전트 생성
 
 **디자인 시스템 흡수 (SPEC-AGENCY-ABSORB-001)**
 
-기존 `/agency` 명령어가 `/moai design`에 완전히 통합되었습니다. 기존 `/agency/` 프로젝트는 다음으로 자동 마이그레이션됩니다:
+레거시 v2.x `/agency` 명령어가 `/moai design`에 완전히 통합되었습니다. 레거시 v2.x 프로젝트는 다음으로 자동 마이그레이션됩니다:
 
 ```bash
 moai migrate agency
 ```
 
 이점:
-- 이중 `/moai` + `/agency` 명령어 대신 단일 통합 디자인 워크플로우
+- 이중 `/moai` + 레거시 명령어 대신 단일 통합 디자인 워크플로우
 - MoAI 코어와의 개선된 통합 (브랜드 컨텍스트, 품질 게이트, SPEC 기반 워크플로우)
 - 향상된 문서 [adk.mo.ai.kr](https://adk.mo.ai.kr) (한국어)
 
@@ -361,7 +361,7 @@ graph LR
 | **Tool** | 2 | ast-grep, svg |
 | **Design** | 2 | design-tools, design-craft |
 | **Framework** | 1 | electron |
-| **Agency** | 5 | agency, client-interview, copywriting, design-system, frontend-patterns |
+| **Legacy v2.x (retired)** | 5 | client-interview, copywriting, design-system, frontend-patterns (absorbed — see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) |
 | **Docs** | 1 | docs-generation |
 | **Language Rules** | 16 | Go, Python, TypeScript, Rust, Java... (path-based rules, not skills) |
 
@@ -1136,7 +1136,7 @@ flowchart LR
 /moai design build BRIEF-001                       # 기존 BRIEF에서 전체 파이프라인 실행
 /moai design import /path/to/design.zip            # Claude Design 핸드오프 번들 import (Path A)
 
-# 기존 /agency 명령어 (deprecated, /moai design으로 리다이렉트)
+# 레거시 v2.x 명령어 (deprecated, /moai design으로 리다이렉트 — SPEC-AGENCY-ABSORB-001 참조)
 /agency "..."                                      # /moai design으로 리다이렉트 + 사용중단 경고
 /agency brief "..."                                # 지원 안 함; /moai design brief 사용 권장
 ```
@@ -1152,15 +1152,15 @@ flowchart LR
 | 테스팅 | Vitest + Playwright | `.moai/config/sections/design.yaml` |
 | 호스팅 | Vercel | `.moai/project/tech.md` |
 
-### /agency 에서의 마이그레이션
+### 레거시 v2.x 디자인 도메인에서의 마이그레이션
 
-`/agency`를 사용 중인 기존 프로젝트는 다음 명령어로 `/moai design`으로 마이그레이션할 수 있습니다:
+레거시 v2.x `/agency`를 사용 중인 기존 프로젝트는 다음 명령어로 `/moai design`으로 마이그레이션할 수 있습니다 (자세한 내용은 [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)):
 
 ```bash
 moai migrate agency
 ```
 
-이 명령어는 `.agency/` 데이터를 `.moai/project/brand/`와 `.moai/config/sections/design.yaml`로 안전하게 이동합니다. 원본 데이터는 복구를 위해 `.agency.archived/`로 보관됩니다.
+이 명령어는 레거시 v2.x 데이터를 `.moai/project/brand/`와 `.moai/config/sections/design.yaml`로 안전하게 이동합니다. 원본 데이터는 복구를 위해 `.agency.archived/`로 보관됩니다.
 
 > [Design System 문서](https://adk.mo.ai.kr)
 

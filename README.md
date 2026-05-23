@@ -1090,7 +1090,7 @@ flowchart LR
 /moai design build BRIEF-001                       # Run full pipeline from existing BRIEF
 /moai design import /path/to/design.zip            # Import Claude Design handoff bundle (Path A)
 
-# Legacy Agency commands (deprecated, redirects to /moai design)
+# Legacy v2.x commands (deprecated, redirects to /moai design — see SPEC-AGENCY-ABSORB-001)
 /agency "..."                                      # Redirects to /moai design with deprecation warning
 /agency brief "..."                                # Not supported; use /moai design brief
 ```
@@ -1106,14 +1106,14 @@ flowchart LR
 | Testing | Vitest + Playwright | `.moai/config/sections/design.yaml` |
 | Hosting | Vercel | `.moai/project/tech.md` |
 
-### Migration from /agency
+### Migration from legacy v2.x
 
-Existing projects using `/agency` can migrate to `/moai design` via:
+Existing projects using the v2.x `/agency` command can migrate to `/moai design` via:
 ```bash
 moai migrate agency
 ```
 
-This command safely moves `.agency/` data to `.moai/project/brand/` and `.moai/config/sections/design.yaml`. Data is preserved as `.agency.archived/` for recovery if needed.
+This command safely moves legacy `.agency/` data to `.moai/project/brand/` and `.moai/config/sections/design.yaml`. Data is preserved as `.agency.archived/` for recovery if needed. See [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md) for absorption history.
 
 > [Design System Documentation](https://adk.mo.ai.kr/design)
 
