@@ -21,8 +21,8 @@ tags: "cli, audit, research, sprint-2, sprint-7-baseline, progress"
 | Milestone | Status | Commit SHA | Files touched | AC link | Notes |
 |-----------|--------|-----------|---------------|---------|-------|
 | M1 — Subcommand Inventory | PASS | b5ea8d936 | audit-2026-05-23.md (NEW §1) + progress.md (NEW) | AC-CLA-001 | Cobra command tree walked from cmd/moai/main.go root → 113 total subcommands |
-| M2 — Dead-Command Classification | PASS | TBD | audit-2026-05-23.md (APPEND §2) + progress.md (UPDATE) | AC-CLA-002 | 116 classification rows (active/internal-only/dead-suspect). 10 dead-suspect candidates (Claude Code forward-compat hook events). harness-observe* preliminary suspect REFUTED (4 hooks reference). db-schema-sync confirmed internal-only per SPEC-DB-SYNC-001. |
-| M3 — Integration Map | TBD | TBD | audit-2026-05-23.md (APPEND §3) + progress.md (UPDATE) | AC-CLA-003 | TBD |
+| M2 — Dead-Command Classification | PASS | 2464ece58 | audit-2026-05-23.md (APPEND §2) + progress.md (UPDATE) | AC-CLA-002 | 116 classification rows (active/internal-only/dead-suspect). 10 dead-suspect candidates (Claude Code forward-compat hook events). harness-observe* preliminary suspect REFUTED (4 hooks reference). db-schema-sync confirmed internal-only per SPEC-DB-SYNC-001. |
+| M3 — Integration Map | PASS | TBD | audit-2026-05-23.md (APPEND §3) + progress.md (UPDATE) | AC-CLA-003 | §3.1 moai init flow + §3.2 moai update 10×10 flag matrix (11 awk-bounded rows) + §3.3 moai cc -p profile system + §3.4 cross-cutting concerns + §3.5 mermaid diagram (TD direction). Init/update/profile triad mapped, 4 integration gaps surfaced for Sprint 7. |
 | M4 — Sprint 7 Baseline + Methodology + Frontmatter Sync | TBD | TBD | audit-2026-05-23.md (APPEND §4 + §5) + 4 SPEC artifacts (frontmatter sync) + progress.md (UPDATE) | AC-CLA-004 + AC-CLA-005 + AC-CLA-006 | TBD |
 
 ## AC Verification Matrix (populated at M4)
