@@ -76,15 +76,17 @@ func IsObservabilityEnabled() bool {
 
 // loadObservabilityMaster does the actual file read. Separated for
 // testability via SetObservabilityMasterForTesting.
+//
+// Resolves project root via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR env
+// var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
+// (REQ-HCWA-006, REQ-HCWA-008). The .moai/ existence guard is NOT applied here
+// because the function reads from a path that may not include
+// observability.yaml (the file is the toggle target itself).
 func loadObservabilityMaster() bool {
-	root := os.Getenv("CLAUDE_PROJECT_DIR")
+	root := resolveProjectRootFromEnv("loadObservabilityMaster")
 	if root == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			slog.Debug("observability master: getwd failed", "error", err)
-			return false
-		}
-		root = cwd
+		// resolveProjectRootFromEnv already logged the failure.
+		return false
 	}
 	path := filepath.Join(root, ".moai", "config", "sections", "observability.yaml")
 	data, err := os.ReadFile(path)

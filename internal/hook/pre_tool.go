@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"golang.org/x/text/unicode/norm"
@@ -320,21 +319,19 @@ type preToolHandler struct {
 }
 
 // NewPreToolHandler creates a new PreToolUse event handler with the given security policy.
+// projectDir is resolved via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR env
+// var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
+// (REQ-HCWA-005, REQ-HCWA-008).
 func NewPreToolHandler(cfg ConfigProvider, policy *SecurityPolicy) Handler {
-	projectDir := os.Getenv(config.EnvClaudeProjectDir)
-	if projectDir == "" {
-		projectDir, _ = os.Getwd()
-	}
+	projectDir := resolveProjectRootFromEnv("NewPreToolHandler")
 	return &preToolHandler{cfg: cfg, policy: policy, projectDir: projectDir}
 }
 
 // NewPreToolHandlerWithScanner creates a PreToolUse handler with AST-based security scanning.
 // If scanner is nil or unavailable, falls back to pattern-based security only.
+// projectDir is resolved via resolveProjectRootFromEnv (REQ-HCWA-005, REQ-HCWA-008).
 func NewPreToolHandlerWithScanner(cfg ConfigProvider, policy *SecurityPolicy, scanner *security.SecurityScanner) Handler {
-	projectDir := os.Getenv(config.EnvClaudeProjectDir)
-	if projectDir == "" {
-		projectDir, _ = os.Getwd()
-	}
+	projectDir := resolveProjectRootFromEnv("NewPreToolHandlerWithScanner")
 
 	// Validate scanner availability
 	if scanner != nil && !scanner.IsAvailable() {
