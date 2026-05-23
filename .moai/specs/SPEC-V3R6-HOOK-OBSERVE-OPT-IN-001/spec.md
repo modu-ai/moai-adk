@@ -25,11 +25,11 @@ This section enumerates pre-existing infrastructure facts discovered during plan
 
 ### A.1 — Pre-existing infrastructure facts (5)
 
-1. **`.moai/config/sections/observability.yaml` exists with `observability.enabled: true`** (10 lines total). The `enabled:` key here is the master toggle for **trace-logging + hook_metrics** infrastructure (REQ-OBS-005 from a prior SPEC, inferred). The file also defines `hook_metrics.output_path`, `hook_metrics.slow_hook_threshold_ms`, `max_file_size_mb`, `report_dir`, `retention_days`, `trace_dir`. This file is NOT empty and NOT new — it has shipping semantics.
+1. **`.moai/config/sections/observability.yaml` exists with `observability.enabled: true`** (9 lines total). The `enabled:` key here is the master toggle for **trace-logging + hook_metrics** infrastructure (REQ-OBS-005 from a prior SPEC, inferred). The file also defines `hook_metrics.output_path`, `hook_metrics.slow_hook_threshold_ms`, `max_file_size_mb`, `report_dir`, `retention_days`, `trace_dir`. This file is NOT empty and NOT new — it has shipping semantics.
 
 2. **`.moai/config/sections/system.yaml` `hook.observability_events: []`** with explicit header comment `# Hook observability configuration (SPEC-V3R2-RT-006 REQ-004)`. The key is a per-event RETIRE-OBS-ONLY whitelist (default empty = all retired events silently no-op). Sibling key `hook.strict_mode: false` controls strict-mode behavior for retired events.
 
-3. **`internal/hook/observability.go`** (44 lines) implements `observabilityOptIn(cfg ConfigProvider, eventName string) bool` which reads `cfg.Get().System.Hook.ObservabilityEvents` (the per-event list from §A.1.2). Annotated `@MX:ANCHOR observabilityOptIn guards all RETIRE-OBS-ONLY handler entry paths` with `@MX:REASON: fan_in=4, called by notification/elicitation/elicitationResult/taskCreated handlers`. Pattern A semantics: callers MUST silently return `HookOutput{}` when this returns false.
+3. **`internal/hook/observability.go`** (44 lines) implements `observabilityOptIn(cfg ConfigProvider, eventName string) bool` which reads `cfg.Get().System.Hook.ObservabilityEvents` (the per-event list from §A.1.2). Annotated `@MX:ANCHOR: [AUTO] observabilityOptIn guards all RETIRE-OBS-ONLY handler entry paths` with `@MX:REASON: fan_in=4, called by notification/elicitation/elicitationResult/taskCreated handlers`. Pattern A semantics: callers MUST silently return `HookOutput{}` when this returns false.
 
 4. **`internal/hook/coverage_table.go`** declares `ResolutionRetireObsOnly` + `ObservabilityOptIn` cohort indexing fields for RT-006 (verified by orchestrator via grep; not re-read in full).
 
