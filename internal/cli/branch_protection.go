@@ -32,9 +32,14 @@ type GhClient interface {
 }
 
 // ttyConfirmer reads a y/n answer from the user's terminal.
+// @MX:NOTE: [AUTO] retained for interactive branch-protection prompt path.
+// Currently unwired (CLI path uses yesConfirmer + --yes-branch-protection flag);
+// kept for follow-up interactive prompt SPEC.
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (interactive prompt path)
 type ttyConfirmer struct{}
 
 // Confirm prompts the user on stderr and reads a single line from stdin.
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (paired with ttyConfirmer)
 func (t *ttyConfirmer) Confirm(prompt string) (bool, error) {
 	fmt.Printf("%s [y/N]: ", prompt)
 	var answer string

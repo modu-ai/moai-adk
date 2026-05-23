@@ -17,7 +17,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -32,10 +31,6 @@ const secretToken = "sk-glm-SENSITIVE-VALUE-1234567890abcdef"
 // tmux. The mock command recorder collects every argv slice; the secret
 // token must never appear in any of them.
 func TestInjectSensitiveEnvNoArgvLeak(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("tmux is not supported on Windows")
-	}
-
 	var calls [][]string
 	runner := func(_ context.Context, name string, args ...string) (string, error) {
 		calls = append(calls, append([]string{name}, args...))
@@ -77,10 +72,6 @@ func TestInjectSensitiveEnvNoArgvLeak(t *testing.T) {
 // After InjectSensitiveEnv returns, the temp script must be unlinked even on
 // the success path so the secret does not linger on disk.
 func TestInjectSensitiveEnvTempFileCleaned(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("tmux is not supported on Windows")
-	}
-
 	var sourcedPaths []string
 	runner := func(_ context.Context, name string, args ...string) (string, error) {
 		if name == "tmux" && len(args) >= 2 && args[0] == "source-file" {
@@ -111,10 +102,6 @@ func TestInjectSensitiveEnvTempFileCleaned(t *testing.T) {
 // ErrTmuxSensitiveInjectFailed — it must NEVER fall back to the
 // argv-exposing `set-environment` path.
 func TestInjectSensitiveEnvFailureNoArgvFallback(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("tmux is not supported on Windows")
-	}
-
 	// Force source-file to fail so the helper enters the error branch.
 	var calls [][]string
 	runner := func(_ context.Context, name string, args ...string) (string, error) {
@@ -159,10 +146,6 @@ func TestInjectSensitiveEnvFailureNoArgvFallback(t *testing.T) {
 // the temp script created in ~/.moai/run/ MUST have mode 0o600 (or stricter)
 // during its brief lifetime. Anything 0o644 leaks the secret to local users.
 func TestInjectSensitiveEnvTempFilePermissionRestrictive(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("POSIX permission test skipped on Windows")
-	}
-
 	// Capture the temp script path by hooking into `source-file` argv and
 	// asserting on the file BEFORE the helper unlinks it. We do this by
 	// inspecting the script during the runner callback itself.

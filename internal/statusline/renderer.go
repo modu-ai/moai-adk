@@ -142,6 +142,7 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 // L3: 5H: 🔋 ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%
 // L4: 7D: 🪫 ████████████████████████████████░░░░░░░░ 82%
 // L5: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (v3 statusline selector)
 func (r *Renderer) renderFullV3(data *StatusData) string {
 	var lines []string
 
@@ -679,6 +680,7 @@ func parseResetTime(resetTime interface{}) time.Time {
 
 // contextPercent returns the context window usage percentage (0~100).
 // Returns -1 if unavailable or total budget is 0.
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (v3 statusline selector)
 func (r *Renderer) contextPercent(data *StatusData) int {
 	if !data.Memory.Available || data.Memory.TokenBudget <= 0 {
 		return -1

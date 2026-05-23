@@ -2005,8 +2005,7 @@ skills:
 			tmpDir := t.TempDir()
 			var paths []string
 			for i, content := range tt.agents {
-				p := filepath.Join(tmpDir, filepath.Join(tmpDir, strings.ReplaceAll(tt.name, " ", "-")+"-agent"+string(rune('0'+i))+".md"))
-				p = filepath.Join(tmpDir, strings.ReplaceAll(tt.name, " ", "-")+"-agent"+string(rune('0'+i))+".md")
+				p := filepath.Join(tmpDir, strings.ReplaceAll(tt.name, " ", "-")+"-agent"+string(rune('0'+i))+".md")
 				if err := os.WriteFile(p, []byte(content), 0644); err != nil {
 					t.Fatalf("write agent file: %v", err)
 				}

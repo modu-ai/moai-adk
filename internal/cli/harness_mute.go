@@ -112,7 +112,7 @@ func runHarnessMute(cmd *cobra.Command, args []string) error {
 	// Add if not already present (idempotent).
 	for _, c := range cfg.Harness.Proposal.Mute.Categories {
 		if c == category {
-			fmt.Fprintf(cmd.OutOrStdout(), "category %q is already muted\n", category)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "category %q is already muted\n", category)
 			return nil
 		}
 	}
@@ -121,7 +121,7 @@ func runHarnessMute(cmd *cobra.Command, args []string) error {
 	if err := saveWorkflowMuteConfig(filepath.Join(root, workflowYAMLPath), cfg); err != nil {
 		return fmt.Errorf("save workflow.yaml: %w", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "muted category %q\n", category)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "muted category %q\n", category)
 	return nil
 }
 
@@ -138,11 +138,11 @@ func runHarnessMuteList(cmd *cobra.Command, _ []string) error {
 
 	cats := cfg.Harness.Proposal.Mute.Categories
 	if len(cats) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "(no muted categories)")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(no muted categories)")
 		return nil
 	}
 	for _, c := range cats {
-		fmt.Fprintln(cmd.OutOrStdout(), c)
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), c)
 	}
 	return nil
 }
@@ -170,7 +170,7 @@ func runHarnessUnmute(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if !removed {
-		fmt.Fprintf(cmd.OutOrStdout(), "category %q was not in mute list\n", category)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "category %q was not in mute list\n", category)
 		return nil
 	}
 	cfg.Harness.Proposal.Mute.Categories = updated
@@ -178,12 +178,12 @@ func runHarnessUnmute(cmd *cobra.Command, args []string) error {
 	if err := saveWorkflowMuteConfig(filepath.Join(root, workflowYAMLPath), cfg); err != nil {
 		return fmt.Errorf("save workflow.yaml: %w", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "unmuted category %q\n", category)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "unmuted category %q\n", category)
 	return nil
 }
 
 func runHarnessVerify(cmd *cobra.Command, _ []string) error {
-	fmt.Fprintln(cmd.OutOrStdout(),
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(),
 		"harness verify --determinism: deferred to W4 (SPEC-V3R5-PROJECT-MEGA-001). "+
 			"Determinism verification (Vision §3.5) is not yet implemented in W3.")
 	return nil

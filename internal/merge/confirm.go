@@ -556,7 +556,7 @@ func (f *AnalysisFormatter) renderSelectionView() string {
 		}
 	}
 	if len(f.selectedFiles) > 0 {
-		b.WriteString(fmt.Sprintf("Selected: %d / %d files\n\n", selectedCount, len(f.selectedFiles)))
+		fmt.Fprintf(&b, "Selected: %d / %d files\n\n", selectedCount, len(f.selectedFiles))
 	}
 
 	if table := f.FormatFileTable(); table != "" {
@@ -634,7 +634,7 @@ func (f *AnalysisFormatter) renderCargoView() string {
 // where the verb column is right-aligned within 10 cells (Cargo convention).
 func (f *AnalysisFormatter) writeVerbLine(b *strings.Builder, verb, value string) {
 	verbStyle := f.styles.headerStyle
-	b.WriteString(fmt.Sprintf("%s  %s\n", verbStyle.Render(fmt.Sprintf("%10s", verb)), value))
+	fmt.Fprintf(b, "%s  %s\n", verbStyle.Render(fmt.Sprintf("%10s", verb)), value)
 }
 
 // styledRisk renders a risk-level string with the matching color. When bold

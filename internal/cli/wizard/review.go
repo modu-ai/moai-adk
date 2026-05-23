@@ -11,6 +11,7 @@ import (
 )
 
 // Review selection values returned by runReview.
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (review panel wiring)
 const (
 	reviewChoiceProceed = "proceed"
 	reviewChoiceEdit    = "edit"
@@ -42,6 +43,7 @@ func shortLabel(id string) string {
 	}
 }
 
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (review panel wiring)
 // renderProgressBreadcrumb returns a single-line breadcrumb that shows where
 // currentQID sits inside the visible question sequence. Answered steps are
 // marked with ✓, the current step with ▸, and pending steps with ·.
@@ -114,6 +116,7 @@ func storedAnswer(id string, result *WizardResult) string {
 	return ""
 }
 
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (review panel wiring)
 // renderReviewPanel composes the Review summary card that lists every visible
 // answer before deployment.
 func renderReviewPanel(questions []Question, result *WizardResult) string {
@@ -148,6 +151,7 @@ func renderReviewPanel(questions []Question, result *WizardResult) string {
 	})
 }
 
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (review panel wiring)
 // runReview prints the Review panel and asks the user to Proceed / Edit / Cancel.
 func runReview(questions []Question, result *WizardResult, locale *string, theme *huh.Theme) (string, error) {
 	_ = locale

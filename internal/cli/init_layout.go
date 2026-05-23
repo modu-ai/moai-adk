@@ -18,6 +18,7 @@ import (
 // The header lists the target directory, project name (when provided), and
 // the active profile summary so the user can confirm context at a glance
 // before the wizard starts.
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (init UX redesign helper)
 func renderInitHeader(rootPath string, opts project.InitOptions, profileName string, prefs profile.ProfilePreferences) string {
 	title := "moai init"
 	if opts.ProjectName != "" {
@@ -58,6 +59,7 @@ func renderInitHeader(rootPath string, opts project.InitOptions, profileName str
 
 // renderInitNextSteps returns the "Next steps" block appended to the success
 // card. The block guides the user toward the natural follow-up commands.
+// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (init UX redesign helper)
 func renderInitNextSteps(projectRoot, projectName string) string {
 	cdTarget := projectName
 	if cdTarget == "" {

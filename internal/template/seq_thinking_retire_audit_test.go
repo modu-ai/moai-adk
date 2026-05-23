@@ -92,7 +92,7 @@ func loadAllowlist(t *testing.T, path string) []string {
 		}
 		t.Fatalf("open allow-list %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var entries []string
 	scanner := bufio.NewScanner(f)
@@ -132,7 +132,7 @@ func scanFileForSeqThinking(t *testing.T, path string, allowlist []string) []str
 		}
 		t.Fatalf("open %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var violations []string
 	scanner := bufio.NewScanner(f)

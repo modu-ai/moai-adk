@@ -147,9 +147,6 @@ func AsValidationError(err error, target **ValidationError) bool {
 	return false
 }
 
-// hardRuleRegexp matches [HARD] rules located outside code fences.
-var hardRuleRegexp = regexp.MustCompile(`\[HARD\]`)
-
 // zoneMarkerRegexp matches [ZONE:Frozen] or [ZONE:Evolvable] markers.
 var zoneMarkerRegexp = regexp.MustCompile(`\[ZONE:(Frozen|Evolvable)\]`)
 
