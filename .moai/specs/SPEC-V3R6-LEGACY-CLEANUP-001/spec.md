@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-LEGACY-CLEANUP-001
 title: "v2.x agency keyword residual cleanup (scope C — user-facing docs + skills + rules + docs-site)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
