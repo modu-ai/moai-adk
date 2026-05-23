@@ -10,6 +10,16 @@ const (
 
 	// BackupsDir is the directory where project backups are stored.
 	BackupsDir = ".moai-backups"
+
+	// NamespaceBackupsSubdir is the subdirectory under .moai/ that stores
+	// user-owned namespace backups created before destructive moai update
+	// operations. Path: .moai/backups/update-<ISO-8601-UTC>/.
+	//
+	// Distinct from BackupsDir (.moai-backups/) which holds only config
+	// backups, and from .moai/archive/skills/v2.16-drift-*/ which holds
+	// archive-drift backups. See SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
+	// REQ-UNP-010.
+	NamespaceBackupsSubdir = "backups"
 )
 
 // DeprecatedPathEntry describes a single deprecated template path.

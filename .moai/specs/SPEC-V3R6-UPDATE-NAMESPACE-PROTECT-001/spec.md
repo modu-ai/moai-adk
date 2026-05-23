@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
 title: "moai update User-Owned Namespace Protection + Backup Standardization"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
@@ -21,6 +21,7 @@ tier: M
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-23 | manager-spec | Initial draft. Tier M, 3-artifact SPEC. Codifies CLAUDE.local.md §24.4 "moai update Contract" into Go implementation. |
+| 0.2.0 | 2026-05-23 | manager-develop | Run-phase complete. M1-M5 implemented (5 commits on feat/SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001). 14 AC PASS, cross-platform build PASS (darwin/linux/windows/darwin-arm64), 0 NEW lint issues, 0 C-HRA-008 violations. See `progress.md`. |
 
 ## §2. Motivation
 
