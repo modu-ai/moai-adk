@@ -3,15 +3,15 @@ id: SPEC-V3R6-LEGACY-CLEANUP-001
 title: "v2.x agency keyword residual cleanup (scope C — user-facing docs + skills + rules + docs-site)"
 version: "0.1.0"
 status: draft
-created_at: 2026-05-23
-updated_at: 2026-05-23
+created: 2026-05-23
+updated: 2026-05-23
 author: manager-spec
 priority: Medium
-labels: [cleanup, legacy, v3-roadmap, sprint-2, docs, brand-design]
+tags: "cleanup, legacy, v3-roadmap, sprint-2, docs, brand-design"
 issue_number: null
-tier: M
-phase: legacy-cleanup
-module: docs
+tier: L
+phase: "v3.0.0"
+module: "docs"
 lifecycle: spec-anchored
 related_specs:
   - SPEC-AGENCY-ABSORB-001
@@ -154,15 +154,31 @@ Per-file inspection of all 31 in-scope files was **NOT performed during plan-pha
 
 **HEAD divergence note**: Spawn prompt §A.4 referenced HEAD `731aa0df5`; actual verified HEAD at plan-phase entry is `87dd61564` (4 commits ahead — parallel session race, `feedback_large_spec_wave_split` L9 reinforced). No impact on this SPEC's scope; the discrepancy is timestamp-only.
 
-### §A.5 Hybrid Trunk Tier classification
+### §A.5 SPEC Tier classification + Hybrid Trunk policy override
 
-Per `CLAUDE.local.md` §23, Tier S (≤5 files surgical) and Tier M (5-30 files coordinated) MAY push directly to main without PR. This SPEC's 31 files exceeds Tier S; classify as **Tier M** with main direct push approved (Hybrid Trunk policy).
+**Tier reclassification (iter-2 fix-forward, plan-auditor B2 finding)**:
+- Per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (SSoT): Tier S < 5 files, Tier M 5-15 files, Tier L > 15 files OR constitutional. PASS thresholds: 0.75 / 0.80 / 0.85.
+- This SPEC scope = **31 files** (root 6 + skills 4 + rule 1 + docs-site 20). 31 > 15 → **Tier L**.
+- iter-1 spec.md mislabeled as Tier M citing "5-30 files coordinated" which contradicts the SSoT 5-15 range. Corrected in iter-2.
 
-**Tier M policy validations**:
-- File count: 31 (in Tier M range 5-30 boundary — at upper edge but acceptable)
-- Per-milestone files-touched: ≤10 (enforced by milestone breakdown M1-M4 in plan.md)
-- CI status checks: 4 (Test ubuntu / Lint / Build linux/amd64 / CodeQL) — all must pass
+**Tier L 5-artifact obligation — relaxed per user decision 2026-05-23**:
+- Standard Tier L requires 5 artifacts (spec/plan/acceptance/design/research). This SPEC produces only 4 (spec/plan/acceptance/progress) because the work is documentation-only (no functional code changes; no external research required).
+- The `design.md` content is absorbed into spec.md §A.3 (4-category replacement framework) + §B.3 (surgical edit contract demoted to design notes in iter-2).
+- The `research.md` content is absorbed into spec.md §A.1 (31-file precise inventory with provenance) + §A.2 (PRESERVE list with 74 out-of-scope files enumeration) + §A.6 (4 follow-up SPEC candidates).
+- Lesson L31 candidate: Tier L documentation-only SPECs MAY consolidate design+research into spec.md §A when the work involves no functional code. Future canonical rule update candidate: `spec-workflow.md` § SPEC Complexity Tier — add note for doc-only Tier L exemption.
+
+**Branch policy override (CLAUDE.local.md §23 [HARD]) — 1-person OSS explicit per-SPEC override 2026-05-23**:
+- §23 [HARD] requires Tier M/L SPECs to use `feat/<SPEC-ID>` branch + auto PR. main direct push is allowed only for "Tier S 미만".
+- This SPEC overrides §23 [HARD] explicitly: run-phase commits push directly to `main` (no PR) under 1-person OSS Hybrid Trunk policy. Rationale: (a) doc-only edits with byte-level reversibility via `.moai/backups/`, (b) 4 CI status checks (Test/Lint/Build/CodeQL) gate main push providing safety net equivalent to PR review for 1-person workflow, (c) pre-push hook warn-only + 5s sleep (CLAUDE.local.md §23.1) provides last-mile abort window.
+- **Override scope**: Per-SPEC only. Default flow for future Tier L SPECs remains §23 [HARD] (feat-branch + auto PR). Override approval recorded: user decision 2026-05-23 AskUserQuestion Q2.
+- Lesson L32 candidate: §23 [HARD] per-SPEC override pattern requires spec.md §A.5 documentation + commit message body annotation.
+
+**Tier L policy validations**:
+- File count: 31 (Tier L scope, 0.85 PASS threshold)
+- Per-milestone files-touched: ≤10 (Hybrid Trunk Tier M files-per-M discipline retained as voluntary practice; reduces blast radius per commit)
+- CI status checks: 4 (Test ubuntu / Lint / Build linux/amd64 / CodeQL) — all must pass for each milestone commit
 - `pre-push` hook: warn-only + 5s sleep (CLAUDE.local.md §23.1)
+- plan-auditor PASS threshold: 0.85 (Tier L per SSoT)
 
 ### §A.6 Out-of-scope but related — separate SPEC candidates
 
@@ -205,11 +221,13 @@ The following follow-up SPECs are explicitly out of THIS SPEC's scope and may be
 - `docs-site/vercel.json`
 - `docs/design/major-v3-master.md`
 
-### §B.3 Surgical edit contract
+### §B.3 Surgical edit (design notes, not normative REQs)
 
-**REQ-LCL-005** [Ubiquitous]: Each modification SHALL preserve sentence and paragraph meaning; `agency` keyword removal SHALL NOT delete factual claims about v2.x architecture history.
+**[iter-2 fix-forward, plan-auditor S4]**: The following 2 items were originally drafted as REQ-LCL-005 + REQ-LCL-006 but are not binary-testable. Per user decision 2026-05-23 (AskUserQuestion Q4), they are demoted to **design notes** governing run-phase implementer judgment. They are NOT REQ-LCL-XXX entries; no AC links to them.
 
-**REQ-LCL-006** [State-Driven]: WHILE editing a file in the in-scope inventory, the implementer SHALL classify each `agency` occurrence into one of four categories (per §A.3): (1) v2.x architecture concept, (2) `.agency/` directory path, (3) skill `description:` frontmatter mention, (4) historical CHANGELOG entry. The edit applied SHALL match the category's documented replacement strategy.
+**Design Note D-1 (formerly REQ-LCL-005)**: Each modification SHOULD preserve sentence and paragraph meaning; `agency` keyword removal SHOULD NOT delete factual claims about v2.x architecture history. Verification: implementer judgment + diff review during run-phase, NOT a binary AC.
+
+**Design Note D-2 (formerly REQ-LCL-006)**: WHILE editing a file in the in-scope inventory, the implementer SHOULD classify each `agency` occurrence into one of four categories (per §A.3): (1) v2.x architecture concept, (2) `.agency/` directory path, (3) skill `description:` frontmatter mention, (4) historical CHANGELOG entry. Verification: per-commit message body annotation suggested but not enforced.
 
 ### §B.4 CHANGELOG append-only contract
 
@@ -219,7 +237,7 @@ The following follow-up SPECs are explicitly out of THIS SPEC's scope and may be
 
 ### §B.5 4-locale parity preservation
 
-**REQ-LCL-009** [Ubiquitous]: The cleanup process SHALL NOT add or remove any docs-site locale files; only the `agency` keyword inside the 20 existing in-scope files SHALL be modified.
+**REQ-LCL-009** [Ubiquitous]: The cleanup process SHALL NOT add or remove any docs-site locale files; only the `agency` keyword inside the 20 existing docs-site in-scope files SHALL be modified.
 
 **REQ-LCL-010** [Ubiquitous]: The pre-existing 4-locale symmetry (5 files per locale × 4 locales = 20 files containing `agency` keyword) SHALL be preserved; any edit applied to a ko file SHALL be applied semantically equivalently to its en, ja, zh siblings.
 
@@ -231,7 +249,15 @@ The following follow-up SPECs are explicitly out of THIS SPEC's scope and may be
 
 ### §B.7 Verification visibility
 
-**REQ-LCL-013** [Ubiquitous]: After cleanup completion, the grep query `grep -rln -E '\bagency\b|\.agency/|/agency/' <31-in-scope-paths>` SHALL return ≤5 occurrences (allowing for legitimate "v2.x agency (retired, see SPEC-AGENCY-ABSORB-001)" references introduced by REQ-LCL-005).
+**REQ-LCL-013** [Ubiquitous]: After cleanup completion, the grep query `grep -rln -E '\bagency\b|\.agency/|/agency/' <31-in-scope-paths>` SHALL return ≤5 occurrences. Threshold rationale: up to 1 retired-reference per top-level user-facing doc — {CHANGELOG, CLAUDE, README × any one canonical locale, 2 design skill bodies} = ~5 expected residuals from category 1 replacement strategy (Design Note D-2). Docs-site retired-references SHOULD be inlined into a shared paragraph rather than per-locale repetition.
+
+### §B.8 Exclusion contracts (Unwanted requirements)
+
+**[iter-2 fix-forward, plan-auditor S5 traceability]**: AC-LCL-009 and AC-LCL-010 in iter-1 linked to `§C exclusion #1/#2` (scope statements). iter-2 promotes those exclusions to formal Unwanted REQs so the AC traceability is REQ-to-AC clean.
+
+**REQ-LCL-014** [Unwanted]: This SPEC's run-phase SHALL NOT modify any file under `internal/**/*.go` (all production Go code, including `internal/cli/migrate_agency*.go`). Production code audit is deferred to SPEC-V3R6-LEGACY-CLEANUP-003.
+
+**REQ-LCL-015** [Unwanted]: This SPEC's run-phase SHALL NOT modify any file under `internal/template/templates/**` (template mirror files). Template mirror cascade is deferred to SPEC-V3R6-LEGACY-CLEANUP-002, which MUST follow IMMEDIATELY after this SPEC merges to restore template-source parity (CLAUDE.local.md §2 [HARD] Template-First Rule).
 
 ---
 

@@ -3,11 +3,15 @@ id: SPEC-V3R6-LEGACY-CLEANUP-001
 title: "Acceptance Criteria — v2.x agency keyword residual cleanup"
 version: "0.1.0"
 status: draft
-created_at: 2026-05-23
-updated_at: 2026-05-23
+created: 2026-05-23
+updated: 2026-05-23
 author: manager-spec
 priority: Medium
-tier: M
+tags: "cleanup, legacy, v3-roadmap, sprint-2, docs, brand-design"
+phase: "v3.0.0"
+module: "docs"
+lifecycle: spec-anchored
+tier: L
 ---
 
 # Acceptance Criteria — SPEC-V3R6-LEGACY-CLEANUP-001
@@ -42,12 +46,18 @@ jq '.[0] | keys' .moai/backups/legacy-cleanup-*/manifest.json   # ["bytes", "pat
 
 **Verification**:
 ```bash
-# Pre-cleanup baseline capture (run BEFORE M1):
-shasum -a 256 .moai/design/v3-legacy/architecture.md .moai/brain/IDEA-001/README.md \
-  .moai/marketing/launch-2026-04.md .moai/specs/SPEC-AGENCY-ABSORB-001/spec.md \
-  .moai/archive/legacy-2025-12.md .moai/plans/DOCS-SITE/wave1.md \
-  .moai/specs/_archive/SPEC-AGENCY-001/spec.md .moai/specs/SPEC-V3R2-WF-001/spec.md \
-  internal/cli/migrate_agency.go internal/defs/dirs.go \
+# Pre-cleanup baseline capture (run BEFORE M1) — 10 real PRESERVE paths verified via filesystem at iter-2 plan-auditor B3 fix-forward:
+shasum -a 256 \
+  .moai/design/v3-legacy/research/findings-wave1-ui-ux.md \
+  .moai/design/v3-legacy/research/audit-report-v3.md \
+  .moai/design/v3-research/findings-wave1-ui-ux.md \
+  .moai/brain/IDEA-001/ideation.md \
+  .moai/marketing/launch-kit/show-hn.md \
+  .moai/specs/SPEC-AGENCY-ABSORB-001/audit-report-v2.md \
+  .moai/archive/skills/v2.16/moai-domain-database/SKILL.md \
+  .moai/plans/staged-forging-manatee.md \
+  .moai/specs/_archive/README.md \
+  internal/cli/migrate_agency_test.go \
   > /tmp/preserve-baseline.txt
 
 # Post-cleanup verification:
@@ -166,11 +176,11 @@ done
 PRE_V3_END=$(grep -n -E '^## \[(v?3\.0|Unreleased)' CHANGELOG.md | head -1 | cut -d: -f1)
 PRE_V3_END=$((PRE_V3_END - 1))
 
-# Extract pre-v3.0 section from current CHANGELOG.md
-sed -n "1,${PRE_V3_END}p" CHANGELOG.md > /tmp/pre-v3.0-current.txt
+# Extract pre-v3.0 section from current CHANGELOG.md (S1 fix: sed → head)
+head -n ${PRE_V3_END} CHANGELOG.md > /tmp/pre-v3.0-current.txt
 
 # Compare to backup
-sed -n "1,${PRE_V3_END}p" .moai/backups/legacy-cleanup-*/CHANGELOG.md > /tmp/pre-v3.0-backup.txt
+head -n ${PRE_V3_END} .moai/backups/legacy-cleanup-*/CHANGELOG.md > /tmp/pre-v3.0-backup.txt
 diff /tmp/pre-v3.0-current.txt /tmp/pre-v3.0-backup.txt && echo PASS || echo FAIL
 ```
 
@@ -190,7 +200,7 @@ MANIFEST=$(ls .moai/backups/legacy-cleanup-*/manifest.json)
 BACKUP_ROOT=$(dirname "$MANIFEST")
 
 jq -r '.[] | "\(.sha256)  \(.path)"' "$MANIFEST" | while read sha path; do
-  ACTUAL=$(shasum -a 256 "$BACKUP_ROOT/$path" 2>/dev/null | awk '{print $1}')
+  ACTUAL=$(shasum -a 256 "$BACKUP_ROOT/$path" 2>/dev/null | cut -d' ' -f1)
   [ "$sha" = "$ACTUAL" ] || echo "MISMATCH: $path (expected=$sha actual=$ACTUAL)"
 done
 # Expected: no MISMATCH lines printed
@@ -200,7 +210,7 @@ done
 
 ## AC-LCL-009 — No production Go code modified
 
-**Linked REQ**: §C exclusion #1
+**Linked REQ**: REQ-LCL-014 (iter-2 fix-forward, plan-auditor S5 traceability — §C exclusion #1 promoted to REQ-LCL-014 [Unwanted])
 
 **Given**: Cleanup completes (M1-M4)
 **When**: Listing modified Go files since this SPEC's plan-phase entry commit
@@ -218,7 +228,7 @@ git diff --name-only "$PLAN_COMMIT" HEAD -- '*.go' | wc -l
 
 ## AC-LCL-010 — No template mirror files modified (deferred to SPEC-V3R6-LEGACY-CLEANUP-002)
 
-**Linked REQ**: §C exclusion #2
+**Linked REQ**: REQ-LCL-015 (iter-2 fix-forward, plan-auditor S5 traceability — §C exclusion #2 promoted to REQ-LCL-015 [Unwanted])
 
 **Given**: Cleanup completes (M1-M4)
 **When**: Listing modified files under `internal/template/templates/`
@@ -233,21 +243,29 @@ git diff --name-only "$PLAN_COMMIT" HEAD -- 'internal/template/templates/' | wc 
 
 ---
 
-## AC-LCL-011 — Locale file count unchanged (no add/remove)
+## AC-LCL-011 — Locale file count unchanged (no add/remove) — iter-2 git-diff approach
 
 **Linked REQ**: REQ-LCL-009
 
 **Given**: Cleanup completes (M1-M4)
-**When**: Counting files per locale directory pre/post cleanup
-**Then**: The total file count per locale directory is identical to baseline (no locale files added, no locale files removed).
+**When**: Listing locale-directory files added or deleted between plan-commit and HEAD
+**Then**: Zero files added AND zero files deleted under any `docs-site/content/<locale>/` directory.
+
+**iter-2 fix-forward rationale (plan-auditor B4)**: Original iter-1 verification compared `find .moai/backups/.../docs-site/content/$loc -name "*.md" | wc -l` (5 in-scope files per locale) vs `find docs-site/content/$loc -name "*.md" | wc -l` (30+ files per locale = full directory). Scope mismatch made PRE != POST always FAIL. Option (b) — `git diff --diff-filter=AD` between plan-commit and HEAD — is backup-free, scope-precise, and binary-verifiable.
 
 **Verification**:
 ```bash
+PLAN_COMMIT=$(git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md)
 for loc in ko en ja zh; do
-  PRE=$(find ".moai/backups/legacy-cleanup-*/docs-site/content/$loc" -name "*.md" 2>/dev/null | wc -l)
-  POST=$(find "docs-site/content/$loc" -name "*.md" 2>/dev/null | wc -l)
-  [ "$PRE" = "$POST" ] && echo "$loc: PASS ($POST)" || echo "$loc: FAIL (pre=$PRE post=$POST)"
+  ADDED=$(git diff --diff-filter=A --name-only "$PLAN_COMMIT" HEAD -- "docs-site/content/$loc/" | wc -l | tr -d ' ')
+  DELETED=$(git diff --diff-filter=D --name-only "$PLAN_COMMIT" HEAD -- "docs-site/content/$loc/" | wc -l | tr -d ' ')
+  if [ "$ADDED" = "0" ] && [ "$DELETED" = "0" ]; then
+    echo "$loc: PASS (no add/remove)"
+  else
+    echo "$loc: FAIL (+$ADDED added, -$DELETED deleted)"
+  fi
 done
+# Expected: all 4 lines show PASS
 ```
 
 ---

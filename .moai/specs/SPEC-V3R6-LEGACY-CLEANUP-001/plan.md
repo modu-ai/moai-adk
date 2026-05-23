@@ -3,11 +3,15 @@ id: SPEC-V3R6-LEGACY-CLEANUP-001
 title: "Implementation Plan — v2.x agency keyword residual cleanup"
 version: "0.1.0"
 status: draft
-created_at: 2026-05-23
-updated_at: 2026-05-23
+created: 2026-05-23
+updated: 2026-05-23
 author: manager-spec
 priority: Medium
-tier: M
+tags: "cleanup, legacy, v3-roadmap, sprint-2, docs, brand-design"
+phase: "v3.0.0"
+module: "docs"
+lifecycle: spec-anchored
+tier: L
 related_specs: [SPEC-AGENCY-ABSORB-001, SPEC-V3R6-CHANGELOG-CLEANUP-001]
 ---
 
@@ -15,9 +19,9 @@ related_specs: [SPEC-AGENCY-ABSORB-001, SPEC-V3R6-CHANGELOG-CLEANUP-001]
 
 ## Overview
 
-This Tier M SPEC performs a coordinated cleanup of residual `agency` keyword references across 31 user-facing files. The work is structured into 4 milestones (M1–M4) with files-touched-per-milestone capped at ≤10 to comply with Hybrid Trunk Tier M discipline.
+This **Tier L** SPEC (reclassified iter-2 from Tier M per spec-workflow.md SSoT: 31 files > 15 = Tier L) performs a coordinated cleanup of residual `agency` keyword references across 31 user-facing files. The work is structured into 4 milestones (M1–M4) with files-touched-per-milestone capped at ≤10 to retain Tier M files-per-M voluntary discipline (Tier L does not mandate the ≤10 cap, but smaller per-commit blast radius improves CI gating).
 
-**Execution mode**: Hybrid Trunk Tier M — direct main push (no PR required), pre-push hook warn-only, 4 CI status checks gating.
+**Execution mode**: Hybrid Trunk Tier L with 1-person OSS **explicit per-SPEC override** of CLAUDE.local.md §23 [HARD] feat-branch+PR rule (per user decision 2026-05-23 AskUserQuestion Q2). Direct main push (no PR required) for this SPEC only; default flow for future Tier L SPECs remains §23 [HARD] feat-branch + auto PR. pre-push hook warn-only, 4 CI status checks gating. See spec.md §A.5 for override rationale + lesson L32 candidate.
 
 ## Milestone Breakdown
 
@@ -220,7 +224,7 @@ For each `agency` occurrence, implementer classifies into one of:
 
 ## Commit Strategy
 
-Each milestone produces one commit on `main` directly (Hybrid Trunk Tier M policy, CLAUDE.local.md §23):
+Each milestone produces one commit on `main` directly (1-person OSS Hybrid Trunk Tier L **explicit per-SPEC override** of CLAUDE.local.md §23 [HARD], per user decision 2026-05-23):
 
 ```
 plan(SPEC-V3R6-LEGACY-CLEANUP-001): M1 — backup + skills/rule cleanup

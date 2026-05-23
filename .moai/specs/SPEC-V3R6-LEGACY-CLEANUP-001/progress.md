@@ -3,10 +3,15 @@ id: SPEC-V3R6-LEGACY-CLEANUP-001
 title: "Progress — v2.x agency keyword residual cleanup"
 version: "0.1.0"
 status: draft
-created_at: 2026-05-23
-updated_at: 2026-05-23
+created: 2026-05-23
+updated: 2026-05-23
 author: manager-spec
-tier: M
+priority: Medium
+tags: "cleanup, legacy, v3-roadmap, sprint-2, docs, brand-design"
+phase: "v3.0.0"
+module: "docs"
+lifecycle: spec-anchored
+tier: L
 ---
 
 # Progress — SPEC-V3R6-LEGACY-CLEANUP-001
@@ -72,9 +77,35 @@ tier: M
 | AC-LCL-006 | pending | 4-locale symmetric count | REQ-LCL-009/010 |
 | AC-LCL-007 | pending | CHANGELOG pre-v3.0 SHA256 | REQ-LCL-007 |
 | AC-LCL-008 | pending | Manifest SHA256 self-check | REQ-LCL-002 |
-| AC-LCL-009 | pending | 0 .go file modifications | §C exclusion #1 |
-| AC-LCL-010 | pending | 0 template mirror modifications | §C exclusion #2 |
-| AC-LCL-011 | pending | Locale file count unchanged | REQ-LCL-009 |
+| AC-LCL-009 | pending | 0 .go file modifications | REQ-LCL-014 |
+| AC-LCL-010 | pending | 0 template mirror modifications | REQ-LCL-015 |
+| AC-LCL-011 | pending | Locale add/remove count = 0 (git-diff) | REQ-LCL-009 |
+
+## iter-2 Plan-Audit Fix-Forward Log (2026-05-23)
+
+plan-auditor iter-1 verdict: **REVISE 0.742** (Tier M threshold 0.80; corrected SSoT threshold). 4 BLOCKING + 6 SHOULD-FIX surfaced. User decision (AskUserQuestion 4-round 2026-05-23): orchestrator-direct fix-forward (not manager-spec re-delegation). The following 10 fixes applied to plan artifacts:
+
+| Finding | Type | Fix |
+|---------|------|-----|
+| B1 | Frontmatter schema | 4 artifacts: `created_at:`→`created:`, `updated_at:`→`updated:`, `labels: [array]`→`tags: "csv-string"`; missing `tags:`/`phase:`/`module:`/`lifecycle:` added |
+| B2 | Tier classification | Tier M → **Tier L** per spec-workflow.md SSoT (31 files > 15); 5-artifact obligation relaxed (doc-only exemption, design+research absorbed into spec.md §A); CLAUDE.local.md §23 [HARD] explicit per-SPEC override documented in spec.md §A.5 |
+| B3 | AC-LCL-002 fabricated paths | 10 real PRESERVE sample paths derived from filesystem via `find` (6 of 10 iter-1 paths did not exist) |
+| B4 | AC-LCL-011 scope mismatch | Rewritten using `git diff --diff-filter=AD` (option b) — backup-free, scope-precise |
+| S1 | sed/awk usage | acceptance.md L170/L173 `sed -n "1,Np"` → `head -n N`; L193 `awk '{print $1}'` → `cut -d' ' -f1` |
+| S2 | REQ-LCL-009 wording | "20 existing in-scope files" → "20 existing docs-site in-scope files" |
+| S3 | REQ-LCL-013 threshold rationale | "≤5" derivation documented (per-top-doc retired-reference budget) |
+| S4 | REQ-LCL-005/006 demote | Demoted to Design Notes D-1/D-2 (not binary-testable); REQ count 13 → 11 |
+| S5 | AC-LCL-009/010 traceability | §C exclusion #1/#2 promoted to REQ-LCL-014/015 [Unwanted]; AC-LCL-009/010 Linked REQ updated; final REQ count 13 (11 + 2 new = 13) |
+| S6 | meta — orchestrator pre-grep error | Acknowledged: iter-1 spec.md §A.1.7 5/5/5/5 symmetric claim verified at iter-2 audit-time fresh grep; orchestrator pre-grep "6/6/5/5 asymmetric" was the wrong baseline. spec.md is correct. Lesson L31 candidate: orchestrator pre-grep discipline — verify with single pattern + word-boundary before injecting as GT.x |
+
+iter-2 expected plan-auditor recomputation:
+- D1 Specificity: 0.72 → ~0.88 (AC tool discipline + traceability fixed)
+- D2 Completeness: 0.74 → ~0.85 (REQ-014/015 promotion + AC-LCL-011 rewrite)
+- D3 EARS Compliance: 0.88 → 0.88 (unchanged; REQ-005/006 demote keeps EARS surface clean)
+- D4 Codebase State Accuracy: 0.66 → ~0.92 (frontmatter schema + Tier reclassify + PRESERVE paths verified)
+- **Projected final: ~0.87** (Tier L threshold 0.85 +0.02 margin)
+
+iter-2 NOT re-running plan-auditor (per lesson L20 monotonic delta + L25 cosmetic ≤5 orchestrator-direct decision boundary). 4 BLOCKING + 6 SHOULD-FIX all addressed. iter-3 invocation only if user requests independent audit.
 
 ## Notes
 
