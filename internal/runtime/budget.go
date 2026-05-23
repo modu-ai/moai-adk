@@ -163,7 +163,7 @@ func (t *Tracker) IncrementStallRetry(agentName string) string {
 	if count >= t.config.RetryMax {
 		recommendation := fmt.Sprintf(
 			"[Token Circuit Breaker] Agent %q stalled %d/%d times. Recommended action: %s. "+
-				"Consider splitting the work into smaller waves. /clear is NOT auto-triggered.",
+				"Consider splitting the work into smaller rounds. /clear is NOT auto-triggered.",
 			agentName, count, t.config.RetryMax, t.config.Fallback,
 		)
 		slog.Warn("stall retry_max reached",

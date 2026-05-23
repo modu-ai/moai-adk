@@ -46,7 +46,7 @@ func (h *specStatusHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	var targetStatus string
 	var specIDs []string
 
-	// Handle gh pr merge commands (Wave 2: AC-02.b)
+	// Handle gh pr merge commands (Round 2: AC-02.b)
 	if h.isGhPrMergeCommand(data.Command) {
 		// Classify PR title to determine target status
 		category, status, err := spec.ClassifyPRTitle(data.Title)
@@ -74,7 +74,7 @@ func (h *specStatusHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		targetStatus = status
 		specIDs = spec.ExtractSPECIDs(data.Title)
 
-	// Handle git commit commands (existing behavior: Wave 1)
+	// Handle git commit commands (existing behavior: Round 1)
 	} else if isGitCommitCommand(data.Command) {
 		commitMsg := extractCommitMessage(data.Command)
 		if commitMsg == "" {

@@ -35,7 +35,7 @@ type CIState struct {
 }
 
 // FailedCheck is the forward-stable schema for a failed required check,
-// intended for consumption by Wave 3 expert-debug prompt injection.
+// intended for consumption by Round 3 expert-debug prompt injection.
 type FailedCheck struct {
 	// Name is the check context name.
 	Name string `json:"name"`
@@ -49,10 +49,10 @@ type FailedCheck struct {
 
 // Handoff is the structured metadata package produced when the CI watch loop
 // detects required check failures. It is serialized to JSON and piped to the
-// Wave 3 expert-debug invocation prompt.
+// Round 3 expert-debug invocation prompt.
 //
 // JSON shape stability: fields are tagged for stable serialization across
-// Wave 3 consumers. Do not rename or remove fields without a major version bump.
+// Round 3 consumers. Do not rename or remove fields without a major version bump.
 type Handoff struct {
 	// PRNumber is the GitHub pull request number.
 	PRNumber int `json:"prNumber"`

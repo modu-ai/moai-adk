@@ -16,7 +16,7 @@ import (
 )
 
 // @MX:NOTE: `moai worktree snapshot|verify|restore` are the orchestrator-facing
-// CLI primitives for SPEC-V3R3-CI-AUTONOMY-001 Wave 5. The orchestrator (Claude
+// CLI primitives for SPEC-V3R3-CI-AUTONOMY-001 Round 5. The orchestrator (Claude
 // Code runtime) invokes these via Bash before/after each Agent(isolation:) call.
 
 // ExitCodeError carries a structured exit code so cmd/moai/main.go can propagate

@@ -47,7 +47,7 @@ var tmuxSessionFactory = func() tmux.SessionManager {
 // BODP audit trail must always anchor on git root, never os.Getwd(), because
 // test processes run with cwd=package-dir which differs from the repo root.
 //
-// @MX:NOTE BODP audit trail path bug fix (SPEC-V3R3-CI-AUTONOMY-001 Wave 7):
+// @MX:NOTE BODP audit trail path bug fix (SPEC-V3R3-CI-AUTONOMY-001 Round 7):
 // os.Getwd() returns the package directory during test execution, causing the
 // audit trail to leak into internal/cli/worktree/.moai/... — this var allows
 // tests to inject a tempDir.

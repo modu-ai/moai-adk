@@ -1,4 +1,4 @@
-// Package ciwatch provides helpers for CI watch loop (Wave 2, T2).
+// Package ciwatch provides helpers for CI watch loop (Round 2, T2).
 // It classifies GitHub Actions check runs as required vs auxiliary
 // by reading the SSoT at .github/required-checks.yml.
 package ciwatch

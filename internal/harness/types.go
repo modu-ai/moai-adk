@@ -30,7 +30,7 @@ const (
 	// @MX:NOTE: [AUTO] Three new event kinds for session termination (Stop hook),
 	// subagent termination (SubagentStop hook), and user prompt submission (UserPromptSubmit hook).
 	// REQ-HRN-OBS-015: uses SEMANTIC values (not the runtime hook names).
-	// Wave C will add more in the future: REQ-HRN-OBS-016 (SPEC-V3R4-HARNESS-003).
+	// Round C will add more in the future: REQ-HRN-OBS-016 (SPEC-V3R4-HARNESS-003).
 
 	// EventTypeSessionStop represents Claude Code Stop hook (session termination).
 	EventTypeSessionStop EventType = "session_stop"

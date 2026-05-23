@@ -953,7 +953,7 @@ var terminalStatusEnum = map[string]bool{
 }
 
 // StatusGitConsistencyRule checks if SPEC frontmatter status agrees with git log
-// Implements Wave 3: W3-T4
+// Implements Round 3: W3-T4
 // Default severity: warning (promoted to error under --strict)
 type StatusGitConsistencyRule struct{}
 

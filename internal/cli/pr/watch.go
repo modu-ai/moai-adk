@@ -14,7 +14,7 @@ import (
 // EmitReadyToMergeReport writes a markdown-formatted report to w that the
 // orchestrator can parse and present via AskUserQuestion.
 //
-// Format contract (Wave 2 forward-stable):
+// Format contract (Round 2 forward-stable):
 //   - Starts with a ## header identifying the PR
 //   - Includes check summary (N/N pass)
 //   - Lists recommended action option labeled "(권장)" (FIRST option)
@@ -72,7 +72,7 @@ The following options are available:
 }
 
 // EmitFailureHandoff writes a structured JSON handoff to w for consumption by
-// the Wave 3 expert-debug agent. The JSON shape is defined by ciwatch.Handoff.
+// the Round 3 expert-debug agent. The JSON shape is defined by ciwatch.Handoff.
 func EmitFailureHandoff(w io.Writer, state ciwatch.CIState) error {
 	h := ciwatch.NewHandoff(state)
 

@@ -150,7 +150,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	}
 
 	// Check for SPEC status drift and emit warning if >= 5 SPECs drifted
-	// This is non-blocking: errors are silently ignored (Wave 3: W3-T3)
+	// This is non-blocking: errors are silently ignored (Round 3: W3-T3)
 	if input.ProjectDir != "" {
 		if driftMsg := detectStatusDrift(input.ProjectDir); driftMsg != "" {
 			data["status_drift_warning"] = driftMsg

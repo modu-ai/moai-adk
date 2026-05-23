@@ -26,7 +26,7 @@ type RequiredChecks struct {
 	// Branches maps branch name/glob to BranchChecks (used for branch protection JSON).
 	Branches map[string]BranchChecks `yaml:"branches"`
 	// Auxiliary lists check context names that run on PRs but do NOT block merge.
-	// Consumed by Wave 2 CI watch loop to discriminate required vs advisory failures.
+	// Consumed by Round 2 CI watch loop to discriminate required vs advisory failures.
 	Auxiliary []string `yaml:"auxiliary,omitempty"`
 }
 
@@ -51,7 +51,7 @@ func LoadRequiredChecks(projectRoot string) (*RequiredChecks, error) {
 }
 
 // IsAuxiliary reports whether the given check context name is in the Auxiliary list.
-// Used by Wave 2 watch loop to filter advisory-only checks out of the
+// Used by Round 2 watch loop to filter advisory-only checks out of the
 // fail-fast policy.
 func (rc *RequiredChecks) IsAuxiliary(context string) bool {
 	for _, a := range rc.Auxiliary {

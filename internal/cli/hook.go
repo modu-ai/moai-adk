@@ -101,7 +101,7 @@ func init() {
 		RunE:  runHarnessObserve,
 	})
 
-	// Multi-event observer subcommands (SPEC-V3R4-HARNESS-002 Wave A)
+	// Multi-event observer subcommands (SPEC-V3R4-HARNESS-002 Round A)
 	hookCmd.AddCommand(&cobra.Command{
 		Use:   "harness-observe-stop",
 		Short: "Record Stop event to harness usage log",
