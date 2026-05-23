@@ -27,10 +27,11 @@ Claude Code and MoAI configuration management rules.
 Standard MCP servers in MoAI-ADK:
 
 - context7: Library documentation lookup
-- sequential-thinking: Complex problem analysis
 - pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
 - claude-in-chrome: Browser automation
 - zai-mcp-server (optional): Z.AI hosted MCP for Vision OCR / WebSearch / WebReader. Registered via `moai glm tools enable [vision|websearch|webreader|all]`.
+
+> Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+) for deep reasoning.
 
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
@@ -99,13 +100,13 @@ Example `.mcp.json` configuration:
 1. resolve-library-id: Find library identifier
 2. get-library-docs: Retrieve documentation
 
-**Sequential Thinking Usage** - For complex analysis requiring step-by-step reasoning:
+**Adaptive Thinking Usage** - For complex analysis requiring deeper reasoning:
 
 - Breaking down multi-step problems
 - Architecture decisions
 - Technology trade-off analysis
 
-Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+) for enhanced analysis. Sequential Thinking MCP remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001.
 
 ### MoAI Configuration
 

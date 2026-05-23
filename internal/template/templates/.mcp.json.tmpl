@@ -12,17 +12,6 @@
       "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
 {{- end}}
     },
-    "sequential-thinking": {
-      "$comment": "Step-by-step reasoning for complex problems",
-      "alwaysLoad": true,
-{{- if eq .Platform "windows"}}
-      "command": "cmd.exe",
-      "args": ["/c", "npx -y @modelcontextprotocol/server-sequential-thinking"]
-{{- else}}
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
-{{- end}}
-    },
     "moai-lsp": {
       "$comment": "LSP code intelligence via moai binary (goto definition, find references, hover, diagnostics, rename)",
       "command": "moai",
