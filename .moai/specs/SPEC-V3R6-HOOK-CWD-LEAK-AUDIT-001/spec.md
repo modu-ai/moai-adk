@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001
 title: "Hook cwd leak audit + resolveProjectRoot consistency"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
@@ -198,8 +198,8 @@ The following are explicitly out of scope for this SPEC. Any work in these areas
 
 ---
 
-Version: 0.1.0
-Status: draft
+Version: 0.2.0
+Status: implemented
 Tier: S (minimal — 4 artifacts, no separate design.md/research.md)
 Created: 2026-05-23
 Last Updated: 2026-05-23

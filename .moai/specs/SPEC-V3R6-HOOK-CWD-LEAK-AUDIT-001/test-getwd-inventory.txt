@@ -1,0 +1,10 @@
+internal/hook/path_resolve_test.go:17:// CLAUDE_PROJECT_DIR is set, the helper returns it verbatim — no os.Getwd()
+internal/hook/path_resolve_test.go:28:// CLAUDE_PROJECT_DIR is unset, the helper falls back to os.Getwd().
+internal/hook/path_resolve_test.go:63:// both input.CWD and the env var are empty, the helper falls back to os.Getwd().
+internal/hook/subagent_stop_capture_path_test.go:3:// Root cause: subagent_stop.go:dispatchCapture() falls back to os.Getwd()
+internal/hook/subagent_stop_capture_path_test.go:25:	cwd, err := os.Getwd()
+internal/hook/subagent_stop_capture_path_test.go:27:		t.Fatalf("os.Getwd: %v", err)
+internal/hook/session_end_extra_coverage_test.go:46:	dir, err := os.Getwd()
+internal/hook/quality/path_resolve_test.go:6:// over CLAUDE_PROJECT_DIR env var over os.Getwd() fallback. No .moai/
+internal/hook/quality/path_resolve_test.go:18:// or os.Getwd() fallback is consulted.
+internal/hook/quality/path_resolve_test.go:41:// to os.Getwd().

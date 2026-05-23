@@ -271,10 +271,8 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	// Step 2.5: ast-grep domain rules
 	// ASTG-UPGRADE-001: switched to RunAstGrepGateV2 which uses the unified Scanner
 	if g.config.AstGrepGate != nil && g.config.AstGrepGate.Enabled {
-		projectDir := g.config.ProjectDir
-		if projectDir == "" {
-			projectDir, _ = os.Getwd()
-		}
+		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
+		projectDir := resolveQualityProjectDir(*g.config, "QualityGate.Run.astgrep")
 		if ok, out := RunAstGrepGateV2(ctx, projectDir, g.config.AstGrepGate); !ok {
 			return false, out
 		}
@@ -292,10 +290,8 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 
 // detectToolchain finds the matching toolchain by checking marker files in ProjectDir.
 func (g *QualityGate) detectToolchain() *langToolchain {
-	dir := g.config.ProjectDir
-	if dir == "" {
-		dir, _ = os.Getwd()
-	}
+	// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
+	dir := resolveQualityProjectDir(*g.config, "QualityGate.detectToolchain")
 	if dir == "" {
 		return nil
 	}
@@ -394,10 +390,8 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 	// Fix 1: skip when no staged file matches changedExts.
 	// If stagedFiles lookup fails or we are outside a git repository, run the step conservatively.
 	if len(step.changedExts) > 0 {
-		dir := g.config.ProjectDir
-		if dir == "" {
-			dir, _ = os.Getwd()
-		}
+		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
+		dir := resolveQualityProjectDir(*g.config, "QualityGate.executeStep.extfilter")
 		staged := g.cachedStagedFiles(ctx, dir)
 		// If staged is nil, cannot determine — run step conservatively
 		if staged != nil && !hasStagedExt(staged, step.changedExts) {
@@ -475,10 +469,8 @@ func stagedFiles(ctx context.Context, dir string) ([]string, error) {
 
 // anyConfigFileExists returns true if at least one of the given config files exists in ProjectDir.
 func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
-	dir := g.config.ProjectDir
-	if dir == "" {
-		dir, _ = os.Getwd()
-	}
+	// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
+	dir := resolveQualityProjectDir(*g.config, "QualityGate.anyConfigFileExists")
 	if dir == "" {
 		return false
 	}

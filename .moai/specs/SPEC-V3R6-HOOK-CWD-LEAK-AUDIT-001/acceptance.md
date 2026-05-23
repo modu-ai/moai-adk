@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001
 title: "Hook cwd leak audit + resolveProjectRoot consistency — Acceptance Criteria"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
@@ -23,15 +23,19 @@ This document defines 7 binary acceptance criteria (ACs) that must all PASS for 
 
 **Given** the working tree is at the post-M3 commit
 **When** the audit grep command is executed
-**Then** the count of `os.Getwd()` matches in non-test files under `internal/hook/` shall be exactly 0
+**Then** the count of `os.Getwd()` matches in non-test files under `internal/hook/` (excluding the two helper definition files `path_resolve.go` and `quality/path_resolve.go` which legitimately call `os.Getwd()` as the documented last-resort fallback) shall be exactly 0
 
 **Verification command**:
 ```bash
-test "$(grep -rn 'os\.Getwd' internal/hook/ | grep -v '_test.go' | wc -l)" -eq 0 && echo "AC-HCWA-001 PASS" || echo "AC-HCWA-001 FAIL"
+test "$(grep -rn 'os\.Getwd' internal/hook/ | grep -v '_test.go' | grep -v 'path_resolve\.go' | grep -v '^[^:]*:[0-9]*:[ \t]*//' | wc -l)" -eq 0 && echo "AC-HCWA-001 PASS" || echo "AC-HCWA-001 FAIL"
 ```
 
 **Pass condition**: Output is `AC-HCWA-001 PASS`
-**Fail condition**: Output is `AC-HCWA-001 FAIL` OR any remaining match in non-test source
+**Fail condition**: Output is `AC-HCWA-001 FAIL` OR any remaining match in non-helper production source
+
+**Exclusion rationale** (refined post-M3):
+1. **Helper definitions** (`path_resolve.go` × 2): REQ-HCWA-001 mandates "Direct `os.Getwd()` calls outside these helpers shall not exist." The two helper files (`internal/hook/path_resolve.go` and `internal/hook/quality/path_resolve.go`) MUST contain exactly one `os.Getwd()` call each as the documented last-resort fallback after env-var and (for quality) cfg.ProjectDir resolution. These are the contractual implementation of REQ-HCWA-001 itself, NOT instances of the leak class being audited.
+2. **Comments referencing the fallback behavior**: After refactoring, several call-site comments still describe the env-var → `os.Getwd()` fallback chain as the documented contract (e.g., `// env var → os.Getwd() fallback with slog.Warn cwd_fallback:true marker`). These are documentation references, not active call sites, and the `^[^:]*:[0-9]*:[ \t]*//` filter excludes them.
 
 ---
 
@@ -208,6 +212,6 @@ The SPEC is considered DONE when:
 
 ---
 
-Version: 0.1.0
-Status: draft
+Version: 0.2.0
+Status: implemented
 Last Updated: 2026-05-23

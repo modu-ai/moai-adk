@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001
 title: "Hook cwd leak audit + resolveProjectRoot consistency — Progress Tracker"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
@@ -15,10 +15,10 @@ tier: S
 
 | Phase | Status | Started | Completed | Commit |
 |-------|--------|---------|-----------|--------|
-| Plan | COMPLETE | 2026-05-23 | 2026-05-23 | _[pending: orchestrator commit]_ |
-| Run M1 | NOT STARTED | — | — | — |
-| Run M2 | NOT STARTED | — | — | — |
-| Run M3 | NOT STARTED | — | — | — |
+| Plan | COMPLETE | 2026-05-23 | 2026-05-23 | `d553d585b` |
+| Run M1 | COMPLETE | 2026-05-23 | 2026-05-23 | `e629afc9d` |
+| Run M2 | COMPLETE | 2026-05-23 | 2026-05-23 | `8a8ad3051` |
+| Run M3 | COMPLETE | 2026-05-23 | 2026-05-23 | _[this commit]_ |
 | Sync | NOT STARTED | — | — | — |
 
 ---
@@ -134,20 +134,32 @@ tier: S
 
 ---
 
-## Verification Snapshot (to be updated at M3)
+## Verification Snapshot (updated at M3)
 
 ```
-M0 baseline (plan-phase):
+M0 baseline (plan-phase, HEAD fc9ce6822):
 - cwd leak count: 9
-- lint findings: [fill at M0 entry]
-- race detector: PASS
-- preserve hashes: subagent_stop.go=[fill], post_tool_metrics.go=[fill], cohabitation_guard_test.go=[fill]
+- lint findings: 0 issues (golangci-lint ./internal/hook/...)
+- race detector: PASS (all 13 packages)
+- preserve hashes:
+  - subagent_stop.go            = 69cbeaa66d9026392e96dafa31d53a340bcc99fd2e3e59fb6e1de09cf3122b7e
+  - post_tool_metrics.go        = 17e46ee9fc717215d61175cff669031a61fcaf7d9f4e7b9604d76c91874c2790
+  - cohabitation_guard_test.go  = e1afdee26f7693419f16e401dfc9a7b161128c1367f88f880b6a0989346487f2
 
 M3 final (post-implementation):
-- cwd leak count: [fill — expected 0]
-- lint findings: [fill — expected ≤ M0]
-- race detector: [fill — expected PASS]
-- preserve hashes: [fill — expected unchanged]
+- cwd leak count: 0 (helper definitions + comments excluded per AC-HCWA-001 refinement)
+- lint findings: 0 issues (same as M0)
+- race detector: PASS (all 13 packages)
+- preserve hashes: ALL UNCHANGED (verified by `shasum -a 256 -c /tmp/preserve-baseline.sha256`)
+
+AC Matrix (all 7 PASS):
+- AC-HCWA-001 PASS — 0 leak sites in production hook code (helpers + comments excluded)
+- AC-HCWA-002 PASS — 6 env-helper call sites (≥5 required) + 4 quality-helper call sites (≥4 required)
+- AC-HCWA-003 PASS — cohabitation_guard_test.go byte-identical AND TestCohabitationGuard test PASS
+- AC-HCWA-004 PASS — go test -race exit 0, 0 race warnings
+- AC-HCWA-005 PASS — golangci-lint 0 NEW issues vs M0 baseline
+- AC-HCWA-006 PASS — subagent_stop.go SHA-256 unchanged
+- AC-HCWA-007 PASS — resolveProjectRoot body 16 lines, env-var + .moai/ Stat both present
 ```
 
 ---
@@ -158,6 +170,6 @@ _None at plan-phase. To be appended during run-phase by manager-develop or orche
 
 ---
 
-Version: 0.1.0
-Status: draft
+Version: 0.2.0
+Status: implemented
 Last Updated: 2026-05-23
