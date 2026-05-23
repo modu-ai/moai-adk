@@ -701,6 +701,30 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			} else {
 				plBackup.Done("No config to backup")
 			}
+
+			// SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 M3: user-owned namespace backup
+			// (REQ-UNP-004). Sequential after .moai/config backup. Skips silently
+			// when no user-owned content exists (EC-UNP-001).
+			plNsBackup := tui.ProgressLine(out, "Backing up user-owned namespace...", nil)
+			nsBackupPath, nsBackupErr := backupUserOwnedNamespace(projectRoot)
+			if nsBackupErr != nil {
+				plNsBackup.Fail(fmt.Sprintf("Namespace backup failed: %v", nsBackupErr))
+				if reporter != nil {
+					reporter.StepError(nsBackupErr)
+				}
+				return nsBackupErr
+			}
+			if nsBackupPath != "" {
+				// Derive display-friendly project-root-relative path
+				displayNs := nsBackupPath
+				if rel, relErr := filepath.Rel(projectRoot, nsBackupPath); relErr == nil {
+					displayNs = rel
+				}
+				plNsBackup.Done(fmt.Sprintf("User-owned namespace backed up: %s", displayNs))
+			} else {
+				plNsBackup.Done("No user-owned namespace to back up")
+			}
+
 			// Also backup .gitignore for EntryMerge after deploy
 			gitignorePath := filepath.Join(projectRoot, ".gitignore")
 			if data, readErr := os.ReadFile(gitignorePath); readErr == nil {
