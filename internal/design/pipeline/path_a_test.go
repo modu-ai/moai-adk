@@ -1,13 +1,13 @@
 //go:build integration
 
-// Package pipeline: Path A (Claude Design 핸드오프 번들) 통합 테스트.
+// Package pipeline: integration tests for Path A (Claude Design handoff bundle).
 // SPEC-V3R3-DESIGN-PIPELINE-001 Phase 4 (T4-02).
 //
-// 검증:
-// 1. testdata/path_a_handoff/ 핸드오프 번들에서 아티팩트 읽기
-// 2. tokens.json에 dtcg.Validate 실행 — 유효 샘플은 오류 없어야 함
-// 3. corrupt tokens.json은 검증기가 오류를 발생시켜야 함
-// 4. path-selection.json에 Path A 기록
+// Verification:
+// 1. Read artifacts from the testdata/path_a_handoff/ handoff bundle.
+// 2. Run dtcg.Validate against tokens.json — valid samples must produce no errors.
+// 3. Corrupt tokens.json must cause the validator to raise errors.
+// 4. Record Path A in path-selection.json.
 package pipeline
 
 import (
@@ -20,11 +20,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// loadTestdataTokens: testdata/path_a_handoff/tokens.json을 읽어 map으로 반환한다.
+// loadTestdataTokens reads testdata/path_a_handoff/tokens.json and returns it as a map.
 func loadTestdataTokens(t *testing.T, filename string) map[string]any {
 	t.Helper()
 
-	// 테스트 실행 디렉토리에서 testdata 경로 구성
+	// Build the testdata path relative to the test execution directory.
 	path := filepath.Join("testdata", "path_a_handoff", filename)
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -39,9 +39,9 @@ func loadTestdataTokens(t *testing.T, filename string) map[string]any {
 	return tokens
 }
 
-// TestPathA_HandoffBundleArtifactsExist: Path A 핸드오프 번들 아티팩트 파일 존재 검증.
+// TestPathA_HandoffBundleArtifactsExist verifies that Path A handoff bundle artifact files exist.
 func TestPathA_HandoffBundleArtifactsExist(t *testing.T) {
-	// constitution §3.2의 reserved file paths 검증
+	// Verify the reserved file paths defined in constitution §3.2.
 	required := []string{
 		filepath.Join("testdata", "path_a_handoff", "tokens.json"),
 		filepath.Join("testdata", "path_a_handoff", "components.json"),
@@ -56,7 +56,7 @@ func TestPathA_HandoffBundleArtifactsExist(t *testing.T) {
 	}
 }
 
-// TestPathA_ValidTokensPassValidator: 유효한 tokens.json은 검증기를 통과해야 한다.
+// TestPathA_ValidTokensPassValidator: a valid tokens.json must pass the validator.
 func TestPathA_ValidTokensPassValidator(t *testing.T) {
 	tokens := loadTestdataTokens(t, "tokens.json")
 
@@ -77,21 +77,21 @@ func TestPathA_ValidTokensPassValidator(t *testing.T) {
 	}
 }
 
-// TestPathA_CorruptTokensBlockDownstream: 손상된 tokens.json은 검증기가 차단해야 한다.
+// TestPathA_CorruptTokensBlockDownstream: the validator must block a corrupt tokens.json.
 func TestPathA_CorruptTokensBlockDownstream(t *testing.T) {
-	// 손상된 tokens.json: 알 수 없는 카테고리 + $value 누락
+	// Corrupt tokens.json: unknown category + missing $value.
 	corruptTokens := map[string]any{
 		"color-bad": map[string]any{
 			"$type":  "color",
-			"$value": "not-a-hex-value", // 잘못된 hex 형식
+			"$value": "not-a-hex-value", // invalid hex format
 		},
 		"unknown-cat": map[string]any{
-			"$type":  "foobar", // 알 수 없는 카테고리
+			"$type":  "foobar", // unknown category
 			"$value": "something",
 		},
 		"missing-value": map[string]any{
 			"$type": "dimension",
-			// $value 누락
+			// $value missing
 		},
 	}
 
@@ -100,7 +100,7 @@ func TestPathA_CorruptTokensBlockDownstream(t *testing.T) {
 		t.Fatalf("Validate() 실행 실패: %v", err)
 	}
 
-	// 손상된 데이터이므로 Valid는 false여야 함
+	// Corrupt data, so Valid must be false.
 	if report.Valid {
 		t.Error("손상된 tokens.json이 검증을 통과함 — 다운스트림 차단이 되지 않음")
 	}
@@ -115,7 +115,7 @@ func TestPathA_CorruptTokensBlockDownstream(t *testing.T) {
 	}
 }
 
-// TestPathA_PathSelectionWrittenOnImport: Path A 처리 후 path-selection.json에 "A" 기록.
+// TestPathA_PathSelectionWrittenOnImport: after Path A processing, "A" is recorded in path-selection.json.
 func TestPathA_PathSelectionWrittenOnImport(t *testing.T) {
 	dir := t.TempDir()
 
@@ -144,23 +144,23 @@ func TestPathA_PathSelectionWrittenOnImport(t *testing.T) {
 	}
 }
 
-// TestPathA_ValidatorGateBeforeCodeGen: 토큰 검증 → 코드 생성 허용 흐름 검증.
-// expert-frontend의 DTCG 게이트 패턴을 시뮬레이션한다.
+// TestPathA_ValidatorGateBeforeCodeGen: token validation -> code generation allowed flow.
+// Simulates the DTCG gate pattern used by expert-frontend.
 func TestPathA_ValidatorGateBeforeCodeGen(t *testing.T) {
 	tokens := loadTestdataTokens(t, "tokens.json")
 
-	// expert-frontend가 수행하는 검증 흐름 시뮬레이션
+	// Simulate the validation flow performed by expert-frontend.
 	report, err := dtcg.Validate(tokens)
 	if err != nil {
 		t.Fatalf("검증기 실행 실패: %v", err)
 	}
 
 	if !report.Valid {
-		// 코드 생성 차단 — 실제 구현에서는 오케스트레이터에 DTCGValidationFailure 반환
+		// Block code generation — real implementations return DTCGValidationFailure to the orchestrator.
 		t.Logf("코드 생성 차단됨 (오류 %d개)", len(report.Errors))
 		t.FailNow()
 	}
 
-	// 검증 통과: 코드 생성 허용
+	// Validation passed: code generation allowed.
 	t.Logf("검증 통과 (%d개 토큰) — 코드 생성 허용", report.TokenCount)
 }

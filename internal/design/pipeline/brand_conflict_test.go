@@ -1,4 +1,4 @@
-// Package pipeline: 브랜드 충돌 검사기 단위 테스트.
+// Package pipeline: unit tests for the brand-conflict checker.
 // SPEC-V3R3-DESIGN-PIPELINE-001 Phase 4 (T4-05).
 package pipeline
 
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestExtractBrandColors_WithColors: hex 색상이 포함된 visual-identity.md에서 정상 추출.
+// TestExtractBrandColors_WithColors: normal extraction from a visual-identity.md containing hex colors.
 func TestExtractBrandColors_WithColors(t *testing.T) {
 	t.Parallel()
 
@@ -30,12 +30,12 @@ neutral: #6B7280
 		t.Fatalf("ExtractBrandColors 실패: %v", err)
 	}
 
-	// 4개 색상 추출 기대
+	// Expect 4 extracted colors.
 	if len(colors) != 4 {
 		t.Errorf("색상 수 = %d, want 4", len(colors))
 	}
 
-	// 정규화된 소문자 hex 검증
+	// Verify normalized lowercase hex values.
 	hexSet := make(map[string]bool)
 	for _, c := range colors {
 		hexSet[c.HexValue] = true
@@ -48,7 +48,7 @@ neutral: #6B7280
 	}
 }
 
-// TestExtractBrandColors_TBDOnly: _TBD_ 플레이스홀더만 있는 경우 빈 슬라이스 반환.
+// TestExtractBrandColors_TBDOnly: returns an empty slice when only _TBD_ placeholders are present.
 func TestExtractBrandColors_TBDOnly(t *testing.T) {
 	t.Parallel()
 
@@ -73,7 +73,7 @@ secondary: _TBD_
 	}
 }
 
-// TestExtractBrandColors_FileNotExist: 파일 없는 경우 nil, nil 반환.
+// TestExtractBrandColors_FileNotExist: returns nil, nil when the file is missing.
 func TestExtractBrandColors_FileNotExist(t *testing.T) {
 	t.Parallel()
 
@@ -86,7 +86,7 @@ func TestExtractBrandColors_FileNotExist(t *testing.T) {
 	}
 }
 
-// TestCheckBrandConflicts_NoConflict: tokens.json 색상이 브랜드 팔레트에 있으면 경고 없음.
+// TestCheckBrandConflicts_NoConflict: no warning when tokens.json colors exist in the brand palette.
 func TestCheckBrandConflicts_NoConflict(t *testing.T) {
 	t.Parallel()
 
@@ -98,7 +98,7 @@ func TestCheckBrandConflicts_NoConflict(t *testing.T) {
 	tokens := map[string]any{
 		"color-primary": map[string]any{
 			"$type":  "color",
-			"$value": "#1D4ED8", // 대소문자 달라도 정규화 후 일치
+			"$value": "#1D4ED8", // case differs but matches after normalization
 		},
 		"color-secondary": map[string]any{
 			"$type":  "color",
@@ -112,7 +112,7 @@ func TestCheckBrandConflicts_NoConflict(t *testing.T) {
 	}
 }
 
-// TestCheckBrandConflicts_WithConflict: 브랜드에 없는 색상은 경고 발생.
+// TestCheckBrandConflicts_WithConflict: a color absent from the brand palette triggers a warning.
 func TestCheckBrandConflicts_WithConflict(t *testing.T) {
 	t.Parallel()
 
@@ -123,7 +123,7 @@ func TestCheckBrandConflicts_WithConflict(t *testing.T) {
 	tokens := map[string]any{
 		"color-primary": map[string]any{
 			"$type":  "color",
-			"$value": "#FF0000", // 브랜드에 없는 색상
+			"$value": "#FF0000", // color not in the brand palette
 		},
 	}
 
@@ -141,7 +141,7 @@ func TestCheckBrandConflicts_WithConflict(t *testing.T) {
 	}
 }
 
-// TestCheckBrandConflicts_NonColorSkipped: color 이외 $type은 검사에서 제외.
+// TestCheckBrandConflicts_NonColorSkipped: $type other than color is excluded from the check.
 func TestCheckBrandConflicts_NonColorSkipped(t *testing.T) {
 	t.Parallel()
 
@@ -150,12 +150,12 @@ func TestCheckBrandConflicts_NonColorSkipped(t *testing.T) {
 	}
 
 	tokens := map[string]any{
-		// dimension 토큰은 브랜드 색상과 무관 — 경고 없어야 함
+		// dimension token is unrelated to brand colors — no warning expected.
 		"spacing-md": map[string]any{
 			"$type":  "dimension",
 			"$value": "16px",
 		},
-		// color 토큰은 브랜드에 있음 — 경고 없어야 함
+		// color token is in the brand palette — no warning expected.
 		"color-primary": map[string]any{
 			"$type":  "color",
 			"$value": "#1d4ed8",
@@ -168,7 +168,7 @@ func TestCheckBrandConflicts_NonColorSkipped(t *testing.T) {
 	}
 }
 
-// TestCheckBrandConflicts_EmptyBrandColors: 브랜드 색상이 없으면 경고 없음.
+// TestCheckBrandConflicts_EmptyBrandColors: no warnings when brand colors are absent.
 func TestCheckBrandConflicts_EmptyBrandColors(t *testing.T) {
 	t.Parallel()
 
@@ -185,7 +185,7 @@ func TestCheckBrandConflicts_EmptyBrandColors(t *testing.T) {
 	}
 }
 
-// TestRunBrandConflictCheck_Integration: 합성 visual-identity.md + tokens로 통합 테스트.
+// TestRunBrandConflictCheck_Integration: integration test with a synthesized visual-identity.md + tokens.
 func TestRunBrandConflictCheck_Integration(t *testing.T) {
 	t.Parallel()
 
@@ -236,7 +236,7 @@ secondary: #7C3AED
 	})
 }
 
-// TestRunBrandConflictCheck_FileNotExist: visual-identity.md 없으면 nil 반환.
+// TestRunBrandConflictCheck_FileNotExist: returns nil when visual-identity.md is missing.
 func TestRunBrandConflictCheck_FileNotExist(t *testing.T) {
 	t.Parallel()
 

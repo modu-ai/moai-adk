@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestExtractSpecIDs_Patterns는 다양한 SPEC ID 패턴 추출을 테스트합니다.
+// TestExtractSpecIDs_Patterns tests extraction across various SPEC ID patterns.
 func TestExtractSpecIDs_Patterns(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -67,7 +67,7 @@ func TestExtractSpecIDs_Patterns(t *testing.T) {
 	}
 }
 
-// TestSpecAssociator_Associate_ByBody는 본문 기반 SPEC 연결을 테스트합니다.
+// TestSpecAssociator_Associate_ByBody tests body-based SPEC association.
 func TestSpecAssociator_Associate_ByBody(t *testing.T) {
 	associator := NewSpecAssociator(map[string][]string{})
 
@@ -94,7 +94,7 @@ func TestSpecAssociator_Associate_ByBody(t *testing.T) {
 	}
 }
 
-// TestSpecAssociator_Associate_ByModulePath는 파일 경로 기반 SPEC 연결을 테스트합니다.
+// TestSpecAssociator_Associate_ByModulePath tests file-path-based SPEC association.
 func TestSpecAssociator_Associate_ByModulePath(t *testing.T) {
 	specModules := map[string][]string{
 		"SPEC-AUTH-001": {"internal/auth/"},
@@ -126,7 +126,7 @@ func TestSpecAssociator_Associate_ByModulePath(t *testing.T) {
 	}
 }
 
-// TestSpecAssociator_Associate_NoDuplicate는 중복 SPEC ID가 없음을 확인합니다.
+// TestSpecAssociator_Associate_NoDuplicate verifies that there are no duplicate SPEC IDs.
 func TestSpecAssociator_Associate_NoDuplicate(t *testing.T) {
 	specModules := map[string][]string{
 		"SPEC-AUTH-001": {"internal/auth/"},
@@ -134,7 +134,7 @@ func TestSpecAssociator_Associate_NoDuplicate(t *testing.T) {
 
 	associator := NewSpecAssociator(specModules)
 
-	// 경로로도, 본문으로도 SPEC-AUTH-001에 연결되는 태그
+	// Tag associated with SPEC-AUTH-001 by both path and body.
 	tag := Tag{
 		Kind: MXAnchor,
 		File: "internal/auth/handler.go",
@@ -144,7 +144,7 @@ func TestSpecAssociator_Associate_NoDuplicate(t *testing.T) {
 
 	specs := associator.Associate(tag)
 
-	// 중복 없어야 함
+	// Must contain no duplicates.
 	seen := make(map[string]int)
 	for _, s := range specs {
 		seen[s]++
@@ -157,7 +157,7 @@ func TestSpecAssociator_Associate_NoDuplicate(t *testing.T) {
 	}
 }
 
-// TestIsFileUnderModules는 파일 경로가 모듈 경로 하위에 있는지 확인합니다.
+// TestIsFileUnderModules verifies whether a file path lives under a module path.
 func TestIsFileUnderModules(t *testing.T) {
 	tests := []struct {
 		name     string

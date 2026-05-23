@@ -9,9 +9,10 @@ import (
 	lsp "github.com/modu-ai/moai-adk/internal/lsp"
 )
 
-// TestResolver_ResolveAnchorCallsites_LSP는 LSP mock이 3개의 Location을 반환할 때
-// ResolveAnchorCallsites가 Method="lsp"인 3개 Callsite를 반환하는지 확인합니다.
-// AC-SPC-004-02: LSP 기반 callsite 위치 목록 반환.
+// TestResolver_ResolveAnchorCallsites_LSP verifies that when the LSP mock
+// returns three Locations, ResolveAnchorCallsites returns three Callsites with
+// Method="lsp".
+// AC-SPC-004-02: returns the LSP-based callsite location list.
 func TestResolver_ResolveAnchorCallsites_LSP(t *testing.T) {
 	// Arrange: Manager with a single ANCHOR tag
 	manager := newTestManager(t, []Tag{
@@ -59,8 +60,8 @@ func TestResolver_ResolveAnchorCallsites_LSP(t *testing.T) {
 	}
 }
 
-// TestResolver_ResolveAnchorCallsites_TextualFallback는 LSP 사용 불가 시
-// walk-based textual fallback으로 callsite 목록을 반환하는지 확인합니다.
+// TestResolver_ResolveAnchorCallsites_TextualFallback verifies that the
+// walk-based textual fallback returns a callsite list when LSP is unavailable.
 // AC-SPC-004-07: LSP unavailable → textual fallback.
 func TestResolver_ResolveAnchorCallsites_TextualFallback(t *testing.T) {
 	// Arrange: tmp directory with fixture files referencing the anchor
@@ -110,9 +111,9 @@ func unrelated() {}
 	}
 }
 
-// TestResolver_ResolveAnchor_BackwardCompat는 ResolveAnchor의 시그니처가
-// 변경되지 않았음을 확인합니다 (PR #746 baseline 호환).
-// G-04: 기존 API 시그니처 불변 보장.
+// TestResolver_ResolveAnchor_BackwardCompat verifies that the ResolveAnchor
+// signature has not changed (PR #746 baseline compatibility).
+// G-04: guarantees the existing API signature stays unchanged.
 func TestResolver_ResolveAnchor_BackwardCompat(t *testing.T) {
 	// Arrange
 	manager := newTestManager(t, []Tag{
@@ -143,8 +144,8 @@ func TestResolver_ResolveAnchor_BackwardCompat(t *testing.T) {
 	_ = tag
 }
 
-// TestResolver_ResolveAnchorCallsites_IncludeTests는 includeTests=false 시
-// _test.go 파일의 callsite를 제외하는지 확인합니다.
+// TestResolver_ResolveAnchorCallsites_IncludeTests verifies that callsites in
+// _test.go files are excluded when includeTests=false.
 func TestResolver_ResolveAnchorCallsites_IncludeTests(t *testing.T) {
 	// Arrange
 	manager := newTestManager(t, []Tag{
@@ -188,8 +189,8 @@ func TestResolver_ResolveAnchorCallsites_IncludeTests(t *testing.T) {
 	}
 }
 
-// TestResolver_ResolveAnchorCallsites_AnchorNotFound는 존재하지 않는 AnchorID에 대해
-// error를 반환하는지 확인합니다.
+// TestResolver_ResolveAnchorCallsites_AnchorNotFound verifies that an error
+// is returned for a non-existent AnchorID.
 func TestResolver_ResolveAnchorCallsites_AnchorNotFound(t *testing.T) {
 	manager := newTestManager(t, nil)
 	resolver := NewResolver(manager)
@@ -202,7 +203,7 @@ func TestResolver_ResolveAnchorCallsites_AnchorNotFound(t *testing.T) {
 
 // --- helpers ---
 
-// newTestManager는 주어진 Tag 목록을 가진 임시 Manager를 생성합니다.
+// newTestManager creates a temporary Manager seeded with the given Tag list.
 func newTestManager(t *testing.T, tags []Tag) *Manager {
 	t.Helper()
 	tmpDir := t.TempDir()
@@ -217,7 +218,7 @@ func newTestManager(t *testing.T, tags []Tag) *Manager {
 	return mgr
 }
 
-// writeFixture는 주어진 경로에 파일을 생성하고 내용을 씁니다.
+// writeFixture creates a file at the given path and writes content to it.
 func writeFixture(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

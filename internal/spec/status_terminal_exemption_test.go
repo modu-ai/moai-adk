@@ -5,20 +5,20 @@ import (
 	"testing"
 )
 
-// TestStatusGitConsistency_TerminalStateExemption은 SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001
-// Wave 4 요구사항(REQ-SDF-007)을 검증한다:
-// terminal lifecycle state(superseded, archived)를 가진 SPEC은
-// git-implied status와 mismatch가 발생해도 StatusGitConsistency finding을 emit하지 않아야 한다.
+// TestStatusGitConsistency_TerminalStateExemption verifies the SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001
+// Wave 4 requirement (REQ-SDF-007):
+// SPECs in a terminal lifecycle state (superseded, archived) must not emit a
+// StatusGitConsistency finding even when their git-implied status mismatches.
 //
 // Pattern D: superseded frontmatter, git-implied 'completed'
 // Pattern E: superseded frontmatter, git-implied 'implemented'
 // Pattern F: archived frontmatter, git-implied 'implemented'
 // Pattern G: archived frontmatter, git-implied 'in-progress'
 
-// TestStatusGitConsistency_SupersededIsTerminal_Completed는 Pattern D를 검증한다.
-// frontmatter status='superseded', git-implied='completed' → finding 없음
+// TestStatusGitConsistency_SupersededIsTerminal_Completed verifies Pattern D.
+// frontmatter status='superseded', git-implied='completed' -> no finding
 func TestStatusGitConsistency_SupersededIsTerminal_Completed(t *testing.T) {
-	// git 픽스처: sync(docs) commit → git-implied 'completed'
+	// git fixture: sync(docs) commit -> git-implied 'completed'
 	dir := setupGitFixture(t, []fixtureCommit{
 		{title: "docs(sync): SPEC-TERMINAL-D001 closeout"},
 	})
@@ -48,10 +48,10 @@ func TestStatusGitConsistency_SupersededIsTerminal_Completed(t *testing.T) {
 	}
 }
 
-// TestStatusGitConsistency_SupersededIsTerminal_Implemented는 Pattern E를 검증한다.
-// frontmatter status='superseded', git-implied='implemented' → finding 없음
+// TestStatusGitConsistency_SupersededIsTerminal_Implemented verifies Pattern E.
+// frontmatter status='superseded', git-implied='implemented' -> no finding
 func TestStatusGitConsistency_SupersededIsTerminal_Implemented(t *testing.T) {
-	// git 픽스처: feat commit → git-implied 'implemented'
+	// git fixture: feat commit -> git-implied 'implemented'
 	dir := setupGitFixture(t, []fixtureCommit{
 		{title: "feat(spec): SPEC-TERMINAL-E001 구현 완료"},
 	})
@@ -81,10 +81,10 @@ func TestStatusGitConsistency_SupersededIsTerminal_Implemented(t *testing.T) {
 	}
 }
 
-// TestStatusGitConsistency_ArchivedIsTerminal_Implemented는 Pattern F를 검증한다.
-// frontmatter status='archived', git-implied='implemented' → finding 없음
+// TestStatusGitConsistency_ArchivedIsTerminal_Implemented verifies Pattern F.
+// frontmatter status='archived', git-implied='implemented' -> no finding
 func TestStatusGitConsistency_ArchivedIsTerminal_Implemented(t *testing.T) {
-	// git 픽스처: feat commit → git-implied 'implemented'
+	// git fixture: feat commit -> git-implied 'implemented'
 	dir := setupGitFixture(t, []fixtureCommit{
 		{title: "feat(spec): SPEC-TERMINAL-F001 구현 완료"},
 	})
@@ -114,11 +114,11 @@ func TestStatusGitConsistency_ArchivedIsTerminal_Implemented(t *testing.T) {
 	}
 }
 
-// TestStatusGitConsistency_ArchivedIsTerminal_InProgress는 Pattern G를 검증한다.
-// frontmatter status='archived', git-implied='in-progress' → finding 없음
+// TestStatusGitConsistency_ArchivedIsTerminal_InProgress verifies Pattern G.
+// frontmatter status='archived', git-implied='in-progress' -> no finding
 func TestStatusGitConsistency_ArchivedIsTerminal_InProgress(t *testing.T) {
-	// git 픽스처: ci commit → git-implied 'in-progress'
-	// (chore(spec): 은 shouldSkipCommitTitle 로 필터되므로 ci: 를 사용)
+	// git fixture: ci commit -> git-implied 'in-progress'
+	// (chore(spec): is filtered by shouldSkipCommitTitle, so use ci: instead)
 	dir := setupGitFixture(t, []fixtureCommit{
 		{title: "ci: SPEC-TERMINAL-G001 파이프라인 수정"},
 	})

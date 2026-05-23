@@ -6,8 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestMigrateLegacyBypassRules_HappyPath legacy bypassPermissions action → acceptEdits 마이그레이션 검증.
-// T-RT002-30, AC-11 관련.
+// TestMigrateLegacyBypassRules_HappyPath verifies migration of legacy bypassPermissions action -> acceptEdits.
+// Related to T-RT002-30 and AC-11.
 func TestMigrateLegacyBypassRules_HappyPath(t *testing.T) {
 	t.Parallel()
 
@@ -30,21 +30,21 @@ func TestMigrateLegacyBypassRules_HappyPath(t *testing.T) {
 	if migrated[0].Action != DecisionAllow {
 		t.Errorf("MigrateLegacyBypassRules() migrated action = %v, want DecisionAllow", migrated[0].Action)
 	}
-	// warning 에 origin 파일 경로 포함 확인.
+	// Verify the warning includes the origin file path.
 	if !containsMiddle(warnings[0], ".claude/settings.json") {
 		t.Errorf("warning should mention origin file, got: %s", warnings[0])
 	}
 }
 
-// TestMigrateLegacyBypassRules_NoLegacy legacy action 없으면 warning 없음 검증.
-// T-RT002-30 관련.
+// TestMigrateLegacyBypassRules_NoLegacy verifies no warnings when no legacy action is present.
+// Related to T-RT002-30.
 func TestMigrateLegacyBypassRules_NoLegacy(t *testing.T) {
 	t.Parallel()
 
 	rules := []PermissionRule{
 		{
 			Pattern: "Bash(go test:*)",
-			Action:  DecisionAllow, // 이미 올바른 action.
+			Action:  DecisionAllow, // already the correct action.
 			Source:  config.SrcProject,
 			Origin:  ".claude/settings.json",
 		},
@@ -62,8 +62,8 @@ func TestMigrateLegacyBypassRules_NoLegacy(t *testing.T) {
 	}
 }
 
-// TestMigrateLegacyBypassRules_MultipleOrigins 복수 legacy 규칙 각각 origin 명시 검증.
-// T-RT002-30 관련.
+// TestMigrateLegacyBypassRules_MultipleOrigins verifies that each of multiple legacy rules names its origin.
+// Related to T-RT002-30.
 func TestMigrateLegacyBypassRules_MultipleOrigins(t *testing.T) {
 	t.Parallel()
 
@@ -94,7 +94,7 @@ func TestMigrateLegacyBypassRules_MultipleOrigins(t *testing.T) {
 			t.Errorf("migrated[%d].Action = %v, want DecisionAllow", i, r.Action)
 		}
 	}
-	// 각 warning 에 해당 파일 origin 포함.
+	// Each warning includes the corresponding file origin.
 	if !containsMiddle(warnings[0], "file-a.json") && !containsMiddle(warnings[1], "file-a.json") {
 		t.Error("one of the warnings should mention file-a.json")
 	}

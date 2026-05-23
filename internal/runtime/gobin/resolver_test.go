@@ -8,49 +8,49 @@ import (
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 )
 
-// TestDetect_GOBINFirst는 GOBIN 환경변수 우선순위를 검증합니다.
-// REQ-V3R2-RT-007-001: GoBinPath resolver는 go env GOBIN을 우선检查합니다.
+// TestDetect_GOBINFirst verifies the GOBIN env var has highest priority.
+// REQ-V3R2-RT-007-001: GoBinPath resolver checks go env GOBIN first.
 func TestDetect_GOBINFirst(t *testing.T) {
 	homeDir, cleanup := setupDetectTest(t)
 	defer cleanup()
 
-	// GOBIN 설정
+	// Set GOBIN.
 	t.Setenv("GOBIN", "/custom/bin")
 
 	result := gobin.Detect(homeDir)
 
-	// GOBIN이 설정되면 그 값을 반환해야 함
+	// When GOBIN is set, its value must be returned.
 	if result != "/custom/bin" && result != "" {
-		// go env GOBIN이 실제로 실행되므로 빈 문자열 가능성 있음
+		// go env GOBIN runs for real, so an empty string is possible.
 		t.Logf("GOBIN 우선순위 검증: result=%s (empty is ok if go env GOBIN returns empty)", result)
 	}
 }
 
-// TestDetect_GOPATHSecond는 GOPATH/bin 두 번째 우선순위를 검증합니다.
-// REQ-V3R2-RT-007-001: GOBIN이 없으면 go env GOPATH/bin을检查합니다.
+// TestDetect_GOPATHSecond verifies GOPATH/bin as the second priority.
+// REQ-V3R2-RT-007-001: when GOBIN is absent, check go env GOPATH/bin.
 func TestDetect_GOPATHSecond(t *testing.T) {
 	homeDir, cleanup := setupDetectTest(t)
 	defer cleanup()
 
-	// GOBIN clear, GOPATH 설정
+	// Clear GOBIN, set GOPATH.
 	t.Setenv("GOBIN", "")
 	t.Setenv("GOPATH", "/custom/gopath")
 
 	result := gobin.Detect(homeDir)
 
-	// GOPATH/bin을 반환해야 함
+	// Must return GOPATH/bin.
 	if result != "" {
 		t.Logf("GOPATH/bin 우선순위 검증: result=%s", result)
 	}
 }
 
-// TestDetect_HomeFallback은 $HOME/go/bin 폴백을 검증합니다.
-// REQ-V3R2-RT-007-001: GOPATH도 없으면 $HOME/go/bin을 반환합니다.
+// TestDetect_HomeFallback verifies the $HOME/go/bin fallback.
+// REQ-V3R2-RT-007-001: when GOPATH is also absent, return $HOME/go/bin.
 func TestDetect_HomeFallback(t *testing.T) {
 	homeDir, cleanup := setupDetectTest(t)
 	defer cleanup()
 
-	// GOBIN, GOPATH 모두 clear
+	// Clear both GOBIN and GOPATH.
 	t.Setenv("GOBIN", "")
 	t.Setenv("GOPATH", "")
 
@@ -66,13 +66,13 @@ func TestDetect_HomeFallback(t *testing.T) {
 	}
 }
 
-// TestDetect_LastResort는 platform-aware last resort를 검증합니다.
-// REQ-V3R2-RT-007-001: 모든 check가 실패하면 빈 문자열을 반환합니다.
+// TestDetect_LastResort verifies the platform-aware last resort.
+// REQ-V3R2-RT-007-001: returns an empty string when every check fails.
 func TestDetect_LastResort(t *testing.T) {
 	_, cleanup := setupDetectTest(t)
 	defer cleanup()
 
-	// 모든 환경변수 clear
+	// Clear all environment variables.
 	t.Setenv("GOBIN", "")
 	t.Setenv("GOPATH", "")
 
@@ -83,14 +83,14 @@ func TestDetect_LastResort(t *testing.T) {
 	}
 }
 
-// setupDetectTest는 공통 테스트 setup입니다.
+// setupDetectTest provides the shared test setup.
 func setupDetectTest(t *testing.T) (string, func()) {
-	// 현재 환경 변수 저장
+	// Save the current environment variables.
 	oldGOBIN := os.Getenv("GOBIN")
 	oldGOPATH := os.Getenv("GOPATH")
 	oldHOME := os.Getenv("HOME")
 
-	// cleanup 함수 반환
+	// Return cleanup function.
 	cleanup := func() {
 		if oldGOBIN != "" {
 			_ = os.Setenv("GOBIN", oldGOBIN)

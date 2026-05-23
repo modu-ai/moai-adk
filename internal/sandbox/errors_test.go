@@ -28,23 +28,23 @@ func TestErrors_SentinelMatching(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// 직접 비교
+			// Direct comparison.
 			if !errors.Is(tc.err, tc.err) {
 				t.Errorf("%s: errors.Is(err, err) returned false", tc.name)
 			}
 
-			// 래핑 후 비교
+			// Comparison after wrapping.
 			wrapped := fmt.Errorf("outer: %w", tc.err)
 			if !errors.Is(wrapped, tc.err) {
 				t.Errorf("%s: errors.Is(wrapped, sentinel) returned false", tc.name)
 			}
 
-			// 센티넬이 비어있지 않아야 함
+			// The sentinel must not be nil.
 			if tc.err == nil {
 				t.Errorf("%s must not be nil", tc.name)
 			}
 
-			// Error() 문자열이 비어있지 않아야 함
+			// Error() must return a non-empty string.
 			if tc.err.Error() == "" {
 				t.Errorf("%s Error() returned empty string", tc.name)
 			}

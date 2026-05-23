@@ -171,13 +171,13 @@ func TestCreateLearning_RejectsInvalidIDFormats(t *testing.T) {
 
 	invalidIDs := []string{
 		"../../etc/passwd",
-		"learn-20260415-001",      // 소문자 LEARN
-		"LEARN-2026415-001",       // 날짜 형식 오류
-		"LEARN-20260415-01",       // NNN이 2자리
-		"LEARN-20260415-0001",     // NNN이 4자리
-		"LEARN-20260415-001/evil", // 슬래시 포함
-		"",                        // 빈 문자열
-		"LEARN-20260415-001.bak",  // 확장자 포함
+		"learn-20260415-001",      // lowercase LEARN
+		"LEARN-2026415-001",       // invalid date format
+		"LEARN-20260415-01",       // NNN is 2 digits
+		"LEARN-20260415-0001",     // NNN is 4 digits
+		"LEARN-20260415-001/evil", // contains a slash
+		"",                        // empty string
+		"LEARN-20260415-001.bak",  // contains an extension
 	}
 
 	for _, id := range invalidIDs {

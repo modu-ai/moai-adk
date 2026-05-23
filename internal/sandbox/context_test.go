@@ -9,7 +9,7 @@ import (
 func TestSandbox_EnumExhaustive(t *testing.T) {
 	t.Parallel()
 
-	// 4개 열거값 모두 검증
+	// Verify all four enum values.
 	validValues := []Sandbox{
 		SandboxNone,
 		SandboxBubblewrap,
@@ -24,7 +24,7 @@ func TestSandbox_EnumExhaustive(t *testing.T) {
 		}
 		seen[v] = true
 
-		// 각 값이 비어있지 않아야 함
+		// Each value must be non-empty.
 		if string(v) == "" {
 			t.Error("sandbox value must not be empty string")
 		}
@@ -34,7 +34,7 @@ func TestSandbox_EnumExhaustive(t *testing.T) {
 		t.Errorf("expected exactly 4 sandbox values, got %d", len(seen))
 	}
 
-	// 각 값의 문자열 표현 확인
+	// Verify the string representation of each value.
 	if string(SandboxNone) != "none" {
 		t.Errorf("SandboxNone: got %q, want %q", SandboxNone, "none")
 	}

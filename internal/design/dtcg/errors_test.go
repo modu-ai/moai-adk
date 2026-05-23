@@ -7,7 +7,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// TestValidationError_Error: ValidationError 문자열 표현 검증.
+// TestValidationError_Error verifies ValidationError string representation.
 func TestValidationError_Error(t *testing.T) {
 	t.Parallel()
 
@@ -45,7 +45,7 @@ func TestValidationError_Error(t *testing.T) {
 	})
 }
 
-// TestValidationWarning_Warning: ValidationWarning 문자열 표현 검증.
+// TestValidationWarning_Warning verifies ValidationWarning string representation.
 func TestValidationWarning_Warning(t *testing.T) {
 	t.Parallel()
 	w := &dtcg.ValidationWarning{
@@ -62,7 +62,7 @@ func TestValidationWarning_Warning(t *testing.T) {
 	}
 }
 
-// TestReport_HasErrors: Report.HasErrors() 검증.
+// TestReport_HasErrors verifies Report.HasErrors().
 func TestReport_HasErrors(t *testing.T) {
 	t.Parallel()
 
@@ -87,7 +87,7 @@ func TestReport_HasErrors(t *testing.T) {
 	})
 }
 
-// TestReport_HasWarnings: Report.HasWarnings() 검증.
+// TestReport_HasWarnings verifies Report.HasWarnings().
 func TestReport_HasWarnings(t *testing.T) {
 	t.Parallel()
 
@@ -106,7 +106,7 @@ func TestReport_HasWarnings(t *testing.T) {
 		if !r.HasWarnings() {
 			t.Error("HasWarnings() = false; 경고 있어야 함")
 		}
-		// 경고는 Valid에 영향 없음
+		// Warnings do not affect Valid.
 		if !r.Valid {
 			t.Error("Valid = false; 경고는 Valid 변경 안해야 함")
 		}

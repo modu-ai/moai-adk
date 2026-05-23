@@ -6,8 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg/categories"
 )
 
-// TestValidateFontFamily_Positive: fontFamily 카테고리 양성 케이스
-// DTCG 2025.10: string 또는 string 배열 (폴백 체인).
+// TestValidateFontFamily_Positive: positive cases for the fontFamily category.
+// DTCG 2025.10: string or string array (fallback chain).
 func TestValidateFontFamily_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -21,7 +21,7 @@ func TestValidateFontFamily_Positive(t *testing.T) {
 		{name: "단일 원소 배열", value: []any{"Roboto"}},
 		{name: "폴백 체인", value: []any{"Roboto", "Arial", "sans-serif"}},
 		{name: "공백포함 배열", value: []any{"Open Sans", "Helvetica Neue", "sans-serif"}},
-		// 에일리어스 참조
+		// Alias references.
 		{name: "에일리어스 참조", value: "{typography.font-family.primary}"},
 	}
 
@@ -36,7 +36,7 @@ func TestValidateFontFamily_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateFontFamily_Negative: fontFamily 카테고리 음성 케이스
+// TestValidateFontFamily_Negative: negative cases for the fontFamily category.
 func TestValidateFontFamily_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -63,8 +63,8 @@ func TestValidateFontFamily_Negative(t *testing.T) {
 	}
 }
 
-// TestValidateFontWeight_Positive: fontWeight 카테고리 양성 케이스
-// DTCG 2025.10: 100-900 수치 또는 named ("thin","light" 등).
+// TestValidateFontWeight_Positive: positive cases for the fontWeight category.
+// DTCG 2025.10: numeric values from 100-900 or named ("thin", "light", etc.).
 func TestValidateFontWeight_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -72,7 +72,7 @@ func TestValidateFontWeight_Positive(t *testing.T) {
 		name  string
 		value any
 	}{
-		// 수치 (100 단위)
+		// Numeric values (100-step increments).
 		{name: "100 Thin", value: float64(100)},
 		{name: "200 ExtraLight", value: float64(200)},
 		{name: "300 Light", value: float64(300)},
@@ -90,7 +90,7 @@ func TestValidateFontWeight_Positive(t *testing.T) {
 		{name: "medium", value: "medium"},
 		{name: "bold", value: "bold"},
 		{name: "heavy", value: "heavy"},
-		// 에일리어스 참조
+		// Alias references.
 		{name: "에일리어스", value: "{typography.font-weight.bold}"},
 	}
 
@@ -105,7 +105,7 @@ func TestValidateFontWeight_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateFontWeight_Negative: fontWeight 카테고리 음성 케이스
+// TestValidateFontWeight_Negative: negative cases for the fontWeight category.
 func TestValidateFontWeight_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -133,8 +133,8 @@ func TestValidateFontWeight_Negative(t *testing.T) {
 	}
 }
 
-// TestValidateFont_Positive: font 복합 카테고리 양성 케이스
-// DTCG 2025.10: {family, size, weight, style?, lineHeight?} 복합 토큰.
+// TestValidateFont_Positive: positive cases for the composite font category.
+// DTCG 2025.10: composite token {family, size, weight, style?, lineHeight?}.
 func TestValidateFont_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -181,7 +181,7 @@ func TestValidateFont_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateFont_Negative: font 복합 카테고리 음성 케이스
+// TestValidateFont_Negative: negative cases for the composite font category.
 func TestValidateFont_Negative(t *testing.T) {
 	t.Parallel()
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestDangerCategoryMatcher_Match는 REASON 텍스트와 카테고리 매칭을 테스트합니다.
+// TestDangerCategoryMatcher_Match tests matching REASON text against categories.
 func TestDangerCategoryMatcher_Match(t *testing.T) {
 	matcher := NewDangerCategoryMatcher(DangerCategoryConfig{})
 
@@ -94,7 +94,7 @@ func TestDangerCategoryMatcher_Match(t *testing.T) {
 	}
 }
 
-// TestDangerCategoryMatcher_CategoryOf는 REASON 텍스트의 카테고리 추론을 테스트합니다.
+// TestDangerCategoryMatcher_CategoryOf tests category inference from REASON text.
 func TestDangerCategoryMatcher_CategoryOf(t *testing.T) {
 	matcher := NewDangerCategoryMatcher(DangerCategoryConfig{})
 
@@ -119,7 +119,7 @@ func TestDangerCategoryMatcher_CategoryOf(t *testing.T) {
 	}
 }
 
-// TestDangerCategoryMatcher_ValidateCategory는 카테고리 유효성 검증을 테스트합니다.
+// TestDangerCategoryMatcher_ValidateCategory tests category validity checks.
 func TestDangerCategoryMatcher_ValidateCategory(t *testing.T) {
 	matcher := NewDangerCategoryMatcher(DangerCategoryConfig{})
 
@@ -142,7 +142,7 @@ func TestDangerCategoryMatcher_ValidateCategory(t *testing.T) {
 	}
 }
 
-// TestDangerCategoryMatcher_CustomConfig는 커스텀 설정을 테스트합니다.
+// TestDangerCategoryMatcher_CustomConfig tests custom configuration.
 func TestDangerCategoryMatcher_CustomConfig(t *testing.T) {
 	config := DangerCategoryConfig{
 		Categories: map[string][]string{
@@ -156,14 +156,14 @@ func TestDangerCategoryMatcher_CustomConfig(t *testing.T) {
 		t.Error("커스텀 카테고리 패턴 매칭 실패")
 	}
 
-	// 기본 카테고리는 사용되지 않아야 함
+	// Default categories must not be applied.
 	if matcher.Match("goroutine leak", "concurrency") {
 		t.Error("커스텀 설정 시 기본 카테고리 사용됨")
 	}
 }
 
-// TestLoadDangerConfig_UserCustomCategories는 mx.yaml에 사용자 정의 카테고리가 있을 때
-// LoadDangerConfig가 이를 올바르게 로드하는지 테스트합니다.
+// TestLoadDangerConfig_UserCustomCategories verifies that LoadDangerConfig
+// correctly loads user-defined categories declared in mx.yaml.
 // SPEC-V3R2-SPC-004 M2 RED — T-SPC004-03
 func TestLoadDangerConfig_UserCustomCategories(t *testing.T) {
 	tempDir := t.TempDir()
@@ -198,12 +198,12 @@ func TestLoadDangerConfig_UserCustomCategories(t *testing.T) {
 	}
 }
 
-// TestLoadDangerConfig_FileMissing_DefaultUsed는 mx.yaml이 없을 때
-// LoadDangerConfig가 빈 DangerCategoryConfig를 반환하는지 테스트합니다.
+// TestLoadDangerConfig_FileMissing_DefaultUsed verifies that LoadDangerConfig
+// returns an empty DangerCategoryConfig when mx.yaml is missing.
 // SPEC-V3R2-SPC-004 M2 RED — T-SPC004-03
 func TestLoadDangerConfig_FileMissing_DefaultUsed(t *testing.T) {
 	tempDir := t.TempDir()
-	// mx.yaml 파일 없음
+	// mx.yaml is absent.
 
 	cfg, err := LoadDangerConfig(tempDir)
 	if err != nil {
@@ -218,7 +218,7 @@ func TestLoadDangerConfig_FileMissing_DefaultUsed(t *testing.T) {
 	}
 }
 
-// TestDangerCategoryMatcher_KnownCategories는 알려진 카테고리 목록을 테스트합니다.
+// TestDangerCategoryMatcher_KnownCategories tests the list of known categories.
 func TestDangerCategoryMatcher_KnownCategories(t *testing.T) {
 	matcher := NewDangerCategoryMatcher(DangerCategoryConfig{})
 
@@ -227,7 +227,7 @@ func TestDangerCategoryMatcher_KnownCategories(t *testing.T) {
 		t.Error("알려진 카테고리 없음")
 	}
 
-	// 기본 4개 카테고리가 모두 있어야 함
+	// The default four categories must all be present.
 	expected := map[string]bool{
 		"concurrency":   false,
 		"resource-leak": false,

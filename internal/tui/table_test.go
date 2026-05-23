@@ -118,7 +118,7 @@ func TestSectionDark(t *testing.T) {
 //
 // TestRenderMixedKoEn runs all 18 mixed Korean+English string cases through
 // KV rendering and verifies golden snapshots for both light and dark themes.
-// Ref: acceptance.md §AC-CLI-TUI-007 검증 케이스
+// Ref: acceptance.md §AC-CLI-TUI-007 verification cases.
 func TestRenderMixedKoEn(t *testing.T) {
 	// The 18 cases from acceptance.md verbatim.
 	cases := []struct {

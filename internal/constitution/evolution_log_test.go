@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// TestLoadEvolutionLogs는 evolution-log 로드를 테스트한다.
+// TestLoadEvolutionLogs tests evolution-log loading.
 func TestLoadEvolutionLogs(t *testing.T) {
 	t.Run("파일 없으면 빈 목록 반환", func(t *testing.T) {
 		logs, err := LoadEvolutionLogs("/nonexistent/path/evolution-log.md")
@@ -102,7 +102,7 @@ rolled_back: false
 	})
 }
 
-// TestAppendEvolutionLog는 로그 추가를 테스트한다.
+// TestAppendEvolutionLog tests log appending.
 func TestAppendEvolutionLog(t *testing.T) {
 	t.Run("새 파일에 엔트리 추가", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -126,12 +126,12 @@ func TestAppendEvolutionLog(t *testing.T) {
 			t.Errorf("expected no error, got %v", err)
 		}
 
-		// 파일 존재 확인
+		// File-existence check.
 		if _, err := os.Stat(logPath); os.IsNotExist(err) {
 			t.Error("file was not created")
 		}
 
-		// 로드 확인
+		// Load check.
 		logs, err := LoadEvolutionLogs(logPath)
 		if err != nil {
 			t.Errorf("failed to load logs: %v", err)
@@ -148,7 +148,7 @@ func TestAppendEvolutionLog(t *testing.T) {
 		tmpDir := t.TempDir()
 		logPath := filepath.Join(tmpDir, "evolution-log.md")
 
-		// 첫 번째 엔트리
+		// First entry.
 		log1 := &AmendmentLog{
 			ID:            "LEARN-20260428-001",
 			RuleID:        "CONST-V3R2-008",
@@ -165,7 +165,7 @@ func TestAppendEvolutionLog(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// 두 번째 엔트리
+		// Second entry.
 		log2 := &AmendmentLog{
 			ID:            "LEARN-20260428-002",
 			RuleID:        "CONST-V3R2-009",
@@ -182,7 +182,7 @@ func TestAppendEvolutionLog(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// 로드 확인
+		// Load check.
 		logs, err := LoadEvolutionLogs(logPath)
 		if err != nil {
 			t.Errorf("failed to load logs: %v", err)
@@ -196,7 +196,7 @@ func TestAppendEvolutionLog(t *testing.T) {
 		tmpDir := t.TempDir()
 		logPath := filepath.Join(tmpDir, "evolution-log.md")
 
-		// ID 없는 로그
+		// Log without ID.
 		log := &AmendmentLog{
 			RuleID:       "CONST-V3R2-008",
 			ZoneBefore:   ZoneEvolvable,
@@ -213,13 +213,13 @@ func TestAppendEvolutionLog(t *testing.T) {
 	})
 }
 
-// TestMarkRolledBack은 rollback 마킹을 테스트한다.
+// TestMarkRolledBack tests rollback marking.
 func TestMarkRolledBack(t *testing.T) {
 	t.Run("활성 로그를 rolled_back으로 변경", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		logPath := filepath.Join(tmpDir, "evolution-log.md")
 
-		// 초기 로그 생성
+		// Create initial log.
 		log := &AmendmentLog{
 			ID:            "LEARN-20260428-001",
 			RuleID:        "CONST-V3R2-008",
@@ -236,13 +236,13 @@ func TestMarkRolledBack(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Rollback 마킹
+		// Rollback marking.
 		reason := "Score drop 0.15 > threshold 0.10 detected in next SPEC evaluation"
 		if err := MarkRolledBack(logPath, "CONST-V3R2-008", reason); err != nil {
 			t.Errorf("expected no error, got %v", err)
 		}
 
-		// 확인
+		// Verification.
 		logs, err := LoadEvolutionLogs(logPath)
 		if err != nil {
 			t.Errorf("failed to load logs: %v", err)
@@ -265,7 +265,7 @@ func TestMarkRolledBack(t *testing.T) {
 		tmpDir := t.TempDir()
 		logPath := filepath.Join(tmpDir, "evolution-log.md")
 
-		// 빈 파일 생성
+		// Create empty file.
 		if err := os.WriteFile(logPath, []byte("# Evolution Log\n"), 0644); err != nil {
 			t.Fatal(err)
 		}

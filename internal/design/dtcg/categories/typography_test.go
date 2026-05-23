@@ -6,8 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg/categories"
 )
 
-// TestValidateTypography_Positive: typography 복합 카테고리 양성 케이스
-// DTCG 2025.10: font 복합 + letterSpacing, textDecoration, textTransform 확장.
+// TestValidateTypography_Positive: positive cases for the composite typography category.
+// DTCG 2025.10: composite font + letterSpacing, textDecoration, textTransform extensions.
 func TestValidateTypography_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -57,7 +57,7 @@ func TestValidateTypography_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateTypography_Negative: typography 복합 카테고리 음성 케이스
+// TestValidateTypography_Negative: negative cases for the composite typography category.
 func TestValidateTypography_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -83,7 +83,7 @@ func TestValidateTypography_Negative(t *testing.T) {
 	}
 }
 
-// TestIsAlias: 에일리어스 문법 ({group.token}) 감지 테스트
+// TestIsAlias: alias syntax ({group.token}) detection test.
 func TestIsAlias(t *testing.T) {
 	t.Parallel()
 

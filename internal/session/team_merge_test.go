@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// TestMergeTeamCheckpoints_HappyPath은 여러 에이전트의 checkpoint를 병합합니다.
+// TestMergeTeamCheckpoints_HappyPath merges checkpoints from multiple agents.
 // SPEC-V3R2-RT-004 AC-08: team-mode merge.
 func TestMergeTeamCheckpoints_HappyPath(t *testing.T) {
 	tempDir := t.TempDir()
@@ -18,7 +18,7 @@ func TestMergeTeamCheckpoints_HappyPath(t *testing.T) {
 	specID := "SPEC-TEAM-001"
 	phase := PhaseRun
 
-	// 에이전트별 checkpoint 파일 작성
+	// Write per-agent checkpoint files.
 	agentNames := []string{"agent-a", "agent-b"}
 	for i, agent := range agentNames {
 		state := PhaseState{
@@ -45,20 +45,20 @@ func TestMergeTeamCheckpoints_HappyPath(t *testing.T) {
 			t.Fatalf("marshal 실패: %v", err)
 		}
 
-		// 에이전트별 checkpoint 파일 경로: checkpoint-{phase}-{specID}-{agent}.json
+		// Per-agent checkpoint path: checkpoint-{phase}-{specID}-{agent}.json.
 		agentPath := filepath.Join(tempDir, fmt.Sprintf("checkpoint-%s-%s-%s.json", phase, specID, agent))
 		if err := os.WriteFile(agentPath, data, 0644); err != nil {
 			t.Fatalf("에이전트 checkpoint 쓰기 실패: %v", err)
 		}
 	}
 
-	// 병합
+	// Merge.
 	merged, err := store.MergeTeamCheckpoints(specID, phase, agentNames)
 	if err != nil {
 		t.Fatalf("MergeTeamCheckpoints() 실패: %v", err)
 	}
 
-	// 병합 결과 검증
+	// Verify merged result.
 	if merged.Phase != phase {
 		t.Errorf("Phase = %v, want %v", merged.Phase, phase)
 	}
@@ -73,7 +73,7 @@ func TestMergeTeamCheckpoints_HappyPath(t *testing.T) {
 	if !ok {
 		t.Fatal("Checkpoint은 *RunCheckpoint이어야 함")
 	}
-	// 합산 검증: TestsTotal = 50+50=100, TestsPassed = 50+49=99, FilesModified = 1+2=3
+	// Sum verification: TestsTotal = 50+50=100, TestsPassed = 50+49=99, FilesModified = 1+2=3.
 	if rc.TestsTotal != 100 {
 		t.Errorf("TestsTotal = %d, want 100", rc.TestsTotal)
 	}
@@ -85,8 +85,8 @@ func TestMergeTeamCheckpoints_HappyPath(t *testing.T) {
 	}
 }
 
-// TestMergeTeamCheckpoints_BlockerBubble은 에이전트 중 하나에 미해결 blocker가 있으면
-// 에러를 반환합니다 (REQ-051 bubble-mode).
+// TestMergeTeamCheckpoints_BlockerBubble returns an error when any agent has an
+// unresolved blocker (REQ-051 bubble-mode).
 func TestMergeTeamCheckpoints_BlockerBubble(t *testing.T) {
 	tempDir := t.TempDir()
 	store := NewFileSessionStore(tempDir, 3600*time.Second)
@@ -94,7 +94,7 @@ func TestMergeTeamCheckpoints_BlockerBubble(t *testing.T) {
 	specID := "SPEC-TEAM-BLOCKER"
 	phase := PhaseRun
 
-	// 정상 에이전트
+	// Normal agent.
 	normalState := PhaseState{
 		Phase:  phase,
 		SPECID: specID,
@@ -112,7 +112,7 @@ func TestMergeTeamCheckpoints_BlockerBubble(t *testing.T) {
 		t.Fatalf("정상 에이전트 checkpoint 쓰기 실패: %v", err)
 	}
 
-	// blocker 있는 에이전트
+	// Agent with an outstanding blocker.
 	blockedState := PhaseState{
 		Phase:  phase,
 		SPECID: specID,
@@ -133,7 +133,7 @@ func TestMergeTeamCheckpoints_BlockerBubble(t *testing.T) {
 		t.Fatalf("blocker 에이전트 checkpoint 쓰기 실패: %v", err)
 	}
 
-	// 병합 시 blocker가 bubble-up 되어야 함
+	// Blockers must bubble up during merge.
 	_, err := store.MergeTeamCheckpoints(specID, phase, []string{"agent-ok", "agent-blocked"})
 	if err == nil {
 		t.Error("미해결 blocker가 있는 에이전트 병합 시 에러를 반환해야 함")
@@ -144,8 +144,8 @@ func TestMergeTeamCheckpoints_BlockerBubble(t *testing.T) {
 	}
 }
 
-// TestMergeTeamCheckpoints_MissingFile은 파일이 없는 에이전트가 있으면
-// 에러를 반환합니다.
+// TestMergeTeamCheckpoints_MissingFile returns an error if any agent file is
+// missing.
 func TestMergeTeamCheckpoints_MissingFile(t *testing.T) {
 	tempDir := t.TempDir()
 	store := NewFileSessionStore(tempDir, 3600*time.Second)
@@ -156,7 +156,7 @@ func TestMergeTeamCheckpoints_MissingFile(t *testing.T) {
 	}
 }
 
-// TestProvenanceRoundTrip은 Provenance 필드가 JSON 마샬/언마샬 후에도 보존됩니다.
+// TestProvenanceRoundTrip verifies that the Provenance field is preserved across JSON marshal/unmarshal.
 // SPEC-V3R2-RT-004 AC-07: Provenance round-trip.
 func TestProvenanceRoundTrip(t *testing.T) {
 	original := PhaseState{

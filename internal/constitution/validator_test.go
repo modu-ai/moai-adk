@@ -13,7 +13,7 @@ import (
 // All tests below should FAIL until validator.go is implemented (GREEN phase).
 // AC-CDL-003, AC-CDL-004, AC-CDL-006, AC-CDL-008, AC-CDL-009, AC-CDL-010.
 
-// writeRegistryInDir는 dir 내에 registry.md 를 작성하고 그 경로를 반환한다.
+// writeRegistryInDir writes registry.md inside dir and returns its path.
 func writeRegistryInDir(t *testing.T, dir, yamlContent string) string {
 	t.Helper()
 	content := "# Test Registry\n\n## Entries\n\n```yaml\n" + yamlContent + "\n```\n"
@@ -24,7 +24,7 @@ func writeRegistryInDir(t *testing.T, dir, yamlContent string) string {
 	return path
 }
 
-// writeSourceInDir는 dir/relPath 에 source file 을 작성한다.
+// writeSourceInDir writes a source file at dir/relPath.
 func writeSourceInDir(t *testing.T, dir, relPath, content string) {
 	t.Helper()
 	full := filepath.Join(dir, relPath)
@@ -36,7 +36,7 @@ func writeSourceInDir(t *testing.T, dir, relPath, content string) {
 	}
 }
 
-// TestValidateHappyPath는 registry 와 source file 이 완전히 sync 될 때 status=ok 를 반환한다.
+// TestValidateHappyPath returns status=ok when the registry and source file are fully in sync.
 // AC-CDL-003.
 func TestValidateHappyPath(t *testing.T) {
 	t.Parallel()
@@ -72,7 +72,7 @@ func TestValidateHappyPath(t *testing.T) {
 	}
 }
 
-// TestValidateSourceFileMissing은 등록된 source file 이 존재하지 않을 때 SOURCE_FILE_MISSING 오류를 반환한다.
+// TestValidateSourceFileMissing returns a SOURCE_FILE_MISSING error when the registered source file does not exist.
 // AC-CDL-004 / REQ-CDL-013.
 func TestValidateSourceFileMissing(t *testing.T) {
 	t.Parallel()
@@ -107,7 +107,7 @@ func TestValidateSourceFileMissing(t *testing.T) {
 	}
 }
 
-// TestValidateDrift는 clause text 가 source 와 불일치할 때 DRIFT 오류를 반환한다.
+// TestValidateDrift returns a DRIFT error when the clause text does not match the source.
 // AC-CDL-004 / REQ-CDL-012.
 func TestValidateDrift(t *testing.T) {
 	t.Parallel()
@@ -144,7 +144,7 @@ func TestValidateDrift(t *testing.T) {
 	}
 }
 
-// TestValidateFrozenWithoutCanary는 Frozen entry 가 canary_gate:false 일 때 오류를 반환한다.
+// TestValidateFrozenWithoutCanary returns an error when a Frozen entry has canary_gate:false.
 // AC-CDL-004 / REQ-CDL-015.
 func TestValidateFrozenWithoutCanary(t *testing.T) {
 	t.Parallel()
@@ -178,7 +178,7 @@ func TestValidateFrozenWithoutCanary(t *testing.T) {
 	}
 }
 
-// TestValidateInvalidZoneClass는 zone_class 가 4-enum 외 값일 때 오류를 반환한다.
+// TestValidateInvalidZoneClass returns an error when zone_class is outside the 4-value enum.
 // AC-CDL-006.
 func TestValidateInvalidZoneClass(t *testing.T) {
 	t.Parallel()
@@ -211,7 +211,7 @@ func TestValidateInvalidZoneClass(t *testing.T) {
 	}
 }
 
-// TestValidateDuplicateZoneMarkerWarning은 동일 라인에 ZONE 마커가 2개일 때 warning 을 반환한다.
+// TestValidateDuplicateZoneMarkerWarning returns a warning when two ZONE markers appear on the same line.
 // EC-CDL-007.
 func TestValidateDuplicateZoneMarkerWarning(t *testing.T) {
 	t.Parallel()
@@ -253,7 +253,7 @@ func TestValidateDuplicateZoneMarkerWarning(t *testing.T) {
 	}
 }
 
-// TestValidateReadOnly은 validator 가 파일을 write 하지 않음을 검증한다.
+// TestValidateReadOnly verifies that the validator does not write files.
 // AC-CDL-010.
 func TestValidateReadOnly(t *testing.T) {
 	t.Parallel()
@@ -297,7 +297,7 @@ func TestValidateReadOnly(t *testing.T) {
 	}
 }
 
-// TestValidateSkipOverride는 MOAI_CONSTITUTION_SKIP_VALIDATE=1 환경변수 시 bypass 됨을 검증한다.
+// TestValidateSkipOverride verifies that validation is bypassed when MOAI_CONSTITUTION_SKIP_VALIDATE=1.
 // AC-CDL-009.
 func TestValidateSkipOverride(t *testing.T) {
 	// Non-parallel: uses t.Setenv
@@ -346,7 +346,7 @@ func TestValidateSkipOverride(t *testing.T) {
 	}
 }
 
-// TestValidateWhitespaceNormalization은 clause 의 다중 공백이 정규화됨을 검증한다.
+// TestValidateWhitespaceNormalization verifies that multiple whitespace characters in a clause are normalized.
 // EC-CDL-002.
 func TestValidateWhitespaceNormalization(t *testing.T) {
 	t.Parallel()
@@ -382,7 +382,7 @@ func TestValidateWhitespaceNormalization(t *testing.T) {
 	}
 }
 
-// TestValidateReflectsUpdatesWithoutRestart은 registry 수정 후 재호출 시 새 entry 를 반영한다.
+// TestValidateReflectsUpdatesWithoutRestart reflects new entries on re-invocation after the registry is modified.
 // AC-CDL-008 / REQ-CDL-009.
 func TestValidateReflectsUpdatesWithoutRestart(t *testing.T) {
 	// Non-parallel: modifies file in place
@@ -443,7 +443,7 @@ func TestValidateReflectsUpdatesWithoutRestart(t *testing.T) {
 	}
 }
 
-// TestValidateCodeFenceExclusion은 마크다운 코드 펜스 내 [HARD] 가 카운트에서 제외됨을 검증한다.
+// TestValidateCodeFenceExclusion verifies that [HARD] inside a markdown code fence is excluded from the count.
 // EC-CDL-005.
 func TestValidateCodeFenceExclusion(t *testing.T) {
 	t.Parallel()
@@ -480,7 +480,7 @@ func TestValidateCodeFenceExclusion(t *testing.T) {
 	}
 }
 
-// TestValidateStrictModeWithDrift는 drift 가 발견될 때 status=drift 를 반환한다.
+// TestValidateStrictModeWithDrift returns status=drift when drift is detected.
 func TestValidateStrictModeWithDrift(t *testing.T) {
 	t.Parallel()
 
@@ -513,7 +513,7 @@ func TestValidateStrictModeWithDrift(t *testing.T) {
 	}
 }
 
-// TestValidateJSONFormat은 Validate 가 JSON 직렬화 가능한 결과를 반환함을 검증한다.
+// TestValidateJSONFormat verifies that Validate returns a JSON-serializable result.
 func TestValidateJSONFormat(t *testing.T) {
 	t.Parallel()
 
@@ -551,7 +551,7 @@ func TestValidateJSONFormat(t *testing.T) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// hasEntryWithStatus는 ValidationResult.Entries 에서 지정된 sentinel key 가 있는지 확인한다.
+// hasEntryWithStatus reports whether ValidationResult.Entries contains the specified sentinel key.
 func hasEntryWithStatus(result constitution.ValidationResult, key string) bool {
 	for _, e := range result.Entries {
 		if e.SentinelKey == key {

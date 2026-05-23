@@ -6,8 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg/categories"
 )
 
-// TestValidateShadow_Positive: shadow 복합 카테고리 양성 케이스
-// DTCG 2025.10: 단일 또는 다층({color, offsetX, offsetY, blur, spread, inset?}) shadow.
+// TestValidateShadow_Positive: positive cases for the composite shadow category.
+// DTCG 2025.10: single or multi-layer ({color, offsetX, offsetY, blur, spread, inset?}) shadow.
 func TestValidateShadow_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -78,7 +78,7 @@ func TestValidateShadow_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateShadow_Negative: shadow 카테고리 음성 케이스
+// TestValidateShadow_Negative: negative cases for the shadow category.
 func TestValidateShadow_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -108,8 +108,8 @@ func TestValidateShadow_Negative(t *testing.T) {
 	}
 }
 
-// TestValidateBorder_Positive: border 복합 카테고리 양성 케이스
-// DTCG 2025.10: {color, width: dimension, style: strokeStyle} 복합 토큰.
+// TestValidateBorder_Positive: positive cases for the composite border category.
+// DTCG 2025.10: composite token {color, width: dimension, style: strokeStyle}.
 func TestValidateBorder_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -165,7 +165,7 @@ func TestValidateBorder_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateBorder_Negative: border 카테고리 음성 케이스
+// TestValidateBorder_Negative: negative cases for the border category.
 func TestValidateBorder_Negative(t *testing.T) {
 	t.Parallel()
 

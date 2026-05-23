@@ -8,8 +8,8 @@ import (
 
 // --- duration ---
 
-// TestValidateDuration_Positive: duration 카테고리 양성 케이스
-// DTCG 2025.10: {value: number, unit: "ms"|"s"} 구조화 또는 "300ms" 레거시.
+// TestValidateDuration_Positive: positive cases for the duration category.
+// DTCG 2025.10: structured form {value: number, unit: "ms"|"s"} or legacy "300ms".
 func TestValidateDuration_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -35,7 +35,7 @@ func TestValidateDuration_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateDuration_Negative: duration 카테고리 음성 케이스
+// TestValidateDuration_Negative: negative cases for the duration category.
 func TestValidateDuration_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -64,8 +64,8 @@ func TestValidateDuration_Negative(t *testing.T) {
 
 // --- cubicBezier ---
 
-// TestValidateCubicBezier_Positive: cubicBezier 카테고리 양성 케이스
-// DTCG 2025.10: [x1,y1,x2,y2] x1,x2 ∈ [0,1], y1,y2 제한 없음.
+// TestValidateCubicBezier_Positive: positive cases for the cubicBezier category.
+// DTCG 2025.10: [x1,y1,x2,y2] with x1,x2 in [0,1]; y1,y2 unbounded.
 func TestValidateCubicBezier_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -93,7 +93,7 @@ func TestValidateCubicBezier_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateCubicBezier_Negative: cubicBezier 카테고리 음성 케이스
+// TestValidateCubicBezier_Negative: negative cases for the cubicBezier category.
 func TestValidateCubicBezier_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -126,7 +126,7 @@ func TestValidateCubicBezier_Negative(t *testing.T) {
 
 // --- number ---
 
-// TestValidateNumber_Positive: number 카테고리 양성 케이스
+// TestValidateNumber_Positive: positive cases for the number category.
 func TestValidateNumber_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -153,7 +153,7 @@ func TestValidateNumber_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateNumber_Negative: number 카테고리 음성 케이스
+// TestValidateNumber_Negative: negative cases for the number category.
 func TestValidateNumber_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -180,8 +180,8 @@ func TestValidateNumber_Negative(t *testing.T) {
 
 // --- strokeStyle ---
 
-// TestValidateStrokeStyle_Positive: strokeStyle 카테고리 양성 케이스
-// DTCG 2025.10: enum string 또는 {dashArray, lineCap} 복합.
+// TestValidateStrokeStyle_Positive: positive cases for the strokeStyle category.
+// DTCG 2025.10: enum string or composite {dashArray, lineCap}.
 func TestValidateStrokeStyle_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -231,7 +231,7 @@ func TestValidateStrokeStyle_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateStrokeStyle_Negative: strokeStyle 카테고리 음성 케이스
+// TestValidateStrokeStyle_Negative: negative cases for the strokeStyle category.
 func TestValidateStrokeStyle_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -262,7 +262,7 @@ func TestValidateStrokeStyle_Negative(t *testing.T) {
 
 // --- transition ---
 
-// TestValidateTransition_Positive: transition 복합 카테고리 양성 케이스
+// TestValidateTransition_Positive: positive cases for the composite transition category.
 // DTCG 2025.10: {duration, delay?, timingFunction: cubicBezier}.
 func TestValidateTransition_Positive(t *testing.T) {
 	t.Parallel()
@@ -306,7 +306,7 @@ func TestValidateTransition_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateTransition_Negative: transition 카테고리 음성 케이스
+// TestValidateTransition_Negative: negative cases for the transition category.
 func TestValidateTransition_Negative(t *testing.T) {
 	t.Parallel()
 
@@ -340,8 +340,8 @@ func TestValidateTransition_Negative(t *testing.T) {
 
 // --- gradient ---
 
-// TestValidateGradient_Positive: gradient 카테고리 양성 케이스
-// DTCG 2025.10: [{color, position: 0..1}, ...] 배열.
+// TestValidateGradient_Positive: positive cases for the gradient category.
+// DTCG 2025.10: array of [{color, position: 0..1}, ...].
 func TestValidateGradient_Positive(t *testing.T) {
 	t.Parallel()
 
@@ -384,7 +384,7 @@ func TestValidateGradient_Positive(t *testing.T) {
 	}
 }
 
-// TestValidateGradient_Negative: gradient 카테고리 음성 케이스
+// TestValidateGradient_Negative: negative cases for the gradient category.
 func TestValidateGradient_Negative(t *testing.T) {
 	t.Parallel()
 

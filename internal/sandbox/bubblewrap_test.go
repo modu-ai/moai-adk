@@ -58,7 +58,7 @@ func TestBubblewrap_FileWriteScopeEPERM(t *testing.T) {
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	// scope 밖에 쓰기 시도 → 실패해야 함
+	// Attempt to write outside scope -> must fail.
 	_, err := b.Exec(opts, []string{"sh", "-c", "touch /etc/passwd"})
 	if err == nil {
 		t.Error("bubblewrap should have denied write to /etc/passwd outside scope")
@@ -80,10 +80,10 @@ func TestBubblewrap_NetworkBlocked(t *testing.T) {
 		t.Skip("bubblewrap backend reports unavailable")
 	}
 
-	// 네트워크 차단 상태에서 curl 시도 → curl은 exit code != 0
+	// Attempt curl with the network blocked -> curl exits non-zero.
 	opts := SandboxOptions{
 		WritableScope:    []string{t.TempDir()},
-		NetworkAllowlist: []string{}, // 빈 allowlist = 모두 차단
+		NetworkAllowlist: []string{}, // empty allowlist = block all
 		MaxOutputBytes:   16 * 1024 * 1024,
 	}
 
@@ -113,7 +113,7 @@ func TestBubblewrap_SetuidDenied(t *testing.T) {
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	// sudo 실행 시도 → 실패해야 함 (user namespaces 내에서 setuid 불가)
+	// Attempt sudo -> must fail (setuid unavailable inside user namespaces).
 	_, err := b.Exec(opts, []string{"sudo", "id"})
 	if err == nil {
 		t.Error("bubblewrap should have denied sudo (setuid escalation)")

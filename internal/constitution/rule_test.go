@@ -7,14 +7,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// TestRuleStructFieldsMatchRegistrySchema는 Rule 구조체가 정확히 7개 exported 필드를 가짐을 검증한다.
-// AC-CON-001-004 직접 매핑. 7 = 6 original fields + ZoneClass (SPEC-V3R5-CONSTITUTION-DUAL-001).
+// TestRuleStructFieldsMatchRegistrySchema verifies that the Rule struct has exactly 7 exported fields.
+// Direct mapping to AC-CON-001-004. 7 = 6 original fields + ZoneClass (SPEC-V3R5-CONSTITUTION-DUAL-001).
 func TestRuleStructFieldsMatchRegistrySchema(t *testing.T) {
 	t.Parallel()
 
 	rt := reflect.TypeOf(constitution.Rule{})
 
-	// exported 필드만 카운트
+	// Count exported fields only.
 	var exportedFields []string
 	for i := range rt.NumField() {
 		f := rt.Field(i)
@@ -28,15 +28,15 @@ func TestRuleStructFieldsMatchRegistrySchema(t *testing.T) {
 		t.Errorf("Rule exported 필드 수 = %d, want %d; 필드: %v", len(exportedFields), wantCount, exportedFields)
 	}
 
-	// 필드명 순서 및 일치 검증
+	// Verify field-name order and consistency.
 	wantFields := []string{"ID", "Zone", "File", "Anchor", "Clause", "CanaryGate", "ZoneClass"}
 	if !reflect.DeepEqual(exportedFields, wantFields) {
 		t.Errorf("Rule exported 필드 = %v, want %v", exportedFields, wantFields)
 	}
 }
 
-// TestRuleStructYAMLTags는 Rule 구조체의 yaml 태그가 registry 스키마와 일치함을 검증한다.
-// AC-CON-001-017 관련.
+// TestRuleStructYAMLTags verifies that the Rule struct's yaml tags match the registry schema.
+// Related to AC-CON-001-017.
 func TestRuleStructYAMLTags(t *testing.T) {
 	t.Parallel()
 
@@ -65,7 +65,7 @@ func TestRuleStructYAMLTags(t *testing.T) {
 	}
 }
 
-// TestRuleValidateValidRule은 유효한 Rule의 Validate()가 nil을 반환함을 검증한다.
+// TestRuleValidateValidRule verifies that Validate() returns nil for a valid Rule.
 func TestRuleValidateValidRule(t *testing.T) {
 	t.Parallel()
 
@@ -83,7 +83,7 @@ func TestRuleValidateValidRule(t *testing.T) {
 	}
 }
 
-// TestRuleValidateEmptyID는 빈 ID의 Validate()가 오류를 반환함을 검증한다.
+// TestRuleValidateEmptyID verifies that Validate() returns an error for an empty ID.
 func TestRuleValidateEmptyID(t *testing.T) {
 	t.Parallel()
 
@@ -100,7 +100,7 @@ func TestRuleValidateEmptyID(t *testing.T) {
 	}
 }
 
-// TestRuleValidateInvalidIDFormat은 잘못된 ID 형식의 Validate()가 오류를 반환함을 검증한다.
+// TestRuleValidateInvalidIDFormat verifies that Validate() returns an error for an invalid ID format.
 func TestRuleValidateInvalidIDFormat(t *testing.T) {
 	t.Parallel()
 
@@ -131,8 +131,8 @@ func TestRuleValidateInvalidIDFormat(t *testing.T) {
 	}
 }
 
-// TestRuleValidateV3R5ID는 CONST-V3R5-NNN 형식 ID가 유효함을 검증한다.
-// SPEC-V3R5-CONSTITUTION-DUAL-001 parallel namespace 지원.
+// TestRuleValidateV3R5ID verifies that CONST-V3R5-NNN format IDs are valid.
+// Parallel namespace support from SPEC-V3R5-CONSTITUTION-DUAL-001.
 func TestRuleValidateV3R5ID(t *testing.T) {
 	t.Parallel()
 
@@ -169,7 +169,7 @@ func TestRuleValidateV3R5ID(t *testing.T) {
 	}
 }
 
-// TestRuleValidateEmptyClause는 빈 Clause의 Validate()가 오류를 반환함을 검증한다.
+// TestRuleValidateEmptyClause verifies that Validate() returns an error for an empty Clause.
 func TestRuleValidateEmptyClause(t *testing.T) {
 	t.Parallel()
 
@@ -186,7 +186,7 @@ func TestRuleValidateEmptyClause(t *testing.T) {
 	}
 }
 
-// TestRuleValidateEmptyFile은 빈 File의 Validate()가 오류를 반환함을 검증한다.
+// TestRuleValidateEmptyFile verifies that Validate() returns an error for an empty File.
 func TestRuleValidateEmptyFile(t *testing.T) {
 	t.Parallel()
 

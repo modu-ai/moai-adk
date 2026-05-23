@@ -12,7 +12,7 @@ import (
 // based on the current operating system (and not CI).
 // RED: fails until launcher.go::Launcher is created.
 func TestLauncher_DispatchByOS(t *testing.T) {
-	// t.Setenv 사용 시 t.Parallel() 불가 (Go 1.26 제약)
+	// t.Setenv prevents t.Parallel() (Go 1.26 constraint).
 	t.Setenv("CI", "")
 
 	l := NewLauncher()
@@ -20,16 +20,16 @@ func TestLauncher_DispatchByOS(t *testing.T) {
 
 	switch runtime.GOOS {
 	case "darwin":
-		// macOS에서 none은 none 유지 (no upgrade)
-		// implementer role 테스트는 TestLauncher_ResolveBackend_AllScenarios에서
+		// On macOS, none stays as none (no upgrade).
+		// implementer-role tests live in TestLauncher_ResolveBackend_AllScenarios.
 	case "linux":
-		// Linux에서 none은 none 유지
+		// On Linux, none stays as none.
 	}
 
-	// SandboxNone은 항상 none으로 반환 (role-based override는 ResolveForRole)
+	// SandboxNone always returns as none (role-based override happens in ResolveForRole).
 	if resolved != SandboxNone {
-		// none이 아닌 경우 — declared가 none이면 launcher는 그대로 none 반환
-		// (업그레이드는 role-profile에서)
+		// When not none — if declared is none, the launcher still returns none
+		// (upgrades happen in role-profile resolution).
 		t.Logf("ResolveBackend(SandboxNone) = %q (OS: %s)", resolved, runtime.GOOS)
 	}
 }
@@ -37,18 +37,18 @@ func TestLauncher_DispatchByOS(t *testing.T) {
 // TestLauncher_CIOverride verifies CI=1 forces docker backend for implementer roles.
 // RED: fails until launcher.go handles CI detection.
 func TestLauncher_CIOverride(t *testing.T) {
-	// t.Setenv 사용 시 t.Parallel() 불가
+	// t.Setenv prevents t.Parallel().
 	t.Setenv("CI", "1")
 
 	l := NewLauncher()
 
-	// implementer role에서 CI=1이면 docker
+	// implementer role with CI=1 -> docker.
 	resolved := l.ResolveForRole("implementer")
 	if resolved != SandboxDocker {
 		t.Errorf("CI=1: ResolveForRole(implementer) = %q, want %q", resolved, SandboxDocker)
 	}
 
-	// researcher role에서 CI=1이어도 none
+	// researcher role with CI=1 -> still none.
 	resolvedResearcher := l.ResolveForRole("researcher")
 	if resolvedResearcher != SandboxNone {
 		t.Errorf("CI=1: ResolveForRole(researcher) = %q, want %q", resolvedResearcher, SandboxNone)
@@ -99,9 +99,9 @@ func TestLauncher_BackendUnavailable(t *testing.T) {
 // TestLauncher_ResolveBackend_AllScenarios verifies resolve logic for all OS × CI × role combinations.
 // RED: fails until launcher.go implements resolve logic.
 func TestLauncher_ResolveBackend_AllScenarios(t *testing.T) {
-	// 서브테스트 내에서 t.Setenv 사용하므로 부모는 Parallel 불가
+	// Subtests call t.Setenv, so the parent must not be Parallel.
 
-	// 현재 OS에 따라 기대값 결정
+	// Determine the expected value based on the current OS.
 	var osDefault Sandbox
 	switch runtime.GOOS {
 	case "darwin":
@@ -133,7 +133,7 @@ func TestLauncher_ResolveBackend_AllScenarios(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// t.Setenv 사용 시 t.Parallel() 불가
+			// t.Setenv prevents t.Parallel().
 			if tc.ciSet {
 				t.Setenv("CI", "1")
 			} else {
@@ -155,7 +155,7 @@ func TestLauncher_ResolveBackend_AllScenarios(t *testing.T) {
 func TestLauncher_PermissionDenyDivergence(t *testing.T) {
 	t.Parallel()
 
-	// mockBackend가 exec에서 EPERM에 해당하는 에러를 반환
+	// mockBackend returns an EPERM-equivalent error from exec.
 	permErr := &SandboxDeniedError{Path: "/etc/passwd", Reason: "file-write-denied"}
 	backend := &mockBackend{
 		available: true,
@@ -170,7 +170,7 @@ func TestLauncher_PermissionDenyDivergence(t *testing.T) {
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	// permission이 "allow"를 반환했더라도 sandbox 거부 → sandbox 우선
+	// Even when permission returns "allow", a sandbox denial wins.
 	_, err := l.Exec(SandboxSeatbelt, opts, []string{"touch", "/etc/passwd"})
 	if err == nil {
 		t.Fatal("Exec: expected error from sandbox-denied, got nil")
@@ -196,11 +196,11 @@ func TestLauncher_OutputTruncation_SystemMessage(t *testing.T) {
 		t.Errorf("TruncateOutput: expected ErrSandboxOutputTruncated, got %v", err)
 	}
 
-	// 마지막 부분에 truncation 표시가 있어야 함
+	// The tail must include a truncation marker.
 	last200 := string(truncated[len(truncated)-200:])
 	_ = last200 // truncation marker format is implementation-defined
 
-	// 에러 메시지에 크기 정보가 있어야 함
+	// The error message must include the size information.
 	if err.Error() == "" {
 		t.Error("ErrSandboxOutputTruncated Error() should not be empty")
 	}

@@ -2,8 +2,8 @@ package permission
 
 import "testing"
 
-// TestRejectIfStrict_RejectsBypass bypassPermissions + strictMode=true → 오류 반환 검증.
-// T-RT002-16, AC-07 관련.
+// TestRejectIfStrict_RejectsBypass verifies that bypassPermissions + strictMode=true returns an error.
+// Related to T-RT002-16 and AC-07.
 func TestRejectIfStrict_RejectsBypass(t *testing.T) {
 	t.Parallel()
 
@@ -16,8 +16,8 @@ func TestRejectIfStrict_RejectsBypass(t *testing.T) {
 	}
 }
 
-// TestRejectIfStrict_AllowsAcceptEdits acceptEdits + strictMode=true → nil 반환 검증.
-// T-RT002-16 관련.
+// TestRejectIfStrict_AllowsAcceptEdits verifies that acceptEdits + strictMode=true returns nil.
+// Related to T-RT002-16.
 func TestRejectIfStrict_AllowsAcceptEdits(t *testing.T) {
 	t.Parallel()
 
@@ -27,8 +27,8 @@ func TestRejectIfStrict_AllowsAcceptEdits(t *testing.T) {
 	}
 }
 
-// TestRejectIfStrict_StrictModeFalse strictMode=false → nil 반환 검증.
-// T-RT002-16 관련.
+// TestRejectIfStrict_StrictModeFalse verifies that strictMode=false returns nil.
+// Related to T-RT002-16.
 func TestRejectIfStrict_StrictModeFalse(t *testing.T) {
 	t.Parallel()
 

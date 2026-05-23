@@ -134,13 +134,13 @@ func TestPrefixToStatusCompleteness(t *testing.T) {
 	}
 }
 
-// TestClassifyPRTitle_ChoreSpecUnchanged는 AC-LSCSK-003 regression guard다.
-// chore(spec): 분류는 skip-meta 카테고리 + 빈 status를 반환해야 한다 (의도된 설계).
-// transitions.go 의 chore(spec) 분류 규칙이 변경되면 이 테스트가 즉시 실패한다.
+// TestClassifyPRTitle_ChoreSpecUnchanged is an AC-LSCSK-003 regression guard.
+// chore(spec): classification must return the skip-meta category + empty status (by design).
+// This test fails immediately if the chore(spec) classification rule in transitions.go changes.
 //
-// 주의: chore(specs): (plural) 은 transitions.go에 별도 규칙이 없으므로
-// generic chore 규칙 ("run-partial", "in-progress") 으로 분류된다.
-// 이는 ClassifyPRTitle의 의도된 동작이며, shouldSkipCommitTitle에서 별도로 처리한다.
+// Note: chore(specs): (plural) has no dedicated rule in transitions.go, so it
+// falls through to the generic chore rule ("run-partial", "in-progress").
+// This is the intended ClassifyPRTitle behavior; shouldSkipCommitTitle handles the skip separately.
 func TestClassifyPRTitle_ChoreSpecUnchanged(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -161,9 +161,9 @@ func TestClassifyPRTitle_ChoreSpecUnchanged(t *testing.T) {
 			wantStatus:   "",
 		},
 		{
-			// chore(specs): plural 은 transitions.go에 별도 규칙이 없으므로
-			// generic chore 규칙으로 fallthrough → ("run-partial", "in-progress")
-			// walker는 shouldSkipCommitTitle에서 별도 skip 처리하므로 이 동작은 정상
+			// chore(specs): (plural) has no dedicated rule in transitions.go and
+			// falls through to the generic chore rule -> ("run-partial", "in-progress").
+			// The walker handles the skip in shouldSkipCommitTitle, so this behavior is normal.
 			name:         "chore(specs) plural은 generic chore 규칙으로 분류됨 (walker에서 shouldSkipCommitTitle이 처리)",
 			title:        "chore(specs): bulk metadata update",
 			wantCategory: "run-partial",

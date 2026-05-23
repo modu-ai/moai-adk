@@ -6,18 +6,18 @@ import (
 	"github.com/modu-ai/moai-adk/internal/constitution"
 )
 
-// TestZoneEnumValuesExactlyTwo는 Zone 타입이 정확히 2개 값만 가짐을 검증한다.
-// AC-CON-001-004 매핑.
+// TestZoneEnumValuesExactlyTwo verifies that the Zone type has exactly two values.
+// Mapped to AC-CON-001-004.
 func TestZoneEnumValuesExactlyTwo(t *testing.T) {
 	t.Parallel()
 
-	// ZoneFrozen과 ZoneEvolvable이 정의되어 있어야 한다.
+	// ZoneFrozen and ZoneEvolvable must be defined.
 	if constitution.ZoneFrozen == constitution.ZoneEvolvable {
 		t.Fatal("ZoneFrozen과 ZoneEvolvable이 같은 값을 가진다")
 	}
 }
 
-// TestZoneFrozenIsZero는 ZoneFrozen이 iota=0임을 검증한다.
+// TestZoneFrozenIsZero verifies that ZoneFrozen has iota value 0.
 func TestZoneFrozenIsZero(t *testing.T) {
 	t.Parallel()
 
@@ -26,7 +26,7 @@ func TestZoneFrozenIsZero(t *testing.T) {
 	}
 }
 
-// TestZoneEvolvableIsOne은 ZoneEvolvable이 iota=1임을 검증한다.
+// TestZoneEvolvableIsOne verifies that ZoneEvolvable has iota value 1.
 func TestZoneEvolvableIsOne(t *testing.T) {
 	t.Parallel()
 
@@ -35,7 +35,7 @@ func TestZoneEvolvableIsOne(t *testing.T) {
 	}
 }
 
-// TestZoneString은 Zone.String() 메서드의 출력을 검증한다.
+// TestZoneString verifies the output of the Zone.String() method.
 func TestZoneString(t *testing.T) {
 	t.Parallel()
 
@@ -58,7 +58,7 @@ func TestZoneString(t *testing.T) {
 	}
 }
 
-// TestParseZoneValidInputs는 유효한 입력에 대한 ParseZone을 검증한다.
+// TestParseZoneValidInputs verifies ParseZone for valid inputs.
 func TestParseZoneValidInputs(t *testing.T) {
 	t.Parallel()
 
@@ -88,7 +88,7 @@ func TestParseZoneValidInputs(t *testing.T) {
 	}
 }
 
-// TestParseZoneInvalidInputs는 알 수 없는 값에 대한 ParseZone 오류 반환을 검증한다.
+// TestParseZoneInvalidInputs verifies that ParseZone returns an error for unknown values.
 func TestParseZoneInvalidInputs(t *testing.T) {
 	t.Parallel()
 

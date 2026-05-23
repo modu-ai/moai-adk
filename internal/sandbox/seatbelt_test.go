@@ -57,7 +57,7 @@ func TestSeatbelt_FileWriteScopeEPERM(t *testing.T) {
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	// scope 밖 /etc/passwd 쓰기 시도 → EPERM으로 실패해야 함
+	// Attempt to write /etc/passwd outside scope -> must fail with EPERM.
 	_, err := s.Exec(opts, []string{"sh", "-c", "touch /etc/passwd"})
 	if err == nil {
 		t.Error("seatbelt should have denied write to /etc/passwd outside writable scope")
@@ -112,7 +112,7 @@ func TestSeatbelt_SetuidDenied(t *testing.T) {
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	// sudo 실행 시도 → 실패해야 함
+	// Attempt sudo -> must fail.
 	_, err := s.Exec(opts, []string{"sudo", "id"})
 	if err == nil {
 		t.Error("seatbelt should have denied sudo (setuid escalation)")

@@ -10,7 +10,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// TestValidate_ValidTokenSet: 유효한 토큰 집합 전체 검증.
+// TestValidate_ValidTokenSet: full validation of a valid token set.
 func TestValidate_ValidTokenSet(t *testing.T) {
 	t.Parallel()
 
@@ -96,7 +96,7 @@ func TestValidate_ValidTokenSet(t *testing.T) {
 	}
 }
 
-// TestValidate_InvalidTokens: 잘못된 토큰 검증 - 오류 집계.
+// TestValidate_InvalidTokens: invalid-token validation — error aggregation.
 func TestValidate_InvalidTokens(t *testing.T) {
 	t.Parallel()
 
@@ -107,11 +107,11 @@ func TestValidate_InvalidTokens(t *testing.T) {
 		},
 		"bad-dimension": map[string]any{
 			"$type":  "dimension",
-			"$value": 42, // 숫자 타입 (잘못된 형식)
+			"$value": 42, // number type (wrong format)
 		},
 		"bad-weight": map[string]any{
 			"$type":  "fontWeight",
-			"$value": float64(950), // 범위 초과
+			"$value": float64(950), // out of range
 		},
 	}
 
@@ -127,7 +127,7 @@ func TestValidate_InvalidTokens(t *testing.T) {
 	}
 }
 
-// TestValidate_MissingType: $type 누락 토큰 처리.
+// TestValidate_MissingType: handling of tokens missing $type.
 func TestValidate_MissingType(t *testing.T) {
 	t.Parallel()
 
@@ -146,7 +146,7 @@ func TestValidate_MissingType(t *testing.T) {
 	}
 }
 
-// TestValidate_MissingValue: $value 누락 토큰 처리.
+// TestValidate_MissingValue: handling of tokens missing $value.
 func TestValidate_MissingValue(t *testing.T) {
 	t.Parallel()
 
@@ -165,7 +165,7 @@ func TestValidate_MissingValue(t *testing.T) {
 	}
 }
 
-// TestValidate_UnknownCategory: 알 수 없는 $type 카테고리 처리.
+// TestValidate_UnknownCategory: handling of unknown $type categories.
 func TestValidate_UnknownCategory(t *testing.T) {
 	t.Parallel()
 
@@ -185,7 +185,7 @@ func TestValidate_UnknownCategory(t *testing.T) {
 	}
 }
 
-// TestValidate_EmptyTokenSet: 빈 토큰 집합 검증.
+// TestValidate_EmptyTokenSet: validation of an empty token set.
 func TestValidate_EmptyTokenSet(t *testing.T) {
 	t.Parallel()
 
@@ -201,7 +201,7 @@ func TestValidate_EmptyTokenSet(t *testing.T) {
 	}
 }
 
-// TestValidate_NilTokenSet: nil 입력 처리.
+// TestValidate_NilTokenSet: handling of nil input.
 func TestValidate_NilTokenSet(t *testing.T) {
 	t.Parallel()
 
@@ -214,14 +214,14 @@ func TestValidate_NilTokenSet(t *testing.T) {
 	}
 }
 
-// TestValidate_NonTokenEntry: 토큰이 아닌 map[string]any 항목 (중첩 그룹) 처리.
+// TestValidate_NonTokenEntry: handling of non-token map[string]any entries (nested groups).
 func TestValidate_NonTokenEntry(t *testing.T) {
 	t.Parallel()
 
-	// DTCG에서는 $type/$value 없는 항목은 그룹으로 취급 - 스킵
+	// In DTCG, entries without $type/$value are treated as groups and skipped.
 	tokens := map[string]any{
 		"color-group": map[string]any{
-			// $type/$value 없음 - 그룹 노드로 스킵
+			// No $type/$value — skipped as a group node.
 			"description": "색상 그룹",
 		},
 		"actual-color": map[string]any{
@@ -234,14 +234,14 @@ func TestValidate_NonTokenEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Validate() 오류: %v", err)
 	}
-	// 그룹 노드는 스킵, actual-color만 검증
+	// Group nodes are skipped; only actual-color is validated.
 	if !report.Valid {
 		t.Errorf("Validate() = Invalid; 그룹 노드는 스킵해야 함")
 	}
 }
 
-// TestValidate_PositiveGoldenFiles: testdata/positive/*.json 파일 모두 검증 통과해야 함.
-// T3-10: 골든 파일 table-driven 테스트.
+// TestValidate_PositiveGoldenFiles: all testdata/positive/*.json files must validate.
+// T3-10: golden-file table-driven tests.
 func TestValidate_PositiveGoldenFiles(t *testing.T) {
 	t.Parallel()
 
@@ -287,7 +287,7 @@ func TestValidate_PositiveGoldenFiles(t *testing.T) {
 	}
 }
 
-// TestValidate_NegativeGoldenFiles: testdata/negative/*.json 파일 모두 검증 실패해야 함.
+// TestValidate_NegativeGoldenFiles: all testdata/negative/*.json files must fail validation.
 func TestValidate_NegativeGoldenFiles(t *testing.T) {
 	t.Parallel()
 
@@ -330,10 +330,10 @@ func TestValidate_NegativeGoldenFiles(t *testing.T) {
 	}
 }
 
-// BenchmarkValidate_500Tokens: 500개 토큰 검증 성능 벤치마크.
-// [HARD]: 500개 토큰 검증은 100ms 미만이어야 함 (REQ-DPL-010).
+// BenchmarkValidate_500Tokens: performance benchmark validating 500 tokens.
+// [HARD]: validation of 500 tokens must complete in under 100ms (REQ-DPL-010).
 func BenchmarkValidate_500Tokens(b *testing.B) {
-	// 500개 토큰 생성
+	// Generate 500 tokens.
 	tokens := make(map[string]any, 500)
 	categories := []string{"color", "dimension", "fontWeight", "fontFamily", "duration", "number", "strokeStyle"}
 	values := map[string]any{
@@ -367,7 +367,7 @@ func BenchmarkValidate_500Tokens(b *testing.B) {
 		if !report.Valid {
 			b.Fatalf("Validate() = Invalid: %v", report.Errors)
 		}
-		// 첫 번째 반복에서만 시간 체크 (벤치마크 워밍업 제외)
+		// Check time only on the first iteration (skip benchmark warmup).
 		if b.N == 1 && elapsed > 100*time.Millisecond {
 			b.Errorf("성능 위반: 500 토큰 검증 %v > 100ms", elapsed)
 		}

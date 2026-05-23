@@ -6,20 +6,20 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestResolveConflict_SpecificityWins 더 구체적인 패턴이 우선함을 검증한다.
-// T-RT002-22, AC-12 관련.
+// TestResolveConflict_SpecificityWins verifies that the more specific pattern wins.
+// Related to T-RT002-22 and AC-12.
 func TestResolveConflict_SpecificityWins(t *testing.T) {
 	t.Parallel()
 
 	rules := []*PermissionRule{
 		{
-			Pattern: "Bash(git push:*)",      // 덜 구체적 → deny.
+			Pattern: "Bash(git push:*)",      // less specific -> deny.
 			Action:  DecisionDeny,
 			Source:  config.SrcLocal,
 			Origin:  "a-settings.json",
 		},
 		{
-			Pattern: "Bash(git push origin main)", // 더 구체적 → allow.
+			Pattern: "Bash(git push origin main)", // more specific -> allow.
 			Action:  DecisionAllow,
 			Source:  config.SrcLocal,
 			Origin:  "b-settings.json",
@@ -38,24 +38,24 @@ func TestResolveConflict_SpecificityWins(t *testing.T) {
 	}
 }
 
-// TestResolveConflict_FsOrderTiebreak specificity 동점 시 fs-order (Origin 나중) 우선 검증.
-// T-RT002-22, AC-12 관련.
+// TestResolveConflict_FsOrderTiebreak verifies fs-order (later Origin) wins when specificity ties.
+// Related to T-RT002-22 and AC-12.
 func TestResolveConflict_FsOrderTiebreak(t *testing.T) {
 	t.Parallel()
 
-	// 같은 패턴 specificity, 다른 Origin.
+	// Same pattern specificity, different Origin.
 	rules := []*PermissionRule{
 		{
 			Pattern: "Bash(curl:*)",
 			Action:  DecisionDeny,
 			Source:  config.SrcLocal,
-			Origin:  "a-settings.json", // 먼저 (lexicographic 앞).
+			Origin:  "a-settings.json", // earlier (lexicographically first).
 		},
 		{
 			Pattern: "Bash(curl:*)",
 			Action:  DecisionAllow,
 			Source:  config.SrcLocal,
-			Origin:  "z-settings.json", // 나중 (lexicographic 뒤) → 우선.
+			Origin:  "z-settings.json", // later (lexicographically last) -> wins.
 		},
 	}
 
@@ -63,14 +63,14 @@ func TestResolveConflict_FsOrderTiebreak(t *testing.T) {
 	if winner == nil {
 		t.Fatal("resolveConflict() returned nil")
 	}
-	// fs-order 나중 → z-settings.json 의 allow 가 우선.
+	// fs-order later -> the allow rule from z-settings.json wins.
 	if winner.Origin != "z-settings.json" {
 		t.Errorf("resolveConflict() winner.Origin = %q, want 'z-settings.json' (fs-order tiebreak)", winner.Origin)
 	}
 }
 
-// TestResolveConflict_SingleMatchNoLog 단일 매칭 시 충돌 로그 없이 반환 검증.
-// T-RT002-22 관련.
+// TestResolveConflict_SingleMatchNoLog verifies single-match returns without a conflict log.
+// Related to T-RT002-22.
 func TestResolveConflict_SingleMatchNoLog(t *testing.T) {
 	t.Parallel()
 
@@ -92,8 +92,8 @@ func TestResolveConflict_SingleMatchNoLog(t *testing.T) {
 	}
 }
 
-// TestResolveConflict_LogPath 충돌 발생 시 오류 없이 완료됨을 검증한다.
-// T-RT002-22 관련 — logConflict 호출이 패닉/오류 없이 완료.
+// TestResolveConflict_LogPath verifies that conflict resolution completes without error.
+// Related to T-RT002-22 — logConflict invocation completes without panic or error.
 func TestResolveConflict_LogPath(t *testing.T) {
 	t.Parallel()
 
@@ -112,7 +112,7 @@ func TestResolveConflict_LogPath(t *testing.T) {
 		},
 	}
 
-	// logConflict 호출 포함하여 패닉 없이 완료.
+	// Completes without panic, including the logConflict invocation.
 	winner := resolveConflict(rules, "Bash", "rm /tmp/test.txt")
 	if winner == nil {
 		t.Fatal("resolveConflict() should not return nil for 2 rules")

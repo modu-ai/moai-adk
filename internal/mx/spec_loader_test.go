@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestLoadSpecModules_StringFormat는 module 필드가 쉼표 구분 문자열일 때 올바르게 파싱하는지 검증합니다.
+// TestLoadSpecModules_StringFormat verifies correct parsing when the module field is a comma-separated string.
 func TestLoadSpecModules_StringFormat(t *testing.T) {
 	dir := t.TempDir()
 	specDir := filepath.Join(dir, ".moai", "specs", "SPEC-X")
@@ -40,7 +40,7 @@ func TestLoadSpecModules_StringFormat(t *testing.T) {
 	}
 }
 
-// TestLoadSpecModules_ArrayFormat는 module 필드가 YAML 시퀀스일 때 올바르게 파싱하는지 검증합니다.
+// TestLoadSpecModules_ArrayFormat verifies correct parsing when the module field is a YAML sequence.
 func TestLoadSpecModules_ArrayFormat(t *testing.T) {
 	dir := t.TempDir()
 	specDir := filepath.Join(dir, ".moai", "specs", "SPEC-X")
@@ -74,7 +74,7 @@ func TestLoadSpecModules_ArrayFormat(t *testing.T) {
 	}
 }
 
-// TestLoadSpecModules_EmptyModule는 module 필드가 빈 문자열일 때 빈 슬라이스를 반환하는지 검증합니다.
+// TestLoadSpecModules_EmptyModule verifies that an empty module field returns an empty slice.
 func TestLoadSpecModules_EmptyModule(t *testing.T) {
 	dir := t.TempDir()
 	specDir := filepath.Join(dir, ".moai", "specs", "SPEC-X")
@@ -102,7 +102,7 @@ func TestLoadSpecModules_EmptyModule(t *testing.T) {
 	}
 }
 
-// TestLoadSpecModules_NoSpecsDir는 .moai/specs/ 디렉터리가 없을 때 빈 맵을 반환하는지 검증합니다.
+// TestLoadSpecModules_NoSpecsDir verifies that an empty map is returned when .moai/specs/ is absent.
 func TestLoadSpecModules_NoSpecsDir(t *testing.T) {
 	dir := t.TempDir()
 
@@ -116,8 +116,8 @@ func TestLoadSpecModules_NoSpecsDir(t *testing.T) {
 	}
 }
 
-// TestSpecAssociator_PathBased_FromLoader는 LoadSpecModules 결과를 SpecAssociator에 주입하면
-// path-prefix 매칭이 올바르게 동작하는지 검증합니다.
+// TestSpecAssociator_PathBased_FromLoader verifies that injecting LoadSpecModules
+// results into SpecAssociator yields correct path-prefix matching.
 func TestSpecAssociator_PathBased_FromLoader(t *testing.T) {
 	dir := t.TempDir()
 	specDir := filepath.Join(dir, ".moai", "specs", "SPEC-X")

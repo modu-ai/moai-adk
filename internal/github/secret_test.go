@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// mockGHError는 테스트용 모의 에러입니다.
+// mockGHError is a mock error for testing.
 type mockGHError struct {
 	msg string
 }
@@ -14,7 +14,7 @@ func (e *mockGHError) Error() string {
 	return e.msg
 }
 
-// MockGHSecretExecutor는 테스트용 GHSecretExecutor 모의 구현입니다.
+// MockGHSecretExecutor is a mock GHSecretExecutor implementation for testing.
 type MockGHSecretExecutor struct {
 	RunGHFunc          func(ctx context.Context, args ...string) error
 	RunGHOutputFunc    func(ctx context.Context, args ...string) (string, error)
@@ -48,7 +48,7 @@ func TestGHSecretManager_SetSecret(t *testing.T) {
 		ctx := context.Background()
 		mockExecutor := &MockGHSecretExecutor{
 			RunGHFunc: func(ctx context.Context, args ...string) error {
-				// gh secret set NAME -R REPO 형식 검증
+				// Verify gh secret set NAME -R REPO form.
 				if len(args) < 4 {
 					t.Errorf("예상보다 적은 인자: got %d, want at least 4", len(args))
 				}

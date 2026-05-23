@@ -22,14 +22,14 @@ func TestEnvScrub_DefaultDenylist(t *testing.T) {
 
 	result := ScrubEnv(parent, nil)
 
-	// 제거되어야 할 변수들
+	// Variables that must be removed.
 	for _, key := range []string{"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN", "GH_TOKEN", "NPM_TOKEN"} {
 		if envContainsKey(result, key) {
 			t.Errorf("ScrubEnv: %s should be removed from env", key)
 		}
 	}
 
-	// 유지되어야 할 변수들
+	// Variables that must be preserved.
 	for _, key := range []string{"PATH", "HOME", "MY_SAFE_VAR"} {
 		if !envContainsKey(result, key) {
 			t.Errorf("ScrubEnv: %s should be preserved in env", key)
@@ -53,14 +53,14 @@ func TestEnvScrub_AWSPrefixOnly(t *testing.T) {
 
 	result := ScrubEnv(parent, nil)
 
-	// 모든 AWS_ 접두사 변수 제거 확인
+	// Verify removal of every AWS_ prefixed variable.
 	for _, key := range []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_REGION"} {
 		if envContainsKey(result, key) {
 			t.Errorf("ScrubEnv: %s (AWS_ prefix) should be removed", key)
 		}
 	}
 
-	// AWESOME_VAR은 "AWS_"가 아니므로 유지
+	// AWESOME_VAR is not the "AWS_" prefix, so it is preserved.
 	if !envContainsKey(result, "AWESOME_VAR") {
 		t.Error("ScrubEnv: AWESOME_VAR should be preserved (not AWS_ prefix)")
 	}
@@ -83,7 +83,7 @@ func TestEnvScrub_PassthroughPreserved(t *testing.T) {
 
 	result := ScrubEnv(parent, passthrough)
 
-	// passthrough 목록에 있는 변수는 유지
+	// Variables in the passthrough list are preserved.
 	if !envContainsKey(result, "GH_TOKEN") {
 		t.Error("ScrubEnv: GH_TOKEN should be preserved via passthrough")
 	}

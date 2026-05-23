@@ -52,7 +52,7 @@ func TestDocker_NetworkAllowlist(t *testing.T) {
 		t.Skip("docker backend reports unavailable")
 	}
 
-	// allowlist가 비어있으면 --network=none 선택
+	// Empty allowlist -> select --network=none.
 	opts := SandboxOptions{
 		WritableScope:    []string{t.TempDir()},
 		NetworkAllowlist: []string{}, // empty = none
@@ -60,7 +60,7 @@ func TestDocker_NetworkAllowlist(t *testing.T) {
 		MaxOutputBytes:   16 * 1024 * 1024,
 	}
 
-	// --network=none 상태에서 curl → 실패해야 함
+	// Attempt network calls under --network=none -> must fail.
 	_, err := d.Exec(opts, []string{"sh", "-c", "wget -q https://example.com || exit 1"})
 	if err == nil {
 		t.Error("docker with empty allowlist should block network access")
@@ -89,7 +89,7 @@ func TestDocker_FileWriteScope(t *testing.T) {
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	// scope 안 파일 쓰기 → 성공해야 함
+	// Write a file inside scope -> must succeed.
 	_, err := d.Exec(opts, []string{"sh", "-c", "touch " + scope + "/test.txt"})
 	if err != nil {
 		t.Errorf("docker should allow write inside scope: %v", err)

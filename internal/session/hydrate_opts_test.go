@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-// TestHydrateWithOpts_SkipStaleCheck은 SkipStaleCheck 옵션이 staleness 검사를
-// 우회하는지 검증합니다. SPEC-V3R2-RT-004 AC-06: --resume 플래그 연동.
+// TestHydrateWithOpts_SkipStaleCheck verifies that the SkipStaleCheck option
+// bypasses the staleness check. SPEC-V3R2-RT-004 AC-06: --resume flag integration.
 func TestHydrateWithOpts_SkipStaleCheck(t *testing.T) {
 	tempDir := t.TempDir()
-	// 매우 짧은 TTL로 즉시 stale 처리
+	// Use a very short TTL to mark as stale immediately.
 	store := NewFileSessionStore(tempDir, 1*time.Millisecond)
 
 	oldState := PhaseState{
@@ -20,7 +20,7 @@ func TestHydrateWithOpts_SkipStaleCheck(t *testing.T) {
 			Status:  "pass",
 			Harness: "standard",
 		},
-		UpdatedAt: time.Now().Add(-1 * time.Hour), // 1시간 전 (stale)
+		UpdatedAt: time.Now().Add(-1 * time.Hour), // 1 hour ago (stale)
 		Provenance: ProvenanceTag{
 			Source: "session",
 			Origin: "cli",
@@ -28,19 +28,19 @@ func TestHydrateWithOpts_SkipStaleCheck(t *testing.T) {
 		},
 	}
 
-	// 스토어 생성 후 직접 파일 쓰기 (TTL 우회)
+	// After store creation, write directly (bypasses TTL).
 	storeFull := NewFileSessionStore(tempDir, 3600*time.Second)
 	if err := storeFull.Checkpoint(oldState); err != nil {
 		t.Fatalf("Checkpoint() 실패: %v", err)
 	}
 
-	// SkipStaleCheck=false이면 ErrCheckpointStale 반환해야 함
+	// SkipStaleCheck=false must return ErrCheckpointStale.
 	_, err := store.HydrateWithOpts(PhaseRun, "SPEC-RESUME-001", HydrateOpts{SkipStaleCheck: false})
 	if err != ErrCheckpointStale {
 		t.Errorf("SkipStaleCheck=false 시 ErrCheckpointStale 기대, got: %v", err)
 	}
 
-	// SkipStaleCheck=true이면 성공해야 함
+	// SkipStaleCheck=true must succeed.
 	state, err := store.HydrateWithOpts(PhaseRun, "SPEC-RESUME-001", HydrateOpts{SkipStaleCheck: true})
 	if err != nil {
 		t.Errorf("SkipStaleCheck=true 시 에러가 없어야 함, got: %v", err)
@@ -50,8 +50,8 @@ func TestHydrateWithOpts_SkipStaleCheck(t *testing.T) {
 	}
 }
 
-// TestHydrateWithOpts_Default은 기본 옵션(SkipStaleCheck=false)이
-// 기존 Hydrate와 동일하게 동작합니다.
+// TestHydrateWithOpts_Default verifies that default options (SkipStaleCheck=false)
+// behave identically to the existing Hydrate.
 func TestHydrateWithOpts_Default(t *testing.T) {
 	tempDir := t.TempDir()
 	store := NewFileSessionStore(tempDir, 3600*time.Second)
@@ -72,7 +72,7 @@ func TestHydrateWithOpts_Default(t *testing.T) {
 		t.Fatalf("Checkpoint() 실패: %v", err)
 	}
 
-	// 기본 옵션으로 Hydrate
+	// Hydrate with default options.
 	loaded, err := store.HydrateWithOpts(PhasePlan, "SPEC-OPTS-001", HydrateOpts{})
 	if err != nil {
 		t.Fatalf("HydrateWithOpts() 실패: %v", err)
@@ -85,7 +85,7 @@ func TestHydrateWithOpts_Default(t *testing.T) {
 	}
 }
 
-// TestHydrateWithOpts_NotExists은 존재하지 않는 checkpoint에 대해 nil을 반환합니다.
+// TestHydrateWithOpts_NotExists returns nil for non-existent checkpoints.
 func TestHydrateWithOpts_NotExists(t *testing.T) {
 	tempDir := t.TempDir()
 	store := NewFileSessionStore(tempDir, 3600*time.Second)

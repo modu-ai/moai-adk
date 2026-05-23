@@ -104,7 +104,7 @@ func TestFileSessionStoreHydrate(t *testing.T) {
 		Checkpoint: &RunCheckpoint{
 			SPECID:        "SPEC-001",
 			Status:        "pass",
-			Harness:       "standard", // SPEC-V3R2-RT-004: 필수 필드 추가
+			Harness:       "standard", // SPEC-V3R2-RT-004: required field added
 			TestsTotal:    100,
 			TestsPassed:   95,
 			FilesModified: 12,
@@ -328,19 +328,19 @@ func TestFileSessionStoreResolveBlocker(t *testing.T) {
 }
 
 // T-RT004-04: TestCheckpoint_ValidatorRejectsBadHarness
-// RED phase - validator/v10 태그가 없으므로 이 테스트는 현재 실패해야 함
+// RED phase — without validator/v10 tags this test currently fails.
 func TestCheckpoint_ValidatorRejectsBadHarness(t *testing.T) {
 	tempDir := t.TempDir()
 	store := NewFileSessionStore(tempDir, 3600*time.Second)
 
-	// RunCheckpoint에 유효하지 않은 Harness 값
+	// Invalid Harness value in RunCheckpoint.
 	state := PhaseState{
 		Phase:  PhaseRun,
 		SPECID: "SPEC-V3R2-RT-004",
 		Checkpoint: &RunCheckpoint{
 			SPECID: "SPEC-V3R2-RT-004",
 			Status: "pass",
-			Harness: "ultra", // 유효하지 않은 값 (oneof=minimal standard thorough)
+			Harness: "ultra", // invalid value (oneof=minimal standard thorough)
 		},
 		UpdatedAt: time.Now(),
 	}
@@ -351,7 +351,7 @@ func TestCheckpoint_ValidatorRejectsBadHarness(t *testing.T) {
 		return
 	}
 
-	// 에러 메시지에 "harness" 문자열 포함 확인 (AC-15 요구사항)
+	// Verify the error message contains "harness" (AC-15 requirement).
 	errMsg := err.Error()
 	if !contains(errMsg, "harness") && !contains(errMsg, "Harness") {
 		t.Errorf("Error message should contain 'harness' or 'Harness', got: %v", errMsg)
@@ -369,7 +369,7 @@ func TestCheckpoint_ValidatorAcceptsGoodHarness(t *testing.T) {
 		Checkpoint: &RunCheckpoint{
 			SPECID:        "SPEC-V3R2-RT-004",
 			Status:        "pass",
-			Harness:       "thorough", // 유효한 값
+			Harness:       "thorough", // valid value
 			TestsTotal:    100,
 			TestsPassed:   100,
 			FilesModified: 5,
@@ -394,7 +394,7 @@ func TestCheckpoint_ValidatorRejectsEmptyHarness(t *testing.T) {
 		Checkpoint: &RunCheckpoint{
 			SPECID:  "SPEC-V3R2-RT-004",
 			Status:  "pass",
-			Harness: "", // 빈 값 (required 필드)
+			Harness: "", // empty value (required field)
 		},
 		UpdatedAt: time.Now(),
 	}
@@ -412,7 +412,7 @@ func TestCheckpoint_ValidatorRejectsEmptyHarness(t *testing.T) {
 }
 
 // T-RT004-03: TestCheckpoint_ConcurrentRace
-// RED phase - advisory lock 구현이 없으므로 이 테스트는 현재 실패해야 함
+// RED phase — without advisory-lock implementation this test currently fails.
 func TestCheckpoint_ConcurrentRace(t *testing.T) {
 	tempDir := t.TempDir()
 	store := NewFileSessionStore(tempDir, 3600*time.Second)
@@ -429,11 +429,11 @@ func TestCheckpoint_ConcurrentRace(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	// SPEC-V3R2-RT-004: atomic counter로 goroutine 간 race-free 집계
-	// (이전 int++ 사용은 go test -race에서 WARNING: DATA RACE 발동)
+	// SPEC-V3R2-RT-004: race-free aggregation across goroutines via atomic counters
+	// (the prior int++ usage triggered WARNING: DATA RACE under go test -race).
 	var successCount, concurrentErrCount atomic.Int64
 
-	// 2개의 goroutine이 동시에 Checkpoint 시도
+	// Two goroutines attempt Checkpoint concurrently.
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		go func() {
@@ -450,18 +450,18 @@ func TestCheckpoint_ConcurrentRace(t *testing.T) {
 
 	wg.Wait()
 
-	// 적어도 하나는 성공해야 함
+	// At least one must succeed.
 	if successCount.Load() < 1 {
 		t.Errorf("Expected at least 1 successful checkpoint, got %d", successCount.Load())
 	}
 
-	// lock 구현이 없으면 둘 다 성공해버림 (현재 skeleton 동작)
+	// Without lock implementation, both succeed (current skeleton behavior).
 	if concurrentErrCount.Load() < 1 {
 		t.Log("WARNING: No ErrCheckpointConcurrent returned - advisory lock not yet implemented (expected in RED phase)")
 	}
 }
 
-// 보조 함수: 문자열 포함 검사
+// Helper function: substring check.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsSubstring(s, substr))
 }

@@ -31,7 +31,7 @@ func TestProfile_GenerateSBPL(t *testing.T) {
 		t.Errorf("SBPL profile must start with (version 1), got: %q", profile[:min(50, len(profile))])
 	}
 
-	// (deny default) は必須
+	// (deny default) is mandatory.
 	if !strings.Contains(profile, "(deny default)") {
 		t.Error("SBPL profile must contain (deny default)")
 	}
@@ -41,13 +41,13 @@ func TestProfile_GenerateSBPL(t *testing.T) {
 		t.Error("SBPL profile must contain writable scope path")
 	}
 
-	// SBPL은 host-specific TCP 차단을 지원하지 않음 (sandbox-exec 제약).
-	// 대신 비어있지 않은 allowlist가 있으면 `(allow network-outbound (remote tcp))`가 포함되어야 함.
+	// SBPL does not support host-specific TCP blocking (sandbox-exec constraint).
+	// Instead, a non-empty allowlist must include `(allow network-outbound (remote tcp))`.
 	if !strings.Contains(profile, "(allow network-outbound (remote tcp))") {
 		t.Error("SBPL profile with non-empty allowlist must contain (allow network-outbound (remote tcp))")
 	}
 
-	// LSP 카브아웃 포함 (REQ-021)
+	// LSP carve-out included (REQ-021).
 	if !strings.Contains(profile, ".cache") {
 		t.Error("SBPL profile must contain LSP carve-out for ~/.cache")
 	}
@@ -74,7 +74,7 @@ func TestProfile_GenerateBwrapArgs(t *testing.T) {
 
 	joined := strings.Join(args, " ")
 
-	// 필수 bwrap 플래그
+	// Required bwrap flags.
 	if !strings.Contains(joined, "--unshare-all") {
 		t.Error("bwrap args must contain --unshare-all")
 	}
@@ -82,7 +82,7 @@ func TestProfile_GenerateBwrapArgs(t *testing.T) {
 		t.Error("bwrap args must contain --die-with-parent")
 	}
 
-	// writable scope는 --bind로 마운트
+	// writable scope mounts via --bind.
 	if !strings.Contains(joined, "/tmp/worktree") {
 		t.Error("bwrap args must contain writable scope path")
 	}
@@ -106,12 +106,12 @@ func TestProfile_GenerateDockerSnippet(t *testing.T) {
 		t.Fatal("GenerateDockerSnippet: returned empty snippet")
 	}
 
-	// docker run 포함
+	// must include docker run.
 	if !strings.Contains(snippet, "docker run") {
 		t.Error("Docker snippet must contain 'docker run'")
 	}
 
-	// --rm은 ephemeral execution의 필수 플래그
+	// --rm is a required flag for ephemeral execution.
 	if !strings.Contains(snippet, "--rm") {
 		t.Error("Docker snippet must contain --rm flag")
 	}
@@ -130,7 +130,7 @@ func TestProfile_DeterministicChecksum_100Runs(t *testing.T) {
 		MaxOutputBytes:   16 * 1024 * 1024,
 	}
 
-	// SBPL 결정성
+	// SBPL determinism.
 	first, err := GenerateSBPL(opts)
 	if err != nil {
 		t.Fatalf("GenerateSBPL: %v", err)
@@ -147,7 +147,7 @@ func TestProfile_DeterministicChecksum_100Runs(t *testing.T) {
 		}
 	}
 
-	// bwrap 결정성
+	// bwrap determinism.
 	firstArgs, err := GenerateBwrapArgs(opts)
 	if err != nil {
 		t.Fatalf("GenerateBwrapArgs: %v", err)

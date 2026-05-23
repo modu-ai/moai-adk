@@ -245,8 +245,8 @@ func TestBuilder_SetMode(t *testing.T) {
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
-	// 모든 StatuslineMode 변형은 NormalizeMode를 통해 default 3-line layout으로 collapse 한다.
-	// renderer.go:46-65 anchor — full layout retirement으로 인한 backward-compat contract.
+	// Every StatuslineMode variant collapses to the default 3-line layout via NormalizeMode.
+	// renderer.go:46-65 anchor — backward-compat contract introduced by full-layout retirement.
 	modes := []StatuslineMode{
 		ModeDefault, ModeFull, ModeCompact, ModeMinimal, ModeVerbose,
 	}
@@ -267,7 +267,7 @@ func TestBuilder_SetMode(t *testing.T) {
 			}
 			if i == 0 {
 				baseline = got
-				// baseline은 default 3-line layout
+				// Baseline is the default 3-line layout.
 				if lines := strings.Count(got, "\n") + 1; lines != 3 {
 					t.Errorf("baseline mode=%s should produce 3 lines, got %d\noutput:\n%s",
 						mode, lines, got)

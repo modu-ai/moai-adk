@@ -282,8 +282,8 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Layout v3 CH3 (2026-05-22 정정): repo info 존재 → "🔀 owner/name | 🅱️ branch" 형식.
-	// clean → no dirty suffix.
+	// Layout v3 CH3 (2026-05-22 fix): repo info present -> "🔀 owner/name | 🅱️ branch" form.
+	// clean -> no dirty suffix.
 	if !strings.Contains(got, "🔀 modu-ai/moai-adk | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
 		t.Errorf("should show clean branch as '🔀 modu-ai/moai-adk | 🅱️ main' or '📭 main +0', got %q", got)
 	}
@@ -912,7 +912,7 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	if !strings.Contains(l3, "📁 moai-adk-go") {
 		t.Errorf("default L3 must contain directory at head, got: %q", l3)
 	}
-	// Layout v3 CH3 (2026-05-22 정정): combined repo+branch segment
+	// Layout v3 CH3 (2026-05-22 fix): combined repo+branch segment.
 	// "🔀 owner/name | 🅱️ branch ↑N ↓N +N" (pipe separator, repo prefix required).
 	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
 	if !strings.Contains(l3, "🔀 modu-ai/moai-adk | 🅱️ feat/auth ↑2 ↓1 +6") {

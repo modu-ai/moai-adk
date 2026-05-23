@@ -597,8 +597,8 @@ func TestLoaderMIG003MalformedSectionsUseDefaults(t *testing.T) {
 	}
 }
 
-// TestLoadHarnessConfigValid는 per_iteration 값을 가진 유효한 harness 설정이
-// 오류 없이 로드되는지 검증합니다 (AC-HRN-002-04).
+// TestLoadHarnessConfigValid verifies that a valid harness config with a
+// per_iteration value loads without error (AC-HRN-002-04).
 func TestLoadHarnessConfigValid(t *testing.T) {
 	t.Parallel()
 
@@ -622,8 +622,8 @@ func TestLoadHarnessConfigValid(t *testing.T) {
 	}
 }
 
-// TestLoadHarnessConfigFrozenViolation은 cumulative 값이 로더 검증에서
-// ErrEvalMemoryFrozen 오류로 거부되는지 검증합니다 (AC-HRN-002-04).
+// TestLoadHarnessConfigFrozenViolation verifies that a cumulative value is
+// rejected by loader validation with ErrEvalMemoryFrozen (AC-HRN-002-04).
 func TestLoadHarnessConfigFrozenViolation(t *testing.T) {
 	t.Parallel()
 
@@ -647,8 +647,8 @@ func TestLoadHarnessConfigFrozenViolation(t *testing.T) {
 	}
 }
 
-// TestLoadHarnessConfigMissingField는 evaluator 키가 없는 경우
-// 필수 필드 오류를 반환하는지 검증합니다 (AC-HRN-002-04).
+// TestLoadHarnessConfigMissingField verifies that a missing evaluator key
+// returns a required-field error (AC-HRN-002-04).
 func TestLoadHarnessConfigMissingField(t *testing.T) {
 	t.Parallel()
 
@@ -667,7 +667,7 @@ func TestLoadHarnessConfigMissingField(t *testing.T) {
 	if err == nil {
 		t.Fatal("LoadHarnessConfig() error = nil, want required-field error")
 	}
-	// missing field도 ErrEvalMemoryFrozen으로 표현되거나 ErrInvalidConfig 계열이어야 함
+	// Missing field must surface as ErrEvalMemoryFrozen or ErrInvalidConfig family.
 	if !errors.Is(err, ErrEvalMemoryFrozen) && !errors.Is(err, ErrInvalidConfig) {
 		t.Errorf("LoadHarnessConfig() error = %v, want ErrEvalMemoryFrozen or ErrInvalidConfig", err)
 	}

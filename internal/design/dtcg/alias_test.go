@@ -6,8 +6,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// TestDetectAliasCycle_NoCycle: 순환 참조 없는 정상 에일리어스 체인.
-// [HARD]: A→B→C 형태의 정상 체인은 오류 없어야 함.
+// TestDetectAliasCycle_NoCycle: normal alias chain without cyclic references.
+// [HARD]: A->B->C-shaped normal chains must produce no error.
 func TestDetectAliasCycle_NoCycle(t *testing.T) {
 	t.Parallel()
 
@@ -48,8 +48,8 @@ func TestDetectAliasCycle_NoCycle(t *testing.T) {
 	}
 }
 
-// TestDetectAliasCycle_Cycle: 순환 참조 감지.
-// [HARD]: A→B→C→A 순환 및 A→A 자기 참조 모두 감지해야 함.
+// TestDetectAliasCycle_Cycle: cycle detection.
+// [HARD]: must detect A->B->C->A cycles and A->A self-references.
 func TestDetectAliasCycle_Cycle(t *testing.T) {
 	t.Parallel()
 
@@ -84,7 +84,7 @@ func TestDetectAliasCycle_Cycle(t *testing.T) {
 				"token.1": "token.2",
 				"token.2": "token.3",
 				"token.3": "token.4",
-				"token.4": "token.2", // 여기서 순환
+				"token.4": "token.2", // cycle closes here
 			},
 		},
 	}
