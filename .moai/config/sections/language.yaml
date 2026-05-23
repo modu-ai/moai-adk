@@ -5,4 +5,4 @@ language:
     conversation_language_name: ko
     documentation: ko
     error_messages: en
-    git_commit_messages: ko
+    git_commit_messages: en
