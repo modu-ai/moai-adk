@@ -3,11 +3,11 @@ name: moai-foundation-thinking
 description: >
   Unified thinking toolkit: Creative frameworks (Critical Evaluation, Diverge-Converge,
   Deep Questioning), First Principles reasoning (absorbed from moai-foundation-philosopher),
-  and Sequential Thinking MCP (absorbed from moai-workflow-thinking). Use for ideation,
-  strategic analysis, architecture decisions, and structured step-by-step reasoning.
+  and Adaptive Thinking via the `ultrathink` keyword. Use for ideation, strategic
+  analysis, architecture decisions, and deep reasoning on complex problems.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, mcp__sequential-thinking__sequentialthinking
+allowed-tools: Read, Grep, Glob
 user-invocable: false
 metadata:
   version: "2.0.0"
@@ -15,7 +15,7 @@ metadata:
   status: "active"
   updated: "2026-04-25"
   modularized: "true"
-  tags: "foundation, critical-thinking, brainstorming, ideation, evaluation, creative-thinking, diverge-converge, first-principles, sequential-thinking, philosophy, architecture-decision"
+  tags: "foundation, critical-thinking, brainstorming, ideation, evaluation, creative-thinking, diverge-converge, first-principles, adaptive-thinking, philosophy, architecture-decision"
   related-skills: "moai-foundation-philosopher, moai-workflow-thinking"
 
 # MoAI Extension: Progressive Disclosure
@@ -300,6 +300,11 @@ Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with high ef
 ### When to Activate
 
 Architecture decisions affecting 3+ files, technology selection between options, breaking changes under consideration, performance vs maintainability trade-offs, complex problems with multiple viable approaches.
-3. Use branching (`branchFromThought`) when two viable alternatives exist
-4. Set `nextThoughtNeeded: false` only when a concrete conclusion is reached
-5. On Opus 4.7: Adaptive Thinking handles reasoning automatically — no fixed budget needed
+
+On Opus 4.7+: Adaptive Thinking handles reasoning depth automatically — no fixed budget needed. The orchestrator activates deep reasoning by prepending the `ultrathink` keyword to the user prompt.
+
+---
+
+## Backward Compatibility Marker
+
+Sequential Thinking MCP support retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. For deep reasoning use the `ultrathink` keyword (triggers Opus 4.7+ Adaptive Thinking). The earlier "Sequential Thinking MCP (absorbed from moai-workflow-thinking)" content is superseded; this skill's deep-reasoning path is consolidated onto ultrathink + the creative frameworks above.
