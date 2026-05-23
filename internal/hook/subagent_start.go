@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // subagentStartHandler processes SubagentStart events.
@@ -30,14 +28,11 @@ func NewSubagentStartHandler() Handler {
 
 // NewSubagentStartHandlerWithConfig creates a new SubagentStart event handler with
 // config access for project context injection.
-// projectDir is resolved from CLAUDE_PROJECT_DIR env var or os.Getwd() as fallback.
+// projectDir is resolved via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR env
+// var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
+// (REQ-HCWA-003, REQ-HCWA-008).
 func NewSubagentStartHandlerWithConfig(cfg ConfigProvider) Handler {
-	dir := os.Getenv(config.EnvClaudeProjectDir)
-	if dir == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			dir = cwd
-		}
-	}
+	dir := resolveProjectRootFromEnv("NewSubagentStartHandlerWithConfig")
 	return &subagentStartHandler{cfg: cfg, projectDir: dir}
 }
 
@@ -202,16 +197,10 @@ func (h *agentStartHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		return &HookOutput{}, nil
 	}
 
-	// Determine projectDir: CWD priority, environment variable fallback
-	projectDir := input.CWD
-	if projectDir == "" {
-		projectDir = os.Getenv(config.EnvClaudeProjectDir)
-	}
-	if projectDir == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			projectDir = cwd
-		}
-	}
+	// Determine projectDir via shared helper: input.CWD → CLAUDE_PROJECT_DIR
+	// env var → os.Getwd() fallback with slog.Warn cwd_fallback:true marker
+	// (REQ-HCWA-004, REQ-HCWA-008).
+	projectDir := resolveProjectRootFromInputOrEnv(input, "agentStartHandler.Handle")
 
 	fm, found, err := h.loadAgentFrontmatter(projectDir, agentName)
 	if err != nil {
