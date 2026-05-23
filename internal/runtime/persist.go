@@ -15,7 +15,7 @@ import (
 // If the SPEC directory does not exist, the function silently skips (returns "", nil).
 // Existing progress.md content is preserved; the new section is appended.
 // Atomic write is used via os.Rename to avoid partial writes (SPEC-V3R3-ARCH-007 §2.4).
-func (t *Tracker) PersistProgress(specID, waveLabel, approach, nextStep string) (string, error) {
+func (t *Tracker) PersistProgress(specID, roundLabel, approach, nextStep string) (string, error) {
 	t.mu.RLock()
 	cfg := t.config
 	projectRoot := t.projectRoot
@@ -35,8 +35,8 @@ func (t *Tracker) PersistProgress(specID, waveLabel, approach, nextStep string) 
 
 	// Build the appended section
 	timestamp := time.Now().UTC().Format(time.RFC3339)
-	section := fmt.Sprintf("\n## Auto-saved at %s (75%% threshold)\n\n- Wave: %s\n- Approach: %s\n- Next step: %s\n",
-		timestamp, waveLabel, approach, nextStep)
+	section := fmt.Sprintf("\n## Auto-saved at %s (75%% threshold)\n\n- Round: %s\n- Approach: %s\n- Next step: %s\n",
+		timestamp, roundLabel, approach, nextStep)
 
 	// Read existing content (if any)
 	var existing []byte
@@ -55,7 +55,7 @@ func (t *Tracker) PersistProgress(specID, waveLabel, approach, nextStep string) 
 	slog.Info("PersistProgress: progress.md saved", "spec_id", specID, "path", progressPath)
 
 	// Generate resume message
-	resumeMsg := buildResumeMessage(cfg.ResumeMessageFormat, specID, waveLabel, approach, progressPath, nextStep)
+	resumeMsg := buildResumeMessage(cfg.ResumeMessageFormat, specID, roundLabel, approach, progressPath, nextStep)
 	return resumeMsg, nil
 }
 
@@ -86,11 +86,11 @@ func atomicWrite(path string, data []byte) error {
 
 // buildResumeMessage generates the paste-ready resume message from the format template.
 // Replacements follow context-window-management.md §Resume message format.
-func buildResumeMessage(format, specID, waveLabel, approach, progressPath, nextStep string) string {
+func buildResumeMessage(format, specID, roundLabel, approach, progressPath, nextStep string) string {
 	msg := format
 	msg = strings.ReplaceAll(msg, "{spec_id}", specID)
 	msg = strings.ReplaceAll(msg, "{SPEC_ID}", specID)
-	msg = strings.ReplaceAll(msg, "{wave_label}", waveLabel)
+	msg = strings.ReplaceAll(msg, "{round_label}", roundLabel)
 	msg = strings.ReplaceAll(msg, "{approach_summary}", approach)
 	msg = strings.ReplaceAll(msg, "{progress_path}", progressPath)
 	msg = strings.ReplaceAll(msg, "{next_step}", nextStep)
