@@ -201,11 +201,15 @@ func (h *subagentStopHandler) removeTeammateFromConfig(configPath, teammateName 
 // dispatchCapture emits an observation to the harness-learner capture pipeline (REQ-HRA-001).
 // Non-blocking: errors are logged to slog and ignored (capture is best-effort).
 // [HARD] No AskUserQuestion call — this package is a subagent-level hook handler.
+//
+// Path resolution: delegates to resolveProjectRoot to prefer CLAUDE_PROJECT_DIR
+// over input.CWD and guard against writes outside a valid MoAI project root.
+// Skips capture entirely when no .moai/ exists in the resolved root (prevents
+// the historical internal/hook/.moai/ leak when tests called Handle without CWD).
 func (h *subagentStopHandler) dispatchCapture(input *HookInput) {
-	// Determine observations path relative to project CWD.
-	projectDir := input.CWD
+	projectDir := resolveProjectRoot(input)
 	if projectDir == "" {
-		projectDir, _ = os.Getwd()
+		return
 	}
 	obsPath := filepath.Join(projectDir, ".moai", "harness", "observations.yaml")
 
