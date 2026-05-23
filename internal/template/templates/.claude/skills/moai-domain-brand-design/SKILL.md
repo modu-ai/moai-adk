@@ -32,7 +32,7 @@ triggers:
 
 # moai-domain-brand-design
 
-Visual design system skill for brand-aligned web projects. Absorbed from agency-design-system (v1.0.0). Enforces hero-first chaining, WCAG 2.1 AA contrast, and structured design token output for downstream implementation.
+Visual design system skill for brand-aligned web projects. Absorbed from the retired v2.x `*-design-system` capability (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) at v1.0.0. Enforces hero-first chaining, WCAG 2.1 AA contrast, and structured design token output for downstream implementation.
 
 ---
 
@@ -252,6 +252,6 @@ Generated design must meet:
 
 ---
 
-Source: Absorbed from agency-design-system v1.0.0 on 2026-04-20.
+Source: Absorbed from the retired v2.x `*-design-system` capability v1.0.0 (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) on 2026-04-20.
 REQ coverage: REQ-SKILL-004, REQ-SKILL-005, REQ-SKILL-006, REQ-FALLBACK-003
 Version: 1.0.0

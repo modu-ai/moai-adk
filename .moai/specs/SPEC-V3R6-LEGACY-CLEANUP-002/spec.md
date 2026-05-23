@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-LEGACY-CLEANUP-002
 title: "Template mirror cascade for v2.x agency keyword cleanup (LEGACY-CLEANUP-001 follow-up)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

@@ -41,10 +41,10 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 Before presenting the route selection, perform these checks in order:
 
-### Check 1: Existing .agency/ detection (REQ-DETECT-003)
+### Check 1: Existing legacy `.agency/` detection (REQ-DETECT-003)
 
-If `.agency/` directory exists AND `.moai/project/brand/` does not exist:
-- Output warning before route selection: "agency data detected — run `moai migrate agency` to migrate your brand context first."
+If the legacy `.agency/` directory exists (v2.x layout, retired; see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) AND `.moai/project/brand/` does not exist:
+- Output warning before route selection: "Legacy v2.x agency data detected — run `moai migrate agency` to migrate your brand context first."
 - Include `moai migrate agency --dry-run` as the preview command.
 - Continue to route selection (do not block).
 
