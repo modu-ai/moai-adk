@@ -768,7 +768,7 @@ cat > .git/hooks/pre-push <<'EOF'
 #!/bin/bash
 while read local_ref local_sha remote_ref remote_sha; do
   if echo "$remote_ref" | grep -qE "refs/heads/main$"; then
-    echo "⚠️  main 직접 push — Hybrid Trunk (Tier S 미만 허용) | CI 자동 트리거" >&2
+    echo "⚠️  main 직접 push — Hybrid Trunk (모든 tier 허용) | CI 자동 트리거" >&2
     sleep 5
   fi
 done
@@ -875,7 +875,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `git reset --hard` 대신 `--keep` 사용 (sandbox 안전)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
-- [HARD] 1-person OSS Hybrid Trunk: Tier S 미만은 main 직접 push, Tier M/L SPEC만 feat 브랜치 + 자동 PR
+- [HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용 — CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호 (§23.0 chore commit `cd9eead14`, 2026-05-22 채택). feat 브랜치 + 자동 PR은 사용자가 명시적으로 review round 필요하다고 결정한 경우 (예: cross-team review, security-sensitive change) opt-in으로만 사용
 
 ---
 
