@@ -5,7 +5,22 @@ paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moa
 
 # manager-develop 위임 Prompt Template
 
-> [ZONE:Evolvable] [HARD] 모든 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. 누락 시 재위임 반복 위험 증가.
+## Applicability
+
+[ZONE:Evolvable] [HARD] The Section A-E 5-section delegation template defined in this rule is **REQUIRED for Tier M and Tier L SPEC delegations** and **OPTIONAL for Tier S** delegations. Tier S SPECs (≤300 LOC, <5 files affected, 2 artifacts per the LEAN workflow) MAY use minimal delegation prompts (~500-800 tokens) covering only:
+
+- Goal (single-paragraph task description)
+- Deliverables (concrete file/commit list)
+- Constraints (PRESERVE list, forbidden commands)
+- Self-verification (AC PASS/FAIL matrix)
+
+When applying the minimal form for Tier S, Section B (Known Issues B1-B8) MAY be filtered to relevant categories only or omitted entirely if no listed risk applies. Section C (Pre-flight) MAY be reduced to the single most-relevant baseline command.
+
+When the SPEC tier is M or L, the full Section A-E template SHOULD be applied; Section B (known issues) MAY filter B1-B8 categories by domain relevance (e.g., a documentation-only SPEC may omit B1 cross-platform build tags).
+
+Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L). Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization).
+
+> [ZONE:Evolvable] [HARD] 모든 Tier M/L의 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. Tier S는 위 Applicability 절의 minimal form을 사용해도 무방. 누락 시 (Tier M/L에서) 재위임 반복 위험 증가.
 
 본 rule은 W3 HARNESS-AUTONOMY-001 메타-분석 결과 (2026-05-20)에서 도출된 위임 품질 개선 사항을 표준화한다. 1-pass 위임으로 결함 사전 차단 목표.
 
@@ -60,6 +75,27 @@ paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moa
 - runtime-managed files (`.moai/harness/usage-log.jsonl`, `.moai/state/`) 변경 금지
 - session_end의 `cleanupBogusRootDir` 의존 (`{}/`  literal directory는 cleanup 대상)
 - 무관 untracked files은 commit 포함 금지 (`git add` specific path만)
+
+**B9. Git Commit + Push 자체 수행 (Hybrid Trunk 1-person OSS)**
+- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 per .claude/rules/moai/workflow/git-workflow-doctrine.md Tier S/M)
+- Conventional Commits format 의무 (`feat(SPEC-...): M{N} <subject>`)
+- M별 분리 commit + 마지막 push 또는 M별 push 둘 다 허용
+- `--no-verify` 사용 절대 금지 (pre-commit hook warn-only는 정상)
+- 예외: (a) parallel session race 발생 시 orchestrator가 push 수행, (b) AC PASS-WITH-DEBT 상태에서 사용자 확인 필요 시 orchestrator 위임, (c) explicit blocker report 시
+- 본 rule이 manager-docs에는 적용 **안 됨** — manager-docs는 /moai sync workflow에서 commit + push가 deliverable 자체
+
+**B10. Untouched Paths PRESERVE (Scope Discipline)**
+- 본 SPEC plan.md §A.5 PRESERVE list 외 working tree 변경 절대 금지
+- parallel manager-develop instance 진행 중일 때 특히 주의 (다른 디렉토리 scope 손대지 말 것)
+- runtime-managed files (`.moai/harness/*`, `.moai/state/*`, `.moai/cache/*`) 손대지 말 것
+- 무관 SPEC 디렉토리 (다른 V3R6 SPEC plan-phase artifacts) 손대지 말 것
+- parallel session research/audit 산출물 (`.moai/research/*`) 손대지 말 것
+
+**B11. AskUserQuestion 금지 (Subagent Boundary)**
+- subagent는 사용자와 직접 상호작용 금지 (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary)
+- Blocker 발견 시 structured blocker report 반환 (orchestrator가 AskUserQuestion 수행 + re-delegate)
+- Blocker report format: 4-옵션 + 각 옵션의 변경/영향/위험/ETA 명시
+- free-form prose 질문 절대 금지 (response body에 "? 어떻게 진행할까요?" 패턴 금지)
 
 ### Section C — Pre-flight Check List (착수 전 의무 검증)
 

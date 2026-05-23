@@ -76,6 +76,27 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - session_end의 `cleanupBogusRootDir` 의존 (`{}/`  literal directory는 cleanup 대상)
 - 무관 untracked files은 commit 포함 금지 (`git add` specific path만)
 
+**B9. Git Commit + Push 자체 수행 (Hybrid Trunk 1-person OSS)**
+- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 per .claude/rules/moai/workflow/git-workflow-doctrine.md Tier S/M)
+- Conventional Commits format 의무 (`feat(SPEC-...): M{N} <subject>`)
+- M별 분리 commit + 마지막 push 또는 M별 push 둘 다 허용
+- `--no-verify` 사용 절대 금지 (pre-commit hook warn-only는 정상)
+- 예외: (a) parallel session race 발생 시 orchestrator가 push 수행, (b) AC PASS-WITH-DEBT 상태에서 사용자 확인 필요 시 orchestrator 위임, (c) explicit blocker report 시
+- 본 rule이 manager-docs에는 적용 **안 됨** — manager-docs는 /moai sync workflow에서 commit + push가 deliverable 자체
+
+**B10. Untouched Paths PRESERVE (Scope Discipline)**
+- 본 SPEC plan.md §A.5 PRESERVE list 외 working tree 변경 절대 금지
+- parallel manager-develop instance 진행 중일 때 특히 주의 (다른 디렉토리 scope 손대지 말 것)
+- runtime-managed files (`.moai/harness/*`, `.moai/state/*`, `.moai/cache/*`) 손대지 말 것
+- 무관 SPEC 디렉토리 (다른 V3R6 SPEC plan-phase artifacts) 손대지 말 것
+- parallel session research/audit 산출물 (`.moai/research/*`) 손대지 말 것
+
+**B11. AskUserQuestion 금지 (Subagent Boundary)**
+- subagent는 사용자와 직접 상호작용 금지 (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary)
+- Blocker 발견 시 structured blocker report 반환 (orchestrator가 AskUserQuestion 수행 + re-delegate)
+- Blocker report format: 4-옵션 + 각 옵션의 변경/영향/위험/ETA 명시
+- free-form prose 질문 절대 금지 (response body에 "? 어떻게 진행할까요?" 패턴 금지)
+
 ### Section C — Pre-flight Check List (착수 전 의무 검증)
 
 위임 받은 manager-develop가 코드 변경 전 실행:
