@@ -194,7 +194,8 @@ PRESERVE (1 byte도 변경 금지, frontmatter `model:` 필드 외):
 - `grep -l 'model: opus' .claude/agents/{core,expert,harness,meta}/*.md | wc -l` → **7** (REQ-AMR-NF-010)
 - `grep -l 'model: sonnet' .claude/agents/{core,expert,harness,meta}/*.md | wc -l` → **13** (REQ-AMR-003)
 - `grep -l 'model: haiku' .claude/agents/{core,expert,harness,meta}/*.md | wc -l` → **3** (REQ-AMR-004)
-- Template mirror diff: `diff -q .claude/agents/<sub>/<agent>.md internal/template/templates/.claude/agents/<sub>/<agent>.md` → 0 mismatches (REQ-AMR-NF-009)
+- Template mirror diff: `diff -q .claude/agents/<sub>/<agent>.md internal/template/templates/.claude/agents/<sub>/<agent>.md` → 0 mismatches for **19 non-harness pairs** (core 8 + expert 6 + meta 5) per REQ-AMR-NF-009 harness/ exclusion clause
+- Anti-leak guard: `test -d internal/template/templates/.claude/agents/harness && exit 1 || exit 0` → exit 0 (harness/ template mirror MUST NOT exist per CLAUDE.local.md §24.2)
 
 ---
 

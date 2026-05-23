@@ -260,14 +260,14 @@ grep -l 'model: inherit' .claude/agents/core/*.md .claude/agents/expert/*.md .cl
 
 ---
 
-### AC-AMR-009: Template mirror byte-identical
+### AC-AMR-009: Template mirror byte-identical (19 non-harness pairs)
 
-**Statement**: 23 agent files의 local과 `internal/template/templates/.claude/agents/<sub>/<agent>.md` mirror가 byte-identical.
+**Statement**: 19 non-harness agent files (core 8 + expert 6 + meta 5)의 local과 `internal/template/templates/.claude/agents/{core,expert,meta}/<agent>.md` mirror가 byte-identical. harness/ 4 agents는 CLAUDE.local.md §24.2 namespace policy로 template mirror **존재 자체 금지** — verification에서 제외.
 
 **Verification Command**:
 ```bash
 mismatches=0
-for sub in core expert harness meta; do
+for sub in core expert meta; do
   for f in .claude/agents/$sub/*.md; do
     name=$(basename "$f")
     if ! diff -q "$f" "internal/template/templates/.claude/agents/$sub/$name" >/dev/null 2>&1; then
@@ -276,18 +276,24 @@ for sub in core expert harness meta; do
   done
 done
 echo "$mismatches"
+
+# Anti-leak guard: harness/ template mirror MUST NOT exist
+if [ -d "internal/template/templates/.claude/agents/harness" ]; then
+  echo "ANTI-LEAK FAIL: harness/ template mirror exists (CLAUDE.local.md §24.2 violation)"
+  exit 1
+fi
 ```
 
 **Expected Output**: `0`
 
-**Status**: PASS if 0 mismatches across all 23 pairs, FAIL otherwise.
+**Status**: PASS if 0 mismatches across **19 non-harness pairs** AND `internal/template/templates/.claude/agents/harness/` directory does NOT exist, FAIL otherwise.
 
 **Given-When-Then**:
-- **Given** M2+M3+M4 milestone마다 template mirror 동시 갱신
-- **When** 23 pair diff 검증
-- **Then** 0 mismatches
+- **Given** M2+M3+M4 milestone마다 template mirror 동시 갱신 (core+expert+meta only)
+- **When** 19 pair diff 검증 + harness/ template directory absence 검증
+- **Then** 0 mismatches AND harness/ template directory not present
 
-**Traces to**: REQ-AMR-NF-009
+**Traces to**: REQ-AMR-NF-009 (harness/ exclusion clause)
 
 ---
 

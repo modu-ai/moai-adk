@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-AGENT-MODEL-ROUTING-001
 title: "Agent 23개 모델 명시 라우팅 (opus 7 / sonnet 13 / haiku 3)"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-05-23
 updated: 2026-05-23
@@ -19,6 +19,8 @@ related_specs: [SPEC-V3R6-PROMPT-CACHE-001, SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001, S
 # SPEC-V3R6-AGENT-MODEL-ROUTING-001 — Agent 23개 모델 명시 라우팅
 
 ## HISTORY
+
+- v0.2.1 (2026-05-23): orchestrator-direct minor fix-forward — REQ-AMR-NF-009 + AC-AMR-009 + plan.md §D.5 정정. CLAUDE.local.md §24.2 namespace policy 충돌 해소: `internal/template/templates/.claude/agents/harness/` directory는 §24.2에 의해 **존재 자체 금지**이므로 template mirror 의무에서 harness/ 4 agents 제외. 23 agents 모두 routing 적용 유지 (REQ-AMR-001..005), 단 mirror sync는 19 non-harness pairs (core 8 + expert 6 + meta 5)만 의무. AC-AMR-009 anti-leak guard 추가 (harness/ template directory 존재 시 FAIL). 본 정정은 plan-auditor iter 2 PASS 0.871 post-audit codebase-state blindspot 발견에 따른 fix-forward (≤5 edits, scope-clarification only, score-affecting REQ wording 외 변경 없음, manager-spec 재위임 불요). plan-auditor codebase state blindspot lesson candidate (memory entry [[feedback-plan-auditor-codebase-state-blindspot]] 재현).
 
 - v0.2.0 (2026-05-23): plan-auditor iter 1 REVISE 0.633 (Tier M 0.80 미만 -0.167) 4 BLOCKING 적용. B1 foundational inventory 정정: 19 agents → 23 agents (4 subdirectories: core 8 / expert 6 / harness 4 / meta 5). B2 AC 검증 명령 4-subdirectory glob으로 재작성. B3 `module:` 경로 정정 (`.claude/agents/moai` → `.claude/agents`). B4 cost 산수 + opus 카운트 정합: 7 opus (manager-develop, manager-spec, manager-strategy, expert-security, **expert-refactoring** — constitution-aligned, plan-auditor, evaluator-active) + 13 sonnet (8 harness/builder/expert/manager + 4 new harness specialists + 1 claude-code-guide) + 3 haiku (manager-docs, manager-git, researcher + batch_api). Opus 호출 빈도 23/23 baseline → 7/23 = 70% off. 메인 워크플로우 `/moai run` 5-agent 평균 input 단가 $4.20 → $2.20/MTok 유지 (5-agent set membership 불변). 5 SHOULD-FIX 적용: S1 sprint-round-naming.md SSOT (Wave → Round retired, Sprint = multi-SPEC). S2 expert-refactoring opus carve-out constitution 본문 직접 인용. S3 Tier M → Tier L 재분류 (50+ files affected, 5 artifacts). S4 batch_api key resilience (3-key accept). S5 baseline state line 정확화 (main HEAD `0abcda296` + Sprint 1 Lane A status).
 
@@ -196,8 +198,10 @@ The MoAI-ADK orchestrator **shall** maintain `model: inherit` count = 0 across a
 
 ### 3.2 Non-Functional Requirements
 
-**REQ-AMR-NF-009 (Template mirror sync)**:
-**When** any of the 23 agent files is modified under REQ-AMR-001..005, the SPEC implementation **shall** apply byte-identical changes to the corresponding mirror file at `internal/template/templates/.claude/agents/{core,expert,harness,meta}/<filename>.md` to satisfy CLAUDE.local.md §2 [HARD] Template-First Rule. Verification: `diff -q .claude/agents/<sub>/<agent>.md internal/template/templates/.claude/agents/<sub>/<agent>.md` returns 0 mismatches for all 23 pairs.
+**REQ-AMR-NF-009 (Template mirror sync, harness/ exclusion)**:
+**When** any agent file in `.claude/agents/{core,expert,meta}/` is modified under REQ-AMR-001..005, the SPEC implementation **shall** apply byte-identical changes to the corresponding mirror file at `internal/template/templates/.claude/agents/{core,expert,meta}/<filename>.md` to satisfy CLAUDE.local.md §2 [HARD] Template-First Rule. Verification: `diff -q .claude/agents/<sub>/<agent>.md internal/template/templates/.claude/agents/<sub>/<agent>.md` returns 0 mismatches for **19 non-harness pairs** (core 8 + expert 6 + meta 5 = 19).
+
+**Exception (CLAUDE.local.md §24.2 Namespace Policy — harness/ user-owned)**: harness/ 4 agents (`cli-template-specialist`, `hook-ci-specialist`, `quality-specialist`, `workflow-specialist`) are **user-owned namespace** per CLAUDE.local.md §24.2. Their `model:` frontmatter is modified in `.claude/agents/harness/*.md` only — `internal/template/templates/.claude/agents/harness/` directory **MUST NOT exist** (per §24.2 contract). Template mirror sync verification SKIPS the 4 harness pairs. REQ-AMR-001..005 still apply (23 agents total receive routing); only the mirror sync obligation excludes harness/.
 
 **REQ-AMR-NF-010 (Cost reduction target)**:
 The cumulative Opus invocation frequency across the 23 agents **shall** decrease from 23/23 (current effective state via `inherit`) to 7/23 (70% reduction in Opus calls). Measurement: post-migration grep count of `model: opus` returns exactly `7`.
