@@ -18,7 +18,7 @@ tier: S
 | Plan | COMPLETE | 2026-05-23 | 2026-05-23 | `d553d585b` |
 | Run M1 | COMPLETE | 2026-05-23 | 2026-05-23 | `e629afc9d` |
 | Run M2 | COMPLETE | 2026-05-23 | 2026-05-23 | `8a8ad3051` |
-| Run M3 | COMPLETE | 2026-05-23 | 2026-05-23 | _[this commit]_ |
+| Run M3 | COMPLETE | 2026-05-23 | 2026-05-23 | `0f4860e17` |
 | Sync | NOT STARTED | — | — | — |
 
 ---
