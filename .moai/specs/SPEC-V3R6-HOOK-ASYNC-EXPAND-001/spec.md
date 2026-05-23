@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HOOK-ASYNC-EXPAND-001
 title: "Hook async 확대 (FileChanged + ConfigChange + TaskCreated + Notification)"
-version: "0.1.0"
-status: draft
+version: "0.3.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
