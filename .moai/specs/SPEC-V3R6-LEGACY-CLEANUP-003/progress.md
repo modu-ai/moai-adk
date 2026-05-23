@@ -44,9 +44,25 @@ lifecycle: spec-anchored
 | AC-LCL-007 | REQ-LCL-006 + LSP gate | PASS | `go vet ./...` → no output (exit 0); `golangci-lint run --timeout=2m` → 0 issues (identical to pre-flight baseline) |
 | AC-LCL-008 | REQ-LCL-007 + REQ-LCL-008 | PASS | (1) `handle-harness-observe` references in internal/ Go files: 10 (baseline 10 at 146a268e7 confirmed via `git show 146a268e7:internal/cli/hook.go | grep -c` + 5 referencing-files diff inspection showing zero net additions or removals across run-phase commits; ≥9 acceptance.md threshold met; corrected from manager-develop's E8 tally of 24 via orchestrator-direct independent verification post-run); (2) `internal/cli/migrate_agency*` cluster untouched (B10 scope discipline); (3) `internal/config/types.go` Copywriter/Designer fields untouched; (4) state_guard.go:15 + doc.go:11 historical SPEC-IDs verbatim; (5) state_guard.go:39 strategy-wave5.md file reference verbatim |
 
-## Sync-phase Evidence (TBD — populated by manager-docs)
+## Sync-phase Evidence
 
-TBD
+**CHANGELOG entry insertion**: `CHANGELOG.md` lines 70-83 (after LEGACY-CLEANUP-002 entry, before CODE-COMMENTS-EN-001 entry). Sub-section `### Changed`. Entry includes M1-M4 milestone summaries + 8/8 ACs summary + 3 immutable exemptions rationale + [Unwanted] §A.6 retention categories + scope discipline attestation. 
+
+**B12 6th self-test execution**:
+- **B12.a (Read-before-Write)**: 
+  - Read 6 run-phase commits: `git log -p 146a268e7..HEAD -- internal/` verified all 6 commits present with correct scope
+  - Read all 4 SPEC artifacts (spec.md 197L, plan.md 205L, acceptance.md 222L, progress.md): final content verified, no plan-phase placeholders remain
+  - Read CHANGELOG.md structure: `[Unreleased]` at line 30, `### Changed` section at line 54, insertion point after LEGACY-CLEANUP-002 (line 68) located
+- **B12.b (acceptance.md SSOT for AC count)**:
+  - `grep -c "^## AC-LCL-" acceptance.md` returned 8 (AC-LCL-001 through AC-LCL-008)
+  - CHANGELOG entry cites **8/8 ACs PASS** per acceptance.md SSOT (not progress.md row count)
+- **B12.c (CHANGELOG duplicate detection + post-write verify)**:
+  - Pre-flight: `grep -c "SPEC-V3R6-LEGACY-CLEANUP-003" CHANGELOG.md` returned 0 ✓
+  - Post-write: `grep -c "SPEC-V3R6-LEGACY-CLEANUP-003" CHANGELOG.md` returned 1 ✓ (single entry added, lines 70-83)
+
+**manager-docs commit**: Single sync-phase commit `<SHA-TBD-on-push>` on main (commit message per D3 conventional-commits format: `docs(SPEC-V3R6-LEGACY-CLEANUP-003): sync — CHANGELOG entry + B12 6th self-test PASS`)
+
+**PRESERVE compliance**: B8 dirty files (6 files: 3 config + 2 harness + 1 research) remain in original M/?? state; B10 untouched paths (other SPEC dirs, runtime state, template mirror) remain unchanged.
 
 ## Mx-phase Evidence
 
