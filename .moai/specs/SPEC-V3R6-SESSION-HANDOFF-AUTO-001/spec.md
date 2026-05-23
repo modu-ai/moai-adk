@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 title: "Session handoff auto-persistence (paste-ready resume → memory + MEMORY.md)"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: Author Name

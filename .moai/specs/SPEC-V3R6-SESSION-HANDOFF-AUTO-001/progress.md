@@ -3,7 +3,7 @@ spec_id: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 progress_version: "0.1.0"
 created: 2026-05-23
 updated: 2026-05-23
-status: not_started
+status: implemented
 ---
 
 # Progress — SPEC-V3R6-SESSION-HANDOFF-AUTO-001
@@ -36,91 +36,103 @@ This document tracks milestone execution evidence during run-phase. Plan-phase p
 
 ### M1 Status
 
-`not_started`
+`complete` — commit `8dfaacac4` on `main`
 
-### M1 Evidence Placeholders (to be filled by manager-develop)
+### M1 Evidence
 
-- [ ] `internal/hook/handoff/persist.go` created with package declaration + signature
-- [ ] `pendingPath(projectDir string) string` helper implemented
-- [ ] Absent pending file short-circuit returns `nil` without slog.Warn
-- [ ] `go build ./internal/hook/handoff/` succeeds (paste command output)
-- [ ] `grep -r "AskUserQuestion\|mcp__askuser" internal/hook/handoff/` exits code 1 (paste command + exit code)
+- [x] `internal/hook/handoff/persist.go` created (77 LOC) with package declaration + `PersistIfPending(ctx, sessionID, projectDir, memoryDir) error` signature + package doc-comment referencing SPEC ID + best-effort contract
+- [x] `pendingFilePath(projectDir string) string` helper centralizes REQ-SHA-001 contract path
+- [x] Absent pending file short-circuit returns `nil` via `os.IsNotExist(err)` check without slog.Warn (REQ-SHA-002)
+- [x] `go build ./internal/hook/handoff/` → exit 0
+- [x] Subagent-boundary grep: `grep -r 'AskUserQuestion\|mcp__askuser' internal/hook/handoff/` → exit 1 (zero matches)
 
-### M1 AC Verification (target)
+### M1 AC Verification
 
-- AC-SHA-001 (partial) — pendingPath centralization
-- AC-SHA-002 (partial) — IsNotExist short-circuit
-- AC-SHA-009 (partial) — package import audit
+- AC-SHA-001 (partial) — pendingFilePath centralization PASS
+- AC-SHA-002 (partial) — IsNotExist short-circuit PASS
+- AC-SHA-009 (partial) — package zero AskUserQuestion imports PASS
 
 ## M2 — Parser + Writer + Supersede Marker
 
 ### M2 Status
 
-`not_started`
+`complete` — commit `768dc49c4` on `main`
 
-### M2 Evidence Placeholders (to be filled by manager-develop)
+### M2 Evidence
 
-- [ ] `parsePending` function implemented with required-field validation
-- [ ] `pendingEntry` struct fields: Sprint, Spec, Status, Supersedes, IndexLine, Body
-- [ ] Sprint/spec field regex `^[a-z0-9_-]+$` enforced
-- [ ] Body validation: `## Next Session Entry Point` heading + fenced ```` ```text ```` block
-- [ ] `atomicWriteFile` helper using `os.CreateTemp` + `os.Rename`
-- [ ] `prependToMemoryMD` helper with retry loop (max 3)
-- [ ] Supersede marker logic: `[SUPERSEDED by <new-file>]` prefix on matched line
-- [ ] `slog.Warn` messages use `"session_end: handoff: ..."` prefix
-- [ ] `go build ./internal/hook/handoff/` succeeds
-- [ ] `go vet ./internal/hook/handoff/` zero warnings
+- [x] `parsePending` function implemented with required-field validation (sprint/spec/status/index_line) + REQ-SHA-005 body structure check
+- [x] `pendingEntry` struct fields: Sprint, Spec, Status, Supersedes, IndexLine, Body (yaml tags)
+- [x] Sprint/spec/status field regex `^[a-z0-9_-]+$` enforced (REQ-SHA-011 path-injection guard)
+- [x] Body validation: `## Next Session Entry Point` heading + fenced ` ```text ` block; failures return `errStructuralDefect` sentinel
+- [x] `atomicWriteFile(dir, baseName, data, perm)` helper using `os.CreateTemp(dir, baseName+".tmp.*")` + Write + Chmod + Sync + Close + `os.Rename` with cleanup on error (REQ-SHA-006)
+- [x] `prependToMemoryMD(memoryDir, indexLine, supersedesFileName, newFileName)` helper with read → optional supersede marker → prepend → atomic-write loop, mtime+size drift detection, max 3 retries (REQ-SHA-007)
+- [x] Supersede marker logic: `[SUPERSEDED by <new-file-name>] ` prefix on FIRST matched line; double-mark prevention check (`[SUPERSEDED ` prefix detection)
+- [x] All `slog.Warn` messages use `"session_end: handoff: ..."` prefix
+- [x] `go build ./internal/hook/handoff/` → exit 0
+- [x] `go vet ./internal/hook/handoff/` → zero warnings
 
-### M2 AC Verification (target)
+### M2 AC Verification
 
-- AC-SHA-003 (full happy path)
-- AC-SHA-004 (malformed frontmatter)
-- AC-SHA-005 (missing heading/block)
-- AC-SHA-006 (atomic write)
-- AC-SHA-008 (supersede marker)
+- AC-SHA-003 (happy path with/without supersedes) PASS via test
+- AC-SHA-004 (malformed frontmatter: 9 subtests including invalid field format) PASS via test
+- AC-SHA-005 (missing heading / missing fenced block / wrong fence language) PASS via test
+- AC-SHA-006 (atomic write contract via goroutine reader race test) PASS via `-race` test
+- AC-SHA-008 (supersede marker with single/no-match/multiple-match/already-marked) PASS via test
 
 ## M3 — session_end.go Integration Call Site
 
 ### M3 Status
 
-`not_started`
+`complete` — commit `9551c41e0` on `main`
 
-### M3 Evidence Placeholders (to be filled by manager-develop)
+### M3 Evidence
 
-- [ ] `resolveMemoryDir(homeDir, projectDir string) (string, error)` helper added to `session_end.go` with `@MX:TODO: [AUTO]` annotation
-- [ ] `handoff.PersistIfPending` call inserted after MX validation block, before final `slog.Info("session_end: cleanup complete", ...)`
-- [ ] Import `"github.com/modu-ai/moai-adk/internal/hook/handoff"` added
-- [ ] Error from `resolveMemoryDir` logged via `slog.Warn`; persistence skipped on resolution failure
-- [ ] `go build ./internal/hook/...` succeeds (full hook package)
-- [ ] `go test ./internal/hook/...` zero regressions vs M0 baseline
-- [ ] Integration smoke: absent pending file → session_end completes silently
+- [x] `resolveMemoryDir(homeDir, projectDir string) (string, error)` helper added to `session_end.go` with `@MX:TODO: [AUTO] resolve Claude Code project-hash convention; placeholder fails to produce real memory writes until resolved` annotation + `@MX:REASON:` rationale citing §E.1
+- [x] `handoff.PersistIfPending(ctx, input.SessionID, projectDir, memoryDir)` call inserted after MX validation block (lines 110-119), before final `slog.Info("session_end: cleanup complete", ...)` line ~123
+- [x] Import `"github.com/modu-ai/moai-adk/internal/hook/handoff"` and `"fmt"` added
+- [x] Error from `resolveMemoryDir` logged via `slog.Warn("session_end: could not resolve memory directory", "error", err)`; persistence skipped on resolution failure
+- [x] `go build ./internal/hook/...` → exit 0
+- [x] `GOOS=windows GOARCH=amd64 go build ./internal/hook/...` → exit 0
+- [x] `go test ./internal/hook/...` → ALL PASS (zero regressions vs baseline `eaff5f272`)
+- [x] Integration smoke: absent pending file → no new slog warn records emitted
 
-### M3 AC Verification (target)
+### M3 AC Verification
 
-- AC-SHA-002 (integration-level, end-to-end no-op)
-- AC-SHA-010 (cleanup-on-success end-to-end)
+- AC-SHA-002 (integration-level no-op) PASS
+- AC-SHA-010 (cleanup-on-success end-to-end) PASS via test
 
 ## M4 — Test Suite + Integration Smoke
 
 ### M4 Status
 
-`not_started`
+`complete` — commit pending (this commit, after progress.md update)
 
-### M4 Evidence Placeholders (to be filled by manager-develop)
+### M4 Evidence
 
-- [ ] `internal/hook/handoff/persist_test.go` created
-- [ ] 10 test functions implemented (one per AC-SHA-001..010)
-- [ ] All tests use `t.TempDir()` for isolation
-- [ ] Race-detector test (`TestPersistIfPending_AtomicWriteNoPartialRead`) passes under `-race`
-- [ ] `go test -race ./internal/hook/handoff/...` all pass (paste output)
-- [ ] `go test -cover ./internal/hook/handoff/...` ≥ 85% (paste coverage)
-- [ ] `golangci-lint run ./internal/hook/handoff/...` zero new findings (vs M0 baseline)
-- [ ] Static guard `grep -r "AskUserQuestion\|mcp__askuser" internal/hook/handoff/ | grep -v "_test.go" | grep -v "^[^:]*:[0-9]*:[ \t]*//"` exits code 1
-- [ ] Full hook package regression check: `go test ./internal/hook/...` passes vs M0 baseline
+- [x] `internal/hook/handoff/persist_test.go` created (15 test functions including the 10 AC-mapped functions + 5 coverage-supporting tests for atomicWriteFile / memoryDir-missing / pending-as-directory / MEMORY.md-as-directory / CRLF-frontmatter)
+- [x] All 10 AC-mapped test functions implemented per plan.md M4 deliverable 1
+- [x] All tests use `t.TempDir()` for filesystem isolation (CLAUDE.local.md §6 compliance)
+- [x] Race-detector test `TestPersistIfPending_AtomicWriteNoPartialRead` passes under `-race`
+- [x] `go test -race ./internal/hook/handoff/...` → ok 1.502s (all pass)
+- [x] `go test -cover ./internal/hook/handoff/...` → **coverage 85.1% of statements** (≥85% target met)
+- [x] `golangci-lint run ./internal/hook/handoff/...` → **0 issues** (zero new findings)
+- [x] Static guard: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/hook/handoff/ | grep -v "_test.go" | grep -v "^[^:]*:[0-9]*:[ \t]*//"` → exit 1 (no matches in non-test code)
+- [x] Full hook package regression check: `go test ./internal/hook/...` → ALL PASS
 
-### M4 AC Verification (target)
+### M4 AC Verification
 
-- AC-SHA-001 through AC-SHA-010 (all 10 via automated tests)
+| AC | Test Function | Result |
+|----|---------------|--------|
+| AC-SHA-001 | `TestPersistIfPending_ReadsOnlyContractPath` | PASS |
+| AC-SHA-002 | `TestPersistIfPending_AbsentPendingNoOp` | PASS |
+| AC-SHA-003 | `TestPersistIfPending_ValidPendingWritesBoth` (2 subtests) | PASS |
+| AC-SHA-004 | `TestPersistIfPending_MalformedFrontmatterPreserved` (9 subtests) | PASS |
+| AC-SHA-005 | `TestPersistIfPending_MissingHeadingPreserved` (3 subtests) | PASS |
+| AC-SHA-006 | `TestPersistIfPending_AtomicWriteNoPartialRead` (`-race` validated) | PASS |
+| AC-SHA-007 | `TestPersistIfPending_MemoryMdContentionRetry` (2 subtests) | PASS |
+| AC-SHA-008 | `TestPersistIfPending_SupersedeMarkerApplied` (4 subtests) | PASS |
+| AC-SHA-009 | `TestPersistIfPending_NoUserInteraction` + static grep guard | PASS |
+| AC-SHA-010 | `TestPersistIfPending_PendingCleanedOnSuccess` | PASS |
 
 ## Run-Phase Completion Checklist (manager-develop final verification)
 
@@ -155,10 +167,11 @@ All 7 commands SHOULD be invoked in a single assistant turn per AC-WO-007 verifi
 
 | Date | Milestone | Decision | Rationale |
 |---|---|---|---|
-| (TBD M1) | M1 | (placeholder) | (placeholder) |
-| (TBD M2) | M2 | (placeholder) | (placeholder) |
-| (TBD M3) | M3 | (placeholder) | (placeholder) |
-| (TBD M4) | M4 | (placeholder) | (placeholder) |
+| 2026-05-23 | M2 | Status field also subject to `^[a-z0-9_-]+$` regex (not just sprint/spec) | Status flows into the memory file name via `fmt.Sprintf("project_%s_%s_%s.md", ...)`; same path-injection risk as sprint/spec; added AC-SHA-004 subtest `invalid-status-format` |
+| 2026-05-23 | M2 | mtime+size drift detection for MEMORY.md retry (REQ-SHA-007) uses BOTH `ModTime` Equal AND `Size` comparison | mtime resolution is filesystem-dependent (1s on HFS+, 1ns on APFS); size cross-check catches same-second mutations |
+| 2026-05-23 | M2 | `applySupersedeMarker` checks for existing `[SUPERSEDED ` prefix to avoid double-marking | Single-line idempotency: re-running persistence on a retried supersede must not stack markers |
+| 2026-05-23 | M3 | `resolveMemoryDir` returns `TODO-project-hash` placeholder per §E.1 deferral | PersistIfPending logs warn + skips when memoryDir missing, so placeholder ships safely; real implementation requires Claude Code project-hash convention research (follow-up SPEC candidate) |
+| 2026-05-23 | M4 | Coverage target met at 85.1% (vs 85% threshold) via 5 supporting tests beyond the 10 AC-mapped tests | atomicWriteFile inner-error branches (Write/Chmod/Sync/Close fail) require kernel-level fault injection; covered remaining branches via memoryDir-read-only test + MEMORY.md-as-directory test + applySupersedeMarker double-mark test |
 
 ## Blockers Log (run-phase appendable)
 
@@ -169,7 +182,5 @@ All 7 commands SHOULD be invoked in a single assistant turn per AC-WO-007 verifi
 | Date | From | To | By |
 |---|---|---|---|
 | 2026-05-23 | (none) | draft | manager-spec (plan-phase initial creation) |
-| (TBD) | draft | planned | (post-merge automation or manager-develop run-phase entry) |
-| (TBD) | planned | in-progress | manager-develop |
-| (TBD) | in-progress | implemented | manager-develop |
+| 2026-05-23 | draft | implemented | manager-develop (run-phase M1-M4 complete, Hybrid Trunk Tier S direct on main) |
 | (TBD) | implemented | completed | manager-docs (sync-phase) |
