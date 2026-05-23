@@ -80,6 +80,10 @@ var errStructuralDefect = errors.New("structural defect")
 // If the directory does not exist the helper logs warn and returns nil; it
 // MUST NOT create the directory because the project-hash directory is owned
 // by Claude Code (§B.2 "Project-hash directory creation").
+//
+// @MX:ANCHOR: [AUTO] SessionEnd hook 호출 단일 진입점 (public API). 6단계 파이프라인: 1) pending.md 검출 (REQ-SHA-002 absent=no-op) → 2) parsePending 검증 (REQ-SHA-004/005/011) → 3) memoryDir 존재 확인 (§B.2 directory 생성 금지) → 4) atomicWriteFile (REQ-SHA-006) → 5) prependToMemoryMD (REQ-SHA-007/008) → 6) pending 제거 (REQ-SHA-010).
+// @MX:REASON: REQ-SHA-001~010 통합 계약 위치 + SessionEnd hook으로부터의 유일한 진입점. 모든 실패 경로 best-effort (slog.Warn + return nil, 사용자 가시적 출력 0, REQ-SHA-009). 시그니처/단계 순서 변경 시 SessionEnd 통합 + AC-SHA-001~010 전체 회귀 위험. ctx + sessionID는 향후 timeout/로깅 컨텍스트 확장 예약 (현재 미사용).
+// @MX:SPEC: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir string) error {
 	_ = ctx
 	_ = sessionID
@@ -182,6 +186,10 @@ func pendingFilePath(projectDir string) string {
 // REQ-SHA-005 (structural-defect path):
 //   - Missing `## Next Session Entry Point` heading
 //   - Missing fenced ```text block in the body
+//
+// @MX:ANCHOR: [AUTO] frontmatter + body 구조 검증 단일 진실 공급원. REQ-SHA-004 (malformed) + REQ-SHA-005 (structural-defect) + REQ-SHA-011 (path-injection guard) 통합 게이트. PersistIfPending에서 유일하게 호출 (fan_in=1, 본 함수가 검증 책임 전체 보유).
+// @MX:REASON: sprint/spec/status 필드가 fmt.Sprintf("project_%s_%s_%s.md")를 통해 메모리 파일명에 직접 사용되므로 정규식 `^[a-z0-9_-]+$` 위반 시 경로 조작 공격 가능 (예: `spec: ../../etc/passwd`). 본 함수가 유일한 검증 게이트 — 우회 경로 추가 금지. errStructuralDefect 반환 시 reason="structural_defect"로 분류되어 caller가 동등 처리.
+// @MX:SPEC: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 func parsePending(data []byte) (*pendingEntry, error) {
 	// Frontmatter delimiter: leading `---\n` ... `\n---\n` (or `\n---\r\n`).
 	if !bytes.HasPrefix(data, []byte("---\n")) && !bytes.HasPrefix(data, []byte("---\r\n")) {
@@ -261,6 +269,10 @@ func parsePending(data []byte) (*pendingEntry, error) {
 // as the target to keep the rename atomic within a single filesystem.
 //
 // On any error after temp creation the temp file is best-effort removed.
+//
+// @MX:ANCHOR: [AUTO] atomic 쓰기 계약 (CreateTemp → Write → Chmod → Sync → Close → Rename). 동시 읽기자에게 부분 쓰기를 노출하지 않음 (REQ-SHA-006). PersistIfPending + prependToMemoryMD 양쪽 호출 (fan_in=2 + 잠재 외부 호출자).
+// @MX:REASON: tmp 파일은 target과 동일 디렉토리에 생성되어야 rename이 atomic (단일 파일시스템 경계). 다른 디렉토리로 변경 시 cross-device link 에러 + atomicity 보장 깨짐. perm 인자 명시로 umask 회피. Sync 호출은 crash safety (POSIX fsync 등가).
+// @MX:SPEC: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 func atomicWriteFile(dir, baseName string, data []byte, perm os.FileMode) error {
 	tmp, err := os.CreateTemp(dir, baseName+".tmp.*")
 	if err != nil {
@@ -310,6 +322,9 @@ func atomicWriteFile(dir, baseName string, data []byte, perm os.FileMode) error 
 // should be prefixed with `[SUPERSEDED by <newFileName>] `. When the supersedes
 // field is empty or the matching line is not found the supersede step is
 // silently skipped (per §A.3 spec — supersede is opportunistic).
+//
+// @MX:NOTE: [AUTO] read-modify-write 루프 최대 3회 재시도 (memoryMdRetryLimit). mtime + size 양쪽 비교로 read와 write 사이 동시 수정 감지. drift 감지 시 재시도, 한계 초과 시 contention 에러 반환 (slog.Warn 처리는 caller PersistIfPending). MEMORY.md 부재 시 신규 생성 (atomic rename 보장).
+// @MX:SPEC: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 func prependToMemoryMD(memoryDir, indexLine, supersedesFileName, newFileName string) error {
 	memoryPath := filepath.Join(memoryDir, "MEMORY.md")
 
@@ -366,6 +381,9 @@ func prependToMemoryMD(memoryDir, indexLine, supersedesFileName, newFileName str
 // applySupersedeMarker rewrites the FIRST line of `content` that references
 // `supersedesFileName` to be prefixed with `[SUPERSEDED by <newFileName>] `.
 // When no match is found the content is returned unchanged.
+//
+// @MX:NOTE: [AUTO] FIRST 매치 라인만 supersede marker 적용 후 즉시 반환 (§A.3 opportunistic 정책 — 다중 매치 시에도 첫 줄만 처리). 중복 marker 방지를 위해 라인 prefix `[SUPERSEDED ` 검사 후 skip. 미매치 시 content 변경 없이 그대로 반환.
+// @MX:SPEC: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 func applySupersedeMarker(content []byte, supersedesFileName, newFileName string) []byte {
 	lines := bytes.Split(content, []byte("\n"))
 	marker := []byte(fmt.Sprintf("[SUPERSEDED by %s] ", newFileName))
