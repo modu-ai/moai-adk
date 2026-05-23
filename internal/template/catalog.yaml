@@ -26,7 +26,7 @@ catalog:
             - name: moai-foundation-thinking
               tier: core
               path: templates/.claude/skills/moai-foundation-thinking/
-              hash: cc81cd01b7b47fe6d814014717269fa4ba9f9220ca8edb421fd8d8922554b45c
+              hash: f0b44b551ae1d8da44814e301897b8c7de8ede6fe96f28e63a6c05a65dd71aac
               version: 1.0.0
             - name: moai-harness-learner
               tier: core
@@ -107,12 +107,12 @@ catalog:
             - name: evaluator-active
               tier: core
               path: templates/.claude/agents/meta/evaluator-active.md
-              hash: 064d6b1e40c8f83682e37be5d8f52f679e27d87fea0216569802001a0fffecaf
+              hash: 265456ad3acca6406666651daec34b2ec41499a25a49a139548e2bcbbe5aa945
               version: 1.0.0
             - name: expert-refactoring
               tier: core
               path: templates/.claude/agents/expert/expert-refactoring.md
-              hash: c03476f94b032506daf1c5e046d5fec4f8d6a7e249a42daf90bbf9249fc9ad6b
+              hash: f5cc9cf625ca78124cb20357e86e5d742f21cb9dfab20fd08c6531da777f2e21
               version: 1.0.0
             - name: manager-brain
               tier: core
@@ -122,12 +122,12 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/core/manager-develop.md
-              hash: 5c13877835b9ecc4db99611f886bdeff5b861a25dd99f6d10855468dd466e933
+              hash: 12071447ab761e29fb698d077cf7fdc5c6006cb19310b98eff94fb2bfdd382da
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/core/manager-docs.md
-              hash: b5fd33c8f0b64e2d11e0dfb9334478562a466865c60515e015af991bae23f34b
+              hash: 83d8d6f6ec95fd409228a7cfbecc490cf092c5609d3e8d344409ee364307b7f7
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -137,27 +137,27 @@ catalog:
             - name: manager-project
               tier: core
               path: templates/.claude/agents/core/manager-project.md
-              hash: e2938eae6c9beba9f403c38844e33bed646d606a28c5675922e72c93786fb029
+              hash: 696b7ebf4d096e7ec61833910adc049107a49e5ca036712f86ff426ee78d8683
               version: 1.0.0
             - name: manager-quality
               tier: core
               path: templates/.claude/agents/core/manager-quality.md
-              hash: 82cbf8f8057d9f4a5afcb95ad0c50fa04b16968e3ae4ec819b284ea8f0afcb0d
+              hash: d63267a3f77b784cd670bb7b9753259a55776c2a3a06b4c15146d89d3c655759
               version: 1.0.0
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/core/manager-spec.md
-              hash: fb5ac00038df868ec223a2f8eac6053239d1a19fb97a5aa856daabb608427bbd
+              hash: 5a078bce5aed69776a84bc69fe7c9e262d41df9f0ea8d614091709c12480a8b9
               version: 1.0.0
             - name: manager-strategy
               tier: core
               path: templates/.claude/agents/core/manager-strategy.md
-              hash: 40340d049439e49fc201fc62ac8c503c817377031b6b3424e2ac5c91e3968fd5
+              hash: cd9cee2fa86eed0be40620447e2830ed97417e0d4941178916fa6a93107cfb14
               version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/meta/plan-auditor.md
-              hash: 0f692a25d3d51bc83ed85ed3d2667e83adee55500a94790c2e3ba0bfef0084ba
+              hash: 9145555304e9992559c3df73b525a1330b03a195a37906acbee268ce4be73a20
               version: 1.0.0
             - name: researcher
               tier: core
@@ -188,7 +188,7 @@ catalog:
                 - name: expert-backend
                   tier: optional-pack:backend
                   path: templates/.claude/agents/expert/expert-backend.md
-                  hash: 4799df71cfd0096fa56d80daccebed8c3e17b1478e15aa85c495bbf6955afd2c
+                  hash: 7343465334e6fb3695210552b9671bca3892adccdd52d164fc904c16035229d9
                   version: 1.0.0
         deployment:
             description: Deployment and hosting with Vercel, Railway, Convex, and serverless infrastructure
@@ -199,7 +199,7 @@ catalog:
                 - name: expert-devops
                   tier: optional-pack:deployment
                   path: templates/.claude/agents/expert/expert-devops.md
-                  hash: 6b5d3d8e388dda52692e4caba38b84f90c2a8f7d027ce88483790568682e239b
+                  hash: 6c61eb8e2d24ed6c021db5b83ab1234fc26d52b14550372b4aba4b8c50232c56
                   version: 1.0.0
         design:
             description: Brand-aligned design system, copywriting, GAN loop, and Claude Design handoff workflow
@@ -256,7 +256,7 @@ catalog:
                 - name: expert-security
                   tier: optional-pack:devops
                   path: templates/.claude/agents/expert/expert-security.md
-                  hash: 91fe7bfa0e39ac468b5936bc8a564ccf01a7231a4ed985c825bbd26736acc549
+                  hash: e7a6d4d5b97c39a30a6880034af64daeb2ceeed31b9b9c7f24e2c604e6bb2d9d
                   version: 1.0.0
         frontend:
             description: Frontend development with React, Next.js, Vue, and modern UI patterns
@@ -276,7 +276,7 @@ catalog:
                 - name: expert-frontend
                   tier: optional-pack:frontend
                   path: templates/.claude/agents/expert/expert-frontend.md
-                  hash: 3ac58c8151ddf6262c270ed1f6405bbcc90f4542c68bffb56ae3d01462132d40
+                  hash: dec3221d148aa59683e8a8221b3027ca78eb439f2821c4f970973fbb9645687d
                   version: 1.0.0
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows
@@ -289,5 +289,5 @@ catalog:
             - name: builder-harness
               tier: harness-generated
               path: templates/.claude/agents/meta/builder-harness.md
-              hash: f5f27c0f50e7c3dfd10a2b47e36009fd20ae24537b1a1feda60330b6cd86aeb2
+              hash: 9f940a34a766eedfdd77d5c96dd2db1d1bb668385a6d3d284533a928f9361713
               version: 1.0.0
