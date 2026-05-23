@@ -274,6 +274,54 @@ each, serial execution adds ~14 s of dead-time per run-phase completion.
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` documents the
   formal verification grouping pattern.
 
+### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
+
+[ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()`
+(manager-develop / manager-docs / expert-*) that will commit or modify
+shared working-tree files, the orchestrator MUST execute the following
+2-command parallel batch and surface any divergence to the user.
+
+```bash
+# 1. Fetch latest origin/main without merging
+git fetch origin main 2>&1
+
+# 2. Count divergence between local HEAD and origin/main
+git rev-list --count --left-right origin/main...HEAD
+```
+
+Interpretation matrix:
+
+| Output | Meaning | Action |
+|--------|---------|--------|
+| `0 N` | Local ahead by N (clean — your commits not yet pushed) | Proceed normally |
+| `0 0` | Synced (local == origin/main) | Proceed normally |
+| `N 0` | Origin ahead by N — **parallel session race detected** | STOP, surface via AskUserQuestion: rebase / inspect / abort |
+| `N M` | Diverged (both ahead) | STOP, MUST resolve before spawn |
+
+Rationale: When 2+ Claude Code sessions operate on the same project root
++ same memory hash (`~/.claude/projects/{hash}/memory/`), they may both
+consume the same paste-ready resume and attempt the same `/moai <subcommand>`
+work. The git working tree is shared; the memory file is shared. Without
+a pre-spawn fetch, the second session works on a stale baseline and may
+produce duplicate commits, conflicting frontmatter edits, or CHANGELOG
+entry races.
+
+Origin: SPEC-V3R6-LEGACY-CLEANUP-001 sync-phase race (2026-05-23) —
+parallel session committed `aea0cf7b9` (spec.md frontmatter status update)
+between manager-develop M4 (`ccd1fa9cf`) and manager-docs sync
+(`19bc873ff`). Detection occurred retrospectively when `git push` succeeded
+with an unexpected intermediate commit in the push range. L9 reinforced
+(parallel session race during long agent runs) + L44 NEW (pre-spawn fetch
+discipline).
+
+Exemption: read-only agents (`Explore`, `manager-quality` in diagnostic
+mode) do not require pre-spawn fetch — they cannot trigger race conflicts.
+
+Cross-reference: `CLAUDE.local.md` §23.8 Multi-Session Race Mitigation
+(defense-in-depth policy at user-facing layer); `.claude/rules/moai/
+workflow/session-handoff.md` § Worktree-Anchored Resume Pattern (L2/L3
+worktree as race-elimination alternative).
+
 ## Tool Optimization Patterns
 
 [ZONE:Evolvable] [HARD] Agents MUST use single-command idioms over multi-step

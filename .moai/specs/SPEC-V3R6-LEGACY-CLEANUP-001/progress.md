@@ -24,8 +24,9 @@ tier: L
 | run M1 (backup + skills/rule) | done | ffa65ab15 | backup dir + 31-entry manifest + 5 source files |
 | run M2 (docs-site ko + en) | done | e517d59e9 | 8 of 10 edited; migration-guide preserved as canonical retainer |
 | run M3 (docs-site ja + zh) | done | 42bc8024d | 8 files edited + 4-locale parity verified |
-| run M4 (root markdown + verification) | done | TBD (this commit) | CLAUDE.md + 4 READMEs edited; CHANGELOG preserved as historical record per REQ-LCL-007 + REQ-LCL-008 [Optional] |
-| sync | not started | — | CHANGELOG `[Unreleased]` entry only (B12 rule) |
+| run M4 (root markdown + verification) | done | ccd1fa9cf | CLAUDE.md + 4 READMEs edited; CHANGELOG preserved as historical record per REQ-LCL-007 + REQ-LCL-008 [Optional] |
+| sync | done | 19bc873ff | CHANGELOG `[Unreleased]` entry + AC-LCL-005/003 PASS-WITH-DEBT corrections + B12 2nd self-test PASS (per session race, prior session interrupted before progress.md sync row update — fix-forward in mx commit) |
+| mx | done (skip justified) | — (this commit) | 0 Go files in scope C (`git diff --name-only ffa65ab15^..19bc873ff \| grep -E "\.go$" \| wc -l` = 0); `.md`-only scope outside @MX:ANCHOR/NOTE/TODO applicability per CLAUDE.md §5 MX Tag Integration; precedent CHANGELOG-CLEANUP-001 (memory `project_sprint2_changelog_cleanup_001_sync_complete` L33) |
 
 ## Milestone Tracker
 
@@ -184,6 +185,42 @@ Documented in spec.md §A.6:
 - SPEC-V3R6-LEGACY-CLEANUP-004 (master design doc cleanup)
 - SPEC-V3R6-LEGACY-CLEANUP-005 (historical SPEC archive consolidation — 38+ files)
 
+## Sync-phase Evidence (2026-05-23, 19bc873ff)
+
+Source: 19bc873ff commit `docs(SPEC-V3R6-LEGACY-CLEANUP-001): sync — CHANGELOG entry + AC-LCL-005 PASS-WITH-DEBT correction + B12 2nd self-test PASS` — applied by manager-docs in prior session that was interrupted before progress.md sync row update (L28 reinforced — manager-docs claimed "Sync-phase Evidence section 채움" in commit body but the section was not actually inserted; fix-forward in this commit).
+
+| Item | Result | Verification |
+|------|--------|--------------|
+| CHANGELOG.md [Unreleased] entry append | PASS | `grep -c "SPEC-V3R6-LEGACY-CLEANUP-001" CHANGELOG.md` = 1 (B12.c discipline, no duplicate) |
+| AC-LCL-005 status PASS → PASS-WITH-DEBT (line 76) + note section (lines 84-93) | PASS | Read verified; i18n-validator TestBudget 31.18s vs 30s budget +4% over → user-accepted via AskUserQuestion |
+| AC-LCL-003 PASS-WITH-DEBT note section (lines 95-112) | PASS | per-canonical-locale (ko) residual count 5 matches REQ-LCL-013 rationale; 4× locale multiplier discrepancy noted |
+| spec.md frontmatter `status: implemented` + `version: 0.2.0` | PASS | applied by manager-develop M4 (aea0cf7b9) ahead of sync (L39 candidate: phase responsibility cross-boundary but end-state correct) |
+| B12 standing-rule guard 2nd self-test | PASS | B12.a Read-before-Write (CHANGELOG line 30-52 + manager-develop-prompt-template B12 verbatim + 4 milestone diffs + spec.md §A + progress.md AC tracker) + B12.b acceptance.md SSOT (11 ACs cited NOT progress.md row count) + B12.c `grep -c` pre=0 post=1 |
+| Trust-but-verify 6-item batch | PASS | 6 sister SPEC dirs 0 changes + ambient runtime files (usage-log.jsonl + observations.yaml + v3.0-redesign-2026-05-23.md) NOT staged (L37 discipline) + per-file `git add` only |
+
+### Follow-up SPEC candidates (post-merge triage, expanded)
+
+Per spec.md §A.6 + sync-phase additions (6 candidates):
+- SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 (Tier S, 1-line `scripts/i18n-validator/main_test.go` line 377 budget bump 30s → 35s; AC-LCL-005 PASS-WITH-DEBT debt clearance)
+- SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 (13 pre-existing internal/template baseline test failures — orthogonal to LEGACY-CLEANUP scope C)
+- SPEC-V3R6-LEGACY-CLEANUP-002 (template mirror cascade — 7 `internal/template/templates/.claude/` files; **IMMEDIATE priority** per CLAUDE.local.md §2 [HARD] Template-First Rule)
+- SPEC-V3R6-LEGACY-CLEANUP-003 (production Go code audit — 19 files with potential agency-related references)
+- SPEC-V3R6-LEGACY-CLEANUP-004 (`docs/design/major-v3-master.md` cleanup)
+- SPEC-V3R6-LEGACY-CLEANUP-005 (38+ historical SPECs archive consolidation)
+
+## mx-phase Evidence (2026-05-23, [this commit])
+
+| Item | Result | Verification |
+|------|--------|--------------|
+| Run+sync phase Go file count | **0** | `git diff --name-only ffa65ab15^..19bc873ff \| grep -E "\.go$" \| wc -l` = 0 |
+| Scope C content | 5 source `.md` files (4 skills + 1 rule per spec.md §A.1) | `.claude/rules/moai/design/constitution.md` + `.claude/skills/moai-domain-{brand-design,copywriting}/SKILL.md` + `.claude/skills/moai-workflow-gan-loop/SKILL.md` + `.claude/skills/moai/workflows/design.md` |
+| @MX:NOTE / @MX:ANCHOR / @MX:WARN / @MX:TODO insertion candidates | **0** | `.md` files do NOT carry code-level annotations (no functions, no fan_in/fan_out analysis applicable, no execution surface) |
+| mx Step decision | **SKIP (justified)** | Per CLAUDE.md §5 MX Tag Integration table — mx phase applies to source code (Go); `.md` files outside scope. Precedent: SPEC-V3R6-CHANGELOG-CLEANUP-001 sync (memory `project_sprint2_changelog_cleanup_001_sync_complete` lesson L33) — `.md`-only SPECs justifiably skip mx |
+| Lifecycle close | plan → run → sync → mx (skip) | all 4 phases closed |
+| Frontmatter version bump | NOT applied | mx-phase skip does NOT bump version per L33 (sync was final semantic bump → 0.2.0) |
+
 ## Lessons Captured (post-merge candidates)
 
-- (TBD post-run-phase) Lesson candidates will be documented after milestone M4 completes.
+- **L28 reinforced (2026-05-23 19bc873ff)**: manager-docs commit body over-claim — claimed "Sync-phase Evidence section 채움" but section was NOT actually inserted into progress.md; sync row at line 28 remained "not started". Mitigation: orchestrator post-sync independent verification MUST include `grep -c "Sync-phase Evidence" <progress.md>` to catch claimed-but-missing sections.
+- **L43 NEW (2026-05-23 parallel-session sync race)**: paste-ready resume's sync work was completed by parallel session between resume composition and receiver session arrival. Receiver session detected via precondition grep (CHANGELOG count = 1 vs expected 0). Mitigation: every paste-ready resume Block 3-4 (Preconditions) MUST include the very command that detects "is the work already done?" — typically `grep -c "<SPEC-ID>" CHANGELOG.md` and `git log --oneline -1` against expected SHA from prior memory. When mismatch detected: surface to user via AskUserQuestion BEFORE proceeding with sync-equivalent action.
+- (TBD post-LEGACY-CLEANUP-002 + Sprint 2 close) Additional lessons documented after Sprint 2 cascade completes.
