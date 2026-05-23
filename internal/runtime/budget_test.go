@@ -21,10 +21,10 @@ func testConfig() *runtime.RuntimeConfig {
 		PerAgentBudget:        map[string]int{"default": 1000, "manager-strategy": 2000},
 		StallDetectionSeconds: 1, // 1s for fast tests
 		RetryMax:              3,
-		Fallback:              "split_into_waves",
+		Fallback:              "split_into_rounds",
 		AutoSaveAtThreshold:   true,
 		SavePathTemplate:      ".moai/specs/{SPEC_ID}/progress.md",
-		ResumeMessageFormat:   "ultrathink. {wave_label} 이어서 진행. SPEC-{spec_id}부터 {approach_summary}. progress.md 경로: {progress_path}. 다음 단계: {next_step}.",
+		ResumeMessageFormat:   "ultrathink. {round_label} 이어서 진행. SPEC-{spec_id}부터 {approach_summary}. progress.md 경로: {progress_path}. 다음 단계: {next_step}.",
 	}
 }
 
@@ -189,8 +189,8 @@ func TestRetryMaxFallback(t *testing.T) {
 	if recommendation == "" {
 		t.Error("expected non-empty fallback recommendation after retry_max exhausted")
 	}
-	if !strings.Contains(recommendation, "split_into_waves") {
-		t.Errorf("expected fallback=split_into_waves in recommendation, got %q", recommendation)
+	if !strings.Contains(recommendation, "split_into_rounds") {
+		t.Errorf("expected fallback=split_into_rounds in recommendation, got %q", recommendation)
 	}
 }
 
@@ -209,7 +209,7 @@ func TestPersistProgressAt75Pct(t *testing.T) {
 	tracker := runtime.NewTracker(testConfig())
 	tracker.SetProjectRoot(tmpDir)
 
-	msg, err := tracker.PersistProgress(specID, "Wave 1", "budget tracker 구현", "다음: /moai sync")
+	msg, err := tracker.PersistProgress(specID, "Round 1", "budget tracker 구현", "다음: /moai sync")
 	if err != nil {
 		t.Fatalf("PersistProgress returned unexpected error: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestSilentSkipOnMissingSPECDir(t *testing.T) {
 	tracker.SetProjectRoot(tmpDir)
 
 	// SPEC dir does not exist — should return empty string and nil error
-	msg, err := tracker.PersistProgress("SPEC-NONEXISTENT", "Wave 1", "test", "next step")
+	msg, err := tracker.PersistProgress("SPEC-NONEXISTENT", "Round 1", "test", "next step")
 	if err != nil {
 		t.Errorf("expected nil error for missing SPEC dir, got %v", err)
 	}
@@ -379,7 +379,7 @@ func TestLoadRuntimeFromFile(t *testing.T) {
   circuit_breaker:
     stall_detection_seconds: 30
     retry_max: 2
-    fallback: split_into_waves
+    fallback: split_into_rounds
   progress_persistence:
     auto_save_at_threshold: true
     save_path_template: ".moai/specs/{SPEC_ID}/progress.md"
@@ -447,7 +447,7 @@ func TestProgressMdAtomicWrite(t *testing.T) {
 	tracker := runtime.NewTracker(testConfig())
 	tracker.SetProjectRoot(tmpDir)
 
-	_, err := tracker.PersistProgress(specID, "Wave 2", "budget fix", "next: sync")
+	_, err := tracker.PersistProgress(specID, "Round 2", "budget fix", "next: sync")
 	if err != nil {
 		t.Fatalf("PersistProgress error: %v", err)
 	}
@@ -482,13 +482,13 @@ func TestResumeMessageFormat(t *testing.T) {
 	tracker := runtime.NewTracker(testConfig())
 	tracker.SetProjectRoot(tmpDir)
 
-	msg, err := tracker.PersistProgress(specID, "Wave 3", "test approach", "/moai sync")
+	msg, err := tracker.PersistProgress(specID, "Round 3", "test approach", "/moai sync")
 	if err != nil {
 		t.Fatalf("PersistProgress error: %v", err)
 	}
 
 	// Validate required components per context-window-management.md §Resume message format
-	required := []string{"ultrathink", specID, "Wave 3", "test approach", "/moai sync", "progress.md"}
+	required := []string{"ultrathink", specID, "Round 3", "test approach", "/moai sync", "progress.md"}
 	for _, token := range required {
 		if !strings.Contains(msg, token) {
 			t.Errorf("resume message missing required token %q: %q", token, msg)
