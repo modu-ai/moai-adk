@@ -19,8 +19,8 @@ tags: "template-mirror, cascade, drift-fix, tier-s, sprint-2-p4-3"
 
 | Phase | Status | Reference |
 |-------|--------|-----------|
-| Plan  | audit-ready | <plan-commit-sha-placeholder> |
-| Run   | pending | — |
+| Plan  | audit-ready | 28f783c2a |
+| Run   | in-progress | <run-commit-sha-placeholder> |
 | Sync  | pending | — |
 | Mx    | pending | — |
 
@@ -49,19 +49,17 @@ Originating SPEC: **SPEC-V3R5-WORKFLOW-LEAN-001** (Tier judgment Socratic questi
 
 ## Run-phase Evidence
 
-_Populated by manager-develop after M1 completion. Expected rows:_
-
 | AC ID | Verification | Result | Evidence |
 |-------|--------------|--------|----------|
-| AC-TMC-001 | `go test ./internal/template/ -run 'TestLateBranchTemplateMirror/spec-assembly' -v` PASS | TBD | TBD |
-| AC-TMC-002 | `wc -c <mirror>` = 28423 | TBD | TBD |
-| AC-TMC-003 | `diff <source> <mirror>` line count = 0 | TBD | TBD |
-| AC-TMC-004 | `git diff HEAD~1..HEAD -- <source>` line count = 0 (source untouched in fix commit) | TBD | TBD |
-| AC-TMC-005 | `go vet ./...` 0 lines AND `golangci-lint run --timeout=2m` `0 issues.` | TBD | TBD |
+| AC-TMC-001 | `go test ./internal/template/ -run 'TestLateBranchTemplateMirror/spec-assembly' -v` PASS | PASS | `--- PASS: TestLateBranchTemplateMirror/spec-assembly.md (0.00s)` / `PASS` / `ok  github.com/modu-ai/moai-adk/internal/template 0.553s` |
+| AC-TMC-002 | `wc -c <mirror>` = 28423 | PASS | `wc -c internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md \| awk '{print $1}'` → `28423` |
+| AC-TMC-003 | `diff <source> <mirror>` line count = 0 | PASS | `diff .claude/skills/moai/workflows/plan/spec-assembly.md internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md \| wc -l` → `0` |
+| AC-TMC-004 | `git diff HEAD~1..HEAD -- <source>` line count = 0 (source untouched in fix commit) | PASS | `git diff -- .claude/skills/moai/workflows/plan/spec-assembly.md \| wc -l` → `0` (working-tree verification pre-commit; post-commit `git diff HEAD~1..HEAD -- <source>` mirrors this 0-line invariant per `cp source mirror` semantic) |
+| AC-TMC-005 | `go vet ./...` 0 lines AND `golangci-lint run --timeout=2m` `0 issues.` | PASS | `go vet ./... 2>&1 \| wc -l` → `0`; `golangci-lint run --timeout=2m 2>&1 \| tail -1` → `0 issues.` |
 
-**Build**: TBD
-**Lint**: TBD
-**Sibling baseline (L46 attribution)**: TBD — expected net delta -1 (only `spec-assembly.md` row cleared; all other TEMPLATE-MIRROR-DRIFT-family + catalog/agent-folder drifts persist per REQ-TMC-006).
+**Build**: PASS — exit 0 (go vet + lint pipeline 0 issues, no compilation regression)
+**Lint**: PASS — `0 issues.`
+**Sibling baseline (L46 attribution)**: PASS — net delta -1 confirmed (`spec-assembly.md` row cleared from `TestLateBranchTemplateMirror` failure set); all other TEMPLATE-MIRROR-DRIFT-family + catalog/agent-folder drifts persist per REQ-TMC-006 (Sprint 7+ deferred to master SPEC `SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001`).
 
 ## Sync-phase Evidence
 
@@ -89,6 +87,12 @@ _Populated by orchestrator after sync. Expected rows:_
 
 - plan_complete_at: 2026-05-24T03:36:08Z
 - plan_status: audit-ready
+
+## Run-phase Audit-Ready Signal
+
+- run_complete_at: 2026-05-24T04:30:00Z
+- run_status: implemented
+- run_commit_sha: <run-commit-sha-placeholder>
 
 ## Exemptions / Carry-over
 
