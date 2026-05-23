@@ -54,6 +54,20 @@ var retiredEventNames = RetiredEventNames
 //
 // SPEC-V3R2-RT-006 REQ-003, AC-13.
 // Implements T-RT006-02 (RED) + T-RT006-19 (body).
+//
+// Baseline history:
+//   - Original SPEC-V3R2-RT-006 baseline: 22 settings.json keys.
+//   - 2026-05-22 commit a3239d3de "fix(hook): WorktreeCreate/Remove 등록 해제":
+//     deregistered WorktreeCreate + WorktreeRemove from settings.json because
+//     Claude Code v2.1.49+ contract treats WorktreeCreate as an active creator
+//     (must echo path to stdout); our observer-style HookOutput{} broke worktree
+//     creation. The Go handlers remain (ResolutionKeep in CoverageTable) as
+//     observability taps but are NOT registered in settings.json. Reduced
+//     native count: 22 → 20.
+//   - 2026-05-23 SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 M2: HOI conditional rendering
+//     gates secondary `handle-harness-observe-*` wrappers inside Stop/SubagentStop/
+//     UserPromptSubmit nested `hooks[]` arrays. This does NOT change the top-level
+//     event key count (still 20).
 func TestAuditRegistrationParity(t *testing.T) {
 	// Count of RETIRE-OBS-ONLY handlers (kept in Go, not in settings.json)
 	const obsOnlyCount = 4 // notification, elicitation, elicitationResult, taskCreated
@@ -84,16 +98,20 @@ func TestAuditRegistrationParity(t *testing.T) {
 		}
 	}
 
-	// Expected: 22 settings.json event registrations (21 native + 1 composite SessionStart/autoUpdate
-	// share the same key) + 4 obs-only = 26 Go handlers total.
-	// The autoUpdate composite is registered in Go deps.go under SessionStart, NOT as a separate
-	// settings.json key — so the settings.json count is 22 (includes SessionStart once).
-	const expectedNative = 22
+	// Expected: 20 settings.json event registrations (22 native − 2 Worktree
+	// events deregistered per a3239d3de) + 4 obs-only retired = 24 Go handlers
+	// that have a registered or observability-only path. The 2 deregistered
+	// Worktree handlers (ResolutionKeep, IsActive: true in CoverageTable) are
+	// counted separately as orphan-but-intentional entries.
+	// The autoUpdate composite is registered in Go deps.go under SessionStart,
+	// NOT as a separate settings.json key — so the settings.json count includes
+	// SessionStart once.
+	const expectedNative = 20
 	if nativeCount != expectedNative {
-		t.Errorf("settings.json hook count = %d, want %d (4 retired events must be absent)", nativeCount, expectedNative)
+		t.Errorf("settings.json hook count = %d, want %d (4 retired events + 2 worktree events deregistered per a3239d3de must be absent)", nativeCount, expectedNative)
 	}
 
-	// Total Go handlers: native registrations + obs-only = 26
+	// Total Go handlers with a path: native registrations + obs-only = 24.
 	// (autoUpdate composite is embedded in SessionStart key, not a separate count)
 	expectedGoHandlers := expectedNative + obsOnlyCount
 	t.Logf("expected Go handler count: %d (=%d settings.json keys + %d obs-only)",
@@ -252,8 +270,26 @@ func TestAuditObservabilityWhitelist(t *testing.T) {
 	})
 }
 
-// TestAuditThreeWaySync verifies the 3-way sync invariant:
-// Go-registered event set ≡ settings.json.tmpl hook-key set ∪ retiredEventNames.
+// deregisteredButLiveEventNames lists events whose Go handler remains live
+// (ResolutionKeep in CoverageTable) but is intentionally NOT registered in
+// settings.json. These are orphan-but-intentional entries — the third leg
+// of the 3-way sync invariant beyond retiredEventNames.
+//
+// Origin: 2026-05-22 commit a3239d3de "fix(hook): WorktreeCreate/Remove 등록 해제".
+// Claude Code v2.1.49+ contract: WorktreeCreate is an active creator that must
+// echo a worktree path to stdout. Our observer-style empty HookOutput{} caused
+// `path that is not a directory: {}` regression, breaking isolation: worktree
+// for 5 agents. The handlers remain in Go for future re-enablement under a
+// stdout-emitting contract, but settings.json registration was removed.
+var deregisteredButLiveEventNames = []string{
+	"WorktreeCreate",
+	"WorktreeRemove",
+}
+
+// TestAuditThreeWaySync verifies the 3-way sync invariant (extended to 4-way):
+// Go-registered event set ≡ settings.json.tmpl hook-key set
+//                          ∪ retiredEventNames
+//                          ∪ deregisteredButLiveEventNames.
 //
 // SPEC-V3R2-MIG-002 REQ-MIG002-009, REQ-MIG002-010 → AC-MIG002-A1.
 // Reports HOOK_SYNC_DRIFT for Go-only entries; HOOK_WRAPPER_ORPHAN for settings-only entries.
@@ -301,16 +337,23 @@ func TestAuditThreeWaySync(t *testing.T) {
 		retiredSet[name] = true
 	}
 
-	// --- Step 4: Assert 3-way invariant ---
-	// Expected: goEvents ∖ (settingsKeys ∪ retiredSet) == ∅
+	// --- Step 3b: Build deregistered-but-live event set ---
+	deregisteredSet := make(map[string]bool, len(deregisteredButLiveEventNames))
+	for _, name := range deregisteredButLiveEventNames {
+		deregisteredSet[name] = true
+	}
+
+	// --- Step 4: Assert 4-way invariant ---
+	// Expected: goEvents ∖ (settingsKeys ∪ retiredSet ∪ deregisteredSet) == ∅
 	// and settingsKeys ∖ goEvents == ∅
 
 	driftFound := false
 
-	// Check for HOOK_SYNC_DRIFT: Go-only entries not in settings AND not retired.
+	// Check for HOOK_SYNC_DRIFT: Go-only entries not in settings AND not retired
+	// AND not in the deregistered-but-live allowlist.
 	for event := range goEvents {
-		if !settingsKeys[event] && !retiredSet[event] {
-			t.Errorf("HOOK_SYNC_DRIFT: Go handler registered for %q but absent from settings.json and not in retiredEventNames", event)
+		if !settingsKeys[event] && !retiredSet[event] && !deregisteredSet[event] {
+			t.Errorf("HOOK_SYNC_DRIFT: Go handler registered for %q but absent from settings.json and not in retiredEventNames or deregisteredButLiveEventNames", event)
 			driftFound = true
 		}
 	}
@@ -324,8 +367,8 @@ func TestAuditThreeWaySync(t *testing.T) {
 	}
 
 	if !driftFound {
-		t.Logf("3-way sync OK: goEvents=%d, settingsKeys=%d, retiredEvents=%d",
-			len(goEvents), len(settingsKeys), len(retiredSet))
+		t.Logf("4-way sync OK: goEvents=%d, settingsKeys=%d, retiredEvents=%d, deregisteredButLive=%d",
+			len(goEvents), len(settingsKeys), len(retiredSet), len(deregisteredSet))
 	}
 }
 
