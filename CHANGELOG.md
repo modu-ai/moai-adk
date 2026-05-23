@@ -70,6 +70,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`audit_test.go` baseline 정정** (commit `adcb206f2`): TestAuditRegistrationParity expectedNative 22→20 (M2 conditional rendering note + a3239d3de pre-existing WorktreeCreate/Remove deregistration). TestAuditThreeWaySync 4-way 확장 with `deregisteredButLiveEventNames` allowlist. `TestAuditObservabilityWhitelist` function body는 §A.3 cohabitation contract per UNTOUCHED.
 
+### Tooling (Standing Rules + Output Style)
+
+- **manager-develop-prompt-template Section B — B9/B10/B11 standing rule promotion** (commit `ba85955db`): V3R6 잔여 작업 5+ manager-develop 위임 prompt에 매번 추가됐던 B9/B10/B11 known issues를 `.claude/rules/moai/development/manager-develop-prompt-template.md` Section B에 정식 등재. 향후 prompt 작성 시 자동 포함되어 token 절감 + 일관성 보장.
+  - **B9 Git Commit + Push 자체 수행** (Hybrid Trunk 1-person OSS): manager-develop이 main 직진 commit + push 권장. 예외 (parallel race / AC PASS-WITH-DEBT / blocker) 명시. manager-docs에는 적용 안 됨 (sync workflow 자체가 deliverable per [[L15 lesson]]).
+  - **B10 Untouched Paths PRESERVE** (Scope Discipline): SPEC plan.md §A.5 PRESERVE list 외 working tree 변경 절대 금지. parallel manager-develop instance 진행 중 특히 주의. runtime-managed files + 무관 SPEC 디렉토리 + research 산출물 보호.
+  - **B11 AskUserQuestion 금지** (Subagent Boundary): subagent의 user 직접 interact 금지 (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary). Blocker 시 4-옵션 structured blocker report. free-form prose 질문 절대 금지.
+  - Byte-identical template mirror 동기화 (`internal/template/templates/.claude/rules/moai/development/`). 2 files +58/-1.
+
+- **output-style moai v5.1.0 → v5.2.0 — Session Handoff template surfaced** (commit `95e3ed247`): `.claude/output-styles/moai/moai.md` §6 "Session Boundary Handoff [HARD]" 5-trigger 추가 (canonical: `.claude/rules/moai/workflow/session-handoff.md` §When To Generate) + §8 Session Handoff [HARD] 6-block format + 5-item pre-emit self-check + auto-memory persistence contract + anti-pattern catalogue. Rationale: session-handoff.md [HARD] rule이 정의되어 있었으나 orchestrator output template에 verbatim format이 없어서 resume message가 self-discipline failure로 skipped 되는 사례 발생. output-style template에 surfacing하여 emit reliability 향상 (no code change required). SESSION-HANDOFF-AUTO-001 (Tier S, line 34/65)의 Go-level safeguard와 함께 dual-layer protection (output-style 자율 + hook 자동 persist). Byte-identical template mirror 동기화. 2 files +150/-4.
+
 ## [Unreleased] — v2.20.0-rc1: 11 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001 + STATUSLINE-STDINFIELDS-001)
 
 ### Added
