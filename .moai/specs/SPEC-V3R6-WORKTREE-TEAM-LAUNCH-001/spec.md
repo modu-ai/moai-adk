@@ -114,7 +114,7 @@ REQ-WTL-012 [Optional]: Where the user runs on Windows (no tmux), `--team` autom
 
 ## 4. Acceptance Criteria Summary
 
-12 binary ACs across 5 categories (full Given/When/Then in `acceptance.md`):
+14 binary ACs across 5 categories (full Given/When/Then in `acceptance.md`):
 
 1. AC-WTL-001 through AC-WTL-005: pattern dispatch (P1, P2, P3, P4, CG detection)
 2. AC-WTL-006 through AC-WTL-008: safety (BODP HARD guard, pane spawn failure, swarm registry)

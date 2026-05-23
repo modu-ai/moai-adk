@@ -90,7 +90,7 @@ tier: M
 
 Performed internal self-check per orchestrator instructions:
 
-- [x] Every REQ has at least one mapped AC (14 ACs across 12 REQs; REQ-WTL-000 is pre-flight gate)
+- [x] Every REQ has at least one mapped AC (14 ACs across 13 REQs; REQ-WTL-000 is pre-flight gate)
 - [x] Every AC verifies a specific REQ or HARD constraint
 - [x] Traceability matrix is complete (acceptance.md §3)
 - [x] Out of Scope is explicit (spec.md §4.1 + plan.md OQ resolutions)
@@ -99,7 +99,7 @@ Performed internal self-check per orchestrator instructions:
 - [x] Frontmatter 12-field canonical schema applied (id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags, plus optional tier)
 - [x] No file modifications outside `.moai/specs/SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001/`
 - [x] No implementation code touched (plan-phase only; M1-M6 deferred to run-phase)
-- [x] BODP HARD compliance: REQ-WTL-006 + AC-WTL-006 enforce CLI no-AskUserQuestion rule (CONST-V3R5-030)
+- [x] BODP HARD compliance: REQ-WTL-013 + AC-WTL-006 enforce CLI no-AskUserQuestion rule (CONST-V3R5-030)
 - [x] Template-First Rule: REQ-WTL-011 + AC-WTL-013 enforce byte-identical mirror in `internal/template/templates/`
 
 ## Notes
