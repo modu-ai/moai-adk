@@ -10,7 +10,7 @@
 │  MoAI-ADK ---                                                                                                                                 │
 │  !  MoAI Config  .moai/ directory not found (run 'moai init')                                                                                 │
 │  !  Claude Config  .claude/ directory not found                                                                                               │
-│  ✓  MoAI Version  moai-adk v2.17.0                                                                                                            │
+│  ✓  MoAI Version  moai-adk v3.0.0-rc1                                                                                                         │
 │  ✓  Binary Freshness  development build (no commit metadata)                                                                                  │
 │  ✓  MCP Scope Duplicates  no MCP configuration found (project or global)                                                                      │
 │  !  Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
@@ -19,6 +19,7 @@
 │                                                                                                                                               │
 │  Workspace ---                                                                                                                                │
 │  !  Hooks Config  .claude/hooks/ not found — hook handlers unavailable                                                                        │
+│  ✓  Hook opt-in:  disabled                                                                                                                    │
 │  !  Slash Commands  .claude/commands/ not found — slash commands unavailable                                                                  │
 │  !  Skills Allowlist  .claude/skills/ not found                                                                                               │
 │  !  MX Tag Config  .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                            │
@@ -27,6 +28,6 @@
 │  !  Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
 │  !  Glamour Cache  glamour 미도입                                                                                                             │
 │                                                                                                                                               │
-│  [통과 9]  [주의 11]  [실패 0]                                                                                                                │
+│  [통과 10]  [주의 11]  [실패 0]                                                                                                               │
 │                                                                                                                                               │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

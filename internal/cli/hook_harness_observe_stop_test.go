@@ -81,6 +81,7 @@ func TestRunHarnessObserveStop_PreservesExistingLogWhenDisabled(t *testing.T) {
 func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	const (
@@ -164,6 +165,7 @@ func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
 func TestRunHarnessObserveStop_EmptyMessageNoHashFields(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
@@ -198,6 +200,7 @@ func TestRunHarnessObserveStop_EmptyMessageNoHashFields(t *testing.T) {
 func TestRunHarnessObserveStop_LogErrorPathDoesNotReturn(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// Pre-create a directory at the usage-log.jsonl path to induce a file-write failure

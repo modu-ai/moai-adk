@@ -39,6 +39,28 @@ func writeHarnessYAML(t *testing.T, dir, body string) {
 	}
 }
 
+// writeSystemYAMLHookOptIn writes a minimal system.yaml under
+// dir/.moai/config/sections/ with hook.opt_in.enabled set to the given value.
+// Required by harness-observe wrapper tests (Stop / SubagentStop /
+// UserPromptSubmit) after SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 introduced the
+// HOI master toggle gate. Pass true when the test exercises the active path;
+// the gate's fail-CLOSED default would otherwise short-circuit the handler.
+func writeSystemYAMLHookOptIn(t *testing.T, dir string, enabled bool) {
+	t.Helper()
+	configDir := filepath.Join(dir, ".moai", "config", "sections")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatalf("mkdir config dir: %v", err)
+	}
+	body := "hook:\n  opt_in:\n    enabled: false\n"
+	if enabled {
+		body = "hook:\n  opt_in:\n    enabled: true\n"
+	}
+	path := filepath.Join(configDir, "system.yaml")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write system.yaml: %v", err)
+	}
+}
+
 // withStdin temporarily replaces os.Stdin with the given reader for the
 // duration of fn, restoring afterwards. Used to simulate hook stdin JSON.
 func withStdin(t *testing.T, payload string, fn func()) {

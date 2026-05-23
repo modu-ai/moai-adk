@@ -23,6 +23,7 @@ import (
 func TestRunHarnessObserveUserPromptSubmit_StrategyNone_NoOp(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: none\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
@@ -45,6 +46,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyNone_NoOp(t *testing.T) {
 func TestRunHarnessObserveUserPromptSubmit_StrategyA_HashLenLang(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: hash\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// Use a pure-Korean prompt (detectPromptLang would return "en" if ASCII appeared first)
@@ -137,6 +139,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: preview\n")
+			writeSystemYAMLHookOptIn(t, dir, true)
 			t.Chdir(dir)
 
 			payloadBytes, _ := json.Marshal(map[string]string{"prompt": tc.prompt})
@@ -207,6 +210,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyB_Preview(t *testing.T) {
 func TestRunHarnessObserveUserPromptSubmit_StrategyC_Full(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: full\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	const prompt = "SPEC-V3R4-HARNESS-002 전문 기록 테스트 - Strategy C"
@@ -248,6 +252,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyC_Full(t *testing.T) {
 func TestRunHarnessObserveUserPromptSubmit_SpecIDExtraction(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// specIDRegexp = SPEC-[A-Z][A-Z0-9]+-[0-9]+
@@ -285,6 +290,7 @@ func TestRunHarnessObserveUserPromptSubmit_SpecIDExtraction(t *testing.T) {
 func TestRunHarnessObserveUserPromptSubmit_FailOpenOnInvalidStrategy(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n  user_prompt_content: INVALID_VALUE\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
@@ -332,6 +338,7 @@ func TestRunHarnessObserveUserPromptSubmit_LangHeuristic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+			writeSystemYAMLHookOptIn(t, dir, true)
 			t.Chdir(dir)
 
 			cmd := &cobra.Command{}

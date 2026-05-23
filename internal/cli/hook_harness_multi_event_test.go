@@ -46,6 +46,7 @@ func TestRunHarnessObserveStop_NoOpWhenDisabled(t *testing.T) {
 func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
@@ -116,6 +117,7 @@ func TestRunHarnessObserveSubagentStop_NoOpWhenDisabled(t *testing.T) {
 func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// T-A4 spec: camelCase agentName + nested session.id
@@ -184,6 +186,7 @@ func TestRunHarnessObserveUserPromptSubmit_StrategyA_DefaultHash(t *testing.T) {
 	dir := t.TempDir()
 	// Strategy A applies when user_prompt_content is unset or set to "hash"
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}

@@ -82,6 +82,7 @@ func TestRunHarnessObserveSubagentStop_PreservesExistingLogWhenDisabled(t *testi
 func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// T-A4 spec: camelCase agentName/agentType + nested session.id
@@ -154,6 +155,7 @@ func TestRunHarnessObserveSubagentStop_RecordsAllFields(t *testing.T) {
 func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// Pre-create a directory at the usage-log.jsonl path to induce a file-write failure
@@ -179,6 +181,7 @@ func TestRunHarnessObserveSubagentStop_LogErrorPathDoesNotReturn(t *testing.T) {
 func TestRunHarnessObserveSubagentStop_UnknownSubjectFallback(t *testing.T) {
 	dir := t.TempDir()
 	writeHarnessYAML(t, dir, "learning:\n  enabled: true\n")
+	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
 	// T-A4 spec: omitting agentName → "unknown" fallback

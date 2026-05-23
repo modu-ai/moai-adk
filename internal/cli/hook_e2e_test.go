@@ -94,6 +94,16 @@ func TestHookSubcommands_EventTypeMapping(t *testing.T) {
 				HookProtocol: &spyProtocol{},
 			}
 
+			// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001: the runHookEvent dispatcher
+			// gates TaskCreated + Notification on hook.opt_in.enabled. To
+			// exercise the dispatch path for the notification subcommand,
+			// chdir to a tempdir with HOI enabled so the gate passes through.
+			if wantEvent == hook.EventNotification || wantEvent == hook.EventTaskCreated {
+				dir := t.TempDir()
+				writeSystemYAMLHookOptIn(t, dir, true)
+				t.Chdir(dir)
+			}
+
 			// Find the subcommand by name and execute with a valid context.
 			var found bool
 			for _, cmd := range hookCmd.Commands() {

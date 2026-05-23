@@ -197,6 +197,7 @@ func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
 
 	workspaceChecks := []checkFunc{
 		{"Hooks Config", func(v bool) DiagnosticCheck { return checkHooksConfig(cwd, v) }},
+		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
 		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
@@ -660,6 +661,31 @@ func checkHooksConfig(projectRoot string, verbose bool) DiagnosticCheck {
 	check.Message = "hook handlers directory found"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", hooksDir)
+	}
+	return check
+}
+
+// checkHookOptIn reports the SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 master toggle
+// state from .moai/config/sections/system.yaml `hook.opt_in.enabled`.
+// Per REQ-HOI-005, the output line must match `Hook opt-in:\s*(enabled|disabled)`.
+// This line is DISTINCT from any REQ-OBS-005 `Observability:` line — cohabitation
+// invariant (§A.3). The check NEVER errors on missing keys: a legacy project
+// without the opt_in sub-block reports `disabled` (R3 mitigation).
+func checkHookOptIn(projectRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Hook opt-in:"}
+	enabled := isHookOptInEnabled(projectRoot)
+	check.Status = CheckOK
+	if enabled {
+		check.Message = "enabled"
+	} else {
+		check.Message = "disabled"
+	}
+	if verbose {
+		if enabled {
+			check.Detail = "set .moai/config/sections/system.yaml `hook.opt_in.enabled: false` to disable"
+		} else {
+			check.Detail = "set .moai/config/sections/system.yaml `hook.opt_in.enabled: true` to enable"
+		}
 	}
 	return check
 }
