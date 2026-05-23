@@ -27,7 +27,7 @@ tier: M
 
 | ID | Title | Status | Started | Completed | Notes |
 |----|-------|--------|---------|-----------|-------|
-| M1 | CG Mode Detector + Pattern Dispatcher Scaffolding | not-started | — | — | `internal/tmux/cg_detect.go` + `team_launch.go` skeleton + add `--team` cobra flag to `newNewCmd` (no dispatch yet) |
+| M1 | CG Mode Detector + Pattern Dispatcher Scaffolding | completed | 2026-05-23 | 2026-05-23 | `internal/tmux/cg_detect.go` + `team_launch.go` skeleton + `--team` cobra flag added to `newNewCmd` (no dispatch yet). TDD RED→GREEN: 9 IsCGMode subtests + TestDecidePattern (5 cases) + TestPatternString (5 cases) + TestTeamLaunchConfig_ZeroValue all PASS. Coverage cg_detect.go 94.1%, team_launch.go 100% (String + decidePattern). Cross-platform builds (darwin/linux/windows amd64) exit 0. `go vet` clean. C-HRA-008 grep: 0 matches. golangci-lint M1 files: 0 issues. |
 | M2 | Pattern P4 (Handoff) + P3 (syscall.Exec) + Mutex | not-started | — | — | Foundation patterns; injectable `syscallExecFn`; add `MarkFlagsMutuallyExclusive("team", "tmux")` |
 | M3 | Pattern P1/P2 (Tmux Window Spawn) | not-started | — | — | `tmux new-window` inside existing session |
 | M4 | Swarm Registry + Failure Mode Wiring | not-started | — | — | `.moai/state/swarm/<SPEC>.json` writer |
@@ -42,8 +42,8 @@ tier: M
 | AC-WTL-002 | P2 dispatch: tmux + CC → moai cc window | `go test -run TestTeamLaunch_P2_TmuxCC ./internal/cli/worktree/` | _pending_ |
 | AC-WTL-003 | P3 dispatch: no tmux → syscall.Exec | `go test -run TestTeamLaunch_P3_NoTmux_SyscallExec ./internal/cli/worktree/` | _pending_ |
 | AC-WTL-004 | P4 dispatch: --team absent → handoff guidance | `go test -run TestTeamLaunch_P4_NoFlag_Handoff ./internal/cli/worktree/` | _pending_ |
-| AC-WTL-005 | CG mode detection 4-scenario boolean | `go test -run TestIsCGMode ./internal/tmux/` | _pending_ |
-| AC-WTL-006 | BODP HARD: TestNew_NoAskUserQuestion green | `go test -run TestNew_NoAskUserQuestion ./internal/cli/worktree/` | _pending_ |
+| AC-WTL-005 | CG mode detection 4-scenario boolean | `go test -run TestIsCGMode ./internal/tmux/` | **PASS (M1 2026-05-23)**: 9 subtests PASS (4 AC scenarios + drift warning + nil-sink + base-URL + corrupt-JSON + no-file). Drift test asserts stderr substring `GLM env vars are absent`. |
+| AC-WTL-006 | BODP HARD: TestNew_NoAskUserQuestion green | `go test -run TestNew_NoAskUserQuestion ./internal/cli/worktree/` | **Partial PASS (M1 2026-05-23)**: TestNew_NoAskUserQuestion green; extended scan over `team_launch.go` deferred to M2 after `handoff_guidance.go` exists. Raw grep `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/worktree/ internal/tmux/` returns 0 non-comment matches. |
 | AC-WTL-007 | Pane spawn failure → P4 fallback | `go test -run TestTeamLaunch_PaneSpawnFailure_FallbackToP4 ./internal/cli/worktree/` | _pending_ |
 | AC-WTL-008 | Swarm registry schema (7 fields + 0o600) | `go test -run TestSwarmRegistry_P1_Schema ./internal/cli/worktree/` | _pending_ |
 | AC-WTL-009 | Cross-platform builds darwin/linux/windows | `GOOS={darwin,linux,windows} GOARCH=amd64 go build ./...` | _pending_ |
@@ -78,7 +78,7 @@ tier: M
 | R1: syscall.Exec uncoverable in tests | open | Injectable `syscallExecFn` var (proven pattern) |
 | R2: Windows build fail due to syscall.Exec | open | `//go:build !windows` tag split |
 | R3: Coverage <85% due to uncoverable lines | open | Per-package threshold + nolint annotations |
-| R4: glm.SettingsLocal import cycle | open | Local minimal struct in `cg_detect.go` |
+| R4: glm.SettingsLocal import cycle | resolved (M1 2026-05-23) | Local `settingsLocalMin` struct in `internal/tmux/cg_detect.go`; verified no `internal/cli/*` import (build clean cross-platform) |
 | R5: tmux new-window vs new-session confusion | resolved | OQ-1 resolved: new-window |
 | R6: Orphaned worktree on pane spawn failure | accepted | Exit 0 + P4 handoff guidance gives user manual recovery |
 | R7: settings.local.json accidental mutation | open | No os.WriteFile on settings.local.json in team_launch.go |

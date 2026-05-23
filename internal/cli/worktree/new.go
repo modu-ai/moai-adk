@@ -91,6 +91,10 @@ origin/main is safer because it always reflects the latest merged state.`,
 	cmd.Flags().String("base", bodp.DefaultBase, "Base branch (default origin/main, auto-fetched). Use --base main for local-only commits, --from-current for current HEAD.")
 	cmd.Flags().Bool("from-current", false, "Use current HEAD as the worktree base (skips `git fetch origin main`)")
 	cmd.Flags().Bool("tmux", false, "Create a tmux session after worktree creation")
+	// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 M1: declare --team surface so M2 can
+	// wire dispatch and M3's tmux tests can invoke the command consistently.
+	// Dispatch logic lands in M2 (handoff_guidance.go + decidePattern wiring).
+	cmd.Flags().Bool("team", false, "Spawn a Claude/GLM session in the new worktree (P1 tmux+CG → moai glm window, P2 tmux+CC → moai cc window, P3 no-tmux → in-process, P4 no-flag → handoff guidance)")
 	return cmd
 }
 
