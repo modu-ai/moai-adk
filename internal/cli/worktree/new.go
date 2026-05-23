@@ -91,6 +91,15 @@ origin/main is safer because it always reflects the latest merged state.`,
 	cmd.Flags().String("base", bodp.DefaultBase, "Base branch (default origin/main, auto-fetched). Use --base main for local-only commits, --from-current for current HEAD.")
 	cmd.Flags().Bool("from-current", false, "Use current HEAD as the worktree base (skips `git fetch origin main`)")
 	cmd.Flags().Bool("tmux", false, "Create a tmux session after worktree creation")
+	// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 M1: declare --team surface so M2 can
+	// wire dispatch and M3's tmux tests can invoke the command consistently.
+	// Dispatch logic lands in M2 (handoff_guidance.go + decidePattern wiring).
+	cmd.Flags().Bool("team", false, "Spawn a Claude/GLM session in the new worktree (P1 tmux+CG → moai glm window, P2 tmux+CC → moai cc window, P3 no-tmux → in-process, P4 no-flag → handoff guidance)")
+	// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 M2 / R9 / OQ-2: --team subsumes tmux
+	// launching (P1/P2 paths). Combining --team with --tmux creates ambiguous
+	// intent, so cobra rejects them before any worktree-creation side-effect.
+	// AC-WTL-007 edge case: cobra reports the mutex error and exits non-zero.
+	cmd.MarkFlagsMutuallyExclusive("team", "tmux")
 	return cmd
 }
 
@@ -194,6 +203,134 @@ func runNew(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 M2 — --team dispatch wiring.
+	//
+	// Cobra has already rejected `--team --tmux` via MarkFlagsMutuallyExclusive
+	// before reaching runNew, so the two flags can never both be true here.
+	//
+	// Dispatch decisions:
+	//   P4 (default, no --team)  → printHandoff on stdout
+	//   P3 (--team, no tmux)     → launchP3 (POSIX syscall.Exec; Windows: handoff)
+	//   P1/P2 (--team + in tmux) → M3 territory; for now fall back to handoff
+	//                              with an info notice so the user still has a
+	//                              paste-ready command while M3 lands.
+	if err := dispatchTeamLaunch(cmd, repoRoot, specID, branchName, wtPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// dispatchTeamLaunch is the M2 entry point for --team handling. It is invoked
+// after worktree creation + BODP audit trail write + tmux (legacy --tmux)
+// side-effects, so an error here does NOT roll back the worktree. P3 callers
+// should be aware: on POSIX with --team and a valid moai binary, this function
+// REPLACES the current process via syscall.Exec and never returns.
+//
+// @MX:NOTE Pattern dispatch is purely flag-driven; no user prompts (REQ-WTL-013).
+func dispatchTeamLaunch(cmd *cobra.Command, repoRoot, specID, branchName, wtPath string) error {
+	out := cmd.OutOrStdout()
+	stderr := cmd.ErrOrStderr()
+
+	teamFlag, _ := cmd.Flags().GetBool("team")
+	inTmux := tmux.NewDetector().InTmuxSession()
+	settingsPath := filepath.Join(repoRoot, ".claude", "settings.local.json")
+	cgMode, cgErr := tmux.IsCGMode(settingsPath, stderr)
+	if cgErr != nil {
+		// settings.local.json corrupt JSON (per acceptance.md §2 edge case):
+		// surface a warning, treat as CC mode (cgMode=false already by IsCGMode
+		// error path) and continue. Worktree creation already succeeded.
+		_, _ = fmt.Fprintf(stderr, "Warning: CG mode detection failed (assuming CC mode): %v\n", cgErr)
+	}
+
+	pattern := decidePattern(teamFlag, inTmux, cgMode)
+	llm := "cc"
+	if cgMode {
+		llm = "glm"
+	}
+	cfg := TeamLaunchConfig{
+		Pattern:      pattern,
+		WorktreePath: wtPath,
+		Branch:       branchName,
+		SpecID:       specID,
+		LLM:          llm,
+		LaunchTime:   time.Now(),
+	}
+
+	switch pattern {
+	case PatternP4Handoff:
+		// Default no-flag path: print paste-ready instructions and exit 0.
+		// REQ-WTL-008: no spawn occurred → no swarm registry entry.
+		printHandoff(out, cfg)
+		return nil
+
+	case PatternP3InProgress:
+		// M4 (REQ-WTL-008): syscall.Exec REPLACES the process image on
+		// success, so the registry entry MUST be written BEFORE launchP3
+		// otherwise the write code path is unreachable. On Windows launchP3
+		// returns nil after printing handoff fallback — same ordering keeps
+		// the registry consistent across platforms.
+		entry := SwarmEntry{
+			SpecID:       cfg.SpecID,
+			WorktreePath: cfg.WorktreePath,
+			Branch:       cfg.Branch,
+			PaneID:       "", // P3 has no tmux pane
+			Mode:         patternToMode(cfg.Pattern, cfg.LLM),
+			CreatedAt:    time.Now().UTC(),
+			CreatedByPID: os.Getpid(),
+		}
+		if regErr := WriteSwarmEntry(repoRoot, entry); regErr != nil {
+			// Non-fatal: launch is about to happen / process about to be
+			// replaced. Surface a stderr warning so the user knows the
+			// registry is incomplete but proceed with the launch.
+			_, _ = fmt.Fprintf(stderr, "Warning: failed to write swarm registry: %v\n", regErr)
+		}
+		// POSIX: launchP3 REPLACES the current process via syscall.Exec on
+		// success and never returns. The error path here covers: moai binary
+		// missing from PATH, worktree chdir failure, exec call failure.
+		// Windows: launchP3 returns nil after printing the handoff fallback
+		// (REQ-WTL-012).
+		return launchP3(cfg)
+
+	case PatternP1TmuxGLM, PatternP2TmuxCC:
+		// M3 implementation — spawn a new tmux window in the caller's current
+		// tmux session. On failure (tmux server down, syntax error, etc.) we
+		// degrade to the P4 handoff path with a stderr notice (REQ-WTL-007).
+		// Worktree creation already succeeded, so exit code remains 0 either
+		// way.
+		paneID, launchErr := launchP1P2(cfg)
+		if launchErr != nil {
+			// REQ-WTL-007 + REQ-WTL-008: pane spawn failure → P4 handoff
+			// fallback AND no registry write. The "tmux pane spawn failed"
+			// substring is the verification anchor for AC-WTL-007's stderr
+			// assertion. Registry write is deferred until after the
+			// launchP1P2 success branch so the failure path is structurally
+			// guaranteed to skip it.
+			printHandoffWithError(out, stderr, cfg, fmt.Sprintf("tmux pane spawn failed: %v", launchErr))
+			return nil
+		}
+		// M4 (REQ-WTL-008): write swarm registry with the captured pane_id.
+		// Non-fatal failure: tmux window has already spawned, so we cannot
+		// undo it; surface a warning and continue.
+		entry := SwarmEntry{
+			SpecID:       cfg.SpecID,
+			WorktreePath: cfg.WorktreePath,
+			Branch:       cfg.Branch,
+			PaneID:       paneID,
+			Mode:         patternToMode(cfg.Pattern, cfg.LLM),
+			CreatedAt:    time.Now().UTC(),
+			CreatedByPID: os.Getpid(),
+		}
+		if regErr := WriteSwarmEntry(repoRoot, entry); regErr != nil {
+			_, _ = fmt.Fprintf(stderr, "Warning: failed to write swarm registry: %v\n", regErr)
+		}
+		// Success: report the captured pane_id so the user can switch to the
+		// new window (tmux: C-b w, or use `tmux select-window -t <pane>`).
+		_, _ = fmt.Fprintf(out, "tmux window spawned in pane %s — running `moai %s` in %s\n", paneID, cfg.LLM, cfg.WorktreePath)
+		return nil
+	}
+	// Defensive: decidePattern returns one of the four constants above; an
+	// unreachable default is documented per Go style for completeness.
 	return nil
 }
 
