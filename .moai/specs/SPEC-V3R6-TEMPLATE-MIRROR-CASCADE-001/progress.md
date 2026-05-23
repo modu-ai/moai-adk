@@ -21,8 +21,8 @@ tags: "template-mirror, cascade, drift-fix, tier-s, sprint-2-p4-3"
 |-------|--------|-----------|
 | Plan  | audit-ready | 28f783c2a |
 | Run   | implemented | 5af40acc3 |
-| Sync  | pending | — |
-| Mx    | pending | — |
+| Sync  | implemented | 1f42eecb1 |
+| Mx    | implemented | (this commit) |
 
 ## Plan-phase Evidence
 
@@ -76,12 +76,10 @@ _Populated by manager-docs after sync-phase. Expected rows:_
 
 ## Mx-phase Evidence
 
-_Populated by orchestrator after sync. Expected rows:_
-
 | Item | Status | Evidence |
 |------|--------|----------|
-| Step C judgment (template-only .md edit → SKIP candidate per mx-tag-protocol §a) | TBD (likely SKIP-JUSTIFIED) | TBD — per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a, template/skill .md edits alone do not trigger any @MX tag category (NOTE/WARN/ANCHOR/TODO/SPEC/REASON). M1 edit modified mirror `spec-assembly.md` only (mechanical content overwrite from source); no production .go code, no @MX:ANCHOR fan_in change, no @MX:WARN danger zone introduction. Mx Step C SKIP expected. Precedent: SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 (`d3ed4727d`) and SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001 (`5e0dc6a9b`) — same Sprint 2 P4 trio, identical test-only / template-only SKIP-justified outcome. |
-| `@MX` annotation count delta in mirror file | TBD (expected delta = 0) | TBD — `grep -cE "@MX:(NOTE\|WARN\|ANCHOR\|TODO\|SPEC\|REASON)" internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md` should match source `grep -c` (both contain the same @MX tags by definition post-parity, baseline preserved). |
+| Step C judgment (template-only .md edit → SKIP candidate per mx-tag-protocol §a) | **SKIP-JUSTIFIED** | Per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a, template/skill .md edits alone do not trigger any @MX tag category (NOTE/WARN/ANCHOR/TODO/SPEC/REASON). Run-phase scope: M1 commit `5af40acc3` modified mirror `spec-assembly.md` (mechanical content overwrite from source) + progress.md only — `git diff 28f783c2a..692f39689 --stat` confirms 0 `.go` files. Sync-phase scope: 5 markdown files (CHANGELOG.md + 4 SPEC artifacts) — `git diff 692f39689..1f42eecb1 --stat` confirms 0 `.go` files. No production .go code, no @MX:ANCHOR fan_in change, no @MX:WARN danger zone introduction. Precedent: SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 (`d3ed4727d`) and SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001 (`5e0dc6a9b`) — same Sprint 2 P4 trio, identical test-only / template-only SKIP-justified outcome. |
+| `@MX` annotation count delta in mirror file | **PASS (delta = 0)** | `grep -cE "@MX:(NOTE\|WARN\|ANCHOR\|TODO\|SPEC\|REASON)" .claude/skills/moai/workflows/plan/spec-assembly.md` = `3`; same grep on `internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md` = `3`. Source vs mirror delta = 0 (post-parity 동등 — mirror가 source의 정확한 @MX tag set을 byte-for-byte 흡수). REQ-TMC-001 byte-identity invariant 자체가 @MX tag set parity를 함의. |
 
 ## Audit-Ready Signal
 
@@ -92,13 +90,20 @@ _Populated by orchestrator after sync. Expected rows:_
 
 - sync_complete_at: 2026-05-24T04:45:00Z
 - sync_status: implemented
-- sync_commit_sha: <sync-commit-sha-placeholder>
+- sync_commit_sha: 1f42eecb1
 
 ## Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-05-24T04:30:00Z
 - run_status: implemented
 - run_commit_sha: 5af40acc3
+
+## Mx-phase Audit-Ready Signal
+
+- mx_complete_at: 2026-05-24T05:00:00Z
+- mx_status: implemented
+- mx_judgment: SKIP-JUSTIFIED (template-only .md edit per mx-tag-protocol §a; @MX tag delta = 0)
+- mx_commit_sha: (this commit)
 
 ## Exemptions / Carry-over
 
