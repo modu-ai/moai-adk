@@ -9,7 +9,7 @@ description: |
   JA: 評価, 品質評価, 独立レビュー, コード監査, 欠陥分析, 受入基準テスト
   ZH: 评估, 质量评估, 独立审查, 代码审计, 缺陷分析, 验收标准测试
   NOT for: code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking
+tools: Read, Grep, Glob, Bash
 model: inherit
 effort: xhigh
 permissionMode: plan

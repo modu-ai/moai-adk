@@ -8,7 +8,7 @@ description: |
   JA: フロントエンド, UI, コンポーネント, リアクト, ビュー, CSS, レスポンシブ, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
   ZH: 前端, UI, 组件, React, Vue, CSS, 响应式, 状态管理, UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
   NOT for: backend API design, database modeling, DevOps, mobile apps (React Native/Flutter), desktop apps (Electron), CLI tools, data pipelines
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: high
 permissionMode: bypassPermissions

@@ -8,7 +8,7 @@ description: |
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント, スキル作成, 新スキル, スキル最適化, YAMLフロントマター, プラグイン作成, プラグイン, プラグイン検証, マーケットプレイス, MCPサーバー, LSPサーバー
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 创建技能, 新技能, 技能优化, YAML前置信息, 创建插件, 插件, 插件验证, 市场, MCP服务器, LSP服务器
   NOT for: code implementation, testing, documentation writing, git operations, production deployment
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: high
 permissionMode: bypassPermissions

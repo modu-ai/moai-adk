@@ -8,7 +8,7 @@ description: |
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
   NOT for: code implementation, architecture design, deployment, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, Skill, mcp__sequential-thinking__sequentialthinking
+tools: Read, Grep, Glob, Bash, Skill
 model: inherit
 effort: high
 permissionMode: plan
