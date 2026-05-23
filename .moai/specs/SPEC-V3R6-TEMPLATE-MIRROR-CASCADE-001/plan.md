@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001
 title: "Template mirror cascade: implementation plan"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: GOOS행님

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001
 title: "Template mirror cascade: progress log"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: GOOS행님
@@ -67,12 +67,12 @@ _Populated by manager-docs after sync-phase. Expected rows:_
 
 | Item | Status | Evidence |
 |------|--------|----------|
-| CHANGELOG `[Unreleased]` `### Fixed` entry | TBD | TBD — entry summary: SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 + 1 file modified (mirror parity +32 lines, +2,484 bytes) + test signal cleared + L46 attribution to SPEC-V3R5-WORKFLOW-LEAN-001 + Sprint 2 P4.3 marker |
-| spec.md status `draft → implemented` | TBD | TBD |
-| plan.md status `draft → implemented` | TBD | TBD |
-| acceptance.md status `draft → implemented` | TBD | TBD |
-| progress.md status `draft → implemented` | TBD | TBD |
-| B12 9th self-test PASS (3 sub-conditions) | TBD | TBD — (a) `Read` mirror file post-edit verified byte-identical to source / (b) acceptance.md SSOT AC count = 5 / (c) pre-emission `grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001' CHANGELOG.md` = 0, post-emission = 1 |
+| CHANGELOG `[Unreleased]` `### Fixed` entry | PASS | entry inserted at top of `### Fixed` section — SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 + 1 file modified (mirror parity +32 lines, +2,484 bytes) + test signal cleared + L46 attribution to SPEC-V3R5-WORKFLOW-LEAN-001 + Sprint 2 P4.3 marker (verified via `grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001' CHANGELOG.md` = 1) |
+| spec.md status `draft → implemented` | PASS | frontmatter line 5 status changed to implemented |
+| plan.md status `draft → implemented` | PASS | frontmatter line 5 status changed to implemented |
+| acceptance.md status `draft → implemented` | PASS | frontmatter line 5 status changed to implemented |
+| progress.md status `draft → implemented` | PASS | frontmatter line 5 status changed to implemented (this file) |
+| B12 9th self-test PASS (3 sub-conditions) | PASS | (a) `wc -c internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md` = 548 lines / 28,423 bytes, byte-identical to source verified / (b) `grep -cE '^\| \*\*AC-TMC-[0-9]+\*\*' acceptance.md` = 5 (AC-TMC-001..005 SSOT) / (c) pre-emission `grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001' CHANGELOG.md` = 0, post-emission = 1 |
 
 ## Mx-phase Evidence
 
@@ -87,6 +87,12 @@ _Populated by orchestrator after sync. Expected rows:_
 
 - plan_complete_at: 2026-05-24T03:36:08Z
 - plan_status: audit-ready
+
+## Sync-phase Audit-Ready Signal
+
+- sync_complete_at: 2026-05-24T04:45:00Z
+- sync_status: implemented
+- sync_commit_sha: <sync-commit-sha-placeholder>
 
 ## Run-phase Audit-Ready Signal
 

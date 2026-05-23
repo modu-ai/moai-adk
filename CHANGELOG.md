@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v3.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
 
+### Fixed
+
+- **[SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001](.moai/specs/SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001/spec.md)** — `internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md` template mirror parity 회복 (TEMPLATE-MIRROR-DRIFT-001 family). Operational source `.claude/skills/moai/workflows/plan/spec-assembly.md` (548줄 / 28,423 bytes)와 mirror byte-for-byte 동등 상태로 복구 (+32줄 / +2,484 bytes — Phase 1.6 Tier Judgment Socratic Question 블록). 발원지: SPEC-V3R5-WORKFLOW-LEAN-001이 Phase 1.6 documentation을 source에 추가했으나 mirror로 전파 누락. 테스트 시그널: `TestLateBranchTemplateMirror/spec-assembly.md` FAIL (`rule_template_mirror_test.go:182` `RULE_TEMPLATE_MIRROR_DRIFT`) → PASS 전환. Tier S minimal 1-pass scope: 1-file mechanical content overwrite. Sprint 2 P4.3 (P4 trio 마지막, P4.1 IVB-001 `d3ed4727d` + P4.2 SARM-001 `5e0dc6a9b` 후속). **5/5 ACs PASS**: AC-TMC-001 (`TestLateBranchTemplateMirror/spec-assembly.md` PASS), AC-TMC-002 (`wc -c mirror` = 28423), AC-TMC-003 (`diff source mirror` = 0), AC-TMC-004 (source 비변경, `git diff 28f783c2a..692f39689 -- source` = 0), AC-TMC-005 (`go vet` 0 + `golangci-lint` `0 issues.`). plan-auditor iter-1 PASS 0.92 (Tier S threshold 0.75, +0.17 margin). Phase 0.5 Plan Audit Gate skip-eligible (0.92 ≥ 0.90 per spec-workflow.md skip policy). Run-phase: M1 commit `5af40acc3` + chore backfill `692f39689` (2 commits, path-specific `git add`, PRESERVE 11 files verbatim). Sibling baseline failures persist per REQ-TMC-006 / L46 attribution discipline — TEMPLATE-MIRROR-DRIFT-001 master SPEC deferred to Sprint 7+ for systematic cleanup of remaining 9+ template mirror drifts.
+
 ### Documentation
 
 - **SPEC-V3R6-CLI-AUDIT-001** — moai CLI audit baseline for Sprint 7 FINAL (Tier M research-only)
