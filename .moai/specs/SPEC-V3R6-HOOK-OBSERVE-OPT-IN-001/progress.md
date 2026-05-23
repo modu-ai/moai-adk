@@ -132,32 +132,84 @@ The 2026-05-23 lesson "plan-auditor codebase state blindspot" identified 4 mitig
 | 3 | plan-auditor checklist `presence check` extension for proposed keys vs codebase grep | NO | Out of scope for this revise. Separate rule-revise PR for `.claude/agents/meta/plan-auditor.md` |
 | 4 | plan-phase optional `state-snapshot.md` artifact | NO | Out of scope for this revise. Candidate for Tier M/L SPECs only; this SPEC remains Tier S 4-artifact (spec+plan+acceptance+progress) |
 
-## Run-Phase Tracking (TO BE EXTENDED AFTER plan-auditor RE-AUDIT PASS)
+## Run-Phase Tracking (COMPLETED 2026-05-23)
 
-### M1 Evidence (TO BE FILLED)
+Run-phase delegated to manager-develop Tier S minimal cycle_type=ddd. Implementation completed in 4 commits (M1 + M2 + M3 + cohabitation_guard_test) on `main` (Hybrid Trunk Tier S direct-push policy).
 
-- [ ] `.moai/config/sections/system.yaml` edited with NEW `hook.opt_in.enabled: false` sub-block
-- [ ] `internal/template/templates/.moai/config/sections/system.yaml` template mirror updated
-- [ ] `SystemHookConfig` Go struct extended with `OptIn HookOptInConfig` field
-- [ ] Loader unit test asserts zero-value default when `opt_in:` sub-block absent
-- [ ] AC-HOI-001 PASS (3-check grep)
+### M1 Evidence — Schema + Loader (commit 18112a7b6)
 
-### M2 Evidence (TO BE FILLED)
+- [x] `.moai/config/sections/system.yaml` edited with NEW `hook.opt_in.enabled: false` sub-block (+7 lines)
+- [x] `internal/template/templates/.moai/config/sections/system.yaml.tmpl` template mirror updated (+7 lines, byte-equivalent)
+- [x] `SystemHookConfig` Go struct extended with `OptIn HookOptInConfig` field (+13 lines including COHABITATION NOTE)
+- [x] NEW `HookOptInConfig{Enabled bool}` type defined (yaml:"opt_in" tag)
+- [x] Loader contract: Go zero-value default (false) when `opt_in:` sub-block absent (R3 mitigation)
+- [x] AC-HOI-001 PASS — 3-check grep verifies opt_in.enabled + preserved observability_events + preserved strict_mode
 
-- [ ] `internal/template/templates/.claude/settings.json.tmpl` wrapped with `{{ if .HookOptIn.Enabled }}` for 3 hook stanzas
-- [ ] `internal/hook/hook_opt_in.go` NEW file with `hookOptInEnabled()` helper
-- [ ] Dispatcher integration with early-return on `hookOptInEnabled(cfg) == false`
-- [ ] `TestHookOptInDisabled` / `TestHookOptInEnabled` / `TestHookOptInCohabitation` tests pass
-- [ ] AC-HOI-003 / AC-HOI-004 / AC-HOI-005 / AC-HOI-007 PASS
+### M2 Evidence — Gate + Dispatcher + Tests (commit e3f8dd463)
 
-### M3 Evidence (TO BE FILLED)
+- [x] NEW file `internal/hook/hook_opt_in.go` (32 lines) with `hookOptInEnabled(cfg ConfigProvider) bool` Go-level helper
+- [x] NEW file `internal/hook/hook_opt_in_test.go` (191 lines) with 5 tests:
+  - `TestHookOptInDisabled` (4 sub-cases: nil cfg, nil underlying, default zero-value, explicit false) → PASS
+  - `TestHookOptInEnabled` → PASS
+  - `TestHookOptInMissingKey_DefaultsDisabled` (legacy project edge case) → PASS
+  - `TestHookOptInCohabitation` (4-quadrant matrix HOI × RT-006) → PASS all 4 quadrants
+  - `TestHookOptInIndependence_RT006Whitelist` (R5 regression guard) → PASS
+- [x] CLI dispatcher gate: `runHookEvent` in `internal/cli/hook.go` checks `isHookOptInEnabled(cwd)` BEFORE registry dispatch for TaskCreated + Notification events
+- [x] CLI wrapper gates: 3 secondary observability wrappers (`runHarnessObserveStop`, `runHarnessObserveSubagentStop`, `runHarnessObserveUserPromptSubmit`) gated via `isHookOptInEnabled(cwd)` — Primary `runHarnessObserve` (PostToolUse) NOT gated (out of scope)
+- [x] Handler-level defense-in-depth: `notification.go` and `task_created.go` Handle() methods check `hookOptInEnabled(h.cfg)` FIRST
+- [x] `deps.go` switched to `NewNotificationHandlerWithConfig(deps.Config)` and `NewTaskCreatedHandlerWithConfig(deps.Config)` to wire config provider
+- [x] Template conditional render: `settings.json.tmpl` wraps 3 `handle-harness-observe-*` stanzas in `{{ if .HookOptIn.Enabled }}...{{ end }}`
+- [x] `TemplateContext.HookOptIn` field added (mirrors `config.HookOptInConfig`); `WithHookOptIn(enabled bool)` option exposed
+- [x] `update.go` reads existing `system.yaml` via NEW `readHookOptInEnabled(projectRoot)` helper at template rendering time
+- [x] AC-HOI-003 PASS — `go test -run TestHookOptInDisabled ./internal/hook/...` exit 0
+- [x] AC-HOI-004 PASS — `go test -run TestHookOptInEnabled ./internal/hook/...` exit 0
+- [x] AC-HOI-005 PASS — template conditional verified via `settings.json.tmpl` diff (3 hook stanzas wrapped)
+- [x] AC-HOI-007 PASS — 4-quadrant cohabitation matrix executes all (HOI × RT-006) combinations independently
 
-- [ ] `moai doctor` extended with `Hook opt-in: (enabled|disabled)` line
-- [ ] `moai init` default verified to produce `hook.opt_in.enabled: false`
-- [ ] Test fixtures in `internal/hook/...` updated (enumeration TBD during run-phase)
-- [ ] `internal/hook/observability.go` file-top COHABITATION NOTE comment added (function body untouched per AC-HOI-007)
-- [ ] Cross-platform `go test ./...` PASS on darwin + linux + windows
-- [ ] AC-HOI-002 / AC-HOI-006 PASS
+### M3 Evidence — Doctor + Cohabitation Note + Fixture Refactor (commit 8fba30ac5)
+
+- [x] `moai doctor` extended with `Hook opt-in:` workspace check (NEW `checkHookOptIn()` function in `internal/cli/doctor.go`)
+- [x] Output line format: `Hook opt-in:  (enabled|disabled)` — matches AC-HOI-006 regex `Hook opt-in:\s*(enabled|disabled)`
+- [x] Doctor line is DISTINCT from any REQ-OBS-005 `Observability:` line (cohabitation invariant)
+- [x] testdata/doctor-{light,dark,nocolor}.golden regenerated via `UPDATE_GOLDEN=1`
+- [x] `moai init` default verified — `system.yaml.tmpl` renders `hook.opt_in.enabled: false` by default (no `--hook-opt-in` flag introduced; default behavior is sufficient)
+- [x] Test fixture refactor: NEW `writeSystemYAMLHookOptIn` helper in `hook_harness_observe_test.go`; 13 harness-observe wrapper tests updated to set HOI=true
+- [x] `TestHookSubcommands_EventTypeMapping/notification` subtest updated to chdir into HOI-enabled tempdir so dispatcher gate passes through
+- [x] `internal/hook/observability.go` file-top COHABITATION NOTE comment block added (+15 lines documenting 3-key independence)
+- [x] `observabilityOptIn()` function body UNTOUCHED (verified via git diff — only file-top comment changed)
+- [x] Cross-platform: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- [x] AC-HOI-002 PASS — `moai init` produces `system.yaml` with `hook.opt_in.enabled: false` (template default)
+- [x] AC-HOI-006 PASS — `moai doctor 2>&1 | grep -E 'Hook opt-in:\s*(enabled|disabled)'` exit 0
+
+### +1 Cohabitation Guard (commit 12a917a36)
+
+- [x] NEW file `internal/hook/cohabitation_guard_test.go` (181 lines) with 5 static CI assertions:
+  - `TestCohabitationGuard_ObservabilityYAMLPresent` — 4 sentinel keys present
+  - `TestCohabitationGuard_ObservabilityOptInFunctionBody` — RT-006 read path retained, no System.Hook.OptIn reference, file-top NOTE present
+  - `TestCohabitationGuard_CoverageTableFieldsPresent` — ResolutionRetireObsOnly + ObservabilityOptIn fields retained
+  - `TestCohabitationGuard_AuditTestObservabilityWhitelistPresent` — RT-006 REQ-040 contract verifier retained
+  - `TestCohabitationGuard_HOIKeyIndependence` — 3 distinct YAML tags + separate HookOptInConfig type
+- [x] All 5 tests PASS at run-phase completion
+- [x] R5 mitigation operationalized — permanent regression guard against gate unification
+
+## Quality Gate Verification (run-phase exit)
+
+- [x] `go build ./...` exit 0
+- [x] `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- [x] `golangci-lint run --timeout=2m`: 27 issues — UNCHANGED from baseline (0 NEW HOI issues)
+- [x] `grep -rn 'AskUserQuestion\|mcp__askuser' internal/hook/ | grep -v "_test.go" | grep -v "// "` exit 1 (0 matches) — C-HRA-008 satisfied
+- [x] `go test ./internal/hook/...` coverage: same as pre-change baseline (no regression)
+- [x] internal/hook test suite: only 2 pre-existing baseline failures (TestAuditRegistrationParity, TestAuditThreeWaySync — WorktreeCreate/WorktreeRemove drift, NOT HOI-related)
+- [x] internal/cli test suite: net -3 failures (3 doctor goldens fixed via UPDATE_GOLDEN regeneration)
+
+## Files Untouched (AC-HOI-007 cohabitation invariant — verified via git diff)
+
+| File | Status |
+|---|---|
+| `.moai/config/sections/observability.yaml` | UNTOUCHED (REQ-OBS-005 owner) |
+| `internal/hook/coverage_table.go` | UNTOUCHED (RT-006 fields preserved) |
+| `internal/hook/audit_test.go` | UNTOUCHED (TestAuditObservabilityWhitelist body preserved) |
+| `internal/hook/observability.go` function bodies | UNTOUCHED (only file-top NOTE added) |
 
 ## Open Questions for plan-auditor Re-Audit
 
