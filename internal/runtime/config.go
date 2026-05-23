@@ -25,7 +25,7 @@ const (
 	// DefaultRetryMax is the max stall retry count before fallback recommendation.
 	DefaultRetryMax = 3
 	// DefaultFallback is the recommended action when retry_max is exhausted.
-	DefaultFallback = "split_into_waves"
+	DefaultFallback = "split_into_rounds"
 )
 
 // RuntimeConfig holds the parsed runtime.yaml configuration.
@@ -133,7 +133,7 @@ func DefaultRuntimeConfig() *RuntimeConfig {
 		Fallback:              DefaultFallback,
 		AutoSaveAtThreshold:   true,
 		SavePathTemplate:      ".moai/specs/{SPEC_ID}/progress.md",
-		ResumeMessageFormat:   "ultrathink. {wave_label} 이어서 진행. SPEC-{spec_id}부터 {approach_summary}. progress.md 경로: {progress_path}. 다음 단계: {next_step}.",
+		ResumeMessageFormat:   "ultrathink. {round_label} 이어서 진행. SPEC-{spec_id}부터 {approach_summary}. progress.md 경로: {progress_path}. 다음 단계: {next_step}.",
 	}
 }
 
