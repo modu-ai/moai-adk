@@ -4,7 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/hook/testutil"
 )
 
 func TestFileChangedHandler_EventType(t *testing.T) {
@@ -18,11 +24,10 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		input         *HookInput
-		createFile    bool
-		fileContent   string
-		expectMessage bool
+		name        string
+		input       *HookInput
+		createFile  bool
+		fileContent string
 	}{
 		{
 			name: "deleted file - skip",
@@ -32,8 +37,7 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 				ChangeType:    "deleted",
 				HookEventName: "FileChanged",
 			},
-			createFile:    false,
-			expectMessage: false,
+			createFile: false,
 		},
 		{
 			name: "unsupported extension",
@@ -43,8 +47,7 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 				ChangeType:    "modified",
 				HookEventName: "FileChanged",
 			},
-			createFile:    false,
-			expectMessage: false,
+			createFile: false,
 		},
 		{
 			name: "supported Go file without tags",
@@ -54,9 +57,8 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 				ChangeType:    "modified",
 				HookEventName: "FileChanged",
 			},
-			createFile:    true,
-			fileContent:   "package main\n\nfunc main() {}\n",
-			expectMessage: false,
+			createFile:  true,
+			fileContent: "package main\n\nfunc main() {}\n",
 		},
 		{
 			name: "supported Go file with tags",
@@ -66,9 +68,8 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 				ChangeType:    "modified",
 				HookEventName: "FileChanged",
 			},
-			createFile:    true,
-			fileContent:   "// @MX:NOTE: This is a note\npackage main\n",
-			expectMessage: true,
+			createFile:  true,
+			fileContent: "// @MX:NOTE: This is a note\npackage main\n",
 		},
 		{
 			name: "Python file with tags",
@@ -78,9 +79,8 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 				ChangeType:    "modified",
 				HookEventName: "FileChanged",
 			},
-			createFile:    true,
-			fileContent:   "# @MX:NOTE: Python note\nprint('hello')\n",
-			expectMessage: true,
+			createFile:  true,
+			fileContent: "# @MX:NOTE: Python note\nprint('hello')\n",
 		},
 	}
 
@@ -88,7 +88,7 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewFileChangedHandler()
+			h := NewFileChangedHandler().(*fileChangedHandler)
 
 			// Create temp file if needed
 			if tt.createFile {
@@ -113,14 +113,166 @@ func TestFileChangedHandler_Handle(t *testing.T) {
 				t.Fatal("expected non-nil output")
 			}
 
-			if tt.expectMessage && out.SystemMessage == "" {
-				t.Error("expected SystemMessage for MX tag delta")
+			// REQ-HAE-001: async path emits empty HookOutput; SystemMessage
+			// is logged at info level only.
+			if out.SystemMessage != "" {
+				t.Errorf("expected empty SystemMessage in async mode, got: %q", out.SystemMessage)
 			}
-			if !tt.expectMessage && out.SystemMessage != "" {
-				t.Errorf("unexpected SystemMessage: %v", out.SystemMessage)
-			}
+
+			// Drain any spawned goroutines deterministically (REQ-HAE-006).
+			testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
 		})
 	}
+}
+
+// TestFileChanged_AsyncReturn_Under100ms verifies REQ-HAE-001: main return
+// path completes within ≤ 100 ms regardless of side-effect duration.
+// AC-HAE-002 covers the formal p95 ≤ 100ms benchmark below; this is a
+// per-call sanity check.
+func TestFileChanged_AsyncReturn_Under100ms(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	path := filepath.Join(tempDir, "sample.go")
+	if err := os.WriteFile(path, []byte("package main\n// @MX:NOTE: x\nfunc main(){}\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	h := NewFileChangedHandler().(*fileChangedHandler)
+	input := &HookInput{
+		SessionID:     "t1",
+		FilePath:      path,
+		ChangeType:    "modified",
+		HookEventName: "FileChanged",
+		CWD:           tempDir,
+	}
+
+	start := time.Now()
+	out, err := h.Handle(context.Background(), input)
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if out == nil {
+		t.Fatal("nil output")
+	}
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("synchronous return took %v, want ≤ 100ms (REQ-HAE-001)", elapsed)
+	}
+
+	testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
+}
+
+// TestFileChanged_SideEffectsCompleted verifies the side-effect goroutine
+// actually executes (sidecar updated) when WaitForAsync drains the WG.
+func TestFileChanged_SideEffectsCompleted(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	path := filepath.Join(tempDir, "tagged.go")
+	if err := os.WriteFile(path, []byte("// @MX:ANCHOR: side\n// @MX:REASON: test\npackage main\nfunc main(){}\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	h := NewFileChangedHandler().(*fileChangedHandler)
+	input := &HookInput{
+		SessionID:     "t2",
+		FilePath:      path,
+		ChangeType:    "modified",
+		HookEventName: "FileChanged",
+		CWD:           tempDir,
+	}
+	out, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if out == nil {
+		t.Fatal("nil output")
+	}
+
+	// Wait for the goroutine to complete its sidecar update.
+	testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
+
+	// The sidecar index lives under <CWD>/.moai/state/. Its exact
+	// filename depends on mx.Manager internals; verify the directory
+	// exists as a proxy for "the async side-effect ran".
+	stateDir := filepath.Join(tempDir, ".moai", "state")
+	if _, err := os.Stat(stateDir); err != nil {
+		t.Errorf("expected MX state dir %s to exist after async scan, got: %v", stateDir, err)
+	}
+}
+
+// BenchmarkFileChanged_AsyncReturn measures the p95 latency of the main
+// return path under 10 concurrent invocations. AC-HAE-002 requires p95 ≤ 100ms.
+// The metric `p95-ms` is registered via b.ReportMetric for grep-able output.
+func BenchmarkFileChanged_AsyncReturn(b *testing.B) {
+	tempDir := b.TempDir()
+	path := filepath.Join(tempDir, "bench.go")
+	if err := os.WriteFile(path, []byte("// @MX:NOTE: bench\npackage main\nfunc main(){}\n"), 0644); err != nil {
+		b.Fatalf("write: %v", err)
+	}
+
+	const concurrency = 10
+	durations := make([]time.Duration, 0, b.N*concurrency)
+	var mu sync.Mutex
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		h := NewFileChangedHandler().(*fileChangedHandler)
+		var wg sync.WaitGroup
+		wg.Add(concurrency)
+		for j := 0; j < concurrency; j++ {
+			go func() {
+				defer wg.Done()
+				input := &HookInput{
+					SessionID:     "bench",
+					FilePath:      path,
+					ChangeType:    "modified",
+					HookEventName: "FileChanged",
+					CWD:           tempDir,
+				}
+				start := time.Now()
+				_, _ = h.Handle(context.Background(), input)
+				d := time.Since(start)
+				mu.Lock()
+				durations = append(durations, d)
+				mu.Unlock()
+			}()
+		}
+		wg.Wait()
+		// Drain async goroutines so the benchmark doesn't leak.
+		testutil.WaitForAsync(b, h.waitGroup(), 5*time.Second)
+	}
+	b.StopTimer()
+
+	p95Ms := percentileMillis(durations, 0.95)
+	b.ReportMetric(p95Ms, "p95-ms")
+	if p95Ms > 100 {
+		b.Errorf("AC-HAE-002 violation: p95 = %.2f ms, want ≤ 100 ms", p95Ms)
+	}
+
+	// Sanity: no goroutine should leak after the benchmark.
+	finalCount := atomic.LoadInt64(new(int64)) // placeholder for leak counter
+	_ = finalCount
+}
+
+// percentileMillis computes the percentile of a duration slice in milliseconds.
+// p ∈ [0, 1]. Returns 0 if the slice is empty.
+func percentileMillis(durations []time.Duration, p float64) float64 {
+	if len(durations) == 0 {
+		return 0
+	}
+	sorted := make([]time.Duration, len(durations))
+	copy(sorted, durations)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	idx := int(float64(len(sorted)-1) * p)
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(sorted) {
+		idx = len(sorted) - 1
+	}
+	return float64(sorted[idx].Microseconds()) / 1000.0
 }
 
 func TestFileChangedHandler_SupportedExtensions(t *testing.T) {
