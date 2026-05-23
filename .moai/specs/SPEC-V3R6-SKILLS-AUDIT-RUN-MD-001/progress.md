@@ -21,8 +21,8 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 |-------|--------|------------|-------|
 | Plan | completed | ea798aec2 | manager-spec Tier S 4 artifacts + plan-auditor iter-2 PASS 0.89 |
 | Run | completed | 965d661f0 | M1 single-milestone 2-line edit applied; 5/5 AC PASS (4 PASS + AC-SARM-003 PASS-WITH-DEBT: 10 pre-existing TEMPLATE-MIRROR-DRIFT-001 baseline failures attributable to sibling SPECs, stash-and-rerun verified, net delta -1 cleared) |
-| Sync | completed | (this commit) | CHANGELOG entry + 4 frontmatter status `draft → implemented` + B12 8th self-test PASS |
-| Mx | pending-judgment | TBD | Step C judgment per scope (test-file edit alone → SKIP-justified candidate per mx-tag-protocol §a) |
+| Sync | completed | a56c6541d | CHANGELOG entry + 4 frontmatter status `draft → implemented` + B12 8th self-test PASS |
+| Mx | completed (SKIP-justified) | (this commit) | Step C SKIP per mx-tag-protocol §a (test-only edit triggers no @MX category); orchestrator-direct chore commit per IVB-001 precedent (d3ed4727d) |
 
 ## Plan-phase Evidence
 
@@ -58,8 +58,8 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 
 | Item | Status | Evidence |
 |------|--------|----------|
-| Step C judgment (test-only edit → SKIP candidate per mx-tag-protocol §a) | TBD | TBD |
-| `@MX` annotation count delta in `skills_audit_test.go` | TBD | TBD |
+| Step C judgment (test-only edit → SKIP candidate per mx-tag-protocol §a) | **SKIP-JUSTIFIED** | Per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a, test-file edits alone do not trigger any @MX tag category (NOTE/WARN/ANCHOR/TODO/SPEC/REASON). M1 edit modified `skills_audit_test.go` lines 39-40 only (`name:` + `filePath:` strings in a test entry struct); no production code, no @MX:ANCHOR fan_in change, no @MX:WARN danger zone introduction. Mx Step C SKIP is justified. Precedent: SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 chore `d3ed4727d` (2026-05-24, same Sprint 2 P4 trio) — identical test-only edit pattern, identical SKIP-justified outcome. |
+| `@MX` annotation count delta in `skills_audit_test.go` | **PASS (delta = 0)** | `grep -cE "@MX:(NOTE\|WARN\|ANCHOR\|TODO\|SPEC\|REASON)" internal/template/skills_audit_test.go` → 0 (pre-edit and post-edit identical; baseline preserved). |
 
 ## Audit-Ready Signal
 
@@ -67,3 +67,7 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 - plan_status: audit-ready
 - run_complete_at: 2026-05-24T05:00:00Z
 - run_status: implemented-ready
+- sync_complete_at: 2026-05-24T03:20:49Z
+- sync_status: completed
+- mx_complete_at: 2026-05-24T03:30:00Z
+- mx_status: SKIP-JUSTIFIED
