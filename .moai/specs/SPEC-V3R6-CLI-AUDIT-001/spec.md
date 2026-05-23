@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-CLI-AUDIT-001
 title: "moai CLI 40+ subcommand inventory + dead command identification + init/update/profile integration analysis (research baseline for Sprint 7 CLI-INTEGRATION-001)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
