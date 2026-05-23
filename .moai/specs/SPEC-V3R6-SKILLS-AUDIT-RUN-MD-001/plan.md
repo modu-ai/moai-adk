@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001
 title: Implementation Plan — skills_audit_test.go solo run.md path update
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec

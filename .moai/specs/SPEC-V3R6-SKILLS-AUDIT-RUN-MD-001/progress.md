@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001
 title: Progress Tracker — skills_audit_test.go solo run.md path update
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
@@ -20,9 +20,9 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 | Phase | Status | Commit SHA | Notes |
 |-------|--------|------------|-------|
 | Plan | completed | ea798aec2 | manager-spec Tier S 4 artifacts + plan-auditor iter-2 PASS 0.89 |
-| Run | implemented-ready | (pending — this commit) | M1 single-milestone 2-line edit applied; 4/5 AC PASS + AC-SARM-003 PASS-WITH-DEBT (pre-existing TEMPLATE-MIRROR-DRIFT-001 baseline failures, stash-and-rerun verified) |
-| Sync | not-started | TBD | CHANGELOG entry + 4 frontmatter status `draft → implemented` + B12 8th self-test |
-| Mx | not-started | TBD | Step C judgment per scope (test-file edit alone → SKIP-justified candidate) |
+| Run | completed | 965d661f0 | M1 single-milestone 2-line edit applied; 5/5 AC PASS (4 PASS + AC-SARM-003 PASS-WITH-DEBT: 10 pre-existing TEMPLATE-MIRROR-DRIFT-001 baseline failures attributable to sibling SPECs, stash-and-rerun verified, net delta -1 cleared) |
+| Sync | completed | (this commit) | CHANGELOG entry + 4 frontmatter status `draft → implemented` + B12 8th self-test PASS |
+| Mx | pending-judgment | TBD | Step C judgment per scope (test-file edit alone → SKIP-justified candidate per mx-tag-protocol §a) |
 
 ## Plan-phase Evidence
 
@@ -47,12 +47,12 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 
 | Item | Status | Evidence |
 |------|--------|----------|
-| CHANGELOG `[Unreleased]` `### Fixed` entry | TBD | TBD |
-| spec.md status `draft → implemented` | TBD | TBD |
-| plan.md status `draft → implemented` | TBD | TBD |
-| acceptance.md status `draft → implemented` | TBD | TBD |
-| progress.md status `draft → implemented` | TBD | TBD |
-| B12 8th self-test PASS (3 sub-conditions) | TBD | TBD |
+| CHANGELOG `[Unreleased]` `### Fixed` entry | PASS | `grep -c "SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001" CHANGELOG.md` = 1 (appended at line 66); entry under `### Fixed` heading at line 65. Content: scope (2-line `skills_audit_test.go` edit), root cause (SPEC-V3R4-WORKFLOW-SPLIT-001 commit `986418598`), tier/sprint (S minimal, P4.2), AC results (5/5), plan-auditor (iter-3 PASS 0.94 +0.05 monotonic), B12 8th PASS marker. |
+| spec.md status `draft → implemented` | PASS | Frontmatter status field updated to `implemented` (line 5). |
+| plan.md status `draft → implemented` | PASS | Frontmatter status field updated to `implemented` (line 5). |
+| acceptance.md status `draft → implemented` | PASS | Frontmatter status field updated to `implemented` (line 5). |
+| progress.md status `draft → implemented` | PASS | Frontmatter status field updated to `implemented` (line 5, this file). |
+| B12 8th self-test PASS (3 sub-conditions) | PASS | (a) `Read internal/template/skills_audit_test.go` lines 36-50: line 39 `name: "solo run/phase-execution.md — plan audit gate markers"` + line 40 `filePath: ".claude/skills/moai/workflows/run/phase-execution.md"` verified verbatim. (b) acceptance.md AC count = 5 ACs (SSOT). (c) Pre-edit `grep -c` = 0, post-edit (current) = 1. |
 
 ## Mx-phase Evidence
 
