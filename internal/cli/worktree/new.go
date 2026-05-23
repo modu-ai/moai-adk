@@ -260,10 +260,31 @@ func dispatchTeamLaunch(cmd *cobra.Command, repoRoot, specID, branchName, wtPath
 	switch pattern {
 	case PatternP4Handoff:
 		// Default no-flag path: print paste-ready instructions and exit 0.
+		// REQ-WTL-008: no spawn occurred → no swarm registry entry.
 		printHandoff(out, cfg)
 		return nil
 
 	case PatternP3InProgress:
+		// M4 (REQ-WTL-008): syscall.Exec REPLACES the process image on
+		// success, so the registry entry MUST be written BEFORE launchP3
+		// otherwise the write code path is unreachable. On Windows launchP3
+		// returns nil after printing handoff fallback — same ordering keeps
+		// the registry consistent across platforms.
+		entry := SwarmEntry{
+			SpecID:       cfg.SpecID,
+			WorktreePath: cfg.WorktreePath,
+			Branch:       cfg.Branch,
+			PaneID:       "", // P3 has no tmux pane
+			Mode:         patternToMode(cfg.Pattern, cfg.LLM),
+			CreatedAt:    time.Now().UTC(),
+			CreatedByPID: os.Getpid(),
+		}
+		if regErr := WriteSwarmEntry(repoRoot, entry); regErr != nil {
+			// Non-fatal: launch is about to happen / process about to be
+			// replaced. Surface a stderr warning so the user knows the
+			// registry is incomplete but proceed with the launch.
+			_, _ = fmt.Fprintf(stderr, "Warning: failed to write swarm registry: %v\n", regErr)
+		}
 		// POSIX: launchP3 REPLACES the current process via syscall.Exec on
 		// success and never returns. The error path here covers: moai binary
 		// missing from PATH, worktree chdir failure, exec call failure.
@@ -279,15 +300,32 @@ func dispatchTeamLaunch(cmd *cobra.Command, repoRoot, specID, branchName, wtPath
 		// way.
 		paneID, launchErr := launchP1P2(cfg)
 		if launchErr != nil {
-			// REQ-WTL-007: pane spawn failure → P4 handoff fallback. The
-			// "tmux pane spawn failed" substring is the verification anchor
-			// for AC-WTL-007's stderr assertion.
+			// REQ-WTL-007 + REQ-WTL-008: pane spawn failure → P4 handoff
+			// fallback AND no registry write. The "tmux pane spawn failed"
+			// substring is the verification anchor for AC-WTL-007's stderr
+			// assertion. Registry write is deferred until after the
+			// launchP1P2 success branch so the failure path is structurally
+			// guaranteed to skip it.
 			printHandoffWithError(out, stderr, cfg, fmt.Sprintf("tmux pane spawn failed: %v", launchErr))
 			return nil
 		}
+		// M4 (REQ-WTL-008): write swarm registry with the captured pane_id.
+		// Non-fatal failure: tmux window has already spawned, so we cannot
+		// undo it; surface a warning and continue.
+		entry := SwarmEntry{
+			SpecID:       cfg.SpecID,
+			WorktreePath: cfg.WorktreePath,
+			Branch:       cfg.Branch,
+			PaneID:       paneID,
+			Mode:         patternToMode(cfg.Pattern, cfg.LLM),
+			CreatedAt:    time.Now().UTC(),
+			CreatedByPID: os.Getpid(),
+		}
+		if regErr := WriteSwarmEntry(repoRoot, entry); regErr != nil {
+			_, _ = fmt.Fprintf(stderr, "Warning: failed to write swarm registry: %v\n", regErr)
+		}
 		// Success: report the captured pane_id so the user can switch to the
 		// new window (tmux: C-b w, or use `tmux select-window -t <pane>`).
-		// The pane_id will also feed the M4 swarm registry entry.
 		_, _ = fmt.Fprintf(out, "tmux window spawned in pane %s — running `moai %s` in %s\n", paneID, cfg.LLM, cfg.WorktreePath)
 		return nil
 	}

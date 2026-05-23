@@ -12,14 +12,18 @@
 package worktree
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 // TestLaunchP3_CapturesArgvAndCwd_CC verifies P3 (no-tmux) dispatch performs:
@@ -499,6 +503,229 @@ func TestLaunchP1P2_EmptyLLMDefaultsToCC(t *testing.T) {
 	}
 	if !strings.Contains(capturedCommand, "moai cc") {
 		t.Errorf("captured command = %q must default to %q when cfg.LLM is empty", capturedCommand, "moai cc")
+	}
+}
+
+// =============================================================================
+// M4: dispatch wiring tests (REQ-WTL-008 registry write + REQ-WTL-007/010
+// failure modes). Drive dispatchTeamLaunch end-to-end with injected
+// tmuxNewWindowFn and t.Setenv("TMUX", "fake") to force P1/P2 selection. The
+// registry file is verified in the per-test t.TempDir().
+// =============================================================================
+
+// newDispatchCmd returns a minimal cobra.Command set up the way newNewCmd
+// produces — registered --team flag, captured out/err writers — for direct
+// dispatchTeamLaunch invocation in tests.
+func newDispatchCmd(t *testing.T, teamFlag bool) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+	cmd := newNewCmd()
+	if err := cmd.Flags().Set("team", boolToString(teamFlag)); err != nil {
+		t.Fatalf("set --team flag: %v", err)
+	}
+	outBuf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	cmd.SetOut(outBuf)
+	cmd.SetErr(errBuf)
+	return cmd, outBuf, errBuf
+}
+
+func boolToString(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// TestDispatchTeamLaunch_P1_WritesRegistry verifies REQ-WTL-008: after a
+// successful P1 (tmux + CG mode) launch, dispatchTeamLaunch writes the
+// swarm registry entry to .moai/state/swarm/<SPEC>.json with the captured
+// pane_id, mode="tmux-glm", and the canonical 7-field schema.
+//
+// Mocks:
+//   - tmuxNewWindowFn → returns "%5" without spawning a real tmux window
+//   - t.Setenv("TMUX", "/tmp/fake") → forces InTmuxSession() == true
+//   - settings.local.json with CG sentinel → forces IsCGMode == true,
+//     selecting PatternP1TmuxGLM
+func TestDispatchTeamLaunch_P1_WritesRegistry(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		return "%5", nil
+	}
+	// Force in-tmux state.
+	t.Setenv("TMUX", "/tmp/tmux-fake/default,42,0")
+
+	// Build a fake repo root + settings.local.json that activates CG mode.
+	repoRoot := t.TempDir()
+	settingsDir := filepath.Join(repoRoot, ".claude")
+	if err := os.MkdirAll(settingsDir, 0o755); err != nil {
+		t.Fatalf("mkdir settings dir: %v", err)
+	}
+	settingsPath := filepath.Join(settingsDir, "settings.local.json")
+	// Populate GLM env vars so IsCGMode returns true (per
+	// internal/tmux/cg_detect.go semantics).
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "sk-fake-glm-token")
+	t.Setenv("ANTHROPIC_BASE_URL", "https://open.bigmodel.cn/api/anthropic")
+	if err := os.WriteFile(settingsPath, []byte(`{"teammateMode": "tmux"}`), 0o644); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	wtPath := t.TempDir()
+	specID := "SPEC-WTL-REG-001"
+	branch := "feature/" + specID
+
+	cmd, outBuf, _ := newDispatchCmd(t, true)
+	if err := dispatchTeamLaunch(cmd, repoRoot, specID, branch, wtPath); err != nil {
+		t.Fatalf("dispatchTeamLaunch returned unexpected error: %v", err)
+	}
+
+	registryPath := filepath.Join(repoRoot, ".moai", "state", "swarm", specID+".json")
+	data, err := os.ReadFile(registryPath)
+	if err != nil {
+		t.Fatalf("read registry file (expected after P1 success): %v", err)
+	}
+	var entry SwarmEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("unmarshal registry JSON: %v", err)
+	}
+
+	if entry.SpecID != specID {
+		t.Errorf("SpecID = %q, want %q", entry.SpecID, specID)
+	}
+	if entry.WorktreePath != wtPath {
+		t.Errorf("WorktreePath = %q, want %q", entry.WorktreePath, wtPath)
+	}
+	if entry.Branch != branch {
+		t.Errorf("Branch = %q, want %q", entry.Branch, branch)
+	}
+	if entry.PaneID != "%5" {
+		t.Errorf("PaneID = %q, want %q", entry.PaneID, "%5")
+	}
+	if entry.Mode != "tmux-glm" {
+		t.Errorf("Mode = %q, want tmux-glm", entry.Mode)
+	}
+	if entry.CreatedAt.IsZero() {
+		t.Errorf("CreatedAt is zero; should be populated")
+	}
+	if entry.CreatedByPID == 0 {
+		t.Errorf("CreatedByPID = 0; should be os.Getpid()")
+	}
+	// Stdout should report the spawn (no error path).
+	if !strings.Contains(outBuf.String(), "tmux window spawned in pane %5") {
+		t.Errorf("stdout = %q, want substring %q", outBuf.String(), "tmux window spawned in pane %5")
+	}
+}
+
+// TestDispatchTeamLaunch_P1_PaneSpawnFails_NoRegistry verifies REQ-WTL-007:
+// when tmuxNewWindowFn returns an error (e.g., tmux server down), the P4
+// handoff fallback path is taken AND no swarm registry file is written.
+//
+// This is the negative assertion for AC-WTL-008 (registry only on success).
+func TestDispatchTeamLaunch_P1_PaneSpawnFails_NoRegistry(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		return "", errors.New("tmux: no server running on /tmp/tmux-1000/default")
+	}
+	t.Setenv("TMUX", "/tmp/tmux-fake/default,42,0")
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "sk-fake-glm-token")
+	t.Setenv("ANTHROPIC_BASE_URL", "https://open.bigmodel.cn/api/anthropic")
+
+	repoRoot := t.TempDir()
+	settingsDir := filepath.Join(repoRoot, ".claude")
+	if err := os.MkdirAll(settingsDir, 0o755); err != nil {
+		t.Fatalf("mkdir settings dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(settingsDir, "settings.local.json"), []byte(`{"teammateMode": "tmux"}`), 0o644); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	wtPath := t.TempDir()
+	specID := "SPEC-WTL-NOREG-001"
+	branch := "feature/" + specID
+
+	cmd, _, errBuf := newDispatchCmd(t, true)
+	// On pane spawn failure, dispatchTeamLaunch falls back to handoff (returns nil).
+	if err := dispatchTeamLaunch(cmd, repoRoot, specID, branch, wtPath); err != nil {
+		t.Fatalf("dispatchTeamLaunch should return nil on tmux failure (handoff fallback); got: %v", err)
+	}
+
+	registryPath := filepath.Join(repoRoot, ".moai", "state", "swarm", specID+".json")
+	if _, err := os.Stat(registryPath); !os.IsNotExist(err) {
+		t.Errorf("registry file MUST NOT exist after pane spawn failure; stat err = %v", err)
+	}
+	if !strings.Contains(errBuf.String(), "tmux pane spawn failed") {
+		t.Errorf("stderr = %q, want substring %q (REQ-WTL-007 anchor)", errBuf.String(), "tmux pane spawn failed")
+	}
+}
+
+// TestDispatchTeamLaunch_P2_WritesRegistry verifies P2 (tmux + CC mode)
+// registry entry: mode="tmux-cc", pane_id populated.
+//
+// Distinct from the P1 test by leaving GLM env vars unset → IsCGMode returns
+// false → PatternP2TmuxCC selected.
+func TestDispatchTeamLaunch_P2_WritesRegistry(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		return "%7", nil
+	}
+	t.Setenv("TMUX", "/tmp/tmux-fake/default,42,0")
+	// GLM env vars deliberately unset → IsCGMode returns false → P2.
+	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+
+	repoRoot := t.TempDir()
+	// No settings.local.json → IsCGMode returns false straight away.
+
+	wtPath := t.TempDir()
+	specID := "SPEC-WTL-REG-002"
+	branch := "feature/" + specID
+
+	cmd, _, _ := newDispatchCmd(t, true)
+	if err := dispatchTeamLaunch(cmd, repoRoot, specID, branch, wtPath); err != nil {
+		t.Fatalf("dispatchTeamLaunch returned unexpected error: %v", err)
+	}
+
+	registryPath := filepath.Join(repoRoot, ".moai", "state", "swarm", specID+".json")
+	data, err := os.ReadFile(registryPath)
+	if err != nil {
+		t.Fatalf("read registry file: %v", err)
+	}
+	var entry SwarmEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("unmarshal registry JSON: %v", err)
+	}
+	if entry.Mode != "tmux-cc" {
+		t.Errorf("Mode = %q, want tmux-cc", entry.Mode)
+	}
+	if entry.PaneID != "%7" {
+		t.Errorf("PaneID = %q, want %q", entry.PaneID, "%7")
+	}
+}
+
+// TestDispatchTeamLaunch_P4_NoRegistry verifies that PatternP4Handoff (no
+// --team flag) does NOT write a swarm registry file. P4 is the "no spawn"
+// path — printing handoff guidance only.
+func TestDispatchTeamLaunch_P4_NoRegistry(t *testing.T) {
+	// No tmuxNewWindowFn override needed — P4 never reaches launchP1P2.
+	// No TMUX env var → not in tmux session, but team flag is false anyway.
+	repoRoot := t.TempDir()
+	wtPath := t.TempDir()
+	specID := "SPEC-WTL-P4-001"
+	branch := "feature/" + specID
+
+	cmd, _, _ := newDispatchCmd(t, false) // teamFlag = false → P4
+	if err := dispatchTeamLaunch(cmd, repoRoot, specID, branch, wtPath); err != nil {
+		t.Fatalf("dispatchTeamLaunch returned unexpected error: %v", err)
+	}
+
+	registryPath := filepath.Join(repoRoot, ".moai", "state", "swarm", specID+".json")
+	if _, err := os.Stat(registryPath); !os.IsNotExist(err) {
+		t.Errorf("registry file MUST NOT exist for P4 handoff path; stat err = %v", err)
 	}
 }
 
