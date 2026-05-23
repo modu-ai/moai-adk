@@ -159,4 +159,4 @@ gan_loop:
 
 ## 次のステップ
 
-- [移行ガイド](./migration-guide.md) — 既存.agency/プロジェクト変換
+- [移行ガイド](./migration-guide.md) — レガシー v2.x プロジェクト変換

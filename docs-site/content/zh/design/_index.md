@@ -41,7 +41,7 @@ flowchart TD
 - **[Claude Design交接](./claude-design-handoff.md)** — 了解Claude Design功能和包导出
 - **[代码路径](./code-based-path.md)** — 使用brand-voice.md进行设计
 - **[GAN Loop](./gan-loop.md)** — Builder-Evaluator迭代过程
-- **[迁移指南](./migration-guide.md)** — 转换现有.agency/项目
+- **[迁移指南](./migration-guide.md)** — 转换旧版 v2.x 项目
 
 ## 要求
 

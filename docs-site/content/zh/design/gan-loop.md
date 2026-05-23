@@ -157,4 +157,4 @@ gan_loop:
 
 ## 后续步骤
 
-- [迁移指南](./migration-guide.md) — 转换现有.agency/项目
+- [迁移指南](./migration-guide.md) — 转换旧版 v2.x 项目

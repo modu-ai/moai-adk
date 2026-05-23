@@ -41,7 +41,7 @@ flowchart TD
 - **[Claude Designハンドオフ](./claude-design-handoff.md)** — Claude Design機能とバンドルエクスポート
 - **[コードベースパス](./code-based-path.md)** — brand-voice.mdを使用した設計
 - **[GAN Loop](./gan-loop.md)** — Builder-Evaluator反復プロセス
-- **[移行ガイド](./migration-guide.md)** — 既存の.agency/プロジェクト変換
+- **[移行ガイド](./migration-guide.md)** — レガシー v2.x プロジェクト変換
 
 ## 要件
 
