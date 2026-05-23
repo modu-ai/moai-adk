@@ -279,6 +279,31 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 "Run: go test ./..."
 ```
 
+## Team Launch Patterns
+
+The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session inside the new worktree based on the current environment. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag for the full P1-P4 decision matrix, detection logic, and example invocations.
+
+### HARD Rules
+
+[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/workflow/branch-origin-protocol.md` § HARD Rules).
+
+Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans all team-launch sources for `AskUserQuestion` / `mcp__askuser` references.
+
+[ZONE:Frozen] [HARD] `--team` and `--tmux` are mutually exclusive at the cobra flag layer. Combining them is rejected before any worktree state is created.
+
+### Swarm Registry Baseline
+
+`.moai/state/swarm/<SPEC-ID>.json` (per-project, 0o600 perms) is written after successful team launch in P1, P2, or P3. The registry is NOT written for P4 (no spawn occurred), and is NOT written if pane spawn fails or worktree creation fails.
+
+The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `created_at`, `created_by_pid`) is the baseline for future `moai swarm status / done / kill-all` commands. Those commands are out of scope for SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 — this SPEC delivers only the registry write.
+
+### Cross-references
+
+- `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag (P1-P4 matrix + examples)
+- `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`
+- SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 (REQ-WTL-001..013)
+- CONST-V3R5-030 — Branch Origin Decision Protocol (BODP)
+
 ## Minimum Version Requirements
 
 | Feature | Minimum Version | Notes |
